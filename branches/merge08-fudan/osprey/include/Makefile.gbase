@@ -173,6 +173,7 @@ LIBELF_HFILES = \
 
 LIBELF_DIRS = libelf
 
+.PHONY: default
 default: pathscale_defs.h
 	@: Make directories in case they do not exist.
 	@for d in sys cmplrs libelf; do \

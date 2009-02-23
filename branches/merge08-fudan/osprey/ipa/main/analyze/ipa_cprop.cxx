@@ -750,11 +750,6 @@ Connect_indirect_call (IPA_NODE* caller)
 	if (!call->Is_func_ptr ())
 	    continue;
 
-#ifdef KEY
-	if( call->Is_icall_target() )
-	  continue;
-#endif
-
 	SUMMARY_VALUE &value = (*icall_iter)->Value();
 	if (!value.Is_addr_of () || !value.Is_global ())
 	    continue;

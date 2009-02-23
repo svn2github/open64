@@ -102,10 +102,13 @@ endif
 
 default: first all last
 
+
 all: $(TARGET)
 
 first:
+ifndef SKIP_DEP_BUILD
 	$(call submake,$(BUILD_AREA)/include)
+endif
 
 last: make_libdeps
 

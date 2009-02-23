@@ -62,7 +62,13 @@ endif
 ifeq ($(BUILD_OPTIMIZE), NODEBUG)
 OPTIMIZER = -O3
 endif
-#CFLAGS += -fno-fast-stdlib
+
+ifeq ($(BUILD_COMPILER), OSP)
+OPTIMIZER += -fno-fast-stdlib
+endif
+ifeq ($(BUILD_COMPILER), PSC)
+OPTIMIZER += -fno-fast-stdlib
+endif
 
 ifeq ($(BUILD_VARIANT), LIBMV)
 LCDEFS += -D_SW_PIPELINE
@@ -275,11 +281,16 @@ VPATH = $(BUILD_BASE) $(BUILD_BASE)/mips $(BUILD_BASE)/mips/extra
 endif
 
 
-default: first $(TARGETS) last
+default:
+	$(MAKE)  first
+	$(MAKE)  $(TARGETS)
+	$(MAKE)  last
 
 first:
-ifeq ($(BUILD_OS), LINUX)
+ifndef SKIP_DEP_BUILD
+ ifeq ($(BUILD_OS), LINUX)
 	$(call submake,$(BUILD_AREA)/include)
+ endif
 endif
 
 last : make_deps
@@ -320,8 +331,8 @@ $(PROF_LIB): $(OBJECTS:%.o=%.pg.o)
 
 $(DSO): $(OBJECTS:%.o=%.pic.o)
 ifeq ($(BUILD_OS), DARWIN)
-	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -o $@ $^ -lm
+	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -o $@ $^ -lm -L.
 else
-	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -Wl,-soname=$(DSO) -Wl,--version-script=$(BUILD_BASE)/$(DSO:%.so.$(dso_version)=%.vs) -o $@ $^ -lm
+	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -Wl,-soname=$(DSO) -Wl,--version-script=$(BUILD_BASE)/$(DSO:%.so.$(dso_version)=%.vs) -o $@ $^ -lm -L.
 endif
 	$(ln) -sf $(DSO) $(basename $(DSO))

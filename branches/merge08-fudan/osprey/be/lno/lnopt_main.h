@@ -911,7 +911,7 @@ public:
   void Set_Generally_Unimportant(BOOL b = TRUE) {Set_Flag(UNIMPORTANT, b);}
 
   DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
-	ACCESS_VECTOR *step, BOOL has_calls, BOOL has_unsummarized_calls,
+	ACCESS_VECTOR *step, BOOL has_calls, BOOL has_nested_calls, BOOL has_unsummarized_calls,
 	BOOL has_unsummarized_call_cost, BOOL has_gotos, 
 	BOOL has_gotos_this_level,BOOL has_exits, BOOL is_inner); 
   DO_LOOP_INFO(DO_LOOP_INFO *dli, MEM_POOL *pool);

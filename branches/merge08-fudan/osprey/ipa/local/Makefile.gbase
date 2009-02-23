@@ -252,7 +252,12 @@ LDIRT = be.so wopt.so be ipl ii_files
 
 DEP_OBJECTS = $(IPA_OBJS) $(IPA_CXX_OBJS)
 
-default: make_deps
+.PHONY: default first make_deps install
+
+default:
+	$(MAKE) first
+	$(MAKE) make_deps
+
 make_deps: $(TARGETS)
 $(DEP_OBJECTS): $(BUILD_AREA)/be/preg_list.h
 .PHONY: default make_deps
@@ -261,13 +266,12 @@ $(DEP_OBJECTS): $(BUILD_AREA)/be/preg_list.h
 #  Library prerequisites are updated via submake
 #----------------------------------------------------------------------
 
-.PHONY: force
-force: ;
-
-$(TARG_OPT_DIR)/wopt.so: force
-	$(call submake,$(TARG_OPT_DIR),wopt.so)
-$(TARG_BE_DIR)/be.so: force
-	$(call submake,$(TARG_BE_DIR),be.so)
+.PHONY: first
+first:
+ifndef SKIP_DEP_BUILD
+	$(call submake,$(TARG_BE_DIR))
+endif
+	ln -sf $(TARG_BE_DIR)/be.so .
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is

@@ -153,14 +153,26 @@
 # endif
 
 # define SET_POINTER_SIZE	(cmd_line_flags.s_pointer8)
+/* OSP_456 */
+# define Is_Target_32bit()      (cmd_line_flags.s_pointer8 == 0)
+# define Is_Target_64bit()      (cmd_line_flags.s_pointer8 == 1)
 
-# if defined(_DOPE_VECTOR_32_OR_64)
+/* OSP_467, #4, select ptr32 or ptr64 for TARG_X8664 at runtime */
+# if defined(_DOPE_VECTOR_32_OR_64) || defined(TARG_X8664)
 
-#ifdef KEY /* Bug 6845 */
-# define DV_ALLOC_CPNT_OFFSET_WORD_SIZE		((SET_POINTER_SIZE)? 2 : 1)
-#endif /* KEY Bug 6845 */
-# define DV_DIM_WORD_SIZE		((SET_POINTER_SIZE)? 6 : 3)
-# define DV_HD_WORD_SIZE		((SET_POINTER_SIZE)? 12 : 8)
+# if defined(TARG_X8664) && defined(_HOST64)
+#  define DV_ALLOC_CPNT_OFFSET_WORD_SIZE		1
+#  define DV_DIM_WORD_SIZE               ((SET_POINTER_SIZE)? 3 : 3)
+#  define DV_HD_WORD_SIZE                ((SET_POINTER_SIZE)? 6 : 8)
+#  define DV_BITS_PER_WORD               ((SET_POINTER_SIZE)? 64 : 32)
+#  define INTEGER_DEFAULT_BITS           ((SET_POINTER_SIZE)? 64 : 32)
+# else
+#  define DV_ALLOC_CPNT_OFFSET_WORD_SIZE ((SET_POINTER_SIZE)? 2 : 1)
+#  define DV_DIM_WORD_SIZE               ((SET_POINTER_SIZE)? 6 : 3)
+#  define DV_HD_WORD_SIZE                ((SET_POINTER_SIZE)? 12 : 8)
+#  define DV_BITS_PER_WORD               TARGET_BITS_PER_WORD
+#  define INTEGER_DEFAULT_BITS           TARGET_BITS_PER_WORD
+# endif
 
 # define DV_BASE_ADDR(DOPE)		((SET_POINTER_SIZE)?                   \
                      (DOPE).ptr64.base_addr : (DOPE).ptr32.base_addr)
@@ -250,13 +262,12 @@
 # define DV_ALLOC_CPNT_OFFSET_WORD_SIZE		1
 #endif /* KEY Bug 6845 */
 
-#if defined (TARG_X8664) && defined (_HOST64)
-# define DV_DIM_WORD_SIZE               ((SET_POINTER_SIZE)? 3 : 3)
-# define DV_HD_WORD_SIZE                ((SET_POINTER_SIZE)? 6 : 8)
-#else
 # define DV_DIM_WORD_SIZE		3       /* Size of dope vector dimen  */
 # define DV_HD_WORD_SIZE		6       /* Size of dope vector header */
-#endif
+
+/* OSP_XXX */
+# define DV_BITS_PER_WORD               TARGET_BITS_PER_WORD
+# define INTEGER_DEFAULT_BITS           TARGET_BITS_PER_WORD
 
 # define DV_BASE_ADDR(DOPE)             (DOPE).base_addr
 # define DV_EL_LEN(DOPE)                (DOPE).el_len
@@ -4657,6 +4668,10 @@
 # define BYTES_TO_WORDS(BIT_SIZE, ALIGN_TO)				       \
 	bits_and_bytes_to_words(&(BIT_SIZE), (ALIGN_TO == 64) ? 7:3,	       \
 				(ALIGN_TO == 64) ? 3 : 2);
+
+/* OSP_467, #2 */
+# define BITS_TO_INTEGER_DEFAULT_WORDS(BIT_SIZE, INT_SIZE)                     \
+	((INT_SIZE) == 64) ? (((BIT_SIZE)+63) >> 6) : (((BIT_SIZE)+31) >> 5)
 
 /*      This routine will test the value held in an integer array (c) against */
 /*      the value held in TRUE_VALUE to see if the they match. This is to     */

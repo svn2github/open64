@@ -80,6 +80,9 @@ extern int prof_lib_exists (const char *lib);
 /* add library to path */
 extern void add_library (string_list_t *list, const char *lib);
 
+/* search library_dirs for the object file provided by the compiler */
+extern char *find_obj_path (char *objname);
+
 /* search library_dirs for the crt file */
 extern char *find_crt_path (char *crtname);
 

@@ -406,7 +406,7 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
     dli = (DO_LOOP_INFO *) WN_MAP_Get(LNO_Info_Map,wn);
     if (!dli) {
       dli = (DO_LOOP_INFO *) 
-       CXX_NEW(DO_LOOP_INFO(&LNO_default_pool,NULL,NULL,NULL,FALSE,FALSE,
+       CXX_NEW(DO_LOOP_INFO(&LNO_default_pool,NULL,NULL,NULL,FALSE,FALSE,FALSE,
         FALSE,FALSE,FALSE,FALSE,TRUE), &LNO_default_pool);
       dli->Depth = depth;
       dli->Is_Backward = Do_Loop_Is_Backward(wn); 

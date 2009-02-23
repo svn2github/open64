@@ -127,7 +127,7 @@ Combine_div_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
 #endif
 	    ! (WN_operator_is(WN_kid1(old_wn), OPR_INTCONST) && 
 	       Can_Do_Fast_Divide(MTYPE_I4, WN_const_val(WN_kid1(old_wn))))) {
-    
+
     // Transform:  DIV        DIVPART
     //             a b  =>    DIVREM
     //                        a    b

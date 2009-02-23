@@ -3353,7 +3353,8 @@ typedef struct f90_type {
 |* our dope vector in C so we can create dope vectors for the folders. *|
 \***********************************************************************/
 
-# if defined(_DOPE_VECTOR_32_OR_64)
+/* OSP_467, #4, dynamic selection of ptr32 or ptr64 for TARG_X8664 */
+# if defined(_DOPE_VECTOR_32_OR_64) || defined(TARG_X8664)
 union ext_dope_entry {
 		struct {
                         int       	base_addr;

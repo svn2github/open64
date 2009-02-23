@@ -225,9 +225,21 @@ LLDLIBS += $(LIBRARIES) -lftn -lu  -lm
 #  -> All targets finished before make_deps or make_libdeps.
 #----------------------------------------------------------------------
 
-default: make_libdeps
+default:
+	$(MAKE) first
+	$(MAKE) make_libdeps
+
+
 make_libdeps: $(TARGETS)
-.PHONY: default install make_libdeps
+first:
+ifndef SKIP_DEP_BUILD
+ ifeq ($(BUILD_OS), LINUX)
+	$(call submake,$(BUILD_AREA)/include)
+ endif
+endif
+
+
+.PHONY: default first make_libdeps install
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is

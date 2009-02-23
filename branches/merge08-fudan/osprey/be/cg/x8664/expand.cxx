@@ -2894,7 +2894,14 @@ Expand_Long_Double_To_Int(TN* dest, TN* src, TYPE_ID imtype, OPS* ops)
     Cur_BB = bb_exit;
   }
 
-  CGTARG_Load_From_Memory( dest, mem_loc, ops );
+  // OSP 495
+  if ( imtype == MTYPE_U4 && TY_mtype(mem_ty) == MTYPE_U8 ) {
+    // in this case, we only need to load lower 4 bytes
+    Exp_Load(MTYPE_U4, MTYPE_U4, dest, mem_loc, 0, ops, 0);
+  }
+  else {
+    CGTARG_Load_From_Memory( dest, mem_loc, ops );
+  }
 
   if( Trace_Exp ){
     Print_OPS( ops );

@@ -189,7 +189,9 @@ endif
 #----------------------------------------------------------------------
 LLDLIBS += 
 
-default: $(TARGETS) last
+default:
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is

@@ -658,7 +658,7 @@ WN* SNL_Distribute(DOLOOP_STACK* stack, INT inner, INT loopd, BOOL above)
 				  &LNO_default_pool);
 
     DO_LOOP_INFO* dli = CXX_NEW(DO_LOOP_INFO(&LNO_default_pool,
-      newlb, newub, newstep, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
+      newlb, newub, newstep, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
       (i == imperfect)), &LNO_default_pool);
     if (olddli->Lego_Info != NULL) 
       dli->Lego_Info = CXX_NEW(LEGO_INFO(olddli->Lego_Info, LEGO_pool),

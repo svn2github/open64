@@ -2961,17 +2961,18 @@ Expand_Sqrt (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
 
 
 static void
-Expand_Float_Compares(TOP cmp_opcode, TN *dest, TN *src1, TN *src2, OPS *ops)
+Expand_Float_Compares(TOP cmp_opcode, TN *dest, TN *src1, TN *src2, OPS *ops, BOOL disable_exception = FALSE)
 {
+  TN* sf = (disable_exception == TRUE) ? Gen_Enum_TN(ECV_sf_s1) : Gen_Enum_TN(ECV_sf_s0);
   if (TN_register_class(dest) == ISA_REGISTER_CLASS_predicate) {
     // return result of comparison in a predicate register
     TN *p1 = dest;
     TN *p2 = Get_Complement_TN(dest);
-    Build_OP (cmp_opcode, p1, p2, True_TN, Gen_Enum_TN(ECV_sf_s0), src1, src2, ops);
+    Build_OP (cmp_opcode, p1, p2, True_TN, sf, src1, src2, ops);
   } else {
     TN *p1 = Build_RCLASS_TN (ISA_REGISTER_CLASS_predicate);
     TN *p2 = Build_RCLASS_TN (ISA_REGISTER_CLASS_predicate);
-    Build_OP (cmp_opcode, p1, p2, True_TN, Gen_Enum_TN(ECV_sf_s0), src1, src2, ops);
+    Build_OP (cmp_opcode, p1, p2, True_TN, sf, src1, src2, ops);
     // can either do unconditional copy of 0,
     // or predicated copy of 0 followed by predicated copy of 1.
     // Expand_Copy (dest, Zero_TN, MTYPE_I8, ops);
@@ -3318,14 +3319,23 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN * op1, OPS *ops)
       Build_OP (TOP_popcnt, result, p2, t2, ops);
     }
     break;
+  case INTRN_ISGREATER:
+    Expand_Float_Compares(TOP_fcmp_gt, result, op0, op1, ops, TRUE /* disable exception */);
+    break;
+  case INTRN_ISGREATEREQUAL:
+    Expand_Float_Compares(TOP_fcmp_ge, result, op0, op1, ops, TRUE /* disable exception */);
+    break;
+  case INTRN_ISLESS:
+    Expand_Float_Compares(TOP_fcmp_lt, result, op0, op1, ops, TRUE /* disable exception */);
+    break;
+  case INTRN_ISLESSEQUAL:
+    Expand_Float_Compares(TOP_fcmp_le, result, op0, op1, ops, TRUE /* disable exception */);
+    break;
   case INTRN_ISLESSGREATER:
-    // This is the final place to expand this intrinsic
-    // If Expand it in FE can get more optimization opportunity,
-    // please handle it in FE.
-    Expand_Float_Compares(TOP_fcmp_neq, result, op0, op1, ops); 
+    Expand_Float_Compares(TOP_fcmp_neq, result, op0, op1, ops, TRUE /* disable exception */); 
     break;
   case INTRN_ISUNORDERED:
-    Expand_Float_Compares(TOP_fcmp_unord, result, op0, op1, ops);
+    Expand_Float_Compares(TOP_fcmp_unord, result, op0, op1, ops, TRUE /* disable exception */);
     break;
   case INTRN_CLZ32:
     // expand the intrinsic __builtin_clz, which Returns the number of leading 0-bits in X, 

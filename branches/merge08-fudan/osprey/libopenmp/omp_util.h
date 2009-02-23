@@ -44,14 +44,14 @@
       fprintf(stderr, ParmList), \
       fprintf(stderr, "\n"), \
       fflush(stderr), \
-      abort(), 0))
+      abort(), (void) 0))
 
 #define DevWarning(Cond, ParmList)\
     ( Cond ? (void) 1 : \
     ( fprintf(stderr, "DevWaring: at %s: %d", __FILE__, __LINE__), \
       fprintf(stderr, ParmList), \
       fprintf(stderr, "\n"), \
-      fflush(stderr), 0)) 
+      fflush(stderr), (void) 0)) 
 
 #define DebugLog(ParmList) \
 	fprintf(stderr, "Debug Log at %s:%d", __FILE__, __LINE__); \
@@ -70,7 +70,7 @@
       fprintf(stderr, ParmList), \
       fprintf(stderr, "\n"), \
       fflush(stderr), \
-      abort(), 0))
+      abort(), (void) 0))
 
 void
 Not_Valid (char * error_message) __attribute__ ((__noreturn__));

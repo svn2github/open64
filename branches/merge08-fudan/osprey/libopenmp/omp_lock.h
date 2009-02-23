@@ -37,30 +37,30 @@
 
 #include <pthread.h>
 
-typedef pthread_mutex_t omp_lock_t;
+typedef pthread_mutex_t ompc_lock_t;
 
 typedef struct {
-   omp_lock_t      lock, wait;
+   ompc_lock_t      lock, wait;
    pthread_t       thread_id;
    int             count;
-} omp_nest_lock_t;
+} ompc_nest_lock_t;
 
 #endif
 
-extern void __ompc_init_lock (volatile omp_lock_t *);
-extern void __ompc_lock (volatile omp_lock_t *);
-extern void __ompc_unlock (volatile omp_lock_t *);
-extern void __ompc_destroy_lock (volatile omp_lock_t *);
-extern int __ompc_test_lock (volatile omp_lock_t *);
+extern void __ompc_init_lock (volatile ompc_lock_t *);
+extern void __ompc_lock (volatile ompc_lock_t *);
+extern void __ompc_unlock (volatile ompc_lock_t *);
+extern void __ompc_destroy_lock (volatile ompc_lock_t *);
+extern int __ompc_test_lock (volatile ompc_lock_t *);
 
-extern void __ompc_init_nest_lock (volatile omp_nest_lock_t *);
-extern void __ompc_nest_lock (volatile omp_nest_lock_t *);
-extern void __ompc_nest_unlock (volatile omp_nest_lock_t *);
-extern void __ompc_destroy_nest_lock (volatile omp_nest_lock_t *);
-extern int __ompc_test_nest_lock (volatile omp_nest_lock_t *);
+extern void __ompc_init_nest_lock (volatile ompc_nest_lock_t *);
+extern void __ompc_nest_lock (volatile ompc_nest_lock_t *);
+extern void __ompc_nest_unlock (volatile ompc_nest_lock_t *);
+extern void __ompc_destroy_nest_lock (volatile ompc_nest_lock_t *);
+extern int __ompc_test_nest_lock (volatile ompc_nest_lock_t *);
 
-extern void __ompc_critical(int gtid, volatile omp_lock_t **lck);
-extern void __ompc_end_critical(int gtid, volatile omp_lock_t **lck);
+extern void __ompc_critical(int gtid, volatile ompc_lock_t **lck);
+extern void __ompc_end_critical(int gtid, volatile ompc_lock_t **lck);
 
 #endif
 

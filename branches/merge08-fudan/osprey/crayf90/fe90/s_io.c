@@ -8813,21 +8813,28 @@ static void gen_array_element_init(int		attr_idx,
    if (OPND_FLD((*rhs_opnd)) == CN_Tbl_Idx) {
 
       if (TYP_LINEAR(type_idx) == Integer_4 &&
-          sizeof(long_type) == 4 &&
+          (sizeof(long_type) == 4 || Is_Target_32bit()) &&  /* OSP_456 */
           TYP_LINEAR(CN_TYPE_IDX(OPND_IDX((*rhs_opnd)))) == Integer_8) {
+ 
+         // OSP_456
+         // in 32-bit compiler, the_constant[0] = CP_CONSTANT[idx]
+         //                     the_constant[1] = CP_CONSTANT[idx+1]
+         // in 64-bit compiler, the_constant[0] = CP_CONSTANT[idx] & 0xffffffff
+         //                     the_constant[1] = CP_CONSTANT[idx] >> 32
+         // TODO: the byte order
+         int* the_constant = (int *) &CP_CONSTANT(CN_POOL_IDX(
+                                                 OPND_IDX((*rhs_opnd)))); 
          gen_opnd(&(opnd[0]), 
                   ntr_const_tbl(Integer_4,
                                 FALSE,
-                                &CP_CONSTANT(CN_POOL_IDX(
-                                            OPND_IDX((*rhs_opnd))))),
+                                the_constant),
                   CN_Tbl_Idx,
                   line,
                   col);
          gen_opnd(&(opnd[1]), 
                   ntr_const_tbl(Integer_4,
                                 FALSE,
-                                &CP_CONSTANT(1 + CN_POOL_IDX(
-                                            OPND_IDX((*rhs_opnd))))),
+                                the_constant + 1),
                   CN_Tbl_Idx,
                   line,
                   col);

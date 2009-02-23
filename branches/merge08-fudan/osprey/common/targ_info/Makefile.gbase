@@ -279,19 +279,26 @@ COPYSOURCEDIR = FALSE
 endif
 
 
-default: first $(TARGETS) last
+.PHONY: default first last install
+
+default:
+	$(MAKE) first
+	$(MAKE) $(TARGETS) 
+	$(MAKE) last
 
 #----------------------------------------------------------------------
 #  The commands in this section are done BEFORE any other target is 
 #  built.
 #----------------------------------------------------------------------
 first:
-# Verify that COPYSOURCEDIR is up to date
-ifneq ($(COPYSOURCEDIR), FALSE)
+ifndef SKIP_DEP_BUILD
+ # Verify that COPYSOURCEDIR is up to date
+ ifneq ($(COPYSOURCEDIR), FALSE)
         $(call submake,$(COPYSOURCEDIR))
-endif
-ifeq ($(BUILD_OS), LINUX)
+ endif
+ ifeq ($(BUILD_OS), LINUX)
 	$(call submake,$(BUILD_AREA)/include)
+ endif
 endif
 
 #----------------------------------------------------------------------

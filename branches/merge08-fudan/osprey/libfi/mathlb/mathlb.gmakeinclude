@@ -132,11 +132,13 @@ gen_ieee_cpp_macros.o: gen_ieee_cpp_macros.c
 
 ieee_cpp_macros.h: gen_ieee_cpp_macros
 	./gen_ieee_cpp_macros > ieee_cpp_macros.h
-	rm -f ./gen_ieee_cpp_macros
 
 ieee_exceptions.o ieee_arithmetic.o iso_fortran_env.o: ieee_cpp_macros.h
+ieee_exceptions.pg.o ieee_arithmetic.pg.o iso_fortran_env.pg.o: ieee_cpp_macros.h
+ieee_exceptions.pic.o ieee_arithmetic.pic.o iso_fortran_env.pic.o: ieee_cpp_macros.h
 
 LF77INCS += -I$(BUILD_AREA)/libfortran
 
-LDIRT = ieee_cpp_macros.h $(XMATHLBDIRT)
+LDIRT = ieee_cpp_macros.h gen_ieee_cpp_macros *.mod $(XMATHLBDIRT)
 endif
+

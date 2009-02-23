@@ -1179,7 +1179,7 @@ extern void Fix_Up_Loop_Info(WN *IO_node, WN **loops, INT num_loops)
   for (INT i=0; i<num_loops; i++) {
     DO_LOOP_INFO *dli = (DO_LOOP_INFO *)
 	CXX_NEW(DO_LOOP_INFO(&LNO_default_pool,NULL,NULL,NULL,FALSE,
-          FALSE,FALSE,FALSE,FALSE,FALSE,TRUE) ,&LNO_default_pool);
+          FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE) ,&LNO_default_pool);
     dli->Depth = depth+i+1;
     dli->Is_Backward = FALSE;
     dli->Has_Calls=FALSE;

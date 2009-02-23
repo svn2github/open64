@@ -808,7 +808,7 @@ extern WN* SNL_INV_Cache_Block(SNL_NEST_INFO* ni,
     // annotate the new loop
 
     DO_LOOP_INFO* dli = CXX_NEW(DO_LOOP_INFO(&LNO_default_pool,
-      NULL, NULL, NULL, FALSE,FALSE,FALSE, FALSE, FALSE, FALSE, FALSE),
+      NULL, NULL, NULL, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE),
       &LNO_default_pool);
     DO_LOOP_INFO* olddli = Get_Do_Loop_Info(olddo);
     Set_Do_Loop_Info(stripdo, dli);

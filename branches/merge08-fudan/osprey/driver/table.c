@@ -1086,6 +1086,7 @@ write_opt_action (void)
 	f = begin_file("opt_action.i");
 	fprintf(f, "#include \"string_utils.h\"\n\n");
 	fprintf(f, "#include \"get_options.h\"\n\n");
+	fprintf(f, "#include \"lib_phase_dir.h\"\n\n");
 	fprintf(f, "/* do action associated with option */\n");
 	fprintf(f, "extern void\n");
 	fprintf(f, "opt_action (int optflag)\n");

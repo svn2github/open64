@@ -485,8 +485,8 @@ void Post_Multi_Branch(void)
              // for check split bb
              if (BB_chk_split_head(bb) && BB_next(next_bb) && 
 	         BB_chk_split(BB_next(next_bb)) && 
-		 op == BB_last_op(next_bb)) {// && 
-//                 !BB_chk_split_head(BB_next(next_bb))) {
+		 BB_preds_len(BB_next(next_bb)) == 1 &&
+		 op == BB_last_op(next_bb)) {
                  
 	          next_bb = BB_next(next_bb);
                   next_op = BB_first_op(next_bb);	     
@@ -585,8 +585,8 @@ void Post_Multi_Branch(void)
                  // for check split bb
                  if (BB_chk_split_head(bb) && BB_next(next_bb) && 
 	             BB_chk_split(BB_next(next_bb)) && 
-		     op == BB_last_op(next_bb)) {// &&  
-//                     !BB_chk_split_head(BB_next(next_bb))) {
+		     BB_preds_len(BB_next(next_bb)) == 1 &&
+		     op == BB_last_op(next_bb)) {
                      BB_Remove_Op(next_bb,op);
                      op->bb =  next_bb;
 	             next_bb = BB_next(next_bb);

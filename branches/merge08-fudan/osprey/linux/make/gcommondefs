@@ -88,7 +88,7 @@ else
  SIZEDEFS += -D_MIPS_SZPTR=64
  ifeq ($(BUILD_ABI), W64BIT)
   # W64BIT is win64, which has 64bit ptr but 32bit long
-  SIZEDEFS += -D_MIPS_SZLONG=32
+  SIZEDEFS += -D_MIPS_SZLONG=32 -DWIN64
  else
   SIZEDEFS += -D_MIPS_SZLONG=64 -D_LP64
  endif
@@ -105,9 +105,8 @@ ifeq ($(BUILD_COMPILER), GNU)
   ASNAME = gcc  
   CCNAME = gcc 
   C++NAME = g++ 
-  F90 = openf90
-  #F90 = gfortran
-  #F90_RTLIBS = -lgfortran
+  F90 = gfortran -fsecond-underscore
+  F90_RTLIBS = -lgfortran
   #F90 = ifort -assume 2underscores
   #F90_RTLIBS = $(INTEL_COMPILER_FC_HOME)/lib/libifcore.a $(INTEL_COMPILER_FC_HOME)/lib/libimf.a
 
@@ -116,14 +115,14 @@ ifeq ($(BUILD_COMPILER), GNU)
     #
     CCNAME  += 
     C++NAME +=  
-    F90 += -march=anyx86 
+    F90 +=
   endif
   ifeq ($(BUILD_TARGET), IA32)
     # only 64bit libraries set the BUILD_ARCH to X8664 
     CCNAME  +=
     C++NAME +=
     ASNAME +=
-    F90 += -march=anyx86 
+    F90 +=
   endif
   ifeq ($(BUILD_TARGET), IA64)
     # only 64bit libraries set the BUILD_ARCH to X8664 
@@ -223,16 +222,15 @@ C++	= $(C++NAME) -D_SGI_SOURCE -D_LANGUAGE_C_PLUS_PLUS
 
 CC	= $(CCNAME) -D_SGI_SOURCE -D_LANGUAGE_C
 
-ifeq ($(BUILD_COMPILER), GNU)
- AS	+= -funsigned-char -D__GNU_BUG_WORKAROUND
- CC	+= -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND
- C++	+= -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND -D_NOTHREADS
+AS	+= -funsigned-char -D__GNU_BUG_WORKAROUND
+CC	+= -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND
+C++	+= -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND -D_NOTHREADS
 
- ifeq ($(BUILD_OS), MINGW)
+ifeq ($(BUILD_OS), MINGW)
   CC	+= -mno-cygwin
   C++	+= -mno-cygwin
- endif
- ifeq ($(BUILD_TARGET), NVISA)
+endif
+ifeq ($(BUILD_TARGET), NVISA)
 # FUTURE_SUPPORT is items that will not be enabled in current release
   CC	+= $(GCC_OPTS) -DFUTURE_SUPPORT
   C++	+= $(GXX_OPTS) -DFUTURE_SUPPORT
@@ -243,8 +241,7 @@ ifeq ($(BUILD_COMPILER), GNU)
    CC += -m64
    C++ += -m64
   endif
- endif
-endif # GNU
+endif
 
 C++C	= $(C++)
 CXX	= $(C++)

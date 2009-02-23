@@ -4317,10 +4317,13 @@ static void gen_dv_stride_mult(opnd_type	*stride_opnd,
    }
    else {
       res_sm_unit_in_bits = sm_unit_in_bits(exp_desc->type_idx);
+#if 0 /* OSP_467, #5, do not adjust the size because 
+	 we patch the stride_multi_unit_in_bits during the compiler initialization */
 # ifdef _WHIRL_HOST64_TARGET64
       if (res_sm_unit_in_bits > 32)
         res_sm_unit_in_bits = 32;
 # endif /* _WHIRL_HOST64_TARGET64 */
+#endif
    }
 
    /* src_sm_unit_in_bits describes the sm unit for the arrays bd entry */

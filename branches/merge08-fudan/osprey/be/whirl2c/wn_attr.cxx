@@ -447,9 +447,9 @@ WN_Tree_Type(const WN *wn)
 	   //We assume the type is always the latter, and use explicit casts to take care of the former case
 	   //(there will be a type mismatch)
 	   // Should we go for the inner array type here or for the element type?
-	   ty = Make_Pointer_Type(/*TY_etype*/ Get_Inner_Array_Type(TY_pointed(ty)));
+	   ty = Make_Pointer_Type(Get_Inner_Array_Type(TY_pointed(ty)));
 	 }
-
+         break; 
       case OPR_MLOAD:
 	 /* There is not much we can do about this case */
 	 if (WN_opc_operator(WN_kid1(wn)) == OPR_INTCONST &&

@@ -1,8 +1,4 @@
 #
-#  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
-#
-
-#
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -36,15 +32,30 @@
 #
 #
 
-# sort the options list so the read_options can group things properly
-{
-	# combine -name lines with help msg, onto one line,
-	# so sorting is easier.
-	# add | character between implies and help msg.
-	firstchar = substr($1,1,1);
-	if (firstchar == "-" || firstchar == "I")
-		printf "%s | ", $0
-	else if (firstchar == "\"")
-		printf "%s\n", $0
-}
+### =======================================================================
+### =======================================================================
+###  Module: gen_preg_list.sh
+###  $Revision: 1.1.1.1 $
+###  $Date: 2005/06/23 02:15:38 $
+###  $Author: sxyang $
+###  $Source: /u/cvs/Pathscale.MIPS/be/com/gen_preg_list.sh,v $
+###  Revision comments:
+###  31-May-1995 - Initial version
+###  ============
+###  Usage:      gen_preg_list MTP_BIN
+###     Generate the preg_list.[ch] module.  The argument is the MTP_BIN
+###     directory.  We do this in a file so the make rule can depend on
+###     and it can be rebuilt when the procedure changes
+###  
+### =======================================================================
+### =======================================================================
+### 
 
+#!/bin/sh
+
+sh $1/gen_x_list.sh    'PREG_NUM'                                 \
+                            'PREG'                                     \
+                            'defs.h'                                   \
+			    'errors.h'				       \
+                            'mempool.h'                                 \
+                            'preg_list.h'

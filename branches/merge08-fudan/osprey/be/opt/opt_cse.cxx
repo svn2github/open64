@@ -783,12 +783,11 @@ CSE::Generate_injury_repair( STMTREP *injury, CODEREP *new_temp,
                                     // multiplier->Dtyp(),
                                     old_temp->Dtyp(),
                                     MTYPE_V);
-#ifdef TARG_X8664 // bug 11692
+// bug 11692, OSP_458
     if (MTYPE_signed(incr_amt->Dtyp()))
       mpy_opc = OPCODE_make_op(OPR_MPY,
                                 Mtype_TransferSign(MTYPE_I8, old_temp->Dtyp()),
                                 MTYPE_V);
-#endif
     
     temp_incr = Htable()->Add_bin_node_and_fold( mpy_opc, 
 						 multiplier, incr_amt );

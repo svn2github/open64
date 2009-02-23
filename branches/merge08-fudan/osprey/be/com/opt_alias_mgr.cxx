@@ -122,7 +122,7 @@ public:
 #endif
     _pu_pool(pu_pool),
     _map(WN_MAP_Create(pu_pool))
-      { }
+      { WN_MAP_Set_dont_copy(_map, TRUE);}
 
   ~RESTRICTED_MAP(void) { 
     WN_MAP_Delete(_map);

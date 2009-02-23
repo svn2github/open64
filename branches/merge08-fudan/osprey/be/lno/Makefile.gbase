@@ -373,11 +373,15 @@ else
 TARGETS = lno.so
 endif
 
+.PHONY: default	first last install
 #----------------------------------------------------------------------
 #  Variables describing additional sources, objects, and libraries
 #----------------------------------------------------------------------
 
-default: first $(TARGETS) last
+default:
+	$(MAKE) first
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 
 #----------------------------------------------------------------------
 #  The commands in this section are done BEFORE any other target is
@@ -386,14 +390,16 @@ default: first $(TARGETS) last
 #  requested target.
 #----------------------------------------------------------------------
 first:
+ifndef SKIP_DEP_BUILD
 ## verify that wopt.so is up to date
 	$(call submake,$(TARG_OPT_DIR))
 ## verify that ipl.so if up to date
 	$(call submake,$(TARG_IPL_DIR))
-ifeq ($(BUILD_PCH), USE_PCH)
+ ifeq ($(BUILD_PCH), USE_PCH)
 ## build pch files first so that we can use precompiled headers
 	( $(MAKE) $(.MAKEFLAGS) BUILD_PCH=USE_PCH PCH_OPTS="-LANG:create_pch=lno_pch.pch" lno_pch.pch lno_pch.o )
 	( $(MAKE) $(.MAKEFLAGS) BUILD_PCH=USE_PCH PCH_OPTS="-LANG:use_pch=lno_pch.pch" lno_pch_files )
+ endif
 endif
 
 #----------------------------------------------------------------------

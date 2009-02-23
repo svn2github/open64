@@ -1,4 +1,4 @@
-#!/bin/csh -f
+#!/bin/sh
 #
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -32,19 +32,33 @@
 #  http://oss.sgi.com/projects/GenInfo/NoticeExplan
 #
 #
-# $1 == source dir, $2 == OPTIONS file
-# $3 == optional cpp defines
-# need C locale for sort to work as expected
-setenv LANG C
-set dir = $1
-set file = $2
-shift
-shift
-cpp -traditional -P $* $dir/$file > tmp.options.cpp
-awk -f $dir/sort_options.awk tmp.options.cpp > tmp.options
-# note that some linux versions of sort are broken,
-# so we actually re-sort within table for safety.
-sort -r tmp.options > tmp.options.sort
-echo "%%% OPTIONS"
-cat tmp.options.sort
-rm -f tmp.options*
+
+### ======================================================================
+### ======================================================================
+###
+### Module: gen_void_list.sh
+### $Revision: 1.1.1.1 $
+### $Date: 2005/06/23 02:15:36 $
+### $Author: sxyang $
+### $Source: /u/cvs/Pathscale.MIPS/be/cg/gen_void_list.sh,v $
+### Revision history:
+###   27-Feb-92 - Original version
+###
+### Usage:      gen_void_list MTP_BIN
+###
+###     Generate the void_list.[ch] module.  The argument is the MTP_BIN
+###     directory.  We do this in a file so the make rule can depend on
+###     and it can be rebuilt when the procedure changes
+###
+### ======================================================================
+### ======================================================================
+
+
+
+sh $1/gen_x_list.sh    'void*'                                    \
+                            'VOID'                                     \
+                            'defs.h'                                   \
+			    'errors.h'				       \
+                            'mempool.h'                                 \
+                            'cgir.h'                                   \
+                            'void_list.h'

@@ -231,14 +231,21 @@ LLDOPTS = -Wl,--export-dynamic
 endif
 LLDLIBS = 
 
-default: first $(TARGETS) last
+.PHONY: default first last install
+
+default:
+	$(MAKE) first
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 
 #----------------------------------------------------------------------
 #  The commands in this section are done BEFORE any other target is
 #  built.
 #----------------------------------------------------------------------
 first:
+ifndef SKIP_DEP_BUILD
 	$(call submake,$(TARG_BE_DIR))
+endif
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is

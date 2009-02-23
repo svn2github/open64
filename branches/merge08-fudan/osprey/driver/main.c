@@ -363,15 +363,6 @@ main (int argc, char *argv[])
 	/* Check target specifications for consistency: */
 	Check_Target ();
 
-    if (dump_version) {
-        if (option_was_seen(O_compat_gcc))
-#ifdef PSC_TO_OPEN64
-          puts(OPEN64_GCC_VERSION);
-        else
-          puts(OPEN64_FULL_VERSION);
- #endif
-    }
-
 #if defined(TARG_NVISA)
 	if (show_version) {
 	    /* Echo information about the compiler version */
@@ -385,42 +376,6 @@ main (int argc, char *argv[])
 	    fprintf(stderr, "Portions Copyright (c) 2000-2001 Silicon Graphics, Inc.\n");
 	    fprintf(stderr, "All Rights Reserved.\n");
 	}
-#else
-        if (show_version) {
-            fprintf(stderr, "Open64 Compiler Suite: "
-            "Version %s\n", compiler_version);
-        if (show_version > 1) {
-        fprintf(stderr, "ChangeSet: %s\n", cset_id);
-        fprintf(stderr, "Built by: %s@%s in %s\n", build_user,
-            build_host, build_root);
-        }
-            fprintf(stderr, "Built on: %s\n", build_date);
-            fprintf(stderr, "Thread model: posix\n");   // Bug 4608.
-#ifdef PSC_TO_OPEN64
-            fprintf(stderr, "GNU gcc version " OPEN64_GCC_VERSION
-                    " (Open64 " OPEN64_FULL_VERSION " driver)\n");
-#endif
-        }
-#if 0
-	if (show_copyright) {
-	    if (show_version)
-		fputc('\n', stderr);
-	    char *exe_dir = get_executable_dir();
-	    fprintf(stderr, "Copyright 2000, 2001 Silicon Graphics, Inc.  "
-		    "All Rights Reserved.\n");
-	    fprintf(stderr, "Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.\n");
-	    fprintf(stderr, "Copyright 2006, 2007 QLogic Corporation.  All Rights Reserved.\n");
-	    fprintf(stderr, "Copyright 2007 PathScale, LLC.  All Rights Reserved.\n");
-
-	    fprintf(stderr, "See complete copyright, patent and legal notices "
-		    "in the\n");
-#ifdef PSC_TO_OPEN64
-	    fprintf(stderr, "%.*s/share/doc/open64-" 
-	    	    OPEN64_FULL_VERSION "/LEGAL.pdf file.\n",
-		    (int)(strlen(exe_dir) - 4), exe_dir);
-#endif
-	}
-#endif
 #endif //TARG_NVISA
 	if (show_search_path) {
 		print_search_path();
@@ -438,7 +393,7 @@ main (int argc, char *argv[])
 	{
 		print_help_msg();
 	}
-	if ( ! execute_flag && ! show_flag && ! dump_version) {
+	if ( ! show_version && ! execute_flag && ! show_flag && ! dump_version) {
 		do_exit(RC_OKAY);	/* just exit */
 	}
 	if (source_kind == S_NONE || read_stdin) {

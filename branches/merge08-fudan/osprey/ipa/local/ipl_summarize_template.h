@@ -1247,18 +1247,6 @@ struct eq_oper
 // Map from label number to label usage information
 typedef hash_map<INT, label_wn, __gnu_cxx::hash<INT>, eq_oper> LABEL_WN_MAP;
 #endif
-  
-// This structure is used to save the basic information of ICALL
-struct ICALL_INFO {
-    WN* w2;
-    INT loopnest;
-    float probability;
-  
-    ICALL_INFO() { }
-    ICALL_INFO(WN *w2, INT loopnest, float probability) : w2(w2), loopnest(loopnest), probability(probability) { }
-};
-typedef std::vector<ICALL_INFO> ICALL_INFO_LIST;
-
 //-----------------------------------------------------------
 // summary procedure node
 // create call site entries
@@ -1290,7 +1278,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 #endif
     LABEL_WN_MAP label_use_map;     
     UINT64 PU_invoke_count = 0;
-    vector<INT> icall_site;
 #else
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback&& IPA_Enable_Reorder;//and other things, such as Feedback_Enabled[PROFILE_PHASE_BEFORE_LNO]
 #endif // KEY
@@ -1439,10 +1426,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 
     BOOL found = FALSE;
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
-    ICALL_INFO_LIST icall_list;
-#endif
-
     // walk the tree
     for (WN_TREE_ITER<PRE_ORDER, WN*> iter (w); iter.Wn () != NULL; ++iter) {
 
@@ -1574,7 +1557,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
                 (WN_Fake_Call_EH_Region(w2, Parent_Map)))
               break;
 
-            proc->Incr_call_count ();
 #ifdef KEY
 	    float probability = -1;
 	    // Remove the use of this flag in future
@@ -1599,10 +1581,11 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
             // This ifdef is redundant, but just for clarity.
             if (Cur_PU_Feedback && WN_operator(w2) == OPR_ICALL)
-	      icall_list.push_back(ICALL_INFO(w2, loopnest, probability));
+	      Process_icall (proc, w2, loopnest, probability);
 #endif
 #endif // KEY
 
+            proc->Incr_call_count ();
 #ifdef KEY
             Process_callsite (w2, proc->Get_callsite_count (), loopnest, probability);
 #else
@@ -1987,17 +1970,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	}
 
     }
-    
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
-    if (Cur_PU_Feedback) {
-      // Since Process_icall will insert dummy calls in the SUMMARY_CALLSITE array, 
-      // we must call that after traversing the WN tree and inserted SUMMARY_CALLSITE
-      // entries for the normal calls, or the callsite_idx and WN will mismatch during IPO.
-      for (ICALL_INFO_LIST::const_iterator iter = icall_list.begin(); iter != icall_list.end(); ++iter)
-	Process_icall(proc, iter->w2, iter->loopnest, iter->probability);
-    }
-#endif
-
 #ifdef KEY
     {
       // Update bb and stmt count
@@ -2028,40 +2000,9 @@ SUMMARIZE<program>::Process_procedure (WN* w)
                  ("Expected all labels to be included in bb count"));
         proc->Set_bb_count (bbs - unused_labels);
       }
-
-      if_map.clear ();
     }
-#endif // KEY
-
-
-{
-#ifdef KEY
     if_map.clear ();
-    /* Append a list of free slots to the currnet callsite_array for
-       the future use by IPA_Convert_Icalls.
-    */
-    for( int i = 0; i < icall_site.size(); i++ ){
-      SUMMARY_CALLSITE* icall_info = Get_callsite (icall_site[i]);
-      SUMMARY_CALLSITE* callsite = New_callsite ();
-
-      callsite->Set_callsite_id( proc->Get_callsite_count()  );
-      callsite->Set_icall_target();
-
-      callsite->Set_param_count( icall_info->Get_param_count() );
-      callsite->Set_return_type( icall_info->Get_return_type() );
-      callsite->Set_map_id( icall_info->Get_map_id() );
-      callsite->Set_loopnest( icall_info->Get_loopnest() );
-      callsite->Set_probability( icall_info->Get_probability() );
-
-      if( callsite->Get_param_count() > 0 ){
-	callsite->Set_actual_index( icall_info->Get_actual_index() );
-      }
-
-      proc->Incr_callsite_count();
-    }
-#endif // KEY 
-}
-
+#endif // KEY
 
     /*loop_count_stack may not be empty! and loopnest may not be empty!!*/
     if (proc->Get_callsite_count () > 0)

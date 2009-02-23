@@ -2883,7 +2883,22 @@ print_source (SRCPOS srcpos)
     for (i = cur_file->max_line_printed; i < USRCPOS_linenum(usrcpos); i++) {
       if (fgets (text, sizeof(text), cur_file->fileptr) != NULL) {
 	// check for really long line
-	if (strlen(text) >= 1023) text[1022] = '\n'; 
+       if (strlen(text) >= 1023) text[1022] = '\n';
+#if defined(TARG_SL)
+        // Fixed a source information bug with IPA turn on. When turning on
+        // IPA there is no '\n' after source line info "#endif\0", but correct
+        // content should be "#endif\n\0". This will cause real instruction
+        // is in same line after comment.
+        // Without IPA:
+        //   #endif
+        //     mv16 $4, $0
+        // With IPA:
+        //   #endif mv16 $4, $0
+        if (text[strlen(text)-1] != '\n') {
+          text[strlen(text)+1] = '\0';
+          text[strlen(text)] = '\n';
+        }
+#endif
         fprintf (Asm_File, "%s%4d  %s", ASM_CMNT_LINE, i+1, text);
       }
     }

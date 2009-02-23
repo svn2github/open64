@@ -161,7 +161,8 @@ class DSE {
                 else
                   return FALSE;
               }
-    void Set_Required_Imp_VSE( VER_ID vid, BOOL real_use) const;
+    //OSP_468, remove all Set_Required_Imp_VSE()
+    //void Set_Required_Imp_VSE( VER_ID vid, BOOL real_use) const;
     BOOL Mem_WN_equiv_rec(WN *wn1, WN *wn2) const;
     BOOL Mem_WN_equiv(WN *wn1, WN* wn2) const;
     BOOL Same_memloc( WN* store1, WN* store2) const;
@@ -519,6 +520,7 @@ DSE::Set_Required_MU( MU_NODE *mu, BOOL real_use ) const
   Set_Required_VSE( ver, real_use, NULL );
 }
 
+#if 0  // OSP_468, remove Set_Required_Imp_VSE()
 void 
 DSE::Set_Required_Imp_VSE( VER_ID vid, BOOL real_use) const
 {
@@ -585,6 +587,7 @@ DSE::Set_Required_Imp_VSE( VER_ID vid, BOOL real_use) const
   return;
 
 }
+#endif
 
 static bool Is_identity_asgn(WN *wn, OPT_STAB *opt_stab)
 {
@@ -817,7 +820,8 @@ DSE::Set_Required_WN( WN *wn ) const
   if ( WN_has_ver(wn) ) {
     VER_STAB_ENTRY *sym = Opt_stab()->Ver_stab_entry(WN_ver(wn));
     if(OPERATOR_is_scalar_load( WN_operator(wn) )) {
-      Set_Required_Imp_VSE(WN_ver(wn), TRUE);
+      //OSP_468
+      //Set_Required_Imp_VSE(WN_ver(wn), TRUE);
       Set_last_store(sym->Aux_id(), NULL);
     }
     Set_Required_VSE( sym, TRUE, wn );
@@ -865,7 +869,8 @@ DSE::Set_Required_WN( WN *wn ) const
       }
     } else  {
       Set_Required_MU( occ->Mem_mu_node(), mu_reqd || mu_of_parm);
-      Set_Required_Imp_VSE(occ->Mem_mu_node()->Opnd(), mu_reqd || mu_of_parm);
+      //OSP_468
+      //Set_Required_Imp_VSE(occ->Mem_mu_node()->Opnd(), mu_reqd || mu_of_parm);
     }
   }
 }

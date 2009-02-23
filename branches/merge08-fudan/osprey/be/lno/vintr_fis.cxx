@@ -886,9 +886,11 @@ static INT Vintrinsic_Fission(WN* innerloop)
   }
 #endif
   // if there are too few iterations, we will not fission
-  if (dli->Est_Num_Iterations < Iteration_Count_Threshold)
+  if (dli->Est_Num_Iterations < Iteration_Count_Threshold) {
+    sprintf(fail_msg, "Too few iterations");
     sprintf(fail_msg, "Too few iterations");
     return 0;
+  }
 
   // if the loop index var is live at exit and cannot be finalized,
   // we will not vectorize

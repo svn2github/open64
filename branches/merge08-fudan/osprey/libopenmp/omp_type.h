@@ -35,14 +35,16 @@
  * the RTL.
  */
 
-typedef int 		omp_int32;
-typedef long long 	omp_int64;
-typedef float		omp_real32;
-typedef double		omp_real64;
-typedef int		omp_bool;
+typedef int 	  omp_int32;
+typedef long long omp_int64;
+typedef float	  omp_real32;
+typedef double	  omp_real64;
+typedef int	  omp_bool;
 
-typedef int omp_int_t;
-typedef double omp_wtime_t;
+typedef int       omp_int_t;
+typedef double    omp_wtime_t;
+typedef void     *omp_lock_t; 
+typedef void     *omp_nest_lock_t; 
 
 #define TRUE	1
 #define FALSE	0

@@ -461,17 +461,24 @@ LIBIBERTY_OBJS = $(TARG_LIBIBERTY_DIR)/libiberty.a
 LLDLIBS = $(COMUTIL_OBJS) $(LIBIBERTY_OBJS)
 LLDLIBS += -lm $(CMPLRS_OBJS) $(CSUP_OBJS)
 
-default: first $(TARGETS) last
+.PHONY: default first last install
+
+default:
+	$(MAKE) first
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 
 #----------------------------------------------------------------------
 #  The commands in this section are done BEFORE any other target is 
 #  built.
 #----------------------------------------------------------------------
 first:
-ifeq ($(BUILD_OS), LINUX)
+ifndef SKIP_DEP_BUILD
+ ifeq ($(BUILD_OS), LINUX)
 	$(call submake,$(BUILD_AREA)/include)
-endif
+ endif
 	$(call submake,$(TARG_LIBIBERTY_DIR))
+endif
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is 

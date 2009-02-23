@@ -302,17 +302,29 @@ LLDLIBS = $(COMUTIL_OBJS) $(LIBIBERTY_OBJS) $(LIBSPIN_OBJS)
 LLDLIBS += -lm $(CMPLRS_OBJS)
 LDIRT += $(TARGETS)
 
+.PHONY: default first last install
+
 #default: first $(TARGETS) last
-default: $(TARGETS) last
+default:
+	$(MAKE) first
+	$(MAKE) $(TARGETS)
+	$(MAKE) last
 
 #----------------------------------------------------------------------
 #  The commands in this section are done BEFORE any other target is
 #  built.
 #----------------------------------------------------------------------
 first:
+ifndef SKIP_DEP_BUILD
+ ifeq ($(BUILD_OS), LINUX)
+	$(call submake,$(BUILD_AREA)/include)
+ endif
 	$(call submake,$(TARG_CMPLRS_DIR))
 	$(call submake,$(TARG_COMUTIL_DIR))
 	$(call submake,$(TARG_LIBIBERTY_DIR))
+	$(MAKE) $(LIBSPIN_OBJS)
+endif
+
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is
 #  built.
@@ -335,7 +347,7 @@ else
 	$(call submake,$(TARG_LIBSPIN_DIR))
 endif
 
-$(TARGETS) : $(OBJECTS) $(LIBSPIN_OBJS)
+$(TARGETS) : $(OBJECTS)
 	$(link.cxxf) -g -o $@ $(OBJECTS) $(LDFLAGS)
 #----------------------------------------------------------------------
 #  Include the usual commonrules

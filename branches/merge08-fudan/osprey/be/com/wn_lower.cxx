@@ -1419,7 +1419,9 @@ static PREG_NUM AssignPregExprPos(WN *block, WN *tree, TY_IDX ty,
 
     stid = WN_Stid(type, pregNo, preg, ty, tree);
 
+#ifdef TARG_NVISA
     Set_addr_saved_expr(tree, TRUE);
+#endif
 
     if (srcpos)
       WN_Set_Linenum (stid, srcpos);
@@ -14125,6 +14127,9 @@ void Lower_Init(void)
     */
    lowering_parity_map = WN_MAP32_Create(MEM_pu_pool_ptr);
    wn_derivation_map = WN_MAP_Create (MEM_pu_pool_ptr);
+ 
+   WN_MAP_Set_dont_copy(lowering_parity_map, TRUE);
+   WN_MAP_Set_dont_copy(wn_derivation_map, TRUE);
 
    lowering_actions = 0;
    current_state = current_state_NULL;

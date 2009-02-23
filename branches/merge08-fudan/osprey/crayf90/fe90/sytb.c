@@ -4039,7 +4039,8 @@ size_offset_type	stor_bit_size_of(int		 attr_idx,
 	       ((n_allocatable_cpnt + 1) * DV_ALLOC_CPNT_OFFSET_WORD_SIZE) :
 	       0);
 	 }
-	 num *= TARGET_BITS_PER_WORD;
+	 /* OSP_467, #4, dope vector bit size */
+	 num *= DV_BITS_PER_WORD;
 #else /* KEY Bug 6845 */
          num =  (ATD_ARRAY_IDX(attr_idx) != NULL_IDX) ?
                 (TARGET_BITS_PER_WORD * (DV_HD_WORD_SIZE +
@@ -5167,12 +5168,17 @@ void	set_stride_for_first_dim(int			 type_idx,
    case CRI_Ch_Ptr:
    case Real:
    case Complex:
-      length      	= TARGET_BITS_TO_WORDS(storage_bit_size_tbl[
-                                               TYP_LINEAR(type_idx)]);
+      /* OSP_467, #2, use the multiple of INTEGER_SIZE as the stride */
+      length            = BITS_TO_INTEGER_DEFAULT_WORDS(
+                              storage_bit_size_tbl[TYP_LINEAR(type_idx)],
+                              storage_bit_size_tbl[CG_INTEGER_DEFAULT_TYPE] );
+
+# if 0 /* OSP_467, #2, double_stride is no longer needed */
 # if defined(_TARGET64) && defined(_WHIRL_HOST64_TARGET64)
       if (double_stride && (storage_bit_size_tbl[TYP_LINEAR(type_idx)] > 32))
         length *= 2;
 # endif /* defined(_TARGET64) && defined(_WHIRL_HOST64_TARGET64) */
+# endif
       (*stride).fld	= CN_Tbl_Idx;
       (*stride).idx	= C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, length);
       break;

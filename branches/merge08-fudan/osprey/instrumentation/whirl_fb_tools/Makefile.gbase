@@ -190,7 +190,9 @@ LLDLIBS += -lstdc++
 ifeq ($(BUILD_OS), IRIX)
 default: so_locations $(TARGETS) last
 else
-default: $(TARGETS) last
+default:
+	$(MAKE)	$(TARGETS)
+	$(MAKE) last
 endif
 
 #----------------------------------------------------------------------

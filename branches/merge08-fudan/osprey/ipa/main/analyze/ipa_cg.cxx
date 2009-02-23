@@ -909,14 +909,9 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 
 #ifdef KEY
       if (IPA_Enable_Pure_Call_Opt &&
-          (callsite_array[callsite_index].Is_icall_target() ||
-	   callsite_array[callsite_index].Is_func_ptr() ||
+	  (callsite_array[callsite_index].Is_func_ptr() ||
 	   callsite_array[callsite_index].Is_intrinsic()))
 	caller->Summary_Proc()->Set_has_side_effect ();
-
-      if( callsite_array[callsite_index].Is_icall_target() ){
-	continue;
-      }
 #endif	       
 
       // for indirect call sites
@@ -1591,7 +1586,8 @@ Build_Call_Graph ()
 } // Build_Call_Graph
 
 
-#ifdef KEY
+#if 0
+// NEVER called, comment them out so far, jianxin.lai@hp.com, 2008-09-16
 #include "wn_util.h"
 #include "ir_reader.h"
 #include <map>
@@ -1629,6 +1625,7 @@ static BOOL Is_Return_Store_Stmt( WN *wn )
   return FALSE;
 }
 
+#endif
 
 static bool Check_Heuristic( IPA_NODE* caller,
 			     IPA_NODE* callee,
@@ -1729,7 +1726,8 @@ static bool Check_Heuristic( IPA_NODE* caller,
   return true;
 }
 
-
+#if 0
+// NEVER called, comment them out so far, jianxin.lai@hp.com, 2008-09-16
 static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
 {
   if( node == NULL            ||
@@ -2080,8 +2078,7 @@ void IPA_Convert_Icalls( IPA_CALL_GRAPH* cg )
     Convert_Icall( cg, cg_iter.Current() );
   }
 }
-
-#endif // KEY
+#endif
 
 
 // ======================================================================
@@ -3275,11 +3272,6 @@ IPA_CALL_GRAPH::Update_Node_After_Preopt (IPA_NODE* node,
   // Iterate over regenerated call sites and update edges
   for (UINT16 j = 0; j < callsite_count; ++j) {
 
-#ifdef KEY
-    if( callsite_array[j].Is_icall_target() ){
-      continue;
-    }
-#endif	       
     // indirect calls
     if (callsite_array[j].Is_func_ptr()) {
       append_icall_list (node->Icall_List(), &callsite_array[j]);

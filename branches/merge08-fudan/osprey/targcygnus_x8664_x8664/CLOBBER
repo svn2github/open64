@@ -24,5 +24,8 @@
 
 # Clobber everything except ptools-controlled files
 
+SRC_DIR=../cygnus
+
+rm -f  ${SRC_DIR}/bfd/po/*.gmo ${SRC_DIR}/opcodes/po/*.gmo ${SRC_DIR}/ld/po/*.gmo
 rm -rf bfd config.cache config.status x86_64-pathscale-linux ld libiberty Makefile \
        mt-frag opcodes build-i586-linux-gnu config.log maybedep.tmp serdep.tmp

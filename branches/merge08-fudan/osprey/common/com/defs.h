@@ -89,6 +89,7 @@ static char *defs_rcs_id = "$Source: /home/bos/bk/kpro64-pending/common/com/SCCS
 #define __STDC_CONSTANT_MACROS
 #endif
 #include <stdint.h>
+#include <limits.h>
 
 #ifdef __cplusplus
 extern "C" {

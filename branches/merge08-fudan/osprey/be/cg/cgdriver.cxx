@@ -665,15 +665,6 @@ static OPTION_DESC Options_CG[] = {
   { OVK_INT32,	OV_INTERNAL, TRUE, "cio_rw_max_omega", "",
     8, 0, INT32_MAX, &CIO_rw_max_omega, NULL },
 
-  // CG Unrolling options - see also OPT:unroll_times_max:unroll_size.
-
-  { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_non_trip_countable", "unroll_non_trip",
-    0, 0, 0, &CG_LOOP_unroll_non_trip_countable, NULL },
-  { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_fully", "unroll_full",
-    0, 0, 0, &CG_LOOP_unroll_fully, NULL },
-  { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_remainder_fully", "unroll_remainder_full",
-    0, 0, 0, &CG_LOOP_unroll_remainder_fully, NULL },
-
   // Control flow optimizations (CFLOW) options.
 
   { OVK_BOOL,	OV_INTERNAL, TRUE, "unique_exit", "",
@@ -1925,7 +1916,10 @@ Configure_CG_Options(void)
 #if defined(KEY) && defined(TARG_X8664) //adjust unroll_size default for em64t and core
     if (Is_Target_EM64T() || Is_Target_Core())
       OPT_unroll_size = 256;
-    else 
+    else
+      OPT_unroll_size = 128; 
+#elif !defined(TARG_NVISA)
+      OPT_unroll_size = 128;
 #elif !defined(TARG_NVISA)
       OPT_unroll_size = 128;
 #endif

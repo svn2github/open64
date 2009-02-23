@@ -4017,6 +4017,10 @@ Local_Insn_Sched (BOOL prepass)
                                          FALSE,  /* local code motion */
                                          TFile) ;
 
+    // reset the order field of OPs
+    for (BB *bp = REGION_First_BB; bp; bp = BB_next(bp)) {
+        BB_Update_OP_Order(bp);
+    }
 #ifdef TARG_IA64
     Stop_Timer(T_Ipfec_LOCS_CU);
 #endif 

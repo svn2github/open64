@@ -8211,13 +8211,15 @@ typedef struct AllocHead {
 
 
    if (TYP_LINEAR(type_idx) == Integer_4) {
+      /* OSP_467, #1, sizeof(long_type) == 64 on TARGET64 */
+      int *p_version = (int *) version;
       cn_idx = ntr_const_tbl(type_idx,
                              FALSE,
-                             version);
+                             (long_type *)p_version);
 
       *second_cn_idx = ntr_const_tbl(type_idx,
                                      FALSE,
-                                     &(version[1]));
+                                     (long_type *)(p_version+1));
    }
    else {
       *second_cn_idx = NULL_IDX;

@@ -1166,6 +1166,10 @@ WFE_Array_Expr(tree exp,
       if (WN_operator(wn2) == OPR_SUB)
         WN_set_rtype(wn2, Mtype_TransferSign(MTYPE_I4, WN_rtype(wn2)));
 #endif
+#ifdef KEY // bug 14871, OSP_455
+      if (TARGET_64BIT && OPCODE_is_load(WN_opcode(wn2)))
+        WN_set_rtype(wn2, Mtype_TransferSize(MTYPE_U8, WN_rtype(wn2)));
+#endif
 #ifdef KEY
       // Expand the current dimension by growing the array just expanded.  Bug
       // 4692.
@@ -3883,7 +3887,8 @@ WFE_Expand_Expr (tree exp,
 	      if (WN_operator (wn) == OPR_LDID) {
 		WN_set_operator (wn, OPR_LDA);
 		WN_set_desc (wn, MTYPE_V);
-//		wn = WN_Lda (Pointer_Mtype, WN_offset (wn), WN_st (wn));
+                WN_set_rtype (wn, Pointer_Mtype);
+                WN_set_ty (wn, Make_Pointer_Type(WN_ty(wn))); // bug 10098, bug 10352
 	      }
 	      else
 	      if (WN_operator (wn) == OPR_ILOAD) {
@@ -7990,7 +7995,10 @@ WFE_Expand_Expr (tree exp,
 	    else {
 	      Is_True(OPCODE_is_load(WN_opcode(ap_wn)),
 		      ("WFE_Expand_Expr: unexpected VA_ARG_EXPR argument"));
-	      ap_wn = WN_kid0(ap_wn);
+	      if ( WN_offset(ap_wn) == 0 )
+		ap_wn = WN_kid0(ap_wn);
+	      else
+		ap_wn = WN_Add(Pointer_Mtype, WN_kid0(ap_wn), WN_Intconst(Pointer_Mtype, WN_offset(ap_wn)));
 	    }
 	  }
 	  TY_IDX ty_idx = Get_TY (TREE_TYPE(exp));
@@ -8085,6 +8093,7 @@ WFE_Expand_Expr (tree exp,
 	TY_IDX	   ap_addr_ty;
         ST        *ap_st;
         WN_OFFSET  ap_offset;
+        UINT32     ap_field_id = 0;
 
         if (WN_operator(ap_load) == OPR_LDID) {
 	  ap_st     = WN_st (ap_load);
@@ -8094,6 +8103,7 @@ WFE_Expand_Expr (tree exp,
         if (WN_operator(ap_load) == OPR_ILOAD) {
           ap_st     = NULL;
           ap_offset = WN_offset (ap_load);
+          ap_field_id = WN_field_id(ap_load);
           ap_addr   = WN_COPY_Tree (WN_kid0 (ap_load));
 	  ap_addr_ty = WN_load_addr_ty(ap_load);
           if (WN_has_side_effects (ap_addr))
@@ -8175,10 +8185,10 @@ WFE_Expand_Expr (tree exp,
         else {
           wn = WN_CreateIstore (OPR_ISTORE, MTYPE_V, Pointer_Mtype, ap_offset,
 #if defined(TARG_SL)
-                                 Make_Pointer_Type(MTYPE_To_TY(MTYPE_U4)), wn, ap_addr, 0);
+                                 Make_Pointer_Type(MTYPE_To_TY(MTYPE_U4)), wn, ap_addr, ap_field_id);
 	  DevWarn("Forcing var-arg istore to aligned");
 #else
-                                ap_addr_ty, wn, ap_addr, 0);
+                                ap_addr_ty, wn, ap_addr, ap_field_id);
 #endif
         }
         WFE_Stmt_Append (wn, Get_Srcpos ());
