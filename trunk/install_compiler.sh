@@ -272,7 +272,7 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
     # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archieves
     # is it necessary?
     if [ "$ARCH" = "ia64" ] ; then
-        for i in libgcc.a libstdc++.a libstdc++.so; do 
+        for i in libgcc.a libgcc_s.so libstdc++.a libstdc++.so; do 
             F=`gcc --print-file-name $i`
             if [ ! -z "$F" ] && [ -e "$F" ]; then
               INSTALL_DATA_SUB $F ${PHASEPATH}/$i
@@ -280,7 +280,7 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         done
     fi
     if [ "$ARCH" = "i386" ] ; then
-        for i in libgcc.a libstdc++.a libstdc++.so; do
+        for i in libgcc.a libgcc_s.so libstdc++.a libstdc++.so; do
 	    F=`gcc --print-file-name $i`
             if [ ! -z "$F" ] && [ -e "$F" ]; then
               INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
@@ -288,7 +288,7 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
 	done
     fi
     if [ "$ARCH" = "x86_64" ] ; then
-        for i in libgcc.a libstdc++.a libstdc++.so; do
+        for i in libgcc.a libgcc_s.so libstdc++.a libstdc++.so; do
 	    F=`gcc -m32 --print-file-name $i`
 	    if [ ! -z "$F" ] && [ -e "$F" ]; then
               INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
@@ -450,8 +450,8 @@ INSTALL_NATIVE_HEADER () {
     #INSTALL_DATA_SUB osprey/include/nue/stdarg.h  ${PHASEPATH}/include/stdarg.h
     #INSTALL_DATA_SUB osprey/include/nue/va-ia64.h  ${PHASEPATH}/include/va-ia64.h 
     #cp -f -a osprey/include ${PHASEPATH}/ 
-    INSTALL_DATA_SUB ${ROOT}/include/whirl2c.h  ${ROOT}/include/${VERSION}/whirl2c.h
-    INSTALL_DATA_SUB ${ROOT}/include/whirl2f.h  ${ROOT}/include/${VERSION}/whirl2f.h
+    INSTALL_DATA_SUB osprey/include/whirl2c.h  ${ROOT}/include/${VERSION}/whirl2c.h
+    INSTALL_DATA_SUB osprey/include/whirl2f.h  ${ROOT}/include/${VERSION}/whirl2f.h
 
     INSTALL_DATA_SUB ${AREA}/include/dwarf.h  ${ROOT}/include/${VERSION}/dwarf.h
     INSTALL_DATA_SUB ${AREA}/include/libdwarf.h  ${ROOT}/include/${VERSION}/libdwarf.h
@@ -459,7 +459,9 @@ INSTALL_NATIVE_HEADER () {
     INSTALL_DATA_SUB ${AREA}/include/libelf/libelf.h  ${ROOT}/include/${VERSION}/libelf/libelf.h
     INSTALL_DATA_SUB ${AREA}/include/libelf/sys_elf.h  ${ROOT}/include/${VERSION}/libelf/sys_elf.h
 
-    INSTALL_DATA_SUB ${AREA}/include/omp/omp.h  ${ROOT}/include/${VERSION}/omp.h
+    INSTALL_DATA_SUB osprey/include/omp/omp.h  ${ROOT}/include/${VERSION}/omp.h
+    INSTALL_DATA_SUB osprey/include/omp/omp_lib.h  ${ROOT}/include/${VERSION}/omp_lib.h
+    INSTALL_DATA_SUB osprey/include/omp/omp_lib.f  ${ROOT}/include/${VERSION}/omp_lib.f
 
     return 0
 }
