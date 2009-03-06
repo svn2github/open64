@@ -595,6 +595,8 @@ Phase_Init (void)
 	Ipl_Init ();
     if (Run_lno || Run_Distr_Array || Run_autopar)
 	Lno_Init ();
+    if ( Opt_Level > 0 ) /* run VHO at -O1 and above */
+        Vho_Init ();
     if (Run_purple)
 	Prp_Init();
     if (Run_w2c || (Run_prompf && Anl_Needs_Whirl2c()))
@@ -675,6 +677,8 @@ Phase_Fini (void)
     if (Run_Dsm_Cloner || Run_Dsm_Common_Check)
       DRA_Finalize ();
 
+    if ( Opt_Level > 0 ) /* run VHO at -O1 and above */
+        Vho_Fini ();
     if (Run_lno || Run_Distr_Array || Run_autopar)
 	Lno_Fini ();
     if (Run_ipl)
