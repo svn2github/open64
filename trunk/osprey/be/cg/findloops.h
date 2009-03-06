@@ -156,7 +156,9 @@ struct LOOP_DESCR {
 #define LOOP_DESCR_next(l)        ((l)->next)
 #define LOOP_DESCR_loopinfo(l)    ((l)->loopinfo)
 #define LOOP_DESCR_flags(l)    	  ((l)->flags)
-
+#ifdef TARG_SL
+#define LOOP_DESCR_lcidx(l)     ((l)->lc_index)
+#endif
 /* flags to annotate the properties of the loop. these comprise the flag
  * properties for LOOP_DESCR
  */

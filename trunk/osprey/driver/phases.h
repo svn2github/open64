@@ -59,7 +59,11 @@ extern char *fb_type;          /* type for -fb_type */
 #ifdef KEY
 extern char *coco_setfile;  /* setfile for -fcoco */
 #endif
-
+#ifdef TARG_SL
+extern boolean ldscript_file;
+extern boolean Long_Long_Support;
+extern boolean Float_Point_Support;
+#endif
 extern char *global_toolroot;   /* TOOLROOT, get from $TOOLROOT or guess from arg[0] */
 extern char *ldpath_for_pixie;  /* Tell pixie where to find ld */
 extern int saved_argc;		/* original argc */

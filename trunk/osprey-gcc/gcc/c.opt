@@ -158,6 +158,14 @@ U
 C ObjC C++ ObjC++ Joined Separate
 -U<macro>	Undefine <macro>
 
+msoft-float
+C ObjC C++ ObjC++
+float/double type supported for simplnano
+
+mlong-long
+C ObjC C++ ObjC++
+Long long type supported for simplnano
+
 Wabi
 C++ ObjC++ Var(warn_abi)
 Warn about things that will change when compiling with an ABI-compliant compiler

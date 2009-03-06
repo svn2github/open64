@@ -458,6 +458,27 @@ I-fini%s		;		CC	ld	"-fini %s"
 	""
 -profile	;	ALL	ld	self "-lm" "-TENV:call_mcount"
 	""
+#ifdef SL
+% sl specific flags
+-march=%s	;  ALL     as      ""
+        "Set CPU type"
+-n32    toggle(&abi,ABI_N32);   ALL     PFA     "-n32" "-TARG:abi=n32"
+        "Compile for 32-bit ABI"
+-mips4  toggle(&isa,ISA_MIPS4);         ALL     as      "-mips4" "-TARG:isa=mips4"
+        "compile for mips4 instruction set"
+-bblib  toggle(&use_bblibs,TRUE);	ALL  NONE  "-CG:dsp_thread=on -TARG:processor=sl1_dsp"
+        ""
+-sl1_dsp toggle(&use_sl1,TRUE); 	ALL	NONE	"-CG:dsp_thread=on -TARG:processor=sl1_dsp -march=sl1"
+	""
+-sl1_pcore toggle(&use_sl1,TRUE);	ALL     NONE    "-TARG:processor=sl1_pcore -march=sl1"
+	""
+-mlong-long      Long_Long_Support=TRUE;   Cc,cpp f self
+	"Supporting 64bit Long Long for SL"
+-msoft-float    Float_Point_Support=TRUE;  Cc,cpp f self
+	"Supporting Float Point Emulation for SL"
+-ldscript ldscript_file=TRUE; ALL ld  "" 
+  "Using appointed link file"
+#endif
 #ifdef X8664 /* Bug #381, here the MACRO is X8664/IA64, no 'TARG_' prefix */
 -m32	toggle(&abi,ABI_N32);	ALL	be	"-TARG:abi=n32" 
         "Compile for 32-bit ABI"
@@ -866,13 +887,11 @@ I-xall		;	FTN	ffe	self
 % this should be on by default unless -mp, but off now until freeze over
 -cray_directives	;		FTN	N	self
 	""
+-mipslibs      toggle(&use_mipslibs,TRUE);toggle(&use_craylibs,FALSE);         f77     NONE    ""
+       ""
 
--mipslibs	toggle(&use_mipslibs,TRUE);toggle(&use_craylibs,FALSE);		f77	NONE	""
-	""
-
--craylibs	toggle(&use_craylibs,TRUE);toggle(&use_mipslibs,FALSE);		f77	NONE	""
-	""
-
+-craylibs      toggle(&use_craylibs,TRUE);toggle(&use_mipslibs,FALSE);         f77     NONE    ""
+       ""
 #ifndef KEY
 -cray_mp    toggle(&mpkind,CRAY_MP);	 FTN ffe self 
     "enable Cray micro-tasking directives"
@@ -1138,6 +1157,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Pass -m args to linker"
 -m*elf_x86_64	;	LINK	ld	""
 	"Pass -m args to linker"
+#ifdef SL
+-m%s            ;               ALL     NONE    "-m %s"
+        "Pass -m args to as"
+#endif
 %-m	run_m4=TRUE;		f77	NONE	""
 %	"run m4 on each RATFOR source"
 -framepointer	warn_no_longer_supported2(option_name,"-TENV:large_stack");  ALL	NONE ""
@@ -1177,8 +1200,10 @@ I-u%s		;		Cc	ld	"-u %s"
 
 -mcpu=%s	set_cpu(optargs,M_CPU);	ALL	NONE	""
 	"Set CPU type"
+#if !defined(SL)
 -march=%s	set_cpu(optargs,M_ARCH);	ALL	NONE	""
 	"Set CPU type"
+#endif
 -mtune=%s	set_cpu(optargs,M_TUNE);	ALL	NONE	""
 	"Set CPU type"
 -pipe	;		ALL	NONE	""
@@ -1190,10 +1215,12 @@ I-u%s		;		Cc	ld	"-u %s"
 %%% C language options
 -flang-isoc9x	;		Cc	f	self
 	""
+#ifndef SL
 -msoft-float	warn_ignored(option_name);	ALL	NONE	""
 	""
 -mno-soft-float	warn_ignored(option_name);	ALL	NONE	""
 	""
+#endif
 -fcond-mismatch	;		Cc	f	self
 	""
 #ifdef KEY
@@ -1618,7 +1645,7 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Improve FP speed by violating ANSI & IEEE rules"
 -fno-unsafe-math-optimizations	;	Cc	f	"-OPT:funsafe_math_optimizations=OFF -fmath-errno"
 	"Conform to ANSI & IEEE math rules at the expense of speed"
-#ifdef MIPS
+#if defined(MIPS) && !defined(SL)
 -ffloat-store	warn_ignored(option_name);	Cc,FTN	NONE	""
 #else
 -ffloat-store	;	Cc,FTN	be	"-CG:x87_store=1:min_spill_loc_size=1"
@@ -1859,8 +1886,13 @@ I-u%s		;		Cc	ld	"-u %s"
 #endif
 -fhandle-exceptions	;	Cc	cpp,cfe	self
 	"Enable exception handling"
+#ifndef SL
 -fno-exceptions	;	Cc	CPP,cfe	"-fno-exceptions -fno-gnu-exceptions"
 	"Disable exception handling"
+#else
+-fno-exceptions	;	Cc	CPP,cfe	"-fno-exceptions"
+	"Disable exception handling"
+#endif
 -fno-optimize-regions	;	Cc	cfe	self
 	"Enable optimization of EH regions formation"
 -fno-handle-exceptions	;	Cc	cfe	self

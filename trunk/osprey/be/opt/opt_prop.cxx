@@ -424,6 +424,9 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
     // temporary hack
     if (x->Opr() == OPR_INTRINSIC_OP && x->Is_C3_Intrinsic())
       return NOT_PROPAGATABLE;
+
+    if (MTYPE_is_float(x->Dtyp()) || MTYPE_is_float(x->Dsctyp()))
+      return NOT_PROPAGATABLE;
 #endif
     // intrinsic op may by lowered into a call, so propagating it past the
     // def of a return preg is wrong

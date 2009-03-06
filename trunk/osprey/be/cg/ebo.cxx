@@ -1726,10 +1726,8 @@ static BOOL
 OP_can_change(OP* op)
 {
 #if defined(TARG_SL)
-  if ((OP_code(op) == TOP_C3_mvtacc) 
-      || (OP_code(op) == TOP_c3_mvtacc)
-      || (OP_code(op) == TOP_c3_mvfacc)
-      || (OP_code(op) == TOP_C3_mvfacc))
+  if ((OP_code(op) == TOP_c3_mvtacc) 
+      || (OP_code(op) == TOP_c3_mvfacc))
     return FALSE;
 #endif
   return TRUE;

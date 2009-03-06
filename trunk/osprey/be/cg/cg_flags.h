@@ -441,6 +441,7 @@ extern UINT32 CG_zdl_enabled_level;
 extern UINT32 CG_zdl_skip_e;
 extern UINT32 CG_zdl_skip_a;
 extern UINT32 CG_zdl_skip_b;
+extern BOOL CG_enable_opt_condmv;
 #endif
 #ifdef TARG_IA64
 extern BOOL CG_tune_do_loop;

@@ -51,10 +51,285 @@
 #include "cgexp.h"
 #include "cgexp_internals.h"
 
+extern OPS   New_OPs;
+extern OP *  Last_Processed_OP;
+extern INT   total_bb_insts;
+extern BB *  Cur_BB;
+
+extern INT64 Get_TN_Value(TN * tn);
+extern TN *  Get_64Bit_High_TN(TN * low, TYPE_ID type, OPS * ops);
+extern void  Process_New_OPs(void);
+
 void
 Initialize_Branch_Variants(void)
 {
 	// nothing to do
+}
+
+BOOL 
+Cond_Is_64Bit(VARIANT cond)
+{
+  const int COND_OP[] = {
+    V_BR_I8EQ0, V_BR_I8NE0, V_BR_I8GT0, V_BR_I8GE0, V_BR_I8LT0, V_BR_I8LE0,           
+    V_BR_I8EQ,  V_BR_I8NE,  V_BR_I8GT,  V_BR_I8GE,  V_BR_I8LT,  V_BR_I8LE,
+    V_BR_U8EQ0, V_BR_U8NE0, V_BR_U8GT0, V_BR_U8GE0, V_BR_U8LT0, V_BR_U8LE0,
+    V_BR_U8EQ,  V_BR_U8NE,  V_BR_U8GT,  V_BR_U8GE,  V_BR_U8LT,  V_BR_U8LE};
+
+  for (int i = 0; i < sizeof(COND_OP) / sizeof(COND_OP[0]); i++) {
+    if (cond == COND_OP[i]) return TRUE;		
+  }
+
+	return FALSE;
+}
+
+BOOL
+Cond_Is_Unsigned(VARIANT cond)
+{
+  const int UNSIGNED_COND_OP[] = {
+    V_BR_U4EQ0, V_BR_U4NE0, V_BR_U4GT0, V_BR_U4GE0, V_BR_U4LT0, V_BR_U4LE0,
+    V_BR_U4EQ,  V_BR_U4NE,  V_BR_U4GT,  V_BR_U4GE,  V_BR_U4LT,  V_BR_U4LE,
+    V_BR_U8EQ0, V_BR_U8NE0, V_BR_U8GT0, V_BR_U8GE0, V_BR_U8LT0, V_BR_U8LE0,
+    V_BR_U8EQ,  V_BR_U8NE,  V_BR_U8GT,  V_BR_U8GE,  V_BR_U8LT,  V_BR_U8LE
+  };
+
+  const int SIGNED_COND_OP[] = {
+    V_BR_I4EQ0, V_BR_I4NE0, V_BR_I4GT0, V_BR_I4GE0, V_BR_I4LT0, V_BR_I4LE0,           
+    V_BR_I4EQ,  V_BR_I4NE,  V_BR_I4GT,  V_BR_I4GE,  V_BR_I4LT,  V_BR_I4LE,
+    V_BR_I8EQ0, V_BR_I8NE0, V_BR_I8GT0, V_BR_I8GE0, V_BR_I8LT0, V_BR_I8LE0,           
+    V_BR_I8EQ,  V_BR_I8NE,  V_BR_I8GT,  V_BR_I8GE,  V_BR_I8LT,  V_BR_I8LE
+  };
+
+  for (int i = 0; i < sizeof(UNSIGNED_COND_OP) / sizeof(UNSIGNED_COND_OP[0]); i++) {
+    if (cond == UNSIGNED_COND_OP[i]) return TRUE;		
+  }
+
+  for (int i = 0; i < sizeof(SIGNED_COND_OP) / sizeof(SIGNED_COND_OP[0]); i++) {
+    if (cond == SIGNED_COND_OP[i]) return FALSE;		
+  }
+
+  FmtAssert(FALSE, ("Cond_Is_Unsigned: Branch cond NYI"));
+  return FALSE;
+}
+
+void
+Expand_64Bit_Branch(TN* targ, TN* src1, TN* src2, VARIANT variant, OPS *ops)
+{
+  TN * src1_low   = src1;
+  TN * src1_high  = Get_TN_Pair(src1);
+  TN * src2_low   = src2;
+  TN * src2_high  = Get_TN_Pair(src2);
+
+  if (TN_has_value(src1)) {
+    Expand_64Bit_Branch(targ, src2, src1, Invert_BR_Variant(variant), ops);
+    return;
+  }
+
+  VARIANT cond = V_br_condition(variant);
+
+  if (src1_high == NULL) {
+    src1_high = Get_64Bit_High_TN(src1_low, Cond_Is_Unsigned(cond) ? 
+        MTYPE_U8 : MTYPE_I8, ops);
+  }
+
+  if (TN_is_register(src2) && (src2_high == NULL)) {
+    src2_high = Get_64Bit_High_TN(src2_low, Cond_Is_Unsigned(cond) ? 
+        MTYPE_U8 : MTYPE_I8, ops);
+  } else if (TN_has_value(src2)) {
+    INT64 val      = Get_TN_Value(src2);
+    INT32 val_high = (val >> 32);
+    UINT32 val_low = val & 0XFFFFFFFF;
+    src2_high = Gen_Literal_TN(val_high, 4);
+    src2_low  = Gen_Literal_TN(val_low,  4);	
+  }
+
+  FmtAssert((src2_high != NULL) && (src1_high != NULL), ("Expand_64Bit_Branch src2_high/src1_high is NULL"));
+
+  if (cond == V_BR_I8EQ || cond == V_BR_U8EQ) {
+    BB* bb_entry   = Cur_BB;
+    BB* bb_cmp_low = Gen_And_Append_BB(bb_entry);
+    BB* bb_exit    = Gen_And_Append_BB(bb_cmp_low);
+
+    LABEL_IDX label_bb_exit = Gen_Label_For_BB(bb_exit);
+    BB_branch_wn(bb_entry)  = WN_Create(OPC_TRUEBR,1);
+    WN_kid0(BB_branch_wn(bb_entry)) = NULL;
+    WN_label_number(BB_branch_wn(bb_entry)) = label_bb_exit;
+
+    Expand_Branch(Gen_Label_TN(label_bb_exit, 0), src1_high, src2_high, 
+        cond == V_BR_I8EQ ? V_BR_I4NE : V_BR_U4NE, ops);
+
+    if( ops != &New_OPs )
+      OPS_Append_Ops(&New_OPs, ops);
+
+    Process_New_OPs();
+    BB_Append_Ops(bb_entry, &New_OPs);
+    OPS_Init(&New_OPs);
+    OPS_Init(ops);
+
+    BB_branch_wn(bb_cmp_low) = WN_Create(OPC_TRUEBR,1);
+    WN_kid0(BB_branch_wn(bb_cmp_low)) = NULL;
+    WN_label_number(BB_branch_wn(bb_cmp_low)) = TN_label(targ);
+
+    OPS* bb_cmp_low_ops = &New_OPs;
+
+    Expand_Branch(targ, src1_low, src2_low, V_BR_U4EQ, bb_cmp_low_ops);
+
+    total_bb_insts    = 0;
+    Last_Processed_OP = NULL;
+    Process_New_OPs();
+    BB_Append_Ops(bb_cmp_low, bb_cmp_low_ops);
+    OPS_Init(bb_cmp_low_ops);
+
+    total_bb_insts    = 0;
+    Last_Processed_OP = NULL;
+    Process_New_OPs();
+    OPS_Init(&New_OPs);
+
+    Cur_BB            = bb_exit;
+    return;
+  }
+  if (cond == V_BR_I8NE || cond == V_BR_U8NE) {
+    BB* bb_entry   = Cur_BB;
+    BB* bb_cmp_low = Gen_And_Append_BB(bb_entry);
+    BB* bb_exit    = Gen_And_Append_BB(bb_cmp_low);
+    LABEL_IDX label_bb_exit = Gen_Label_For_BB(bb_exit);
+
+    BB_branch_wn(bb_entry)  = WN_Create(OPC_TRUEBR,1);
+    WN_kid0(BB_branch_wn(bb_entry)) = NULL;
+    WN_label_number(BB_branch_wn(bb_entry)) = TN_label(targ);
+
+    Expand_Branch(targ, src1_high, src2_high, 
+        cond == V_BR_I8NE ? V_BR_I4NE : V_BR_U4NE, ops);
+
+    if( ops != &New_OPs )
+      OPS_Append_Ops(&New_OPs, ops);
+
+    Process_New_OPs();
+    BB_Append_Ops(bb_entry, &New_OPs);
+    OPS_Init(&New_OPs);
+    OPS_Init(ops);
+
+    BB_branch_wn(bb_cmp_low) = WN_Create(OPC_TRUEBR,1);
+    WN_kid0(BB_branch_wn(bb_cmp_low)) = NULL;
+    WN_label_number(BB_branch_wn(bb_cmp_low)) = TN_label(targ);
+
+    OPS* bb_cmp_low_ops = &New_OPs;
+
+    Expand_Branch(targ, src1_low, src2_low, V_BR_U4NE, bb_cmp_low_ops);    
+
+    total_bb_insts    = 0;
+    Last_Processed_OP = NULL;
+    Process_New_OPs();
+    BB_Append_Ops(bb_cmp_low, bb_cmp_low_ops);
+    OPS_Init(bb_cmp_low_ops);
+
+    total_bb_insts    = 0;
+    Last_Processed_OP = NULL;
+    Process_New_OPs();
+    OPS_Init(&New_OPs);
+
+    Cur_BB            = bb_exit;
+    return;
+  }
+
+  VARIANT br1_cond, br2_cond, br3_cond;
+  switch (cond) {
+    case V_BR_I8GT: // GT, LT, GT
+      br1_cond = V_BR_I4GT;
+      br2_cond = V_BR_I4LT;
+      br3_cond = V_BR_U4GT;
+      break;
+    case V_BR_U8GT: 
+      br1_cond = V_BR_U4GT;
+      br2_cond = V_BR_U4LT;
+      br3_cond = V_BR_U4GT;
+      break;
+    case V_BR_I8GE: // GT, LT, GE
+      br1_cond = V_BR_I4GT;
+      br2_cond = V_BR_I4LT;
+      br3_cond = V_BR_U4GE;
+      break;
+    case V_BR_U8GE:
+      br1_cond = V_BR_U4GT;
+      br2_cond = V_BR_U4LT;
+      br3_cond = V_BR_U4GE;
+      break;
+    case V_BR_I8LE: // LT, GT, LE
+      br1_cond = V_BR_I4LT;
+      br2_cond = V_BR_I4GT;
+      br3_cond = V_BR_U4LE;
+      break;		
+    case V_BR_U8LE:
+      br1_cond = V_BR_U4LT;
+      br2_cond = V_BR_U4GT;
+      br3_cond = V_BR_U4LE;
+      break;		
+    case V_BR_I8LT: // LT, GT, LT
+      br1_cond = V_BR_I4LT;
+      br2_cond = V_BR_I4GT;
+      br3_cond = V_BR_U4LT;
+      break;		
+    case V_BR_U8LT:
+      br1_cond = V_BR_U4LT;
+      br2_cond = V_BR_U4GT;
+      br3_cond = V_BR_U4LT;
+      break;
+    default:
+      FmtAssert(FALSE, ("unknown condition in Expand_64Bit_Branch"));
+  }
+
+  BB* bb_entry    = Cur_BB;
+  BB* bb_cmp_high = Gen_And_Append_BB(bb_entry);
+  BB* bb_cmp_low  = Gen_And_Append_BB(bb_cmp_high);
+  BB* bb_exit     = Gen_And_Append_BB(bb_cmp_low);
+  LABEL_IDX label_bb_exit = Gen_Label_For_BB(bb_exit);
+
+  BB_branch_wn(bb_entry)  = WN_Create(OPC_TRUEBR,1);
+  WN_kid0(BB_branch_wn(bb_entry)) = NULL;
+  WN_label_number(BB_branch_wn(bb_entry)) = TN_label(targ);
+
+  Expand_Branch(targ, src1_high, src2_high, br1_cond, ops);
+
+  if( ops != &New_OPs )
+    OPS_Append_Ops(&New_OPs, ops);
+
+  Process_New_OPs();
+  BB_Append_Ops(bb_entry, &New_OPs);
+  OPS_Init(&New_OPs);
+  OPS_Init(ops);
+
+  BB_branch_wn(bb_cmp_high) = WN_Create(OPC_TRUEBR,1);
+  WN_kid0(BB_branch_wn(bb_cmp_high)) = NULL;
+  WN_label_number(BB_branch_wn(bb_cmp_high)) = label_bb_exit;
+
+  OPS* bb_cmp_high_ops = &New_OPs;
+  Expand_Branch(Gen_Label_TN(label_bb_exit, 0), src1_high, src2_high, br2_cond, bb_cmp_high_ops);
+
+  total_bb_insts    = 0;
+  Last_Processed_OP = NULL;
+  Process_New_OPs();
+  BB_Append_Ops(bb_cmp_high, bb_cmp_high_ops);
+  OPS_Init(bb_cmp_high_ops);
+
+  BB_branch_wn(bb_cmp_low) = WN_Create(OPC_TRUEBR,1);
+  WN_kid0(BB_branch_wn(bb_cmp_low)) = NULL;
+  WN_label_number(BB_branch_wn(bb_cmp_low)) = TN_label(targ);
+
+  OPS* bb_cmp_low_ops = &New_OPs;
+
+  Expand_Branch(targ, src1_low, src2_low, br3_cond, bb_cmp_low_ops);
+
+  total_bb_insts    = 0;
+  Last_Processed_OP = NULL;
+  Process_New_OPs();
+  BB_Append_Ops(bb_cmp_low, bb_cmp_low_ops);
+  OPS_Init(bb_cmp_low_ops);
+
+  total_bb_insts    = 0;
+  Last_Processed_OP = NULL;
+  Process_New_OPs();
+  OPS_Init(&New_OPs);
+
+  Cur_BB = bb_exit;
 }
 
 // Check that compare is of proper form,
@@ -65,7 +340,7 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
 {
   TOP cmp = TOP_UNDEFINED;
   TOP cmp_i = TOP_UNDEFINED;
-  INT64 val;
+  int val;
 
   if (*src1 != NULL && TN_has_value(*src1)) {
 	  // swap operands and change variant
@@ -290,6 +565,11 @@ Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
 
   FmtAssert( cond <= V_BR_LAST, ("unexpected variant in Expand_Branch"));
   FmtAssert( cond != V_BR_NONE, ("BR_NONE variant in Expand_Branch"));
+
+  if (Cond_Is_64Bit(cond) && Get_TN_Pair(src1) != NULL) {
+    Expand_64Bit_Branch(targ, src1, src2, variant, ops);
+    return;
+  }
 
   cmp = Pick_Compare_TOP (&cond, &src1, &src2, ops);
 

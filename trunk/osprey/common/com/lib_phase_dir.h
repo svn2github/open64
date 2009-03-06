@@ -188,18 +188,18 @@
     #define OPEN64_PHASE_PATH "usr/socc-linux/bin"
     #define OPEN64_CMPLR_NAME_PREFIX "so"
     #define OPEN64_TARGET_NAME "so"
-#elif defined(TARG_MIPS)
-    #define OPEN64_TARGET "mips-linux"
-    #define VERSION ""
-    #define OPEN64_PHASE_PATH "/usr/mips-linux/bin"
-    #define OPEN64_CMPLR_NAME_PREFIX "mips"
-    #define OPEN64_TARGET_NAME "mips"
 #elif defined(TARG_SL)
     #define OPEN64_TARGET ""
     #define VERSION ""
     #define OPEN64_PHASE_PATH "/usr/bin"
     #define OPEN64_CMPLR_NAME_PREFIX ""
     #define OPEN64_TARGET_NAME "sl"
+#elif defined(TARG_MIPS)
+    #define OPEN64_TARGET "mips-linux"
+    #define VERSION ""
+    #define OPEN64_PHASE_PATH "/usr/mips-linux/bin"
+    #define OPEN64_CMPLR_NAME_PREFIX "mips"
+    #define OPEN64_TARGET_NAME "mips"
 #endif // TARG_IA64
 
 #endif /* lib_phase_dir_INCLUDED */

@@ -214,7 +214,7 @@ Can_Schedule_HB(std::list<BB*> hb_blocks)
 INT
 Memory_OP_Base_Opndnum (OP *op)
 {
-#ifdef TARG_X8664
+#ifdef TARG_X8664  
   return TOP_Find_Operand_Use( OP_code(op), OU_base );
 #else
   INT opnd_num;
@@ -233,12 +233,7 @@ Memory_OP_Base_Opndnum (OP *op)
 INT
 Memory_OP_Offset_Opndnum (OP *op)
 {
-#ifdef TARG_SL2
-  if( TOP_is_c2_load(OP_code(op)) || TOP_is_c2_store(OP_code(op)) )
-    return TOP_Find_Operand_Use( OP_code(op), OU_offset );
-#endif
-
-#ifdef TARG_X8664
+#ifdef TARG_X8664  
   return TOP_Find_Operand_Use( OP_code(op), OU_offset );
 #else
   INT opnd_num;
@@ -3073,18 +3068,6 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
   if( BB_length(bb) == 0 )
     return;
 
-#if defined(TARG_SL)
-  LABEL_IDX tag_idx = 0;
-  OP* orig_last_op = NULL;
-  if( CG_enable_zero_delay_loop ) {
-    if( BB_zdl_body(bb) ) {
-      orig_last_op = BB_last_op(bb);
-      Is_True(OP_has_tag(orig_last_op), ("zdl loop body's last op is not tagged"));
-      tag_idx = Get_OP_Tag( orig_last_op );
-    }
-  }
-#endif
- 
   Invoke_Pre_HBS_Phase(bb);
 
   std::list<BB*> bblist;
@@ -3183,19 +3166,6 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
       }
     }
   }
-#if defined(TARG_SL)
-  if( CG_enable_zero_delay_loop) {
-    if( BB_zdl_body(bb) ) {
-      Is_True( tag_idx > 0, ("incorrect tag index") );
-      OP* last_op = BB_last_op(bb);
-      /* the last tagged OP is moved to other places */
-      if( !OP_has_tag(last_op) ) {
-        Reset_OP_has_tag( orig_last_op );
-        Set_OP_Tag( last_op, tag_idx );
-      }
-    }
-  }
-#endif
 
 }
 

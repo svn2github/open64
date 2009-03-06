@@ -756,6 +756,16 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
   if (exp->Is_flag_set(CF_INTERNAL_MEM_OFFSET)) {
     WN_Set_is_internal_mem_ofst(wn);
   }
+
+  extern INT Need_type_conversion(TYPE_ID from_ty, TYPE_ID to_ty, OPCODE *opc);
+  
+  OPERATOR opr_t = WN_operator(wn);
+  TYPE_ID from_ty = WN_desc(wn);
+  TYPE_ID to_ty = WN_rtype(wn);
+  OPCODE opc = WN_opcode(wn);
+  
+  if ((opr_t == OPR_CVT) && (Need_type_conversion(from_ty, to_ty, &opc) == NOT_AT_ALL) && WN_kid0(wn))
+     wn = WN_kid0(wn);
 #endif 
 
   // connect up this cr and the resulting wn for def-use

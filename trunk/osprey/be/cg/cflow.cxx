@@ -1149,6 +1149,14 @@ static void Insert_Goto_BB(
   lab = Gen_Label_For_BB(targ_bb);
   lab_tn = Gen_Label_TN(lab, targ_offset);
   Exp_OP1(OPC_GOTO, NULL, lab_tn, &ops);
+
+#ifdef TARG_SL
+  // make up line info of GOTO instruction
+  if (BB_last_op(bb) && (OP_srcpos(BB_last_op(bb)) != 0)) {
+    OP_srcpos(OPS_last(&ops)) = OP_srcpos(BB_last_op(bb));
+  }
+#endif
+
   if (   PROC_has_branch_delay_slot()
       && (fill_delay_slots || region_is_scheduled))
   {
@@ -3849,6 +3857,11 @@ Merge_With_Pred ( BB *b, BB *pred )
   for (i = 0; i < BBINFO_nsuccs(pred); ++i) {
     if (BBINFO_succ_bb(pred, i) == b) {
 
+#if defined(TARG_SL)
+  if(BB_zdl_prolog(b))
+    Set_BB_zdl_prolog(pred);
+#endif
+
 #ifdef TARG_IA64
 	  if (IPFEC_Enable_Region_Formation && RGN_Formed) {
         RGN_Link_Pred_Succ_With_Prob(pred, b_targ, BBINFO_succ_prob(pred, i));
@@ -4529,6 +4542,11 @@ Merge_With_Succ(BB *b, BB *suc, BB *merged_pred, BOOL in_cgprep)
   if (!Can_Append_Succ(b, suc, merged_pred, TRUE, CFLOW_Trace_Merge)) {
     return FALSE;
   }
+
+#if defined(TARG_SL)
+  if(BB_zdl_prolog(suc))
+    Set_BB_zdl_prolog(b);
+#endif
 
   Append_Succ(b, suc, in_cgprep, TRUE);
   if (CFLOW_Trace_Merge) {
@@ -5215,6 +5233,18 @@ typedef struct bbchain {
   BOOL never;		/* blocks in chain have NEVER freq hint */
 } BBCHAIN;
 
+#ifdef TARG_SL
+static BB*
+Get_Zdl_Loop_Tail(BB * prolog)
+{
+  FmtAssert(OP_code(BB_last_op(prolog))==TOP_loop, ("Get_Zdl_Loop_Tail::wrong zdl prolog"));
+  FmtAssert(BB_in_succs(prolog, BB_next(prolog)), ("Get_Zdl_Loop_Tail::wrong zdl header"));
+  BB *body = BB_next(prolog);
+  BB *tail = BB_Other_Predecessor(body, prolog);
+  FmtAssert(tail!=NULL, ("Get_Zdl_Loop_Tail::cannot find zdl tail"));
+}
+#endif
+
 
 /* ====================================================================
  *
@@ -5245,6 +5275,23 @@ Init_Chains(BBCHAIN *chains)
   for (bb = REGION_First_BB; bb; bb = next_bb) {
     BB *tail = bb;
     BB_MAP_Set(chain_map, bb, chains);
+
+#ifdef TARG_SL
+    /* We do not intend to reorder bb inside a zero delay loop
+     */
+    if (CG_enable_zero_delay_loop) {
+      OP *op = BB_last_op(bb);
+      if (op!=NULL && OP_code(op) == TOP_loop) {
+        BB *zdl_tail=Get_Zdl_Loop_Tail(bb);
+        BB *loop_bb = bb;
+        while (loop_bb!=zdl_tail) {
+          loop_bb = BB_next(loop_bb);
+          BB_MAP_Set(chain_map, loop_bb, chains);
+        }
+        tail = zdl_tail;
+      }
+    }
+#endif
 
     /* We have to be careful about reordering in the face of regions
      * (REGION and exception regions). The two kind of regions have
@@ -5723,6 +5770,28 @@ Validate_Cold_Region(BBCHAIN *chains, BBCHAIN *cold_region)
     BB *bb;
     BB_NUM cold_ord = BB_ORD(cold_region->head);
 
+#ifdef TARG_SL
+    BB *ch_head = ch->head;
+    if (ch_head != NULL) {
+      BBLIST *edge;
+      FOR_ALL_BB_PREDS(ch_head, edge) {
+        BB *pred = BBLIST_item(edge);
+        if (OP_fork(BB_last_op(pred))) {
+          BBCHAIN *new_cold = ch->next;
+          if (CFLOW_Trace_Freq_Order) {
+            #pragma mips_frequency_hint NEVER
+            fprintf(TFile, "  fork target caused cold region start"
+                           " to move from BB:%d to BB:%d\n",
+                           BB_id(cold_region->head),
+                           new_cold ? BB_id(new_cold->head) : -1);
+          }
+          cold_region = new_cold;
+          goto next_chain;
+        }
+      }
+    }
+#endif
+
     for (bb = ch->head; bb; bb = BB_next(bb)) {
       BBLIST *edge;
 
@@ -5742,6 +5811,22 @@ Validate_Cold_Region(BBCHAIN *chains, BBCHAIN *cold_region)
 	cold_region = new_cold;
 	goto next_chain;
       }
+
+#ifdef TARG_SL
+      if (OP_fork(BB_last_op(bb))) {
+        BBCHAIN *new_cold = ch->next;
+        if (CFLOW_Trace_Freq_Order) {
+          #pragma mips_frequency_hint NEVER
+          fprintf(TFile, "  fork instruction caused cold region start"
+                         " to move from BB:%d to BB:%d\n",
+                         BB_id(cold_region->head),
+                         new_cold ? BB_id(new_cold->head) : -1);
+        }
+        cold_region = new_cold;
+        goto next_chain;
+      }
+
+#endif
 
       /* Check to make sure that an edge between the hot and cold
        * region is also not a transition between regions. If we

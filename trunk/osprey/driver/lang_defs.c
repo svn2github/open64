@@ -109,8 +109,13 @@ static phase_info_t phase_info[] = {
    /* invoke gcc driver directly rather than cpp
     * because cpp can have different paths, reads spec file,
     * and may eventually be merged with cc1. */
+#ifndef TARG_SL
    {'p',  0x0000000000000020LL,	NAMEPREFIX "gcc", ALTBINPATH, FALSE, TRUE}, /* gcpp */
    {'p',  0x0000000000000040LL,	NAMEPREFIX "g++", ALTBINPATH, FALSE, TRUE}, /* gcpp_plus */
+#else
+   {'p',  0x0000000000000020LL, NAMEPREFIX "gcc", ALTBINPATH, FALSE, FALSE}, /* gcpp */
+   {'p',  0x0000000000000040LL, NAMEPREFIX "g++", ALTBINPATH, FALSE, FALSE}, /* gcpp_plus */
+#endif
    {'p',  0x0000000000000080LL,	"fec",	 PHASEPATH,	FALSE, FALSE},	/* c_cpp */
    {'p',  0x0000000000000100LL, "cpp",   PHASEPATH,     FALSE, FALSE}, /* cplus_cpp */
    {'p',  0x0000000000000200LL,	"mfef77",PHASEPATH,	FALSE, FALSE},	/* f_cpp */
@@ -173,18 +178,27 @@ static phase_info_t phase_info[] = {
 #if defined(TARG_X8664) || ( defined(KEY) && !defined(CROSS_COMPILATION))
    /* on x8664, we alwayse use gcc as the assembler */
    {'a',  0x0000002000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE, TRUE}, /* gcc */
+#elif defined(TARG_SL)
+   {'a',  0x0000002000000000LL, NAMEPREFIX "as", BINPATH, FALSE, FALSE},  /* as*/
 #else
    {'a',  0x0000002000000000LL,	"as",	BINPATH,	FALSE, TRUE},	/* gas */
 #endif
    {'a',  0x0000003000000000LL,	"",	"",		FALSE, FALSE},	/* any_as */
 
    {'d',  0x0000008000000000LL, "dsm_prelink", PHASEPATH,FALSE, FALSE},/* dsm_prelink*/
+#ifndef TARG_SL
    {'j',  0x0000010000000000LL,	"ipa_link", GNUPHASEPATH, TRUE, FALSE},	/* ipa_link */
+#else
+   {'j',  0x0000010000000000LL, "ipa_link", BINPATH, TRUE, FALSE}, /* ipa_link */
+#endif
    {'l',  0x0000020000000000LL,	"ld", BINPATH, TRUE, TRUE},	/* collect */
 #if defined(TARG_X8664) || ( defined(KEY) && !defined(CROSS_COMPILATION))
    /* on x8664, we alwayse use gcc/g++ as the linker */
    {'l',  0x0000040000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE, TRUE}, /* ld */
    {'l',  0x0000080000000000LL,	NAMEPREFIX "g++", BINPATH, FALSE, TRUE}, /* ldplus */
+#elif defined(TARG_SL)
+   {'l',  0x0000040000000000LL, NAMEPREFIX "ld", BINPATH, FALSE, FALSE}, /* ld */
+   {'l',  0x0000080000000000LL, NAMEPREFIX "ld", BINPATH, FALSE, FALSE}, /* ldplus */
 #else
    {'l',  0x0000040000000000LL,	"ld", BINPATH, FALSE, TRUE}, /* ld */
    {'l',  0x0000080000000000LL,	"ld", BINPATH, FALSE, TRUE}, /* ldplus */
@@ -200,6 +214,9 @@ static phase_info_t phase_info[] = {
    {'I',  0x0020000000000000LL,	"inc",	"/include",	FALSE, FALSE},	/* include */
    {'L',  0x0040000000000000LL,	"lib",	LIBPATH,	FALSE, FALSE},	/* library */
    {'L',  0x0080000000000000LL,	"alib",	ALTLIBPATH,	FALSE, FALSE},	/* alt_library */
+#ifdef TARG_SL
+   {'S',  0x0010000000000000LL, "crt",  "/usr/libsl2",  FALSE, FALSE}, /*sl2_startup*/
+#endif
 };
 mask_t OPEN64_PHASE_MASK=
           0x0000f19fffffff90LL;

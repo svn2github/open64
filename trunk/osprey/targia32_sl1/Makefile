@@ -53,7 +53,10 @@ LIBRARY_SUBDIRS := \
 	libdwarf \
 	libelf \
 	libelfutil \
-	libunwindP 
+	libiberty  \
+	libunwindP \ 
+	libspin_4_2_0 \
+	libspin 
 
 
 #
@@ -74,6 +77,10 @@ TOOL_SUBDIRS := \
 	whirl2f \
 	wopt \
 	be_driver \
+	gccfe \
+	g++fe  \
+	wgen	\
+	wgen_4_2_0   
 #	libinstr
 #	lno \
 #	gccfe \

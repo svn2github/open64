@@ -583,7 +583,7 @@ Configure_Target ( void )
   Integer_type = MTYPE_I4;
 
   Split_Quad_Ops = TRUE;
-  Split_64_Bit_Int_Ops = FALSE;
+  Split_64_Bit_Int_Ops = TRUE;
 
 #if defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)
 #ifndef EDG_FORTRAN

@@ -102,6 +102,9 @@ typedef INT64 LOWER_ACTIONS;
 #define LOWER_FAST_EXP            0x080000000000ll
 #define LOWER_EARLY_MLOAD         0x100000000000ll
 #define LOWER_TO_CG		  0x800000000000ll
+#if defined(TARG_SL)
+#define LOWER_FP_EMULATE  0x400000000000ll
+#endif
 
 
 /* 

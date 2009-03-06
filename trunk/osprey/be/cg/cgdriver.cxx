@@ -633,6 +633,8 @@ static OPTION_DESC Options_CG[] = {
     INT32_MAX, 0, INT32_MAX, &CG_zdl_skip_a, NULL },
   { OVK_INT32, OV_INTERNAL, TRUE, "zdl_skip_b", "",
     INT32_MAX, 0, INT32_MAX, &CG_zdl_skip_b, NULL },
+  { OVK_BOOL,  OV_INTERNAL, TRUE, "opt_condmv", "",
+    0, 0, 0,   &CG_enable_opt_condmv, NULL},
   /* For SL2, I need a options to tell what application I'm comping.
    * So I can get the right LUT file
    */

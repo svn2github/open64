@@ -247,6 +247,11 @@ extern TYPE_DESC Machine_Types[];
 
 #define MTYPE_is_size_double(n)	(MTYPE_bit_size(n) == MTYPE_bit_size(MTYPE_I8))
 
+#ifdef TARG_SL
+#define MTYPE_is_longlong(n) (MTYPE_is_integral(n) && (MTYPE_bit_size(n) == 64))
+#define MTYPE_is_double(n) (MTYPE_is_float(n) && (MTYPE_bit_size(n) == 64))
+#endif
+
 /* Define a mask of machine types, for use in register descriptors: */
 typedef UINT32 MTYPE_MASK;
 

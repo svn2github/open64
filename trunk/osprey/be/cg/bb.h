@@ -582,10 +582,9 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #elif defined(TARG_SL)
 #define BBM_ZDL_PROLOG          0x01000000 
 #define BBM_ZDL_BODY            0x02000000        
-#define BBM_ZDL_EPILOG          0x04000000        
+#define BBM_HAS_TAG          0x04000000        
 #define BBM_SCHEDULED_SIZE      0x08000000          
 #define BBM_FREQ_UNBALANCED	0x10000000
-#define BBM_LOCAL_FLAG2         0x20000000
 #endif // TARG_SL
 
 #define BB_edge_splitting(x)  	      (BB_flag(x) & BBM_EDGE_SPLITTING)
@@ -600,26 +599,26 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
  */
 #define BB_zdl_prolog(x)        (BB_flag(x) & BBM_ZDL_PROLOG)
 #define Set_BB_zdl_prolog(x)    (BB_flag(x) |= BBM_ZDL_PROLOG)
+#define Reset_BB_zdl_prolog(x)  (BB_flag(x) &= ~BBM_ZDL_PROLOG)
 
 /* BB is the body of zero-delay-loop, so if it has branch inside,
  * it should be deleted ( i delay this to keep cfg not complain)
  */
 #define BB_zdl_body(x)          (BB_flag(x) & BBM_ZDL_BODY)
 #define Set_BB_zdl_body(x)      (BB_flag(x) |= BBM_ZDL_BODY)
+#define Reset_BB_zdl_body(x)    (BB_flag(x) &= ~BBM_ZDL_BODY)
 
-/* BB is the epilog of zero-delay-loop, so it is a target of 
- * loop instruction , this BB cannot be deleted, although it is
- * not a 'branch' target.
- */
-#define BB_zdl_epilog(x)          (BB_flag(x) & BBM_ZDL_EPILOG)
-#define Set_BB_zdl_epilog(x)      (BB_flag(x) |= BBM_ZDL_EPILOG)
+#define BB_has_tag(x)           (BB_flag(x) & BBM_HAS_TAG)
+#define Set_BB_has_tag(x)       (BB_flag(x) |= BBM_HAS_TAG)
+#define Reset_BB_has_tag(x)     (BB_flag(x) &=~ BBM_HAS_TAG)
+
+#define BB_SCHED_SIZE(x)        (BB_flag(x) & BBM_SCHEDULED_SIZE)
+#define Set_BB_sched_size(x)    (BB_flag(x) |= BBM_SCHEDULED_SIZE)
+#define Reset_BB_sched_size(x)  (BB_flag(x) &= ~BBM_SCHEDULED_SIZE)
 
 #define BB_freq_unbalanced(x)			(BB_flag(x) & BBM_FREQ_UNBALANCED)
 #define Set_BB_freq_unbalanced(x)		(BB_flag(x) |= BBM_FREQ_UNBALANCED)
-
-#define BB_local_flag2(bb)		(BB_flag(bb) & BBM_LOCAL_FLAG2)
-#define Set_BB_local_flag2(bb)		(BB_flag(bb) |= BBM_LOCAL_FLAG2)
-#define Reset_BB_local_flag2(bb) (BB_flag(bb) &= ~BBM_LOCAL_FLAG2)
+#define Reset_BB_freq_unbalanced(x)		(BB_flag(x) &= ~BBM_FREQ_UNBALANCED)
 #endif // TARG_SL
 
 #define	BB_entry(x)		(BB_flag(x) & BBM_ENTRY)
@@ -646,11 +645,6 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define	BB_has_post_label(x)		(BB_flag(x) & BBM_POST_LABEL)
 #ifdef KEY
 #define	BB_has_non_local_label(x)	(BB_flag(x) & BBM_NON_LOCAL_LABEL)
-#endif
-#if defined(TARG_SL)
-#define BB_SCHED_SIZE(bb)       (BB_flag(bb) & BBM_SCHEDULED_SIZE)
-#define Set_BB_sched_size(bb)   (BB_flag(bb) |= BBM_SCHEDULED_SIZE)
-#define Reset_BB_sched_size(bb) (BB_flag(bb) &= ~BBM_SCHEDULED_SIZE)
 #endif
 #ifdef TARG_IA64
 #define BB_recovery(x)          (BB_flag(x) & BBM_RECOVERY)

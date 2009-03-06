@@ -108,7 +108,9 @@ static struct cvt_rule {
   { nop, nop, nop, nop,I1I4,I1I8, nop, nop,I1I4,I1I8},//to I1
   { nop, nop, nop, nop,I2I4,I2I8, nop, nop,I2I4,I1I8},//to I2
   { nop, I4B,I4I1,I4I2, nop,I4I8, nop, nop, nop,U4U8},//to I4
-#ifdef TARG_MIPS
+#ifdef TARG_SL
+  { nop, I8B,I8I1,I8I2,I8I4, nop, I8U1,I8U2,I8U4, nop},//to I8
+#elif defined(TARG_MIPS)
   { nop, nop,I8I1,I8I2, nop, nop, nop, nop,I8U4, nop},//to I8
 #elif defined(TARG_IA32)
   { nop, nop,I8I1,I8I2,I8I4, nop, nop, nop,I8U4, nop},//to I8
@@ -120,7 +122,9 @@ static struct cvt_rule {
   { nop, nop, nop, nop,U1U4,U1U8, nop, nop,U1U4,U1U8},//to U1
   { nop, nop, nop, nop,U2U4,U2U8, nop, nop,U2U4,U2U8},//to U2
   { nop, U4B, nop, nop, nop,U4I8,U4U1,U4U2, nop,U4U8},//to U4
-#ifdef TARG_MIPS
+#ifdef TARG_SL
+  { nop, U8B,U8I1,U8I2,U8I4, nop,U8U1,U8U2,U8U4, nop} //to U8
+#elif defined(TARG_MIPS)
   { nop, nop, nop, nop, nop, nop,U8U1,U8U2,U8U4, nop} //to U8
 #elif defined(TARG_IA32)
   { nop, nop, nop, nop,U8I4, nop,U8U1,U8U2,U8U4, nop} //to U8

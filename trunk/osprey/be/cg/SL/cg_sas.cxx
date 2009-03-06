@@ -529,7 +529,7 @@ void KEY_SCH::Schedule_DDG()
   static char* solver = NULL;
 
   if( solver == NULL ){
-    (void*)solver = (char*)malloc( sizeof(solver[0]) * 256 );
+    solver = (char*)malloc( sizeof(solver[0]) * 256 );
 
     if( CG_Path == NULL ){
       char* path = getenv( "LD_LIBRARY_PATH" );
@@ -1008,7 +1008,7 @@ void KEY_SCH::Schedule_Kernel()
   }
 
   OP_info_size = max_indx + 1 + 1;  // for the new br_op at Preconditioning
-  (void*)op_info = (OP_info *)MEM_POOL_Alloc( mem_pool, ( sizeof(op_info[0]) * OP_info_size ) );
+  op_info = (OP_info *)MEM_POOL_Alloc( mem_pool, ( sizeof(op_info[0]) * OP_info_size ) );
   OP_info_reset();
   max_indx = 0;
   FOR_ALL_BB_OPs( kernel, op ){

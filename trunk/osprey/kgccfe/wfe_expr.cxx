@@ -425,30 +425,8 @@ typedef struct intrinsicop_attr_extended {
   INTRINSIC aux_id;   // extend intrinsic opr
 } INTRN_ATTR_EXTEND; 
 
-#define INTRN_EATTR_LAST 48	
+#define INTRN_EATTR_LAST 27	
 static INTRN_ATTR_EXTEND intrn_eattr[INTRN_EATTR_LAST] = {
-  INTRN_C3_MAC_A,  TRUE,   2,  P2_P4, INTRN_C3_PTR,
-  INTRN_C3_MACN_A, TRUE,  2,  P2_P4,  INTRN_C3_PTR,	
-  INTRN_C3_MAC_AR,  TRUE, 1,  P3,       INTRN_C3_PTR,
-  INTRN_C3_MACN_AR, TRUE, 1, P3,       INTRN_C3_PTR,
-  INTRN_C3_MULA_AR,  TRUE, 1, P3,       INTRN_C3_PTR,
-  INTRN_C3_DMAC_A, TRUE,  2,  P2_P4,   INTRN_C3_PTR,
-  INTRN_C3_DMACN_A, TRUE,  2,  P2_P4,   INTRN_C3_PTR,
-  INTRN_C3_SAADDH_A, TRUE, 2, P0_P2 , INTRN_C3_PTR,
-  INTRN_C3_SASUBH_A,  TRUE, 2, P0_P2,  INTRN_C3_PTR,
-  INTRN_C3_MULA_A,      TRUE,  2, P2_P4, INTRN_C3_PTR,
-  INTRN_C3_SAMULH_A,   TRUE, 2, P0_P2, INTRN_C3_PTR,
-  INTRN_C3_DMULT_A,      TRUE,  2, P2_P4, INTRN_C3_PTR,
-  INTRN_C3_DMULTN_A,      TRUE,  2, P2_P4, INTRN_C3_PTR,
-  INTRN_C3_SAADD_A, TRUE, 2, P0_P2, INTRN_C3_PTR,
-  INTRN_C3_SAADDHA_A, TRUE, 1, P2, INTRN_C3_PTR,
-  INTRN_C3_SASUB_A, TRUE, 2, P0_P2, INTRN_C3_PTR,
-  INTRN_C3_LOAD, TRUE, 1, P0, INTRN_C3_PTR,
-  INTRN_C3_STORE, TRUE, 1, P1, INTRN_C3_PTR,
-  INTRN_C3_FFTLD, TRUE, 1, P0, INTRN_C3_PTR,
-  INTRN_C3_FFTST, TRUE, 1, P1, INTRN_C3_PTR,
-  INTRN_SET_CIRCBUF, FALSE, 2, P3_P4, INTRN_C3_PTR,
-  INTRN_RESET_CIRCBUF, FALSE, 2, P3_P4, INTRN_C3_PTR,
   INTRN_C2_LD_V,  FALSE, 1, P1,INTRN_C3_PTR,
   INTRN_C2_LD_G,    FALSE, 1, P0,INTRN_C3_PTR,
   INTRN_C2_LD_V2G,   FALSE, 1, P0,INTRN_C3_PTR,
@@ -462,8 +440,8 @@ static INTRN_ATTR_EXTEND intrn_eattr[INTRN_EATTR_LAST] = {
   INTRN_C2_ST_C_IMM,   FALSE, 1, P1,INTRN_C3_PTR,
   INTRN_C2_ST_V_IMM,   FALSE, 1, P3,INTRN_C3_PTR,
   INTRN_C2_ST_G_IMM,   FALSE, 1, P2,INTRN_C3_PTR,
-  INTRN_C2_ST_G2V_IMM,  FALSE, 1, P2,INTRN_C3_PTR, 
-  // new C3 
+  INTRN_C2_ST_G2V_IMM,  FALSE, 1, P2,INTRN_C3_PTR,
+  // C3 
   INTRN_C3DMAC_A, TRUE, 2, P2_P4, INTRN_C3_PTR,
   INTRN_C3DMULA_A, TRUE, 1, P2, INTRN_C3_PTR,
   INTRN_C3LD, TRUE, 1, P0, INTRN_C3_PTR,
@@ -476,6 +454,7 @@ static INTRN_ATTR_EXTEND intrn_eattr[INTRN_EATTR_LAST] = {
   INTRN_C3SAADDH_A, TRUE, 2, P0_P2, INTRN_C3_PTR,
   INTRN_C3SADDA_A, TRUE, 1, P2, INTRN_C3_PTR,
   INTRN_C3SAMULH_A, TRUE, 2, P0_P2, INTRN_C3_PTR,
+  INTRN_C3_SET_CIRCBUF, FALSE, 2, P3_P4, INTRN_C3_PTR,
 };
 
 static BOOL intrinsic_op_need_extend (INTRINSIC id) {
@@ -4373,7 +4352,11 @@ WFE_Expand_Expr (tree exp,
     case REALPART_EXPR:
     case IMAGPART_EXPR:
       {
+#ifdef TARG_SL
+        wn0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0), Get_TY(TREE_TYPE(exp)));
+#else
         wn0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
+#endif
         wn  = WN_Unary (Operator_From_Tree [code].opr,
                         Widen_Mtype(TY_mtype(Get_TY(TREE_TYPE(exp)))), wn0);
 #ifdef KEY // bug 2648
@@ -4917,7 +4900,12 @@ WFE_Expand_Expr (tree exp,
 			   Widen_Mtype(mtyp0), wn0, wn1);
 #endif
 #ifdef KEY
+#ifdef TARG_SL // 32bit target
+      if ( (Widen_Mtype(mtyp) != Boolean_type) && 
+	  	   (!MTYPE_is_size_double(mtyp)))	  	        
+#else
         if (Widen_Mtype(mtyp) != Boolean_type)
+#endif	
 	  wn = WN_Cvt(Boolean_type, Widen_Mtype(mtyp), wn);
 #endif
       }
@@ -5044,6 +5032,7 @@ WFE_Expand_Expr (tree exp,
             && WN_operator(WN_kid0(wn)) != OPR_LDA
             && WN_operator(WN_kid0(wn)) != OPR_LDID
             && WN_operator(WN_kid0(wn)) != OPR_LDBITS
+            && WN_operator(WN_kid0(wn)) != OPR_ILOAD 
 #endif
 	)
 	    { // We do not need the CVT
@@ -6781,267 +6770,34 @@ WFE_Expand_Expr (tree exp,
 	      iopc = INTRN_SBUF_OFFSET;
 	      intrinsic_op = TRUE;
 	      break;
-            case BUILT_IN_MUL_SHIFT_HI:
-              iopc = INTRN_MUL_SHIFT_HI;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_MUL_SHIFT_HI_UNSIGNED:
-              iopc = INTRN_MUL_SHIFT_HI_U;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_MUL_SHIFT:
-              iopc = INTRN_MUL_SHIFT;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_MUL_SHIFT_UNSIGNED:
-              iopc = INTRN_MUL_SHIFT_U;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_LEAD:
-              iopc = INTRN_C3_LEAD;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_MAC:
-              iopc = INTRN_C3_MAC;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_MACN:
-              iopc = INTRN_C3_MACN;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_ROUND:
-              iopc = INTRN_C3_ROUND;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_SAADDS:
-              iopc = INTRN_C3_SAADDS;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_SASUBS:
-              iopc = INTRN_C3_SASUBS;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_MULA:
-              iopc = INTRN_C3_MULA;
-              intrinsic_op = TRUE;
-              break;
             case BUILT_IN_C3_INIT_ACC:
-	      iopc = INTRN_C3_INIT_ACC;
-	      break;
+              iopc = INTRN_C3_INIT_ACC;
+              break;
             case BUILT_IN_C3_SAVE_ACC:
               iopc = INTRN_C3_SAVE_ACC;
-	      break;	  
-            case BUILT_IN_MPY_32_16:
-              iopc = INTRN_MPY_32_16;
-	      intrinsic_op = TRUE;	
-	      break;	
-	    case BUILT_IN_C3_MACD:
-	      iopc = INTRN_C3_MACD;
-	      intrinsic_op = TRUE;	
-	      break;
-            case BUILT_IN_C3_SAADDSH:
-	      iopc = INTRN_C3_SAADDSH;
-	      intrinsic_op = TRUE;	
-	      break; 
-	    case BUILT_IN_C3_SASUBSH:
-              iopc = INTRN_C3_SASUBSH;
-	      intrinsic_op = TRUE;	
-	      break; 
+              break;
             case BUILT_IN_C3_MVFS:
-	      iopc = INTRN_C3_MVFS;
-	      intrinsic_op = TRUE;	
-	      break; 
-	    case BUILT_IN_C3_INIT_ADDR:
-	      iopc = INTRN_C3_INIT_ADDR;
+              iopc = INTRN_C3_MVFS;
+              intrinsic_op = TRUE;
+              break;
+            case BUILT_IN_C3_INIT_ADDR:
+              iopc = INTRN_C3_INIT_ADDR;
               break;
             case BUILT_IN_C3_SAVE_ADDR:
               iopc = INTRN_C3_SAVE_ADDR;
               break;
-	    case BUILT_IN_C3_MAC_A:
-	      iopc = INTRN_C3_MAC_A;
-	      intrinsic_op = TRUE;
-	      break;	
-            case BUILT_IN_C3_MACN_A:
-	      iopc = INTRN_C3_MACN_A;
-	      intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_DMAC_A:
-	      iopc = INTRN_C3_DMAC_A;
-              intrinsic_op = TRUE;
-	      break;	
-            case BUILT_IN_C3_DMACN_A:
-	      iopc = INTRN_C3_DMACN_A;
-	      intrinsic_op = TRUE;
-	      break;
             case BUILT_IN_C3_INIT_DACC:
-	      iopc = INTRN_C3_INIT_DACC;
+              iopc = INTRN_C3_INIT_DACC;
               break;
             case BUILT_IN_C3_SAVE_DACC:
               iopc = INTRN_C3_SAVE_DACC;
               break;
-	    case BUILT_IN_C3_SAADDH_A:
-	      iopc = INTRN_C3_SAADDH_A;
-	      intrinsic_op = TRUE;
-	      break;
-            case BUILT_IN_C3_SASUBH_A:
-	      iopc = INTRN_C3_SASUBH_A;
-	      intrinsic_op = TRUE;
-	      break;
-            case BUILT_IN_C3_SAMULSH:
-	      iopc = INTRN_C3_SAMULSH;
-	      intrinsic_op = TRUE;
-	      break;
-            case BUILT_IN_C3_MULA_A:
-              iopc = INTRN_C3_MULA_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_SAMULH_A:
-  	      iopc = INTRN_C3_SAMULH_A;
-	      intrinsic_op = TRUE;
-	      break;
-            case BUILT_IN_C3_PTR:
-              iopc = INTRN_C3_PTR;
-              intrinsic_op =  TRUE;
-              break;	
-            case BUILT_IN_C3_MAC_AR:
-              iopc = INTRN_C3_MAC_AR;
-	      intrinsic_op =  TRUE;
-              break;
-            case BUILT_IN_C3_MACN_AR:
-              iopc = INTRN_C3_MACN_AR;
-	      intrinsic_op =  TRUE;
-              break;
-            case BUILT_IN_C3_MULA_AR:
-              iopc = INTRN_C3_MULA_AR;
-	      intrinsic_op =  TRUE;
-              break;			  
-            case BUILT_IN_C3_INIT_PTR:
-	      iopc = INTRN_C3_INIT_PTR;
-	      break;
-            case BUILT_IN_C3_TRBACK:
-	      iopc = INTRN_C3_TRBACK;
-	      break;
-            case BUILT_IN_C3_VITERBI:
-	      iopc = INTRN_C3_VITERBI;
-	      break;
-            case BUILT_IN_C3_DMULT:
-              iopc = INTRN_C3_DMULT;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_DMULT_A:
-              iopc = INTRN_C3_DMULT_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_DMULTN:
-              iopc = INTRN_C3_DMULTN;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_DMULTN_A:
-              iopc = INTRN_C3_DMULTN_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_SET_CIRCBUF:
-              iopc = INTRN_SET_CIRCBUF;
-              break;
-            case BUILT_IN_RESET_CIRCBUF:
-              iopc = INTRN_SET_CIRCBUF;
-              break;
-            case BUILT_IN_C3_DADD:
-              iopc = INTRN_C3_DADD;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_DSUB:
-              iopc = INTRN_C3_DSUB;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_FFT:
-              iopc = INTRN_C3_FFT;
-              break;
-            case BUILT_IN_C3_FFTLD:
-              iopc = INTRN_C3_FFTLD;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_FFTST:
-              iopc = INTRN_C3_FFTST;
-              break;
-            case BUILT_IN_DEPOSIT:
-              iopc = INTRN_DEPOSIT;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_EXTRACT:
-              iopc = INTRN_EXTRACT;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_EXTRACT_UNSIGNED:
-              iopc = INTRN_EXTRACTU;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_BITR:
-              iopc = INTRN_C3_BITR;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_DMAC:
-              iopc = INTRN_C3_DMAC;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_DMACN:
-              iopc = INTRN_C3_DMACN;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_LOAD:
-              iopc = INTRN_C3_LOAD;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_STORE:
-              iopc = INTRN_C3_STORE;
-              break;
-            case BUILT_IN_C3_REVB:
-              iopc = INTRN_C3_REVB;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_DSHL_I:
-              iopc = INTRN_C3_DSHL_I;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_DSHR_I:
-              iopc = INTRN_C3_DSHR_I;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_MAC_I:
-              iopc = INTRN_C3_MAC_I;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_MACN_I:
-              iopc = INTRN_C3_MACN_I;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_MULA_I:
-              iopc = INTRN_C3_MULA_I;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_SAADD_A:
-              iopc = INTRN_C3_SAADD_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_SADDHA:
-              iopc = INTRN_C3_SADDHA;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_SAADDHA_A:
-              iopc = INTRN_C3_SAADDHA_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_C3_SASUB_A:
-              iopc = INTRN_C3_SASUB_A;
-              intrinsic_op = TRUE;
-              break;
-            case BUILT_IN_COPY_ADDR:
-              iopc = INTRN_C3_COPY_ADDR; 
-              break;
             case BUILT_IN_SET_ADDR:
               iopc = INTRN_C3_SET_ADDR;
               break;
-            // new C3
+            case BUILT_IN_SET_CIRCBUF:
+              iopc = INTRN_C3_SET_CIRCBUF;
+              break;
             case BUILT_IN_C3AADDA:
               iopc = INTRN_C3AADDA; 
               intrinsic_op = TRUE;
@@ -8161,8 +7917,27 @@ WFE_Expand_Expr (tree exp,
             WN_Intconst (Pointer_Mtype, rounded_size));
 	    } else
             /* Compute new value for AP.  */
-            wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
-            WN_Intconst (Pointer_Mtype, rounded_size));
+#if defined(TARG_SL) && (defined(EMULATE_LONGLONG) || defined(EMULATE_FLOAT_POINT))
+        if ((mtype == MTYPE_F8) || (mtype == MTYPE_I8) || (mtype == MTYPE_U8)
+            || (mtype == MTYPE_M && TY_fld(ty_idx).Entry() 
+              && MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty_idx))))==8)) {
+
+          /* Force 8byte align, ((offset + 15) << 3) >> 3 */
+          wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+              WN_Intconst (Pointer_Mtype, 8*2-1));
+
+          wn = WN_Binary (OPR_LSHR, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, 3));
+          wn = WN_Binary (OPR_SHL, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, 3));
+          if (mtype == MTYPE_M && TY_fld(ty_idx).Entry() 
+              && MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty_idx))))==8)
+            wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, rounded_size-8));
+        } else
+#endif
+        {
+          wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+              WN_Intconst (Pointer_Mtype, rounded_size));
+        }
+
 #ifdef TARG_X8664 // bug 12118: pad since under -m32, vector types are 8-byte aligned
 	if (MTYPE_is_vector(mtype) && ! TARGET_64BIT) {
 	  wn = WN_Add(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 7));
@@ -8185,7 +7960,7 @@ WFE_Expand_Expr (tree exp,
         else {
           wn = WN_CreateIstore (OPR_ISTORE, MTYPE_V, Pointer_Mtype, ap_offset,
 #if defined(TARG_SL)
-                                 Make_Pointer_Type(MTYPE_To_TY(MTYPE_U4)), wn, ap_addr, ap_field_id);
+                                ap_addr_ty, wn, ap_addr, ap_field_id);
 	  DevWarn("Forcing var-arg istore to aligned");
 #else
                                 ap_addr_ty, wn, ap_addr, ap_field_id);

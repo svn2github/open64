@@ -182,11 +182,25 @@ static BOOL IFMM_Convertible(WN* wn_tree,
     if (Matching_Exprs(wn_expr_right, wn_expr_then)) {
       mm_max = opr == OPR_LT || opr == OPR_LE; 
       return_value = TRUE;
+
+#if defined (TARG_SL) && defined (EMULATE_FLOAT_POINT)
+      /* Don't generate F8/F4 MIN/MAX */
+      if (MTYPE_is_float(WN_rtype(wn_expr_left)) || MTYPE_is_float(WN_rtype(wn_expr_right)))
+	  	return FALSE;
+#endif
+
     } 
   } else if (Matching_Exprs(wn_expr_right, wn_expr_else)) { 
     if (Matching_Exprs(wn_expr_left, wn_expr_then)) {
       mm_max = opr == OPR_GT || opr == OPR_GE; 
       return_value = TRUE;
+
+#if defined (TARG_SL) && defined (EMULATE_FLOAT_POINT)
+      /* Don't generate F8/F4 MIN/MAX */
+      if (MTYPE_is_float(WN_rtype(wn_expr_left)) || MTYPE_is_float(WN_rtype(wn_expr_right)))
+	  	return FALSE;
+#endif
+
     } 
   } 
   *if_mm_max = mm_max;

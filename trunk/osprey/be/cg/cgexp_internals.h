@@ -43,7 +43,11 @@ extern BOOL Trace_Exp;	/* general cgexp trace flag */
 extern BOOL Trace_Exp2;	/* extra trace info */
 
 /* in expand: */
+#ifdef TARG_SL
+extern void Expand_Immediate (TN *dest, TN *src, TYPE_ID rtype, OPS *ops);
+#else
 extern void Expand_Immediate (TN *dest, TN *src, BOOL is_signed, OPS *ops);
+#endif
 extern void Expand_Const (TN *dest, TN *src, TYPE_ID mtype, OPS *ops);
 extern void Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
 #if defined(TARG_PR)
@@ -185,6 +189,14 @@ extern void Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 
 extern void Expand_Float_Divide (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Float_Recip (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
+
+#ifdef TARG_SL
+#define OP_NEED_PAIR(t)  (((t)==MTYPE_I8) || ((t)==MTYPE_U8))
+extern TN*  Get_TN_Pair(TN*);
+extern void Create_TN_Pair(TN*, TN*);
+extern TN*  Create_TN_Pair(TN*, TYPE_ID);
+#endif
+
 #ifdef TARG_NVISA
 extern INT Mtype_Index (TYPE_ID mtype);
 extern void Exp_Ldst_Init(void);

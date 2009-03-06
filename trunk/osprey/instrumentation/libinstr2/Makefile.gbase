@@ -98,6 +98,9 @@ else
 CXXFLAGS += -O2 -fno-exceptions -nostdinc++ -D_INCLUDED_FROM_LIBINSTR_
 endif
 
+ifeq ($(BUILD_TARGET), SL)
+CXXFLAGS += -O2 -fno-exceptions -nostdinc++ -CG:emit_unwind_info=off -D_INCLUDED_FROM_LIBINSTR -msoft-float 
+endif
 
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
@@ -115,6 +118,9 @@ LIBINSTR_HEADER_DIRS    = \
  $(BUILD_TOT)/common/instrument   \
  $(BUILD_TOT)/common/com
 
+ifeq ($(BUILD_TARGET), SL)
+LIBINSTR_HEADER_DIRS += $(TOOLROOT)/usr/include
+endif
 # These are the directories in which to look for source files.
 
 
@@ -183,6 +189,12 @@ ifndef TARGETS
 TARGETS = $(LIBRARY) $(PROF_LIB) $(DSO) 
 endif
 
+#--------------------------------------------------------------------
+#define ranlib
+#--------------------------------------------------------------------
+ifeq ($(BUILD_TARGET), SL)
+RANLIB = $(TOOLROOT)/usr/bin/ranlib
+endif
 
 #--------------------------------------------------------------------
 #  Variables describing additional sources, objects, and libraries

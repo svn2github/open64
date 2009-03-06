@@ -165,7 +165,7 @@ find_crt_path (char *crtname)
         string_item_t *p;
         buffer_t buf;
         phases_t ld_phase;
- 
+#ifndef TARG_SL 
         /* See which phase is used to link the "TRUE" objects (i.e, 
          * not the fake objects built by ipl.  
          */
@@ -178,7 +178,7 @@ find_crt_path (char *crtname)
                                          crtname, buf, sizeof(buf)); 
                 return string_copy (buf);
         }
-
+#endif
         for (p = library_dirs->head; p != NULL; p = p->next) {
 		sprintf(buf, "%s/%s", p->name, crtname);
 		if (file_exists(buf)) {
@@ -193,7 +193,7 @@ find_crt_path (char *crtname)
 		}
 		return crtname;
  	}
-
+#ifndef TARG_SL
         sprintf (buf, "%s/%s", get_phase_dir(P_be), crtname);
         if (file_exists(buf)) { return string_copy(buf); }
 
@@ -202,7 +202,7 @@ find_crt_path (char *crtname)
 
         sprintf (buf, "%s/%s", get_phase_dir(P_alt_library), crtname);
         if (file_exists(buf)) { return string_copy(buf); }
-
+#endif
         if (option_was_seen(O_L)) {
 		error("crt files not found in any -L directories:");
         	for (p = library_dirs->head; p != NULL; p = p->next) {
@@ -211,7 +211,6 @@ find_crt_path (char *crtname)
 		
 		return crtname;
  	}
-
 	/* use default */
 	sprintf(buf, "%s/%s", get_phase_dir(P_startup), crtname);
 	return string_copy(buf);
@@ -239,7 +238,7 @@ init_given_crt_path (char *crtname, char *prog_name, char *tmp_name)
 */
 void init_stdc_plus_plus_path (void)
 {
-
+#ifndef TARG_SL
         phases_t ld_phase = determine_ld_phase (FALSE);
         if (ld_phase != P_ldplus || ld_phase != P_ld) {
                 /* use prebuilt libstdc++.so which reside at the same directory
@@ -256,6 +255,11 @@ void init_stdc_plus_plus_path (void)
                 if (debug) fprintf(stderr, "libstdc++.so found in %s\n", &buf[0]);
                 add_library_dir (&buf[0]);
         }
+#else
+	char *tmp_name = create_temp_file_name("sl");
+	char *slcc_name = concat_strings(get_phase_dir(P_ld), "/slcc");
+	init_given_crt_path ("libstdc++.a", slcc_name, tmp_name);
+#endif
 }
 
 
@@ -268,10 +272,31 @@ init_crt_paths (void)
 	 * Invoke gcc -print-file-name=crt* to find the path.
 	 * Assume are two paths, one for crt{1,i,n} and one for crt{begin,end}.
 	 */
+#ifndef TARG_SL
 	char *tmp_name = create_temp_file_name("gc");
 	char *gcc_name = get_full_phase_name(P_ld);
 	init_given_crt_path ("crtbegin.o", gcc_name, tmp_name);
 	init_given_crt_path ("crt1.o", gcc_name, tmp_name);
+#else
+	// When "-ipa -h264lib" is used in command line, this function is called
+	// and the ./libsl2/ dir should be the right place to find crt*.o. However,
+	// a simple "slcc -print-file-name=crt*.o" can't know this and will give the
+	// wrong lib dir.  So, we use find_crt_path() instead. --jczhang
+	char *crt_names[2] = {"crtbegin.o", "crt1.o"};
+
+	for (int i = 0; i < 2; i++) {
+	  char *crt = crt_names[i];
+	  char* path = find_crt_path(crt);
+	  if (path[0] != '/') {
+	    internal_error("%s path not found", crt);
+          }
+          else {
+	    char *p = drop_path (path);
+	    *p = '\0';
+	    add_library_dir (path);
+          }
+        }
+#endif
 }
 
 /* whether option is an object or not */
@@ -369,13 +394,17 @@ add_object (int flag, char *arg)
 				add_library(lib_objects, "mv");
 				add_library(lib_objects, "m");
 			} else {
+#ifndef TARG_SL
 				add_library(objects, "mv");
+#endif
 				add_library(objects, "m");
 			}
+#ifndef TARG_SL
 			if (invoked_lang == L_CC) {
 			    add_library(cxx_prelinker_objects, "mv");
 			    add_library(cxx_prelinker_objects, "m");
 			}
+#endif
 #ifdef TARG_X8664
 			extern boolean link_with_mathlib;
 			// Bug 4680 - It is too early to check target_cpu so we
@@ -411,7 +440,12 @@ add_object (int flag, char *arg)
 	       break;
 	case O_WlC:
 	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
+#ifdef TARG_SL
+                 // ld didn't support -Wl in SL
+                 add_string(objects, arg);
+#else
 	         add_string(objects, concat_strings("-Wl,", arg));
+#endif
 	       } else {
 	         /* the arg would look like "-F,arg1,arg2,argn", 
 	          * each token delimited by comma should be passed 
@@ -534,6 +568,7 @@ add_library_options (void)
 	 */
 	switch (abi) {
 #ifdef TARG_MIPS
+#ifndef TARG_SL
 	case ABI_N32:
 	case ABI_I32:
 		append_phase_dir(P_library, "32");
@@ -543,6 +578,11 @@ add_library_options (void)
 		append_phase_dir(P_library, "64");
 		append_phase_dir(P_startup, "64");
 		break;
+#else
+        case ABI_N32:
+        case ABI_64:
+                break;
+#endif //!SL
 #else
         case ABI_N32:
 	case ABI_64:

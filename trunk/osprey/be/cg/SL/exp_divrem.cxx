@@ -148,7 +148,7 @@ Expand_Power_Of_2_Divide (TN *result, TN *numer, INT64 dvsr, TYPE_ID mtype, OPS 
     int unsignedflag = (mtype == MTYPE_U4) ? 1 : 0;    
     Is_True((mtype == MTYPE_U4 || mtype==MTYPE_I4) , 
             (" Expand_Power_Of_2_Divide:: mtype must be MTYPE_I4 or MTYPE_U4" ));
-    Exp_2inst_MC_Zero(TOP_mc_z_lt, tmp_result, t1, numer, numer, unsignedflag, ops);
+    Exp_2inst_MC_Zero(TOP_mc_z_lt, tmp_result, t1, numer, numer, mtype, mtype, unsignedflag, ops);
 #else
     TN *p1 = Build_TN_Of_Mtype(MTYPE_I4);
     Build_OP(TOP_slt, p1, numer, Zero_TN, ops);
@@ -534,7 +534,7 @@ Expand_Power_Of_2_Rem (TN *result, TN *src1, INT64 src2_val, TYPE_ID mtype, OPS 
     int unsignedflag = (mtype == MTYPE_U4) ? 1 : 0;
     Is_True((mtype == MTYPE_U4 || mtype==MTYPE_I4) ,
             (" Expand_Power_Of_2_Rem:: mtype must be MTYPE_I4 or MTYPE_U4" )); 
-    Build_MC_OP(TOP_mc_zn_ge, result, src1, tmp2, unsignedflag, ops, OP_ALWAYS_UNC_DEF);
+    Build_OP(TOP_mc_zn_ge, result, src1, tmp2, Gen_Literal_TN(unsignedflag, 4), ops);
 #else
     if (is_double) 
       Build_OP(TOP_dsubu, result, Zero_TN, tmp2, ops);
