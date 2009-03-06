@@ -8337,7 +8337,7 @@ private:
   BOOL Cselect_Opt;
   BOOL Iload_Opt;
   BOOL Istore_Opt;
-  BOOL Call_opt;
+  BOOL Call_Opt;
 public:
   void Init();
   void Disable();
@@ -8351,7 +8351,7 @@ void VHO_Switches_Mgr::Init()
   Cselect_Opt = VHO_Cselect_Opt;
   Iload_Opt   = VHO_Iload_Opt;
   Istore_Opt  = VHO_Istore_Opt;
-  Call_opt    = VHO_Call_Opt;
+  Call_Opt    = VHO_Call_Opt;
 } /* VHO_Switches_Mgr::Init */
 
 void VHO_Switches_Mgr::Disable()
@@ -8361,7 +8361,7 @@ void VHO_Switches_Mgr::Disable()
   Cselect_Opt = FALSE;  
   Iload_Opt   = FALSE;  
   Istore_Opt  = FALSE;  
-  Call_opt    = FALSE;  
+  Call_Opt    = FALSE;  
 } /* VHO_Switches_Mgr::Disable */
 
 void VHO_Switches_Mgr::Enable()
@@ -8371,7 +8371,7 @@ void VHO_Switches_Mgr::Enable()
   VHO_Cselect_Opt = Cselect_Opt;
   VHO_Iload_Opt   = Iload_Opt;
   VHO_Istore_Opt  = Istore_Opt;
-  VHO_Call_opt    = Call_Opt;
+  VHO_Call_Opt    = Call_Opt;
 } /* VHO_Switches_Mgr::Enable */
 
 static VHO_Switches_Mgr vho_switches_mgr;
