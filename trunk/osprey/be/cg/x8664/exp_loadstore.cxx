@@ -168,8 +168,6 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
   case MTYPE_V16F4:
   case MTYPE_V16C4:
     return base != NULL ? TOP_ldaps : TOP_ldaps_n32;
-  case MTYPE_V8F4:
-    return base != NULL ? TOP_ldlps : TOP_ldlps_n32;
   case MTYPE_V16F8:
   case MTYPE_V16C8:
     return base != NULL ? TOP_ldapd : TOP_ldapd_n32;
@@ -181,14 +179,18 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
   case MTYPE_V8I1: 
   case MTYPE_V8I2: 
   case MTYPE_V8I4: 
-    if (!Is_Target_SSE2())
-      return base != NULL ? TOP_ldlps : TOP_ldlps_n32;
-    else return base != NULL ? TOP_ld64_2sse : TOP_ld64_2sse_n32;
+  case MTYPE_V8F4:
   case MTYPE_M8I1:
   case MTYPE_M8I2:
   case MTYPE_M8I4:
-  case MTYPE_M8F4: return base != NULL ? TOP_ld64_2m : TOP_ld64_2m_n32;
-    
+  case MTYPE_M8F4:
+    if ( rclass == ISA_REGISTER_CLASS_mmx )
+      return base != NULL ? TOP_ld64_2m : TOP_ld64_2m_n32;
+    else if ( rclass == ISA_REGISTER_CLASS_float )
+      return base != NULL ? TOP_ld64_2sse : TOP_ld64_2sse_n32;
+    else
+      return base != NULL ? TOP_ldlps : TOP_ldlps_n32;
+
   case MTYPE_V:
     if (rtype != MTYPE_V)
       // use rtype to pick load (e.g. if lda)
@@ -416,8 +418,6 @@ Pick_Store_Instruction( TYPE_ID mtype,
   case MTYPE_V16F8: 
   case MTYPE_V16C8: 
     return base != NULL ? TOP_stapd : TOP_stapd_n32;
-  case MTYPE_V8F4:
-    return base != NULL ? TOP_stlps : TOP_stlps_n32;
   case MTYPE_V16I1: 
   case MTYPE_V16I2: 
   case MTYPE_V16I4: 
@@ -426,14 +426,18 @@ Pick_Store_Instruction( TYPE_ID mtype,
   case MTYPE_V8I1: 
   case MTYPE_V8I2: 
   case MTYPE_V8I4: 
-    if (!Is_Target_SSE2())
-      return base != NULL ? TOP_stlps : TOP_stlps_n32;
-    else return base != NULL ? TOP_store64_fsse : TOP_store64_fsse_n32;
+  case MTYPE_V8F4:
   case MTYPE_M8I1:
   case MTYPE_M8I2:
   case MTYPE_M8I4:
   case MTYPE_M8F4:
-    return base != NULL ? TOP_store64_fm : TOP_store64_fm_n32;
+    if ( rclass == ISA_REGISTER_CLASS_mmx )
+      return base != NULL ? TOP_store64_fm : TOP_store64_fm_n32;
+    else if ( rclass == ISA_REGISTER_CLASS_float )
+      return base != NULL ? TOP_store64_fsse : TOP_store64_fsse_n32;
+    else
+      return base != NULL ? TOP_stlps : TOP_stlps_n32;
+
   default:  FmtAssert(FALSE, ("NYI: Pick_Store_Instruction mtype"));
     return TOP_UNDEFINED;
   }
