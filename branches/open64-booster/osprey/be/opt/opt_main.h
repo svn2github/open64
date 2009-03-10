@@ -170,6 +170,7 @@ public:
   void	       Find_uninitialized_locals(void); // find uninitialized local vars
   void	       Find_uninit_locals_for_entry(BB_NODE*); // find uninitialized local vars for an entry to the PU
 #endif
+  void         Pro_loop_fusion_trans(); // The driver for proactive loop fusion transformation
 
   // member access functions
   WN          *Input_tree(void)         { return _input_tree; }

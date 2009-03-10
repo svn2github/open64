@@ -1019,6 +1019,7 @@ public:
 #endif
   OPT_PU_POINTS_TO_SUMMARIZER* Points_to_summarizer (void) 
                                          { return &_pt_sum; }
+  void     check_ipa_mod_ref_info (const ST * , const ST * , INT *, INT *);
   MEM_POOL *Occ_pool(void)               { return &_occ_pool; }
   MEM_POOL* Ver_pool(void)               { return &_ver_pool; }
   CFG      *Cfg(void) const              { return _cfg; }

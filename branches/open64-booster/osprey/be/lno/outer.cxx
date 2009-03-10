@@ -36,6 +36,9 @@
 
 */
 
+#ifndef opt_defs_INCLUDED
+#include "opt_defs.h"
+#endif
 
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -559,7 +562,7 @@ static FISSION_FUSION_STATUS Fuse_Outer_Loops(WN* loop1, WN* loop2,
   FISSION_FUSION_STATUS status=
     Fuse(loop1,loop2,fusion_level,peeling_limit,TRUE);
   if (status==Succeeded || status==Succeeded_and_Inner_Loop_Removed) {
-    if (LNO_Verbose)
+    if (LNO_Verbose || Get_Trace(TP_WOPT2, PRO_TRANS_TRACE_FLAG))
       outer_fusion_verbose_info(srcpos1,srcpos2,
         "Successfully fused outer loops.");
     if (LNO_Analysis)
@@ -715,7 +718,7 @@ static OUTER_FUSION_STATUS Outer_Loop_Fusion_Walk(WN* wn,
 	    LWN_Copy_Tree(WN_next(next_wn), TRUE, LNO_Info_Map);	
 #endif
         FISSION_FUSION_STATUS fusion_status=
-          Fuse_Outer_Loops(wn,next_wn,ffi,wn2ffi,&fused_level);
+           Fuse_Outer_Loops(wn,next_wn,ffi,wn2ffi,&fused_level);
         if (fusion_status==Succeeded || fusion_status==Partially_fused) {
           WN* wn1=wn;
           WN* wn2=wn;

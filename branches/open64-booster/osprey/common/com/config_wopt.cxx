@@ -318,6 +318,13 @@ BOOL  WOPT_Enable_Pt_Keep_Track_Ptr = TRUE;  // POINTS_TO keeps track of pointer
 BOOL  WOPT_Enable_Aggr_Pt_Keep_Track_Ptr = TRUE; 
 BOOL  WOPT_Enable_Noreturn_Attr_Opt = TRUE;
 BOOL  WOPT_Enable_Pt_Summary = FALSE;  // points-to summary/annotation 
+INT32 WOPT_Enable_If_Merge_Limit = -1;  // Limit number of if-merging transformations per function.
+INT32 WOPT_Enable_Tail_Dup_Limit = -1; // Limit number of tail-duplication transformations per function.
+INT32 WOPT_Tail_Dup_Max_Clone = 1000; // Limit code size bloats (in statement count)
+                                                  // due to tail-duplication.
+INT32 WOPT_Enable_Pro_Loop_Fusion_Func_Limit = -1; // Enable proactive loop fusion transformation for
+                                                  // functions within the limit.
+BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans = FALSE;  // Enables proactive loop fusion transformation
 
 #ifdef KEY
 BOOL  WOPT_Enable_Preserve_Mem_Opnds = FALSE; // if TRUE, suppress EPRE on 
@@ -745,6 +752,18 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_Bdce_Before_Ivr, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "new_phase_order", "new_phase_order",
     TRUE, 0, 0,	&WOPT_Enable_New_Phase_Ordering, NULL },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "pro_loop_fusion_trans", "pro_loop_fusion_trans",
+    FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Fusion_Trans, NULL },
+  { OVK_INT32,  OV_VISIBLE,    FALSE, "if_merge_limit",              "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_If_Merge_Limit, NULL },
+  { OVK_INT32,  OV_VISIBLE,    FALSE, "tail_dup_limit",              "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Tail_Dup_Limit, NULL },
+  { OVK_INT32,  OV_VISIBLE,    FALSE, "tail_dup_max_clone",              "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Tail_Dup_Max_Clone, NULL },
+  { OVK_INT32,  OV_VISIBLE,    FALSE, "pro_loop_fusion_func_limit",              "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Pro_Loop_Fusion_Func_Limit, NULL },
+  
+
 #ifdef KEY
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "mem_opnds", "mem_opnds",
     TRUE, 0, 0,	&WOPT_Enable_Preserve_Mem_Opnds, NULL },

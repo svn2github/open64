@@ -72,6 +72,12 @@
 
 PU_Info *Current_PU_Info = NULL;
 
+char *
+Current_PU_Name()
+{
+  return ST_name(PU_Info_proc_sym(Current_PU_Info));
+}
+
 void
 PU_Info_init (PU_Info *pu)
 {

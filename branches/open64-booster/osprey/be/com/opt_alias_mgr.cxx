@@ -934,10 +934,6 @@ ALIAS_RESULT Aliased(const ALIAS_MANAGER *am, WN *wn1, WN *wn2,
   if (id2 == 0 && Is_PREG_ldst(wn2)) 
     am->Set_id(wn2, id2 = am->Preg_id());
   
-  // Complain if the WNs have no alias information.
-  if (id1 == 0 || id2 == 0) 
-    return POSSIBLY_ALIASED;
-  
   if (FILE_INFO_ipa(File_info))
   {
     // if -ipa is in effect, and if wn1 or wn2 is a call wn, further check that
@@ -959,6 +955,10 @@ ALIAS_RESULT Aliased(const ALIAS_MANAGER *am, WN *wn1, WN *wn2,
         return NOT_ALIASED;
     }
   }
+
+  // Complain if the WNs have no alias information.
+  if (id1 == 0 || id2 == 0) 
+    return POSSIBLY_ALIASED;
 
   //  If both are PREGs, they are not alias if
   //  their base ST is different or their offset is different.
@@ -1676,6 +1676,11 @@ static BOOL in_pure_call_list(char *function_name)
     return TRUE;
   if (strcmp(function_name, "fprintf") == 0)
     return TRUE;
+  if (strcmp(function_name, "exit") == 0)
+    return TRUE;
+  if (strcmp(function_name, "free") == 0)
+    return TRUE;
+  
   // add more
   return FALSE;
 }

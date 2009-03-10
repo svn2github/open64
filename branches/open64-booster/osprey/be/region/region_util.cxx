@@ -618,6 +618,7 @@ REGION_LEVEL RID_preopt_level(INT phase)
     case PREOPT_IPA0_PHASE:	return RL_IPA_PREOPT;
     case PREOPT_IPA1_PHASE:	return RL_IPA_PREOPT;
     case PREOPT_LNO_PHASE:	return RL_LNO_PREOPT;
+    case PREOPT_LNO1_PHASE:     return RL_LNO1_PREOPT;
     case PREOPT_DUONLY_PHASE:	return RL_DU_PREOPT;
     case PREOPT_PHASE:		return RL_PREOPT;
     case MAINOPT_PHASE:		return RL_MAINOPT;
@@ -1044,6 +1045,7 @@ char *RID_level_str(RID *rid)
     case RL_MP:		strcpy(buff,"RL_MP");		break;
     case RL_RGN_INIT:	strcpy(buff,"RL_RGN_INIT");	break;
     case RL_LNO_PREOPT:	strcpy(buff,"RL_LNO_PREOPT");	break;
+    case RL_LNO1_PREOPT: strcpy(buff,"RL_LNO1_PREOPT");	break;
     case RL_LNO:	strcpy(buff,"RL_LNO");		break;
     case RL_RAIL:	strcpy(buff,"RL_RAIL");		break;
     case RL_RBI:	strcpy(buff,"RL_RBI");		break;

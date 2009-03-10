@@ -2281,7 +2281,30 @@ DEP_RESULT DEPV_COMPUTE::Base_Test(const WN *ref1,  ARA_REF *ara_ref1,
         return DEP_DEPENDENT;
       }
     }
-  } else {
+  }
+  else if (ob1 == OPR_ILOAD) {
+    // The bases of array1 and array2 are both indirect loads.
+    // Continue if the indirect loads are loop invariants
+    // and the addresses of indirect loads are the same.
+
+    if (WN_offset(base1) != WN_offset(base2))
+      return DEP_DEPENDENT;
+
+    if (!Is_Loop_Invariant_Indir(base1)
+	|| !Is_Loop_Invariant_Indir(base2))
+      return DEP_DEPENDENT;
+
+    WN * addr1 = WN_kid0(base1);
+    WN * addr2 = WN_kid0(base2);
+
+    if (WN_Simp_Compare_Trees(addr1, addr2) != 0)
+      return DEP_DEPENDENT;
+
+    if (Base_Test(base1, NULL, base2, NULL) != DEP_CONTINUE)
+      return DEP_DEPENDENT;
+
+  }
+  else {
     return (DEP_DEPENDENT);
   }
 

@@ -2648,8 +2648,8 @@ OPT_STAB::Has_read_only_parm(AUX_ID idx, WN *wn, INT32 num_parms)
 #include "be_ipa_util.h"
 // Brute force method for now
 // TODO: Keep a map internal to wopt so that we need to search once for a pu
-static void
-check_ipa_mod_ref_info (const ST * call_st, const ST * st, INT * mod, INT * ref)
+void
+OPT_STAB::check_ipa_mod_ref_info (const ST * call_st, const ST * st, INT * mod, INT * ref)
 {
   PU_IDX idx = ST_pu (call_st);
 

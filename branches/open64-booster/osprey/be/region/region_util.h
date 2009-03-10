@@ -85,6 +85,7 @@ typedef	enum {
   RL_RGN_INIT,  /* processed by REGION_initialize in driver	*/
   RL_IPA_PREOPT,/* processed by IPA controlled Preopt		*/
   RL_LNO_PREOPT,/* processed by LNO controlled Preopt		*/
+  RL_LNO1_PREOPT, /* processed by LNO controlled Preopt	        */
   RL_LNO,	/* processed by LNO				*/
   RL_DU_PREOPT,	/* processed by LNO DU checking			*/
   RL_RAIL,	/* processed by RAIL				*/

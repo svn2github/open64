@@ -625,8 +625,9 @@ Identical_Array_Refbase (WN *array1, WN *array2)
        OPCODE_is_store (WN_opcode (p1))) &&
       (OPCODE_is_load (WN_opcode (p2)) || 
        OPCODE_is_store (WN_opcode (p2)))) {
-    if (DEP_CONTINUE == DEPV_COMPUTE::Base_Test (p1, NULL, 
-						 p2, NULL)) {
+    if ((DEP_CONTINUE == DEPV_COMPUTE::Base_Test (p1, NULL, 
+						 p2, NULL))
+	&& (WN_operator(t1) != OPR_ILOAD)) {
       // assert (WN_array_base (array1) == WN_array_base (array2));
 #ifdef KEY // Bug 2484
       if (WN_Simp_Compare_Trees(t1, t2) != 0)

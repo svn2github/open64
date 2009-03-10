@@ -179,6 +179,7 @@ private:
   INT32        _pdo_vec_sz;    // the number of entries in it
   MEM_POOL    *_mem_pool;      // permenant memory pool
   MEM_POOL    *_loc_pool;      // local memory pool
+  MEM_POOL    * _sc_pool;      // SC nodes and trees pool
   BB_NODE     *_entry_bb;      // assume _entry_bb dominate all bbs.
   BB_NODE     *_exit_bb;       // assume exit_bb post dominate all bbs.
   BB_NODE     *_first_bb;      // in source order, excluding the fake entry/exit
@@ -187,6 +188,14 @@ private:
   BB_NODE     *_fake_exit_bb;  // the fake exit BB
   BB_LOOP     *_loops;         // the loop structure used in mainopt
   BOOL         _loops_valid;   // the loop structure are valid
+  SC_NODE *    _sc_root;        // the root SC_NODE for the funtion
+  IDTYPE       _last_sc_id;     // ID for last-allocated SC node
+  STACK<SC_NODE *> * _sc_parent_stack; // a stack of parent SC_NODEs. Used during SC
+                                      // tree construction.
+  MAP         *_sc_map;               // map from BB_NODE Id to SC_NODE *. Used during
+                                      // SC tree construction.
+  MAP         *_clone_map;            // map from original block id to cloned block id. 
+                                      // scratch field
   EXC         *_exc;           // handle to the exception handling
   INT32        _last_stmt_id;  // stmt_id
 
@@ -256,6 +265,27 @@ private:
 			  tmp->Set_kind(k);
 			  return tmp;
 			}
+  // SC tree manipulation routines.
+  SC_NODE *   Add_sc(BB_NODE * bb, SC_TYPE type);
+  SC_NODE *   Unlink_sc(BB_NODE *bb);
+  SC_NODE    *Get_sc_from_bb(BB_NODE * bb) const
+  {
+    return (SC_NODE *) _sc_map->Get_val((POINTER) bb->Id());
+  }
+
+  void        Add_sc_map (BB_NODE * bb, SC_NODE *sc)
+  {
+    _sc_map->Add_map((POINTER) bb->Id(), (POINTER)sc);
+  }
+
+  void Remove_sc_map (BB_NODE * bb, SC_NODE *sc) {
+    MAP_LIST * map_lst = _sc_map->Find_map_list((POINTER) bb->Id());
+    if (map_lst->Val() == (POINTER) sc)
+      map_lst->Set_val(NULL);
+  }
+
+  void        SC_init();
+  void        Fix_WN_label(WN *);
 
   // attach the block to the cfg, and make it the current block
   void         Append_bb( BB_NODE *bb )
@@ -266,6 +296,8 @@ private:
 			  }
 			  _last_bb = bb;
 			  _current_bb = bb;
+			  if (Do_pro_loop_fusion_trans())
+			    Add_sc(bb, SC_BLOCK);
 			}
 
   void         Set_current_bb(BB_NODE *b)
@@ -406,7 +438,8 @@ public:
 		      REGION_LEVEL rgn_level,  // caller level:
   		      			// preopt/mainopt/rvi
 		      OPT_STAB *opt_stab,// optimizer symbol table
-		      BOOL do_tail);	// do tail recursion?
+		      BOOL do_tail, // do tail recursion?
+		      MEM_POOL * sc_pool);  // pool for SC nodes and trees
 
   void         Compute_dom_tree          // compute dominator tree or
                      (BOOL build_dom);   // post-dominator tree
@@ -417,6 +450,7 @@ public:
 
   MEM_POOL    *Mem_pool(void)       const{ return _mem_pool; }
   MEM_POOL    *Loc_pool(void)       const{ return _loc_pool; }
+  MEM_POOL    *SC_pool(void)        const{ return _sc_pool; }
   CODEMAP     *Htable(void)         const{ return _htable; }
   void         Set_htable(CODEMAP *h)    { _htable = h; }
   IDTYPE       First_bb_id(void)    const{ return _first_bb_id; }
@@ -636,6 +670,8 @@ public:
 
   BOOL         Verify_tree(WN *);
   BOOL         Verify_cfg(void);
+  BOOL         Verify_label(void);
+  
 
   // find cyclic regions in the cfg, and attempt to convert them to
   // higher-level loops by changing their block kinds and setting the
@@ -650,7 +686,18 @@ public:
 
   void         Delete_empty_BB();
 
-  void         Clone_bb(IDTYPE source, IDTYPE dest);
+  // Clone a BB_NODE
+  void         Clone_bb(IDTYPE source, IDTYPE dest, BOOL clone_wn);
+  // Clone a list of BB_NODEs
+  void         Clone_bbs(BB_NODE *, BB_NODE *, BB_NODE **, BB_NODE **, BOOL clone_wn);
+  // Clone a BB_IFINFO
+  BB_IFINFO *  Clone_ifinfo(BB_IFINFO *);
+  // Clone a BB_LOOP
+  BB_LOOP *    Clone_loop(BB_LOOP *);
+  // Clone a SC_NODE
+  SC_NODE *    Clone_sc(SC_NODE *, BOOL);
+  // Create a SC node 
+  SC_NODE *    Create_sc(SC_TYPE type);
 
   // Create a new block and allocate it.
   BB_NODE     *Create_and_allocate_bb( BB_KIND k )
@@ -668,6 +715,16 @@ public:
   BOOL         Screen_cand(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then);
   WN*          Conv_to_select(WN* wn);
 
+  // Obtain root of the SC tree
+  SC_NODE *   SC_root(void)           { return _sc_root; }
+  // Query whether to do proactive loop fusion transformations
+  BOOL Do_pro_loop_fusion_trans()     { return (_sc_root != NULL); }
+  // Free SC tree and related storages.
+  void Free_sc(void);
+  // Obtain the cloned version of a BB_NODE
+  BB_NODE *  Get_cloned_bb(BB_NODE *);
+  // Create a LABEL WN and add it to the BB_NODE
+  LABEL_IDX  Add_label_with_wn(BB_NODE * bb);
 };
 
 

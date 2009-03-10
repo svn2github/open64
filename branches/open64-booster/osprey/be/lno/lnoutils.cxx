@@ -494,6 +494,59 @@ extern void wn_dumpexpr(WN* wn, INT fancy, FILE* f,
   fflush(f);
 }
 
+extern int last_loop_num;
+
+// Enumerate loops for WHIRL tree rooted at wn.
+// Currently, only DO loops are enumerated.
+void Enum_loops(WN * wn)
+{
+  switch (WN_opcode(wn)) {
+  case OPC_BLOCK:
+    {
+      for (WN* w = WN_first(wn); w; w = WN_next(w))
+	Enum_loops(w);
+    }
+    break;
+  case OPC_DO_LOOP:
+    {
+      DO_LOOP_INFO * dli = Get_Do_Loop_Info(wn, TRUE);
+      if (dli && (dli->Get_Id() == 0))
+	dli->Set_Id(++last_loop_num);
+    }
+
+    Enum_loops(WN_do_body(wn));
+    break;
+    
+  case OPC_IF:
+    Enum_loops(WN_then(wn));
+    Enum_loops(WN_else(wn));
+    break;
+    
+  case OPC_WHILE_DO:
+    Enum_loops(WN_while_body(wn));
+    break;
+    
+  case OPC_DO_WHILE:
+    Enum_loops(WN_while_body(wn));
+    break;
+
+  case OPC_COMPGOTO:
+    Enum_loops(WN_kid(wn,0));
+    break;
+    
+  case OPC_FUNC_ENTRY:
+    Enum_loops(WN_kid(wn, WN_kid_count(wn)-1));
+    break;
+    
+  case OPC_REGION:
+    Enum_loops(WN_region_body(wn));
+    break;
+    
+  default:
+    ;
+  }
+}
+
 void Dump_WN(WN* wn, FILE* f, INT fancy, INT ws, INT ws_inc,
              ARRAY_DIRECTED_GRAPH16* dg, WN** list, WN* parent,
 	     BOOL recursive)
@@ -536,7 +589,13 @@ void Dump_WN(WN* wn, FILE* f, INT fancy, INT ws, INT ws_inc,
     fprintf(f, " indx=");
     fflush(f);
     wn_dumpexpr(WN_index(wn), fancy, f, dg, list, wn, recursive);
-    fprintf(f, " (Line=%d)\n", line);
+    fprintf(f, " (Line=%d)", line);
+    {
+      DO_LOOP_INFO * dli = Get_Do_Loop_Info(wn, TRUE);
+      if (dli)
+	fprintf(f, " (loop num=%d)\n", dli->Get_Id());
+      fprintf(f, "\n");
+    }
     if (fancy >= 3) {
       DO_LOOP_INFO* dli = Get_Do_Loop_Info(wn, TRUE);
       if (dli)
@@ -672,6 +731,7 @@ void Dump_WN(WN* wn, FILE* f, INT fancy, INT ws, INT ws_inc,
 
   fflush(f);
 }
+
 
 
 // Given two indices to be added/subtracted/maxed/mined, what is the
@@ -3442,6 +3502,48 @@ BOOL Is_Loop_Invariant_Exp(WN* wn,
     return TRUE; 
   } 
 } 
+
+// Query whether wn represents the address of a constant-indexed array element.
+BOOL Is_Const_Array_Addr(WN * wn)
+{
+  if (WN_operator(wn) == OPR_ARRAY) {
+    if (WN_operator(WN_kid0(wn)) != OPR_LDID)
+      return FALSE;
+
+    for (int i = 0; i < WN_num_dim(wn); i ++) {
+      WN * index = WN_array_index(wn, i);
+      if (WN_operator(index) != OPR_INTCONST)
+	return FALSE;
+    }
+
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+// Query whether given wn is a loop invariant indirect load
+// wrt all the enclosing loops.
+BOOL Is_Loop_Invariant_Indir(WN * wn)
+{
+  if ((WN_operator(wn) == OPR_ILOAD)
+      && Is_Const_Array_Addr(WN_kid0(wn))) {
+    WN * lp_wn = wn;
+    while (lp_wn) {
+      OPCODE opcode = WN_opcode(lp_wn);
+      if ((opcode == OPC_DO_LOOP) 
+	  || (opcode == OPC_DO_WHILE)
+	  || (opcode == OPC_WHILE_DO)) {
+	if (!Is_Loop_Invariant_Use(wn, lp_wn))
+	  return FALSE;
+      }
+      lp_wn = LWN_Get_Parent(lp_wn);
+    }
+    return TRUE;
+  }
+
+  return FALSE;
+}
 
 typedef HASH_TABLE<WN*,WN*> LOOP_MAPPING;
 

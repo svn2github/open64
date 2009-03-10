@@ -198,6 +198,7 @@ Set_tlog_phase(const INT32 phase)
   switch (phase) {
   case PREOPT_PHASE:
   case PREOPT_LNO_PHASE:
+  case PREOPT_LNO1_PHASE:
   case PREOPT_DUONLY_PHASE:
   case PREOPT_IPA0_PHASE:
   case PREOPT_IPA1_PHASE:

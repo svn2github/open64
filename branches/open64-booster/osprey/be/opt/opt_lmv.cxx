@@ -982,7 +982,7 @@ BB_NODE*
 CFG::LMV_clone_block (const BB_NODE* src, LMV_CFG_ADAPTOR* adaptor) {
 
   BB_NODE* clone = Create_and_allocate_bb (src->Kind()); 
-  Clone_bb (src->Id(), clone->Id()); 
+  Clone_bb (src->Id(), clone->Id(), FALSE); 
   clone->Set_loopdepth (src->Loopdepth());
   clone->Set_rid_id (src->Rid_id());
   clone->Set_flag (src->Flag());
@@ -1467,7 +1467,7 @@ CFG::LMV_clone_loop (LMV_CFG_ADAPTOR* adaptor) {
   // step 2. Clone the preheader
   //
   BB_NODE* new_phdr = LMV_create_alike_block (BB_GOTO, src_loop->Preheader());
-  Clone_bb (src_loop->Preheader()->Id(), new_phdr->Id());
+  Clone_bb (src_loop->Preheader()->Id(), new_phdr->Id(), FALSE);
   adaptor->Set_cloned_loop_preheader (new_phdr);
 
   // prepend to the prev/next list

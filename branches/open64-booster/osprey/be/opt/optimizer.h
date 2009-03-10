@@ -65,6 +65,7 @@ static char *optimizerrcs_id =	optimizer_INCLUDED"$Revision$";
 typedef enum {
   PREOPT_PHASE,		// used for -PHASE:p
   PREOPT_LNO_PHASE,	// used for -PHASE:l
+  PREOPT_LNO1_PHASE,	// used for -PHASE:l
   PREOPT_DUONLY_PHASE,  // called by LNO, but will disable optimization */
 #ifdef TARG_NVISA
   PREOPT_CMC_PHASE,

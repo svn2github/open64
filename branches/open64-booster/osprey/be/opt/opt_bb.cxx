@@ -90,6 +90,7 @@ static char *rcs_id = 	opt_bb_CXX"$Revision: 1.1.1.1 $";
 #include "opt_base.h"
 #include "bb_node_set.h"
 #include "idx_32_set.h"
+#include "wn_simp.h"
 
 BB_LOOP*
 BB_LOOP::Append (BB_LOOP *loop)
@@ -285,7 +286,7 @@ BB_NODE::Falls_thru_to(void) const
     }
   }
   else {
-    if (!Can_fallthru(WN_opcode(Laststmt()))) {
+    if (Laststmt() && !Can_fallthru(WN_opcode(Laststmt()))) {
       return NULL;
     }
   }
@@ -781,6 +782,19 @@ BB_NODE::Branch_wn(void) const
   return ( NULL );
 }
 
+// Query whether this BB_NODE ends with a branch WN targetting at the given bb.
+
+BOOL
+BB_NODE::Is_branch_to(BB_NODE * bb)
+{
+  WN * branch_wn = Branch_wn();
+  
+  if (branch_wn && WN_label_number(branch_wn) 
+      && (WN_label_number(branch_wn) == bb->Labnam()))
+    return TRUE;
+
+  return FALSE;
+}
 
 // ====================================================================
 // Label_wn - determine if this block has a LABEL statement
@@ -1217,6 +1231,12 @@ BB_NODE::Print_head (FILE *fp) const
     fprintf(fp, "Fallthrough: %d\n", Falls_thru_to()->Id());
   }
 
+  if (Next())
+    fprintf(fp, "Next  :  BB%d\n", Next()->Id());
+
+  if (Prev())
+    fprintf(fp, "Prev  :  BB%d\n", Prev()->Id());
+
   if (Idom())
     fprintf(fp, "Idom  : BB%d\n", Idom()->Id() );
   if (Ipdom())
@@ -1331,5 +1351,1150 @@ INT32 BB_NODE::Code_size_est(void) const
     }
   }
   return size;
+}
+
+// query whether this BB_NODE dominates every node in the SC tree rooted at sc.
+BOOL 
+BB_NODE::Is_dom(SC_NODE * sc)
+{
+  BB_NODE * tmp = sc->Get_bb_rep();
+
+  if ((tmp != NULL) && !this->Dominates(tmp))
+    return FALSE;
+  
+  BB_LIST * bb_list = sc->Get_bbs();
+
+  if (bb_list != NULL) {
+    BB_LIST_ITER bb_list_iter(bb_list);
+    BB_NODE * tmp;
+    
+    FOR_ALL_ELEM(tmp, bb_list_iter, Init()) {
+      if (!this->Dominates(tmp))
+	return FALSE;
+    }
+  }
+
+  SC_LIST * kids = sc->Kids();
+
+  if (kids != NULL) {
+    SC_LIST_ITER sc_list_iter(kids);
+    SC_NODE *tmp;
+    FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+      if (!this->Is_dom(tmp))
+	return FALSE;
+    }
+  }
+  return TRUE;
+}
+
+// query whether this BB_NODE post-dominates every node in the SC tree rooted at sc.
+
+BOOL
+BB_NODE::Is_postdom(SC_NODE * sc)
+{
+  BB_NODE * tmp = sc->Get_bb_rep();
+
+  if ((tmp != NULL) && !this->Postdominates(tmp))
+    return FALSE;
+  
+  BB_LIST * bb_list = sc->Get_bbs();
+
+  if (bb_list != NULL) {
+    BB_LIST_ITER bb_list_iter(bb_list);
+    BB_NODE * tmp;
+    
+    FOR_ALL_ELEM(tmp, bb_list_iter, Init()) {
+      if (!this->Postdominates(tmp))
+	return FALSE;
+    }
+  }
+
+  SC_LIST * kids = sc->Kids();
+
+  if (kids != NULL) {
+    SC_LIST_ITER sc_list_iter(kids);
+    SC_NODE *tmp;
+    FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+      if (!this->Is_postdom(tmp))
+	return FALSE;
+    }
+  }
+  return TRUE;
+
+}
+
+// Query whether every WN statement in this BB_NODE and given BB_NODE
+// have the same shape, where the shape is defined by the identity of operators
+// and operands.  The real values of the operands are not considered.
+
+BOOL
+BB_NODE::Compare_Trees(BB_NODE * bb)
+{
+  WN * stmt1 = Firststmt();
+  WN * stmt2 = bb->Firststmt();
+
+  while (stmt1 && stmt2) {
+    if (WN_Simp_Compare_Trees(stmt1, stmt2) != 0)
+      return FALSE;
+
+    stmt1 = WN_next(stmt1);
+    stmt2 = WN_next(stmt2);
+  }
+
+  if ((stmt1 != NULL) || (stmt2 != NULL))
+    return FALSE;
+
+  return TRUE;
+}
+
+// Count number of real statements in this BB_NODE.
+int
+BB_NODE::Real_stmt_count()
+{
+  WN * tmp;
+  int count = 0;
+
+  for (tmp = Firststmt(); tmp != NULL; tmp = WN_next(tmp)) {
+    if ((WN_operator(tmp) != OPR_LABEL)
+	&& (WN_operator(tmp) != OPR_PRAGMA))
+      count++;
+
+    if (tmp == Laststmt())
+      break;
+  }
+
+  return count;
+}
+
+// Reset/clear fields.
+void 
+SC_NODE::Clear()
+{
+  type = SC_NONE;
+  _id = 0;
+  _class_id = 0;
+  _depth = 0;
+  pool = NULL;
+  u1.bb_rep = NULL;
+  u1.bbs = NULL;
+  parent = NULL;
+  kids = NULL;
+  _flag = 0;
+}
+
+// Unmask given value from this SC_NODE's flag.
+void
+SC_NODE::Remove_flag(int i)
+{
+  if (_flag >= i)
+    _flag -= i;
+}
+
+// Append given sc as this SC_NODE's last kid.
+void 
+SC_NODE::Append_kid(SC_NODE *sc)
+{
+  FmtAssert(this->Type() != SC_BLOCK, ("Unexpect kid for SC_BLOCK"));
+
+  if (kids == NULL)
+    kids = (SC_LIST*)CXX_NEW(SC_LIST(sc), pool);
+  else {
+    FmtAssert(!kids->Contains(sc), ("Repeated kids"));
+    kids = kids->Append(sc,pool);
+  }
+}
+
+// Prepend given sc as this SC_NODE's first kid.
+void
+SC_NODE::Prepend_kid(SC_NODE *sc)
+{
+  FmtAssert(this->Type() != SC_BLOCK, ("Unexpect kid for SC_BLOCK"));
+
+  if (kids == NULL)
+    kids = (SC_LIST*)CXX_NEW(SC_LIST(sc), pool);
+  else {
+    FmtAssert(!kids->Contains(sc), ("Repeated kids"));
+    kids = kids->Prepend(sc,pool);
+  }
+}
+
+// Remove given SC_NODE from this SC_NODE's kids.
+void SC_NODE::Remove_kid(SC_NODE *sc)
+{
+  if (kids != NULL)
+    kids = kids->Remove(sc, pool);
+}
+
+// Obtain last kid of this SC_NODE.
+SC_NODE *
+SC_NODE::Last_kid()
+{
+  if (kids == NULL)
+    return NULL;
+
+  return kids->Last_elem();
+}
+
+// Unlink this SC_NODE from the SC tree.
+void
+SC_NODE::Unlink()
+{
+  parent->Remove_kid(this);
+  this->Set_parent(NULL);
+}
+
+// Convert type to new_type 
+void
+SC_NODE::Convert(SC_TYPE new_type)
+{
+  SC_TYPE old_type = type;
+
+  if (old_type == new_type)
+    return;
+
+  if (SC_type_has_bbs(old_type) && SC_type_has_rep(new_type)) {
+    BB_LIST * bb_list = Get_bbs();
+    FmtAssert(((bb_list != NULL) && !bb_list->Multiple_bbs()), 
+	      ("Expect a single block"));
+    BB_NODE * bb = bb_list->Node();
+    bb_list->Remove(bb, pool);
+    Set_bbs(NULL);
+    type = new_type;
+    Set_bb_rep(bb);
+  }
+  else if (SC_type_has_rep(old_type) && SC_type_has_bbs(new_type)) {
+    BB_NODE * bb = Get_bb_rep();
+    Set_bb_rep(NULL);
+    type = new_type;
+    Append_bbs(bb);
+  }
+  else
+    FmtAssert(FALSE, ("TODO"));
+}
+
+// Obtain first kid of this SC_NODE.
+SC_NODE *
+SC_NODE::First_kid()
+{
+  if (kids == NULL)
+    return NULL;
+  
+  return kids->First_elem();
+
+}
+
+// Return next sibling SC_NODE from the same parent.
+
+SC_NODE *
+SC_NODE::Next_sibling()
+{
+  if (parent == NULL)
+    return NULL;
+  
+  SC_LIST_ITER sc_list_iter(parent->Kids());
+  SC_NODE * tmp = NULL;
+  BOOL found = FALSE;
+
+  FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+    if (found)
+      return tmp;
+    else if (tmp == this) {
+      found = TRUE;
+    }
+  }
+
+  return NULL;
+}
+
+// Return closest next sibling SC_NODE of the given type
+SC_NODE *
+SC_NODE::Next_sibling_of_type(SC_TYPE match_type)
+{
+  if (parent == NULL)
+    return NULL;
+  
+  SC_LIST_ITER sc_list_iter(parent->Kids());
+  SC_NODE * tmp = NULL;
+  BOOL found = FALSE;
+
+  FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+    if (found) {
+      if (tmp->Type() == match_type)
+	return tmp;
+    }
+    else if (tmp == this) {
+      found = TRUE;
+    }
+  }
+
+  return NULL;
+}
+
+// Find the first kid that matches the given type.
+SC_NODE  *
+SC_NODE::First_kid_of_type(SC_TYPE match_type)
+{
+  SC_LIST_ITER kids_iter;
+  SC_NODE * tmp;
+
+  FOR_ALL_ELEM(tmp, kids_iter, Init(kids)) {
+    if (tmp->Type() == match_type)
+      return tmp;
+  }
+
+  return NULL;
+}
+
+// Return previous sibling of this SC_NODE.
+SC_NODE *
+SC_NODE::Prev_sibling()
+{
+  if (parent == NULL)
+    return NULL;
+
+  SC_LIST_ITER sc_list_iter(parent->Kids());
+  SC_NODE * tmp = NULL;
+  SC_NODE * prev = NULL;
+
+  FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+    if (tmp == this)
+      return prev;
+
+    prev = tmp;
+  }
+  
+  return NULL;
+}
+
+// Find the first kid that matches the given type
+SC_NODE * 
+SC_NODE::Find_kid_of_type(SC_TYPE kid_type)
+{
+  SC_LIST_ITER sc_list_iter(kids);
+  SC_NODE * tmp;
+
+  FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+    if (tmp->Type() == kid_type)
+      return tmp;
+  }
+  
+  return NULL;
+}
+
+// Obtain the first node on a then-path.
+BB_NODE *
+SC_NODE::Then()
+{
+  FmtAssert((this->Type() == SC_IF), ("Expect a SC_IF"));
+  BB_NODE * head = this->Get_bb_rep();
+  BB_IFINFO * ifinfo = head->Ifinfo();
+  return ifinfo->Then();
+}
+
+// Obtain the first node on a else-path.
+BB_NODE *
+SC_NODE::Else()
+{
+  FmtAssert((this->Type() == SC_IF), ("Expect a SC_IF"));
+  BB_NODE * head = this->Get_bb_rep();
+  BB_IFINFO * ifinfo = head->Ifinfo();
+  return ifinfo->Else();
+}
+
+// Obtain the first BB_NODE in source order for the SC tree rooted at this SC_NODE.
+BB_NODE *
+SC_NODE::First_bb()
+{
+  BB_NODE * bb_tmp = Get_bb_rep();
+
+  if (bb_tmp)
+    return bb_tmp;
+
+  BB_LIST * bb_list = Get_bbs();
+  if (bb_list)
+    return bb_list->Node();
+
+  SC_LIST_ITER sc_list_iter(kids);
+  SC_NODE * sc_tmp;
+
+  FOR_ALL_ELEM(sc_tmp, sc_list_iter, Init()) {
+    bb_tmp = sc_tmp->First_bb();
+    if (bb_tmp)
+      return bb_tmp;
+  }
+  
+  return NULL;
+}
+
+// Obtain the last BB_NODE in source order for the SC tree rooted at this SC_NODE.
+BB_NODE *
+SC_NODE::Last_bb()
+{
+  SC_NODE * last_kid = Last_kid();
+  BB_NODE * last_bb = NULL;
+  
+  while (last_kid) {
+    last_bb = last_kid->Last_bb();
+
+    if (last_bb)
+      return last_bb;
+
+    last_kid = last_kid->Prev_sibling();
+  }
+
+  last_bb = Get_bb_rep();
+
+  if (last_bb)
+    return last_bb;
+
+  BB_LIST * bb_list = Get_bbs();
+  BB_LIST_ITER bb_list_iter(bb_list);
+  BB_NODE * tmp;
+
+  FOR_ALL_ELEM(tmp, bb_list_iter, Init()) {
+    last_bb = tmp;
+  }
+
+  return last_bb;
+}
+
+// If this SC_NODE is a SC_LOOP, obtain loop info.
+BB_LOOP * 
+SC_NODE::Loopinfo()
+{
+  FmtAssert((type == SC_LOOP), ("Expect a SC_LOOP"));
+  
+  SC_LIST_ITER sc_list_iter;
+  SC_NODE * tmp;
+  SC_NODE * sc_cond = NULL;
+
+  FOR_ALL_ELEM(tmp, sc_list_iter, Init(kids)) {
+    if (tmp->Type() == SC_LP_COND) {
+      sc_cond = tmp;
+      break;
+    }
+  }
+
+  FmtAssert(sc_cond, ("Loop cond not found"));
+  BB_NODE * bb_cond = NULL;
+
+  FOR_ALL_ELEM(tmp, sc_list_iter, Init(sc_cond->Kids())) {
+    if (tmp->Type() == SC_BLOCK) {
+      bb_cond = tmp->Get_bbs()->Node();
+      break;
+    }
+  }
+
+  FmtAssert(bb_cond, ("BB cond not found"));
+  BB_LOOP * loopinfo = bb_cond->Loop();
+  FmtAssert(loopinfo, ("Loop info not found"));
+  return loopinfo;
+}
+
+// Obtain the merge block of a if-region or a loop-region.
+BB_NODE *
+SC_NODE::Merge()
+{
+  if (type == SC_IF) {
+    BB_NODE * head = this->Get_bb_rep();
+    BB_IFINFO * ifinfo = head->Ifinfo();
+    return ifinfo->Merge();
+  }
+  else if (type == SC_LOOP) {
+    BB_LOOP * loopinfo = Loopinfo();
+    return loopinfo->Merge();
+  }
+  else {
+    FmtAssert(FALSE, ("Expect a SC_IF or a SC_LOOP"));
+  }
+  
+  return NULL;
+}
+
+// Find an exit of this SC_NODE
+BB_NODE *
+SC_NODE::Exit()
+{
+  BB_NODE * exit = NULL;
+  BB_NODE * merge = NULL;
+  BB_NODE * tmp;
+  BB_LIST_ITER bb_list_iter;
+
+  switch (type) {
+  case SC_LOOP:
+    merge = Merge();
+    FOR_ALL_ELEM(tmp, bb_list_iter, Init(merge->Pred())) {
+      if (Contains(tmp)) {
+	exit = tmp;
+	break;
+      }
+    }
+    break;
+  default:
+    FmtAssert(FALSE, ("TODO: find exit"));
+  }
+
+  return exit;
+}
+
+// Obtain the head block of a if-region or a loop-region.
+BB_NODE *
+SC_NODE::Head()
+{
+  if (type == SC_IF) {
+    return Get_bb_rep();
+  }
+  else if (type == SC_LOOP) {
+    BB_NODE * bb = First_bb();
+    FmtAssert(bb, ("First BB not found"));
+    return bb;
+  }
+  else {
+    FmtAssert(FALSE, ("Expect a SC_IF or a SC_LOOP"));
+  }
+  return NULL;
+}
+
+// Query whether the SC tree rooted at this SC_NODE contains bb.
+
+BOOL
+SC_NODE::Contains(BB_NODE * bb)
+{
+  BB_NODE * tmp = this->Get_bb_rep();
+  if ((tmp != NULL) && (tmp == bb))
+    return TRUE;
+
+  BB_LIST * bb_list = this->Get_bbs();
+
+  if (bb_list != NULL) {
+    BB_LIST_ITER bb_list_iter(bb_list);
+    FOR_ALL_ELEM(tmp, bb_list_iter, Init()) {
+      if (tmp == bb)
+	return TRUE;
+    }
+  }
+
+  SC_LIST * kids = this->Kids();
+
+  if (kids != NULL) {
+    SC_LIST_ITER sc_list_iter(kids);
+    SC_NODE *sc_tmp;
+    FOR_ALL_ELEM(sc_tmp, sc_list_iter, Init()) {
+      if (sc_tmp->Contains(bb))
+	return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+// Obtain the last block of a then-path.
+BB_NODE *
+SC_NODE::Then_end()
+{
+  FmtAssert((this->Type() == SC_IF), ("Expect a SC_IF"));
+  SC_NODE * sc_then = Find_kid_of_type(SC_THEN);
+
+  BB_NODE * merge = this->Merge();
+  BB_LIST_ITER bb_list_iter(merge->Pred());
+  BB_NODE * tmp;
+
+  FOR_ALL_ELEM(tmp, bb_list_iter, Init()) {
+    if (sc_then->Contains(tmp))
+      return tmp;
+  }
+  return NULL;
+}
+
+// Obtain the last block of a else-path.
+BB_NODE *
+SC_NODE::Else_end()
+{
+  FmtAssert((this->Type() == SC_IF), ("Expect a SC_IF"));
+  SC_NODE * sc_else = Find_kid_of_type(SC_ELSE);
+
+  BB_NODE * merge = this->Merge();
+  BB_LIST_ITER bb_list_iter(merge->Pred());
+  BB_NODE * tmp;
+
+  FOR_ALL_ELEM(tmp, bb_list_iter, Init()) {
+    if (sc_else->Contains(tmp))
+      return tmp;
+  }
+  return NULL;
+}
+
+// Delete SC tree rooted at this SC_NODE.
+void
+SC_NODE::Delete()
+{
+  SC_LIST_ITER sc_list_iter(kids);
+  SC_NODE * tmp;
+
+  FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+    tmp->Delete();
+  }
+
+  if (SC_type_has_bbs(type)) {
+    BB_LIST * bbs = Get_bbs();
+    while (bbs) {
+      BB_NODE * bb = bbs->Node();
+      bbs = bbs->Remove(bb, pool);
+    }
+  }
+
+  SC_LIST * cur;
+  SC_LIST * next;
+
+  for (cur = kids; cur; cur = next) {
+    next = cur->Next();
+    CXX_DELETE(cur, pool);
+  }
+  
+  CXX_DELETE(this, pool);
+}
+
+// Query whether this SC_NODE is well-behaved.
+// A well-behaved if-region has a head block, a then-path, a else-path
+// and a merge block.  The Next() of the head block is the first block on the then-path.
+// The Next() of the last block on the then-path is the first block on the else-path.
+// The Next() of the last block on the else-path is the merge block.
+BOOL
+SC_NODE::Is_well_behaved()
+{
+  BB_NODE * bb_head = Get_bb_rep();
+  BB_NODE * bb_then = Then();
+  BB_NODE * bb_then_end = Then_end();
+  BB_NODE * bb_else = Else();
+  BB_NODE * bb_else_end = Else_end();
+  BB_NODE * bb_merge = Merge();
+
+  if (!bb_head || !bb_then || !bb_then_end 
+      || !bb_else || !bb_else_end || !bb_merge)
+    return FALSE;
+
+  if (bb_head->Next() != bb_then)
+    return FALSE;
+  
+  if (bb_then_end->Next() != bb_else)
+    return FALSE;
+
+  if (bb_else_end->Next() != bb_merge)
+    return FALSE;
+
+  return TRUE;
+}
+
+// Query whether given BB_NODE is a member of the SC tree rooted at this SC_NODE.
+BOOL
+SC_NODE::Is_member(BB_NODE * bb)
+{
+  if (bb == this->Get_bb_rep())
+    return TRUE;
+
+  BB_LIST_ITER bb_list_iter(Get_bbs());
+  BB_NODE * bb_tmp;
+
+  FOR_ALL_ELEM(bb_tmp, bb_list_iter, Init()) {
+    if (bb_tmp == bb)
+      return TRUE;
+  }
+  
+  SC_LIST_ITER sc_list_iter(kids);
+  SC_NODE * sc_tmp;
+  FOR_ALL_ELEM(sc_tmp, sc_list_iter, Init()) {
+    if (sc_tmp->Is_member(bb))
+      return TRUE;
+  }
+
+  return FALSE;
+}
+
+// Query whether this SC_NODE has a single-entry and a single-exit.
+BOOL
+SC_NODE::Is_sese()
+{
+  BOOL ret_val = FALSE;
+  BB_NODE * bb_head;
+  BB_NODE * bb_merge;
+
+  switch (type) {
+  case SC_BLOCK:
+    ret_val = TRUE;
+    break;
+
+  case SC_IF:
+    if (Is_well_behaved()) {
+      bb_head = Head();
+      bb_merge = Merge();
+      
+      if (bb_head->Is_dom(this)
+	  && bb_merge->Is_postdom(this))
+	ret_val= TRUE;
+    }
+    break;
+
+  case SC_LOOP:
+    bb_head = Head();
+    bb_merge = Merge();
+    
+    if (bb_head->Is_dom(this)
+	&& bb_merge->Is_postdom(this)) {
+      BB_LIST * pred = bb_merge->Pred();
+
+      if (pred->Len() == 1) {
+	BB_NODE * tmp = pred->Node();
+	if (this->Is_member(tmp))
+	  ret_val = TRUE;
+      }
+    }
+
+    break;
+    
+  default:
+    ;
+  }
+
+  return ret_val;
+}
+
+// Query whether this SC_NODE is a predessor of sc in the SC tree.
+
+BOOL
+SC_NODE::Is_pred_in_tree(SC_NODE * sc)
+{
+  SC_NODE * p_sc = sc->Parent();
+
+  while (p_sc) {
+    if (this == p_sc)
+      return TRUE;
+    p_sc = p_sc->Parent();
+  }
+
+  return FALSE;
+}
+
+// Find least common predecessor of this SC_NODE and sc in the SC tree.
+
+SC_NODE *
+SC_NODE::Find_lcp(SC_NODE * sc)
+{
+  if (Is_pred_in_tree(sc))
+    return this;
+  else if (sc->Is_pred_in_tree(this))
+    return sc;
+  else {
+    SC_NODE * p_sc = parent;
+    
+    while (p_sc) {
+      if (p_sc->Is_pred_in_tree(sc))
+	return p_sc;
+      p_sc = p_sc->Parent();
+    }
+  }
+
+  FmtAssert(FALSE, ("LCP not found"));
+  return NULL;
+}
+
+// Query whether this SC_NODE has the same shape as given sc, i.e.,
+// the SC tree rooted at this SC_NODE and the SC tree rooted at the given sc have the
+// same shape, and all WN trees in the two SC trees also have the same shape.
+// where the shape of WN tree is defined by the identify of operators and operands.
+// The real values of the operands are not considered.
+
+BOOL
+SC_NODE::Has_same_shape(SC_NODE * sc)
+{
+  if (type != sc->Type())
+    return FALSE;
+
+  BB_NODE * bb1 = Get_bb_rep();
+  BB_NODE * bb2 = sc->Get_bb_rep();
+
+  if (bb1 && bb2) {
+    if (!bb1->Compare_Trees(bb2))
+      return FALSE;
+  }
+
+  BB_LIST * bb_list1 = Get_bbs();
+  BB_LIST * bb_list2 = sc->Get_bbs();
+
+  if (bb_list1 && bb_list2 && (bb_list1->Len() != bb_list2->Len()))
+    return FALSE;
+  
+  while (bb_list1) {
+    bb1 = bb_list1->Node();
+    bb2 = bb_list2->Node();
+    
+    if (bb1->Compare_Trees(bb2))
+      return FALSE;
+
+    bb_list1 = bb_list1->Next();
+    bb_list2 = bb_list2->Next();
+  }
+  
+  if (kids->Len() != sc->Kids()->Len())
+    return FALSE;
+
+  SC_NODE * kid1 = First_kid();
+  SC_NODE * kid2 = sc->First_kid();
+  
+  while (kid1) {
+    if (!kid1->Has_same_shape(kid2))
+      return FALSE;
+
+    kid1 = kid1->Next_sibling();
+    kid2 = kid2->Next_sibling();
+  }
+  
+  return TRUE;
+}
+
+
+// Query whether this SC_NODE has the same loop structure as sc
+BOOL
+SC_NODE::Has_same_loop_struct(SC_NODE * sc)
+{
+
+  if ((type != SC_LOOP) || (type != sc->Type()))
+    return FALSE;
+
+  if (kids->Len() != sc->Kids()->Len())
+    return FALSE;
+  
+  SC_NODE * sc1 = First_kid();
+  SC_NODE * sc2 = sc->First_kid();
+  BB_NODE * bb1;
+  BB_NODE * bb2;
+
+  while (sc1) {
+    if (sc1->Type() != sc2->Type())
+      return FALSE;
+
+    switch (sc1->Type()) {
+    case SC_LP_START:
+    case SC_LP_COND:
+    case SC_LP_STEP:
+      if (!sc1->Has_same_shape(sc2))
+	return FALSE;
+      
+    default:
+      ;
+    }
+
+    sc1 = sc1->Next_sibling();
+    sc2 = sc2->Next_sibling();
+  }
+  return TRUE;
+}
+
+// Query this SC_NODE and the sc have symmetric path.
+// Find LCP, for every pair of noded on the path from LCP to this SC_NODE, and 
+// on the path from LCP to the sc, the following condition must be satisfied:
+// - Same type, and the type must be SC_IF or a SC_LOOP.
+// - If the type is a SC_IF, condition expression should have the same shape.
+// - If the type is a SC_LOOP, loop structure should be the same
+// - Two pathes have the same length.
+
+
+BOOL
+SC_NODE::Has_symmetric_path(SC_NODE * sc)
+{
+  SC_NODE * sc1 = this;
+  SC_NODE * sc2 = sc;
+  SC_NODE * lcp = Find_lcp(sc);
+
+  if (!lcp)
+    return FALSE;
+
+  while (sc1 && sc2) {
+    if ((sc1 == lcp) && (sc2 != lcp))
+      return FALSE;
+    else if ((sc1 != lcp) && (sc2 == lcp))
+      return FALSE;
+    else if ((sc1 == lcp) && (sc2 == lcp))
+      return TRUE;
+    else {
+      SC_TYPE type1 = sc1->Type();
+      SC_TYPE type2 = sc2->Type();
+
+      if (type1 != type2)
+	return FALSE;
+      
+      if ((type1 != SC_IF) && (type1 != SC_LOOP))
+	return FALSE;
+      
+      if ((type1 == SC_IF)
+	  && !sc1->Has_same_shape(sc2))
+	return FALSE;
+
+      if ((type1 == SC_LOOP)
+	  && !sc1->Has_same_loop_struct(sc2))
+	return FALSE;
+    }
+
+    sc1 = sc1->Parent();
+    sc2 = sc2->Parent();
+  }
+
+  return FALSE;
+}
+
+// Count number of loops on the path from this SC_NODE to given sc_root.
+// this_is_exc indicates whether to exclude this SC_NODE.
+// root_is_exc indicates whether to exclude sc_root.
+int 
+SC_NODE::Num_of_loops(SC_NODE * sc_root, BOOL this_is_exc, BOOL root_is_exc)
+{
+  FmtAssert(sc_root->Is_pred_in_tree(this), ("Expect a pred in the SC tree"));
+  int count = 0;
+  SC_NODE * sc_node;
+
+  if (this_is_exc)
+    sc_node = this->Parent();
+  else
+    sc_node = this;
+
+  while (sc_node) {
+    if (sc_node == sc_root) {
+      if (root_is_exc)
+	break;
+    }
+    
+    if (sc_node->Type() == SC_LOOP)
+      count++;
+
+    if (sc_node == sc_root)
+      break;
+
+    sc_node = sc_node->Parent();
+  }
+
+  return count;
+}
+
+// Count number of statements for all BB_NODEs in the SC tree rooted at this SC_NODE.
+int
+SC_NODE::Real_stmt_count()
+{
+  int count = 0;
+  BB_NODE * bb = Get_bb_rep();
+  
+  if (bb)
+    count += bb->Real_stmt_count();
+
+  BB_LIST * bb_list = Get_bbs();
+  BB_LIST_ITER bb_list_iter(bb_list);
+  BB_NODE * bb_tmp;
+
+  FOR_ALL_ELEM(bb_tmp, bb_list_iter, Init()) {
+    count += (bb_tmp->Real_stmt_count());
+  }
+
+  SC_LIST_ITER sc_list_iter(kids);
+  SC_NODE * sc_tmp;
+
+  FOR_ALL_ELEM(sc_tmp, sc_list_iter, Init()) {
+    count += (sc_tmp->Real_stmt_count());
+  }
+
+  return count;
+}
+
+// Dump a SC_NODE.  If dump_tree is TRUE, dump the SC tree
+// rooetd at this SC_NODE.
+void 
+SC_NODE::Print(FILE *fp, BOOL dump_tree) const
+{
+  fprintf(fp, "\n--- SC:%d %s ---\n", _id, this->Type_name());
+
+  if (SC_type_has_rep(type)) {
+    BB_NODE * bb = Get_bb_rep();
+    if (bb) 
+      fprintf(fp, " rep BB:%d", bb->Id());
+  }
+  else if (SC_type_has_bbs(type)) {
+    BB_LIST  * bbs = Get_bbs();
+    if (bbs) {
+      fprintf(fp, " component BBs:");
+      bbs->Print(fp);
+    }
+  }
+
+  if (parent)
+    fprintf(fp, " parent:%d", parent->Id());
+
+  if (kids) {
+    fprintf(fp, " kids:");
+    kids->Print(fp);
+    
+    if (dump_tree) {
+      SC_LIST_ITER sc_list_iter(kids);
+      SC_NODE *tmp = NULL;
+
+      FOR_ALL_ELEM(tmp, sc_list_iter, Init()) 
+	tmp->Print(fp, TRUE);
+    }
+  }
+
+  fprintf(fp, "\n");
+}
+
+SC_LIST*
+SC_LIST::Append(SC_NODE *sc, MEM_POOL *pool)
+{
+  SLIST sc_list_container(this);
+  SC_LIST *new_sclst = (SC_LIST*)CXX_NEW(SC_LIST(sc), pool);
+  if (new_sclst == NULL) ErrMsg ( EC_No_Mem, "SC_LIST::Append" );
+  sc_list_container.Append(new_sclst);
+  return (SC_LIST*)sc_list_container.Head();
+}
+
+SC_LIST *
+SC_LIST::Remove(SC_NODE *sc, MEM_POOL *pool)
+{
+  SC_LIST *prev, *cur, *retval = this;
+  
+  if (sc == NULL) return this;
+
+  for (prev=NULL,cur=this; cur && cur->node != sc; cur = cur->Next()) {
+    prev = cur;
+  }
+
+  if (cur == NULL)
+    return this;
+
+  if (cur == this)
+    retval = Next();
+
+  cur->SLIST_NODE::Remove(prev);
+  CXX_DELETE(cur, pool);
+  return retval;
+}
+
+BOOL
+SC_LIST::Contains(SC_NODE *sc) const
+{
+  SC_LIST_ITER sc_list_iter(this);
+  SC_NODE *tmp;
+  FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+    if (tmp == sc)
+      return TRUE;
+  }
+  return FALSE;
+}
+
+SC_NODE *
+SC_LIST::Last_elem()
+{
+  SC_LIST_ITER sc_list_iter(this);
+  SC_NODE *tmp = NULL;
+  SC_NODE * last = NULL;
+  
+  FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+    last = tmp;
+  }
+
+  return last;
+}
+
+SC_NODE *
+SC_LIST::First_elem()
+{
+  SC_LIST_ITER sc_list_iter(this);
+  SC_NODE *tmp = NULL;
+
+  FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+    return tmp;
+  }
+
+  return NULL;
+}
+
+void
+SC_LIST::Print(FILE *fp) const
+{
+  SC_LIST_ITER sc_list_iter(this);
+  SC_NODE * tmp;
+  FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+    if (tmp)
+      fprintf(fp, "%d ",tmp->Id());
+  }
+}
+
+void
+SC_LIST_ITER::Validate_unique(FILE *fp)
+{
+  for (First(); !Is_Empty(); Next()) {
+    SC_NODE *tmp = Cur()->Node();
+    if (tmp == NULL) {
+      fprintf(fp, "Empty Node in the sc_list!!!\n");
+      break;
+    }
+    if (Peek_Next()) {
+      if (Peek_Next()->Contains(tmp)) {
+	fprintf(fp, "The sc_list has redundant sc_node");
+	this->Head()->Print(fp);
+      }
+    }
+  }  
+}
+
+void
+SC_LIST_CONTAINER::Append(SC_NODE *sc, MEM_POOL *pool)
+{
+  SC_LIST * new_sclst = (SC_LIST*)CXX_NEW(SC_LIST(sc), pool);
+  if (new_sclst == NULL) ErrMsg ( EC_No_Mem, "SC_LIST::Append" );
+  Append(new_sclst);
+}
+
+
+void 
+SC_LIST_CONTAINER::Prepend(SC_NODE *sc, MEM_POOL *pool)
+{
+  SC_LIST *new_sclst = (SC_LIST*)CXX_NEW( SC_LIST(sc), pool );
+  if ( new_sclst == NULL ) ErrMsg ( EC_No_Mem, "SC_LIST::Prepend" );
+  Prepend(new_sclst);
+}
+
+void
+SC_LIST_CONTAINER::Remove  (SC_NODE *sc, MEM_POOL *pool)
+{
+  Warn_todo("SC_LIST_CONTAINER::Remove: remove this call");
+  SC_LIST *prev, *cur;
+
+  if (sc == NULL) return;
+  for (prev=NULL,cur=Head(); cur && cur->Node() != sc; cur = cur->Next())
+    prev = cur;
+
+  CXX_DELETE(cur->Remove(prev), pool);
+}
+
+SC_NODE *
+SC_LIST_CONTAINER::Remove_head(MEM_POOL *pool)
+{
+  Warn_todo("SC_LIST_CONTAINER::Remove_head: remove this call");
+  SC_NODE *sc;
+  SC_LIST *head;
+
+  head = Head();
+  if (head == NULL)
+    return NULL;
+  sc = head->Node();
+  CXX_DELETE(Remove_Headnode(), pool);
+  return sc;
+}
+
+BOOL
+SC_LIST_CONTAINER::Contains(SC_NODE *sc) const
+{
+  SC_LIST_ITER sc_list_iter(this);
+  SC_NODE* tmp;
+  FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+    if (tmp == sc)
+      return TRUE;
+  }
+  return FALSE;
 }
 

@@ -1797,7 +1797,8 @@ INT ARRAY_DIRECTED_GRAPH16::Gather_References(WN *wn, REF_LIST_STACK *writes,
 	  reads->Bottom_nth(i)->Append(CXX_NEW(REFERENCE_NODE(wn,s,
 			statement_number), &LNO_local_pool));
 	} else {
-	  if (WN_operator(wn) != OPR_LDID)
+	  if ((WN_operator(wn) != OPR_LDID)
+	      && !Is_Loop_Invariant_Indir(wn))
 	    Set_Bad_Mem(wn);
 	  VINDEX16 vindex = Get_Vertex(wn);
 	  if (vindex)

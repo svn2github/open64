@@ -520,6 +520,9 @@ private:
   BOOL  _spre_before_ivr; // For running spre early
   BOOL  _bdce_before_ivr; // For running bdce early
   BOOL  _loop_multiver;   // loop multiversioning 
+  BOOL _pro_loop_fusion_trans; 
+  BOOL _bool_simp;
+  BOOL _fold_lda_iload_istore;
 
   WOPT_SWITCHES(const WOPT_SWITCHES&);
   WOPT_SWITCHES& operator = (const WOPT_SWITCHES&);
@@ -654,6 +657,19 @@ private:
       break;
 #endif
 
+    case PREOPT_LNO1_PHASE: 
+      WOPT_Enable_SSA_PRE = FALSE;
+      WOPT_Enable_Goto = FALSE;
+      WOPT_Enable_Epre_Before_Ivr = FALSE;
+      WOPT_Enable_Lpre_Before_Ivr = FALSE;
+      WOPT_Enable_Spre_Before_Ivr = FALSE;
+      WOPT_Enable_Bdce_Before_Ivr = FALSE;
+      WOPT_Enable_IVR = FALSE;
+      WOPT_Enable_Copy_Propagate = FALSE;
+      WOPT_Enable_DCE = FALSE;
+      WOPT_Enable_Bool_Simp = FALSE;
+      WOPT_Enable_Fold_Lda_Iload_Istore = FALSE;
+  
     case PREOPT_LNO_PHASE: 
       if (Run_autopar && Current_LNO->IPA_Enabled
 #ifdef KEY // bug 6383
@@ -689,6 +705,9 @@ private:
     }
     
     if (_phase != PREOPT_LNO_PHASE) WOPT_Enable_Loop_Multiver = FALSE;
+
+    if (_phase != PREOPT_LNO1_PHASE)
+      WOPT_Enable_Pro_Loop_Fusion_Trans = FALSE;
   }
 
   void Unadjust_Optimization(void) {
@@ -761,6 +780,12 @@ private:
       WOPT_Enable_DU_Full = _du_full;
       break;
 #endif
+    case PREOPT_LNO1_PHASE:
+      WOPT_Enable_SSA_PRE = _ssa_pre;
+      WOPT_Enable_Zero_Version = _zero_version;
+      WOPT_Enable_IVR = _ivr;
+      WOPT_Enable_Copy_Propagate = _lno_copy;
+      WOPT_Enable_DCE = _dce;
     case PREOPT_LNO_PHASE:
       if (Run_autopar && Current_LNO->IPA_Enabled) { 
         WOPT_Enable_Call_Zero_Version = _call_zero_version;
@@ -772,6 +797,9 @@ private:
       break;
     }
 
+    WOPT_Enable_Pro_Loop_Fusion_Trans = _pro_loop_fusion_trans;
+    WOPT_Enable_Bool_Simp = _bool_simp;
+    WOPT_Enable_Fold_Lda_Iload_Istore = _fold_lda_iload_istore;
     Enable_WN_Simp = _wn_simp;
     WOPT_Enable_Goto = _goto;
     WOPT_Enable_Combine_Operations = _combine_operations;
@@ -863,6 +891,9 @@ public:
     _spre_before_ivr = WOPT_Enable_Spre_Before_Ivr; // For running spre early
     _bdce_before_ivr = WOPT_Enable_Bdce_Before_Ivr; // For running bdce early
     _loop_multiver = WOPT_Enable_Loop_Multiver;
+    _pro_loop_fusion_trans = WOPT_Enable_Pro_Loop_Fusion_Trans;
+    _bool_simp = WOPT_Enable_Bool_Simp;
+    _fold_lda_iload_istore = WOPT_Enable_Fold_Lda_Iload_Istore;
 
     Adjust_Optimization();
   }
@@ -1123,6 +1154,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   Is_True(phase == PREOPT_IPA0_PHASE ||
 	  phase == PREOPT_IPA1_PHASE ||
 	  phase == PREOPT_LNO_PHASE ||
+	  phase == PREOPT_LNO1_PHASE ||
 	  phase == PREOPT_DUONLY_PHASE ||
 	  phase == PREOPT_PHASE ||
 	  phase == MAINOPT_PHASE,
@@ -1397,7 +1429,8 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   comp_unit->Cfg()->Create(comp_unit->Input_tree(), lower_fully,
 			   WOPT_Enable_Calls_Break_BB,
 			   rgn_level/*context*/, 
-			   comp_unit->Opt_stab(), do_tail_rec );
+			   comp_unit->Opt_stab(), do_tail_rec,
+			   Malloc_Mem_Pool);
 
   // Transfer feedback data from Whirl annotation (at Cur_PU_Feedback)
   // to optimizer CFG annotation (at comp_unit->Cfg()->Feedback())
@@ -1418,6 +1451,9 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   comp_unit->Cfg()->Remove_fake_entryexit_arcs();
   comp_unit->Cfg()->Compute_dom_frontier(); // create dominance frontier
   comp_unit->Cfg()->Compute_control_dependence(); // create control-dependence set
+
+  SET_OPT_PHASE("Proactive Loop Fusion Transformation");
+  comp_unit->Pro_loop_fusion_trans();
   comp_unit->Cfg()->Analyze_loops();
 
   // Setup flow free alias information  --  CHI and MU list 
@@ -1544,74 +1580,76 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   }
 #endif
 
-  for (INT i = 0; i < WOPT_Enable_Extra_Rename_Pass; ++i) {
+  if (phase != PREOPT_LNO1_PHASE) {
+    for (INT i = 0; i < WOPT_Enable_Extra_Rename_Pass; ++i) {
 
-    if (Get_Trace(TP_WOPT2, SECOND_RENAME_FLAG)) 
-      fprintf(TFile, "%sEXTRA RENAME PASS %d:\n%s", DBar, i+1, DBar);
+      if (Get_Trace(TP_WOPT2, SECOND_RENAME_FLAG)) 
+        fprintf(TFile, "%sEXTRA RENAME PASS %d:\n%s", DBar, i+1, DBar);
 
-    // only enable during MAINOPT_PHASE because the update of high level
-    // structure is not implemented.  -Raymond 5/29/98.
-    //
-    if (WOPT_Enable_CFG_Opt && phase == MAINOPT_PHASE) {
-      SET_OPT_PHASE("CFG optimization");
-      CFG_transformation(comp_unit,
-			 WOPT_Enable_CFG_Opt2 && i == 0, // first pass
-			 Get_Trace(TP_WOPT2, CFG_OPT_FLAG),
-			 WOPT_Enable_CFG_Display);
+      // only enable during MAINOPT_PHASE because the update of high level
+      // structure is not implemented.  -Raymond 5/29/98.
+      //
+      if (WOPT_Enable_CFG_Opt && phase == MAINOPT_PHASE) {
+        SET_OPT_PHASE("CFG optimization");
+        CFG_transformation(comp_unit,
+			   WOPT_Enable_CFG_Opt2 && i == 0, // first pass
+			   Get_Trace(TP_WOPT2, CFG_OPT_FLAG),
+			   WOPT_Enable_CFG_Display);
 
-      if ( comp_unit->Cfg()->Feedback() )
-	comp_unit->Cfg()->Feedback()->Verify( comp_unit->Cfg(),
-					      "after CFG Optimization" );
-    }
+        if ( comp_unit->Cfg()->Feedback() )
+	  comp_unit->Cfg()->Feedback()->Verify( comp_unit->Cfg(),
+					        "after CFG Optimization" );
+      }
 
-    SET_OPT_PHASE("Second rename");
-    Rename_CODEMAP(comp_unit);
+      SET_OPT_PHASE("Second rename");
+      Rename_CODEMAP(comp_unit);
 
-    if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
-      SET_OPT_PHASE("Skip verify Live-Range because timing trace is on");
-    } else {
-      SET_OPT_PHASE("Verify Live-Range");
-      comp_unit->Verify_version();
-    }
+      if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
+        SET_OPT_PHASE("Skip verify Live-Range because timing trace is on");
+      } else {
+        SET_OPT_PHASE("Verify Live-Range");
+        comp_unit->Verify_version();
+      }
 
-    // do flow free copy propagation
-    if (WOPT_Enable_Copy_Propagate) {
-      SET_OPT_PHASE("Copy Propagation");
-      comp_unit->Do_copy_propagate();
-    }
+      // do flow free copy propagation
+      if (WOPT_Enable_Copy_Propagate) {
+        SET_OPT_PHASE("Copy Propagation");
+        comp_unit->Do_copy_propagate();
+      }
 
-    if (WOPT_Enable_DCE) {
-      SET_OPT_PHASE("Dead Code Elimination");
-      BOOL paths_removed;
-      BOOL dce_renumber_pregs = This_preopt_renumbers_pregs(phase);
-      comp_unit->Do_dead_code_elim(TRUE, TRUE, TRUE, TRUE,
-				   WOPT_Enable_Copy_Propagate,
-				   dce_renumber_pregs,
-				   &paths_removed);
+      if (WOPT_Enable_DCE) {
+        SET_OPT_PHASE("Dead Code Elimination");
+        BOOL paths_removed;
+        BOOL dce_renumber_pregs = This_preopt_renumbers_pregs(phase);
+        comp_unit->Do_dead_code_elim(TRUE, TRUE, TRUE, TRUE,
+				     WOPT_Enable_Copy_Propagate,
+				     dce_renumber_pregs,
+				     &paths_removed);
 
       if ( comp_unit->Cfg()->Feedback() )
 	   comp_unit->Cfg()->Feedback()->Verify( comp_unit->Cfg(),
 						 "Dead Code Elimination" );
 
       if (!paths_removed) break;
-    }
+      }
 
 #ifdef KEY // moved here because renaming causes bad code when there is
     	   // overlapped live ranges, which can be created by copy propagation
-    if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
-      SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
-      comp_unit->Fold_lda_iload_istore();
-    }
+      if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
+        SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
+        comp_unit->Fold_lda_iload_istore();
+      }
 #endif
 
-    // synchronize CFG and feedback info
-    // comp_unit->Cfg()->Feedback().make_coherent();
+      // synchronize CFG and feedback info
+      // comp_unit->Cfg()->Feedback().make_coherent();
 
-    if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
-      SET_OPT_PHASE("Skip verify Live-Range because timing trace is on");
-    } else {
-      SET_OPT_PHASE("Verify Live-Range");
-      comp_unit->Verify_version();
+      if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
+        SET_OPT_PHASE("Skip verify Live-Range because timing trace is on");
+      } else {
+        SET_OPT_PHASE("Verify Live-Range");
+        comp_unit->Verify_version();
+      }
     }
   }
 

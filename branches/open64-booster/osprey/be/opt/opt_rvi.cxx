@@ -638,7 +638,8 @@ RVI::Perform_phase1( WN *entry_wn )
   cfg.Set_rvi_break_stmt(WOPT_Enable_Rvisplit);
   cfg.Create(entry_wn, TRUE/*lower_fully*/, TRUE/*calls_break*/,
 	     RL_RVI1/*this is RVI phase 1*/, NULL/*stab*/,
-	     FALSE/*tail-rec*/ );
+	     FALSE/*tail-rec*/,
+	     NULL);
   // we don't build dom-tree, so we need to do this little fixup
   cfg.Remove_fake_entryexit_arcs();
   // locate the loops
@@ -743,7 +744,8 @@ RVI::Perform_phase2( WN *entry_wn )
   cfg.Set_rvi_break_stmt(FALSE);
   cfg.Create(entry_wn, TRUE/*lower_fully*/, TRUE/*calls_break*/,
 	     RL_RVI2/*this is RVI phase 2*/, NULL/*stab*/,
-	     FALSE/*tail-rec*/ );
+	     FALSE/*tail-rec*/,
+	     NULL);
 
   // we don't build dom-tree, so we need to do this little fixup
   cfg.Remove_fake_entryexit_arcs();

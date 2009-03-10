@@ -70,7 +70,8 @@
 #define USE_STANDARD_TYPE
 #include "opt_defs.h"   // use Is_True
 #include <stdio.h>
-
+#include "opt_bb.h"
+#include "opt_base.h"
 typedef int vertex_id;
 
 template <class Cluster_iterator>
@@ -358,6 +359,9 @@ inline void reverse_graph(Graph_in& in, Graph_out& out)
 }
 
 
+extern INT32 Current_PU_Count();
+extern char *Current_PU_Name();
+
 template <class Graph, class Vertex_id, class Insert_iterator, class Visited_set>
 void generate_post_order(Graph& g, Vertex_id v, Insert_iterator& ii, Visited_set& visited)
 {
@@ -368,6 +372,7 @@ void generate_post_order(Graph& g, Vertex_id v, Insert_iterator& ii, Visited_set
        ++e) {
     generate_post_order(g, second(*e), ii, visited);
   };
+
   *ii++ = v;
 }
 
@@ -685,6 +690,7 @@ struct less<path_type*> {
 
 extern void print_path_type(path_type *, FILE *);
 extern void print_vertex_set(std::set<vertex_id> *, FILE *);
+extern INT32 Current_PU_Count(void);
 
 
 class COMP_UNIT;  // forward declaration
@@ -695,5 +701,115 @@ void generate_conditional_const_zones(COMP_UNIT *cu, successor_graph &g,
 				      zone_container& zones, bool trace);
 void generate_loop_butterfly_zones(COMP_UNIT *cu, successor_graph &g,
 				   zone_container& zones, int, bool trace);
+
+// forward declaration.
+class TAIL_DUP_TRANS;
+
+typedef enum IF_MERGE_ACTION {
+  DO_NONE = 0x0,
+  DO_IFMERGE = 0x1,
+  DO_IFCOLLAPSE = 0x2
+};
+
+class IF_MERGE_TRANS {
+private:
+  COMP_UNIT * _cu;
+  BOOL _trace;
+  BOOL _dump;
+  int _count;
+  MAP * _val_map;   // map from an interger to a value number.
+  MEM_POOL * _pool;
+  TAIL_DUP_TRANS * _tail_dup;
+  IF_MERGE_ACTION _action;
+
+private:
+  void Delete_val_map();
+  void Init_val_map(WN *);
+  BOOL Val_mod(SC_NODE *, WN *);
+  BOOL Val_match(WN *);
+  BOOL Is_trackable_var(AUX_ID);
+  BOOL Is_trackable_expr(WN *);
+  void Track_val(BB_NODE *, BB_NODE *, WN *);
+  void Track_val(SC_NODE *, BB_NODE *, WN *);
+  AUX_ID Get_val(AUX_ID);
+  void Set_val(AUX_ID, AUX_ID);
+  void Remove_val(WN *, WN *);
+  BOOL Is_if_collapse_cand(SC_NODE * sc1, SC_NODE * sc2);
+  BOOL Maybe_assigned_expr(WN *, WN *);
+  BOOL Maybe_assigned_expr(SC_NODE *, WN *);
+  BOOL Maybe_assigned_expr(BB_NODE *, WN *);
+  BOOL Maybe_assigned_expr(SC_NODE *, BB_NODE *);
+  BOOL Maybe_assigned_expr(SC_NODE *, SC_NODE *);
+  BOOL Maybe_assigned_expr(BB_NODE *, BB_NODE *);  
+  BOOL Maybe_assigned_expr(BB_NODE *, SC_NODE *);
+
+public:
+  void      Top_down_trans(SC_NODE * sc);
+  BOOL      Is_cand(SC_NODE *, SC_NODE *, BOOL);
+  SC_NODE * Do_merge(SC_NODE *, SC_NODE *);
+  void      Set_trace(BOOL i)                { _trace = i; }
+  void      Set_dump(BOOL i)                 { _dump = i; }
+  void      Set_tail_dup(TAIL_DUP_TRANS * i) { _tail_dup = i; }
+
+  IF_MERGE_TRANS(void) { Clear(); }
+  IF_MERGE_TRANS(COMP_UNIT * i) { Clear(); _cu = i; }
+  IF_MERGE_TRANS(const IF_MERGE_TRANS&);
+  ~IF_MERGE_TRANS(void) {};
+
+  void Clear(void);
+  int Count() { return _count; }
+  void Inc_count() { _count ++; }
+  void Set_pool(MEM_POOL * i) { _pool = i; };
+  void Merge_CFG(SC_NODE *, SC_NODE *);
+  void Merge_SC(SC_NODE *, SC_NODE *);
+  BOOL Has_dependency(SC_NODE *, SC_NODE *);
+  BOOL Has_dependency(SC_NODE *, BB_NODE *);
+  BOOL Is_aliased(WN *, WN *);
+};
+
+class TAIL_DUP_TRANS {
+private:
+  COMP_UNIT * _cu;
+  BOOL _trace;
+  BOOL _dump;
+  int _traverse_count;
+  int _transform_count;
+  IF_MERGE_TRANS * _if_merge;
+  MEM_POOL * _pool;
+  MAP  *_loop_depth_to_loop_map;  // map from SC tree depth to a list of SC_LOOPs, scratch field
+  SC_LIST * _loop_list;          // a list of SC_LOOPs, scratch field
+  int _last_class_id;
+  BOOL _edit_loop_class;
+  INT32 _code_bloat_count;
+private:
+  void Reset_loop_class(SC_NODE *, int);
+  void Find_loop_class(SC_NODE *);
+  void Collect_classified_loops(SC_NODE *);
+  BOOL Is_cand_type(SC_TYPE type) { return ((type == SC_IF) || (type == SC_LOOP)); }
+  void Find_cand(SC_NODE *, SC_NODE **, SC_NODE **, SC_NODE *);
+  void Traverse_trans(SC_NODE *, SC_NODE *);
+  void Insert_region(BB_NODE *, BB_NODE *, BB_NODE *, BB_NODE *, MEM_POOL *);
+  BOOL Is_delayed(SC_NODE *, SC_NODE *);
+public:
+  void Clear();
+  TAIL_DUP_TRANS(void) { Clear(); }
+  TAIL_DUP_TRANS(COMP_UNIT * i) { Clear(); _cu = i; }
+  void Set_trace(BOOL i) { _trace = i; }
+  void Set_dump(BOOL i)  { _dump = i; }
+  void Set_if_merge(IF_MERGE_TRANS * i) { _if_merge = i; }
+  void Set_pool(MEM_POOL * i) { _pool = i; }
+  MEM_POOL * Loc_pool() { return _pool; }
+  int Transform_count() { return _transform_count; }
+  void Inc_traverse_count() { _traverse_count++; }
+  void Inc_transform_count() { _transform_count++; }
+  void Top_down_trans(SC_NODE *);
+  BOOL Nonrecursive_trans(SC_NODE *, BOOL);
+  void Classify_loops(SC_NODE *);
+  int New_class_id() { _last_class_id ++; return _last_class_id; }
+  void Do_code_motion(SC_NODE *, SC_NODE *);
+  void Do_head_duplication(SC_NODE *, SC_NODE *);
+  void Do_tail_duplication(SC_NODE *, SC_NODE *);
+};
+
 
 #endif
