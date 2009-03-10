@@ -533,7 +533,7 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
   }
 
   // Invalidate CFG aux info
-  cfg->Invalidate_and_update_aux_info();
+  cfg->Invalidate_and_update_aux_info(TRUE);
 }
 
 
@@ -1265,6 +1265,7 @@ BOOL IF_MERGE_TRANS::Val_mod(SC_NODE * sc, WN * wn, BOOL eval_true)
 {
   BOOL ret_val = TRUE;
 
+  OPT_POOL_Push(_pool, MEM_DUMP_FLAG + 1);
   Init_val_map(wn, eval_true);
 
   if (_val_map != NULL) {
@@ -1273,6 +1274,7 @@ BOOL IF_MERGE_TRANS::Val_mod(SC_NODE * sc, WN * wn, BOOL eval_true)
   }
 
   Delete_val_map();
+  OPT_POOL_Pop(_pool, MEM_DUMP_FLAG + 1);
   return ret_val;
 }
 
@@ -1306,7 +1308,7 @@ IF_MERGE_TRANS::Delete_val_map()
   }
 
   if (_true_val)
-    _true_val = BS_ClearD(_true_val);
+    _true_val = NULL;
 }
 
 // Initialize _val_map by hashing all loads in the given wn.
@@ -1318,7 +1320,7 @@ IF_MERGE_TRANS::Init_val_map(WN * wn, BOOL eval_true)
     AUX_ID aux_id = WN_aux(wn);
     if (aux_id) {
       if (_val_map == NULL)
-	_val_map = CXX_NEW(MAP(CFG_BB_TAB_SIZE, _pool), _pool);	
+	_val_map = CXX_NEW(MAP(CFG_BB_TAB_SIZE, _pool), _pool);
       _val_map->Add_map((POINTER) aux_id, (POINTER)aux_id);
     }
   }
@@ -1763,7 +1765,7 @@ IF_MERGE_TRANS::Merge_CFG(SC_NODE * sc1, SC_NODE * sc2)
   sc2_head->Set_next(sc2_merge);
   sc2_merge->Set_prev(sc2_head);
 
-  cfg->Invalidate_and_update_aux_info();
+  cfg->Invalidate_and_update_aux_info(FALSE);
   cfg->Invalidate_loops();
 
 }
@@ -2985,7 +2987,7 @@ PRO_LOOP_FUSION_TRANS::Do_code_motion(SC_NODE * sc1, SC_NODE * sc2)
   // Fix parent info.
   Fix_parent_info(sc1, sc2);
 
-  cfg->Invalidate_and_update_aux_info();
+  cfg->Invalidate_and_update_aux_info(FALSE);
   cfg->Invalidate_loops();
   Inc_transform_count();
 }
@@ -3247,7 +3249,7 @@ PRO_LOOP_FUSION_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
   // Fix parent info.
   Fix_parent_info(sc_src, sc_dst);
 
-  cfg->Invalidate_and_update_aux_info();
+  cfg->Invalidate_and_update_aux_info(FALSE);
   cfg->Invalidate_loops();
 
   _code_bloat_count += sc_src->Real_stmt_count();
@@ -3546,7 +3548,7 @@ PRO_LOOP_FUSION_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
     FmtAssert(FALSE, ("Unexpected SC type"));
   }
   
-  cfg->Invalidate_and_update_aux_info();
+  cfg->Invalidate_and_update_aux_info(FALSE);
   cfg->Invalidate_loops();
   _code_bloat_count += sc_src->Real_stmt_count();
   Inc_transform_count();
@@ -3835,14 +3837,15 @@ void
 PRO_LOOP_FUSION_TRANS::Classify_loops(SC_NODE *sc)
 {
   _edit_loop_class = TRUE;
+  OPT_POOL_Push(_pool, MEM_DUMP_FLAG + 1);
   _loop_depth_to_loop_map = CXX_NEW(MAP(CFG_BB_TAB_SIZE, _pool), _pool);
   Reset_loop_class(sc, 0);
   Find_loop_class(sc);
   CXX_DELETE(_loop_depth_to_loop_map, _pool);
   _loop_depth_to_loop_map = NULL;
+  OPT_POOL_Pop(_pool, MEM_DUMP_FLAG + 1);
   _edit_loop_class = FALSE;
 }
-
 
 // The driver to invoke if-merge and head-tail-duplication transformations
 // to allow loop fusion.
@@ -3860,6 +3863,7 @@ COMP_UNIT::Pro_loop_fusion_trans()
     OPT_POOL_Push(pool, MEM_DUMP_FLAG + 1);
     BOOL trace = Get_Trace(TP_WOPT2, PRO_TRANS_TRACE_FLAG);
     BOOL dump = Get_Trace(TP_WOPT2, PRO_TRANS_DUMP_FLAG);
+    BOOL changed = FALSE;
 
     vector<vertex_id> entry;
     successor_graph _g_tmp;
@@ -3889,7 +3893,7 @@ COMP_UNIT::Pro_loop_fusion_trans()
       pro_loop_fusion_trans->Set_dump(dump);
       pro_loop_fusion_trans->Set_if_merge(if_merge_trans);
       pro_loop_fusion_trans->Set_pool(pool);
-
+      
       if_merge_trans->Set_tail_dup(pro_loop_fusion_trans);
 
       // Start a top-down if-merging.
@@ -3900,9 +3904,10 @@ COMP_UNIT::Pro_loop_fusion_trans()
       if_merge_trans->Set_pass(PASS_LOCAL);
       pro_loop_fusion_trans->Classify_loops(sc_root);
       pro_loop_fusion_trans->Top_down_trans(sc_root);
-
+    
       // Verify branch target labels and feed back info.
       if ((pro_loop_fusion_trans->Transform_count() > 0) || (if_merge_trans->Count() > 0)) {
+	changed = TRUE;
 	_cfg->Verify_label();
 
 	if (Cur_PU_Feedback)
@@ -3917,12 +3922,13 @@ COMP_UNIT::Pro_loop_fusion_trans()
 	  printf("\n\t Code-motion-Head-Tail-Dup total:%d\n", 
 		 pro_loop_fusion_trans->Transform_count());
       }
-
-
     }
 
     OPT_POOL_Pop(pool, MEM_DUMP_FLAG + 1);
     _cfg->Free_sc();
+
+    if (changed)
+      _cfg->Invalidate_and_update_aux_info(TRUE);      
   }
 }
 

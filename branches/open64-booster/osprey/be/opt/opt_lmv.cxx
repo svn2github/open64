@@ -811,7 +811,7 @@ LOOP_MULTIVER::Perform_loop_multiversioning (void) {
 
   // reconstruct the CFG 
   _cfg->Invalidate_loops();
-  _cfg->Invalidate_and_update_aux_info();
+  _cfg->Invalidate_and_update_aux_info(TRUE);
   _cfg->Analyze_loops();
 
   if (_tracing) {

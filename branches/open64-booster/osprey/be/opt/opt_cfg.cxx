@@ -5693,10 +5693,10 @@ CFG::Is_outermost_loop_in_parallel_region( BB_LOOP *loop,
 
 // Add a BB_NODE to each CFG edge from a bb with multiple successors to
 // a bb with multiple predecessors.  Rebuild the data structure if
-// rebuild_ds is TRUE.
+// rebuild_ds is TRUE.  do_df indicates whether to compute dom frontiers.
 
 void    
-CFG::Invalidate_and_update_aux_info(void)
+CFG::Invalidate_and_update_aux_info(BOOL do_df)
 {
   // handle blocks that don't exit
   Process_multi_entryexit( FALSE/*!whirl*/ );
@@ -5711,8 +5711,11 @@ CFG::Invalidate_and_update_aux_info(void)
   Compute_dom_tree(TRUE); // create dom tree
   Compute_dom_tree(FALSE);// create post-dom tree
   Remove_fake_entryexit_arcs();
-  Compute_dom_frontier(); // create dom frontier
-  Compute_control_dependence(); // create reverse cfg dom
+
+  if (do_df) {
+    Compute_dom_frontier(); // create dom frontier
+    Compute_control_dependence(); // create reverse cfg dom
+  }
 
   // fake blocks should not be considered as reached
   if ( Fake_entry_bb() != NULL )
@@ -5783,7 +5786,7 @@ CFG::Remove_critical_edge()
   }
   // Rebuild the data structures
   if (inserted > 0) {
-    Invalidate_and_update_aux_info();
+    Invalidate_and_update_aux_info(TRUE);
     Invalidate_loops();
     Analyze_loops();
   }

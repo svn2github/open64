@@ -638,7 +638,7 @@ public:
 
   // Rebuild or mark for rebuilding all auxilliary data structures:
   // dom/pdom trees, _dpo_vec, _po_vec...
-  void         Invalidate_and_update_aux_info(void);
+  void         Invalidate_and_update_aux_info(BOOL);
 
   // Remove critical edge: add a BB_NODE to each CFG edge where the
   // source BB has more than one successors and the sink BB has more

@@ -5014,7 +5014,7 @@ COMP_UNIT::Do_dead_code_elim(BOOL do_unreachable,
       unreachable = dce.Unreachable_code_elim();
 
       if ( unreachable ) {
-	Cfg()->Invalidate_and_update_aux_info();
+	Cfg()->Invalidate_and_update_aux_info(TRUE);
       }
     }
 
@@ -5027,7 +5027,7 @@ COMP_UNIT::Do_dead_code_elim(BOOL do_unreachable,
     unreachable = dce.Dead_store_elim();
 
     if ( unreachable ) {
-      Cfg()->Invalidate_and_update_aux_info();
+      Cfg()->Invalidate_and_update_aux_info(TRUE);
     }
 
     // fake blocks should not be considered as reached
