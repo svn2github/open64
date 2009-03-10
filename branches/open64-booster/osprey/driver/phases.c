@@ -2018,12 +2018,17 @@ postprocess_ld_args (string_list_t *args)
 	    dir = p->next->name;
 	}
 	if (dir) {
+            char * root_prefix = directory_path(get_executable_dir());
 	    add_after_string(args, p, concat_strings("-Wl,-rpath-link,", dir));
 
-            if (option_was_seen(O_hugepage)) {
-                if (hugepage_alloc == ALLOC_BDT) {
-                    dir = concat_strings(dir, "/elf.xBDT");
-                    add_after_string(args, p, concat_strings("-Wl,-T", dir));
+            if (option_was_seen(O_hugepage) && (strstr(dir, root_prefix) != NULL)) {
+                HUGEPAGE_DESC desc;
+
+                for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
+                    if (desc->alloc == ALLOC_BDT && !add_huge_lib) {
+                        dir = concat_strings(dir, "/elf.xBDT");
+                        add_after_string(args, p, concat_strings("-Wl,-T", dir));
+                    }
                 }
             }
 	}

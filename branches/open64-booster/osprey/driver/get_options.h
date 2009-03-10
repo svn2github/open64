@@ -68,8 +68,13 @@ typedef enum
 {
     SIZE_NA = 0,
     SIZE_2M,
-    SIZE_1G
+    SIZE_1G,
+    SIZE_2M1G,  /* add a new entry before SIZE_END, append its name in the name table below */
+    SIZE_END
 } HUGEPAGE_SIZE;
+
+/* name table */
+static const char * hugepage_size_name[SIZE_END] = {"NA", "2M", "1G", "2M1G"};
 
 /* huge page allocation type */
 
@@ -77,10 +82,29 @@ typedef enum
 {
     ALLOC_NA = 0,
     ALLOC_HEAP,
-    ALLOC_BDT
+    ALLOC_BDT,
+    ALLOC_BSS,  /* add a new entry before ALLOC_END, then append its name in the name table below */
+    ALLOC_END
 } HUGEPAGE_ALLOC;
 
-extern HUGEPAGE_SIZE hugepage_size;
-extern HUGEPAGE_ALLOC hugepage_alloc;
-extern int hugepage_limit;
+/* name table */
+static const char * hugepage_alloc_name[ALLOC_END] = {"NA", "HEAP", "BDT", "BSS"};
+
+typedef struct hugepage_desc_tag {
+    HUGEPAGE_ALLOC alloc;
+    HUGEPAGE_SIZE  size;
+    int            limit;
+    struct hugepage_desc_tag * next;
+} HUGEPAGE_DESC_TAG;
+
+typedef HUGEPAGE_DESC_TAG * HUGEPAGE_DESC;
+    
+extern HUGEPAGE_DESC hugepage_desc;
+
+/* hugepage default values */
+
+#define HUGEPAGE_ALLOC_DEFAULT ALLOC_HEAP
+#define HUGEPAGE_SIZE_DEFAULT  SIZE_2M
+#define HUGEPAGE_LIMIT_DEFAULT 20
+
 #endif

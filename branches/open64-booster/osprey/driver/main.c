@@ -84,9 +84,7 @@ boolean show_search_path;
 boolean show_defaults;
 boolean print_help = FALSE;
 
-HUGEPAGE_SIZE hugepage_size;
-HUGEPAGE_ALLOC hugepage_alloc;
-int hugepage_limit;
+HUGEPAGE_DESC hugepage_desc;
 
 #if 0
 // obsolete, see comments in DESIGN_DOC
@@ -146,6 +144,7 @@ main (int argc, char *argv[])
 #ifdef KEY
 	char *unrecognized_dashdash_option_name = NULL;
 #endif
+        hugepage_desc = NULL;
 
 	init_error_list();
 	program_name = drop_path(argv[0]);	/* don't print path */
