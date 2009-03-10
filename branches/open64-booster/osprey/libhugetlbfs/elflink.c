@@ -950,6 +950,37 @@ static void remap_segments(struct seg_info *seg, int num)
 	int i;
 	void *p;
 
+#ifdef OPEN64_MOD
+        /* advance brk value to next huge page boundary to allow small page malloc */
+
+        unsigned long oldbrk,newbrk;
+
+        newbrk = oldbrk = (unsigned long) sbrk(0);
+        DEBUG("Old brk=0x%lx\n", oldbrk);
+
+        for (i = 0; i < num; i++) {
+            unsigned long slice_start, slice_end;
+
+            DEBUG("%p+0x%lx\n", seg[i].vaddr, seg[i].memsz);
+            slice_start = hugetlb_slice_start((unsigned long) seg[i].vaddr);
+            slice_end = hugetlb_slice_end((unsigned long) seg[i].vaddr +
+                                          seg[i].memsz);
+            if ((slice_start <= oldbrk) && (oldbrk <= slice_end)) {
+                if (slice_end + 1 > newbrk)
+                    newbrk = slice_end + 1;
+            }
+        }
+
+        DEBUG("New brk=0x%lx\n", newbrk);
+
+        if (newbrk != oldbrk) {
+            if (brk((void *) newbrk) < 0)
+                WARNING("Couldn't set brk to 0x%lx; err %d\n", newbrk, errno);
+        }
+
+        munmap((void *)oldbrk, newbrk - oldbrk);
+#endif
+
 	/*
 	 * XXX: The bogus call to mmap below forces ld.so to resolve the
 	 * mmap symbol before we unmap the plt in the data segment

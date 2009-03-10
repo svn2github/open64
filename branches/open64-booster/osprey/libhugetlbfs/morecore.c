@@ -107,9 +107,12 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
                 if ((long long) delta + mapsize > (long long) hugepages_heap_limit * blocksize) {
                     DEBUG("size %ld exceeds huge page limit %ld\n",
                           delta + mapsize, hugepages_heap_limit);
+                    __morecore = &__default_morecore;
+                    DEBUG("brk=0x%lx\n",(unsigned long) sbrk(0));
                     return NULL;
                 }
 #endif
+
 		/* map in (extend) more of the file at the end of our last map */
 		p = mmap(heapbase + mapsize, delta, PROT_READ|PROT_WRITE,
 			 MAP_PRIVATE, heap_fd, mapsize);
@@ -230,8 +233,8 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
 	p = heaptop;
 	/* and we now have added this much more space to the heap */
 	heaptop = heaptop + increment;
-
 	DEBUG("... = %p\n", p);
+
 	return p;
 }
 
@@ -307,18 +310,6 @@ void __hugetlbfs_setup_morecore(void)
 	heaptop = heapbase = (void *)heapaddr;
 	__morecore = &hugetlbfs_morecore;
 
-#ifdef OPEN64_MOD
-        hugepages_avail = hugetlbfs_num_pages();
-        hugepages_heap_limit= hugepages_avail;
-        env = getenv("HUGETLB_LIMIT");
-        if ( env ) {
-            long n = atol(env);
-            if( (n >= 0) && (n < hugepages_avail) ) 
-		hugepages_heap_limit = n;
-        }
-
-#endif
-
 	/* Set some allocator options more appropriate for hugepages */
 	
 	if (shrink_ok)
@@ -339,12 +330,23 @@ void __hugetlbfs_setup_morecore(void)
 
 void  __setup_hugepage(int l_limit)
 {
-    char *env = getenv("HUGETLB_LIMIT");
-    
-    if (env != NULL)
-        return;
-    
-    if ((l_limit >= 0) && (l_limit < hugepages_avail))
-        hugepages_heap_limit = l_limit;
+    hugepages_avail = hugetlbfs_num_pages();
+
+    if ((l_limit != 0) && (hugepages_avail > 0)) {
+        char *env;
+        hugepages_heap_limit = hugepages_avail;
+        
+        env = getenv("HUGETLB_LIMIT");
+
+        if ( env ) {
+            long n = atol(env);
+            if( (n >= 0) && (n < hugepages_avail) ) 
+                hugepages_heap_limit = n;
+        }
+        else if ((l_limit >= 0) && (l_limit < hugepages_avail))
+            hugepages_heap_limit = l_limit;        
+
+        __hugetlbfs_setup_morecore();
+    }
 }
 #endif

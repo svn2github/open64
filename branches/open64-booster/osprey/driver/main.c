@@ -616,10 +616,8 @@ main (int argc, char *argv[])
 
             if (do_heap == FALSE)
                 heap_limit = 0;
-                    
-            if (!option_was_seen(O_static)) {
+            else
                 add_heap_limit = TRUE;
-            }
         }
         
 	if (read_stdin) {

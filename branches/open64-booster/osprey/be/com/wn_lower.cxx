@@ -13229,7 +13229,7 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
 
     /* Insert a call to a routine inside libhugetlbfs to set heap huge page limit.
      */
-    if ((OPT_Hugepage_Heap_Limit >= 0)
+    if (OPT_Hugepage_Heap_Set
 	&& (!strcmp(Cur_PU_Name, "main") ||
 	    !strcmp(Cur_PU_Name, "MAIN__"))) {
       WN *hugepageBlock = WN_CreateBlock();

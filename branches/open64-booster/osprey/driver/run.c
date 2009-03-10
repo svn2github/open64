@@ -294,7 +294,8 @@ run_phase (phases_t phase, char *name, string_list_t *args)
             sprintf(&buf[0],"%d", heap_limit);
 
             for (p = args->head; p != NULL; p = p->next) {
-                if (strncmp(p->name, "alloc=", 6) == 0) {
+                if ((strncmp(p->name, "alloc=", 6) == 0)
+                    || (strncmp(p->name, "-hugepage:alloc=heap", 20) == 0)) {
                     replace_string(args, p->name, 
                                    concat_strings("-OPT:hugepage_heap_limit=", buf));
                     break;
@@ -304,7 +305,8 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 
         if (option_was_seen(O_hugepage)) {
             for (p = args->head; p != NULL; p = p->next) {
-                if (strncmp(p->name, "alloc=", 6) == 0) 
+                if ((strncmp(p->name, "alloc=", 6) == 0) 
+                    || (strncmp(p->name, "-hugepage:alloc=heap", 20) == 0))
                     replace_string(args, p->name, "");
             }
         }

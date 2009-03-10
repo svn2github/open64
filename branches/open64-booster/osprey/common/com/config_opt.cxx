@@ -310,6 +310,7 @@ BOOL    OPT_Float_Via_Int = FALSE; // when on, perform FP copies using int regs
 UINT32 OPT_Malloc_Alg = 0;	/* select malloc algorithm */
 BOOL OPT_Malloc_Alg_Set = FALSE; 
 INT32 OPT_Hugepage_Heap_Limit = -1;  /* set huge page limit */
+BOOL OPT_Hugepage_Heap_Set = FALSE;
 BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO(C/C++)
 BOOL Early_Goto_Conversion_Set = FALSE;
 #endif	// KEY
@@ -448,7 +449,7 @@ static OPTION_DESC Options_OPT[] = {
     "Use alternate malloc algorithm" },
 
   { OVK_INT32, OV_VISIBLE,     TRUE,    "hugepage_heap_limit", NULL,
-    0, -1, 50000, &OPT_Hugepage_Heap_Limit, NULL,
+    0, -1, 50000, &OPT_Hugepage_Heap_Limit, &OPT_Hugepage_Heap_Set,
     "Set huge page heap limit" },
 
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "early_goto_conv", "",

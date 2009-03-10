@@ -29,5 +29,7 @@ static void __attribute__ ((constructor)) setup_libhugetlbfs(void)
 #ifndef NO_ELFLINK
 	__hugetlbfs_setup_elflink();
 #endif
+#ifndef OPEN64_MOD
 	__hugetlbfs_setup_morecore();
+#endif
 }
