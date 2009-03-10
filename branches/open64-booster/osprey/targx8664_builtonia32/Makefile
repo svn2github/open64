@@ -53,7 +53,8 @@ LIBRARY_SUBDIRS := \
 	libu \
 	libmv \
 	libinstr2 \
-	libopenmp
+	libopenmp \
+	libhugetlbfs
 
 	#libF77
 	#libm \
