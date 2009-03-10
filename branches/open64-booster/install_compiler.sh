@@ -265,12 +265,19 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         # IA32 and x86_64
         LIBAREA=osprey/targx8664_builtonia32
         LIB32AREA=osprey/targia32_builtonia32
+        HUGETLB=osprey/libhugetlbfs
 
         INSTALL_DATA_SUB ${LIBAREA}/libinstr2/libinstr.a      ${PHASEPATH}/libinstr.a
         INSTALL_DATA_SUB ${LIB32AREA}/libinstr2/libinstr.a      ${PHASEPATH}/32/libinstr.a
 
         INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/obj64/libhugetlbfs.a      ${PHASEPATH}/libhugetlbfs.a
         INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/obj32/libhugetlbfs.a      ${PHASEPATH}/32/libhugetlbfs.a
+
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xB      ${PHASEPATH}/elf_x86_64.xB
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386.xB        ${PHASEPATH}/32/elf_i386.xB
+
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xBDT    ${PHASEPATH}/elf_x86_64.xBDT
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386.xBDT      ${PHASEPATH}/32/elf_i386.xBDT
     fi
 
     # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archieves
