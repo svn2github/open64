@@ -29,8 +29,10 @@
 #include "ipc_symtab_merge.h"
 #include <vector>
 #include <ext/hash_map>
+#include <ext/hash_set>
 
 using __gnu_cxx::hash_map;
+using __gnu_cxx::hash_set;
 
 #define BASE_CLASS_NOT_FOUND (size_t)-1
 
@@ -57,6 +59,11 @@ public:
     BOOL Is_Ancestor(TY_INDEX ancestor, TY_INDEX descendant); 
 
     size_t Get_Ancestor_Offset(TY_INDEX sub, TY_INDEX anc);
+
+    void Get_Sub_Class_Hierarchy (TY_INDEX declared_class,
+        hash_set<TY_INDEX>& targets);
+
+    int Num_Sub_Class_In_Hierarchy(TY_INDEX declared_class);
 
     void Print_IPA_CLASS_HIERARCHY() {
       FILE *_debug = fopen("class_hierarchy.trace", "w");

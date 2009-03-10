@@ -651,7 +651,7 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
     IPO_Process_Icalls (node);
   }
 #endif
-  if (IPA_Enable_fast_static_analysis_VF && 
+  if (IPA_Enable_Fast_Static_Analysis_VF && 
       node->Has_Pending_Virtual_Functions()) {
     IPO_Process_Virtual_Functions (node);
   }

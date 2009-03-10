@@ -1582,7 +1582,8 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 #endif
 #endif // KEY
 
-            if (!Cur_PU_Feedback && WN_Call_Is_Virtual(w2)) {
+            if (!Cur_PU_Feedback && WN_Call_Is_Virtual(w2) 
+                    && IPA_Enable_Fast_Static_Analysis_VF == TRUE) {
 	        Process_virtual_function (proc, w2, loopnest, probability);
             }
 
@@ -2152,6 +2153,7 @@ Notes for File 1:
 
 */
 
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
 template <PROGRAM program>
 void
 SUMMARIZE<program>::Process_virtual_function (SUMMARY_PROCEDURE * proc, 
@@ -2193,6 +2195,7 @@ SUMMARIZE<program>::Process_virtual_function (SUMMARY_PROCEDURE * proc,
   proc->Incr_callsite_count ();
   proc->Incr_call_count ();
 }
+#endif // KEY && !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
 
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
 // If found suitable, generate a new callsite summary for the direct call

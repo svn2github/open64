@@ -572,7 +572,11 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
 }
 */
 
-    IPA_fast_static_analysis_VF ();
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    if (IPA_Enable_Fast_Static_Analysis_VF == TRUE) {
+        IPA_Fast_Static_Analysis_VF ();
+    }
+#endif // KEY && !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
     // The following if-block is left by earlier developer. IPA_Enable_Devirtualization is not active in open64 4.2-1.
     if (IPA_Enable_Devirtualization) { 
         Temporary_Error_Phase ephase ("IPA Devirtualization"); 

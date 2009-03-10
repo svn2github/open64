@@ -363,7 +363,7 @@ Convert_virtual_call(IPA_NODE *method) { // Left by earlier developer.
         if (callee_st_idx == ST_IDX_ZERO) {
             DevWarn("Find virtual function for class %s (offset %lu) failed.",
                     &Str_Table[TY_name_idx(make_TY_IDX(cand.actual_class))],
-                    func_offset);
+                    (long)func_offset);
             continue;
         }
 
@@ -412,7 +412,7 @@ Convert_virtual_call(IPA_NODE *method) { // Left by earlier developer.
         // print debug info
         DevWarn("Convert indirect call (class %s, offset %lu) to direct call %s (class %s) in function %s.",
                 &Str_Table[TY_name_idx(orig_class)],
-                func_offset, &Str_Table[ST_name_idx(*callee_st)],
+                (long)func_offset, &Str_Table[ST_name_idx(*callee_st)],
                 &Str_Table[TY_name_idx(make_TY_IDX(cand.actual_class))],
                 &Str_Table[ST_name_idx(*(method->Func_ST()))]);
     }
@@ -494,13 +494,9 @@ IPA_devirtualization() {
 /*
 ------------------
 The optimization is enabled if the following variable is true:
-   common/com/config_ipa.cxx BOOL variable IPA_Enable_fast_static_analysis_VF is TRUE
-But not all of the devirtualization pass is disabled, 
-with IPA_Enable_fast_static_analysis_VF == FALSE. 
-A small portion of the pass is necessarily run to 
-do a "fix up" work. This fix up leaves
-no change in compiled code.
-
+   common/com/config_ipa.cxx BOOL 
+   IPA_Enable_fast_static_analysis_VF variable is TRUE
+-------------------------------
 Effect of pass on compiled code:
 -------------------------------
 The pass changes the WHIRL at a virtual 
@@ -520,37 +516,40 @@ if-then-else structure is introduced.
         Take the previous example, Example 1. 
         An edge from the caller that 
         contains bar->foo() is added to CLS::foo(bar)
-
-
+-------------------------------
+Description and psuedo code:
+-------------------------------
 This is the file osprey/ipa/main/analyze/ipa_devirtual.cxx 
-containing most of the devirtualization work. All of the 
-pass is done through a class called 
-DEVIRT_WORK in this file, ipa_devirtual.cxx.
+containing most of the devirtualization work. 
+All of the pass is done through a class called 
+IPA_VIRTUAL_FUNCTION_TRANSFORM in this file, ipa_devirtual.cxx.
 This file, ipa_devirtual.cxx file has been left 
 by the earlier developer. 
-The addition now is the class DEVIRT_WORK
-and the function IPA_fast_static_analysis_VF. 
-Rest of the functions in the file except for one or two. 
-But most of the member functions in DEVIRT_WORK borrow 
-code or idea directly from the existing functions 
+The addition now is the class IPA_VIRTUAL_FUNCTION_TRANSFORM
+and the function IPA_Fast_Static_Analysis_VF. 
+But most of the member functions in IPA_VIRTUAL_FUNCTION_TRANSFORM 
+borrow code or idea directly from the existing functions 
 left by the earlier developer.
 
-psuedo code for IPA_fast_static_analysis_VF:
-IPA_fast_static_analysis_VF() {
-    if IPA_Enable_fast_static_analysis_VF() {
- construct the class inheritance graph 
+psuedo code for IPA_Fast_Static_Analysis_VF:
+IPA_Fast_Static_Analysis_VF() {
+    if IPA_Enable_Fast_Static_Analysis_VF() {
+
+     Prepare_Virtual_Function_Transform() which contains 
+       {
+ code to construct the class inheritance graph 
         Build_Class_Hierarchy() ; // ipa/main/analyze/ipa_chg.cxx ipa_chg.h
- find all constructor calls. Since a constructor 
- is called at instantiation time, the
- effect is that we collect all instantiations of classes declared in program       
+        Identify_Constructors(); // Gets all constructors from call graph
+ Note:Since a constructor is called at instantiation time, the
+ effect is that we collect all instantiations of classes declared in program.
  Constructors are collected by iterating over the nodes in the Call graph. 
  So there is a need for the call graph before this pass.
-        find_constructors()
- Walk over the IPA_NODES in IPA_Call_Graph and check if 
+        }
+        Transform_Virtual_Functions()   //  Code to walk over the 
+ IPA_NODES in IPA_Call_Graph and check if 
  these functions make any virtual function calls and 
  replace the virtual function call with an oracle 
- if-then-else           
-        analyze_VFs()    
+ if-then-else structure.
  
  Now that all virtual functions for IPA_NODEs are processed, 
  we got to update call node to SUMMARY_CALLSITE object mapping 
@@ -565,7 +564,8 @@ IPA_fast_static_analysis_VF() {
  SUMMARY_CALLSITE so that the call graph can be constructed.
  In our pass, we are going to be inserting an additional call. And
  we don't have a SUMMARY_CALLSITE for it, as SUMMARY_CALLSITEs are added 
- by IPL. It is not feasible to add an additional SUMMARY_CALLSITE into the file being 
+ by IPL. It is not feasible to add an 
+ additional SUMMARY_CALLSITE into the file being 
  processed right now during IPA. 
  The best idea is to insert the SUMMARY_CALLSITE 
  during IPL. This requires very little effort.
@@ -589,19 +589,22 @@ IPA_fast_static_analysis_VF() {
  a call WHIRL node. i.e. watch out if there a clean mapping, 
  or some pass will crash.
  
- fix_up_only basically renumbers SUMMARY_CALLSITEs, i.e fixes up the 
+ Fixup_Virtual_Function_Transform basically renumbers 
+ SUMMARY_CALLSITEs, i.e fixes up the 
  mapping between callsites and call nodes.
  
  The reference code fix_up_only is in Add_Edges_For_Node 
  function called by Build_Call_Graph.       
-        fix_up_only()
- miscellaneous statistics, code for testing and profiling etc
-        ...
+        Fixup_Virtual_Function_Callsites()
+transformation work is done
     }
 }
 
-pseudo code for analyze_VFs():
-analyze_VFs() {
+pseudo code for Transform_Virtual_Functions():
+This function wraps around a 
+Transform_Virtual_Functions_Per_Node
+which does the real work
+Transform_Virtual_Functions_Per_Node() {
     For each virtual call in a IPA_Node, 
     map its WN_Map_ID to the whirl node,
     make_VF_wn_map(...);
@@ -621,13 +624,14 @@ analyze_VFs() {
             class_instantiations uses constructor data collected earlier
             instances = class_instantiations(type(virtual_function_class))
 
-            try class_hierarchy_analysis:
+            if we want class_hierarchy_analysis:
             if num_subclasses(type(virtual_function_class)) == 0 {
                 heuristic 1 pass that enables Class Hierarchy Analysis transformation
                 add Virtual function, and its dummy_callsite for 
                 optimization
             }
-            else if length(instances) == 1 {
+            else if we want class type analysis: 
+                if length(instances) == 1 {
                 heuristic 2 pass that enables Class Type Analysis transformation
                 add Virtual function, and its dummy_callsite for 
                 optimization 
@@ -636,12 +640,12 @@ analyze_VFs() {
     }
 
     if the loop marked virtual functions in the IPA_Node, apply transformation on them
-    for functions in virtual_function_candidates{
-        apply_VF_transformation();
+    for all VIRTUAL_FUNCTION_CANDIDATEs{
+       Apply_Virtual_Function_Transform ();
     }
 }
-pseudo code for apply_VF_Transformation():
-apply_VF_transformation() {
+pseudo code for Apply_Virtual_Function_Transform():
+Apply_Virtual_Function_Transform() {
     Change the code to look like Example 1.
     insert the call from the if-then part into 
     IPA_Call_Graph by using dummy callsite as 
@@ -650,116 +654,988 @@ apply_VF_transformation() {
     If you are debugging use them otherwise disable them 
     during release time.
 }
-
-
 */
 
-class DEVIRT_WORK {
+void 
+IPA_Fast_Static_Analysis_VF () {
+    IPA_VIRTUAL_FUNCTION_TRANSFORM vf_transform;
+    vf_transform.Initialize_Virtual_Function_Transform ();
+    vf_transform.Prepare_Virtual_Function_Transform ();
+    vf_transform.Dump_Constructors();
+    vf_transform.Transform_Virtual_Functions ();
+    vf_transform.Fixup_Virtual_Function_Callsites ();
+    vf_transform.Finalize_Virtual_Function_Transform ();
+    vf_transform.Print_Statistics ();
+    vf_transform.Dump_Virtual_Function_Transform_Candidates ();
+    vf_transform.Histogram_Statistics ();
+    vf_transform.Miss_Hit_Profile ();
+}
 
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Initialize_Virtual_Function_Transform () {
+    Enable_Debug = false;
+    if (Enable_Debug == true) {
+        Virtual_Whirls = fopen ("Virtual_Whirls.log", "w");
+        Transformed_Whirls = fopen ("Tranformed_Whirls.log", "w");
+    } else {
+        Virtual_Whirls = NULL;
+        Transformed_Whirls = NULL;
+    }
 
-TY_INDEX get_constructor_type (SUMMARY_SYMBOL* func_sym) {
+    Enable_Profile = false;
+    // In case profiling is enabled locate the global STs 
+    // __MISS_VIRTUAL_FUNCTION__ and __HIT_VIRTUAL_FUNCTION__
+    if (Enable_Profile == true) {
+        Miss_ST_IDX = ST_IDX_ZERO;
+        Hit_ST_IDX = ST_IDX_ZERO;
+        for (ST_IDX sts = 1; sts < ST_Table_Size(GLOBAL_SYMTAB) ; ++sts) {
+            ST* cur_st = &St_Table(GLOBAL_SYMTAB,sts);
+            typedef mUINT32 INDEX;
+            INDEX ty_index = cur_st->u2.type>>8;
+            if (Ty_tab[ty_index].kind==KIND_ARRAY){ 
+                if (strcmp(ST_name(cur_st), 
+                            "__MISS_VIRTUAL_FUNCTION__") == 0) {
+                    Miss_ST_IDX = sts;
+                } else if (strcmp(ST_name(cur_st), 
+                            "__HIT_VIRTUAL_FUNCTION__") == 0) {
+                    Hit_ST_IDX = sts;
+                }
+            }
+            if (Hit_ST_IDX != ST_IDX_ZERO && Miss_ST_IDX != ST_IDX_ZERO)
+                break;
+        }
+    } else {
+        Miss_ST_IDX = ST_IDX_ZERO;
+        Hit_ST_IDX = ST_IDX_ZERO;
+    }
+    
+    Enable_Statistics = false;
+    Num_VFs_Count = 0;
+    Class_Hierarchy_Transform_Count = 0;
+    Class_Instance_Transform_Count = 0;
+    // build PU -> NODE_INDEX mapping
+    Build_PU_NODE_INDEX_Map();
+    // disable or enable heuristics using these booleans
+    Class_Hierarchy_Analysis = true;
+    Class_Type_Analysis = false;
+}
 
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Finalize_Virtual_Function_Transform () {
+    if (Enable_Debug == true) {
+        fclose(Virtual_Whirls);
+        fclose(Transformed_Whirls);
+    }
+}
+
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Build_PU_NODE_INDEX_Map () {
+    IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+        IPA_NODE *method = cg_iter.Current();
+        if (method == NULL) 
+            continue;
+        PU_IDX pui = ST_pu(method->Func_ST());
+    
+        BOOL is_cxx = PU_cxx_lang(method->Get_PU());
+        if (!is_cxx)
+            continue;
+    
+        Is_True(pui >= PU_IDX_ZERO && pui < PU_Table_Size(), 
+                ("PUI index:%d not in range:%d <= indx < %d\n",
+                 pui, PU_IDX_ZERO, PU_Table_Size()));
+    
+        Is_True (pu_node_index_map.find(pui) == 
+                 pu_node_index_map.end(), 
+                 ("PU_IDX already in pu_node_index_map; %d -> %d; newly:%d -> %d\n",
+                  pui, pu_node_index_map[pui], 
+                  pui, method->Node_Index()));
+        pu_node_index_map[pui] = method->Node_Index();
+    }
+}
+
+int IPA_VIRTUAL_FUNCTION_TRANSFORM::Get_Callsite_Count (IPA_NODE* method) {
+    SUMMARY_PROCEDURE* method_summary = method->Summary_Proc();
+    SUMMARY_CALLSITE* callsite_array =
+        IPA_get_callsite_array(method) + 
+        method_summary->Get_callsite_index();
+    int count = method_summary->Get_callsite_count();
+    return count;
+}
+
+// Following two functions,Identify_Constructors, Get_Constructor_Type
+// are for collecting constructors from call graph
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Identify_Constructors () {
+    IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+        IPA_NODE *method = cg_iter.Current();
+        if (method == NULL) 
+            continue;
+    
+        BOOL is_cxx = PU_cxx_lang(method->Get_PU());
+        if (!is_cxx)
+            continue;
+
+        IPA_NODE_CONTEXT context(method);
+        PU_IDX pui = ST_pu(method->Func_ST());
+        SUMMARY_PROCEDURE* method_summary =
+            method->Summary_Proc();
+
+        SUMMARY_CALLSITE* callsite_array =
+            IPA_get_callsite_array(method) + 
+            method_summary->Get_callsite_index();
+        int count = Get_Callsite_Count(method);
+        while (count > 0) {
+            if (!callsite_array->Is_func_ptr() && 
+                !callsite_array->Is_intrinsic()) {
+                SUMMARY_SYMBOL *cons_sym = 
+                    IPA_get_symbol_array(method) +
+                    callsite_array->Get_symbol_index();
+                TY_INDEX constructor_class = 
+                    Get_Constructor_Type(cons_sym);
+                if (constructor_class != TY_IDX_ZERO) {
+                    if (Constructor_Map.find(constructor_class) == 
+                        Constructor_Map.end()) {
+                        ST_IDX func_st_idx = cons_sym->St_idx();
+                        ST *func_st = &St_Table[func_st_idx];
+                        PU_IDX cons_pui = ST_pu(func_st);
+                        Is_True (pui >= PU_IDX_ZERO && pui < PU_Table_Size(),
+                                 ("PUI of constructor:%d not in range:%s:%d\n",
+                                  pui, "0 <= pui < PU_Table_Size:",
+                                  PU_Table_Size()));
+
+                        if (pu_node_index_map.find(cons_pui) !=
+                            pu_node_index_map.end()) {
+                            Constructed_Types.insert(constructor_class);
+                            Constructor_Map[constructor_class] = cons_pui;
+                      } else {
+                          if (Enable_Debug == true) {
+                              if (pui < PU_IDX_ZERO || pui > PU_Table_Size()) 
+                                  printf ("IPA_fast_static_analysis_VF:%s %d %s %d",  
+                                          "Node's PU_IDX:", pui,
+                                          "not in range 0 <= idx <",
+                                           PU_Table_Size());
+                          }
+                      }
+                  } // We are required to be omitting automatic base class 
+                  // constructor calls. This code does it.
+                  // As PU_IS_CONSTRUCTOR flag is not set on 
+                  // them by the spin frontend we are automatically 
+                  // handling them in the above code.
+                  //
+                }
+            }
+            count--;
+            callsite_array++;
+        }
+    }
+}
+
+TY_INDEX IPA_VIRTUAL_FUNCTION_TRANSFORM::Get_Constructor_Type (
+        SUMMARY_SYMBOL* func_sym) {
     Is_True((ST_IDX_level(func_sym->St_idx()) <= GLOBAL_SYMTAB),
             ("SUMMARY_SYMBOL for function call not a global Symbol"));
 
-    {
-        ST_IDX func_st_idx = func_sym->St_idx();
-        ST *func_st = &St_Table[func_st_idx];
-        PU_IDX pui = ST_pu(func_st);
-        if (PU_is_constructor(Pu_Table[pui])) {
-            TY_IDX class_ty = PU_base_class(Pu_Table[pui]);
-            Is_True(TY_kind(class_ty) == KIND_STRUCT,
+    ST_IDX func_st_idx = func_sym->St_idx();
+    ST *func_st = &St_Table[func_st_idx];
+    PU_IDX pui = ST_pu(func_st);
+    if (PU_is_constructor(Pu_Table[pui])) {
+        TY_IDX class_ty = PU_base_class(Pu_Table[pui]);
+        Is_True(TY_kind(class_ty) == KIND_STRUCT,
                 ("Wrong base class."));
-            //printf ("symbol is global symbol:%s\n", 
-            //    ST_name(St_Table[func_sym->St_idx()]));
-            return TY_IDX_index(class_ty);
-        }
+        return TY_IDX_index(class_ty);
     }
     return TY_IDX_ZERO;
 }
-    typedef struct  {
-        WN* vtab;
-        ST_IDX fun_st_idx;
-        IPA_NODE * constructor;
-        size_t ancestor_offset;
-    } Shared_attr;
-    
 
-    void
-    fdump_st(FILE* afil, ST *st)
-    {
-        st->Print(afil);
-        switch (st->sym_class) {
-        case CLASS_BLOCK:
-            Blk_Table[st->u2.blk].Print (afil);
-            break;
-        case CLASS_FUNC:
-            Pu_Table[st->u2.pu].Print (afil);
-            break;
-        }
-    
+// This function IPA_VIRTUAL_FUNCTION_TRANSFORM::Prepare_Virtual_Function_Transform 
+// 1: builds the class hierarchy, 
+// 2: collects constructor calls from the call graph
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Prepare_Virtual_Function_Transform () {
+    IPA_Class_Hierarchy = Build_Class_Hierarchy (); 
+    Identify_Constructors ();
+}
+
+// This function does the crux of the work, find virtual function and transform them
+// after heuristic analysis
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Transform_Virtual_Functions () {
+    IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+        IPA_NODE *method = cg_iter.Current();
+        if (method == NULL) 
+            continue;
+
+        BOOL is_cxx = PU_cxx_lang(method->Get_PU());
+        if (!is_cxx)
+            continue;
+        Transform_Virtual_Functions_Per_Node (method);
     }
-    
-    ST_IDX
-    find_vfun(FILE *trace_multi, IPA_NODE* constructor, 
-            WN* vtab, size_t func_offset) {
-    
-        // I borrowed everything here from 
-        // the earlier developer.
-        IPA_NODE_CONTEXT context(constructor);
-        WN *pos = WN_kid0(vtab);
-        // vtab_st is the ST of vtable
-        ST *vtab_st = WN_st(pos);
-        // base_offset is the offset of vtable
-        UINT32 base_offset = WN_lda_offset(pos);
-    
-        // The ST for the VT is in the INIT
-        // region in WHIRL
-        // Find the INITO entry for the ST index
-        INITO_IDX inito_idx
-        = Find_inito_by_st(ST_st_idx(vtab_st));
-    
-        // There is an INITV for the vtab in INITO.
-        // We get the INITV entry to
-        // find the target function call
-        INITV_IDX initv_idx = INITO_val(inito_idx);
-        // The position of target function
-        // call in INITV is the entry
-        // at func_offset from base_offset.
-        // The Stroustrup paper on Multiple Inheritance,
-        // refered elsewhere in this file, describes a
-        // "naive" implementation for virtual functions
-        // that is costlier in space than what GCC uses.         
-        // Also you may need to brush up on virtual thunks
-        // for single/multiple inheritance.
-        // The wikipedia page on virtual functions
-        // is a good reference on the topic of how 
-        // the offsets come together.
-        // The implementation in GCC generates thunks and 
-        // using them cuts down on the virtual table sizes against the 
-        // naive implementation.
-        UINT32 offset = base_offset + func_offset;
-    
-        ST_IDX st_id = ST_IDX_ZERO;
-        if (initv_idx <= INITV_IDX_ZERO) {
-           // fprintf(trace_multi, "initv_idx_zero\n");
-            return ST_IDX_ZERO;
-        }
-        do {
-            if (offset == 0) {
-    #ifdef TARG_IA64
-                Is_True(INITV_kind(initv_idx)
-                        == INITVKIND_SYMIPLT,
-                        ("Wrong INITV for virtual function."));
-    #else
-                Is_True(INITV_kind(initv_idx)
-                        == INITVKIND_SYMOFF,
-                        ("Wrong INITV for virtual function."));
-    #endif
-                st_id = INITV_st(initv_idx);
-                break;
+}
+
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Transform_Virtual_Functions_Per_Node (
+        IPA_NODE *method) {
+    Is_True ((method != NULL), 
+             ("IPA_fast_static_analysis_VF:%s %s\n",
+              "Test method != NULL fails in", 
+              "Transform_Virtual_Functions_Per_Node"));
+    PU_IDX pui = ST_pu(method->Func_ST());
+    if (pu_node_index_map.find(pui) == pu_node_index_map.end()) {
+        //printf ("Skipping method:pu_node_index_map does not carry pui:%d\n",
+        //        pui);
+        return;
+    }
+    WN_IPA_MAP a_wn_ipa_map;
+    // This function maps virtual function whirlnodes in a method 
+    // to their WN_map_id.
+    // if there are no virtual functions in a method, 
+    // a_wn_ipa_map will be empty
+    Build_Virtual_Function_Whirl_Map (method, a_wn_ipa_map);
+
+    if (a_wn_ipa_map.size() != 0) {
+        // we have passed stage_1 test. i.e we have 
+        // a virtual function callsite in 'method'. 
+        int count = Get_Callsite_Count(method);
+        SUMMARY_PROCEDURE* method_summary = method->Summary_Proc();
+        SUMMARY_CALLSITE* callsite_array = IPA_get_callsite_array(method) + 
+            method_summary->Get_callsite_index();
+
+        list<VIRTUAL_FUNCTION_CANDIDATE> vcands;
+        // vf_object_instances is only used for getting debug data
+        hash_map <WN_MAP_ID, hash_set<TY_INDEX> > vf_object_instances;
+
+        while (count > 0) {
+            // 
+            // This is what we expect to do for
+            // virtual functions. For each virtual function
+            // site, ipl had added a sister call site
+            // with a call to a dummy_callee
+            // This dummy callsite precedes virtual function 
+            // callsite in callsite_array.
+            //
+            // 1: After this transformation we have an additional CALL
+            // instruction in the WHIRL for a 
+            // transformed WHIRL node. The dummy callsite
+            // is used to insert an edge into the call graph 
+            // for this additional CALL instruction. 
+            // 2: Many of the VFs may never get through the heuristics.
+            // If there are no replacements due to that, 
+            // there are going to be unused dummy callsites
+            // in the SUMMARY_CALLSITE* array used by
+            // the IPA_NODE. 
+            // 3: The virtual function ICALL WN* and 
+            // the callsite will always remain in WHIRL.
+            // 4: It should be noted that it is required to pass
+            // a SUMMARY_CALLSITE* to Add_New_Edge in order 
+            // to insert IPA_EDGEs into the IPA_CALL_GRAPH. 
+            // The actual WN* corresponding to the CALL
+            // instruction is not required. Thus we have a 
+            // somewhat disjoint representation
+            // for the IPA_CALL_GRAPH mainly because the graph
+            // is not directly tied to the WHIRL. 
+            // 
+            // Finally please note that we are decrementing 
+            // callsite count variable 2 times in
+            // every iteration in case the present 
+            // callsite is a dummy callsite
+            // 
+            SUMMARY_CALLSITE * dummy_cs = callsite_array;
+            callsite_array++;
+            count--;
+            if (count == 0) break;
+            if (dummy_cs->Is_virtual_function_target()) {
+                if (callsite_array->Is_virtual_call()) {
+                    SUMMARY_CALLSITE* callsite = callsite_array;
+                    if (Enable_Statistics == true) {
+                        Update_Class_Hierarchy_Depth(
+                            IPA_Class_Hierarchy->Num_Sub_Class_In_Hierarchy (TY_IDX_index(
+                                callsite->Get_virtual_class()))); 
+                    }
+                    if (a_wn_ipa_map.find(callsite->Get_map_id()) != 
+                            a_wn_ipa_map.end()) {
+                        hash_set<TY_INDEX> instance_set = 
+                            Identify_Instances_From_Subclass_Hierarchy (
+                                    TY_IDX_index( 
+                                        callsite->Get_virtual_class()));
+
+                        if (Class_Hierarchy_Analysis == true &&
+                            (IPA_Class_Hierarchy->Num_Sub_Class_In_Hierarchy (TY_IDX_index(
+                                 callsite->Get_virtual_class())) == 1)) {
+                            //
+                            // this is heuristic 1, 
+                            // `Class Hierarchy Analysis'
+                            // we check if num_subcls of
+                            // the declared_class is == 1, 
+                            // i.e. when the declared class 
+                            // is the same as the true class of the object.
+                            // Declared class is typically the 
+                            // type used during argument passing time and true 
+                            // class is the type used with the new operator 
+                            // at object creation time.
+                            VIRTUAL_FUNCTION_CANDIDATE vcand;
+                            vcand.Virtual_Table = (WN*) NULL;
+                            vcand.Transform_Function_ST_IDX = ST_IDX_ZERO;
+                            vcand.Caller = method;
+                            Identify_Virtual_Function (instance_set, 
+                                        callsite, vcand);
+                            // After Identify_Virtual_Function the 
+                            // vcand object will be containing the 
+                            // infered callee or ST_IDX_ZERO, 
+                            // in case of no inference
+                            if (vcand.Transform_Function_ST_IDX != 
+                                ST_IDX_ZERO) {
+                                // Now that we have infered a call target
+                                // and added that to vcand, 
+                                // we also fill vcand up 
+                                // rest of data that is used during 
+                                // transformation and finally push vcand into
+                                // a list, 'vcands', that holds all transform 
+                                // candidates.
+
+                                if (Enable_Statistics == true) {
+                                    Class_Hierarchy_Transform_Count++;
+                                }
+                                vcand.Virtual_Call_Site = callsite;
+                                vcand.Dummy_Call_Site = dummy_cs;
+                                vcand.Caller = method;
+                                vcands.push_back(vcand);
+                                if (Enable_Debug == true) {
+                                    // the set of classes that may been instantiated 
+                                    // is stored in vf_object_instances, which is
+                                    // used to get debug dumps only
+                                    vf_object_instances[callsite->Get_map_id()] = 
+                                            instance_set;
+                                }
+                            }
+                        } else if (Class_Type_Analysis == true && (instance_set.size() == 1)) {
+                            if (Enable_Statistics == true) {
+                                Update_Instances(instance_set.size());
+                            }
+
+                            // this is heuristic 2, 
+                            // `Class Type Analysis'. We check
+                            // if out of a class hierarchy only 
+                            // one instance is instantiated ever.
+                            VIRTUAL_FUNCTION_CANDIDATE vcand;
+                            vcand.Virtual_Table = (WN*) NULL;
+                            vcand.Transform_Function_ST_IDX = ST_IDX_ZERO;
+                            Identify_Virtual_Function (instance_set, 
+                                        callsite, vcand);
+                            // After Identify_Virtual_Function the 
+                            // vcand object will be containing the 
+                            // infered callee or ST_IDX_ZERO, 
+                            // in case of no inference
+                            if (vcand.Transform_Function_ST_IDX != 
+                                ST_IDX_ZERO) {
+                                // Now that we have infered a call target
+                                // and added that to vcand, 
+                                // we also fill vcand up 
+                                // rest of data that is used during 
+                                // transformation and finally push vcand into
+                                // a list, 'vcands', that holds all transform 
+                                // candidates.
+                                
+                                if (Enable_Statistics == true) {
+                                    Class_Instance_Transform_Count++;
+                                }
+                                vcand.Virtual_Call_Site = callsite;
+                                vcand.Dummy_Call_Site = dummy_cs;
+                                vcand.Caller = method;
+                                vcands.push_back(vcand);
+                                if (Enable_Debug == true) {
+                                    vf_object_instances[callsite->Get_map_id()] = 
+                                            instance_set;
+                                }
+                            }
+                        }
+                    }
+                    callsite_array++;
+                    count--;
+                }
             }
-            switch (INITV_kind(initv_idx)) {
+        }
+
+        // if analysis found some virtual functions
+        if (vcands.size() > 0) {
+            Node_Transform_Lists[method->Node_Index()] = vcands;
+            Node_Virtual_Function_Whirl_Map[method->Node_Index()] = 
+                a_wn_ipa_map;
+            if (Enable_Debug == true) {
+                Transform_Debug_Data[method->Node_Index()] = 
+                    vf_object_instances;
+            }
+            for (list <VIRTUAL_FUNCTION_CANDIDATE>::iterator  vc_cit = 
+                vcands.begin(); vc_cit != vcands.end(); ++vc_cit) {
+                // We could have done this right after
+                // the virtual function ST_IDX was found, 
+                // but I find this kind of check pointing useful 
+                // while debugging.
+                // Obviously this means we double traverse 
+                // but that is on a small list and the cost will not 
+                // be much.
+                VIRTUAL_FUNCTION_CANDIDATE vcand = *vc_cit;
+                Apply_Virtual_Function_Transform (vcand);
+            }
+        }
+    }
+}
+
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Apply_Virtual_Function_Transform (
+        VIRTUAL_FUNCTION_CANDIDATE vcand) {
+    //
+    // This function contains the "oracle based static dispatch" 
+    // function calling scheme.  We add code to load the ST
+    // entry of the virtual table at this callsite and during run time,
+    // compare if the same virtual table is used by the object.
+    // Depending on the compare we take the if-then or if-else. 
+    //
+    IPA_NODE *method = vcand.Caller;
+    SUMMARY_CALLSITE *callsite = vcand.Virtual_Call_Site;
+    SUMMARY_CALLSITE *dummy_cs = vcand.Dummy_Call_Site;
+    WN *vtab = vcand.Virtual_Table;
+
+    IPA_NODE_CONTEXT context(method);
+    if (Node_Virtual_Function_Whirl_Map.find (method->Node_Index()) == 
+        Node_Virtual_Function_Whirl_Map.end()) {
+       return;
+    } else {
+        hash_map<WN_MAP_ID, WN*> wn_map = (Node_Virtual_Function_Whirl_Map.find(
+             method->Node_Index()))->second;
+        if ( wn_map.size() == 0) {
+            return;
+        }
+    }
+
+    hash_map<WN_MAP_ID, WN*> wn_map = 
+        Node_Virtual_Function_Whirl_Map[method->Node_Index()];
+            
+    ST_IDX calle_st = vcand.Transform_Function_ST_IDX;
+    ST *callee_st = ST_ptr (calle_st);
+    PU_IDX pui = ST_pu(callee_st);
+    if (pu_node_index_map.find(pui) == pu_node_index_map.end()) {
+        return;
+     }
+
+     for(UINT edg_i = 0; edg_i < IPA_Call_Graph->Edge_Size(); 
+         ++ edg_i) {
+         if (IPA_Call_Graph->Caller(
+              IPA_Call_Graph->Edge(edg_i)) == method) {
+            if (IPA_Call_Graph->Edge(edg_i)->Summary_Callsite()
+                 == dummy_cs) {
+                return;
+            }
+        }
+    }
+
+    NODE_INDEX callee_nod_idx = AUX_PU_node(Aux_Pu_Table[ST_pu(callee_st)]);
+
+    if (callee_nod_idx == INVALID_NODE_INDEX) {
+        return;
+    }
+
+    TY_IDX ty_callee = ST_pu_type (callee_st);
+    Is_True ((!(ty_callee <= TY_IDX_ZERO && ty_callee > TY_Table_Size())),
+             ("TY_IDX:%d is not in range:(%d %d)", 
+              ty_callee, TY_IDX_ZERO, TY_Table_Size()));
+
+     WN *old_wn = wn_map[callsite->Get_map_id()];
+
+     Is_True (WN_operator_is(old_wn, OPR_ICALL), 
+              ("Transformation only for ICALL"));
+
+     if (Enable_Debug == true) {   
+         fprintf (Transformed_Whirls, "Going to transform... \n");
+         fprintf (Transformed_Whirls, "Caller->Total_Succ():%d", 
+                   method->Total_Succ());
+         fdump_tree (Transformed_Whirls, method->Whirl_Tree(TRUE));
+     }
+ 
+     WN_verifier (method->Whirl_Tree(TRUE));
+
+     WN *copy_lda = WN_CreateLda (Use_32_Bit_Pointers ? 
+                    OPC_U4LDA : OPC_U8LDA,
+                    0, Make_Pointer_Type (ty_callee), 
+                    WN_st(WN_kid(vtab,0)));
+
+     WN *new_wn = WN_generic_call (OPR_CALL,
+                                 WN_rtype(old_wn),
+                                 /* result type is same as old_wn */
+                                 WN_desc(old_wn),  /*  */
+                                 WN_kid_count(old_wn)-1,
+                                 callee_st);
+
+
+     WN *block = WN_Get_Parent (old_wn,
+                                method->Parent_Map(),
+                                method->Map_Table());
+     for (size_t j = 0; j < WN_kid_count(new_wn); j++) {
+          WN_kid(new_wn,j) = WN_COPY_Tree_With_Map(WN_kid(old_wn,j));
+     }
+
+     WN* copy_load = WN_COPY_Tree_With_Map(WN_kid(WN_kid(old_wn,
+                                    WN_kid_count(old_wn)-1),
+                                     0));
+
+     OPCODE incopcode = OPCODE_make_op(OPR_SUB, 
+                            WN_rtype(copy_load),MTYPE_V);
+     WN * sub_op = WN_CreateExp2 (incopcode, 
+                            WN_COPY_Tree_With_Map(copy_load),
+                            WN_CreateIntconst(OPC_I4INTCONST,
+                            (WN_lda_offset(WN_kid0(vtab)))));
+
+     WN *cmp = WN_Create (Use_32_Bit_Pointers?
+                          OPC_U4U4EQ:OPC_U8U8EQ,2);
+
+     WN_kid0(cmp) = copy_lda;
+     WN_kid1(cmp) = sub_op;
+
+     WN *then_blk = WN_CreateBlock();
+     WN *else_blk = WN_CreateBlock();
+     WN* if_type = WN_CreateIf (cmp, then_blk, else_blk);
+     WN* aold_wn = WN_COPY_Tree_With_Map (old_wn);
+
+     WN_INSERT_BlockLast (then_blk, new_wn);
+     WN_INSERT_BlockLast (else_blk, aold_wn);
+
+     for (WN* stmt = WN_next (old_wn); stmt != NULL && 
+             Is_Return_Store_Stmt (stmt);) {
+         WN_INSERT_BlockLast (then_blk, WN_COPY_Tree(stmt));
+         WN_INSERT_BlockLast (else_blk, WN_COPY_Tree(stmt));
+         WN * ret_wn = stmt;
+         stmt = WN_next (stmt);
+         WN_EXTRACT_FromBlock (block, ret_wn);
+     }
+
+     if (Enable_Profile == true) {
+          // 
+          // This code is used for profiling only. This is not 
+          // a production feature.
+          // we load from extern variable miss_vf, hit_vf
+          // increment and store back to the same location 
+          // these load/stores are to two arrays
+          // else block gets missed load/store
+          // if-then block gets hits load/store
+          //
+          if (Hit_ST_IDX != ST_IDX_ZERO && Miss_ST_IDX != ST_IDX_ZERO) {
+               // hit part
+               // must use ldid instead???
+               ST *Hit_st = &St_Table (GLOBAL_SYMTAB, Hit_ST_IDX);
+               ST *Miss_st = &St_Table (GLOBAL_SYMTAB, Miss_ST_IDX);
+               TY_IDX pty_idx = Make_Pointer_Type (ST_type(Hit_st), FALSE);
+               WN *hit_ldid = WN_Ldid (MTYPE_I4, 
+                            (WN_OFFSET)(Num_VFs_Count*4), Hit_st, 
+                            ST_type(Hit_st));
+               WN *miss_ldid = WN_Ldid (MTYPE_I4, 
+                            (WN_OFFSET)(Num_VFs_Count*4), Miss_st, 
+                            ST_type(Miss_st));
+               OPCODE myaddopcode = OPCODE_make_op (OPR_ADD,
+                            MTYPE_U8,MTYPE_V);
+               WN *hit_add_op = WN_CreateExp2 (myaddopcode,
+                                         hit_ldid,
+                                         WN_CreateIntconst(
+                                            OPC_I4INTCONST, 1));
+               WN *miss_add_op = WN_CreateExp2 (myaddopcode,
+                                         miss_ldid,
+                                         WN_CreateIntconst (
+                                            OPC_I4INTCONST, 1));
+               WN *hit_store = WN_Stid (MTYPE_I4, 
+                            (WN_OFFSET)(Num_VFs_Count*4), Hit_st,
+                            ST_type(Hit_st), hit_add_op);
+               WN *miss_store = WN_Stid (MTYPE_I4, 
+                            (WN_OFFSET)(Num_VFs_Count*4), Miss_st,
+                            ST_type(Miss_st), miss_add_op);
+               WN_INSERT_BlockLast (then_blk,hit_store);
+               WN_INSERT_BlockLast (else_blk,miss_store);
+               list <string> mytags;
+               mytags.push_back (string(method->Name()));
+               mytags.push_back (string(ST_name(callee_st)));
+               Miss_Hit_Tag[Num_VFs_Count] = mytags;
+        }
+    }
+
+    WN_Parentize (then_blk, method->Parent_Map(),
+                  method->Map_Table());
+    WN_Parentize (else_blk, method->Parent_Map(),
+                  method->Map_Table());
+
+    WN_set_map_id(new_wn, WN_map_id(old_wn));
+    WN_set_flag(new_wn, WN_flag(old_wn));
+
+    WN_INSERT_BlockAfter(block,old_wn,if_type);
+    WN_EXTRACT_FromBlock(block, old_wn);
+    WN_Parentize (block, method->Parent_Map(), method->Map_Table());
+
+    // Now fix_up_only will update this dummy callsite as well.
+    dummy_cs->Reset_virtual_function_target();
+    dummy_cs->Reset_func_ptr();
+    dummy_cs->Set_param_count(WN_num_actuals(new_wn));
+    dummy_cs->Set_return_type(WN_rtype(new_wn));
+    //dummy_cs->Set_callsite_freq();
+    // 
+    // We dont have use for probability at all 
+    // in this transformation. If I 
+    // dont set probability to -1, the inliner 
+    // skips this edge. 
+    // 
+    dummy_cs->Set_probability(-1);
+
+    // set the symbol index of the inferred function on 
+    // the dummy callsite
+    method->Set_Pending_Virtual_Functions();
+    IPA_NODE* callee_ipa_node = IPA_Call_Graph->Node(callee_nod_idx);
+    SUMMARY_PROCEDURE* proc_summ_callee = 
+                callee_ipa_node->Summary_Proc();
+    dummy_cs->Set_symbol_index(proc_summ_callee->Get_symbol_index());
+            
+    // update call graph
+            
+    IPA_EDGE* edge = IPA_Call_Graph->Add_New_Edge(dummy_cs,
+                             method->Node_Index(),
+                             pu_node_index_map[ST_pu(callee_st)]);
+    edge->Set_Whirl_Node(new_wn); 
+
+    // verify if the whirl_tree is proper after my insertions into it
+    WN_verifier(method->Whirl_Tree(TRUE));
+
+    if (Enable_Profile == true || 
+        Enable_Statistics == true) { 
+        Num_VFs_Count ++;
+    }
+    if (Enable_Profile == true ||
+        Enable_Statistics == true ||
+        Enable_Debug == true) {
+        Optimized_Methods_By_NODE_INDEX[method->Node_Index()] = 
+            method;
+    }
+
+    if (Enable_Debug == true) {   
+        fprintf (Transformed_Whirls, "After transformation...\n");
+        fdump_tree (Transformed_Whirls, method->Whirl_Tree(TRUE));
+        fprintf (Transformed_Whirls, "Caller->Total_Succ():%d", 
+        method->Total_Succ());
+        fprintf (Transformed_Whirls, "...done\n");
+    }
+}
+
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Update_Class_Hierarchy_Depth(int index) {
+    Class_Hierarchy_Depth[index] = Class_Hierarchy_Depth[index] + 1;
+}
+        
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Update_Instances (int index) {
+    Num_Instances[index] = Num_Instances[index] + 1;
+}
+
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Build_Virtual_Function_Whirl_Map (
+    IPA_NODE *method, WN_IPA_MAP& a_wn_ipa_map) {
+    IPA_NODE_CONTEXT context(method);
+    WN *wn_start = method->Whirl_Tree(TRUE);
+    Is_True(wn_start, ("IPA_fast_static_analysis_VF: Whirl node is empty."));
+    //
+    // Walk over the whirl nodes in the Whirl_Tree of a node and
+    // check if a WHIRL node is a virtual function call or not.
+    // If WN* is a virtual function,
+    // map it into argument WN_IPA_MAP& using the WN*'s 
+    // map_id as hashmap's key.
+    // 
+    for (WN_ITER *wni = WN_WALK_StmtIter(wn_start);
+         wni != NULL; wni = WN_WALK_StmtNext(wni)) {
+        WN *wn = WN_ITER_wn(wni);
+        if (WN_operator(wn) == OPR_ICALL) {
+            if (WN_Call_Is_Virtual(wn)) {
+                if (Enable_Debug == true) {
+                    method->Print(Virtual_Whirls);
+                    fprintf(Virtual_Whirls, 
+                            "------ mapid:%d\n ------",
+                            WN_map_id(wn));
+                    fdump_tree(Virtual_Whirls, wn);
+                }
+                Is_True(a_wn_ipa_map.find(WN_map_id(wn)) == 
+                        a_wn_ipa_map.end(), 
+                        ("Whirl map id conflicts in wn_map"));
+                a_wn_ipa_map[WN_map_id(wn)] = wn;
+            }
+        }
+    }
+}
+
+hash_set<TY_INDEX> 
+    IPA_VIRTUAL_FUNCTION_TRANSFORM::Identify_Instances_From_Subclass_Hierarchy (
+        TY_INDEX declared_class) {
+    hash_set<TY_INDEX> targets;
+    hash_set <TY_INDEX> inter_set;
+    IPA_Class_Hierarchy->Get_Sub_Class_Hierarchy (declared_class, targets);
+    for (hash_set<TY_INDEX>::iterator tg_it = 
+         targets.begin();
+         tg_it != targets.end();
+         ++tg_it) {
+        if (Constructed_Types.find(*tg_it) != Constructed_Types.end()) {
+            inter_set.insert(*tg_it);
+        }
+    }
+    return inter_set;
+}
+
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Identify_Virtual_Function (
+            hash_set<TY_INDEX> constructed_types_set, 
+            SUMMARY_CALLSITE *callsite,
+            VIRTUAL_FUNCTION_CANDIDATE& vcand) {
+    //
+    // The following is borrowed directly from the 
+    // earlier developer's work.
+    // "Multiple Inheritance for C++", 
+    // Bjarne Stroustrup, May 1999 issue of "The C/C++ Users Journal"
+    // is a very useful read to begin with.
+    // Available on citeseer: 
+    // http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.36.8766
+    // More recent information is in Wikipedia: 
+    // http://en.wikipedia.org/wiki/Virtual_function_table
+    // These contain C++ specifics on class
+    // instance data layout in memory. 
+    // 1: A virtual table is shared by all instances of a class.
+    // 2: Each subtype has its own virtual table.
+    // 3: First element in an instance will be the rooting base
+    // class/true class's virtual pointer, 
+    // if virtual functions are used in the class hierarchy. 
+    // Virtual table pointers are shared between the root base class and 
+    // the true type of the object. The second entry in the object 
+    // memory layout will be first data 
+    // member in base class, followed by second, etc, and after
+    // exhausting the base class, entries are the
+    // virtual table pointer and data members of subclasses 
+    // of base class and then their children and so on. 
+    // Thus the data layout goes recursively first from the 
+    // root of the class hierarchy refered earlier 
+    // as the rooting base class.
+    // 4: In case of multiple inheritance 
+    // the layout is depth first on the specified inheritance order.
+    // 5: Implicit typecasting: When object pointers are passed 
+    // using typecasting to a base 
+    // in order to support polymorphism via virtual functions, 
+    // we see that the callee requires
+    // a 'this' pointer that looks like the base type or declared type 
+    // in the function parameter and not a subtype of the 
+    // declared type. So in order to support this type casting, 
+    // C++ offsets the pointer of subtype object, and
+    // passes the offseted pointer as though it actually
+    // is a type of the declared class. When there is a call
+    // to a virtual function call the dynamically
+    // resolved virtual function expects the original subtype class.
+    // That is an uncast is necessary to make virtual function calls 
+    // with an 'this' pointer to instance of the subtype class. 
+    // To ensure this 'thunks' are used under the covers in G++. 
+    // Thunks are used in both single and multiple inheritance scenarios.
+    // 
+    // Open64 does not need to do any of this work either to set up 
+    // the virtual table or to set up data layout of objects. 
+    // These are handled by the GCC frontend. open64 faithfully
+    // brings this data from the GCC frontend 
+    // into TY_Tab, Inito, Initvs etc.
+    // 
+    // Sometimes it helps to read the following with 
+    // a pen/paper and a print of the 
+    // Ty_Tab, Initv, Inito etc 
+    // symbol tables of your test file
+    //  
+    // 1: formal_class is also called as the declared class
+    // 2: callsite->Get_vtable_offset() 
+    // is the vtable offset at the callsite. 
+    // The virtual function is at this 
+    // offset in the virtual table. 
+    // The virtual table pointer is always 
+    // the first entry in an object. 
+    // 3: formal_vptr_offset is the offset to get
+    // the correct virtual table, nonzero only when
+    // multiple inheritance is used 
+    // and when the declared class is subtype 
+    // using multiple inheritance.
+    // Another requirement to have a non-zero formal_vptr_offset
+    // is that the virtual function is existing
+    // in a virtual table that is niether in the true class nor in the 
+    // first base in the inheritance order, 
+    // and is beyond these two, i.e. in the second or third etc. 
+    // Remember that the object layout of the 
+    // leaf class is in depth first order 
+    // of the inherited bases. Also remember that 
+    // the virtual table that is  as the first element 
+    // can only be used directly in situations 
+    // when the 'true' class is either the 'declared' class 
+    // or when the virtual function resides in virtual table of
+    // the first base of the true class.
+    // But here the virtual function is in the virtual table of the 
+    // second base or the third base etc. 
+    // We need to get the pointer of the virtual 
+    // table in the particular base to resolve the function.
+    // For that we use another offset from this
+    // "incorrect" virtual table pointer to resolve to the 
+    // correct virtual table. This offset is called
+    // formal_vptr_offset here. 
+    // After we get the virtual table
+    // we can use the callsite->Get_vtable_offset() 
+    // to reach the exact virtual function.
+    // For ex, if the inheritance is like so:
+    // BarFoo:Bar, Foo. Assume that we call 
+    // a certain method which is defined in Foo.
+    // Assume that the declared class at the 
+    // calling site is BarFoo.
+    // The virtual table pointer for Foo will be at 
+    // formal_vptr_offset offset from 
+    // the virtual pointer of BarFoo.
+    // Summarizing, if the declared class is known to be 
+    // BarFoo, we need to offset the object by formal_vptr_offset 
+    // to obtain the virtual table of Foo and use 
+    // callsite->Get_vtable_offset 
+    // to obtain a function reference in the virtual table.
+    // 4:ancestor_offset:
+    // Extending the same example is helpful in describing
+    // another offset called ancestor_offset and how that relates 
+    // to the rest of the offsets. 
+    // If the 'true' class of the object is a subclass of BarFoo, 
+    // we use the ancestor_offset to resolve
+    // to the correct virtual table. This ancestor_offset 
+    // is used only during our analysis to locate the virtual table.  
+    // Note the while the rest of the offsets are used 
+    // during a virtual function call at runtime, 
+    // the ancestor class is not required at runtime. 
+    // It is required by us here because we start our 
+    // search for the virtual table using constructors
+    // of true types and try to find the
+    // actual function using the formal_vptr_offset
+    // and the ancestor_offset. 
+    // Ancestor offset is computed by summing 
+    // sizes of data members of classes that 
+    // are along the path from the constructor class
+    // to the ancestor which is refered to as 
+    // formal_class or declared class in here.
+    // 
+    // To get a complete handle on all of this 
+    // you need to understand the paper by 
+    // C++ Stroustrup on Multiple inheritance, 
+    // wikipedia page on Thunks and in general understand 
+    // how virtual function resolution happens at run time. 
+    // The Stroustrup paper on Multiple Inheritance
+    // describes a "naive" implementation for virtual table
+    // that is costlier in space than what GCC uses.         
+    // The implementation in GCC generates thunks and 
+    // using them cuts down on the virtual table sizes against the 
+    // naive implementation. Please contact us through 
+    // the appropriate forum in case you have comments. 
+    // 
+    TY_INDEX formal_class = 
+        TY_IDX_index(callsite->Get_virtual_class());
+    UINT64 formal_vptr_offset =
+        callsite->Get_vptr_offset();
+    for (hash_set<TY_INDEX>::iterator cons_it = 
+         constructed_types_set.begin(); 
+         cons_it != constructed_types_set.end();
+         ++cons_it) {
+        TY_INDEX cons_ty = *cons_it;
+        Is_True (constructor_map.find(cons_ty) != 
+                 constructor_map.end(),
+                 ("IPA_fast_static_analysis_VF:Constructor_map does not carry pui for type"));
+        Is_True (pu_node_index_map.find(constructor_map[cons_ty]) !=
+                 pu_node_index_map.end(),
+                 ("IPA_fast_static_analysis_VF:PU_node_index_map does not carry node index for pui"));
+
+        size_t ancestor_offset
+            = IPA_Class_Hierarchy->Get_Ancestor_Offset(
+                       cons_ty, formal_class);
+
+        IPA_NODE * constructor = IPA_Call_Graph->Node(
+             pu_node_index_map[Constructor_Map[cons_ty]]);
+
+        Is_True (constructor != NULL,
+                 ("IPA_fast_static_analysis_VF: Constructor Node is not found in call graph"));
+
+        IPA_NODE_CONTEXT context(constructor);
+        WN *vtab = NULL;
+        WN *wn_start = constructor->Whirl_Tree(TRUE);
+        for (WN_ITER *wni = WN_WALK_StmtIter(wn_start);
+             wni != NULL;
+             wni = WN_WALK_StmtNext(wni)) {
+            WN *wn = WN_ITER_wn(wni);
+            if (WN_operator(wn) == OPR_ISTORE) {
+                WN *rhs = WN_kid0(wn);
+                WN *lhs = WN_kid1(wn);
+                UINT64 add_ofst = 0;
+                if (WN_operator(lhs) == OPR_ADD) {
+                    if (WN_operator(WN_kid1(lhs)) == OPR_INTCONST) {
+                        add_ofst = WN_const_val(WN_kid1(lhs));
+                        lhs = WN_kid0(lhs);
+                    } else {
+                        continue;
+                    }
+                }
+                if (WN_operator(rhs) == OPR_LDA && 
+                    WN_operator(lhs) == OPR_LDID) {
+
+                    TY_IDX this_class_ptr = ST_type(WN_st(lhs));
+                    if (TY_kind(this_class_ptr) != KIND_POINTER)
+                        continue;
+
+                    TY_IDX this_class = TY_pointed(this_class_ptr);
+                    if (TY_IDX_index(this_class) == cons_ty) {
+                        // Find the field by the
+                        // statement in constructor
+                        UINT64 ofst = WN_store_offset(wn) + add_ofst;
+                        // If they are matched, this
+                        // statement indicates the
+                        // vtable of the actual class
+                        if (ofst == ancestor_offset + formal_vptr_offset) {
+                            vtab = wn;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (vtab != NULL) {
+            size_t func_offset = callsite->Get_vtable_offset();
+            vcand.Virtual_Table = vtab;
+            Locate_Virtual_Function_In_Virtual_Table (constructor, 
+                    vtab, func_offset, vcand);
+        }
+    }
+}
+
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Locate_Virtual_Function_In_Virtual_Table (
+    IPA_NODE *constructor,
+    WN* vtab, size_t func_offset, 
+    VIRTUAL_FUNCTION_CANDIDATE& vcand) {
+    
+    // I borrowed everything here from 
+    // the earlier developer.
+    IPA_NODE_CONTEXT context(constructor);
+    WN *pos = WN_kid0(vtab);
+    // vtab_st is the ST of vtable
+    ST *vtab_st = WN_st(pos);
+    // base_offset is the offset of vtable
+    UINT32 base_offset = WN_lda_offset(pos);
+    
+    // The ST for the virtual table is in the INITO/INITV
+    // regions in WHIRL
+    // Find the INITO entry for the ST index
+    INITO_IDX inito_idx = Find_inito_by_st(ST_st_idx(vtab_st));
+    // There is an INITV for the virtual table in INITO.
+    // We get the INITV entry to look up the virtual table
+    INITV_IDX initv_idx = INITO_val(inito_idx);
+    // The position of target function
+    // call in the virtual table INITV is the entry
+    // at func_offset from base_offset. 
+    UINT32 offset = base_offset + func_offset;
+    ST_IDX st_id = ST_IDX_ZERO;
+    if (initv_idx <= INITV_IDX_ZERO) {
+        return;
+    }
+    do {
+        if (offset == 0) {
+    #ifdef TARG_IA64
+            Is_True(INITV_kind(initv_idx) == INITVKIND_SYMIPLT,
+                    ("Wrong INITV for virtual function."));
+    #else
+            Is_True(INITV_kind(initv_idx) == INITVKIND_SYMOFF,
+                    ("Wrong INITV for virtual function."));
+    #endif
+            st_id = INITV_st(initv_idx);
+            break;
+        }
+        switch (INITV_kind(initv_idx)) {
             case INITVKIND_BLOCK:
                 initv_idx = INITV_blk(initv_idx);
                 break;
@@ -781,1167 +1657,162 @@ TY_INDEX get_constructor_type (SUMMARY_SYMBOL* func_sym) {
             default:
                 Is_True(FALSE, ("Unexcepted INITV kind."));
             }
-        } while (initv_idx > INITV_IDX_ZERO);
-        return st_id;
-    }
+    } while (initv_idx > INITV_IDX_ZERO);
+    vcand.Transform_Function_ST_IDX = st_id;
+}
 
-    class WN_IPA_MAP {
-        public:
-            hash_map <WN_MAP_ID, WN *> wn_map;
-            IPA_NODE *ipa_node;
-    } ;
-
-    private:
-
-        // we set class_hierarchy_analysis to true if we want CHA, Class Hierarchy Analysis
-        // we set class_type_analysis to true if we want CTA or Class Type Analysis
-        // we set both to true to enable both.
-        bool class_hierarchy_analysis, class_type_analysis;
-        bool i_must_debug;
-        ST_IDX miss_st, hit_st;
-        hash_map <PU_IDX, NODE_INDEX> pu_node_index_map;
-        hash_map <NODE_INDEX, WN_IPA_MAP> node_idx_virt_funs;
-        hash_map <NODE_INDEX, list<SUMMARY_CALLSITE *> > node_idx_vf_callsites;
-        hash_map <NODE_INDEX, IPA_NODE*> opti_cand;
-        hash_map <int, int > num_instances;
-        hash_map <int, int > num_true_classes;
-        hash_map <int, list<string> > miss_hit_tag;
-
-        void update_true_classes(int index) {
-            num_true_classes[index] = num_true_classes[index] + 1;
-        }
-        
-        void update_instances (int index) {
-            num_instances[index] = num_instances[index] + 1;
-        }
-
-        int heur1, heur2;
-        hash_set <TY_INDEX> constructed_types;
-        hash_map <TY_INDEX, PU_IDX> constructor_map;
-
-        typedef hash_map <NODE_INDEX, hash_map <WN_MAP_ID, hash_set<TY_INDEX> > > VF_GLOBAL_TYPE;
-        VF_GLOBAL_TYPE method_vf_data;
-
-        //
-        // After analyze_VF is called, these must contain all
-        // that we need.
-        //
-
-        typedef struct {
-            ST_IDX vfun;
-            WN* vtab;
-        } VTAB_HANDLE_H;
-
-        // We do not need to have a hash_map, hash_set in 
-        // this data structure. The code adds only one entry
-        // to both of them. I got to change this struct to 
-        // something meaningful.
-        typedef struct {
-            hash_map<TY_INDEX, VTAB_HANDLE_H> vtab_h;
-            hash_set<ST_IDX> sts;
-        } VTAB_CONS; 
-
-        // VTAB_CONS is a table indexed by each class, 
-        // from the VTAB's inheritance graph, from which objects 
-        // are instantiated
-
-        FILE *virtual_whirls;
-        FILE *transform_whirls;
-        int num_vfs_count;
-    public:
-        void trace_cg() {
-     	  FILE *tmp_call_graph = fopen("cg_dump.log", "w");
-
-    	  if(tmp_call_graph != NULL) {	  
-    	    fprintf(stdout, "\t+++++++++++++++++++++++++++++++++++++++\n");
-	    // KEY
-  	    IPA_Call_Graph->Print_vobose(stdout);
-    	    fprintf(stdout, "\t+++++++++++++++++++++++++++++++++++++++\n");
-	      }
-    	  fclose(tmp_call_graph);
-        }
-
-        void fixup_only () {
-            IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
-            for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
-                IPA_NODE *method = cg_iter.Current();
-                if (method == NULL) 
-                    continue;
-                // TODO: add is_c check as well.
-                BOOL is_fortran = PU_f77_lang(method->Get_PU()) ||
-                                  PU_f90_lang(method->Get_PU());
-                if (is_fortran)
-                    continue;
-                fix_callsites(method);
-            }
-        }
- 
-        void analyze_VFs() {
-            IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
-            for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
-                IPA_NODE *method = cg_iter.Current();
-                if (method == NULL) 
-                    continue;
-                BOOL is_fortran = PU_f77_lang(method->Get_PU()) ||
-                                  PU_f90_lang(method->Get_PU());
-                if (is_fortran)
-                    continue;
-                analyze_and_transform_VF (method);
-            }
-        }
-
-        void print_stat() {
-            printf("Number of vf callees that can be statically replaced: %d\n", 
-                    num_vfs_count);
-            printf("Number of vf callsites caught by heuristic 1: %d\n", 
-                    heur1);
-            printf("Number of vf callsites caught by heuristic 2: %d\n",
-                    heur2);
-        }
-
-        void miss_hit_profile() {
-            if(hit_st != ST_IDX_ZERO && miss_st != ST_IDX_ZERO) {
-                FILE *csvfile = fopen("miss_hit_profile.csv", "w");
-                for (hash_map<int, list<string> >::iterator mhmi =
-                        miss_hit_tag.begin();
-                        mhmi != miss_hit_tag.end();
-                        ++mhmi) {
-                    int id_num = mhmi->first;
-                    list<string> str_lis = mhmi->second;
-                    fprintf (csvfile, "%d,", id_num);
-                    for (list<string>::iterator myns = str_lis.begin(); 
-                            myns != str_lis.end(); ++myns) 
-                        fprintf(csvfile, "%s,", (*myns).c_str());
-                    fprintf (csvfile, "\n");
-                }
-                fclose(csvfile);
-            }
-        }
-        void histogram_stat() {
-            if ((num_true_classes.size() != 0) 
-                    || (num_instances.size() != 0)) {
-           
-                FILE *csvfile = fopen ("vf_class_hist.csv", "w");
-                printf ("Number of true classes:%d\n", num_true_classes.size());
-                fprintf (csvfile, "%s,%s",
-                     "\"Number of True classes\"",
-                     "\"Number of virtual function callsites\"\n");
-                for (hash_map<int, int>::iterator trcit = num_true_classes.begin();
-                    trcit != num_true_classes.end();
-                    ++trcit) {
-                    int trval = trcit->first;
-                    int numvf = trcit->second;
-                    fprintf(csvfile, "%d,%d\n", trval, numvf);
-                }
-
-                printf ("Number of instance classes:%d\n", num_instances.size());
-
-                fprintf (csvfile, "%s,%s",
-                    "\"Number of instance classes\"", 
-                    "\"Number of virtual function callsites\"\n");
-                for (hash_map<int,int>::iterator incit = num_instances.begin();
-                    incit != num_instances.end();
-                    ++incit) {
-                    int inval = incit->first;
-                    int numvf = incit->second;
-                    fprintf(csvfile, "%d,%d\n", inval, numvf);
-                }
-                fclose(csvfile);
-            }
-        }
-
-        void dump_constructors () {
-            FILE *fp = fopen("constructors.log", "w");
-            for (hash_map<TY_INDEX, PU_IDX>::iterator cm_it = constructor_map.begin();
-                    cm_it != constructor_map.end(); ++cm_it) {
-                TY_INDEX ty_indx = cm_it->first;
-                PU_IDX pu_indx = cm_it->second;
-                fprintf (fp, "type of constructor:\n");
-                Ty_tab[ty_indx].Print(fp);
-                fprintf (fp, "PU of constructor:\n");
-                Pu_Table[pu_indx].Print(fp);
-                //fprintf (stdout, "type of constructor:\n");
-                //Ty_tab[ty_indx].Print(stdout);
-                //fprintf (stdout, "PU of constructor:%d\n", pu_indx);
-                //Pu_Table[pu_indx].Print(stdout);
-                IPA_NODE *constructor =
-                   IPA_Call_Graph->Node (pu_node_index_map[pu_indx]);
-                if (constructor != NULL) {
-                    IPA_NODE_CONTEXT context(constructor);
-                    fprintf(fp, "WHIRL of constructor:\n");
-                    //fdump_tree(stdout,constructor->Whirl_Tree(TRUE));
-                    fdump_tree(fp,constructor->Whirl_Tree(TRUE));
-                } else {
-                    fprintf(fp, "WHIRL of constructor: NOT_FOUND!\n");
-                }
-                 
-                fprintf (fp, "-\n");
-            }
-            fclose(fp);
-        }
-
-        void dump_VF_optset() {
-            FILE *fp = fopen("vf_opt_set.log", "w");
-            for (VF_GLOBAL_TYPE::iterator vf_it = method_vf_data.begin();
-                 vf_it != method_vf_data.end(); ++vf_it) {
-                NODE_INDEX nod_indx = vf_it->first;
-                hash_map<WN_MAP_ID, hash_set<TY_INDEX> > wn_map_constrs = vf_it->second;
-                {
-                    IPA_NODE* method = opti_cand[nod_indx];
-                    IPA_NODE_CONTEXT context(method);
-                    fprintf (fp, "WHIRL of caller:\n");
-                    fdump_tree(fp, method->Whirl_Tree(TRUE));
-                    fprintf (fp, "@WHIRL of caller ends_here\n");
-
-                    for (hash_map<WN_MAP_ID, hash_set<TY_INDEX> >::iterator vf_wn_it 
-                            = wn_map_constrs.begin(); vf_wn_it != wn_map_constrs.end();
-                            ++vf_wn_it) {
-                        fprintf (fp, "VF in WHIRL which can be optimized:\n");
-                        WN_MAP_ID wn_id = vf_wn_it->first;
-                        hash_set<TY_INDEX> vf_obj_types = vf_wn_it->second;
-                        WN_IPA_MAP a_wn_map = node_idx_virt_funs[method->Node_Index()];
-                        fdump_tree(fp, a_wn_map.wn_map[wn_id]);
-                        fprintf (fp, "@VF in WHIRL which can be optimized ends_here\n");
-                        fprintf (fp, "VF is accessed by these constructed objects:\n");
-                        for (hash_set<TY_INDEX>::iterator vf_obj_it = vf_obj_types.begin();
-                                vf_obj_it != vf_obj_types.end(); ++vf_obj_it) {
-                            TY_INDEX ty_indx = *vf_obj_it;
-                            Ty_tab[ty_indx].Print(fp);
-                            {
-                                PU_IDX pu_indx = constructor_map[ty_indx];
-                                fprintf (fp, "PU of constructor:\n");
-                                Pu_Table[pu_indx].Print(fp);
-                                IPA_NODE *constructor =
-                                   IPA_Call_Graph->Node (pu_node_index_map[pu_indx]);
-                                {
-                                    IPA_NODE_CONTEXT context(constructor);
-                                    fprintf (fp, "WHIRL of constructor\n");
-                                    fdump_tree(fp,constructor->Whirl_Tree(TRUE));
-                                    fprintf (fp, "@WHIRL of constructor ends_here\n");
-                                }
-                            }
-                        }
-                        fprintf (fp, "@VF is accessed by these constructed objects ends_here\n");
-                    }
-                }
-            }
-            fclose(fp);
-        }
-
-     private:    
-        int callsite_count(IPA_NODE* method) {
-            SUMMARY_PROCEDURE* method_summary = method->Summary_Proc();
-            SUMMARY_CALLSITE* callsite_array =
-               IPA_get_callsite_array(method) + method_summary->Get_callsite_index();
-            int count = method_summary->Get_callsite_count();
-            return count;
-        }
-
-     public:
-        void itest () {
-            IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
-            for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
-                IPA_NODE *method = cg_iter.Current();
-                if (method == NULL) 
-                    continue;
-                PU_IDX pui
-                    = ST_pu(method->Func_ST());
-                Is_True(pui >= PU_IDX_ZERO && pui < PU_Table_Size(), 
-                        ("PUI index:%d not in range:%d <= indx < %d\n",
-                         pui, PU_IDX_ZERO, PU_Table_Size()));
-
-                BOOL is_fortran = PU_f77_lang(method->Get_PU()) ||
-            	  PU_f90_lang(method->Get_PU());
-                if (is_fortran)
-                    continue;
-                SUMMARY_PROCEDURE* method_summary =
-                    method->Summary_Proc();
-
-                SUMMARY_CALLSITE* callsite_array =
-                    IPA_get_callsite_array(method)
-                    + method_summary->Get_callsite_index();
-
-                int count = callsite_count(method);
-                while (count > 0) {
-                    if (!callsite_array->Is_func_ptr()
-                        && !callsite_array->Is_intrinsic()) {
-                    
-                        SUMMARY_SYMBOL *cons_sym
-                            = IPA_get_symbol_array(method) +
-                              callsite_array->Get_symbol_index();
-                    }
-                    count --;
-                    callsite_array++;
-                }
-            }
-        }
-            
-        void init () {
-            { 
-                i_must_debug = false;
-                if (i_must_debug == true) {
-                    virtual_whirls = fopen("virtual_whirls.txt", "w");
-                    transform_whirls = fopen("tranform_whirls.txt", "w");
-                } else {
-                    virtual_whirls = NULL;
-                    transform_whirls = NULL;
-                }
-                num_vfs_count = 0;
-                heur1 = 0;
-                heur2 = 0;
-                IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
-                for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
-                    IPA_NODE *method = cg_iter.Current();
-                    if (method == NULL) 
-                        continue;
-                    PU_IDX pui
-                        = ST_pu(method->Func_ST());
-
-                BOOL is_fortran = PU_f77_lang(method->Get_PU()) ||
-            	  PU_f90_lang(method->Get_PU());
-                if (is_fortran)
-                    continue;
-
-                    Is_True(pui >= PU_IDX_ZERO && pui < PU_Table_Size(), 
-                        ("PUI index:%d not in range:%d <= indx < %d\n",
-                         pui, PU_IDX_ZERO, PU_Table_Size()));
-
-                    Is_True (pu_node_index_map.find(pui) == 
-                            pu_node_index_map.end(), 
-                            ("PU_IDX already in pu_node_index_map; %d -> %d; newly:%d -> %d\n",
-                             pui, pu_node_index_map[pui], 
-                             pui, method->Node_Index()));
-                    pu_node_index_map[pui] = method->Node_Index();
-                }
-            }
-
-            {
-                miss_st = ST_IDX_ZERO;
-                hit_st = ST_IDX_ZERO;
-                for (ST_IDX sts = 1; sts < ST_Table_Size(GLOBAL_SYMTAB) ; ++sts) {
-                    ST* cur_st = &St_Table(GLOBAL_SYMTAB,sts);
-                    typedef mUINT32 INDEX;
-                    INDEX ty_index=cur_st->u2.type>>8;
-                    if(Ty_tab[ty_index].kind==KIND_ARRAY){ 
-                        if (strcmp(ST_name(cur_st), "__MISS_VIRTUAL_FUNCTION__") == 0) {
-                            miss_st = sts;
-                        } else if (strcmp(ST_name(cur_st), "__HIT_VIRTUAL_FUNCTION__") == 0) {
-                            hit_st = sts;
-                        }
-                    }
-                }
-            }
-            class_hierarchy_analysis = true;
-            class_type_analysis = false;
-        }
-
-        void fini() {
-            if (i_must_debug == true) {
-                fclose(virtual_whirls);
-                fclose(transform_whirls);
-            }
-        }
-
-        void find_constructors () {
-            IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
-            for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
-                IPA_NODE *method = cg_iter.Current();
-                if (method == NULL) 
-                    continue;
-
-                BOOL is_fortran = PU_f77_lang(method->Get_PU()) ||
-            	  PU_f90_lang(method->Get_PU());
-                if (is_fortran)
-                    continue;
-
-                IPA_NODE_CONTEXT context(method);
-                PU_IDX pui
-                     = ST_pu(method->Func_ST());
-
-                SUMMARY_PROCEDURE* method_summary =
-                    method->Summary_Proc();
-
-                SUMMARY_CALLSITE* callsite_array =
-                    IPA_get_callsite_array(method)
-                    + method_summary->Get_callsite_index();
-                int count = callsite_count(method);
-                while (count > 0) {
-                    if (!callsite_array->Is_func_ptr()
-                        && !callsite_array->Is_intrinsic()) {
-                        SUMMARY_SYMBOL *cons_sym
-                        = IPA_get_symbol_array(method) +
-                          callsite_array->Get_symbol_index();
-                        TY_INDEX constructor_class 
-                            = get_constructor_type(cons_sym);
-                        if (constructor_class != TY_IDX_ZERO) {
-                            if (constructor_map.find(constructor_class) 
-                                    == constructor_map.end()) {
-                                ST_IDX func_st_idx = cons_sym->St_idx();
-                                ST *func_st = &St_Table[func_st_idx];
-                                PU_IDX cons_pui = ST_pu(func_st);
-                                Is_True (pui >= PU_IDX_ZERO && pui < PU_Table_Size(),
-                                    ("PUI of constructor:%d not in range: 0 <= pui < PU_Table_Size:%d\n",
-                                    pui, PU_Table_Size()));
-
-                                    if (pu_node_index_map.find(cons_pui) !=
-                                            pu_node_index_map.end()) {
-                                        constructed_types.insert(constructor_class);
-                                        constructor_map[constructor_class] = cons_pui;
-                                    } else {
-                                       if (pui < PU_IDX_ZERO || pui > PU_Table_Size()) 
-                                            printf ("problem for node pu index:%d not in range 0 <= idx < %d",
-                                                pui, PU_Table_Size());
-                                    }
-                            } // We are required to omitting automatic base class 
-                            // constructor calls. This code does it.
-                            // As PU_IS_CONSTRUCTOR flag is not set on 
-                            // them by the spin frontend we are automatically 
-                            // handling them in the above code
-                            //
-                        }
-                    }
-                    count--;
-                    callsite_array++;
-                }
-            }
-        }
-
-     private:
-
-        void get_subcls_hierarchy(
-            TY_INDEX declared_class,
-            hash_set<TY_INDEX>& targets) {
-            targets.insert(declared_class);
-            if (IPA_Class_Hierarchy->
-                    Get_Num_Sub_Classes(declared_class) == 0)
-                return;
-            for (UINT scls = 0;
-                    scls < IPA_Class_Hierarchy->Get_Num_Sub_Classes(
-                        declared_class);
-                    ++scls) {
-                TY_INDEX sub = IPA_Class_Hierarchy->
-                               Get_Sub_Class(declared_class, scls);
-                get_subcls_hierarchy(sub, targets);
-            }
-        }
-
-
-        int num_subcls (TY_INDEX declared_class) {
-            hash_set<TY_INDEX> subclses;
-            get_subcls_hierarchy(declared_class, subclses);
-            return subclses.size();
-        }
-
-        hash_set<TY_INDEX>
-        class_instantiations (SUMMARY_CALLSITE* vfsite) {
-            TY_INDEX declared_class
-            = TY_IDX_index(vfsite->Get_virtual_class());
-            hash_set<TY_INDEX> targets;
-            hash_set <TY_INDEX> inter_set;
-            get_subcls_hierarchy(declared_class, targets);
-            Is_True(targets.size() > 0,
-              ("IPA_fast_static_analysis_VF: size of subclasses in hierarchy must be > 0"));
-            for (hash_set<TY_INDEX>::iterator tg_it
-                    = targets.begin();
-                    tg_it != targets.end();
-                    ++tg_it) {
-                if (constructed_types.find(*tg_it)
-                        != constructed_types.end()) {
-                    inter_set.insert(*tg_it);
-                }
-            }
-        
-            return inter_set;
-        }
-
-        VTAB_CONS find_vfuns (hash_set<TY_INDEX> cons_set,
-            SUMMARY_CALLSITE* callsite) {
-    //
-    // Sometimes it helps to read the following with 
-    // a pen/paper and a print of the 
-    // Ty_Tab, Initv, Inito etc symbol tables of your test file
-    //        
-    // 1: formal_class is the class declaration
-    // at the callsite
-    // 2: callsite->Get_vtable_offset() 
-    // is the vtable offset at
-    // the callsite (the function is at this 
-    // offset from vtable pointer, which will 
-    // the first entry in an object 
-    // 3: formal_vptr_offset is the offset to get
-    // the correct vptr, only required in case of 
-    // multiple inheritance and when the declared class is 
-    // not the first base in the inheritance order. 
-    // In this case we have an 
-    // offset to reach functions defined in 
-    // the vtab of this particular base.
-    // Also remember that the object layout of the 
-    // leaf class is in depth first order 
-    // of the inherited bases.
-    // For ex, if the inheritance is like so:
-    // BarFoo:Bar, Foo. Assume that we call 
-    // a certain method which is defined in Foo.
-    // Assume that the declared class at the 
-    // calling site is BarFoo.
-    // The virtual table 
-    // pointer for Foo will be at 
-    // formal_vptr_offset offset from 
-    // the virtual pointer of BarFoo.
-    // Summarizing, if the declared class is known to be 
-    // BarFoo, we need to start at this offset 
-    // from the virtual pointer of BarFoo.
-    // But if the actual class of the object
-    // is a subclass of BarFoo, then we also
-    // need the ancestor_offset to resolve
-    // to the correct vfun.
-    //
-            TY_INDEX formal_class = 
-                TY_IDX_index(callsite->Get_virtual_class());
-            UINT64 formal_vptr_offset =
-                callsite->Get_vptr_offset();
-            VTAB_CONS vtab_hand;
-            hash_set <ST_IDX> vfun_set;
-            for (hash_set<TY_INDEX>::iterator
-                    cons_it = cons_set.begin(); cons_it != cons_set.end();
-                    ++cons_it) {
-                TY_INDEX cons_ty = *cons_it;
-
-                Is_True (constructor_map.find(cons_ty) != 
-                        constructor_map.end(),
-                        ("IPA_fast_static_analysis_VF:Constructor_map does not carry pui for type"));
-                Is_True (pu_node_index_map.find(constructor_map[cons_ty]) !=
-                        pu_node_index_map.end(),
-                        ("IPA_fast_static_analysis_VF:PU_node_index_map does not carry node index for pui"));
-
-                IPA_NODE * constructor 
-                    = IPA_Call_Graph->Node(
-                          pu_node_index_map[constructor_map[cons_ty]]);
-
-                Is_True (constructor != NULL,
-                        ("IPA_fast_static_analysis_VF: Constructor Node is not found in call graph"));
-
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Dump_Constructors () {
+    if (Enable_Debug == true) {
+        FILE *fp = fopen("Constructors.log", "w");
+        for (hash_map<TY_INDEX, PU_IDX>::iterator cm_it = Constructor_Map.begin();
+             cm_it != Constructor_Map.end(); ++cm_it) {
+            TY_INDEX ty_indx = cm_it->first;
+            PU_IDX pu_indx = cm_it->second;
+            fprintf (fp, "type of constructor: <TY_INDEX:%d>\n", ty_indx);
+            Ty_tab[ty_indx].Print(fp);
+            fprintf (fp, "PU of constructor:\n");
+            Pu_Table[pu_indx].Print(fp);
+            IPA_NODE *constructor =
+                IPA_Call_Graph->Node (pu_node_index_map[pu_indx]);
+            if (constructor != NULL) {
                 IPA_NODE_CONTEXT context(constructor);
-                WN *vtab = NULL;
-                WN *wn_start = constructor->Whirl_Tree(TRUE);
-                
-                // The following is borrowed directly from the 
-                // earlier developer's work.
-                // Ancestor offset is computed by summing 
-                // sizes of data members of classes that 
-                // are along the path from the constructor class
-                // to its ancestor, formal_class
-                // Following comes from Multiple Inheritance for C++, 
-                // Bjarne Stroustrup, May 1999 issue of "The C/C++ Users Journal"
-                // On citeseer: http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.36.8766
-                // More recent information is in Wikipedia: http://en.wikipedia.org/wiki/Virtual_function_table
-                // These discuss the way C++ lays out
-                // an object's data in memory. First element will be the rooting base
-                // class/infered class's virtual pointer, 
-                // if the class has a virtual function (the same virtual 
-                // table pointers are shared between the root base class and 
-                // the constructed type of the object), second will be first data 
-                // member in base class, then the next, etc, and then the
-                // members of subclass of base class and its children. Then the 
-                // subclasses of the base's subclasses are laid out and 
-                // so on recursively.
-                // In case of multiple inheritance the layout is depth 
-                // first on the specified inheritance order.
-                // Open64 does not need to do any of this work to set up 
-                // the virtual table or to set up data layout of objects. 
-                // These are handled by the GCC frontend. open64 faithfully
-                // brings this data from the GCC frontend 
-                // into TY_Tab, Inito, initvs etc.
-                // 
-
-                size_t ancestor_offset
-                    = IPA_Class_Hierarchy->Get_Ancestor_Offset(
-                       cons_ty, formal_class);
-
-                for (WN_ITER *wni = WN_WALK_StmtIter(wn_start);
-                        wni != NULL;
-                        wni = WN_WALK_StmtNext(wni)) {
-                    WN *wn = WN_ITER_wn(wni);
-                    if (WN_operator(wn) == OPR_ISTORE) {
-                        WN *rhs = WN_kid0(wn);
-                        WN *lhs = WN_kid1(wn);
-                        UINT64 add_ofst = 0;
-                        if (WN_operator(lhs) == OPR_ADD) {
-                            add_ofst = WN_const_val(WN_kid1(lhs));
-                            lhs = WN_kid0(lhs);
-                        }
-                        if (WN_operator(rhs) == OPR_LDA
-                            && WN_operator(lhs) == OPR_LDID) {
-
-                            TY_IDX this_class_ptr
-                                = ST_type(WN_st(lhs));
-
-                            if (TY_kind(this_class_ptr)
-                                != KIND_POINTER)
-                                continue;
-
-                            TY_IDX this_class
-                                = TY_pointed(this_class_ptr);
-
-                            if (TY_IDX_index(this_class) == cons_ty) {
-                                // Find the field by the
-                                // statement in constructor
-                                UINT64 ofst
-                                    = WN_store_offset(wn) + add_ofst;
-                                // If they are matched, this
-                                // statement indicates the
-                                // vtable of the actual class
-                                if (ofst == ancestor_offset + 
-                                        formal_vptr_offset) {
-                                    vtab = wn;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-
-               if (vtab != NULL) {
-                  size_t func_offset = callsite->Get_vtable_offset();
-                  ST_IDX st_id = find_vfun(stdout, constructor, vtab, func_offset);
-                  if (st_id != ST_IDX_ZERO) {
-                       VTAB_HANDLE_H vtabh;
-                       vtabh.vfun = st_id;
-                       vtabh.vtab = vtab;
-                       vtab_hand.vtab_h[cons_ty] = vtabh;
-                       vtab_hand.sts.insert(st_id);
-                   }
-                }
-            }
-            return vtab_hand;
-        }
-
-        void fix_callsites (IPA_NODE *method) {
-            if (method == NULL)
-                return;
-
-            PU_IDX pui
-                = ST_pu(method->Func_ST());
-            if (pu_node_index_map.find(pui) == pu_node_index_map.end()) {
-                //printf ("Skipping method:pu_node_index_map does not carry pui:%d\n",
-                //        pui);
-                 return;
-            }
-
-            //IPA_NODE_CONTEXT context(method);
-            SUMMARY_PROCEDURE * proc_array = method->Summary_Proc();
-            SUMMARY_CALLSITE* callsite_array2 =
-                IPA_get_callsite_array(method) + proc_array->Get_callsite_index();
-            INT cs_index = proc_array->Get_callsite_index();
-            cs_index =0;
-            INT count = 0;
-            for (INT j = 0; j < proc_array->Get_callsite_count(); ++j, ++cs_index) {
-                // 
-                // The only calls that will have this flag set are virtual function dummy callsites.
-                // If the pass is enabled, after virtual function replacement, 
-                // some dummy callsites will have this flag reset as they now get to 
-                // represent the infered callee. 
-                // In case the replacement did not kick in for a virtual function, or in case the 
-                // pass is disabled, the corresponding dummy callsite
-                // will still have this flag set on it. We check for this case here 
-                // and leave their callsite_ids intact, without remapping to count.
-                //
-                 if (!callsite_array2[cs_index].Is_virtual_function_target()) {
-                      callsite_array2[cs_index].Set_callsite_id (count++);
-                 }
-            }
-        }
-
-        void make_VF_wn_map (IPA_NODE *method,
-                WN_IPA_MAP& a_wn_ipa_map) {
-            IPA_NODE_CONTEXT context(method);
-            a_wn_ipa_map.ipa_node = (IPA_NODE*) NULL;
-            WN *wn_start = method->Whirl_Tree(TRUE);
-            Is_True(wn_start, ("IPA_fast_static_analysis_VF: Whirl node is empty."));
-            //
-            // Walk over the whirl nodes in the Whirl_Tree of a node and
-            // check if a WHIRL node is a virtual function call or not.
-            // If WN* is a virtual function,
-            // map it into argument WN_IPA_MAP& using the WN*'s 
-            // map_id as hashmap's key.
-            // 
-            for (WN_ITER *wni = WN_WALK_StmtIter(wn_start);
-                    wni != NULL; wni = WN_WALK_StmtNext(wni))
-            {
-                WN *wn = WN_ITER_wn(wni);
-                if (WN_operator(wn) == OPR_ICALL) {
-                    if (WN_Call_Is_Virtual(wn)) {
-                        if (i_must_debug == true) {
-                            method->Print(virtual_whirls);
-                            fprintf(virtual_whirls, 
-                                    "------ mapid:%d\n ------",
-                                    WN_map_id(wn));
-                            fdump_tree(virtual_whirls, wn);
-                        }
-                        Is_True(a_wn_ipa_map.wn_map.find(WN_map_id(wn)) 
-                                == a_wn_ipa_map.wn_map.end(), 
-                               ("Whirl map id conflicts in wn_map"));
-                        a_wn_ipa_map.wn_map[WN_map_id(wn)] = wn;
-                        a_wn_ipa_map.ipa_node = method;
-                    }   
-                }
-            }
-
-        }
-
-        void analyze_and_transform_VF (IPA_NODE *method) {
-            Is_True ((method != NULL), 
-("IPA_fast_static_analysis_VF: Test method != NULL fails with analyze_and_transform_VF\n"));
-
-            PU_IDX pui = ST_pu(method->Func_ST());
-            if (pu_node_index_map.find(pui) == pu_node_index_map.end()) {
-//                printf ("Skipping method:pu_node_index_map does not carry pui:%d\n",
-//                        pui);
-                 return;
-            }
-
-            WN_IPA_MAP a_wn_ipa_map;
-            
-            // This function maps virtual function whirlnodes in a method 
-            // to their WN_map_id.
-            // if there are no virtual functions in a method, a_wn_ipa_map.ipa_node
-            // will be NULL
-            make_VF_wn_map(method, a_wn_ipa_map);
-
-            if (a_wn_ipa_map.ipa_node != NULL) {
-                // we have passed stage_1 test. i.e we have 
-                // a VF callsite in 'method'. 
-                
-                list <SUMMARY_CALLSITE* >  vf_callsites; // list of vf callsites from an IPA_NODE that heuristic 1 & 2 found
-                list <SUMMARY_CALLSITE* >  vf_duplicates; // list of dummy callsites inserted by IPL if heuristic 1 & 2 approve the virtual function
- // the set of classes that may been instantiated is stored in vf_object_instances
-                hash_map <WN_MAP_ID, hash_set<TY_INDEX> > vf_object_instances;
-// 
-// This is a hash_map mapping the virtual function Whirl_Node to a VTAB_CONS
-// which contains the ST of the infered candidate for the virtual function. Also VTAB_CONS 
-// contains the virtual table of the infered class containing the virtual function.
-// more on this later.
-// 
-//
-                hash_map <WN_MAP_ID, VTAB_CONS> vf_vtab_sts;
-
-                int count = callsite_count(method);
-                SUMMARY_PROCEDURE* method_summary =
-                    method->Summary_Proc();
-
-                SUMMARY_CALLSITE* callsite_array =
-                    IPA_get_callsite_array(method)
-                    + method_summary->Get_callsite_index();
-                while (count > 0) {
-                    // 
-                    // This is what we expect to do for
-                    // VFs. For each VF site, ipl had added a sister call site
-                    // with a call to a dummy_callee
-                    // This dummy callsite precedes VF callsite in callsite_array.
-                    //
-                    // If the virtual function is replaced, the dummy 
-                    // callsite will be used by Add_New_Edge as the SUMMARY_CALLSITE 
-                    // of the new call being inserted into the call graph. 
-                    // Many of the VFs may never get through the heuristics and
-                    // if there are no replacements due to that, the dummy callsite 
-                    // needs to be skipped over in the callsite_array
-                    // and fixup_only () function in this file does that.
-                    // 
-                    // we are decrementing callsite count variable 2 times in
-                    // every iteration in case the present 
-                    // callsite is a dummy callsite
-                    // 
-                    SUMMARY_CALLSITE * dummy_cs = callsite_array;
-                    callsite_array++;
-                    count--;
-                    if (count == 0) break;
-
-                    if (dummy_cs->Is_virtual_function_target()) {
-                        if (callsite_array->Is_virtual_call()) {
-                            SUMMARY_CALLSITE* callsite = callsite_array;
-
-                           // printf ("num_subcls is %d for \n", 
-                           //         num_subcls(TY_IDX_index(
-                           //                 callsite->Get_virtual_class())));
-                           // Ty_tab[TY_IDX_index(callsite->Get_virtual_class())].Print(stdout);
-                            update_true_classes(
-                                   num_subcls(TY_IDX_index(
-                                            callsite->Get_virtual_class())));
-
-                            if (a_wn_ipa_map.wn_map.find(callsite->Get_map_id()) 
-                                    != a_wn_ipa_map.wn_map.end()) {
-                                hash_set<TY_INDEX> instance_set
-                                        = class_instantiations(callsite);
-
-                                if (class_hierarchy_analysis == true && 
-                                        num_subcls(TY_IDX_index(
-                                        callsite->Get_virtual_class())) == 1) {
-                                    //
-                                    // this is heuristic 1, `Class Hierarchy Analysis'
-                                    //  we check if num_subcls (containing the
-                                    // declared_class is == 1, i.e. the declared class 
-                                    // is the same as the true class of the object
-                                    // declared class is typically the type used during 
-                                    // argument passing time and true class is the type used
-                                    // with the new operator at object creation time.
-                                    // find_vfuns is a very complicated function. you 
-                                    // need to understand the paper by C++ Stroustrup
-                                    // on Multiple inheritance, wikipedia pages on 
-                                    // Thunks and in general understand how virtual function
-                                    // resolution happens at run time. Please contact us 
-                                    // through the appropriate forum in case you have 
-                                    // questions/comments regarding that.
-                                    // 
-                                    VTAB_CONS vtab_sts =
-                                        find_vfuns(instance_set, callsite);
-                                    if (vtab_sts.sts.size() == 1) {
-                                        heur1++;
-                                        vf_callsites.push_back(callsite);
-                                        vf_duplicates.push_back(dummy_cs);
-                                        vf_object_instances[callsite->Get_map_id()] =
-                                            instance_set;
-                                        vf_vtab_sts[callsite->Get_map_id()] =
-                                            vtab_sts;
-                                    }
-                                }
-                                else if (class_type_analysis == true && instance_set.size() >= 1) {
-                                    // this is heuristic 2, `Class Type Analysis'. We check
-                                    // if out of a class hierarchy only one instance is 
-                                    // instantiated ever.
-                                    update_instances(instance_set.size());
-                                    if (instance_set.size() == 1) {
-                                    VTAB_CONS vtab_sts =
-                                        find_vfuns(instance_set, callsite);
-                                    if (vtab_sts.sts.size() == 1) {
-                                        heur2++;
-                                        vf_callsites.push_back(callsite);
-                                        vf_duplicates.push_back(dummy_cs);
-                                        vf_object_instances[callsite->Get_map_id()] =
-                                            instance_set;
-                                        vf_vtab_sts[callsite->Get_map_id()] =
-                                            vtab_sts;
-                                    }
-                                    }
-                                }
-                            }
-                            callsite_array++;
-                            count--;
-                        }
-                    }
-                }
-
-                // if analysis found some virtual functions
-                if (vf_callsites.size() > 0) {
-                    node_idx_virt_funs[method->Node_Index()] = a_wn_ipa_map;
-                    node_idx_vf_callsites[method->Node_Index()] = 
-                        vf_callsites;
-                    method_vf_data[method->Node_Index()] = vf_object_instances;
-                    list <SUMMARY_CALLSITE*>::iterator vf_dummy_it = vf_duplicates.begin();
-                    for (list <SUMMARY_CALLSITE* >::iterator  vf_cit = 
-                            vf_callsites.begin(); vf_cit != vf_callsites.end();
-                            ++vf_cit, ++vf_dummy_it) {
-                        // We could have done this right where the VF was found, 
-                        // but some may find this kind of check pointing useful 
-                        // while debugging.
-                        // Obviously this list we double traverse on is a small list and the cost will not 
-                        // be much due to the double travesal.
-                        SUMMARY_CALLSITE *callsite = *vf_cit;
-                        SUMMARY_CALLSITE *dummy_cs = *vf_dummy_it;
-                        VTAB_CONS vtab_sts = vf_vtab_sts[callsite->Get_map_id()];
-                        hash_set<TY_INDEX> instance_set = 
-                            vf_object_instances[callsite->Get_map_id()];
-                        WN* vtab = vtab_sts.vtab_h[*(instance_set.begin())].vtab;
-                        ST_IDX st_id = *(vtab_sts.sts.begin());
-
-                        // Shared_attr is just a convenient place holder
-                        // for the vtab and a ST id of the inferred callee in it. 
-                        // It helps in enabling a smaller argument passing list.
-                        Shared_attr* ret = new Shared_attr();
-                        ret->vtab = vtab;
-                        ret->fun_st_idx = st_id;
-
-                        TY_INDEX method_class
-                            = TY_IDX_index(callsite->Get_virtual_class());
-                        size_t ancestor_offset
-                            = IPA_Class_Hierarchy->Get_Ancestor_Offset(
-                              *(instance_set.begin()), method_class);
-                        ret->ancestor_offset = ancestor_offset;
-                        apply_VF_transformation(callsite, dummy_cs, method, ret);
-                    }
-                }
-            }
-        }
-     private:
-        int apply_VF_transformation(SUMMARY_CALLSITE *callsite,
-                             SUMMARY_CALLSITE *dummy_cs,
-                             IPA_NODE* method, Shared_attr *ret) {
-            //
-            // walk over the VTab and get the initv
-            // entry of the function for each of the
-            // instances in instance_set.
-            // If these functions are the same we can adapt the 
-            // "oracle based static dispatch" function calling scheme.
-            //
-            IPA_NODE_CONTEXT context(method);
-            if (node_idx_virt_funs.find(method->Node_Index()) ==
-                    node_idx_virt_funs.end()) {
-                return -1;
+                fprintf(fp, "WHIRL of constructor:\n");
+                fdump_tree(fp,constructor->Whirl_Tree(TRUE));
             } else {
-                if (node_idx_virt_funs[method->Node_Index()].wn_map.size() == 0) {
-                    return -1;
-                }
-                if (node_idx_virt_funs[method->Node_Index()].ipa_node == NULL) {
-                    return -1;
-                }
+                fprintf(fp, "WHIRL of constructor: NOT_FOUND!\n");
             }
-            hash_map<WN_MAP_ID, WN*> wn_map 
-                = node_idx_virt_funs[method->Node_Index()].wn_map;
-            
-            ST_IDX calle_st = ret->fun_st_idx;
-
-            ST *callee_st = ST_ptr (calle_st);
-            
-            PU_IDX pui = ST_pu(callee_st);
-
-            if (pu_node_index_map.find(pui) == pu_node_index_map.end()) {
-                //printf ("Skipping method:pu_node_index_map does not carry pui:%d\n",
-                //        pui);
-                 return -1;
-            }
-
-            for(UINT edg_i = 0; edg_i < IPA_Call_Graph->Edge_Size(); ++ edg_i) {
-                if (IPA_Call_Graph->Caller(IPA_Call_Graph->Edge(edg_i)) == method) {
-                    if (IPA_Call_Graph->Edge(edg_i)->Summary_Callsite()
-                            == dummy_cs) {
-                        //printf("Call graph already contains the callsite!\n");
-                        return -1;
-                    }
-                }
-            }
-
-            NODE_INDEX callee_nod_idx = AUX_PU_node (Aux_Pu_Table[ST_pu(callee_st)]);
-
-            if (callee_nod_idx == INVALID_NODE_INDEX) {
-                //printf("Call graph does not contain the callsite's node\n");
-                return -1;
-            }
-
-            TY_IDX ty_callee = ST_pu_type (callee_st);
-            Is_True ((!(ty_callee <= TY_IDX_ZERO && ty_callee > TY_Table_Size())),
-                    ("TY_IDX:%d is not in range:(%d %d)", 
-                    ty_callee, TY_IDX_ZERO, TY_Table_Size()));
-
- 
-            WN *old_wn = wn_map[callsite->Get_map_id()];
-
-            Is_True (WN_operator_is(old_wn, OPR_ICALL), 
-                    ("Transformation only for ICALL"));
-
-            if (i_must_debug == true) {   
-                fprintf (transform_whirls, "Going to transform... \n");
-                fprintf (transform_whirls, "caller->Total_Succ():%d", 
-                       method->Total_Succ());
-                fdump_tree(transform_whirls, method->Whirl_Tree(TRUE));
-            }
- 
-            WN_verifier(method->Whirl_Tree(TRUE));
-
-            WN* copy_lda = WN_CreateLda (Use_32_Bit_Pointers ? 
-                    OPC_U4LDA : OPC_U8LDA,
-                    0, Make_Pointer_Type(ty_callee), 
-                    WN_st(WN_kid(ret->vtab,0)));
-
-            WN *new_wn = WN_generic_call(OPR_CALL,
-                                 WN_rtype(old_wn),
-                                 /* result type is same as old_wn */
-                                 WN_desc(old_wn),  /*  */
-                                 WN_kid_count(old_wn)-1,
-                                 callee_st);
-
-
-            WN * block = WN_Get_Parent (old_wn,
-                                method->Parent_Map(),
-                                method->Map_Table());
-           for (size_t j = 0; j < WN_kid_count(new_wn); j++) {
-                WN_kid(new_wn,j) = WN_COPY_Tree_With_Map(WN_kid(old_wn,j));
-            }
-
-            WN* copy_load = WN_COPY_Tree_With_Map(
-                                WN_kid(WN_kid(old_wn,
-                                    WN_kid_count(old_wn)-1),
-                                     0));
-
-            OPCODE incopcode = OPCODE_make_op(OPR_SUB, 
-                    WN_rtype(copy_load),MTYPE_V);
-            WN * sub_op = WN_CreateExp2 (incopcode, 
-                            WN_COPY_Tree_With_Map(copy_load),
-                            WN_CreateIntconst(OPC_I4INTCONST,
-                            (WN_lda_offset(WN_kid0(ret->vtab)))));
-
-            WN *cmp = WN_Create(
-                          Use_32_Bit_Pointers?
-                          OPC_U4U4EQ:OPC_U8U8EQ,2);
-
-            WN_kid0(cmp) = copy_lda;
-            WN_kid1(cmp) = sub_op;
-
-            WN *then_blk = WN_CreateBlock();
-            WN *else_blk = WN_CreateBlock();
-            WN* if_type = WN_CreateIf(cmp, then_blk, else_blk);
-            WN* aold_wn = WN_COPY_Tree_With_Map(old_wn);
-
-            WN_INSERT_BlockLast(then_blk, new_wn);
-            WN_INSERT_BlockLast(else_blk, aold_wn);
-
-            bool todo = false;
-            for (WN* stmt = WN_next(old_wn);
-                    stmt != NULL && Is_Return_Store_Stmt (stmt);) {
-                todo= true;
-                WN_INSERT_BlockLast (then_blk, WN_COPY_Tree(stmt));
-                WN_INSERT_BlockLast (else_blk, WN_COPY_Tree(stmt));
-                WN * ret_wn = stmt;
-                stmt = WN_next (stmt);
-
-                WN_EXTRACT_FromBlock (block, ret_wn);
-            }
-
-            if(i_must_debug == true) {
-            // 
-            // This code is used for profiling only. It is a debug feature.
-            // load from extern variable miss_vf, hit_vf
-            // increment and store back to the location 
-            // miss_vf, hit_vf
-            // else block gets missed 
-            // if-then block gets hits
-            //
-                if (hit_st != ST_IDX_ZERO && miss_st != ST_IDX_ZERO) {
-                    // hit part
-                    // must use ldid???
-                    ST *Hit_st = &St_Table(GLOBAL_SYMTAB, hit_st);
-                    ST *Miss_st = &St_Table(GLOBAL_SYMTAB, miss_st);
-                    TY_IDX pty_idx = Make_Pointer_Type (ST_type(Hit_st), FALSE);
-
-                    WN *hit_ldid = WN_Ldid(MTYPE_I4, (WN_OFFSET)(num_vfs_count*4), Hit_st, 
-                            ST_type(Hit_st));
-                    WN *miss_ldid = WN_Ldid(MTYPE_I4, (WN_OFFSET)(num_vfs_count*4), Miss_st, 
-                            ST_type(Miss_st));
-                    OPCODE myaddopcode = OPCODE_make_op(OPR_ADD,MTYPE_U8,MTYPE_V);
-                    WN *hit_add_op = WN_CreateExp2(myaddopcode,
-                                         hit_ldid,
-                                         WN_CreateIntconst(
-                                            OPC_I4INTCONST, 1));
-                    WN *miss_add_op = WN_CreateExp2(myaddopcode,
-                                         miss_ldid,
-                                         WN_CreateIntconst(
-                                            OPC_I4INTCONST, 1));
-                    WN *hit_store = WN_Stid(MTYPE_I4, (WN_OFFSET)(num_vfs_count*4), Hit_st,
-                            ST_type(Hit_st), hit_add_op);
-                    WN *miss_store = WN_Stid(MTYPE_I4, (WN_OFFSET)(num_vfs_count*4), Miss_st,
-                            ST_type(Miss_st), miss_add_op);
-                    WN_INSERT_BlockLast(then_blk,hit_store);
-                    WN_INSERT_BlockLast(else_blk,miss_store);
-                    list <string> mytags;
-                    mytags.push_back(string(method->Name()));
-                    mytags.push_back(string(ST_name(callee_st)));
-                    miss_hit_tag[num_vfs_count] = mytags;
-                }
-            }
-
-            WN_Parentize (then_blk, method->Parent_Map(),
-                          method->Map_Table());
-            WN_Parentize (else_blk, method->Parent_Map(),
-                          method->Map_Table());
-
-            WN_set_map_id(new_wn, WN_map_id(old_wn));
-            WN_set_flag(new_wn, WN_flag(old_wn));
-
-            WN_INSERT_BlockAfter(block,old_wn,if_type);
-            WN_EXTRACT_FromBlock(block, old_wn);
-            WN_Parentize (block, method->Parent_Map(), method->Map_Table());
-
-            // Now fix_up_only will update this dummy callsite as well.
-            dummy_cs->Reset_virtual_function_target();
-            dummy_cs->Reset_func_ptr();
-            dummy_cs->Set_param_count(WN_num_actuals(new_wn));
-            dummy_cs->Set_return_type(WN_rtype(new_wn));
-            //dummy_cs->Set_callsite_freq();
-            // 
-            // We dont have use for probability at all 
-            // in this transformation. If I 
-            // dont set probability to -1, the inliner 
-            // skips this edge. 
-            // 
-            dummy_cs->Set_probability(-1);
-
-            // set the symbol index of the inferred function on 
-            // the dummy callsite
-            method->Set_Pending_Virtual_Functions();
-            IPA_NODE* callee_ipa_node = IPA_Call_Graph->Node(callee_nod_idx);
-            SUMMARY_PROCEDURE* proc_summ_callee = callee_ipa_node->Summary_Proc();
-            dummy_cs->Set_symbol_index(proc_summ_callee->Get_symbol_index());
-            
-            // update call graph
-            
-            IPA_EDGE* edge = IPA_Call_Graph->Add_New_Edge(dummy_cs,
-                             method->Node_Index(),
-                             pu_node_index_map[ST_pu(callee_st)]);
-            edge->Set_Whirl_Node(new_wn); 
-
-            // verify if the whirl_tree is proper after my insertions into it
-            WN_verifier(method->Whirl_Tree(TRUE));
-
-            num_vfs_count ++;
-            
-            // opti_cand is used only for statistics
-            opti_cand[method->Node_Index()] = method;
-            if (i_must_debug == true) {   
-                fprintf (transform_whirls, "After transformation...\n");
-                fdump_tree(transform_whirls, method->Whirl_Tree(TRUE));
-                fprintf (transform_whirls, "caller->Total_Succ():%d", 
-                        method->Total_Succ());
-                fprintf (transform_whirls, "...done\n");
-            }
-            return 0;
+                 
+            fprintf (fp, "-\n");
         }
-};
+        fclose(fp);
+    }
+}
 
-void
-IPA_fast_static_analysis_VF () {
-    DEVIRT_WORK devirt_work;
-    devirt_work.init();
-    if (IPA_Enable_fast_static_analysis_VF == TRUE) {
-//        printf ("Devirt on open64.4.2.1-0\n");
-        IPA_Class_Hierarchy = Build_Class_Hierarchy(); 
-        devirt_work.find_constructors ();
-// Dump out all constructors that we have found into a "constructors.log" file
-//        devirt_work.dump_constructors();
-        devirt_work.analyze_VFs();
-        devirt_work.fixup_only();
-        devirt_work.fini();
-//
-// The print_stat function prints the number of VF callees that have been replaced
-// with the if-then-else and out of this, the number of CHA, CTA 
-// cases that were replaced
-//        
-//        devirt_work.print_stat();
-//
-/* 
- This function collects histogram data. 
- compiler dump goes into a vf_class_hist.csv file in 
- current directory 
- Data looks like this:
- "Number of True classes","Number of virtual function callsites"
-   1,888 // There were 888 virtual functions with Size(True_Class) == 1, 
-   2,814
-   ...
-Number of instance classes","Number of virtual function callsites"
-   1,2 
-   2,856 // There were 856 virtual functions with Size(Instance_Class) == 1
-   3,1085 
- */
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Dump_Virtual_Function_Transform_Candidates () {
+    if (Enable_Debug == true) {
+        FILE *fp = fopen("VF_opt_set.log", "w");
+        for (VIRTUAL_FUNCTION_DEBUG_DATA::iterator vf_it = 
+             Transform_Debug_Data.begin();
+             vf_it != Transform_Debug_Data.end(); ++vf_it) {
+            NODE_INDEX nod_indx = vf_it->first;
+            hash_map<WN_MAP_ID, hash_set<TY_INDEX> > wn_map_constrs = 
+                vf_it->second;
+            {
+                IPA_NODE* method = Optimized_Methods_By_NODE_INDEX[nod_indx];
+                IPA_NODE_CONTEXT context(method);
+                fprintf (fp, "WHIRL of caller:\n");
+                fdump_tree(fp, method->Whirl_Tree(TRUE));
+                fprintf (fp, "@WHIRL of caller ends_here\n");
+    
+                for (hash_map<WN_MAP_ID, hash_set<TY_INDEX> >::iterator vf_wn_it 
+                     = wn_map_constrs.begin(); vf_wn_it != wn_map_constrs.end();
+                     ++vf_wn_it) {
+                    fprintf (fp, "VF in WHIRL which can be optimized:\n");
+                    WN_MAP_ID wn_id = vf_wn_it->first;
+                    hash_set<TY_INDEX> vf_obj_types = vf_wn_it->second;
+                    WN_IPA_MAP a_wn_map = Node_Virtual_Function_Whirl_Map[method->Node_Index()];
+                    fdump_tree(fp, a_wn_map[wn_id]);
+                    fprintf (fp, "@VF in WHIRL which can be optimized ends_here\n");
+                    fprintf (fp, "VF is accessed by these constructed objects:\n");
+                    for (hash_set<TY_INDEX>::iterator vf_obj_it = vf_obj_types.begin();
+                         vf_obj_it != vf_obj_types.end(); ++vf_obj_it) {
+                        TY_INDEX ty_indx = *vf_obj_it;
+                        Ty_tab[ty_indx].Print(fp);
+                        {
+                            PU_IDX pu_indx = Constructor_Map[ty_indx];
+                            fprintf (fp, "PU of constructor:\n");
+                            Pu_Table[pu_indx].Print(fp);
+                            IPA_NODE *constructor =
+                                IPA_Call_Graph->Node (pu_node_index_map[pu_indx]);
+                            {
+                                IPA_NODE_CONTEXT context(constructor);
+                                fprintf (fp, "WHIRL of constructor\n");
+                                fdump_tree(fp,constructor->Whirl_Tree(TRUE));
+                                fprintf (fp, "@WHIRL of constructor ends_here\n");
+                            }
+                        }
+                    }
+                    fprintf (fp, "@VF is accessed by these constructed objects ends_here\n");
+                }
+            }
+        }
+        fclose(fp);
+    }
+}
+
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Fixup_Virtual_Function_Callsites () {
+    IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+        IPA_NODE *method = cg_iter.Current();
+        if (method == NULL) 
+            continue;
+        BOOL is_cxx = PU_cxx_lang(method->Get_PU());
+        if (!is_cxx)
+            continue;
+        Fixup_Virtual_Function_Callsites_Per_Node (method);
+    }
+}
+
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Fixup_Virtual_Function_Callsites_Per_Node (
+        IPA_NODE *method) {
+    if (method == NULL)
+        return;
+    PU_IDX pui = ST_pu(method->Func_ST());
+    if (pu_node_index_map.find(pui) == pu_node_index_map.end()) {
+        return;
+    }
+    SUMMARY_PROCEDURE * proc_array = method->Summary_Proc();
+    SUMMARY_CALLSITE* callsite_array2 =
+            IPA_get_callsite_array(method) + proc_array->Get_callsite_index();
+    INT cs_index = proc_array->Get_callsite_index();
+    cs_index =0;
+    INT count = 0;
+    for (INT j = 0; j < proc_array->Get_callsite_count(); ++j, ++cs_index) {
+        // 
+        // The only calls that will have this flag set are 
+        // virtual function dummy callsites.
+        // If the pass is enabled, after virtual function replacement, 
+        // some dummy callsites will have this flag reset as they now get to 
+        // represent the infered callee. Also there is a CALL WHIRL 
+        // node that corresponds to it. In case the replacement did not 
+        // kick in for a virtual function or in case the pass 
+        // is disabled, the corresponding dummy callsite
+        // will not have an infered callee and there will not be
+        // a CALL WHIRL node corresponding to it. These left-over 
+        // dummy callsites will still have the flag set on it.
+        // We check for this case here and do not remap 
+        // the left-over dummy callsites to the unique id, INT count.
+        // Effectively what happens is that only for every 
+        // CALL instruction in the WHIRL do we have a corresponding
+        // callsite. Each callsite in turn binds back to every CALL 
+        // instruction using the newly set callsite_id. 
+        // Look at IPO_Process_Virtual_Functions to get more 
+        // idea on the use for this callsite id.
+        // 
+        if (!callsite_array2[cs_index].Is_virtual_function_target()) {
+            callsite_array2[cs_index].Set_callsite_id (count++);
+        }
+    }
+}
+
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Print_Statistics () {
+    if (Enable_Statistics == true) {
+        FILE *statistics_file = fopen("Statistics.log", "w");
+        fprintf (statistics_file, 
+                "Number of vf callees that can be statically replaced: %d\n", 
+                Num_VFs_Count);
+        fprintf (statistics_file,
+                "Number of vf callsites caught by heuristic 1: %d\n", 
+                Class_Hierarchy_Transform_Count);
+        fprintf (statistics_file,
+                "Number of vf callsites caught by heuristic 2: %d\n",
+                Class_Instance_Transform_Count);
+        fclose(statistics_file);
+    }
+}
  
-//        devirt_work.histogram_stat();
 /* 
- The following function, devirt_work.miss_hit_profile(), 
+ The following function, IPA_VIRTUAL_FUNCTION_TRANSFORM::Miss_Hit_Profile(), 
  is a profiling cum testing implementation.
  This is an experimental feature for use by developers during test and debug.
  The profiling mechanism counts how many times we had hits, i.e the optimization found
@@ -1954,7 +1825,7 @@ Number of instance classes","Number of virtual function callsites"
  failed in predicting the right virtual function. In case we have a very large hit rate, 
  we are somewhat certain that our approach is accurate for all practical purposes.         
  How this feature works is described here. 
-        After replacement we have an if-then-else structure for 
+ After replacement we have an if-then-else structure for 
  the virtual function. Each such replaced virtual function is assigned an unique integer id. 
  Inside the if-then block and if-else block, profiling code is added. The profiling code
  requires two global arrays named __HIT_VIRTUAL_FUNCTION__ and __MISS_VIRTUAL_FUNCTION__ to be
@@ -1970,9 +1841,7 @@ Number of instance classes","Number of virtual function callsites"
  finalize these arrays.
  i.e at this time, we need to manually add lines into the  
  source code just like down here.
- Here it is:*/
-/*
-//  
+ Here it is:  
 unsigned int __MISS_VIRTUAL_FUNCTION__[2000], __HIT_VIRTUAL_FUNCTION__[2000];
 // Add this class for initialization and finalization of these two arrays
 class StatMan__ {
@@ -2015,9 +1884,65 @@ int main () {
     return 
 }
 */
-//        devirt_work.miss_hit_profile();
-    } else {
-        devirt_work.fixup_only();
+
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Miss_Hit_Profile () {
+    if (Enable_Profile == true) {
+        if (Hit_ST_IDX != ST_IDX_ZERO && Miss_ST_IDX != ST_IDX_ZERO) {
+            FILE *csvfile = fopen("Miss_hit_profile.csv", "w");
+            for (hash_map<int, list<string> >::iterator mhmi =
+                 Miss_Hit_Tag.begin(); mhmi != Miss_Hit_Tag.end(); ++mhmi) {
+                int id_num = mhmi->first;
+                list<string> str_lis = mhmi->second;
+                fprintf (csvfile, "%d,", id_num);
+                for (list<string>::iterator myns = str_lis.begin(); 
+                     myns != str_lis.end(); ++myns) {
+                    fprintf(csvfile, "%s,", (*myns).c_str());
+                }
+                fprintf (csvfile, "\n");
+            }
+            fclose(csvfile);
+        }
     }
 }
 
+/* 
+ Histogram_Statistics function collects histogram data. 
+ compiler dump goes into a vf_class_hist.csv file in 
+ current directory 
+ Data looks like this:
+ "Number of classes used from hierarchy","Number of virtual function callsites"
+   1,888 // There were 888 virtual functions with Size(True_Class) == 1, 
+   2,814
+   ...
+ "Number of instance classes","Number of virtual function callsites"
+   1,2 
+   2,856 // There were 856 virtual functions with Size(Instance_Class) == 2
+   3,1085 
+*/
+
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Histogram_Statistics () {
+    if (Enable_Statistics == true) {
+        if ((Class_Hierarchy_Depth.size() != 0) || (Num_Instances.size() != 0)) {
+            FILE *csvfile = fopen ("vf_class_hist.csv", "w");
+            fprintf (csvfile, "%s,%s",
+                    "\"Number of classes used from hierarchy\"",
+                    "\"Number of virtual function callsites\"\n");
+            for (hash_map<int, int>::iterator trcit = Class_Hierarchy_Depth.begin();
+                 trcit != Class_Hierarchy_Depth.end(); ++trcit) {
+                int trval = trcit->first;
+                int numvf = trcit->second;
+                fprintf(csvfile, "%d,%d\n", trval, numvf);
+            }
+            fprintf (csvfile, "%s,%s",
+                     "\"Number of instance classes\"", 
+                     "\"Number of virtual function callsites\"\n");
+            for (hash_map<int,int>::iterator incit = Num_Instances.begin();
+                 incit != Num_Instances.end(); ++incit) {
+                int inval = incit->first;
+                int numvf = incit->second;
+                fprintf(csvfile, "%d,%d\n", inval, numvf);
+            }
+            fclose(csvfile);
+        }
+    }
+}
