@@ -112,13 +112,6 @@ static long read_dynamic_meminfo()
     int len, readerr;
     long val;
 
-    fd = open("/proc/sys/vm/hugepages_treat_as_movable", O_RDONLY);
-
-    if (fd < 0)
-        return 0;
-    
-    close(fd);
-
     fd = open("/proc/sys/vm/nr_overcommit_hugepages", O_RDONLY);
 
     if (fd < 0)
@@ -315,13 +308,13 @@ long hugetlbfs_num_free_pages(void)
 long hugetlbfs_num_pages(void)
 {
 #ifdef OPEN64_MOD
-    if (hugepage_stype == SIZE_2M) {
-        long val = read_dynamic_meminfo();
-        if (val > 0)
-            return val;
-    }
-#endif
+    long d_val = 0;
+    if (hugepage_stype == SIZE_2M) 
+        d_val = read_dynamic_meminfo();
+    return (d_val + read_meminfo("HugePages_Total:"));
+#else
     return read_meminfo("HugePages_Total:");
+#endif
 }
 
 #define MAPS_BUF_SZ 4096
