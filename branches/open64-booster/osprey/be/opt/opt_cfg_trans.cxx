@@ -2395,7 +2395,7 @@ IF_MERGE_TRANS::Has_dependency(SC_NODE * sc, BB_NODE * bb)
 // Collect classified loops for the SC tree rooted at sc.
 
 void
-TAIL_DUP_TRANS::Collect_classified_loops(SC_NODE * sc)
+PRO_LOOP_FUSION_TRANS::Collect_classified_loops(SC_NODE * sc)
 {
   if ((sc->Type() == SC_LOOP) && (sc->Class_id() != 0)) {
     if (_loop_list == NULL)
@@ -2413,9 +2413,9 @@ TAIL_DUP_TRANS::Collect_classified_loops(SC_NODE * sc)
 
 // Find a pair of tail duplication candidates for the SC_tree rooted at sc_root.
 // a non-NULL sc_begin gives the initial search point in _loop_list.
-// This routine can only be called from TAIL_DUP_TRANS::Top_down_trans.
+// This routine can only be called from PRO_LOOP_FUSION_TRANS::Top_down_trans.
 void
-TAIL_DUP_TRANS::Find_cand
+PRO_LOOP_FUSION_TRANS::Find_cand
 (
  SC_NODE *  sc_root, 
  SC_NODE ** cand1_ptr, 
@@ -2740,7 +2740,7 @@ TAIL_DUP_TRANS::Find_cand
 // Move BB_NODEs in sc2 before the first BB_NODE in sc1.
 // The caller of this routine should be responsible for the legality check.
 void
-TAIL_DUP_TRANS::Do_code_motion(SC_NODE * sc1, SC_NODE * sc2)
+PRO_LOOP_FUSION_TRANS::Do_code_motion(SC_NODE * sc1, SC_NODE * sc2)
 {
   FmtAssert((sc1->Parent() == sc2->Parent()), ("Expect sibling SC_NODEs"));
   BB_NODE * first_bb1 = sc1->First_bb();
@@ -2890,7 +2890,7 @@ TAIL_DUP_TRANS::Do_code_motion(SC_NODE * sc1, SC_NODE * sc2)
 // Before insertion, src_entry should have no predecessor, src_exit should have at most
 // one successor. Also fix Prev/Next links.
 void
-TAIL_DUP_TRANS::Insert_region
+PRO_LOOP_FUSION_TRANS::Insert_region
 (
  BB_NODE * src_entry, 
  BB_NODE * src_exit, 
@@ -2940,7 +2940,7 @@ TAIL_DUP_TRANS::Insert_region
 // Fix parent ifinfo and loop info after sc1 is head-duplicated into sc2
 // or after sc2 is moved above sc1.  
 void
-TAIL_DUP_TRANS::Fix_parent_info(SC_NODE * sc1, SC_NODE * sc2)
+PRO_LOOP_FUSION_TRANS::Fix_parent_info(SC_NODE * sc1, SC_NODE * sc2)
 {
   SC_NODE * parent = sc2->Parent();
   SC_TYPE parent_type = parent->Type();
@@ -2965,7 +2965,7 @@ TAIL_DUP_TRANS::Fix_parent_info(SC_NODE * sc1, SC_NODE * sc2)
 // Do head duplication of sc_src into sc_dst.
 // Caller of this routine should take the responsiblity of legality check.
 void
-TAIL_DUP_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
+PRO_LOOP_FUSION_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 {
   FmtAssert((sc_dst->Type() == SC_IF), ("Expect a SC_IF"));
   FmtAssert(sc_src->Is_sese(), ("Expect a single entry single exit"));
@@ -3153,7 +3153,7 @@ TAIL_DUP_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 // Caller of this routine should take the responsiblity of legality check.
 
 void
-TAIL_DUP_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
+PRO_LOOP_FUSION_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 {
   FmtAssert((sc_dst->Type() == SC_IF), ("Expect a SC_IF"));
   FmtAssert(sc_src->Is_sese(), ("Expect a single entry single exit"));
@@ -3451,9 +3451,9 @@ TAIL_DUP_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 // to bring sc1 and sc2 adjacent to each other. Return TRUE if all transformations
 // during the traversal are successful.
 //
-// This routine can only be called from TAIL_DUP_TRANS::Top_down_trans.
+// This routine can only be called from PRO_LOOP_FUSION_TRANS::Top_down_trans.
 BOOL
-TAIL_DUP_TRANS::Traverse_trans(SC_NODE * sc1, SC_NODE * sc2)
+PRO_LOOP_FUSION_TRANS::Traverse_trans(SC_NODE * sc1, SC_NODE * sc2)
 {
   FmtAssert((sc1->Parent() == sc2->Parent()), ("Expect siblings"));
   SC_NODE * sc = sc1;
@@ -3540,7 +3540,7 @@ TAIL_DUP_TRANS::Traverse_trans(SC_NODE * sc1, SC_NODE * sc2)
 // Query whether the traverse transformation between the given pair
 // should be delayed.
 BOOL
-TAIL_DUP_TRANS::Is_delayed(SC_NODE * sc1, SC_NODE * sc2)
+PRO_LOOP_FUSION_TRANS::Is_delayed(SC_NODE * sc1, SC_NODE * sc2)
 {
   BOOL ret_val = FALSE;
 
@@ -3569,7 +3569,7 @@ TAIL_DUP_TRANS::Is_delayed(SC_NODE * sc1, SC_NODE * sc2)
 
 // Do non-recursive tail-duplication transformation for candidates whose lcp is sc_root.
 void
-TAIL_DUP_TRANS::Nonrecursive_trans(SC_NODE * sc_root, BOOL do_find) 
+PRO_LOOP_FUSION_TRANS::Nonrecursive_trans(SC_NODE * sc_root, BOOL do_find) 
 {
   if (do_find) {
     _loop_list = NULL;
@@ -3621,7 +3621,7 @@ TAIL_DUP_TRANS::Nonrecursive_trans(SC_NODE * sc_root, BOOL do_find)
 
 // Top down do tail-duplication transformation for the SC tree rooted at the given sc_root.
 void
-TAIL_DUP_TRANS::Top_down_trans(SC_NODE * sc_root)
+PRO_LOOP_FUSION_TRANS::Top_down_trans(SC_NODE * sc_root)
 {
   FmtAssert(_if_merge, ("Expect a if-merge object"));
 
@@ -3644,7 +3644,7 @@ TAIL_DUP_TRANS::Top_down_trans(SC_NODE * sc_root)
 
 // Reset/clear fields
 void
-TAIL_DUP_TRANS::Clear()
+PRO_LOOP_FUSION_TRANS::Clear()
 {
   _cu = NULL;
   _trace = FALSE;
@@ -3661,10 +3661,10 @@ TAIL_DUP_TRANS::Clear()
 
 // Reset related loop classification fields for the SC tree rooted at sc.
 // Rebuild map of SC tree depth to a list of SC_LOOP nodes.
-// The routine can only be invoked by TAIL_DUP_TRANS::Classify_loops.
+// The routine can only be invoked by PRO_LOOP_FUSION_TRANS::Classify_loops.
 
 void
-TAIL_DUP_TRANS::Reset_loop_class(SC_NODE * sc, int cur_depth)
+PRO_LOOP_FUSION_TRANS::Reset_loop_class(SC_NODE * sc, int cur_depth)
 {
   FmtAssert(_edit_loop_class, ("Not in edit mode"));
 
@@ -3692,10 +3692,10 @@ TAIL_DUP_TRANS::Reset_loop_class(SC_NODE * sc, int cur_depth)
 }
 
 // Mark SC_LOOPs with symmetric paths the same class id.
-// The routine can only be invoked by TAIL_DUP_TRANS::Classify_loops.
+// The routine can only be invoked by PRO_LOOP_FUSION_TRANS::Classify_loops.
 
 void
-TAIL_DUP_TRANS::Find_loop_class(SC_NODE * sc)
+PRO_LOOP_FUSION_TRANS::Find_loop_class(SC_NODE * sc)
 {
   FmtAssert(_edit_loop_class, ("Not in edit mode"));
 
@@ -3727,7 +3727,7 @@ TAIL_DUP_TRANS::Find_loop_class(SC_NODE * sc)
 
 // Classify loops for the SC tree rooted at sc.
 void
-TAIL_DUP_TRANS::Classify_loops(SC_NODE *sc)
+PRO_LOOP_FUSION_TRANS::Classify_loops(SC_NODE *sc)
 {
   _edit_loop_class = TRUE;
   _loop_depth_to_loop_map = CXX_NEW(MAP(CFG_BB_TAB_SIZE, _pool), _pool);
@@ -3777,25 +3777,25 @@ COMP_UNIT::Pro_loop_fusion_trans()
       if_merge_trans->Set_dump(dump);
       if_merge_trans->Set_pool(pool);
 
-      // Create tail-duplication class object
+      // Create proactive loop fusion transformation class object
 
-      TAIL_DUP_TRANS * tail_dup_trans = CXX_NEW(TAIL_DUP_TRANS(this), pool);
-      tail_dup_trans->Set_trace(trace);
-      tail_dup_trans->Set_dump(dump);
-      tail_dup_trans->Set_if_merge(if_merge_trans);
-      tail_dup_trans->Set_pool(pool);
+      PRO_LOOP_FUSION_TRANS * pro_loop_fusion_trans = CXX_NEW(PRO_LOOP_FUSION_TRANS(this), pool);
+      pro_loop_fusion_trans->Set_trace(trace);
+      pro_loop_fusion_trans->Set_dump(dump);
+      pro_loop_fusion_trans->Set_if_merge(if_merge_trans);
+      pro_loop_fusion_trans->Set_pool(pool);
 
-      if_merge_trans->Set_tail_dup(tail_dup_trans);
+      if_merge_trans->Set_tail_dup(pro_loop_fusion_trans);
 
       // Start a top-down if-merging.
       if_merge_trans->Top_down_trans(sc_root);
 
-      // Start a top-down tail duplication.
-      tail_dup_trans->Classify_loops(sc_root);
-      tail_dup_trans->Top_down_trans(sc_root);
+      // Start a top-down proactive loop fusion transformations.
+      pro_loop_fusion_trans->Classify_loops(sc_root);
+      pro_loop_fusion_trans->Top_down_trans(sc_root);
 
       // Verify branch target labels and feed back info.
-      if ((tail_dup_trans->Transform_count() > 0) || (if_merge_trans->Count() > 0)) {
+      if ((pro_loop_fusion_trans->Transform_count() > 0) || (if_merge_trans->Count() > 0)) {
 	_cfg->Verify_label();
 
 	if (Cur_PU_Feedback)
@@ -3806,9 +3806,9 @@ COMP_UNIT::Pro_loop_fusion_trans()
 	if (if_merge_trans->Count() > 0)
 	  printf("\n\t If-merge total:%d\n", if_merge_trans->Count());
 
-	if (tail_dup_trans->Transform_count() > 0)
+	if (pro_loop_fusion_trans->Transform_count() > 0)
 	  printf("\n\t Code-motion-Head-Tail-Dup total:%d\n", 
-		 tail_dup_trans->Transform_count());
+		 pro_loop_fusion_trans->Transform_count());
       }
 
 

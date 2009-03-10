@@ -708,7 +708,7 @@ void generate_loop_butterfly_zones(COMP_UNIT *cu, successor_graph &g,
 				   zone_container& zones, int, bool trace);
 
 // forward declaration.
-class TAIL_DUP_TRANS;
+class PRO_LOOP_FUSION_TRANS;
 
 typedef enum IF_MERGE_ACTION {
   DO_NONE = 0x0,
@@ -725,7 +725,7 @@ private:
   MAP * _val_map;   // map from an interger to a value number.
   BS * _true_val;   // a bit set of TRUE values, scratch field.
   MEM_POOL * _pool;
-  TAIL_DUP_TRANS * _tail_dup;
+  PRO_LOOP_FUSION_TRANS * _tail_dup;
   IF_MERGE_ACTION _action;
 
 private:
@@ -755,7 +755,7 @@ public:
   SC_NODE * Do_merge(SC_NODE *, SC_NODE *);
   void      Set_trace(BOOL i)                { _trace = i; }
   void      Set_dump(BOOL i)                 { _dump = i; }
-  void      Set_tail_dup(TAIL_DUP_TRANS * i) { _tail_dup = i; }
+  void      Set_tail_dup(PRO_LOOP_FUSION_TRANS * i) { _tail_dup = i; }
 
   IF_MERGE_TRANS(void) { Clear(); }
   IF_MERGE_TRANS(COMP_UNIT * i) { Clear(); _cu = i; }
@@ -776,7 +776,7 @@ public:
   BOOL Can_be_speculative(WN *);
 };
 
-class TAIL_DUP_TRANS {
+class PRO_LOOP_FUSION_TRANS {
 private:
   COMP_UNIT * _cu;
   BOOL _trace;
@@ -801,8 +801,8 @@ private:
   void Fix_parent_info(SC_NODE *, SC_NODE *);
 public:
   void Clear();
-  TAIL_DUP_TRANS(void) { Clear(); }
-  TAIL_DUP_TRANS(COMP_UNIT * i) { Clear(); _cu = i; }
+  PRO_LOOP_FUSION_TRANS(void) { Clear(); }
+  PRO_LOOP_FUSION_TRANS(COMP_UNIT * i) { Clear(); _cu = i; }
   void Set_trace(BOOL i) { _trace = i; }
   void Set_dump(BOOL i)  { _dump = i; }
   void Set_if_merge(IF_MERGE_TRANS * i) { _if_merge = i; }
