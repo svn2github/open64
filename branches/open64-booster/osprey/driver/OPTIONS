@@ -234,6 +234,8 @@ I-include=%D  ;		FTN     ffe,PFA     "-include=%D"
 	"Do not search for header files in the standard directories specific to C++"
 -nostdlib	;	LINK	ld	self
 	"Do not use standard system startup files or libraries when linking"
+-useacml_mv	;	LINK	ld	""
+	"Include libacml_mv when linking with libm"
 -ffast-stdlib	;	A	anyfe,ld	"-OPT:fast_stdlib=on"
 	"Use faster versions of some standard library functions, when available"
 -fno-fast-stdlib	;	A	anyfe,ld	"-OPT:fast_stdlib=off"

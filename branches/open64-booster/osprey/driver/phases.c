@@ -1840,6 +1840,10 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 		}
 		*/
 		add_library(args, "fortran");
+#ifdef TARG_X8664
+		if (option_was_seen(O_useacml_mv) && abi != ABI_N32)
+			add_library(args, "acml_mv");
+#endif
 		add_string(args, "-lmv");
 	//	add_string(args, "-lm" PSC_NAME_PREFIX);
 		add_string(args, "-lm");
@@ -1917,6 +1921,10 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	       provided by libmblah.a lib.
 	    */
 	    if (invoked_lang != L_cc) {
+#ifdef TARG_X8664
+	      if (option_was_seen(O_useacml_mv) && abi != ABI_N32)
+		add_library(args, "acml_mv");
+#endif
 	      add_library(args, "mv");			// bug 5527
 	      // add_library(args, "m" PSC_NAME_PREFIX);	// bug 3092
               // OSP -lm is needed
