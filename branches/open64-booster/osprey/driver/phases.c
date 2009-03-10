@@ -2002,6 +2002,7 @@ postprocess_ld_args (string_list_t *args)
 {
     string_item_t *p;
     boolean add_huge_lib = FALSE;
+    boolean do_link = FALSE;
 
     if (option_was_seen(O_pg) && !option_was_seen(O_nostdlib)) {
 	if (prof_lib_exists("c"))
@@ -2033,11 +2034,11 @@ postprocess_ld_args (string_list_t *args)
             if (option_was_seen(O_HP) && (strstr(dir, root_prefix) != NULL)
                 && (instrumentation_invoked != TRUE)) {
                 HUGEPAGE_DESC desc;
-                boolean do_link = FALSE;
+
                 add_after_string(args, p, concat_strings("-Wl,-rpath,", dir));
 
                 for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
-                    if (desc->alloc == ALLOC_BDT && !add_huge_lib) {
+                    if (desc->alloc == ALLOC_BDT && !do_link) {
                         /* libhugetlbfs linker script only supports dynamic link. 
                          */
                         if (!option_was_seen(O_static)) {

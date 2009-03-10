@@ -300,14 +300,6 @@ run_phase (phases_t phase, char *name, string_list_t *args)
                                  concat_strings(" -OPT:hugepage_attr=", buf));
             add_string(args, str);
         }
-
-        if (option_was_seen(O_HP)) {
-            for (p = args->head; p != NULL; p = p->next) {
-                if ((strncmp(p->name, "heap", 4) == 0) 
-                    || (strncmp(p->name, "bdt", 3) == 0))
-                    replace_string(args, p->name, "");
-            }
-        }
 	
 	if (show_flag) {
 		/* echo the command */
