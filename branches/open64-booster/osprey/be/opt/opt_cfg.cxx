@@ -6264,6 +6264,10 @@ BOOL CFG::Verify_label()
 
     BB_IFINFO * ifinfo = NULL;
 
+    if ((bb->Kind() == BB_VARGOTO)
+	|| (bb->Kind() == BB_IO))
+      continue;
+
     if (bb->Kind() == BB_LOGIF)
       ifinfo = bb->Ifinfo();
 

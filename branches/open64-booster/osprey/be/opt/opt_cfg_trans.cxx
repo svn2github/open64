@@ -106,6 +106,7 @@
 
 #include "opt_main.h"
 #include "wn_simp.h"
+#include "w2op.h"
 
 using std::insert_iterator;
 using std::map;
@@ -1205,8 +1206,10 @@ IF_MERGE_TRANS::Clear(void)
 
 BOOL IF_MERGE_TRANS::Is_trackable_var(AUX_ID aux_id)
 {
-  if (aux_id) {
-    AUX_STAB_ENTRY * aux_entry = _cu->Opt_stab()->Aux_stab_entry(aux_id);
+  OPT_STAB * op_stab = _cu->Opt_stab();
+
+  if (aux_id && (aux_id <= op_stab->Lastidx())) {
+    AUX_STAB_ENTRY * aux_entry = op_stab->Aux_stab_entry(aux_id);
     if (aux_entry && (aux_entry->Stype() == VT_NO_LDA_SCALAR)) {
       ST * st = aux_entry->St();
 
@@ -1232,9 +1235,13 @@ BOOL IF_MERGE_TRANS::Is_trackable_expr(WN * wn)
   if ((opc == OPC_IO) || OPCODE_is_call(opc)) 
     return FALSE;
 
-  if (OPERATOR_is_scalar_load(WN_operator(wn))) {
-    AUX_ID aux_id = WN_aux(wn);
-    if (!Is_trackable_var(aux_id)) 
+  if (OPCODE_is_load(opc)) {
+    if (OPERATOR_is_scalar_load(WN_operator(wn))) {
+      AUX_ID aux_id = WN_aux(wn);
+      if (!Is_trackable_var(aux_id)) 
+	return FALSE;
+    }
+    else
       return FALSE;
   }
 
@@ -1251,6 +1258,9 @@ BOOL IF_MERGE_TRANS::Is_trackable_expr(WN * wn)
 BOOL IF_MERGE_TRANS::Val_mod(SC_NODE * sc, WN * wn)
 {
   Init_val_map(wn);
+  if (_val_map == NULL)
+    return FALSE;
+
   Track_val(sc, sc->First_bb(), wn);
   BOOL ret_val = !Val_match(wn);
   Delete_val_map();
@@ -1366,6 +1376,77 @@ BOOL IF_MERGE_TRANS::Is_aliased(WN * wn1, WN * wn2)
   }
 
   return FALSE;
+}
+
+// Given a WN, query whether all of its kids and itself can be speculative.
+
+BOOL IF_MERGE_TRANS::Can_be_speculative(WN * wn)
+{
+  INT i;
+  struct ALIAS_MANAGER * alias = _cu->Alias_mgr();
+  
+  for (i=0; i<WN_kid_count(wn); i++) {
+    if (!Can_be_speculative(WN_kid(wn,i)))
+      return FALSE;
+  }
+
+  OPERATOR op = WN_operator(wn);
+
+  if (OPERATOR_is_store(op) || OPERATOR_is_load(op)) {
+    if (WN_Is_Volatile_Mem(wn))
+      return FALSE;
+  }
+
+  if (OPCODE_is_call(WN_opcode(wn)))
+    return FALSE;
+
+  return TRUE;
+}
+
+// Given a BB_NODE, query whether all of its real statements can be speculative.
+BOOL
+IF_MERGE_TRANS::Can_be_speculative(BB_NODE * bb)
+{
+  WN * tmp;
+
+  for (tmp = bb->Firststmt(); tmp != NULL; tmp = WN_next(tmp)) {
+    if ((WN_operator(tmp) == OPR_LABEL)
+	|| (WN_operator(tmp) == OPR_PRAGMA))
+      continue;
+    
+    if (!Can_be_speculative(tmp))
+      return FALSE;
+  }
+
+  return TRUE;
+}
+
+// Given a SC_NODE, query whether all of its BB_NODEs can be speculative.
+BOOL
+IF_MERGE_TRANS::Can_be_speculative(SC_NODE * sc)
+{
+  BB_LIST_ITER bb_list_iter;
+  BB_NODE * tmp;
+
+  tmp = sc->Get_bb_rep();
+
+  if ((tmp != NULL) && !Can_be_speculative(tmp))
+    return FALSE;
+
+  FOR_ALL_ELEM(tmp, bb_list_iter,Init(sc->Get_bbs())) {
+    if (!Can_be_speculative(tmp))
+      return FALSE;
+  }
+
+  SC_LIST_ITER sc_list_iter(sc->Kids());
+  SC_NODE * sc_tmp;
+
+  FOR_ALL_ELEM(sc_tmp, sc_list_iter, Init()) {
+    if (!Can_be_speculative(sc_tmp))
+      return FALSE;
+  }
+  
+  return TRUE;
 }
 
 // For every load in wn, if it aliases with wn_iter,
@@ -1967,6 +2048,7 @@ IF_MERGE_TRANS::Maybe_assigned_expr(SC_NODE * sc1, SC_NODE * sc2)
 // else {
 //   ......
 // }
+// where the value of const1 is not equal to the value of const2.
 BOOL
 IF_MERGE_TRANS::Is_if_collapse_cand(SC_NODE * sc1, SC_NODE * sc2)
 {
@@ -2020,6 +2102,7 @@ IF_MERGE_TRANS::Is_if_collapse_cand(SC_NODE * sc1, SC_NODE * sc2)
   if (!wn 
       || !OPERATOR_is_scalar_store(WN_operator(wn))
       || (WN_aux(wn) != WN_aux(wn_load))
+      || (WN_operator(WN_kid0(wn)) != OPR_INTCONST)
       || (WN_const_val(WN_kid0(wn)) != WN_const_val(wn_const)))
     return FALSE;
 
@@ -2027,6 +2110,7 @@ IF_MERGE_TRANS::Is_if_collapse_cand(SC_NODE * sc1, SC_NODE * sc2)
   if (!wn
       || !OPERATOR_is_scalar_store(WN_operator(wn))
       || (WN_aux(wn) != WN_aux(wn_load))
+      || (WN_operator(WN_kid0(wn)) != OPR_INTCONST)
       || (WN_const_val(WN_kid0(wn)) == WN_const_val(wn_const)))
     return FALSE;
 
@@ -2075,6 +2159,22 @@ IF_MERGE_TRANS::Is_cand(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
   if (!sc2->Is_well_behaved())
     return FALSE;
 
+  // If merge SC is a SC_BLOCK, it should be a SESE.
+
+  SC_NODE * next_sibling = sc1->Next_sibling();
+
+  if (next_sibling
+      && (next_sibling->Type() == SC_BLOCK)
+      && !next_sibling->Is_sese())
+    return FALSE;
+
+  next_sibling = sc2->Next_sibling();
+  
+  if (next_sibling
+      && (next_sibling->Type() == SC_BLOCK)
+      && !next_sibling->Is_sese())
+    return FALSE;
+  
   // Check whether sc2 can be if-collapsed with sc1.
   // See IF_MERGE_TRANS:Is_if_collapse_cand.
   if (_action == DO_IFCOLLAPSE) {
@@ -2113,7 +2213,7 @@ IF_MERGE_TRANS::Is_cand(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
 
   // All siblings between sc1 and sc2 (exclusive) should not
   // modify condition expression.
-  SC_NODE * next_sibling = sc1->Next_sibling();
+  next_sibling = sc1->Next_sibling();
   
   while (next_sibling && (next_sibling != sc2)) {
     if (Maybe_assigned_expr(next_sibling, expr2))
@@ -2141,6 +2241,7 @@ IF_MERGE_TRANS::Is_cand(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
 
   BOOL has_dep = FALSE;
   BOOL all_blk = TRUE;
+  BOOL has_non_sp = FALSE;
 
   next_sibling = sc1->Next_sibling();
   int count = 0;
@@ -2153,13 +2254,21 @@ IF_MERGE_TRANS::Is_cand(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
 	has_dep = TRUE;
     }
 
+    if (!Can_be_speculative(next_sibling))
+      has_non_sp = TRUE;
+
     if (next_sibling->Type() != SC_BLOCK)
       all_blk = FALSE;
     next_sibling = next_sibling->Next_sibling();
   }
 
-  if (!has_dep)
-    return TRUE;
+  if (!has_dep) {
+    // Do not reorder operations that can not be speculative.
+    if (has_non_sp && !Can_be_speculative(sc2))
+      return FALSE;
+    else
+      return TRUE;
+  }
 
   if (!all_blk)
     return FALSE;
@@ -2270,8 +2379,9 @@ TAIL_DUP_TRANS::Find_cand
   // 2.3 For all the sibling nodes between cand1 and cand2 EXCLUSIVE,
   //    - It must be a SC_BLOCK or a SC_IF.
   //    - In the case of a SC_BLOCK, it should have no dependency on loop1.
+  //      It can be speculative.  It should have a single-entry and single-exit.
   //      It should also have a single successor that has a single predecessor.
-  //      If cand1 is a loop, cand1 should be control equivalent to the SC_BLOCK 
+  //      If cand1 is a loop, cand1 should be control equivalent to the SC_BLOCK
   //      for safe code motion.  The requirement of single successor is to make
   //      sure the successor can become a merge block for a loop after the code
   //      motion or a merge block for a SC_IF after tail duplication.
@@ -2304,6 +2414,10 @@ TAIL_DUP_TRANS::Find_cand
     if (!sc_root->Is_pred_in_tree(tmp1))
       continue;
 
+    // Condition 1.2
+    if (!tmp1->Is_sese())
+      continue;
+
     // Condition 1.5
     if (tmp1->Num_of_loops(sc_root, TRUE, TRUE) != 0)
       continue;
@@ -2314,6 +2428,10 @@ TAIL_DUP_TRANS::Find_cand
 	tmp2 = list2->Node();
 
 	if (!sc_root->Is_pred_in_tree(tmp2))
+	  continue;
+
+	// Condition 1.2
+	if (!tmp2->Is_sese())
 	  continue;
 
 	// Condition 1.5
@@ -2454,12 +2572,19 @@ TAIL_DUP_TRANS::Find_cand
 		    break;
 		  }
 
+		  if (!next->Is_sese()) {
+		    cand1 = NULL;
+		    cand2 = NULL;
+		    break;
+		  }
+
+		  BB_LIST_ITER bb_list_iter;
+		  BB_NODE * tmp;
+
 		  if (cand1->Type() == SC_LOOP) {
 		    BB_NODE * cand1_first_bb = cand1->First_bb();
-		    BB_LIST_ITER bb_list_iter(next->Get_bbs());
-		    BB_NODE * tmp;
 
-		    FOR_ALL_ELEM(tmp, bb_list_iter,Init()) {
+		    FOR_ALL_ELEM(tmp, bb_list_iter,Init(next->Get_bbs())) {
 		      if (!cand1_first_bb->Dominates(tmp)
 			  || !tmp->Postdominates(cand1_first_bb)) {
 			cand1 = NULL;
@@ -2473,6 +2598,13 @@ TAIL_DUP_TRANS::Find_cand
 		  
 		  // No dependency on loop1.
 		  if (_if_merge->Has_dependency(tmp1, next)) {
+		    cand1 = NULL;
+		    cand2 = NULL;
+		    break;
+		  }
+
+		  // Can be speculative
+		  if (!_if_merge->Can_be_speculative(next)) {
 		    cand1 = NULL;
 		    cand2 = NULL;
 		    break;
@@ -2619,18 +2751,17 @@ TAIL_DUP_TRANS::Do_code_motion(SC_NODE * sc1, SC_NODE * sc2)
     FmtAssert(WN_label_number(branch_wn), ("Null label"));
     WN_label_number(branch_wn) = last_bb2_succ->Labnam();
 
-    // Fix label on if-branch to sc1.
+    // Fix label on branch to sc1.
     if (first_bb1->Labnam() != 0) {
       cfg->Add_label_with_wn(first_bb2);
       
       FOR_ALL_ELEM(tmp, bb_list_iter, Init(first_bb2->Pred())) {
 	FmtAssert(!sc1->Contains(tmp), ("TODO: back edge"));
-	WN * branch_wn = tmp->Branch_wn();
-	if (branch_wn) {
-	  FmtAssert((WN_label_number(branch_wn) == first_bb1->Labnam()), 
-		    ("Unexpected label"));
-	  WN_label_number(branch_wn) = first_bb2->Labnam();
 
+	if (tmp->Is_branch_to(first_bb1)) {
+	  WN * branch_wn = tmp->Branch_wn();	  
+	  WN_label_number(branch_wn) = first_bb2->Labnam();
+	  
 	  if (parent->Type() != SC_IF) {
 	    // If first_bb1 has a label WN and first_bb2 does not have
 	    // a label WN, create one for first_bb2.	    
@@ -2659,21 +2790,19 @@ TAIL_DUP_TRANS::Do_code_motion(SC_NODE * sc1, SC_NODE * sc2)
       cur_list->Set_node(sc1);
   }
 
+  // Fix previous sibling's merge info 
+  SC_NODE * prev_sibling = sc2->Prev_sibling();
+
+  if (prev_sibling) {
+    BB_NODE * merge = prev_sibling->Merge();
+    if (merge) {
+      FmtAssert((merge == first_bb1), ("Unexpected merge block"));
+      prev_sibling->Set_merge(first_bb2);
+    }
+  }
+
   // Fix parent info.
-  SC_TYPE parent_type = parent->Type();
-
-  if ((parent_type == SC_THEN) || (parent_type == SC_ELSE)) {
-    BB_NODE * bb_cond = parent->Parent()->Head();
-    BB_IFINFO * ifinfo = bb_cond->Ifinfo();
-
-    if (parent_type == SC_THEN)
-      ifinfo->Set_then(parent->First_bb());
-    else
-      ifinfo->Set_else(parent->First_bb());
-  }
-  else if (parent_type == SC_LOOP) {
-    FmtAssert(FALSE, ("TODO: fix parent loop info"));
-  }
+  Fix_parent_info(sc1, sc2);
 
   cfg->Invalidate_and_update_aux_info();
   cfg->Invalidate_loops();
@@ -2732,6 +2861,31 @@ TAIL_DUP_TRANS::Insert_region
   }
 }
 
+// Fix parent ifinfo and loop info after sc1 is head-duplicated into sc2
+// or after sc2 is moved above sc1.  
+void
+TAIL_DUP_TRANS::Fix_parent_info(SC_NODE * sc1, SC_NODE * sc2)
+{
+  SC_NODE * parent = sc2->Parent();
+  SC_TYPE parent_type = parent->Type();
+
+  if ((parent_type == SC_THEN) || (parent_type == SC_ELSE)) {
+    BB_NODE * bb_cond = parent->Parent()->Head();
+    BB_IFINFO * ifinfo = bb_cond->Ifinfo();
+    
+    if (parent_type == SC_THEN)
+      ifinfo->Set_then(parent->First_bb());
+    else
+      ifinfo->Set_else(parent->First_bb());
+  }
+  else if (parent_type == SC_LP_BODY) {
+    BB_LOOP * loop = parent->Parent()->Loopinfo();
+    if (loop->Body() == sc1->First_bb()) {
+      loop->Set_body(sc2->First_bb());
+    }
+  }
+}
+
 // Do head duplication of sc_src into sc_dst.
 // Caller of this routine should take the responsiblity of legality check.
 void
@@ -2750,6 +2904,7 @@ TAIL_DUP_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 	   sc_src->Id(), sc_dst->Id());
   }
 
+  SC_NODE * prev_sibling = sc_src->Prev_sibling();
   CFG * cfg = _cu->Cfg();
   SC_NODE * sc_new = cfg->Clone_sc(sc_src, TRUE);
   FmtAssert(sc_new, ("NULL clone"));
@@ -2782,7 +2937,12 @@ TAIL_DUP_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
     new_entry = cfg->Get_cloned_bb(old_entry);
     new_exit = cfg->Get_cloned_bb(old_exit);
 
-    FmtAssert(old_entry->Labnam() == 0, ("TODO: fix label"));
+    if (old_entry->Labnam() != 0) {
+      FOR_ALL_ELEM(tmp, bb_list_iter, Init(old_entry->Pred())) {
+	if ((tmp->Kind() != BB_GOTO) || tmp->Is_branch_to(old_entry))
+	  FmtAssert(FALSE, ("TODO: fix label"));	  
+      }
+    }
 
     // Fix label on if-branch.
     if (dst_head->Is_branch_to(dst_else)) {
@@ -2869,6 +3029,19 @@ TAIL_DUP_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
     FmtAssert(FALSE, ("Unexpected SC type"));
   }
 
+  
+
+  if (prev_sibling) {
+    BB_NODE * merge = prev_sibling->Merge();
+    if (merge) {
+      FmtAssert((merge == sc_src->First_bb()), ("Unexpected merge block"));
+      prev_sibling->Set_merge(dst_head);
+    }
+  }
+
+  // Fix parent info.
+  Fix_parent_info(sc_src, sc_dst);
+
   cfg->Invalidate_and_update_aux_info();
   cfg->Invalidate_loops();
 
@@ -2937,7 +3110,7 @@ TAIL_DUP_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 
     FmtAssert(!src_merge->Pred()->Multiple_bbs(), ("Expect single predecessor"));
 
-    new_merge = cfg->Create_and_allocate_bb(src_merge->Kind());
+    new_merge = cfg->Create_and_allocate_bb(BB_GOTO);
 
     // Disconnect BB_NODEs in src_src from CFG
     FOR_ALL_ELEM(tmp, bb_list_iter, Init(old_entry->Pred())) {
@@ -2991,7 +3164,7 @@ TAIL_DUP_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
     sc_blk->Set_parent(sc_insert_after);
     
     // Insert new BB_NODEs into else-path
-    new_merge = cfg->Create_and_allocate_bb(src_merge->Kind());
+    new_merge = cfg->Create_and_allocate_bb(BB_GOTO);
     new_exit->Prepend_succ(new_merge, pool);
     new_merge->Append_pred(new_exit, pool);
     
@@ -3116,18 +3289,21 @@ TAIL_DUP_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 }
 
 // Traverse siblings between sc1 and sc2, do code motion or head/tail duplication
-// to bring sc1 and sc2 adjacent to each other. 
+// to bring sc1 and sc2 adjacent to each other. Return TRUE if all transformations
+// during the traversal are successful.
+//
 // This routine can only be called from TAIL_DUP_TRANS::Top_down_trans.
-void
+BOOL
 TAIL_DUP_TRANS::Traverse_trans(SC_NODE * sc1, SC_NODE * sc2)
 {
   FmtAssert((sc1->Parent() == sc2->Parent()), ("Expect siblings"));
   SC_NODE * sc = sc1;
+  BOOL ret_val = TRUE;
 
   if (_trace)
     printf("\n\t Traverse (SC%d,SC%d)\n", 
 	   sc1->Id(), sc2->Id());
-	    
+
   while (sc != sc2) {
     SC_NODE * next = sc->Next_sibling();
     SC_TYPE sc_type = sc->Type();
@@ -3138,8 +3314,15 @@ TAIL_DUP_TRANS::Traverse_trans(SC_NODE * sc1, SC_NODE * sc2)
     
     switch (next_type) {
     case SC_BLOCK:
-      if (sc_type == SC_LOOP) 
-	Do_code_motion(sc, next);
+      if (sc_type == SC_LOOP) {
+	if (sc->Loopinfo()->Is_flag_set(LOOP_PRE_DO)) 
+	  Do_code_motion(sc, next);
+	else {
+	  ret_val = FALSE;
+	  if (_trace)
+	    printf("\n\t\t  Skip non-DO-LOOP (SC%d)\n", sc->Id());
+	}
+      }
       else if (sc_type == SC_IF) 
 	Do_tail_duplication(next, sc);
       else 
@@ -3150,31 +3333,49 @@ TAIL_DUP_TRANS::Traverse_trans(SC_NODE * sc1, SC_NODE * sc2)
       if (sc_type == SC_IF) {
 	if (_if_merge && _if_merge->Is_cand(sc, next, TRUE))
 	  _if_merge->Do_merge(sc, next);
-	else 
-	  FmtAssert(FALSE, ("TODO"));
+	else {
+	  // FmtAssert(FALSE, ("TODO"));
+	  ret_val = FALSE;
+	}
       }
       else if (sc_type == SC_LOOP) {
-	// Do head duplication.
-	Do_head_duplication(sc, next);
-	sc = next;
+	if (sc->Loopinfo()->Is_flag_set(LOOP_PRE_DO)) {
+	  // Do head duplication.
+	  Do_head_duplication(sc, next);
+	  sc = next;
+	}
+	else {
+	  ret_val = FALSE;
+	  if (_trace)
+	    printf("\n\t\t  Skip non-DO-LOOP (SC%d)\n", sc->Id());
+	}
       }
 
       break;
     case SC_LOOP:
       if (sc_type == SC_IF) {
-	Do_tail_duplication(next, sc);
-	// exhause transformation opportunities on current loop classifications.
-	Nonrecursive_trans(sc->Find_kid_of_type(SC_THEN), FALSE);
-	Nonrecursive_trans(sc->Find_kid_of_type(SC_ELSE), FALSE);
+	if (next->Loopinfo()->Is_flag_set(LOOP_PRE_DO)) {
+	  Do_tail_duplication(next, sc);
+	  // exhause transformation opportunities on current loop classifications.
+	  Nonrecursive_trans(sc->Find_kid_of_type(SC_THEN), FALSE);
+	  Nonrecursive_trans(sc->Find_kid_of_type(SC_ELSE), FALSE);
+	}
+	else {
+	  ret_val = FALSE;
+	  if (_trace)
+	    printf("\n\t\t  Skip non-DO-LOOP (SC%d)\n", next->Id());
+	}
       }
       break;
     default:
       FmtAssert(FALSE, ("Unexpect SC type"));
     }
 
-    if (next == sc2)
+    if ((next == sc2) || (ret_val == FALSE))
       break;
   }
+
+  return ret_val;
 }
 
 // Query whether the traverse transformation between the given pair
@@ -3208,11 +3409,9 @@ TAIL_DUP_TRANS::Is_delayed(SC_NODE * sc1, SC_NODE * sc2)
 }
 
 // Do non-recursive tail-duplication transformation for candidates whose lcp is sc_root.
-BOOL
+void
 TAIL_DUP_TRANS::Nonrecursive_trans(SC_NODE * sc_root, BOOL do_find) 
 {
-  BOOL changed = FALSE;
-
   if (do_find) {
     _loop_list = NULL;
     Collect_classified_loops(sc_root);
@@ -3246,9 +3445,8 @@ TAIL_DUP_TRANS::Nonrecursive_trans(SC_NODE * sc_root, BOOL do_find)
     }
 
     if (cand1 && cand2) {
-      Traverse_trans(cand1, cand2);
-      Inc_traverse_count();
-      changed = TRUE;
+      if (!Traverse_trans(cand1, cand2)) 
+	break;
     }
     else
       break;
@@ -3260,8 +3458,6 @@ TAIL_DUP_TRANS::Nonrecursive_trans(SC_NODE * sc_root, BOOL do_find)
       _loop_list = _loop_list->Remove(tmp, _pool);
     }
   }
-  
-  return changed;
 }
 
 // Top down do tail-duplication transformation for the SC tree rooted at the given sc_root.
@@ -3271,9 +3467,10 @@ TAIL_DUP_TRANS::Top_down_trans(SC_NODE * sc_root)
   FmtAssert(_if_merge, ("Expect a if-merge object"));
 
   if (sc_root->Flag() >= HAS_SYMM_LOOP) {
-    BOOL changed = Nonrecursive_trans(sc_root, TRUE);
+    int orig_transform_count = _transform_count;
+    Nonrecursive_trans(sc_root, TRUE);
 
-    if (changed) {
+    if (_transform_count > orig_transform_count) {
       _if_merge->Top_down_trans(sc_root); 
       Classify_loops(sc_root);
     }
@@ -3293,7 +3490,6 @@ TAIL_DUP_TRANS::Clear()
   _cu = NULL;
   _trace = FALSE;
   _dump = FALSE;
-  _traverse_count = 0;
   _transform_count = 0;
   _last_class_id = 0;
   _if_merge = NULL;

@@ -1804,11 +1804,18 @@ SC_NODE::Merge()
     BB_LOOP * loopinfo = Loopinfo();
     return loopinfo->Merge();
   }
-  else {
-    FmtAssert(FALSE, ("Expect a SC_IF or a SC_LOOP"));
-  }
-  
-  return NULL;
+  else
+    return NULL;
+}
+
+// Set merge for this SC_NODE.
+void
+SC_NODE::Set_merge(BB_NODE * bb)
+{
+  if (type == SC_IF) 
+    this->Head()->Ifinfo()->Set_merge(bb);
+  else if (type == SC_LOOP)
+    this->Loopinfo()->Set_merge(bb);
 }
 
 // Find an exit of this SC_NODE
@@ -1956,9 +1963,13 @@ SC_NODE::Delete()
 
 // Query whether this SC_NODE is well-behaved.
 // A well-behaved if-region has a head block, a then-path, a else-path
-// and a merge block.  The Next() of the head block is the first block on the then-path.
+// and a merge block. 
+// The Next() of the head block is the first block on the then-path.
 // The Next() of the last block on the then-path is the first block on the else-path.
 // The Next() of the last block on the else-path is the merge block.
+// The last block on the then-path is a predecessor of the merge block.
+// The last block on the else-path is a predecessor of the merge block.
+
 BOOL
 SC_NODE::Is_well_behaved()
 {
@@ -1980,6 +1991,14 @@ SC_NODE::Is_well_behaved()
     return FALSE;
 
   if (bb_else_end->Next() != bb_merge)
+    return FALSE;
+
+  if (!bb_then_end->Succ()
+      || !bb_then_end->Succ()->Contains(bb_merge))
+    return FALSE;
+
+  if (!bb_else_end->Succ() 
+      || !bb_else_end->Succ()->Contains(bb_merge))
     return FALSE;
 
   return TRUE;
@@ -2017,10 +2036,23 @@ SC_NODE::Is_sese()
   BOOL ret_val = FALSE;
   BB_NODE * bb_head;
   BB_NODE * bb_merge;
+  BB_LIST_ITER bb_list_iter;
+  BB_NODE * bb_tmp;
+  BB_NODE * bb_first;
 
   switch (type) {
   case SC_BLOCK:
     ret_val = TRUE;
+    bb_first = First_bb();
+
+    FOR_ALL_ELEM(bb_tmp, bb_list_iter, Init(this->Get_bbs())) {
+      if ((bb_tmp != bb_first)
+	  && (!bb_first->Dominates(bb_tmp) || !bb_tmp->Postdominates(bb_first))) {
+	ret_val = FALSE;
+	break;
+      }
+    }
+
     break;
 
   case SC_IF:

@@ -814,6 +814,7 @@ public:
   BB_NODE     *Dohead(void) const   { return _u1._dohead; }
   BB_NODE     *End(void) const      { return _end; }
   BB_NODE     *Body(void) const     { return _body; }
+  void         Set_body(BB_NODE *p) { _body = p; }
   BB_NODE     *Step(void) const     { return _step; }
   void         Set_merge(BB_NODE *b){ _u2._merge = b; }
   BB_NODE     *Merge(void) const    { return _u2._merge; }
@@ -1933,6 +1934,7 @@ public:
   BB_NODE * Then();
   BB_NODE * Else();
   BB_NODE * Merge();
+  void      Set_merge(BB_NODE *);
   BB_NODE * Head();
   BB_NODE * Then_end();
   BB_NODE * Else_end();

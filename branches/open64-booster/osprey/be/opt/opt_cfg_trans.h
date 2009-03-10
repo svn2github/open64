@@ -765,6 +765,9 @@ public:
   BOOL Has_dependency(SC_NODE *, SC_NODE *);
   BOOL Has_dependency(SC_NODE *, BB_NODE *);
   BOOL Is_aliased(WN *, WN *);
+  BOOL Can_be_speculative(SC_NODE *);
+  BOOL Can_be_speculative(BB_NODE *);
+  BOOL Can_be_speculative(WN *);
 };
 
 class TAIL_DUP_TRANS {
@@ -772,7 +775,6 @@ private:
   COMP_UNIT * _cu;
   BOOL _trace;
   BOOL _dump;
-  int _traverse_count;
   int _transform_count;
   IF_MERGE_TRANS * _if_merge;
   MEM_POOL * _pool;
@@ -787,9 +789,10 @@ private:
   void Collect_classified_loops(SC_NODE *);
   BOOL Is_cand_type(SC_TYPE type) { return ((type == SC_IF) || (type == SC_LOOP)); }
   void Find_cand(SC_NODE *, SC_NODE **, SC_NODE **, SC_NODE *);
-  void Traverse_trans(SC_NODE *, SC_NODE *);
+  BOOL Traverse_trans(SC_NODE *, SC_NODE *);
   void Insert_region(BB_NODE *, BB_NODE *, BB_NODE *, BB_NODE *, MEM_POOL *);
   BOOL Is_delayed(SC_NODE *, SC_NODE *);
+  void Fix_parent_info(SC_NODE *, SC_NODE *);
 public:
   void Clear();
   TAIL_DUP_TRANS(void) { Clear(); }
@@ -800,10 +803,9 @@ public:
   void Set_pool(MEM_POOL * i) { _pool = i; }
   MEM_POOL * Loc_pool() { return _pool; }
   int Transform_count() { return _transform_count; }
-  void Inc_traverse_count() { _traverse_count++; }
   void Inc_transform_count() { _transform_count++; }
   void Top_down_trans(SC_NODE *);
-  BOOL Nonrecursive_trans(SC_NODE *, BOOL);
+  void Nonrecursive_trans(SC_NODE *, BOOL);
   void Classify_loops(SC_NODE *);
   int New_class_id() { _last_class_id ++; return _last_class_id; }
   void Do_code_motion(SC_NODE *, SC_NODE *);
