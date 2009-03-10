@@ -2025,7 +2025,7 @@ postprocess_ld_args (string_list_t *args)
 
                 for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
                     if (desc->alloc == ALLOC_BDT && !add_huge_lib) {
-                        /* -T option does not work with -static. todo: find out why.
+                        /* libhugetlbfs linker script only supports dynamic link. 
                          */
                         if (!option_was_seen(O_static)) {
                             dir = concat_strings(dir, "/elf.xBDT");
