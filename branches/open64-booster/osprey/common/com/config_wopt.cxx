@@ -324,7 +324,7 @@ INT32 WOPT_Tail_Dup_Max_Clone = -1; // Limit code size bloats (in statement coun
                                                   // due to tail-duplication.
 INT32 WOPT_Enable_Pro_Loop_Fusion_Func_Limit = -1; // Enable proactive loop fusion transformation for
                                                   // functions within the limit.
-BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans = FALSE;  // Enables proactive loop fusion transformation
+BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans = TRUE;  // Enables proactive loop fusion transformation
 
 #ifdef KEY
 BOOL  WOPT_Enable_Preserve_Mem_Opnds = FALSE; // if TRUE, suppress EPRE on 
