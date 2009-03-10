@@ -2030,13 +2030,14 @@ postprocess_ld_args (string_list_t *args)
             char * root_prefix = directory_path(get_executable_dir());
 	    add_after_string(args, p, concat_strings("-Wl,-rpath-link,", dir));
 
-            if (option_was_seen(O_hugepage) && (strstr(dir, root_prefix) != NULL)
+            if (option_was_seen(O_HP) && (strstr(dir, root_prefix) != NULL)
                 && (instrumentation_invoked != TRUE)) {
                 HUGEPAGE_DESC desc;
+                boolean do_link = FALSE;
                 add_after_string(args, p, concat_strings("-Wl,-rpath,", dir));
 
                 for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
-                    if (desc->alloc == ALLOC_BDT && !add_huge_lib) {
+                    if (desc->alloc == ALLOC_BDT && !do_link) {
                         /* libhugetlbfs linker script only supports dynamic link. 
                          */
                         if (!option_was_seen(O_static)) {
@@ -2046,6 +2047,7 @@ postprocess_ld_args (string_list_t *args)
                                 dir = concat_strings(dir, "/elf_1G.xBDT");
                                 
                             add_after_string(args, p, concat_strings("-Wl,-T", dir));
+                            do_link = TRUE;
                             add_huge_lib = TRUE;
                         }
                     }

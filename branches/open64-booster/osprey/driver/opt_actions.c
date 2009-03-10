@@ -2007,7 +2007,7 @@ static void
 Process_Hugepage_Default()
 {
     add_hugepage_desc(HUGEPAGE_ALLOC_DEFAULT, HUGEPAGE_SIZE_DEFAULT, HUGEPAGE_LIMIT_DEFAULT);
-    add_option_seen(O_hugepage);
+    add_option_seen(O_HP);
 }
 
 static boolean hugepage_warn = FALSE;
@@ -2017,6 +2017,7 @@ Process_Hugepage_Group(char * hugepage_args)
 {
     char * p = hugepage_args;
     boolean has_err = FALSE;
+    int process_state = 0;
     HUGEPAGE_ALLOC hugepage_alloc;
     HUGEPAGE_SIZE  hugepage_size;
     int hugepage_limit;
@@ -2027,66 +2028,96 @@ Process_Hugepage_Group(char * hugepage_args)
     hugepage_limit = HUGEPAGE_LIMIT_DEFAULT;
     
     while (*p) {
-        if (strncmp(p, "limit=", 6) == 0) {
-            p = &p[6];
-            sscanf(p, "%d", &hugepage_limit);
-
-            while ((*p) && ((*p) >= '0') && ((*p) <= '9'))
-                p++;
-        }
-        else if (strncmp(p, "alloc=", 6) == 0) {
-            p = &p[6];
-
-            if ((strncmp(p, "heap", 4) == 0)
-                || (strncmp(p, "HEAP", 4) == 0)) {
-                hugepage_alloc = ALLOC_HEAP;
-                p += 4;
-            }
-            else if ((strncmp(p, "bdt", 3) == 0)
-                     || (strncmp(p, "BDT", 3) == 0)) {
-                hugepage_alloc = ALLOC_BDT;
-                p += 3;
-            }
-            else
-                has_err = TRUE;
-        }
-        else if (strncmp(p, "size=", 5) == 0) {
-            p = &p[5];
-#if 0
-            if (hugepage_alloc != ALLOC_HEAP)
-                warning("Ignoring size option in %s", hugepage_alloc_name[hugepage_alloc]);
-#endif
-            
-            if ((strncmp(p, "2M", 2) == 0)
-                || (strncmp(p, "2m", 2) == 0)) {
+        if (process_state == 1) {
+            if (strncmp(p, "2m", 2) == 0) {
                 hugepage_size = SIZE_2M;
                 p += 2;
+                process_state = 2;
             }
-            else if ((strncmp(p, "1G", 2) == 0)
-                     || (strncmp(p, "1g", 2) == 0)) {
+            else if (strncmp(p, "1g", 2) == 0) {
                 hugepage_size = SIZE_1G;
                 p += 2;
+                process_state = 2;
             }
             else
                 has_err = TRUE;
         }
-        else 
+        else if (process_state == 2) {
+            if (strncmp(p, "limit=", 6) == 0) {
+                boolean is_neg = FALSE;
+                p = &p[6];
+
+                if ((*p) && ((*p) == '-')) {
+                    p++;
+                    is_neg = TRUE;
+                }
+
+                if (!(*p) || !isdigit(*p))
+                    has_err = TRUE;
+                else {
+                    sscanf(p, "%d", &hugepage_limit);
+
+                    if (is_neg && (hugepage_limit > 0))
+                        hugepage_limit = -1;
+                    
+                    while ((*p) && ((*p) >= '0') && ((*p) <= '9'))
+                        p++;
+                    
+                    process_state = 3;
+                }
+            }
+            else
+                has_err = TRUE;
+        }
+        else if (strncmp(p, "heap=", 5) == 0) {
+            p = &p[5];
+            hugepage_alloc = ALLOC_HEAP;
+            process_state = 1;
+            if (!(*p))
+                has_err = TRUE;
+            else
+                continue;
+        }
+        else if (strncmp(p, "heap", 4) == 0) {
+            p = &p[4];
+            hugepage_alloc = ALLOC_HEAP;
+            process_state = 2;
+        }
+        else if (strncmp(p, "bdt=", 4) == 0) {
+            p = &p[4];
+            hugepage_alloc = ALLOC_BDT;
+            process_state = 1;
+            if (!(*p))
+                has_err = TRUE;
+            else
+                continue;
+        }
+        else if (strncmp(p, "bdt", 3) == 0) {
+            p = &p[3];
+            hugepage_alloc = ALLOC_BDT;
+            process_state = 2;
+        }
+        else
             has_err = TRUE;
 
         if (*p) {
-            if ((*p) == ',') 
-                p++;
-            else if ((*p) = ':') {
-                p++;
-                if (!has_err) 
-                    add_hugepage_desc(hugepage_alloc, hugepage_size, hugepage_limit);
+            if ((*p) == ',') {
+                if (!has_err)
+                    p++;
 
+                if ((process_state != 2) || !(*p))
+                    has_err = TRUE;
+            }
+            else if ((*p) == ':') {
+                if (!has_err) {
+                    p++;
+                    add_hugepage_desc(hugepage_alloc, hugepage_size, hugepage_limit);
+                }
+                
                 hugepage_alloc = HUGEPAGE_ALLOC_DEFAULT;
                 hugepage_size = HUGEPAGE_SIZE_DEFAULT;
                 hugepage_limit = HUGEPAGE_LIMIT_DEFAULT;
-            }
-            else {
-                has_err = TRUE;
+                process_state = 0;
             }
         }
         else if (!has_err) 
@@ -2095,14 +2126,14 @@ Process_Hugepage_Group(char * hugepage_args)
         if (has_err) {
             if (!hugepage_warn) {
                 hugepage_warn = TRUE;
-                warning("unknown argument: %s in -hugepage", p);
+                warning("Illegal argument: %s in -HP", p);
             }
             break;
         }
     }
 
     if (!has_err) 
-        add_option_seen(O_hugepage);
+        add_option_seen(O_HP);
 }
 
 #include "opt_action.i"

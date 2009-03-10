@@ -431,12 +431,13 @@ void  __setup_hugepage(int l_limit, int attr)
 
     hugepages_avail = hugetlbfs_num_pages();
 
-    if ((l_limit != 0) && (hugepages_avail > 0)) {
+    hugepages_heap_limit = hugepages_avail;
+
+    if (hugepages_avail > 0) {
         char *env;
-        hugepages_heap_limit = hugepages_avail;
         
         env = getenv("HUGETLB_LIMIT");
-
+        
         if ( env ) {
             long n = atol(env);
             if( (n >= 0) && (n < hugepages_avail) ) 
@@ -453,7 +454,8 @@ void  __setup_hugepage(int l_limit, int attr)
 
         DEBUG("Limit %ld huge pages for heap.\n", hugepages_heap_limit);
 
-        __hugetlbfs_setup_morecore();
+        if (hugepages_heap_limit > 0)
+            __hugetlbfs_setup_morecore();
     }
 }
 #endif

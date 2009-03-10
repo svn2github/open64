@@ -604,7 +604,7 @@ main (int argc, char *argv[])
         heap_limit = HUGEPAGE_LIMIT_DEFAULT;
         hugepage_attr = 0;
 
-        if (option_was_seen(O_hugepage)
+        if (option_was_seen(O_HP)
             && (instrumentation_invoked != TRUE)) {
             HUGEPAGE_DESC desc;
             boolean do_heap = FALSE;

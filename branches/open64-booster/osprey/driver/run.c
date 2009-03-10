@@ -292,27 +292,19 @@ run_phase (phases_t phase, char *name, string_list_t *args)
         if (((phase == P_be) || (phase == P_ipl))
             && add_heap_limit) {
             char buf[100];
+            char * str;
             sprintf(&buf[0],"%d", heap_limit);
-
-            for (p = args->head; p != NULL; p = p->next) {
-                if ((strncmp(p->name, "alloc=", 6) == 0)
-                    || (strncmp(p->name, "-hugepage:alloc=heap", 20) == 0)) {
-                    char * str = concat_strings("-OPT:hugepage_heap_limit=", buf);
-
-                    sprintf(&buf[0],"%d", hugepage_attr);
-                    str = concat_strings(str, 
-                                         concat_strings(" -OPT:hugepage_attr=", buf));
-                    replace_string(args, p->name, str);
-                                 
-                    break;
-                }
-            }
+            str = concat_strings("-OPT:hugepage_heap_limit=", buf);
+            sprintf(&buf[0],"%d", hugepage_attr);
+            str = concat_strings(str, 
+                                 concat_strings(" -OPT:hugepage_attr=", buf));
+            add_string(args, str);
         }
 
-        if (option_was_seen(O_hugepage)) {
+        if (option_was_seen(O_HP)) {
             for (p = args->head; p != NULL; p = p->next) {
-                if ((strncmp(p->name, "alloc=", 6) == 0) 
-                    || (strncmp(p->name, "-hugepage:alloc=heap", 20) == 0))
+                if ((strncmp(p->name, "heap", 4) == 0) 
+                    || (strncmp(p->name, "bdt", 3) == 0))
                     replace_string(args, p->name, "");
             }
         }
