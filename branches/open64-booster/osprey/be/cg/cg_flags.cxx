@@ -115,6 +115,9 @@ BOOL CG_skip_local_hbf = FALSE;
 BOOL CG_skip_local_loop = FALSE;
 BOOL CG_skip_local_sched = FALSE;
 BOOL CG_skip_local_swp = FALSE;
+#ifdef TARG_X8664
+BOOL CG_cmp_load_exec = FALSE;
+#endif
 BOOL CG_opt_level;
 BOOL CG_localize_tns = FALSE;
 BOOL CG_localize_tns_Set = FALSE;

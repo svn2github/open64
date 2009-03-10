@@ -189,7 +189,8 @@ void Redundancy_Elimination ();
 #ifdef TARG_X8664
 void Update_op_must_not_be_moved( OP*, EBO_TN_INFO** );
 BOOL EBO_Merge_Memory_Addr( OP*, TN**, EBO_TN_INFO**, EBO_TN_INFO** );
-BOOL EBO_Load_Execution( OP*, TN**, EBO_TN_INFO** );
+BOOL EBO_Not_Load_Exec_Opnd( OP* );
+BOOL EBO_Load_Execution( OP*, TN**, EBO_TN_INFO**, int );
 BOOL EBO_Lea_Insertion( OP*, TN**, EBO_TN_INFO** );
 BOOL EBO_Fold_Load_Duplicate( OP*, TN**, EBO_TN_INFO** );
 void Lea_Insertion ();

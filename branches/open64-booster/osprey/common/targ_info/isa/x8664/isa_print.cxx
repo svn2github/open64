@@ -172,6 +172,19 @@ main()
 			   TOP_comixss,
 			   TOP_UNDEFINED );
 
+  ISA_PRINT_TYPE cmpxr =  ISA_Print_Type_Create("cmpxr", "%s %s,%s%s(%s)");
+  Name();
+  Operand(2);
+  Segment();
+  Operand(1);
+  Operand(0);
+  Instruction_Print_Group( cmpxr,
+			   TOP_cmpxr8,
+			   TOP_cmpxr16,
+			   TOP_cmpxr32,
+			   TOP_cmpxr64,
+			   TOP_UNDEFINED );
+
   ISA_PRINT_TYPE cmpxi =  ISA_Print_Type_Create("cmpxi", "%s %s,%s%s(%s)");
   Name();
   Operand(2);
@@ -203,6 +216,21 @@ main()
 			   TOP_cmpxx64,
 			   TOP_comixxsd,
 			   TOP_comixxss,
+			   TOP_UNDEFINED );
+
+  ISA_PRINT_TYPE cmpxxr =  ISA_Print_Type_Create("cmpxxr", "%s %s,%s%s(%s,%s,%s)");
+  Name();
+  Operand(4);
+  Segment();
+  Operand(3);
+  Operand(0);
+  Operand(1);
+  Operand(2);
+  Instruction_Print_Group( cmpxxr,
+			   TOP_cmpxxr8,
+			   TOP_cmpxxr16,
+			   TOP_cmpxxr32,
+			   TOP_cmpxxr64,
 			   TOP_UNDEFINED );
 
   ISA_PRINT_TYPE cmpxxi =  ISA_Print_Type_Create("cmpxxi", "%s %s,%s%s(%s,%s,%s)");
@@ -238,6 +266,21 @@ main()
 			   TOP_comixxxss,
 			   TOP_UNDEFINED );
 
+  ISA_PRINT_TYPE cmpxxxr =  ISA_Print_Type_Create("cmpxxxr", "%s %s,%s%s(,%s,%s)");
+  Name();
+  Operand(3);
+  Segment();
+  Operand(2);
+  Operand(0);
+  Operand(1);
+  Instruction_Print_Group( cmpxxxr,
+			   TOP_cmpxxxr8,
+			   TOP_cmpxxxr16,
+			   TOP_cmpxxxr32,
+			   TOP_cmpxxxr64,
+			   TOP_UNDEFINED );
+
+  /* One result / two operands in x86 style */
   ISA_PRINT_TYPE cmpxxxi =  ISA_Print_Type_Create("cmpxxxi", "%s %s,%s%s(,%s,%s)");
   Name();
   Operand(3);

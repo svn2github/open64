@@ -132,6 +132,8 @@ typedef enum {
 	T_LRA_Comp,	
 	T_GRA_CU,		/* Register allocation */
 	T_GRA_Comp,	
+        T_GRU_CU,		/* Fuse Spills */
+	T_GRU_COMP,
 	T_Emit_CU,		/* Code emission */
 	T_Emit_Comp,	
 	T_Region_Finalize_CU,	/* Region Finalize */

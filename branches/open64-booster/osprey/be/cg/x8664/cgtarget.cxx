@@ -328,6 +328,9 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_cmpxi8:
   case TOP_cmpxxi8:
   case TOP_cmpxxxi8:
+  case TOP_cmpxr8:
+  case TOP_cmpxxr8:
+  case TOP_cmpxxxr8:
   case TOP_or8:
   case TOP_orx8:
   case TOP_orxx8:
@@ -365,6 +368,9 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_cmpxi16:
   case TOP_cmpxxi16:
   case TOP_cmpxxxi16:
+  case TOP_cmpxr16:
+  case TOP_cmpxxr16:
+  case TOP_cmpxxxr16:
   case TOP_or16:
   case TOP_orx16:
   case TOP_orxx16:
@@ -404,6 +410,9 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_cmpxi32:
   case TOP_cmpxxi32:
   case TOP_cmpxxxi32:
+  case TOP_cmpxr32:
+  case TOP_cmpxxr32:
+  case TOP_cmpxxxr32:
   case TOP_testx32:
   case TOP_testxx32:
   case TOP_testxxx32:
@@ -473,6 +482,9 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_cmpxi64:
   case TOP_cmpxxi64:
   case TOP_cmpxxxi64:
+  case TOP_cmpxr64:
+  case TOP_cmpxxr64:
+  case TOP_cmpxxxr64:
   case TOP_testx64:
   case TOP_testxx64:
   case TOP_testxxx64:

@@ -1483,6 +1483,10 @@ CG_Generate_Code(
 
   LRA_Allocate_Registers (!region);
 
+#ifdef TARG_X8664
+  GRU_Fuse_Global_Spills (!region);
+#endif
+
 #if defined(TARG_SL)
   if (Run_ipisr)
     IPISR_Insert_Spills();

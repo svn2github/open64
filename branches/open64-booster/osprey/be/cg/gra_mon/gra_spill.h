@@ -55,6 +55,7 @@ extern void GRA_Note_Restore_Above( LUNIT* lunit );
 extern void GRA_Spill_Initialize(void);
 extern void GRA_Note_Spill( LRANGE* lrange );
 extern void GRA_Spill(void);
+extern void GRU_Fuse(void);
 
 extern void GRA_Remove_Predicates_Save_Restore(void);
 #ifdef TARG_IA64

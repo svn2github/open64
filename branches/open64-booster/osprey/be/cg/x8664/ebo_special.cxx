@@ -114,8 +114,13 @@ static const char source_file[] = __FILE__;
 #include "ebo_special.h"
 #include "ebo_util.h"
 #include "cgtarget.h"
+#include "dominate.h"
 
 #include "config_lno.h"
+
+#ifdef TARG_X8664
+#include "config_opt.h"
+#endif
 
 extern BOOL TN_live_out_of( TN*, BB* );
 
@@ -2784,6 +2789,9 @@ BOOL Delete_Unwanted_Prefetches ( OP* op )
   return FALSE;
 }
 
+extern void dump_bb (BB *bb);
+extern void dump_tn (TN *tn);
+
 /*
  * Look at an expression and it's inputs to identify special sequences
  * that can be simplified.
@@ -4262,6 +4270,62 @@ static BOOL Check_loadbw_execute( int ld_bytes, OP* ex_op )
 }
 
 
+/*
+ * If the cmp's load operand is not in the form that the 
+ * load exec table can allow, morph it here, as it can only
+ * support 1 type of mapping when this case there are 2.
+ */
+static TOP Fit_Cmp_By_Load_Usage( TOP cur_top, BOOL use_right )
+{
+  TOP new_top = cur_top;
+ 
+  if( use_right ){
+    switch(cur_top){
+    case TOP_cmpx8:
+      new_top = TOP_cmpxr8;
+      break;
+    case TOP_cmpxx8:
+      new_top = TOP_cmpxxr8;
+      break;
+    case TOP_cmpxxx8:
+      new_top = TOP_cmpxxxr8;
+      break;
+    case TOP_cmpx16:
+      new_top = TOP_cmpxr16;
+      break;
+    case TOP_cmpxx16:
+      new_top = TOP_cmpxxr16;
+      break;
+    case TOP_cmpxxx16:
+      new_top = TOP_cmpxxxr16;
+      break;
+    case TOP_cmpx32:
+      new_top = TOP_cmpxr32;
+      break;
+    case TOP_cmpxx32:
+      new_top = TOP_cmpxxr32;
+      break;
+    case TOP_cmpxxx32:
+      new_top = TOP_cmpxxxr32;
+      break;
+    case TOP_cmpx64:
+      new_top = TOP_cmpxr64;
+      break;
+    case TOP_cmpxx64:
+      new_top = TOP_cmpxxr64;
+      break;
+    case TOP_cmpxxx64:
+      new_top = TOP_cmpxxxr64;
+      break;
+    default:
+      break;
+    }
+  }
+
+  return new_top;
+}
+
+
 // What is the load-execute instruction corresponding to 
 // load "op" and execute "ex_op"
 static TOP
@@ -4610,7 +4674,18 @@ void Init_Load_Exec_Map( BB* bb, MEM_POOL* pool )
 }
 
 
-BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
+BOOL EBO_Not_Load_Exec_Opnd( OP* ld_op )
+{
+  const INT32 load_uses = hTN_MAP32_Get( _load_exec_map, 
+                                         OP_result(ld_op,0) ) - 1;
+  return ( load_uses > CG_load_execute );
+}
+
+
+BOOL EBO_Load_Execution( OP* alu_op, 
+                         TN** opnd_tn,     
+                         EBO_TN_INFO** actual_tninfo,
+                         int alu_cmp_idx )
 {
 #if Is_True_On
   if (!(EBO_Opt_Mask & EBO_LOAD_EXECUTION)) return FALSE;
@@ -4620,8 +4695,10 @@ BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
   if( top == TOP_xor64 ||
       top == TOP_or64  ||
       top == TOP_and64 ||
-      top == TOP_cmp64 ||
       top == TOP_test64 )
+    return FALSE;
+
+  if ((top == TOP_cmp64) && (EBO_flow_safe == FALSE))
     return FALSE;
 
   if (TOP_is_load_exe(top) ||		// Skip if TOP is already load-execute.
@@ -4637,25 +4714,43 @@ BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
   EBO_TN_INFO* tninfo = NULL;
   int opnd0_indx = 0;  // indicate which opnd will be kept for the new op.
 
-  for( int i = OP_opnds(alu_op) - 1; i >= 0; i-- ){
+  if( EBO_flow_safe ){
+    int i = alu_cmp_idx;
     if( TN_is_register( OP_opnd( alu_op, i ) ) ){
       tninfo = actual_tninfo[i];
       opnd0_indx = OP_opnds(alu_op) - 1 - i;
       Is_True( opnd0_indx >= 0, ("NYI") );
-      break;
+    }
+  } else {
+    for( int i = OP_opnds(alu_op) - 1; i >= 0; i-- ){
+      if( TN_is_register( OP_opnd( alu_op, i ) ) ){
+        tninfo = actual_tninfo[i];
+        opnd0_indx = OP_opnds(alu_op) - 1 - i;
+        Is_True( opnd0_indx >= 0, ("NYI") );
+        break;
+      }
     }
   }
 
   OP* ld_op = tninfo == NULL ? NULL : tninfo->in_op;
   EBO_OP_INFO* ld_opinfo = tninfo == NULL ? NULL : tninfo->in_opinfo;
 
+  // If we cannot use the op we were directed to use, there is no other
+  // action to do.
+  if (( EBO_flow_safe ) && 
+      ( ld_op != NULL) && 
+      ( ld_opinfo->op_must_not_be_moved ))
+    return FALSE;
+
   if( ld_op == NULL || !OP_load( ld_op ) ||
       ld_opinfo->op_must_not_be_moved ){
       
     // Now, try opnd0
 
-    if( !TOP_is_commutative( OP_code(alu_op) ) )
-      return FALSE;
+    if( !EBO_flow_safe ) {
+      if( !TOP_is_commutative( OP_code(alu_op) ) )
+        return FALSE;
+    } 
 
     tninfo = actual_tninfo[0];
     ld_op = tninfo == NULL ? NULL : tninfo->in_op;
@@ -4677,8 +4772,16 @@ BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 
   BB* bb = OP_bb( alu_op );
 
-  if( OP_bb( ld_op ) != bb )
+  if( (OP_bb( ld_op ) != bb) && !EBO_flow_safe )
     return FALSE;
+
+#ifdef TARG_X8664
+  if ((OP_bb( ld_op ) != bb) && EBO_flow_safe ) {
+    BB *ld_bb = OP_bb( ld_op );
+    if (!BS_MemberP(BB_dom_set(bb), BB_id(ld_bb)))
+      return FALSE; 
+  }
+#endif
 
   /* bug#1480
      The memory opnd of an alu op must be aligned.
@@ -4755,10 +4858,14 @@ BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
     }
   }
 
-  const TOP new_top = Load_Execute_Format( ld_op, alu_op, mode );
+  TOP new_top = Load_Execute_Format( ld_op, alu_op, mode );
 
   if( new_top == TOP_UNDEFINED )
     return FALSE;
+
+  if( EBO_flow_safe && (opnd0_indx == 1) ) {
+    new_top = Fit_Cmp_By_Load_Usage( new_top, TRUE );
+  }
 
   const INT32 load_uses = hTN_MAP32_Get( _load_exec_map, OP_result(ld_op,0) ) - 1;
 
@@ -4786,8 +4893,9 @@ BOOL EBO_Load_Execution( OP* alu_op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
   TN* opnd1 = NULL;
   TN* opnd0 = OP_opnd( alu_op, opnd0_indx );
 
+
   // For TOP_cmpi cases
-  if( opnd0_indx == 1 && TN_has_value(opnd0) ){
+  if( opnd0_indx == 1 && (TN_has_value(opnd0) || EBO_flow_safe ) ){
     opnd1 = opnd0;
     opnd0 = NULL;
   }

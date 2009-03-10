@@ -285,6 +285,12 @@ Init_BB_Dom_Info(BB *bb, BS *dom_init)
     BS_Union1D(BB_pdom_set(bb), BB_ID_POST_EXIT, NULL);
   }
 }
+
+BOOL
+Are_Dominators_Calculated(void)
+{
+  return pool_inited;
+}
 
 /* ====================================================================
  *

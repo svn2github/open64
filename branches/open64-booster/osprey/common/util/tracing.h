@@ -227,8 +227,9 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
 #define TP_HBF		57	/* Hyperblock formation */
 #define TP_PQS		58	/* Predicate query system */
 #define TP_THR		59	/* Tree-Height reduction */
+#define TP_GRU          60      /* Fuse Spills */
 
-#define TP_TEMP		60	/* Temporary use */
+#define TP_TEMP		61	/* Temporary use */
 
 #define TP_IPFEC	61	/* Actualy several phases, but all IPFEC related */
 #define TP_A_GSCHED 	62  	/* "AGS", Ipfec global scheduler" */

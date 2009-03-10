@@ -285,6 +285,10 @@ static OPTION_DESC Options_GRA[] = {
     4, 0, 16,	&GRA_local_forced_max, &GRA_local_forced_max_set,
     "How many locals to force allocate (out of the number requested by LRA) [Default 4]"
   },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "unspill", "",
+    0,0,0,	&GRA_unspill_enable, NULL,
+    "Enable/disable fusing of GRA spills and restores back to registers [Default FALSE]"
+  },
 #else
   { OVK_INT32,	OV_INTERNAL, TRUE, "local_forced_max", "",
     4, 0, 32,	&GRA_local_forced_max, NULL,
@@ -455,6 +459,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,	&CG_skip_local_swp, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_ebo", "",
     0, 0, 0,	&CG_skip_local_ebo, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "cmp_peep", "",
+    0, 0, 0,	&CG_cmp_load_exec, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_sched", "",
     0, 0, 0,	&CG_skip_local_sched, NULL },
 #endif //TARG_NVISA
