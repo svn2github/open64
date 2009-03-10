@@ -2675,6 +2675,37 @@ OPT_STAB::check_ipa_mod_ref_info (const ST * call_st, const ST * st, INT * mod, 
     }
   }
 }
+
+// Similar to the above, this function checks if the input global variable's
+// exit value is the same as its entry value in the input function, or that the
+// exit value is 1.
+void
+OPT_STAB::check_ipa_same_entry_exit_value_or_1_info(const ST *call_st,
+  const ST *global_var_st, INT *same_entry_exit_value_or_1)
+{
+  PU_IDX pu_idx;
+  INT global_var_st_index;
+
+  *same_entry_exit_value_or_1 = 0; // default is to be conservative
+  pu_idx = ST_pu(call_st);
+  global_var_st_index = ST_IDX_index(ST_st_idx(global_var_st));
+  for (INT i = 0; i < Mod_Ref_Info_Table_Size(); i++)
+  {
+    if (Mod_Ref_Info_Table[i].pu_idx != pu_idx)
+      continue;
+    else
+    {
+      mUINT8 *same_entry_exit_value_or_1_info = Mod_Ref_Info_Table[i].
+        same_entry_exit_value_or_1;
+      if (global_var_st_index >= Mod_Ref_Info_Table[i].size * 8)
+        return;
+      *same_entry_exit_value_or_1 = (*(same_entry_exit_value_or_1_info +
+        global_var_st_index/8) >> (8 - 1 - (global_var_st_index % 8))) & 0x1;
+      return;
+    }
+  }
+  return;
+}
 #endif
 
 

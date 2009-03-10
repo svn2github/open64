@@ -787,6 +787,13 @@ IPA_irb_write_mod_ref_info(Output_File *fl)
                    0, // padding
                    fl);
 
+    // same_entry_exit_value_or_1
+    ir_b_save_buf (Mod_Ref_Info_Table[0].same_entry_exit_value_or_1,
+		   Mod_Ref_Info_Table[0].size,
+		   0, // alignment
+		   0, // padding
+		   fl);
+
     for (INT i=1; i<size; i++)
     {
       ir_b_save_buf (&Mod_Ref_Info_Table[i].pu_idx,
@@ -800,6 +807,10 @@ IPA_irb_write_mod_ref_info(Output_File *fl)
 
       ir_b_save_buf (Mod_Ref_Info_Table[i].ref,
                      Mod_Ref_Info_Table[i].size, 0, 0, fl);
+
+      ir_b_save_buf (Mod_Ref_Info_Table[i].same_entry_exit_value_or_1,
+                     Mod_Ref_Info_Table[i].size, 0, 0, fl);
+      
     }
 
     offset_mod_ref = offset_mod_ref - cur_sec_disp;

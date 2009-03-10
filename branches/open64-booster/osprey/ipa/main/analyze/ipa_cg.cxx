@@ -2485,10 +2485,457 @@ IPA_NODE::Set_Whirl_Tree (WN *wn)
 #if defined(KEY) && !defined(_LIGHTWEIGHT_INLINER)
 #include "be_ipa_util.h"
 
+// This function returns TRUE if the input block of WN is a simple straight line
+// code without a return statement; otherwise it returns FALSE.
+static BOOL
+block_is_straight_line_no_return(WN *wn)
+{
+  if (wn == NULL)
+    return TRUE; // degenerate straight line code
+  if (WN_operator(wn) != OPR_BLOCK)
+    return FALSE;
+  wn = WN_first(wn);
+  while (wn != NULL)
+  {
+    if (WN_operator(wn) == OPR_PRAGMA ||
+        WN_operator(wn) == OPR_CALL ||
+        WN_operator(wn) == OPR_STID)
+    {
+      // OK
+    }
+    else if (WN_operator(wn) == OPR_IF)
+    {
+      if (!block_is_straight_line_no_return(WN_then(wn)) ||
+          !block_is_straight_line_no_return(WN_else(wn)))
+        return FALSE;
+    }
+    else
+      return FALSE;
+    wn = WN_next(wn);
+  }
+  return TRUE;
+}
+
+static ST *tracked_global_var_st = NULL;
+
+// This function identifies global vars inside the input function whose function
+// exit value is the same as their entry value.
+static UINT32
+analyze_global_var_returns_same_entry_value(IPA_NODE *node)
+{
+  WN *wn;
+  ST *tracked_local_var_st = NULL;
+  int same_as_entry_value = 0;
+
+  // current restrictions: the input function must only have straight line code
+  // (and if constructs), and we only identify one such global var for now
+  wn = node->Whirl_Tree(TRUE);
+  if (WN_operator(wn) != OPR_FUNC_ENTRY)
+    return 0;
+  wn = WN_kid(wn, WN_kid_count(wn)-1);
+  if (WN_operator(wn) != OPR_BLOCK)
+    return 0;
+  wn = WN_first(wn); // body
+  while (wn != NULL)
+  {
+    switch (WN_operator(wn))
+    {
+      case OPR_PRAGMA:
+        break;
+      case OPR_IF:
+        if (!block_is_straight_line_no_return(WN_then(wn)) ||
+            !block_is_straight_line_no_return(WN_else(wn)))
+          return 0; // a return statement inside a if/then/else block is bad
+        // fall through
+      case OPR_CALL:
+        same_as_entry_value = 0; // the value of global var may change
+        break;
+      case OPR_STID:
+        if (tracked_global_var_st == NULL && Is_Global_Symbol(WN_st(wn)))
+          return 0; // some global var gets updated before it's saved; no good
+        if (tracked_global_var_st == NULL &&
+            Is_Local_Symbol(WN_st(wn)) && !ST_addr_taken(WN_st(wn)) &&
+            WN_operator(WN_kid0(wn)) == OPR_LDID &&
+            Is_Global_Symbol(WN_st(WN_kid0(wn))))
+        {
+          // found the first occurrence of "local_var = global_var"; start
+          // tracking.  (We will only track one (the first) such for now.)
+          tracked_global_var_st = WN_st(WN_kid0(wn));
+          tracked_local_var_st = WN_st(wn);
+          if (tracked_global_var_st == NULL || tracked_local_var_st == NULL)
+            return 0;
+          break;
+        }
+        if (tracked_local_var_st != NULL && WN_st(wn) == tracked_local_var_st)
+          return 0;  // this same local_var gets updated; that is, the saved
+            // value of global_var may be gone; all bets are off
+        if (WN_st(wn) == tracked_global_var_st)
+        {
+          if (WN_operator(WN_kid0(wn)) == OPR_LDID &&
+              WN_st(WN_kid0(wn)) == tracked_local_var_st)
+          {
+            // found "global_var = local_var", and we know that the value of
+            // local_var has not been changed (because its address is not taken,
+            // and there have not been an explicit assignment into it)
+            same_as_entry_value = 1;
+          }
+          else
+            same_as_entry_value = 0; // global_var = ...
+        }
+        break;
+      case OPR_RETURN:
+      case OPR_RETURN_VAL:
+        if (same_as_entry_value == 0)
+          return 0;
+        // debug print
+        // fprintf(stderr, "same_entry_exit var (%d %s) in function %s\n", ST_IDX_index(ST_st_idx(tracked_global_var_st)), ST_name(tracked_global_var_st), node->Name());
+        return ST_IDX_index(ST_st_idx(tracked_global_var_st));
+      default:
+        return 0; // loops, switches, etc. are not allowed, for now
+    }
+    wn = WN_next(wn);
+  }
+  return 0;
+}
+
+// Given the input STID wn, this function returns TRUE if the RHS of this STID
+// can be proved to be the integer constant 1; otherwise, it returns FALSE.
+static BOOL
+RHS_is_1(WN *stid_wn)
+{
+  WN *ldid_wn;
+  ST *var_st;
+  WN *wn;
+
+  if (stid_wn == NULL || WN_operator(stid_wn) != OPR_STID)
+    return FALSE;
+  ldid_wn = WN_kid0(stid_wn);
+  if (WN_operator(ldid_wn) == OPR_INTCONST && WN_const_val(ldid_wn) == 1)
+    return TRUE;
+  if (WN_operator(ldid_wn) == OPR_LDID)
+  {
+    var_st = WN_st(ldid_wn);
+    // walk up the IR to find a (local) reaching def for this RHS
+    wn = WN_prev(stid_wn);
+    if (wn != NULL && WN_operator(wn) == OPR_PRAGMA)
+      wn = WN_prev(wn);
+    while (wn != NULL && WN_operator(wn) == OPR_STID)
+    {
+      if (WN_st(wn) == var_st)
+      {
+        if (WN_operator(WN_kid0(wn)) == OPR_INTCONST &&
+            WN_const_val(WN_kid0(wn)) == 1)
+          return TRUE;
+        else
+          return FALSE;
+      }
+      wn = WN_prev(wn);
+      if (wn != NULL && WN_operator(wn) == OPR_PRAGMA)
+        wn = WN_prev(wn);
+    }
+    return FALSE;
+  }
+  // anything harder than the above, give up
+  return FALSE;
+}
+
+static WN *return_wn;
+static int continue_with_walk_tree_for_returns_and_global_var;
+
+// This function walks the input wn in postorder, counts the number of return
+// statements, and marks the last-visited definition of a global variable whose
+// RHS of the assignment is 1.
+static void
+walk_tree_for_returns_and_global_var(WN *wn)
+{
+  if (wn == NULL || continue_with_walk_tree_for_returns_and_global_var == 0)
+    return;
+
+  if (!OPCODE_is_leaf(WN_opcode(wn)))
+  {
+    if (WN_opcode(wn) == OPC_BLOCK)
+    {
+      WN *child_wn = WN_first(wn);
+      while (child_wn != NULL)
+      {
+        walk_tree_for_returns_and_global_var(child_wn);
+        if (continue_with_walk_tree_for_returns_and_global_var == 0)
+          return;
+        child_wn = WN_next(child_wn);
+      }
+    }
+    else
+    {
+      INT child_num;
+      WN *child_wn;
+      for (child_num = 0; child_num < WN_kid_count(wn); child_num++)
+      {
+        child_wn = WN_kid(wn, child_num);
+        if (child_wn != NULL)
+        {
+          walk_tree_for_returns_and_global_var(child_wn);
+          if (continue_with_walk_tree_for_returns_and_global_var == 0)
+            return;
+        }
+      }
+    }
+  }
+
+  // nodes of interest
+  switch (WN_operator(wn))
+  {
+    case OPR_STID:
+      if (Is_Global_Symbol(WN_st(wn)) && RHS_is_1(wn))
+        tracked_global_var_st = WN_st(wn); // last one wins
+      break;
+    case OPR_RETURN:
+    case OPR_RETURN_VAL:
+      if (return_wn != NULL)
+      {
+        // more than one return statement
+        return_wn = NULL;
+        tracked_global_var_st = NULL;
+        continue_with_walk_tree_for_returns_and_global_var = 0;
+        return;
+      }
+      return_wn = wn;
+      break;
+    default:
+      break;
+  }
+  return;
+}
+
+#define ENTRY 0
+#define ONE 1
+#define UNKNOWN 2
+static int phi_outermost_argument;
+static int phi_if_true_argument;
+static int phi_if_false_argument;
+static int in_if_true_branch;
+static int in_if_false_branch;
+static int continue_with_finding_reaching_def;
+
+// This function checks if there is a definition of the tracked_global_var_st or
+// a call inside the input wn.
+static BOOL
+found_def_or_call(WN *wn)
+{
+  if (wn == NULL)
+    return FALSE;
+
+  if (!OPCODE_is_leaf(WN_opcode(wn)))
+  {
+    if (WN_opcode(wn) == OPC_BLOCK)
+    {
+      WN *child_wn = WN_first(wn);
+      while (child_wn != NULL)
+      {
+        if (found_def_or_call(child_wn))
+          return TRUE;
+        child_wn = WN_next(child_wn);
+      }
+    }
+    else
+    {
+      INT child_num;
+      WN *child_wn;
+      for (child_num = 0; child_num < WN_kid_count(wn); child_num++)
+      {
+        child_wn = WN_kid(wn, child_num);
+        if (child_wn != NULL)
+        {
+          if (found_def_or_call(child_wn))
+            return TRUE;
+        }
+      }
+    }
+  }
+
+  // nodes of interest
+  switch (WN_operator(wn))
+  {
+    case OPR_STID:
+      if (WN_st(wn) == tracked_global_var_st)
+        return TRUE;
+      break;
+    case OPR_CALL:
+      return TRUE;
+    default:
+      break;
+  }
+  return FALSE;
+}
+
+// This function finds the reaching def of tracked_global_var_st at program
+// exit.  The answer is encoded as a SSA phi function, with 3 arguments:
+// phi_outermost_argument, phi_if_true_argument, phi_if_false_argument.
+static void
+find_reaching_def_for_tracked_global_var_st(WN *wn)
+{
+  if (continue_with_finding_reaching_def == 0)
+    return;
+
+  while (wn != NULL)
+  {
+    switch (WN_operator(wn))
+    {
+      case OPR_BLOCK:
+        find_reaching_def_for_tracked_global_var_st(WN_first(wn));
+        if (continue_with_finding_reaching_def == 0)
+          return;
+        break;
+      case OPR_PRAGMA:
+      case OPR_LABEL:
+      case OPR_ISTORE:
+      case OPR_RETURN:
+      case OPR_RETURN_VAL:
+        break;
+      case OPR_STID:
+        if (WN_st(wn) == tracked_global_var_st)
+        {
+          // found a def
+          if (in_if_true_branch == 1)
+          {
+            if (RHS_is_1(wn))
+              phi_if_true_argument = ONE;
+            else
+              phi_if_true_argument = UNKNOWN;
+          }
+          else if (in_if_false_branch == 1)
+          {
+            if (RHS_is_1(wn))
+              phi_if_false_argument = ONE;
+            else
+              phi_if_false_argument = UNKNOWN;
+          }
+          else
+          {
+            if (RHS_is_1(wn))
+              phi_outermost_argument = ONE;
+            else
+              phi_outermost_argument = UNKNOWN;
+            // this kills any previous phi's
+            phi_if_true_argument = phi_outermost_argument;
+            phi_if_false_argument = phi_outermost_argument;
+          }
+        }
+        break;
+      case OPR_IF:
+        // for now, only analyze one level of if statement
+        if (in_if_true_branch == 1)
+        {
+          if (found_def_or_call(WN_then(wn)) || found_def_or_call(WN_else(wn)))
+            phi_if_true_argument = UNKNOWN;
+        }
+        else if (in_if_false_branch == 1)
+        {
+          if (found_def_or_call(WN_then(wn)) || found_def_or_call(WN_else(wn)))
+            phi_if_false_argument = UNKNOWN;
+        }
+        else
+        {
+          in_if_true_branch = 1;
+          find_reaching_def_for_tracked_global_var_st(WN_then(wn));
+          in_if_true_branch = 0;
+          if (continue_with_finding_reaching_def == 0)
+            return;
+          // if we get UNKNOWN result in this outermost if, there is no hope
+          if (phi_if_true_argument == UNKNOWN)
+          {
+            continue_with_finding_reaching_def = 0;
+            return;
+          }
+          in_if_false_branch = 1;
+          find_reaching_def_for_tracked_global_var_st(WN_else(wn));
+          in_if_false_branch = 0;
+          if (continue_with_finding_reaching_def == 0)
+            return;
+          // if we get UNKNOWN result in this outermost if, there is no hope
+          if (phi_if_false_argument == UNKNOWN)
+          {
+            continue_with_finding_reaching_def = 0;
+            return;
+          }
+        }
+        break;
+      case OPR_CALL:
+      default:
+        // assume the value of tracked_global_var_st may change
+        if (in_if_true_branch == 1)
+          phi_if_true_argument = UNKNOWN;
+        else if (in_if_false_branch == 1)
+          phi_if_false_argument = UNKNOWN;
+        else
+        {
+          phi_outermost_argument = UNKNOWN;
+          // this kills any previous phi's
+          phi_if_true_argument = phi_outermost_argument;
+          phi_if_false_argument = phi_outermost_argument;
+        }
+        break;
+    }
+    wn = WN_next(wn);
+  }
+  return;
+}
+
+// This function identifies global vars inside the input function whose function
+// exit value is the same as their entry value, or that value is 1.
+static UINT32
+analyze_global_var_returns_same_entry_value_or_1(IPA_NODE *node)
+{
+  WN *wn;
+
+  // current restrictions: the input function must only have straight line code
+  // (and if constructs), and we only identify one such global var for now
+  wn = node->Whirl_Tree(TRUE);
+  if (WN_operator(wn) != OPR_FUNC_ENTRY)
+    return 0;
+  wn = WN_kid(wn, WN_kid_count(wn)-1);
+  if (WN_operator(wn) != OPR_BLOCK)
+    return 0;
+
+  // make sure that there is only one return in the entire program and identify
+  // the most promising global variable to track
+  return_wn = NULL;
+  tracked_global_var_st = NULL;
+  continue_with_walk_tree_for_returns_and_global_var = 1;
+  walk_tree_for_returns_and_global_var(wn);
+  if (return_wn == NULL || return_wn != WN_last(wn) ||
+      tracked_global_var_st == NULL || ST_addr_taken(tracked_global_var_st))
+    return 0;
+
+  // now attempt to find the reaching def of tracked_global_var_st at program
+  // exit.  If it is program entry, "=1", or phi(program entry,"=1"), return the
+  // tracked_global_var_st.  (Do we have SSA here?)
+
+  // we will only allow one level of if-then-else in the analysis.  So there can
+  // only be a maximum of 3 phi arguments:  outermost (not inside any if
+  // statement), if_true (inside true branch of if statement), if_false (inside
+  // false branch of if statement)
+  phi_outermost_argument = ENTRY; // program entry is the default value
+  phi_if_true_argument = ENTRY;
+  phi_if_false_argument = ENTRY;
+  in_if_true_branch = 0;
+  in_if_false_branch = 0;
+  continue_with_finding_reaching_def = 1;
+  find_reaching_def_for_tracked_global_var_st(wn);
+
+  if (phi_outermost_argument == UNKNOWN || phi_if_true_argument == UNKNOWN ||
+      phi_if_false_argument == UNKNOWN)
+    return 0;
+  // all the phi arguments are either ONE or ENTRY
+  // debug print
+  // fprintf(stderr, "same_entry_exit_or_1 var (%d %s) in function %s\n", ST_IDX_index(ST_st_idx(tracked_global_var_st)), ST_name(tracked_global_var_st), node->Name());
+  return ST_IDX_index(ST_st_idx(tracked_global_var_st));
+}
+
 static void
 Add_Mod_Ref_Info (IPA_NODE * node)
 {
   UINT32 index;
+  UINT32 same_entry_exit_value_or_1_var_st_index;
 
   // NOTE: Lots of optimizations can be done in the implementation
   // below.
@@ -2518,6 +2965,16 @@ Add_Mod_Ref_Info (IPA_NODE * node)
   mUINT8 * REF = CXX_NEW_ARRAY (mUINT8, bv_size, Malloc_Mem_Pool);
   BZERO (REF, bv_size);
 
+  // SAME_ENTRY_EXIT_VALUE_OR_1
+  mUINT8 * SAME_ENTRY_EXIT_VALUE_OR_1 = CXX_NEW_ARRAY (mUINT8, bv_size,
+    Malloc_Mem_Pool);
+  bzero (SAME_ENTRY_EXIT_VALUE_OR_1, bv_size);
+
+  same_entry_exit_value_or_1_var_st_index =
+    analyze_global_var_returns_same_entry_value_or_1(node); // currently, there
+    // will only be one such global var (if at all); however, the following
+    // framework is ready to handle arbitrarily many such global vars in the
+    // future
   for (INT i=1; i<ST_Table_Size (GLOBAL_SYMTAB); i++)
   {
     ST * st = &St_Table(GLOBAL_SYMTAB, i);
@@ -2525,6 +2982,8 @@ Add_Mod_Ref_Info (IPA_NODE * node)
 
     BOOL mod_info = info->Is_def_elmt (i);
     BOOL ref_info = info->Is_eref_elmt (i);
+    BOOL same_entry_exit_value_or_1_info =
+      (i == same_entry_exit_value_or_1_var_st_index);
 
     mUINT8 bit_to_set = 1 << (bitsize - 1 - (i % bitsize));
 
@@ -2533,10 +2992,15 @@ Add_Mod_Ref_Info (IPA_NODE * node)
 
     if (ref_info)
       *(REF + i / bitsize) |= bit_to_set;
+
+    if (same_entry_exit_value_or_1_info)
+      *(SAME_ENTRY_EXIT_VALUE_OR_1 + i / bitsize) |= bit_to_set;
   }
 
   Mod_Ref_Info_Table[index].mod = MOD;
   Mod_Ref_Info_Table[index].ref = REF;
+  Mod_Ref_Info_Table[index].same_entry_exit_value_or_1 =
+    SAME_ENTRY_EXIT_VALUE_OR_1;
   // This can be optimized later, and be different for different PUs
   Mod_Ref_Info_Table[index].size = bv_size;
 }

@@ -72,6 +72,11 @@
 #include <stdio.h>
 #include "opt_bb.h"
 #include "opt_base.h"
+
+extern "C" {
+#include "bitset.h"
+}
+
 typedef int vertex_id;
 
 template <class Cluster_iterator>
@@ -718,14 +723,15 @@ private:
   BOOL _dump;
   int _count;
   MAP * _val_map;   // map from an interger to a value number.
+  BS * _true_val;   // a bit set of TRUE values, scratch field.
   MEM_POOL * _pool;
   TAIL_DUP_TRANS * _tail_dup;
   IF_MERGE_ACTION _action;
 
 private:
   void Delete_val_map();
-  void Init_val_map(WN *);
-  BOOL Val_mod(SC_NODE *, WN *);
+  void Init_val_map(WN *, BOOL);
+  BOOL Val_mod(SC_NODE *, WN *, BOOL);
   BOOL Val_match(WN *);
   BOOL Is_trackable_var(AUX_ID);
   BOOL Is_trackable_expr(WN *);
@@ -736,7 +742,7 @@ private:
   void Remove_val(WN *, WN *);
   BOOL Is_if_collapse_cand(SC_NODE * sc1, SC_NODE * sc2);
   BOOL Maybe_assigned_expr(WN *, WN *);
-  BOOL Maybe_assigned_expr(SC_NODE *, WN *);
+  BOOL Maybe_assigned_expr(SC_NODE *, WN *, BOOL);
   BOOL Maybe_assigned_expr(BB_NODE *, WN *);
   BOOL Maybe_assigned_expr(SC_NODE *, BB_NODE *);
   BOOL Maybe_assigned_expr(SC_NODE *, SC_NODE *);

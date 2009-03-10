@@ -689,13 +689,13 @@ public:
   // Clone a BB_NODE
   void         Clone_bb(IDTYPE source, IDTYPE dest, BOOL clone_wn);
   // Clone a list of BB_NODEs
-  void         Clone_bbs(BB_NODE *, BB_NODE *, BB_NODE **, BB_NODE **, BOOL clone_wn);
+  void         Clone_bbs(BB_NODE *, BB_NODE *, BB_NODE **, BB_NODE **, BOOL clone_wn, float scale);
   // Clone a BB_IFINFO
   BB_IFINFO *  Clone_ifinfo(BB_IFINFO *);
   // Clone a BB_LOOP
   BB_LOOP *    Clone_loop(BB_LOOP *);
   // Clone a SC_NODE
-  SC_NODE *    Clone_sc(SC_NODE *, BOOL);
+  SC_NODE *    Clone_sc(SC_NODE *, BOOL, float);
   // Create a SC node 
   SC_NODE *    Create_sc(SC_TYPE type);
 

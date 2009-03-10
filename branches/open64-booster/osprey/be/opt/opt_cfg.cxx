@@ -3788,11 +3788,8 @@ CFG::Create(WN *func_wn, BOOL lower_fully, BOOL calls_break,
 
   SC_init();
 
-  // TODO: enable this for FDO. 
-  if (WOPT_Enable_Pro_Loop_Fusion_Trans
-      && !Cur_PU_Feedback) {
+  if (WOPT_Enable_Pro_Loop_Fusion_Trans) {
     if (opr == OPR_FUNC_ENTRY) {
-      
       PU &pu = Pu_Table[ST_pu(WN_st(func_wn))];
 
       // Skip abnormal control flows in the first implementation.
@@ -6387,7 +6384,8 @@ void CFG::Clone_bbs
  BB_NODE * bb_last,
  BB_NODE ** new_first,
  BB_NODE ** new_last,
- BOOL clone_wn
+ BOOL  clone_wn,
+ float scale
 )
 {
   *new_first = NULL;
@@ -6411,6 +6409,9 @@ void CFG::Clone_bbs
       INT32 label = Alloc_label();
       Append_label_map(label, bb_new);
     }
+
+    if (Feedback())
+      Feedback()->Add_node(dst_id);
 
     if (bb_cur == bb_first)
       *new_first = bb_new;
@@ -6450,6 +6451,12 @@ void CFG::Clone_bbs
 	BB_NODE * new_pred = Get_cloned_bb(old_pred);
 	FmtAssert(new_pred, ("Cloned BB_NODE not found"));
 	Connect_predsucc(new_pred, bb_new);
+	
+	if (Feedback()) {
+	  Feedback()->Clone_edge(old_pred->Id(), bb_cur->Id(),
+				 new_pred->Id(), bb_new->Id(),
+				 scale);
+	}
       }
     }
     
@@ -6564,7 +6571,7 @@ CFG::Clone_loop(BB_LOOP * bb_loop)
 // Clone given sc, BB_NODEs are cloned only at root level for SESEs.
 
 SC_NODE *
-CFG::Clone_sc(SC_NODE * sc, BOOL is_root)
+CFG::Clone_sc(SC_NODE * sc, BOOL is_root, float scale)
 {
   SC_NODE * sc_new = NULL;
 
@@ -6574,7 +6581,7 @@ CFG::Clone_sc(SC_NODE * sc, BOOL is_root)
     BB_NODE * bb_last = sc->Last_bb();
     BB_NODE * bb_new_first = NULL;
     BB_NODE * bb_new_last = NULL;
-    Clone_bbs(bb_first, bb_last, &bb_new_first, &bb_new_last, TRUE);
+    Clone_bbs(bb_first, bb_last, &bb_new_first, &bb_new_last, TRUE, scale);
   }
   
   sc_new = Create_sc(sc->Type());
@@ -6600,7 +6607,7 @@ CFG::Clone_sc(SC_NODE * sc, BOOL is_root)
   SC_NODE * new_kid;
 
   FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
-    new_kid = Clone_sc(tmp, FALSE);
+    new_kid = Clone_sc(tmp, FALSE, scale);
     sc_new->Append_kid(new_kid);
     new_kid->Set_parent(sc_new);
   }

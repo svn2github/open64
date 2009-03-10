@@ -212,14 +212,10 @@ private:
   vector<OPT_FB_NODE, mempool_allocator<OPT_FB_NODE> >  _fb_opt_nodes;
   vector<OPT_FB_EDGE, mempool_allocator<OPT_FB_EDGE> >  _fb_opt_edges;
 
-  bool    Edge_has_freq( IDTYPE nx_src, IDTYPE nx_dst ) const;
   IDTYPE  Find_edge_by_type( IDTYPE nx, FB_EDGE_TYPE edge_type ) const;
   FB_FREQ Get_edge_freq_by_type( IDTYPE nx, FB_EDGE_TYPE edge_type ) const;
   IDTYPE  Get_node_successor( IDTYPE nx ) const;
 
-  void Add_node( IDTYPE nx_new );
-  void Add_edge( IDTYPE nx_src, IDTYPE nx_dst,
-		 FB_EDGE_TYPE edge_type, FB_FREQ freq );
   void Remove_edge( IDTYPE ex );
   void Change_edge_freq( IDTYPE ex, FB_FREQ new_freq );
   void Set_edge_dest( IDTYPE ex, IDTYPE nx_dst_new );
@@ -250,7 +246,10 @@ public:
   FB_FREQ Get_node_freq_out( IDTYPE nx ) const {
     return _fb_opt_nodes[nx].freq_total_out;
   }
+  
+  bool    Edge_has_freq( IDTYPE nx_src, IDTYPE nx_dst ) const;
   FB_FREQ Get_edge_freq( IDTYPE nx_src, IDTYPE nx_dst ) const;
+  FB_EDGE_TYPE Get_edge_type(IDTYPE nx_src, IDTYPE nx_dst ) const;
   float   Get_pred_prob( IDTYPE nx_src, IDTYPE nx_dst ) const;
   float   Get_succ_prob( IDTYPE nx_src, IDTYPE nx_dst ) const;
 
@@ -265,6 +264,10 @@ public:
   void Clone_edge( IDTYPE nx_src_old, IDTYPE nx_dst_old,
 		   IDTYPE nx_src_new, IDTYPE nx_dst_new, float scale );
   void Clone_zone( zone& z, std::map<vertex_id, vertex_id>& nx_old_to_new );
+
+  void Add_node( IDTYPE nx_new );
+  void Add_edge( IDTYPE nx_src, IDTYPE nx_dst,
+		 FB_EDGE_TYPE edge_type, FB_FREQ freq );
 
   void Print( FILE *fp = stderr ) const;
   FB_VERIFY_STATUS Verify( CFG *cfg, const char *const phase );

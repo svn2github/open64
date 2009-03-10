@@ -240,6 +240,7 @@ public:
 
   // Member access methods
   FREQ_VALUE_TYPE Value() const { return _value; }
+  FB_FREQ_TYPE Type() const { return _type; }
   FREQ_VALUE_TYPE& Get_Value() { return _value; }
   void   Set_Value(FREQ_VALUE_TYPE val) { _value=val; }
 

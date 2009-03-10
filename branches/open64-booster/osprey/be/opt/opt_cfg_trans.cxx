@@ -1198,8 +1198,10 @@ IF_MERGE_TRANS::Clear(void)
   _dump = FALSE;
   _count = 0;
   _val_map = NULL;
+  _true_val = NULL;
   _pool = NULL;
   _action = DO_NONE;
+  
 }
 
 // Query whether given aux_id represents a scalar non-address-taken non-virtual variable.
@@ -1252,17 +1254,23 @@ BOOL IF_MERGE_TRANS::Is_trackable_expr(WN * wn)
   return TRUE;
 }
 
+
 // Query whether the values of loads in the given expression tree 
 // are modified by the given SC_NODE.  We perform a quick and simple
 // value-number hashing to the given SC_NODE. 
-BOOL IF_MERGE_TRANS::Val_mod(SC_NODE * sc, WN * wn)
+// eval_true indicates whether wn is evaluated to TRUE at the entry
+// of sc.
+BOOL IF_MERGE_TRANS::Val_mod(SC_NODE * sc, WN * wn, BOOL eval_true)
 {
-  Init_val_map(wn);
-  if (_val_map == NULL)
-    return FALSE;
+  BOOL ret_val = TRUE;
 
-  Track_val(sc, sc->First_bb(), wn);
-  BOOL ret_val = !Val_match(wn);
+  Init_val_map(wn, eval_true);
+
+  if (_val_map != NULL) {
+    Track_val(sc, sc->First_bb(), wn);
+    ret_val = !Val_match(wn);
+  }
+
   Delete_val_map();
   return ret_val;
 }
@@ -1295,11 +1303,15 @@ IF_MERGE_TRANS::Delete_val_map()
     CXX_DELETE(_val_map, _pool);
     _val_map = NULL;
   }
+
+  if (_true_val)
+    _true_val = BS_ClearD(_true_val);
 }
 
 // Initialize _val_map by hashing all loads in the given wn.
+// eval_true indicates whether wn is evaluated to TRUE.
 void
-IF_MERGE_TRANS::Init_val_map(WN * wn)
+IF_MERGE_TRANS::Init_val_map(WN * wn, BOOL eval_true)
 {
   if (OPERATOR_is_scalar_load(WN_operator(wn))) {
     AUX_ID aux_id = WN_aux(wn);
@@ -1310,8 +1322,27 @@ IF_MERGE_TRANS::Init_val_map(WN * wn)
     }
   }
 
+  OPERATOR op = WN_operator(wn);
+
+  // Infer non-zero values
+  if (eval_true
+      && ((op == OPR_NE) || (op == OPR_EQ))
+      && (WN_operator(WN_kid1(wn)) == OPR_INTCONST)
+      && OPERATOR_is_scalar_load(WN_operator(WN_kid0(wn)))) {
+    AUX_ID aux_id = WN_aux(WN_kid0(wn));
+    INT64 const_val = WN_const_val(WN_kid1(wn));
+
+    if (((op == OPR_NE) && (const_val == 0))
+	|| ((op == OPR_EQ) && (const_val != 0))) {
+      if (_true_val == NULL) 
+	_true_val = BS_Create_Empty(_cu->Opt_stab()->Lastidx() + 1, _pool);
+
+      _true_val = BS_Union1D(_true_val, aux_id, _pool);
+    }
+  }
+
   for ( int i = 0; i < WN_kid_count(wn); i++) 
-    Init_val_map(WN_kid(wn, i));
+    Init_val_map(WN_kid(wn, i), FALSE);
 }
 
 // Obtain the hashed value number for the given AUX_ID.
@@ -1365,10 +1396,15 @@ BOOL IF_MERGE_TRANS::Is_aliased(WN * wn1, WN * wn2)
 	if (mod == 0)
 	  return FALSE;
 
-	// Work around.
-	if ((strcmp(ST_name(load_st), "type") == 0)
-	    && (strcmp(ST_name(call_st), "quantum_qec_counter") == 0))
-	  return FALSE;
+	if (Is_Global_Symbol(load_st)
+	    && _true_val
+	    && BS_MemberP(_true_val, load_aux)) {
+	  INT same_entry_exit_value_or_1 = 0;	  
+	  opt_stab->check_ipa_same_entry_exit_value_or_1_info(call_st, load_st,
+							      &same_entry_exit_value_or_1);
+	  if (same_entry_exit_value_or_1)
+	    return FALSE;
+	}
       }
     }
 
@@ -1648,13 +1684,34 @@ IF_MERGE_TRANS::Merge_CFG(SC_NODE * sc1, SC_NODE * sc2)
   }
 
   sc1_then_end->Replace_succ(sc1_merge, sc2_then);
+
+  if (cfg->Feedback())
+    cfg->Feedback()->Move_edge_dest(sc1_then_end->Id(), sc1_merge->Id(), sc2_then->Id());
+
   sc1_else_end->Replace_succ(sc1_merge, sc2_else);
+
+  if (cfg->Feedback())
+    cfg->Feedback()->Move_edge_dest(sc1_else_end->Id(), sc1_merge->Id(), sc2_else->Id());
   
   sc2_then->Replace_pred(sc2_head, sc1_then_end);
+  
+  if (cfg->Feedback())
+    cfg->Feedback()->Delete_edge(sc2_head->Id(), sc2_then->Id());
+
   sc2_else->Replace_pred(sc2_head, sc1_else_end);
 
+  if (cfg->Feedback())
+    cfg->Feedback()->Delete_edge(sc2_head->Id(), sc2_else->Id());
+
   sc2_then_end->Replace_succ(sc2_merge, sc1_merge);
+  
+  if (cfg->Feedback())
+    cfg->Feedback()->Move_edge_dest(sc2_then_end->Id(), sc2_merge->Id(), sc1_merge->Id());
+
   sc2_else_end->Replace_succ(sc2_merge, sc1_merge);
+  
+  if (cfg->Feedback())
+    cfg->Feedback()->Move_edge_dest(sc2_else_end->Id(), sc2_merge->Id(), sc1_merge->Id());
 
   sc1_merge->Replace_pred(sc1_then_end, sc2_then_end);
   sc1_merge->Replace_pred(sc1_else_end, sc2_else_end);
@@ -1665,6 +1722,12 @@ IF_MERGE_TRANS::Merge_CFG(SC_NODE * sc1, SC_NODE * sc2)
   sc2_merge->Remove_pred(sc2_then_end, pool);
   sc2_merge->Replace_pred(sc2_else_end, sc2_head);
 
+  if (cfg->Feedback()) {
+    cfg->Feedback()->Add_edge(sc2_head->Id(), sc2_merge->Id(), FB_EDGE_OUTGOING, 
+			      cfg->Feedback()->Get_edge_freq(sc2_then_end->Id(), sc1_merge->Id())
+			      + cfg->Feedback()->Get_edge_freq(sc2_else_end->Id(), sc1_merge->Id()));
+
+  }
   sc2_head->Set_ifinfo(NULL);
 
   // remove conditional branch
@@ -1874,14 +1937,16 @@ IF_MERGE_TRANS::Maybe_assigned_expr(BB_NODE * bb, WN * wn_root)
 
 // Query whether loads/stores in the WHILE tree rooted at wn_root could
 // alias with a store/call statement  in the SC tree rooted at sc. 
+// eval_true indicates whether wn_root is evaluated to TRUE at the entry
+// of the sc.
 
 BOOL
-IF_MERGE_TRANS::Maybe_assigned_expr(SC_NODE * sc, WN * wn_root)
+IF_MERGE_TRANS::Maybe_assigned_expr(SC_NODE * sc, WN * wn_root, BOOL eval_true)
 {
   if (Is_trackable_expr(wn_root)) {
     // Track whether values of loads in the WHILR tree rooted at wn_root
     // are modified by sc
-    if (Val_mod(sc, wn_root))
+    if (Val_mod(sc, wn_root, eval_true))
       return TRUE;
     else
       return FALSE;
@@ -1910,7 +1975,7 @@ IF_MERGE_TRANS::Maybe_assigned_expr(SC_NODE * sc, WN * wn_root)
     SC_LIST_ITER sc_list_iter(kids);
     SC_NODE *tmp;
     FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
-      if (Maybe_assigned_expr(tmp, wn_root))
+      if (Maybe_assigned_expr(tmp, wn_root, FALSE))
 	return TRUE;
     }
   }
@@ -1932,7 +1997,7 @@ IF_MERGE_TRANS::Maybe_assigned_expr(SC_NODE *sc1, BB_NODE *bb)
 	|| (WN_operator(wn_iter) == OPR_TRUEBR))
       wn_iter = WN_kid0(wn_iter);
 
-    if (Maybe_assigned_expr(sc1, wn_iter))
+    if (Maybe_assigned_expr(sc1, wn_iter, FALSE))
       return TRUE;
   }
 
@@ -2206,7 +2271,7 @@ IF_MERGE_TRANS::Is_cand(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
 
   // sc1' then-path and else-path should not modify condition expression.
   FOR_ALL_ELEM(tmp, sc_list_iter, Init(sc1->Kids())) {
-    if (Maybe_assigned_expr(tmp, expr1))
+    if (Maybe_assigned_expr(tmp, expr1, (tmp->Type() == SC_THEN) ? TRUE : FALSE))
       return FALSE;
   }
 
@@ -2215,7 +2280,7 @@ IF_MERGE_TRANS::Is_cand(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
   next_sibling = sc1->Next_sibling();
   
   while (next_sibling && (next_sibling != sc2)) {
-    if (Maybe_assigned_expr(next_sibling, expr2))
+    if (Maybe_assigned_expr(next_sibling, expr2, FALSE))
       return FALSE;
     next_sibling = next_sibling->Next_sibling();
   }
@@ -2681,6 +2746,7 @@ TAIL_DUP_TRANS::Do_code_motion(SC_NODE * sc1, SC_NODE * sc2)
   BB_NODE * first_bb1 = sc1->First_bb();
   BB_NODE * first_bb2 = sc2->First_bb();
   BB_NODE * last_bb2 = sc2->Last_bb();
+  CFG * cfg = _cu->Cfg();
 
   // Other scenario not tested yet.
   FmtAssert((sc1->Type() == SC_LOOP) && (sc2->Type() == SC_BLOCK), 
@@ -2710,15 +2776,23 @@ TAIL_DUP_TRANS::Do_code_motion(SC_NODE * sc1, SC_NODE * sc2)
     if (sc1->Type() == SC_LOOP)
       FmtAssert(!sc1->Contains(tmp), ("TODO: back edge"));
     tmp->Replace_succ(first_bb1, first_bb2);
+
+    if (cfg->Feedback()) 
+      cfg->Feedback()->Move_edge_dest(tmp->Id(), first_bb1->Id(), first_bb2->Id());
   }
   
   last_bb2_succ->Replace_pred(last_bb2, first_bb2_pred);
   first_bb2_pred->Replace_succ(first_bb2, last_bb2_succ);
 
+  if (cfg->Feedback())
+    cfg->Feedback()->Move_edge_dest(first_bb2_pred->Id(), first_bb2->Id(), last_bb2_succ->Id());
+
   first_bb2->Set_pred(first_bb1->Pred());
   last_bb2->Replace_succ(last_bb2_succ, first_bb1);
 
-  CFG * cfg = _cu->Cfg();
+  if (cfg->Feedback())
+    cfg->Feedback()->Move_edge_dest(last_bb2->Id(), last_bb2_succ->Id(), first_bb1->Id());
+
   BB_LIST * new_pred = CXX_NEW(BB_LIST(last_bb2), cfg->Mem_pool());
   first_bb1->Set_pred(new_pred);
 
@@ -2905,16 +2979,26 @@ TAIL_DUP_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 	   sc_src->Id(), sc_dst->Id());
   }
 
-  SC_NODE * prev_sibling = sc_src->Prev_sibling();
-  CFG * cfg = _cu->Cfg();
-  SC_NODE * sc_new = cfg->Clone_sc(sc_src, TRUE);
-  FmtAssert(sc_new, ("NULL clone"));
-
-  // Fix CFG.
   BB_NODE * dst_merge = sc_dst->Merge();
   BB_NODE * dst_head = sc_dst->Head();
   BB_NODE * dst_else = sc_dst->Else();
   BB_NODE * dst_then = sc_dst->Then();
+  CFG * cfg = _cu->Cfg();
+  float scale = 0.0;
+
+  if (cfg->Feedback()) {
+    FB_FREQ freq = cfg->Feedback()->Get_edge_freq(dst_head->Id(), dst_else->Id()) 
+      / cfg->Feedback()->Get_node_freq_out(dst_head->Id()) * 1.0;
+    if (freq.Known())
+      scale = freq.Value();
+  }
+
+  SC_NODE * prev_sibling = sc_src->Prev_sibling();
+
+  SC_NODE * sc_new = cfg->Clone_sc(sc_src, TRUE, scale);
+  FmtAssert(sc_new, ("NULL clone"));
+
+  // Fix CFG.
 
   BB_NODE * new_entry;
   BB_NODE * new_exit;
@@ -2947,6 +3031,14 @@ TAIL_DUP_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 
     // Insert BB_NODEs into else-path.
     Insert_region(new_entry, new_exit, dst_head, dst_else, pool);
+
+    if (cfg->Feedback()) {
+      FB_EDGE_TYPE edge_type = cfg->Feedback()->Get_edge_type(old_exit->Id(), src_merge->Id());
+      cfg->Feedback()->Move_edge_dest(dst_head->Id(), dst_else->Id(), new_entry->Id());
+      cfg->Feedback()->Add_edge(new_exit->Id(), dst_else->Id(), 
+				edge_type,
+				cfg->Feedback()->Get_edge_freq(dst_head->Id(), new_entry->Id()));
+    }
     
     // Prepend sc_new to SC_ELSE's kids.
     sc_insert_before = sc_dst->Find_kid_of_type(SC_ELSE);
@@ -2976,11 +3068,19 @@ TAIL_DUP_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 	FmtAssert(src_merge->Labnam(), ("Expect a non-NULL label"));
 	WN_label_number(branch_wn) = src_merge->Labnam();
       }
+
+      if (cfg->Feedback()) 
+	cfg->Feedback()->Move_edge_dest(tmp->Id(), old_entry->Id(), src_merge->Id());
     }
     src_merge->Remove_pred(old_exit, pool);
     src_merge->Set_pred(old_entry->Pred());
     old_entry->Set_pred(NULL);
     old_exit->Remove_succ(src_merge, pool);
+
+    if (cfg->Feedback()) {
+       cfg->Feedback()->Move_edge_dest(dst_head->Id(), dst_then->Id(), old_entry->Id());
+       cfg->Feedback()->Move_edge_dest(old_exit->Id(), src_merge->Id(), dst_then->Id());
+     }
 
     tmp = src_merge->Prev();
     tmp->Set_next(NULL);
@@ -3067,15 +3167,31 @@ TAIL_DUP_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 	   sc_src->Id(), sc_dst->Id());
   }
   
+  BB_NODE * dst_head = sc_dst->Head();
+  BB_NODE * dst_merge = sc_dst->Merge();
+  BB_NODE * dst_else = sc_dst->Else();
+  BB_NODE * dst_else_end = sc_dst->Else_end();
+  BB_NODE * dst_then_end = sc_dst->Then_end();
   CFG * cfg = _cu->Cfg();
-  SC_NODE * sc_new = cfg->Clone_sc(sc_src, TRUE);
+  float scale = 0.0;
+  FB_FREQ      then_edge_freq;
+  FB_FREQ      else_edge_freq;
+  FB_EDGE_TYPE exit_edge_type;
+
+  if (cfg->Feedback()) {
+    FB_FREQ freq = cfg->Feedback()->Get_edge_freq(dst_head->Id(), dst_else->Id()) 
+      / cfg->Feedback()->Get_node_freq_out(dst_head->Id()) * 1.0;
+    if (freq.Known())
+      scale = freq.Value();
+    then_edge_freq = cfg->Feedback()->Get_edge_freq(dst_then_end->Id(), dst_merge->Id());
+    else_edge_freq = cfg->Feedback()->Get_edge_freq(dst_else_end->Id(), dst_merge->Id());
+
+  }
+
+  SC_NODE * sc_new = cfg->Clone_sc(sc_src, TRUE, scale);
   FmtAssert(sc_new, ("NULL clone"));
 
   // Fix CFG
-  BB_NODE * dst_head = sc_dst->Head();
-  BB_NODE * dst_merge = sc_dst->Merge();
-  BB_NODE * dst_else_end = sc_dst->Else_end();
-  BB_NODE * dst_then_end = sc_dst->Then_end();
   
   BB_NODE * new_entry;
   BB_NODE * new_exit;
@@ -3111,10 +3227,29 @@ TAIL_DUP_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 
     new_merge = cfg->Create_and_allocate_bb(BB_GOTO);
 
+    if (cfg->Feedback()) {
+      cfg->Feedback()->Add_node(new_merge->Id());
+      exit_edge_type = cfg->Feedback()->Get_edge_type(old_exit->Id(), src_merge->Id());
+    }
+
     // Disconnect BB_NODEs in src_src from CFG
     FOR_ALL_ELEM(tmp, bb_list_iter, Init(old_entry->Pred())) {
       tmp->Replace_succ(old_entry, src_merge);
+      if (cfg->Feedback() && (old_entry != dst_merge))
+	cfg->Feedback()->Move_edge_dest(tmp->Id(), old_entry->Id(), src_merge->Id());
     }
+    
+    if (cfg->Feedback()) {
+      if (old_entry == dst_merge)
+	cfg->Feedback()->Move_edge_dest(dst_else_end->Id(), dst_merge->Id(), new_entry->Id());
+      cfg->Feedback()->Move_edge_dest(old_exit->Id(), src_merge->Id(), new_merge->Id());
+      cfg->Feedback()->Add_edge(new_merge->Id(), src_merge->Id(), FB_EDGE_OUTGOING, then_edge_freq);
+
+      if (!cfg->Feedback()->Edge_has_freq(dst_then_end->Id(), old_entry->Id()))
+	cfg->Feedback()->Add_edge(dst_then_end->Id(), old_entry->Id(), 
+				  FB_EDGE_OUTGOING, then_edge_freq);
+    }
+
     old_exit->Replace_succ(src_merge, new_merge);
     new_merge->Append_pred(old_exit, pool);
     src_merge->Remove_pred(old_exit, pool);
@@ -3144,12 +3279,8 @@ TAIL_DUP_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
     old_entry->Set_prev(NULL);
     
     dst_merge = src_merge;
-    Insert_region(old_entry, new_merge, dst_then_end, dst_merge, pool);
 
-#if 0
-    if (Feedback())
-      Feedback()->Split_edge(old_exit->Id(), new_merge->Id(), src_merge->Id());
-#endif
+    Insert_region(old_entry, new_merge, dst_then_end, dst_merge, pool);
       
     // UNlink sc_src from SC tree and append it to SC_THEN's kids.
     sc_src->Unlink();
@@ -3164,6 +3295,16 @@ TAIL_DUP_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
     
     // Insert new BB_NODEs into else-path
     new_merge = cfg->Create_and_allocate_bb(BB_GOTO);
+    
+    if (cfg->Feedback()) {
+      cfg->Feedback()->Add_node(new_merge->Id());
+      cfg->Feedback()->Add_edge(new_exit->Id(), new_merge->Id(), exit_edge_type, else_edge_freq);
+      cfg->Feedback()->Add_edge(new_merge->Id(), dst_merge->Id(), FB_EDGE_OUTGOING, else_edge_freq);
+      if (!cfg->Feedback()->Edge_has_freq(dst_else_end->Id(), new_entry->Id()))
+	cfg->Feedback()->Add_edge(dst_else_end->Id(), new_entry->Id(),
+				  FB_EDGE_OUTGOING, else_edge_freq);
+    }
+
     new_exit->Prepend_succ(new_merge, pool);
     new_merge->Append_pred(new_exit, pool);
     
@@ -3211,8 +3352,13 @@ TAIL_DUP_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 
     FOR_ALL_ELEM(tmp, bb_list_iter, Init(old_entry->Pred())) {
       tmp->Replace_succ(old_entry, tmp2);
+      if (cfg->Feedback() && (old_entry != dst_merge)) 
+	cfg->Feedback()->Move_edge_dest(tmp->Id(), old_entry->Id(), tmp2->Id());
     }
 
+    if (cfg->Feedback())
+      cfg->Feedback()->Delete_edge(old_exit->Id(), tmp2->Id());
+    
     bb_list = tmp2->Pred();
     while (bb_list) {
       bb_list = bb_list->Remove(bb_list->Node(), pool);
@@ -3226,17 +3372,31 @@ TAIL_DUP_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
     }
 
     old_exit->Set_succ(NULL);
-
+    
     tmp = old_entry->Prev();
     tmp->Set_next(tmp2);
     tmp2->Set_prev(tmp);
     old_entry->Set_prev(NULL);
     old_exit->Set_next(NULL);
 
+    if (cfg->Feedback()) {
+      cfg->Feedback()->Move_edge_dest(dst_else_end->Id(), dst_merge->Id(), new_entry->Id());
+      cfg->Feedback()->Move_edge_dest(dst_then_end->Id(), dst_merge->Id(), old_entry->Id());
+    }
+    
     if (dst_merge == old_entry) {
       ifinfo = dst_head->Ifinfo();
       ifinfo->Set_merge(tmp2);
       dst_merge = tmp2;
+    }
+
+    if (cfg->Feedback()) {
+      cfg->Feedback()->Add_edge(new_exit->Id(), dst_merge->Id(),
+				FB_EDGE_OUTGOING,
+				cfg->Feedback()->Get_edge_freq(dst_else_end->Id(), new_entry->Id()));
+      cfg->Feedback()->Add_edge(old_exit->Id(), dst_merge->Id(),
+				FB_EDGE_OUTGOING,
+				cfg->Feedback()->Get_edge_freq(dst_then_end->Id(), old_entry->Id()));
     }
     
     // Insert BB_NODEs into else-path
@@ -3634,10 +3794,14 @@ COMP_UNIT::Pro_loop_fusion_trans()
       tail_dup_trans->Classify_loops(sc_root);
       tail_dup_trans->Top_down_trans(sc_root);
 
-      // Verify branch target labels.
-      if (tail_dup_trans->Transform_count() > 0)
+      // Verify branch target labels and feed back info.
+      if ((tail_dup_trans->Transform_count() > 0) || (if_merge_trans->Count() > 0)) {
 	_cfg->Verify_label();
 
+	if (Cur_PU_Feedback)
+	  _cfg->Feedback()->Verify(_cfg, "after proactive loop fusion transformation");
+      }
+      
       if (trace) {
 	if (if_merge_trans->Count() > 0)
 	  printf("\n\t If-merge total:%d\n", if_merge_trans->Count());
@@ -3646,6 +3810,8 @@ COMP_UNIT::Pro_loop_fusion_trans()
 	  printf("\n\t Code-motion-Head-Tail-Dup total:%d\n", 
 		 tail_dup_trans->Transform_count());
       }
+
+
     }
 
     OPT_POOL_Pop(pool, MEM_DUMP_FLAG + 1);
