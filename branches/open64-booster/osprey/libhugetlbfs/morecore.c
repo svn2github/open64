@@ -43,6 +43,11 @@ static void *heapbase;
 static void *heaptop;
 static long mapsize;
 
+#ifdef OPEN64_MOD
+long hugepages_heap_limit;
+static long hugepages_avail;
+#endif
+
 static long hugetlbfs_next_addr(long addr)
 {
 #if defined(__powerpc64__)
@@ -82,6 +87,10 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
 
 	DEBUG("hugetlbfs_morecore(%ld) = ...\n", (long)increment);
 
+#ifdef OPEN64_MOD
+        if (hugepages_heap_limit == 0)
+            return NULL;
+#endif
 	/*
 	 * how much to grow the heap by =
 	 * 	(size of heap) + malloc request - mmap'd space
@@ -95,10 +104,16 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
 	delta = ALIGN(delta, blocksize);
 
 	if (delta > 0) {
-		/* growing the heap */
+                /* growing the heap */
+                DEBUG("Attempting to map %ld bytes\n", delta);
 
-		DEBUG("Attempting to map %ld bytes\n", delta);
-
+#ifdef OPEN64_MOD
+                if ((long long) delta + mapsize > (long long) hugepages_heap_limit * blocksize) {
+                    DEBUG("size %ld exceeds huge page limit %ld\n",
+                          delta + mapsize, hugepages_heap_limit);
+                    return NULL;
+                }
+#endif
 		/* map in (extend) more of the file at the end of our last map */
 		p = mmap(heapbase + mapsize, delta, PROT_READ|PROT_WRITE,
 			 MAP_PRIVATE, heap_fd, mapsize);
@@ -293,6 +308,19 @@ void __hugetlbfs_setup_morecore(void)
 	heaptop = heapbase = (void *)heapaddr;
 	__morecore = &hugetlbfs_morecore;
 
+#ifdef OPEN64_MOD
+        hugepages_avail = hugetlbfs_num_pages();
+        hugepages_heap_limit= hugepages_avail;
+        env = getenv("HUGETLB_LIMIT");
+        if ( env ) {
+            long n = atol(env);
+            if( (n >= 0) && (n < hugepages_avail) ) 
+		hugepages_heap_limit = n;
+        }
+
+        DEBUG("setup_morecore(): hugepages_heap_limit = %ld\n", hugepages_heap_limit);
+#endif
+
 	/* Set some allocator options more appropriate for hugepages */
 	
 	if (shrink_ok)
@@ -305,3 +333,21 @@ void __hugetlbfs_setup_morecore(void)
 	 * to mmap() if we run out of hugepages. */
 	mallopt(M_MMAP_MAX, 0);
 }
+
+#ifdef OPEN64_MOD
+/*  Command line precedes environment variable in setting limit of huge pages to use.
+ *
+ *  Input:
+ *     A value of 0 denotes no huge page should be used.
+ *     A value greater than 0 gives the limit.
+ *     A value less than 0 denotes no limit.
+ *  
+ * When this routine is used, the setup routine should not be called from setup_libhugetlbfs.
+ */
+
+void setup_hugepage(long l_limit)
+{
+    if ((l_limit >= 0) && (l_limit < hugepages_avail))
+        hugepages_heap_limit = l_limit;
+}
+#endif

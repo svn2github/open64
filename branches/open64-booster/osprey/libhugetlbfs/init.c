@@ -19,7 +19,11 @@
 
 #include "libhugetlbfs_internal.h"
 
+#ifdef OPEN64_MOD
+void __attribute__ ((constructor)) setup_libhugetlbfs(void)
+#else
 static void __attribute__ ((constructor)) setup_libhugetlbfs(void)
+#endif
 {
 	__hugetlbfs_setup_debug();
 #ifndef NO_ELFLINK

@@ -1989,16 +1989,13 @@ static void
 postprocess_ld_args (string_list_t *args)
 {
     string_item_t *p;
+    boolean add_huge_lib = FALSE;
 
     if (option_was_seen(O_pg) && !option_was_seen(O_nostdlib)) {
 	if (prof_lib_exists("c"))
 	    add_library(args, "c");
     }
 
-    if (option_was_seen(O_hugepage)) {
-        add_library(args, "hugetlbfs");
-    }
-	    
     /*
      * For some reason, our cross linker won't find libraries in some
      * directories unless it's told about them with -rpath-link.
@@ -2021,18 +2018,30 @@ postprocess_ld_args (string_list_t *args)
             char * root_prefix = directory_path(get_executable_dir());
 	    add_after_string(args, p, concat_strings("-Wl,-rpath-link,", dir));
 
-            if (option_was_seen(O_hugepage) && (strstr(dir, root_prefix) != NULL)) {
+            if (option_was_seen(O_hugepage) && (strstr(dir, root_prefix) != NULL)
+                && (instrumentation_invoked != TRUE)) {
                 HUGEPAGE_DESC desc;
+                add_after_string(args, p, concat_strings("-Wl,-rpath,", dir));
 
                 for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
                     if (desc->alloc == ALLOC_BDT && !add_huge_lib) {
-                        add_after_string(args, p, concat_strings("-Wl,-rpath,", dir));
-                        dir = concat_strings(dir, "/elf.xBDT");
-                        add_after_string(args, p, concat_strings("-Wl,-T", dir));
+                        /* -T option does not work with -static. todo: find out why.
+                         */
+                        if (!option_was_seen(O_static)) {
+                            dir = concat_strings(dir, "/elf.xBDT");
+                            add_after_string(args, p, concat_strings("-Wl,-T", dir));
+                            add_huge_lib = TRUE;
+                        }
                     }
+                    else if (desc->alloc == ALLOC_HEAP)
+                        add_huge_lib = TRUE;
                 }
             }
 	}
+    }
+
+    if (add_huge_lib) {
+        add_library(args, "hugetlbfs");
     }
 }
 #endif

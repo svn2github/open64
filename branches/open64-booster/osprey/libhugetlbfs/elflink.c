@@ -621,7 +621,15 @@ int parse_elf_relinked(struct dl_phdr_info *info, size_t size, void *data)
 
 		if (!(info->dlpi_phdr[i].p_flags & PF_LINUX_HUGETLB))
 			continue;
-
+#ifdef OPEN64_MOD
+                if (info->dlpi_phdr[i].p_vaddr & 0xffffff) {
+                    DEBUG("Cant map segment %d %#0lx (2M misalignment)\n",
+                          i, (unsigned long) info->dlpi_phdr[i].p_vaddr);
+                    htlb_num_segs = 0;
+                    return 0;
+                }
+#endif
+                    
 		if (save_phdr(htlb_num_segs, i, &info->dlpi_phdr[i]))
 			return 1;
 
