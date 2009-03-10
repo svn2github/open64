@@ -1971,6 +1971,7 @@ static void add_hugepage_desc
 )
 {
     HUGEPAGE_DESC desc;
+    HUGEPAGE_DESC last_desc = NULL;
 
     if (((alloc == ALLOC_BDT) || (alloc == ALLOC_BSS))
         && (limit != HUGEPAGE_LIMIT_DEFAULT))
@@ -1990,6 +1991,7 @@ static void add_hugepage_desc
             desc->limit = limit;
             return;
         }
+        last_desc = desc;
     }
     
     desc = malloc(sizeof(HUGEPAGE_DESC_TAG));
@@ -1997,10 +1999,15 @@ static void add_hugepage_desc
     desc->alloc = alloc;
     desc->size = size;
     desc->limit = limit;
-    desc->next = NULL;
 
-    desc->next = hugepage_desc;
-    hugepage_desc = desc;    
+    if ((alloc == ALLOC_HEAP) && (last_desc != NULL)) {
+        desc->next = NULL;
+        last_desc->next = desc;
+    }
+    else {
+        desc->next = hugepage_desc;
+        hugepage_desc = desc; 
+    }
 }
 
 static void
