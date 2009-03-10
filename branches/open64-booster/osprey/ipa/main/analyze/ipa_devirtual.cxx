@@ -173,6 +173,8 @@ Find_virtual_function(TY_IDX actual_class,
 
     // Find the INITO entry via ST index
     INITO_IDX inito_idx = Find_inito_by_st(ST_st_idx(vtab_st));
+    if (inito_idx <= INITO_IDX_ZERO)
+      return ST_IDX_ZERO;
 
     // Get the INITV entry, then find the target function call
     INITV_IDX initv_idx = INITO_val(inito_idx);
@@ -1612,6 +1614,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Locate_Virtual_Function_In_Virtual_Table (
     // regions in WHIRL
     // Find the INITO entry for the ST index
     INITO_IDX inito_idx = Find_inito_by_st(ST_st_idx(vtab_st));
+    if (inito_idx <= INITO_IDX_ZERO)
+      return;
     // There is an INITV for the virtual table in INITO.
     // We get the INITV entry to look up the virtual table
     INITV_IDX initv_idx = INITO_val(inito_idx);
