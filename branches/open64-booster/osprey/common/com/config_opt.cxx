@@ -759,6 +759,9 @@ static OPTION_DESC Options_OPT[] = {
     "Allow LFTR which may wrap around MAX_INT" },
 
   /* intrinsic expansion for bzero/blkclr/bcopy/memset/memcpy/memmove */
+  {OVK_BOOL,    OV_VISIBLE,	TRUE,	"emulate_memset",       "",
+    0, 0, 0,    &Emulate_memset, NULL,
+    "Enable inline expansion of memset" },
   {OVK_BOOL,    OV_VISIBLE,	TRUE,	"mem_intrinsics",       "",
     0, 0, 0,    &CG_mem_intrinsics, NULL,
     "Enable inline expansion of memory intrinsics (bzero, blkclr, bcopy, memset, memcpy, memmove)" },

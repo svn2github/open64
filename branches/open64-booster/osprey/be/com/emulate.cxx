@@ -5110,10 +5110,21 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
     break;
 
   case INTRN_MEMSET:
-#if !defined(KEY) || defined(TARG_SL) || defined(TARG_NVISA)	// Don't emulate memset; call PathScale memset instead.
-    if (CG_mem_intrinsics)
+#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_NVISA)	// Emulate memset; don't call PathScale memset.
+    if (CG_mem_intrinsics && Emulate_memset)
     {
-      return em_memset(block, tree, WN_arg(tree, 0), WN_arg(tree, 1), WN_arg(tree, 2));
+      WN * con = WN_arg(tree, 1);
+      WN * size = WN_arg(tree, 2);
+      if (Is_Integer_Constant(size) && Is_Integer_Constant(con)) {
+	int n = (int) WN_const_val(size);
+	int mod;
+	if(Is_Target_64bit())
+	  mod = 8;
+	else
+	  mod = 4;
+ 	if (((n % mod) == 0) && (n <= (mod * 16)))
+	  return em_memset(block, tree, WN_arg(tree, 0), WN_arg(tree, 1), WN_arg(tree, 2));
+      }
     }
 #endif
     break;

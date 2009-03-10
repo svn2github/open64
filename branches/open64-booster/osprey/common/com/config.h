@@ -591,6 +591,7 @@ extern INT32 Olimit;	/* stop optimization or use regions at this limit */
 extern BOOL Olimit_opt;	/* FALSE => stop optimization if Olimit reached;
 			 * TRUE  => use regions to optimize if Olimit reached */
 extern BOOL CG_mem_intrinsics;
+extern BOOL Emulate_memset;
 extern INT32 CG_memmove_inst_count;
 extern BOOL CG_memmove_inst_count_overridden;
 extern BOOL CG_bcopy_cannot_overlap;

@@ -898,6 +898,7 @@ BOOL Idict_Commutable_Match = FALSE;
 BOOL Scalar_Formal_Ref = TRUE;		/* for fortran scalar formal refs */
 BOOL Non_Scalar_Formal_Ref = FALSE;	/* for fortran non_scalar formal refs */
 
+BOOL Emulate_memset = TRUE;             /* for intrinsic expansion of memset */
 BOOL CG_mem_intrinsics = TRUE;		/* for memory intrinsic expansion */
 #ifdef TARG_NVISA
 INT32 CG_memmove_inst_count = 128;	/* for intrinsic expansion of bzero etc */
