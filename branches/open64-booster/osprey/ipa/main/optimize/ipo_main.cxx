@@ -120,6 +120,7 @@
 
 #include "ipc_option.h"
 
+#include "ipa_devirtual.h"
 #ifdef KEY
 #include "ipa_builtins.h"
 #include "ipo_parent.h"
@@ -620,6 +621,7 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
 } // Inline_Call
 
 #ifdef KEY
+extern void IPO_Process_Virtual_Functions (IPA_NODE *);
 extern void IPO_Process_Icalls (IPA_NODE *);
 extern void IPA_update_ehinfo_in_pu (IPA_NODE *);
 #endif
@@ -649,6 +651,11 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
     IPO_Process_Icalls (node);
   }
 #endif
+  if (IPA_Enable_fast_static_analysis_VF && 
+      node->Has_Pending_Virtual_Functions()) {
+    IPO_Process_Virtual_Functions (node);
+  }
+
 
   if (IPA_Enable_Padding) {
     IPO_Pad_Whirl (node);

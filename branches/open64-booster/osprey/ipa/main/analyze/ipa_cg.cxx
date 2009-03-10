@@ -3742,7 +3742,8 @@ IPA_CALL_GRAPH::Update_Node_After_Preopt (IPA_NODE* node,
 
     // indirect calls
     if (callsite_array[j].Is_func_ptr()) {
-      append_icall_list (node->Icall_List(), &callsite_array[j]);
+        if (!callsite_array[j].Is_virtual_call()) 
+            append_icall_list (node->Icall_List(), &callsite_array[j]);
     }
     else if (!callsite_array[j].Is_intrinsic()) {
       // direct calls

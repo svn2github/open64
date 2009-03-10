@@ -1292,7 +1292,7 @@ static void ir_put_stmt(WN * wn, INT indent)
       fprintf(ir_ofile, "%*sLOC %d %d\n", indent, "",
 		USRCPOS_filenum(srcpos), USRCPOS_linenum(srcpos));
 #else
-      print_source(USRCPOS_srcpos(srcpos));
+      //print_source(USRCPOS_srcpos(srcpos));
 #endif
     }
 

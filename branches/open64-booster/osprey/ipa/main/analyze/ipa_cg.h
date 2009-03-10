@@ -208,6 +208,7 @@ private:
                                              // from partial inlining returns
                                              // an (int) constant.
 
+  static const mUINT32 _pending_vfuns =   0x20000000;   // need icall conversion
   // map to the file I/O info
   mINT32 _file_index;			// index into the file header structure
   mINT32 _proc_info_index;		// index into the proc info structure
@@ -555,6 +556,9 @@ public:
 
   void Set_Pending_Icalls () { _flags |= _pending_icalls; }
   BOOL Has_Pending_Icalls () const { return _flags & _pending_icalls; }
+
+  void Set_Pending_Virtual_Functions () { _flags |= _pending_vfuns; }
+  BOOL Has_Pending_Virtual_Functions () const { return _flags & _pending_vfuns; }
 
   static mINT32 next_file_id; // public field
 #endif

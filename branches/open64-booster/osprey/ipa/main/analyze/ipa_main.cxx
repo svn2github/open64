@@ -548,6 +548,32 @@ Perform_Interprocedural_Analysis ()
 #endif
     }
 
+/*
+on virtual function optimization pass:
+The virtual function optimization pass is invoked here 
+in ipa_main.cxx Perform_Interprocedural_Analysis function after
+Build_Call_Graph.
+this is the psuedo code that describes where the optimization must be 
+placed.
+Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
+    ... // Need to have built the call graph prior to my pass
+    Build_Call_Graph ();
+    ...
+        // Note 1: We need a call graph prior to making this function call
+        // Note 2: Uncommenting the following function: IPA_fast_static_analysis_VF
+        // may lead to unknown behavior.
+        // if you want to disable virtual function optimization,
+        // use the BOOL variable in config/config_ipa.cxx,
+        // IPA_Enable_fast_static_analysis_VF. Set it to FALSE to disable 
+        // the pass.
+    IPA_fast_static_analysis_VF () ; //  ipa/main/analyze/ipa_devirtual.cxx 
+
+    ...
+}
+*/
+
+    IPA_fast_static_analysis_VF ();
+    // The following if-block is left by earlier developer. IPA_Enable_Devirtualization is not active in open64 4.2-1.
     if (IPA_Enable_Devirtualization) { 
         Temporary_Error_Phase ephase ("IPA Devirtualization"); 
         IPA_Class_Hierarchy = Build_Class_Hierarchy(); 

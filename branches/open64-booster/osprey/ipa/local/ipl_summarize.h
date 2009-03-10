@@ -499,6 +499,15 @@ private:
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     void Process_icall (SUMMARY_PROCEDURE *, WN *, INT, float);
 #endif
+/*
+    this function is added to enable IPA to apply
+    virtual function optimization. Look in 
+    osprey/ipa/local/ipl_summarize_template.h for
+    more information.
+*/
+    
+    void Process_virtual_function (SUMMARY_PROCEDURE * , 
+        WN * , INT , float );
     void Process_formal (WN *w, INT num_formals, SUMMARY_PROCEDURE *proc);
     void Process_formal_alt (WN *w, INT kid_count);
     void Process_actual (WN *actual);

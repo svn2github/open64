@@ -318,6 +318,7 @@ BOOL IPA_Enable_Old_Type_Merge = TRUE;  //jczhang: Not enabled in SL
 
 /* enable devirtualization */
 BOOL IPA_Enable_Devirtualization = FALSE;
+BOOL IPA_Enable_fast_static_analysis_VF = TRUE;
 
 static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL,	OV_VISIBLE,	FALSE, "addressing",	"",

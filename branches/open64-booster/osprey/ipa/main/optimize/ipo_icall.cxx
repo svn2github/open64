@@ -43,6 +43,7 @@
 #include "ipo_alias.h"
 #include "ipo_alias_class.h"
 #include "ipo_parent.h"
+#include "ipl_summarize.h"
 
 #include <deque>
 #include <queue>
@@ -154,6 +155,8 @@ Convert_Icall (WN * wn, IPA_EDGE * edge)
   WN_EXTRACT_FromBlock (block, wn);
   WN_Parentize (block, caller->Parent_Map(), caller->Map_Table());
 } // Convert_Icall
+
+
 
 // ======================================================================
 // Top-level function for icall-transformation.
@@ -275,3 +278,117 @@ IPO_Process_Icalls (IPA_NODE * node)
     callsite_idx++; // for the popped node
   }
 } // IPO_Process_Icalls
+
+void
+IPO_Process_Virtual_Functions (IPA_NODE * node)
+{
+    FmtAssert (!node->Is_Visited(),
+             ("Node is getting visited NOT for the first time"));
+
+    node->Set_Visited();
+
+    if (node->Total_Succ() == 0) return;
+
+    // deque: constant time removal of elements from the front.
+    std::deque<WN*> callsite_map;
+    // Maintain elements in decreasing order of callsite id.
+    std::priority_queue<IPA_EDGE *,
+                      vector<IPA_EDGE *>,
+                      order_by_callsite_id> edge_order;
+
+    // Get the existing callsites ACTUALLY present in code.
+    for (WN_ITER* wni = WN_WALK_TreeIter(node->Whirl_Tree(FALSE));
+       wni != NULL;
+       wni = WN_WALK_TreeNext(wni))
+    {
+        WN* wn = WN_ITER_wn (wni);
+
+        switch (WN_operator(wn))
+        {
+          case OPR_CALL:
+            if (WN_opcode(wn) == OPC_VCALL &&
+                WN_Fake_Call_EH_Region (wn, Parent_Map))
+            break;
+          // fall through
+          case OPR_ICALL:
+          case OPR_INTRINSIC_CALL:
+              callsite_map.push_back (wn);
+              break;
+        }
+    }
+
+    IPA_SUCC_ITER succ_iter (node);
+  
+    // Edges in decreasing order of callsite-id
+    for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next())
+    {
+      IPA_EDGE *edge = succ_iter.Current_Edge();
+      if (edge)
+        edge_order.push (edge);
+    }
+  
+  // The following counter helps in maintaining the mapping between
+    // CALL/ICALL WN nodes and call graph edges.
+    //
+    // Detects cases where 
+    // 1. there are WN nodes but no corresponding edges, like
+    //      intrinsic calls, icalls not being converted.
+    //        Ignore such WN nodes.
+    // 2. there are edges but no WN nodes, like
+    //      edges added for icall-opt. 
+    //        In such a scenario, either add WN or delete edge from call graph.
+  
+    UINT32 callsite_idx = 0;
+    while (!edge_order.empty())
+    {
+      // Edge with the lowest callsite id.
+      IPA_EDGE * edge = edge_order.top();
+      edge_order.pop();
+  
+      // Remove WN nodes for which we don't have an edge
+      for (; callsite_idx < edge->Callsite_Id(); callsite_idx++)
+        callsite_map.pop_front();
+  
+      FmtAssert (callsite_idx == edge->Callsite_Id(),
+                 ("IPO_Process_Virtual_Functions: Invalid callsite index"));
+      IPA_EDGE * next_edge = (!edge_order.empty()) ?
+                          edge_order.top() : NULL;
+      WN * w = callsite_map.front();
+      if(WN_operator(w) == OPR_CALL) {
+          edge->Set_Whirl_Node (w);
+      } else {
+          FmtAssert (WN_operator (w) == OPR_ICALL,
+                 ("IPO_Process_Icalls: Expected ICALL"));
+          IPA_EDGE * next_edge = (!edge_order.empty()) ?
+                        edge_order.top() : NULL;
+
+          if (edge->Summary_Callsite()->Is_func_ptr())
+          { // We decided not to do icall conversion, but IPA data flow
+            // has the answer.
+            edge->Set_Whirl_Node (w);
+          } 
+      }
+        callsite_map.pop_front();
+        callsite_idx++; // for the popped node
+      
+    }
+    // assertion for edge
+
+    IPA_SUCC_ITER succ_iter_assert (node);
+    for (succ_iter_assert.First(); 
+            !succ_iter_assert.Is_Empty(); succ_iter_assert.Next())
+    {
+      IPA_EDGE *edge = succ_iter_assert.Current_Edge();
+      if (edge) {
+          if (!(edge->Summary_Callsite()->Is_func_ptr()) &&
+                  !(edge->Summary_Callsite()->Is_intrinsic())) {
+              WN* eds_wn = edge->Whirl_Node();
+              ST_IDX st_call = WN_st_idx(eds_wn);
+              Is_True (strcmp(IPA_Call_Graph->Callee(edge->Edge_Index())->Name(), ST_name(St_Table[st_call])) == 0,
+                      ("Edge mapping assertion not met:%s -> %s not %s",
+                       node->Name(), IPA_Call_Graph->Callee(edge->Edge_Index())->Name(), 
+                       ST_name(St_Table[st_call])));
+          }
+      }
+    }
+}

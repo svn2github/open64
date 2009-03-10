@@ -588,14 +588,17 @@ trivially_ok_to_inline (const IPA_NODE * node, const IPA_CALL_GRAPH * cg)
 }
 #endif // KEY
 
+#include<string>
+#include<sstream>
+
 static BOOL
 check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 		     IPA_NODE *callee, const IPA_CALL_GRAPH *cg)
 {
     BOOL inline_it = FALSE;
-    char reason[300] = "{reason: ";
-    char tmp_decision[300] = "";
-    char tmp_reason[100]="";
+    using namespace std;
+    std::string reason_st, tmp_decision_st, tmp_reason_st;
+    reason_st = "{reason: ";
     INT32 IPA_idx = 0;
     UINT32 caller_weight = caller->Weight ();
     UINT32 callee_weight = Effective_weight (callee);
@@ -659,9 +662,15 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	    //pengzhao
 	    if (Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
 		inline_it = TRUE;
-		sprintf ( tmp_decision, "*[%s] will be Inlined into [%s] (edge=%d)", DEMANGLE (callee->Name()),DEMANGLE (caller->Name()),ed->Edge_Index() );
-		sprintf(tmp_reason, " because of force depth = (%d)}",IPA_Force_Depth); 
-		strcat (reason, tmp_reason);
+                ostringstream ed_ind;
+                ed_ind << ed->Edge_Index();
+                tmp_decision_st = string ("*[") + string(DEMANGLE(callee->Name())) + string("]") +
+                                  string("will be Inlined into [") + string (DEMANGLE(caller->Name())) + string("] (edge=") +
+                ed_ind.str() + string(")");
+                ostringstream fd_;
+                fd_ << IPA_Force_Depth;
+                tmp_reason_st = string(" because of force depth = (") + fd_.str() + string (")");
+                reason_st = reason_st + tmp_reason_st;
 	    }
 	    
 	    if ( INLINE_List_Actions ) {
@@ -856,14 +865,21 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 		//pengzhao
 		if (Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
 		    inline_it = TRUE;
-		    sprintf ( tmp_decision, "*[%s] will be Inlined into [%s] (edge=%d): ", DEMANGLE (callee->Name()) ,DEMANGLE (caller->Name()),ed->Edge_Index() );
-		    sprintf(tmp_reason, " forced because of small size (%d) ",callee_weight);
-		    strcat (reason, tmp_reason);
+                    ostringstream ed_ind;
+                    ed_ind << ed->Edge_Index();
+                    tmp_decision_st = string ("*[") + string(DEMANGLE(callee->Name())) + string("]") +
+                                      string("will be Inlined into [") + string (DEMANGLE(caller->Name())) + string("] (edge=") +
+                    ed_ind.str() + string(")");
+                    ostringstream cw;
+                    cw << callee_weight;
+                    tmp_reason_st = string(" forced because of small size (") + cw.str() + string (")");
+                    reason_st = reason_st + tmp_reason_st;
 		}
 		
 		if ( INLINE_List_Actions ) {
                     fprintf ( stderr, "%s (size %d) inlined into ", DEMANGLE (callee->Name()), callee_weight );
-                    fprintf ( stderr, "%s (combined size %d): forced because of small size (%d)  (edge# %d)\n", DEMANGLE (caller->Name()), combined_weight, callee_weight, ed->Edge_Index() );
+                    fprintf ( stderr, "%s (combined size %d): forced because of small size (%d)  (edge# %d)\n", 
+                              DEMANGLE (caller->Name()), combined_weight, callee_weight, ed->Edge_Index() );
 		}
 	    }
 	}
@@ -906,18 +922,25 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
     inline_do_it: if (Trace_IPA || Trace_Perf) {
 	fprintf (stderr, "%s inlined into %s", callee->Name(),caller->Name());
 	fprintf (TFile, "%s inlined into ", DEMANGLE (callee->Name()));
-	fprintf (TFile, "%s (size: %d + %d = %d)   (edge# %d) \n", DEMANGLE (caller->Name()), callee_weight, caller_weight, combined_weight, ed->Edge_Index());
+	fprintf (TFile, "%s (size: %d + %d = %d)   (edge# %d) \n",
+                 DEMANGLE (caller->Name()), callee_weight, caller_weight, combined_weight, ed->Edge_Index());
     }
     
     //pengzhao
     if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
-	if (inline_it==FALSE)
-	    sprintf (tmp_decision, "*[%s] will be Inlined into [%s] (edge=%d)", DEMANGLE (callee->Name()), DEMANGLE (caller->Name()),ed->Edge_Index() );
-	sprintf(tmp_reason, " and the limits donot filter it out},(size: %d + %d = %d) ",callee_weight, caller_weight, combined_weight );
-	strcat (reason, tmp_reason);
-	strcat (reason, "\n");
-	fprintf(Y_inlining, tmp_decision);
-	fprintf(Y_inlining, reason);
+	if (inline_it==FALSE) {
+            ostringstream ed_ind;
+            ed_ind << ed->Edge_Index();
+            tmp_decision_st = string ("*[") + string(DEMANGLE(callee->Name())) + string("]") +
+                              string("will be Inlined into [") + string (DEMANGLE(caller->Name())) + string("] (edge=") +
+                              ed_ind.str() + string(")");
+        }
+        ostringstream alis;
+        alis << callee_weight << "+" << caller_weight << "=" << combined_weight << ")\n";
+        tmp_reason_st = string("  and the limits donot filter it out},(size") + alis.str();
+        reason_st = reason_st + tmp_reason_st;
+	fprintf(Y_inlining, tmp_decision_st.c_str());
+	fprintf(Y_inlining, reason_st.c_str());
     }
     
 #ifdef TODO

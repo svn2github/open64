@@ -31,5 +31,12 @@
 extern void
 IPA_devirtualization();
 
+extern void
+IPA_fast_static_analysis_VF ();
+
+extern void
+IPA_virt_opt();
+
+
 #endif
 
