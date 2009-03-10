@@ -311,6 +311,8 @@ UINT32 OPT_Malloc_Alg = 0;	/* select malloc algorithm */
 BOOL OPT_Malloc_Alg_Set = FALSE; 
 INT32 OPT_Hugepage_Heap_Limit = -1;  /* set huge page limit */
 BOOL OPT_Hugepage_Heap_Set = FALSE;
+INT32 OPT_Hugepage_Mallopt = 1;  /* set huge page mallopt */
+
 BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO(C/C++)
 BOOL Early_Goto_Conversion_Set = FALSE;
 #endif	// KEY
@@ -451,6 +453,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_INT32, OV_VISIBLE,     TRUE,    "hugepage_heap_limit", NULL,
     0, -1, 50000, &OPT_Hugepage_Heap_Limit, &OPT_Hugepage_Heap_Set,
     "Set huge page heap limit" },
+
+  { OVK_INT32, OV_VISIBLE, 	TRUE,	"hugepage_mallopt", NULL,
+    1, 0, 1, &OPT_Hugepage_Mallopt, NULL,
+    "Set mallopt in libhugetlbfs" },
 
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "early_goto_conv", "",
     0, 0, 0,    &Early_Goto_Conversion, &Early_Goto_Conversion_Set,

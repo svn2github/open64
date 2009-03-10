@@ -47,6 +47,7 @@ static long mapsize;
 long hugepages_heap_limit;
 long hugepages_seg_total;
 static long hugepages_avail;
+static int hugepages_mallopt;
 #endif
 
 static long hugetlbfs_next_addr(long addr)
@@ -330,16 +331,27 @@ void __hugetlbfs_setup_morecore(void)
 	__morecore = &hugetlbfs_morecore;
 
 	/* Set some allocator options more appropriate for hugepages */
-	
-	if (shrink_ok)
+
+#ifdef OPEN64_MOD
+        if (hugepages_mallopt != 0) 
+#endif
+            {
+            if (shrink_ok)
 		mallopt(M_TRIM_THRESHOLD, blocksize / 2);
-	else
+            else
 		mallopt(M_TRIM_THRESHOLD, -1);
-	mallopt(M_TOP_PAD, blocksize / 2);
-	/* we always want to use our morecore, not ordinary mmap().
-	 * This doesn't appear to prohibit malloc() from falling back
-	 * to mmap() if we run out of hugepages. */
-	mallopt(M_MMAP_MAX, 0);
+        }
+#ifdef OPEN64_MOD
+        if (hugepages_mallopt != 0)
+#endif
+        {
+            mallopt(M_TOP_PAD, blocksize / 2);
+            /* we always want to use our morecore, not ordinary mmap().
+             * This doesn't appear to prohibit malloc() from falling back
+             * to mmap() if we run out of hugepages. */
+
+            mallopt(M_MMAP_MAX, 0);
+        }
 }
 
 #ifdef OPEN64_MOD
@@ -347,7 +359,7 @@ void __hugetlbfs_setup_morecore(void)
  *  for the heap. 
  */
 
-void  __setup_hugepage(int l_limit)
+void  __setup_hugepage(int l_limit, int mallopt)
 {
     hugepages_avail = hugetlbfs_num_pages();
 
@@ -371,7 +383,8 @@ void  __setup_hugepage(int l_limit)
             hugepages_heap_limit = 0;
 
         DEBUG("Limit %ld huge pages for heap.\n", hugepages_heap_limit);
-
+        DEBUG("Set mallopt: %s\n", (mallopt == 0) ? "no" : "yes");
+        hugepages_mallopt = mallopt;
         __hugetlbfs_setup_morecore();
     }
 }

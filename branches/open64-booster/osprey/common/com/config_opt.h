@@ -190,6 +190,7 @@ extern BOOL OPT_Float_Via_Int;
 extern UINT32 OPT_Malloc_Alg;
 extern INT32 OPT_Hugepage_Heap_Limit;
 extern BOOL OPT_Hugepage_Heap_Set;
+extern INT32 OPT_Hugepage_Mallopt;
 extern BOOL OPT_Malloc_Alg_Set;
 extern BOOL Early_Goto_Conversion;
 extern BOOL Early_Goto_Conversion_Set;

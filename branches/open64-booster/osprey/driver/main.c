@@ -87,6 +87,7 @@ boolean print_help = FALSE;
 HUGEPAGE_DESC hugepage_desc;
 boolean add_heap_limit;
 int heap_limit;
+int heap_mallopt;
 
 #if 0
 // obsolete, see comments in DESIGN_DOC
@@ -601,6 +602,7 @@ main (int argc, char *argv[])
 
         add_heap_limit = FALSE;
         heap_limit = HUGEPAGE_LIMIT_DEFAULT;
+        heap_mallopt = HUGEPAGE_MALLOPT_DEFAULT;
 
         if (option_was_seen(O_hugepage)
             && (instrumentation_invoked != TRUE)) {
@@ -611,6 +613,7 @@ main (int argc, char *argv[])
                 if (desc->alloc == ALLOC_HEAP) {
                     do_heap = TRUE;
                     heap_limit = desc->limit;
+                    heap_mallopt = desc->mallopt;
                 }
             }
 

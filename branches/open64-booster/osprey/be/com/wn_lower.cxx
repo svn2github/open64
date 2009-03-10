@@ -13848,9 +13848,11 @@ lower_hugepage_limit(WN *block, WN *tree, LOWER_ACTIONS actions)
   Set_PU_no_side_effects(Pu_Table[ST_pu(st)]);
   Set_PU_is_pure(Pu_Table[ST_pu(st)]);
 
-  call = WN_Call(MTYPE_V, MTYPE_V, 1, st);	// bug 10736
+  call = WN_Call(MTYPE_V, MTYPE_V, 2, st);	// bug 10736
   
   WN_kid0(call) = WN_CreateParm(MTYPE_I4, WN_Intconst(MTYPE_I4, OPT_Hugepage_Heap_Limit),
+				MTYPE_To_TY(MTYPE_I4), WN_PARM_BY_VALUE);
+  WN_kid1(call) = WN_CreateParm(MTYPE_I4, WN_Intconst(MTYPE_I4, OPT_Hugepage_Mallopt),
 				MTYPE_To_TY(MTYPE_I4), WN_PARM_BY_VALUE);
   WN_Set_Linenum(call, current_srcpos);
   call = lower_call(block, call, actions);
