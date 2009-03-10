@@ -1354,7 +1354,7 @@ IF_MERGE_TRANS::Get_val(AUX_ID aux_id)
 {
   AUX_ID val = 0;
   if (aux_id)
-    val = (AUX_ID) _val_map->Get_val((POINTER) aux_id);
+    val = (AUX_ID) (unsigned long) _val_map->Get_val((POINTER) aux_id);
   return val;
 }
 

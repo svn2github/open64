@@ -6210,7 +6210,7 @@ BB_NODE *
 CFG::Get_cloned_bb(BB_NODE * bb)
 {
   FmtAssert(_clone_map, ("NULL clone map"));
-  IDTYPE new_id = (IDTYPE) _clone_map->Get_val((POINTER) bb->Id());
+  IDTYPE new_id = (IDTYPE) (unsigned long) (_clone_map->Get_val((POINTER) bb->Id()));
   if (new_id)
     return Get_bb(new_id);
 
