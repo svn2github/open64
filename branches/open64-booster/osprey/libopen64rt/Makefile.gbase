@@ -7,7 +7,8 @@
 
 include $(COMMONDEFS)
 
-LCOPTS = -ansi $(STD_COMPILE_OPTS) $(STD_C_OPTS)
+# NO -ansi in LCOPTS, otherwise x8664 memset will not preprocess correctly
+LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS =
 LCINCS += -I$(BUILD_BASE)
 
@@ -42,6 +43,10 @@ install: default
 include $(COMMONRULES)
 
 VPATH =    $(BUILD_BASE)
+
+ifeq ($(BUILD_TARGET), X8664)
+OBJECTS +=memset.o cacheinfo.o
+endif
 
 $(LIBRARY): $(OBJECTS)
 	$(ar) cru $@ $^
