@@ -53,10 +53,22 @@ typedef enum
 {
     SIZE_SMALL = 0,
     SIZE_2M,
-    SIZE_1G
+    SIZE_1G,
+    SIZE_2M1G,
+    SIZE_END
 } HUGEPAGE_STYPE;
 
-extern HUGEPAGE_STYPE hugepage_stype;
+static const char * hugepage_stype_name[SIZE_END] = {"SMALL", "2M", "1G", "2M1G"};
+
+#define BLOCKSIZE_1G   1024 * 1024 * 1024
+#define BLOCKSIZE_2M   2 * 1024 * 1024
+#define IS_1G_ALIGNED(x) (((x) & 0x3fffffff) == 0)
+#define IS_2M_ALIGNED(x) (((x) & 0xffffff) == 0)
+
+extern HUGEPAGE_STYPE hugepage_m_stype;
+extern HUGEPAGE_STYPE hugepage_elf_stype;
+extern HUGEPAGE_STYPE hugepage_heap_stype;
+extern HUGEPAGE_STYPE hugepage_s_stype;
 extern long hugepages_seg_total;
 extern  void *heapbase;
 extern  void *heaptop;

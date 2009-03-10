@@ -2043,6 +2043,11 @@ Process_Hugepage_Group(char * hugepage_args)
             p = &p[8];
             sscanf(p, "%d", &hugepage_mallopt);
 
+            if (hugepage_mallopt >= (1 << HEAP_BEGIN)) {
+                has_err = TRUE;
+                warning("Value: %d in mallopt option overflows", hugepage_mallopt);
+            }
+
             while ((*p) && ((*p) >= '0') && ((*p) <= '9'))
                 p++;
         }
@@ -2064,6 +2069,9 @@ Process_Hugepage_Group(char * hugepage_args)
         }
         else if (strncmp(p, "size=", 5) == 0) {
             p = &p[5];
+
+            if (hugepage_alloc != ALLOC_HEAP)
+                warning("Ignoring size option in %s", hugepage_alloc_name[hugepage_alloc]);
             
             if ((strncmp(p, "2M", 2) == 0)
                 || (strncmp(p, "2m", 2) == 0)) {

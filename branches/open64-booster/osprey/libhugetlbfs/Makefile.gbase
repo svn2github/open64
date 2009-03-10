@@ -38,7 +38,7 @@ NODEPTARGETS=<version.h> <clean>
 INSTALL = install
 
 LDFLAGS += --no-undefined-version -Wl,--version-script=$(BUILD_BASE)/version.lds
-CFLAGS ?= -O2 -g -DOPEN64_MOD
+CFLAGS ?= -O2 -g -DOPEN64_MOD -DM_PAGE
 CFLAGS += -Wall -fPIC
 CPPFLAGS += -D__LIBHUGETLBFS__
 

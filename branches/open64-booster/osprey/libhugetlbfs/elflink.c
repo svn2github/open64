@@ -59,7 +59,6 @@
 #endif
 
 #ifdef OPEN64_MOD
-
 static long hugepages_total = 0;
 static long hugepages_elf_limit = -1;
 static long hugepages_avail;
@@ -633,15 +632,16 @@ int parse_elf_relinked(struct dl_phdr_info *info, size_t size, void *data)
 		if (!(info->dlpi_phdr[i].p_flags & PF_LINUX_HUGETLB))
 			continue;
 #ifdef OPEN64_MOD
-                if (hugepage_stype == SIZE_2M) {
-                    if (info->dlpi_phdr[i].p_vaddr & 0xffffff) {
+
+                if (hugepage_elf_stype == SIZE_2M) {
+                    if (!IS_2M_ALIGNED(info->dlpi_phdr[i].p_vaddr)) {
                         DEBUG("Cant map segment %d %#0lx (2M misalignment)\n",
                               i, (unsigned long) info->dlpi_phdr[i].p_vaddr);
                         is_misalign = 1;
                     }
                 }
-                else if (hugepage_stype == SIZE_1G) {
-                    if (info->dlpi_phdr[i].p_vaddr & 0x3fffffff) {
+                else if (hugepage_elf_stype == SIZE_1G) {
+                    if (!IS_1G_ALIGNED(info->dlpi_phdr[i].p_vaddr)) {
                         DEBUG("Cant map segment %d %#0lx (1G misalignment)\n",
                               i, (unsigned long) info->dlpi_phdr[i].p_vaddr);
                         is_misalign = 1;
@@ -658,28 +658,18 @@ int parse_elf_relinked(struct dl_phdr_info *info, size_t size, void *data)
                         continue;
                 }
 #endif
-                
+
 		if (save_phdr(htlb_num_segs, i, &info->dlpi_phdr[i]))
 			return 1;
 
 		get_extracopy(&htlb_seg_table[htlb_num_segs],
 				&info->dlpi_phdr[0], info->dlpi_phnum);
 
-#ifdef OPEN64_MOD
-                hugepages_total += (ALIGN(htlb_seg_table[htlb_num_segs].memsz, hpage_size) / hpage_size);
-                                    
-                if (hugepages_total >= hugepages_elf_limit) {
-                    WARNING("ELF Segments require %ld huge pages, exceed huge page limit %ld.\n",
-                            hugepages_total,
-                            hugepages_elf_limit);
-                    htlb_num_segs = 0;
-                    return 0;
-                }
-#endif
 		htlb_num_segs++;
 	}
 	if (__hugetlbfs_debug)
 		check_memsz();
+
 	return 1;
 }
 
@@ -997,7 +987,7 @@ static void remap_segments(struct seg_info *seg, int num)
                 seg_start = slice_start;
 
             /* Attempt to put heap and data in the same page for 1G huge pages */
-            if (hugepage_stype == SIZE_1G) {
+            if (hugepage_elf_stype == SIZE_1G) {
                 if (offset > (unsigned long) heapbase)
                     heapbase = (void *) offset;
             }
@@ -1150,6 +1140,19 @@ static int parse_elf()
 			return -1;
 		}
 	} else {
+#if defined(OPEN64_MOD) && defined(M_PAGE)
+                /* First of all, attempt to use 1G page if it is supported by the system
+                 * and alignment check is satisfied.  Otherwise, use 2M instead.
+                 */
+                if (hugepage_s_stype >= SIZE_1G) {
+                    hugepage_elf_stype = SIZE_1G;
+                    dl_iterate_phdr(parse_elf_relinked, NULL);
+
+                    if (htlb_num_segs != 0)
+                        return 0;
+                    hugepage_elf_stype = SIZE_2M;
+                }
+#endif
 		dl_iterate_phdr(parse_elf_relinked, NULL);
 		if (htlb_num_segs == 0) {
 			DEBUG("No segments were appropriate for "
@@ -1167,21 +1170,33 @@ void __hugetlbfs_setup_elflink(void)
 
 #ifdef OPEN64_MOD
         char * env;
-#endif
+#ifdef M_PAGE
+        /* Find huge page types supported by the system */
 
+        hugepage_s_stype = SIZE_SMALL;
+        hugepage_m_stype = SIZE_1G;
+        
+        if (hugetlbfs_find_path() != NULL)
+            hugepage_s_stype += SIZE_1G;
+
+        hugepage_m_stype = SIZE_2M;
+
+        if (hugetlbfs_find_path() != NULL)
+            hugepage_s_stype += SIZE_2M;
+
+        DEBUG("System supports %s\n", hugepage_stype_name[hugepage_s_stype]);
+#endif /* M_PAGE */
+#endif /* OPEN64_MOD */
+        
 	if (check_env())
-		return;
+            return;
 
+	if (parse_elf())
+            return;
+        
 #ifdef OPEN64_MOD
-	hpage_size = gethugepagesize();
-
-        if (hpage_size == 2 * 1024 * 1024)
-            hugepage_stype = SIZE_2M;
-        else if (hpage_size == 1024 * 1024 * 1024)
-            hugepage_stype = SIZE_1G;
-            
-        DEBUG("Huge page size = %lx\n", hpage_size);
-
+        DEBUG("Use %s page for ELF segment.\n ", hugepage_stype_name[hugepage_elf_stype]);
+        hugepage_m_stype = hugepage_elf_stype;
         hugepages_avail = hugetlbfs_num_pages();
         hugepages_elf_limit = hugepages_avail;
         env = getenv("HUGETLB_ELF_LIMIT");
@@ -1191,12 +1206,8 @@ void __hugetlbfs_setup_elflink(void)
             if ((n >= 0) && ( n < hugepages_avail))
                 hugepages_elf_limit = n;
         }
-#endif
-
-	if (parse_elf())
-		return;
-
-#ifndef OPEN64_MOD
+        hpage_size = gethugepagesize();
+#else
         hpage_size = gethugepagesize();
 #endif
 
@@ -1209,8 +1220,22 @@ void __hugetlbfs_setup_elflink(void)
 			ERROR("Hugepage size (%s)\n", strerror(errno));
 		return;
 	}
-
+        
 	DEBUG("libhugetlbfs version: %s\n", VERSION);
+
+#ifdef OPEN64_MOD
+        for (i = 0; i < htlb_num_segs; i++) {
+            struct seg_info  seg = htlb_seg_table[i];
+            hugepages_total += ALIGN((seg.filesz + seg.extrasz), hpage_size) / hpage_size;
+            
+            if (hugepages_total >= hugepages_elf_limit) {
+                WARNING("ELF Segments require %ld huge pages, exceed huge page limit %ld.\n",
+                        hugepages_total,
+                        hugepages_elf_limit);
+                return;
+            }
+        }
+#endif
 
 	/* Do we need to find a share directory */
 	if (sharing) {

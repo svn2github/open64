@@ -50,7 +50,11 @@ void *heapbase;
 void *heaptop;
 long mapsize;
 unsigned long newbrk = 0;
-HUGEPAGE_STYPE hugepage_stype = SIZE_SMALL;
+
+HUGEPAGE_STYPE hugepage_m_stype = SIZE_2M;   /* type of huge page to match */
+HUGEPAGE_STYPE hugepage_elf_stype = SIZE_2M; /* type of huge page to map segments */
+HUGEPAGE_STYPE hugepage_heap_stype = SIZE_2M; /* type of huge page to map heap */
+HUGEPAGE_STYPE hugepage_s_stype = SIZE_2M; /* type of huge page supported by the system */
 
 long hugepages_heap_limit;
 long hugepages_seg_total;
@@ -86,8 +90,10 @@ static long hugetlbfs_next_addr(long addr)
  */
 #define IOV_LEN	64
 #ifdef OPEN64_MOD
-#define IN_UNIFY_PAGE  ((hugepage_stype == SIZE_1G) && (newbrk > 0) && \
-                       ((unsigned long) heaptop <= newbrk))
+#define IN_UNIFY_PAGE  ((hugepage_elf_stype == SIZE_1G) && \
+                        (hugepage_heap_stype == hugepage_elf_stype) && \
+                        (newbrk > 0) && \
+                        ((unsigned long) heaptop <= newbrk))
 #endif
 static void *hugetlbfs_morecore(ptrdiff_t increment)
 {
@@ -350,10 +356,13 @@ void __hugetlbfs_setup_morecore(void)
 			      env);
 			return;
 		}
-	} else if (heapbase > 0) {
+	}
+#ifdef OPEN64_MOD
+        else if ((heapbase > 0) && (hugepage_heap_stype == hugepage_elf_stype)) {
             heapaddr = (unsigned long) heapbase;
             mapsize = (unsigned long) sbrk(0) - heapaddr;
         }
+#endif
         else {
 		heapaddr = (unsigned long)sbrk(0);
 		heapaddr = hugetlbfs_next_addr(heapaddr);
@@ -395,12 +404,41 @@ void __hugetlbfs_setup_morecore(void)
 }
 
 #ifdef OPEN64_MOD
-/*  Environment variable overrides command line option in setting limit of huge pages to use
+/*  Customize heap allocation, interface to the compiler.
+ *
+ *  Environment variable overrides command line option in setting limit of huge pages to use
  *  for the heap. 
+ *
+ *    Bit mask of input attr:
+ *    bit 0: mallopt
+ *    bit 1: unused 
+ *    bit 2: unused 
+ *    bit 3: heap 2M page
+ *    bit 4: heap 1G page
+ *    bit 5: unused 
+ *    bit 6: unused
  */
 
-void  __setup_hugepage(int l_limit, int mallopt)
+#define MALLOPT_MASK 0x7
+#define HEAP_2M_MASK 0x8
+#define HEAP_1G_MASK 0x10
+
+void  __setup_hugepage(int l_limit, int attr)
 {
+    if (attr & HEAP_1G_MASK)
+        hugepage_heap_stype = SIZE_1G;
+    else if (attr & HEAP_2M_MASK)
+        hugepage_heap_stype = SIZE_2M;
+
+    DEBUG("%s page for heap from input\n", hugepage_stype_name[hugepage_heap_stype]);
+
+    if (hugepage_heap_stype > hugepage_s_stype) {
+        hugepage_heap_stype = hugepage_s_stype;
+        DEBUG("Downgrade to %s page for heap\n", hugepage_stype_name[hugepage_heap_stype]);
+    }
+
+    hugepage_m_stype = hugepage_heap_stype;
+
     hugepages_avail = hugetlbfs_num_pages();
 
     if ((l_limit != 0) && (hugepages_avail > 0)) {
@@ -417,14 +455,17 @@ void  __setup_hugepage(int l_limit, int mallopt)
         else if ((l_limit >= 0) && (l_limit < hugepages_avail))
             hugepages_heap_limit = l_limit;        
 
-        hugepages_heap_limit -= hugepages_seg_total;
+        if (hugepage_heap_stype == hugepage_elf_stype)
+            hugepages_heap_limit -= hugepages_seg_total;
 
         if (hugepages_heap_limit < 0)
             hugepages_heap_limit = 0;
 
         DEBUG("Limit %ld huge pages for heap.\n", hugepages_heap_limit);
-        DEBUG("Set mallopt: %s\n", (mallopt == 0) ? "no" : "yes");
-        hugepages_mallopt = mallopt;
+        hugepages_mallopt = (attr & MALLOPT_MASK);
+
+        DEBUG("Set mallopt: %s\n", (hugepages_mallopt == 0) ? "no" : "yes");
+
         __hugetlbfs_setup_morecore();
     }
 }

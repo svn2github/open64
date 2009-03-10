@@ -108,4 +108,13 @@ extern HUGEPAGE_DESC hugepage_desc;
 #define HUGEPAGE_SIZE_DEFAULT  SIZE_2M
 #define HUGEPAGE_LIMIT_DEFAULT -1
 #define HUGEPAGE_MALLOPT_DEFAULT 1
+
+/* This has to be in sync with bit mask definitions from modified libhugetlbfs */
+
+
+#define HEAP_BEGIN  3
+
+#define HEAP_2M_BIT HEAP_BEGIN
+#define HEAP_1G_BIT (HEAP_BEGIN + 1)
+
 #endif

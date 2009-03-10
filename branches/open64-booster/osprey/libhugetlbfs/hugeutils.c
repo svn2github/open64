@@ -105,14 +105,14 @@ static long read_meminfo(const char *tag)
 }
 
 #ifdef OPEN64_MOD
-static long read_dynamic_meminfo()
+static long read_sysctrl(const char * tag)
 {
     int fd;
     char buf[MEMINFO_SIZE];
     int len, readerr;
     long val;
 
-    fd = open("/proc/sys/vm/nr_overcommit_hugepages", O_RDONLY);
+    fd = open(tag, O_RDONLY);
 
     if (fd < 0)
         return 0;
@@ -125,14 +125,13 @@ static long read_dynamic_meminfo()
         return 0;
 
     if (len == sizeof(buf)) {
-        ERROR("/proc/sys/vm/nr_overcommit_hugepages is too large\n");
+        ERROR("%s is too large\n", tag);
         return -1;
     }
 
     buf[len] = '\0';
 
     val = strtol(buf, 0, 0);
-    DEBUG("Max dynamic pool = %ld\n", val);
 
     return val;
 }
@@ -154,6 +153,16 @@ long gethugepagesize(void)
 	long hpage_kb;
 	long max_hpage_kb = LONG_MAX / 1024;
 
+#if defined(OPEN64_MOD) && defined(M_PAGE)
+        switch (hugepage_m_stype) {
+        case SIZE_2M:
+            return BLOCKSIZE_2M;
+        case SIZE_1G:
+            return BLOCKSIZE_1G;
+        default:
+            ERROR("Illegal huge page size");
+        }
+#endif
 	if (hpage_size) {
 		errno = hugepagesize_errno;
 		return hpage_size;
@@ -190,7 +199,19 @@ int hugetlbfs_test_path(const char *mount)
 	if (err)
 		return -1;
 
+#if !defined(OPEN64_MOD) || !defined(M_PAGE)
 	return (sb.f_type == HUGETLBFS_MAGIC);
+#else
+        switch (hugepage_m_stype) {
+        case SIZE_1G:
+            return ((sb.f_type == HUGETLBFS_MAGIC) && (sb.f_bsize == BLOCKSIZE_1G));
+        case SIZE_2M:
+            return ((sb.f_type == HUGETLBFS_MAGIC) && (sb.f_bsize == BLOCKSIZE_2M));
+        default:
+            ERROR("Unknow type of huge page to match\n");
+            return 0;
+        }
+#endif
 }
 
 #define MOUNTS_SZ	4096
@@ -252,16 +273,20 @@ const char *hugetlbfs_find_path(void)
 			     "%*s %" stringify(PATH_MAX)
 			     "s hugetlbfs ",
 			     htlb_mount);
-		if ((err == 1) && (hugetlbfs_test_path(htlb_mount) == 1))
+
+		if ((err == 1) && (hugetlbfs_test_path(htlb_mount) == 1)) 
 			return htlb_mount;
 
 		memset(htlb_mount, 0, sizeof(htlb_mount));
-
+                
 		tmp = strchr(tmp, '\n');
 		if (tmp)
 			tmp++;
 	}
 
+#if defined(OPEN64_MOD) && defined(M_PAGE)
+        if (hugepage_m_stype != SIZE_1G)
+#endif
 	WARNING("Could not find hugetlbfs mount point in /proc/mounts. "
 			"Is it mounted?\n");
 
@@ -308,13 +333,47 @@ long hugetlbfs_num_free_pages(void)
 long hugetlbfs_num_pages(void)
 {
 #ifdef OPEN64_MOD
-    long d_val = 0;
-    if (hugepage_stype == SIZE_2M) 
-        d_val = read_dynamic_meminfo();
-    return (d_val + read_meminfo("HugePages_Total:"));
-#else
-    return read_meminfo("HugePages_Total:");
+
+#ifdef M_PAGE
+    if (hugepage_m_stype == SIZE_1G) {
+        /* TODO: make change when 1G dynamic is supported */
+        return read_sysctrl("/sys/kernel/hugepages/hugepages-1048576kB/nr_hugepages");
+    }
 #endif
+
+    if (hugepage_m_stype == SIZE_2M) {
+
+        /* Interface for the future release
+         * TODO: verify this on a release kernel.
+         */
+        long o_val = read_sysctrl("/sys/kernel/hugepages/hugepages-2048kB/nr_overcommit_hugepages");
+
+        if (o_val > 0) {
+            long t_val = read_sysctrl("/sys/kernel/hugepages/hugepages-2048kB/nr_hugepages");
+            long s_val = read_sysctrl("/sys/kernel/hugepages/hugepages-2048kB/surplus_hugepages");
+            
+            /* dynamic pool exists */
+            DEBUG("2M dynamic pool = %ld\n", o_val);
+            return (o_val + t_val - s_val);
+        }
+
+        /* Interface for the current release 
+         * TODO: verify this on a release kernel.
+         */
+        o_val = read_sysctrl("/proc/sys/vm/nr_overcommit_hugepages");
+        
+        if (o_val > 0) {
+            long t_val = read_meminfo("HugePages_Total:");
+            long s_val = read_meminfo("HugePages_Surp:");
+
+            /* dynamic pool exists */
+            DEBUG("2M dynamic pool = %ld\n", o_val);
+            return (o_val + t_val - s_val);
+        }
+    }
+#endif
+    
+    return (read_meminfo("HugePages_Total:"));
 }
 
 #define MAPS_BUF_SZ 4096

@@ -100,7 +100,7 @@ static void my_vsema(void);
 
 extern boolean add_heap_limit;
 extern int heap_limit;
-extern int heap_mallopt;
+extern int hugepage_attr;
 
 #define LOGFILE "/var/log/messages"
 
@@ -299,9 +299,9 @@ run_phase (phases_t phase, char *name, string_list_t *args)
                     || (strncmp(p->name, "-hugepage:alloc=heap", 20) == 0)) {
                     char * str = concat_strings("-OPT:hugepage_heap_limit=", buf);
 
-                    sprintf(&buf[0],"%d", heap_mallopt);
+                    sprintf(&buf[0],"%d", hugepage_attr);
                     str = concat_strings(str, 
-                                         concat_strings(" -OPT:hugepage_mallopt=", buf));
+                                         concat_strings(" -OPT:hugepage_attr=", buf));
                     replace_string(args, p->name, str);
                                  
                     break;

@@ -13852,7 +13852,7 @@ lower_hugepage_limit(WN *block, WN *tree, LOWER_ACTIONS actions)
   
   WN_kid0(call) = WN_CreateParm(MTYPE_I4, WN_Intconst(MTYPE_I4, OPT_Hugepage_Heap_Limit),
 				MTYPE_To_TY(MTYPE_I4), WN_PARM_BY_VALUE);
-  WN_kid1(call) = WN_CreateParm(MTYPE_I4, WN_Intconst(MTYPE_I4, OPT_Hugepage_Mallopt),
+  WN_kid1(call) = WN_CreateParm(MTYPE_I4, WN_Intconst(MTYPE_I4, OPT_Hugepage_Attr),
 				MTYPE_To_TY(MTYPE_I4), WN_PARM_BY_VALUE);
   WN_Set_Linenum(call, current_srcpos);
   call = lower_call(block, call, actions);
