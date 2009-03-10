@@ -220,6 +220,9 @@ obj64/%.s:	$(BUILD_BASE)/%.c
 	@$(VECHO) CC64 -S $@
 	$(CC64) $(CPPFLAGS) $(CFLAGS) -o $@ -S $<
 
+clobber: clean
+	@$(VECHO) CLOBBER
+
 clean:
 	@$(VECHO) CLEAN
 	rm -f *~ *.o *.so *.a *.d *.i core a.out $(BUILD_BASE)/$(VERSION)
