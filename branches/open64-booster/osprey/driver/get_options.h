@@ -61,3 +61,26 @@ extern string_list_t *feedback_files;
 
 /* explicitly set language */
 void set_explicit_lang(const char *flag, const char *lang);
+
+#ifndef HUGEPAGE_DEF
+#define HUGEPAGE_DEF
+typedef enum 
+{
+    SIZE_NA = 0,
+    SIZE_2M,
+    SIZE_1G
+} HUGEPAGE_SIZE;
+
+/* huge page allocation type */
+
+typedef enum
+{
+    ALLOC_NA = 0,
+    ALLOC_HEAP,
+    ALLOC_BDT
+} HUGEPAGE_ALLOC;
+
+extern HUGEPAGE_SIZE hugepage_size;
+extern HUGEPAGE_ALLOC hugepage_alloc;
+extern int hugepage_limit;
+#endif

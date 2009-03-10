@@ -72,6 +72,7 @@
 #include "opt_actions.h"
 #include "profile_type.h"    /* for PROFILE_TYPE */
 #include "lib_phase_dir.h"   /* for LIBPATH */
+#include "get_options.h"
 
 int subverbose ;
 
@@ -1993,6 +1994,10 @@ postprocess_ld_args (string_list_t *args)
 	if (prof_lib_exists("c"))
 	    add_library(args, "c");
     }
+
+    if (option_was_seen(O_hugepage)) {
+        add_library(args, "hugetlbfs");
+    }
 	    
     /*
      * For some reason, our cross linker won't find libraries in some
@@ -2014,6 +2019,13 @@ postprocess_ld_args (string_list_t *args)
 	}
 	if (dir) {
 	    add_after_string(args, p, concat_strings("-Wl,-rpath-link,", dir));
+
+            if (option_was_seen(O_hugepage)) {
+                if (hugepage_alloc == ALLOC_BDT) {
+                    dir = concat_strings(dir, "/elf.xBDT");
+                    add_after_string(args, p, concat_strings("-Wl,-T", dir));
+                }
+            }
 	}
     }
 }

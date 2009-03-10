@@ -1960,4 +1960,93 @@ accumulate_isystem(char *optargs)
 }
 #endif /* KEY Bug 11265 */
 
+static void
+Process_Hugepage_Default(boolean set_flag)
+{
+    hugepage_size = SIZE_2M;
+    hugepage_alloc = ALLOC_HEAP;
+    hugepage_limit = 20;
+
+    if (set_flag)
+        add_option_seen(O_hugepage);
+}
+
+static boolean hugepage_warn = FALSE;
+
+static void
+Process_Hugepage_Group(char * hugepage_args)
+{
+    char * p = hugepage_args;
+    boolean has_err = FALSE;
+
+    /* set default values */
+
+    Process_Hugepage_Default(FALSE);
+
+    while (*p) {
+        if (strncmp(p, "limit=", 6) == 0) {
+            p = &p[6];
+            sscanf(p, "%d", &hugepage_limit);
+
+            while ((*p) && ((*p) >= '0') && ((*p) <= '9'))
+                p++;
+        }
+        else if (strncmp(p, "alloc=", 6) == 0) {
+            p = &p[6];
+
+            if ((strncmp(p, "heap", 4) == 0)
+                || (strncmp(p, "HEAP", 4) == 0)) {
+                hugepage_alloc = ALLOC_HEAP;
+                p += 4;
+            }
+            else if ((strncmp(p, "bdt", 3) == 0)
+                     || (strncmp(p, "BDT", 3) == 0)) {
+                hugepage_alloc = ALLOC_BDT;
+                p += 3;
+            }
+            else
+                has_err = TRUE;
+        }
+        else if (strncmp(p, "size=", 5) == 0) {
+            p = &p[5];
+            
+            if ((strncmp(p, "2M", 2) == 0)
+                || (strncmp(p, "2m", 2) == 0)) {
+                hugepage_size = SIZE_2M;
+                p += 2;
+            }
+            else if ((strncmp(p, "1G", 2) == 0)
+                     || (strncmp(p, "1g", 2) == 0)) {
+                hugepage_size = SIZE_1G;
+                p += 2;
+            }
+            else
+                has_err = TRUE;
+        }
+        else 
+            has_err = TRUE;
+
+        if (*p) {
+            if ((*p) == ',') 
+                p++;
+            else {
+                has_err = TRUE;
+            }
+        }
+
+        if (has_err) {
+            if (!hugepage_warn) {
+                hugepage_warn = TRUE;
+                warning("unknown argument: %s in -hugepage", p);                
+            }
+            break;
+        }
+    }
+
+    if (!has_err) 
+        add_option_seen(O_hugepage);
+}
+
+
+
 #include "opt_action.i"

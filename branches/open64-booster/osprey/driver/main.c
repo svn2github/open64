@@ -84,6 +84,10 @@ boolean show_search_path;
 boolean show_defaults;
 boolean print_help = FALSE;
 
+HUGEPAGE_SIZE hugepage_size;
+HUGEPAGE_ALLOC hugepage_alloc;
+int hugepage_limit;
+
 #if 0
 // obsolete, see comments in DESIGN_DOC
 //extern void check_for_combos(void);
