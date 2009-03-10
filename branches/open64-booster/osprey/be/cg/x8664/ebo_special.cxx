@@ -4682,6 +4682,243 @@ BOOL EBO_Not_Load_Exec_Opnd( OP* ld_op )
 }
 
 
+// Convert movss and movsd to moco-buffer forms that allow the mov src
+// operand to have a micro-op optimization form in the pipeine.  Also
+// attempt to schedule the compute-to operation closer to the canonical
+// mov form.
+void EBO_SIMD_Compute_To( OP* simd_op )
+{
+  BB *bb = OP_bb(simd_op);
+  OP *anti_op = NULL;
+  ARC_LIST *true_arcs, *arcs;
+  ARC_LIST *anti_arcs;
+  BOOL hoist_only_cand = FALSE;
+  BOOL convert_cand = FALSE;
+  BOOL found_anti_dep = FALSE;
+  BOOL cand_ok = FALSE;
+  BOOL found_dep = FALSE;
+  TN *tnr = OP_results(simd_op) ? OP_result(simd_op, 0) : NULL;
+  int i;
+  int num_ops;
+
+  // check for xmm/mmx register class
+  if (tnr && TN_is_register(tnr)) {
+    if (TN_register_class(tnr) != ISA_REGISTER_CLASS_float)
+      return;
+
+    if (OP_load(simd_op))
+      return;
+
+    if (!TOP_is_move(OP_code(simd_op)))
+      return;
+
+    if ((TN_size(tnr) != 8) && (TN_size(tnr) != 16))
+      return;
+
+    // Map all the mov candidates, and also allow
+    // translations on movss/movsd to movaps/movapd.
+    switch (OP_code(simd_op)) {
+    case TOP_movaps:
+    case TOP_movapd:
+    case TOP_movdq:
+      hoist_only_cand = TRUE;
+      break;
+    case TOP_movss:
+    case TOP_movsd:
+      convert_cand = TRUE;
+      break;
+    default:
+      return;
+    }
+  } else {
+    return;
+  }
+
+  // First check to see if the register allocator produced
+  // an identity copy which will be elimated later.
+  for (i = 0; i < OP_opnds(simd_op); i++) {
+    TN *src_tn = OP_opnd(simd_op, i);
+    if (TN_is_register(src_tn)) {
+      if (TN_register(tnr) == TN_register(src_tn))
+        return;
+    }
+  }
+
+  // check for anti-deps on the simd_op's src operands
+  for (anti_arcs = OP_succs(simd_op); 
+       anti_arcs != NULL; anti_arcs = ARC_LIST_rest(anti_arcs)) {
+    ARC *anti_arc = ARC_LIST_first(anti_arcs);
+    OP *succ_op = ARC_succ(anti_arc);
+    if (ARC_kind(anti_arc) != CG_DEP_REGANTI) continue;
+
+    // Iff the src only operand of the simd_op has an anti arc
+    // note it, we will check to see if the operands def occurs
+    // between the flow dependent edges we will attempt to 
+    // convert for, as the moco buffer will be invalidated.
+    TN *src_tn = OP_opnd(simd_op, ARC_opnd(anti_arc));
+    if (src_tn &&
+        (TN_register_class(src_tn) == ISA_REGISTER_CLASS_float)  &&
+        (src_tn != tnr)) {
+      anti_op = succ_op;
+      break;
+    }
+  }
+
+  // See if there are uses of this simd_op's src which occur 
+  // between use_op and the simd_op, since we know its a move. 
+  for (true_arcs = OP_succs(simd_op); 
+       true_arcs != NULL; true_arcs = ARC_LIST_rest(true_arcs)) {
+    ARC *true_arc = ARC_LIST_first(true_arcs);
+    OP *succ_op = ARC_succ(true_arc);
+    if (ARC_kind(true_arc) != CG_DEP_REGIN) continue;
+
+    // no move - move opt
+    if (TOP_is_move( OP_code(succ_op)) ) continue;
+
+    if (OP_flop(succ_op)) {
+      OP *cur_op, *first_op;
+      BOOL first_time = TRUE;
+
+      first_op = succ_op;
+      num_ops = 0;
+
+      // If we are on in a loop, check the position of the 
+      // succ_op relative to the simd_op
+      if (BB_loop_head_bb(bb)) {
+        // Skip loop carried successor arcs
+        if (OP_Precedes(succ_op, simd_op))
+          continue;
+      }
+
+      // Find the closest suitable op to succ_op if there are flow 
+      // dependencies.
+      cur_op = NULL;
+      if (OP_next(simd_op) != succ_op) {
+        for (arcs = OP_preds(succ_op); 
+             arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+          ARC *arc = ARC_LIST_first(arcs);
+          if (ARC_pred(arc) == simd_op) continue;
+          if (OP_Precedes(simd_op, ARC_pred(arc))) {
+            cur_op = ARC_pred(arc);
+            if ((OP_Precedes(first_op, cur_op) || first_time) &&
+                OP_Precedes(cur_op, succ_op)) {
+              if (OP_next(cur_op) != succ_op) {
+                first_op = cur_op;
+                first_time = FALSE;
+              } else {
+                // dep arc prevents motion
+                first_op = succ_op;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // Now evaluate the results
+      if (first_op != succ_op) { 
+        if (OP_load(first_op)) {
+          hoist_only_cand = convert_cand = FALSE; 
+        } else if (anti_op && (OP_Precedes(anti_op, first_op))) {
+          hoist_only_cand = convert_cand = FALSE; 
+        } else {
+          found_dep = TRUE;
+          first_op = OP_next(first_op);
+        }
+      } else if (cur_op == NULL) {
+        // If there are no dependencies but there are instructions in
+        // between, allow motioning up next to the simd_op.
+        if (OP_next(simd_op) != succ_op) {
+          first_op = OP_next(simd_op);
+        }
+      }
+
+      // See if the new hoist position is inside the latency 
+      // shadow of a conversion candidate.
+      if ((convert_cand || hoist_only_cand) && 
+          (first_op != succ_op)) {
+        for (cur_op = OP_next(simd_op); 
+             cur_op != succ_op; cur_op = OP_next(cur_op)) {
+          num_ops++;
+          if (cur_op == first_op)
+            break;
+        }
+      }
+
+      // We want to gate a conversion and hoisting based on if we can 
+      // move the op into the latency shadow.
+      if ((convert_cand || hoist_only_cand) && 
+          (num_ops > 0) &&
+          (ARC_latency(true_arc) < num_ops)) {
+        hoist_only_cand = convert_cand = FALSE;
+      }
+
+      // Apply hoist-ability here
+      if (first_op != succ_op) {
+        // Now do the hoist if we can
+        if (convert_cand || hoist_only_cand) {
+          cand_ok = TRUE;
+          if (EBO_Trace_Data_Flow) {
+            if (found_dep) {
+              fprintf( TFile, "dep(conv=%s): hoist to succ compute-to\n",
+                       convert_cand ? "true" : "false");
+            } else {
+              fprintf( TFile, "clean(conv=%s): hoist to succ compute-to\n",
+                       convert_cand ? "true" : "false");
+            }
+          }
+
+          BB_Move_Op_Before(bb, first_op, bb, succ_op);
+          break;
+        }
+      } else if (convert_cand) {
+        // Allow conversion if they are right next to each other
+        if (EBO_Trace_Data_Flow) {
+          fprintf( TFile, "convert(no hoist) for succ compute-to\n");
+        }
+        cand_ok = TRUE;
+      }
+    }
+  }
+
+  // Convert the candidate if we passed all tests and the op
+  // is not yet in the cannonical form.
+  if (convert_cand && cand_ok) {
+    // we have a single dependence arc on this def, we can convert
+    if (OP_code(simd_op) == TOP_movsd) {
+      OP_Change_Opcode( simd_op, TOP_movapd );
+    } else if (OP_code(simd_op) == TOP_movss) {
+      OP_Change_Opcode( simd_op, TOP_movaps );
+    }
+  }
+}
+
+
+// Do basic block level compute-to opts
+void EBO_Compute_To ( BB* bb )
+{
+  OP *op;
+
+  // We need to do this step only once for the bb, as the code
+  // is static, we will only change opcodes and move ops, no ops are
+  // deleted or inserted, ergo, the DDG is static.
+  CG_DEP_Compute_Graph ( bb,
+                         INCLUDE_ASSIGNED_REG_DEPS,
+                         NON_CYCLIC,
+                         NO_MEMREAD_ARCS,
+                         INCLUDE_MEMIN_ARCS,
+                         NO_CONTROL_ARCS,
+                         NULL);
+
+  FOR_ALL_BB_OPs (bb, op) {
+    if (OP_flop(op))
+      EBO_SIMD_Compute_To(op);
+  }
+
+  CG_DEP_Delete_Graph (bb);
+}
+
+
 // Attempt to fold a constant onto the index calcuation of an array
 BOOL EBO_Fold_Lea_Const_Component( OP* mem_op )
 {

@@ -491,6 +491,8 @@ INT32 CG_sse_load_execute = 0;
 INT32 CG_load_execute = 1;
 BOOL CG_loadbw_execute = FALSE;
 BOOL CG_p2align = FALSE;
+BOOL CG_loop32 = FALSE;
+BOOL CG_compute_to = FALSE;
 BOOL CG_valgrind_friendly = TRUE;
 #endif
 

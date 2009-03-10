@@ -1633,6 +1633,13 @@ CG_Generate_Code(
 
 #ifdef TARG_X8664
   {
+    /* Perform compute-to opts. */
+    if (Is_Target_Barcelona() && CG_compute_to) {
+      for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){
+        EBO_Compute_To(bb);
+      }
+    }
+
     /* Convert all the x87 regs to stack-like regs. */
     extern void Convert_x87_Regs( MEM_POOL* );
     Convert_x87_Regs( &MEM_local_region_pool );

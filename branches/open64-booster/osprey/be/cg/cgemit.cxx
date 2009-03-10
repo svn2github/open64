@@ -4330,6 +4330,11 @@ Emit_Loop_Note(BB *bb, FILE *file)
 #ifdef TARG_X8664
     if (CG_p2align) 
       fputs ("\t.p2align 6,,7\n", file);
+    else if (CG_loop32) {
+      if (BB_innermost(bb) && Is_Target_Barcelona()) {
+        fputs ("\t.p2align 5,,\n", file);
+      }
+    }
 #endif
     SRCPOS srcpos = BB_Loop_Srcpos(bb);
     INT32 lineno = SRCPOS_linenum(srcpos);

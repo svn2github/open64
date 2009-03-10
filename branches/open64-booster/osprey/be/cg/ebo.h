@@ -136,6 +136,8 @@ void EBO_Post_Process_Region(RID *rid);
 void EBO_Post_Process_Region_2(RID *rid);
 #endif
 
+void EBO_Compute_To( BB *bb );
+
 void EBO_Finalize(void);
 
 #ifdef TARG_IA64
