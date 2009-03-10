@@ -76,6 +76,8 @@ static INT initial_initv_tab_size;
 MEM_POOL Ipo_mem_pool;
 WN_MAP Parent_Map;
 
+extern FILE *Y_inlining;
+
 // ======================================================================
 // For easy switching of Scope_tab
 // ======================================================================
@@ -435,6 +437,17 @@ BOOL
 Can_Inline_Call (IPA_NODE* caller, IPA_NODE* callee, const IPA_EDGE* edge) 
 {
   SCOPE_CONTEXT switch_scope(callee->Scope());
+
+  if (callee->Has_Varargs()) {
+     if (Is_partial_inline_candidate(callee, FALSE)) {
+        if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+           fprintf (Y_inlining, "Finding a partialn inline candidate %s with var args\n",
+                 callee->Name());
+        }
+     } else {
+        return FALSE;
+     }
+  }
 
   // if we end up linearizing certain references in fortran
   // then we should not inline
@@ -3800,6 +3813,226 @@ IPO_INLINE::Merge_EH_Tables (void)
 }
 #endif
 
+/* Prune WN tree based on a cloned copy of the original callee
+   for partial inlining.
+   This function has to be kept in sync with
+   ipa_inline.cxx: found_partial_inlining_path() so that
+   we are identifying and pruning partial inlining candidates
+   consistently. Consider to merge these two functions into one.
+*/
+static BOOL
+Prune_Tree(WN* wn, IPO_INLINE_AUX &aux, BOOL *cont_search)
+{
+   int    i;
+   WN     *wn2 = NULL;
+   BOOL   rtn_val = FALSE;
+   if (!wn) {
+       return FALSE;
+   }
+
+   OPERATOR opr = WN_operator(wn);
+
+   if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+      fprintf (Y_inlining, "encountering opr %d\n", opr);
+   }
+
+   /* For now, let's just find a simple pattern for partial inlining:
+      an IF-statement, with a RETURN on the then clause.
+      Skip for anything else.
+    */
+   switch (opr) {
+      case OPR_BLOCK:
+         wn2 = WN_first(wn);
+         while (wn2) {
+            rtn_val = Prune_Tree(wn2, aux, cont_search);
+            if(!(*cont_search)) {
+               /* rtn_val has to be TRUE, so this should be an
+                  assertion. If this is FALSE, we did not find
+                  a partial inlining path in a function which is
+                  already identified as a partial inlining candidate.
+                */
+               if (rtn_val) {
+                  WN *wn3 = WN_next(wn2);
+                  WN *wn4 = wn3;
+                  /* Delete the remaining kids in the BLOCK. */
+                  WN_next(wn2) = NULL;
+                  while (wn4) {
+                     /* Save the next kid before deleting the current one. */
+                     wn3 = WN_next(wn4);
+                     WN_DELETE_Tree(wn4);
+                     wn4 = wn3;
+                  }
+               }
+               WN_last(wn) = wn2;
+               return rtn_val;
+            }
+            wn2 = WN_next(wn2);
+         }
+         return FALSE;
+
+      case OPR_IF:
+         wn2 = WN_else(wn);
+         rtn_val = Prune_Tree(wn2, aux, cont_search);
+         /* If we find anything non-trivial in the else
+            clause, regardless what it is (even if rtn_val TRUE),
+            this is not a case that we are looking for now.
+            Return FALSE.
+          */
+         if(!(*cont_search))   return FALSE;
+
+         wn2 = WN_then(wn);
+         rtn_val = Prune_Tree(wn2, aux, cont_search);
+         /* Stop searching. */
+         *cont_search = FALSE;
+         aux.part_inl_leftover_call_site = WN_else(wn);
+         return rtn_val;
+
+      case OPR_RETURN:
+      case OPR_RETURN_VAL:
+         *cont_search = FALSE;
+         return TRUE;
+
+      case OPR_FUNC_ENTRY:
+      case OPR_PRAGMA:
+      case OPR_IDNAME:   
+         for (i = 0; i < WN_kid_count(wn); i++) {
+            wn2 = WN_kid(wn,i);
+            BOOL rtn_val = Prune_Tree(wn2, aux, cont_search);
+            if(!(*cont_search)) {
+               /* rtn_val has to be TRUE, so this should be an
+                  assertion. If this is FALSE, we did not find
+                  a partial inlining path in a function which is
+                  already identified a partial inlining candidate.
+                */
+               if (rtn_val) {
+                  UINT new_kid_cnt = ++i;
+                  /* Delete the remaining kids in this stmt. */
+                  for (; i < WN_kid_count(wn); i++) {
+                     wn2 = WN_kid(wn,i);
+                     WN_DELETE_Tree(wn2);
+                  }
+                  WN_set_kid_count(wn, new_kid_cnt);
+               }
+               return rtn_val;
+            }
+         }
+         return FALSE;
+
+      default:
+         (*cont_search) = FALSE;
+         return FALSE;
+   }
+
+   return FALSE;
+}
+
+/* Prune the WN tree in the leftover (cloned) callee.
+*/
+static void
+Prune_Callee(WN* wn) 
+{
+   int    i;
+   WN     *wn2 = NULL;
+   if (!wn) {
+       return;
+   }
+
+   OPERATOR opr = WN_operator(wn);
+
+   if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+      fprintf (Y_inlining, "In Prune_Callee(): encountering opr %d\n", opr);
+   }
+
+   switch (opr) {
+      case OPR_BLOCK:
+         wn2 = WN_first(wn);
+         while (wn2) {
+            OPERATOR opr2 = WN_operator(wn2);
+            if (opr2 == OPR_IF) {
+               // Delete this IF wn.
+               if (wn2 == WN_first(wn)) {
+                  // The IF is the first wn in the block.
+                  WN_first(wn) = WN_next(wn2);
+                  WN_prev(WN_next(wn2)) = NULL;
+               } else if (wn2 == WN_last(wn)) {               
+                  // The IF is the last wn in the block.
+                  WN_last(wn) = WN_prev(wn2);
+                  WN_next(WN_prev(wn2)) = NULL;
+               } else {
+                  WN_next(WN_prev(wn2)) = WN_next(wn2);
+                  WN_prev(WN_next(wn2)) = WN_prev(wn2);
+               }
+               WN_DELETE_Tree(wn2);
+               return;
+            } 
+            wn2 = WN_next(wn2);
+         }
+         return;
+
+      case OPR_FUNC_ENTRY:
+      case OPR_PRAGMA:
+      case OPR_IDNAME:   
+         for (i = 0; i < WN_kid_count(wn); i++) {
+            wn2 = WN_kid(wn,i);
+            Prune_Callee(wn2);
+         }
+         return;
+
+      default:
+         return;
+   }
+
+   return;
+}
+
+/* Check if the PU (node) returns an int constant value. 
+   If so, set the value in *const_val.
+ */
+static BOOL
+PU_Rtn_Const(IPA_NODE *node, INT64 *const_val)
+{
+   WN *wn = node->Whirl_Tree();
+   WN *wn2;
+   BOOL has_seen_rtn_val = FALSE;
+
+   // walk the tree
+   for (WN_TREE_ITER<PRE_ORDER, WN*> iter (wn); iter.Wn () != NULL; ++iter) {
+      wn2 = iter.Wn ();
+      OPERATOR opr = WN_operator(wn2);
+      if (opr == OPR_RETURN_VAL) {
+         WN *kid = WN_kid0(wn2);
+         if (WN_operator(kid) == OPR_INTCONST ) {
+            INT64 this_const = WN_const_val(kid);
+            if (has_seen_rtn_val) {
+               if (*const_val != this_const) {
+                  /* Could return different const values. */
+                  return FALSE;
+               }
+            } else {
+               *const_val = this_const;
+               has_seen_rtn_val = TRUE;
+            }
+         } else {
+            // Return a non int const.
+            return FALSE;
+         }
+      }
+   }
+
+   if (has_seen_rtn_val) {
+       if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+          fprintf (Y_inlining, "PU %s returns a const value %d\n",
+                   node->Name(), (INT32) (*const_val));
+       }
+       return TRUE;
+   }
+
+   // Did not find a return (the user should receive a warning
+   // for this code or we should assert). We could aggressively claim
+   // this returns any const, but let's be conservative.
+   return FALSE;
+}
+
 // This function does modify the Caller.
 void
 IPO_INLINE::Process_Callee (IPO_INLINE_AUX& aux, BOOL same_file)
@@ -3826,9 +4059,91 @@ IPO_INLINE::Process_Callee (IPO_INLINE_AUX& aux, BOOL same_file)
 
     Set_Tables (Callee_node ());
 
-    // clone the callee: set freq ratio, promote statics, and clone tree
-    // initialize block to result
-    aux.inlined_body = Clone_Callee (same_file);
+    if (Callee_node()->Has_Varargs() && 
+        Callee_node()->Is_Part_Inl_Candidate()) {
+
+#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+        IPA_NODE *callee = Callee_node(); 
+
+        Call_edge()->Set_Partial_Inline_Attrib();
+ 
+        if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+           fprintf (Y_inlining, "IPO_INLINE::Process_Callee: func %s for partial inlining \n",
+                    Callee_node()->Name());
+           fprintf (Y_inlining, "Dump original callee %s \n", 
+                    Callee_node()->Name());
+           fdump_tree(Y_inlining, Callee_node()->Whirl_Tree());
+        }
+
+        // Consider to clone from  callee->Set_Part_Inlined_Body so
+        // that we don't need to prune every time.
+        aux.inlined_body = Clone_Callee (same_file);
+
+        if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+           fprintf (Y_inlining, "Dump inlined_body before pruning\n");
+           fdump_tree(Y_inlining, aux.inlined_body);
+        }
+
+        BOOL cont_search = TRUE;
+        Prune_Tree(aux.inlined_body, aux, &cont_search);
+        callee->Set_Part_Inlined_Body(aux.inlined_body);
+
+        if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+           fprintf (Y_inlining, "Dump inlined_body after pruning\n");
+           fdump_tree(Y_inlining, aux.inlined_body);
+        }
+
+        // Don't delete callee in the partial inlining case as we currently
+        // keep a call to callee.
+        callee->Clear_Deletable();
+   
+        if (callee->Part_Inl_Clone() == NULL) {
+           // Encounter this partial inlining the first time.
+           IPA_NODE *clone_callee = IPA_Call_Graph->Create_Clone (callee, FALSE);
+
+           if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ) {
+              fprintf (Y_inlining, "Dump cloned func %s for partial inlining \n",
+                    clone_callee->Name());
+              fdump_tree(Y_inlining, clone_callee->Whirl_Tree());
+           }
+
+           // Prune the partially inlined path from the cloned callee.
+           Prune_Callee(clone_callee->Whirl_Tree());
+
+           if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+              fprintf (Y_inlining, "Dump cloned callee %s after pruning\n", 
+                    clone_callee->Name());
+              fdump_tree(Y_inlining, clone_callee->Whirl_Tree());
+           }
+
+           callee->Set_Part_Inl_Clone(clone_callee);
+
+           // clone_callee PU has a return value and check to see if
+           // it returns a constant value.
+           if (aux.rp.size () > 0 && 
+               WN_opcode (Call_Wn ()) != OPC_VCALL) {
+              INT64 const_val = 0;
+              if (PU_Rtn_Const(clone_callee, &const_val)) {
+                 callee->Set_Leftover_Rtn_Const();
+                 callee->Set_Leftover_Rtn_Val(const_val);
+              }
+           }
+
+           // Write out the cloned PU. 
+           // TODO: still having a problem to write out clone_callee.
+           // Call the original callee for now since this is still
+           // correct as the partially inlined code is idempotent 
+           // (can be executed multiple times). Consider to create a new
+           // entry in the original callee as an alternative to 
+           // Write_PU().
+           // clone_callee->Write_PU();
+        }
+#endif 
+    } else {
+        // clone the callee: set freq ratio, promote statics, and clone tree
+        // initialize block to result
+        aux.inlined_body = Clone_Callee (same_file);
+    }
 
     // Need to recreate the parent pointers for the cloned callee_block
     // in the caller-side
@@ -3844,8 +4159,9 @@ IPO_INLINE::Process_Callee (IPO_INLINE_AUX& aux, BOOL same_file)
     Compute_Return_Preg_Offset (Callee_Wn (), aux.rp, use_lowered_return_preg,
 				Caller_Scope(), Caller_level()); 
 
-    if (aux.rp.size () > 0 && WN_opcode (Call_Wn ()) != OPC_VCALL)
+    if (aux.rp.size () > 0 && WN_opcode (Call_Wn ()) != OPC_VCALL) {
 	Fix_Return_Pregs(Call_Wn (), aux.rp);
+    }
 #endif // !KEY
     Walk_and_Update_Callee (aux);
     
@@ -3890,6 +4206,11 @@ IPO_INLINE::Post_Process_Caller (IPO_INLINE_AUX& aux)
 #endif
     WN* call = Call_Wn ();
     WN* parent_wn = WN_Get_Parent(call, Parent_Map, Current_Map_Tab);
+
+    if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+       fprintf (Y_inlining, "Dump caller %s, parent_wn of call\n", Caller_node()->Name());
+       fdump_tree(Y_inlining, parent_wn);
+    }
 
     Is_True (((WN_operator(parent_wn) == OPR_BLOCK)),
 	     ("Illegal Parent for the call statement")); 
@@ -3949,7 +4270,6 @@ IPO_INLINE::Post_Process_Caller (IPO_INLINE_AUX& aux)
 		       aux.inlined_body);
     }
   
-
     // Finally, replace the call by the inlined block
     if (WN_first (aux.inlined_body) != NULL) {
 	WN_next (WN_prev (call)) = WN_first (aux.inlined_body);
@@ -3961,8 +4281,90 @@ IPO_INLINE::Post_Process_Caller (IPO_INLINE_AUX& aux)
 	WN_next (WN_prev (call)) = WN_next (call);
 	WN_prev (WN_next (call)) = WN_prev (call);
     }
+
     // all the cleanup code should have the same line number as the call
     WN_Set_Linenum (WN_next (call), WN_Get_Linenum (call));
+
+    // Process partial inlining call edge.
+    if ( Call_edge()->Has_Partial_Inline_Attrib() ) {
+       // Place the "call" wn into the ELSE clause of the IF from 
+       // partial inlining. Modify the "call" to call the leftover
+       // function (for now we still call the original callee since
+       // the partially inlined codes are idempontent).
+       Is_True (((WN_operator(aux.part_inl_leftover_call_site) == OPR_BLOCK)),
+	     ("Illegal Parent for the partial inlining leftover call site")); 
+       // Reuse the call WN but call the cloned callee.
+       // WN_st_idx(call) = ST_st_idx(*Callee_node()->Part_Inl_Clone()->Func_ST());
+
+       // Replace the original callee with the new clone.
+       // Set_callee_node(aux.part_inl_clone_callee); probably no need to do this
+
+       WN_prev (call) = NULL;
+       WN_next (call) = NULL;
+
+       // Check to see if "call" has a return value.
+       if (aux.rp.size () > 0 && WN_opcode (call) != OPC_VCALL) {
+          // Place the call site in a block.
+          WN *call_blk = WN_CreateBlock ();
+          LWN_Insert_Block_Before(call_blk, NULL, call);
+          WN_Set_Parent(call, call_blk, Parent_Map, Current_Map_Tab);
+
+          // Create a LDID for the return value.
+          ST* tmp_st = aux.rp.find_st ();
+          TY_IDX stid_ty = ST_type(tmp_st);
+          WN *wn_ldid = WN_Ldid(TY_mtype(stid_ty), -1, Return_Val_Preg,
+                                stid_ty); 
+
+          // Create a COMMA to get the return value.
+          WN *wn_comma = WN_CreateComma(OPR_COMMA, TY_mtype(stid_ty),
+                         TY_mtype(stid_ty), call_blk, wn_ldid);
+          WN_Set_Parent(call_blk, wn_comma, Parent_Map, Current_Map_Tab);
+          WN_Set_Parent(wn_ldid, wn_comma, Parent_Map, Current_Map_Tab);
+
+          // Create an STID to store to a tmp.
+          WN *wn_stid = WN_StidPreg(TY_mtype (stid_ty), 
+                                    aux.rp.find((PREG_IDX) -1), 
+                                    wn_comma);
+          WN_Set_Parent(wn_comma, wn_stid, Parent_Map, Current_Map_Tab);
+
+          // Insert the STID as a kid of the ELSE block.
+          LWN_Insert_Block_Before(aux.part_inl_leftover_call_site,
+                                  NULL, wn_stid);
+          WN_Set_Parent(wn_stid, aux.part_inl_leftover_call_site,
+                        Parent_Map, Current_Map_Tab);
+
+          // If the leftover function has a constant return value,
+          // insert an assignment of the const value to the return
+          // value after the call.
+          if (Callee_node()->Is_Leftover_Rtn_Const()) {
+             OPCODE op = OPCODE_make_op (OPR_INTCONST, MTYPE_I8, 
+                                         MTYPE_V);
+             WN *kid = WN_CreateIntconst (op, 
+                                          Callee_node()->Leftover_Rtn_Val());
+             // Create an STID to assign the return var with the const.
+             WN *wn_stid2 = WN_StidPreg(TY_mtype (stid_ty), 
+                                        aux.rp.find((PREG_IDX) -1), 
+                                        kid);
+             LWN_Insert_Block_After(aux.part_inl_leftover_call_site,
+                                    wn_stid, wn_stid2);
+             WN_Set_Parent(wn_stid2, aux.part_inl_leftover_call_site,
+                           Parent_Map, Current_Map_Tab);
+          }
+       } else {
+          // The callee has no return value. Just place "call" at the
+          // ELSE clause.
+          LWN_Insert_Block_Before(aux.part_inl_leftover_call_site,
+                                  NULL, call);
+          WN_Set_Parent(call, aux.part_inl_leftover_call_site,
+                        Parent_Map, Current_Map_Tab);
+       }
+
+       if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+          fprintf (Y_inlining, "Dump caller %s after partial inlining\n", 
+                   Caller_node()->Name());
+          fdump_tree(Y_inlining, Caller_node()->Whirl_Tree());
+       }
+    }
 
 } // IPO_INLINE::Post_Process_Caller() 
 

@@ -200,6 +200,13 @@ private:
   static const mUINT32 _ehinfo_updated =   0x2000000;   // summary updated
   static const mUINT32 _pending_icalls =   0x4000000;   // need icall conversion
 #endif
+  static const mUINT32 _part_inl_candidate = 0x8000000; // whether this PU 
+                                                        // a partial inlining
+                                                        // candidate
+  static const mUINT32 _leftover_rtn_const = 0x10000000;
+                                             // whether the leftover function
+                                             // from partial inlining returns
+                                             // an (int) constant.
 
   // map to the file I/O info
   mINT32 _file_index;			// index into the file header structure
@@ -249,6 +256,16 @@ private:
   INLINED_BODY_LIST  _inlined_list;     // Hold pts to all inlined callees
                                         // for this node
 #endif // _LIGHTWEIGHT_INLINER
+
+  // Auxiliary fields added for partial inlining.
+  WN*       _part_inlined_body;       // partial function body to be inlined
+  IPA_NODE* _part_inl_clone;          // The cloned callee for partial inlining
+                                      // (i.e. the leftover PU)
+  INT64     _leftover_rtn_val;        // The return const value of the leftover
+                                      // function from partial inlining.
+                                      // Meaningful only when 
+                                      // _leftover_rtn_const is set.
+
 public:
 
   // Constructor
@@ -286,6 +303,8 @@ public:
     ,_sizeof_eh_spec (0)
     ,_file_id (-1)
 #endif
+    ,_part_inlined_body (NULL)
+    ,_part_inl_clone (NULL)
   {
 #ifdef KEY
     // If we are constructing for a builtin, then skip the info that a builtin
@@ -463,6 +482,17 @@ public:
   void Clear_Clone_Candidate ()		{ _flags &= ~_clone_candidate; }
   BOOL Is_Clone_Candidate () const	{ return _flags & _clone_candidate; }
 
+  // node needs to be partially inlined
+  void Set_Part_Inl_Candidate ()	{ _flags |= _part_inl_candidate; }
+  void Clear_Part_Inl_Candidate ()	{ _flags &= ~_part_inl_candidate; }
+  BOOL Is_Part_Inl_Candidate () const	{ return _flags & _part_inl_candidate; }
+
+  // Whether the leftover function (from partial inlining) returns an 
+  // int const.
+  void Set_Leftover_Rtn_Const ()	{ _flags |= _leftover_rtn_const; }
+  void Clear_Leftover_Rtn_Const ()	{ _flags &= ~_leftover_rtn_const; }
+  BOOL Is_Leftover_Rtn_Const () const	{ return _flags & _leftover_rtn_const; }
+
   // node has common blocks that need to be padded
   void Set_Needs_Padding ()     { _flags |= _padding; }
   BOOL Needs_Padding () const   { return _flags & _padding; }
@@ -585,6 +615,15 @@ public:
   void Set_Inline_Attrib ()	  { Set_PU_is_inline_function (Get_PU ()); }
   void Clear_Inline_Attrib ()     { Clear_PU_is_inline_function (Get_PU ()); }
   BOOL Has_Inline_Attrib () const { return PU_is_inline_function (Get_PU ()); }
+
+  void Set_Part_Inlined_Body(WN* wn)    { _part_inlined_body = wn; }
+  WN  *Part_Inlined_Body()              { return _part_inlined_body; }
+  void Set_Part_Inl_Clone(IPA_NODE* node)
+                                        { _part_inl_clone = node; }
+  IPA_NODE* Part_Inl_Clone()            { return _part_inl_clone; }
+  void      Set_Leftover_Rtn_Val(INT64 val)  
+                                        { _leftover_rtn_val = val; }
+  INT64     Leftover_Rtn_Val()          { return _leftover_rtn_val; }
 
   BOOL Is_Nested_PU () const { return PU_is_nested_func(Get_PU()); }
     
@@ -838,6 +877,7 @@ private:
   static const mUINT32 _inline		= 0x10;
   static const mUINT32 _must_inline	= 0x20;
   static const mUINT32 _no_inline	= 0x40;
+  static const mUINT32 _partial_inline	= 0x80;
   
   EDGE_INDEX _edge_index;			// index to the edge array in graph
   IPA_EDGE_INDEX _array_index;		// index into the IPA_EDGE_ARRAY
@@ -931,7 +971,12 @@ public:
   void Set_Noinline_Attrib ()		{ _flags |= _no_inline; }
   BOOL Has_Noinline_Attrib () const	{ return _flags & _no_inline; }
 
-  void Clear_All_Inline_Attrib ()	{ _flags &= ~(_inline|_must_inline); }
+  void Set_Partial_Inline_Attrib ()	{ _flags |= _partial_inline; }
+  void Clear_Partial_Inline_Attrib ()	{ _flags &= ~_partial_inline; }
+  BOOL Has_Partial_Inline_Attrib () const { return _flags & _partial_inline; }
+
+  void Clear_All_Inline_Attrib ()	{ _flags &= ~(_inline|_must_inline|
+                                                      _partial_inline); }
 
   // we use a bit vector to represent actual parameters that are readonly
   // up to a max. of 32 parameters are recorded, the rests are ignored.
@@ -1151,7 +1196,7 @@ public:
   void Map_Callsites(IPA_NODE* caller);
 
   // Create a clone of the given node
-  IPA_NODE* Create_Clone (IPA_NODE* node);
+  IPA_NODE* Create_Clone (IPA_NODE* node, BOOL update_cg = TRUE);
 
   // Quasi clones are present only as IPA_NODEs with cprop annotations
   // their WHIRL and ST are not cloned

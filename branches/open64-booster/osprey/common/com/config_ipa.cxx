@@ -146,6 +146,7 @@ UINT32 IPA_Common_Pad_Size = 0;	        /* Amount by which to pad commons */
 
 BOOL IPA_Enable_Cloning = TRUE;         /* Enable Cloning in conjunction */
                                         /* with constant propagation     */
+BOOL IPA_Enable_Partial_Inline = FALSE; /* Enable partial inlining */
 BOOL IPA_Enable_Lang = FALSE;           /* support inlining across language */
 BOOL IPA_Enable_Relocatable_Opt = FALSE;/* support -call_shared optimizations of relocatable objects */
 BOOL IPA_Enable_Split_Common = TRUE;    /* Enable split common inside IPA */
@@ -377,6 +378,9 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL,	OV_VISIBLE,	FALSE, "clone",	"",
 	  0, 0, 0,		&IPA_Enable_Cloning,	NULL,
 	  "Enable subprogram cloning" },
+    { OVK_BOOL,	OV_VISIBLE,	FALSE, "partial_inl",	"",
+	  0, 0, 0,		&IPA_Enable_Partial_Inline,	NULL,
+	  "Enable partial inlining" },
     { OVK_UINT32, OV_INTERNAL,	FALSE, "multi_clone",   "",
            0, 0, UINT32_MAX, &IPA_Max_Node_Clones, &IPA_Max_Node_Clones_Set,
  	  "Maximum clones per call graph node" },

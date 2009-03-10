@@ -233,6 +233,9 @@ struct IPO_INLINE_AUX
     WN* copy_in_block;			// copy the actual to formal
     WN* copy_out_block;			// copy the result back to the actual
     WN* inlined_body;			// callee's function body
+    WN* part_inl_leftover_call_site;	// the WN block which will contain the call
+                                        // site to the leftover function 
+                                        // after partial inlining.
     PROCESSED_SET processed_local_syms; // Set of symbols that have PRAGMA LOCAL processed
 #ifdef KEY
     replace_st_vec replace_st;
@@ -246,7 +249,8 @@ struct IPO_INLINE_AUX
 	entry_label (0),
 	copy_in_block (NULL),
 	copy_out_block (NULL),
-	inlined_body (NULL)
+	inlined_body (NULL),
+        part_inl_leftover_call_site (NULL)
 #ifdef KEY
 	, replace_st (pool)
 #endif

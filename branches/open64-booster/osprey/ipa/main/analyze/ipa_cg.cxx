@@ -2577,6 +2577,12 @@ IPA_NODE::Write_PU ()
 #endif
     }
   }
+/* To enable this code once resolving Write_PU() of a newly created PU from
+   partial inlining.
+  if (Part_Inl_Clone()) {
+     Part_Inl_Clone()->Write_PU();
+  }
+*/
 }
 
 //----------------------------------------------------------------
@@ -2847,11 +2853,12 @@ IPA_add_new_procedure (const IPA_NODE* node)
 }
 
 //------------------------------------------------------------------
-// clone a procedure, copy all the from and to edges that contain
+// clone a procedure, 
+// If update_cg is TRUE, copy all the from and to edges that contain
 // summary information, delete the from and to edges from the clone
 //------------------------------------------------------------------
 IPA_NODE*
-IPA_CALL_GRAPH::Create_Clone (IPA_NODE* node)
+IPA_CALL_GRAPH::Create_Clone (IPA_NODE* node, BOOL update_cg)
 {
   IPA_NODE* clone = Add_New_Node (node->Func_ST(),
                                   node->File_Index(),
@@ -2877,66 +2884,71 @@ IPA_CALL_GRAPH::Create_Clone (IPA_NODE* node)
   }
   clone_array->AddElement (clone);
 
-  // get the number of successor edges
-  EDGE_INDEX* out_edges = 
-    (EDGE_INDEX*) alloca (Num_Out_Edges(node) * sizeof(EDGE_INDEX));
+  /* In the partial inlining case, we use Create_Clone() to create the
+     leftover function, but we don't want to change the call graph edges.
+   */
+  if (update_cg) {
+     // get the number of successor edges
+     EDGE_INDEX* out_edges = 
+       (EDGE_INDEX*) alloca (Num_Out_Edges(node) * sizeof(EDGE_INDEX));
 
-  // move all successor edges from the original node to the clone
-  INT32 out_count = 0;
-  IPA_SUCC_ITER succ_iter (this, node);
-  for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) {    
+     // move all successor edges from the original node to the clone
+     INT32 out_count = 0;
+     IPA_SUCC_ITER succ_iter (this, node);
+     for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) {    
 
-    IPA_EDGE* edge = succ_iter.Current_Edge();
-    IPA_NODE* callee = Callee (edge);
+       IPA_EDGE* edge = succ_iter.Current_Edge();
+       IPA_NODE* callee = Callee (edge);
 
-    if (callee == node) { // recursive edge
-      Add_Edge (clone, clone, edge); 
-    }
-    else {
-      Add_Edge (clone, callee, edge); 
-    }
+       if (callee == node) { // recursive edge
+         Add_Edge (clone, clone, edge); 
+       }
+       else {
+         Add_Edge (clone, callee, edge); 
+       }
 
-    // keep track of the edges that need to be deleted
-    out_edges[out_count++] = succ_iter.Current_Edge_Index();
-  }
+       // keep track of the edges that need to be deleted
+       out_edges[out_count++] = succ_iter.Current_Edge_Index();
+     }
   
 
-  // get the number of predecessor edges
-  EDGE_INDEX* in_edges = 
-    (EDGE_INDEX*) alloca (Num_In_Edges(node) * sizeof(EDGE_INDEX));
+     // get the number of predecessor edges
+     EDGE_INDEX* in_edges = 
+       (EDGE_INDEX*) alloca (Num_In_Edges(node) * sizeof(EDGE_INDEX));
 
-  // move all predecessor edges from the original node to the clone
-  // also, delete those edges from the original procedure
-  INT32 in_count = 0;
-  IPA_PRED_ITER pred_iter (this, node);
-  for (pred_iter.First(); !pred_iter.Is_Empty(); pred_iter.Next()) {
+     // move all predecessor edges from the original node to the clone
+     // also, delete those edges from the original procedure
+     INT32 in_count = 0;
+     IPA_PRED_ITER pred_iter (this, node);
+     for (pred_iter.First(); !pred_iter.Is_Empty(); pred_iter.Next()) {
 
-    IPA_EDGE* edge = pred_iter.Current_Edge();
-    // NULL edges come from the entry node (Root ?)
-    if (edge) { 
-      IPA_NODE* caller = Caller (edge);
+       IPA_EDGE* edge = pred_iter.Current_Edge();
+       // NULL edges come from the entry node (Root ?)
+       if (edge) { 
+         IPA_NODE* caller = Caller (edge);
 
-      // skip recursive edges; they had been handled above
-      if (caller != node) {  
-	Add_Edge (caller, clone, edge);
-        // keep track of the edges that need to be deleted 
-        // do not delete edges from the root to keeo the graph connected
-        if (caller->Node_Index() != Root()) {
-	  in_edges[in_count++] = pred_iter.Current_Edge_Index();
-        }
-      }
-    }
-  }
+         // skip recursive edges; they had been handled above
+         if (caller != node) {  
+   	   Add_Edge (caller, clone, edge);
+           // keep track of the edges that need to be deleted 
+           // do not delete edges from the root to keeo the graph connected
+           if (caller->Node_Index() != Root()) {
+   	     in_edges[in_count++] = pred_iter.Current_Edge_Index();
+           }
+         }
+       }
+     }
   
-  INT32 i;
-  // delete the incoming edges
-  for (i = 0; i < in_count; ++i) {
-    _graph->Delete_Edge (in_edges[i]);
-  }
+     INT32 i;
+     // delete the incoming edges
+     for (i = 0; i < in_count; ++i) {
+       _graph->Delete_Edge (in_edges[i]);
+     }
 
-  // delete the outgoing edges 
-  for (i = 0 ; i < out_count; ++i) {
-    _graph->Delete_Edge (out_edges[i]);
+     // delete the outgoing edges 
+     for (i = 0 ; i < out_count; ++i) {
+       _graph->Delete_Edge (out_edges[i]);
+     }
   }
 
   // Set the clone flag

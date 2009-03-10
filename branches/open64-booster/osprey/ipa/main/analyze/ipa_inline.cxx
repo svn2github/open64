@@ -69,6 +69,7 @@
 #include "ipa_nested_pu.h"
 #include "ipa_summary.h"
 #include "ipc_symtab_merge.h"		// IPC_GLOBAL_IDX_MAP
+#include "ir_reader.h"                  // fdump_tree
 #if 0
 #include "ipo_defs.h"			// IPA_NODE_CONTEXT
 #endif
@@ -93,10 +94,10 @@ static INT Real_Orig_Prog_Weight; // Orig_Prog_Weight - dead code
 static UINT32 non_aggr_callee_limit;
 static UINT32 Real_Orig_WN_Count; // Orig_Prog_Weight - dead code
 
-FILE *N_inlining;
-FILE *Y_inlining;
-FILE *e_weight;
-FILE *Verbose_inlining;
+FILE *N_inlining = NULL;
+FILE *Y_inlining = NULL;
+FILE *e_weight = NULL;
+FILE *Verbose_inlining = NULL;
 
 #define BASETYPE TY_mtype
 
@@ -1408,6 +1409,153 @@ formal_is_loop_index (IPA_NODE * caller_node, IPA_NODE * callee_node, IPA_EDGE *
 #endif // KEY
 
 /*-------------------------------------------------------------*/
+/* 
+   Check to see if this callee is a candidate for partial     
+   inlining.                                                 
+   There are different considerations for partial inlining, e.g.
+   1. When the callee is too large to inline the whole function,
+      consider to inline only part of it.
+   2. When certain paths in callee are particularly hot while
+      the others are cold, inline only the hot paths.
+   3. When callee has certain contructs (e.g. var args) that we 
+      cannot inline them, try to inline only part of the function
+      without these constraining constructs.
+   The current selection of partial inlining candidate is quite
+   limited, and the select heuristics are to be extended.
+   We are currently identifying candidates like
+  
+   foo() {
+     if (cond)     // This if clause to be partially inlined.
+       return;
+     ....
+  }
+*/
+/*-------------------------------------------------------------*/
+static BOOL
+found_partial_inlining_path(WN* wn, BOOL *cont_search, BOOL *has_if)
+{
+   int    i;
+   WN     *wn2 = NULL;
+   BOOL   rtn_val = FALSE;
+   if (!wn) {
+       return FALSE;
+   }
+
+   OPERATOR opr = WN_operator(wn);
+
+   if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+      fprintf (Y_inlining, "encountering opr %d\n", opr); 
+   }
+
+   /* For now, let's just find a simple pattern for partial inlining:
+      an IF-statement, with a RETURN on the then clause.
+      Skip for anything else.
+    */
+   switch (opr) {
+      case OPR_BLOCK:
+         wn2 = WN_first(wn);
+         while (wn2) {
+            rtn_val = found_partial_inlining_path(wn2, cont_search, has_if);
+            if(!(*cont_search))   return rtn_val; 
+            wn2 = WN_next(wn2);
+         }
+         return FALSE;
+
+      case OPR_IF:
+         wn2 = WN_else(wn);
+         *has_if = TRUE;
+         rtn_val = found_partial_inlining_path(wn2, cont_search, has_if);
+         /* If we find anything non-trivial in the else
+            clause, regardless what it is (even if rtn_val TRUE),
+            this is not a case that we are looking for now.
+            Return FALSE.
+          */
+         if(!(*cont_search))   return FALSE; 
+
+         wn2 = WN_then(wn);
+         rtn_val = found_partial_inlining_path(wn2, cont_search, has_if);
+         /* Stop searching. */
+         *cont_search = FALSE;
+         return rtn_val;
+
+      case OPR_RETURN:
+      case OPR_RETURN_VAL:
+         *cont_search = FALSE;
+         /* If the return is not embedded in an IF, not a pattern that
+            we are looking for.
+          */
+         if (*has_if)
+            return TRUE;
+         else
+            return FALSE;
+
+      case OPR_FUNC_ENTRY:  
+      case OPR_PRAGMA:  
+      case OPR_IDNAME:  
+         for (i = 0; i < WN_kid_count(wn); i++) {
+            wn2 = WN_kid(wn,i);
+            rtn_val = found_partial_inlining_path(wn2, cont_search, has_if);
+            if(!(*cont_search))   return rtn_val; 
+         }
+         return FALSE;
+
+      default:
+         (*cont_search) = FALSE;
+         return FALSE;
+   }
+
+   return FALSE;
+}
+
+/* The driver to identify whether a node is a partial inlining 
+   candidate. 
+   Whether a node is a partial inlining candidate should be a function
+   of the node (PU) itself, not a function of a call site (the call
+   edge). Consider to move this function a member function of IPA_NODE.
+ */
+BOOL
+Is_partial_inline_candidate(IPA_NODE *callee, BOOL prt_tree) 
+{
+    // Skip these cases until we better understand how to make partial
+    // inlining work with these cases.
+    if (!IPA_Enable_Partial_Inline ||
+        callee->Is_Clone_Candidate() ||
+        callee->Is_Quasi_Clone() ||
+        callee->PU_Can_Throw()
+       ) {
+       return FALSE;
+    }
+
+    // Since Whirl_Tree is unavailable at the analysis phase, we 
+    // are currently invoking this function at the optimize phase.
+    // In the long term, we may want to move this to the IPL phase.
+    WN* wn = callee->Whirl_Tree();
+
+    if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+       if (prt_tree) {
+          fdump_tree(Y_inlining, wn);
+       }
+
+       fprintf (Y_inlining, "Start checking func %s for partial inlining \n", 
+                callee->Name());
+    }
+
+    BOOL cont_search = TRUE;
+    BOOL has_if = FALSE;
+    BOOL result = found_partial_inlining_path(wn, &cont_search, &has_if);
+    if (result) {
+       if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+          fprintf (Y_inlining, "func %s detected as a partial inline candidate \n", 
+                   callee->Name());
+       }
+       callee->Set_Part_Inl_Candidate();
+       return TRUE;
+    }
+
+    return FALSE;
+}
+
+/*-------------------------------------------------------------*/
 /* check to see if we should be inlining                       */
 /*-------------------------------------------------------------*/
 static BOOL
@@ -1513,10 +1661,24 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	result = FALSE;
 	reason = "callee is recursive";
 	ed->Set_reason_id (6);
-    } else if (callee->Has_Varargs()) {
+    } else if (callee->Has_Varargs() && 
+               !IPA_Enable_Partial_Inline) {
+        /*
+             Because WNs have not been read to memory at this
+             stage, we cannot scan the body of the callee
+             to determine a partial inlining candidate as in
+               !Is_partial_inline_candidate(callee, TRUE) ) 
+             If we can (probably should) read WNs in before
+             starting analyzing for inlining candidates, we
+             will analyze PU body here. 
+         */
 	result = FALSE;
 	reason = "callee is varargs";
 	ed->Set_reason_id (7);
+
+        if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+	   fprintf (Y_inlining, "In do_inline(): finding a var args\n");
+        }
     } else if (callee->Summary_Proc()->Is_alt_entry() ||
 	       callee->Summary_Proc()->Has_alt_entry() || 
 	       caller->Summary_Proc()->Is_alt_entry()) {
@@ -1924,7 +2086,7 @@ void Perform_Inline_Analysis2( IPA_CALL_GRAPH* cg, MEM_POOL* pool )
   if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
     Verbose_inlining = fopen ("Verbose_inlining.log", "w");
     N_inlining = fopen ("N_inlining.log", "w");
-    Y_inlining = fopen ("Y_inlining.log", "w");
+    Y_inlining = fopen ("Y_inlining.log", "a+");
     e_weight = fopen ("callee_wght.log","w");
   }
 
@@ -1990,7 +2152,6 @@ void Perform_Inline_Analysis2( IPA_CALL_GRAPH* cg, MEM_POOL* pool )
 
   if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
     fclose(e_weight);
-    fclose(Y_inlining);
     fclose(N_inlining);
     fclose(Verbose_inlining);
   }
@@ -2007,7 +2168,7 @@ Perform_Inline_Analysis (IPA_CALL_GRAPH* cg, MEM_POOL* pool)
     if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
         Verbose_inlining = fopen ("Verbose_inlining.log", "w");
 	N_inlining = fopen ("N_inlining.log", "w");
-	Y_inlining = fopen ("Y_inlining.log", "w");
+	Y_inlining = fopen ("Y_inlining.log", "a+");
 	e_weight = fopen ("callee_wght.log","w");
     }
     Init_inline_parameters ();
@@ -2085,7 +2246,6 @@ Perform_Inline_Analysis (IPA_CALL_GRAPH* cg, MEM_POOL* pool)
 
     if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
         fclose(e_weight);
-        fclose(Y_inlining);
         fclose(N_inlining);
         fclose(Verbose_inlining);
     }

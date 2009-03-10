@@ -107,6 +107,7 @@ extern UINT32 IPA_Common_Pad_Size;      /* Amount by which to pad commons */
 extern BOOL IPA_Enable_Split_Common;    /* Enable split common inside IPA */
 extern BOOL IPA_Enable_Cloning;         /* Enable Cloning in conjunction
 					 * with constant propagation */
+extern BOOL IPA_Enable_Partial_Inline;  /* Enable partial inlining */ 
 					   
 extern BOOL IPA_Echo_Commands;		/* Echo back end command lines */
 extern BOOL IPA_Enable_Lang;            /* support inlining across language

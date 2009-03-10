@@ -140,6 +140,7 @@ extern WN_MAP Parent_Map;
 
 extern char * preopt_path;       // declared in ld/option.c
 extern int preopt_opened;        // declared in ld/option.c
+extern FILE *Y_inlining;         // declared in analyze/ipa_inline.cxx
 static BOOL have_open_input_file = FALSE;
 static FILE *fin;
 struct reg_feedback {
@@ -1082,7 +1083,6 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	MEM_POOL_Pop(&Recycle_mem_pool);   
     }
 #endif
-
 } // Perform_Transformation
 
 static void
@@ -2077,6 +2077,11 @@ IPO_main (IPA_CALL_GRAPH* cg)
     if ( INLINE_List_Actions ) {
         fprintf ( stderr, "Total number of edges = %d\n", IPA_Call_Graph->Edge_Size() );
     }
+
+  if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+    fclose(Y_inlining);
+  }
+
 } // IPO_main
 
 
