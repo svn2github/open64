@@ -369,7 +369,7 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 -LNO:%s		;		ALL	be	"-LNO:%s"
 	"option group to control loop nest optimization"
 -hugepage:%s	Process_Hugepage_Group(optargs);	ALL	be	""
-	"option group to control huge page, e.g., alloc=BDT,size=2M,limit=20:alloc=HEAP,limit=150"
+	"option group to control huge page, e.g., -hugepage:alloc=BDT,size=2M,limit=20:alloc=HEAP,limit=150"
 -hugepage	Process_Hugepage_Default();		ALL	be	""
 	"equivalent to -hugepage:alloc=heap,size=2M,limit=20"
 #ifndef KEY
