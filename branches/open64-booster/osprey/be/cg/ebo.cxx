@@ -208,6 +208,8 @@ EBO_OP_INFO *EBO_opinfo_table[EBO_MAX_OP_HASH];
 BOOL EBO_in_pre  = FALSE;
 BOOL EBO_in_before_unrolling = FALSE;
 BOOL EBO_in_after_unrolling = FALSE;
+LOOP_DESCR *EBO_loop = NULL;
+INT EBO_loop_size = 0;
 BOOL EBO_in_peep = FALSE;
 BOOL EBO_flow_safe = FALSE;
 BOOL EBO_doms_calculated = FALSE;
@@ -787,7 +789,7 @@ static void EBO_Start()
   EBO_tninfo_table = TN_MAP_Create();
 
 #ifdef TARG_X8664
-  if (!EBO_in_peep && !Are_Dominators_Calculated()) {
+  if (!EBO_in_peep && !EBO_in_after_unrolling && !Are_Dominators_Calculated()) {
     EBO_doms_calculated = TRUE;
     Calculate_Dominators();
   }
@@ -820,7 +822,7 @@ static void EBO_Finish(void)
 #endif
 
 #ifdef TARG_X8664
-  if (!EBO_in_peep && EBO_doms_calculated) {
+  if (!EBO_in_peep && !EBO_in_after_unrolling && EBO_doms_calculated) {
     EBO_doms_calculated = FALSE;
     Free_Dominators_Memory();
   }
@@ -1176,6 +1178,14 @@ find_duplicate_mem_op (BB *bb,
   EBO_TN_INFO *extend_lr_tninfo = NULL;
   EBO_REG_ENTRY reginfo;
 #endif
+
+  if (EBO_in_loop) {
+    if ((CG_LOOP_unroll_level == 2) && (Is_Multibb_Loop(EBO_loop))) {
+      // It is possible to have no loop info on the unrolled multi block loop
+      if (_CG_LOOP_info(op) == NULL)
+        return FALSE;
+    }
+  }
 
   if (op == NULL) return FALSE;
 
@@ -2201,9 +2211,20 @@ Find_BB_TNs (BB *bb)
 {
   OP *op;
   BOOL no_barriers_encountered = TRUE;
+  BOOL scalar_replacement_performed = FALSE;
 #ifdef KEY
   OP *op_with_reg_usage_info, *next_op_with_reg_usage_info;
   INT op_count = 0;
+#endif
+
+#ifdef TARG_X8664
+  if (EBO_in_loop) {
+    if ((CG_LOOP_unroll_level == 2) && (Is_Multibb_Loop(EBO_loop))) {
+      // Only process blocks in our loop
+      if (BB_SET_MemberP(LOOP_DESCR_bbset(EBO_loop),bb) == FALSE)
+        return no_barriers_encountered;
+    }
+  }
 #endif
 
   if (EBO_Trace_Execution) {
@@ -2799,6 +2820,16 @@ Find_BB_TNs (BB *bb)
       if( !op_replaced ){
 	op_replaced = EBO_Merge_Memory_Addr( op, opnd_tn, opnd_tninfo, orig_tninfo );
       }
+      if ( !op_replaced &&
+            (CG_LOOP_unroll_level == 2) &&
+            OP_load(op) &&
+            EBO_in_loop &&
+            BB_unrolled_fully(bb) &&
+            (EBO_loop != NULL)) {
+        op_replaced = EBO_Opt_Const_Array( op, EBO_loop, EBO_loop_size );
+        if (op_replaced)
+          scalar_replacement_performed = op_replaced;
+      }
 #endif
     } else if (OP_effectively_copy(op)) {
       if (!op_replaced &&
@@ -2905,6 +2936,15 @@ Find_BB_TNs (BB *bb)
 	op_replaced = EBO_Load_Execution( op, opnd_tn, orig_tninfo, cmp_merge_idx );
       }
 
+      if ( !op_replaced &&
+            (CG_LOOP_unroll_level == 2) &&
+            (OP_code(op) == TOP_leax32) &&
+            scalar_replacement_performed &&
+            EBO_in_loop &&
+            BB_unrolled_fully(bb) &&
+            (EBO_loop != NULL)) {
+        op_replaced = EBO_Fold_Lea_Const_Component( op );
+      }
       if( !op_replaced     &&
 	  !OP_effectively_copy(op) ){
 	op_replaced = EBO_Lea_Insertion( op, opnd_tn, orig_tninfo );
@@ -3669,7 +3709,18 @@ EBO_Process ( BB *first_bb )
     }
     if (!BB_visited(bb)) {
       EBO_Add_BB_to_EB (bb);
+#ifdef TARG_X8664
+      if (EBO_in_loop) {
+        if (CG_LOOP_unroll_level == 2) {
+          if (Is_Multibb_Loop(EBO_loop) == FALSE)
+            break;
+        } else {
+          break;
+        }
+      }
+#else
       if (EBO_in_loop) break;
+#endif
     }
   }
 #endif
@@ -3800,13 +3851,15 @@ EBO_before_unrolling(BB_REGION *bbr )
  * perform EBO optimizations after unrolling and pipelining
  */
 void
-EBO_after_unrolling(BB_REGION *bbr )
+EBO_after_unrolling(BB_REGION *bbr, LOOP_DESCR *loop, int loop_iter_size)
 {
   INT i;
 
   EBO_in_pre  = FALSE;
   EBO_in_before_unrolling = FALSE;
   EBO_in_after_unrolling = TRUE;
+  EBO_loop = loop;
+  EBO_loop_size = loop_iter_size;
   EBO_in_peep = FALSE;
 
 #ifdef KEY
@@ -3819,7 +3872,7 @@ EBO_after_unrolling(BB_REGION *bbr )
   EBO_in_loop = TRUE;
 
   if ((EBO_Opt_Level < 3) && ((EBO_Opt_Level > 0) || (EBO_Opt_Level != -3))) return;
- 
+
 #if defined(TARG_IA64) || defined(KEY)
   for (i = 0; i < bbr->entries.size(); i++) {
     clear_bb_flag (bbr->entries[i]);
@@ -3829,6 +3882,8 @@ EBO_after_unrolling(BB_REGION *bbr )
   }
   EBO_Process (bbr->entries[0]);
 #endif
+
+  EBO_loop = NULL;
 }
 
   

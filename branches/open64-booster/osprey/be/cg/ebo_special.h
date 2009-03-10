@@ -187,9 +187,14 @@ BOOL Special_Sequence (OP *op,
 void Redundancy_Elimination ();
 #endif
 #ifdef TARG_X8664
+
+class LOOP_DESCR;
+
 void Update_op_must_not_be_moved( OP*, EBO_TN_INFO** );
 BOOL EBO_Merge_Memory_Addr( OP*, TN**, EBO_TN_INFO**, EBO_TN_INFO** );
 BOOL EBO_Not_Load_Exec_Opnd( OP* );
+BOOL EBO_Fold_Lea_Const_Component( OP* );
+BOOL EBO_Opt_Const_Array( OP*, LOOP_DESCR*, INT );
 BOOL EBO_Load_Execution( OP*, TN**, EBO_TN_INFO**, int );
 BOOL EBO_Lea_Insertion( OP*, TN**, EBO_TN_INFO** );
 BOOL EBO_Fold_Load_Duplicate( OP*, TN**, EBO_TN_INFO** );

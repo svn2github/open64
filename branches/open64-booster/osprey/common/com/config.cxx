@@ -918,6 +918,8 @@ BOOL CG_memmove_nonconst = FALSE;	/* expand mem intrinsics unknown size */
 /***** Miscellaneous GOPT options *****/
 INT32 Opt_Level = DEF_OPT_LEVEL;
 INT32 OPT_unroll_times = 4;		/* but see Configure_Target() */
+INT32 OPT_unroll_level = 1;
+BOOL OPT_keep_extsyms = FALSE;
 BOOL OPT_unroll_times_overridden = FALSE;
 INT32 OPT_unroll_size = 40;		/* but see Configure_CG_Options() */
 BOOL OPT_unroll_size_overridden = FALSE;

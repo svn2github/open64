@@ -118,6 +118,7 @@
 #ifndef EBO_INCLUDED
 #define EBO_INCLUDED
 
+class LOOP_DESCR;
 
 void EBO_Init(void);
 
@@ -125,7 +126,7 @@ void EBO_Pre_Process_Region(RID *rid);
 
 void EBO_before_unrolling(BB_REGION *bbr);
 
-void EBO_after_unrolling(BB_REGION *bbr);
+void EBO_after_unrolling(BB_REGION *bbr, LOOP_DESCR *loop, INT loop_iter_size);
 
 void EBO_Process_Region(RID *rid);
 

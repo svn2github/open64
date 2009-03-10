@@ -708,6 +708,14 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, INT32_MAX, &OPT_unroll_times, &OPT_unroll_times_overridden,
     "Maximum number of times to unroll loops" },
 
+  { OVK_INT32,	OV_VISIBLE,	TRUE, "unroll_level",	"unroll_lev",
+    0, 1, 2, &OPT_unroll_level, &OPT_unroll_level,
+    "Aggressive level to unroll loops" },
+
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "keep_ext",	"keep_ext",
+    0, 0, 0, &OPT_keep_extsyms, &OPT_keep_extsyms,
+    "Preserve symbol info for externs under ipa" },
+
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "wn_simplify",		"wn_simp",
     0, 0, 0,	&Enable_WN_Simp, &Enable_WN_Simp_Set,
     "Enable simplifier" },

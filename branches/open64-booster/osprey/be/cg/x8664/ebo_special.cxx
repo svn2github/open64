@@ -108,6 +108,10 @@ static const char source_file[] = __FILE__;
 #include "stblock.h"
 #include "cxx_hash.h"
 #include "op.h"
+#ifdef TARG_X8664
+#include "opt_alias_interface.h"
+#include "opt_alias_mgr.h"
+#endif
 
 #include "ebo.h"
 #include "ebo_info.h"
@@ -117,10 +121,6 @@ static const char source_file[] = __FILE__;
 #include "dominate.h"
 
 #include "config_lno.h"
-
-#ifdef TARG_X8664
-#include "config_opt.h"
-#endif
 
 extern BOOL TN_live_out_of( TN*, BB* );
 
@@ -4679,6 +4679,250 @@ BOOL EBO_Not_Load_Exec_Opnd( OP* ld_op )
   const INT32 load_uses = hTN_MAP32_Get( _load_exec_map, 
                                          OP_result(ld_op,0) ) - 1;
   return ( load_uses > CG_load_execute );
+}
+
+
+// Attempt to fold a constant onto the index calcuation of an array
+BOOL EBO_Fold_Lea_Const_Component( OP* mem_op )
+{
+  OP *const_op, *pred_op;
+  BB *bb = OP_bb(mem_op);
+  ARC_LIST *arcs;
+  TN *lea_tnr;
+  int i;
+
+  // Identify the lea tns.
+  int base_loc = OP_find_opnd_use( mem_op, OU_base );
+  TN *base_tn = base_loc >= 0 ?  OP_opnd( mem_op, base_loc ) : NULL;
+  int index_loc = OP_find_opnd_use( mem_op, OU_index );
+  TN *index_tn = index_loc >= 0 ?  OP_opnd( mem_op, index_loc ) : NULL;
+  int scale_loc = OP_find_opnd_use( mem_op, OU_scale );
+  TN *scale_tn = scale_loc >= 0 ?  OP_opnd( mem_op, scale_loc ) : NULL;
+  int offset_loc = OP_find_opnd_use( mem_op, OU_offset );
+  TN *offset_tn = offset_loc >= 0 ?  OP_opnd( mem_op, offset_loc ) : NULL;
+
+  if ((base_tn == NULL) ||
+      (index_tn == NULL) ||
+      (scale_tn == NULL) ||
+      (offset_tn == NULL))
+    return FALSE;
+
+  if (!TN_is_constant(offset_tn)) return FALSE;
+  if (TN_value(offset_tn) != 0) return FALSE;
+  if (TN_size(index_tn) != 4) return FALSE;
+
+  // for this bb, obtain the dependence graph so that we can
+  // walk this mem_op's expression tree.
+  CG_DEP_Compute_Graph ( bb,
+                         INCLUDE_ASSIGNED_REG_DEPS,
+                         NON_CYCLIC,
+                         NO_MEMREAD_ARCS,
+                         NO_MEMIN_ARCS,
+                         NO_CONTROL_ARCS,
+                         NULL);
+
+  // locate the ldc32(const_op) and evaluate it
+  const_op = NULL;
+  for (arcs = OP_preds(mem_op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+    ARC *arc = ARC_LIST_first(arcs);
+    OP *pred_op = ARC_pred(arc);
+    if (OP_code(pred_op) == TOP_ldc32) {
+      TN *tnr = OP_result(pred_op, 0);
+      if (TN_is_register(tnr) && !TN_is_global_reg(tnr)) {
+        if (TN_register(tnr) == TN_register(base_tn)) {
+          const_op = pred_op;
+          break;
+        }
+      }
+    }
+  }
+
+  // If we fail to match any part of the expression, we are done
+  if (const_op == NULL) return FALSE;
+
+  // A non global ldc32 can have but 1 use to transform this expression.
+  int num_ldc_uses = 0;
+  for (arcs = OP_succs(const_op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+    ARC *arc = ARC_LIST_first(arcs);
+    if (ARC_kind(arc) != CG_DEP_REGIN) continue;
+    OP *succ_op = ARC_succ(arc);
+    for (i = 0; i < OP_opnds(succ_op); i++) {
+      if (OP_opnd(succ_op, i) == base_tn)
+        num_ldc_uses++;
+    }
+  }
+
+  // Nothing to do, the constant cannot be folded.
+  if (num_ldc_uses > 1) return FALSE;
+
+  // Now fold the constant from the ldc32 onto the lea as an offset field.
+  TN *const_tn = OP_opnd(const_op, 0);
+  lea_tnr = OP_result(mem_op, 0);
+  OP *new_op = Mk_OP(TOP_leaxx32, 
+                     lea_tnr, 
+                     index_tn,
+                     scale_tn,
+                     const_tn);
+  Set_OP_unrolling( new_op, OP_unrolling(mem_op) );
+  Set_OP_orig_idx( new_op, OP_map_idx(mem_op) );
+  Set_OP_unroll_bb( new_op, OP_unroll_bb(mem_op) );
+  OP_srcpos( new_op ) = OP_srcpos( mem_op );
+  BB_Insert_Op_After( bb, mem_op, new_op );
+  OP_Change_To_Noop( const_op );
+
+  CG_DEP_Delete_Graph (bb);
+
+  return TRUE;
+}
+
+
+// Attempt scalar replacement of const init array elements with ldc32 to
+// to register, this only within the interation.
+BOOL EBO_Opt_Const_Array( OP* mem_op,
+                          LOOP_DESCR* loop,
+                          INT loop_iter_size )
+{
+  LOOPINFO *info = loop->loopinfo;
+  WN *loop_info = LOOPINFO_wn(info);
+  WN *loop_indvar =  WN_loop_induction(loop_info);
+  WN *load_wn = Get_WN_From_Memory_OP(mem_op);
+  BB *bb = OP_bb(mem_op);
+  POINTS_TO *load_data;
+  BOOL ret_val = FALSE;
+  int value;
+  int unroll_iter = OP_unrolling(mem_op);
+
+  // For now only do up counting loops
+  if (WN_Loop_Up_Trip(loop_info) == FALSE)
+    return ret_val;
+
+  if ((loop_indvar == NULL) || (load_wn == NULL))
+    return ret_val;
+
+  if (Alias_Manager && Valid_alias(Alias_Manager, load_wn)) {
+    load_data = Points_to(Alias_Manager, load_wn);
+  } else {
+    return ret_val;
+  }
+
+  if (load_data && load_data->Base()) {
+    ST *load_sym = load_data->Base();
+
+    // we can only proceed when processing vars
+    if (ST_class(load_sym) != CLASS_VAR)
+      return ret_val;
+
+    // only handle some types of storage
+    switch (ST_sclass(load_sym)) {
+    case SCLASS_AUTO:
+    case SCLASS_PSTATIC:
+    case SCLASS_FSTATIC:
+    case SCLASS_EXTERN:
+      break;
+    default:
+      return ret_val;
+    }
+
+    TY_IDX sym_type = ST_type(load_sym);
+    if (TY_kind(sym_type) == KIND_ARRAY) {
+      TY_IDX ty_ele = TY_etype(sym_type);
+      if(TY_kind(ty_ele) == KIND_SCALAR) {
+        OPCODE opcode = WN_opcode(load_wn);
+        OPERATOR oper = OPCODE_operator(opcode); 
+
+        if ((oper == OPR_ILOAD) &&
+            (WN_operator(WN_kid0(load_wn)) == OPR_LDID)) {
+          WN *index_var = WN_kid0(load_wn);
+          char *index_name = ST_name(WN_st(index_var));
+          char *indvar_name = ST_name(WN_st(loop_indvar));
+          if (index_name == indvar_name) {
+            int element_size = TY_mtype (ty_ele);
+            // See if we have a const array or not, if so
+            // and since our index is the loop induction var, we can 
+            // try to obtain the initialized data to attempt
+            // an unrolled replacement of the data items as immediates
+            // via ldc32 moves instead of via memory.
+            if ((TY_is_const(ty_ele)) && 
+                (TY_AR_ndims(sym_type) == 1) &&
+                (element_size == 4)) {
+              int array_size = TY_size(sym_type);
+              // Because of this constraint, we do not need to examine
+              // the initial value of the induction variable, but 
+              // we can only do this on up counted loops.
+              if ((array_size / element_size) == loop_iter_size) {
+                TCON *init_array = new TCON[loop_iter_size];
+                INITO_IDX inito = Find_INITO_For_Symbol(load_sym);
+                INITO ino = Inito_Table[inito];
+                INITV_IDX idx;
+                INT32 i,j;
+                BOOL no_val = FALSE;
+
+                // fetch the contents of the initalized const array.
+                if (INITO_val(ino) != (INITO_IDX) NULL) {
+                  FOREACH_INITV (INITO_val(ino), idx) {
+                    INITV_IDX ninv;
+                    INITV inv = Initv_Table[idx];
+                    j = 0;
+                    if (INITV_kind(inv) != INITVKIND_BLOCK) continue;
+                    for (i = 0; i < INITV_repeat1(inv); i++) {
+                      for (ninv = INITV_blk(inv); ninv; 
+                           ninv = INITV_next(ninv)) {
+                        INITV inv_ele = Initv_Table[ninv];
+                        TCON tcon;
+                        switch ( INITV_kind(inv_ele) ) {
+                        case INITVKIND_ZERO:
+                          tcon = Host_To_Targ (INITV_mtype (inv_ele), 0);
+                          break;
+                        case INITVKIND_ONE:
+                          tcon = Host_To_Targ (INITV_mtype (inv_ele), 1);
+                          break;
+                        case INITVKIND_VAL:
+                          tcon = INITV_tc_val(inv_ele);
+                          break;
+                        default:
+                          no_val = TRUE;
+                        }
+                        init_array[j++] = tcon;
+                      }
+                    }
+                  }
+                }
+
+                // If we ever trip over an element we cannot dereference, we 
+                // fail.
+                if (no_val)
+                  return ret_val;
+
+                // Now begin processing the scalar replacement candidate
+                value = TCON_ival(init_array[unroll_iter]);
+                if (ISA_LC_Value_In_Class( value, LC_simm32 )) {
+                  TN *tnr = NULL;
+                  OP *new_op;
+                  // There will only be the 1 result on this load anyways.
+                  for (i = 0; i < OP_results(mem_op); i++) {
+                    tnr = OP_result(mem_op, i);
+                  }
+                  // This step happens before register allocation
+                  if (tnr) {
+                    new_op = Mk_OP(TOP_ldc32, tnr, Gen_Literal_TN(value, 4));
+                    Set_OP_unrolling( new_op, OP_unrolling(mem_op) );
+                    Set_OP_orig_idx( new_op, OP_map_idx(mem_op) );
+                    Set_OP_unroll_bb( new_op, OP_unroll_bb(mem_op) );
+                    OP_srcpos( new_op ) = OP_srcpos( mem_op );
+                    BB_Insert_Op_After( bb, mem_op, new_op );
+                    ret_val = TRUE;
+                  }
+                } 
+                delete init_array;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return ret_val;
 }
 
 

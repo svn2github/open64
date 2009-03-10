@@ -12449,6 +12449,26 @@ static WN *lower_do_loop(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 #ifdef TARG_X8664
   loop_info_stack[current_loop_nest_depth--] = NULL;
+
+  // Evaluate and mark loop direction
+  if (WN_start(tree) != NULL) {
+    WN *init_exp = WN_start(tree);
+    if ( WN_operator(init_exp) == OPR_STID ) {
+      if (WN_kid(init_exp,0) != NULL) {
+        WN *store_val = WN_kid(init_exp,0);
+        if ( WN_operator(store_val) == OPR_INTCONST ) {
+          if (loop_info != NULL) {
+            int trip_est = WN_loop_trip_est(loop_info);
+            int init_val = WN_const_val(store_val);
+            // annotate a up counting loop
+            if (init_val < trip_est) {
+              WN_Set_Loop_Up_Trip(loop_info);
+            }
+          }
+        }
+      }
+    }
+  }
 #endif
 
   --loop_nest_depth;

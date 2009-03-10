@@ -946,6 +946,7 @@ Print_LOOPINFO(LOOPINFO *info)
   if (WN_Loop_Unimportant_Misc(loop_info)) fprintf(TFile, "UNIMPORTANT_MISC ");
   if (WN_Loop_Nz_Trip(loop_info)) fprintf(TFile, "NZ_TRIP ");
   if (WN_Loop_Symb_Trip(loop_info)) fprintf(TFile, "SYMB_TRIP ");
+  if (WN_Loop_Up_Trip(loop_info)) fprintf(TFile, "UP_TRIP ");
   fprintf(TFile, "\n");
   if (LOOPINFO_trip_count_tn(info)) {
     fprintf(TFile, "    trip count TN = ");

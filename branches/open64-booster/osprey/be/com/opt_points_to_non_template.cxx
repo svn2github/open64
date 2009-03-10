@@ -465,6 +465,18 @@ Expand_ST_into_base_and_ofst(ST *st, INT64 st_ofst, ST **base, INT64 *ofst)
 	ST_class(ST_base(tmpbase)) == CLASS_BLOCK)
       break;
 
+#ifdef TARG_X8664
+    // Allow extern syms which are about to flattened into a section
+    // to retain symbolic/type information.
+    if ((OPT_keep_extsyms) &&
+        ST_sclass(tmpbase) == SCLASS_EXTERN &&
+	ST_class(ST_base(tmpbase)) == CLASS_BLOCK) {
+      // Excluding C++.
+      if (PU_src_lang(Get_Current_PU()) != PU_CXX_LANG)
+        break;
+    }
+#endif
+
     // several places in wopt assumed that ST_sclass(st) == ST_sclass(ST_base(st))
     // and it is not always true.  
     if (ST_sclass(tmpbase) == SCLASS_FORMAL &&

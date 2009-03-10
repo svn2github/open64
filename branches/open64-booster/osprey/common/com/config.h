@@ -578,6 +578,8 @@ extern BOOL GCM_Eager_Null_Ptr_Deref_Set; /* ... option seen? */
 #define DEF_OPT_LEVEL	1
 extern INT32 Opt_Level;		/* -On level */
 extern INT32 OPT_unroll_times;
+extern INT32 OPT_unroll_level;
+extern BOOL OPT_keep_extsyms;
 extern BOOL OPT_unroll_times_overridden;
 extern INT32 OPT_unroll_size;
 extern BOOL OPT_unroll_size_overridden;

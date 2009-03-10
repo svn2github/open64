@@ -184,6 +184,8 @@ BOOL CFLOW_Trace_Dom;
 BOOL CFLOW_Trace_Empty_BB_Elim;
 #endif
 
+extern UINT32 CG_LOOP_unroll_level;
+
 /* We need to keep some auxilary information for each BB for the various
  * optimizations we perform. The following BB_MAP provides the mechanism
  * to access the info.
@@ -5369,6 +5371,11 @@ Weight_Succ_Chains(BB_MAP chain_map, BBCHAIN *chain)
       BB *succ = BBINFO_succ_bb(bb, i);
       BBCHAIN *succ_chain = BB_Chain(chain_map, succ);
       succ_chain->weight += bb_freq * BBINFO_succ_prob(bb, i);
+      // keep loops with flow that are unrolled together
+      if (CG_LOOP_unroll_level == 2) {
+        if (BB_unrolled_fully(bb))
+          succ_chain->weight = 1.0;
+      }
     }
   } while (bb = BB_next(bb));
 }
@@ -6140,10 +6147,17 @@ Grow_Chains(BBCHAIN *chains, EDGE *edges, INT n_edges, BB_MAP chain_map)
     }
 #endif
 
+    // keep loops with flow that are unrolled together
+    BOOL can_combine = TRUE;
+    if (CG_LOOP_unroll_level == 2) {
+      can_combine = (BB_unrolled_fully(succ) == FALSE);
+    }
+
     /* If this edge connects the tail of one chain to the head of
      * another, then combine the chains.
      */
-    if (pchain != schain && pchain->tail == pred && schain->head == succ) {
+    if ((can_combine) &&
+        (pchain != schain && pchain->tail == pred && schain->head == succ)) {
       INT j;
       INT nsuccs;
       BB *bb;

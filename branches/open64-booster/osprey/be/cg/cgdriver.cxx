@@ -459,7 +459,7 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,	&CG_skip_local_swp, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_ebo", "",
     0, 0, 0,	&CG_skip_local_ebo, NULL },
-  { OVK_BOOL,	OV_INTERNAL, TRUE, "cmp_peep", "",
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "cmp_peep", "",
     0, 0, 0,	&CG_cmp_load_exec, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_sched", "",
     0, 0, 0,	&CG_skip_local_sched, NULL },
@@ -657,6 +657,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CG_LOOP_unroll_fully, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_remainder_fully", "unroll_remainder_full",
     0, 0, 0, &CG_LOOP_unroll_remainder_fully, NULL },
+  { OVK_BOOL,	OV_VISIBLE, TRUE,"unroll_fb_req", "",
+    0, 0, 0, &CG_LOOP_unroll_fb_required, NULL },
 
   // Cross Iteration Loop Optimization options.
 
@@ -668,7 +670,7 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CIO_enable_write_removal, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "cio_cse_removal", "",
     0, 0, 0, &CIO_enable_cse_removal, NULL },
-  { OVK_INT32,	OV_INTERNAL, TRUE, "cio_rw_max_omega", "",
+  { OVK_INT32, OV_INTERNAL, TRUE, "cio_rw_max_omega", "",
     8, 0, INT32_MAX, &CIO_rw_max_omega, NULL },
 
   // Control flow optimizations (CFLOW) options.
@@ -1934,6 +1936,7 @@ Configure_CG_Options(void)
   }
   CG_LOOP_unroll_times_max = OPT_unroll_times;
   CG_LOOP_unrolled_size_max = OPT_unroll_size;
+  CG_LOOP_unroll_level = OPT_unroll_level;
 
   CG_LOOP_ooo_unroll_heuristics = PROC_is_out_of_order();
 
