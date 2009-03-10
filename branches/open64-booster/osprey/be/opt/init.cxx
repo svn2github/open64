@@ -80,6 +80,7 @@ extern WN* (*Perform_Global_Optimization_p) (WN *, WN *, ALIAS_MANAGER *);
 
 // from be/opt/optimizer.h
 extern WN* (*Pre_Optimizer_p) (INT32, WN*, DU_MANAGER*, ALIAS_MANAGER*);
+extern void (*choose_from_complete_struct_for_relayout_candidates_p)();
 extern DU_MANAGER* (*Create_Du_Manager_p) (MEM_POOL *);
 extern void (*Delete_Du_Manager_p) (DU_MANAGER *, MEM_POOL *);
 
@@ -113,6 +114,7 @@ struct WOPT_INIT
 	Perform_Global_Optimization_p = Perform_Global_Optimization;
 
 	Pre_Optimizer_p = Pre_Optimizer;
+ choose_from_complete_struct_for_relayout_candidates_p = choose_from_complete_struct_for_relayout_candidates;
 	Create_Du_Manager_p = Create_Du_Manager;
 	Delete_Du_Manager_p = Delete_Du_Manager;
 

@@ -37,6 +37,8 @@
 #include "ipa_cg.h"
 #include "ipo_parent.h"
 #include "ipa_struct_opt.h"
+#include "tracing.h"
+#include "ipa_option.h" // Trace_IPA
 
 // ======================================================================
 // Implements a form of structure splitting.
@@ -924,6 +926,675 @@ WN * traverse_wn_tree (WN * block, WN * grandparent, WN * parent, WN * wn, INT k
   return wn;
 }
 
+static int global_ptrs_for_complete_struct_relayout_created = 0;
+static int complete_struct_relayout_size = 0;
+static int orig_complete_struct_relayout_size = 0;
+static TY_IDX ptr_to_gptr_ty_idx
+  [MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT+1];
+static ST *gptr_st[MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT+1];
+static int field_offset_in_complete_struct_relayout
+  [MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT+1];
+static int num_fields_in_complete_struct_relayout = 0;
+static int continue_with_complete_struct_relayout = 1;
+static int encountered_calloc_for_complete_struct_relayout = 0;
+
+// Create the global pointers gptr[0..num_fields_in_complete_struct_relayout]
+// for the structure that will be completely relayed-out.  There is no harm in
+// creating these pointers even if we decide not to invoke the optimization
+// later (most likely due to legality).  At the same time, save the ty_idx's for// the members of complete_struct_relayout also.
+static void create_global_ptrs_for_complete_struct_relayout(void)
+{
+  global_ptrs_for_complete_struct_relayout_created = 1;
+  complete_struct_relayout_size = TY_size(complete_struct_relayout_type_id <<
+    8);
+  orig_complete_struct_relayout_size = complete_struct_relayout_size;
+  if (complete_struct_relayout_size > 48 && complete_struct_relayout_size < 64)
+    complete_struct_relayout_size = 64; // close enough to pad to improve
+      // performance
+  if (complete_struct_relayout_size > 96 && complete_struct_relayout_size < 128)
+    complete_struct_relayout_size = 128; // close enough to pad to improve
+      // performance
+
+  // gptr[0] is a special "base" pointer; it points to the original calloc-ed
+  // memory and has the type (complete_struct_relayout *)
+  ptr_to_gptr_ty_idx[0] = Make_Pointer_Type(complete_struct_relayout_type_id <<
+    8);
+  gptr_st[0] = New_ST(GLOBAL_SYMTAB);
+  ST_Init(gptr_st[0], Save_Str2i("g", "ptr", 0), CLASS_VAR, SCLASS_COMMON,
+    EXPORT_INTERNAL, ptr_to_gptr_ty_idx[0]);
+
+  // gptr[1..num_fields_in_complete_struct_relayout] points to the beginning of
+  // each relayed-out array; it has the type (field_i_type *)
+  int i = 1;
+  FLD_ITER field_iter = Make_fld_iter(TY_fld(complete_struct_relayout_type_id
+    << 8));
+  do
+  {
+    FLD_HANDLE field_handle(field_iter);
+    ptr_to_gptr_ty_idx[i] = Make_Pointer_Type(FLD_type(field_handle));
+    gptr_st[i] = New_ST(GLOBAL_SYMTAB);
+    ST_Init(gptr_st[i], Save_Str2i("g", "ptr", i), CLASS_VAR, SCLASS_COMMON,
+      EXPORT_INTERNAL, ptr_to_gptr_ty_idx[i]);
+    field_offset_in_complete_struct_relayout[i] = FLD_ofst(field_handle);
+    i++;
+  } while (!FLD_last_field(field_iter++));
+  num_fields_in_complete_struct_relayout = i-1;
+
+  // these pointers are not initialized here; that will be done when memory is
+  // allocated for the entire complete_struct_relayout
+  return;
+}
+
+// Does the input wn contain the type complete_struct_relayout?
+static BOOL expr_contains_complete_struct_relayout(WN *wn)
+{
+  int child_num;
+  WN *child_wn;
+  TY_IDX child_ty_idx;
+  int i;
+
+  if (wn == NULL)
+    return FALSE;
+  if (WN_operator(wn) != OPR_ADD && WN_operator(wn) != OPR_SUB)
+    return FALSE; // we are only interested in ptr +/- n, where ptr points to
+      // complete_struct_relayout
+  for (child_num = 0; child_num < WN_kid_count(wn); child_num++)
+  {
+    child_wn = WN_kid(wn, child_num);
+    if (child_wn != NULL)
+    {
+      child_ty_idx = WN_ty(child_wn);
+      if (child_ty_idx != 0 &&
+          (TY_IDX_index(child_ty_idx) == complete_struct_relayout_type_id ||
+           TY_IDX_index(child_ty_idx) ==
+             another_complete_struct_relayout_type_id) ||
+          (TY_kind(child_ty_idx) == KIND_POINTER &&
+           (TY_IDX_index(TY_pointed(child_ty_idx)) ==
+              complete_struct_relayout_type_id ||
+            TY_IDX_index(TY_pointed(child_ty_idx)) ==
+              another_complete_struct_relayout_type_id)))
+        return TRUE;
+      if (child_ty_idx != 0 && TY_kind(child_ty_idx) == KIND_STRUCT &&
+          WN_operator(child_wn) == OPR_ILOAD)
+      {
+        int field_id = WN_field_id(child_wn);
+        for (i = 0; i <
+             num_structs_with_field_pointing_to_complete_struct_relayout; i++)
+        {
+          if (struct_with_field_pointing_to_complete_struct_relayout_type_id[i]
+                == TY_IDX_index(child_ty_idx) &&
+              struct_with_field_pointing_to_complete_struct_relayout_field_num
+                [i] == field_id)
+          return TRUE;
+        }
+      }
+      if (WN_operator(child_wn) == OPR_ADD || WN_operator(child_wn) == OPR_SUB)
+        if (expr_contains_complete_struct_relayout(child_wn) == TRUE)
+          return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+// First pass:  is it legal (safe) to do complete_struct_relayout?  (Read the
+// code in traverse_wn_tree_for_complete_struct_relayout to understand this
+// function.)
+static WN *traverse_wn_tree_for_complete_struct_relayout_legality(WN *block_wn,
+  WN *grandparent_wn, WN *parent_wn, WN *wn, INT child_num)
+{
+  if (wn == NULL || continue_with_complete_struct_relayout == 0)
+    return NULL;
+
+  if (!OPCODE_is_leaf(WN_opcode(wn)))
+  {
+    if (WN_opcode(wn) == OPC_BLOCK)
+    {
+      WN *child_wn = WN_first(wn);
+      while (child_wn != NULL)
+      {
+        WN *new_block_wn = WN_CreateBlock();
+        child_wn = traverse_wn_tree_for_complete_struct_relayout_legality
+          (new_block_wn, parent_wn, wn, child_wn, 0);
+        if (continue_with_complete_struct_relayout == 0)
+          return wn;
+        if (WN_last(new_block_wn) != NULL)
+        {
+          // something was added to new_block_wn
+          continue_with_complete_struct_relayout = 0;
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> complete_struct_relayout disable -1\n");
+          return wn;
+        }
+        child_wn = WN_next(child_wn);
+      }
+    }
+    else
+    {
+      INT child_num;
+      WN *child_wn;
+      for (child_num = 0; child_num < WN_kid_count(wn); child_num++)
+      {
+        child_wn = WN_kid(wn, child_num);
+        if (child_wn != NULL)
+        {
+          traverse_wn_tree_for_complete_struct_relayout_legality(block_wn,
+            parent_wn, wn, child_wn, child_num);
+          if (continue_with_complete_struct_relayout == 0)
+            return wn;
+        }
+      }
+    }
+  }
+
+  switch (WN_operator(wn))
+  {
+    case OPR_INTCONST:
+      if (complete_struct_relayout_size != orig_complete_struct_relayout_size)
+      {
+        if (WN_const_val(wn) == orig_complete_struct_relayout_size)
+        {
+          if (parent_wn != NULL &&
+              (WN_operator(parent_wn) == OPR_ADD ||
+               WN_operator(parent_wn) == OPR_SUB))
+          {
+            if (expr_contains_complete_struct_relayout(parent_wn))
+            {
+              break;
+            }
+          }
+          if (parent_wn != NULL && WN_operator(parent_wn) == OPR_MPY)
+          {
+            if (grandparent_wn != NULL &&
+                (WN_operator(grandparent_wn) == OPR_ADD ||
+                 WN_operator(grandparent_wn) == OPR_SUB))
+            {
+              if (expr_contains_complete_struct_relayout(grandparent_wn))
+              {
+                break;
+              }
+            }
+          }
+          if (parent_wn != NULL && WN_operator(parent_wn) == OPR_PARM)
+          {
+            if (grandparent_wn != NULL &&
+                WN_operator(grandparent_wn) == OPR_CALL &&
+                strcmp(ST_name(WN_st(grandparent_wn)), "calloc") == 0)
+              break;
+          }
+
+          // the following may be too conservative; perhaps we should just let
+          // the rest escape unchanged?
+          continue_with_complete_struct_relayout = 0;
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> complete_struct_relayout disable 0\n");
+          return wn;
+        }
+      }
+      break;
+
+    case OPR_LDID:
+    case OPR_STID:
+      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id ||
+          TY_IDX_index(WN_ty(wn)) == another_complete_struct_relayout_type_id)
+      {
+        continue_with_complete_struct_relayout = 0;
+        if (Get_Trace(TP_IPA, 1))
+          fprintf(TFile, "ipo -> complete_struct_relayout disable 1 2\n");
+        return wn;
+      }
+      break;
+
+    case OPR_ILOAD:
+      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id ||
+          TY_IDX_index(WN_ty(wn)) == another_complete_struct_relayout_type_id)
+      {
+        if (WN_operator(WN_kid0(wn)) == OPR_LDID &&
+            (TY_kind(WN_ty(WN_kid0(wn))) != KIND_POINTER ||
+             TY_pointed(WN_ty(WN_kid0(wn))) != WN_ty(wn)))
+        {
+          continue_with_complete_struct_relayout = 0;
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> complete_struct_relayout disable 3\n");
+          return wn;
+        }
+      }
+      break;
+
+    case OPR_ISTORE:
+      if (TY_kind(WN_ty(wn)) == KIND_POINTER &&
+          (TY_IDX_index(TY_pointed(WN_ty(wn))) ==
+             complete_struct_relayout_type_id ||
+           TY_IDX_index(TY_pointed(WN_ty(wn))) ==
+             another_complete_struct_relayout_type_id))
+      {
+        if (WN_operator(WN_kid1(wn)) == OPR_LDID &&
+            WN_ty(WN_kid1(wn)) != WN_ty(wn))
+        {
+          continue_with_complete_struct_relayout = 0;
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> complete_struct_relayout disable 4\n");
+          return wn;
+        }
+      }
+      break;
+
+    case OPR_CALL:
+      if (strcmp(ST_name(WN_st(wn)), "malloc") == 0 ||
+          strcmp(ST_name(WN_st(wn)), "realloc") == 0)
+      {
+        if (WN_operator(WN_next(wn)) != OPR_STID ||
+            WN_operator(WN_kid0(WN_next(wn))) != OPR_LDID)
+          return wn;
+
+        TY_IDX ty_idx = WN_ty(WN_next(wn));
+        if (TY_kind(ty_idx) == KIND_POINTER &&
+            (TY_IDX_index(TY_pointed(ty_idx)) ==
+               complete_struct_relayout_type_id ||
+             TY_IDX_index(TY_pointed(ty_idx)) ==
+               another_complete_struct_relayout_type_id))
+        {
+          continue_with_complete_struct_relayout = 0;
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> complete_struct_relayout disable 5\n");
+          return wn;
+        }
+      }
+      if (strcmp(ST_name(WN_st(wn)), "calloc") == 0 && WN_kid_count(wn) == 2)
+      {
+        if (WN_operator(WN_next(wn)) != OPR_STID ||
+            WN_operator(WN_kid0(WN_next(wn))) != OPR_LDID)
+          return wn;
+
+        TY_IDX ptr_to_struct_ty_idx = WN_ty(WN_kid0(WN_next(wn)));
+        if (WN_ty(WN_next(wn)) != ptr_to_struct_ty_idx ||
+            TY_kind(ptr_to_struct_ty_idx) != KIND_POINTER ||
+            (TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
+               complete_struct_relayout_type_id &&
+             TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
+               another_complete_struct_relayout_type_id))
+          return wn;
+
+        WN *arg0_wn = WN_kid0(WN_kid0(wn));
+        WN *arg1_wn = WN_kid0(WN_kid1(wn));
+        if (WN_operator(arg0_wn) == OPR_INTCONST &&
+            WN_const_val(arg0_wn) == orig_complete_struct_relayout_size)
+        {
+        }
+        else if (WN_operator(arg1_wn) == OPR_INTCONST &&
+                 WN_const_val(arg1_wn) == orig_complete_struct_relayout_size)
+        {
+        }
+        else
+        {
+          continue_with_complete_struct_relayout = 0;
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> complete_struct_relayout disable 6\n");
+          return wn;
+        }
+
+        encountered_calloc_for_complete_struct_relayout = 1;
+        wn = WN_next(wn);
+        if (TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
+            TY_IDX_index(TY_pointed(ptr_to_gptr_ty_idx[0])))
+        {
+          continue_with_complete_struct_relayout = 0;
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> complete_struct_relayout disable 7\n");
+          return wn;
+        }
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  return wn;
+}
+
+// Second pass:  we already know that it is legal (safe) to do
+// complete_struct_relayout; now perform the optimization.
+static WN *traverse_wn_tree_for_complete_struct_relayout(WN *block_wn,
+  WN *grandparent_wn, WN *parent_wn, WN *wn, INT child_num)
+{
+  if (wn == NULL)
+    return NULL;
+
+  if (!OPCODE_is_leaf(WN_opcode(wn)))
+  {
+    if (WN_opcode(wn) == OPC_BLOCK)
+    {
+      WN *child_wn = WN_first(wn);
+      while (child_wn != NULL)
+      {
+        WN *new_block_wn = WN_CreateBlock();
+        child_wn = traverse_wn_tree_for_complete_struct_relayout(new_block_wn,
+          parent_wn, wn, child_wn, 0);
+        if (WN_last(new_block_wn) != NULL)
+        {
+          // something was added to new_block_wn
+          WN *save_child_wn = child_wn;
+          child_wn = WN_last(new_block_wn);
+          WN_INSERT_BlockAfter(wn, save_child_wn, new_block_wn);
+        }
+        child_wn = WN_next(child_wn);
+      }
+    }
+    else
+    {
+      INT child_num;
+      WN *child_wn;
+      for (child_num = 0; child_num < WN_kid_count(wn); child_num++)
+      {
+        child_wn = WN_kid(wn, child_num);
+        if (child_wn != NULL)
+          traverse_wn_tree_for_complete_struct_relayout(block_wn, parent_wn, wn,
+            child_wn, child_num);
+      }
+    }
+  }
+
+  // nodes that are of interest
+  switch (WN_operator(wn))
+  {
+    case OPR_INTCONST:
+      if (complete_struct_relayout_size != orig_complete_struct_relayout_size)
+      {
+        // We need to change all the occurrences of the original size of our
+        // complete_struct_relayout to the new size.  This is because the front
+        // end has already replaced all sizeof(complete_struct_relayout) by its
+        // constant, even before the ipl phase.
+        if (WN_const_val(wn) == orig_complete_struct_relayout_size)
+        {
+          // examine all such constants, but need to replace only those
+          // implicitly generated by the compiler in cases such as node[i] or
+          // node++, where node is a pointer to our complete_struct_relayout;
+          // all other occurrences, even those that are
+          // sizeof(complete_struct_relayout), should remain as they are to
+          // match the user's expectation
+          if (parent_wn != NULL &&
+              (WN_operator(parent_wn) == OPR_ADD ||
+               WN_operator(parent_wn) == OPR_SUB))
+          {
+            if (expr_contains_complete_struct_relayout(parent_wn))
+            {
+              WN_const_val(wn) = complete_struct_relayout_size;
+              break;
+            }
+          }
+          if (parent_wn != NULL && WN_operator(parent_wn) == OPR_MPY)
+          {
+            if (grandparent_wn != NULL &&
+                (WN_operator(grandparent_wn) == OPR_ADD ||
+                 WN_operator(grandparent_wn) == OPR_SUB))
+            {
+              if (expr_contains_complete_struct_relayout(grandparent_wn))
+              {
+                WN_const_val(wn) = complete_struct_relayout_size;
+                break;
+              }
+            }
+          }
+          if (parent_wn != NULL && WN_operator(parent_wn) == OPR_PARM)
+          {
+            if (grandparent_wn != NULL &&
+                WN_operator(grandparent_wn) == OPR_CALL &&
+                strcmp(ST_name(WN_st(grandparent_wn)), "calloc") == 0)
+              break; // the calloc code below will take care of this case
+          }
+
+          // the following may be too conservative; perhaps we should just let
+          // the rest escape unchanged?
+          // fprintf(stderr, "disable0\n"); legality taken care of
+          return wn;
+        }
+      }
+      break;
+
+    case OPR_ILOAD:
+      // Look for a load from our complete_struct_relayout.  Need to change
+      // "= ptr->field_i" into
+      // "= gptr_i[(ptr-gptr_0)/sizeof(complete_struct_relayout)]"
+      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id ||
+          TY_IDX_index(WN_ty(wn)) == another_complete_struct_relayout_type_id)
+      {
+        TYPE_ID desc;
+        WN *ldid_ptr_wn;
+        WN *ldid_gptr0_wn;
+        WN *sub_wn;
+        WN *complete_struct_size_wn;
+        WN *div_wn;
+        WN *field_size_wn;
+        WN *mult_wn;
+        WN *ldid_gptri_wn;
+        WN *add_wn;
+        int index_offset;
+
+        if (WN_operator(WN_kid0(wn)) == OPR_LDID &&
+            (TY_kind(WN_ty(WN_kid0(wn))) != KIND_POINTER ||
+             TY_pointed(WN_ty(WN_kid0(wn))) != WN_ty(wn)))
+        {
+          // fprintf(stderr, "disable3\n"); legailty taken care of
+          return wn;
+        }
+        desc = TY_mtype(ptr_to_gptr_ty_idx[0]); // pointer mtype
+        ldid_ptr_wn = WN_COPY_Tree(WN_kid0(wn));
+        ldid_gptr0_wn = WN_Ldid(desc, 0, gptr_st[0], ptr_to_gptr_ty_idx[0]);
+        sub_wn = WN_CreateExp2(OPCODE_make_op(OPR_SUB, desc, MTYPE_V),
+          ldid_ptr_wn, ldid_gptr0_wn);
+        complete_struct_size_wn = WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST,
+          MTYPE_U4, MTYPE_V), (INT)complete_struct_relayout_size);
+        div_wn = WN_CreateExp2(OPCODE_make_op(OPR_DIV, MTYPE_U4, MTYPE_V),
+          sub_wn, complete_struct_size_wn);
+        field_size_wn = WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST, MTYPE_U4,
+          MTYPE_V), (INT)TY_size(TY_pointed(ptr_to_gptr_ty_idx[WN_field_id
+          (wn)])));
+        mult_wn = WN_CreateExp2(OPCODE_make_op(OPR_MPY, MTYPE_U4, MTYPE_V),
+          div_wn, field_size_wn);
+        ldid_gptri_wn = WN_Ldid(desc, 0, gptr_st[WN_field_id(wn)],
+          ptr_to_gptr_ty_idx[WN_field_id(wn)]);
+        add_wn = WN_CreateExp2(OPCODE_make_op(OPR_ADD, desc, MTYPE_V),
+          ldid_gptri_wn, mult_wn);
+        WN_kid0(wn) = add_wn;
+        WN_set_ty(wn, TY_pointed(ptr_to_gptr_ty_idx[WN_field_id(wn)]));
+        WN_set_load_addr_ty(wn, ptr_to_gptr_ty_idx[WN_field_id(wn)]);
+        index_offset = (WN_offset(wn) -
+          field_offset_in_complete_struct_relayout[WN_field_id(wn)]) /
+          orig_complete_struct_relayout_size; // positive or negative
+        WN_offset(wn) = index_offset * TY_size(TY_pointed(ptr_to_gptr_ty_idx
+          [WN_field_id(wn)]));
+        WN_set_field_id(wn, 0);
+      }
+      break;
+
+    case OPR_ISTORE:
+      // Look for an assignment into our complete_struct_relayout.  Need to
+      // change "ptr->field_i = ..." into
+      // "gptr_i[(ptr-gptr_0)/sizeof(complete_struct_relayout)] = ..."
+      if (TY_kind(WN_ty(wn)) == KIND_POINTER &&
+          (TY_IDX_index(TY_pointed(WN_ty(wn))) ==
+             complete_struct_relayout_type_id ||
+           TY_IDX_index(TY_pointed(WN_ty(wn))) ==
+             another_complete_struct_relayout_type_id))
+      {
+        TYPE_ID desc;
+        WN *ldid_ptr_wn;
+        WN *ldid_gptr0_wn;
+        WN *sub_wn;
+        WN *complete_struct_size_wn;
+        WN *div_wn;
+        WN *field_size_wn;
+        WN *mult_wn;
+        WN *ldid_gptri_wn;
+        WN *add_wn;
+        int index_offset;
+
+        if (WN_operator(WN_kid1(wn)) == OPR_LDID &&
+            WN_ty(WN_kid1(wn)) != WN_ty(wn))
+        {
+          // fprintf(stderr, "disable4\n"); legailty taken care of
+          return wn;
+        }
+        desc = TY_mtype(ptr_to_gptr_ty_idx[0]); // pointer mtype
+        ldid_ptr_wn = WN_COPY_Tree(WN_kid1(wn));
+        ldid_gptr0_wn = WN_Ldid(desc, 0, gptr_st[0], ptr_to_gptr_ty_idx[0]);
+        sub_wn = WN_CreateExp2(OPCODE_make_op(OPR_SUB, desc, MTYPE_V),
+          ldid_ptr_wn, ldid_gptr0_wn);
+        complete_struct_size_wn = WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST,
+          MTYPE_U4, MTYPE_V), (INT)complete_struct_relayout_size);
+        div_wn = WN_CreateExp2(OPCODE_make_op(OPR_DIV, MTYPE_U4, MTYPE_V),
+          sub_wn, complete_struct_size_wn);
+        field_size_wn = WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST, MTYPE_U4,
+          MTYPE_V), (INT)TY_size(TY_pointed(ptr_to_gptr_ty_idx[WN_field_id
+          (wn)])));
+        mult_wn = WN_CreateExp2(OPCODE_make_op(OPR_MPY, MTYPE_U4, MTYPE_V),
+          div_wn, field_size_wn);
+        ldid_gptri_wn = WN_Ldid(desc, 0, gptr_st[WN_field_id(wn)],
+          ptr_to_gptr_ty_idx[WN_field_id(wn)]);
+        add_wn = WN_CreateExp2(OPCODE_make_op(OPR_ADD, desc, MTYPE_V),
+          ldid_gptri_wn, mult_wn);
+        WN_kid1(wn) = add_wn;
+        WN_set_ty(wn, ptr_to_gptr_ty_idx[WN_field_id(wn)]);
+        index_offset = (WN_offset(wn) -
+          field_offset_in_complete_struct_relayout[WN_field_id(wn)]) /
+          orig_complete_struct_relayout_size; // positive or negative
+        WN_offset(wn) = index_offset * TY_size(TY_pointed(ptr_to_gptr_ty_idx
+          [WN_field_id(wn)]));
+        WN_set_field_id(wn, 0);
+      }
+      break;
+
+    case OPR_CALL:
+      // Look for "ptr = (complete_struct_relayout *)calloc(num, sizeof
+      // (complete_struct_relayout))" and reject
+      // "ptr = (complete_struct_relayout *)malloc(...)"
+      // (since num is not known (although it can be rediscovered by size/sizeof
+      // (complete_struct_relayout))) and "ptr = (complete_struct_relayout *)
+      // realloc(ptr1, new_size)" (since we currently do not keep track of the
+      // old_size, which will be needed in the realloc-ing of the
+      // complete_struct_relayout.
+      if (strcmp(ST_name(WN_st(wn)), "malloc") == 0 ||
+          strcmp(ST_name(WN_st(wn)), "realloc") == 0)
+      {
+        if (WN_operator(WN_next(wn)) != OPR_STID ||
+            WN_operator(WN_kid0(WN_next(wn))) != OPR_LDID)
+          return wn; // does not assign into our complete_struct_relayout
+
+        TY_IDX ty_idx = WN_ty(WN_next(wn));
+        if (TY_kind(ty_idx) == KIND_POINTER &&
+            (TY_IDX_index(TY_pointed(ty_idx)) ==
+               complete_struct_relayout_type_id ||
+             TY_IDX_index(TY_pointed(ty_idx)) ==
+               another_complete_struct_relayout_type_id))
+        {
+          // fprintf(stderr, "disable5\n"); legailty taken care of
+          return wn;
+        }
+      }
+      if (strcmp(ST_name(WN_st(wn)), "calloc") == 0 && WN_kid_count(wn) == 2)
+      {
+        if (WN_operator(WN_next(wn)) != OPR_STID ||
+            WN_operator(WN_kid0(WN_next(wn))) != OPR_LDID)
+          return wn; // does not assign into our complete_struct_relayout
+
+        TY_IDX ptr_to_struct_ty_idx = WN_ty(WN_kid0(WN_next(wn)));
+        if (WN_ty(WN_next(wn)) != ptr_to_struct_ty_idx ||
+            TY_kind(ptr_to_struct_ty_idx) != KIND_POINTER ||
+            (TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
+               complete_struct_relayout_type_id &&
+             TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
+               another_complete_struct_relayout_type_id))
+          return wn; // does not assign into our complete_struct_relayout
+
+        // Yes, this is the special calloc.  Do the following for every such
+        // calloc encountered, so that the global gptr[]'s will get sync-ed up
+        // with the calloc's.  From now on, anytime we encounter something not
+        // right, we need to disable the optimization, not just return and
+        // pretend that this optimization does not apply
+        WN *num_elements_wn;
+        ST *calloc_returned_ptr_st; // doesn't work
+        TYPE_ID desc;
+        WN *ldid_wn;
+        WN *stid_wn;
+        TY_IDX field_ty_idx;
+        TY_IDX ptr_to_field_ty_idx;
+        TY_IDX ptr_to_prev_field_ty_idx;
+        int prev_field_size;
+        WN *field_size_wn;
+        WN *mult_wn;
+        WN *add_wn;
+
+        // find out from the calloc arguments the number of elements being
+        // allocated
+        WN *arg0_wn = WN_kid0(WN_kid0(wn));
+        WN *arg1_wn = WN_kid0(WN_kid1(wn));
+        if (WN_operator(arg0_wn) == OPR_INTCONST &&
+            WN_const_val(arg0_wn) == orig_complete_struct_relayout_size)
+        {
+          num_elements_wn = arg1_wn;
+          WN_const_val(arg0_wn) = complete_struct_relayout_size;
+        }
+        else if (WN_operator(arg1_wn) == OPR_INTCONST &&
+                 WN_const_val(arg1_wn) == orig_complete_struct_relayout_size)
+        {
+          num_elements_wn = arg0_wn;
+          WN_const_val(arg1_wn) = complete_struct_relayout_size;
+        }
+        else
+        {
+          // fprintf(stderr, "disable6\n"); legailty taken care of
+          return wn;
+        }
+
+        // only now do we advance wn, and get the pointer calloc returns and
+        // start dividing up the allocated memory
+        wn = WN_next(wn);
+        calloc_returned_ptr_st = WN_st(wn); // doesn't work
+        desc = TY_mtype(ptr_to_gptr_ty_idx[0]); // pointer mtype
+
+        // gptr[0] = calloc_returned_ptr
+        if (TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
+            TY_IDX_index(TY_pointed(ptr_to_gptr_ty_idx[0])))
+        {
+          // fprintf(stderr, "disable7\n"); legailty taken care of
+          return wn;
+        }
+        ldid_wn = WN_COPY_Tree(WN_kid0(wn)); // for some reason building a new
+          // WN_Ldid with the calloc_returned_ptr does not work
+        stid_wn = WN_Stid(desc, 0, gptr_st[0], ptr_to_gptr_ty_idx[0], ldid_wn);
+        WN_INSERT_BlockLast(block_wn, stid_wn);
+
+        // gptr[i] = gptr[i-1] + num_elements * sizeof(field[i-1])
+        for (int i = 1; i <= num_fields_in_complete_struct_relayout; i++)
+        {
+          ldid_wn = WN_Ldid(desc, 0, gptr_st[i-1], ptr_to_gptr_ty_idx[i-1]);
+          if (i == 1)
+            add_wn = ldid_wn;
+          else
+          {
+            field_size_wn = WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST,
+              MTYPE_U4, MTYPE_V), (INT)TY_size(TY_pointed(ptr_to_gptr_ty_idx
+              [i-1])));
+            mult_wn = WN_CreateExp2(OPCODE_make_op(OPR_MPY, MTYPE_U4, MTYPE_V),
+              WN_COPY_Tree(num_elements_wn), field_size_wn);
+            add_wn = WN_CreateExp2(OPCODE_make_op(OPR_ADD, desc, MTYPE_V),
+              ldid_wn, mult_wn);
+          }
+          stid_wn = WN_Stid(desc, 0, gptr_st[i], ptr_to_gptr_ty_idx[i], add_wn);
+          WN_INSERT_BlockLast(block_wn, stid_wn);
+        }
+      }
+
+      // all other calls (including free()) do not affect this optimization
+      break;
+
+    default:
+      break;
+  }
+
+  return wn;
+}
+
 extern INT struct_field_count(TY_IDX);
 static BOOL new_types_created = FALSE;
 
@@ -1117,8 +1788,8 @@ void IPO_WN_Update_For_Struct_Opt (IPA_NODE * node)
     Struct_update_index = IPA_Update_Struct;
   }
 
-  if (!Struct_split_candidate_index)
-    return;
+  if (!Struct_split_candidate_index && complete_struct_relayout_type_id == 0)
+    return; // no structure splitting/peeling or complete_struct_relayout to do
 
   WN * tree = node->Whirl_Tree();
   preg_id = 0;
@@ -1134,6 +1805,11 @@ void IPO_WN_Update_For_Struct_Opt (IPA_NODE * node)
 
   // parentize before
   WN_Parentize(tree, PU_Parent_Map, PU_Map_Tab);
+
+  if (Struct_split_candidate_index != 0)
+  {
+    // structure splitting/peeling
+
   candidate_ty_idx = Struct_split_candidate_index;
   // Assign candidate_ty_idx here.
   FmtAssert (candidate_ty_idx != 0, ("No TY to optimize"));
@@ -1143,6 +1819,45 @@ void IPO_WN_Update_For_Struct_Opt (IPA_NODE * node)
   if (!new_types_created)
     IPO_generate_new_types (Struct_split_candidate_index);
   traverse_wn_tree (NULL, NULL, tree, WN_func_body(tree), 0);
+  }
+  else
+  {
+    if (IPA_Enable_Struct_Opt == 0 ||
+        complete_struct_relayout_type_id == 0 ||
+        continue_with_complete_struct_relayout == 0 ||
+        encountered_calloc_for_complete_struct_relayout == 0)
+      return; // nothing to do
+
+    {
+      // perform complete_struct_relayout optimization for this function
+
+      if (global_ptrs_for_complete_struct_relayout_created == 0)
+        create_global_ptrs_for_complete_struct_relayout(); // do this once only
+      traverse_wn_tree_for_complete_struct_relayout(NULL, NULL, tree,
+        WN_func_body(tree), 0);
+      if (Get_Trace(TP_IPA, 1))
+        fprintf(TFile, "ipo -> complete_struct_relayout for %s\n",
+          ST_name(node->Func_ST()));
+    }
+  }
+
   // parentize after
   WN_Parentize(tree, PU_Parent_Map, PU_Map_Tab);
+}
+
+// This function checks if it is legal to perform the complete structure
+// relayout optimization.
+void IPO_WN_Update_For_Complete_Structure_Relayout_Legality(IPA_NODE *node)
+{
+  if (IPA_Enable_Struct_Opt == 0 ||
+      complete_struct_relayout_type_id == 0 ||
+      continue_with_complete_struct_relayout == 0)
+    return; // nothing to do
+
+  WN *tree = node->Whirl_Tree();
+  if (global_ptrs_for_complete_struct_relayout_created == 0)
+    create_global_ptrs_for_complete_struct_relayout(); // do this once only
+  traverse_wn_tree_for_complete_struct_relayout_legality(NULL, NULL, tree,
+    WN_func_body(tree), 0);
+  // continue_with_complete_struct_relayout is set to 0 if anything is wrong
 }

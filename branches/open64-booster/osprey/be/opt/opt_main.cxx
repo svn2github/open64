@@ -381,6 +381,8 @@ static MEM_POOL  Opt_local_pool;
 static ST       *Opt_current_pu_st = NULL;
 static PU_IDX    Opt_current_pu;
 
+static void identify_complete_struct_relayout_candidates(WN *wn);
+
 static void Opt_memory_init_pools(void)
 {
   OPT_POOL_Initialize(&Opt_global_pool, "Opt_global_pool", FALSE,
@@ -1360,6 +1362,9 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 #endif
   }
 
+  if (phase == PREOPT_IPA0_PHASE) // ipl
+    identify_complete_struct_relayout_candidates(wn_tree);
+
   SET_OPT_PHASE("Preparation");
 
 #ifdef SKIP
@@ -2049,4 +2054,189 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   WN_CopyMap(opt_wn, WN_MAP_FEEDBACK, wn_orig);
 
   return opt_wn;
+}
+
+// complete struct relayout optimization
+
+#include "symtab_access.h"
+
+#define MAX_NUM_COMPLETE_STRUCT_RELAYOUT_CANDIDATES 5
+#define MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE 32
+static TY_IDX complete_struct_relayout_candidate_ty_idx
+  [MAX_NUM_COMPLETE_STRUCT_RELAYOUT_CANDIDATES];
+static int complete_struct_relayout_candidate_total_num_fields
+  [MAX_NUM_COMPLETE_STRUCT_RELAYOUT_CANDIDATES];
+static int complete_struct_relayout_candidate_field_access_array
+  [MAX_NUM_COMPLETE_STRUCT_RELAYOUT_CANDIDATES]
+  [MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE];
+static int num_complete_struct_relayout_candidates = 0;
+static int continue_with_complete_struct_relayout_analysis = 1;
+static int start_counting = 0;
+
+// This function returns the total number of fields in the input structure.
+static int
+total_num_fields_in_struct(TY_IDX struct_ty_idx)
+{
+  int i = 0;
+  FLD_ITER field_iter = Make_fld_iter(TY_fld(struct_ty_idx));
+  do
+  {
+    i++;
+  } while (!FLD_last_field(field_iter++));
+  return i;
+}
+
+// This function visits all the loops in the input program and counts how many
+// different fields of each structure are accessed in the loops.  The answers
+// are stored in some static arrays that are global to all the functions being
+// compiled for the file.  After the last function is compiled, another function
+// will attempt to choose the best structure for complete_struct_relayout
+// optimization.
+static void
+identify_complete_struct_relayout_candidates(WN *wn)
+{
+  if (!(PU_src_lang(Get_Current_PU()) & PU_C_LANG))
+    IPA_Enable_Struct_Opt = 0; // only do this for C programs
+  if (IPA_Enable_Struct_Opt == 0 || wn == NULL ||
+      continue_with_complete_struct_relayout_analysis == 0)
+    return;
+  if (!OPCODE_is_leaf(WN_opcode(wn)))
+  {
+    if (start_counting == 1)
+    {
+      if (WN_operator(wn) == OPR_ILOAD || WN_operator(wn) == OPR_ISTORE)
+      {
+        if (WN_field_id(wn) != 0 &&
+            (TY_kind(WN_ty(wn)) == KIND_STRUCT ||
+             (TY_kind(WN_ty(wn)) == KIND_POINTER &&
+              TY_kind(TY_pointed(WN_ty(wn))) == KIND_STRUCT)))
+        {
+          // found an access to "structure.field"; record it
+          TY_IDX struct_ty_idx;
+          int i;
+          int j;
+          int n;
+
+          if (TY_kind(WN_ty(wn)) == KIND_STRUCT)
+            struct_ty_idx = WN_ty(wn);
+          else
+            struct_ty_idx = TY_pointed(WN_ty(wn));
+          for (i = 0; i < num_complete_struct_relayout_candidates; i++)
+          {
+            if (complete_struct_relayout_candidate_ty_idx[i] == struct_ty_idx)
+            {
+              // we have encountered this structure in some loops before; just
+              // update the field access
+              complete_struct_relayout_candidate_field_access_array[i]
+                [WN_field_id(wn)] = 1; // careful, some C++ #fields >= MAX
+              break;
+            }
+          }
+          if (i == num_complete_struct_relayout_candidates)
+          {
+            // we have not encountered this structure in any loops before; enter
+            // it into the array
+            if (i >= MAX_NUM_COMPLETE_STRUCT_RELAYOUT_CANDIDATES)
+            {
+              continue_with_complete_struct_relayout_analysis = 0;
+              return; // too many such structures encountered in loops; give up
+            }
+            n = total_num_fields_in_struct(struct_ty_idx);
+            if (n >= MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE)
+            {
+              continue_with_complete_struct_relayout_analysis = 0;
+              return; // too many fields in this struct; give up
+            }
+            complete_struct_relayout_candidate_ty_idx[i] = struct_ty_idx;
+            complete_struct_relayout_candidate_total_num_fields[i] = n;
+            for (j = 0; j <
+                 MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE; j++)
+              complete_struct_relayout_candidate_field_access_array[i][j] = 0;
+            complete_struct_relayout_candidate_field_access_array[i]
+              [WN_field_id(wn)] = 1; // careful, some C++ #fields >= MAX
+            num_complete_struct_relayout_candidates++;
+          }
+        }
+      }
+    }
+    if (WN_operator(wn) == OPR_BLOCK)
+    {
+      WN *child = WN_first(wn);
+      while (child != NULL)
+      {
+        identify_complete_struct_relayout_candidates(child);
+        child = WN_next(child);
+      }
+    }
+    else
+    {
+      INT child_num;
+      WN *child;
+      if (WN_operator(wn) == OPR_DO_LOOP ||
+          WN_operator(wn) == OPR_WHILE_DO ||
+          WN_operator(wn) == OPR_DO_WHILE)
+        start_counting = 1; // only count structure field accesses in loops
+      for (child_num = 0; child_num < WN_kid_count(wn); child_num++)
+      {
+        child = WN_kid(wn, child_num);
+        if (child != NULL)
+          identify_complete_struct_relayout_candidates(child);
+      }
+      if (WN_operator(wn) == OPR_DO_LOOP ||
+          WN_operator(wn) == OPR_WHILE_DO ||
+          WN_operator(wn) == OPR_DO_WHILE)
+        start_counting = 0;
+    }
+  }
+  // not interested in any leaf nodes
+  return;
+}
+
+// This function is called after the last function in the file has been
+// compiled.  Among all the structures that have been marked (more precisely,
+// all the structures whose fields that were accessed in some loops have been
+// marked), choose one that is the most profitable for complete_struct_relayout
+// optimization.
+void
+choose_from_complete_struct_for_relayout_candidates()
+{
+  int i;
+  int j;
+  int num_fields_accessed;
+
+  // in case you think the following is a good structure splitting candidate,
+  // and want to perform structure splitting or peeling optimization instead,
+  // keep in mind that structure splitting/peeling analyses have already been
+  // performed and deemed it not a candidate; we will perform
+  // complete_struct_relayout optimization on it instead
+  if (IPA_Enable_Struct_Opt == 0 ||
+      continue_with_complete_struct_relayout_analysis == 0)
+    return; // we have given up already
+  for (i = 0; i < num_complete_struct_relayout_candidates; i++)
+  {
+    num_fields_accessed = 0;
+    for (j = 0; j < MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE; j++)
+      num_fields_accessed +=
+        complete_struct_relayout_candidate_field_access_array[i][j];
+    if (num_fields_accessed == 1)
+    {
+      // wow, only *1* field in this entire structure was accessed in all the
+      // loops in all the functions in this file; choose it if the entire
+      // structure matches some good heuristics in size and number of fields
+      if (complete_struct_relayout_candidate_total_num_fields[i] > 8 &&
+          TY_size(complete_struct_relayout_candidate_ty_idx[i]) < 128)
+      {
+        if (Get_Trace(TP_IPL, 1))
+          fprintf(TFile, "ipl -> complete_struct_relayout_candidate = %d %s\n",
+            complete_struct_relayout_candidate_ty_idx[i],
+            TY_name(complete_struct_relayout_candidate_ty_idx[i]));
+        // for some reason when we do the following *another* such type is
+        // created, making the complete_struct_relayout_type_id not unique,
+        // introducing a lot of confusion
+        Set_TY_complete_struct_relayout_candidate
+          (complete_struct_relayout_candidate_ty_idx[i]);
+      }
+    }
+  }
+  return;
 }

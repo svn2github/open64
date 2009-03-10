@@ -263,6 +263,9 @@ extern WN* (*Perform_Global_Optimization_p) (WN *, WN *, ALIAS_MANAGER *);
 extern WN* (*Pre_Optimizer_p) (INT32, WN*, DU_MANAGER*, ALIAS_MANAGER*);
 #define Pre_Optimizer (*Pre_Optimizer_p)
 
+extern void (*choose_from_complete_struct_for_relayout_candidates_p)();
+#define choose_from_complete_struct_for_relayout_candidates (*choose_from_complete_struct_for_relayout_candidates_p)
+
 extern DU_MANAGER* (*Create_Du_Manager_p) (MEM_POOL *);
 #define Create_Du_Manager (*Create_Du_Manager_p)
 
@@ -278,6 +281,7 @@ extern void Wopt_Fini ();
 extern WN* Perform_Preopt_Optimization (WN *, WN *);
 extern WN* Perform_Global_Optimization (WN *, WN *, ALIAS_MANAGER *);
 extern WN* Pre_Optimizer (INT32, WN*, DU_MANAGER*, ALIAS_MANAGER*);
+extern void choose_from_complete_struct_for_relayout_candidates();
 extern DU_MANAGER* Create_Du_Manager (MEM_POOL *);
 extern void Delete_Du_Manager (DU_MANAGER *, MEM_POOL *);
 extern BOOL Verify_alias (ALIAS_MANAGER *, WN *);
@@ -290,6 +294,7 @@ extern BOOL Verify_alias (ALIAS_MANAGER *, WN *);
 #pragma weak Perform_Global_Optimization
 #pragma weak Perform_Preopt_Optimization
 #pragma weak Pre_Optimizer
+#pragma weak choose_from_complete_struct_for_relayout_candidates
 #pragma weak Create_Du_Manager
 #pragma weak Delete_Du_Manager
 #pragma weak Verify_alias
@@ -1882,6 +1887,10 @@ Postprocess_PU (PU_Info *current_pu)
   if (Tlog_File) {
     fprintf (Tlog_File, "END %s\n", ST_name(PU_Info_proc_sym(current_pu)));
   }
+
+  choose_from_complete_struct_for_relayout_candidates(); // among all the
+    // structures marked by ipl while compiling all the functions in this file,
+    // choose the most profitable one
 
   Current_Map_Tab = PU_Info_maptab(current_pu);
  

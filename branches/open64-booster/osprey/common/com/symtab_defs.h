@@ -555,6 +555,8 @@ enum TY_FLAGS
 #ifdef TARG_NVISA
     TY_CAN_BE_VECTOR	= 0x8000,	// vector type like int4
 #endif
+    TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE = 0x0001, // it's OK to share this
+      // with TY_IS_CHARACTER above for now, since this has to be a struct
 };
 
 

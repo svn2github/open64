@@ -129,6 +129,7 @@
 #include "inline_script_parser.h"
 #else
 extern void IPO_WN_Update_For_Struct_Opt (IPA_NODE *);
+extern void IPO_WN_Update_For_Complete_Structure_Relayout_Legality(IPA_NODE *);
 #endif  /* KEY */
 #include "ipa_reorder.h" //IPO_Modify_WN_for_field_reorder ()
 
@@ -1887,6 +1888,22 @@ IPO_main (IPA_CALL_GRAPH* cg)
     if (IPA_Enable_EH_Region_Removal)
     	IPA_Remove_Regions (walk_order, cg); // Remove EH regions that are not required
 #endif
+
+    // we will use the following loop to check whether it is legal to perform
+    // the complete structure relayout optimization; later (in the subsequent
+    // loop) we will perform the actual optimization (if it is legal)
+    for (IPA_NODE_VECTOR::iterator first = walk_order.begin();
+         first != walk_order.end(); first++)
+    {
+      if (IPA_Enable_Struct_Opt != 0 &&
+          PU_src_lang((*first)->Get_PU()) & PU_C_LANG)
+      {
+        IPA_NODE_CONTEXT context(*first);
+        IPO_WN_Update_For_Complete_Structure_Relayout_Legality(*first);
+      }
+      else
+        IPA_Enable_Struct_Opt = 0; // only do this for C programs
+    }
 
     for (IPA_NODE_VECTOR::iterator first = walk_order.begin ();
 	 first != walk_order.end ();
