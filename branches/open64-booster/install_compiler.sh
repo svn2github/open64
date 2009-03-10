@@ -273,11 +273,11 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/obj64/libhugetlbfs.a      ${PHASEPATH}/libhugetlbfs.a
         INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/obj32/libhugetlbfs.a      ${PHASEPATH}/32/libhugetlbfs.a
 
-        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xB      ${PHASEPATH}/elf_x86_64.xB
-        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386.xB        ${PHASEPATH}/32/elf_i386.xB
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xB      ${PHASEPATH}/elf.xB
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386.xB        ${PHASEPATH}/32/elf.xB
 
-        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xBDT    ${PHASEPATH}/elf_x86_64.xBDT
-        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386.xBDT      ${PHASEPATH}/32/elf_i386.xBDT
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xBDT    ${PHASEPATH}/elf.xBDT
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386.xBDT      ${PHASEPATH}/32/elf.xBDT
     fi
 
     # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archieves
