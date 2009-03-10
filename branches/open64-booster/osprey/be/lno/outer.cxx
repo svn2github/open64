@@ -562,9 +562,12 @@ static FISSION_FUSION_STATUS Fuse_Outer_Loops(WN* loop1, WN* loop2,
   FISSION_FUSION_STATUS status=
     Fuse(loop1,loop2,fusion_level,peeling_limit,TRUE);
   if (status==Succeeded || status==Succeeded_and_Inner_Loop_Removed) {
-    if (LNO_Verbose || Get_Trace(TP_WOPT2, PRO_TRANS_TRACE_FLAG))
+    if (LNO_Verbose || Get_Trace(TP_WOPT2, PRO_TRANS_TRACE_FLAG)) {
       outer_fusion_verbose_info(srcpos1,srcpos2,
         "Successfully fused outer loops.");
+      if ((dli1->Get_Id() > 0) && (dli2->Get_Id() > 0))
+	printf("     loop num(%d+%d)\n", dli1->Get_Id(), dli2->Get_Id());
+    }
     if (LNO_Analysis)
       outer_fusion_analysis_info(SUCCEED,srcpos1,srcpos2,snl_level1,snl_level2,
         "Successfully fused outer loops.");

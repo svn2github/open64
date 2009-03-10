@@ -2034,7 +2034,8 @@ IF_MERGE_TRANS::Is_if_collapse_cand(SC_NODE * sc1, SC_NODE * sc2)
 }
 
 // Check whether the given pair of SC_NODEs are if-merging candidates.
-// where, sc1 precedes sc2 in source order.
+// where, sc1 precedes sc2 in source order.  Do not invoke tail duplication
+// transformation if do_query is TRUE.
 
 BOOL
 IF_MERGE_TRANS::Is_cand(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
@@ -2280,12 +2281,15 @@ TAIL_DUP_TRANS::Find_cand
   // Limit is used to control code size bloat due to head/tail duplication.
   // 
   // 2.4 For all sibling nodes between cand1 and cand2 INCLUSIVE, 
-  //     - If it is a SC_IF, it must be well-behaved, its head has no dependency
-  //       on preceding siblings and the its merge has no dependency on succeeding
-  //       siblings.  There should be at most one non single-entry-singe-exit 
-  //       (SESE) SC_IFs since we don't duplicate non-SESE SC_IFs to avoid complexity. 
-  //       If cand2 is a loop, its merge block must have a single predecessor so that
-  //       it can be tail-duplicated into the SC_IF.
+  //     - If it is a SC_IF, it must be well-behaved; its head has no dependency
+  //       on preceding siblings unless the preceding sibling is a SC_IF that can 
+  //       be if-merged with this SC_IF and its merge has no dependency on succeeding
+  //       siblings unless the succeeding SC_IF is a SC_IF that can be if-merged with
+  //       this SC_IF.   This is a legality check for head/tail duplication.  There 
+  //       should exist at most one non single-entry-singe-exit (SESE) SC_IFs since we
+  //       don't duplicate non-SESE SC_IFs to avoid complexity.  If cand2 is a loop, 
+  //       its merge block must have a single predecessor so that it can be tail-duplicated
+  //       into the SC_IF.
 
   for (list1 = _loop_list; list1; list1 = list1->Next()) {
     tmp1 = list1->Node();
@@ -2377,7 +2381,10 @@ TAIL_DUP_TRANS::Find_cand
 		    if (sc_tmp2 == sc_tmp1)
 		      break;
 		    
-		    if (_if_merge->Has_dependency(sc_tmp2, bb_head)) {
+		    if ((sc_tmp2->Type() == SC_IF)
+			&& _if_merge->Is_cand(sc_tmp2, sc_tmp1, TRUE)) {
+		    }
+		    else if (_if_merge->Has_dependency(sc_tmp2, bb_head)) {
 		      cand1 = NULL;
 		      cand2 = NULL;
 		      break;
@@ -2393,7 +2400,11 @@ TAIL_DUP_TRANS::Find_cand
 		  BB_NODE * bb_merge = sc_tmp1->Merge();
 
 		  while (sc_tmp2) {
-		    if (_if_merge->Has_dependency(sc_tmp2, bb_merge)) {
+		    if ((sc_tmp2->Type() == SC_IF)
+			&& _if_merge->Is_cand(sc_tmp1, sc_tmp2, TRUE)) {
+
+		    }
+		    else if (_if_merge->Has_dependency(sc_tmp2, bb_merge)) {
 		      cand1 = NULL;
 		      cand2 = NULL;
 		      break;
