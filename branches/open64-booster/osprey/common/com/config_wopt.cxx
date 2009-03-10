@@ -320,7 +320,7 @@ BOOL  WOPT_Enable_Noreturn_Attr_Opt = TRUE;
 BOOL  WOPT_Enable_Pt_Summary = FALSE;  // points-to summary/annotation 
 INT32 WOPT_Enable_If_Merge_Limit = -1;  // Limit number of if-merging transformations per function.
 INT32 WOPT_Enable_Tail_Dup_Limit = -1; // Limit number of tail-duplication transformations per function.
-INT32 WOPT_Tail_Dup_Max_Clone = 1000; // Limit code size bloats (in statement count)
+INT32 WOPT_Tail_Dup_Max_Clone = -1; // Limit code size bloats (in statement count)
                                                   // due to tail-duplication.
 INT32 WOPT_Enable_Pro_Loop_Fusion_Func_Limit = -1; // Enable proactive loop fusion transformation for
                                                   // functions within the limit.

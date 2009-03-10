@@ -1638,8 +1638,7 @@ IF_MERGE_TRANS::Merge_CFG(SC_NODE * sc1, SC_NODE * sc2)
 	     Current_PU_Name(), Current_PU_Count());
     }
     
-    printf("\n\t If-merge (BB%d,BB%d)(SC%d,SC%d)\n", 
-	   sc1->Get_bb_rep()->Id(), sc2_head->Id(),
+    printf("\n\t If-merge (SC%d,SC%d)\n", 
 	   sc1->Id(), sc2->Id());
   }
 
@@ -2692,8 +2691,7 @@ TAIL_DUP_TRANS::Do_code_motion(SC_NODE * sc1, SC_NODE * sc2)
     FmtAssert((sc1->Loopinfo()->Is_flag_set(LOOP_PRE_DO)), ("TODO: other loops"));    
 
   if (_trace) {
-    printf("\n\t\t Code-motion (BB%d,BB%d)(SC%d,SC%d)\n", 
-	   first_bb1->Id(), first_bb2->Id(),
+    printf("\n\t\t Code-motion (SC%d,SC%d)\n", 
 	   sc1->Id(), sc2->Id());
   }
 
@@ -2903,8 +2901,7 @@ TAIL_DUP_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
     FmtAssert((sc_src->Loopinfo()->Is_flag_set(LOOP_PRE_DO)), ("TODO: Test code motion"));  
 
   if (_trace) {
-    printf("\n\t\t Head-duplication (BB%d,BB%d)(SC%d,SC%d)\n", 
-	   sc_src->First_bb()->Id(), sc_dst->Head()->Id(),
+    printf("\n\t\t Head-duplication (SC%d,SC%d)\n", 
 	   sc_src->Id(), sc_dst->Id());
   }
 
@@ -2941,13 +2938,6 @@ TAIL_DUP_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
     new_entry = cfg->Get_cloned_bb(old_entry);
     new_exit = cfg->Get_cloned_bb(old_exit);
 
-    if (old_entry->Labnam() != 0) {
-      FOR_ALL_ELEM(tmp, bb_list_iter, Init(old_entry->Pred())) {
-	if ((tmp->Kind() != BB_GOTO) || tmp->Is_branch_to(old_entry))
-	  FmtAssert(FALSE, ("TODO: fix label"));	  
-      }
-    }
-
     // Fix label on if-branch.
     if (dst_head->Is_branch_to(dst_else)) {
       branch_wn = dst_head->Branch_wn();
@@ -2980,6 +2970,12 @@ TAIL_DUP_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
     // Disconnect BB_NODEs in src_src from CFG and then insert it into then-path.
     FOR_ALL_ELEM(tmp, bb_list_iter, Init(old_entry->Pred())) {
       tmp->Replace_succ(old_entry, src_merge);
+
+      if (tmp->Is_branch_to(old_entry)) {
+	branch_wn = tmp->Branch_wn();
+	FmtAssert(src_merge->Labnam(), ("Expect a non-NULL label"));
+	WN_label_number(branch_wn) = src_merge->Labnam();
+      }
     }
     src_merge->Remove_pred(old_exit, pool);
     src_merge->Set_pred(old_entry->Pred());
@@ -3067,8 +3063,7 @@ TAIL_DUP_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
     FmtAssert((sc_src->Loopinfo()->Is_flag_set(LOOP_PRE_DO)), ("TODO: test other loops"));
 
   if (_trace) {
-    printf("\n\t\t Tail-duplication (BB%d,BB%d)(SC%d,SC%d)\n", 
-	   sc_src->First_bb()->Id(), sc_dst->Head()->Id(),
+    printf("\n\t\t Tail-duplication (SC%d,SC%d)\n", 
 	   sc_src->Id(), sc_dst->Id());
   }
   

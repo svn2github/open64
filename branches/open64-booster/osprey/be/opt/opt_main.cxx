@@ -523,6 +523,8 @@ private:
   BOOL _pro_loop_fusion_trans; 
   BOOL _bool_simp;
   BOOL _fold_lda_iload_istore;
+  BOOL _no_return;
+  BOOL _simp_if_conv;
 
   WOPT_SWITCHES(const WOPT_SWITCHES&);
   WOPT_SWITCHES& operator = (const WOPT_SWITCHES&);
@@ -681,6 +683,11 @@ private:
 	WOPT_Enable_Zero_Version = FALSE;
 	WOPT_Enable_DU_Full = TRUE;
       } 
+
+      if (WOPT_Enable_Pro_Loop_Fusion_Trans) {
+	WOPT_Enable_Noreturn_Attr_Opt = FALSE;
+      }
+      
       // fall though 
     default:
       // if the global flag "Allow_wrap_around_opt" is off
@@ -800,6 +807,8 @@ private:
     }
 
     WOPT_Enable_Pro_Loop_Fusion_Trans = _pro_loop_fusion_trans;
+    WOPT_Enable_Noreturn_Attr_Opt = _no_return;
+    WOPT_Enable_Simple_If_Conv = _simp_if_conv;
     WOPT_Enable_Bool_Simp = _bool_simp;
     WOPT_Enable_Fold_Lda_Iload_Istore = _fold_lda_iload_istore;
     Enable_WN_Simp = _wn_simp;
@@ -896,6 +905,8 @@ public:
     _pro_loop_fusion_trans = WOPT_Enable_Pro_Loop_Fusion_Trans;
     _bool_simp = WOPT_Enable_Bool_Simp;
     _fold_lda_iload_istore = WOPT_Enable_Fold_Lda_Iload_Istore;
+    _no_return = WOPT_Enable_Noreturn_Attr_Opt;
+    _simp_if_conv = WOPT_Enable_Simple_If_Conv;
 
     Adjust_Optimization();
   }
