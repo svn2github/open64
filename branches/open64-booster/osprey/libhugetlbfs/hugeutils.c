@@ -337,7 +337,7 @@ long hugetlbfs_num_pages(void)
 #ifdef M_PAGE
     if (hugepage_m_stype == SIZE_1G) {
         /* TODO: make change when 1G dynamic is supported */
-        return read_sysctrl("/sys/kernel/hugepages/hugepages-1048576kB/nr_hugepages");
+        return read_sysctrl("/sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages");
     }
 #endif
 
@@ -346,11 +346,11 @@ long hugetlbfs_num_pages(void)
         /* Interface for the future release
          * TODO: verify this on a release kernel.
          */
-        long o_val = read_sysctrl("/sys/kernel/hugepages/hugepages-2048kB/nr_overcommit_hugepages");
+        long o_val = read_sysctrl("/sys/kernel/mm/hugepages/hugepages-2048kB/nr_overcommit_hugepages");
 
         if (o_val > 0) {
-            long t_val = read_sysctrl("/sys/kernel/hugepages/hugepages-2048kB/nr_hugepages");
-            long s_val = read_sysctrl("/sys/kernel/hugepages/hugepages-2048kB/surplus_hugepages");
+            long t_val = read_sysctrl("/sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages");
+            long s_val = read_sysctrl("/sys/kernel/mm/hugepages/hugepages-2048kB/surplus_hugepages");
             
             /* dynamic pool exists */
             DEBUG("2M dynamic pool = %ld\n", o_val);
