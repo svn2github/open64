@@ -3788,7 +3788,9 @@ CFG::Create(WN *func_wn, BOOL lower_fully, BOOL calls_break,
 
   SC_init();
 
-  if (WOPT_Enable_Pro_Loop_Fusion_Trans) {
+  // TODO: enable this for FDO. 
+  if (WOPT_Enable_Pro_Loop_Fusion_Trans
+      && !Cur_PU_Feedback) {
     if (opr == OPR_FUNC_ENTRY) {
       
       PU &pu = Pu_Table[ST_pu(WN_st(func_wn))];

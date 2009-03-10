@@ -2047,7 +2047,9 @@ SC_NODE::Is_sese()
 
     FOR_ALL_ELEM(bb_tmp, bb_list_iter, Init(this->Get_bbs())) {
       if ((bb_tmp != bb_first)
-	  && (!bb_first->Dominates(bb_tmp) || !bb_tmp->Postdominates(bb_first))) {
+	  && (!bb_first->Dominates(bb_tmp) || !bb_tmp->Postdominates(bb_first)
+	      || !bb_tmp->Pred()
+	      || (bb_tmp->Pred()->Len() != 1))) {
 	ret_val = FALSE;
 	break;
       }

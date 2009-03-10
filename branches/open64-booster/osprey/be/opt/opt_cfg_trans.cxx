@@ -2242,6 +2242,7 @@ IF_MERGE_TRANS::Is_cand(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
   BOOL has_dep = FALSE;
   BOOL all_blk = TRUE;
   BOOL has_non_sp = FALSE;
+  BOOL all_sese = TRUE;
 
   next_sibling = sc1->Next_sibling();
   int count = 0;
@@ -2259,6 +2260,9 @@ IF_MERGE_TRANS::Is_cand(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
 
     if (next_sibling->Type() != SC_BLOCK)
       all_blk = FALSE;
+    else if (!next_sibling->Is_sese())
+      all_sese = FALSE;
+
     next_sibling = next_sibling->Next_sibling();
   }
 
@@ -2270,7 +2274,7 @@ IF_MERGE_TRANS::Is_cand(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
       return TRUE;
   }
 
-  if (!all_blk)
+  if (!all_blk || !all_sese)
     return FALSE;
 
   if ((WOPT_Enable_Tail_Dup_Limit >= 0)

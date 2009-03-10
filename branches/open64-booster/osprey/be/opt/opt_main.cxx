@@ -669,6 +669,7 @@ private:
       WOPT_Enable_DCE = FALSE;
       WOPT_Enable_Bool_Simp = FALSE;
       WOPT_Enable_Fold_Lda_Iload_Istore = FALSE;
+      WOPT_Enable_Input_Prop = FALSE;
   
     case PREOPT_LNO_PHASE: 
       if (Run_autopar && Current_LNO->IPA_Enabled
@@ -786,6 +787,7 @@ private:
       WOPT_Enable_IVR = _ivr;
       WOPT_Enable_Copy_Propagate = _lno_copy;
       WOPT_Enable_DCE = _dce;
+      WOPT_Enable_Input_Prop = _input_prop;
     case PREOPT_LNO_PHASE:
       if (Run_autopar && Current_LNO->IPA_Enabled) { 
         WOPT_Enable_Call_Zero_Version = _call_zero_version;
