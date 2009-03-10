@@ -76,6 +76,7 @@
 #include "file_names.h"
 #include "phases.h"
 #include "opt_actions.h"
+#include "option_seen.h"
 #include "file_utils.h"
 #include "pathscale_defs.h"
 #include "option_names.h"
@@ -96,6 +97,9 @@ static void init_time (void);
 static void print_time (char *phase);
 static void my_psema(void);
 static void my_vsema(void);
+
+extern boolean add_heap_limit;
+extern int heap_limit;
 
 #define LOGFILE "/var/log/messages"
 
@@ -283,6 +287,27 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 	const boolean uses_message_system = 
 			(phase == P_f90_fe || phase == P_f90_cpp ||
 			 phase == P_cppf90_fe);
+
+        if (((phase == P_be) || (phase == P_ipl))
+            && add_heap_limit) {
+            char buf[100];
+            sprintf(&buf[0],"%d", heap_limit);
+
+            for (p = args->head; p != NULL; p = p->next) {
+                if (strncmp(p->name, "alloc=", 6) == 0) {
+                    replace_string(args, p->name, 
+                                   concat_strings("-OPT:hugepage_heap_limit=", buf));
+                    break;
+                }
+            }
+        }
+
+        if (option_was_seen(O_hugepage)) {
+            for (p = args->head; p != NULL; p = p->next) {
+                if (strncmp(p->name, "alloc=", 6) == 0) 
+                    replace_string(args, p->name, "");
+            }
+        }
 	
 	if (show_flag) {
 		/* echo the command */

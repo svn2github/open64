@@ -1970,6 +1970,11 @@ static void add_hugepage_desc
 {
     HUGEPAGE_DESC desc;
 
+    if (((alloc == ALLOC_BDT) || (alloc == ALLOC_BSS))
+        && (limit != HUGEPAGE_LIMIT_DEFAULT))
+        warning("Can't set huge page limit for %s in the command line.  Use HUGETLB_ELF_LIMIT instead",
+                hugepage_alloc_name[alloc]);
+
     /* check whether to override existing descriptors */
 
     for (desc = hugepage_desc; desc != NULL; desc = desc->next) {

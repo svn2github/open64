@@ -85,6 +85,8 @@ boolean show_defaults;
 boolean print_help = FALSE;
 
 HUGEPAGE_DESC hugepage_desc;
+boolean add_heap_limit;
+int heap_limit;
 
 #if 0
 // obsolete, see comments in DESIGN_DOC
@@ -597,6 +599,29 @@ main (int argc, char *argv[])
 	       run_prof();
         }
 
+        add_heap_limit = FALSE;
+        heap_limit = HUGEPAGE_LIMIT_DEFAULT;
+
+        if (option_was_seen(O_hugepage)
+            && (instrumentation_invoked != TRUE)) {
+            HUGEPAGE_DESC desc;
+            boolean do_heap = FALSE;
+            
+            for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
+                if (desc->alloc == ALLOC_HEAP) {
+                    do_heap = TRUE;
+                    heap_limit = desc->limit;
+                }
+            }
+
+            if (do_heap == FALSE)
+                heap_limit = 0;
+                    
+            if (!option_was_seen(O_static)) {
+                add_heap_limit = TRUE;
+            }
+        }
+        
 	if (read_stdin) {
 		if ( option_was_seen(O_E) 
 			|| (source_lang != L_NONE && source_kind != S_o)) 
@@ -612,7 +637,7 @@ main (int argc, char *argv[])
 
 	for (p = files->head, q=file_suffixes->head; p != NULL; p = p->next, q=q->next) 
 	{
-		source_file = p->name;
+            source_file = p->name;
 #ifdef KEY
 		run_inline = UNDEFINED;	// bug 11325
 

@@ -2036,6 +2036,9 @@ postprocess_ld_args (string_list_t *args)
                     else if (desc->alloc == ALLOC_HEAP)
                         add_huge_lib = TRUE;
                 }
+
+                if (add_huge_lib && option_was_seen(O_static))
+                    add_after_string(args, p, "-u setup_libhugetlbfs");
             }
 	}
     }
@@ -3015,7 +3018,6 @@ run_compiler (int argc, char *argv[])
 #endif
 
 	for (i = 0; phase_order[i] != P_NONE; i++) {
-
 	        /* special case where the frontend decided that
 		   inliner should not be run */
 	        if (
@@ -3026,7 +3028,7 @@ run_compiler (int argc, char *argv[])
 #endif
 		    phase_order[i] == P_inline)
 		    continue;
-		
+
 		if (is_matching_phase(get_phase_mask(phase_order[i]), P_any_ld)) {
 			source_kind = S_o;
 			/* reset source-lang to be invoked-lang for linking */
@@ -3038,6 +3040,7 @@ run_compiler (int argc, char *argv[])
 			args = init_string_list();
 			add_file_args_first (args, phase_order[i]);  // bug 6874
 			copy_phase_options (args, phase_order[i]);
+                        
 			if (!cmd_line_updated &&
 			    phase_order[i] > P_any_optfe &&
 			    phase_order[i] != P_c_gfe &&

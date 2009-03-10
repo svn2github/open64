@@ -87,10 +87,6 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
 
 	DEBUG("hugetlbfs_morecore(%ld) = ...\n", (long)increment);
 
-#ifdef OPEN64_MOD
-        if (hugepages_heap_limit == 0)
-            return NULL;
-#endif
 	/*
 	 * how much to grow the heap by =
 	 * 	(size of heap) + malloc request - mmap'd space
@@ -243,11 +239,14 @@ void __hugetlbfs_setup_morecore(void)
 {
 	char *env, *ep;
 	unsigned long heapaddr;
-
 	env = getenv("HUGETLB_MORECORE");
+
+#ifndef OPEN64_MOD
 	if (! env)
 		return;
-	if (strcasecmp(env, "no") == 0) {
+#endif
+
+	if (env && strcasecmp(env, "no") == 0) {
 		DEBUG("HUGETLB_MORECORE=%s, not setting up morecore\n",
 								env);
 		return;
@@ -318,7 +317,6 @@ void __hugetlbfs_setup_morecore(void)
 		hugepages_heap_limit = n;
         }
 
-        DEBUG("setup_morecore(): hugepages_heap_limit = %ld\n", hugepages_heap_limit);
 #endif
 
 	/* Set some allocator options more appropriate for hugepages */
@@ -335,18 +333,17 @@ void __hugetlbfs_setup_morecore(void)
 }
 
 #ifdef OPEN64_MOD
-/*  Command line precedes environment variable in setting limit of huge pages to use.
- *
- *  Input:
- *     A value of 0 denotes no huge page should be used.
- *     A value greater than 0 gives the limit.
- *     A value less than 0 denotes no limit.
- *  
- * When this routine is used, the setup routine should not be called from setup_libhugetlbfs.
+/*  Environment variable overrides command line option in setting limit of huge pages to use
+ *  for the heap. 
  */
 
-void setup_hugepage(long l_limit)
+void  __setup_hugepage(int l_limit)
 {
+    char *env = getenv("HUGETLB_LIMIT");
+    
+    if (env != NULL)
+        return;
+    
     if ((l_limit >= 0) && (l_limit < hugepages_avail))
         hugepages_heap_limit = l_limit;
 }

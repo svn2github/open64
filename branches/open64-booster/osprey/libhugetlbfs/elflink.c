@@ -58,6 +58,12 @@
 #define ELF_ST_TYPE(x)  ELF64_ST_TYPE(x)
 #endif
 
+#ifdef OPEN64_MOD
+static long hugepages_total = 0;
+static long hugepages_elf_limit = -1;
+static long hugepages_avail;
+#endif
+
 /* This function prints an error message to stderr, then aborts.  It
  * is safe to call, even if the executable segments are presently
  * unmapped.
@@ -636,6 +642,18 @@ int parse_elf_relinked(struct dl_phdr_info *info, size_t size, void *data)
 		get_extracopy(&htlb_seg_table[htlb_num_segs],
 				&info->dlpi_phdr[0], info->dlpi_phnum);
 
+#ifdef OPEN64_MOD
+                hugepages_total += (ALIGN(htlb_seg_table[htlb_num_segs].memsz, hpage_size) / hpage_size);
+                                    
+                if (hugepages_total >= hugepages_elf_limit) {
+                    WARNING("ELF Segments require %ld huge pages, exceed huge page limit %ld.\n",
+                            hugepages_total,
+                            hugepages_elf_limit);
+                    htlb_num_segs = 0;
+                    return 0;
+                }
+
+#endif
 		htlb_num_segs++;
 	}
 	if (__hugetlbfs_debug)
@@ -1029,6 +1047,17 @@ static int check_env(void)
 		}
 	}
 
+#ifdef OPEN64_MOD
+        hugepages_avail = hugetlbfs_num_pages();
+        hugepages_elf_limit = hugepages_avail;
+        env = getenv("HUGETLB_ELF_LIMIT");
+        
+        if (env) {
+            long n = atol(env);
+            if ((n >= 0) && ( n < hugepages_avail))
+                hugepages_elf_limit = n;
+        }
+#endif
 	return 0;
 }
 
@@ -1073,10 +1102,17 @@ void __hugetlbfs_setup_elflink(void)
 	if (check_env())
 		return;
 
+#ifdef OPEN64_MOD
+	hpage_size = gethugepagesize();
+#endif
+
 	if (parse_elf())
 		return;
 
-	hpage_size = gethugepagesize();
+#ifndef OPEN64_MOD
+        hpage_size = gethugepagesize();
+#endif
+
 	if (hpage_size <= 0) {
 		if (errno == ENOSYS)
 			ERROR("Hugepages unavailable\n");
