@@ -47,6 +47,22 @@ extern void __hugetlbfs_setup_elflink();
 extern void __hugetlbfs_setup_morecore();
 extern void __hugetlbfs_setup_debug();
 extern char __hugetlbfs_hostname[];
+#ifdef OPEN64_MOD
+
+typedef enum
+{
+    SIZE_SMALL = 0,
+    SIZE_2M,
+    SIZE_1G
+} HUGEPAGE_STYPE;
+
+extern HUGEPAGE_STYPE hugepage_stype;
+extern long hugepages_seg_total;
+extern  void *heapbase;
+extern  void *heaptop;
+extern  long  mapsize;
+extern unsigned long newbrk;
+#endif
 
 #define ERROR(format, ...) \
 	do { \

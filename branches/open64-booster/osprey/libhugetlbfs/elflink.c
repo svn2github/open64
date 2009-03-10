@@ -59,10 +59,11 @@
 #endif
 
 #ifdef OPEN64_MOD
+
 static long hugepages_total = 0;
 static long hugepages_elf_limit = -1;
 static long hugepages_avail;
-extern long hugepages_seg_total;
+
 #endif
 
 /* This function prints an error message to stderr, then aborts.  It
@@ -623,20 +624,41 @@ int parse_elf_relinked(struct dl_phdr_info *info, size_t size, void *data)
 	int i;
 
 	for (i = 0; i < info->dlpi_phnum; i++) {
+#ifdef OPEN64_MOD
+                int is_misalign = 0;
+#endif
 		if (info->dlpi_phdr[i].p_type != PT_LOAD)
 			continue;
 
 		if (!(info->dlpi_phdr[i].p_flags & PF_LINUX_HUGETLB))
 			continue;
 #ifdef OPEN64_MOD
-                if (info->dlpi_phdr[i].p_vaddr & 0xffffff) {
-                    DEBUG("Cant map segment %d %#0lx (2M misalignment)\n",
-                          i, (unsigned long) info->dlpi_phdr[i].p_vaddr);
-                    htlb_num_segs = 0;
-                    return 0;
+                if (hugepage_stype == SIZE_2M) {
+                    if (info->dlpi_phdr[i].p_vaddr & 0xffffff) {
+                        DEBUG("Cant map segment %d %#0lx (2M misalignment)\n",
+                              i, (unsigned long) info->dlpi_phdr[i].p_vaddr);
+                        is_misalign = 1;
+                    }
+                }
+                else if (hugepage_stype == SIZE_1G) {
+                    if (info->dlpi_phdr[i].p_vaddr & 0x3fffffff) {
+                        DEBUG("Cant map segment %d %#0lx (1G misalignment)\n",
+                              i, (unsigned long) info->dlpi_phdr[i].p_vaddr);
+                        is_misalign = 1;
+                    }
+                }
+
+                if (is_misalign) {
+                    if (htlb_num_segs > 0) {
+                        /*  Make sure huge pages are mapped in continuous segments */
+                        htlb_num_segs = 0;
+                        return 0;
+                    }
+                    else
+                        continue;
                 }
 #endif
-                    
+                
 		if (save_phdr(htlb_num_segs, i, &info->dlpi_phdr[i]))
 			return 1;
 
@@ -653,7 +675,6 @@ int parse_elf_relinked(struct dl_phdr_info *info, size_t size, void *data)
                     htlb_num_segs = 0;
                     return 0;
                 }
-
 #endif
 		htlb_num_segs++;
 	}
@@ -954,7 +975,7 @@ static void remap_segments(struct seg_info *seg, int num)
 #ifdef OPEN64_MOD
         /* advance brk value to next huge page boundary to allow small page malloc */
 
-        unsigned long oldbrk,newbrk;
+        unsigned long oldbrk;
         unsigned long seg_start = 0;
 
         newbrk = oldbrk = (unsigned long) sbrk(0);
@@ -962,11 +983,11 @@ static void remap_segments(struct seg_info *seg, int num)
 
         for (i = 0; i < num; i++) {
             unsigned long slice_start, slice_end;
-
+            unsigned long offset = (unsigned long) seg[i].vaddr + seg[i].memsz;
             DEBUG("%p+0x%lx\n", seg[i].vaddr, seg[i].memsz);
             slice_start = hugetlb_slice_start((unsigned long) seg[i].vaddr);
-            slice_end = hugetlb_slice_end((unsigned long) seg[i].vaddr +
-                                          seg[i].memsz);
+            slice_end = hugetlb_slice_end(offset);
+
             if ((slice_start <= oldbrk) && (oldbrk <= slice_end)) {
                 if (slice_end + 1 > newbrk)
                     newbrk = slice_end + 1;
@@ -974,19 +995,32 @@ static void remap_segments(struct seg_info *seg, int num)
 
             if ((seg_start == 0) || (slice_start < seg_start))
                 seg_start = slice_start;
+
+            /* Attempt to put heap and data in the same page for 1G huge pages */
+            if (hugepage_stype == SIZE_1G) {
+                if (offset > (unsigned long) heapbase)
+                    heapbase = (void *) offset;
+            }
         }
 
         DEBUG("New brk=0x%lx\n", newbrk);
         DEBUG("Seg start=0x%lx\n", seg_start);
-        
+
         if (newbrk > seg_start) {
             hugepages_seg_total = (newbrk - seg_start) / hpage_size;
             DEBUG("Mapping segments uses %ld huge pages.\n", hugepages_seg_total);
         }
-            
+        
         if (newbrk != oldbrk) {
             if (brk((void *) newbrk) < 0)
                 WARNING("Couldn't set brk to 0x%lx; err %d\n", newbrk, errno);
+        }
+
+        if (heapbase > 0) {
+            heapbase = (void *) ALIGN_UP((unsigned long) heapbase, 16);
+            
+            if ((unsigned long) heapbase >= newbrk) 
+                heapbase = 0;
         }
 
         munmap((void *)oldbrk, newbrk - oldbrk);
@@ -1026,6 +1060,7 @@ static void remap_segments(struct seg_info *seg, int num)
 				       "wrong address %p\n", i, seg[i].vaddr,
 				       seg[i].vaddr+mapsize, p);
 	}
+
 	/* The segments are all back at this point.
 	 * and it should be safe to reference static data
 	 */
@@ -1089,17 +1124,6 @@ static int check_env(void)
 		}
 	}
 
-#ifdef OPEN64_MOD
-        hugepages_avail = hugetlbfs_num_pages();
-        hugepages_elf_limit = hugepages_avail;
-        env = getenv("HUGETLB_ELF_LIMIT");
-        
-        if (env) {
-            long n = atol(env);
-            if ((n >= 0) && ( n < hugepages_avail))
-                hugepages_elf_limit = n;
-        }
-#endif
 	return 0;
 }
 
@@ -1141,11 +1165,32 @@ void __hugetlbfs_setup_elflink(void)
 {
 	int i, ret;
 
+#ifdef OPEN64_MOD
+        char * env;
+#endif
+
 	if (check_env())
 		return;
 
 #ifdef OPEN64_MOD
 	hpage_size = gethugepagesize();
+
+        if (hpage_size == 2 * 1024 * 1024)
+            hugepage_stype = SIZE_2M;
+        else if (hpage_size == 1024 * 1024 * 1024)
+            hugepage_stype = SIZE_1G;
+            
+        DEBUG("Huge page size = %lx\n", hpage_size);
+
+        hugepages_avail = hugetlbfs_num_pages();
+        hugepages_elf_limit = hugepages_avail;
+        env = getenv("HUGETLB_ELF_LIMIT");
+        
+        if (env) {
+            long n = atol(env);
+            if ((n >= 0) && ( n < hugepages_avail))
+                hugepages_elf_limit = n;
+        }
 #endif
 
 	if (parse_elf())

@@ -26,7 +26,7 @@
 # add a default rule to build version and libs.
 
 LIBOBJS = hugeutils.o version.o init.o morecore.o debug.o
-INSTALL_OBJ_LIBS = libhugetlbfs.so libhugetlbfs.a
+INSTALL_OBJ_LIBS = libhugetlbfs_open64.so libhugetlbfs_open64.a
 LDSCRIPT_TYPES = B BDT
 LDSCRIPT_DIST_ELF = elf32ppclinux elf64ppc elf_i386 elf_x86_64
 INSTALL_OBJSCRIPT = ld.hugetlbfs
@@ -188,19 +188,19 @@ obj64/%.o: $(BUILD_BASE)/%.S
 	@mkdir -p obj64
 	$(CC64) $(CPPFLAGS) -o $@ -c $<
 
-obj32/libhugetlbfs.a: $(LIBOBJS32)
+obj32/libhugetlbfs_open64.a: $(LIBOBJS32)
 	@$(VECHO) AR32 $@
 	$(AR) $(ARFLAGS) $@ $^
 
-obj64/libhugetlbfs.a: $(LIBOBJS64)
+obj64/libhugetlbfs_open64.a: $(LIBOBJS64)
 	@$(VECHO) AR64 $@
 	$(AR) $(ARFLAGS) $@ $^
 
-obj32/libhugetlbfs.so: $(LIBOBJS32)
+obj32/libhugetlbfs_open64.so: $(LIBOBJS32)
 	@$(VECHO) LD32 "(shared)" $@
 	$(CC32) $(LDFLAGS) -Wl,-soname,$(notdir $@) -shared -o $@ $^ $(LDLIBS)
 
-obj64/libhugetlbfs.so: $(LIBOBJS64)
+obj64/libhugetlbfs_open64.so: $(LIBOBJS64)
 	@$(VECHO) LD64 "(shared)" $@
 	$(CC64) $(LDFLAGS) -Wl,-soname,$(notdir $@) -shared -o $@ $^ $(LDLIBS)
 

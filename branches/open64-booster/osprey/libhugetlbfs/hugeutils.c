@@ -46,6 +46,7 @@ static long hpage_size; /* = 0 */
 static char htlb_mount[PATH_MAX+1]; /* = 0 */
 static int hugepagesize_errno; /* = 0 */
 
+
 /********************************************************************/
 /* Internal functions                                               */
 /********************************************************************/
@@ -62,6 +63,7 @@ static long read_meminfo(const char *tag)
 	long val;
 
 	fd = open("/proc/meminfo", O_RDONLY);
+
 	if (fd < 0) {
 		ERROR("Couldn't open /proc/meminfo (%s)\n", strerror(errno));
 		return -1;
@@ -101,6 +103,47 @@ static long read_meminfo(const char *tag)
 
 	return val;
 }
+
+#ifdef OPEN64_MOD
+static long read_dynamic_meminfo()
+{
+    int fd;
+    char buf[MEMINFO_SIZE];
+    int len, readerr;
+    long val;
+
+    fd = open("/proc/sys/vm/hugepages_treat_as_movable", O_RDONLY);
+
+    if (fd < 0)
+        return 0;
+    
+    close(fd);
+
+    fd = open("/proc/sys/vm/nr_overcommit_hugepages", O_RDONLY);
+
+    if (fd < 0)
+        return 0;
+
+    len = read(fd, buf, sizeof(buf));
+    readerr = errno;
+    close(fd);
+
+    if (len < 0) 
+        return 0;
+
+    if (len == sizeof(buf)) {
+        ERROR("/proc/sys/vm/nr_overcommit_hugepages is too large\n");
+        return -1;
+    }
+
+    buf[len] = '\0';
+
+    val = strtol(buf, 0, 0);
+    DEBUG("Max dynamic pool = %ld\n", val);
+
+    return val;
+}
+#endif
 
 /********************************************************************/
 /* Library user visible functions                                   */
@@ -271,7 +314,14 @@ long hugetlbfs_num_free_pages(void)
 
 long hugetlbfs_num_pages(void)
 {
-	return read_meminfo("HugePages_Total:");
+#ifdef OPEN64_MOD
+    if (hugepage_stype == SIZE_2M) {
+        long val = read_dynamic_meminfo();
+        if (val > 0)
+            return val;
+    }
+#endif
+    return read_meminfo("HugePages_Total:");
 }
 
 #define MAPS_BUF_SZ 4096

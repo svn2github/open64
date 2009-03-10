@@ -270,14 +270,23 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         INSTALL_DATA_SUB ${LIBAREA}/libinstr2/libinstr.a      ${PHASEPATH}/libinstr.a
         INSTALL_DATA_SUB ${LIB32AREA}/libinstr2/libinstr.a      ${PHASEPATH}/32/libinstr.a
 
-        INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/obj64/libhugetlbfs.a      ${PHASEPATH}/libhugetlbfs.a
-        INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/obj32/libhugetlbfs.a      ${PHASEPATH}/32/libhugetlbfs.a
+        INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/obj64/libhugetlbfs_open64.a     ${PHASEPATH}/libhugetlbfs_open64.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/obj32/libhugetlbfs_open64.a   ${PHASEPATH}/32/libhugetlbfs_open64.a
+
+        INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/obj64/libhugetlbfs_open64.so    ${PHASEPATH}/libhugetlbfs_open64.so.1
+        INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/obj32/libhugetlbfs_open64.so  ${PHASEPATH}/32/libhugetlbfs_open64.so.1
+
+        ln -sf ${PHASEPATH}/libhugetlbfs_open64.so.1    ${PHASEPATH}/libhugetlbfs_open64.so
+        ln -sf ${PHASEPATH}/32/libhugetlbfs_open64.so.1 ${PHASEPATH}/32/libhugetlbfs_open64.so
 
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xB      ${PHASEPATH}/elf.xB
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386.xB        ${PHASEPATH}/32/elf.xB
 
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xBDT    ${PHASEPATH}/elf.xBDT
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386.xBDT      ${PHASEPATH}/32/elf.xBDT
+
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64_1G.xBDT    ${PHASEPATH}/elf_1G.xBDT
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386_1G.xBDT      ${PHASEPATH}/32/elf_1G.xBDT
     fi
 
     # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archieves

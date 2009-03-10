@@ -2028,7 +2028,11 @@ postprocess_ld_args (string_list_t *args)
                         /* libhugetlbfs linker script only supports dynamic link. 
                          */
                         if (!option_was_seen(O_static)) {
-                            dir = concat_strings(dir, "/elf.xBDT");
+                            if (desc->size == SIZE_2M)
+                                dir = concat_strings(dir, "/elf.xBDT");
+                            else if (desc->size == SIZE_1G)
+                                dir = concat_strings(dir, "/elf_1G.xBDT");
+                                
                             add_after_string(args, p, concat_strings("-Wl,-T", dir));
                             add_huge_lib = TRUE;
                         }
@@ -2044,7 +2048,7 @@ postprocess_ld_args (string_list_t *args)
     }
 
     if (add_huge_lib) {
-        add_library(args, "hugetlbfs");
+        add_library(args, "hugetlbfs_open64");
     }
 }
 #endif

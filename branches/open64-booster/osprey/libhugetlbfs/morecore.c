@@ -39,11 +39,19 @@ static int shrink_ok;		/* default = 0; no shrink */
 static int zero_fd;
 static long blocksize;
 
+#ifndef OPEN64_MOD
 static void *heapbase;
 static void *heaptop;
 static long mapsize;
+#endif
 
 #ifdef OPEN64_MOD
+void *heapbase;
+void *heaptop;
+long mapsize;
+unsigned long newbrk = 0;
+HUGEPAGE_STYPE hugepage_stype = SIZE_SMALL;
+
 long hugepages_heap_limit;
 long hugepages_seg_total;
 static long hugepages_avail;
@@ -77,7 +85,10 @@ static long hugetlbfs_next_addr(long addr)
  * go back to small pages and use mmap to get them.  Hurrah.
  */
 #define IOV_LEN	64
-
+#ifdef OPEN64_MOD
+#define IN_UNIFY_PAGE  ((hugepage_stype == SIZE_1G) && (newbrk > 0) && \
+                       ((unsigned long) heaptop <= newbrk))
+#endif
 static void *hugetlbfs_morecore(ptrdiff_t increment)
 {
 	unsigned long offset;
@@ -88,6 +99,7 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
 	long delta;
 
 #ifdef OPEN64_MOD
+        long p_delta = 0;
         DEBUG("brk=0x%lx\n",(unsigned long) sbrk(0));
 #endif
 
@@ -101,6 +113,24 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
 
 	DEBUG("heapbase = %p, heaptop = %p, mapsize = %lx, delta=%ld\n",
 	      heapbase, heaptop, mapsize, delta);
+
+#ifdef OPEN64_MOD
+        if (IN_UNIFY_PAGE) {
+            if (delta < 0) {
+                p = heaptop;
+                heaptop = heaptop + increment;
+                return p;
+            }
+            else {
+                /* transition point from BD page */
+                p_delta = increment - delta;
+                heaptop = heapbase = (void *) newbrk;
+                mapsize = 0;
+                DEBUG("in transition p_delta = %ld, heaptop = %p\n",
+                      p_delta, heaptop);
+            }
+        }
+#endif
 
 	/* align to multiple of hugepagesize. */
 	delta = ALIGN(delta, blocksize);
@@ -190,7 +220,6 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
 
 		/* we now have mmap'd further */
 		mapsize += delta;
-                
 	} else if (delta < 0) {
 		/* shrinking the heap */
 
@@ -243,7 +272,14 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
 	}
 
 	/* heap is continuous */
+
 	p = heaptop;
+
+#ifdef OPEN64_MOD
+        p -= p_delta;
+        heaptop -= p_delta;
+#endif
+
 	/* and we now have added this much more space to the heap */
 	heaptop = heaptop + increment;
 	DEBUG("... = %p\n", p);
@@ -314,7 +350,11 @@ void __hugetlbfs_setup_morecore(void)
 			      env);
 			return;
 		}
-	} else {
+	} else if (heapbase > 0) {
+            heapaddr = (unsigned long) heapbase;
+            mapsize = (unsigned long) sbrk(0) - heapaddr;
+        }
+        else {
 		heapaddr = (unsigned long)sbrk(0);
 		heapaddr = hugetlbfs_next_addr(heapaddr);
 	}
@@ -324,7 +364,7 @@ void __hugetlbfs_setup_morecore(void)
             sbrk(heapaddr - curbrk);
 #endif
 	zero_fd = open("/dev/zero", O_RDONLY);
-
+        
 	DEBUG("setup_morecore(): heapaddr = 0x%lx\n", heapaddr);
 
 	heaptop = heapbase = (void *)heapaddr;
