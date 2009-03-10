@@ -258,9 +258,7 @@ private:
 #endif // _LIGHTWEIGHT_INLINER
 
   // Auxiliary fields added for partial inlining.
-  WN*       _part_inlined_body;       // partial function body to be inlined
-  IPA_NODE* _part_inl_clone;          // The cloned callee for partial inlining
-                                      // (i.e. the leftover PU)
+  WN*       _leftover_body;           // leftover function body
   INT64     _leftover_rtn_val;        // The return const value of the leftover
                                       // function from partial inlining.
                                       // Meaningful only when 
@@ -303,8 +301,7 @@ public:
     ,_sizeof_eh_spec (0)
     ,_file_id (-1)
 #endif
-    ,_part_inlined_body (NULL)
-    ,_part_inl_clone (NULL)
+    ,_leftover_body (NULL)
   {
 #ifdef KEY
     // If we are constructing for a builtin, then skip the info that a builtin
@@ -616,11 +613,8 @@ public:
   void Clear_Inline_Attrib ()     { Clear_PU_is_inline_function (Get_PU ()); }
   BOOL Has_Inline_Attrib () const { return PU_is_inline_function (Get_PU ()); }
 
-  void Set_Part_Inlined_Body(WN* wn)    { _part_inlined_body = wn; }
-  WN  *Part_Inlined_Body()              { return _part_inlined_body; }
-  void Set_Part_Inl_Clone(IPA_NODE* node)
-                                        { _part_inl_clone = node; }
-  IPA_NODE* Part_Inl_Clone()            { return _part_inl_clone; }
+  void Set_Leftover_Body(WN* wn)        { _leftover_body = wn; }
+  WN  *Leftover_Body()                  { return _leftover_body; }
   void      Set_Leftover_Rtn_Val(INT64 val)  
                                         { _leftover_rtn_val = val; }
   INT64     Leftover_Rtn_Val()          { return _leftover_rtn_val; }

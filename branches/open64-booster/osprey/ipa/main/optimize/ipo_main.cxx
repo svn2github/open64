@@ -538,17 +538,12 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     }
 #endif
 
-/*pengzhao
-if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW))
-	{
-			
-		fprintf ( inlining_result,"%s inlined into ", DEMANGLE(callee->Name()));
-		fprintf ( inlining_result, "%s (edge# %d)\n", DEMANGLE (caller->Name()), edge->Edge_Index () );
-
-	} */
-
     if ( Trace_IPA || Trace_Perf ) {
-	fprintf ( TFile, "%s inlined into ", DEMANGLE (callee->Name()) );
+        if (edge->Has_Partial_Inline_Attrib()) {
+           fprintf ( TFile, "%s partially inlined into ", DEMANGLE (callee->Name()) );
+        } else {
+           fprintf ( TFile, "%s inlined into ", DEMANGLE (callee->Name()) );
+        }
 	fprintf ( TFile, "%s (edge# %d)", DEMANGLE (caller->Name()), edge->Edge_Index () );
 	if ( IPA_Skip_Report ) {
 	    fprintf ( TFile, " (%d)\n", caller->Node_Index() );
@@ -557,7 +552,11 @@ if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW))
 	}
     }
     if ( INLINE_List_Actions ) {
-	fprintf ( stderr, "%s inlined into ", DEMANGLE (callee->Name()) );
+        if (edge->Has_Partial_Inline_Attrib()) {
+           fprintf ( stderr, "%s partially inlined into ", DEMANGLE (callee->Name()) );
+        } else {
+           fprintf ( stderr, "%s inlined into ", DEMANGLE (callee->Name()) );
+        }
 	fprintf ( stderr, "%s (edge# %d)\n", DEMANGLE (caller->Name()), edge->Edge_Index () );
 	if ( IPA_Skip_Report ) {
 	    fprintf ( stderr, " (%d)\n", caller->Node_Index() );
@@ -607,7 +606,11 @@ if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW))
    	strcat(callee_key, callee_file);
 	strcat(callee_key, callee_func);	
 	
-	fprintf(inline_action, "[%s] inlined into [%s]\n", callee_key, caller_key);
+        if (edge->Has_Partial_Inline_Attrib()) {
+           fprintf(inline_action, "[%s] partially inlined into [%s]\n", callee_key, caller_key);
+        } else {
+           fprintf(inline_action, "[%s] inlined into [%s]\n", callee_key, caller_key);
+        }
 	fclose(inline_action);
 #endif
     }

@@ -146,7 +146,7 @@ UINT32 IPA_Common_Pad_Size = 0;	        /* Amount by which to pad commons */
 
 BOOL IPA_Enable_Cloning = TRUE;         /* Enable Cloning in conjunction */
                                         /* with constant propagation     */
-BOOL IPA_Enable_Partial_Inline = FALSE; /* Enable partial inlining */
+BOOL IPA_Enable_Partial_Inline = TRUE; /* Enable partial inlining */
 BOOL IPA_Enable_Lang = FALSE;           /* support inlining across language */
 BOOL IPA_Enable_Relocatable_Opt = FALSE;/* support -call_shared optimizations of relocatable objects */
 BOOL IPA_Enable_Split_Common = TRUE;    /* Enable split common inside IPA */

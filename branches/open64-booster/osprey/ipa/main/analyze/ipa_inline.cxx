@@ -83,6 +83,9 @@
 #define MINI_HOTNESS_THRESHOLD		1
 #define MEDIAN_HOTNESS_THRESHOLD	10
 #define LARGE_HOTNESS_THRESHOLD		120
+
+#define ESTIMATED_PART_INL_BB_CNT       2
+#define ESTIMATED_PART_INL_STMT_CNT     5
 //INLINING_TUNIN$
 #define TINY_SIZE 10
 
@@ -306,6 +309,23 @@ if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING))
 UINT32
 Get_combined_weight (PU_SIZE s1, PU_SIZE s2, IPA_NODE *callee)
 {
+    if (callee->Has_Varargs()) {
+       /* If callee is a varargs, we will only do partial inlining
+          and hence we estimate a much smaller size increase.
+          TODO:
+          We want to adjust the size estimate for all partially
+          inlined functions. But since the partial inlining candidates
+          and paths are not determined until the IPO phase, this
+          adjustment is not easy here. Once we move the partial
+          inlining candidate selection to the IPL phase and the decision
+          to the ipa_inline phase, we can solve this size adjustment
+          problem.
+        */
+       s1.Inc_PU_Size (ESTIMATED_PART_INL_BB_CNT,
+                       ESTIMATED_PART_INL_STMT_CNT, 0);
+       return s1.Weight ();
+    }
+
     s1 += s2;
     /* 1 less bb and 1 less callfrom removing the call, add copy stmt for
        formals */ 
@@ -320,6 +340,23 @@ Get_combined_weight (PU_SIZE s1, PU_SIZE s2, IPA_NODE *callee)
 UINT32
 Get_combined_olimit (PU_SIZE s1, PU_SIZE s2, IPA_NODE *callee)
 {
+    if (callee->Has_Varargs()) {
+       /* If callee is a varargs, we will only do partial inlining
+          and hence we estimate a much smaller size increase.
+          TODO:
+          We want to adjust the size estimate for all partially
+          inlined functions. But since the partial inlining candidates
+          and paths are not determined until the IPO phase, this
+          adjustment is not easy here. Once we move the partial
+          inlining candidate selection to the IPL phase and the decision
+          to the ipa_inline phase, we can solve this size adjustment
+          problem.
+        */
+       s1.Inc_PU_Size (ESTIMATED_PART_INL_BB_CNT,
+                       ESTIMATED_PART_INL_STMT_CNT, 0);
+       return s1.Weight ();
+    }
+
     s1 += s2;
     /* 1 less bb and 1 less callfrom removing the call, add copy stmt for
        formals */ 
@@ -436,7 +473,11 @@ Update_Total_Prog_Size (const IPA_NODE *caller, IPA_NODE *callee,
 {
     ++((*inline_count)[callee]);
 
-    if (IPA_Enable_Cloning && caller->Is_Clone_Candidate()) {
+    if ((IPA_Enable_Cloning && caller->Is_Clone_Candidate()) ||
+        callee->Has_Varargs()) {
+        /* If callee has var args, this is indempotent partial
+           inlining and the callee will be kept.
+         */
 	callee->Set_Undeletable ();
 	return;
     }
@@ -475,6 +516,20 @@ Effective_weight (const IPA_NODE* node)  {
 	return PU_Weight (fb->Get_effective_bb_count (),
 			  fb->Get_effective_stmt_count (),
 			  node->PU_Size().Call_Count ());
+    } else if (node->Has_Varargs()) { 
+        /* If callee is a varargs, we will only do partial inlining
+           and hence we estimate a much smaller size increase.
+           TODO:
+           We want to adjust the size estimate for all partially
+           inlined functions. But since the partial inlining candidates
+           and paths are not determined until the IPO phase, this
+           adjustment is not easy here. Once we move the partial 
+           inlining candidate selection to the IPL phase and the decision
+           to the ipa_inline phase, we can solve this size adjustment
+           problem.
+         */
+        return PU_Weight(ESTIMATED_PART_INL_BB_CNT, 
+                         ESTIMATED_PART_INL_STMT_CNT, 0);
     } else
 #endif // _STANDALONE_INLINER
 	return node->Weight ();
@@ -610,8 +665,8 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	    }
 	    
 	    if ( INLINE_List_Actions ) {
-		fprintf ( stderr, "%s inlined into ", DEMANGLE (callee->Name()) );
-		fprintf ( stderr, "%s: because of force depth =  (%d)\n", DEMANGLE (caller->Name()), IPA_Force_Depth );
+                fprintf ( stderr, "%s (size %d) inlined into ", DEMANGLE (callee->Name()), callee_weight );
+                fprintf ( stderr, "%s (combined size %d): because of force depth =  (%d)\n", DEMANGLE (caller->Name()), combined_weight, IPA_Force_Depth );
 		Total_Prog_Size += (combined_weight - caller_weight);
 		caller->UpdateSize (callee, ed);
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
@@ -650,6 +705,9 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 #ifdef KEY
                 Report_Reason (callee, caller, 
 		               "Total program size limit exceeded", ed);
+                if ( INLINE_List_Actions ) {
+                    fprintf ( stderr, "Total program size (%d) exceeds the limit (%d)\n", Total_Prog_Size, Max_Total_Prog_Size);
+                }
 #else
 		if ( INLINE_List_Actions ) {
 		    fprintf ( stderr, "Inlining stopped because total " "program size limit exceeded\n" );
@@ -804,8 +862,8 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 		}
 		
 		if ( INLINE_List_Actions ) {
-		    fprintf ( stderr, "%s inlined into ", DEMANGLE (callee->Name()) );
-		    fprintf ( stderr, "%s: forced because of small size (%d)  (edge# %d)\n", DEMANGLE (caller->Name()), callee_weight, ed->Edge_Index() );
+                    fprintf ( stderr, "%s (size %d) inlined into ", DEMANGLE (callee->Name()), callee_weight );
+                    fprintf ( stderr, "%s (combined size %d): forced because of small size (%d)  (edge# %d)\n", DEMANGLE (caller->Name()), combined_weight, callee_weight, ed->Edge_Index() );
 		}
 	    }
 	}
@@ -1214,6 +1272,25 @@ param_types_are_compatible (IPA_NODE* caller_node, IPA_NODE* callee_node, IPA_ED
 void
 IPA_NODE::UpdateSize (IPA_NODE *callee, IPA_EDGE *ed)
 {
+    if (callee->Has_Varargs()) {
+       /* If callee is a varargs, we will only do partial inlining
+          and hence we estimate a much smaller size increase.
+          TODO:     
+          We want to adjust the size estimate for all partially
+          inlined functions. But since the partial inlining candidates
+          and paths are not determined until the IPO phase, this
+          adjustment is not easy here. Once we move the partial
+          inlining candidate selection to the IPL phase and the decision
+          to the ipa_inline phase, we can solve this size adjustment
+          problem.
+          TODO:
+          To adjust the size in the feedback case.
+        */
+       _pu_size.Inc_PU_Size (ESTIMATED_PART_INL_BB_CNT,
+                             ESTIMATED_PART_INL_STMT_CNT, 0);
+       return;
+    } 
+
     _pu_size += callee->PU_Size();
 #ifdef KEY
     _pu_size.Inc_PU_Size (-1, 0, -1);
@@ -1409,153 +1486,6 @@ formal_is_loop_index (IPA_NODE * caller_node, IPA_NODE * callee_node, IPA_EDGE *
 #endif // KEY
 
 /*-------------------------------------------------------------*/
-/* 
-   Check to see if this callee is a candidate for partial     
-   inlining.                                                 
-   There are different considerations for partial inlining, e.g.
-   1. When the callee is too large to inline the whole function,
-      consider to inline only part of it.
-   2. When certain paths in callee are particularly hot while
-      the others are cold, inline only the hot paths.
-   3. When callee has certain contructs (e.g. var args) that we 
-      cannot inline them, try to inline only part of the function
-      without these constraining constructs.
-   The current selection of partial inlining candidate is quite
-   limited, and the select heuristics are to be extended.
-   We are currently identifying candidates like
-  
-   foo() {
-     if (cond)     // This if clause to be partially inlined.
-       return;
-     ....
-  }
-*/
-/*-------------------------------------------------------------*/
-static BOOL
-found_partial_inlining_path(WN* wn, BOOL *cont_search, BOOL *has_if)
-{
-   int    i;
-   WN     *wn2 = NULL;
-   BOOL   rtn_val = FALSE;
-   if (!wn) {
-       return FALSE;
-   }
-
-   OPERATOR opr = WN_operator(wn);
-
-   if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
-      fprintf (Y_inlining, "encountering opr %d\n", opr); 
-   }
-
-   /* For now, let's just find a simple pattern for partial inlining:
-      an IF-statement, with a RETURN on the then clause.
-      Skip for anything else.
-    */
-   switch (opr) {
-      case OPR_BLOCK:
-         wn2 = WN_first(wn);
-         while (wn2) {
-            rtn_val = found_partial_inlining_path(wn2, cont_search, has_if);
-            if(!(*cont_search))   return rtn_val; 
-            wn2 = WN_next(wn2);
-         }
-         return FALSE;
-
-      case OPR_IF:
-         wn2 = WN_else(wn);
-         *has_if = TRUE;
-         rtn_val = found_partial_inlining_path(wn2, cont_search, has_if);
-         /* If we find anything non-trivial in the else
-            clause, regardless what it is (even if rtn_val TRUE),
-            this is not a case that we are looking for now.
-            Return FALSE.
-          */
-         if(!(*cont_search))   return FALSE; 
-
-         wn2 = WN_then(wn);
-         rtn_val = found_partial_inlining_path(wn2, cont_search, has_if);
-         /* Stop searching. */
-         *cont_search = FALSE;
-         return rtn_val;
-
-      case OPR_RETURN:
-      case OPR_RETURN_VAL:
-         *cont_search = FALSE;
-         /* If the return is not embedded in an IF, not a pattern that
-            we are looking for.
-          */
-         if (*has_if)
-            return TRUE;
-         else
-            return FALSE;
-
-      case OPR_FUNC_ENTRY:  
-      case OPR_PRAGMA:  
-      case OPR_IDNAME:  
-         for (i = 0; i < WN_kid_count(wn); i++) {
-            wn2 = WN_kid(wn,i);
-            rtn_val = found_partial_inlining_path(wn2, cont_search, has_if);
-            if(!(*cont_search))   return rtn_val; 
-         }
-         return FALSE;
-
-      default:
-         (*cont_search) = FALSE;
-         return FALSE;
-   }
-
-   return FALSE;
-}
-
-/* The driver to identify whether a node is a partial inlining 
-   candidate. 
-   Whether a node is a partial inlining candidate should be a function
-   of the node (PU) itself, not a function of a call site (the call
-   edge). Consider to move this function a member function of IPA_NODE.
- */
-BOOL
-Is_partial_inline_candidate(IPA_NODE *callee, BOOL prt_tree) 
-{
-    // Skip these cases until we better understand how to make partial
-    // inlining work with these cases.
-    if (!IPA_Enable_Partial_Inline ||
-        callee->Is_Clone_Candidate() ||
-        callee->Is_Quasi_Clone() ||
-        callee->PU_Can_Throw()
-       ) {
-       return FALSE;
-    }
-
-    // Since Whirl_Tree is unavailable at the analysis phase, we 
-    // are currently invoking this function at the optimize phase.
-    // In the long term, we may want to move this to the IPL phase.
-    WN* wn = callee->Whirl_Tree();
-
-    if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
-       if (prt_tree) {
-          fdump_tree(Y_inlining, wn);
-       }
-
-       fprintf (Y_inlining, "Start checking func %s for partial inlining \n", 
-                callee->Name());
-    }
-
-    BOOL cont_search = TRUE;
-    BOOL has_if = FALSE;
-    BOOL result = found_partial_inlining_path(wn, &cont_search, &has_if);
-    if (result) {
-       if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
-          fprintf (Y_inlining, "func %s detected as a partial inline candidate \n", 
-                   callee->Name());
-       }
-       callee->Set_Part_Inl_Candidate();
-       return TRUE;
-    }
-
-    return FALSE;
-}
-
-/*-------------------------------------------------------------*/
 /* check to see if we should be inlining                       */
 /*-------------------------------------------------------------*/
 static BOOL
@@ -1598,8 +1528,6 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	    (caller->Get_partition_group() != callee->Get_partition_group())) 
 	return FALSE;
 #endif
-//;;printf("######## (0x%x)%s->(0x%x)%s (%.1f)\n", caller,caller->Name(), callee,callee->Name(),callee->Get_cycle_count()._value );
-//;;fflush(stdout);
 
     if (callee->Should_Be_Skipped()) {
 	reason = "callee is skipped";
@@ -1666,11 +1594,10 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
         /*
              Because WNs have not been read to memory at this
              stage, we cannot scan the body of the callee
-             to determine a partial inlining candidate as in
-               !Is_partial_inline_candidate(callee, TRUE) ) 
-             If we can (probably should) read WNs in before
-             starting analyzing for inlining candidates, we
-             will analyze PU body here. 
+             to determine a partial inlining candidate here.
+               The plan is to move the scanning for partial
+             inlining candidates to the IPL stage to address
+             this phase ordering issue.
          */
 	result = FALSE;
 	reason = "callee is varargs";
