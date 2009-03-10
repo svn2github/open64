@@ -710,10 +710,18 @@ void generate_loop_butterfly_zones(COMP_UNIT *cu, successor_graph &g,
 // forward declaration.
 class PRO_LOOP_FUSION_TRANS;
 
+// bit mask for if-merging actions.
 typedef enum IF_MERGE_ACTION {
   DO_NONE = 0x0,
   DO_IFMERGE = 0x1,
   DO_IFCOLLAPSE = 0x2
+};
+
+// bit mask for if-merging pass
+typedef enum IF_MERGE_PASS {
+  PASS_NONE = 0x0,
+  PASS_GLOBAL = 0x1,
+  PASS_LOCAL = 0x2
 };
 
 class IF_MERGE_TRANS {
@@ -727,6 +735,7 @@ private:
   MEM_POOL * _pool;
   PRO_LOOP_FUSION_TRANS * _tail_dup;
   IF_MERGE_ACTION _action;
+  IF_MERGE_PASS _pass;
 
 private:
   void Delete_val_map();
@@ -756,6 +765,7 @@ public:
   void      Set_trace(BOOL i)                { _trace = i; }
   void      Set_dump(BOOL i)                 { _dump = i; }
   void      Set_tail_dup(PRO_LOOP_FUSION_TRANS * i) { _tail_dup = i; }
+  void      Set_pass(IF_MERGE_PASS i) { _pass = i; }
 
   IF_MERGE_TRANS(void) { Clear(); }
   IF_MERGE_TRANS(COMP_UNIT * i) { Clear(); _cu = i; }
@@ -799,6 +809,7 @@ private:
   void Insert_region(BB_NODE *, BB_NODE *, BB_NODE *, BB_NODE *, MEM_POOL *);
   BOOL Is_delayed(SC_NODE *, SC_NODE *);
   void Fix_parent_info(SC_NODE *, SC_NODE *);
+  BOOL Is_worthy(SC_NODE *);
 public:
   void Clear();
   PRO_LOOP_FUSION_TRANS(void) { Clear(); }

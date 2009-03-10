@@ -1712,9 +1712,9 @@ public:
   BOOL Is_dom(SC_NODE *);
   // Does this BB post-dominate every BB in the given SC_NODE?
   BOOL Is_postdom(SC_NODE *);
-  // Does every pair of WN statements in this BB_NODE and the given BB_NODE 
-  // have the same shape?
+  // Is every pair of WN statements in this BB_NODE and the given BB_NODE identical?
   BOOL Compare_Trees(BB_NODE *);
+
   // Count of real statements in this BB_NODE.
   int  Real_stmt_count();
   // Does this BB_NODE end with a branch targeting the given BB_NODE?
@@ -1859,7 +1859,6 @@ private:
 
 private:
   BOOL Is_member(BB_NODE *);
-  BOOL Has_same_shape(SC_NODE *);
 
 public:
   IDTYPE       Id(void)          const  { return _id; }
@@ -1954,6 +1953,7 @@ public:
   BOOL Is_pred_in_tree(SC_NODE *);
   int Num_of_loops(SC_NODE *, BOOL, BOOL);
   int Real_stmt_count();
+  BOOL Has_loop();
 };
 
 class SC_LIST : public SLIST_NODE {

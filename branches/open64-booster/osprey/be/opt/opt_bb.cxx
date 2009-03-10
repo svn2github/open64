@@ -1424,8 +1424,7 @@ BB_NODE::Is_postdom(SC_NODE * sc)
 }
 
 // Query whether every WN statement in this BB_NODE and given BB_NODE
-// have the same shape, where the shape is defined by the identity of operators
-// and operands.  The real values of the operands are not considered.
+// are identical.
 
 BOOL
 BB_NODE::Compare_Trees(BB_NODE * bb)
@@ -1434,8 +1433,17 @@ BB_NODE::Compare_Trees(BB_NODE * bb)
   WN * stmt2 = bb->Firststmt();
 
   while (stmt1 && stmt2) {
-    if (WN_Simp_Compare_Trees(stmt1, stmt2) != 0)
+    OPERATOR opr = WN_operator(stmt1);
+
+    if (opr != WN_operator(stmt2))
       return FALSE;
+
+    if ((opr == OPR_FALSEBR) || (opr == OPR_TRUEBR)) {
+      if (WN_Simp_Compare_Trees(WN_kid0(stmt1), WN_kid0(stmt2)) != 0)
+	return FALSE;
+    }
+    else if (WN_Simp_Compare_Trees(stmt1, stmt2) != 0)
+      return FALSE;      
 
     stmt1 = WN_next(stmt1);
     stmt2 = WN_next(stmt2);
@@ -1443,6 +1451,39 @@ BB_NODE::Compare_Trees(BB_NODE * bb)
 
   if ((stmt1 != NULL) || (stmt2 != NULL))
     return FALSE;
+
+  return TRUE;
+}
+
+// For every pair of WHILR nodes in the WHIRL tree rooted
+// at wn1 and wn2, check whether operators are identical.
+// If the node is a constant, check whether constant value
+// is identical.
+
+static BOOL
+Has_same_shape(WN * wn1, WN * wn2)
+{
+  if (WN_operator(wn1) != WN_operator(wn2))
+    return FALSE;
+
+  switch (WN_operator(wn1)) {
+  case OPR_INTCONST:
+    if (WN_const_val(wn1) != WN_const_val(wn2))
+      return FALSE;
+
+    break;
+
+  default:
+    ;
+  }
+
+  if (WN_kid_count(wn1) != WN_kid_count(wn2))
+    return FALSE;
+
+  for (int i = 0; i < WN_kid_count(wn1); i++) {
+    if (!Has_same_shape(WN_kid(wn1,i), WN_kid(wn2,i)))
+      return FALSE;
+  }
 
   return TRUE;
 }
@@ -2131,86 +2172,45 @@ SC_NODE::Find_lcp(SC_NODE * sc)
   return NULL;
 }
 
-// Query whether this SC_NODE has the same shape as given sc, i.e.,
-// the SC tree rooted at this SC_NODE and the SC tree rooted at the given sc have the
-// same shape, and all WN trees in the two SC trees also have the same shape.
-// where the shape of WN tree is defined by the identify of operators and operands.
-// The real values of the operands are not considered.
-
-BOOL
-SC_NODE::Has_same_shape(SC_NODE * sc)
-{
-  if (type != sc->Type())
-    return FALSE;
-
-  BB_NODE * bb1 = Get_bb_rep();
-  BB_NODE * bb2 = sc->Get_bb_rep();
-
-  if (bb1 && bb2) {
-    if (!bb1->Compare_Trees(bb2))
-      return FALSE;
-  }
-
-  BB_LIST * bb_list1 = Get_bbs();
-  BB_LIST * bb_list2 = sc->Get_bbs();
-
-  if (bb_list1 && bb_list2 && (bb_list1->Len() != bb_list2->Len()))
-    return FALSE;
-  
-  while (bb_list1) {
-    bb1 = bb_list1->Node();
-    bb2 = bb_list2->Node();
-    
-    if (bb1->Compare_Trees(bb2))
-      return FALSE;
-
-    bb_list1 = bb_list1->Next();
-    bb_list2 = bb_list2->Next();
-  }
-  
-  if (kids->Len() != sc->Kids()->Len())
-    return FALSE;
-
-  SC_NODE * kid1 = First_kid();
-  SC_NODE * kid2 = sc->First_kid();
-  
-  while (kid1) {
-    if (!kid1->Has_same_shape(kid2))
-      return FALSE;
-
-    kid1 = kid1->Next_sibling();
-    kid2 = kid2->Next_sibling();
-  }
-  
-  return TRUE;
-}
-
-
 // Query whether this SC_NODE has the same loop structure as sc
 BOOL
 SC_NODE::Has_same_loop_struct(SC_NODE * sc)
 {
-
   if ((type != SC_LOOP) || (type != sc->Type()))
     return FALSE;
 
   if (kids->Len() != sc->Kids()->Len())
     return FALSE;
-  
+
   SC_NODE * sc1 = First_kid();
   SC_NODE * sc2 = sc->First_kid();
   BB_NODE * bb1;
   BB_NODE * bb2;
-
+  WN * wn1;
+  WN * wn2;
+  
   while (sc1) {
     if (sc1->Type() != sc2->Type())
       return FALSE;
+
+    bb1 = sc1->First_bb();
+    bb2 = sc2->First_bb();
 
     switch (sc1->Type()) {
     case SC_LP_START:
     case SC_LP_COND:
     case SC_LP_STEP:
-      if (!sc1->Has_same_shape(sc2))
+
+      wn1 = bb1->Laststmt();
+      wn2 = bb2->Laststmt();
+      
+      if (WN_operator(wn1) == OPR_GOTO)
+	wn1 = WN_prev(wn1);
+
+      if (WN_operator(wn2) == OPR_GOTO)
+	wn2 = WN_prev(wn2);
+
+      if (!wn1 || !wn2 || !Has_same_shape(wn1, wn2))
 	return FALSE;
       
     default:
@@ -2220,6 +2220,7 @@ SC_NODE::Has_same_loop_struct(SC_NODE * sc)
     sc1 = sc1->Next_sibling();
     sc2 = sc2->Next_sibling();
   }
+
   return TRUE;
 }
 
@@ -2259,9 +2260,13 @@ SC_NODE::Has_symmetric_path(SC_NODE * sc)
       if ((type1 != SC_IF) && (type1 != SC_LOOP))
 	return FALSE;
       
-      if ((type1 == SC_IF)
-	  && !sc1->Has_same_shape(sc2))
-	return FALSE;
+      if (type1 == SC_IF) {
+	BB_NODE * bb1 = sc1->Get_bb_rep();
+	BB_NODE * bb2 = sc2->Get_bb_rep();
+
+	if (!bb1->Compare_Trees(bb2))
+	  return FALSE;
+      }
 
       if ((type1 == SC_LOOP)
 	  && !sc1->Has_same_loop_struct(sc2))
@@ -2334,6 +2339,25 @@ SC_NODE::Real_stmt_count()
   }
 
   return count;
+}
+
+// Query whether there exists a SC_LOOP in the SC-tree rooted at this SC_NODE.
+BOOL
+SC_NODE::Has_loop()
+{
+  if (type == SC_LOOP)
+    return TRUE;
+  
+  SC_LIST_ITER sc_list_iter(kids);
+  SC_NODE * sc_tmp;
+  
+  FOR_ALL_ELEM(sc_tmp, sc_list_iter, Init()) {
+    if ((sc_tmp->Type() == SC_LOOP)
+	|| sc_tmp->Has_loop())
+      return TRUE;
+  }
+
+  return FALSE;
 }
 
 // Dump a SC_NODE.  If dump_tree is TRUE, dump the SC tree

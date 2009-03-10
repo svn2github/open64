@@ -1201,6 +1201,7 @@ IF_MERGE_TRANS::Clear(void)
   _true_val = NULL;
   _pool = NULL;
   _action = DO_NONE;
+  _pass = PASS_NONE;
   
 }
 
@@ -2345,6 +2346,13 @@ IF_MERGE_TRANS::Is_cand(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
       && ((_tail_dup->Transform_count() + count) >= WOPT_Enable_Tail_Dup_Limit))
     return FALSE;
 
+  // Heuristic: in the global pass, avoid tail duplication unless both
+  // SC_NODEs contain loop.
+
+  if ((_pass == PASS_GLOBAL)
+      && (!sc1->Has_loop() || !sc2->Has_loop()))
+    return FALSE;
+
   if (!do_query) {
     next_sibling = sc1->Next_sibling();
   
@@ -2409,6 +2417,99 @@ PRO_LOOP_FUSION_TRANS::Collect_classified_loops(SC_NODE * sc)
   FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
     Collect_classified_loops(tmp);
   }
+}
+
+// Check whether it is worthy to do proactive loop fusion transformation
+// for the given SC_NODE. Currently we avoid loops of small trip counts.
+
+#define TRIP_COUNT_THRESHOLD 1000
+
+BOOL
+PRO_LOOP_FUSION_TRANS::Is_worthy(SC_NODE * sc)
+{
+  FmtAssert(sc->Type() == SC_LOOP, ("Expect a SC_LOOP."));
+
+  SC_NODE * sc_start = sc->Find_kid_of_type(SC_LP_START);
+  SC_NODE * sc_end = sc->Find_kid_of_type(SC_LP_COND);
+  SC_NODE * sc_step = sc->Find_kid_of_type(SC_LP_STEP);
+
+  if (!sc_start || !sc_end || !sc_step)
+    return FALSE;
+
+  BB_NODE * bb_start = sc_start->First_bb();
+  BB_NODE * bb_end = sc_end->First_bb();
+  BB_NODE * bb_step = sc_step->First_bb();
+
+  if (!bb_start || !bb_end || !bb_step)
+    return FALSE;
+
+  WN * wn_start = bb_start->Laststmt();  
+  WN * wn_end = bb_end->Laststmt();
+  WN * wn_step = bb_step->Laststmt();
+
+  if (wn_step && (WN_operator(wn_step) == OPR_GOTO))
+    wn_step = WN_prev(wn_step);
+
+  if (!wn_start || !wn_end || !wn_step)
+    return FALSE;
+
+  WN * wn_lower = NULL;
+  WN * wn_upper = NULL;
+  WN * wn_incr = NULL;
+  WN * wn_kid;
+  WN * wn_kid0;
+  WN * wn_kid1;
+  OPERATOR opr;
+  OPCODE op;
+
+  // Find trip count lower bound.
+  if (WN_operator(wn_start) == OPR_STID) 
+    wn_lower = WN_kid0(wn_start);
+
+  // Find trip count upper bound.
+  if ((WN_operator(wn_end) == OPR_FALSEBR)
+      || (WN_operator(wn_end) == OPR_TRUEBR)) {
+    wn_kid = WN_kid0(wn_end);
+    opr = WN_operator(wn_kid);
+    op = WN_opcode(wn_kid);
+
+    if (((opr == OPR_EQ) || (opr == OPR_NE) 
+	 || (opr == OPR_LT) || (opr == OPR_LE)
+	 || (opr == OPR_GT) || (opr == OPR_GE))
+	&& MTYPE_is_integral(OPCODE_desc(op))) {
+      wn_kid0 = WN_kid0(wn_kid);
+      wn_kid1 = WN_kid1(wn_kid);
+      wn_upper = (WN_operator(wn_kid0) == OPR_LDID) ? wn_kid1 :
+	((WN_operator(wn_kid1) == OPR_LDID) ? wn_kid0 : NULL);
+    }
+  }
+  
+  // Find step.
+  if (wn_step && (WN_operator(wn_step) == OPR_STID)) {
+    wn_kid = WN_kid0(wn_step);
+    opr = WN_operator(wn_kid);
+
+    if ((opr == OPR_ADD) || (opr == OPR_SUB)) {
+      wn_kid0 = WN_kid0(wn_kid);
+      wn_kid1 = WN_kid1(wn_kid);
+      wn_incr = (WN_operator(wn_kid0) == OPR_LDID) ? wn_kid1 :
+	((WN_operator(wn_kid1) == OPR_LDID) ? wn_kid0 : NULL);
+    }
+  }
+  
+  if (wn_lower && wn_upper && wn_incr) {
+    if ((WN_operator(wn_lower) == OPR_INTCONST)
+	&& (WN_operator(wn_step) == OPR_INTCONST)
+	&& (WN_operator(wn_upper) == OPR_INTCONST)) {
+      int trip_count = abs(WN_const_val(wn_upper) - WN_const_val(wn_lower))
+	/ abs(WN_const_val(wn_incr));
+      
+      if (trip_count < TRIP_COUNT_THRESHOLD)
+	return FALSE;
+    }
+  }
+
+  return TRUE;
 }
 
 // Find a pair of tail duplication candidates for the SC_tree rooted at sc_root.
@@ -2488,6 +2589,10 @@ PRO_LOOP_FUSION_TRANS::Find_cand
 
     // Condition 1.5
     if (tmp1->Num_of_loops(sc_root, TRUE, TRUE) != 0)
+      continue;
+
+    // heuristic to avoid unprofitable loops.
+    if (!Is_worthy(tmp1))
       continue;
 
     // Condition 1.2
@@ -3788,9 +3893,11 @@ COMP_UNIT::Pro_loop_fusion_trans()
       if_merge_trans->Set_tail_dup(pro_loop_fusion_trans);
 
       // Start a top-down if-merging.
+      if_merge_trans->Set_pass(PASS_GLOBAL);
       if_merge_trans->Top_down_trans(sc_root);
-
+      
       // Start a top-down proactive loop fusion transformations.
+      if_merge_trans->Set_pass(PASS_LOCAL);
       pro_loop_fusion_trans->Classify_loops(sc_root);
       pro_loop_fusion_trans->Top_down_trans(sc_root);
 
