@@ -20,12 +20,19 @@
 #include "libhugetlbfs_internal.h"
 
 #ifdef OPEN64_MOD
+extern long hugepages_seg_total;
+
 void __attribute__ ((constructor)) setup_libhugetlbfs(void)
 #else
 static void __attribute__ ((constructor)) setup_libhugetlbfs(void)
 #endif
 {
 	__hugetlbfs_setup_debug();
+
+#ifdef OPEN64_MOD
+        hugepages_seg_total = 0;
+#endif
+        
 #ifndef NO_ELFLINK
 	__hugetlbfs_setup_elflink();
 #endif

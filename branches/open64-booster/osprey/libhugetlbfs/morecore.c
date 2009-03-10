@@ -45,6 +45,7 @@ static long mapsize;
 
 #ifdef OPEN64_MOD
 long hugepages_heap_limit;
+long hugepages_seg_total;
 static long hugepages_avail;
 #endif
 
@@ -85,6 +86,10 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
 	void *p;
 	long delta;
 
+#ifdef OPEN64_MOD
+        DEBUG("brk=0x%lx\n",(unsigned long) sbrk(0));
+#endif
+
 	DEBUG("hugetlbfs_morecore(%ld) = ...\n", (long)increment);
 
 	/*
@@ -114,8 +119,14 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
 #endif
 
 		/* map in (extend) more of the file at the end of our last map */
+#ifdef OPEN64_MOD
+                sbrk(delta);
 		p = mmap(heapbase + mapsize, delta, PROT_READ|PROT_WRITE,
-			 MAP_PRIVATE, heap_fd, mapsize);
+			 MAP_PRIVATE|MAP_FIXED, heap_fd, mapsize);
+#else
+                p = mmap(heapbase + mapsize, delta, PROT_READ|PROT_WRITE,
+                         MAP_PRIVATE, heap_fd, mapsize);
+#endif
 		if (p == MAP_FAILED) {
 			WARNING("New heap segment map at %p failed: %s\n",
 				heapbase+mapsize, strerror(errno));
@@ -178,6 +189,7 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
 
 		/* we now have mmap'd further */
 		mapsize += delta;
+                
 	} else if (delta < 0) {
 		/* shrinking the heap */
 
@@ -242,13 +254,15 @@ void __hugetlbfs_setup_morecore(void)
 {
 	char *env, *ep;
 	unsigned long heapaddr;
+#ifdef OPEN64_MOD
+        unsigned long curbrk = (unsigned long) sbrk(0);
+#endif
 	env = getenv("HUGETLB_MORECORE");
 
 #ifndef OPEN64_MOD
 	if (! env)
 		return;
 #endif
-
 	if (env && strcasecmp(env, "no") == 0) {
 		DEBUG("HUGETLB_MORECORE=%s, not setting up morecore\n",
 								env);
@@ -303,6 +317,11 @@ void __hugetlbfs_setup_morecore(void)
 		heapaddr = (unsigned long)sbrk(0);
 		heapaddr = hugetlbfs_next_addr(heapaddr);
 	}
+
+#ifdef OPEN64_MOD
+        if (heapaddr > curbrk)
+            sbrk(heapaddr - curbrk);
+#endif
 	zero_fd = open("/dev/zero", O_RDONLY);
 
 	DEBUG("setup_morecore(): heapaddr = 0x%lx\n", heapaddr);
@@ -345,6 +364,13 @@ void  __setup_hugepage(int l_limit)
         }
         else if ((l_limit >= 0) && (l_limit < hugepages_avail))
             hugepages_heap_limit = l_limit;        
+
+        hugepages_heap_limit -= hugepages_seg_total;
+
+        if (hugepages_heap_limit < 0)
+            hugepages_heap_limit = 0;
+
+        DEBUG("Limit %ld huge pages for heap.\n", hugepages_heap_limit);
 
         __hugetlbfs_setup_morecore();
     }

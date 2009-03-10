@@ -62,6 +62,7 @@
 static long hugepages_total = 0;
 static long hugepages_elf_limit = -1;
 static long hugepages_avail;
+extern long hugepages_seg_total;
 #endif
 
 /* This function prints an error message to stderr, then aborts.  It
@@ -954,6 +955,7 @@ static void remap_segments(struct seg_info *seg, int num)
         /* advance brk value to next huge page boundary to allow small page malloc */
 
         unsigned long oldbrk,newbrk;
+        unsigned long seg_start = 0;
 
         newbrk = oldbrk = (unsigned long) sbrk(0);
         DEBUG("Old brk=0x%lx\n", oldbrk);
@@ -969,10 +971,19 @@ static void remap_segments(struct seg_info *seg, int num)
                 if (slice_end + 1 > newbrk)
                     newbrk = slice_end + 1;
             }
+
+            if ((seg_start == 0) || (slice_start < seg_start))
+                seg_start = slice_start;
         }
 
         DEBUG("New brk=0x%lx\n", newbrk);
-
+        DEBUG("Seg start=0x%lx\n", seg_start);
+        
+        if (newbrk > seg_start) {
+            hugepages_seg_total = (newbrk - seg_start) / hpage_size;
+            DEBUG("Mapping segments uses %ld huge pages.\n", hugepages_seg_total);
+        }
+            
         if (newbrk != oldbrk) {
             if (brk((void *) newbrk) < 0)
                 WARNING("Couldn't set brk to 0x%lx; err %d\n", newbrk, errno);
