@@ -254,7 +254,8 @@ Traverse_TYs_for_complete_struct_relayout(void)
   for (iter = Ty_tab.begin(); iter != Ty_tab.end(); iter++)
   {
     TY& ty = *iter.Ptr();
-    if (TY_complete_struct_relayout_candidate(ty)) // marked by ipl
+    if (TY_kind(ty) == KIND_STRUCT &&
+        TY_complete_struct_relayout_candidate(ty)) // marked by ipl
     {
       if (local_complete_struct_relayout_type_id == 0)
         local_complete_struct_relayout_type_id = iter.Index();

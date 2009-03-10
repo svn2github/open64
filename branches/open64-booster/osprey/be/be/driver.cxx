@@ -1888,7 +1888,8 @@ Postprocess_PU (PU_Info *current_pu)
     fprintf (Tlog_File, "END %s\n", ST_name(PU_Info_proc_sym(current_pu)));
   }
 
-  choose_from_complete_struct_for_relayout_candidates(); // among all the
+  if (Run_ipl != 0 && (Run_wopt || Run_preopt))
+    choose_from_complete_struct_for_relayout_candidates(); // among all the
     // structures marked by ipl while compiling all the functions in this file,
     // choose the most profitable one
 
