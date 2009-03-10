@@ -139,6 +139,7 @@ char *Lib_File_Name = NULL;	/* Program library file	*/
 char *Lib_Lock_Name = NULL;	/* Program library lock	file */
 char *DSTdump_File_Name = NULL; /* Dwarf (i.e. DST) dump file */
 char *Global_File_Name = NULL;	/* Global symbol table file */
+void *Global_PU_Tree = NULL; /* global tree of all the pu's */
 
 char *License_File_Name = NULL ;	/* license file */
 char *Whirl2C_File_Name = NULL ;	/* whirl2c output file */

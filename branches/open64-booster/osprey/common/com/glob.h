@@ -144,6 +144,7 @@ extern char *Lib_File_Name;	/* Program library file */
 extern char *Lib_Lock_Name;	/* Program library lock file */
 extern char *DSTdump_File_Name; /* Dwarf intermediate (i.e. DST) dump file */
 extern char *Global_File_Name;	/* Global symbol table file */
+extern void *Global_PU_Tree; /* global tree of all the pu's */
 
 extern char *License_File_Name ; /* name of license file */
 extern char *Whirl2C_File_Name; /* Whirl2C output file */

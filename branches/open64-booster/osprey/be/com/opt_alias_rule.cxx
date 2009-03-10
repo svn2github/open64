@@ -909,6 +909,26 @@ BOOL ALIAS_RULE::Aliased_Memop_By_Declaration(const POINTS_TO *p1,
 
   if (Rule_enabled(IBM_DISJOINT_RULE) && !Aliased_Disjoint(p1, p2))
     return FALSE;
+
+  // extend the disjoint rule to cover the case of the *same* pointer to a
+  // struct's different members
+  if (Rule_enabled(IBM_DISJOINT_RULE))
+    if (p1->Ty() == p2->Ty() &&
+        p1->Id() == p2->Id() &&
+        p1->Expr_kind() == p2->Expr_kind() &&
+        p1->Base_kind() == p2->Base_kind() &&
+        p1->Ofst_kind() == p2->Ofst_kind() &&
+        p1->Base() == p2->Base() &&
+        p1->Byte_Ofst() != p2->Byte_Ofst() &&
+        p1->Byte_Size() == p2->Byte_Size() &&
+        p1->Bit_Ofst() == p2->Bit_Ofst() &&
+        p1->Bit_Size() == p2->Bit_Size() &&
+        p1->Based_sym() == p2->Based_sym() &&
+        p1->Based_sym_depth() == p2->Based_sym_depth() &&
+        p1->Attr() == p2->Attr() &&
+        p1->Alias_class() == p2->Alias_class() &&
+        p1->Ip_alias_class() == p2->Ip_alias_class())
+      return FALSE;
   
   if (Rule_enabled(F90_TARGET_RULE) && !Aliased_F90_Target_Rule(p1, p2, ty1, ty2))
     return FALSE;

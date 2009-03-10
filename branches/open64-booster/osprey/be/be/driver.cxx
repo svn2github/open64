@@ -2271,6 +2271,7 @@ main (INT argc, char **argv)
   }
 #endif
 
+  Global_PU_Tree = (void *)pu_tree; // expose this pu_tree to the optimizer
   Stop_Timer (T_ReadIR_Comp);
 
   Initialize_Special_Global_Symbols ();
