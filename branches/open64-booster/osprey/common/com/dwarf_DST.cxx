@@ -301,6 +301,7 @@ DST_append_child(DST_INFO_IDX parent, DST_INFO_IDX child)
    DST_INFO     *child_info;
    DST_INFO	*parent_info = DST_INFO_IDX_TO_PTR(parent);
 
+   FmtAssert(parent_info != NULL, ("Illegal attempt to append DST child"));
    last_child_field = DST_get_ptr_to_lastChildField(parent_info);
    DST_ASSERT(last_child_field != NULL, "Illegal attempt to append DST child");
    

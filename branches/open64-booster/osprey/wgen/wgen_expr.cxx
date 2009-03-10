@@ -8285,7 +8285,10 @@ WGEN_Tree_Node_Name (gs_t exp)
 static bool
 WGEN_Call_Returns_Ptr_To_Member_Func (gs_t exp)
 {
-  TY_IDX exp_ty_idx = Get_TY(gs_tree_type(exp));
+  gs_t t = gs_tree_type(exp);
+  FmtAssert(t != NULL,
+            ("WGEN_Call_Returns_Ptr_To_Member_Func: tree type is NULL"));
+  TY_IDX exp_ty_idx = Get_TY(t);
   if (gs_tree_code(exp) == GS_CALL_EXPR &&
       gs_type_ptrmemfunc_p(gs_tree_type(exp)) &&
       TY_return_in_mem(exp_ty_idx)) {

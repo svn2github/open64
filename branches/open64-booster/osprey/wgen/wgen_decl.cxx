@@ -3372,6 +3372,8 @@ AGGINIT::Traverse_Aggregate_Struct (
       // PTRMEM_CST was expanded by GCC's cplus_expand_constant.  Get the
       // result.
       gs_t expanded_ptrmem_cst = gs_expanded_ptrmem_cst(init_value);
+      FmtAssert(expanded_ptrmem_cst != NULL,
+               ("Traverse_Aggregate_Struct: expanded PTRMEM_CST is NULL"));
 #ifdef NEW_INITIALIZER
       field_id = Traverse_Aggregate_Constructor (target, expanded_ptrmem_cst,
 #else
@@ -3554,6 +3556,8 @@ AGGINIT::Traverse_Aggregate_Struct (
       // PTRMEM_CST was expanded by GCC's cplus_expand_constant.  Get the
       // result.
       gs_t expanded_ptrmem_cst = gs_expanded_ptrmem_cst(init_value);
+      FmtAssert(expanded_ptrmem_cst != NULL,
+               ("Traverse_Aggregate_Struct: expanded PTRMEM_CST is NULL"));
 #ifdef NEW_INITIALIZER
       field_id = Traverse_Aggregate_Constructor (target, expanded_ptrmem_cst,
 #else
