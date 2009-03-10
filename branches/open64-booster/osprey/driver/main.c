@@ -613,7 +613,6 @@ main (int argc, char *argv[])
                 if (desc->alloc == ALLOC_HEAP) {
                     do_heap = TRUE;
                     heap_limit = desc->limit;
-                    hugepage_attr += desc->mallopt;
 
                     if (desc->size == SIZE_2M)
                         hugepage_attr |= ( 1 << HEAP_2M_BIT);

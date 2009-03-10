@@ -373,7 +373,7 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 -hugepage:%s	Process_Hugepage_Group(optargs);	ALL	be	""
 	"option group to control huge page, e.g., -hugepage:alloc=BDT:alloc=HEAP,limit=150"
 -hugepage	Process_Hugepage_Default();		ALL	be	"-hugepage:alloc=heap"
-	"equivalent to -hugepage:alloc=HEAP,mallopt=1"
+	"equivalent to -hugepage:alloc=HEAP"
 #ifndef KEY
 -MP:%s		Process_Mp_Group(optargs);		ALL	NONE	""
 	""

@@ -110,7 +110,7 @@ extern boolean parsing_default_options;
 extern boolean drop_option;
 
 static void set_cpu(char *name, m_flag flag_type);
-static void add_hugepage_desc(HUGEPAGE_ALLOC, HUGEPAGE_SIZE, int, int);
+static void add_hugepage_desc(HUGEPAGE_ALLOC, HUGEPAGE_SIZE, int);
 
 #ifdef KEY
 void set_memory_model(char *model);
@@ -1967,8 +1967,7 @@ static void add_hugepage_desc
 (
     HUGEPAGE_ALLOC alloc,
     HUGEPAGE_SIZE  size,
-    int            limit,
-    int            mallopt
+    int            limit
 )
 {
     HUGEPAGE_DESC desc;
@@ -1982,15 +1981,13 @@ static void add_hugepage_desc
 
     for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
         if (desc->alloc == alloc) {
-            if ((desc->size != size) || (desc->limit != limit)
-                || (desc->mallopt != mallopt)) {
+            if ((desc->size != size) || (desc->limit != limit)) {
                 warning("conflict values for huge page %s; using latter values",
                         hugepage_alloc_name[alloc]);
             }
 
             desc->size = size;
             desc->limit = limit;
-            desc->mallopt = mallopt;
             return;
         }
     }
@@ -2000,7 +1997,6 @@ static void add_hugepage_desc
     desc->alloc = alloc;
     desc->size = size;
     desc->limit = limit;
-    desc->mallopt = mallopt;
     desc->next = NULL;
 
     desc->next = hugepage_desc;
@@ -2010,8 +2006,7 @@ static void add_hugepage_desc
 static void
 Process_Hugepage_Default()
 {
-    add_hugepage_desc(HUGEPAGE_ALLOC_DEFAULT, HUGEPAGE_SIZE_DEFAULT, HUGEPAGE_LIMIT_DEFAULT,
-                      HUGEPAGE_MALLOPT_DEFAULT);
+    add_hugepage_desc(HUGEPAGE_ALLOC_DEFAULT, HUGEPAGE_SIZE_DEFAULT, HUGEPAGE_LIMIT_DEFAULT);
     add_option_seen(O_hugepage);
 }
 
@@ -2025,30 +2020,16 @@ Process_Hugepage_Group(char * hugepage_args)
     HUGEPAGE_ALLOC hugepage_alloc;
     HUGEPAGE_SIZE  hugepage_size;
     int hugepage_limit;
-    int hugepage_mallopt;
 
     /* set default values */
     hugepage_alloc = HUGEPAGE_ALLOC_DEFAULT;
     hugepage_size = HUGEPAGE_SIZE_DEFAULT;
     hugepage_limit = HUGEPAGE_LIMIT_DEFAULT;
-    hugepage_mallopt = HUGEPAGE_MALLOPT_DEFAULT;
     
     while (*p) {
         if (strncmp(p, "limit=", 6) == 0) {
             p = &p[6];
             sscanf(p, "%d", &hugepage_limit);
-
-            while ((*p) && ((*p) >= '0') && ((*p) <= '9'))
-                p++;
-        }
-        else if (strncmp(p, "mallopt=",8) == 0) {
-            p = &p[8];
-            sscanf(p, "%d", &hugepage_mallopt);
-
-            if (hugepage_mallopt >= (1 << HEAP_BEGIN)) {
-                has_err = TRUE;
-                warning("Value: %d in mallopt option overflows", hugepage_mallopt);
-            }
 
             while ((*p) && ((*p) >= '0') && ((*p) <= '9'))
                 p++;
@@ -2098,21 +2079,18 @@ Process_Hugepage_Group(char * hugepage_args)
             else if ((*p) = ':') {
                 p++;
                 if (!has_err) 
-                    add_hugepage_desc(hugepage_alloc, hugepage_size, hugepage_limit,
-                                      hugepage_mallopt);
+                    add_hugepage_desc(hugepage_alloc, hugepage_size, hugepage_limit);
 
                 hugepage_alloc = HUGEPAGE_ALLOC_DEFAULT;
                 hugepage_size = HUGEPAGE_SIZE_DEFAULT;
                 hugepage_limit = HUGEPAGE_LIMIT_DEFAULT;
-                hugepage_mallopt = HUGEPAGE_MALLOPT_DEFAULT;
             }
             else {
                 has_err = TRUE;
             }
         }
         else if (!has_err) 
-            add_hugepage_desc(hugepage_alloc, hugepage_size, hugepage_limit,
-                              hugepage_mallopt);                
+            add_hugepage_desc(hugepage_alloc, hugepage_size, hugepage_limit);
 
         if (has_err) {
             if (!hugepage_warn) {

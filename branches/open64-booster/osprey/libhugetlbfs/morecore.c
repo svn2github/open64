@@ -59,7 +59,6 @@ HUGEPAGE_STYPE hugepage_s_stype = SIZE_2M; /* type of huge page supported by the
 long hugepages_heap_limit;
 long hugepages_seg_total;
 static long hugepages_avail;
-static int hugepages_mallopt;
 #endif
 
 static long hugetlbfs_next_addr(long addr)
@@ -381,26 +380,17 @@ void __hugetlbfs_setup_morecore(void)
 
 	/* Set some allocator options more appropriate for hugepages */
 
-#ifdef OPEN64_MOD
-        if (hugepages_mallopt != 0) 
-#endif
-            {
-            if (shrink_ok)
-		mallopt(M_TRIM_THRESHOLD, blocksize / 2);
-            else
-		mallopt(M_TRIM_THRESHOLD, -1);
-        }
-#ifdef OPEN64_MOD
-        if (hugepages_mallopt != 0)
-#endif
-        {
-            mallopt(M_TOP_PAD, blocksize / 2);
-            /* we always want to use our morecore, not ordinary mmap().
-             * This doesn't appear to prohibit malloc() from falling back
-             * to mmap() if we run out of hugepages. */
+        if (shrink_ok)
+            mallopt(M_TRIM_THRESHOLD, blocksize / 2);
+        else
+            mallopt(M_TRIM_THRESHOLD, -1);
 
-            mallopt(M_MMAP_MAX, 0);
-        }
+        mallopt(M_TOP_PAD, blocksize / 2);
+        /* we always want to use our morecore, not ordinary mmap().
+         * This doesn't appear to prohibit malloc() from falling back
+         * to mmap() if we run out of hugepages. */
+        
+        mallopt(M_MMAP_MAX, 0);
 }
 
 #ifdef OPEN64_MOD
@@ -410,7 +400,7 @@ void __hugetlbfs_setup_morecore(void)
  *  for the heap. 
  *
  *    Bit mask of input attr:
- *    bit 0: mallopt
+ *    bit 0: unused
  *    bit 1: unused 
  *    bit 2: unused 
  *    bit 3: heap 2M page
@@ -462,9 +452,6 @@ void  __setup_hugepage(int l_limit, int attr)
             hugepages_heap_limit = 0;
 
         DEBUG("Limit %ld huge pages for heap.\n", hugepages_heap_limit);
-        hugepages_mallopt = (attr & MALLOPT_MASK);
-
-        DEBUG("Set mallopt: %s\n", (hugepages_mallopt == 0) ? "no" : "yes");
 
         __hugetlbfs_setup_morecore();
     }

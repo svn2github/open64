@@ -94,7 +94,6 @@ typedef struct hugepage_desc_tag {
     HUGEPAGE_ALLOC alloc;
     HUGEPAGE_SIZE  size;
     int            limit;
-    int            mallopt;
     struct hugepage_desc_tag * next;
 } HUGEPAGE_DESC_TAG;
 
@@ -107,7 +106,6 @@ extern HUGEPAGE_DESC hugepage_desc;
 #define HUGEPAGE_ALLOC_DEFAULT ALLOC_HEAP
 #define HUGEPAGE_SIZE_DEFAULT  SIZE_2M
 #define HUGEPAGE_LIMIT_DEFAULT -1
-#define HUGEPAGE_MALLOPT_DEFAULT 1
 
 /* This has to be in sync with bit mask definitions from modified libhugetlbfs */
 
