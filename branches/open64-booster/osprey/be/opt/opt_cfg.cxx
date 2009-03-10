@@ -2084,7 +2084,6 @@ void
 CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
 {
   BOOL process_mp_do = Inside_mp_do();
-  BOOL do_pro_loop_fusion_trans = Do_pro_loop_fusion_trans();
 
   Set_cur_loop_depth( Cur_loop_depth() + 1 );
 
@@ -2094,7 +2093,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
 
   // The init statement goes in its own block
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = Add_sc(NULL, SC_LOOP);
     _sc_parent_stack->Push(sc);
     sc = Add_sc(NULL, SC_LP_START);
@@ -2107,7 +2106,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   }
   else {
     start_bb = _current_bb;
-    if (do_pro_loop_fusion_trans) {
+    if (Do_pro_loop_fusion_trans()) {
       SC_NODE * sc = Unlink_sc(start_bb);
       if (sc == NULL)
 	Add_sc(start_bb, SC_BLOCK);
@@ -2129,7 +2128,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   Is_True(start_wn != NULL, ("CFG::Add_one_do_loop_stmt: NULL start"));
   Add_one_stmt( start_wn, NULL );
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_START), ("Expect a SC_LP_START"));
   }
@@ -2144,7 +2143,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   WN *end_cond = WN_CreateFalsebr(merge_bb->Labnam(), WN_end(wn));
   WN_Set_Linenum( end_cond, WN_Get_Linenum(WN_end(wn)) );
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = Add_sc(NULL, SC_LP_COND);
     _sc_parent_stack->Push(sc);
   }
@@ -2155,7 +2154,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   if ( cond_bb->Labnam() == 0 )
     Append_label_map(Alloc_label(), cond_bb);
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_COND), ("Expect a SC_LP_COND"));
     sc = Add_sc(NULL, SC_LP_BODY);
@@ -2170,7 +2169,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   END_BLOCK body_end;
   Add_one_stmt(WN_do_body(wn), &body_end);
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_BODY), ("Expect a SC_LP_BODY"));
     sc = Add_sc(NULL, SC_LP_STEP);
@@ -2190,7 +2189,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   WN *gotocond = WN_CreateGoto(cond_bb->Labnam());
   Add_one_stmt( gotocond, NULL );
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_STEP), ("Expect a SC_LP_STEP"));
     sc = _sc_parent_stack->Pop();
@@ -2246,9 +2245,8 @@ void
 CFG::Add_one_while_do_stmt( WN *wn, END_BLOCK *ends_bb )
 {
   Set_cur_loop_depth( Cur_loop_depth() + 1 );
-  BOOL do_pro_loop_fusion_trans = Do_pro_loop_fusion_trans();
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = Add_sc(NULL, SC_LOOP);
     _sc_parent_stack->Push(sc);
     sc = Add_sc(NULL, SC_LP_COND);
@@ -2273,7 +2271,7 @@ CFG::Add_one_while_do_stmt( WN *wn, END_BLOCK *ends_bb )
   Add_one_stmt( end_cond, NULL );
   cond_bb->Set_kind( BB_WHILEEND );
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_COND), ("Expect a SC_LP_COND"));
     sc = Add_sc(NULL, SC_LP_BODY);
@@ -2286,7 +2284,7 @@ CFG::Add_one_while_do_stmt( WN *wn, END_BLOCK *ends_bb )
   Add_one_stmt( WN_while_body(wn), &body_end );
 
   
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_BODY), ("Expect a SC_LP_BODY"));
     sc = Add_sc(NULL, SC_LP_BACKEDGE);
@@ -2299,7 +2297,7 @@ CFG::Add_one_while_do_stmt( WN *wn, END_BLOCK *ends_bb )
   WN *gotocond = WN_CreateGoto(cond_bb->Labnam());
   Add_one_stmt( gotocond, NULL );
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_BACKEDGE), ("Expect a SC_LP_BACKEDGE"));
     sc = _sc_parent_stack->Pop();
@@ -2339,11 +2337,10 @@ void
 CFG::Add_one_do_while_stmt( WN *wn, END_BLOCK *ends_bb )
 {
   Set_cur_loop_depth( Cur_loop_depth()+1 );
-  BOOL do_pro_loop_fusion_trans = Do_pro_loop_fusion_trans();
 
   BB_NODE *body_bb = NULL;
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = Add_sc(NULL, SC_LOOP);
     _sc_parent_stack->Push(sc);
     sc = Add_sc(NULL, SC_LP_BODY);
@@ -2360,7 +2357,7 @@ CFG::Add_one_do_while_stmt( WN *wn, END_BLOCK *ends_bb )
   END_BLOCK body_end;
   Add_one_stmt( WN_while_body(wn), &body_end );
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_BODY), ("Expect a SC_LP_BODY"));
     sc = Add_sc(NULL, SC_LP_COND);
@@ -2377,7 +2374,7 @@ CFG::Add_one_do_while_stmt( WN *wn, END_BLOCK *ends_bb )
   Add_one_stmt( end_cond, NULL );
   cond_bb->Set_kind(BB_REPEATEND);
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_COND), ("Expect a SC_LP_COND"));
     sc = _sc_parent_stack->Pop();
@@ -2420,7 +2417,6 @@ CFG::Add_one_if_stmt( WN *wn, END_BLOCK *ends_bb )
   // create, but do not connect, the "else" block
   BB_NODE *else_bb = Create_bb();
   Append_label_map(Alloc_label(), else_bb);
-  BOOL do_pro_loop_fusion_trans = Do_pro_loop_fusion_trans();
 
   // create if bb
   WN *end_cond = WN_CreateFalsebr(else_bb->Labnam(), WN_if_test(wn));
@@ -2428,7 +2424,7 @@ CFG::Add_one_if_stmt( WN *wn, END_BLOCK *ends_bb )
   BB_NODE *cond_bb = _current_bb;
   Add_one_stmt( end_cond, NULL );
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = Add_sc(cond_bb, SC_IF);
     _sc_parent_stack->Push(sc);
   }
@@ -2437,7 +2433,7 @@ CFG::Add_one_if_stmt( WN *wn, END_BLOCK *ends_bb )
   BB_NODE *merge_bb = Create_bb();
   merge_bb->Set_ifmerge();
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = Add_sc(NULL, SC_THEN);
     _sc_parent_stack->Push(sc);
   }
@@ -2456,7 +2452,7 @@ CFG::Add_one_if_stmt( WN *wn, END_BLOCK *ends_bb )
     Connect_predsucc(_current_bb, merge_bb);
   }
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc =_sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_THEN), ("Expect a SC_THEN"));
     sc = Add_sc(NULL, SC_ELSE);
@@ -2470,7 +2466,7 @@ CFG::Add_one_if_stmt( WN *wn, END_BLOCK *ends_bb )
   if ( block_end != END_BREAK )
     Connect_predsucc(_current_bb, merge_bb);
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_ELSE), ("Expect a SC_ELSE"));
     sc = _sc_parent_stack->Pop();
@@ -2507,9 +2503,8 @@ void
 CFG::Add_one_compgoto_stmt( WN *wn, END_BLOCK *ends_bb )
 {
   INT32 new_num_entries = WN_num_entries(wn);
-  BOOL do_pro_loop_fusion_trans = Do_pro_loop_fusion_trans();
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = Add_sc(_current_bb, SC_COMPGOTO);
     _sc_parent_stack->Push(sc);
   }
@@ -2533,7 +2528,7 @@ CFG::Add_one_compgoto_stmt( WN *wn, END_BLOCK *ends_bb )
       Append_label_map(WN_label_number(def_goto), def_blk);
     }
     else {
-      FmtAssert(!do_pro_loop_fusion_trans, ("Unexpected def_blk"));
+      FmtAssert(!Do_pro_loop_fusion_trans(), ("Unexpected def_blk"));
     }
 
     _current_bb->Set_switchdefault(def_blk);
@@ -2574,7 +2569,7 @@ CFG::Add_one_compgoto_stmt( WN *wn, END_BLOCK *ends_bb )
   if ( ends_bb )
     *ends_bb = END_BREAK;
 
-  if (do_pro_loop_fusion_trans) {
+  if (Do_pro_loop_fusion_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_COMPGOTO), ("Expect a SC_COMPGOTO"));
   }
@@ -2674,10 +2669,10 @@ void
 CFG::Add_one_region( WN *wn, END_BLOCK *ends_bb )
 {
   RID *rid = REGION_get_rid(wn);
-  BOOL do_pro_loop_fusion_trans = Do_pro_loop_fusion_trans();
 
-  if (do_pro_loop_fusion_trans) {
-    FmtAssert(FALSE, ("TODO. region"));
+  if (Do_pro_loop_fusion_trans()) {
+    Free_sc();
+    // FmtAssert(FALSE, ("TODO. region"));
   }
 
   Is_True(rid != NULL,("CFG::Add_one_region, cannot find RID"));
