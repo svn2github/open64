@@ -2037,7 +2037,7 @@ postprocess_ld_args (string_list_t *args)
                 add_after_string(args, p, concat_strings("-Wl,-rpath,", dir));
 
                 for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
-                    if (desc->alloc == ALLOC_BDT && !do_link) {
+                    if (desc->alloc == ALLOC_BDT && !add_huge_lib) {
                         /* libhugetlbfs linker script only supports dynamic link. 
                          */
                         if (!option_was_seen(O_static)) {
