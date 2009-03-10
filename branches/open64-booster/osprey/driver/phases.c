@@ -2038,7 +2038,7 @@ postprocess_ld_args (string_list_t *args)
                 }
 
                 if (add_huge_lib && option_was_seen(O_static))
-                    add_after_string(args, p, "-u setup_libhugetlbfs");
+                    add_after_string(args, p, "-Wl,--undefined=setup_libhugetlbfs");
             }
 	}
     }
