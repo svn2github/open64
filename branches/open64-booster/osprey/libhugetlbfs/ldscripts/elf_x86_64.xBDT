@@ -159,9 +159,10 @@ SECTIONS
    /* Align here to ensure that the .bss section occupies space up to
       _end.  Align after .bss to ensure correct alignment even if the
       .bss section disappears because there are no input sections.  */
-   . = ALIGN(64 / 8);
+   /* OPEN64_MOD : make the section occupies space up to the end of 2M page */
+   . = ALIGN(0x200000);
   } :hdata
-  . = ALIGN(64 / 8);
+  . = ALIGN(0x200000);
   _end = .;
   PROVIDE (end = .);
   /* Stabs debugging sections.  */
