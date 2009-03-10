@@ -655,7 +655,7 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
       RGN_Link_Pred_Succ_With_Prob(bb,new_succ,prob);
   } else {
       Unlink_Pred_Succ(bb, old_succ);
-#if defined(KEY) && defined(TARG_SL)
+#if defined(KEY)
   Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE,
                            BBLIST_prob_hint_based(old_edge) != 0, !prob_acced);
 #else
@@ -666,7 +666,7 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
   return TRUE;
 #else
   Unlink_Pred_Succ(bb, old_succ);
-#if defined(KEY) && defined(TARG_SL)
+#if defined(KEY)
   Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE,
                            BBLIST_prob_hint_based(old_edge) != 0);
 #else
