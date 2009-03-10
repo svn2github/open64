@@ -300,6 +300,9 @@ extern void List_Phase_Numbers ( void );
  */
 extern void Set_Trace ( INT func, INT arg );
 
+/* Set a trace flag in all phases. */
+void Set_All_Trace ( INT func );
+
 /* Note a PU to be traced: */
 extern void Set_Trace_Pu ( char *name );
 extern void Set_Trace_Pu_Number ( INT number );

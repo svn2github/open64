@@ -2135,8 +2135,14 @@ Process_Trace_Option ( char *option )
 	break;
     
     case 'r':
-	Set_Trace (TKIND_IR,
-		   Get_Trace_Phase_Number ( &cp, option ) );
+	if (strcmp(cp, "a") == 0) {
+	  Set_All_Trace( TKIND_IR );
+	  cp++;
+	}
+	else {
+	  Set_Trace (TKIND_IR,
+		     Get_Trace_Phase_Number ( &cp, option ) );
+	}
 	break;
 
     case 's':
