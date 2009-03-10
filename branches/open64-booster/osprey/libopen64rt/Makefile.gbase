@@ -45,8 +45,14 @@ include $(COMMONRULES)
 VPATH =    $(BUILD_BASE)
 
 ifeq ($(BUILD_TARGET), X8664)
-OBJECTS +=memset.o cacheinfo.o
+OBJECTS_NONSHARED = memset.o cacheinfo.o
+OBJECTS += $(OBJECTS_NONSHARED)
 endif
 
+# Currently X8664 memset is provided for the non-shared run-time
+# library (there are still PIC issues with memset.S that still
+# need to be resolved).
 $(LIBRARY): $(OBJECTS)
 	$(ar) cru $@ $^
+	$(AR) cru libopen64rt_shared.a $^
+	$(AR) dv libopen64rt_shared.a $(OBJECTS_NONSHARED)

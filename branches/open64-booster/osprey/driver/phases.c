@@ -1883,7 +1883,11 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	// Bug 3995.
 	if (!option_was_seen(O_fno_fast_stdlib) &&
 	    !option_was_seen(O_nolibopen64rt)) {	// bug 9611
-	    add_library(args, "open64rt");
+            if (option_was_seen(O_shared)) {
+                add_library(args, "open64rt_shared");
+            } else {
+                add_library(args, "open64rt");
+            }
 	}
 #endif
 
