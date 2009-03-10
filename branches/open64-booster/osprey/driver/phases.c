@@ -2026,6 +2026,7 @@ postprocess_ld_args (string_list_t *args)
 
                 for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
                     if (desc->alloc == ALLOC_BDT && !add_huge_lib) {
+                        add_after_string(args, p, concat_strings("-Wl,-rpath,", dir));
                         dir = concat_strings(dir, "/elf.xBDT");
                         add_after_string(args, p, concat_strings("-Wl,-T", dir));
                     }
