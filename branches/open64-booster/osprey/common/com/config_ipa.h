@@ -346,7 +346,7 @@ extern UINT32  IPA_Max_Density;
 extern BOOL IPA_Enable_Old_Type_Merge;
 
 extern BOOL IPA_Enable_Devirtualization;
-extern BOOL IPA_Enable_fast_static_analysis_VF;
+extern BOOL IPA_Enable_Fast_Static_Analysis_VF;
 
 #ifdef __cplusplus
 }
