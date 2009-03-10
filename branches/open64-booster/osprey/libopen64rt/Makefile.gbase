@@ -1,0 +1,47 @@
+# -*- makefile -*-
+#
+
+#
+#  Makefile.base for libopen64rt
+#
+
+include $(COMMONDEFS)
+
+LCOPTS = -ansi $(STD_COMPILE_OPTS) $(STD_C_OPTS)
+LCDEFS =
+LCINCS += -I$(BUILD_BASE)
+
+LIBRARY = libopen64rt.a
+
+TARGETS = $(LIBRARY)
+
+CFILES	=	malloc_opt.c
+
+
+
+SRC_DIRS = $(BUILD_BASE)
+
+default:
+	$(MAKE)  first
+	$(MAKE)  $(TARGETS)
+	$(MAKE)  last
+
+first:
+ifndef SKIP_DEP_BUILD
+ ifeq ($(BUILD_OS), LINUX)
+	$(call submake,$(BUILD_AREA)/include)
+ endif
+endif
+
+last: make_deps
+
+exports: default
+
+install: default
+
+include $(COMMONRULES)
+
+VPATH =    $(BUILD_BASE)
+
+$(LIBRARY): $(OBJECTS)
+	$(ar) cru $@ $^

@@ -54,6 +54,7 @@ LIBRARY_SUBDIRS := \
 	libmv \
 	libinstr2 \
 	libopenmp \
+	libopen64rt \
 	libhugetlbfs
 
 	#libm \

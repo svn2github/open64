@@ -1818,11 +1818,11 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	  add_library(args, "acml_mv");
 #endif
 	if (option_was_seen(O_nodefaultlibs) || option_was_seen(O_nostdlib)) {
-	    // If -compat-gcc, link with pscrt even if -nostdlib.  Bug 4551.
+	    // If -compat-gcc, link with open64rt even if -nostdlib.  Bug 4551.
 	    if (option_was_seen(O_compat_gcc) &&
 		!option_was_seen(O_fno_fast_stdlib) &&
-		!option_was_seen(O_nolibpscrt)) {	// bug 9611
-	      // add_library(args, "pscrt");
+		!option_was_seen(O_nolibopen64rt)) {	// bug 9611
+	      // add_library(args, "open64rt");
 	    }
 	    return;
 	}
@@ -1874,12 +1874,12 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	}
 
 #ifdef TARG_X8664
-	// Put pscrt after all the libraries that are built with PathScale
+	// Put open64rt after all the libraries that are built with PathScale
 	// compilers, since those libraries could use PathScale routines.
 	// Bug 3995.
 	if (!option_was_seen(O_fno_fast_stdlib) &&
-	    !option_was_seen(O_nolibpscrt)) {	// bug 9611
-	    // add_library(args, "pscrt");
+	    !option_was_seen(O_nolibopen64rt)) {	// bug 9611
+	    add_library(args, "open64rt");
 	}
 #endif
 

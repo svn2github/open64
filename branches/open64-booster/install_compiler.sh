@@ -270,6 +270,9 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         INSTALL_DATA_SUB ${LIBAREA}/libinstr2/libinstr.a      ${PHASEPATH}/libinstr.a
         INSTALL_DATA_SUB ${LIB32AREA}/libinstr2/libinstr.a      ${PHASEPATH}/32/libinstr.a
 
+        INSTALL_DATA_SUB ${LIBAREA}/libopen64rt/libopen64rt.a      ${PHASEPATH}/libopen64rt.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libopen64rt/libopen64rt.a      ${PHASEPATH}/32/libopen64rt.a
+
         INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/obj64/libhugetlbfs_open64.a     ${PHASEPATH}/libhugetlbfs_open64.a
         INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/obj32/libhugetlbfs_open64.a   ${PHASEPATH}/32/libhugetlbfs_open64.a
 

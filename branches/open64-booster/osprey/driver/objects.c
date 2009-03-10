@@ -319,7 +319,7 @@ static struct prof_lib prof_libs[] = {
     { "msgi", 1 },
     { "mv", 1 },
     { "fortran", 1 },
-    /* { "pscrt", 1 }, */
+    /* { "open64rt", 1 }, */
     { NULL, 0 },
 };
 
