@@ -6,3 +6,4 @@ sysdeps/generic/sysdep.h sysdeps/generic/sysdep.h
 sysdeps/x86_64/memset.S memset.S
 b/config.h config.h
 sysdeps/x86_64/sysdep.h sysdep.h
+COPYING.LIB COPYING.LIB
