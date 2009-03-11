@@ -577,6 +577,7 @@ WN_UNROLL::Unroll(INT unroll_times)
 					   WN_Intconst(_rtype, unroll_times));
 
     if (const_trips && (const_trips % unroll_times == 0)
+      && WN_kid1(_loop_info) != NULL
       && WN_operator(WN_kid1(_loop_info)) == OPR_INTCONST
       && WN_const_val(WN_kid1(_loop_info)) == 1)
     {
