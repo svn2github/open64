@@ -115,7 +115,7 @@ extern int 	    __omp_rtl_initialized;
 extern volatile unsigned long int __omp_stack_size;
 
 /* a system level lock, used for malloc in __ompc_get_thdprv ,by Liao*/
-extern omp_lock_t _ompc_thread_lock;
+extern ompc_lock_t _ompc_thread_lock;
 
 /* The OMP_EXE_MODE_NESTED_SEQUENTIAL is of no use any longer*/
 typedef enum {
@@ -160,7 +160,7 @@ struct omp_team{
 
   /* for loop schedule*/
 
-  omp_lock_t	schedule_lock;
+  ompc_lock_t	schedule_lock;
   volatile long loop_lower_bound;
   long	loop_upper_bound;
   long	loop_increament;
@@ -182,7 +182,7 @@ struct omp_team{
   pthread_cond_t ordered_cond;
 
   /* for single*/
-  omp_lock_t	single_lock;
+  ompc_lock_t	single_lock;
   volatile int	single_count; 
   //	volatile int	single_open; /* Single section protector*/
   /* for copyprivate*/
@@ -276,20 +276,20 @@ extern void __ompc_end(void);
 extern void __ompc_fork(const int num_threads, omp_micro micro_task,
 			frame_pointer_t frame_pointer);
 /* copied from omp_lock.h*/
-extern void __ompc_init_lock (volatile omp_lock_t *);
-extern void __ompc_lock (volatile omp_lock_t *);
-extern void __ompc_unlock (volatile omp_lock_t *);
-extern void __ompc_destroy_lock (volatile omp_lock_t *);
-extern int __ompc_test_lock (volatile omp_lock_t *);
+extern void __ompc_init_lock (volatile ompc_lock_t *);
+extern void __ompc_lock (volatile ompc_lock_t *);
+extern void __ompc_unlock (volatile ompc_lock_t *);
+extern void __ompc_destroy_lock (volatile ompc_lock_t *);
+extern int __ompc_test_lock (volatile ompc_lock_t *);
 
-extern void __ompc_init_nest_lock (volatile omp_nest_lock_t *);
-extern void __ompc_nest_lock (volatile omp_nest_lock_t *);
-extern void __ompc_nest_unlock (volatile omp_nest_lock_t *);
-extern void __ompc_destroy_nest_lock (volatile omp_nest_lock_t *);
-extern int __ompc_test_nest_lock (volatile omp_nest_lock_t *);
+extern void __ompc_init_nest_lock (volatile ompc_nest_lock_t *);
+extern void __ompc_nest_lock (volatile ompc_nest_lock_t *);
+extern void __ompc_nest_unlock (volatile ompc_nest_lock_t *);
+extern void __ompc_destroy_nest_lock (volatile ompc_nest_lock_t *);
+extern int __ompc_test_nest_lock (volatile ompc_nest_lock_t *);
 
-extern void __ompc_critical(int gtid, volatile omp_lock_t **lck);
-extern void __ompc_end_critical(int gtid, volatile omp_lock_t **lck);
+extern void __ompc_critical(int gtid, volatile ompc_lock_t **lck);
+extern void __ompc_end_critical(int gtid, volatile ompc_lock_t **lck);
 
 /* TODO:Not implemented yet*/
 extern void __ompc_serialized_parallel(int vthread_id);

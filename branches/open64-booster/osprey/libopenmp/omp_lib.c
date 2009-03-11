@@ -146,7 +146,6 @@ omp_get_nested(void)
   return (omp_int_t)__ompc_get_nested();
 }
 
-
 omp_int_t omp_get_nested_(void);
 #pragma weak omp_get_nested_ = omp_get_nested
 /*
@@ -155,7 +154,9 @@ omp_int_t omp_get_nested_(void);
 inline void
 omp_init_lock(volatile omp_lock_t *lock)
 {
-  __ompc_init_lock(lock);
+  ompc_lock_t *tmp_lp = malloc(sizeof(ompc_lock_t)); 
+  __ompc_init_lock(tmp_lp);
+  (*lock) = (omp_lock_t*)tmp_lp; 
 }
 
 
@@ -165,7 +166,9 @@ void omp_init_lock_(volatile omp_lock_t *);
 inline void
 omp_init_nest_lock(volatile omp_nest_lock_t *lock)
 {
-  __ompc_init_nest_lock(lock);
+  ompc_nest_lock_t *tmp_lp = malloc(sizeof(ompc_nest_lock_t)); 
+  __ompc_init_nest_lock(tmp_lp);
+  (*lock) = (omp_lock_t*)tmp_lp; 
 }
 
 
@@ -175,7 +178,8 @@ void omp_init_nest_lock_(volatile omp_nest_lock_t *);
 inline void
 omp_destroy_lock(volatile omp_lock_t *lock)
 {
-  __ompc_destroy_lock(lock);
+  __ompc_destroy_lock((ompc_lock_t*)(*lock));
+  free((ompc_lock_t*)(*lock)); 
 }
 
 
@@ -184,7 +188,8 @@ void omp_destroy_lock_(volatile omp_lock_t *);
 inline void
 omp_destroy_nest_lock(volatile omp_nest_lock_t *lock)
 {
-  __ompc_destroy_nest_lock(lock);
+  __ompc_destroy_nest_lock((ompc_nest_lock_t*)(*lock));
+  free((ompc_nest_lock_t*)(*lock)); 
 }
 
 
@@ -193,7 +198,7 @@ void omp_destroy_nest_lock_(volatile omp_nest_lock_t *);
 inline void
 omp_set_lock(volatile omp_lock_t *lock)
 {
-  __ompc_lock(lock);
+  __ompc_lock((ompc_lock_t*)(*lock));
 }
 
 
@@ -202,7 +207,7 @@ void omp_set_lock_(volatile omp_lock_t *);
 inline void
 omp_set_nest_lock(volatile omp_nest_lock_t *lock)
 {
-  __ompc_nest_lock(lock);
+  __ompc_nest_lock((ompc_nest_lock_t*)(*lock));
 }
 
 
@@ -211,7 +216,7 @@ void omp_set_nest_lock_(volatile omp_nest_lock_t *);
 inline void
 omp_unset_lock(volatile omp_lock_t *lock)
 {
-  __ompc_unlock(lock);
+  __ompc_unlock((ompc_lock_t*)(*lock));
 }
 
 
@@ -220,7 +225,7 @@ void omp_unset_lock_(volatile omp_lock_t *);
 inline void
 omp_unset_nest_lock(volatile omp_nest_lock_t *lock)
 {
-  __ompc_nest_unlock(lock);
+  __ompc_nest_unlock((ompc_nest_lock_t*)(*lock));
 }
 
 
@@ -229,7 +234,7 @@ void omp_unset_nest_lock_(volatile omp_nest_lock_t *);
 inline int
 omp_test_lock(volatile omp_lock_t *lock)
 {
-  return __ompc_test_lock(lock);
+  return __ompc_test_lock((ompc_lock_t*)(*lock));
 }
 
 
@@ -237,7 +242,7 @@ int omp_test_lock_(volatile omp_lock_t *);
 #pragma weak omp_test_lock_ = omp_test_lock
 inline int
 omp_test_nest_lock(volatile omp_nest_lock_t *lock){
-  return __ompc_test_nest_lock(lock);
+  return __ompc_test_nest_lock((ompc_nest_lock_t*)(*lock));
 }
 	
 

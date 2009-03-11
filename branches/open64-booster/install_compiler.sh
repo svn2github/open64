@@ -553,6 +553,7 @@ INSTALL_IPA
 INSTALL_CG 
 INSTALL_WHIRL_STUFF 
 INSTALL_MISC
+INSTALL_NATIVE_HEADER
 
 #cat << _EOF_
 # ------------------------------------------------------------------------
