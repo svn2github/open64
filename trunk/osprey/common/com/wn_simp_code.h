@@ -957,6 +957,11 @@ INT32 SIMPNODE_Simp_Compare_Trees(simpnode t1, simpnode t2)
       if (SIMPNODE_lda_offset(t1) > SIMPNODE_lda_offset(t2)) return(1);
       return SIMPNODE_Compare_Symbols(t1,t2);
 
+    case OPR_LDA_LABEL:
+      if (SIMPNODE_label_number(t1) < SIMPNODE_label_number(t2)) return(-1);
+      if (SIMPNODE_label_number(t1) > SIMPNODE_label_number(t2)) return(1);
+      return (0); /* the same label */
+
     case OPR_ARRAY:
       if (SIMPNODE_num_dim(t1) < SIMPNODE_num_dim(t2)) return (-1);
       if (SIMPNODE_num_dim(t1) > SIMPNODE_num_dim(t2)) return (1);

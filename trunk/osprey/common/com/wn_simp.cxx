@@ -120,6 +120,7 @@ typedef WN * simpnode;
 #define SIMPNODE_element_size WN_element_size
 #define SIMPNODE_idname_offset WN_idname_offset
 #define SIMPNODE_lda_offset WN_lda_offset
+#define SIMPNODE_label_number WN_label_number
 #define SIMPNODE_num_dim WN_num_dim
 #define SIMPNODE_array_base WN_array_base
 #define SIMPNODE_array_index WN_array_index
