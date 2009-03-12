@@ -451,7 +451,7 @@ BOOL GTABLE::Is_Truebr(const GDESCRIPTOR *gd) const
          WN_label_number(stmt) == WN_label_number(WN_next(grand_parent)))
        ;
 #if defined(LANGUAGE_JAVA )
-     if (PU_java_lang(Get_Current_PU()) &&
+     else if (PU_java_lang(Get_Current_PU()) &&
 	  stmt == WN_last(wn_else) &&
          wn != stmt &&
          WN_operator(stmt) == OPR_EVAL ) 
