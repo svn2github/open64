@@ -107,6 +107,7 @@
 #include "opt_fb.h"
 #include "opt_cfg_trans.h"
 #include "config_wopt.h"
+#include "config_lno.h"
 
 #include "opt_main.h"
 #include "wn_simp.h"
@@ -3856,6 +3857,9 @@ PRO_LOOP_FUSION_TRANS::Classify_loops(SC_NODE *sc)
   _edit_loop_class = FALSE;
 }
 
+#define PRO_LOOP_FUSION_THRESHOLD 280
+#define MAX_OLF_UPPER_BOUND 70
+
 // The driver to invoke if-merge and head-tail-duplication transformations
 // to allow loop fusion.
 
@@ -3913,21 +3917,31 @@ COMP_UNIT::Pro_loop_fusion_trans()
       if_merge_trans->Set_pass(PASS_LOCAL);
       pro_loop_fusion_trans->Classify_loops(sc_root);
       pro_loop_fusion_trans->Top_down_trans(sc_root);
+
+      int pro_loop_fusion_trans_count = pro_loop_fusion_trans->Transform_count();
     
       // Verify branch target labels and feed back info.
-      if ((pro_loop_fusion_trans->Transform_count() > 0) || (if_merge_trans->Count() > 0)) {
+      if ((pro_loop_fusion_trans_count > 0) || (if_merge_trans->Count() > 0)) {
 	changed = TRUE;
 	_cfg->Verify_label();
 
 	if (Cur_PU_Feedback)
 	  _cfg->Feedback()->Verify(_cfg, "after proactive loop fusion transformation");
+
+	// A simple heuristic to dynamically increase OLF_Upper_Bound if number of proactive
+	// loop fusion transformations exceed a threshold.
+	if (pro_loop_fusion_trans_count > PRO_LOOP_FUSION_THRESHOLD) {
+	  int olf_ub = Current_LNO->OLF_Upper_Bound;
+	  LNO_Save_Config(OLF_UPPER_BOUND);
+	  Current_LNO->OLF_Upper_Bound = Max(olf_ub, MAX_OLF_UPPER_BOUND);
+	}
       }
       
       if (trace) {
 	if (if_merge_trans->Count() > 0)
 	  printf("\n\t If-merge total:%d\n", if_merge_trans->Count());
 
-	if (pro_loop_fusion_trans->Transform_count() > 0)
+	if (pro_loop_fusion_trans_count > 0)
 	  printf("\n\t Code-motion-Head-Tail-Dup total:%d\n", 
 		 pro_loop_fusion_trans->Transform_count());
       }

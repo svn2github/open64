@@ -682,6 +682,7 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
 
     MEM_POOL_Pop(&ARA_memory_pool);
     MEM_POOL_Delete(&ARA_memory_pool);
+    LNO_Restore_Configs();
     return func_nd;
   }
 
@@ -1172,6 +1173,7 @@ return_point:
   // fclose(LNO_Analysis); 
   MEM_POOL_Pop(&ARA_memory_pool);
   MEM_POOL_Delete(&ARA_memory_pool);
+  LNO_Restore_Configs();
   return func_nd;
 }
 
