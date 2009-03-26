@@ -307,24 +307,18 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
             fi
         done
     fi
-    if [ "$ARCH" = "i386" ] ; then
-        for i in libgcc.a libgcc_s.so libstdc++.a libstdc++.so; do
-	    F=`gcc --print-file-name $i`
-            if [ ! -z "$F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
-            fi
-	done
-    fi
-    if [ "$ARCH" = "x86_64" ] ; then
+    if [ "$ARCH" = "x86_64" -o "$ARCH" = "i386" ] ; then
         for i in libgcc.a libgcc_s.so libstdc++.a libstdc++.so; do
 	    F=`gcc -m32 --print-file-name $i`
 	    if [ ! -z "$F" ] && [ -e "$F" ]; then
               INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
             fi
-	    F=`gcc -m64 --print-file-name $i`
-	    if [ ! -z "$F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $F ${PHASEPATH}/$i
-            fi
+	    if [ `uname -m` = x86_64 ] ; then
+		F=`gcc -m64 --print-file-name $i`
+		if [ ! -z "$F" ] && [ -e "$F" ]; then
+		  INSTALL_DATA_SUB $F ${PHASEPATH}/$i
+		fi
+	    fi
 	done
     fi
     return 0
