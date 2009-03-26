@@ -594,7 +594,7 @@ _xfunc_has_stmts2prevent_shackle(QUEUE<WN *> *stmts)
 // We just want to return a ST that is meaningful
 static ST* Array_Base_St (WN* node)
 {
-  if (OPCODE_is_load(WN_opcode(node))) return WN_st(node);
+  if (OPCODE_is_load(WN_opcode(node)) && WN_has_sym(node)) return WN_st(node);
 
   // Recurse
   ST* sym;
