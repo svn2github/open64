@@ -246,23 +246,15 @@ init_given_crt_path (char *crtname, char *prog_name, char *tmp_name)
 */
 void init_stdc_plus_plus_path (void)
 {
-
         phases_t ld_phase = determine_ld_phase (FALSE);
-        if (ld_phase != P_ldplus || ld_phase != P_ld) {
-                /* use prebuilt libstdc++.so which reside at the same directory
-                 * as other phases.e.g BE, since the /path/to/be has already 
-                 * in the lib-path, we need not duplicate at this place. 
-                 */
-        } else {
-                char buf[1024];
-                char* p;
-                find_full_path_of_gcc_file (get_full_phase_name (ld_phase), 
-                                "libstdc++.so",  &buf[0], sizeof(buf));
-                p = drop_path (&buf[0]);
-                *p = '\0';
-                if (debug) fprintf(stderr, "libstdc++.so found in %s\n", &buf[0]);
-                add_library_dir (&buf[0]);
-        }
+        char buf[1024];
+        char* p;
+        find_full_path_of_gcc_file (get_full_phase_name (ld_phase), 
+                                    "libstdc++.so",  &buf[0], sizeof(buf));
+        p = drop_path (&buf[0]);
+        *p = '\0';
+        if (debug) fprintf(stderr, "libstdc++.so found in %s\n", &buf[0]);
+        add_library_dir (&buf[0]);
 }
 
 
