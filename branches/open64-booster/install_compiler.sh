@@ -210,7 +210,7 @@ INSTALL_IPA () {
 
     INSTALL_EXEC_SUB ${LD_NEW_DIR}/ld-new  ${PHASEPATH}/ipa_link
 
-    ln -sf ${PHASEPATH}/be ${PHASEPATH}/ipl 
+    (cd ${PHASEPATH}; ln -sf be ipl)
 
     return 0
 }
@@ -233,8 +233,8 @@ INSTALL_WHIRL_STUFF () {
     INSTALL_EXEC_SUB  ${AREA}/whirl2c/whirl2c.so ${PHASEPATH}/whirl2c.so
     INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f.so ${PHASEPATH}/whirl2f.so
 
-    (cd ${PHASEPATH}; ln -sf ${PHASEPATH}/be whirl2c_be) 
-    (cd ${PHASEPATH}; ln -sf ${PHASEPATH}/be whirl2f_be) 
+    (cd ${PHASEPATH}; ln -sf be whirl2c_be) 
+    (cd ${PHASEPATH}; ln -sf be whirl2f_be) 
 
     INSTALL_EXEC_SUB  ${AREA}/ir_tools/ir_b2a    ${BIN_DIR}/ir_b2a
     INSTALL_EXEC_SUB  ${AREA}/libspin/gspin      ${BIN_DIR}/gspin
@@ -284,8 +284,8 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/obj64/libhugetlbfs_open64.so    ${PHASEPATH}/libhugetlbfs_open64.so.1
         INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/obj32/libhugetlbfs_open64.so  ${PHASEPATH}/32/libhugetlbfs_open64.so.1
 
-        ln -sf ${PHASEPATH}/libhugetlbfs_open64.so.1    ${PHASEPATH}/libhugetlbfs_open64.so
-        ln -sf ${PHASEPATH}/32/libhugetlbfs_open64.so.1 ${PHASEPATH}/32/libhugetlbfs_open64.so
+        (cd ${PHASEPATH}; ln -sf libhugetlbfs_open64.so.1 libhugetlbfs_open64.so)
+        (cd ${PHASEPATH}/32; ln -sf libhugetlbfs_open64.so.1 libhugetlbfs_open64.so)
 
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xB      ${PHASEPATH}/elf.xB
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386.xB        ${PHASEPATH}/32/elf.xB
@@ -503,7 +503,7 @@ INSTALL_MAN_PAGE () {
     INSTALL_DATA_SUB $d1/sgicc.1 $d2 
     INSTALL_DATA_SUB $d1/sgif90.1 $d2
 
-    ln -sf $d2/sgicc.1  $d2/sgiCC.1
+    (cd $d2; ln -sf sgicc.1 sgiCC.1)
 
     return 0
 }
