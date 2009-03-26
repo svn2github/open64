@@ -2300,8 +2300,13 @@ IF_MERGE_TRANS::Is_cand(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
   // excluding the conditional branch.
 
   if (head2->Real_stmt_count() > 1) {
+    BOOL has_non_sp = !Can_be_speculative(head2);
+
     FOR_ALL_ELEM(tmp, sc_list_iter, Init(sc2->Kids())) {
       if (Has_dependency(tmp, head2))
+	return FALSE;
+      // Do not reorder operations that can not be speculative.
+      if (has_non_sp && !Can_be_speculative(tmp))
 	return FALSE;
     }
   }
