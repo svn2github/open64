@@ -1531,10 +1531,10 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Identify_Virtual_Function (
          cons_it != constructed_types_set.end();
          ++cons_it) {
         TY_INDEX cons_ty = *cons_it;
-        Is_True (constructor_map.find(cons_ty) != 
-                 constructor_map.end(),
-                 ("IPA_fast_static_analysis_VF:Constructor_map does not carry pui for type"));
-        Is_True (pu_node_index_map.find(constructor_map[cons_ty]) !=
+        Is_True (Constructor_Map.find(cons_ty) != 
+                 Constructor_Map.end(),
+                 ("IPA_fast_static_analysis_VF:Constructor_Map does not carry pui for type"));
+        Is_True (pu_node_index_map.find(Constructor_Map[cons_ty]) !=
                  pu_node_index_map.end(),
                  ("IPA_fast_static_analysis_VF:PU_node_index_map does not carry node index for pui"));
 
