@@ -1568,7 +1568,7 @@ void IF_MERGE_TRANS::Track_val(BB_NODE * bb_cur, BB_NODE * bb_entry, WN * wn)
 
     if (OPERATOR_is_scalar_store(WN_operator(wn_iter))) {
       WN * wn_data = WN_kid0(wn_iter);
-      AUX_ID rval = Get_val(WN_aux(wn_data));
+      AUX_ID rval = OPERATOR_has_sym(WN_operator(wn_data)) ? Get_val(WN_aux(wn_data)) : 0;
       AUX_ID lval = Get_val(WN_aux(wn_iter));
       
       if (Is_trackable_var(WN_aux(wn_iter)) && rval
