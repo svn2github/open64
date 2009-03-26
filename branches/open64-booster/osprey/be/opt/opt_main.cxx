@@ -1239,10 +1239,14 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 	LOWER_IO_STATEMENT |
 	LOWER_ENTRY_EXIT |
 	LOWER_SHORTCIRCUIT |
-#ifdef KEY
-	LOWER_UPLEVEL |
-#endif
 	lower_region_exits_flag;	// this is a variable
+
+#ifdef KEY
+    // No uplevel reference spliting for openmp
+    if ((PU_has_mp (Get_Current_PU ()) == FALSE) && 
+        (PU_mp(Get_Current_PU ()) == FALSE))
+      actions |= LOWER_UPLEVEL;
+#endif
     
     if (WOPT_Enable_Bits_Load_Store)
 	actions |= LOWER_BIT_FIELD_ID;
