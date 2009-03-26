@@ -2081,11 +2081,6 @@ Process_Hugepage_Group(char * hugepage_args)
             else
                 continue;
         }
-        else if (strncmp(p, "heap", 4) == 0) {
-            p = &p[4];
-            hugepage_alloc = ALLOC_HEAP;
-            process_state = 2;
-        }
         else if (strncmp(p, "bdt=", 4) == 0) {
             p = &p[4];
             hugepage_alloc = ALLOC_BDT;
@@ -2094,11 +2089,6 @@ Process_Hugepage_Group(char * hugepage_args)
                 has_err = TRUE;
             else
                 continue;
-        }
-        else if (strncmp(p, "bdt", 3) == 0) {
-            p = &p[3];
-            hugepage_alloc = ALLOC_BDT;
-            process_state = 2;
         }
         else
             has_err = TRUE;
