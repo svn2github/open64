@@ -2131,6 +2131,12 @@ identify_complete_struct_relayout_candidates(WN *wn)
             {
               // we have encountered this structure in some loops before; just
               // update the field access
+              if (WN_field_id(wn) >=
+                  MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE)
+              {
+                continue_with_complete_struct_relayout_analysis = 0;
+                return;
+              }
               complete_struct_relayout_candidate_field_access_array[i]
                 [WN_field_id(wn)] = 1; // careful, some C++ #fields >= MAX
               break;
@@ -2156,6 +2162,12 @@ identify_complete_struct_relayout_candidates(WN *wn)
             for (j = 0; j <
                  MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE; j++)
               complete_struct_relayout_candidate_field_access_array[i][j] = 0;
+            if (WN_field_id(wn) >=
+                MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE)
+            {
+              continue_with_complete_struct_relayout_analysis = 0;
+              return;
+            }
             complete_struct_relayout_candidate_field_access_array[i]
               [WN_field_id(wn)] = 1; // careful, some C++ #fields >= MAX
             num_complete_struct_relayout_candidates++;
