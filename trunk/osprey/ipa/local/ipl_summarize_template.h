@@ -1814,7 +1814,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
             {
               ST * thdprv_st = ST_ptr (WN_pragma_arg2(w2));
               Get_symbol_index (thdprv_st);  
-              WN_pragma_arg2(w2) = Get_symbol_index (thdprv_st);
               Record_global_ref (w2, thdprv_st, OPR_PRAGMA, TRUE);
 
               // increment modcount
