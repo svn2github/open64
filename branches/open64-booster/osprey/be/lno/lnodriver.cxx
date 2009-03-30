@@ -293,6 +293,8 @@ Perform_Loop_Nest_Optimization (PU_Info* current_pu, WN *pu_wn,
     Is_True(REGION_consistency_check(region_wn),(""));
 
     if (WOPT_Enable_Pro_Loop_Fusion_Trans) {
+      Delete_Du_Manager(du_mgr, MEM_pu_nz_pool_ptr);
+      du_mgr = Create_Du_Manager(MEM_pu_nz_pool_ptr);
       region_wn =
 	Pre_Optimizer(PREOPT_LNO1_PHASE, region_wn, du_mgr, alias_mgr);
       Check_for_IR_Dump(TP_LNOPT3, region_wn, "LNO1 PREOPT");

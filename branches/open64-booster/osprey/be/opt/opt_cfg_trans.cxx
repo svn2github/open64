@@ -1568,7 +1568,8 @@ void IF_MERGE_TRANS::Track_val(BB_NODE * bb_cur, BB_NODE * bb_entry, WN * wn)
 
     if (OPERATOR_is_scalar_store(WN_operator(wn_iter))) {
       WN * wn_data = WN_kid0(wn_iter);
-      AUX_ID rval = OPERATOR_has_sym(WN_operator(wn_data)) ? Get_val(WN_aux(wn_data)) : 0;
+      AUX_ID rval = (WN_has_sym(wn_data) &&
+		     OPERATOR_is_load(WN_operator(wn_data))) ? Get_val(WN_aux(wn_data)) : 0;
       AUX_ID lval = Get_val(WN_aux(wn_iter));
       
       if (Is_trackable_var(WN_aux(wn_iter)) && rval
@@ -1904,7 +1905,7 @@ IF_MERGE_TRANS::Maybe_assigned_expr(WN * wn1, WN * wn_root)
 {
   OPCODE opc = WN_opcode(wn_root);
 
-  if (OPCODE_is_load(opc) || OPCODE_is_store(opc)) {
+  if (OPCODE_is_load(opc) || OPCODE_is_store(opc) || (opc == OPC_IO)) {
     OPCODE opc = WN_opcode(wn1);
 
     // OPC_IO has side effect and hidden control flow.
