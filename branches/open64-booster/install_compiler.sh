@@ -155,7 +155,9 @@ INSTALL_DATA_SUB () {
 # install the driver
 INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${PHASEPATH}/driver
-    INSTALL_EXEC_SUB ${AREA}/driver/kdriver  ${PHASEPATH}/kdriver
+    if [ "$TARG_HOST" = "ia64" ]; then
+      INSTALL_EXEC_SUB ${AREA}/driver/kdriver  ${PHASEPATH}/kdriver
+    fi
 
     [ ! -d ${BIN_DIR}       ] && mkdir -p ${BIN_DIR}
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/opencc
@@ -167,7 +169,9 @@ INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf90-${VERSION}
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95-${VERSION}
 
-    INSTALL_EXEC_SUB ${AREA}/driver/kdriver ${BIN_DIR}/kopencc
+    if [ "$TARG_HOST" = "ia64" ]; then
+      INSTALL_EXEC_SUB ${AREA}/driver/kdriver ${BIN_DIR}/kopencc
+    fi
 
     return 0
 }
@@ -297,8 +301,7 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386_1G.xBDT      ${PHASEPATH}/32/elf_1G.xBDT
     fi
 
-    # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archieves
-    # is it necessary?
+    # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archives
     if [ "$ARCH" = "ia64" ] ; then
         for i in libgcc.a libgcc_s.so libstdc++.a libstdc++.so; do 
             F=`gcc --print-file-name $i`
@@ -306,20 +309,6 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
               INSTALL_DATA_SUB $F ${PHASEPATH}/$i
             fi
         done
-    fi
-    if [ "$ARCH" = "x86_64" -o "$ARCH" = "i386" ] ; then
-        for i in libgcc.a libgcc_s.so libstdc++.a libstdc++.so; do
-	    F=`gcc -m32 --print-file-name $i`
-	    if [ ! -z "$F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
-            fi
-	    if [ `uname -m` = x86_64 ] ; then
-		F=`gcc -m64 --print-file-name $i`
-		if [ ! -z "$F" ] && [ -e "$F" ]; then
-		  INSTALL_DATA_SUB $F ${PHASEPATH}/$i
-		fi
-	    fi
-	done
     fi
     return 0
 }
@@ -365,26 +354,6 @@ INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP () {
               INSTALL_DATA_SUB $F ${PHASEPATH}/$i
             fi
         done
-    fi
-    if [ "$ARCH" = "i386" ] ; then
-        for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do
-	    F=`gcc --print-file-name=$i`
-            if [ ! -z "F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
-            fi
-	done
-    fi
-    if [ "$ARCH" = "x86_64" ] ; then
-        for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do
-	    F=`gcc -m32 --print-file-name=$i`
-            if [ ! -z "F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
-            fi
-            F=`gcc -m64 --print-file-name=$i`
-            if [ ! -z "F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $F ${PHASEPATH}/$i
-            fi
-	done
     fi
     return 0
 }
