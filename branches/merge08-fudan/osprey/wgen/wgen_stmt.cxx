@@ -525,7 +525,7 @@ Push_Handler_Info (gs_t handler, vector<gs_t> *v,
  
   ti.stmt  = stmt;                              
   ti.catch_labels   = catch_labels;             
-  if(gs_tree_code(stmt) == GS_TRY_FINALLY_EXPR)
+  if (gs_tree_code(stmt) == GS_TRY_FINALLY_EXPR)
         New_LABEL (CURRENT_SYMTAB, ti.finally_label);
   else
         ti.finally_label = 0;
@@ -589,9 +589,9 @@ Do_Handlers (INT cleanups)
      ) processing_handler = true;
 #endif
 #if defined(LANGUAGE_JAVA )
-  if(lang_cplus)
+  if (lang_cplus)
     try_monitor.Set_Index_Last();   
-  if(lang_java)
+  if (lang_java)
     try_monitor.Set_Index_First();
   while (!try_monitor.Empty()) {
 #else
@@ -640,15 +640,13 @@ Do_Handlers (INT cleanups)
 #endif
 #ifdef KEY
 #if defined(LANGUAGE_JAVA )
-  if(lang_cplus)
-  { 
+  if (lang_cplus) { 
     try_monitor.Set_Index_Prev();	
     try_monitor.PopBack();	
     if(try_monitor.LastIsCurrent())
       break;
   }
-  if(lang_java)
-  { 
+  if (lang_java) { 
     try_monitor.Set_Index_Next();
     if(try_monitor.Index_At_End())
       break;
@@ -662,7 +660,7 @@ Do_Handlers (INT cleanups)
   processing_handler = false;
   Do_Cleanups_For_EH(cleanups);
 #if defined(LANGUAGE_JAVA )
-  if(lang_java)  
+  if (lang_java)  
     try_monitor.Clean_Up();	
 #endif
   if (key_exceptions) 
@@ -1050,8 +1048,7 @@ Do_Temp_Cleanups (gs_t t)
   {
 #if defined(LANGUAGE_JAVA )
     Try_Info ti = try_monitor.Indexing_TI();
-    if (ti.temp_cleanup)
-    {  
+    if (ti.temp_cleanup) {  
       int n = ti.temp_cleanup->size()-1;
       while (!cleanup_matches((*ti.temp_cleanup)[n].expr, t)) {
         gs_t cleanup = (*ti.temp_cleanup) [n].expr;
@@ -2322,11 +2319,11 @@ WGEN_Expand_Goto (gs_t label)	// KEY VERSION
         while ((i >= 0) && (scope_cleanup_stack [i].stmt != *ci))
         {
 #if defined(LANGUAGE_JAVA )
-          if(lang_cplus)
+          if (lang_cplus)
 #endif
             Maybe_Emit_Cleanup (i, FALSE);
 #if defined(LANGUAGE_JAVA )
-          if(lang_java)
+          if (lang_java)
           {
             int index = try_monitor.Find_Finally_Containing_This_Bind(scope_cleanup_stack [i].stmt);
             if(index != -1)
@@ -2540,7 +2537,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 #endif
 
 #if defined(LANGUAGE_JAVA )
-  if(lang_cplus)
+  if (lang_cplus)
   {
 #endif
     int i = scope_cleanup_i;
@@ -2573,7 +2570,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 
 #ifdef KEY
 #if defined(LANGUAGE_JAVA )
-  if(lang_cplus)
+  if (lang_cplus)
   {
 #endif 
     if (key_exceptions && processing_handler) {
@@ -2691,7 +2688,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 #endif
 
 #if defined(LANGUAGE_JAVA )
-  if(lang_cplus)
+  if (lang_cplus)
   {
 #endif
     int i = scope_cleanup_i;
@@ -2723,8 +2720,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 #ifdef KEY
     if (key_exceptions && processing_handler) {
 #if defined(LANGUAGE_JAVA )
-      if(lang_cplus)
-      {
+      if (lang_cplus) {
         Try_Info ti = try_monitor.Indexing_TI();           
         FmtAssert (ti.scope, ("NULL scope"));
         int j = ti.scope->size()-1;
@@ -2739,8 +2735,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 	}
 #if defined(LANGUAGE_JAVA )
       }
-      if(lang_java)
-      {
+      if (lang_java) {
         for(int index = try_monitor.Get_Current_Try(); index != -1; index = try_monitor.Get_Parent(index))
         {
           gs_t t = try_monitor.Get_Indexed_Try(index).stmt;
@@ -3277,8 +3272,7 @@ Set_Handler_Labels (gs_t stmt, std::list<LABEL_IDX>* catch_labels)
   if (gs_cleanup_p (stmt))
     return;
  
-  if(lang_cplus)
-  {
+  if (lang_cplus) {
     gs_t handlers = gs_try_handlers(stmt);
  
     HANDLER_ITER iter (handlers);
@@ -3291,8 +3285,7 @@ Set_Handler_Labels (gs_t stmt, std::list<LABEL_IDX>* catch_labels)
       catch_labels->push_back(handler_label);
     }
   }
-  if(lang_java)
-  {
+  if (lang_java) {
     gs_t catches = gs_tree_operand(stmt, 1);
  
     CATCH_ITER iter (catches);
@@ -3351,8 +3344,7 @@ Current_Handler_Count()
       return result;
     }
 #if defined(LANGUAGE_JAVA )
-    if (gs_tree_code(t) == GS_TRY_CATCH_EXPR)
-    {
+    if (gs_tree_code(t) == GS_TRY_CATCH_EXPR) {
       CATCH_ITER iter(gs_tree_operand(t, 1));
       return iter.Size();
     }
@@ -3407,12 +3399,10 @@ Add_Handler_Info (WN * call_wn, INT i, INT num_handlers)
   }
 #if defined(LANGUAGE_JAVA )
   if (gs_tree_code(t) == GS_TRY_CATCH_EXPR) {
-    if(gs_tree_code(gs_tree_operand(t, 1)) == GS_CATCH_EXPR)
+    if (gs_tree_code(gs_tree_operand(t, 1)) == GS_CATCH_EXPR)
       WN_kid (call_wn, i++) = WN_CreateHandlerInfo (0, HANDLER_LABEL (gs_tree_operand(t, 1)));
-    else
-    {
-      for(gs_t cmpd = gs_tree_operand(t, 1); gs_tree_code(cmpd) == GS_COMPOUND_EXPR; cmpd = gs_tree_operand(cmpd, 1))
-      {
+    else {
+      for(gs_t cmpd = gs_tree_operand(t, 1); gs_tree_code(cmpd) == GS_COMPOUND_EXPR; cmpd = gs_tree_operand(cmpd, 1)) {
         WN_kid (call_wn, i++) = WN_CreateHandlerInfo (0, HANDLER_LABEL (gs_tree_operand(cmpd, 0)));
       }
       WN_kid (call_wn, i++) = WN_CreateHandlerInfo (0, HANDLER_LABEL (cmpd));
@@ -3817,7 +3807,7 @@ lookup_cleanups (INITV_IDX& iv)
   	cleanups->push_back (temp_cleanup);
 #if defined(LANGUAGE_JAVA )
   }
-  if(lang_java)
+  if (lang_java)
   {
     if (try_monitor.Get_Current_Try() == -1 && !try_monitor.In_Catch_With_Finally())
     {
@@ -3847,9 +3837,7 @@ lookup_cleanups (INITV_IDX& iv)
         h = gs_tree_operand(t, 1);
     }
     iv = Create_handler_list ();
-    if(gs_cleanup_p(t) && try_monitor.Get_Parent(try_monitor.Get_Current_Try()) != -1) 
-      goto_idx = try_monitor.Get_Cmp_Label(try_monitor.Get_Parent(try_monitor.Get_Current_Try()));
-    else
+    if((lang_cplus && !gs_cleanup_p(t)) || lang_java)
       goto_idx = try_monitor.Get_Cmp_Label(try_monitor.Get_Current_Try());
   }
 #else
@@ -3866,7 +3854,7 @@ lookup_cleanups (INITV_IDX& iv)
 	{
 	    iv = lookup_handlers (cleanups);
 #if defined(LANGUAGE_JAVA )
-            if(try_monitor.In_Catch_With_Finally())       
+            if (try_monitor.In_Catch_With_Finally())       
               goto_idx = try_monitor.Get_Indexed_Try(try_monitor.Get_Current_State().index).finally_label;
             else
               goto_idx = try_monitor.Indexing_TI().goto_idx;
@@ -3975,7 +3963,7 @@ static void
 Get_handler_list (vector<ST_IDX> *handler_list)
 {
 #if defined(LANGUAGE_JAVA )
-  if(lang_cplus)
+  if (lang_cplus)
   {
 #endif
   FmtAssert (gs_tree_code(scope_cleanup_stack[scope_cleanup_i+1].stmt) == 
@@ -3998,7 +3986,7 @@ Get_handler_list (vector<ST_IDX> *handler_list)
   }
 #if defined(LANGUAGE_JAVA )
   }
-  if(lang_java)
+  if (lang_java)
   {
     for(int index = try_monitor.Get_Current_Try(); index != -1; index = try_monitor.Get_Parent(index))
     {
@@ -4102,7 +4090,7 @@ Get_Cleanup_Info (vector<gs_t> *cleanups, LABEL_IDX *goto_idx)
 #if defined(LANGUAGE_JAVA )
   } // end if(lang_cplus)
 
-  if(lang_java)
+  if (lang_java)
   {
     if(try_monitor.Get_Parent(index) != -1)
       *goto_idx = try_monitor.Get_Cmp_Label(try_monitor.Get_Parent(index));
@@ -4131,7 +4119,7 @@ Get_Scope_Info (void)
 	scope->push_back (*i);
   }
 #if defined(LANGUAGE_JAVA )
-  if(lang_cplus)  
+  if (lang_cplus)  
 #endif
   FmtAssert (gs_tree_code(scope_cleanup_stack[scope_cleanup_i].stmt) 
 		== GS_TRY_BLOCK, ("Scope Error in Get_Scope_Info"));
@@ -4197,7 +4185,7 @@ Get_Break_Continue_Info (void)
 	info->push_back (*i);
   }
 #if defined(LANGUAGE_JAVA )
-  if(lang_cplus)
+  if (lang_cplus)
 #endif
   FmtAssert (gs_tree_code(scope_cleanup_stack[scope_cleanup_i].stmt) 
 		== GS_TRY_BLOCK, ("Scope Error in Get_Break_Continue_Info"));
@@ -4957,7 +4945,7 @@ WGEN_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
     Get_Srcpos());
 #endif // !KEY
 #if defined(LANGUAGE_JAVA )
-  if(lang_cplus) 
+  if (lang_cplus) 
   {
     if (gs_tree_code(handlers) == GS_HANDLER || gs_tree_code(handlers) == GS_STATEMENT_LIST) {
 #else 
