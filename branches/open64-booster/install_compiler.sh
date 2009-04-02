@@ -38,7 +38,7 @@
 VER_MAJOR="4"
 VER_MINOR="2"
 #PATCH_LEVEL=""
-VERSION="${VER_MAJOR}.${VER_MINOR}"
+VERSION="${OPEN64_FULL_VERSION:-${VER_MAJOR}.${VER_MINOR}}"
 
 PREBUILT_LIB="./lib"
 PREBUILT_BIN="./bin"
@@ -333,8 +333,9 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
         #INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
-	INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
-	INSTALL_DATA_SUB /opt/acml4.2.0/pathscale64/lib/libacml_mv.a ${PHASEPATH}/libacml_mv.a
+        INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
+        INSTALL_DATA_SUB libacml_mv/libacml_mv.a ${PHASEPATH}/libacml_mv.a
+        INSTALL_DATA_SUB libacml_mv/LICENSE-LIBACML_MV ${PHASEPATH}/LICENSE-LIBACML_MV
         # 32bit libraries
         INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.a ${PHASEPATH}/32/libfortran.a
         INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
