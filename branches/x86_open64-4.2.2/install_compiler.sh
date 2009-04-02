@@ -521,6 +521,9 @@ INSTALL_WHIRL_STUFF
 INSTALL_MISC
 INSTALL_NATIVE_HEADER
 
+# copy release notes to top level
+cp RELEASE-x86_4.2.2 $ROOT
+
 #cat << _EOF_
 # ------------------------------------------------------------------------
 # NOTE: Following archives may not present. these archives are built on 

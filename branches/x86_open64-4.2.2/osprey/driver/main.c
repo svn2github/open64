@@ -1517,11 +1517,11 @@ display_version(boolean dump_version_only)
     return;
   }
 
-  fprintf(stderr, "Open64 Compiler Suite: Version %s\n",
+  fprintf(stderr, "x86 Open64 Compiler Suite: Version %s\n",
 	  compiler_version);
   if (show_version > 1) {
     fprintf(stderr, "Changeset: %s\n", cset_id);
-    fprintf(stderr, "Built by: %s@%s in %s\n", build_user, build_host,
+    fprintf(stderr, "Built by: %s@%s from %s\n", build_user, build_host,
 	    build_root);
   }
   fprintf(stderr, "Built on: %s\n", build_date);

@@ -1,0 +1,180 @@
+
+x86 Open64 4.2.1.90 Release Notes 
+
+
+               April 1, 2009
+
+
+1. Overview
+
+2. Features
+
+3. The Packages of the Compiler Suite
+
+4. Supported Operating Systems
+
+5. Installing the Compiler Suite
+  5.1 Install from bz2 Package
+  5.2 Install from RPM packages
+
+6. Bug Reporting and Support
+
+7. Known Issues and Limitations
+
+
+1. Overview
+===========
+
+ This is a preview release of the x86 Open64 4.2.2 compiler suite.
+
+ x86 Open64 is an open source, optimizing compiler for 32-bit (x86) and
+ 64-bit (x86-64) achitectures. x86 Open64 supports Fortran 77/90/95 and C/C++,
+ as well as the shared memory programming model OpenMP (version 2.5).
+
+ The compiler source code is released under GPL v2. Libraries intended for
+ redistribution are licensed under LGPL v2.1. These libraries include libffio,
+ libfortran, libhugetlbfs, libmv, libopen64rt, libopen64rt_shared, and
+ libopenmp.
+
+ The libacml_mv math library is provided in binary form at this time, on an
+ "as-is" basis. The license is detailed in the file LICENSE-LIBACML_MV.
+
+
+
+2. New Features in x86 Open64 4.2.2
+===================================
+
+ o Support for 2 MB huge pages.
+
+ o Improved loop fusion and loop unrolling.
+
+ o Improved head/tail duplication, if-merging, scalar replacement and
+   constant folding optimizations.
+
+ o Improved interprocedural alias analysis.
+
+ o Improved partial inlining and inlining of virtual functions.
+
+ o More aggressive re-layout optimization for structure members.
+
+ o Improved instruction selection and instruction scheduling.
+
+ o Improved tuning of library functions.
+
+
+
+3. The Packages of the Compiler Suite
+=====================================
+
+ This compiler is available in both binary and source-code form.
+
+ o x86_open64-4.2.1.90-1.src.tar.bz2
+
+   This package contains the compiler's source code. For instructions on how
+   to build the compiler from source, see the included INSTALL file.
+
+ o x86_open64-4.2.1.90-1.x86_64.tar.bz2
+
+   This package contains the binary code for x86_64 machines.
+
+   The compiler is built on an x86_64-based system running SUSE Linux
+   Enterprise Server (SLES) 10 with SP2 installed. We use the system
+   compilers (GCC 4.1.2) to build the compiler components and a prebuilt
+   binary release of the Open64 compiler, version 4.2.1, to build the
+   libraries. The Open64 4.2.1 release can be downloaded from
+   http://www.open64.net.
+
+ o x86_open64-4.2.1.90-1.x86_64.rpm
+
+   This package contains the same binaries as the tar.bz2 package in RPM form.
+
+
+
+4. Supported Operating Systems
+==============================
+
+ The two binary packages,
+
+ o x86_open64-4.2.1.90-1.x86_64.tar.bz2
+ o x86_open64-4.2.1.90-1.x86_64.rpm
+
+ are tested and validated on 64-bit Linux systems running:
+
+ o SUSE Linux Enterprise Server (SLES) 10 with SP2
+ o Red Hat Enterprise Linux (RHEL) 5.3
+
+ x86 Open64 compilers make use of the system GCC compiler. This release is
+ interoperable with GCC 4.1.x and GCC 4.2.x.
+
+
+
+5. Installing the Compiler Suite
+================================
+
+5.1 Install from bz2 Package
+----------------------------
+
+ To install the compiler from the bz2 package:
+
+ o Expand x86_open64-4.2.1.90-1.x86_64.tar.bz2 with the command:
+
+   tar xjvf x86_open64-4.2.1.90-1.x86_64.tar.bz2
+
+ o If desired, move the x86_open64-4.2.1.90 directory to the final
+   installation location using the 'mv' command.
+
+   The C, C++, FORTRAN compilers are now available in the 'bin'
+   subdirectory.
+
+
+5.2 Install from RPM Package
+----------------------------
+
+ To install the compiler from RPM:
+
+ $ rpm -ivh x86_open64-4.2.1.90-1.x86_64.rpm
+
+ This command will install the x86 Open64 compiler to
+ /opt/x86_open64-4.2.1.90. The C, C++, FORTRAN compilers are in folder
+ /opt/x86_open64-4.2.1.90/bin.
+
+ Normally you must have superuser privileges to install RPM packages to /opt.
+
+ To install the compiler to another location:
+
+ $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.1.90-1.x86_64.rpm
+
+ Then the compiler will be installed to /path/to/folder.
+
+
+
+6. Bug Reporting and Support
+============================
+
+ To report a bug or get help with the binary releases, please see the Support
+ section on http://developer.amd.com/cpu/open64.
+
+ Bug reports should include these items in order to be reproduced:
+
+ o The compiler release version.
+
+ o System details -- the OS, GCC version, libc, etc.
+
+ o The compilation flags that trigger the bug.
+
+ o The test file if applicable (it is highly appreciated if the test file is
+   minimized).
+
+ o The correct output of the test file.
+
+
+
+7. Known Issues and Limitations
+===============================
+
+ o OpenMP (enabled by '-mp') support and Auto-Parallel optimization (enabled
+   by '-apo') are not fully qualified and should be treated as preview
+   features.
+
+
+
