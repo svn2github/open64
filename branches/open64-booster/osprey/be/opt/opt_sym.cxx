@@ -1832,9 +1832,7 @@ OPT_STAB::Convert_ST_to_AUX(WN *wn, WN *block_wn)
     BOOL in_parallel_region_save = FALSE;
     if (Phase() != MAINOPT_PHASE && PU_has_mp(Get_Current_PU()) && 
 	! PU_mp_lower_generated(Get_Current_PU())) {
-      // see if there is a WN_PRAGMA_PARALLEL
-      has_parallel_pragma = Is_region_with_pragma(wn, WN_PRAGMA_PARALLEL_BEGIN)
-      			 || Is_region_with_pragma(wn, WN_PRAGMA_MASTER_BEGIN);
+      has_parallel_pragma = Is_region_with_pragma(wn, WN_PRAGMA_MASTER_BEGIN);
     }
     for (i = 0; i < WN_kid_count(wn); i++) {
       if (has_parallel_pragma && i == 2) {
