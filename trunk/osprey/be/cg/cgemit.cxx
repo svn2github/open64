@@ -6398,7 +6398,8 @@ Write_Label (
   INT scn_idx,		/* Section to emit it in */
   Elf64_Word scn_ofst,	/* Section offset to emit it at */
   INT32	repeat,		/* Repeat count */
-  INT32 flags )         /* Label flag */
+  INT32 flags,          /* Label flag */
+  mTYPE_ID mtype )      /* mTYPE_ID for label value */
 {
   INT32 i;
   ST *basesym;
@@ -6479,9 +6480,26 @@ Write_Label (
       }
       else { // for Label values
         if ( flags == INITVLABELFLAGS_VALUES_FIRST ) {
-          fprintf (Asm_File, "\t%s\t",        
-                  (scn_ofst % address_size) == 0 ?    
-                  AS_ADDRESS : AS_ADDRESS_UNALIGNED);
+          Is_True( mtype != MTYPE_UNKNOWN, ("bad mtype for label value") );
+          INT size = MTYPE_byte_size(mtype);
+          const char* as_size = NULL;
+          switch (mtype) {
+            case MTYPE_I1:
+              as_size = AS_BYTE;
+              break;
+            case MTYPE_I2:
+              as_size = (scn_ofst % size) == 0 ? AS_HALF : AS_HALF_UNALIGNED;
+              break;
+            case MTYPE_I4:
+              as_size = (scn_ofst % size) == 0 ? AS_WORD : AS_WORD_UNALIGNED;
+              break;
+            case MTYPE_I8:
+              as_size = (scn_ofst % size) == 0 ? AS_DWORD : AS_DWORD_UNALIGNED;
+              break;
+            default:
+              FmtAssert(FALSE, ("bad mtype for label value"));
+          }
+          fprintf (Asm_File, "\t%s\t", as_size);     
         }
         if ( flags == INITVLABELFLAGS_VALUES_PLUS ) {
           fputs ("+", Asm_File);
@@ -6810,7 +6828,7 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
 	    break;
 	}
 #endif
-	scn_ofst = Write_Label (lab, 0, scn_idx, scn_ofst, INITV_repeat1(inv), INITV_lab_flags(inv));
+	scn_ofst = Write_Label (lab, 0, scn_idx, scn_ofst, INITV_repeat1(inv), INITV_lab_flags(inv), INITV_lab_mtype(inv));
 	break;
     case INITVKIND_SYMDIFF:
       scn_ofst = Write_Symdiff ( INITV_lab1(inv), INITV_st2(inv),

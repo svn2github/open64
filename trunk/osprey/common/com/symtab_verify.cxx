@@ -624,8 +624,14 @@ void INITV::Verify(UINT) const
     break;	// we are using 'unused' as flags
 #endif // KEY
   case INITVKIND_LABEL:
-    Is_True (u.lab.flags >= INITVLABELFLAGS_FIRST && u.lab.flags <= INITVLABELFLAGS_LAST,
+    Is_True ( u.lab.flags >= INITVLABELFLAGS_FIRST && u.lab.flags <= INITVLABELFLAGS_LAST,
 	     (msg, "bad label flag"));
+    if ( u.lab.flags == INITVLABELFLAGS_UNUSED ) {
+      Is_True ( u.lab.mtype == MTYPE_UNKNOWN, (msg, "bad mtype for lab") );
+    }
+    else {
+      Is_True ( u.lab.mtype != MTYPE_UNKNOWN, (msg, "bad mtype for lab value") );
+    }
     Is_True ( repeat1 != 0,
               (msg, "repeat1: should not be 0"));
     break;
