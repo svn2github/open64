@@ -239,7 +239,7 @@ EOF
 
   if test "$ld_shlibs" = yes; then
     runpath_var=LD_RUN_PATH
-    hardcode_libdir_flag_spec='${wl}--rpath ${wl}$libdir'
+    hardcode_libdir_flag_spec='${wl}-rpath ${wl}$libdir'
     export_dynamic_flag_spec='${wl}--export-dynamic'
     case $host_os in
     cygwin* | mingw*)
