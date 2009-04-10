@@ -1,8 +1,8 @@
 
-x86 Open64 4.2.1.90 Release Notes 
+x86 Open64 4.2.1.95 Release Notes 
 
 
-               April 1, 2009
+               April 10, 2009
 
 
 1. Overview
@@ -25,16 +25,16 @@ x86 Open64 4.2.1.90 Release Notes
 1. Overview
 ===========
 
- This is a preview release of the x86 Open64 4.2.2 compiler suite.
+ This is a release candidate of the x86 Open64 4.2.2 compiler suite.
 
  x86 Open64 is an open source, optimizing compiler for 32-bit (x86) and
  64-bit (x86-64) achitectures. x86 Open64 supports Fortran 77/90/95 and C/C++,
  as well as the shared memory programming model OpenMP (version 2.5).
 
- The compiler source code is released under GPL v2. Libraries intended for
- redistribution are licensed under LGPL v2.1. These libraries include libffio,
- libfortran, libhugetlbfs, libmv, libopen64rt, libopen64rt_shared, and
- libopenmp.
+ The compiler source code and instrumentation library (libinstr) are released
+ under GPL v2. Libraries intended for redistribution are licensed under
+ LGPL v2.1. These libraries include libffio, libfortran, libhugetlbfs, libmv,
+ libopen64rt, libopen64rt_shared, and libopenmp.
 
  The libacml_mv math library is provided in binary form at this time, on an
  "as-is" basis. The license is detailed in the file LICENSE-LIBACML_MV.
@@ -68,12 +68,12 @@ x86 Open64 4.2.1.90 Release Notes
 
  This compiler is available in both binary and source-code form.
 
- o x86_open64-4.2.1.90-1.src.tar.bz2
+ o x86_open64-4.2.1.95-1.src.tar.bz2
 
    This package contains the compiler's source code. For instructions on how
    to build the compiler from source, see the included INSTALL file.
 
- o x86_open64-4.2.1.90-1.x86_64.tar.bz2
+ o x86_open64-4.2.1.95-1.x86_64.tar.bz2
 
    This package contains the binary code for x86_64 machines.
 
@@ -84,7 +84,7 @@ x86 Open64 4.2.1.90 Release Notes
    libraries. The Open64 4.2.1 release can be downloaded from
    http://www.open64.net.
 
- o x86_open64-4.2.1.90-1.x86_64.rpm
+ o x86_open64-4.2.1.95-1.x86_64.rpm
 
    This package contains the same binaries as the tar.bz2 package in RPM form.
 
@@ -95,8 +95,8 @@ x86 Open64 4.2.1.90 Release Notes
 
  The two binary packages,
 
- o x86_open64-4.2.1.90-1.x86_64.tar.bz2
- o x86_open64-4.2.1.90-1.x86_64.rpm
+ o x86_open64-4.2.1.95-1.x86_64.tar.bz2
+ o x86_open64-4.2.1.95-1.x86_64.rpm
 
  are tested and validated on 64-bit Linux systems running:
 
@@ -116,11 +116,11 @@ x86 Open64 4.2.1.90 Release Notes
 
  To install the compiler from the bz2 package:
 
- o Expand x86_open64-4.2.1.90-1.x86_64.tar.bz2 with the command:
+ o Expand x86_open64-4.2.1.95-1.x86_64.tar.bz2 with the command:
 
-   tar xjvf x86_open64-4.2.1.90-1.x86_64.tar.bz2
+   tar xjvf x86_open64-4.2.1.95-1.x86_64.tar.bz2
 
- o If desired, move the x86_open64-4.2.1.90 directory to the final
+ o If desired, move the x86_open64-4.2.1.95 directory to the final
    installation location using the 'mv' command.
 
    The C, C++, FORTRAN compilers are now available in the 'bin'
@@ -130,19 +130,19 @@ x86 Open64 4.2.1.90 Release Notes
 5.2 Install from RPM Package
 ----------------------------
 
+ Normally you must have superuser privileges to install RPM packages.
+
  To install the compiler from RPM:
 
- $ rpm -ivh x86_open64-4.2.1.90-1.x86_64.rpm
+ $ rpm -ivh x86_open64-4.2.1.95-1.x86_64.rpm
 
  This command will install the x86 Open64 compiler to
- /opt/x86_open64-4.2.1.90. The C, C++, FORTRAN compilers are in folder
- /opt/x86_open64-4.2.1.90/bin.
-
- Normally you must have superuser privileges to install RPM packages to /opt.
+ /opt/x86_open64-4.2.1.95. The C, C++, FORTRAN compilers are in folder
+ /opt/x86_open64-4.2.1.95/bin.
 
  To install the compiler to another location:
 
- $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.1.90-1.x86_64.rpm
+ $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.1.95-1.x86_64.rpm
 
  Then the compiler will be installed to /path/to/folder.
 
@@ -175,6 +175,22 @@ x86 Open64 4.2.1.90 Release Notes
  o OpenMP (enabled by '-mp') support and Auto-Parallel optimization (enabled
    by '-apo') are not fully qualified and should be treated as preview
    features.
+
+ o The x86 Open64 compiler ABI is designed to be compatible with the GNU ABI.
+   However, recently an ABI incompatibility has been uncovered.
+
+   The 64-bit ABI used by gcc assumes that the high order 32 bits in %rax are
+   undefined for a function that returns a 32-bit quantity; thus the caller
+   is responsible for converting %eax into a 64-bit value when the result is
+   used as an operand to a 64-bit operation.
+ 
+   The ABI used by the Open64 compiler assumes that a function that returns a
+   32-bit value will produce a 64-bit extended result in %rax; thus no
+   conversion is needed when the result is used in a 64-bit operation.
+ 
+   In practice this incompatibility will produce bad results in rare
+   situations. This issue will be addressed in a future release of the
+   x86 Open64 compiler.
 
 
 
