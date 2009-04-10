@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -104,7 +104,7 @@ typedef	enum {
 } REGION_LEVEL;
 
 struct region_flags_struct {
-  mUINT16 level : 4;	       /* how far the region has been processed*/
+  mUINT16 level : 5;	       /* how far the region has been processed*/
   mUINT16 gra_flags : 4;
   mUINT16 return_flag : 1;     /* region contains a return	       */
   mUINT16 glue_code_flag : 1;  /* glue code region created by cg       */

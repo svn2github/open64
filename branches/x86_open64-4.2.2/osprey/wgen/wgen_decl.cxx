@@ -1856,9 +1856,12 @@ private:
 #ifdef TARG_IA64
   void Add_Aggregate_Init_Symiplt (ST *st, WN_OFFSET offset = 0);
 #endif
-  void WGEN_Add_Aggregate_Init_Label (LABEL_IDX lab);
+  void WGEN_Add_Aggregate_Init_Label (LABEL_IDX lab, INT32 flag = INITVLABELFLAGS_UNUSED, mTYPE_ID mtype = MTYPE_UNKNOWN);
   void WGEN_Add_Aggregate_Init_Address (gs_t init);
   void WGEN_Add_Aggregate_Init_Vector (gs_t init_list);
+  // For label values, '.L1 - .L2' 
+  void Add_Init_For_Label_Values(WN *init_wn, UINT size, BOOL first_child = TRUE, BOOL last_child = TRUE); 
+  BOOL WN_Tree_Is_Label_Values(WN* init_wn);   // Is the wn tree label values
   void Add_Init_For_WHIRL(WN *init_wn, UINT size, INT64 ofst);
   void Add_Initv_For_Tree (gs_t val, UINT size);
   void Add_Bitfield_Initv_For_Tree (gs_t val, FLD_HANDLE fld, INT &bytes);
@@ -2166,13 +2169,13 @@ AGGINIT::Add_Aggregate_Init_Symiplt (ST *st, WN_OFFSET offset)
 
 
 void
-AGGINIT::WGEN_Add_Aggregate_Init_Label (LABEL_IDX lab)
+AGGINIT::WGEN_Add_Aggregate_Init_Label (LABEL_IDX lab, INT16 flag, mTYPE_ID mtype)
 {
   DevWarn ("taking address of a label at line %d", lineno);
   Set_PU_no_inline (Get_Current_PU ());
   if (_inito == 0) return;
   INITV_IDX inv = New_INITV();
-  INITV_Init_Label (inv, lab, 1);
+  INITV_Init_Label (inv, lab, 1, flag, mtype);
   if (_last_initv != 0)
     Set_INITV_next(_last_initv, inv);
   else if (! _not_root)
@@ -3936,7 +3939,11 @@ AGGINIT::Add_Init_For_WHIRL(WN *init_wn, UINT size, INT64 ofst)
       Add_Init_For_WHIRL(WN_kid0(init_wn), size, 
       			 ofst + WN_const_val(WN_kid1(init_wn)));
       return;
-    } 
+    }
+    if (WN_Tree_Is_Label_Values(init_wn) == TRUE) {
+      Add_Init_For_Label_Values(init_wn, size);
+      return;
+    }
     break;
   case OPR_SUB:
     if (WN_operator(WN_kid1(init_wn)) == OPR_INTCONST) {
@@ -3944,6 +3951,10 @@ AGGINIT::Add_Init_For_WHIRL(WN *init_wn, UINT size, INT64 ofst)
       			 ofst - WN_const_val(WN_kid1(init_wn)));
       return;
     } 
+    if (WN_Tree_Is_Label_Values(init_wn) == TRUE) {
+      Add_Init_For_Label_Values(init_wn, size);
+      return;
+    }
     break;
 #ifdef KEY // bug 10924
   case OPR_ARRAY: 
@@ -3981,6 +3992,101 @@ AGGINIT::Add_Init_For_WHIRL(WN *init_wn, UINT size, INT64 ofst)
   default: ;
   }
   Fail_FmtAssertion("Add_Init_For_WHIRL: unexpected static init tree");
+}
+
+
+static inline
+BOOL WN_is_lda_label(WN* wn) {
+  if ( WN_operator_is(wn, OPR_LDA_LABEL) )
+    return TRUE;
+  else if ( WN_operator_is(wn, OPR_CVT) )
+    return WN_is_lda_label(WN_kid0(wn));
+  else
+    return FALSE;
+} /* WN_is_lda_label */
+
+static inline
+INT32 WN_lda_label_number(WN* wn) {
+  if ( WN_operator_is(wn, OPR_LDA_LABEL) )
+    return WN_label_number(wn);
+  else if ( WN_operator_is(wn, OPR_CVT) )
+    return WN_lda_label_number(WN_kid0(wn));
+  else {
+    FmtAssert( FALSE, ("WN is not a LDA_LABEL or CVT"));
+    return 0;
+  }
+} /* WN_lda_label_number */
+
+static inline
+mTYPE_ID Size_To_MTYPE(UINT size) {
+  switch ( size ) {
+    case 1:  return MTYPE_I1;
+    case 2:  return MTYPE_I2;
+    case 4:  return MTYPE_I4;
+    case 8:  return MTYPE_I8;
+    default:
+      FmtAssert( FALSE, ("Fix me, unexpected size=%d", size) );
+      return MTYPE_UNKNOWN;
+  }
+} /* Size_To_MTYPE */
+
+BOOL
+AGGINIT::WN_Tree_Is_Label_Values(WN* init_wn)
+{
+  // check if the tree is for initializing label values ( .L1 - .L2 )
+  if ( WN_operator(init_wn) == OPR_SUB ) {
+    // only allow the substractions on labels
+    if ( ! WN_is_lda_label(WN_kid0(init_wn)) ||
+         ! WN_is_lda_label(WN_kid1(init_wn)) ) {
+      return FALSE;
+    }
+  }
+  else if ( WN_operator(init_wn) == OPR_ADD ) {
+    // check children of the add node, which can be OPR_ADD or OPR_SUB
+    if ( WN_Tree_Is_Label_Values(WN_kid0(init_wn)) == FALSE ) {
+      return FALSE;
+    }
+    if ( WN_Tree_Is_Label_Values(WN_kid1(init_wn)) == FALSE ) {
+      return FALSE;
+    }
+  }
+  else {
+    // Other operator is not allowed in label values
+    return FALSE;
+  }
+  return TRUE;
+}
+
+void
+AGGINIT::Add_Init_For_Label_Values(WN* init_wn, UINT size, BOOL first_child, BOOL last_child)
+{
+  OPERATOR opr = WN_operator(init_wn);
+  Is_True(opr == OPR_ADD || opr == OPR_SUB,
+          ("Only OPR_ADD and OPR_SUB is allowed in Label Values"));
+
+  WN* kid0 = WN_kid0(init_wn);
+  if ( WN_is_lda_label(kid0) ) {
+    Is_True(opr == OPR_SUB,
+            ("Only Label Substraction is allowed for LDA_LABEL"));
+    WGEN_Add_Aggregate_Init_Label ( WN_lda_label_number(kid0),
+             (first_child == TRUE) ? INITVLABELFLAGS_VALUES_FIRST : INITVLABELFLAGS_VALUES_PLUS,
+             Size_To_MTYPE(size) );
+  }
+  else {
+    Add_Init_For_Label_Values(kid0, size, first_child, FALSE);
+  }
+
+  WN* kid1 = WN_kid1(init_wn);
+  if ( WN_is_lda_label(kid1) ) {
+    Is_True(opr == OPR_SUB,
+            ("Only Label Substraction is allowed for LDA_LABEL"));
+    WGEN_Add_Aggregate_Init_Label (  WN_lda_label_number(kid1),
+             (last_child == TRUE) ? INITVLABELFLAGS_VALUES_LAST : INITVLABELFLAGS_VALUES_MINUS,
+             Size_To_MTYPE(size) );
+  }
+  else {
+    Add_Init_For_Label_Values(kid1, size, FALSE, last_child);
+  }
 }
 
 void

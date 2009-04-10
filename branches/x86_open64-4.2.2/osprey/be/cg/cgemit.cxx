@@ -6391,7 +6391,9 @@ Write_Label (
   Elf64_Sxword lab_ofst,/*   ... plus this offset */
   INT scn_idx,		/* Section to emit it in */
   Elf64_Word scn_ofst,	/* Section offset to emit it at */
-  INT32	repeat)		/* Repeat count */
+  INT32	repeat,		/* Repeat count */
+  INT32 flags,          /* Label flag */
+  mTYPE_ID mtype )      /* mTYPE_ID for label value */
 {
   INT32 i;
   ST *basesym;
@@ -6454,6 +6456,8 @@ Write_Label (
 
   for ( i = 0; i < repeat; i++ ) {
     if (Assembly) {
+
+      if ( flags == INITVLABELFLAGS_UNUSED ) {
 #ifdef TARG_MIPS
 	if (CG_emit_non_gas_syntax)
 	  fprintf(Asm_File, "\t%s\t", Use_32_Bit_Pointers ? ".word" : ".dword");
@@ -6462,10 +6466,47 @@ Write_Label (
 	fprintf (Asm_File, "\t%s\t", 
 		(scn_ofst % address_size) == 0 ? 
 		AS_ADDRESS : AS_ADDRESS_UNALIGNED);
+
 	fputs (LABEL_name(lab), Asm_File);
 	if (lab_ofst != 0)
-		fprintf (Asm_File, " %+lld", (INT64)lab_ofst);
+	  fprintf (Asm_File, " %+lld", (INT64)lab_ofst);
 	fprintf (Asm_File, "\n");
+      }
+      else { // for Label values
+        if ( flags == INITVLABELFLAGS_VALUES_FIRST ) {
+          Is_True( mtype != MTYPE_UNKNOWN, ("bad mtype for label value") );
+          INT size = MTYPE_byte_size(mtype);
+          const char* as_size = NULL;
+          switch (mtype) {
+            case MTYPE_I1:
+              as_size = AS_BYTE;
+              break;
+            case MTYPE_I2:
+              as_size = (scn_ofst % size) == 0 ? AS_HALF : AS_HALF_UNALIGNED;
+              break;
+            case MTYPE_I4:
+              as_size = (scn_ofst % size) == 0 ? AS_WORD : AS_WORD_UNALIGNED;
+              break;
+            case MTYPE_I8:
+              as_size = (scn_ofst % size) == 0 ? AS_DWORD : AS_DWORD_UNALIGNED;
+              break;
+            default:
+              FmtAssert(FALSE, ("bad mtype for label value"));
+          }
+          fprintf (Asm_File, "\t%s\t", as_size);     
+        }
+        if ( flags == INITVLABELFLAGS_VALUES_PLUS ) {
+          fputs ("+", Asm_File);
+        }
+        if ( flags == INITVLABELFLAGS_VALUES_MINUS ||
+             flags == INITVLABELFLAGS_VALUES_LAST ) {
+          fputs ("-", Asm_File);
+        }
+        fputs (LABEL_name(lab), Asm_File);
+        if ( flags == INITVLABELFLAGS_VALUES_LAST ) {
+          fprintf (Asm_File, "\n");
+        }
+      }
     } 
     if (Object_Code) {
     	Em_Add_Address_To_Scn (scn, EMT_Put_Elf_Symbol (basesym), base_ofst, 1);
@@ -6781,7 +6822,7 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
 	    break;
 	}
 #endif
-	scn_ofst = Write_Label (lab, 0, scn_idx, scn_ofst, INITV_repeat1(inv));
+	scn_ofst = Write_Label (lab, 0, scn_idx, scn_ofst, INITV_repeat1(inv), INITV_lab_flags(inv), INITV_lab_mtype(inv));
 	break;
     case INITVKIND_SYMDIFF:
       scn_ofst = Write_Symdiff ( INITV_lab1(inv), INITV_st2(inv),

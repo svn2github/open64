@@ -1555,9 +1555,8 @@ public:
 						  ("Illegal use of loop"));
 					  return (_loop)?
 					    _loop->Dotail() : NULL; }
-  BB_IFINFO   *Ifinfo(void)    const    { Is_True(Kind() == BB_LOGIF || Ifmerge(),
-						  ("Illegal use of ifinfo"));
-					  return _hi._ifinfo;}
+  BB_IFINFO   *Ifinfo(void)    const    { return (Kind() == BB_LOGIF || Ifmerge()) ? 
+                                              _hi._ifinfo : NULL ; }
   void         Set_ifinfo(BB_IFINFO
 			    *ii)        { Is_True((Kind() == BB_LOGIF) || Ifmerge(),
 						  ("Illegal use of ifinfo"));

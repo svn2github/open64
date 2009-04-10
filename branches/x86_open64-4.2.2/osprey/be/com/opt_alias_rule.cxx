@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -861,7 +861,9 @@ ALIAS_KIND ALIAS_RULE::Aliased_Memop_By_Analysis
   if (Rule_enabled(CLAS_RULE) && !Aliased_Classification_Rule(p1, p2))
     return ALIAS_KIND (AR_NOT_ALIAS);
 
-  if (Rule_enabled(IP_CLAS_RULE) && !Aliased_Ip_Classification_Rule(p1, p2))
+  if (Rule_enabled(IP_CLAS_RULE) && !Aliased_Ip_Classification_Rule(p1, p2)
+      && (!p1->Default_vsym() || p2->No_alias())
+      && (!p2->Default_vsym() || p1->No_alias()))
     return ALIAS_KIND (AR_NOT_ALIAS);
 
   return ALIAS_KIND (AR_POSSIBLE_ALIAS);
