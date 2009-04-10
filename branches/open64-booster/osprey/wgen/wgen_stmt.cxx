@@ -2533,6 +2533,18 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 #endif
     else if (rhs_wn) {
       WGEN_Set_ST_Addr_Saved (rhs_wn);
+#ifdef KEY // bug 15176 force return type to same size as declared return type
+      if (MTYPE_byte_size(TY_mtype(ret_ty_idx)) < MTYPE_byte_size(WN_rtype(rhs_wn)))
+	rhs_wn = WN_CreateCvtl(OPR_CVTL,
+			       Mtype_TransferSize(WN_rtype(rhs_wn), TY_mtype(ret_ty_idx)),
+			       MTYPE_V,
+			       MTYPE_size_min(TY_mtype(ret_ty_idx)), rhs_wn);
+      else if (MTYPE_byte_size(TY_mtype(ret_ty_idx)) >
+	       MTYPE_byte_size(WN_rtype(rhs_wn)))
+	rhs_wn = WN_Cvt(WN_rtype(rhs_wn),
+			Mtype_TransferSize(TY_mtype(ret_ty_idx), WN_rtype(rhs_wn)),
+			rhs_wn);
+#endif
       wn = WN_CreateReturn_Val(OPR_RETURN_VAL, WN_rtype(rhs_wn), MTYPE_V, rhs_wn);
     }
   }
