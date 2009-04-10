@@ -958,6 +958,20 @@ static void create_global_ptrs_for_complete_struct_relayout(void)
   if (complete_struct_relayout_size > 96 && complete_struct_relayout_size < 128)
     complete_struct_relayout_size = 128; // close enough to pad to improve
       // performance
+  if (complete_struct_relayout_size != 1 &&
+      complete_struct_relayout_size != 2 &&
+      complete_struct_relayout_size != 4 &&
+      complete_struct_relayout_size != 8 &&
+      complete_struct_relayout_size != 16 &&
+      complete_struct_relayout_size != 32 &&
+      complete_struct_relayout_size != 64 &&
+      complete_struct_relayout_size != 128)
+  {
+    // for performance reasons, only allow structure size that is a power of 2
+    // and not too big
+    continue_with_complete_struct_relayout = 0;
+    return;
+  }
 
   // gptr[0] is a special "base" pointer; it points to the original calloc-ed
   // memory and has the type (complete_struct_relayout *)
@@ -1233,6 +1247,15 @@ static WN *traverse_wn_tree_for_complete_struct_relayout_legality(WN *block_wn,
           continue_with_complete_struct_relayout = 0;
           if (Get_Trace(TP_IPA, 1))
             fprintf(TFile, "ipo -> complete_struct_relayout disable 6\n");
+          return wn;
+        }
+
+        if (encountered_calloc_for_complete_struct_relayout == 1)
+        {
+          //  for now, only one global calloc is allowed
+          continue_with_complete_struct_relayout = 0;
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> complete_struct_relayout disable 6.5\n");
           return wn;
         }
 
