@@ -1440,7 +1440,11 @@ BOOL IF_MERGE_TRANS::Can_be_speculative(WN * wn)
     if (WN_Is_Volatile_Mem(wn))
       return FALSE;
   }
-
+  if ((op == OPR_ALLOCA) || (op == OPR_DEALLOCA)
+      || (op == OPR_ASM_STMT)
+      || (op == OPR_FORWARD_BARRIER) || (op == OPR_BACKWARD_BARRIER))
+    return FALSE;
+  
   if (OPCODE_is_call(WN_opcode(wn)))
     return FALSE;
 

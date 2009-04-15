@@ -365,27 +365,27 @@ add_object (int flag, char *arg)
 
 			/* add -lmv -lmblah */
 			if (xpg_flag && invoked_lang == L_f77) {
-#ifdef TARG_X8664
-				if (option_was_seen(O_useacml_mv) && abi != ABI_N32)
-					add_library(objects, "acml_mv");
-#endif
 				add_library(lib_objects, "mv");
 				add_library(lib_objects, "m");
-			} else {
 #ifdef TARG_X8664
-				if (option_was_seen(O_useacml_mv) && abi != ABI_N32)
+				if (abi != ABI_N32)
 					add_library(objects, "acml_mv");
 #endif
+			} else {
 				add_library(objects, "mv");
 				add_library(objects, "m");
+#ifdef TARG_X8664
+				if (abi != ABI_N32)
+					add_library(objects, "acml_mv");
+#endif
 			}
 			if (invoked_lang == L_CC) {
-#ifdef TARG_X8664
-			    if (option_was_seen(O_useacml_mv) && abi != ABI_N32)
-				add_library(objects, "acml_mv");
-#endif
 			    add_library(cxx_prelinker_objects, "mv");
 			    add_library(cxx_prelinker_objects, "m");
+#ifdef TARG_X8664
+			    if (abi != ABI_N32)
+				add_library(objects, "acml_mv");
+#endif
 			}
 #ifdef TARG_X8664
 			extern boolean link_with_mathlib;

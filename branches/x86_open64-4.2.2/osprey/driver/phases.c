@@ -1814,13 +1814,6 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 {
 #ifdef TARG_X8664 
         extern boolean link_with_mathlib;
-#if 0 // Bug 4813 - acml_mv is not in yet.
-        if ((link_with_mathlib || source_lang == L_CC) && 
-	    option_was_seen(O_m64) && 
-	    strcmp(target_cpu, "em64t") && strcmp(target_cpu, "anyx86"))
-          // Bug 4680 - Link with libacml_mv by default.
-	  add_library(args, "acml_mv");
-#endif
 	if (option_was_seen(O_nodefaultlibs) || option_was_seen(O_nostdlib)) {
 	    // If -compat-gcc, link with open64rt even if -nostdlib.  Bug 4551.
 	    if (option_was_seen(O_compat_gcc) &&
@@ -1844,13 +1837,13 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 		}
 		*/
 		add_library(args, "fortran");
-#ifdef TARG_X8664
-		if (option_was_seen(O_useacml_mv) && abi != ABI_N32)
-			add_library(args, "acml_mv");
-#endif
 		add_string(args, "-lmv");
 	//	add_string(args, "-lm" PSC_NAME_PREFIX);
 		add_string(args, "-lm");
+#ifdef TARG_X8664
+		if (abi != ABI_N32)
+                    add_library(args, "acml_mv");
+#endif
 		add_library(args, "mv");
 	//	add_library(args, "m" PSC_NAME_PREFIX);
 		add_library(args, "m");
@@ -1929,14 +1922,14 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	       provided by libmblah.a lib.
 	    */
 	    if (invoked_lang != L_cc) {
-#ifdef TARG_X8664
-	      if (option_was_seen(O_useacml_mv) && abi != ABI_N32)
-		add_library(args, "acml_mv");
-#endif
 	      add_library(args, "mv");			// bug 5527
 	      // add_library(args, "m" PSC_NAME_PREFIX);	// bug 3092
               // OSP -lm is needed
               add_library(args, "m");
+#ifdef TARG_X8664
+	      if (abi != ABI_N32)
+		add_library(args, "acml_mv");
+#endif
 	    }
 	  }
 	}
