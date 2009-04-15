@@ -36,8 +36,9 @@ x86 Open64 4.2.1.95 Release Notes
  LGPL v2.1. These libraries include libffio, libfortran, libhugetlbfs, libmv,
  libopen64rt, libopen64rt_shared, and libopenmp.
 
- The libacml_mv math library is provided in binary form at this time, on an
- "as-is" basis. The license is detailed in the file LICENSE-LIBACML_MV.
+ The libacml_mv math library, used automatically for certain optimizations, is
+ provided in binary form at this time. The Software License Agreement is
+ detailed in the file LICENSE-LIBACML_MV.
 
 
 
@@ -175,6 +176,14 @@ x86 Open64 4.2.1.95 Release Notes
  o OpenMP (enabled by '-mp') support and Auto-Parallel optimization (enabled
    by '-apo') are not fully qualified and should be treated as preview
    features.
+
+ o The combination of '-g' and '-ipa' (or an option that implies IPA
+   compilation, such as '-Ofast') on the link line is not handled well.
+   The x86 Open64 compilers do not require '-g' on the link line, even for
+   for objects built with debugging information. However, '-ipa' is required
+   on the link line for IPA compilation. Therefore, we recommend omitting
+   the '-g' option and instead using the desired optimization flags in the
+   link line.
 
  o The x86 Open64 compiler ABI is designed to be compatible with the GNU ABI.
    However, recently an ABI incompatibility has been uncovered.
