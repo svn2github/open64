@@ -1763,8 +1763,9 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
 // 4th field in a call-site record.
   int running_ofst=1;
   int bytes_for_filter;
+  INITO_IDX tmp = PU_misc_info (Get_Current_PU());
 
-  INITO* eh_spec = Create_Type_Filter_Map ();
+  INITO* eh_spec = (tmp) ? Create_Type_Filter_Map () : NULL ;
 
   vector<INITV_IDX> action_chains;
 
