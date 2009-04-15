@@ -335,8 +335,6 @@ Process_Ofast ( char *ipname )
      /* -ffast-math */
      toggle ( &ffast_math, 1);
      add_option_seen (O_ffast_math);
-     /* For the time being assume that fast math requires libacml_mv */
-     add_option_seen (O_useacml_mv);
 
      /* -IPA: */
      toggle ( &ipa, TRUE );
