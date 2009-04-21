@@ -2392,7 +2392,15 @@ IF_MERGE_TRANS::Has_dependency(SC_NODE * sc1, SC_NODE * sc2)
     if (Has_dependency(sc1->First_kid(), sc2)
 	|| Has_dependency(sc2->Last_kid(), sc2))
       return TRUE;
+
+    // Check head of SC_IF.
+    BB_NODE * head = sc1->Get_bb_rep();
+
+    if (Maybe_assigned_expr(head, sc2)
+	|| Maybe_assigned_expr(sc2, head))
+      return TRUE;
   }
+
   else  if (Maybe_assigned_expr(sc1, sc2)
 	    || Maybe_assigned_expr(sc2, sc1))
     return TRUE;
@@ -2407,6 +2415,13 @@ IF_MERGE_TRANS::Has_dependency(SC_NODE * sc, BB_NODE * bb)
   if (sc->Type() == SC_IF) {
     if (Has_dependency(sc->First_kid(), bb)
 	|| Has_dependency(sc->Last_kid(), bb))
+      return TRUE;
+
+    // Check head of SC_IF.
+    BB_NODE * head = sc->Get_bb_rep();
+
+    if (Maybe_assigned_expr(head, bb)
+	|| Maybe_assigned_expr(bb, head))
       return TRUE;
   }
   else if (Maybe_assigned_expr(sc, bb)
