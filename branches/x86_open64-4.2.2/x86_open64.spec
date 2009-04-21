@@ -40,7 +40,7 @@ C/C++, as well as the shared memory programming model OpenMP.
 %dir %{open64_prefix}/lib/gcc-lib/%{open64_arch}-open64-linux
 %dir %{open64_prefix}/lib/gcc-lib/%{open64_arch}-open64-linux/%{open64_version}
 
-%{open64_prefix}/RELEASE-x86_4.2.2
+%{open64_prefix}/ReleaseNotes.txt
 
 %{open64_bin_dir}/opencc
 %{open64_bin_dir}/openCC
