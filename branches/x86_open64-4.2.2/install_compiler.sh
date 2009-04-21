@@ -522,7 +522,7 @@ INSTALL_MISC
 INSTALL_NATIVE_HEADER
 
 # copy release notes to top level
-cp RELEASE-x86_4.2.2 $ROOT
+cp ReleaseNotes.txt $ROOT
 
 #cat << _EOF_
 # ------------------------------------------------------------------------
