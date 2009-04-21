@@ -1,8 +1,8 @@
 
-x86 Open64 4.2.1.95 Release Notes 
+x86 Open64 4.2.2 Release Notes 
 
 
-               April 10, 2009
+               April 20, 2009
 
 
 1. Overview
@@ -25,19 +25,20 @@ x86 Open64 4.2.1.95 Release Notes
 1. Overview
 ===========
 
- This is a release candidate of the x86 Open64 4.2.2 compiler suite.
+ This is version 4.2.2 of the x86 Open64 compiler suite.
 
  x86 Open64 is an open source, optimizing compiler for 32-bit (x86) and
- 64-bit (x86-64) achitectures. x86 Open64 supports Fortran 77/90/95 and C/C++,
- as well as the shared memory programming model OpenMP (version 2.5).
+ 64-bit (x86-64) achitectures. x86 Open64 supports Fortran 77/90/95, C (C89
+ and C99 with GNU extensions), and C++ (C++98 with GNU extensions), as well as
+ the shared memory programming model OpenMP (version 2.5).
 
  The compiler source code and instrumentation library (libinstr) are released
  under GPL v2. Libraries intended for redistribution are licensed under
  LGPL v2.1. These libraries include libffio, libfortran, libhugetlbfs, libmv,
  libopen64rt, libopen64rt_shared, and libopenmp.
 
- The libacml_mv math library, used automatically for certain optimizations, is
- provided in binary form at this time. The Software License Agreement is
+ The libacml_mv runtime library, used automatically for certain optimizations,
+ is provided in binary form at this time. The Software License Agreement is
  detailed in the file LICENSE-LIBACML_MV.
 
 
@@ -67,25 +68,30 @@ x86 Open64 4.2.1.95 Release Notes
 3. The Packages of the Compiler Suite
 =====================================
 
- This compiler is available in both binary and source-code form.
+ This compiler is available in both binary and source-code forms.
 
- o x86_open64-4.2.1.95-1.src.tar.bz2
+ o x86_open64-4.2.2-1.src.tar.bz2
 
-   This package contains the compiler's source code. For instructions on how
-   to build the compiler from source, see the included INSTALL file.
+   This package contains the compiler's source code. To unpack the source, use
+   the command:
 
- o x86_open64-4.2.1.95-1.x86_64.tar.bz2
+     tar xjvf x86_open64-4.2.2-1.src.tar.bz2
 
-   This package contains the binary code for x86_64 machines.
+   For instructions on how to build the compiler from source, see the included
+   INSTALL file.
 
-   The compiler is built on an x86_64-based system running SUSE Linux
+ o x86_open64-4.2.2-1.x86_64.tar.bz2
+
+   This package contains the binary code for x86-64 machines.
+
+   The compiler is built on an x86-64-based system running SUSE Linux
    Enterprise Server (SLES) 10 with SP2 installed. We use the system
    compilers (GCC 4.1.2) to build the compiler components and a prebuilt
    binary release of the Open64 compiler, version 4.2.1, to build the
    libraries. The Open64 4.2.1 release can be downloaded from
    http://www.open64.net.
 
- o x86_open64-4.2.1.95-1.x86_64.rpm
+ o x86_open64-4.2.2-1.x86_64.rpm
 
    This package contains the same binaries as the tar.bz2 package in RPM form.
 
@@ -96,17 +102,21 @@ x86 Open64 4.2.1.95 Release Notes
 
  The two binary packages,
 
- o x86_open64-4.2.1.95-1.x86_64.tar.bz2
- o x86_open64-4.2.1.95-1.x86_64.rpm
+ o x86_open64-4.2.2-1.x86_64.tar.bz2
+ o x86_open64-4.2.2-1.x86_64.rpm
 
  are tested and validated on 64-bit Linux systems running:
 
  o SUSE Linux Enterprise Server (SLES) 10 with SP2
  o Red Hat Enterprise Linux (RHEL) 5.3
 
- x86 Open64 compilers make use of the system GCC compiler. This release is
+ x86 Open64 compilers make use of the system GCC compilers. This release is
  interoperable with GCC 4.1.x and GCC 4.2.x.
 
+ Example packages that supply a compatible version of gcc are:
+
+ o gcc-4.1.2_20070115-0.22 (SLES 10 with SP2)
+ o gcc-4.1.2-44.el5 (RHEL 5.3)
 
 
 5. Installing the Compiler Suite
@@ -117,11 +127,11 @@ x86 Open64 4.2.1.95 Release Notes
 
  To install the compiler from the bz2 package:
 
- o Expand x86_open64-4.2.1.95-1.x86_64.tar.bz2 with the command:
+ o Expand x86_open64-4.2.2-1.x86_64.tar.bz2 with the command:
 
-   tar xjvf x86_open64-4.2.1.95-1.x86_64.tar.bz2
+   tar xjvf x86_open64-4.2.2-1.x86_64.tar.bz2
 
- o If desired, move the x86_open64-4.2.1.95 directory to the final
+ o If desired, move the x86_open64-4.2.2 directory to the final
    installation location using the 'mv' command.
 
    The C, C++, FORTRAN compilers are now available in the 'bin'
@@ -135,15 +145,15 @@ x86 Open64 4.2.1.95 Release Notes
 
  To install the compiler from RPM:
 
- $ rpm -ivh x86_open64-4.2.1.95-1.x86_64.rpm
+ $ rpm -ivh x86_open64-4.2.2-1.x86_64.rpm
 
  This command will install the x86 Open64 compiler to
- /opt/x86_open64-4.2.1.95. The C, C++, FORTRAN compilers are in folder
- /opt/x86_open64-4.2.1.95/bin.
+ /opt/x86_open64-4.2.2. The C, C++, FORTRAN compilers are in folder
+ /opt/x86_open64-4.2.2/bin.
 
  To install the compiler to another location:
 
- $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.1.95-1.x86_64.rpm
+ $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.2-1.x86_64.rpm
 
  Then the compiler will be installed to /path/to/folder.
 
@@ -177,13 +187,27 @@ x86 Open64 4.2.1.95 Release Notes
    by '-apo') are not fully qualified and should be treated as preview
    features.
 
+ o The x86 Open64 driver is designed to automatically detect the CPU of the
+   host machine and optimize for its architecture. Some new CPU models may
+   not be detected correctly, which may result in code generated for the
+   generic 'i386' target, or in some cases, the link-time error message:
+
+     /usr/bin/ld: cannot find -lacml_mv
+     collect2: ld returned 1 exit status
+
+   To work around this problem, specify a compatible target architecture on
+   the command line using the '-march=' option. For example, to compile on
+   machines with the Intel(R) Core(TM) i7 CPU, use '-march=core'.
+
+   This problem will be addressed in a future release.
+
  o The combination of '-g' and '-ipa' (or an option that implies IPA
-   compilation, such as '-Ofast') on the link line is not handled well.
-   The x86 Open64 compilers do not require '-g' on the link line, even for
+   compilation, such as '-Ofast') in the link command is not handled well.
+   The x86 Open64 compilers do not require '-g' in the link command, even for
    for objects built with debugging information. However, '-ipa' is required
-   on the link line for IPA compilation. Therefore, we recommend omitting
+   in the link command for IPA compilation. Therefore, we recommend omitting
    the '-g' option and instead using the desired optimization flags in the
-   link line.
+   link command.
 
  o The x86 Open64 compiler ABI is designed to be compatible with the GNU ABI.
    However, recently an ABI incompatibility has been uncovered.

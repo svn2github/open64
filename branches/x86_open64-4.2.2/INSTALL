@@ -37,7 +37,7 @@ http://developer.amd.com/cpu/open64.
 
 To extract the source code, use the command:
 
-  tar xjzf x86_open64-4.2.1.90-1.src.tar.bz2
+  tar xjvf x86_open64-4.2.2-1.src.tar.bz2
 
 
 Compiling
@@ -45,13 +45,13 @@ Compiling
 
 First set your environment to use the installed Open64 4.2.1 compiler. This
 step will be necessary to build the libraries. These commands assume you
-are using sh-compatible shell, such as bash.
+are using an sh-compatible shell, such as bash.
 
   export TOOLROOT=/opt/open64-4.2.1
   export PATH=${TOOLROOT}/bin:$PATH
 
 Now, to build the x86 Open64 compiler components, switch to the
-x86_open64-4.2.1.90 directory and execute the following command:
+x86_open64-4.2.2 directory and execute the following command:
 
   make all MACHINE_TYPE=i386
 
