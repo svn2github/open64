@@ -432,10 +432,13 @@ add_special_options (void)
 	if (Gen_feedback && ipa == TRUE) {
 		turn_off_ipa ("-IPA -fbgen combination not allowed, replaced with -fbgen");
 	}
+#if 0
+	/* Disable for SiCortex 5069. */
 	/* Fix for BUG 451 */
 	if (glevel > 1 && ipa == TRUE) {
 		turn_off_ipa ("-IPA -g combination not allowed, replaced with -g");
 	}
+#endif
 	if (ipa == TRUE) {
 #ifdef KEY // bug 8130
             if (option_was_seen (O_fprofile_arcs))
