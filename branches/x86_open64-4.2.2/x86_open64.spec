@@ -21,8 +21,6 @@ Requires: gcc >= 4.0
 Prefix: %{open64_prefix}
 
 %description
-This is a preview release of the x86 Open64 4.2.2 compiler suite.
-
 x86 Open64 is an open source, optimizing compiler for 32-bit (x86) and
 64-bit (x86-64) achitectures. x86 Open64 supports Fortran 77/95/2003 and
 C/C++, as well as the shared memory programming model OpenMP.
@@ -105,9 +103,13 @@ C/C++, as well as the shared memory programming model OpenMP.
 %{open64_lib_dir}/%{open64_version}/libfortran.a
 %{open64_lib_dir}/%{open64_version}/libinstr.a
 %{open64_lib_dir}/%{open64_version}/libmv.a
+%{open64_lib_dir}/%{open64_version}/libmv.so.1
+%{open64_lib_dir}/%{open64_version}/libmv.so
 %{open64_lib_dir}/%{open64_version}/libopen64rt.a
 %{open64_lib_dir}/%{open64_version}/libopen64rt_shared.a
 %{open64_lib_dir}/%{open64_version}/libopenmp.a
+%{open64_lib_dir}/%{open64_version}/libopenmp.so.1
+%{open64_lib_dir}/%{open64_version}/libopenmp.so
 %endif
 
 # ia32/x8664 specified files
@@ -117,9 +119,11 @@ C/C++, as well as the shared memory programming model OpenMP.
 %{open64_lib_dir}/%{open64_version}/em64t.so
 %{open64_lib_dir}/%{open64_version}/barcelona.so
 %{open64_lib_dir}/%{open64_version}/core.so
+%{open64_lib_dir}/%{open64_version}/wolfdale.so
 %{open64_lib_dir}/%{open64_version}/32/elf_1G.xBDT
 %{open64_lib_dir}/%{open64_version}/32/elf.xB
 %{open64_lib_dir}/%{open64_version}/32/elf.xBDT
+%{open64_lib_dir}/%{open64_version}/32/libacml_mv.a
 %{open64_lib_dir}/%{open64_version}/32/libhugetlbfs_open64.a
 %{open64_lib_dir}/%{open64_version}/32/libhugetlbfs_open64.so.1
 %{open64_lib_dir}/%{open64_version}/32/libhugetlbfs_open64.so
@@ -127,9 +131,14 @@ C/C++, as well as the shared memory programming model OpenMP.
 %{open64_lib_dir}/%{open64_version}/32/libfortran.a
 %{open64_lib_dir}/%{open64_version}/32/libinstr.a
 %{open64_lib_dir}/%{open64_version}/32/libmv.a
+%{open64_lib_dir}/%{open64_version}/32/libmv.so.1
+%{open64_lib_dir}/%{open64_version}/32/libmv.so
 %{open64_lib_dir}/%{open64_version}/32/libopen64rt.a
 %{open64_lib_dir}/%{open64_version}/32/libopen64rt_shared.a
 %{open64_lib_dir}/%{open64_version}/32/libopenmp.a
+%{open64_lib_dir}/%{open64_version}/32/libopenmp.so.1
+%{open64_lib_dir}/%{open64_version}/32/libopenmp.so
+%{open64_lib_dir}/%{open64_version}/32/README_ACML
 %endif
 
 %prep
