@@ -886,6 +886,7 @@ void ipacom_doit (const char* ipaa_filename)
     const char* executable_macro      = "$(IPA_OUTFILENAME)";
 
     fprintf(makefile, "%s = %s\n\n", executable_macro_name, executable);
+    fprintf(makefile, ".PHONY: default\n");
     fprintf(makefile, "default: %s\n\n", executable_macro);
     fprintf(makefile, ".IGNORE: %s\n\n", executable_macro);
 #ifdef KEY
@@ -1101,6 +1102,7 @@ void ipacom_doit (const char* ipaa_filename)
     }
   }
   else {
+    fprintf(makefile, ".PHONY: default\n");
     fprintf(makefile, "\ndefault: \\\n");      
     print_all_outfiles(tmpdir_macro);
   }

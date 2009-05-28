@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -75,6 +78,7 @@ extern void IR_Srcpos_Filename (SRCPOS srcpos,         /* in */
 struct ALIAS_MANAGER;    /* forward declaration */
 
 extern void Check_for_IR_Dump(INT phase, WN *pu, const char *phase_name);
+extern void Check_for_IR_Dump_Before_Phase(INT phase, WN *pu, const char *phase_name);
 
 extern void dump_wn(WN *wn);
 extern void dump_tree(WN *wn);

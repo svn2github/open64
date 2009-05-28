@@ -1118,17 +1118,23 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Apply_Virtual_Function_Transform (
         return;
      }
 
-     for(UINT edg_i = 0; edg_i < IPA_Call_Graph->Edge_Size(); 
-         ++ edg_i) {
-         if (IPA_Call_Graph->Caller(
-              IPA_Call_Graph->Edge(edg_i)) == method) {
-            if (IPA_Call_Graph->Edge(edg_i)->Summary_Callsite()
-                 == dummy_cs) {
-                return;
+    IPA_NODE_ITER cg_iter(IPA_Call_Graph, DONTCARE);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+        IPA_NODE *ipaNode = cg_iter.Current();
+        if (ipaNode == NULL)
+            continue;
+        if (ipaNode == method) {
+            IPA_SUCC_ITER succIter(method);
+            for (succIter.First(); !succIter.Is_Empty(); succIter.Next()) {
+                IPA_EDGE *ipaEdge = succIter.Current_Edge();
+                if (ipaEdge == NULL)
+                    continue;
+                if (ipaEdge->Summary_Callsite() == dummy_cs)
+                    return;
             }
         }
     }
-
+ 
     NODE_INDEX callee_nod_idx = AUX_PU_node(Aux_Pu_Table[ST_pu(callee_st)]);
 
     if (callee_nod_idx == INVALID_NODE_INDEX) {

@@ -333,7 +333,9 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
         #INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
+        INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.so.1           ${PHASEPATH}/libmv.so.1
         INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
+        INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.so.1      ${PHASEPATH}/libopenmp.so.1
         INSTALL_DATA_SUB libacml_mv/libacml_mv.a ${PHASEPATH}/libacml_mv.a
         INSTALL_DATA_SUB libacml_mv/LICENSE-LIBACML_MV ${PHASEPATH}/LICENSE-LIBACML_MV
         # 32bit libraries
@@ -341,7 +343,23 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
         #INSTALL_DATA_SUB ${LIB32AREA}/libm/libmsgi.a       ${PHASEPATH}/32/libmsgi.a
         INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.a           ${PHASEPATH}/32/libmv.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.so.1           ${PHASEPATH}/32/libmv.so.1
         INSTALL_DATA_SUB ${LIB32AREA}/libopenmp/libopenmp.a      ${PHASEPATH}/32/libopenmp.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libopenmp/libopenmp.so.1      ${PHASEPATH}/32/libopenmp.so.1
+
+        (cd ${PHASEPATH}; ln -sf libmv.so.1 libmv.so; ln -sf libopenmp.so.1 libopenmp.so)
+        (cd ${PHASEPATH}/32; ln -sf libmv.so.1 libmv.so; ln -sf libopenmp.so.1 libopenmp.so)
+
+        # The special processing of the -lm option in the compiler driver should
+        # be delayed until all of the options have been parsed.  Until the
+        # driver is cleaned up, it is important that processing be the same on
+        # all architectures.  Thus we add an empty 32 bit ACML vector math
+        # library.
+        if [ ! -f ${PHASEPATH}/32/libacml_mv.a ] ; then
+	    ar rc ${PHASEPATH}/32/libacml_mv.a
+	    echo An empty 32-bit libacml_mv.a was added to work around a problem > ${PHASEPATH}/32/README_ACML
+	    echo with the Open64 compiler driver. >> ${PHASEPATH}/32/README_ACML
+	fi
     fi 
     return 0
 }
@@ -486,6 +504,7 @@ INSTALL_MISC () {
         INSTALL_EXEC_SUB ${AREA}/targ_info/opteron.so ${PHASEPATH}/opteron.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/em64t.so ${PHASEPATH}/em64t.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/core.so ${PHASEPATH}/core.so
+        INSTALL_EXEC_SUB ${AREA}/targ_info/wolfdale.so ${PHASEPATH}/wolfdale.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/barcelona.so ${PHASEPATH}/barcelona.so
     fi
 #    if [ ! -z "$ROOT" ] ; then

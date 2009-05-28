@@ -2836,11 +2836,11 @@ IPO_INLINE::Process_Formal_ST (TREE_ITER& iter, ST* cp, IPO_INLINE_AUX& aux)
 	return;
 	
     case FM_REPLACE_ARRAY:
-	Is_True (WN_operator (wn) == OPR_LDID,
-		 ("Incorrect parameter passing analysis"));
-	Reshape_Array (iter, parm, aux);
-	return;
-	
+        // if we have other than a LDID, we need to lower instead
+        if (WN_operator (wn) == OPR_LDID) {
+	  Reshape_Array (iter, parm, aux);
+	  return;
+        }
 
     case FM_LOWER_FORMAL_REF:
 	// lower the formal_ref, i.e.:

@@ -1030,6 +1030,8 @@ prescan_options (int argc, char *argv[])
     }
   }
 
+  // Disable for SiCortex 5069.
+#if 0
   // Turn off IPA for certain flag combinations.  Must turn off IPA before
   // adding objects because the objects' suffix depends on whether IPA is
   // invoked.  Bug 7879.
@@ -1047,6 +1049,7 @@ prescan_options (int argc, char *argv[])
       }
     }
   }
+#endif
 }
 
 static void

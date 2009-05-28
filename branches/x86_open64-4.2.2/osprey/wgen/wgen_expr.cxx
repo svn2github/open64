@@ -42,6 +42,7 @@ extern "C"{
 #else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
 #endif /* defined(BUILD_OS_DARWIN) */
+#include "pathscale_defs.h"
 #include "defs.h"
 #include "glob.h"
 #include "config.h"
@@ -4688,7 +4689,7 @@ WGEN_Expand_Expr (gs_t exp,
 	if (gs_tree_code(gs_tree_realpart(exp)) != GS_REAL_CST ||
 	    gs_tree_code(gs_tree_imagpart(exp)) != GS_REAL_CST) {
 	  printf("%s does not support complex integer data types "
-		 "(a GNU extension)\n", lang_cplus ? "pathCC" : "pathcc");
+		 "(a GNU extension)\n", lang_cplus ? OPEN64_NAME_PREFIX "CC" : OPEN64_NAME_PREFIX "cc");
 	  exit(2);
 	}
 #endif
@@ -4754,7 +4755,7 @@ WGEN_Expand_Expr (gs_t exp,
 	     code == GS_IMAGPART_EXPR) &&
 	    !MTYPE_float(mtyp)) {
 	  printf("%s does not support complex integer data types "
-		 "(a GNU extension)\n", lang_cplus ? "pathCC" : "pathcc");
+		 "(a GNU extension)\n", lang_cplus ? OPEN64_NAME_PREFIX "CC" : OPEN64_NAME_PREFIX "cc");
 	  exit(2);
 	}
 #endif
@@ -5346,7 +5347,7 @@ WGEN_Expand_Expr (gs_t exp,
 #ifdef KEY // Bug 11875
         if (code == GS_COMPLEX_EXPR && !MTYPE_float(WN_rtype(wn0))) {
 	  printf("%s does not support complex integer data types "
-		 "(a GNU extension)\n", lang_cplus ? "pathCC" : "pathcc");
+		 "(a GNU extension)\n", lang_cplus ? OPEN64_NAME_PREFIX "CC" : OPEN64_NAME_PREFIX "cc");
 	  exit(2);
 	}
 #endif
@@ -7788,7 +7789,10 @@ WGEN_Expand_Expr (gs_t exp,
 	    else {
 	      Is_True(OPCODE_is_load(WN_opcode(ap_wn)),
 		      ("WGEN_Expand_Expr: unexpected VA_ARG_EXPR argument"));
-	      ap_wn = WN_kid0(ap_wn);
+	      if ( WN_offset(ap_wn) == 0 )
+		ap_wn = WN_kid0(ap_wn);
+	      else
+		ap_wn = WN_Add(Pointer_Mtype, WN_kid0(ap_wn), WN_Intconst(Pointer_Mtype, WN_offset(ap_wn)));
 	    }
 	  }
 	  TY_IDX ty_idx = Get_TY (gs_tree_type(exp));

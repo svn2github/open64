@@ -1927,8 +1927,14 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
               // OSP -lm is needed
               add_library(args, "m");
 #ifdef TARG_X8664
-	      if (abi != ABI_N32)
+	      if (abi != ABI_N32) {
+		/* Sigh, g++ removes the first -lm since it is implicitly added by g++,
+		 * however adding two instances of -lm only removes one.
+		 */
+                if (invoked_lang == L_CC)
+		  add_library(args, "m");
 		add_library(args, "acml_mv");
+              }
 #endif
 	    }
 	  }
@@ -2026,35 +2032,37 @@ postprocess_ld_args (string_list_t *args)
 	}
 	if (dir) {
             char * root_prefix = directory_path(get_executable_dir());
-	    add_after_string(args, p, concat_strings("-Wl,-rpath-link,", dir));
+            add_after_string(args, p, concat_strings("-Wl,-rpath-link,", dir));
 
-            if (option_was_seen(O_HP) && (strstr(dir, root_prefix) != NULL)
-                && (instrumentation_invoked != TRUE)) {
-                HUGEPAGE_DESC desc;
+            if (strstr(dir, root_prefix) != NULL) {
 
                 add_after_string(args, p, concat_strings("-Wl,-rpath,", dir));
 
-                for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
-                    if (desc->alloc == ALLOC_BDT && !do_link) {
-                        /* libhugetlbfs linker script only supports dynamic link. 
-                         */
-                        if (!option_was_seen(O_static)) {
-                            if (desc->size == SIZE_2M)
-                                dir = concat_strings(dir, "/elf.xBDT");
-                            else if (desc->size == SIZE_1G)
-                                dir = concat_strings(dir, "/elf_1G.xBDT");
-                                
-                            add_after_string(args, p, concat_strings("-Wl,-T", dir));
-                            do_link = TRUE;
-                            add_huge_lib = TRUE;
-                        }
-                    }
-                    else if (desc->alloc == ALLOC_HEAP)
-                        add_huge_lib = TRUE;
-                }
+                if (option_was_seen(O_HP) && instrumentation_invoked != TRUE) {
+                    HUGEPAGE_DESC desc;
 
-                if (add_huge_lib && option_was_seen(O_static))
-                    add_after_string(args, p, "-Wl,--undefined=setup_libhugetlbfs");
+                    for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
+                        if (desc->alloc == ALLOC_BDT && !do_link) {
+                            /* libhugetlbfs linker script only supports dynamic link. 
+                             */
+                            if (!option_was_seen(O_static)) {
+                                if (desc->size == SIZE_2M)
+                                    dir = concat_strings(dir, "/elf.xBDT");
+                                else if (desc->size == SIZE_1G)
+                                    dir = concat_strings(dir, "/elf_1G.xBDT");
+                                
+                                add_after_string(args, p, concat_strings("-Wl,-T", dir));
+                                do_link = TRUE;
+                                add_huge_lib = TRUE;
+                            }
+                        }
+                        else if (desc->alloc == ALLOC_HEAP)
+                            add_huge_lib = TRUE;
+                    }
+
+                    if (add_huge_lib && option_was_seen(O_static))
+                        add_after_string(args, p, "-Wl,--undefined=setup_libhugetlbfs");
+                }
             }
 	}
     }

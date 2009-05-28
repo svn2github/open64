@@ -3922,6 +3922,7 @@ AGGINIT::Add_Init_For_WHIRL(WN *init_wn, UINT size, INT64 ofst)
   case OPR_INTCONST:
     WGEN_Add_Aggregate_Init_Integer(WN_const_val(init_wn) + ofst, size);
     return;
+  case OPR_LDID:
   case OPR_LDA:
     WGEN_Add_Aggregate_Init_Symbol(WN_st(init_wn), WN_offset(init_wn)+ofst);
 // bugs 555, 11308
