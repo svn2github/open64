@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -1870,116 +1873,115 @@ load_symbols (lang_input_statement_type *entry,
 #ifdef KEY
       // Go through archive to make sure it does not contain both regular and
       // WHIRL objects.
-		if (is_ipa) {
-			bfd_boolean seen_nonwhirl_obj = FALSE;
-			bfd_boolean seen_whirl_obj = FALSE;
-			bfd_boolean mixed = FALSE;	// TRUE if archive has mixed objects
-			bfd *member = NULL;
+      if (is_ipa) {
+	bfd_boolean seen_nonwhirl_obj = FALSE;
+	bfd_boolean seen_whirl_obj = FALSE;
+	bfd_boolean mixed = FALSE;	// TRUE if archive has mixed objects
+	bfd *member = NULL;
 
-			// check mixed archive
-			member = bfd_openr_next_archived_file (entry->the_bfd, member);
-			while(member != NULL) {
-				if (!bfd_check_format (member, bfd_object)) {
-					einfo (_("%F%B: member %B in archive is not an object\n"), entry->the_bfd, member);
-					break;
-				}
-				if (ipa_is_whirl (member)) {  // WHIRL object
-					seen_whirl_obj = TRUE;
-					if(seen_nonwhirl_obj) {
-						mixed = TRUE;
-						break;
-					}
-				} else {			// non-WHIRL object
-					seen_nonwhirl_obj = TRUE;
-					if (seen_whirl_obj) {
-						mixed = TRUE;
-						break;
-					}
-				}
-				member = bfd_openr_next_archived_file (entry->the_bfd, member);
-			}
+	member = bfd_openr_next_archived_file (entry->the_bfd, member);
+	while(member != NULL) {
+	  if (!bfd_check_format (member, bfd_object)) {
+	    einfo (_("%F%B: member %B in archive is not an object\n"), entry->the_bfd, member);
+	    break;
+	  }
 
-			if(mixed) {
-				archive_fname = (char*)xmalloc(strlen(entry->filename)+1);
-				sprintf(archive_fname, "%s", entry->filename);
-				(*p_ipa_modify_link_flag)(archive_lname, archive_fname);
-			} else
-				free(archive_lname);
-
-			if(!mixed && seen_whirl_obj) {
-				// All inner .o files are WHIRL in the archive. Here member is NULL!
-				member = bfd_openr_next_archived_file (entry->the_bfd, member);
+	  // it's an object
+	  if (ipa_is_whirl (member)) {  // WHIRL object
+	    seen_whirl_obj = TRUE;
+	    if(seen_nonwhirl_obj) {
+	      mixed = TRUE;
+	    } else {
+	      char *buf;
+	      struct ar_hdr *p_hdr;
+	      size_t parsed_size;
 #ifdef OSP_OPT
-                                // Open the file and use mmap to read in whirl files inside the archive.
-                                int fd = open(entry->filename, O_RDONLY);
-                                if (fd == -1) {
-                                  einfo(("%F%B: cannot open archive file\n"), entry->the_bfd);
-                                }
+	      // Open the file and use mmap to read in whirl files inside the archive.
+	      int fd = open(entry->filename, O_RDONLY);
+	      if (fd == -1) {
+		einfo(("%F%B: cannot open archive file\n"), entry->the_bfd);
+	      }
 #endif
-				while (member != NULL) {
-					char *buf;
-					struct ar_hdr *p_hdr;
-					size_t parsed_size;
-					// Process the WHIRL object.
-					if (! bfd_link_add_symbols (member, &link_info)) {
-						einfo (_("%F%B: could not read symbols from member %B in archive: %E\n"),
-								entry->the_bfd, member);
-						entry->loaded = FALSE;
-						return FALSE;
-					}
+	      // Process the WHIRL object.
+	      if (! bfd_link_add_symbols (member, &link_info)) {
+		einfo (_("%F%B: could not read symbols from member %B in archive: %E\n"),
+		       entry->the_bfd, member);
+		entry->loaded = FALSE;
+		return FALSE;
+	      }
 
-					ld_set_cur_obj(member);
-					p_hdr = arch_hdr(member);
-					parsed_size = strtol (p_hdr->ar_size, NULL, 10);
+	      ld_set_cur_obj(member);
+	      p_hdr = arch_hdr(member);
+	      parsed_size = strtol (p_hdr->ar_size, NULL, 10);
 
 #ifdef OSP_OPT
-                                        if ((buf = ipa_mmap_file_in_archive(member, fd, parsed_size)) == NULL) {
-                                          einfo(("%F%B: ipa_mmap_file_in_archive failed for member %B\n"), entry->the_bfd, member);
-                                        }
+	      if ((buf = ipa_mmap_file_in_archive(member, fd, parsed_size)) == NULL) {
+		einfo(("%F%B: ipa_mmap_file_in_archive failed for member %B\n"), entry->the_bfd, member);
+	      }
 #else
-					if ((buf = bfd_alloc(member, parsed_size)) == NULL) {	
-						einfo(_("%F%B: bfd_alloc failed for member %B\n"), entry->the_bfd, member);
-					}
-					if (bfd_seek(member, 0, SEEK_SET) != 0) {
-						einfo(_("%F%B: bfd_seek failed for member %B\n"), entry->the_bfd, member);
-					}
-					if (bfd_bread(buf, parsed_size, member) != parsed_size) {
-						einfo(_("%F%B: bfd_read failed for member %B\n"), entry->the_bfd, member);
-					}
+	      if ((buf = bfd_alloc(member, parsed_size)) == NULL) {	
+		einfo(_("%F%B: bfd_alloc failed for member %B\n"), entry->the_bfd, member);
+	      }
+	      if (bfd_seek(member, 0, SEEK_SET) != 0) {
+		einfo(_("%F%B: bfd_seek failed for member %B\n"), entry->the_bfd, member);
+	      }
+	      if (bfd_bread(buf, parsed_size, member) != parsed_size) {
+		einfo(_("%F%B: bfd_read failed for member %B\n"), entry->the_bfd, member);
+	      }
 #endif
 
-					member->usrdata = buf;
-					if ((elf_elfheader(member)->e_flags & EF_IRIX_ABI64) == 0)
-						(*p_process_whirl32) ((void *)member,
-							elf_elfheader (member)->e_shnum,
-							member->usrdata+elf_elfheader(member)->e_shoff,
-							0, /* check_whirl_revision */
+	      member->usrdata = buf;
+	      if ((elf_elfheader(member)->e_flags & EF_IRIX_ABI64) == 0)
+		(*p_process_whirl32) ((void *)member,
+				      elf_elfheader (member)->e_shnum,
+				      member->usrdata+elf_elfheader(member)->e_shoff,
+				      0, /* check_whirl_revision */
 #ifdef OSP_OPT
-							member->filename, parsed_size, TRUE);
+				      member->filename, parsed_size, TRUE
 #else
-                                                        member->filename, parsed_size);
+				      member->filename, parsed_size
 #endif
-					else
-						(*p_process_whirl64) ((void *)member,
-							elf_elfheader (member)->e_shnum,
-							member->usrdata+elf_elfheader(member)->e_shoff,
-							0, /* check_whirl_revision */
+		  );
+	      else
+		(*p_process_whirl64) ((void *)member,
+				      elf_elfheader (member)->e_shnum,
+				      member->usrdata+elf_elfheader(member)->e_shoff,
+				      0, /* check_whirl_revision */
 #ifdef OSP_OPT
-							member->filename, parsed_size, TRUE);
+				      member->filename, parsed_size, TRUE
 #else
-                                                        member->filename, parsed_size);
+				      member->filename, parsed_size
 #endif
+		  );
 
-					// Since it is not a regular object archive, don't pass it to the
-					// linker.
-					(*p_ipa_erase_link_flag) (entry->local_sym_name);
-					member = bfd_openr_next_archived_file (entry->the_bfd, member);
-				}
-				// Done processing WHIRL-object archive.
-				entry->loaded = TRUE;
-				return TRUE;
-			}
-		} 
+	      // Since it is not a regular object archive, don't pass it to the
+	      // linker.
+	      (*p_ipa_erase_link_flag) (entry->local_sym_name);
+	    }
+	  } else {			// non-WHIRL object
+	    seen_nonwhirl_obj = TRUE;
+	    if (seen_whirl_obj) {
+	      mixed = TRUE;
+	    }
+	  }
+
+	  // Give error if the archive contains both regular and WHIRL objects.
+	  if (mixed) {
+	    einfo(_("%F%B: cannot mix regular and ipa objects in same archive\n"),
+		  entry->the_bfd);
+	    entry->loaded = FALSE;
+	    return FALSE;
+	  }
+
+	  member = bfd_openr_next_archived_file (entry->the_bfd, member);
+	}
+
+	// Done processing WHIRL-object archive.
+	if (seen_whirl_obj) {
+	  entry->loaded = TRUE;
+	  return TRUE;
+	}
+      }
 #endif
 
       check_excluded_libs (entry->the_bfd);
