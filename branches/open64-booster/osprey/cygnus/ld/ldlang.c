@@ -1957,6 +1957,9 @@ load_symbols (lang_input_statement_type *entry,
 	      // Since it is not a regular object archive, don't pass it to the
 	      // linker.
 	      (*p_ipa_erase_link_flag) (entry->local_sym_name);
+#ifdef OSP_OPT
+            close(fd);
+#endif
 	    }
 	  } else {			// non-WHIRL object
 	    seen_nonwhirl_obj = TRUE;
