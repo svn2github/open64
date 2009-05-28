@@ -2482,6 +2482,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
     if (WN_operator(rhs_wn) == OPR_COMMA) {
       WN * comma_block = WN_kid0(rhs_wn);
       if (WN_first(comma_block) &&
+          (TY_mtype (ret_ty_idx) != MTYPE_M) &&
           comma_is_not_needed(comma_block, WN_kid1(rhs_wn))) {
         WN * last = WN_last (comma_block);
         WN_EXTRACT_FromBlock (comma_block, last);
