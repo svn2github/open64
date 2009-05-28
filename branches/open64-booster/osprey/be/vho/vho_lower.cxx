@@ -2003,8 +2003,8 @@ VHO_Lower_Mstid (WN * wn)
                                         VHO_Struct_Field_Id_Table[i]);
               }
           }
-          // Note (1).  The source and dest. types must match otherwise,
-          // the calculation to compute the field_id argument to WN_CreateStid()
+          // Note (1).  The source and dest. types must match otherwise, the
+          // calculation to compute the field_id argument to WN_CreateStid()
           // will be incorrect.
           opc = OPCODE_make_op ( OPR_STID, MTYPE_V, TY_mtype(fty_idx) );
           if (src_ty_idx != dst_ty_idx || VHO_Struct_Field_Is_Array_Table[i]) {
