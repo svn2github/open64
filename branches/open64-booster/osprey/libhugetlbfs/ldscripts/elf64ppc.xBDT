@@ -4,7 +4,6 @@ OUTPUT_FORMAT("elf64-powerpc", "elf64-powerpc",
 OUTPUT_ARCH(powerpc:common64)
 ENTRY(_start)
 SEARCH_DIR("/usr/powerpc64-linux-gnu/lib64"); SEARCH_DIR("/usr/local/lib64"); SEARCH_DIR("/lib64"); SEARCH_DIR("/usr/lib64"); SEARCH_DIR("/usr/powerpc64-linux-gnu/lib"); SEARCH_DIR("/usr/local/lib"); SEARCH_DIR("/lib"); SEARCH_DIR("/usr/lib");
-INPUT( -lhugetlbfs );
 PHDRS
 {
   headers PT_PHDR PHDRS ;
