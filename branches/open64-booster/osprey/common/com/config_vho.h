@@ -89,6 +89,7 @@ extern BOOL  VHO_Icall_Devir;
 extern BOOL  VHO_Check_Tree;
 extern BOOL  VHO_Single_Loop_Test;
 extern BOOL  VHO_Use_Do_While;
+extern BOOL  VHO_Disable_Copy_Field_Element;
 #ifdef KEY
 extern BOOL  VHO_Enable_Simple_If_Conv; // Enable simple if-conv at VHO lowering
 extern INT32 VHO_Enable_If_Conv_Limit;  // Maximum overhead allowed after ifconv

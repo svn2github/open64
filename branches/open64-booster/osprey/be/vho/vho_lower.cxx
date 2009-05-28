@@ -210,7 +210,8 @@ static char    * VHO_Switch_Format;
 #endif /* VHO_DEBUG */
 
 static SRCPOS    VHO_Srcpos;
-static BOOL      VHO_Mstid_Debug;
+static BOOL      VHO_SCL_Debug;             // Debug Structure Copy Lowering 
+static BOOL      VHO_M_Debug_Type_Mismatch;
 
 /* Variables related to handling of switch statements */
 
@@ -1851,17 +1852,19 @@ VHO_Lower_Mstid (WN * wn)
   SRCPOS      srcpos;
   OPCODE      opc;
   BOOL	      src_is_pointer = FALSE;
+  BOOL        ty_mismatch;
   INT src_field_id = 0;
   INT dst_field_id = 0;
+
+  if (VHO_SCL_Debug) {
+      fprintf ( TFile, "\nVHO_Lower_Mstid  lowering:\n");
+      fdump_tree(TFile, wn);
+  }
 
   src_value   = WN_kid0(wn);
   dst_ty_idx  = WN_ty(wn);
   srcpos      = WN_Get_Linenum(wn);
 
-  if (VHO_Mstid_Debug) {
-      fprintf ( TFile, "lowering:\n");
-      fdump_tree(TFile, wn);
-  }
   // field_ids complicate things, as they require generating 
   // (struct-type, field_id) rather than a simple field type.
   // We can handle field_ids by getting fty
@@ -2009,22 +2012,25 @@ VHO_Lower_Mstid (WN * wn)
           // Note (1).  The source and dest. types must match otherwise, the
           // calculation to compute the field_id argument to WN_CreateStid()
           // will be incorrect.
-	  //
-	  // Note that this type check was reverted since there are performance
-	  // issues that need to be resolved.
           opc = OPCODE_make_op ( OPR_STID, MTYPE_V, TY_mtype(fty_idx) );
-          if (VHO_Struct_Field_Is_Array_Table[i]) {
+          ty_mismatch = TY_id(src_ty_idx) != TY_id(dst_ty_idx);
+          if (VHO_Struct_Field_Is_Array_Table[i] || ty_mismatch || VHO_Disable_Copy_Field_Element) {
               // each element uses same field_id,
               // so rather than create array refs, just do element copies
               dst = WN_CreateStid ( opc, 
                                     dst_offset + VHO_Struct_Offset_Table[i], 
                                     dst_st, fty_idx, src);
+              if (VHO_M_Debug_Type_Mismatch && ty_mismatch || VHO_SCL_Debug) {
+                  fprintf(TFile, "VHO_Lower_Mstid: %stype mismatch, dst WN follows\n",
+                        ty_mismatch ? "" : "no ");
+                  fdump_tree(TFile, dst);
+              }
           } else {
               dst = WN_CreateStid ( opc, 
                                     dst_offset + VHO_Struct_Offset_Table[i], 
                                     dst_st, WN_ty(wn), src, 
                                     dst_field_id - src_field_id + VHO_Struct_Field_Id_Table[i]);
-              if (VHO_Mstid_Debug) {
+              if (VHO_SCL_Debug) {
                   fprintf(TFile, "dst_field_id=%d, src_field_id=%d, VHO_Struct_Field_Id_Table[%d]=%d, dst WN follows\n",
                           dst_field_id, src_field_id, i, VHO_Struct_Field_Id_Table[i]);
                   fdump_tree(TFile, dst);
@@ -2109,6 +2115,7 @@ VHO_Lower_Mistore ( WN * wn )
   WN        * size;
   INT64       bytes;
   WN        * block;
+  BOOL        ty_mismatch;
   // WN_OFFSET   field_offset;
   INT32       i;
   SRCPOS      srcpos;
@@ -2120,6 +2127,10 @@ VHO_Lower_Mistore ( WN * wn )
   WN *src_iload_kid;
   WN *src_ldid;
 
+  if (VHO_SCL_Debug) {
+      fprintf ( TFile, "\nVHO_Lower_Mistore lowering:\n");
+      fdump_tree(TFile, wn);
+  }
   src_value      = WN_kid0(wn);
   WN *dst_address= WN_kid1(wn);
   dst_offset     = WN_store_offset(wn);
@@ -2235,17 +2246,28 @@ VHO_Lower_Mistore ( WN * wn )
           }
           opc = OPCODE_make_op ( OPR_ISTORE, MTYPE_V, TY_mtype(fty_idx));
           // See Note (1).
-          if (VHO_Struct_Field_Is_Array_Table[i]) {
+          ty_mismatch = TY_id(src_ty_idx) != TY_id(dst_ty_idx);
+          if (VHO_Struct_Field_Is_Array_Table[i] || ty_mismatch || VHO_Disable_Copy_Field_Element) {
             dst = WN_CreateIstore ( opc, 
                                     dst_offset + VHO_Struct_Offset_Table[i],
                                     Make_Pointer_Type( fty_idx),
                                     src, WN_COPY_Tree( dst_address ));
+            if (VHO_M_Debug_Type_Mismatch && ty_mismatch || VHO_SCL_Debug) {
+              fprintf(TFile, "VHO_Lower_Mistore: %stype mismatch, dst WN follows\n",
+                      ty_mismatch ? "" : "no ");
+              fdump_tree(TFile, dst);
+            }
           } else {
             dst = WN_CreateIstore ( opc, 
                                     dst_offset + VHO_Struct_Offset_Table[i],
                                     ptr_dst_ty_idx,
                                     src, WN_COPY_Tree( dst_address ), 
                                     dst_field_id - src_field_id + VHO_Struct_Field_Id_Table[i]);
+            if (VHO_SCL_Debug) {
+              fprintf(TFile, "dst_field_id=%d, src_field_id=%d, VHO_Struct_Field_Id_Table[%d]=%d, dst WN follows\n",
+                      dst_field_id, src_field_id, i, VHO_Struct_Field_Id_Table[i]);
+              fdump_tree(TFile, dst);
+            }
           }
           WN_Set_Linenum(dst, srcpos);
 
@@ -8353,7 +8375,8 @@ VHO_Lower ( WN * wn )
 WN * VHO_Lower_Driver (PU_Info* pu_info, 
 		       WN *wn) {
 
-   VHO_Mstid_Debug = Get_Trace ( TP_VHO_LOWER, 0x4 );
+   VHO_SCL_Debug = Get_Trace ( TP_VHO_LOWER, 0x4 );
+   VHO_M_Debug_Type_Mismatch = Get_Trace ( TP_VHO_LOWER, 0x8 );
 
    if (Get_Trace ( TKIND_IR, TP_VHO_LOWER )) {
 
