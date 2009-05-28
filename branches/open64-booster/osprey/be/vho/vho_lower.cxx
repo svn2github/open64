@@ -2009,8 +2009,11 @@ VHO_Lower_Mstid (WN * wn)
           // Note (1).  The source and dest. types must match otherwise, the
           // calculation to compute the field_id argument to WN_CreateStid()
           // will be incorrect.
+	  //
+	  // Note that this type check was reverted since there are performance
+	  // issues that need to be resolved.
           opc = OPCODE_make_op ( OPR_STID, MTYPE_V, TY_mtype(fty_idx) );
-          if (src_ty_idx != dst_ty_idx || VHO_Struct_Field_Is_Array_Table[i]) {
+          if (VHO_Struct_Field_Is_Array_Table[i]) {
               // each element uses same field_id,
               // so rather than create array refs, just do element copies
               dst = WN_CreateStid ( opc, 
@@ -2232,7 +2235,7 @@ VHO_Lower_Mistore ( WN * wn )
           }
           opc = OPCODE_make_op ( OPR_ISTORE, MTYPE_V, TY_mtype(fty_idx));
           // See Note (1).
-          if (src_ty_idx != dst_ty_idx || VHO_Struct_Field_Is_Array_Table[i]) {
+          if (VHO_Struct_Field_Is_Array_Table[i]) {
             dst = WN_CreateIstore ( opc, 
                                     dst_offset + VHO_Struct_Offset_Table[i],
                                     Make_Pointer_Type( fty_idx),
