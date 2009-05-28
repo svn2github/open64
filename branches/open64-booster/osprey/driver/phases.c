@@ -1929,7 +1929,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 #ifdef TARG_X8664
 	      if (abi != ABI_N32) {
 		/* Sigh, g++ removes the first -lm since it is implicitly added by g++,
-		 * however adding two instances of -lm only removes 1.
+		 * however adding two instances of -lm only removes one.
 		 */
                 if (invoked_lang == L_CC)
 		  add_library(args, "m");
