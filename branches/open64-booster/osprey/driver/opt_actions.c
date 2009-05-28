@@ -1622,6 +1622,7 @@ static struct
   { "xeon",	"xeon",			ABI_N32,	TRUE,	FALSE, FALSE},
   { "em64t",	"em64t",		ABI_64,		TRUE,	TRUE,  FALSE},
   { "core",	"core",			ABI_64,		TRUE,	TRUE,  FALSE},
+  { "wolfdale", "wolfdale",		ABI_64,		TRUE,	TRUE, FALSE},
   { "barcelona","barcelona",		ABI_64,		TRUE,	TRUE, TRUE},
   { NULL,	NULL, },
 };
@@ -1746,6 +1747,10 @@ get_auto_cpu_name ()
       } else if (strstr(buf, "Xeon")) {
 	cpu_name = "xeon";
 	cpu_name_64bit = "em64t";
+      } else if (strstr(buf, "i7")) {
+          // TODO -- need-to-date machine model.
+	cpu_name = "wolfdale";
+	cpu_name_64bit = "wolfdale";
       }
     } else if (strstr(buf, "GenuineIntel")) {
       intel = TRUE;
@@ -1770,6 +1775,9 @@ get_auto_cpu_name ()
 	    return "i386";
 
 	case 6:			// P6, Core, ...
+	  if (model == 23)
+	    return "wolfdale";
+
 	  if (model == 15)
 	    return "core";
 

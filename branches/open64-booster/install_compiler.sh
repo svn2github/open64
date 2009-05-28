@@ -342,6 +342,16 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         #INSTALL_DATA_SUB ${LIB32AREA}/libm/libmsgi.a       ${PHASEPATH}/32/libmsgi.a
         INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.a           ${PHASEPATH}/32/libmv.a
         INSTALL_DATA_SUB ${LIB32AREA}/libopenmp/libopenmp.a      ${PHASEPATH}/32/libopenmp.a
+        # The special processing of the -lm option in the compiler driver should
+        # be delayed until all of the options have been parsed.  Until the
+        # driver is cleaned up, it is important that processing be the same on
+        # all architectures.  Thus we add an empty 32 bit ACML vector math
+        # library.
+        if [ ! -f ${PHASEPATH}/32/libacml_mv.a ] ; then
+	    ar rc ${PHASEPATH}/32/libacml_mv.a
+	    echo An empty 32-bit libacml_mv.a was added to work around a problem > ${PHASEPATH}/32/README_ACML
+	    echo with the Open64 compiler driver. >> ${PHASEPATH}/32/README_ACML
+	fi
     fi 
     return 0
 }
@@ -486,6 +496,7 @@ INSTALL_MISC () {
         INSTALL_EXEC_SUB ${AREA}/targ_info/opteron.so ${PHASEPATH}/opteron.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/em64t.so ${PHASEPATH}/em64t.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/core.so ${PHASEPATH}/core.so
+        INSTALL_EXEC_SUB ${AREA}/targ_info/wolfdale.so ${PHASEPATH}/wolfdale.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/barcelona.so ${PHASEPATH}/barcelona.so
     fi
 #    if [ ! -z "$ROOT" ] ; then
