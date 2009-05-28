@@ -3226,6 +3226,7 @@ IPA_CALL_GRAPH::Map_Callsites (IPA_NODE* caller)
     }
   
     WN** callsite_map = (WN**) alloca (caller->Total_Succ() * sizeof(WN*));
+    memset(callsite_map, 0, caller->Total_Succ() * sizeof(WN*));
     UINT32 num_calls = 0;
 
     for (WN_ITER* wni = WN_WALK_TreeIter(caller->Whirl_Tree(FALSE)); 
