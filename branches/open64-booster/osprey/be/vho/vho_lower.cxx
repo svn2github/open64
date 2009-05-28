@@ -2009,6 +2009,7 @@ VHO_Lower_Mstid (WN * wn)
                                         VHO_Struct_Field_Id_Table[i]);
               }
           }
+
           // Note (1).  The source and dest. types must match otherwise, the
           // calculation to compute the field_id argument to WN_CreateStid()
           // will be incorrect.
