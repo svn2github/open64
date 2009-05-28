@@ -4755,8 +4755,27 @@ BOOL
 CODEREP::Can_be_speculated(OPT_STAB *opt_stab) const
 {
   switch (Kind()) {
-  case CK_VAR:
+  case CK_VAR: {
+    TY_IDX var_type = Lod_ty();
+    if (var_type != 0 && IEEE_Arithmetic < 2)
+    {
+      // we have to disallow speculated code motion when the variable type is
+      // floating point and the IEEE_Arithmetic level is set at "strict"
+      if (TY_kind(var_type) == KIND_SCALAR &&
+          MTYPE_is_float(TY_mtype(var_type)))
+        return FALSE;
+      if (TY_kind(var_type) == KIND_POINTER &&
+          TY_kind(TY_pointed(var_type)) == KIND_SCALAR &&
+          MTYPE_is_float(TY_mtype(TY_pointed(var_type))))
+        return FALSE;
+      if (TY_kind(var_type) == KIND_POINTER &&
+          TY_kind(TY_pointed(var_type)) == KIND_ARRAY &&
+          TY_kind(TY_pointed(TY_pointed(var_type))) == KIND_SCALAR &&
+          MTYPE_is_float(TY_mtype(TY_pointed(TY_pointed(var_type)))))
+        return FALSE;
+    }
     return opt_stab->Safe_to_speculate(Aux_id());
+    }
   case CK_IVAR: {
     CODEREP *base = Ilod_base() ? Ilod_base() : Istr_base();
     if (! base->Can_be_speculated(opt_stab))
