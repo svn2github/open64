@@ -128,6 +128,7 @@ void EETARG_Generate_PIC_Entry_Code( BB* bb, OPS* ops )
   // Create BB #1.
   BB* call_bb = Gen_And_Insert_BB_Before(bb);
   BB_Transfer_Entryinfo( bb, call_bb );
+  Set_BB_after_pic_entry(bb); // bb is original entry and now it's after the pic entry  
   REGION_First_BB = call_bb;
   Entry_BB_Head = BB_LIST_Delete( bb, Entry_BB_Head );
   Entry_BB_Head = BB_LIST_Push( call_bb, Entry_BB_Head, &MEM_pu_pool );

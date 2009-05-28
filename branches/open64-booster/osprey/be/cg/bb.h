@@ -566,6 +566,10 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_NON_LOCAL_LABEL     0x00400000 /* BB has a non-local label */
 #endif
 
+#if defined(TARG_X8664)
+#define BBM_AFTER_PIC_ENTRY     0x00800000 /* BB is the original entry after PIC entry on IA-32 with -fPIC */
+#endif
+
 #if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
 #define BBM_EDGE_SPLITTING      0x00800000 /* BB is used for edge splitting */
 
@@ -592,7 +596,6 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Set_BB_edge_splitting(x)      (BB_flag(x) |= BBM_EDGE_SPLITTING)
 #define Reset_BB_edge_splitting(x)    (BB_flag(x) &= ~BBM_EDGE_SPLITTING)
 #endif // TARG_IA64 || TARG_SL
-
 
 #if defined (TARG_SL)
 /* BB is the prolog of  zero-delay-loop, so it  only contains 
@@ -663,6 +666,9 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BB_partial_bundle(x)	(BB_flag(x) & BBM_PARTIAL_BUNDLE)
 #define BB_chk_split_tail(x)    (BB_flag(x) & BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
 #endif
+#if defined(TARG_X8664)
+#define BB_after_pic_entry(x)   (BB_flag(x) & BBM_AFTER_PIC_ENTRY)
+#endif
 
 #define	Set_BB_entry(x)		(BB_flag(x) |= BBM_ENTRY)
 #define Set_BB_handler(bb)	(BB_flag(bb) |= BBM_HANDLER)
@@ -701,6 +707,10 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Set_BB_partial_bundle(x)    (BB_flag(x) |= BBM_PARTIAL_BUNDLE)
 #define Set_BB_chk_split_tail(x)    (BB_flag(x) |= BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
 #endif
+#if defined(TARG_X8664)
+#define Set_BB_after_pic_entry(x)   (BB_flag(x) |= BBM_AFTER_PIC_ENTRY)
+#endif
+
 #define	Reset_BB_entry(x)	(BB_flag(x) &= ~BBM_ENTRY)
 #define Reset_BB_handler(bb) 	(BB_flag(bb) &= ~BBM_HANDLER)
 #define	Reset_BB_exit(x)	(BB_flag(x) &= ~BBM_EXIT)
@@ -735,6 +745,10 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Reset_BB_partial_bundle(x)    (BB_flag(x) &= ~BBM_PARTIAL_BUNDLE)
 #define Reset_BB_chk_split_tail(x)    (BB_flag(x) &= ~BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
 #endif
+#if defined(TARG_X8664)
+#define Reset_BB_after_pic_entry(x)  (BB_flag(x) &= ~BBM_AFTER_PIC_ENTRY)
+#endif
+
 #ifdef KEY
 #define	Reset_BB_has_non_local_label(x)	(BB_flag(x) &= ~BBM_NON_LOCAL_LABEL)
 #endif

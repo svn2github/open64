@@ -305,6 +305,12 @@ Get_Current_PU ()
 #endif
 }
 
+inline TY_IDX
+Get_Current_PU_TY ()
+{
+    return PU_prototype( Get_Current_PU() );
+}
+
 // get PU at specified level
 inline PU &
 Get_Scope_PU (UINT level)
