@@ -661,6 +661,10 @@ int parse_elf_relinked(struct dl_phdr_info *info, size_t size, void *data)
                     else
                         continue;
                 }
+                if (! (info->dlpi_phdr[i].p_flags & PF_W) && getenv("HUGETLB_DISABLE_MAPPING_TEXT")) {
+                        DEBUG("HUGETLB_DISABLE_MAPPING_TEXT set, not mapping text\n");
+                        continue;
+                }
 #endif
 
 		if (save_phdr(htlb_num_segs, i, &info->dlpi_phdr[i]))
@@ -1230,7 +1234,10 @@ void __hugetlbfs_setup_elflink(void)
 #ifdef OPEN64_MOD
         for (i = 0; i < htlb_num_segs; i++) {
             struct seg_info  seg = htlb_seg_table[i];
-            hugepages_total += ALIGN((seg.filesz + seg.extrasz), hpage_size) / hpage_size;
+            unsigned long seg_hpages = ALIGN((seg.filesz + seg.extrasz), hpage_size) / hpage_size;
+
+            DEBUG("seg index %d used %lu pages\n", i, seg_hpages);
+            hugepages_total += seg_hpages;
             
             if (hugepages_total >= hugepages_elf_limit) {
                 WARNING("ELF Segments require %ld huge pages, exceed huge page limit %ld.\n",
