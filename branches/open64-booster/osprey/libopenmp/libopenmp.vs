@@ -30,6 +30,7 @@ LIBOPENMP_1.0 {
     __ompc_static_fini;
     __ompc_static_init_4;
     __ompc_static_init_8;
+    __ompc_sug_numthreads;
     omp_destroy_lock;
     omp_destroy_nest_lock;
     omp_get_dynamic;

@@ -100,9 +100,9 @@ $(PROF_LIB): $(OBJECTS:%.o=%.pg.o)
 
 $(DSO): $(OBJECTS:%.o=%.pic.o)
 ifeq ($(BUILD_OS), DARWIN)
-	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -o $@ $^ -L.
+	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -o $@ $^ -L. -lpthread
 else
-	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -Wl,-soname=$(DSO) -Wl,--version-script=$(BUILD_BASE)/$(DSO:%.so.$(dso_version)=%.vs) -o $@ $^ -L.
+	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -Wl,-soname=$(DSO) -Wl,--version-script=$(BUILD_BASE)/$(DSO:%.so.$(dso_version)=%.vs) -o $@ $^ -L. -lpthread
 endif
 	$(ln) -sf $(DSO) $(basename $(DSO))
 
