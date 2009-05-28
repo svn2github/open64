@@ -883,7 +883,9 @@ Ipl_Processing (PU_Info *current_pu, WN *pu)
     if (Run_preopt) {
 	du_mgr = Create_Du_Manager(MEM_pu_nz_pool_ptr);
 	al_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr);
+	Check_for_IR_Dump_Before_Phase(TP_IPL, pu, "Pre_Optimizer");
 	pu = Pre_Optimizer(PREOPT_IPA0_PHASE, pu, du_mgr, al_mgr);
+	Check_for_IR_Dump(TP_IPL, pu, "Pre_Optimizer");
 #ifdef Is_True_On
 	if (Get_Trace (TKIND_ALLOC, TP_IPA)) {
 	    fprintf (TFile, "\n%s%s\tMemory allocation information after"

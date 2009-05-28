@@ -1682,7 +1682,7 @@ extern void fdump_tree(FILE *f, WN *wn)
   else if (WN_opcode(wn) == OPC_FUNC_ENTRY)
     IR_put_func(wn, NULL);
   else
-    fprintf(ir_ofile, "unknown opcode in (WN *) 0x%p\n", wn);
+    fprintf(ir_ofile, "unknown opcode in (WN *) %p\n", wn);
   ir_ofile = save;
 }
 
@@ -2038,7 +2038,7 @@ extern void WN_TREE_fdump_tree(FILE *f, WN *wn)
   else if (WN_opcode(wn) == OPC_FUNC_ENTRY)
   WN_TREE_put_func(wn, NULL);
   else
-    fprintf(ir_ofile, "unknown opcode in (WN *) 0x%p\n", wn);
+    fprintf(ir_ofile, "unknown opcode in (WN *) %p\n", wn);
   ir_ofile = save;
 } 
 
@@ -2076,19 +2076,29 @@ extern void fdump_dep_tree( FILE *f, WN *wn, struct ALIAS_MANAGER *alias)
 }
 #endif /* BACK_END */
 
-extern void Check_for_IR_Dump(INT phase, WN *pu, const char *phase_name)
+static void Check_for_IR_Dump0(INT phase, WN *pu, const char *phase_name, BOOL before)
 {
     BOOL dump_ir;
     BOOL dump_symtab;
     dump_ir = Get_Trace ( TKIND_IR, phase );
     dump_symtab =  Get_Trace ( TKIND_SYMTAB, phase );
     if (dump_ir || dump_symtab) {
-	fprintf(TFile,"\n\n========== Driver dump after %s ==========\n",
-		phase_name);
+	fprintf(TFile,"\n\n========== Driver dump %s %s ==========\n",
+		before == TRUE ? "before" : "after", phase_name);
 	if (dump_ir) fdump_tree (TFile,pu);
 	if (dump_symtab) {
 	    Print_symtab (TFile, GLOBAL_SYMTAB);
 	    Print_symtab (TFile, CURRENT_SYMTAB);
 	}
     }
+}
+
+extern void Check_for_IR_Dump(INT phase, WN *pu, const char *phase_name)
+{
+    Check_for_IR_Dump0(phase, pu, phase_name, FALSE);
+}
+
+extern void Check_for_IR_Dump_Before_Phase(INT phase, WN *pu, const char *phase_name)
+{
+    Check_for_IR_Dump0(phase, pu, phase_name, TRUE);
 }

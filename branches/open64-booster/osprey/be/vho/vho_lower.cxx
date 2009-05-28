@@ -207,6 +207,7 @@ static char    * VHO_Switch_Format;
 #endif /* VHO_DEBUG */
 
 static SRCPOS    VHO_Srcpos;
+static BOOL      VHO_Mstid_Debug;
 
 /* Variables related to handling of switch statements */
 
@@ -1854,6 +1855,10 @@ VHO_Lower_Mstid (WN * wn)
   dst_ty_idx  = WN_ty(wn);
   srcpos      = WN_Get_Linenum(wn);
 
+  if (VHO_Mstid_Debug) {
+      fprintf ( TFile, "lowering:\n");
+      fdump_tree(TFile, wn);
+  }
   // field_ids complicate things, as they require generating 
   // (struct-type, field_id) rather than a simple field type.
   // We can handle field_ids by getting fty
@@ -1998,8 +2003,11 @@ VHO_Lower_Mstid (WN * wn)
                                         VHO_Struct_Field_Id_Table[i]);
               }
           }
+          // Note (1).  The source and dest. types must match otherwise,
+          // the calculation to compute the field_id argument to WN_CreateStid()
+          // will be incorrect.
           opc = OPCODE_make_op ( OPR_STID, MTYPE_V, TY_mtype(fty_idx) );
-          if (VHO_Struct_Field_Is_Array_Table[i]) {
+          if (src_ty_idx != dst_ty_idx || VHO_Struct_Field_Is_Array_Table[i]) {
               // each element uses same field_id,
               // so rather than create array refs, just do element copies
               dst = WN_CreateStid ( opc, 
@@ -2010,6 +2018,11 @@ VHO_Lower_Mstid (WN * wn)
                                     dst_offset + VHO_Struct_Offset_Table[i], 
                                     dst_st, WN_ty(wn), src, 
                                     dst_field_id - src_field_id + VHO_Struct_Field_Id_Table[i]);
+              if (VHO_Mstid_Debug) {
+                  fprintf(TFile, "dst_field_id=%d, src_field_id=%d, VHO_Struct_Field_Id_Table[%d]=%d, dst WN follows\n",
+                          dst_field_id, src_field_id, i, VHO_Struct_Field_Id_Table[i]);
+                  fdump_tree(TFile, dst);
+              }
           }
           WN_Set_Linenum(dst, srcpos);
           WN_INSERT_BlockAfter (block, WN_last(block), dst);
@@ -2215,7 +2228,8 @@ VHO_Lower_Mistore ( WN * wn )
             }
           }
           opc = OPCODE_make_op ( OPR_ISTORE, MTYPE_V, TY_mtype(fty_idx));
-          if (VHO_Struct_Field_Is_Array_Table[i]) {
+          // See Note (1).
+          if (src_ty_idx != dst_ty_idx || VHO_Struct_Field_Is_Array_Table[i]) {
             dst = WN_CreateIstore ( opc, 
                                     dst_offset + VHO_Struct_Offset_Table[i],
                                     Make_Pointer_Type( fty_idx),
@@ -8332,6 +8346,8 @@ VHO_Lower ( WN * wn )
 
 WN * VHO_Lower_Driver (PU_Info* pu_info, 
 		       WN *wn) {
+
+   VHO_Mstid_Debug = Get_Trace ( TP_VHO_LOWER, 0x4 );
 
    if (Get_Trace ( TKIND_IR, TP_VHO_LOWER )) {
 
