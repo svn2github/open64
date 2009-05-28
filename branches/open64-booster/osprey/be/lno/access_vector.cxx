@@ -1770,7 +1770,7 @@ INT ACCESS_ARRAY::Set_LB_r(WN *wn, DOLOOP_STACK *stack, INT i, INT64 step)
 	_dim[i].Too_Messy = TRUE;
       return (i+1);
     } else {
-      _dim[i+1].Too_Messy = TRUE;
+      _dim[i].Too_Messy = TRUE;
       return (i+1);
     }
   } else {
