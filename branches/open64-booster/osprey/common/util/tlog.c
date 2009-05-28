@@ -71,4 +71,7 @@ extern void Generate_Tlog(
   fprintf(Tlog_File, "{ %s }\n", aux_info_string);
 }
 
-
+extern FILE * Get_Tlog_File()
+{
+    return Tlog_File;
+}

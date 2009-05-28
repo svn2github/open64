@@ -83,6 +83,10 @@ extern void Generate_Tlog(
   const char*	output_string,
   const char*	aux_info_string
 );
+
+extern FILE * Get_Tlog_File();
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -4012,7 +4012,7 @@ WN** epilog_loop_out, mINT32 offset_out[])
     sprintf(in_string,"%d %d %d", Srcpos_To_Line(srcpos1),
                       Srcpos_To_Line(srcpos2), fusion_level);
     sprintf(out_string,"%d",Succeeded);
-    Generate_Tlog("LNO","fusion", Srcpos_To_Line(srcpos1),
+    Generate_Tlog("LNO","##Fusion: ", Srcpos_To_Line(srcpos1),
                   ST_name(WN_st(WN_index(in_loop1))),
                   in_string, out_string, "Successfully fused !!");
   }
