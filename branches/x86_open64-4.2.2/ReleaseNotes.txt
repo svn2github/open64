@@ -1,31 +1,34 @@
 
-x86 Open64 4.2.2 Release Notes 
+x86 Open64 4.2.2.1 Release Notes 
 
 
-               April 20, 2009
+               June 4, 2009
 
 
 1. Overview
 
-2. Features
+2. Resolved Issues
 
-3. The Packages of the Compiler Suite
+3. Features
 
-4. Supported Operating Systems
+4. The Packages of the Compiler Suite
 
-5. Installing the Compiler Suite
-  5.1 Install from bz2 Package
-  5.2 Install from RPM packages
+5. Supported Operating Systems
 
-6. Bug Reporting and Support
+6. Installing the Compiler Suite
+  6.1 Install from bz2 Package
+  6.2 Install from RPM packages
 
-7. Known Issues and Limitations
+7. Bug Reporting and Support
+
+8. Known Issues and Limitations
 
 
 1. Overview
 ===========
 
- This is version 4.2.2 of the x86 Open64 compiler suite.
+ This is version 4.2.2.1 of the x86 Open64 compiler suite. It is a bug fix and
+ maintenance release for version 4.2.2.
 
  x86 Open64 is an open source, optimizing compiler for 32-bit (x86) and
  64-bit (x86-64) achitectures. x86 Open64 supports Fortran 77/90/95, C (C89
@@ -43,7 +46,41 @@ x86 Open64 4.2.2 Release Notes
 
 
 
-2. New Features in x86 Open64 4.2.2
+2. Issues Resolved in x86 Open64 4.2.2.1
+========================================
+
+ o Building a program for the generic 'i386' target no longer results in the
+   error:
+
+     /usr/bin/ld: cannot find -lacml_mv
+     collect2: ld returned 1 exit status
+
+ o The automatic CPU detection in the x86 Open64 driver now recognizes the
+   the Intel(R) Core(TM) i7 CPU and uses the included 'wolfdale.so' target
+   description module.
+
+ o The combination of '-g' and '-ipa' (or an option that implies IPA
+   compilation, such as '-Ofast') in the link command is now accepted.
+
+ o Shared object versions of the OpenMP runtime library (libopenmp.so) and
+   legacy vector math library (libmv.so) are now included.
+
+ o A front-end issue that caused increased compilation time for C/C++ programs
+   has been fixed.
+
+ o As a result of extensive testing with language and compiler regression test
+   suites, benchmark suites, and many libraries and applications; several
+   internal compiler errors and assertions have been fixed. A few cases of
+   incorrect code generation with aggressive optimization have also been found
+   and fixed.
+
+   For information on some of the code that the x86 Open64 compiler is tested
+   with, please see the "Applications and Libraries Built by x86 Open64" link
+   at http://developer.amd.com/cpu/open64.
+
+
+
+3. New Features in x86 Open64 4.2.2
 ===================================
 
  o Support for 2 MB huge pages.
@@ -65,22 +102,22 @@ x86 Open64 4.2.2 Release Notes
 
 
 
-3. The Packages of the Compiler Suite
+4. The Packages of the Compiler Suite
 =====================================
 
  This compiler is available in both binary and source-code forms.
 
- o x86_open64-4.2.2-1.src.tar.bz2
+ o x86_open64-4.2.2.1-1.src.tar.bz2
 
    This package contains the compiler's source code. To unpack the source, use
    the command:
 
-     tar xjvf x86_open64-4.2.2-1.src.tar.bz2
+     tar xjvf x86_open64-4.2.2.1-1.src.tar.bz2
 
    For instructions on how to build the compiler from source, see the included
    INSTALL file.
 
- o x86_open64-4.2.2-1.x86_64.tar.bz2
+ o x86_open64-4.2.2.1-1.x86_64.tar.bz2
 
    This package contains the binary code for x86-64 machines.
 
@@ -91,19 +128,19 @@ x86 Open64 4.2.2 Release Notes
    libraries. The Open64 4.2.1 release can be downloaded from
    http://www.open64.net.
 
- o x86_open64-4.2.2-1.x86_64.rpm
+ o x86_open64-4.2.2.1-1.x86_64.rpm
 
    This package contains the same binaries as the tar.bz2 package in RPM form.
 
 
 
-4. Supported Operating Systems
+5. Supported Operating Systems
 ==============================
 
  The two binary packages,
 
- o x86_open64-4.2.2-1.x86_64.tar.bz2
- o x86_open64-4.2.2-1.x86_64.rpm
+ o x86_open64-4.2.2.1-1.x86_64.tar.bz2
+ o x86_open64-4.2.2.1-1.x86_64.rpm
 
  are tested and validated on 64-bit Linux systems running:
 
@@ -119,47 +156,47 @@ x86 Open64 4.2.2 Release Notes
  o gcc-4.1.2-44.el5 (RHEL 5.3)
 
 
-5. Installing the Compiler Suite
+6. Installing the Compiler Suite
 ================================
 
-5.1 Install from bz2 Package
+6.1 Install from bz2 Package
 ----------------------------
 
  To install the compiler from the bz2 package:
 
- o Expand x86_open64-4.2.2-1.x86_64.tar.bz2 with the command:
+ o Expand x86_open64-4.2.2.1-1.x86_64.tar.bz2 with the command:
 
-   tar xjvf x86_open64-4.2.2-1.x86_64.tar.bz2
+   tar xjvf x86_open64-4.2.2.1-1.x86_64.tar.bz2
 
- o If desired, move the x86_open64-4.2.2 directory to the final
+ o If desired, move the x86_open64-4.2.2.1 directory to the final
    installation location using the 'mv' command.
 
    The C, C++, FORTRAN compilers are now available in the 'bin'
    subdirectory.
 
 
-5.2 Install from RPM Package
+6.2 Install from RPM Package
 ----------------------------
 
  Normally you must have superuser privileges to install RPM packages.
 
  To install the compiler from RPM:
 
- $ rpm -ivh x86_open64-4.2.2-1.x86_64.rpm
+ $ rpm -ivh x86_open64-4.2.2.1-1.x86_64.rpm
 
  This command will install the x86 Open64 compiler to
- /opt/x86_open64-4.2.2. The C, C++, FORTRAN compilers are in folder
- /opt/x86_open64-4.2.2/bin.
+ /opt/x86_open64-4.2.2.1. The C, C++, FORTRAN compilers are in folder
+ /opt/x86_open64-4.2.2.1/bin.
 
  To install the compiler to another location:
 
- $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.2-1.x86_64.rpm
+ $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.2.1-1.x86_64.rpm
 
  Then the compiler will be installed to /path/to/folder.
 
 
 
-6. Bug Reporting and Support
+7. Bug Reporting and Support
 ============================
 
  To report a bug or get help with the binary releases, please see the Support
@@ -180,34 +217,19 @@ x86 Open64 4.2.2 Release Notes
 
 
 
-7. Known Issues and Limitations
+8. Known Issues and Limitations
 ===============================
 
  o OpenMP (enabled by '-mp') support and Auto-Parallel optimization (enabled
    by '-apo') are not fully qualified and should be treated as preview
    features.
 
- o The x86 Open64 driver is designed to automatically detect the CPU of the
-   host machine and optimize for its architecture. Some new CPU models may
-   not be detected correctly, which may result in code generated for the
-   generic 'i386' target, or in some cases, the link-time error message:
+ o Fortran runtime error messages such as 'Subscript is out of range' may be
+   incorrectly displayed as:
 
-     /usr/bin/ld: cannot find -lacml_mv
-     collect2: ld returned 1 exit status
+     Unable to find error message (check NLSPATH, file lib.cat)
 
-   To work around this problem, specify a compatible target architecture on
-   the command line using the '-march=' option. For example, to compile on
-   machines with the Intel(R) Core(TM) i7 CPU, use '-march=core'.
-
-   This problem will be addressed in a future release.
-
- o The combination of '-g' and '-ipa' (or an option that implies IPA
-   compilation, such as '-Ofast') in the link command is not handled well.
-   The x86 Open64 compilers do not require '-g' in the link command, even for
-   for objects built with debugging information. However, '-ipa' is required
-   in the link command for IPA compilation. Therefore, we recommend omitting
-   the '-g' option and instead using the desired optimization flags in the
-   link command.
+   This problem will be resolved in a future release.
 
  o The x86 Open64 compiler ABI is designed to be compatible with the GNU ABI.
    However, recently an ABI incompatibility has been uncovered.
