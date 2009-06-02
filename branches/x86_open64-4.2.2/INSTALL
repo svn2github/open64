@@ -50,7 +50,7 @@ are using an sh-compatible shell, such as bash.
   export PATH=${TOOLROOT}/bin:$PATH
 
 Now, to build the x86 Open64 compiler components, switch to the
-x86_open64-4.2.2.1 directory and execute the following command:
+x86_open64-4.2.2 directory and execute the following command:
 
   make all MACHINE_TYPE=i386
 
