@@ -750,6 +750,9 @@ extern	void Init_TNs_For_PU (void);
 /* Initialize the TN data structure at the start of each REGION. */ 
 extern	void Init_TNs_For_REGION (void);
 
+#if defined(TARG_PPC32)
+extern TN * Gen_CR_TN (UINT cr);
+#endif
 
 /* TN generation: */
 
@@ -813,6 +816,12 @@ inline TN *Build_TN_Like(TN *tn)
     ISA_REGISTER_CLASS rc = TN_register_class(tn);
     if (tn == RA_TN || tn == JA_TN || tn == LC0_TN || tn == LC1_TN || tn == LC2_TN || tn == LC3_TN ||
 	tn == HI_TN ) {
+      rc = ISA_REGISTER_CLASS_integer;
+    }
+    new_tn = Gen_Register_TN(rc, TN_size(tn));
+#elif defined(TARG_PPC32)
+    ISA_REGISTER_CLASS rc = TN_register_class(tn);;
+    if (tn == RA_TN) {
       rc = ISA_REGISTER_CLASS_integer;
     }
     new_tn = Gen_Register_TN(rc, TN_size(tn));

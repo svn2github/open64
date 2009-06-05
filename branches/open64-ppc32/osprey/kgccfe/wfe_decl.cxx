@@ -86,6 +86,11 @@ extern "C" {
 // with the enumeration in common/com/ia32/config_targ.h
 #undef TARGET_PENTIUM
 #endif /* TARG_IA32 */
+#if defined(TARG_PPC32)
+// the definition in gnu/config/ppc32/rs6000.h causes problem
+// with the enumeration in common/com/ppc32/config_targ.h
+#undef TARGET_POWERPC
+#endif /* TARG_PPC32 */
 
 #ifdef KEY 
 #ifdef TARG_MIPS
@@ -267,6 +272,8 @@ WFE_Assemble_Asm(char *asm_string)
     --CURRENT_SYMTAB;
 }
 
+extern ST* ap_tmp;
+extern ST* vararg_ofst;
 extern void
 WFE_Start_Function (tree fndecl)
 {
@@ -498,6 +505,11 @@ WFE_Start_Function (tree fndecl)
     body = WN_CreateBlock ( );
     wn = WN_CreateEntry ( num_args, func_st, body, NULL, NULL );
 
+#if defined(TARG_PPC32)
+	void Set_Current_PU_WN(WN * wn);
+	Set_Current_PU_WN(wn);
+#endif
+
     /* from 1..nkids, create idname args */
     INT i = 0;
     for (pdecl = DECL_ARGUMENTS (fndecl); pdecl; pdecl = TREE_CHAIN (pdecl) )
@@ -578,6 +590,8 @@ WFE_Start_Function (tree fndecl)
     WFE_Stmt_Append (vla_block, Get_Srcpos());
 
     WFE_Vararg_Start_ST = NULL;
+    ap_tmp = NULL;
+    vararg_ofst = NULL;
 #ifndef KEY
 // current_function_varargs does not exist any more, current_function_stdarg
 // is still available.
@@ -2623,6 +2637,9 @@ WFE_Alloca_ST (tree decl)
 #ifdef KEY  // TYPE_SIZE is size of array in bits.  Convert to bytes.  Bug 6887.
   TYPE_ID mtype = WN_rtype(swn);
   swn = WN_Div(mtype, swn, WN_Intconst(mtype, BITSPERBYTE));
+#ifdef TARG_PPC32
+  swn = WN_CreateCvtl(OPC_U4CVTL, 32, swn);
+#endif
 #endif
   WN *wn  = WN_CreateAlloca (swn);
   wn = WN_Stid (Pointer_Mtype, 0, alloca_st, ST_type (alloca_st), wn);

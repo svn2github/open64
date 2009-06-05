@@ -220,7 +220,7 @@ LNOTARGET_Int_Lior_Res (TI_RES_COUNT* resource_count, TYPE_ID rtype);
 extern double
 LNOTARGET_Int_Cior_Res (TI_RES_COUNT* resource_count, TYPE_ID rtype);
 #else
-#ifndef TARG_MIPS
+#if !(defined(TARG_MIPS) || defined(TARG_PPC32))
 extern double
 LNOTARGET_Int_Div_Res (TI_RES_COUNT* resource_count, BOOL eight_bytes);
 #else

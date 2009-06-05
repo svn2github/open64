@@ -1047,8 +1047,9 @@ WFE_Array_Expr(tree exp,
                  ("Variable Length Arrays within struct not currently implemented"));
       wn = WN_Ldid (Pointer_Mtype, 0, base_st, ST_type (base_st));
     }
-    else
+    else {
       wn = WN_Lda (Pointer_Mtype, ST_ofst(st)+component_offset, st, field_id);
+    }
     if (component_ty_idx == 0)
       *ty_idx = ST_type(st);
     else {
@@ -3746,6 +3747,206 @@ WFE_target_builtins (tree exp, INTRINSIC * iopc, BOOL * intrinsic_op)
 }
 #endif // TARG_X8664
 
+ST* ap_tmp;
+ST* vararg_ofst;
+static WN * CURRENT_PU_WN;
+
+void Set_Current_PU_WN(WN * wn)
+{
+	CURRENT_PU_WN = wn;
+}
+
+WN* Get_Current_PU_WN()
+{
+	return CURRENT_PU_WN;
+}
+
+static bool isFindCalled = false;
+TY_IDX
+Find_Vararg_TY_IDX_PPC32() {
+	static TY_IDX vararg_ty_idx;
+	if (!isFindCalled) {
+		isFindCalled = true;
+	} else {
+		return vararg_ty_idx;
+	}
+	STR_IDX name_idx = Save_Str("__va_list_tag");
+	UINT idx = 0;
+	TY_ITER iter = Ty_tab.begin();
+	for (; iter != Ty_tab.end(); iter++, idx++) {
+		if ((*iter).name_idx == name_idx) {
+			vararg_ty_idx = make_TY_IDX(idx);
+			return vararg_ty_idx;
+		}
+	}
+	FmtAssert(FALSE, ("could not find __va_list_tag"));
+}
+
+inline void 
+Check_AP_Tmp()
+{
+	if (ap_tmp == NULL) {
+		ap_tmp = New_ST();
+		ST_Init(ap_tmp, Save_Str("ap_tmp"), CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL, Make_Pointer_Type(Find_Vararg_TY_IDX_PPC32(), FALSE));
+	}
+}
+inline void 
+Check_Vararg_Ofst()
+{
+	if (vararg_ofst == NULL) {
+		vararg_ofst = New_ST();
+		ST_Init(vararg_ofst, Save_Str("va_cur_position"), CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL, MTYPE_To_TY(Pointer_Mtype));
+	}
+}
+
+extern void WFE_Expand_Start_Cond_WN(WN* test,  int exitflag);
+
+bool 
+Vararg_Is_Simple_Type(TYPE_ID mtype)
+{
+	return mtype == MTYPE_I1 || mtype == MTYPE_I2 || mtype == MTYPE_I4 || mtype == MTYPE_I8
+		|| mtype == MTYPE_U1 || mtype == MTYPE_U2 || mtype == MTYPE_U4 || mtype == MTYPE_U8
+		|| mtype == MTYPE_F4 || mtype == MTYPE_F8 || mtype == MTYPE_A4;
+}
+
+TY_IDX
+WFE_Load_Va_List_PPC32(tree ap)
+{
+	WN* ap_wn = WFE_Expand_Expr(ap);
+	TY_IDX va_ty_index = Find_Vararg_TY_IDX_PPC32();
+	if (WN_opcode(ap_wn) == OPC_MMLDID) {
+		ST* ap_st = WN_st(ap_wn);
+		Set_ST_addr_saved(ap_st);
+		ap_wn = WN_Lda(Pointer_Mtype, ST_ofst(ap_st), ap_st);
+	} else if (WN_opcode(ap_wn) == OPC_MMILOAD) { // for pointer
+		ap_wn = WN_kid0(ap_wn);
+	}
+	ap_wn = 	WN_Ternary(OPR_ARRAY, Pointer_Mtype, 
+			ap_wn, 
+			Make_Integer_Const(MTYPE_I4, 1), 
+			Make_Integer_Const(MTYPE_I4, 0));
+	WN_element_size(ap_wn) = TY_size(va_ty_index);
+	Check_AP_Tmp();
+	WN* wn = WN_Stid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE), ap_wn);
+	WFE_Stmt_Append (wn, Get_Srcpos());
+	return va_ty_index;
+}
+
+WN* 
+WFE_Expand_Vararg_Expr_PPC32(TY_IDX ty_idx, TY_IDX va_ty_index, FLD_HANDLE& reg_count, FLD_HANDLE& reg_save_area, FLD_HANDLE& overflow_area)
+{
+	TYPE_ID mtype = TY_mtype(ty_idx);
+	UINT reg_count_field_id = MTYPE_is_float(mtype) ? 2 : 1;
+	TYPE_ID	reg_count_rtype = Mtype_comparison(TY_mtype(FLD_type(reg_count)));
+	if (mtype == MTYPE_I8 || mtype == MTYPE_U8 || mtype == MTYPE_A8) {
+		WN* iwn = WN_Iload(TY_mtype(FLD_type(reg_count)), FLD_ofst(reg_count), va_ty_index, 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)),
+			reg_count_field_id);
+		iwn = WN_Band(reg_count_rtype, iwn, Make_Integer_Const(reg_count_rtype, 1));
+		iwn = WN_Add(reg_count_rtype, iwn, 
+			WN_Iload(TY_mtype(FLD_type(reg_count)), FLD_ofst(reg_count), va_ty_index, 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)),
+			reg_count_field_id));
+		iwn = WN_Istore(TY_mtype(FLD_type(reg_count)),  FLD_ofst(reg_count), Make_Pointer_Type(va_ty_index, FALSE),
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)), iwn, reg_count_field_id);
+		WFE_Stmt_Append (iwn, Get_Srcpos());
+		
+	}
+	WN* cond = WN_LT(reg_count_rtype,  
+		WN_Iload(TY_mtype(FLD_type(reg_count)), FLD_ofst(reg_count), va_ty_index, 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)),
+			reg_count_field_id), 
+		Make_Integer_Const(reg_count_rtype, 8));
+	INT16 ty_size = (MTYPE_is_size_double(mtype) || mtype == MTYPE_F4) ? 8 : 4;
+	WN *comma_block      = WN_CreateBlock ();
+ 	WFE_Stmt_Push (comma_block, wfe_stmk_comma, Get_Srcpos ());
+	WFE_Stmt_Pop (wfe_stmk_comma);
+	if (WN_first (comma_block)) {
+		cond = WN_CreateComma (OPR_COMMA, Mtype_comparison (mtype), MTYPE_V,
+		comma_block, cond);
+	} else {
+		WN_Delete (comma_block);
+	}
+	WFE_Expand_Start_Cond_WN(cond, 0);
+	Check_Vararg_Ofst();
+	WN* wn = WN_Iload(TY_mtype(FLD_type(reg_count)), FLD_ofst(reg_count), va_ty_index, 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)),
+			reg_count_field_id);
+	if (reg_count_rtype != Pointer_Mtype) {
+		wn = WN_Cvt(reg_count_rtype, Pointer_Mtype, wn);
+	}
+	wn = WN_Shl(Pointer_Mtype, wn, Make_Integer_Const(MTYPE_I4, MTYPE_is_float(mtype) ? 3 : 2));
+	WN* base = WN_Iload(TY_mtype(FLD_type(reg_save_area)), FLD_ofst(reg_save_area), va_ty_index, 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)),
+			4);
+	if (MTYPE_is_float(mtype)) {
+		base = WN_Add(Pointer_Mtype, base, Make_Integer_Const(Pointer_Mtype, 32));
+	}
+	wn = WN_Add(Pointer_Mtype, wn, base);
+	wn = WN_Stid(Pointer_Mtype, ST_ofst(vararg_ofst), vararg_ofst, Make_Pointer_Type(ty_idx, FALSE), wn);
+	WFE_Stmt_Append (wn, Get_Srcpos());
+
+	INT16  countinc = (mtype == MTYPE_I8 || mtype == MTYPE_U8) ? 2 : 1;
+	wn = WN_Iload(TY_mtype(FLD_type(reg_count)), FLD_ofst(reg_count), va_ty_index, 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)),
+			reg_count_field_id);
+	wn = WN_Add(reg_count_rtype, wn, Make_Integer_Const(reg_count_rtype, countinc));
+	wn = WN_Istore(TY_mtype(FLD_type(reg_count)),  FLD_ofst(reg_count), Make_Pointer_Type(va_ty_index, FALSE), 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)), wn,reg_count_field_id);
+	WFE_Stmt_Append (wn, Get_Srcpos());
+			
+	WFE_Expand_Start_Else();
+
+	wn = WN_Iload(TY_mtype(FLD_type(overflow_area)), FLD_ofst(overflow_area), va_ty_index, 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)), 
+			3);
+	wn = WN_Stid(Pointer_Mtype, ST_ofst(vararg_ofst), vararg_ofst, Make_Pointer_Type(ty_idx, FALSE), wn);
+	WFE_Stmt_Append (wn, Get_Srcpos());
+
+	wn = WN_Iload(TY_mtype(FLD_type(overflow_area)), FLD_ofst(overflow_area), va_ty_index, 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)), 
+			3);
+	wn = WN_Add(TY_mtype(FLD_type(overflow_area)), wn, Make_Integer_Const(TY_mtype(FLD_type(overflow_area)), ty_size));
+	wn = WN_Istore(TY_mtype(FLD_type(overflow_area)),  FLD_ofst(overflow_area), Make_Pointer_Type(va_ty_index, FALSE), 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)), wn, 3);
+	WFE_Stmt_Append (wn, Get_Srcpos());
+
+	WFE_Expand_End_Cond ();
+
+	
+	if (Vararg_Is_Simple_Type(mtype)) {
+		wn = WN_Iload(mtype, 0, ty_idx, 
+			WN_Ldid(Pointer_Mtype, ST_ofst(vararg_ofst), vararg_ofst, Make_Pointer_Type(ty_idx, FALSE)));
+	} else {
+		wn = WN_Iload(Pointer_Mtype, 0, Make_Pointer_Type(ty_idx, FALSE), 
+			WN_Ldid(Pointer_Mtype, ST_ofst(vararg_ofst), vararg_ofst, Make_Pointer_Type(ty_idx, FALSE)));
+		wn = WN_Iload(mtype, 0,  ty_idx, wn);
+	}
+	return wn;
+}
+
+
+WN*
+WFE_Expand_Vararg_Expr_PPC32(TY_IDX ty_idx, TY_IDX va_ty_index)
+{
+	FLD_HANDLE gpr = TY_fld(va_ty_index);
+	FLD_HANDLE fpr = FLD_next(gpr);
+	FLD_HANDLE overflow_area = FLD_next(fpr);
+	FLD_HANDLE reg_save_area = FLD_next(overflow_area);
+	TYPE_ID mtype = TY_mtype(ty_idx);
+	switch (mtype)
+	{	
+    		case MTYPE_F4:
+		case MTYPE_F8:
+		{
+			return WFE_Expand_Vararg_Expr_PPC32(ty_idx, va_ty_index, fpr, reg_save_area, overflow_area);
+		}
+		default:
+			return WFE_Expand_Vararg_Expr_PPC32(ty_idx, va_ty_index, gpr, reg_save_area, overflow_area);
+	}
+	return NULL;
+}
+
 /* expand gnu expr tree into symtab & whirl */
 WN *
 WFE_Expand_Expr (tree exp, 
@@ -3810,7 +4011,7 @@ WFE_Expand_Expr (tree exp,
 		wn = WN_Intconst (Pointer_Mtype, 0);
 	      }
 	      else
-	        wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
+                 wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
 	    }
 	    break;
 
@@ -3855,7 +4056,14 @@ WFE_Expand_Expr (tree exp,
 	      // taken. 
 	      if ( ST_export (Get_Current_PU_ST()) != EXPORT_LOCAL)
 #endif
+#if defined(TARG_PPC32)
+            {
+              Clear_PU_must_inline(Get_Current_PU());
+#endif
               Set_PU_no_inline (Get_Current_PU ());
+#if defined(TARG_PPC32)
+             }
+#endif
             }
             break;
 
@@ -4721,10 +4929,15 @@ WFE_Expand_Expr (tree exp,
 #endif
 	    wn = WN_Cvt(WN_rtype(wn0), mtyp, wn0);
 	    // The following opcodes are not valid for MIPS
+#if defined(TARG_PPC32)
+	    if (WN_opcode(wn) == OPC_I4U4CVT ||
+	        WN_opcode(wn) == OPC_I8U8CVT) {
+#else
 	    if (WN_opcode(wn) == OPC_I4U4CVT ||
 	        WN_opcode(wn) == OPC_U4I4CVT ||
 	        WN_opcode(wn) == OPC_I8U8CVT ||
 	        WN_opcode(wn) == OPC_U8I8CVT) {
+#endif
 	      wn = WN_kid0 (wn);
 	    }
 	  }
@@ -5295,6 +5508,93 @@ WFE_Expand_Expr (tree exp,
 	      case BUILT_IN_VA_START:
 #endif
 	      {
+#ifdef TARG_PPC32
+		arg1 = TREE_VALUE (arglist);
+		TY_IDX va_ty_index = WFE_Load_Va_List_PPC32(arg1);
+		
+		static int va_count;
+
+		va_count++;
+		int fix_int = 0, fix_float = 0, int_start_offset, float_start_offset;
+		
+		ST * pu = Get_Current_PU_ST();
+		WN * pu_tree = CURRENT_PU_WN;
+		
+		arg2 = TREE_VALUE (TREE_CHAIN (arglist));
+		while (TREE_CODE (arg2) == NOP_EXPR
+		       || TREE_CODE (arg2) == CONVERT_EXPR
+		       || TREE_CODE (arg2) == NON_LVALUE_EXPR
+		       || TREE_CODE (arg2) == INDIRECT_REF)
+		  arg2 = TREE_OPERAND (arg2, 0);
+		
+		ST * st_arg2 = Get_ST(arg2);
+		TYPE_ID ty_arg2 = TY_mtype(ST_type(st_arg2));
+		int va_arg_begin = -1;
+		
+		// Get fix formal integer/float parameter number
+		for (int i = 0; i < WN_num_formals(pu_tree); i++) {
+			ST * stf  = WN_st(WN_formal(pu_tree, i));
+			TY_IDX ty = ST_type(stf);
+			TYPE_ID tid = TY_mtype (ty);		  	  
+			if (MTYPE_float(tid)) {
+				fix_float++;
+			}
+			else if (MTYPE_is_integral(tid) && MTYPE_is_size_double(tid)) {	// longlong type
+				fix_int += 2;
+				if (i & 0x1) 
+					fix_int++;
+			}
+			else {		// struct value, union value, and all others are treated as integer
+				fix_int++;
+			}
+			if (st_arg2 == stf) {
+				FmtAssert((va_arg_begin == -1), ("VA_START here"));
+				if (MTYPE_float(ty_arg2)) {
+					va_arg_begin = fix_float;
+				}
+				else {
+					va_arg_begin = fix_int;
+				}
+				break;
+			}    
+		}
+		FmtAssert((va_arg_begin != -1), ("va_start can not find 2nd parameter in formal parameter list"));
+		FLD_HANDLE gpr = TY_fld(va_ty_index);
+		wn = WN_Istore(TY_mtype(FLD_type(gpr)), FLD_ofst(gpr), Make_Pointer_Type(va_ty_index, FALSE), 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)), 
+			Make_Integer_Const(MTYPE_I4, (fix_int>=8) ? 8 : fix_int), 1);
+		WFE_Stmt_Append (wn, Get_Srcpos());
+		
+		FLD_HANDLE fpr = FLD_next(gpr);
+		wn = WN_Istore(TY_mtype(FLD_type(fpr)), FLD_ofst(fpr), Make_Pointer_Type(va_ty_index, FALSE), 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)), 
+			Make_Integer_Const(MTYPE_I4, (fix_float>=8) ? 8: fix_float), 2);
+		WFE_Stmt_Append (wn, Get_Srcpos());
+		
+		FLD_HANDLE overflow_arg_area = FLD_next(fpr);
+		INT32 overflow_start_ofst = 8;
+		if (fix_int > 8) {
+			overflow_start_ofst += MTYPE_byte_size(MTYPE_I4) * (fix_int - 8);
+		}
+		if (fix_float > 8) {
+			overflow_start_ofst += MTYPE_byte_size(MTYPE_F8) * (fix_float - 8);
+		}
+		WN* ofstWN = WN_Add(Pointer_Mtype, WN_LdidPreg(Pointer_Mtype, 65), 
+			Make_Integer_Const(MTYPE_I4, overflow_start_ofst));
+		wn = WN_Istore(TY_mtype(FLD_type(overflow_arg_area)), FLD_ofst(overflow_arg_area), Make_Pointer_Type(va_ty_index, FALSE), 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)), ofstWN, 3);
+		WFE_Stmt_Append (wn, Get_Srcpos());
+
+		FLD_HANDLE reg_save_area = FLD_next(overflow_arg_area);
+		ofstWN = WN_Add(Pointer_Mtype, WN_LdidPreg(Pointer_Mtype, 66), 
+			Make_Integer_Const(MTYPE_I4, 1));
+		wn = WN_Istore(TY_mtype(FLD_type(reg_save_area)), FLD_ofst(reg_save_area), Make_Pointer_Type(va_ty_index, FALSE), 
+			WN_Ldid(Pointer_Mtype, ST_ofst(ap_tmp), ap_tmp, Make_Pointer_Type(va_ty_index, FALSE)), ofstWN, 4);
+		WFE_Stmt_Append (wn, Get_Srcpos());
+		whirl_generated = TRUE;
+		wn = NULL;
+		break;
+#endif
 #ifdef TARG_X8664
 		if( TARGET_64BIT ){
 		  iopc = INTRN_VA_START;
@@ -5357,8 +5657,18 @@ WFE_Expand_Expr (tree exp,
 	      {
 		arg1 = TREE_VALUE (arglist);
 		arg2 = TREE_VALUE (TREE_CHAIN (arglist));
-                TY_IDX arg_ty_idx = Get_TY (TREE_TYPE (arg1));
-
+		TY_IDX arg_ty_idx = Get_TY (TREE_TYPE (arg1));
+#ifdef TARG_PPC32
+		WN* addr = WFE_Expand_Expr( arg1 );
+		WN* value = WFE_Expand_Expr( arg2 );
+		TY_IDX va_ty_idx = Find_Vararg_TY_IDX_PPC32();
+		wn = WN_Iload(MTYPE_M, 0, va_ty_idx, value);
+		wn = WN_Istore(MTYPE_M, 0, Make_Pointer_Type(va_ty_idx, FALSE), addr, wn);
+		WFE_Stmt_Append( wn, Get_Srcpos() );
+              whirl_generated = TRUE;
+		wn = NULL;
+		break;
+#endif
 #ifdef KEY
 		/* Under -m32, convert a __builtin_va_copy to an assignment if the
 		   type of va_list is not array.
@@ -5478,16 +5788,18 @@ WFE_Expand_Expr (tree exp,
 		  tree len1 = c_strlen_exported (arg1);
 		  if (len1) {
 		    tree len2 = c_strlen_exported (arg2);
+#if !defined(TARG_PPC32)        // contains bug
 		    if (len2) {
 		      char *ptr1 = get_string_pointer (WFE_Expand_Expr (arg1));
 		      char *ptr2 = get_string_pointer (WFE_Expand_Expr (arg2));
-		      if (ptr1 && ptr2) {
+		      if (ptr1 && ptr2) { //if not, we should delete the code of arg1 and arg2
 			wn = WN_Intconst (MTYPE_I4,
 					  strcmp (ptr1, ptr2));
 			whirl_generated = TRUE;
 			break;
 		      }
 		    }
+#endif        
 		  }
 		  iopc = INTRN_STRCMP;
 //		  intrinsic_op = TRUE;
@@ -5512,7 +5824,7 @@ WFE_Expand_Expr (tree exp,
 		  }
 		}
                 break;
-
+#ifndef TARG_PPC32 // turn off for the timing being due to bug 
 #ifdef KEY
             case BUILT_IN_FLOOR:
               arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
@@ -5524,7 +5836,6 @@ WFE_Expand_Expr (tree exp,
               whirl_generated = TRUE;
 #endif
               break;
-
             case BUILT_IN_FLOORF:
               arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
 #if defined TARG_MIPS
@@ -5620,7 +5931,7 @@ WFE_Expand_Expr (tree exp,
               whirl_generated = TRUE;
               break;
 #endif
-
+#endif // ifndef TARG_PPC32
 #ifdef TARG_NVISA
               case BUILT_IN_SQRT:
               case BUILT_IN_SQRTF:      // newer gcc name
@@ -6482,9 +6793,13 @@ WFE_Expand_Expr (tree exp,
 		  load = WN_LdidPreg(MTYPE_F8, 32); //$f0
 		  store = WN_Stid(MTYPE_F8, 
 				  (WN_OFFSET)8, tmpst, Spill_Int_Type, load);
-		  WFE_Stmt_Append (store, Get_Srcpos());		
+		  WFE_Stmt_Append (store, Get_Srcpos());
+#ifdef TARG_PPC32
+                wn = WN_Lda (Pointer_Mtype, 0, tmpst);
+#else
 		  wn = WN_Lda (Pointer_Mtype, 0, tmpst, 
 			       Make_Pointer_Type (ST_type(tmpst), FALSE));
+#endif
 
 		  // Dealloca/Restore SP
 		  WN *dealloca_wn = WN_CreateDealloca (2);
@@ -7736,6 +8051,15 @@ WFE_Expand_Expr (tree exp,
 
     case VA_ARG_EXPR:
       {
+#if defined(TARG_PPC32)
+      tree kid0 = TREE_OPERAND(exp, 0);
+      TY_IDX va_ty_index = WFE_Load_Va_List_PPC32(kid0);
+
+      wn = WFE_Expand_Vararg_Expr_PPC32(Get_TY (TREE_TYPE(exp)), va_ty_index);
+      break;
+      }     
+              
+#else // defined(TARG_PPC32)
 #ifdef TARG_X8664
 	if( TARGET_64BIT ){
 	  tree kid0 = TREE_OPERAND(exp, 0);
@@ -7996,6 +8320,7 @@ WFE_Expand_Expr (tree exp,
 
       }
       break;
+#endif // defined(TARG_PPC32)
 
     case ERROR_MARK:
 

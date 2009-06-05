@@ -61,6 +61,8 @@ extern boolean option_matches_phase (int flag, phases_t p);
 extern boolean is_internal_option (int flag);
 extern void set_internal_option (int flag);
 
+/* keep multi options for a phase */ 
+extern void keep_phase_for_option(int flag, char *opt);
 /* add phase to list of valid phases for option */
 extern void add_phase_for_option(int flag, phases_t p);
 /* remove phase from list of valid phases for option */

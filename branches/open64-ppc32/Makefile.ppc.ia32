@@ -1,0 +1,213 @@
+#
+#
+#  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of version 2 of the GNU General Public License as
+#  published by the Free Software Foundation.
+#
+#  This program is distributed in the hope that it would be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+#
+#  Further, this software is distributed without any warranty that it is
+#  free of the rightful claim of any third person regarding infringement 
+#  or the like.  Any license provided herein, whether implied or 
+#  otherwise, applies only to this software file.  Patent licenses, if 
+#  any, provided herein do not apply to combinations of this program with 
+#  other software, or any other product whatsoever.  
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write the Free Software Foundation, Inc., 59
+#  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+#
+#  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+#  Mountain View, CA 94043, or:
+#
+#  http://www.sgi.com
+#
+#  For further information regarding this notice, see:
+#
+#  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+#
+#
+
+# The directory where all native compiler component build subdirectories
+# are located
+#
+
+  NATIVE_BUILD_DIR    = osprey/targia32_ppc32
+  NATIVE_BUILD_DIR_LD = osprey/targcygnus_ppc32_ppc32
+  GNUFE_BUILD_DIR     = osprey-gcc/targppc32_ppc32
+  TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/ppc.so  
+  LIB_BUILD_DIR       = osprey/targppc32_builtonppc32  
+
+CROSS_BUILD = true
+SUBMAKE=${MAKE}
+
+# All native compiler components:
+BASIC_COMPONENTS = \
+		$(NATIVE_BUILD_DIR)/driver/driver \
+                $(NATIVE_BUILD_DIR)/be/be \
+                $(NATIVE_BUILD_DIR)/be/be.so \
+                $(NATIVE_BUILD_DIR)/cg/cg.so \
+                $(NATIVE_BUILD_DIR)/wopt/wopt.so \
+                $(NATIVE_BUILD_DIR)/lno/lno.so \
+                $(NATIVE_BUILD_DIR)/lw_inline/inline \
+                $(NATIVE_BUILD_DIR)/ipa/ipa.so \
+                $(NATIVE_BUILD_DIR)/ipl/ipl.so \
+                $(NATIVE_BUILD_DIR)/ipl/ipl \
+                $(NATIVE_BUILD_DIR)/whirl2c/whirl2c.so \
+                $(NATIVE_BUILD_DIR)/whirl2c/whirl2c \
+                $(NATIVE_BUILD_DIR)/whirl2f/whirl2f.so \
+                $(NATIVE_BUILD_DIR)/whirl2f/whirl2f \
+                $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a 
+
+GNU3_FE_COMPONENTS = \
+                $(NATIVE_BUILD_DIR)/gccfe/gfec \
+                $(NATIVE_BUILD_DIR)/g++fe/gfecc
+
+GNU4_FE_COMPONENTS = \
+                $(NATIVE_BUILD_DIR)/wgen/wgen \
+                $(GNUFE_BUILD_DIR)/gcc/cc1 \
+                $(GNUFE_BUILD_DIR)/gcc/cc1plus
+
+FORT_FE_COMPONENTS = \
+                $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
+
+NATIVE_COMPONENTS = $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
+                    $(GNU3_FE_COMPONENTS) $(GNU4_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
+
+CROSS_COMPONENTS =  $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
+                    $(GNU3_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
+
+CROSS_PHONY_TARGET = $(shell for i in $(CROSS_COMPONENTS); do basename "$$i" ; done)
+
+PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done) 
+.PHONY : $(PHONY_TARGET) install clean clobber
+
+all: build
+
+$(NATIVE_BUILD_DIR)/driver/driver driver:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/driver
+
+$(NATIVE_BUILD_DIR)/gccfe/gfec gfec:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gccfe
+
+$(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe
+
+$(NATIVE_BUILD_DIR)/be/be be:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be
+
+$(NATIVE_BUILD_DIR)/be/be.so be.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be
+
+$(NATIVE_BUILD_DIR)/cg/cg.so cg.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/cg
+
+$(NATIVE_BUILD_DIR)/wopt/wopt.so wopt.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wopt
+
+$(NATIVE_BUILD_DIR)/lno/lno.so lno.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/lno
+
+$(NATIVE_BUILD_DIR)/ipa/ipa.so ipa.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipa
+
+$(NATIVE_BUILD_DIR)/ipl/ipl.so ipl.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipl
+
+$(NATIVE_BUILD_DIR)/ipl/ipl ipl:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipl
+
+$(NATIVE_BUILD_DIR)/lw_inline/inline inline:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/lw_inline
+
+$(NATIVE_BUILD_DIR)/whirl2c/whirl2c.so whirl2c.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2c
+
+$(NATIVE_BUILD_DIR)/whirl2c/whirl2c whirl2c:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2c
+
+$(NATIVE_BUILD_DIR)/whirl2f/whirl2f.so whirl2f.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2f
+
+$(NATIVE_BUILD_DIR)/whirl2f/whirl2f whirl2f:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2f
+
+$(NATIVE_BUILD_DIR)/targ_info/ppc.so:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/targ_info
+
+$(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a:
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ir_tools
+
+.PHONY: Force
+
+build: ${PHONY_TARGET} 
+
+cross: NATIVE_BUILD_DIR = osprey/targia32_ppc32
+cross: NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia32_ia64
+cross: CROSS_BUILD = true
+cross: $(CROSS_PHONY_TARGET)
+	echo $(CROSS_PHONY_TARGET)
+
+install: ;@./install_compiler.sh.ppc $(MACHINE_TYPE)
+install-cross: ;@./install_compiler.sh ia64-cross
+
+.PHONY: library lib clean-library clean-lib
+library lib: LIB_ACTION = default
+clean-library clean-lib: LIB_ACTION = clobber
+
+
+clobber clean: clean-lib
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/driver clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe clobber
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/cg clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wopt clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/lno clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipa clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipl clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/lw_inline clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2c clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2f clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/../libkapi clean 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/targ_info clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ir_tools clobber
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/include clobber
+	
+	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
+		libiberty libunwindP; do  \
+		$(SUBMAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \
+	done
+
+
+help:
+	@echo "Help of the Makefile for Open64 compiler source"
+	@echo "Available targets:"
+	@echo "  - (DEFAULT)"
+	@echo "    Build the components of the compiler"
+	@echo "  - help"
+	@echo "    Display this help"
+	@echo "  - install"
+	@echo "    Install the components of the compiler."
+	@echo "    If TOOLROOT is set, the compiler will be installed under the TOOLROOT,"
+	@echo "    otherwise, you will be prompted to input the path\n"
+	@echo "  - library"
+	@echo "    Build the libraries needed by the compiler"
+	@echo "  - clean-lib"
+	@echo "    Remove intermediate files generated in building libraries"
+	@echo "  - clean"
+	@echo "  - clobber"
+	@echo "    Remove all intermediate files"
+	@echo ""
+	@echo "Available options (former is default):" 
+	@echo "  - BUILD_OPTIMIZE={NODEBUG|DEBUG}"
+	@echo "    Enable debug the compiler or not"
+	@echo "  - BUILD_COMPILER={GNU|OSP|PSC}"
+	@echo "    Using GCC(GNU) or Open64(OSP) Or Pathscale(PSC) compiler"
+	@echo "    to build the open64 compiler"
+	@echo "  - V={0|1}"
+	@echo "    Display detailed compilation progress or not"

@@ -71,9 +71,12 @@
  * (It would be better to get the max operands and results from the
  * generated targ_isa_operands.h file -- Ken)
  */
-#ifdef TARG_SL
+#if defined(TARG_SL)
 #define MAX_OPNDS 9
 #define MAX_RESULTS 4
+#elif defined(TARG_PPC32)
+#define MAX_OPNDS 6
+#define MAX_RESULTS 2
 #else
 #define MAX_OPNDS ISA_OPERAND_max_operands
 #define MAX_RESULTS ISA_OPERAND_max_results

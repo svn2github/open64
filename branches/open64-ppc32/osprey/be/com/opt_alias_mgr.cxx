@@ -1485,13 +1485,15 @@ void Print_alias_info(char *buf, const ALIAS_MANAGER *am, const WN *wn)
   POINTS_TO *pt = am->Pt(alias_id);
 
   if (pt->Expr_kind() == EXPR_IS_ADDR && pt->Base_kind() == BASE_IS_FIXED) {
+    const char* st_name = ST_class(pt->Base()) == CLASS_CONST ? "<constant>" : ST_name(pt->Base());
+    
     if (pt->Ofst_kind() == OFST_IS_FIXED) 
       sprintf(buf, "id:%d %s+0x%llx",
 	      alias_id, 
-	      ST_class(pt->Base())==CLASS_VAR ? ST_name(pt->Base()) : "not_variable",
+	      ST_class(pt->Base())==CLASS_VAR ? st_name : "not_variable",
 	      pt->Byte_Ofst());
     else
-      sprintf(buf, "id:%d %s", alias_id, ST_name(pt->Base()));
+      sprintf(buf, "id:%d %s", alias_id, st_name);
   } else if (pt->F_param() && pt->Based_sym() != NULL) {
     sprintf(buf, "id:%d parm:%s", alias_id, ST_name(pt->Based_sym()));
   } else if (pt->Unique_pt() && pt->Based_sym() != NULL) {

@@ -74,7 +74,7 @@ const char * sanity_check_targ_so_name_p;
  * ====================================================================
  */
 void
-#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_PPC32)
 TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *tpath, char* version)
 #else
 TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *tpath)

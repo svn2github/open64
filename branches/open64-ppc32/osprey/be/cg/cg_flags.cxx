@@ -210,6 +210,8 @@ BOOL CG_cond_defs_allowed = FALSE;
 BOOL LOCS_Enable_Bundle_Formation = FALSE;
 #if defined(TARG_MIPS) && !defined(TARG_SL)
 BOOL CG_tail_call = FALSE;
+#elif defined(TARG_PPC32)
+BOOL CG_tail_call = FALSE;// we have some problem with struct value parameter tail call OPT
 #else
 BOOL CG_tail_call = TRUE;
 #endif

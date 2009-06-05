@@ -1322,7 +1322,7 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
 
       x_copy = WN_COPY_Tree(x);
     }    
-#if !defined (TARG_MIPS) && !defined (TARG_IA64)
+#if !defined (TARG_MIPS) && !defined (TARG_IA64) && !defined(TARG_PPC32)
     else if (ABS((trunc(n)+1.0/3) - n) < .0000001 && 
              ! (Is_Target_64bit() && !Is_Target_Anyx86() && OPT_Fast_Math))
     { // the pow in fast_math is faster than cbrt, so no point converting

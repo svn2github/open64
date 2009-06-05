@@ -652,6 +652,12 @@ Process_Targ_Group ( char *targ_args )
 void
 Check_Target ( void )
 {
+#ifdef TARG_PPC32
+  abi  = ABI_P32;
+  isa  = ISA_PPC32;
+  proc = 0;
+  return;
+#else
   int opt_id;
   int opt_val;
 
@@ -919,6 +925,7 @@ Check_Target ( void )
     fprintf ( stderr, "Check_Target done; ABI=%d ISA=%d Processor=%d\n",
 	      abi, isa, proc );
   }
+#endif
 }
 
 /* ====================================================================

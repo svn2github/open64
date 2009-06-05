@@ -95,6 +95,15 @@
     #define PHASEPATH	 "/ia32-sgi-linux/bin"
     #define GNUPHASEPATH "/lib"
 
+#elif defined(TARG_PPC32)
+#define NAMEPREFIX	 ""
+#define BINPATH		OPEN64_INSTALL_PREFIX "/bin"
+#define ALTBINPATH	BINPATH
+#define LIBPATH		OPEN64_INSTALL_PREFIX "/lib"
+#define ALTLIBPATH	LIBPATH
+#define PHASEPATH	OPEN64_INSTALL_PREFIX "/lib"
+#define GNUPHASEPATH	OPEN64_INSTALL_PREFIX "/lib/gcc-lib/ppc32-open64-linux/4.0/"
+
 #else
     #define NAMEPREFIX	""
     #ifdef PSC_TO_OPEN64

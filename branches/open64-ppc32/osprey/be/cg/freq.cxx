@@ -783,7 +783,7 @@ Pointer_Heuristic(
 
   cond_wn = WN_kid0(br_wn);
 
-#if defined(TARG_SL)
+#if defined(TARG_SL) || defined(TARG_PPC32)  
   if (cond_wn == 0)  return FALSE;
 #endif
 
@@ -883,9 +883,11 @@ Opcode_Heuristic(
   WN *br_wn = BB_branch_wn(bb);
   if (br_wn) {
     WN *cond_wn = WN_kid0(br_wn);
-#if defined(TARG_SL)
+
+#if defined(TARG_SL) || defined(TARG_PPC32)
     if (!cond_wn) return FALSE;
 #endif    
+
     OPERATOR cond_oper = WN_operator(cond_wn);
     if (OPERATOR_is_compare(cond_oper)) {
       if (WN_Is_Pointer(WN_kid0(cond_wn)) || WN_Is_Pointer(WN_kid1(cond_wn))) {

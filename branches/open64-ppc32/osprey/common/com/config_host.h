@@ -84,11 +84,11 @@ static char *config_host_rcs_id = "$Source$ $Revision$";
 
 #else 
 /* unix systems should have endian.h */
-#	ifdef __APPLE__
+#ifdef __APPLE__
 #include <machine/endian.h>
-#	else
+#else
 #include <endian.h>
-#	endif
+#endif
 
 #if defined(__BYTE_ORDER) && (__BYTE_ORDER == __BIG_ENDIAN)
 #define HOST_IS_BIG_ENDIAN	1
@@ -98,7 +98,7 @@ static char *config_host_rcs_id = "$Source$ $Revision$";
 #define HOST_IS_BIG_ENDIAN	0
 #define HOST_IS_LITTLE_ENDIAN	1
 #endif
-#endif 
+#endif
 
 /* Does the host (compiler) support quad-precision floating point? */
 #if !defined(HOST_SUPPORTS_QUAD_FLOAT)

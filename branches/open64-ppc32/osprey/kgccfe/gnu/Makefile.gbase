@@ -89,6 +89,9 @@ endif
 ifeq ($(BUILD_TARGET), NVISA)
 HOSTDEFS += -DTARGET_NAME=\"nvisa\"
 endif
+ifeq ($(BUILD_TARGET), PPC32)
+HOSTDEFS += -DTARGET_NAME=\"ppc32-linux\"
+endif
 
 HOSTDEFS += -DLONGLONG
 HOSTDEFS += -DFRONT_END
@@ -155,6 +158,9 @@ endif
 ifeq ($(BUILD_TARGET), NVISA)
 GNU_TARG_DIR = $(GNU_DIR)/i386
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
+endif
+ifeq ($(BUILD_TARGET), PPC32)
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/rs6000
 endif
 
 TARG_COMUTIL_DIR	= $(TARGDIR)/libcomutil
@@ -352,6 +358,10 @@ ifeq ($(BUILD_TARGET), SL)
 endif
 ifeq ($(BUILD_TARGET), NVISA)
   GNU_SRCS += i386.c
+endif
+ifeq ($(BUILD_TARGET), PPC32)
+  GNU_SRCS += rs6000-c.c \
+              rs6000.c
 endif
 
 GNU_SRCS += 		\

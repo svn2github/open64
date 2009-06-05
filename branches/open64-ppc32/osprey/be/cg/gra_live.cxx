@@ -610,7 +610,7 @@ Compute_Force_TNs(void)
   }
 #endif
 
-#ifndef TARG_X8664
+#ifdef TARG_IA64
   // OSP_426, always mark Caller_GP_TN global
   if (Caller_GP_TN != NULL) {
     Force_Live_Add(Caller_GP_TN);

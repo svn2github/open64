@@ -870,7 +870,7 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
       switch (opcode) {
       case OPC_I8INTCONST:
       case OPC_U8INTCONST:
-#if defined(EMULATE_LONGLONG) && !defined(TARG_SL)
+#if defined(EMULATE_LONGLONG) && !defined(TARG_SL) && !defined(TARG_PPC32)
         {
           extern TN *Gen_Literal_TN_Pair(UINT64);
           const_tn = Gen_Literal_TN_Pair((UINT64) WN_const_val(home));

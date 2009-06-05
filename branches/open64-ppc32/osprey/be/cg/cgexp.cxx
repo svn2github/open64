@@ -130,6 +130,9 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Mtype_Immediate (result, op1, rtype, ops);
 #elif defined(TARG_SL)
 	Expand_Immediate (result, op1, rtype, ops);
+#elif defined(TARG_PPC32) 
+	void Expand_Immediate (TN *, TN *, BOOL, OPS *, TYPE_ID);
+	Expand_Immediate (result, op1, TRUE /* is_signed */, ops, rtype);
 #else
 	Expand_Immediate (result, op1, TRUE /* is_signed */, ops);
 #endif
@@ -173,7 +176,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Misaligned_Load ( opcode, result, op1, op2, variant, ops);
 	}
 	else {
-#if defined(TARG_MIPS) || defined(TARG_X8664)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_PPC32)
 		Expand_Load (opcode, result, op1, op2, ops);
 #else
 		Expand_Load (opcode, result, op1, op2, variant, ops);
@@ -191,7 +194,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Misaligned_Store (desc, op1, op2, op3, variant, ops);
 	}
 	else {
-#if defined(TARG_MIPS) || defined(TARG_X8664)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_PPC32)
 		Expand_Store (desc, op1, op2, op3, ops);
 #else
 		Expand_Store (desc, op1, op2, op3, variant, ops);
@@ -322,12 +325,16 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	break;
 
   case OPR_CVTL:
+#if defined(TARG_PPC32)
+	Expand_Convert_Length ( result, op1, op2, rtype, rtype, ops);
+#else
 	Expand_Convert_Length ( result, op1, op2, rtype, MTYPE_is_signed(rtype), ops);
+#endif
 	break;
   case OPR_CVT:
 	Is_True(rtype != MTYPE_B, ("conversion to bool unsupported"));
 	if (MTYPE_is_float(rtype) && MTYPE_is_float(desc)) {
-#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_PPC32)
 		Expand_Float_To_Float (result, op1, rtype, desc, ops);
 #else
 		Expand_Float_To_Float (result, op1, rtype, ops);
@@ -359,9 +366,11 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   		// zero-extend when enlarging an unsigned value, or 
   		//   converting to smaller unsigned vlaue (e.g U4I8CVT)
 		// else sign-extend.
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
 		// have to change register size, so not an in-place truncation
 		Expand_Convert (result, rtype, op1, desc, ops);
+#elif defined(TARG_PPC32)
+		Expand_Convert_Length (result, op1, op2, rtype, desc, ops);
 #else
 		Expand_Convert_Length ( result, op1, op2, 
 			rtype, 
@@ -373,7 +382,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		|| (MTYPE_bit_size(desc) > MTYPE_bit_size(rtype) ) ),
 		     ops);
 #endif
-#endif // TARG_NVISA
+#endif // TARG_NVISA TARG_PPC32
 	}
 	break;
 #ifdef TARG_X8664

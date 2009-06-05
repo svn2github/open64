@@ -1204,7 +1204,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
 #if defined(TARG_X8664) || defined(TARG_NVISA)
     BOOL target_64bit = Is_Target_64bit();
-#elif defined(TARG_SL)
+#elif defined(TARG_SL) || defined(TARG_PPC32)
     BOOL target_64bit = FALSE;
 #else
     BOOL target_64bit = TRUE;

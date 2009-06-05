@@ -1818,7 +1818,7 @@ IVR::Compute_trip_count(const OPCODE cmp_opc,
   //  The trip count is (bound - init + step + adjustmen) / step.
   //     
   CODEREP *trip_count = NO_TRIP_COUNT;
-#if defined(TARG_SL)
+#if defined(TARG_SL) || defined(TARG_PPC32)
   if (!diff_divisable_by_step) {
     if (step->Kind() == CK_CONST && step->Const_val() < 0) {
       return NO_TRIP_COUNT;

@@ -161,6 +161,13 @@ add_phase_for_option(int flag, phases_t p)
                 options[flag].valid_phases |= get_phase_mask(p);
 }
 
+/* keep multi options for a phase */
+void
+keep_phase_for_option(int flag, char *opt)
+{
+                options[flag].implies->name = opt;
+}
+
 /* remove phase to list of valid phases for option */
 void
 remove_phase_for_option(int flag, phases_t p)

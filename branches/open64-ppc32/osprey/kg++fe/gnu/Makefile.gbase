@@ -89,6 +89,9 @@ HOSTDEFS += -DPREFIX=\"$(OPEN64_INSTALL_PREFIX)\"
 HOSTDEFS += -DGCC_INCLUDE_DIR=\"$(OPEN64_INCLUDE_DIR)\"
 HOSTDEFS += -DGPLUSPLUS_INCLUDE_DIR=\"$(OPEN64_INCLUDE_DIR)\"
 endif
+ifeq ($(BUILD_TARGET), PPC32)
+HOSTDEFS += -DTARGET_NAME=\"ppc32-linux\"
+endif
 ifeq ($(BUILD_TARGET), MIPS)
 HOSTDEFS += -DTARGET_NAME=\"key-linux\"
 endif
@@ -166,6 +169,9 @@ GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/mips
 endif
 ifeq ($(BUILD_TARGET), SL)
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/sl
+endif
+ifeq ($(BUILD_TARGET), PPC32)
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/ppc32
 endif
 
 GNU_CP_DIR		= $(BUILD_BASE)/cp
@@ -357,7 +363,10 @@ endif
 ifeq ($(BUILD_TARGET), SL)
   GNU_SRCS += mips.c
 endif
-
+ifeq ($(BUILD_TARGET), PPC32)
+  GNU_SRCS += rs6000-c.c \
+              rs6000.c
+endif
 
 # Move lex.c down to after parse.c since it needs the generated parse.h
 GNU_CP_UNIQ_SRCS =	\

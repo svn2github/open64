@@ -3529,7 +3529,7 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
 	    return wn;
 	  }
 	}
-
+#if !defined(TARG_PPC32) // PPC32 can not handle intric call
 	/* Handle saturation arithmetic SUB operator by converting it 
 	 * to an intrinsic 
 	 * x =  (y >= 0x8000) ? y - 0x8000 : 0; 
@@ -3571,7 +3571,8 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
 	  return wn;
 	  
 	}
-#endif // TARG_X7664 
+#endif // TARG_X8664 
+#endif // #if !defined(TARG_PPC32)  
 #endif
 
         /* x > 0 ? x : -x => abs(x) */
@@ -3607,7 +3608,7 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
                   || WN_operator(test) == OPR_GE )
              && WN_Simp_Compare_Trees ( WN_kid0(test), lwn ) == 0
              && WN_Simp_Compare_Trees ( WN_kid1(test), rwn ) == 0 
-#if defined(TARG_SL)
+#if defined(TARG_SL) || defined(TARG_PPC32)
              && MTYPE_is_integral(WN_desc(test))
 #endif
 	 ) {
@@ -3633,7 +3634,7 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
                   || WN_operator(test) == OPR_LE )
              && WN_Simp_Compare_Trees ( WN_kid0(test), lwn ) == 0
              && WN_Simp_Compare_Trees ( WN_kid1(test), rwn ) == 0 
-#if defined(TARG_SL)
+#if defined(TARG_SL) || defined(TARG_PPC32)
              && MTYPE_is_integral(WN_desc(test))
 #endif			 
 	 ) {
@@ -4532,7 +4533,7 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info, BOOL is_return )
 
     case OPR_PARM:
 
-#ifdef KEY // bug 7741
+#if defined(KEY) && !defined(TARG_PPC32) // bug 7741
       wn = vho_lower_mparm (wn);
 #endif
       WN_kid0(wn) = vho_lower_expr (WN_kid0(wn), block, NULL);

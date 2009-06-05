@@ -118,6 +118,9 @@ endif
 ifeq ($(BUILD_TARGET), NVISA)
 TARGDEFS = -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), PPC32)
+TARGDEFS = -D__MIPS_AND_IA64_ELF_H
+endif
 
 TARG_TARG_INFO = $(TARGDIR)/targ_info
 ifeq ($(BUILD_OS), IRIX)
@@ -314,6 +317,10 @@ BE_CG_TARG_CXX_SRCS =	\
   pqs_cg.cxx            \
   pqs.cxx		\
   register_targ.cxx
+ifeq ($(OLIVE_AUTO_CG), TRUE)
+  BE_CG_TARG_CXX_SRCS += olive_expand_expr.cxx
+  CXXFLAGS += -D_OLIVE_AUTO_CG_
+endif
 
 ifeq ($(BUILD_TARGET), IA64)
   BE_CG_TARG_CXX_SRCS += float_rf.cxx
@@ -339,6 +346,10 @@ ifeq ($(BUILD_TARGET), SL)
   BE_CG_TARG_CXX_SRCS += gcm_licm.cxx
 endif
 
+ifeq ($(BUILD_TARGET), PPC32)
+  BE_CG_TARG_CXX_SRCS += cg_sas.cxx    
+  BE_CG_TARG_CXX_SRCS += olive_convert_wn.cxx
+endif
 ifeq ($(BUILD_TARGET), X8664)
   BE_CG_TARG_CXX_SRCS += cg_sched.cxx
   BE_CG_TARG_CXX_SRCS += cg_convert_x87.cxx
@@ -606,6 +617,9 @@ endif
 ifeq ($(BUILD_TARGET), X8664)
 TARGET_SO = opteron.so
 endif
+ifeq ($(BUILD_TARGET), PPC32)
+TARGET_SO = ppc.so
+endif
 
 ifeq ($(BUILD_OS), IRIX)
 LLDLIBS += -lelf_xtnd -ldwarf_xtnd -lelfutil_xtnd -lm -lc
@@ -620,6 +634,9 @@ LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
 LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
  endif
  ifeq ($(BUILD_TARGET), SL)
+LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
+ endif
+ ifeq ($(BUILD_TARGET), PPC32)
 LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
  endif
 LLDLIBS += $(TARG_LIBDWARF)/libdwarf.a \
@@ -656,6 +673,9 @@ ifndef SKIP_DEP_BUILD
 	$(call submake,$(TARG_LIBUNWIND))
   endif
   ifeq ($(BUILD_TARGET), SL)
+	$(call submake,$(TARG_LIBUNWIND))
+  endif
+  ifeq ($(BUILD_TARGET), PPC32)
 	$(call submake,$(TARG_LIBUNWIND))
   endif
  endif
@@ -850,6 +870,33 @@ gtn_set.h : gtn_set.td
 gtn_set.td : $(SETGEN) $(BE_CG_DIR)/gen_gtn_set
 	sh  $(BE_CG_DIR)/gen_gtn_set $(COMMON_UTIL_DIR) $(GEN_X_SET_OPTS)
 
+ifeq ($(OLIVE_AUTO_CG), TRUE)
+  BE_CG_OLIVE_DIR	= $(BE_CG_DIR)/olive
+  
+  OLIVE_GRAMMY		= $(BE_CG_OLIVE_DIR)/gram.y
+  OLIVE_GRAMMY_C	= $(BE_CG_OLIVE_DIR)/gram.c
+  OLIVE_GRAM_OBJ	= gram.o
+  OLIVE_OBJS		= x_arrayc.o x_arrayp.o	code.o iburg.o
+  OLIVE_SRCS		= $(BE_CG_OLIVE_DIR)/x_arrayc.c	$(BE_CG_OLIVE_DIR)/x_arrayp.c \
+			 $(BE_CG_OLIVE_DIR)/code.c	$(BE_CG_OLIVE_DIR)/iburg.c 
+  
+  OLIVE_TOOL		= olive
+  OLIVE_CG_GRAMMY	= $(BE_CG_TARG_DIR)/olive_expand_expr.brg
+  OLIVE_CG_OUTPUT	= olive_expand_expr.cxx
+  
+  $(OLIVE_CG_OUTPUT):	$(OLIVE_TOOL) $(OLIVE_CG_GRAMMY)
+			./$(OLIVE_TOOL) -I -L $(OLIVE_CG_GRAMMY)
+  $(OLIVE_TOOL):	$(OLIVE_OBJS) $(OLIVE_GRAM_OBJ)
+			$(CC) -o $(OLIVE_TOOL) $(LDFLAGS) $(OLIVE_OBJS) $(OLIVE_GRAM_OBJ)
+					
+  $(OLIVE_GRAM_OBJ):	$(OLIVE_GRAMMY_C)
+			$(CC) -c $(OLIVE_GRAMMY_C)		
+  $(OLIVE_GRAMMY_C):	$(OLIVE_GRAMMY)	
+			$(YACC)	-o $@ $?
+  $(OLIVE_OBJS):	$(OLIVE_SRCS)
+			$(CC) -c $?
+			
+endif
 # here's the target that gets made recursively
 derived_files : $(DERIVED_SRCS) $(DERIVED_INCS)
 

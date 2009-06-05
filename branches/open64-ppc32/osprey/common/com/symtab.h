@@ -567,7 +567,16 @@ ST_ATTR_Init (ST_ATTR& st_attr, ST_IDX st_idx, ST_ATTR_KIND akind, UINT64 val)
 {
     st_attr.st_idx = st_idx;
     st_attr.kind = akind;
-    st_attr.Set_u (val);
+    switch (akind) {
+    case ST_ATTR_DEDICATED_REGISTER:
+      st_attr.Set_reg_id(val);
+      break;
+    case ST_ATTR_SECTION_NAME:
+      st_attr.Set_section_name(val);
+      break;
+    default:
+      Is_True (FALSE, ("Unknown kind of ST_ATTR_Init "));
+    }
 }
 
 inline UINT32

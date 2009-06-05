@@ -389,17 +389,17 @@ add_object (int flag, char *arg)
 #endif
                  ) {	// bug 5184
 
-			/* add -lmv -lmblah */
+			/* add -lmv -lmblah */		
 			if (xpg_flag && invoked_lang == L_f77) {
 				add_library(lib_objects, "mv");
 				add_library(lib_objects, "m");
 			} else {
-#ifndef TARG_SL
+#if !defined(TARG_SL) && !defined(TARG_PPC32)   
 				add_library(objects, "mv");
 #endif
 				add_library(objects, "m");
 			}
-#ifndef TARG_SL
+#if !defined(TARG_SL) && !defined(TARG_PPC32)
 			if (invoked_lang == L_CC) {
 			    add_library(cxx_prelinker_objects, "mv");
 			    add_library(cxx_prelinker_objects, "m");
@@ -592,6 +592,11 @@ add_library_options (void)
 	case ABI_W64:
 		break;
 	case ABI_IA32:
+	case ABI_P32:
+#if defined(TARG_PPC32) && defined(HOST_PPC32)    
+    add_library_dir("/usr/lib");
+    add_library_dir("/usr/lib/gcc-lib/powerpc-linux/3.3.5");
+#endif    
  		break;
 	default:
 		internal_error("no abi set? (%d)", abi);
