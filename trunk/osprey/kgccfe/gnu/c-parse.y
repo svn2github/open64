@@ -1740,7 +1740,7 @@ enum_head:
 
 structsp_attr:
 	  struct_head identifier '{'
-		{ $$ = start_struct (RECORD_TYPE, $2);
+		{ $<ttype>$ = start_struct (RECORD_TYPE, $2);
 		  /* Start scope of tag before parsing components.  */
 		}
 	  component_decl_list '}' maybe_attribute
@@ -1750,7 +1750,7 @@ structsp_attr:
 				      $3, chainon ($1, $5));
 		}
 	| union_head identifier '{'
-		{ $$ = start_struct (UNION_TYPE, $2); }
+		{ $<ttype>$ = start_struct (UNION_TYPE, $2); }
 	  component_decl_list '}' maybe_attribute
 		{ $$ = finish_struct ($<ttype>4, $5, chainon ($1, $7)); }
 	| union_head '{' component_decl_list '}' maybe_attribute
@@ -1758,12 +1758,12 @@ structsp_attr:
 				      $3, chainon ($1, $5));
 		}
 	| enum_head identifier '{'
-		{ $$ = start_enum ($2); }
+		{ $<ttype>$ = start_enum ($2); }
 	  enumlist maybecomma_warn '}' maybe_attribute
 		{ $$ = finish_enum ($<ttype>4, nreverse ($5),
 				    chainon ($1, $8)); }
 	| enum_head '{'
-		{ $$ = start_enum (NULL_TREE); }
+		{ $<ttype>$ = start_enum (NULL_TREE); }
 	  enumlist maybecomma_warn '}' maybe_attribute
 		{ $$ = finish_enum ($<ttype>3, nreverse ($4),
 				    chainon ($1, $7)); }
@@ -2478,7 +2478,7 @@ structured_block:
 parallel_construct:
         parallel_directive
         {
-	    $$ = add_stmt (build_omp_stmt (parallel_dir_b, $1));
+	    $<ttype>$ = add_stmt (build_omp_stmt (parallel_dir_b, $1));
 	    In_MP_Region = true;
 	    mp_nesting++;
 	    if (mp_nesting == MAX_MP_NESTING)
@@ -2545,7 +2545,7 @@ for_construct:
         for_directive
         {
 	    add_stmt (build_omp_stmt (for_dir_b, $1));
-	    $$ = NULL;
+	    $<ttype>$ = NULL;
         }
                                                                                 
         iteration_statement
@@ -2625,7 +2625,7 @@ sections_construct:
         sections_directive
         {
 	    add_stmt (build_omp_stmt (sections_cons_b, $1));
-	    $$ = NULL;
+	    $<ttype>$ = NULL;
         }
         section_scope
         { add_stmt (build_omp_stmt (sections_cons_e, NULL)); $$ = NULL; }
@@ -2709,7 +2709,7 @@ single_construct:
         single_directive
         {
 	    add_stmt (build_omp_stmt (single_cons_b, $1));
-	    $$ = NULL;
+	    $<ttype>$ = NULL;
         }
         structured_block
         { add_stmt (build_omp_stmt (single_cons_e, NULL)); $$ = NULL; }
@@ -2743,7 +2743,7 @@ single_clause:
 parallel_for_construct:
         parallel_for_directive
         {
-	    $$ = add_stmt (build_omp_stmt (par_for_cons_b, $1));
+	    $<ttype>$ = add_stmt (build_omp_stmt (par_for_cons_b, $1));
 	    In_MP_Region = true;
 	    mp_nesting++;
 	    if (mp_nesting == MAX_MP_NESTING)
@@ -2819,7 +2819,7 @@ parallel_for_clause:
 parallel_sections_construct:
         parallel_sections_directive
         {
-	    $$ = add_stmt (build_omp_stmt (par_sctn_cons_b, $1));
+	    $<ttype>$ = add_stmt (build_omp_stmt (par_sctn_cons_b, $1));
 	    In_MP_Region = true;
 	    mp_nesting++;
 	    if (mp_nesting == MAX_MP_NESTING)
@@ -2888,7 +2888,7 @@ parallel_sections_clause:
                                                                                 
 master_construct:
         master_directive
-        { add_stmt (build_omp_stmt (master_cons_b, NULL)); $$ = NULL; }
+        { add_stmt (build_omp_stmt (master_cons_b, NULL)); $<ttype>$ = NULL; }
         structured_block
         { add_stmt (build_omp_stmt (master_cons_e, NULL)); $$ = NULL; }
         ;
@@ -2899,7 +2899,7 @@ master_directive:
                                                                                 
 critical_construct:
         critical_directive
-        { add_stmt (build_omp_stmt (critical_cons_b, $1)); $$ = NULL; }
+        { add_stmt (build_omp_stmt (critical_cons_b, $1)); $<ttype>$ = NULL; }
         structured_block
         { add_stmt (build_omp_stmt (critical_cons_e, NULL)); $$ = NULL; }
         ;
@@ -2943,7 +2943,7 @@ flush_directive:
 
 ordered_construct:
         ordered_directive
-        { add_stmt (build_omp_stmt (ordered_cons_b, NULL)); $$ = NULL; }
+        { add_stmt (build_omp_stmt (ordered_cons_b, NULL)); $<ttype>$ = NULL; }
         structured_block
         { add_stmt (build_omp_stmt (ordered_cons_e, NULL)); $$ = NULL; }
         ;
