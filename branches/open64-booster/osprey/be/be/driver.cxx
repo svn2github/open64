@@ -604,6 +604,8 @@ Phase_Init (void)
 	Ipl_Init ();
     if (Run_lno || Run_Distr_Array || Run_autopar)
 	Lno_Init ();
+    if ( Opt_Level > 0 ) /* run VHO at -O1 and above */
+        Vho_Init ();
     if (Run_purple)
 	Prp_Init();
     if (Run_w2c || (Run_prompf && Anl_Needs_Whirl2c()))
@@ -684,6 +686,8 @@ Phase_Fini (void)
     if (Run_Dsm_Cloner || Run_Dsm_Common_Check)
       DRA_Finalize ();
 
+    if ( Opt_Level > 0 ) /* run VHO at -O1 and above */
+        Vho_Fini ();
     if (Run_lno || Run_Distr_Array || Run_autopar)
 	Lno_Fini ();
     if (Run_ipl)
@@ -1230,7 +1234,11 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
 #endif
     }
  
+#if defined(EMULATE_FLOAT_POINT) && defined(TARG_SL)
+ 	rwn = WN_Lower(rwn, LOWER_TO_CG | LOWER_FP_EMULATE, alias_mgr, "Lowering to CG/Lowering float point emulate");
+#else
 	rwn = WN_Lower(rwn, LOWER_TO_CG, alias_mgr, "Lowering to CG");
+#endif
 #ifdef TARG_IA64
 	if (Only_Unsigned_64_Bit_Ops &&
 	    (!Run_wopt || Query_Skiplist (WOPT_Skip_List, Current_PU_Count()))) 	  U64_lower_wn(rwn, FALSE);

@@ -256,351 +256,9 @@ main()
   width      = Create_Operand_Use("width");
 
 #ifdef TARG_SL
-   // dsp thread
-  Instruction_Group("c3_alu",
-               TOP_c3_saadd_a,
-               TOP_c3_saaddh_a,
-               TOP_c3_sasub_a,
-               TOP_c3_sasubh_a,
-               TOP_c3_samulh_a,
-               TOP_UNDEFINED);
-  Result(0, int64);
-  Result(1, addreg);
-  Result(2, addreg);
-  Operand(0, addreg, base);
-  Operand(1, uimm3);
-  Operand(2, addreg, base);
-  Operand(3, uimm3);
-  Operand(4, uimm2);
-
-  Instruction_Group("c3_bitc",
-  	        TOP_c3_bitc,  //same res
-  	        TOP_UNDEFINED);
-  Result(0, creg);
-  Operand(0, creg);
-  Operand(1, uimm5);
-  Operand(2, uimm4);
-
-  Instruction_Group("c3_bitr",
-  	             TOP_c3_bitr,
-  	             TOP_UNDEFINED);
-   Result(0, int64);
-  Operand(0, int64);
-  Operand(1, uimm5);
-  Operand(2, uimm4);
-
-  Instruction_Group("c3_mac",
-  	             TOP_c3_mac,// same_res
-  	             TOP_c3_macn, // same_res
-  	             TOP_c3_macd, //same_res
-  	             TOP_UNDEFINED);
-  Result(0, accreg);
-  Operand(0, uimm3);
-  Operand(1, int64);
-  Operand(2, int64);
-  Operand(3, accreg);
-
-  Instruction_Group("c3_dmac",
-  	             TOP_c3_dmac,  // same_res
-  	             TOP_c3_dmacn,// same_res
-                     TOP_UNDEFINED);
-  Result(0, accreg);
-  Result(1, accreg);
-  Operand(0, uimm3);
-  Operand(1, int64);
-  Operand(2, int64);
-  Operand(3, uimm1);
-  Operand(4, accreg);
-  Operand(5, accreg);
-
-  Instruction_Group("c3_maci",
- 	             TOP_c3_macci, // same_res
-  	             TOP_c3_maccr, //same_res
-                    TOP_c3_mula,
-  	             TOP_c3_mulaci,
-  	             TOP_c3_mulacr,
-  	             TOP_c3_mulan, 
-  	             TOP_UNDEFINED);
-  Result(0, accreg);
-  Operand(0, uimm3);
-  Operand(1, int64);
-  Operand(2, int64);
-
-  Instruction_Group("c3_dmul",
-                    TOP_c3_dmula,
-                    TOP_c3_dmulan,
-                    TOP_UNDEFINED);
-  Result(0, accreg);
-  Result(1, accreg);
-  Operand(0, uimm3);
-  Operand(1, int64);
-  Operand(2, int64);
-
-  Instruction_Group("c3_dmac_a",
-                    TOP_c3_dmac_a,// same_res
-                    TOP_c3_dmacn_a,// same_res
-                    TOP_UNDEFINED);
-  Result(0, accreg);
-  Result(1, accreg);
-  Result(2, addreg);
-  Result(3, addreg);
-  Operand(0, uimm3);
-  Operand(1, addreg, base);
-  Operand(2, uimm3);
-  Operand(3, addreg, base);
-  Operand(4, uimm3);
-  Operand(5, uimm1);
-  Operand(6, uimm2);
-  Operand(7, accreg);
-  Operand(8, accreg);
- 
-   Instruction_Group("c3_mac_a",
-                    TOP_c3_mac_a,// same_res
-                    TOP_c3_macn_a, //same_res
-                    TOP_UNDEFINED);
-  Result(0, accreg);
-  Result(1, addreg);
-  Result(2, addreg);
-  Operand(0, uimm3);
-  Operand(1, addreg, base);
-  Operand(2, uimm3);
-  Operand(3, addreg, base);
-  Operand(4, uimm3);
-  Operand(5, uimm2);
-  Operand(6, accreg);
- 
-  Instruction_Group("c3_mula_a",
-  	             TOP_c3_mula_a,
-  	             TOP_UNDEFINED);
-  Result(0, accreg);
-  Result(1, addreg);
-  Result(2, addreg);
-  Operand(0, uimm3);
-  Operand(1, addreg, base);
-  Operand(2, uimm3);
-  Operand(3, addreg, base);
-  Operand(4, uimm3);
-  Operand(5, uimm2);
-
-    Instruction_Group("c3_dmul_a",
-                     TOP_c3_dmula_a,
-                     TOP_c3_dmulan_a,
-                     TOP_UNDEFINED);
-  Result(0, accreg);
-  Result(1, accreg);
-  Result(2, addreg);
-  Result(3, addreg);
-  Operand(0, uimm3);
-  Operand(1, addreg, base);
-  Operand(2, uimm3);
-  Operand(3, addreg, base);
-  Operand(4, uimm3);
-  Operand(5, uimm2);
-
-  Instruction_Group("c3_dshl_i",
-  	            TOP_c3_dshll_i,
-  	            TOP_c3_dshrl_i,
-  	            TOP_UNDEFINED);
-  Result(0, int64);
-  Operand(0, int64);
-  Operand(1, uimm5);
-  Operand(2, uimm5);
-  
-  Instruction_Group("c3 load",
-                    TOP_c3_ld,
-                    TOP_c3_fftld,
-                    TOP_UNDEFINED);
-  Result(0, int64);
-  Result(1, addreg);
-  Operand(0, addreg, base);
-  Operand(1, uimm1, offset);
-  Operand(2, uimm3);
-  Operand(3, uimm3);
-  Operand(4, uimm2); 
-  
-  Instruction_Group ("c3_lead",
-  	            TOP_c3_lead,
- 	            TOP_UNDEFINED);
-  Result(0, int64);
-  Operand(0, accreg);
-  Operand(1, uimm2);
-
-  Instruction_Group("c3_mula_ar",
-  	              TOP_c3_mula_ar,
-  	              TOP_UNDEFINED);
-  Result(0, accreg);
-  Result(1, addreg);
-  Operand(0, uimm3);
-  Operand(1, int64);
-  Operand(2, addreg, base);
-  Operand(3, uimm3);
-  Operand(4, uimm2);
-
-  Instruction_Group("c3_mac_ar",
-  	              TOP_c3_mac_ar,  //same_res
-  	              TOP_c3_macn_ar, //same_res
-  	              TOP_UNDEFINED);
-  Result(0, accreg);
-  Result(1, addreg);
-  Operand(0, uimm3);
-  Operand(1, int64);
-  Operand(2, addreg, base);
-  Operand(3, uimm3);
-  Operand(4, uimm2);
-  Operand(5, accreg);
-
-  Instruction_Group("c3_mac_i",
-                     TOP_c3_mac_i, //same_res
-                     TOP_c3_macn_i, //same_res
-                     TOP_UNDEFINED);
-  Result(0,  accreg);
-  Operand(0, uimm3);
-  Operand(1, int64);
-  Operand(2, simm10);
-  Operand(3, accreg);
-  
-  Instruction_Group("c3_mula_i",
-                     TOP_c3_mula_i,
-                     TOP_UNDEFINED);
-  Result(0,  accreg);
-  Operand(0, uimm3);
-  Operand(1, int64);
-  Operand(2, simm10);
-
-  Instruction_Group("c3_mvfacc",
-  	             TOP_c3_mvfacc,
-  	             TOP_UNDEFINED);
-  Result(0, int64);
-  Operand(0, accreg);
-  Operand(1, uimm5);
-
-  Instruction_Group("c3_mvfaddreg",
-  	             TOP_c3_mvfadd,
-  	             TOP_UNDEFINED);
-  Result(0, int64);
-  Operand(0, addreg);
-  Operand(1, uimm5);
-	
-  Instruction_Group("c3_mvfaddsize",
-  	             TOP_c3_mvfadds,
-  	             TOP_UNDEFINED);
-  Result(0, int64);
-  Operand(0, addsreg);
-  Operand(1, uimm5);
-  
-  Instruction_Group("c3_mvtacc",
-  	             TOP_c3_mvtacc,
-  	             TOP_UNDEFINED);
-  Result(0, accreg);
-  Operand(0, int64);
-  Operand(1, uimm5);
-  
-  Instruction_Group("c3_mvtaddreg",
-  	             TOP_c3_mvtadd,
-  	             TOP_UNDEFINED);
-  Result(0, addreg);
-  Operand(0, int64);
-  Operand(1, uimm5);
-  
-  Instruction_Group("c3_mvtadds",
-  	             TOP_c3_mvtadds,
-  	             TOP_UNDEFINED);
-  Result(0, addsreg);
-  Result(1, addreg);
-  Operand(0, int64);
-  Operand(1, uimm5);
-  Operand(2, addreg);
- 
-  Instruction_Group("c3_revb",
-  	             TOP_c3_revb,
-  	             TOP_UNDEFINED);
-  Result(0, int64);
-  Operand(0, int64);
-  Operand(1, simm5);
-
-  Instruction_Group("c3_round",
-  	             TOP_c3_round,
-  	             TOP_UNDEFINED);
-  Result(0, accreg); // same res
-  Operand(0, uimm5);
-  Operand(1, uimm2);
-  Operand(2, accreg);
-  
-  Instruction_Group("c3_saddha",
-  	             TOP_c3_saddha,  //same res
-  	             TOP_UNDEFINED);
-  Result(0, accreg);
-  Operand(0, uimm3);
-  Operand(1, int64);
-  Operand(2, uimm4);
-  Operand(3, uimm1);
-  Operand(4, accreg);
-
-
-  Instruction_Group("c3_saddha_a",
-  	             TOP_c3_saddha_a,  // same res
-  	             TOP_UNDEFINED);
-  Result(0, accreg);
-  Result(1, addreg);
-  Operand(0, uimm3);
-  Operand(1, addreg, base);
-  Operand(2, uimm3);
-  Operand(3, uimm4);
-  Operand(4, uimm1);
-  Operand(5, uimm2);
-  Operand(6, accreg);
-
-  Instruction_Group("c3_alu2",
-  	            TOP_c3_saadds,
-  	            TOP_c3_saaddsh,
-  	            TOP_c3_sasubs,
-  	            TOP_c3_sasubsh,
-  	            TOP_c3_samulsh,
-  	            TOP_UNDEFINED);
-  Result(0, int64);
-  Operand(0, 	int64);
-  Operand(1, int64);
-  Operand(2, uimm5);
-  
-  Instruction_Group("c3 store",
-  	             TOP_c3_st,
-  	             TOP_c3_fftst,
-  	             TOP_UNDEFINED);
-  Result(0, addreg);
-  Operand(0, int64, storeval);
-  Operand(1, addreg, base);
-  Operand(2, uimm1, offset);
-  Operand(3, uimm3);
-  Operand(4, uimm3);
-  Operand(5, uimm2);
-
-  
-  Instruction_Group("c3_dadd",
-                    TOP_c3_dadd,
-                    TOP_c3_dsub,
-  	            TOP_c3_sashllh,
-  	            TOP_UNDEFINED);
-  Result(0, int64);
-  Operand(0, int64);
-  Operand(1, int64);
-
-  Instruction_Group("c3_mvts",
-  	            TOP_c3_mvts,
-  	            TOP_UNDEFINED);
-  Result(0, spereg);
-  Operand(0, int64);
-  Operand(1, uimm5);
-
-  Instruction_Group("c3_mvfs",
-  	            TOP_c3_mvfs,
-  	            TOP_UNDEFINED);
-  Result(0, int64);
-  Operand(0, spereg);
-  Operand(1, uimm5);
-
   // new c3
   Instruction_Group("C3-aadda",
-                    TOP_C3_aadda,
+                    TOP_c3_aadda,
                     TOP_UNDEFINED);
   Result(0,accreg); // same res
   Operand(0, uimm3);
@@ -609,7 +267,7 @@ main()
   Operand(3, accreg);
 
   Instruction_Group("C3-nega",
-                    TOP_C3_nega,
+                    TOP_c3_nega,
                     TOP_UNDEFINED);
   Result(0,accreg); // same res
   Operand(0, uimm3);
@@ -617,7 +275,7 @@ main()
   Operand(2, uimm1);
 
   Instruction_Group("C3-bitr",
-                    TOP_C3_bitr,
+                    TOP_c3_bitr,
                     TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, int64);
@@ -625,7 +283,7 @@ main()
   Operand(2, uimm4);
 
   Instruction_Group("C3-cs",
-                    TOP_C3_cs,
+                    TOP_c3_cs,
                     TOP_UNDEFINED);
   Result(0, int64);
   Result(1, spereg);
@@ -635,16 +293,16 @@ main()
   Operand(3, spereg);
 
   Instruction_Group("C3-dadd",
-                    TOP_C3_dadd,
-                    TOP_C3_dsub,
+                    TOP_c3_dadd,
+                    TOP_c3_dsub,
                     TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, int64);
   Operand(1, int64);
   
   Instruction_Group("C3-dmac",
-                    TOP_C3_dmac,
-                    TOP_C3_dmacn,
+                    TOP_c3_dmac,
+                    TOP_c3_dmacn,
                     TOP_UNDEFINED);
   Result(0, accreg);  // same res
   Result(1, accreg);
@@ -658,8 +316,8 @@ main()
   Operand(7, accreg);
 
   Instruction_Group("C3-dmac-a",
-                    TOP_C3_dmac_a,
-                    TOP_C3_dmacn_a,
+                    TOP_c3_dmac_a,
+                    TOP_c3_dmacn_a,
                     TOP_UNDEFINED);
   Result(0, accreg);  // same res
   Result(1, accreg);
@@ -676,8 +334,8 @@ main()
   Operand(8, accreg);
 
   Instruction_Group("C3-dmula",
-                    TOP_C3_dmula,
-                    TOP_C3_dmulan,
+                    TOP_c3_dmula,
+                    TOP_c3_dmulan,
                     TOP_UNDEFINED); 
   Result(0, accreg);
   Result(1, accreg);
@@ -688,8 +346,8 @@ main()
   Operand(4, uimm1);
 
   Instruction_Group("C3-dmula-a",
-                    TOP_C3_dmula_a,
-                    TOP_C3_dmulan_a,
+                    TOP_c3_dmula_a,
+                    TOP_c3_dmulan_a,
                     TOP_UNDEFINED);
   Result(0, accreg);
   Result(1, accreg);
@@ -703,8 +361,8 @@ main()
   Operand(5, uimm1);
  
   Instruction_Group("C3-dshll",
-                    TOP_C3_dshll_i,
-                    TOP_C3_dshrl_i,
+                    TOP_c3_dshll_i,
+                    TOP_c3_dshrl_i,
                     TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, int64);
@@ -712,7 +370,7 @@ main()
   Operand(2, uimm5);
 
   Instruction_Group("C3-fixfunc",
-                    TOP_C3_ffe,
+                    TOP_c3_ffe,
                     TOP_UNDEFINED);
   Result(0, int64);
   Operand(0,int64,opnd1);
@@ -720,8 +378,8 @@ main()
   Operand(2,uimm5,opnd3);
 
   Instruction_Group("C3-fftld",
-                    TOP_C3_ld,
-                    TOP_C3_fftld,
+                    TOP_c3_ld,
+                    TOP_c3_fftld,
                     TOP_UNDEFINED);
   Result(0, int64);
   Result(1, addreg);
@@ -731,8 +389,8 @@ main()
   Operand(3, uimm3);
 
   Instruction_Group("C3-fftst",
-                    TOP_C3_st,
-                    TOP_C3_fftst,
+                    TOP_c3_st,
+                    TOP_c3_fftst,
                     TOP_UNDEFINED);
   Result(0, addreg);
   Operand(0, int64, storeval);
@@ -742,14 +400,14 @@ main()
   Operand(4, uimm3);
 
   Instruction_Group("C3-lead",
-                    TOP_C3_lead,
+                    TOP_c3_lead,
                     TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, accreg);
 
   Instruction_Group("C3-mac",
-                    TOP_C3_mac,
-                    TOP_C3_macn,
+                    TOP_c3_mac,
+                    TOP_c3_macn,
                     TOP_UNDEFINED);
   Result(0, accreg); // same res
   Operand(0, uimm3);
@@ -759,8 +417,8 @@ main()
   Operand(4, accreg);
  
   Instruction_Group("C3-mac-a",
-                    TOP_C3_mac_a,
-                    TOP_C3_macn_a,
+                    TOP_c3_mac_a,
+                    TOP_c3_macn_a,
                     TOP_UNDEFINED);
   Result(0, accreg); // same res
   Result(1, addreg);
@@ -775,8 +433,8 @@ main()
  
 
   Instruction_Group("C3-mac-ar",
-                    TOP_C3_mac_ar,
-                    TOP_C3_macn_ar,
+                    TOP_c3_mac_ar,
+                    TOP_c3_macn_ar,
                     TOP_UNDEFINED);
   Result(0, accreg);  // same res
   Result(1, addreg);
@@ -788,8 +446,8 @@ main()
   Operand(5, accreg);
  
   Instruction_Group("C3-mac-i",
-                    TOP_C3_mac_i, 
-                    TOP_C3_macn_i, 
+                    TOP_c3_mac_i, 
+                    TOP_c3_macn_i, 
                     TOP_UNDEFINED);
   Result(0,  accreg); // same res
   Operand(0, uimm3);
@@ -799,8 +457,8 @@ main()
   Operand(4, accreg);
 
   Instruction_Group("C3-mula",
-                    TOP_C3_mula,
-                    TOP_C3_mulan,
+                    TOP_c3_mula,
+                    TOP_c3_mulan,
                     TOP_UNDEFINED);
   Result(0, accreg);
   Operand(0, uimm3);
@@ -808,7 +466,7 @@ main()
   Operand(2, int64);
                              
   Instruction_Group("C3-mula-a",
-                    TOP_C3_mula_a,
+                    TOP_c3_mula_a,
                     TOP_UNDEFINED); 
   Result(0, accreg);
   Result(1, addreg);
@@ -820,7 +478,7 @@ main()
   Operand(4, uimm3);
 
   Instruction_Group("C3-mula-ar",
-                    TOP_C3_mula_ar,
+                    TOP_c3_mula_ar,
                     TOP_UNDEFINED);
   Result(0, accreg);
   Result(1, addreg);
@@ -830,7 +488,7 @@ main()
   Operand(3, uimm3);
 
   Instruction_Group("C3-mula-i",
-                    TOP_C3_mula_i,
+                    TOP_c3_mula_i,
                     TOP_UNDEFINED);
   Result(0, accreg);
   Operand(0, uimm3);
@@ -838,8 +496,8 @@ main()
   Operand(2, simm9);
 
   Instruction_Group("C3-muls",
-                    TOP_C3_muls,
-                    TOP_C3_mulus,
+                    TOP_c3_muls,
+                    TOP_c3_mulus,
                     TOP_UNDEFINED);
   Result(0, spereg);
   Result(1, int64);
@@ -848,14 +506,14 @@ main()
   Operand(2, uimm5, opnd3);
  
   Instruction_Group("C3-revb",
-                    TOP_C3_revb,
+                    TOP_c3_revb,
                     TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, int64);
   Operand(1, uimm5);
 
   Instruction_Group("C3-round",
-                    TOP_C3_round,
+                    TOP_c3_round,
                     TOP_UNDEFINED);
   Result(0, accreg); // same res
   Operand(0, uimm3);
@@ -864,11 +522,11 @@ main()
   Operand(3, accreg);
 
   Instruction_Group("C3-saadd-a",
-                    TOP_C3_saadd_a,
-                    TOP_C3_saaddh_a,
-                    TOP_C3_samulh_a,
-                    TOP_C3_sasub_a,
-                    TOP_C3_sasubh_a,
+                    TOP_c3_saadd_a,
+                    TOP_c3_saaddh_a,
+                    TOP_c3_samulh_a,
+                    TOP_c3_sasub_a,
+                    TOP_c3_sasubh_a,
                     TOP_UNDEFINED);
   Result(0, int64);
   Result(1, addreg);
@@ -879,11 +537,11 @@ main()
   Operand(3, uimm3);
   
   Instruction_Group("C3-saadds",
-                    TOP_C3_saadds,
-                    TOP_C3_saaddsh,
-                    TOP_C3_samulsh,
-                    TOP_C3_sasubs,
-                    TOP_C3_sasubsh,
+                    TOP_c3_saadds,
+                    TOP_c3_saaddsh,
+                    TOP_c3_samulsh,
+                    TOP_c3_sasubs,
+                    TOP_c3_sasubsh,
                     TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, int64);
@@ -891,7 +549,7 @@ main()
   Operand(2, uimm5);
  
   Instruction_Group("C3-sadda",
-                    TOP_C3_sadda,
+                    TOP_c3_sadda,
                     TOP_UNDEFINED);
   Result(0, accreg);  // same res
   Operand(0, uimm3);
@@ -903,7 +561,7 @@ main()
   Operand(6, accreg);
 
   Instruction_Group("C3-sadda-a",
-                    TOP_C3_sadda_a,
+                    TOP_c3_sadda_a,
                     TOP_UNDEFINED);
   Result(0, accreg);  // same res
   Result(1, addreg);
@@ -917,7 +575,7 @@ main()
   Operand(7, accreg);
 
   Instruction_Group("C3-shav",
-                    TOP_C3_shav,
+                    TOP_c3_shav,
                     TOP_UNDEFINED);
   Result(0, accreg); // same res
   Operand(0, uimm3);
@@ -926,8 +584,8 @@ main()
   Operand(3, accreg);
 
   Instruction_Group("C3-shlafa-i",
-                    TOP_C3_shlafa_i,
-                    TOP_C3_shrafa_i,
+                    TOP_c3_shlafa_i,
+                    TOP_c3_shrafa_i,
                     TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, accreg);
@@ -935,8 +593,8 @@ main()
   Operand(2, uimm5);
   
   Instruction_Group("C3-shlata-i",
-                    TOP_C3_shlata_i,
-                    TOP_C3_shrata_i,
+                    TOP_c3_shlata_i,
+                    TOP_c3_shrata_i,
                     TOP_UNDEFINED);
   Result(0, accreg);
   Operand(0, uimm3);
@@ -945,8 +603,8 @@ main()
   Operand(3, uimm1);
 
   Instruction_Group("C3-shra-i",
-                    TOP_C3_shla_i,
-                    TOP_C3_shra_i,
+                    TOP_c3_shla_i,
+                    TOP_c3_shra_i,
                     TOP_UNDEFINED);
   Result(0, accreg);
   Operand(0, uimm3);
@@ -954,7 +612,7 @@ main()
   Operand(2, uimm1);
     
   Instruction_Group("C3-subc",
-                    TOP_C3_subc,
+                    TOP_c3_subc,
                     TOP_UNDEFINED);
   Result(0, spereg); //hi
   Result(1, int64);  
@@ -963,49 +621,49 @@ main()
   Operand(2, spereg);
 
   Instruction_Group("C3-mvts",
-                    TOP_C3_mvts,
+                    TOP_c3_mvts,
                     TOP_UNDEFINED);
   Result(0, spereg);
   Operand(0, int64);
   Operand(1, uimm5);
 
   Instruction_Group("C3-mvfs",
-                    TOP_C3_mvfs,
+                    TOP_c3_mvfs,
                     TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, spereg);
   Operand(1, uimm5);
 
   Instruction_Group("C3-mvfacc",
-                     TOP_C3_mvfacc,
+                     TOP_c3_mvfacc,
                      TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, accreg);
   Operand(1, uimm5);
 
   Instruction_Group("C3-mvfaddr",
-                     TOP_C3_mvfaddr,
+                     TOP_c3_mvfaddr,
                      TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, addreg);
   Operand(1, uimm5);
 
   Instruction_Group("C3-mvfadds",
-                     TOP_C3_mvfadds,
+                     TOP_c3_mvfadds,
                      TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, addsreg);
   Operand(1, uimm5);
 
   Instruction_Group("C3-mvtacc",
-                     TOP_C3_mvtacc,
+                     TOP_c3_mvtacc,
                      TOP_UNDEFINED);
   Result(0, accreg);
   Operand(0, int64);
   Operand(1, uimm5);
 
   Instruction_Group("C3-mvtaddr",
-                     TOP_C3_mvtaddr,
+                     TOP_c3_mvtaddr,
                      TOP_UNDEFINED);
   Result(0, addreg);
   Operand(0, int64);
@@ -1013,7 +671,7 @@ main()
 
   
   Instruction_Group("C3-mvtadds",
-                     TOP_C3_mvtadds,
+                     TOP_c3_mvtadds,
                      TOP_UNDEFINED);
   Result(0, addsreg);
   Result(1, addreg);
@@ -1093,9 +751,6 @@ main()
 		     TOP_sub16,
 		     TOP_xor16,
                      TOP_mv16,
-                     TOP_c3_trback,
-                     TOP_c3_viterbi,
-                     TOP_c3_fft,
 		     TOP_UNDEFINED);
   Result(0, int64);
   Operand(0,int64,opnd1);
@@ -1649,14 +1304,22 @@ main()
                     TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, int64, opnd1);
+
+  Instruction_Group("sl_mc_zero",
+                    TOP_mc_z_eq,
+                    TOP_mc_z_ne,
+                    TOP_mc_z_gt,
+                    TOP_mc_z_ge,
+                    TOP_mc_z_lt,
+                    TOP_mc_z_le,
+                    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64, opnd1);
+  Operand(1, int64, opnd2);
+  Operand(2, simm16, opnd3);
+  Operand(3, int64, opnd4);
  
   Instruction_Group("sl conditional mv",
-                  TOP_mc_z_eq,
-                  TOP_mc_z_ne,
-		    TOP_mc_z_gt,
-		    TOP_mc_z_ge,
-		    TOP_mc_z_lt,
-		    TOP_mc_z_le,
 		    TOP_mc_zn_eq,
 		    TOP_mc_zn_ne,
 		    TOP_mc_zn_gt,

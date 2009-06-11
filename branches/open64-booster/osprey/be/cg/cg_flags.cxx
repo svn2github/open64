@@ -254,6 +254,7 @@ UINT32 CG_zdl_enabled_level = 2; // default value is 2
 UINT32 CG_zdl_skip_e = 0;  
 UINT32 CG_zdl_skip_a = INT32_MAX;
 UINT32 CG_zdl_skip_b = 0;
+BOOL CG_enable_opt_condmv = TRUE;
 #endif
 BOOL CG_enable_loop_optimizations = TRUE;
 BOOL GCM_Motion_Across_Calls = TRUE;

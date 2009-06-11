@@ -469,9 +469,7 @@ endif
 
 ## targ_isa_hazards.[ch] ##
 
-targ_isa_hazards.c: targ_isa_hazards.h
-	$(RUN) ./isa_hazards_gen
-targ_isa_hazards.h: isa_hazards_gen
+targ_isa_hazards.c targ_isa_hazards.h: isa_hazards_gen
 	$(RUN) ./isa_hazards_gen
 
 isa_hazards_gen: isa_hazards_gen.o gen_util.o isa_hazards.o topcode.o \
@@ -494,9 +492,7 @@ targ_isa_operands.o: targ_isa_operands.c targ_isa_operands.h targ_isa_properties
 
 ## targ_isa_pack.[ch] ##
 
-targ_isa_pack.c: targ_isa_pack.h
-	$(RUN) ./isa_pack_gen
-targ_isa_pack.h: isa_pack_gen
+targ_isa_pack.c targ_isa_pack.h: isa_pack_gen
 	$(RUN) ./isa_pack_gen
 
 isa_pack_gen: gen_util.o isa_pack_gen.o gen_util.o isa_pack.o \
@@ -513,9 +509,7 @@ isa_pack.o: isa_pack.cxx isa_pack_gen.h topcode.h
 
 ## targ_isa_decode.[ch] ##
 
-targ_isa_decode.c: targ_isa_decode.h
-	$(RUN) ./isa_decode_gen
-targ_isa_decode.h: isa_decode_gen
+targ_isa_decode.c targ_isa_decode.h: isa_decode_gen
 	$(RUN) ./isa_decode_gen
 
 isa_decode_gen: gen_util.o isa_decode_gen.o gen_util.o isa_decode.o topcode.o targ_isa_bundle.o 
@@ -532,9 +526,7 @@ isa_decode.o: isa_decode.cxx isa_decode_gen.h topcode.h targ_isa_bundle.h \
 
 ## targ_isa_pseudo.[ch] ##
 
-targ_isa_pseudo.c: targ_isa_pseudo.h
-	$(RUN) ./isa_pseudo_gen
-targ_isa_pseudo.h: isa_pseudo_gen
+targ_isa_pseudo.c targ_isa_pseudo.h: isa_pseudo_gen
 	$(RUN) ./isa_pseudo_gen
 
 isa_pseudo_gen: gen_util.o isa_pseudo_gen.o gen_util.o isa_pseudo.o topcode.o \
@@ -554,9 +546,7 @@ isa_pseudo.o: isa_pseudo.cxx isa_pseudo_gen.h topcode.h
 
 ## targ_isa_print.[ch] ##
 
-targ_isa_print.c: targ_isa_print.h
-	$(RUN) ./isa_print_gen
-targ_isa_print.h: isa_print_gen
+targ_isa_print.c targ_isa_print.h: isa_print_gen
 	$(RUN) ./isa_print_gen
 
 isa_print_gen: gen_util.o isa_print_gen.o isa_print.o \
@@ -573,124 +563,90 @@ isa_print.o: isa_print.cxx isa_print_gen.h topcode.h
 
 ## topcode.[ch] ##
 
-topcode.c: topcode.h
-	$(RUN) ./ipfec_targ_gen 
-topcode.h: ipfec_targ_gen
+topcode.c topcode.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen 
 
 ## targ_isa_enums.[ch] ##
 
-targ_isa_enums.c: targ_isa_enums.h
-	$(RUN) ./ipfec_targ_gen 
-targ_isa_enums.h: ipfec_targ_gen
+targ_isa_enums.c targ_isa_enums.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 ## targ_isa_lits.[ch] ##
 
-targ_isa_lits.c: targ_isa_lits.h
-	$(RUN) ./ipfec_targ_gen 
-targ_isa_lits.h: ipfec_targ_gen
+targ_isa_lits.c targ_isa_lits.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 
 ## targ_isa_registers.[ch] ##
 
-targ_isa_registers.c: targ_isa_registers.h
-	$(RUN) ./ipfec_targ_gen 
-targ_isa_registers.h: ipfec_targ_gen
+targ_isa_registers.c targ_isa_registers.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 ## targ_isa_subset.[ch] ##
 
-targ_isa_subset.c: targ_isa_subset.h
-	$(RUN) ./ipfec_targ_gen 
-targ_isa_subset.h: ipfec_targ_gen
+targ_isa_subset.c targ_isa_subset.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 
 ## targ_isa_properties.[ch] ##
 
-targ_isa_properties.c: targ_isa_properties.h
-	$(RUN) ./ipfec_targ_gen 
-targ_isa_properties.h: ipfec_targ_gen
+targ_isa_properties.c targ_isa_properties.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 
 ## targ_isa_operands.[ch] ##
 
-targ_isa_operands.c: targ_isa_operands.h
-	$(RUN) ./ipfec_targ_gen 
-targ_isa_operands.h: ipfec_targ_gen
+targ_isa_operands.c targ_isa_operands.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 ## targ_abi_properties.[ch] ##
 
-targ_abi_properties.c: targ_abi_properties.h
-	$(RUN) ./ipfec_targ_gen
-targ_abi_properties.h: ipfec_targ_gen
+targ_abi_properties.c targ_abi_properties.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 ## targ_isa_bundle.[ch] ##
 
-targ_isa_bundle.c: targ_isa_bundle.h
-	$(RUN) ./ipfec_targ_gen
-targ_isa_bundle.h: ipfec_targ_gen
+targ_isa_bundle.c targ_isa_bundle.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 ## targ_proc.[ch] ##
 
-targ_proc.c: targ_proc.h
-	$(RUN) ./ipfec_targ_gen
-targ_proc.h: ipfec_targ_gen
+targ_proc.c targ_proc.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 ## targ_proc_properties.[ch] ##
 
-targ_proc_properties.c: targ_proc_properties.h
-	$(RUN) ./ipfec_targ_gen
-targ_proc_properties.h: ipfec_targ_gen
+targ_proc_properties.c targ_proc_properties.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 ## targ_bypass.[ch] ##
 
-targ_bypass.cxx: targ_bypass.h
-	$(RUN) ./ipfec_targ_gen
-targ_bypass.h:   ipfec_targ_gen
+targ_bypass.cxx targ_bypass.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 ## targ_cache_info.[ch] ##
 
-targ_cache_info.cxx: targ_cache_info.h
-	$(RUN) ./ipfec_targ_gen
-targ_cache_info.h:   ipfec_targ_gen
+targ_cache_info.cxx targ_cache_info.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 ## targ_issue_port_mck.[ch] ##
 
-targ_issue_port.cxx: targ_issue_port.h
-	$(RUN) ./ipfec_targ_gen
-targ_issue_port.h:   ipfec_targ_gen
+targ_issue_port.cxx targ_issue_port.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 ## targ_issue_port_mck.[ch] ##
 
-targ_issue_port_mck.cxx: targ_issue_port_mck.h
-	$(RUN) ./ipfec_targ_gen
-targ_issue_port_mck.h:   ipfec_targ_gen
+targ_issue_port_mck.cxx targ_issue_port_mck.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 ## targ_cache_info_mck.[ch] ##
 
-targ_cache_info_mck.cxx: targ_cache_info_mck.h
-	$(RUN) ./ipfec_targ_gen
-targ_cache_info_mck.h:   ipfec_targ_gen
+targ_cache_info_mck.cxx targ_cache_info_mck.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 ## targ_bypass_mck.[ch] ##
 
-targ_bypass_mck.cxx: targ_bypass_mck.h
-	$(RUN) ./ipfec_targ_gen
-targ_bypass_mck.h:   ipfec_targ_gen
+targ_bypass_mck.cxx targ_bypass_mck.h: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen
 
 ## si_gen.so ##
@@ -910,7 +866,8 @@ itanium.c itanium_mck.c: ipfec_targ_gen
 cggrp_ptn_table.h cggrp_ptn_table.cxx : ptn_table_gen
 	$(RUN) ./ptn_table_gen
 
-ptn_table_gen : ptn_table_gen.o targ_issue_port.o $(TARG_INFO_LIB)
+ptn_table_gen.o: $(TARG_INFO_LIB) 
+ptn_table_gen: ptn_table_gen.o  targ_issue_port.o $(TARG_INFO_LIB)
 	$(CXX) $(CXXFLAGS) ptn_table_gen.o targ_issue_port.o  $(TARG_INFO_LIB) -o ptn_table_gen
 
 cggrp_ptn_table_mck.cxx : ptn_table_gen_mck
@@ -945,6 +902,7 @@ pentium_si.o: pentium_si.cxx targ_isa_subset.h topcode.h si_gen.h
 	$(CXX) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/pentium_si.cxx
 endif
 
+libtarginfo.a: $(LIBTARGINFO_OBJS)
 libtarginfo.a: libtarginfo.a($(LIBTARGINFO_OBJS))
 
 ifeq ($(BUILD_COMPILER), EDG)
@@ -958,8 +916,7 @@ endif
 #
 ##############################################################
 KAPI_LIBS = $(KAPI_DIR)/libkapi.a \
-            $(KAPI_DIR)/libkapi_ia64.a \
-            -lm -lc
+            $(KAPI_DIR)/libkapi_ia64.a 
 
 KNOBS_ACCESS_SRC = \
          ekapi_util.cxx \
@@ -1006,20 +963,22 @@ KNOBS_TARGS = \
     
 KNOBS_FILES =  v11-itanium-extra.knb v26-itanium-41-external.knb
 KNOBS_FILES +=  v12-itanium-extra.knb mckinley_knobsfile.knb 
-ipfec_targ_gen:  $(KNOBS_OBJ) $(KNOBS_FILES) $(KAPI_LIBS) 
-	$(CXX) $(CXXLDFLAGS) $(KNOBS_OBJ) -o $@ $(KAPI_LIBS)
+ipfec_targ_gen:  $(KNOBS_OBJ) $(KNOBS_FILES) $(KAPI_DIR)/libkapi_ia64.a
+	$(CXX) $(CXXLDFLAGS) $(KNOBS_OBJ) -o $@ $(KAPI_LIBS) -lm -lc
 	ln -sf $(TARGINFO_DIR)/v12-itanium-extra.knb v12-itanium-extra.knb
 	ln -sf $(TARGINFO_DIR)/mckinley_knobsfile.knb mckinley_knobsfile.knb
 	ln -sf $(TARGINFO_DIR)/v11-itanium-extra.knb v11-itanium-extra.knb
 	ln -sf $(TARGINFO_DIR)/v26-itanium-41-external.knb v26-itanium-41-external.knb
 
-$(KAPI_LIBS): 
-	cd ${KAPI_DIR}; gmake libkapi_ia64.a;
+$(KAPI_DIR)/libkapi_ia64.a: $(KAPI_DIR)/libkapi.a
+	$(MAKE) libkapi_ia64.a -C ${KAPI_DIR}
+$(KAPI_DIR)/libkapi.a:
+	$(MAKE) libkapi.a -C ${KAPI_DIR}
 #
 
 clear:
 	rm -f $(KNOBS_TARGS) $(TARGETS) $(TARG_INFO_OBJS) $(TARG_INFO_EXPORTS) core *.d *.a *.o *.h *.knb *.Exported Makedepend $(LDIRT)
-	cd ${KAPI_DIR};make clean;  
+	make clean -C ${KAPI_DIR}
 ##  end of IPFEC project
 ###########################################################
 

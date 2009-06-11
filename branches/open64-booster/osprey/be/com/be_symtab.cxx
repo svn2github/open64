@@ -105,11 +105,11 @@ ST_is_const_initialized (const ST* st)
     if (BE_ST_unknown_const(st))
       return FALSE;
 
+#ifdef TARG_NVISA
     // if is extern const, then is same as unknown const
     if (ST_sclass(st) == SCLASS_EXTERN)
 	return FALSE;
 
-#ifdef TARG_NVISA
     if (ST_in_shared_mem(st))
     	// may be readonly but don't know initial value
 	return FALSE;
@@ -204,6 +204,8 @@ ST_is_const_initialized_scalar(const ST *st, INT64 offset, TCON &tcon_copy)
       if (!Is_Simple_Type(TY_etype(ty))) {
 	return FALSE;
       }
+      // fix bug 479: to use mtype of array element
+      mtype = TY_mtype(TY_etype(ty)); 
     }
     else { // someday could do structures, but for now give up.
 	return FALSE;

@@ -115,5 +115,9 @@ extern INT32 VHO_Disable_MP_Local_Equal;
 extern BOOL  VHO_Generate_Rrotate;
 extern BOOL  VHO_Generate_Rrotate_Set;
 #endif
+
+extern OPTION_LIST* VHO_Skip;          // enable -VHO:skip_* for debugging 
+extern SKIPLIST* VHO_Skip_List;    
+
 #endif /* config_vho_INCLUDED */
 

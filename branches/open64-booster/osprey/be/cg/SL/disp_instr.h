@@ -38,7 +38,9 @@ extern void Guarantee_Paired_instr16 (void);
 extern void Replace_Size16_Instr(BB *bb) ;
 extern void Check_QuadWord_Boundary(void);
 extern void Check_QuadWord_Boundary_Absolute(void) ;
-extern void Check_Br16(int first);
+extern void Check_Br16(void);
+extern void SL1_patch(void);
+
 typedef struct MvtcInfor {
     UINT32 cr_idx;
     UINT32 pc;	

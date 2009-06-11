@@ -125,9 +125,11 @@ Is_Return_Preg (PREG_NUM preg)
 	return (preg == First_Int_Preg_Return_Offset ||
 	        preg == Last_Int_Preg_Return_Offset) || 
 	       (preg >= First_X87_Preg_Return_Offset && 
-		preg <= Last_X87_Preg_Return_Offset) ||
+	        preg <= Last_X87_Preg_Return_Offset) ||
 	       (preg >= First_Float_Preg_Return_Offset && 
-		preg <= Last_Float_Preg_Return_Offset);
+	        preg <= Last_Float_Preg_Return_Offset) ||
+	       (preg >= First_MMX_Preg_Return_Offset && 
+	        preg <= Last_MMX_Preg_Return_Offset);
 }
 
 /* return whether preg is an output preg */
@@ -145,7 +147,9 @@ Is_Formal_Preg (PREG_NUM preg)
 	return (preg >= First_Int_Preg_Param_Offset && 
 		preg <= Last_Int_Preg_Param_Offset) || 
 	       (preg >= First_Float_Preg_Param_Offset && 
-		preg <= Last_Float_Preg_Param_Offset);
+		preg <= Last_Float_Preg_Param_Offset)||
+	       (preg >= First_MMX_Preg_Return_Offset && 
+		preg <= Last_MMX_Preg_Return_Offset);
 }
 
 /* return the result of merging class1 and class2, implemented according to
@@ -434,18 +438,37 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
         info.preg  [0] = PR_first_reg(SIM_INFO.flt_results);
       break;
 
+    case MTYPE_V8I1:
+    case MTYPE_V8I2:
+    case MTYPE_V8I4:
+    case MTYPE_V8F4:
+    case MTYPE_M8I1:
+    case MTYPE_M8I2:
+    case MTYPE_M8I4:
+    case MTYPE_M8F4:
+      info.count = 1;
+      info.mtype [0] = mtype;
+      if (Is_Target_32bit() && Target_MMX) {
+        info.preg  [0] = MM0;
+      }
+      else {
+        info.preg  [0] = PR_first_reg(SIM_INFO.flt_results);
+      }
+      break;
     case MTYPE_V16I1:
     case MTYPE_V16I2:
     case MTYPE_V16I4:
     case MTYPE_V16I8:
     case MTYPE_V16F4:
     case MTYPE_V16F8:
-    case MTYPE_V8I1:
-    case MTYPE_V8I2:
-    case MTYPE_V8I4:
       info.count = 1;
       info.mtype [0] = mtype;
-      info.preg  [0] = XMM0;
+      if (Is_Target_32bit() && Target_SSE) {
+        info.preg  [0] = XMM0;
+      }
+      else {
+        info.preg  [0] = PR_first_reg(SIM_INFO.flt_results);
+      }
       break;
 
     case MTYPE_C4:
@@ -550,21 +573,19 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
       }
       break;
 
-    case MTYPE_M8I1:
-    case MTYPE_M8I2:
-    case MTYPE_M8I4:
-    case MTYPE_M8F4:
-      info.count = 0;
-      info.return_via_first_arg = TRUE;
-      break;
 
     case MTYPE_M:
 
       info.count = 0;
 
       size = TY_size(Ty_Table[rtype]);
-      if (size == 0)
+      if (size == 0) {
+	/*OSP bug 523 for MTYPE_M return the address by %eax*/ 
+	info.count = 1;
+	info.mtype[0] = MTYPE_I8;
+	info.preg[0]= PR_first_reg(SIM_INFO.int_results);
 	break;
+      }
 
       info.return_via_first_arg = TRUE;
 
@@ -638,9 +659,11 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
 
 static INT Current_Int_Param_Num = -1;		// count integer parameters only
 static INT Current_Float_Param_Num = -1;	// count float parameters only
+static INT Current_MMX_Param_Num = -1;
 static INT Register_Parms = 0;
 static BOOL SSE_Register_Parms = FALSE;
 const INT SSE_Register_Parms_Allowed = 3;
+const INT MMX_Register_Parms_Allowed = 3;
 
 
 static PLOC
@@ -675,6 +698,7 @@ Setup_Parameter_Locations (TY_IDX pu_type)
     Current_Param_Num = -1;		// count all parameters
     Current_Int_Param_Num = -1;		// count integer parameters only
     Current_Float_Param_Num = -1;	// count float parameters only
+    Current_MMX_Param_Num = -1;   
     Last_Param_Offset = 0;
     return plocNULL;
 } // Setup_Parameter_Locations
@@ -686,6 +710,7 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
     PLOC ploc;				// return location
     mDED_PREG_NUM int_regs_array[] = {RAX, RDX, RCX};
     mDED_PREG_NUM flt_regs_array[] = {XMM0, XMM1, XMM2};
+    mDED_PREG_NUM mmx_regs_array[] = {MM0, MM1, MM2};
 
     ploc.reg = 0;
     ploc.reg2 = 0;
@@ -737,38 +762,66 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	}
 	break;
 	
-    case MTYPE_V16I1:
-    case MTYPE_V16I2:
-    case MTYPE_V16I4:
-    case MTYPE_V16I8:
     case MTYPE_V8I1:
     case MTYPE_V8I2:
     case MTYPE_V8I4:
-    case MTYPE_V16F4:
-    case MTYPE_V16F8:
     case MTYPE_V8F4:
-    case MTYPE_F4:
-    case MTYPE_F8:
-        ++Current_Float_Param_Num;
-        if (Is_Target_32bit() && SSE_Register_Parms &&
-            Current_Float_Param_Num < SSE_Register_Parms_Allowed) {
-          ploc.reg = flt_regs_array[Current_Float_Param_Num];
-        }
-        else {
-	  ploc.reg = PR_first_reg(SIM_INFO.flt_args) + Current_Float_Param_Num;
-	  if (ploc.reg > PR_last_reg(SIM_INFO.flt_args)) {
-	    ploc.reg = 0;
-	    if( Is_Target_64bit() )
-	      rpad = MTYPE_RegisterSize(SIM_INFO.flt_type) - ploc.size;
-	  }
-        }
-	break;
-
     case MTYPE_M8I1:
     case MTYPE_M8I2:
     case MTYPE_M8I4:
     case MTYPE_M8F4:
-      ploc.reg = 0; // pass in memory
+      if (Is_Target_32bit()) {
+	//8 bytes vector in 32bit system, if enable mmx
+	//use mm0, mm1, mm2 for parameter passing
+	++Current_MMX_Param_Num;
+	if (Current_MMX_Param_Num < MMX_Register_Parms_Allowed && Target_MMX) {
+	  ploc.reg = mmx_regs_array[Current_MMX_Param_Num];
+	}
+	else {
+	  ploc.reg = 0;  /* pass in memory */
+	}
+	break;
+      }
+    case MTYPE_F4:
+    case MTYPE_F8:
+      if (Is_Target_32bit()) {
+	//float and double in 32bit system, if allow sse register parms
+	//use xmm0, xmm1, xmm2 for parameter passing
+	++Current_Float_Param_Num;
+	if ( SSE_Register_Parms && Current_Float_Param_Num < SSE_Register_Parms_Allowed) {
+	  ploc.reg = flt_regs_array[Current_Float_Param_Num];
+	}
+	else {
+	  ploc.reg = 0;  /* pass in memory */
+	}
+	break;
+      }
+    case MTYPE_V16I1:
+    case MTYPE_V16I2:
+    case MTYPE_V16I4:
+    case MTYPE_V16I8:
+    case MTYPE_V16F4:
+    case MTYPE_V16F8:
+      ++Current_Float_Param_Num;
+      if (Is_Target_32bit()) {
+	//16 bytes vector in 32bit system, if enable sse
+	//use xmm0, xmm1, xmm2 for parameter passing
+	if (Current_Float_Param_Num < SSE_Register_Parms_Allowed && Target_SSE) {
+	  ploc.reg = flt_regs_array[Current_Float_Param_Num];
+	}
+	else {
+	  ploc.reg = 0;  /* pass in memory */
+	}
+      }
+      else {
+	//in 64bit system all vectors and float double use xmm0-xmm7 
+	//for parameter passing
+	ploc.reg = PR_first_reg(SIM_INFO.flt_args) + Current_Float_Param_Num;
+	if (ploc.reg > PR_last_reg(SIM_INFO.flt_args)) {
+	  ploc.reg = 0;
+	  rpad = MTYPE_RegisterSize(SIM_INFO.flt_type) - ploc.size;
+	}
+      }
       break;
 
     case MTYPE_CQ:

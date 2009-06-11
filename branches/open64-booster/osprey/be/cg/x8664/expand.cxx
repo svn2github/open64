@@ -128,6 +128,8 @@ static BOOL Target_Support_Cmov()
 static TN_MAP _TN_Pair_table = NULL;
 
 static TN *Exp_Fetch_and_Add (TN *addr, TN *opnd1, TYPE_ID mtype, OPS *ops);
+static void Store_To_Temp_Stack(TYPE_ID desc, TN *src, const char *sym_name, TN **mem_base_tn,
+		    TN **mem_ofst_tn, OPS *ops);
 
 void
 Expand_Cmov (TOP top, TN *result, TN *src, TN *rflags, OPS *ops, TN *result2,
@@ -6268,7 +6270,16 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
     } else if( src_rc == ISA_REGISTER_CLASS_integer &&
 	       tgt_rc == ISA_REGISTER_CLASS_mmx) {
       // mov int64 to mmx
-      Build_OP (TOP_movi64_2m, tgt_tn, src_tn, ops);
+      if (Is_Target_64bit()) {
+        Build_OP (TOP_movi64_2m, tgt_tn, src_tn, ops);
+      } else {
+        // Move the 64-bit value via memory because there is no 64-bit int
+        // register.
+        TN *base_tn, *ofst_tn;
+        Store_To_Temp_Stack(MTYPE_I8, src_tn, "int64_2_mmx", &base_tn, &ofst_tn,
+                            ops);
+        Build_OP(TOP_ld64_2m, tgt_tn, base_tn, ofst_tn, ops);
+      }
     } else if( src_rc == ISA_REGISTER_CLASS_float &&
 	       tgt_rc == ISA_REGISTER_CLASS_mmx) {
       // mov sse to mmx
@@ -7046,15 +7057,39 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TYPE_ID m
     {
       TN* tmp0 = Build_TN_Like(result);
       TN* tmp1 = Build_TN_Like(result);
-      Build_OP( TOP_movg2x, tmp0, op0, ops );
-      Build_OP( TOP_movg2x, tmp1, op1, ops );
-      Build_OP( TOP_punpckldq, result, tmp0, tmp1, ops );
+      if ( TN_register_class(result) == ISA_REGISTER_CLASS_mmx ) {
+        Build_OP( TOP_movi32_2m, tmp0, op0, ops );
+        Build_OP( TOP_movi32_2m, tmp1, op1, ops );
+        Build_OP( TOP_punpckl64v32, result, tmp0, tmp1, ops );
+      } else {
+        Build_OP( TOP_movg2x, tmp0, op0, ops );
+        Build_OP( TOP_movg2x, tmp1, op1, ops );
+        Build_OP( TOP_punpckldq, result, tmp0, tmp1, ops );
+      }
       break;
     }
   case INTRN_VEC_EXT_V2SI:
-    if (Is_Target_64bit())
-      Build_OP( TOP_movx2g64, result, op0, ops );
-    else Expand_Float_To_Int_Tas(result, op0, MTYPE_I8, ops);
+    if ( TN_register_class(op0) == ISA_REGISTER_CLASS_mmx ) {
+      if ( TN_has_value(op1) && TN_value(op1) == 1 ) {
+        Build_OP( TOP_punpckhdq, op0, op0, op0, ops );
+        Build_OP( TOP_movm_2i32, result, op0, ops );
+      } else if ( TN_is_zero(op1)) {
+        Build_OP( TOP_movm_2i32, result, op0, ops );
+      } else {
+        FmtAssert(0, ("op1 must be an integer constant in the range 0..1"));
+      }
+    } else {
+      if ( TN_has_value(op1) && TN_value(op1) == 1 ) {
+        TN* tmp=Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
+        Build_OP( TOP_movdq2q, tmp,  op0, ops);
+        Build_OP( TOP_punpckhdq, tmp, tmp, tmp, ops);
+        Build_OP( TOP_movm_2i32, result, tmp, ops );
+      } else if ( TN_is_zero(op1)) {
+        Build_OP( TOP_movx2g, result, op0, ops );
+      } else {
+        FmtAssert(0, ("op1 must be an integer constant in the range 0..1"));
+      }
+    }
     break;
   case INTRN_PMADDWD:
     Build_OP( TOP_pmaddwd, result, op0, op1, ops );
@@ -7707,6 +7742,10 @@ BOOL
 Target_Has_Immediate_Operand (WN *parent, WN *expr)
 {
   OPERATOR opr = WN_operator(parent);
+  //add for OPR_INTRINSIC_OP INTRN_VEC_EXT_V2SI, the second oprand is const 0 or 1
+  INTRINSIC id = (INTRINSIC) WN_intrinsic (parent);
+  if ( opr == OPR_INTRINSIC_OP && id == INTRN_VEC_EXT_V2SI && WN_kid0(WN_kid1(parent))== expr )
+    return true;
   return opr == OPR_ADD || opr == OPR_SUB || opr == OPR_EQ ||
          opr == OPR_BAND || opr == OPR_BIOR || opr == OPR_BXOR ||
          opr == OPR_LT || opr == OPR_LE || opr == OPR_GT || opr == OPR_GE ||

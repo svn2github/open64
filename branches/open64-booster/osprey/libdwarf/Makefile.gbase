@@ -163,6 +163,8 @@ VPATH = $(BUILD_BASE) $(BUILD_BASE)/dwarfdump $(BUILD_BASE)/libdwarf
 $(LIBRARY): $(OBJECTS)
 	$(ar) cru $@ $^
 
+print_sections.o: dwarf_names.h
+
 dwarf_names.h dwarf_names.c: stamp-names
 
 stamp-names: dwarf_names.awk dwarf.h

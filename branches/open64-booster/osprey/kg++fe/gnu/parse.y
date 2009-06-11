@@ -913,7 +913,7 @@ fndef:
 
 constructor_declarator:
 	  nested_name_specifier SELFNAME '('
-                { $$ = begin_constructor_declarator ($1, $2); }
+                { $<ttype>$ = begin_constructor_declarator ($1, $2); }
 	  parmlist ')' cv_qualifiers exception_specification_opt
 		{ $$ = make_call_declarator ($<ttype>4, $5, $7, $8); }
 	| nested_name_specifier SELFNAME LEFT_RIGHT cv_qualifiers exception_specification_opt
@@ -921,7 +921,7 @@ constructor_declarator:
 		  $$ = make_call_declarator ($$, empty_parms (), $4, $5);
 		}
 	| global_scope nested_name_specifier SELFNAME '('
-                { $$ = begin_constructor_declarator ($2, $3); }
+                { $<ttype>$ = begin_constructor_declarator ($2, $3); }
 	 parmlist ')' cv_qualifiers exception_specification_opt
 		{ $$ = make_call_declarator ($<ttype>5, $6, $8, $9); }
 	| global_scope nested_name_specifier SELFNAME LEFT_RIGHT cv_qualifiers exception_specification_opt
@@ -929,7 +929,7 @@ constructor_declarator:
 		  $$ = make_call_declarator ($$, empty_parms (), $5, $6);
 		}
 	| nested_name_specifier self_template_type '('
-                { $$ = begin_constructor_declarator ($1, $2); }
+                { $<ttype>$ = begin_constructor_declarator ($1, $2); }
 	  parmlist ')' cv_qualifiers exception_specification_opt
 		{ $$ = make_call_declarator ($<ttype>4, $5, $7, $8); }
 	| nested_name_specifier self_template_type LEFT_RIGHT cv_qualifiers exception_specification_opt
@@ -937,7 +937,7 @@ constructor_declarator:
 		  $$ = make_call_declarator ($$, empty_parms (), $4, $5);
 		}
 	| global_scope nested_name_specifier self_template_type '('
-                { $$ = begin_constructor_declarator ($2, $3); }
+                { $<ttype>$ = begin_constructor_declarator ($2, $3); }
 	 parmlist ')' cv_qualifiers exception_specification_opt
 		{ $$ = make_call_declarator ($<ttype>5, $6, $8, $9); }
 	| global_scope nested_name_specifier self_template_type LEFT_RIGHT cv_qualifiers exception_specification_opt
@@ -4122,7 +4122,7 @@ save_lineno:
 parallel_construct:
 	parallel_directive
 	{
-	  $$ = add_stmt (build_omp_stmt (parallel_dir_b, $1));
+	  $<ttype>$ = add_stmt (build_omp_stmt (parallel_dir_b, $1));
 	  In_MP_Region = true;
 	  mp_nesting++;
 	  if (mp_nesting == MAX_MP_NESTING)
@@ -4191,7 +4191,7 @@ for_construct:
         for_directive
         {
             add_stmt (build_omp_stmt (for_dir_b, $1));
-            $$ = NULL;
+            $<ttype>$ = NULL;
         }
                                                                                 
         iteration_statement
@@ -4267,7 +4267,7 @@ sections_construct:
         sections_directive
         {
             add_stmt (build_omp_stmt (sections_cons_b, $1));
-            $$ = NULL;
+            $<ttype>$ = NULL;
         }
         section_scope
         { add_stmt (build_omp_stmt (sections_cons_e, NULL)); $$ = NULL; }
@@ -4350,7 +4350,7 @@ single_construct:
         single_directive
         {
             add_stmt (build_omp_stmt (single_cons_b, $1));
-            $$ = NULL;
+            $<ttype>$ = NULL;
         }
         structured_block
         { add_stmt (build_omp_stmt (single_cons_e, NULL)); $$ = NULL; }
@@ -4384,7 +4384,7 @@ single_clause:
 parallel_for_construct:
         parallel_for_directive
         {
-            $$ = add_stmt (build_omp_stmt (par_for_cons_b, $1));
+            $<ttype>$ = add_stmt (build_omp_stmt (par_for_cons_b, $1));
             In_MP_Region = true;
             mp_nesting++;
             if (mp_nesting == MAX_MP_NESTING)
@@ -4459,7 +4459,7 @@ parallel_for_clause:
 parallel_sections_construct:
         parallel_sections_directive
         {
-            $$ = add_stmt (build_omp_stmt (par_sctn_cons_b, $1));
+            $<ttype>$ = add_stmt (build_omp_stmt (par_sctn_cons_b, $1));
             In_MP_Region = true;
             mp_nesting++;
             if (mp_nesting == MAX_MP_NESTING)
@@ -4531,7 +4531,7 @@ parallel_sections_clause:
                                                                                 
 master_construct:
         master_directive
-        { add_stmt (build_omp_stmt (master_cons_b, NULL)); $$ = NULL; }
+        { add_stmt (build_omp_stmt (master_cons_b, NULL)); $<ttype>$ = NULL; }
         structured_block
         { add_stmt (build_omp_stmt (master_cons_e, NULL)); $$ = NULL; }
         ;
@@ -4542,7 +4542,7 @@ master_directive:
                                                                                 
 critical_construct:
         critical_directive
-        { add_stmt (build_omp_stmt (critical_cons_b, $1)); $$ = NULL; }
+        { add_stmt (build_omp_stmt (critical_cons_b, $1)); $<ttype>$ = NULL; }
         structured_block
         { add_stmt (build_omp_stmt (critical_cons_e, NULL)); $$ = NULL; }
         ;
@@ -4568,7 +4568,7 @@ atomic_construct:
         atomic_directive
         {
             add_stmt (build_omp_stmt (atomic_cons_b, NULL));
-            $$ = NULL;
+            $<ttype>$ = NULL;
         }
         expr_no_commas ';'
         {
@@ -4592,7 +4592,7 @@ flush_directive:
                                                                                 
 ordered_construct:
         ordered_directive
-        { add_stmt (build_omp_stmt (ordered_cons_b, NULL)); $$ = NULL; }
+        { add_stmt (build_omp_stmt (ordered_cons_b, NULL)); $<ttype>$ = NULL; }
         structured_block
         { add_stmt (build_omp_stmt (ordered_cons_e, NULL)); $$ = NULL; }
         ;

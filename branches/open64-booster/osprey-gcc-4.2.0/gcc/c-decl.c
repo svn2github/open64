@@ -5800,8 +5800,22 @@ finish_enum (tree enumtype, tree values, tree attributes)
       tem = c_common_type_for_size (precision, unsign);
       if (tem == NULL)
 	{
-	  warning (0, "enumeration values exceed range of largest integer");
-	  tem = long_long_integer_type_node;
+#ifdef TARG_SL
+    if (Long_Long_Support == TRUE)
+    {
+      warning (0, "enumeration values exceed range of largest integer");
+      tem = long_long_integer_type_node;
+    }
+    else
+    {
+      error("\"long long\" is mapped to \"long\", "
+            "Please use \"-mlong-long\" option to enbale long long type suporting."
+            "enumeration values exceed range of largest integer");
+    }
+#else	
+  warning (0, "enumeration values exceed range of largest integer");
+  tem = long_long_integer_type_node;
+#endif
 	}
     }
   else
@@ -6346,6 +6360,30 @@ store_parm_decls_oldstyle (tree fndecl, const struct c_arg_info *arg_info)
   tree parm, decl, last;
   tree parmids = arg_info->parms;
   struct pointer_set_t *seen_args = pointer_set_create ();
+
+#ifdef TARG_SL
+/* Don't support old-style function definition for float/double type */
+  tree parm_t;
+  int float_flag = 0;
+  for (parm_t = parmids; parm_t != NULL; parm_t = TREE_CHAIN(parm_t))
+  {
+      tree type_node = TYPE_MAIN_VARIANT(TREE_TYPE((I_SYMBOL_BINDING (TREE_VALUE (parm_t))->decl)));
+      if (type_node == float_type_node || type_node == double_type_node) 
+      {
+          float_flag = 1;
+          break;
+      }
+  }
+  if (float_flag == 1)
+  {
+     error("Old-style function definition is not supported for float/double type");
+  }
+  else
+  {
+     warning(0, "Old-style function definition");
+  }
+#endif
+
 
   if (!in_system_header)
     warning (OPT_Wold_style_definition, "%Jold-style function definition",
@@ -7776,9 +7814,29 @@ finish_declspecs (struct c_declspecs *specs)
       gcc_assert (!(specs->long_p && specs->short_p));
       gcc_assert (!(specs->signed_p && specs->unsigned_p));
       if (specs->long_long_p)
-	specs->type = (specs->unsigned_p
-		       ? long_long_unsigned_type_node
-		       : long_long_integer_type_node);
+      {
+#ifdef TARG_SL
+    if (Long_Long_Support == TRUE)
+    {
+      specs->type = (specs->unsigned_p
+           ? long_long_unsigned_type_node
+           : long_long_integer_type_node);
+    }
+    else
+    {
+      warning(0, "\"long long\" is mapped to \"long\", "
+              "Please use \"-mlong-long\" option to enbale long long type suporting");
+      specs->type = (specs->unsigned_p
+                         ? long_unsigned_type_node
+                         : long_integer_type_node);
+    }
+#else
+    specs->type = (specs->unsigned_p
+           ? long_long_unsigned_type_node
+           : long_long_integer_type_node);
+    
+#endif
+      }
       else if (specs->long_p)
 	specs->type = (specs->unsigned_p
 		       ? long_unsigned_type_node
@@ -7793,6 +7851,9 @@ finish_declspecs (struct c_declspecs *specs)
 		       : integer_type_node);
       if (specs->complex_p)
 	{
+#ifdef TARG_SL 
+      error("Unsupported type: \"complex\"");
+#endif
 	  if (pedantic)
 	    pedwarn ("ISO C does not support complex integer types");
 	  specs->type = build_complex_type (specs->type);
@@ -7804,6 +7865,21 @@ finish_declspecs (struct c_declspecs *specs)
       specs->type = (specs->complex_p
 		     ? complex_float_type_node
 		     : float_type_node);
+	  
+#ifdef TARG_SL
+    if (TYPE_MAIN_VARIANT(specs->type) == float_type_node)
+		{
+		  if (Float_Point_Support == FALSE)
+      {    
+        error("\"float\" type is not supported in default mode, "
+              "Please use \"-msoft-float\" option to enable float point emulation");
+      }
+	  }
+    else
+    {
+        warning(0, "Unsupported type: \"complex float\"");
+    }
+#endif
       break;
     case cts_double:
       gcc_assert (!specs->long_long_p && !specs->short_p
@@ -7820,10 +7896,28 @@ finish_declspecs (struct c_declspecs *specs)
 			 ? complex_double_type_node
 			 : double_type_node);
 	}
+
+#ifdef TARG_SL
+    if (TYPE_MAIN_VARIANT(specs->type) == double_type_node)
+		{
+		  if (Float_Point_Support == FALSE)
+      {    
+        error("\"double\" type is not supported in default mode, "
+              "Please use \"-msoft-float\" option to enable float point emulation");
+      }
+	  }
+    else
+    {
+        warning(0, "Unsupported type: \"long double/complex\"");
+    }    
+#endif
       break;
     case cts_dfloat32:
     case cts_dfloat64:
     case cts_dfloat128:
+#ifdef TARG_SL 
+      error("Unsupported type: \"complex\"");
+#endif
       gcc_assert (!specs->long_p && !specs->long_long_p && !specs->short_p
 		  && !specs->signed_p && !specs->unsigned_p && !specs->complex_p);
       if (specs->typespec_word == cts_dfloat32)

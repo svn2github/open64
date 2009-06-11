@@ -606,8 +606,11 @@ void CGEMIT_Alias (ST *sym, ST *strongsym)
   fprintf ( Asm_File, "\t%s = %s", ST_name(sym), ST_name(strongsym));
   if (ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
     // modelled after EMT_Write_Qualified_Name (bug 6899)
-    if (ST_level(strongsym) == GLOBAL_SYMTAB)
-      fprintf ( Asm_File, "%s%d", Label_Name_Separator, ST_index(strongsym));
+    if (ST_level(strongsym) == GLOBAL_SYMTAB) {
+      // bug 14517, OSP 490
+      if (Emit_Global_Data || ST_sclass(strongsym) == SCLASS_PSTATIC)
+        fprintf ( Asm_File, "%s%d", Label_Name_Separator, ST_index(strongsym));
+    }
     else
       fprintf ( Asm_File, "%s%d%s%d", Label_Name_Separator, 
 		ST_pu(Get_Current_PU_ST()),

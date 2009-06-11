@@ -147,6 +147,10 @@ BOOL	VHO_Generate_Rrotate = FALSE;
 BOOL	VHO_Generate_Rrotate_Set = FALSE;
 #endif
 
+/* Debugging Flags for VHO */
+OPTION_LIST* VHO_Skip = NULL; /* Skip option list */
+SKIPLIST* VHO_Skip_List = NULL;      /* Processed skiplist */
+
 /* List of global variables to turn on and off various optimizations */
 
 /* ====================================================================
@@ -229,5 +233,14 @@ static OPTION_DESC Options_VHO[] = {
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "rotate", "",
     0, 0, 0,    &VHO_Generate_Rrotate, &VHO_Generate_Rrotate_Set },
 #endif
+
+  /* Debugging flags for VHO */
+  { OVK_LIST,   OV_SHY,        FALSE, "skip_equal",          "skip_e",
+    0, 0, 4096, &VHO_Skip,      NULL },
+  { OVK_LIST,   OV_SHY,        FALSE, "skip_before",         "skip_b",
+    0, 0, 4096, &VHO_Skip,      NULL },
+  { OVK_LIST,   OV_SHY,        FALSE, "skip_after",          "skip_a",
+    0, 0, 4096, &VHO_Skip,      NULL },
+
   { OVK_COUNT }		/* List terminator -- must be last */
 };

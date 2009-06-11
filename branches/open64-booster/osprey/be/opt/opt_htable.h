@@ -646,11 +646,7 @@ public:
 					    ("CODEREP::Set_dtyp_const_val, illegal kind"));
 					// use given mtype if value fits
 #if defined(TARG_SL)
-					if (dt == MTYPE_U4
-					  && (v == (v << 32) >> 32))
-					  _dtyp = MTYPE_U4;
-					else if (dt == MTYPE_I4
-					  && (v == (v << 32) >> 32))
+					if ((dt == MTYPE_U4 || dt == MTYPE_I4) && (v == (v << 32) >> 32))
 					  _dtyp = MTYPE_I4;
 #else
 					if (dt == MTYPE_U4

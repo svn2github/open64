@@ -126,8 +126,10 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Lda_Label (result, op1, ops);
 	break;
   case OPR_INTCONST:
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
 	Expand_Mtype_Immediate (result, op1, rtype, ops);
+#elif defined(TARG_SL)
+	Expand_Immediate (result, op1, rtype, ops);
 #else
 	Expand_Immediate (result, op1, TRUE /* is_signed */, ops);
 #endif

@@ -118,6 +118,12 @@ extern BOOL Madd_Allowed;	/* Generate madd instructions? */
 extern BOOL SYNC_Allowed;
 extern BOOL Slow_CVTDL;
 
+extern BOOL Target_MMX;        /* Generate mmx instructions? */
+extern BOOL Target_MMX_Set;
+
+extern BOOL Target_SSE;        /* Generate sse instructions? */
+extern BOOL Target_SSE_Set;
+
 extern BOOL Target_SSE2;        /* Generate sse2 instructions? */
 extern BOOL Target_SSE2_Set;
 

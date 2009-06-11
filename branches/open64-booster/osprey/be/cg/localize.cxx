@@ -78,6 +78,11 @@
 #include "targ_sim.h"
 #include "whirl2ops.h"
 
+#if defined(TARG_SL)
+#include <queue>
+#include <set>
+#endif
+
 static BOOL Trace_Localize = FALSE;
 
 #define Trace_Replace(msg1,old_tn,msg2,new_tn,bb) \
@@ -239,6 +244,9 @@ Localize_Global_Return_Reg (BB *current_bb, TN *ret_tn)
 			}
 		}
 	}
+#if defined(TARG_SL)	
+	if (bb == NULL) return;
+#endif	
 	FmtAssert(bb != NULL && BB_call(bb), ("didn't find call BB before bb %d for tn %d", BB_id(current_bb), TN_number(ret_tn)));
 	bb = BB_next(bb);	/* go back to bb after call */
 	/* insert copy at beginning of bb */
@@ -1018,6 +1026,38 @@ Call_or_Entry_Reaches_BB(BB *start)
       return bb;
     }
   }
+
+#if defined(TARG_SL)
+  /*
+   * Fix a bug, in OspreyTest/SingleSource/gcc.c-torture/double/unsorted/poor.c
+   * If  preds(bb1) = {bb2, bb3}, the original code only search bb2, but bb3 is omitted.
+   * The added codes is a breadth-first search up travel.
+   */
+  std::queue<BB*> to_visit;
+  std::set<BB*>   visited_bb;
+  to_visit.push(start);
+  int cnt = 0;
+
+  /* CFG : breadth-first search up travel  */
+  while ((!to_visit.empty()) && (cnt++ < BB_SEARCH_LIMIT)) {
+    bb = to_visit.front();
+    visited_bb.insert(bb);
+    to_visit.pop();
+    if (BB_entry(bb)) return bb;
+
+    BBLIST* nxt;
+    BBLIST* prevs;
+
+	/* Push all not visited pred of BB to to_visit queue */
+    for (prevs = BB_preds(bb); prevs; prevs = nxt) {
+      BB* bb_prev = BBLIST_item(prevs);
+      nxt = BBLIST_next(prevs);
+
+      if (visited_bb.count(bb_prev) == 0) 
+        to_visit.push(bb_prev);
+    } 
+  }
+#endif  
   return NULL;
 }
 
@@ -1083,6 +1123,28 @@ BB_Predecessor_Compiled_Region( INT *exit_num, BB *start )
   }
   return NULL;
 }
+
+#ifdef TARG_SL
+/* Is Tn defined in Local BB before end_op */
+static BOOL 
+TN_Def_Local(BB * bb, OP * end_op, TN * ded_tn)
+{
+  OP * op = NULL;
+  TN * tn = NULL;
+  FOR_ALL_BB_OPs (bb, op) {
+  	if (op == end_op) {
+	  break;
+  	}
+	for (INT i = 0; i < OP_results(op); i++) {
+	  tn = OP_result(op,i);
+	  if (tn == ded_tn) 
+	  	return TRUE;
+	}
+  }
+
+  return FALSE;
+}
+#endif
 
 /* =======================================================================
  *
@@ -1239,6 +1301,10 @@ Localize_or_Replace_Dedicated_TNs(void)
 #endif
 	if ( non_region_def_bb == bb ) // the def is already local
 	  continue;
+#if defined(TARG_SL)	
+	else if (TN_Def_Local(bb, op, tn))
+	  continue;	
+#endif	
 	else if ( non_region_def_bb ) {
 	  // replace this use by a use of new_tn and add a copy new_tn <- tn
 	  // in non_region_def_bb

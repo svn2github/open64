@@ -121,6 +121,8 @@ typedef enum {
 } TARGET_ABI;
 
 extern TARGET_ABI Target_ABI;
+extern BOOL Target_MMX;
+extern BOOL Target_SSE;
 extern BOOL Target_SSE2;
 extern BOOL Target_SSE3;
 extern BOOL Target_3DNow;
@@ -157,6 +159,8 @@ extern const char *Targ_Name (TARGET_PROCESSOR target);
 #define Is_Target_x86_64()	(Target >= TARGET_opteron && Target <= TARGET_xeon)
 #define Is_Target_64bit()       (Target_ABI == ABI_n64)
 #define Is_Target_32bit()       (Target_ABI == ABI_n32)
+#define Is_Target_MMX()         (Target_MMX == TRUE)
+#define Is_Target_SSE()         (Target_SSE == TRUE)
 #define Is_Target_SSE2()        (Target_SSE2 == TRUE)
 #define Is_Target_SSE3()        (Target_SSE3 == TRUE)
 #define Is_Target_3DNow()       (Target_3DNow == TRUE)

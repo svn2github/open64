@@ -5074,6 +5074,10 @@ WGEN_Expand_Top_Level_Decl (gs_t top_level_decl)
       gxx_emitted_asms_expanded = TRUE;
     }
 
+    // No decls or all decls have been expanded
+    if ( gs_code(top_level_decl) == EMPTY )
+      return;
+
     WGEN_Expand_Decl (top_level_decl, TRUE);
 
 #ifdef KEY

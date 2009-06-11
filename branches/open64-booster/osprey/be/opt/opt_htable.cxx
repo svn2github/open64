@@ -2066,8 +2066,17 @@ CODEMAP::Canon_add_sub(WN       *wn,
     if (opr == OPR_ADD)
       ccr->Set_tree(kid1.Tree());
     else
+#ifdef KEY // bug 14605: force to signed because generating negate
       ccr->Set_tree(Add_unary_node(
-           OPCODE_make_op(OPR_NEG, OPCODE_rtype(op), MTYPE_V), kid1.Tree()));
+                      OPCODE_make_op(OPR_NEG,
+                        Mtype_TransferSign(MTYPE_I4, OPCODE_rtype(op)),
+                        MTYPE_V),
+                      kid1.Tree()));
+#else
+      ccr->Set_tree(Add_unary_node(
+                        OPCODE_make_op(OPR_NEG, OPCODE_rtype(op), MTYPE_V), 
+                        kid1.Tree()));
+#endif
     return propagated;
   }
   if (kid1.Tree() == NULL) {
@@ -2212,7 +2221,7 @@ CODEMAP::Canon_cvt(WN       *wn,
   }
 #endif
 
-#ifdef TARG_MIPS
+#if defined (TARG_MIPS) && !defined (TARG_SL)
   // U8I4CVT and I8I4CVT are nops so return kid, MIPS III and above
   // since U8I4CVT is required to preserve the type of its type for
   // Fix_var_type at emitter time, we do not delete U8I4CVT #329096
@@ -2227,8 +2236,12 @@ CODEMAP::Canon_cvt(WN       *wn,
       MTYPE_size_min(OPCODE_rtype(op)) == MTYPE_size_min(OPCODE_desc(op))) 
     return propagated;
 
+#ifdef TARG_SL
+  extern BOOL Is_Target_32bit();
+#endif
+
   if ( WOPT_Enable_Cvt_Folding && 
-#if defined(TARG_X8664) || defined(TARG_NVISA) // bug 5851
+#if defined(TARG_X8664) || defined(TARG_NVISA) || defined (TARG_SL) // bug 5851
        ! Is_Target_32bit() &&
 #endif
       (op == OPC_I8U4CVT || op == OPC_U8U4CVT) && 
@@ -5996,7 +6009,6 @@ MEMOP_ANNOT_CR_SR_MGR::Discard_offline_annot
   (WN* root, const ALIAS_MANAGER* am, BOOL trace) {
 
   WN_MEMOP_ANNOT_MGR* wn_annot_mgr = WN_MEMOP_ANNOT_MGR::WN_mem_annot_mgr(); 
-  Is_True (wn_annot_mgr == NULL, ("Annotation manager is supposed to be NULL"));
 
   if (trace) {
     fprintf (TFile, "Discard offline annotations:\n");

@@ -222,6 +222,11 @@ Compute_Parameter_Regs (TY_IDX call_ty, WN *call_wn, REGSET parms)
     while (PLOC_is_nonempty(ploc)) {
     	if (PLOC_on_stack(ploc)) break;	// no more register parameters.
 	Add_PREG_To_REGSET (PLOC_reg(ploc), parms);
+#if defined(TARG_SL)
+        if (MTYPE_byte_size(TY_mtype(parm_ty)) == 8) { //I8/U8/F8
+          Add_PREG_To_REGSET (PLOC_reg(ploc)+1, parms);
+        }
+#endif   
         ploc = func_entry ? Next_Input_PLOC_Reg (ploc)
                           : Next_Output_PLOC_Reg (ploc);
     }
@@ -257,6 +262,12 @@ Compute_Return_Regs (ST *call_st, TY_IDX call_ty, REGSET return_regs)
 	retpreg[i] = RETURN_INFO_preg (return_info, i);
 	Add_PREG_To_REGSET (retpreg[i], return_regs);
     }
+#if defined(TARG_SL)
+    FmtAssert(RETURN_INFO_count(return_info) <= 1, ("except 1 return register"));
+    if (MTYPE_byte_size(TY_mtype(call_ty)) == 8) { //I8/U8/F8
+      Add_PREG_To_REGSET (RETURN_INFO_preg(return_info, 0)+1, return_regs);
+    }
+#endif   
   }
 
   else {

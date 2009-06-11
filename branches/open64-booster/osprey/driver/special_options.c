@@ -104,12 +104,14 @@ set_defaults (void)
 	  }
 	}
 	if (endian == UNDEFINED) {
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS)
+#if !defined(TARG_SL)
 		/* Default to little-endian -JMB */
 		toggle(&endian, ENDIAN_LITTLE);
 		prepend_option_seen(O_EL);
 		prepend_option_seen(O_mlittle_endian);
-#else
+#endif
+#else 
 #ifdef LITTLE_ENDIAN_HOST
 		toggle(&endian, ENDIAN_LITTLE);
 #else

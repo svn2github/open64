@@ -1324,12 +1324,6 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
       else
 	sqrt_75 = TRUE;
 
-      // non-constant float x could be negative; 
-      // so it could be error to fold the INTRN_EXPEXPR to sqrt 
-#define FLOAT_CANNOT_BE_FOLDED(x) (!Is_Constant (x) || Targ_To_Host_Float (Const_Val (x)))
-      if (FLOAT_CANNOT_BE_FOLDED(x))
-        return NULL; 
-
       x_copy = WN_COPY_Tree(x);
     }    
 #if !defined (TARG_MIPS) && !defined (TARG_IA64)
@@ -1450,9 +1444,6 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
       if (rsqrt_75 && (type == MTYPE_F8 || type == MTYPE_V16F8))
 	return NULL;
 #endif 
-
-      if (FLOAT_CANNOT_BE_FOLDED(x_copy))
-	return NULL;
 
       if (tree)
       {

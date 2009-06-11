@@ -79,191 +79,6 @@ main()
 
   Set_AsmName_Func(NULL);
 #ifdef TARG_SL
-   // dsp thread
-
-  /*one result  | 5 operands*/
-  ISA_PRINT_TYPE c3type1 =  ISA_Print_Type_Create("c3type1", "%s %s,%s,%s,%s,%s,%s");
-  Name();
-  Result(0);
-  Operand(0);
-  Operand(1);
-  Operand(2);
-  Operand(3);
-  Operand(4);
-  Instruction_Print_Group(c3type1,
-  	        TOP_c3_mac_ar,  
-               TOP_c3_macn_ar,
-               TOP_c3_mula_ar,
-               TOP_c3_samulh_a,
-               TOP_c3_sasub_a,
-               TOP_c3_sasubh_a,
-               TOP_c3_saadd_a,
-               TOP_c3_saaddh_a,
-               TOP_UNDEFINED);
-
-  /*one result  | 3 operands*/
-  ISA_PRINT_TYPE c3type2 =  ISA_Print_Type_Create("c3type2", "%s %s,%s,%s,%s");
-  Name();
-  Result(0);
-  Operand(0);
-  Operand(1);
-  Operand(2);
-  Instruction_Print_Group(c3type2,
-                     TOP_c3_bitc,  
-                     TOP_c3_bitr,
-  	             TOP_c3_dmula,
-  	             TOP_c3_dmulan, 
-  	             TOP_c3_mac,// same_res
-  	             TOP_c3_macci, // same_res
-  	             TOP_c3_maccr, //same_res
-  	             TOP_c3_macd, //same_res
-  	             TOP_c3_macn, // same_res
-  	             TOP_c3_mula,
-  	             TOP_c3_mulaci,
-  	             TOP_c3_mulacr,
-  	             TOP_c3_mulan, //same_res
-  	             TOP_c3_dshll_i,
-    	             TOP_c3_dshrl_i,
-    	             TOP_c3_mac_i, //same_res
-                    TOP_c3_macn_i, //same_res
-                    TOP_c3_mula_i,
-                    TOP_c3_saadds,
-  	            TOP_c3_sasubs,
-  	            TOP_c3_saaddsh,
-  	            TOP_c3_sasubsh,
-  	            TOP_c3_samulsh,
-  	        TOP_UNDEFINED);
-
-  /*one result  | 6 operands*/
-  ISA_PRINT_TYPE c3type5=  ISA_Print_Type_Create("c3type5", "%s %s,%s,%s,%s,%s,%s,%s");
-  Name();
-  Result(0);
-  Operand(0);
-  Operand(1);
-  Operand(2);
-  Operand(3);
-  Operand(4);
-  Operand(5);
-  Instruction_Print_Group(c3type5,
-  	             TOP_c3_dmula_a,
-  	             TOP_c3_dmulan_a,
-  	             TOP_c3_mac_a,// same_res
-  	             TOP_c3_macn_a, //same_res
-  	             TOP_c3_mula_a,
-  	             TOP_c3_saddha_a,
-  	             TOP_UNDEFINED);
-
-  /*one result  | 7 operands*/
-  ISA_PRINT_TYPE c3type6=  ISA_Print_Type_Create("c3type6", "%s %s,%s,%s,%s,%s,%s,%s,%s");
-  Name();
-  Result(0);
-  Operand(0);
-  Operand(1);
-  Operand(2);
-  Operand(3);
-  Operand(4);
-  Operand(5);
-  Operand(6);
-  Instruction_Print_Group(c3type6,
-                         TOP_c3_dmac_a,// same_res
-                         TOP_c3_dmacn_a,// same_res
-                         TOP_UNDEFINED);
- 
-  /*one result  | 4 operands*/
-  ISA_PRINT_TYPE c3type7 =  ISA_Print_Type_Create("c3type7", "%s %s,%s,%s,%s,%s");
-  Name();
-  Result(0);
-  Operand(0);
-  Operand(1);
-  Operand(2);
-  Operand(3);
-  Instruction_Print_Group(c3type7,
-  	            TOP_c3_saddha,
-                    TOP_c3_dmac,  // same_res
-                    TOP_c3_dmacn,// same_res
-  	            TOP_UNDEFINED);
-  
-  /*one result  | 2 operands*/
-  ISA_PRINT_TYPE c3type8 =  ISA_Print_Type_Create("c3type8", "%s %s,%s,%s");
-  Name();
-  Result(0);
-  Operand(0);
-  Operand(1);
-  Instruction_Print_Group (c3type8,
-  	            TOP_c3_lead,
-  	            TOP_c3_revb,
-  	            TOP_c3_sashllh,
-                    TOP_c3_dadd,
-                    TOP_c3_dsub,
- 	            TOP_UNDEFINED);
-
-  /*one result | two operand | no name()*/
-  ISA_PRINT_TYPE c3type11 =  ISA_Print_Type_Create("c3type11", "c3.mvfs %s,%s,%s");
-  Result(0);
-  Operand(0);
-  Operand(1);
-  Instruction_Print_Group(c3type11,
-  	             TOP_c3_mvfacc,
-  	             TOP_c3_mvfadd,
-      	             TOP_c3_mvfadds,
-  	             TOP_UNDEFINED);
-  
-  /*one result | two operand | no name()*/
-  ISA_PRINT_TYPE c3type12 =  ISA_Print_Type_Create("c3type12", "c3.mvts %s,%s,%s");
-  Result(0);
-  Operand(0);
-  Operand(1);  
-  Instruction_Print_Group(c3type12,
-     	             TOP_c3_mvtacc,
-      	             TOP_c3_mvtadds,
-      	             TOP_c3_mvtadd,
-  	             TOP_UNDEFINED);
-
-  ISA_PRINT_TYPE c3type13 = ISA_Print_Type_Create("c3type13", "%s %s, %s,%s");
-  Name();
-  Result(0);
-  Operand(0);
-  Operand(1);
-  Instruction_Print_Group(c3type13,
-  	             TOP_c3_mvfs,
-  	             TOP_c3_mvts,
-  	             TOP_UNDEFINED);
-  
-  /*one result  | 2 operand*/
-  ISA_PRINT_TYPE c3type14 =  ISA_Print_Type_Create("c3type14", "%s %s,%s,%s");
-  Name();
-  Result(0); // same res
-  Operand(0); // shl
-  Operand(1); // mode
-  Instruction_Print_Group(c3type14,
-  	             TOP_c3_round,
-  	             TOP_UNDEFINED);
-
-  /*no result | 5 operand*/
-  ISA_PRINT_TYPE c3type22 =  ISA_Print_Type_Create("c3type22", "%s %s,%s,%s,%s,%s");
-  Name();
-  Operand(0);
-  Operand(1);
-  Operand(3);
-  Operand(4);
-  Operand(5);
-  Instruction_Print_Group(c3type22,
-  	             TOP_c3_st,
-                     TOP_c3_fftst,
-  	             TOP_UNDEFINED);
-  
-  ISA_PRINT_TYPE c3ld = ISA_Print_Type_Create("c3ld", "%s %s,%s,%s,%s,%s");
-  Name();
-  Result(0);
-  Operand(0);
-  Operand(2);
-  Operand(3);
-  Operand(4);
-  Instruction_Print_Group(c3ld,
-                     TOP_c3_ld,
-                     TOP_c3_fftld,
-                     TOP_UNDEFINED);
-
   // new c3 
   ISA_PRINT_TYPE c3_1des_4opr =  ISA_Print_Type_Create("c3_1des_4opr", "%s %s,%s,%s,%s,%s");
   Name();
@@ -273,18 +88,18 @@ main()
   Operand(2);
   Operand(3);
   Instruction_Print_Group(c3_1des_4opr,
-                          TOP_C3_mac,
-                          TOP_C3_macn,
-                          TOP_C3_mula_ar,
-                          TOP_C3_saadd_a,
-                          TOP_C3_saaddh_a,
-                          TOP_C3_samulh_a,
-                          TOP_C3_sasub_a,
-                          TOP_C3_sasubh_a,
-                          TOP_C3_shlata_i,
-                          TOP_C3_shrata_i,
-                          TOP_C3_mac_i,
-                          TOP_C3_macn_i,
+                          TOP_c3_mac,
+                          TOP_c3_macn,
+                          TOP_c3_mula_ar,
+                          TOP_c3_saadd_a,
+                          TOP_c3_saaddh_a,
+                          TOP_c3_samulh_a,
+                          TOP_c3_sasub_a,
+                          TOP_c3_sasubh_a,
+                          TOP_c3_shlata_i,
+                          TOP_c3_shrata_i,
+                          TOP_c3_mac_i,
+                          TOP_c3_macn_i,
                           TOP_UNDEFINED);
 
   ISA_PRINT_TYPE c3_2des_2opr = ISA_Print_Type_Create("c3_2des_2opr", "%s %s,%s,%s");
@@ -293,7 +108,7 @@ main()
   Operand(0);
   Operand(1);
   Instruction_Print_Group(c3_2des_2opr,
-                          TOP_C3_subc,
+                          TOP_c3_subc,
                           TOP_UNDEFINED);
 
   ISA_PRINT_TYPE c3_2des_3opr = ISA_Print_Type_Create("c3_2des_3opr", "%s %s,%s,%s,%s");
@@ -303,8 +118,8 @@ main()
   Operand(1);
   Operand(2);
   Instruction_Print_Group(c3_2des_3opr,
-                          TOP_C3_muls,
-                          TOP_C3_mulus,
+                          TOP_c3_muls,
+                          TOP_c3_mulus,
                           TOP_UNDEFINED);
    
   ISA_PRINT_TYPE c3_1des_3opr = ISA_Print_Type_Create("c3_1des_3opr", "%s %s,%s,%s,%s");
@@ -314,26 +129,26 @@ main()
   Operand(1);
   Operand(2);
   Instruction_Print_Group(c3_1des_3opr,
-                          TOP_C3_aadda,
-                          TOP_C3_nega,
-                          TOP_C3_bitr,
-                          TOP_C3_cs,
-                          TOP_C3_dshll_i,
-                          TOP_C3_dshrl_i,
-                          TOP_C3_mula,
-                          TOP_C3_mulan,
-                          TOP_C3_mula_i,
-                          TOP_C3_round,
-                          TOP_C3_saadds,
-                          TOP_C3_saaddsh,
-                          TOP_C3_sasubsh,
-                          TOP_C3_samulsh,
-                          TOP_C3_sasubs,
-                          TOP_C3_shav,
-                          TOP_C3_shlafa_i,
-                          TOP_C3_shrafa_i,
-                          TOP_C3_shla_i,
-                          TOP_C3_shra_i,
+                          TOP_c3_aadda,
+                          TOP_c3_nega,
+                          TOP_c3_bitr,
+                          TOP_c3_cs,
+                          TOP_c3_dshll_i,
+                          TOP_c3_dshrl_i,
+                          TOP_c3_mula,
+                          TOP_c3_mulan,
+                          TOP_c3_mula_i,
+                          TOP_c3_round,
+                          TOP_c3_saadds,
+                          TOP_c3_saaddsh,
+                          TOP_c3_sasubsh,
+                          TOP_c3_samulsh,
+                          TOP_c3_sasubs,
+                          TOP_c3_shav,
+                          TOP_c3_shlafa_i,
+                          TOP_c3_shrafa_i,
+                          TOP_c3_shla_i,
+                          TOP_c3_shra_i,
                           TOP_UNDEFINED);
  
   ISA_PRINT_TYPE c3_1des_2opr = ISA_Print_Type_Create("c3_1des_2opr", "%s %s,%s,%s");
@@ -342,11 +157,11 @@ main()
   Operand(0);
   Operand(1);
   Instruction_Print_Group(c3_1des_2opr,
-                          TOP_C3_dadd,
-                          TOP_C3_dsub,
-                          TOP_C3_revb,
-                          TOP_C3_mvfs,
-                          TOP_C3_mvts,
+                          TOP_c3_dadd,
+                          TOP_c3_dsub,
+                          TOP_c3_revb,
+                          TOP_c3_mvfs,
+                          TOP_c3_mvts,
                           TOP_UNDEFINED);
 
 
@@ -355,9 +170,9 @@ main()
   Operand(0);
   Operand(1);
   Instruction_Print_Group(c3_gfs,
-                          TOP_C3_mvfacc,
-                          TOP_C3_mvfaddr,
-                          TOP_C3_mvfadds,
+                          TOP_c3_mvfacc,
+                          TOP_c3_mvfaddr,
+                          TOP_c3_mvfadds,
                           TOP_UNDEFINED);
 
   ISA_PRINT_TYPE c3_gts = ISA_Print_Type_Create("c3_gts", "C3.mvts %s,%s,%s");
@@ -365,9 +180,9 @@ main()
   Operand(0);
   Operand(1);
   Instruction_Print_Group(c3_gts,
-                          TOP_C3_mvtacc,
-                          TOP_C3_mvtaddr,
-                          TOP_C3_mvtadds,
+                          TOP_c3_mvtacc,
+                          TOP_c3_mvtaddr,
+                          TOP_c3_mvtadds,
                           TOP_UNDEFINED);
 
   ISA_PRINT_TYPE c3_1des_6opr = ISA_Print_Type_Create("c3_1des_6opr", "%s %s,%s,%s,%s,%s,%s,%s");
@@ -380,13 +195,13 @@ main()
   Operand(4);
   Operand(5);
   Instruction_Print_Group(c3_1des_6opr,
-                          TOP_C3_dmac,
-                          TOP_C3_dmacn,
-                          TOP_C3_dmula_a,
-                          TOP_C3_dmulan_a,
-                          TOP_C3_mac_a,
-                          TOP_C3_macn_a,
-                          TOP_C3_sadda,
+                          TOP_c3_dmac,
+                          TOP_c3_dmacn,
+                          TOP_c3_dmula_a,
+                          TOP_c3_dmulan_a,
+                          TOP_c3_mac_a,
+                          TOP_c3_macn_a,
+                          TOP_c3_sadda,
 	                  TOP_UNDEFINED);
 
   ISA_PRINT_TYPE c3_1des_7opr = ISA_Print_Type_Create("c3_1des_7opr", "%s %s,%s,%s,%s,%s,%s,%s,%s");
@@ -400,9 +215,9 @@ main()
   Operand(5);
   Operand(6);
   Instruction_Print_Group(c3_1des_7opr,
-                          TOP_C3_dmac_a,
-                          TOP_C3_dmacn_a,
-                          TOP_C3_sadda_a,
+                          TOP_c3_dmac_a,
+                          TOP_c3_dmacn_a,
+                          TOP_c3_sadda_a,
                           TOP_UNDEFINED);
 
   ISA_PRINT_TYPE c3_1des_5opr = ISA_Print_Type_Create("c3_1des_5opr", "%s %s,%s,%s,%s,%s,%s");
@@ -414,11 +229,11 @@ main()
   Operand(3);
   Operand(4);
   Instruction_Print_Group(c3_1des_5opr,
-                          TOP_C3_dmula,
-                          TOP_C3_dmulan,
-                          TOP_C3_mac_ar,
-                          TOP_C3_macn_ar,
-                          TOP_C3_mula_a,
+                          TOP_c3_dmula,
+                          TOP_c3_dmulan,
+                          TOP_c3_mac_ar,
+                          TOP_c3_macn_ar,
+                          TOP_c3_mula_a,
                           TOP_UNDEFINED);
 
   ISA_PRINT_TYPE c3_0des_3opr =  ISA_Print_Type_Create("c3_0des_3opr", "%s %s,%s,%s");
@@ -427,7 +242,7 @@ main()
   Operand(1);
   Operand(2);
   Instruction_Print_Group(c3_0des_3opr,
-                          TOP_C3_ffe,
+                          TOP_c3_ffe,
                           TOP_UNDEFINED);
    
   ISA_PRINT_TYPE c3_1des_3opr_1 = ISA_Print_Type_Create("c3_1des_3opr_1", "%s %s,%s,%s,%s");
@@ -437,8 +252,8 @@ main()
   Operand(2);
   Operand(3);
   Instruction_Print_Group(c3_1des_3opr_1,
-                     TOP_C3_ld,
-                     TOP_C3_fftld,
+                     TOP_c3_ld,
+                     TOP_c3_fftld,
                      TOP_UNDEFINED);
 
   ISA_PRINT_TYPE c3_0des_4opr =  ISA_Print_Type_Create("c3_0des_4opr", "%s %s,%s,%s,%s");
@@ -448,8 +263,8 @@ main()
   Operand(3);
   Operand(4);
   Instruction_Print_Group(c3_0des_4opr,
-                     TOP_C3_st,
-                     TOP_C3_fftst,
+                     TOP_c3_st,
+                     TOP_c3_fftst,
                      TOP_UNDEFINED);
 
   ISA_PRINT_TYPE c3_1des_1opr = ISA_Print_Type_Create("c3_1des_1opr", "%s %s,%s");
@@ -457,9 +272,8 @@ main()
   Result(0);
   Operand(0);
   Instruction_Print_Group(c3_1des_1opr,
-                     TOP_C3_lead,
+                     TOP_c3_lead,
                      TOP_UNDEFINED);
-  // end
   
   // core thread
   ISA_PRINT_TYPE slad =  ISA_Print_Type_Create("slad", "add %s,%s,%s");
@@ -544,9 +358,6 @@ main()
   Operand(1);
   Instruction_Print_Group(sixteenop4,
   	                  TOP_stw16,
-                          TOP_c3_trback,
-                          TOP_c3_viterbi,
-                          TOP_c3_fft,
   	                  TOP_UNDEFINED);
 
   ISA_PRINT_TYPE sixteenop5 =  ISA_Print_Type_Create("sixteenop5", "%s %s,%s");
@@ -554,7 +365,7 @@ main()
   Operand(0);
   Operand(2);
   Instruction_Print_Group(sixteenop5,
-                           TOP_br16_eqz,
+                          TOP_br16_eqz,
                           TOP_br16_nez,
   	                  TOP_UNDEFINED);
 
@@ -1644,7 +1455,7 @@ main()
   Operand(2);
 
   Instruction_Print_Group(slmc,
-		         TOP_mc_z_eq,
+		          TOP_mc_z_eq,
 			  TOP_mc_z_ne,
 			  TOP_mc_z_gt,
 			  TOP_mc_z_ge,

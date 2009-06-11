@@ -3860,6 +3860,24 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
       type = long_double_type_node;
     }
 
+#ifdef TARG_SL
+    if (TREE_CODE(type) == REAL_TYPE)
+    {
+      if (TYPE_MAIN_VARIANT(type) == double_type_node || TYPE_MAIN_VARIANT(type) == float_type_node)
+      {
+        if (Float_Point_Support == FALSE)
+        {
+          error("\"float/double\" type is not supported in default mode, "
+                "Please use \"-msoft-float\" option to enable float point emulation");
+        }
+     }
+     else
+     {
+          warning("Unsupported real type\n");
+     }
+   }
+#endif
+
   /* Check all other uses of type modifiers.  */
 
   if (specbits & ((1 << (int) RID_LONG) | (1 << (int) RID_SHORT)
@@ -3930,18 +3948,25 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
 		    && C_TYPEDEF_EXPLICITLY_SIGNED (typedef_decl)))
 	  && TREE_CODE (type) != ENUMERAL_TYPE
 	  && !(specbits & 1 << (int) RID_SIGNED)))
+  {
+    if (longlong)
     {
-      if (longlong)
-#if defined(TARG_SL)
-/* SL don't support type long long, for bringup os easily, 
- * compiler just mapping signed long long to signed long and
- * unsigned long long to unsigned long 
- */
-    	type = long_unsigned_type_node;     
+#ifdef TARG_SL
+      if (Long_Long_Support == TRUE)
+      {
+        type = long_long_unsigned_type_node;
+      }
+      else
+      {
+        warning("\"unsigned long long\" is mapped to \"unsigned long\" in declaration %s, "
+            "Please use \"-mlong-long\" option to enbale long long type suporting", name);
+        type = long_unsigned_type_node;
+      }
 #else
-	type = long_long_unsigned_type_node;
+      type = long_long_unsigned_type_node;
 #endif
-      else if (specbits & 1 << (int) RID_LONG)
+    }
+    else if (specbits & 1 << (int) RID_LONG)
 	type = long_unsigned_type_node;
       else if (specbits & 1 << (int) RID_SHORT)
 	type = short_unsigned_type_node;
@@ -3956,15 +3981,22 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
 	   && type == char_type_node)
     type = signed_char_type_node;
   else if (longlong)
-#if defined(TARG_SL)
-/* SL don't support type long long, for bringup os easily, 
- * compiler just mapping signed long long to signed long and
- * unsigned long long to unsigned long 
- */
-    type = long_integer_type_node;
+  {
+#ifdef TARG_SL
+    if (Long_Long_Support == TRUE)
+    {
+      type = long_long_integer_type_node;
+    }
+    else
+    {
+      warning("\"long long\" is mapped to \"long\" in declaration %s, "
+          "Please use \"-mlong-long\" option to enbale long long type supporting", name);
+      type = long_integer_type_node;
+    }
 #else
     type = long_long_integer_type_node;
 #endif
+  }
   else if (specbits & 1 << (int) RID_LONG)
     type = long_integer_type_node;
   else if (specbits & 1 << (int) RID_SHORT)
@@ -3972,6 +4004,9 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
 
   if (specbits & 1 << (int) RID_COMPLEX)
     {
+#ifdef TARG_SL
+      error("Unsupported type: \"complex\"");
+#endif
       if (pedantic && !flag_isoc99)
 	pedwarn ("ISO C90 does not support complex types");
       /* If we just have "complex", it is equivalent to
@@ -5852,10 +5887,24 @@ finish_enum (enumtype, values, attributes)
     {
       tree narrowest = c_common_type_for_size (precision, unsign);
       if (narrowest == 0)
-	{
-	  warning ("enumeration values exceed range of largest integer");
-	  narrowest = long_long_integer_type_node;
-	}
+      {
+#ifdef TARG_SL
+        if (Long_Long_Support == TRUE)
+        {
+          warning ("enumeration values exceed range of largest integer");
+          narrowest = long_long_integer_type_node;
+        }
+        else
+        {
+          error("\"long long\" is mapped to \"long\", "
+              "Please use \"-mlong-long\" option to enbale long long type suporting."
+              "enumeration values exceed range of largest integer");
+        }
+#else	
+        warning ("enumeration values exceed range of largest integer");
+        narrowest = long_long_integer_type_node;
+#endif
+      }
 
       precision = TYPE_PRECISION (narrowest);
     }
@@ -6289,6 +6338,32 @@ store_parm_decls ()
 
   /* Don't re-emit shadow warnings.  */
   warn_shadow = 0;
+
+#ifdef TARG_SL
+  /* Don't support old-style function definition for float/double type */
+  if (parmdecls) 
+  {
+    tree parm;
+    INT float_flag = 0;
+    for (parm = parmdecls; parm != NULL; parm = TREE_CHAIN(parm))
+    {
+        tree type_node = TYPE_MAIN_VARIANT(TREE_TYPE(parm));
+        if (type_node == float_type_node || type_node == double_type_node) 
+        {
+            float_flag = 1;
+            break;
+        }
+    }
+    if (float_flag == 1)
+    {
+       error("Old-style function definition is not supported for float/double type");
+    }
+    else
+    {
+       warning("Old-style function definition");
+    }
+  }
+#endif
 
   if (specparms != 0 && TREE_CODE (specparms) != TREE_LIST)
     {

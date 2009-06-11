@@ -698,6 +698,12 @@ Init_Section (ST *st)
 		else
 			Set_STB_align(st, CGTARG_Text_Alignment());
 	}
+#ifdef TARG_SL
+        // align all text-like section in SL1
+        else if (STB_exec(st) && (ST_sclass(st) == SCLASS_TEXT)) {
+          Set_STB_align(st, CGTARG_Text_Alignment());
+        }
+#endif
 
 	em_scn[last_scn].sym = st;	/* save symbol for later reference */
 	/* assume st is CLASS_BLOCK */
@@ -894,8 +900,13 @@ EMT_Write_Qualified_Name (FILE *f, ST *st)
 		// so add suffix to help .s file distinguish names.
 		// assume that statics in mult. pu's will 
 		// get moved to global symtab, so don't need pu-num
-		if (ST_level(st) == GLOBAL_SYMTAB)
-		    fprintf (f, "%s%d", Label_Name_Separator, ST_index(st));
+                if (ST_level(st) == GLOBAL_SYMTAB) {
+#ifdef KEY
+                    // bug 14517, OSP 490
+                    if (Emit_Global_Data || ST_sclass(st) == SCLASS_PSTATIC)
+#endif
+                        fprintf (f, "%s%d", Label_Name_Separator, ST_index(st));
+                }
 		else
 		    fprintf (f, "%s%d%s%d", Label_Name_Separator, 
 			ST_pu(Get_Current_PU_ST()),
@@ -3444,10 +3455,7 @@ static void Check_QuadWord_Alignment(OP *op, BB *bb, ISA_BUNDLE *bundle)
 	      BB *cur_bb = OP_bb(op);
 	      if (cur_bb) {
 	        int num =  (quadword_size - (quadword_pc&0xf));// 4 is sizeof intruction op
-	        if (num % 4 ==0)
-	          num = num/4;
-		else
-		  num = (num/4)+1;
+		  num = (num + 3) >> 2;
                 for (int j =0; j< num ; j++) {
 		  OP *op1 = Mk_OP(TOP_nop16);
 		  OP *op2 = Mk_OP(TOP_nop16);
@@ -3475,10 +3483,7 @@ static void Check_QuadWord_Alignment(OP *op, BB *bb, ISA_BUNDLE *bundle)
             BB *cur_bb = OP_bb(op);
 	      if (cur_bb) {
 	        int num =  (quadword_size - (quadword_pc&0xf));// 4 is sizeof intruction op
-	        if (num % 4 ==0)
-	          num = num/4;
-		else
-		  num = (num/4)+1;
+		  num = (num + 3) >> 2;
                 for (int j =0; j< num ; j++) {
 		  OP *op1 = Mk_OP(TOP_nop16);
 		  OP *op2 = Mk_OP(TOP_nop16);
@@ -3545,31 +3550,27 @@ int Compute_Asm_Num (const char *asm_string, BOOL emit_phase=TRUE) {
       }
       // distinguish the instruction
       for(i = 0; i < 3; i++) {
-        if (!strncmp(skip_string[i], instr, strlen(skip_string[i]))) {
+        if (!strncmp(skip_string[i], instr, strlen(skip_string[i])) && (strlen(instr) == strlen(skip_string[i]))) { 
           p = p+strlen(skip_string[i]);
           flag = 1;
           break;
         }
       }
-      if (flag == 1)
-        continue;
-      for (i = 0; i < 5; i++) {
+      for (i = 0; (i < 5) && (!flag); i++) {
         if (!strncmp(general_macro_string[i].str, instr, strlen(general_macro_string[i].str))) {
-          if (emit_phase)
+          if (emit_phase) {
             PC = PC_Incr_N(PC, general_macro_string[i].expand_num);
+            Offset_From_Last_Label = PC_Incr_N(Offset_From_Last_Label, general_macro_string[i].expand_num);
+          }
           else
             words += general_macro_string[i].expand_num;
           p = p + strlen(general_macro_string[i].str);
-#ifdef TARG_SL
           if (trace_pc)
             fprintf(TFile, "%s\n", general_macro_string[i].str);
-#endif
           flag == 1;
         }
       }
-      if (flag == 1)
-        continue;
-      if (!strncmp("li", instr, 2)) {
+      if ((!flag) && (!strncmp("li", instr, 2))) {
         char *k = q;
         char digit[10];
         int j =0;
@@ -3582,37 +3583,35 @@ int Compute_Asm_Num (const char *asm_string, BOOL emit_phase=TRUE) {
         digit[j] = '\0';
         j = atoi(digit);
         if (((j) &~ 0x7fff) == 0 || (((j) &~ 0x7fff) == ~ 0x7fff) || (j >= 0 && j < 65536)) {
-#ifdef TARG_SL
           if (trace_pc)
             fprintf(TFile, "one instruction li: digit  %d\n", j);
-#endif
-          if (emit_phase)
+          if (emit_phase) {
             PC = PC_Incr_N(PC, 2);
+            Offset_From_Last_Label = PC_Incr_N(Offset_From_Last_Label, 2);
+          }
           else
             words += 2;
         } else {
-#ifdef TARG_SL
           if (trace_pc)
             fprintf(TFile, "two instruction li :digit  %d\n", j);
-#endif
-          if (emit_phase)
+          if (emit_phase) {
             PC = PC_Incr_N(PC, 4);
+            Offset_From_Last_Label = PC_Incr_N(Offset_From_Last_Label, 2);
+          }
           else
             words += 4;
         }
         p = k;
         continue;
-      } else {
+      } else if (!flag) {
         int j;
         int len;
         for (j = 0; j<= TOP_count; j++) {
           const char *opname = TOP_Name((topcode)j);
           len = strlen(opname);
           if (!strncmp(opname, instr, len))  {
-#ifdef TARG_SL
             if (trace_pc)
               fprintf(TFile, "asm: \t %d  %s\n", PC, instr);
-#endif
             p = p+len;
             // continue to next instruction
             while (*p && (*p != '\n') && (*p != ';')) {
@@ -3623,6 +3622,7 @@ int Compute_Asm_Num (const char *asm_string, BOOL emit_phase=TRUE) {
                 PC = PC_Incr_N(PC, 1);
               else
                 PC = PC_Incr_N(PC, 2);
+              Offset_From_Last_Label = PC_Incr_N(Offset_From_Last_Label, 2);
             }
             else {
               if (TOP_is_instr16(j))
@@ -4420,6 +4420,21 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   ST *st;
   ANNOTATION *ant;
   RID *rid = BB_rid(bb);
+
+#ifdef TARG_SL
+  if (BB_zdl_body(bb)) {
+    FmtAssert(BB_has_tag(bb), ("zdl body has no tag"));
+    LABEL_IDX tag = Get_BB_Tag(bb);
+    FmtAssert(tag!=0, ("EMT_Assemble_BB: zdl body tag is 0"));
+    OP *last_op=BB_last_op(bb);
+    while(last_op && OP_dummy(last_op)) {
+      last_op=OP_prev(last_op);
+    }
+    FmtAssert(last_op, ("cannot find op to carry tag"));
+    Set_OP_Tag(last_op, tag);
+  }
+#endif
+
 #ifdef TARG_IA64
   INT bb_cycle_count = 0;
   ROTATING_KERNEL_INFO *info ;

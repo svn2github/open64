@@ -1,3 +1,4 @@
+
 /*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
@@ -106,7 +107,9 @@
 #include "gtn_universe.h"
 #include "gtn_set.h"
 #endif
-
+#ifdef TARG_SL
+#include "config_debug.h"    // insert break op in debug mode
+#endif
 
 INT64 Frame_Len;
 extern BOOL IPFEC_Enable_Edge_Profile;
@@ -614,6 +617,15 @@ Generate_Entry (BB *bb, BOOL gra_run )
     }
     ENTRYINFO_sp_adj(ent_info) = OPS_last(&ops);
 #endif //ABI_PROPERTY_stack_ptr
+
+#ifdef TARG_SL
+    // insert break after sp adjust
+    if (DEBUG_Stack_Check & STACK_ENTRY_CHECK) {
+      Build_OP(TOP_break, &ops);
+      Set_OP_no_move_before_gra(OPS_last(&ops));
+      Set_OP_volatile(OPS_last(&ops));
+    }
+#endif
 
 #if defined(KEY) && !defined(TARG_NVISA)
     // bug 4583: save callee-saved registers that may get clobbered 
@@ -1371,6 +1383,36 @@ Target_Unique_Exit (
 	  OP_srcpos(OPS_last(&ops)) = EXITINFO_srcpos(exit_info);
 	  BB_Prepend_Ops(unique_exit_bb, &ops);
 	}
+
+#if defined(TARG_SL)
+/*
+ * Fix bug in _load_inttype.c in uclibc with O2
+ *
+ *   if (return type is int)
+ *     return int_a ($2)
+ *   else if(return type is long long) 
+ *     return long_long_a ($2, $3 (shra.i $3, $2, 31))
+ *
+ * In the original code, $2 is copied to a new_tn, 
+ * But the use of $2 in next top (shra.i $3, $2, 31) is not changed.
+ */
+  OP * opaf = OP_next(op);
+  while (opaf != NULL) {
+    for (int j = OP_opnds(opaf) - 1; j >= 0; --j) {
+      TN * tnop = OP_opnd(opaf, j);
+      if (tnop == tn) {
+        if (Trace_EE) {
+          #pragma mips_frequency_hint NEVER
+          fprintf(TFile, "\nReplace TN %d with %d in Target_Unique_Exit line %d\n",
+              TN_number(tnop), TN_number(new_tn), __LINE__);
+        }			
+        Set_OP_opnd(opaf, j, new_tn);
+      }
+    }	
+    opaf = OP_next(opaf);
+  }
+#endif
+	
       }
     }
 
@@ -1740,6 +1782,15 @@ Generate_Exit (
     Exp_COPY (FP_TN, Caller_FP_TN, &ops);
     Set_OP_no_move_before_gra(OPS_last(&ops));
   }
+#endif
+
+#ifdef TARG_SL
+    // insert "break16" before exit
+    if (DEBUG_Stack_Check & STACK_EXIT_CHECK) {
+      Build_OP(TOP_break, &ops);
+      Set_OP_no_move_before_gra(OPS_last(&ops));
+      Set_OP_volatile(OPS_last(&ops));
+    }
 #endif
 
   /* Generate the return instruction, unless is this a tail call

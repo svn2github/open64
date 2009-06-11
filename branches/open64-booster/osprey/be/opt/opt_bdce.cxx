@@ -1219,6 +1219,13 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
        }
       return FALSE;
 
+    case OPR_INTRINSIC_OP:
+      //  if INTRINSIC_OP type is I2, the computation based on 16 bit register and the CVTL could be deleted 
+      if ((from_bit == 16) && (to_bit == 32)) {
+        return (MTYPE_signed(dtyp) == sign_xtd);
+      }
+      return FALSE;  
+
     case OPR_EXTRACT_BITS:
       //     U4U4LDID 72 <1,4,.preg_U4>
       //   U4EXTRACT_BITS <bofst:27 bsize:4>
@@ -1230,15 +1237,7 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
           return ! MTYPE_signed(dtyp);
       }
       return FALSE;
-
-    case OPR_INTRINSIC_OP:
-      //  if INTRINSIC_OP type is I2, the computation based on 16 bit register and the CVTL could be deleted 
-      if ((from_bit == 16) && (to_bit == 32)) {
-        return (MTYPE_signed(dtyp) == sign_xtd);
-      }
-      return FALSE;  
 #endif
-
     default: ;
     }
     return FALSE;
@@ -1400,7 +1399,7 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
     else if (opr == OPR_CVT) {
 // NVISA: leave converts as they are represented by different size registers.
 // Revisit this if ever allow I1 or I2 CVT which would use same register.
-#if !defined(TARG_IA32) && !defined(TARG_NVISA)
+#if !defined(TARG_IA32) && !defined(TARG_NVISA) && !defined(TARG_SL)
       MTYPE dtyp = cr->Dtyp();
       MTYPE dsctyp = cr->Dsctyp();
       if (dsctyp == MTYPE_B)
@@ -1440,7 +1439,7 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
         }
 #endif
       }
-#endif /* !TARG_IA32 && !TARG_NVISA */
+#endif /* !TARG_IA32 && !TARG_NVISA && !TARG_SL */
     }
 #ifdef TARG_X8664
     else if (! Is_Target_64bit() && MTYPE_size_min(cr->Dtyp()) == 64 &&

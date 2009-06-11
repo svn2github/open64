@@ -105,6 +105,8 @@ boolean ftz_crt = FALSE;
 int proc = UNDEFINED;
 #ifdef TARG_X8664
 static int target_supported_abi = UNDEFINED;
+static boolean target_supports_mmx = FALSE;
+static boolean target_supports_sse = FALSE;
 static boolean target_supports_sse2 = FALSE;
 static boolean target_prefers_sse3 = FALSE;
 static boolean target_supports_sse4a = FALSE;
@@ -497,10 +499,13 @@ Process_Targ_Group ( char *targ_args )
 	  if ( strncasecmp ( cp+4, "n32", 3 ) == 0 ) {
 	    add_option_seen ( O_n32 );
 	    toggle ( &abi, ABI_N32 );
-	  } else if ( strncasecmp ( cp+4, "64", 2 ) == 0 ) {
+	  }
+#ifndef TARG_SL 
+          else if ( strncasecmp ( cp+4, "64", 2 ) == 0 ) {
 	    add_option_seen ( O_m64 );
 	    toggle ( &abi, ABI_64 );
 	  }
+#endif
 #endif
 #ifdef TARG_X8664
 	  // The driver needs to handle all the -TARG options that it gives to
@@ -568,6 +573,7 @@ Process_Targ_Group ( char *targ_args )
 	if ( strncasecmp ( cp, "mips", 4 ) == 0 ) {
 	  if ( '1' <= *(cp+4) && *(cp+4) <= '6' ) {
 	    toggle ( &isa, *(cp+4) - '0' );
+#ifndef TARG_SL
 	    switch ( isa ) {
 	      case 1:	add_option_seen ( O_mips1 );
 			break;
@@ -580,6 +586,7 @@ Process_Targ_Group ( char *targ_args )
 	      default:	error ( "invalid ISA: %s", cp );
 			break;
 	    }
+#endif
 	  }
 	}
 #endif
@@ -596,27 +603,39 @@ Process_Targ_Group ( char *targ_args )
 
       case 's':
 #ifdef TARG_X8664
-	if (!strncasecmp(cp, "sse2=on", 8)) {
-	  add_option_seen(O_msse2);
-	  toggle(&sse2, TRUE);
-	} else if (!strncasecmp(cp, "sse2=off", 9)) {
-	  add_option_seen(O_mno_sse2);
-	  toggle(&sse2, FALSE);
-	} else if (!strncasecmp(cp, "sse3=on", 8)) {
-	  add_option_seen(O_msse3);
-	  toggle(&sse3, TRUE);
-	} else if (!strncasecmp(cp, "sse3=off", 9)) {
-	  add_option_seen(O_mno_sse3);
-	  toggle(&sse3, FALSE);
-	}else if (!strncasecmp(cp, "sse4a=on", 9)){
-          add_option_seen(O_mno_sse4a);
-          toggle(&sse4a, TRUE);
-        }else if (!strncasecmp(cp, "sse4a=off", 10)){
-          add_option_seen(O_mno_sse4a);
-          toggle(&sse4a, FALSE);
-        }
+		if (!strncasecmp(cp, "mmx=on", 7)) {
+		  add_option_seen(O_mmmx);
+		  toggle(&mmx, TRUE);
+		} else if (!strncasecmp(cp, "mmx=off", 8)) {
+		  add_option_seen(O_mno_mmx);
+		  toggle(&mmx, FALSE);
+		} else if (!strncasecmp(cp, "sse=on", 7)) {
+		  add_option_seen(O_msse);
+		  toggle(&sse, TRUE);
+		} else if (!strncasecmp(cp, "sse=off", 8)) {
+		  add_option_seen(O_mno_sse);
+		  toggle(&sse, FALSE);
+		} else if (!strncasecmp(cp, "sse2=on", 8)) {
+		  add_option_seen(O_msse2);
+		  toggle(&sse2, TRUE);
+		} else if (!strncasecmp(cp, "sse2=off", 9)) {
+		  add_option_seen(O_mno_sse2);
+		  toggle(&sse2, FALSE);
+		} else if (!strncasecmp(cp, "sse3=on", 8)) {
+		  add_option_seen(O_msse3);
+		  toggle(&sse3, TRUE);
+		} else if (!strncasecmp(cp, "sse3=off", 9)) {
+		  add_option_seen(O_mno_sse3);
+		  toggle(&sse3, FALSE);
+		}else if (!strncasecmp(cp, "sse4a=on", 9)){
+		  add_option_seen(O_mno_sse4a);
+		  toggle(&sse4a, TRUE);
+		}else if (!strncasecmp(cp, "sse4a=off", 10)){
+		  add_option_seen(O_mno_sse4a);
+		  toggle(&sse4a, FALSE);
+		}
 #endif
-	break;
+		break;
     }
 
     /* Skip to the next group option: */
@@ -662,6 +681,9 @@ Check_Target ( void )
 #elif TARG_IA32
 	toggle(&abi, ABI_IA32);
     	add_option_seen ( O_ia32 );
+#elif TARG_SL
+        toggle(&abi, ABI_N32);
+        add_option_seen ( O_n32 );
 #elif TARG_MIPS
 	toggle(&abi, ABI_64);
     	add_option_seen ( O_64 );
@@ -707,7 +729,7 @@ Check_Target ( void )
   /* Check ABI against ISA: */
   if ( isa != UNDEFINED ) {
     switch ( abi ) {
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) && !defined(TARG_SL)
       case ABI_N32:
 	if ( isa < ISA_MIPS3 ) {
 	  add_option_seen ( O_mips3 );
@@ -750,7 +772,16 @@ Check_Target ( void )
     /* ISA is undefined, so derive it from ABI and possibly processor: */
 
     switch ( abi ) {
-#ifdef TARG_MIPS
+#ifdef TARG_SL
+      case ABI_N32:
+      case ABI_64:
+        opt_val = ISA_MIPS4;
+        opt_id = O_mips4;
+        toggle ( &isa, opt_val );
+        add_option_seen ( opt_id );
+        option_name = get_option_name ( opt_id );
+        break;
+#elif TARG_MIPS
       case ABI_N32:
       case ABI_64:
         if (default_isa == ISA_MIPS3) {
@@ -804,6 +835,7 @@ Check_Target ( void )
 #ifdef TARG_MIPS
       case ABI_N32:
       case ABI_64:
+#ifndef TARG_SL
 	if ( proc < PROC_R4K ) {
 	  warning ( "ABI specification %s conflicts with processor "
 		    "specification %s: defaulting processor to r10000",
@@ -814,6 +846,7 @@ Check_Target ( void )
 	  add_option_seen ( O_r10000 );
 	  toggle ( &proc, PROC_R10K );
 	}
+#endif
 	break;
 #endif
     }
@@ -822,7 +855,7 @@ Check_Target ( void )
   /* Check ISA against processor: */
   if ( proc != UNDEFINED ) {
     switch ( isa ) {
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) && !defined(TARG_SL)
       case ISA_MIPS1:
 	/* Anything works: */
 	break;
@@ -859,7 +892,7 @@ Check_Target ( void )
   else if (default_proc != UNDEFINED) {
 	/* set proc if compatible */
 	opt_id = 0;
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) && !defined(TARG_SL)
 	switch (default_proc) {
 	case PROC_R4K:
 		if (isa <= ISA_MIPS3) {

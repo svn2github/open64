@@ -7343,7 +7343,22 @@ grokdeclarator (const cp_declarator *declarator,
 	  && !same_type_p (TYPE_MAIN_VARIANT (type), wchar_type_node)))
     {
       if (longlong)
-	type = long_long_unsigned_type_node;
+    {
+#ifdef TARG_SL
+      if (Long_Long_Support == TRUE)
+      {
+        type = long_long_unsigned_type_node;
+      }
+      else
+      {
+        warning("\"unsigned long long\" is mapped to \"unsinged long\" in declaration %s, "
+                "Please use \"-mlong-long\" option to enbale long long type supporting", name);
+    	  type = long_unsigned_type_node;
+      }
+#else
+      type = long_long_unsigned_type_node;
+#endif
+   }
       else if (long_p)
 	type = long_unsigned_type_node;
       else if (short_p)
@@ -7358,7 +7373,22 @@ grokdeclarator (const cp_declarator *declarator,
   else if (signed_p && type == char_type_node)
     type = signed_char_type_node;
   else if (longlong)
+    {
+#ifdef TARG_SL
+      if (Long_Long_Support == TRUE)
+      {
+        type = long_long_integer_type_node;
+      }
+      else
+      {
+        warning("\"long long\" is mapped to \"long\" in declaration %s, "
+                "Please use \"-mlong-long\" option to enbale long long type supporting", name);
+    	  type = long_integer_type_node;
+      }
+#else
     type = long_long_integer_type_node;
+#endif
+    }
   else if (long_p)
     type = long_integer_type_node;
   else if (short_p)
@@ -7366,6 +7396,9 @@ grokdeclarator (const cp_declarator *declarator,
 
   if (declspecs->specs[(int)ds_complex])
     {
+#ifdef TARG_SL
+      error("Unsupported type: \"complex\"");
+#endif
       if (TREE_CODE (type) != INTEGER_TYPE && TREE_CODE (type) != REAL_TYPE)
 	error ("complex invalid for %qs", name);
       /* If we just have "complex", it is equivalent to
@@ -7387,6 +7420,24 @@ grokdeclarator (const cp_declarator *declarator,
       else
 	type = build_complex_type (type);
     }
+
+#ifdef TARG_SL
+    if (TREE_CODE(type) == REAL_TYPE)
+    {
+      if (TYPE_MAIN_VARIANT(type) == double_type_node || TYPE_MAIN_VARIANT(type) == float_type_node)
+      {
+        if (Float_Point_Support == FALSE)
+        {
+          error("\"float/double\" type is not supported in default mode, "
+                "Please use \"-msoft-float\" option to enable float point emulation");
+        }
+      }
+      else
+      {
+        warning(0, "Unsupported real type");
+      }
+    }
+#endif
 
   type_quals = TYPE_UNQUALIFIED;
   if (declspecs->specs[(int)ds_const])

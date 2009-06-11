@@ -148,53 +148,27 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       return 1;
     case TOP_lduh16_rs:
       return 2;
-
-    case TOP_c3_ld:
-    case TOP_c3_st:
-    case TOP_c3_dmac_a:
-    case TOP_c3_dmacn_a:
-    case TOP_c3_dmula_a:
-    case TOP_c3_dmulan_a:
-    case TOP_c3_mac_a:
-    case TOP_c3_mac_ar:
-    case TOP_c3_macn_a:
-    case TOP_c3_macn_ar:
-    case TOP_c3_mula_a:
-    case TOP_c3_mula_ar:
-    case TOP_c3_saadd_a:
-    case TOP_c3_saaddh_a:
-    case TOP_c3_saddha_a:
-    case TOP_c3_samulh_a:
-    case TOP_c3_sasub_a:
-    case TOP_c3_sasubh_a:
-    case TOP_c3_viterbi:
-    case TOP_c3_trback:
-    case TOP_c3_fft:
-    case TOP_c3_fftld:
-    case TOP_c3_fftst:
-    // new C3   
-    case TOP_C3_dmac_a:            
-    case TOP_C3_dmacn_a:           
-    case TOP_C3_dmula_a:           
-    case TOP_C3_dmulan_a:          
-    case TOP_C3_ffe:               
-    case TOP_C3_fftld:             
-    case TOP_C3_ld:                
-    case TOP_C3_fftst:             
-    case TOP_C3_st:                
-    case TOP_C3_mac_a:             
-    case TOP_C3_macn_a:            
-    case TOP_C3_mac_ar:            
-    case TOP_C3_macn_ar:           
-    case TOP_C3_mula_a:            
-    case TOP_C3_mula_ar:           
-    case TOP_C3_saadd_a:           
-    case TOP_C3_sasub_a:           
-    case TOP_C3_saaddh_a:          
-    case TOP_C3_sasubh_a:          
-    case TOP_C3_sadda_a:           
-    case TOP_C3_samulh_a:          
-    // end 
+    case TOP_c3_dmac_a:            
+    case TOP_c3_dmacn_a:           
+    case TOP_c3_dmula_a:           
+    case TOP_c3_dmulan_a:          
+    case TOP_c3_ffe:               
+    case TOP_c3_fftld:             
+    case TOP_c3_ld:                
+    case TOP_c3_fftst:             
+    case TOP_c3_st:                
+    case TOP_c3_mac_a:             
+    case TOP_c3_macn_a:            
+    case TOP_c3_mac_ar:            
+    case TOP_c3_macn_ar:           
+    case TOP_c3_mula_a:            
+    case TOP_c3_mula_ar:           
+    case TOP_c3_saadd_a:           
+    case TOP_c3_sasub_a:           
+    case TOP_c3_saaddh_a:          
+    case TOP_c3_sasubh_a:          
+    case TOP_c3_sadda_a:           
+    case TOP_c3_samulh_a:          
       return 4;
 #endif
 
@@ -1893,6 +1867,65 @@ CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, IN
     *latency = 2;
   } 
 #endif
+}
+
+/* ===================================================================
+ * CGTARG_Mem_AR_Dep
+ *   Set OP is ARDEP when there is dependence between C3-MEM and Normal MEM
+ * ===================================================================
+ */
+void
+CGTARG_Mem_AR_Dep(OP *pred_op, OP *succ_op, CG_DEP_KIND kind)
+{
+  //  1) insert nop when C3 mem op points to same address with normal memory op in same BB
+  //     now implement version is based on sl0mpw
+  switch (kind) {
+    case CG_DEP_MEMIN:
+    {
+       /* case 1:  stw
+                   c3.mac.a
+          case 2:  c3.st      <- SL1 HW could identify kind 2-5 of memory dep
+                   c3.mac.a      sl0mpw didn't identify 1 and 2
+          case 3:  c3.st
+                   c3.ld
+          case 4:  c3.st
+                   ldw
+          case 5:  stw
+                   ldw
+       */
+       BOOL mac_load = OP_c3_load(succ_op) && (!OP_memtrap(succ_op));
+
+       if (OP_store(pred_op) && mac_load) {
+         Set_OP_ARdep(succ_op);
+       }
+       break;
+     }
+     case CG_DEP_MEMANTI:
+     {
+       //  if bb is loop body, MEMANTI will cause same problem as MEMIN
+       /* case 1: c3.mac.a
+                  stw
+          case 2: c3.mac.a   <- SL1 HW could identify kind 2-5 of memory dep
+                  c3.st         sl0mpw didn't identify 1 and 2
+          case 3: c3.ld
+                  c3.st
+          case 4: ldw
+                  c3.st
+          case 5: ldw
+                  stw
+       */
+       if ((BB_zdl_body(OP_bb(pred_op)) || BB_loophead(OP_bb(pred_op)))) {
+         BOOL mac_load = OP_c3_load(pred_op) && (!OP_memtrap(pred_op));
+         if (mac_load && OP_store(succ_op)) {
+           Set_OP_ARdep(pred_op);
+         }
+        }
+        break;
+    }
+    default:
+      break;
+  }
+  return;
 }
 
 /* ====================================================================

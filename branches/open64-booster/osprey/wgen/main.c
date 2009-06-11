@@ -343,6 +343,9 @@ main ( INT argc, char **argv, char **envp)
 #endif
 	}
 
+        // expand global-scope asms for C program and C++ program without any DECL
+        WGEN_Expand_Top_Level_Decl(list);
+
 #ifdef KEY
 	if (!lang_cplus)
 	  WGEN_Alias_Finish();
