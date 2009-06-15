@@ -6549,7 +6549,6 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 #if defined(TARG_PPC32)
   if (Action(LOWER_TO_CG)) {
     TYPE_ID rtype = WN_rtype(tree);
-    TYPE_ID desc = WN_desc(tree);
     PREG_NUM result;
     WN* test;
     WN* then_block = WN_CreateBlock();
@@ -6577,12 +6576,15 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
         if (rtype == MTYPE_I8 || rtype == MTYPE_U8) {
           result = Create_Preg(rtype, "min max result");
           kid0 = WN_kid0(tree);
+          LEAF kid0_leaf = Make_Leaf(block, kid0, rtype);
           kid1 = WN_kid1(tree);
+          LEAF kid1_leaf = Make_Leaf(block, kid1, rtype);
           test = WN_operator(tree) == OPR_MAX ?
-		  	WN_GT(desc, kid0, kid1) : WN_LT(desc, kid0, kid1);
-          stid = WN_StidPreg(rtype, result, kid0);
+		  	WN_GT(rtype, Load_Leaf(kid0_leaf), Load_Leaf(kid1_leaf)) : 
+		  	WN_LT(rtype, Load_Leaf(kid0_leaf), Load_Leaf(kid1_leaf));
+          stid = WN_StidPreg(rtype, result, Load_Leaf(kid0_leaf));
           WN_INSERT_BlockLast(then_block, stid);
-          stid = WN_StidPreg(rtype, result, kid1);
+          stid = WN_StidPreg(rtype, result, Load_Leaf(kid1_leaf));
           WN_INSERT_BlockLast(else_block, stid);
           if_stmt = WN_CreateIf(test, then_block, else_block);
           WN_INSERT_BlockLast(block, lower_if(block, if_stmt, actions));
