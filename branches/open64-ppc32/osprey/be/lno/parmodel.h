@@ -323,6 +323,7 @@ extern double SNL_Cache_Cost(WN* wn_outer, INT permutation[], INT nloops,
 #define HASH_SIZE                    100
 
 class PAR_STAT {
+  DECL_CXX_ALLOC_AS_FRIEND(PAR_STAT); 
 private:
   PAR_STAT* _next; 
   PAR_STAT* _prev; 

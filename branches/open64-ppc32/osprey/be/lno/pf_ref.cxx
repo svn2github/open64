@@ -1698,6 +1698,11 @@ static PF_SORTED_REFS* Sort_Refvecs (PF_REFVEC_DA* refvecs, mINT16 leadingref){
   return srefs;
 }
 
+struct SORT_STR {
+  mINT16 num;
+  mINT16 eq;      /* 1 if LR_Compare/equal to previous ref */
+};
+
 /***********************************************************************
  *
  * Given the srefs, compute and fill in leading reference order
@@ -1708,10 +1713,6 @@ void PF_LG::LR_Ordering (PF_SORTED_REFS* srefs, INT start, INT stop) {
   INT i, j;
 
   /* Now compute and store a sorted leading-ref number */
-  struct SORT_STR {
-    mINT16 num;
-    mINT16 eq;      /* 1 if LR_Compare/equal to previous ref */
-  };
 
   SORT_STR* lr_num = CXX_NEW_ARRAY (SORT_STR, stop-start, PF_mpool);
   lr_num[0].num = start;
