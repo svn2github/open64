@@ -6246,10 +6246,10 @@ Do_Loop_Perform_SWP_or_Unroll (BOOL perform_swp, CG_LOOP& cg_loop,
       Rename_TNs_For_BB(cg_loop.Loop_header(), NULL);
       cg_loop.Recompute_Liveness();
 
-      cg_loop.Build_CG_LOOP_Info();
+      cg_loop.Build_CG_LOOP_Info(TRUE);
       cg_loop.Recompute_Liveness();
 
-      if (cg_loop.Determine_Unroll_Fully()) {
+      if (cg_loop.Determine_Unroll_Fully(FALSE)) {
         Unroll_Do_Loop_Fully(loop, cg_loop.Unroll_factor());
         cg_loop.Recompute_Liveness();
         return TRUE;
@@ -6344,7 +6344,7 @@ Do_Loop_Perform_SWP_or_Unroll (BOOL perform_swp, CG_LOOP& cg_loop,
       if (!Remove_Non_Definite_Dependence(cg_loop, false, trace_loop_opt))
         return FALSE;
 
-      cg_loop.Build_CG_LOOP_Info();
+      cg_loop.Build_CG_LOOP_Info(TRUE);
 
       if (trace_loop_opt)
         CG_LOOP_Trace_Loop(loop, "*** Before SINGLE_BB_DOLOOP_UNROLL ***");
@@ -6489,7 +6489,7 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
   case SINGLE_BB_DOLOOP_SWP_OR_UNROLL:
     {
       CG_LOOP cg_loop(loop);
-      cg_loop.Build_CG_LOOP_Info ();
+      cg_loop.Build_CG_LOOP_Info (TRUE);
 
       BOOL perform_swp = Do_Loop_Determine_SWP_Or_Unroll
           (cg_loop, trace_loop_opt);
