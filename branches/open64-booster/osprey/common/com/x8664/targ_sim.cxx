@@ -579,13 +579,8 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
       info.count = 0;
 
       size = TY_size(Ty_Table[rtype]);
-      if (size == 0) {
-	/*OSP bug 523 for MTYPE_M return the address by %eax*/ 
-	info.count = 1;
-	info.mtype[0] = MTYPE_I8;
-	info.preg[0]= PR_first_reg(SIM_INFO.int_results);
+      if (size == 0)
 	break;
-      }
 
       info.return_via_first_arg = TRUE;
 
