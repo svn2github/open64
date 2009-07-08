@@ -641,7 +641,7 @@ WGEN_Generate_Thunk (gs_t decl)
 
     WN *block_wn = WN_CreateBlock ();
     WN_INSERT_BlockLast (block_wn, call_wn);
-    wn = WN_Ldid (ret_mtype, -1, Return_Val_Preg, Be_Type_Tbl (ret_mtype));
+    wn = WN_Ldid (ret_mtype, -1, Return_Val_Preg, TY_ret_type(ST_pu_type(func_st)));
     wn = WN_CreateComma (OPR_COMMA, Mtype_comparison (ret_mtype), MTYPE_V,
 			 block_wn, wn);
     if (!adjust_this) {

@@ -1496,7 +1496,7 @@ Create_ST_For_Tree (gs_t decl_node)
              gs_decl_asmreg(decl_node) >= 0)) &&
            gs_decl_name(decl_node) != 0)
     name = (char *) gs_identifier_pointer (gs_decl_name (decl_node));
-  else if (gs_decl_assembler_name (decl_node))
+  else if (gs_decl_assembler_name (decl_node) && gs_decl_name (decl_node))
     name = (char *) gs_identifier_pointer (gs_decl_assembler_name (decl_node));
   else if (gs_decl_name (decl_node))
     name = (char *) gs_identifier_pointer (gs_decl_name (decl_node));
