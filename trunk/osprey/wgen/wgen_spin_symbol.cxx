@@ -1766,15 +1766,17 @@ Create_ST_For_Tree (gs_t decl_node)
             }
           }
         }
-	// Make g++ guard variables global in order to make them weak.  Ideally
-	// guard variables should be "common", but for some reason the back-end
-	// currently can't handle C++ commons.  As a work around, make the
-	// guard variables weak.  Since symtab_verify.cxx don't like weak
-	// locals, make the guard variables global.
+        // Make g++ guard variables local unless it's weak.
 	if (guard_var) {
 	  level = GLOBAL_SYMTAB;
-	  sclass = SCLASS_UGLOBAL;
-	  eclass = EXPORT_PREEMPTIBLE;
+          if ( gs_decl_weak(decl_node) ) {
+	    sclass = SCLASS_UGLOBAL;
+	    eclass = EXPORT_PREEMPTIBLE;
+          }
+          else {
+            sclass = SCLASS_PSTATIC;
+            eclass = EXPORT_LOCAL;
+          }
 	}
 
 	// The tree under DECL_ARG_TYPE(decl_node) could reference decl_node.
@@ -1970,7 +1972,9 @@ Create_ST_For_Tree (gs_t decl_node)
   }
   // See comment above about guard variables.
   else if (guard_var) {
-    Set_ST_is_weak_symbol (st);
+    if ( gs_decl_weak(decl_node) ) {
+      Set_ST_is_weak_symbol (st);
+    }
     Set_ST_init_value_zero (st);
     Set_ST_is_initialized (st);
   }
