@@ -212,7 +212,8 @@ INT Classify_Aggregate(const TY_IDX ty,
       FLD_ITER fld_iter = Make_fld_iter(TY_fld(ty));
       do {
         FLD_HANDLE fld(fld_iter);
-        if (TY_size(FLD_type(fld)) == 0 && TY_kind(FLD_type(fld)) != KIND_STRUCT )
+        if (TY_size(FLD_type(fld)) == 0 && 
+	    !(TY_kind(FLD_type(fld)) == KIND_STRUCT && PU_cxx_lang(Get_Current_PU())))
 	  continue;
         n = Classify_Aggregate(FLD_type(fld), subclasses, byte_offset + FLD_ofst(fld));
         if (n == 0)
