@@ -4787,8 +4787,8 @@ CODEREP::Can_be_speculated(OPT_STAB *opt_stab) const
         return FALSE;
       if (TY_kind(var_type) == KIND_POINTER &&
           TY_kind(TY_pointed(var_type)) == KIND_ARRAY &&
-          TY_kind(TY_pointed(TY_pointed(var_type))) == KIND_SCALAR &&
-          MTYPE_is_float(TY_mtype(TY_pointed(TY_pointed(var_type)))))
+          TY_kind(TY_AR_etype(TY_pointed(var_type))) == KIND_SCALAR &&
+          MTYPE_is_float(TY_mtype(TY_AR_etype(TY_pointed(var_type)))))
         return FALSE;
     }
     return opt_stab->Safe_to_speculate(Aux_id());
