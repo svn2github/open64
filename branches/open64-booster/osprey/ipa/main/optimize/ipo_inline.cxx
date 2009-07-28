@@ -3863,7 +3863,7 @@ Prune_Callee(WN* wn)
                   WN_next(WN_prev(wn2)) = WN_next(wn2);
                   WN_prev(WN_next(wn2)) = WN_prev(wn2);
                }
-               WN_DELETE_Tree(wn2);
+               IPA_WN_DELETE_Tree(caller_map_tab, wn2);
                return;
             } 
             // TODO: to delete the wn's before the conditional contruct,
@@ -4208,7 +4208,7 @@ Identify_Partial_Inline_Candiate(IPA_NODE *callee, WN *wn, BOOL prune_tree,
                while (wn_next) {
                   /* Save the next kid before deleting the current one. */
                   WN* wn3 = WN_next(wn_next);
-                  WN_DELETE_Tree(wn_next); 
+                  IPA_WN_DELETE_Tree(caller_map_tab, wn_next); 
                   wn_next = wn3; 
                }
                WN_last(parent_blk) = wn2;
@@ -4276,7 +4276,7 @@ Identify_Partial_Inline_Candiate(IPA_NODE *callee, WN *wn, BOOL prune_tree,
                   }
 
                   // Delete the entire while loop body.
-                  WN_DELETE_Tree(WN_while_body(wn2));
+                  IPA_WN_DELETE_Tree(caller_map_tab, WN_while_body(wn2));
 
                   return TRUE;
                } else {
