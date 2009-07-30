@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -102,6 +106,9 @@ template <> MEM_POOL* MAT<mINT32>::_default_pool = &LNO_local_pool;
 
 #ifdef LNO
 extern BOOL Is_Consistent_Condition(ACCESS_VECTOR*, WN*);
+extern BOOL Is_Const_Array_Addr(WN *);
+extern BOOL Is_Loop_Invariant_Use(WN *, WN *);
+extern BOOL Is_Loop_Invariant_Indir(WN*);
 #endif
 
 // The following functions are used in place of snprintf(), which belongs 
@@ -1314,7 +1321,12 @@ void ACCESS_ARRAY::Set_Array(WN *wn, DOLOOP_STACK *stack)
 	      WN_operator(WN_kid0(base)) == OPR_LDID)) {
     Update_Non_Const_Loops(WN_kid0(base),stack);
 #endif
-  } else if (WN_operator(base) != OPR_LDA) {
+  }
+#ifdef LNO
+  else if (Is_Loop_Invariant_Indir(base)) 
+    Update_Non_Const_Loops(WN_kid0(WN_kid0(base)), stack);
+#endif
+  else if (WN_operator(base) != OPR_LDA) {
     for (INT32 i=0; i<_num_vec; i++) {
       Dim(i)->Max_Non_Const_Loops(stack->Elements());
     }
@@ -1758,7 +1770,7 @@ INT ACCESS_ARRAY::Set_LB_r(WN *wn, DOLOOP_STACK *stack, INT i, INT64 step)
 	_dim[i].Too_Messy = TRUE;
       return (i+1);
     } else {
-      _dim[i+1].Too_Messy = TRUE;
+      _dim[i].Too_Messy = TRUE;
       return (i+1);
     }
   } else {

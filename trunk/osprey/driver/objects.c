@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007 Pathscale, LLC.  All Rights Reserved.
  */
 
@@ -240,21 +244,14 @@ void init_stdc_plus_plus_path (void)
 {
 #ifndef TARG_SL
         phases_t ld_phase = determine_ld_phase (FALSE);
-        if (ld_phase != P_ldplus || ld_phase != P_ld) {
-                /* use prebuilt libstdc++.so which reside at the same directory
-                 * as other phases.e.g BE, since the /path/to/be has already 
-                 * in the lib-path, we need not duplicate at this place. 
-                 */
-        } else {
-                char buf[1024];
-                char* p;
-                find_full_path_of_gcc_file (get_full_phase_name (ld_phase), 
-                                "libstdc++.so",  &buf[0], sizeof(buf));
-                p = drop_path (&buf[0]);
-                *p = '\0';
-                if (debug) fprintf(stderr, "libstdc++.so found in %s\n", &buf[0]);
-                add_library_dir (&buf[0]);
-        }
+        char buf[1024];
+        char* p;
+        find_full_path_of_gcc_file (get_full_phase_name (ld_phase), 
+                                    "libstdc++.so",  &buf[0], sizeof(buf));
+        p = drop_path (&buf[0]);
+        *p = '\0';
+        if (debug) fprintf(stderr, "libstdc++.so found in %s\n", &buf[0]);
+        add_library_dir (&buf[0]);
 #else
 	char *tmp_name = create_temp_file_name("sl");
 	char *slcc_name = concat_strings(get_phase_dir(P_ld), "/slcc");
@@ -341,7 +338,7 @@ static struct prof_lib prof_libs[] = {
     { "msgi", 1 },
     { "mv", 1 },
     { "fortran", 1 },
-    /* { "pscrt", 1 }, */
+    /* { "open64rt", 1 }, */
     { NULL, 0 },
 };
 
@@ -393,16 +390,28 @@ add_object (int flag, char *arg)
 			if (xpg_flag && invoked_lang == L_f77) {
 				add_library(lib_objects, "mv");
 				add_library(lib_objects, "m");
+#ifdef TARG_X8664
+				if (abi != ABI_N32)
+					add_library(objects, "acml_mv");
+#endif
 			} else {
 #ifndef TARG_SL
 				add_library(objects, "mv");
 #endif
 				add_library(objects, "m");
+#ifdef TARG_X8664
+				if (abi != ABI_N32)
+					add_library(objects, "acml_mv");
+#endif
 			}
 #ifndef TARG_SL
 			if (invoked_lang == L_CC) {
 			    add_library(cxx_prelinker_objects, "mv");
 			    add_library(cxx_prelinker_objects, "m");
+#ifdef TARG_X8664
+			    if (abi != ABI_N32)
+				add_library(objects, "acml_mv");
+#endif
 			}
 #endif
 #ifdef TARG_X8664

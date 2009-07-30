@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -284,6 +288,12 @@ Init_BB_Dom_Info(BB *bb, BS *dom_init)
   if (BB_exit(bb) || rid && BB_REGION_Exit(bb, rid) != NO_REGION_EXIT) {
     BS_Union1D(BB_pdom_set(bb), BB_ID_POST_EXIT, NULL);
   }
+}
+
+BOOL
+Are_Dominators_Calculated(void)
+{
+  return pool_inited;
 }
 
 /* ====================================================================

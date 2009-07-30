@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -1216,6 +1220,10 @@ WN_get_mod_ref_table (void * handle)
 
     Mod_Ref_Info_Table[index].ref = CXX_NEW_ARRAY (mUINT8, bv_size, Malloc_Mem_Pool);
     memcpy (Mod_Ref_Info_Table[index].ref, p, bv_size);
+    p += bv_size;
+    
+    Mod_Ref_Info_Table[index].same_entry_exit_value_or_1  = CXX_NEW_ARRAY (mUINT8, bv_size, Malloc_Mem_Pool);
+    memcpy (Mod_Ref_Info_Table[index].same_entry_exit_value_or_1, p, bv_size);
     p += bv_size;
   }
 }

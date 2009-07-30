@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2005-2007 NVIDIA Corporation.  All rights reserved.
  */
 
@@ -399,6 +403,7 @@ void
 DU_MANAGER::Add_Def_Use( WN *def, WN *use )
 {
   if ((_opt_phase == PREOPT_PHASE || _opt_phase == PREOPT_LNO_PHASE ||
+       _opt_phase == PREOPT_LNO1_PHASE ||
        _opt_phase == PREOPT_DUONLY_PHASE) &&
       OPERATOR_is_scalar_iload (WN_operator(use)) &&
       !OPERATOR_is_scalar_store (WN_operator(def)))
@@ -1197,7 +1202,8 @@ EMITTER::Compute_use_def(DU_MANAGER *du_mgr)
   }
 
   // do not generate info for LNO if no loops
-  if (du_mgr->Opt_phase() == PREOPT_LNO_PHASE && 
+  if ((du_mgr->Opt_phase() == PREOPT_LNO_PHASE
+       || du_mgr->Opt_phase() == PREOPT_LNO1_PHASE) &&
       !Has_do_loop() &&
       !PU_mp_needs_lno(Get_Current_PU())
       )

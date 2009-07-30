@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -290,6 +294,8 @@ static ST_IDX find_trampoline(ST_IDX func_st_idx);
 // return the WN* from which <derived> was derived
 static WN* get_original_wn (WN* derived);
 static void set_original_wn (WN* derived, WN* orig);
+
+static WN *lower_hugepage_limit(WN *block, WN *tree, LOWER_ACTIONS actions);
 
 /* ====================================================================
  *			 private variables
@@ -12788,6 +12794,26 @@ static WN *lower_do_loop(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 #ifdef TARG_X8664
   loop_info_stack[current_loop_nest_depth--] = NULL;
+
+  // Evaluate and mark loop direction
+  if (WN_start(tree) != NULL) {
+    WN *init_exp = WN_start(tree);
+    if ( WN_operator(init_exp) == OPR_STID ) {
+      if (WN_kid(init_exp,0) != NULL) {
+        WN *store_val = WN_kid(init_exp,0);
+        if ( WN_operator(store_val) == OPR_INTCONST ) {
+          if (loop_info != NULL) {
+            int trip_est = WN_loop_trip_est(loop_info);
+            int init_val = WN_const_val(store_val);
+            // annotate a up counting loop
+            if (init_val < trip_est) {
+              WN_Set_Loop_Up_Trip(loop_info);
+            }
+          }
+        }
+      }
+    }
+  }
 #endif
 
   --loop_nest_depth;
@@ -13567,6 +13593,17 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
       WN_INSERT_BlockLast(block, mallocBlock);
     }
 #endif
+
+    /* Insert a call to a routine inside libhugetlbfs to set heap huge page limit.
+     */
+    if (OPT_Hugepage_Heap_Set
+	&& (!strcmp(Cur_PU_Name, "main") ||
+	    !strcmp(Cur_PU_Name, "MAIN__"))) {
+      WN *hugepageBlock = WN_CreateBlock();
+      hugepageBlock = lower_hugepage_limit(hugepageBlock, tree, actions);
+      hugepageBlock = lower_block(hugepageBlock, actions);
+      WN_INSERT_BlockLast(block, hugepageBlock);
+    }
   }
   else if (Action(LOWER_ENTRY_FORMAL_REF))
   {
@@ -14177,6 +14214,36 @@ lower_malloc_alg(WN *block, WN *tree, LOWER_ACTIONS actions)
   return block;
 }
 #endif
+
+/* ====================================================================
+ *
+ * WN *lower_hugepage_limit(WN *block, WN *tree, LOWER_ACTIONS actions)
+ *
+ * Insert code to set huge page heap limit.
+ *
+ * ==================================================================== */
+
+static WN *
+lower_hugepage_limit(WN *block, WN *tree, LOWER_ACTIONS actions)
+{
+  WN * call;
+  TY_IDX ty = Make_Function_Type(MTYPE_To_TY(MTYPE_V));
+  ST *st = Gen_Intrinsic_Function(ty, "__setup_hugepage");
+  Set_PU_no_side_effects(Pu_Table[ST_pu(st)]);
+  Set_PU_is_pure(Pu_Table[ST_pu(st)]);
+
+  call = WN_Call(MTYPE_V, MTYPE_V, 2, st);	// bug 10736
+  
+  WN_kid0(call) = WN_CreateParm(MTYPE_I4, WN_Intconst(MTYPE_I4, OPT_Hugepage_Heap_Limit),
+				MTYPE_To_TY(MTYPE_I4), WN_PARM_BY_VALUE);
+  WN_kid1(call) = WN_CreateParm(MTYPE_I4, WN_Intconst(MTYPE_I4, OPT_Hugepage_Attr),
+				MTYPE_To_TY(MTYPE_I4), WN_PARM_BY_VALUE);
+  WN_Set_Linenum(call, current_srcpos);
+  call = lower_call(block, call, actions);
+  WN_INSERT_BlockLast(block, call);
+
+  return block;
+}
 
 static void lower_actions_fprintf(FILE *f, LOWER_ACTIONS actions)
 {

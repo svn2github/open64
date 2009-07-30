@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -120,6 +124,7 @@
 
 #include "ipc_option.h"
 
+#include "ipa_devirtual.h"
 #ifdef KEY
 #include "ipa_builtins.h"
 #include "ipo_parent.h"
@@ -129,6 +134,7 @@
 #include "inline_script_parser.h"
 #else
 extern void IPO_WN_Update_For_Struct_Opt (IPA_NODE *);
+extern void IPO_WN_Update_For_Complete_Structure_Relayout_Legality(IPA_NODE *);
 #endif  /* KEY */
 #include "ipa_reorder.h" //IPO_Modify_WN_for_field_reorder ()
 
@@ -140,6 +146,7 @@ extern WN_MAP Parent_Map;
 
 extern char * preopt_path;       // declared in ld/option.c
 extern int preopt_opened;        // declared in ld/option.c
+extern FILE *Y_inlining;         // declared in analyze/ipa_inline.cxx
 static BOOL have_open_input_file = FALSE;
 static FILE *fin;
 struct reg_feedback {
@@ -536,17 +543,12 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     }
 #endif
 
-/*pengzhao
-if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW))
-	{
-			
-		fprintf ( inlining_result,"%s inlined into ", DEMANGLE(callee->Name()));
-		fprintf ( inlining_result, "%s (edge# %d)\n", DEMANGLE (caller->Name()), edge->Edge_Index () );
-
-	} */
-
     if ( Trace_IPA || Trace_Perf ) {
-	fprintf ( TFile, "%s inlined into ", DEMANGLE (callee->Name()) );
+        if (edge->Has_Partial_Inline_Attrib()) {
+           fprintf ( TFile, "%s partially inlined into ", DEMANGLE (callee->Name()) );
+        } else {
+           fprintf ( TFile, "%s inlined into ", DEMANGLE (callee->Name()) );
+        }
 	fprintf ( TFile, "%s (edge# %d)", DEMANGLE (caller->Name()), edge->Edge_Index () );
 	if ( IPA_Skip_Report ) {
 	    fprintf ( TFile, " (%d)\n", caller->Node_Index() );
@@ -555,7 +557,11 @@ if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW))
 	}
     }
     if ( INLINE_List_Actions ) {
-	fprintf ( stderr, "%s inlined into ", DEMANGLE (callee->Name()) );
+        if (edge->Has_Partial_Inline_Attrib()) {
+           fprintf ( stderr, "%s partially inlined into ", DEMANGLE (callee->Name()) );
+        } else {
+           fprintf ( stderr, "%s inlined into ", DEMANGLE (callee->Name()) );
+        }
 	fprintf ( stderr, "%s (edge# %d)\n", DEMANGLE (caller->Name()), edge->Edge_Index () );
 	if ( IPA_Skip_Report ) {
 	    fprintf ( stderr, " (%d)\n", caller->Node_Index() );
@@ -605,7 +611,11 @@ if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW))
    	strcat(callee_key, callee_file);
 	strcat(callee_key, callee_func);	
 	
-	fprintf(inline_action, "[%s] inlined into [%s]\n", callee_key, caller_key);
+        if (edge->Has_Partial_Inline_Attrib()) {
+           fprintf(inline_action, "[%s] partially inlined into [%s]\n", callee_key, caller_key);
+        } else {
+           fprintf(inline_action, "[%s] inlined into [%s]\n", callee_key, caller_key);
+        }
 	fclose(inline_action);
 #endif
     }
@@ -615,6 +625,7 @@ if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW))
 } // Inline_Call
 
 #ifdef KEY
+extern void IPO_Process_Virtual_Functions (IPA_NODE *);
 extern void IPO_Process_Icalls (IPA_NODE *);
 extern void IPA_update_ehinfo_in_pu (IPA_NODE *);
 #endif
@@ -644,6 +655,11 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
     IPO_Process_Icalls (node);
   }
 #endif
+  if (IPA_Enable_Fast_Static_Analysis_VF && 
+      node->Has_Pending_Virtual_Functions()) {
+    IPO_Process_Virtual_Functions (node);
+  }
+
 
   if (IPA_Enable_Padding) {
     IPO_Pad_Whirl (node);
@@ -1082,7 +1098,6 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	MEM_POOL_Pop(&Recycle_mem_pool);   
     }
 #endif
-
 } // Perform_Transformation
 
 static void
@@ -1888,6 +1903,22 @@ IPO_main (IPA_CALL_GRAPH* cg)
     	IPA_Remove_Regions (walk_order, cg); // Remove EH regions that are not required
 #endif
 
+    // we will use the following loop to check whether it is legal to perform
+    // the complete structure relayout optimization; later (in the subsequent
+    // loop) we will perform the actual optimization (if it is legal)
+    for (IPA_NODE_VECTOR::iterator first = walk_order.begin();
+         first != walk_order.end(); first++)
+    {
+      if (IPA_Enable_Struct_Opt != 0 &&
+          PU_src_lang((*first)->Get_PU()) & PU_C_LANG)
+      {
+        IPA_NODE_CONTEXT context(*first);
+        IPO_WN_Update_For_Complete_Structure_Relayout_Legality(*first);
+      }
+      else
+        IPA_Enable_Struct_Opt = 0; // only do this for C programs
+    }
+
     for (IPA_NODE_VECTOR::iterator first = walk_order.begin ();
 	 first != walk_order.end ();
 	 ++first) {
@@ -2077,6 +2108,11 @@ IPO_main (IPA_CALL_GRAPH* cg)
     if ( INLINE_List_Actions ) {
         fprintf ( stderr, "Total number of edges = %d\n", IPA_Call_Graph->Edge_Size() );
     }
+
+  if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+    fclose(Y_inlining);
+  }
+
 } // IPO_main
 
 

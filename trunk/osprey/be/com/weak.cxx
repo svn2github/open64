@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -134,6 +138,7 @@ WN* (*Perform_Global_Optimization_p) (WN *, WN *, struct ALIAS_MANAGER *);
 
 // from be/opt/optimizer.h
 WN* (*Pre_Optimizer_p) (INT32, WN*, DU_MANAGER*, ALIAS_MANAGER*);
+void (*choose_from_complete_struct_for_relayout_candidates_p)();
 DU_MANAGER* (*Create_Du_Manager_p) (MEM_POOL *);
 void (*Delete_Du_Manager_p) (DU_MANAGER *, MEM_POOL *);
 

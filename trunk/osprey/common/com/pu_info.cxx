@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -71,6 +75,12 @@
 #include "pu_info.h"
 
 PU_Info *Current_PU_Info = NULL;
+
+char *
+Current_PU_Name()
+{
+  return ST_name(PU_Info_proc_sym(Current_PU_Info));
+}
 
 void
 PU_Info_init (PU_Info *pu)

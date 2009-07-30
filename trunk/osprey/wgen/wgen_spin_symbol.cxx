@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007 Pathscale, LLC.  All Rights Reserved.
  */
 
@@ -62,6 +66,7 @@ extern "C"{
 #else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
 #endif /* defined(BUILD_OS_DARWIN) */
+#include "pathscale_defs.h"
 #include "defs.h"
 #include "errors.h"
 
@@ -423,7 +428,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			// bugs 943, 11277, 10506
 			{
 			  // Should use ErrMsg (or something similar) instead.
-			  printf("pathcc: variable-length structure not yet implemented\n");
+			  printf(OPEN64_NAME_PREFIX "cc: variable-length structure not yet implemented\n");
 			  exit(2);
 			}
 #endif

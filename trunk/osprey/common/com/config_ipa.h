@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -107,6 +111,7 @@ extern UINT32 IPA_Common_Pad_Size;      /* Amount by which to pad commons */
 extern BOOL IPA_Enable_Split_Common;    /* Enable split common inside IPA */
 extern BOOL IPA_Enable_Cloning;         /* Enable Cloning in conjunction
 					 * with constant propagation */
+extern BOOL IPA_Enable_Partial_Inline;  /* Enable partial inlining */ 
 					   
 extern BOOL IPA_Echo_Commands;		/* Echo back end command lines */
 extern BOOL IPA_Enable_Lang;            /* support inlining across language
@@ -345,6 +350,7 @@ extern UINT32  IPA_Max_Density;
 extern BOOL IPA_Enable_Old_Type_Merge;
 
 extern BOOL IPA_Enable_Devirtualization;
+extern BOOL IPA_Enable_Fast_Static_Analysis_VF;
 
 #ifdef __cplusplus
 }

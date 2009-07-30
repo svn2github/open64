@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
  */
 
@@ -171,6 +175,8 @@ static const char source_file[] = __FILE__;
 #include "config_wopt.h"
 #include "config_lno.h"
 #include "xstats.h"	// Spill_Var_Cnt
+#include "dominate.h"
+#include "glob.h"
 
 static void Init_Remove_Dead_LRA_Stores(BS **bs, MEM_POOL *pool);
 static void Mark_LRA_Spill_Reference(OP *op, BS **bs, MEM_POOL *pool);
@@ -206,7 +212,11 @@ EBO_OP_INFO *EBO_opinfo_table[EBO_MAX_OP_HASH];
 BOOL EBO_in_pre  = FALSE;
 BOOL EBO_in_before_unrolling = FALSE;
 BOOL EBO_in_after_unrolling = FALSE;
+LOOP_DESCR *EBO_loop = NULL;
+INT EBO_loop_size = 0;
 BOOL EBO_in_peep = FALSE;
+BOOL EBO_flow_safe = FALSE;
+BOOL EBO_doms_calculated = FALSE;
 
 /* Are OMEGA entries present? */
 BOOL EBO_in_loop = FALSE;
@@ -782,6 +792,13 @@ static void EBO_Start()
   MEM_POOL_Push(&MEM_local_pool);
   EBO_tninfo_table = TN_MAP_Create();
 
+#ifdef TARG_X8664
+  if (!EBO_in_peep && !EBO_in_after_unrolling && !Are_Dominators_Calculated()) {
+    EBO_doms_calculated = TRUE;
+    Calculate_Dominators();
+  }
+#endif
+
   ISA_REGISTER_CLASS cl;
   FOR_ALL_ISA_REGISTER_CLASS(cl) {
     Regs_Delta_Map[cl] = OP_MAP32_Create();
@@ -806,6 +823,13 @@ static void EBO_Finish(void)
     Regs_Delta_Map[cl] = NULL;
   }
   EBO_Special_Finish();
+#endif
+
+#ifdef TARG_X8664
+  if (!EBO_in_peep && !EBO_in_after_unrolling && EBO_doms_calculated) {
+    EBO_doms_calculated = FALSE;
+    Free_Dominators_Memory();
+  }
 #endif
 
   TN_MAP_Delete (EBO_tninfo_table);
@@ -1158,6 +1182,14 @@ find_duplicate_mem_op (BB *bb,
   EBO_TN_INFO *extend_lr_tninfo = NULL;
   EBO_REG_ENTRY reginfo;
 #endif
+
+  if (EBO_in_loop) {
+    if ((CG_LOOP_unroll_level == 2) && (Is_Multibb_Loop(EBO_loop))) {
+      // It is possible to have no loop info on the unrolled multi block loop
+      if (_CG_LOOP_info(op) == NULL)
+        return FALSE;
+    }
+  }
 
   if (op == NULL) return FALSE;
 
@@ -2062,6 +2094,102 @@ find_previous_constant (OP *op,
 }
 
 
+/*
+ * Check if a load/cmp load exec peep is flow safe
+ */
+static BOOL
+EBO_Load_Flow_Safe(OP *ld_op, BB* ld_bb, BB *cmp_bb)
+{
+  TN *ld_tn = OP_result(ld_op,0);
+  BB *other_bb = NULL;
+  BB *search_bb = NULL;
+  BBLIST *lst, *slst;
+  BOOL flow_safe = FALSE;
+  int ld_bb_succ_len = BB_succs_len(ld_bb);
+  int cmp_bb_pred_len = BB_preds_len(cmp_bb);
+
+  // exclude handlers
+  if (BB_handler(ld_bb) || BB_handler(cmp_bb))
+    return FALSE;
+
+  // Since we are motioning a load, no calls may be present
+  // in our analysis pass of the related flow, sides effects can
+  // exist where the memory location is changed.
+  if (BB_call(ld_bb) || BB_call(cmp_bb))
+    return FALSE;
+
+  // We are safe if both ops are in the same block and ld_tn does not escape
+  if (ld_bb == cmp_bb)
+    return (TN_is_global_reg(ld_tn) == FALSE);
+
+  // Only evaluate global tn candidates
+  if (TN_is_global_reg(ld_tn) == FALSE)
+    return FALSE;
+
+  // Only 1 pred block allowed from cmp block, this ensures
+  // nobody else is providing a value for the global ld_tn.
+  if (cmp_bb_pred_len != 1)
+    return FALSE;
+  
+  // Now examine the flow we have
+  for (lst = BB_preds(cmp_bb); lst != NULL; lst = BBLIST_next(lst)) {
+    BB *bb = BBLIST_item(lst);
+    if (bb != ld_bb) {
+      // iff a single block exists between the ld_bb and the cmp_bb
+      // with nothing but ft flow from the ld_bb to it.
+      if (ld_bb_succ_len == 1) {
+        slst = BB_succs(bb);
+        if (BBLIST_item(slst) != cmp_bb) {
+          return FALSE;
+        } else {
+          search_bb = bb;
+          flow_safe = TRUE;
+        }
+      }
+    } else {
+      flow_safe = TRUE;
+      search_bb = ld_bb;
+    }
+  }
+ 
+  // presence of handlers or calls means we cannot proceed
+  if (search_bb && (BB_handler(search_bb) || BB_call(search_bb)))
+    return FALSE;
+
+  if (flow_safe == FALSE)
+    return FALSE;
+
+  // check for simple flow
+  for (lst = BB_succs(search_bb); lst != NULL; lst = BBLIST_next(lst)) {
+    BB *bb = BBLIST_item(lst);
+    if (bb != cmp_bb)
+      other_bb = bb;
+  }
+
+  // if only the cmp_bb exists as a successor ld_bb, we need only
+  // check if our ld_tn is live out.
+  if (other_bb == NULL) {
+    // If the tn is live out of the cmp_bb we must fail also
+    if (GRA_LIVE_TN_Live_Outof_BB(ld_tn, cmp_bb))
+      return FALSE;
+    else
+      return TRUE;
+  }
+
+#ifdef KEY
+  if (EBO_no_liveness_info_available)
+    return FALSE;
+#endif
+
+  // If the tn is live out of the cmp_bb we must fail also
+  if (GRA_LIVE_TN_Live_Outof_BB(ld_tn, cmp_bb))
+    return FALSE;
+
+  // The final constraint is that the load's tn must not be live in here
+  return (GRA_LIVE_TN_Live_Into_BB(ld_tn, other_bb) == FALSE);
+}
+
+
 /* 
  * Iterate through a Basic Block and build EBO_TN_INFO entries.
  */
@@ -2070,9 +2198,20 @@ Find_BB_TNs (BB *bb)
 {
   OP *op;
   BOOL no_barriers_encountered = TRUE;
+  BOOL scalar_replacement_performed = FALSE;
 #ifdef KEY
   OP *op_with_reg_usage_info, *next_op_with_reg_usage_info;
   INT op_count = 0;
+#endif
+
+#ifdef TARG_X8664
+  if (EBO_in_loop) {
+    if ((CG_LOOP_unroll_level == 2) && (Is_Multibb_Loop(EBO_loop))) {
+      // Only process blocks in our loop
+      if (BB_SET_MemberP(LOOP_DESCR_bbset(EBO_loop),bb) == FALSE)
+        return no_barriers_encountered;
+    }
+  }
 #endif
 
   if (EBO_Trace_Execution) {
@@ -2097,7 +2236,16 @@ Find_BB_TNs (BB *bb)
   BOOL in_x87_state = FALSE;
   OP *maybe_redundant_EMMS_OP = NULL;
 
-  const BOOL do_load_execute = ( CG_load_execute > 0 ) && !EBO_in_pre && !EBO_in_loop;
+#ifdef TARG_X8664
+  BOOL do_load_execute;
+  if (CG_cmp_load_exec)
+    do_load_execute = ( CG_load_execute > 0 ) && !EBO_in_loop;
+  else
+    do_load_execute = ( CG_load_execute > 0 ) && !EBO_in_pre && !EBO_in_loop;
+#else
+  BOOL do_load_execute = ( CG_load_execute > 0 ) && !EBO_in_pre && !EBO_in_loop;
+#endif
+
   if( do_load_execute ){
     Init_Load_Exec_Map( bb, &MEM_local_pool );
   }
@@ -2155,9 +2303,11 @@ Find_BB_TNs (BB *bb)
     INT num_opnds = OP_opnds(op);
     TN *rslt_tn = NULL;
     INT rslt_num = 0;
+    INT cmp_merge_idx = -1;
     BOOL opnds_constant = TRUE;
     BOOL op_replaced = FALSE;
     BOOL op_is_predicated = OP_has_predicate(op)?TRUE:FALSE;
+    BOOL op_is_cmp_merge_cand = FALSE;
     TN *op_predicate_tn = NULL;
     EBO_TN_INFO *op_predicate_tninfo = NULL;
     BOOL check_omegas = (EBO_in_loop && _CG_LOOP_info(op))?TRUE:FALSE;
@@ -2387,6 +2537,61 @@ Find_BB_TNs (BB *bb)
 	    tn_replace = NULL;
 	  }
 	}
+
+        // Find cmp merge cands if only neither of the cmp opnds are memops.
+        if( Is_Target_32bit() &&
+            CG_cmp_load_exec &&
+            !EBO_in_peep &&
+            !op_is_cmp_merge_cand &&
+            do_load_execute &&
+            ( num_opnds == 2 ) &&
+            ( OP_code(op) == TOP_cmp32 ) && 
+            ( tninfo->in_op ) &&
+            ( TN_is_register(tn) ) &&
+            ( OP_load( tninfo->in_op ) ) &&
+            ( tninfo->reference_count == 1 ) &&
+            ( OP_code(tninfo->in_op) == TOP_ld32 ) ){
+          // If the load cannot be folded into the cmp keep looking.
+          // We can only do this step on local loads within the bb,
+          // else we rely on the EBO_Load_Flow_Safe.
+          if( (tninfo->in_op->bb == bb) &&
+              EBO_Not_Load_Exec_Opnd( tninfo->in_op ) ) 
+            continue;
+
+          // If the load is from another block apply flow criteria or reject it
+          if( !EBO_Load_Flow_Safe( tninfo->in_op, tninfo->in_op->bb, bb ) ) 
+            continue;
+
+          // We found a candidate
+          cmp_merge_idx = opndnum;
+          op_is_cmp_merge_cand = TRUE;
+        } else if( Is_Target_64bit() &&
+                   CG_cmp_load_exec &&
+                   !EBO_in_peep &&
+                   !op_is_cmp_merge_cand &&
+                   do_load_execute &&
+                   ( num_opnds == 2 ) &&
+                   ( OP_code(op) == TOP_cmp64 ) && 
+                   ( tninfo->in_op ) &&
+                   ( TN_is_register(tn) ) &&
+                   ( OP_load( tninfo->in_op ) ) &&
+                   ( tninfo->reference_count == 1 ) &&
+                   ( OP_code(tninfo->in_op) == TOP_ld64 ) ){
+          // If the load cannot be folded into the cmp keep looking.
+          // We can only do this step on local loads within the bb,
+          // else we rely on the EBO_Load_Flow_Safe.
+          if( (tninfo->in_op->bb == bb) &&
+              EBO_Not_Load_Exec_Opnd( tninfo->in_op ) ) 
+            continue;
+
+          // If the load is from another block apply flow criteria or reject it
+          if( !EBO_Load_Flow_Safe( tninfo->in_op, tninfo->in_op->bb, bb ) ) 
+            continue;
+
+          // We found a candidate
+          cmp_merge_idx = opndnum;
+          op_is_cmp_merge_cand = TRUE;
+        }
 #endif
 
 #ifdef KEY
@@ -2567,6 +2772,11 @@ Find_BB_TNs (BB *bb)
 
     } /* End: Process all the operand TNs. */
 
+#ifdef TARG_X8664
+    if (EBO_in_pre && !EBO_in_loop && CG_cmp_load_exec )
+      do_load_execute = op_is_cmp_merge_cand;
+#endif
+
     if (OP_memory(op)) {
       if (!op_replaced &&
           OP_same_res(op)) {
@@ -2597,6 +2807,16 @@ Find_BB_TNs (BB *bb)
       if( !op_replaced ){
 	op_replaced = EBO_Merge_Memory_Addr( op, opnd_tn, opnd_tninfo, orig_tninfo );
       }
+      if ( !op_replaced &&
+            (CG_LOOP_unroll_level == 2) &&
+            OP_load(op) &&
+            EBO_in_loop &&
+            BB_unrolled_fully(bb) &&
+            (EBO_loop != NULL)) {
+        op_replaced = EBO_Opt_Const_Array( op, EBO_loop, EBO_loop_size );
+        if (op_replaced)
+          scalar_replacement_performed = op_replaced;
+      }
 #endif
     } else if (OP_effectively_copy(op)) {
       if (!op_replaced &&
@@ -2606,6 +2826,20 @@ Find_BB_TNs (BB *bb)
       if (!op_replaced) {
         op_replaced = Special_Sequence (op, opnd_tn, opnd_tninfo);
       }
+    } else if ( op_is_cmp_merge_cand &&
+                !op_replaced ) {
+#ifdef TARG_X8664
+      /* we already know the cmp is not a memop and that we have a
+       * load feeding one of the src operands. Allow load execute to
+       * handle the operation. */
+      EBO_flow_safe = TRUE;
+      op_replaced = EBO_Load_Execution( op, opnd_tn, orig_tninfo, cmp_merge_idx );
+      if( op_replaced ){
+        /* we need to cleanup here, as we will not be doing so below. */
+        OP_Change_To_Noop(orig_tninfo[cmp_merge_idx]->in_op);
+      }
+      EBO_flow_safe = FALSE;
+#endif
     } else if (!op_replaced &&
                !OP_effectively_copy(op) &&
                !OP_glue(op) &&
@@ -2686,9 +2920,18 @@ Find_BB_TNs (BB *bb)
       if( do_load_execute  &&
 	  !op_replaced     &&
 	  !OP_effectively_copy(op) ){
-	op_replaced = EBO_Load_Execution( op, opnd_tn, orig_tninfo );
+	op_replaced = EBO_Load_Execution( op, opnd_tn, orig_tninfo, cmp_merge_idx );
       }
 
+      if ( !op_replaced &&
+            (CG_LOOP_unroll_level == 2) &&
+            (OP_code(op) == TOP_leax32) &&
+            scalar_replacement_performed &&
+            EBO_in_loop &&
+            BB_unrolled_fully(bb) &&
+            (EBO_loop != NULL)) {
+        op_replaced = EBO_Fold_Lea_Const_Component( op );
+      }
       if( !op_replaced     &&
 	  !OP_effectively_copy(op) ){
 	op_replaced = EBO_Lea_Insertion( op, opnd_tn, orig_tninfo );
@@ -3453,7 +3696,18 @@ EBO_Process ( BB *first_bb )
     }
     if (!BB_visited(bb)) {
       EBO_Add_BB_to_EB (bb);
+#ifdef TARG_X8664
+      if (EBO_in_loop) {
+        if (CG_LOOP_unroll_level == 2) {
+          if (Is_Multibb_Loop(EBO_loop) == FALSE)
+            break;
+        } else {
+          break;
+        }
+      }
+#else
       if (EBO_in_loop) break;
+#endif
     }
   }
 #endif
@@ -3584,13 +3838,15 @@ EBO_before_unrolling(BB_REGION *bbr )
  * perform EBO optimizations after unrolling and pipelining
  */
 void
-EBO_after_unrolling(BB_REGION *bbr )
+EBO_after_unrolling(BB_REGION *bbr, LOOP_DESCR *loop, int loop_iter_size)
 {
   INT i;
 
   EBO_in_pre  = FALSE;
   EBO_in_before_unrolling = FALSE;
   EBO_in_after_unrolling = TRUE;
+  EBO_loop = loop;
+  EBO_loop_size = loop_iter_size;
   EBO_in_peep = FALSE;
 
 #ifdef KEY
@@ -3603,7 +3859,7 @@ EBO_after_unrolling(BB_REGION *bbr )
   EBO_in_loop = TRUE;
 
   if ((EBO_Opt_Level < 3) && ((EBO_Opt_Level > 0) || (EBO_Opt_Level != -3))) return;
- 
+
 #if defined(TARG_IA64) || defined(KEY)
   for (i = 0; i < bbr->entries.size(); i++) {
     clear_bb_flag (bbr->entries[i]);
@@ -3613,6 +3869,8 @@ EBO_after_unrolling(BB_REGION *bbr )
   }
   EBO_Process (bbr->entries[0]);
 #endif
+
+  EBO_loop = NULL;
 }
 
   

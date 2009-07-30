@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
  */
 
@@ -3375,6 +3379,8 @@ AGGINIT::Traverse_Aggregate_Struct (
       // PTRMEM_CST was expanded by GCC's cplus_expand_constant.  Get the
       // result.
       gs_t expanded_ptrmem_cst = gs_expanded_ptrmem_cst(init_value);
+      FmtAssert(expanded_ptrmem_cst != NULL,
+               ("Traverse_Aggregate_Struct: expanded PTRMEM_CST is NULL"));
 #ifdef NEW_INITIALIZER
       field_id = Traverse_Aggregate_Constructor (target, expanded_ptrmem_cst,
 #else
@@ -3557,6 +3563,8 @@ AGGINIT::Traverse_Aggregate_Struct (
       // PTRMEM_CST was expanded by GCC's cplus_expand_constant.  Get the
       // result.
       gs_t expanded_ptrmem_cst = gs_expanded_ptrmem_cst(init_value);
+      FmtAssert(expanded_ptrmem_cst != NULL,
+               ("Traverse_Aggregate_Struct: expanded PTRMEM_CST is NULL"));
 #ifdef NEW_INITIALIZER
       field_id = Traverse_Aggregate_Constructor (target, expanded_ptrmem_cst,
 #else
@@ -3914,6 +3922,7 @@ AGGINIT::Add_Init_For_WHIRL(WN *init_wn, UINT size, INT64 ofst)
   case OPR_INTCONST:
     WGEN_Add_Aggregate_Init_Integer(WN_const_val(init_wn) + ofst, size);
     return;
+  case OPR_LDID:
   case OPR_LDA:
     WGEN_Add_Aggregate_Init_Symbol(WN_st(init_wn), WN_offset(init_wn)+ofst);
 // bugs 555, 11308

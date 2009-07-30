@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -590,7 +594,7 @@ _xfunc_has_stmts2prevent_shackle(QUEUE<WN *> *stmts)
 // We just want to return a ST that is meaningful
 static ST* Array_Base_St (WN* node)
 {
-  if (OPCODE_is_load(WN_opcode(node))) return WN_st(node);
+  if (OPCODE_is_load(WN_opcode(node)) && WN_has_sym(node)) return WN_st(node);
 
   // Recurse
   ST* sym;
@@ -625,8 +629,9 @@ Identical_Array_Refbase (WN *array1, WN *array2)
        OPCODE_is_store (WN_opcode (p1))) &&
       (OPCODE_is_load (WN_opcode (p2)) || 
        OPCODE_is_store (WN_opcode (p2)))) {
-    if (DEP_CONTINUE == DEPV_COMPUTE::Base_Test (p1, NULL, 
-						 p2, NULL)) {
+    if ((DEP_CONTINUE == DEPV_COMPUTE::Base_Test (p1, NULL, 
+						 p2, NULL))
+	&& (WN_operator(t1) != OPR_ILOAD)) {
       // assert (WN_array_base (array1) == WN_array_base (array2));
 #ifdef KEY // Bug 2484
       if (WN_Simp_Compare_Trees(t1, t2) != 0)

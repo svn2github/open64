@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
@@ -172,20 +176,32 @@ main ()
 	      "cmpxx64",
 	      "cmpxxx64",
 	      "cmpi8",
+	      "cmpxr8",
 	      "cmpxi8",
+	      "cmpxxr8",
 	      "cmpxxi8",
+	      "cmpxxxr8",
 	      "cmpxxxi8",
 	      "cmpi16",
+	      "cmpxr16",
 	      "cmpxi16",
+	      "cmpxxr16",
 	      "cmpxxi16",
+	      "cmpxxxr16",
 	      "cmpxxxi16",
 	      "cmpi32",
+	      "cmpxr32",
 	      "cmpxi32",
+	      "cmpxxr32",
 	      "cmpxxi32",
+	      "cmpxxxr32",
 	      "cmpxxxi32",
 	      "cmpi64",
+	      "cmpxr64",
 	      "cmpxi64",
+	      "cmpxxr64",
 	      "cmpxxi64",
+	      "cmpxxxr64",
 	      "cmpxxxi64",
 	      "cmovb",
 	      "cmovae",

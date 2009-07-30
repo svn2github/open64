@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -578,6 +582,8 @@ extern BOOL GCM_Eager_Null_Ptr_Deref_Set; /* ... option seen? */
 #define DEF_OPT_LEVEL	1
 extern INT32 Opt_Level;		/* -On level */
 extern INT32 OPT_unroll_times;
+extern INT32 OPT_unroll_level;
+extern BOOL OPT_keep_extsyms;
 extern BOOL OPT_unroll_times_overridden;
 extern INT32 OPT_unroll_size;
 extern BOOL OPT_unroll_size_overridden;
@@ -589,6 +595,7 @@ extern INT32 Olimit;	/* stop optimization or use regions at this limit */
 extern BOOL Olimit_opt;	/* FALSE => stop optimization if Olimit reached;
 			 * TRUE  => use regions to optimize if Olimit reached */
 extern BOOL CG_mem_intrinsics;
+extern BOOL Emulate_memset;
 extern INT32 CG_memmove_inst_count;
 extern BOOL CG_memmove_inst_count_overridden;
 extern BOOL CG_bcopy_cannot_overlap;

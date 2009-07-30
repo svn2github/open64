@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. Pathscale LLC. All Rights Reserved.
  */
 
@@ -285,6 +289,10 @@ static OPTION_DESC Options_GRA[] = {
     4, 0, 16,	&GRA_local_forced_max, &GRA_local_forced_max_set,
     "How many locals to force allocate (out of the number requested by LRA) [Default 4]"
   },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "unspill", "",
+    0,0,0,	&GRA_unspill_enable, NULL,
+    "Enable/disable fusing of GRA spills and restores back to registers [Default FALSE]"
+  },
 #else
   { OVK_INT32,	OV_INTERNAL, TRUE, "local_forced_max", "",
     4, 0, 32,	&GRA_local_forced_max, NULL,
@@ -455,6 +463,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,	&CG_skip_local_swp, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_ebo", "",
     0, 0, 0,	&CG_skip_local_ebo, NULL },
+#ifdef TARG_X8664
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "cmp_peep", "",
+    0, 0, 0,	&CG_cmp_load_exec, NULL },
+#endif
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_sched", "",
     0, 0, 0,	&CG_skip_local_sched, NULL },
 #endif //TARG_NVISA
@@ -653,6 +665,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CG_LOOP_unroll_fully, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_remainder_fully", "unroll_remainder_full",
     0, 0, 0, &CG_LOOP_unroll_remainder_fully, NULL },
+  { OVK_BOOL,	OV_VISIBLE, TRUE,"unroll_fb_req", "",
+    0, 0, 0, &CG_LOOP_unroll_fb_required, NULL },
 
   // Cross Iteration Loop Optimization options.
 
@@ -664,7 +678,7 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CIO_enable_write_removal, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "cio_cse_removal", "",
     0, 0, 0, &CIO_enable_cse_removal, NULL },
-  { OVK_INT32,	OV_INTERNAL, TRUE, "cio_rw_max_omega", "",
+  { OVK_INT32, OV_INTERNAL, TRUE, "cio_rw_max_omega", "",
     8, 0, INT32_MAX, &CIO_rw_max_omega, NULL },
 
   // Control flow optimizations (CFLOW) options.
@@ -1169,6 +1183,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CG_use_short_form, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "p2align", "p2align",
     0, 0, 0,	&CG_p2align, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "loop32", "loop32",
+    0, 0, 0,	&CG_loop32, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "compute_to", "compute_to",
+    0, 0, 0,	&CG_compute_to, NULL },
   { OVK_UINT64,	OV_INTERNAL, TRUE, "p2align_freq", "",
     0, 0, UINT64_MAX>>1, &CG_p2align_freq, NULL, "freq threshold for .p2align" },
   { OVK_UINT32,	OV_INTERNAL, TRUE,"p2align_max_skip_bytes", "",
@@ -1930,6 +1948,7 @@ Configure_CG_Options(void)
   }
   CG_LOOP_unroll_times_max = OPT_unroll_times;
   CG_LOOP_unrolled_size_max = OPT_unroll_size;
+  CG_LOOP_unroll_level = OPT_unroll_level;
 
   CG_LOOP_ooo_unroll_heuristics = PROC_is_out_of_order();
 

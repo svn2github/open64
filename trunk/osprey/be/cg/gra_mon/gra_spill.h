@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,6 +59,7 @@ extern void GRA_Note_Restore_Above( LUNIT* lunit );
 extern void GRA_Spill_Initialize(void);
 extern void GRA_Note_Spill( LRANGE* lrange );
 extern void GRA_Spill(void);
+extern void GRU_Fuse(void);
 
 extern void GRA_Remove_Predicates_Save_Restore(void);
 #ifdef TARG_IA64

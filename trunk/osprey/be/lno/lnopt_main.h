@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -811,6 +815,7 @@ extern void Last_Value_Peeling_Off();
 class DO_LOOP_INFO {
 private:
   MEM_POOL *_pool;
+  IDTYPE  _id;  //  a unique ID for debugging purpose.
   mUINT8 _wind_down_flags;
   enum DLI_FLAG {CWD = 1, RWD = 2, ICWD = 4, IRWD = 8, UNIMPORTANT = 16};
   void Set_Flag(DLI_FLAG flag, BOOL set) {
@@ -909,6 +914,8 @@ public:
   void Set_In_Register_Winddown(BOOL b = TRUE) {Set_Flag(IRWD, b);}
   BOOL Is_Generally_Unimportant() const {return Get_Flag(UNIMPORTANT);}
   void Set_Generally_Unimportant(BOOL b = TRUE) {Set_Flag(UNIMPORTANT, b);}
+  IDTYPE Get_Id() { return _id; }
+  IDTYPE Set_Id(IDTYPE i ) { _id = i; }
 
   DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
 	ACCESS_VECTOR *step, BOOL has_calls, BOOL has_nested_calls, BOOL has_unsummarized_calls,

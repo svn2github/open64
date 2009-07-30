@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -115,6 +119,9 @@ BOOL CG_skip_local_hbf = FALSE;
 BOOL CG_skip_local_loop = FALSE;
 BOOL CG_skip_local_sched = FALSE;
 BOOL CG_skip_local_swp = FALSE;
+#ifdef TARG_X8664
+BOOL CG_cmp_load_exec = FALSE;
+#endif
 BOOL CG_opt_level;
 BOOL CG_localize_tns = FALSE;
 BOOL CG_localize_tns_Set = FALSE;
@@ -489,6 +496,8 @@ INT32 CG_sse_load_execute = 0;
 INT32 CG_load_execute = 1;
 BOOL CG_loadbw_execute = FALSE;
 BOOL CG_p2align = FALSE;
+BOOL CG_loop32 = FALSE;
+BOOL CG_compute_to = FALSE;
 BOOL CG_valgrind_friendly = TRUE;
 #endif
 

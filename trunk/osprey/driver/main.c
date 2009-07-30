@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
  */
 
@@ -84,6 +88,11 @@ boolean show_search_path;
 boolean show_defaults;
 boolean print_help = FALSE;
 
+HUGEPAGE_DESC hugepage_desc;
+boolean add_heap_limit;
+int heap_limit;
+int hugepage_attr;
+
 #if 0
 // obsolete, see comments in DESIGN_DOC
 //extern void check_for_combos(void);
@@ -142,6 +151,7 @@ main (int argc, char *argv[])
 #ifdef KEY
 	char *unrecognized_dashdash_option_name = NULL;
 #endif
+        hugepage_desc = NULL;
 
 	init_error_list();
 	program_name = drop_path(argv[0]);	/* don't print path */
@@ -595,6 +605,33 @@ main (int argc, char *argv[])
 	       run_prof();
         }
 
+        add_heap_limit = FALSE;
+        heap_limit = HUGEPAGE_LIMIT_DEFAULT;
+        hugepage_attr = 0;
+
+        if (option_was_seen(O_HP)
+            && (instrumentation_invoked != TRUE)) {
+            HUGEPAGE_DESC desc;
+            boolean do_heap = FALSE;
+            
+            for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
+                if (desc->alloc == ALLOC_HEAP) {
+                    do_heap = TRUE;
+                    heap_limit = desc->limit;
+
+                    if (desc->size == SIZE_2M)
+                        hugepage_attr |= ( 1 << HEAP_2M_BIT);
+                    else if (desc->size == SIZE_1G)
+                        hugepage_attr |= ( 1 << HEAP_1G_BIT);
+                }
+            }
+
+            if (do_heap == FALSE)
+                heap_limit = 0;
+            else
+                add_heap_limit = TRUE;
+        }
+        
 	if (read_stdin) {
 		if ( option_was_seen(O_E) 
 			|| (source_lang != L_NONE && source_kind != S_o)) 
@@ -610,7 +647,7 @@ main (int argc, char *argv[])
 
 	for (p = files->head, q=file_suffixes->head; p != NULL; p = p->next, q=q->next) 
 	{
-		source_file = p->name;
+            source_file = p->name;
 #ifdef KEY
 		run_inline = UNDEFINED;	// bug 11325
 
@@ -994,6 +1031,8 @@ prescan_options (int argc, char *argv[])
     }
   }
 
+  // Disable for SiCortex 5069.
+#if 0
   // Turn off IPA for certain flag combinations.  Must turn off IPA before
   // adding objects because the objects' suffix depends on whether IPA is
   // invoked.  Bug 7879.
@@ -1011,6 +1050,7 @@ prescan_options (int argc, char *argv[])
       }
     }
   }
+#endif
 }
 
 static void

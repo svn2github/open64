@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -898,6 +902,7 @@ BOOL Idict_Commutable_Match = FALSE;
 BOOL Scalar_Formal_Ref = TRUE;		/* for fortran scalar formal refs */
 BOOL Non_Scalar_Formal_Ref = FALSE;	/* for fortran non_scalar formal refs */
 
+BOOL Emulate_memset = TRUE;             /* for intrinsic expansion of memset */
 BOOL CG_mem_intrinsics = TRUE;		/* for memory intrinsic expansion */
 #ifdef TARG_NVISA
 INT32 CG_memmove_inst_count = 128;	/* for intrinsic expansion of bzero etc */
@@ -918,6 +923,8 @@ BOOL CG_memmove_nonconst = FALSE;	/* expand mem intrinsics unknown size */
 /***** Miscellaneous GOPT options *****/
 INT32 Opt_Level = DEF_OPT_LEVEL;
 INT32 OPT_unroll_times = 4;		/* but see Configure_Target() */
+INT32 OPT_unroll_level = 1;
+BOOL OPT_keep_extsyms = FALSE;
 BOOL OPT_unroll_times_overridden = FALSE;
 INT32 OPT_unroll_size = 40;		/* but see Configure_CG_Options() */
 BOOL OPT_unroll_size_overridden = FALSE;
@@ -2135,8 +2142,14 @@ Process_Trace_Option ( char *option )
 	break;
     
     case 'r':
-	Set_Trace (TKIND_IR,
-		   Get_Trace_Phase_Number ( &cp, option ) );
+	if (strcmp(cp, "a") == 0) {
+	  Set_All_Trace( TKIND_IR );
+	  cp++;
+	}
+	else {
+	  Set_Trace (TKIND_IR,
+		     Get_Trace_Phase_Number ( &cp, option ) );
+	}
 	break;
 
     case 's':
