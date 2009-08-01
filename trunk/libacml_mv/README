@@ -1,0 +1,13 @@
+The Open64 team very sincerely apologizes for the temporary build problems.  We
+are working hard to resolve this as soon as possible.
+
+libacml_mv.a is graciously provided by AMD and available at the link below.
+
+https://svn.open64.net/filedetails.php?repname=Open64&path=%2Fbranches%2Fopen64-booster%2Flibacml_mv%2Flibacml_mv.a
+
+License
+
+https://svn.open64.net/filedetails.php?repname=Open64&path=%2Fbranches%2Fopen64-booster%2Flibacml_mv%2FLICENSE-LIBACML_MV
+
+Questions or additional help can be found on our mailing list :
+open64-devel@lists.sourceforge.net
