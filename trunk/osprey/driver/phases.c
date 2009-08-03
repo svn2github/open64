@@ -1971,7 +1971,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 		add_string(args, "-lmv");
 	//	add_string(args, "-lm" PSC_NAME_PREFIX);
 		add_string(args, "-lm");
-#ifdef TARG_X8664
+#ifdef TARG_X8664_WITH_LIBACML_MV
 		if (abi != ABI_N32)
                     add_library(args, "acml_mv");
 #endif
@@ -2058,7 +2058,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	      // add_library(args, "m" PSC_NAME_PREFIX);	// bug 3092
               // OSP -lm is needed
               add_library(args, "m");
-#ifdef TARG_X8664
+#ifdef TARG_X8664_WITH_LIBACML_MV
 	      if (abi != ABI_N32) {
 		/* Sigh, g++ removes the first -lm since it is implicitly added by g++,
 		 * however adding two instances of -lm only removes one.

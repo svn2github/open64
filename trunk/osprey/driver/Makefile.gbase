@@ -63,6 +63,9 @@ endif
 
 ifeq ($(BUILD_TARGET), X8664)
 LCDEFS += -DX8664
+ ifeq ($(shell test -f ../../../libacml_mv/libacml_mv.a && echo 1),1)
+ LCDEFS += -DTARG_X8664_WITH_LIBACML_MV
+ endif
 endif
 
 LCDEFS += -DOPEN64_PRODNAME='"Compiler"'

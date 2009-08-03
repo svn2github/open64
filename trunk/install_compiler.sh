@@ -336,8 +336,10 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.so.1           ${PHASEPATH}/libmv.so.1
         INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
         INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.so.1      ${PHASEPATH}/libopenmp.so.1
-        INSTALL_DATA_SUB libacml_mv/libacml_mv.a ${PHASEPATH}/libacml_mv.a
-        INSTALL_DATA_SUB libacml_mv/LICENSE-LIBACML_MV ${PHASEPATH}/LICENSE-LIBACML_MV
+        if [ -f libacml_mv/libacml_mv.a ] ; then
+            INSTALL_DATA_SUB libacml_mv/libacml_mv.a ${PHASEPATH}/libacml_mv.a
+            INSTALL_DATA_SUB libacml_mv/LICENSE-LIBACML_MV ${PHASEPATH}/LICENSE-LIBACML_MV
+        fi
         # 32bit libraries
         INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.a ${PHASEPATH}/32/libfortran.a
         INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
@@ -355,7 +357,7 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         # driver is cleaned up, it is important that processing be the same on
         # all architectures.  Thus we add an empty 32 bit ACML vector math
         # library.
-        if [ ! -f ${PHASEPATH}/32/libacml_mv.a ] ; then
+        if [ -f libacml_mv/libacml_mv.a -a ! -f ${PHASEPATH}/32/libacml_mv.a ] ; then
 	    ar rc ${PHASEPATH}/32/libacml_mv.a
 	    echo An empty 32-bit libacml_mv.a was added to work around a problem > ${PHASEPATH}/32/README_ACML
 	    echo with the Open64 compiler driver. >> ${PHASEPATH}/32/README_ACML

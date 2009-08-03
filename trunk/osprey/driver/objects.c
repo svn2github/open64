@@ -390,7 +390,7 @@ add_object (int flag, char *arg)
 			if (xpg_flag && invoked_lang == L_f77) {
 				add_library(lib_objects, "mv");
 				add_library(lib_objects, "m");
-#ifdef TARG_X8664
+#ifdef TARG_X8664_WITH_LIBACML_MV
 				if (abi != ABI_N32)
 					add_library(objects, "acml_mv");
 #endif
@@ -399,7 +399,7 @@ add_object (int flag, char *arg)
 				add_library(objects, "mv");
 #endif
 				add_library(objects, "m");
-#ifdef TARG_X8664
+#ifdef TARG_X8664_WITH_LIBACML_MV
 				if (abi != ABI_N32)
 					add_library(objects, "acml_mv");
 #endif
@@ -408,7 +408,7 @@ add_object (int flag, char *arg)
 			if (invoked_lang == L_CC) {
 			    add_library(cxx_prelinker_objects, "mv");
 			    add_library(cxx_prelinker_objects, "m");
-#ifdef TARG_X8664
+#ifdef TARG_X8664_WITH_LIBACML_MV
 			    if (abi != ABI_N32)
 				add_library(objects, "acml_mv");
 #endif
