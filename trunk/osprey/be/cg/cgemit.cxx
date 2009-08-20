@@ -3153,13 +3153,15 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
       name = ST_name( st );
 
 #if defined (TARG_X8664)
+      //remove "$" for  rodata section address reference
+      //https://bugs.open64.net/show_bug.cgi?id=494
       if (!memory /* bug 14399 */ && !strcmp (name, ".rodata")) {
         // This is the address of a string constant, treat it similar
         // to a numeric constant. (bug 14390)
         if( base_ofst == 0 )
-          sprintf( buf, "$%s", name );
+          sprintf( buf, "%s", name );
         else
-          sprintf( buf, "$%s+%d", name, (int)base_ofst );
+          sprintf( buf, "%s+%d", name, (int)base_ofst );
       }
       else {
 #endif
