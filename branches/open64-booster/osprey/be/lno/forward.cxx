@@ -229,6 +229,11 @@ static void FS_Substitute(WN* wn_orig,
       continue;
     if (FS_Is_Inside_If(use, LWN_Get_Parent(wn_orig)))
       continue; 
+
+    // Bug 539: Don't perform FS for nodes directly under ASM_INPUT
+    if (WN_operator(LWN_Get_Parent(use)) == OPR_ASM_INPUT)
+      continue;
+
     sub_count++; 
     INT position = loop_ls->In(use); 
     INT32 count = 0;

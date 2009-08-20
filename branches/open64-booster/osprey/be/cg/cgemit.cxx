@@ -2881,8 +2881,8 @@ Replace_Substring(char* in, char* from, const char* to)
   // memory if need be. Due to the context, this is more efficient than finding
   // out the number of occurrences of 'from' in 'in'.
   UINT  buflen = strlen(in) + 5*strlen(to) + 64;
-  char* buf = CXX_NEW(char[buflen], &MEM_local_pool);
-  char* tmp = CXX_NEW(char[buflen], &MEM_local_pool);
+  char* buf = CXX_NEW_ARRAY(char, buflen, &MEM_local_pool);
+  char* tmp = CXX_NEW_ARRAY(char, buflen, &MEM_local_pool);
   char* cpy = in;
   char* p = NULL;
   char* q = NULL;
@@ -2996,9 +2996,9 @@ Replace_Substring(char* in, char* from, const char* to)
       times = 5; 
     }
   }
-  CXX_DELETE(tmp, &MEM_local_pool);
+  CXX_DELETE_ARRAY(tmp, &MEM_local_pool);
   if (strcmp(buf, "") == 0) {
-    CXX_DELETE(buf, &MEM_local_pool);
+    CXX_DELETE_ARRAY(buf, &MEM_local_pool);
     return cpy;
   }  
   strcat(buf, in);

@@ -7307,15 +7307,7 @@ vho_lower_while_do ( WN * wn, WN *block )
   //LLC
 
   // Clone the loop test
-#ifndef KEY
   WN *copy = WN_COPY_Tree( test_original );
-#else
-#if defined(TARG_SL)
-  WN *copy = WN_COPY_Tree( test_original );  
-#else
-  WN *copy = WN_COPY_Tree_With_Map( test_original );
-#endif
-#endif
 
   if ( Cur_PU_Feedback ) {
     // Guess that the loop test will not be cloned
@@ -7477,15 +7469,7 @@ vho_lower_while_do ( WN * wn, WN *block )
 
 	Reset_PREG_Table_Size( CURRENT_SYMTAB, last_preg );
 
-#ifndef KEY
         WN *copy = WN_COPY_Tree( test_original );
-#else
-#if defined (TARG_SL) 
-        WN *copy = WN_COPY_Tree( test_original );
-#else
-        WN *copy = WN_COPY_Tree_With_Map( test_original );
-#endif
-#endif
 	Cur_PU_Feedback->FB_clone_loop_test( test_original, copy, wn );
 
 	test_block = WN_CreateBlock ();

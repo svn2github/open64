@@ -196,6 +196,9 @@ class SX_PNODE : public CHAIN_NODE {
   friend class SX_PLIST;
   friend class SX_PITER;
   friend class SX_INFO;
+
+  DECL_CXX_ALLOC_AS_FRIEND(SX_PNODE); 
+
  private:
   WN* _wn_symbol; 
   SYMBOL _symbol;

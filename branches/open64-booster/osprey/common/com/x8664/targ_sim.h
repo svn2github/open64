@@ -110,7 +110,7 @@ enum X86_64_PARM_CLASS {
 
 #define MAX_CLASSES 2
 extern INT Classify_Aggregate(const TY_IDX ty, 
-			      enum X86_64_PARM_CLASS classes[MAX_CLASSES]);
+			      enum X86_64_PARM_CLASS classes[MAX_CLASSES], INT byte_offset = 0);
 
 #ifdef __cplusplus
 }

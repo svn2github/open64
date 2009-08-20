@@ -1081,41 +1081,68 @@ Get_TF_Map_and_EH_Spec_List(PU& pu, TF_MAP& tfmap)
 //
 // TODO: Check if the new regions created have any call, if not, don't
 // create, or delete the region.
+
+// FIX: remove two improper assumptions in previous implementation:
+//   1. there is no gaps between children of a same parent. It has been violated
+//      by some test case;
+//   2. there is no level 2 or higher vertexes.
+//      it is not violated yet, but we remove it for safety.
+// We now assume that the EH_RANGES forms an arbitrary forrest now.
+// We still assume that parents are always listed after their children, and regions
+// are listed in order of starting BB. Also, we discard some empty new ranges.
 static void flatten_regions (void)
 {
   vector<EH_RANGE> new_ranges;
-  int i=0;
-  while (i < range_list.size() - 1)
+  int i, j;
+  const int no_child = -1;
+
+  for ( j = range_list.size() - 1; j > 0; j--)
   {
-    if (range_list[i].parent) 
+    int first_child, last_child;
+    bool more_parents;
+
+    first_child = last_child = no_child;
+    more_parents = false;
+    for (i=0; i < j; i++)
     {
-      int first_child, last_child;
-      first_child = last_child = i++;
-      // search for the parent
-      while (range_list[first_child].parent != &range_list[i])
+      if(range_list[i].parent)
+        more_parents = true;
+      if (range_list[i].parent == &range_list[j])
       {
-        if (range_list[i].parent == range_list[first_child].parent)
-	{
-          range_list[i].parent = NULL;
-	  last_child = i;
-	}
-	i++;
+        if (first_child == no_child)
+          last_child = first_child = i;
+        if ( first_child != no_child && i != last_child )
+        {
+          EH_RANGE new_range (range_list[i].rid);
+          new_range.start_label = range_list[last_child].end_label;
+          new_range.end_label = range_list[i].start_label;
+          new_range.end_bb = Get_Label_BB(range_list[i].start_label);
+          new_range.has_call = range_list[j].has_call; // not accurate
+          if (Get_Label_BB(new_range.start_label) != Get_Label_BB(new_range.end_label))
+             new_ranges.push_back (new_range);
+
+        }
+        range_list[i].parent = NULL;
+        last_child = i;
       }
-      // 'i' has the parent
-      EH_RANGE new_range (range_list[i].rid);
+    }
+
+    if (first_child != no_child)
+    {
+      EH_RANGE new_range (range_list[j].rid);
       new_range.start_label = range_list[last_child].end_label;
-      new_range.end_label = range_list[i].end_label;
-      new_range.end_bb = range_list[i].end_bb;
-      new_range.has_call = range_list[i].has_call; // not accurate
-      new_ranges.push_back (new_range);
+      new_range.end_label = range_list[j].end_label;
+      new_range.end_bb = range_list[j].end_bb;
+      new_range.has_call = range_list[j].has_call; // not accurate
+      if (Get_Label_BB(new_range.start_label) != Get_Label_BB(new_range.end_label))
+        new_ranges.push_back (new_range);
 
       // Update the parent now to end before the 1st child
-      range_list[i].end_label = range_list[first_child].start_label;
-      range_list[i].end_bb = Get_Label_BB (range_list[i].end_label);
-      range_list[first_child].parent = NULL;
-      i = first_child + 1; // start over
+      range_list[j].end_label = range_list[first_child].start_label;
+      range_list[j].end_bb = Get_Label_BB (range_list[first_child].start_label);
     }
-    else i++;
+    if (!more_parents)
+     break;
   }
 
   for (vector<EH_RANGE>::iterator iter = new_ranges.begin();
