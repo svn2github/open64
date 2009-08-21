@@ -512,6 +512,7 @@ BE_COM_PCH_CXX_SRCS = \
   wn_verifier.cxx       \
   wn_retype_expr.cxx	\
   wn_unroll.cxx	\
+  alias_analysis.cxx \
   $(DERIVED_SRCS)
 
 ifeq ($(BUILD_PCH), USE_PCH)

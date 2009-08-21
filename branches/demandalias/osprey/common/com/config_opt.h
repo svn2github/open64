@@ -104,6 +104,11 @@ struct skiplist;
 /***** Optimization Warning Messages *****/
 extern BOOL Show_OPT_Warnings;		/* Display OPT warning messages */
 
+/***** Demand driven alias analysis *****/
+extern BOOL Adsn_Alias;
+extern BOOL Adsn_Fld_Sstv;
+extern BOOL Adsn_Limit;
+
 /***** Aliasing control *****/
 extern BOOL Alias_Pointer_Parms;	/* Reference parms indep? */
 extern BOOL Alias_Pointer_Types;	/* Ptrs to distinct basic types indep? */

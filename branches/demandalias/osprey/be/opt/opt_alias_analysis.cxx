@@ -131,6 +131,8 @@
 #include "opt_alias_analysis.h"
 #include "intrn_info.h"
 
+#include "alias_analysis.h"
+
 extern "C" {
 #include "bitset.h"
 }
@@ -2401,6 +2403,8 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
 	         occ->Points_to()->Alias_class(),
 	         Alias_classification()->Alias_class(wn)));
         occ->Points_to()->Set_alias_class(Alias_classification()->Alias_class(wn));
+        occ->Points_to()->Set_adsn_id(Get_Wn_Adsn_Id(wn) == ILLEGAL_ALIAS_ID?
+                 ILLEGAL_ALIAS_ID:Get_Adsn_Dereference_Id(Get_Wn_Adsn_Id(wn)));
         vp_idx = Adjust_vsym(vp_idx, occ);
       }
     } else {
@@ -3704,6 +3708,70 @@ OPT_STAB::Transfer_alias_class_to_occ_and_aux(RID *const rid,
   return found_ip_alias_class_info;
 }
 
+void OPT_STAB::Transfer_adsn_id_to_aux()
+{
+  AUX_ID i;
+  AUX_STAB_ITER aux_stab_iter(this);
+  FOR_ALL_NODE(i, aux_stab_iter, Init()) {
+    AUX_STAB_ENTRY *sym = Aux_stab_entry(i);
+    ST* st=sym->St();
+    if (st != NULL) {
+      IDTYPE adsn_id;
+      if (ST_class(st) == CLASS_PREG)
+        adsn_id = Get_Reg_Adsn_Id(sym->St_ofst());
+      else
+        adsn_id = Get_St_Adsn_Id(st);
+
+      if (adsn_id != ILLEGAL_ALIAS_ID) {
+        POINTS_TO *aux_pt = sym->Points_to();
+        aux_pt->Set_adsn_id(adsn_id);
+      }
+    }
+  }
+  return;
+}
+
+void OPT_STAB::Transfer_adsn_id_to_occ(RID *const rid, WN *const wn) 
+{
+  OPERATOR opr=WN_operator(wn);
+  if (OPERATOR_is_black_box(opr))
+    return;
+
+  if (OPERATOR_is_load(opr) || OPERATOR_is_store(opr) || 
+      (opr == OPR_PARM && WN_Parm_By_Reference(wn))) {
+    IDTYPE adsn_id = Get_Wn_Adsn_Id(wn);
+    if (adsn_id != ILLEGAL_ALIAS_ID) {
+      if (opr == OPR_PARM) {
+        adsn_id = Get_Adsn_Dereference_Id(adsn_id);
+        FmtAssert(adsn_id != ILLEGAL_ALIAS_ID, ("cannot find dereference for reference parm"));
+      }
+
+      if (OPERATOR_is_scalar_load(opr) || OPERATOR_is_scalar_store(opr)) {
+        POINTS_TO *sym_pt = Aux_stab_entry(WN_aux(wn))->Points_to();
+        FmtAssert(sym_pt->Adsn_id() != ILLEGAL_ALIAS_ID, ("aux adsn id is not set"));
+        if (sym_pt->Adsn_id() != adsn_id) {
+          if(Verify_Wn_Adsn_Id(opr, adsn_id));
+            sym_pt->Set_adsn_id(adsn_id);
+        }
+      } else {
+        FmtAssert(Get_occ(wn) != NULL, ("no occ for indirect memop"));
+      }
+
+      OCC_TAB_ENTRY *occ = Get_occ(wn);
+      if (occ != NULL) {
+        POINTS_TO *occ_pt = occ->Points_to();
+        occ_pt->Set_adsn_id(adsn_id);
+        POINTS_TO *vsym_pt = Aux_stab_entry(occ->Aux_id())->Points_to();
+        vsym_pt->Meet_info_from_adsn(occ_pt);
+      }
+    }
+  }
+  for (UINT i = 0; i < WN_kid_count(wn); i++) {
+    Transfer_adsn_id_to_occ(rid, WN_kid(wn, i));
+  }
+  return;
+}
+
 #if defined(TARG_SL)
 void OPT_STAB::Refine_intrn_alias_info(	WN* intrn_wn )
 {  
@@ -3920,6 +3988,14 @@ void OPT_STAB::Compute_FFA(RID *const rid)
     }
   }
 
+  if (Adsn_Alias) {
+    Transfer_adsn_id_to_aux();
+    FOR_ALL_ELEM (bb, cfg_iter, Init(_cfg)) {
+      FOR_ALL_ELEM (wn, stmt_iter, Init(bb->Firststmt(), bb->Laststmt())) {
+        Transfer_adsn_id_to_occ(rid, wn);
+      }
+    }
+  }
 
   // The following code is last-minute for v7.3 beta, and should be
   // deleted and replaced with something smarter after that

@@ -2672,5 +2672,52 @@ FBS_Union1D_Validate(
   BS_byte(set,bs_QBPB(x)) |= bs_ONE << bs_RBPB(x);
 }
 
+void
+FBS_Copy_Validate(
+  BS *set1,
+  BS *set2
+)
+{
+  size_t size;
+  BS_ELT i;
+
+  size = BS_word_count(set1);
+  Is_True(size == BS_word_count(set2), ("FBS_Copy called with sets of different size"));
+  for ( i = 0; i < size; ++i )
+    BS_word(set1,i) = BS_word(set2,i);
+
+}
+
+void
+FBS_DifferenceD_Validate(
+  BS* set1,
+  BS* set2
+)
+{
+  BS_ELT i;
+  size_t size;
+  
+  size = BS_word_count(set1);
+  Is_True( size == BS_word_count(set2), ("FBS_DifferenceD called with sets of different size"));
+  for ( i = 0; i < size; ++i )
+    BS_word(set1,i) &= ~BS_word(set2,i);
+
+}
+
+void
+FBS_UnionD_Validate(
+  BS* set1,
+  BS* set2
+)
+{
+  BS_ELT i;
+  size_t size;
+  
+  size = BS_word_count(set1);
+  Is_True( size == BS_word_count(set2), ("FBS_UnionD called with sets of different size"));
+  for ( i = 0; i < size; ++i )
+    BS_word(set1,i) |= BS_word(set2,i);
+
+}
 
 

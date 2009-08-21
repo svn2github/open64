@@ -111,6 +111,7 @@ extern char * Targ_Print (const char *fmt, TCON c );
 
 #ifdef BACK_END
 #include "opt_alias_mgr.h"
+#include "alias_analysis.h"
 #endif /* BACK_END */
 
 #include "wio.h"
@@ -1209,6 +1210,10 @@ static void ir_put_wn(WN * wn, INT indent)
       fprintf(ir_ofile, " [alias_id: %d%s]", WN_MAP32_Get(IR_alias_map, wn),
 	      IR_alias_mgr && IR_alias_mgr->Safe_to_speculate(wn) ? ",fixed" : "");
     }
+
+    IDTYPE alias_id = Get_Wn_Adsn_Id(wn);
+    if (alias_id != 0)
+      fprintf(ir_ofile, " [adsn_id: %d]", alias_id);
 #endif
 
     if (IR_freq_map != WN_MAP_UNDEFINED && (OPCODE_is_scf(WN_opcode(wn)) ||

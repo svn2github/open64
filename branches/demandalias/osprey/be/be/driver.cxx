@@ -470,6 +470,13 @@ extern BOOL   Whirl2c_loaded;    /* Defined in cleanup.c */
 extern void *Current_Dep_Graph;
 FILE *DFile = stderr;
 
+extern int better_adsn_num;
+extern int better_ac_num;
+extern int equal_num;
+extern int no_adsn_num;
+extern int alias_ac_num;
+extern int noalias_ac_num;
+
 static void
 load_components (INT argc, char **argv)
 {
@@ -2421,6 +2428,10 @@ main (INT argc, char **argv)
     Preorder_Process_PUs(current_pu);
   }
 #endif
+
+  fprintf(stdout, "better_adsn: %d, better_ac: %d, equal: %d, no_adsn: %d, alias_ac: %d, noalias_ac: %d\n", 
+          better_adsn_num, better_ac_num, equal_num, no_adsn_num, alias_ac_num, noalias_ac_num);
+
 
   /* Terminate stdout line if showing PUs: */
   if (Show_Progress) {

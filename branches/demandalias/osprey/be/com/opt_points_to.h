@@ -293,7 +293,7 @@ friend class POINTS_TO;
   IDTYPE        _ip_alias_class;   // which equivalence class this
 				   // memop is in, according to
 				   // whole-program analysis
-
+  IDTYPE        _adsn_id;
 };
 
 // for alias classification
@@ -513,6 +513,10 @@ public:
 	ai._ip_alias_class = PESSIMISTIC_AC_ID;
       }
     }
+  void Set_adsn_id(const IDTYPE id) 
+    {
+      ai._adsn_id = id;
+    }
   void Set_ty(TY_IDX ty)                  { _ty = ty; }
   void Set_hl_ty(TY_IDX hlty)             { _hl_ty = hlty; }
   void Set_field_id (UINT32 fldid)        { _field_id = fldid; }
@@ -608,6 +612,7 @@ public:
     Set_id(0);
     Set_alias_class(OPTIMISTIC_AC_ID);
     Set_ip_alias_class(OPTIMISTIC_AC_ID);
+    Set_adsn_id(0);
     _mem_annot.Init();
     // The default attributes: 
     Set_attr(PT_ATTR_NONE);
@@ -655,6 +660,8 @@ public:
 
   IDTYPE Ip_alias_class(void) const { return ai._ip_alias_class; }
 
+  IDTYPE Adsn_id(void) const { return ai._adsn_id; }
+
   void Shift_ofst(mINT64 shift)   // shift offset by that amount
     { Set_byte_ofst( Byte_Ofst() + shift ); }
 
@@ -673,6 +680,9 @@ public:
 
   // Merge the information from alias classification for two POINTS_TO's
   void Meet_info_from_alias_class(const POINTS_TO *);
+
+  // Merge the infomation from adsn for two POINTS_TO's
+  void Meet_info_from_adsn(const POINTS_TO *pt);
 
   // Merge two points to information
   void Meet(const POINTS_TO *, ST *);

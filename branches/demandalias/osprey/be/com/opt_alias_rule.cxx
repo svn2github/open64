@@ -84,6 +84,15 @@ static char *rcs_id = 	opt_alias_rule_CXX"$Revision: 1.8 $";
 #include "config_opt.h"
 #endif
 
+#include "alias_analysis.h"
+
+int better_adsn_num = 0;
+int better_ac_num = 0;
+int equal_num = 0;
+int no_adsn_num = 0;
+int alias_ac_num = 0;
+int noalias_ac_num = 0;
+
 // ***********************************************************
 //
 //              Alias Rules
@@ -858,11 +867,55 @@ ALIAS_KIND ALIAS_RULE::Aliased_Memop_By_Analysis
   if (Rule_enabled(NEST_RULE) && !Aliased_Static_Nest_Rule(p1, p2))
     return ALIAS_KIND (AR_NOT_ALIAS);
 
+#if 0
   if (Rule_enabled(CLAS_RULE) && !Aliased_Classification_Rule(p1, p2)
       && (!p1->Default_vsym() || p2->No_alias())
       && (!p2->Default_vsym() || p1->No_alias()))
     return ALIAS_KIND (AR_NOT_ALIAS);
+#else
+  if (Adsn_Manager_Initialized()) {
+    BOOL aliased_adsn;
+    BOOL aliased_ac;
+    BOOL illegal_adsn_id;
 
+    aliased_adsn = TRUE;
+    aliased_ac = TRUE;
+    illegal_adsn_id = FALSE;
+
+    if(p1->Adsn_id() == 0 || p2->Adsn_id() == 0) {
+      illegal_adsn_id = TRUE;
+      no_adsn_num++;
+    }
+
+    if (!illegal_adsn_id && !Aliased_Id_By_Adsn(p1->Adsn_id(), p2->Adsn_id()))
+      aliased_adsn=FALSE;
+
+    if (Rule_enabled(CLAS_RULE) && !Aliased_Classification_Rule(p1, p2))
+      aliased_ac = FALSE;
+
+    if(!illegal_adsn_id) {
+      if (!aliased_adsn && aliased_ac)
+        better_adsn_num++;
+      else if (aliased_adsn && !aliased_ac)
+        better_ac_num++;
+      else
+        equal_num++;
+    } else {
+      if (aliased_ac)
+        alias_ac_num++;
+      else
+        noalias_ac_num++;
+    }
+
+    if (!aliased_adsn)
+      return ALIAS_KIND (AR_NOT_ALIAS);
+  }
+  else {
+    if (Rule_enabled(CLAS_RULE) && !Aliased_Classification_Rule(p1, p2))
+      return ALIAS_KIND (AR_NOT_ALIAS);
+  }
+
+#endif
   if (Rule_enabled(IP_CLAS_RULE) && !Aliased_Ip_Classification_Rule(p1, p2)
       && (!p1->Default_vsym() || p2->No_alias())
       && (!p2->Default_vsym() || p1->No_alias()))

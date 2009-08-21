@@ -88,6 +88,11 @@ extern BOOL WOPT_Enable_Goto;	/* In case config_wopt.h is later */
 /***** Optimization Warning Messages *****/
 BOOL Show_OPT_Warnings = TRUE;          /* Display OPT warning messages */
 
+/***** Demand driven alias analysis *****/
+BOOL Adsn_Alias = FALSE;
+BOOL Adsn_Fld_Sstv = TRUE;
+INT32 Adsn_Limit = 100000;
+
 /***** Aliasing control *****/
 OPTION_LIST *Alias_Option = NULL;
 BOOL Alias_Pointer_Parms = TRUE;        /* Parms ptr indep? */
@@ -349,6 +354,18 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_LIST,	OV_VISIBLE,	TRUE, 	"alias",		"alia",
     0, 0, 0,	&Alias_Option,	NULL,
     "Control interpretation of possible variable aliasing" },
+
+  { OVK_BOOL,  OV_INTERNAL,    FALSE, "adsn_alias", "adsn_alias",
+    0, 0, 0,   &Adsn_Alias,    NULL,
+    "Use andersen alias analysis" },
+
+  { OVK_BOOL,  OV_INTERNAL,    FALSE, "adsn_fld_sstv", "adsn_fld_sstv",
+    0, 0, 0,   &Adsn_Fld_Sstv,    NULL,
+    "Use field sensitivity analysis" },
+    
+  { OVK_INT32, OV_VISIBLE,     TRUE, "adsn_limit", "adsn_limit",
+    0, 0, INT32_MAX, &Adsn_Limit,  NULL,
+    "limit of iteration count in andersen alias analysis" },
 
   { OVK_INT32,	OV_SHY,		TRUE, "align_instructions",	"align_i",
     16, 0, 1024, ALIGN_INSTS,	NULL,

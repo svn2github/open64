@@ -650,6 +650,9 @@ extern BS_ELT BS_Intersection_Choose_Next(BS *set1, BS *set2, BS_ELT elt);
 */
 extern BOOL FBS_MemberP_Validate(BS *set, BS_ELT x);
 extern void FBS_Union1D_Validate(BS *set, BS_ELT x);
+extern void FBS_Copy_Validate(BS *set1, BS *set2);
+extern void FBS_DifferenceD_Validate(BS *set1, BS *set2);
+extern void FBS_UnionD_Validate(BS *set1, BS *set2);
 
 #ifdef Is_True_On
 #define FBS_MemberP(set, x)  FBS_MemberP_Validate(set, x)

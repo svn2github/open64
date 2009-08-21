@@ -59,6 +59,7 @@
 #include "erglob.h"
 #include "opt_sym.h"
 #include "opt_util.h"
+#include "alias_analysis.h"
 
 #ifdef SHARED_BUILD
 #if defined(__linux__) || defined(BUILD_OS_DARWIN)
@@ -287,6 +288,16 @@ void POINTS_TO::Meet_info_from_alias_class(const POINTS_TO *pt)
   }
     
   if (!pt->Not_alloca_mem())   Reset_not_alloca_mem();
+}
+
+void POINTS_TO::Meet_info_from_adsn(const POINTS_TO *pt)
+{
+  if (Adsn_id() == ILLEGAL_ALIAS_ID)
+    Set_adsn_id(pt->Adsn_id());
+  else if (pt->Adsn_id() != ILLEGAL_ALIAS_ID && pt->Adsn_id() != Adsn_id())
+    Set_adsn_id(MESS_ALIAS_ID);
+
+  return;
 }
 
 //  Combine *this and *pt in a conservative manner.
@@ -1071,6 +1082,7 @@ void POINTS_TO::Print(FILE *fp) const
       fprintf(fp, "bit size is %d, ", Bit_Size());
   }
   fprintf(fp, "per-PU class %d, ", Alias_class());
+  fprintf(fp, "adsn id %d, ", Adsn_id());
   fprintf(fp, "global class %d, ", Ip_alias_class());
   fprintf(fp, "ty=%d, hlty=%d, ", Ty(), Highlevel_Ty ());
 

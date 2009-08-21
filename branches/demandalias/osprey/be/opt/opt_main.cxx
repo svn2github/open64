@@ -363,6 +363,7 @@
 #if defined(TARG_SL)
 #include "opt_lclsc.h"
 #endif
+#include "alias_analysis.h"
 
 extern "C" void
 Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
@@ -1416,6 +1417,13 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   if (WOPT_Enable_Pt_Summary) {
     comp_unit->Opt_stab()->Points_to_summarizer()->
        Bind_callee_points_to_summary (wn_tree);
+  }
+
+  if (Adsn_Alias) {
+    if (Get_Trace(TKIND_INFO, TINFO_TIME)) 
+      SET_OPT_PHASE("Trace Timing for Adsn Alias Analysis");    
+      Create_Adsn_Manager(comp_unit->Input_tree(), comp_unit->Opt_stab(),
+        MEM_pu_nz_pool_ptr);
   }
 
   MEM_POOL alias_class_pool;
