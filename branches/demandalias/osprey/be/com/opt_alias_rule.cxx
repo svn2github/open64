@@ -89,9 +89,6 @@ static char *rcs_id = 	opt_alias_rule_CXX"$Revision: 1.8 $";
 int better_adsn_num = 0;
 int better_ac_num = 0;
 int equal_num = 0;
-int no_adsn_num = 0;
-int alias_ac_num = 0;
-int noalias_ac_num = 0;
 
 // ***********************************************************
 //
@@ -876,35 +873,23 @@ ALIAS_KIND ALIAS_RULE::Aliased_Memop_By_Analysis
   if (Adsn_Manager_Initialized()) {
     BOOL aliased_adsn;
     BOOL aliased_ac;
-    BOOL illegal_adsn_id;
-
     aliased_adsn = TRUE;
     aliased_ac = TRUE;
-    illegal_adsn_id = FALSE;
 
     if(p1->Adsn_id() == 0 || p2->Adsn_id() == 0) {
-      illegal_adsn_id = TRUE;
-      no_adsn_num++;
-    }
+      aliased_adsn = TRUE;
+    }else {
+      if (!Aliased_Id_By_Adsn(p1->Adsn_id(), p2->Adsn_id()))
+        aliased_adsn=FALSE;
+      if (Rule_enabled(CLAS_RULE) && !Aliased_Classification_Rule(p1, p2))
+        aliased_ac = FALSE;
 
-    if (!illegal_adsn_id && !Aliased_Id_By_Adsn(p1->Adsn_id(), p2->Adsn_id()))
-      aliased_adsn=FALSE;
-
-    if (Rule_enabled(CLAS_RULE) && !Aliased_Classification_Rule(p1, p2))
-      aliased_ac = FALSE;
-
-    if(!illegal_adsn_id) {
       if (!aliased_adsn && aliased_ac)
         better_adsn_num++;
       else if (aliased_adsn && !aliased_ac)
         better_ac_num++;
       else
         equal_num++;
-    } else {
-      if (aliased_ac)
-        alias_ac_num++;
-      else
-        noalias_ac_num++;
     }
 
     if (!aliased_adsn)
