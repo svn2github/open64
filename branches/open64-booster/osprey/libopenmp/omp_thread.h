@@ -375,7 +375,7 @@ inline void __omp_get_available_processors()
   int return_val, i, cur_count=0;
 
   /* create the list to record available processors */
-  __omp_list_processors = (int *) malloc (sizeof(int) * __omp_num_processors);
+  posix_memalign(&__omp_list_processors, CACHE_LINE_SIZE, sizeof(int) * __omp_num_processors);
 
   Is_True(__omp_list_processors != NULL,
           ("Can't allocate __omp_list_processors"));

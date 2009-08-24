@@ -440,14 +440,12 @@ __ompc_init_rtl(int num_threads)
   __ompc_clear_hash_table();
 
   /* create level 1 team */
-  __omp_level_1_pthread = 
-    (omp_u_thread_t *) malloc(sizeof(omp_u_thread_t) * threads_to_create);
+  posix_memalign(&__omp_level_1_pthread, CACHE_LINE_SIZE, sizeof(omp_u_thread_t) * threads_to_create);
   Is_True(__omp_level_1_pthread != NULL, 
 	  ("Can't allocate __omp_level_1_pthread"));
   memset(__omp_level_1_pthread, 0, sizeof(omp_u_thread_t) * threads_to_create);
 
-  __omp_level_1_team = 
-    (omp_v_thread_t *) malloc(sizeof(omp_v_thread_t) * threads_to_create);
+  posix_memalign(&__omp_level_1_team, CACHE_LINE_SIZE, sizeof(omp_v_thread_t) * threads_to_create);
   Is_True(__omp_level_1_team != NULL, 
 	  ("Can't allocate __omp_level_1_team"));
   memset(__omp_level_1_team, 0, sizeof(omp_v_thread_t) * threads_to_create);
@@ -710,14 +708,12 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
     pthread_mutex_init(&(temp_team.barrier_lock), NULL);
     pthread_cond_init(&(temp_team.barrier_cond), NULL);
  
-    nest_v_thread_team = (omp_v_thread_t *)malloc(
-						  sizeof(omp_v_thread_t) * num_threads);
+    posix_memalign(&nest_v_thread_team, CACHE_LINE_SIZE,sizeof(omp_v_thread_t) * num_threads);
     Is_True(nest_v_thread_team != NULL, 
 	    ("Can't allocate nested v_thread team"));
 
     /* nest_u_thread_team[0] is of no use currently*/
-    nest_u_thread_team = (omp_u_thread_t *)malloc(
-						  sizeof(omp_u_thread_t) * num_threads );
+    posix_memalign(&nest_u_thread_team,  CACHE_LINE_SIZE, sizeof(omp_u_thread_t) * num_threads );
     Is_True(nest_u_thread_team != NULL,
 	    ("Can't allocate nested u_thread team"));
 
