@@ -364,6 +364,7 @@ __ompc_init_rtl(int num_threads)
   /* parse OpenMP environment variables */
   __ompc_environment_variables();
   __ompc_sug_numthreads = __omp_nthreads_var;
+  __ompc_cur_numthreads = __omp_nthreads_var;
 
   /* register the finalize function*/
   atexit(__ompc_fini_rtl);

@@ -305,5 +305,6 @@ extern void __ompc_end_serialized_parallel(int vthread_id);
 
 /* Support Pathscale OpenMP lowering, CWG */
 extern int __ompc_sug_numthreads;
+extern int __ompc_cur_numthreads;
 
 #endif /* __omp_rtl_basic_included */
