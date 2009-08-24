@@ -116,7 +116,7 @@ void __ompc_level_1_barrier(const int vthread_id);
 void __ompc_exit_barrier(omp_v_thread_t *_v_thread);
 void __ompc_fini_rtl();
 int  __ompc_init_rtl(int num_threads);
-int  __ompc_expand_level_1_team(int new_num_threads);
+void __ompc_expand_level_1_team(int new_num_threads);
 void *__ompc_level_1_slave(void *_u_thread_id);
 void *__ompc_nested_slave(void *_v_thread); 
 
@@ -243,7 +243,7 @@ __ompc_environment_variables()
     Is_Valid(spin_count > 0, ("spine count must be positive"));
     __omp_spin_count = spin_count;
   }
-
+ 
   env_var_str = getenv("O64_OMP_SET_AFFINITY");
   if (env_var_str != NULL) {
     env_var_val = strncasecmp(env_var_str, "true", 4);
@@ -323,10 +323,10 @@ __ompc_level_1_slave(void * _uthread_index)
         while (__omp_level_1_team_manager.new_task != task_expect) {
           pthread_cond_wait(&__omp_level_1_cond, &__omp_level_1_mutex);
         }
-        pthread_mutex_unlock(&__omp_level_1_mutex);
+       pthread_mutex_unlock(&__omp_level_1_mutex);
        counter = 0;
-      }
-    }
+     }
+   }
 
     task_expect = !task_expect;
 
@@ -533,9 +533,9 @@ __ompc_init_rtl(int num_threads)
 }
 
 /* Expand level_1_team to new_num_threads.
- * Original size: __omp_level_1_team_alloc_size.
- * return: the real allocated size( expect new_num_threads */
-int
+   The caller must make sure the validity of new_num_threads. */
+
+void
 __ompc_expand_level_1_team(int new_num_threads)
 {
   int i;
@@ -616,9 +616,10 @@ __ompc_expand_level_1_team(int new_num_threads)
   /* TODO: wait for all slaves*/
 
   __omp_max_num_threads -= new_num_threads - __omp_level_1_team_alloc_size;
+  Is_True(__omp_max_num_threads >= 0, "Invalid number of thread to expand");
+
   __omp_level_1_team_size = new_num_threads;
   __omp_level_1_team_alloc_size = new_num_threads;
-  return new_num_threads;
 }
 
 /* The main fork API. at the first fork, initialize the RTL*/
@@ -636,40 +637,27 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
   omp_u_thread_t *current_u_thread;
   omp_v_thread_t *original_v_thread;
 
-  /* TODO: We still need to check the limitation before real fork?*/
-  if ( num_threads !=0) {
+  Is_True(__omp_rtl_initialized != 0,
+          (" RTL should have been initialized!"));
+
+  // check the validity of num_threads
+  if (num_threads != 0) 
     num_threads = __ompc_check_num_threads(num_threads);
-  } else {
-    /* no valid num_threads provided, using default, still
-     * need to check the validity against __omp_max_num_threads*/
-    /*		num_threads = __omp_num_threads;
-		this is a bug causing 4 threads are always created by default, 
-		let init_rtl to decide  right threads number and save it as __omp_num_threads
-		Liao*/
-  }
-
-
-  if (__omp_rtl_initialized == 0 ) {
-    /* first fork, initial rtl*/
-    __ompc_init_rtl(num_threads);
-  }
 
   if (__omp_exe_mode & OMP_EXE_MODE_SEQUENTIAL) {
     __omp_exe_mode = OMP_EXE_MODE_NORMAL;
-    /* level 1 thread fork */
-    /* How about num_threads < __omp_level_1_team_size */
-    /* TODO: fix this condition*/
-    if (num_threads > __omp_level_1_team_alloc_size) {
-      Is_True( __omp_max_num_threads >0,
-	       ("reach thread number limit, no more new threads"));
-      __ompc_expand_level_1_team(num_threads);
-    } else if(num_threads>0) {
-      __omp_level_1_team_size = num_threads;
-      __omp_level_1_team_manager.team_size = num_threads;
-    } else if (num_threads==0) {
-      /* use default thread number decided from processor number and environment variable*/
+
+    // Adjust the number of the number of thread in the team
+    if (num_threads == 0) {
+     /* use default thread number decided from processor number and environment variable*/
       __omp_level_1_team_size = __omp_nthreads_var;
       __omp_level_1_team_manager.team_size = __omp_nthreads_var;
+    } else {
+      // expand the team when there is not enough threads
+      if (num_threads > __omp_level_1_team_alloc_size)
+        __ompc_expand_level_1_team(num_threads);
+      __omp_level_1_team_size = num_threads;
+      __omp_level_1_team_manager.team_size = num_threads;
     }
 
     for (i=0; i<__omp_level_1_team_size; i++) {

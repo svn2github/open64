@@ -96,17 +96,19 @@ inline int __ompc_get_num_procs(void)
     return __omp_get_cpu_num();
 }
 
-/* The caller must ensure the validity of __num_threads*/
 inline void __ompc_set_num_threads(const int __num_threads)
 {
-  /* The logic is perhaps wrong*/
-  Is_Valid( __num_threads > 0,
-	    (" number of threads must be possitive!"));
-  if (__num_threads > __omp_max_num_threads) {
-    Warning(" Exceed the threads number limit.");
-  }
-  /* Not try to modify the setting, adjust it at fork*/
-  __omp_nthreads_var = __num_threads;
+  int num_threads;
+
+  // check the validity of _num_threads
+  num_threads = __ompc_check_num_threads(__num_threads);
+
+  // expand the team when the current threads are fewer
+  if (num_threads > __omp_nthreads_var)
+     __ompc_expand_level_1_team(num_threads);
+
+  __omp_nthreads_var = num_threads; 
+ 
 }
 
 inline int __ompc_in_parallel(void)
@@ -272,8 +274,8 @@ inline void __ompc_barrier_wait(omp_team_t *team)
 	return;
       }
     pthread_mutex_lock(&(team->barrier_lock));
-    pthread_mutex_unlock(&(team->barrier_lock));
     pthread_cond_broadcast(&(team->barrier_cond));
+    pthread_mutex_unlock(&(team->barrier_lock));
   } else {
     /* Wait for the last to reset te barrier*/
     /* We must make sure that every waiting thread get this
@@ -321,16 +323,12 @@ int
 __ompc_check_num_threads(const int _num_threads)
 {
   int num_threads = _num_threads;
-  int request_threads;
-  /* How about _num_threads == 1*/
   Is_Valid( num_threads > 0,
 	    (" number of threads must be possitive!"));
+
   if (__omp_exe_mode & OMP_EXE_MODE_SEQUENTIAL) {
     /* request for level 1 threads*/
-    request_threads = num_threads - __omp_level_1_team_alloc_size;
-    if (request_threads <= __omp_max_num_threads) {
-      /* OK. we can fulfill your request*/
-    } else {
+    if (num_threads - __omp_level_1_team_alloc_size > __omp_max_num_threads) {
       /* Exceed current limitat*/
       Warning(" Exceed the thread number limit: Reduce to Max");
       num_threads = __omp_level_1_team_alloc_size + __omp_max_num_threads;
@@ -339,12 +337,11 @@ __ompc_check_num_threads(const int _num_threads)
     if ((num_threads - 1) > __omp_max_num_threads) {
       /* Exceed current limit*/
       /* The master is already there, need not to be allocated*/
-      num_threads = __omp_max_num_threads + 1; 
       Warning(" Exceed the thread number limit: Reduce to Max");
-    } else {
-      /* OK. we can fulfill your request*/
-    }
+      num_threads = __omp_max_num_threads + 1; 
+    } 
   }
+
   return num_threads;
 }
 
@@ -379,6 +376,7 @@ inline void __omp_get_available_processors()
 
   /* create the list to record available processors */
   __omp_list_processors = (int *) malloc (sizeof(int) * __omp_num_processors);
+
   Is_True(__omp_list_processors != NULL,
           ("Can't allocate __omp_list_processors"));
   memset(__omp_list_processors, 0, sizeof(int) * __omp_num_processors);
