@@ -184,8 +184,8 @@ __ompc_critical(int gtid, volatile ompc_lock_t **lck)
 
       Is_True(*lck!=NULL, 
 	      ("Cannot allocate lock memory for critical"));
+      __ompc_init_lock (*lck);
     }
-    __ompc_init_lock (*lck);
     __ompc_unlock (&_ompc_thread_lock);
   }
   __ompc_lock((volatile ompc_lock_t *)*lck);
