@@ -155,6 +155,7 @@ omp_int_t omp_get_nested_(void);
 /*
  * Lock Functions
  */
+extern int __omp_spin_user_lock;
 inline void
 omp_init_lock(volatile omp_lock_t *lock)
 {
@@ -162,11 +163,12 @@ omp_init_lock(volatile omp_lock_t *lock)
   // malloc a cache line for the lock to avoid
   // false sharing
   ompc_lock_t *tmp_lp;
-  tmp_lp = aligned_malloc(CACHE_LINE_SIZE, CACHE_LINE_SIZE);
+  tmp_lp = aligned_malloc(sizeof(ompc_lock_t), CACHE_LINE_SIZE);
   Is_True(tmp_lp != NULL, "can not allocate tmp_lp");
 
+  tmp_lp->flag = __omp_spin_user_lock;
   __ompc_init_lock(tmp_lp);
-  (*lock) = (omp_lock_t*)tmp_lp; 
+  (*lock) = (omp_lock_t)tmp_lp; 
 }
 
 

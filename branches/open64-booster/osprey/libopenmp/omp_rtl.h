@@ -128,7 +128,7 @@ extern int 	    __omp_rtl_initialized;
 extern volatile unsigned long int __omp_stack_size;
 
 /* a system level lock, used for malloc in __ompc_get_thdprv ,by Liao*/
-extern ompc_lock_t _ompc_thread_lock;
+extern ompc_spinlock_t _ompc_thread_lock;
 
 /* The OMP_EXE_MODE_NESTED_SEQUENTIAL is of no use any longer*/
 typedef enum {
@@ -167,7 +167,7 @@ struct omp_team{
 
   /* for loop schedule*/
 
-  ompc_lock_t	schedule_lock;
+  ompc_spinlock_t schedule_lock;
   volatile long loop_lower_bound;
   long	loop_upper_bound;
   long	loop_increament;
@@ -206,12 +206,13 @@ struct omp_team{
   /* TODO: optimize the barrier implementation, test the performance */
   // offset = 320
   volatile int barrier_count;
-  volatile int barrier_count2;
 
   /* Still need a flag to indicate there are new tasks for level_1 team,
    * To avoid pthread allowed spurious wake up, and for nested teams,
    * use this as a semphore to synchronize all thread before they really start*/
   volatile int new_task;
+  pthread_mutex_t ordered_mutex;
+
 } __attribute__ ((__aligned__(CACHE_LINE_SIZE_L2L3)));
 
 /* user thread*/

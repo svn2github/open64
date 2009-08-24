@@ -40,7 +40,7 @@
 #include "omp_rtl.h"
 
 /* a system level lock, used for malloc in __ompc_get_thdprv ,by Liao*/
-ompc_lock_t _ompc_thread_lock;
+ompc_spinlock_t _ompc_thread_lock;
 
 /* RTL API related with schedule */
 
@@ -336,10 +336,10 @@ __ompc_scheduler_init_4 (omp_int32 global_tid, omp_sched_t schedtype,
 
   p_vthread->loop_count++;
 
-  __ompc_lock(&(p_team->schedule_lock));
+  __ompc_lock_spinlock(&(p_team->schedule_lock));
   if (p_team->loop_count >= p_vthread->loop_count) {
     /* We assume that the initialization has already OK */
-    __ompc_unlock(&(p_team->schedule_lock));
+    __ompc_unlock_spinlock(&(p_team->schedule_lock));
     return;
   } else {
     /* The first one call schedule_init do the initialization work */
@@ -355,7 +355,7 @@ __ompc_scheduler_init_4 (omp_int32 global_tid, omp_sched_t schedtype,
     /* Initialization finished */
     p_team->loop_count++;
 
-    __ompc_unlock(&(p_team->schedule_lock));
+    __ompc_unlock_spinlock(&(p_team->schedule_lock));
 
     return;
   }
@@ -416,10 +416,10 @@ __ompc_scheduler_init_8 (omp_int32 global_tid, omp_sched_t schedtype,
 
   p_vthread->loop_count++;
 
-  __ompc_lock(&(p_team->schedule_lock));
+  __ompc_lock_spinlock(&(p_team->schedule_lock));
   if (p_team->loop_count >= p_vthread->loop_count) {
     /* We assume that the initialization has already OK */
-    __ompc_unlock(&(p_team->schedule_lock));
+    __ompc_unlock_spinlock(&(p_team->schedule_lock));
     return;
   } else {
     /* The first one call schedule_init do the initialization work */
@@ -435,7 +435,7 @@ __ompc_scheduler_init_8 (omp_int32 global_tid, omp_sched_t schedtype,
     /* Initialization finished */
     p_team->loop_count++;
 
-    __ompc_unlock(&(p_team->schedule_lock));
+    __ompc_unlock_spinlock(&(p_team->schedule_lock));
 
     return;
   }
@@ -591,7 +591,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     return 1;
     break;
   case OMP_SCHED_GUIDED:
-    __ompc_lock(&(p_team->schedule_lock));
+    __ompc_lock_spinlock(&(p_team->schedule_lock));
 
     global_lower = p_team->loop_lower_bound;
     global_upper = p_team->loop_upper_bound;
@@ -600,7 +600,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     trip_count = (global_upper - global_lower) / incr ;
 
     if ( trip_flag < 0) {
-      __ompc_unlock(&(p_team->schedule_lock));
+      __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
       return 0;
     }
@@ -614,7 +614,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     my_upper = my_lower + (chunk - 1) * incr;
     p_team->loop_lower_bound = my_lower + chunk * incr;
 			
-    __ompc_unlock(&(p_team->schedule_lock));
+    __ompc_unlock_spinlock(&(p_team->schedule_lock));
 
     *plower = my_lower;
     *pupper = my_upper;
@@ -623,7 +623,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     break;
 
   case OMP_SCHED_DYNAMIC:
-    __ompc_lock(&(p_team->schedule_lock));
+    __ompc_lock_spinlock(&(p_team->schedule_lock));
 
     global_lower = p_team->loop_lower_bound;
     global_upper = p_team->loop_upper_bound;
@@ -633,7 +633,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     /* Need to fix the trip_count for trip_count = 1 case */
 
     if ( trip_flag < 0) {
-      __ompc_unlock(&(p_team->schedule_lock));
+      __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
       return 0;
     }
@@ -644,7 +644,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     my_upper = my_lower + (chunk - 1) * incr;
     p_team->loop_lower_bound = my_lower + chunk * incr;
 			
-    __ompc_unlock(&(p_team->schedule_lock));
+    __ompc_unlock_spinlock(&(p_team->schedule_lock));
 
     *plower = my_lower;
     *pupper = my_upper;
@@ -729,7 +729,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
 
     break;
   case OMP_SCHED_ORDERED_DYNAMIC:
-    __ompc_lock(&(p_team->schedule_lock));
+    __ompc_lock_spinlock(&(p_team->schedule_lock));
 
     global_lower = p_team->loop_lower_bound;
     global_upper = p_team->loop_upper_bound;
@@ -738,7 +738,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     trip_flag = (global_upper - global_lower) * 1.0 / (float)incr;
 
     if ( trip_flag < 0) {
-      __ompc_unlock(&(p_team->schedule_lock));
+      __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
       return 0;
     }
@@ -748,7 +748,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     p_team->loop_lower_bound = my_lower + chunk * incr;
     p_team->schedule_count++;
 			
-    __ompc_unlock(&(p_team->schedule_lock));
+    __ompc_unlock_spinlock(&(p_team->schedule_lock));
 
     trip_count = (global_upper - global_lower) / incr + 1;
     my_upper = my_lower + (chunk - 1) * incr;
@@ -762,7 +762,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     return 1;
     break;
   case OMP_SCHED_ORDERED_GUIDED:
-    __ompc_lock(&(p_team->schedule_lock));
+    __ompc_lock_spinlock(&(p_team->schedule_lock));
 
     global_lower = p_team->loop_lower_bound;
     global_upper = p_team->loop_upper_bound;
@@ -773,7 +773,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
 
     if ( trip_flag < 0)
       {
-	__ompc_unlock(&(p_team->schedule_lock));
+	__ompc_unlock_spinlock(&(p_team->schedule_lock));
 	/* No more iterations */
 	return 0;
       }
@@ -787,7 +787,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     p_team->loop_lower_bound = my_lower + chunk * incr;
     p_team->schedule_count +=1;
 			
-    __ompc_unlock(&(p_team->schedule_lock));
+    __ompc_unlock_spinlock(&(p_team->schedule_lock));
 
     p_vthread->ordered_count = schedule_count;
     p_vthread->rest_iter_count = chunk;
@@ -943,7 +943,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     return 1;
     break;
   case OMP_SCHED_GUIDED:
-    __ompc_lock(&(p_team->schedule_lock));
+    __ompc_lock_spinlock(&(p_team->schedule_lock));
 
     global_lower = p_team->loop_lower_bound;
     global_upper = p_team->loop_upper_bound;
@@ -952,7 +952,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     trip_count = (global_upper - global_lower) / incr ;
 
     if ( trip_flag < 0) {
-      __ompc_unlock(&(p_team->schedule_lock));
+      __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
       return 0;
     }
@@ -965,7 +965,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     my_upper = my_lower + (chunk - 1) * incr;
     p_team->loop_lower_bound = my_lower + chunk * incr;
 			
-    __ompc_unlock(&(p_team->schedule_lock));
+    __ompc_unlock_spinlock(&(p_team->schedule_lock));
 
     *plower = my_lower;
     *pupper = my_upper;
@@ -974,7 +974,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
 
     break;
   case OMP_SCHED_DYNAMIC:
-    __ompc_lock(&(p_team->schedule_lock));
+    __ompc_lock_spinlock(&(p_team->schedule_lock));
 
     global_lower = p_team->loop_lower_bound;
     global_upper = p_team->loop_upper_bound;
@@ -983,7 +983,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     trip_count = (global_upper - global_lower) / incr;
 
     if ( trip_flag < 0) {
-      __ompc_unlock(&(p_team->schedule_lock));
+      __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
       return 0;
     }
@@ -993,7 +993,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     my_upper = my_lower + (chunk - 1) * incr;
     p_team->loop_lower_bound = my_lower + chunk * incr;
 			
-    __ompc_unlock(&(p_team->schedule_lock));
+    __ompc_unlock_spinlock(&(p_team->schedule_lock));
 
     *plower = my_lower;
     *pupper = my_upper;
@@ -1078,7 +1078,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
 
     break;
   case OMP_SCHED_ORDERED_DYNAMIC:
-    __ompc_lock(&(p_team->schedule_lock));
+    __ompc_lock_spinlock(&(p_team->schedule_lock));
 
     global_lower = p_team->loop_lower_bound;
     global_upper = p_team->loop_upper_bound;
@@ -1088,7 +1088,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     trip_count = (global_upper - global_lower) / incr;
 
     if ( trip_flag < 0) {
-      __ompc_unlock(&(p_team->schedule_lock));
+      __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
       return 0;
     }
@@ -1099,7 +1099,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     p_team->loop_lower_bound = my_lower + chunk * incr;
     p_team->schedule_count += 1;
 			
-    __ompc_unlock(&(p_team->schedule_lock));
+    __ompc_unlock_spinlock(&(p_team->schedule_lock));
 
     p_vthread->ordered_count = schedule_count;
     p_vthread->rest_iter_count = chunk;
@@ -1111,7 +1111,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
 
     break;
   case OMP_SCHED_ORDERED_GUIDED:
-    __ompc_lock(&(p_team->schedule_lock));
+    __ompc_lock_spinlock(&(p_team->schedule_lock));
 
     global_lower = p_team->loop_lower_bound;
     global_upper = p_team->loop_upper_bound;
@@ -1121,7 +1121,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     schedule_count = p_team->schedule_count;
 
     if ( trip_flag < 0) {
-      __ompc_unlock(&(p_team->schedule_lock));
+      __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
       return 0;
     }
@@ -1136,7 +1136,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     p_team->schedule_count +=1;
     p_vthread->rest_iter_count = chunk;
 			
-    __ompc_unlock(&(p_team->schedule_lock));
+    __ompc_unlock_spinlock(&(p_team->schedule_lock));
 
     p_vthread->ordered_count = schedule_count;
 
@@ -1184,10 +1184,10 @@ __ompc_ordered (omp_int32 global_tid)
   if (p_team->team_size == 1)
     return;
 
-  pthread_mutex_lock(&(p_team->schedule_lock));
+  pthread_mutex_lock(&(p_team->ordered_mutex));
   while (p_team->ordered_count != p_vthread->ordered_count)
-    pthread_cond_wait(&(p_team->ordered_cond), &(p_team->schedule_lock));
-  pthread_mutex_unlock(&(p_team->schedule_lock));
+    pthread_cond_wait(&(p_team->ordered_cond), &(p_team->ordered_mutex));
+  pthread_mutex_unlock(&(p_team->ordered_mutex));
 }
 
 /* Inrease the global ordered semphore*/
@@ -1210,10 +1210,10 @@ __ompc_end_ordered (omp_int32 global_tid)
   if (p_team->team_size == 1)
     return;
   
-  __ompc_lock(&(p_team->schedule_lock));
+  pthread_mutex_lock(&(p_team->ordered_mutex));
   p_team->ordered_count++;
   pthread_cond_broadcast(&(p_team->ordered_cond));
-  __ompc_unlock(&(p_team->schedule_lock));
+  pthread_mutex_lock(&(p_team->ordered_mutex));
 }
 
 /* Return 1 for the first one to enter single gate,
@@ -1308,7 +1308,7 @@ __ompc_get_thdprv(void *** thdprv_p, omp_int64 size, void *datap,omp_int32 globa
   num_threads=OMP_MAX_NUM_THREADS;
 
   if((pp = *thdprv_p) == NULL) {
-    __ompc_lock(&_ompc_thread_lock);
+    __ompc_lock_spinlock(&_ompc_thread_lock);
 
     if((pp = *thdprv_p) == NULL) {
       // put the shared data aligned with the cache line size
@@ -1317,7 +1317,7 @@ __ompc_get_thdprv(void *** thdprv_p, omp_int64 size, void *datap,omp_int32 globa
       bzero(pp,sizeof(void *)*num_threads);
       *thdprv_p = pp;
     }
-    __ompc_unlock(&_ompc_thread_lock);
+    __ompc_unlock_spinlock(&_ompc_thread_lock);
   }
   if((p = pp[global_tid]) == NULL) {
     if(global_tid == 0)

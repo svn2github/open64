@@ -73,9 +73,11 @@ volatile omp_team_t	 __omp_level_1_team_manager;
 omp_u_thread_t * __omp_uthread_hash_table[UTHREAD_HASH_SIZE];
 
 /* use once for pthread creation */
-volatile int	 __omp_level_1_pthread_count = 1;
+volatile int __attribute__ ((__aligned__(CACHE_LINE_SIZE)))__omp_level_1_pthread_count = 1;
 /* use for level_1 team end microtask synchronization */
-volatile int	 __omp_level_1_exit_count = 0;
+volatile int __attribute__ ((__aligned__(CACHE_LINE_SIZE)))__omp_level_1_exit_count = 0;
+
+int __attribute__ ((__aligned__(CACHE_LINE_SIZE)))__omp_spin_user_lock = 0;
 
 omp_team_t	 __omp_root_team;
 omp_u_thread_t * __omp_root_u_thread;
@@ -85,11 +87,11 @@ pthread_t	 __omp_root_thread_id = -1;
 int		  __omp_rtl_initialized = 0;
 
 // control variable for spin lock, it can be set by O64_OMP_SPIN_COUNT
-unsigned long int __omp_spin_count = SPIN_COUNT_DEFAULT;
+long int __omp_spin_count = SPIN_COUNT_DEFAULT;
 
 // control variable for whether binding thread to cpu
 // it can be reset by O64_OMP_SET_AFFINITY
-int              __omp_set_affinity = 1;
+int             __omp_set_affinity = 1;
 
 //static volatile int __omp_global_team_count = 0;
 //static volatile int __omp_nested_team_count = 0;
@@ -238,10 +240,26 @@ __ompc_environment_variables()
 
   env_var_str = getenv("O64_OMP_SPIN_COUNT");
   if (env_var_str != NULL) {
-    unsigned long int spin_count;
+    long int spin_count;
     sscanf(env_var_str, "%ld", &spin_count);
-    Is_Valid(spin_count > 0, ("spine count must be positive"));
+    Is_Valid(spin_count > 0, ("spin count must be positive"));
     __omp_spin_count = spin_count;
+  }
+
+  env_var_str = getenv("O64_OMP_SPIN_USER_LOCK");
+  if (env_var_str != NULL) {
+    env_var_val = strncasecmp(env_var_str, "true", 4);
+
+    if (env_var_val == 0) {
+      __omp_spin_user_lock = 1;
+    } else {
+      env_var_val = strncasecmp(env_var_str, "false", 4);
+      if (env_var_val == 0) {
+        __omp_spin_user_lock = 0;
+      } else {
+        Not_Valid("O64_OMP_SPIN_USER_LOCK should be set to: true/false");
+      }
+    }
   }
  
   env_var_str = getenv("O64_OMP_SET_AFFINITY");
@@ -255,7 +273,7 @@ __ompc_environment_variables()
       if (env_var_val == 0) {
         __omp_set_affinity = 0;
       } else {
-        Not_Valid("OMP_SET_AFFINITY should be set to: true/false");
+        Not_Valid("O64_OMP_SET_AFFINITY should be set to: true/false");
       }
     }
   }
@@ -269,17 +287,31 @@ __ompc_environment_variables()
 void
 __ompc_level_1_barrier(const int vthread_id)
 {
-  pthread_mutex_lock(&__omp_level_1_barrier_mutex);
-  __omp_level_1_exit_count++;
+  long int counter;
+  int team_size = __omp_level_1_team_size;
+  long int max_count = __omp_spin_count;
+
+  __sync_fetch_and_add(&__omp_level_1_exit_count,1);
+
   if (vthread_id == 0) {
-    while (__omp_level_1_exit_count != __omp_level_1_team_size)
-      pthread_cond_wait(&__omp_level_1_barrier_cond, &__omp_level_1_barrier_mutex);
-    // reset for next usage, Warning: No need to lock it.
+    for( counter = 0; __omp_level_1_exit_count != team_size; counter++) {
+      if (counter > max_count) {
+        pthread_mutex_lock(&__omp_level_1_barrier_mutex);
+        while (__omp_level_1_exit_count != team_size)
+          pthread_cond_wait(&__omp_level_1_barrier_cond, &__omp_level_1_barrier_mutex);
+        pthread_mutex_unlock(&__omp_level_1_barrier_mutex);
+      }
+    }
     __omp_level_1_exit_count = 0;
-    __omp_level_1_team_manager.barrier_flag = 0;
-  } else if (__omp_level_1_exit_count == __omp_level_1_team_size)
+  } else 
+  if (__omp_level_1_exit_count == team_size )
+  {
+    // here we do need the mutex lock! otherwise, 
+    // Otherwise, it's possible that cond_signal may fail to wake up the master thread.
+    pthread_mutex_lock(&__omp_level_1_barrier_mutex);
     pthread_cond_signal(&__omp_level_1_barrier_cond);
-  pthread_mutex_unlock(&__omp_level_1_barrier_mutex);
+    pthread_mutex_unlock(&__omp_level_1_barrier_mutex);
+  }
 }
 
 /* Used for Nested team end parallel barrier. Since
@@ -292,9 +324,7 @@ __ompc_exit_barrier(omp_v_thread_t * vthread)
   Is_True((vthread != NULL) && (vthread->team != NULL), 
 	  ("bad vthread or vthread->team in nested groups"));
 
-  pthread_mutex_lock(&(vthread->team->barrier_lock));
-  vthread->team->barrier_count += 1;
-  pthread_mutex_unlock(&(vthread->team->barrier_lock));
+  __sync_fetch_and_add(&(vthread->team->barrier_count),1);
 
   // Master wait all slaves arrived
   if(vthread->vthread_id == 0) {
@@ -307,14 +337,12 @@ void*
 __ompc_level_1_slave(void * _uthread_index)
 {
   long uthread_index;
-  int counter;
+  long int counter;
   int task_expect = 1;
 
   uthread_index = (long) _uthread_index;
 
-  pthread_mutex_lock(&__omp_level_1_mutex);
-  __omp_level_1_pthread_count++;
-  pthread_mutex_unlock(&__omp_level_1_mutex);
+  __sync_fetch_and_add(&__omp_level_1_pthread_count,1);
 
   for(;;) {
     for( counter = 0; __omp_level_1_team_manager.new_task != task_expect; counter++) {
@@ -324,7 +352,6 @@ __ompc_level_1_slave(void * _uthread_index)
           pthread_cond_wait(&__omp_level_1_cond, &__omp_level_1_mutex);
         }
        pthread_mutex_unlock(&__omp_level_1_mutex);
-       counter = 0;
      }
    }
 
@@ -434,7 +461,7 @@ __ompc_init_rtl(int num_threads)
   pthread_mutex_init(&__omp_hash_table_lock, NULL);
   pthread_cond_init(&__omp_level_1_cond, NULL);
   pthread_cond_init(&__omp_level_1_barrier_cond, NULL);
-  __ompc_init_lock(&_ompc_thread_lock);
+  __ompc_init_spinlock(&_ompc_thread_lock);
 
   /* clean up uthread hash table */
   __ompc_clear_hash_table();
@@ -459,7 +486,7 @@ __ompc_init_rtl(int num_threads)
   __omp_level_1_team_manager.new_task = 0;
   __omp_level_1_team_manager.loop_count = 0;
 	
-  __ompc_init_lock(&(__omp_level_1_team_manager.schedule_lock));
+  __ompc_init_spinlock(&(__omp_level_1_team_manager.schedule_lock));
   pthread_cond_init(&(__omp_level_1_team_manager.ordered_cond), NULL);
   __ompc_init_lock(&(__omp_level_1_team_manager.single_lock));
   pthread_mutex_init(&(__omp_level_1_team_manager.barrier_lock), NULL);
@@ -702,7 +729,7 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
     temp_team.loop_count = 0;
     temp_team.single_count = 0;
 
-    __ompc_init_lock(&(temp_team.schedule_lock));
+    __ompc_init_spinlock(&(temp_team.schedule_lock));
     pthread_cond_init(&(__omp_level_1_team_manager.ordered_cond), NULL);
     __ompc_init_lock(&(temp_team.single_lock));
     pthread_mutex_init(&(temp_team.barrier_lock), NULL);
@@ -793,7 +820,7 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
     temp_team.loop_count = 0;
     temp_team.single_count = 0;
 
-    __ompc_init_lock(&(temp_team.schedule_lock));
+    __ompc_init_spinlock(&(temp_team.schedule_lock));
     __ompc_init_lock(&(temp_team.single_lock));
 
     current_u_thread->task = &temp_v_thread;
@@ -813,7 +840,7 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
       __omp_exe_mode = OMP_EXE_MODE_NORMAL;
     */
 
-    __ompc_destroy_lock(&(temp_team.schedule_lock));
+    __ompc_destroy_spinlock(&(temp_team.schedule_lock));
     __ompc_destroy_lock(&(temp_team.single_lock));
   }
 }

@@ -35,12 +35,26 @@
 #ifndef __omp_lock_included
 #define __omp_lock_included
 
-#ifndef __OPENMP_LOCK_TYPE_DEFINED_
-#define __OPENMP_LOCK_TYPE_DEFINED_
+#define ALIGN_SIZE 64
 
 #include <pthread.h>
+#include "omp_sys.h"
+#include "omp_util.h"
 
-typedef pthread_mutex_t ompc_lock_t;
+typedef struct {
+  pthread_spinlock_t data;
+}__attribute__ ((__aligned__(ALIGN_SIZE))) ompc_spinlock_t;
+
+typedef struct {
+  int __attribute__ ((__aligned__(ALIGN_SIZE))) flag;
+  union{
+    pthread_spinlock_t spin_data;
+    pthread_mutex_t mutex_data;
+  }lock;
+}__attribute__ ((__aligned__(ALIGN_SIZE))) ompc_lock_t;
+
+#ifndef __OPENMP_LOCK_TYPE_DEFINED_
+#define __OPENMP_LOCK_TYPE_DEFINED_
 
 typedef struct {
    ompc_lock_t      lock, wait;
@@ -49,6 +63,36 @@ typedef struct {
 } ompc_nest_lock_t;
 
 #endif
+
+static inline void
+__ompc_init_spinlock(ompc_spinlock_t *lck_p)
+{
+  pthread_spin_init(&(lck_p->data),PTHREAD_PROCESS_PRIVATE);
+}
+
+static inline void
+__ompc_destroy_spinlock(ompc_spinlock_t *lck)
+{
+  pthread_spin_destroy(&(lck->data));
+}
+
+static inline void
+__ompc_lock_spinlock(ompc_spinlock_t *lck)
+{
+  pthread_spin_lock(&(lck->data));
+}
+
+static inline void
+__ompc_unlock_spinlock(ompc_spinlock_t *lck)
+{
+  pthread_spin_unlock(&(lck->data));
+}
+
+static inline int
+__ompc_try_spinlock(ompc_spinlock_t *lck)
+{
+  return pthread_spin_trylock(&(lck->data));
+}
 
 extern void __ompc_init_lock (volatile ompc_lock_t *);
 extern void __ompc_lock (volatile ompc_lock_t *);

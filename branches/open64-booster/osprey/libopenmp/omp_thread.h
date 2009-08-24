@@ -252,6 +252,8 @@ inline omp_team_t * __ompc_get_current_team(void)
   }
 }
 
+extern long int __omp_spin_count; // defined in omp_thread.c
+
 /* Should not be called directly, use __ompc_barrier instead*/
 inline void __ompc_barrier_wait(omp_team_t *team)
 {
@@ -259,20 +261,16 @@ inline void __ompc_barrier_wait(omp_team_t *team)
   int barrier_flag;
   int reset_barrier = 0;
   int new_count;
-  int i, j;
+  long int i;
+  volatile int *barrier_flag_p = &(team->barrier_flag);
 
-  barrier_flag = team->barrier_flag;
+  barrier_flag = *barrier_flag_p;
   new_count = __ompc_atomic_inc(&team->barrier_count);
 
   if (new_count == team->team_size) {
     /* The last one reset flags*/
     team->barrier_count = 0;
-    team->barrier_count2 = 1;
     team->barrier_flag = barrier_flag ^ 1; /* Xor: toggle*/
-    for (i = 0; i < 300; i++)
-      if (team->barrier_count2 == team->team_size) {
-	return;
-      }
     pthread_mutex_lock(&(team->barrier_lock));
     pthread_cond_broadcast(&(team->barrier_cond));
     pthread_mutex_unlock(&(team->barrier_lock));
@@ -280,14 +278,15 @@ inline void __ompc_barrier_wait(omp_team_t *team)
     /* Wait for the last to reset te barrier*/
     /* We must make sure that every waiting thread get this
      * signal */
-    for (i = 0; i < 5000; i++)
-      if (team->barrier_flag != barrier_flag) {
-	__ompc_atomic_inc(&team->barrier_count2);
+    for (i = 0; i < __omp_spin_count; i++)
+      if ((*barrier_flag_p) != barrier_flag) {
 	return;
       }
     pthread_mutex_lock(&(team->barrier_lock));
     while (team->barrier_flag == barrier_flag)
+    {
       pthread_cond_wait(&(team->barrier_cond), &(team->barrier_lock));
+    }
     pthread_mutex_unlock(&(team->barrier_lock));
   }
 

@@ -82,14 +82,14 @@ void
 Warning (char * warning_message);
 
 /* Waiting while condition is true */
-#define MAX_COUNT 50000
+//#define MAX_COUNT 50000
+#define MAX_COUNT 1000000000
 #define OMPC_WAIT_WHILE(condition) \
       { \
           if (condition) { \
               int count = 0; \
               while (condition) { \
                    if (count > MAX_COUNT) { \
-	                sleep(0); \
 	                count = 0; \
                    } \
 		   count++; \
