@@ -85,6 +85,97 @@ Get_SMP_CPU_num (void)
   return (int) sysconf(_SC_NPROCESSORS_ONLN);
 }
 
+int
+GetCPUCores(void)
+{
+  FILE * fp;
+  char buf[256], *data;
+  int cores;
+
+  if ((fp = fopen ("/proc/cpuinfo", "r")) != NULL) 
+  {
+    while (fgets (buf, 256, fp))
+    {
+      if (!strncasecmp (buf, "cpu cores", 9)) {
+        strtok (buf, ":");
+        data = strtok (NULL, "\n");
+        cores = atoi(data);
+        fclose (fp);
+        return cores;
+      }
+    }
+    fclose(fp);
+  }
+  Warning("Could not get cpu cores from cpuinfo\n");
+  return 0;
+}
+
+void
+GetOrderedCoreList(int *list, int total_cores)
+{
+  FILE * fp;
+  char buf[256], *data;
+  int core_id = -1, socket_id = -1, proc_id, i, proc_done=0;
+
+  int cores = GetCPUCores();
+
+  // illegal cpu cores
+  if (cores == 0 || cores > total_cores) goto set_default;
+
+  // could not find /proc/cpuinfo
+  if ((fp = fopen ("/proc/cpuinfo", "r")) == NULL) goto set_default;
+   
+  while (fgets (buf, 256, fp))
+  {
+    if (!strncasecmp (buf, "processor", 9)) 
+    {
+       strtok (buf, ":");
+       data = strtok (NULL, "\n");
+       proc_id = atoi(data);
+       // illegal proc_id
+       if (proc_id >= total_cores) goto set_default;
+
+       while (fgets(buf, 256, fp))
+       {
+         if(!strncasecmp (buf, "physical id", 11)) 
+         {
+           strtok (buf, ":");
+           data = strtok (NULL, "\n");
+           socket_id = atoi(data);
+         }
+         if(!strncasecmp (buf, "core id", 7)) 
+         {
+           strtok (buf, ":");
+           data = strtok (NULL, "\n");
+           core_id = atoi(data);
+         }
+
+         if((socket_id >= 0) && (core_id >= 0)) 
+         {
+           // illegal socket_id or cores_id
+           if (socket_id * cores + core_id >= total_cores)
+             goto set_default;
+
+           list[socket_id * cores + core_id] = proc_id;
+           socket_id = -1;
+           core_id = -1;
+           proc_done ++;
+           break;
+         }
+      }
+    }
+  } 
+   
+  if (proc_done != total_cores)
+  {
+// if any unexpected case happens, set the list to be 
+// the natural number order
+set_default:
+    for (i=0; i<total_cores; i++)
+      list[i] = i;
+  }
+}
+
 /*
  * This routine returns an piece of allocated memory with the alignment
  * specified by the caller.

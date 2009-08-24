@@ -113,6 +113,12 @@ Get_System_Stack_Limit(void);
 int
 Get_SMP_CPU_num(void);
 
+int
+GetCPUCores(void);
+
+void
+GetOrderedCoreList(int *, int);
+
 void *
 aligned_malloc(size_t, size_t);
 
