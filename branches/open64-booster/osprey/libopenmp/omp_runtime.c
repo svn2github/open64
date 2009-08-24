@@ -1312,9 +1312,9 @@ __ompc_get_thdprv(void *** thdprv_p, omp_int64 size, void *datap,omp_int32 globa
 
     if((pp = *thdprv_p) == NULL) {
       // put the shared data aligned with the cache line size
-      posix_memalign(&pp, CACHE_LINE_SIZE, sizeof(void *)*num_threads);
-      bzero(pp,sizeof(void *)*num_threads);
+      pp = aligned_malloc(sizeof(void *)*num_threads, CACHE_LINE_SIZE);
       Is_True (pp !=NULL, "cannot allocate memory");
+      bzero(pp,sizeof(void *)*num_threads);
       *thdprv_p = pp;
     }
     __ompc_unlock(&_ompc_thread_lock);
@@ -1322,8 +1322,10 @@ __ompc_get_thdprv(void *** thdprv_p, omp_int64 size, void *datap,omp_int32 globa
   if((p = pp[global_tid]) == NULL) {
     if(global_tid == 0)
       p = datap;
-    else
-     posix_memalign(&p, CACHE_LINE_SIZE, (int)size); 
+    else {
+      p = aligned_malloc((int)size, CACHE_LINE_SIZE);
+      Is_True (p !=NULL, "cannot allocate memory");
+    }
     pp[global_tid] = p;
   }
   return 1;

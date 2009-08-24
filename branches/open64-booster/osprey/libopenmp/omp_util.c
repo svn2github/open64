@@ -85,6 +85,103 @@ Get_SMP_CPU_num (void)
   return (int) sysconf(_SC_NPROCESSORS_ONLN);
 }
 
+/*
+ * This routine returns an piece of allocated memory with the alignment
+ * specified by the caller.
+ *
+ * It uses system's malloc to allocate memory.  The return address will be
+ * adjusted according to the alignment requirement. The adjusted size
+ * is stored to the allocated memory, right before the return address.
+ *
+ * Argument "alignment" must be power of 2. This routine will
+ * check this and will return NULL if otherwise.
+ *
+ * If argument "bytes" is 0, it will return NULL. The adjusted size
+ * will not be stored.
+ *
+ * To free the memory, aligned_free() needs to be used. Using
+ * free() leads to an unmatched deallocation.
+ *
+ */
+
+void* aligned_malloc(size_t bytes, size_t alignment)
+{
+  size_t real_alignment;   // the real alignment used in this call
+  size_t real_size;        // the real allocated memory size
+  size_t alignment_mask;   // the mask bits to compute the alignment
+  size_t adj_size;         // the adjusted size that stored to memory
+  unsigned long p;         // address returned from malloc()
+  unsigned long ret_p;     // address returned to caller
+  size_t sizet;            // the size of type size_t
+
+  if (bytes == 0)
+    return NULL;
+
+  /*
+   *  First make sure the argument "alignment" is indeed power of 2.
+   */
+  if (alignment & (alignment-1))
+    return NULL;
+
+  /*
+   * We store the adj_size to the allocated memory. We adjust the
+   * alignment so that the access to adj_size is not an unaligned
+   * access.
+   */
+  sizet = sizeof(size_t);
+  real_alignment = alignment < sizet ? sizet : alignment;
+
+  alignment_mask = ~(real_alignment - 1);
+
+  /*
+   * We can save some space if we know the minimal alignment of
+   * system's malloc. Here we assume we don't know the minimal
+   * alignment.
+   */
+
+  // sanity check to detect overflow.
+  if (bytes > (size_t)-1 - sizet - real_alignment-1)
+    return NULL;
+
+  real_size = bytes + real_alignment-1 + sizet;
+
+  // real allocation
+  if ((p = (unsigned long) malloc(real_size)) == 0)
+    return NULL;
+
+  // adjust the address according to the alignment requirement
+  ret_p = (p + sizet + real_alignment - 1) & alignment_mask;
+  adj_size = ret_p - p;
+
+  // record the adj_size right before the returned address.
+  ((size_t*)ret_p)[-1] = adj_size;
+
+  return (void*) ret_p;
+}
+
+
+/*
+ * This routine free the memory allocated by aligned_malloc().
+ *
+ * Using this routine to a address directly from malloc() will cause
+ * program errors.
+ */
+
+void aligned_free(void* p)
+{
+  size_t adj_size;         // the adjusted size that stored
+  unsigned long real_p;    // the real address of the allocated memory
+
+  if (p == NULL)
+    return;
+
+  adj_size = ((size_t*)p)[-1];
+  real_p = (unsigned long) p - adj_size;
+
+  free((void*) real_p);
+}
+
+
 void
 __ompc_do_nothing (void)
 {

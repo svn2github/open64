@@ -375,13 +375,13 @@ __ompc_fini_rtl(void)
 {
   /* clean up job*/
   if (__omp_level_1_team != NULL)
-    free(__omp_level_1_team);
+    aligned_free(__omp_level_1_team);
   if (__omp_level_1_pthread != NULL)
-    free(__omp_level_1_pthread);
+    aligned_free(__omp_level_1_pthread);
 
   /* Other mutex, conditions, locks , should be destroyed here*/
   if (__omp_list_processors != NULL)
-    free(__omp_list_processors);
+    aligned_free(__omp_list_processors);
 }
 
 /* must be called when the first fork()*/
@@ -440,12 +440,12 @@ __ompc_init_rtl(int num_threads)
   __ompc_clear_hash_table();
 
   /* create level 1 team */
-  posix_memalign(&__omp_level_1_pthread, CACHE_LINE_SIZE, sizeof(omp_u_thread_t) * threads_to_create);
+  __omp_level_1_pthread = aligned_malloc(sizeof(omp_u_thread_t) * threads_to_create, CACHE_LINE_SIZE);
   Is_True(__omp_level_1_pthread != NULL, 
 	  ("Can't allocate __omp_level_1_pthread"));
   memset(__omp_level_1_pthread, 0, sizeof(omp_u_thread_t) * threads_to_create);
 
-  posix_memalign(&__omp_level_1_team, CACHE_LINE_SIZE, sizeof(omp_v_thread_t) * threads_to_create);
+  __omp_level_1_team = aligned_malloc(sizeof(omp_v_thread_t) * threads_to_create, CACHE_LINE_SIZE);
   Is_True(__omp_level_1_team != NULL, 
 	  ("Can't allocate __omp_level_1_team"));
   memset(__omp_level_1_team, 0, sizeof(omp_v_thread_t) * threads_to_create);
@@ -707,13 +707,13 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
     __ompc_init_lock(&(temp_team.single_lock));
     pthread_mutex_init(&(temp_team.barrier_lock), NULL);
     pthread_cond_init(&(temp_team.barrier_cond), NULL);
- 
-    posix_memalign(&nest_v_thread_team, CACHE_LINE_SIZE,sizeof(omp_v_thread_t) * num_threads);
+
+    nest_v_thread_team = aligned_malloc(sizeof(omp_v_thread_t) * num_threads, CACHE_LINE_SIZE); 
     Is_True(nest_v_thread_team != NULL, 
 	    ("Can't allocate nested v_thread team"));
 
     /* nest_u_thread_team[0] is of no use currently*/
-    posix_memalign(&nest_u_thread_team,  CACHE_LINE_SIZE, sizeof(omp_u_thread_t) * num_threads );
+    nest_u_thread_team = aligned_malloc(sizeof(omp_u_thread_t) * num_threads, CACHE_LINE_SIZE);
     Is_True(nest_u_thread_team != NULL,
 	    ("Can't allocate nested u_thread team"));
 
@@ -766,8 +766,8 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
       __ompc_remove_from_hash_table(nest_u_thread_team[i].uthread_id);
     }
 
-    free(nest_v_thread_team);
-    free(nest_u_thread_team);
+    aligned_free(nest_v_thread_team);
+    aligned_free(nest_u_thread_team);
 
     current_u_thread->task = original_v_thread;
 			

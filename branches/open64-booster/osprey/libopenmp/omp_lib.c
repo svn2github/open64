@@ -37,6 +37,7 @@
 
 #include "omp_rtl.h"
 #include "omp_lock.h" 
+#include "omp_util.h"
 
 #include <sys/time.h>
 
@@ -161,7 +162,9 @@ omp_init_lock(volatile omp_lock_t *lock)
   // malloc a cache line for the lock to avoid
   // false sharing
   ompc_lock_t *tmp_lp;
-  posix_memalign(&tmp_lp, CACHE_LINE_SIZE, CACHE_LINE_SIZE);
+  tmp_lp = aligned_malloc(CACHE_LINE_SIZE, CACHE_LINE_SIZE);
+  Is_True(tmp_lp != NULL, "can not allocate tmp_lp");
+
   __ompc_init_lock(tmp_lp);
   (*lock) = (omp_lock_t*)tmp_lp; 
 }
@@ -175,7 +178,8 @@ omp_init_nest_lock(volatile omp_nest_lock_t *lock)
 {
   // put the lock aligned to cache line size
   ompc_nest_lock_t * tmp_lp;
-  posix_memalign(&tmp_lp, CACHE_LINE_SIZE, CACHE_LINE_SIZE);
+  tmp_lp = aligned_malloc(CACHE_LINE_SIZE, CACHE_LINE_SIZE); 
+  Is_True(tmp_lp != NULL, "can not allocate tmp_lp");
   __ompc_init_nest_lock(tmp_lp);
   (*lock) = (omp_lock_t*)tmp_lp; 
 }
@@ -188,7 +192,7 @@ inline void
 omp_destroy_lock(volatile omp_lock_t *lock)
 {
   __ompc_destroy_lock((ompc_lock_t*)(*lock));
-  free((ompc_lock_t*)(*lock)); 
+  aligned_free((ompc_lock_t*)(*lock)); 
 }
 
 
@@ -198,7 +202,7 @@ inline void
 omp_destroy_nest_lock(volatile omp_nest_lock_t *lock)
 {
   __ompc_destroy_nest_lock((ompc_nest_lock_t*)(*lock));
-  free((ompc_nest_lock_t*)(*lock)); 
+  aligned_free((ompc_nest_lock_t*)(*lock)); 
 }
 
 

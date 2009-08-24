@@ -113,5 +113,11 @@ Get_System_Stack_Limit(void);
 int
 Get_SMP_CPU_num(void);
 
+void *
+aligned_malloc(size_t, size_t);
+
+void
+aligned_free(void*);
+
 void __ompc_do_nothing(void);
 #endif

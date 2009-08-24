@@ -375,10 +375,10 @@ inline void __omp_get_available_processors()
   int return_val, i, cur_count=0;
 
   /* create the list to record available processors */
-  posix_memalign(&__omp_list_processors, CACHE_LINE_SIZE, sizeof(int) * __omp_num_processors);
-
+  __omp_list_processors = aligned_malloc(sizeof(int) * __omp_num_processors, CACHE_LINE_SIZE);
   Is_True(__omp_list_processors != NULL,
           ("Can't allocate __omp_list_processors"));
+
   memset(__omp_list_processors, 0, sizeof(int) * __omp_num_processors);
 
   return_val = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
