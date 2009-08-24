@@ -248,7 +248,7 @@ struct omp_v_thread {
 extern omp_v_thread_t *  __omp_level_1_team; 
 extern omp_u_thread_t *  __omp_level_1_pthread;
 extern int		 __omp_level_1_team_size;
-extern omp_team_t	 __omp_level_1_team_manager;
+extern volatile omp_team_t	 __omp_level_1_team_manager;
 extern int		 __omp_level_1_team_alloc_size;
 extern omp_u_thread_t *  __omp_uthread_hash_table[UTHREAD_HASH_SIZE]; 
 

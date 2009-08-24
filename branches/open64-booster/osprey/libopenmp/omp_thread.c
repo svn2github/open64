@@ -69,7 +69,7 @@ omp_v_thread_t * __omp_level_1_team = NULL;
 omp_u_thread_t * __omp_level_1_pthread = NULL;
 int		 __omp_level_1_team_size = 1;
 int		 __omp_level_1_team_alloc_size = 1;
-omp_team_t	 __omp_level_1_team_manager;
+volatile omp_team_t	 __omp_level_1_team_manager;
 omp_u_thread_t * __omp_uthread_hash_table[UTHREAD_HASH_SIZE];
 
 /* use once for pthread creation */
