@@ -56,6 +56,13 @@ LCINCS = -I$(SRC_DIRS) -I$(BUILD_BASE)
 # HOSTDEFS += -DHAVE_CONFIG_H
 # HOSTDEFS += -DLONGLONG
 
+#
+# don't support i386 since it lacks atomic instructions.
+#
+ifeq ($(BUILD_ARCH), IA32)
+CFLAGS += -march=i486
+endif
+
 CFLAGS += -DTARG_$(BUILD_TARGET)
 
 CFILES = \
