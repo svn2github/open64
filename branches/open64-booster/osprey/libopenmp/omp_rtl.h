@@ -106,8 +106,13 @@ extern volatile int __omp_dynamic;	  /* dynamic enable/disable */
 extern volatile int __omp_max_num_threads;
 /* stores the number of threads requested for future parallel regions. */
 extern volatile int __omp_nthreads_var;
+/* num of hardware processors */
+extern int __omp_num_hardware_processors;
 /* num of processors available*/
 extern int 	    __omp_num_processors; 
+/* list of processors available*/
+extern int *        __omp_list_processors;
+
 /* default schedule type and chunk size of runtime schedule*/
 extern omp_sched_t  __omp_rt_sched_type;
 extern int  	    __omp_rt_sched_size;

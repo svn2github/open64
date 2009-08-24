@@ -47,8 +47,16 @@ volatile int __omp_dynamic = OMP_DYNAMIC_DEFAULT;         /* dynamic enable/disa
 volatile int __omp_max_num_threads = OMP_MAX_NUM_THREADS - 1;
 /* stores the number of threads requested for future parallel regions. */
 volatile int __omp_nthreads_var;
-/* num of processors available*/
+
+/* num of hardware processors */
+int __omp_num_hardware_processors;
+
+/* num of available processors */
 int __omp_num_processors;
+
+/* list of the available processors */
+int * __omp_list_processors;
+
 /* default schedule type and chunk size of runtime schedule*/
 omp_sched_t  __omp_rt_sched_type = OMP_SCHED_DEFAULT;
 int  __omp_rt_sched_size = OMP_CHUNK_SIZE_DEFAULT;
@@ -341,7 +349,8 @@ __ompc_fini_rtl(void)
     free(__omp_level_1_pthread);
 
   /* Other mutex, conditions, locks , should be destroyed here*/
-
+  if (__omp_list_processors != NULL)
+    free(__omp_list_processors);
 }
 
 /* must be called when the first fork()*/
@@ -357,9 +366,19 @@ __ompc_init_rtl(int num_threads)
 	  (" RTL has been initialized yet!"));
 
 
-  /* set default thread number to processor number */
-  __omp_num_processors = Get_SMP_CPU_num();
+  /* get the number of hardware processors */
+  __omp_num_hardware_processors = Get_SMP_CPU_num();
+
+  /* get the number of available processors. It can be smaller than
+     __omp_num_hardware_processors, because user can use numactl to 
+     control which processors to run. Set default thread number to
+     the number of available processors */
+  __omp_num_processors = __omp_get_cpu_num();
   __omp_nthreads_var = __omp_num_processors;
+
+  /* get the list of available processors, later we can bind pthreads
+     to the available processors */ 
+  __omp_get_available_processors();
 
   /* parse OpenMP environment variables */
   __ompc_environment_variables();
@@ -451,7 +470,7 @@ __ompc_init_rtl(int num_threads)
   __omp_root_u_thread->hash_next = NULL;
   __ompc_insert_into_hash_table(__omp_root_u_thread);
 
-  //bind the current thread to cpu 0
+  //bind the current thread to the first available cpu 
   __ompc_bind_pthread_to_cpu(__omp_root_thread_id);
 
   for (i=1; i< threads_to_create; i++) {

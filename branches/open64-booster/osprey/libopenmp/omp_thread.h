@@ -66,12 +66,26 @@ inline int __ompc_get_nested(void)
   return __omp_nested;
 }
 
+inline int __omp_get_cpu_num()
+{
+  cpu_set_t cpuset;
+  int return_val, i, cur_count = 0;
+
+  return_val = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+  Is_True(return_val == 0, ("Get affinity error"));
+
+  for (i = 0; i < __omp_num_hardware_processors; i++)
+    if (CPU_ISSET(i, &cpuset)) cur_count ++;
+
+  return cur_count;
+}
+
 inline int __ompc_get_max_threads(void)
 {
   if (__omp_rtl_initialized == 1)
     return __omp_nthreads_var;
   else
-    return Get_SMP_CPU_num();
+    return __omp_get_cpu_num();
 }
 
 inline int __ompc_get_num_procs(void)
@@ -79,7 +93,7 @@ inline int __ompc_get_num_procs(void)
   if (__omp_rtl_initialized == 1)
     return __omp_num_processors;
   else
-    return Get_SMP_CPU_num();
+    return __omp_get_cpu_num();
 }
 
 /* The caller must ensure the validity of __num_threads*/
@@ -358,6 +372,26 @@ inline void __ompc_end(void)
   /* do nothing */
 }
 
+inline void __omp_get_available_processors()
+{
+  cpu_set_t cpuset;
+  int return_val, i, cur_count=0;
+
+  /* create the list to record available processors */
+  __omp_list_processors = (int *) malloc (sizeof(int) * __omp_num_processors);
+  Is_True(__omp_list_processors != NULL,
+          ("Can't allocate __omp_list_processors"));
+  memset(__omp_list_processors, 0, sizeof(int) * __omp_num_processors);
+
+  return_val = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+  Is_True(return_val == 0, ("Get affinity error"));
+
+  for (i = 0; i < __omp_num_hardware_processors; i++)
+    if (CPU_ISSET(i, &cpuset))
+	__omp_list_processors[cur_count++] = i;
+
+}
+
 static int cur_cpu_to_bind = 0;
 
 /* bind the pthread to a specific cpu */
@@ -367,7 +401,7 @@ inline void __ompc_bind_pthread_to_cpu(pthread_t thread)
   int return_val;
   
   CPU_ZERO(&cpuset);
-  CPU_SET(cur_cpu_to_bind,&cpuset);
+  CPU_SET(__omp_list_processors[cur_cpu_to_bind],&cpuset);
 
   return_val = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
   Is_True(return_val == 0, ("Set affinity error"));
