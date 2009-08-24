@@ -1180,9 +1180,14 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Apply_Virtual_Function_Transform (
           WN_kid(new_wn,j) = WN_COPY_Tree_With_Map(WN_kid(old_wn,j));
      }
 
+#ifdef TARG_IA64
+     WN* copy_load = WN_COPY_Tree_With_Map(WN_kid(old_wn,
+                                    WN_kid_count(old_wn)-1));
+#else
      WN* copy_load = WN_COPY_Tree_With_Map(WN_kid(WN_kid(old_wn,
                                     WN_kid_count(old_wn)-1),
                                      0));
+#endif
 
      OPCODE incopcode = OPCODE_make_op(OPR_SUB, 
                             WN_rtype(copy_load),MTYPE_V);
