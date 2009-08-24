@@ -607,7 +607,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
 
     trip_count += 1;
     my_lower = global_lower;
-    block_size = trip_count / team_size;
+    block_size = trip_count / (2 * team_size);
     chunk = p_team->chunk_size;
     if (block_size > chunk) 
       chunk = block_size;
@@ -958,7 +958,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     }
     trip_count += 1;
     my_lower = global_lower;
-    block_size = trip_count / team_size;
+    block_size = trip_count / (2 * team_size);
     chunk = p_team->chunk_size;
     if (block_size > chunk) 
       chunk = block_size;
