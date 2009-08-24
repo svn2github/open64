@@ -451,11 +451,18 @@ __ompc_init_rtl(int num_threads)
   __omp_root_u_thread->hash_next = NULL;
   __ompc_insert_into_hash_table(__omp_root_u_thread);
 
+  //bind the current thread to cpu 0
+  __ompc_bind_pthread_to_cpu(__omp_root_thread_id);
+
   for (i=1; i< threads_to_create; i++) {
     return_value = pthread_create( &(__omp_level_1_pthread[i].uthread_id),
 				   &__omp_pthread_attr, (pthread_entry) __ompc_level_1_slave, 
 				   (void *)((unsigned long int)i));
     Is_True(return_value == 0, ("Can not create more pthread"));
+
+    // bind pthread to a specific cpu
+    __ompc_bind_pthread_to_cpu(__omp_level_1_pthread[i].uthread_id);
+
     __ompc_insert_into_hash_table(&(__omp_level_1_pthread[i]));
   }
 
@@ -541,6 +548,10 @@ __ompc_expand_level_1_team(int new_num_threads)
 				   &__omp_pthread_attr, (pthread_entry) __ompc_level_1_slave, 
 				   (void *)((unsigned long int)i));
     Is_True(return_value == 0, ("Can not create more pthread"));
+
+    // bind pthread to a specific cpu
+    __ompc_bind_pthread_to_cpu(__omp_level_1_pthread[i].uthread_id);
+
     __ompc_insert_into_hash_table(&(__omp_level_1_pthread[i]));
   }
 
@@ -685,6 +696,9 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
 				    &__omp_pthread_attr, (pthread_entry) __ompc_nested_slave, 
 				    (void *)(&(nest_v_thread_team[i])));
       Is_True(return_value == 0, ("Can not create more pthread"));
+
+      // TODO: may need to bind pthread to a specific cpu for nested threads
+
       __ompc_insert_into_hash_table(&(nest_u_thread_team[i]));
     }
 

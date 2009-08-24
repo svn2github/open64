@@ -358,5 +358,23 @@ inline void __ompc_end(void)
   /* do nothing */
 }
 
+static int cur_cpu_to_bind = 0;
+
+/* bind the pthread to a specific cpu */
+inline void __ompc_bind_pthread_to_cpu(pthread_t thread)
+{
+  cpu_set_t cpuset;
+  int return_val;
+  
+  CPU_ZERO(&cpuset);
+  CPU_SET(cur_cpu_to_bind,&cpuset);
+
+  return_val = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+  Is_True(return_val == 0, ("Set affinity error"));
+
+  // next cpu to bind
+  cur_cpu_to_bind = (cur_cpu_to_bind + 1) % __omp_num_processors; 
+
+}
 
 #endif /* __omp_rtl_thread_included */
