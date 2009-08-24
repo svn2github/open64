@@ -40,7 +40,7 @@
 #include <malloc.h>
 #include "omp_thread.h"
 
-#define MAX_COUNTER  20000
+#define SPIN_COUNT_DEFAULT 20000
 volatile int __omp_nested = OMP_NESTED_DEFAULT;          /* nested enable/disable */
 volatile int __omp_dynamic = OMP_DYNAMIC_DEFAULT;         /* dynamic enable/disable */
 /* max num of thread available*/
@@ -83,6 +83,14 @@ omp_v_thread_t	 __omp_root_v_thread;
 pthread_t	 __omp_root_thread_id = -1;
 
 int		  __omp_rtl_initialized = 0;
+
+// control variable for spin lock, it can be set by O64_OMP_SPIN_COUNT
+unsigned long int __omp_spin_count = SPIN_COUNT_DEFAULT;
+
+// control variable for whether binding thread to cpu
+// it can be reset by O64_OMP_SET_AFFINITY
+int              __omp_set_affinity = 1;
+
 //static volatile int __omp_global_team_count = 0;
 //static volatile int __omp_nested_team_count = 0;
 
@@ -227,6 +235,31 @@ __ompc_environment_variables()
 	      ("beyond current user stack limit, try using ulimit"));
     __omp_stack_size = stack_size;
   }
+
+  env_var_str = getenv("O64_OMP_SPIN_COUNT");
+  if (env_var_str != NULL) {
+    unsigned long int spin_count;
+    sscanf(env_var_str, "%ld", &spin_count);
+    Is_Valid(spin_count > 0, ("spine count must be positive"));
+    __omp_spin_count = spin_count;
+  }
+
+  env_var_str = getenv("O64_OMP_SET_AFFINITY");
+  if (env_var_str != NULL) {
+    env_var_val = strncasecmp(env_var_str, "true", 4);
+
+    if (env_var_val == 0) {
+      __omp_set_affinity = 1;
+    } else {
+      env_var_val = strncasecmp(env_var_str, "false", 4);
+      if (env_var_val == 0) {
+        __omp_set_affinity = 0;
+      } else {
+        Not_Valid("OMP_SET_AFFINITY should be set to: true/false");
+      }
+    }
+  }
+
 }
 
 
@@ -284,16 +317,14 @@ __ompc_level_1_slave(void * _uthread_index)
   pthread_mutex_unlock(&__omp_level_1_mutex);
 
   for(;;) {
-    if (__omp_level_1_team_manager.new_task != task_expect) {
-      for( counter = 0; __omp_level_1_team_manager.new_task != task_expect; counter++) {
-	if (counter > MAX_COUNTER) {
-	  pthread_mutex_lock(&__omp_level_1_mutex);
-	  while (__omp_level_1_team_manager.new_task != task_expect) {
-	    pthread_cond_wait(&__omp_level_1_cond, &__omp_level_1_mutex);
-	  }
-	  pthread_mutex_unlock(&__omp_level_1_mutex);
-	  counter = 0;
-	}
+    for( counter = 0; __omp_level_1_team_manager.new_task != task_expect; counter++) {
+      if (counter > __omp_spin_count) {
+        pthread_mutex_lock(&__omp_level_1_mutex);
+        while (__omp_level_1_team_manager.new_task != task_expect) {
+          pthread_cond_wait(&__omp_level_1_cond, &__omp_level_1_mutex);
+        }
+        pthread_mutex_unlock(&__omp_level_1_mutex);
+       counter = 0;
       }
     }
 
@@ -470,8 +501,10 @@ __ompc_init_rtl(int num_threads)
   __omp_root_u_thread->hash_next = NULL;
   __ompc_insert_into_hash_table(__omp_root_u_thread);
 
-  //bind the current thread to the first available cpu 
-  __ompc_bind_pthread_to_cpu(__omp_root_thread_id);
+  if (__omp_set_affinity) {
+    //bind the current thread to the first available cpu 
+    __ompc_bind_pthread_to_cpu(__omp_root_thread_id);
+  }
 
   for (i=1; i< threads_to_create; i++) {
     return_value = pthread_create( &(__omp_level_1_pthread[i].uthread_id),
@@ -479,8 +512,10 @@ __ompc_init_rtl(int num_threads)
 				   (void *)((unsigned long int)i));
     Is_True(return_value == 0, ("Can not create more pthread"));
 
-    // bind pthread to a specific cpu
-    __ompc_bind_pthread_to_cpu(__omp_level_1_pthread[i].uthread_id);
+    if (__omp_set_affinity) {
+      // bind pthread to a specific cpu
+      __ompc_bind_pthread_to_cpu(__omp_level_1_pthread[i].uthread_id);
+    }
 
     __ompc_insert_into_hash_table(&(__omp_level_1_pthread[i]));
   }
@@ -568,8 +603,10 @@ __ompc_expand_level_1_team(int new_num_threads)
 				   (void *)((unsigned long int)i));
     Is_True(return_value == 0, ("Can not create more pthread"));
 
-    // bind pthread to a specific cpu
-    __ompc_bind_pthread_to_cpu(__omp_level_1_pthread[i].uthread_id);
+    if (__omp_set_affinity) {
+      // bind pthread to a specific cpu
+      __ompc_bind_pthread_to_cpu(__omp_level_1_pthread[i].uthread_id);
+    }
 
     __ompc_insert_into_hash_table(&(__omp_level_1_pthread[i]));
   }
