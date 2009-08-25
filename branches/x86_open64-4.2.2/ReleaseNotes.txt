@@ -1,8 +1,8 @@
 
-x86 Open64 4.2.2.1 Release Notes 
+x86 Open64 4.2.2.2 Release Notes 
 
 
-               June 4, 2009
+               August 28, 2009
 
 
 1. Overview
@@ -27,7 +27,7 @@ x86 Open64 4.2.2.1 Release Notes
 1. Overview
 ===========
 
- This is version 4.2.2.1 of the x86 Open64 compiler suite. It is a bug fix and
+ This is version 4.2.2.2 of the x86 Open64 compiler suite. It is a bug fix and
  maintenance release for version 4.2.2.
 
  x86 Open64 is an open source, optimizing compiler for 32-bit (x86) and
@@ -46,8 +46,46 @@ x86 Open64 4.2.2.1 Release Notes
 
 
 
-2. Issues Resolved in x86 Open64 4.2.2.1
+2. Issues Resolved in x86 Open64 4.2.2.2
 ========================================
+
+2.1 Issues Resolved in version 4.2.2.2
+--------------------------------------
+
+ o The OpenMP runtime library (libopenmp) has been updated with several
+   performance and correctness improvements.
+
+   The library now respects the following environment variable controls:
+
+   O64_OMP_SET_AFFINITY (TRUE or FALSE)
+   When TRUE, the operating system's affinity mechanism (where available) is
+   used to assign OpenMP threads to CPUs, otherwise no affinity assignments
+   are made. The default value is TRUE.
+
+   O64_OMP_SPIN_COUNT (Integer Value)
+   O64_OMP_SPIN_COUNT takes a numeric value and sets the number of times that
+   the spin loops will spin at user-level before falling back to O/S schedule/
+   reschedule mechanisms. The default value is 20000. If there are more active
+   threads than processors and this is set very high, then the thread
+   contention will typically cause a performance drop. Synchronization using
+   the O/S schedule and reschedule mechanisms is significantly more expensive
+   but frees up execution resources for other threads.
+
+   O64_SPIN_USER_LOCK (TRUE or FALSE)
+   O64_SPIN_USER_LOCK specifies whether or not to use user-level spin
+   mechanism for OpenMP locks. By default it is FALSE, where pthread mutexes
+   are used for OpenMP locks.
+
+ o The explicit dependency on using the bash shell to build from source has
+   been removed.
+
+
+2.2 Issues Resolved in version 4.2.2.1
+--------------------------------------
+
+ o The automatic CPU detection in the x86 Open64 driver now recognizes the
+   the Intel(R) Core(TM) i7 CPU and uses the included 'wolfdale.so' target
+   description module.
 
  o Building a program for the generic 'i386' target no longer results in the
    error:
@@ -107,17 +145,17 @@ x86 Open64 4.2.2.1 Release Notes
 
  This compiler is available in both binary and source-code forms.
 
- o x86_open64-4.2.2.1-1.src.tar.bz2
+ o x86_open64-4.2.2.2-1.src.tar.bz2
 
    This package contains the compiler's source code. To unpack the source, use
    the command:
 
-     tar xjvf x86_open64-4.2.2.1-1.src.tar.bz2
+     tar xjvf x86_open64-4.2.2.2-1.src.tar.bz2
 
    For instructions on how to build the compiler from source, see the included
    INSTALL file.
 
- o x86_open64-4.2.2.1-1.x86_64.tar.bz2
+ o x86_open64-4.2.2.2-1.x86_64.tar.bz2
 
    This package contains the binary code for x86-64 machines.
 
@@ -128,7 +166,7 @@ x86 Open64 4.2.2.1 Release Notes
    libraries. The Open64 4.2.1 release can be downloaded from
    http://www.open64.net.
 
- o x86_open64-4.2.2.1-1.x86_64.rpm
+ o x86_open64-4.2.2.2-1.x86_64.rpm
 
    This package contains the same binaries as the tar.bz2 package in RPM form.
 
@@ -139,8 +177,8 @@ x86 Open64 4.2.2.1 Release Notes
 
  The two binary packages,
 
- o x86_open64-4.2.2.1-1.x86_64.tar.bz2
- o x86_open64-4.2.2.1-1.x86_64.rpm
+ o x86_open64-4.2.2.2-1.x86_64.tar.bz2
+ o x86_open64-4.2.2.2-1.x86_64.rpm
 
  are tested and validated on 64-bit Linux systems running:
 
@@ -164,11 +202,11 @@ x86 Open64 4.2.2.1 Release Notes
 
  To install the compiler from the bz2 package:
 
- o Expand x86_open64-4.2.2.1-1.x86_64.tar.bz2 with the command:
+ o Expand x86_open64-4.2.2.2-1.x86_64.tar.bz2 with the command:
 
-   tar xjvf x86_open64-4.2.2.1-1.x86_64.tar.bz2
+   tar xjvf x86_open64-4.2.2.2-1.x86_64.tar.bz2
 
- o If desired, move the x86_open64-4.2.2.1 directory to the final
+ o If desired, move the x86_open64-4.2.2.2 directory to the final
    installation location using the 'mv' command.
 
    The C, C++, FORTRAN compilers are now available in the 'bin'
@@ -182,15 +220,15 @@ x86 Open64 4.2.2.1 Release Notes
 
  To install the compiler from RPM:
 
- $ rpm -ivh x86_open64-4.2.2.1-1.x86_64.rpm
+ $ rpm -ivh x86_open64-4.2.2.2-1.x86_64.rpm
 
  This command will install the x86 Open64 compiler to
- /opt/x86_open64-4.2.2.1. The C, C++, FORTRAN compilers are in folder
- /opt/x86_open64-4.2.2.1/bin.
+ /opt/x86_open64-4.2.2.2. The C, C++, FORTRAN compilers are in folder
+ /opt/x86_open64-4.2.2.2/bin.
 
  To install the compiler to another location:
 
- $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.2.1-1.x86_64.rpm
+ $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.2.2-1.x86_64.rpm
 
  Then the compiler will be installed to /path/to/folder.
 
