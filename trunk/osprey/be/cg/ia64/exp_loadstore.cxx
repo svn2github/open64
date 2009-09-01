@@ -681,7 +681,7 @@ Exp_Ldst (
 		FmtAssert(FALSE, ("gp-relative offset doesn't fit in 22 bits"));
 	}
   }
-  else if (ST_is_tls(sym))
+  else if (ST_is_thread_local(sym))
   {
 	// Thread-Local-Storage
 	TN *tmp1, *tmp2;
@@ -694,8 +694,8 @@ Exp_Ldst (
 	PLOC ploc;
 	// Initialize the TLS related variables if it's not initialized
 	TLS_init();
-	switch( TLS_model) {
-	case TLS_MODEL_GLOBAL_DYNAMIC:
+	switch( ST_tls_model(sym) ) {
+	case TLS_GLOBAL_DYNAMIC:
 		// tmp1 = addl @ltoff(@dtpmod(ST#)), gp
 		// tmp2 = addl @ltoff(@dtprel(ST#)), gp
 		// out0 = ld8 tmp1
@@ -704,7 +704,7 @@ Exp_Ldst (
 		// base_tn = r8
 		// ofst_tn = Gen_Literal_TN(ofst, 4)
 
-	case TLS_MODEL_LOCAL_DYNAMIC:
+	case TLS_LOCAL_DYNAMIC:
 		// tmp1 = addl @ltoff(@dtpmod(ST#)), gp
 		// out0 = ld8 tmp1
 		// out1 = add1 @dtprel(ST#),r0
@@ -727,7 +727,7 @@ Exp_Ldst (
 		Expand_Add(tmp1,
 			   Gen_Symbol_TN(sym, 0, TN_RELOC_IA_LTOFF_DTPMOD22),
 			   GP_TN, Pointer_Mtype, &newops);
-		if ( TLS_model == TLS_MODEL_GLOBAL_DYNAMIC ) {
+		if ( ST_tls_model(sym) == TLS_GLOBAL_DYNAMIC ) {
 			tmp2 = Build_TN_Of_Mtype(Pointer_Mtype);
 			Expand_Add(tmp2,
 				   Gen_Symbol_TN(sym, 0, TN_RELOC_IA_LTOFF_DTPREL22),
@@ -755,7 +755,7 @@ Exp_Ldst (
 		Exp_COPY(base_tn, ret0, &newops);
 		ofst_tn = Gen_Literal_TN(ofst, 4);
 		break;
-        case TLS_MODEL_INITIAL_EXEC:
+        case TLS_INITIAL_EXEC:
 		// tmp1 = addl @ltoff(@tprel(sym#)), gp
 		// tmp2 = ld8 [tmp1]
 		// base_tn = addl tmp2, TP_TN
@@ -773,7 +773,7 @@ Exp_Ldst (
                    	   tmp2, TP_TN, Pointer_Mtype, &newops);
 		ofst_tn = Gen_Literal_TN(ofst, 4);
 		break;
-	case TLS_MODEL_LOCAL_EXEC:
+	case TLS_LOCAL_EXEC:
 		base_tn = TP_TN;
 		ofst_tn = Gen_Symbol_TN(sym, ofst, TN_RELOC_IA_TPREL22);
 		break;

@@ -5710,7 +5710,9 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       }
     }
     if ( Action(LOWER_TO_CG) && promote_tls_ldst &&
-         ST_is_tls( WN_st(tree) ) ) {
+         ST_is_thread_local( WN_st(tree) ) &&
+	 (ST_tls_model( WN_st(tree) ) == TLS_GLOBAL_DYNAMIC ||
+	  ST_tls_model( WN_st(tree) ) == TLS_LOCAL_DYNAMIC) ) {
       // There is a ldid to TLS data needs to be promoted to up level
       // In order to avoid conflicts in output registers
       // We create a preg to be the local copy of the TLS variable.
@@ -5801,8 +5803,10 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 	return tree;
       }
     }
-    if (Action(LOWER_TO_CG) && promote_tls_ldst &&
-        ST_is_tls( WN_st(tree) ) ) 
+    if ( Action(LOWER_TO_CG) && promote_tls_ldst &&
+         ST_is_thread_local( WN_st(tree) ) &&
+	 (ST_tls_model( WN_st(tree) ) == TLS_GLOBAL_DYNAMIC ||
+	  ST_tls_model( WN_st(tree) ) == TLS_LOCAL_DYNAMIC) )
     {
       // promote OPR_LDA to TLS variable in the OPR_PARAM of OPR_CALL to upper level
       // In order to avoid conflicts in output registers
@@ -5819,7 +5823,7 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       // OPR_CALL
       char local_name[64];
       ST* tls_st = WN_st(tree);
-      snprintf(local_name, 64, "local.%s", ST_name(tls_st));
+      snprintf(local_name, 64, "%s.local", ST_name(tls_st));
       ST* local_st = MTYPE_To_PREG(Pointer_type);
       PREG_NUM local_num = Create_Preg ( Pointer_type, local_name);
       WN* tls_lda = WN_COPY_Tree(tree);
@@ -10352,9 +10356,7 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
   // In order to avoid the output register conflict,
   // we need to promote the ldid/lda in actual parameter to up-level.
   // This is done in LOWER_TO_CG phase
-  if( Action(LOWER_TO_CG) && 
-      (TLS_model == TLS_MODEL_GLOBAL_DYNAMIC ||
-       TLS_model == TLS_MODEL_LOCAL_DYNAMIC )) {
+  if( Action(LOWER_TO_CG) ) {
 #if !defined(TARG_SL)
     promote_tls_ldst = TRUE;
 #else
