@@ -2006,7 +2006,7 @@ Create_ST_For_Tree (gs_t decl_node)
     }
   }
 
-#if defined(KEY) && defined(TARG_IA64)
+#if defined(TARG_IA64)
   //lookup syscall_linkage attribute for FUNCTION_DECL
   if (gs_tree_code (decl_node) == GS_FUNCTION_DECL)
   {
@@ -2030,6 +2030,29 @@ Create_ST_For_Tree (gs_t decl_node)
   }
 #endif
 
+  if (gs_tree_code (decl_node) == GS_VAR_DECL)
+  {
+#if !defined(TARG_NVISA)
+    gs_tls_model_kind_t tlsk =
+      (gs_tls_model_kind_t) gs_decl_tls_model(decl_node);
+    enum ST_TLS_MODEL tls_model = TLS_NONE;
+    switch (tlsk) {
+      case GS_TLS_MODEL_GLOBAL_DYNAMIC:
+        tls_model = TLS_GLOBAL_DYNAMIC;
+        break;
+      case GS_TLS_MODEL_LOCAL_DYNAMIC:
+        tls_model = TLS_LOCAL_DYNAMIC;
+        break;
+      case GS_TLS_MODEL_INITIAL_EXEC:
+        tls_model = TLS_INITIAL_EXEC;
+        break;
+      case GS_TLS_MODEL_LOCAL_EXEC:
+        tls_model = TLS_LOCAL_EXEC;
+        break;
+    }
+    Set_ST_tls_model(st, tls_model);
+#endif
+  }
 
   if(Debug_Level >= 2) {
     // Bug 559

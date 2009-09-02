@@ -657,6 +657,12 @@ inline BOOL
 ST_in_param_mem (const ST* s)     { return (s->memory_space == MEMORY_PARAM); }
 inline void
 Set_ST_in_param_mem (ST *s)       { s->memory_space = MEMORY_PARAM; }
+#else
+/* tls-model */
+inline ST_TLS_MODEL
+ST_tls_model (const ST* s)                   { return s->tls_model;  }
+inline void
+Set_ST_tls_model (ST* s, ST_TLS_MODEL model) { s->tls_model = model; }
 #endif /* TARG_NVISA */
 
 inline BOOL

@@ -44,6 +44,7 @@ extern gs_t gs_build_2(gs_tree_code_class_t code_class,
                        gs_code_t code, gs_t k0, gs_t k1);
 #endif
 
+
 /*  Define kid positions */
 
 // ---------------------------------------------------------------------------
@@ -273,6 +274,15 @@ extern gs_t gs_build_2(gs_tree_code_class_t code_class,
 #define GS_THUNK_FIXED_OFFSET		39
 #define GS_THUNK_VIRTUAL_OFFSET		40
 #define GS_DECL_NAMED_RETURN_OBJECT	41
+#define GS_DECL_FLAG2                   42
+
+// ---- begin GS_DECL_FLAG2 definition ----
+#  define GS_DECL_TLS_MODEL             0    // 3 bits
+#  define GS_DECL_TLS_MODEL_BITS        3    
+#  define GS_DECL_FLAG2_LAST            6    // next available bits, change it when
+                                             // you add more flags
+// ---- end GS_DECL_FLAG2 definition ----
+
 //   ==== end GS_TCC_DECLARATION fields
 
 
@@ -577,6 +587,18 @@ static inline void name (gs_t t, gs_bool_t val) {  \
   _gs_bv (gs_operand (t, operand), flag, val);     \
 }
 
+#define GS_LOOKUP_BITS(operand, name, flag, bits)        \
+static inline unsigned long name (gs_t t) {              \
+  GS_ASSERT (t != (gs_t) NULL, "Got null node");         \
+  return gs_bitsv (gs_operand (t, operand), flag, bits); \
+}
+
+#define GS_UPDATE_BITS(operand, name, flag, bits)        \
+static inline void name (gs_t t, unsigned long val) {    \
+  GS_ASSERT (t != (gs_t) NULL, "Got null node");         \
+  _gs_bitsv (gs_operand (t, operand), flag, bits, val);  \
+}
+
 GS_LOOKUP (gs_cc1_command_line_args, GS_CC1_COMMAND_LINE_ARGS)
 GS_LOOKUP (gs_global_trees_list, GS_GLOBAL_TREES_LIST)
 GS_LOOKUP (gs_integer_types_list, GS_INTEGER_TYPES_LIST)
@@ -786,6 +808,8 @@ GS_LOOKUP (gs_decl_arg_type, GS_DECL_ARG_TYPE)
 GS_LOOKUP (gs_decl_arg_type_as_written, GS_DECL_ARG_TYPE_AS_WRITTEN)
 GS_LOOKUP (gs_tree_chain, GS_TREE_CHAIN)
 GS_LOOKUP (gs_type_name, GS_TYPE_NAME)
+GS_LOOKUP_BITS (GS_DECL_FLAG2, gs_decl_tls_model, GS_DECL_TLS_MODEL, GS_DECL_TLS_MODEL_BITS)
+GS_UPDATE_BITS (GS_DECL_FLAG2, gs_set_decl_tls_model, GS_DECL_TLS_MODEL, GS_DECL_TLS_MODEL_BITS)
 static inline gs_string_t gs_decl_mode (gs_t t) {
   return gs_s (gs_operand (t, GS_DECL_MODE));
 }

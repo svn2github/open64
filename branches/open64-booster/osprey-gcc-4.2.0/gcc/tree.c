@@ -10206,6 +10206,13 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 		 DECL_NAMESPACE_SCOPE_P(t));
         }
       }
+
+      // DECL_FLAG2
+      gs_set_operand((gs_t) GS_NODE (t), GS_DECL_FLAG2, __gs (IB_BIT_VECTOR));
+      gs_set_decl_tls_model((gs_t) GS_NODE (t), DECL_TLS_MODEL(t));
+      GS_ASSERT(gs_decl_tls_model((gs_t) GS_NODE (t) ) == DECL_TLS_MODEL(t),
+                ("tls_model setting failure!!!"));
+      
       break;
 
     case tcc_type:

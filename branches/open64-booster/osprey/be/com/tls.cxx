@@ -27,7 +27,6 @@
 #include "tls.h"
 #include "config.h"
 
-TLS_MODEL TLS_model = TLS_MODEL_UNKNOWN;     /* TLS Access Model, parse from command line */
 TY_IDX TLS_get_addr_ty_idx = 0;		     /* TY_IDX of Pointer_Mtype __tls_get_addr(U8, U8); */
 ST *TLS_get_addr_st = NULL;   		     /* ST of '__tls_get_addr' */
 
@@ -37,28 +36,7 @@ void TLS_init()
 	if( TLS_initialized )
 		return;
 	TLS_initialized = TRUE;
-	// Parse the command line '-ftls-model=%s' for tls access model
-	TLS_model = TLS_MODEL_UNKNOWN;
-	if( TLS_Model_Name != NULL ) {
-		if( strcmp("global-dynamic", TLS_Model_Name) == 0 )
-			TLS_model = TLS_MODEL_GLOBAL_DYNAMIC;
-		else if( strcmp("local-dynamic", TLS_Model_Name) == 0 )
-			TLS_model = TLS_MODEL_LOCAL_DYNAMIC;
-		else if( strcmp("initial-exec", TLS_Model_Name) == 0 )
-			TLS_model = TLS_MODEL_INITIAL_EXEC;
-		else if( strcmp("local-exec", TLS_Model_Name) == 0 )
-			TLS_model = TLS_MODEL_LOCAL_EXEC;
-	}
-	if( TLS_model == TLS_MODEL_UNKNOWN ) {
-		// Set the default value for TLS_model. Follow the GCC's behavior.
-		if( Gen_PIC_Shared == TRUE )
-			TLS_model = TLS_MODEL_GLOBAL_DYNAMIC;
-		else
-			TLS_model = TLS_MODEL_INITIAL_EXEC;
-	}
-
-	if( TLS_model == TLS_MODEL_GLOBAL_DYNAMIC ||
-	    TLS_model == TLS_MODEL_LOCAL_DYNAMIC ) {
+	if( Gen_PIC_Shared ) { 
 		// with this access model, we'll call the '__tls_get_addr' 
 		// to get the address of the thread local data
 		// Create TY for this function call
@@ -92,5 +70,4 @@ void TLS_fini()
 {
 	// Do nothing
 }
-
 
