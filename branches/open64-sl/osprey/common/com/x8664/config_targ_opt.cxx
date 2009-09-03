@@ -85,6 +85,12 @@ static char * Platform_Name = NULL;
 INT16 Target_FPRs = 0;		/* -TARG:fp_regs=nn */
 BOOL Pure_ABI = FALSE;		/* Avoid non-ABI constructs? */
 
+BOOL Target_MMX = TRUE;        /* -TARG:mmx=on/off */
+BOOL Target_MMX_Set = FALSE;
+
+BOOL Target_SSE = TRUE;        /* -TARG:sse=on/off */
+BOOL Target_SSE_Set = FALSE;
+
 BOOL Target_SSE2 = TRUE;        /* -TARG:sse2=on/off */
 BOOL Target_SSE2_Set = FALSE;
 
@@ -130,6 +136,12 @@ static OPTION_DESC Options_TARG[] = {
   { OVK_NAME,	OV_VISIBLE,	FALSE, "isa",		"is",
     0, 0, 0, &ISA_Name,		NULL,
     "Specify the instruction set architecture to use" },
+  { OVK_BOOL,	OV_VISIBLE,	FALSE, "mmx",		"mmx",
+    0, 0, 0,	&Target_MMX,	&Target_MMX_Set,
+    "Enable MMX extensions" },
+  { OVK_BOOL,	OV_VISIBLE,	FALSE, "sse",		"sse",
+    0, 0, 0,	&Target_SSE,	&Target_SSE_Set,
+    "Enable SSE extensions" },
   { OVK_BOOL,	OV_VISIBLE,	FALSE, "sse2",		"sse2",
     0, 0, 0,	&Target_SSE2,	&Target_SSE2_Set,
     "Enable SSE2 extensions" },

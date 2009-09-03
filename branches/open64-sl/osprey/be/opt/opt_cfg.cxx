@@ -1946,6 +1946,20 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
 #endif
        ) {
 
+#ifdef TARG_SL      
+      WN *cond_kid0 = WN_kid0(if_test);
+      WN *cond_kid1 = WN_kid1(if_test);
+      OPERATOR opr = WN_operator(if_test);
+
+      WN *then_kid0 = WN_kid0(then_expr);      
+      WN *else_kid0 = WN_kid0(else_expr);
+
+      if ((opr == OPR_EQ || opr == OPR_NE || opr == OPR_GE || opr == OPR_GT || opr == OPR_LE || opr == OPR_LT)  
+       && ((WN_operator(cond_kid1) == OPR_INTCONST) && (WN_const_val(cond_kid1) == 0))
+       && ((WN_operator(then_expr) == OPR_ILOAD) && (WN_Simp_Compare_Trees(cond_kid0, then_kid0) == 0) 
+        || ((WN_operator(else_expr) == OPR_ILOAD) && (WN_Simp_Compare_Trees(cond_kid0, else_kid0)==0)))) 
+       goto skip_if_conversion;
+#endif
       // Generate a SELECT expression
       WN *sel = WN_Select( Mtype_comparison(dsctyp),
 			   WN_if_test(wn), then_expr, else_expr );

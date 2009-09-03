@@ -101,6 +101,8 @@ boolean ftz_crt = FALSE;
 int proc = UNDEFINED;
 #ifdef TARG_X8664
 static int target_supported_abi = UNDEFINED;
+static boolean target_supports_mmx = FALSE;
+static boolean target_supports_sse = FALSE;
 static boolean target_supports_sse2 = FALSE;
 static boolean target_prefers_sse3 = FALSE;
 static boolean target_supports_sse4a = FALSE;
@@ -596,27 +598,39 @@ Process_Targ_Group ( char *targ_args )
 
       case 's':
 #ifdef TARG_X8664
-	if (!strncasecmp(cp, "sse2=on", 8)) {
-	  add_option_seen(O_msse2);
-	  toggle(&sse2, TRUE);
-	} else if (!strncasecmp(cp, "sse2=off", 9)) {
-	  add_option_seen(O_mno_sse2);
-	  toggle(&sse2, FALSE);
-	} else if (!strncasecmp(cp, "sse3=on", 8)) {
-	  add_option_seen(O_msse3);
-	  toggle(&sse3, TRUE);
-	} else if (!strncasecmp(cp, "sse3=off", 9)) {
-	  add_option_seen(O_mno_sse3);
-	  toggle(&sse3, FALSE);
-	}else if (!strncasecmp(cp, "sse4a=on", 9)){
-          add_option_seen(O_mno_sse4a);
-          toggle(&sse4a, TRUE);
-        }else if (!strncasecmp(cp, "sse4a=off", 10)){
-          add_option_seen(O_mno_sse4a);
-          toggle(&sse4a, FALSE);
-        }
+		if (!strncasecmp(cp, "mmx=on", 7)) {
+		  add_option_seen(O_mmmx);
+		  toggle(&mmx, TRUE);
+		} else if (!strncasecmp(cp, "mmx=off", 8)) {
+		  add_option_seen(O_mno_mmx);
+		  toggle(&mmx, FALSE);
+		} else if (!strncasecmp(cp, "sse=on", 7)) {
+		  add_option_seen(O_msse);
+		  toggle(&sse, TRUE);
+		} else if (!strncasecmp(cp, "sse=off", 8)) {
+		  add_option_seen(O_mno_sse);
+		  toggle(&sse, FALSE);
+		} else if (!strncasecmp(cp, "sse2=on", 8)) {
+		  add_option_seen(O_msse2);
+		  toggle(&sse2, TRUE);
+		} else if (!strncasecmp(cp, "sse2=off", 9)) {
+		  add_option_seen(O_mno_sse2);
+		  toggle(&sse2, FALSE);
+		} else if (!strncasecmp(cp, "sse3=on", 8)) {
+		  add_option_seen(O_msse3);
+		  toggle(&sse3, TRUE);
+		} else if (!strncasecmp(cp, "sse3=off", 9)) {
+		  add_option_seen(O_mno_sse3);
+		  toggle(&sse3, FALSE);
+		}else if (!strncasecmp(cp, "sse4a=on", 9)){
+		  add_option_seen(O_mno_sse4a);
+		  toggle(&sse4a, TRUE);
+		}else if (!strncasecmp(cp, "sse4a=off", 10)){
+		  add_option_seen(O_mno_sse4a);
+		  toggle(&sse4a, FALSE);
+		}
 #endif
-	break;
+		break;
     }
 
     /* Skip to the next group option: */

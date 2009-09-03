@@ -1326,7 +1326,8 @@ CGTARG_Preg_Register_And_Class(
 
   if (!Preg_Offset_Is_Int(preg)   &&
       !Preg_Offset_Is_Float(preg) &&
-      !Preg_Offset_Is_X87(preg))
+      !Preg_Offset_Is_X87(preg)   &&
+      !Preg_Offset_Is_MMX(preg))
     return FALSE;
 
   /* Get the target register number and class associated with the
@@ -1343,6 +1344,10 @@ CGTARG_Preg_Register_And_Class(
   else if (Preg_Offset_Is_X87(preg)) {
     regnum = preg - X87_Preg_Min_Offset;
     rclass = ISA_REGISTER_CLASS_x87;
+  }
+  else if (Preg_Offset_Is_MMX(preg)) {
+    regnum = preg - MMX_Preg_Min_Offset;
+    rclass = ISA_REGISTER_CLASS_mmx;
   }
   else if (preg == 0) {
     regnum = 0;
@@ -3116,7 +3121,10 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   }
   else if (*constraint == 'y')
   {
-    ret_tn = (pref_tn ? pref_tn : Build_RCLASS_TN(ISA_REGISTER_CLASS_float));
+    if(Is_Target_32bit())
+      ret_tn = (pref_tn ? pref_tn : Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx));
+    else
+      ret_tn = (pref_tn ? pref_tn : Build_RCLASS_TN(ISA_REGISTER_CLASS_float));
   }
   else
   {

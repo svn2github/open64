@@ -2031,15 +2031,15 @@ I-u%s		;		Cc	ld	"-u %s"
 -malign-functions=%d	warn_ignored(option_name); 	ALL	NONE	self
 	""
 %%% x86 extensions
--mmmx	;		ALL	NONE	self
+-mmmx	toggle(&mmx,TRUE);		ALL	ALL	""
 	"Enable MMX extensions"
--mno-mmx	warn_ignored(option_name);	ALL	NONE	self
+-mno-mmx	toggle(&mmx,FALSE);toggle(&sse,FALSE);toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	NONE	self
 	"Disable MMX extensions"
--msse	;		ALL	NONE	self
+-msse	toggle(&mmx,TRUE);toggle(&sse,TRUE);		ALL	ALL	""
 	"Enable SSE extensions"
--mno-sse	toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	be	""
+-mno-sse	toggle(&sse,FALSE);toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	be	""
 	"Disable SSE2/SSE3/SSE4a extensions"
--msse2	toggle(&sse2,TRUE);		ALL	be	""
+-msse2	toggle(&mmx,TRUE);toggle(&sse,TRUE);toggle(&sse2,TRUE);		ALL	be	""
 	"Enable SSE2 extensions"
 -mno-sse2	toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	be	""
 	"Disable SSE2/SSE3 extensions"

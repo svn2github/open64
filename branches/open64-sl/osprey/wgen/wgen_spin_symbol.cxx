@@ -1315,13 +1315,19 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		    idx = MTYPE_To_TY(MTYPE_V16F8);
 		  else if (strncasecmp(p, "SI", 2) == 0) {
 		    if (num_elems == 2)
-		      idx = MTYPE_To_TY(MTYPE_V8I4);
+		      if ( Is_Target_64bit())
+			idx = MTYPE_To_TY(MTYPE_V8I4);
+		      else
+			idx = MTYPE_To_TY(MTYPE_M8I4);
 		    else if (num_elems == 4)
 		      idx = MTYPE_To_TY(MTYPE_V16I4);
 		  }
 		  else if (strncasecmp(p, "SF", 2) == 0) {
 		    if (num_elems == 2)
-		      idx = MTYPE_To_TY(MTYPE_V8F4);
+		      if ( Is_Target_64bit())
+			idx = MTYPE_To_TY(MTYPE_V8F4);
+		      else
+			idx = MTYPE_To_TY(MTYPE_M8F4);
 		    else if (num_elems == 4)
 		      idx = MTYPE_To_TY(MTYPE_V16F4);
 		  }
@@ -1490,8 +1496,10 @@ Create_ST_For_Tree (gs_t decl_node)
              gs_decl_asmreg(decl_node) >= 0)) &&
            gs_decl_name(decl_node) != 0)
     name = (char *) gs_identifier_pointer (gs_decl_name (decl_node));
-  else if (gs_decl_name (decl_node) && gs_decl_assembler_name (decl_node))
+  else if (gs_decl_assembler_name (decl_node))
     name = (char *) gs_identifier_pointer (gs_decl_assembler_name (decl_node));
+  else if (gs_decl_name (decl_node))
+    name = (char *) gs_identifier_pointer (gs_decl_name (decl_node));
   else {
     sprintf(tempname, "anon%d", ++anon_count);
     name = tempname;

@@ -372,11 +372,23 @@ add_targ_options ( string_list_t *args )
   }
 
 #ifdef TARG_X8664
-  // SSE2, SSE3, 3DNow, SSE4a
-  if (sse2 == TRUE)
+  // MMX, SSE, SSE2, SSE3, 3DNow, SSE4a
+  if (sse2 == TRUE) {
     add_string(args, "-TARG:sse2=on");
-  else
+    mmx = TRUE;
+    sse = TRUE;
+  } else
     add_string(args, "-TARG:sse2=off");
+
+  if (mmx == TRUE)
+    add_string(args, "-TARG:mmx=on");
+  else
+    add_string(args, "-TARG:mmx=off");
+
+  if (sse == TRUE)
+    add_string(args, "-TARG:sse=on");
+  else
+    add_string(args, "-TARG:sse=off");
 
   if (sse3 == TRUE)
     add_string(args, "-TARG:sse3=on");
@@ -878,6 +890,14 @@ add_file_args (string_list_t *args, phases_t index)
 		
 		// Call gcc preprocessor using "gcc -E ...".
 		add_string(args, "-E");
+		if (sse2 == TRUE)
+			add_string(args, "-msse2");
+		else if(sse == TRUE)
+			add_string(args, "-msse");
+		else if(mmx == TRUE)
+			add_string(args, "-mmmx");
+                
+
 #if defined(TARG_SL)
                 char *comp_target_root = getenv("COMP_TARGET_ROOT");
                 char *root_prefix;
@@ -1231,6 +1251,10 @@ add_file_args (string_list_t *args, phases_t index)
 	case P_cplus_gfe:
 		if (sse2 == TRUE)
 			add_string(args, "-msse2");
+		else if(sse == TRUE)
+			add_string(args, "-msse");
+		else if(mmx == TRUE)
+			add_string(args, "-mmmx");
 		// add -msse3 later when fe support is available
 
 		if (show_but_not_run)

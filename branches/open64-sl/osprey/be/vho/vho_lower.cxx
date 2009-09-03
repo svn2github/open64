@@ -65,6 +65,8 @@
 #include "prompf.h" 
 #include "wb_f90_lower.h"
 #include "wn_lower.h"
+#include "be_util.h"            // For Current_PU_Count
+#include "glob.h"               // For Show_Progress
 #ifdef KEY
 #include "w2op.h"		// For OPCODE_Can_Be_Spculative
 #endif
@@ -8328,6 +8330,76 @@ VHO_Lower ( WN * wn )
 
 #ifndef FRONT_END
 
+class VHO_Switches_Mgr {
+private:
+  BOOL Struct_Opt;
+  BOOL Switch_Opt;
+  BOOL Cselect_Opt;
+  BOOL Iload_Opt;
+  BOOL Istore_Opt;
+  BOOL Call_Opt;
+public:
+  void Init();
+  void Disable();
+  void Enable();
+}; /* class VHO_Switches_Mgr */
+
+void VHO_Switches_Mgr::Init()
+{
+  Struct_Opt  = VHO_Struct_Opt;
+  Switch_Opt  = VHO_Switch_Opt;
+  Cselect_Opt = VHO_Cselect_Opt;
+  Iload_Opt   = VHO_Iload_Opt;
+  Istore_Opt  = VHO_Istore_Opt;
+  Call_Opt    = VHO_Call_Opt;
+} /* VHO_Switches_Mgr::Init */
+
+void VHO_Switches_Mgr::Disable()
+{
+  Struct_Opt  = FALSE;  
+  Switch_Opt  = FALSE;  
+  Cselect_Opt = FALSE;  
+  Iload_Opt   = FALSE;  
+  Istore_Opt  = FALSE;  
+  Call_Opt    = FALSE;  
+} /* VHO_Switches_Mgr::Disable */
+
+void VHO_Switches_Mgr::Enable()
+{
+  VHO_Struct_Opt  = Struct_Opt;
+  VHO_Switch_Opt  = Switch_Opt;
+  VHO_Cselect_Opt = Cselect_Opt;
+  VHO_Iload_Opt   = Iload_Opt;
+  VHO_Istore_Opt  = Istore_Opt;
+  VHO_Call_Opt    = Call_Opt;
+} /* VHO_Switches_Mgr::Enable */
+
+static VHO_Switches_Mgr vho_switches_mgr;
+
+void Disable_VHO_Opt()
+{
+  vho_switches_mgr.Disable();
+} /* Disable_VHO_Opt */
+
+void Enable_VHO_Opt()
+{
+  vho_switches_mgr.Enable();
+} /* Enable_VHO_Opt */
+
+void Vho_Init()
+{
+  /* Save VHO flags */
+  vho_switches_mgr.Init();
+
+  /* Construct the skiplist from -VHO:skip_* options */
+  VHO_Skip_List = Build_Skiplist( VHO_Skip );
+} /* Vho_Init */
+
+void Vho_Fini()
+{
+} /* Vho_Fini */
+
+
 /* ============================================================================
  *
  * WN *VHO_Lower_Driver (PU_Info* pu_info, WN * wn )
@@ -8356,7 +8428,18 @@ WN * VHO_Lower_Driver (PU_Info* pu_info,
       wn = F90_Lower(pu_info, wn);
       WB_F90_Lower_Terminate();
    }
-   wn = VHO_Lower(wn);
+
+   if ( Query_Skiplist(VHO_Skip_List, Current_PU_Count()) ) {
+      if ( Show_Progress )
+        ErrMsg(EC_Skip_PU, " VHO", Current_PU_Count(), ST_name(PU_Info_proc_sym(pu_info)));
+
+      Disable_VHO_Opt();
+      wn = VHO_Lower(wn);
+      Enable_VHO_Opt();
+   }
+   else {
+     wn = VHO_Lower(wn);
+   }
 
    if (Get_Trace ( TKIND_IR, TP_VHO_LOWER )) {
 
