@@ -248,6 +248,8 @@ void MHD::Initialize()
               L[1].Effective_Size, L[1].Line_Size);
 #endif
 
+  }else if (Is_Target_Sl5()) {
+    //TODO
   }
 #endif 
   else {

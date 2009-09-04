@@ -436,13 +436,13 @@ Expand_Composed_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT varian
         Build_OP(TOP_lbu,  result, base, disp, ops);		 
 
         Build_OP(TOP_lbu,  load1, newbase, Gen_Literal_TN(1, 4), ops);	
-        Build_OP(TOP_depb, result, result, load1, Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), ops);
+        Build_OP(TOP_depb, result, load1, Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), result, ops);
 
         Build_OP(TOP_lbu,  load2, newbase, Gen_Literal_TN(2, 4), ops);		 
-        Build_OP(TOP_depb, result, result, load2, Gen_Literal_TN(23, 4), Gen_Literal_TN(8, 4), ops);     
+        Build_OP(TOP_depb, result, load2, Gen_Literal_TN(23, 4), Gen_Literal_TN(8, 4), result, ops);     
 
         Build_OP(TOP_lbu,  load3, newbase, Gen_Literal_TN(3, 4), ops);		 
-        Build_OP(TOP_depb, result, result, load3, Gen_Literal_TN(31, 4), Gen_Literal_TN(8, 4), ops);
+        Build_OP(TOP_depb, result, load3, Gen_Literal_TN(31, 4), Gen_Literal_TN(8, 4), result, ops);
 
         result = Get_TN_Pair(result);
         FmtAssert(result != NULL, ("result tn in Expand_Composed_Load not setup\n"));
@@ -450,13 +450,13 @@ Expand_Composed_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT varian
         Build_OP(TOP_lbu,  result, newbase, Gen_Literal_TN(4, 4), ops);		 
 
         Build_OP(TOP_lbu,  load1, newbase, Gen_Literal_TN(5, 4), ops);	
-        Build_OP(TOP_depb, result, result, load1, Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), ops);
+        Build_OP(TOP_depb, result, load1, Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), result, ops);
 
         Build_OP(TOP_lbu,  load2, newbase, Gen_Literal_TN(6, 4), ops);		 
-        Build_OP(TOP_depb, result, result, load2, Gen_Literal_TN(23, 4), Gen_Literal_TN(8, 4), ops);     
+        Build_OP(TOP_depb, result, load2, Gen_Literal_TN(23, 4), Gen_Literal_TN(8, 4), result, ops);     
 
         Build_OP(TOP_lbu,  load3, newbase, Gen_Literal_TN(7, 4), ops);		 
-        Build_OP(TOP_depb, result, result, load3, Gen_Literal_TN(31, 4), Gen_Literal_TN(8, 4), ops);
+        Build_OP(TOP_depb, result, load3, Gen_Literal_TN(31, 4), Gen_Literal_TN(8, 4), result, ops);
         return;
       case MTYPE_I4:
       case MTYPE_U4:
@@ -464,13 +464,13 @@ Expand_Composed_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT varian
 
         Expand_Add (newbase, base, disp, MTYPE_I4, ops);	
         Build_OP (TOP_lbu, load1, newbase, Gen_Literal_TN(1, 4), ops);	
-        Build_OP(TOP_depb, result, result, load1,  Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), ops);
+        Build_OP(TOP_depb, result, load1,  Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), result, ops);
 
         Build_OP (TOP_lbu, load2, newbase, Gen_Literal_TN(2, 4), ops);		 
-        Build_OP(TOP_depb, result, result, load2,  Gen_Literal_TN(23, 4), Gen_Literal_TN(8, 4), ops);     
+        Build_OP(TOP_depb, result, load2,  Gen_Literal_TN(23, 4), Gen_Literal_TN(8, 4), result, ops);     
 
         Build_OP (TOP_lbu, load3, newbase, Gen_Literal_TN(3, 4), ops);		 
-        Build_OP(TOP_depb, result, result, load3,  Gen_Literal_TN(31, 4), Gen_Literal_TN(8, 4), ops);
+        Build_OP(TOP_depb, result, load3,  Gen_Literal_TN(31, 4), Gen_Literal_TN(8, 4), result, ops);
 
         //Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
         return;
@@ -480,7 +480,7 @@ Expand_Composed_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT varian
 
         Expand_Add (newbase, base, disp, MTYPE_I4, ops);	
         Build_OP (TOP_lbu, load1, newbase, Gen_Literal_TN(1, 4), ops);	
-        Build_OP(TOP_depb, result, result, load1,  Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), ops);	    
+        Build_OP(TOP_depb, result, load1,  Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), result, ops);	    
         return;
       default:
         FmtAssert (FALSE, ("Expand_Composed_Load: unexpected operand size\n"));
@@ -1085,8 +1085,8 @@ void Build_Depb_OP(TYPE_ID desc, TYPE_ID rtype, TN *tgt_tn, TN *src_tn,
     FmtAssert(pos == 31, ("Build_Extrb_OP: pos is out of range\n"));
     Expand_Copy(tgt_tn, src_tn, MTYPE_U4, ops);
   } else {
-    Build_OP(TOP_depb, tgt_tn, tgt_tn, src_tn, Gen_Literal_TN(pos, 4), 
-        Gen_Literal_TN(width, 4), ops);
+    Build_OP(TOP_depb, tgt_tn, src_tn, Gen_Literal_TN(pos, 4), 
+        Gen_Literal_TN(width, 4), tgt_tn, ops);
   }
 }
 
@@ -1286,7 +1286,7 @@ Exp_Deposit_Bits (TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_size,
           TN *temp_tn    = Build_TN_Like(src2_tn);          
           Build_OP(TOP_srl, temp_tn, src2_tn, Gen_Literal_TN(low_width, 4), ops);
 
-          Build_Depb_OP(desc, rtype, tgt_tn, temp_tn, high_pos, high_width, ops);
+          Build_Depb_OP(desc, rtype, tgt_high, temp_tn, high_pos, high_width, ops);
         }      
       } else {  // bit_offset > 32      
         // example: [33, 35(1,3)](33,3)        

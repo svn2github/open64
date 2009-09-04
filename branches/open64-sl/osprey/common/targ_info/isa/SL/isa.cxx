@@ -212,6 +212,7 @@ main ()
 	"addi",
 	"add.i",
 	"addu",
+	"smult",
 	"div",
 	"divu",
 	"mult",

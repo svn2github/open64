@@ -4251,7 +4251,7 @@ static void Break_Dependency( OP_LIST * moved_loads, BB* cand_bb )
     Is_True(OP_results(op) == 1, ("strange load Op with more than one results"));
   
     TN *result_tn = OP_result(op, 0);
-    TN* new_tn = Dup_TN( result_tn );
+    TN* new_tn = Dup_TN_Even_If_Dedicated( result_tn );
     Set_OP_result( op, 0, new_tn );
   
     /* add a move instruction just behind the load */
@@ -4993,7 +4993,7 @@ static void Reduce_Loop_Count( LOOP_DESCR *loop, BB *src_bb )
     // we may got mvtc $lp0, 0
     if( lp_val < 1 )
       return;
-    TN *new_tn = Dup_TN( tn );
+    TN *new_tn = Dup_TN_Even_If_Dedicated( tn );
     Set_TN_value( new_tn, lp_val - 1  );
     Set_OP_opnd( mvtc, 0, new_tn );
 
@@ -5005,7 +5005,7 @@ static void Reduce_Loop_Count( LOOP_DESCR *loop, BB *src_bb )
     Is_True( OP_code(mvtc) == TOP_mvtc, ("incorrect mvtc") );
 
     TN *opnd_tn = OP_opnd(mvtc, 0);
-    TN *new_tn = Dup_TN( opnd_tn );
+    TN *new_tn = Dup_TN_Even_If_Dedicated( opnd_tn );
     Set_OP_opnd( mvtc, 0, new_tn );
   
     /* add a add.i instruction just before the mvtc */

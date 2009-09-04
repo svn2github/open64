@@ -125,7 +125,8 @@ main()
 			 TOP_mthi, 0x000000ff,
 			 TOP_mtlo, 0x000000ff,
 #if defined(TARG_SL)	
-                         TOP_loop,      0x000000ff,
+			 TOP_smult,     0x000000ff,
+			 TOP_loop,      0x000000ff,
 			 TOP_mc_z_eq,   0x000000ff,
 			 TOP_mc_z_ne,   0x000000ff,
 			 TOP_mc_z_gt,   0x000000ff,

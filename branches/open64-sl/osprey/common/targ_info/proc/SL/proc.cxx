@@ -48,6 +48,7 @@ main ()
         "sl1_dsp",
         "sl2_mcore",
         "sl2_pcore",
+        "sl5",
 #else
         "r10000",
         "sb1",

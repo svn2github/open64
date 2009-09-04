@@ -47,6 +47,7 @@
 #include "defs.h"
 #include "config.h"
 #include "config_opt.h"
+#include "config_debug.h"
 #include "mempool.h"
 #include "wn.h"
 #include "wn_util.h"
@@ -5318,6 +5319,27 @@ vho_lower_asm_stmt (WN* wn, WN* block)
   return wn;
 } /* vho_lower_asm_stmt */
 
+#if defined(TARG_SL)
+void Add_function_before_return(WN *wn, WN* block) {
+  if (((WN_operator(wn) == OPR_RETURN) || (WN_operator(wn) == OPR_RETURN_VAL))
+    && (DEBUG_Stack_Check & STACK_FUNC_END_CHECK)) {
+    char * PU_name = ST_name(&St_Table[PU_Info_proc_sym(Current_PU_Info)]);
+    if ((strcmp(PU_name, "__stackcheck_end") != 0) && (strcmp(PU_name, "__stackcheck") != 0)) {
+      TY_IDX ty = Make_Function_Type(MTYPE_To_TY(MTYPE_V ));
+      ST *st = Gen_Intrinsic_Function(ty, "__stackcheck_end" );
+      Clear_PU_no_side_effects(Pu_Table[ST_pu(st)]);
+      Clear_PU_is_pure(Pu_Table[ST_pu(st)]);
+      Set_PU_no_delete(Pu_Table[ST_pu(st)]);
+      WN *wn_call = WN_Call(MTYPE_V, MTYPE_V, 0, st );
+      WN_Set_Call_Default_Flags(wn_call);
+      WN_Set_Linenum (wn_call, WN_Get_Linenum(wn));
+      WN_INSERT_BlockLast(block, wn_call);
+    }
+  }
+}
+#endif
+
+
 static WN *
 vho_lower_stmt ( WN * wn, WN * block )
 {
@@ -5368,13 +5390,18 @@ vho_lower_stmt ( WN * wn, WN * block )
 #ifdef KEY
     case OPR_GOTO_OUTER_BLOCK:
 #endif
-
+      
       wn = vho_lower_return ( wn, block );
+#if defined(TARG_SL)
+      Add_function_before_return(wn, block);
+#endif
       break;
 
     case OPR_RETURN_VAL:
-
       wn = vho_lower_return_val ( wn, block );
+#if defined(TARG_SL)      
+      Add_function_before_return(wn, block);
+#endif
       break;
 
     case OPR_LABEL:

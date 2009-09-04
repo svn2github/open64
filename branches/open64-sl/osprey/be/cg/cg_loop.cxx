@@ -6604,6 +6604,52 @@ void CG_LOOP_Statistics(LOOP_DESCR *loop)
 static BOOL enable_zdl_with_branch = FALSE;
 static int zdl_seq_no = 0;
 
+static void Dead_Code_Elimination_Within_BB(TN* probably_not_liveout_tn)
+{
+  for (BB *bb = REGION_First_BB; bb != NULL; bb = BB_next(bb))
+  {
+     OP* next_op;
+
+     if (GRA_LIVE_TN_Live_Outof_BB(probably_not_liveout_tn, bb))
+ 	continue;
+     for (OP* op = BB_first_op(bb); op!=NULL; op = next_op)
+     {
+       next_op = OP_next(op);
+       //check every local TN in BB
+       bool can_be_removed = TRUE;
+       if (OP_results(op)==1)
+       {
+ 	   TN* result = OP_result(op,0);
+	   if (!TN_is_register(result)) continue;
+       }
+       if (OP_results(op)== 1 && TNs_Are_Equivalent(probably_not_liveout_tn,OP_result(op,0)))
+       {
+          for (OP* op_after = OP_next(op); op_after != NULL; op_after = OP_next(op_after))
+          {
+              for (int i = 0; i < OP_opnds(op_after); i++)
+              {
+                 if (TNs_Are_Equivalent(probably_not_liveout_tn, OP_opnd(op_after, i)))
+                   can_be_removed = FALSE;
+              }
+              if (can_be_removed == FALSE)
+	        break;
+          }
+	  if (can_be_removed == TRUE)
+	  {
+  	     if (Get_Trace(TP_CGLOOP,0x1))
+	     {
+	        fprintf(TFile,"--------------Dead_Code_Elimination_Within-----------\n");
+	        Print_OP(op);
+		fprintf(TFile,"----------------------------------------\n\n");
+	     }
+	  }
+          if (can_be_removed == TRUE)
+              BB_Remove_Op( bb, op );
+       }
+    }
+  } 
+}
+
 /* This is procedure to generate detail code for zdl
  * It is called by CG_LOOP_Zdl_Ident_Rec 
  */
@@ -6701,7 +6747,27 @@ CG_LOOP_Zdl_Internal_Gen_Code( CG_LOOP& cl)
 
   /* remove the old branch op*/
   if (br_op)
+  {
+    MEM_POOL TN_mempool;
+    MEM_POOL_Initialize(&TN_mempool, "branch_tn_probably_not_liveout", TRUE);
+    int opnd_num = OP_opnds(br_op);
+    TN **use_value = CXX_NEW_ARRAY(TN*, opnd_num, &TN_mempool);
+    //first,  copy TNs in branch-op
+    for (int i = 0; i < opnd_num; i++)
+      use_value[i] = OP_opnd(br_op, i);
+    //second, remove branch-op
     BB_Remove_Op( tail, br_op );
+    //bug fix 509
+    //third, re-calculate live-out
+    GRA_LIVE_Init(NULL);
+    //fourth, delete branch-op not live-out TN in previous BB.
+    for (int i = 0; i < opnd_num; i++)
+    {
+      if (TN_is_register(use_value[i]))
+        Dead_Code_Elimination_Within_BB(use_value[i]);
+    }
+    MEM_POOL_Delete(&TN_mempool);
+  }
 
   /* Set the tag of the last op in the tail BB of loop */
 
@@ -6936,7 +7002,10 @@ CG_LOOP_ZDL_Remove_Idx_GTN( LOOP_DESCR * loop, CG_LOOP &cl, OP* br_op )
       }
     }
   }
-  
+  //bug fix 509
+  GRA_LIVE_Init(NULL);
+  Dead_Code_Elimination_Within_BB(ind_var_gtn); 
+ 
   return;
 }
 #endif

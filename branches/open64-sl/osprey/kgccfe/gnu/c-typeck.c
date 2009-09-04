@@ -7164,6 +7164,12 @@ c_expand_return (retval)
     }
   else
     {
+#ifdef TARG_SL
+      /* Verify sequence points for return expr, Warning for undefined behaviors */
+      extern void verify_sequence_points (tree expr);
+      if (warn_sequence_point)
+        verify_sequence_points (retval);
+#endif
       tree t = convert_for_assignment (valtype, retval, _("return"),
 				       NULL_TREE, NULL_TREE, 0);
       tree res = DECL_RESULT (current_function_decl);
@@ -7283,6 +7289,12 @@ c_start_case (exp)
 	      && (type == long_integer_type_node
 		  || type == long_unsigned_type_node))
 	    warning ("`long' switch expression not converted to `int' in ISO C");
+#ifdef TARG_SL
+	  /* Verify sequence points for cond expr, Warning for undefined behaviors */
+	  extern void verify_sequence_points (tree expr);
+	  if (warn_sequence_point)
+	    verify_sequence_points (exp);
+#endif
 
 	  exp = default_conversion (exp);
 	  type = TREE_TYPE (exp);

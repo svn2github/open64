@@ -80,9 +80,9 @@ TOOL_SUBDIRS := \
 	gccfe \
 	g++fe  \
 	wgen	\
-	wgen_4_2_0   
-#	libinstr
-#	lno \
+	wgen_4_2_0 \
+	libinstr \
+	lno 
 #	gccfe \
 #       g++fe \
 #	crayf90 

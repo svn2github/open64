@@ -576,9 +576,9 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
        Is_True(vsize >= 32, 
 	       ("Unexpected size of result type in EXP_OCCURS::Get_temp_cr"));
     }
-// ia32,x86,ia64,nvisa all don't want to do this cause it can cause 
+// ia32,x86,ia64,nvisa,simplnano all don't want to do this cause it can cause 
 // inconsistent sizes for the same symbol
-#if defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_NVISA)
+#if defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_NVISA) || defined(TARG_SL)
 #if 0 // this can cause inconsistent sizes for the same symbol
     if (vsize <= 32 && dtyp == MTYPE_U8 && (signess & SIGN_0_EXTD)) 
       dtyp = MTYPE_U4;

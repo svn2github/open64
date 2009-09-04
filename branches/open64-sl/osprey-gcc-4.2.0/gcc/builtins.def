@@ -726,6 +726,16 @@ DEF_EXT_LIB_BUILTIN    (BUILT_IN_VPRINTF_CHK, "__vprintf_chk", BT_FN_INT_INT_CON
 
 #ifdef TARG_SL
 /* SL intrinsic */
+/* following convert functions are used for float and double constant */
+DEF_LIB_BUILTIN(BUILT_IN_CVT64_LOW, "__builtin_intrinsic_cvt64_low", BT_FN_INT_DOUBLE, ATTR_NOTHROW_LIST)
+DEF_LIB_BUILTIN(BUILT_IN_CVT64_HIGH, "__builtin_intrinsic_cvt64_high", BT_FN_INT_DOUBLE, ATTR_NOTHROW_LIST)
+DEF_LIB_BUILTIN(BUILT_IN_CVT32, "__builtin_intrinsic_cvt32", BT_FN_INT_FLOAT, ATTR_NOTHROW_LIST)
+                
+/* following convert functions are used for long long */
+DEF_LIB_BUILTIN(BUILT_IN_LONGLONG_CVT64_LOW, "__builtin_intrinsic_longlong_cvt64_low", BT_FN_INT_LONGLONG, ATTR_NOTHROW_LIST)
+DEF_LIB_BUILTIN(BUILT_IN_LONGLONG_CVT64_HIGH, "__builtin_intrinsic_longlong_cvt64_high", BT_FN_INT_LONGLONG, ATTR_NOTHROW_LIST)
+
+/* following function is c3 intrnsic */
 DEF_LIB_BUILTIN(BUILT_IN_C3AADDA, "Sl1_aadda", BT_FN_INT_INT_INT_INT_INT_INT, ATTR_NOTHROW_LIST)
 DEF_LIB_BUILTIN(BUILT_IN_C3NEGA,  "Sl1_nega", BT_FN_INT_INT_INT_INT_INT, ATTR_NOTHROW_LIST)
 DEF_LIB_BUILTIN(BUILT_IN_C3BITR,  "Sl1_bitr", BT_FN_INT_INT_INT_INT, ATTR_NOTHROW_LIST)

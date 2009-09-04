@@ -1436,6 +1436,38 @@ static BOOL Same_store_target(WN *wn1, WN *wn2)
   return Same_addr_expr(WN_kid1(wn1), WN_kid1(wn2));
 }
 
+#ifdef TARG_SL
+// ====================================================================
+// check if mode_wn is part of wn, and the parent of part is ILOAD.
+// check following case for if_conversion:
+//    if(p)
+//      res = p->a
+//    else
+//      res = 0;
+// ====================================================================
+static BOOL Is_Sub_ILOAD_Tree(WN *wn, WN *parent_wn, WN * mode_wn)
+{
+  if (parent_wn 
+   && ((WN_operator(parent_wn) == OPR_ILOAD) || (WN_operator(parent_wn) == OPR_ILOADX)
+    || (WN_operator(parent_wn) == OPR_MLOAD))
+   && (WN_Simp_Compare_Trees(wn, mode_wn) == 0)) 
+    return TRUE;
+
+  INT kids_cnt = WN_kid_count(wn);
+  if (kids_cnt == 0) {
+    return FALSE;
+  } else { 
+    int i;
+    for(i = 0; i< kids_cnt; i++) {
+      if (Is_Sub_ILOAD_Tree(WN_kid(wn, i), wn, mode_wn)) {
+        return TRUE;
+      }      
+    }
+    return FALSE;
+  }  
+}
+#endif
+
 BOOL CFG::Screen_cand(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then)
 {
   WN *if_test = WN_if_test(wn);
@@ -1751,6 +1783,25 @@ CFG::Conv_to_select(WN* wn)
       (lanswer + ranswer) <= WOPT_Enable_If_Conv_Limit
 #endif
        ) {
+#ifdef TARG_SL
+
+      //
+      // For such case,
+      //    if(p)
+      //      res = p->a
+      //    else
+      //      res = 0;
+      // if_conversion is skipped as accessing ZERO-address is illegal for SL. 
+      //
+      WN *cond_kid0 = WN_kid0(if_test);
+      WN *cond_kid1 = WN_kid1(if_test);
+      OPERATOR opr = WN_operator(if_test);
+
+      if ((opr == OPR_EQ || opr == OPR_NE || opr == OPR_GE || opr == OPR_GT || opr == OPR_LE || opr == OPR_LT)  
+       && ((WN_operator(cond_kid1) == OPR_INTCONST) && (WN_const_val(cond_kid1) == 0))
+       && (Is_Sub_ILOAD_Tree(then_expr, NULL, cond_kid0) || Is_Sub_ILOAD_Tree(else_expr, NULL, cond_kid0))) 
+         return NULL;
+#endif
       // Generate a SELECT expression
       WN *sel = WN_Select( Mtype_comparison(dsctyp),
 			   WN_if_test(wn), then_expr, else_expr );
@@ -1946,18 +1997,23 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
 #endif
        ) {
 
-#ifdef TARG_SL      
+#ifdef TARG_SL 
+      //
+      // For such case,
+      //    if(p)
+      //      res = p->a
+      //    else
+      //      res = 0;
+      // if_conversion is skipped as accessing ZERO-address is illegal for SL. 
+      //
+       
       WN *cond_kid0 = WN_kid0(if_test);
       WN *cond_kid1 = WN_kid1(if_test);
       OPERATOR opr = WN_operator(if_test);
 
-      WN *then_kid0 = WN_kid0(then_expr);      
-      WN *else_kid0 = WN_kid0(else_expr);
-
       if ((opr == OPR_EQ || opr == OPR_NE || opr == OPR_GE || opr == OPR_GT || opr == OPR_LE || opr == OPR_LT)  
        && ((WN_operator(cond_kid1) == OPR_INTCONST) && (WN_const_val(cond_kid1) == 0))
-       && ((WN_operator(then_expr) == OPR_ILOAD) && (WN_Simp_Compare_Trees(cond_kid0, then_kid0) == 0) 
-        || ((WN_operator(else_expr) == OPR_ILOAD) && (WN_Simp_Compare_Trees(cond_kid0, else_kid0)==0)))) 
+       && (Is_Sub_ILOAD_Tree(then_expr, NULL, cond_kid0) || Is_Sub_ILOAD_Tree(else_expr, NULL, cond_kid0))) 
        goto skip_if_conversion;
 #endif
       // Generate a SELECT expression

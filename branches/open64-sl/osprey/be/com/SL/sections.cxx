@@ -188,7 +188,7 @@ Corresponding_Short_Section (SECTION_IDX sec)
 {
    switch ( sec ) {
    case _SEC_DATA:      return _SEC_SDATA;
-   case _SEC_RDATA:     return _SEC_RDATA;
+   case _SEC_RDATA:     return _SEC_SRDATA;
    case _SEC_BSS:       return _SEC_SBSS;
    default:		return sec;
    }

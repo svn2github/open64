@@ -86,6 +86,9 @@ void Initialize_Targ_Info(void)
   case TARGET_sl2_mcore:
     proc = PROCESSOR_sl2_mcore;
     break;
+  case TARGET_sl5:
+    proc = PROCESSOR_sl5;
+    break;
 #else
 
   case TARGET_R10K:

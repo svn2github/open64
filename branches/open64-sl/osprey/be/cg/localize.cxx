@@ -1239,7 +1239,7 @@ Localize_or_Replace_Dedicated_TNs(void)
 
     FOR_ALL_BB_OPs (bb, op) {
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
       /* Do not replace dedicated tn inside an inline asm. (bug#3067)
        */
       if( OP_code(op) == TOP_asm ){

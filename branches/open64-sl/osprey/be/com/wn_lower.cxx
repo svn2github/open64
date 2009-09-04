@@ -4071,8 +4071,10 @@ lower_field_id (WN* tree)
   Is_True (! fld.Is_Null (), ("invalid bit-field ID for %s",
 			      OPERATOR_name(opr)));
 
-  WN_set_ty (tree, (is_ptr_type ? Make_Pointer_Type (FLD_type (fld)) :
-		    FLD_type (fld)));
+  // keep volatile attribute if symbol of tree is volatile
+  TY_IDX fld_idx = TY_is_volatile(ty_idx) ? (FLD_type (fld) | TY_VOLATILE) : FLD_type (fld);
+  WN_set_ty (tree, (is_ptr_type ? Make_Pointer_Type (fld_idx) : fld_idx));
+   
   WN_set_field_id (tree, 0);
   return;
 } // lower_field_id
@@ -13642,9 +13644,9 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
   }
 
 #ifdef TARG_SL
-  if (Action(LOWER_RETURN_VAL) && (WN_operator(tree) == OPR_FUNC_ENTRY) && (DEBUG_Stack_Check & STACK_FUNC_CHECK)) {
+  if (Action(LOWER_RETURN_VAL) && (WN_operator(tree) == OPR_FUNC_ENTRY) && (DEBUG_Stack_Check & STACK_FUNC_START_CHECK)) {
     char * PU_name = ST_name(&St_Table[PU_Info_proc_sym(Current_PU_Info)]);
-    if (strcmp(PU_name, "__stackcheck") != 0) {
+    if ((strcmp(PU_name, "__stackcheck") != 0) && (strcmp(PU_name, "__stackcheck_end") != 0)) {
       TY_IDX ty = Make_Function_Type(MTYPE_To_TY(MTYPE_V ));
       ST *st = Gen_Intrinsic_Function(ty, "__stackcheck" );
       Clear_PU_no_side_effects(Pu_Table[ST_pu(st)]);

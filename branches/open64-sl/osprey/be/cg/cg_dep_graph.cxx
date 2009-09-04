@@ -2142,6 +2142,8 @@ static SAME_ADDR_RESULT CG_DEP_Address_Analyze(OP *pred_op, OP *succ_op)
 #if defined (TARG_SL)
   if (CG_ignore_mem_alias)
     return DONT_KNOW;
+  if(OP_sl_special_ldst(pred_op) || OP_sl_special_ldst(succ_op))
+    return DONT_KNOW;
 #endif
   
 #ifndef TARG_X8664
@@ -3802,7 +3804,13 @@ void add_mem_arcs_from(UINT16 op_idx)
     }
 
     if (get_mem_dep(op, succ, &definite, cyclic ? &omega : NULL)) {
-
+#ifdef TARG_SL
+        // insert nop when c3 mem op points to same location of normal mem op in same BB
+        if (!cyclic && (Is_Target_Sl1_pcore() || Is_Target_Sl1_dsp()) &&
+            (OP_bb(op) == OP_bb(succ))) {
+          CGTARG_Mem_AR_Dep(op, succ, kind);
+        }
+#endif
       // For OOO machine (eg. T5), non-definite memory dependences can be 
       // relaxed to edges with zero latency. The belief is that this can 
       // help avoid creating false dependences with biased critical info. 

@@ -2619,11 +2619,9 @@ WFE_Alloca_ST (tree decl)
   Set_ST_is_temp_var (alloca_st);
   Set_ST_pt_to_unique_mem (alloca_st);
   Set_ST_base_idx (st, ST_st_idx (alloca_st));
-  WN *swn = WFE_Expand_Expr (TYPE_SIZE(TREE_TYPE(decl)));
-#ifdef KEY  // TYPE_SIZE is size of array in bits.  Convert to bytes.  Bug 6887.
-  TYPE_ID mtype = WN_rtype(swn);
-  swn = WN_Div(mtype, swn, WN_Intconst(mtype, BITSPERBYTE));
-#endif
+
+  WN *swn = WFE_Expand_Expr (TYPE_SIZE_UNIT(TREE_TYPE(decl)));
+
   WN *wn  = WN_CreateAlloca (swn);
   wn = WN_Stid (Pointer_Mtype, 0, alloca_st, ST_type (alloca_st), wn);
   WFE_Stmt_Append (wn, Get_Srcpos());

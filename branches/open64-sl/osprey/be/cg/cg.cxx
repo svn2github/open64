@@ -1422,6 +1422,7 @@ CG_Generate_Code(
   }
   Check_for_Dump_ALL ( TP_CGEXP, NULL, "Pre LIS" );
 
+#if 0 /* EBO is turn on*/
   /* for now we don't turn on ebo, it causes that there are lots of 
    * jump to jump not converted to direct jump implemented in 
    * CFLOW_Optimize in EBO_Post_Process_Region so we call 
@@ -1437,6 +1438,7 @@ CG_Generate_Code(
   }
 
   Check_for_Dump_ALL ( TP_CGEXP, NULL, "after Sched" );
+#endif
 #else
   GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
   GRA_LIVE_Rename_TNs();

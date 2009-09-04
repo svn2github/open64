@@ -132,6 +132,7 @@ typedef enum {
   TARGET_sl1_dsp,
   TARGET_sl2_pcore,
   TARGET_sl2_mcore,
+  TARGET_sl5,
 } TARGET_PROCESSOR;
 #define Is_Target_Sb1() (Target == TARGET_sb1)
 #define Is_Target_R10K() (Target == TARGET_R10K)
@@ -140,6 +141,7 @@ typedef enum {
 #define Is_Target_Sl1_dsp() (Target == TARGET_sl1_dsp)
 #define Is_Target_Sl2_pcore() (Target == TARGET_sl2_pcore)
 #define Is_Target_Sl2_mcore() (Target == TARGET_sl2_mcore)
+#define Is_Target_Sl5() (Target == TARGET_sl5)
 #endif
 #define Is_Target_64bit() (Target_ABI == ABI_N64)
 #define Is_Target_Opteron() (0)

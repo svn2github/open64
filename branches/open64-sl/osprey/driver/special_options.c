@@ -369,7 +369,11 @@ add_special_options (void)
 			toggle(&gnum,8);
 		}
 		sprintf(buf, "%d", gnum);
+#ifdef TARG_SL
+		flag = add_string_option(O_G8, buf);
+#else
 		flag = add_string_option(O_G__, buf);
+#endif
 		prepend_option_seen(flag);
 	}
 

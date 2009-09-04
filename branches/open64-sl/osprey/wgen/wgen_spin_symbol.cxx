@@ -594,8 +594,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		if (gs_tree_code(gs_type_size(gs_tree_type(type_tree))) == GS_INTEGER_CST) {
 			Set_ARB_const_stride (arb);
 			Set_ARB_stride_val (arb, 
-				gs_get_integer_value (gs_type_size(gs_tree_type(type_tree))) 
-				/ BITSPERBYTE);
+				gs_get_integer_value (gs_type_size_unit(gs_tree_type(type_tree))));
 		}
 #ifdef KEY /* bug 8346 */
 		else if (!expanding_function_definition &&
@@ -609,7 +608,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 #endif
 		else {
 			WN *swn;
-			swn = WGEN_Expand_Expr (gs_type_size(gs_tree_type(type_tree)));
+			swn = WGEN_Expand_Expr (gs_type_size_unit(gs_tree_type(type_tree)));
 			if (WN_opcode (swn) == OPC_U4I4CVT ||
 			    WN_opcode (swn) == OPC_U8I8CVT) {
 				swn = WN_kid0 (swn);
@@ -620,9 +619,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			// and use LDID of that stored address as swn.
 			// Copied from Wfe_Save_Expr in wfe_expr.cxx
 			if (WN_operator (swn) != OPR_LDID) {
-			  TY_IDX    ty_idx  = 
-			    Get_TY (gs_tree_type (type_size));
-			  TYPE_ID   mtype   = TY_mtype (ty_idx);
+
+			  TYPE_ID   mtype   = WN_rtype(swn);
+			  TY_IDX    ty_idx  = MTYPE_To_TY(mtype);
 			  ST       *st;
 			  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
 #ifdef FE_GNU_4_2_0
@@ -687,7 +686,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			TY_IDX ty_idx;
 			WN *wn;
 			if (WN_operator (uwn) != OPR_LDID) {
-				ty_idx = Get_TY (gs_tree_type (gs_type_max_value (gs_type_domain (type_tree)) ) );
+				ty_idx  = MTYPE_To_TY(WN_rtype(uwn));
 				st = Gen_Temp_Symbol (ty_idx, "__vla_bound");
 #ifdef FE_GNU_4_2_0
 			  	WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
@@ -725,7 +724,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 #endif
 		   {
 			WN *swn, *wn;
-			swn = WGEN_Expand_Expr (type_size);
+			swn = WGEN_Expand_Expr (gs_type_size_unit(type_tree));
 			if (TY_size(TY_etype(ty))) {
 				if (WN_opcode (swn) == OPC_U4I4CVT ||
 				    WN_opcode (swn) == OPC_U8I8CVT) {
@@ -737,9 +736,8 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 				// and use LDID of that stored address as swn.
 				// Copied from Wfe_Save_Expr in wfe_expr.cxx
 				if (WN_operator (swn) != OPR_LDID) {
-				  TY_IDX    ty_idx  = 
-				    Get_TY (gs_tree_type (type_size));
-				  TYPE_ID   mtype   = TY_mtype (ty_idx);
+				  TYPE_ID   mtype   = WN_rtype(swn);
+				  TY_IDX    ty_idx  = MTYPE_To_TY(mtype);
 				  ST       *st;
 				  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
 #ifdef FE_GNU_4_2_0
@@ -756,7 +754,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 				ST *st = WN_st (swn);
 				TY_IDX ty_idx = ST_type (st);
 				TYPE_ID mtype = TY_mtype (ty_idx);
-				swn = WN_Div (mtype, swn, WN_Intconst (mtype, BITSPERBYTE));
+
 				wn = WN_Stid (mtype, 0, st, ty_idx, swn);
 				WGEN_Stmt_Append (wn, Get_Srcpos());
 			}

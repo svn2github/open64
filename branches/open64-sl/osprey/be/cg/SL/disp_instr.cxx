@@ -1,4 +1,38 @@
 /*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+
+  This program is free software; you can redistribute it and/or modify it
+  under the terms of version 2 of the GNU General Public License as
+  published by the Free Software Foundation.
+
+  This program is distributed in the hope that it would be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+
+  Further, this software is distributed without any warranty that it is
+  free of the rightful claim of any third person regarding infringement 
+  or the like.  Any license provided herein, whether implied or 
+  otherwise, applies only to this software file.  Patent licenses, if 
+  any, provided herein do not apply to combinations of this program with 
+  other software, or any other product whatsoever.  
+
+  You should have received a copy of the GNU General Public License along
+  with this program; if not, write the Free Software Foundation, Inc., 59
+  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+
+  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+  Mountain View, CA 94043, or:
+
+  http://www.sgi.com
+
+  For further information regarding this notice, see:
+
+  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+
+*/
+
+/*
  * Module: disp_instr.cxx
  *
  * Description:
@@ -901,6 +935,23 @@ void SL1_patch() {
             OP *nop = Mk_OP(TOP_nop);
             OPS_Insert_Op_Before(&(bb->ops), op, nop);
           }
+        }
+      }
+    }
+
+    // Insert nop if bb's entry has c3_load or c3_store instruction to make sure
+    // the correctness if there is a store instruction in the prev-BB.
+    if (CG_enbale_C3_AR_dependence_workaround) {
+      INT num_nop = nops;
+      for (op = BB_first_op(bb); (op != NULL) && (num_nop >= 0); op = OP_next(op)) {
+        if (OP_c3_load(op) || OP_c3_store(op)) {
+          for (UINT i=0; i<num_nop; i++) {
+            OP *op1 = Mk_OP(TOP_nop);
+            BB_Insert_Op_Before(bb, op, op1);
+          }
+          break;
+        } else if (OP_code(op) != TOP_noop){
+          num_nop--;
         }
       }
     }

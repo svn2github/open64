@@ -454,10 +454,10 @@ main()
   Operand(0);
   Operand(1);
   Instruction_Print_Group(ropop,
-	  		  TOP_add,
+			  TOP_add,
 #if !defined(TARG_SL)
 			  TOP_addu,
-                          TOP_subu,
+			  TOP_subu,
 #endif
 			  TOP_sub,
 			  TOP_dadd,
@@ -1446,7 +1446,8 @@ main()
   Instruction_Print_Group(mc_abs,
    	                  TOP_mc_abs,
    	                  TOP_UNDEFINED);
-  /* mc.z, mc.zn mc.r*/
+
+  /* mc.z, mc.zn, mc.r */
   ISA_PRINT_TYPE slmc = ISA_Print_Type_Create("slmc", "%s %s,%s,%s, %s");
   Name();
   Result(0);
@@ -1455,7 +1456,7 @@ main()
   Operand(2);
 
   Instruction_Print_Group(slmc,
-		          TOP_mc_z_eq,
+		    TOP_mc_z_eq,
 			  TOP_mc_z_ne,
 			  TOP_mc_z_gt,
 			  TOP_mc_z_ge,
@@ -1473,7 +1474,7 @@ main()
 			  TOP_mc_zc_ge,
 			  TOP_mc_zc_lt,
 			  TOP_mc_zc_le,
-            		  TOP_mc_r_eq,
+			  TOP_mc_r_eq,
 			  TOP_mc_r_ne,
 			  TOP_mc_r_gt,
 			  TOP_mc_r_ge,
@@ -1498,12 +1499,24 @@ main()
   ISA_PRINT_TYPE deposit_bit = ISA_Print_Type_Create("deposit_bit", "%s %s,%s,%s,%s");
   Name();
   Result(0);
-  Operand(1); //0 is hidden operand, = result
-  Operand(2);
-  Operand(3);
+  Operand(0); 
+  Operand(1);
+  Operand(2); // 3 is hidden operand, = result
   Instruction_Print_Group(deposit_bit,
 			  TOP_depb,
 			  TOP_UNDEFINED);			  
+
+/* sl5-smult */
+  ISA_PRINT_TYPE sl5_smult = ISA_Print_Type_Create("sl5-smult", "%s %s,%s,%s, %s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(1);
+  Operand(2);
+
+  Instruction_Print_Group(slmc,
+			  TOP_smult,
+			  TOP_UNDEFINED);
 
 #endif
   ISA_Print_End();

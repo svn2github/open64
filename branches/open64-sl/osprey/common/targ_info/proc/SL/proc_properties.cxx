@@ -97,15 +97,16 @@ main()
   superscalar = PROC_Property_Create ("is_superscalar");
   Processor_Group (superscalar,
 #if defined(TARG_SL)
-                        PROCESSOR_sl2_pcore,
-                        PROCESSOR_sl2_mcore,
-                        PROCESSOR_sl1_pcore,
-                        PROCESSOR_sl1_dsp,
+      PROCESSOR_sl2_pcore,
+      PROCESSOR_sl2_mcore,
+      PROCESSOR_sl1_pcore,
+      PROCESSOR_sl1_dsp,
+      PROCESSOR_sl5,        
 #else
-	  		PROCESSOR_sb1,
-	  		PROCESSOR_r10000,
+      PROCESSOR_sb1,
+      PROCESSOR_r10000,
 #endif
-			PROCESSOR_UNDEFINED);
+      PROCESSOR_UNDEFINED);
 
   /* Does the target execute insts as sequence of bundles, or require 
    * bundle alignment? The info is used to align instructions to bundles, 

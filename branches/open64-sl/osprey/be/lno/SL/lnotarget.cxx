@@ -270,8 +270,17 @@ double
 LNOTARGET_Int_Mult_Res (TI_RES_COUNT* resource_count, BOOL eight_bytes)
 {
   char *op_name = NULL;
-  TI_RES_COUNT_Add_Op_Resources(resource_count, TOP_mult);
-  TI_RES_COUNT_Add_Op_Resources(resource_count, TOP_mflo);
+#ifdef TARG_SL
+  if (Is_Target_Sl5()) {
+    TI_RES_COUNT_Add_Op_Resources(resource_count, TOP_smult);
+  } 
+  else 
+#else
+  {
+    TI_RES_COUNT_Add_Op_Resources(resource_count, TOP_mult);
+    TI_RES_COUNT_Add_Op_Resources(resource_count, TOP_mflo);
+  }
+#endif
   return 2.0;
 }
 

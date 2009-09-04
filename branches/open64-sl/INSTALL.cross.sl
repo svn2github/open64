@@ -111,9 +111,9 @@ INSTALL_DRIVER () {
     [ ! -e ${BIN_DIR}/slcc ] && ln -sf driver ${BIN_DIR}/slcc
     [ ! -e ${BIN_DIR}/mipsf90 ] && ln -sf driver ${BIN_DIR}/mipsf90
     [ ! -e ${ROOT}/usr/lib/ldscripts ] && mkdir -p ${ROOT}/usr/lib/ldscripts
-    [ -d  osprey/targia32_sl1/ldscripts ] && cp -rf osprey/targia32_sl1/ldscripts/* ${ROOT}/usr/lib/ldscripts/
-#   [ ! -e ${ROOT}/usr/libsl2/ldscripts ] && mkdir -p ${ROOT}/usr/libsl2/ldscripts
-#   cp -rf osprey/ldscripts/sl2-h264* ${ROOT}/usr/libsl2/ldscripts/
+    cp -rf osprey/ldscripts/sl1* ${ROOT}/usr/lib/ldscripts/
+    [ ! -e ${ROOT}/usr/libsl5/ldscripts ] && mkdir -p ${ROOT}/usr/libsl5/ldscripts
+    cp -rf osprey/ldscripts/sl5* ${ROOT}/usr/libsl5/ldscripts/
 #   [ ! -e ${ROOT}/usr/libsl2/h264enc ] && mkdir -p ${ROOT}/usr/libsl2/h264enc
 #   cp -f osprey/h264enc/lut ${ROOT}/usr/libsl2/h264enc/
     return 0
@@ -320,6 +320,7 @@ INSTALL_MISC () {
     INSTALL_EXEC_SUB ${AREA}/targ_info/sl1_dsp.so ${PHASEPATH}/sl1_dsp.so
     INSTALL_EXEC_SUB ${AREA}/targ_info/sl2_pcore.so ${PHASEPATH}/sl2_pcore.so
     INSTALL_EXEC_SUB ${AREA}/targ_info/sl2_mcore.so ${PHASEPATH}/sl2_mcore.so
+    INSTALL_EXEC_SUB ${AREA}/targ_info/sl5.so ${PHASEPATH}/sl5.so
     [ "$BUILD_HOST" != "$TARG_HOST" ] && ln -s /data/share/sl1-1-toolchain//gcc-3.3.5-tools/bin ${ALT_BIN_DIR} 2>/dev/null
 
         # install some scripts

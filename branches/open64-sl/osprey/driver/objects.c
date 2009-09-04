@@ -211,8 +211,13 @@ find_crt_path (char *crtname)
 		
 		return crtname;
  	}
+
 	/* use default */
-	sprintf(buf, "%s/%s", get_phase_dir(P_startup), crtname);
+  if (use_sl5 == TRUE)
+    sprintf(buf, "%s/%s", get_phase_dir(P_sl5_startup), crtname);  
+  else    
+    sprintf(buf, "%s/%s", get_phase_dir(P_startup), crtname);
+    
 	return string_copy(buf);
 }
 

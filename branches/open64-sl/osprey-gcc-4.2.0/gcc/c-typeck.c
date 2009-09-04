@@ -7140,6 +7140,11 @@ c_start_case (tree exp)
 	    warning (OPT_Wtraditional, "%<long%> switch expression not "
 		     "converted to %<int%> in ISO C");
 
+#ifdef TARG_SL
+	    /* Verify sequence points for cond expr, Warning for undefined behaviors */
+	  if (warn_sequence_point)
+	    verify_sequence_points (exp);
+#endif
 	  exp = default_conversion (exp);
 	}
     }

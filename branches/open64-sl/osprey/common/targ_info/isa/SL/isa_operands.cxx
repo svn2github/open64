@@ -606,10 +606,11 @@ main()
                     TOP_c3_shla_i,
                     TOP_c3_shra_i,
                     TOP_UNDEFINED);
-  Result(0, accreg);
+  Result(0, accreg); // same res
   Operand(0, uimm3);
   Operand(1, uimm5);
   Operand(2, uimm1);
+  Operand(3, accreg);
     
   Instruction_Group("C3-subc",
                     TOP_c3_subc,
@@ -922,6 +923,14 @@ main()
   Operand(0, pfhint);
   Operand(1, int64, base);
   Operand(2, simm16, offset);
+
+  Instruction_Group("sl5-smult",
+		    TOP_smult,
+		    TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64, opnd1);
+  Operand(1, int64, opnd2);
+  Operand(2, simm16, opnd2);
 
   Instruction_Group("int mult/div",
 		    TOP_div,
@@ -1357,10 +1366,10 @@ main()
 		    TOP_depb,
 		    TOP_UNDEFINED);
   Result(0, int64);
-  Operand(0, int64, opnd1); //hidden operand, = result
-  Operand(1, int64, opnd2);
-  Operand(2, uimm5, pos);
-  Operand(3, uimm5, width);  
+  Operand(0, int64, opnd1);
+  Operand(1, uimm5, pos);
+  Operand(2, uimm5, width);  
+  Operand(3, int64, opnd2); //hidden operand, = result
 
 #endif // TARG_SL
 

@@ -56,6 +56,9 @@
 #ifdef TARG_X8664
 #include "config_opt.h"
 #endif
+#ifdef TARG_SL
+#include <cmplrs/rcodes.h>
+#endif
 #include "wn.h"
 #include "wn_util.h"
 #include "targ_sim.h"
@@ -582,7 +585,7 @@ static void WFE_Stmt_Append_Extend_Intrinsic(WN *wn, WN *master_variable, SRCPOS
    }
    
    TY_IDX  ti2 = WN_ty(master_variable);
-   TYPE_ID tm2 = TY_mtype(ti2);
+   TYPE_ID tm2 = WN_rtype(master_variable);
    master_variable = WN_CreateParm (Mtype_comparison (tm2), master_variable,
 					  ti2, WN_PARM_BY_VALUE);
    kid1s[0]= master_variable;
@@ -602,7 +605,7 @@ static void WFE_Stmt_Append_Extend_Intrinsic(WN *wn, WN *master_variable, SRCPOS
        continue;
      }
      TY_IDX  ti1 = WN_ty(op1);
-     TYPE_ID tm1 = TY_mtype(ti1);
+     TYPE_ID tm1 = WN_rtype(master_variable);
      op1 = WN_CreateParm (Mtype_comparison (tm1), op1,
 			  ti1, WN_PARM_BY_VALUE);
      kid1s[1]= op1;
@@ -1452,12 +1455,14 @@ static BOOL Same_Var( char* var_name, tree rhs )
         tempsame |= Same_Var( var_name, TREE_OPERAND(rhs,0) );
       } else
         return FALSE;
-    default:
-      if( TREE_OPERAND(rhs,0) )
-        tempsame |= Same_Var( var_name, TREE_OPERAND(rhs,0) );
-      if( TREE_OPERAND(rhs,1) )
-        tempsame |= Same_Var( var_name, TREE_OPERAND(rhs,1) );
       break;
+    default:
+      for (int i=0; i < TREE_CODE_LENGTH(TREE_CODE(rhs)); i++) {
+        if( TREE_OPERAND(rhs,i) )
+          tempsame |= Same_Var( var_name, TREE_OPERAND(rhs,i) );
+      }
+      break; 
+
   }
   /* I dont know how to get all the kids of a tree node,
    * but I use the common case : each node has only two kids
@@ -2004,57 +2009,15 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
        *   p++;
        * This is to make our compiler consistent with gcc. So far,
        * only POST(INC/DEC) differs from gcc.
-       *
-       * NOTE! here, we are already in the INDIRECT_REF node, so I
-       * only need to make sure : (1) the last whirl stmt is for 
-       * the POST(INC/DEC); (2) the r.h.s doesnt re-define the 
-       * pointer 'p', but how to make sure about this ? 
        */
       tree post_inc_dec = TREE_OPERAND(lhs, 0);
-      tree var_node = TREE_OPERAND(post_inc_dec, 0);
       if( TREE_CODE(post_inc_dec) == POSTINCREMENT_EXPR ||
-          TREE_CODE(post_inc_dec) == POSTDECREMENT_EXPR ){
-        /* Here I need to make sure it's of form *p++=.., and 
-         * 'p' is of a reasonable type which I can compare with the
-         * symbol name
-         */
-        Is_True( var_node && ( TREE_CODE(var_node)==VAR_DECL 
-                 || TREE_CODE(var_node)==PARM_DECL
-                 || TREE_CODE(var_node)==COMPONENT_REF
-                 || TREE_CODE(var_node)==INDIRECT_REF ), 
-                 ("Post{Inc|Dec} should be on variables or parameters, or component of struct"));
-
-        /* For indirect_ref, the actual symbol name for comparison is
-         * the first operand. However if the 1st operand is still a
-         * indirect ref, things will got too complex, just forget it
-         */
-        if( TREE_CODE(var_node) == INDIRECT_REF ) {
-          if( TREE_CODE(var_node) != PARM_DECL && 
-              TREE_CODE(var_node) != VAR_DECL ) {
-            DevWarn(" When handling *p++ consistent with gcc, there is *p++, p is a pointer to non-var-decl, non-parm-decl, NOT HANDLED yet!" );
-          } else 
-            var_node = TREE_OPERAND(var_node, 0);
-        }
-
-        sameness = FALSE;
-        /* for lhs being component ref (having no name), or lhs has 
-         * no name, I dont want to handle them, since too complex.
-         */
-        
-        if( DECL_NAME(var_node) && 
-            IDENTIFIER_POINTER(DECL_NAME(var_node)) )
-          sameness |= Same_Var( IDENTIFIER_POINTER(DECL_NAME(var_node)), rhs );
-        if( sameness ) {
-          DevWarn("ANSI C undefined behavior: *p++=...,p,.. or *p--=...,p,...");
-          WFE_Stmt_Prepend_Last(wn, Get_Srcpos());
-        }
-        else
-        WFE_Stmt_Append(wn, Get_Srcpos());
-      } else 
-        WFE_Stmt_Append(wn, Get_Srcpos());
-#else
-      WFE_Stmt_Append(wn, Get_Srcpos());
+          TREE_CODE(post_inc_dec) == POSTDECREMENT_EXPR)
+        WFE_Stmt_Prepend_Last(wn, Get_Srcpos());
+      else
 #endif
+        WFE_Stmt_Append(wn, Get_Srcpos());
+
 #if defined(TARG_SL)
       if (need_append) {
          WN *ldid_wn;

@@ -211,12 +211,12 @@ static phase_info_t phase_info[] = {
    {'R',  0x0001000000000000LL, "ar",  BINPATH,      FALSE, FALSE}, /* ar */
 
    {'S',  0x0010000000000000LL,	"crt",	LIBPATH,	FALSE, FALSE},	/* startup */
+#ifdef TARG_SL
+   {'S',  0x0010000000000000LL, "crt",  "/usr/libsl5",  FALSE, FALSE}, /*sl5_startup*/
+#endif
    {'I',  0x0020000000000000LL,	"inc",	"/include",	FALSE, FALSE},	/* include */
    {'L',  0x0040000000000000LL,	"lib",	LIBPATH,	FALSE, FALSE},	/* library */
    {'L',  0x0080000000000000LL,	"alib",	ALTLIBPATH,	FALSE, FALSE},	/* alt_library */
-#ifdef TARG_SL
-   {'S',  0x0010000000000000LL, "crt",  "/usr/libsl2",  FALSE, FALSE}, /*sl2_startup*/
-#endif
 };
 mask_t OPEN64_PHASE_MASK=
           0x0000f19fffffff90LL;

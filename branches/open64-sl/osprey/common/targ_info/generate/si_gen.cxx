@@ -1367,11 +1367,13 @@ void TOP_SCHED_INFO_MAP::Output( FILE* fd )
                        TOP_Name((TOP)i));
       }
     } else {
+#ifndef TARG_SL
       if ( isa_member && ! is_dummy ) {  
 	fprintf(stderr,"### Error: no scheduling info for opcode %s\n",
                        TOP_Name((TOP)i));
 	err = true;
       }
+#endif
     }
   }
   fprintf(fd,"\n};\n");

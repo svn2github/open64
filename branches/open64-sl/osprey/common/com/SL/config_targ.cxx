@@ -435,6 +435,8 @@ Prepare_Target ( void )
       targ = TARGET_sl2_pcore;
     } else if (strcasecmp (Processor_Name, "sl2_mcore") == 0 ) {
       targ = TARGET_sl2_mcore;
+    }  else if (strcasecmp (Processor_Name, "sl5") == 0 ) {
+      targ = TARGET_sl5;
     }
 #endif
     else {
@@ -478,6 +480,10 @@ Prepare_Target ( void )
     case TARGET_sl2_mcore:
         Target_ISA = TARGET_ISA_Mips64;
         Target = TARGET_sl2_mcore;
+        break;
+    case TARGET_sl5:
+        Target_ISA = TARGET_ISA_Mips64;
+        Target = TARGET_sl5;
         break;
 #endif
     case TARGET_UNDEF:

@@ -233,7 +233,8 @@ main()
       TOP_mflo,
       TOP_mthi,
       TOP_mtlo,
-#if defined(TARG_SL)     
+#if defined(TARG_SL)   
+      TOP_smult,
       TOP_mc_abs,
       TOP_mc_zc_eq,
       TOP_mc_zc_ne,

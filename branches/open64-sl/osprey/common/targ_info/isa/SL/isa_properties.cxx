@@ -629,6 +629,7 @@ main()
       TOP_sltu,
       TOP_sub,
       TOP_subu,
+      TOP_smult,
       TOP_and,
       TOP_andi,
       TOP_nor,
@@ -935,6 +936,7 @@ main()
                      TOP_c3_sadda_a,
                      TOP_c3_shav,
                      TOP_c3_shla_i,
+                     TOP_c3_shra_i,
 #endif		     
 #ifdef TARG_SL2
                    TOP_c2_bxtr_u_l,

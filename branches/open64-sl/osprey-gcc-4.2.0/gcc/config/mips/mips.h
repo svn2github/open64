@@ -979,7 +979,10 @@ extern const struct mips_rtx_cost_data *mips_cost;
   mips_debugger_offset (X, (HOST_WIDE_INT) OFFSET)
 
 /* Target machine storage layout */
-
+#ifdef TARG_SL
+#undef TARGET_BIG_ENDIAN
+#define TARGET_BIG_ENDIAN 0
+#endif
 #define BITS_BIG_ENDIAN 0
 #define BYTES_BIG_ENDIAN (TARGET_BIG_ENDIAN != 0)
 #define WORDS_BIG_ENDIAN (TARGET_BIG_ENDIAN != 0)

@@ -1147,8 +1147,8 @@ void CGTARG_Compute_Branch_Parameters(INT32 *mispredict, INT32 *fixed, INT32 *br
   {
     *mispredict= 7; *fixed= 1; *brtaken= 1; *factor = 1.0;
   }
-#ifdef TARG_SL
-  else if (Is_Target_Sl1_pcore()  || Is_Target_Sl1_dsp()) {
+#ifdef TARG_SL  //NEED TODO (comment by srf)
+  else if (Is_Target_Sl1_pcore()  || Is_Target_Sl1_dsp() || Is_Target_Sl5()) {
     *mispredict= 7; *fixed= 1; *brtaken= 1; *factor = 1.0;
   }
   else if ( Is_Target_Sl2_pcore() || Is_Target_Sl2_mcore()) {

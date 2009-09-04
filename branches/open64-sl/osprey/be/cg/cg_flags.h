@@ -442,6 +442,9 @@ extern UINT32 CG_zdl_skip_e;
 extern UINT32 CG_zdl_skip_a;
 extern UINT32 CG_zdl_skip_b;
 extern BOOL CG_enable_opt_condmv;
+extern BOOL CG_enable_CBUS_workaround;
+extern BOOL CG_enable_LD_NOP_workaround;
+extern BOOL CG_enbale_C3_AR_dependence_workaround;
 #endif
 #ifdef TARG_IA64
 extern BOOL CG_tune_do_loop;
@@ -645,6 +648,7 @@ extern INT32 CG_Max_Accreg;
 extern INT32 CG_Max_Addreg;
 extern BOOL  CG_round_spreg;
 extern BOOL  CG_check_packed;
+extern BOOL CG_branch_taken;
 #endif
 
 extern BOOL EMIT_pjump_all;
