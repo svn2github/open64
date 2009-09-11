@@ -4746,7 +4746,7 @@ BB_NODE **
 CFG::Dpo_vec(void)
 {
   if (_dpo_vec == NULL) {
-    _dpo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Last_bb_id(), Mem_pool());
+    _dpo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Last_bb_id()+1, Mem_pool());
     INT id = 0;
     Init_dpo_vec(Entry_bb(), &id);
     _dpo_vec_sz = id;
@@ -4758,7 +4758,7 @@ BB_NODE **
 CFG::Pdo_vec(void)
 {
   if (_pdo_vec == NULL) {
-    _pdo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Last_bb_id(), Mem_pool());
+    _pdo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Last_bb_id()+1, Mem_pool());
     INT id = 0;
     Init_pdo_vec(Exit_bb(), &id);
     _pdo_vec_sz = id;
@@ -5252,7 +5252,7 @@ Allocate_loop(BB_NODE *bb, BB_LOOP *parent, CFG *cfg)
   if (loop == NULL)
     loop = CXX_NEW( BB_LOOP(NULL, NULL, NULL, NULL, NULL, NULL),
 		    cfg->Mem_pool() );
-  loop->Set_true_body_set(CXX_NEW(BB_NODE_SET(cfg->Last_bb_id(), cfg,
+  loop->Set_true_body_set(CXX_NEW(BB_NODE_SET(cfg->Last_bb_id()+1, cfg,
 					      cfg->Mem_pool(), BBNS_EMPTY),
 				  cfg->Mem_pool()));
   loop->Set_body_set(NULL);  // body_set not supported in mainopt
