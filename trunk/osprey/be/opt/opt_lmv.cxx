@@ -1240,7 +1240,7 @@ CFG::LMV_clone_BB_LOOP (LMV_CFG_ADAPTOR* adaptor) {
                                adaptor->Cloned_loop_merge()), 
                                Mem_pool());
 
-  BB_NODE_SET* t = CXX_NEW (BB_NODE_SET(Last_bb_id(), this, Mem_pool(), 
+  BB_NODE_SET* t = CXX_NEW (BB_NODE_SET(Last_bb_id()+1, this, Mem_pool(), 
                             BBNS_EMPTY), Mem_pool());
   dup_loop->Set_true_body_set (t);
  
