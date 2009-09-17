@@ -208,6 +208,10 @@ typedef struct debug_flags {
 #endif
 #ifdef TARG_SL
   BOOL stack_check;             /* Stack Check for SL */
+  struct option_list *dummy_chk_section_list; /* pad globals in designated sections with dummy variable to check overflow */
+  BOOL dummy_chk_seen; /* option explicit NOT set */
+  INT32 chk_blk_size_before; /* default size of a dummy block which is placed before st */
+  INT32 chk_blk_size_after; /* default size of a dummy block which is placed after st */
 #endif
   /* This buffer area allows references to new fields to be added in
    * later revisions, from other DSOs, without requiring a new be.so
@@ -317,6 +321,12 @@ extern DEBUG_FLAGS Initial_DEBUG;
 #define STACK_FUNC_END_CHECK 8
 
 #define DEBUG_Stack_Check               (Current_DEBUG->stack_check)
+
+#define DEBUG_Dummy_Check_Sections        (Current_DEBUG->dummy_chk_section_list)
+#define DEBUG_Dummy_Check_Seen            (Current_DEBUG->dummy_chk_seen)
+#define DEBUG_Chk_Blk_Size_Before         (Current_DEBUG->chk_blk_size_before)
+#define DEBUG_Chk_Blk_Size_After         (Current_DEBUG->chk_blk_size_after)
+
 #endif
 
 
