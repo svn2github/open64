@@ -409,6 +409,7 @@ __ompc_fini_rtl(void)
   /* Other mutex, conditions, locks , should be destroyed here*/
   if (__omp_list_processors != NULL)
     aligned_free(__omp_list_processors);
+
 }
 
 /* must be called when the first fork()*/

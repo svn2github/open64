@@ -387,7 +387,7 @@ inline void __omp_get_available_processors()
   ordered_core_list = (int*) malloc(sizeof(int) * __omp_num_hardware_processors);
   Is_True(ordered_core_list!= NULL,
           ("Can't allocate ordered_core_list"));
-  GetOrderedCoreList(ordered_core_list, __omp_num_hardware_processors);
+  Get_Ordered_Corelist(ordered_core_list, __omp_num_hardware_processors);
 
   return_val = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
   Is_True(return_val == 0, ("Get affinity error"));
@@ -402,7 +402,7 @@ inline void __omp_get_available_processors()
     free(ordered_core_list);
 }
 
-static int cur_cpu_to_bind = 0;
+static int cur_cpu_to_bind;
 
 /* bind the pthread to a specific cpu */
 inline void __ompc_bind_pthread_to_cpu(pthread_t thread)

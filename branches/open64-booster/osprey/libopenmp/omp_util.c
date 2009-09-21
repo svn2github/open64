@@ -86,7 +86,7 @@ Get_SMP_CPU_num (void)
 }
 
 int
-GetCPUCores(void)
+Get_CPU_Cores(void)
 {
   FILE * fp;
   char buf[256], *data;
@@ -110,21 +110,36 @@ GetCPUCores(void)
   return 0;
 }
 
+#define SET_DEFAULT {  \
+        for (i=0; i<total_cores; i++)\
+           list[i] = i; \
+        if (fp != NULL) fclose(fp); \   
+        return; }
+
 void
-GetOrderedCoreList(int *list, int total_cores)
+Get_Ordered_Corelist(int *list, int total_cores)
 {
   FILE * fp;
   char buf[256], *data;
-  int core_id = -1, socket_id = -1, proc_id, i, proc_done=0;
+  int proc_id, i, proc_done=0;
+  int core_id = -1, socket_id = -1, cores = 0;   
 
-  int cores = GetCPUCores();
-
+  // could not find /proc/cpuinfo  
+  if ((fp = fopen ("/proc/cpuinfo", "r")) == NULL) SET_DEFAULT;
+  while (fgets (buf, 256, fp))
+  {
+    if (!strncasecmp (buf, "cpu cores", 9)) {
+      strtok (buf, ":");
+      data = strtok (NULL, "\n");
+      cores = atoi(data); 
+      break;  
+    }
+  }
+  
   // illegal cpu cores
-  if (cores == 0 || cores > total_cores) goto set_default;
+  if (cores == 0 || cores > total_cores) SET_DEFAULT;
 
-  // could not find /proc/cpuinfo
-  if ((fp = fopen ("/proc/cpuinfo", "r")) == NULL) goto set_default;
-   
+  rewind(fp);
   while (fgets (buf, 256, fp))
   {
     if (!strncasecmp (buf, "processor", 9)) 
@@ -133,7 +148,7 @@ GetOrderedCoreList(int *list, int total_cores)
        data = strtok (NULL, "\n");
        proc_id = atoi(data);
        // illegal proc_id
-       if (proc_id >= total_cores) goto set_default;
+       if (proc_id >= total_cores) SET_DEFAULT;
 
        while (fgets(buf, 256, fp))
        {
@@ -154,7 +169,7 @@ GetOrderedCoreList(int *list, int total_cores)
          {
            // illegal socket_id or cores_id
            if (socket_id * cores + core_id >= total_cores)
-             goto set_default;
+             SET_DEFAULT;
 
            list[socket_id * cores + core_id] = proc_id;
            socket_id = -1;
@@ -165,15 +180,10 @@ GetOrderedCoreList(int *list, int total_cores)
       }
     }
   } 
-   
-  if (proc_done != total_cores)
-  {
-// if any unexpected case happens, set the list to be 
-// the natural number order
-set_default:
-    for (i=0; i<total_cores; i++)
-      list[i] = i;
-  }
+  
+  if (proc_done != total_cores) SET_DEFAULT;
+
+  fclose(fp);  
 }
 
 /*

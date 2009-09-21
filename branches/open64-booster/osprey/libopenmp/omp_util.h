@@ -114,10 +114,10 @@ int
 Get_SMP_CPU_num(void);
 
 int
-GetCPUCores(void);
+Get_CPU_Cores(void);
 
 void
-GetOrderedCoreList(int *, int);
+Get_Ordered_Corelist(int *, int);
 
 void *
 aligned_malloc(size_t, size_t);
