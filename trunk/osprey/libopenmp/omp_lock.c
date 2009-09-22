@@ -38,41 +38,54 @@
 #include "omp_rtl.h"
 #include "omp_sys.h"
 
-static ompc_lock_t atomic_lock;
-
-
+extern int __omp_spin_user_lock;
 inline void 
 __ompc_init_lock (volatile ompc_lock_t *lp)
 {
-  pthread_mutex_init((pthread_mutex_t *)lp, NULL);
+  if (__omp_spin_user_lock == 0)
+    pthread_mutex_init(&(lp->lock.mutex_data), NULL);
+  else
+    pthread_spin_init(&(lp->lock.spin_data), PTHREAD_PROCESS_PRIVATE);
 }
 
 
 inline void 
 __ompc_lock (volatile ompc_lock_t *lp)
 {
-  pthread_mutex_lock((pthread_mutex_t *)lp);
+  if (__omp_spin_user_lock == 0)
+    pthread_mutex_lock(&(lp->lock.mutex_data));
+  else 
+    pthread_spin_lock(&(lp->lock.spin_data));
 }
 
 
 inline void 
 __ompc_unlock (volatile ompc_lock_t *lp)
 {
-  pthread_mutex_unlock((pthread_mutex_t *)lp);
+  if (__omp_spin_user_lock == 0)
+    pthread_mutex_unlock(&(lp->lock.mutex_data));
+  else 
+    pthread_spin_unlock(&(lp->lock.spin_data));
 }
 
 
 inline void 
 __ompc_destroy_lock (volatile ompc_lock_t *lp)
 {
-  pthread_mutex_destroy((pthread_mutex_t *)lp);
+  if (__omp_spin_user_lock == 0)
+    pthread_mutex_destroy(&(lp->lock.mutex_data));
+  else 
+    pthread_spin_destroy(&(lp->lock.spin_data));
 }
 
 
 inline int 
 __ompc_test_lock (volatile ompc_lock_t *lp)
 {
-  return (pthread_mutex_trylock((pthread_mutex_t *)lp) == 0);
+  if (__omp_spin_user_lock == 0)
+    return (pthread_mutex_trylock(&(lp->lock.mutex_data)) == 0);
+  else
+    return (pthread_spin_trylock(&(lp->lock.spin_data)) == 0);
 }
 
 
@@ -176,15 +189,16 @@ __ompc_test_nest_lock (volatile ompc_nest_lock_t *lp)
 inline void
 __ompc_critical(int gtid, volatile ompc_lock_t **lck)
 {
-  if (*lck ==NULL) {
-    __ompc_lock(&_ompc_thread_lock);
+  if (*lck == NULL) {
+    __ompc_lock_spinlock(&_ompc_thread_lock);
     if ((ompc_lock_t*)*lck == NULL){
-      *lck = (ompc_lock_t *)malloc(sizeof(ompc_lock_t));
+      // put the shared data aligned with cache line
+      *lck = aligned_malloc(sizeof(ompc_lock_t), CACHE_LINE_SIZE);
       Is_True(*lck!=NULL, 
 	      ("Cannot allocate lock memory for critical"));
+      __ompc_init_lock (*lck);
     }
-    __ompc_init_lock (*lck);
-    __ompc_unlock (&_ompc_thread_lock);
+    __ompc_unlock_spinlock(&_ompc_thread_lock);
   }
   __ompc_lock((volatile ompc_lock_t *)*lck);
 }
