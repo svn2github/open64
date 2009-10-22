@@ -639,7 +639,11 @@ Phase_Init (void)
 
     if (need_lno_output) {
 	Write_BE_Maps = TRUE;
-	ir_output = Open_Output_Info(New_Extension(output_file_name,".N"));
+	// Output IR after preopt to .P file, and IR after LNO to .N file.
+	if (Run_lno)
+	    ir_output = Open_Output_Info(New_Extension(output_file_name,".N"));
+	else
+	    ir_output = Open_Output_Info(New_Extension(output_file_name,".P"));
     }
     if (need_wopt_output) {
 	Write_ALIAS_CLASS_Map = TRUE;

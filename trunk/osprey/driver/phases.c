@@ -1441,6 +1441,7 @@ add_file_args (string_list_t *args, phases_t index)
 		    }
 		    /* fall through */
 		case S_I:
+		case S_P:
 		case S_N:
 		case S_O:
 		    temp = the_file;
@@ -2507,6 +2508,7 @@ determine_phase_order (void)
 		next_phase = post_fe_phase ();
 		break;
 	case S_I:
+	case S_P:
 	case S_N:
 	case S_O:
 		next_phase = be_phase;

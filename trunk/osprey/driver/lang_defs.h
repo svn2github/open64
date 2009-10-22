@@ -78,6 +78,7 @@ typedef enum {
 	S_S,
 	S_I,
 	S_B,
+	S_P,
 	S_N,
 	S_O,
 	S_o,

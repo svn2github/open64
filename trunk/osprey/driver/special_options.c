@@ -460,11 +460,11 @@ add_special_options (void)
 	    /*
 	     * Determine which back end phase(s) need to be run.
 	     *
-	     *			-O0/-O1	-O2		-O3
-	     *			===========================
-	     *		.B,.I:	cg	wopt/cg		lno/wopt/cg
-	     *		.N:	cg	wopt/cg		wopt/cg
-	     *		.O:	cg	cg		cg
+	     *				-O0/-O1	-O2		-O3
+	     *				===========================
+	     *		.B,.I,.P:	cg	wopt/cg		lno/wopt/cg
+	     *		.N:		cg	wopt/cg		wopt/cg
+	     *		.O:		cg	cg		cg
 	     */
 	    if (source_kind == S_O)
 		warning("compiles of WOPT-generated .O files will usually fail due to missing state information");
