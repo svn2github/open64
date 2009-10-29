@@ -318,7 +318,8 @@ BE_CG_TARG_CXX_SRCS =	\
   pqs.cxx		\
   register_targ.cxx
 ifeq ($(OLIVE_AUTO_CG), TRUE)
-  BE_CG_TARG_CXX_SRCS += olive_expand_expr.cxx
+  BE_CG_TARG_CXX_SRCS += olive_gen_expr.cxx
+  BE_CG_TARG_CXX_SRCS += olive_convert_longlong.cxx
   CXXFLAGS += -D_OLIVE_AUTO_CG_
 endif
 
@@ -881,10 +882,21 @@ ifeq ($(OLIVE_AUTO_CG), TRUE)
 			 $(BE_CG_OLIVE_DIR)/code.c	$(BE_CG_OLIVE_DIR)/iburg.c 
   
   OLIVE_TOOL		= olive
-  OLIVE_CG_GRAMMY	= $(BE_CG_TARG_DIR)/olive_expand_expr.brg
-  OLIVE_CG_OUTPUT	= olive_expand_expr.cxx
-  
-  $(OLIVE_CG_OUTPUT):	$(OLIVE_TOOL) $(OLIVE_CG_GRAMMY)
+  OLIVE_CG_GRAMMY	= $(BE_CG_TARG_DIR)/olive_gen_expr.brg
+  OLIVE_CG_OUTPUT	= olive_gen_expr.cxx
+
+
+  GRAMMY_TOOL		= gramgen
+  GRAMMY_CXX		= $(BE_CG_TARG_DIR)/gramgen.cxx
+  GRAMMY_RULES		= $(BE_CG_TARG_DIR)/rule_int.brg  $(BE_CG_TARG_DIR)/rule_bit.brg  $(BE_CG_TARG_DIR)/rule_float.brg \
+			  $(BE_CG_TARG_DIR)/rule_double.brg $(BE_CG_TARG_DIR)/rule_longlong.brg $(BE_CG_TARG_DIR)/rule_llbit.brg
+
+  OLIVE_CG_GRAMMY:	$(GRAMMY_CXX) $(GRAMMY_RULE)
+			$(CXX) -o $(GRAMMY_TOOL) $(GRAMMY_CXX)
+			./$(GRAMMY_TOOL) $(OLIVE_CG_GRAMMY) $(GRAMMY_RULES)
+
+
+  $(OLIVE_CG_OUTPUT):	$(OLIVE_TOOL) OLIVE_CG_GRAMMY
 			./$(OLIVE_TOOL) -I -L $(OLIVE_CG_GRAMMY)
   $(OLIVE_TOOL):	$(OLIVE_OBJS) $(OLIVE_GRAM_OBJ)
 			$(CC) -o $(OLIVE_TOOL) $(LDFLAGS) $(OLIVE_OBJS) $(OLIVE_GRAM_OBJ)

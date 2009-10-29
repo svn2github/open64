@@ -732,7 +732,7 @@ main (int argc, char *argv[])
 			  TOP_mtfsf, /* type 19, lat 4 */
 			  TOP_mtlr, //			  TOP_mtc1, /* type 19, lat 4 */
 			  TOP_mtctr,
-//			  TOP_dmtc1, /* type 19, lat 4 */
+			  TOP_mffs,
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (4);
@@ -740,46 +740,13 @@ main (int argc, char *argv[])
   Resource_Requirement (res_EX, 0); /* ??? */
 
   Instruction_Group ("FPU Move/Convert",
-//			  TOP_mov_s, /* type 19, lat 4 */ /* missing paired single */
 			  TOP_fmr, /* type 19, lat 4 */
-//			  TOP_movf_s, /* type 19, lat 4 */ /* missing paired single */
-//			  TOP_movf_d, /* type 19, lat 4 */
-//			  TOP_movn_s, /* type 19, lat 4 */
-//			  TOP_movn_d, /* type 19, lat 4 */
-//			  TOP_movt_s, /* type 19, lat 4 */ /* missing paired single */
-//			  TOP_movt_d, /* type 19, lat 4 */
-//			  TOP_movz_s, /* type 19, lat 4 */
-//			  TOP_movz_d, /* type 19, lat 4 */
 
 			  /* Table 25: FPU Convert Instructions */
 
 			  TOP_frsp, /* type 19, lat 4 */
 			  TOP_fctiw, /* type 19, lat 4 */
 			  TOP_fctiwz, /* type 19, lat 4 */
-//			  TOP_cvt_d_l, /* type 19, lat 4 */
-//			  TOP_cvt_l_s, /* type 19, lat 4 */
-//			  TOP_cvt_l_d, /* type 19, lat 4 */
-//			  TOP_cvt_s_d, /* type 19, lat 4 */
-//			  TOP_cvt_s_w, /* type 19, lat 4 */
-//			  TOP_cvt_s_l, /* type 19, lat 4 */
-//			  TOP_cvt_w_s, /* type 19, lat 4 */
-//			  TOP_cvt_w_d, /* type 19, lat 4 */
-//			  TOP_ceil_w_s, /* type 19, lat 4 */
-//			  TOP_ceil_w_d, /* type 19, lat 4 */
-//			  TOP_ceil_l_s, /* type 19, lat 4 */
-//			  TOP_ceil_l_d, /* type 19, lat 4 */
-//			  TOP_floor_w_s, /* type 19, lat 4 */
-//			  TOP_floor_w_d, /* type 19, lat 4 */
-//			  TOP_floor_l_s, /* type 19, lat 4 */
-//			  TOP_floor_l_d, /* type 19, lat 4 */
-//			  TOP_round_w_s, /* type 19, lat 4 */
-//			  TOP_round_w_d, /* type 19, lat 4 */
-//			  TOP_round_l_s, /* type 19, lat 4 */
-//			  TOP_round_l_d, /* type 19, lat 4 */
-//			  TOP_trunc_w_s, /* type 19, lat 4 */
-//			  TOP_trunc_w_d, /* type 19, lat 4 */
-//			  TOP_trunc_l_s, /* type 19, lat 4 */
-//			  TOP_trunc_l_d, /* type 19, lat 4 */
 			  /* 6 paired single instructions skipped here */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);

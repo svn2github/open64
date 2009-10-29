@@ -471,6 +471,7 @@ main()
 		   TOP_fsel, 0x000000ff,
 			 TOP_mcrfs, 0x000000ff,
 			 TOP_mtfsf, 0x000000ff,
+			 TOP_mffs, 0x000000ff,
 			 TOP_mflr, 0x000000ff,//			  TOP_mfc1,
 			 TOP_mtlr, 0x000000ff,//			  TOP_dmfc1,//			 TOP_mfc1, 
 			 TOP_mfctr, 0x000000ff,//			  TOP_mfc1,

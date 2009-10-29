@@ -1,14 +1,56 @@
 #include "olive_convert_wn.h"
-#include "olive_expand_expr.h"
+#ifdef _OLIVE_AUTO_CG_
+#include "olive_gen_expr.h"
+#endif
 
 #include "cgexp.h"
+
+#ifdef _OLIVE_AUTO_CG_
 
 int OPC2OP(OPCODE opc)
 {
     OPERATOR opr = OPCODE_operator(opc);
-    if (opr == OPR_CALL)
-        return CALL;
-    switch (opc)
+
+    switch(opr)
+    {
+	case OPR_CALL:
+	case OPR_ICALL:
+	case OPR_PICCALL:
+            return CALL;
+    }
+
+    switch(opr){ 
+	case OPR_LDBITS:
+	    switch(OPCODE_rtype(opc)){
+		case MTYPE_I4:
+		    return I4LDBITS;
+		case MTYPE_U4:
+		    return U4LDBITS;
+		case MTYPE_I8:
+		    return I8LDBITS;
+		case MTYPE_U8:
+		    return U8LDBITS;
+	    }
+	    break;
+	case OPR_STBITS:
+	    return STBITS;
+	case OPR_ILDBITS:
+	    switch(OPCODE_rtype(opc)){
+		case MTYPE_I4:
+		    return I4ILDBITS;
+		case MTYPE_U4:
+		    return U4ILDBITS;
+		case MTYPE_I8:
+		    return I8ILDBITS;
+		case MTYPE_U8:
+		    return U8ILDBITS;
+	    }
+	    break;
+	case OPR_ISTBITS:
+	    return ISTBITS;
+   }
+
+   switch (opc)
     {
         case OPC_I4INTCONST:
             return I4INTCONST;
@@ -178,8 +220,8 @@ int OPC2OP(OPCODE opc)
             return U4ASHR;
         case OPC_U4LSHR:
             return U4LSHR;
-        case OPC_F4CONST:
-            return F4CONST;
+	case OPC_F4CONST:
+	    return F4CONST;
         case OPC_F4ADD:
             return F4ADD;
         case OPC_F4SUB:
@@ -200,14 +242,8 @@ int OPC2OP(OPCODE opc)
             return F4NEG;
         case OPC_F4ABS:
             return F4ABS;
-        case OPC_F4RECIP:
-            return F4RECIP;
-        case OPC_F4SQRT:
-            return F4SQRT;
-        case OPC_F4RSQRT:
-            return F4RSQRT;
-        case OPC_F8CONST:
-            return F8CONST;
+	case OPC_F8CONST:
+	    return F8CONST;
         case OPC_F8ADD:
             return F8ADD;
         case OPC_F8SUB:
@@ -228,12 +264,6 @@ int OPC2OP(OPCODE opc)
             return F8NEG;
         case OPC_F8ABS:
             return F8ABS;
-        case OPC_F8RECIP:
-            return F8RECIP;
-        case OPC_F8SQRT:
-            return F8SQRT;
-        case OPC_F8RSQRT:
-            return F8RSQRT;
         case OPC_BF4LT:
             return BF4LT;
         case OPC_BF4LE:
@@ -732,12 +762,21 @@ int OPC2OP(OPCODE opc)
             return U8F8GE;
         case OPC_U8F8GT:
             return U8F8GT;
+
         case OPC_I4I8CVT:
             return I4I8CVT;
+	case OPC_I4U8CVT:
+	    return I4U8CVT;
+	case OPC_U4I8CVT:
+	    return U4I8CVT;
         case OPC_U4U8CVT:
             return U4U8CVT;
         case OPC_I8I4CVT:
             return I8I4CVT;
+	case OPC_I8U4CVT:
+	    return I8U4CVT;
+	case OPC_U8I4CVT:
+	    return U8I4CVT;
         case OPC_U8U4CVT:
             return U8U4CVT;
         case OPC_I8U8CVT:
@@ -752,10 +791,12 @@ int OPC2OP(OPCODE opc)
             return U4CVTL;
         case OPC_U8CVTL:
             return U8CVTL;
+
         case OPC_F8U8CVT:
             return F8U8CVT;
         case OPC_F4U8CVT:
             return F4U8CVT;
+
         case OPC_I4PARM:
             return I4PARM;
         case OPC_U4PARM:
@@ -768,6 +809,173 @@ int OPC2OP(OPCODE opc)
             return F4PARM;
         case OPC_F8PARM:
             return F8PARM;
+
+	case OPC_I4I1ILOAD:
+	case OPC_I4I2ILOAD:
+	case OPC_I4I4ILOAD:
+	    return I4ILOAD;
+	case OPC_I8I1ILOAD:
+	case OPC_I8I2ILOAD:
+	case OPC_I8I4ILOAD:
+	case OPC_I8I8ILOAD:
+	    return I8ILOAD;
+	case OPC_U4U1ILOAD:
+	case OPC_U4U2ILOAD:
+	case OPC_U4U4ILOAD:
+	    return U4ILOAD;
+	case OPC_U8U1ILOAD:
+	case OPC_U8U2ILOAD:
+	case OPC_U8U4ILOAD:
+	case OPC_U8U8ILOAD:
+	    return U8ILOAD;
+	case OPC_F4F4ILOAD:
+	    return F4ILOAD;
+	case OPC_F8F8ILOAD:
+	    return F8ILOAD;
+
+	case OPC_I1ISTORE:
+	case OPC_I2ISTORE:
+	case OPC_I4ISTORE:
+	    return I4ISTORE;
+	case OPC_U1ISTORE:
+	case OPC_U2ISTORE:
+	case OPC_U4ISTORE:
+	    return U4ISTORE;
+	case OPC_I8ISTORE:
+	    return I8ISTORE;
+	case OPC_U8ISTORE:
+	    return U8ISTORE;
+	case OPC_F4ISTORE:
+	    return F4ISTORE;
+	case OPC_F8ISTORE:
+	    return F8ISTORE;
+
+	case OPC_I4COMPOSE_BITS:
+	    return I4COMPOSE_BITS;
+	case OPC_U4COMPOSE_BITS:
+	    return U4COMPOSE_BITS;
+	case OPC_I8COMPOSE_BITS:
+	    return I8COMPOSE_BITS;
+	case OPC_U8COMPOSE_BITS:
+	    return U8COMPOSE_BITS;
+	case OPC_I4EXTRACT_BITS:
+	    return I4EXTRACT_BITS;
+	case OPC_U4EXTRACT_BITS:
+	    return U4EXTRACT_BITS;
+	case OPC_I8EXTRACT_BITS:
+	    return I8EXTRACT_BITS;
+	case OPC_U8EXTRACT_BITS:
+	    return U8EXTRACT_BITS;
+
+	case OPC_I4DIVREM:
+	    return I4DIVREM;
+	case OPC_U4DIVREM:
+	    return U4DIVREM;
+	case OPC_I8DIVREM:
+	    return I8DIVREM;
+	case OPC_U8DIVREM:
+	    return U8DIVREM;
+
+	case OPC_I4DIVPART:
+	    return I4DIVPART;
+	case OPC_U4DIVPART:
+	    return U4DIVPART;
+	case OPC_I4REMPART:
+	    return I4REMPART;
+	case OPC_U4REMPART:
+	    return U4REMPART;
+
+	case OPC_F4RECIP:
+	    return F4RECIP;
+	case OPC_F8RECIP:
+	    return F8RECIP;
+
+	case OPC_I4MAXPART:
+	    return I4MAXPART;
+	case OPC_U4MAXPART:
+	    return U4MAXPART;
+	case OPC_I8MAXPART:
+	    return I8MAXPART;
+	case OPC_U8MAXPART:
+	    return U8MAXPART;
+	case OPC_F4MAXPART:
+	    return F4MAXPART;
+	case OPC_F8MAXPART:
+	    return F8MAXPART;
+
+	case OPC_I4MINPART:
+	    return I4MINPART;
+	case OPC_U4MINPART:
+	    return U4MINPART;
+	case OPC_I8MINPART:
+	    return I8MINPART;
+	case OPC_U8MINPART:
+	    return U8MINPART;
+	case OPC_F4MINPART:
+	    return F4MINPART;
+	case OPC_F8MINPART:
+	    return F8MINPART;
+
+	case OPC_I4MINMAX:
+	    return I4MINMAX;
+	case OPC_U4MINMAX:
+	    return U4MINMAX;
+	case OPC_I8MINMAX:
+	    return I8MINMAX;
+	case OPC_U8MINMAX:
+	    return U8MINMAX;
+	case OPC_F4MINMAX:
+	    return F4MINMAX;
+	case OPC_F8MINMAX:
+	    return F8MINMAX;
+
+	case OPC_I4SELECT:
+	    return I4SELECT;
+	case OPC_U4SELECT:
+	    return U4SELECT;
+	case OPC_I8SELECT:
+	    return I8SELECT;
+	case OPC_U8SELECT:
+	    return U8SELECT;
+	case OPC_F4SELECT:
+	    return F4SELECT;
+	case OPC_F8SELECT:
+	    return F8SELECT;
+
+	case OPC_U4ALLOCA:
+	    return U4ALLOCA;
+	case OPC_U8ALLOCA:
+	    return U8ALLOCA;
+	case OPC_DEALLOCA:
+	    return DEALLOCA;
+
+	case OPC_U4LDA:
+	    return U4LDA;
+	case OPC_U4LDA_LABEL:
+	    return U4LDA_LABEL;
+
+	case OPC_I1INTRINSIC_OP:
+	case OPC_I2INTRINSIC_OP:
+	case OPC_I4INTRINSIC_OP:
+	    return I4INTRINSIC_OP;
+	case OPC_U1INTRINSIC_OP:
+	case OPC_U2INTRINSIC_OP:
+	case OPC_U4INTRINSIC_OP:
+	    return U4INTRINSIC_OP;
+	case OPC_I8INTRINSIC_OP:
+	    return I8INTRINSIC_OP;
+	case OPC_U8INTRINSIC_OP:
+	    return U8INTRINSIC_OP;
+	case OPC_F4INTRINSIC_OP:
+	    return F4INTRINSIC_OP;
+	case OPC_F8INTRINSIC_OP:
+	    return F8INTRINSIC_OP;
+
+
+	case OPC_PREFETCH:
+	    return PREFETCH;
+	case OPC_PREFETCHX:
+	    return PREFETCHX;
     }
     char errMsg[128];
     sprintf(errMsg, "invalid opcode in OPC2OP %s",  OPCODE_name(opc));
@@ -775,7 +983,7 @@ int OPC2OP(OPCODE opc)
     return -1;
 }
 
-
+#endif
 
 
 
@@ -869,79 +1077,6 @@ void Expand_Load_Address(WN * expr, TN ** p_base_tn, TN ** p_ofst_tn, OPS * ops)
             *p_base_tn = tmp_tn;
             *p_ofst_tn = Gen_Symbol_TN(sym, ofst, TN_RELOC_LOW16);
         }
-    }
-}
-
-/* Handle the misc. stuff that needs to be done for OPR_CALL, OPR_PICCALL,
- * and OPR_ICALL nodes. This includes:
- *
- *  1. generate code for the actual arguments  // I think the function does not do this. then why ?
- *  2. mark the current PU and bb as having a call.
- *  3. mark the current EH range as having a call.
- */
-void Handle_Call (WN *call, OPERATOR call_opr) {
-    TN *tgt_tn;
-    ST *call_st = (call_opr != OPR_ICALL) ? WN_st(call) : NULL;
-    CALLINFO *call_info;
-
-    /* wn_lower_call has already expanded the parameters, so don't need
-     * to do anything more for parameters at this point.
-     */
-
-    /* Note the presence of a call in the current PU and bb. */
-    PU_Has_Calls = TRUE;
-
-    /* Generate the call instruction */
-    if (call_opr == OPR_CALL) {
-        tgt_tn = Gen_Symbol_TN (call_st, 0, 0);
-    } else {
-        /* For PIC calls, force t9 to be the result register. */
-        tgt_tn = Gen_PIC_Calls ? Ep_TN : NULL;
-        tgt_tn = Expand_Expr (WN_kid(call,WN_kid_count(call)-1), call, tgt_tn);
-
-        /* If call-shared and the call is to a non PREEMPTIBLE symbol,
-         * generate a jal instead of a jalr. 
-         */
-        if (Gen_PIC_Call_Shared &&
-                call_st != NULL &&
-                !ST_is_preemptible(call_st) ) {
-            tgt_tn = Gen_Symbol_TN (call_st, 0, 0);
-            call_opr = OPR_CALL;
-        }
-    }
-    Last_Mem_OP = OPS_last(&New_OPs);
-    Exp_Call (call_opr, RA_TN, tgt_tn, &New_OPs);
-    Set_OP_To_WN_Map(call);
-
-    call_info = TYPE_PU_ALLOC (CALLINFO);
-    CALLINFO_call_st(call_info) = call_st;
-    CALLINFO_call_wn(call_info) = call;
-    BB_Add_Annotation (Cur_BB, ANNOT_CALLINFO, call_info);
-
-    region_stack_eh_set_has_call();
-
-    /* For now, terminate the basic block. This makes GRA work better since
-     * it has finer granularity. It is also easier for LRA to make the
-     * assumption that a procedure call breaks a basic block. 
-     */
-    Start_New_Basic_Block ();
-
-    // if caller-save-gp and not defined in own dso, then restore gp.
-    // if call_st == null, then indirect call, and assume external.
-    if (Is_Caller_Save_GP && !Constant_GP &&
-            (call_st == NULL || ST_export(call_st) == EXPORT_PREEMPTIBLE) || ST_is_weak_symbol(call_st)) {
-        // restore old gp
-        // assume that okay to restore gp before return val of call
-        TN *caller_gp_tn = PREG_To_TN_Array[ Caller_GP_Preg ];
-        if (caller_gp_tn == NULL) {
-            caller_gp_tn = Gen_Register_TN ( ISA_REGISTER_CLASS_integer,
-                                             Pointer_Size);
-            TN_MAP_Set( TN_To_PREG_Map, caller_gp_tn,
-                        (void *)(INTPTR)Caller_GP_Preg );
-            PREG_To_TN_Array[ Caller_GP_Preg ] = caller_gp_tn;
-            PREG_To_TN_Mtype[ Caller_GP_Preg ] = TY_mtype(Spill_Int_Type);
-        }
-        Exp_COPY (GP_TN, caller_gp_tn, &New_OPs);
     }
 }
 
@@ -1255,32 +1390,36 @@ void Handle_MaxMin_Float(bool max, TYPE_ID mtype, TN* dest, TN* src1, TN* src2, 
         Build_OP(TOP_fsel, dest, tn, src2, src1, ops);
 }
 
-void Handle_Float_Int_Cvt(Cvt_Type cvtType, TYPE_ID srcType, TN* dest, TN* src, OPS* ops)
+void Handle_Float_Int_Cvt(ROUND_MODE rm, TYPE_ID srcType, TN* dest, TN* src, OPS* ops)
 {
     OP * st = OPS_last(ops);
     TN* tn = Build_TN_Of_Mtype(srcType);
-    switch (cvtType)
-    {
-    case RND:
+    if (rm == ROUND_USER) {
         Build_OP(TOP_fctiw, tn, src, ops);
-        break;
-    case TRUNC:
+    } else if (rm == ROUND_CHOP) {
         Build_OP(TOP_fctiwz, tn, src, ops);
+    } else {
+        TN* savefr = Build_TN_Of_Mtype(MTYPE_I8);
+        Build_OP(TOP_mffs, savefr, ops);
+        switch (rm)
+        {
+        case ROUND_NEAREST:
+            Build_OP(TOP_mtfsb0, Gen_Literal_TN(30, 4), ops);
+            Build_OP(TOP_mtfsb0, Gen_Literal_TN(31, 4), ops);
+            Build_OP(TOP_fctiw, tn, src, ops);
+            break;
+        case ROUND_PLUS_INF:
+            Build_OP(TOP_mtfsb1, Gen_Literal_TN(30, 4), ops);
+            Build_OP(TOP_mtfsb0, Gen_Literal_TN(31, 4), ops);
+            Build_OP(TOP_fctiw, tn, src, ops);
         break;
-    case CEIL:
-        Build_OP(TOP_mtfsb1, Gen_Literal_TN(30, 4), ops);
-        Build_OP(TOP_mtfsb0, Gen_Literal_TN(31, 4), ops);
-        Build_OP(TOP_fctiw, tn, src, ops);
-        Build_OP(TOP_mtfsb0, Gen_Literal_TN(30, 4), ops);
-        Build_OP(TOP_mtfsb0, Gen_Literal_TN(31, 4), ops);
+        case ROUND_NEG_INF:
+            Build_OP(TOP_mtfsb1, Gen_Literal_TN(30, 4), ops);
+            Build_OP(TOP_mtfsb1, Gen_Literal_TN(31, 4), ops);
+            Build_OP(TOP_fctiw, tn, src, ops);
         break;
-    case FLOOR:
-        Build_OP(TOP_mtfsb1, Gen_Literal_TN(30, 4), ops);
-        Build_OP(TOP_mtfsb1, Gen_Literal_TN(31, 4), ops);
-        Build_OP(TOP_fctiw, tn, src, ops);
-        Build_OP(TOP_mtfsb0, Gen_Literal_TN(30, 4), ops);
-        Build_OP(TOP_mtfsb0, Gen_Literal_TN(31, 4), ops);
-        break;
+        }
+        Build_OP(TOP_mtfsf, Gen_Literal_TN(255, 4), savefr, ops);
     }
     
     ST* sym = CGSPILL_Get_TN_Spill_Location(tn, CGSPILL_LRA);
@@ -1320,7 +1459,7 @@ extern void Expand_Copy (TN *result_l, TN *src_l, TYPE_ID mtype, OPS *ops);
     blt cr2,$+8 # add 2^31 if input
     xoris R3,R3,0x8000 # was >= 2^31
 */
-void Handle_Float_Uint_Cvt(Cvt_Type cvtType, TYPE_ID srcType, TN* dest, TN* src, OPS* ops)
+void Handle_Float_Uint_Cvt(ROUND_MODE rm, TYPE_ID srcType, TN* dest, TN* src, OPS* ops)
 {
     OP * st = OPS_last(ops);
 
@@ -1360,28 +1499,32 @@ void Handle_Float_Uint_Cvt(Cvt_Type cvtType, TYPE_ID srcType, TN* dest, TN* src,
     Build_OP(TOP_xoris, tn3, tn2, Gen_Literal_TN(0x8000, 4), ops);
     Build_OP(TOP_fsel, fr2, fr5, fr5, fr2, ops);
 
-    switch (cvtType)
-    {
-    case RND:
+    if (rm == ROUND_USER) {
         Build_OP(TOP_fctiw, fr2, fr2, ops);
+    } else if (rm == ROUND_CHOP) {
+        Build_OP(TOP_fctiwz,  fr2, fr2, ops);
+    } else {
+        TN* savefr = Build_TN_Of_Mtype(MTYPE_I8);
+        Build_OP(TOP_mffs, savefr, src, ops);
+        switch (rm)
+        {
+        case ROUND_NEAREST:
+            Build_OP(TOP_mtfsb0, Gen_Literal_TN(30, 4), ops);
+            Build_OP(TOP_mtfsb0, Gen_Literal_TN(31, 4), ops);
+            Build_OP(TOP_fctiw, fr2, fr2, ops);
+            break;
+        case ROUND_PLUS_INF:
+            Build_OP(TOP_mtfsb1, Gen_Literal_TN(30, 4), ops);
+            Build_OP(TOP_mtfsb0, Gen_Literal_TN(31, 4), ops);
+            Build_OP(TOP_fctiw, fr2, fr2, ops);
         break;
-    case TRUNC:
-        Build_OP(TOP_fctiwz, fr2, fr2, ops);
+        case ROUND_NEG_INF:
+            Build_OP(TOP_mtfsb1, Gen_Literal_TN(30, 4), ops);
+            Build_OP(TOP_mtfsb1, Gen_Literal_TN(31, 4), ops);
+            Build_OP(TOP_fctiw, fr2, fr2, ops);
         break;
-    case CEIL:
-        Build_OP(TOP_mtfsb1, Gen_Literal_TN(30, 4), ops);
-        Build_OP(TOP_mtfsb0, Gen_Literal_TN(31, 4), ops);
-        Build_OP(TOP_fctiw, fr2, fr2, ops);
-        Build_OP(TOP_mtfsb0, Gen_Literal_TN(30, 4), ops);
-        Build_OP(TOP_mtfsb0, Gen_Literal_TN(31, 4), ops);
-        break;
-    case FLOOR:
-        Build_OP(TOP_mtfsb1, Gen_Literal_TN(30, 4), ops);
-        Build_OP(TOP_mtfsb1, Gen_Literal_TN(31, 4), ops);
-        Build_OP(TOP_fctiw, fr2, fr2, ops);
-        Build_OP(TOP_mtfsb0, Gen_Literal_TN(30, 4), ops);
-        Build_OP(TOP_mtfsb0, Gen_Literal_TN(31, 4), ops);
-        break;
+        }
+        Build_OP(TOP_mtfsf, Gen_Literal_TN(255, 4), savefr, ops);
     }
     
     ST* sym = CGSPILL_Get_TN_Spill_Location(fr2, CGSPILL_LRA);
@@ -1575,45 +1718,6 @@ void Handle_ULonglong_Float_Cvt(TN* dest, TN* src_high, TN* src_low, OPS* ops, b
 
     for (; opst != NULL; opst = OP_next(opst)) 
       Set_OP_no_move_before_gra(opst);
-#if 0
-#if HOST_IS_LITTLE_ENDIAN
-    static unsigned char magic[] = {0, 0, 0, 0, 0, 0, 0xF0, 0x43};
-#else
-    static unsigned char magic[] = {0x43, 0xF0, 0, 0, 0, 0, 0, 0};
-#endif
-    TCON tcon = Host_To_Targ_Float(MTYPE_F8, *(double *)magic);
-    TY_IDX ty_idx = MTYPE_F8 << 8;
-    ST * st   = New_Const_Sym(Enter_tcon(tcon), ty_idx);
-    WN * wn   = WN_CreateConst(OPR_CONST, TY_mtype(ty_idx), MTYPE_V, st);  
-    TN * tmp  = Gen_Register_TN(ISA_REGISTER_CLASS_float, 8);  
-    Exp_Load(MTYPE_F8, MTYPE_F8, tmp, st, 0, ops, 0); // load magic value
-
-    TN * tn   = Build_TN_Of_Mtype(MTYPE_F8);
-    ST * sym1 = CGSPILL_Get_TN_Spill_Location(tn, CGSPILL_LRA);
-    INT64 ofst;
-    ST * sym;  
-    Base_Symbol_And_Offset_For_Addressing(sym1, 0, &sym, &ofst);
-
-    TN* tmp1 = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
-    TN* tmp2 = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
-    TN* tmp3 = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
-    Build_OP(TOP_srwi,  tmp1, src_high, Gen_Literal_TN(12, 4), ops);
-    Build_OP(TOP_oris, tmp2, tmp1, Gen_Literal_TN(0x43F0, 4), ops);
-    Exp_Store(MTYPE_I4, tmp2, sym1, 0, ops, V_NONE);
-    Build_OP(TOP_srwi,  tmp3, src_low, Gen_Literal_TN(12, 4), ops);
-    Build_OP(TOP_rlwimi, tmp3, src_high, Gen_Literal_TN(20, 4), Gen_Literal_TN(0, 4), Gen_Literal_TN(11, 4), tmp3, ops);
-    Exp_Store(MTYPE_I4, tmp3, sym1, 4, ops, V_NONE);
-    TN* tn1 = Build_TN_Like(dest);
-    Exp_Load(MTYPE_F8, MTYPE_F8, tn1, sym1, 0, ops, V_NONE);    
-    
-    if (!isDouble) {
-        TN* tn2 = Build_TN_Like(dest);
-        Build_OP(TOP_fsub, tn2, tn1, tmp, ops);
-        Build_OP(TOP_frsp, dest, tn2, ops);
-    } else {
-        Build_OP(TOP_fsub, dest, tn1, tmp, ops);
-    }
-#endif
 }
 
 void Handle_Longlong_Ldst(WN* expr, TOP top, TN *low, TN* high, OPS* ops)

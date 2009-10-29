@@ -737,7 +737,24 @@ void Em_Dwarf_Process_PU (Dwarf_Unsigned begin_label,
 				(Dwarf_Unsigned) end_label,
 				end_offset,
 				eh_offset, eh_symindex, &dw_error);
-
+#ifdef TARG_PPC32
+    if (eh_offset == DW_DLX_NO_EH_OFFSET)	/* no exception handler */
+  	dwf_add_ehframe_fde_b (dw_dbg, fde, PU_die, eh_cie_index, 
+			       begin_offset,
+			       0 /* dummy code length */,
+			       (Dwarf_Unsigned) begin_label,
+			       (Dwarf_Unsigned) end_label,
+			       end_offset,
+			       &dw_error);
+  else
+  	dwf_add_ehframe_info_b (dw_dbg, fde, PU_die, eh_cie_index, 
+				begin_offset,
+				0 /* dummy code length */,
+				(Dwarf_Unsigned) begin_label,
+				(Dwarf_Unsigned) end_label,
+				end_offset,
+				eh_offset, eh_symindex, &dw_error);
+#endif
 #ifdef TARG_X8664
   if (eh_fde == NULL)
   	return;

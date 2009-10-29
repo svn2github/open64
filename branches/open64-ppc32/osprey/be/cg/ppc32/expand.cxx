@@ -183,7 +183,7 @@ TN* Create_TN_Pair(TN* key, TYPE_ID mtype)
   return pair;
 }
 
-static TN * Get_64Bit_High_TN(TN * low, BOOL bsigned, OPS * ops)
+TN * Get_64Bit_High_TN(TN * low, BOOL bsigned, OPS * ops)
 {
   TN * high = Build_TN_Of_Mtype(bsigned ? MTYPE_I4 : MTYPE_U4);
   
@@ -2353,17 +2353,9 @@ void
 Expand_Bool_To_Int (TN *dest, TN *src, TYPE_ID rtype, OPS *ops)
 { FmtAssert(FALSE,("Unimplemented")); }
 
-// TODO how do you trap on float val too big for [u]int32?
-typedef enum {
-  ROUND_USER,
-  ROUND_NEAREST,
-  ROUND_CHOP,
-  ROUND_NEG_INF,
-  ROUND_PLUS_INF
-} ROUND_MODE;
 
 static void
-Expand_Float_To_Int (Cvt_Type rm, TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops)
+Expand_Float_To_Int (ROUND_MODE rm, TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops)
 {
   FmtAssert(MTYPE_is_integral(imtype), ("Expand_Float_To_Int : Dest type should be int"));
   if (OP_NEED_PAIR(imtype)) {
@@ -2382,45 +2374,32 @@ Expand_Float_To_Int (Cvt_Type rm, TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmt
 void
 Expand_Float_To_Int_Cvt (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops)
 {
-  Expand_Float_To_Int(TRUNC, dest, src, imtype, fmtype, ops);
-#if 0  
-  if (OP_NEED_PAIR(imtype)) {
-    FmtAssert(FALSE, ("Expand_Float_To_Int_Cvt 64Bit convert"));
-  }
-  else {
-    if (MTYPE_is_signed(imtype)) {
-      Handle_Float_Int_Cvt(TRUNC, fmtype, dest, src, ops);
-    }
-    else {
-      Handle_Float_Uint_Cvt(TRUNC, fmtype, dest, src, ops);
-    }
-  }
-#endif  
+  Expand_Float_To_Int(ROUND_USER, dest, src, imtype, fmtype, ops); 
 }
 
 void
 Expand_Float_To_Int_Round (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops)
 {
-  Expand_Float_To_Int(RND, dest, src, imtype, fmtype, ops);
+  Expand_Float_To_Int(ROUND_NEAREST, dest, src, imtype, fmtype, ops);
 }
 
 void
 Expand_Float_To_Int_Trunc (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops)
 {
-  Expand_Float_To_Int(TRUNC, dest, src, imtype, fmtype, ops);
+  Expand_Float_To_Int(ROUND_CHOP, dest, src, imtype, fmtype, ops);
 }
 
 
 void
 Expand_Float_To_Int_Floor (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops)
 {
-  Expand_Float_To_Int(FLOOR, dest, src, imtype, fmtype, ops);
+  Expand_Float_To_Int(ROUND_NEG_INF, dest, src, imtype, fmtype, ops);
 }
 
 void
 Expand_Float_To_Int_Ceil (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops)
 {
-  Expand_Float_To_Int(CEIL, dest, src, imtype, fmtype, ops);
+  Expand_Float_To_Int(ROUND_PLUS_INF, dest, src, imtype, fmtype, ops);
 }
 
 void
@@ -3674,7 +3653,14 @@ Expand_Flop (OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *ops)
         Build_OP(TOP_frsqrte, result, src1, ops);
         return;
     } else if (opcode == OPC_F4RECIP) {
-        Build_OP(TOP_fres, result, src1, ops);
+        TCON tcon = Host_To_Targ_Float(MTYPE_F4, 1.0); // 2^32 - 1
+        TY_IDX ty_idx = MTYPE_F4 << 8;
+        ST * st   = New_Const_Sym(Enter_tcon(tcon), ty_idx);
+        WN * wn   = WN_CreateConst(OPR_CONST, TY_mtype(ty_idx), MTYPE_V, st);  
+        TN * fr  = Gen_Register_TN(ISA_REGISTER_CLASS_float, 4);  
+        Exp_Load(MTYPE_F4, MTYPE_F4, fr, st, 0, ops, 0); // load magic value
+        Build_OP(TOP_fdivs, result, fr, src1, ops);
+//        Build_OP(TOP_fres, result, src1, ops);
         return;
     } 
   TOP opc;

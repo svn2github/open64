@@ -978,7 +978,11 @@ Set_PU_arg_area_size (TY_IDX pu, UINT32 size)
 struct is_return_address
 {
     BOOL operator () (UINT32, const ST *st) const {
+#ifdef TARG_PPC32
+	return (strcmp (ST_name (st), "__return_address") == 0 || strcmp(ST_name(st), "__ra_sym") == 0);
+#else
 	return (strcmp (ST_name (st), "__return_address") == 0);
+#endif
     }
 }; 
 
@@ -994,7 +998,6 @@ Find_Special_Return_Address_Symbol (void)
 	return ST_ptr(st_idx);
 
 } // Find_Special_Return_Address_Symbol
-
 
 /* ====================================================================
  *
@@ -2176,7 +2179,7 @@ Merge_Fixed_Stack_Frame(ST *SP_baseST, ST *FP_baseST)
   	Set_STB_size(SF_Block(SFSEG_FORMAL), SF_Maxsize(SFSEG_FORMAL));
 #endif
   }
-
+  ST *ra_sv_sym = Find_Special_Return_Address_Symbol();
   switch ( Current_PU_Stack_Model) {
   case SMODEL_SMALL:
     MERGE_SEGMENT(SP_baseST, SFSEG_ACTUAL, Max_Small_Frame_Offset);
@@ -2189,6 +2192,9 @@ Merge_Fixed_Stack_Frame(ST *SP_baseST, ST *FP_baseST)
     /* attach formals and upformal to SP, but don't assign offsets till finalize */
 #ifdef TARG_PPC32
      MERGE_SEGMENT(SP_Sym, SFSEG_FORMAL, Max_Small_Frame_Offset);
+     if (ra_sv_sym) {
+       Set_ST_base(ra_sv_sym, SP_Sym);
+     }
 #else
     Set_ST_base(SF_Block(SFSEG_FORMAL), SP_baseST);
 #endif
@@ -2203,6 +2209,10 @@ Merge_Fixed_Stack_Frame(ST *SP_baseST, ST *FP_baseST)
     Set_ST_ofst (SF_Block(SFSEG_UPFORMAL), Stack_Offset_Adjustment);
 #ifdef TARG_PPC32
     MERGE_SEGMENT(SP_baseST, SFSEG_FORMAL, MAX_LARGE_FRAME_OFFSET);
+    if (ra_sv_sym) {
+      Set_ST_base(ra_sv_sym, FP_Sym);
+      Set_ST_ofst(ra_sv_sym, 4);
+    }
 #else
     MERGE_SEGMENT(FP_baseST, SFSEG_FORMAL, MAX_LARGE_FRAME_OFFSET);
 #endif
@@ -2214,6 +2224,10 @@ Merge_Fixed_Stack_Frame(ST *SP_baseST, ST *FP_baseST)
     Set_ST_ofst (SF_Block(SFSEG_UPFORMAL), Stack_Offset_Adjustment);
 #ifdef TARG_PPC32
     Set_ST_base(SF_Block(SFSEG_FORMAL), FP_baseST);
+    if (ra_sv_sym) {
+      Set_ST_base(ra_sv_sym, FP_Sym);
+      Set_ST_ofst(ra_sv_sym, 4);
+    }
 #else
     MERGE_SEGMENT(FP_baseST, SFSEG_FORMAL, MAX_LARGE_FRAME_OFFSET);
 #endif
@@ -2640,6 +2654,15 @@ INT64 Finalize_Stack_Frame (void)
     Frame_Size += MTYPE_byte_size(Pointer_Mtype);
     if ((*Push_Pop_Int_Saved_Regs_p)() & 1)
       Frame_Size += MTYPE_byte_size(Pointer_Mtype);
+  }
+#endif
+#ifdef TARG_PPC32
+  // for return address
+  if (Current_PU_Stack_Model == SMODEL_SMALL) {
+    ST *ra_sv_sym = Find_Special_Return_Address_Symbol();
+    if (ra_sv_sym) {
+      Set_ST_ofst(ra_sv_sym, Frame_Size + 4);
+    }
   }
 #endif
 

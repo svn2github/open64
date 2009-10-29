@@ -375,7 +375,7 @@ main ()
 	"fmr",
 	"mfcr",
 	"mcrf",
-	
+	"mffs",
 	
 	"frsp",
 	"fctiw",

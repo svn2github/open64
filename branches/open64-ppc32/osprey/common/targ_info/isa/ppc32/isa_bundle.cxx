@@ -356,6 +356,7 @@ main()
 		        TOP_fsel,
 			      TOP_mcrfs,
 			      TOP_mtfsf,
+			      TOP_mffs,
 			      TOP_mflr, //			      TOP_mfc1,
 			      TOP_mtlr, //			      TOP_mtc1,
 			      TOP_mfctr,

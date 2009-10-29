@@ -921,7 +921,7 @@ Process_OPs_For_Stmt (void)
  * Currently we allocate a new TN for every invocation of this procedure.
  * 
  */
-static TN *
+TN *
 Allocate_Result_TN (WN *wn, TN **opnd_tn)
 {
 #ifdef TARG_SL
@@ -988,7 +988,7 @@ void
 Set_OP_To_WN_Map(WN *wn)
 {
   OP *op;
-
+return;
   // We don't have aliasing information at -O0 and -O1.
   if (CG_opt_level < 2) return;
 
@@ -1590,7 +1590,7 @@ Add_PregTNs_To_BB (PREG_LIST *prl0, BB *bb, BOOL prepend)
 /* Check if the parent WHIRL node can take an immediate operand
  * of the value const_val. If parent is NULL, return FALSE.
  */
-static BOOL
+BOOL
 Has_Immediate_Operand (WN *parent, WN *expr)
 {
   Is_True( WN_operator_is(expr, OPR_INTCONST),
@@ -1660,7 +1660,7 @@ Has_Immediate_Operand (WN *parent, WN *expr)
  *  2. mark the current PU and bb as having a call.
  *  3. mark the current EH range as having a call.
  */
-static void
+void
 Handle_Call_Site (WN *call, OPERATOR call_opr)
 {
   TN *tgt_tn;
@@ -1910,7 +1910,7 @@ static VARIANT Memop_Variant(WN *memop)
   return variant;
 }
 
-static TN *
+TN *
 Handle_LDA (WN *lda, WN *parent, TN *result, OPCODE opcode)
 {
   OPERATOR call_op = OPERATOR_UNKNOWN;
@@ -1975,7 +1975,7 @@ Find_PREG_For_Symbol (const ST *st)
 extern void Expand_Copy_Extension (TN *result, TN *src, TYPE_ID mtype, BOOL signed_extension, OPS *ops);
 #endif
 
-static TN *
+TN *
 Handle_LDID (WN *ldid, TN *result, OPCODE opcode)
 {
   if (ST_assigned_to_dedicated_preg(WN_st(ldid))) {
@@ -2107,7 +2107,7 @@ Handle_LDID (WN *ldid, TN *result, OPCODE opcode)
   return result;
 }
 
-static TN *
+TN *
 Handle_LDBITS (WN *ldbits, TN *result, OPCODE opcode)
 {
   TN *src_tn;
@@ -2137,7 +2137,7 @@ Handle_LDBITS (WN *ldbits, TN *result, OPCODE opcode)
   return result;
 }
 
-static TN *
+TN *
 Handle_EXTRACT_BITS (WN *extrbits, TN *result, OPCODE opcode)
 {
   TN *kid0_tn = Expand_Expr (WN_kid0(extrbits), extrbits, NULL);
@@ -2215,7 +2215,7 @@ TN *TN_CORRESPOND_Get(TN *result, WN *expr)
 }
 
 
-static TN *
+TN *
 Handle_DIVREM(WN *expr, WN *parent, TN *result, OPCODE opcode)
 {
   TN	*result2, *kid0_tn, *kid1_tn;
@@ -2235,7 +2235,7 @@ Handle_DIVREM(WN *expr, WN *parent, TN *result, OPCODE opcode)
   return result;
 }
 
-static TN *
+TN *
 Handle_DIVPART(WN *expr, WN *parent, TN *result)
 {
   TN *pregTN;
@@ -2259,7 +2259,7 @@ Handle_DIVPART(WN *expr, WN *parent, TN *result)
   return result;
 }
 
-static TN *
+TN *
 Handle_REMPART(WN *expr, WN *parent, TN *result)
 {
   TN *pregTN;
@@ -2286,7 +2286,7 @@ Handle_REMPART(WN *expr, WN *parent, TN *result)
   return result;
 }
 
-static TN *
+TN *
 Handle_MINMAX(WN *expr, WN *parent, TN *result, OPCODE opcode)
 {
   TN	*result2, *kid0_tn, *kid1_tn;
@@ -2306,7 +2306,7 @@ Handle_MINMAX(WN *expr, WN *parent, TN *result, OPCODE opcode)
   return result;
 }
 
-static TN *
+TN *
 Handle_MINPART(WN *expr, WN *parent, TN *result)
 {
   TN *pregTN;
@@ -2331,7 +2331,7 @@ Handle_MINPART(WN *expr, WN *parent, TN *result)
   return result;
 }
 
-static TN *
+TN *
 Handle_MAXPART(WN *expr, WN *parent, TN *result)
 {
   TN *pregTN;
@@ -2361,7 +2361,7 @@ Handle_MAXPART(WN *expr, WN *parent, TN *result)
 
 
 
-static TN *
+TN *
 Handle_ILOAD (WN *iload, TN *result, OPCODE opcode)
 {
   VARIANT variant;
@@ -2491,7 +2491,7 @@ Handle_ILOAD (WN *iload, TN *result, OPCODE opcode)
 }
 
 
-static TN *
+TN *
 Handle_ILDBITS (WN *ildbits, TN *result, OPCODE opcode)
 {
   VARIANT variant = Memop_Variant(ildbits);
@@ -2545,7 +2545,7 @@ static BOOL Operator_Is_Bool (OPERATOR opr) {
   }
 }
 
-static void
+void
 Handle_STID (WN *stid, OPCODE opcode)
 {
   TN *result;
@@ -2818,7 +2818,7 @@ Handle_STID (WN *stid, OPCODE opcode)
 }
 
 
-static void
+void
 Handle_STBITS (WN *stbits)
 {
   VARIANT variant;
@@ -2873,7 +2873,7 @@ Handle_STBITS (WN *stbits)
 }
 
 
-static TN *
+TN *
 Handle_COMPOSE_BITS (WN *compbits, TN *result, OPCODE opcode)
 {
   TN *kid0_tn = Expand_Expr (WN_kid0(compbits), compbits, NULL);
@@ -2903,7 +2903,7 @@ Handle_COMPOSE_BITS (WN *compbits, TN *result, OPCODE opcode)
 }
 
 
-static void
+void
 Handle_ISTORE (WN *istore, OPCODE opcode)
 {
   VARIANT variant  = Memop_Variant(istore);
@@ -3036,7 +3036,7 @@ Handle_ISTORE (WN *istore, OPCODE opcode)
 }
 
 
-static void
+void
 Handle_ISTBITS (WN *istbits)
 {
   VARIANT variant  = Memop_Variant(istbits);
@@ -3096,7 +3096,7 @@ Handle_ISTBITS (WN *istbits)
   }
 }
 
-static TN *
+TN *
 Handle_SELECT(WN *select, TN *result, OPCODE opcode)
 {
   TN	*trueop, *falseop, *cond;
@@ -3244,7 +3244,7 @@ Handle_RROTATE (WN *rotate, TN *result)
 **
 **	If the operands are boolean, then we can use the binary version
 */
-static TN*
+TN*
 Handle_LAND_LIOR(WN *expr, WN *parent, TN *result)
 {
   VARIANT variant;
@@ -3273,7 +3273,7 @@ Handle_LAND_LIOR(WN *expr, WN *parent, TN *result)
   return result;
 }
 
-static TN*
+TN*
 Handle_LNOT(WN *expr, WN *parent, TN *result)
 {
   VARIANT variant;
@@ -3521,7 +3521,7 @@ Is_CVTL_Opcode (OPCODE opc)
 	}
 }
 
-static TN* 
+TN* 
 Handle_ALLOCA (WN *tree, TN *result)
 {
 
@@ -3609,7 +3609,7 @@ Handle_ALLOCA (WN *tree, TN *result)
   return result;
 }
 
-static void
+void
 Handle_DEALLOCA (WN *tree)
 {
   INT stack_adjustment = Stack_Offset_Adjustment_For_PU();
@@ -3677,7 +3677,7 @@ Handle_Imm_Op (WN * expr, INT * kidno /* counted from 0 */)
 }
 #endif
 
-static TN*
+TN*
 Handle_INTRINSIC_OP (WN *expr, TN *result)
 {
   INTRINSIC id = (INTRINSIC) WN_intrinsic (expr);
@@ -4420,6 +4420,7 @@ Handle_Shift_Operation(WN* expr, TN* result)
  * is also NULL for cases where there is no parent (i.e. statement
  * level nodes).
  */
+int aa=0;
 #if defined(TARG_SL) || defined(TARG_PPC32)
 TN *
 Expand_Expr (WN *expr, WN *parent, TN *result, INTRINSIC intrn_id)
@@ -4428,9 +4429,9 @@ static TN *
 Expand_Expr (WN *expr, WN *parent, TN *result)
 #endif
 {
-#ifdef _OLIVE_AUTO_CG_
-  extern TN* Burm_Expand_Expr(WN *, WN *, TN *, INTRINSIC);
-  return Burm_Expand_Expr(expr, parent, result, intrn_id);
+#ifdef _OLIVE_AUTO_CG_a
+//  extern TN* Burm_Expand_Expr(WN *, WN *, TN *, INTRINSIC);
+//  return Burm_Expand_Expr(expr, parent, result, intrn_id);
 #endif
   OPCODE opcode;
   OPERATOR opr;
@@ -4488,6 +4489,21 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
 #endif
 			  );
   }
+
+#ifdef _OLIVE_AUTO_CG_
+  if(aa==1){
+    printf("\nOPCODE: %d %s    TOP: %d\n", opcode, OPCODE_name(opcode), top);
+    dump_tree(expr);
+  }
+
+  extern TN* Burm_Expand_Expr(WN *, WN *, TN *, INTRINSIC);
+  if(  
+	aa==0)
+	 return Burm_Expand_Expr(expr, parent, result, intrn_id);
+  aa=0;
+#endif
+
+
   /* get #opnds from topcode or from #kids of whirl
    * (special cases like store handled directly). */
   if (top != TOP_UNDEFINED) {
@@ -6756,7 +6772,7 @@ static void Expand_Statement (WN *stmt)
 }
 
 
-static WN *
+WN *
 Handle_INTRINSIC_CALL (WN *intrncall)
 {
   enum {max_intrinsic_opnds = 4};

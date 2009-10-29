@@ -691,6 +691,13 @@ Generate_Entry (BB *bb, BOOL gra_run )
       // accessible as 4(%ebp), but it is never in a register.  Nor
       // does it need to be saved.
       ST *ra_sv_sym = Find_Special_Return_Address_Symbol();
+#ifdef TARG_PPC32
+      TN *ra_sv_tn = Build_TN_Like(RA_TN);
+      Set_TN_save_creg (ra_sv_tn, TN_class_reg(RA_TN));
+      Set_TN_spill(ra_sv_tn, ra_sv_sym);
+      Exp_COPY (ra_sv_tn, RA_TN, &ops);
+      CGSPILL_Store_To_Memory (ra_sv_tn, ra_sv_sym, &ops, CGSPILL_LCL, bb);
+#else
       // bug fix for OSP_357
       // When gra is enabled, we build this instruction:
       //       branch_reg1 (save register) copy.br branch_reg
@@ -714,8 +721,24 @@ Generate_Entry (BB *bb, BOOL gra_run )
       } else {
 	CGSPILL_Store_To_Memory (RA_TN, ra_sv_sym, &ops, CGSPILL_LCL, bb);
       }
+#endif // TARG_PPC32
 #endif // ! TARG_NVISA
     }
+#if defined(TARG_PPC32)
+    else if (PU_Has_Calls) {
+      ST *ra_sym = Find_Special_Return_Address_Symbol();
+      if (ra_sym == NULL) {
+        ra_sym = New_ST();
+        ST_Init (ra_sym, Save_Str ("__ra_sym"), CLASS_VAR, SCLASS_AUTO,
+	     EXPORT_LOCAL, Make_Pointer_Type (Be_Type_Tbl (MTYPE_V), FALSE));
+      }
+      TN *ra_sv_tn = Build_TN_Like(RA_TN);
+      Set_TN_save_creg (ra_sv_tn, TN_class_reg(RA_TN));
+      Set_TN_spill(ra_sv_tn, ra_sym);
+      Exp_COPY (ra_sv_tn, RA_TN, &ops);
+      CGSPILL_Store_To_Memory (ra_sv_tn, ra_sym, &ops, CGSPILL_LCL, bb);
+    }
+#else
 #if defined(TARG_IA64) 
     else if (PU_Has_Calls || IPFEC_Enable_Edge_Profile){
       // Some points need to be noted here:
@@ -752,14 +775,10 @@ Generate_Entry (BB *bb, BOOL gra_run )
 	// it could use a stacked reg; ideally gra would handle
 	// this, but it doesn't and is easy to just copy to int reg
 	// by hand and then let gra use stacked reg.
-#if defined(TARG_PPC32)
-        ra_intsave_tn = Build_RCLASS_TN (ISA_REGISTER_CLASS_integer);
-#else
       	 if (ra_intsave_tn == NULL) {
             ra_intsave_tn = Build_RCLASS_TN (ISA_REGISTER_CLASS_integer);
             Set_TN_save_creg (ra_intsave_tn, TN_class_reg(RA_TN));
         }
-#endif
         Exp_COPY (ra_intsave_tn, RA_TN, &ops );
       }
 #if defined(TARG_SL) 
@@ -771,6 +790,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
       }
       Set_OP_no_move_before_gra(OPS_last(&ops));
     }
+#endif // TARG_PPC32
   }
 
   if ( gra_run ) 
@@ -1685,6 +1705,16 @@ Generate_Exit (
       Exp_COPY (RA_TN, ra_sv_tn, &ops);
 #endif
     }
+#ifdef TARG_PPC32
+    else if (PU_Has_Calls) {
+      ST *ra_sv_sym = Find_Special_Return_Address_Symbol();
+      TN *ra_sv_tn = Build_TN_Like(RA_TN);
+      Set_TN_save_creg (ra_sv_tn, TN_class_reg(RA_TN));
+      Set_TN_spill(ra_sv_tn, ra_sv_sym);
+      CGSPILL_Load_From_Memory (ra_sv_tn, ra_sv_sym, &ops, CGSPILL_LCL, bb_epi);
+      Exp_COPY (RA_TN, ra_sv_tn, &ops);
+    }
+#else
 #ifdef TARG_IA64
     else if( PU_Has_Calls || IPFEC_Enable_Edge_Profile) {
       // Please see comment in similar place in "Generate_Entry" PU.
@@ -1714,6 +1744,7 @@ Generate_Exit (
 	Set_OP_no_move_before_gra(OPS_last(&ops));
       }
     }
+#endif // TARG_PPC32
   }
 
   if ( gra_run ) {

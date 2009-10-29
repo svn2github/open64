@@ -222,7 +222,7 @@ extern BOOL PU_has_trampoline;  // defined in wn_lower.cxx
 
 #if defined(TARG_PPC32) // turn off for now until we need to deal with dwarf
 BOOL CG_emit_asm_dwarf    = TRUE;  // Dwarf Error: wrong version in compilation unit header (is 296, should be 2)
-BOOL CG_emit_unwind_info  = FALSE;
+BOOL CG_emit_unwind_info  = TRUE;
 BOOL CG_emit_unwind_info_Set = FALSE;
 BOOL CG_emit_unwind_directives = FALSE;
 #else
@@ -6137,7 +6137,7 @@ Write_TCON (
     INT32 scn_ofst32 = (INT32)scn_ofst;
     FmtAssert(scn_ofst32 == scn_ofst, ("section offset exceeds 32 bits: 0x%llx",
 				       (INT64)scn_ofst));
-#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_MIPS)
+#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_MIPS) && !defined(TARG_PPC32)
     if (etable)
         Targ_Emit_EH_Const ( Asm_File, *tcon, add_null, repeat, scn_ofst32, format );
     else
@@ -8886,7 +8886,6 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 		Initial_Pu_PC, PC);
 #endif // TARG_X8664
   }
-
   if (Run_prompf) {
     fputc ('\n', anl_file);
     fclose(anl_file);
@@ -8895,7 +8894,6 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   PU_Size = PC - Initial_Pu_PC;
   Set_STB_size (PU_base, PC);
   text_PC = PC;
-
   if (generate_dwarf) {
     // The final label in this PU is liable to get used in computing
     // arguments to Em_Dwarf_End_Text_Region_Semi_Symbolic, so we need
@@ -8905,7 +8903,6 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 		ST_pu(pu),
 		Offset_From_Last_Label);
   }
-
   Finalize_Unwind_Info();
 }
 
@@ -9644,7 +9641,6 @@ EMT_End_File( void )
       }
   }
 #endif /* EMIT_DATA_SECTIONS */
-
   INT dwarf_section_count = 0;
 
   if (generate_dwarf) {

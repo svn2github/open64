@@ -75,7 +75,7 @@ main()
   pc26 = ISA_Lit_Opnd_Type_Create("pc26", 26, PCREL, LC_pc26);
   uimm10 = ISA_Lit_Opnd_Type_Create("uimm10", 10, UNSIGNED, LC_uimm10);
   uimm3  = ISA_Lit_Opnd_Type_Create("uimm3", 3, UNSIGNED, LC_uimm3);
-
+  uimm7  = ISA_Lit_Opnd_Type_Create("uimm7", 7, UNSIGNED, LC_uimm3);
   
   /* Registers... */
 
@@ -684,12 +684,12 @@ Instruction_Group("int load x",
 	    TOP_UNDEFINED);
   Operand(0, int32, opnd1);
 
-  Instruction_Group("ctc1",
+  Instruction_Group("move to FPSCR",
 	    TOP_mtfsf,
 	    TOP_UNDEFINED);
 
-  Result(0, fp64);
-  Operand(0, int32, opnd1);
+  Operand(0, uimm7, opnd1);
+  Operand(1, fp64, opnd1);
   
   Instruction_Group("set FPSCR bit",	    
 				TOP_mtfsb0,
@@ -697,6 +697,12 @@ Instruction_Group("int load x",
 	    TOP_UNDEFINED);
 
   Operand(0, uimm5, opnd1);
+
+  Instruction_Group("move from FPSCR",	    
+				TOP_mffs,
+	    TOP_UNDEFINED);
+
+  Operand(0, fp64, opnd1);
 
   Instruction_Group("CR Logical",
   	                    TOP_crand,

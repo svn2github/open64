@@ -2188,7 +2188,6 @@ Traverse_Extra_DST (void)
   Dwarf_P_Die parent;
   BOOL inlined_subp;
   BOOL visit_children;
-
   if (Trace_Dwarf) {
 	fprintf(TFile, "Trace Extra DST\n");
   }

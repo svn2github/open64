@@ -56,6 +56,7 @@
 #include "be_symtab.h"
 #include "be_util.h"
 #include "config_asm.h"
+#include "errors.h"
 
 /*
  * extern declaration 
@@ -85,10 +86,10 @@ inline bool IN_RANGE(INT64 a, INT64 b, INT64 c)
 }
 
 #define SIMM16 -32768, 32767
-#define SIMM32 -2147483648, 2147483647
+#define SIMM32 -2147483648ll, 2147483647ll
 #define UIMM16A 0, 32767
 #define UIMM16 0, 65535
-#define UIMM32 0, 4294967295
+#define UIMM32 0, 4294967295ll
 
 int OPC2OP(OPCODE opc);
 
@@ -102,10 +103,17 @@ void Handle_Cond_Move_Float(OPERATOR opr, TN *dest, TN *src1, TN *src2, OPS *ops
 void Handle_MaxMin_Float(bool max, TYPE_ID mtype, TN* dest, TN* src1, TN* src2, OPS* ops);
 void Handle_MaxMin_Longlong(bool max, TOP top_cmp, TN* dest_high, TN* dest_low, TN* src1_high, TN* src1_low, TN* src2_high, TN* src2_low, OPS* ops);
 
-enum Cvt_Type {RND, TRUNC, CEIL, FLOOR};
+// TODO how do you trap on float val too big for [u]int32?
+typedef enum {
+  ROUND_USER,
+  ROUND_NEAREST,
+  ROUND_CHOP,
+  ROUND_NEG_INF,
+  ROUND_PLUS_INF
+} ROUND_MODE;
 
-void Handle_Float_Int_Cvt(Cvt_Type cvtType, TYPE_ID srcType, TN* dest, TN* src, OPS* ops);
-void Handle_Float_Uint_Cvt(Cvt_Type cvtType, TYPE_ID srcType, TN* dest, TN* src, OPS* ops);
+void Handle_Float_Int_Cvt(ROUND_MODE rm, TYPE_ID srcType, TN* dest, TN* src, OPS* ops);
+void Handle_Float_Uint_Cvt(ROUND_MODE rm, TYPE_ID srcType, TN* dest, TN* src, OPS* ops);
 void Handle_Int_Float_Cvt(TN * dest, TN * src, OPS * ops, bool isUnsigned, bool isDouble);
 void Handle_ULonglong_Float_Cvt(TN* dest, TN* src_high, TN* src_low, OPS* ops, bool isDouble);
 
@@ -121,6 +129,8 @@ TN * Handle_Load(WN *ldid, TN *result, TOP top, OPS * ops);
 void Handle_Store(WN *stid, TN *result, TOP top, OPS * ops);
 TN * Handle_Float_Load(WN *fld, TN *result, TOP top, OPS *ops);
 void Handle_Float_Store(WN *fst, TN *result, TOP top, OPS *ops);
+
+TN * Allocate_Result_TN (WN *wn, TN **opnd_tn);
 
 /*
  * olive defines
@@ -151,6 +161,8 @@ static COST COST_ZERO     = { 0 };
 
 #define burm_trace printf
 
+extern int aa;
+
 struct olive_node{     
     OPCODE    opcode;
     OPERATOR  opr;
@@ -179,8 +191,33 @@ struct olive_node{
         opr       = WN_operator(wn);
         top       = WHIRL_To_TOP(wn);  
         opc       = OPC2OP(WN_opcode(wn));
-          
+
+	begin_action();
+
+	result = res;
+	result_high = NULL;
+
+        int i;
+        for (i = 0; i < OP_MAX_FIXED_OPNDS; i++) {
+            opnd_tn[i] = NULL;
+        }
+        
+        for (i = 0; i < num_opnds; i++) {
+            kids[i] = new olive_node(WN_kid(wn, i), wn, NULL, intrn_id);
+        }
+        for (; i < OP_MAX_FIXED_OPNDS; i++) {
+            kids[i] = NULL;
+        }
+    }
+
+    bool isnull() {
+	return !result;
+    }
+    void begin_action(){
         if (top != TOP_UNDEFINED) {
+	    dump_tree(wn);
+	    printf("Top NOOP: %d\n",top);
+//	    FmtAssert(FALSE, ("Top NOOP: %d\n", top));
             num_opnds = ISA_OPERAND_INFO_Operands(ISA_OPERAND_Info(top))
 		        - (TOP_is_predicated(top) != 0);
         } else {
@@ -188,32 +225,15 @@ struct olive_node{
         }
         FmtAssert(num_opnds <= OP_MAX_FIXED_OPNDS, ("too many operands (%d) in olive_node::olive_node", num_opnds));
         
-        if (OPCODE_has_sym(opcode) && WN_st(wn) != NULL) {            
+        if (OPCODE_has_sym(opcode) && WN_st(wn) != NULL) {
             Allocate_Object (WN_st(wn));  /* make sure st is allocated */
         }
-
-	result = NULL;
-	result_high = NULL;
-        
-        /* if we need a result, make sure we have a valid result tn */
-        /* move this to action */
-//        if (OPCODE_is_expression(opcode) && (result == NULL)) {
-//            result = Build_TN_Of_Mtype (WN_rtype(wn));
-//        }
-        int i;
-        for (i = 0; i < OP_MAX_FIXED_OPNDS; i++) {
-            opnd_tn[i] = NULL;
-        }
-        
-        for (i = 0; i < num_opnds; i++) {
-            kids[i] = new olive_node(WN_kid(wn, i), wn, opnd_tn[i], intrn_id);
-            opnd_tn[i] = kids[i]->result;
-        }
-        for (; i < OP_MAX_FIXED_OPNDS; i++) {
-            kids[i] = NULL;
-        }
     }
-    
+    void init_result() { 
+        if (OPCODE_is_expression(opcode) && (result == NULL)) {
+            result = Allocate_Result_TN (wn, NULL);
+        }
+    } 
     virtual ~olive_node() {
         for (int i = 0; i < num_opnds; i++) {
             delete kids[i];
