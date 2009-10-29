@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -444,6 +448,8 @@ extern BB *CG_LOOP_epilog_end;
 extern UINT32 CG_LOOP_unroll_times_max;
 extern UINT32 CG_LOOP_unrolled_size_max;
 extern BOOL CG_LOOP_unroll_fully;
+extern UINT32 CG_LOOP_unroll_level;
+extern BOOL CG_LOOP_unroll_fb_required;
 extern BOOL CG_LOOP_unroll_remainder_fully;
 extern UINT32 CG_LOOP_unroll_min_trip;
 extern BOOL CG_LOOP_unroll_analysis;
@@ -604,10 +610,10 @@ public:
 #endif
 
   void Recompute_Liveness();
-  bool Determine_Unroll_Fully();
+  bool Determine_Unroll_Fully(BOOL count_multi_bb);
   void Determine_Unroll_Factor();
   void Determine_SWP_Unroll_Factor();
-  void Build_CG_LOOP_Info();
+  void Build_CG_LOOP_Info(BOOL single_bb);
   void EBO_Before_Unrolling();
   void EBO_After_Unrolling();
   void Print(FILE *fp);
@@ -634,13 +640,14 @@ typedef vector<SWP_FIXUP> SWP_FIXUP_VECTOR;
 #include "tn_map.h"
 
 // Create the mapping from a TN to its first definition 
-// in the loop body (only for single BB loop).
+// in the loop body.
 //
 struct CG_LOOP_DEF {
   TN_MAP tn_map;
   OP *Get(TN *tn); 
   BOOL Is_invariant(TN *tn);
-  CG_LOOP_DEF(BB *bb);
+  CG_LOOP_DEF(LOOP_DESCR *loop);
+  CG_LOOP_DEF(BB *body);
   ~CG_LOOP_DEF();
 };
 

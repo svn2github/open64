@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
@@ -1227,11 +1231,47 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
     for (INT i = 0; i < WN_kid_count(expr); i++) {
       // Tell the recursive call that the expression need not
       // point. If it must point, we'll handle it here.
-      AC_PTR_OBJ_PAIR u = Classify_deref_of_expr(WN_kid(expr, i),
-						 FALSE);
+      WN * wn_kid = WN_kid(expr, i);
+      OPCODE kid_opc = WN_opcode(wn_kid);
+      OPERATOR kid_opr = OPCODE_operator(kid_opc);
+      BOOL kid_maybe_point = Expr_may_contain_pointer(wn_kid);
+      BOOL kid_must_point = FALSE;
 
-      if (expr_maybe_point && 
-          Expr_may_contain_pointer (WN_kid(expr, i))) {
+      // AMD Bug 15176. For an address expression "U8ADD" as shown below, 
+      // kid "U8U8ILOAD" gives base address, but we got a NULL object class
+      // for "U8U8ILOAD" from "Classify_deref_of_expr" since we passed down 
+      // a value of "FALSE" for "expr_must_point".
+      // i.e,, we create an object class for a pointer expression "p", 
+      // but we did not create an object class for pointer expression
+      // "*p" even though "*p" itself is also a pointer.  As a result,
+      // "(*p + e1)" and "(*p + e2)" have different object classes
+      // even though "e1" could have the same runtime value as "e2".
+      //
+      //    U8U8LDID 0 <3,69,_temp___slink_sym25> T<126,anon_ptr.,8>
+      //   U8U8ILOAD 40 T<52,anon_ptr.,8> T<126,anon_ptr.,8> 
+      //      I4I4LDID 0 <3,24,IATM> T<4,.predef_I4,4>
+      //      I4INTCONST -1 (0xffffffffffffffff)
+      //     I4ADD
+      //    I8I4CVT
+      //    U8INTCONST 24 (0x18)
+      //   U8MPY
+      //  U8ADD 
+      // F8F8ILOAD T<11,.predef_F8,8> T<75,anon_ptr.,8>
+      //
+      // As a fix, for an address expression rooted at a "ADD" or a "SUB",
+      // if kid is an "ILOAD" that could be a pointer, we pass down "TRUE"
+      // to "Classify_deref_of_expr" for the "ILOAD", where an object class
+      // will be created for it if none exists yet.
+      if (expr_must_point && kid_maybe_point
+	  && (kid_opr == OPR_ILOAD)
+	  && ((opr == OPR_ADD) || (opr == OPR_SUB))
+	  && !Opcode_cannot_be_pointer_value(opr, opc)
+	  && !Opcode_cannot_be_pointer_value(kid_opr, kid_opc))
+	kid_must_point = TRUE;
+ 
+      AC_PTR_OBJ_PAIR u = Classify_deref_of_expr(WN_kid(expr, i), kid_must_point);
+      
+      if (expr_maybe_point && kid_maybe_point) {
         AC_PTR_OBJ_PAIR t(t_member->Alias_class(),
 			  t_member->Alias_class()->Class_pointed_to());
         Merge_conditional(t, u);
@@ -1315,10 +1355,6 @@ ALIAS_CLASSIFICATION::Classify_lhs_of_store(WN *const stmt)
 //
 BOOL
 ALIAS_CLASSIFICATION::Expr_may_contain_pointer (WN* const expr) {
-   
-  if (!WOPT_Enable_Aggressive_Alias_Classification || !Alias_Pointer_Types) {
-    return TRUE;
-  }
 
   TYPE_ID res = WN_rtype (expr); 
   if (MTYPE_byte_size (res) == 0) {
@@ -1367,6 +1403,10 @@ ALIAS_CLASSIFICATION::Expr_may_contain_pointer (WN* const expr) {
   case OPR_BNOT:
   case OPR_LNOT:
     return FALSE;
+  }
+
+  if (!WOPT_Enable_Aggressive_Alias_Classification || !Alias_Pointer_Types) {
+    return TRUE;
   }
 
   return TRUE;

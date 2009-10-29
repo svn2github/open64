@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -69,6 +73,7 @@
 #include "ipa_nested_pu.h"
 #include "ipa_summary.h"
 #include "ipc_symtab_merge.h"		// IPC_GLOBAL_IDX_MAP
+#include "ir_reader.h"                  // fdump_tree
 #if 0
 #include "ipo_defs.h"			// IPA_NODE_CONTEXT
 #endif
@@ -82,6 +87,9 @@
 #define MINI_HOTNESS_THRESHOLD		1
 #define MEDIAN_HOTNESS_THRESHOLD	10
 #define LARGE_HOTNESS_THRESHOLD		120
+
+#define ESTIMATED_PART_INL_BB_CNT       2
+#define ESTIMATED_PART_INL_STMT_CNT     5
 //INLINING_TUNIN$
 #define TINY_SIZE 10
 
@@ -93,10 +101,10 @@ static INT Real_Orig_Prog_Weight; // Orig_Prog_Weight - dead code
 static UINT32 non_aggr_callee_limit;
 static UINT32 Real_Orig_WN_Count; // Orig_Prog_Weight - dead code
 
-FILE *N_inlining;
-FILE *Y_inlining;
-FILE *e_weight;
-FILE *Verbose_inlining;
+FILE *N_inlining = NULL;
+FILE *Y_inlining = NULL;
+FILE *e_weight = NULL;
+FILE *Verbose_inlining = NULL;
 
 #define BASETYPE TY_mtype
 
@@ -305,6 +313,23 @@ if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING))
 UINT32
 Get_combined_weight (PU_SIZE s1, PU_SIZE s2, IPA_NODE *callee)
 {
+    if (callee->Has_Varargs()) {
+       /* If callee is a varargs, we will only do partial inlining
+          and hence we estimate a much smaller size increase.
+          TODO:
+          We want to adjust the size estimate for all partially
+          inlined functions. But since the partial inlining candidates
+          and paths are not determined until the IPO phase, this
+          adjustment is not easy here. Once we move the partial
+          inlining candidate selection to the IPL phase and the decision
+          to the ipa_inline phase, we can solve this size adjustment
+          problem.
+        */
+       s1.Inc_PU_Size (ESTIMATED_PART_INL_BB_CNT,
+                       ESTIMATED_PART_INL_STMT_CNT, 0);
+       return s1.Weight ();
+    }
+
     s1 += s2;
     /* 1 less bb and 1 less callfrom removing the call, add copy stmt for
        formals */ 
@@ -319,6 +344,23 @@ Get_combined_weight (PU_SIZE s1, PU_SIZE s2, IPA_NODE *callee)
 UINT32
 Get_combined_olimit (PU_SIZE s1, PU_SIZE s2, IPA_NODE *callee)
 {
+    if (callee->Has_Varargs()) {
+       /* If callee is a varargs, we will only do partial inlining
+          and hence we estimate a much smaller size increase.
+          TODO:
+          We want to adjust the size estimate for all partially
+          inlined functions. But since the partial inlining candidates
+          and paths are not determined until the IPO phase, this
+          adjustment is not easy here. Once we move the partial
+          inlining candidate selection to the IPL phase and the decision
+          to the ipa_inline phase, we can solve this size adjustment
+          problem.
+        */
+       s1.Inc_PU_Size (ESTIMATED_PART_INL_BB_CNT,
+                       ESTIMATED_PART_INL_STMT_CNT, 0);
+       return s1.Weight ();
+    }
+
     s1 += s2;
     /* 1 less bb and 1 less callfrom removing the call, add copy stmt for
        formals */ 
@@ -435,7 +477,11 @@ Update_Total_Prog_Size (const IPA_NODE *caller, IPA_NODE *callee,
 {
     ++((*inline_count)[callee]);
 
-    if (IPA_Enable_Cloning && caller->Is_Clone_Candidate()) {
+    if ((IPA_Enable_Cloning && caller->Is_Clone_Candidate()) ||
+        callee->Has_Varargs()) {
+        /* If callee has var args, this is indempotent partial
+           inlining and the callee will be kept.
+         */
 	callee->Set_Undeletable ();
 	return;
     }
@@ -474,6 +520,20 @@ Effective_weight (const IPA_NODE* node)  {
 	return PU_Weight (fb->Get_effective_bb_count (),
 			  fb->Get_effective_stmt_count (),
 			  node->PU_Size().Call_Count ());
+    } else if (node->Has_Varargs()) { 
+        /* If callee is a varargs, we will only do partial inlining
+           and hence we estimate a much smaller size increase.
+           TODO:
+           We want to adjust the size estimate for all partially
+           inlined functions. But since the partial inlining candidates
+           and paths are not determined until the IPO phase, this
+           adjustment is not easy here. Once we move the partial 
+           inlining candidate selection to the IPL phase and the decision
+           to the ipa_inline phase, we can solve this size adjustment
+           problem.
+         */
+        return PU_Weight(ESTIMATED_PART_INL_BB_CNT, 
+                         ESTIMATED_PART_INL_STMT_CNT, 0);
     } else
 #endif // _STANDALONE_INLINER
 	return node->Weight ();
@@ -532,14 +592,17 @@ trivially_ok_to_inline (const IPA_NODE * node, const IPA_CALL_GRAPH * cg)
 }
 #endif // KEY
 
+#include<string>
+#include<sstream>
+
 static BOOL
 check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 		     IPA_NODE *callee, const IPA_CALL_GRAPH *cg)
 {
     BOOL inline_it = FALSE;
-    char reason[300] = "{reason: ";
-    char tmp_decision[300] = "";
-    char tmp_reason[100]="";
+    using namespace std;
+    std::string reason_st, tmp_decision_st, tmp_reason_st;
+    reason_st = "{reason: ";
     INT32 IPA_idx = 0;
     UINT32 caller_weight = caller->Weight ();
     UINT32 callee_weight = Effective_weight (callee);
@@ -603,14 +666,20 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	    //pengzhao
 	    if (Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
 		inline_it = TRUE;
-		sprintf ( tmp_decision, "*[%s] will be Inlined into [%s] (edge=%d)", DEMANGLE (callee->Name()),DEMANGLE (caller->Name()),ed->Edge_Index() );
-		sprintf(tmp_reason, " because of force depth = (%d)}",IPA_Force_Depth); 
-		strcat (reason, tmp_reason);
+                ostringstream ed_ind;
+                ed_ind << ed->Edge_Index();
+                tmp_decision_st = string ("*[") + string(DEMANGLE(callee->Name())) + string("]") +
+                                  string("will be Inlined into [") + string (DEMANGLE(caller->Name())) + string("] (edge=") +
+                ed_ind.str() + string(")");
+                ostringstream fd_;
+                fd_ << IPA_Force_Depth;
+                tmp_reason_st = string(" because of force depth = (") + fd_.str() + string (")");
+                reason_st = reason_st + tmp_reason_st;
 	    }
 	    
 	    if ( INLINE_List_Actions ) {
-		fprintf ( stderr, "%s inlined into ", DEMANGLE (callee->Name()) );
-		fprintf ( stderr, "%s: because of force depth =  (%d)\n", DEMANGLE (caller->Name()), IPA_Force_Depth );
+                fprintf ( stderr, "%s (size %d) inlined into ", DEMANGLE (callee->Name()), callee_weight );
+                fprintf ( stderr, "%s (combined size %d): because of force depth =  (%d)\n", DEMANGLE (caller->Name()), combined_weight, IPA_Force_Depth );
 		Total_Prog_Size += (combined_weight - caller_weight);
 		caller->UpdateSize (callee, ed);
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
@@ -649,6 +718,9 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 #ifdef KEY
                 Report_Reason (callee, caller, 
 		               "Total program size limit exceeded", ed);
+                if ( INLINE_List_Actions ) {
+                    fprintf ( stderr, "Total program size (%d) exceeds the limit (%d)\n", Total_Prog_Size, Max_Total_Prog_Size);
+                }
 #else
 		if ( INLINE_List_Actions ) {
 		    fprintf ( stderr, "Inlining stopped because total " "program size limit exceeded\n" );
@@ -797,14 +869,21 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 		//pengzhao
 		if (Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
 		    inline_it = TRUE;
-		    sprintf ( tmp_decision, "*[%s] will be Inlined into [%s] (edge=%d): ", DEMANGLE (callee->Name()) ,DEMANGLE (caller->Name()),ed->Edge_Index() );
-		    sprintf(tmp_reason, " forced because of small size (%d) ",callee_weight);
-		    strcat (reason, tmp_reason);
+                    ostringstream ed_ind;
+                    ed_ind << ed->Edge_Index();
+                    tmp_decision_st = string ("*[") + string(DEMANGLE(callee->Name())) + string("]") +
+                                      string("will be Inlined into [") + string (DEMANGLE(caller->Name())) + string("] (edge=") +
+                    ed_ind.str() + string(")");
+                    ostringstream cw;
+                    cw << callee_weight;
+                    tmp_reason_st = string(" forced because of small size (") + cw.str() + string (")");
+                    reason_st = reason_st + tmp_reason_st;
 		}
 		
 		if ( INLINE_List_Actions ) {
-		    fprintf ( stderr, "%s inlined into ", DEMANGLE (callee->Name()) );
-		    fprintf ( stderr, "%s: forced because of small size (%d)  (edge# %d)\n", DEMANGLE (caller->Name()), callee_weight, ed->Edge_Index() );
+                    fprintf ( stderr, "%s (size %d) inlined into ", DEMANGLE (callee->Name()), callee_weight );
+                    fprintf ( stderr, "%s (combined size %d): forced because of small size (%d)  (edge# %d)\n", 
+                              DEMANGLE (caller->Name()), combined_weight, callee_weight, ed->Edge_Index() );
 		}
 	    }
 	}
@@ -847,18 +926,25 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
     inline_do_it: if (Trace_IPA || Trace_Perf) {
 	fprintf (stderr, "%s inlined into %s", callee->Name(),caller->Name());
 	fprintf (TFile, "%s inlined into ", DEMANGLE (callee->Name()));
-	fprintf (TFile, "%s (size: %d + %d = %d)   (edge# %d) \n", DEMANGLE (caller->Name()), callee_weight, caller_weight, combined_weight, ed->Edge_Index());
+	fprintf (TFile, "%s (size: %d + %d = %d)   (edge# %d) \n",
+                 DEMANGLE (caller->Name()), callee_weight, caller_weight, combined_weight, ed->Edge_Index());
     }
     
     //pengzhao
     if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
-	if (inline_it==FALSE)
-	    sprintf (tmp_decision, "*[%s] will be Inlined into [%s] (edge=%d)", DEMANGLE (callee->Name()), DEMANGLE (caller->Name()),ed->Edge_Index() );
-	sprintf(tmp_reason, " and the limits donot filter it out},(size: %d + %d = %d) ",callee_weight, caller_weight, combined_weight );
-	strcat (reason, tmp_reason);
-	strcat (reason, "\n");
-	fprintf(Y_inlining, tmp_decision);
-	fprintf(Y_inlining, reason);
+	if (inline_it==FALSE) {
+            ostringstream ed_ind;
+            ed_ind << ed->Edge_Index();
+            tmp_decision_st = string ("*[") + string(DEMANGLE(callee->Name())) + string("]") +
+                              string("will be Inlined into [") + string (DEMANGLE(caller->Name())) + string("] (edge=") +
+                              ed_ind.str() + string(")");
+        }
+        ostringstream alis;
+        alis << callee_weight << "+" << caller_weight << "=" << combined_weight << ")\n";
+        tmp_reason_st = string("  and the limits donot filter it out},(size") + alis.str();
+        reason_st = reason_st + tmp_reason_st;
+	fprintf(Y_inlining, tmp_decision_st.c_str());
+	fprintf(Y_inlining, reason_st.c_str());
     }
     
 #ifdef TODO
@@ -1213,6 +1299,25 @@ param_types_are_compatible (IPA_NODE* caller_node, IPA_NODE* callee_node, IPA_ED
 void
 IPA_NODE::UpdateSize (IPA_NODE *callee, IPA_EDGE *ed)
 {
+    if (callee->Has_Varargs()) {
+       /* If callee is a varargs, we will only do partial inlining
+          and hence we estimate a much smaller size increase.
+          TODO:     
+          We want to adjust the size estimate for all partially
+          inlined functions. But since the partial inlining candidates
+          and paths are not determined until the IPO phase, this
+          adjustment is not easy here. Once we move the partial
+          inlining candidate selection to the IPL phase and the decision
+          to the ipa_inline phase, we can solve this size adjustment
+          problem.
+          TODO:
+          To adjust the size in the feedback case.
+        */
+       _pu_size.Inc_PU_Size (ESTIMATED_PART_INL_BB_CNT,
+                             ESTIMATED_PART_INL_STMT_CNT, 0);
+       return;
+    } 
+
     _pu_size += callee->PU_Size();
 #ifdef KEY
     _pu_size.Inc_PU_Size (-1, 0, -1);
@@ -1450,8 +1555,6 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	    (caller->Get_partition_group() != callee->Get_partition_group())) 
 	return FALSE;
 #endif
-//;;printf("######## (0x%x)%s->(0x%x)%s (%.1f)\n", caller,caller->Name(), callee,callee->Name(),callee->Get_cycle_count()._value );
-//;;fflush(stdout);
 
     if (callee->Should_Be_Skipped()) {
 	reason = "callee is skipped";
@@ -1513,10 +1616,23 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	result = FALSE;
 	reason = "callee is recursive";
 	ed->Set_reason_id (6);
-    } else if (callee->Has_Varargs()) {
+    } else if (callee->Has_Varargs() && 
+               !IPA_Enable_Partial_Inline) {
+        /*
+             Because WNs have not been read to memory at this
+             stage, we cannot scan the body of the callee
+             to determine a partial inlining candidate here.
+               The plan is to move the scanning for partial
+             inlining candidates to the IPL stage to address
+             this phase ordering issue.
+         */
 	result = FALSE;
 	reason = "callee is varargs";
 	ed->Set_reason_id (7);
+
+        if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+	   fprintf (Y_inlining, "In do_inline(): finding a var args\n");
+        }
     } else if (callee->Summary_Proc()->Is_alt_entry() ||
 	       callee->Summary_Proc()->Has_alt_entry() || 
 	       caller->Summary_Proc()->Is_alt_entry()) {
@@ -1924,7 +2040,7 @@ void Perform_Inline_Analysis2( IPA_CALL_GRAPH* cg, MEM_POOL* pool )
   if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
     Verbose_inlining = fopen ("Verbose_inlining.log", "w");
     N_inlining = fopen ("N_inlining.log", "w");
-    Y_inlining = fopen ("Y_inlining.log", "w");
+    Y_inlining = fopen ("Y_inlining.log", "a+");
     e_weight = fopen ("callee_wght.log","w");
   }
 
@@ -1990,7 +2106,6 @@ void Perform_Inline_Analysis2( IPA_CALL_GRAPH* cg, MEM_POOL* pool )
 
   if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
     fclose(e_weight);
-    fclose(Y_inlining);
     fclose(N_inlining);
     fclose(Verbose_inlining);
   }
@@ -2007,7 +2122,7 @@ Perform_Inline_Analysis (IPA_CALL_GRAPH* cg, MEM_POOL* pool)
     if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
         Verbose_inlining = fopen ("Verbose_inlining.log", "w");
 	N_inlining = fopen ("N_inlining.log", "w");
-	Y_inlining = fopen ("Y_inlining.log", "w");
+	Y_inlining = fopen ("Y_inlining.log", "a+");
 	e_weight = fopen ("callee_wght.log","w");
     }
     Init_inline_parameters ();
@@ -2085,7 +2200,6 @@ Perform_Inline_Analysis (IPA_CALL_GRAPH* cg, MEM_POOL* pool)
 
     if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
         fclose(e_weight);
-        fclose(Y_inlining);
         fclose(N_inlining);
         fclose(Verbose_inlining);
     }

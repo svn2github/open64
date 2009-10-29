@@ -1,6 +1,8 @@
 #!/bin/bash
 #
 #
+#  Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -36,7 +38,7 @@
 VER_MAJOR="4"
 VER_MINOR="2"
 #PATCH_LEVEL=""
-VERSION="${VER_MAJOR}.${VER_MINOR}"
+VERSION="${OPEN64_FULL_VERSION:-${VER_MAJOR}.${VER_MINOR}}"
 
 PREBUILT_LIB="./lib"
 PREBUILT_BIN="./bin"
@@ -153,7 +155,9 @@ INSTALL_DATA_SUB () {
 # install the driver
 INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${PHASEPATH}/driver
-    INSTALL_EXEC_SUB ${AREA}/driver/kdriver  ${PHASEPATH}/kdriver
+    if [ "$TARG_HOST" = "ia64" ]; then
+      INSTALL_EXEC_SUB ${AREA}/driver/kdriver  ${PHASEPATH}/kdriver
+    fi
 
     [ ! -d ${BIN_DIR}       ] && mkdir -p ${BIN_DIR}
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/opencc
@@ -165,7 +169,9 @@ INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf90-${VERSION}
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95-${VERSION}
 
-    INSTALL_EXEC_SUB ${AREA}/driver/kdriver ${BIN_DIR}/kopencc
+    if [ "$TARG_HOST" = "ia64" ]; then
+      INSTALL_EXEC_SUB ${AREA}/driver/kdriver ${BIN_DIR}/kopencc
+    fi
 
     return 0
 }
@@ -208,7 +214,7 @@ INSTALL_IPA () {
 
     INSTALL_EXEC_SUB ${LD_NEW_DIR}/ld-new  ${PHASEPATH}/ipa_link
 
-    ln -sf ${PHASEPATH}/be ${PHASEPATH}/ipl 
+    (cd ${PHASEPATH}; ln -sf be ipl)
 
     return 0
 }
@@ -231,8 +237,8 @@ INSTALL_WHIRL_STUFF () {
     INSTALL_EXEC_SUB  ${AREA}/whirl2c/whirl2c.so ${PHASEPATH}/whirl2c.so
     INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f.so ${PHASEPATH}/whirl2f.so
 
-    (cd ${PHASEPATH}; ln -sf ${PHASEPATH}/be whirl2c_be) 
-    (cd ${PHASEPATH}; ln -sf ${PHASEPATH}/be whirl2f_be) 
+    (cd ${PHASEPATH}; ln -sf be whirl2c_be) 
+    (cd ${PHASEPATH}; ln -sf be whirl2f_be) 
 
     INSTALL_EXEC_SUB  ${AREA}/ir_tools/ir_b2a    ${BIN_DIR}/ir_b2a
     INSTALL_EXEC_SUB  ${AREA}/libspin/gspin      ${BIN_DIR}/gspin
@@ -265,12 +271,37 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         # IA32 and x86_64
         LIBAREA=osprey/targx8664_builtonia32
         LIB32AREA=osprey/targia32_builtonia32
+        HUGETLB=osprey/libhugetlbfs
+
         INSTALL_DATA_SUB ${LIBAREA}/libinstr2/libinstr.a      ${PHASEPATH}/libinstr.a
         INSTALL_DATA_SUB ${LIB32AREA}/libinstr2/libinstr.a      ${PHASEPATH}/32/libinstr.a
+
+        INSTALL_DATA_SUB ${LIBAREA}/libopen64rt/libopen64rt.a      ${PHASEPATH}/libopen64rt.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libopen64rt/libopen64rt.a      ${PHASEPATH}/32/libopen64rt.a
+
+        INSTALL_DATA_SUB ${LIBAREA}/libopen64rt/libopen64rt_shared.a      ${PHASEPATH}/libopen64rt_shared.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libopen64rt/libopen64rt_shared.a      ${PHASEPATH}/32/libopen64rt_shared.a
+
+        INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/obj64/libhugetlbfs_open64.a     ${PHASEPATH}/libhugetlbfs_open64.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/obj32/libhugetlbfs_open64.a   ${PHASEPATH}/32/libhugetlbfs_open64.a
+
+        INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/obj64/libhugetlbfs_open64.so    ${PHASEPATH}/libhugetlbfs_open64.so.1
+        INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/obj32/libhugetlbfs_open64.so  ${PHASEPATH}/32/libhugetlbfs_open64.so.1
+
+        (cd ${PHASEPATH}; ln -sf libhugetlbfs_open64.so.1 libhugetlbfs_open64.so)
+        (cd ${PHASEPATH}/32; ln -sf libhugetlbfs_open64.so.1 libhugetlbfs_open64.so)
+
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xB      ${PHASEPATH}/elf.xB
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386.xB        ${PHASEPATH}/32/elf.xB
+
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xBDT    ${PHASEPATH}/elf.xBDT
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386.xBDT      ${PHASEPATH}/32/elf.xBDT
+
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64_1G.xBDT    ${PHASEPATH}/elf_1G.xBDT
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386_1G.xBDT      ${PHASEPATH}/32/elf_1G.xBDT
     fi
 
-    # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archieves
-    # is it necessary?
+    # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archives
     if [ "$ARCH" = "ia64" ] ; then
         for i in libgcc.a libgcc_s.so libstdc++.a libstdc++.so; do 
             F=`gcc --print-file-name $i`
@@ -278,26 +309,6 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
               INSTALL_DATA_SUB $F ${PHASEPATH}/$i
             fi
         done
-    fi
-    if [ "$ARCH" = "i386" ] ; then
-        for i in libgcc.a libgcc_s.so libstdc++.a libstdc++.so; do
-	    F=`gcc --print-file-name $i`
-            if [ ! -z "$F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
-            fi
-	done
-    fi
-    if [ "$ARCH" = "x86_64" ] ; then
-        for i in libgcc.a libgcc_s.so libstdc++.a libstdc++.so; do
-	    F=`gcc -m32 --print-file-name $i`
-	    if [ ! -z "$F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
-            fi
-	    F=`gcc -m64 --print-file-name $i`
-	    if [ ! -z "$F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $F ${PHASEPATH}/$i
-            fi
-	done
     fi
     return 0
 }
@@ -322,13 +333,35 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
         #INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
-	INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
+        INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.so.1           ${PHASEPATH}/libmv.so.1
+        INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
+        INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.so.1      ${PHASEPATH}/libopenmp.so.1
+        if [ -f libacml_mv/libacml_mv.a ] ; then
+            INSTALL_DATA_SUB libacml_mv/libacml_mv.a ${PHASEPATH}/libacml_mv.a
+            INSTALL_DATA_SUB libacml_mv/LICENSE-LIBACML_MV ${PHASEPATH}/LICENSE-LIBACML_MV
+        fi
         # 32bit libraries
         INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.a ${PHASEPATH}/32/libfortran.a
         INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
-        INSTALL_DATA_SUB ${LIB32AREA}/libm/libmsgi.a       ${PHASEPATH}/32/libmsgi.a
+        #INSTALL_DATA_SUB ${LIB32AREA}/libm/libmsgi.a       ${PHASEPATH}/32/libmsgi.a
         INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.a           ${PHASEPATH}/32/libmv.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.so.1           ${PHASEPATH}/32/libmv.so.1
         INSTALL_DATA_SUB ${LIB32AREA}/libopenmp/libopenmp.a      ${PHASEPATH}/32/libopenmp.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libopenmp/libopenmp.so.1      ${PHASEPATH}/32/libopenmp.so.1
+
+        (cd ${PHASEPATH}; ln -sf libmv.so.1 libmv.so; ln -sf libopenmp.so.1 libopenmp.so)
+        (cd ${PHASEPATH}/32; ln -sf libmv.so.1 libmv.so; ln -sf libopenmp.so.1 libopenmp.so)
+
+        # The special processing of the -lm option in the compiler driver should
+        # be delayed until all of the options have been parsed.  Until the
+        # driver is cleaned up, it is important that processing be the same on
+        # all architectures.  Thus we add an empty 32 bit ACML vector math
+        # library.
+        if [ -f libacml_mv/libacml_mv.a -a ! -f ${PHASEPATH}/32/libacml_mv.a ] ; then
+	    ar rc ${PHASEPATH}/32/libacml_mv.a
+	    echo An empty 32-bit libacml_mv.a was added to work around a problem > ${PHASEPATH}/32/README_ACML
+	    echo with the Open64 compiler driver. >> ${PHASEPATH}/32/README_ACML
+	fi
     fi 
     return 0
 }
@@ -342,26 +375,6 @@ INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP () {
               INSTALL_DATA_SUB $F ${PHASEPATH}/$i
             fi
         done
-    fi
-    if [ "$ARCH" = "i386" ] ; then
-        for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do
-	    F=`gcc --print-file-name=$i`
-            if [ ! -z "F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
-            fi
-	done
-    fi
-    if [ "$ARCH" = "x86_64" ] ; then
-        for i in crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o crtendT.o; do
-	    F=`gcc -m32 --print-file-name=$i`
-            if [ ! -z "F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $F ${PHASEPATH}/32/$i
-            fi
-            F=`gcc -m64 --print-file-name=$i`
-            if [ ! -z "F" ] && [ -e "$F" ]; then
-              INSTALL_DATA_SUB $F ${PHASEPATH}/$i
-            fi
-	done
     fi
     return 0
 }
@@ -474,7 +487,7 @@ INSTALL_MAN_PAGE () {
     INSTALL_DATA_SUB $d1/sgicc.1 $d2 
     INSTALL_DATA_SUB $d1/sgif90.1 $d2
 
-    ln -sf $d2/sgicc.1  $d2/sgiCC.1
+    (cd $d2; ln -sf sgicc.1 sgiCC.1)
 
     return 0
 }

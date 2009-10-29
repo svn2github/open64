@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -848,6 +852,21 @@ class SUMMARY_CALLSITE
 
 #define IPL_IN_CASE_CLAUSE      0x40
 #define IPL_IS_VIRTUAL_CALL     0x80
+
+/*
+File 3: osprey/ipa/local/ipl_summary.h
+    I added a new state flag IPL_VIRTUAL_FUNCTION_TARGET in SUMMARY_CALLSITE 
+    and functions to set, reset and test this flag. This flag is set on the dummy callsite
+    inserted by Process_virtual_function. This flag is reset after the 
+    devirtualization pass has replaced a dummy call site with a real call, to the 
+    inferred direct call.
+    function that sets this flag: Set_virtual_function_target
+    function that resets this flag: Reset_virtual_function_target
+    function that checks this flag: Is_virtual_function_target
+
+*/
+
+#define IPL_VIRTUAL_FUNCTION_TARGET     0x100
     
 private:
 
@@ -943,6 +962,7 @@ public:
 
     void Set_intrinsic()		{ _state |= IPL_INTRINSIC_FUNC; }
     BOOL Is_intrinsic() const		{ return _state & IPL_INTRINSIC_FUNC; };
+
     void Set_callsite_freq ()		{ _state |= IPL_HAS_CALLSITE_FREQ;}
     BOOL Has_callsite_freq () const	{ return _state & IPL_HAS_CALLSITE_FREQ; }
 
@@ -965,6 +985,10 @@ public:
 
     void Set_return_type (TYPE_ID return_type)	{ _return_type = return_type;}
     TYPE_ID Get_return_type () const		{ return _return_type;}
+
+    void Set_virtual_function_target() { _state |= IPL_VIRTUAL_FUNCTION_TARGET; }
+    void Reset_virtual_function_target() { _state &= ~IPL_VIRTUAL_FUNCTION_TARGET; }
+    BOOL Is_virtual_function_target() { return (_state & IPL_VIRTUAL_FUNCTION_TARGET); }
 
     void Set_virtual_class(TY_IDX func) { _virtual_class = func; } 
     TY_IDX Get_virtual_class() { return _virtual_class; } 

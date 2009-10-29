@@ -188,16 +188,22 @@ static enum X86_64_PARM_CLASS Merge_Classes(enum X86_64_PARM_CLASS class1,
  * the register class used; return 0 if whole aggregate is passed in memory.
  * Implemented according to the X86-64 ABI */
 INT Classify_Aggregate(const TY_IDX ty, 
-			  enum X86_64_PARM_CLASS classes[MAX_CLASSES])
+			  enum X86_64_PARM_CLASS classes[MAX_CLASSES], INT byte_offset )
 {
   INT i, n;
   enum X86_64_PARM_CLASS subclasses[MAX_CLASSES];
 
+  if(TY_size(ty) == 0 && TY_kind(ty) == KIND_STRUCT && PU_cxx_lang(Get_Current_PU()) ){
+   classes[0] = X86_64_SSE_CLASS;
+   return 1;
+  }
+
   if (TY_size(ty) > 16 || TY_size(ty) == 0 ||
       TY_is_non_pod(ty) /* || TY_is_packed(ty) bug 11892 */)
     return 0;
-
-  INT size_in_dwords = (TY_size(ty) + 7) / 8;
+  byte_offset %= 8;
+  INT size_in_dwords = (TY_size(ty) + byte_offset + 7) / 8;
+  
   for (i = 0; i < size_in_dwords; i++)
     classes[i] = X86_64_NO_CLASS;
   if (TY_kind(ty) == KIND_STRUCT ||
@@ -206,18 +212,19 @@ INT Classify_Aggregate(const TY_IDX ty,
       FLD_ITER fld_iter = Make_fld_iter(TY_fld(ty));
       do {
         FLD_HANDLE fld(fld_iter);
-        if (TY_size(FLD_type(fld)) == 0)
+        if (TY_size(FLD_type(fld)) == 0 && 
+	    !(TY_kind(FLD_type(fld)) == KIND_STRUCT && PU_cxx_lang(Get_Current_PU())))
 	  continue;
-        n = Classify_Aggregate(FLD_type(fld), subclasses);
+        n = Classify_Aggregate(FLD_type(fld), subclasses, byte_offset + FLD_ofst(fld));
         if (n == 0)
 	  return 0;
-        INT inx =	FLD_ofst(fld) / 8;
+        INT inx = (FLD_ofst(fld) + byte_offset) / 8;
         for (i = 0; i < n; i++) 
 	  classes[i + inx] = Merge_Classes(classes[i + inx], subclasses[i]);
       } while (!FLD_last_field(fld_iter++));
     }
     else { /* (TY_kind(ty) == KIND_ARRAY) */
-      n = Classify_Aggregate(TY_etype(ty), subclasses);
+      n = Classify_Aggregate(TY_etype(ty), subclasses, byte_offset);
       if (n == 0)
         return 0;
       for (i = 0; i < size_in_dwords; i++)

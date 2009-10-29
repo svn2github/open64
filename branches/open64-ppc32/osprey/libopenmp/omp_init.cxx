@@ -36,6 +36,7 @@
  * Put '__ompc_sug_numthreads' here so that this file can be linked into the executable.
  */
 int __ompc_sug_numthreads = 0;
+int __ompc_cur_numthreads = 0;
 
 extern "C" int  __ompc_init_rtl(int num_threads);
 

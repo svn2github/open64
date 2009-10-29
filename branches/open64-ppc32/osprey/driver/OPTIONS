@@ -4,6 +4,8 @@
 
 % -*- fundamental -*-
 %
+%  Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+%
 %  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
 %
 %  Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
@@ -238,8 +240,8 @@ I-include=%D  ;		FTN     ffe,PFA     "-include=%D"
 	"Use faster versions of some standard library functions, when available"
 -fno-fast-stdlib	;	A	anyfe,ld	"-OPT:fast_stdlib=off"
 	"Do not use faster versions of standard library functions"
--nolibpscrt	;	LINK	ld	""
-	"Do not link with libpscrt"
+-nolibopen64rt	;	LINK	ld	""
+	"Do not link with libopen64rt"
 %I-split_common	;		LINK	ld	"-split_common"
 %	"check split COMMON for inconsistencies and fix them"
 
@@ -348,6 +350,10 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 % See opt_actions.c::Process_Ofast if you change the -OPT: item.
 -OPT:%s		Process_Opt_Group(optargs); 	ALL	CMP,ipap "-OPT:%s"
 	"option group to control optimization"
+-OPT:unroll_level=n ;		ALL	be	""
+	"where n=1,2 controls unrolling, default=1, aggressive=2"
+-OPT:keep_ext=on,off ;	ALL	be	""
+	"where default is off, on means external syms are preserved"
 -DEBUG:%s	;		ALL	GRP	"-DEBUG:%s"
 	"option group to debugging options"
 -TENV:%s	Process_Tenv_Group(optargs);	ALL	GRP	"-TENV:%s"
@@ -358,16 +364,39 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 	""
 -GRA:%s		;		ALL	be	"-GRA:%s"
 	"option group to control global register allocation"
+#ifdef X8664
+-GRA:unspill=on,off ;		ALL	be	""
+	"when on enables optimal GRA/LRA boundary condition allocations"
+#endif
 -GCM:%s		{warning("-GCM group no longer supported");}	N NONE	""
 	""
 -CG:%s		;		ALL	be	"-CG:%s"
 	"option group to control code generation"
+-CG:unroll_level=n ;		ALL	be	""
+	"where n=0,1,2 controls unrolling, none=0, default=1, aggressive=2"
+-CG:unroll_fb_req=on,off ;		ALL	be	""
+	"when on with FDO disables cold code layout for unrolled loops"
+#ifdef X8664
+-CG:cmp_peep=on,off ;		ALL	be	""
+	"when on load-exec opts include compare instructions"
+-CG:compute_to=on,off ;		ALL	be	""
+	"when on, enables SSE based scheduling/local code motion optimizations"
+#endif
 -PHASE:%s	;		ALL	be,ipl	"-PHASE:%s"
 	""
 -WOPT:%s	;		ALL	be,ipl	"-WOPT:%s"
 	"option group internal-use WOPT options"
 -LNO:%s		;		ALL	be	"-LNO:%s"
 	"option group to control loop nest optimization"
+-HP:%s		Process_Hugepage_Group(optargs);	ALL	be	""
+	"option group to specify huge page usage, e.g., -HP:bdt=2m:heap=2m,limit=150"
+-HP		Process_Hugepage_Default();		ALL	be	""
+	"equivalent to -HP:heap=2m"
+-HUGEPAGE:%s	Process_Hugepage_Group(optargs);	ALL	be	""
+	"equivalent to -HP:"
+-HUGEPAGE	Process_Hugepage_Default();		ALL	be	""
+	"equivalent to -HP"
+
 #ifndef KEY
 -MP:%s		Process_Mp_Group(optargs);		ALL	NONE	""
 	""
@@ -860,8 +889,8 @@ I-xall		;	FTN	ffe	self
         "prevent the -pedantic warning of the variable length array"
 -Wno-error=%s   warn_ignored(option_name);      ALL     NONE    ""
         "makes -Ws warnings not be error"
--ftls-model=%s	check_opt_tls_model(optargs);		ALL	be	"-TENV:tls-model=%s"
-	"Thread-Local Storage model. IA64 only so far.\n\t\tShould be one of `global-dynamic', `local-dynamic', `initial-exec' or `local-exec'.\n\t\tThe default without -fpic is `initial-exec'; with -fpic the default is `global-dynamic`."
+-ftls-model=%s	check_opt_tls_model(optargs);		Cc	cfe	"-ftls-model=%s"
+	"Thread-Local Storage model. \n\t\tShould be one of `global-dynamic', `local-dynamic', `initial-exec' or `local-exec'.\n\t\tThe default without -fpic is `initial-exec'; with -fpic the default is `global-dynamic`."
 -varargs	;		f77	ffe	self
 	"MATRA varargs"
 %-nocode last_phase=earliest_phase(P_any_fe,last_phase);  FTN ffe   self

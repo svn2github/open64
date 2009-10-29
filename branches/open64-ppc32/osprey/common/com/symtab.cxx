@@ -1848,6 +1848,30 @@ ST::Print (FILE *f, BOOL verbose) const
                 fprintf (f, " __texture__");
 	    if (memory_space == MEMORY_PARAM)
                 fprintf (f, " __param__");
+#else
+        // tls-model
+	if (flags_ext & ST_IS_THREAD_LOCAL) {
+            switch (tls_model) {
+            case TLS_NONE:
+                fputs (", TLS:none", f);
+                break;
+            case TLS_EMULATED:
+                fputs (", TLS:emulated", f);
+                break;
+            case TLS_GLOBAL_DYNAMIC:
+                fputs (", TLS:global-dynamic", f);
+                break;
+            case TLS_LOCAL_DYNAMIC:
+                fputs (", TLS:local-dynamic", f);
+                break;
+            case TLS_INITIAL_EXEC:
+                fputs (", TLS:initial-exec", f);
+                break;
+            case TLS_LOCAL_EXEC:
+                fputs (", TLS:local-exec", f);
+                break;
+            }
+        }
 #endif /* TARG_NVISA */
 
 	switch (export_class) {

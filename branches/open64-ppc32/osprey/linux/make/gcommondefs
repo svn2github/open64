@@ -1,6 +1,8 @@
 # -*- Makefile -*-
 #
 #
+#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -111,7 +113,7 @@ ifeq ($(BUILD_COMPILER), GNU)
     C++NAME = g++ 
   endif
   F90 = gfortran -fsecond-underscore
-  F90_RTLIBS = -lgfortran
+  F90_RTLIBS = -Wl,-Bstatic -lgfortran -Wl,-Bdynamic
   #F90 = ifort -assume 2underscores
   #F90_RTLIBS = $(INTEL_COMPILER_FC_HOME)/lib/libifcore.a $(INTEL_COMPILER_FC_HOME)/lib/libimf.a
 

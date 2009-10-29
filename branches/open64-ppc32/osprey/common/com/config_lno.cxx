@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
  */
 
@@ -908,6 +912,70 @@ LNO_Init_Config ( void )
   LNO_FLAGS_next(Current_LNO) = next;
   LNO_FLAGS_mhd (Current_LNO) = &Mhd_Options;
 }
+
+/* ==================================================================
+ * Query whether the given bit mask has a legal value 
+ * ==================================================================
+ */
+static BOOL
+LNO_Check_Bitmask(LNO_FLAGS_MASK bitmask)
+{
+  if ((bitmask < 0) || (bitmask >= LNO_FLAGS_BM_NEXT))
+    return FALSE;
+
+  int bitcount = 0;
+  int val = (INT) bitmask;
+
+  while (val > 0) {
+    if (val & 1) 
+      bitcount ++;
+    val >>=  1;
+  }
+  
+  return (bitcount == 1);
+}
+
+/* ==========================================================================
+ * Given a LNO flag configuration and the bit mask of a field, check whether 
+ * the value of the field has been saved in the next element on the LNO 
+ * configuration stack. If so, copy the value to the cur_lno and reset the
+ * bit mask.
+ * ==========================================================================
+ */
+static void
+LNO_Restore_Field(LNO_FLAGS * cur_lno, LNO_FLAGS_MASK field_mask)
+{
+  FmtAssert(LNO_Check_Bitmask(field_mask), ("Illegal bit mask for LNO flag configuration"));
+
+  if (LNO_FLAGS_bitmask(cur_lno) & field_mask) {
+    LNO_FLAGS * next_lno = LNO_FLAGS_next(cur_lno);
+    FmtAssert(next_lno, ("Null LNO configuration"));
+
+    switch (field_mask) {
+    case OLF_UPPER_BOUND:
+      cur_lno->OLF_Upper_Bound = next_lno->OLF_Upper_Bound;
+      break;
+    default:
+      FmtAssert(FALSE, ("Unknown bit mask for LNO configuration")); 
+      ;
+    }
+
+    LNO_FLAGS_bitmask(cur_lno) -= field_mask;
+  }
+}
+
+/* ===================================================================
+ *  Restore LNO configuration for all fields that have been saved.
+ * ====================================================================
+ */
+static void
+LNO_Restore_Fields( LNO_FLAGS * cur_lno )
+{
+  LNO_Restore_Field(cur_lno,OLF_UPPER_BOUND);
+  /* Add new calls to restore additional fields one by one here */
+}
+
+
 
 /* ====================================================================
  *
@@ -925,7 +993,7 @@ LNO_Init_Config ( void )
  */
 
 void
-LNO_Push_Config ( BOOL use_default )
+LNO_Push_Config ( BOOL use_default, LNO_FLAGS_MASK bitmask )
 {
   LNO_FLAGS *new_flags =
 	(LNO_FLAGS *) malloc ( sizeof(LNO_FLAGS) );
@@ -937,10 +1005,12 @@ LNO_Push_Config ( BOOL use_default )
   *new_flags = use_default ? Default_LNO : *Current_LNO;
   LNO_FLAGS_next(new_flags) = Current_LNO;
   LNO_FLAGS_mhd (new_flags) = &Mhd_Options;
+
+  FmtAssert(LNO_Check_Bitmask(bitmask), ("Illegal bit mask for LNO flag configuration"));
+  LNO_FLAGS_bitmask(new_flags) |=  bitmask;
+
   Current_LNO = new_flags;
 }
-
-
 
 /* ====================================================================
  *
@@ -958,7 +1028,7 @@ LNO_Push_Config ( BOOL use_default )
  */
 
 BOOL
-LNO_Pop_Config ( void )
+LNO_Pop_Config (BOOL do_restore )
 {
   if ( Current_LNO->next == NULL ) {
     /* This is the bottom of the stack: */
@@ -966,11 +1036,39 @@ LNO_Pop_Config ( void )
   } else {
     /* Deallocate the top element and pop it: */
     LNO_FLAGS *new_flags = LNO_FLAGS_next(Current_LNO);
+
+    /*  Copy flags from Current_LNO to new_flags excluding saved fields
+     *  and next field and mhd field
+     */
+    if (do_restore && LNO_FLAGS_bitmask(Current_LNO)) {
+      LNO_FLAGS * next = LNO_FLAGS_next(new_flags);
+      struct MHD * mhd = LNO_FLAGS_mhd(new_flags);
+      LNO_Restore_Fields(Current_LNO);
+      *new_flags = *Current_LNO;
+      LNO_FLAGS_next(new_flags) = next;
+      LNO_FLAGS_mhd(new_flags) = mhd;
+    }
+    
     free ( Current_LNO );
     Current_LNO = new_flags;
+
     return TRUE;
   }
 }
+
+/* ======================================================================================
+ * Pop all temporary elements from LNO configuration stack and restore all saved fields 
+ * ======================================================================================
+ */
+
+void
+LNO_Restore_Configs()
+{
+  while (LNO_Pop_Config(TRUE));
+  FmtAssert(Current_LNO, ("Null Current_LNO"));
+  FmtAssert((LNO_FLAGS_bitmask(Current_LNO) == 0), ("Invalid LNO flag bit mask"));
+}
+
 
 /* ====================================================================
  *

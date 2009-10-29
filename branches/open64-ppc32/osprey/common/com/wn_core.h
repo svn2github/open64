@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -1375,6 +1379,9 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 /* Is the trip count estimate based on guessing the size of symbols */
 #define WN_LOOP_SYMB_TRIP 0x20
 
+/* Is the loop a upward countable loop */
+#define WN_LOOP_UP_TRIP   0x40
+
 /* Is the loop an innermost loop */
 #define WN_Loop_Innermost(x)		(WN_loop_flag(x) & WN_LOOP_INNERMOST)
 #define WN_Set_Loop_Innermost(x)	(WN_loop_flag(x) |= WN_LOOP_INNERMOST)
@@ -1420,6 +1427,10 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 #define WN_Loop_Symb_Trip(x)         (WN_loop_flag(x) & WN_LOOP_SYMB_TRIP)
 #define WN_Set_Loop_Symb_Trip(x)     (WN_loop_flag(x) |= WN_LOOP_SYMB_TRIP)
 #define WN_Reset_Loop_Symb_Trip(x)   (WN_loop_flag(x) &= ~WN_LOOP_SYMB_TRIP)
+
+#define WN_Loop_Up_Trip(x)         (WN_loop_flag(x) & WN_LOOP_UP_TRIP)
+#define WN_Set_Loop_Up_Trip(x)     (WN_loop_flag(x) |= WN_LOOP_UP_TRIP)
+#define WN_Reset_Loop_Up_Trip(x)   (WN_loop_flag(x) &= ~WN_LOOP_UP_TRIP)
 
 #define WN_LABEL_HANDLER_BEGIN 0x2
 #define WN_Label_Is_Handler_Begin(x)	   (WN_label_flag(x) & \

@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -733,6 +737,7 @@ extern void Update_MP_Local_Var(ST* st, WN_OFFSET offset, WN *wn);
 extern void Dump_WN(WN*, FILE*, INT, INT = 2, INT = 2,
                     ARRAY_DIRECTED_GRAPH16* =NULL, WN** = NULL, WN* = NULL,
 		    BOOL recursive = TRUE);
+extern void Enum_loops(WN *);
 
 // Good stuff extracted from SNL codes.
 
@@ -821,6 +826,8 @@ extern BOOL Is_Permutation_Vector(const INT order[], INT count);
 extern BOOL Are_Permutations(const INT* order1, const INT* order2, INT count);
 extern BOOL Is_Loop_Invariant_Use(WN* wn, WN* outerloop);
 extern BOOL Is_Loop_Invariant_Exp(WN* wn, WN* outerloop);
+extern BOOL Is_Const_Array_Addr(WN *);
+extern BOOL Is_Loop_Invariant_Indir(WN *);
 extern HASH_TABLE<WN*,WN*>* Make_Loop_Mapping(WN*, WN*, MEM_POOL*);
 extern HASH_TABLE<WN*,BOOL>* Find_Loops_Within(WN* orig, MEM_POOL*);
 extern INT Num_Common_Loops(WN *wn1, WN *wn2); 

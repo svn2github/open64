@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -946,6 +950,7 @@ Print_LOOPINFO(LOOPINFO *info)
   if (WN_Loop_Unimportant_Misc(loop_info)) fprintf(TFile, "UNIMPORTANT_MISC ");
   if (WN_Loop_Nz_Trip(loop_info)) fprintf(TFile, "NZ_TRIP ");
   if (WN_Loop_Symb_Trip(loop_info)) fprintf(TFile, "SYMB_TRIP ");
+  if (WN_Loop_Up_Trip(loop_info)) fprintf(TFile, "UP_TRIP ");
   fprintf(TFile, "\n");
   if (LOOPINFO_trip_count_tn(info)) {
     fprintf(TFile, "    trip count TN = ");
@@ -2555,7 +2560,7 @@ void Change_Succ(BB *pred, BB *old_succ, BB *new_succ)
   BBLIST_item(succs) = new_succ;
   if (FREQ_Frequencies_Computed()) {
     adjust = BB_freq(pred) * BBLIST_prob(succs);
-#if !defined(TARG_SL)   // embedded systems uses int for feedback
+#if !defined(TARG_SL) && !defined(KEY)   // embedded systems uses int for feedback
     if ((BB_freq(pred) == 0) && (BBLIST_prob(succs) >= 0) && 
 	!(adjust == adjust)) /* the result of NaN compare will always be false */
 	adjust = 0;

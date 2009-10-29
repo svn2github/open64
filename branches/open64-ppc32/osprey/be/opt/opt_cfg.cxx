@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2005-2008 Simplight NanoElectronics Ltd.  All rights reserved.
  */
 
@@ -113,6 +117,7 @@ CFG::CFG(MEM_POOL *pool, MEM_POOL *lpool)
 {
   _mem_pool = pool;
   _loc_pool = lpool;
+  _sc_pool = NULL;
   _bb_vec.Alloc_array(CFG_BB_TAB_SIZE);
   _entry_vec.Alloc_array(CFG_ALTENTRY_TAB_SIZE);
   _exit_vec.Alloc_array(CFG_EARLYEXIT_TAB_SIZE);
@@ -153,6 +158,7 @@ CFG::CFG(MEM_POOL *pool, MEM_POOL *lpool)
   WN_Simplifier_Enable(FALSE);
   _trace = Get_Trace(TP_GLOBOPT, CFG_DUMP_FLAG);
   _loops_valid = FALSE;
+  _clone_map = NULL;
 }
 
 CFG::~CFG()
@@ -165,6 +171,7 @@ CFG::~CFG()
   _notreach_vec.Free_array();
   _agoto_pred_vec.Free_array();
   _agoto_succ_vec.Free_array();
+
 }
 
 // ====================================================================
@@ -2103,20 +2110,46 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   // It does some form of lowering without changing the original IR.
 
   // The init statement goes in its own block
+
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = Add_sc(NULL, SC_LOOP);
+    _sc_parent_stack->Push(sc);
+    sc = Add_sc(NULL, SC_LP_START);
+    _sc_parent_stack->Push(sc);
+  }
+  
   BB_NODE *start_bb;
   if (_current_bb->Firststmt() != NULL) {
     start_bb = New_bb( TRUE/*connect*/, BB_DOSTART );
   }
   else {
     start_bb = _current_bb;
+    if (Do_pro_loop_fusion_trans()) {
+      SC_NODE * sc = Unlink_sc(start_bb);
+      if (sc == NULL)
+	Add_sc(start_bb, SC_BLOCK);
+      else {
+	sc->Convert(SC_BLOCK);
+	SC_NODE * parent = _sc_parent_stack->Top();
+	sc->Set_parent(parent);
+	parent->Append_kid(sc);
+      }
+    }
+
     start_bb->Set_kind( BB_DOSTART );
   }
+  
   start_bb->Set_linenum(WN_Get_Linenum(wn));
 
   // Put the init statement in it
   WN *start_wn = WN_start(wn);
   Is_True(start_wn != NULL, ("CFG::Add_one_do_loop_stmt: NULL start"));
   Add_one_stmt( start_wn, NULL );
+
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_LP_START), ("Expect a SC_LP_START"));
+  }
 
   // Create, but do not connect the merge block
   BB_NODE *merge_bb = Create_bb();
@@ -2128,11 +2161,23 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   WN *end_cond = WN_CreateFalsebr(merge_bb->Labnam(), WN_end(wn));
   WN_Set_Linenum( end_cond, WN_Get_Linenum(WN_end(wn)) );
 
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = Add_sc(NULL, SC_LP_COND);
+    _sc_parent_stack->Push(sc);
+  }
+
   BB_NODE *cond_bb = New_bb( TRUE/*connect*/ );
   Add_one_stmt(end_cond, NULL);
   cond_bb->Set_kind(BB_DOEND);
   if ( cond_bb->Labnam() == 0 )
     Append_label_map(Alloc_label(), cond_bb);
+
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_LP_COND), ("Expect a SC_LP_COND"));
+    sc = Add_sc(NULL, SC_LP_BODY);
+    _sc_parent_stack->Push(sc);
+  }
 
   // Third, create loop body bb
   Is_True(WN_do_body(wn) != NULL, 
@@ -2141,6 +2186,13 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   body_bb->Set_linenum(WN_Get_Linenum(WN_do_body(wn)));
   END_BLOCK body_end;
   Add_one_stmt(WN_do_body(wn), &body_end);
+
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_LP_BODY), ("Expect a SC_LP_BODY"));
+    sc = Add_sc(NULL, SC_LP_STEP);
+    _sc_parent_stack->Push(sc);
+  }
 
   // Fourth, add loop increment bb
   FmtAssert(WN_step(wn) != NULL, 
@@ -2154,6 +2206,13 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   // create back edge from step to cond
   WN *gotocond = WN_CreateGoto(cond_bb->Labnam());
   Add_one_stmt( gotocond, NULL );
+
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_LP_STEP), ("Expect a SC_LP_STEP"));
+    sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_LOOP), ("Expect a SC_LOOP"));
+  }
 
   // here is where the merge block goes
   Append_bb( merge_bb );
@@ -2205,6 +2264,13 @@ CFG::Add_one_while_do_stmt( WN *wn, END_BLOCK *ends_bb )
 {
   Set_cur_loop_depth( Cur_loop_depth() + 1 );
 
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = Add_sc(NULL, SC_LOOP);
+    _sc_parent_stack->Push(sc);
+    sc = Add_sc(NULL, SC_LP_COND);
+    _sc_parent_stack->Push(sc);
+  }
+
   // create loop cond bb 
   BB_NODE *cond_bb = NULL;
   // do not reuse the empty bb, because it can be a merge bb of do loop
@@ -2223,16 +2289,38 @@ CFG::Add_one_while_do_stmt( WN *wn, END_BLOCK *ends_bb )
   Add_one_stmt( end_cond, NULL );
   cond_bb->Set_kind( BB_WHILEEND );
 
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_LP_COND), ("Expect a SC_LP_COND"));
+    sc = Add_sc(NULL, SC_LP_BODY);
+    _sc_parent_stack->Push(sc);
+  }
+
   // add the loop body bb now
   BB_NODE *body_bb = New_bb( TRUE/*connect*/ );
   END_BLOCK body_end;
   Add_one_stmt( WN_while_body(wn), &body_end );
+
+  
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_LP_BODY), ("Expect a SC_LP_BODY"));
+    sc = Add_sc(NULL, SC_LP_BACKEDGE);
+    _sc_parent_stack->Push(sc);
+  }
 
   // create back edge to loop cond_bb
   BB_NODE *loop_back = New_bb( body_end != END_BREAK );
   // create back edge from step to cond
   WN *gotocond = WN_CreateGoto(cond_bb->Labnam());
   Add_one_stmt( gotocond, NULL );
+
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_LP_BACKEDGE), ("Expect a SC_LP_BACKEDGE"));
+    sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_LOOP), ("Expect a SC_LOOP"));
+  }
 
   // here is where the merge block goes
   Append_bb( merge_bb );
@@ -2269,6 +2357,14 @@ CFG::Add_one_do_while_stmt( WN *wn, END_BLOCK *ends_bb )
   Set_cur_loop_depth( Cur_loop_depth()+1 );
 
   BB_NODE *body_bb = NULL;
+
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = Add_sc(NULL, SC_LOOP);
+    _sc_parent_stack->Push(sc);
+    sc = Add_sc(NULL, SC_LP_BODY);
+    _sc_parent_stack->Push(sc);
+  }
+  
   body_bb = New_bb( TRUE/*connect*/, BB_REPEATBODY );
   body_bb->Set_linenum(WN_Get_Linenum(wn));
   if ( body_bb->Labnam() == 0 )
@@ -2279,6 +2375,13 @@ CFG::Add_one_do_while_stmt( WN *wn, END_BLOCK *ends_bb )
   END_BLOCK body_end;
   Add_one_stmt( WN_while_body(wn), &body_end );
 
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_LP_BODY), ("Expect a SC_LP_BODY"));
+    sc = Add_sc(NULL, SC_LP_COND);
+    _sc_parent_stack->Push(sc);
+  }
+
   // create loop cond
 
   // create loop cond bb, and connect from body if it doesn't goto
@@ -2288,6 +2391,13 @@ CFG::Add_one_do_while_stmt( WN *wn, END_BLOCK *ends_bb )
   WN_Set_Linenum( end_cond, WN_Get_Linenum(WN_while_test(wn)) );
   Add_one_stmt( end_cond, NULL );
   cond_bb->Set_kind(BB_REPEATEND);
+
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_LP_COND), ("Expect a SC_LP_COND"));
+    sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_LOOP), ("Expect a SC_LOOP"));
+  }
 
   // Create new bb after the cond bb to be the merge block
   BB_NODE *merge_bb = New_bb( TRUE/*connect*/ );
@@ -2332,9 +2442,19 @@ CFG::Add_one_if_stmt( WN *wn, END_BLOCK *ends_bb )
   BB_NODE *cond_bb = _current_bb;
   Add_one_stmt( end_cond, NULL );
 
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = Add_sc(cond_bb, SC_IF);
+    _sc_parent_stack->Push(sc);
+  }
+
   // create, but do not connect, the merge point
   BB_NODE *merge_bb = Create_bb();
   merge_bb->Set_ifmerge();
+
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = Add_sc(NULL, SC_THEN);
+    _sc_parent_stack->Push(sc);
+  }
 
   // process then block first so as maintain source order for the BBs
   BB_NODE *then_bb = New_bb( TRUE/*connect*/ );
@@ -2350,12 +2470,27 @@ CFG::Add_one_if_stmt( WN *wn, END_BLOCK *ends_bb )
     Connect_predsucc(_current_bb, merge_bb);
   }
 
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc =_sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_THEN), ("Expect a SC_THEN"));
+    sc = Add_sc(NULL, SC_ELSE);
+    _sc_parent_stack->Push(sc);
+  }
+
   // now process the "else" part using the block created earlier
   Append_bb( else_bb );
+
   Add_one_stmt( WN_else(wn), &block_end );
   if ( block_end != END_BREAK )
     Connect_predsucc(_current_bb, merge_bb);
 
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_ELSE), ("Expect a SC_ELSE"));
+    sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_IF), ("Expect a SC_IF"));
+  }
+  
   // here is where the merge block goes
   Append_bb(merge_bb);
 
@@ -2386,6 +2521,12 @@ void
 CFG::Add_one_compgoto_stmt( WN *wn, END_BLOCK *ends_bb )
 {
   INT32 new_num_entries = WN_num_entries(wn);
+
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = Add_sc(_current_bb, SC_COMPGOTO);
+    _sc_parent_stack->Push(sc);
+  }
+
   _current_bb->Set_kind(BB_VARGOTO);
   _current_bb->Set_hasujp();
   Append_wn_in(_current_bb, wn);
@@ -2403,6 +2544,9 @@ CFG::Add_one_compgoto_stmt( WN *wn, END_BLOCK *ends_bb )
     if (def_blk == NULL) {
       def_blk = Create_bb();
       Append_label_map(WN_label_number(def_goto), def_blk);
+    }
+    else {
+      FmtAssert(!Do_pro_loop_fusion_trans(), ("Unexpected def_blk"));
     }
 
     _current_bb->Set_switchdefault(def_blk);
@@ -2442,6 +2586,11 @@ CFG::Add_one_compgoto_stmt( WN *wn, END_BLOCK *ends_bb )
   // the end of the current block
   if ( ends_bb )
     *ends_bb = END_BREAK;
+
+  if (Do_pro_loop_fusion_trans()) {
+    SC_NODE * sc = _sc_parent_stack->Pop();
+    FmtAssert((sc->Type() == SC_COMPGOTO), ("Expect a SC_COMPGOTO"));
+  }
 }
 
 // ====================================================================
@@ -2538,6 +2687,11 @@ void
 CFG::Add_one_region( WN *wn, END_BLOCK *ends_bb )
 {
   RID *rid = REGION_get_rid(wn);
+
+  if (Do_pro_loop_fusion_trans()) {
+    Free_sc();
+    // FmtAssert(FALSE, ("TODO. region"));
+  }
 
   Is_True(rid != NULL,("CFG::Add_one_region, cannot find RID"));
   Is_True(REGION_consistency_check(wn), (""));
@@ -3222,6 +3376,194 @@ CFG::Connect_agotos()
   }
 }
 
+// Query whether a SC_NODE of given type has representing BB_NODE.
+BOOL
+SC_type_has_rep(SC_TYPE type)
+{
+  return ((type == SC_IF) || (type == SC_COMPGOTO));
+}
+
+// Query whether a SC_NODE of given type has a list of BB_NODEs.
+BOOL
+SC_type_has_bbs(SC_TYPE type)
+{
+  return (type == SC_BLOCK);
+}
+
+// Query whether a SC_NODE of given type is a marker, i.e., it does not
+// contain any BB_NODE and only serves as a delimitator.
+
+BOOL
+SC_type_is_marker(SC_TYPE type)
+{
+  return ((type == SC_THEN) || (type == SC_ELSE) || (type == SC_LOOP) || (type == SC_LP_BODY)
+	  || (type == SC_LP_START) || (type == SC_LP_COND) || (type == SC_LP_STEP)
+	  || (type == SC_LP_BACKEDGE));
+}
+
+// Allocate a SC_NODE of the given type.
+SC_NODE *
+CFG::Create_sc(SC_TYPE type)
+{
+  SC_NODE * sc = CXX_NEW(SC_NODE(), _sc_pool);
+  sc->Set_type(type);
+  sc->Set_id(++_last_sc_id);
+  sc->Set_pool(_sc_pool);
+
+  return sc;
+}
+
+// Initialize scratch fields to build a SC tree.
+void
+CFG::SC_init()
+{
+  _sc_root = NULL;
+  _sc_parent_stack = NULL;
+  _sc_map = NULL;
+  _last_sc_id = 0;
+}
+
+// Remove BB_NODE from SC tree.  Used during SC_TREE construction.
+
+SC_NODE *
+CFG::Unlink_sc(BB_NODE *bb)
+{
+  SC_NODE * sc = this->Get_sc_from_bb(bb);
+
+  if (sc == NULL)
+    return NULL;
+
+  SC_TYPE type = sc->Type();
+
+  if (SC_type_has_bbs(type)) {
+    BB_LIST * bb_list = sc->Get_bbs();
+    if (bb_list->Multiple_bbs()) {
+      bb_list->Remove(bb, sc->Get_pool());
+      this->Remove_sc_map(bb,sc);
+      return NULL;
+    }
+  }
+
+  SC_NODE * parent = sc->Parent();
+
+  FmtAssert((sc->Kids() == NULL), ("Expect a leaf SC_NODE"));
+
+  parent->Remove_kid(sc);
+  sc->Set_parent(NULL);
+  
+  return sc;
+}
+
+// Add BB_NODE to SC tree. Used during SC_TREE construction.
+
+SC_NODE *
+CFG::Add_sc(BB_NODE *bb, SC_TYPE type)
+{
+  FmtAssert((_sc_parent_stack != NULL), ("Expect non NULL sc parent"));
+
+  SC_NODE * parent = _sc_parent_stack->Top();
+  SC_NODE * sc = (bb != NULL) ? this->Get_sc_from_bb(bb) : NULL;
+  BOOL connect_parent_kid = TRUE;
+
+  if (sc != NULL) {
+    // Handle the case that a condition-testing expression was appended to an
+    // existing bb.  If the bb belongs to a SC_BLOCK containing a single bb,
+    // convert the bb into a SC_IF.  If the sc contains more than one bbs, 
+    // remove the bb from the sc.
+
+    if (SC_type_has_rep(type)) {
+      SC_TYPE old_type = sc->Type();
+      BB_LIST * bb_list = sc->Get_bbs();
+      FmtAssert(SC_type_has_bbs(old_type), ("Unexpected SC type"));
+      FmtAssert(bb_list && (bb_list->Contains(bb)), ("Unexpected bbs"));
+      
+      if (bb_list->Multiple_bbs()) {
+	bb_list->Remove(bb, sc->Get_pool());
+	this->Remove_sc_map(bb, sc);
+	sc = NULL;
+      }
+      else 
+	sc->Convert(type);
+    }
+  }
+
+  if (sc != NULL)
+    return sc;
+
+
+  if (SC_type_has_rep(type)) {
+    sc = Create_sc(type);
+    sc->Set_bb_rep(bb);
+  }
+  else if (SC_type_has_bbs(type)) {
+    sc = parent->Last_kid();
+
+    if ((sc == NULL) || (sc->Type() != SC_BLOCK)
+	|| (sc->Type() != type)) {
+      sc = Create_sc(type);
+    }
+    else {
+      connect_parent_kid = FALSE;
+    }
+    sc->Append_bbs(bb);
+  }
+  else if (SC_type_is_marker(type)) {
+    sc = Create_sc(type);
+  }
+  else {
+    FmtAssert(FALSE, ("Unexpected SC type"));
+  }
+
+  if (bb != NULL)
+    this->Add_sc_map(bb, sc);
+
+  if (connect_parent_kid) {
+    sc->Set_parent(parent);
+    parent->Append_kid(sc);
+  }
+
+  // For COMPGOTO, BBs of case statements and default statement are appended to the CFG
+  // when the label WNs are processed, though the pred/succ are connected at the time
+  // the BBs are created.
+  //
+  if (parent && (parent->Type() == SC_COMPGOTO)) {
+    BB_NODE * parent_bb = parent->Get_bb_rep();
+    BB_LIST * succ = parent_bb->Succ();
+    BB_LIST_ITER bb_list_iter(succ);
+    BOOL all_processed = TRUE;
+    BB_NODE * tmp;
+
+    FOR_ALL_ELEM(tmp, bb_list_iter, Init()) {
+      if (this->Get_sc_from_bb(tmp) == NULL) {
+	all_processed = FALSE;
+	break;
+      }
+    }
+
+    if (all_processed)
+      _sc_parent_stack->Pop();
+  }
+
+  return sc;
+}
+
+// Free SC storages.
+void
+CFG::Free_sc()
+{
+  if (_sc_map) {
+    CXX_DELETE(_sc_map, _sc_pool);
+    _sc_map = NULL;
+  }
+
+  if (_sc_parent_stack) {
+    CXX_DELETE(_sc_parent_stack, _sc_pool);
+    _sc_parent_stack = NULL;
+  }
+    
+  _sc_root->Delete();
+  _sc_root = NULL;
+}
 
 // ====================================================================
 // Remove bb from the list of blocks containing AGOTOs (used during DCE)
@@ -3443,23 +3785,48 @@ CFG::Ident_sl2_para_regions(void)
 
 void 
 CFG::Create(WN *func_wn, BOOL lower_fully, BOOL calls_break, 
-	    REGION_LEVEL rgn_level, OPT_STAB *opt_stab, BOOL do_tail )
+	    REGION_LEVEL rgn_level, OPT_STAB *opt_stab, BOOL do_tail, MEM_POOL * sc_pool )
 {
   _opt_stab = opt_stab;
   _lower_fully = lower_fully;
   _calls_break = calls_break;
   _rgn_level   = rgn_level;	// context: preopt/mainopt/rvi
+  _sc_pool = sc_pool;
 
   Set_cur_loop_depth( 0 );
+
+  OPERATOR opr = WN_operator(func_wn);
+  FmtAssert(opr == OPR_FUNC_ENTRY || opr == OPR_REGION, 
+	    ("CFG::Create: root wn not FUNC_ENTRY or REGION"));
+
+  SC_init();
+
+  if (WOPT_Enable_Pro_Loop_Fusion_Trans) {
+    if (opr == OPR_FUNC_ENTRY) {
+      PU &pu = Pu_Table[ST_pu(WN_st(func_wn))];
+
+      // Skip abnormal control flows in the first implementation.
+
+      if (!PU_has_altentry(pu)
+	  && !PU_has_exc_scopes(pu)
+	  && !PU_has_unknown_control_flow(pu)
+	  && !PU_has_nonlocal_goto_label(pu)
+	  && !PU_has_goto_outer_block(pu)
+	  && !PU_calls_setjmp(pu)
+	  && !PU_calls_longjmp(pu)) {
+	FmtAssert(_sc_pool, ("Null SC pool"));
+	_sc_map = CXX_NEW(MAP(CFG_BB_TAB_SIZE, _sc_pool), _sc_pool);
+	_sc_root = Create_sc(SC_FUNC);
+	_sc_parent_stack = CXX_NEW(STACK<SC_NODE *>(_sc_pool), _sc_pool);
+	_sc_parent_stack->Push(_sc_root);
+      }
+    }
+  }
 
   // create the first entry block
   _last_bb = NULL;
   _first_bb = Create_bb();
   Append_bb( _first_bb );
-
-  OPERATOR opr = WN_operator(func_wn);
-  FmtAssert(opr == OPR_FUNC_ENTRY || opr == OPR_REGION, 
-	    ("CFG::Create: root wn not FUNC_ENTRY or REGION"));
 
   // assign the RID for this section of code, can be func_entry (RID tree)
   // or individual region with no subregions
@@ -4379,7 +4746,7 @@ BB_NODE **
 CFG::Dpo_vec(void)
 {
   if (_dpo_vec == NULL) {
-    _dpo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Last_bb_id(), Mem_pool());
+    _dpo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Last_bb_id()+1, Mem_pool());
     INT id = 0;
     Init_dpo_vec(Entry_bb(), &id);
     _dpo_vec_sz = id;
@@ -4391,7 +4758,7 @@ BB_NODE **
 CFG::Pdo_vec(void)
 {
   if (_pdo_vec == NULL) {
-    _pdo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Last_bb_id(), Mem_pool());
+    _pdo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Last_bb_id()+1, Mem_pool());
     INT id = 0;
     Init_pdo_vec(Exit_bb(), &id);
     _pdo_vec_sz = id;
@@ -4885,7 +5252,7 @@ Allocate_loop(BB_NODE *bb, BB_LOOP *parent, CFG *cfg)
   if (loop == NULL)
     loop = CXX_NEW( BB_LOOP(NULL, NULL, NULL, NULL, NULL, NULL),
 		    cfg->Mem_pool() );
-  loop->Set_true_body_set(CXX_NEW(BB_NODE_SET(cfg->Last_bb_id(), cfg,
+  loop->Set_true_body_set(CXX_NEW(BB_NODE_SET(cfg->Last_bb_id()+1, cfg,
 					      cfg->Mem_pool(), BBNS_EMPTY),
 				  cfg->Mem_pool()));
   loop->Set_body_set(NULL);  // body_set not supported in mainopt
@@ -5339,10 +5706,10 @@ CFG::Is_outermost_loop_in_parallel_region( BB_LOOP *loop,
 
 // Add a BB_NODE to each CFG edge from a bb with multiple successors to
 // a bb with multiple predecessors.  Rebuild the data structure if
-// rebuild_ds is TRUE.
+// rebuild_ds is TRUE.  do_df indicates whether to compute dom frontiers.
 
 void    
-CFG::Invalidate_and_update_aux_info(void)
+CFG::Invalidate_and_update_aux_info(BOOL do_df)
 {
   // handle blocks that don't exit
   Process_multi_entryexit( FALSE/*!whirl*/ );
@@ -5357,8 +5724,11 @@ CFG::Invalidate_and_update_aux_info(void)
   Compute_dom_tree(TRUE); // create dom tree
   Compute_dom_tree(FALSE);// create post-dom tree
   Remove_fake_entryexit_arcs();
-  Compute_dom_frontier(); // create dom frontier
-  Compute_control_dependence(); // create reverse cfg dom
+
+  if (do_df) {
+    Compute_dom_frontier(); // create dom frontier
+    Compute_control_dependence(); // create reverse cfg dom
+  }
 
   // fake blocks should not be considered as reached
   if ( Fake_entry_bb() != NULL )
@@ -5429,7 +5799,7 @@ CFG::Remove_critical_edge()
   }
   // Rebuild the data structures
   if (inserted > 0) {
-    Invalidate_and_update_aux_info();
+    Invalidate_and_update_aux_info(TRUE);
     Invalidate_loops();
     Analyze_loops();
   }
@@ -5848,8 +6218,115 @@ void CFG::Delete_empty_BB()
   }
 }
 
+// Obtained cloned equivalent of given bb
+BB_NODE * 
+CFG::Get_cloned_bb(BB_NODE * bb)
+{
+  FmtAssert(_clone_map, ("NULL clone map"));
+  IDTYPE new_id = (IDTYPE) (unsigned long) (_clone_map->Get_val((POINTER) bb->Id()));
+  if (new_id)
+    return Get_bb(new_id);
 
-void CFG::Clone_bb(IDTYPE src, IDTYPE dst)
+  return NULL;
+}
+
+// Fix label number for WHIRL tree rooted at wn.  Must be invoked on a valid _clone_map.
+void CFG::Fix_WN_label(WN * wn)
+{
+  OPCODE op;
+  WN * kid;
+  op = WN_opcode(wn);
+  INT32 label = WN_label_number(wn);
+
+  if (label) {
+    BB_NODE * old_bb = Get_bb_from_label(label);
+    if (old_bb) {
+      BB_NODE * new_bb = Get_cloned_bb(old_bb);
+      if (new_bb) 
+	WN_label_number(wn) = new_bb->Labnam();
+    }
+  }
+
+  if (op == OPC_BLOCK) {
+    kid = WN_first(wn);
+    while (kid) {
+      Fix_WN_label(kid);
+      kid = WN_next(kid);
+    }
+  }
+  else {
+    INT kidno;
+    for (kidno = 0; kidno < WN_kid_count(wn); kidno++) {
+      kid = WN_kid(wn, kidno);
+      if (kid)
+	Fix_WN_label(kid);
+    }
+  }
+}
+
+// For every BB_NODE bb, Verify that:
+// - If bb ends with a branch WN, then WN's label is the same as bb's non-fall-through successor.
+// - If bb has a ifinfo, then ifinfo's Then() and Else() are bb's successor.
+
+BOOL CFG::Verify_label()
+{
+  BOOL ret_val = TRUE;
+
+  for (BB_NODE *bb = First_bb(); bb != NULL; bb = bb->Next()) {
+    WN * branch_wn = bb->Branch_wn();
+    BB_NODE * tmp;
+    BB_LIST_ITER bb_list_iter;
+
+    BB_IFINFO * ifinfo = NULL;
+
+    if ((bb->Kind() == BB_VARGOTO)
+	|| (bb->Kind() == BB_IO))
+      continue;
+
+    if (bb->Kind() == BB_LOGIF)
+      ifinfo = bb->Ifinfo();
+
+    if (!branch_wn && !ifinfo)
+      continue;
+
+    OPCODE opcode = WN_opcode(branch_wn);
+
+    FOR_ALL_ELEM(tmp, bb_list_iter, Init(bb->Succ())) {
+      if (branch_wn && (bb->Next() != tmp) && !OPCODE_is_call(opcode)) {
+	if (WN_label_number(branch_wn) != tmp->Labnam()) {
+	  ret_val = FALSE;
+	  FmtAssert(FALSE, ("Verification error: branch label"));
+	}
+      }
+
+      if (ifinfo) {
+	if ((ifinfo->Then() != tmp) && (ifinfo->Else() != tmp)) {
+	  ret_val = FALSE;
+	  FmtAssert(FALSE, ("Verification error: ifinfo"));
+	}
+      }
+    }
+  }
+
+  return ret_val;
+}
+
+// If the given bb has no label, add a new label and create a LABEL WN.
+LABEL_IDX CFG::Add_label_with_wn(BB_NODE * bb)
+{
+  LABEL_IDX label = 0;
+
+  if (bb->Labnam() == 0) {
+    bb->Add_label(this);
+    label = bb->Labnam();
+    FmtAssert(label, ("NULL label"));
+    WN * new_wn = WN_CreateLabel(0, label, 0, NULL);
+    Prepend_wn_in(bb, new_wn);
+  }
+  return label;
+}
+
+void CFG::Clone_bb(IDTYPE src, IDTYPE dst, BOOL clone_wn)
 {
   BB_NODE *srcbb = Get_bb(src);
   BB_NODE *destbb = Get_bb(dst);
@@ -5899,4 +6376,257 @@ void CFG::Clone_bb(IDTYPE src, IDTYPE dst)
     tmp->Clone(stmt, Htable(), Htable()->Mem_pool());
     destbb->Append_stmtrep(tmp);
   }
+
+  // Clone WN statements.
+  if (clone_wn) {
+    STMT_ITER stmt_iter;
+    WN * wn_iter;
+    WN * prev_wn = NULL;
+
+    FOR_ALL_ELEM (wn_iter, stmt_iter, Init(srcbb->Firststmt(), srcbb->Laststmt())) {
+      WN * wn_new = WN_COPY_Tree_With_Map(wn_iter);
+      Append_wn_in(destbb, wn_new);
+    }
+  }
+}
+
+// Clone all BB_NODEs that are linked by Next fields starting from bb_first and ending 
+// in bb_last. Pred/Succ are set up for internal nodes.  bb_first and bb_last's cloned
+// equivalents are returned via new_first and new_last.
+
+void CFG::Clone_bbs
+(
+ BB_NODE * bb_first, 
+ BB_NODE * bb_last,
+ BB_NODE ** new_first,
+ BB_NODE ** new_last,
+ BOOL  clone_wn,
+ float scale
+)
+{
+  *new_first = NULL;
+  *new_last = NULL;
+  BB_NODE * bb_cur;
+  MEM_POOL * pool = _loc_pool;
+
+  if (_clone_map)
+    CXX_DELETE(_clone_map, pool);
+
+  _clone_map = CXX_NEW(MAP(CFG_BB_TAB_SIZE, pool), pool);
+
+  for (bb_cur = bb_first; bb_cur; bb_cur = bb_cur->Next()) {
+    BB_NODE * bb_new = Create_and_allocate_bb(bb_cur->Kind());
+    IDTYPE src_id = bb_cur->Id();
+    IDTYPE dst_id = bb_new->Id();
+
+    Clone_bb(src_id, dst_id, clone_wn);
+
+    if (bb_cur->Labnam()) {
+      INT32 label = Alloc_label();
+      Append_label_map(label, bb_new);
+    }
+
+    if (Feedback())
+      Feedback()->Add_node(dst_id);
+
+    if (bb_cur == bb_first)
+      *new_first = bb_new;
+
+    if (bb_cur == bb_last)
+      *new_last = bb_new;
+    
+    _clone_map->Add_map((POINTER) src_id, (POINTER) dst_id);
+    if (bb_cur == bb_last)
+      break;
+  }
+
+  bb_cur = bb_first;
+  BB_NODE * bb_prev = NULL;
+
+  while (bb_cur) {
+    BB_NODE * bb_new = Get_cloned_bb(bb_cur);
+    FmtAssert(bb_new, ("Cloned BB_NODE not found"));
+    BB_LIST_ITER bb_list_iter;
+    BB_NODE * old_pred;
+
+    // Update label
+    STMT_ITER stmt_iter;
+    WN * wn_iter;
+    FOR_ALL_ELEM (wn_iter, stmt_iter, Init(bb_new->Firststmt(), bb_new->Laststmt())) {
+      Fix_WN_label(wn_iter);
+    }
+
+    // Set up prev/next
+    bb_new->Set_prev(bb_prev);
+    if (bb_prev)
+      bb_prev->Set_next(bb_new);
+
+    if (bb_cur != bb_first) {
+      // Connect pred/succ
+      FOR_ALL_ELEM(old_pred, bb_list_iter, Init(bb_cur->Pred())) {
+	BB_NODE * new_pred = Get_cloned_bb(old_pred);
+	FmtAssert(new_pred, ("Cloned BB_NODE not found"));
+	Connect_predsucc(new_pred, bb_new);
+	
+	if (Feedback()) {
+	  Feedback()->Clone_edge(old_pred->Id(), bb_cur->Id(),
+				 new_pred->Id(), bb_new->Id(),
+				 scale);
+	}
+      }
+    }
+    
+    // Clone ifinfo
+    BB_IFINFO * ifinfo = bb_cur->Ifinfo();
+
+    if (ifinfo && !bb_new->Ifinfo()) {
+      BB_IFINFO * new_ifinfo = Clone_ifinfo(ifinfo);
+      bb_new->Set_ifinfo(new_ifinfo);
+    }
+
+    // Clone loopinfo
+    BB_LOOP * loopinfo = bb_cur->Loop();
+    
+    if (loopinfo && !bb_new->Loop()) {
+      BB_LOOP * new_loopinfo = Clone_loop(loopinfo);
+      bb_new->Set_loop(new_loopinfo);
+    }
+
+    if (bb_cur == bb_last)
+      break;
+
+    bb_prev = bb_new;
+    bb_cur = bb_cur->Next();
+  }
+}
+
+// Clone given BB_IFINFO. Must be invoked on a valid _clone_map.
+BB_IFINFO *
+CFG::Clone_ifinfo(BB_IFINFO * ifinfo)
+{
+  BB_NODE * old_cond = ifinfo->Cond();
+  BB_NODE * old_then = ifinfo->Then();
+  BB_NODE * old_else = ifinfo->Else();
+  BB_NODE * old_merge = ifinfo->Merge();
+  BB_NODE * new_cond = old_cond ? Get_cloned_bb(old_cond) : NULL;
+  BB_NODE * new_then = old_then ? Get_cloned_bb(old_then) : NULL;
+  BB_NODE * new_else = old_else ? Get_cloned_bb(old_else) : NULL;
+  BB_NODE * new_merge = old_merge ? Get_cloned_bb(old_merge) : NULL;
+
+  if (new_cond && new_cond->Ifinfo())
+    return new_cond->Ifinfo();
+
+  BB_IFINFO * new_ifinfo = CXX_NEW(BB_IFINFO(ifinfo->Thenloc(),
+					     ifinfo->Elseloc(),
+					     new_cond,
+					     new_then,
+					     new_else,
+					     new_merge),
+				   Mem_pool());
+
+  return new_ifinfo;
+}
+
+// Clone given BB_LOOP. Must be invoked on a valid _clone_map.
+BB_LOOP *
+CFG::Clone_loop(BB_LOOP * bb_loop)
+{
+  WN * old_index = bb_loop->Index();
+  BB_NODE * old_start = bb_loop->Start();
+  BB_NODE * old_end = bb_loop->End();
+  BB_NODE * old_body = bb_loop->Body();
+  BB_NODE * old_step = bb_loop->Step();
+  BB_NODE * old_merge = bb_loop->Merge();
+  WN *      new_index = NULL;
+  BB_NODE * new_start = old_start ? Get_cloned_bb(old_start) : NULL;
+  BB_NODE * new_end = old_end ? Get_cloned_bb(old_end) : NULL;
+  BB_NODE * new_body = old_body ? Get_cloned_bb(old_body) : NULL;
+  BB_NODE * new_step = old_step ? Get_cloned_bb(old_step) : NULL;
+  BB_NODE * new_merge = old_merge ? Get_cloned_bb(old_merge) : NULL;
+
+  if (new_start && new_start->Loop())
+    return new_start->Loop();
+
+  if (new_end && new_end->Loop())
+    return new_end->Loop();
+
+  if (new_body && new_body->Loop())
+    return new_body->Loop();
+
+  if (new_step && new_step->Loop())
+    return new_step->Loop();
+
+  if (new_merge && new_merge->Loop())
+    return new_merge->Loop();
+
+  if (old_index)
+    new_index = WN_COPY_Tree_With_Map(old_index);
+
+  BB_LOOP * new_loopinfo = CXX_NEW(BB_LOOP(new_index,
+					   new_start,
+					   new_end,
+					   new_body,
+					   new_step,
+					   new_merge),
+				   Mem_pool());
+
+  new_loopinfo->Set_flag(bb_loop->Flags());
+
+  if (bb_loop->Has_entry_guard())
+    new_loopinfo->Set_has_entry_guard();
+
+  if (bb_loop->Promoted_do())
+    new_loopinfo->Set_promoted_do();
+
+  if (bb_loop->Orig_wn())
+    new_loopinfo->Set_orig_wn(bb_loop->Orig_wn());
+  
+  return new_loopinfo;
+}
+
+// Clone given sc, BB_NODEs are cloned only at root level for SESEs.
+
+SC_NODE *
+CFG::Clone_sc(SC_NODE * sc, BOOL is_root, float scale)
+{
+  SC_NODE * sc_new = NULL;
+
+  if (is_root) {
+    FmtAssert(sc->Is_sese(), ("Expect a single entry single exit node"));
+    BB_NODE * bb_first = sc->First_bb();
+    BB_NODE * bb_last = sc->Last_bb();
+    BB_NODE * bb_new_first = NULL;
+    BB_NODE * bb_new_last = NULL;
+    Clone_bbs(bb_first, bb_last, &bb_new_first, &bb_new_last, TRUE, scale);
+  }
+  
+  sc_new = Create_sc(sc->Type());
+  BB_NODE * bb = sc->Get_bb_rep();
+  BB_NODE * bb_new;
+
+  if (bb) {
+    bb_new = Get_cloned_bb(bb);
+    FmtAssert(bb_new, ("BB_NODE not cloned yet"));
+    sc_new->Set_bb_rep(bb_new);
+  }
+
+  BB_LIST_ITER bb_list_iter(sc->Get_bbs());
+
+  FOR_ALL_ELEM(bb, bb_list_iter, Init()) {
+    bb_new = Get_cloned_bb(bb);
+    FmtAssert(bb_new, ("BB_NODE not cloned yet"));
+    sc_new->Append_bbs(bb_new);
+  }
+
+  SC_LIST_ITER sc_list_iter(sc->Kids());
+  SC_NODE * tmp;
+  SC_NODE * new_kid;
+
+  FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+    new_kid = Clone_sc(tmp, FALSE, scale);
+    sc_new->Append_kid(new_kid);
+    new_kid->Set_parent(sc_new);
+  }
+
+  return sc_new;
 }

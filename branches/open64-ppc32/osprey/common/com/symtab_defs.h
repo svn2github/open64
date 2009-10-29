@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -132,6 +136,16 @@ enum ST_MEMORY
     MEMORY_PARAM = 6,
     MEMORY_COUNT = 7
 }; // ST_MEMORY
+#else
+enum ST_TLS_MODEL {
+    TLS_NONE,
+    TLS_EMULATED, /* for emulated tls */
+    TLS_REAL,
+    TLS_GLOBAL_DYNAMIC = TLS_REAL,
+    TLS_LOCAL_DYNAMIC,
+    TLS_INITIAL_EXEC,
+    TLS_LOCAL_EXEC,
+}; // TLS_MODEL
 #endif /* TARG_NVISA */
 
 enum ST_FLAGS
@@ -219,11 +233,11 @@ public:
 
     ST_CLASS sym_class : 8;		// class info
     ST_SCLASS storage_class : 8;	// storage info
-#ifdef TARG_NVISA
     ST_EXPORT export_class : 4;		// export class of the symbol
+#ifdef TARG_NVISA
     ST_MEMORY memory_space: 4;		// memory space of the symbol
 #else
-    ST_EXPORT export_class : 8;		// export class of the symbol
+    ST_TLS_MODEL tls_model: 4;		// Thread-Local-Storage(TLS) model
 #endif
     union {
 	TY_IDX type;			// idx to high-level type
@@ -555,6 +569,8 @@ enum TY_FLAGS
 #ifdef TARG_NVISA
     TY_CAN_BE_VECTOR	= 0x8000,	// vector type like int4
 #endif
+    TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE = 0x0001, // it's OK to share this
+      // with TY_IS_CHARACTER above for now, since this has to be a struct
 };
 
 

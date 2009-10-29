@@ -23,12 +23,18 @@ BUILD_HOST     = IA32
 #  Include (optional) parameter override file
 -include $(BUILD_AREA)/Makefile.override
 
-#  Temporary setting. There's some bug if compile libopenmp with Open64,
-#  so we need to compile it with gcc now.
-BUILD_COMPILER = GNU
+#
+# !!! Temporary setting. !!!
+# Open64 has a bug when expanding atomic operations, like fetch_and_add.
+# We need to compile libopenmp library with gcc or TOT compiler. 
+#
+# Here we set to use gcc compiler.
+#
+# If you want to compile with TOT compiler, commend out the 
+# "BUILD_COMPIER" here and set the path to the TOT compiler.
+#
+override BUILD_COMPILER = GNU
 
 #  Include setup file which will then include Makefile.base
 include $(BUILD_TOT)/Makefile.gsetup
 
-# Local override to really using gcc for 64-bit build
-# CCNAME = gcc -m64

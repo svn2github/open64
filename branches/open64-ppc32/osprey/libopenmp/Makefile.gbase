@@ -2,6 +2,8 @@
 #
 #  OpenMP runtime library to be used in conjunction with Open64 Compiler Suites.
 #
+#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2003 - 2009 Tsinghua University.
 #
 #  This library is free software; you can redistribute it and/or
@@ -29,7 +31,16 @@
 
 # What we're building, and where to find it.
 LIBRARY = libopenmp.a
+PROF_LIB = libopenmp_p.a
+dso_version := 1
+DSO = libopenmp.so.$(dso_version)
+
+ifeq ($(BUILD_TYPE), NONSHARED)
 TARGETS = $(LIBRARY)
+else
+TARGETS = $(LIBRARY) $(PROF_LIB) $(DSO)
+endif
+
 SRC_DIRS    = $(BUILD_BASE)
 
 # Makefile setup
@@ -45,6 +56,13 @@ LCINCS = -I$(SRC_DIRS) -I$(BUILD_BASE)
 # HOSTDEFS += -DHAVE_CONFIG_H
 # HOSTDEFS += -DLONGLONG
 
+#
+# don't support i386 since it lacks atomic instructions.
+#
+ifeq ($(BUILD_ARCH), IA32)
+CFLAGS += -march=i486
+endif
+
 CFLAGS += -DTARG_$(BUILD_TARGET)
 
 CFILES = \
@@ -57,9 +75,15 @@ CFILES = \
 CXXFILES = \
 	omp_init.cxx
 
+ifeq ($(BUILD_COMPILER), GNU)
+NO_UNWIND=-fno-unwind-tables
+else
+NO_UNWIND=-CG:emit_unwind_info=off
+endif
+
 # Adding -fno-exceptions to avoid EH related stuffs, 
 #  which may cause undefined symbols in C program
-CXXFLAGS += -fno-exceptions -nostdinc++
+CXXFLAGS += -fno-exceptions -nostdinc++ $(NO_UNWIND)
 
 default:
 	$(MAKE)  first
@@ -73,7 +97,21 @@ endif
 
 last : make_libdeps
 
+include $(COMMONRULES)
+
 $(LIBRARY): $(OBJECTS)
 	$(ar) cru $@ $^
+	$(ranlib) $@
 
-include $(COMMONRULES)
+$(PROF_LIB): $(OBJECTS:%.o=%.pg.o)
+	$(ar) cru $@ $^
+	$(ranlib) $@
+
+$(DSO): $(OBJECTS:%.o=%.pic.o)
+ifeq ($(BUILD_OS), DARWIN)
+	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -o $@ $^ -L. -lpthread
+else
+	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -Wl,-soname=$(DSO) -Wl,--version-script=$(BUILD_BASE)/$(DSO:%.so.$(dso_version)=%.vs) -o $@ $^ -L. -lpthread
+endif
+	$(ln) -sf $(DSO) $(basename $(DSO))
+

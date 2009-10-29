@@ -453,6 +453,42 @@ static inline gs_void_t _gs_bv_reset (gs_t node, unsigned int position)
   node->u1.data[1] &= realign.data[1];
   return;
 }
+
+static inline gs_void_t _gs_bitsv (gs_t node, gs_count_t position, 
+                                   unsigned int bits, unsigned long val )
+{
+  gs_realign_t realign;
+  GS_ASSERT (node != (gs_t) NULL, "Got null node");
+  GS_ASSERT (bits < 32, "bits exceeds limits");
+  unsigned long long mask = (1LL << bits) - 1;
+  val &= mask;  // truncate the value to bits length
+
+  // get old value
+  realign.data[0] = node->u1.data[0];
+  realign.data[1] = node->u1.data[1];
+
+  realign.ull &= ~(mask << position);
+  realign.ull |= val << position;
+
+  node->u1.data[0] |= realign.data[0];
+  node->u1.data[1] |= realign.data[1];
+  return;
+}
+
+static inline unsigned long gs_bitsv (gs_t node, unsigned int position, 
+                                      unsigned int bits)
+{
+  gs_realign_t realign;
+  if (node == NULL)
+    return false;
+  GS_ASSERT (bits < 64, "bits exceeds limits");
+  unsigned long long mask = (1LL << bits) - 1;
+  realign.data[0] = node->u1.data[0];
+  realign.data[1] = node->u1.data[1];
+  unsigned long k = (realign.ull >> position) & mask;
+  return k;
+}
+
 static inline gs_void_t _gs_n (gs_t node, int n)
 {
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
@@ -1921,5 +1957,13 @@ typedef enum gs_omp_clause_default_kind {
   GS_OMP_CLAUSE_DEFAULT_PRIVATE
 } gs_omp_clause_default_kind_t;
 #endif
+
+typedef enum gs_tls_model_kind {
+  GS_TLS_MODEL_NONE,
+  GS_TLS_MODEL_GLOBAL_DYNAMIC,
+  GS_TLS_MODEL_LOCAL_DYNAMIC,
+  GS_TLS_MODEL_INITIAL_EXEC,
+  GS_TLS_MODEL_LOCAL_EXEC
+} gs_tls_model_kind_t;
 
 #endif // __GSPIN_TREE_H__

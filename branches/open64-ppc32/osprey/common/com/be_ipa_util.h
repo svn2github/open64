@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -39,6 +43,9 @@ struct pu_mod_ref_info
   mUINT32 size;             // size in bytes of mod info (must equal ref)
   mUINT8 * mod;             // bit-vector for mod
   mUINT8 * ref;             // bit-vector for ref
+  mUINT8 * same_entry_exit_value_or_1; // bit-vector for global vars whose
+                                       // function exit value is the same as
+                                       // their entry value, or that value is 1
 };
 
 typedef SEGMENTED_ARRAY<pu_mod_ref_info> MOD_REF_INFO_TAB;

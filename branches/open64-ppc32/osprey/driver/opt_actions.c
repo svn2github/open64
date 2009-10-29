@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. PathScale, LLC. All Rights Reserved.
  */
 /*
@@ -112,6 +116,7 @@ extern boolean parsing_default_options;
 extern boolean drop_option;
 
 static void set_cpu(char *name, m_flag flag_type);
+static void add_hugepage_desc(HUGEPAGE_ALLOC, HUGEPAGE_SIZE, int);
 
 #ifdef KEY
 void set_memory_model(char *model);
@@ -1782,6 +1787,10 @@ get_auto_cpu_name ()
       } else if (strstr(buf, "Xeon")) {
 	cpu_name = "xeon";
 	cpu_name_64bit = "em64t";
+      } else if (strstr(buf, "i7")) {
+          // TODO -- need-to-date machine model.
+	cpu_name = "wolfdale";
+	cpu_name_64bit = "wolfdale";
       }
     } else if (strstr(buf, "GenuineIntel")) {
       intel = TRUE;
@@ -1806,8 +1815,8 @@ get_auto_cpu_name ()
 	    return "i386";
 
 	case 6:			// P6, Core, ...
-          if (model == 23)
-            return "wolfdale"; 
+	  if (model == 23)
+	    return "wolfdale";
 
 	  if (model == 15)
 	    return "core";
@@ -2003,5 +2012,167 @@ accumulate_isystem(char *optargs)
   add_string(isystem_dirs, strcat(strcpy(temp, INCLUDE_EQ), optargs));
 }
 #endif /* KEY Bug 11265 */
+
+static void add_hugepage_desc
+(
+    HUGEPAGE_ALLOC alloc,
+    HUGEPAGE_SIZE  size,
+    int            limit
+)
+{
+    HUGEPAGE_DESC desc;
+
+    if (((alloc == ALLOC_BDT) || (alloc == ALLOC_BSS))
+        && (limit != HUGEPAGE_LIMIT_DEFAULT))
+        warning("Can't set huge page limit for %s in the command line.  Use HUGETLB_ELF_LIMIT instead",
+                hugepage_alloc_name[alloc]);
+
+    /* check whether to override existing descriptors */
+
+    for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
+        if (desc->alloc == alloc) {
+            if ((desc->size != size) || (desc->limit != limit)) {
+                warning("conflict values for huge page %s; using latter values",
+                        hugepage_alloc_name[alloc]);
+            }
+
+            desc->size = size;
+            desc->limit = limit;
+            return;
+        }
+    }
+    
+    desc = malloc(sizeof(HUGEPAGE_DESC_TAG));
+    
+    desc->alloc = alloc;
+    desc->size = size;
+    desc->limit = limit;
+
+    desc->next = hugepage_desc;
+    hugepage_desc = desc; 
+}
+
+static void
+Process_Hugepage_Default()
+{
+    add_hugepage_desc(HUGEPAGE_ALLOC_DEFAULT, HUGEPAGE_SIZE_DEFAULT, HUGEPAGE_LIMIT_DEFAULT);
+    add_option_seen(O_HP);
+}
+
+static boolean hugepage_warn = FALSE;
+
+static void
+Process_Hugepage_Group(char * hugepage_args)
+{
+    char * p = hugepage_args;
+    boolean has_err = FALSE;
+    int process_state = 0;
+    HUGEPAGE_ALLOC hugepage_alloc;
+    HUGEPAGE_SIZE  hugepage_size;
+    int hugepage_limit;
+
+    /* set default values */
+    hugepage_alloc = HUGEPAGE_ALLOC_DEFAULT;
+    hugepage_size = HUGEPAGE_SIZE_DEFAULT;
+    hugepage_limit = HUGEPAGE_LIMIT_DEFAULT;
+    
+    while (*p) {
+        if (process_state == 1) {
+            if (strncmp(p, "2m", 2) == 0) {
+                hugepage_size = SIZE_2M;
+                p += 2;
+                process_state = 2;
+            }
+            else if (strncmp(p, "1g", 2) == 0) {
+                hugepage_size = SIZE_1G;
+                p += 2;
+                process_state = 2;
+            }
+            else
+                has_err = TRUE;
+        }
+        else if (process_state == 2) {
+            if (strncmp(p, "limit=", 6) == 0) {
+                boolean is_neg = FALSE;
+                p = &p[6];
+
+                if ((*p) && ((*p) == '-')) {
+                    p++;
+                    is_neg = TRUE;
+                }
+
+                if (!(*p) || !isdigit(*p))
+                    has_err = TRUE;
+                else {
+                    sscanf(p, "%d", &hugepage_limit);
+
+                    if (is_neg && (hugepage_limit > 0))
+                        hugepage_limit = -1;
+                    
+                    while ((*p) && ((*p) >= '0') && ((*p) <= '9'))
+                        p++;
+                    
+                    process_state = 3;
+                }
+            }
+            else
+                has_err = TRUE;
+        }
+        else if (strncmp(p, "heap=", 5) == 0) {
+            p = &p[5];
+            hugepage_alloc = ALLOC_HEAP;
+            process_state = 1;
+            if (!(*p))
+                has_err = TRUE;
+            else
+                continue;
+        }
+        else if (strncmp(p, "bdt=", 4) == 0) {
+            p = &p[4];
+            hugepage_alloc = ALLOC_BDT;
+            process_state = 1;
+            if (!(*p))
+                has_err = TRUE;
+            else
+                continue;
+        }
+        else
+            has_err = TRUE;
+
+        if (*p) {
+            if ((*p) == ',') {
+                if (!has_err)
+                    p++;
+
+                if ((process_state != 2) || !(*p))
+                    has_err = TRUE;
+            }
+            else if ((*p) == ':') {
+                if (!has_err) {
+                    p++;
+                    add_hugepage_desc(hugepage_alloc, hugepage_size, hugepage_limit);
+                }
+                
+                hugepage_alloc = HUGEPAGE_ALLOC_DEFAULT;
+                hugepage_size = HUGEPAGE_SIZE_DEFAULT;
+                hugepage_limit = HUGEPAGE_LIMIT_DEFAULT;
+                process_state = 0;
+            }
+        }
+        else if (!has_err) 
+            add_hugepage_desc(hugepage_alloc, hugepage_size, hugepage_limit);
+
+        if (has_err) {
+            if (!hugepage_warn) {
+                hugepage_warn = TRUE;
+                warning("Illegal argument: %s in -HP", p);
+            }
+            break;
+        }
+    }
+
+    if (!has_err) 
+        add_option_seen(O_HP);
+}
 
 #include "opt_action.i"

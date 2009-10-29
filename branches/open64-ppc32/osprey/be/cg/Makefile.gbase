@@ -696,9 +696,9 @@ ifndef SKIP_DEP_BUILD
  endif
 endif
 ifeq ($(BUILD_OS), LINUX)
-	if ! test -a be.so; then ln -sf $(TARG_BE)/be.so .; fi
-	if ! test -a be; then ln -sf $(TARG_BE)/be .; fi
-	if ! test -a $(TARGET_SO); then ln -sf $(TARG_TARG_INFO)/$(TARGET_SO) .; fi
+	if ! test -e be.so; then ln -sf $(TARG_BE)/be.so .; fi
+	if ! test -e be; then ln -sf $(TARG_BE)/be .; fi
+	if ! test -e $(TARGET_SO); then ln -sf $(TARG_TARG_INFO)/$(TARGET_SO) .; fi
 endif
 
 #----------------------------------------------------------------------

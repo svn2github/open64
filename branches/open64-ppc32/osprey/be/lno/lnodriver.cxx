@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -71,6 +75,7 @@
 #include "defs.h"
 #include "config.h"
 #include "config_lno.h"
+#include "config_wopt.h"
 #include "config_debug.h"	    /* for DEBUG_Ir_Version_Check */
 #include "errors.h"
 #include "erauxdesc.h"
@@ -286,6 +291,16 @@ Perform_Loop_Nest_Optimization (PU_Info* current_pu, WN *pu_wn,
 
     RID_level(REGION_get_rid(region_wn)) = RL_LNO_PREOPT;
     Is_True(REGION_consistency_check(region_wn),(""));
+
+    if (WOPT_Enable_Pro_Loop_Fusion_Trans) {
+      Delete_Du_Manager(du_mgr, MEM_pu_nz_pool_ptr);
+      du_mgr = Create_Du_Manager(MEM_pu_nz_pool_ptr);
+      region_wn =
+	Pre_Optimizer(PREOPT_LNO1_PHASE, region_wn, du_mgr, alias_mgr);
+      Check_for_IR_Dump(TP_LNOPT3, region_wn, "LNO1 PREOPT");
+      RID_level(REGION_get_rid(region_wn)) = RL_LNO1_PREOPT;
+      Is_True(REGION_consistency_check(region_wn),(""));
+    }
 
     Stop_Timer ( T_Preopt_CU );
     Start_Timer ( T_LNO_CU );

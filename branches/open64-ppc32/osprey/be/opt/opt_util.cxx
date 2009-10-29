@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2005-2007 NVIDIA Corporation.  All rights reserved.
  */
 
@@ -198,6 +202,7 @@ Set_tlog_phase(const INT32 phase)
   switch (phase) {
   case PREOPT_PHASE:
   case PREOPT_LNO_PHASE:
+  case PREOPT_LNO1_PHASE:
   case PREOPT_DUONLY_PHASE:
   case PREOPT_IPA0_PHASE:
   case PREOPT_IPA1_PHASE:

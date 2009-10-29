@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -254,6 +258,29 @@ Localize_Global_Return_Reg (BB *current_bb, TN *ret_tn)
 	BB_Prepend_Ops (bb, &ops);
 }
 
+/*
+ * Check if the BB is entry BB:
+ *   1. BB is entry BB or
+ *   2. BB is original entry BB and now it's after the PIC entry due to PIC code on IA-32
+ */
+static BOOL
+BB_like_entry(BB* bb)
+{
+    if ( BB_entry(bb) )
+        return TRUE;
+
+#if defined(TARG_X8664)
+    if ( BB_after_pic_entry(bb) ) {
+        Is_True( Is_Target_32bit() && Gen_PIC_Shared,
+                 ("Only allow split_from_entry on IA-32 with -fPIC") );
+        Is_True( BB_preds_len(bb) == 1,
+                 ("after_pic_entry can only have one pred") );
+        return TRUE;
+    }
+#endif
+
+    return FALSE;
+}
 
 /*
  * Check if a dedicated TN is global, and if so, make it local.
@@ -407,6 +434,11 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 		else if (!def && regnum == RDX &&
 			 BB_entry(current_bb) && BB_handler(current_bb))
 		  ;   // okay because RAX and RDX will be saved at the entry of a handler
+                else if (!def && Is_Target_32bit() && BB_like_entry(current_bb) &&
+                          ( (regnum==RAX && TY_register_parm( Get_Current_PU_TY() ) > 0 ) ||
+                            (regnum==RDX && TY_register_parm( Get_Current_PU_TY() ) > 1 ) ||
+                            (regnum==RCX && TY_register_parm( Get_Current_PU_TY() ) > 2 ) ) )
+                        ;       // okey because RAX, RDX, RCX can be args for regparm on IA-32
 #endif
 		else if (!def && is_func_retval 
 		    && BB_prev(current_bb) != NULL 

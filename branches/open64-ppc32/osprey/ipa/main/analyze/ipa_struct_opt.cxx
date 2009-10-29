@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 ////////////////////////////////////////////////////////////////////////////
 //
 // Copyright (C) 2007, 2008 PathScale, LLC. All Rights Reserved.
@@ -32,9 +36,19 @@
 #include "symtab.h"
 #include "config_ipa.h"
 #include "ipa_struct_opt.h"
+#include "tracing.h"
+#include "ipa_option.h" // Trace_IPA
 
 Field_pos *Struct_field_layout = NULL;
 INT Struct_split_count = 0;
+
+TYPE_ID complete_struct_relayout_type_id = 0;
+TYPE_ID another_complete_struct_relayout_type_id = 0;
+TYPE_ID struct_with_field_pointing_to_complete_struct_relayout_type_id
+  [MAX_NUM_STRUCTS_WITH_FIELD_POINTING_TO_COMPLETE_STRUCT_RELAYOUT];
+int struct_with_field_pointing_to_complete_struct_relayout_field_num
+  [MAX_NUM_STRUCTS_WITH_FIELD_POINTING_TO_COMPLETE_STRUCT_RELAYOUT];
+int num_structs_with_field_pointing_to_complete_struct_relayout = 0;
 
 // Invalidate struct types that are either parameters or returned from
 // functions, or if a pointer to such types is a parameter or returned
@@ -228,10 +242,174 @@ void Traverse_TYs (void)
   }
 }
 
+// Prepare for complete_struct_relayout optimization.  This involves retrieving
+// the structure marked for this optimization by ipl and set up some supporting
+// data structures.
+static void
+Traverse_TYs_for_complete_struct_relayout(void)
+{
+  TY_TAB::iterator iter;
+  TYPE_ID local_complete_struct_relayout_type_id = 0;
+  int i;
+
+  if (IPA_Enable_Struct_Opt == 0)
+    return; // nothing to do
+
+  for (iter = Ty_tab.begin(); iter != Ty_tab.end(); iter++)
+  {
+    TY& ty = *iter.Ptr();
+    if (TY_kind(ty) == KIND_STRUCT &&
+        TY_complete_struct_relayout_candidate(ty)) // marked by ipl
+    {
+      if (local_complete_struct_relayout_type_id == 0)
+        local_complete_struct_relayout_type_id = iter.Index();
+      else
+      {
+        complete_struct_relayout_type_id = 0;
+        return; // ipl should only have marked one
+      }
+    }
+  }
+
+  if (local_complete_struct_relayout_type_id == 0)
+  {
+    complete_struct_relayout_type_id = 0;
+    return; // nothing marked
+  }
+
+  // sometimes when ipl marks the complete_struct_relayout, a new struct gets
+  // created; we want to work on both of them
+  for (iter = Ty_tab.begin(); iter != Ty_tab.end(); iter++)
+  {
+    TY& ty = *iter.Ptr();
+    if (TY_kind(ty) == KIND_STRUCT)
+    {
+      if (strcmp(TY_name(ty), TY_name(local_complete_struct_relayout_type_id <<
+            8)) == 0)
+      {
+        if (complete_struct_relayout_type_id == 0)
+          complete_struct_relayout_type_id = iter.Index();
+        else
+        {
+          if (TY_complete_struct_relayout_candidate(ty))
+          {
+            // this is the new one marked by ipl; only one such will be marked
+            another_complete_struct_relayout_type_id = iter.Index();
+          }
+          else
+          {
+            complete_struct_relayout_type_id = 0;
+            return; // we only perform complete_sturct_relayout for one struct
+          }
+        }
+      }
+    }
+  }
+
+  if (complete_struct_relayout_type_id == 0)
+    return;
+
+  // some more restrictions
+  if (struct_field_count(complete_struct_relayout_type_id << 8) >=
+    MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT)
+  {
+    complete_struct_relayout_type_id = 0;
+    return;
+  }
+  if (another_complete_struct_relayout_type_id != 0)
+  {
+    // not only must their names have to be the same, pretty much everything
+    // else also (what about individual fields?)
+    if (struct_field_count(complete_struct_relayout_type_id << 8) !=
+        struct_field_count(another_complete_struct_relayout_type_id << 8) ||
+        TY_kind(complete_struct_relayout_type_id << 8) !=
+        TY_kind(another_complete_struct_relayout_type_id << 8) ||
+        TY_size(complete_struct_relayout_type_id << 8) !=
+        TY_size(another_complete_struct_relayout_type_id << 8) ||
+        TY_mtype(complete_struct_relayout_type_id << 8) !=
+        TY_mtype(another_complete_struct_relayout_type_id << 8))
+    {
+      complete_struct_relayout_type_id = 0;
+      return;
+    }
+  }
+
+  // now go through all the structures again and record all the fields whose
+  // type is a pointer to the complete_struct_relayout
+  for (i = 0; i <
+       MAX_NUM_STRUCTS_WITH_FIELD_POINTING_TO_COMPLETE_STRUCT_RELAYOUT; i++)
+  {
+    // initialization
+    struct_with_field_pointing_to_complete_struct_relayout_type_id[i] = 0;
+    struct_with_field_pointing_to_complete_struct_relayout_field_num[i] = 0;
+  }
+  for (iter = Ty_tab.begin(); iter != Ty_tab.end(); iter++)
+  {
+    TY& ty = *iter.Ptr();
+    if (TY_kind(ty) == KIND_STRUCT)
+    {
+      FLD_ITER field_iter = Make_fld_iter(TY_fld(ty));
+      i = 1;
+      do
+      {
+        FLD_HANDLE field_handle(field_iter);
+        if (TY_kind(FLD_type(field_handle)) == KIND_POINTER &&
+            (TY_IDX_index(TY_pointed(FLD_type(field_handle))) ==
+               complete_struct_relayout_type_id ||
+             TY_IDX_index(TY_pointed(FLD_type(field_handle))) ==
+               another_complete_struct_relayout_type_id))
+        {
+          struct_with_field_pointing_to_complete_struct_relayout_type_id
+            [num_structs_with_field_pointing_to_complete_struct_relayout] =
+            iter.Index();
+          struct_with_field_pointing_to_complete_struct_relayout_field_num
+            [num_structs_with_field_pointing_to_complete_struct_relayout] = i;
+          num_structs_with_field_pointing_to_complete_struct_relayout++;
+          if (num_structs_with_field_pointing_to_complete_struct_relayout >=
+              MAX_NUM_STRUCTS_WITH_FIELD_POINTING_TO_COMPLETE_STRUCT_RELAYOUT)
+          {
+            // too many
+            complete_struct_relayout_type_id = 0;
+            break;
+          }
+        }
+        i++;
+      } while (!FLD_last_field(field_iter++));
+    }
+  }
+
+  if (complete_struct_relayout_type_id != 0)
+  {
+    if (Get_Trace(TP_IPA, 1))
+      fprintf(TFile, "ipa -> complete_struct_relayout %d %s another one %d %s\n",
+        complete_struct_relayout_type_id,
+        TY_name(complete_struct_relayout_type_id << 8),
+        another_complete_struct_relayout_type_id,
+        TY_name(another_complete_struct_relayout_type_id << 8));
+  }
+  return; // all ready for ipo
+}
+
 void IPA_struct_opt_legality (void)
 {
   Traverse_PU_parameters ();
 
   // This function should be called after all type legality checks are done.
   Traverse_TYs ();
+
+  if (Struct_split_candidate_index != 0)
+  {
+    // the design decision is such that complete_struct_relayout optimization
+    // will not compete with structure splitting or structure peeling
+    // optimizations; so if the above identifies a candidate for either of the
+    // latter optimizations, the new complete_struct_relayout optimization will
+    // not be invoked
+    return;
+  }
+
+  // no opportunities for structure splitting/peeling were found; try
+  // complete_struct_relayout optimization
+  complete_struct_relayout_type_id = 0;
+  another_complete_struct_relayout_type_id = 0;
+  Traverse_TYs_for_complete_struct_relayout();
 }

@@ -298,7 +298,7 @@ ifndef SKIP_DEP_BUILD
 	$(call submake,$(TARGDIR)/be)
 endif
 ifeq ($(BUILD_OS), LINUX)
-	if ! test -a $(TARGET_SO); then ln -sf $(TARG_TARG_INFO_DIR)/$(TARGET_SO) .; fi
+	if ! test -e $(TARGET_SO); then ln -sf $(TARG_TARG_INFO_DIR)/$(TARGET_SO) .; fi
 endif
 
 #----------------------------------------------------------------------
@@ -336,16 +336,16 @@ whirl2f_be: whirl2f.so
                    LINK_DSO='$(LINK_DSO)' \
                    LINK_DSO_OPTS='$(LINK_DSO_OPTS) -L.' \
                    be)
-	if ! test -a whirl2f_be; then ln -sf $(TARGDIR)/be/be whirl2f_be ; fi
+	if ! test -e whirl2f_be; then ln -sf $(TARGDIR)/be/be whirl2f_be ; fi
 
 whirl2f: whirl2f.so whirl2f_be $(WHIRL2F_MAIN_OBJS)
 	$(link.c++f) -o whirl2f $(WHIRL2F_MAIN_OBJS) $(LDFLAGS)
 
 be.so:
-	if ! test -a be.so; then ln -sf $(TARGDIR)/be/be.so .; fi
+	if ! test -e be.so; then ln -sf $(TARGDIR)/be/be.so .; fi
 
 be:
-	if ! test -a be; then ln -sf $(TARGDIR)/be/be .; fi
+	if ! test -e be; then ln -sf $(TARGDIR)/be/be .; fi
 
 #For debugging, set LD_LIBRARY_PATH manually and invoke whirl2f_dbg
 # directly.

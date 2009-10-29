@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -653,6 +657,12 @@ inline BOOL
 ST_in_param_mem (const ST* s)     { return (s->memory_space == MEMORY_PARAM); }
 inline void
 Set_ST_in_param_mem (ST *s)       { s->memory_space = MEMORY_PARAM; }
+#else
+/* tls-model */
+inline ST_TLS_MODEL
+ST_tls_model (const ST* s)                   { return s->tls_model;  }
+inline void
+Set_ST_tls_model (ST* s, ST_TLS_MODEL model) { s->tls_model = model; }
 #endif /* TARG_NVISA */
 
 inline BOOL
@@ -1449,6 +1459,25 @@ inline void
 Set_TY_no_split (TY_IDX tyi)    { Set_TY_no_split(Ty_Table[tyi]); }
 inline void
 Clear_TY_no_split (TY_IDX tyi)  { Clear_TY_no_split(Ty_Table[tyi]); }
+
+inline BOOL
+TY_complete_struct_relayout_candidate(const TY& ty)
+  { return ty.flags & TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE; }
+inline void
+Set_TY_complete_struct_relayout_candidate(TY& ty)
+  { ty.flags |= TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE; }
+inline void
+Clear_TY_complete_struct_relayout_candidate(TY& ty)
+  { ty.flags &= ~TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE; }
+inline BOOL
+TY_complete_struct_relayout_candidate(const TY_IDX tyi)
+  { return TY_complete_struct_relayout_candidate(Ty_Table[tyi]); }
+inline void
+Set_TY_complete_struct_relayout_candidate(TY_IDX tyi)
+  { Set_TY_complete_struct_relayout_candidate(Ty_Table[tyi]); }
+inline void
+Clear_TY_complete_struct_relayout_candidate(TY_IDX tyi)
+  { Clear_TY_complete_struct_relayout_candidate(Ty_Table[tyi]); }
 #endif
 
 // TY pu_flags

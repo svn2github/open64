@@ -356,7 +356,8 @@ IPA_Create_Builtins ()
   // create the builtins (currently none)
 
   // Create our own arrays for used in ctype.h.
-  IPA_Create_Ctype_Arrays();
+  if(IPA_Enable_Ctype)
+    IPA_Create_Ctype_Arrays();
 
   // Restore pointers to standard memory pools
   MEM_pu_pool_ptr = save_pu_pool_ptr;

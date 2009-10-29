@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -398,6 +402,24 @@ Set_Trace ( INT func, INT arg )
       return;
   }
 }
+
+/* ====================================================================
+ *
+ * Set_All_Trace
+ *
+ * Set a trace flag in all phases.
+ *
+ * ====================================================================
+ */
+void
+Set_All_Trace ( INT func )
+{
+  int i;
+
+  for (i = TP_MIN; i < TP_LAST; i++)
+    Set_Trace ( func, i );
+}
+
 
 /* Set current PU for pu tracing */
 #define RID_CREATE_NEW_ID -1	/* see be/region/region_util.h */

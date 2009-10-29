@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
@@ -1300,6 +1304,7 @@ static RAISE_FUNC raise_func[] = {
 //
 // ====================================================================
 
+#include <malloc.h>
 void
 EMITTER::Gen_wn(BB_NODE *first_bb, BB_NODE *last_bb)
 {

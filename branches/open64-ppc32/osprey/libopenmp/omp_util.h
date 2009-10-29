@@ -82,14 +82,14 @@ void
 Warning (char * warning_message);
 
 /* Waiting while condition is true */
-#define MAX_COUNT 50000
+//#define MAX_COUNT 50000
+#define MAX_COUNT 1000000000
 #define OMPC_WAIT_WHILE(condition) \
       { \
           if (condition) { \
               int count = 0; \
               while (condition) { \
                    if (count > MAX_COUNT) { \
-	                sleep(0); \
 	                count = 0; \
                    } \
 		   count++; \
@@ -112,6 +112,18 @@ Get_System_Stack_Limit(void);
 
 int
 Get_SMP_CPU_num(void);
+
+int
+Get_CPU_Cores(void);
+
+void
+Get_Ordered_Corelist(int *, int);
+
+void *
+aligned_malloc(size_t, size_t);
+
+void
+aligned_free(void*);
 
 void __ompc_do_nothing(void);
 #endif

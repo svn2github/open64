@@ -80,8 +80,19 @@ There are two ways:
         svn export https://svn.open64.net/svnroot/open64/trunk open64
 
       This will copy the latest code to the directory open64.
+      
+      (X86_64 only): To build the compiler driver to automatically
+      include libacml_mv.a (the source to this library will be
+      included with the Open64 compiler in the near future), perform
+      the following steps to import libacml_mv.a into your build tree:
+ 
+        cd open64
+        svn export https://svn.open64.net/svnroot/open64/branches/open64-booster/libacml_mv
 
-      then checkout the latest prebuild package:
+      This is currently the recommended way to build the compiler when checking
+      SPEC performance on X86-64.
+
+      Now checkout the latest prebuild package:
         svn checkout  https://svn.open64.net/svnroot/open64/branches/open64-prebuild/ prebuild
       then copy the bin/ and lib/ directory into the trunk, such as:
         cp -r prebuild/lib  open64/

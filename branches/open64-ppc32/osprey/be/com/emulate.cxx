@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -4537,10 +4541,51 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 	  argC = 3;
 	}
       }
+    }
 
+#if defined(TARG_X8664)
+    // Rename memcpy to the amd optimized memcpy.
+    else if (WN_intrinsic(tree) == INTRN_MEMCPY &&
+	       OPT_Fast_Stdlib &&
+	       Is_Target_64bit()) {
+      if (Is_Target_Barcelona()) {
+        WN *child = WN_arg(tree, 2);
+        if (Is_Integer_Constant(child)) {
+          int memcpy_len = WN_const_val(child);
+          if (((memcpy_len % 32) == 0) || 
+              ((memcpy_len % 64) == 0)) {
+            int exact = ((memcpy_len % 64) == 0);
+            int strideval = memcpy_len / 64; 
+            if ((memcpy_len <= 256) && (memcpy_len >= 96)) {
+              WN *exact_arg = WN_CreateIntconst (OPC_I4INTCONST, exact);
+              args[ argC++] = exact_arg;
+              WN_const_val(child) = strideval;
+	      st = Gen_Intrinsic_Function(ty, "__fastcopy_stride64_gp");
+            } else if (memcpy_len > 256) {
+              WN *exact_arg = WN_CreateIntconst (OPC_I4INTCONST, exact);
+              args[ argC++] = exact_arg;
+              WN_const_val(child) = strideval;
+	      st = Gen_Intrinsic_Function(ty, "__fastcopy_stride64_gh");
+            } else {
+              /* if we do not match we default to the non intrinsic form */ 
+              st = Gen_Intrinsic_Function(ty, function);
+            }
+          } else {
+            /* if we do not match we default to the non intrinsic form */ 
+            st = Gen_Intrinsic_Function(ty, function);
+          }
+        } else {
+          /* if we do not match we default to the non intrinsic form */ 
+          st = Gen_Intrinsic_Function(ty, function);
+        }
+      } else {
+        st = Gen_Intrinsic_Function(ty, function);
+      }
+    }
+#endif
 #if defined(TARG_X8664) && !defined(OSP_OPT)
     // Rename memset to the PathScale optimized memset.
-    } else if (WN_intrinsic(tree) == INTRN_MEMSET &&
+    else if (WN_intrinsic(tree) == INTRN_MEMSET &&
 	       OPT_Fast_Stdlib &&
 	       Is_Target_64bit()) {
       if (Is_Target_EM64T() || Is_Target_Core() || Is_Target_Wolfdale())
@@ -4556,8 +4601,9 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_em64t");
       else
 	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_opteron");
+    }
 #endif
-    } else if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
+    else if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
     	       MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4 &&
                Is_Target_32bit()) {
       st = Gen_Intrinsic_Function(ty, "__popcountsi2");
@@ -5101,10 +5147,21 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
     break;
 
   case INTRN_MEMSET:
-#if !defined(KEY) || defined(TARG_SL) || defined(TARG_NVISA)	// Don't emulate memset; call PathScale memset instead.
-    if (CG_mem_intrinsics)
+#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_NVISA)	// Emulate memset; don't call PathScale memset.
+    if (CG_mem_intrinsics && Emulate_memset)
     {
-      return em_memset(block, tree, WN_arg(tree, 0), WN_arg(tree, 1), WN_arg(tree, 2));
+      WN * con = WN_arg(tree, 1);
+      WN * size = WN_arg(tree, 2);
+      if (Is_Integer_Constant(size) && Is_Integer_Constant(con)) {
+	int n = (int) WN_const_val(size);
+	int mod;
+	if(Is_Target_64bit())
+	  mod = 8;
+	else
+	  mod = 4;
+ 	if (((n % mod) == 0) && (n <= (mod * 16)))
+	  return em_memset(block, tree, WN_arg(tree, 0), WN_arg(tree, 1), WN_arg(tree, 2));
+      }
     }
 #endif
     break;

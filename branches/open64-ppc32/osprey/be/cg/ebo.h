@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -118,6 +122,7 @@
 #ifndef EBO_INCLUDED
 #define EBO_INCLUDED
 
+class LOOP_DESCR;
 
 void EBO_Init(void);
 
@@ -125,7 +130,7 @@ void EBO_Pre_Process_Region(RID *rid);
 
 void EBO_before_unrolling(BB_REGION *bbr);
 
-void EBO_after_unrolling(BB_REGION *bbr);
+void EBO_after_unrolling(BB_REGION *bbr, LOOP_DESCR *loop, INT loop_iter_size);
 
 void EBO_Process_Region(RID *rid);
 
@@ -134,6 +139,8 @@ void EBO_Post_Process_Region(RID *rid);
 #ifdef KEY
 void EBO_Post_Process_Region_2(RID *rid);
 #endif
+
+void EBO_Compute_To( BB *bb );
 
 void EBO_Finalize(void);
 

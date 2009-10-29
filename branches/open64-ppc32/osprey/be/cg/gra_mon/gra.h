@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -93,6 +97,7 @@ extern void GRA_Initialize(void);
 extern BOOL GRA_Spill_Around_Save_TN_Copies(void);
 extern REGISTER_SET GRA_Local_Register_Grant( BB* bb, ISA_REGISTER_CLASS rc );
 extern void GRA_Finalize_Grants(void);
+extern void GRU_Fuse_Global_Spills( BOOL is_region );
 
 // defined in gra.cxx
 extern MEM_POOL* const GRA_pool;
@@ -114,6 +119,9 @@ extern BOOL GRA_split_lranges; 		// controlled by -GRA:split_lranges
 extern INT GRA_non_split_tn_id;		// controlled by -GRA:non_split_tn
 extern INT GRA_non_preference_tn_id;	// controlled by -GRA:non_preference_tn
 extern BOOL GRA_optimize_placement;	// controlled by -GRA:optimize_placement
+#ifdef TARG_X8664
+extern BOOL GRA_unspill_enable;		// controlled by -GRA:unspill
+#endif
 #ifdef KEY
 extern BOOL GRA_optimize_boundary;	// controlled by -GRA:optimize_boundary
 extern BOOL GRA_optimize_boundary_set;

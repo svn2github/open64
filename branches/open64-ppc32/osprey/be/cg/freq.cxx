@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -333,13 +337,13 @@ Initialize_Freq_Edges(void)
       EDGE_slst(edge) = slst;
       EDGE_succ(edge) = succ;
       BB_succ_edges(bb) = edge;
-
-     if (BBLIST_prob(slst) != 0.0 
-	 	&& BBLIST_prob_hint_based(slst)
-	 	) {
-       EDGE_prob(edge) = BBLIST_prob(slst);
-       Set_EDGE_prob_hint_based(edge);
-     }
+#ifdef KEY
+      if (BBLIST_prob(slst) != 0.0 &&
+          BBLIST_prob_hint_based(slst)) {
+        EDGE_prob(edge) = BBLIST_prob(slst);
+        Set_EDGE_prob_hint_based(edge);
+      }
+#endif
 
       FOR_ALL_BB_PREDS(succ, plst) {
         if (BBLIST_item(plst) == bb) break;
@@ -1849,8 +1853,9 @@ Compute_Branch_Probabilities(void)
 	EDGE_prob(edge) = 1.0 / n_succs;
       }
     }
+#ifdef KEY
     else if (EDGE_prob_hint_based(BB_succ_edges(bb)) &&
-            EDGE_prob_hint_based(EDGE_next_succ(BB_succ_edges(bb)))) {
+             EDGE_prob_hint_based(EDGE_next_succ(BB_succ_edges(bb)))) {
       if (CFLOW_Trace_Freq) {
         #pragma mips_frequency_hint NEVER
         EDGE *edge1 = BB_succ_edges(bb);
@@ -1865,6 +1870,7 @@ Compute_Branch_Probabilities(void)
                       EDGE_prob(edge1), EDGE_prob(edge2));
       }
     }
+#endif
     else {
 
       /* 2-way branch

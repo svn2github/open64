@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -313,6 +317,10 @@ BOOL    OPT_Float_Via_Int = FALSE; // when on, perform FP copies using int regs
 
 UINT32 OPT_Malloc_Alg = 0;	/* select malloc algorithm */
 BOOL OPT_Malloc_Alg_Set = FALSE; 
+INT32 OPT_Hugepage_Heap_Limit = -1;  /* set huge page limit */
+BOOL OPT_Hugepage_Heap_Set = FALSE;
+INT32 OPT_Hugepage_Attr = 1;  /* set huge page mallopt */
+
 BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO(C/C++)
 BOOL Early_Goto_Conversion_Set = FALSE;
 #endif	// KEY
@@ -449,6 +457,14 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_UINT32, OV_VISIBLE,     TRUE,   "malloc_algorithm", "malloc_alg",
     0, 0, 3, &OPT_Malloc_Alg, &OPT_Malloc_Alg_Set,
     "Use alternate malloc algorithm" },
+
+  { OVK_INT32, OV_VISIBLE,     TRUE,    "hugepage_heap_limit", NULL,
+    0, -1, 50000, &OPT_Hugepage_Heap_Limit, &OPT_Hugepage_Heap_Set,
+    "Set huge page heap limit" },
+
+  { OVK_INT32, OV_VISIBLE, 	TRUE,	"hugepage_attr", NULL,
+    1, 0, 127, &OPT_Hugepage_Attr, NULL,
+    "Set mallopt in libhugetlbfs" },
 
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "early_goto_conv", "",
     0, 0, 0,    &Early_Goto_Conversion, &Early_Goto_Conversion_Set,
@@ -700,6 +716,14 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, INT32_MAX, &OPT_unroll_times, &OPT_unroll_times_overridden,
     "Maximum number of times to unroll loops" },
 
+  { OVK_INT32,	OV_VISIBLE,	TRUE, "unroll_level",	"unroll_lev",
+    0, 1, 2, &OPT_unroll_level, &OPT_unroll_level,
+    "Aggressive level to unroll loops" },
+
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "keep_ext",	"keep_ext",
+    0, 0, 0, &OPT_keep_extsyms, &OPT_keep_extsyms,
+    "Preserve symbol info for externs under ipa" },
+
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "wn_simplify",		"wn_simp",
     0, 0, 0,	&Enable_WN_Simp, &Enable_WN_Simp_Set,
     "Enable simplifier" },
@@ -743,6 +767,9 @@ static OPTION_DESC Options_OPT[] = {
     "Allow LFTR which may wrap around MAX_INT" },
 
   /* intrinsic expansion for bzero/blkclr/bcopy/memset/memcpy/memmove */
+  {OVK_BOOL,    OV_VISIBLE,	TRUE,	"emulate_memset",       "",
+    0, 0, 0,    &Emulate_memset, NULL,
+    "Enable inline expansion of memset" },
   {OVK_BOOL,    OV_VISIBLE,	TRUE,	"mem_intrinsics",       "",
     0, 0, 0,    &CG_mem_intrinsics, NULL,
     "Enable inline expansion of memory intrinsics (bzero, blkclr, bcopy, memset, memcpy, memmove)" },

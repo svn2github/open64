@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007 Pathscale, LLC.  All Rights Reserved.
  */
 
@@ -62,6 +66,7 @@ extern "C"{
 #else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
 #endif /* defined(BUILD_OS_DARWIN) */
+#include "pathscale_defs.h"
 #include "defs.h"
 #include "errors.h"
 
@@ -423,7 +428,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			// bugs 943, 11277, 10506
 			{
 			  // Should use ErrMsg (or something similar) instead.
-			  printf("pathcc: variable-length structure not yet implemented\n");
+			  printf(OPEN64_NAME_PREFIX "cc: variable-length structure not yet implemented\n");
 			  exit(2);
 			}
 #endif
@@ -1766,15 +1771,17 @@ Create_ST_For_Tree (gs_t decl_node)
             }
           }
         }
-	// Make g++ guard variables global in order to make them weak.  Ideally
-	// guard variables should be "common", but for some reason the back-end
-	// currently can't handle C++ commons.  As a work around, make the
-	// guard variables weak.  Since symtab_verify.cxx don't like weak
-	// locals, make the guard variables global.
+        // Make g++ guard variables local unless it's weak.
 	if (guard_var) {
 	  level = GLOBAL_SYMTAB;
-	  sclass = SCLASS_UGLOBAL;
-	  eclass = EXPORT_PREEMPTIBLE;
+          if ( gs_decl_weak(decl_node) ) {
+	    sclass = SCLASS_UGLOBAL;
+	    eclass = EXPORT_PREEMPTIBLE;
+          }
+          else {
+            sclass = SCLASS_PSTATIC;
+            eclass = EXPORT_LOCAL;
+          }
 	}
 
 	// The tree under DECL_ARG_TYPE(decl_node) could reference decl_node.
@@ -1970,7 +1977,9 @@ Create_ST_For_Tree (gs_t decl_node)
   }
   // See comment above about guard variables.
   else if (guard_var) {
-    Set_ST_is_weak_symbol (st);
+    if ( gs_decl_weak(decl_node) ) {
+      Set_ST_is_weak_symbol (st);
+    }
     Set_ST_init_value_zero (st);
     Set_ST_is_initialized (st);
   }
@@ -2001,7 +2010,7 @@ Create_ST_For_Tree (gs_t decl_node)
     }
   }
 
-#if defined(KEY) && defined(TARG_IA64)
+#if defined(TARG_IA64)
   //lookup syscall_linkage attribute for FUNCTION_DECL
   if (gs_tree_code (decl_node) == GS_FUNCTION_DECL)
   {
@@ -2025,6 +2034,29 @@ Create_ST_For_Tree (gs_t decl_node)
   }
 #endif
 
+  if (gs_tree_code (decl_node) == GS_VAR_DECL)
+  {
+#if !defined(TARG_NVISA)
+    gs_tls_model_kind_t tlsk =
+      (gs_tls_model_kind_t) gs_decl_tls_model(decl_node);
+    enum ST_TLS_MODEL tls_model = TLS_NONE;
+    switch (tlsk) {
+      case GS_TLS_MODEL_GLOBAL_DYNAMIC:
+        tls_model = TLS_GLOBAL_DYNAMIC;
+        break;
+      case GS_TLS_MODEL_LOCAL_DYNAMIC:
+        tls_model = TLS_LOCAL_DYNAMIC;
+        break;
+      case GS_TLS_MODEL_INITIAL_EXEC:
+        tls_model = TLS_INITIAL_EXEC;
+        break;
+      case GS_TLS_MODEL_LOCAL_EXEC:
+        tls_model = TLS_LOCAL_EXEC;
+        break;
+    }
+    Set_ST_tls_model(st, tls_model);
+#endif
+  }
 
   if(Debug_Level >= 2) {
     // Bug 559

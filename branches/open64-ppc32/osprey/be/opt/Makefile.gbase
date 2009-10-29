@@ -322,7 +322,7 @@ ifndef SKIP_DEP_BUILD
 	$(call submake,$(TARG_BE_DIR))
 endif
 ifeq ($(BUILD_OS), LINUX)
-	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
+	if ! test -e be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 endif
 ifndef SKIP_DEP_BUILD
  ifeq ($(BUILD_PCH), USE_PCH)

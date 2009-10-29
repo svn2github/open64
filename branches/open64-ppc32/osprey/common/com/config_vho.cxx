@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -110,6 +114,7 @@ BOOL    VHO_Icall_Devir			= TRUE;
 BOOL    VHO_Check_Tree                  = FALSE;
 BOOL    VHO_Single_Loop_Test            = FALSE;
 BOOL    VHO_Use_Do_While                = FALSE;
+BOOL    VHO_Disable_Copy_Field_Element  = FALSE;
 #ifdef KEY
 #if defined(TARG_IA64) || defined(TARG_PPC32)
 BOOL  VHO_Enable_Simple_If_Conv = FALSE;
@@ -194,6 +199,8 @@ static OPTION_DESC Options_VHO[] = {
     TRUE, 0, 0,  &VHO_Single_Loop_Test,      NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "use_do_while",       "use_do_while",
     TRUE, 0, 0,  &VHO_Use_Do_While,      NULL },
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "disable_copy_field_element",       "disable_copy_field_element",
+    TRUE, 0, 0,  &VHO_Disable_Copy_Field_Element,      NULL },
 #ifdef KEY
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "if_conv",                "",
     0, 0, 0,    &VHO_Enable_Simple_If_Conv, NULL },

@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -3212,13 +3216,15 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
       name = ST_name( st );
 
 #if defined (TARG_X8664)
+      //remove "$" for  rodata section address reference
+      //https://bugs.open64.net/show_bug.cgi?id=494
       if (!memory /* bug 14399 */ && !strcmp (name, ".rodata")) {
         // This is the address of a string constant, treat it similar
         // to a numeric constant. (bug 14390)
         if( base_ofst == 0 )
-          sprintf( buf, "$%s", name );
+          sprintf( buf, "%s", name );
         else
-          sprintf( buf, "$%s+%d", name, (int)base_ofst );
+          sprintf( buf, "%s+%d", name, (int)base_ofst );
       }
       else {
 #endif
@@ -4425,6 +4431,11 @@ Emit_Loop_Note(BB *bb, FILE *file)
 #ifdef TARG_X8664
     if (CG_p2align) 
       fputs ("\t.p2align 6,,7\n", file);
+    else if (CG_loop32) {
+      if (BB_innermost(bb) && Is_Target_Barcelona()) {
+        fputs ("\t.p2align 5,,\n", file);
+      }
+    }
 #endif
     SRCPOS srcpos = BB_Loop_Srcpos(bb);
     INT32 lineno = SRCPOS_linenum(srcpos);
