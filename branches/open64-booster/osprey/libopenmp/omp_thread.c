@@ -290,7 +290,7 @@ __ompc_level_1_barrier(const int vthread_id)
   long int counter;
   int team_size = __omp_level_1_team_size;
   long int max_count = __omp_spin_count;
-
+  
   __sync_fetch_and_add(&__omp_level_1_exit_count,1);
 
   if (vthread_id == 0) {
@@ -400,6 +400,8 @@ __ompc_nested_slave(void * _v_thread)
 void
 __ompc_fini_rtl(void) 
 {
+  int i;
+  
   /* clean up job*/
   if (__omp_level_1_team != NULL)
     aligned_free(__omp_level_1_team);
@@ -419,6 +421,7 @@ __ompc_init_rtl(int num_threads)
   int threads_to_create;
   int i;
   int return_value;
+  void *stack_pointer;
 
 
   Is_True(__omp_rtl_initialized == 0, 
@@ -453,7 +456,6 @@ __ompc_init_rtl(int num_threads)
   /* setup pthread attributes */
   pthread_attr_init(&__omp_pthread_attr);
   pthread_attr_setscope(&__omp_pthread_attr, PTHREAD_SCOPE_SYSTEM);
-  pthread_attr_setstacksize(&__omp_pthread_attr, __omp_stack_size);
   /* need to set up barrier attributes */
 
   /* initial global locks*/
@@ -533,10 +535,16 @@ __ompc_init_rtl(int num_threads)
   }
 
   for (i=1; i< threads_to_create; i++) {
+    stack_pointer = malloc(__omp_stack_size);
+    Is_True(stack_pointer != NULL, ("Can not allocate stack for slave"));
+    return_value = pthread_attr_setstack(&__omp_pthread_attr, stack_pointer, __omp_stack_size); 
+    Is_True(return_value == 0, ("Can not set stack pointer for thread"));
     return_value = pthread_create( &(__omp_level_1_pthread[i].uthread_id),
 				   &__omp_pthread_attr, (pthread_entry) __ompc_level_1_slave, 
 				   (void *)((unsigned long int)i));
     Is_True(return_value == 0, ("Can not create more pthread"));
+
+    __omp_level_1_pthread[i].stack_pointer = stack_pointer;
 
     if (__omp_set_affinity) {
       // bind pthread to a specific cpu
