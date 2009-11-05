@@ -538,6 +538,25 @@ __ompc_init_rtl(int num_threads)
     __ompc_bind_pthread_to_cpu(__omp_root_thread_id);
   }
 
+/*
+ * This routine is called by dynamic loader, which is before
+ * user-defined main() where various bits in mxcsr are set.
+ * This means those bits are not set to the threads
+ * created here.
+ * Here I only do a paritial fix that sets flush-to-zero
+ * bit in X86.
+ * ToDo:
+ * 1. fix other bits in X86 (like masks controlled by options)
+ * 2. fix for other platforms
+ */
+#if defined(TARG_X8664) || defined(TARG_IA32)
+
+#define MM_FLUSH_ZERO_ON     0x8000
+  __builtin_ia32_ldmxcsr(__builtin_ia32_stmxcsr() | MM_FLUSH_ZERO_ON);
+
+#endif
+
+
   for (i=1; i< threads_to_create; i++) {
     stack_pointer = malloc(__omp_stack_size);
     Is_True(stack_pointer != NULL, ("Can not allocate stack for slave"));
