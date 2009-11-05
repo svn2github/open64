@@ -185,6 +185,7 @@ Get_Ordered_Corelist(int *list, int total_cores)
   char buf[256], *data;
   int proc_id, proc_done=0;
   int core_id = -1, socket_id = -1, cores = 0;   
+  int i;
 
   // could not find /proc/cpuinfo  
   if ((fp = fopen ("/proc/cpuinfo", "r")) == NULL) SET_DEFAULT;
