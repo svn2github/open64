@@ -104,7 +104,7 @@ inline void __ompc_set_num_threads(const int __num_threads)
   num_threads = __ompc_check_num_threads(__num_threads);
 
   // expand the team when the current threads are fewer
-  if (num_threads > __omp_nthreads_var)
+  if (num_threads > __omp_level_1_team_alloc_size)
      __ompc_expand_level_1_team(num_threads);
 
   __omp_nthreads_var = num_threads; 

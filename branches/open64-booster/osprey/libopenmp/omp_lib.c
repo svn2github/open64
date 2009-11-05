@@ -59,17 +59,16 @@ omp_set_num_threads(omp_int_t num)
   __ompc_set_num_threads(num);
 }
 
-
-void omp_set_num_threads_(omp_int_t);
-
-#pragma weak omp_set_num_threads_ = omp_set_num_threads
+void omp_set_num_threads_(omp_int_t * num)
+{
+    __ompc_set_num_threads(*num);
+}
 
 inline omp_int_t
 omp_get_num_threads(void)
 {
   return (omp_int_t)__ompc_get_num_threads();
 }
-
 
 omp_int_t omp_get_num_threads_(void);
 #pragma weak omp_get_num_threads_ = omp_get_num_threads
@@ -120,8 +119,10 @@ omp_set_dynamic(omp_int_t dynamic)
 }
 
 
-void omp_set_dynamic_(omp_int_t);
-#pragma weak omp_set_dynamic_ = omp_set_dynamic
+void omp_set_dynamic_(omp_int_t* dynamic)
+{
+    __ompc_set_dynamic(*dynamic);
+}
 
 inline omp_int_t
 omp_get_dynamic(void)
@@ -140,9 +141,10 @@ omp_set_nested(omp_int_t nested)
 }
 
 
-void omp_set_nested_(omp_int_t);
-#pragma weak omp_set_nested_ = omp_set_nested
-
+void omp_set_nested_(omp_int_t* nested)
+{
+    __ompc_set_nested(*nested);
+}
 
 inline omp_int_t
 omp_get_nested(void)
