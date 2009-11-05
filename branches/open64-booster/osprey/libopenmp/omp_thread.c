@@ -548,12 +548,18 @@ __ompc_init_rtl(int num_threads)
  * ToDo:
  * 1. fix other bits in X86 (like masks controlled by options)
  * 2. fix for other platforms
+ * We should have checked if SSE is avaliable as
+ * x87 uses a different register.
  */
 #if defined(TARG_X8664) || defined(TARG_IA32)
 
 #define MM_FLUSH_ZERO_ON     0x8000
-  __builtin_ia32_ldmxcsr(__builtin_ia32_stmxcsr() | MM_FLUSH_ZERO_ON);
-
+  {
+    unsigned int cr;
+    __asm__  __volatile__("stmxcsr %0" : "=m" (*&cr));
+    cr = cr | MM_FLUSH_ZERO_ON; 
+    __asm__  __volatile__("ldmxcsr %0" : : "m" (*&cr));
+  }
 #endif
 
 
