@@ -822,6 +822,7 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
     original_v_thread = current_u_thread->task;
 
     temp_v_thread.team_size = 1;
+    temp_v_thread.vthread_id = 0;
     temp_v_thread.single_count = 0;
     temp_v_thread.loop_count = 0;
     temp_v_thread.executor = current_u_thread;
@@ -860,6 +861,7 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
 
     __ompc_destroy_spinlock(&(temp_team.schedule_lock));
     __ompc_destroy_lock(&(temp_team.single_lock));
+    current_u_thread->task = original_v_thread;
   }
 }
 
