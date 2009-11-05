@@ -6954,6 +6954,9 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TYPE_ID m
   case INTRN_RSQRTSS:
     Build_OP( TOP_rsqrtss, result, op0, ops );
     break;
+  case INTRN_SQRTSD:
+    Build_OP( TOP_sqrtsd, result, op0, ops );
+    break;
   case INTRN_SQRTSS:
     Build_OP( TOP_sqrtss, result, op0, ops );
     break;
