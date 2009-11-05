@@ -54,6 +54,9 @@ int __omp_num_hardware_processors;
 /* num of available processors */
 int __omp_num_processors;
 
+/* num of cores that used in affinity setting*/
+int __omp_core_list_size;
+
 /* list of the available processors */
 int * __omp_list_processors;
 

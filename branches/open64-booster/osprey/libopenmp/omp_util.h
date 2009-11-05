@@ -116,6 +116,9 @@ Get_SMP_CPU_num(void);
 int
 Get_CPU_Cores(void);
 
+int 
+Get_Affinity_Map(int**, int);
+
 void
 Get_Ordered_Corelist(int *, int);
 

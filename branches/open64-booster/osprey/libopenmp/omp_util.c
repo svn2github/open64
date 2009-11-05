@@ -110,10 +110,72 @@ Get_CPU_Cores(void)
   return 0;
 }
 
+/*
+ * Check if the user specifies an environment variable to map
+ * the core to thread.
+ * Note:
+ * (1) core_id needs to be in the numactl list if numactl
+ *     is used; otherwise, that id will be filtered out later.
+ * (2) O64_OMP_SET_AFFINITY needs to be TRUE to make
+ *     this mapping effective.
+ * 
+ * Return:
+ *  the number of cores in the list.
+ * 
+ * !!
+ * !! the client needs to free the memory used by list !!
+ * !!
+ */
+
+#define MAX_LIST_SIZE 4096
+
+int
+Get_Affinity_Map(int **list, int total_cores)
+{
+  char *data, *str;
+  int list_size;
+  int buf[MAX_LIST_SIZE], *my_list;
+  int cnt, i;
+
+  if ( (data = getenv("O64_OMP_AFFINITY_MAP")) == NULL)
+    return 0;
+
+  cnt = 0;
+  str = strtok(data,", ");
+  while (str && cnt<MAX_LIST_SIZE)
+  {
+    int core_id = atoi(str);
+    // some sanity checks on core_id. Note that atoi() can return 0 when failed.
+    if (core_id == 0 && str[0] != '0')
+      fprintf(stderr,"O64_OMP_AFFINITY_MAP: ingored invalid core_id=%s.\n", str);
+    else if ( core_id < 0 || core_id >= total_cores )
+      fprintf(stderr,"O64_OMP_AFFINITY_MAP: ingored invalid core_id=%d.\n", core_id);
+    else
+      buf[cnt++] = atoi(str);
+    str = strtok(NULL,", \n");
+  }
+  
+  if (cnt == 0)
+    return 0;
+
+  if (cnt == MAX_LIST_SIZE)
+      fprintf(stderr,
+           "O64_OMP_AFFINITY_MAP: map is too big, ingore items after %dth.\n", 
+           MAX_LIST_SIZE);
+  my_list = (int*) malloc(sizeof(int) * cnt);
+  Is_True(my_list!= NULL, ("Can't allocate list in Get_Affinity_Map"));
+
+  memcpy(my_list, buf, sizeof(int)*cnt);
+
+  *list = my_list;
+
+  return cnt;
+}
+
 #define SET_DEFAULT {  \
         for (i=0; i<total_cores; i++)\
            list[i] = i; \
-        if (fp != NULL) fclose(fp); \   
+        if (fp != NULL) fclose(fp); \
         return; }
 
 void
@@ -121,7 +183,7 @@ Get_Ordered_Corelist(int *list, int total_cores)
 {
   FILE * fp;
   char buf[256], *data;
-  int proc_id, i, proc_done=0;
+  int proc_id, proc_done=0;
   int core_id = -1, socket_id = -1, cores = 0;   
 
   // could not find /proc/cpuinfo  

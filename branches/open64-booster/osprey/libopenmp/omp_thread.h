@@ -373,30 +373,39 @@ inline void __omp_get_available_processors()
   cpu_set_t cpuset;
   int return_val, i, cur_count=0;
   int *ordered_core_list;
+  int core_list_size;
+
+  // Try to bind pthread to cores: Fist try user-specified mapping. 
+  // If we cannot get one, we try to figure it out automatically.
+  if ( (core_list_size = Get_Affinity_Map(
+            &ordered_core_list, __omp_num_hardware_processors)) == 0)
+  {
+    // We try to bind pthreads to cores on one cpu first. Thus we need to know how
+    // cores are ordered. For example, some machine assign 0,4,8,12 to the cores
+    // on the first cpu/socket and 1,5,9,13 to the second cpu and etc. We get
+    // this info from /proc/cpuinfo. For any reason that we could not find the order,
+    // we will use the default order 0,1,2,3...  
+
+    ordered_core_list = (int*) malloc(sizeof(int) * __omp_num_hardware_processors);
+    Is_True(ordered_core_list!= NULL,
+            ("Can't allocate ordered_core_list"));
+    Get_Ordered_Corelist(ordered_core_list, __omp_num_hardware_processors);
+    core_list_size = __omp_num_hardware_processors;
+  }
 
   /* create the list to record available processors */
-  __omp_list_processors = aligned_malloc(sizeof(int) * __omp_num_processors, CACHE_LINE_SIZE);
+  __omp_list_processors = aligned_malloc(sizeof(int) * core_list_size, CACHE_LINE_SIZE);
   Is_True(__omp_list_processors != NULL,
           ("Can't allocate __omp_list_processors"));
-
-  // We try to bind pthreads to cores on one cpu first. Thus we need to know how
-  // cores are ordered. For example, some machine assign 0,4,8,12 to the cores
-  // on the first cpu/socket and 1,5,9,13 to the second cpu and etc. We get
-  // this info from /proc/cpuinfo. For any reason that we could not find the order,
-  // we will use the default order 0,1,2,3...  
-  ordered_core_list = (int*) malloc(sizeof(int) * __omp_num_hardware_processors);
-  Is_True(ordered_core_list!= NULL,
-          ("Can't allocate ordered_core_list"));
-  Get_Ordered_Corelist(ordered_core_list, __omp_num_hardware_processors);
 
   return_val = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
   Is_True(return_val == 0, ("Get affinity error"));
  
-  for (i = 0; i < __omp_num_hardware_processors; i++) {
+  for (i = 0; i < core_list_size; i++) {
      if (CPU_ISSET(ordered_core_list[i], &cpuset))
        __omp_list_processors[cur_count++] = ordered_core_list[i];
   }
-  Is_True( cur_count == __omp_num_processors, "Wrong with get avaible processors"); 
+  __omp_core_list_size = cur_count;
 
   if (ordered_core_list!= NULL)
     free(ordered_core_list);
@@ -417,7 +426,7 @@ inline void __ompc_bind_pthread_to_cpu(pthread_t thread)
   Is_True(return_val == 0, ("Set affinity error"));
 
   // next cpu to bind
-  cur_cpu_to_bind = (cur_cpu_to_bind + 1) % __omp_num_processors; 
+  cur_cpu_to_bind = (cur_cpu_to_bind + 1) % __omp_core_list_size; 
 
 }
 
