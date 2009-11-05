@@ -53,7 +53,7 @@ __omp_fatal(char *msg)
  * OpenMP standard library function
  */
 
-inline void
+void
 omp_set_num_threads(omp_int_t num)
 {
   __ompc_set_num_threads(num);
@@ -64,7 +64,7 @@ void omp_set_num_threads_(omp_int_t * num)
     __ompc_set_num_threads(*num);
 }
 
-inline omp_int_t
+omp_int_t
 omp_get_num_threads(void)
 {
   return (omp_int_t)__ompc_get_num_threads();
@@ -73,7 +73,7 @@ omp_get_num_threads(void)
 omp_int_t omp_get_num_threads_(void);
 #pragma weak omp_get_num_threads_ = omp_get_num_threads
 
-inline omp_int_t
+omp_int_t
 omp_get_max_threads(void)
 {
   return (omp_int_t)__ompc_get_max_threads();
@@ -83,7 +83,7 @@ omp_get_max_threads(void)
 omp_int_t omp_get_max_threads_(void);
 #pragma weak omp_get_max_threads_ = omp_get_max_threads
 
-inline omp_int_t
+omp_int_t
 omp_get_thread_num(void)
 {
   return (omp_int_t)__ompc_get_local_thread_num();
@@ -93,7 +93,7 @@ omp_get_thread_num(void)
 omp_int_t omp_get_thread_num_(void);
 #pragma weak omp_get_thread_num_ = omp_get_thread_num
 
-inline omp_int_t
+omp_int_t
 omp_get_num_procs(void)
 {
   return (omp_int_t)__ompc_get_num_procs();
@@ -102,7 +102,7 @@ omp_get_num_procs(void)
 
 omp_int_t omp_get_num_procs_(void);
 #pragma weak omp_get_num_procs_ = omp_get_num_procs
-inline omp_int_t
+omp_int_t
 omp_in_parallel(void)
 {
   return (omp_int_t)__ompc_in_parallel();
@@ -112,7 +112,7 @@ omp_in_parallel(void)
 omp_int_t omp_in_parallel_(void);
 #pragma weak omp_in_parallel_ = omp_in_parallel
 
-inline void
+void
 omp_set_dynamic(omp_int_t dynamic)
 {
   __ompc_set_dynamic(dynamic);
@@ -124,7 +124,7 @@ void omp_set_dynamic_(omp_int_t* dynamic)
     __ompc_set_dynamic(*dynamic);
 }
 
-inline omp_int_t
+omp_int_t
 omp_get_dynamic(void)
 {
   return (omp_int_t)__ompc_get_dynamic();
@@ -134,7 +134,7 @@ omp_get_dynamic(void)
 omp_int_t omp_get_dynamic_(void);
 #pragma weak omp_get_dynamic_ = omp_get_dynamic
 
-inline void
+void
 omp_set_nested(omp_int_t nested)
 {
   __ompc_set_nested(nested);
@@ -146,7 +146,7 @@ void omp_set_nested_(omp_int_t* nested)
     __ompc_set_nested(*nested);
 }
 
-inline omp_int_t
+omp_int_t
 omp_get_nested(void)
 {
   return (omp_int_t)__ompc_get_nested();
@@ -158,7 +158,7 @@ omp_int_t omp_get_nested_(void);
  * Lock Functions
  */
 extern int __omp_spin_user_lock;
-inline void
+void
 omp_init_lock(volatile omp_lock_t *lock)
 {
   // put the lock aligned to cache line size and
@@ -177,7 +177,7 @@ omp_init_lock(volatile omp_lock_t *lock)
 void omp_init_lock_(volatile omp_lock_t *);
 #pragma weak omp_init_lock_ = omp_init_lock
 
-inline void
+void
 omp_init_nest_lock(volatile omp_nest_lock_t *lock)
 {
   // put the lock aligned to cache line size
@@ -192,7 +192,7 @@ omp_init_nest_lock(volatile omp_nest_lock_t *lock)
 void omp_init_nest_lock_(volatile omp_nest_lock_t *);
 #pragma weak omp_init_nest_lock_ = omp_init_nest_lock
 
-inline void
+void
 omp_destroy_lock(volatile omp_lock_t *lock)
 {
   __ompc_destroy_lock((ompc_lock_t*)(*lock));
@@ -202,7 +202,7 @@ omp_destroy_lock(volatile omp_lock_t *lock)
 
 void omp_destroy_lock_(volatile omp_lock_t *);
 #pragma weak omp_destroy_lock_ = omp_destroy_lock
-inline void
+void
 omp_destroy_nest_lock(volatile omp_nest_lock_t *lock)
 {
   __ompc_destroy_nest_lock((ompc_nest_lock_t*)(*lock));
@@ -212,7 +212,7 @@ omp_destroy_nest_lock(volatile omp_nest_lock_t *lock)
 
 void omp_destroy_nest_lock_(volatile omp_nest_lock_t *);
 #pragma weak omp_destroy_nest_lock_ = omp_destroy_nest_lock
-inline void
+void
 omp_set_lock(volatile omp_lock_t *lock)
 {
   __ompc_lock((ompc_lock_t*)(*lock));
@@ -221,7 +221,7 @@ omp_set_lock(volatile omp_lock_t *lock)
 
 void omp_set_lock_(volatile omp_lock_t *);
 #pragma weak omp_set_lock_ = omp_set_lock
-inline void
+void
 omp_set_nest_lock(volatile omp_nest_lock_t *lock)
 {
   __ompc_nest_lock((ompc_nest_lock_t*)(*lock));
@@ -230,7 +230,7 @@ omp_set_nest_lock(volatile omp_nest_lock_t *lock)
 
 void omp_set_nest_lock_(volatile omp_nest_lock_t *);
 #pragma weak omp_set_nest_lock_ = omp_set_nest_lock
-inline void
+void
 omp_unset_lock(volatile omp_lock_t *lock)
 {
   __ompc_unlock((ompc_lock_t*)(*lock));
@@ -239,7 +239,7 @@ omp_unset_lock(volatile omp_lock_t *lock)
 
 void omp_unset_lock_(volatile omp_lock_t *);
 #pragma weak omp_unset_lock_ = omp_unset_lock
-inline void
+void
 omp_unset_nest_lock(volatile omp_nest_lock_t *lock)
 {
   __ompc_nest_unlock((ompc_nest_lock_t*)(*lock));
@@ -248,7 +248,7 @@ omp_unset_nest_lock(volatile omp_nest_lock_t *lock)
 
 void omp_unset_nest_lock_(volatile omp_nest_lock_t *);
 #pragma weak omp_unset_nest_lock_ = omp_unset_nest_lock
-inline int
+int
 omp_test_lock(volatile omp_lock_t *lock)
 {
   return __ompc_test_lock((ompc_lock_t*)(*lock));
@@ -257,7 +257,7 @@ omp_test_lock(volatile omp_lock_t *lock)
 
 int omp_test_lock_(volatile omp_lock_t *);
 #pragma weak omp_test_lock_ = omp_test_lock
-inline int
+int
 omp_test_nest_lock(volatile omp_nest_lock_t *lock){
   return __ompc_test_nest_lock((ompc_nest_lock_t*)(*lock));
 }
