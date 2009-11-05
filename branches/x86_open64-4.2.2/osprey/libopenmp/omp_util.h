@@ -69,7 +69,7 @@
 	
 #define Is_Valid(Cond, ParmList)\
     ( Cond ? (void) 1 : \
-    ( fprintf(stderr, "Invalid setting :"), \
+    ( fprintf(stderr, "Invalid setting : "), \
       fprintf(stderr, ParmList), \
       fprintf(stderr, "\n"), \
       fflush(stderr), \
@@ -114,16 +114,22 @@ int
 Get_SMP_CPU_num(void);
 
 int
-GetCPUCores(void);
+Get_CPU_Cores(void);
+
+int 
+Get_Affinity_Map(int**, int);
 
 void
-GetOrderedCoreList(int *, int);
+Get_Ordered_Corelist(int *, int);
 
 void *
 aligned_malloc(size_t, size_t);
 
 void
 aligned_free(void*);
+
+void *
+aligned_realloc(void *, size_t, size_t, size_t);
 
 void __ompc_do_nothing(void);
 #endif

@@ -1213,7 +1213,7 @@ __ompc_end_ordered (omp_int32 global_tid)
   pthread_mutex_lock(&(p_team->ordered_mutex));
   p_team->ordered_count++;
   pthread_cond_broadcast(&(p_team->ordered_cond));
-  pthread_mutex_lock(&(p_team->ordered_mutex));
+  pthread_mutex_unlock(&(p_team->ordered_mutex));
 }
 
 /* Return 1 for the first one to enter single gate,

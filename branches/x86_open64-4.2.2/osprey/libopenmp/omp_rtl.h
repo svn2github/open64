@@ -115,6 +115,8 @@ extern volatile int __omp_nthreads_var;
 extern int __omp_num_hardware_processors;
 /* num of processors available*/
 extern int 	    __omp_num_processors; 
+/* size of core list in affinty setting*/
+extern int 	    __omp_core_list_size; 
 /* list of processors available*/
 extern int *        __omp_list_processors;
 
@@ -155,6 +157,7 @@ struct omp_u_thread{
   pthread_t uthread_id;		/* pthread id*/
   omp_u_thread_t *hash_next;	/* hash link*/
   omp_v_thread_t *task;		/* task(vthread)*/
+  char *stack_pointer;
 } __attribute__ ((__aligned__(CACHE_LINE_SIZE))) ;
 
 /* team*/

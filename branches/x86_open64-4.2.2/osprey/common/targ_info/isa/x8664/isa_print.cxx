@@ -1466,7 +1466,7 @@ main()
 			   TOP_UNDEFINED );
 
   /* instructions that read-modify-write */
-  ISA_PRINT_TYPE rmw =  ISA_Print_Type_Create("rmw", "%s %s,%s%s(%s)");
+  ISA_PRINT_TYPE rmw =  ISA_Print_Type_Create("rmw", "lock %s %s,%s%s(%s)");
   Name();
   Operand(0);
   Segment();
@@ -1500,7 +1500,7 @@ main()
 			   TOP_lock_xadd64,
 			   TOP_UNDEFINED );
 
-  ISA_PRINT_TYPE cmpxchg =  ISA_Print_Type_Create("cmpxchg", "%s %s,%s%s(%s)");
+  ISA_PRINT_TYPE cmpxchg =  ISA_Print_Type_Create("cmpxchg", "lock %s %s,%s%s(%s)");
   Name();
   Operand(1);
   Segment();

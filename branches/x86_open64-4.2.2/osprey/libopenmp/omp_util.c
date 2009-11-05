@@ -86,7 +86,7 @@ Get_SMP_CPU_num (void)
 }
 
 int
-GetCPUCores(void)
+Get_CPU_Cores(void)
 {
   FILE * fp;
   char buf[256], *data;
@@ -110,21 +110,99 @@ GetCPUCores(void)
   return 0;
 }
 
+/*
+ * Check if the user specifies an environment variable to map
+ * the core to thread.
+ * Note:
+ * (1) core_id needs to be in the numactl list if numactl
+ *     is used; otherwise, that id will be filtered out later.
+ * (2) O64_OMP_SET_AFFINITY needs to be TRUE to make
+ *     this mapping effective.
+ * 
+ * Return:
+ *  the number of cores in the list.
+ * 
+ * !!
+ * !! the client needs to free the memory used by list !!
+ * !!
+ */
+
+#define MAX_LIST_SIZE 4096
+
+int
+Get_Affinity_Map(int **list, int total_cores)
+{
+  char *data, *str;
+  int list_size;
+  int buf[MAX_LIST_SIZE], *my_list;
+  int cnt, i;
+
+  if ( (data = getenv("O64_OMP_AFFINITY_MAP")) == NULL)
+    return 0;
+
+  cnt = 0;
+  str = strtok(data,", ");
+  while (str && cnt<MAX_LIST_SIZE)
+  {
+    int core_id = atoi(str);
+    // some sanity checks on core_id. Note that atoi() can return 0 when failed.
+    if (core_id == 0 && str[0] != '0')
+      fprintf(stderr,"O64_OMP_AFFINITY_MAP: ingored invalid core_id=%s.\n", str);
+    else if ( core_id < 0 || core_id >= total_cores )
+      fprintf(stderr,"O64_OMP_AFFINITY_MAP: ingored invalid core_id=%d.\n", core_id);
+    else
+      buf[cnt++] = atoi(str);
+    str = strtok(NULL,", \n");
+  }
+  
+  if (cnt == 0)
+    return 0;
+
+  if (cnt == MAX_LIST_SIZE)
+      fprintf(stderr,
+           "O64_OMP_AFFINITY_MAP: map is too big, ingore items after %dth.\n", 
+           MAX_LIST_SIZE);
+  my_list = (int*) malloc(sizeof(int) * cnt);
+  Is_True(my_list!= NULL, ("Can't allocate list in Get_Affinity_Map"));
+
+  memcpy(my_list, buf, sizeof(int)*cnt);
+
+  *list = my_list;
+
+  return cnt;
+}
+
+#define SET_DEFAULT {  \
+        for (i=0; i<total_cores; i++)\
+           list[i] = i; \
+        if (fp != NULL) fclose(fp); \
+        return; }
+
 void
-GetOrderedCoreList(int *list, int total_cores)
+Get_Ordered_Corelist(int *list, int total_cores)
 {
   FILE * fp;
   char buf[256], *data;
-  int core_id = -1, socket_id = -1, proc_id, i, proc_done=0;
+  int proc_id, proc_done=0;
+  int core_id = -1, socket_id = -1, cores = 0;   
+  int i;
 
-  int cores = GetCPUCores();
-
+  // could not find /proc/cpuinfo  
+  if ((fp = fopen ("/proc/cpuinfo", "r")) == NULL) SET_DEFAULT;
+  while (fgets (buf, 256, fp))
+  {
+    if (!strncasecmp (buf, "cpu cores", 9)) {
+      strtok (buf, ":");
+      data = strtok (NULL, "\n");
+      cores = atoi(data); 
+      break;  
+    }
+  }
+  
   // illegal cpu cores
-  if (cores == 0 || cores > total_cores) goto set_default;
+  if (cores == 0 || cores > total_cores) SET_DEFAULT;
 
-  // could not find /proc/cpuinfo
-  if ((fp = fopen ("/proc/cpuinfo", "r")) == NULL) goto set_default;
-   
+  rewind(fp);
   while (fgets (buf, 256, fp))
   {
     if (!strncasecmp (buf, "processor", 9)) 
@@ -133,7 +211,7 @@ GetOrderedCoreList(int *list, int total_cores)
        data = strtok (NULL, "\n");
        proc_id = atoi(data);
        // illegal proc_id
-       if (proc_id >= total_cores) goto set_default;
+       if (proc_id >= total_cores) SET_DEFAULT;
 
        while (fgets(buf, 256, fp))
        {
@@ -154,7 +232,7 @@ GetOrderedCoreList(int *list, int total_cores)
          {
            // illegal socket_id or cores_id
            if (socket_id * cores + core_id >= total_cores)
-             goto set_default;
+             SET_DEFAULT;
 
            list[socket_id * cores + core_id] = proc_id;
            socket_id = -1;
@@ -165,15 +243,10 @@ GetOrderedCoreList(int *list, int total_cores)
       }
     }
   } 
-   
-  if (proc_done != total_cores)
-  {
-// if any unexpected case happens, set the list to be 
-// the natural number order
-set_default:
-    for (i=0; i<total_cores; i++)
-      list[i] = i;
-  }
+  
+  if (proc_done != total_cores) SET_DEFAULT;
+
+  fclose(fp);  
 }
 
 /*
@@ -272,6 +345,26 @@ void aligned_free(void* p)
   free((void*) real_p);
 }
 
+void* aligned_realloc(void *p, size_t old_size, size_t new_size, size_t alignment)
+{
+    void * ret_p = NULL;
+    
+    if (new_size != 0)
+    {
+        ret_p = aligned_malloc(new_size, alignment);
+        Is_True(ret_p != NULL, ("Can not aligned malloc"));
+    }
+    
+    // copy the data to the new address 
+    if (p != NULL)
+    {
+        memcpy(ret_p, p, (old_size >= new_size) ? new_size : old_size);
+        aligned_free (p);
+    }
+    
+    return ret_p;
+          
+}
 
 void
 __ompc_do_nothing (void)
