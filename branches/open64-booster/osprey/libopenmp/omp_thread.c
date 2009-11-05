@@ -290,21 +290,25 @@ __ompc_level_1_barrier(const int vthread_id)
   long int counter;
   int team_size = __omp_level_1_team_size;
   long int max_count = __omp_spin_count;
+  int myrank;
   
-  __sync_fetch_and_add(&__omp_level_1_exit_count,1);
+  myrank = 1 + __sync_fetch_and_add(&__omp_level_1_exit_count,1);
 
   if (vthread_id == 0) {
-    for( counter = 0; __omp_level_1_exit_count != team_size; counter++) {
-      if (counter > max_count) {
-        pthread_mutex_lock(&__omp_level_1_barrier_mutex);
-        while (__omp_level_1_exit_count != team_size)
-          pthread_cond_wait(&__omp_level_1_barrier_cond, &__omp_level_1_barrier_mutex);
-        pthread_mutex_unlock(&__omp_level_1_barrier_mutex);
+    if (myrank != team_size)
+    {
+      for( counter = 0; __omp_level_1_exit_count != team_size; counter++) {
+        if (counter > max_count) {
+          pthread_mutex_lock(&__omp_level_1_barrier_mutex);
+          while (__omp_level_1_exit_count != team_size)
+            pthread_cond_wait(&__omp_level_1_barrier_cond, &__omp_level_1_barrier_mutex);
+          pthread_mutex_unlock(&__omp_level_1_barrier_mutex);
+        }
       }
     }
     __omp_level_1_exit_count = 0;
   } else 
-  if (__omp_level_1_exit_count == team_size )
+  if (myrank == team_size )
   {
     // here we do need the mutex lock! otherwise, 
     // Otherwise, it's possible that cond_signal may fail to wake up the master thread.
