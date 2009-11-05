@@ -69,7 +69,7 @@
 	
 #define Is_Valid(Cond, ParmList)\
     ( Cond ? (void) 1 : \
-    ( fprintf(stderr, "Invalid setting :"), \
+    ( fprintf(stderr, "Invalid setting : "), \
       fprintf(stderr, ParmList), \
       fprintf(stderr, "\n"), \
       fflush(stderr), \

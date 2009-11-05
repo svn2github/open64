@@ -131,7 +131,7 @@ __ompc_environment_variables()
   env_var_str = getenv("OMP_NUM_THREADS");
   if (env_var_str != NULL) {
     sscanf(env_var_str, "%d", &env_var_val);
-    Is_Valid(env_var_val > 0, ("OMP_NUM_THREAD should > 0"));
+    Is_Valid(env_var_val > 0, ("OMP_NUM_THREADS should be positive")); 
     if (env_var_val > __omp_max_num_threads)
       env_var_val = __omp_max_num_threads;
     __omp_nthreads_var = env_var_val;
@@ -189,13 +189,13 @@ __ompc_environment_variables()
 		
     if (*env_var_str != '\0') {
       Is_Valid(*env_var_str == ',', 
-	       ("An ',' is expected before the chunksize"));
+	       ("a ',' is expected before the chunksize"));
       env_var_str = Trim_Leading_Spaces(++env_var_str);
       Is_Valid(isdigit((int)(*env_var_str)),
-	       ("number expected for chunksize"));
+	       ("positive number expected for chunksize"));
       sscanf(env_var_str, "%d", &env_var_val);
       Is_Valid(env_var_val > 0, 
-	       ("Positive number expected"));
+	       ("positive number expected for chunksize"));
       __omp_rt_sched_size = env_var_val;
     } else { /* no chunk size specified */
       if(__omp_rt_sched_type == OMP_SCHED_STATIC)

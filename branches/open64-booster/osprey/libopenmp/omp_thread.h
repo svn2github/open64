@@ -323,7 +323,7 @@ __ompc_check_num_threads(const int _num_threads)
 {
   int num_threads = _num_threads;
   Is_Valid( num_threads > 0,
-	    (" number of threads must be possitive!"));
+	    ("number of threads must be positive!"));
 
   if (__omp_exe_mode & OMP_EXE_MODE_SEQUENTIAL) {
     /* request for level 1 threads*/
