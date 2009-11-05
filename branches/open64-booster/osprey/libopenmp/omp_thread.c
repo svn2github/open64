@@ -569,8 +569,11 @@ __ompc_expand_level_1_team(int new_num_threads)
   omp_u_thread_t *new_u_team;
   omp_v_thread_t *new_v_team;
 
-  new_u_team = (omp_u_thread_t *) realloc((void *) __omp_level_1_pthread,
-					  sizeof(omp_u_thread_t) * new_num_threads);
+  new_u_team = (omp_u_thread_t *) aligned_realloc((void *) __omp_level_1_pthread,
+                        sizeof(omp_u_thread_t) * __omp_level_1_team_alloc_size, 
+                        sizeof(omp_u_thread_t) * new_num_threads,
+                        CACHE_LINE_SIZE);
+                        
 
   Is_True(new_u_team != NULL, ("Can not realloc level 1 pthread data structure"));
 
@@ -593,8 +596,10 @@ __ompc_expand_level_1_team(int new_num_threads)
 
   }
 
-  new_v_team = (omp_v_thread_t *) realloc((void *) __omp_level_1_team, 
-					  sizeof(omp_v_thread_t) * new_num_threads);
+  new_v_team = (omp_v_thread_t *) aligned_realloc((void *) __omp_level_1_team, 
+                      sizeof(omp_v_thread_t) * __omp_level_1_team_alloc_size,
+					  sizeof(omp_v_thread_t) * new_num_threads, 
+                      CACHE_LINE_SIZE);
 
   Is_True(new_v_team != NULL, ("Can not realloc level 1 team data structure"));
 

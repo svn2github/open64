@@ -125,5 +125,8 @@ aligned_malloc(size_t, size_t);
 void
 aligned_free(void*);
 
+void *
+aligned_realloc(void *, size_t, size_t, size_t);
+
 void __ompc_do_nothing(void);
 #endif

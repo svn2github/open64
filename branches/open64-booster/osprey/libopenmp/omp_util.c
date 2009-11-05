@@ -282,6 +282,26 @@ void aligned_free(void* p)
   free((void*) real_p);
 }
 
+void* aligned_realloc(void *p, size_t old_size, size_t new_size, size_t alignment)
+{
+    void * ret_p = NULL;
+    
+    if (new_size != 0)
+    {
+        ret_p = aligned_malloc(new_size, alignment);
+        Is_True(ret_p != NULL, ("Can not aligned malloc"));
+    }
+    
+    // copy the data to the new address 
+    if (p != NULL)
+    {
+        memcpy(ret_p, p, (old_size >= new_size) ? new_size : old_size);
+        aligned_free (p);
+    }
+    
+    return ret_p;
+          
+}
 
 void
 __ompc_do_nothing (void)
