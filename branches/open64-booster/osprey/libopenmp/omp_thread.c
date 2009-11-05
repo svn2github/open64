@@ -605,6 +605,7 @@ __ompc_expand_level_1_team(int new_num_threads)
   int return_value;
   omp_u_thread_t *new_u_team;
   omp_v_thread_t *new_v_team;
+  void *stack_pointer;
 
   new_u_team = (omp_u_thread_t *) aligned_realloc((void *) __omp_level_1_pthread,
                         sizeof(omp_u_thread_t) * __omp_level_1_team_alloc_size, 
@@ -666,10 +667,16 @@ __ompc_expand_level_1_team(int new_num_threads)
     __omp_level_1_pthread[i].task = &__omp_level_1_team[i];
 
     /* for u_thread */
+    stack_pointer = malloc(__omp_stack_size);
+    Is_True(stack_pointer != NULL, ("Can not allocate stack for slave"));
+    return_value = pthread_attr_setstack(&__omp_pthread_attr, stack_pointer, __omp_stack_size);
+    Is_True(return_value == 0, ("Can not set stack pointer for thread"));
     return_value = pthread_create( &(__omp_level_1_pthread[i].uthread_id),
 				   &__omp_pthread_attr, (pthread_entry) __ompc_level_1_slave, 
 				   (void *)((unsigned long int)i));
     Is_True(return_value == 0, ("Can not create more pthread"));
+
+    __omp_level_1_pthread[i].stack_pointer = stack_pointer;
 
     if (__omp_set_affinity) {
       // bind pthread to a specific cpu
@@ -704,6 +711,7 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
   omp_u_thread_t *nest_u_thread_team;
   omp_u_thread_t *current_u_thread;
   omp_v_thread_t *original_v_thread;
+  void * stack_pointer;
 
   Is_True(__omp_rtl_initialized != 0,
           (" RTL should have been initialized!"));
@@ -802,6 +810,12 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
 
       nest_u_thread_team[i].hash_next = NULL;
       nest_u_thread_team[i].task = &(nest_v_thread_team[i]);
+
+      stack_pointer = malloc(__omp_stack_size);
+      Is_True(stack_pointer != NULL, ("Can not allocate stack for slave"));
+      return_value = pthread_attr_setstack(&__omp_pthread_attr, stack_pointer, __omp_stack_size);
+      Is_True(return_value == 0, ("Can not set stack pointer for thread"));
+  
       return_value = pthread_create(&(nest_u_thread_team[i].uthread_id),
 				    &__omp_pthread_attr, (pthread_entry) __ompc_nested_slave, 
 				    (void *)(&(nest_v_thread_team[i])));
