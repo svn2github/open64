@@ -1466,7 +1466,7 @@ main()
 			   TOP_UNDEFINED );
 
   /* instructions that read-modify-write */
-  ISA_PRINT_TYPE rmw =  ISA_Print_Type_Create("rmw", "lock; %s %s,%s%s(%s)");
+  ISA_PRINT_TYPE rmw =  ISA_Print_Type_Create("rmw", "lock %s %s,%s%s(%s)");
   Name();
   Operand(0);
   Segment();
