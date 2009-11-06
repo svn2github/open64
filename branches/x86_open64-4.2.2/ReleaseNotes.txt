@@ -1,8 +1,8 @@
 
-x86 Open64 4.2.2.2 Release Notes 
+x86 Open64 4.2.2.3 Release Notes 
 
 
-               August 28, 2009
+               November 6, 2009
 
 
 1. Overview
@@ -27,7 +27,7 @@ x86 Open64 4.2.2.2 Release Notes
 1. Overview
 ===========
 
- This is version 4.2.2.2 of the x86 Open64 compiler suite. It is a bug fix and
+ This is version 4.2.2.3 of the x86 Open64 compiler suite. It is a bug fix and
  maintenance release for version 4.2.2.
 
  x86 Open64 is an open source, optimizing compiler for 32-bit (x86) and
@@ -46,10 +46,22 @@ x86 Open64 4.2.2.2 Release Notes
 
 
 
-2. Issues Resolved in x86 Open64 4.2.2.2
+2. Issues Resolved in x86 Open64 4.2.2.3
 ========================================
 
-2.1 Issues Resolved in version 4.2.2.2
+2.1 Issues Resolved in version 4.2.2.3
+--------------------------------------
+
+ o The OpenMP runtime library (libopenmp) has been updated with additional
+   bug fixes.
+
+ o Support for the "_mm_sqrt_sd" intrinsic operation was added.
+
+ o The generated instruction sequence for some intrinsics now includes
+   the LOCK prefix, which is needed to make these operations atomic.
+
+
+2.2 Issues Resolved in version 4.2.2.2
 --------------------------------------
 
  o The OpenMP runtime library (libopenmp) has been updated with several
@@ -80,7 +92,7 @@ x86 Open64 4.2.2.2 Release Notes
    been removed.
 
 
-2.2 Issues Resolved in version 4.2.2.1
+2.3 Issues Resolved in version 4.2.2.1
 --------------------------------------
 
  o The automatic CPU detection in the x86 Open64 driver now recognizes the
@@ -145,17 +157,17 @@ x86 Open64 4.2.2.2 Release Notes
 
  This compiler is available in both binary and source-code forms.
 
- o x86_open64-4.2.2.2-1.src.tar.bz2
+ o x86_open64-4.2.2.3-1.src.tar.bz2
 
    This package contains the compiler's source code. To unpack the source, use
    the command:
 
-     tar xjvf x86_open64-4.2.2.2-1.src.tar.bz2
+     tar xjvf x86_open64-4.2.2.3-1.src.tar.bz2
 
    For instructions on how to build the compiler from source, see the included
    INSTALL file.
 
- o x86_open64-4.2.2.2-1.x86_64.tar.bz2
+ o x86_open64-4.2.2.3-1.x86_64.tar.bz2
 
    This package contains the binary code for x86-64 machines.
 
@@ -166,7 +178,7 @@ x86 Open64 4.2.2.2 Release Notes
    libraries. The Open64 4.2.1 release can be downloaded from
    http://www.open64.net.
 
- o x86_open64-4.2.2.2-1.x86_64.rpm
+ o x86_open64-4.2.2.3-1.x86_64.rpm
 
    This package contains the same binaries as the tar.bz2 package in RPM form.
 
@@ -177,8 +189,8 @@ x86 Open64 4.2.2.2 Release Notes
 
  The two binary packages,
 
- o x86_open64-4.2.2.2-1.x86_64.tar.bz2
- o x86_open64-4.2.2.2-1.x86_64.rpm
+ o x86_open64-4.2.2.3-1.x86_64.tar.bz2
+ o x86_open64-4.2.2.3-1.x86_64.rpm
 
  are tested and validated on 64-bit Linux systems running:
 
@@ -202,11 +214,11 @@ x86 Open64 4.2.2.2 Release Notes
 
  To install the compiler from the bz2 package:
 
- o Expand x86_open64-4.2.2.2-1.x86_64.tar.bz2 with the command:
+ o Expand x86_open64-4.2.2.3-1.x86_64.tar.bz2 with the command:
 
-   tar xjvf x86_open64-4.2.2.2-1.x86_64.tar.bz2
+   tar xjvf x86_open64-4.2.2.3-1.x86_64.tar.bz2
 
- o If desired, move the x86_open64-4.2.2.2 directory to the final
+ o If desired, move the x86_open64-4.2.2.3 directory to the final
    installation location using the 'mv' command.
 
    The C, C++, FORTRAN compilers are now available in the 'bin'
@@ -220,15 +232,15 @@ x86 Open64 4.2.2.2 Release Notes
 
  To install the compiler from RPM:
 
- $ rpm -ivh x86_open64-4.2.2.2-1.x86_64.rpm
+ $ rpm -ivh x86_open64-4.2.2.3-1.x86_64.rpm
 
  This command will install the x86 Open64 compiler to
- /opt/x86_open64-4.2.2.2. The C, C++, FORTRAN compilers are in folder
- /opt/x86_open64-4.2.2.2/bin.
+ /opt/x86_open64-4.2.2.3. The C, C++, FORTRAN compilers are in folder
+ /opt/x86_open64-4.2.2.3/bin.
 
  To install the compiler to another location:
 
- $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.2.2-1.x86_64.rpm
+ $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.2.3-1.x86_64.rpm
 
  Then the compiler will be installed to /path/to/folder.
 

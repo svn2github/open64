@@ -4,7 +4,7 @@ Introduction
 This document explains how to compile and install x86 Open64 from source
 on an x86-64 based system. There are many variations on this process;
 for simplicity, we describe the steps that we used to build the x86 Open64
-4.2.2.2 binary packages available on http://developer.amd.com/cpu/open64.
+4.2.2.3 binary packages available on http://developer.amd.com/cpu/open64.
 
     * Prerequisites
     * Obtaining the Source Code
@@ -36,7 +36,7 @@ http://developer.amd.com/cpu/open64.
 
 To extract the source code, use the command:
 
-  tar xjvf x86_open64-4.2.2.2-1.src.tar.bz2
+  tar xjvf x86_open64-4.2.2.3-1.src.tar.bz2
 
 
 Compiling
