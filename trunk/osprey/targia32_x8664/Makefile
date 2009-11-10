@@ -62,6 +62,8 @@ LIBRARY_SUBDIRS := \
 	libu \
 	libmv \
 	libmsgi \
+	libunwindP \
+
 
 
 #
