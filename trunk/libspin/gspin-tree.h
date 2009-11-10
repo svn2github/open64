@@ -2,30 +2,30 @@
  * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
-////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright 2006 PathScale, Inc. All Rights Reserved.
-//
-// This program is free software; you can redistribute it and/or modify it
-// under the terms of version 2 of the GNU General Public License as
-// published by the Free Software Foundation.
-//
-// This program is distributed in the hope that it would be useful, but
-// WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-//
-// Further, this software is distributed without any warranty that it is
-// free of the rightful claim of any third person regarding infringement
-// or the like.  Any license provided herein, whether implied or
-// otherwise, applies only to this software file.  Patent licenses, if
-// any, provided herein do not apply to combinations of this program with
-// other software, or any other product whatsoever.
-//
-// You should have received a copy of the GNU General Public License along
-// with this program; if not, write the Free Software Foundation, Inc., 59
-// Temple Place - Suite 330, Boston MA 02111-1307, USA.
-//
-////////////////////////////////////////////////////////////////////////////////
+/* */
+/* */
+/* Copyright 2006 PathScale, Inc. All Rights Reserved. */
+/* */
+/* This program is free software; you can redistribute it and/or modify it */
+/* under the terms of version 2 of the GNU General Public License as */
+/* published by the Free Software Foundation. */
+/* */
+/* This program is distributed in the hope that it would be useful, but */
+/* WITHOUT ANY WARRANTY; without even the implied warranty of */
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. */
+/* */
+/* Further, this software is distributed without any warranty that it is */
+/* free of the rightful claim of any third person regarding infringement */
+/* or the like.  Any license provided herein, whether implied or */
+/* otherwise, applies only to this software file.  Patent licenses, if */
+/* any, provided herein do not apply to combinations of this program with */
+/* other software, or any other product whatsoever. */
+/* */
+/* You should have received a copy of the GNU General Public License along */
+/* with this program; if not, write the Free Software Foundation, Inc., 59 */
+/* Temple Place - Suite 330, Boston MA 02111-1307, USA. */
+/* */
+/* */
 
 #ifndef __GSPIN_TREE_H__
 #define __GSPIN_TREE_H__
@@ -38,15 +38,15 @@
 
 typedef enum gs_code {
 
- // Generic core stuff:
+ /* Generic core stuff: */
 
  DOT,
 
- // list
+ /* list */
  EMPTY,
  CONS,
 
- // Inbuilt Constructors:
+ /* Inbuilt Constructors: */
 
  IB_INT,
  IB_UNSIGNED,
@@ -66,7 +66,7 @@ typedef enum gs_code {
  GSBI,
  GSBI_CLASS,
 
- // GCC Specific tree codes:
+ /* GCC Specific tree codes: */
 
  GS_ABS_EXPR,
  GS_ADDR_EXPR,
@@ -93,7 +93,7 @@ typedef enum gs_code {
  GS_CEIL_DIV_EXPR,
  GS_CEIL_MOD_EXPR,
  GS_CHAR_TYPE,
- GS_CLEANUP, // TODO: Same as GS_CLEANUP_POINT_EXPR?
+ GS_CLEANUP, /* TODO: Same as GS_CLEANUP_POINT_EXPR? */
  GS_CLEANUP_POINT_EXPR,
  GS_COMPLEX_CST,
  GS_COMPLEX_EXPR,
@@ -186,7 +186,7 @@ typedef enum gs_code {
  GS_POSTINCREMENT_EXPR,
  GS_PREDECREMENT_EXPR,
  GS_PREINCREMENT_EXPR,
- GS_PROGRAM, // Not in GCC.
+ GS_PROGRAM, /* Not in GCC. */
  GS_QUAL_UNION_TYPE,
  GS_RANGE_EXPR,
  GS_RDIV_EXPR,
@@ -207,7 +207,7 @@ typedef enum gs_code {
  GS_SCEV_KNOWN,
  GS_SCEV_NOT_KNOWN,
  GS_SCOPE,
- GS_SCOPE_STMT,		// Can delete because GCC 4 does not have SCOPE_STMT.  
+ GS_SCOPE_STMT,		/* Can delete because GCC 4 does not have SCOPE_STMT.   */
  GS_SIZEOF_EXPR,
  GS_SSA_NAME,
  GS_STATEMENT_LIST,
@@ -295,7 +295,7 @@ typedef enum gs_code {
  GS_UNBOUND_CLASS_TEMPLATE,
  GS_VEC_DELETE_EXPR,
  GS_VEC_NEW_EXPR,
- GS_TEMPLATE_TEMPLATE_PARM, // this is 233; should not be higher than 255
+ GS_TEMPLATE_TEMPLATE_PARM /* this is 233; should not be higher than 255 */
 
 } gs_code_t;
 
@@ -310,7 +310,7 @@ typedef enum gs_tree_code_class {
  GS_TCC_UNARY,
  GS_TCC_BINARY,
  GS_TCC_STATEMENT,
- GS_TCC_EXPRESSION,
+ GS_TCC_EXPRESSION
 
 } gs_tree_code_class_t;
 
@@ -326,44 +326,44 @@ typedef struct gspin *gs_t;
 typedef gs_t *gs_vec_t;
 
 
-// Bug 13134: gspin_t should have alignment 4 to conserve memory.
-// Data types with alignment 8 and higher are stored in u1.data[] and
-// realigned in the inline procedures below using gs_realign_t.
+/* Bug 13134: gspin_t should have alignment 4 to conserve memory. */
+/* Data types with alignment 8 and higher are stored in u1.data[] and */
+/* realigned in the inline procedures below using gs_realign_t. */
 typedef struct gspin
 {
-  union { // byte 0
+  union { /* byte 0 */
     struct {
-      gs_code_t	code:8;
+      unsigned int	code:8;         /*gs_code_t*/
       unsigned int	emitted:1;
-      unsigned int	slen:23;	// length part of IB_STRING
+      unsigned int	slen:23;	/* length part of IB_STRING */
     } u0s0;
-    struct { // byte 0
-      char		unused1;	// space for code
-      char		unused2;	// space for emitted flag
-      union { // byte 2
-	unsigned char	byte;	// IB_BOOL, IB_CHAR, GS_TCC, GSBI_CLASS
-	unsigned short	hword;	// GSBI
+    struct { /* byte 0 */
+      char		unused1;	/* space for code */
+      char		unused2;	/* space for emitted flag */
+      union { /* byte 2 */
+	unsigned char	byte;	/* IB_BOOL, IB_CHAR, GS_TCC, GSBI_CLASS */
+	unsigned short	hword;	/* GSBI */
       } u0s1u;
     } u0s1;
   } u0;
-  union { // byte 4
-    unsigned int	u;	// IB_UNSIGNED, IB_UNSIGNED_LONG
-    int			n;	// IB_INT, IB_LONG
-    float		f;	// IB_FLOAT
-    gs_t		arg[1];	// for pointing to kids of non-leaf nodes
-    char *		s;	// pointer part of IB_STRING
-    int			data[4]; // All types larger than 4 bytes (see
-  } u1;				 //   gs_realign_t below)
+  union { /* byte 4 */
+    unsigned int	u;	/* IB_UNSIGNED, IB_UNSIGNED_LONG */
+    int			n;	/* IB_INT, IB_LONG */
+    float		f;	/* IB_FLOAT */
+    gs_t		arg[1];	/* for pointing to kids of non-leaf nodes */
+    char *		s;	/* pointer part of IB_STRING */
+    int			data[4]; /* All types larger than 4 bytes (see */
+  } u1;				 /*   gs_realign_t below) */
 } gspin_t;
 
 
 typedef union gs_realign
 {
   int data[4];
-  long long		ll;	// IB_LONG_LONG
-  unsigned long long	ull;	// IB_UNSIGNED_LONG_LONG, IB_BIT_VECTOR
-  double		d;	// IB_DOUBLE
-  long double		ld;	// IB_LONG_DOUBLE
+  long long		ll;	/* IB_LONG_LONG */
+  unsigned long long	ull;	/* IB_UNSIGNED_LONG_LONG, IB_BIT_VECTOR */
+  double		d;	/* IB_DOUBLE */
+  long double		ld;	/* IB_LONG_DOUBLE */
 } gs_realign_t;
 
 
@@ -424,7 +424,7 @@ static inline gs_void_t _gs_bv (gs_t node, gs_count_t position, bool bit)
   gs_realign_t realign;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
   GS_ASSERT (bit == true || bit == false, "Bad bit value");
-  // Per Bug 10335, return right away if the value of parameter bit is 0.
+  /* Per Bug 10335, return right away if the value of parameter bit is 0. */
   if (bit == false)
     return;
   realign.ull = 1LL << position;
@@ -436,11 +436,11 @@ static inline gs_void_t _gs_bv (gs_t node, gs_count_t position, bool bit)
 static inline bool gs_bv (gs_t node, unsigned int position)
 {
   gs_realign_t realign;
+  unsigned long long k = 1LL << position;
   if (node == NULL)
     return false;
   realign.data[0] = node->u1.data[0];
   realign.data[1] = node->u1.data[1];
-  unsigned long long k = 1LL << position;
   return (k & realign.ull) != 0;
 }
 
@@ -458,12 +458,13 @@ static inline gs_void_t _gs_bitsv (gs_t node, gs_count_t position,
                                    unsigned int bits, unsigned long val )
 {
   gs_realign_t realign;
+  unsigned long long mask;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
   GS_ASSERT (bits < 32, "bits exceeds limits");
-  unsigned long long mask = (1LL << bits) - 1;
-  val &= mask;  // truncate the value to bits length
+  mask = (1LL << bits) - 1;
+  val &= mask;  /* truncate the value to bits length */
 
-  // get old value
+  /* get old value */
   realign.data[0] = node->u1.data[0];
   realign.data[1] = node->u1.data[1];
 
@@ -479,13 +480,14 @@ static inline unsigned long gs_bitsv (gs_t node, unsigned int position,
                                       unsigned int bits)
 {
   gs_realign_t realign;
+  unsigned long long mask, k;
   if (node == NULL)
     return false;
   GS_ASSERT (bits < 64, "bits exceeds limits");
-  unsigned long long mask = (1LL << bits) - 1;
+  mask = (1LL << bits) - 1;
   realign.data[0] = node->u1.data[0];
   realign.data[1] = node->u1.data[1];
-  unsigned long k = (realign.ull >> position) & mask;
+  k = (realign.ull >> position) & mask;
   return k;
 }
 
@@ -657,7 +659,7 @@ static inline unsigned int gs_slen(gs_t op)
 static inline gs_code_t gs_code (gs_t node)
 {
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
-  return node->u0.u0s0.code;
+  return (gs_code_t) node->u0.u0s0.code;
 }
 
 static inline gs_code_t gs_tree_code(gs_t node) { return gs_code(node); }
@@ -667,15 +669,15 @@ static inline gs_t gs_operand(gs_t node, int i)
   return node->u1.arg[i];
 }
 
-// gs_t field accessors/modifiers-
+/* gs_t field accessors/modifiers- */
 
 extern gs_t __gs (gs_code_t code);
 
 
-// Auxiliary
+/* Auxiliary */
 extern gs_void_t gs_dump (gs_t t);
 
-// This is GCC specific and ideally ought to be abstracted out into gspin-tel.h maybe.
+/* This is GCC specific and ideally ought to be abstracted out into gspin-tel.h maybe. */
 typedef enum gsbi {
 
   GSBI_BUILT_IN_ACOS,
@@ -1438,7 +1440,7 @@ typedef enum gsbi {
   GSBI_BUILT_IN_SET_ADDR,
   GSBI_BUILT_IN_SET_CIRCBUF,
 #endif
-  GSBI_END_BUILTINS,
+  GSBI_END_BUILTINS
 
 } gsbi_t;
 
@@ -1449,7 +1451,7 @@ typedef enum gsbi_class {
  GSBI_CLASS_NOT_BUILT_IN,
  GSBI_CLASS_BUILT_IN_FRONTEND,
  GSBI_CLASS_BUILT_IN_MD,
- GSBI_CLASS_BUILT_IN_NORMAL,
+ GSBI_CLASS_BUILT_IN_NORMAL
 
 } gsbi_class_t;
 
@@ -1829,8 +1831,8 @@ typedef enum gsbi_ts {
 
 extern gs_string_t gsbi_ts_name (gsbi_ts_t code);
 
-// These are indexes into GS_GLOBAL_TREES_LIST.
-// They have to be in 1-1 correspondence with the corresponding enumeration in GCC.
+/* These are indexes into GS_GLOBAL_TREES_LIST. */
+/* They have to be in 1-1 correspondence with the corresponding enumeration in GCC. */
 typedef enum gs_tree_index
 {
   GS_TI_ERROR_MARK,
@@ -1909,7 +1911,7 @@ typedef enum gs_tree_index
   GS_TI_MAX
 } gs_tree_index_t;
 
-// The values below have to be in 1-1 correspondence with the corresponding enumeration in GCC.
+/* The values below have to be in 1-1 correspondence with the corresponding enumeration in GCC. */
 typedef enum gs_integer_type_kind {
   GS_ITK_CHAR,
   GS_ITK_SIGNED_CHAR,
@@ -1966,4 +1968,4 @@ typedef enum gs_tls_model_kind {
   GS_TLS_MODEL_LOCAL_EXEC
 } gs_tls_model_kind_t;
 
-#endif // __GSPIN_TREE_H__
+#endif /* __GSPIN_TREE_H__ */
