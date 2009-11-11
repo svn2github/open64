@@ -1395,7 +1395,10 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
     if (x->Is_var_volatile()) 
       return NULL;
 #endif
-    x->Set_dsctyp(cr->Dsctyp());
+    if (x->Dsctyp() == 0 ||
+        (MTYPE_is_integral(x->Dsctyp()) &&
+         MTYPE_byte_size(cr->Dsctyp()) != MTYPE_byte_size(x->Dsctyp())))
+        x->Set_dsctyp(cr->Dsctyp());
     x->Set_lod_ty(TY_pointed(cr->Ilod_base_ty()));
     x->Set_field_id(cr->I_field_id());
 #if 1 // bug fix sep-4-02
@@ -1407,9 +1410,9 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
       x->Set_offset(cr->Offset()+cr->Ilod_base()->Offset());
     if (cr->Opr() == OPR_ILDBITS) 
       x->Set_bit_field_valid();
-    // if sizes don't match, add cvt
-    if (MTYPE_is_integral(x->Dtyp()) 
-      && MTYPE_byte_size(cr->Dtyp()) != MTYPE_byte_size(x->Dtyp())) 
+    // add cvt if types don't match (size or sign differences)
+    if (MTYPE_is_integral(x->Dtyp()) &&
+        cr->Dtyp() != x->Dtyp())
     {
       DevWarn("insert cvt above zero-version");
       CODEREP cvt_cr;
