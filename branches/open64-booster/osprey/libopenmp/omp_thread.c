@@ -584,13 +584,13 @@ __ompc_init_rtl(int num_threads)
 
   for (i=1; i< threads_to_create; i++) {
     stack_pointer = malloc(__omp_stack_size);
-    Is_True(stack_pointer != NULL, ("Can not allocate stack for slave"));
+    Is_True(stack_pointer != NULL, ("Cannot allocate stack for slave"));
     return_value = pthread_attr_setstack(&__omp_pthread_attr, stack_pointer, __omp_stack_size); 
-    Is_True(return_value == 0, ("Can not set stack pointer for thread"));
+    Is_True(return_value == 0, ("Cannot set stack pointer for thread"));
     return_value = pthread_create( &(__omp_level_1_pthread[i].uthread_id),
 				   &__omp_pthread_attr, (pthread_entry) __ompc_level_1_slave, 
 				   (void *)((unsigned long int)i));
-    Is_True(return_value == 0, ("Can not create more pthread"));
+    Is_True(return_value == 0, ("Cannot create more pthreads"));
 
     __omp_level_1_pthread[i].stack_pointer = stack_pointer;
 
@@ -632,7 +632,7 @@ __ompc_expand_level_1_team(int new_num_threads)
                         CACHE_LINE_SIZE);
                         
 
-  Is_True(new_u_team != NULL, ("Can not realloc level 1 pthread data structure"));
+  Is_True(new_u_team != NULL, ("Cannot realloc level 1 pthread data structure"));
 
   if (new_u_team != __omp_level_1_pthread) {
     /* squash hash_table */
@@ -658,7 +658,7 @@ __ompc_expand_level_1_team(int new_num_threads)
 					  sizeof(omp_v_thread_t) * new_num_threads, 
                       CACHE_LINE_SIZE);
 
-  Is_True(new_v_team != NULL, ("Can not realloc level 1 team data structure"));
+  Is_True(new_v_team != NULL, ("Cannot realloc level 1 team data structure"));
 
   if (new_v_team != __omp_level_1_team) {
     __omp_level_1_team = new_v_team;
@@ -687,13 +687,13 @@ __ompc_expand_level_1_team(int new_num_threads)
 
     /* for u_thread */
     stack_pointer = malloc(__omp_stack_size);
-    Is_True(stack_pointer != NULL, ("Can not allocate stack for slave"));
+    Is_True(stack_pointer != NULL, ("Cannot allocate stack for slave"));
     return_value = pthread_attr_setstack(&__omp_pthread_attr, stack_pointer, __omp_stack_size);
-    Is_True(return_value == 0, ("Can not set stack pointer for thread"));
+    Is_True(return_value == 0, ("Cannot set stack pointer for thread"));
     return_value = pthread_create( &(__omp_level_1_pthread[i].uthread_id),
 				   &__omp_pthread_attr, (pthread_entry) __ompc_level_1_slave, 
 				   (void *)((unsigned long int)i));
-    Is_True(return_value == 0, ("Can not create more pthread"));
+    Is_True(return_value == 0, ("Cannot create more pthreads"));
 
     __omp_level_1_pthread[i].stack_pointer = stack_pointer;
 
@@ -813,12 +813,12 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
 
     nest_v_thread_team = aligned_malloc(sizeof(omp_v_thread_t) * num_threads, CACHE_LINE_SIZE); 
     Is_True(nest_v_thread_team != NULL, 
-	    ("Can't allocate nested v_thread team"));
+	    ("Cannot allocate nested v_thread team"));
 
     /* nest_u_thread_team[0] is of no use currently*/
     nest_u_thread_team = aligned_malloc(sizeof(omp_u_thread_t) * num_threads, CACHE_LINE_SIZE);
     Is_True(nest_u_thread_team != NULL,
-	    ("Can't allocate nested u_thread team"));
+	    ("Cannot allocate nested u_thread team"));
 
     /* A lock is needed to protect global variables */
     /* TODO: need a global lock*/
@@ -837,14 +837,14 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
       nest_u_thread_team[i].task = &(nest_v_thread_team[i]);
 
       stack_pointer = malloc(__omp_stack_size);
-      Is_True(stack_pointer != NULL, ("Can not allocate stack for slave"));
+      Is_True(stack_pointer != NULL, ("Cannot allocate stack for slave"));
       return_value = pthread_attr_setstack(&__omp_pthread_attr, stack_pointer, __omp_stack_size);
-      Is_True(return_value == 0, ("Can not set stack pointer for thread"));
+      Is_True(return_value == 0, ("Cannot set stack pointer for thread"));
   
       return_value = pthread_create(&(nest_u_thread_team[i].uthread_id),
 				    &__omp_pthread_attr, (pthread_entry) __ompc_nested_slave, 
 				    (void *)(&(nest_v_thread_team[i])));
-      Is_True(return_value == 0, ("Can not create more pthread"));
+      Is_True(return_value == 0, ("Cannot create more pthreads"));
 
       // TODO: may need to bind pthread to a specific cpu for nested threads
 
