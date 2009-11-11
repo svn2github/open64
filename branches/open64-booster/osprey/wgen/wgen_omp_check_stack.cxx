@@ -363,6 +363,6 @@ void WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_ID id, ST * st,
   }
 
   // bug 5149: set pragma_compiler_generated flag
-  Add_Pragma_To_MP_Regions (&regions, id, st, 0, 0, TRUE, parallel_only);
+  Add_Pragma_To_MP_Regions (&regions, id, st, 0, WN_MAP_UNDEFINED, TRUE, parallel_only);
 }
 

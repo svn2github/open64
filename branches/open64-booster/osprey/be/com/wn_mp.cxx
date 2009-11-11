@@ -11813,7 +11813,8 @@ Process_Parallel_Region ( void )
   stmt_block = Walk_and_Localize ( stmt_block, var_table, &lps, TRUE , 
                                    &non_pod_finalization_nodes );
 #ifdef KEY
-  if (LANG_Enable_CXX_Openmp && PU_Info_pu(ppuinfo).misc)
+  if (LANG_Enable_CXX_Openmp && PU_Info_pu(ppuinfo).misc &&
+    PU_src_lang(PU_Info_pu(ppuinfo)) == PU_CXX_LANG)
   { // C++
     Is_True (parallel_proc, ("Parallel block unavailable"));
     PU_IDX pu_idx = ST_pu(parallel_proc);
