@@ -332,7 +332,7 @@ INT32 WOPT_Enable_Pro_Loop_Fusion_Func_Limit = -1; // Enable proactive loop fusi
 INT32 WOPT_Enable_Pro_Loop_Interchange_Func_Limit = -1; // Enable proactive loop interchange for 
                                                         // functions within the limit.
 BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans = TRUE;  // Enables proactive loop fusion transformation
-BOOL  WOPT_Enable_Pro_Loop_Interchange_Trans = FALSE; // Enables proactive loop interchange transformation
+BOOL  WOPT_Enable_Pro_Loop_Interchange_Trans = TRUE; // Enables proactive loop interchange transformation
 
 BOOL  WOPT_Enable_Mem_Clear_Remove = TRUE;  // Enables removal of redundant mem clear after a calloc
 
