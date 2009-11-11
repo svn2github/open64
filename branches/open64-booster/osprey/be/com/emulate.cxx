@@ -1516,7 +1516,7 @@ static WN *em_exp_int(WN *block, WN *x, WN *pow, TYPE_ID type)
     INT32	absN = ABS(n);
     WN		*exp=  NULL;
 
-    if (em_exp_int_max < absN)
+    if (em_exp_int_max < absN || absN < 0) //in case absN == 0x80000000
       return NULL;
 
     switch(n) {
