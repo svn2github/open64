@@ -79,12 +79,16 @@ static const char* mmx_reg_names[8] = {
 enum { RAX=0, RBX, RBP, RSP, RDI, RSI, RDX, RCX,
        R8, R9, R10, R11, R12, R13, R14, R15 };
 
+enum { XMM0=0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7,
+       XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15 };
+
 static int rax_reg[] = { RAX };
 static int rdx_reg[] = { RDX };
 static int rcx_reg[] = { RCX };
 static int rbp_reg[] = { RBP };
 static int rsp_reg[] = { RSP };
 static int r11_reg[] = { R11 };
+static int xmm0_reg[] = { XMM0 };
 static int m32_8bit_regs[] = {RAX, RBX, RCX, RDX};
 
 static int ISA_Mask(ISA_SUBSET isa)
@@ -140,6 +144,8 @@ main (int argc, char** argv)
   ISA_Register_Subclass_Create("rbp", rc_integer, 1, rbp_reg, NULL);
   ISA_Register_Subclass_Create("rsp", rc_integer, 1, rsp_reg, NULL);
   ISA_Register_Subclass_Create("r11", rc_integer, 1, r11_reg, NULL);
+
+  ISA_Register_Subclass_Create("xmm0", rc_fp, 1, xmm0_reg, NULL);
 
   ISA_Register_Subclass_Create("m32_8bit_regs", rc_integer, 4, m32_8bit_regs, NULL);
 

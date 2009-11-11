@@ -135,6 +135,10 @@ main()
     ISA_Reg_Opnd_Type_Create("edx", ISA_REGISTER_CLASS_integer,
 			     ISA_REGISTER_SUBCLASS_rdx,
 			     32, SIGNED, INVALID);
+  const OPERAND_VALUE_TYPE ecx =
+    ISA_Reg_Opnd_Type_Create("ecx", ISA_REGISTER_CLASS_integer,
+			     ISA_REGISTER_SUBCLASS_rcx,
+			     32, SIGNED, INVALID);
   const OPERAND_VALUE_TYPE cl =
     ISA_Reg_Opnd_Type_Create("cl", ISA_REGISTER_CLASS_integer,
 			     ISA_REGISTER_SUBCLASS_rcx,
@@ -167,6 +171,10 @@ main()
     ISA_Reg_Opnd_Type_Create("fp256", ISA_REGISTER_CLASS_float,
                              ISA_REGISTER_SUBCLASS_UNDEFINED,
                              256, SIGNED, INVALID);
+  const OPERAND_VALUE_TYPE xmm0 =
+    ISA_Reg_Opnd_Type_Create("xmm0", ISA_REGISTER_CLASS_float,
+                             ISA_REGISTER_SUBCLASS_xmm0,
+                             128, SIGNED, INVALID);
   const OPERAND_VALUE_TYPE x87 =
     ISA_Reg_Opnd_Type_Create("x87", ISA_REGISTER_CLASS_x87,
 			     ISA_REGISTER_SUBCLASS_UNDEFINED,
@@ -215,6 +223,10 @@ main()
   const OPERAND_USE_TYPE opnd2 = Create_Operand_Use("opnd2");
   // third operand of an alu operator
   const OPERAND_USE_TYPE opnd3 = Create_Operand_Use("opnd3");
+  // forth operand
+  const OPERAND_USE_TYPE opnd4 = Create_Operand_Use("opnd4");
+  // fifth operand
+  const OPERAND_USE_TYPE opnd5 = Create_Operand_Use("opnd5");
   // addend/subtrahend operand of a madd
   const OPERAND_USE_TYPE maddend = Create_Operand_Use("maddend");
 
@@ -234,6 +246,19 @@ main()
 		    TOP_emms,
                     TOP_vzeroupper,
 		    TOP_UNDEFINED);
+
+  Instruction_Group("sse3 monitor",
+                    TOP_monitor,
+                    TOP_UNDEFINED);
+  Operand( 0, rax, opnd1);
+  Operand( 1, ecx, opnd2);
+  Operand( 2, edx, opnd3);
+
+  Instruction_Group("sse3 mwait",
+                    TOP_mwait,
+                    TOP_UNDEFINED);
+  Operand( 0, ecx, opnd1);
+  Operand( 1, edx, opnd2);
 
   Instruction_Group("ret imm16",
 		    TOP_reti,
@@ -295,6 +320,238 @@ main()
   Result(0, int64);
   Operand(0, int64, opnd1);
   Operand(1, int64, opnd2);
+
+  Instruction_Group( "sse4.2 crc32b reg",
+                           TOP_crc32b,
+                           TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int32, opnd1);
+  Operand(1, int8, opnd2);
+
+  Instruction_Group( "sse4.2 crc32w reg",
+                           TOP_crc32w,
+                           TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int32, opnd1);
+  Operand(1, int16, opnd2);
+
+  Instruction_Group( "sse4.2 crc32d reg",
+                           TOP_crc32d,
+                           TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int32, opnd1);
+  Operand(1, int32, opnd2);
+
+  Instruction_Group( "sse4.2 crc32q reg",
+                           TOP_crc32q,
+                           TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64, opnd1);
+  Operand(1, int64, opnd2);
+
+  Instruction_Group( "sse4.2 crc32 mem opnd",
+                           TOP_crcx32b,
+                           TOP_crcx32w,
+                           TOP_crcx32d,
+                           TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int32, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+
+  Instruction_Group( "sse4.2 crc32q mem opnd",
+                           TOP_crcx32q,
+                           TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+
+  Instruction_Group( "sse4.2 crc32 mem opnd w/ scaled index",
+                           TOP_crcxx32b,
+                           TOP_crcxx32w,
+                           TOP_crcxx32d,
+                           TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int32, opnd1);
+  Operand(1, int64, base);
+  Operand(2, int64, index);
+  Operand(3, uimm8, scale);
+  Operand(4, simm32, offset);
+
+  Instruction_Group( "sse4.2 crc32q mem opnd w/ scaled index",
+                           TOP_crcxx32q,
+                           TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64, opnd1);
+  Operand(1, int64, base);
+  Operand(2, int64, index);
+  Operand(3, uimm8, scale);
+  Operand(4, simm32, offset);
+
+  Instruction_Group( "sse4.2 crc32 mem opnd w/ scaled index w/o base",
+                           TOP_crcxxx32b,
+                           TOP_crcxxx32w,
+                           TOP_crcxxx32d,
+                           TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int32, opnd1);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+
+  Instruction_Group( "sse4.2 crc32q mem opnd w/ scaled index w/o base",
+                           TOP_crcxxx32q,
+                           TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64, opnd1);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+
+  Instruction_Group( "int16 unary reg",
+                           /* SSE4.2 instructions */
+                           TOP_popcnt16,
+                           TOP_UNDEFINED);
+  Result(0, int16);
+  Operand(0, int16, opnd1);
+
+  Instruction_Group( "int16 unary mem opnd",
+                           /* SSE4.2 instructions */
+                           TOP_popcntx16,
+                           TOP_UNDEFINED);
+  Result(0, int16);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+
+  Instruction_Group( "int16 unary mem opnd w/ scaled index",
+                           /* SSE4.2 instructions */
+                           TOP_popcntxx16,
+                           TOP_UNDEFINED);
+  Result(0, int16);
+  Operand(0, int64, base);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+
+  Instruction_Group( "int16 unary mem opnd w/ scaled index w/o base",
+                           /* SSE4.2 instructions */
+                           TOP_popcntxxx16,
+                           TOP_UNDEFINED);
+  Result(0, int16);
+  Operand(0, int64, index);
+  Operand(1, uimm8, scale);
+  Operand(2, simm32, offset);
+
+  Instruction_Group( "int32 unary reg",
+                           /* SSE4.2 instructions */
+                           TOP_popcnt32,
+                           TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int32, opnd1);
+
+  Instruction_Group( "int32 unary mem opnd",
+                           /* SSE4.2 instructions */
+                           TOP_popcntx32,
+                           TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+
+  Instruction_Group( "int32 unary mem opnd w/ scaled index",
+                           /* SSE4.2 instructions */
+                           TOP_popcntxx32,
+                           TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int64, base);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+
+  Instruction_Group( "int32 unary mem opnd w/ scaled index w/o base",
+                           /* SSE4.2 instructions */
+                           TOP_popcntxxx32,
+                           TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int64, index);
+  Operand(1, uimm8, scale);
+  Operand(2, simm32, offset);
+
+  Instruction_Group( "int64 unary reg",
+                           /* SSE4.2 instructions */
+                           TOP_popcnt64,
+                           TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64, opnd1);
+
+  Instruction_Group( "int64 unary mem opnd",
+                           /* SSE4.2 instructions */
+                           TOP_popcntx64,
+                           TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+
+  Instruction_Group( "int64 unary mem opnd w/ scaled index",
+                           /* SSE4.2 instructions */
+                           TOP_popcntxx64,
+                           TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64, base);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+
+  Instruction_Group( "int64 unary mem opnd w/ scaled index w/o base",
+                           /* SSE4.2 instructions */
+                           TOP_popcntxxx64,
+                           TOP_UNDEFINED);
+  Result(0, int64);
+  Operand(0, int64, index);
+  Operand(1, uimm8, scale);
+  Operand(2, simm32, offset);
+
+  Instruction_Group( "vector unary reg",
+                           /* SSSE3 instructions */
+                           TOP_pabs128v8,
+                           TOP_pabs128v16,
+                           TOP_pabs128v32,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+
+  Instruction_Group( "vector unary mem opnd",
+                           /* SSSE3 instructions */
+                           TOP_pabsx128v8,
+                           TOP_pabsx128v16,
+                           TOP_pabsx128v32,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+
+  Instruction_Group( "vector unary mem opnd w/ scaled index",
+                           /* SSSE3 instructions */
+                           TOP_pabsxx128v8,
+                           TOP_pabsxx128v16,
+                           TOP_pabsxx128v32,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, int64, base);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+
+  Instruction_Group( "vector unary mem opnd w/ scaled index w/o base",
+                           /* SSSE3 instructions */
+                           TOP_pabsxxx128v8,
+                           TOP_pabsxxx128v16,
+                           TOP_pabsxxx128v32,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, int64, index);
+  Operand(1, uimm8, scale);
+  Operand(2, simm32, offset);
 
   Instruction_Group( "vector arithmetic",
   		     TOP_mul128v16,
@@ -359,6 +616,48 @@ main()
 		     TOP_max128v16,
 		     TOP_min128v8,
 		     TOP_min128v16,
+                     /* SSSE3 instructions */
+                     TOP_psign128v8,
+                     TOP_psign128v16,
+                     TOP_psign128v32,
+                     TOP_pshuf128v8,
+                     TOP_phsub128v16,
+                     TOP_phsub128v32,
+                     TOP_phsubs128v16,
+                     TOP_phadd128v16,
+                     TOP_phadd128v32,
+                     TOP_phadds128v16,
+                     TOP_pmulhrs128,
+                     TOP_pmaddubs128,
+                     /* SSE4.1 instructions */
+                     TOP_muldq,
+                     TOP_ldntdqa,
+                     TOP_stntdqa,
+                     TOP_mins128v8,
+                     TOP_maxs128v8,
+                     TOP_minu128v16,
+                     TOP_maxu128v16,
+                     TOP_minu128v32,
+                     TOP_maxu128v32,
+                     TOP_mins128v32,
+                     TOP_maxs128v32,
+                     TOP_pmovsxbw,
+                     TOP_pmovzxbw,
+                     TOP_pmovsxbd,
+                     TOP_pmovzxbd,
+                     TOP_pmovsxbq,
+                     TOP_pmovzxbq,
+                     TOP_pmovsxwd,
+                     TOP_pmovzxwd,
+                     TOP_pmovsxwq,
+                     TOP_pmovzxwq,
+                     TOP_pmovsxdq,
+                     TOP_pmovzxdq,
+                     TOP_mul128v32,
+                     TOP_cmpeq128v64,
+                     TOP_packusdw,
+                     /* SSE4.2 instructions */
+                     TOP_cmpgt128v64,
 		     TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -418,7 +717,49 @@ main()
 		           TOP_maxx128v8,
 		           TOP_maxx128v16,
 		           TOP_minx128v8,
-		           TOP_minx128v16,
+ 		           TOP_minx128v16,
+                           /* SSSE3 instructions */
+                           TOP_psignx128v8,
+                           TOP_psignx128v16,
+                           TOP_psignx128v32,
+                           TOP_pshufx128v8,
+                           TOP_phsubx128v16,
+                           TOP_phsubx128v32,
+                           TOP_phsubsx128v16,
+                           TOP_phaddx128v16,
+                           TOP_phaddx128v32,
+                           TOP_phaddsx128v16,
+                           TOP_pmulhrsx128,
+                           TOP_pmaddubsx128,
+                           /* SSE4.1 instructions */
+                           TOP_muldqx,
+                           TOP_ldntdqax,
+                           TOP_stntdqax,
+                           TOP_minsx128v8,
+                           TOP_maxsx128v8,
+                           TOP_minux128v16,
+                           TOP_maxux128v16,
+                           TOP_minux128v32,
+                           TOP_maxux128v32,
+                           TOP_minsx128v32,
+                           TOP_maxsx128v32,
+                           TOP_pmovsxbwx,
+                           TOP_pmovzxbwx,
+                           TOP_pmovsxbdx,
+                           TOP_pmovzxbdx,
+                           TOP_pmovsxbqx,
+                           TOP_pmovzxbqx,
+                           TOP_pmovsxwdx,
+                           TOP_pmovzxwdx,
+                           TOP_pmovsxwqx,
+                           TOP_pmovzxwqx,
+                           TOP_pmovsxdqx,
+                           TOP_pmovzxdqx,
+                           TOP_mulx128v32,
+                           TOP_cmpeqx128v64,
+                           TOP_packusdwx,
+                           /* SSE4.2 instructions */
+                           TOP_cmpgtx128v64,
 			   TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -480,6 +821,48 @@ main()
 		           TOP_maxxx128v16,
 		           TOP_minxx128v8,
 		           TOP_minxx128v16,
+                           /* SSSE3 instructions */
+                           TOP_psignxx128v8,
+                           TOP_psignxx128v16,
+                           TOP_psignxx128v32,
+                           TOP_pshufxx128v8,
+                           TOP_phsubxx128v16,
+                           TOP_phsubxx128v32,
+                           TOP_phsubsxx128v16,
+                           TOP_phaddxx128v16,
+                           TOP_phaddxx128v32,
+                           TOP_phaddsxx128v16,
+                           TOP_pmulhrsxx128,
+                           TOP_pmaddubsxx128,
+                           /* SSE4.1 instructions */
+                           TOP_muldqxx,
+                           TOP_ldntdqaxx,
+                           TOP_stntdqaxx,
+                           TOP_minsxx128v8,
+                           TOP_maxsxx128v8,
+                           TOP_minuxx128v16,
+                           TOP_maxuxx128v16,
+                           TOP_minuxx128v32,
+                           TOP_maxuxx128v32,
+                           TOP_minsxx128v32,
+                           TOP_maxsxx128v32,
+                           TOP_pmovsxbwxx,
+                           TOP_pmovzxbwxx,
+                           TOP_pmovsxbdxx,
+                           TOP_pmovzxbdxx,
+                           TOP_pmovsxbqxx,
+                           TOP_pmovzxbqxx,
+                           TOP_pmovsxwdxx,
+                           TOP_pmovzxwdxx,
+                           TOP_pmovsxwqxx,
+                           TOP_pmovzxwqxx,
+                           TOP_pmovsxdqxx,
+                           TOP_pmovzxdqxx,
+                           TOP_mulxx128v32,
+                           TOP_cmpeqxx128v64,
+                           TOP_packusdwxx,
+                           /* SSE4.2 instructions */
+                           TOP_cmpgtxx128v64,
 			   TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -543,12 +926,190 @@ main()
 		           TOP_maxxxx128v16,
 		           TOP_minxxx128v8,
 		           TOP_minxxx128v16,
+                           /* SSSE3 instructions */
+                           TOP_psignxxx128v8,
+                           TOP_psignxxx128v16,
+                           TOP_psignxxx128v32,
+                           TOP_pshufxxx128v8,
+                           TOP_phsubxxx128v16,
+                           TOP_phsubxxx128v32,
+                           TOP_phsubsxxx128v16,
+                           TOP_phaddxxx128v16,
+                           TOP_phaddxxx128v32,
+                           TOP_phaddsxxx128v16,
+                           TOP_pmulhrsxxx128,
+                           TOP_pmaddubsxxx128,
+                           /* SSE4.1 instructions */
+                           TOP_muldqxxx,
+                           TOP_minsxxx128v8,
+                           TOP_maxsxxx128v8,
+                           TOP_minuxxx128v16,
+                           TOP_maxuxxx128v16,
+                           TOP_minuxxx128v32,
+                           TOP_maxuxxx128v32,
+                           TOP_minsxxx128v32,
+                           TOP_maxsxxx128v32,
+                           TOP_pmovsxbwxxx,
+                           TOP_pmovzxbwxxx,
+                           TOP_pmovsxbdxxx,
+                           TOP_pmovzxbdxxx,
+                           TOP_pmovsxbqxxx,
+                           TOP_pmovzxbqxxx,
+                           TOP_pmovsxwdxxx,
+                           TOP_pmovzxwdxxx,
+                           TOP_pmovsxwqxxx,
+                           TOP_pmovzxwqxxx,
+                           TOP_pmovsxdqxxx,
+                           TOP_pmovzxdqxxx,
+                           TOP_mulxxx128v32,
+                           TOP_cmpeqxxx128v64,
+                           TOP_packusdwxxx,
+                           /* SSE4.2 instructions */
+                           TOP_cmpgtxxx128v64,
 			   TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
   Operand(1, int64, index);
   Operand(2, uimm8, scale);
   Operand(3, simm32, offset);
+
+  Instruction_Group( "vector res reg reg imm",
+                           /* SSSE3 instructions */
+                           TOP_palignr128,
+                           /* SSE4.1 instructions */
+                           TOP_roundsd,
+                           TOP_mpsadbw,
+                           TOP_insr128v8,
+                           TOP_insr128v16,
+                           TOP_insr128v32,
+                           TOP_insr128v64,
+                           TOP_extr128v8,
+                           TOP_extr128v16,
+                           TOP_extr128v32,
+                           TOP_extr128v64,
+                           TOP_finsr128v32,
+                           TOP_fextr128v32,
+                           TOP_fblendv128v32,
+                           TOP_fblendv128v64,
+                           TOP_blendv128v8,
+                           TOP_round128v32,
+                           TOP_roundss,
+                           TOP_fblend128v64,
+                           TOP_blend128v16,
+                           TOP_fdp128v32,
+                           TOP_fdp128v64,
+                           TOP_round128v64,
+                           TOP_fblend128v32,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, fp128, opnd2);
+  Operand(2, simm8, opnd3);
+
+  Instruction_Group( "vector res reg mem imm",
+                           /* SSSE3 instructions */
+                           TOP_palignrx128,
+                           /* SSE4.1 instructions */
+                           TOP_roundsdx,
+                           TOP_mpsadbwx,
+                           TOP_insrx128v8,
+                           TOP_insrx128v16,
+                           TOP_insrx128v32,
+                           TOP_insrx128v64,
+                           TOP_extrx128v8,
+                           TOP_extrx128v16,
+                           TOP_extrx128v32,
+                           TOP_extrx128v64,
+                           TOP_finsrx128v32,
+                           TOP_fextrx128v32,
+                           TOP_fblendvx128v32,
+                           TOP_fblendvx128v64,
+                           TOP_blendvx128v8,
+                           TOP_roundx128v32,
+                           TOP_roundssx,
+                           TOP_fblendx128v64,
+                           TOP_blendx128v16,
+                           TOP_fdpx128v32,
+                           TOP_fdpx128v64,
+                           TOP_roundx128v64,
+                           TOP_fblendx128v32,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+  Operand(3, simm8, opnd3);
+
+  Instruction_Group( "vector res reg mem imm w/ scaled index",
+                           /* SSSE3 instructions */
+                           TOP_palignrxx128,
+                           /* SSE4.1 instructions */
+                           TOP_roundsdxx,
+                           TOP_mpsadbwxx,
+                           TOP_insrxx128v8,
+                           TOP_insrxx128v16,
+                           TOP_insrxx128v32,
+                           TOP_insrxx128v64,
+                           TOP_extrxx128v8,
+                           TOP_extrxx128v16,
+                           TOP_extrxx128v32,
+                           TOP_extrxx128v64,
+                           TOP_finsrxx128v32,
+                           TOP_fextrxx128v32,
+                           TOP_fblendvxx128v32,
+                           TOP_fblendvxx128v64,
+                           TOP_blendvxx128v8,
+                           TOP_roundxx128v32,
+                           TOP_roundssxx,
+                           TOP_fblendxx128v64,
+                           TOP_blendxx128v16,
+                           TOP_fdpxx128v32,
+                           TOP_fdpxx128v64,
+                           TOP_roundxx128v64,
+                           TOP_fblendxx128v32,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, base);
+  Operand(2, int64, index);
+  Operand(3, uimm8, scale);
+  Operand(4, simm32, offset);
+  Operand(5, simm8, opnd3);
+
+  Instruction_Group( "vector res reg mem imm w/ scaled index w/o base",
+                           /* SSSE3 instructions */
+                           TOP_palignrxxx128,
+                           /* SSE4.1 instructions */
+                           TOP_roundsdxxx,
+                           TOP_mpsadbwxxx,
+                           TOP_insrxxx128v8,
+                           TOP_insrxxx128v16,
+                           TOP_insrxxx128v32,
+                           TOP_insrxxx128v64,
+                           TOP_extrxxx128v8,
+                           TOP_extrxxx128v16,
+                           TOP_extrxxx128v32,
+                           TOP_extrxxx128v64,
+                           TOP_finsrxxx128v32,
+                           TOP_fextrxxx128v32,
+                           TOP_fblendvxxx128v32,
+                           TOP_fblendvxxx128v64,
+                           TOP_blendvxxx128v8,
+                           TOP_roundxxx128v32,
+                           TOP_roundssxxx,
+                           TOP_fblendxxx128v64,
+                           TOP_blendxxx128v16,
+                           TOP_fdpxxx128v32,
+                           TOP_fdpxxx128v64,
+                           TOP_roundxxx128v64,
+                           TOP_fblendxxx128v32,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+  Operand(4, simm8, opnd3);
 
   Instruction_Group( "int8 arithmetic mem opnd",
 		     TOP_xorx8,
@@ -2211,6 +2772,40 @@ main()
   Operand(0, fp64,  opnd1);
   Operand(1, fp64,  opnd2);
 
+  Instruction_Group( "vector ptest reg",
+                           TOP_ptest128,
+                           TOP_UNDEFINED);
+  Result(0, rflags);
+  Operand(0, fp128, opnd1);
+  Operand(1, fp128, opnd2);
+
+  Instruction_Group( "vector ptest mem opnd",
+                           TOP_ptestx128,
+                           TOP_UNDEFINED);
+  Result(0, rflags);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+
+  Instruction_Group( "vector ptest mem opnd w/ scaled index",
+                           TOP_ptestxx128,
+                           TOP_UNDEFINED);
+  Result(0, rflags);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, base);
+  Operand(2, int64, index);
+  Operand(3, uimm8, scale);
+  Operand(4, simm32, offset);
+
+  Instruction_Group( "vector ptest mem opnd w/ scaled index w/o base",
+                           TOP_ptestxxx128,
+                           TOP_UNDEFINED);
+  Result(0, rflags);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+
   Instruction_Group("fp vector compare",
 		    TOP_cmpps,
 		    TOP_cmppd,
@@ -3188,6 +3783,174 @@ main()
   Operand(2, uimm8,  scale);
   Operand(3, simm32, offset);
   Operand(4, fp128,  opnd2);
+
+  Instruction_Group( "sse4.2 pcmpei reg",
+                           TOP_cmpestri,
+                           TOP_UNDEFINED);
+  Result(0, ecx);
+  Operand(0, fp128, opnd1);
+  Operand(1, eax, opnd2);
+  Operand(2, fp128, opnd3);
+  Operand(3, edx, opnd4);
+  Operand(4, simm8, opnd5);
+
+  Instruction_Group( "sse4.2 pcmpei mem opnd",
+                           TOP_cmpestrix,
+                           TOP_UNDEFINED);
+  Result(0, ecx);
+  Operand(0, fp128, opnd1);
+  Operand(1, eax, opnd2);
+  Operand(2, int64, base);
+  Operand(3, simm32, offset);
+  Operand(4, edx, opnd4);
+  Operand(5, simm8, opnd5);
+
+  Instruction_Group( "sse4.2 pcmpei mem opnd w/ scaled index",
+                           TOP_cmpestrixx,
+                           TOP_UNDEFINED);
+  Result(0, ecx);
+  Operand(0, fp128, opnd1);
+  Operand(1, eax, opnd2);
+  Operand(2, int64, base);
+  Operand(3, int64, index);
+  Operand(4, uimm8, scale);
+  Operand(5, simm32, offset);
+  Operand(6, edx, opnd4);
+  Operand(7, simm8, opnd5);
+
+  Instruction_Group( "sse4.2 pcmpei mem opnd w/ scaled index w/o base",
+                           TOP_cmpestrixxx,
+                           TOP_UNDEFINED);
+  Result(0, ecx);
+  Operand(0, fp128, opnd1);
+  Operand(1, eax, opnd2);
+  Operand(2, int64, index);
+  Operand(3, uimm8, scale);
+  Operand(4, simm32, offset);
+  Operand(5, edx, opnd4);
+  Operand(6, simm8, opnd5);
+
+  Instruction_Group( "sse4.2 pcmpem reg",
+                           TOP_cmpestrm,
+                           TOP_UNDEFINED);
+  Result(0, xmm0);
+  Operand(0, fp128, opnd1);
+  Operand(1, eax, opnd2);
+  Operand(2, fp128, opnd3);
+  Operand(3, edx, opnd4);
+  Operand(4, simm8, opnd5);
+
+  Instruction_Group( "sse4.2 pcmpem mem opnd",
+                           TOP_cmpestrmx,
+                           TOP_UNDEFINED);
+  Result(0, xmm0);
+  Operand(0, fp128, opnd1);
+  Operand(1, eax, opnd2);
+  Operand(2, int64, base);
+  Operand(3, simm32, offset);
+  Operand(4, edx, opnd4);
+  Operand(5, simm8, opnd5);
+
+  Instruction_Group( "sse4.2 pcmpem mem opnd w/ scaled index",
+                           TOP_cmpestrmxx,
+                           TOP_UNDEFINED);
+  Result(0, xmm0);
+  Operand(0, fp128, opnd1);
+  Operand(1, eax, opnd2);
+  Operand(2, int64, base);
+  Operand(3, int64, index);
+  Operand(4, uimm8, scale);
+  Operand(5, simm32, offset);
+  Operand(6, edx, opnd4);
+  Operand(7, simm8, opnd5);
+
+  Instruction_Group( "sse4.2 pcmpem mem opnd w/ scaled index w/o base",
+                           TOP_cmpestrmxxx,
+                           TOP_UNDEFINED);
+  Result(0, xmm0);
+  Operand(0, fp128, opnd1);
+  Operand(1, eax, opnd2);
+  Operand(2, int64, index);
+  Operand(3, uimm8, scale);
+  Operand(4, simm32, offset);
+  Operand(5, edx, opnd4);
+  Operand(6, simm8, opnd5);
+
+  Instruction_Group( "sse4.2 pcmpii reg",
+                           TOP_cmpistri,
+                           TOP_UNDEFINED);
+  Result(0, ecx);
+  Operand(0, fp128, opnd1);
+  Operand(1, fp128, opnd2);
+  Operand(2, simm8, opnd3);
+
+  Instruction_Group( "sse4.2 pcmpii mem opnd",
+                           TOP_cmpistrix,
+                           TOP_UNDEFINED);
+  Result(0, ecx);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+  Operand(3, simm8, opnd3);
+
+  Instruction_Group( "sse4.2 pcmpii mem opnd w/ scaled index",
+                           TOP_cmpistrixx,
+                           TOP_UNDEFINED);
+  Result(0, ecx);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, base);
+  Operand(2, int64, index);
+  Operand(3, uimm8, scale);
+  Operand(4, simm32, offset);
+  Operand(5, simm8, opnd3);
+
+  Instruction_Group( "sse4.2 pcmpii mem opnd w/ scaled index w/o base",
+                           TOP_cmpistrixxx,
+                           TOP_UNDEFINED);
+  Result(0, ecx);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+  Operand(4, simm8, opnd3);
+
+  Instruction_Group( "sse4.2 pcmpim reg",
+                           TOP_cmpistrm,
+                           TOP_UNDEFINED);
+  Result(0, xmm0);
+  Operand(0, fp128, opnd1);
+  Operand(1, fp128, opnd2);
+  Operand(2, simm8, opnd3);
+
+  Instruction_Group( "sse4.2 pcmpim mem opnd",
+                           TOP_cmpistrmx,
+                           TOP_UNDEFINED);
+  Result(0, xmm0);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+  Operand(3, simm8, opnd3);
+
+  Instruction_Group( "sse4.2 pcmpim mem opnd w/ scaled index",
+                           TOP_cmpistrmxx,
+                           TOP_UNDEFINED);
+  Result(0, xmm0);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, base);
+  Operand(2, int64, index);
+  Operand(3, uimm8, scale);
+  Operand(4, simm32, offset);
+  Operand(5, simm8, opnd3);
+
+  Instruction_Group( "sse4.2 pcmpim mem opnd w/ scaled index w/o base",
+                           TOP_cmpistrmxxx,
+                           TOP_UNDEFINED);
+  Result(0, xmm0);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+  Operand(4, simm8, opnd3);
 
   ISA_Operands_End();
   return 0;

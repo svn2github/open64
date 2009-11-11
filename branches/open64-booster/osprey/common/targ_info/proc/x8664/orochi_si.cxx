@@ -2111,6 +2111,561 @@ int main (int argc, char *argv[])
   Any_Result_Available_Time(3);
   Resource_Requirement(res_issue, 0);
 
+  /* SSE3 monitor/mwait */
+  Instruction_Group("monitor mwait",
+                    TOP_monitor,
+                    TOP_mwait,
+                    TOP_UNDEFINED);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_agu, 0);
+
+  /* SSSE3 instructions */
+  Instruction_Group( "ssse3 misc reg opnd",
+                        TOP_psign128v8,
+                        TOP_psign128v16,
+                        TOP_psign128v32,
+                        TOP_pabs128v8,
+                        TOP_pabs128v16,
+                        TOP_pabs128v32,
+                        TOP_palignr128,
+                        TOP_pshuf128v8,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(2);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "ssse3 misc mem opnd",
+                        TOP_psignx128v8,
+                        TOP_psignxx128v8,
+                        TOP_psignxxx128v8,
+                        TOP_psignx128v16,
+                        TOP_psignxx128v16,
+                        TOP_psignxxx128v16,
+                        TOP_psignx128v32,
+                        TOP_psignxx128v32,
+                        TOP_psignxxx128v32,
+                        TOP_pabsx128v8,
+                        TOP_pabsxx128v8,
+                        TOP_pabsxxx128v8,
+                        TOP_pabsx128v16,
+                        TOP_pabsxx128v16,
+                        TOP_pabsxxx128v16,
+                        TOP_pabsx128v32,
+                        TOP_pabsxx128v32,
+                        TOP_pabsxxx128v32,
+                        TOP_palignrx128,
+                        TOP_palignrxx128,
+                        TOP_palignrxxx128,
+                        TOP_pshufx128v8,
+                        TOP_pshufxx128v8,
+                        TOP_pshufxxx128v8,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(7);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "ssse3 hadd reg opnd",
+                        TOP_phsub128v16,
+                        TOP_phsub128v32,
+                        TOP_phsubs128v16,
+                        TOP_phadd128v16,
+                        TOP_phadd128v32,
+                        TOP_phadds128v16,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(5);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "ssse3 hadd mem opnd",
+                        TOP_phsubx128v16,
+                        TOP_phsubxx128v16,
+                        TOP_phsubxxx128v16,
+                        TOP_phsubx128v32,
+                        TOP_phsubxx128v32,
+                        TOP_phsubxxx128v32,
+                        TOP_phsubsx128v16,
+                        TOP_phsubsxx128v16,
+                        TOP_phsubsxxx128v16,
+                        TOP_phaddx128v16,
+                        TOP_phaddxx128v16,
+                        TOP_phaddxxx128v16,
+                        TOP_phaddx128v32,
+                        TOP_phaddxx128v32,
+                        TOP_phaddxxx128v32,
+                        TOP_phaddsx128v16,
+                        TOP_phaddsxx128v16,
+                        TOP_phaddsxxx128v16,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(10);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "ssse3 mul reg opnd",
+                        TOP_pmulhrs128,
+                        TOP_pmaddubs128,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(4);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "ssse3 mul mem opnd",
+                        TOP_pmulhrsx128,
+                        TOP_pmulhrsxx128,
+                        TOP_pmulhrsxxx128,
+                        TOP_pmaddubsx128,
+                        TOP_pmaddubsxx128,
+                        TOP_pmaddubsxxx128,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(9);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  /* SSE4.1 instructions */
+  Instruction_Group( "sse4.1 pmov reg opnd",
+                        TOP_mins128v8,
+                        TOP_maxs128v8,
+                        TOP_minu128v16,
+                        TOP_maxu128v16,
+                        TOP_minu128v32,
+                        TOP_maxu128v32,
+                        TOP_mins128v32,
+                        TOP_maxs128v32,
+                        TOP_pmovsxbw,
+                        TOP_pmovzxbw,
+                        TOP_pmovsxbd,
+                        TOP_pmovzxbd,
+                        TOP_pmovsxbq,
+                        TOP_pmovzxbq,
+                        TOP_pmovsxwd,
+                        TOP_pmovzxwd,
+                        TOP_pmovsxwq,
+                        TOP_pmovzxwq,
+                        TOP_pmovsxdq,
+                        TOP_pmovzxdq,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(2);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "sse4.1 pmov mem opnd",
+                        TOP_minsx128v8,
+                        TOP_minsxx128v8,
+                        TOP_minsxxx128v8,
+                        TOP_maxsx128v8,
+                        TOP_maxsxx128v8,
+                        TOP_maxsxxx128v8,
+                        TOP_minux128v16,
+                        TOP_minuxx128v16,
+                        TOP_minuxxx128v16,
+                        TOP_maxux128v16,
+                        TOP_maxuxx128v16,
+                        TOP_maxuxxx128v16,
+                        TOP_minux128v32,
+                        TOP_minuxx128v32,
+                        TOP_minuxxx128v32,
+                        TOP_maxux128v32,
+                        TOP_maxuxx128v32,
+                        TOP_maxuxxx128v32,
+                        TOP_minsx128v32,
+                        TOP_minsxx128v32,
+                        TOP_minsxxx128v32,
+                        TOP_maxsx128v32,
+                        TOP_maxsxx128v32,
+                        TOP_maxsxxx128v32,
+                        TOP_pmovsxbwx,
+                        TOP_pmovsxbwxx,
+                        TOP_pmovsxbwxxx,
+                        TOP_pmovzxbwx,
+                        TOP_pmovzxbwxx,
+                        TOP_pmovzxbwxxx,
+                        TOP_pmovsxbdx,
+                        TOP_pmovsxbdxx,
+                        TOP_pmovsxbdxxx,
+                        TOP_pmovzxbdx,
+                        TOP_pmovzxbdxx,
+                        TOP_pmovzxbdxxx,
+                        TOP_pmovsxbqx,
+                        TOP_pmovsxbqxx,
+                        TOP_pmovsxbqxxx,
+                        TOP_pmovzxbqx,
+                        TOP_pmovzxbqxx,
+                        TOP_pmovzxbqxxx,
+                        TOP_pmovsxwdx,
+                        TOP_pmovsxwdxx,
+                        TOP_pmovsxwdxxx,
+                        TOP_pmovzxwdx,
+                        TOP_pmovzxwdxx,
+                        TOP_pmovzxwdxxx,
+                        TOP_pmovsxwqx,
+                        TOP_pmovsxwqxx,
+                        TOP_pmovsxwqxxx,
+                        TOP_pmovzxwqx,
+                        TOP_pmovzxwqxx,
+                        TOP_pmovzxwqxxx,
+                        TOP_pmovsxdqx,
+                        TOP_pmovsxdqxx,
+                        TOP_pmovsxdqxxx,
+                        TOP_pmovzxdqx,
+                        TOP_pmovzxdqxx,
+                        TOP_pmovzxdqxxx,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(7);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "sse4.1 misc reg opnd",
+                        TOP_round128v32,
+                        TOP_roundss,
+                        TOP_round128v64,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(4);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "sse4.1 misc mem opnd",
+                        TOP_roundx128v32,
+                        TOP_roundxx128v32,
+                        TOP_roundxxx128v32,
+                        TOP_roundssx,
+                        TOP_roundssxx,
+                        TOP_roundssxxx,
+                        TOP_roundx128v64,
+                        TOP_roundxx128v64,
+                        TOP_roundxxx128v64,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(9);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "sse4.1 blend reg opnd",
+                        TOP_fblend128v32,
+                        TOP_fblend128v64,
+                        TOP_fblendv128v32,
+                        TOP_fblendv128v64,
+                        TOP_blendv128v8,
+                        TOP_blend128v16,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(5);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "sse4.1 blend mem opnd",
+                        TOP_fblendx128v32,
+                        TOP_fblendxx128v32,
+                        TOP_fblendxxx128v32,
+                        TOP_fblendx128v64,
+                        TOP_fblendxx128v64,
+                        TOP_fblendxxx128v64,
+                        TOP_fblendvx128v32,
+                        TOP_fblendvxx128v32,
+                        TOP_fblendvxxx128v32,
+                        TOP_fblendvx128v64,
+                        TOP_fblendvxx128v64,
+                        TOP_fblendvxxx128v64,
+                        TOP_blendvx128v8,
+                        TOP_blendvxx128v8,
+                        TOP_blendvxxx128v8,
+                        TOP_blendx128v16,
+                        TOP_blendxx128v16,
+                        TOP_blendxxx128v16,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(10);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "sse4.1 insr extr reg opnd",
+                        TOP_insr128v8,
+                        TOP_insr128v16,
+                        TOP_insr128v32,
+                        TOP_insr128v64,
+                        TOP_extr128v8,
+                        TOP_extr128v16,
+                        TOP_extr128v32,
+                        TOP_extr128v64,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(2);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "sse4.1 insr extr mem opnd",
+                        TOP_insrx128v8,
+                        TOP_insrxx128v8,
+                        TOP_insrxxx128v8,
+                        TOP_insrx128v16,
+                        TOP_insrxx128v16,
+                        TOP_insrxxx128v16,
+                        TOP_insrx128v32,
+                        TOP_insrxx128v32,
+                        TOP_insrxxx128v32,
+                        TOP_insrx128v64,
+                        TOP_insrxx128v64,
+                        TOP_insrxxx128v64,
+                        TOP_extrx128v8,
+                        TOP_extrxx128v8,
+                        TOP_extrxxx128v8,
+                        TOP_extrx128v16,
+                        TOP_extrxx128v16,
+                        TOP_extrxxx128v16,
+                        TOP_extrx128v32,
+                        TOP_extrxx128v32,
+                        TOP_extrxxx128v32,
+                        TOP_extrx128v64,
+                        TOP_extrxx128v64,
+                        TOP_extrxxx128v64,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(4);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "sse4.1 misc reg opnd",
+                        TOP_roundsd,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(4);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "sse4.1 misc mem opnd",
+                        TOP_roundsdx,
+                        TOP_roundsdxx,
+                        TOP_roundsdxxx,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(9);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "sse4.1 finsr fextr reg opnd",
+                        TOP_finsr128v32,
+                        TOP_fextr128v32,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(5);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "sse4.1 finsr fextr mem opnd",
+                        TOP_finsrx128v32,
+                        TOP_finsrxx128v32,
+                        TOP_finsrxxx128v32,
+                        TOP_fextrx128v32,
+                        TOP_fextrxx128v32,
+                        TOP_fextrxxx128v32,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(10);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "sse4.1 misc reg opnd",
+                        TOP_mpsadbw,
+                        TOP_muldq,
+                        TOP_mul128v32,
+                        TOP_fdp128v32,
+                        TOP_fdp128v64,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(4);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "sse4.1 misc mem opnd",
+                        TOP_mpsadbwx,
+                        TOP_mpsadbwxx,
+                        TOP_mpsadbwxxx,
+                        TOP_muldqx,
+                        TOP_muldqxx,
+                        TOP_muldqxxx,
+                        TOP_mulx128v32,
+                        TOP_mulxx128v32,
+                        TOP_mulxxx128v32,
+                        TOP_fdpx128v32,
+                        TOP_fdpxx128v32,
+                        TOP_fdpxxx128v32,
+                        TOP_fdpx128v64,
+                        TOP_fdpxx128v64,
+                        TOP_fdpxxx128v64,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(9);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "sse4.1 load ntdqa",
+                        TOP_ldntdqa,
+                        TOP_ldntdqax,
+                        TOP_ldntdqaxx,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(2);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "sse4.1 store ntdqa",
+                        TOP_stntdqa,
+                        TOP_stntdqax,
+                        TOP_stntdqaxx,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(2);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "sse4.1 pmov reg opnd",
+                        TOP_cmpeq128v64,
+                        TOP_packusdw,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(2);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "sse4.1 pmov mem opnd",
+                        TOP_cmpeqx128v64,
+                        TOP_cmpeqxx128v64,
+                        TOP_cmpeqxxx128v64,
+                        TOP_packusdwx,
+                        TOP_packusdwxx,
+                        TOP_packusdwxxx,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(7);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "sse4.1 ptest reg opnd",
+                        TOP_ptest128,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(5);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "sse4.1 ptest mem opnd",
+                        TOP_ptestx128,
+                        TOP_ptestxx128,
+                        TOP_ptestxxx128,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(10);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  /* SSE4.2 instructions */
+  Instruction_Group( "sse4.2 crc reg opnd",
+                        TOP_crc32b,
+                        TOP_crc32w,
+                        TOP_crc32d,
+                        TOP_crc32q,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(5);
+  Resource_Requirement(res_alu, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "sse4.2 crc mem opnd",
+                        TOP_crcx32b,
+                        TOP_crcxx32b,
+                        TOP_crcxxx32b,
+                        TOP_crcx32w,
+                        TOP_crcxx32w,
+                        TOP_crcxxx32w,
+                        TOP_crcx32d,
+                        TOP_crcxx32d,
+                        TOP_crcxxx32d,
+                        TOP_crcx32q,
+                        TOP_crcxx32q,
+                        TOP_crcxxx32q,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(10);
+  Resource_Requirement(res_alu, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "sse4.2 pcmp reg opnd",
+                        TOP_cmpestri,
+                        TOP_cmpestrm,
+                        TOP_cmpistri,
+                        TOP_cmpistrm,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(10);
+  Resource_Requirement(res_alu, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "sse4.2 pcmp mem opnd",
+                        TOP_cmpestrix,
+                        TOP_cmpestrixx,
+                        TOP_cmpestrixxx,
+                        TOP_cmpestrmx,
+                        TOP_cmpestrmxx,
+                        TOP_cmpestrmxxx,
+                        TOP_cmpistrix,
+                        TOP_cmpistrixx,
+                        TOP_cmpistrixxx,
+                        TOP_cmpistrmx,
+                        TOP_cmpistrmxx,
+                        TOP_cmpistrmxxx,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(20);
+  Resource_Requirement(res_alu, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "sse4.2 pcmp reg opnd",
+                        TOP_cmpgt128v64,
+                        TOP_popcnt16,
+                        TOP_popcnt32,
+                        TOP_popcnt64,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(5);
+  Resource_Requirement(res_alu, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "sse4.2 pcmp mem opnd",
+                        TOP_cmpgtx128v64,
+                        TOP_cmpgtxx128v64,
+                        TOP_cmpgtxxx128v64,
+                        TOP_popcntx16,
+                        TOP_popcntxx16,
+                        TOP_popcntxxx16,
+                        TOP_popcntx32,
+                        TOP_popcntxx32,
+                        TOP_popcntxxx32,
+                        TOP_popcntx64,
+                        TOP_popcntxx64,
+                        TOP_popcntxxx64,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(10);
+  Resource_Requirement(res_alu, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
   Instruction_Group("dummy",
 		    TOP_asm,
 		    TOP_intrncall,
