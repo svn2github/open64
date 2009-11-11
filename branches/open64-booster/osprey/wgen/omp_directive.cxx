@@ -741,7 +741,7 @@ static void save_block_stmts(WN *wn)
     return;
 }
 
-// this term should be ldid lcv
+// it should be ldid lcv
 static bool expand_load_lcv(WN **wn, ST_IDX lcv, gs_t expr)
 {
     WN *wn_tmp;
@@ -781,11 +781,10 @@ static WN *expand_rhs_expr_and_cache_doloop_side_effects(gs_t expr, const char *
       // Mark as local in surrounding parallel region.
       WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st, TRUE);
       WN * stid = WN_Stid (TY_mtype(ty_idx), 0, st, ty_idx, result);
+      WN_Set_Linenum(stid, Get_Srcpos());
 
       WN_INSERT_BlockAfter(WGEN_Stmt_Top(), NULL, stid);
       Check_For_Call_Region();
-      // Hold it in a vector for emitting it outside and before the
-      // PDO region.
       result = WN_Ldid (TY_mtype(ty_idx), 0, st, ty_idx);
     }
     wn_tmp = WGEN_Stmt_Pop (wgen_stmk_comma);
@@ -961,7 +960,8 @@ void expand_start_do_loop (gs_t init_expr, gs_t logical_expr, gs_t incr_expr)
             if (expand_load_lcv(&term0, stlcv, gs_term0) && expand_increment_term(&term1, stlcv, gs_term1) ||
                 expand_load_lcv(&term1, stlcv, gs_term1) && expand_increment_term(&term0, stlcv, gs_term0))
             {
-            // do nothing
+              // do nothing, it should be noted that expand_increment_term has side effect, and 
+	      // we always call it after sucessful call of expand_load_lcv.
             } else {
               detail = "messy step expression";
               valid_for_expr = false;
@@ -973,15 +973,12 @@ void expand_start_do_loop (gs_t init_expr, gs_t logical_expr, gs_t incr_expr)
           if (valid_for_expr)
           {
             // create the step WN 
-            TY_IDX ty_idx0 = Get_TY(gs_tree_type(gs_tree_operand(gs_tree_operand(incr_expr, 1), 0)));
-            TYPE_ID mtype0 = TY_mtype(ty_idx0);
-            TY_IDX ty_idx1 = Get_TY(gs_tree_type(gs_tree_operand(gs_tree_operand(incr_expr, 1), 1)));
-            TYPE_ID mtype1 = TY_mtype(ty_idx1);
             step  = WN_CreateExp2(Operator_From_Tree_node(gs_tree_code(gs_tree_operand(incr_expr, 1))),
 			     TY_mtype(Get_TY(gs_tree_type(gs_tree_operand(incr_expr, 1)))), MTYPE_V,
                              term0, term1);
             step = WN_Stid(TY_mtype(ST_type(stlcv)), 0, WN_st(lcv), 
-              ST_type(stlcv), step);
+                           ST_type(stlcv), step);
+	    WN_Set_Linenum(step, Get_Srcpos());
           }
 	} else if (code == GS_POSTDECREMENT_EXPR || code == GS_POSTINCREMENT_EXPR ||
                    code == GS_PREDECREMENT_EXPR || code == GS_PREINCREMENT_EXPR)
@@ -990,6 +987,7 @@ void expand_start_do_loop (gs_t init_expr, gs_t logical_expr, gs_t incr_expr)
           WGEN_Expand_Expr (incr_expr, FALSE);
           wn_tmp = WGEN_Stmt_Pop (wgen_stmk_comma);
           step = WN_COPY_Tree( WN_last( wn_tmp ));
+	  WN_DELETE_Tree( wn_tmp);
 	} else {
 	  detail = ("invalid arithmatic operator of the step expression");
 	  valid_for_expr = false;
