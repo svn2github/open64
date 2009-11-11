@@ -3322,20 +3322,24 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
   switch (ins_code)
   {
     // Generate WN
+    case GSBI_IX86_BUILTIN_PADDQ:
+      *iopc = INTRN_PADDQ;
+      break;
     case GSBI_IX86_BUILTIN_PADDB:
     case GSBI_IX86_BUILTIN_PADDW:
     case GSBI_IX86_BUILTIN_PADDD:
-    case GSBI_IX86_BUILTIN_PADDQ:
     case GSBI_IX86_BUILTIN_ADDPD:
     case GSBI_IX86_BUILTIN_PADDB128:
     case GSBI_IX86_BUILTIN_PADDQ128:
       wn = WN_Add (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
       break;
+    case GSBI_IX86_BUILTIN_PSUBQ:
+      *iopc = INTRN_PSUBQ;
+      break;
     case GSBI_IX86_BUILTIN_PSUBB:
     case GSBI_IX86_BUILTIN_PSUBW:
     case GSBI_IX86_BUILTIN_PSUBD:
-    case GSBI_IX86_BUILTIN_PSUBQ:
     case GSBI_IX86_BUILTIN_SUBPD:
     case GSBI_IX86_BUILTIN_PSUBB128:
     case GSBI_IX86_BUILTIN_PSUBW128:
@@ -3344,57 +3348,13 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       wn = WN_Sub (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
       break;
-#if 0
-    case GSBI_IX86_BUILTIN_PAND:
-      if (MTYPE_is_mmx_vector(res_type))
-	goto unsupported;
-      wn = WN_Band (res_type, arg0, arg1);
-      *intrinsic_op = FALSE;
-      break;
-    case GSBI_IX86_BUILTIN_PANDN:
-      if (MTYPE_is_mmx_vector(res_type))
-	goto unsupported;
-      wn = WN_Band (res_type, WN_Bnot (res_type, arg0), arg1);
-      *intrinsic_op = FALSE;
-      break;
-    case GSBI_IX86_BUILTIN_POR:
-      if (MTYPE_is_mmx_vector(res_type))
-	goto unsupported;
-      wn = WN_Bior (res_type, arg0, arg1);
-      *intrinsic_op = FALSE;
-      break;
-    case GSBI_IX86_BUILTIN_PXOR:
-      if (MTYPE_is_mmx_vector(res_type))
-	goto unsupported;
-      wn = WN_Bxor (res_type, arg0, arg1);
-      *intrinsic_op = FALSE;
-      break;
-#endif
-    case GSBI_IX86_BUILTIN_PSLLQ:
-      if (MTYPE_is_mmx_vector(res_type))
-	goto unsupported;
-      wn = WN_Shl (res_type, arg0, arg1);
-      *intrinsic_op = FALSE;
-      break;
-    case GSBI_IX86_BUILTIN_PSRLQ:
-      if (MTYPE_is_mmx_vector(res_type))
-	goto unsupported;
-      wn = WN_Lshr (res_type, arg0, arg1);
-      *intrinsic_op = FALSE;
-      break;
-                                                                                
+
     // Generate intrinsics to be expanded in CG expand
     case GSBI_IX86_BUILTIN_PADDSB:
       *iopc = INTRN_PADDSB;
       break;
     case GSBI_IX86_BUILTIN_PADDSW:
       *iopc = INTRN_PADDSW;
-      break;
-    case GSBI_IX86_BUILTIN_PADDD128:
-      *iopc = INTRN_PADDD128;
-      break;
-    case GSBI_IX86_BUILTIN_PADDW128:
-      *iopc = INTRN_PADDW128;
       break;
     case GSBI_IX86_BUILTIN_PSUBSB:
       *iopc = INTRN_PSUBSB;
@@ -3409,19 +3369,58 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_PADDUSW;
       break;
     case GSBI_IX86_BUILTIN_PSUBUSB:
-    case GSBI_IX86_BUILTIN_PSUBUSB128:
       *iopc = INTRN_PSUBUSB;
       break;
     case GSBI_IX86_BUILTIN_PSUBUSW:
-    case GSBI_IX86_BUILTIN_PSUBUSW128:
       *iopc = INTRN_PSUBUSW;
       break;
     case GSBI_IX86_BUILTIN_PMULLW:
       *iopc = INTRN_PMULLW;
       break;
     case GSBI_IX86_BUILTIN_PMULHW:
-    case GSBI_IX86_BUILTIN_PMULHW128:
       *iopc = INTRN_PMULHW;
+      break;
+    case GSBI_IX86_BUILTIN_PMULUDQ:
+      *iopc = INTRN_PMULUDQ;
+      break;
+    case GSBI_IX86_BUILTIN_PADDSB128:
+      *iopc = INTRN_PADDSB128;
+      break;
+    case GSBI_IX86_BUILTIN_PADDSW128:
+      *iopc = INTRN_PADDSW128;
+      break;
+    case GSBI_IX86_BUILTIN_PSUBSB128:
+      *iopc = INTRN_PSUBSB128;
+      break;
+    case GSBI_IX86_BUILTIN_PSUBSW128:
+      *iopc = INTRN_PSUBSW128;
+      break;
+    case GSBI_IX86_BUILTIN_PADDUSB128:
+      *iopc = INTRN_PADDUSB128;
+      break;
+    case GSBI_IX86_BUILTIN_PADDUSW128:
+      *iopc = INTRN_PADDUSW128;
+      break;
+    case GSBI_IX86_BUILTIN_PSUBUSB128:
+      *iopc = INTRN_PSUBUSB128;
+      break;
+    case GSBI_IX86_BUILTIN_PSUBUSW128:
+      *iopc = INTRN_PSUBUSW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMULLW128:
+      *iopc = INTRN_PMULLW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMULHW128:
+      *iopc = INTRN_PMULHW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMULUDQ128:
+      *iopc = INTRN_PMULUDQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PADDD128:
+      *iopc = INTRN_PADDD128;
+      break;
+    case GSBI_IX86_BUILTIN_PADDW128:
+      *iopc = INTRN_PADDW128;
       break;
     case GSBI_IX86_BUILTIN_PCMPEQB:
       *iopc = INTRN_PCMPEQB;
@@ -3468,8 +3467,16 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PUNPCKHDQ:
       *iopc = INTRN_PUNPCKHDQ;
       break;
+    case GSBI_IX86_BUILTIN_PUNPCKHBW128:
+      *iopc = INTRN_PUNPCKHBW128;
+      break;
+    case GSBI_IX86_BUILTIN_PUNPCKHWD128:
+      *iopc = INTRN_PUNPCKHWD128;
+      break;
+    case GSBI_IX86_BUILTIN_PUNPCKHDQ128:
+      *iopc = INTRN_PUNPCKHDQ128;
+      break;
     case GSBI_IX86_BUILTIN_PUNPCKLBW:
-    case GSBI_IX86_BUILTIN_PUNPCKLBW128:
       *iopc = INTRN_PUNPCKLBW;
       break;
     case GSBI_IX86_BUILTIN_PUNPCKLWD:
@@ -3478,16 +3485,38 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PUNPCKLDQ:
       *iopc = INTRN_PUNPCKLDQ;
       break;
+    case GSBI_IX86_BUILTIN_PUNPCKLBW128:
+      *iopc = INTRN_PUNPCKLBW128;
+      break;
+    case GSBI_IX86_BUILTIN_PUNPCKLWD128:
+      *iopc = INTRN_PUNPCKLWD128;
+      break;
+    case GSBI_IX86_BUILTIN_PUNPCKLDQ128:
+      *iopc = INTRN_PUNPCKLDQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PUNPCKHQDQ128:
+      *iopc = INTRN_PUNPCKHQDQ;
+      break;
+    case GSBI_IX86_BUILTIN_PUNPCKLQDQ128:
+      *iopc = INTRN_PUNPCKLQDQ;
+      break;
     case GSBI_IX86_BUILTIN_PACKSSWB:
       *iopc = INTRN_PACKSSWB;
       break;
     case GSBI_IX86_BUILTIN_PACKSSDW:
-    case GSBI_IX86_BUILTIN_PACKSSDW128:
       *iopc = INTRN_PACKSSDW;
       break;
     case GSBI_IX86_BUILTIN_PACKUSWB:
-    case GSBI_IX86_BUILTIN_PACKUSWB128:
       *iopc = INTRN_PACKUSWB;
+      break;
+    case GSBI_IX86_BUILTIN_PACKSSWB128:
+      *iopc = INTRN_PACKSSWB128;
+      break;
+    case GSBI_IX86_BUILTIN_PACKSSDW128:
+      *iopc = INTRN_PACKSSDW128;
+      break;
+    case GSBI_IX86_BUILTIN_PACKUSWB128:
+      *iopc = INTRN_PACKUSWB128;
       break;
     case GSBI_IX86_BUILTIN_PMULHUW:
       *iopc = INTRN_PMULHUW;
@@ -3501,6 +3530,18 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PSADBW:
       *iopc = INTRN_PSADBW;
       break;
+    case GSBI_IX86_BUILTIN_PMULHUW128:
+      *iopc = INTRN_PMULHUW128;
+      break;
+    case GSBI_IX86_BUILTIN_PAVGB128:
+      *iopc = INTRN_PAVGB128;
+      break;
+    case GSBI_IX86_BUILTIN_PAVGW128:
+      *iopc = INTRN_PAVGW128;
+      break;
+    case GSBI_IX86_BUILTIN_PSADBW128:
+      *iopc = INTRN_PSADBW128;
+      break;
     case GSBI_IX86_BUILTIN_PMAXUB:
       *iopc = INTRN_PMAXUB;
       break;
@@ -3512,6 +3553,18 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       break;
     case GSBI_IX86_BUILTIN_PMINSW:
       *iopc = INTRN_PMINSW;
+      break;
+    case GSBI_IX86_BUILTIN_PMAXUB128:
+      *iopc = INTRN_PMAXUB128;
+      break;
+    case GSBI_IX86_BUILTIN_PMAXSW128:
+      *iopc = INTRN_PMAXSW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMINUB128:
+      *iopc = INTRN_PMINUB128;
+      break;
+    case GSBI_IX86_BUILTIN_PMINSW128:
+      *iopc = INTRN_PMINSW128;
       break;
 #if 0 // wgen TODO
     case GSBI_IX86_BUILTIN_PEXTRW:
@@ -3602,6 +3655,18 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_DIVPS:
       *iopc = INTRN_DIVPS;
       break;
+    case GSBI_IX86_BUILTIN_ADDSD:
+      *iopc = INTRN_ADDSD;
+      break;
+    case GSBI_IX86_BUILTIN_SUBSD:
+      *iopc = INTRN_SUBSD;
+      break;
+    case GSBI_IX86_BUILTIN_MULSD:
+      *iopc = INTRN_MULSD;
+      break;
+    case GSBI_IX86_BUILTIN_DIVSD:
+      *iopc = INTRN_DIVSD;
+      break;
     case GSBI_IX86_BUILTIN_ADDSS:
       *iopc = INTRN_ADDSS;
       break;
@@ -3613,6 +3678,42 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       break;
     case GSBI_IX86_BUILTIN_DIVSS:
       *iopc = INTRN_DIVSS;
+      break;
+    case GSBI_IX86_BUILTIN_CMPEQPD:
+      *iopc = INTRN_CMPEQPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPLTPD:
+      *iopc = INTRN_CMPLTPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPLEPD:
+      *iopc = INTRN_CMPLEPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPGTPD:
+      *iopc = INTRN_CMPGTPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPGEPD:
+      *iopc = INTRN_CMPGEPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPUNORDPD:
+      *iopc = INTRN_CMPUNORDPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNEQPD:
+      *iopc = INTRN_CMPNEQPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNLTPD:
+      *iopc = INTRN_CMPNLTPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNLEPD:
+      *iopc = INTRN_CMPNLEPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNGTPD:
+      *iopc = INTRN_CMPNGTPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNGEPD:
+      *iopc = INTRN_CMPNGEPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPORDPD:
+      *iopc = INTRN_CMPORDPD;
       break;
     case GSBI_IX86_BUILTIN_CMPEQPS:
       *iopc = INTRN_CMPEQPS;
@@ -3650,6 +3751,48 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_CMPORDPS:
       *iopc = INTRN_CMPORDPS;
       break;
+    case GSBI_IX86_BUILTIN_CMPEQSD:
+      *iopc = INTRN_CMPEQSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPLTSD:
+      *iopc = INTRN_CMPLTSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPLESD:
+      *iopc = INTRN_CMPLESD;
+      break;
+#if 0
+    // GCC 4.2.0 FE does not support CMPGTSD, CMPGESD
+    case GSBI_IX86_BUILTIN_CMPGTSD:
+      *iopc = INTRN_CMPGTSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPGESD:
+      *iopc = INTRN_CMPGESD;
+      break;
+#endif
+    case GSBI_IX86_BUILTIN_CMPUNORDSD:
+      *iopc = INTRN_CMPUNORDSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNEQSD:
+      *iopc = INTRN_CMPNEQSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNLTSD:
+      *iopc = INTRN_CMPNLTSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNLESD:
+      *iopc = INTRN_CMPNLESD;
+      break;
+#if 0
+    // GCC 4.2.0 FE does not support CMPNGTSD, CMPNGESD
+    case GSBI_IX86_BUILTIN_CMPNGTSD:
+      *iopc = INTRN_CMPNGTSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNGESD:
+      *iopc = INTRN_CMPNGESD;
+      break;
+#endif
+    case GSBI_IX86_BUILTIN_CMPORDSD:
+      *iopc = INTRN_CMPORDSD;
+      break;
     case GSBI_IX86_BUILTIN_CMPEQSS:
       *iopc = INTRN_CMPEQSS;
       break;
@@ -3659,6 +3802,15 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_CMPLESS:
       *iopc = INTRN_CMPLESS;
       break;
+#if 0
+    // GCC 4.2.0 FE does not support CMPGTSS, CMPGESS
+    case GSBI_IX86_BUILTIN_CMPGTSS:
+      *iopc = INTRN_CMPGTSS;
+      break;
+    case GSBI_IX86_BUILTIN_CMPGESS:
+      *iopc = INTRN_CMPGESS;
+      break;
+#endif
     case GSBI_IX86_BUILTIN_CMPUNORDSS:
       *iopc = INTRN_CMPUNORDSS;
       break;
@@ -3671,11 +3823,20 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_CMPNLESS:
       *iopc = INTRN_CMPNLESS;
       break;
+    case GSBI_IX86_BUILTIN_CMPNGTSS:
+      *iopc = INTRN_CMPNGTSS;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNGESS:
+      *iopc = INTRN_CMPNGESS;
+      break;
     case GSBI_IX86_BUILTIN_CMPORDSS:
       *iopc = INTRN_CMPORDSS;
       break;
     case GSBI_IX86_BUILTIN_MAXPS:
       *iopc = INTRN_MAXPS;
+      break;
+    case GSBI_IX86_BUILTIN_MAXSD:
+      *iopc = INTRN_MAXSD;
       break;
     case GSBI_IX86_BUILTIN_MAXSS:
       *iopc = INTRN_MAXSS;
@@ -3683,11 +3844,17 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_MINPS:
       *iopc = INTRN_MINPS;
       break;
+    case GSBI_IX86_BUILTIN_MINSD:
+      *iopc = INTRN_MINSD;
+      break;
     case GSBI_IX86_BUILTIN_MINSS:
       *iopc = INTRN_MINSS;
       break;
     case GSBI_IX86_BUILTIN_ANDPS:
       *iopc = INTRN_ANDPS;
+      break;
+    case GSBI_IX86_BUILTIN_ANDNPD:
+      *iopc = INTRN_ANDNPD;
       break;
     case GSBI_IX86_BUILTIN_ANDNPS:
       *iopc = INTRN_ANDNPS;
@@ -3744,6 +3911,10 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_EMMS;
       *intrinsic_op = FALSE;
       break;
+    case GSBI_IX86_BUILTIN_CLFLUSH:
+      *iopc = INTRN_CLFLUSH;
+      *intrinsic_op = FALSE;
+      break;
 #if 0 // wgen TODO
     case GSBI_IX86_BUILTIN_LOADAPS:
       *iopc = INTRN_LOADAPS;
@@ -3753,10 +3924,6 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *intrinsic_op = FALSE;
       break;
 #endif
-    case GSBI_IX86_BUILTIN_PXOR128:
-      wn = WN_Bxor (res_type, arg0, arg1);
-      *intrinsic_op = FALSE;
-      break;
     case GSBI_IX86_BUILTIN_PSLLDQI128:
       *iopc = INTRN_PSLLDQ;
       break;
@@ -3764,52 +3931,52 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_PSRLDQ;
       break;
     case GSBI_IX86_BUILTIN_PSLLW128:
-      *iopc = INTRN_PSLLW;
+      *iopc = INTRN_PSLLW128;
       break;
     case GSBI_IX86_BUILTIN_PSLLD128:
-      *iopc = INTRN_PSLLD;
+      *iopc = INTRN_PSLLD128;
       break;
     case GSBI_IX86_BUILTIN_PSLLQ128:
-      *iopc = INTRN_PSLLQ;
+      *iopc = INTRN_PSLLQ128;
       break;
     case GSBI_IX86_BUILTIN_PSRLW128:
-      *iopc = INTRN_PSRLW;
+      *iopc = INTRN_PSRLW128;
       break;
     case GSBI_IX86_BUILTIN_PSRLD128:
-      *iopc = INTRN_PSRLD;
+      *iopc = INTRN_PSRLD128;
       break;
     case GSBI_IX86_BUILTIN_PSRLQ128:
-      *iopc = INTRN_PSRLQ;
+      *iopc = INTRN_PSRLQ128;
       break;
     case GSBI_IX86_BUILTIN_PSRAW128:
-      *iopc = INTRN_PSRAW;
+      *iopc = INTRN_PSRAW128;
       break;
     case GSBI_IX86_BUILTIN_PSRAD128:
-      *iopc = INTRN_PSRAD;
+      *iopc = INTRN_PSRAD128;
       break;
     case GSBI_IX86_BUILTIN_PSRAWI128:
-      *iopc = INTRN_PSRAW;
+      *iopc = INTRN_PSRAWI128;
       break;
     case GSBI_IX86_BUILTIN_PSRADI128:
-      *iopc = INTRN_PSRAD;
+      *iopc = INTRN_PSRADI128;
       break;
     case GSBI_IX86_BUILTIN_PSLLWI128:
-      *iopc = INTRN_PSLLW;
+      *iopc = INTRN_PSLLWI128;
       break;
     case GSBI_IX86_BUILTIN_PSLLDI128:
-      *iopc = INTRN_PSLLD;
+      *iopc = INTRN_PSLLDI128;
       break;
     case GSBI_IX86_BUILTIN_PSLLQI128:
-      *iopc = INTRN_PSLLQ;
+      *iopc = INTRN_PSLLQI128;
       break;
     case GSBI_IX86_BUILTIN_PSRLWI128:
-      *iopc = INTRN_PSRLW;
+      *iopc = INTRN_PSRLWI128;
       break;
     case GSBI_IX86_BUILTIN_PSRLDI128:
-      *iopc = INTRN_PSRLD;
+      *iopc = INTRN_PSRLDI128;
       break;
     case GSBI_IX86_BUILTIN_PSRLQI128:
-      *iopc = INTRN_PSRLQ;
+      *iopc = INTRN_PSRLQI128;
       break;
     case GSBI_IX86_BUILTIN_MOVNTDQ:
       *iopc = INTRN_MOVNTDQ;
@@ -3954,22 +4121,52 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_PMADDWD;
       break;
     case GSBI_IX86_BUILTIN_PSLLW:
-      *iopc = INTRN_PSLLW_MMX;
+      *iopc = INTRN_PSLLW;
       break;
     case GSBI_IX86_BUILTIN_PSLLD:
-      *iopc = INTRN_PSLLD_MMX;
+      *iopc = INTRN_PSLLD;
+      break;
+    case GSBI_IX86_BUILTIN_PSLLQ:
+      *iopc = INTRN_PSLLQ;
       break;
     case GSBI_IX86_BUILTIN_PSRLW:
-      *iopc = INTRN_PSRLW_MMX;
+      *iopc = INTRN_PSRLW;
       break;
     case GSBI_IX86_BUILTIN_PSRLD:
-      *iopc = INTRN_PSRLD_MMX;
+      *iopc = INTRN_PSRLD;
+      break;
+    case GSBI_IX86_BUILTIN_PSRLQ:
+      *iopc = INTRN_PSRLQ;
       break;
     case GSBI_IX86_BUILTIN_PSRAW:
-      *iopc = INTRN_PSRAW_MMX;
+      *iopc = INTRN_PSRAW;
       break;
     case GSBI_IX86_BUILTIN_PSRAD:
-      *iopc = INTRN_PSRAD_MMX;
+      *iopc = INTRN_PSRAD;
+      break;
+    case GSBI_IX86_BUILTIN_PSRAWI:
+      *iopc = INTRN_PSRAWI;
+      break;
+    case GSBI_IX86_BUILTIN_PSRADI:
+      *iopc = INTRN_PSRADI;
+      break;
+    case GSBI_IX86_BUILTIN_PSLLWI:
+      *iopc = INTRN_PSLLWI;
+      break;
+    case GSBI_IX86_BUILTIN_PSLLDI:
+      *iopc = INTRN_PSLLDI;
+      break;
+    case GSBI_IX86_BUILTIN_PSLLQI:
+      *iopc = INTRN_PSLLQI;
+      break;
+    case GSBI_IX86_BUILTIN_PSRLWI:
+      *iopc = INTRN_PSRLWI;
+      break;
+    case GSBI_IX86_BUILTIN_PSRLDI:
+      *iopc = INTRN_PSRLDI;
+      break;
+    case GSBI_IX86_BUILTIN_PSRLQI:
+      *iopc = INTRN_PSRLQI;
       break;
     case GSBI_IX86_BUILTIN_PAND:
       *iopc = INTRN_PAND_MMX;
@@ -3982,6 +4179,18 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       break;
     case GSBI_IX86_BUILTIN_POR:
       *iopc = INTRN_POR_MMX;
+      break;
+    case GSBI_IX86_BUILTIN_PAND128:
+      *iopc = INTRN_PAND128;
+      break;
+    case GSBI_IX86_BUILTIN_PANDN128:
+      *iopc = INTRN_PANDN128;
+      break;
+    case GSBI_IX86_BUILTIN_POR128:
+      *iopc = INTRN_POR128;
+      break;
+    case GSBI_IX86_BUILTIN_PXOR128:
+      *iopc = INTRN_PXOR128;
       break;
     case GSBI_IX86_BUILTIN_VEC_INIT_V4HI: {
       WN *arg[4];
@@ -5400,8 +5609,17 @@ unsupported:
   // The following instructions expect both arguments as FP (xmm), but
   // the 2nd argument type for the corresponding builtin is INT, so we
   // need to insert a CVT here.
+  BOOL is_mmx = FALSE;
   switch (ins_code)
   {
+    case GSBI_IX86_BUILTIN_PSRAW:
+    case GSBI_IX86_BUILTIN_PSRAD:
+    case GSBI_IX86_BUILTIN_PSLLW:
+    case GSBI_IX86_BUILTIN_PSLLD:
+    case GSBI_IX86_BUILTIN_PSRLW:
+    case GSBI_IX86_BUILTIN_PSRLD:
+      is_mmx = TRUE;
+      // fall thr
     case GSBI_IX86_BUILTIN_PSRAWI128:
     case GSBI_IX86_BUILTIN_PSRADI128:
     case GSBI_IX86_BUILTIN_PSLLWI128:
@@ -5412,27 +5630,55 @@ unsupported:
     case GSBI_IX86_BUILTIN_PSRLQI128:
       Is_True (wn == NULL, ("WGEN_target_builtins: null WN expected"));
       WN * args[2];
-      //for (int c=0; c<2; c++)
-      {
-        // 1st argument
-        TY_IDX arg_ty_idx = Get_TY (gs_tree_type (gs_tree_value (t_list)));
-        TYPE_ID arg_mtype = TY_mtype (arg_ty_idx);
-        args[0] = WN_CreateParm (Mtype_comparison (arg_mtype), arg0,
-                                 arg_ty_idx, WN_PARM_BY_VALUE);
+      // 1st argument
+      TY_IDX arg_ty_idx = Get_TY (gs_tree_type (gs_tree_value (t_list)));
+      TYPE_ID arg_mtype = TY_mtype (arg_ty_idx);
+      args[0] = WN_CreateParm (Mtype_comparison (arg_mtype), arg0,
+                               arg_ty_idx, WN_PARM_BY_VALUE);
                                                                                 
-        // 2nd argument
-        arg1 = WN_Cvt (WN_rtype(arg1), MTYPE_V16I8, arg1);
-        arg_ty_idx = MTYPE_TO_TY_array[WN_rtype (arg1)];
-        arg_mtype = WN_rtype (arg1);
-        args[1] = WN_CreateParm (Mtype_comparison (arg_mtype), arg1,
-                                 arg_ty_idx, WN_PARM_BY_VALUE);
-      }
+      // 2nd argument
+      arg1 = WN_Cvt (WN_rtype(arg1), 
+                     is_mmx ? MTYPE_M8I4 : MTYPE_V16I8, arg1);
+      arg_ty_idx = MTYPE_TO_TY_array[WN_rtype (arg1)];
+      arg_mtype = WN_rtype (arg1);
+      args[1] = WN_CreateParm (Mtype_comparison (arg_mtype), arg1,
+                               arg_ty_idx, WN_PARM_BY_VALUE);
                                                                                 
       wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, res_type, MTYPE_V,
                                 *iopc, 2, args);
       break;
   }
-                                                                                
+  
+  // The following instructions expect both arguments are MMX, but both of the 
+  // argument type for the builtin is INT, so we insert a CVT here.
+  switch(ins_code)
+  {
+    TY_IDX arg_ty_idx;
+    TYPE_ID arg_mtype;
+    case GSBI_IX86_BUILTIN_PADDQ:
+    case GSBI_IX86_BUILTIN_PSUBQ:
+    case GSBI_IX86_BUILTIN_PSLLQ:
+    case GSBI_IX86_BUILTIN_PSRLQ:
+      Is_True (wn == NULL, ("WGEN_target_builtins: null WN expected"));
+      WN* args[2];
+      // 1st argument
+      arg0 = WN_Cvt (WN_rtype(arg0), MTYPE_M8I4, arg0);
+      arg_ty_idx = MTYPE_TO_TY_array[WN_rtype (arg0)];
+      arg_mtype = WN_rtype (arg0);
+      args[0] = WN_CreateParm (Mtype_comparison (arg_mtype), arg0,
+                               arg_ty_idx, WN_PARM_BY_VALUE);
+      // 2nd argument
+      arg1 = WN_Cvt (WN_rtype(arg1), MTYPE_M8I4, arg1);
+      arg_ty_idx = MTYPE_TO_TY_array[WN_rtype (arg1)];
+      arg_mtype = WN_rtype (arg1);
+      args[1] = WN_CreateParm (Mtype_comparison (arg_mtype), arg1,
+                               arg_ty_idx, WN_PARM_BY_VALUE);
+
+      wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, MTYPE_M8I4, MTYPE_V,
+                                *iopc, 2, args);
+      break;
+  }
+
   return wn;
 }
 #endif // TARG_X8664

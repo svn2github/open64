@@ -877,6 +877,7 @@ Mk_OP(TOP opr, ...)
 #endif
 
   FmtAssert(!TOP_is_var_opnds(opr), ("Mk_OP not allowed with variable operands"));
+  FmtAssert(opr != TOP_UNDEFINED,   ("Mk_OP not allowed with TOP_UNDEFINED"));
 
   Set_OP_code(op, opr);
 
@@ -962,6 +963,7 @@ Mk_VarOP(TOP opr, INT results, INT opnds, TN **res_tn, TN **opnd_tn)
   OP *op = New_OP(results, opnds);
 #endif
 
+  FmtAssert(opr != TOP_UNDEFINED,   ("Mk_VarOP not allowed with TOP_UNDEFINED"));
   Set_OP_code(op, opr);
 
   for (i = 0; i < results; ++i) Set_OP_result(op, i, res_tn[i]);
@@ -2158,9 +2160,6 @@ static Top_Trans_Group Top_SSE_To_Vex_Mode_Group_Table[] = {
     {TOP_punpckhbw,         TOP_vpunpckh64v8},
     {TOP_punpckhwd,         TOP_vpunpckh64v16},
     {TOP_punpckhdq,         TOP_vpunpckh64v32},
-    {TOP_punpckl64v8,       TOP_vpunpckl64v8},
-    {TOP_punpckl64v16,      TOP_vpunpckl64v16},
-    {TOP_punpckl64v32,      TOP_vpunpckl64v32},
     {TOP_packsswb,          TOP_vpacksswb},
     {TOP_packssdw,          TOP_vpackssdw},
     {TOP_packuswb,          TOP_vpackuswb},

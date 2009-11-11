@@ -262,6 +262,12 @@ main()
                     TOP_vzeroall,
 		    TOP_UNDEFINED);
 
+  Instruction_Group("sse2 clflush",
+                    TOP_clflush,
+                    TOP_UNDEFINED);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+
   Instruction_Group("sse3 monitor",
                     TOP_monitor,
                     TOP_UNDEFINED);
@@ -1000,6 +1006,28 @@ main()
 		     TOP_fhsub128v32,
 		     TOP_fhsub128v64,
 		     TOP_subus128v16,
+		     TOP_paddsb128,
+		     TOP_paddsw128,
+		     TOP_paddq128,
+		     TOP_psubsb128,
+		     TOP_psubsw128,
+		     TOP_psubq128,
+		     TOP_paddusb128,
+		     TOP_paddusw128,
+		     TOP_psubusb128,
+		     TOP_psubusw128,
+		     TOP_pmullw128,
+		     TOP_pmulhw128,
+		     TOP_pmulhuw128,
+		     TOP_pmuludq128,
+		     TOP_pmaddwd128,
+		     TOP_pavgb128,
+		     TOP_pavgw128,
+		     TOP_psadbw128,
+		     TOP_pand,
+		     TOP_pandn,
+		     TOP_por,
+		     TOP_pxor,
 		     TOP_and128v8,
 		     TOP_and128v16,
 		     TOP_and128v32,
@@ -3988,13 +4016,21 @@ main()
   Operand(1, simm32, offset);
 
   Instruction_Group("unpack",
+		    TOP_punpckhbw128,
+		    TOP_punpckhwd128,
+		    TOP_punpckhdq128,
+		    TOP_punpcklbw128,
+		    TOP_punpcklwd128,
+		    TOP_punpckldq128,
+		    TOP_punpckhqdq,
+		    TOP_punpcklqdq,
+		    TOP_packsswb128,
+		    TOP_packssdw128,
+		    TOP_packuswb128,
 		    TOP_unpckhps,
 		    TOP_unpcklps,
 		    TOP_unpckhpd,
 		    TOP_unpcklpd,
-		    TOP_punpcklbw,
-		    TOP_punpcklwd,
-		    TOP_punpckldq,
 		    TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -4112,6 +4148,14 @@ main()
 		    TOP_psrldq,
 		    TOP_psrlq128v64, // psrlq with immediate
 		    TOP_pslldq,
+                    TOP_psllwi,
+                    TOP_pslldi,
+                    TOP_psllqi,
+                    TOP_psrlwi,
+                    TOP_psrldi,
+                    TOP_psrlqi,
+                    TOP_psrawi,
+                    TOP_psradi,
                     /* AVX instructions */
                     TOP_vpslldq,
                     TOP_vpsrldq,
@@ -4762,6 +4806,14 @@ main()
   Operand(2, simm8, opnd3);
 
   Instruction_Group("fp compare I",
+		    TOP_cmpeqsd,
+		    TOP_cmpltsd,
+		    TOP_cmplesd,
+		    TOP_cmpunordsd,
+		    TOP_cmpneqsd,
+		    TOP_cmpnltsd,
+		    TOP_cmpnlesd,
+		    TOP_cmpordsd,
 		    TOP_cmpeqss,
 		    TOP_cmpltss,
 		    TOP_cmpless,
@@ -4835,6 +4887,14 @@ main()
   Operand(2, simm8, opnd3);
 
   Instruction_Group("fp vector compare I",
+		    TOP_cmpeqpd,
+		    TOP_cmpltpd,
+		    TOP_cmplepd,
+		    TOP_cmpunordpd,
+		    TOP_cmpneqpd,
+		    TOP_cmpnltpd,
+		    TOP_cmpnlepd,
+		    TOP_cmpordpd,
 		    TOP_cmpeqps,
 		    TOP_cmpltps,
 		    TOP_cmpleps,
@@ -5585,12 +5645,14 @@ main()
 		     TOP_paddq,
 		     TOP_psubsb,
 		     TOP_psubsw,
+		     TOP_psubq,
 		     TOP_paddusb,
 		     TOP_paddusw,
 		     TOP_psubusb,
 		     TOP_psubusw,
 		     TOP_pmullw,
 		     TOP_pmulhw,
+		     TOP_pmuludq,
 		     TOP_pmaddwd,
 		     TOP_pcmpeqb,
 		     TOP_pcmpeqw,
@@ -5601,9 +5663,9 @@ main()
 		     TOP_punpckhbw,
 		     TOP_punpckhwd,
 		     TOP_punpckhdq,
-		     TOP_punpckl64v8,
-		     TOP_punpckl64v16,
-		     TOP_punpckl64v32,
+		     TOP_punpcklbw,
+		     TOP_punpcklwd,
+		     TOP_punpckldq,
 		     TOP_packsswb,
 		     TOP_packssdw,
 		     TOP_packuswb,
@@ -5667,8 +5729,10 @@ main()
   Instruction_Group("packed mmx arith",
   		     TOP_psllw_mmx,
   		     TOP_pslld_mmx,
+  		     TOP_psllq_mmx,
   		     TOP_psrlw_mmx,
   		     TOP_psrld_mmx,
+  		     TOP_psrlq_mmx,
   		     TOP_psraw_mmx,
   		     TOP_psrad_mmx,
   		     TOP_pand_mmx,
@@ -5679,6 +5743,20 @@ main()
   Result(0, mmx);
   Operand(0, mmx, opnd1);
   Operand(1, mmx, opnd2);
+
+  Instruction_Group("packed mmx imm arith",
+  		     TOP_psllwi_mmx,
+  		     TOP_pslldi_mmx,
+  		     TOP_psllqi_mmx,
+  		     TOP_psrlwi_mmx,
+  		     TOP_psrldi_mmx,
+  		     TOP_psrlqi_mmx,
+  		     TOP_psrawi_mmx,
+  		     TOP_psradi_mmx,
+                     TOP_UNDEFINED);
+  Result(0, mmx);
+  Operand(0, mmx, opnd1);
+  Operand(1, simm8, opnd2);
 
   Instruction_Group( "vector cvt sse ps/pd 2 mmx pi",
 		     TOP_cvtps2pi,

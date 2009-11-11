@@ -233,6 +233,14 @@ int main (int argc, char *argv[])
 		     TOP_bsr32, // guess!
 		     TOP_bsr64, // guess!
 		     TOP_mov64_m,
+		     TOP_cmpeqsd,
+		     TOP_cmpltsd,
+		     TOP_cmplesd,
+		     TOP_cmpunordsd,
+		     TOP_cmpneqsd,
+		     TOP_cmpnltsd,
+		     TOP_cmpnlesd,
+		     TOP_cmpordsd,
 		     TOP_cmpeqss,
 		     TOP_cmpltss,
 		     TOP_cmpless,
@@ -1645,6 +1653,7 @@ int main (int argc, char *argv[])
 		    TOP_fmin128v32,
 		    TOP_fmin128v64,
 		    TOP_psadbw,
+		    TOP_psadbw128,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(2);
@@ -1759,11 +1768,21 @@ int main (int argc, char *argv[])
   Instruction_Group("mmx shuffle",
 		    TOP_pshufw64v16,
 		    TOP_psllw_mmx,
+		    TOP_psllwi_mmx,
 		    TOP_pslld_mmx,
+		    TOP_pslldi_mmx,
+		    TOP_psllq_mmx,
+		    TOP_psllqi_mmx,
 		    TOP_psrlw_mmx,
+		    TOP_psrlwi_mmx,
 		    TOP_psrld_mmx,
+		    TOP_psrldi_mmx,
+		    TOP_psrlq_mmx,
+		    TOP_psrlqi_mmx,
 		    TOP_psraw_mmx,
+		    TOP_psrawi_mmx,
 		    TOP_psrad_mmx,
+		    TOP_psradi_mmx,
 		    TOP_pand_mmx,
 		    TOP_pandn_mmx,
 		    TOP_por_mmx,
@@ -1780,13 +1799,21 @@ int main (int argc, char *argv[])
 		    TOP_psrlq128v64,
 		    TOP_pslldq,
 		    TOP_psllw,
+		    TOP_psllwi,
 		    TOP_pslld,
+		    TOP_pslldi,
 		    TOP_psllq,
+		    TOP_psllqi,
 		    TOP_psrlw,
+		    TOP_psrlwi,
 		    TOP_psrld,
+		    TOP_psrldi,
 		    TOP_psrlq,
+		    TOP_psrlqi,
 		    TOP_psraw,
+		    TOP_psrawi,
 		    TOP_psrad,
+		    TOP_psradi,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(3);
@@ -1797,12 +1824,23 @@ int main (int argc, char *argv[])
 		    TOP_punpcklwd,
 		    TOP_punpcklbw,
 		    TOP_punpckldq,
+		    TOP_punpcklwd128,
+		    TOP_punpcklbw128,
+		    TOP_punpckldq128,
 		    TOP_punpckhbw,
 		    TOP_punpckhwd,
 		    TOP_punpckhdq,
-		    TOP_punpckl64v8,
-		    TOP_punpckl64v16,
-		    TOP_punpckl64v32,
+		    TOP_punpckhbw128,
+		    TOP_punpckhwd128,
+		    TOP_punpckhdq128,
+		    TOP_punpcklqdq,
+		    TOP_punpckhqdq,
+		    TOP_packsswb,
+		    TOP_packssdw,
+		    TOP_packuswb,
+		    TOP_packsswb128,
+		    TOP_packssdw128,
+		    TOP_packuswb128,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(2);
@@ -1819,6 +1857,14 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_fadd, 0);
 
   Instruction_Group("sse parallel compares",
+		    TOP_cmpeqpd,
+		    TOP_cmpltpd,
+		    TOP_cmplepd,
+		    TOP_cmpunordpd,
+		    TOP_cmpneqpd,
+		    TOP_cmpnltpd,
+		    TOP_cmpnlepd,
+		    TOP_cmpordpd,
 		    TOP_cmpeqps,
 		    TOP_cmpltps,
 		    TOP_cmpleps,
@@ -1911,10 +1957,21 @@ int main (int argc, char *argv[])
 		    TOP_paddq,
 		    TOP_psubsb,
 		    TOP_psubsw,
+		    TOP_psubq,
 		    TOP_paddusb,
 		    TOP_paddusw,
 		    TOP_psubusb,
 		    TOP_psubusw,
+		    TOP_paddsb128,
+		    TOP_paddsw128,
+		    TOP_paddq128,
+		    TOP_psubsb128,
+		    TOP_psubsw128,
+		    TOP_psubq128,
+		    TOP_paddusb128,
+		    TOP_paddusw128,
+		    TOP_psubusb128,
+		    TOP_psubusw128,
 		    TOP_sub128v8,
 		    TOP_sub128v16,
 		    TOP_sub128v32,
@@ -1935,11 +1992,14 @@ int main (int argc, char *argv[])
 		    TOP_xor128v32,
 		    TOP_xor128v64,		    
 		    TOP_subus128v16,
-		    TOP_packsswb,
-		    TOP_packssdw,
-		    TOP_packuswb,
 		    TOP_pavgb,
 		    TOP_pavgw,
+		    TOP_pavgb128,
+		    TOP_pavgw128,
+		    TOP_pand,
+		    TOP_pandn,
+		    TOP_por,
+		    TOP_pxor,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(2);
@@ -1958,7 +2018,13 @@ int main (int argc, char *argv[])
 		    TOP_pmullw,
 		    TOP_pmulhw,
 		    TOP_pmulhuw,
+		    TOP_pmuludq,
 		    TOP_pmaddwd,
+		    TOP_pmullw128,
+		    TOP_pmulhw128,
+		    TOP_pmulhuw128,
+		    TOP_pmuludq128,
+		    TOP_pmaddwd128,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(4);
@@ -2210,6 +2276,12 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_fadd, 0);
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group("clflush",
+		    TOP_clflush,
+		    TOP_UNDEFINED);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_alu, 0);
 
   Instruction_Group("zeroupper",
                     TOP_vzeroupper,

@@ -2550,6 +2550,18 @@ Handle_STID (WN *stid, OPCODE opcode)
 	result = Gen_Register_TN(TN_register_class(result),
 				 MTYPE_byte_size(dtype));
       }
+
+#if defined(TARG_X8664)
+      // MMX data can be store into SSE(float) register. For example, the 
+      // return value. In this case, we create a new MMX result for expansion 
+      // and after the expansion, copy the data from MMX to SSE(float).
+      if (MTYPE_is_mmx_vector(dtype) &&
+          TN_register_class(result) == ISA_REGISTER_CLASS_float) {
+        old_result = result;
+        result = Gen_Register_TN(ISA_REGISTER_CLASS_mmx, MTYPE_byte_size(dtype));
+      }
+#endif
+
 #endif
 
 #if defined(TARG_IA32)
@@ -3560,8 +3572,24 @@ Handle_Imm_Op (WN * expr, INT * kidno /* counted from 0 */)
       *kidno = 2;
       return Gen_Literal_TN (WN_const_val (WN_kid0 (WN_kid2 (expr))), 4);
 
+    case INTRN_PSLLWI:
+    case INTRN_PSLLDI:
+    case INTRN_PSLLQI:
+    case INTRN_PSRLWI:
+    case INTRN_PSRLDI:
+    case INTRN_PSRLQI:
+    case INTRN_PSRAWI:
+    case INTRN_PSRADI:
     case INTRN_PSLLDQ:
     case INTRN_PSRLDQ:
+    case INTRN_PSLLWI128:
+    case INTRN_PSLLDI128:
+    case INTRN_PSLLQI128:
+    case INTRN_PSRLWI128:
+    case INTRN_PSRLDI128:
+    case INTRN_PSRLQI128:
+    case INTRN_PSRAWI128:
+    case INTRN_PSRADI128:
     case INTRN_PSHUFD:
     case INTRN_PSHUFW:
     case INTRN_PSHUFLW:

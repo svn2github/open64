@@ -5879,7 +5879,7 @@ Expand_Replicate (OPCODE op, TN *result, TN *op1, OPS *ops)
   {
     TN* tmp_a = Build_TN_Like(result);
     Build_OP(TOP_movg2x, tmp, op1, ops);
-    Build_OP(TOP_punpcklwd, tmp_a, tmp, tmp, ops);
+    Build_OP(TOP_punpcklwd128, tmp_a, tmp, tmp, ops);
     Build_OP(TOP_pshufd, result, tmp_a, Gen_Literal_TN(0, 1), ops);
     break;
   }
@@ -5888,8 +5888,8 @@ Expand_Replicate (OPCODE op, TN *result, TN *op1, OPS *ops)
     TN* tmp_a = Build_TN_Like(result);
     TN* tmp_b = Build_TN_Like(result);
     Build_OP(TOP_movg2x, tmp, op1, ops);
-    Build_OP(TOP_punpcklbw, tmp_a, tmp, tmp, ops);
-    Build_OP(TOP_punpcklbw, tmp_b, tmp_a, tmp_a, ops);
+    Build_OP(TOP_punpcklbw128, tmp_a, tmp, tmp, ops);
+    Build_OP(TOP_punpcklbw128, tmp_b, tmp_a, tmp_a, ops);
     Build_OP(TOP_pshufd, result, tmp_b, Gen_Literal_TN(0, 1), ops);
     break;
   }
@@ -6813,7 +6813,7 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
   };
 
   TN* rflags = Rflags_TN();
-  TN *result_tmp = Build_TN_Of_Mtype( MTYPE_U1 );
+  TN* result_tmp = Build_TN_Of_Mtype( MTYPE_U1 );
   BOOL need_zero_ext = FALSE;	// if zero ext is needed, if yes, `movzb{l|q} result_tmp, result' is appended
   const BOOL is_double = MTYPE_is_size_double(mtype);
   const TOP cmp_opcode = ( MTYPE_is_quad(mtype) || !Is_Target_SSE2() )
@@ -6822,12 +6822,16 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
   if (INTRN_return_kind(id) == IRETURN_M8I1 ||
       INTRN_return_kind(id) == IRETURN_M8I2 ||
       INTRN_return_kind(id) == IRETURN_M8I4) { // convert operands to MMX TNs
+    FmtAssert(TN_register_class(result) == ISA_REGISTER_CLASS_mmx, ("bad class"));
+
     if (TN_register_class(op0) != ISA_REGISTER_CLASS_mmx) {
       TN *tmp0 = Build_TN_Like(result);
       Exp_COPY( tmp0, op0, ops );
       op0 = tmp0;
     }
-    if (id != INTRN_PSHUFW && id != INTRN_PSHUFD &&
+    if (id != INTRN_PSHUFW && 
+        id != INTRN_PSHUFD &&
+        id != INTRN_VEC_EXT_V2SI &&
 	TN_register_class(op1) != ISA_REGISTER_CLASS_mmx) {
       TN *tmp1 = Build_TN_Like(result);
       Exp_COPY( tmp1, op1, ops );
@@ -6999,20 +7003,20 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
   case INTRN_PADDSW:
     Build_OP( TOP_paddsw, result, op0, op1, ops );
     break;
+  case INTRN_PADDQ:
+    Build_OP( TOP_paddq, result, op0, op1, ops );
+    break;
   case INTRN_PSUBSB:
     Build_OP( TOP_psubsb, result, op0, op1, ops );
     break;
   case INTRN_PSUBSW:
     Build_OP( TOP_psubsw, result, op0, op1, ops );
     break;
+  case INTRN_PSUBQ:
+    Build_OP( TOP_psubq, result, op0, op1, ops );
+    break;
   case INTRN_PADDUSB:
     Build_OP( TOP_paddusb, result, op0, op1, ops );
-    break;
-  case INTRN_PADDD128:
-    Build_OP( TOP_add128v32, result, op0, op1, ops );
-    break;
-  case INTRN_PADDW128:
-    Build_OP( TOP_add128v16, result, op0, op1, ops );
     break;
   case INTRN_PADDUSW:
     Build_OP( TOP_paddusw, result, op0, op1, ops );
@@ -7028,6 +7032,48 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     break;
   case INTRN_PMULHW:
     Build_OP( TOP_pmulhw, result, op0, op1, ops );
+    break;
+  case INTRN_PMULUDQ:
+    Build_OP( TOP_pmuludq, result, op0, op1, ops );
+    break;
+  case INTRN_PADDSB128:
+    Build_OP( TOP_paddsb128, result, op0, op1, ops );
+    break;
+  case INTRN_PADDSW128:
+    Build_OP( TOP_paddsw128, result, op0, op1, ops );
+    break;
+  case INTRN_PSUBSB128:
+    Build_OP( TOP_psubsb128, result, op0, op1, ops );
+    break;
+  case INTRN_PSUBSW128:
+    Build_OP( TOP_psubsw128, result, op0, op1, ops );
+    break;
+  case INTRN_PADDUSB128:
+    Build_OP( TOP_paddusb128, result, op0, op1, ops );
+    break;
+  case INTRN_PADDUSW128:
+    Build_OP( TOP_paddusw128, result, op0, op1, ops );
+    break;
+  case INTRN_PSUBUSB128:
+    Build_OP( TOP_psubusb128, result, op0, op1, ops );
+    break;
+  case INTRN_PSUBUSW128:
+    Build_OP( TOP_psubusw128, result, op0, op1, ops );
+    break;
+  case INTRN_PMULLW128:
+    Build_OP( TOP_pmullw128, result, op0, op1, ops );
+    break;
+  case INTRN_PMULHW128:
+    Build_OP( TOP_pmulhw128, result, op0, op1, ops );
+    break;
+  case INTRN_PMULUDQ128:
+    Build_OP( TOP_pmuludq128, result, op0, op1, ops );
+    break;
+  case INTRN_PADDD128:
+    Build_OP( TOP_add128v32, result, op0, op1, ops );
+    break;
+  case INTRN_PADDW128:
+    Build_OP( TOP_add128v16, result, op0, op1, ops );
     break;
   case INTRN_PCMPEQB:
     Build_OP( TOP_pcmpeqb, result, op0, op1, ops );
@@ -7074,14 +7120,38 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
   case INTRN_PUNPCKHDQ:
     Build_OP( TOP_punpckhdq, result, op0, op1, ops );
     break;
+  case INTRN_PUNPCKHBW128:
+    Build_OP( TOP_punpckhbw128, result, op0, op1, ops );
+    break;
+  case INTRN_PUNPCKHWD128:
+    Build_OP( TOP_punpckhwd128, result, op0, op1, ops );
+    break;
+  case INTRN_PUNPCKHDQ128:
+    Build_OP( TOP_punpckhdq128, result, op0, op1, ops );
+    break;
   case INTRN_PUNPCKLBW:
-    Build_OP( TOP_punpckl64v8, result, op0, op1, ops );
+    Build_OP( TOP_punpcklbw, result, op0, op1, ops );
     break;
   case INTRN_PUNPCKLWD:
-    Build_OP( TOP_punpckl64v16, result, op0, op1, ops );
+    Build_OP( TOP_punpcklwd, result, op0, op1, ops );
     break;
   case INTRN_PUNPCKLDQ:
-    Build_OP( TOP_punpckl64v32, result, op0, op1, ops );
+    Build_OP( TOP_punpckldq, result, op0, op1, ops );
+    break;
+  case INTRN_PUNPCKLBW128:
+    Build_OP( TOP_punpcklbw128, result, op0, op1, ops );
+    break;
+  case INTRN_PUNPCKLWD128:
+    Build_OP( TOP_punpcklwd128, result, op0, op1, ops );
+    break;
+  case INTRN_PUNPCKLDQ128:
+    Build_OP( TOP_punpckldq128, result, op0, op1, ops );
+    break;
+  case INTRN_PUNPCKHQDQ:
+    Build_OP( TOP_punpckhqdq, result, op0, op1, ops );
+    break;
+  case INTRN_PUNPCKLQDQ:
+    Build_OP( TOP_punpcklqdq, result, op0, op1, ops );
     break;
   case INTRN_PACKSSWB:
     Build_OP( TOP_packsswb, result, op0, op1, ops );
@@ -7091,6 +7161,15 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     break;
   case INTRN_PACKUSWB:
     Build_OP( TOP_packuswb, result, op0, op1, ops );
+    break;
+  case INTRN_PACKSSWB128:
+    Build_OP( TOP_packsswb128, result, op0, op1, ops );
+    break;
+  case INTRN_PACKSSDW128:
+    Build_OP( TOP_packssdw128, result, op0, op1, ops );
+    break;
+  case INTRN_PACKUSWB128:
+    Build_OP( TOP_packuswb128, result, op0, op1, ops );
     break;
   case INTRN_PMULHUW:
     Build_OP( TOP_pmulhuw, result, op0, op1, ops );
@@ -7104,6 +7183,18 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
   case INTRN_PSADBW:
     Build_OP( TOP_psadbw, result, op0, op1, ops );
     break;
+  case INTRN_PMULHUW128:
+    Build_OP( TOP_pmulhuw128, result, op0, op1, ops );
+    break;
+  case INTRN_PAVGB128:
+    Build_OP( TOP_pavgb128, result, op0, op1, ops );
+    break;
+  case INTRN_PAVGW128:
+    Build_OP( TOP_pavgw128, result, op0, op1, ops );
+    break;
+  case INTRN_PSADBW128:
+    Build_OP( TOP_psadbw128, result, op0, op1, ops );
+    break;
   case INTRN_PMAXUB:
     Build_OP( TOP_max64v8, result, op0, op1, ops );
     break;
@@ -7115,6 +7206,18 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     break;
   case INTRN_PMINSW:
     Build_OP( TOP_min64v16, result, op0, op1, ops );
+    break;
+  case INTRN_PMAXUB128:
+    Build_OP( TOP_max128v8, result, op0, op1, ops );
+    break;
+  case INTRN_PMAXSW128:
+    Build_OP( TOP_max128v16, result, op0, op1, ops );
+    break;
+  case INTRN_PMINUB128:
+    Build_OP( TOP_min128v8, result, op0, op1, ops );
+    break;
+  case INTRN_PMINSW128:
+    Build_OP( TOP_min128v16, result, op0, op1, ops );
     break;
   case INTRN_PEXTRW0:
     Is_True (op1 == NULL, ("Imm operand should be null"));
@@ -7234,6 +7337,18 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
   case INTRN_DIVPS:
     Build_OP( TOP_fdiv128v32, result, op0, op1, ops );
     break;
+  case INTRN_ADDSD:
+    Build_OP( TOP_addsd, result, op0, op1, ops );
+    break;
+  case INTRN_SUBSD:
+    Build_OP( TOP_subsd, result, op0, op1, ops );
+    break;
+  case INTRN_MULSD:
+    Build_OP( TOP_mulsd, result, op0, op1, ops );
+    break;
+  case INTRN_DIVSD:
+    Build_OP( TOP_divsd, result, op0, op1, ops );
+    break;
   case INTRN_ADDSS:
     Build_OP( TOP_addss, result, op0, op1, ops );
     break;
@@ -7246,6 +7361,42 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
   case INTRN_DIVSS:
     Build_OP( TOP_divss, result, op0, op1, ops );
     break;
+  case INTRN_CMPEQPD:
+    Build_OP( TOP_cmpeqpd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPLTPD:
+    Build_OP( TOP_cmpltpd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPLEPD:
+    Build_OP( TOP_cmplepd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPGTPD:
+    Build_OP( TOP_cmpltpd, result, op1, op0, ops );  // swap operands
+    break;
+  case INTRN_CMPGEPD:
+    Build_OP( TOP_cmplepd, result, op1, op0, ops );  // swap operands
+    break;
+  case INTRN_CMPUNORDPD:
+    Build_OP( TOP_cmpunordpd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNEQPD:
+    Build_OP( TOP_cmpneqpd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNLTPD:
+    Build_OP( TOP_cmpnltpd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNLEPD:
+    Build_OP( TOP_cmpnlepd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNGTPD:
+    Build_OP( TOP_cmpnltpd, result, op1, op0, ops );  // swap operands
+    break;
+  case INTRN_CMPNGEPD:
+    Build_OP( TOP_cmpnlepd, result, op1, op0, ops );  // swap operands
+    break;
+  case INTRN_CMPORDPD:
+    Build_OP( TOP_cmpordpd, result, op0, op1, ops );
+    break;
   case INTRN_CMPEQPS:
     Build_OP( TOP_cmpeqps, result, op0, op1, ops );
     break;
@@ -7256,10 +7407,10 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Build_OP( TOP_cmpleps, result, op0, op1, ops );
     break;
   case INTRN_CMPGTPS:
-    Build_OP( TOP_cmpltps, result, op1, op0, ops );
+    Build_OP( TOP_cmpltps, result, op1, op0, ops );  // swap operands
     break;
   case INTRN_CMPGEPS:
-    Build_OP( TOP_cmpleps, result, op1, op0, ops );
+    Build_OP( TOP_cmpleps, result, op1, op0, ops );  // swap operands
     break;
   case INTRN_CMPUNORDPS:
     Build_OP( TOP_cmpunordps, result, op0, op1, ops );
@@ -7274,13 +7425,49 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Build_OP( TOP_cmpnleps, result, op0, op1, ops );
     break;
   case INTRN_CMPNGTPS:
-    Build_OP( TOP_cmpnltps, result, op1, op0, ops );
+    Build_OP( TOP_cmpnltps, result, op1, op0, ops );  // swap operands
     break;
   case INTRN_CMPNGEPS:
-    Build_OP( TOP_cmpnleps, result, op1, op0, ops );
+    Build_OP( TOP_cmpnleps, result, op1, op0, ops );  // swap operands
     break;
   case INTRN_CMPORDPS:
     Build_OP( TOP_cmpordps, result, op0, op1, ops );
+    break;
+  case INTRN_CMPEQSD:
+    Build_OP( TOP_cmpeqsd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPLTSD:
+    Build_OP( TOP_cmpltsd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPLESD:
+    Build_OP( TOP_cmplesd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPGTSD:
+    Build_OP( TOP_cmpltsd, result, op1, op0, ops );  // swap operands
+    break;
+  case INTRN_CMPGESD:
+    Build_OP( TOP_cmplesd, result, op1, op0, ops );  // swap operands
+    break;
+  case INTRN_CMPUNORDSD:
+    Build_OP( TOP_cmpunordsd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNEQSD:
+    Build_OP( TOP_cmpneqsd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNLTSD:
+    Build_OP( TOP_cmpnltsd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNLESD:
+    Build_OP( TOP_cmpnlesd, result, op0, op1, ops );
+    break;
+  case INTRN_CMPNGTSD:
+    Build_OP( TOP_cmpnltsd, result, op1, op0, ops );  // swap operands
+    break;
+  case INTRN_CMPNGESD:
+    Build_OP( TOP_cmpnlesd, result, op1, op0, ops );  // swap operands
+    break;
+  case INTRN_CMPORDSD:
+    Build_OP( TOP_cmpordsd, result, op0, op1, ops );
     break;
   case INTRN_CMPEQSS:
     Build_OP( TOP_cmpeqss, result, op0, op1, ops );
@@ -7290,6 +7477,12 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     break;
   case INTRN_CMPLESS:
     Build_OP( TOP_cmpless, result, op0, op1, ops );
+    break;
+  case INTRN_CMPGTSS:
+    Build_OP( TOP_cmpltss, result, op1, op0, ops );  // swap operands
+    break;
+  case INTRN_CMPGESS:
+    Build_OP( TOP_cmpless, result, op1, op0, ops );  // swap operands
     break;
   case INTRN_CMPUNORDSS:
     Build_OP( TOP_cmpunordss, result, op0, op1, ops );
@@ -7303,11 +7496,20 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
   case INTRN_CMPNLESS:
     Build_OP( TOP_cmpnless, result, op0, op1, ops );
     break;
+  case INTRN_CMPNGTSS:
+    Build_OP( TOP_cmpnltss, result, op1, op0, ops );  // swap operands
+    break;
+  case INTRN_CMPNGESS:
+    Build_OP( TOP_cmpnless, result, op1, op0, ops );  // swap operands
+    break;
   case INTRN_CMPORDSS:
     Build_OP( TOP_cmpordss, result, op0, op1, ops );
     break;
   case INTRN_MAXPS:
     Build_OP( TOP_fmax128v32, result, op0, op1, ops );
+    break;
+  case INTRN_MAXSD:
+    Build_OP( TOP_maxsd, result, op0, op1, ops );
     break;
   case INTRN_MAXSS:
     Build_OP( TOP_maxss, result, op0, op1, ops );
@@ -7315,11 +7517,17 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
   case INTRN_MINPS:
     Build_OP( TOP_fmin128v32, result, op0, op1, ops );
     break;
+  case INTRN_MINSD:
+    Build_OP( TOP_minsd, result, op0, op1, ops );
+    break;
   case INTRN_MINSS:
     Build_OP( TOP_minss, result, op0, op1, ops );
     break;
   case INTRN_ANDPS:
     Build_OP( TOP_fand128v32, result, op0, op1, ops );
+    break;
+  case INTRN_ANDNPD:
+    Build_OP( TOP_andnpd, result, op0, op1, ops );
     break;
   case INTRN_ANDNPS:
     Build_OP( TOP_andnps, result, op0, op1, ops );
@@ -7411,29 +7619,101 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
   case INTRN_PSRLDQ:
     Build_OP( TOP_psrldq, result, op0, op1, ops );
     break;
-  case INTRN_PSLLW:
+  case INTRN_PSLLW128:
     Build_OP( TOP_psllw, result, op0, op1, ops );
     break;
-  case INTRN_PSLLD:
+  case INTRN_PSLLD128:
     Build_OP( TOP_pslld, result, op0, op1, ops );
     break;
-  case INTRN_PSLLQ:
+  case INTRN_PSLLQ128:
     Build_OP( TOP_psllq, result, op0, op1, ops );
     break;
-  case INTRN_PSRLW:
+  case INTRN_PSRLW128:
     Build_OP( TOP_psrlw, result, op0, op1, ops );
     break;
-  case INTRN_PSRLD:
+  case INTRN_PSRLD128:
     Build_OP( TOP_psrld, result, op0, op1, ops );
     break;
-  case INTRN_PSRLQ:
+  case INTRN_PSRLQ128:
     Build_OP( TOP_psrlq, result, op0, op1, ops );
     break;
-  case INTRN_PSRAW:
+  case INTRN_PSRAW128:
     Build_OP( TOP_psraw, result, op0, op1, ops );
     break;
-  case INTRN_PSRAD:
+  case INTRN_PSRAD128:
     Build_OP( TOP_psrad, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLWI128:
+    Build_OP( TOP_psllwi, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLDI128:
+    Build_OP( TOP_pslldi, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLQI128:
+    Build_OP( TOP_psllqi, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLWI128:
+    Build_OP( TOP_psrlwi, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLDI128:
+    Build_OP( TOP_psrldi, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLQI128:
+    Build_OP( TOP_psrlqi, result, op0, op1, ops );
+    break;
+  case INTRN_PSRAWI128:
+    Build_OP( TOP_psrawi, result, op0, op1, ops );
+    break;
+  case INTRN_PSRADI128:
+    Build_OP( TOP_psradi, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLW:
+    Build_OP( TOP_psllw_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLD:
+    Build_OP( TOP_pslld_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLQ:
+    Build_OP( TOP_psllq_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLW:
+    Build_OP( TOP_psrlw_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLD:
+    Build_OP( TOP_psrld_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLQ:
+    Build_OP( TOP_psrlq_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRAW:
+    Build_OP( TOP_psraw_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRAD:
+    Build_OP( TOP_psrad_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLWI:
+    Build_OP( TOP_psllwi_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLDI:
+    Build_OP( TOP_pslldi_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSLLQI:
+    Build_OP( TOP_psllqi_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLWI:
+    Build_OP( TOP_psrlwi_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLDI:
+    Build_OP( TOP_psrldi_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRLQI:
+    Build_OP( TOP_psrlqi_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRAWI:
+    Build_OP( TOP_psrawi_mmx, result, op0, op1, ops );
+    break;
+  case INTRN_PSRADI:
+    Build_OP( TOP_psradi_mmx, result, op0, op1, ops );
     break;
   case INTRN_LOADD:
     Build_OP( TOP_movg2x64, result, op0, ops );
@@ -7489,13 +7769,9 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
       TN* tmp0 = Build_TN_Like(result);
       TN* tmp1 = Build_TN_Like(result);
       if ( TN_register_class(result) == ISA_REGISTER_CLASS_mmx ) {
-        Build_OP( TOP_movi32_2m, tmp0, op0, ops );
-        Build_OP( TOP_movi32_2m, tmp1, op1, ops );
-        Build_OP( TOP_punpckl64v32, result, tmp0, tmp1, ops );
+        Build_OP( TOP_punpckldq, result, op0, op1, ops );
       } else {
-        Build_OP( TOP_movg2x, tmp0, op0, ops );
-        Build_OP( TOP_movg2x, tmp1, op1, ops );
-        Build_OP( TOP_punpckldq, result, tmp0, tmp1, ops );
+        Build_OP( TOP_punpckldq128, result, op0, op1, ops );
       }
       break;
     }
@@ -7513,10 +7789,12 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
       if ( TN_has_value(op1) && TN_value(op1) == 1 ) {
         TN* tmp=Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
         Build_OP( TOP_movdq2q, tmp,  op0, ops);
-        Build_OP( TOP_punpckhdq, tmp, tmp, tmp, ops);
-        Build_OP( TOP_movm_2i32, result, tmp, ops );
+        Build_OP( TOP_punpckhdq128, result, tmp, tmp, ops);
       } else if ( TN_is_zero(op1)) {
-        Build_OP( TOP_movx2g, result, op0, ops );
+        if ( TN_register_class(result) == ISA_REGISTER_CLASS_integer )
+          Build_OP( TOP_movx2g, result, op0, ops );
+        else
+          Build_OP( TOP_movdq2q, result, op0, ops );
       } else {
         FmtAssert(0, ("op1 must be an integer constant in the range 0..1"));
       }
@@ -7524,24 +7802,6 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     break;
   case INTRN_PMADDWD:
     Build_OP( TOP_pmaddwd, result, op0, op1, ops );
-    break;
-  case INTRN_PSLLW_MMX:
-    Build_OP( TOP_psllw_mmx, result, op0, op1, ops );
-    break;
-  case INTRN_PSLLD_MMX:
-    Build_OP( TOP_pslld_mmx, result, op0, op1, ops );
-    break;
-  case INTRN_PSRLW_MMX:
-    Build_OP( TOP_psrlw_mmx, result, op0, op1, ops );
-    break;
-  case INTRN_PSRLD_MMX:
-    Build_OP( TOP_psrld_mmx, result, op0, op1, ops );
-    break;
-  case INTRN_PSRAW_MMX:
-    Build_OP( TOP_psraw_mmx, result, op0, op1, ops );
-    break;
-  case INTRN_PSRAD_MMX:
-    Build_OP( TOP_psrad_mmx, result, op0, op1, ops );
     break;
   case INTRN_PAND_MMX:
     Build_OP( TOP_pand_mmx, result, op0, op1, ops );
@@ -7555,6 +7815,18 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
   case INTRN_PXOR_MMX:
     Build_OP( TOP_pxor_mmx, result, op0, op1, ops );
     break;
+  case INTRN_PAND128:
+    Build_OP( TOP_pand, result, op0, op1, ops );
+    break;
+  case INTRN_PANDN128:
+    Build_OP( TOP_pandn, result, op0, op1, ops );
+    break;
+  case INTRN_POR128:
+    Build_OP( TOP_por, result, op0, op1, ops );
+    break;
+  case INTRN_PXOR128:
+    Build_OP( TOP_pxor, result, op0, op1, ops );
+    break;
   case INTRN_CVTPI2PS:
     if (TN_register_class(op0) != ISA_REGISTER_CLASS_mmx) {
       TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
@@ -7563,20 +7835,12 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     }
     Build_OP( TOP_cvtpi2ps, result, op0, ops );
     break;
-  case INTRN_CVTPS2PI: {
-      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
-      Build_OP( TOP_cvtps2pi, tmp0, op0, ops );
-      // mov mmx to sse
-      Build_OP (TOP_movq2dq, result, tmp0, ops);
-      break;
-    }
-  case INTRN_CVTTPS2PI: {
-      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
-      Build_OP( TOP_cvttps2pi, tmp0, op0, ops );
-      // mov mmx to sse
-      Build_OP (TOP_movq2dq, result, tmp0, ops);
-      break;
-    }
+  case INTRN_CVTPS2PI:
+    Build_OP( TOP_cvtps2pi, result, op0, ops);
+    break;
+  case INTRN_CVTTPS2PI:
+    Build_OP( TOP_cvttps2pi, result, op0, ops);
+    break;
   case INTRN_CVTPI2PD:
     if (TN_register_class(op0) != ISA_REGISTER_CLASS_mmx) {
       TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
@@ -7585,20 +7849,12 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     }
     Build_OP( TOP_cvtpi2pd, result, op0, ops );
     break;
-  case INTRN_CVTPD2PI: {
-      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
-      Build_OP( TOP_cvtpd2pi, tmp0, op0, ops );
-      // mov mmx to sse
-      Build_OP (TOP_movq2dq, result, tmp0, ops);
-      break;
-    }
-  case INTRN_CVTTPD2PI: {
-      TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx);
-      Build_OP( TOP_cvttpd2pi, tmp0, op0, ops );
-      // mov mmx to sse
-      Build_OP (TOP_movq2dq, result, tmp0, ops);
-      break;
-    }
+  case INTRN_CVTPD2PI:
+    Build_OP( TOP_cvtpd2pi, result, op0, ops);
+    break;
+  case INTRN_CVTTPD2PI:
+    Build_OP( TOP_cvttpd2pi, result, op0, ops);
+    break;
   case INTRN_CVTSI2SS:
     if (TN_register_class(op0) != ISA_REGISTER_CLASS_integer) {
       TN *tmp0 = Build_RCLASS_TN(ISA_REGISTER_CLASS_integer);
@@ -8793,6 +9049,9 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2,
   case INTRN_EMMS:
     Build_OP (TOP_emms, ops);
     break;
+  case INTRN_CLFLUSH:
+    Build_OP (TOP_clflush, op0, Gen_Literal_TN (0, 4), ops);
+    break;
   case INTRN_STOREAPS:
     Build_OP (TOP_staps, op1, op0, Gen_Literal_TN (0, 4), ops);
     break;
@@ -9894,7 +10153,11 @@ void Expand_Conv_To_Vector (TN * dest, TN * src, TYPE_ID desc, TYPE_ID rtype,
 			      ops);
 	  Build_OP(TOP_ld64_2m, dest, base_tn, ofst_tn, ops);
 	}
-      } else
+      }
+      else if (desc == MTYPE_I4 || desc == MTYPE_U4) {
+        Build_OP (TOP_movi32_2m, dest, src, ops);
+      } 
+      else
         Fail_FmtAssertion ("Expand_Conv_To_Vector: NYI");
     }
     else {

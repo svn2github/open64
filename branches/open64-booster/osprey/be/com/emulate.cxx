@@ -584,6 +584,11 @@ TYPE_ID INTR_return_mtype(INTRINSIC id)
   case IRETURN_C4:	return MTYPE_C4;
   case IRETURN_C8:	return MTYPE_C8;
   case IRETURN_CQ:	return MTYPE_CQ;
+#if defined(TARG_X8664)
+  case IRETURN_M8I1:    return MTYPE_M8I1;
+  case IRETURN_M8I2:    return MTYPE_M8I2;
+  case IRETURN_M8I4:    return MTYPE_M8I4;
+#endif
   case IRETURN_V:	return MTYPE_V;
   case IRETURN_PV:
   case IRETURN_PU1:
