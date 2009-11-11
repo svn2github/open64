@@ -521,8 +521,7 @@ void _Ieee_save(FENV_T *state) {
 #endif /* defined(TARG_whatever) */
   }
 
-//#if defined(X86)
-#if defined(TARG_IA32)
+#if defined(X86)
 int _Ieee_restore(const FENV_T *state) {
   FENV_T temp;
   __asm__("fnstenv %0" : "=m" (*&temp));
