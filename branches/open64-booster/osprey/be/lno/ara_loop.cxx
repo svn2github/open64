@@ -2017,10 +2017,7 @@ void ARA_LOOP_INFO::Walk_Rhs(WN *wn, WN *skip_store_id)
       rhs = LWN_WALK_TreeNext(rhs);
 
     } else if (WN_operator(wn) == OPR_LDID
-#ifdef KEY // bug 7444: MP lowerer cannot handle reduction of field in a struct
-    	       && TY_kind(ST_type(WN_st(wn))) != KIND_STRUCT
-#endif
-    	      ) {
+    	       && TY_kind(ST_type(WN_st(wn))) != KIND_STRUCT) {
       if (Is_Covered(wn))
 	_scalar_pri.Add_Scalar(wn,0);
       else if (red_manager && red_manager->Which_Reduction(wn) != RED_NONE) {
