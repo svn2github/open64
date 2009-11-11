@@ -2287,6 +2287,9 @@ public:
   CODEREP  *Convert2cr(WN *wn,
                        CODEMAP *htable,
                        BOOL     foldit) const;
+  CODEREP  *Convert2cr(MTYPE typ, OPERATOR opr, OPCODE opc, 
+                       CODEMAP *htable, BOOL foldit) const;
+
   void      Trim_to_16bits(WN *wn,
 			   CODEMAP *htable);
 

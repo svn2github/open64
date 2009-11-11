@@ -3481,6 +3481,18 @@ static BOOL Compose_Addr( OP* mem_op, EBO_TN_INFO* pt_tninfo,
     return FALSE;
   }
 
+  // We do not want to fold address computation across a type conversion
+  // E.g.  [ 830, 0] GTN238 :- lea32 TN240 (0x2) ;
+  //           :
+  //       [ 831, 0] TN241 :- leax64 GTN238 GTN180 (0x1) (0x0) ;
+  if (!OP_memory(mem_op)) {
+    TN *addr_result = OP_result(addr_op,0);
+    TN *mem_result = OP_result(mem_op,0);
+    if (addr_result && mem_result &&
+        TN_size(addr_result) != TN_size(mem_result))
+      return FALSE;
+  }
+
   const int op_offset_idx = OP_find_opnd_use( mem_op, OU_offset );
   TN* op_offset_tn = opnd_tn[op_offset_idx];
 

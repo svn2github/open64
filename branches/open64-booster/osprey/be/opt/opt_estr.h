@@ -121,7 +121,7 @@ private:
   // Determine if the CVT is a linear function, and the value being
   // converted can thus be used as an iv.
   BOOL Is_cvt_linear(const CODEREP *cr) const;
-  BOOL Is_implicit_cvt_linear (MTYPE, MTYPE) const;
+  BOOL Is_implicit_cvt_linear (MTYPE, const CODEREP *cr) const;
 
   // Does the lhs var match the rhs var/expr?  If so, return the
   // rhs var, else return NULL.  May strip off CVTs, etc.

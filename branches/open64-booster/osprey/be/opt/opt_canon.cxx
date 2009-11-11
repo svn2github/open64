@@ -103,7 +103,15 @@ CANON_CR::Convert2cr(WN *wn, CODEMAP *htable, BOOL foldit) const
     typ = MTYPE_U4; // U8U4CVT is deleted in Canon_cvt; otherwise will 
     		       // generate U8ADD instead of U4ADD which is wrong
 #endif
+  cr = Convert2cr(typ,opr,WN_opcode(wn),htable,foldit);
+  return cr;
+}
 
+CODEREP*
+CANON_CR::Convert2cr(MTYPE typ, OPERATOR opr, OPCODE opc, CODEMAP *htable, BOOL foldit) const
+{
+  CODEREP *cr;
+   
   if (Tree() && Scale() != 0) {
     cr = htable->Add_bin_node_and_fold
       (OPCODE_make_op(OPR_ADD, typ, MTYPE_V),
@@ -118,8 +126,8 @@ CANON_CR::Convert2cr(WN *wn, CODEMAP *htable, BOOL foldit) const
     // change the new operator to an unsigned because the convert is about to be deleted.
     // This corrects a regression introduced by a fix in file opt_htable.cxx method
     // CODEMAP::Canon_add_sub (search for string "bug 14605").
-    if( WN_operator(wn) == OPR_CVT &&
-        !MTYPE_signed(OPCODE_rtype(WN_opcode(wn))) && MTYPE_signed(cr->Dtyp()) ) {
+    if( opr == OPR_CVT &&
+        !MTYPE_signed(OPCODE_rtype(opc)) && MTYPE_signed(cr->Dtyp()) ) {
       cr->Set_dtyp(Mtype_TransferSign(MTYPE_U4, cr->Dtyp()));
     }
 #endif

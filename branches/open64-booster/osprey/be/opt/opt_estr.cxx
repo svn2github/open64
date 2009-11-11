@@ -209,7 +209,7 @@ STR_RED::Is_cvt_linear( const CODEREP *cr ) const
   // allow U8U4CVT strength reduction if the CVT is a 1st order expr
   if ((cr->Dtyp() == MTYPE_U8 || cr->Dtyp() == MTYPE_I8)
       && cr->Dsctyp() == MTYPE_U4) {
-#ifndef TARG_X8664
+
     Is_True(cr->Opnd(0)->Kind() == CK_VAR, 
 	    ("STR_RED::Is_cvt_linear:  invalid str red expr."));
 #ifdef TARG_NVISA
@@ -222,7 +222,6 @@ STR_RED::Is_cvt_linear( const CODEREP *cr ) const
 #else
     if (!Htable()->Opt_stab()->Aux_stab_entry(cr->Opnd(0)->Aux_id())->EPRE_temp())
 #endif
-#endif
       return TRUE;
   }
       
@@ -231,8 +230,10 @@ STR_RED::Is_cvt_linear( const CODEREP *cr ) const
 
 
 BOOL 
-STR_RED::Is_implicit_cvt_linear(MTYPE opc_type, MTYPE opnd_type) const
+STR_RED::Is_implicit_cvt_linear(MTYPE opc_type, const CODEREP *cr) const
 {
+  MTYPE opnd_type = cr->Dtyp();
+   
   // The check below is commented because 
   //     U4U4LDID
   //    U8MPY  
@@ -242,6 +243,14 @@ STR_RED::Is_implicit_cvt_linear(MTYPE opc_type, MTYPE opnd_type) const
 
   // Is_True( Need_type_conversion(opc_type, opnd_type, NULL) == NOT_AT_ALL,
   //  ("STR_RED::Is_implicit_cvt_linear:  cvt is not implicit."));
+
+#ifdef TARG_X8664
+  // Restrict strength reduction of implicit U8U4CVT as we do in Is_cvt_linear
+  if ((opc_type == MTYPE_U8 || opc_type == MTYPE_I8) &&
+      opnd_type == MTYPE_U4)
+     if (Htable()->Opt_stab()->Aux_stab_entry(cr->Aux_id())->EPRE_temp())
+        return FALSE;
+#endif
 
   // e.g., disable str-red of I8I4CVT ... if do not allow wrap around opt
   if (! Allow_wrap_around_opt && 
@@ -1089,7 +1098,7 @@ STR_RED::Candidate( const CODEREP *cr,
 				opr == OPR_ADD || opr == OPR_SUB))
       {
 	if (Is_cvt_linear(use_opnd0) &&
-	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd0->Dtyp())) {
+	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd0)) {
 	  return TRUE;
         }
       }
@@ -1102,7 +1111,7 @@ STR_RED::Candidate( const CODEREP *cr,
 				opr == OPR_ADD || opr == OPR_SUB))
       {
         if (Is_cvt_linear(use_opnd1) &&
-	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd1->Dtyp())) {
+	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd1)) {
 	  return TRUE;
         }
       }
@@ -1126,7 +1135,7 @@ STR_RED::Candidate( const CODEREP *cr,
       // i*-1
       if (Defined_by_iv_update( use_opnd0, def_opnd0, NULL, use_bb, cr)) {
 	if (Is_cvt_linear(use_opnd0) && 
-	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd0->Dtyp())) {
+	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd0)) {
 	  return TRUE;
 	}
       }
@@ -1137,7 +1146,7 @@ STR_RED::Candidate( const CODEREP *cr,
       if (Defined_by_iv_update( use_opnd0, def_opnd0, NULL, use_bb, cr)) {
 	if (Is_cvt_linear(cr) && 
 	    Is_cvt_linear(use_opnd0) &&
-	    Is_implicit_cvt_linear(cr->Dsctyp(), use_opnd0->Dtyp())) {
+	    Is_implicit_cvt_linear(cr->Dsctyp(), use_opnd0)) {
 	  return TRUE;
 	}
       }
@@ -1174,7 +1183,7 @@ STR_RED::Candidate_phi_res( const CODEREP *cr,
 				       opr == OPR_ADD || opr == OPR_SUB))
       {
 	if (Is_cvt_linear(use_opnd0) &&
-	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd0->Dtyp())) {
+	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd0)) {
 	  return TRUE;
 	}
       }
@@ -1187,7 +1196,7 @@ STR_RED::Candidate_phi_res( const CODEREP *cr,
 				       opr == OPR_ADD || opr == OPR_SUB))
       {
 	if (Is_cvt_linear(use_opnd1) &&
-	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd1->Dtyp())) {
+	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd1)) {
 	  return TRUE;
 	}
       }
@@ -1203,7 +1212,7 @@ STR_RED::Candidate_phi_res( const CODEREP *cr,
 				       NULL/*invar*/, use_bb, cr))
       {
 	if (Is_cvt_linear(use_opnd0) && 
-	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd0->Dtyp())) {
+	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd0)) {
 	  return TRUE;
 	}
       }
@@ -1215,7 +1224,7 @@ STR_RED::Candidate_phi_res( const CODEREP *cr,
       {
 	if (Is_cvt_linear(cr) && 
 	    Is_cvt_linear(use_opnd0) &&
-	    Is_implicit_cvt_linear(cr->Dsctyp(), use_opnd0->Dtyp())) {
+	    Is_implicit_cvt_linear(cr->Dsctyp(), use_opnd0)) {
 	  return TRUE;
 	}
       }

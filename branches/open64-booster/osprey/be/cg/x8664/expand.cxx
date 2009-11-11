@@ -1302,7 +1302,10 @@ void Expand_Convert_Length ( TN *dest, TN *src, TN *length_tn, TYPE_ID mtype,
     else if( MTYPE_bit_size(mtype) == 32 ){
       // Bug 4117 - use a move here without setting the copy bits 
       // (that is, don't call Expand_Copy).
-      Build_OP( TOP_mov32, dest, src, ops);
+      // We use a movzlq instead of a mov32 to prevent the copy from
+      // being treated as a nop when both the target and destination
+      // operands are 8-byte.
+      Build_OP( TOP_movzlq, dest, src, ops);
       return;
     }
   }

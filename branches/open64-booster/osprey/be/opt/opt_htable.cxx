@@ -2120,6 +2120,35 @@ CODEMAP::Canon_neg(WN       *wn,
   return propagated;
 }
 
+
+// This routine is a helper used by CODEMAP::Canon_mpy to prevent
+// constant folding across unsigned conversions, be they explicit
+// or implicit.  NOTE: This routine will not prevent folding across
+// conversions from signed types as the behavior of signed types
+// with respect to integer overflow is undefined.
+static BOOL 
+Prevent_fold_across_cvt(CANON_CR *ccr, WN *wn, MTYPE &from_type)
+{
+   BOOL prevent_folding = FALSE;
+   if (MTYPE_is_unsigned(ccr->Tree()->Dtyp()))
+   {
+      if (ccr->Tree()->Dtyp() != WN_rtype(wn))
+      {
+         prevent_folding = TRUE;
+         from_type = ccr->Tree()->Dtyp();
+      }
+      else if (ccr->Tree()->Kind() == CK_OP &&
+               ccr->Tree()->Opr() == OPR_CVT &&
+               MTYPE_is_unsigned(ccr->Tree()->Dsctyp()))
+      {
+         prevent_folding = TRUE;
+         from_type = ccr->Tree()->Dsctyp();
+      }
+   }
+   return prevent_folding;
+}
+
+
 BOOL
 CODEMAP::Canon_mpy(WN       *wn,
                    OPT_STAB *opt_stab,
@@ -2152,10 +2181,32 @@ CODEMAP::Canon_mpy(WN       *wn,
       ccr->Set_scale(0);
       return propagated+propagated1;
       }
+    
+    MTYPE from_type;
+    if (Prevent_fold_across_cvt(ccr,wn,from_type))
+    {
+      // If we have decided not to propagate teh extracted constant,
+      // i.e. ccr->Scale() up to the parent we must rematerialize
+      // the original CODEREP including the constant.  Here we make
+      // sure that any necessary cvt operation is injected after
+      // we add the constant back into the expression.  Note we
+      // we are propragating no constant up to the parent expression
+      // so we set the ccr->Scale(0). 
+      cr->Set_opnd(0,ccr->Convert2cr(ccr->Tree()->Dtyp(),OPR_CVT,
+                                     OPCODE_make_op(OPR_CVT,
+                                                    WN_rtype(wn),
+                                                    from_type),
+                                     this,propagated));
+      cr->Set_opnd(1,Add_const(WN_rtype(wn),kid1.Scale()));
+      ccr->Set_scale(0);
+    }
+    else 
+    {
     // materialize the constant part of ccr into tree
     cr->Set_opnd(0, ccr->Tree());
     cr->Set_opnd(1, Add_const(WN_rtype(wn), kid1.Scale()));
     ccr->Set_scale(ccr->Scale() * kid1.Scale());
+    }
     }
   else if (ccr->Tree() == NULL && !kid1.Tree()->Has_volatile_content()) {
     if (ccr->Scale() == 0) {	// mult by 0; fold to 0
@@ -2164,10 +2215,31 @@ CODEMAP::Canon_mpy(WN       *wn,
       ccr->Set_scale(0);
       return propagated+propagated1;
       }
+    MTYPE from_type;
+    if (Prevent_fold_across_cvt(&kid1,wn,from_type))
+    {
+      // If we have decided not to propagate teh extracted constant,
+      // i.e. ccr->Scale() up to the parent we must rematerialize
+      // the original CODEREP including the constant.  Here we make
+      // sure that any necessary cvt operation is injected after
+      // we add the constant back into the expression.  Note we
+      // we are propragating no constant up to the parent expression
+      // so we set the ccr->Scale(0). 
+      cr->Set_opnd(0, Add_const(WN_rtype(wn), ccr->Scale()));
+      cr->Set_opnd(1,ccr->Convert2cr(kid1.Tree()->Dtyp(),OPR_CVT,
+                                     OPCODE_make_op(OPR_CVT,
+                                                    WN_rtype(wn),
+                                                    from_type),
+                                     this,propagated));
+      ccr->Set_scale(0);
+    }
+    else
+    {
     // materialize the constant part of ccr into tree
     cr->Set_opnd(0, Add_const(WN_rtype(wn), ccr->Scale()));
     cr->Set_opnd(1, kid1.Tree());
     ccr->Set_scale(ccr->Scale() * kid1.Scale());
+    }
   }
   else {
     // both ccr and kid1 has tree
@@ -3070,8 +3142,8 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
       if (WOPT_Enable_Input_Prop && !copyprop->Disabled()) {
         CODEREP *newtree = copyprop->Prop_var(retv_var, stmt->Bb(), TRUE, TRUE,TRUE/*in_array*/, no_complex_preg);
         if (newtree) {
-	  if (retv->Kind() == CK_VAR) 
-	    retv = newtree;
+	  if (retv->Kind() == CK_VAR)
+             retv = newtree;
 	  else {
 	    CODEREP *cr = Alloc_stack_cr(0);
 	    newtree->IncUsecnt();
@@ -3116,7 +3188,14 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 #endif
             if (WOPT_Enable_CRSIMP &&
                 (opr == OPR_ADD || opr == OPR_SUB) &&
-                retv_op->Get_opnd(1)->Kind() == CK_CONST) {
+                retv_op->Get_opnd(1)->Kind() == CK_CONST 
+#ifdef TARG_X8664
+                // Don't fold constants across implicit unsigned conversions,
+                // we must preserve the modulo behavior of unsigned arithmetic
+                && !(MTYPE_is_unsigned(retv->Dtyp()) &&
+                     MTYPE_size_reg(WN_rtype(wn)) != MTYPE_size_reg(retv->Dtyp()))   
+#endif
+               ) {
                   CODEREP *cr = retv_op->Get_opnd(0);
 #ifdef TARG_NVISA
                   if (retv->Opr() == OPR_CVT) {

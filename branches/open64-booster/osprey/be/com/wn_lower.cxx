@@ -6049,12 +6049,40 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 
   case OPR_SELECT:
     {
-#ifdef KEY // f90 front-end sometimes generate inconsistent types; fix them
-      if (MTYPE_size_min(type) != MTYPE_size_min(WN_rtype(WN_kid1(tree))))
-	WN_kid1(tree) = WN_Cvt(WN_rtype(WN_kid1(tree)), type, WN_kid1(tree));
-      if (MTYPE_size_min(type) != MTYPE_size_min(WN_rtype(WN_kid2(tree))))
-	WN_kid2(tree) = WN_Cvt(WN_rtype(WN_kid2(tree)), type, WN_kid2(tree));
+      // Due unknown issues with the Fortran front-end we insert convert
+      // operations if the types do not match.  Doing this unconditionally
+      // can result in issues for X8664 if the necessary conversion would
+      // be a sign extension, when there is actually an implicit zero extend.
+      // As such we only insert zero extensions for unsigned types, e.g.
+      //
+      //        .....
+      //      I4I4NE 
+      //      U4 INTCONST  64
+      //      U4 INTCONST  32
+      //    U8 SELECT 
+      if (MTYPE_size_min(type) != MTYPE_size_min(WN_rtype(WN_kid1(tree)))) {
+#ifdef TARG_X8664
+         if (PU_ftn_lang(*Current_pu)) 
 #endif
+            WN_kid1(tree) = WN_Cvt(WN_rtype(WN_kid1(tree)), type, WN_kid1(tree));
+#ifdef TARG_X8664
+         else if (WN_operator_is(WN_kid1(tree),OPR_INTCONST) &&
+                  MTYPE_is_unsigned(WN_rtype(WN_kid1(tree))))
+            WN_kid1(tree) = WN_Cvt(WN_rtype(WN_kid1(tree)), type, WN_kid1(tree));
+#endif
+      }
+      if (MTYPE_size_min(type) != MTYPE_size_min(WN_rtype(WN_kid2(tree)))) {
+#ifdef TARG_X8664
+         if (PU_ftn_lang(*Current_pu))
+#endif
+            WN_kid2(tree) = WN_Cvt(WN_rtype(WN_kid2(tree)), type, WN_kid2(tree));
+#ifdef TARG_X8664
+         else if (WN_operator_is(WN_kid2(tree),OPR_INTCONST) &&
+                  MTYPE_is_unsigned(WN_rtype(WN_kid2(tree))))
+            WN_kid2(tree) = WN_Cvt(WN_rtype(WN_kid2(tree)), type, WN_kid2(tree));
+#endif
+      }
+
       WN * const kid0 = WN_kid0(tree);	// the condition expression
       if (WN_operator_is(kid0, OPR_INTCONST))
       {
