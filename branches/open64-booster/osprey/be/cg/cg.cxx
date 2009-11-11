@@ -1670,6 +1670,9 @@ CG_Generate_Code(
 
     /* When a function returns a structure under -m32, the value of SP will be
        increased by 4 bytes.
+       For a function which has stdcall or fastcall attrubute, the SP also
+       will be adjusted by the same amount which popped at the function
+       return time. 
     */
     if( Is_Target_32bit() ){
       for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){

@@ -375,7 +375,8 @@ typedef enum {
 				     /* IA-32 relocations start at 0x40 */
   TN_RELOC_IA32_ALL   = 0x40,	     /* All 32 bits of a symbol value. */
   TN_RELOC_IA32_GOT   = 0x41,
-  TN_RELOC_IA32_GLOBAL_OFFSET_TABLE = 0x42
+  TN_RELOC_IA32_GLOBAL_OFFSET_TABLE = 0x42,
+  TN_RELOC_IA32_GOTOFF              = 0x43   /* 32 bit offset to GOT */
 #endif
 #if defined(TARG_SL)
 TN_RELOC_GPREL_V1 = 0x41,

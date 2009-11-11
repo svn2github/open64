@@ -690,6 +690,7 @@ static INT Current_Float_Param_Num = -1;	// count float parameters only
 static INT Current_MMX_Param_Num = -1;
 static INT Register_Parms = 0;
 static BOOL SSE_Register_Parms = FALSE;
+static BOOL FASTCALL_Parms = FALSE;
 const INT SSE_Register_Parms_Allowed = 3;
 const INT MMX_Register_Parms_Allowed = 3;
 
@@ -721,6 +722,12 @@ Setup_Parameter_Locations (TY_IDX pu_type)
       // -m32 is enforced in front-end, use it here also to be more specific.
       SSE_Register_Parms = TY_has_sseregister_parm (pu_type);
       Register_Parms = TY_register_parm (pu_type);
+
+      FASTCALL_Parms = TY_has_fastcall (pu_type);
+      if (FASTCALL_Parms) {
+         Register_Parms = 2;  // use ECX and EDX for fast call
+      }
+
     }
 
     Current_Param_Num = -1;		// count all parameters
@@ -736,9 +743,12 @@ static PLOC
 Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 {
     PLOC ploc;				// return location
-    mDED_PREG_NUM int_regs_array[] = {RAX, RDX, RCX};
+    mDED_PREG_NUM regparm_regs_array[] = {RAX, RDX, RCX};
     mDED_PREG_NUM flt_regs_array[] = {XMM0, XMM1, XMM2};
     mDED_PREG_NUM mmx_regs_array[] = {MM0, MM1, MM2};
+    mDED_PREG_NUM fastcall_regs_array[] = {RCX, RDX};
+    mDED_PREG_NUM *int_regs_array = 
+       FASTCALL_Parms ? fastcall_regs_array : regparm_regs_array;
 
     ploc.reg = 0;
     ploc.reg2 = 0;
@@ -782,11 +792,31 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
         ++Current_Int_Param_Num;
 	if (Is_Target_32bit() && Current_Int_Param_Num < Register_Parms) {
 	  ploc.reg = int_regs_array[Current_Int_Param_Num];
+          // handle 64 bit integer passed in register pair
+          if (ploc.size == 8) {
+            ++Current_Int_Param_Num;
+            if (FASTCALL_Parms) {
+              // fastcall doesn't pass 8byte value in register
+              ploc.reg = 0;
+            }
+            else if (Current_Int_Param_Num < Register_Parms) {
+              // check if there is another register left for the lower 32 bit
+	      ploc.reg2 = int_regs_array[Current_Int_Param_Num];
+            }
+            else {
+              // no enough register to pass 64bit parameter, remove the register
+              ploc.reg = 0;
+            }
+          }
 	}
 	else {
 	  ploc.reg = PR_first_reg(SIM_INFO.int_args) + Current_Int_Param_Num;
 	  if (ploc.reg > PR_last_reg(SIM_INFO.int_args)) 
 	    ploc.reg = 0;
+          // keep the int param number in sync for 32bit if the type is 64bit
+          if (Is_Target_32bit() && ploc.size == 8) {
+            ++Current_Int_Param_Num;
+          }
 	}
 	break;
 	

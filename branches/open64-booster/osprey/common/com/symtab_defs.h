@@ -584,7 +584,9 @@ enum TY_PU_FLAGS
     TY_HAS_SSEREG_PARM	= 0x00000008,	// SSE register parameters under i386
     TY_HAS_1_REG_PARM	= 0x00000010,	// 1 register parameter under i386
     TY_HAS_2_REG_PARM	= 0x00000020,	// 2 register parameters under i386
-    TY_HAS_3_REG_PARM	= 0x00000030	// 3 register parameters under i386
+    TY_HAS_3_REG_PARM	= 0x00000030,	// 3 register parameters under i386
+    TY_HAS_STDCALL      = 0x00000040,   // stdcall calling convention under i386
+    TY_HAS_FASTCALL     = 0x00000080    // fastcall calling convention under i386
 #endif
 };
 

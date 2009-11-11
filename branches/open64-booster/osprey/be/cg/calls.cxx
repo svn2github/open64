@@ -1537,21 +1537,35 @@ void Adjust_SP_After_Call( BB* bb )
 						   No_Simulated,
 						   ff2c_abi );
 
+  INT adjust_size = 0;
   /* The C++ front-end will add the first fake param, then convert the
      function return type to void. (bug#2424)
    */
   if( RETURN_INFO_return_via_first_arg(return_info) ||
       TY_return_to_param( call_ty ) ){
-    if (call_st != NULL && strncmp(ST_name(call_st), "_TRANSFER", 9) == 0)
-      return; // bug 6153
+    if (!(call_st != NULL && strncmp(ST_name(call_st), "_TRANSFER", 9) == 0))
+      adjust_size = 4;
+  }
+
+  // adjust sp for stdcall/fastcall
+  // stdcall/fastcall adjusted sp at callee site, the orginal purpose is to
+  // save caller sites stack adjustment, but when the calling convention 
+  // is changed to allocate maximum stack frame for all calls in the function,
+  // there is no need to adjust SP after call, so for stdcall/fastcall, we
+  // need to adjust the SP in reverse way as in callee return site.
+  if (Is_Target_32bit() && (TY_has_fastcall(call_ty) || TY_has_stdcall(call_ty))) {
+    adjust_size += Get_PU_arg_area_size(call_ty);
+  }
+  
+  if (adjust_size) {
     OPS ops = OPS_EMPTY;
-    Exp_SUB( Pointer_Mtype, SP_TN, SP_TN, Gen_Literal_TN(4,0), &ops );
+    Exp_SUB( Pointer_Mtype, SP_TN, SP_TN, Gen_Literal_TN(adjust_size,0), &ops );
     BB_Append_Ops( bb, &ops );
 
     if( Trace_EE ){
 #pragma mips_frequency_hint NEVER
-      fprintf( TFile, "%sDecrease SP by 4 bytes after call in BB:%d\n",
-	       DBar, BB_id(bb) );
+      fprintf( TFile, "%sDecrease SP by %d bytes after call in BB:%d\n",
+	       DBar, adjust_size, BB_id(bb) );
       Print_OPS( &ops );
     }
   }
@@ -1810,6 +1824,12 @@ Generate_Exit (
 	  TY_return_to_param( call_ty ) ){
 	sp_adjust = Pointer_Size;
       }
+
+      // callee adjust SP for stdcall/fastcall at return time
+      if (TY_has_stdcall(call_ty) || TY_has_fastcall(call_ty)) {
+        sp_adjust += Get_PU_arg_area_size(call_ty);
+      }
+          
     }
 
     Exp_Return( RA_TN, sp_adjust, &ops );

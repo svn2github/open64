@@ -1576,6 +1576,42 @@ inline void
 Set_TY_register_parm (TY_IDX tyi, INT num) {
 	Set_TY_register_parm (Ty_Table[tyi], num);
 }
+
+inline BOOL
+TY_has_stdcall (const TY& ty) {
+	return ty.Pu_flags () & TY_HAS_STDCALL;
+}
+inline void
+Set_TY_has_stdcall (TY& ty) {
+	ty.Set_pu_flag (TY_HAS_STDCALL);
+}
+inline BOOL
+TY_has_stdcall (const TY_IDX tyi) {
+	return TY_has_stdcall(Ty_Table[tyi]);
+}
+inline void
+Set_TY_has_stdcall (TY_IDX tyi) {
+	Set_TY_has_stdcall(Ty_Table[tyi]);
+}
+
+inline BOOL
+TY_has_fastcall (const TY& ty) {
+	return ty.Pu_flags () & TY_HAS_FASTCALL;
+}
+inline void
+Set_TY_has_fastcall (TY& ty) {
+	ty.Set_pu_flag (TY_HAS_FASTCALL);
+	Set_TY_register_parm (ty, 2);  // fastcall uses ECX and EDX
+}
+inline BOOL
+TY_has_fastcall (const TY_IDX tyi) {
+	return TY_has_fastcall(Ty_Table[tyi]);
+}
+inline void
+Set_TY_has_fastcall (TY_IDX tyi) {
+	Set_TY_has_fastcall(Ty_Table[tyi]);
+}
+
 #endif
 
 //----------------------------------------------------------------------

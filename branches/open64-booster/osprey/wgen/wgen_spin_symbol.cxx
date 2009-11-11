@@ -1246,6 +1246,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		if (!TARGET_64BIT && !TY_is_varargs(idx))
 		{
 		  // Ignore m{sse}regparm and corresponding attributes at -m64.
+		  // Ignore stdcall/fastcall attributes at -m64 and varargs.
 		  if (SSE_Reg_Parm ||
 		      lookup_attribute("sseregparm",
 		                       gs_type_attributes(type_tree)))
@@ -1262,6 +1263,19 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  }
 		  else if (Reg_Parm_Count)
 		    Set_TY_register_parm (idx, Reg_Parm_Count);
+
+                  if (gs_t attr = lookup_attribute("stdcall",
+		      gs_type_attributes(type_tree)))
+		  {
+		    gs_t value = gs_tree_value (attr);
+		    Set_TY_has_stdcall (idx);
+		  }
+                  else if (gs_t attr = lookup_attribute("fastcall",
+		            gs_type_attributes(type_tree)))
+		  {
+		    gs_t value = gs_tree_value (attr);
+		    Set_TY_has_fastcall (idx);
+		  }
 		}
 #endif
 		} // end FUNCTION_TYPE scope
