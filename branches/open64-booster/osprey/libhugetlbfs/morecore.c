@@ -160,7 +160,11 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
 
 		/* map in (extend) more of the file at the end of our last map */
 #ifdef OPEN64_MOD
-                sbrk(delta);
+                if (sbrk(delta) == -1l){
+			WARNING("New heap segment map at %p failed: %s\n",
+	                	heapbase+mapsize, strerror(errno));
+	 		return NULL;
+		}
 		p = mmap(heapbase + mapsize, delta, PROT_READ|PROT_WRITE,
 			 MAP_PRIVATE|MAP_FIXED, heap_fd, mapsize);
 #else

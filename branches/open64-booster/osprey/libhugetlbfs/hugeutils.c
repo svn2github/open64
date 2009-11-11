@@ -226,7 +226,8 @@ const char *hugetlbfs_find_path(void)
 	char *tmp;
 	int fd, len;
 	char buf[MOUNTS_SZ];
-
+	char mytag[12]; /* to check if the tag is hugetlbfs, so 10 bytes are enough */
+	const char hugetlbtag[]="hugetlbfs";
 	/* Have we already located a mount? */
 	if (*htlb_mount)
 		return htlb_mount;
@@ -275,10 +276,10 @@ const char *hugetlbfs_find_path(void)
 	while (tmp) {
 		err = sscanf(tmp,
 			     "%*s %" stringify(PATH_MAX)
-			     "s hugetlbfs ",
-			     htlb_mount);
+			     "s %12s ",
+			     htlb_mount, mytag);
 
-		if ((err == 1) && (hugetlbfs_test_path(htlb_mount) == 1)) 
+		if ((err == 2) && (strcmp(mytag, hugetlbtag) == 0) &&(hugetlbfs_test_path(htlb_mount) == 1)) 
 			return htlb_mount;
 
 		memset(htlb_mount, 0, sizeof(htlb_mount));
