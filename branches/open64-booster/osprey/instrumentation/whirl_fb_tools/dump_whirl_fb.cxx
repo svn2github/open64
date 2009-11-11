@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
   Copyright (c) 2001, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
   Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it

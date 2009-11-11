@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
   Copyright (C) 2006-2007, Hewlett-Packard Company.  All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
