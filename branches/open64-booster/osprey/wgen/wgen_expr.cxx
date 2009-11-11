@@ -4994,6 +4994,7 @@ get_wrapper_value (gs_t stmt)
             temp = gs_build_decl (GS_VAR_DECL, type);
             gs_t s = gs_build_2 (GS_TCC_EXPRESSION, GS_INIT_EXPR, temp,
                             gs_bind_expr_body(p));
+            gs_set_operand(s, GS_TREE_TYPE, type);  
             gs_set_operand(p, GS_BIND_EXPR_BODY, s);
             goto out;
           }
@@ -5009,6 +5010,7 @@ get_wrapper_value (gs_t stmt)
             temp = gs_build_decl (GS_VAR_DECL, type);
             gs_t s = gs_build_2 (GS_TCC_EXPRESSION, GS_INIT_EXPR, temp,
                             gs_tree_operand(p, 0));
+            gs_set_operand(s, GS_TREE_TYPE, type);  
             gs_set_tree_operand(p, 0, s);
             goto out;
           }
@@ -5029,6 +5031,7 @@ get_wrapper_value (gs_t stmt)
               {
                 temp = gs_build_decl (GS_VAR_DECL, type);
                 p = gs_build_2 (GS_TCC_EXPRESSION, GS_INIT_EXPR, temp, p);
+                gs_set_operand(p, GS_TREE_TYPE, type);  
                 gs_set_operand(list, 0, p);
                 goto out;
               }
@@ -5047,6 +5050,7 @@ get_wrapper_value (gs_t stmt)
           {
             temp = gs_build_decl (GS_VAR_DECL, type);
             p = gs_build_2 (GS_TCC_EXPRESSION, GS_INIT_EXPR, temp, p);
+            gs_set_operand(p, GS_TREE_TYPE, type);  
             gs_set_tree_operand(e, 1, p);
             goto out;
           }
