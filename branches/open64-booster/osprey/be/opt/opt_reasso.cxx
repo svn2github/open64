@@ -53,9 +53,7 @@
 // in open64. Reassociation can be enabled with a 
 // subexpression elimination pass that is aware of the 
 // Math laws for associative arithmetic and then uses these 
-// laws to guide CSE. Real associative trees like in SPEC 2006 
-// are very large. In such instances we found 
-// reassociation to introduce performance gain.
+// laws to guide CSE. 
 // We not only need reassociation for term 
 // based NARY trees (like the above example) but also for 
 // trees that also include trees in them, i.e. non-terminal 
@@ -65,10 +63,6 @@
 // term based and goes up into non-term based trees that 
 // contain them. We have now implemented a nary-reassociation 
 // pass. 
-// 
-// We first prototyped the algorithm separately from open64. 
-// Then we incorporated the work into open64. It is a new pass 
-// which works on basicblocks that contain WHIRL. 
 // 
 // Our intention is to build a standard recursive algorithm 
 // (using dynamic programming) that selects a subexpression 
@@ -118,11 +112,9 @@
 // appropriate forum with other questions. 
 // 
 // Placement of pass:
-// It is placed right after the proactive fusion transformation 
-// in Pre_optimizer. We invoke it in Pre_optimizer because 
-// it requires code in form of basic blocks. We decided to 
-// work with WHIRL with intention to incorporate n-ary 
-// reassociation in to the PRE/GVN pass in the future. 
+// It is placed after Dead store elimination after
+// SSA but before CODEREP. This pass can only operates on 
+// SSA WHIRL, not on CODEREPs or on non-SSA WHIRL.
 // 
 // Enabling the pass:
 // The pass is always on, but can be disabled by unsetting 
@@ -137,8 +129,10 @@
 // 
 // Restrictions:
 // 1: Pass works at basic block level only. Maybe that is 
-// a reasonable choice considering that the algorithmic 
-// complexity of the solution. 
+// a reasonable choice considering the algorithmic 
+// complexity of the solution. It should be straightforward
+// to port it to work on function level with a CFG traversal
+// similar to GVN's 
 // The algorithmic complexity is around O(n^2). 
 // 2: Then it applies redundancy elimination only to 
 // associative trees (not really a restriction). 
@@ -146,11 +140,7 @@
 // as leaves (array expressions via OPR_ILOADs are not 
 // allowed in this version). 
 // 4: Also, it is legal only if the variables in the 
-// basic block are used in a SSA like way. In the future 
-// we will either be using available 
-// expressions or SSA BBs and rebuild the front-end of 
-// the pass. This is a major restriction now as it is hard to 
-// encounter SSA like programmer code frequently. 
+// basic block are used in a SSA like way. 
 // 5: Also we only allow statements like OPR_STIDs, 
 // OPR_ISTOREs, OPR_COMMENTs, OPR_PRAGMAs, OPR_LABEL 
 // statements in the basic block. This restriction is also 
@@ -161,18 +151,14 @@
 // 
 // The following are main points from these restrictions: 
 // pass does not work on array accesses, pass is not 
-// applied if scalars are written to more than once 
+// valid if scalars are written to more than once 
 // in a basicblock or if a def follows a use in a basic block. 
-// 
-// We believe that these restrictions make this pass 
-// safe from all aliasing problems except when scalars 
-// alias with arrays. This can happen in some FORTRAN 
-// equivalence and C union usage patterns. We will work 
-// on correcting this known aliasing issue. 
 // 
 
 #include "opt_reasso.h"
 
+namespace REASSO {
+MEM_POOL cse_name_pool;
 bool operator== (const nary_exp& x, const nary_exp& y) {
     if (x.narytyp != y.narytyp) 
         return false;
@@ -186,7 +172,7 @@ bool operator== (const nary_exp& x, const nary_exp& y) {
     if (x.narytyp == AWN && y.narytyp == AWN) {
         if (WN_operator(x.awn) == OPR_LDID 
             && WN_operator(y.awn) == OPR_LDID) {
-            if (WN_aux(x.awn) == WN_aux(y.awn)) {
+            if (WN_ver(x.awn) == WN_ver(y.awn)) {
                     return true;
                 } else {
                     return false;
@@ -281,7 +267,7 @@ bool operator== (const wcexp& x, const wcexp& y) {
 
     if (x.wcexptyp == WTERM && y.wcexptyp == WTERM) {
         if (x.aop == OPR_LDID && y.aop == OPR_LDID) {
-            if (WN_aux(x.wterm) == WN_aux(y.wterm)) {
+            if (WN_ver(x.wterm) == WN_ver(y.wterm)) {
                 return true;
             } else {
                 return false;
@@ -330,16 +316,16 @@ bool operator== (const wcexp& x, const wcexp& y) {
 void nary_assert (nary_exp an) {
     if (an.narytyp == AWN) {
         if (an.anary.size() > 0) {
-            assert (0);
+            FmtAssert(FALSE, ("Found nary type nary_exp which type is WHIRL"));
         } 
     } else {
         if (an.aop == OPR_NEG) {
             if (an.anary.size() != 1) {
-                assert (0);
+                FmtAssert(FALSE, ("Found more than one operand in a NARY neg type"));
             }
         } else {
             if (an.anary.size() <= 1) {
-                assert(0);
+                FmtAssert(FALSE, ("Found unsupported number of operands in NARY type"));
             }
         }
     }
@@ -347,14 +333,14 @@ void nary_assert (nary_exp an) {
 
 // This does the opposite of create_wcexp 
 // by returning a nary_exp for an input wcexp.
-nary_exp convert_wcexp_to_nary (wcexp wcx) {
+nary_exp convert_wcexp_to_nary (const wcexp& wcx) {
     if (wcx.wcexptyp == WTERM) {
         nary_exp ncx = make_nary_term (wcx.wterm);
         nary_assert(ncx);
         return ncx;
     } else {
         nary_exp ncx(NARY, wcx.aop, wcx.aopc);
-        vector<wcexp>::iterator wcxit;
+        vector<wcexp>::const_iterator wcxit;
         for (wcxit = wcx.wnode.begin();
              wcxit != wcx.wnode.end();
              ++wcxit) {
@@ -374,12 +360,11 @@ nary_exp convert_wcexp_to_nary (wcexp wcx) {
             }
         }
         nary_assert(ncx);
-        ncx.awn = WHIRL_of_nary_exp(ncx);
         return ncx;
     }
 }
 
-WN* WHIRL_of_wcexp (wcexp wcx) {
+WN* WHIRL_of_wcexp (const wcexp& wcx) {
     nary_exp nexp = convert_wcexp_to_nary (wcx);
     return WHIRL_of_nary_exp (nexp);
 }
@@ -400,11 +385,11 @@ WN* WHIRL_of_wcexp (wcexp wcx) {
 // nary_exp by implicitly invoking operator== 
 // via STL find algorithm to handle
 // duplicates.
-wcexp create_wcexp (nary_exp ctree) {
+wcexp create_wcexp (const nary_exp& ctree) {
     if (ctree.narytyp == NARY) {
         wcexp ret(WNODE, ctree.aop,
                 ctree.aopc, 1);
-        for (vector<nary_exp>::iterator ctit 
+        for (vector<nary_exp>::const_iterator ctit 
             = ctree.anary.begin();
             ctit != ctree.anary.end();
             ++ctit) {
@@ -425,16 +410,17 @@ wcexp create_wcexp (nary_exp ctree) {
                         anewwx.wterm = (*retit).wnode[0].wterm;
                         (*retit).wnode[0] = anewwx;
                     } else {
-                        assert(0);
+                        const char *myasserts = 
+                            "Unsupported neg expression in create_wcexp, expecting NEG operations only on terms";
+                        FmtAssert (FALSE, (myasserts)); 
                     }
                 } else {
                     (*retit).count = (*retit).count + 1;
                 }
             }
         }
-        ret.wterm = WHIRL_of_wcexp (ret);
         if (ctree != convert_wcexp_to_nary(ret)) {
-            assert (0);
+            FmtAssert(FALSE, ("Error in create_wcexp from NARY type nary_exp"));
         }
         return ret;
     } else {
@@ -442,7 +428,7 @@ wcexp create_wcexp (nary_exp ctree) {
                 ctree.aopc, 1);
         myret.wterm = ctree.awn;
         if (ctree != convert_wcexp_to_nary(myret)) {
-            assert (0);
+            FmtAssert(FALSE, ("Error in create_wcexp from TERM type nary_exp"));
         }
         return myret;
     }
@@ -463,7 +449,7 @@ void add_exp (nary_exp cxp, reasso_struct& rrec) {
 // This function is the predicate that a given nary_exp
 // needs to satisfy to be called term_based_expression, IOW,
 // the nary_exp is checked to see if it contains only terms.
-bool all_term_based (nary_exp atree) {
+bool all_term_based (const nary_exp& atree) {
     if (atree.narytyp == AWN) {
         return true;
     } else if (atree.narytyp == NARY) {
@@ -474,7 +460,7 @@ bool all_term_based (nary_exp atree) {
                 return false;
             }
         } else {
-            for (vector<nary_exp>::iterator nvit = 
+            for (vector<nary_exp>::const_iterator nvit = 
                     atree.anary.begin();
                  nvit != atree.anary.end();
                  ++nvit) {
@@ -493,8 +479,7 @@ bool all_term_based (nary_exp atree) {
             return true;
         }
     }
-    assert (0);
-    return false;
+    FmtAssert(FALSE, ("Unknown NARY type for nary_exp"));
 }
 
 // Mutually recursive functions recurse_def and 
@@ -540,17 +525,17 @@ void collect_term_based_expressions (reasso_struct& rrec) {
 // we insert either a or b into return vector, 
 // depending on which has the smallest count.
 // Now two LDIDs can be compared for equal
-// by using WN_aux on them. For constants,
+// by using WN_ver on them. For constants,
 // I use two solutions that I picked from RVI 
 // pass. If the constant is a INTCONSTANT,
 // we can compare the WN_const_val of the two WHIRL nodes.
 // If the constant is another kind of constant, 
 // we can compare their WN_st.
-vector<wcexp> subexp_terms (wcexp a, wcexp b) {
+vector<wcexp> subexp_terms (const wcexp& a, const wcexp& b) {
     vector<wcexp> subt;
     if (((a.wcexptyp == WTERM && b.wcexptyp == WTERM) &&
         (a.aop == OPR_LDID && b.aop == OPR_LDID) &&
-        (WN_aux(a.wterm) == WN_aux(b.wterm))) ||
+        (WN_ver(a.wterm) == WN_ver(b.wterm))) ||
         ((a.wcexptyp == WTERM && b.wcexptyp == WTERM) &&
         (a.aop == OPR_INTCONST && b.aop == OPR_INTCONST) &&
         (WN_const_val(a.wterm) == WN_const_val(b.wterm))) || 
@@ -567,8 +552,8 @@ vector<wcexp> subexp_terms (wcexp a, wcexp b) {
                 b.wnode[0].wcexptyp == WTERM) &&
          (a.wnode[0].aop == OPR_LDID && 
                 b.wnode[0].aop == OPR_LDID) && 
-         (WN_aux(a.wnode[0].wterm) == 
-               WN_aux(b.wnode[0].wterm))) ||
+         (WN_ver(a.wnode[0].wterm) == 
+               WN_ver(b.wnode[0].wterm))) ||
          ((a.wnode[0].wcexptyp == WTERM && 
            b.wnode[0].wcexptyp == WTERM) &&
          (a.wnode[0].aop == OPR_INTCONST && b.wnode[0].aop == OPR_INTCONST) &&
@@ -588,10 +573,10 @@ vector<wcexp> subexp_terms (wcexp a, wcexp b) {
 // subexp_terms to get an idea of 
 // operand_comparisons
 void operand_comparisons (
-        wcexp basewc, vector<wcexp> waN1, 
-        vector<wcexp> waN2, vector<wcexp>& myspli) {
-    vector<wcexp>::iterator waN1_it;
-    vector<wcexp>::iterator waN2_it;
+        const wcexp& basewc, const vector<wcexp>& waN1, 
+        const vector<wcexp>& waN2, vector<wcexp>& myspli) {
+    vector<wcexp>::const_iterator waN1_it;
+    vector<wcexp>::const_iterator waN2_it;
     vector<vector<wcexp> > subexpl;
     wcexp anewx(WNODE, basewc.aop, basewc.aopc, 1);
     for (waN1_it = waN1.begin();
@@ -605,13 +590,14 @@ void operand_comparisons (
             if (splt.size() == 1) {
                 anewx.wnode.push_back(splt[0]);
             } else if (splt.size() > 1) {
-                assert(0);
+                const char *myassertval = 
+                     "Unexpected size, >1 for results wcexp in operand_comparisons";
+                FmtAssert(FALSE, (myassertval));
             }
         }
     }
 
     if (anewx.wnode.size() > 1) {
-        anewx.wterm = WHIRL_of_wcexp (anewx);
         myspli.push_back(anewx);
     }
 }
@@ -642,7 +628,7 @@ void operand_comparisons (
 // come up with a template that can 
 // serve that purpose. For now, the assertion
 // that size() <= 1 guarantee what we what.
-void common_exps(wcexp c, wcexp d, 
+void common_exps(const wcexp& c, const wcexp& d, 
         vector<wcexp>& myspli) {
     if (c.wcexptyp == WNODE && d.wcexptyp == WNODE) {
         if ((c.aop == OPR_ADD && d.aop == OPR_ADD) || 
@@ -652,13 +638,15 @@ void common_exps(wcexp c, wcexp d,
             if (myp.size() == 1) {
                 myspli = myp;
             } else if (myp.size() > 1) {
-                assert(0);
+                const char *myassertval = 
+                    "Unexpected size, >1 for results wcexp in common_exps";
+                FmtAssert(FALSE, (myassertval));
             }
         }
     }
 }
 
-wcexp complement_wcexp (wcexp ay) {
+wcexp complement_wcexp (const wcexp& ay) {
     if (ay.wcexptyp == WTERM) {
         WN* rewn = WN_Unary(OPR_NEG,
                         OPCODE_rtype(ay.aopc), 
@@ -674,14 +662,13 @@ wcexp complement_wcexp (wcexp ay) {
         } else {
             if (ay.aop == OPR_ADD) {
                 wcexp retwc(WNODE, ay.aop, ay.aopc, ay.count);
-                vector<wcexp>::iterator rwc_it;
+                vector<wcexp>::const_iterator rwc_it;
                 for (rwc_it = ay.wnode.begin();
                      rwc_it != ay.wnode.end();
                      ++rwc_it) {
                     retwc.wnode.push_back(
                             complement_wcexp(*rwc_it));
                 }
-                retwc.wterm = WHIRL_of_wcexp (retwc);
                 return retwc;
             } else {
                 WN* awter = WHIRL_of_wcexp (ay);
@@ -695,10 +682,10 @@ wcexp complement_wcexp (wcexp ay) {
             }
         }
     }
-    assert(0);
+    FmtAssert(FALSE, ("Unknown NARY type for nary_exp"));
 }
 
-void common_exps_complement (wcexp c, wcexp d, 
+void common_exps_complement (const wcexp& c, const wcexp& d, 
         vector<wcexp>& myspli) {
     wcexp newc = complement_wcexp (c);
     if (newc.wcexptyp == WTERM) {
@@ -727,7 +714,7 @@ void common_exps_complement (wcexp c, wcexp d,
     } else {
         return;
     }
-    assert(0);
+    FmtAssert(FALSE, ("Unknown input type for common_exps_complement"));
 }
 
 // The following functions, find_subexps_for_one_exp
@@ -741,8 +728,8 @@ void common_exps_complement (wcexp c, wcexp d,
 // common terms between the given expression and 
 // the currently examined expression in the 
 // term expression vector.
-void find_subexps_for_one_exp (wcexp h, 
-        vector<wcexp> ftvec, 
+void find_subexps_for_one_exp (const wcexp h, 
+        const vector<wcexp>& ftvec, 
         int where, vector<wcexp>& myinsw) {
     if (where >= ftvec.size()) {
         return;
@@ -753,14 +740,16 @@ void find_subexps_for_one_exp (wcexp h,
         if (mysplices.size() == 1) {
             myinsw.push_back(mysplices[0]);
         } else  if (mysplices.size() != 0) {
-            assert(0);
+            const char *myassertval = 
+            "Unexpected size, >1 for results wcexp in find_subexps_for_one_exp";
+            FmtAssert(FALSE, (myassertval));
         }
     }
 }
 
 // See comment on find_subexps_for_one_exp
-void find_subexps_for_one_exp_complement (wcexp h, 
-        vector<wcexp> ftvec, 
+void find_subexps_for_one_exp_complement (const wcexp& h, 
+        const vector<wcexp>& ftvec, 
         int where, 
         vector<wcexp>& myinsw) {
     if (where >= ftvec.size()) {
@@ -772,7 +761,9 @@ void find_subexps_for_one_exp_complement (wcexp h,
         if (mysplices.size() == 1) {
             myinsw.push_back(mysplices[0]);
         } else if (mysplices.size() != 0) {
-            assert(0);
+            const char *myassertval = 
+            "Unexpected size, >1 for results wcexp in find_subexps_for_one_exp_complement";
+            FmtAssert(FALSE, (myassertval));
         }
     }
 }
@@ -795,7 +786,7 @@ void find_subexps_for_one_exp_complement (wcexp h,
 // find_subexps_for_one_exp itself.
 // This function defines the algorithmic complexity of 
 // this reassociation enabled redundancy elimination. 
-void find_subexps_across_exps (vector<wcexp> ftvec, 
+void find_subexps_across_exps (const vector<wcexp>& ftvec, 
         vector<vector<wcexp> >& subexpl) {
     for (int i = 0; i < ftvec.size(); ++i) {
         vector<wcexp> myinsw;
@@ -830,7 +821,7 @@ void collect_common_subexpressions (reasso_struct& rrec) {
     }
 }
 
-bool contained_in_wcexp (wcexp a1, wcexp b1) {
+bool contained_in_wcexp (const wcexp& a1, const wcexp& b1) {
     if (a1.wcexptyp == WTERM) {
         return false;
     } else if (a1.wcexptyp == WNODE &&
@@ -842,8 +833,8 @@ bool contained_in_wcexp (wcexp a1, wcexp b1) {
         if (a1.wnode.size() > b1.wnode.size()) {
             return false;
         } else {
-            vector<wcexp>::iterator a1it;
-            vector<wcexp>::iterator b1it;
+            vector<wcexp>::const_iterator a1it;
+            vector<wcexp>::const_iterator b1it;
             if ((a1.aop == OPR_ADD &&
                  b1.aop == OPR_ADD) ||
                 (a1.aop == OPR_MPY &&
@@ -880,9 +871,9 @@ bool contained_in_wcexp (wcexp a1, wcexp b1) {
     }
 }
 
-void enumerate_subexps (vector<wcexp> aexps,
+void enumerate_subexps (const vector<wcexp>& aexps,
      vector<int>& costvec) {
-    vector<wcexp>::iterator aexpsit;
+    vector<wcexp>::const_iterator aexpsit;
     int which;
 
     which = 0;
@@ -893,7 +884,8 @@ void enumerate_subexps (vector<wcexp> aexps,
             costvec[which] = 
                 costvec[which]*((*aexpsit).wnode.size()-1);
         } else {
-            assert(0);
+            FmtAssert(FALSE, 
+                    ("Unexpected type in wcexp in emunerate_subexps"));
         }
     }
 
@@ -901,7 +893,7 @@ void enumerate_subexps (vector<wcexp> aexps,
     for (aexpsit = aexps.begin(); 
          aexpsit != aexps.end();
          ++aexpsit) {
-        vector<wcexp>::iterator tlexpsit;
+        vector<wcexp>::const_iterator tlexpsit;
         int tlwhich = which+1;
         tlexpsit = aexpsit;
         ++tlexpsit;
@@ -930,9 +922,9 @@ void enumerate_subexps (vector<wcexp> aexps,
 
 // Summarize_subexps checks each vector in 
 // subexpl and computes a cost vector for each.
-void summarize_subexps (vector<vector<wcexp> > subexpl,
+void summarize_subexps (const vector<vector<wcexp> >& subexpl,
         vector<vector<int> >& costvecs) {
-    vector<vector<wcexp> >::iterator subeit;
+    vector<vector<wcexp> >::const_iterator subeit;
     int whic = 0;
     for(subeit = subexpl.begin(); 
         subeit != subexpl.end();
@@ -946,7 +938,7 @@ void summarize_subexps (vector<vector<wcexp> > subexpl,
     }
 }
 
-bool contained_in_nary(nary_exp what, nary_exp where) {
+bool contained_in_nary(const nary_exp& what, const nary_exp& where) {
     if (what.aop != where.aop) {
         return false;
     } 
@@ -967,7 +959,7 @@ bool contained_in_nary(nary_exp what, nary_exp where) {
         return false;
     } 
     
-    vector<nary_exp>::iterator wanit;
+    vector<nary_exp>::const_iterator wanit;
 
     vector<nary_exp> anwhere = where.anary;
     for (wanit = what.anary.begin(); 
@@ -986,9 +978,9 @@ bool contained_in_nary(nary_exp what, nary_exp where) {
 
 nary_exp
 fixpoint_eliminate_subexp_from_nary (
-        nary_exp from,
-        nary_exp what,
-        nary_exp cseterm, 
+        const nary_exp& from,
+        const nary_exp& what,
+        const nary_exp& cseterm, 
         bool& change,
         int itercount) {
     bool reasso_do_the_debug = false;
@@ -996,7 +988,7 @@ fixpoint_eliminate_subexp_from_nary (
         return from;
     } else if (from.narytyp == NARY) {
         if (contained_in_nary(what, from) == true) {
-            vector<nary_exp>::iterator contains_it;
+            vector<nary_exp>::const_iterator contains_it;
             vector<nary_exp> nout(from.anary);
             for (contains_it = what.anary.begin();
                  contains_it != what.anary.end();
@@ -1004,24 +996,21 @@ fixpoint_eliminate_subexp_from_nary (
                 vector<nary_exp>::iterator whichre = find(
                         nout.begin(), nout.end(), *contains_it);
                 if (whichre == nout.end()) {
-                    assert(0);
+                    FmtAssert (FALSE, ("Expecting term, but it is not found in nary_exp"));
                 }
                 nout.erase(whichre); // removes only one
             }
             change = true;
             if (nout.size() == 0) {
                 nary_exp anewcseterm(AWN, cseterm.aop, cseterm.aopc);
-                anewcseterm.awn = WN_COPY_Tree_With_Map(cseterm.awn);
-                WN_set_aux (anewcseterm.awn, WN_aux(cseterm.awn));
+                anewcseterm.awn = cseterm.awn;
                 return anewcseterm;
             } else {
                 nary_exp outnary (NARY, from.aop, from.aopc);
                 nary_exp anewcseterm(AWN, cseterm.aop, cseterm.aopc);
-                anewcseterm.awn = WN_COPY_Tree_With_Map(cseterm.awn);
-                WN_set_aux (anewcseterm.awn, WN_aux(cseterm.awn));
+                anewcseterm.awn = cseterm.awn;
                 nout.push_back(anewcseterm);
                 outnary.anary = nout;
-                outnary.awn = WHIRL_of_nary_exp (outnary);
                 return fixpoint_eliminate_subexp_from_nary (
                         outnary, what, cseterm, change,itercount+1);
             }
@@ -1029,7 +1018,7 @@ fixpoint_eliminate_subexp_from_nary (
             return from;
         }
     }
-    assert(0);
+    FmtAssert(FALSE, ("Unknown NARY type for nary_exp"));
 }
 
 // elimination of a subexpression, arg#2 "nary_exp what",
@@ -1040,8 +1029,8 @@ fixpoint_eliminate_subexp_from_nary (
 // than one occurance of what in from, which can 
 // happen in some situations.
 nary_exp eliminate_subexp_from_nary (
-        nary_exp from, nary_exp what, 
-        nary_exp cseterm, bool& change) {
+        const nary_exp& from, const nary_exp& what, 
+        const nary_exp& cseterm, bool& change) {
     bool reasso_do_the_debug = false;
     if (from.narytyp == AWN) {
         return from;
@@ -1059,7 +1048,7 @@ nary_exp eliminate_subexp_from_nary (
                 return fixsub;
             } else {
                 bool mychange = false;
-                vector<nary_exp>::iterator rec_sub_it;
+                vector<nary_exp>::const_iterator rec_sub_it;
                 vector<nary_exp> resultvec;
                 for (rec_sub_it = fixsub.anary.begin();
                      rec_sub_it != fixsub.anary.end();
@@ -1072,15 +1061,15 @@ nary_exp eliminate_subexp_from_nary (
                 if (mychange == true) {
                     change = true;
                 }
-                assert(resultvec.size() > 0);
+                FmtAssert((resultvec.size() > 0), 
+                  ("Nonzero sized nary vector expected after elimination of subexps"));
                 nary_exp result (NARY, from.aop, from.aopc);
                 result.anary = resultvec;
-                result.awn = WHIRL_of_nary_exp (result);
                 return result; 
             }
         } else {
             bool mychange = false;
-            vector<nary_exp>::iterator rec_sub_it;
+            vector<nary_exp>::const_iterator rec_sub_it;
             vector<nary_exp> resultvec;
             for (rec_sub_it = from.anary.begin();
                  rec_sub_it != from.anary.end();
@@ -1093,15 +1082,14 @@ nary_exp eliminate_subexp_from_nary (
             if (mychange == true) {
                 change = true;
             }
-            assert(resultvec.size() > 0);
+            FmtAssert((resultvec.size() > 0), 
+              ("Nonzero sized nary vector expected after elimination of subexps"));
             nary_exp result (NARY, from.aop, from.aopc);
             result.anary = resultvec;
-            result.awn = WHIRL_of_nary_exp (result);
             return result; 
         }
     }
-    assert(0);
-    return from;
+    FmtAssert(FALSE, ("Unknown NARY type for nary_exp"));
 }
 
 // argument #2, called "what" is eliminated from the 
@@ -1111,7 +1099,7 @@ nary_exp eliminate_subexp_from_nary (
 // of rrec's canonicalized_input_trees. We maintain
 // this preg and the replaced tree "nary_exp what", 
 // in WHIRL form as a pair which is stored in 
-// rrec's excised_subexps_stids map.
+// rrec's excised_subexps_stids vector.
 // Later, after do_reassociation puts the 
 // changed canonicalized trees back into the basic block, 
 // it inserts STIDs before 
@@ -1123,9 +1111,11 @@ void eliminate_subexp (reasso_struct& rrec,
     vector<nary_exp> new_canonicalized_input_trees;
     rrec.cse_start_id = rrec.cse_start_id + 1;
     int ci = 0;
+    AUX_STAB_ENTRY *psym;
     ostringstream cseostr;
     cseostr << "__reasso__temp__" << rrec.cse_start_id;
     string csename(cseostr.str());
+    what.awn = WHIRL_of_nary_exp(what);
     TYPE_ID arg_type_id = WN_rtype(what.awn);
 #ifdef KEY            
     AUX_ID tmp_preg = rrec.optstab->Create_preg(arg_type_id, 
@@ -1140,13 +1130,16 @@ void eliminate_subexp (reasso_struct& rrec,
 		    rrec.optstab->St_ofst(tmp_preg), 
 		    ST_st_idx(rrec.optstab->St(tmp_preg)), 
                     arg_type);
-    WN_set_aux(ldid, (AUX_ID)tmp_preg);
+    psym = rrec.optstab->Aux_stab_entry(tmp_preg);
+    psym->Set_stack(CXX_NEW(STACK<AUX_ID>(
+                    &cse_name_pool), &cse_name_pool));
+    VER_ID du = rrec.optstab->Gen_name(tmp_preg);
+    WN_set_ver(ldid,rrec.optstab->Get_name(tmp_preg));
     nary_exp cseterm(AWN, WN_operator(ldid), WN_opcode(ldid));
     cseterm.awn = ldid;
-    pair<AUX_ID, WN*> apair;
-    apair.first = WN_aux(ldid);
+    pair<VER_ID, WN*> apair;
+    apair.first = WN_ver(ldid);
     apair.second = what.awn;
-    rrec.excised_subexps_stids[csename] = apair;
 
     ostringstream cse_comp_ostr;
     cse_comp_ostr << "__reasso__temp_comp__" << rrec.cse_start_id;
@@ -1164,17 +1157,21 @@ void eliminate_subexp (reasso_struct& rrec,
 		    rrec.optstab->St_ofst(tmp_preg_comp), 
 		    ST_st_idx(rrec.optstab->St(tmp_preg_comp)), 
                     arg_type);
-    WN_set_aux(ldid_comp, (AUX_ID)tmp_preg_comp);
+    psym = rrec.optstab->Aux_stab_entry(tmp_preg_comp);
+    psym->Set_stack(CXX_NEW(STACK<AUX_ID>(
+                    &cse_name_pool), &cse_name_pool));
+    du = rrec.optstab->Gen_name(tmp_preg_comp);
+    WN_set_ver(ldid_comp,rrec.optstab->Get_name(tmp_preg_comp));
+
     nary_exp cse_comp_term(AWN, WN_operator(ldid_comp), WN_opcode(ldid_comp));
     cse_comp_term.awn = ldid_comp;
-    pair<AUX_ID, WN*> apair_comp;
-    apair_comp.first = WN_aux(ldid_comp);
-    WN* acop = WN_COPY_Tree_With_Map(ldid);
-    WN_set_aux(acop,(AUX_ID)tmp_preg);
+    pair<VER_ID, WN*> apair_comp;
+    apair_comp.first = WN_ver(ldid_comp);
+    WN* acop = ldid;
     apair_comp.second = fold_neg_WHIRL(
             WN_Unary(OPR_NEG, WN_rtype(ldid), acop));
-    rrec.excised_subexps_stids_comp[cse_comp_name] = apair_comp;
 
+    bool mychange = false;
     for (nari_it = rrec.canonicalized_input_trees.begin();
          nari_it != rrec.canonicalized_input_trees.end();
          ++nari_it) {
@@ -1184,6 +1181,7 @@ void eliminate_subexp (reasso_struct& rrec,
 
         if (localchange == true) {
             change = true;
+            mychange = true;
             new_canonicalized_input_trees.push_back(newca);
         } else {
             nary_exp newwhat = convert_wcexp_to_nary(
@@ -1192,10 +1190,18 @@ void eliminate_subexp (reasso_struct& rrec,
                     *nari_it, newwhat, cse_comp_term, localchange);
             if (localchange == true) {
                 change = true;
+                mychange = true;
             }
             new_canonicalized_input_trees.push_back(newca_comp);
         }
         ++ci;
+    }
+    if (mychange == true) {
+        rrec.excised_subexps_stids_comp.push_back(apair_comp);
+        rrec.excised_subexps_stids.push_back(apair);
+    } else {
+        WN_DELETE_Tree (ldid);
+        WN_DELETE_Tree (ldid_comp);
     }
     rrec.canonicalized_input_trees = new_canonicalized_input_trees;
 }
@@ -1236,7 +1242,6 @@ void eliminate_subexps (reasso_struct& rrec, bool& change) {
             }
         }
     }
-
 
     if (selected_wcexp.first != -1 
         && selected_wcexp.second != -1) {
@@ -1315,29 +1320,23 @@ void do_reassociation(reasso_struct& reas_st,
         // Change the kid of associative expression 
         // hosting STIDs. Use the newly derived
         // canonical trees instead of what was there.
-        for (int ci = 0; 
+       for (int ci = 0; 
              ci < reas_st.canonicalized_input_trees.size();
              ++ci) {
             WN* in_parent = reas_st.map_stm_wn[ci];
             WN_kid0(in_parent) = WHIRL_of_nary_exp (
                     reas_st.canonicalized_input_trees[ci]);
-        }
-
-        if (Get_Trace( TP_WOPT2, REASSO_DUMP_FLAG_DEBUG)) {
-            fprintf(TFile, "BB before redundancy removal\n");
-            bb->Print(TFile);
-            fprintf (TFile, "----\n");
-        }
+       }
 
         // Rewrite original basic block by including stids for each 
         // cse ldid pregs. Each cse uses a new ldid 
         // preg. These pregs are stored along with the 
-        // cse strand as pairs of <AUX_ID,WN*> in
+        // cse strand as pairs of <VER_ID,WN*> in
         // excised_subexps_stids and excised_subexps_stids_comp.
         // It is necessary that we first iterate over 
         // excised_subexps_stids_comp and then
         // excised_subexps_stids.
-        for (map<string, pair<AUX_ID,WN*> >::iterator mymait = 
+        for (vector<pair<VER_ID,WN*> >::iterator mymait = 
                 reas_st.excised_subexps_stids_comp.begin();
              mymait != reas_st.excised_subexps_stids_comp.end();
              ++mymait) {
@@ -1345,25 +1344,38 @@ void do_reassociation(reasso_struct& reas_st,
             WN *wn = NULL;
             FOR_ALL_ELEM (wn, stmt_iter,
                     Init(bb->Firststmt(), bb->Laststmt())) {
-                if (WHIRL_has_term(wn, (*mymait).second.first)
+                if (WHIRL_has_term(wn, (*mymait).first)
                         == true) {
-                    WN* awn = WN_COPY_Tree_With_Map ((*mymait).second.second);
+                    WN* awn = (*mymait).second;
                     WN * theldid = WHIRL_get_term (wn, 
-                            (*mymait).second.first);
+                            (*mymait).first);
                     TYPE_ID arg_type_id = OPCODE_desc(WN_opcode(theldid));
-                    AUX_ID tmp_preg = WN_aux(theldid);
+                    AUX_ID tmp_preg = reas_st.optstab->Ver_stab_entry(
+                            WN_ver(theldid))->Aux_id();
                     WN *stid = WN_CreateStid(OPR_STID, MTYPE_V,
                             arg_type_id, reas_st.optstab->St_ofst(tmp_preg), 
 			    ST_st_idx(reas_st.optstab->St(tmp_preg)),
 			    Be_Type_Tbl(arg_type_id), awn);
-                    WN_set_aux(stid, (AUX_ID)tmp_preg);
+                    WN_set_ver(stid, WN_ver(theldid));
+
+                    if (reas_st.optstab->Ver_stab_entry(WN_ver(wn))->Real_use()) {
+                        reas_st.optstab->Ver_stab_entry(WN_ver(stid))->Set_Real_use();
+                    } 
+
+                    if (reas_st.optstab->Ver_stab_entry(WN_ver(wn))->Any_use()) {
+                        reas_st.optstab->Ver_stab_entry(WN_ver(stid))->Set_Any_use();
+                    }
+
+                    if (reas_st.optstab->Ver_stab_entry(WN_ver(wn))->Zero_vers()) {
+                        reas_st.optstab->Ver_stab_entry(WN_ver(stid))->Set_Zero_vers();
+                    }
                     bb->Insert_wn_before(stid, wn);
                     goto there1;
                 }
             }
 there1:  ;      
         }
-        for (map<string, pair<AUX_ID,WN*> >::iterator mymait = 
+        for (vector<pair<VER_ID,WN*> >::iterator mymait = 
                 reas_st.excised_subexps_stids.begin();
              mymait != reas_st.excised_subexps_stids.end();
              ++mymait) {
@@ -1371,29 +1383,37 @@ there1:  ;
             WN *wn = NULL;
             FOR_ALL_ELEM (wn, stmt_iter,
                     Init(bb->Firststmt(), bb->Laststmt())) {
-                if (WHIRL_has_term(wn, (*mymait).second.first)
+                if (WHIRL_has_term(wn, (*mymait).first)
                         == true) {
-                    WN* awn = WN_COPY_Tree_With_Map ((*mymait).second.second);
+                    WN* awn = (*mymait).second; 
                     WN * theldid = WHIRL_get_term (wn, 
-                            (*mymait).second.first);
+                            (*mymait).first);
                     TYPE_ID arg_type_id = WN_rtype(theldid);
-                    AUX_ID tmp_preg = WN_aux(theldid);
+                    AUX_ID tmp_preg 
+                        = reas_st.optstab->Ver_stab_entry(WN_ver(theldid))->Aux_id();
                     WN *stid = WN_CreateStid(OPR_STID, MTYPE_V,
                             arg_type_id, reas_st.optstab->St_ofst(tmp_preg), 
 			    ST_st_idx(reas_st.optstab->St(tmp_preg)),
 			    Be_Type_Tbl(arg_type_id), awn);
-                    WN_set_aux(stid, (AUX_ID)tmp_preg);
+                    WN_set_ver(stid, WN_ver(theldid));
+
+                    if (reas_st.optstab->Ver_stab_entry(WN_ver(wn))->Real_use()) {
+                        reas_st.optstab->Ver_stab_entry(WN_ver(stid))->Set_Real_use();
+                    } 
+
+                    if (reas_st.optstab->Ver_stab_entry(WN_ver(wn))->Any_use()) {
+                        reas_st.optstab->Ver_stab_entry(WN_ver(stid))->Set_Any_use();
+                    }
+
+                    if (reas_st.optstab->Ver_stab_entry(WN_ver(wn))->Zero_vers()) {
+                        reas_st.optstab->Ver_stab_entry(WN_ver(stid))->Set_Zero_vers();
+                    }
+
                     bb->Insert_wn_before(stid, wn);
                     goto there;
                 }
             }
 there:   ;         
-        }
-
-        if (Get_Trace( TP_WOPT2, REASSO_DUMP_FLAG_DEBUG)) {
-            fprintf(TFile, "BB after redundancy removal\n");
-            bb->Print(TFile);
-            fprintf (TFile, "----\n");
         }
     }
 }
@@ -1401,10 +1421,11 @@ there:   ;
 // helper function used by WHIRL_of_nary_exp
 WN* WHIRL_of_nary_exp_vector (
         OPERATOR yaop,
-        vector<nary_exp> nary_exp_vec, int where) {
+        const vector<nary_exp>& nary_exp_vec, int where) {
     int length = nary_exp_vec.size();
     if (where < 1 || where >= length) {
-        assert(0);
+        FmtAssert (FALSE, 
+            ("Unexpected size of nary_vector in WHIRL_of_nary_exp_vector"));
     }
 
     if (where == length-1) {
@@ -1427,7 +1448,7 @@ WN* WHIRL_of_nary_exp_vector (
 // SUBs into the code that were converted into
 // ADD-NEG form due to canonicalization.
 // 
-WN* WHIRL_of_nary_exp (nary_exp anary_exp) {
+WN* WHIRL_of_nary_exp (const nary_exp& anary_exp) {
     nary_assert(anary_exp);
     if (anary_exp.narytyp == AWN) {
         return anary_exp.awn;
@@ -1457,7 +1478,8 @@ WN* WHIRL_of_nary_exp (nary_exp anary_exp) {
                 return fold_neg_WHIRL(anaddwn);
             }
         }
-        assert(0);
+        FmtAssert (FALSE, 
+            ("Unexpected nary_exp in WHIRL_of_nary_exp"));
     }
 }
 
@@ -1492,9 +1514,9 @@ void sum_to_nary (WN* atree,
         outli.push_back(binary_to_nary(atree));
         return;
     } else {
-        assert(0);
+        FmtAssert (FALSE, 
+            ("Unexpected WHIRL in sum_to_nary"));
     }
-    assert(0);
 }
 
 // This is a recursive function that is first
@@ -1522,9 +1544,9 @@ void prod_to_nary(WN* atree,
         outli.push_back(binary_to_nary(atree));
         return;
     } else {
-        assert(0);
+        FmtAssert (FALSE, 
+            ("Unexpected WHIRL in prod_to_nary"));
     }
-    assert(0);
 }
 
 // Top level dispatcher for converting 
@@ -1548,7 +1570,6 @@ binary_to_nary (WN* atree) {
         nary_exp myret (NARY, WN_operator(atree), 
                 WN_opcode(atree));
         prod_to_nary(atree, myret.anary); 
-        myret.awn = WHIRL_of_nary_exp(myret);
         return myret;
     } else if (WN_operator(atree) == OPR_ADD) {
         // convert Binop(ADD
@@ -1556,7 +1577,6 @@ binary_to_nary (WN* atree) {
                 WN_operator(atree), 
                 WN_opcode(atree));
         sum_to_nary(atree, myret.anary); 
-        myret.awn = WHIRL_of_nary_exp(myret);
         return myret;
     } else if (WN_operator(atree) == OPR_NEG) {
         // convert Unaryop(NEG
@@ -1565,14 +1585,14 @@ binary_to_nary (WN* atree) {
                 WN_opcode(atree));
         myret.anary.push_back(
                 binary_to_nary(WN_kid0(atree)));
-        myret.awn = WHIRL_of_nary_exp(myret);
         return myret;
     } else if ((WN_operator(atree) == OPR_LDID) ||
          (WN_operator(atree) == OPR_CONST)) {
         nary_exp myret = make_nary_term(atree);
         return myret;
     }
-    assert(0);
+    FmtAssert (FALSE, 
+        ("Unexpected WHIRL in binary_to_nary"));
 }
 
 // Given a WHIRL tree, we obtain the corresponding 
@@ -1590,9 +1610,9 @@ make_nary_tree (WN* atree) {
 
 // utility function used only in factorize_mul_trees (in 
 // this work)
-int count_negates (vector<nary_exp> anary_vec) {
+int count_negates (const vector<nary_exp>& anary_vec) {
     int ret = 0;
-    for (vector<nary_exp>::iterator vit = 
+    for (vector<nary_exp>::const_iterator vit = 
             anary_vec.begin();
          vit != anary_vec.end(); ++vit) {
         nary_exp vitex = *vit;
@@ -1606,8 +1626,8 @@ int count_negates (vector<nary_exp> anary_vec) {
 
 // utility function used only in factorize_mul_trees (in 
 // this work)
-vector<nary_exp> clear_signs (vector<nary_exp> anaryv) {
-    vector<nary_exp>::iterator vit;
+vector<nary_exp> clear_signs (const vector<nary_exp>& anaryv) {
+    vector<nary_exp>::const_iterator vit;
     vector<nary_exp> outvec;
     for (vit = anaryv.begin();
         vit != anaryv.end();
@@ -1625,7 +1645,7 @@ vector<nary_exp> clear_signs (vector<nary_exp> anaryv) {
 // utility function used only in factorize_mul_trees (in 
 // this work)
 nary_exp
-unary_sub_fold (nary_exp mytree) {
+unary_sub_fold (const nary_exp& mytree) {
     if(mytree.narytyp == NARY) {
         if (mytree.aop == OPR_NEG) {
             nary_exp neged = mytree.anary[0];
@@ -1658,24 +1678,27 @@ factorize_mul_trees (nary_exp atree) {
             int negatives = count_negates (atree.anary);
             if (negatives % 2 == 0) {
                 // even
-                atree.anary = clear_signs (atree.anary);
-                return atree;
+                nary_exp outnary(NARY, atree.aop,
+                        atree.aopc);
+                outnary.anary = clear_signs (atree.anary);
+                return outnary;
             } else {
                 // odd
+
                 nary_exp outnary(NARY, atree.aop,
-                        atree.aopc, atree.awn,
-                        clear_signs(atree.anary));
+                        atree.aopc);
+                
+                outnary.anary= clear_signs(atree.anary);
 
                 OPCODE aopC =  OPCODE_make_op (
                         OPR_NEG, OPCODE_rtype(atree.aopc),
-                        WN_desc(atree.awn));
+                        OPCODE_desc(atree.aopc));
                 nary_exp neged_nary(NARY, OPR_NEG, aopC);
                 neged_nary.anary.push_back(outnary); 
-                neged_nary.awn = WHIRL_of_nary_exp(neged_nary);
                 return neged_nary;
             }
         } else if (atree.aop == OPR_ADD) {
-            vector<nary_exp>::iterator vit; 
+            vector<nary_exp>::const_iterator vit; 
             vector<nary_exp> outvec;
             for (vit = atree.anary.begin(); 
                 vit != atree.anary.end(); 
@@ -1684,10 +1707,12 @@ factorize_mul_trees (nary_exp atree) {
                         factorize_mul_trees(
                             *vit));
             }
-            atree.anary = outvec;
-            return atree;
+            nary_exp outnary(NARY, atree.aop,
+                    atree.aopc);
+            outnary.anary = outvec;
+            return outnary;
         }
-        assert(0);
+        FmtAssert (FALSE, ("Unexpected nary_typ in factorize_mul_trees"));
     }
 }
 
@@ -1699,10 +1724,10 @@ factorize_mul_trees (nary_exp atree) {
 // -A is also considered to be a terminal, 
 // if A is a nary-exp terminal.
 void extract_term_based (
-        vector<nary_exp> oplis,
+        const vector<nary_exp>& oplis,
         vector<nary_exp>& nterms,
         vector<nary_exp>& terms) {
-    vector<nary_exp>::iterator opl_it;
+    vector<nary_exp>::const_iterator opl_it;
     for(opl_it = oplis.begin();
         opl_it != oplis.end();
         ++opl_it) {
@@ -1726,10 +1751,10 @@ void extract_term_based (
 // nary expressions out of the input nary expression, 
 // and rewrite the input nary expression to contain
 // newly created term only nary expression.
-nary_exp group_terms_nonterms (nary_exp atree);
-vector<nary_exp> reorg_vec (vector<nary_exp> anterms) {
+nary_exp group_terms_nonterms (const nary_exp& atree);
+vector<nary_exp> reorg_vec (const vector<nary_exp>& anterms) {
     vector<nary_exp> outvec;
-    vector<nary_exp>::iterator anterm_it;
+    vector<nary_exp>::const_iterator anterm_it;
     for (anterm_it = anterms.begin();
         anterm_it != anterms.end();
         ++anterm_it) {
@@ -1743,7 +1768,7 @@ vector<nary_exp> reorg_vec (vector<nary_exp> anterms) {
 
 // See comments related to reorg_vec for help
 // on this function.
-nary_exp group_terms_nonterms (nary_exp atree) {
+nary_exp group_terms_nonterms (const nary_exp& atree) {
     if (atree.narytyp == AWN) {
         return atree;
     } else {
@@ -1768,11 +1793,9 @@ nary_exp group_terms_nonterms (nary_exp atree) {
                 } else {
                     nary_exp term_exp (NARY, atree.aop, 
                             atree.aopc, atree.awn, terms);
-                    term_exp.awn = WHIRL_of_nary_exp(term_exp);
                     nary_exp nterm_exp(NARY, atree.aop, 
                             atree.aopc, atree.awn, nterms);
                     nterm_exp.anary.push_back(term_exp);
-                    nterm_exp.awn = WHIRL_of_nary_exp(nterm_exp);
                     return nterm_exp;
                 }
             }
@@ -1780,7 +1803,7 @@ nary_exp group_terms_nonterms (nary_exp atree) {
     }
 }
 
-void find_terms (nary_exp atree, list<nary_exp>& trec) {
+void find_terms (const nary_exp& atree, list<nary_exp>& trec) {
     if (atree.narytyp == AWN) {
         if (WN_operator(atree.awn) == OPR_LDID) {
             if (find(trec.begin(), trec.end(), atree) 
@@ -1793,15 +1816,44 @@ void find_terms (nary_exp atree, list<nary_exp>& trec) {
                 trec.push_back(atree);
             }
         } else {
-            assert(0);
+            FmtAssert (FALSE, ("Unexpected term type in nary_exp"));
         }
     } else {
-        for (vector<nary_exp>::iterator vit = 
+        for (vector<nary_exp>::const_iterator vit = 
                 atree.anary.begin();
              vit != atree.anary.end(); ++vit) {   
             find_terms(*vit, trec);
         }
     }
+}
+
+bool 
+contains_volatile_term (OPT_STAB* opt_stab, WN* in_tree) {
+    // we find volatile terms recursively
+    switch(WN_operator(in_tree)) {
+        case OPR_ADD:
+        case OPR_SUB:
+        case OPR_MPY:
+            return 
+                (contains_volatile_term (opt_stab, WN_kid0(in_tree)) || 
+                 contains_volatile_term (opt_stab, WN_kid1(in_tree)));
+        case OPR_NEG:
+            return 
+                contains_volatile_term (opt_stab, WN_kid0(in_tree)); 
+        case OPR_LDID:
+            {
+                if (opt_stab->Du_is_volatile(WN_ver(in_tree))) 
+                    return true;
+                else 
+                    return false;
+            }
+        case OPR_CONST: 
+            return false;
+        default:
+            return false;
+    }
+    FmtAssert (FALSE, 
+        ("Unexpected transfer of control in contains_volatile_term"));
 }
 
 bool 
@@ -1819,12 +1871,13 @@ is_associate_tree (WN* in_tree) {
             return 
                 is_associate_tree(WN_kid0(in_tree)); 
         case OPR_LDID:
-        case OPR_CONST:    
+        case OPR_CONST: 
             return true;
         default:
             return false;
     }
-    assert(false);
+    FmtAssert (FALSE, 
+        ("Unexpected transfer of control in is_associate_tree"));
 }
 
 WN* fold_neg_WHIRL (WN* intre) {
@@ -2084,12 +2137,19 @@ WN* canon_sub_fn (WN *mytree) {
 
 WN* 
 build_associate_trees_collect_terms (
+        OPT_STAB* opt_stab,
         WN* in_parent,
         WN* in_tree, 
-        set<AUX_ID>& termset, 
+        set<VER_ID>& termset, 
         vector<nary_exp>& assovec,
         map<int,WN*>& map_stm_wn) {
     if(is_associate_tree(in_tree) == true) {
+        if (contains_volatile_term (opt_stab, in_tree) == true) {
+            // we do not reassociate trees that contain
+            // volatile terms in them
+            return in_tree;
+        }
+        
         if (WN_operator(in_tree) != OPR_LDID
                 && WN_operator(in_tree) != OPR_CONST) {
             WN* ctree;
@@ -2139,7 +2199,7 @@ build_associate_trees_collect_terms (
                 // termset is used in the main routine
                 // toplvl_bb
                 if (WN_operator ((*snait).awn) == OPR_LDID) {
-                    termset.insert(WN_aux((*snait).awn));
+                    termset.insert(WN_ver((*snait).awn));
                 }
             }
             // push canonicalized expressions into 
@@ -2160,7 +2220,7 @@ build_associate_trees_collect_terms (
     }
 }
 
-bool WHIRL_has_term (WN* intre, AUX_ID astidx) {
+bool WHIRL_has_term (WN* intre, VER_ID astidx) {
     // finds out if the given intre contains the
     // astidx
     if (is_associate_tree (intre) == true) {
@@ -2172,7 +2232,7 @@ bool WHIRL_has_term (WN* intre, AUX_ID astidx) {
         } else if (WN_operator(intre) == OPR_NEG) {
             return WHIRL_has_term (WN_kid0(intre), astidx);
         } else if (WN_operator(intre) == OPR_LDID) {
-            if (WN_aux(intre) == astidx) {
+            if (WN_ver(intre) == astidx) {
                 return true;
             } else {
                 return false;
@@ -2190,7 +2250,7 @@ bool WHIRL_has_term (WN* intre, AUX_ID astidx) {
     }
 }
 
-WN* WHIRL_get_term (WN* intre, AUX_ID astidx) {
+WN* WHIRL_get_term (WN* intre, VER_ID astidx) {
     // utility function that finds the first LDID 
     // that contains the astidx
     if (is_associate_tree (intre) == true) {
@@ -2206,7 +2266,7 @@ WN* WHIRL_get_term (WN* intre, AUX_ID astidx) {
         } else if (WN_operator(intre) == OPR_NEG) {
             return WHIRL_get_term (WN_kid0(intre), astidx);
         } else if (WN_operator(intre) == OPR_LDID) {
-            if (WN_aux(intre) == astidx) {
+            if (WN_ver(intre) == astidx) {
                 return intre;
             } else {
                 return NULL;
@@ -2231,9 +2291,9 @@ toplvl_bb (CFG* acfg, BB_NODE *bb, OPT_STAB * optstab) {
     bool useful_work = false;
     int num_iter = 0;
     do {
-        map<AUX_ID,WN*> whirlmap;
+        map<VER_ID,WN*> whirlmap;
         vector<nary_exp> assovec;
-        set<AUX_ID> termset;
+        set<VER_ID> termset;
         // this is the variable that is used to 
         // detect a change for this fix point algorithm
         useful_work = false;
@@ -2257,17 +2317,21 @@ toplvl_bb (CFG* acfg, BB_NODE *bb, OPT_STAB * optstab) {
             // array accesses, which should be  
             // accurate.
             if ((WN_operator(wn) == OPR_STID)) {
-                if(whirlmap.find(WN_aux(wn)) 
+                if (!optstab->Du_any_use(WN_ver(wn)))
+                    continue;
+                if (optstab->Du_is_volatile(WN_ver(wn)) == true) 
+                    continue;
+                if(whirlmap.find(WN_ver(wn)) 
                             == whirlmap.end()) {
-                    if (termset.find(WN_aux(wn)) == termset.end()) {
+                    if (termset.find(WN_ver(wn)) == termset.end()) {
                         // collect WHIRL for reassociation only if 
                         // STID writes to unseen terms.
                         // i.e. we require no anti/output dependencies 
                         // on the scalar variables
-                        whirlmap[WN_aux(wn)] = WN_kid0(wn);
-                        termset.insert(WN_aux(wn));
-                        build_associate_trees_collect_terms (
-                                wn, WN_kid0(wn), termset, 
+                        whirlmap[WN_ver(wn)] = WN_kid0(wn);
+                        termset.insert(WN_ver(wn));
+                        WN_kid0(wn) = build_associate_trees_collect_terms (
+                                optstab, wn, WN_kid0(wn), termset, 
                                 assovec, map_stm_wn);
                     } else {
                         // If we do a value numbering on 
@@ -2279,13 +2343,15 @@ toplvl_bb (CFG* acfg, BB_NODE *bb, OPT_STAB * optstab) {
                         // we can extend the range of code this 
                         // pass acts over. For now, we
                         //bail out because term is reused.
-                        return;
+                        FmtAssert(FALSE, 
+                            ("Found a scalar name resue, expecting SSA semantics"));
                     }
                 } else {
                     // we also need to bail out from here 
                     // because we do not 
                     // support rewrites to known variables
-                    return;
+                    FmtAssert(FALSE, 
+                        ("Found a scalar name resue, expecting SSA semantics"));
                 }
             } else if (WN_operator(wn) == OPR_ISTORE) {
                 // we assume that any istore does not write to scalar
@@ -2317,7 +2383,7 @@ toplvl_bb (CFG* acfg, BB_NODE *bb, OPT_STAB * optstab) {
             } 
         }
 here:    
-        if (assovec.size() != 0) {
+        if (assovec.size() > 1) {
             reasso_struct reas_st(startcsenum, 
                     assovec, 
                     map_stm_wn, 
@@ -2344,6 +2410,9 @@ here:
 
 void
 toplvl_cfg (CFG* acfg, OPT_STAB * optstab) {
+    OPT_POOL_Initialize(&cse_name_pool, 
+                    "Reassociation name pool", FALSE, REASSO_DUMP_FLAG_DEBUG);
+    OPT_POOL_Push(&cse_name_pool, REASSO_DUMP_FLAG_DEBUG);
     CFG_ITER cfg_iter;
     BB_NODE *bb;
     if (Get_Trace( TP_WOPT2, REASSO_DUMP_FLAG)) {
@@ -2356,17 +2425,20 @@ toplvl_cfg (CFG* acfg, OPT_STAB * optstab) {
         toplvl_bb (acfg, bb, optstab);
     }
 
+    OPT_POOL_Pop(&cse_name_pool, REASSO_DUMP_FLAG_DEBUG);
+    OPT_POOL_Delete(&cse_name_pool, REASSO_DUMP_FLAG_DEBUG);
     if (Get_Trace( TP_WOPT2, REASSO_DUMP_FLAG)) {
         fprintf (TFile, 
         "-------After redundancy elimination with reassociation--------\n"); 
         acfg->Print(TFile);
     }
 }
+}
 
 void COMP_UNIT::Do_reasso(void) {
     if (WOPT_Enable_Reassociation_CSE == TRUE) {
         if (Roundoff_Level >= ROUNDOFF_ASSOC) {
-            toplvl_cfg (Cfg(), Opt_stab());
+            REASSO::toplvl_cfg (Cfg(), Opt_stab());
         }
     }
 }

@@ -1511,12 +1511,6 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   comp_unit->Pro_loop_trans();
   comp_unit->Cfg()->Analyze_loops();
 
-  // redundancy elimination with reassociation 
-  if (phase == MAINOPT_PHASE) {
-    SET_OPT_PHASE("Reassociation enabled CSE");
-    comp_unit->Do_reasso();
-  }
-
   // Setup flow free alias information  --  CHI and MU list 
   SET_OPT_PHASE("Create MU and CHI list");
   comp_unit->Opt_stab()->Compute_FFA(comp_unit->Rid());
@@ -1538,6 +1532,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   comp_unit->Ssa()->Construct(comp_unit->Htable(),
 			      comp_unit->Cfg(),
 			      comp_unit->Opt_stab());
+  // redundancy elimination with reassociation 
 
   // Why do we wait until now to free the alias class resources? It
   // seems to me we could do it after
@@ -1558,7 +1553,10 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   comp_unit->Ssa()->Dead_store_elim(comp_unit->Cfg(),
                                     comp_unit->Opt_stab(),
                                     comp_unit->Exc());
-
+  if (phase == MAINOPT_PHASE) {
+    SET_OPT_PHASE("Reassociation enabled CSE");
+    comp_unit->Do_reasso();
+  }
   comp_unit->Opt_stab()->Update_return_mu();
   Analyze_pu_attr (comp_unit->Opt_stab(), Opt_current_pu_st);
   

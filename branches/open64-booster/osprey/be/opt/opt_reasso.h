@@ -25,13 +25,16 @@
 
 #include "id_map.h"
 #include "defs.h"
+#include "opt_defs.h"
 #include "glob.h"
 #include "opt_bb.h"
 #include "opt_cfg.h"
 #include "opt_main.h"
 #include "opt_sym.h"
 #include "opt_wn.h"
+#include "opt_base.h"
 #include "config.h"
+#include "ir_reader.h"
 
 #include <iostream>
 #include <fstream>
@@ -45,6 +48,7 @@
 #include <cassert>
 using namespace std;
 
+namespace REASSO {
 struct nary_exp;
 struct wcexp;
 
@@ -62,7 +66,7 @@ struct nary_exp {
             OPERATOR op,
             OPCODE opc, 
             WN* wN, 
-            vector<nary_exp> anar) :
+            vector<nary_exp>& anar) :
             narytyp(qual),
             aop(op),
             aopc(opc), 
@@ -88,7 +92,7 @@ struct nary_exp {
 bool WHIRL_has_term (WN* intre, AUX_ID astidx);
 WN* WHIRL_get_term (WN* intre, AUX_ID astidx);
 WN* fold_neg_WHIRL (WN* intre);
-WN* WHIRL_of_nary_exp (nary_exp anary_exp);
+WN* WHIRL_of_nary_exp (const nary_exp& anary_exp);
 nary_exp binary_to_nary (WN* atree);
 
 struct term_struct {
@@ -124,7 +128,7 @@ struct wcexp {
     }
 };
 
-WN* WHIRL_of_wcexp (wcexp wcx);
+WN* WHIRL_of_wcexp (const wcexp& wcx);
 
 struct exp_struct {
     vector<nary_exp> term_based_explis;
@@ -143,12 +147,12 @@ struct reasso_struct {
     int cse_start_id;
     vector<nary_exp> excised_subexps;
     vector<int> excised_costs;
-    map<string, pair<AUX_ID, WN*> > excised_subexps_stids;
-    map<string, pair<AUX_ID, WN*> > excised_subexps_stids_comp;
+    vector<pair<AUX_ID, WN*> > excised_subexps_stids;
+    vector<pair<AUX_ID, WN*> > excised_subexps_stids_comp;
     OPT_STAB * optstab;
     reasso_struct (int term_start, 
-            vector<nary_exp> canons, 
-            map<int, WN*> mystmnumwn, 
+            vector<nary_exp>& canons, 
+            map<int, WN*>& mystmnumwn, 
             OPT_STAB* optsta) 
         : cse_start_id (term_start),
         canonicalized_input_trees(canons), 
@@ -159,5 +163,6 @@ struct reasso_struct {
 
 nary_exp make_nary_term (WN* ald);
 void make_nary_term (WN* ald, nary_exp& myret);
+}
 
 #endif /*opt_reasso_INCLUDED*/
