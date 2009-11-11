@@ -852,7 +852,7 @@ Exp_Ldst (
 	if (Gen_PIC_Shared) {
 	  FmtAssert(!ST_is_thread_local(base_sym),
 		    ("Exp_Ldst: thread-local storage NYI under PIC"));
-	  if (ST_is_preemptible (base_sym) ) {
+	  if ( !ST_is_export_local(base_sym) ) {
 	    TN *tmp = base_ofst == 0 ? tn : Build_TN_Like(tn);
 	    Build_OP( TOP_ld64, tmp, Rip_TN(), 
 		      Gen_Symbol_TN( base_sym, 0, TN_RELOC_X8664_GOTPCREL ),
@@ -922,7 +922,7 @@ Exp_Ldst (
 	  ErrMsg(EC_Misc_User_Abort,
 	    ("Detected 64-bit address offset under -m32.  Try -m64 -mcmodel=medium."));
 
-	if( Gen_PIC_Shared && (ST_is_preemptible (base_sym) ||
+	if( Gen_PIC_Shared && (!ST_is_export_local (base_sym) ||
 	                       // function, even if export_local?
 	                       ST_class(base_sym) == CLASS_FUNC ||
 	                       // section?
@@ -1049,7 +1049,7 @@ Exp_Ldst (
 	}
       }
 
-      if( Gen_PIC_Shared && (ST_is_preemptible (base_sym) ||
+      if( Gen_PIC_Shared && (!ST_is_export_local (base_sym) ||
                               // section?
                              (ST_class(base_sym) == CLASS_BLOCK &&
                               STB_section(base_sym) /* bug 10097 */)) ){
