@@ -2052,6 +2052,16 @@ Create_ST_For_Tree (gs_t decl_node)
     }
   }
 
+  // For external variable without an initializer, if it has
+  // a "const" qualifier, we mark the symbol const var.
+  if (gs_tree_code(decl_node) == GS_VAR_DECL && 
+      gs_tree_readonly(decl_node) && !gs_tree_this_volatile(decl_node) &&
+      gs_tree_public(decl_node) && gs_decl_external(decl_node) &&
+      !ST_is_initialized(st)) 
+  {
+    Set_ST_is_const_var(st);
+  }
+
 #if defined(TARG_IA64)
   //lookup syscall_linkage attribute for FUNCTION_DECL
   if (gs_tree_code (decl_node) == GS_FUNCTION_DECL)
