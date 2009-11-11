@@ -2071,16 +2071,13 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 	  }
 	}
 	LRA_TN_Allocate_Register (result_tn, result_reg);
-      } else {
-        Delete_Avail_Reg (result_cl, result_reg, opnum);
-        if (result_reg == REGISTER_sp &&
+      } else if (result_reg == REGISTER_sp &&
 #ifdef KEY	 // Bug 4327.
-          result_cl == ISA_REGISTER_CLASS_integer &&
+		 result_cl == ISA_REGISTER_CLASS_integer &&
 #endif
-          CG_localize_tns) {
-          Update_Callee_Availability(bb);
-        } 
-      }
+		 CG_localize_tns) {
+	Update_Callee_Availability(bb);
+      } 
 
 #ifdef KEY
       // Always free the result register, even for ASM OPs.  For ASM
