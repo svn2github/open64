@@ -2113,8 +2113,9 @@ Create_ST_For_Tree (gs_t decl_node)
     // for function decls visibility, needs to delay the process to WGEN_Start_Function
     gs_symbol_visibility_kind_t vk = 
       (gs_symbol_visibility_kind_t) gs_decl_visibility(decl_node);
-    if (gs_decl_visibility_specified(decl_node) ||
-        GS_VISIBILITY_DEFAULT != vk) {
+    if (gs_tree_public (decl_node) &&
+        (gs_decl_visibility_specified(decl_node) ||
+        GS_VISIBILITY_DEFAULT != vk) ) {
       ST_EXPORT export_class = EXPORT_PREEMPTIBLE;
       switch (vk) {
         case GS_VISIBILITY_DEFAULT:
