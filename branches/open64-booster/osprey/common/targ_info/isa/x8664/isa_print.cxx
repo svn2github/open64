@@ -543,18 +543,6 @@ main()
                            TOP_maxu128v32,
                            TOP_mins128v32,
                            TOP_maxs128v32,
-                           TOP_pmovsxbw,
-                           TOP_pmovzxbw,
-                           TOP_pmovsxbd,
-                           TOP_pmovzxbd,
-                           TOP_pmovsxbq,
-                           TOP_pmovzxbq,
-                           TOP_pmovsxwd,
-                           TOP_pmovzxwd,
-                           TOP_pmovsxwq,
-                           TOP_pmovzxwq,
-                           TOP_pmovsxdq,
-                           TOP_pmovzxdq,
                            TOP_muldq,
                            TOP_mul128v32,
                            TOP_cmpeq128v64,
@@ -571,7 +559,6 @@ main()
                            TOP_aesenclast,
                            TOP_aesdec,
                            TOP_aesdeclast,
-                           TOP_aeskeygenassist,
 			   TOP_UNDEFINED );
 
   /* One result / two operands in x86 style w/ mem operand */
@@ -683,18 +670,6 @@ main()
                            TOP_maxux128v32,
                            TOP_minsx128v32,
                            TOP_maxsx128v32,
-                           TOP_pmovsxbwx,
-                           TOP_pmovzxbwx,
-                           TOP_pmovsxbdx,
-                           TOP_pmovzxbdx,
-                           TOP_pmovsxbqx,
-                           TOP_pmovzxbqx,
-                           TOP_pmovsxwdx,
-                           TOP_pmovzxwdx,
-                           TOP_pmovsxwqx,
-                           TOP_pmovzxwqx,
-                           TOP_pmovsxdqx,
-                           TOP_pmovzxdqx,
                            TOP_muldqx,
                            TOP_mulx128v32,
                            TOP_cmpeqx128v64,
@@ -711,7 +686,6 @@ main()
                            TOP_aesenclastx,
                            TOP_aesdecx,
                            TOP_aesdeclastx,
-                           TOP_aeskeygenassistx,
 			   TOP_UNDEFINED );
 
   /* One result / two operands in x86 style w/ mem operand w/ scaled-index */
@@ -826,18 +800,6 @@ main()
                            TOP_maxuxx128v32,
                            TOP_minsxx128v32,
                            TOP_maxsxx128v32,
-                           TOP_pmovsxbwxx,
-                           TOP_pmovzxbwxx,
-                           TOP_pmovsxbdxx,
-                           TOP_pmovzxbdxx,
-                           TOP_pmovsxbqxx,
-                           TOP_pmovzxbqxx,
-                           TOP_pmovsxwdxx,
-                           TOP_pmovzxwdxx,
-                           TOP_pmovsxwqxx,
-                           TOP_pmovzxwqxx,
-                           TOP_pmovsxdqxx,
-                           TOP_pmovzxdqxx,
                            TOP_muldqxx,
                            TOP_mulxx128v32,
                            TOP_cmpeqxx128v64,
@@ -854,7 +816,6 @@ main()
                            TOP_aesenclastxx,
                            TOP_aesdecxx,
                            TOP_aesdeclastxx,
-                           TOP_aeskeygenassistxx,
 			   TOP_UNDEFINED );
 
   /* One result / two operands in x86 style w/ mem operand w/o base */
@@ -968,18 +929,6 @@ main()
                            TOP_maxuxxx128v32,
                            TOP_minsxxx128v32,
                            TOP_maxsxxx128v32,
-                           TOP_pmovsxbwxxx,
-                           TOP_pmovzxbwxxx,
-                           TOP_pmovsxbdxxx,
-                           TOP_pmovzxbdxxx,
-                           TOP_pmovsxbqxxx,
-                           TOP_pmovzxbqxxx,
-                           TOP_pmovsxwdxxx,
-                           TOP_pmovzxwdxxx,
-                           TOP_pmovsxwqxxx,
-                           TOP_pmovzxwqxxx,
-                           TOP_pmovsxdqxxx,
-                           TOP_pmovzxdqxxx,
                            TOP_muldqxxx,
                            TOP_mulxxx128v32,
                            TOP_cmpeqxxx128v64,
@@ -996,7 +945,6 @@ main()
                            TOP_aesenclastxxx,
                            TOP_aesdecxxx,
                            TOP_aesdeclastxxx,
-                           TOP_aeskeygenassistxxx,
 			   TOP_UNDEFINED );
 
   /* SSE4.1 blendv: res reg reg */ 
@@ -1219,6 +1167,8 @@ main()
   Operand(0);
   Result(0);
   Instruction_Print_Group( vropop,
+                           /* AES instruction */
+                           TOP_aeskeygenassist,
                            /* AVX instruction */
                            TOP_vfsqrtsd,
                            TOP_vfsqrtss,
@@ -1313,6 +1263,8 @@ main()
                            TOP_vsubus128v8,
                            TOP_vsubus128v16,
                            TOP_vptest128,
+                           TOP_vptestpd,
+                           TOP_vptestps,
                            TOP_vpackssdw,
                            TOP_vpacksswb,
                            TOP_vpackusdw,
@@ -1415,6 +1367,8 @@ main()
   Operand(0);
   Result(0);
   Instruction_Print_Group( vropmem,
+                           /* AES instruction */
+                           TOP_aeskeygenassistx,
                            /* AVX instruction */
                            TOP_vfsqrtxsd,
                            TOP_vfsqrtxss,
@@ -1510,6 +1464,8 @@ main()
                            TOP_vsubusx128v8,
                            TOP_vsubusx128v16,
                            TOP_vptestx128,
+                           TOP_vptestxpd,
+                           TOP_vptestxps,
                            TOP_vpackssdwx,
                            TOP_vpacksswbx,
                            TOP_vpackusdwx,
@@ -1599,6 +1555,8 @@ main()
   Operand(3);
   Result(0);
   Instruction_Print_Group( vropmemindex,
+                           /* AES instruction */
+                           TOP_aeskeygenassistxx,
                            /* AVX instruction */
                            TOP_vfsqrtxxsd,
                            TOP_vfsqrtxxss,
@@ -1694,6 +1652,8 @@ main()
                            TOP_vsubusxx128v8,
                            TOP_vsubusxx128v16,
                            TOP_vptestxx128,
+                           TOP_vptestxxpd,
+                           TOP_vptestxxps,
                            TOP_vpackssdwxx,
                            TOP_vpacksswbxx,
                            TOP_vpackusdwxx,
@@ -1782,6 +1742,8 @@ main()
   Operand(2);
   Result(0);
   Instruction_Print_Group( vropmemindex,
+                           /* AES instruction */
+                           TOP_aeskeygenassistxxx,
                            /* AVX instruction */
                            TOP_vfsqrtxxxsd,
                            TOP_vfsqrtxxxss,
@@ -1877,6 +1839,8 @@ main()
                            TOP_vsubusxxx128v8,
                            TOP_vsubusxxx128v16,
                            TOP_vptestxxx128,
+                           TOP_vptestxxxpd,
+                           TOP_vptestxxxps,
                            TOP_vpackssdwxxx,
                            TOP_vpacksswbxxx,
                            TOP_vpackusdwxxx,
@@ -2785,6 +2749,18 @@ main()
                            TOP_pabs128v32,
                            /* SSE4.1 instructions */
                            TOP_phminposuw,
+                           TOP_pmovsxbw,
+                           TOP_pmovzxbw,
+                           TOP_pmovsxbd,
+                           TOP_pmovzxbd,
+                           TOP_pmovsxbq,
+                           TOP_pmovzxbq,
+                           TOP_pmovsxwd,
+                           TOP_pmovzxwd,
+                           TOP_pmovsxwq,
+                           TOP_pmovzxwq,
+                           TOP_pmovsxdq,
+                           TOP_pmovzxdq,
                            /* SSE4.2 instructions */
                            TOP_popcnt16,
                            TOP_popcnt32,
@@ -2908,6 +2884,18 @@ main()
                            TOP_pabsx128v32,
                            /* SSE4.1 instructions */
                            TOP_phminposuwx,
+                           TOP_pmovsxbwx,
+                           TOP_pmovzxbwx,
+                           TOP_pmovsxbdx,
+                           TOP_pmovzxbdx,
+                           TOP_pmovsxbqx,
+                           TOP_pmovzxbqx,
+                           TOP_pmovsxwdx,
+                           TOP_pmovzxwdx,
+                           TOP_pmovsxwqx,
+                           TOP_pmovzxwqx,
+                           TOP_pmovsxdqx,
+                           TOP_pmovzxdqx,
                            /* SSE4.2 instructions */
                            TOP_popcntx16,
                            TOP_popcntx32,
@@ -2988,6 +2976,18 @@ main()
                            TOP_pabsxx128v32,
                            /* SSE4.1 instructions */
                            TOP_phminposuwxx,
+                           TOP_pmovsxbwxx,
+                           TOP_pmovzxbwxx,
+                           TOP_pmovsxbdxx,
+                           TOP_pmovzxbdxx,
+                           TOP_pmovsxbqxx,
+                           TOP_pmovzxbqxx,
+                           TOP_pmovsxwdxx,
+                           TOP_pmovzxwdxx,
+                           TOP_pmovsxwqxx,
+                           TOP_pmovzxwqxx,
+                           TOP_pmovsxdqxx,
+                           TOP_pmovzxdqxx,
                            /* SSE4.2 instructions */
                            TOP_popcntxx16,
                            TOP_popcntxx32,
@@ -3059,6 +3059,18 @@ main()
                            TOP_pabsxxx128v32,
                            /* SSE4.1 instructions */
                            TOP_phminposuwxxx,
+                           TOP_pmovsxbwxxx,
+                           TOP_pmovzxbwxxx,
+                           TOP_pmovsxbdxxx,
+                           TOP_pmovzxbdxxx,
+                           TOP_pmovsxbqxxx,
+                           TOP_pmovzxbqxxx,
+                           TOP_pmovsxwdxxx,
+                           TOP_pmovzxwdxxx,
+                           TOP_pmovsxwqxxx,
+                           TOP_pmovzxwqxxx,
+                           TOP_pmovsxdqxxx,
+                           TOP_pmovzxdqxxx,
                            /* SSE4.2 instructions */
                            TOP_popcntxxx16,
                            TOP_popcntxxx32,

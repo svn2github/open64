@@ -4227,6 +4227,8 @@ int main (int argc, char *argv[])
 
   Instruction_Group( "avx ptest reg opnd",
                         TOP_vptest128,
+                        TOP_vptestpd,
+                        TOP_vptestps,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(5);
@@ -4236,6 +4238,12 @@ int main (int argc, char *argv[])
                         TOP_vptestx128,
                         TOP_vptestxx128,
                         TOP_vptestxxx128,
+                        TOP_vptestxpd,
+                        TOP_vptestxxpd,
+                        TOP_vptestxxxpd,
+                        TOP_vptestxps,
+                        TOP_vptestxxps,
+                        TOP_vptestxxxps,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(10);

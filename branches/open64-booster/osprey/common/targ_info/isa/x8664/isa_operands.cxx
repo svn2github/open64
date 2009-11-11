@@ -1165,7 +1165,6 @@ main()
                      TOP_vfhadd128v32,
                      TOP_vfhsub128v64,
                      TOP_vfhsub128v32,
-                     TOP_vptest128,
 		     TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -1415,7 +1414,6 @@ main()
                            TOP_vfhsubx128v32,
                            TOP_vcomixsd,
                            TOP_vcomixss,
-                           TOP_vptestx128,
                            TOP_vucomixsd,
                            TOP_vucomixss,
                            TOP_vfmaskld128v32,
@@ -1672,7 +1670,6 @@ main()
                            TOP_vfhsubxx128v32,
                            TOP_vcomixxsd,
                            TOP_vcomixxss,
-                           TOP_vptestxx128,
                            TOP_vucomixxsd,
                            TOP_vucomixxss,
                            TOP_vfmaskldx128v32,
@@ -1929,7 +1926,6 @@ main()
                            TOP_vfhsubxxx128v32,
                            TOP_vcomixxxsd,
                            TOP_vcomixxxss,
-                           TOP_vptestxxx128,
                            TOP_vucomixxxsd,
                            TOP_vucomixxxss,
                            TOP_vfmaskldxx128v32,
@@ -4546,6 +4542,10 @@ main()
 
   Instruction_Group( "vector ptest reg",
                            TOP_ptest128,
+                           /* AVX instructions */
+                           TOP_vptest128,
+                           TOP_vptestpd,
+                           TOP_vptestps,
                            TOP_UNDEFINED);
   Result(0, rflags);
   Operand(0, fp128, opnd1);
@@ -4553,6 +4553,10 @@ main()
 
   Instruction_Group( "vector ptest mem opnd",
                            TOP_ptestx128,
+                           /* AVX instructions */
+                           TOP_vptestx128,
+                           TOP_vptestxps,
+                           TOP_vptestxpd,
                            TOP_UNDEFINED);
   Result(0, rflags);
   Operand(0, fp128, opnd1);
@@ -4561,6 +4565,10 @@ main()
 
   Instruction_Group( "vector ptest mem opnd w/ scaled index",
                            TOP_ptestxx128,
+                           /* AVX instructions */
+                           TOP_vptestxx128,
+                           TOP_vptestxxpd,
+                           TOP_vptestxxps,
                            TOP_UNDEFINED);
   Result(0, rflags);
   Operand(0, fp128, opnd1);
@@ -4571,6 +4579,10 @@ main()
 
   Instruction_Group( "vector ptest mem opnd w/ scaled index w/o base",
                            TOP_ptestxxx128,
+                           /* AVX instruction */
+                           TOP_vptestxxx128,
+                           TOP_vptestxxxpd,
+                           TOP_vptestxxxps,
                            TOP_UNDEFINED);
   Result(0, rflags);
   Operand(0, fp128, opnd1);
@@ -6000,6 +6012,7 @@ main()
                            TOP_vcmpestri,
                            TOP_UNDEFINED);
   Result(0, ecx);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, eax, opnd2);
   Operand(2, fp128, opnd3);
@@ -6012,6 +6025,7 @@ main()
                            TOP_vcmpestrix,
                            TOP_UNDEFINED);
   Result(0, ecx);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, eax, opnd2);
   Operand(2, int64, base);
@@ -6025,6 +6039,7 @@ main()
                            TOP_vcmpestrixx,
                            TOP_UNDEFINED);
   Result(0, ecx);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, eax, opnd2);
   Operand(2, int64, base);
@@ -6040,6 +6055,7 @@ main()
                            TOP_vcmpestrixxx,
                            TOP_UNDEFINED);
   Result(0, ecx);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, eax, opnd2);
   Operand(2, int64, index);
@@ -6054,6 +6070,7 @@ main()
                            TOP_vcmpestrm,
                            TOP_UNDEFINED);
   Result(0, xmm0);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, eax, opnd2);
   Operand(2, fp128, opnd3);
@@ -6066,6 +6083,7 @@ main()
                            TOP_vcmpestrmx,
                            TOP_UNDEFINED);
   Result(0, xmm0);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, eax, opnd2);
   Operand(2, int64, base);
@@ -6079,6 +6097,7 @@ main()
                            TOP_vcmpestrmxx,
                            TOP_UNDEFINED);
   Result(0, xmm0);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, eax, opnd2);
   Operand(2, int64, base);
@@ -6094,6 +6113,7 @@ main()
                            TOP_vcmpestrmxxx,
                            TOP_UNDEFINED);
   Result(0, xmm0);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, eax, opnd2);
   Operand(2, int64, index);
@@ -6108,6 +6128,7 @@ main()
                            TOP_vcmpistri,
                            TOP_UNDEFINED);
   Result(0, ecx);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, fp128, opnd2);
   Operand(2, simm8, opnd3);
@@ -6118,6 +6139,7 @@ main()
                            TOP_vcmpistrix,
                            TOP_UNDEFINED);
   Result(0, ecx);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, int64, base);
   Operand(2, simm32, offset);
@@ -6129,6 +6151,7 @@ main()
                            TOP_vcmpistrixx,
                            TOP_UNDEFINED);
   Result(0, ecx);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, int64, base);
   Operand(2, int64, index);
@@ -6142,6 +6165,7 @@ main()
                            TOP_vcmpistrixxx,
                            TOP_UNDEFINED);
   Result(0, ecx);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, int64, index);
   Operand(2, uimm8, scale);
@@ -6154,6 +6178,7 @@ main()
                            TOP_vcmpistrm,
                            TOP_UNDEFINED);
   Result(0, xmm0);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, fp128, opnd2);
   Operand(2, simm8, opnd3);
@@ -6164,6 +6189,7 @@ main()
                            TOP_vcmpistrmx,
                            TOP_UNDEFINED);
   Result(0, xmm0);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, int64, base);
   Operand(2, simm32, offset);
@@ -6175,6 +6201,7 @@ main()
                            TOP_vcmpistrmxx,
                            TOP_UNDEFINED);
   Result(0, xmm0);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, int64, base);
   Operand(2, int64, index);
@@ -6188,6 +6215,7 @@ main()
                            TOP_vcmpistrmxxx,
                            TOP_UNDEFINED);
   Result(0, xmm0);
+  Result(1, rflags);
   Operand(0, fp128, opnd1);
   Operand(1, int64, index);
   Operand(2, uimm8, scale);
