@@ -188,6 +188,15 @@ INSTALL_GCC () {
         done
     done
 
+    # Make links to gcc runtime libraries
+    cd ${ROOT}
+    for i in open64-gcc-4.2.0/lib64/lib*.so*; do
+        (cd $PHASEPATH; ln -sf ../../../../$i `basename $i`)
+    done
+    for i in open64-gcc-4.2.0/lib/lib*.so*; do
+        (cd $PHASEPATH/32; ln -sf ../../../../../$i `basename $i`)
+    done
+
     popd
 
     return 0
