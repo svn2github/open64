@@ -147,9 +147,9 @@ Get_Affinity_Map(int **list, int total_cores)
     int core_id = atoi(str);
     // some sanity checks on core_id. Note that atoi() can return 0 when failed.
     if (core_id == 0 && str[0] != '0')
-      fprintf(stderr,"O64_OMP_AFFINITY_MAP: ingored invalid core_id=%s.\n", str);
+      fprintf(stderr,"O64_OMP_AFFINITY_MAP: ignored invalid core_id=%s.\n", str);
     else if ( core_id < 0 || core_id >= total_cores )
-      fprintf(stderr,"O64_OMP_AFFINITY_MAP: ingored invalid core_id=%d.\n", core_id);
+      fprintf(stderr,"O64_OMP_AFFINITY_MAP: ignored invalid core_id=%d.\n", core_id);
     else
       buf[cnt++] = atoi(str);
     str = strtok(NULL,", \n");
@@ -160,7 +160,7 @@ Get_Affinity_Map(int **list, int total_cores)
 
   if (cnt == MAX_LIST_SIZE)
       fprintf(stderr,
-           "O64_OMP_AFFINITY_MAP: map is too big, ingore items after %dth.\n", 
+           "O64_OMP_AFFINITY_MAP: map is too big, ignore items after %dth.\n", 
            MAX_LIST_SIZE);
   my_list = (int*) malloc(sizeof(int) * cnt);
   Is_True(my_list!= NULL, ("Can't allocate list in Get_Affinity_Map"));
