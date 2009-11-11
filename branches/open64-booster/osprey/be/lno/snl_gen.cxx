@@ -497,6 +497,30 @@ extern void SNL_Peel_Iteration(WN* wn,
   MEM_POOL_Pop(&SNL_local_pool);
 } 
 
+static void Cleanup_For_Inner_Loop_Peeling(WN *body, WN *current_stmt, 
+                                           WN *match_stmt, BOOL clear_match)
+{
+  // Now cleanup both the code and the dependence graph for
+  // the removed if-test in the loop and the
+  // match_stmt in newblock using the appropriate routines.
+  if (match_stmt) {
+    // In either case, always propagate the
+    // contents of the then block back into the existing loop.
+    WN *stmt = WN_first(WN_then(current_stmt));
+    while (stmt) {
+      WN *next = WN_next(stmt);
+      LWN_Insert_Block_Before(body, current_stmt,
+                              LWN_Extract_From_Block(stmt));
+      stmt = next;
+    }
+    LWN_Delete_Tree(current_stmt);
+    if (clear_match) {
+      LWN_Delete_LNO_dep_graph(match_stmt);
+      LWN_Delete_Tree(match_stmt);
+    }
+  }
+}
+
 //-----------------------------------------------------------------------
 // NAME: SNL_Peel_Iteration_Inner
 // FUNCTION: Peel an iteration off either the front or back of 'wn'.  If 
@@ -537,7 +561,8 @@ extern void SNL_Peel_Iteration_Inner(WN* wn,
   WN* wn_inner = SNL_Get_Inner_Snl_Loop(wn, 1); 
   DO_LOOP_INFO* dli_inner = Get_Do_Loop_Info(wn_inner); 
 
-  WN* newblock = LWN_Copy_Tree(WN_do_body(wn), TRUE, LNO_Info_Map);
+  WN *loop_body = WN_do_body(wn);
+  WN* newblock = LWN_Copy_Tree(loop_body, TRUE, LNO_Info_Map);
   LWN_Set_Frequency_Tree(newblock,1);
   LWN_Adjust_Frequency_Tree(WN_do_body(wn), -1);
   LWN_Adjust_Frequency(WN_step(wn), -1);
@@ -547,15 +572,17 @@ extern void SNL_Peel_Iteration_Inner(WN* wn,
   // as it was proven to be excluded.
   WN *cur, *match_stmt;
   match_stmt = NULL;
+  int num_stmts = 0;
   for (cur = WN_first(newblock); cur; cur = WN_next(cur)) {
     if (WN_opcode(cur) == OPC_IF) {
       WN *stmt_if = WN_if_test(stmt);
       WN *cur_if = WN_if_test(cur);
-      if (WN_Simp_Compare_Trees(stmt_if, cur_if) == 0) {
+      if ((match_stmt == NULL) && 
+          (WN_Simp_Compare_Trees(stmt_if, cur_if) == 0)) {
         match_stmt = cur;
-        break;
       }
     }
+    num_stmts++;
   }
 
   // insert in newblock, but using value of upper/lower bound.  Also
@@ -578,6 +605,21 @@ extern void SNL_Peel_Iteration_Inner(WN* wn,
   }
   if (dli->Est_Num_Iterations > 0)
     dli->Est_Num_Iterations--;
+
+  // check to see if there are other stmts in newblock before adding it
+  if ((num_stmts == 1) && (match_stmt != NULL)) {
+    Cleanup_For_Inner_Loop_Peeling(loop_body, stmt, match_stmt, FALSE);
+    LWN_Delete_Tree(newblock);
+    return;
+  }
+
+  WN* tmp_unrolls[2];
+  tmp_unrolls[0] = WN_do_body(wn);
+  tmp_unrolls[1] = newblock;
+
+  if (red_manager != NULL) red_manager->Unroll_Update(tmp_unrolls, 2);
+  // dli->Depth is the loop further out, so don't need to subtract 1
+  Unrolled_DU_Update(tmp_unrolls, 2, dli->Depth, TRUE, FALSE);
 
   MEM_POOL_Push(&SNL_local_pool);
 
@@ -704,25 +746,9 @@ extern void SNL_Peel_Iteration_Inner(WN* wn,
     }
 
     SNL_DEBUG1(1, "Peeling added %d edges\n", count);
-  } 
-
-  // Now cleanup both the code and the dependence graph for
-  // the removed if-test in the loop and the 
-  // match_stmt in newblock using the appropriate routines.
-  if (match_stmt) {
-    // In either case, always propagate the
-    // contents of the then block back into the existing loop.
-    WN *cur = WN_first(WN_then(stmt));
-    while (cur) {
-      WN *next = WN_next(cur);
-      LWN_Insert_Block_Before(LWN_Get_Parent(stmt), stmt,
-                              LWN_Extract_From_Block(cur));
-      cur = next;
-    }
-    LWN_Delete_Tree(stmt);
-    LWN_Delete_LNO_dep_graph(match_stmt);
-    LWN_Delete_Tree(match_stmt);
   }
+
+  Cleanup_For_Inner_Loop_Peeling(loop_body, stmt, match_stmt, TRUE); 
 
  disaster:
   if (disaster) {

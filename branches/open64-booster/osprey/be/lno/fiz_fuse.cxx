@@ -1389,6 +1389,7 @@ extern FIZ_FUSE_INFO* Fiz_Fuse(WN* loop, FIZ_FUSE_INFO* snls, MEM_POOL* mpool) {
             CXX_NEW(DO_LOOP_INFO(loop_info,
                                  &LNO_default_pool), &LNO_default_pool);
           Set_Do_Loop_Info(new_loop,new_loop_info);
+          new_loop_info->No_Fusion = TRUE;
 
 	  relts++;
 	  last_loop=i;

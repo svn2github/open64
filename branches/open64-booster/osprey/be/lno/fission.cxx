@@ -913,6 +913,37 @@ DYN_ARRAY<FF_STMT_LIST>& loop, MEM_POOL* pool)
 
 }
 
+static BOOL
+has_back_edges(ARRAY_DIRECTED_GRAPH16* sdg, 
+               SCC_DIRECTED_GRAPH16 *dep_g_p,
+               WN_MAP dep_graph_map,
+               WN *scc_first,  
+               int j,
+               VINDEX16 *queue, 
+               VINDEX16 total_scc)
+{
+  BOOL ret_val = FALSE;
+  int i;
+  VINDEX16 v=sdg->Get_Vertex(scc_first);
+  EINDEX16 e=sdg->Get_Out_Edge(v);
+  while (e) {
+    VINDEX16 v1 = sdg->Get_Sink(e);
+    WN* stmt = sdg->Get_Wn(v1);
+    VINDEX16 scc_id = dep_g_p->Get_Scc_Id(
+      (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt));
+    for (i = j - 1; i >= 0; i--) {
+      if (queue[i] == scc_id) {
+        ret_val = TRUE;
+        break;
+      }
+    }
+    if (ret_val) break;
+    e = sdg->Get_Next_Out_Edge(e);
+  }
+
+  return ret_val;
+}
+
 static void
 Find_Partitions(FF_STMT_LIST& stl_1, WN* in_loop, UINT8 fission_level,
 ARRAY_DIRECTED_GRAPH16* sdg,
@@ -922,7 +953,7 @@ MEM_POOL* pool)
   WN_MAP dep_graph_map;	// map from stmts to vertices in dep_g
   WN* stmt;
   VINDEX16 i;
-  int j;
+  int j, num_stmts;
 
   dep_graph_map = WN_MAP_Create(pool);
   FmtAssert(dep_graph_map != -1,("Ran out of mappings in Fission"));
@@ -1002,6 +1033,7 @@ MEM_POOL* pool)
 
   // Append statements to the statement list of proper SCC.
   i = 0;
+  num_stmts = 0;
   for (stmt = WN_first(WN_do_body(in_loop)); stmt; stmt = WN_next(stmt)) {
     VINDEX16 scc_id = dep_g_p->Get_Scc_Id(
       (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt));
@@ -1009,6 +1041,7 @@ MEM_POOL* pool)
     if (s_iter.Is_Empty())
       queue[i++] = scc_id;
     scc[scc_id].Append(stmt, pool);
+    num_stmts++;
   }
 
   // Now we are going to look for breaks in connectivity in the 
@@ -1021,6 +1054,11 @@ MEM_POOL* pool)
   SCC_DIRECTED_GRAPH16 *ac_g;
   ac_g = dep_g_p->Acyclic_Condensation(pool);
   mUINT16 *level = CXX_NEW_ARRAY(mUINT16,ac_g->Get_Vertex_Count()+1,pool);
+  
+  // first clear the levels so that what ever we find it usable
+  for (j = 0; j < ac_g->Get_Vertex_Count()+1; j++)
+    level[j] = 0;
+
   ac_g->Get_Level(level);
   // Walk the scc nodes lexically from the bottom of the loop up.
   for (j=total_scc-1; j>=0; j--) {
@@ -1073,6 +1111,10 @@ MEM_POOL* pool)
             continue;
           }
         }
+        // see if the SCC graph has back edges from scc node i
+        if (has_back_edges(sdg, dep_g_p, dep_graph_map, 
+                           scc_first, j, queue, total_scc))
+          continue;
 
         if (has_dist_list == FALSE)
           has_dist_list = TRUE;
@@ -1092,13 +1134,15 @@ MEM_POOL* pool)
   if (has_dist_list) {
     // Reorder the statements in the loop according to SCCs, but in the
     // current ordering schema, this cleans up overlap.
-    for (i=0; i<total_scc; ++i) {
-      UINT cur = queue[i];
-      FF_STMT_ITER s_iter(&scc[cur]);
-      for (FF_STMT_NODE* stmt_node = s_iter.First(); !s_iter.Is_Empty();
-        stmt_node=s_iter.Next()) {
-        stmt=stmt_node->Get_Stmt();
-        LWN_Insert_Block_Before(loop_body, NULL, LWN_Extract_From_Block(stmt));
+    if (num_stmts > total_scc) {
+      for (i=0; i<total_scc; ++i) {
+        UINT cur = queue[i];
+        FF_STMT_NODE* stmt_node;
+        while(stmt_node = scc[cur].Remove_Headnode()) {
+          stmt=stmt_node->Get_Stmt();
+          LWN_Insert_Block_Before(loop_body, NULL, 
+                                  LWN_Extract_From_Block(stmt));
+        }
       }
     }
 
