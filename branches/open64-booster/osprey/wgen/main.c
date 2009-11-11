@@ -253,6 +253,15 @@ Process_Cc1_Command_Line(gs_t arg_list)
 	      else if (!strcmp( cp, "sseregparm" )) {
 	        SSE_Reg_Parm = TRUE;
 	      }
+	      else if (!strncmp( cp, "mmx", 3 )) {
+	        Target_MMX = TRUE;
+	      }
+	      else if (!strncmp( cp, "sse", 3 )) {
+	        Target_SSE = TRUE;
+	      }
+	      else if (!strncmp( cp, "avx", 3 )) {
+	        Target_SSE = TRUE;
+	      }
 #endif
 #else
 	      // 11953: MIPS expects -mabi=n32 or -mabi=64

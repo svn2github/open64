@@ -1307,14 +1307,14 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			    else if (elem_mtype == MTYPE_F4)
 		    	      idx = MTYPE_To_TY(MTYPE_V16F4);
 		    	    else if (elem_mtype == MTYPE_I2)
-		    	      idx = MTYPE_To_TY(MTYPE_M8I2);
+		    	      idx = MTYPE_To_TY(Target_SSE ? MTYPE_V8I2 : MTYPE_M8I2);
                             else if (elem_mtype == MTYPE_I8)
                               idx = MTYPE_To_TY(MTYPE_V32I8);
                             else if (elem_mtype == MTYPE_F8)
                              idx = MTYPE_To_TY(MTYPE_V32F8);
 			    break;
 		    case 8: if (elem_mtype == MTYPE_I1)
-		    	      idx = MTYPE_To_TY(MTYPE_M8I1);
+		    	      idx = MTYPE_To_TY(Target_SSE ? MTYPE_V8I1 : MTYPE_M8I1);
 		    	    else if (elem_mtype == MTYPE_I2)
 		    	      idx = MTYPE_To_TY(MTYPE_V16I2);
                             else if (elem_mtype == MTYPE_I4)
@@ -1360,7 +1360,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
                   }
 		  else if (strncasecmp(p, "SI", 2) == 0) {
 		    if (num_elems == 2)
-		      if ( Is_Target_64bit())
+		      if ( Is_Target_64bit() || Target_SSE )
 			idx = MTYPE_To_TY(MTYPE_V8I4);
 		      else
 			idx = MTYPE_To_TY(MTYPE_M8I4);
@@ -1369,7 +1369,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  }
 		  else if (strncasecmp(p, "SF", 2) == 0) {
 		    if (num_elems == 2)
-		      if ( Is_Target_64bit())
+		      if ( Is_Target_64bit() || Target_SSE )
 			idx = MTYPE_To_TY(MTYPE_V8F4);
 		      else
 			idx = MTYPE_To_TY(MTYPE_M8F4);
@@ -1380,7 +1380,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  }
 		  else if (strncasecmp(p, "HI", 2) == 0) {
 		    if (num_elems == 4)
-		      idx = MTYPE_To_TY(MTYPE_M8I2);
+		      idx = MTYPE_To_TY(Target_SSE ? MTYPE_V8I2 : MTYPE_M8I2);
 		    else if (num_elems == 8)
 		      idx = MTYPE_To_TY(MTYPE_V16I2);
                     else if (num_elems == 16)
@@ -1388,7 +1388,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  }
 		  else if (strncasecmp(p, "QI", 2) == 0) {
 		    if (num_elems == 8)
-		      idx = MTYPE_To_TY(MTYPE_M8I1);
+		      idx = MTYPE_To_TY(Target_SSE ? MTYPE_V8I1 : MTYPE_M8I1);
 		    else if (num_elems == 16)
 		      idx = MTYPE_To_TY(MTYPE_V16I1);
                     else if (num_elems == 32)

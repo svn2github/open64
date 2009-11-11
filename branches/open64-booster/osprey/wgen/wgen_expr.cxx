@@ -3565,7 +3565,9 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
             arg0 = arg1;
         }
                                                                                 
-        wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, MTYPE_M8I2, MTYPE_V,
+        wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, 
+                                  Target_SSE ? MTYPE_V8I2 : MTYPE_M8I2, 
+                                  MTYPE_V,
                                   *iopc, 2, args);
         break;
       }

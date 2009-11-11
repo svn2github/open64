@@ -4448,6 +4448,12 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
       return tree;
 
 #if defined(TARG_X8664) || defined(VECTOR_MTYPES)
+    case MTYPE_V32I1:
+    case MTYPE_V32I2:
+    case MTYPE_V32I4:
+    case MTYPE_V32I8:
+    case MTYPE_V32F4:
+    case MTYPE_V32F8:
     case MTYPE_V16I1:
     case MTYPE_V16I2:
     case MTYPE_V16I4:
