@@ -46,6 +46,8 @@ static WN* Get_Loop_Stride(WN* loop)
 // clean up before exiting
 void Delete_SAC_Info(SAC_INFO*& sac_info)
 {
+  if (!sac_info) return;
+
   CXX_DELETE_ARRAY(sac_info->fld_info, &LNO_local_pool);
   CXX_DELETE(sac_info, &LNO_local_pool);
   sac_info = NULL;
@@ -139,6 +141,7 @@ void Find_Struct_Array_Copy_Candidate(SAC_INFO*& sac_info,
                                      sizeof(SAC_FLD_INFO)));
       // Collect set of fields accessed. 
       Collect_Loop_Field_Refs(WN_do_body(wn), sac_info);
+      if (!sac_info) return;
 
       int total_access_size = 0;
       for (int i = 0; i < sac_info->orig_num_fields; i++)
@@ -419,8 +422,8 @@ void Create_New_Struct_Type(SAC_INFO* sac_info)
     {
       int align = TY_align(FLD_type(fld));
       offset = (INT)ceil(((double)offset)/align) * align;
-      last_fld = fld;
     }
+    last_fld = fld;
     Set_FLD_ofst(fld, offset);
     sac_info->fld_info[i+1].new_fld_id = new_field_id;
     sac_info->fld_info[i+1].new_offset = offset;
@@ -433,7 +436,7 @@ void Create_New_Struct_Type(SAC_INFO* sac_info)
   sac_info->new_ty = new_ty;
 }
 
-void Insert_Array_Copy_Code(SAC_INFO* sac_info)
+void Insert_Array_Copy_Code(SAC_INFO*& sac_info)
 {
   // Insert the new code somewhere after the start and stop nodes have
   // been defined.
@@ -733,7 +736,7 @@ void Free_Struct_Copy_Array(SAC_INFO* sac_info, WN* insertion_block)
 //   saved_end_val
 //   saved
 
-void Setup_Common_Info(SAC_INFO* sac_info, WN* copy_block)
+void Setup_Common_Info(SAC_INFO*& sac_info, WN* copy_block)
 {
   TYPE_ID array_type = MTYPE_I8;
   TYPE_ID index_type = MTYPE_U4;
@@ -1305,6 +1308,8 @@ void Insert_Sync_Copy_Code(SAC_INFO* sac_info)
 void Find_Writes_To_Struct_Type(WN* wn, SAC_INFO* sac_info, 
                                 bool found_insertion_pt)
 {
+  if (!sac_info) return;
+
   OPCODE opcode = WN_opcode(wn);
   if (wn == sac_info->copy_insertion_wn)
     found_insertion_pt = true;

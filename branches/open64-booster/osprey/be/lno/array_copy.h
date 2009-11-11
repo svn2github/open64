@@ -58,14 +58,14 @@ void Collect_Loop_Field_Refs(WN* loop_body, SAC_INFO*& sac_info);
 void Check_WN_For_Field_Refs(WN* wn, SAC_INFO*& sac_info);
 void Create_New_Struct_Type(SAC_INFO* sac_info);
 
-void Setup_Common_Info(SAC_INFO* sac_info, WN* copy_block);
+void Setup_Common_Info(SAC_INFO*& sac_info, WN* copy_block);
 void Allocate_Struct_Copy_Array(SAC_INFO* sac_info,
                                 WN* insertion_block,
                                 WN* insertion_wn);
 void Free_Struct_Copy_Array(SAC_INFO* sac_info,
                             WN* insertion_block);
 
-void Insert_Array_Copy_Code(SAC_INFO* sac_info);
+void Insert_Array_Copy_Code(SAC_INFO*& sac_info);
 BOOL Find_Insertion_Point(SAC_INFO* sac_info);
 void Find_Def_Block(WN* wn, SAC_INFO* sac_info, WN*& def_block, WN*& def_node);
 void Copy_Bounds_Defs(WN* expr, SAC_INFO*& sac_info, WN* insertion_block, 
