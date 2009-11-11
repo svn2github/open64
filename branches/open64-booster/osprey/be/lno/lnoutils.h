@@ -890,7 +890,7 @@ extern void Constant_Propogate(WN *stid, INT64 const_val);
 extern WN* Messy_Subscript(WN* wn_array);
 extern void Replace_Index_Variable(WN* loop, WN* cp_loop, const char prefix[]);
 extern WN* Enclosing_Proper_Do_Loop(WN* wn_ref);
-extern void Create_Single_Region(WN* wn_single, WN* wn_end); 
+extern void Create_Single_Region(WN* wn_parent, WN* wn_single, WN* wn_end); 
 
 #ifdef Is_True_On
 extern void LNO_Check_Du(WN* orig);

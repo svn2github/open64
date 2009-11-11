@@ -166,5 +166,6 @@ extern void Hoist_Iload_Ldid_Upper_Bound_One_Level(
 	BOOL negative_stride);
 
 extern void Hoist_Varying_Lower_Bounds(WN* func_nd); 
+extern BOOL Exp_Node_Varies_In_Loop(WN* wn_node, WN* wn_loop);
 
 #endif
