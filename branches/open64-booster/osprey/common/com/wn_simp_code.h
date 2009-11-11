@@ -3245,6 +3245,73 @@ static simpnode  simp_min_max(OPCODE opc,
       r = k0;
       SIMP_DELETE_TREE(k1);
    }
+   if (!Allow_wrap_around_opt) 
+      return(r);
+   else{
+      simpnode const_term0 = NULL;
+      simpnode const_term1 = NULL;
+      simpnode var0 = NULL;
+      simpnode var1 = NULL;
+      BOOL is_int;
+      if (SIMPNODE_operator(k0) == OPR_ADD)
+      {
+        const_term0 = SIMPNODE_kid1(k0);
+	if (SIMPNODE_operator(SIMPNODE_kid0(k0)) == OPR_LDID)
+	   var0 = SIMPNODE_kid0(k0);
+      }
+      else if (SIMPNODE_operator(k0) == OPR_LDID)
+      	var0 = k0;
+      
+      if (SIMPNODE_operator(k1) == OPR_ADD)
+      {
+        const_term1 = SIMPNODE_kid1(k1);
+	if (SIMPNODE_operator(SIMPNODE_kid0(k1)) == OPR_LDID)
+	   var1 = SIMPNODE_kid0(k1);
+      }
+      else if (SIMPNODE_operator(k1) == OPR_LDID)
+      	var1 = k1;
+
+      if (var0 == NULL || var1 == NULL || 
+      	SIMPNODE_Simp_Compare_Trees(var0, var1) !=0)
+      	return (r);
+
+      {
+      	double ck0, ck1;
+        if ( const_term0 == NULL)
+	{
+	  ck0 = 0;
+	} else if (SIMP_Is_Int_Constant(const_term0)){
+	  ck0 = SIMP_Int_ConstVal(const_term0);
+	  if (!is_numeric_equal(const_term0, ck0))
+	    return (r);
+	}
+	else
+      	  return (r);
+	
+        if ( const_term1 == NULL)
+	{
+	  ck1 = 0;
+	} else if (SIMP_Is_Int_Constant(const_term1)){
+	  ck1 = SIMP_Int_ConstVal(const_term1);
+	  if (!is_numeric_equal(const_term1, ck1))
+	    return (r);
+	}
+	else
+      	  return (r);
+	SHOW_RULE(" MAX(x+c0,x+c1), MIN(x+c0,x+c1) ");
+        if (ck0 >= ck1 && ismax || !ismax && ck0 <= ck1)
+       	{	  
+	  r = k0;
+  	  SIMP_DELETE_TREE(k1);
+       	}
+	else{
+	  r = k1;
+	  SIMP_DELETE_TREE(k0);
+	}
+		
+      }
+   }
+
    return (r);
 }
 
