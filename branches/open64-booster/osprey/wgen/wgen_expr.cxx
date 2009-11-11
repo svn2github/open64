@@ -9008,7 +9008,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  }
 	  else if (mtype == MTYPE_C4) {
 	    wn = WGEN_x8664_va_arg(ap_wn, MTYPE_float(mtype), ty_idx, FALSE);
-	    wn = WN_CreateIload(OPR_ILOAD, MTYPE_M, MTYPE_M, 0, ty_idx,
+	    wn = WN_CreateIload(OPR_ILOAD, MTYPE_C4, MTYPE_C4, 0, ty_idx,
 				Make_Pointer_Type(ty_idx), wn);
 	  }
 	  else {
