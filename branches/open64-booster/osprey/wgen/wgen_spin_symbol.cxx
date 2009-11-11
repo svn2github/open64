@@ -1662,6 +1662,13 @@ Create_ST_For_Tree (gs_t decl_node)
       }
       break;
 
+    case GS_INDIRECT_REF:
+        if (gs_tree_code(gs_tree_operand(decl_node, 0)) == GS_RESULT_DECL &&
+            DECL_ST(gs_tree_operand(decl_node,0)))
+            return DECL_ST(gs_tree_operand(decl_node,0));
+            
+        Fail_FmtAssertion("Create_ST_For_Tree: not expected GS_INDIRECT_REF");
+        
 #ifdef KEY
     case GS_RESULT_DECL: // bug 3878
 #if 0
