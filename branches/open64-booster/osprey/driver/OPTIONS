@@ -1310,6 +1310,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Attempt to support writable-strings K&R style C"
 -fno-writable-strings	;		Cc	f	self
 	""
+-fshow-column	;		Cc	f	self
+	"Show column numbers in diagnostics when available"
+-fno-show-column	;		Cc	f	self
+	""
 -ftraditional	;		Cc	f	self
 	""
 -fno-traditional ;		Cc	f	self
