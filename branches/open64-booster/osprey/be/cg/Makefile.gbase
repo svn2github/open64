@@ -868,6 +868,10 @@ include $(COMMONRULES)
 ifneq ($(BUILD_TARGET), SL)
 ifeq (gcc,$(firstword $(CCNAME)))
 # work around gcc bug optimizing this file on ia32
+ifeq ($(BUILD_OPTIMIZE), DEBUG)
+cg_loop.o: OPTIMIZER = -O0 -g
+else
 cg_loop.o: OPTIMIZER = -O0
+endif
 endif
 endif
