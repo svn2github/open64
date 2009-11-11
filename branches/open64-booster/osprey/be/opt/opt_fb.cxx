@@ -174,6 +174,14 @@ OPT_FEEDBACK::Get_edge_type(IDTYPE nx_src, IDTYPE nx_dst) const
   return FB_EDGE_UNINIT;
 }
 
+// Set the type of the given edge.
+void
+OPT_FEEDBACK::Set_edge_type(IDTYPE ex, FB_EDGE_TYPE type)
+{
+  OPT_FB_EDGE& edge = _fb_opt_edges[ex];
+  edge.edge_type = type;
+}
+
 // Get the edge between the given pair of nodes.
 IDTYPE
 OPT_FEEDBACK::Get_edge(IDTYPE nx_src, IDTYPE nx_dst) const

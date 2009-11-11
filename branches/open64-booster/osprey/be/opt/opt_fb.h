@@ -256,6 +256,7 @@ public:
   FB_FREQ Get_edge_freq( IDTYPE nx_src, IDTYPE nx_dst ) const;
   IDTYPE  Get_edge(IDTYPE nx_src, IDTYPE nx_dst) const;
   FB_EDGE_TYPE Get_edge_type(IDTYPE nx_src, IDTYPE nx_dst ) const;
+  void Set_edge_type(IDTYPE ex, FB_EDGE_TYPE type);
   float   Get_pred_prob( IDTYPE nx_src, IDTYPE nx_dst ) const;
   float   Get_succ_prob( IDTYPE nx_src, IDTYPE nx_dst ) const;
   void Change_edge_freq( IDTYPE ex, FB_FREQ new_freq );

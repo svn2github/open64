@@ -3558,9 +3558,11 @@ PRO_LOOP_FUSION_TRANS::Do_head_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 
     if (cfg->Feedback()) {
       freq = cfg->Feedback()->Get_edge_freq(dst_head->Id(), dst_then->Id());
-      cfg->Feedback()->Add_edge(dst_head->Id(), dst_then->Id(), FB_EDGE_OUTGOING, freq);
-      freq = cfg->Feedback()->Get_edge_freq(dst_else->Id(), dst_then->Id());
-      cfg->Feedback()->Add_edge(dst_head->Id(), dst_else->Id(), FB_EDGE_OUTGOING, freq);
+      cfg->Feedback()->Move_edge_dest(dst_head->Id(), dst_then->Id(), old_entry->Id());
+      cfg->Feedback()->Add_edge(old_exit->Id(), dst_then->Id(), FB_EDGE_OUTGOING, freq);
+      freq = cfg->Feedback()->Get_edge_freq(dst_head->Id(), dst_else->Id());
+      cfg->Feedback()->Move_edge_dest(dst_head->Id(), dst_else->Id(), new_entry->Id());
+      cfg->Feedback()->Add_edge(new_exit->Id(), dst_else->Id(), FB_EDGE_OUTGOING, freq);
     }
 
     if (dst_head->Is_branch_to(dst_else)) {
@@ -5132,9 +5134,10 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_split_if_head(SC_NODE * sc_if)
       bb_tmp->Replace_pred(bb_head, bb_new);
 
       if (cfg->Feedback()) {
+	FB_EDGE_TYPE edge_type = cfg->Feedback()->Get_edge_type(bb_head->Id(), bb_tmp->Id());
 	freq = cfg->Feedback()->Get_edge_freq(bb_head->Id(), bb_tmp->Id());
 	cfg->Feedback()->Delete_edge(bb_head->Id(), bb_tmp->Id());
-	cfg->Feedback()->Add_edge(bb_new->Id(), bb_tmp->Id(), FB_EDGE_OUTGOING, freq);
+	cfg->Feedback()->Add_edge(bb_new->Id(), bb_tmp->Id(), edge_type, freq);
       }
     }
 	  
@@ -5797,6 +5800,15 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_if_cond_tree_height_reduction(SC_NODE * sc1, SC_N
   BB_NODE * bb_tmp;
   WN * branch_wn;
   FB_FREQ freq;
+  FB_EDGE_TYPE edge_type;
+  FB_EDGE_TYPE ft_edge_type;
+  FB_EDGE_TYPE br_edge_type;
+
+  // Obtain edge types of the fall-through edge and the non-fall-through edge.
+  if (cfg->Feedback()) {
+    ft_edge_type = cfg->Feedback()->Get_edge_type(bb42->Id(), bb42->If_then()->Id());
+    br_edge_type = cfg->Feedback()->Get_edge_type(bb42->Id(), bb42->If_else()->Id());
+  }
 
   bb41->Replace_succ(bb42, bb43);
   BB_IFINFO * info = bb41->Ifinfo();
@@ -5841,10 +5853,13 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_if_cond_tree_height_reduction(SC_NODE * sc1, SC_N
       sc_tmp1 = sc_tmp2;
     }
 
+    edge_type = cfg->Feedback()->Get_edge_type(bb41->Id(), bb42->Id());
     cfg->Feedback()->Delete_edge(bb41->Id(), bb42->Id());
     freq = cfg->Feedback()->Get_edge_freq(bb42->Id(), bb43->Id());
     cfg->Feedback()->Delete_edge(bb42->Id(), bb43->Id());
-    cfg->Feedback()->Add_edge(bb41->Id(), bb43->Id(), FB_EDGE_OUTGOING, freq);
+    cfg->Feedback()->Add_edge(bb41->Id(), bb43->Id(), edge_type, freq);
+    edge = cfg->Feedback()->Get_edge(bb42->Id(), bb51->Id());
+    cfg->Feedback()->Set_edge_type(edge, ft_edge_type);
 
     edge = cfg->Feedback()->Get_edge(bb61->Id(), bb63->Id());
     
@@ -5903,7 +5918,7 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_if_cond_tree_height_reduction(SC_NODE * sc1, SC_N
   if (cfg->Feedback()) {
     freq = cfg->Feedback()->Get_edge_freq(bb42->Id(), bb51->Id());
     cfg->Feedback()->Add_node(bb_new->Id());
-    cfg->Feedback()->Add_edge(bb42->Id(), bb39->Id(), FB_EDGE_OUTGOING, FB_FREQ_UNKNOWN);
+    cfg->Feedback()->Add_edge(bb42->Id(), bb39->Id(), br_edge_type, FB_FREQ_UNKNOWN);
     cfg->Feedback()->Move_edge_dest(bb60->Id(), bb61->Id(), bb64->Id());
     cfg->Feedback()->Add_edge(bb_new->Id(), bb64->Id(), FB_EDGE_OUTGOING, FB_FREQ_UNKNOWN);
   }
@@ -6176,9 +6191,11 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_loop_unswitching(SC_NODE * sc1, SC_NODE * sc2)
     FB_FREQ freq1 = cfg->Feedback()->Get_edge_freq(bb_head->Id(), bb_then->Id());
     FB_FREQ freq2 = cfg->Feedback()->Get_edge_freq(bb_head->Id(), bb_else->Id());
     freq1 = freq1/(freq1 + freq2) * freq;
-    cfg->Feedback()->Add_edge(bb_head_new->Id(), bb_e1->Id(), FB_EDGE_OUTGOING, freq1);
+    FB_EDGE_TYPE edge_type = cfg->Feedback()->Get_edge_type(bb_head->Id(), bb_then->Id());
+    cfg->Feedback()->Add_edge(bb_head_new->Id(), bb_e1->Id(), edge_type, freq1);
     cfg->Feedback()->Add_edge(bb_e1->Id(), bb_merge->Id(), FB_EDGE_OUTGOING, freq1);
-    cfg->Feedback()->Add_edge(bb_head_new->Id(), bb_e2->Id(), FB_EDGE_OUTGOING, freq - freq1);
+    edge_type = cfg->Feedback()->Get_edge_type(bb_head->Id(), bb_else->Id());
+    cfg->Feedback()->Add_edge(bb_head_new->Id(), bb_e2->Id(), edge_type, freq - freq1);
     cfg->Feedback()->Add_edge(bb_e2->Id(), bb_merge->Id(), FB_EDGE_OUTGOING, freq - freq1);
   }
   
@@ -6596,6 +6613,11 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_loop_dist(SC_NODE * sc_loop, BOOL do_interchange)
   
   if (_trace)
     printf("\n\t\t Loop distribution (SC%d)\n", sc_loop->Id());
+
+  FB_EDGE_TYPE edge_type;
+
+  if (cfg->Feedback()) 
+    edge_type = cfg->Feedback()->Get_edge_type(bb_last->Id(), bb_succ->Id());
   
   // Unlink blocks in (bb_pred, bb_succ) from CFG and SC tree.
   bb_pred->Replace_succ(bb_first, bb_succ);
@@ -6626,6 +6648,8 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_loop_dist(SC_NODE * sc_loop, BOOL do_interchange)
   // Clone sc_loop and insert before it.
   SC_NODE * sc_new = cfg->Clone_sc(sc_loop, TRUE, 1.0);
   BB_NODE * bb_lp_head = sc_loop->Head();
+  BB_NODE * bb_lp_end = bb_lp_head->Loopend();
+  BB_NODE * bb_lp_merge = sc_loop->Merge();
   BB_NODE * bb_lp_head_new = sc_new->Head();
   BB_NODE * bb_lp_end_new = bb_lp_head_new->Loopend();
   BB_NODE * bb_lp_step_new = bb_lp_head_new->Loopstep();
@@ -6654,9 +6678,11 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_loop_dist(SC_NODE * sc_loop, BOOL do_interchange)
   bb_list = CXX_NEW(BB_LIST(bb_lp_end_new), pool);
   bb_lp_head->Set_pred(bb_list);
 
-  if (cfg->Feedback()) 
-    cfg->Feedback()->Add_edge(bb_lp_end_new->Id(), bb_lp_head->Id(), FB_EDGE_OUTGOING,
+  if (cfg->Feedback()) {
+    FB_EDGE_TYPE edge_type = cfg->Feedback()->Get_edge_type(bb_lp_end->Id(), bb_lp_merge->Id());
+    cfg->Feedback()->Add_edge(bb_lp_end_new->Id(), bb_lp_head->Id(), edge_type,
 			      cfg->Feedback()->Get_node_freq_in(bb_lp_head_new->Id()));
+  }
   
   bb_tmp = bb_lp_head->Prev();
   bb_tmp->Set_next(bb_lp_head_new);
@@ -6676,7 +6702,7 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_loop_dist(SC_NODE * sc_loop, BOOL do_interchange)
 
   if (cfg->Feedback()) {
     cfg->Feedback()->Move_edge_dest(bb_pred->Id(), bb_succ->Id(), bb_first->Id());
-    cfg->Feedback()->Add_edge(bb_last->Id(), bb_succ->Id(), FB_EDGE_OUTGOING, 
+    cfg->Feedback()->Add_edge(bb_last->Id(), bb_succ->Id(), edge_type,
 			      cfg->Feedback()->Get_node_freq_in(bb_first->Id()));
   }
 
@@ -6752,6 +6778,9 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_if_cond_wrap( BB_NODE * bb_cond,
   BB_NODE * bb_new = NULL;
   cfg->Clone_bbs(bb_cond, bb_cond, &bb_new, &bb_new, TRUE, 1.0);
 
+  BB_NODE * bb_then = bb_cond->If_then();
+  BB_NODE * bb_else = bb_cond->If_else();
+
   BB_NODE * bb_first = sc_begin->First_bb();
   BB_NODE * bb_last = sc_begin->Last_bb();
 
@@ -6790,17 +6819,21 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_if_cond_wrap( BB_NODE * bb_cond,
   FB_FREQ freq;
   FB_FREQ freq_then;
   FB_FREQ freq_else;
+  FB_EDGE_TYPE ft_edge_type;
+  FB_EDGE_TYPE br_edge_type;
   float scale;
   
   if_info->Set_cond(bb_new);
   if_info->Set_merge(bb_merge);
 
   if (cfg->Feedback()) {
+    ft_edge_type = cfg->Feedback()->Get_edge_type(bb_cond->Id(), bb_then->Id());
+    br_edge_type = cfg->Feedback()->Get_edge_type(bb_cond->Id(), bb_else->Id());
     cfg->Feedback()->Add_node(bb_new->Id());
     cfg->Feedback()->Add_node(bb_e->Id());
     cfg->Feedback()->Add_node(bb_merge->Id());
-    freq_then = cfg->Feedback()->Get_edge_freq(bb_cond->Id(), bb_cond->Nth_succ(1)->Id());
-    freq_else = cfg->Feedback()->Get_edge_freq(bb_cond->Id(), bb_cond->Nth_succ(0)->Id());
+    freq_then = cfg->Feedback()->Get_edge_freq(bb_cond->Id(), bb_then->Id());
+    freq_else = cfg->Feedback()->Get_edge_freq(bb_cond->Id(), bb_else->Id());
   }
 
   FOR_ALL_ELEM(bb_tmp, bb_list_iter, Init(bb_first->Pred())) {
@@ -6849,8 +6882,8 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_if_cond_wrap( BB_NODE * bb_cond,
     if_info->Set_else(bb_e);
 
     if (cfg->Feedback()) {
-      cfg->Feedback()->Add_edge(bb_new->Id(), bb_first->Id(), FB_EDGE_OUTGOING, freq_then);
-      cfg->Feedback()->Add_edge(bb_new->Id(), bb_e->Id(), FB_EDGE_OUTGOING, freq_else);
+      cfg->Feedback()->Add_edge(bb_new->Id(), bb_first->Id(), ft_edge_type, freq_then);
+      cfg->Feedback()->Add_edge(bb_new->Id(), bb_e->Id(), br_edge_type, freq_else);
       cfg->Feedback()->Add_edge(bb_e->Id(), bb_merge->Id(), FB_EDGE_OUTGOING, freq_else);
       freq = freq_then / freq;
       scale = freq.Value();
@@ -6870,8 +6903,8 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_if_cond_wrap( BB_NODE * bb_cond,
     if_info->Set_else(bb_first);
 
     if (cfg->Feedback()) {
-      cfg->Feedback()->Add_edge(bb_new->Id(), bb_first->Id(), FB_EDGE_OUTGOING, freq_else);
-      cfg->Feedback()->Add_edge(bb_new->Id(), bb_e->Id(), FB_EDGE_OUTGOING, freq_then);
+      cfg->Feedback()->Add_edge(bb_new->Id(), bb_first->Id(), br_edge_type, freq_else);
+      cfg->Feedback()->Add_edge(bb_new->Id(), bb_e->Id(), ft_edge_type, freq_then);
       cfg->Feedback()->Add_edge(bb_e->Id(), bb_merge->Id(), FB_EDGE_OUTGOING, freq_then);
       freq = freq_else / freq;
       scale = freq.Value();
@@ -7806,12 +7839,17 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_if_cond_dist(SC_NODE * sc)
   BB_IFINFO * info;
   FB_FREQ freq;
   FB_FREQ freq_total;
+  FB_EDGE_TYPE ft_edge_type;
+  FB_EDGE_TYPE br_edge_type;
 
   CFG * cfg = _cu->Cfg();
   MEM_POOL * pool = cfg->Mem_pool();
 
-  if (cfg->Feedback())
+  if (cfg->Feedback()) {
     freq_total = cfg->Feedback()->Get_node_freq_out(bb5->Id());
+    ft_edge_type = cfg->Feedback()->Get_edge_type(bb5->Id(), bb5->If_then()->Id());
+    br_edge_type = cfg->Feedback()->Get_edge_type(bb5->Id(), bb5->If_else()->Id());
+  }
   
   bb_next = NULL;
   bb_last = NULL;
@@ -8104,8 +8142,8 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_if_cond_dist(SC_NODE * sc)
 	  cfg->Feedback()->Delete_edge(bb5->Id(), bb_head->Id());
 	  
 	  // Add 5_1->e1, 5_2->e2, e1->new_1, e2->new_2
-	  cfg->Feedback()->Add_edge(bb5_1->Id(), bb_e1->Id(), FB_EDGE_OUTGOING, freq1);
-	  cfg->Feedback()->Add_edge(bb5_2->Id(), bb_e2->Id(), FB_EDGE_OUTGOING, freq2);
+	  cfg->Feedback()->Add_edge(bb5_1->Id(), bb_e1->Id(), (i == 0) ? br_edge_type : ft_edge_type, freq1);
+	  cfg->Feedback()->Add_edge(bb5_2->Id(), bb_e2->Id(), (i == 0) ? br_edge_type : ft_edge_type, freq2);
 	  cfg->Feedback()->Add_edge(bb_e1->Id(), bb_new1->Id(), FB_EDGE_OUTGOING, freq1);
 	  cfg->Feedback()->Add_edge(bb_e2->Id(), bb_new2->Id(), FB_EDGE_OUTGOING, freq2);
 
@@ -8114,20 +8152,20 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_if_cond_dist(SC_NODE * sc)
 	  // Add bb_merge_c->new_2
 	  if (bb_then_begin) {
 	    freq = cfg->Feedback()->Get_edge_freq(bb_head->Id(), bb_then_begin->Id());
-	    cfg->Feedback()->Add_edge(bb5_2->Id(), bb_then_begin->Id(), FB_EDGE_OUTGOING, freq);
+	    cfg->Feedback()->Add_edge(bb5_2->Id(), bb_then_begin->Id(), (i == 0) ? ft_edge_type : br_edge_type, freq);
 	    cfg->Feedback()->Delete_edge(bb_head->Id(), bb_then_begin->Id());
 	    cfg->Feedback()->Move_edge_dest(bb_then_end->Id(), bb_merge->Id(), bb_merge_c->Id());
 	  }
 	  else {
 	    freq = cfg->Feedback()->Get_edge_freq(bb_head->Id(), bb_merge->Id());
-	    cfg->Feedback()->Add_edge(bb5_2->Id(), bb_merge_c->Id(), FB_EDGE_OUTGOING, freq);
+	    cfg->Feedback()->Add_edge(bb5_2->Id(), bb_merge_c->Id(), (i == 0) ? ft_edge_type : br_edge_type, freq);
 	    cfg->Feedback()->Delete_edge(bb_head->Id(), bb_merge->Id());
 	  }
 
 	  cfg->Feedback()->Add_edge(bb_merge_c->Id(), bb_new2->Id(), FB_EDGE_OUTGOING, freq);
 
 	  // Add 6->5_2
-	  cfg->Feedback()->Add_edge(bb_head->Id(), bb5_2->Id(), FB_EDGE_OUTGOING, freq + freq2);
+	  cfg->Feedback()->Add_edge(bb_head->Id(), bb5_2->Id(), ft_edge_type, freq + freq2);
 	  // Add new2->bb_next
 	  cfg->Feedback()->Add_edge(bb_new2->Id(), bb_next->Id(), FB_EDGE_OUTGOING, freq + freq2);
 	  
@@ -8135,19 +8173,19 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_if_cond_dist(SC_NODE * sc)
 	  // add  bb_merge->new_1.
 	  if (bb_else_begin) {
 	    freq = cfg->Feedback()->Get_edge_freq(bb_head->Id(), bb_else_begin->Id());
-	    cfg->Feedback()->Add_edge(bb5_1->Id(), bb_else_begin->Id(), FB_EDGE_OUTGOING, freq);
+	    cfg->Feedback()->Add_edge(bb5_1->Id(), bb_else_begin->Id(), (i == 0)? ft_edge_type : br_edge_type, freq);
 	    cfg->Feedback()->Delete_edge(bb_head->Id(), bb_else_begin->Id());
 	  }
 	  else {
 	    freq = cfg->Feedback()->Get_edge_freq(bb_head->Id(), bb_merge->Id());
-	    cfg->Feedback()->Add_edge(bb5_1->Id(), bb_merge->Id(), FB_EDGE_OUTGOING, freq);
+	    cfg->Feedback()->Add_edge(bb5_1->Id(), bb_merge->Id(), (i == 0) ? ft_edge_type : br_edge_type, freq);
 	    cfg->Feedback()->Delete_edge(bb_head->Id(), bb_merge->Id());
 	  }
 
 	  cfg->Feedback()->Add_edge(bb_merge->Id(), bb_new1->Id(), FB_EDGE_OUTGOING, freq);
 
 	  // Add 6->5_1
-	  cfg->Feedback()->Add_edge(bb_head->Id(), bb5_1->Id(), FB_EDGE_OUTGOING, freq + freq1);
+	  cfg->Feedback()->Add_edge(bb_head->Id(), bb5_1->Id(), br_edge_type, freq + freq1);
 	  // Add new_1->bb_next
 	  cfg->Feedback()->Add_edge(bb_new1->Id(), bb_next->Id(), FB_EDGE_OUTGOING, freq + freq1);
 
