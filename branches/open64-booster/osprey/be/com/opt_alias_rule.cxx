@@ -790,6 +790,17 @@ BOOL ALIAS_RULE::Aliased_Disjoint(const POINTS_TO *mem1, const POINTS_TO *mem2) 
 //
 BOOL ALIAS_RULE::Same_location(const WN *wn1, const WN *wn2, const POINTS_TO *mem1, const POINTS_TO *mem2) const
 {
+  // The analysis performed in Same_location is quite weak and assumes
+  // that no dependence analysis is done.  This wasn't recognized
+  // early since Same_location returns FALSE for references to arrays
+  // with more than one element.  The problem is exposed for single
+  // element arrays, which are sometimes used in Fortran 77 to
+  // implement dynamic array allocation (that is, in each reference to
+  // the allocated array, an index base appears as a term in the
+  // index expression, where the index base points to the first
+  // element of the allocated array).
+  if (mem1->Is_array())
+    return FALSE;
   if (mem1->Same_base(mem2) &&
       mem1->Ofst_kind() == OFST_IS_FIXED &&
       mem2->Ofst_kind() == OFST_IS_FIXED &&

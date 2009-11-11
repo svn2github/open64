@@ -235,6 +235,7 @@ enum PT_ATTR {
 #ifdef KEY
   PT_ATTR_FIELD          = 0x1000000,  // is a field in a struct
 #endif
+  PT_ATTR_ARRAY          = 0x2000000,  // array reference
 
   // 24 of 32 bits used
 };
@@ -465,6 +466,7 @@ public:
 #ifdef KEY
   BOOL        Is_field(void)         const { return ai._attr & PT_ATTR_FIELD; }
 #endif
+  BOOL        Is_array(void)         const { return ai._attr & PT_ATTR_ARRAY; }
 
 
   //  Set members
@@ -554,6 +556,7 @@ public:
 #ifdef KEY
   void Set_is_field(void)                 { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_FIELD); }
 #endif
+  void Set_is_array(void)                 { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_ARRAY); }
 
   void Reset_attr(void)                   { ai._attr = PT_ATTR_NONE; }
   void Reset_not_addr_saved(void)         { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_NOT_ADDR_SAVED); }
@@ -587,6 +590,7 @@ public:
 #ifdef KEY
   void Reset_is_field(void) { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_FIELD); }
 #endif
+  void Reset_is_array(void) { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_ARRAY); }
 
   void Init(void) {
     //  Set fields in POINTS_TO to invalid for error detection.
