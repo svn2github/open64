@@ -190,7 +190,7 @@ static char * known_library[] = {
 static void detect_whole_program_mode()
 {
     // user already specify whole program mode
-    if (IPA_Enable_Whole_Program_Mode)
+    if (IPA_Enable_Whole_Program_Mode_Set)
         return;
         
     //1) all the libraries are known system libraries
