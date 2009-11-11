@@ -9985,7 +9985,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       !DECL_BUILT_IN(t) || DECL_SAVED_TREE(t)) { // bug 14254
     FULLY_TRANSLATED_TO_GS(t) = 1;
     if (TREE_CODE(t) == FUNCTION_DECL
-        && DECL_INLINE (t))
+        && DECL_INLINE (t) && flag_unit_at_a_time)
       TRANSLATED_TO_GS_AS_INLINE(t) = 1;
     }
 
