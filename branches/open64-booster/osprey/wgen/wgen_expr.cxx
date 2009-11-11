@@ -6077,6 +6077,18 @@ WGEN_Expand_Expr (gs_t exp,
 	  if (mtyp == WN_rtype(wn0) || mtyp == MTYPE_V)
 	    wn = wn0;
 	  else {
+#ifdef TARG_X8664
+            // in 32bit mode, unsigned int to float type conversion would cause
+            // precision lost if the MSB is '1', the reason for that is we use 
+            // cvtsi2ss to convert the unsigned int to float, it treats the 
+            // 32bit number as signed integer, so the round up is to the wrong
+            // direction. To avoid the lost of precision, we should convert the 
+            // unsigned int to 64bit unsigned int first
+            if (MTYPE_float(mtyp) && Is_Target_32bit() && 
+                  WN_rtype(wn0) == MTYPE_U4) {
+	       wn0 = WN_Int_Type_Conversion(wn0, MTYPE_U8);
+            }
+#endif // TARG_X8664
 #ifdef KEY // prevent zero extension when converting to 64-bit address type
 	    if (gs_tree_code(gs_tree_type(exp)) == GS_POINTER_TYPE &&
 		MTYPE_byte_size(FE_Pointer_Type_To_Mtype()) == 8) {
