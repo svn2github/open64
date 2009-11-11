@@ -14815,6 +14815,20 @@ WN *WN_Lower(WN *tree, LOWER_ACTIONS actions, struct ALIAS_MANAGER *alias,
 
   actions = lower_actions(tree, actions);
 
+  /*  
+   * LOWER_RETURN_VAL has side effects: a fake paramter may be added.
+   * We should not do this for OMP outlined routines.
+   * Otherwise we add two fake paramters: this lowering happens
+   * before omp lowering, and the outlined routine will be feed back to
+   * this lowering again.
+   */         
+  if (PU_mp_lower_generated(Get_Current_PU()) && Action(LOWER_RETURN_VAL))
+  {
+    if (LOWER_RETURN_VAL == actions)
+      return tree;
+    actions ^= LOWER_RETURN_VAL;
+  }
+
 #ifdef TARG_X8664
   if (Is_Target_SSE3() && Vcast_Complex &&
       Action(LOWER_COMPLEX) &&
