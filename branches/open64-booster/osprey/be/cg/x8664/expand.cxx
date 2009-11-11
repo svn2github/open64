@@ -2172,8 +2172,9 @@ Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   FmtAssert( MTYPE_is_integral(mtype) && !MTYPE_is_mmx_vector(mtype),
              ("Should be handled in Expand_Flop") );
 
-  if ( mtype == MTYPE_V16I2 || mtype == MTYPE_V8I2 ) {
-    Expand_Flop(OPC_V16I2MPY, result, src1, src2, NULL, ops);
+  if ( mtype == MTYPE_V16I2 || mtype == MTYPE_V8I2 || mtype == MTYPE_V16I4 ) {
+    Expand_Flop( OPCODE_make_op(OPR_MPY, mtype, MTYPE_V), 
+                 result, src1, src2, NULL, ops );
     return;
   }
 
@@ -5763,6 +5764,14 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
   case OPC_V8I2MPY:
   case OPC_M8I2MPY:
     opc = TOP_pmullw;
+    break;
+  case OPC_V16I4MPY:
+    if( Is_Target_SSE41() ) {
+      opc = TOP_mul128v32;
+    }
+    else {
+      FmtAssert( false, ("target does not support OPC_V16I4MPY") );
+    }
     break;
   case OPC_F4MADD:	// (src2 * src3) + src1
   case OPC_F4NMADD:	// -((src2 * src3) + src1)

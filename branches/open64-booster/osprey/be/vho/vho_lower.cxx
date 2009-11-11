@@ -4296,6 +4296,160 @@ vho_lower_mparm (WN * wn)
 }
 #endif
 
+#if defined(TARG_X8664)
+/* ============================================================================
+ *
+ * void split_vector_load (  WN* orig_load, WN* block, WN** splt_load, TYPE_ID mtype )
+ *
+ * split vector load into several scalar loads 
+ *
+ * ============================================================================
+ */
+static void
+split_vector_load ( WN* orig_load, WN* block, WN** splt_load, TYPE_ID mtype )
+{
+  TYPE_ID elem_type = Mtype_vector_elemtype(mtype);
+  int count = MTYPE_byte_size(mtype) / MTYPE_byte_size(elem_type);
+
+  if ( ! OPERATOR_is_load(WN_operator(orig_load)) ) {
+    // store to result of the orig_load to stack
+    ST* arg_st = New_ST(CURRENT_SYMTAB);
+    ST_Init ( arg_st, Save_Str("__split_vector_arg"),
+              CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL,
+              MTYPE_To_TY( mtype ) );
+    WN* stid = WN_Stid( mtype, 0, arg_st, MTYPE_To_TY(mtype), orig_load, 0 );
+    WN_INSERT_BlockLast ( block, stid );
+    orig_load = WN_Ldid ( mtype, 0, arg_st, MTYPE_To_TY(mtype), 0 ); 
+  } 
+
+  switch ( WN_operator(orig_load) ) {
+    case OPR_ILOAD: {
+      WN* addr = WN_kid0(orig_load);
+      WN_OFFSET ofst = WN_load_offset(orig_load);
+      if ( WN_operator(addr) != OPR_LDID ) {
+        // promote address into preg
+        PREG_NUM addr_preg = Create_Preg( Pointer_Mtype, "__split_vectoe_load_addr" );
+        ST* addr_st = MTYPE_To_PREG( Pointer_Mtype );
+        WN* addr_stid = WN_StidIntoPreg( Pointer_Mtype, addr_preg, addr_st, addr );
+        WN_INSERT_BlockLast ( block, addr_stid );
+        addr = WN_LdidPreg( Pointer_Mtype, addr_preg );
+      }
+      for ( int i = 0; i < count; i ++ ) {
+        splt_load[i] = WN_Iload ( elem_type, ofst + i * MTYPE_byte_size(elem_type),
+                                  MTYPE_To_TY(elem_type), WN_COPY_Tree(addr), 0 );
+      }
+    }
+    break;
+
+    case OPR_LDID: {
+      ST* addr_st = WN_st(orig_load);
+      WN_OFFSET ofst = WN_load_offset(orig_load);
+      if ( ST_class(addr_st) == CLASS_PREG ) {
+        // store preg to stack
+        addr_st = New_ST(CURRENT_SYMTAB);
+        ST_Init( addr_st, Save_Str("__split_vector_arg"),
+                 CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL, MTYPE_To_TY(mtype) );
+        WN* stid = WN_Stid(mtype, 0, addr_st, MTYPE_To_TY(mtype), orig_load);
+        WN_INSERT_BlockLast ( block, stid );
+        ofst = 0;
+      }
+      for ( int i = 0; i < count; i ++ ) {
+        splt_load[i] = WN_Ldid ( elem_type, ofst + i * MTYPE_byte_size(elem_type),
+                                 addr_st, MTYPE_To_TY(elem_type), 0 );
+      }
+    }
+    break;
+
+    default:
+      FmtAssert(FALSE, ("split_vector_load NYI"));
+  }
+}
+
+/* ============================================================================
+ *
+ * WN * vho_lower_vector_mpy ( WN* wn, WN * block )
+ *
+ * split integer vector mpy into several scalar mpys 
+ *
+ * ============================================================================
+ */
+static WN*
+vho_lower_vector_mpy ( WN * wn, WN * block )
+{
+  Is_True( WN_operator(wn) == OPR_MPY &&
+           MTYPE_is_vector(WN_rtype(wn)),
+           ("Bad tree for vho_lower_vector_mpy") );
+
+  TYPE_ID orig_type = WN_rtype(wn);
+
+  // only handle M8I4MPY V16I4MPY so far
+  if ( orig_type != MTYPE_M8I4 && orig_type != MTYPE_V16I4 )
+    return wn;
+  // SSE41 support pmulld
+  if ( Is_Target_SSE41() && orig_type == MTYPE_V16I4 )
+    return wn;
+
+  // store result to stack
+  ST* result_st = New_ST(CURRENT_SYMTAB);
+  ST_Init ( result_st, Save_Str("__vector_mpy_res"),
+            CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL,
+            MTYPE_To_TY( WN_rtype(wn) ) );
+  
+  TYPE_ID elem_type = Mtype_vector_elemtype(orig_type);
+  int count = MTYPE_byte_size(orig_type) / MTYPE_byte_size(elem_type);
+  WN *arg0[8], *arg1[8];
+  split_vector_load ( WN_kid0(wn), block, arg0, orig_type );
+  split_vector_load ( WN_kid1(wn), block, arg1, orig_type );
+  for ( int i = 0; i < count; i ++ ) {
+    WN* mpy = WN_Mpy ( elem_type, arg0[i], arg1[i] );
+    WN* stid = WN_Stid( elem_type, i * MTYPE_byte_size(elem_type),
+                        result_st,  MTYPE_To_TY(elem_type), mpy, 0 );
+    WN_INSERT_BlockLast ( block, stid );
+  }
+  return WN_Ldid ( orig_type, 0, result_st, MTYPE_To_TY(orig_type), 0 );
+}
+
+/* ============================================================================
+ *
+ * WN * vho_lower_vector_div ( WN* wn, WN * block )
+ *
+ * split integer vector div into several scalar divs
+ *
+ * ============================================================================
+ */
+static WN*
+vho_lower_vector_div ( WN * wn, WN * block )
+{
+  Is_True( WN_operator(wn) == OPR_MPY &&
+           MTYPE_is_vector(WN_rtype(wn)),
+           ("Bad tree for vho_lower_vector_div") );
+
+  TYPE_ID orig_type = WN_rtype(wn);
+
+  if ( MTYPE_is_float(orig_type) )
+    return wn;
+
+  // store result to stack
+  ST* result_st = New_ST(CURRENT_SYMTAB);
+  ST_Init ( result_st, Save_Str("__vector_div_res"),
+            CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL,
+            MTYPE_To_TY( WN_rtype(wn) ) );
+
+  TYPE_ID elem_type = Mtype_vector_elemtype(orig_type);
+  int count = MTYPE_byte_size(orig_type) / MTYPE_byte_size(elem_type);
+  WN *arg0[8], *arg1[8];
+  split_vector_load ( WN_kid0(wn), block, arg0, orig_type );
+  split_vector_load ( WN_kid1(wn), block, arg1, orig_type );
+  for ( int i = 0; i < count; i ++ ) {
+    WN* div = WN_Div ( elem_type, arg0[i], arg1[i] );
+    WN* stid = WN_Stid( elem_type, i * MTYPE_byte_size(elem_type),
+                        result_st,  MTYPE_To_TY(elem_type), div, 0 );
+    WN_INSERT_BlockLast ( block, stid );
+  }
+  return WN_Ldid ( orig_type, 0, result_st, MTYPE_To_TY(orig_type), 0 );
+}
+#endif
+
 /* ============================================================================
  *
  * WN *vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info )
@@ -4477,6 +4631,12 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info, BOOL is_return )
 
       if ( VHO_Combine_Loads && wn_operator == OPR_ADD )
         wn = vho_lower_combine_loads ( wn );
+#if defined(TARG_X8664)
+      else if ( wn_operator == OPR_MPY && MTYPE_is_vector(WN_rtype(wn)) )
+        wn = vho_lower_vector_mpy ( wn, block );
+      else if ( wn_operator == OPR_DIV && MTYPE_is_vector(WN_rtype(wn)) )
+        wn = vho_lower_vector_div ( wn, block );
+#endif
       break;
 
     case OPR_LOWPART:

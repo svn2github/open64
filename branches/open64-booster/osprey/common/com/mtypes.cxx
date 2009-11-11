@@ -457,3 +457,54 @@ TYPE_ID Mtype_prev_alignment(TYPE_ID type)
 {
   return Machine_Prev_Alignment[type];
 }
+
+#if defined(TARG_X8664)
+/* ====================================================================
+ *
+ * TYPE_ID Mtype_vector_elemtype(TYPE_ID)
+ *
+ * Return element mtype of the vector mtype
+ *
+ * ====================================================================
+ */
+TYPE_ID  Mtype_vector_elemtype(TYPE_ID type)
+{
+  switch (type) {
+    case MTYPE_V32F8:
+    case MTYPE_V16F8:
+      return MTYPE_F8;
+
+    case MTYPE_V32F4:
+    case MTYPE_V16F4:
+    case MTYPE_V8F4:
+    case MTYPE_M8F4:
+      return MTYPE_F4;
+
+    case MTYPE_V32I8:
+    case MTYPE_V16I8:
+    case MTYPE_V8I8:
+      return MTYPE_I8;
+
+    case MTYPE_V32I4:
+    case MTYPE_V16I4:
+    case MTYPE_V8I4:
+    case MTYPE_M8I4:
+      return MTYPE_I4;
+
+    case MTYPE_V32I2:
+    case MTYPE_V16I2:
+    case MTYPE_V8I2:
+    case MTYPE_M8I2:
+      return MTYPE_I2;
+
+    case MTYPE_V32I1:
+    case MTYPE_V16I1:
+    case MTYPE_V8I1:
+    case MTYPE_M8I1:
+      return MTYPE_I1;
+
+    default:
+      return type;
+  }
+}
+#endif

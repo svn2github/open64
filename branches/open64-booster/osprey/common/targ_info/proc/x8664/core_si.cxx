@@ -3708,6 +3708,7 @@ int main (int argc, char *argv[])
                         TOP_vmulhw,
                         TOP_vmulld,
                         TOP_vmul128v16,
+                        TOP_vmul128v32,
                         TOP_vmuludq,
                         TOP_vmuldq,
                         TOP_UNDEFINED);
@@ -3738,6 +3739,9 @@ int main (int argc, char *argv[])
                         TOP_vmulx128v16,
                         TOP_vmulxx128v16,
                         TOP_vmulxxx128v16,
+                        TOP_vmulx128v32,
+                        TOP_vmulxx128v32,
+                        TOP_vmulxxx128v32,
                         TOP_vmuludqx,
                         TOP_vmuludqxx,
                         TOP_vmuludqxxx,

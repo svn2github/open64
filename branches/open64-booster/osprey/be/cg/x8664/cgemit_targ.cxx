@@ -2397,6 +2397,10 @@ static void Init_OP_Name()
   OP_Name[TOP_vmulx128v16] = "vpmullw";
   OP_Name[TOP_vmulxx128v16] = "vpmullw";
   OP_Name[TOP_vmulxxx128v16] = "vpmullw";
+  OP_Name[TOP_vmul128v32] = "vpmulld";
+  OP_Name[TOP_vmulx128v32] = "vpmulld";
+  OP_Name[TOP_vmulxx128v32] = "vpmulld";
+  OP_Name[TOP_vmulxxx128v32] = "vpmulld";
   OP_Name[TOP_vmuludq] = "vpmuludq";
   OP_Name[TOP_vmuludqx] = "vpmuludq";
   OP_Name[TOP_vmuludqxx] = "vpmuludq";
