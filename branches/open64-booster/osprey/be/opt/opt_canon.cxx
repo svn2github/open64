@@ -91,7 +91,9 @@ CODEREP*
 CANON_CR::Convert2cr(WN *wn, CODEMAP *htable, BOOL foldit) const
 {
   const OPERATOR opr = WN_operator(wn);
+  CODEREP *cr;
   MTYPE typ = WN_rtype(wn);
+
   if (typ == MTYPE_V) 
     typ = WN_desc(wn);
 #ifdef TARG_X8664
@@ -103,15 +105,29 @@ CANON_CR::Convert2cr(WN *wn, CODEMAP *htable, BOOL foldit) const
 #endif
 
   if (Tree() && Scale() != 0) {
-    return htable->Add_bin_node_and_fold
+    cr = htable->Add_bin_node_and_fold
       (OPCODE_make_op(OPR_ADD, typ, MTYPE_V),
 #if defined(TARG_SL) || defined(TARG_NVISA)
        Tree(), htable->Add_const(typ, Scale()));
 #else
        Tree(), htable->Add_const(MTYPE_I8, Scale()));
 #endif
+
+#ifdef KEY
+    // If the original operator was a convert to unsigned and the new operator is signed,
+    // change the new operator to an unsigned because the convert is about to be deleted.
+    // This corrects a regression introduced by a fix in file opt_htable.cxx method
+    // CODEMAP::Canon_add_sub (search for string "bug 14605").
+    if( WN_operator(wn) == OPR_CVT &&
+        !MTYPE_signed(OPCODE_rtype(WN_opcode(wn))) && MTYPE_signed(cr->Dtyp()) ) {
+      cr->Set_dtyp(Mtype_TransferSign(MTYPE_U4, cr->Dtyp()));
+    }
+#endif
+
+    return cr;
   }
-  if (Tree()) 
+
+  if (Tree())
     return Tree();
 
   // return a CK_CONST node
@@ -119,10 +135,11 @@ CANON_CR::Convert2cr(WN *wn, CODEMAP *htable, BOOL foldit) const
   // but we want smaller type when don't have native I8,
   // and this is what original code had.
 #if defined(TARG_SL) || defined(TARG_NVISA)
-  CODEREP *cr =  htable->Add_const(typ, Scale());
+  cr =  htable->Add_const(typ, Scale());
 #else
-  CODEREP *cr =  htable->Add_const(MTYPE_I8, Scale());
+  cr =  htable->Add_const(MTYPE_I8, Scale());
 #endif
+
   return cr;
 }
 

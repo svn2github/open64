@@ -3448,6 +3448,20 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
     			    , TRUE
 #endif
 			    );
+#ifdef KEY
+  // If the PARM is signed, its child is unsigned, the new child is signed and the size
+  // of the original child is less than the size of the  PARM, then change the new operator
+  // to an unsigned.  Otherwise a negative result will be (incorrectly) sign extened.
+  // This corrects a regression introduced by a fix in file opt_htable.cxx method
+  // CODEMAP::Canon_add_sub (search for string "bug 14605"). 
+  if( MTYPE_signed(OPCODE_rtype(op)) && !MTYPE_signed(WN_rtype(WN_kid0(wn))) &&
+      MTYPE_signed(kid->Dtyp()) &&
+      MTYPE_byte_size(OPCODE_rtype(op)) > MTYPE_byte_size(OPCODE_desc(WN_opcode(WN_kid0(wn)))) )
+  {
+    kid->Set_dtyp(Mtype_TransferSign(MTYPE_U4, kid->Dtyp()));
+  }
+#endif
+
     /* CVTL-RELATED start (correctness) */
 #if 1
     // Attempt of fix 370390.  However, this breaks testn32/test_overall/longs.c
