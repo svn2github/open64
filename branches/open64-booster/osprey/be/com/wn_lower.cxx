@@ -4396,7 +4396,7 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
     case MTYPE_U1:
     case MTYPE_U2:
     case MTYPE_U4:
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA) || defined(TARG_X8664)
       WN_st_idx(tree) = ST_st_idx(Int32_Preg);
 #else
       WN_st_idx(tree) = ST_st_idx(Int_Preg);

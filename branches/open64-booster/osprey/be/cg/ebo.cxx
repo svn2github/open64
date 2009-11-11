@@ -3007,7 +3007,8 @@ Find_BB_TNs (BB *bb)
         INT cix = copy_operand(op);
         TN *tnr = OP_result(op, 0);
 
-        if ((tnr != NULL) && (tnr != True_TN) && (tnr != Zero_TN)) {
+        // do not propagate copy if the copy has side effect
+        if ((tnr != NULL) && (tnr != True_TN) && (tnr != Zero_TN) && !Op_has_side_effect(op)) {
           tninfo = EBO_last_opinfo->actual_rslt[0];
 
           if (!OP_glue(op) && (cix >= 0)) {
@@ -3240,7 +3241,7 @@ void EBO_Remove_Unused_Ops (BB *bb, BOOL BB_completely_processed)
 
      /* Copies to and from the same register are not needed. */
       if (EBO_in_peep &&
-          OP_effectively_copy(op) &&
+          OP_effectively_copy(op) && !Op_has_side_effect(op) &&
           has_assigned_reg(tn) &&
           (copy_operand(op) >= 0) &&
           has_assigned_reg(OP_opnd(op,copy_operand(op))) &&

@@ -1198,6 +1198,39 @@ static BOOL Is_LR_Reloadable (LIVE_RANGE *lr)
   return TRUE;
 }
 
+bool TN_is_int_retrun_register(TN *tn)
+{
+#ifdef TARG_X8664
+   if ( TN_is_register(tn) &&
+        TN_size(tn) == MTYPE_byte_size(MTYPE_I4) &&
+        TN_register_class(tn) == ISA_REGISTER_CLASS_integer &&
+        LRA_TN_register(tn) == First_Int_Preg_Return_Offset &&
+        PREG_To_TN_Array[LRA_TN_register(tn)] == tn ) {
+     // check if the register for the source TN is return value 
+     return true;
+  }
+#endif
+  return false;
+}
+
+/* copy between different portion of the same register may have
+ * side effect, such as "movslq %eax, %rax" 
+ * another case is "movl %eax, %eax" will clear the upper portion
+ * of %rax, so if the %eax is the return value it should be removed */
+bool
+Op_has_side_effect(OP *op)
+{
+  TN *tn1 = OP_result(op,0);
+  TN *tn2 = OP_opnd(op,CGTARG_Copy_Operand(op));
+  
+  if ( TN_size(tn1) != TN_size(tn2) ) 
+     return true;
+
+  if (Is_Target_64bit() && TN_is_int_retrun_register(tn2)) {
+     return true;
+  }
+  return false;
+}
 
 /* Remove self copies that might have been left behind, and noop
  * ops left as place holders for redundant assignments
@@ -1210,8 +1243,13 @@ Remove_Redundant_Code (BB *bb)
     OP *next_op = OP_next(op);
     if ((CGTARG_Is_Preference_Copy(op) &&
 	 LRA_TN_register(OP_result(op,0)) ==
-	 LRA_TN_register(OP_opnd(op,CGTARG_Copy_Operand(op)))) ||
+	 LRA_TN_register(OP_opnd(op,CGTARG_Copy_Operand(op))) &&
+         !Op_has_side_effect(op)) ||
 	Is_Marked_For_Removal(op)) {
+      if (Do_LRA_Trace(Trace_LRA_Detail)) {
+        fprintf (TFile, "Remove Redundant OP: ");
+        Print_OP_No_SrcLine (op);
+      }
       BB_Remove_Op (bb, op);
       Reset_BB_scheduled (bb);
     }
