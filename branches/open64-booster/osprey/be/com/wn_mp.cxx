@@ -1085,9 +1085,9 @@ Get_Offset_From_Const_Array(WN* array)
 
 // Return a non-structure field from offset, if there's multiple field
 // with the same offset, return the first.
-// This routine will assert if it cannot find a valid field.
+// This routine can return empty fld handler.
 static FLD_HANDLE 
-Get_FLD_From_Offset(const TY_IDX ty_idx, const UINT64 offset)
+Get_FLD_From_Offset_r(const TY_IDX ty_idx, const UINT64 offset)
 {
   Is_True(Is_Structure_Type(ty_idx), ("need to be a structure type"));
 
@@ -1116,13 +1116,25 @@ Get_FLD_From_Offset(const TY_IDX ty_idx, const UINT64 offset)
       // because of unions. 
       INT64 new_offset = offset - cur_offset;
       if (new_offset < 0) return FLD_HANDLE();
-      FLD_HANDLE fld1 = Get_FLD_From_Offset(cur_fld_idx, new_offset);
+      FLD_HANDLE fld1 = Get_FLD_From_Offset_r(cur_fld_idx, new_offset);
       if (!fld1.Is_Null()) return fld1;
     }
 
   } while (!FLD_last_field(fld_iter++));
 
-  Fail_FmtAssertion("cannot find field from offset");
+  return FLD_HANDLE();
+}
+
+// Return a non-structure field from offset, if there's multiple field
+// with the same offset, return the first.
+// This routine will assert if it cannot find a valid field.
+static FLD_HANDLE 
+Get_FLD_From_Offset(const TY_IDX ty_idx, const UINT64 offset)
+{
+
+  FLD_HANDLE fld = Get_FLD_From_Offset_r(ty_idx, offset);
+  FmtAssert(!fld.Is_Null(),("cannot find field from offset"));
+  return fld;
 }
 
 /*
