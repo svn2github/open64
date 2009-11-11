@@ -4218,6 +4218,648 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_INSERTQ:
       *iopc = INTRN_INSERTQ;
       break;
+#ifdef FE_GNU_4_2_0
+    // SSSE3 intrinsics
+    case GSBI_IX86_BUILTIN_PABSB:
+    case GSBI_IX86_BUILTIN_PABSB128:
+      *iopc = INTRN_PABSB;
+      break;
+    case GSBI_IX86_BUILTIN_PABSD:
+    case GSBI_IX86_BUILTIN_PABSD128:
+      *iopc = INTRN_PABSD;
+      break;
+    case GSBI_IX86_BUILTIN_PABSW:
+    case GSBI_IX86_BUILTIN_PABSW128:
+      *iopc = INTRN_PABSW;
+      break;
+    case GSBI_IX86_BUILTIN_PALIGNR:
+    case GSBI_IX86_BUILTIN_PALIGNR128:
+      *iopc = INTRN_PALIGNR;
+      break;
+    case GSBI_IX86_BUILTIN_PHADDD:
+    case GSBI_IX86_BUILTIN_PHADDD128:
+      *iopc = INTRN_PHADDD;
+      break;
+    case GSBI_IX86_BUILTIN_PHADDSW:
+    case GSBI_IX86_BUILTIN_PHADDSW128:
+      *iopc = INTRN_PHADDSW;
+      break;
+    case GSBI_IX86_BUILTIN_PHADDW:
+    case GSBI_IX86_BUILTIN_PHADDW128:
+      *iopc = INTRN_PHADDW;
+      break;
+    case GSBI_IX86_BUILTIN_PHSUBD:
+    case GSBI_IX86_BUILTIN_PHSUBD128:
+      *iopc = INTRN_PHSUBD;
+      break;
+    case GSBI_IX86_BUILTIN_PHSUBSW:
+    case GSBI_IX86_BUILTIN_PHSUBSW128:
+      *iopc = INTRN_PHSUBSW;
+      break;
+    case GSBI_IX86_BUILTIN_PHSUBW:
+    case GSBI_IX86_BUILTIN_PHSUBW128:
+      *iopc = INTRN_PHSUBW;
+      break;
+    case GSBI_IX86_BUILTIN_PMADDUBSW:
+    case GSBI_IX86_BUILTIN_PMADDUBSW128:
+      *iopc = INTRN_PMADDUBSW;
+      break;
+    case GSBI_IX86_BUILTIN_PMULHRSW:
+    case GSBI_IX86_BUILTIN_PMULHRSW128:
+      *iopc = INTRN_PMULHRSW;
+      break;
+    case GSBI_IX86_BUILTIN_PSHUFB:
+    case GSBI_IX86_BUILTIN_PSHUFB128:
+      *iopc = INTRN_PSHUFB;
+      break;
+    case GSBI_IX86_BUILTIN_PSIGNB:
+    case GSBI_IX86_BUILTIN_PSIGNB128:
+      *iopc = INTRN_PSIGNB;
+      break;
+    case GSBI_IX86_BUILTIN_PSIGND:
+    case GSBI_IX86_BUILTIN_PSIGND128:
+      *iopc = INTRN_PSIGND;
+      break;
+    case GSBI_IX86_BUILTIN_PSIGNW:
+    case GSBI_IX86_BUILTIN_PSIGNW128:
+      *iopc = INTRN_PSIGNW;
+      break;
+    // SSE4.1 intrinsics
+    case GSBI_IX86_BUILTIN_BLENDPD:
+      *iopc = INTRN_BLENDPD;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDPS:
+      *iopc = INTRN_BLENDPS;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDVPD:
+      *iopc = INTRN_BLENDVPD;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDVPS:
+      *iopc = INTRN_BLENDVPS;
+      break;
+    case GSBI_IX86_BUILTIN_DPPD:
+      *iopc = INTRN_DPPD;
+      break;
+    case GSBI_IX86_BUILTIN_DPPS:
+      *iopc = INTRN_DPPS;
+      break;
+    case GSBI_IX86_BUILTIN_INSERTPS128:
+      *iopc = INTRN_INSERTPS128;
+      break;
+    case GSBI_IX86_BUILTIN_MOVNTDQA:
+      *iopc = INTRN_MOVNTDQA;
+      break;
+    case GSBI_IX86_BUILTIN_MPSADBW128:
+      *iopc = INTRN_MPSADBW128;
+      break;
+    case GSBI_IX86_BUILTIN_PACKUSDW128:
+      *iopc = INTRN_PACKUSDW128;
+      break;
+    case GSBI_IX86_BUILTIN_PBLENDVB128:
+      *iopc = INTRN_PBLENDVB128;
+      break;
+    case GSBI_IX86_BUILTIN_PBLENDW128:
+      *iopc = INTRN_PBLENDW128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPEQQ:
+      *iopc = INTRN_PCMPEQQ;
+      break;
+    case GSBI_IX86_BUILTIN_PHMINPOSUW128:
+      *iopc = INTRN_PHMINPOSUW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMAXSB128:
+      *iopc = INTRN_PMAXSB128;
+      break;
+    case GSBI_IX86_BUILTIN_PMAXSD128:
+      *iopc = INTRN_PMAXSD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMAXUD128:
+      *iopc = INTRN_PMAXUD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMAXUW128:
+      *iopc = INTRN_PMAXUW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMINSB128:
+      *iopc = INTRN_PMINSB128;
+      break;
+    case GSBI_IX86_BUILTIN_PMINSD128:
+      *iopc = INTRN_PMINSD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMINUD128:
+      *iopc = INTRN_PMINUD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMINUW128:
+      *iopc = INTRN_PMINUW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVSXBD128:
+      *iopc = INTRN_PMOVSXBD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVSXBQ128:
+      *iopc = INTRN_PMOVSXBQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVSXBW128:
+      *iopc = INTRN_PMOVSXBW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVSXDQ128:
+      *iopc = INTRN_PMOVSXDQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVSXWD128:
+      *iopc = INTRN_PMOVSXWD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVSXWQ128:
+      *iopc = INTRN_PMOVSXWQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVZXBD128:
+      *iopc = INTRN_PMOVZXBD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVZXBQ128:
+      *iopc = INTRN_PMOVZXBQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVZXBW128:
+      *iopc = INTRN_PMOVZXBW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVZXDQ128:
+      *iopc = INTRN_PMOVZXDQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVZXWD128:
+      *iopc = INTRN_PMOVZXWD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVZXWQ128:
+      *iopc = INTRN_PMOVZXWQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMULDQ128:
+      *iopc = INTRN_PMULDQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMULLD128:
+      *iopc = INTRN_PMULLD128;
+      break;
+    case GSBI_IX86_BUILTIN_VEC_SET_V16QI:
+      *iopc = INTRN_VEC_SET_V16QI;
+      break;
+    case GSBI_IX86_BUILTIN_VEC_SET_V2DI:
+      *iopc = INTRN_VEC_SET_V2DI;
+      break;
+    case GSBI_IX86_BUILTIN_VEC_SET_V4SF:
+      *iopc = INTRN_VEC_SET_V4SF;
+      break;
+    case GSBI_IX86_BUILTIN_VEC_SET_V4SI:
+      *iopc = INTRN_VEC_SET_V4SI;
+      break;
+    // SSE4.2 intrinsics
+    case GSBI_IX86_BUILTIN_CRC32DI:
+      *iopc = INTRN_CRC32DI;
+      break;
+    case GSBI_IX86_BUILTIN_CRC32HI:
+      *iopc = INTRN_CRC32HI;
+      break;
+    case GSBI_IX86_BUILTIN_CRC32QI:
+      *iopc = INTRN_CRC32QI;
+      break;
+    case GSBI_IX86_BUILTIN_CRC32SI:
+      *iopc = INTRN_CRC32SI;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRI128:
+      *iopc = INTRN_PCMPESTRI128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRA128:
+      *iopc = INTRN_PCMPESTRA128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRC128:
+      *iopc = INTRN_PCMPESTRC128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRO128:
+      *iopc = INTRN_PCMPESTRO128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRS128:
+      *iopc = INTRN_PCMPESTRS128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRZ128:
+      *iopc = INTRN_PCMPESTRZ128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRM128:
+      *iopc = INTRN_PCMPESTRM128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPGTQ:
+      *iopc = INTRN_PCMPGTQ;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRI128:
+      *iopc = INTRN_PCMPISTRI128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRA128:
+      *iopc = INTRN_PCMPISTRA128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRC128:
+      *iopc = INTRN_PCMPISTRC128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRO128:
+      *iopc = INTRN_PCMPISTRO128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRS128:
+      *iopc = INTRN_PCMPISTRS128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRZ128:
+      *iopc = INTRN_PCMPISTRZ128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRM128:
+      *iopc = INTRN_PCMPISTRM128;
+      break;
+    // AES intrinsics
+    case GSBI_IX86_BUILTIN_AESDEC128:
+      *iopc = INTRN_AESDEC128;
+      break;
+    case GSBI_IX86_BUILTIN_AESDECLAST128:
+      *iopc = INTRN_AESDECLAST128;
+      break;
+    case GSBI_IX86_BUILTIN_AESENC128:
+      *iopc = INTRN_AESENC128;
+      break;
+    case GSBI_IX86_BUILTIN_AESENCLAST128:
+      *iopc = INTRN_AESENCLAST128;
+      break;
+    case GSBI_IX86_BUILTIN_AESIMC128:
+      *iopc = INTRN_AESIMC128;
+      break;
+    case GSBI_IX86_BUILTIN_AESKEYGENASSIST128:
+      *iopc = INTRN_AESKEYGENASSIST128;
+      break;
+    // PCLMUL intrinsics
+    case GSBI_IX86_BUILTIN_PCLMULQDQ128:
+      *iopc = INTRN_PCLMULQDQ128;
+      break;
+    // AVX intrinsics
+    case GSBI_IX86_BUILTIN_ADDPD256:
+    case GSBI_IX86_BUILTIN_ADDPS256:
+       wn = WN_Add (res_type, arg0, arg1);
+       *intrinsic_op = FALSE;
+       break;
+    case GSBI_IX86_BUILTIN_ADDSUBPD256:
+      *iopc = INTRN_ADDSUBPD256;
+      break;
+    case GSBI_IX86_BUILTIN_ADDSUBPS256:
+      *iopc = INTRN_ADDSUBPS256;
+      break;
+    case GSBI_IX86_BUILTIN_ANDNPD256:
+    case GSBI_IX86_BUILTIN_ANDNPS256:
+      wn = WN_Bnot(res_type, 
+                   WN_Band(res_type, arg0, arg1) );
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_ANDPD256:
+    case GSBI_IX86_BUILTIN_ANDPS256:
+      wn = WN_Band(res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDPD256:
+      *iopc = INTRN_BLENDPD256;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDPS256:
+      *iopc = INTRN_BLENDPS256;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDVPD256:
+      *iopc = INTRN_BLENDVPD256;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDVPS256:
+      *iopc = INTRN_BLENDVPS256;
+      break;
+    case GSBI_IX86_BUILTIN_CMPPD:
+    case GSBI_IX86_BUILTIN_CMPPD256:
+      *iopc = INTRN_CMPPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPPS:
+    case GSBI_IX86_BUILTIN_CMPPS256:
+      *iopc = INTRN_CMPPS;
+      break;
+    case GSBI_IX86_BUILTIN_CMPSD:
+      *iopc = INTRN_CMPSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPSS:
+      *iopc = INTRN_CMPSS;
+      break;
+    case GSBI_IX86_BUILTIN_CVTDQ2PD256:
+      *iopc = INTRN_CVTDQ2PD256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTDQ2PS256:
+      *iopc = INTRN_CVTDQ2PS256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTPD2DQ256:
+      *iopc = INTRN_CVTPD2DQ256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTPD2PS256:
+      *iopc = INTRN_CVTPD2PS256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTPS2DQ256:
+      *iopc = INTRN_CVTPS2DQ256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTPS2PD256:
+      *iopc = INTRN_CVTPS2PD256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTTPD2DQ256:
+      *iopc = INTRN_CVTTPD2DQ256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTTPS2DQ256:
+      *iopc = INTRN_CVTTPS2DQ256;
+      break;
+    case GSBI_IX86_BUILTIN_DIVPD256:
+    case GSBI_IX86_BUILTIN_DIVPS256:
+      wn = WN_Div (res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_DPPS256:
+      *iopc = INTRN_DPPS256;
+      break;
+    case GSBI_IX86_BUILTIN_HADDPD256:
+      *iopc = INTRN_HADDPD256;
+      break;
+    case GSBI_IX86_BUILTIN_HADDPS256:
+      *iopc = INTRN_HADDPS256;
+      break;
+    case GSBI_IX86_BUILTIN_HSUBPD256:
+      *iopc = INTRN_HSUBPD256;
+      break;
+    case GSBI_IX86_BUILTIN_HSUBPS256:
+      *iopc = INTRN_HSUBPS256;
+      break;
+    case GSBI_IX86_BUILTIN_LDDQU256:
+      *iopc = INTRN_LDDQU256;
+      break;
+    case GSBI_IX86_BUILTIN_LOADDQU256:
+      *iopc = INTRN_LOADDQU256;
+      break;
+    case GSBI_IX86_BUILTIN_LOADUPD256:
+      *iopc = INTRN_LOADUPD256;
+      break;
+    case GSBI_IX86_BUILTIN_LOADUPS256:
+      *iopc = INTRN_LOADUPS256;
+      break;
+    case GSBI_IX86_BUILTIN_MASKLOADPD:
+      *iopc = INTRN_MASKLOADPD;
+      break;
+    case GSBI_IX86_BUILTIN_MASKLOADPD256:
+      *iopc = INTRN_MASKLOADPD256;
+      break;
+    case GSBI_IX86_BUILTIN_MASKLOADPS:
+      *iopc = INTRN_MASKLOADPS;
+      break;
+    case GSBI_IX86_BUILTIN_MASKLOADPS256:
+      *iopc = INTRN_MASKLOADPS256;
+      break;
+    case GSBI_IX86_BUILTIN_MASKSTOREPD:
+      *iopc = INTRN_MASKSTOREPD;
+      break;
+    case GSBI_IX86_BUILTIN_MASKSTOREPD256:
+      *iopc = INTRN_MASKSTOREPD256;
+      break;
+    case GSBI_IX86_BUILTIN_MASKSTOREPS:
+      *iopc = INTRN_MASKSTOREPS;
+      break;
+    case GSBI_IX86_BUILTIN_MASKSTOREPS256:
+      *iopc = INTRN_MASKSTOREPS256;
+      break;
+    case GSBI_IX86_BUILTIN_MAXPD256:
+    case GSBI_IX86_BUILTIN_MAXPS256:
+      wn = WN_Binary (OPR_MAX, res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_MINPD256:
+    case GSBI_IX86_BUILTIN_MINPS256:
+      wn = WN_Binary (OPR_MIN, res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_MOVDDUP256:
+      *iopc = INTRN_MOVDDUP256;
+      break;
+    case GSBI_IX86_BUILTIN_MOVMSKPD256:
+      *iopc = INTRN_MOVMSKPD256;
+      break;
+    case GSBI_IX86_BUILTIN_MOVMSKPS256:
+      *iopc = INTRN_MOVMSKPS256;
+      break;
+    case GSBI_IX86_BUILTIN_MOVNTDQ256:
+      *iopc = INTRN_MOVNTDQ256;
+      break;
+    case GSBI_IX86_BUILTIN_MOVNTPD256:
+      *iopc = INTRN_MOVNTPD256;
+      break;
+    case GSBI_IX86_BUILTIN_MOVNTPS256:
+      *iopc = INTRN_MOVNTPS256;
+      break;
+    case GSBI_IX86_BUILTIN_MOVSHDUP256:
+      *iopc = INTRN_MOVSHDUP256;
+      break;
+    case GSBI_IX86_BUILTIN_MOVSLDUP256:
+      *iopc = INTRN_MOVSLDUP256;
+      break;
+    case GSBI_IX86_BUILTIN_MULPD256:
+    case GSBI_IX86_BUILTIN_MULPS256:
+      wn = WN_Mpy (res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_ORPD256:
+      *iopc = INTRN_ORPD256;
+      break;
+    case GSBI_IX86_BUILTIN_ORPS256:
+      *iopc = INTRN_ORPS256;
+      break;
+    case GSBI_IX86_BUILTIN_PD256_PD:
+      *iopc = INTRN_PD256_PD;
+      break;
+    case GSBI_IX86_BUILTIN_PD_PD256:
+      *iopc = INTRN_PD_PD256;
+      break;
+    case GSBI_IX86_BUILTIN_PS256_PS:
+      *iopc = INTRN_PS256_PS;
+      break;
+    case GSBI_IX86_BUILTIN_PS_PS256:
+      *iopc = INTRN_PS_PS256;
+      break;
+    case GSBI_IX86_BUILTIN_PTESTC256:
+      *iopc = INTRN_PTESTC256;
+      break;
+    case GSBI_IX86_BUILTIN_PTESTNZC256:
+      *iopc = INTRN_PTESTNZC256;
+      break;
+    case GSBI_IX86_BUILTIN_PTESTZ256:
+      *iopc = INTRN_PTESTZ256;
+      break;
+    case GSBI_IX86_BUILTIN_RCPPS256:
+      *iopc = INTRN_RCPPS256;
+      break;
+    case GSBI_IX86_BUILTIN_ROUNDPD256:
+      *iopc = INTRN_ROUNDPD256;
+      break;
+    case GSBI_IX86_BUILTIN_ROUNDPS256:
+      *iopc = INTRN_ROUNDPS256;
+      break;
+    case GSBI_IX86_BUILTIN_RSQRTPS256:
+      *iopc = INTRN_RSQRTPS256;
+      break;
+    case GSBI_IX86_BUILTIN_RSQRTPS_NR256:
+      *iopc = INTRN_RSQRTPS_NR256;
+      break;
+    case GSBI_IX86_BUILTIN_SHUFPD256:
+      *iopc = INTRN_SHUFPD256;
+      break;
+    case GSBI_IX86_BUILTIN_SHUFPS256:
+      *iopc = INTRN_SHUFPS256;
+      break;
+    case GSBI_IX86_BUILTIN_SI256_SI:
+      *iopc = INTRN_SI256_SI;
+      break;
+    case GSBI_IX86_BUILTIN_SI_SI256:
+      *iopc = INTRN_SI_SI256;
+      break;
+    case GSBI_IX86_BUILTIN_SQRTPD256:
+      *iopc = INTRN_SQRTPD256;
+      break;
+    case GSBI_IX86_BUILTIN_SQRTPS256:
+      *iopc = INTRN_SQRTPS256;
+      break;
+    case GSBI_IX86_BUILTIN_SQRTPS_NR256:
+      *iopc = INTRN_SQRTPS_NR256;
+      break;
+    case GSBI_IX86_BUILTIN_STOREDQU256:
+      *iopc = INTRN_STOREDQU256;
+      break;
+    case GSBI_IX86_BUILTIN_STOREUPD256:
+      *iopc = INTRN_STOREUPD256;
+      break;
+    case GSBI_IX86_BUILTIN_STOREUPS256:
+      *iopc = INTRN_STOREUPS256;
+      break;
+    case GSBI_IX86_BUILTIN_SUBPD256:
+      *iopc = INTRN_SUBPD256;
+      break;
+    case GSBI_IX86_BUILTIN_SUBPS256:
+      *iopc = INTRN_SUBPS256;
+      break;
+    case GSBI_IX86_BUILTIN_UNPCKHPD256:
+      *iopc = INTRN_UNPCKHPD256;
+      break;
+    case GSBI_IX86_BUILTIN_UNPCKHPS256:
+      *iopc = INTRN_UNPCKHPS256;
+      break;
+    case GSBI_IX86_BUILTIN_UNPCKLPD256:
+      *iopc = INTRN_UNPCKLPD256;
+      break;
+    case GSBI_IX86_BUILTIN_UNPCKLPS256:
+      *iopc = INTRN_UNPCKLPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VBROADCASTPD256:
+      *iopc = INTRN_VBROADCASTPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VBROADCASTPS256:
+      *iopc = INTRN_VBROADCASTPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VBROADCASTSD256:
+      *iopc = INTRN_VBROADCASTSD256;
+      break;
+    case GSBI_IX86_BUILTIN_VBROADCASTSS:
+      *iopc = INTRN_VBROADCASTSS;
+      break;
+    case GSBI_IX86_BUILTIN_VBROADCASTSS256:
+      *iopc = INTRN_VBROADCASTSS256;
+      break;
+    case GSBI_IX86_BUILTIN_EXTRACTF128PD256:
+      *iopc = INTRN_EXTRACTF128PD256;
+      break;
+    case GSBI_IX86_BUILTIN_EXTRACTF128PS256:
+      *iopc = INTRN_EXTRACTF128PS256;
+      break;
+    case GSBI_IX86_BUILTIN_EXTRACTF128SI256:
+      *iopc = INTRN_EXTRACTF128SI256;
+      break;
+    case GSBI_IX86_BUILTIN_VINSERTF128PD256:
+      *iopc = INTRN_VINSERTF128PD256;
+      break;
+    case GSBI_IX86_BUILTIN_VINSERTF128PS256:
+      *iopc = INTRN_VINSERTF128PS256;
+      break;
+    case GSBI_IX86_BUILTIN_VINSERTF128SI256:
+      *iopc = INTRN_VINSERTF128SI256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERM2F128PD256:
+      *iopc = INTRN_VPERM2F128PD256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERM2F128PS256:
+      *iopc = INTRN_VPERM2F128PS256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERM2F128SI256:
+      *iopc = INTRN_VPERM2F128SI256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILPD:
+      *iopc = INTRN_VPERMILPD;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILPD256:
+      *iopc = INTRN_VPERMILPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILPS:
+      *iopc = INTRN_VPERMILPS;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILPS256:
+      *iopc = INTRN_VPERMILPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILVARPD:
+      *iopc = INTRN_VPERMILVARPD;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILVARPD256:
+      *iopc = INTRN_VPERMILVARPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILVARPS:
+      *iopc = INTRN_VPERMILVARPS;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILVARPS256:
+      *iopc = INTRN_VPERMILVARPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTCPD:
+      *iopc = INTRN_VTESTCPD;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTCPD256:
+      *iopc = INTRN_VTESTCPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTCPS:
+      *iopc = INTRN_VTESTCPS;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTCPS256:
+      *iopc = INTRN_VTESTCPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTNZCPD:
+      *iopc = INTRN_VTESTNZCPD;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTNZCPD256:
+      *iopc = INTRN_VTESTNZCPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTNZCPS:
+      *iopc = INTRN_VTESTNZCPS;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTNZCPS256:
+      *iopc = INTRN_VTESTNZCPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTZPD:
+      *iopc = INTRN_VTESTZPD;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTZPD256:
+      *iopc = INTRN_VTESTZPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTZPS:
+      *iopc = INTRN_VTESTZPS;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTZPS256:
+      *iopc = INTRN_VTESTZPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VZEROALL:
+      *iopc = INTRN_VZEROALL;
+      break;
+    case GSBI_IX86_BUILTIN_VZEROUPPER:
+      *iopc = INTRN_VZEROUPPER;
+      break;
+    case GSBI_IX86_BUILTIN_XORPD256:
+      *iopc = INTRN_XORPD256;
+      break;
+    case GSBI_IX86_BUILTIN_XORPS256:
+      *iopc = INTRN_XORPS256;
+      break;
+#endif
+
     default:
 unsupported:
       if (Opt_Level > 0)

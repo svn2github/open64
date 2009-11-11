@@ -74,6 +74,9 @@ typedef enum INTRN_RETKIND {
   IRETURN_V16F4,	     /* MTYPE_V16F4 */
   IRETURN_V16F8,	     /* MTYPE_V16F8 */
   IRETURN_V16C8,	     /* MTYPE_V16C8 */
+  IRETURN_V8I1,              /* MTYPE_V8I1 */
+  IRETURN_V8I2,              /* MTYPE_V8I2 */
+  IRETURN_V8I4,              /* MTYPE_V8I4 */
   IRETURN_M8I1,              /* MTYPE_M8I1 */
   IRETURN_M8I2,              /* MTYPE_M8I2 */
   IRETURN_M8I4,              /* MTYPE_M8I4 */
