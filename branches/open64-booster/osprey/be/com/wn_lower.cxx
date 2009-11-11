@@ -8789,16 +8789,9 @@ static WN *compute_new_size(WN *tree, WN *size, INT32 align)
 static BOOL is_struct_content_padding(TY_IDX ty, INT32 offset, INT32 len)
 {
   FLD_IDX fld_idx = Ty_Table[ty].Fld();
+  if (fld_idx == 0) return TRUE;
   do {
     FLD_HANDLE fld(fld_idx);
-    if (
-/*
- * work around, as the fld-idx should not be zero here, but it may be
- * tolerrable for 0-sized structures.
- */
-      fld_idx==0 || 
-      FLD_last_field(fld))
-      break;
     if (TY_kind(FLD_type(fld)) != KIND_STRUCT) 
     {
       INT32 myoffset, myend;
@@ -8810,6 +8803,8 @@ static BOOL is_struct_content_padding(TY_IDX ty, INT32 offset, INT32 len)
         return FALSE;
     }else if (!is_struct_content_padding(FLD_type(fld), offset - FLD_ofst(fld), len ))
       return FALSE;
+    if (FLD_last_field(fld))
+      break;
     fld_idx++;
   } while (1);
   return TRUE;
