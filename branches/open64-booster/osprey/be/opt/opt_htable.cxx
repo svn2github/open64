@@ -293,6 +293,7 @@ CODEREP::Copy(const CODEREP &cr)
     }
     Reset_isop_flags();
     Set_temp_id(0);
+    Set_Num_MinMax(cr.Num_MinMax());
 
     switch (Opr()) {
     case OPR_ARRAY:
@@ -338,6 +339,7 @@ CODEREP::Copy(const CODEREP &cr)
     Set_ivar_defstmt(cr.Ivar_defstmt());
     Set_ivar_mu_node(cr.Ivar_mu_node());
     Set_mload_size(cr.Mload_size());
+    Set_Num_MinMax(cr.Num_MinMax());
   }
   else if (kind == CK_CONST) {
     Set_const_val( cr.Const_val() );
@@ -5475,6 +5477,46 @@ CODEMAP::Reset_DCE_visited_flags()
   }
 }
 
+// Find the number if MIN/MAX/MINMAX in this CODEREP
+//
+INT32
+CODEREP::Count_MinMax()
+{
+  INT32 count = Num_MinMax();
+  if (count != -1)
+    return count;
+
+  count = 0;
+  switch (Kind())
+  {
+    case CK_OP:
+      {
+        if (Opr() == OPR_MIN ||
+            Opr() == OPR_MAX ||
+            Opr() == OPR_MINMAX)
+          count = 1;
+
+        for (INT32 i=0; i < Kid_count(); i++)
+        {
+          count += Opnd(i)->Count_MinMax();
+        }
+      }
+      break;
+
+    case CK_IVAR: // must be iload
+      {
+        CODEREP *base = Ilod_base();
+        count = base->Count_MinMax();
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  Set_Num_MinMax(count);
+  return count;
+}
 
 
 // ====================================================================

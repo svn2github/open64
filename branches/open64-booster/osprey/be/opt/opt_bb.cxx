@@ -1345,15 +1345,45 @@ INT32 BB_NODE::Code_size_est(void) const
   STMTREP_CONST_ITER stmt_iter(&_stmtlist);
   const STMTREP *stmt;
   INT32 size = 0;
+
+  INT32 mm_count = 0;
+  INT32 sl_count = 0;
+
   FOR_ALL_NODE(stmt, stmt_iter, Init()) {
     size++;
     if (OPERATOR_is_call(stmt->Opr()))
       size += 10;
-    else if (stmt->Opr() == OPR_ISTORE) {
-      if (stmt->Rhs()->Kind() == CK_OP && stmt->Rhs()->Opr() == OPR_SELECT)
-        size += 19;
-    }
-  }
+    else if (stmt->Opr() == OPR_ISTORE)
+    {
+      CODEREP *rhs = stmt->Rhs();
+      INT32 cf = 0;
+      INT32 c_minmax = 0;
+      switch (rhs->Kind())
+      {
+        case CK_OP:
+          if (stmt->Rhs()->Opr() == OPR_SELECT)
+          {
+             cf = 1;
+             sl_count += 1;
+          } 
+          c_minmax = stmt->Rhs()->Count_MinMax();
+          break;
+
+        case CK_IVAR:
+          c_minmax = stmt->Rhs()->Count_MinMax();
+          break;
+
+        default:
+          continue;
+      }
+      if (c_minmax > 0)
+      {
+        cf += c_minmax;
+        mm_count += c_minmax;
+      }
+      size += cf*19 + c_minmax;
+    }     
+  }         
   return size;
 }
 

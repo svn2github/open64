@@ -485,7 +485,9 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
       const OPERATOR x_opr = x->Opr();
       // list out all operators that are not allowed to be propagated
       // into an array subscript
-      if ( x_opr == OPR_ARRAY || x_opr == OPR_SELECT) {
+      if ( x_opr == OPR_ARRAY || x_opr == OPR_SELECT ||
+           x_opr == OPR_MIN || x_opr == OPR_MAX || x_opr == OPR_MINMAX ) 
+      {
 	x->Set_propagatability(NOT_PROPAGATABLE);
 	return NOT_PROPAGATABLE;
       }
@@ -493,7 +495,10 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
 
 #if defined(TARG_IA32) || defined(TARG_X8664)
     // do not allow SELECT to be propagated
-    if (x->Opr() == OPR_SELECT) { 
+    const OPERATOR x_opr = x->Opr();
+    if (x_opr == OPR_SELECT ||
+        x_opr == OPR_MIN || x_opr == OPR_MAX || x_opr == OPR_MINMAX) 
+    { 
       x->Set_propagatability(NOT_PROPAGATABLE);
       return NOT_PROPAGATABLE;
     }

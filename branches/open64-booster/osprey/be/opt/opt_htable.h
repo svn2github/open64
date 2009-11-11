@@ -400,7 +400,7 @@ private:
       mINT32    kid_count:14;        // number of kids
       MTYPE     _asm_input_dtyp:6;                  // data type
       MTYPE     _asm_input_dsctyp:6;                // descriptor type for various opcode
-      mINT32    _unused:6;	     // unused
+      mINT32    _num_of_min_max:6;   // number of minmax, collectively
       mUINT8    max_depth;           // used in estimating rehash cost (SSAPRE)
       IDTYPE    _temp_id:24;         // processing this CR in new PRE step1
       void * node_cache;             // Hold CR or BB pointer for parents on new differnt paths       
@@ -408,7 +408,8 @@ private:
     } isop;
     struct {                         // for code kind IVAR(ILOD)
       OPERATOR  _opr:8;	             // 
-      mINT32    _unused:8;     	     // unused
+      mINT32    _num_of_min_max:6;   // number of minmax, collectively
+      mINT32    _unused:2;     	     // unused
       mUINT16   ifieldid;	     // field id
       MU_NODE  *mu_node;	     // MU-list for this memory ref
       STMTREP  *defstmt;             // defining stmt for ILOD
@@ -450,7 +451,24 @@ private:
       Reset_flags();
       if (ck == CK_IVAR) 
 	Set_ivar_mu_node(NULL);
+      if (ck == CK_OP || ck == CK_IVAR) 
+	Set_Num_MinMax(-1);
     }
+
+  INT32	Num_MinMax(void) const
+  {
+      CODEKIND ck = Kind();
+      if (ck == CK_IVAR) return u2.isivar._num_of_min_max;
+      if (ck == CK_OP)   return u2.isop._num_of_min_max;
+      return 0;
+  }
+
+  void Set_Num_MinMax(INT32 v) 
+  {
+      CODEKIND ck = Kind();
+      if (ck == CK_IVAR) u2.isivar._num_of_min_max = v ;
+      if (ck == CK_OP)   u2.isop._num_of_min_max = v ;
+  }
 
   // All opnds of the mu_list is defined by STMTREP *
   BOOL Match_mu_and_def(STMTREP *, INT32, OPT_STAB *) const;
@@ -463,6 +481,8 @@ public:
   CODEREP(void)			{}
   CODEREP(const CODEREP &cr)	{ Copy(cr); }
   ~CODEREP(void)		{}
+
+  INT32       Count_MinMax(void);
 
   // this has to be a define because it is sometimes used before the CR exists
 #define Alloc_stack_cr(cnt) ((CODEREP*)alloca(sizeof(CODEREP)+(cnt)*sizeof(CODEREP *)))
@@ -1486,7 +1506,6 @@ private:
   BOOL        _tracing;
   BOOL                        _phi_hash_valid;
   ID_MAP<PHI_NODE *, PHI_KEY> _phi_id_map;
-
 
   CODEMAP(void);
   CODEMAP(const CODEMAP&);

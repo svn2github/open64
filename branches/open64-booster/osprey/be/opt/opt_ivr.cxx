@@ -785,6 +785,9 @@ CODEREP::Propagatable_into_loop(const BB_LOOP *loop) const
 #endif
 #if defined(TARG_IA32) || defined(TARG_X8664)
 	|| Opr() == OPR_SELECT
+	|| Opr() == OPR_MIN
+	|| Opr() == OPR_MAX
+	|| Opr() == OPR_MINMAX
 #endif
        )
       return FALSE;
