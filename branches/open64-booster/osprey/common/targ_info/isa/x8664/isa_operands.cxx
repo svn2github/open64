@@ -552,11 +552,13 @@ main()
   Operand(2, simm32, offset);
 
   Instruction_Group( "vector mov",
-                           /* AVX instructions */
-                           TOP_vmovdqa,
-                           TOP_vmovapd,
-                           TOP_vmovaps,
-                           TOP_UNDEFINED);
+                     /* AVX instructions */
+                     TOP_vmovdqa,
+                     TOP_vmovapd,
+                     TOP_vmovaps,
+                     TOP_vmovsd,
+                     TOP_vmovss,
+                     TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
 
@@ -957,6 +959,7 @@ main()
                      TOP_aesdec,
                      TOP_aesdeclast,
                      /* AVX instructions */
+                     TOP_vcvtsi2ss,
                      TOP_vfsqrtsd,
                      TOP_vfsqrtss,
                      TOP_vand128v8,
@@ -1030,8 +1033,6 @@ main()
                      TOP_vfminsd,
                      TOP_vfminss,
                      TOP_vfrsqrtss,
-                     TOP_vmovsd,
-                     TOP_vmovss,
                      TOP_vmovlhps,
                      TOP_vmovhlps,
                      TOP_vmulhuw,
@@ -1120,11 +1121,7 @@ main()
                      TOP_vfhadd128v32,
                      TOP_vfhsub128v64,
                      TOP_vfhsub128v32,
-                     TOP_vcomisd,
-                     TOP_vcomiss,
                      TOP_vptest128,
-                     TOP_vucomisd,
-                     TOP_vucomiss,
 		     TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -3297,11 +3294,10 @@ main()
   Instruction_Group("avx int32 2 float",
                     /* AVX instructions */
                     TOP_vcvtsi2sd,
-                    TOP_vcvtsi2ss,
                     TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
-  Operand(0, int32, opnd2);
+  Operand(1, int32, opnd2);
 
   Instruction_Group("int64 2 float",
 	  	    TOP_movg2x64,
@@ -3320,7 +3316,7 @@ main()
                     TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
-  Operand(0, int64, opnd2);
+  Operand(1, int64, opnd2);
 
   Instruction_Group("fp 2 int32",
 	  	    TOP_movx2g,
@@ -4375,6 +4371,10 @@ main()
   Operand(3, int64, opnd1);
 
   Instruction_Group("fp ordered compare",
+                    TOP_vcomisd,
+                    TOP_vcomiss,
+                    TOP_vucomisd,
+                    TOP_vucomiss,
 		    TOP_comisd,
 		    TOP_comiss,
 		    TOP_UNDEFINED);

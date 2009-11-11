@@ -4867,7 +4867,7 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
         if ((WN_operator(mul_wn = WN_kid(expr, 1)) == OPR_MPY) &&
             (WN_opcode(mul_wn) != OPC_FQMPY)) {
           rtype = OPCODE_rtype(WN_opcode (mul_wn));
-          if (MTYPE_is_float(rtype) || MTYPE_is_mmx_vector(rtype)) {
+          if (MTYPE_is_float(rtype)) {
             if (WN_operator(expr) == OPR_ADD) {
               return Handle_Fma_Operation(expr, result, mul_wn, FALSE);
             } else if (WN_operator(expr) == OPR_SUB) {
@@ -4877,7 +4877,7 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
         } else if ((WN_operator(mul_wn = WN_kid(expr, 0)) == OPR_MPY) &&
                    (WN_opcode(mul_wn) != OPC_FQMPY)) {
           rtype = OPCODE_rtype(WN_opcode (mul_wn));
-          if (MTYPE_is_float(rtype) || MTYPE_is_mmx_vector(rtype)) {
+          if (MTYPE_is_float(rtype)) {
             if (WN_operator(expr) == OPR_ADD) {
               return Handle_Fma_Operation(expr, result, mul_wn, TRUE);
             } else if (WN_operator(expr) == OPR_SUB) {
@@ -7263,6 +7263,13 @@ void Whirl2ops_Initialize(struct ALIAS_MANAGER *alias_mgr)
     WN_to_OP_map = WN_MAP_UNDEFINED;
   }
   last_loop_pragma = NULL;
+
+#ifdef TARG_X8664
+  if (Is_Target_Orochi()) {
+    Init_LegacySSE_To_Vex_Group();
+  }
+#endif
+
   OP_Asm_Map = OP_MAP_Create();
 #if defined(TARG_IA64)
   OP_Ld_GOT_2_Sym_Map = OP_MAP_Create();

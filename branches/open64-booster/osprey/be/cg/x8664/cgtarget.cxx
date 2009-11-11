@@ -207,6 +207,35 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_cvtsi2ss_x:
       case TOP_cvtsi2ss_xx:
       case TOP_cvtsi2ss_xxx:
+      case TOP_vldss:		// 32 bit
+      case TOP_vldss_n32:
+      case TOP_vldssx:
+      case TOP_vldssxx:
+      case TOP_vstssxx:
+      case TOP_vstss:
+      case TOP_vstss_n32:
+      case TOP_vstssx:
+      case TOP_vstntss:
+      case TOP_vstntssx:
+      case TOP_vstntssxx:
+      case TOP_vdivxxxss:
+      case TOP_vfaddxxxss:
+      case TOP_vsubxxxss:
+      case TOP_vmulxxxss:
+      case TOP_vcomixss:
+      case TOP_vcomixxss:
+      case TOP_vcomixxxss:
+      case TOP_vdivxss:
+      case TOP_vdivxxss:
+      case TOP_vfaddxss:
+      case TOP_vsubxss:
+      case TOP_vmulxss:
+      case TOP_vfaddxxss:
+      case TOP_vsubxxss:
+      case TOP_vmulxxss:
+      case TOP_vcvtsi2ssx:
+      case TOP_vcvtsi2ssxx:
+      case TOP_vcvtsi2ssxxx:
       case TOP_vfmaddxss:
       case TOP_vfmaddxxss:
       case TOP_vfmaddxxxss:
@@ -272,6 +301,45 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_cvtsi2ssq_x:
       case TOP_cvtsi2ssq_xx:
       case TOP_cvtsi2ssq_xxx:
+      case TOP_vldsd:		// 64 bit
+      case TOP_vldsd_n32:
+      case TOP_vldsdx:
+      case TOP_vldsdxx:
+      case TOP_vstsdxx:
+      case TOP_vstsd:
+      case TOP_vstsd_n32:
+      case TOP_vstsdx:
+      case TOP_vstntsd:
+      case TOP_vstntsdx:
+      case TOP_vstntsdxx:
+      case TOP_vstorelpd:
+      case TOP_vdivxxxsd:
+      case TOP_vfaddxxxsd:
+      case TOP_vsubxxxsd:
+      case TOP_vmulxxxsd:
+      case TOP_vcomixsd:
+      case TOP_vcomixxsd:
+      case TOP_vcomixxxsd:
+      case TOP_vdivxsd:
+      case TOP_vdivxxsd:
+      case TOP_vfaddxsd:
+      case TOP_vsubxsd:
+      case TOP_vmulxsd:
+      case TOP_vfaddxxsd:
+      case TOP_vsubxxsd:
+      case TOP_vmulxxsd:
+      case TOP_vcvtsd2ssx:
+      case TOP_vcvtsd2ssxx:
+      case TOP_vcvtsd2ssxxx:
+      case TOP_vcvtsi2sdx:
+      case TOP_vcvtsi2sdxx:
+      case TOP_vcvtsi2sdxxx:
+      case TOP_vcvtsi2sdqx:
+      case TOP_vcvtsi2sdqxx:
+      case TOP_vcvtsi2sdqxxx:
+      case TOP_vcvtsi2ssqx:
+      case TOP_vcvtsi2ssqxx:
+      case TOP_vcvtsi2ssqxxx:
       case TOP_vfmaddxsd:
       case TOP_vfmaddxxsd:
       case TOP_vfmaddxxxsd:
@@ -350,6 +418,58 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_stapsxx:
       case TOP_stapdxx:
       case TOP_storenti128:
+      case TOP_vlddqa:		// 128 bit
+      case TOP_vlddqa_n32:
+      case TOP_vlddqu:
+      case TOP_vldapd:
+      case TOP_vldapd_n32:
+      case TOP_vldaps:
+      case TOP_vldaps_n32:
+      case TOP_vldups:
+      case TOP_vldups_n32:
+      case TOP_vldupd:
+      case TOP_vldupdx:
+      case TOP_vldupdxx:
+      case TOP_vldupd_n32:
+      case TOP_vlddqax:
+      case TOP_vlddqux:
+      case TOP_vldapdx:
+      case TOP_vldapsx:
+      case TOP_vlddqaxx:
+      case TOP_vlddquxx:
+      case TOP_vldapdxx:
+      case TOP_vldapsxx:
+      case TOP_vmovsldupx:
+      case TOP_vmovshdupx:
+      case TOP_vmovddupx:
+      case TOP_vmovsldupxx:
+      case TOP_vmovshdupxx:
+      case TOP_vmovddupxx:
+      case TOP_vmovsldupxxx:
+      case TOP_vmovshdupxxx:
+      case TOP_vmovddupxxx:
+      case TOP_vstdqa:
+      case TOP_vstdqa_n32:
+      case TOP_vstntpd:
+      case TOP_vstntps:
+      case TOP_vstdqu:
+      case TOP_vstdqax:
+      case TOP_vstntpdx:
+      case TOP_vstntpsx:
+      case TOP_vstdqux:
+      case TOP_vstdqaxx:
+      case TOP_vstntpdxx:
+      case TOP_vstntpsxx:
+      case TOP_vstdquxx:
+      case TOP_vstaps:
+      case TOP_vstaps_n32:
+      case TOP_vstapd:
+      case TOP_vstapd_n32:
+      case TOP_vstapsx:
+      case TOP_vstapdx:
+      case TOP_vstapsxx:
+      case TOP_vstapdxx:
+      case TOP_vstorenti128:
 	return 16;
 
       case TOP_store64_fm:	// Misc non-SSE, non-x87.
@@ -2662,6 +2782,15 @@ static TOP Movnti_Top(TOP old_top)
     case TOP_stdqa:     return TOP_stntpd;   break;
     case TOP_stdqax:    return TOP_stntpdx;  break;
     case TOP_stdqaxx:   return TOP_stntpdxx; break;
+    case TOP_vstapd:    return TOP_vstntpd;   break;
+    case TOP_vstapdx:   return TOP_vstntpdx;  break;
+    case TOP_vstapdxx:  return TOP_vstntpdxx; break;
+    case TOP_vstaps:    return TOP_vstntps;   break;
+    case TOP_vstapsx:   return TOP_vstntpsx;  break;
+    case TOP_vstapsxx:  return TOP_vstntpsxx; break;
+    case TOP_vstdqa:    return TOP_vstntpd;   break;
+    case TOP_vstdqax:   return TOP_vstntpdx;  break;
+    case TOP_vstdqaxx:  return TOP_vstntpdxx; break;
 
     case TOP_store32:   return TOP_storenti32;   break;
     case TOP_storex32:  return TOP_storentix32;  break;
@@ -2677,6 +2806,12 @@ static TOP Movnti_Top(TOP old_top)
     case TOP_stsd:      return TOP_stntsd; break;
     case TOP_stsdx:     return TOP_stntsdx; break;
     case TOP_stsdxx:    return TOP_stntsdxx; break;
+    case TOP_vstss:      return TOP_vstntss; break;
+    case TOP_vstssx:     return TOP_vstntssx; break;
+    case TOP_vstssxx:    return TOP_vstntssxx; break;
+    case TOP_vstsd:      return TOP_vstntsd; break;
+    case TOP_vstsdx:     return TOP_vstntsdx; break;
+    case TOP_vstsdxx:    return TOP_vstntsdxx; break;
     }
    FmtAssert(FALSE,("Non-Temporal Store: not supported!"));
    return TOP_UNDEFINED;
@@ -2864,7 +2999,11 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
     //SSE support
     case TOP_staps:
     case TOP_stapsx:
-    case TOP_stapsxx: {
+    case TOP_stapsxx:
+    case TOP_vstaps:
+    case TOP_vstapsx:
+    case TOP_vstapsxx: 
+       {
          new_top = Movnti_Top(OP_code(op));
          break;
        }
@@ -2875,6 +3014,12 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
     case TOP_stdqa:
     case TOP_stdqax:
     case TOP_stdqaxx:
+    case TOP_vstapd:
+    case TOP_vstapdx:
+    case TOP_vstapdxx:
+    case TOP_vstdqa:
+    case TOP_vstdqax:
+    case TOP_vstdqaxx:
     case TOP_store32:
     case TOP_storex32:
     case TOP_storexx32:
@@ -2892,7 +3037,14 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
     case TOP_stssxx:
     case TOP_stsd:
     case TOP_stsdx:
-    case TOP_stsdxx: {
+    case TOP_stsdxx:
+    case TOP_vstss:
+    case TOP_vstssx:
+    case TOP_vstssxx:
+    case TOP_vstsd:
+    case TOP_vstsdx:
+    case TOP_vstsdxx:
+       { 
          if(Is_Target_SSE4a())
             new_top = Movnti_Top(OP_code(op));
          break;

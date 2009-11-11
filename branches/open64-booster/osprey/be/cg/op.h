@@ -1095,6 +1095,10 @@ inline void OPS_Remove_Ops(OPS *ops, OPS *remove_ops)
   ops->length -= OPS_length(remove_ops);
 }
 
+#ifdef TARG_X8664
+void Init_LegacySSE_To_Vex_Group(void);
+#endif
+
 void OPS_Insert_Op_Before(OPS *ops, OP *point, OP *op);
 void OPS_Insert_Op_After(OPS *ops, OP *point, OP *op);
 void OPS_Append_Op(OPS *ops, OP *op);

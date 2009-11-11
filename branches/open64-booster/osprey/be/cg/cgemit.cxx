@@ -1652,7 +1652,11 @@ static void r_assemble_list (
   OP *op,		/* The operation being listed */
   BB *bb)
 {
+#ifdef TARG_X8664
+  const char *result[ISA_OPERAND_max_results+1];
+#else
   const char *result[ISA_OPERAND_max_results];
+#endif
   const char *opnd[ISA_OPERAND_max_operands];
   vstring buf = vstr_begin(LBUF_LEN);
   INT i;

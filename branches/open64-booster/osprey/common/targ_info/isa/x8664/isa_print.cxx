@@ -143,6 +143,10 @@ main()
   Instruction_Print_Group( cmp,
 			   TOP_comisd,
 			   TOP_comiss,
+                           TOP_vcomisd,
+                           TOP_vcomiss,
+                           TOP_vucomisd,
+                           TOP_vucomiss,
 			   TOP_cmpi8,
 			   TOP_cmpi16,
 			   TOP_cmpi32,
@@ -174,6 +178,10 @@ main()
 			   TOP_cmpx64,
 			   TOP_comixsd,
 			   TOP_comixss,
+			   TOP_vcomixsd,
+			   TOP_vcomixss,
+			   TOP_vucomixsd,
+			   TOP_vucomixss,
 			   TOP_UNDEFINED );
 
   ISA_PRINT_TYPE cmpxr =  ISA_Print_Type_Create("cmpxr", "%s %s,%s%s(%s)");
@@ -220,6 +228,10 @@ main()
 			   TOP_cmpxx64,
 			   TOP_comixxsd,
 			   TOP_comixxss,
+			   TOP_vcomixxsd,
+			   TOP_vcomixxss,
+			   TOP_vucomixxsd,
+			   TOP_vucomixxss,
 			   TOP_UNDEFINED );
 
   ISA_PRINT_TYPE cmpxxr =  ISA_Print_Type_Create("cmpxxr", "%s %s,%s%s(%s,%s,%s)");
@@ -268,6 +280,10 @@ main()
 			   TOP_cmpxxx64,
 			   TOP_comixxxsd,
 			   TOP_comixxxss,
+			   TOP_vcomixxxsd,
+			   TOP_vcomixxxss,
+			   TOP_vucomixxxsd,
+			   TOP_vucomixxxss,
 			   TOP_UNDEFINED );
 
   ISA_PRINT_TYPE cmpxxxr =  ISA_Print_Type_Create("cmpxxxr", "%s %s,%s%s(,%s,%s)");
@@ -1153,8 +1169,8 @@ main()
   /* dest=op(src1, src2), non-x86-style */
   ISA_PRINT_TYPE vropop = ISA_Print_Type_Create("vropop", "%s %s,%s,%s");
   Name();
-  Operand(0);
   Operand(1);
+  Operand(0);
   Result(0);
   Instruction_Print_Group( vropop,
                            /* AVX instruction */
@@ -1194,6 +1210,10 @@ main()
                            TOP_vxor128v32,
                            TOP_vxor128v64,
                            TOP_vphadd128v16,
+                           TOP_vcvtsi2sd,
+                           TOP_vcvtsi2sdq,
+                           TOP_vcvtsi2ss,
+                           TOP_vcvtsi2ssq,
                            TOP_vphsub128v32,
                            TOP_vphsubs128v16,
                            TOP_vphsub128v16,
@@ -1224,21 +1244,11 @@ main()
                            TOP_vfperm128v32,
                            TOP_vphadd128v32,
                            TOP_vphadds128v16,
-                           TOP_vcvtsd2ss,
-                           TOP_vcvtsi2sd,
-                           TOP_vcvtsi2sdq,
-                           TOP_vcvtsi2ss,
-                           TOP_vcvtsi2ssq,
-                           TOP_vcvtss2sd,
                            TOP_vfmaxsd,
                            TOP_vfmaxss,
                            TOP_vfminsd,
                            TOP_vfminss,
                            TOP_vfrsqrtss,
-                           TOP_vcomisd,
-                           TOP_vcomiss,
-                           TOP_vmovsd,
-                           TOP_vmovss,
                            TOP_vmovlhps,
                            TOP_vmovhlps,
                            TOP_vmulhuw,
@@ -1305,8 +1315,6 @@ main()
                            TOP_vdivss,
                            TOP_vfblend128v64,
                            TOP_vfblend128v32,
-                           TOP_vucomisd,
-                           TOP_vucomiss,
                            TOP_vunpckh128v64,
                            TOP_vunpckh128v32,
                            TOP_vunpckl128v64,
@@ -1353,12 +1361,12 @@ main()
                            TOP_UNDEFINED);
 
   /* dest=op(src1, memop), non-x86-style */
-  ISA_PRINT_TYPE vropmem = ISA_Print_Type_Create("vropmem", "%s %s,%s%s(%s),%s");
+  ISA_PRINT_TYPE vropmem = ISA_Print_Type_Create("vropmem", "%s %s%s(%s),%s,%s");
   Name();
-  Operand(0);
   Segment();
   Operand(2);
   Operand(1);
+  Operand(0);
   Result(0);
   Instruction_Print_Group( vropmem,
                            /* AVX instruction */
@@ -1440,8 +1448,6 @@ main()
                            TOP_vfminxsd,
                            TOP_vfminxss,
                            TOP_vfrsqrtxss,
-                           TOP_vcomixsd,
-                           TOP_vcomixss,
                            TOP_vmulhuwx,
                            TOP_vmulhrswx,
                            TOP_vmulhwx,
@@ -1496,8 +1502,6 @@ main()
                            TOP_vdivxss,
                            TOP_vfblendx128v64,
                            TOP_vfblendx128v32,
-                           TOP_vucomixsd,
-                           TOP_vucomixss,
                            TOP_vunpckhx128v64,
                            TOP_vunpckhx128v32,
                            TOP_vunpcklx128v64,
@@ -1539,13 +1543,13 @@ main()
                            TOP_UNDEFINED);
 
   /* dest=op(src1, memop with scaled index with base), non-x86-style */
-  ISA_PRINT_TYPE vropmemindex = ISA_Print_Type_Create("vropmemindex", "%s %s,%s%s(%s,%s,%s),%s");
+  ISA_PRINT_TYPE vropmemindex = ISA_Print_Type_Create("vropmemindex", "%s %s%s(%s,%s,%s),%s,%s");
   Name();
-  Operand(0);
   Segment();
   Operand(4);
   Operand(1);
   Operand(2);
+  Operand(0);
   Operand(3);
   Result(0);
   Instruction_Print_Group( vropmemindex,
@@ -1628,8 +1632,6 @@ main()
                            TOP_vfminxxsd,
                            TOP_vfminxxss,
                            TOP_vfrsqrtxxss,
-                           TOP_vcomixxsd,
-                           TOP_vcomixxss,
                            TOP_vmulhuwxx,
                            TOP_vmulhrswxx,
                            TOP_vmulhwxx,
@@ -1684,8 +1686,6 @@ main()
                            TOP_vdivxxss,
                            TOP_vfblendxx128v64,
                            TOP_vfblendxx128v32,
-                           TOP_vucomixxsd,
-                           TOP_vucomixxss,
                            TOP_vunpckhxx128v64,
                            TOP_vunpckhxx128v32,
                            TOP_vunpcklxx128v64,
@@ -1727,12 +1727,12 @@ main()
                            TOP_UNDEFINED);
 
   /* dest=op(src1, memop with scaled index without base), non-x86-style */
-  ISA_PRINT_TYPE vropmemindexx = ISA_Print_Type_Create("vropmemindexx", "%s %s,%s%s(,%s,%s),%s");
+  ISA_PRINT_TYPE vropmemindexx = ISA_Print_Type_Create("vropmemindexx", "%s %s%s(,%s,%s),%s,%s");
   Name();
-  Operand(0);
   Segment();
   Operand(3);
   Operand(1);
+  Operand(0);
   Operand(2);
   Result(0);
   Instruction_Print_Group( vropmemindex,
@@ -1815,8 +1815,6 @@ main()
                            TOP_vfminxxxsd,
                            TOP_vfminxxxss,
                            TOP_vfrsqrtxxxss,
-                           TOP_vcomixxxsd,
-                           TOP_vcomixxxss,
                            TOP_vmulhuwxxx,
                            TOP_vmulhrswxxx,
                            TOP_vmulhwxxx,
@@ -1871,8 +1869,6 @@ main()
                            TOP_vdivxxxss,
                            TOP_vfblendxxx128v64,
                            TOP_vfblendxxx128v32,
-                           TOP_vucomixxxsd,
-                           TOP_vucomixxxss,
                            TOP_vunpckhxxx128v64,
                            TOP_vunpckhxxx128v32,
                            TOP_vunpcklxxx128v64,
@@ -1914,13 +1910,13 @@ main()
                            TOP_UNDEFINED);
 
   /* dest=op(src1, src2, src3), non-x86-style */
-  ISA_PRINT_TYPE vropopop = ISA_Print_Type_Create("vropopop", "%s %s,%s,%s,%s");
+  ISA_PRINT_TYPE vropopimm = ISA_Print_Type_Create("vropopimm", "%s %s,%s,%s,%s");
   Name();
-  Operand(0);
-  Operand(1);
   Operand(2);
+  Operand(1);
+  Operand(0);
   Result(0);
-  Instruction_Print_Group( vropopop,
+  Instruction_Print_Group( vropopimm,
                            /* XOP instructions */
                            TOP_vpperm,
                            TOP_vprotb,
@@ -1997,11 +1993,11 @@ main()
   /* dest=op(src1, mem, src3), non-x86-style */
   ISA_PRINT_TYPE vropmemop = ISA_Print_Type_Create("vropmemop", "%s %s,%s%s(%s),%s,%s");
   Name();
-  Operand(0);
+  Operand(3);
   Segment();
   Operand(2);
   Operand(1);
-  Operand(3);
+  Operand(0);
   Result(0);
   Instruction_Print_Group( vropmemop,
                            /* XOP instructions */
@@ -2075,13 +2071,12 @@ main()
   /* dest=op(src1, memindex, src3), non-x86-style */
   ISA_PRINT_TYPE vropmemindexop = ISA_Print_Type_Create("vropmemindexop", "%s %s,%s%s(%s,%s,%s),%s,%s");
   Name();
-  Operand(0);
+  Operand(3);
   Segment();
   Operand(4);
   Operand(1);
   Operand(2);
-  Operand(3);
-  Operand(4);
+  Operand(0);
   Result(0);
   Instruction_Print_Group( vropmemindexop,
                            /* XOP instructions */
@@ -2155,12 +2150,12 @@ main()
   /* dest=op(src1, memindexx, src3), non-x86-style */
   ISA_PRINT_TYPE vropmemindexxop = ISA_Print_Type_Create("vropmemindexxop", "%s %s,%s%s(,%s,%s),%s,%s");
   Name();
-  Operand(0);
+  Operand(4);
   Segment();
   Operand(3);
   Operand(1);
   Operand(2);
-  Operand(4);
+  Operand(0);
   Result(0);
   Instruction_Print_Group( vropmemindexxop,
                            /* XOP instructions */
@@ -2579,6 +2574,15 @@ main()
   			   TOP_xzero64,
   			   TOP_xzero128v32,
   			   TOP_xzero128v64,
+			   TOP_UNDEFINED );
+
+  /* Zeroing an integer register */
+  ISA_PRINT_TYPE vrr =  ISA_Print_Type_Create("vrr", "%s %s,%s,%s");
+  Name();
+  Result(0);
+  Result(0);
+  Result(0);
+  Instruction_Print_Group( vrr,
                            /* AVX instructions */
                            TOP_vxzero128v64,
                            TOP_vxzero64,
@@ -2652,6 +2656,8 @@ main()
 			   TOP_cvtpi2pd,
 			   TOP_cvtpd2pi,
 			   TOP_cvttpd2pi,
+                           TOP_vcvtsd2ss,
+                           TOP_vcvtss2sd,
 			   TOP_ldc32,
 			   TOP_ldc64,
 			   TOP_movabsq,
@@ -2762,6 +2768,8 @@ main()
                            TOP_vmovdqa,
                            TOP_vmovapd,
                            TOP_vmovaps,
+                           TOP_vmovsd,
+                           TOP_vmovss,
                            TOP_vphminposuw,
                            TOP_vpsign128v8,
                            TOP_vpsign128v32,
@@ -2974,14 +2982,6 @@ main()
                            TOP_vabsxx128v8,
                            TOP_vabsxx128v32,
                            TOP_vabsxx128v16,
-                           TOP_vcvtdq2pdxx,
-                           TOP_vcvtdq2psxx,
-                           TOP_vcvtpd2dqxx,
-                           TOP_vcvtpd2psxx,
-                           TOP_vcvtps2dqxx,
-                           TOP_vcvtps2pdxx,
-                           TOP_vcvttpd2dqxx,
-                           TOP_vcvttps2dqxx,
                            TOP_vfrsqrtxx128v32,
                            TOP_vfsqrtxx128v64,
                            TOP_vfsqrtxx128v32,
@@ -3051,14 +3051,6 @@ main()
                            TOP_vabsxxx128v8,
                            TOP_vabsxxx128v32,
                            TOP_vabsxxx128v16,
-                           TOP_vcvtdq2pdxxx,
-                           TOP_vcvtdq2psxxx,
-                           TOP_vcvtpd2dqxxx,
-                           TOP_vcvtpd2psxxx,
-                           TOP_vcvtps2dqxxx,
-                           TOP_vcvtps2pdxxx,
-                           TOP_vcvttpd2dqxxx,
-                           TOP_vcvttps2dqxxx,
                            TOP_vfrsqrtxxx128v32,
                            TOP_vfsqrtxxx128v64,
                            TOP_vfsqrtxxx128v32,
@@ -3143,6 +3135,14 @@ main()
 			   TOP_cvtps2dq_x,
 			   TOP_cvttps2dq_x,
 			   TOP_cvttpd2dq_x,
+                           TOP_vcvtdq2pdx,
+                           TOP_vcvtdq2psx,
+                           TOP_vcvtpd2dqx,
+                           TOP_vcvtpd2psx,
+                           TOP_vcvtps2dqx,
+                           TOP_vcvtps2pdx,
+                           TOP_vcvttpd2dqx,
+                           TOP_vcvttps2dqx,
 			   TOP_lddqa,
 			   TOP_lddqu,
 			   TOP_ldlps,
@@ -3206,6 +3206,14 @@ main()
 			   TOP_cvtps2dq_xx,
 			   TOP_cvttps2dq_xx,
 			   TOP_cvttpd2dq_xx,
+                           TOP_vcvtdq2pdxx,
+                           TOP_vcvtdq2psxx,
+                           TOP_vcvtpd2dqxx,
+                           TOP_vcvtpd2psxx,
+                           TOP_vcvtps2dqxx,
+                           TOP_vcvtps2pdxx,
+                           TOP_vcvttpd2dqxx,
+                           TOP_vcvttps2dqxx,
 			   TOP_UNDEFINED );
 
   /* lea instruction with indx but without base */
@@ -3231,6 +3239,14 @@ main()
 			   TOP_cvtps2dq_xxx,
 			   TOP_cvttps2dq_xxx,
 			   TOP_cvttpd2dq_xxx,
+                           TOP_vcvtdq2pdxxx,
+                           TOP_vcvtdq2psxxx,
+                           TOP_vcvtpd2dqxxx,
+                           TOP_vcvtpd2psxxx,
+                           TOP_vcvtps2dqxxx,
+                           TOP_vcvtps2pdxxx,
+                           TOP_vcvttpd2dqxxx,
+                           TOP_vcvttps2dqxxx,
 			   TOP_UNDEFINED );
 
   /* load instruction with indx */
