@@ -229,12 +229,11 @@ static void Add_Barrier_Vertex(WN* wn_barrier)
 //   BACKWARD_BARRIER
 //-----------------------------------------------------------------------
 
-extern void Create_Single_Region(WN* wn_single,
+extern void Create_Single_Region(WN* wn_parent, WN* wn_single,
 				 WN* wn_end)
 {
   // Insert barriers before and after the SINGLE PROCESS region
   WN* wn_block = WN_CreateBlock();
-  WN* wn_parent = LWN_Get_Parent(wn_single);
   WN* wn_prag_before = WN_CreateBarrier(TRUE, 0);
   LWN_Insert_Block_Before(wn_parent, wn_single, wn_prag_before);
   Add_Barrier_Vertex(wn_prag_before);
@@ -291,7 +290,6 @@ extern void Create_Single_Region(WN* wn_single,
     WN_set_pragma_omp(wn_prag_sp);
 
   // Insert barriers before and after the SINGLE PROCESS region
-  wn_parent = LWN_Get_Parent(wn_single);
   wn_prag_before = WN_CreateBarrier(FALSE, 0);
   LWN_Insert_Block_After(wn_parent, NULL, wn_prag_before);
   wn_prag_after = WN_CreateBarrier(TRUE, 0);

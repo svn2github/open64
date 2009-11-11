@@ -3346,30 +3346,30 @@ WN* ARA_LOOP_INFO::Create_New_IF_Clause(BOOL is_pdo)
   OPCODE subop = OPCODE_make_op(OPR_SUB, proc_type, MTYPE_V);
   WN* wn_pminus1 = LWN_CreateExp2(subop, wn_procs1, wn_one); 
 #ifdef KEY // bug 7772
-  WN* wn_rhs = LWN_CreateExp2(OPC_I4MPY, wn_prod_trips, wn_pminus1);
+  WN* wn_rhs = LWN_CreateExp2(OPC_I8MPY, wn_prod_trips, wn_pminus1);
       // get P * Tp in wn_PTp
   WN* wn_procs2 = Current_Numprocs(_loop, is_pdo);  
   WN* wn_Tp = LWN_Make_Icon(MTYPE_I4, (INT) Tp_Parallel_Cost());
-  WN* wn_PTp = LWN_CreateExp2(OPC_I4MPY, wn_procs2, wn_Tp); 
+  WN* wn_PTp = LWN_CreateExp2(OPC_I8MPY, wn_procs2, wn_Tp); 
       // get LHS expression P * (Tc + P * Tp) in wn_lhs
-  WN* wn_Tc = LWN_Make_Icon(MTYPE_I4, (INT) Tc_Parallel_Cost());
-  WN* wn_lhs_sum = LWN_CreateExp2(OPC_I4ADD, wn_Tc, wn_PTp);
+  WN* wn_Tc = LWN_Make_Icon(MTYPE_I8, (INT64) Tc_Parallel_Cost());
+  WN* wn_lhs_sum = LWN_CreateExp2(OPC_I8ADD, wn_Tc, wn_PTp);
   WN* wn_procs3 = Current_Numprocs(_loop, is_pdo);
-  WN* wn_lhs = LWN_CreateExp2(OPC_I4MPY, wn_procs3, wn_lhs_sum);
+  WN* wn_lhs = LWN_CreateExp2(OPC_I8MPY, wn_procs3, wn_lhs_sum);
   WN* wn_result;
   if (wn_base_ival != 0) {
     if (WN_operator(wn_lhs) == OPR_INTCONST) {
       WN_const_val(wn_lhs) = WN_const_val(wn_lhs) / wn_base_ival;
-      wn_result = LWN_CreateExp2(OPC_I4I4GT, wn_rhs, wn_lhs);
+      wn_result = LWN_CreateExp2(OPC_I4I8GT, wn_rhs, wn_lhs);
     }
-    else wn_result = LWN_CreateExp2(OPC_I4I4GT, 
-    			       LWN_CreateExp2(OPC_I4MPY, wn_rhs,
-			       		LWN_Make_Icon(MTYPE_I4, wn_base_ival)),
+    else wn_result = LWN_CreateExp2(OPC_I4I8GT, 
+    			       LWN_CreateExp2(OPC_I8MPY, wn_rhs,
+			       		LWN_Make_Icon(MTYPE_I8, wn_base_ival)),
 			       wn_lhs);
   }
   else { // use F8 type
-    wn_rhs = LWN_CreateExp1(OPCODE_make_op(OPR_CVT, MTYPE_F8, MTYPE_I4),wn_rhs);
-    wn_lhs = LWN_CreateExp1(OPCODE_make_op(OPR_CVT, MTYPE_F8, MTYPE_I4),wn_lhs);
+    wn_rhs = LWN_CreateExp1(OPCODE_make_op(OPR_CVT, MTYPE_F8, MTYPE_I8),wn_rhs);
+    wn_lhs = LWN_CreateExp1(OPCODE_make_op(OPR_CVT, MTYPE_F8, MTYPE_I8),wn_lhs);
     wn_result = LWN_CreateExp2(OPC_I4F8GT, 
     			       LWN_CreateExp2(OPC_F8MPY, wn_rhs, wn_base),
 			       wn_lhs);
@@ -4281,7 +4281,7 @@ ARA_LOOP_INFO::Generate_Copyout_Loop()
     Set_SYMTAB_has_rgn(Current_Symtab);
     Set_SYMTAB_uplevel(Current_Symtab);
 #endif
-  Create_Single_Region(wn_after_loop, NULL); 
+  Create_Single_Region(parent_block, wn_after_loop, NULL); 
   Set_Enclosing_If_Has_Region(region);
   if (Index_Variable_Live_At_Exit(_loop)) { 
     WN* wn_inner_region = LWN_Get_Parent(LWN_Get_Parent(_loop)); 

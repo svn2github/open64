@@ -173,14 +173,18 @@ extern void ARA_Initialize_Loops(WN* wn,
 
   if (WN_opcode(wn) == OPC_DO_LOOP){
     DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
-    ARA_LOOP_INFO *cur_loop_info =
-      CXX_NEW(ARA_LOOP_INFO(wn,
+    ARA_LOOP_INFO *cur_loop_info;
+    if (parent_info->Loop() != wn){
+      cur_loop_info = CXX_NEW(ARA_LOOP_INFO(wn,
 			    parent_info,
 			    parent_info->Invariant_Bounds()), 
 	      &ARA_memory_pool);
+      parent_info->Add_Child(cur_loop_info);
+    }else{
+      cur_loop_info = parent_info;
+    }
     dli->ARA_Info = cur_loop_info;
-    parent_info->Add_Child(cur_loop_info);
-    
+
     // Take care of the loop control statement first
     for (INT kidno=1; kidno<=3; ++kidno){
       Set_Invariant_Symbols(cur_loop_info, WN_kid(wn,kidno));
@@ -217,11 +221,11 @@ static void ARA_Print_Loops(ARA_LOOP_INFO *root_info)
 
   if (Get_Trace(TP_LNOPT2,TT_LNO_ARA_VERBOSE) || 
       Get_Trace(TP_LNOPT2,TT_LNO_ARA_DEBUG))
+  {  
     for (INT i = 0; i < inner_loops.Elements(); ++i) {
       inner_loops.Bottom_nth(i)->Print_Loop_Property();
     }
   
-  if (LNO_Analysis) {
     for (INT i = 0; i < inner_loops.Elements(); ++i) {
       inner_loops.Bottom_nth(i)->Print_Analysis_Info();
     }
