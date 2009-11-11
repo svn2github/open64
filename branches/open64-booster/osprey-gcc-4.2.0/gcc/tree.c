@@ -9823,8 +9823,16 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         goto REVISIT;
       else if (CR()) {
         // Don't re-translate the function if it was fully translated before.
-        if (FULLY_TRANSLATED_TO_GS(t))
-          return GS_NODE(t);
+        if (FULLY_TRANSLATED_TO_GS(t)) {
+          // This could be an inline function that we have already output
+          // but for which we now see a non-inline definition.  In this case,
+          // we want to translate again to override the previous definition.
+          if (TRANSLATED_TO_GS_AS_INLINE(t)
+              && ! DECL_INLINE (t) && translate_this_func_decl)
+            TRANSLATED_TO_GS_AS_INLINE(t) = 0;
+          else
+            return GS_NODE(t);
+	}
 
         // Node is partially-translated.
         if (translate_this_func_decl)
@@ -9974,8 +9982,12 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	      FULLY_TRANSLATED_TO_GS(t)) || translate_this_func_decl,
 	    ("gs_x_1: cannot re-translate a fully translated FUNCTION_DECL"));
   if (!CR() || TREE_CODE(t) != FUNCTION_DECL || 
-      !DECL_BUILT_IN(t) || DECL_SAVED_TREE(t)) // bug 14254
+      !DECL_BUILT_IN(t) || DECL_SAVED_TREE(t)) { // bug 14254
     FULLY_TRANSLATED_TO_GS(t) = 1;
+    if (TREE_CODE(t) == FUNCTION_DECL
+        && DECL_INLINE (t))
+      TRANSLATED_TO_GS_AS_INLINE(t) = 1;
+    }
 
   // Add common tree fields: TREE_TYPE, TREE_CHAIN, common flags.  Note that
   // some flags are defined/valid only for certain conditions.
