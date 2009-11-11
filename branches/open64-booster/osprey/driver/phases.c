@@ -1380,6 +1380,9 @@ add_file_args (string_list_t *args, phases_t index)
 		add_string(args, the_file);
 		break;
 	case P_ipl:
+            if (oscale == TRUE)
+                add_string(args, "-OPT:scale=ON");
+
 		add_language_option ( args );
 		if (source_kind == S_B)
 		    sprintf (buf, "-fB,%s", the_file);
