@@ -1537,7 +1537,8 @@ WN *WN_CreateXpragma(WN_PRAGMA_ID pragma_name, ST_IDX st, INT16 kid_count)
   WN_pragma(wn) = pragma_name;
   WN_st_idx(wn) = st;
   WN_pragma_flags(wn) = 0;
-  WN_pragma_arg64(wn) = 0;
+  WN_pragma_arg2(wn) = 0;
+  WN_kid(wn, 0) = NULL;
 
   return(wn);
 }

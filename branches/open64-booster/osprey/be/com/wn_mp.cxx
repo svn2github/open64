@@ -2365,7 +2365,8 @@ Identical_Pragmas ( WN * wn1, WN * wn2 )
       (WN_st(wn1) != WN_st(wn2)) ||
       (WN_pragma_flags(wn1) != WN_pragma_flags(wn2)) ||
       ((WN_operator(wn1) == OPR_PRAGMA) &&
-       (WN_pragma_arg64(wn1) != WN_pragma_arg64(wn2))) ||
+       (WN_pragma_arg1(wn1) != WN_pragma_arg1(wn2))) || 
+       (WN_pragma_arg2(wn1) != WN_pragma_arg2(wn2)) ||
       (WN_kid_count(wn1) != WN_kid_count(wn2)))
     return (FALSE);
 
