@@ -1948,7 +1948,7 @@ Handle_LDID (WN *ldid, TN *result, OPCODE opcode)
       }
 #endif
 
-#elif defined(TARG_NVISA) || defined(TARG_X8664) 
+#elif defined(TARG_NVISA)
     TN *ldid_result;
     if (Is_Simple_Type(WN_ty(ldid))) {
         // pass more exact ty rather than st so know to create 
@@ -1958,28 +1958,17 @@ Handle_LDID (WN *ldid, TN *result, OPCODE opcode)
         ldid_result = PREG_To_TN (WN_st(ldid), WN_load_offset(ldid));
     }
     TYPE_ID rtype = OPCODE_rtype(opcode);
-#if !defined(TARG_X8664)
     if (result) 
 	Is_True(TN_size(result) >= MTYPE_byte_size(rtype),
 		("ldid result is too small for rtype"));
-#endif
     if (rtype != OPCODE_desc(opcode)
-#if defined(TARG_X8664)
-        && !( OP_NEED_PAIR(OPCODE_desc(opcode)) || OP_NEED_PAIR(rtype) )
-#endif
 	&& MTYPE_size_reg(Mtype_Of_TN(ldid_result)) != MTYPE_size_reg(rtype) )
     {
         TYPE_ID dest_type = OPCODE_desc(opcode);
 	// insert cvt of register
 	if (result == NULL)
 		result = Build_TN_Of_Mtype(rtype);
-#if defined(TARG_X8664)
-        Expand_Convert_Length (result, ldid_result, 
-                               Gen_Literal_TN(MTYPE_size_reg(dest_type), 4),
-                               dest_type, MTYPE_is_signed(dest_type), &New_OPs); 
-#else
 	Expand_Convert (result, rtype, ldid_result, OPCODE_desc(opcode), &New_OPs);
-#endif
 	return result;
     }
 #else
@@ -2006,16 +1995,31 @@ Handle_LDID (WN *ldid, TN *result, OPCODE opcode)
           Exp_COPY (result, ldid_result, &New_OPs);
         }
       }
-#else
-#ifdef TARG_X8664
-      if( OP_NEED_PAIR( ST_mtype(WN_st(ldid) ) ) ){
-	Expand_Copy( result, ldid_result, ST_mtype(WN_st(ldid)), &New_OPs );
-	
-      } else
-#endif // TARG_X8664
-	Exp_COPY (result, ldid_result, &New_OPs);
+#elif  defined(TARG_X8664)
+      TYPE_ID rtype = OPCODE_rtype(opcode);
+      TYPE_ID dest_type = OPCODE_desc(opcode);
+      // if the load source object size is different with the result type size
+      // we need to insert a convl to do proper size/zero extension or truncation
+      if (!( OP_NEED_PAIR(dest_type) || OP_NEED_PAIR(rtype) )
+          && MTYPE_size_reg(dest_type) != MTYPE_size_reg(rtype) )
+      {
+        // insert cvt of register
+        if (result == NULL)
+           result = Build_TN_Of_Mtype(rtype);
+        Expand_Convert_Length (result, ldid_result, 
+                               Gen_Literal_TN(MTYPE_size_reg(dest_type), 4),
+                               dest_type, MTYPE_is_signed(dest_type), &New_OPs); 
+        return result;
+      }
 
-#endif // EMULATE_LONGLONG
+      if( OP_NEED_PAIR( ST_mtype(WN_st(ldid) ) ) ){
+        Expand_Copy( result, ldid_result, ST_mtype(WN_st(ldid)), &New_OPs );
+      } else {
+        Exp_COPY (result, ldid_result, &New_OPs);
+      }
+#else  // TARG_X8664
+      Exp_COPY (result, ldid_result, &New_OPs);
+#endif 
     }
   } 
   else
