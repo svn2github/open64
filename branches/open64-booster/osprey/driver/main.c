@@ -636,6 +636,7 @@ main (int argc, char *argv[])
 		if ( option_was_seen(O_E) 
 			|| (source_lang != L_NONE && source_kind != S_o)) 
 		{
+		        run_inline = UNDEFINED;
 			run_compiler(argc, argv);
 		}
 		else {
