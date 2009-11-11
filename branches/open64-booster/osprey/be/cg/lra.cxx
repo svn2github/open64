@@ -2348,17 +2348,20 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
     if( reg == REGISTER_UNDEFINED &&
 	TN_is_preallocated( tn ) ){
       reg = LRA_TN_register( tn );
-      FmtAssert( !REGISTER_allocatable( regclass, reg ),
+
+      FmtAssert( (!avail_regs[regclass].reg[reg] || !REGISTER_allocatable( regclass, reg )),
 		 ("no register is available for a pre-allocated tn") );
 
-      TN* ded_tn = Build_Dedicated_TN( regclass, reg, 0 );
-      const LIVE_RANGE* ded_lr = LR_For_TN( ded_tn );
+      if (!REGISTER_allocatable( regclass, reg )) {
+	TN* ded_tn = Build_Dedicated_TN( regclass, reg, 0 );
+	const LIVE_RANGE* ded_lr = LR_For_TN( ded_tn );
 
-      if( ded_lr == NULL ||
-	  LR_first_def(clr) < LR_exposed_use(ded_lr ) ||
-	  LR_last_use(clr) > LR_first_def(ded_lr) ){
-	FmtAssert( false,
-		   ("no register is available for a pre-allocated tn") );
+	if( ded_lr == NULL ||
+	    LR_first_def(clr) < LR_exposed_use(ded_lr ) ||
+	    LR_last_use(clr) > LR_first_def(ded_lr) ){
+	  FmtAssert( false,
+		     ("no register is available for a pre-allocated tn") );
+	}
       }
     }
 #endif
