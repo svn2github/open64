@@ -130,6 +130,7 @@ main (int argc, char** argv)
   ISA_REGISTER_CLASS rc_x87     = ISA_Register_Class_Create( "x87",    128,  true,  false );
   ISA_REGISTER_CLASS rc_x87_cw  = ISA_Register_Class_Create( "x87_cw",  16,  false, false );
   ISA_REGISTER_CLASS rc_mmx     = ISA_Register_Class_Create( "mmx",     64,  true,  false );
+  ISA_REGISTER_CLASS rc_mxcsr   = ISA_Register_Class_Create( "mxcsr",   32,  true,  false );
   ISA_Register_Set( rc_integer, 0, 15, "%u", int_reg_names,  All_ISA_Mask() );
   ISA_Register_Set( rc_fp,      0, 15, "%u", ymm_reg_names,  All_ISA_Mask() );
   ISA_Register_Set( rc_rflags,  0, 0,  "%%rflags", NULL,      All_ISA_Mask() );
@@ -137,6 +138,7 @@ main (int argc, char** argv)
   ISA_Register_Set( rc_x87,     0, 7,  "%u", x87_reg_names,  All_ISA_Mask() );
   ISA_Register_Set( rc_x87_cw,  0, 0,  "%%x87_cw",NULL,      All_ISA_Mask() );
   ISA_Register_Set( rc_mmx,     0, 7,  "%u", mmx_reg_names,  All_ISA_Mask() );
+  ISA_Register_Set( rc_mxcsr,   0, 0,  "%%mxcsr",  NULL,      All_ISA_Mask() );
 
   ISA_Register_Subclass_Create("rax", rc_integer, 1, rax_reg, NULL);
   ISA_Register_Subclass_Create("rdx", rc_integer, 1, rdx_reg, NULL);
