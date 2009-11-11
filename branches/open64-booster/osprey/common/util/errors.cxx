@@ -1502,15 +1502,7 @@ Set_Error_Descriptor (INT phase, ERROR_DESC *descriptor)
  * ====================================================================
  */
 
-#if Is_True_On
-#if defined(TARG_SL) || defined(TARG_NVISA)
 static BOOL dev_warn_enabled = FALSE;
-#else
-static BOOL dev_warn_enabled = TRUE;
-#endif // TARG_SL
-#else
-static BOOL dev_warn_enabled = FALSE;
-#endif // Is_True_On
 
 extern BOOL 
 DevWarn_Enabled()
