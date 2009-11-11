@@ -1660,9 +1660,9 @@ static void Init_OP_Name()
   OP_Name[TOP_vcvtpd2dqyxx] = "vcvtpd2dqy";
   OP_Name[TOP_vcvtpd2dqyxxx] = "vcvtpd2dqy";
   OP_Name[TOP_vcvtpd2ps] = "vcvtpd2ps";
-  OP_Name[TOP_vcvtpd2psx] = "vcvtpd2ps";
-  OP_Name[TOP_vcvtpd2psxx] = "vcvtpd2ps";
-  OP_Name[TOP_vcvtpd2psxxx] = "vcvtpd2ps";
+  OP_Name[TOP_vcvtpd2psx] = "vcvtpd2psy";
+  OP_Name[TOP_vcvtpd2psxx] = "vcvtpd2psy";
+  OP_Name[TOP_vcvtpd2psxxx] = "vcvtpd2psy";
   OP_Name[TOP_vcvtpd2psy] = "vcvtpd2psy";
   OP_Name[TOP_vcvtpd2psyx] = "vcvtpd2psy";
   OP_Name[TOP_vcvtpd2psyxx] = "vcvtpd2psy";

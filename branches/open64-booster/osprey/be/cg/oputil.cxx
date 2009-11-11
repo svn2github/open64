@@ -2509,7 +2509,7 @@ void Init_LegacySSE_To_Vex_Group(void)
 
 TOP Remap_topcode(OP *op, TOP opr)
 {
-  if (Is_Target_Orochi()) {
+  if (Is_Target_Orochi() && Is_Target_AVX()) {
     if (Top_Leg_To_Vex_Mode_Group[opr].vex_mode == TOP_UNDEFINED)
       return opr;
 

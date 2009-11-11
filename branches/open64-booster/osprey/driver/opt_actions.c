@@ -527,6 +527,20 @@ Process_Targ_Group ( char *targ_args )
 	    add_option_seen ( O_m64 );
 	    toggle ( &abi, ABI_64 );
 	  }
+          // aes and avx
+	  if (!strncasecmp(cp, "aes=on", 6)){
+	    add_option_seen(O_maes);
+	    toggle(&aes, TRUE);
+	  }else if (!strncasecmp(cp, "aes=off", 7)){
+	    add_option_seen(O_mno_aes);
+	    toggle(&aes, FALSE);
+	  }else if (!strncasecmp(cp, "avx=on", 6)){
+	    add_option_seen(O_mavx);
+	    toggle(&avx, TRUE);
+	  }else if (!strncasecmp(cp, "avx=off", 7)){
+	    add_option_seen(O_mno_avx);
+	    toggle(&avx, FALSE);
+          }
 #endif
 #if defined(TARG_NVISA)
 	  if ( strncasecmp ( cp+4, "w64", 3 ) == 0 ) {
@@ -564,6 +578,18 @@ Process_Targ_Group ( char *targ_args )
 	break;
 #endif
 
+      case 'f':
+#ifdef TARG_X8664
+	if (!strncasecmp(cp, "fma4=on", 7)){
+	  add_option_seen(O_mfma4);
+	  toggle(&fma4, TRUE);
+	}else if (!strncasecmp(cp, "fma4=off", 8)){
+	  add_option_seen(O_mfma4);
+	  toggle(&fma4, FALSE);
+        }
+#endif
+	break;
+
       case 'i':
 	/* We support both isa=mipsn and plain mipsn in group.
 	 * Simply move cp to point to value, and fall through to
@@ -598,6 +624,15 @@ Process_Targ_Group ( char *targ_args )
 	  }
 	}
 #endif
+#ifdef TARG_X8664
+	if (!strncasecmp(cp, "mmx=on", 6)) {
+	  add_option_seen(O_mmmx);
+	  toggle(&mmx, TRUE);
+	} else if (!strncasecmp(cp, "mmx=off", 7)) {
+	  add_option_seen(O_mno_mmx);
+	  toggle(&mmx, FALSE);
+	}
+#endif
 	break;
 
       case 'p':
@@ -607,91 +642,77 @@ Process_Targ_Group ( char *targ_args )
 	  set_cpu (target, M_ARCH);
 	}
 #endif
+#ifdef TARG_X8664
+	if (!strncasecmp(cp, "pclmul=on", 9)){
+	  add_option_seen(O_mpclmul);
+	  toggle(&pclmul, TRUE);
+	}else if (!strncasecmp(cp, "pclmul=off", 10)){
+	  add_option_seen(O_mno_pclmul);
+	  toggle(&pclmul, FALSE);
+        }
+#endif
 	break;
 
       case 's':
 #ifdef TARG_X8664
-		if (!strncasecmp(cp, "mmx=on", 7)) {
-		  add_option_seen(O_mmmx);
-		  toggle(&mmx, TRUE);
-		} else if (!strncasecmp(cp, "mmx=off", 8)) {
-		  add_option_seen(O_mno_mmx);
-		  toggle(&mmx, FALSE);
-		} else if (!strncasecmp(cp, "sse=on", 7)) {
-		  add_option_seen(O_msse);
-		  toggle(&sse, TRUE);
-		} else if (!strncasecmp(cp, "sse=off", 8)) {
-		  add_option_seen(O_mno_sse);
-		  toggle(&sse, FALSE);
-		} else if (!strncasecmp(cp, "sse2=on", 8)) {
-		  add_option_seen(O_msse2);
-		  toggle(&sse2, TRUE);
-		} else if (!strncasecmp(cp, "sse2=off", 9)) {
-		  add_option_seen(O_mno_sse2);
-		  toggle(&sse2, FALSE);
-		} else if (!strncasecmp(cp, "sse3=on", 8)) {
-		  add_option_seen(O_msse3);
-		  toggle(&sse3, TRUE);
-		} else if (!strncasecmp(cp, "sse3=off", 9)) {
-		  add_option_seen(O_mno_sse3);
-		  toggle(&sse3, FALSE);
-		}else if (!strncasecmp(cp, "sse4a=on", 9)){
-		  add_option_seen(O_msse4a);
-		  toggle(&sse4a, TRUE);
-		}else if (!strncasecmp(cp, "sse4a=off", 10)){
-		  add_option_seen(O_mno_sse4a);
-		  toggle(&sse4a, FALSE);
-		}else if (!strncasecmp(cp, "ssse3=on", 9)){
-		  add_option_seen(O_mssse3);
-		  toggle(&ssse3, TRUE);
-		}else if (!strncasecmp(cp, "ssse3=off", 10)){
-		  add_option_seen(O_mno_ssse3);
-		  toggle(&ssse3, FALSE);
-		}else if (!strncasecmp(cp, "sse41=on", 9)){
-		  add_option_seen(O_msse41);
-		  toggle(&sse41, TRUE);
-		}else if (!strncasecmp(cp, "sse41=off", 10)){
-		  add_option_seen(O_mno_sse41);
-		  toggle(&sse41, FALSE);
-		}else if (!strncasecmp(cp, "sse42=on", 9)){
-		  add_option_seen(O_msse42);
-		  toggle(&sse42, TRUE);
-		}else if (!strncasecmp(cp, "sse42=off", 10)){
-		  add_option_seen(O_mno_sse42);
-		  toggle(&sse42, FALSE);
-		}else if (!strncasecmp(cp, "aes=on", 7)){
-		  add_option_seen(O_maes);
-		  toggle(&aes, TRUE);
-		}else if (!strncasecmp(cp, "aes=off", 8)){
-		  add_option_seen(O_mno_aes);
-		  toggle(&aes, FALSE);
-		}else if (!strncasecmp(cp, "pclmul=on", 10)){
-		  add_option_seen(O_mpclmul);
-		  toggle(&pclmul, TRUE);
-		}else if (!strncasecmp(cp, "pclmul=off", 11)){
-		  add_option_seen(O_mno_pclmul);
-		  toggle(&pclmul, FALSE);
-		}else if (!strncasecmp(cp, "avx=on", 7)){
-		  add_option_seen(O_mavx);
-		  toggle(&avx, TRUE);
-		}else if (!strncasecmp(cp, "avx=off", 8)){
-		  add_option_seen(O_mno_avx);
-		  toggle(&avx, FALSE);
-		}else if (!strncasecmp(cp, "xop=on", 7)){
-		  add_option_seen(O_mxop);
-		  toggle(&xop, TRUE);
-		}else if (!strncasecmp(cp, "xop=off", 8)){
-		  add_option_seen(O_mno_xop);
-		  toggle(&xop, FALSE);
-		}else if (!strncasecmp(cp, "fma4=on", 8)){
-		  add_option_seen(O_mfma4);
-		  toggle(&fma4, TRUE);
-		}else if (!strncasecmp(cp, "fma4=off", 9)){
-		  add_option_seen(O_mfma4);
-		  toggle(&fma4, FALSE);
-		}
+        // all sse flags
+	if (!strncasecmp(cp, "sse=on", 6)) {
+	  add_option_seen(O_msse);
+	  toggle(&sse, TRUE);
+	} else if (!strncasecmp(cp, "sse=off", 7)) {
+	  add_option_seen(O_mno_sse);
+	  toggle(&sse, FALSE);
+	} else if (!strncasecmp(cp, "sse2=on", 7)) {
+	  add_option_seen(O_msse2);
+	  toggle(&sse2, TRUE);
+	} else if (!strncasecmp(cp, "sse2=off", 8)) {
+	  add_option_seen(O_mno_sse2);
+	  toggle(&sse2, FALSE);
+	} else if (!strncasecmp(cp, "sse3=on", 7)) {
+	  add_option_seen(O_msse3);
+	  toggle(&sse3, TRUE);
+	} else if (!strncasecmp(cp, "sse3=off", 8)) {
+	  add_option_seen(O_mno_sse3);
+	  toggle(&sse3, FALSE);
+	}else if (!strncasecmp(cp, "sse4a=on", 8)){
+	  add_option_seen(O_msse4a);
+	  toggle(&sse4a, TRUE);
+	}else if (!strncasecmp(cp, "sse4a=off", 9)){
+	  add_option_seen(O_mno_sse4a);
+	  toggle(&sse4a, FALSE);
+	}else if (!strncasecmp(cp, "ssse3=on", 8)){
+	  add_option_seen(O_mssse3);
+	  toggle(&ssse3, TRUE);
+	}else if (!strncasecmp(cp, "ssse3=off", 9)){
+	  add_option_seen(O_mno_ssse3);
+	  toggle(&ssse3, FALSE);
+	}else if (!strncasecmp(cp, "sse41=on", 8)){
+	  add_option_seen(O_msse41);
+	  toggle(&sse41, TRUE);
+	}else if (!strncasecmp(cp, "sse41=off", 9)){
+	  add_option_seen(O_mno_sse41);
+	  toggle(&sse41, FALSE);
+	}else if (!strncasecmp(cp, "sse42=on", 8)){
+	  add_option_seen(O_msse42);
+	  toggle(&sse42, TRUE);
+	}else if (!strncasecmp(cp, "sse42=off", 9)){
+	  add_option_seen(O_mno_sse42);
+	  toggle(&sse42, FALSE);
+        }
 #endif
-		break;
+	break;
+
+      case 'x':
+#ifdef TARG_X8664
+	if (!strncasecmp(cp, "xop=on", 6)){
+	  add_option_seen(O_mxop);
+	  toggle(&xop, TRUE);
+	}else if (!strncasecmp(cp, "xop=off", 7)){
+	  add_option_seen(O_mno_xop);
+	  toggle(&xop, FALSE);
+	}
+#endif
+	break;
     }
 
     /* Skip to the next group option: */
@@ -2132,6 +2153,7 @@ Get_x86_ISA_extensions ()
     sse2 = TRUE;
     sse4a = TRUE;
   }
+#endif
   if (target_supports_ssse3 &&
       sse2 != FALSE &&  
       ssse3 != FALSE){//not explicitly turned off
@@ -2180,7 +2202,6 @@ Get_x86_ISA_extensions ()
     sse2 = TRUE;
     fma4 = TRUE;
   }
-#endif
  
   // No error.  Don't count warnings as errors.
   return TRUE;

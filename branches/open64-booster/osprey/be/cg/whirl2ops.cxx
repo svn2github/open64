@@ -4944,7 +4944,8 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
 #elif defined(TARG_X8664)
   case OPR_SUB:
   case OPR_ADD:
-    if ((CG_opt_level > 1) && Is_Target_Orochi()) {
+    if ((CG_opt_level > 1) && Is_Target_Orochi() && 
+        Is_Target_AVX() && Is_Target_FMA4()) {
       TYPE_ID rtype = OPCODE_rtype(opcode);
       WN *mul_wn = NULL;
       // Looking for a fm{a/s} candidate via FMA4 insns
@@ -7352,7 +7353,7 @@ void Whirl2ops_Initialize(struct ALIAS_MANAGER *alias_mgr)
   last_loop_pragma = NULL;
 
 #ifdef TARG_X8664
-  if (Is_Target_Orochi()) {
+  if (Is_Target_Orochi() && Is_Target_AVX()) {
     Init_LegacySSE_To_Vex_Group();
   }
 #endif

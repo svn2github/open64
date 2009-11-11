@@ -5905,10 +5905,22 @@ BOOL EBO_Load_Execution( OP* alu_op,
       i = (add_sub_in_op2 && OP_load(add_sub_in_op2)) ? 2 : -1;
     }
     
-    // FMA4 ops can only have loads on opnd0 and opnd1.
-    if (i == -1)
-      return FALSE;
-    
+    // FMA4 ops can only have loads on opnd1 and opnd2.
+    if (i == -1) {
+      // However we can swap opnd1 and opnd0 because the mul part of the fma
+      // is communitive.
+      if (actual_tninfo[0]->in_op && OP_load(actual_tninfo[0]->in_op)) {
+        TN *tmp = opnd_tn[0];
+        tninfo = actual_tninfo[0];
+        actual_tninfo[0] = actual_tninfo[1];
+        opnd_tn[0] = opnd_tn[1];
+        actual_tninfo[1] = tninfo;
+        opnd_tn[1] = tmp;
+        i = 1;
+      } else
+        return FALSE;
+    } 
+
     alu_cmp_idx = i;
     if( TN_is_register( OP_opnd( alu_op, i ) ) ){
       tninfo = actual_tninfo[i];
@@ -7234,7 +7246,7 @@ EBO_Fold_Load_Duplicate( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
   TOP topcode;
   if (base && offset && index && scale) {
     topcode = TOP_fmovddupxx;
-    if (Is_Target_Orochi())
+    if (Is_Target_Orochi() && Is_Target_AVX())
       topcode = TOP_vmovddupxx;
     new_op = Mk_OP (topcode, 
   		    OP_result(op, 0), 
@@ -7244,7 +7256,7 @@ EBO_Fold_Load_Duplicate( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 		    OP_opnd(load, 3));
   } else if (base && offset) {
     topcode = TOP_fmovddupx;
-    if (Is_Target_Orochi())
+    if (Is_Target_Orochi() && Is_Target_AVX())
       topcode = TOP_vmovddupx;
     new_op = Mk_OP (topcode, 
 		    OP_result(op, 0), 
@@ -7252,7 +7264,7 @@ EBO_Fold_Load_Duplicate( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 		    OP_opnd(load, 1));
   } else if (index && scale && offset) {
     topcode = TOP_fmovddupxxx;
-    if (Is_Target_Orochi())
+    if (Is_Target_Orochi() && Is_Target_AVX())
       topcode = TOP_vmovddupxxx;
     new_op = Mk_OP (topcode, 
 		    OP_result(op, 0), 

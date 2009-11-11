@@ -1666,7 +1666,7 @@ CG_Generate_Code(
     }
 
     // Generate merge dependency clear if avx128 is being used.
-    if (Is_Target_Orochi() && PU_has_avx128) {
+    if (Is_Target_Orochi() && Is_Target_AVX() && PU_has_avx128) {
       Generate_Entry_Merge_Clear(region);
     }
 
