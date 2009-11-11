@@ -3096,7 +3096,8 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
     name = (char*) REGISTER_name(cl, reg);
 #ifdef TARG_X8664
     // Rename an integer register based on the size of the variable.
-    if (cl == ISA_REGISTER_CLASS_integer) {
+    if (cl == ISA_REGISTER_CLASS_integer ||
+        cl == ISA_REGISTER_CLASS_float ) {
        name = (char*) CGTARG_Modified_Asm_Opnd_Name('r', tn, name);
     }
     // Check if you need to modify st0/st1 into parenthesised format.

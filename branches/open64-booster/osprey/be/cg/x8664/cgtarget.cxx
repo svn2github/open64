@@ -3463,7 +3463,7 @@ CGTARG_TN_And_Name_For_Asm_Constraint (char *constraint, TYPE_ID mtype,
 char CGTARG_Asm_Opnd_Modifiers[] = { 'r' };
 INT  CGTARG_Num_Asm_Opnd_Modifiers = 1;
 
-static const char* int_reg_names[3][16] = {
+static const char* x86_reg_names[4][16] = {
   /* BYTE_REG: low 8-bit */
   { "%al", "%bl", "%bpl", "%spl", "%dil", "%sil", "%dl", "%cl",
     "%r8b",  "%r9b",  "%r10b", "%r11b", "%r12b", "%r13b", "%r14b", "%r15b" },
@@ -3473,35 +3473,49 @@ static const char* int_reg_names[3][16] = {
   /* DWORD_REG: 32-bit */
   { "%eax", "%ebx", "%ebp", "%esp", "%edi", "%esi", "%edx", "%ecx",
     "%r8d",  "%r9d",  "%r10d", "%r11d", "%r12d", "%r13d", "%r14d", "%r15d" },
+  /* SSE2_REG: 128-bit */
+  { "%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6", "%xmm7",
+    "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12", "%xmm13", "%xmm14", "%xmm15" },
 };
-      
+
 const char* 
 CGTARG_Modified_Asm_Opnd_Name(char modifier, TN* tn, char *tn_name)
 {
-  if (TN_register_class(tn) == ISA_REGISTER_CLASS_float ||
-      TN_register_class(tn) == ISA_REGISTER_CLASS_x87)
+  if (TN_register_class(tn) == ISA_REGISTER_CLASS_x87)
     return tn_name;
 
   if (modifier == 'r') {
-    if (TN_size(tn) == 8)
-      return tn_name;
-    else { 
-      // Bugs 482, 505, 626
-      INT sub_reg_class = 2; // DWORD_REG
-      if (TN_size(tn) == 2)
-	sub_reg_class = 1;   // WORD_REG
-      else if (TN_size(tn) == 1)
-	sub_reg_class = 0;   // BYTE_REG
-      const ISA_REGISTER_CLASS rc = ISA_REGISTER_CLASS_integer;
-      for( REGISTER reg = REGISTER_MIN; reg <= REGISTER_CLASS_last_register( rc ); reg++ ){
-	const char* n = REGISTER_name( rc, reg );
-	if( strcmp( n, tn_name ) == 0 ){
-	  const char *regname;
-	  regname = int_reg_names[sub_reg_class][reg-REGISTER_MIN];
-	  return regname;
-	}
-      }      
-    } 
+    REGISTER reg;
+    const ISA_REGISTER_CLASS rc = TN_register_class(tn);
+    for( reg = REGISTER_MIN; reg <= REGISTER_CLASS_last_register( rc ); reg++ ){
+      const char* n = REGISTER_name( rc, reg );
+      if( strcmp( n, tn_name ) == 0 ){
+	break;
+      }
+    }
+
+    if ( rc == ISA_REGISTER_CLASS_integer ) {
+      switch(TN_size(tn)) {
+      case 1:
+        return x86_reg_names[0][reg - REGISTER_MIN];
+      case 2:
+        return x86_reg_names[1][reg - REGISTER_MIN];
+      case 4:
+        return x86_reg_names[2][reg - REGISTER_MIN];
+      default:
+        FmtAssert(TN_size(tn) == 8, ("Bad TN size for integer"));
+        return tn_name;
+      }
+    }
+    else if ( rc == ISA_REGISTER_CLASS_float ) {
+      if ( TN_size(tn) == 32 ) 
+        return tn_name;
+      else
+        return x86_reg_names[3][reg - REGISTER_MIN];
+    }
+    else {
+      FmtAssert(FALSE, ("Unknown register class"));
+    }
   }
   else {
     FmtAssert(FALSE, ("Unknown ASM operand modifier '%c'", modifier));
