@@ -1073,6 +1073,58 @@ Gen_In_Parallel(void)
   return wn;
 }
 
+static UINT64
+Get_Offset_From_Const_Array(WN* array)
+{
+  // should be one-dimension array with constant index.
+  WN* index = WN_array_index(array,0);
+  FmtAssert(WN_operator(index) == OPR_INTCONST,("expect a const index"));
+  UINT64 offset = WN_element_size(array) * WN_const_val(index);
+  return offset;
+}
+
+// Return a non-structure field from offset, if there's multiple field
+// with the same offset, return the first.
+// This routine will assert if it cannot find a valid field.
+static FLD_HANDLE 
+Get_FLD_From_Offset(const TY_IDX ty_idx, const UINT64 offset)
+{
+  Is_True(Is_Structure_Type(ty_idx), ("need to be a structure type"));
+
+  UINT64 cur_offset = 0;
+
+  FLD_ITER fld_iter = Make_fld_iter(TY_fld(ty_idx));
+  do {
+    FLD_HANDLE fld(fld_iter);       
+
+    // we assume that we will not see bit-fields here.
+    cur_offset = FLD_ofst(fld);
+
+    if (cur_offset == offset)
+    {
+      // check type
+      TY_IDX cur_fld_idx = FLD_type(fld);
+      if (!Is_Structure_Type(cur_fld_idx))
+        return fld;
+    }
+
+    TY_IDX cur_fld_idx = FLD_type(fld);
+    if (TY_kind(cur_fld_idx) == KIND_STRUCT &&
+        TY_fld(cur_fld_idx) != FLD_HANDLE())
+    {
+      // it's possible that the new_offset becomes negative
+      // because of unions. 
+      INT64 new_offset = offset - cur_offset;
+      if (new_offset < 0) return FLD_HANDLE();
+      FLD_HANDLE fld1 = Get_FLD_From_Offset(cur_fld_idx, new_offset);
+      if (!fld1.Is_Null()) return fld1;
+    }
+
+  } while (!FLD_last_field(fld_iter++));
+
+  Fail_FmtAssertion("cannot find field from offset");
+}
+
 /*
 Generate RT calls to judge if OK to fork. This call should be invocated 
 before real fork calls. Original calls to __omp_region do both the judge
@@ -3663,36 +3715,54 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
   } else if (ST_class(old_st) != CLASS_PREG) {
 
     ty = ST_type(old_st);
-#ifdef KEY // bug 7259 and 8076
-    if ((TY_kind(ty) == KIND_STRUCT) && 
-        (vtype == VAR_REDUCTION_SCALAR || vtype == VAR_REDUCTION_ARRAY))
-      ty = FLD_type(TY_fld(ty));
-#endif
-    if ((TY_kind(ty) == KIND_POINTER) &&
-	((v->is_static_array) || (vtype == VAR_REDUCTION_ARRAY)))
-#ifdef KEY //bug 11661
-     {
-#endif
-      ty = TY_pointed(ty);
-#ifdef KEY //bug 11661: for structure, we need the field type 
-      if (TY_kind(ty) == KIND_STRUCT && vtype == VAR_REDUCTION_ARRAY)
-        ty = FLD_type(TY_fld(ty));
-     }
-#endif
 
-    if ((TY_kind(ty) == KIND_ARRAY) && (vtype == VAR_REDUCTION_ARRAY))
-      ty = TY_etype(ty);
-    if ((vtype == VAR_REDUCTION_ARRAY_OMP) && (TY_kind(ty) == KIND_POINTER)
-					&& (TY_kind(TY_pointed(ty)) == KIND_ARRAY))
-		{
-			ty = TY_pointed(ty);
-			// we need to create an array in local stack.
-			// This may not always work.
-			// csc.
-      /*ty = TY_etype(ty);*/
-		}
+    TY_KIND kind = TY_kind(ty);
+    while ( kind == KIND_POINTER || kind == KIND_STRUCT || kind == KIND_ARRAY)
+    {
+      if (kind == KIND_POINTER)
+      {
+        if (v->is_static_array || vtype == VAR_REDUCTION_ARRAY
+               || vtype == VAR_REDUCTION_ARRAY_OMP)
+          ty = TY_pointed(ty);
+        else
+          break;
+      }else if (kind == KIND_STRUCT)
+      {
+        if (vtype == VAR_REDUCTION_SCALAR)
+           ty = FLD_type(TY_fld(ty));
+        else if (vtype == VAR_REDUCTION_ARRAY)
+        {
+          WN* array = v->vtree;
+          if (WN_element_size(array)<0)
+          {
+            // fortran dope vector: we will iteratively find the element type.
+            // Maybe we should check the dimsion.
+            ty = FLD_type(TY_fld(ty));
+          }
+          else
+          {
+            // must be from pointer promption
+            // we might have some problems for the union as multiple fields
+            // share the same offset. But this info is lost and there's no way
+            // to recover. (we need to change the reduction pragma)
+            UINT64 offset = Get_Offset_From_Const_Array(array);
+            FLD_HANDLE fld = Get_FLD_From_Offset(ty, offset);
+
+            ty = FLD_type(fld);
+          }
+        } else
+         break;
+      }else if (kind == KIND_ARRAY)
+      {
+        if (vtype == VAR_REDUCTION_ARRAY)
+           ty = TY_etype(ty);
+        else
+          break;
+      }
+      kind = TY_kind(ty);
+    }
   
-	localname = (char *) alloca(strlen(ST_name(old_st)) + 32);
+    localname = (char *) alloca(strlen(ST_name(old_st)) + 32);
       // if already localized, append "x" to localization prefix
     if (strncmp(ST_name(old_st), "__mplocal_", 10) == 0)
       sprintf ( localname, "__mplocalx_%s", &ST_name(old_st)[10] );
