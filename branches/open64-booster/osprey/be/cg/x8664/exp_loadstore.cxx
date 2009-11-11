@@ -1162,7 +1162,7 @@ Exp_Ldst (
 	    // got address should not alias
 	    Set_OP_no_alias(OPS_last(&newops));
 	    if (base_ofst != 0)
-	      Build_OP( TOP_addi64, tn, tmp, Gen_Literal_TN(base_ofst, 8),
+	      Build_OP( TOP_lea64, tn, tmp, Gen_Literal_TN(base_ofst, 8),
 		        &newops );
 	  }
 	  else Build_OP( TOP_lea64, tn, Rip_TN(), 
@@ -1222,7 +1222,7 @@ Exp_Ldst (
 	  PU_References_GOT = TRUE;
 
 	  if( base_ofst != 0 ){
-	    Build_OP( TOP_addi32, tn, tmp, Gen_Literal_TN(base_ofst, 4), &newops );
+	    Build_OP( TOP_lea32, tn, tmp, Gen_Literal_TN(base_ofst, 4), &newops );	      
 	  }
 	} else {
 	  Build_OP( TOP_ldc32, tn,
