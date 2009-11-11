@@ -9499,7 +9499,16 @@ static void lower_mload_actual (WN *block, WN *mload, PLOC ploc,
 		type = MTYPE_F4;
 		reg = MTYPE_To_PREG(type);
 	}
-
+#ifdef TARG_X8664
+        if (PLOC_size(ploc) < MTYPE_size_reg(type)
+                && type == MTYPE_F8 && PLOC_size(ploc) == 1)
+        {
+	 // void MSTRUCT in SSE register, simply ignore 
+            mloadOffset += PLOC_size(ploc);
+            ploc = Get_Struct_Output_Parameter_Location(ploc);
+	    continue;
+        }
+#endif
        /*
 	*  special case "small" structs (or remainder of struct)
 	*  we will try not to run off the end of the structure (as bad)
@@ -9610,7 +9619,16 @@ static void lower_mload_formal(WN *block, WN *mload, PLOC ploc,
 		type = MTYPE_F4;
 		reg = MTYPE_To_PREG(type);
 	}
-
+#ifdef TARG_X8664
+	if (PLOC_size(ploc) < MTYPE_size_reg(type)
+                && type == MTYPE_F8 && PLOC_size(ploc) == 1)
+	{
+	 // void MSTRUCT in SSE register, simply ignore
+		offset += PLOC_size(ploc);
+		ploc = Get_Struct_Input_Parameter_Location(ploc);
+		continue;
+	}
+#endif
 	ldid = WN_LdidPreg(type, regNo);
        /*
 	*  special case "small" structs (or remainder of struct)
