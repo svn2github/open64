@@ -6957,6 +6957,7 @@ WGEN_Expand_Expr (gs_t exp,
 	//15210, generate IF-struct, and discard the LDIDs
         bool typed_ite = false;
         if( gs_tree_code(gs_tree_operand(exp, 1)) == GS_TARGET_EXPR &&
+            gs_tree_operand(exp, 2) != NULL       &&  // else statement can be NULL
             gs_tree_code(gs_tree_operand(exp, 2)) == GS_TARGET_EXPR ){
 	 typed_ite = ( gs_tree_code(gs_tree_operand(gs_tree_operand(exp ,1), 0)) == GS_COMPONENT_REF &&
           gs_tree_code(gs_tree_operand(gs_tree_operand(exp ,2), 0)) == GS_COMPONENT_REF );
