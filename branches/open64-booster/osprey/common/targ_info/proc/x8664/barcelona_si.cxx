@@ -713,6 +713,8 @@ int main (int argc, char *argv[])
 		     TOP_lddqux,
 		     TOP_lddquxx,
 		     TOP_ldupd,
+		     TOP_ldupdx,
+		     TOP_ldupdxx,
 		     TOP_ldupd_n32,
 		     TOP_ldups,
 		     TOP_ldups_n32,

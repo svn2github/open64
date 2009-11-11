@@ -260,6 +260,8 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_ldups:
       case TOP_ldups_n32:
       case TOP_ldupd:
+      case TOP_ldupdx:
+      case TOP_ldupdxx:
       case TOP_ldupd_n32:
       case TOP_lddqax:
       case TOP_lddqux:

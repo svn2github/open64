@@ -1314,6 +1314,8 @@ static void Init_OP_Name()
   OP_Name[TOP_ldapsxx] = "movaps";
   OP_Name[TOP_ldapdxx] = "movapd";
   OP_Name[TOP_ldupd] = "movupd";
+  OP_Name[TOP_ldupdx] = "movupd";
+  OP_Name[TOP_ldupdxx] = "movupd";
   OP_Name[TOP_ldupd_n32] = "movupd";
   OP_Name[TOP_ldups] = "movups";
   OP_Name[TOP_ldups_n32] = "movups";

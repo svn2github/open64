@@ -835,6 +835,8 @@ main ()
 	      "ldapdxx",
 	      "ldups",
 	      "ldupd",
+	      "ldupdx",
+	      "ldupdxx",
 	      "stdqaxx",
 	      "stntpdxx",
 	      "stntpsxx",
