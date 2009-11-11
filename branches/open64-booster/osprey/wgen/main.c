@@ -58,6 +58,7 @@ int key_exceptions = 0;
 BOOL opt_regions = 0;
 BOOL lang_cplus = FALSE;
 BOOL c_omit_external = TRUE;
+BOOL keep_inline_functions=FALSE;
 #ifdef FE_GNU_4_2_0
 BOOL enable_cxx_openmp = TRUE;
 #endif
@@ -219,6 +220,9 @@ Process_Cc1_Command_Line(gs_t arg_list)
 	        enable_cxx_openmp = TRUE;
 	      }
 #endif
+              else if (!strcmp( cp, "keep-inline-functions")) {
+                keep_inline_functions = TRUE;
+              }
 	      break;
 
 	  case 'g':		    /* Debug level: */

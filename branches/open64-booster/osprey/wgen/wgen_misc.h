@@ -128,6 +128,7 @@ extern int key_exceptions;		/* from main.c */
 extern BOOL opt_regions;		/* from main.c */
 extern gs_t program;			/* from main.c */
 extern BOOL lang_cplus;			/* from main.c */
+extern BOOL keep_inline_functions;	/* from main.c */
 #ifdef FE_GNU_4_2_0
 #include "wn_util.h"
 extern BOOL enable_cxx_openmp;		/* from main.c */

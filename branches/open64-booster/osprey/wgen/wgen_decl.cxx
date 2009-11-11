@@ -1310,7 +1310,15 @@ WGEN_Start_Function(gs_t fndecl)
           // gnu linker complains about protected symbol illegal relocation
           // for taking its address, the hidden symbol' addres is ok to export 
           // to other DSO or within the same module 
-          eclass = EXPORT_HIDDEN;
+          if (!interface_only || keep_inline_functions || !gs_decl_weak (fndecl)) {
+            // if the inline function is under pragma implementation,
+            // or -fkeep-inline-function, it should be PREEMPTIBLE,
+            // so it will not be DFEed
+            eclass = EXPORT_PREEMPTIBLE;
+          }
+          else {
+            eclass = EXPORT_HIDDEN;
+          }
 	} 
       }
       else
