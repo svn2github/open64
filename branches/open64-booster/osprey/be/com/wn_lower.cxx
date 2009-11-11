@@ -8782,7 +8782,38 @@ static WN *compute_new_size(WN *tree, WN *size, INT32 align)
   return size;
 }
 
-
+/* 
+ * The struct consists of cxx empty struct members and other padding area, 
+ * whose contents are not defined.
+ */
+static BOOL is_struct_content_padding(TY_IDX ty, INT32 offset, INT32 len)
+{
+  FLD_IDX fld_idx = Ty_Table[ty].Fld();
+  do {
+    FLD_HANDLE fld(fld_idx);
+    if (
+/*
+ * work around, as the fld-idx should not be zero here, but it may be
+ * tolerrable for 0-sized structures.
+ */
+      fld_idx==0 || 
+      FLD_last_field(fld))
+      break;
+    if (TY_kind(FLD_type(fld)) != KIND_STRUCT) 
+    {
+      INT32 myoffset, myend;
+      myoffset = FLD_ofst(fld);
+      myend= myoffset + TY_size(FLD_type(fld));
+      if (myoffset <= offset && myend > offset ||
+        myoffset < offset + len && myend >= offset + len ||
+        offset <= myoffset && offset + len > myoffset)
+        return FALSE;
+    }else if (!is_struct_content_padding(FLD_type(fld), offset - FLD_ofst(fld), len ))
+      return FALSE;
+    fld_idx++;
+  } while (1);
+  return TRUE;
+} 
 
 
 /* ====================================================================
@@ -9500,8 +9531,8 @@ static void lower_mload_actual (WN *block, WN *mload, PLOC ploc,
 		reg = MTYPE_To_PREG(type);
 	}
 #ifdef TARG_X8664
-        if (PLOC_size(ploc) < MTYPE_size_reg(type)
-                && type == MTYPE_F8 && PLOC_size(ploc) == 1)
+        if (PLOC_size(ploc) < MTYPE_size_reg(type) && type == MTYPE_F8 && 
+		is_struct_content_padding(mloadTY, mloadOffset, PLOC_size(ploc)))
         {
 	 // void MSTRUCT in SSE register, simply ignore 
             mloadOffset += PLOC_size(ploc);
@@ -9620,8 +9651,8 @@ static void lower_mload_formal(WN *block, WN *mload, PLOC ploc,
 		reg = MTYPE_To_PREG(type);
 	}
 #ifdef TARG_X8664
-	if (PLOC_size(ploc) < MTYPE_size_reg(type)
-                && type == MTYPE_F8 && PLOC_size(ploc) == 1)
+	if (PLOC_size(ploc) < MTYPE_size_reg(type) && type == MTYPE_F8 && 
+		is_struct_content_padding(symTY, offset, PLOC_size(ploc)))
 	{
 	 // void MSTRUCT in SSE register, simply ignore
 		offset += PLOC_size(ploc);
