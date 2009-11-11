@@ -1330,4 +1330,28 @@ gs_skip_artificial_parms_for (gs_t fn, gs_t list)
     gs_skip_artificial_parms_for (fn, gs_type_arg_types (gs_tree_type (fn)))
 #endif
 
+static inline gs_bool_t
+gs_type_anonymous_p(gs_t type_tree)
+{
+    /* anonymous struct/union */
+    if ( (((gs_tree_code(type_tree) == GS_UNION_TYPE ||
+            gs_tree_code(type_tree) == GS_RECORD_TYPE) &&
+            gs_type_lang_flag_5(type_tree))||
+            /* anonymous enumeration */
+            gs_tree_code(type_tree) == GS_ENUMERAL_TYPE) )
+    {
+        gs_t type_name;
+        gs_t decl_name;
+        if ( (type_name = gs_type_name(type_tree)) == NULL ||
+                (decl_name = gs_decl_name(type_name)) == NULL )
+            return gs_true;
+        else {
+            char *name = (char *)gs_identifier_pointer(decl_name);
+            if ( name[0] == '.' && name[1] == '_')
+                return gs_true;
+        }
+    }
+    return gs_false;
+}
+
 #endif // __GSPIN_TEL_H__
