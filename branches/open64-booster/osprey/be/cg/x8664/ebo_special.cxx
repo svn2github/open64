@@ -2949,7 +2949,7 @@ BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
     if ( TOP_is_vector_packed_single ( OP_code (alu_op ) ) )
       op->opr = TOP_movaps;
     else if ( TOP_is_vector_packed_double ( OP_code (alu_op ) ) )
-      op->opr = TOP_movapd;
+      op->opr = TOP_movaps;
   }
 
   else if( top == TOP_jne || top == TOP_je ) {
@@ -5230,7 +5230,7 @@ void EBO_SIMD_Compute_To( OP* simd_op )
   if (convert_cand && cand_ok) {
     // we have a single dependence arc on this def, we can convert
     if (OP_code(simd_op) == TOP_movsd) {
-      OP_Change_Opcode( simd_op, TOP_movapd );
+      OP_Change_Opcode( simd_op, TOP_movaps );
     } else if (OP_code(simd_op) == TOP_movss) {
       OP_Change_Opcode( simd_op, TOP_movaps );
     }

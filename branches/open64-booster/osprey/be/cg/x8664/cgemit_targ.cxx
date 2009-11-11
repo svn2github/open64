@@ -3518,13 +3518,15 @@ static void Init_OP_Name()
     OP_Name[TOP_stsd] = "movsd";
     OP_Name[TOP_stsd_n32] = "movsd";
     OP_Name[TOP_storelpd] = "movsd";
+    // Convert movapd reg reg moves with movaps
+    OP_Name[TOP_movapd]  = "movaps";
     if (Is_Target_Barcelona() ||
 	Is_Target_EM64T()     || // em64t
         Is_Target_Wolfdale()  ||
 	Is_Target_Core()) {	 // use movapd for woodcrest for bug 11548
-      OP_Name[TOP_movsd] = "movapd";  
+      OP_Name[TOP_movsd] = "movaps"; 
     } else if (Is_Target_Orochi()) {
-      OP_Name[TOP_movsd] = "movapd";  
+      OP_Name[TOP_movsd] = "movaps";  
       OP_Name[TOP_vmovsd] = "vmovapd";  
       OP_Name[TOP_vmovss] = "vmovaps";  
       OP_Name[TOP_vldsd] = "vmovsd";
