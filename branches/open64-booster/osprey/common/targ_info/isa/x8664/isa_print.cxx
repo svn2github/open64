@@ -999,6 +999,64 @@ main()
                            TOP_aeskeygenassistxxx,
 			   TOP_UNDEFINED );
 
+  /* SSE4.1 blendv: res reg reg */ 
+  ISA_PRINT_TYPE rblendv =  ISA_Print_Type_Create("rblendv", "%s %s,%s");
+  Name();
+  Operand(2);
+  Result(0);
+  Operand(0);
+  Instruction_Print_Group( rblendv,
+                           /* SSE4.1 instructions */
+                           TOP_blendv128v8,
+                           TOP_fblendv128v64,
+                           TOP_fblendv128v32,
+			   TOP_UNDEFINED );
+
+  /* SSE4.1 blendv: res mem reg */ 
+  ISA_PRINT_TYPE rblendvmem =  ISA_Print_Type_Create("rblendvmem", "%s %s%s(%s),%s");
+  Name();
+  Operand(3);
+  Operand(2);
+  Result(0);
+  Operand(0);
+  Instruction_Print_Group( rblendvmem,
+                           /* SSE4.1 instructions */
+                           TOP_blendvx128v8,
+                           TOP_fblendvx128v64,
+                           TOP_fblendvx128v32,
+			   TOP_UNDEFINED );
+
+  /* SSE4.1 blendv: res mem w/ scaled index reg */ 
+  ISA_PRINT_TYPE rblendvmemindex =  ISA_Print_Type_Create("rblendvmemindex", "%s %s%s(%s,%s,%s),%s");
+  Name();
+  Operand(5);
+  Operand(2);
+  Operand(3);
+  Operand(4);
+  Result(0);
+  Operand(0);
+  Instruction_Print_Group( rblendvmemindex,
+                           /* SSE4.1 instructions */
+                           TOP_blendvxx128v8,
+                           TOP_fblendvxx128v64,
+                           TOP_fblendvxx128v32,
+			   TOP_UNDEFINED );
+
+  /* SSE4.1 blendv: res mem w/ scaled index w/o base reg */ 
+  ISA_PRINT_TYPE rblendvmemindexx =  ISA_Print_Type_Create("rblendvmemindexx", "%s %s%s(,%s,%s),%s");
+  Name();
+  Operand(4);
+  Operand(2);
+  Operand(3);
+  Result(0);
+  Operand(0);
+  Instruction_Print_Group( rblendvmemindexx,
+                           /* SSE4.1 instructions */
+                           TOP_blendvxxx128v8,
+                           TOP_fblendvxxx128v64,
+                           TOP_fblendvxxx128v32,
+			   TOP_UNDEFINED );
+
   /* One result / three operands in x86 style */
   ISA_PRINT_TYPE ropopop =  ISA_Print_Type_Create("ropopop", "%s %s,%s,%s");
   Name();
@@ -1016,9 +1074,6 @@ main()
                            /* SSSE3 instructions */
                            TOP_palignr128,
                            /* SSE4.1 instructions */
-                           TOP_fblendv128v32,
-                           TOP_fblendv128v64,
-                           TOP_blendv128v8,
                            TOP_round128v32,
                            TOP_roundss,
                            TOP_round128v64,
@@ -1056,9 +1111,6 @@ main()
                            /* SSSE3 instructions */
                            TOP_palignrx128,
                            /* SSE4.1 instructions */
-                           TOP_fblendvx128v32,
-                           TOP_fblendvx128v64,
-                           TOP_blendvx128v8,
                            TOP_roundx128v32,
                            TOP_roundxss,
                            TOP_roundx128v64,
@@ -1098,9 +1150,6 @@ main()
                            /* SSSE3 instructions */
                            TOP_palignrxx128,
                            /* SSE4.1 instructions */
-                           TOP_fblendvxx128v32,
-                           TOP_fblendvxx128v64,
-                           TOP_blendvxx128v8,
                            TOP_roundxx128v32,
                            TOP_roundxxss,
                            TOP_roundxx128v64,
@@ -1139,9 +1188,6 @@ main()
                            /* SSSE3 instructions */
                            TOP_palignrxxx128,
                            /* SSE4.1 instructions */
-                           TOP_fblendvxxx128v32,
-                           TOP_fblendvxxx128v64,
-                           TOP_blendvxxx128v8,
                            TOP_roundxxx128v32,
                            TOP_roundxxxss,
                            TOP_roundxxx128v64,
@@ -2560,6 +2606,10 @@ main()
 			   TOP_setge,
 			   TOP_setle,
 			   TOP_setg,
+			   TOP_setc,
+			   TOP_seto,
+			   TOP_sets,
+			   TOP_setz,
 			   TOP_UNDEFINED );
 
   /* Zeroing an integer register */
@@ -2733,6 +2783,8 @@ main()
                            TOP_pabs128v8,
                            TOP_pabs128v16,
                            TOP_pabs128v32,
+                           /* SSE4.1 instructions */
+                           TOP_phminposuw,
                            /* SSE4.2 instructions */
                            TOP_popcnt16,
                            TOP_popcnt32,
@@ -2854,6 +2906,8 @@ main()
                            TOP_pabsx128v8,
                            TOP_pabsx128v16,
                            TOP_pabsx128v32,
+                           /* SSE4.1 instructions */
+                           TOP_phminposuwx,
                            /* SSE4.2 instructions */
                            TOP_popcntx16,
                            TOP_popcntx32,
@@ -2932,6 +2986,8 @@ main()
                            TOP_pabsxx128v8,
                            TOP_pabsxx128v16,
                            TOP_pabsxx128v32,
+                           /* SSE4.1 instructions */
+                           TOP_phminposuwxx,
                            /* SSE4.2 instructions */
                            TOP_popcntxx16,
                            TOP_popcntxx32,
@@ -3001,6 +3057,8 @@ main()
                            TOP_pabsxxx128v8,
                            TOP_pabsxxx128v16,
                            TOP_pabsxxx128v32,
+                           /* SSE4.1 instructions */
+                           TOP_phminposuwxxx,
                            /* SSE4.2 instructions */
                            TOP_popcntxxx16,
                            TOP_popcntxxx32,
