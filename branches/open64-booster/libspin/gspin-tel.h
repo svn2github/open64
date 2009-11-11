@@ -275,11 +275,13 @@ extern gs_t gs_build_2(gs_tree_code_class_t code_class,
 #define GS_THUNK_VIRTUAL_OFFSET		40
 #define GS_DECL_NAMED_RETURN_OBJECT	41
 #define GS_DECL_FLAG2                   42
-
 // ---- begin GS_DECL_FLAG2 definition ----
 #  define GS_DECL_TLS_MODEL             0    // 3 bits
 #  define GS_DECL_TLS_MODEL_BITS        3    
-#  define GS_DECL_FLAG2_LAST            3    // next available bits, change it when
+#  define GS_DECL_VISIBILITY_SPECIFIED  3    // 1 bit
+#  define GS_DECL_VISIBILITY            4    // 2 bits
+#  define GS_DECL_VISIBILITY_BITS       2    
+#  define GS_DECL_FLAG2_LAST            6    // next available bits, change it when
                                              // you add more flags
 // ---- end GS_DECL_FLAG2 definition ----
 
@@ -808,11 +810,17 @@ GS_LOOKUP (gs_decl_arg_type, GS_DECL_ARG_TYPE)
 GS_LOOKUP (gs_decl_arg_type_as_written, GS_DECL_ARG_TYPE_AS_WRITTEN)
 GS_LOOKUP (gs_tree_chain, GS_TREE_CHAIN)
 GS_LOOKUP (gs_type_name, GS_TYPE_NAME)
-GS_LOOKUP_BITS (GS_DECL_FLAG2, gs_decl_tls_model, GS_DECL_TLS_MODEL, GS_DECL_TLS_MODEL_BITS)
-GS_UPDATE_BITS (GS_DECL_FLAG2, gs_set_decl_tls_model, GS_DECL_TLS_MODEL, GS_DECL_TLS_MODEL_BITS)
 static inline gs_string_t gs_decl_mode (gs_t t) {
   return gs_s (gs_operand (t, GS_DECL_MODE));
 }
+
+GS_LOOKUP_BITS (GS_DECL_FLAG2, gs_decl_tls_model, GS_DECL_TLS_MODEL, GS_DECL_TLS_MODEL_BITS)
+GS_UPDATE_BITS (GS_DECL_FLAG2, gs_set_decl_tls_model, GS_DECL_TLS_MODEL, GS_DECL_TLS_MODEL_BITS)
+GS_LOOKUP_FLAG (GS_DECL_FLAG2, gs_decl_visibility_specified, GS_DECL_VISIBILITY_SPECIFIED)
+GS_UPDATE_FLAG (GS_DECL_FLAG2, gs_set_decl_visibility_specified, GS_DECL_VISIBILITY_SPECIFIED)
+GS_LOOKUP_BITS (GS_DECL_FLAG2, gs_decl_visibility, GS_DECL_VISIBILITY, GS_DECL_VISIBILITY_BITS)
+GS_UPDATE_BITS (GS_DECL_FLAG2, gs_set_decl_visibility, GS_DECL_VISIBILITY, GS_DECL_VISIBILITY_BITS)
+
 static inline gs_string_t gs_decl_source_file (gs_t t) {
   return gs_s (gs_operand (t, GS_DECL_SOURCE_FILE));
 }

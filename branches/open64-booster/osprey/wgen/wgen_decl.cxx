@@ -1310,7 +1310,12 @@ WGEN_Start_Function(gs_t fndecl)
           // gnu linker complains about protected symbol illegal relocation
           // for taking its address, the hidden symbol' addres is ok to export 
           // to other DSO or within the same module 
-          if (!interface_only || keep_inline_functions || !gs_decl_weak (fndecl)) {
+          if (!interface_only || keep_inline_functions || 
+              !gs_decl_weak (fndecl)) {
+            // there are inline functions not weak function, such as
+            // global function's local class member, they have the same
+            // export class as hosting function
+            //
             // if the inline function is under pragma implementation,
             // or -fkeep-inline-function, it should be PREEMPTIBLE,
             // so it will not be DFEed
@@ -1389,6 +1394,33 @@ WGEN_Start_Function(gs_t fndecl)
     }
     Set_ST_export (func_st, eclass);
 
+#if 1 // GCC_COMPAT
+    gs_symbol_visibility_kind_t vk = 
+      (gs_symbol_visibility_kind_t) gs_decl_visibility(fndecl);
+    if (gs_decl_visibility_specified(fndecl) ||
+        GS_VISIBILITY_DEFAULT != vk) {
+      ST_EXPORT export_class = EXPORT_PREEMPTIBLE;
+      switch (vk) {
+        case GS_VISIBILITY_DEFAULT:
+          export_class = EXPORT_PREEMPTIBLE;
+          break;
+        case GS_VISIBILITY_PROTECTED:
+          export_class = EXPORT_PROTECTED;
+          break;
+        case GS_VISIBILITY_HIDDEN:
+          export_class = EXPORT_HIDDEN;
+          break;
+        case GS_VISIBILITY_INTERNAL:
+          export_class = EXPORT_INTERNAL;
+          break;
+        default:
+          GS_ASSERT(0, "unknown decl visibility");
+          break;
+      }
+      Set_ST_export (func_st, export_class);
+    }
+#endif
+
     // For extern inline in C++, we ensure the function is inlined at > -O0,
     // when inlining is not disabled. IF the inliner thinks it appropriate,
     // it may also delete the function.
@@ -1460,6 +1492,7 @@ WGEN_Start_Function(gs_t fndecl)
 	  else if (is_attribute("used", attr))
 	    Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);  // bug 3697
 #endif
+#if 0
           else if (is_attribute("visibility", attr)) {
             // process __attribute__ ((visibility ("default   |
             //                                      hidden    |
@@ -1483,6 +1516,7 @@ WGEN_Start_Function(gs_t fndecl)
               }
             }
 	  }
+#endif
 	}
       } 
     }

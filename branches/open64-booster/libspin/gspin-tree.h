@@ -436,11 +436,12 @@ static inline gs_void_t _gs_bv (gs_t node, gs_count_t position, bool bit)
 static inline bool gs_bv (gs_t node, unsigned int position)
 {
   gs_realign_t realign;
+  unsigned long long k;
   if (node == NULL)
     return false;
   realign.data[0] = node->u1.data[0];
   realign.data[1] = node->u1.data[1];
-  unsigned long long k = 1LL << position;
+  k = 1LL << position;
   return (k & realign.ull) != 0;
 }
 
@@ -458,9 +459,9 @@ static inline gs_void_t _gs_bitsv (gs_t node, gs_count_t position,
                                    unsigned int bits, unsigned long val )
 {
   gs_realign_t realign;
+  unsigned long long mask = (1LL << bits) - 1;
   GS_ASSERT (node != (gs_t) NULL, "Got null node");
   GS_ASSERT (bits < 32, "bits exceeds limits");
-  unsigned long long mask = (1LL << bits) - 1;
   val &= mask;  // truncate the value to bits length
 
   // get old value
@@ -2205,5 +2206,13 @@ typedef enum gs_tls_model_kind {
   GS_TLS_MODEL_INITIAL_EXEC,
   GS_TLS_MODEL_LOCAL_EXEC
 } gs_tls_model_kind_t;
+
+typedef enum gs_symbol_visibility_kind
+{
+  GS_VISIBILITY_DEFAULT,
+  GS_VISIBILITY_PROTECTED,
+  GS_VISIBILITY_HIDDEN,
+  GS_VISIBILITY_INTERNAL
+} gs_symbol_visibility_kind_t;
 
 #endif // __GSPIN_TREE_H__

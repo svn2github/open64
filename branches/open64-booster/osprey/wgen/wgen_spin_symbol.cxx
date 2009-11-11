@@ -2078,8 +2078,34 @@ Create_ST_For_Tree (gs_t decl_node)
 
   if (gs_tree_code (decl_node) == GS_VAR_DECL)
   {
-#if !defined(TARG_NVISA)
-    gs_tls_model_kind_t tlsk =
+    // for function decls visibility, needs to delay the process to WGEN_Start_Function
+    gs_symbol_visibility_kind_t vk = 
+      (gs_symbol_visibility_kind_t) gs_decl_visibility(decl_node);
+    if (gs_decl_visibility_specified(decl_node) ||
+        GS_VISIBILITY_DEFAULT != vk) {
+      ST_EXPORT export_class = EXPORT_PREEMPTIBLE;
+      switch (vk) {
+        case GS_VISIBILITY_DEFAULT:
+          export_class = EXPORT_PREEMPTIBLE;
+          break;
+        case GS_VISIBILITY_PROTECTED:
+          export_class = EXPORT_PROTECTED;
+          break;
+        case GS_VISIBILITY_HIDDEN:
+          export_class = EXPORT_HIDDEN;
+          break;
+        case GS_VISIBILITY_INTERNAL:
+          export_class = EXPORT_INTERNAL;
+          break;
+        default:
+          GS_ASSERT(0, "unknown decl visibility");
+          break;
+      }
+      Set_ST_export (*st, export_class);
+    }
+
+#ifndef TARG_NVISA
+    gs_tls_model_kind_t tlsk = 
       (gs_tls_model_kind_t) gs_decl_tls_model(decl_node);
     enum ST_TLS_MODEL tls_model = TLS_NONE;
     switch (tlsk) {
@@ -2097,7 +2123,7 @@ Create_ST_For_Tree (gs_t decl_node)
         break;
     }
     Set_ST_tls_model(st, tls_model);
-#endif
+#endif // !TARG_NVISA
   }
 
   if(Debug_Level >= 2) {

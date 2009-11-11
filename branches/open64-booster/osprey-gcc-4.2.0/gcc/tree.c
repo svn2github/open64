@@ -10450,7 +10450,9 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       gs_set_decl_tls_model((gs_t) GS_NODE (t), DECL_TLS_MODEL(t));
       GS_ASSERT(gs_decl_tls_model((gs_t) GS_NODE (t) ) == DECL_TLS_MODEL(t),
                 ("tls_model setting failure!!!"));
-      
+      gs_set_decl_visibility_specified((gs_t) GS_NODE (t), DECL_VISIBILITY_SPECIFIED(t));
+      gs_set_decl_visibility((gs_t) GS_NODE (t), DECL_VISIBILITY(t));
+
       break;
 
     case tcc_type:
