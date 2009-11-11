@@ -4272,7 +4272,6 @@ vho_lower_mparm (WN * wn)
     // bugs 9989, 10139
     // bug fix for OSP_258
     INT field_id;
-    Is_True (WN_field_id(kid) == 0,("vho_lower_mparm: Expected field-id zero"));
     if ((TY_kind(ty) == KIND_STRUCT) &&
         (field_id /* assign */ = single_field_in_struct (ty)))
       WN_set_field_id (kid, field_id);
