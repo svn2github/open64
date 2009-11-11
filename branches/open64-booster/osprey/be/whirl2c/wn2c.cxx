@@ -3052,9 +3052,6 @@ WN2C_Function_Call_Lhs(TOKEN_BUFFER rhs_tokens,  /* The function call */
 	 }
 	 STAB_OFFSET var_offset = CALLSITE_var_offset(WN2C_Prev_CallSite);
 	 TY_IDX      var_ty = ST_type(result_var);
-
-	 Is_True(!CALLSITE_in_regs(WN2C_Prev_CallSite),
-		 ("Encountered unexpected reference to a return register"));
 	 
 	 /* Return to a variable or to a preg, as was determined by
 	  * the analysis (pattern matching) in PUinfo_init_pu().  We
@@ -3112,9 +3109,6 @@ WN2C_Function_Call_Lhs(TOKEN_BUFFER rhs_tokens,  /* The function call */
 	 Is_True(WN_operator(result_store) == OPR_ISTORE &&
 		 WN_operator(WN_kid0(result_store)) == OPR_LDID, 
 		 ("Unexpected store1 in WN2C_Function_Call_Lhs()"));
-
-	 Is_True(!CALLSITE_in_regs(WN2C_Prev_CallSite),
-		 ("Encountered unexpected reference to a return register"));
 	 
 	 /* Get the type of object being stored */
 	 base_ty = WN_Tree_Type(WN_kid1(result_store));

@@ -137,6 +137,8 @@
 #include "ipa_section.h"
 #include "lnodriver.h"
 #include "ipa_lno_read.h"
+#include "array_copy.h"
+
 
 #pragma weak Prompf_Emit_Whirl_to_Source__GP7pu_infoP2WN
 #if ! defined(BUILD_OS_DARWIN)
@@ -1339,7 +1341,6 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
 #endif
     Reverse_Loops(func_nd);
 
-
    
     if (Roundoff_Level >= ROUNDOFF_ASSOC) {
       // array reductions
@@ -1376,6 +1377,10 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       Mark_Auto_Vectorizable_Loops(func_nd);
 #endif
   
+    // This must be done before LWN_Process_FF_Pragmas because we rely
+    // on the inline markers
+    Perform_Structure_Array_Copy_Opt(func_nd);
+
     // Process pragmas
     if (!LNO_Ignore_Pragmas) {
       Fission_Init();
@@ -1384,7 +1389,8 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
     }
   
     Canonicalize_Unsigned_Loops(func_nd); 
-    
+
+
     BOOL do_ara = ((Get_Trace(TP_LNOPT2,TT_LNO_RUN_ARA) 
       || Run_autopar && LNO_Run_AP > 0)
       && Get_Trace(TP_LNOPT2, TT_LNO_NO_AUTO_PARALLEL));

@@ -326,6 +326,7 @@ static LNO_FLAGS Default_LNO = {
   UINT32_MAX,  /* IfMinMax_Limit */
   UINT32_MAX,  /* IfMinMax_Fix_Cond_Limit */
   0,           /* IfMinMax_Trace */
+  TRUE,        /* Struct_Array_Copy */
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
 
@@ -540,6 +541,7 @@ LNO_FLAGS Initial_LNO = {
   1000000,     /* IfMinMax_Limit */
   1000000,     /* IfMinMax_Fix_Cond_Limit */
   0,           /* IfMinMax_Trace */
+  TRUE,        /* Struct_Array_Copy */
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
 
@@ -908,7 +910,7 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_U32  ( "parallel_pp_overhead", 	NULL,   
 	       128,0,0x7fffffff, Parallel_per_proc_overhead),
   LNOPT_BOOL ( "apo_use_feedback",	NULL,	Apo_use_feedback ),
-
+#endif
   LNOPT_BOOL ( "ifmm_fix_cond",	NULL,	IfMinMax_Fix_Cond),
   LNOPT_U32  ( "ifmm_limit", 	NULL,   
 	       UINT32_MAX,0,UINT32_MAX, IfMinMax_Limit),
@@ -916,8 +918,7 @@ static OPTION_DESC Options_LNO[] = {
 	       UINT32_MAX,0,UINT32_MAX, IfMinMax_Fix_Cond_Limit),
   LNOPT_U32  ( "ifmm_trace", 	NULL,   
 	       0,0,3, IfMinMax_Trace),
-#endif
-
+  LNOPT_BOOL ( "struct_array_copy", NULL, Struct_Array_Copy),
   { OVK_COUNT }		    /* List terminator -- must be last */
 };
 

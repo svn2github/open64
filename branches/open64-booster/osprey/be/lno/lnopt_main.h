@@ -1150,6 +1150,7 @@ inline REGION_INFO* Get_Region_Info(const WN* wn)
 #define TT_CALL_INFO		    0x01000000
 #define TT_SHACKLE_DEBUG            0x02000000
 #define TT_CROSS_LOOP               0x04000000
+#define TT_STRUCT_ARRAY_COPY        0x08000000
 
 #ifdef TARG_X8664
 extern BOOL Minvariant_Removal_For_Simd;

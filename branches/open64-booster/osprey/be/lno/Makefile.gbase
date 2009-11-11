@@ -286,7 +286,8 @@ BE_LNOPT_NLX_CXX_SRCS = \
   cross_snl.cxx			\
   cross_cache.cxx		\
   lnotarget.cxx			\
-  init.cxx	
+  init.cxx			\
+  array_copy.cxx
 
 ifeq ($(BUILD_TARGET), X8664)
 BE_LNOPT_NLX_CXX_SRCS += simd.cxx

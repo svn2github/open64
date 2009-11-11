@@ -1075,7 +1075,8 @@ Accumulate_Expr_PUinfo(WN *root)
 	 case OPR_LDID:
 	    if (ST_sym_class(WN_st(wn)) == CLASS_PREG)
 	    {
-	       Accumulate_Preg_Info(ST_type(WN_st(wn)), WN_load_offset(wn));
+              if (!IS_RETURN_PREG(wn))
+                Accumulate_Preg_Info(ST_type(WN_st(wn)), WN_load_offset(wn));
 
 	       /* If we encounter an unexpected load of a return
 		* register, then update the CALLSITE to indicate that
