@@ -8472,6 +8472,10 @@ COMP_UNIT::Pro_loop_trans()
   BOOL do_pro_loop_fusion = WOPT_Enable_Pro_Loop_Fusion_Trans;
   BOOL do_pro_loop_interchange = WOPT_Enable_Pro_Loop_Interchange_Trans;
 
+  // Disable proactive loop interchange if not optimizing for scalability.
+  if (!OPT_Scale)
+    do_pro_loop_interchange = FALSE;
+
   // Debug limit
   if ((WOPT_Enable_Pro_Loop_Fusion_Func_Limit >= 0)
       && (Current_PU_Count() > WOPT_Enable_Pro_Loop_Fusion_Func_Limit))
