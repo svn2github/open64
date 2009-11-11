@@ -2693,6 +2693,66 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
+  /* AES instructions */
+  Instruction_Group( "aes reg opnd",
+                        TOP_vaesenc,
+                        TOP_vaesenclast,
+                        TOP_vaesdec,
+                        TOP_vaesdeclast,
+                        TOP_vaeskeygenassist,
+                        TOP_vaesimc,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(10);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "aes mem opnd",
+                        TOP_vaesencx,
+                        TOP_vaesencxx,
+                        TOP_vaesencxxx,
+                        TOP_vaesenclastx,
+                        TOP_vaesenclastxx,
+                        TOP_vaesenclastxxx,
+                        TOP_vaesdecx,
+                        TOP_vaesdecxx,
+                        TOP_vaesdecxxx,
+                        TOP_vaesdeclastx,
+                        TOP_vaesdeclastxx,
+                        TOP_vaesdeclastxxx,
+                        TOP_vaeskeygenassistx,
+                        TOP_vaeskeygenassistxx,
+                        TOP_vaeskeygenassistxxx,
+                        TOP_vaesimcx,
+                        TOP_vaesimcxx,
+                        TOP_vaesimcxxx,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(20);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  /* PCLMUL instructions */
+  Instruction_Group( "pclmul reg opnd",
+                        TOP_vpclmulqdq,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(6);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "pclmul mem opnd",
+                        TOP_vpclmulqdqx,
+                        TOP_vpclmulqdqxx,
+                        TOP_vpclmulqdqxxx,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(11);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
   Instruction_Group("dummy",
 		    TOP_asm,
 		    TOP_intrncall,

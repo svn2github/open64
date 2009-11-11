@@ -550,6 +550,12 @@ main()
                            TOP_crc32w,
                            TOP_crc32d,
                            TOP_crc32q,
+                           /* AES instructions */
+                           TOP_vaesenc,
+                           TOP_vaesenclast,
+                           TOP_vaesdec,
+                           TOP_vaesdeclast,
+                           TOP_vaeskeygenassist,
 			   TOP_UNDEFINED );
 
   /* One result / two operands in x86 style w/ mem operand */
@@ -684,7 +690,12 @@ main()
                            TOP_crcx32w,
                            TOP_crcx32d,
                            TOP_crcx32q,
-
+                           /* AES instructions */
+                           TOP_vaesencx,
+                           TOP_vaesenclastx,
+                           TOP_vaesdecx,
+                           TOP_vaesdeclastx,
+                           TOP_vaeskeygenassistx,
 			   TOP_UNDEFINED );
 
   /* One result / two operands in x86 style w/ mem operand w/ scaled-index */
@@ -822,7 +833,12 @@ main()
                            TOP_crcxx32w,
                            TOP_crcxx32d,
                            TOP_crcxx32q,
-
+                           /* AES instructions */
+                           TOP_vaesencxx,
+                           TOP_vaesenclastxx,
+                           TOP_vaesdecxx,
+                           TOP_vaesdeclastxx,
+                           TOP_vaeskeygenassistxx,
 			   TOP_UNDEFINED );
 
   /* One result / two operands in x86 style w/ mem operand w/o base */
@@ -959,7 +975,12 @@ main()
                            TOP_crcxxx32w,
                            TOP_crcxxx32d,
                            TOP_crcxxx32q,
-
+                           /* AES instructions */
+                           TOP_vaesencxxx,
+                           TOP_vaesenclastxxx,
+                           TOP_vaesdecxxx,
+                           TOP_vaesdeclastxxx,
+                           TOP_vaeskeygenassistxxx,
 			   TOP_UNDEFINED );
 
   /* One result / three operands in x86 style */
@@ -1002,7 +1023,8 @@ main()
                            TOP_extr128v64,
                            TOP_finsr128v32,
                            TOP_fextr128v32,
-
+                           /* PCLMUL instructions */
+                           TOP_vpclmulqdq,
 			   TOP_UNDEFINED );
 
   /* One result / x86-style opr, mem, opr */
@@ -1041,7 +1063,8 @@ main()
                            TOP_extrx128v64,
                            TOP_finsrx128v32,
                            TOP_fextrx128v32,
-
+                           /* PCLMUL instructions */
+                           TOP_vpclmulqdqx,
 			   TOP_UNDEFINED );
 
   /* One result / x86 style opr, mem with scaled-index with base, opr*/
@@ -1082,7 +1105,8 @@ main()
                            TOP_extrxx128v64,
                            TOP_finsrxx128v32,
                            TOP_fextrxx128v32,
-
+                           /* PCLMUL instructions */
+                           TOP_vpclmulqdqxx,
 			   TOP_UNDEFINED );
 
   /* One result / x86 style opr, mem with scaled-index w/o base, opr*/
@@ -1122,7 +1146,8 @@ main()
                            TOP_extrxxx128v64,
                            TOP_finsrxxx128v32,
                            TOP_fextrxxx128v32,
-
+                           /* PCLMUL instructions */
+                           TOP_vpclmulqdqxxx,
 			   TOP_UNDEFINED );
 
   /* SSE4.2 cmpestri/cmpestrm */
@@ -1511,6 +1536,8 @@ main()
                            TOP_popcnt16,
                            TOP_popcnt32,
                            TOP_popcnt64,
+                           /* AES instructions */
+                           TOP_vaesimc,
 			   TOP_UNDEFINED );
 
   /* One result / one mem opnd */
@@ -1528,6 +1555,8 @@ main()
                            TOP_popcntx16,
                            TOP_popcntx32,
                            TOP_popcntx64,
+                           /* AES instructions */
+                           TOP_vaesimcx,
 			   TOP_UNDEFINED );
 
   /* One result / one mem opnd with scaled-index with base */
@@ -1547,6 +1576,8 @@ main()
                            TOP_popcntxx16,
                            TOP_popcntxx32,
                            TOP_popcntxx64,
+                           /* AES instructions */
+                           TOP_vaesimcxx,
 			   TOP_UNDEFINED );
 
   /* One result / one mem opnd with scaled-index w/o base */
@@ -1565,6 +1596,8 @@ main()
                            TOP_popcntxxx16,
                            TOP_popcntxxx32,
                            TOP_popcntxxx64,
+                           /* AES instructions */
+                           TOP_vaesimcxxx,
 			   TOP_UNDEFINED );
 
   /* Two operands / no result */

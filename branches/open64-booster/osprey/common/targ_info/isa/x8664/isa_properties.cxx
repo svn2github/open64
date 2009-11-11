@@ -1481,7 +1481,29 @@ main()
                      TOP_ptestx128,
                      TOP_ptestxx128,
                      TOP_ptestxxx128,
-
+                     /* AES instructions */
+                     TOP_vaesimcx,
+                     TOP_vaesimcxx,
+                     TOP_vaesimcxxx,
+                     TOP_vaeskeygenassistx,
+                     TOP_vaeskeygenassistxx,
+                     TOP_vaeskeygenassistxxx,
+                     TOP_vaesencx,
+                     TOP_vaesencxx,
+                     TOP_vaesencxxx,
+                     TOP_vaesenclastx,
+                     TOP_vaesenclastxx,
+                     TOP_vaesenclastxxx,
+                     TOP_vaesdecx,
+                     TOP_vaesdecxx,
+                     TOP_vaesdecxxx,
+                     TOP_vaesdeclastx,
+                     TOP_vaesdeclastxx,
+                     TOP_vaesdeclastxxx,
+                     /* PCLMUL instructions */
+                     TOP_vpclmulqdqx,
+                     TOP_vpclmulqdqxx,
+                     TOP_vpclmulqdqxxx,
                      TOP_UNDEFINED);
 
   /* ===== arith. operations with memory src and dest operand ====== */
@@ -3968,6 +3990,36 @@ main()
                      TOP_ptestx128,
                      TOP_ptestxx128,
                      TOP_ptestxxx128,
+                     /* AES instructions */
+                     TOP_vaesimc,
+                     TOP_vaesimcx,
+                     TOP_vaesimcxx,
+                     TOP_vaesimcxxx,
+                     TOP_vaeskeygenassist,
+                     TOP_vaeskeygenassistx,
+                     TOP_vaeskeygenassistxx,
+                     TOP_vaeskeygenassistxxx,
+                     TOP_vaesenc,
+                     TOP_vaesencx,
+                     TOP_vaesencxx,
+                     TOP_vaesencxxx,
+                     TOP_vaesenclast,
+                     TOP_vaesenclastx,
+                     TOP_vaesenclastxx,
+                     TOP_vaesenclastxxx,
+                     TOP_vaesdec,
+                     TOP_vaesdecx,
+                     TOP_vaesdecxx,
+                     TOP_vaesdecxxx,
+                     TOP_vaesdeclast,
+                     TOP_vaesdeclastx,
+                     TOP_vaesdeclastxx,
+                     TOP_vaesdeclastxxx,
+                     /* PCLMUL instructions */
+                     TOP_vpclmulqdq,
+                     TOP_vpclmulqdqx,
+                     TOP_vpclmulqdqxx,
+                     TOP_vpclmulqdqxxx,
 		     TOP_UNDEFINED );
 
   /* ==== x86 style instructions ==== */
@@ -4655,7 +4707,28 @@ main()
                      TOP_fextrx128v32,
                      TOP_fextrxx128v32,
                      TOP_fextrxxx128v32,
-
+                     /* AES instructions */
+                     TOP_vaesenc,
+                     TOP_vaesencx,
+                     TOP_vaesencxx,
+                     TOP_vaesencxxx,
+                     TOP_vaesenclast,
+                     TOP_vaesenclastx,
+                     TOP_vaesenclastxx,
+                     TOP_vaesenclastxxx,
+                     TOP_vaesdec,
+                     TOP_vaesdecx,
+                     TOP_vaesdecxx,
+                     TOP_vaesdecxxx,
+                     TOP_vaesdeclast,
+                     TOP_vaesdeclastx,
+                     TOP_vaesdeclastxx,
+                     TOP_vaesdeclastxxx,
+                     /* PCLMUL instructions */
+                     TOP_vpclmulqdq,
+                     TOP_vpclmulqdqx,
+                     TOP_vpclmulqdqxx,
+                     TOP_vpclmulqdqxxx,
                      TOP_UNDEFINED );
 
   /* ===== Predicated instructions ====== */
