@@ -3258,6 +3258,50 @@ fei_dowhile(void)
    cwh_block_set_current(block);
 }
 
+/* to check if the step and end expression is of the correct form, 
+ * currently we only verify the end opr.
+*/
+static bool verify_do_loop_sei(WN *loop)
+{
+   WN *start, *end, *incr;
+   DevAssert((WN_opcode(loop) == OPC_DO_LOOP),("The WHIRL node is not DO_LOOP"));
+   start = WN_kid1(loop);
+   end = WN_kid2(loop);
+   incr = WN_kid3(loop);
+
+   if (WN_operator(end) != OPR_LT && WN_operator(end) != OPR_LE
+       && WN_operator(end) != OPR_GT && WN_operator(end) != OPR_GE)
+     return false;
+   
+
+   return true;   
+}
+
+WN* convert_doloop_to_while(WN* doloop)
+{
+// <start>
+// WHILE <end>
+//  <stmts>
+//  <step>
+    WN *body; 
+    WN *while_body; 
+    WN *temp; 
+    body = WN_CreateBlock();
+    while_body = WN_CreateBlock();
+
+    DevAssert((WN_opcode(doloop) == OPC_DO_LOOP),("The WHIRL node is not DO_LOOP"));
+    WN_INSERT_BlockLast(body, WN_COPY_Tree(WN_kid1(doloop)));
+
+    WN_Set_Linenum(while_body, WN_linenum(WN_kid3(doloop)));
+    WN_INSERT_BlockLast(while_body, WN_COPY_Tree(WN_kid4(doloop)));
+    WN_INSERT_BlockLast(while_body, WN_COPY_Tree(WN_kid3(doloop)));
+    temp = WN_CreateWhileDo(WN_COPY_Tree(WN_kid2(doloop)), while_body);
+    WN_Set_Linenum(temp, WN_linenum(doloop));
+    WN_INSERT_BlockLast(body, temp); 
+
+    return body;        
+}
+
 /*================================================================
  *
  * fei_doloop
@@ -3520,6 +3564,14 @@ fei_doloop(INT32	line)
    WN_Set_Linenum (stmts, USRCPOS_srcpos(current_srcpos) );
 
    doloop = WN_CreateDO(index_id, start, end, step, stmts, NULL);
+
+
+   if(!verify_do_loop_sei(doloop))
+   {
+     WN* whileloop;
+     whileloop = convert_doloop_to_while(doloop);
+     doloop = whileloop;
+   }
 
    cwh_directive_insert_do_loop_directives();
    cwh_block_append(doloop);
