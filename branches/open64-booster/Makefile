@@ -60,8 +60,8 @@ ifeq ($(MACHINE_TYPE), ia64)
 # ia64
   NATIVE_BUILD_DIR    = osprey/targia64_ia64_nodebug
   NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia64_ia64
-  GNUFE_BUILD_DIR     = osprey-gcc/targia64_ia64
-  GNUFE42_BUILD_DIR   = osprey-gcc-4.2.0/targia64_ia64
+  GNUFE_BUILD_DIR     = osprey-gcc-4.2.0/targia64_ia64
+  GNUFE_BUILD_HOST    = ia64-unknown-linux-gnu
   TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/itanium.so 
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so
@@ -71,8 +71,8 @@ ifeq ($(MACHINE_TYPE), i386)
 # i386
   NATIVE_BUILD_DIR    = osprey/targia32_x8664
   NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia32_x8664
-  GNUFE_BUILD_DIR     = osprey-gcc/targia32_x8664
-  GNUFE42_BUILD_DIR   = osprey-gcc-4.2.0/targia32_x8664
+  GNUFE_BUILD_DIR     = osprey-gcc-4.2.0/targia32_x8664
+  GNUFE_BUILD_HOST    = x86_64-redhat-linux
   TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/opteron.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/targ_info/em64t.so
   LIB_BUILD_DIR       = osprey/targia32_builtonia32
@@ -82,8 +82,8 @@ ifeq ($(MACHINE_TYPE), x86_64)
 # x86_64
   NATIVE_BUILD_DIR    = osprey/targx8664_x8664
   NATIVE_BUILD_DIR_LD = osprey/targcygnus_x8664_x8664
-  GNUFE_BUILD_DIR     = osprey-gcc/targx8664_x8664
-  GNUFE42_BUILD_DIR   = osprey-gcc-4.2.0/targx8664_x8664
+  GNUFE_BUILD_DIR     = osprey-gcc-4.2.0/targx8664_x8664
+  GNUFE_BUILD_HOST    = x86_64-redhat-linux
   TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/opteron.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/targ_info/em64t.so
   LIB_BUILD_DIR       = osprey/targx8664_builtonia32
@@ -115,14 +115,9 @@ GNU3_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/g++fe/gfecc
 
 GNU4_FE_COMPONENTS = \
-                $(NATIVE_BUILD_DIR)/wgen/wgen \
-                $(GNUFE_BUILD_DIR)/gcc/cc1  \
-                $(GNUFE_BUILD_DIR)/gcc/cc1plus
-
-GNU42_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/wgen_4_2_0/wgen42 \
-                $(GNUFE_BUILD_DIR)/gcc/cc142 \
-                $(GNUFE_BUILD_DIR)/gcc/cc1plus42
+                $(GNUFE_BUILD_DIR)/gcc/cc1 \
+                $(GNUFE_BUILD_DIR)/gcc/cc1plus
 
 FORT_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
@@ -142,7 +137,7 @@ FIRST_COMPONENTS = \
 
 NATIVE_COMPONENTS = $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ)  \
                     $(GNU3_FE_COMPONENTS) $(GNU4_FE_COMPONENTS) \
-                    $(GNU42_FE_COMPONENTS) $(FORT_FE_COMPONENTS) \
+                    $(FORT_FE_COMPONENTS) \
 		    $(FIRST_COMPONENTS) 
 
 CROSS_COMPONENTS =  $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
@@ -276,21 +271,19 @@ $(NATIVE_BUILD_DIR)/libspin/libgspin.a libspin:
 $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a  libspin42:
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0 
 
-# GNU 4.0.2 based FE
-$(GNUFE_BUILD_DIR)/gcc/cc1plus cc1plus: cc1
+# GNU 4.2.0 based FE
+$(GNUFE_BUILD_DIR)/gcc/cc1plus cc1plus: $(GNUFE_BUILD_DIR)/gcc/cc1
 $(GNUFE_BUILD_DIR)/gcc/cc1 cc1: $(GNUFE_BUILD_DIR)/Makefile Force
 	$(MAKE) -C $(GNUFE_BUILD_DIR)
+	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
+	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
+	    install-common install-headers install-libgcc install-cpp install-driver
+	$(MAKE) -C $(GNUFE_BUILD_DIR)/$(GNUFE_BUILD_HOST)/libstdc++-v3 \
+	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
+	    install
 
-$(GNUFE_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin/libgspin.a
+$(GNUFE_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a
 	cd $(GNUFE_BUILD_DIR); BUILD_OPTIMIZE=$(BUILD_OPTIMIZE) CFLAGS=$(GNU_CFLAGS) ./CONFIGURE
-
-# GNU 4.2.0 based FE
-$(GNUFE42_BUILD_DIR)/gcc/cc1plus42 cc1plus42: cc142 
-$(GNUFE42_BUILD_DIR)/gcc/cc142 cc142: $(GNUFE42_BUILD_DIR)/Makefile Force
-	$(MAKE) -C $(GNUFE42_BUILD_DIR)
-
-$(GNUFE42_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a
-	cd $(GNUFE42_BUILD_DIR); BUILD_OPTIMIZE=$(BUILD_OPTIMIZE) CFLAGS=$(GNU_CFLAGS) ./CONFIGURE
 
 build:
 	$(MAKE) first
@@ -357,7 +350,6 @@ ifeq ($(MACHINE_TYPE), ia64)
 endif
 	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER
 	cd $(GNUFE_BUILD_DIR); ./CLOBBER
-	cd $(GNUFE42_BUILD_DIR); ./CLOBBER
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
 		libiberty libunwindP libspin libspin_4_2_0; do  \
 		$(MAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \

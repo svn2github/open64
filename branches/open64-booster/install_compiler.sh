@@ -176,20 +176,34 @@ INSTALL_DRIVER () {
     return 0
 }
 
+# Install internal gcc distribution
+INSTALL_GCC () {
+    pushd ${GNUFE42_AREA}
+
+    for j in '*/*' '*/*/*' '*/*/*/*' '*/*/*/*/*' '*/*/*/*/*/*' '*/*/*/*/*/*/*' '*/*/*/*/*/*/*/*'; do
+        for i in open64-gcc-4.2.0/$j; do
+            if [ -e $i ] && [ ! -d $i ]; then
+                INSTALL_EXEC_SUB $i ${ROOT}/$i
+            fi
+        done
+    done
+
+    popd
+
+    return 0
+}
+
 # Install front-end components
 INSTALL_FE () {
 
     # GNU3 based FE
     INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
     INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
-    # GNU 4.0.2 based FE
-    INSTALL_EXEC_SUB ${AREA}/wgen/wgen ${PHASEPATH}/wgen
-    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1 ${PHASEPATH}/cc1
-    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1plus ${PHASEPATH}/cc1plus
     # GNU 4.2.0 based FE
     INSTALL_EXEC_SUB ${AREA}/wgen_4_2_0/wgen42 ${PHASEPATH}/wgen42
-    INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc142 ${PHASEPATH}/cc142
-    INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc1plus42 ${PHASEPATH}/cc1plus42
+    LIBEXEC=libexec/gcc/x86_64-redhat-linux/4.2.0
+    (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1 cc142)
+    (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1plus cc1plus42)
 
     if [ -f ${AREA}/crayf90/sgi/mfef95 ] ; then 
       INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef95   ${PHASEPATH}/mfef95
@@ -533,6 +547,7 @@ if [ "$TARG_HOST" = "x8664" -a ! -d "${NATIVE_LIB_DIR}/32" ]; then
 fi
 
 INSTALL_DRIVER 
+INSTALL_GCC
 INSTALL_FE 
 INSTALL_BE 
 INSTALL_IPA 
