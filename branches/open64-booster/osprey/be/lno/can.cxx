@@ -422,6 +422,7 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
       dli->Has_Unsummarized_Calls=FALSE;
       dli->Has_Gotos_This_Level=FALSE;
       dli->Has_Exits=FALSE;
+      dli->Has_EH_Regions=FALSE;
       dli->Is_Inner=TRUE;
     }
     WN* wn_region = LWN_Get_Parent(LWN_Get_Parent(wn));

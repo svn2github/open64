@@ -2233,6 +2233,7 @@ DO_LOOP_INFO::DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
 #endif
     Has_Gotos_This_Level = has_gotos_this_level;
     Has_Exits = has_exits;
+    Has_EH_Regions = FALSE;
     Is_Inner = is_inner;
     Has_Bad_Mem = FALSE;
     Has_Barriers = FALSE;
@@ -2330,6 +2331,7 @@ DO_LOOP_INFO::DO_LOOP_INFO(DO_LOOP_INFO *dli, MEM_POOL *pool) {
     Has_Gotos = dli->Has_Gotos;
     Has_Gotos_This_Level = dli->Has_Gotos_This_Level;
     Has_Exits = dli->Has_Exits;
+    Has_EH_Regions = dli->Has_EH_Regions;
     Has_Bad_Mem = dli->Has_Bad_Mem;
     Has_Barriers = dli->Has_Barriers;
     Multiversion_Alias = dli->Multiversion_Alias;
