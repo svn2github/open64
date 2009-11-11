@@ -201,6 +201,8 @@ static char *config_asm_rcs_id = "$Source$ $Revision$";
 #endif /* defined(BUILD_OS_DARWIN) */
 #define AS_IDENT	"#ident" /* Make this ASM_CMNT_START if no ident */
 #define AS_HIDDEN	".hidden"
+#define AS_INTERNAL     ".internal"
+#define AS_PROTECTED    ".protected"
 
 extern BOOL CG_emit_non_gas_syntax;
 

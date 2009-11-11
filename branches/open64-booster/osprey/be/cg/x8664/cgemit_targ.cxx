@@ -415,11 +415,18 @@ CGEMIT_Relocs_In_Asm (TN *t, ST *st, vstring *buf, INT64 *val)
 	case TN_RELOC_X8664_64:
 	  break;
 	case TN_RELOC_X8664_PC32:
+	  *buf = vstr_concat (*buf, ST_name(st));
+	  return 0;
+	case TN_RELOC_X8664_32:
 	  *buf = vstr_concat (*buf, "$");
 	  break;
 	case TN_RELOC_IA32_GOT:
 	  *buf = vstr_concat (*buf, ST_name(st));
 	  *buf = vstr_concat (*buf, "@GOT");
+	  return 0;
+	case TN_RELOC_IA32_GOTOFF:
+	  *buf = vstr_concat (*buf, ST_name(st));
+	  *buf = vstr_concat (*buf, "@GOTOFF");
 	  return 0;
 	case TN_RELOC_X8664_GOTPCREL:
 	  *buf = vstr_concat (*buf, ST_name(st));
@@ -3770,7 +3777,9 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
 	   // tail-call optimization 
 	   ( topcode == TOP_jmp && !TN_is_label( OP_opnd( op, 0))))) {
       ST* function = TN_var(OP_opnd(op, 0));
-      if ( function && !ST_is_export_local(function) )
+      // only preemptaible function need to use PLT, internal/hidden/protected
+      // functions can be called directly from the module (linker resovles it)
+      if ( function && ST_is_preemptible(function) ) 
         strcat( name, "@PLT" );
     }
 #endif /* defined(BUILD_OS_DARWIN) */

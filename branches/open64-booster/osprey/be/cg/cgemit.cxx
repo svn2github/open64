@@ -945,6 +945,29 @@ static void Print_Dynsym (FILE *pfile, ST *st)
 	break;
     }
   }
+  else {
+#if defined(TARG_X8664)
+    const char *eclass_label = NULL;
+    switch (ST_export(st)) {
+      case EXPORT_INTERNAL:
+        eclass_label = AS_INTERNAL;
+        break;
+      case EXPORT_HIDDEN:
+        eclass_label = AS_HIDDEN;
+        break;
+      case EXPORT_PROTECTED:
+        eclass_label = AS_PROTECTED;
+        break;
+      default:
+        break;
+    }
+    if (eclass_label) {
+      fprintf ( pfile, "\t%s\t", eclass_label);
+      EMT_Write_Qualified_Name(pfile, st);
+      putc ('\n', pfile);
+    }
+#endif
+  }
 }
 
 static void Print_Label (FILE *pfile, ST *st, INT64 size)
@@ -956,19 +979,15 @@ static void Print_Label (FILE *pfile, ST *st, INT64 size)
 	fprintf ( pfile, "\t%s\t", AS_WEAK);
 	EMT_Write_Qualified_Name(pfile, st);
 	fputc ('\n', pfile);
-#ifdef KEY // bug 12145: write .hidden
-	if (ST_export(st) == EXPORT_HIDDEN) {
-	  fprintf ( pfile, "\t.hidden\t");
-	  EMT_Write_Qualified_Name(pfile, st);
-	  fputc ('\n', pfile);
-	}
-#endif
     }
     else if (!ST_is_export_local(st)) {
-	fprintf ( pfile, "\t%s\t", AS_GLOBAL);
+	fprintf ( pfile, "%s\t", AS_GLOBAL);
 	EMT_Write_Qualified_Name(pfile, st);
 	fputc ('\n', pfile);
     }
+
+    Print_Dynsym (pfile, st);
+
 #if (defined(TARG_X8664) || defined(TARG_NVISA)) && !defined(BUILD_OS_DARWIN)
 	// Bug 1275 and 4351
 	// Always emit the function type
@@ -1006,7 +1025,6 @@ static void Print_Label (FILE *pfile, ST *st, INT64 size)
     Base_Symbol_And_Offset (st, &base_st, &base_ofst);
     EMT_Write_Qualified_Name (pfile, st);
     fprintf ( pfile, ":\t%s 0x%" LL_FORMAT "x\n", ASM_CMNT, base_ofst);
-    Print_Dynsym (pfile, st);
 }
 
 static void
@@ -1035,20 +1053,20 @@ Print_Common (FILE *pfile, ST *st)
 #else
     fprintf ( pfile, "\t%s\t", AS_COM);
     EMT_Write_Qualified_Name(pfile, st);
-#ifdef TARG_X8664
-#if defined(BUILD_OS_DARWIN) /* .comm alignment arg not allowed */
+ #ifdef TARG_X8664
+  #if defined(BUILD_OS_DARWIN) /* .comm alignment arg not allowed */
     fprintf ( pfile, ", %" LL_FORMAT "d\n", TY_size(ST_type(st)));
-#else /* defined(BUILD_OS_DARWIN) */
+  #else /* !defined(BUILD_OS_DARWIN) */
     if (LNO_Run_Simd && Simd_Align && TY_size(ST_type(st)) >= 16)
       fprintf ( pfile, ", %" LL_FORMAT "d, 16\n", TY_size(ST_type(st)));
     else
       fprintf ( pfile, ", %" LL_FORMAT "d, %d\n", 
  	TY_size(ST_type(st)), TY_align(ST_type(st)));
-#endif /* defined(BUILD_OS_DARWIN) */
-#else
+  #endif /* defined(BUILD_OS_DARWIN) */
+ #else  // !TARG_X8664
     fprintf ( pfile, ", %" LL_FORMAT "d, %d\n", 
 		TY_size(ST_type(st)), TY_align(ST_type(st)));
-#endif
+ #endif
     Print_Dynsym (pfile, st);
 #endif // TARG_NVISA
     // this is needed so that we don't emit commons more than once

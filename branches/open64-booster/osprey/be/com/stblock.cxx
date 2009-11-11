@@ -712,7 +712,7 @@ Base_Symbol_And_Offset_For_Addressing (
 
   while( (ST_base(base) != base  ) 
 	 && (ST_sclass(base) != SCLASS_TEXT) 
-	 && !((Gen_PIC_Shared || Gen_PIC_Call_Shared) && ST_is_preemptible(base))
+	 && !((Gen_PIC_Shared || Gen_PIC_Call_Shared) && !ST_is_export_local(base))
 #ifdef KEY
 	 && !ST_is_weak_symbol(base)
 	 && !ST_is_thread_local(base)

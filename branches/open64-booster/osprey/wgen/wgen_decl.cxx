@@ -1440,6 +1440,29 @@ WGEN_Start_Function(gs_t fndecl)
 	  else if (is_attribute("used", attr))
 	    Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);  // bug 3697
 #endif
+          else if (is_attribute("visibility", attr)) {
+            // process __attribute__ ((visibility ("default   |
+            //                                      hidden    |
+            //                                      internal  |
+            //                                      protected  ")))
+            gs_t value = gs_tree_value (nd);
+            Is_True (gs_tree_code(value) == GS_TREE_LIST,
+                     ("Expected TREE_LIST"));
+            value = gs_tree_value (value);
+            if (gs_tree_code(value) == GS_STRING_CST) {
+              const char *str = 
+                const_cast<char*>(gs_tree_string_pointer(value));
+              if (strcasecmp(str, "default") == 0) {
+                Set_ST_export (func_st, EXPORT_PREEMPTIBLE);
+              } else if (strcasecmp(str, "internal") == 0) {
+                Set_ST_export (func_st, EXPORT_INTERNAL);
+              } else if (strcasecmp(str, "hidden") == 0) {
+                Set_ST_export (func_st, EXPORT_HIDDEN);
+              } else if (strcasecmp(str, "protected") == 0) {
+                Set_ST_export (func_st, EXPORT_PROTECTED);
+              }
+            }
+	  }
 	}
       } 
     }
