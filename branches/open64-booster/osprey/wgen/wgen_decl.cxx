@@ -1541,7 +1541,7 @@ WGEN_Start_Function(gs_t fndecl)
 // Insert special variables into the local symtab, store their id's
 // in the PU_TAB, to be accessed later in the front-end, WN Lowerer,
 // inliner/ipa, and back-end.
-    if (key_exceptions)
+    if (emit_exceptions)
        Setup_Entry_For_EH ();
     else
        Dummy_Exc_Ptr_Expr = NULL;
@@ -1874,8 +1874,7 @@ WGEN_Finish_Function (gs_t fndecl)
     if (lang_cplus) {
       // Add any handler code
       Do_Handlers ();
-      // if (flag_exceptions)// check if exceptions are enabled
-      if (key_exceptions)
+      if (emit_exceptions)
 	Do_EH_Tables ();
     }
 

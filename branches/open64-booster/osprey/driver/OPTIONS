@@ -1906,35 +1906,30 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -fcall-used-%s	;		Cc	NONE	""
 	""
-% KEY: Because of limitation on derived flags, we repeat the -fexceptions
-% in the implied list.  This is to find the parent flag so action is done.
 #ifdef X8664
--fexceptions	;	ALL	cfe	"-fexceptions -fgnu-exceptions -TENV:frame_pointer=on"
+-fexceptions	;	Cc	CPP,cfe	"-fexceptions -TENV:frame_pointer=on"
 	"Enable exception handling"
 #else
--fexceptions	;	ALL	cfe	"-fexceptions -fgnu-exceptions"
+-fexceptions	;	Cc	CPP,cfe	self
 	"Enable exception handling"
 -foptimize-regions  ;   Cc  cfe "-foptimize-regions -TENV:omit_ue_destroy_frame=on"
-    "Enable optimization of EH regions formation"
+	"Enable optimization of EH regions formation"
 #endif
--fhandle-exceptions	;	Cc	cpp,cfe	self
-	"Enable exception handling"
-#ifndef SL
--fno-exceptions	;	Cc	CPP,cfe	"-fno-exceptions -fno-gnu-exceptions"
-	"Disable exception handling"
-#else
+-fhandle-exceptions	;	Cc	CPP,cfe	self
+	""
 -fno-exceptions	;	Cc	CPP,cfe	"-fno-exceptions"
 	"Disable exception handling"
-#endif
+-fno-emit-exceptions	;	Cc	w	self
+	"Do not emit code to handle exceptions"
 -fno-optimize-regions	;	Cc	cfe	self
 	"Enable optimization of EH regions formation"
--fno-handle-exceptions	;	Cc	cfe	self
-	"Disable exception handling"
-#ifdef KEY	/* bug 11732 */
--fgnu-exceptions	toggle(&gnu_exceptions,TRUE);	C	cfe	""
-	"Enable exception handling in the GNU front-end"
--fno-gnu-exceptions	toggle(&gnu_exceptions,FALSE);	C	cfe	""
-	"Disable exception handling in the GNU front-end"
+-fno-handle-exceptions	;	Cc	CPP,cfe	self
+	""
+#ifdef KEY     /* bug 11732 */
+-fgnu-exceptions	;	Cc	CPP,cfe	"-fexceptions"
+	""
+-fno-gnu-exceptions	;	Cc	CPP,cfe     "-fno-exceptions"
+	""
 #endif
 -ffixed-%s	;		Cc	NONE	"-TENV:registers_not_allocatable=%s"
 	""

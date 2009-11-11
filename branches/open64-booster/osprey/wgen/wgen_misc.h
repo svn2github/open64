@@ -124,7 +124,7 @@ extern BOOL wgen_invoke_inliner;	/* from main.c */
 extern char *asm_file_name;		/* from main.c */
 extern BOOL TARGET_64BIT;		/* from main.c */
 extern int lineno;			/* from main.c */
-extern int key_exceptions;		/* from main.c */
+extern int emit_exceptions;		/* from main.c */
 extern BOOL opt_regions;		/* from main.c */
 extern gs_t program;			/* from main.c */
 extern BOOL lang_cplus;			/* from main.c */

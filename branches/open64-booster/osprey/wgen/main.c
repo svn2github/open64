@@ -54,7 +54,7 @@ char *Spin_File_Name = NULL;
 FILE *Spin_File = NULL;
 BOOL flag_no_common = FALSE;
 int pstatic_as_global = 0;
-int key_exceptions = 0;
+int emit_exceptions = -1;
 BOOL opt_regions = 0;
 BOOL lang_cplus = FALSE;
 BOOL c_omit_external = TRUE;
@@ -90,12 +90,14 @@ Process_Command_Line(INT argc, char **argv)
 
 	  switch ( *cp++ ) {
 
-	  case 'f':		    /* file options */
+	  case 'f':
 	      if (*cp == 0)
 		  ;
+	      else if (strcmp(cp, "no-emit-exceptions") == 0) 
+		  emit_exceptions = 0;
 	      else if (*(cp+1) != ',' && *(cp+1) != ':')
 		  ;
-	      else {
+	      else {                /* file options */
 		  switch (*cp) {
 		  case 'f':
 		      Feedback_File_Name = cp + 2;
@@ -166,8 +168,9 @@ Process_Cc1_Command_Line(gs_t arg_list)
   lang_cplus = !strcmp(command, "cc1plus");
 #endif
 
-  if (lang_cplus)
-    key_exceptions = 1;
+  // if not set by the command line, set default value by language
+  if (emit_exceptions == -1)
+    emit_exceptions = (lang_cplus) ? 1 : 0;
 
   for (i = 1; i < argc; i++) {
       argv = gs_s(gs_index(arg_list, i));
@@ -192,19 +195,15 @@ Process_Cc1_Command_Line(gs_t arg_list)
 
 	  case 'e':
 	      if (lang_cplus && !strcmp( cp, "xceptions" ))
-		key_exceptions = TRUE;
+		emit_exceptions = 1;
 	      break;
 
 	  case 'f':
 	      if (!strcmp( cp, "no-exceptions" )) {
-		key_exceptions = FALSE;
+		emit_exceptions = 0;
 	      }
 	      else if (lang_cplus && !strcmp( cp, "exceptions" )) {
-		key_exceptions = TRUE;
-	      }
-	      else if (!strcmp( cp, "no-gnu-exceptions")) {
-		// GNU exceptions off, turn off exception here also.
-		key_exceptions = FALSE;
+		emit_exceptions = 1;
 	      }
 	      else if (!lang_cplus && !strcmp( cp, "no-c-omit-external")) {
 		c_omit_external = FALSE;

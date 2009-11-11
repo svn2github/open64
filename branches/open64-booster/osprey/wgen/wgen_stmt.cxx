@@ -485,7 +485,7 @@ Do_Handlers (INT cleanups)
 
   // enable_cxx_openmp ensures that we do not need any special processing
   // while inside a C++ exception handler.
-  if (key_exceptions
+  if (emit_exceptions
 #ifdef FE_GNU_4_2_0
       && !enable_cxx_openmp
 #endif
@@ -525,7 +525,7 @@ Do_Handlers (INT cleanups)
 #ifdef KEY
   processing_handler = false;
   Do_Cleanups_For_EH(cleanups);
-  if (key_exceptions) 
+  if (emit_exceptions) 
     FmtAssert (cleanup_list_for_eh.size() == cleanups,
                ("EH Cleanup list not completely processed"));
 
@@ -905,7 +905,7 @@ Do_Temp_Cleanups (gs_t t)
   }
   --temp_cleanup_i;
 
-  if (key_exceptions && processing_handler && 
+  if (emit_exceptions && processing_handler && 
 	!cleanup_matches(temp_cleanup_stack[temp_cleanup_i+1].expr, t))
   {
     HANDLER_INFO hi = handler_stack.top();
@@ -1892,7 +1892,7 @@ WGEN_Expand_Break (void)
 
   if (scope)
   {
-    if (key_exceptions && processing_handler)
+    if (emit_exceptions && processing_handler)
 	Cleanup_To_Scope_From_Handler (scope);
     else
     	Cleanup_To_Scope (scope);
@@ -1933,7 +1933,7 @@ WGEN_Expand_Continue (void)
    }
   }
 
-  if (key_exceptions && processing_handler && !label_idx)
+  if (emit_exceptions && processing_handler && !label_idx)
   { // have not yet found the enclosing loop
 	INT32 j = hi.break_continue->size()-1;
 	while ((*hi.break_continue)[j].tree_code == GS_SWITCH_STMT) --j;
@@ -1944,7 +1944,7 @@ WGEN_Expand_Continue (void)
 
   if (scope)
   {
-    if (key_exceptions && processing_handler)
+    if (emit_exceptions && processing_handler)
 	Cleanup_To_Scope_From_Handler (scope);
     else
     	Cleanup_To_Scope (scope);
@@ -2137,12 +2137,12 @@ WGEN_Expand_Goto (gs_t label)	// KEY VERSION
       }
     }
 
-  if (in_handler && (!key_exceptions || !processing_handler))
+  if (in_handler && (!emit_exceptions || !processing_handler))
   	DevWarn ("Goto in exception handler but exceptions not enabled?");
 // If this is a handler, we have just emitted the cleanups within it. 
 // Now find out what other cleanups need to be emitted for variables 
 // outside the handler.
-  if (in_handler && processing_handler && key_exceptions)
+  if (in_handler && processing_handler && emit_exceptions)
   {
     HANDLER_INFO hi = handler_stack.top();
 
@@ -2309,7 +2309,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       --i;
     }
 #ifdef KEY
-    if (key_exceptions && processing_handler) {
+    if (emit_exceptions && processing_handler) {
 	HANDLER_INFO hi = handler_stack.top();
 	FmtAssert (hi.scope, ("NULL scope"));
 	int j = hi.scope->size()-1;
@@ -2425,7 +2425,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       --i;
     }
 #ifdef KEY
-    if (key_exceptions && processing_handler) {
+    if (emit_exceptions && processing_handler) {
 	HANDLER_INFO hi = handler_stack.top();
 	FmtAssert (hi.scope, ("NULL scope"));
 	int j = hi.scope->size()-1;
@@ -3085,7 +3085,7 @@ Create_handler_list (int scope_index)
     if ((gs_tree_code(t) != GS_TRY_BLOCK) || gs_cleanup_p(t))	continue;
 
     gs_t h = gs_try_handlers (t);
-    if (key_exceptions)
+    if (emit_exceptions)
       FmtAssert (h, ("Create_handler_list: Null handlers"));
 
     HANDLER_ITER iter (h);
@@ -3586,7 +3586,7 @@ WGEN_Expand_Try (gs_t stmt)
   vector<BREAK_CONTINUE_INFO> *break_continue = Get_Break_Continue_Info ();
   int handler_count=0;
   WN * region_body;
-  if (key_exceptions)
+  if (emit_exceptions)
   {
     region_body = WN_CreateBlock();
     WGEN_Stmt_Push (region_body, wgen_stmk_region_body, Get_Srcpos());
@@ -3602,7 +3602,7 @@ WGEN_Expand_Try (gs_t stmt)
 
 #ifdef KEY
   LABEL_IDX start = 0;
-  if (key_exceptions)
+  if (emit_exceptions)
   {
     WGEN_Stmt_Pop (wgen_stmk_region_body);
     WN * region_pragmas = WN_CreateBlock();
@@ -3661,10 +3661,10 @@ WGEN_Expand_Try (gs_t stmt)
   cmp_idxs[1] = start;
   LABEL_IDX goto_idx=0;
   bool outermost = 0;
-  if (key_exceptions) outermost = Get_Cleanup_Info (cleanups, &goto_idx);
+  if (emit_exceptions) outermost = Get_Cleanup_Info (cleanups, &goto_idx);
   vector<ST_IDX> *handler_list = new vector<ST_IDX>();
   vector<ST_IDX> * eh_spec_list = NULL;
-  if (key_exceptions) 
+  if (emit_exceptions) 
   {
     Get_handler_list (handler_list);
     eh_spec_list = new vector<ST_IDX>();
@@ -3726,7 +3726,7 @@ WGEN_Expand_EH_Spec (gs_t stmt)
 #ifdef KEY
       int bkup = current_eh_spec_ofst;
       int initial_size = eh_spec_vector.size();
-      if (key_exceptions)
+      if (emit_exceptions)
       {
         // Generally, there is 1 exception specification per function.
         // After inlining (by the GNU front-end or inliner/ipa), the caller
@@ -3775,7 +3775,7 @@ WGEN_Expand_EH_Spec (gs_t stmt)
       WGEN_Expand_Stmt (EH_SPEC_STMTS (stmt));
 #endif
 #ifdef KEY
-      if (key_exceptions)
+      if (emit_exceptions)
       { // now clear eh_spec_vector, eh_spec_func_end stays.
       	if (!initial_size) eh_spec_vector.clear();
 	else
@@ -3891,10 +3891,10 @@ Generate_unwind_resume (void)
 	call_unexpected = Generate_cxa_call_unexpected ();
   }
 
-  if (key_exceptions)
+  if (emit_exceptions)
   	WGEN_Stmt_Push (WN_CreateBlock(), wgen_stmk_region_body, Get_Srcpos());
   WGEN_Stmt_Append (call_wn, Get_Srcpos());
-  if (key_exceptions)
+  if (emit_exceptions)
   	Setup_EH_Region (1 /* for _Unwind_Resume */);
 // We would ideally want to put it inside the above region, but we cannot
 // jmp from outside a region into it.
@@ -3902,10 +3902,10 @@ Generate_unwind_resume (void)
   {
   	WGEN_Stmt_Append (WN_CreateLabel ((ST_IDX) 0, goto_unexpected, 0, NULL),
     		Get_Srcpos());
-  	if (key_exceptions)
+  	if (emit_exceptions)
   	    WGEN_Stmt_Push (WN_CreateBlock(), wgen_stmk_region_body, Get_Srcpos());
   	WGEN_Stmt_Append (call_unexpected, Get_Srcpos());
-  	if (key_exceptions)
+  	if (emit_exceptions)
   	    Setup_EH_Region (1 /* for __cxa_call_unexpected */);
   }
 }
@@ -3959,7 +3959,7 @@ WGEN_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
 
 #ifdef KEY
     HANDLER_ITER iter(t);
-    if (key_exceptions)
+    if (emit_exceptions)
     {
       // Generate the compare statements with eh-filter.
       for (iter.First(); iter.Not_Empty(); iter.Next())
@@ -4016,7 +4016,7 @@ WGEN_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
       }
       else
       	WGEN_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL, goto_idx), Get_Srcpos());
-    } // key_exceptions
+    } // emit_exceptions
 #endif // KEY
     // Now, emit the actual exception handler body's.
     for (iter.First(); iter.Not_Empty(); iter.Next()) {

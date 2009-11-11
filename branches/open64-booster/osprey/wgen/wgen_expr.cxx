@@ -8692,7 +8692,7 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 
 #ifdef KEY
-	if (key_exceptions && !gs_tree_nothrow(exp) && 
+	if (emit_exceptions && !gs_tree_nothrow(exp) && 
 // Call terminate() "when the destruction of an object during stack 
 // unwinding (except.ctor) exits using an exception" [except.terminate]
 // So we don't want to form a region in such cases.
@@ -8717,7 +8717,7 @@ WGEN_Expand_Expr (gs_t exp,
 		inside_eh_region = true;
             	WGEN_Stmt_Push (region_body, wgen_stmk_call_region_body, Get_Srcpos());
 	    }
-	} else if (key_exceptions && inside_eh_region && opt_regions)
+	} else if (emit_exceptions && inside_eh_region && opt_regions)
 	{
 	    // The above conditions dictate that this call MUST not be inside
 	    // a region. So close the region.
@@ -9243,7 +9243,7 @@ WGEN_Expand_Expr (gs_t exp,
 #ifdef KEY
     case GS_EXC_PTR_EXPR:
     {
-      if (key_exceptions)
+      if (emit_exceptions)
       {
 	ST_IDX exc_ptr_st = Get_exception_pointer_symbol ();
       	wn = WN_Ldid (Pointer_Mtype, 0, exc_ptr_st, Get_TY(gs_tree_type(exp)));

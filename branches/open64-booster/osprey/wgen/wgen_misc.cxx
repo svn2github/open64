@@ -570,7 +570,7 @@ WGEN_Stmt_Top (void)
 bool
 Check_For_Call_Region (void)
 {
-  if (key_exceptions) {
+  if (emit_exceptions) {
 	if (wn_stmt_sp->kind == wgen_stmk_call_region_body) {
 		Setup_EH_Region();
 		return TRUE;
@@ -660,7 +660,7 @@ WGEN_Stmt_Pop (WGEN_STMT_KIND kind)
 #ifdef KEY
 // another hack.
   WN * to_be_pushed = 0;
-  if (key_exceptions && wn_stmt_sp->kind != kind)
+  if (emit_exceptions && wn_stmt_sp->kind != kind)
   {
     if (!opt_regions || !Did_Not_Terminate_Region)
     {

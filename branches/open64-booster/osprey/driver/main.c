@@ -523,15 +523,6 @@ main (int argc, char *argv[])
 	    add_option_seen(O_fcxx_openmp);
 	    toggle(&fcxx_openmp,1);
 	  }
-	} else {	// not GNU 4
-	  if (option_was_seen(O_fgnu_exceptions) ||	// bug 11732
-	      option_was_seen(O_fno_gnu_exceptions)) {
-	    warning("ignored -fgnu-exceptions/-fno-gnu-exceptions because"
-		    " option is for GNU GCC 4 only");
-	    set_option_unseen(O_fgnu_exceptions);
-	    set_option_unseen(O_fno_gnu_exceptions);
-	    gnu_exceptions = UNDEFINED;
-	  }
 	}
 
 	// Select the appropriate GNU version front-end.

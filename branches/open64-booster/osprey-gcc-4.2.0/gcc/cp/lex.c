@@ -526,7 +526,8 @@ handle_pragma_interface (cpp_reader* dfile ATTRIBUTE_UNUSED )
     finfo->interface_unknown = 0;
 
 #ifdef KEY
-  gs_set_program_flag_value (GS_PRAGMA_INTERFACE, 1);
+  if (flag_spin_file)
+    gs_set_program_flag_value (GS_PRAGMA_INTERFACE, 1);
 #endif
 }
 
@@ -587,7 +588,8 @@ handle_pragma_implementation (cpp_reader* dfile ATTRIBUTE_UNUSED )
     }
 
 #ifdef KEY
-  gs_set_program_flag_value (GS_PRAGMA_IMPLEMENTATION, 1);
+  if (flag_spin_file)
+    gs_set_program_flag_value (GS_PRAGMA_IMPLEMENTATION, 1);
 #endif
 }
 

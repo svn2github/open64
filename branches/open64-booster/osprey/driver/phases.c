@@ -864,14 +864,6 @@ add_file_args (string_list_t *args, phases_t index)
 			break;
 		}
 
-#ifdef KEY
-		if (gnu_exceptions == FALSE &&		// bug 11732
-		    (source_lang == L_cc ||
-		     source_lang == L_CC)) {
-		  add_string(args, "-fno-exceptions");
-		}
-#endif
-
 		if (!option_was_seen(O_nostdinc)) {
 			char *root = directory_path(get_executable_dir());
 			#ifdef PSC_TO_OPEN64
@@ -1235,9 +1227,6 @@ add_file_args (string_list_t *args, phases_t index)
 		    add_string(args, "-fi386-host");		// bug 10532
 		  }
 #endif
-		}
-		if (gnu_exceptions == FALSE) {			// bug 11732
-		  add_string(args, "-fno-gnu-exceptions");
 		}
 		if (fcxx_openmp == 1) {
 		  add_string(args, "-fcxx-openmp");
