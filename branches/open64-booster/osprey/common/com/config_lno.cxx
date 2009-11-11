@@ -238,6 +238,8 @@ static LNO_FLAGS Default_LNO = {
 #endif
   2,		/* Prefetch_cache_factor */
   FALSE,	/* Prefetch_indirect */
+  TRUE,		/* Prefetch_inductive */
+  TRUE,		/* Prefetch_induc_indir */
   FALSE, FALSE,	/* Run_prefetch_manual */
   TRUE,		/* Power_of_two_hack */
   TRUE,		/* Sclrze */
@@ -450,6 +452,8 @@ LNO_FLAGS Initial_LNO = {
 #endif
   2,		/* Prefetch_cache_factor */
   FALSE,	/* Prefetch_indirect */
+  TRUE,		/* Prefetch_inductive */
+  TRUE,		/* Prefetch_induc_indir */
   FALSE, FALSE,	/* Run_prefetch_manual */
   TRUE,		/* Power_of_two_hack */
   TRUE,		/* Sclrze */
@@ -802,6 +806,8 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_U32  ( "prefetch_cache_factor",	NULL,	1,1,50,	Prefetch_cache_factor),
   LNOPT_U32  (   "pf_cf",		NULL,	1,1,50,	Prefetch_cache_factor),
   LNOPT_BOOL ( "prefetch_indirect",	"",	Prefetch_indirect ),
+  LNOPT_BOOL ( "prefetch_inductive",	"",	Prefetch_inductive ),
+  LNOPT_BOOL ( "prefetch_induc_indir",	"",	Prefetch_induc_indir ),
   MHOPT_BOOL_DUP ( "prefetch_level",	Prefetch_Level ),
   MHOPT_BOOL_DUP ( "pf",		Prefetch_Level ),
   LNOPT_BOOL_SET ( "prefetch_manual",	"",	Run_prefetch_manual,

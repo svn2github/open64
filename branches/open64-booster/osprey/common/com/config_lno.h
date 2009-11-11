@@ -290,6 +290,8 @@ typedef struct lno_flags {
   UINT32 Prefetch_iters_ahead;
   UINT32 Prefetch_cache_factor;
   BOOL	Prefetch_indirect;
+  BOOL	Prefetch_inductive;
+  BOOL	Prefetch_induc_indir;
   BOOL	Run_prefetch_manual;
   BOOL	Run_prefetch_manual_set;
   BOOL	Power_of_two_hack;
@@ -533,6 +535,8 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Prefetch_Iters_Ahead	Current_LNO->Prefetch_iters_ahead
 #define LNO_Prefetch_Cache_Factor	Current_LNO->Prefetch_cache_factor
 #define LNO_Prefetch_Indirect		Current_LNO->Prefetch_indirect
+#define LNO_Prefetch_Inductive		Current_LNO->Prefetch_inductive
+#define LNO_Prefetch_Induc_Indir	Current_LNO->Prefetch_induc_indir
 #define LNO_Run_Prefetch_Manual		Current_LNO->Run_prefetch_manual
 #define LNO_Run_Prefetch_Manual_Set	Current_LNO->Run_prefetch_manual_set
 #define LNO_Power_Of_Two_Hack		Current_LNO->Power_of_two_hack

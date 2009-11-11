@@ -899,7 +899,11 @@ extern void  MP_Sanity_Check_Func(WN *func_nd);
 #endif
 
 #ifdef TARG_X8664 //introduced by bug 10953
-extern WN *Simple_Invariant_Stride_Access(WN *array, WN *loop);
+extern WN *Inductive_Base_Addr_Const_Stride(WN *array, WN *loop, WN **base, 
+               BOOL *inductive_use, BOOL *indirect_base, mINT32 *stride_val);
+
+extern WN *Simple_Invariant_Stride_Access(WN *array, WN *loop, BOOL ck_induc_base,
+                                  BOOL *inductive_use, BOOL *indirect_use);
 #endif
 
 #endif // LNOUTILS_DECLARE
