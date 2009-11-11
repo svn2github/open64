@@ -5156,8 +5156,8 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_split_if_head(SC_NODE * sc_if)
     bb_head->Set_next(bb_new);
 
     ifinfo->Set_cond(bb_new);
-    bb_head->Set_kind(BB_GOTO);
     bb_head->Set_ifinfo(NULL);
+    bb_head->Set_kind(BB_GOTO);
     bb_new->Set_ifinfo(ifinfo);
 
     sc_if->Set_bb_rep(bb_new);
