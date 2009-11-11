@@ -316,7 +316,7 @@ BOOL OPT_Malloc_Alg_Set = FALSE;
 INT32 OPT_Hugepage_Heap_Limit = -1;  /* set huge page limit */
 BOOL OPT_Hugepage_Heap_Set = FALSE;
 INT32 OPT_Hugepage_Attr = 1;  /* set huge page mallopt */
-
+BOOL OPT_Scale=FALSE; // Enable scalability optimization */
 BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO(C/C++)
 BOOL Early_Goto_Conversion_Set = FALSE;
 #endif	// KEY
@@ -441,6 +441,9 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL, OV_INTERNAL, 	TRUE,	"ffast_math", "",
     0, 0, 0, &OPT_Ffast_Math, &OPT_Ffast_Math_Set,
     "Determines conformance to IEEE-754 arithmetic rules" },
+
+  { OVK_BOOL, OV_INTERNAL, 	TRUE,	"scale", "",
+    0, 0, 0, &OPT_Scale, NULL, "Perform scalability optimizations" },
 
   { OVK_BOOL, OV_INTERNAL, 	TRUE,	"funsafe_math_optimizations", "",
     0, 0, 0, &OPT_Funsafe_Math_Optimizations,

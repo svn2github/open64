@@ -645,6 +645,8 @@ I-D_LANGUAGE_FORTRAN	;		FTN	CPP	self
 	"Optimize for space"
 -mspace toggle(&ospace,TRUE);	ALL	CMP	"-OPT:space"
 	""
+-mso    toggle(&oscale,TRUE);   ALL     CMP,ipap,	 ""
+        "Optimize for multicore scalability"
 -g	toggle(&glevel,2);		ALL	CMP	"-g2"
 	"full debug info"
 -g0	toggle(&glevel,0);		ALL	CMP	self

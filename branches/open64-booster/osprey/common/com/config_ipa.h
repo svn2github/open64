@@ -356,6 +356,9 @@ extern BOOL IPA_Enable_Fast_Static_Analysis_VF;
 extern BOOL IPA_Enable_Whole_Program_Mode;
 extern BOOL IPA_Enable_Whole_Program_Mode_Set;
 
+// Enable multi-core scalability optimization.
+extern BOOL IPA_Enable_Scale;
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

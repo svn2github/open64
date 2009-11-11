@@ -1682,8 +1682,11 @@ add_file_args (string_list_t *args, phases_t index)
                 }
 #endif
 		break;
-	case P_collect:
 	case P_ipa_link:
+            if (oscale == TRUE)
+                add_string(args, "-IPA:scale=ON");
+	case P_collect:
+
 #if defined(TARG_X8664) || defined(TARG_NVISA)
 		if( abi == ABI_N32 ) {
 		  add_string(args, "-m32");

@@ -1059,6 +1059,9 @@ print_defaults(int argc, char *argv[])
   else
     fprintf(stderr, " -O%d", olevel);
 
+  if (oscale == TRUE)
+      fprintf(stderr, "-mso");
+
   // target CPU
   if (target_cpu != NULL)
     fprintf(stderr, " -mcpu=%s", target_cpu);
