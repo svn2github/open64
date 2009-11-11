@@ -1397,8 +1397,9 @@ WGEN_Start_Function(gs_t fndecl)
 #if 1 // GCC_COMPAT
     gs_symbol_visibility_kind_t vk = 
       (gs_symbol_visibility_kind_t) gs_decl_visibility(fndecl);
-    if (gs_decl_visibility_specified(fndecl) ||
-        GS_VISIBILITY_DEFAULT != vk) {
+    if (gs_tree_public(fndecl) && 
+        (gs_decl_visibility_specified(fndecl) ||
+         GS_VISIBILITY_DEFAULT != vk)) {
       ST_EXPORT export_class = EXPORT_PREEMPTIBLE;
       switch (vk) {
         case GS_VISIBILITY_DEFAULT:
