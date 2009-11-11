@@ -145,7 +145,7 @@ LDIRT += $(LIBRARY)
 endif
 
 TARGETS = $(LIB_TARGETS)
-LDIRT += lib.i numbers.h massage massage.c lib.cat lib.exp lib.cat.m lib.exp.m
+LDIRT += lib.i numbers.h massage massage.c lib.cat lib.exp lib.cat.m lib.exp.m defgets.c
 
 include $(BUILD_BASE)/aqio/aqio.makeinclude
 #include $(BUILD_BASE)/cdc/cdc.makeinclude
@@ -202,8 +202,8 @@ include $(BUILD_TOT)/libcsup/gen/gen.makeinclude
 ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
 CFILES += \
 	catgetmsg.c \
-	catmsgfmt.c 
-#	catpathnm.c
+	catmsgfmt.c \
+	defgets.c
 else
 CFILES += \
 	catclose.c \
@@ -319,6 +319,9 @@ else
 lib.i: $(BUILD_BASE)/errmsg/lib.msg numbers.h
 	$(CCF) -E -I. $(BUILD_BASE)/errmsg/lib.msg > lib.i
 endif
+
+defgets.c: lib.i
+	$(AWK) -f $(BUILD_BASE)/errmsg/extract.awk lib.i > defgets.c
 
 ifeq ($(BUILD_OS), LINUX)
 lib.cat: lib.i
