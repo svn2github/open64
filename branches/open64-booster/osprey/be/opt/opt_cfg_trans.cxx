@@ -107,6 +107,7 @@
 #include "opt_fb.h"
 #include "opt_cfg_trans.h"
 #include "config_wopt.h"
+#include "config_opt.h"
 #include "config_lno.h"
 
 #include "opt_main.h"
