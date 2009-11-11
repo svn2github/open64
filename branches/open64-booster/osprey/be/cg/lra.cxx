@@ -139,6 +139,10 @@ INT spill_nat_num;
 INT spill_global_num;
 #endif
 
+/* The first and last adjust-sp op of the subroutine*/
+static OP* entry_adjust_sp;
+static OP* exit_adjust_sp;
+
 static AVAIL_REGS avail_regs[ISA_REGISTER_CLASS_MAX+1];
 
 /* Set of available registers in each register class. */
@@ -1713,11 +1717,11 @@ Clear_Fat_Point_Calculation()
 // saves/restores).
 //
 static void
-Update_Callee_Availability(BB *bb)
+Update_Callee_Availability(OP* op)
 {
   ISA_REGISTER_CLASS cl;
   REGISTER reg;
-  if (BB_exit(bb)) {
+  if ( op == exit_adjust_sp ) {
     //
     // can't allow callee saved registers to be used below stack adjustment
     // in exit block (restores are above it).
@@ -1740,7 +1744,7 @@ Update_Callee_Availability(BB *bb)
       avail_regs[cl].reg[reg] = TRUE;
     }	  
 #endif // KEY
-  } else if (BB_entry(bb)) {
+  } else if ( op == entry_adjust_sp ) {
     //
     // can't allow callee saved registers above stack adjustment in
     // entry block (saves are below it).
@@ -2075,8 +2079,9 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 #ifdef KEY	 // Bug 4327.
 		 result_cl == ISA_REGISTER_CLASS_integer &&
 #endif
-		 CG_localize_tns) {
-	Update_Callee_Availability(bb);
+		 CG_localize_tns &&
+		 (op == entry_adjust_sp || op == exit_adjust_sp) ) {
+	Update_Callee_Availability(op);
       } 
 
 #ifdef KEY
@@ -4588,6 +4593,31 @@ void Alloc_Regs_For_BB (BB *bb, HB_Schedule *Sched)
   Preallocate_Single_Register_Subclasses(bb);
 #endif
 
+  entry_adjust_sp = exit_adjust_sp = NULL;
+  if (BB_exit(bb))
+  {
+     OP *op;
+     FOR_ALL_BB_OPs_REV(bb, op){
+       if (OP_spadjust_plus(op)){
+         exit_adjust_sp = op;
+	 break;
+       } 
+     }
+  }
+  if (BB_entry(bb))
+  {
+     OP *op;
+     FOR_ALL_BB_OPs(bb, op){
+       if (OP_spadjust_minus(op)){
+         entry_adjust_sp = op;
+	 break;
+       } 
+     }
+  }
+
+  Is_True( entry_adjust_sp != exit_adjust_sp || entry_adjust_sp == NULL,
+		  (" LRA: illegal sp adjustment pair. "));
+  
   do {
     MEM_POOL_Push (&lra_pool);
     Trip_Count++;
