@@ -2076,7 +2076,7 @@ ARA_LOOP_INFO::Walk_Block(WN *block_stmt)
       Walk_Rhs(stmt, skip_store_id);
       
       // Process the LHS for write
-      ARA_REF* new_def = CXX_NEW(ARA_REF(lfs,WN_offset(lfs),this),&ARA_memory_pool);
+      ARA_REF* new_def = CXX_NEW(ARA_REF(lfs,WN_offset(stmt),this),&ARA_memory_pool);
       if (new_def->Has_Bad_Alias()) 
 	CXX_DELETE(new_def, &ARA_memory_pool);
       else {
