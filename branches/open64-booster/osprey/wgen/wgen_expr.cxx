@@ -2303,7 +2303,7 @@ emit_barrier (bool type, gs_t list, INT32 k)
 } /* emit_barrier */
 
 static WN *
-emit_builtin_lock_test_and_set (gs_t exp, INT32 k)
+emit_builtin_lock_test_and_set (INTRINSIC iopc, gs_t exp, INT32 k)
 {
   WN        *wn;
   WN        *arg_wn;
@@ -2313,7 +2313,6 @@ emit_builtin_lock_test_and_set (gs_t exp, INT32 k)
   TYPE_ID    arg_mtype;
   gs_t       list = gs_tree_operand (exp, 1);
   OPCODE     opc;
-  INTRINSIC  iopc;
 
   obj_mtype  = TY_mtype (TY_pointed (Get_TY(gs_tree_type(gs_tree_value(list)))));
   arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
@@ -2329,31 +2328,18 @@ emit_builtin_lock_test_and_set (gs_t exp, INT32 k)
   ikids [1]  = arg_wn;
   list       = gs_tree_chain (list);
 
-  if (obj_mtype == MTYPE_I4) {
-    opc  = OPC_I4INTRINSIC_CALL;
-    iopc = INTRN_LOCK_TEST_AND_SET_I4;
+  if (obj_mtype == MTYPE_V) {
+    obj_mtype = INTRN_Size_Mtype(iopc);
   }
-  else
-  if (obj_mtype == MTYPE_U4) {
-    opc  = OPC_U4INTRINSIC_CALL;
-    iopc = INTRN_LOCK_TEST_AND_SET_I4;
-  }
-  else
-  if (obj_mtype == MTYPE_I8) {
-    opc  = OPC_I8INTRINSIC_CALL;
-    iopc = INTRN_LOCK_TEST_AND_SET_I8;
-  }
-  else
-  if (obj_mtype == MTYPE_U8) {
-    opc  = OPC_U8INTRINSIC_CALL;
-    iopc = INTRN_LOCK_TEST_AND_SET_I8;
-  }
-  else {
-    Fail_FmtAssertion ("unknown object type in __builtin_lock_test_and_set");
-    opc  = OPCODE_UNKNOWN;
-    iopc = INTRINSIC_NONE;
-  }
+  Is_True( (obj_mtype == MTYPE_I1 || obj_mtype == MTYPE_U1 ||
+            obj_mtype == MTYPE_I2 || obj_mtype == MTYPE_U2 ||
+            obj_mtype == MTYPE_I4 || obj_mtype == MTYPE_U4 ||
+            obj_mtype == MTYPE_I8 || obj_mtype == MTYPE_U8 ),
+           ("Unsupported object type in emit_builtin_lock_test_and_set") );
 
+  emit_barrier (TRUE, list, k);
+
+  opc = OPCODE_make_op(OPR_INTRINSIC_CALL, obj_mtype, MTYPE_V);
   wn = WN_Create_Intrinsic (opc, iopc, 2, ikids);
   WGEN_Stmt_Append (wn, Get_Srcpos());
 
@@ -2373,7 +2359,7 @@ emit_builtin_lock_test_and_set (gs_t exp, INT32 k)
 } /* emit_builtin_lock_test_and_set */
 
 static void
-emit_builtin_lock_release (gs_t exp, INT32 k)
+emit_builtin_lock_release (INTRINSIC iopc, gs_t exp, INT32 k)
 {
   WN        *wn;
   WN        *arg_wn;
@@ -2383,7 +2369,6 @@ emit_builtin_lock_release (gs_t exp, INT32 k)
   TYPE_ID    arg_mtype;
   gs_t       list = gs_tree_operand (exp, 1);
   OPCODE     opc;
-  INTRINSIC  iopc;
 
   obj_mtype  = TY_mtype (TY_pointed (Get_TY(gs_tree_type(gs_tree_value(list)))));
   arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
@@ -2393,32 +2378,25 @@ emit_builtin_lock_release (gs_t exp, INT32 k)
   ikids [0]  = arg_wn;
   list       = gs_tree_chain (list);
 
+  if (obj_mtype == MTYPE_V) {
+    // in case first arg is void*
+    obj_mtype = INTRN_Size_Mtype(iopc);
+  }
+  Is_True( (obj_mtype == MTYPE_I1 || obj_mtype == MTYPE_U1 ||
+            obj_mtype == MTYPE_I2 || obj_mtype == MTYPE_U2 ||
+            obj_mtype == MTYPE_I4 || obj_mtype == MTYPE_U4 ||
+            obj_mtype == MTYPE_I8 || obj_mtype == MTYPE_U8 ),
+           ("Unsupported object type in emit_builtin_lock_test_and_set") );
+
   emit_barrier (TRUE, list, k);
 
-  opc = OPC_VINTRINSIC_CALL;
-  if (obj_mtype == MTYPE_I4)
-    iopc = INTRN_LOCK_RELEASE_I4;
-  else
-  if (obj_mtype == MTYPE_U4)
-    iopc = INTRN_LOCK_RELEASE_I4;
-  else
-  if (obj_mtype == MTYPE_I8)
-    iopc = INTRN_LOCK_RELEASE_I8;
-  else
-  if (obj_mtype == MTYPE_U8)
-    iopc = INTRN_LOCK_RELEASE_I8;
-  else {
-    Fail_FmtAssertion ("unknown object type in __builtin_lock_test_and_set");
-    opc  = OPCODE_UNKNOWN;
-    iopc = INTRINSIC_NONE;
-  }
-
+  opc = OPCODE_make_op(OPR_INTRINSIC_CALL, obj_mtype, MTYPE_V);
   wn = WN_Create_Intrinsic (opc, iopc, 1, ikids);
   WGEN_Stmt_Append (wn, Get_Srcpos());
 } /* emit_builtin_lock_release */
 
 static WN *
-emit_builtin_compare_and_swap (gs_t exp, INT32 k)
+emit_builtin_compare_and_swap (INTRINSIC  iopc, gs_t exp, INT32 k)
 {
   WN        *wn;
   WN        *arg_wn;
@@ -2428,7 +2406,6 @@ emit_builtin_compare_and_swap (gs_t exp, INT32 k)
   TYPE_ID    arg_mtype;
   gs_t       list = gs_tree_operand (exp, 1);
   OPCODE     opc;
-  INTRINSIC  iopc;
 
   obj_mtype  = TY_mtype (TY_pointed (Get_TY(gs_tree_type(gs_tree_value(list)))));
   arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
@@ -2450,45 +2427,44 @@ emit_builtin_compare_and_swap (gs_t exp, INT32 k)
   ikids [2]  = arg_wn;
   list       = gs_tree_chain (list);
 
+  if (iopc == INTRN_BOOL_COMPARE_AND_SWAP_I1 ||
+      iopc == INTRN_BOOL_COMPARE_AND_SWAP_I2 ||
+      iopc == INTRN_BOOL_COMPARE_AND_SWAP_I4 ||
+      iopc == INTRN_BOOL_COMPARE_AND_SWAP_I8) {
+    obj_mtype = MTYPE_U1;
+  }
+  if (obj_mtype == MTYPE_V) {
+    // in case first arg is void*
+    obj_mtype = INTRN_Size_Mtype(iopc);
+  }
+  Is_True( (obj_mtype == MTYPE_I1 || obj_mtype == MTYPE_U1 ||
+            obj_mtype == MTYPE_I2 || obj_mtype == MTYPE_U2 ||
+            obj_mtype == MTYPE_I4 || obj_mtype == MTYPE_U4 ||
+            obj_mtype == MTYPE_I8 || obj_mtype == MTYPE_U8 ),
+           ("Unsupported object type in emit_builtin_lock_test_and_set") );
+
   emit_barrier (TRUE, list, k);
 
-  opc = OPC_I4INTRINSIC_CALL;
-  if (obj_mtype == MTYPE_I4)
-    iopc = INTRN_COMPARE_AND_SWAP_I4;
-  else
-  if (obj_mtype == MTYPE_U4)
-    iopc = INTRN_COMPARE_AND_SWAP_I4;
-  else
-  if (obj_mtype == MTYPE_I8)
-    iopc = INTRN_COMPARE_AND_SWAP_I8;
-  else
-  if (obj_mtype == MTYPE_U8)
-    iopc = INTRN_COMPARE_AND_SWAP_I8;
-  else {
-    Fail_FmtAssertion ("unknown object type in __builtin_lock_test_and_set");
-    opc  = OPCODE_UNKNOWN;
-    iopc = INTRINSIC_NONE;
-  }
-
+  opc = OPCODE_make_op(OPR_INTRINSIC_CALL, obj_mtype, MTYPE_V);
   wn = WN_Create_Intrinsic (opc, iopc, 3, ikids);
   WGEN_Stmt_Append (wn, Get_Srcpos());
 
-  ST       *preg_st = MTYPE_To_PREG(MTYPE_I4);
-  TY_IDX    preg_ty_idx = Be_Type_Tbl(MTYPE_I4);
-  PREG_NUM  preg = Create_Preg (MTYPE_I4, NULL);
+  ST       *preg_st = MTYPE_To_PREG(obj_mtype);
+  TY_IDX    preg_ty_idx = Be_Type_Tbl(obj_mtype);
+  PREG_NUM  preg = Create_Preg (obj_mtype, NULL);
 
-  wn = WN_Ldid (MTYPE_I4, -1, Return_Val_Preg, preg_ty_idx);
-  wn = WN_Stid (MTYPE_I4, preg, preg_st, preg_ty_idx, wn),
+  wn = WN_Ldid (obj_mtype, -1, Return_Val_Preg, preg_ty_idx);
+  wn = WN_Stid (obj_mtype, preg, preg_st, preg_ty_idx, wn),
   WGEN_Stmt_Append (wn, Get_Srcpos());
 
   emit_barrier (FALSE, list, k);
 
-  wn = WN_Ldid (MTYPE_I4, preg, preg_st, preg_ty_idx);
+  wn = WN_Ldid (obj_mtype, preg, preg_st, preg_ty_idx);
 
   return wn;
 } /* emit_builtin_compare_and_swap */
 
-/* OSP
+/*
  * emit_builtin_sync_fetch_op
  *   for FETCH_AND_OP (ADD, SUB, AND, OR, XOR, NAND)
  *   for OP_AND_FETCH (ADD, SUB, AND, OR, XOR, NAND)
@@ -2520,8 +2496,15 @@ emit_builtin_sync_fetch_op (INTRINSIC iopc, gs_t exp, INT32 k)
   ikids [1]  = arg_wn;
   list       = gs_tree_chain (list);
 
-  Is_True( (obj_mtype == MTYPE_I4 || obj_mtype == MTYPE_U4 ||
-            obj_mtype == MTYPE_I8 || obj_mtype == MTYPE_U8), 
+  if ( obj_mtype == MTYPE_V ) {
+    // in case first arg is void*
+    obj_mtype = INTRN_Size_Mtype(iopc);
+  }
+
+  Is_True( (obj_mtype == MTYPE_I1 || obj_mtype == MTYPE_U1 ||
+            obj_mtype == MTYPE_I2 || obj_mtype == MTYPE_U2 ||
+            obj_mtype == MTYPE_I4 || obj_mtype == MTYPE_U4 ||
+            obj_mtype == MTYPE_I8 || obj_mtype == MTYPE_U8 ),
            ("Unsupported object type in emit_builtin_sync_fetch_op") );
 
   emit_barrier (TRUE, list, k);
@@ -3443,21 +3426,38 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PCMPEQB:
       *iopc = INTRN_PCMPEQB;
       break;
+    case GSBI_IX86_BUILTIN_PCMPEQB128:
+      *iopc = INTRN_PCMPEQB128;
+      break;
     case GSBI_IX86_BUILTIN_PCMPEQW:
-    case GSBI_IX86_BUILTIN_PCMPEQW128:
       *iopc = INTRN_PCMPEQW;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPEQW128:
+      *iopc = INTRN_PCMPEQW128;
       break;
     case GSBI_IX86_BUILTIN_PCMPEQD:
       *iopc = INTRN_PCMPEQD;
       break;
+    case GSBI_IX86_BUILTIN_PCMPEQD128:
+      *iopc = INTRN_PCMPEQD128;
+      break;
     case GSBI_IX86_BUILTIN_PCMPGTB:
       *iopc = INTRN_PCMPGTB;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPGTB128:
+      *iopc = INTRN_PCMPGTB128;
       break;
     case GSBI_IX86_BUILTIN_PCMPGTW:
       *iopc = INTRN_PCMPGTW;
       break;
+    case GSBI_IX86_BUILTIN_PCMPGTW128:
+      *iopc = INTRN_PCMPGTW128;
+      break;
     case GSBI_IX86_BUILTIN_PCMPGTD:
       *iopc = INTRN_PCMPGTD;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPGTD128:
+      *iopc = INTRN_PCMPGTD128;
       break;
     case GSBI_IX86_BUILTIN_PUNPCKHBW:
       *iopc = INTRN_PUNPCKHBW;
@@ -8259,25 +8259,85 @@ WGEN_Expand_Expr (gs_t exp,
 #endif // KEY
                 break;
               }
-#if 0
-              case BUILT_IN_LOCK_TEST_AND_SET:
-                wn = emit_builtin_lock_test_and_set (exp, num_args-2);
+#if FE_GNU_4_2_0
+              case GSBI_BUILT_IN_LOCK_TEST_AND_SET_1:
+                wn = emit_builtin_lock_test_and_set (INTRN_LOCK_TEST_AND_SET_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_LOCK_TEST_AND_SET_2:
+                wn = emit_builtin_lock_test_and_set (INTRN_LOCK_TEST_AND_SET_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_LOCK_TEST_AND_SET_4:
+                wn = emit_builtin_lock_test_and_set (INTRN_LOCK_TEST_AND_SET_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_LOCK_TEST_AND_SET_8:
+                wn = emit_builtin_lock_test_and_set (INTRN_LOCK_TEST_AND_SET_I8, exp, num_args-2);
                 whirl_generated = TRUE;
                 break;
 
-              case BUILT_IN_LOCK_RELEASE:
-                emit_builtin_lock_release (exp, num_args-1);
+              case GSBI_BUILT_IN_LOCK_RELEASE_1:
+                emit_builtin_lock_release (INTRN_LOCK_RELEASE_I1, exp, num_args-1);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_LOCK_RELEASE_2:
+                emit_builtin_lock_release (INTRN_LOCK_RELEASE_I2, exp, num_args-1);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_LOCK_RELEASE_4:
+                emit_builtin_lock_release (INTRN_LOCK_RELEASE_I4, exp, num_args-1);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_LOCK_RELEASE_8:
+                emit_builtin_lock_release (INTRN_LOCK_RELEASE_I8, exp, num_args-1);
                 whirl_generated = TRUE;
                 break;
 
-              case BUILT_IN_COMPARE_AND_SWAP:
-                wn = emit_builtin_compare_and_swap (exp, num_args-3);
+              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_1:
+                wn = emit_builtin_compare_and_swap (INTRN_COMPARE_AND_SWAP_I1, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_2:
+                wn = emit_builtin_compare_and_swap (INTRN_COMPARE_AND_SWAP_I2, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_4:
+                wn = emit_builtin_compare_and_swap (INTRN_COMPARE_AND_SWAP_I4, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_8:
+                wn = emit_builtin_compare_and_swap (INTRN_COMPARE_AND_SWAP_I8, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_1:
+                wn = emit_builtin_compare_and_swap (INTRN_BOOL_COMPARE_AND_SWAP_I1, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_2:
+                wn = emit_builtin_compare_and_swap (INTRN_BOOL_COMPARE_AND_SWAP_I2, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_4:
+                wn = emit_builtin_compare_and_swap (INTRN_BOOL_COMPARE_AND_SWAP_I4, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_8:
+                wn = emit_builtin_compare_and_swap (INTRN_BOOL_COMPARE_AND_SWAP_I8, exp, num_args-3);
                 whirl_generated = TRUE;
                 break;
 #endif
 
 #ifdef FE_GNU_4_2_0
-	      // OSP
+              case GSBI_BUILT_IN_FETCH_AND_ADD_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_ADD_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_ADD_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_ADD_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
               case GSBI_BUILT_IN_FETCH_AND_ADD_4:
                 wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_ADD_I4, exp, num_args-2);
                 whirl_generated = TRUE;
@@ -8286,13 +8346,180 @@ WGEN_Expand_Expr (gs_t exp,
                 wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_ADD_I8, exp, num_args-2);
                 whirl_generated = TRUE;
                 break;
-
+              case GSBI_BUILT_IN_FETCH_AND_SUB_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_SUB_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_SUB_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_SUB_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_SUB_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_SUB_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_SUB_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_SUB_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_OR_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_OR_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_OR_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_OR_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_OR_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_OR_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_OR_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_OR_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_XOR_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_XOR_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_XOR_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_XOR_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_XOR_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_XOR_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_XOR_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_XOR_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_AND_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_AND_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_AND_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_AND_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_AND_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_AND_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_AND_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_AND_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_NAND_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_NAND_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_NAND_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_NAND_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_NAND_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_NAND_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_NAND_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_NAND_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_ADD_AND_FETCH_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_ADD_AND_FETCH_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_ADD_AND_FETCH_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_ADD_AND_FETCH_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
               case GSBI_BUILT_IN_ADD_AND_FETCH_4:
                 wn = emit_builtin_sync_fetch_op (INTRN_ADD_AND_FETCH_I4, exp, num_args-2);
                 whirl_generated = TRUE;
                 break;
               case GSBI_BUILT_IN_ADD_AND_FETCH_8:
                 wn = emit_builtin_sync_fetch_op (INTRN_ADD_AND_FETCH_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_SUB_AND_FETCH_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_SUB_AND_FETCH_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_SUB_AND_FETCH_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_SUB_AND_FETCH_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_SUB_AND_FETCH_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_SUB_AND_FETCH_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_SUB_AND_FETCH_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_SUB_AND_FETCH_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_OR_AND_FETCH_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_OR_AND_FETCH_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_OR_AND_FETCH_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_OR_AND_FETCH_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_OR_AND_FETCH_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_OR_AND_FETCH_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_OR_AND_FETCH_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_OR_AND_FETCH_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_XOR_AND_FETCH_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_XOR_AND_FETCH_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_XOR_AND_FETCH_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_XOR_AND_FETCH_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_XOR_AND_FETCH_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_XOR_AND_FETCH_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_XOR_AND_FETCH_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_XOR_AND_FETCH_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_AND_AND_FETCH_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_AND_AND_FETCH_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_AND_AND_FETCH_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_AND_AND_FETCH_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_AND_AND_FETCH_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_AND_AND_FETCH_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_AND_AND_FETCH_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_AND_AND_FETCH_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_NAND_AND_FETCH_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_NAND_AND_FETCH_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_NAND_AND_FETCH_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_NAND_AND_FETCH_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_NAND_AND_FETCH_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_NAND_AND_FETCH_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_NAND_AND_FETCH_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_NAND_AND_FETCH_I8, exp, num_args-2);
                 whirl_generated = TRUE;
                 break;
 #endif
@@ -8688,68 +8915,6 @@ WGEN_Expand_Expr (gs_t exp,
                 }
                 break;
 */
-#ifdef FE_GNU_4_2_0
-              // add
-              case GSBI_BUILT_IN_FETCH_AND_ADD_1:
-              case GSBI_BUILT_IN_FETCH_AND_ADD_2:
-                iopc = INTRN_FETCH_AND_ADD_I4;
-                break;
-
-              // sub
-              case GSBI_BUILT_IN_FETCH_AND_SUB_1:
-              case GSBI_BUILT_IN_FETCH_AND_SUB_2:
-              case GSBI_BUILT_IN_FETCH_AND_SUB_4:
-                iopc = INTRN_FETCH_AND_SUB_I4;
-                break;
-
-              case GSBI_BUILT_IN_FETCH_AND_SUB_8:
-                iopc = INTRN_FETCH_AND_SUB_I8;
-                break;
-
-              // or
-              case GSBI_BUILT_IN_FETCH_AND_OR_1:
-              case GSBI_BUILT_IN_FETCH_AND_OR_2:
-              case GSBI_BUILT_IN_FETCH_AND_OR_4:
-                iopc = INTRN_FETCH_AND_OR_I4;
-                break;
-
-              case GSBI_BUILT_IN_FETCH_AND_OR_8:
-                iopc = INTRN_FETCH_AND_OR_I8;
-                break;
-
-              // xor
-              case GSBI_BUILT_IN_FETCH_AND_XOR_1:
-              case GSBI_BUILT_IN_FETCH_AND_XOR_2:
-              case GSBI_BUILT_IN_FETCH_AND_XOR_4:
-                iopc = INTRN_FETCH_AND_XOR_I4;
-                break;
-
-              case GSBI_BUILT_IN_FETCH_AND_XOR_8:
-                iopc = INTRN_FETCH_AND_XOR_I8;
-                break;
-
-              // and
-              case GSBI_BUILT_IN_FETCH_AND_AND_1:
-              case GSBI_BUILT_IN_FETCH_AND_AND_2:
-              case GSBI_BUILT_IN_FETCH_AND_AND_4:
-                iopc = INTRN_FETCH_AND_AND_I4;
-                break;
-
-              case GSBI_BUILT_IN_FETCH_AND_AND_8:
-                iopc = INTRN_FETCH_AND_AND_I8;
-                break;
-
-              // compare_and_swap
-              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_1:
-              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_2:
-              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_4:
-                iopc = INTRN_COMPARE_AND_SWAP_I4;
-                break;
-
-              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_8:
-                iopc = INTRN_COMPARE_AND_SWAP_I8;
-                break;
-#endif // FE_GNU_4_2_0
 #endif
 #ifdef TARG_SL
               case GSBI_BUILT_IN_C3AADDA:

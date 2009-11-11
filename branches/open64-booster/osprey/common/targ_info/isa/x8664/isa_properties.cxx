@@ -434,6 +434,10 @@ main()
 		     TOP_lock_xadd16,
 		     TOP_lock_xadd32,
 		     TOP_lock_xadd64,
+		     TOP_lock_xchg8,
+		     TOP_lock_xchg16,
+		     TOP_lock_xchg32,
+		     TOP_lock_xchg64,
 		     TOP_asm,
 		     TOP_bsf32,
 		     TOP_bsf64,
@@ -1287,10 +1291,6 @@ main()
 		     TOP_lock_or64,
 		     TOP_lock_xor64,
 		     TOP_lock_sub64,
-		     TOP_lock_xadd8,
-		     TOP_lock_xadd16,
-		     TOP_lock_xadd32,
-		     TOP_lock_xadd64,
                      TOP_vfmaddxss,
                      TOP_vfmaddxxss,
                      TOP_vfmaddxxxss,
@@ -2763,6 +2763,10 @@ main()
 		     TOP_lock_xadd16,
 		     TOP_lock_xadd32,
 		     TOP_lock_xadd64,
+		     TOP_lock_xchg8,
+		     TOP_lock_xchg16,
+		     TOP_lock_xchg32,
+		     TOP_lock_xchg64,
                      TOP_UNDEFINED);
 
   /* ===== Non-temporal memory store operator ====== */
@@ -8046,6 +8050,10 @@ main()
 		     TOP_lock_xadd16,
 		     TOP_lock_xadd32,
 		     TOP_lock_xadd64,
+		     TOP_lock_xchg8,
+		     TOP_lock_xchg16,
+		     TOP_lock_xchg32,
+		     TOP_lock_xchg64,
 		     TOP_addsd,
 		     TOP_addss,
 		     TOP_addxsd,
@@ -8782,6 +8790,10 @@ main()
 		     TOP_lock_xadd16,
 		     TOP_lock_xadd32,
 		     TOP_lock_xadd64,
+		     TOP_lock_xchg8,
+		     TOP_lock_xchg16,
+		     TOP_lock_xchg32,
+		     TOP_lock_xchg64,
                      TOP_vzeroupper,
 		     TOP_UNDEFINED);
 
@@ -10597,6 +10609,10 @@ main()
 		     TOP_lock_xadd16,
 		     TOP_lock_xadd32,
 		     TOP_lock_xadd64,
+		     TOP_lock_xchg8,
+		     TOP_lock_xchg16,
+		     TOP_lock_xchg32,
+		     TOP_lock_xchg64,
 		     TOP_UNDEFINED);
 
   ISA_Properties_End();

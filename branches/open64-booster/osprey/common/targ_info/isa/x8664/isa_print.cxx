@@ -2832,8 +2832,12 @@ main()
   Name();
   Result(0);
   Instruction_Print_Group( r,
+			   TOP_not8,
+			   TOP_not16,
 			   TOP_not32,
 			   TOP_not64,
+			   TOP_neg8,
+			   TOP_neg16,
 			   TOP_neg32,
 			   TOP_neg64,
 			   TOP_inc8,
@@ -4100,6 +4104,21 @@ main()
 			   TOP_lock_xadd16,
 			   TOP_lock_xadd32,
 			   TOP_lock_xadd64,
+			   TOP_UNDEFINED );
+
+  /* xchg */
+  ISA_PRINT_TYPE xchg =  ISA_Print_Type_Create("xchg", "lock %s %s%s(%s),%s");
+  Name();
+  Segment();
+  Operand(2);
+  Operand(1);
+  Result(0);
+  Operand(0);
+  Instruction_Print_Group( xchg,
+			   TOP_lock_xchg8,
+			   TOP_lock_xchg16,
+			   TOP_lock_xchg32,
+			   TOP_lock_xchg64,
 			   TOP_UNDEFINED );
 
   ISA_PRINT_TYPE cmpxchg =  ISA_Print_Type_Create("cmpxchg", "lock %s %s,%s%s(%s)");

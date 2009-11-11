@@ -40,6 +40,7 @@
 #define intrn_info_INCLUDED "intrn_info.h"
 
 #include "defs.h"
+#include "mtypes.h"
 #include "wintrinsic.h"
 
 /* Enumeration of mnemonic names for the return types of intrinsic
@@ -135,6 +136,8 @@ typedef struct intrn_info_t {
 } intrn_info_t;
 
 extern const intrn_info_t intrn_info[];
+
+extern TYPE_ID INTRN_Size_Mtype (const INTRINSIC id);
 
 inline BOOL INTRN_by_value (const INTRINSIC i)
 {

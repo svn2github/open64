@@ -3251,8 +3251,12 @@ static void Init_OP_Name()
   OP_Name[TOP_fmulx128v64] = "mulpd";
   OP_Name[TOP_fmulxx128v64] = "mulpd";
   OP_Name[TOP_fmulxxx128v64] = "mulpd";
+  OP_Name[TOP_neg8] = "negb";
+  OP_Name[TOP_neg16] = "negw";
   OP_Name[TOP_neg32] = "negl";
   OP_Name[TOP_neg64] = "negq";
+  OP_Name[TOP_not8] = "notb";
+  OP_Name[TOP_not16] = "notw";
   OP_Name[TOP_not32] = "notl";
   OP_Name[TOP_not64] = "notq";
   OP_Name[TOP_or32]   = "orl";
@@ -3633,6 +3637,11 @@ static void Init_OP_Name()
   OP_Name[TOP_lock_xadd16] = "xaddw";
   OP_Name[TOP_lock_xadd32] = "xaddl";
   OP_Name[TOP_lock_xadd64] = "xaddq";
+
+  OP_Name[TOP_lock_xchg8] = "xchgb";
+  OP_Name[TOP_lock_xchg16] = "xchgw";
+  OP_Name[TOP_lock_xchg32] = "xchgl";
+  OP_Name[TOP_lock_xchg64] = "xchgq";
 
   OP_Name[TOP_bsf32] = "bsfl";
   OP_Name[TOP_bsf64] = "bsfq";

@@ -2960,6 +2960,8 @@ main()
   Operand(3, simm32, offset);
 
   Instruction_Group( "unary int8 arithmetic",
+		     TOP_neg8,
+		     TOP_not8,
   		     TOP_inc8,
 		     TOP_dec8,
 		     TOP_UNDEFINED);
@@ -2967,6 +2969,8 @@ main()
   Operand(0, int8, opnd1);
 
   Instruction_Group( "unary int16 arithmetic",
+		     TOP_neg16,
+		     TOP_not16,
   		     TOP_inc16,
   		     TOP_dec16,
 		     TOP_UNDEFINED);
@@ -5422,6 +5426,7 @@ main()
 		    TOP_lock_cmpxchg8,
 		    TOP_UNDEFINED);
   Result(0,  eflags);
+  Result(1,  eax);
   Operand(0, eax, opnd1);
   Operand(1, int8, opnd2);
   Operand(2, int64, base);
@@ -5431,6 +5436,7 @@ main()
 		    TOP_lock_cmpxchg16,
 		    TOP_UNDEFINED);
   Result(0,  eflags);
+  Result(1,  eax);
   Operand(0, eax, opnd1);
   Operand(1, int16, opnd2);
   Operand(2, int64, base);
@@ -5440,6 +5446,7 @@ main()
 		    TOP_lock_cmpxchg32,
 		    TOP_UNDEFINED);
   Result(0,  eflags);
+  Result(1,  eax);
   Operand(0, eax, opnd1);
   Operand(1, int32, opnd2);
   Operand(2, int64, base);
@@ -5449,6 +5456,7 @@ main()
 		    TOP_lock_cmpxchg64,
 		    TOP_UNDEFINED);
   Result(0,  rflags);
+  Result(1,  rax);
   Operand(0, rax, opnd1);
   Operand(1, int64, opnd2);
   Operand(2, int64, base);
@@ -5456,6 +5464,7 @@ main()
 
   Instruction_Group("int8 exchange arithmetic lock",
 		    TOP_lock_xadd8,
+		    TOP_lock_xchg8,
 		    TOP_UNDEFINED);
   Result(0, int8);
   Operand(0, int8, opnd1);
@@ -5464,6 +5473,7 @@ main()
 
   Instruction_Group("int16 exchange arithmetic lock",
 		    TOP_lock_xadd16,
+		    TOP_lock_xchg16,
 		    TOP_UNDEFINED);
   Result(0, int16);
   Operand(0, int16, opnd1);
@@ -5472,6 +5482,7 @@ main()
 
   Instruction_Group("int32 exchange arithmetic lock",
 		    TOP_lock_xadd32,
+		    TOP_lock_xchg32,
 		    TOP_UNDEFINED);
   Result(0, int32);
   Operand(0, int32, opnd1);
@@ -5480,6 +5491,7 @@ main()
 
   Instruction_Group("int64 exchange arithmetic lock",
 		    TOP_lock_xadd64,
+		    TOP_lock_xchg64,
 		    TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, int64, opnd1);
