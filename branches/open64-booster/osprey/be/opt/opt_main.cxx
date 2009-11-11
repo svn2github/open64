@@ -387,6 +387,7 @@ static ST       *Opt_current_pu_st = NULL;
 static PU_IDX    Opt_current_pu;
 
 static void identify_complete_struct_relayout_candidates(WN *wn);
+static void identify_array_remapping_candidates(WN *wn, ST *loop_index_st);
 
 extern void 
 remove_redundant_mem_clears(WN *func,
@@ -1390,7 +1391,10 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   }
 
   if (phase == PREOPT_IPA0_PHASE) // ipl
+  {
     identify_complete_struct_relayout_candidates(wn_tree);
+    identify_array_remapping_candidates(wn_tree, NULL);
+  }
 
   SET_OPT_PHASE("Preparation");
 
@@ -2290,5 +2294,298 @@ choose_from_complete_struct_for_relayout_candidates()
       }
     }
   }
+  return;
+}
+
+// array remapping optimization
+
+#define MAX_NUM_ARRAY_REMAPPING_CANDIDATES 5 // max num of different arrays
+#define MAX_NUM_SUBSCRIPTS_IN_ARRAY_REMAPPING_CANDIDATE 128 // max num of static
+  // array references in loop (*not* the total num of subscripts in array)
+static ST *array_remapping_candidate_st[MAX_NUM_ARRAY_REMAPPING_CANDIDATES];
+static int num_subscripts_in_array_remapping_candidate
+  [MAX_NUM_ARRAY_REMAPPING_CANDIDATES];
+static int array_remapping_candidate_subscript
+  [MAX_NUM_ARRAY_REMAPPING_CANDIDATES]
+  [MAX_NUM_SUBSCRIPTS_IN_ARRAY_REMAPPING_CANDIDATE];
+static int remainder_array[MAX_NUM_SUBSCRIPTS_IN_ARRAY_REMAPPING_CANDIDATE];
+static int num_array_remapping_candidates = 0;
+static int array_remapping_in_loop = 0;
+static int array_remapping_discovered_loop_stride = 0;
+static int continue_with_array_remapping_analysis = 1;
+
+// This function visits all the loops in the input program and analyzes the
+// array references inside these loops.  A heuristic is used to determine if the
+// array in question will likely benefit from the array remapping optimization.
+// If so, the array's ST is marked as such.
+static void
+identify_array_remapping_candidates(WN *wn, ST *loop_index_st)
+{
+  int i;
+  int j;
+
+  if (IPA_Enable_Struct_Opt == 0 || wn == NULL ||
+      continue_with_array_remapping_analysis == 0)
+    return;
+  if (!OPCODE_is_leaf(WN_opcode(wn)))
+  {
+    if (array_remapping_in_loop == 1)
+    {
+      // we are in a loop; analyze all iloads and istores (for array[]'s)
+      if (WN_operator(wn) == OPR_ILOAD || WN_operator(wn) == OPR_ISTORE)
+      {
+        ST *array_st;
+        int constant1;
+        int constant2;
+        int element_size;
+        int offset;
+        WN *wn1;
+        int subscript;
+
+        // *(array + (i + constant1) * element_size + constant2 + offset)
+        offset = WN_offset(wn);
+        if (WN_operator(wn) == OPR_ILOAD)
+          wn1 = WN_kid0(wn);
+        else
+          wn1 = WN_kid1(wn);
+        if (WN_operator(wn1) == OPR_ADD &&
+            WN_operator(WN_kid0(wn1)) == OPR_ADD &&
+            WN_operator(WN_kid1(wn1)) == OPR_INTCONST)
+        {
+          constant2 = WN_const_val(WN_kid1(wn1));
+          wn1 = WN_kid0(wn1);
+        }
+        else
+          constant2 = 0;
+        if (WN_operator(wn1) == OPR_ADD &&
+            WN_operator(WN_kid0(wn1)) == OPR_LDID &&
+            WN_operator(WN_kid1(wn1)) == OPR_MPY &&
+            WN_operator(WN_kid1(WN_kid1(wn1))) == OPR_INTCONST)
+        {
+          array_st = WN_st(WN_kid0(wn1));
+          element_size = WN_const_val(WN_kid1(WN_kid1(wn1)));
+          wn1 = WN_kid0(WN_kid1(wn1));
+          if (WN_operator(wn1) == OPR_CVT)
+            wn1 = WN_kid0(wn1);
+          if (WN_operator(wn1) == OPR_ADD &&
+              WN_operator(WN_kid1(wn1)) == OPR_INTCONST)
+          {
+            constant1 = WN_const_val(WN_kid1(wn1));
+            wn1 = WN_kid0(wn1);
+          }
+          else
+            constant1 = 0;
+          if (WN_operator(wn1) == OPR_LDID && WN_st(wn1) == loop_index_st &&
+              offset % element_size == 0 && constant2 % element_size == 0)
+          {
+            // *(array + (i + constant1) * element_size + constant2 + offset)
+            // is equivalent to array[(i + constant1) + (constant2 + offset) /
+            // element_size], giving the constant subscript portion to be
+            // "i + constant1 + (constant2 + offset) / element_size"
+            subscript = constant1 + (constant2 + offset) / element_size;
+
+            // record this information
+            for (i = 0; i < num_array_remapping_candidates; i++)
+            {
+              if (array_remapping_candidate_st[i] == array_st)
+              {
+                // enter it, *even* if it is a duplicate, because the number of
+                // occurrences factors in the heuristic of determining if this
+                // array is a remapping candidate (see heuristic below)
+                array_remapping_candidate_subscript[i]
+                  [num_subscripts_in_array_remapping_candidate[i]] = subscript;
+                num_subscripts_in_array_remapping_candidate[i]++;
+                if (num_subscripts_in_array_remapping_candidate[i] >=
+                    MAX_NUM_SUBSCRIPTS_IN_ARRAY_REMAPPING_CANDIDATE)
+                {
+                  continue_with_array_remapping_analysis = 0;
+                  return;
+                }
+                break;
+              }
+            }
+            if (i == num_array_remapping_candidates)
+            {
+              // new array remapping candidate
+              array_remapping_candidate_st[i] = array_st;
+              num_subscripts_in_array_remapping_candidate[i] = 1;
+              array_remapping_candidate_subscript[i][0] = subscript;
+              num_array_remapping_candidates++;
+              if (num_array_remapping_candidates >=
+                  MAX_NUM_ARRAY_REMAPPING_CANDIDATES)
+              {
+                continue_with_array_remapping_analysis = 0;
+                return;
+              }
+            }
+          }
+        }
+      }
+      else if (WN_operator(wn) == OPR_STID && WN_st(wn) == loop_index_st &&
+               WN_operator(WN_kid0(wn)) == OPR_ADD &&
+               WN_operator(WN_kid0(WN_kid0(wn))) == OPR_LDID &&
+               WN_st(WN_kid0(WN_kid0(wn))) == loop_index_st &&
+               WN_operator(WN_kid1(WN_kid0(wn))) == OPR_INTCONST)
+      {
+        // approximate loop stride (inside if stmt, multiple increments, etc.
+        array_remapping_discovered_loop_stride +=
+          WN_const_val(WN_kid1(WN_kid0(wn)));
+      }
+    }
+    if (WN_operator(wn) == OPR_BLOCK)
+    {
+      WN *child_wn = WN_first(wn);
+      while (child_wn != NULL)
+      {
+        identify_array_remapping_candidates(child_wn, loop_index_st);
+        child_wn = WN_next(child_wn);
+      }
+    }
+    else
+    {
+      ST *local_loop_index_st = loop_index_st;
+      if (WN_operator(wn) == OPR_DO_LOOP ||
+          WN_operator(wn) == OPR_WHILE_DO ||
+          WN_operator(wn) == OPR_DO_WHILE)
+      {
+        // found a loop, but if it is not the outermost loop, skip it.  For now,
+        // we only analyze array subscripts in the outermost loop.  Later, we
+        // will add code to process multi-dimensional array subscripts
+        if (array_remapping_in_loop == 1)
+          return;
+        // otherwise, get ready to process this (outermost) loop
+        array_remapping_in_loop = 1;
+        num_array_remapping_candidates = 0;
+        array_remapping_discovered_loop_stride = 0;
+        if (WN_operator(wn) == OPR_DO_LOOP)
+          local_loop_index_st = WN_st(WN_index(wn));
+        else
+        {
+          // OPR_WHILE_DO, OPR_DO_WHILE
+          local_loop_index_st = NULL;
+          if (WN_operator(WN_while_test(wn)) == OPR_LE ||
+              WN_operator(WN_while_test(wn)) == OPR_LT ||
+              WN_operator(WN_while_test(wn)) == OPR_GE ||
+              WN_operator(WN_while_test(wn)) == OPR_GT ||
+              WN_operator(WN_while_test(wn)) == OPR_EQ ||
+              WN_operator(WN_while_test(wn)) == OPR_NE)
+          {
+            if (WN_operator(WN_kid0(WN_while_test(wn))) == OPR_LDID &&
+                WN_operator(WN_kid1(WN_while_test(wn))) == OPR_INTCONST)
+              local_loop_index_st = WN_st(WN_kid0(WN_while_test(wn)));
+            if (WN_operator(WN_kid1(WN_while_test(wn))) == OPR_LDID &&
+                WN_operator(WN_kid0(WN_while_test(wn))) == OPR_INTCONST)
+              local_loop_index_st = WN_st(WN_kid1(WN_while_test(wn)));
+          }
+        }
+      }
+      for (INT child_num = 0; child_num < WN_kid_count(wn); child_num++)
+      {
+        WN *child_wn = WN_kid(wn, child_num);
+        if (child_wn != NULL)
+          identify_array_remapping_candidates(child_wn, local_loop_index_st);
+      }
+      if (WN_operator(wn) == OPR_DO_LOOP ||
+          WN_operator(wn) == OPR_WHILE_DO ||
+          WN_operator(wn) == OPR_DO_WHILE)
+      {
+        int max_subscript;
+        int min_subscript;
+        int remainder;
+
+        // we have just finished processing a loop; are there any candidates for
+        // array remapping?
+        if (array_remapping_discovered_loop_stride <= 0)
+          return; // not if we don't understand the loop
+        if (array_remapping_discovered_loop_stride >
+            MAX_NUM_SUBSCRIPTS_IN_ARRAY_REMAPPING_CANDIDATE)
+          return; // or that the loop stride (num of distinct remainders) won't
+                  // fit into the remainder_array
+        for (i = 0; i < num_array_remapping_candidates; i++)
+        {
+          // this is the heuristic for an array to be selected as a remapping
+          // candidate:  the access patterns have to look like:
+          // a[subscript_group0], a[subscript_group1], ..., a[subscript_groupn]
+          // where n = number of groups = loop stride, and that each group has
+          // to occur equally often, and that these subscripts are very far
+          // apart, and that the array references in the next loop iteration
+          // will not fit in the same cache line as the current iteration.  The
+          // rationale is that we want to detect constructs such as:
+          //   for (i = 0; i < N; i += loop_stride)
+          //   {
+          //     ... a[iteration(group0)] ...
+          //     ... a[iteration(group1)] ...
+          //     ...
+          //     ... a[iteration(group(loop_stride-1))] ...
+          //   }
+          // and remap the array a with all the group0 subscripts together,
+          // followed by all the group1 subscripts together, etc.  This way each
+          // successive iteration reference to a[iteration(groupx)] will most
+          // likely be in the same cache line as the current iteration
+          for (j = 0; j < MAX_NUM_SUBSCRIPTS_IN_ARRAY_REMAPPING_CANDIDATE; j++)
+            remainder_array[j] = 0; // initialization
+          max_subscript = -999999;
+          min_subscript = 999999;
+          for (j = 0; j < num_subscripts_in_array_remapping_candidate[i]; j++)
+          {
+            remainder = array_remapping_candidate_subscript[i][j] %
+              array_remapping_discovered_loop_stride;
+            if (remainder < 0)
+              remainder += array_remapping_discovered_loop_stride;
+            remainder_array[remainder]++; // we made sure in the above that this
+                                          // will fit
+            if (array_remapping_candidate_subscript[i][j] > max_subscript)
+              max_subscript = array_remapping_candidate_subscript[i][j];
+            if (array_remapping_candidate_subscript[i][j] < min_subscript)
+              min_subscript = array_remapping_candidate_subscript[i][j];
+          }
+          if ((max_subscript - min_subscript) < 100000)
+            continue; // array_remapping_candidate_st[i] is not a candidate:
+                      // the subscripts are not far apart enough
+          // by the way, we realize that the initial arbitrary values for
+          // max_subscript and min_subscript could have been refined to be the
+          // first value of array_remapping_candidate_subscript[i][0] (if the j
+          // loop executes), and that in certain cases these max and min values
+          // may be incorrectly left unchanged.  This is acceptable, since this
+          // is just a heuristic
+
+          // now we make sure that these subscript group numbers occur equally
+          // frequently
+          remainder = 0;
+          for (j = 0; j < array_remapping_discovered_loop_stride; j++)
+          {
+            if (remainder_array[j] == 0)
+              continue;
+            if (remainder == 0)
+            {
+              remainder = remainder_array[j]; // number of occurrences for group
+                                              // (remainder) j
+              continue;
+            }
+            if (remainder_array[j] != remainder)
+              break; // not all the groups (remainders) occur equally often
+          }
+          if (j != array_remapping_discovered_loop_stride)
+            continue; // array_remapping_candidate_st[i] is not a candidate
+          else
+          {
+            // found a candidate; mark it
+            Set_ST_is_array_remapping_candidate(array_remapping_candidate_st
+              [i]);
+            // indicate that this function has an array remapping candidate
+            // (this will speed up the search for such candidates in the ipo
+            // phase)
+            Set_ST_is_array_remapping_candidate(Get_Current_PU_ST());
+            if (Get_Trace(TP_IPL, 1))
+              fprintf(TFile, "ipl -> array_remapping_candidate = %s in function %s\n",
+                ST_name(array_remapping_candidate_st[i]),
+                ST_name(Get_Current_PU_ST()));
+          }
+        }
+        array_remapping_in_loop = 0; // finished processing this loop
+      }
+    }
+  }
+  // not interested in any leaf nodes
   return;
 }

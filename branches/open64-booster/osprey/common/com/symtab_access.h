@@ -686,6 +686,20 @@ inline void
 Reset_ST_is_thread_local (ST& s) { s.flags_ext &= ~ST_IS_THREAD_LOCAL; }
 inline void
 Clear_ST_is_thread_local (ST* s) { s->flags_ext &= ~ST_IS_THREAD_LOCAL; }
+
+inline BOOL
+ST_is_array_remapping_candidate(const ST *s) { return s->flags_ext & ST_IS_ARRAY_REMAPPING_CANDIDATE; }
+inline void
+Set_ST_is_array_remapping_candidate(ST *s) { s->flags_ext |= ST_IS_ARRAY_REMAPPING_CANDIDATE; }
+inline void
+Clear_ST_is_array_remapping_candidate(ST *s) { s->flags_ext &= ~ST_IS_ARRAY_REMAPPING_CANDIDATE; }
+
+inline BOOL
+ST_is_array_remapping_candidate_malloc(const ST *s) { return s->flags_ext & ST_IS_ARRAY_REMAPPING_CANDIDATE_MALLOC; }
+inline void
+Set_ST_is_array_remapping_candidate_malloc(ST *s) { s->flags_ext |= ST_IS_ARRAY_REMAPPING_CANDIDATE_MALLOC; }
+inline void
+Clear_ST_is_array_remapping_candidate_malloc(ST *s) { s->flags_ext &= ~ST_IS_ARRAY_REMAPPING_CANDIDATE_MALLOC; }
 #endif /* KEY */
 
 //----------------------------------------------------------------------
