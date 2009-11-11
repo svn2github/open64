@@ -551,11 +551,11 @@ main()
                            TOP_crc32d,
                            TOP_crc32q,
                            /* AES instructions */
-                           TOP_vaesenc,
-                           TOP_vaesenclast,
-                           TOP_vaesdec,
-                           TOP_vaesdeclast,
-                           TOP_vaeskeygenassist,
+                           TOP_aesenc,
+                           TOP_aesenclast,
+                           TOP_aesdec,
+                           TOP_aesdeclast,
+                           TOP_aeskeygenassist,
 			   TOP_UNDEFINED );
 
   /* One result / two operands in x86 style w/ mem operand */
@@ -691,11 +691,11 @@ main()
                            TOP_crcx32d,
                            TOP_crcx32q,
                            /* AES instructions */
-                           TOP_vaesencx,
-                           TOP_vaesenclastx,
-                           TOP_vaesdecx,
-                           TOP_vaesdeclastx,
-                           TOP_vaeskeygenassistx,
+                           TOP_aesencx,
+                           TOP_aesenclastx,
+                           TOP_aesdecx,
+                           TOP_aesdeclastx,
+                           TOP_aeskeygenassistx,
 			   TOP_UNDEFINED );
 
   /* One result / two operands in x86 style w/ mem operand w/ scaled-index */
@@ -834,11 +834,11 @@ main()
                            TOP_crcxx32d,
                            TOP_crcxx32q,
                            /* AES instructions */
-                           TOP_vaesencxx,
-                           TOP_vaesenclastxx,
-                           TOP_vaesdecxx,
-                           TOP_vaesdeclastxx,
-                           TOP_vaeskeygenassistxx,
+                           TOP_aesencxx,
+                           TOP_aesenclastxx,
+                           TOP_aesdecxx,
+                           TOP_aesdeclastxx,
+                           TOP_aeskeygenassistxx,
 			   TOP_UNDEFINED );
 
   /* One result / two operands in x86 style w/ mem operand w/o base */
@@ -976,11 +976,11 @@ main()
                            TOP_crcxxx32d,
                            TOP_crcxxx32q,
                            /* AES instructions */
-                           TOP_vaesencxxx,
-                           TOP_vaesenclastxxx,
-                           TOP_vaesdecxxx,
-                           TOP_vaesdeclastxxx,
-                           TOP_vaeskeygenassistxxx,
+                           TOP_aesencxxx,
+                           TOP_aesenclastxxx,
+                           TOP_aesdecxxx,
+                           TOP_aesdeclastxxx,
+                           TOP_aeskeygenassistxxx,
 			   TOP_UNDEFINED );
 
   /* One result / three operands in x86 style */
@@ -1024,7 +1024,7 @@ main()
                            TOP_finsr128v32,
                            TOP_fextr128v32,
                            /* PCLMUL instructions */
-                           TOP_vpclmulqdq,
+                           TOP_pclmulqdq,
 			   TOP_UNDEFINED );
 
   /* One result / x86-style opr, mem, opr */
@@ -1064,7 +1064,7 @@ main()
                            TOP_finsrx128v32,
                            TOP_fextrx128v32,
                            /* PCLMUL instructions */
-                           TOP_vpclmulqdqx,
+                           TOP_pclmulqdqx,
 			   TOP_UNDEFINED );
 
   /* One result / x86 style opr, mem with scaled-index with base, opr*/
@@ -1106,7 +1106,7 @@ main()
                            TOP_finsrxx128v32,
                            TOP_fextrxx128v32,
                            /* PCLMUL instructions */
-                           TOP_vpclmulqdqxx,
+                           TOP_pclmulqdqxx,
 			   TOP_UNDEFINED );
 
   /* One result / x86 style opr, mem with scaled-index w/o base, opr*/
@@ -1147,7 +1147,7 @@ main()
                            TOP_finsrxxx128v32,
                            TOP_fextrxxx128v32,
                            /* PCLMUL instructions */
-                           TOP_vpclmulqdqxxx,
+                           TOP_pclmulqdqxxx,
 			   TOP_UNDEFINED );
 
   /* dest=op(src1, src2, src3), non-x86-style */
@@ -1828,7 +1828,7 @@ main()
                            TOP_popcnt32,
                            TOP_popcnt64,
                            /* AES instructions */
-                           TOP_vaesimc,
+                           TOP_aesimc,
                            /* XOP instructions */
                            TOP_vphaddbd,
                            TOP_vphaddbq,
@@ -1867,7 +1867,7 @@ main()
                            TOP_popcntx32,
                            TOP_popcntx64,
                            /* AES instructions */
-                           TOP_vaesimcx,
+                           TOP_aesimcx,
                            /* XOP instructions */
                            TOP_vphaddbdx,
                            TOP_vphaddbqx,
@@ -1908,7 +1908,7 @@ main()
                            TOP_popcntxx32,
                            TOP_popcntxx64,
                            /* AES instructions */
-                           TOP_vaesimcxx,
+                           TOP_aesimcxx,
                            /* XOP instructions */
                            TOP_vphaddbdxx,
                            TOP_vphaddbqxx,
@@ -1948,7 +1948,7 @@ main()
                            TOP_popcntxxx32,
                            TOP_popcntxxx64,
                            /* AES instructions */
-                           TOP_vaesimcxxx,
+                           TOP_aesimcxxx,
                            /* XOP instructions */
                            TOP_vphaddbdxxx,
                            TOP_vphaddbqxxx,

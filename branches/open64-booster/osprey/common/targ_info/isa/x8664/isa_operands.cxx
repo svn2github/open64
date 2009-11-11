@@ -517,7 +517,7 @@ main()
                            TOP_pabs128v16,
                            TOP_pabs128v32,
                            /* AES instructions */
-                           TOP_vaesimc,
+                           TOP_aesimc,
                            /* XOP instructions */
                            TOP_vphaddbd,
                            TOP_vphaddbq,
@@ -548,7 +548,7 @@ main()
                            TOP_pabsx128v16,
                            TOP_pabsx128v32,
                            /* AES instructions */
-                           TOP_vaesimcx,
+                           TOP_aesimcx,
                            /* XOP instructions */
                            TOP_vphaddbdx,
                            TOP_vphaddbqx,
@@ -580,7 +580,7 @@ main()
                            TOP_pabsxx128v16,
                            TOP_pabsxx128v32,
                            /* AES instructions */
-                           TOP_vaesimcxx,
+                           TOP_aesimcxx,
                            /* XOP instructions */
                            TOP_vphaddbdxx,
                            TOP_vphaddbqxx,
@@ -614,7 +614,7 @@ main()
                            TOP_pabsxxx128v16,
                            TOP_pabsxxx128v32,
                            /* AES instructions */
-                           TOP_vaesimcxxx,
+                           TOP_aesimcxxx,
                            /* XOP instructions */
                            TOP_vphaddbdxxx,
                            TOP_vphaddbqxxx,
@@ -641,26 +641,26 @@ main()
   Operand(1, uimm8, scale);
   Operand(2, simm32, offset);
 
-  Instruction_Group( "vaeskeygenassist reg",
+  Instruction_Group( "aeskeygenassist reg",
                         /* AES instructions */
-                        TOP_vaeskeygenassist,
+                        TOP_aeskeygenassist,
                         TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
   Operand(1, simm8, opnd2);
 
-  Instruction_Group( "vaeskeygenassist mem opnd",
+  Instruction_Group( "aeskeygenassist mem opnd",
                         /* AES instructions */
-                        TOP_vaeskeygenassistx,
+                        TOP_aeskeygenassistx,
                         TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
   Operand(1, int64, base);
   Operand(2, simm32, offset);
 
-  Instruction_Group( "vaeskeygenassist mem opnd w/ scaled index",
+  Instruction_Group( "aeskeygenassist mem opnd w/ scaled index",
                         /* AES instructions */
-                        TOP_vaeskeygenassistxx,
+                        TOP_aeskeygenassistxx,
                         TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -669,9 +669,9 @@ main()
   Operand(3, uimm8, scale);
   Operand(4, simm32, offset);
 
-  Instruction_Group( "vaeskeygenassist mem opnd w/ scaled index w/o base",
+  Instruction_Group( "aeskeygenassist mem opnd w/ scaled index w/o base",
                         /* AES instructions */
-                        TOP_vaeskeygenassistxxx,
+                        TOP_aeskeygenassistxxx,
                         TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -785,10 +785,10 @@ main()
                      /* SSE4.2 instructions */
                      TOP_cmpgt128v64,
                      /* SSE4.2 instructions */
-                     TOP_vaesenc,
-                     TOP_vaesenclast,
-                     TOP_vaesdec,
-                     TOP_vaesdeclast,
+                     TOP_aesenc,
+                     TOP_aesenclast,
+                     TOP_aesdec,
+                     TOP_aesdeclast,
 		     TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -892,10 +892,10 @@ main()
                            /* SSE4.2 instructions */
                            TOP_cmpgtx128v64,
                            /* AES instructions */
-                           TOP_vaesencx,
-                           TOP_vaesenclastx,
-                           TOP_vaesdecx,
-                           TOP_vaesdeclastx,
+                           TOP_aesencx,
+                           TOP_aesenclastx,
+                           TOP_aesdecx,
+                           TOP_aesdeclastx,
 			   TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -1000,10 +1000,10 @@ main()
                            /* SSE4.2 instructions */
                            TOP_cmpgtxx128v64,
                            /* AES instructions */
-                           TOP_vaesencxx,
-                           TOP_vaesenclastxx,
-                           TOP_vaesdecxx,
-                           TOP_vaesdeclastxx,
+                           TOP_aesencxx,
+                           TOP_aesenclastxx,
+                           TOP_aesdecxx,
+                           TOP_aesdeclastxx,
 			   TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -1108,10 +1108,10 @@ main()
                            /* SSE4.2 instructions */
                            TOP_cmpgtxxx128v64,
                            /* AES instructions */
-                           TOP_vaesencxxx,
-                           TOP_vaesenclastxxx,
-                           TOP_vaesdecxxx,
-                           TOP_vaesdeclastxxx,
+                           TOP_aesencxxx,
+                           TOP_aesenclastxxx,
+                           TOP_aesdecxxx,
+                           TOP_aesdeclastxxx,
 			   TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -1147,7 +1147,7 @@ main()
                            TOP_round128v64,
                            TOP_fblend128v32,
                            /* PCLMUL instructions */
-                           TOP_vpclmulqdq,
+                           TOP_pclmulqdq,
                            /* XOP instructions */
                            TOP_vprotbi,
                            TOP_vprotdi,
@@ -1195,7 +1195,7 @@ main()
                            TOP_roundx128v64,
                            TOP_fblendx128v32,
                            /* PCLMUL instructions */
-                           TOP_vpclmulqdqx,
+                           TOP_pclmulqdqx,
                            /* XOP instructions */
                            TOP_vprotbix,
                            TOP_vprotdix,
@@ -1244,7 +1244,7 @@ main()
                            TOP_roundxx128v64,
                            TOP_fblendxx128v32,
                            /* PCLMUL instructions */
-                           TOP_vpclmulqdqxx,
+                           TOP_pclmulqdqxx,
                            /* XOP instructions */
                            TOP_vprotbixx,
                            TOP_vprotdixx,
@@ -1295,7 +1295,7 @@ main()
                            TOP_roundxxx128v64,
                            TOP_fblendxxx128v32,
                            /* PCLMUL instructions */
-                           TOP_vpclmulqdqxxx,
+                           TOP_pclmulqdqxxx,
                            /* XOP instructions */
                            TOP_vprotbixxx,
                            TOP_vprotdixxx,

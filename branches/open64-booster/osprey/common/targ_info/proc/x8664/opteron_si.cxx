@@ -2606,12 +2606,12 @@ int main (int argc, char *argv[])
 
   /* AES instructions */
   Instruction_Group( "aes reg opnd",
-                        TOP_vaesenc,
-                        TOP_vaesenclast,
-                        TOP_vaesdec,
-                        TOP_vaesdeclast,
-                        TOP_vaeskeygenassist,
-                        TOP_vaesimc,
+                        TOP_aesenc,
+                        TOP_aesenclast,
+                        TOP_aesdec,
+                        TOP_aesdeclast,
+                        TOP_aeskeygenassist,
+                        TOP_aesimc,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(10);
@@ -2619,24 +2619,24 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "aes mem opnd",
-                        TOP_vaesencx,
-                        TOP_vaesencxx,
-                        TOP_vaesencxxx,
-                        TOP_vaesenclastx,
-                        TOP_vaesenclastxx,
-                        TOP_vaesenclastxxx,
-                        TOP_vaesdecx,
-                        TOP_vaesdecxx,
-                        TOP_vaesdecxxx,
-                        TOP_vaesdeclastx,
-                        TOP_vaesdeclastxx,
-                        TOP_vaesdeclastxxx,
-                        TOP_vaeskeygenassistx,
-                        TOP_vaeskeygenassistxx,
-                        TOP_vaeskeygenassistxxx,
-                        TOP_vaesimcx,
-                        TOP_vaesimcxx,
-                        TOP_vaesimcxxx,
+                        TOP_aesencx,
+                        TOP_aesencxx,
+                        TOP_aesencxxx,
+                        TOP_aesenclastx,
+                        TOP_aesenclastxx,
+                        TOP_aesenclastxxx,
+                        TOP_aesdecx,
+                        TOP_aesdecxx,
+                        TOP_aesdecxxx,
+                        TOP_aesdeclastx,
+                        TOP_aesdeclastxx,
+                        TOP_aesdeclastxxx,
+                        TOP_aeskeygenassistx,
+                        TOP_aeskeygenassistxx,
+                        TOP_aeskeygenassistxxx,
+                        TOP_aesimcx,
+                        TOP_aesimcxx,
+                        TOP_aesimcxxx,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(20);
@@ -2646,7 +2646,7 @@ int main (int argc, char *argv[])
 
   /* PCLMUL instructions */
   Instruction_Group( "pclmul reg opnd",
-                        TOP_vpclmulqdq,
+                        TOP_pclmulqdq,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(6);
@@ -2654,9 +2654,9 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "pclmul mem opnd",
-                        TOP_vpclmulqdqx,
-                        TOP_vpclmulqdqxx,
-                        TOP_vpclmulqdqxxx,
+                        TOP_pclmulqdqx,
+                        TOP_pclmulqdqxx,
+                        TOP_pclmulqdqxxx,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(11);
