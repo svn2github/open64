@@ -5143,6 +5143,7 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
       }
 
    }else {//remainder loop is not needed, dependences should be removed first
+      Delete_Def_Use(WN_start(remainderloop));
       Delete_Def_Use(WN_end(remainderloop)); //bug 12291, 12295
       WN *r_body = WN_do_body(remainderloop);
       WN *r_stmt;
