@@ -163,6 +163,10 @@ main()
     ISA_Reg_Opnd_Type_Create("fp128", ISA_REGISTER_CLASS_float,
 			     ISA_REGISTER_SUBCLASS_UNDEFINED,
 			     128, SIGNED, INVALID);
+  const OPERAND_VALUE_TYPE fp256 =
+    ISA_Reg_Opnd_Type_Create("fp256", ISA_REGISTER_CLASS_float,
+                             ISA_REGISTER_SUBCLASS_UNDEFINED,
+                             256, SIGNED, INVALID);
   const OPERAND_VALUE_TYPE x87 =
     ISA_Reg_Opnd_Type_Create("x87", ISA_REGISTER_CLASS_x87,
 			     ISA_REGISTER_SUBCLASS_UNDEFINED,

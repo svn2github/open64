@@ -108,7 +108,7 @@ enum X86_64_PARM_CLASS {
     X86_64_SSEUP_CLASS,
 };
 
-#define MAX_CLASSES 2
+#define MAX_CLASSES 4
 extern INT Classify_Aggregate(const TY_IDX ty, 
 			      enum X86_64_PARM_CLASS classes[MAX_CLASSES], INT byte_offset = 0);
 

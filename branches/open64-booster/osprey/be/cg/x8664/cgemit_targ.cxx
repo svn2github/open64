@@ -1519,23 +1519,25 @@ static void Init_OP_Name()
 // bug 3699
 #define NAME_LEN 8192
 
-enum OPND_REG { BYTE_REG = 0, WORD_REG, DWORD_REG, QWORD_REG, SSE2_REG };
+enum OPND_REG { BYTE_REG = 0, WORD_REG, DWORD_REG, QWORD_REG, SSE2_REG, AVX_REG };
 
-static enum OPND_REG Get_Opnd_Reg( TOP topcode, int opnd )
+static enum OPND_REG Get_Opnd_Reg( TOP topcode, int opnd, ISA_REGISTER_CLASS rc)
 {
   int num_bits = 0;
+  ISA_REGISTER_CLASS opnd_rc;
 
   if( opnd >= 0 ){
     if( opnd == TOP_Find_Operand_Use(topcode,OU_base) ||
 	opnd == TOP_Find_Operand_Use(topcode,OU_index) ){
       num_bits = Pointer_Size * 8;
-
+      opnd_rc = ISA_REGISTER_CLASS_integer;
     } else {
       // For regular operands.
       const ISA_OPERAND_INFO* oinfo = ISA_OPERAND_Info(topcode);
       const ISA_OPERAND_VALTYP *otype = ISA_OPERAND_INFO_Operand(oinfo, opnd);
 
       num_bits = ISA_OPERAND_VALTYP_Size(otype);
+      opnd_rc = ISA_OPERAND_VALTYP_Register_Class(otype);
     }
 
   } else {  // opnd < 0
@@ -1543,7 +1545,11 @@ static enum OPND_REG Get_Opnd_Reg( TOP topcode, int opnd )
     const ISA_OPERAND_VALTYP* otype = ISA_OPERAND_INFO_Result(oinfo, 0);
 
     num_bits = ISA_OPERAND_VALTYP_Size(otype);
+    opnd_rc = ISA_OPERAND_VALTYP_Register_Class(otype);
   }
+
+  FmtAssert( rc == opnd_rc, 
+             ("REGISTER_CLASS does not match. Something wrong in target info"));
 
   /* We might need to fix up isa_operands.cxx later.
      Also, don't count on TN_size().
@@ -1555,13 +1561,30 @@ static enum OPND_REG Get_Opnd_Reg( TOP topcode, int opnd )
     num_bits = 32;
   }
 
-  switch( num_bits ){
-  case 8:   return BYTE_REG;
-  case 16:  return WORD_REG;
-  case 32:  return DWORD_REG;
-  case 64:  return QWORD_REG;
-  case 128: return SSE2_REG;
-  default:
+  if ( rc == ISA_REGISTER_CLASS_integer ) {
+    // integer register class
+    switch( num_bits ){
+    case 8:   return BYTE_REG;
+    case 16:  return WORD_REG;
+    case 32:  return DWORD_REG;
+    case 64:  return QWORD_REG;
+    case 128: return SSE2_REG;
+    default:
+      FmtAssert( false, ("NYI") );
+    }
+  }
+  else if ( rc == ISA_REGISTER_CLASS_float ) {
+    // float register class
+    switch( num_bits ) {
+    case 32:
+    case 64:
+    case 128: return SSE2_REG;
+    case 256: return AVX_REG;
+    default:
+      FmtAssert( false, ("NYI") );
+    }
+  }
+  else {
     FmtAssert( false, ("NYI") );
   }
 
@@ -1578,7 +1601,7 @@ static void Str_Prepend( char* str, char c )
   str[0] = c;
 }
 
-static const char* int_reg_names[4][16] = {
+static const char* int_reg_names[6][16] = {
   /* BYTE_REG: low 8-bit */
   { "%al", "%bl", "%bpl", "%spl", "%dil", "%sil", "%dl", "%cl",
     "%r8b",  "%r9b",  "%r10b", "%r11b", "%r12b", "%r13b", "%r14b", "%r15b" },
@@ -1591,6 +1614,12 @@ static const char* int_reg_names[4][16] = {
   /* QWORD_REG: 64-bit */
   { "%rax", "%rbx", "%rbp", "%rsp", "%rdi", "%rsi", "%rdx", "%rcx",
     "%r8",  "%r9",  "%r10", "%r11", "%r12", "%r13", "%r14", "%r15" },
+  /* SSE2_REG: 128-bit */
+  { "%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6", "%xmm7",
+    "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12", "%xmm13", "%xmm14", "%xmm15" },
+  /* AVX_REG: 256-bit */
+  { "%ymm0", "%ymm1", "%ymm2", "%ymm3", "%ymm4", "%ymm5", "%ymm6", "%ymm7",
+    "%ymm8", "%ymm9", "%ymm10", "%ymm11", "%ymm12", "%ymm13", "%ymm14", "%ymm15" },
 };
 
 static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
@@ -1601,8 +1630,8 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
       ( opnd == OP_find_opnd_use(op,OU_target) ||
 	opnd == OP_find_opnd_use(op,OU_offset) ) ){
     if ( Is_Target_32bit() ) { // Bug 4666
-      const enum OPND_REG opnd_reg = Get_Opnd_Reg( topcode, opnd );
       const ISA_REGISTER_CLASS rc = ISA_REGISTER_CLASS_integer;
+      const enum OPND_REG opnd_reg = Get_Opnd_Reg( topcode, opnd, rc );
       
       for( REGISTER reg = REGISTER_MIN; 
 	   reg <= REGISTER_CLASS_last_register( rc ); reg++ ){
@@ -1671,9 +1700,10 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
   if( !ISA_OPERAND_VALTYP_Is_Register(vtype) )
     return;
 
-  if( ISA_OPERAND_VALTYP_Register_Class(vtype) == ISA_REGISTER_CLASS_integer ){
-    const enum OPND_REG opnd_reg = Get_Opnd_Reg( topcode, opnd );
-    const ISA_REGISTER_CLASS rc = ISA_REGISTER_CLASS_integer;
+  if( ISA_OPERAND_VALTYP_Register_Class(vtype) == ISA_REGISTER_CLASS_integer ||
+      ISA_OPERAND_VALTYP_Register_Class(vtype) == ISA_REGISTER_CLASS_float ){
+    const ISA_REGISTER_CLASS rc = ISA_OPERAND_VALTYP_Register_Class(vtype);
+    const enum OPND_REG opnd_reg = Get_Opnd_Reg( topcode, opnd, rc );
 
     for( REGISTER reg = REGISTER_MIN; reg <= REGISTER_CLASS_last_register( rc ); reg++ ){
       const char* n = REGISTER_name( rc, reg );

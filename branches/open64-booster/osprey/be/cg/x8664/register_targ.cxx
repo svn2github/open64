@@ -360,4 +360,13 @@ void Init_Mtype_RegClass_Map(void)
   map[MTYPE_M8I2] = ISA_REGISTER_CLASS_mmx;
   map[MTYPE_M8I4] = ISA_REGISTER_CLASS_mmx;
   map[MTYPE_M8F4] = ISA_REGISTER_CLASS_mmx;
+  /* 256-bit floating point */
+  map[MTYPE_V32C4] = ISA_REGISTER_CLASS_float;
+  map[MTYPE_V32C8] = ISA_REGISTER_CLASS_float;
+  map[MTYPE_V32I1] = ISA_REGISTER_CLASS_float;
+  map[MTYPE_V32I2] = ISA_REGISTER_CLASS_float;
+  map[MTYPE_V32I4] = ISA_REGISTER_CLASS_float;
+  map[MTYPE_V32I8] = ISA_REGISTER_CLASS_float;
+  map[MTYPE_V32F4] = ISA_REGISTER_CLASS_float;
+  map[MTYPE_V32F8] = ISA_REGISTER_CLASS_float;
 }

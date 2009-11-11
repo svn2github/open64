@@ -410,7 +410,7 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_UNKNOWN,  /* MTYPE_C16 */
   MTYPE_UNKNOWN,  /* MTYPE_I16 */
   MTYPE_UNKNOWN,  /* MTYPE_U16 */
-#if defined(TARG_X8664) || defined(VECTOR_MTYPES)
+#if defined(TARG_X8664)
   MTYPE_V16C4,    /* MTYPE_V16C4 */
   MTYPE_V16C8,    /* MTYPE_V16C8 */
   MTYPE_V16I1,    /* MTYPE_V16I1 */
@@ -423,13 +423,19 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_V8I2,     /* MTYPE_V8I2 */
   MTYPE_V8I4,     /* MTYPE_V8I4 */
   MTYPE_V8F4,     /* MTYPE_V8F4 */
-#if defined(TARG_X8664)
   MTYPE_M8I1,     /* MTYPE_M8I1 */
   MTYPE_M8I2,     /* MTYPE_M8I2 */
   MTYPE_M8I4,     /* MTYPE_M8I4 */
-  MTYPE_M8F4      /* MTYPE_M8F4 */
+  MTYPE_M8F4,     /* MTYPE_M8F4 */
+  MTYPE_V32C4,    /* MTYPE_V32C4 */
+  MTYPE_V32C8,    /* MTYPE_V32C8 */
+  MTYPE_V32I1,    /* MTYPE_V32I1 */
+  MTYPE_V32I2,    /* MTYPE_V32I2 */
+  MTYPE_V32I4,    /* MTYPE_V32I4 */
+  MTYPE_V32I8,    /* MTYPE_V32I8 */
+  MTYPE_V32F4,    /* MTYPE_V32F4 */
+  MTYPE_V32F8,    /* MTYPE_V32F8 */
 #endif // TARG_X8664
-#endif // (TARG_X8664) || (VECTOR_MTYPES)
 #endif // KEY
 };
 

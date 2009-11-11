@@ -294,6 +294,24 @@ INT Classify_Aggregate(const TY_IDX ty,
     case MTYPE_M8F4:
       classes[0] = X86_64_X87_CLASS;
       return 1;
+    case MTYPE_V32I1:
+    case MTYPE_V32I2:
+    case MTYPE_V32I4:
+    case MTYPE_V32I8:
+      classes[0] = X86_64_INTEGER_CLASS;
+      classes[1] = X86_64_INTEGER_CLASS;
+      classes[2] = X86_64_INTEGER_CLASS;
+      classes[3] = X86_64_INTEGER_CLASS;
+      return 4;
+    case MTYPE_V32F4:
+    case MTYPE_V32F8:
+    case MTYPE_V32C4:
+    case MTYPE_V32C8:
+      classes[0] = X86_64_SSE_CLASS;
+      classes[1] = X86_64_SSEUP_CLASS;
+      classes[2] = X86_64_SSEUP_CLASS;
+      classes[3] = X86_64_SSEUP_CLASS;
+      return 4;
     default:
 	FmtAssert (FALSE, ("Classify_Aggregate:  mtype %s",
 			   MTYPE_name(TY_mtype(ty))));
@@ -468,6 +486,14 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
     case MTYPE_V16I8:
     case MTYPE_V16F4:
     case MTYPE_V16F8:
+    case MTYPE_V32I1:
+    case MTYPE_V32I2:
+    case MTYPE_V32I4:
+    case MTYPE_V32I8:
+    case MTYPE_V32F4:
+    case MTYPE_V32F8:
+    case MTYPE_V32C4:
+    case MTYPE_V32C8:
       info.count = 1;
       info.mtype [0] = mtype;
       if (Is_Target_32bit() && Target_SSE) {

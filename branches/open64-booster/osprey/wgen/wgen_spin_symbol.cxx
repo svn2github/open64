@@ -1291,15 +1291,27 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		    	      idx = MTYPE_To_TY(MTYPE_V16F4);
 		    	    else if (elem_mtype == MTYPE_I2)
 		    	      idx = MTYPE_To_TY(MTYPE_M8I2);
+                            else if (elem_mtype == MTYPE_I8)
+                              idx = MTYPE_To_TY(MTYPE_V32I8);
+                            else if (elem_mtype == MTYPE_F8)
+                             idx = MTYPE_To_TY(MTYPE_V32F8);
 			    break;
 		    case 8: if (elem_mtype == MTYPE_I1)
 		    	      idx = MTYPE_To_TY(MTYPE_M8I1);
 		    	    else if (elem_mtype == MTYPE_I2)
 		    	      idx = MTYPE_To_TY(MTYPE_V16I2);
+                            else if (elem_mtype == MTYPE_I4)
+                              idx = MTYPE_To_TY(MTYPE_V32I4);
+                            else if (elem_mtype == MTYPE_F4)
+                              idx = MTYPE_To_TY(MTYPE_V32F4);
 			    break;
 		    case 16: if (elem_mtype == MTYPE_I1)
 		    	       idx = MTYPE_To_TY(MTYPE_V16I1);
+                             else if (elem_mtype == MTYPE_I2)
+                               idx = MTYPE_To_TY(MTYPE_V32I2);
 			     break;
+                    case 32: if (elem_mtype == MTYPE_I1)
+                               idx = MTYPE_To_TY(MTYPE_V32I1);
 		    default:
 		      Fail_FmtAssertion ("Get_TY: unexpected vector type element count");
 		  }
@@ -1314,10 +1326,18 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		    else Fail_FmtAssertion("Get_TY: NYI");
 		  }
 		  int num_elems = strtol(p, &p, 10);
-		  if (strncasecmp(p, "DI", 2) == 0) 
-		    idx = MTYPE_To_TY(MTYPE_V16I8);
-		  else if (strncasecmp(p, "DF", 2) == 0) 
-		    idx = MTYPE_To_TY(MTYPE_V16F8);
+                  if (strncasecmp(p, "DI", 2) == 0) {
+                    if (num_elems == 2)
+                      idx = MTYPE_To_TY(MTYPE_V16I8);
+                    else if (num_elems == 4)
+                      idx = MTYPE_To_TY(MTYPE_V32I8);
+                  }
+                  else if (strncasecmp(p, "DF", 2) == 0) {
+                    if (num_elems == 2)
+                      idx = MTYPE_To_TY(MTYPE_V16F8);
+                    else if (num_elems == 4)
+                      idx = MTYPE_To_TY(MTYPE_V32F8);
+                  }
 		  else if (strncasecmp(p, "SI", 2) == 0) {
 		    if (num_elems == 2)
 		      if ( Is_Target_64bit())
@@ -1335,18 +1355,24 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			idx = MTYPE_To_TY(MTYPE_M8F4);
 		    else if (num_elems == 4)
 		      idx = MTYPE_To_TY(MTYPE_V16F4);
+                    else if (num_elems == 8)
+                      idx = MTYPE_To_TY(MTYPE_V32I4);
 		  }
 		  else if (strncasecmp(p, "HI", 2) == 0) {
 		    if (num_elems == 4)
 		      idx = MTYPE_To_TY(MTYPE_M8I2);
 		    else if (num_elems == 8)
 		      idx = MTYPE_To_TY(MTYPE_V16I2);
+                    else if (num_elems == 16)
+                      idx = MTYPE_To_TY(MTYPE_V32I2);
 		  }
 		  else if (strncasecmp(p, "QI", 2) == 0) {
 		    if (num_elems == 8)
 		      idx = MTYPE_To_TY(MTYPE_M8I1);
 		    else if (num_elems == 16)
 		      idx = MTYPE_To_TY(MTYPE_V16I1);
+                    else if (num_elems == 32)
+                      idx = MTYPE_To_TY(MTYPE_V32I1);
 		  }
 		}
 		if (idx == 0)

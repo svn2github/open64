@@ -123,8 +123,17 @@ static char *mtypes_rcs_id = "$Source: common/com/SCCS/s.mtypes.h $ $Revision: 1
 #define MTYPE_M8I4      42      /* 64-bit MMX vector of signed ints */
 #define MTYPE_M8F4      43      /* 64-bit MMX vector of signed floats */
 
+#define MTYPE_V32C4     44      /* 256-bit vector of C4                    */
+#define MTYPE_V32C8     45      /* 256-bit vector of C8                    */
+#define MTYPE_V32I1     46      /* 256-bit vector of signed bytes          */
+#define MTYPE_V32I2     47      /* 256-bit vector of signed short ints     */
+#define MTYPE_V32I4     48      /* 256-bit vector of signed ints           */
+#define MTYPE_V32I8     49      /* 256-bit vector of signed long long ints */
+#define MTYPE_V32F4     50      /* 256-bit vector of floats                */
+#define MTYPE_V32F8     51      /* 256-bit vector of doubles               */
+
 /* must define MTYPE_LAST as the index of the last one defined. */
-#define MTYPE_LAST	43	/* Must be defined */
+#define MTYPE_LAST	51	/* Must be defined */
 #elif !defined(TARG_SL)
 #define MTYPE_LAST	27	/* Must be defined */
 #else // TARG_SL

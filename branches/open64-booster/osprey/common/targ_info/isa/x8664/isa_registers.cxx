@@ -62,6 +62,11 @@ static const char* xmm_reg_names[16] = {
   "%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12", "%xmm13", "%xmm14", "%xmm15",
 };
 
+static const char* ymm_reg_names[16] = {
+  "%ymm0", "%ymm1", "%ymm2",  "%ymm3",  "%ymm4",  "%ymm5",  "%ymm6",  "%ymm7",
+  "%ymm8", "%ymm9", "%ymm10", "%ymm11", "%ymm12", "%ymm13", "%ymm14", "%ymm15",
+};
+
 static const char* x87_reg_names[8] = {
   "%st0", "%st1", "%st2", "%st3", "%st4","%st5","%st6","%st7"
 };
@@ -122,7 +127,7 @@ main (int argc, char** argv)
   ISA_REGISTER_CLASS rc_x87_cw  = ISA_Register_Class_Create( "x87_cw",  16,  false, false );
   ISA_REGISTER_CLASS rc_mmx     = ISA_Register_Class_Create( "mmx",     64,  true,  false );
   ISA_Register_Set( rc_integer, 0, 15, "%u", int_reg_names,  All_ISA_Mask() );
-  ISA_Register_Set( rc_fp,      0, 15, "%u", xmm_reg_names,  All_ISA_Mask() );
+  ISA_Register_Set( rc_fp,      0, 15, "%u", ymm_reg_names,  All_ISA_Mask() );
   ISA_Register_Set( rc_rflags,  0, 0,  "%%rflags", NULL,      All_ISA_Mask() );
   ISA_Register_Set( rc_rip,     0, 0,  "%%rip",    NULL,      All_ISA_Mask() );
   ISA_Register_Set( rc_x87,     0, 7,  "%u", x87_reg_names,  All_ISA_Mask() );

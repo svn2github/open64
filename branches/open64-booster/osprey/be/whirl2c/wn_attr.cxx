@@ -306,6 +306,30 @@ WN_intrinsic_return_ty(OPCODE wn_opc, INTRINSIC intr_opc, const WN *call)
    case IRETURN_M8I4:
      ret_ty = Stab_Mtype_To_Ty(MTYPE_M8I4);
      break;     
+   case IRETURN_V32C4:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V32C4);
+     break;
+   case IRETURN_V32C8:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V32C8);
+     break;
+   case IRETURN_V32I1:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V32I1);
+     break;
+   case IRETURN_V32I2:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V32I2);
+     break;
+   case IRETURN_V32I4:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V32I4);
+     break;
+   case IRETURN_V32I8:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V32I8);
+     break;
+   case IRETURN_V32F4:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V32F4);
+     break;
+   case IRETURN_V32F8:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V32F8);
+     break;
 #endif
 #endif
    case IRETURN_PPU2:

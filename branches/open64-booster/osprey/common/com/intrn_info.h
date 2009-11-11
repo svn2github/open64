@@ -79,6 +79,14 @@ typedef enum INTRN_RETKIND {
   IRETURN_M8I4,              /* MTYPE_M8I4 */
   IRETURN_V16I8,             /* MTYPE_V16I8 */
   IRETURN_V16I1,             /* MTYPE_V16I1 */
+  IRETURN_V32C4,             /* MTYPE_V32C4 */
+  IRETURN_V32C8,             /* MTYPE_V32C8 */
+  IRETURN_V32I1,             /* MTYPE_V32I1 */
+  IRETURN_V32I2,             /* MTYPE_V32I2 */
+  IRETURN_V32I4,             /* MTYPE_V32I4 */
+  IRETURN_V32I8,             /* MTYPE_V32I8 */
+  IRETURN_V32F4,             /* MTYPE_V32F4 */
+  IRETURN_V32F8,             /* MTYPE_V32F8 */
 #endif
   IRETURN_PPU2,         /* return type of ctype_b_loc() */
   IRETURN_PPI4,         /* return type of ctype_toupper_loc() and ctype_tolower_loc() */

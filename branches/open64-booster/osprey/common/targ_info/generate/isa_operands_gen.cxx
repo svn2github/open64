@@ -578,7 +578,7 @@ void ISA_Operands_End(void)
 		 "  mUINT8 rsubclass;\n"
 		 "  mUINT8 lclass;\n"
 		 "  mUINT8 eclass;\n"
-		 "  mUINT8 size;\n"
+		 "  mUINT16 size;\n"
 		 "  mUINT8 flags;\n"
 		 "} ISA_OPERAND_VALTYP;\n");
 
