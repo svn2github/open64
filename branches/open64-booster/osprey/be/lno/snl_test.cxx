@@ -1642,9 +1642,22 @@ static void SNL_Transform(WN* wn,
     }
     if (nloops_original == 2 && nloops_t == 2)
     {
-      WN* parent_original=LWN_Get_Parent(wn_original);
       if (Peel_2D_Triangle_Loops(wn_original))
-          Fully_Unroll_Short_Loops(parent_original);
+      {
+          // let the later phase Unroll_before_Factorize to
+          // unroll these loops
+          WN* parent_original=LWN_Get_Parent(wn_original);
+          while (parent_original && 
+            WN_operator(parent_original) != OPR_FUNC_ENTRY &&
+            WN_operator(parent_original) != OPR_DO_LOOP)
+            parent_original = LWN_Get_Parent(parent_original);
+
+          if (WN_operator(parent_original) == OPR_DO_LOOP)
+          {
+            DO_LOOP_INFO *dli = Get_Do_Loop_Info(parent_original);
+            if (dli) dli->Delay_Full_Unroll = TRUE;
+          }      
+      }    
       return;
     }
     SNL_Optimize_Bounds(SNL_REGION(wn, wn));

@@ -2488,6 +2488,8 @@ extern INT cl()
   }
   return error_count;
 }  
+// the map to keep track of the deleted loops (because of unroll, etc)
+extern HASH_TABLE<WN*, BOOL> *Deleted_Loop_Map;
 
 static BOOL
 Unroll_before_Factorize(WN *func_nd)
@@ -2528,6 +2530,7 @@ Unroll_before_Factorize(WN *func_nd)
      INT current_level=1;
      while (current_level < MAX_INNER_LOOPS)
      { 
+        if (Deleted_Loop_Map->Find(loop)) break;
         WN *parent = LWN_Get_Parent(loop);
         WN *outer_loop = Enclosing_Do_Loop(parent);
         if (outer_loop == NULL) break;
