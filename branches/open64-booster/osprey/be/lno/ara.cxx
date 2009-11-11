@@ -64,6 +64,7 @@
 #include "lego_util.h"
 #include "parids.h"
 #include "cond.h"
+#include "access_main.h"
 
 #if ! defined(BUILD_OS_DARWIN)
 #pragma weak Anl_File_Path
@@ -93,9 +94,19 @@ Set_Invariant_Symbols(ARA_LOOP_INFO *loop_info, WN* wn)
 
   if (WN_operator(wn)==OPR_LDID) {
     DEF_LIST *defs = Du_Mgr->Ud_Get_Def(wn);
-    if (!defs || defs->Incomplete()) 
+    if (!defs) 
       return;
 
+    if (defs->Incomplete()){
+    // the "incomplete" means that there are some aliased def,
+    // but the aliased defs possibly is outside of the loop. 
+    // So we need to examine if it is aliased with some def inside of the loop
+      if( WN_opcode(loop_info->Loop()) != OPC_DO_LOOP)
+      // possibly be FUNC_ENTRY
+        return;
+      else if (Exp_Node_Varies_In_Loop(wn, (WN *) loop_info->Loop()))
+        return;
+    }
     if (!loop_info->Processed(wn)) {
       loop_info->Add_Processed(wn);
 
