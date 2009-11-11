@@ -107,9 +107,9 @@ gs_void_t gs_write (const gs_string_t filename)
     p_in_memseg = (gs_t) (mem_seg + i);
     size = gspin_node_size(gs_code(t));
     memcpy(p_in_memseg, t, size);
-#ifdef CHECK_SPIN_LEAKS
 #ifdef Is_True_On
     _gs_em(p_in_memseg, false);
+#ifdef CHECK_SPIN_LEAKS
     if (gs_em(t) == false) {
       printf("leaked node: ");
       gs_dump(t);
