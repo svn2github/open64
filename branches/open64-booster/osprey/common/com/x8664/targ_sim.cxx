@@ -823,6 +823,7 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	break;
 	
     case MTYPE_V8I8:
+    case MTYPE_V8I8:
     case MTYPE_V8F4:
     case MTYPE_M8I1:
     case MTYPE_M8I2:
@@ -860,6 +861,14 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
     case MTYPE_V16I8:
     case MTYPE_V16F4:
     case MTYPE_V16F8:
+    case MTYPE_V32I1:
+    case MTYPE_V32I2:
+    case MTYPE_V32I4:
+    case MTYPE_V32I8:
+    case MTYPE_V32F4:
+    case MTYPE_V32F8:
+    case MTYPE_V32C4:
+    case MTYPE_V32C8:
       ++Current_Float_Param_Num;
       if (Is_Target_32bit()) {
 	//16 bytes vector in 32bit system, if enable sse
