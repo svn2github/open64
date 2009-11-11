@@ -2298,6 +2298,20 @@ Has_Predecessor_Not_In_LRANGE( GRA_BB *gbb, LRANGE* lrange,
 	!pred->Is_Live_Out_LRANGE(lrange)) {
       return TRUE;
     }
+
+    // test if the pred_bb has a NEW restore that trashes the same register 
+    if (pred->Restore_Below(rc)) {
+      LRANGE_SUBUNIVERSE *su = pred->Region()->Subuniverse(rc);
+      LRANGE* lrange1;
+      for (lrange1 = LRANGE_SET_ChooseS(pred->Restore_Below(rc), su);
+           lrange1 != LRANGE_SET_CHOOSE_FAILURE;
+           lrange1 = LRANGE_SET_Choose_NextS(pred->Restore_Below(rc),
+      				   lrange1, su)){
+        if ( lrange1->Reg() == reg)
+          return TRUE;
+      }
+    }
+    
     if (GRA_optimize_boundary) {
       // If <pred> is a boundary BB where <lrange> is not live-out, then
       // <lrange>'s register could be used by another lrange at the end of
