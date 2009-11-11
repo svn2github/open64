@@ -1260,7 +1260,7 @@ VHO_Lower_Compgoto ( WN * wn )
  * Update VHO_Struct_Nfields, VHO_Struct_Last_Field_Offset
  * VHO_Struct_Last_Field_Size.
  *
- * If the structure contains misaligned data, holes or fields which
+ * If the structure contains misaligned data, holes in unions or fields which
  * are out of order, then lowering is not done.
  * This is done by setting VHO_Struct_Can_Be_Lowered to FALSE.
  *
@@ -1268,7 +1268,7 @@ VHO_Lower_Compgoto ( WN * wn )
  */
 
 static UINT
-VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id )
+VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id, BOOL avoid_hole )
 {
   TY_IDX      fty_idx;
   WN_OFFSET   field_offset;
@@ -1280,6 +1280,11 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id )
 
   FLD_ITER fld_iter = Make_fld_iter (TY_fld (Ty_Table[sty_idx]));
 
+  // AMD bug: 15046. When a union is seen, we should not allow holes between underleath flattened fields
+  // when we use copy-by-field to lower struct copies.
+  if (TY_is_union(Ty_Table[sty_idx]))
+    avoid_hole = TRUE;
+  
   while (VHO_Struct_Can_Be_Lowered) {
     FLD_HANDLE fld (fld_iter);
     if ( FLD_is_bit_field(fld) ) {
@@ -1297,13 +1302,18 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id )
         if ( VHO_Struct_Nfields ) {
           if ( field_offset >= VHO_Struct_Last_Field_Offset
                                  + VHO_Struct_Last_Field_Size ) {
-            /* new field */
-            VHO_Struct_Last_Field_Offset = field_offset;
-            VHO_Struct_Last_Field_Size   = TY_size (Ty_Table [fty_idx]);
-            VHO_Struct_Field_Is_Array_Table [VHO_Struct_Nfields] = FALSE;
-            VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = field_id;
-            VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset;
-            VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = fty_idx;
+
+	    if (avoid_hole && (field_offset > (VHO_Struct_Last_Field_Offset + VHO_Struct_Last_Field_Size)))
+	      VHO_Struct_Can_Be_Lowered = FALSE;
+	    else {
+	      /* new field */
+	      VHO_Struct_Last_Field_Offset = field_offset;
+	      VHO_Struct_Last_Field_Size   = TY_size (Ty_Table [fty_idx]);
+	      VHO_Struct_Field_Is_Array_Table [VHO_Struct_Nfields] = FALSE;
+	      VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = field_id;
+	      VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset;
+	      VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = fty_idx;
+	    }
           }
           else
           if ( field_offset == VHO_Struct_Last_Field_Offset ) {
@@ -1349,7 +1359,7 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id )
       
        	  // get new field id from sub-struct 
           // so next field will have right value.
-          field_id = VHO_Get_Field_List (offset + FLD_ofst (fld), fty_idx, field_id);
+          field_id = VHO_Get_Field_List (offset + FLD_ofst (fld), fty_idx, field_id, avoid_hole);
         }
         break;
 
@@ -1381,26 +1391,31 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id )
         if(VHO_Struct_Nfields) {
           if ( field_offset >=  VHO_Struct_Last_Field_Offset
                                   + VHO_Struct_Last_Field_Size ) { 
-            for(int i=0; i<array_elem_num; i++) {
-              if (TY_kind(ety_idx) == KIND_STRUCT) {
-                INT last_nfield = VHO_Struct_Nfields;
-                // array of structs; open up each field of struct
-                VHO_Get_Field_List (field_offset + i*TY_size(ety_idx), 
-                                    ety_idx, field_id);
-                for (INT j=last_nfield; j < VHO_Struct_Nfields; ++j) {
-                  VHO_Struct_Field_Is_Array_Table [j] = TRUE;
-                  VHO_Struct_Field_Id_Table [j] = field_id;
-                }
-              }
-              else {
-                VHO_Struct_Field_Is_Array_Table [VHO_Struct_Nfields] = TRUE;
-                VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = field_id;
-                VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset + i*TY_size(Ty_Table [ety_idx]);
-                VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = ety_idx;
-              }
-            }
-            VHO_Struct_Last_Field_Offset = field_offset;
-            VHO_Struct_Last_Field_Size   = TY_size(Ty_Table [fty_idx]); 
+
+	    if (avoid_hole && (field_offset > (VHO_Struct_Last_Field_Offset + VHO_Struct_Last_Field_Size)))
+	      VHO_Struct_Can_Be_Lowered = FALSE;
+	    else {
+	      for(int i=0; i<array_elem_num; i++) {
+		if (TY_kind(ety_idx) == KIND_STRUCT) {
+		  INT last_nfield = VHO_Struct_Nfields;
+		  // array of structs; open up each field of struct
+		  VHO_Get_Field_List (field_offset + i*TY_size(ety_idx), 
+				      ety_idx, field_id, avoid_hole);
+		  for (INT j=last_nfield; j < VHO_Struct_Nfields; ++j) {
+		    VHO_Struct_Field_Is_Array_Table [j] = TRUE;
+		    VHO_Struct_Field_Id_Table [j] = field_id;
+		  }
+		}
+		else {
+		  VHO_Struct_Field_Is_Array_Table [VHO_Struct_Nfields] = TRUE;
+		  VHO_Struct_Field_Id_Table [VHO_Struct_Nfields] = field_id;
+		  VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset + i*TY_size(Ty_Table [ety_idx]);
+		  VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = ety_idx;
+		}
+	      }
+	      VHO_Struct_Last_Field_Offset = field_offset;
+	      VHO_Struct_Last_Field_Size   = TY_size(Ty_Table [fty_idx]); 
+	    }
           } else if ( field_offset == VHO_Struct_Last_Field_Offset ) {
             if ( TY_size (Ty_Table [fty_idx]) > VHO_Struct_Last_Field_Size ) {
               VHO_Struct_Nfields--;
@@ -1409,7 +1424,7 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id )
                   INT last_nfield = VHO_Struct_Nfields;
                   // array of structs; open up each field of struct
                   VHO_Get_Field_List (field_offset + i*TY_size(ety_idx), 
-                                      ety_idx, field_id);
+                                      ety_idx, field_id, avoid_hole);
                   for (INT j=last_nfield; j < VHO_Struct_Nfields; ++j) {
                     VHO_Struct_Field_Is_Array_Table [j] = TRUE;
                     VHO_Struct_Field_Id_Table [j] = field_id;
@@ -1436,7 +1451,7 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id )
               INT last_nfield = VHO_Struct_Nfields;
               // array of structs; open up each field of struct
               VHO_Get_Field_List (field_offset + i*TY_size(ety_idx), 
-                                  ety_idx, field_id);
+                                  ety_idx, field_id, avoid_hole);
               for (INT j=last_nfield; j < VHO_Struct_Nfields; ++j) {
                 VHO_Struct_Field_Is_Array_Table [j] = TRUE;
                 VHO_Struct_Field_Id_Table [j] = field_id;
@@ -1596,7 +1611,7 @@ VHO_Lower_Mstore ( WN * wn )
 //    VHO_Struct_Alignment = TY_align(dst_ty_idx);
 
       /* Flatten out the structure into non overlapping fields */
-      VHO_Get_Field_List ( 0, src_ty_idx, WN_field_id(src_value) );
+      VHO_Get_Field_List ( 0, src_ty_idx, WN_field_id(src_value), FALSE );
 
 #ifdef VHO_DEBUG
       if ( VHO_Struct_Debug )
@@ -1949,7 +1964,7 @@ VHO_Lower_Mstid (WN * wn)
       // src_field_id is the starting point of type src_ty_idx
       // inside the outer structure of type orig_src_ty_idx
               
-      VHO_Get_Field_List (0, src_ty_idx, src_field_id);
+      VHO_Get_Field_List (0, src_ty_idx, src_field_id, FALSE);
               
 #ifdef VHO_DEBUG
       if ( VHO_Struct_Debug)
@@ -2187,7 +2202,7 @@ VHO_Lower_Mistore ( WN * wn )
       VHO_Struct_Can_Be_Lowered = TRUE;
       //    VHO_Struct_Alignment = TY_align(dst_ty_idx);
       /* Flatten out the structure into non overlapping fields */
-      VHO_Get_Field_List ( 0, src_ty_idx, WN_field_id(src_value) );
+      VHO_Get_Field_List ( 0, src_ty_idx, WN_field_id(src_value), FALSE );
 
 #ifdef VHO_DEBUG
       if ( VHO_Struct_Debug )
