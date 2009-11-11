@@ -352,6 +352,10 @@ extern BOOL IPA_Enable_Old_Type_Merge;
 extern BOOL IPA_Enable_Devirtualization;
 extern BOOL IPA_Enable_Fast_Static_Analysis_VF;
 
+/* assert whole program mode to enable more aggressive ipo */
+extern BOOL IPA_Enable_Whole_Program_Mode;
+extern BOOL IPA_Enable_Whole_Program_Mode_Set;
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

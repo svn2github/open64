@@ -442,7 +442,8 @@ Process_Command_Line (INT argc, char **argv)
 
     myname = Last_Pathname_Component (argv[0]);
 
-    if (myname[0] == 'i' && strcmp (myname, "ipl") == 0) {
+    if (Run_ipl /* set via -PHASE:i */ ||
+            myname[0] == 'i' && strcmp (myname, "ipl") == 0) {
 	Run_ipl = TRUE;
 	/* We don't support olimit region for ipl (yet).  So if we overflow
 	   the olimit, we don't want to run preopt, but still run ipl. */

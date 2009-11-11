@@ -997,6 +997,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Transform_Virtual_Functions_Per_Node (
                                 if (Enable_Statistics == true) {
                                     Class_Hierarchy_Transform_Count++;
                                 }
+                                vcand.Single_Callee =
+                                        (IPA_Enable_Whole_Program_Mode == true);
                                 vcand.Virtual_Call_Site = callsite;
                                 vcand.Dummy_Call_Site = dummy_cs;
                                 vcand.Caller = method;
@@ -1019,6 +1021,7 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Transform_Virtual_Functions_Per_Node (
                             // if out of a class hierarchy only 
                             // one instance is instantiated ever.
                             VIRTUAL_FUNCTION_CANDIDATE vcand;
+                            vcand.Single_Callee = false;
                             vcand.Virtual_Table = (WN*) NULL;
                             vcand.Transform_Function_ST_IDX = ST_IDX_ZERO;
                             Identify_Virtual_Function (instance_set, 
@@ -1095,6 +1098,7 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Apply_Virtual_Function_Transform (
     SUMMARY_CALLSITE *callsite = vcand.Virtual_Call_Site;
     SUMMARY_CALLSITE *dummy_cs = vcand.Dummy_Call_Site;
     WN *vtab = vcand.Virtual_Table;
+    BOOL assert_single_target = vcand.Single_Callee;
 
     IPA_NODE_CONTEXT context(method);
     if (Node_Virtual_Function_Whirl_Map.find (method->Node_Index()) == 
@@ -1153,154 +1157,247 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Apply_Virtual_Function_Transform (
 
      if (Enable_Debug == true) {   
          fprintf (Transformed_Whirls, "Going to transform... \n");
-         fprintf (Transformed_Whirls, "Caller->Total_Succ():%d", 
+         fprintf (Transformed_Whirls, "Caller->Total_Succ():%d\n",
                    method->Total_Succ());
+         fprintf (Transformed_Whirls, "Single_Callee: %d\n",assert_single_target);
          fdump_tree (Transformed_Whirls, method->Whirl_Tree(TRUE));
      }
  
      WN_verifier (method->Whirl_Tree(TRUE));
 
-     WN *copy_lda = WN_CreateLda (Use_32_Bit_Pointers ? 
-                    OPC_U4LDA : OPC_U8LDA,
-                    0, Make_Pointer_Type (ty_callee), 
-                    WN_st(WN_kid(vtab,0)));
+     if ( assert_single_target ) {
+         /* Generate a new direct call operation with the same parameters */
+          WN *new_wn = WN_generic_call (OPR_CALL,
+                                      WN_rtype(old_wn),
+                                      /* result type is same as old_wn */
+                                      WN_desc(old_wn),  /*  */
+                                      WN_kid_count(old_wn)-1,
+                                      callee_st);
+          for (size_t j = 0; j < WN_kid_count(new_wn); j++) {
+               WN_kid(new_wn,j) = WN_COPY_Tree_With_Map(WN_kid(old_wn,j));
+          }
 
-     WN *new_wn = WN_generic_call (OPR_CALL,
-                                 WN_rtype(old_wn),
-                                 /* result type is same as old_wn */
-                                 WN_desc(old_wn),  /*  */
-                                 WN_kid_count(old_wn)-1,
-                                 callee_st);
+           WN_set_map_id(new_wn, WN_map_id(old_wn));
+           WN_set_flag(new_wn, WN_flag(old_wn));
 
+           /* Insert the new call after the original */
+           WN *block = WN_Get_Parent (old_wn,
+                                       method->Parent_Map(),
+                                       method->Map_Table());
+           WN_INSERT_BlockAfter(block,old_wn,new_wn);
 
-     WN *block = WN_Get_Parent (old_wn,
-                                method->Parent_Map(),
-                                method->Map_Table());
-     for (size_t j = 0; j < WN_kid_count(new_wn); j++) {
-          WN_kid(new_wn,j) = WN_COPY_Tree_With_Map(WN_kid(old_wn,j));
+           /* Remove the old call from the code stream */
+           /*WN_Delete(*/WN_EXTRACT_FromBlock(block, old_wn)/*)*/;
+           WN_Parentize(block, method->Parent_Map(), method->Map_Table());
+
+           /* Now we fix up the the original callsite information */
+           //callsite->Reset_icall_target(); // paranoia?
+           //callsite->Reset_virtual_function_target();
+           callsite->Reset_is_virtual_call();
+           callsite->Reset_func_ptr();
+           Is_True( WN_num_actuals(new_wn) == callsite->Get_param_count(),
+                   ("Parameter count mismatch on original call site"));
+           Is_True( WN_rtype(new_wn) == callsite->Get_return_type(),
+                   ("Return type mismatch on original call site"));
+           callsite->Set_callsite_freq();
+           callsite->Set_probability(-1);
+
+           /* Get the symbol index for the now direct call */
+           method->Set_Pending_Virtual_Functions();
+           IPA_NODE* callee_ipa_node = IPA_Call_Graph->Node(callee_nod_idx);
+           SUMMARY_PROCEDURE* proc_summ_callee =
+                   callee_ipa_node->Summary_Proc();
+           callsite->Set_symbol_index(proc_summ_callee->Get_symbol_index());
+
+           /* The call graph does not contain any edges for virtual
+            * calls, but the IPA_NODE does contain a list of indirect
+            * calls that must be updated.  We do two things:
+            * (1) Add an edge for the now direct call
+            * (2) Remove the indirect callsite from the icall list
+            */
+           IPA_EDGE* edge = IPA_Call_Graph->Add_New_Edge(callsite,
+                                    method->Node_Index(),
+                                    pu_node_index_map[ST_pu(callee_st)]);
+                                    
+           edge->Set_Whirl_Node(new_wn);
+           
+           // set edge frequency in order to inline this direct call, 
+           // if we can find icall's frequency set to it
+           // otherwise set to 1
+           BOOL set_freq = false;
+           if (Cur_PU_Feedback) {
+                FB_Info_Icall info_icall = Cur_PU_Feedback->Query_icall(old_wn);
+                if (!info_icall.Is_uninit())
+                {    
+                    INT64 callee_counter = info_icall.tnv._counters[0];
+                    edge->Set_frequency(FB_FREQ(callee_counter));
+                    set_freq = true;
+                }   
+           }     
+           if (!set_freq)
+                edge->Set_frequency(1);
+
+           Is_True(!method->Icall_List().empty(),
+                   ("Expecting a non-empty list of indirect calls"));
+
+           BOOL found = false;
+           IPA_ICALL_LIST& icall_list = method->Icall_List ();
+           for (IPA_ICALL_LIST::iterator icall_iter = icall_list.begin ();
+                   icall_iter != icall_list.end (); ++icall_iter) {
+               if ((*icall_iter)->Callsite() == callsite) {
+                   method->Icall_List().erase(icall_iter);
+                   found = true;
+                   break;
+               }
+           }
+           Is_True(found == true,("Unable to find indirect callsite"));
      }
+     else {
+         WN *copy_lda = WN_CreateLda (Use_32_Bit_Pointers ?
+                 OPC_U4LDA : OPC_U8LDA,
+                 0, Make_Pointer_Type (ty_callee),
+                 WN_st(WN_kid(vtab,0)));
 
-     WN* copy_load = WN_COPY_Tree_With_Map(WN_kid(WN_kid(old_wn,
-                                    WN_kid_count(old_wn)-1),
-                                     0));
+         /* Generate a new direct call operation with the same parameters */
+         WN *new_wn = WN_generic_call (OPR_CALL,
+                 WN_rtype(old_wn),
+                 /* result type is same as old_wn */
+                 WN_desc(old_wn),  /*  */
+                 WN_kid_count(old_wn)-1,
+                 callee_st);
+         for (size_t j = 0; j < WN_kid_count(new_wn); j++) {
+             WN_kid(new_wn,j) = WN_COPY_Tree_With_Map(WN_kid(old_wn,j));
+         }
 
-     OPCODE incopcode = OPCODE_make_op(OPR_SUB, 
-                            WN_rtype(copy_load),MTYPE_V);
-     WN * sub_op = WN_CreateExp2 (incopcode, 
-                            WN_COPY_Tree_With_Map(copy_load),
-                            WN_CreateIntconst(OPC_I4INTCONST,
-                            (WN_lda_offset(WN_kid0(vtab)))));
+         WN *block = WN_Get_Parent (old_wn,
+                 method->Parent_Map(),
+                 method->Map_Table());
 
-     WN *cmp = WN_Create (Use_32_Bit_Pointers?
-                          OPC_U4U4EQ:OPC_U8U8EQ,2);
 
-     WN_kid0(cmp) = copy_lda;
-     WN_kid1(cmp) = sub_op;
+         WN* copy_load = WN_COPY_Tree_With_Map(WN_kid(WN_kid(old_wn,
+                 WN_kid_count(old_wn)-1),
+                 0));
 
-     WN *then_blk = WN_CreateBlock();
-     WN *else_blk = WN_CreateBlock();
-     WN* if_type = WN_CreateIf (cmp, then_blk, else_blk);
-     WN* aold_wn = WN_COPY_Tree_With_Map (old_wn);
+         OPCODE incopcode = OPCODE_make_op(OPR_SUB,
+                 WN_rtype(copy_load),MTYPE_V);
+         WN * sub_op = WN_CreateExp2 (incopcode,
+                 WN_COPY_Tree_With_Map(copy_load),
+                 WN_CreateIntconst(OPC_I4INTCONST,
+                         (WN_lda_offset(WN_kid0(vtab)))));
 
-     WN_INSERT_BlockLast (then_blk, new_wn);
-     WN_INSERT_BlockLast (else_blk, aold_wn);
+         WN *cmp = WN_Create (Use_32_Bit_Pointers?
+                 OPC_U4U4EQ:OPC_U8U8EQ,2);
 
-     for (WN* stmt = WN_next (old_wn); stmt != NULL && 
-             Is_Return_Store_Stmt (stmt);) {
-         WN_INSERT_BlockLast (then_blk, WN_COPY_Tree(stmt));
-         WN_INSERT_BlockLast (else_blk, WN_COPY_Tree(stmt));
-         WN * ret_wn = stmt;
-         stmt = WN_next (stmt);
-         WN_EXTRACT_FromBlock (block, ret_wn);
+         WN_kid0(cmp) = copy_lda;
+         WN_kid1(cmp) = sub_op;
+
+         WN *then_blk = WN_CreateBlock();
+         WN *else_blk = WN_CreateBlock();
+         WN* if_type = WN_CreateIf (cmp, then_blk, else_blk);
+         WN* aold_wn = WN_COPY_Tree_With_Map (old_wn);
+
+         WN_INSERT_BlockLast (then_blk, new_wn);
+         WN_INSERT_BlockLast (else_blk, aold_wn);
+
+         for (WN* stmt = WN_next (old_wn); stmt != NULL &&
+         Is_Return_Store_Stmt (stmt);) {
+             WN_INSERT_BlockLast (then_blk, WN_COPY_Tree(stmt));
+             WN_INSERT_BlockLast (else_blk, WN_COPY_Tree(stmt));
+             WN * ret_wn = stmt;
+             stmt = WN_next (stmt);
+             // Should we be calling WN_Delete() here?
+             WN_EXTRACT_FromBlock (block, ret_wn);
+         }
+
+         if (Enable_Profile == true) {
+             //
+             // This code is used for profiling only. This is not
+             // a production feature.
+             // we load from extern variable miss_vf, hit_vf
+             // increment and store back to the same location
+             // these load/stores are to two arrays
+             // else block gets missed load/store
+             // if-then block gets hits load/store
+             //
+             if (Hit_ST_IDX != ST_IDX_ZERO && Miss_ST_IDX != ST_IDX_ZERO) {
+                 // hit part
+                 // must use ldid instead???
+                 ST *Hit_st = &St_Table (GLOBAL_SYMTAB, Hit_ST_IDX);
+                 ST *Miss_st = &St_Table (GLOBAL_SYMTAB, Miss_ST_IDX);
+                 TY_IDX pty_idx = Make_Pointer_Type (ST_type(Hit_st), FALSE);
+                 WN *hit_ldid = WN_Ldid (MTYPE_I4,
+                         (WN_OFFSET)(Num_VFs_Count*4), Hit_st,
+                         ST_type(Hit_st));
+                 WN *miss_ldid = WN_Ldid (MTYPE_I4,
+                         (WN_OFFSET)(Num_VFs_Count*4), Miss_st,
+                         ST_type(Miss_st));
+                 OPCODE myaddopcode = OPCODE_make_op (OPR_ADD,
+                         MTYPE_U8,MTYPE_V);
+                 WN *hit_add_op = WN_CreateExp2 (myaddopcode,
+                         hit_ldid,
+                         WN_CreateIntconst(
+                                 OPC_I4INTCONST, 1));
+                 WN *miss_add_op = WN_CreateExp2 (myaddopcode,
+                         miss_ldid,
+                         WN_CreateIntconst (
+                                 OPC_I4INTCONST, 1));
+                 WN *hit_store = WN_Stid (MTYPE_I4,
+                         (WN_OFFSET)(Num_VFs_Count*4), Hit_st,
+                         ST_type(Hit_st), hit_add_op);
+                 WN *miss_store = WN_Stid (MTYPE_I4,
+                         (WN_OFFSET)(Num_VFs_Count*4), Miss_st,
+                         ST_type(Miss_st), miss_add_op);
+                 WN_INSERT_BlockLast (then_blk,hit_store);
+                 WN_INSERT_BlockLast (else_blk,miss_store);
+                 list <string> mytags;
+                 mytags.push_back (string(method->Name()));
+                 mytags.push_back (string(ST_name(callee_st)));
+                 Miss_Hit_Tag[Num_VFs_Count] = mytags;
+             }
+         }
+
+         WN_Parentize (then_blk, method->Parent_Map(),
+                 method->Map_Table());
+         WN_Parentize (else_blk, method->Parent_Map(),
+                 method->Map_Table());
+
+         WN_set_map_id(new_wn, WN_map_id(old_wn));
+         WN_set_flag(new_wn, WN_flag(old_wn));
+
+         WN_INSERT_BlockAfter(block,old_wn,if_type);
+         // This is the old call, we should call WN_Delete()?
+         WN_EXTRACT_FromBlock(block, old_wn);
+         WN_Parentize (block, method->Parent_Map(), method->Map_Table());
+
+         // Now fix_up_only will update this dummy callsite as well.
+         dummy_cs->Reset_virtual_function_target();
+         dummy_cs->Reset_func_ptr();
+         dummy_cs->Set_param_count(WN_num_actuals(new_wn));
+         dummy_cs->Set_return_type(WN_rtype(new_wn));
+         //dummy_cs->Set_callsite_freq();
+         //
+         // We dont have use for probability at all
+         // in this transformation. If I
+         // dont set probability to -1, the inliner
+         // skips this edge.
+         //
+         dummy_cs->Set_probability(-1);
+
+         // set the symbol index of the inferred function on
+         // the dummy callsite
+         method->Set_Pending_Virtual_Functions();
+         IPA_NODE* callee_ipa_node = IPA_Call_Graph->Node(callee_nod_idx);
+         SUMMARY_PROCEDURE* proc_summ_callee =
+                 callee_ipa_node->Summary_Proc();
+         dummy_cs->Set_symbol_index(proc_summ_callee->Get_symbol_index());
+
+         // update call graph
+
+         IPA_EDGE* edge = IPA_Call_Graph->Add_New_Edge(dummy_cs,
+                 method->Node_Index(),
+                 pu_node_index_map[ST_pu(callee_st)]);
+         edge->Set_Whirl_Node(new_wn);
      }
-
-     if (Enable_Profile == true) {
-          // 
-          // This code is used for profiling only. This is not 
-          // a production feature.
-          // we load from extern variable miss_vf, hit_vf
-          // increment and store back to the same location 
-          // these load/stores are to two arrays
-          // else block gets missed load/store
-          // if-then block gets hits load/store
-          //
-          if (Hit_ST_IDX != ST_IDX_ZERO && Miss_ST_IDX != ST_IDX_ZERO) {
-               // hit part
-               // must use ldid instead???
-               ST *Hit_st = &St_Table (GLOBAL_SYMTAB, Hit_ST_IDX);
-               ST *Miss_st = &St_Table (GLOBAL_SYMTAB, Miss_ST_IDX);
-               TY_IDX pty_idx = Make_Pointer_Type (ST_type(Hit_st), FALSE);
-               WN *hit_ldid = WN_Ldid (MTYPE_I4, 
-                            (WN_OFFSET)(Num_VFs_Count*4), Hit_st, 
-                            ST_type(Hit_st));
-               WN *miss_ldid = WN_Ldid (MTYPE_I4, 
-                            (WN_OFFSET)(Num_VFs_Count*4), Miss_st, 
-                            ST_type(Miss_st));
-               OPCODE myaddopcode = OPCODE_make_op (OPR_ADD,
-                            MTYPE_U8,MTYPE_V);
-               WN *hit_add_op = WN_CreateExp2 (myaddopcode,
-                                         hit_ldid,
-                                         WN_CreateIntconst(
-                                            OPC_I4INTCONST, 1));
-               WN *miss_add_op = WN_CreateExp2 (myaddopcode,
-                                         miss_ldid,
-                                         WN_CreateIntconst (
-                                            OPC_I4INTCONST, 1));
-               WN *hit_store = WN_Stid (MTYPE_I4, 
-                            (WN_OFFSET)(Num_VFs_Count*4), Hit_st,
-                            ST_type(Hit_st), hit_add_op);
-               WN *miss_store = WN_Stid (MTYPE_I4, 
-                            (WN_OFFSET)(Num_VFs_Count*4), Miss_st,
-                            ST_type(Miss_st), miss_add_op);
-               WN_INSERT_BlockLast (then_blk,hit_store);
-               WN_INSERT_BlockLast (else_blk,miss_store);
-               list <string> mytags;
-               mytags.push_back (string(method->Name()));
-               mytags.push_back (string(ST_name(callee_st)));
-               Miss_Hit_Tag[Num_VFs_Count] = mytags;
-        }
-    }
-
-    WN_Parentize (then_blk, method->Parent_Map(),
-                  method->Map_Table());
-    WN_Parentize (else_blk, method->Parent_Map(),
-                  method->Map_Table());
-
-    WN_set_map_id(new_wn, WN_map_id(old_wn));
-    WN_set_flag(new_wn, WN_flag(old_wn));
-
-    WN_INSERT_BlockAfter(block,old_wn,if_type);
-    WN_EXTRACT_FromBlock(block, old_wn);
-    WN_Parentize (block, method->Parent_Map(), method->Map_Table());
-
-    // Now fix_up_only will update this dummy callsite as well.
-    dummy_cs->Reset_virtual_function_target();
-    dummy_cs->Reset_func_ptr();
-    dummy_cs->Set_param_count(WN_num_actuals(new_wn));
-    dummy_cs->Set_return_type(WN_rtype(new_wn));
-    //dummy_cs->Set_callsite_freq();
-    // 
-    // We dont have use for probability at all 
-    // in this transformation. If I 
-    // dont set probability to -1, the inliner 
-    // skips this edge. 
-    // 
-    dummy_cs->Set_probability(-1);
-
-    // set the symbol index of the inferred function on 
-    // the dummy callsite
-    method->Set_Pending_Virtual_Functions();
-    IPA_NODE* callee_ipa_node = IPA_Call_Graph->Node(callee_nod_idx);
-    SUMMARY_PROCEDURE* proc_summ_callee = 
-                callee_ipa_node->Summary_Proc();
-    dummy_cs->Set_symbol_index(proc_summ_callee->Get_symbol_index());
-            
-    // update call graph
-            
-    IPA_EDGE* edge = IPA_Call_Graph->Add_New_Edge(dummy_cs,
-                             method->Node_Index(),
-                             pu_node_index_map[ST_pu(callee_st)]);
-    edge->Set_Whirl_Node(new_wn); 
 
     // verify if the whirl_tree is proper after my insertions into it
     WN_verifier(method->Whirl_Tree(TRUE));
@@ -1803,7 +1900,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Fixup_Virtual_Function_Callsites_Per_Node (
         // Look at IPO_Process_Virtual_Functions to get more 
         // idea on the use for this callsite id.
         // 
-        if (!callsite_array2[cs_index].Is_virtual_function_target()) {
+       if (!callsite_array2[cs_index].Is_virtual_function_target() &&
+           !callsite_array2[cs_index].Is_icall_target() ) {
             callsite_array2[cs_index].Set_callsite_id (count++);
         }
     }

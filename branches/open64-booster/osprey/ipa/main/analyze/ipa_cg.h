@@ -755,6 +755,8 @@ public:
     fprintf (fp, "%s\n", Name());
   }
 
+  void Print(FILE *fp, IPA_CALL_GRAPH *cg);
+
   void Trace () const 
   {
     Print (TFile);
@@ -1142,6 +1144,11 @@ public:
       edge->Set_Edge_Index (edge_index);
     }
     caller->Incr_Total_Succ();
+  }
+
+  void Delete_Edge(IPA_EDGE *edge)
+  {
+      _graph->Delete_Edge(edge->Edge_Index());
   }
     
   IPA_NODE* Caller (EDGE_INDEX edge_idx) const

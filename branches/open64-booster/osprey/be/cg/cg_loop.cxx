@@ -5026,6 +5026,29 @@ bool CG_LOOP::Determine_Unroll_Fully(BOOL count_multi_bb)
     return false;
   }
 
+  // filter out those loops in which indirect branch has a succ
+  // that is inside the loop, because unroll_multi_bb could not
+  // handle such loops. Here, the check is  
+  // the same as in line 4214 (i.e., not yet retargeting
+  // intra-loop indirect branches)
+  BB *loop_bb;
+  FOR_ALL_BB_SET_members(LOOP_DESCR_bbset(loop), loop_bb) {
+    WN *stmt = BB_branch_wn(loop_bb);
+    OP *br_op = BB_branch_op(loop_bb);
+    if (stmt != NULL && 
+        (!br_op || !TN_is_label(OP_opnd(br_op, Branch_Target_Operand(br_op)))))
+    {
+      BBLIST *succs;
+      FOR_ALL_BB_SUCCS(loop_bb, succs) {
+        BB *succ = BBLIST_item(succs);
+        if (BB_SET_MemberP(LOOP_DESCR_bbset(loop), succ))
+        {
+          return false;
+        }
+      }
+    }
+ }   
+  
   // This preserves the legacy behavior
   if (count_multi_bb) {
     BB *cur_bb;

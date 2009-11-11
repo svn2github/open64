@@ -52,6 +52,8 @@ class IPA_VIRTUAL_FUNCTION_TRANSFORM {
 // for each transformable virtual function       
     class VIRTUAL_FUNCTION_CANDIDATE {
         public:
+            // Replace icall with call
+            BOOL Single_Callee;
 // The virtual function's call site summary
             SUMMARY_CALLSITE *Virtual_Call_Site;
 // Dummy call site summary that will now be set to fun_st_idx

@@ -107,7 +107,7 @@ private:
     BOOL Check_Uses_Defs_in_Loop(BB_LOOP* , STMTREP*, BB_NODE*, POINTS_TO*, BOOL);
     BOOL Check_Uses_Defs_Coderep(STMTREP*, CODEREP*, POINTS_TO*, BOOL);
     BOOL Check_First_Def_Coderep(STMTREP*, BB_NODE *, CODEREP*, POINTS_TO*, BOOL);
-    BOOL Call_Can_be_Negelect(STMTREP*, POINTS_TO*);
+    BOOL Call_Can_be_Ignore(STMTREP*, POINTS_TO*);
     BOOL Is_Def_Candidate(CODEREP*);
     BOOL Same_as_first_def(CODEREP*);
     BOOL Have_Increment_Def(BB_LOOP*, BB_NODE*, POINTS_TO*);

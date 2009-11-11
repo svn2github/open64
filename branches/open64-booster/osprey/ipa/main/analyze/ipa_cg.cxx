@@ -3236,12 +3236,14 @@ IPA_EDGE::Print ( const FILE* fp,		// File to which to print
   IPA_NODE* callee = cg->Callee(Edge_Index());
 
   fprintf ( (FILE*) fp,
-	    "name = %-20s (ix:%d, f:%02x:%02x, @%p)\n",
+	    "name = %-20s (ix:%d, f:%02x:%02x, @%p) callsite %x:%d,%x\n",
 	    invert ? caller->Name() : callee->Name(), 
             Edge_Index(), 
             _flags,
-	    EDGE_etype(&GRAPH_e_i(cg->Graph(), Edge_Index())), 
-            this );
+	    EDGE_etype(&GRAPH_e_i(cg->Graph(), Edge_Index())),
+	    this,
+	    Summary_Callsite(),Summary_Callsite()->Get_callsite_id(),
+	    Summary_Callsite()->Get_state());
 }
 
 // ====================================================================
@@ -4190,6 +4192,19 @@ fprintf(fp, SBar);
        }
   }
 }//Print-vobose()
+
+void
+IPA_NODE::Print(FILE *fp, IPA_CALL_GRAPH *cg)
+{
+   IPA_NODE *node = this;
+   fprintf(fp, "PU    %s (freq = %.1f) \n", IPA_Node_Name(node),
+           (node->Get_frequency()).Value());
+   IPA_SUCC_ITER succ_iter(node);
+   for ( succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next() ) {
+       IPA_EDGE *edge = succ_iter.Current_Edge();
+       edge->Print(fp,cg,false);
+   }
+}
 
 // ---------------------------------------------
 // Print all node indices in the specified order

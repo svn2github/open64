@@ -831,7 +831,7 @@ UselessStoreElimination::Is_Freed_in_BB(BB_NODE * bb, CODEREP * cr)
                 return TRUE;
             }
 
-            if (Call_Can_be_Negelect(stmt, pt))
+            if (Call_Can_be_Ignore(stmt, pt))
                 continue;
 
             return FALSE;    
@@ -859,7 +859,7 @@ UselessStoreElimination::Is_Freed_in_BB(BB_NODE * bb, CODEREP * cr)
 // check whether this is a known_effect call that does not
 // mod the user globals 
 BOOL
-UselessStoreElimination::Call_Can_be_Negelect(STMTREP * call, POINTS_TO *  pt)
+UselessStoreElimination::Call_Can_be_Ignore(STMTREP * call, POINTS_TO *  pt)
 {
     Is_True(OPERATOR_is_call(call->Opr()), ("Should be a call"));
 
@@ -868,9 +868,6 @@ UselessStoreElimination::Call_Can_be_Negelect(STMTREP * call, POINTS_TO *  pt)
          !strcmp(ST_name(call->St()), "malloc")))
          return TRUE;
     
-    // After vcall promotion change, there should no vcall
-    if (call->Opr() == OPR_ICALL)  return TRUE;
-
     // intrinsic call should have no alias with pt
     if (call->Opr() == OPR_INTRINSIC_CALL)
     {
@@ -912,7 +909,7 @@ UselessStoreElimination::Check_Uses_Defs_in_Loop(
         if (OPERATOR_is_call(stmt->Opr()))
         {
             // skip these "known" calls
-            if (Call_Can_be_Negelect(stmt, pt)) continue;
+            if (Call_Can_be_Ignore(stmt, pt)) continue;
             
             return FALSE;
         }
@@ -1114,7 +1111,7 @@ UselessStoreElimination::Have_Increment_Def(
         if (OPERATOR_is_call(stmt->Opr()))
         {
             // skip these "known effect" calls
-            if (Call_Can_be_Negelect(stmt, st_pt)) continue;
+            if (Call_Can_be_Ignore(stmt, st_pt)) continue;
             
             return FALSE;
 
@@ -1169,7 +1166,7 @@ UselessStoreElimination::Istore_Inc_Const_Other(STMTREP * stmt, INT * const_val)
     if (stmt->Rhs()->Kind() == CK_OP &&
         stmt->Rhs()->Opr() == OPR_ADD &&
         stmt->Rhs()->Get_opnd(1)->Kind() == CK_CONST &&
-        stmt->Rhs()->Get_opnd(1)->Const_val() != 0 &&
+        stmt->Rhs()->Get_opnd(1)->Const_val() > 0 &&
         stmt->Rhs()->Get_opnd(0)->Ilod_base()->Aux_id() == stmt->Lhs()->Istr_base()->Aux_id())
     {
         return Inc_Store;
