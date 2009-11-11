@@ -2184,8 +2184,8 @@ REGION_UN::Is_Included(const REGION_UN &a, const ARA_LOOP_INFO &ara_info)
 	break;
       }
 
-      if (!covered) return FALSE;
     }
+    if (!covered) return FALSE;
   }
 
   return TRUE;
