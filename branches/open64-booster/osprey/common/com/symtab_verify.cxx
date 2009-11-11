@@ -171,8 +171,11 @@ ST_Verify_Sclass_Export (ST_SCLASS storage_class, ST_EXPORT export_class,
         ST_IDX base_idx = ST_base_idx (st);
         Is_True ( base_idx != ST_st_idx (st),
 		  (msg, Export_Name(export_class), Sclass_Name (storage_class)));
-        Is_True ( storage_class == ST_sclass(St_Table[base_idx]),
-		  (msg, Export_Name(export_class), Sclass_Name (storage_class)));
+        if (! (ST_sclass(St_Table[base_idx]) == SCLASS_UNKNOWN &&
+               ST_class(St_Table[base_idx])  == CLASS_BLOCK) )
+          Is_True ( storage_class == ST_sclass(St_Table[base_idx]),
+                    (msg, Export_Name(export_class),
+                     Sclass_Name (storage_class)) );
       }
       else {
         Is_True (export_class == EXPORT_LOCAL ||
