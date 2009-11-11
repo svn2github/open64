@@ -976,8 +976,8 @@ MEM_POOL* pool)
           WN* stmt1 = sdg->Get_Wn(v1);
 
           EINDEX16 e1=dep_g_p->Add_Unique_Edge(
-            (mUINT32)WN_MAP_Get(dep_graph_map, stmt),
-            (mUINT32)WN_MAP_Get(dep_graph_map, stmt1));
+            (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt),
+            (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt1));
 
           if (e1==0) {
             DevWarn("Statement scc graph too big");
