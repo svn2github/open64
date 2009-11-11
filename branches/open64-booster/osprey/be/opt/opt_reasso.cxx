@@ -887,6 +887,7 @@ void enumerate_subexps (const vector<wcexp>& aexps,
             FmtAssert(FALSE, 
                     ("Unexpected type in wcexp in emunerate_subexps"));
         }
+        ++which;
     }
 
     which = 0;
