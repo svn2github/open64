@@ -945,8 +945,13 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       {
 	mINT16 kidcount = WN_kid_count (rwn);
 	WN * kid = WN_kid (rwn, kidcount - 1 );
+        // cannot replace ICALL with a CALL if the types
+        // are not match:
+        //   extern void foo(void);  
+        //   int i = ((int (*))foo)();
 	if (WN_operator (kid) == OPR_LDA &&
-	    ST_class (WN_st (kid)) == CLASS_FUNC)
+	    ST_class (WN_st (kid)) == CLASS_FUNC &&
+            srep->Ty() == ST_type(WN_st (kid)) )
 	{
 	  WN_set_operator (rwn, OPR_CALL);
 	  WN_st_idx (rwn) = ST_st_idx (WN_st (kid));
