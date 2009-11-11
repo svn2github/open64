@@ -346,6 +346,7 @@ typedef struct lno_flags {
   UINT32 Local_pad_size;
   UINT32 Full_unrolling;  
 #ifdef KEY
+  BOOL   Peel_2D_triangle_loop;
   UINT32 Full_unrolling_loop_size_limit;
   BOOL   Full_Unroll_Outer;
   UINT32 Num_Processors;	// 0 means unknown
@@ -612,6 +613,7 @@ extern LNO_FLAGS Initial_LNO;
 // Unroll loops with trip count <= LNO_Full_Unrolling_Limit
 #define LNO_Full_Unrolling_Limit	Current_LNO->Full_unrolling
 #ifdef KEY
+#define LNO_Peel_2D_Triangle_LOOP Current_LNO->Peel_2D_triangle_loop
 #define LNO_Full_Unrolling_Loop_Size_Limit \
 Current_LNO->Full_unrolling_loop_size_limit
 #define LNO_Full_Unroll_Outer           Current_LNO->Full_Unroll_Outer

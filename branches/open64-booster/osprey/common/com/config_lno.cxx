@@ -309,7 +309,8 @@ static LNO_FLAGS Default_LNO = {
   8,            /* Full_unrolling */
 #endif
 #ifdef KEY
-  2000,         /* Full_unrolling_loop_size_limit */
+  TRUE,         /* Peel_2D_triangle_loop */
+  2500,         /* Full_unrolling_loop_size_limit */
 #ifdef TARG_IA64
   TRUE,		/* Full_Unroll_Outer */
 #else
@@ -520,7 +521,8 @@ LNO_FLAGS Initial_LNO = {
   8,            /* Full_unrolling */
 #endif
 #ifdef KEY
-  2000,         /* Full_unrolling_loop_size_limit */
+  TRUE,         /* Peel_2D_triangle_loop */
+  2500,         /* Full_unrolling_loop_size_limit */
 #ifdef TARG_IA64
   TRUE,		/* Full_Unroll_Outer */
 #else
@@ -891,8 +893,9 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_U32  ( "local_pad_size", 	NULL,   0,0,1000,Local_pad_size),
   LNOPT_U32  ( "full_unroll", 	        "fu",   0,0,100,Full_unrolling),
 #ifdef KEY
+  LNOPT_BOOL ( "peel_triangle_loop",   NULL,	Peel_2D_triangle_loop ),
   LNOPT_U32  ( "full_unroll_size", 	NULL,   
-	       2000,0,10000,Full_unrolling_loop_size_limit),
+	       2500,0,10000,Full_unrolling_loop_size_limit),
   LNOPT_BOOL ( "full_unroll_outer",	NULL,	Full_Unroll_Outer ),
   LNOPT_U32  ( "processors", 	NULL,   
 	       0,0,10000,Num_Processors),

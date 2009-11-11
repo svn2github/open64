@@ -224,6 +224,7 @@ SNL_NEST_INFO::SNL_NEST_INFO(WN* outer, INT nloops, MEM_POOL* pool,
   _below_is_distributable(TRUE),
   _nloops_general(0),
   _nloops_invariant(0),
+  _nloops_transformable(0),
   _depth_inner(0),
   _privatizability_info(pool),
   _problem(NULL)
@@ -273,6 +274,8 @@ SNL_NEST_INFO::SNL_NEST_INFO(WN* outer, INT nloops, MEM_POOL* pool,
       const SX_PNODE* pnode = NULL;
       INT outer_scalar_loop = 
         Privatizability_Info().First_Transformable_Depth( &pnode);
+      INT outer_transformable_loop=
+	Privatizability_Info().First_Transformable_Depth_Reduction(&pnode);
       INT i;
       for (i = 0; i < _nloops; i++) {
         INT d = _depth_inner - i;
@@ -292,6 +295,21 @@ SNL_NEST_INFO::SNL_NEST_INFO(WN* outer, INT nloops, MEM_POOL* pool,
       }
       _nloops_general = ii;
       _nloops_invariant = ii;
+
+      for (i = 0; i < _nloops; i++) {
+        INT d = _depth_inner - i;
+        if (d < outer_transformable_loop)
+          break;
+      }
+
+      for (ii = 0; ii < i; ii++) {
+        INT d = _depth_inner - ii;
+        if (!SNL_Is_Transformable(Dostack().Bottom_nth(d),
+                                  _depth_inner - _nloops + 1, dli[d]))
+          break;
+      }
+      _nloops_transformable = ii;
+
     
       // How far out are the loop bounds really invariant?
       for (i = 2; i <= _nloops_invariant; i++) {
@@ -635,6 +653,7 @@ SNL_NEST_INFO::SNL_NEST_INFO(WN* outer, WN *inner, INT nloops, MEM_POOL* pool)
   _below_is_distributable(FALSE),
   _nloops_general(0),
   _nloops_invariant(0),
+  _nloops_transformable(0),
   _depth_inner(0),
   _privatizability_info(pool),
   _problem(NULL)

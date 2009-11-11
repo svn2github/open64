@@ -127,12 +127,13 @@ SX_PNODE::SX_PNODE(WN* wn_symbol,
 		   INT outer_se_not_reqd, 
 	           INT defining_def_depth,
 		   INT lcd_depth,
-		   BOOL finalize):
+		   BOOL finalize,
+		   INT non_red_depth ):
  _wn_symbol(wn_symbol), _symbol(symbol), 
  _reduction_carried_by(reduction_carried_by),
  _outer_se_reqd(outer_se_reqd), _outer_se_not_reqd(outer_se_not_reqd),
  _defining_def_depth(defining_def_depth), _finalize(finalize),
- _lcd_depth(lcd_depth) {
+ _lcd_depth(lcd_depth), _non_red_depth(non_red_depth) {
  FmtAssert(_outer_se_reqd <= _outer_se_not_reqd,
    ("how can scalar expansion disable transformation? %d %d",
    _outer_se_reqd, _outer_se_not_reqd));
@@ -270,12 +271,15 @@ void SX_INFO::Enter(WN* wn_symbol,
 	            INT no_se_depth,
                     INT defining_def_depth,
 		    INT lcd_depth,
-		    BOOL finalize)
+		    BOOL finalize,
+		    INT non_red_depth)
 {
   Is_True(Find(sym) == NULL,
     ("Entering %s twice into SX_INFO", sym.Name()));
   SX_PNODE* n = CXX_NEW(SX_PNODE(wn_symbol, sym, wn_rd, se_depth,
-    no_se_depth, defining_def_depth, lcd_depth, finalize), Plist._pool);
+				 no_se_depth, defining_def_depth, 
+				 lcd_depth, finalize, non_red_depth), 
+			Plist._pool);
   Plist.Append(n);
 }
 
@@ -335,6 +339,33 @@ INT SX_INFO::First_Transformable_Depth(const SX_PNODE** p) const
   for (const SX_PNODE* n = i.First(); !i.Is_Empty(); n = i.Next()) {
     if (ftd < n->_outer_se_reqd) {
       ftd = n->_outer_se_reqd;
+      if (p)
+        *p = n;
+    }
+  }
+  return ftd;
+}
+//-----------------------------------------------------------------------
+// NAME: SX_INFO::First_Transformable_Depth 
+// FUNCTION: Returns the depth of the loop with the lowest depth number 
+//   which can be transformed by considering the reduction, 
+//   SX_PNODE** 'p' will point to a SX_PNODE* containing the innermost 
+//   scalar which must be expanded or the scalar reduction that can not be
+//   expanded   
+//-----------------------------------------------------------------------
+
+INT SX_INFO::First_Transformable_Depth_Reduction(const SX_PNODE** p) const
+{
+  INT ftd = 0;
+  SX_CONST_PITER i(&Plist);
+  if (p)
+    *p = NULL;
+  for (const SX_PNODE* n = i.First(); !i.Is_Empty(); n = i.Next()) {
+    if (ftd < n->_outer_se_reqd) {
+      if ( n->_non_red_depth == -1)
+	ftd = n->_outer_se_reqd;
+      else if ( ftd < n->_defining_def_depth )
+	ftd = n->_defining_def_depth;
       if (p)
         *p = n;
     }
@@ -700,7 +731,7 @@ void SX_INFO::Handle_Other_Def(WN* wn_def,
   }
   Enter(wn_def, SYMBOL(wn_def), wn_red_loop_stmt, se_reqd, se_not_reqd, 
     defining_def_depth, lcd_depth, se_result == SE_HARD 
-    || se_result == SE_HARD_LCD); 
+	|| se_result == SE_HARD_LCD, non_red_depth); 
   CXX_DELETE(equivalence_class, &LNO_local_pool);
 }
 

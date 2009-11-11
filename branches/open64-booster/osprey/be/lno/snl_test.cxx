@@ -1429,7 +1429,8 @@ static void SNL_Transform_Min(WN* wn,
   } 
 }
 
-
+extern void Fully_Unroll_Short_Loops(WN *);
+extern BOOL Peel_2D_Triangle_Loops(WN* outer_loop);
 static void SNL_Transform(WN* wn,
 		          INT nloops)
 {
@@ -1561,8 +1562,9 @@ static void SNL_Transform(WN* wn,
 
   INT nloops_g = ni.Nloops_General();
   INT nloops_i = ni.Nloops_Invariant();
+  INT nloops_t = ni.Nloops_Transformable();
 
-  while (nloops >= 2 && nloops > nloops_g && nloops > nloops_i) {
+  while (nloops >= 2 && nloops > nloops_g && nloops > nloops_i ) {
     nloops--;
     ni.Exclude_Outer_Loops(1);
     nloops_g = ni.Nloops_General();
@@ -1630,6 +1632,13 @@ static void SNL_Transform(WN* wn,
     if (LNO_Verbose) {
      printf("SNL not transforming nest,");
      printf(" transformable depth is less than two.\n");
+    }
+    if (nloops_original == 2 && nloops_t == 2)
+    {
+      WN* parent_original=LWN_Get_Parent(wn_original);
+      if (Peel_2D_Triangle_Loops(wn_original))
+          Fully_Unroll_Short_Loops(parent_original);
+      return;
     }
     SNL_Optimize_Bounds(SNL_REGION(wn, wn));
     SNL_Transform(Find_Next_Innermost_Do(wn_original), nloops_original - 1); 

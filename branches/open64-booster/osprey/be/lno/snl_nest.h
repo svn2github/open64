@@ -111,6 +111,7 @@ class SNL_NEST_INFO {
   INT			Nloops_General() const {return _nloops_general;}
   INT			Nloops_Invariant() const {return _nloops_invariant;}
   INT&			Nloops_Invariant() {return _nloops_invariant;}
+  INT			Nloops_Transformable() const {return _nloops_transformable;}
   INT		       	Depth_Inner() const {return _depth_inner;}
   INT			Num_Bad() const {return _num_bad;}
   SNL_BOUNDS_INFO*	Bi() {return _bi;}
@@ -166,6 +167,9 @@ class SNL_NEST_INFO {
   BOOL			    _above_is_distributable;
   BOOL			    _below_is_distributable;
   SNL_LOOP_PROBLEM_INFO*    _problem;
+  
+  // event aggretive transformations
+  INT			     _nloops_transformable;
 };
 
 //---------------------------------------------------------------------------
