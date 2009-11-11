@@ -3642,11 +3642,18 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
     UINT current_reloc_size = is_64bit?8:4; 
 
     if((reloc_count > 0) && reloc_buffer && k < reloc_count) {
-	// For cygnus semi-64-bit dwarf.
-	// targets of relocs in semi-64-bit vary.
-	// Some sections have no relocs and reloc_buffer can be null
-	// in such cases.
-      current_reloc_size = reloc_buffer[k].drd_length;
+      // For cygnus semi-64-bit dwarf.
+      // targets of relocs in semi-64-bit vary.
+      // Some sections have no relocs and reloc_buffer can be null
+      // in such cases.
+      // dwarf_drt_imported_declaration's length is different
+      // the pointer doesn't appear in the 'vsp' array. so we set the size
+      // to zero.
+      // refer _dwarf_pro_generate_debuginfo() in libdwarf/pro_section.c
+      if (reloc_buffer[k].drd_type == dwarf_drt_imported_declaration)
+        current_reloc_size = 0;
+      else
+        current_reloc_size = reloc_buffer[k].drd_length;
     }
 
     cur_byte += vsp.vsp_print_bytes(asm_file,current_reloc_target,cur_byte);
