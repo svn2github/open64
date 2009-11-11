@@ -2825,9 +2825,8 @@ Print_Directives_For_All_Files(void) {
 	      file_table[count].filename);
     else 
 #endif
-    fprintf(Asm_File, "\t%s\t%d\t\"%s/%s\"\n", AS_FILE, count, 
-	    incl_table[file_table[count].incl_index].path_name, 
-	    file_table[count].filename);
+    fprintf(Asm_File, "\t%s\t%d\t\"%s\"\n", AS_FILE, count,
+            file_table[count].filename);
     count++;
   }
   fputc ('\n', Asm_File);
