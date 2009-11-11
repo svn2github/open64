@@ -2064,12 +2064,12 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	    	if (invoked_lang == L_CC) {
 			add_library(args, "stdc++");
 	    	}
-		if (external_gcc == TRUE && invoked_lang == L_CC && !option_was_seen(O_static)) {
+		if (invoked_lang == L_CC && !option_was_seen(O_static)) {
 			add_libgcc_s (args);
 		}
 		add_library (args, "gcc");
 		add_library (args, "c");
-		if (external_gcc == TRUE && invoked_lang == L_CC && !option_was_seen(O_static))
+		if (invoked_lang == L_CC && !option_was_seen(O_static))
 			add_libgcc_s (args);
 		add_library(args, "gcc");
 	}
@@ -2732,7 +2732,7 @@ add_instr_archive (string_list_t* args)
 
       add_library (args, "instr");
 #ifndef TARG_IA64
-      if (external_gcc == TRUE && !option_was_seen(O_static))
+      if (!option_was_seen(O_static))
 	add_libgcc_s (args);
 #endif
     } else {
@@ -3079,7 +3079,7 @@ run_ld (void)
 
 	    init_crt_paths ();
 	    if (invoked_lang == L_CC || instrumentation_invoked == TRUE) {
-	      init_stdc_plus_plus_path(external_gcc == TRUE);
+	      init_stdc_plus_plus_path(!option_was_seen(O_static));
 	    }
 	}
 	ldpath = get_full_phase_name(ldphase);
