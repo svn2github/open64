@@ -181,6 +181,10 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
   case MTYPE_V8I4: 
   case MTYPE_V8I8: 
   case MTYPE_V8F4:
+    if ( rclass == ISA_REGISTER_CLASS_float )
+      return base != NULL ? TOP_ld64_2sse : TOP_ld64_2sse_n32;
+    else
+      return base != NULL ? TOP_ld64 : TOP_ld64_off;
   case MTYPE_M8I1:
   case MTYPE_M8I2:
   case MTYPE_M8I4:
@@ -439,6 +443,10 @@ Pick_Store_Instruction( TYPE_ID mtype,
   case MTYPE_V8I4: 
   case MTYPE_V8I8: 
   case MTYPE_V8F4:
+    if ( rclass == ISA_REGISTER_CLASS_float )
+      return base != NULL ? TOP_store64_fsse : TOP_store64_fsse_n32;
+    else
+      return base != NULL ? TOP_store64 : TOP_store64_off;
   case MTYPE_M8I1:
   case MTYPE_M8I2:
   case MTYPE_M8I4:

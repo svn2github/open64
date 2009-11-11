@@ -2158,7 +2158,7 @@ Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   FmtAssert( MTYPE_is_integral(mtype) && !MTYPE_is_mmx_vector(mtype),
              ("Should be handled in Expand_Flop") );
 
-  if ( mtype == MTYPE_V16I2 ) {
+  if ( mtype == MTYPE_V16I2 || mtype == MTYPE_V8I2 ) {
     Expand_Flop(OPC_V16I2MPY, result, src1, src2, NULL, ops);
     return;
   }
@@ -5702,6 +5702,7 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
   case OPC_V16I2MPY:
     opc = TOP_mul128v16;
     break;
+  case OPC_V8I2MPY:
   case OPC_M8I2MPY:
     opc = TOP_pmullw;
     break;

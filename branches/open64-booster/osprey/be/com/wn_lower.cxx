@@ -4464,6 +4464,7 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
     case MTYPE_V8I2:
     case MTYPE_V8I4:
     case MTYPE_V8I8:
+    case MTYPE_V8F4:
 #ifdef TARG_X8664
     case MTYPE_M8I1:
     case MTYPE_M8I2:
