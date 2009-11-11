@@ -1403,7 +1403,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  }
 		  else if (strncasecmp(p, "QI", 2) == 0) {
 		    if (num_elems == 8)
-		      idx = MTYPE_To_TY(Target_SSE ? MTYPE_V8I1 : MTYPE_M8I1);
+		      idx = MTYPE_To_TY(MTYPE_M8I1);
 		    else if (num_elems == 16)
 		      idx = MTYPE_To_TY(MTYPE_V16I1);
                     else if (num_elems == 32)
