@@ -4083,20 +4083,24 @@ static void Simd_Vectorize_Intrinsics(WN *simd_op)
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
           break;
 
+#if 0 // currently not supplied by libacml_mv.a
         case INTRN_F8SINH:
           WN_intrinsic(simd_op) = INTRN_V16F8SINH;
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
           break;
+#endif
 #if 0 //for bug 8931 release this when single precision vec ready
         case INTRN_F4SINH:
           WN_intrinsic(simd_op) = INTRN_V16F4SINH;
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
           break;
 #endif
+#if 0 // currently not supplied by libacml_mv.a
         case INTRN_F8COSH:
           WN_intrinsic(simd_op) = INTRN_V16F8COSH;
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
           break;
+#endif
 #if 0 //for bug 8931 release this when single precision vec ready
         case INTRN_F4COSH:
           WN_intrinsic(simd_op) = INTRN_V16F4COSH;
