@@ -183,10 +183,10 @@ void Hoist_Outer_Invar(WN *wn_inner, INT num_loops, INT outer_reg_tile, BOOL can
   if (LNO_Verbose) { 
     fprintf(stdout, 
       "# Hoisting outer invariants from loop on line %d (begin)\n", 
-      (INT) WN_linenum(wn_inner)); 
+      Srcpos_To_Line(WN_linenum(wn_inner))); 
     fprintf(TFile, 
       "# Hoisting outer invariants from loop on line %d (begin)\n", 
-      (INT) WN_linenum(wn_inner)); 
+      Srcpos_To_Line(WN_linenum(wn_inner))); 
   } 
   DOLOOP_STACK *do_stack = CXX_NEW(DOLOOP_STACK(&LNO_local_pool),
 					&LNO_local_pool);
@@ -219,10 +219,10 @@ void Hoist_Outer_Invar(WN *wn_inner, INT num_loops, INT outer_reg_tile, BOOL can
   if (LNO_Verbose) { 
     fprintf(stdout, 
       "# Hoisting outer invariants from loop on line %d (end)\n", 
-      (INT) WN_linenum(wn_inner)); 
+      Srcpos_To_Line(WN_linenum(wn_inner))); 
     fprintf(TFile, 
       "# Hoisting outer invariants from loop on line %d (end)\n", 
-      (INT) WN_linenum(wn_inner)); 
+      Srcpos_To_Line(WN_linenum(wn_inner))); 
   } 
   MEM_POOL_Pop(&LNO_local_pool);
 }

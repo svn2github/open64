@@ -2387,11 +2387,11 @@ extern void Scalar_Expand(WN* allocregion,
     fprintf(stdout, "Scalar expanding %s %s%sin loop %s at %d\n",
       symbol.Name(), has_lcd ? "(with lcd) " : "", 
       finalize ? "(with finalization) " : "", 
-      WB_Whirl_Symbol(wn_outer), (INT) WN_linenum(wn_outer));
+      WB_Whirl_Symbol(wn_outer), Srcpos_To_Line(WN_linenum(wn_outer)));
     fprintf(TFile, "Scalar expanding %s %s%sin loop %s at %d\n",
       symbol.Name(), has_lcd ? "(with lcd) " : "", 
       finalize ? "(with finalization) " : "", 
-      WB_Whirl_Symbol(wn_outer), (INT) WN_linenum(wn_outer));
+      WB_Whirl_Symbol(wn_outer), Srcpos_To_Line(WN_linenum(wn_outer)));
   }
 
   // Step 1: How much space do we need, in bytes?  Put that in bsz.

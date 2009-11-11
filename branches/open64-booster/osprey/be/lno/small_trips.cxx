@@ -85,9 +85,9 @@ extern void Remove_Zero_Trip_Loop(WN* wn_loop)
 
   if (LNO_Verbose) {
     fprintf(stdout, "Removing Zero Trip Loop on line %d\n", 
-      (INT) WN_linenum(wn_loop));
+      Srcpos_To_Line(WN_linenum(wn_loop)));
     fprintf(TFile, "Removing Zero Trip Loop on line %d\n", 
-      (INT) WN_linenum(wn_loop));
+      Srcpos_To_Line(WN_linenum(wn_loop)));
   } 
   if (LNO_Tlog) 
     Generate_Tlog("LNO", "trip_count", Srcpos_To_Line(WN_linenum(wn_loop)),
@@ -353,9 +353,9 @@ extern void Remove_Unity_Trip_Loop(WN* wn_loop,
 
   if (LNO_Verbose) {
     fprintf(stdout, "Removing Unity Trip Loop on line %d\n", 
-      (INT) WN_linenum(wn_loop));
+      Srcpos_To_Line(WN_linenum(wn_loop)));
     fprintf(TFile, "Removing Unity Trip Loop on line %d\n", 
-      (INT) WN_linenum(wn_loop));
+      Srcpos_To_Line(WN_linenum(wn_loop)));
   } 
   if (LNO_Tlog) 
     Generate_Tlog("LNO", "trip_count", Srcpos_To_Line(WN_linenum(wn_loop)),
@@ -776,9 +776,9 @@ static void Unify_Loop(WN* wn_inner_loop,
   WN* wn_outer_loop = LWN_Get_Parent(LWN_Get_Parent(wn_inner_loop));
   if (LNO_Verbose) {
     fprintf(stdout, "Unifying Coupled Loops on lines %d and %d\n", 
-      (INT) WN_linenum(wn_inner_loop), (INT) WN_linenum(wn_outer_loop));
+      Srcpos_To_Line(WN_linenum(wn_inner_loop)), Srcpos_To_Line(WN_linenum(wn_outer_loop)));
     fprintf(TFile, "Unifying Coupled Loops on lines %d and %d\n", 
-      (INT) WN_linenum(wn_inner_loop), (INT) WN_linenum(wn_outer_loop));
+      Srcpos_To_Line(WN_linenum(wn_inner_loop)), Srcpos_To_Line(WN_linenum(wn_outer_loop)));
   }
   if (LNO_Tlog) 
     Generate_Tlog("LNO", "trip_count", 
@@ -840,9 +840,9 @@ static void Trip_Reduce_Loop(WN* wn_loop,
 {
   if (LNO_Verbose) {
     fprintf(stdout, "Trip Reducing Loop on line %d\n", 
-      (INT) WN_linenum(wn_loop));
+      Srcpos_To_Line(WN_linenum(wn_loop)));
     fprintf(TFile, "Trip Reducing Loop on line %d\n", 
-      (INT) WN_linenum(wn_loop));
+      Srcpos_To_Line(WN_linenum(wn_loop)));
   }
   if (LNO_Tlog) 
     Generate_Tlog("LNO", "trip_count", Srcpos_To_Line(WN_linenum(wn_loop)),
@@ -1225,9 +1225,9 @@ extern WN* SNL_Finalize_Loops(WN* wn_outer_loop,
     WN* wn_loop = stack_final->Bottom_nth(i); 
     if (LNO_Verbose) {
       fprintf(stdout, "Finalizing Loop on line %d\n", 
-        (INT) WN_linenum(wn_loop));
+        Srcpos_To_Line(WN_linenum(wn_loop)));
       fprintf(TFile, "Finalizing Loop on line %d\n", 
-        (INT) WN_linenum(wn_loop));
+        Srcpos_To_Line(WN_linenum(wn_loop)));
     }
     if (LNO_Tlog) 
       Generate_Tlog("LNO", "trip_count", Srcpos_To_Line(WN_linenum(wn_loop)),

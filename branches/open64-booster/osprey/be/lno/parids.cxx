@@ -261,11 +261,11 @@ static void Print_Prompl_Msgs(PU_Info* current_pu,
   if (dli->Last_Value_Peeled) {
     fprintf(fp,
       "%5d: Created by peeling last iteration of parallel loop.\n",
-        (INT) WN_linenum(wn_loop));
+        Srcpos_To_Line(WN_linenum(wn_loop)));
     return;
   }
   if (Do_Loop_Is_Mp(wn_loop) && !dli->Auto_Parallelized) {
-    fprintf(fp, "%5d: PARALLEL (Manual) ", (INT) WN_linenum(wn_loop));
+    fprintf(fp, "%5d: PARALLEL (Manual) ", Srcpos_To_Line(WN_linenum(wn_loop)));
     Print_Mp_Lowerer_Name(current_pu, wn_loop, fp);
     fprintf(fp, "\n"); 
     return;
@@ -275,15 +275,15 @@ static void Print_Prompl_Msgs(PU_Info* current_pu,
   if (dli->ARA_Info->Is_Parallel() && dli->Auto_Parallelized) {
     if (dli->Is_Doacross)
       fprintf(fp, "%5d: PARALLEL (Auto Synchronized) ", 
-        (INT) WN_linenum(wn_loop));
+        Srcpos_To_Line(WN_linenum(wn_loop)));
     else 
-      fprintf(fp, "%5d: PARALLEL (Auto) ", (INT) WN_linenum(wn_loop));
+      fprintf(fp, "%5d: PARALLEL (Auto) ", Srcpos_To_Line(WN_linenum(wn_loop)));
     Print_Mp_Lowerer_Name(current_pu, wn_loop, fp);
     fprintf(fp, "\n");
     return;
   }
   INT found_problem = FALSE;
-  fprintf(fp, "%5d: Not Parallel\n", (INT) WN_linenum(wn_loop));
+  fprintf(fp, "%5d: Not Parallel\n", Srcpos_To_Line(WN_linenum(wn_loop)));
   if (dli->ARA_Info->Is_Parallel() 
       && dli->ARA_Info->Not_Enough_Parallel_Work()) {
     fprintf(fp, "         ");

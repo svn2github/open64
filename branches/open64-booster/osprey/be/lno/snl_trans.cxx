@@ -550,8 +550,8 @@ extern void Print_Interchange(FILE* file,
   }
   fprintf(file, ") at ("); 
   for (i = 0; i < nloops; i++) {
-    fprintf(file, "%d", (INT) WN_linenum(SNL_Get_Inner_Snl_Loop(outer_loop, 
-      i + 1)));
+    fprintf(file, "%d", Srcpos_To_Line(WN_linenum(SNL_Get_Inner_Snl_Loop(outer_loop, 
+      i + 1))));
     if (i < nloops - 1)
       fprintf(file, ",");
   }

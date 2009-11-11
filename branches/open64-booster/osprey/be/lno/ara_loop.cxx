@@ -3237,7 +3237,7 @@ WN* ARA_LOOP_INFO::Create_New_IF_Clause(BOOL is_pdo)
   DO_LOOP_INFO* dli = Get_Do_Loop_Info(wn_outer); 
   if (dli->Suggested_Parallel && dli->Work_Estimate == 0) 
     DevWarn("Work Estimate for loop %s at %d is 0", WB_Whirl_Symbol(wn_outer),
-      (INT) WN_linenum(wn_outer)); 
+      Srcpos_To_Line(WN_linenum(wn_outer))); 
   if (!dli->Suggested_Parallel) {
       // This can only happen in the case that Robert's and Peng's
       // selections of which loop to parallelize are not in agreement.
@@ -3460,7 +3460,7 @@ static void Print_Non_Parallel_Loop(FILE* fp,
 				    WN* wn_loop)
 {
   fprintf(fp, "NOT Auto Parallelizing Loop %s at %d (SMALL TRIP COUNT)\n",
-    WB_Whirl_Symbol(wn_loop), (INT) WN_linenum(wn_loop));
+    WB_Whirl_Symbol(wn_loop), Srcpos_To_Line(WN_linenum(wn_loop)));
 }
 
 #ifdef KEY
@@ -3553,7 +3553,7 @@ ARA_LOOP_INFO::Generate_Parallel_Pragma()
     if (!Get_Trace(TP_LNOPT2, TT_LNO_NO_AUTO_PARALLEL)
 	&& !_info->Suggested_Parallel)
       DevWarn("Auto-parallelizing unexpected loop %s at %d", 
-	WB_Whirl_Symbol(_loop), (INT) WN_linenum(_loop)); 
+	WB_Whirl_Symbol(_loop), Srcpos_To_Line(WN_linenum(_loop))); 
 
     _info->Auto_Parallelized = TRUE; 
     if (Has_Last_Value_Array()) {
@@ -3884,7 +3884,7 @@ ARA_LOOP_INFO::Generate_Parallel_Pragma()
   } else {
     if (Is_OK_Parallel())
       DevWarn("Heuristic prefers INNER parallel loop to loop %s at %d", 
-        WB_Whirl_Symbol(_loop), (INT) WN_linenum(_loop));
+        WB_Whirl_Symbol(_loop), Srcpos_To_Line(WN_linenum(_loop)));
     for (INT i = 0; i < _children.Elements(); ++i) 
       _children.Bottom_nth(i)->Generate_Parallel_Pragma();
   }

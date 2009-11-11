@@ -563,7 +563,7 @@ void SNL_Parallelization_Costs(WN* wn_outer, INT nloops, PARALLEL_INFO_ST  *pist
 				      &work_estimate, TRUE); 
     if (work_estimate == 0.0) 
       DevWarn("Work Estimate for loop %s at %d is 0", 
-	      WB_Whirl_Symbol(wn_new_outer), (INT) WN_linenum(wn_new_outer));
+	      WB_Whirl_Symbol(wn_new_outer), Srcpos_To_Line(WN_linenum(wn_new_outer)));
     min_parallel_cycles = SNL_Min_Parallel_Overhead_Cost(wn_new_outer, 
 							 new_nloops, i);
 

@@ -651,7 +651,7 @@ static void this_node(WN* wn,
   fprintf(stdout, "%s ", ch); 
   if (fancy >= 3) 
     if (OPCODE_has_next_prev(WN_opcode(wn)))
-      fprintf(stdout, "(%d) ", (INT) WN_linenum(wn)); 
+      fprintf(stdout, "(%d) ", Srcpos_To_Line(WN_linenum(wn))); 
   if (fancy >= 3 && Prompf_Info != NULL) 
     fprintf(stdout, "<%d> ", WN_MAP32_Get(Prompf_Id_Map, wn));
   if (WN_operator(wn) == OPR_INTCONST) {
@@ -2813,20 +2813,20 @@ extern void dump_loops(WN* wn, FILE* fp, INT spaces, INT increment)
 	const char *name = WB_Whirl_Symbol(wn);
 	if (Prompf_Id_Map != WN_MAP_UNDEFINED) { 
 	  fprintf(fp, "[%d] 0x%p DOLOOP (%d) <%d> %s\n", loop_count, wn,  
-	    (INT) WN_linenum(wn), WN_MAP32_Get(Prompf_Id_Map, wn), name);
+	    Srcpos_To_Line(WN_linenum(wn)), WN_MAP32_Get(Prompf_Id_Map, wn), name);
 	} else { 
 	  fprintf(fp, "[%d] 0x%p DOLOOP (%d) %s\n", loop_count, wn,  
-	    (INT) WN_linenum(wn), name);
+	    Srcpos_To_Line(WN_linenum(wn)), name);
 	} 
       } else {  
 	const char *name = WB_Whirl_Symbol(wn); 
 	if (Prompf_Info != NULL) {
 	  fprintf(fp, "[%d] 0x%p DOLOOP %d (%d) <%d> %s\n", loop_count, wn,  
-	    dli->Depth, (INT) WN_linenum(wn), WN_MAP32_Get(Prompf_Id_Map, wn), 
+	    dli->Depth, Srcpos_To_Line(WN_linenum(wn)), WN_MAP32_Get(Prompf_Id_Map, wn), 
 	    name);
 	} else { 
 	  fprintf(fp, "[%d] 0x%p DOLOOP %d (%d) %s\n", loop_count, 
-	    wn, dli->Depth, (INT) WN_linenum(wn), name);
+	    wn, dli->Depth, Srcpos_To_Line(WN_linenum(wn)), name);
 	} 
       } 
       if (loop_count < MAX_SAVED_NODES) 
@@ -2878,7 +2878,7 @@ extern void dump_loops(WN* wn, FILE* fp, INT spaces, INT increment)
   case OPC_DO_WHILE: 
     dump_spaces(fp, spaces);
     fprintf(fp, "[%d] 0x%p DO_WHILE_LOOP (%d) \n", loop_count, wn,
-      (INT) WN_linenum(wn));
+      Srcpos_To_Line(WN_linenum(wn)));
     if (loop_count < MAX_SAVED_NODES)
       carray[loop_count++] = wn;
     dump_loops(WN_while_body(wn), fp, spaces + increment, increment);
@@ -2886,7 +2886,7 @@ extern void dump_loops(WN* wn, FILE* fp, INT spaces, INT increment)
   case OPC_WHILE_DO:
     dump_spaces(fp, spaces);
     fprintf(fp, "[%d] 0x%p WHILE_DO_LOOP (%d) \n", loop_count, wn,
-      (INT) WN_linenum(wn));
+      Srcpos_To_Line(WN_linenum(wn)));
     if (loop_count < MAX_SAVED_NODES)
       carray[loop_count++] = wn;
     dump_loops(WN_while_body(wn), fp, spaces + increment, increment);
