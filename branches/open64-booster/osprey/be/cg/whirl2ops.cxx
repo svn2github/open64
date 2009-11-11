@@ -1392,9 +1392,6 @@ PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num)
     // of size 4 bytes
     if (!TN_is_float(tn) &&
 	TN_size(tn) != TY_size(preg_ty)
-#ifdef TARG_X8664
-	&& Is_Target_64bit()
-#endif // TARG_X8664
        ) {
 #if defined(TARG_SL) && (defined(EMULATE_LONGLONG) || defined(EMULATE_FLOAT_POINT)) 
       if (mtype != MTYPE_I8 && mtype != MTYPE_U8 && mtype != MTYPE_F8) 
@@ -1951,7 +1948,7 @@ Handle_LDID (WN *ldid, TN *result, OPCODE opcode)
       }
 #endif
 
-#elif defined(TARG_NVISA)
+#elif defined(TARG_NVISA) || defined(TARG_X8664) 
     TN *ldid_result;
     if (Is_Simple_Type(WN_ty(ldid))) {
         // pass more exact ty rather than st so know to create 
@@ -1961,16 +1958,28 @@ Handle_LDID (WN *ldid, TN *result, OPCODE opcode)
         ldid_result = PREG_To_TN (WN_st(ldid), WN_load_offset(ldid));
     }
     TYPE_ID rtype = OPCODE_rtype(opcode);
+#if !defined(TARG_X8664)
     if (result) 
 	Is_True(TN_size(result) >= MTYPE_byte_size(rtype),
 		("ldid result is too small for rtype"));
+#endif
     if (rtype != OPCODE_desc(opcode)
+#if defined(TARG_X8664)
+        && !( OP_NEED_PAIR(OPCODE_desc(opcode)) || OP_NEED_PAIR(rtype) )
+#endif
 	&& MTYPE_size_reg(Mtype_Of_TN(ldid_result)) != MTYPE_size_reg(rtype) )
     {
+        TYPE_ID dest_type = OPCODE_desc(opcode);
 	// insert cvt of register
 	if (result == NULL)
 		result = Build_TN_Of_Mtype(rtype);
+#if defined(TARG_X8664)
+        Expand_Convert_Length (result, ldid_result, 
+                               Gen_Literal_TN(MTYPE_size_reg(dest_type), 4),
+                               dest_type, MTYPE_is_signed(dest_type), &New_OPs); 
+#else
 	Expand_Convert (result, rtype, ldid_result, OPCODE_desc(opcode), &New_OPs);
+#endif
 	return result;
     }
 #else
@@ -2484,7 +2493,7 @@ Handle_STID (WN *stid, OPCODE opcode)
   if (WN_class(stid) == CLASS_PREG) {
       WN *kid = WN_kid0(stid);
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
       TN *final_result = NULL;
       if (Is_Simple_Type(WN_ty(stid))) {
         // pass more exact ty rather than st so know to create 

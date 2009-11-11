@@ -195,6 +195,20 @@ TN **TN_Vec = NULL;		/* TN_number (TN_Vec[i]) == i */
 
 static TN_LIST *Hash_Table[HASH_TABLE_SIZE];
 
+#ifdef Is_True_On
+int trace_tn_number_ = -1;
+
+void set_trace_tn(int n) { trace_tn_number_ = n; }
+
+void reset_trace_tn() { trace_tn_number_ = -1; }
+
+void gdb_stop_here()
+{
+   return ;
+}
+
+#endif
+
 
 /* ====================================================================
  *

@@ -371,7 +371,7 @@ EBO_OPS_predicate(TN *predicate_tn, OPS *ops)
 }
 
 
-
+extern void Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
 
 inline
 void

@@ -426,7 +426,23 @@ inline TN * CAN_USE_REG_TN (const TN *t)
 #define     TN_size(t)		(CAN_USE_TN(t)->size+0)
 #define Set_TN_size(t,x)	(CAN_USE_TN(t)->size = (x))
 #define     TN_number(t)	(CAN_USE_REG_TN(t)->u1.reg_tn.number+0)
-#define Set_TN_number(t,x)	(CAN_USE_REG_TN(t)->u1.reg_tn.number = (x))
+
+#ifdef Is_True_On
+extern int trace_tn_number_;
+extern void set_trace_tn(int n);
+extern void reset_trace_tn();
+extern void gdb_stop_here();
+#endif
+
+inline void  Set_TN_number(TN *t, int x)
+{
+   (CAN_USE_REG_TN(t)->u1.reg_tn.number = (x));
+#ifdef Is_True_On
+   if (trace_tn_number_ == x)
+      gdb_stop_here();
+#endif
+}
+
 #define	    TN_class_reg(t)	(CAN_USE_REG_TN(t)->u1.reg_tn.class_reg)
 #define	Set_TN_class_reg(t,x)	(CAN_USE_REG_TN(t)->u1.reg_tn.class_reg = (x))
 #define     TN_register(t)	\

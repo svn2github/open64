@@ -1202,7 +1202,7 @@ bool TN_is_int_retrun_register(TN *tn)
 {
 #ifdef TARG_X8664
    if ( TN_is_register(tn) &&
-        TN_size(tn) == MTYPE_byte_size(MTYPE_I4) &&
+        TN_size(tn) <= MTYPE_byte_size(MTYPE_I4) &&
         TN_register_class(tn) == ISA_REGISTER_CLASS_integer &&
         LRA_TN_register(tn) == First_Int_Preg_Return_Offset &&
         PREG_To_TN_Array[LRA_TN_register(tn)] == tn ) {
@@ -1226,9 +1226,11 @@ Op_has_side_effect(OP *op)
   if ( TN_size(tn1) != TN_size(tn2) ) 
      return true;
 
+#if 0
   if (Is_Target_64bit() && TN_is_int_retrun_register(tn2)) {
      return true;
   }
+#endif
   return false;
 }
 
