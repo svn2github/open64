@@ -30,8 +30,9 @@ fi
 # create symbol link to libgspin.a
 ln -s -f ../../osprey/targia64_ia64_nodebug/libspin/libgspin.a libgspin.a
 
-# copy all header files in libspin to gcc
-cp -f ../../libspin/*.h ../gcc/
+# remove gspin headers from the gcc directory (use -I to get them
+# directly from the libspin directory).
+rm -f ../gcc/gspin-[abilmt]*.h
 
 # configure the osprey-gcc
 CC='gcc -DTARG_IA64' ../configure --prefix=/usr --program-prefix=open64- --program-suffix=-4.0.2 --with-gnu-as --with-gnu-ld --enable-languages=c,c++ --disable-shared --disable-multilib --disable-libmudflap --enable-threads=posix --disable-checking --enable-tls --with-system-zlib --enable-__cxa_atexit
