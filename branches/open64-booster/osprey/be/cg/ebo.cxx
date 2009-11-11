@@ -1975,6 +1975,30 @@ find_duplicate_op (BB *bb,
         }
     }
 
+#ifdef TARG_X8664
+    //check the rflags, op like sbb32 will be affected by the rflags,consider the following
+    // TN172 :- sbb32 TN154 TN154  #1
+    // TN173 :- sub32 TN161 TN162  #2
+    // TN174 :- sbb32 TN154 TN154  #3
+    // because the op #2 will change the rflags and op #3 will read the rflags, then
+    // op #2 is not a duplicate of op #1
+
+    if( hash_op_matches  && TOP_is_read_rflags( OP_code(op) ) ){
+      for( OP* iop = pred_op; iop != op && iop != NULL ; iop = OP_next( iop ) ){
+       if( TOP_is_change_rflags( OP_code(iop)) ){
+         hash_op_matches = FALSE;
+         if (EBO_Trace_Hash_Search) {
+            #pragma mips_frequency_hint NEVER
+            fprintf(TFile,"%sExpression match found, but the predicates do not match because of rflag dependency\n\t",
+                   EBO_trace_pfx);
+            Print_OP_No_SrcLine(pred_op);
+          }
+         break;
+       }
+      }
+    }
+#endif  //TARG_X8664
+
     if (hash_op_matches) {
 
       if (EBO_Trace_Hash_Search) {
