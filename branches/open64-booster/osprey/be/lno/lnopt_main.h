@@ -136,6 +136,10 @@
 //
 //		Any gotos/returns leaving the loop
 //
+//	mBOOL Has_EH_Regions
+//
+//		Has EH regions in the loop
+//
 //	mBOOL Has_Gotos_This_Level
 //
 //		Any gotos jump to a label in this DO loop but not
@@ -854,6 +858,7 @@ public:
   mBOOL Has_Conditional;
   mBOOL Has_Gotos_This_Level;
   mBOOL Has_Exits;
+  mBOOL Has_EH_Regions;
   mBOOL Is_Inner;
   mBOOL Has_Bad_Mem;
   mBOOL Is_Ivdep; 
@@ -1007,6 +1012,12 @@ inline BOOL Do_Loop_Has_Exits (WN *wn)
 {
   DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
   return(dli && dli->Has_Exits);
+}
+
+inline BOOL Do_Loop_Has_EH_Regions (WN *wn)
+{
+  DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
+  return(dli && dli->Has_EH_Regions);
 }
 
 inline BOOL Do_Loop_Is_Inner (WN *wn)

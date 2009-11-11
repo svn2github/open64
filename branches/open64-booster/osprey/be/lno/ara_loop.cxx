@@ -2268,8 +2268,14 @@ ARA_LOOP_INFO::Walk_Loop()
       }
     }
   }
-  
-  if (!_info || _info->Has_Exits || _info->Has_Bad_Mem) {
+ 
+  if ( _info->Has_EH_Regions ) {
+    Default_For_Bad_Loop();
+    Set_To_Sequential();
+    return;
+  }
+ 
+  if ( _info->Has_Exits || _info->Has_Bad_Mem ) {
     Default_For_Bad_Loop();
     return;
   }

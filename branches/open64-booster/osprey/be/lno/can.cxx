@@ -488,9 +488,12 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
       while (pwn) {
 	if (WN_opcode(pwn) == OPC_DO_LOOP) {
 	  DO_LOOP_INFO *dli = Get_Do_Loop_Info(pwn);
-	  if (dli && dli->Mp_Info) {
-	    // must be a parallel loop
-	    dli->Mp_Info->Disable_Plowering();
+	  if (dli) {
+            dli->Has_EH_Regions = TRUE;
+            if (dli->Mp_Info) {
+              // must be a parallel loop
+              dli->Mp_Info->Disable_Plowering();
+            }
 	  }
 	}
 	pwn = LWN_Get_Parent(pwn);
