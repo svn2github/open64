@@ -248,6 +248,22 @@ __ompc_environment_variables()
     Is_Valid(spin_count > 0, ("spin count must be positive"));
     __omp_spin_count = spin_count;
   }
+
+  env_var_str = getenv("O64_OMP_SPIN_USER_LOCK");
+  if (env_var_str != NULL) {
+    env_var_val = strncasecmp(env_var_str, "true", 4);
+
+    if (env_var_val == 0) {
+      __omp_spin_user_lock = 1;
+    } else {
+      env_var_val = strncasecmp(env_var_str, "false", 4);
+      if (env_var_val == 0) {
+        __omp_spin_user_lock = 0;
+      } else {
+        Not_Valid("O64_OMP_SPIN_USER_LOCK should be set to: true/false");
+      }
+    }
+  }
  
   env_var_str = getenv("O64_OMP_SPIN_USER_LOCK");
   if (env_var_str != NULL) {
