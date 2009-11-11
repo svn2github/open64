@@ -7393,7 +7393,6 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_reverse_loop_unswitching
   if (!Can_fuse(sc_begin))
     do_fuse = FALSE;
   else {
-    
     Get_unique_ref(sc_begin->Find_kid_of_type(SC_LP_BODY), sc_begin, &wn_u);
     lp_u = sc_begin;
 
@@ -7421,6 +7420,7 @@ PRO_LOOP_INTERCHANGE_TRANS::Do_reverse_loop_unswitching
     Get_unique_ref(sc_tmp1->Find_kid_of_type(SC_LP_BODY), sc_tmp1, &wn_tmp);
 
     if ((wn_tmp == NULL) 
+	|| (wn_u == NULL)
 	|| !Compare_trees(wn_u, lp_u, wn_tmp, sc_tmp1))
       return FALSE;
   }
