@@ -2157,9 +2157,6 @@ Propagate_Freq(
   if (bb == head) {
     if (!BB_freq_fb_based(bb)) BB_freq(bb) = head_freq;
   } else {
-    double cyclic_prob;
-    double in_freq;
-
     /* Make sure all preds are either visited or loopback edges before
      * going on. The point here is to ensure that we don't use the
      * frequency for an edge until we've computed it. Each loopback
@@ -2206,6 +2203,20 @@ Propagate_Freq(
      * loop or an entry point, otherwise the loop head would have
      * been handled above.
      */
+#ifndef __SSE2__
+    // work around for the triple build validate error
+    // If the Is_Loop_Back_Edge(edge) is inlined, 
+    // in_freq is kept in st stack register during the loop
+    // but it's putted into memory otherwise. 
+    // The two behavior cause in_freq get a bit different because
+    // double is 64bit in memory but the st stack register is 80bit
+    // long
+    long double cyclic_prob;
+    long double in_freq;
+#else
+    double cyclic_prob;
+    double in_freq;
+#endif
     in_freq = 0.0;
     cyclic_prob = 0.0;
 
