@@ -35,6 +35,8 @@
 
 #include "srcpos.h"
 
+#include "ir_reader.h"
+#include <cmplrs/rcodes.h>
 extern "C"{
 #include "gspin-wgen-interface.h"
 }
@@ -53,7 +55,7 @@ extern "C"{
 #include "const.h"
 
 extern std::vector<WN *> doloop_side_effects;
- 
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if 0
@@ -731,6 +733,80 @@ int  check_do_loop_for(gs_t init_expr, gs_t logical_expr, gs_t incr_expr)
 extern OPERATOR Operator_From_Tree_node (gs_code_t);
 extern bool Has_Subsumed_Cvtl (OPERATOR);
 
+static void save_block_stmts(WN *wn)
+{
+    WN *i;
+    for (i = WN_first(wn); i; i = WN_next(i))
+      doloop_side_effects.push_back(WN_COPY_Tree(i));
+    return;
+}
+
+// this term should be ldid lcv
+static bool expand_load_lcv(WN **wn, ST_IDX lcv, gs_t expr)
+{
+    WN *wn_tmp;
+    WN *result;
+
+    WGEN_Stmt_Push(WN_CreateBlock (), wgen_stmk_comma, Get_Srcpos());
+    result = WGEN_Expand_Expr (expr);
+    Check_For_Call_Region();
+    wn_tmp = WGEN_Stmt_Pop (wgen_stmk_comma);
+
+    if (WN_first(wn_tmp) == NULL)
+    {
+       if (WN_operator(result) == OPR_LDID && WN_st_idx(result) == lcv)
+       {
+         *wn = result;
+         return true;
+       }
+    }
+    return false;
+}
+
+// expand the rhs expression, and move any node with side effects into the side
+// effect stack. The result is cached by a temp variable named by the prefix.
+//
+// specifically, we deal with block expressions and call with exceptions.
+static WN *expand_rhs_expr_and_cache_doloop_side_effects(gs_t expr, const char *prefix)
+{
+    WN *wn_tmp;
+    WN *result;
+
+    WGEN_Stmt_Push(WN_CreateBlock (), wgen_stmk_comma, Get_Srcpos());
+    result = WGEN_Expand_Expr (expr);
+    if (WN_has_side_effects(result))
+    {
+      TY_IDX ty_idx = MTYPE_TO_TY_array[WN_rtype(result)];
+      ST * st = Gen_Temp_Symbol (ty_idx, prefix);
+      // Mark as local in surrounding parallel region.
+      WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st, TRUE);
+      WN * stid = WN_Stid (TY_mtype(ty_idx), 0, st, ty_idx, result);
+
+      WN_INSERT_BlockAfter(WGEN_Stmt_Top(), NULL, stid);
+      Check_For_Call_Region();
+      // Hold it in a vector for emitting it outside and before the
+      // PDO region.
+      result = WN_Ldid (TY_mtype(ty_idx), 0, st, ty_idx);
+    }
+    wn_tmp = WGEN_Stmt_Pop (wgen_stmk_comma);
+    save_block_stmts(wn_tmp);
+    WN_DELETE_Tree(wn_tmp);
+    return result; 
+}
+static bool expand_increment_term(WN **wn, ST_IDX lcv, gs_t expr)
+{
+    WN *result;
+    bool is_ldid_lcv = false;
+    result = expand_rhs_expr_and_cache_doloop_side_effects(expr, "__doloop_incr");
+
+    if (WN_operator(result) == OPR_LDID && WN_st_idx(result) == lcv)
+    {
+      is_ldid_lcv = true;
+    }
+    *wn = result;
+    return !is_ldid_lcv;
+}
+
 void expand_start_do_loop (gs_t init_expr, gs_t logical_expr, gs_t incr_expr)
 {
     bool valid_for_expr = true;
@@ -744,6 +820,7 @@ void expand_start_do_loop (gs_t init_expr, gs_t logical_expr, gs_t incr_expr)
     WN *tdecl;
     ST *tst;
     ST_IDX stlcv;
+    char *detail = NULL;
 
     TYPE_ID lcv_t;
 
@@ -753,7 +830,7 @@ void expand_start_do_loop (gs_t init_expr, gs_t logical_expr, gs_t incr_expr)
 
     if (code != GS_MODIFY_EXPR && code != GS_VAR_DECL) 
     {
-      printf ("Invalid init_expr in a FOR statement! \n");
+      detail = ("invalid init expression");
       valid_for_expr = false;
       WGEN_Stmt_Push (WN_CreateBlock (), wgen_stmk_comma, Get_Srcpos());
     }
@@ -780,61 +857,44 @@ void expand_start_do_loop (gs_t init_expr, gs_t logical_expr, gs_t incr_expr)
         if (lcv_t != MTYPE_I4 && lcv_t != MTYPE_I8 &&
             lcv_t != MTYPE_I2 && lcv_t != MTYPE_I1)
         {
-          printf ("Invalid induction variable type in init_expr in a FOR statement! \n");
+          if (lcv_t == MTYPE_U4 || lcv_t == MTYPE_U8 ||
+              lcv_t == MTYPE_U2 || lcv_t == MTYPE_U1)
+            detail = ("unsigned induction variable is supported by OpenMP 3.0 and we support version 2.5");
+          else
+            detail = ("invalid induction variable type");
           valid_for_expr = false;		
         }
         else
         {
           index = WN_CreateIdname(0,WN_st_idx(lcv));
-          if (lang_cplus)
-          { // Handle any side-effects in loop init.
-            WN * rhs = WGEN_Expand_Expr(gs_tree_operand(init_expr, 1));
-            if (WN_has_side_effects(rhs))
-            {
-              TY_IDX ty_idx = MTYPE_TO_TY_array[WN_rtype(rhs)];
-              ST * st = Gen_Temp_Symbol (ty_idx, "__doloop_init");
-              // Mark as local in surrounding parallel region.
-              WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st, TRUE);
-              WN * stid = WN_Stid (TY_mtype(ty_idx), 0, st, ty_idx, rhs);
-              // Hold it in a vector for emitting it outside and before the
-              // PDO region.
-              doloop_side_effects.push_back (stid);
-              rhs = WN_Ldid (TY_mtype(ty_idx), 0, st, ty_idx);
-            }
-            WGEN_Stmt_Push (WN_CreateBlock (), wgen_stmk_comma, Get_Srcpos());
-            WGEN_Lhs_Of_Modify_Expr(code, gs_tree_operand (init_expr, 0), NULL, FALSE,
-                                    0, 0, 0, FALSE, rhs, 0, FALSE, FALSE);
-            wn_tmp = WGEN_Stmt_Pop (wgen_stmk_comma);
-            // loop init
-            start = WN_COPY_Tree (WN_first (wn_tmp));
-            WN_DELETE_Tree (wn_tmp);
-          }
-          else
-          {
-            WGEN_Stmt_Push (WN_CreateBlock (), wgen_stmk_comma, Get_Srcpos());
-            wn_tmp = WGEN_Expand_Expr (init_expr); 
-            wn_tmp = WGEN_Stmt_Pop (wgen_stmk_comma);
-            start = WN_COPY_Tree( WN_first( wn_tmp ));
-            WN_DELETE_Tree( wn_tmp );
-          }
+          WN *rhs;
+          rhs = expand_rhs_expr_and_cache_doloop_side_effects(gs_tree_operand(init_expr, 1), "__doloop_init"); 
+          
+          WGEN_Stmt_Push (WN_CreateBlock (), wgen_stmk_comma, Get_Srcpos());
+          WGEN_Lhs_Of_Modify_Expr(code, gs_tree_operand (init_expr, 0), NULL, FALSE,
+                                  0, 0, 0, FALSE, rhs, 0, FALSE, FALSE);
+          wn_tmp = WGEN_Stmt_Pop (wgen_stmk_comma);
+          // loop init
+          start = WN_COPY_Tree (WN_first (wn_tmp));
+          WN_DELETE_Tree (wn_tmp);
         }
       }
     }
     code = gs_tree_code (logical_expr);
     if (valid_for_expr && (code != GS_LT_EXPR) && (code != GS_LE_EXPR) && (code != GS_GT_EXPR) && (code != GS_GE_EXPR)) 
     {
-      printf ("Invalid logical_expr in a FOR statement! \
-	   	      The logical operators can only be <=, <, > or >= \n");
+      detail = ("invalid logical expression, the logical operators can only be <=, <, > or >=");
       valid_for_expr = false;		
     }
     else
     {
-      if (lang_cplus)
-      { // Handle any side-effects in loop upper bound.
         // index variable
         WN * var = WGEN_Expand_Expr(gs_tree_operand(logical_expr, 0));
+        WN *ub;
         // upper bound
-        WN * ub = WGEN_Expand_Expr(gs_tree_operand(logical_expr, 1));
+        //WN * ub = WGEN_Expand_Expr(gs_tree_operand(logical_expr, 1));
+
+        ub = expand_rhs_expr_and_cache_doloop_side_effects(gs_tree_operand(logical_expr, 1), "__doloop_ub"); 
 
         // Mimick WGEN_Expand_Expr for type conversion.
         TY_IDX ty_idx = Get_TY (gs_tree_type(logical_expr));
@@ -853,24 +913,9 @@ void expand_start_do_loop (gs_t init_expr, gs_t logical_expr, gs_t incr_expr)
           ub = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp1), MTYPE_V,
                               MTYPE_size_min(mtyp1), ub);
 
-        if (WN_has_side_effects(ub))
-        {
-          TY_IDX ty_idx = MTYPE_TO_TY_array[WN_rtype(ub)];
-          ST * st = Gen_Temp_Symbol (ty_idx, "__doloop_ub");
-          // Mark as local in any enclosing parallel region.
-          WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st, TRUE);
-          WN * stid = WN_Stid (TY_mtype(ty_idx), 0, st, ty_idx, ub);
-          // Hold it in a vector for emitting it outside and before the
-          // PDO region.
-          doloop_side_effects.push_back (stid);
-          ub = WN_Ldid (TY_mtype(ty_idx), 0, st, ty_idx);
-        }
         end  = WN_CreateExp2(Operator_From_Tree_node(code),
                              Widen_Mtype(mtyp), Widen_Mtype(mtyp0),
                              var, ub);
-      }
-      else
-        end = WGEN_Expand_Expr (logical_expr); 
     }
     
     code = gs_tree_code (incr_expr);
@@ -878,7 +923,7 @@ void expand_start_do_loop (gs_t init_expr, gs_t logical_expr, gs_t incr_expr)
     if (valid_for_expr && (code != GS_MODIFY_EXPR) && (code != GS_PREDECREMENT_EXPR) && (code != GS_PREINCREMENT_EXPR) 
            && (code != GS_POSTDECREMENT_EXPR) && (code != GS_POSTINCREMENT_EXPR)) 
     {
-      printf ("Invalid incr_expr in a FOR statement! \n");
+      detail = ("invalid step expression");
       valid_for_expr = false;		
     }
     else
@@ -890,28 +935,65 @@ void expand_start_do_loop (gs_t init_expr, gs_t logical_expr, gs_t incr_expr)
         stlcv = WN_st_idx(lcv);
       if (stlcv!=WN_st_idx(incv))
       {
-        printf ("Invalid incr_expr in a FOR statement!  \
-		       	      No induction variable to be modified.\n");
+        detail = ("invalid step expression"
+		       	      "induction variable not modified");
         valid_for_expr = false;		
       }
       else 
       {
         code1 = gs_tree_code (gs_tree_operand (incr_expr, 1));
-        if ((code == GS_MODIFY_EXPR) && (code1 != GS_PLUS_EXPR) && (code1 != GS_MINUS_EXPR))
+        if (code == GS_MODIFY_EXPR)
         {
-          printf ("Invalid incr_expr in a FOR statement!  \
-                   No such increment operation is permitted.\n");
-          valid_for_expr = false;		
-        }
-        else
-       	{
+          WN *incr_term;
+          WN *term0, *term1;
+          gs_t gs_term0, gs_term1;
+
+          gs_term0 = gs_tree_operand(gs_tree_operand(incr_expr, 1), 0);
+          gs_term1 = gs_tree_operand(gs_tree_operand(incr_expr, 1), 1);
+          if (code1 == GS_MINUS_EXPR)
+          {
+            if (!expand_load_lcv(&term0, stlcv, gs_term0) || !expand_increment_term(&term1, stlcv, gs_term1))
+            {
+              detail = "messy step expression";
+              valid_for_expr = false;
+            }
+          } else if (code1 == GS_PLUS_EXPR){ // GS_PLUS_EXPR
+            if (expand_load_lcv(&term0, stlcv, gs_term0) && expand_increment_term(&term1, stlcv, gs_term1) ||
+                expand_load_lcv(&term1, stlcv, gs_term1) && expand_increment_term(&term0, stlcv, gs_term0))
+            {
+            // do nothing
+            } else {
+              detail = "messy step expression";
+              valid_for_expr = false;
+            }
+          } else {
+	    detail = ("invalid arithmatic operator of the step expression");
+	    valid_for_expr = false;
+	  }
+          if (valid_for_expr)
+          {
+            // create the step WN 
+            TY_IDX ty_idx0 = Get_TY(gs_tree_type(gs_tree_operand(gs_tree_operand(incr_expr, 1), 0)));
+            TYPE_ID mtype0 = TY_mtype(ty_idx0);
+            TY_IDX ty_idx1 = Get_TY(gs_tree_type(gs_tree_operand(gs_tree_operand(incr_expr, 1), 1)));
+            TYPE_ID mtype1 = TY_mtype(ty_idx1);
+            step  = WN_CreateExp2(Operator_From_Tree_node(gs_tree_code(gs_tree_operand(incr_expr, 1))),
+			     TY_mtype(Get_TY(gs_tree_type(gs_tree_operand(incr_expr, 1)))), MTYPE_V,
+                             term0, term1);
+            step = WN_Stid(TY_mtype(ST_type(stlcv)), 0, WN_st(lcv), 
+              ST_type(stlcv), step);
+          }
+	} else if (code == GS_POSTDECREMENT_EXPR || code == GS_POSTINCREMENT_EXPR ||
+                   code == GS_PREDECREMENT_EXPR || code == GS_PREINCREMENT_EXPR)
+	{
           WGEN_Stmt_Push (WN_CreateBlock (), wgen_stmk_comma, Get_Srcpos());
-          WGEN_Expand_Expr (incr_expr, FALSE); 
+          WGEN_Expand_Expr (incr_expr, FALSE);
           wn_tmp = WGEN_Stmt_Pop (wgen_stmk_comma);
-          step = WN_COPY_Tree( WN_first( wn_tmp ));
-          WN_DELETE_Tree(  wn_tmp );
-          // TODO: side-effects in increment amount not handled properly.
-       	}
+          step = WN_COPY_Tree( WN_last( wn_tmp ));
+	} else {
+	  detail = ("invalid arithmatic operator of the step expression");
+	  valid_for_expr = false;
+	}
       }
     }
     if (valid_for_expr) 
@@ -920,9 +1002,12 @@ void expand_start_do_loop (gs_t init_expr, gs_t logical_expr, gs_t incr_expr)
     }
     else
     {
+      char *filename, *dirname; 
       SRCPOS srcpos = Get_Srcpos();
-      Fail_FmtAssertion ("Invalid syntax in the FOR statement at line: %d, file number: %d.!\n", 
-                      SRCPOS_linenum(srcpos), SRCPOS_filenum(srcpos));
+      IR_Srcpos_Filename(srcpos, (const char **)&filename, (const char**)&dirname);
+      printf("%s:%d: error: invalid syntax in the omp for statement, %s.\n", 
+        filename, SRCPOS_linenum(srcpos), detail);
+      exit(RC_USER_ERROR);
     }
 }
 
