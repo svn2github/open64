@@ -59,7 +59,7 @@
 #include "cross_snl.h"
 #include "snl_utils.h"
 #include "cross_cache.h"
-#define NOMINAL_PROCS 8
+#include "parmodel.h" 
 
 static INT cross_loop_debug_level = 2;
 BOOL running_cross_loop_analysis = FALSE;

@@ -316,8 +316,8 @@ extern double SNL_Cache_Cost(WN* wn_outer, INT permutation[], INT nloops,
   INT parallel_depth, INT split_depth, SX_PLIST* plist,
   double *est_num_iters);
 
-
-#define NOMINAL_PROCS                  8
+#include "config_lno.h"
+#define NOMINAL_PROCS                 (LNO_Num_Processors == 0 ? 8 : LNO_Num_Processors) 
 #define UNBOUNDED_ITERS         12345678
 #define LOOP_CYCLES_PER_ITER           4
 #define HASH_SIZE                    100
