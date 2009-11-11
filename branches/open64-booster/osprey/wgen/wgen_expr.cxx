@@ -2943,6 +2943,18 @@ WGEN_Address_Of(gs_t arg0)
                                   (gs_decl_initial (arg0), "");
       wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
       break;
+
+    case GS_VA_ARG_EXPR:
+      wn = WGEN_Expand_Expr (arg0);
+      Is_True( WN_operator(wn) == OPR_ILOAD, 
+                ("expand VA_ARG_EXPR does not return OPR_ILOAD") );
+      if (WN_operator(wn) == OPR_ILOAD) {
+        wn0 = WN_kid0 (wn);
+        wn1 = WN_Intconst (Pointer_Mtype, WN_offset (wn));
+        wn  = WN_Binary (OPR_ADD, Pointer_Mtype, wn0, wn1);
+      }
+      break;
+
 #endif
 
   default:
