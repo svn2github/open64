@@ -585,28 +585,22 @@ struct comp_zones {
     }
 #endif
 
-#if 0
-    bool t = (*zones)[x].priority() > (*zones)[y].priority();
-
-    if (t) {
-      Is_True( !((*zones)[y].priority() > (*zones)[x].priority()),
-	       ("vx > vy && vy > vx."));
-    }
-#else
-
     // Work around g++ bug!
     //   g++ can't compare results of two double functions.
 
     double vx = (*zones)[x].priority();
     double vy = (*zones)[y].priority();
 
-    bool t = vx > vy;
+    // comparing two double function will get precise problem, so
+    // use epsilon to avoid errors.
+
+    double epsilon = 1e-13;
+    bool t = vx > vy + epsilon * vx ;
 
     if (t) {
       Is_True( !(vy > vx),
 	       ("vx > vy && vy > vx."));
     }
-#endif
     return t;
   }
   comp_zones(zone_container& z):zones(&z) {}
