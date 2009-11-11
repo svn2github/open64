@@ -518,6 +518,26 @@ main()
                            TOP_pabs128v32,
                            /* AES instructions */
                            TOP_vaesimc,
+                           /* XOP instructions */
+                           TOP_vphaddbd,
+                           TOP_vphaddbq,
+                           TOP_vphaddbw,
+                           TOP_vphadddq,
+                           TOP_vphaddubd,
+                           TOP_vphaddubq,
+                           TOP_vphaddubw,
+                           TOP_vphaddudq,
+                           TOP_vphadduwd,
+                           TOP_vphadduwq,
+                           TOP_vphaddwd,
+                           TOP_vphaddwq,
+                           TOP_vphsubbw,
+                           TOP_vphsubdq,
+                           TOP_vphsubwd,
+                           TOP_vfrczpd,
+                           TOP_vfrczps,
+                           TOP_vfrczsd,
+                           TOP_vfrczss,
                            TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -529,6 +549,26 @@ main()
                            TOP_pabsx128v32,
                            /* AES instructions */
                            TOP_vaesimcx,
+                           /* XOP instructions */
+                           TOP_vphaddbdx,
+                           TOP_vphaddbqx,
+                           TOP_vphaddbwx,
+                           TOP_vphadddqx,
+                           TOP_vphaddubdx,
+                           TOP_vphaddubqx,
+                           TOP_vphaddubwx,
+                           TOP_vphaddudqx,
+                           TOP_vphadduwdx,
+                           TOP_vphadduwqx,
+                           TOP_vphaddwdx,
+                           TOP_vphaddwqx,
+                           TOP_vphsubbwx,
+                           TOP_vphsubdqx,
+                           TOP_vphsubwdx,
+                           TOP_vfrczpdx,
+                           TOP_vfrczpsx,
+                           TOP_vfrczsdx,
+                           TOP_vfrczssx,
                            TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, int64, base);
@@ -541,6 +581,26 @@ main()
                            TOP_pabsxx128v32,
                            /* AES instructions */
                            TOP_vaesimcxx,
+                           /* XOP instructions */
+                           TOP_vphaddbdxx,
+                           TOP_vphaddbqxx,
+                           TOP_vphaddbwxx,
+                           TOP_vphadddqxx,
+                           TOP_vphaddubdxx,
+                           TOP_vphaddubqxx,
+                           TOP_vphaddubwxx,
+                           TOP_vphaddudqxx,
+                           TOP_vphadduwdxx,
+                           TOP_vphadduwqxx,
+                           TOP_vphaddwdxx,
+                           TOP_vphaddwqxx,
+                           TOP_vphsubbwxx,
+                           TOP_vphsubdqxx,
+                           TOP_vphsubwdxx,
+                           TOP_vfrczpdxx,
+                           TOP_vfrczpsxx,
+                           TOP_vfrczsdxx,
+                           TOP_vfrczssxx,
                            TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, int64, base);
@@ -555,6 +615,26 @@ main()
                            TOP_pabsxxx128v32,
                            /* AES instructions */
                            TOP_vaesimcxxx,
+                           /* XOP instructions */
+                           TOP_vphaddbdxxx,
+                           TOP_vphaddbqxxx,
+                           TOP_vphaddbwxxx,
+                           TOP_vphadddqxxx,
+                           TOP_vphaddubdxxx,
+                           TOP_vphaddubqxxx,
+                           TOP_vphaddubwxxx,
+                           TOP_vphaddudqxxx,
+                           TOP_vphadduwdxxx,
+                           TOP_vphadduwqxxx,
+                           TOP_vphaddwdxxx,
+                           TOP_vphaddwqxxx,
+                           TOP_vphsubbwxxx,
+                           TOP_vphsubdqxxx,
+                           TOP_vphsubwdxxx,
+                           TOP_vfrczpdxxx,
+                           TOP_vfrczpsxxx,
+                           TOP_vfrczsdxxx,
+                           TOP_vfrczssxxx,
                            TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, int64, index);
@@ -1068,6 +1148,19 @@ main()
                            TOP_fblend128v32,
                            /* PCLMUL instructions */
                            TOP_vpclmulqdq,
+                           /* XOP instructions */
+                           TOP_vprotbi,
+                           TOP_vprotdi,
+                           TOP_vprotqi,
+                           TOP_vprotwi,
+                           TOP_vpcomb,
+                           TOP_vpcomd,
+                           TOP_vpcomq,
+                           TOP_vpcomw,
+                           TOP_vpcomub,
+                           TOP_vpcomud,
+                           TOP_vpcomuq,
+                           TOP_vpcomuw,
                            TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -1103,6 +1196,19 @@ main()
                            TOP_fblendx128v32,
                            /* PCLMUL instructions */
                            TOP_vpclmulqdqx,
+                           /* XOP instructions */
+                           TOP_vprotbix,
+                           TOP_vprotdix,
+                           TOP_vprotqix,
+                           TOP_vprotwix,
+                           TOP_vpcombx,
+                           TOP_vpcomdx,
+                           TOP_vpcomqx,
+                           TOP_vpcomwx,
+                           TOP_vpcomubx,
+                           TOP_vpcomudx,
+                           TOP_vpcomuqx,
+                           TOP_vpcomuwx,
                            TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -1139,6 +1245,19 @@ main()
                            TOP_fblendxx128v32,
                            /* PCLMUL instructions */
                            TOP_vpclmulqdqxx,
+                           /* XOP instructions */
+                           TOP_vprotbixx,
+                           TOP_vprotdixx,
+                           TOP_vprotqixx,
+                           TOP_vprotwixx,
+                           TOP_vpcombxx,
+                           TOP_vpcomdxx,
+                           TOP_vpcomqxx,
+                           TOP_vpcomwxx,
+                           TOP_vpcomubxx,
+                           TOP_vpcomudxx,
+                           TOP_vpcomuqxx,
+                           TOP_vpcomuwxx,
                            TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -1177,6 +1296,19 @@ main()
                            TOP_fblendxxx128v32,
                            /* PCLMUL instructions */
                            TOP_vpclmulqdqxxx,
+                           /* XOP instructions */
+                           TOP_vprotbixxx,
+                           TOP_vprotdixxx,
+                           TOP_vprotqixxx,
+                           TOP_vprotwixxx,
+                           TOP_vpcombxxx,
+                           TOP_vpcomdxxx,
+                           TOP_vpcomqxxx,
+                           TOP_vpcomwxxx,
+                           TOP_vpcomubxxx,
+                           TOP_vpcomudxxx,
+                           TOP_vpcomuqxxx,
+                           TOP_vpcomuwxxx,
                            TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -1184,6 +1316,220 @@ main()
   Operand(2, uimm8, scale);
   Operand(3, simm32, offset);
   Operand(4, simm8, opnd3);
+
+  Instruction_Group( "vector res reg reg reg",
+                           /* XOP instructions */
+                           TOP_vpperm,
+                           TOP_vprotb,
+                           TOP_vprotd,
+                           TOP_vprotq,
+                           TOP_vprotw,
+                           TOP_vpshab,
+                           TOP_vpshad,
+                           TOP_vpshaq,
+                           TOP_vpshaw,
+                           TOP_vpshlb,
+                           TOP_vpshld,
+                           TOP_vpshlq,
+                           TOP_vpshlw,
+                           TOP_vpcmov,
+                           TOP_vpmacsdd,
+                           TOP_vpmacsdqh,
+                           TOP_vpmacsdql,
+                           TOP_vpmacssdd,
+                           TOP_vpmacssdqh,
+                           TOP_vpmacssdql,
+                           TOP_vpmacsswd,
+                           TOP_vpmacssww,
+                           TOP_vpmacswd,
+                           TOP_vpmacsww,
+                           TOP_vpmadcsswd,
+                           TOP_vpmadcswd,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, fp128, opnd2);
+  Operand(2, fp128, opnd3);
+
+  Instruction_Group( "vector res reg mem reg",
+                           /* XOP instructions */
+                           TOP_vppermx,
+                           TOP_vprotbx,
+                           TOP_vprotdx,
+                           TOP_vprotqx,
+                           TOP_vprotwx,
+                           TOP_vpshabx,
+                           TOP_vpshadx,
+                           TOP_vpshaqx,
+                           TOP_vpshawx,
+                           TOP_vpshlbx,
+                           TOP_vpshldx,
+                           TOP_vpshlqx,
+                           TOP_vpshlwx,
+                           TOP_vpcmovx,
+                           TOP_vpmacsddx,
+                           TOP_vpmacsdqhx,
+                           TOP_vpmacsdqlx,
+                           TOP_vpmacssddx,
+                           TOP_vpmacssdqhx,
+                           TOP_vpmacssdqlx,
+                           TOP_vpmacsswdx,
+                           TOP_vpmacsswwx,
+                           TOP_vpmacswdx,
+                           TOP_vpmacswwx,
+                           TOP_vpmadcsswdx,
+                           TOP_vpmadcswdx,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+  Operand(3, fp128, opnd3);
+
+  Instruction_Group( "vector res reg mem reg w/ scaled index",
+                           /* XOP instructions */
+                           TOP_vppermxx,
+                           TOP_vprotbxx,
+                           TOP_vprotdxx,
+                           TOP_vprotqxx,
+                           TOP_vprotwxx,
+                           TOP_vpshabxx,
+                           TOP_vpshadxx,
+                           TOP_vpshaqxx,
+                           TOP_vpshawxx,
+                           TOP_vpshlbxx,
+                           TOP_vpshldxx,
+                           TOP_vpshlqxx,
+                           TOP_vpshlwxx,
+                           TOP_vpcmovxx,
+                           TOP_vpmacsddxx,
+                           TOP_vpmacsdqhxx,
+                           TOP_vpmacsdqlxx,
+                           TOP_vpmacssddxx,
+                           TOP_vpmacssdqhxx,
+                           TOP_vpmacssdqlxx,
+                           TOP_vpmacsswdxx,
+                           TOP_vpmacsswwxx,
+                           TOP_vpmacswdxx,
+                           TOP_vpmacswwxx,
+                           TOP_vpmadcsswdxx,
+                           TOP_vpmadcswdxx,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, base);
+  Operand(2, int64, index);
+  Operand(3, uimm8, scale);
+  Operand(4, simm32, offset);
+  Operand(5, fp128, opnd3);
+
+  Instruction_Group( "vector res reg mem reg w/ scaled index w/o base",
+                           /* XOP instructions */
+                           TOP_vppermxxx,
+                           TOP_vprotbxxx,
+                           TOP_vprotdxxx,
+                           TOP_vprotqxxx,
+                           TOP_vprotwxxx,
+                           TOP_vpshabxxx,
+                           TOP_vpshadxxx,
+                           TOP_vpshaqxxx,
+                           TOP_vpshawxxx,
+                           TOP_vpshlbxxx,
+                           TOP_vpshldxxx,
+                           TOP_vpshlqxxx,
+                           TOP_vpshlwxxx,
+                           TOP_vpcmovxxx,
+                           TOP_vpmacsddxxx,
+                           TOP_vpmacsdqhxxx,
+                           TOP_vpmacsdqlxxx,
+                           TOP_vpmacssddxxx,
+                           TOP_vpmacssdqhxxx,
+                           TOP_vpmacssdqlxxx,
+                           TOP_vpmacsswdxxx,
+                           TOP_vpmacsswwxxx,
+                           TOP_vpmacswdxxx,
+                           TOP_vpmacswwxxx,
+                           TOP_vpmadcsswdxxx,
+                           TOP_vpmadcswdxxx,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+  Operand(4, fp128, opnd3);
+
+  Instruction_Group( "vector res reg reg memr",
+                           /* XOP instructions */
+                           TOP_vppermxr,
+                           TOP_vprotbxr,
+                           TOP_vprotdxr,
+                           TOP_vprotqxr,
+                           TOP_vprotwxr,
+                           TOP_vpshabxr,
+                           TOP_vpshadxr,
+                           TOP_vpshaqxr,
+                           TOP_vpshawxr,
+                           TOP_vpshlbxr,
+                           TOP_vpshldxr,
+                           TOP_vpshlqxr,
+                           TOP_vpshlwxr,
+                           TOP_vpcmovxr,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, fp128, opnd2);
+  Operand(2, int64, base);
+  Operand(3, simm32, offset);
+
+  Instruction_Group( "vector res reg reg memr w/ scaled index",
+                           /* XOP instructions */
+                           TOP_vppermxxr,
+                           TOP_vprotbxxr,
+                           TOP_vprotdxxr,
+                           TOP_vprotqxxr,
+                           TOP_vprotwxxr,
+                           TOP_vpshabxxr,
+                           TOP_vpshadxxr,
+                           TOP_vpshaqxxr,
+                           TOP_vpshawxxr,
+                           TOP_vpshlbxxr,
+                           TOP_vpshldxxr,
+                           TOP_vpshlqxxr,
+                           TOP_vpshlwxxr,
+                           TOP_vpcmovxxr,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, fp128, opnd2);
+  Operand(2, int64, base);
+  Operand(3, int64, index);
+  Operand(4, uimm8, scale);
+  Operand(5, simm32, offset);
+
+  Instruction_Group( "vector res reg reg memr w/ scaled index w/o base",
+                           /* XOP instructions */
+                           TOP_vppermxxxr,
+                           TOP_vprotbxxxr,
+                           TOP_vprotdxxxr,
+                           TOP_vprotqxxxr,
+                           TOP_vprotwxxxr,
+                           TOP_vpshabxxxr,
+                           TOP_vpshadxxxr,
+                           TOP_vpshaqxxxr,
+                           TOP_vpshawxxxr,
+                           TOP_vpshlbxxxr,
+                           TOP_vpshldxxxr,
+                           TOP_vpshlqxxxr,
+                           TOP_vpshlwxxxr,
+                           TOP_vpcmovxxxr,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, fp128, opnd2);
+  Operand(2, int64, index);
+  Operand(3, uimm8, scale);
+  Operand(4, simm32, offset);
 
   Instruction_Group( "int8 arithmetic mem opnd",
 		     TOP_xorx8,

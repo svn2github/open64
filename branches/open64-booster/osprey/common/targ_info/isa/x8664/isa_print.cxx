@@ -1150,6 +1150,297 @@ main()
                            TOP_vpclmulqdqxxx,
 			   TOP_UNDEFINED );
 
+  /* dest=op(src1, src2, src3), non-x86-style */
+  ISA_PRINT_TYPE vropopop = ISA_Print_Type_Create("vropopop", "%s %s,%s,%s,%s");
+  Name();
+  Operand(0);
+  Operand(1);
+  Operand(2);
+  Result(0);
+  Instruction_Print_Group( vropopop,
+                           /* XOP instructions */
+                           TOP_vpperm,
+                           TOP_vprotb,
+                           TOP_vprotd,
+                           TOP_vprotq,
+                           TOP_vprotw,
+                           TOP_vpshab,
+                           TOP_vpshad,
+                           TOP_vpshaq,
+                           TOP_vpshaw,
+                           TOP_vpshlb,
+                           TOP_vpshld,
+                           TOP_vpshlq,
+                           TOP_vpshlw,
+                           TOP_vpcmov,
+                           TOP_vpmacsdd,
+                           TOP_vpmacsdqh,
+                           TOP_vpmacsdql,
+                           TOP_vpmacssdd,
+                           TOP_vpmacssdqh,
+                           TOP_vpmacssdql,
+                           TOP_vpmacsswd,
+                           TOP_vpmacssww,
+                           TOP_vpmacswd,
+                           TOP_vpmacsww,
+                           TOP_vpmadcsswd,
+                           TOP_vpmadcswd,
+                           TOP_vprotbi,
+                           TOP_vprotdi,
+                           TOP_vprotqi,
+                           TOP_vprotwi,
+                           TOP_vpcomb,
+                           TOP_vpcomd,
+                           TOP_vpcomq,
+                           TOP_vpcomw,
+                           TOP_vpcomub,
+                           TOP_vpcomud,
+                           TOP_vpcomuq,
+                           TOP_vpcomuw,
+                           TOP_UNDEFINED );
+
+
+  /* dest=op(src1, mem, src3), non-x86-style */
+  ISA_PRINT_TYPE vropmemop = ISA_Print_Type_Create("vropmemop", "%s %s,%s%s(%s),%s,%s");
+  Name();
+  Operand(0);
+  Segment();
+  Operand(2);
+  Operand(1);
+  Operand(3);
+  Result(0);
+  Instruction_Print_Group( vropmemop,
+                           /* XOP instructions */
+                           TOP_vppermx,
+                           TOP_vprotbx,
+                           TOP_vprotdx,
+                           TOP_vprotqx,
+                           TOP_vprotwx,
+                           TOP_vpshabx,
+                           TOP_vpshadx,
+                           TOP_vpshaqx,
+                           TOP_vpshawx,
+                           TOP_vpshlbx,
+                           TOP_vpshldx,
+                           TOP_vpshlqx,
+                           TOP_vpshlwx,
+                           TOP_vpcmovx,
+                           TOP_vpmacsddx,
+                           TOP_vpmacsdqhx,
+                           TOP_vpmacsdqlx,
+                           TOP_vpmacssddx,
+                           TOP_vpmacssdqhx,
+                           TOP_vpmacssdqlx,
+                           TOP_vpmacsswdx,
+                           TOP_vpmacsswwx,
+                           TOP_vpmacswdx,
+                           TOP_vpmacswwx,
+                           TOP_vpmadcsswdx,
+                           TOP_vpmadcswdx,
+                           TOP_vprotbix,
+                           TOP_vprotdix,
+                           TOP_vprotqix,
+                           TOP_vprotwix,
+                           TOP_vpcombx,
+                           TOP_vpcomdx,
+                           TOP_vpcomqx,
+                           TOP_vpcomwx,
+                           TOP_vpcomubx,
+                           TOP_vpcomudx,
+                           TOP_vpcomuqx,
+                           TOP_vpcomuwx,
+                           TOP_UNDEFINED );
+ 
+  /* dest=op(src1, memindex, src3), non-x86-style */
+  ISA_PRINT_TYPE vropmemindexop = ISA_Print_Type_Create("vropmemindexop", "%s %s,%s%s(%s,%s,%s),%s,%s");
+  Name();
+  Operand(0);
+  Segment();
+  Operand(4);
+  Operand(1);
+  Operand(2);
+  Operand(3);
+  Operand(4);
+  Result(0);
+  Instruction_Print_Group( vropmemindexop,
+                           /* XOP instructions */
+                           TOP_vppermxx,
+                           TOP_vprotbxx,
+                           TOP_vprotdxx,
+                           TOP_vprotqxx,
+                           TOP_vprotwxx,
+                           TOP_vpshabxx,
+                           TOP_vpshadxx,
+                           TOP_vpshaqxx,
+                           TOP_vpshawxx,
+                           TOP_vpshlbxx,
+                           TOP_vpshldxx,
+                           TOP_vpshlqxx,
+                           TOP_vpshlwxx,
+                           TOP_vpcmovxx,
+                           TOP_vpmacsddxx,
+                           TOP_vpmacsdqhxx,
+                           TOP_vpmacsdqlxx,
+                           TOP_vpmacssddxx,
+                           TOP_vpmacssdqhxx,
+                           TOP_vpmacssdqlxx,
+                           TOP_vpmacsswdxx,
+                           TOP_vpmacsswwxx,
+                           TOP_vpmacswdxx,
+                           TOP_vpmacswwxx,
+                           TOP_vpmadcsswdxx,
+                           TOP_vpmadcswdxx,
+                           TOP_vprotbixx,
+                           TOP_vprotdixx,
+                           TOP_vprotqixx,
+                           TOP_vprotwixx,
+                           TOP_vpcombxx,
+                           TOP_vpcomdxx,
+                           TOP_vpcomqxx,
+                           TOP_vpcomwxx,
+                           TOP_vpcomubxx,
+                           TOP_vpcomudxx,
+                           TOP_vpcomuqxx,
+                           TOP_vpcomuwxx,
+                           TOP_UNDEFINED );
+
+  /* dest=op(src1, memindexx, src3), non-x86-style */
+  ISA_PRINT_TYPE vropmemindexxop = ISA_Print_Type_Create("vropmemindexxop", "%s %s,%s%s(,%s,%s),%s,%s");
+  Name();
+  Operand(0);
+  Segment();
+  Operand(3);
+  Operand(1);
+  Operand(2);
+  Operand(4);
+  Result(0);
+  Instruction_Print_Group( vropmemindexxop,
+                           /* XOP instructions */
+                           TOP_vppermxxx,
+                           TOP_vprotbxxx,
+                           TOP_vprotdxxx,
+                           TOP_vprotqxxx,
+                           TOP_vprotwxxx,
+                           TOP_vpshabxxx,
+                           TOP_vpshadxxx,
+                           TOP_vpshaqxxx,
+                           TOP_vpshawxxx,
+                           TOP_vpshlbxxx,
+                           TOP_vpshldxxx,
+                           TOP_vpshlqxxx,
+                           TOP_vpshlwxxx,
+                           TOP_vpcmovxxx,
+                           TOP_vpmacsddxxx,
+                           TOP_vpmacsdqhxxx,
+                           TOP_vpmacsdqlxxx,
+                           TOP_vpmacssddxxx,
+                           TOP_vpmacssdqhxxx,
+                           TOP_vpmacssdqlxxx,
+                           TOP_vpmacsswdxxx,
+                           TOP_vpmacsswwxxx,
+                           TOP_vpmacswdxxx,
+                           TOP_vpmacswwxxx,
+                           TOP_vpmadcsswdxxx,
+                           TOP_vpmadcswdxxx,
+                           TOP_vprotbixxx,
+                           TOP_vprotdixxx,
+                           TOP_vprotqixxx,
+                           TOP_vprotwixxx,
+                           TOP_vpcombxxx,
+                           TOP_vpcomdxxx,
+                           TOP_vpcomqxxx,
+                           TOP_vpcomwxxx,
+                           TOP_vpcomubxxx,
+                           TOP_vpcomudxxx,
+                           TOP_vpcomuqxxx,
+                           TOP_vpcomuwxxx,
+                           TOP_UNDEFINED );
+
+
+  /* dest=op(src1, src2, mem), non-x86-style */
+  ISA_PRINT_TYPE vropopmem = ISA_Print_Type_Create("vropopmem", "%s %s,%s,%s%s(%s),%s");
+  Name();
+  Operand(0);
+  Operand(1);
+  Segment();
+  Operand(3);
+  Operand(2);
+  Result(0);
+  Instruction_Print_Group( vropopmem,
+                           /* XOP instructions */
+                           TOP_vppermxr,
+                           TOP_vprotbxr,
+                           TOP_vprotdxr,
+                           TOP_vprotqxr,
+                           TOP_vprotwxr,
+                           TOP_vpshabxr,
+                           TOP_vpshadxr,
+                           TOP_vpshaqxr,
+                           TOP_vpshawxr,
+                           TOP_vpshlbxr,
+                           TOP_vpshldxr,
+                           TOP_vpshlqxr,
+                           TOP_vpshlwxr,
+                           TOP_vpcmovxr,
+                           TOP_UNDEFINED );
+
+  /* dest=op(src1, src2, memindex), non-x86-style */
+  ISA_PRINT_TYPE vropopmemindex = ISA_Print_Type_Create("vropopmemindex", "%s %s,%s,%s%s(%s,%s,%s),%s");
+  Name();
+  Operand(0);
+  Operand(1);
+  Segment();
+  Operand(5);
+  Operand(2);
+  Operand(3);
+  Operand(4);
+  Result(0);
+  Instruction_Print_Group( vropopmemindex,
+                           /* XOP instructions */
+                           TOP_vppermxxr,
+                           TOP_vprotbxxr,
+                           TOP_vprotdxxr,
+                           TOP_vprotqxxr,
+                           TOP_vprotwxxr,
+                           TOP_vpshabxxr,
+                           TOP_vpshadxxr,
+                           TOP_vpshaqxxr,
+                           TOP_vpshawxxr,
+                           TOP_vpshlbxxr,
+                           TOP_vpshldxxr,
+                           TOP_vpshlqxxr,
+                           TOP_vpshlwxxr,
+                           TOP_vpcmovxxr,
+                           TOP_UNDEFINED );
+
+  /* dest=op(src1, src2, memindexx), non-x86-style */
+  ISA_PRINT_TYPE vropopmemindexx = ISA_Print_Type_Create("vropopmemindexx", "%s %s,%s,%s%s(,%s,%s),%s");
+  Name();
+  Operand(0);
+  Operand(1);
+  Segment();
+  Operand(4);
+  Operand(2);
+  Operand(3);
+  Result(0);
+  Instruction_Print_Group( vropopmemindexx,
+                           /* XOP instructions */
+                           TOP_vppermxxxr,
+                           TOP_vprotbxxxr,
+                           TOP_vprotdxxxr,
+                           TOP_vprotqxxxr,
+                           TOP_vprotwxxxr,
+                           TOP_vpshabxxxr,
+                           TOP_vpshadxxxr,
+                           TOP_vpshaqxxxr,
+                           TOP_vpshawxxxr,
+                           TOP_vpshlbxxxr,
+                           TOP_vpshldxxxr,
+                           TOP_vpshlqxxxr,
+                           TOP_vpshlwxxxr,
+                           TOP_vpcmovxxxr,
+                           TOP_UNDEFINED );
+
   /* SSE4.2 cmpestri/cmpestrm */
   ISA_PRINT_TYPE pcmpestr = ISA_Print_Type_Create("pcmpestr", "%s %s,%s,%s");
   Name();
@@ -1538,6 +1829,26 @@ main()
                            TOP_popcnt64,
                            /* AES instructions */
                            TOP_vaesimc,
+                           /* XOP instructions */
+                           TOP_vphaddbd,
+                           TOP_vphaddbq,
+                           TOP_vphaddbw,
+                           TOP_vphadddq,
+                           TOP_vphaddubd,
+                           TOP_vphaddubq,
+                           TOP_vphaddubw,
+                           TOP_vphaddudq,
+                           TOP_vphadduwd,
+                           TOP_vphadduwq,
+                           TOP_vphaddwd,
+                           TOP_vphaddwq,
+                           TOP_vphsubbw,
+                           TOP_vphsubdq,
+                           TOP_vphsubwd,
+                           TOP_vfrczpd,
+                           TOP_vfrczps,
+                           TOP_vfrczsd,
+                           TOP_vfrczss,
 			   TOP_UNDEFINED );
 
   /* One result / one mem opnd */
@@ -1557,6 +1868,26 @@ main()
                            TOP_popcntx64,
                            /* AES instructions */
                            TOP_vaesimcx,
+                           /* XOP instructions */
+                           TOP_vphaddbdx,
+                           TOP_vphaddbqx,
+                           TOP_vphaddbwx,
+                           TOP_vphadddqx,
+                           TOP_vphaddubdx,
+                           TOP_vphaddubqx,
+                           TOP_vphaddubwx,
+                           TOP_vphaddudqx,
+                           TOP_vphadduwdx,
+                           TOP_vphadduwqx,
+                           TOP_vphaddwdx,
+                           TOP_vphaddwqx,
+                           TOP_vphsubbwx,
+                           TOP_vphsubdqx,
+                           TOP_vphsubwdx,
+                           TOP_vfrczpdx,
+                           TOP_vfrczpsx,
+                           TOP_vfrczsdx,
+                           TOP_vfrczssx,
 			   TOP_UNDEFINED );
 
   /* One result / one mem opnd with scaled-index with base */
@@ -1578,6 +1909,26 @@ main()
                            TOP_popcntxx64,
                            /* AES instructions */
                            TOP_vaesimcxx,
+                           /* XOP instructions */
+                           TOP_vphaddbdxx,
+                           TOP_vphaddbqxx,
+                           TOP_vphaddbwxx,
+                           TOP_vphadddqxx,
+                           TOP_vphaddubdxx,
+                           TOP_vphaddubqxx,
+                           TOP_vphaddubwxx,
+                           TOP_vphaddudqxx,
+                           TOP_vphadduwdxx,
+                           TOP_vphadduwqxx,
+                           TOP_vphaddwdxx,
+                           TOP_vphaddwqxx,
+                           TOP_vphsubbwxx,
+                           TOP_vphsubdqxx,
+                           TOP_vphsubwdxx,
+                           TOP_vfrczpdxx,
+                           TOP_vfrczpsxx,
+                           TOP_vfrczsdxx,
+                           TOP_vfrczssxx,
 			   TOP_UNDEFINED );
 
   /* One result / one mem opnd with scaled-index w/o base */
@@ -1598,6 +1949,26 @@ main()
                            TOP_popcntxxx64,
                            /* AES instructions */
                            TOP_vaesimcxxx,
+                           /* XOP instructions */
+                           TOP_vphaddbdxxx,
+                           TOP_vphaddbqxxx,
+                           TOP_vphaddbwxxx,
+                           TOP_vphadddqxxx,
+                           TOP_vphaddubdxxx,
+                           TOP_vphaddubqxxx,
+                           TOP_vphaddubwxxx,
+                           TOP_vphaddudqxxx,
+                           TOP_vphadduwdxxx,
+                           TOP_vphadduwqxxx,
+                           TOP_vphaddwdxxx,
+                           TOP_vphaddwqxxx,
+                           TOP_vphsubbwxxx,
+                           TOP_vphsubdqxxx,
+                           TOP_vphsubwdxxx,
+                           TOP_vfrczpdxxx,
+                           TOP_vfrczpsxxx,
+                           TOP_vfrczsdxxx,
+                           TOP_vfrczssxxx,
 			   TOP_UNDEFINED );
 
   /* Two operands / no result */
