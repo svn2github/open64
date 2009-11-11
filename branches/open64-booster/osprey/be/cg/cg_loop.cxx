@@ -2616,7 +2616,7 @@ static void note_not_unrolled(BB *head, const char *reason, ...)
 
 
 
-inline UINT16 log2(UINT32 n)
+inline UINT16 log2_u32(UINT32 n)
 /* -----------------------------------------------------------------------
  * Requires: n > 0.
  * Return the base-2 logarithm of <n> (truncated if <n> isn't a power of
@@ -2668,14 +2668,14 @@ static void unroll_guard_unrolled_body(LOOP_DESCR *loop,
 
     /* We know <orig_trip_count_tn's> value is positive, and <ntimes> is a power
    * of two, so we can divide <orig_trip_count_tn> by <ntimes> with:
-   *   <new_trip_count_tn> <- [d]sra <orig_trip_count_tn> log2(ntimes)
+   *   <new_trip_count_tn> <- [d]sra <orig_trip_count_tn> log2_u32(ntimes)
    * and guard the unrolled loop with:
    *   beq continuation_lbl <new_trip_count_tn> 0
    */
     Exp_OP2(trip_size == 4 ? OPC_I4ASHR : OPC_I8ASHR,
 	    new_trip_count_tn,
 	    orig_trip_count_tn,
-	    Gen_Literal_TN(log2(ntimes), trip_size),
+	    Gen_Literal_TN(log2_u32(ntimes), trip_size),
 	    &ops);
 #ifdef TARG_X8664 //bug 12956: x8664/exp_branch.cxx does not accept Zero_TN
     Exp_OP3v(OPC_FALSEBR,
@@ -4634,7 +4634,7 @@ void Unroll_Do_Loop(CG_LOOP& cl, UINT32 ntimes)
       Exp_OP2(trip_size == 4 ? OPC_I4ASHR : OPC_I8ASHR,
 	      unrolled_trip_count,
 	      trip_count_tn,
-	      Gen_Literal_TN(log2(ntimes), trip_size),
+	      Gen_Literal_TN(log2_u32(ntimes), trip_size),
 	      &ops);
     else
       Exp_OP2(trip_size == 4 ? OPC_U4DIV : OPC_U8DIV,
@@ -5170,7 +5170,7 @@ void CG_LOOP::Determine_Unroll_Factor()
       UINT32 ntimes = OPT_unroll_times;
       ntimes = MIN(ntimes, CG_LOOP_unroll_times_max);
       if (!is_power_of_two(ntimes)) {
-	ntimes = 1 << log2(ntimes); 
+	ntimes = 1 << log2_u32(ntimes); 
 	if (trace)
 	  fprintf(TFile, "<unroll> rounding down to power of two = %d times\n", ntimes);
       }
