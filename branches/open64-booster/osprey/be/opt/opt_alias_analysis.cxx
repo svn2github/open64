@@ -94,7 +94,6 @@
 #pragma hdrstop
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"			// INT32, INT64
 
@@ -1513,6 +1512,8 @@ OPT_STAB::Create_entry_chi(void)
       AUX_ID auxid;
       FOR_ALL_NODE(auxid, aux_stab_iter, Init()) {
         AUX_STAB_ENTRY *sym = Aux_stab_entry(auxid);
+        if (sym->Stype() == VT_UNKNOWN)
+          continue; 
 	if ( !sym->Is_volatile() ) {
 	  CHI_NODE *cnode = chi->New_chi_node(auxid, Occ_pool());
 	  cnode->Set_opnd(auxid);
@@ -2977,6 +2978,9 @@ OPT_STAB::Generate_exit_mu(WN *wn)
       
     // examining all variables (including volatile virtuals)
     // but excluding the default vsym.
+
+    if (psym->Stype() == VT_UNKNOWN) 
+      continue;
 
     if (psym->Is_volatile()) continue;
     if (idx == Default_vsym()) continue;

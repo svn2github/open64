@@ -84,7 +84,6 @@
 #pragma hdrstop
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "limits.h"
 
@@ -1725,15 +1724,22 @@ OPT_STAB::Convert_ST_to_AUX(WN *wn, WN *block_wn)
 				 WN_kid0(wn)); 
       if (twn) {
 	opr = WN_operator(twn);
+        FmtAssert(opr == OPR_LDID || opr == OPR_LDBITS || opr == OPR_INTCONST,
+                  ("Unknown operator: opr:%s when simpilfying iload", 
+                  OPERATOR_name(opr)));
 	rtype = WN_rtype(twn);
 	desc = WN_desc(twn);
         WN_set_operator(wn, opr);
 	WN_set_rtype(wn, rtype);
 	WN_set_desc(wn, desc);
-        WN_load_offset(wn) = WN_load_offset(twn);
-        WN_st_idx(wn) = WN_st_idx(twn);
-        WN_set_ty(wn, WN_ty(twn));
-	WN_kid0(wn) = NULL;
+        if (opr == OPR_INTCONST)
+          WN_const_val(wn) = WN_const_val(twn);
+        else {
+          WN_load_offset(wn) = WN_load_offset(twn);
+          WN_st_idx(wn) = WN_st_idx(twn);
+          WN_set_ty(wn, WN_ty(twn));
+	  WN_kid0(wn) = NULL;
+        }
 	WN_Delete(twn);
       }
     }
@@ -2517,7 +2523,7 @@ OPT_STAB::Collect_ST_attr(void)
     ST *st = psym->St();
     const INT32 stype = psym->Stype();
 
-    if (stype == VT_OTHER) continue;
+    if (stype == VT_OTHER || stype == VT_UNKNOWN) continue;
       
     // Update POINTS_TO 
     POINTS_TO *pt = psym->Points_to();
@@ -4008,6 +4014,9 @@ OPT_STAB::Collect_nested_ref_info(void)
   // symtabs.
   FOR_ALL_NODE(var, aux_stab_iter, Init()) {
     ST *var_base;
+
+    if (Aux_stab_entry(var)->Stype() == VT_UNKNOWN)
+      continue;
 
     if (!Aux_stab_entry(var)->Has_nested_ref() &&
 	(ST_class(var_base = Aux_stab_entry(var)->Base()) == CLASS_VAR) &&
