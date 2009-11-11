@@ -4161,12 +4161,12 @@ Identify_Partial_Inline_Candiate(IPA_NODE *callee, WN *wn, BOOL prune_tree,
                   } else {
                      // Select this as a partial inlining candidate
                      // only if the return path is very frequent.
-                     FB_FREQ if_freq = Cur_PU_Feedback->Query(wn2,
-                                       FB_EDGE_INCOMING);
                      FB_FREQ then_freq = Cur_PU_Feedback->Query(wn2,
+                                       FB_EDGE_BRANCH_TAKEN);
+                     FB_FREQ else_freq = Cur_PU_Feedback->Query(wn2,
                                        FB_EDGE_BRANCH_NOT_TAKEN);
 
-                     if ( (then_freq / if_freq) > FREQ_RTN_THRESHOLD )
+                     if ( (then_freq/(then_freq+else_freq) ) > FREQ_RTN_THRESHOLD )
                         return TRUE;
                      else
                         return FALSE;
@@ -4185,12 +4185,12 @@ Identify_Partial_Inline_Candiate(IPA_NODE *callee, WN *wn, BOOL prune_tree,
                   } else {
                      // Select this as a partial inlining candidate
                      // only if the return path is very frequent.
-                     FB_FREQ if_freq = Cur_PU_Feedback->Query(wn2,
-                                       FB_EDGE_INCOMING);
-                     FB_FREQ else_freq = Cur_PU_Feedback->Query(wn2,
+                     FB_FREQ then_freq = Cur_PU_Feedback->Query(wn2,
                                        FB_EDGE_BRANCH_TAKEN);
+                     FB_FREQ else_freq = Cur_PU_Feedback->Query(wn2,
+                                       FB_EDGE_BRANCH_NOT_TAKEN);
 
-                     if ( (else_freq / if_freq) > FREQ_RTN_THRESHOLD )
+                     if ( (else_freq/(then_freq+else_freq) ) > FREQ_RTN_THRESHOLD )
                         return TRUE;
                      else
                         return FALSE;
@@ -4286,12 +4286,12 @@ Identify_Partial_Inline_Candiate(IPA_NODE *callee, WN *wn, BOOL prune_tree,
                   // Select this as a partial inlining candidate
                   // only if the loop body is entered very few times
                   // and the return path is very frequent.
-                  FB_FREQ do_freq = Cur_PU_Feedback->Query(wn2,
-                                       FB_EDGE_INCOMING);
                   FB_FREQ iter_freq = Cur_PU_Feedback->Query(wn2,
                                        FB_EDGE_LOOP_ITERATE);
                   FB_FREQ rtn_freq = Cur_PU_Feedback->Query(WN_next(wn2),
                                        FB_EDGE_INCOMING);
+                  FB_FREQ do_freq = Cur_PU_Feedback->Query(wn2,
+                                       FB_EDGE_LOOP_ZERO) + iter_freq;
 
                   if ((iter_freq / do_freq) < (1.0 - FREQ_RTN_THRESHOLD) &&
                       (rtn_freq / do_freq) > FREQ_RTN_THRESHOLD) {
