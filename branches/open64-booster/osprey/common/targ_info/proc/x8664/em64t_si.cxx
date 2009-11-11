@@ -2444,9 +2444,9 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "sse4.1 store ntdqa",
-                        TOP_stntdqa,
-                        TOP_stntdqax,
-                        TOP_stntdqaxx,
+                        TOP_stntdq,
+                        TOP_stntdqx,
+                        TOP_stntdqxx,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(2);
@@ -2504,18 +2504,18 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "sse4.2 crc mem opnd",
-                        TOP_crcx32b,
-                        TOP_crcxx32b,
-                        TOP_crcxxx32b,
-                        TOP_crcx32w,
-                        TOP_crcxx32w,
-                        TOP_crcxxx32w,
-                        TOP_crcx32d,
-                        TOP_crcxx32d,
-                        TOP_crcxxx32d,
-                        TOP_crcx32q,
-                        TOP_crcxx32q,
-                        TOP_crcxxx32q,
+                        TOP_crc32bx,
+                        TOP_crc32bxx,
+                        TOP_crc32bxxx,
+                        TOP_crc32wx,
+                        TOP_crc32wxx,
+                        TOP_crc32wxxx,
+                        TOP_crc32dx,
+                        TOP_crc32dxx,
+                        TOP_crc32dxxx,
+                        TOP_crc32qx,
+                        TOP_crc32qxx,
+                        TOP_crc32qxxx,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(10);
@@ -4153,9 +4153,9 @@ int main (int argc, char *argv[])
                         TOP_vstorenti128,
                         TOP_vstorentxi128,
                         TOP_vstorentxxi128,
-                        TOP_vstntdqa,
-                        TOP_vstntdqax,
-                        TOP_vstntdqaxx,
+                        TOP_vstntdq,
+                        TOP_vstntdqx,
+                        TOP_vstntdqxx,
                         TOP_vstntpd,
                         TOP_vstntpdx,
                         TOP_vstntpdxx,
@@ -4238,8 +4238,8 @@ int main (int argc, char *argv[])
 
   Instruction_Group( "avx ptest reg opnd",
                         TOP_vptest128,
-                        TOP_vptestpd,
-                        TOP_vptestps,
+                        TOP_vtestpd,
+                        TOP_vtestps,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(5);
@@ -4249,12 +4249,12 @@ int main (int argc, char *argv[])
                         TOP_vptestx128,
                         TOP_vptestxx128,
                         TOP_vptestxxx128,
-                        TOP_vptestxpd,
-                        TOP_vptestxxpd,
-                        TOP_vptestxxxpd,
-                        TOP_vptestxps,
-                        TOP_vptestxxps,
-                        TOP_vptestxxxps,
+                        TOP_vtestxpd,
+                        TOP_vtestxxpd,
+                        TOP_vtestxxxpd,
+                        TOP_vtestxps,
+                        TOP_vtestxxps,
+                        TOP_vtestxxxps,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(10);
@@ -4265,7 +4265,9 @@ int main (int argc, char *argv[])
                         TOP_vcvtdq2pd,
                         TOP_vcvtdq2ps,
                         TOP_vcvtpd2dq,
+                        TOP_vcvtpd2dqy,
                         TOP_vcvtpd2ps,
+                        TOP_vcvtpd2psy,
                         TOP_vcvtps2dq,
                         TOP_vcvtps2pd,
                         TOP_vcvtsd2si,
@@ -4279,6 +4281,7 @@ int main (int argc, char *argv[])
                         TOP_vcvtss2si,
                         TOP_vcvtss2siq,
                         TOP_vcvttpd2dq,
+                        TOP_vcvttpd2dqy,
                         TOP_vcvttps2dq,
                         TOP_vcvttsd2si,
                         TOP_vcvttsd2siq,
@@ -4299,9 +4302,15 @@ int main (int argc, char *argv[])
                         TOP_vcvtpd2dqx,
                         TOP_vcvtpd2dqxx,
                         TOP_vcvtpd2dqxxx,
+                        TOP_vcvtpd2dqyx,
+                        TOP_vcvtpd2dqyxx,
+                        TOP_vcvtpd2dqyxxx,
                         TOP_vcvtpd2psx,
                         TOP_vcvtpd2psxx,
                         TOP_vcvtpd2psxxx,
+                        TOP_vcvtpd2psyx,
+                        TOP_vcvtpd2psyxx,
+                        TOP_vcvtpd2psyxxx,
                         TOP_vcvtps2dqx,
                         TOP_vcvtps2dqxx,
                         TOP_vcvtps2dqxxx,
@@ -4329,6 +4338,9 @@ int main (int argc, char *argv[])
                         TOP_vcvttpd2dqx,
                         TOP_vcvttpd2dqxx,
                         TOP_vcvttpd2dqxxx,
+                        TOP_vcvttpd2dqyx,
+                        TOP_vcvttpd2dqyxx,
+                        TOP_vcvttpd2dqyxxx,
                         TOP_vcvttps2dqx,
                         TOP_vcvttps2dqxx,
                         TOP_vcvttps2dqxxx,
@@ -4346,6 +4358,15 @@ int main (int argc, char *argv[])
   Any_Result_Available_Time(14);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "avx move mask",
+                        TOP_vmovmskpd,
+                        TOP_vmovmskps,
+                        TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(5);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_alu, 0);
 
   Instruction_Group( "avx unalign store",
                         TOP_vstupd,

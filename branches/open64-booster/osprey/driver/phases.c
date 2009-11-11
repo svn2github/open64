@@ -409,6 +409,46 @@ add_targ_options ( string_list_t *args )
     add_string(args, "-TARG:sse4a=on");
   else
     add_string(args, "-TARG:sse4a=off");
+
+  if (ssse3 == TRUE)
+    add_string(args, "-TARG:ssse3=on");
+  else
+    add_string(args, "-TARG:ssse3=off");
+
+  if (sse41 == TRUE)
+    add_string(args, "-TARG:sse41=on");
+  else
+    add_string(args, "-TARG:sse41=off");
+
+  if (sse42 == TRUE)
+    add_string(args, "-TARG:sse42=on");
+  else
+    add_string(args, "-TARG:sse42=off");
+
+  if (aes == TRUE)
+    add_string(args, "-TARG:aes=on");
+  else
+    add_string(args, "-TARG:aes=off");
+
+  if (pclmul == TRUE)
+    add_string(args, "-TARG:pclmul=on");
+  else
+    add_string(args, "-TARG:pclmul=off");
+
+  if (avx == TRUE)
+    add_string(args, "-TARG:avx=on");
+  else
+    add_string(args, "-TARG:avx=off");
+
+  if (xop == TRUE)
+    add_string(args, "-TARG:xop=on");
+  else
+    add_string(args, "-TARG:xop=off");
+
+  if (fma4 == TRUE)
+    add_string(args, "-TARG:fma4=on");
+  else
+    add_string(args, "-TARG:fma4=off");
 #endif
 }
 

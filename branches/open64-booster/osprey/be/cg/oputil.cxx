@@ -2393,9 +2393,9 @@ static Top_Trans_Group Top_SSE_To_Vex_Mode_Group_Table[] = {
     {TOP_ldntdqa,            TOP_vldntdqa},
     {TOP_ldntdqax,           TOP_vldntdqax},
     {TOP_ldntdqaxx,          TOP_vldntdqaxx},
-    {TOP_stntdqa,            TOP_vstntdqa},
-    {TOP_stntdqax,           TOP_vstntdqax},
-    {TOP_stntdqaxx,          TOP_vstntdqaxx},
+    {TOP_stntdq,             TOP_vstntdq},
+    {TOP_stntdqx,            TOP_vstntdqx},
+    {TOP_stntdqxx,           TOP_vstntdqxx},
     // SSE4.2
     {TOP_cmpestri,           TOP_vcmpestri},
     {TOP_cmpestrix,          TOP_vcmpestrix},

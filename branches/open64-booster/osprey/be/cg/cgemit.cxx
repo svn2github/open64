@@ -9314,6 +9314,30 @@ Emit_Options (void)
     if (Is_Target_SSE4a()) fputs ("-msse4a ", Asm_File);
     else fputs ("-mno-sse4a ", Asm_File);
 
+    if (Is_Target_SSSE3()) fputs ("-mssse3 ", Asm_File);
+    else fputs ("-mno-ssse3 ", Asm_File);
+
+    if (Is_Target_SSE41()) fputs ("-msse41 ", Asm_File);
+    else fputs ("-mno-sse41 ", Asm_File);
+
+    if (Is_Target_SSE42()) fputs ("-msse42 ", Asm_File);
+    else fputs ("-mno-sse42 ", Asm_File);
+
+    if (Is_Target_AES()) fputs ("-maes ", Asm_File);
+    else fputs ("-mno-aes ", Asm_File);
+
+    if (Is_Target_PCLMUL()) fputs ("-mpclmul ", Asm_File);
+    else fputs ("-mno-pclmul ", Asm_File);
+
+    if (Is_Target_AVX()) fputs ("-mavx ", Asm_File);
+    else fputs ("-mno-avx ", Asm_File);
+
+    if (Is_Target_XOP()) fputs ("-mxop ", Asm_File);
+    else fputs ("-mno-xop ", Asm_File);
+
+    if (Is_Target_FMA4()) fputs ("-mfma4 ", Asm_File);
+    else fputs ("-mno-fma4 ", Asm_File);
+
     if (Is_Target_64bit()) fputs ("-m64", Asm_File);
     else fputs ("-m32", Asm_File);
 #endif // TARG_X8664

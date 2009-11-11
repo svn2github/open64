@@ -580,7 +580,7 @@ Init_Dedicated_TNs (void)
   	Set_TN_size(v16_ded_tns[reg], 16);
         ++tnum;
         v32_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
-        Set_TN_size(v16_ded_tns[reg], 32);
+        Set_TN_size(v32_ded_tns[reg], 32);
 #endif
     }
 

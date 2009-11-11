@@ -1166,27 +1166,27 @@ static void Init_OP_Name()
   OP_Name[TOP_ldntdqa] = "movntdqa";
   OP_Name[TOP_ldntdqax] = "movntdqa";
   OP_Name[TOP_ldntdqaxx] = "movntdqa";
-  OP_Name[TOP_stntdqa] = "movntdqa";
-  OP_Name[TOP_stntdqax] = "movntdqa";
-  OP_Name[TOP_stntdqaxx] = "movntdqa";
+  OP_Name[TOP_stntdq] = "movntdq";
+  OP_Name[TOP_stntdqx] = "movntdq";
+  OP_Name[TOP_stntdqxx] = "movntdq";
 
   // SSE4.2 TOP to instruction map
   OP_Name[TOP_crc32b] = "crc32b";
-  OP_Name[TOP_crcx32b] = "crc32b";
-  OP_Name[TOP_crcxx32b] = "crc32b";
-  OP_Name[TOP_crcxxx32b] = "crc32b";
+  OP_Name[TOP_crc32bx] = "crc32b";
+  OP_Name[TOP_crc32bxx] = "crc32b";
+  OP_Name[TOP_crc32bxxx] = "crc32b";
   OP_Name[TOP_crc32w] = "crc32w";
-  OP_Name[TOP_crcx32w] = "crc32w";
-  OP_Name[TOP_crcxx32w] = "crc32w";
-  OP_Name[TOP_crcxxx32w] = "crc32w";
+  OP_Name[TOP_crc32wx] = "crc32w";
+  OP_Name[TOP_crc32wxx] = "crc32w";
+  OP_Name[TOP_crc32wxxx] = "crc32w";
   OP_Name[TOP_crc32d] = "crc32d";
-  OP_Name[TOP_crcx32d] = "crc32d";
-  OP_Name[TOP_crcxx32d] = "crc32d";
-  OP_Name[TOP_crcxxx32d] = "crc32d";
+  OP_Name[TOP_crc32dx] = "crc32d";
+  OP_Name[TOP_crc32dxx] = "crc32d";
+  OP_Name[TOP_crc32dxxx] = "crc32d";
   OP_Name[TOP_crc32q] = "crc32q";
-  OP_Name[TOP_crcx32q] = "crc32q";
-  OP_Name[TOP_crcxx32q] = "crc32q";
-  OP_Name[TOP_crcxxx32q] = "crc32q";
+  OP_Name[TOP_crc32qx] = "crc32q";
+  OP_Name[TOP_crc32qxx] = "crc32q";
+  OP_Name[TOP_crc32qxxx] = "crc32q";
   OP_Name[TOP_cmpestri] = "pcmpestri";
   OP_Name[TOP_cmpestrix] = "pcmpestri";
   OP_Name[TOP_cmpestrixx] = "pcmpestri";
@@ -1605,15 +1605,15 @@ static void Init_OP_Name()
   OP_Name[TOP_vfblendvx128v32] = "vblendvps";
   OP_Name[TOP_vfblendvxx128v32] = "vblendvps";
   OP_Name[TOP_vfblendvxxx128v32] = "vblendvps";
-  OP_Name[TOP_vfbroadcastss] = "vbroadcast";
-  OP_Name[TOP_vfbroadcastxss] = "vbroadcast";
-  OP_Name[TOP_vfbroadcastxxss] = "vbroadcast";
-  OP_Name[TOP_vfbroadcastsd] = "vbroadcast";
-  OP_Name[TOP_vfbroadcastxsd] = "vbroadcast";
-  OP_Name[TOP_vfbroadcastxxsd] = "vbroadcast";
-  OP_Name[TOP_vfbroadcastf128] = "vbroadcast";
-  OP_Name[TOP_vfbroadcastxf128] = "vbroadcast";
-  OP_Name[TOP_vfbroadcastxxf128] = "vbroadcast";
+  OP_Name[TOP_vfbroadcastss] = "vbroadcastss";
+  OP_Name[TOP_vfbroadcastxss] = "vbroadcastss";
+  OP_Name[TOP_vfbroadcastxxss] = "vbroadcastss";
+  OP_Name[TOP_vfbroadcastsd] = "vbroadcastsd";
+  OP_Name[TOP_vfbroadcastxsd] = "vbroadcastsd";
+  OP_Name[TOP_vfbroadcastxxsd] = "vbroadcastsd";
+  OP_Name[TOP_vfbroadcastf128] = "vbroadcastf128";
+  OP_Name[TOP_vfbroadcastxf128] = "vbroadcastf128";
+  OP_Name[TOP_vfbroadcastxxf128] = "vbroadcastf128";
   OP_Name[TOP_vfcmp128v64] = "vcmppd";
   OP_Name[TOP_vfcmpx128v64] = "vcmppd";
   OP_Name[TOP_vfcmpxx128v64] = "vcmppd";
@@ -1650,18 +1650,30 @@ static void Init_OP_Name()
   // TODO: add y suffix additions for 256-bit cg.
   //   affected insns: vcvtpd2dq, vcvtpd2ps, vcvttpd2dq
   //                   vcvtsi2sdq
-  OP_Name[TOP_vcvtpd2dq] = "vcvtpd2dqx";
-  OP_Name[TOP_vcvtpd2dqx] = "vcvtpd2dqx";
-  OP_Name[TOP_vcvtpd2dqxx] = "vcvtpd2dqx";
-  OP_Name[TOP_vcvtpd2dqxxx] = "vcvtpd2dqx";
-  OP_Name[TOP_vcvtpd2ps] = "vcvtpd2psx";
-  OP_Name[TOP_vcvtpd2psx] = "vcvtpd2psx";
-  OP_Name[TOP_vcvtpd2psxx] = "vcvtpd2psx";
-  OP_Name[TOP_vcvtpd2psxxx] = "vcvtpd2psx";
-  OP_Name[TOP_vcvttpd2dq] = "vcvttpd2dqx";
-  OP_Name[TOP_vcvttpd2dqx] = "vcvttpd2dqx";
-  OP_Name[TOP_vcvttpd2dqxx] = "vcvttpd2dqx";
-  OP_Name[TOP_vcvttpd2dqxxx] = "vcvttpd2dqx";
+  OP_Name[TOP_vcvtpd2dq] = "vcvtpd2dq";
+  OP_Name[TOP_vcvtpd2dqx] = "vcvtpd2dq";
+  OP_Name[TOP_vcvtpd2dqxx] = "vcvtpd2dq";
+  OP_Name[TOP_vcvtpd2dqxxx] = "vcvtpd2dq";
+  OP_Name[TOP_vcvtpd2dqy] = "vcvtpd2dqy";
+  OP_Name[TOP_vcvtpd2dqyx] = "vcvtpd2dqy";
+  OP_Name[TOP_vcvtpd2dqyxx] = "vcvtpd2dqy";
+  OP_Name[TOP_vcvtpd2dqyxxx] = "vcvtpd2dqy";
+  OP_Name[TOP_vcvtpd2ps] = "vcvtpd2ps";
+  OP_Name[TOP_vcvtpd2psx] = "vcvtpd2ps";
+  OP_Name[TOP_vcvtpd2psxx] = "vcvtpd2ps";
+  OP_Name[TOP_vcvtpd2psxxx] = "vcvtpd2ps";
+  OP_Name[TOP_vcvtpd2psy] = "vcvtpd2psy";
+  OP_Name[TOP_vcvtpd2psyx] = "vcvtpd2psy";
+  OP_Name[TOP_vcvtpd2psyxx] = "vcvtpd2psy";
+  OP_Name[TOP_vcvtpd2psyxxx] = "vcvtpd2psy";
+  OP_Name[TOP_vcvttpd2dq] = "vcvttpd2dq";
+  OP_Name[TOP_vcvttpd2dqx] = "vcvttpd2dq";
+  OP_Name[TOP_vcvttpd2dqxx] = "vcvttpd2dq";
+  OP_Name[TOP_vcvttpd2dqxxx] = "vcvttpd2dq";
+  OP_Name[TOP_vcvttpd2dqy] = "vcvttpd2dqy";
+  OP_Name[TOP_vcvttpd2dqyx] = "vcvttpd2dqy";
+  OP_Name[TOP_vcvttpd2dqyxx] = "vcvttpd2dqy";
+  OP_Name[TOP_vcvttpd2dqyxxx] = "vcvttpd2dqy";
 
   OP_Name[TOP_vcvtps2dq] = "vcvtps2dq";
   OP_Name[TOP_vcvtps2dqx] = "vcvtps2dq";
@@ -1769,18 +1781,18 @@ static void Init_OP_Name()
   OP_Name[TOP_vlddqu_n32] = "vlddqu";
   OP_Name[TOP_vldmxcsr] = "vldmxcsr";
   OP_Name[TOP_vmaskmovdqu] = "vmaskmovdqu";
-  OP_Name[TOP_vfmaskld128v32] = "vmaskmov";
-  OP_Name[TOP_vfmaskldx128v32] = "vmaskmov";
-  OP_Name[TOP_vfmaskldxx128v32] = "vmaskmov";
-  OP_Name[TOP_vfmaskld128v64] = "vmaskmov";
-  OP_Name[TOP_vfmaskldx128v64] = "vmaskmov";
-  OP_Name[TOP_vfmaskldxx128v64] = "vmaskmov";
-  OP_Name[TOP_vfmaskst128v32] = "vmaskmov";
-  OP_Name[TOP_vfmaskstx128v32] = "vmaskmov";
-  OP_Name[TOP_vfmaskstxx128v32] = "vmaskmov";
-  OP_Name[TOP_vfmaskst128v64] = "vmaskmov";
-  OP_Name[TOP_vfmaskstx128v64] = "vmaskmov";
-  OP_Name[TOP_vfmaskstxx128v64] = "vmaskmov";
+  OP_Name[TOP_vfmaskld128v32] = "vmaskmovps";
+  OP_Name[TOP_vfmaskldx128v32] = "vmaskmovps";
+  OP_Name[TOP_vfmaskldxx128v32] = "vmaskmovps";
+  OP_Name[TOP_vfmaskld128v64] = "vmaskmovpd";
+  OP_Name[TOP_vfmaskldx128v64] = "vmaskmovpd";
+  OP_Name[TOP_vfmaskldxx128v64] = "vmaskmovpd";
+  OP_Name[TOP_vfmaskst128v32] = "vmaskmovps";
+  OP_Name[TOP_vfmaskstx128v32] = "vmaskmovps";
+  OP_Name[TOP_vfmaskstxx128v32] = "vmaskmovps";
+  OP_Name[TOP_vfmaskst128v64] = "vmaskmovpd";
+  OP_Name[TOP_vfmaskstx128v64] = "vmaskmovpd";
+  OP_Name[TOP_vfmaskstxx128v64] = "vmaskmovpd";
   OP_Name[TOP_vfmax128v64] = "vmaxpd";
   OP_Name[TOP_vfmaxx128v64] = "vmaxpd";
   OP_Name[TOP_vfmaxxx128v64] = "vmaxpd";
@@ -1902,9 +1914,9 @@ static void Init_OP_Name()
   OP_Name[TOP_vldntdqa] = "vmovntdqa";
   OP_Name[TOP_vldntdqax] = "vmovntdqa";
   OP_Name[TOP_vldntdqaxx] = "vmovntdqa";
-  OP_Name[TOP_vstntdqa] = "vmovntdqa";
-  OP_Name[TOP_vstntdqax] = "vmovntdqa";
-  OP_Name[TOP_vstntdqaxx] = "vmovntdqa";
+  OP_Name[TOP_vstntdq] = "vmovntdq";
+  OP_Name[TOP_vstntdqx] = "vmovntdq";
+  OP_Name[TOP_vstntdqxx] = "vmovntdq";
   OP_Name[TOP_vstntpd] = "vmovntpd";
   OP_Name[TOP_vstntpdx] = "vmovntpd";
   OP_Name[TOP_vstntpdxx] = "vmovntpd";
@@ -3651,8 +3663,9 @@ static void Init_OP_Name()
 
 enum OPND_REG { BYTE_REG = 0, WORD_REG, DWORD_REG, QWORD_REG, SSE2_REG, AVX_REG };
 
-static enum OPND_REG Get_Opnd_Reg( TOP topcode, int opnd, ISA_REGISTER_CLASS rc)
+static enum OPND_REG Get_Opnd_Reg( OP* op, int opnd, ISA_REGISTER_CLASS rc)
 {
+  TOP topcode = OP_code(op);
   int num_bits = 0;
   ISA_REGISTER_CLASS opnd_rc;
 
@@ -3705,6 +3718,13 @@ static enum OPND_REG Get_Opnd_Reg( TOP topcode, int opnd, ISA_REGISTER_CLASS rc)
   }
   else if ( rc == ISA_REGISTER_CLASS_float ) {
     // float register class
+    // distiguish SSE and AVX size by TN_size
+    if ( opnd >= 0 && TN_size ( OP_opnd ( op, opnd ) ) == 32 ) {
+      num_bits = 256;
+    }
+    else if ( opnd == -1 && TN_size ( OP_result ( op, 0 ) ) == 32 ) {
+      num_bits = 256;
+    }
     switch( num_bits ) {
     case 32:
     case 64:
@@ -3761,7 +3781,7 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
 	opnd == OP_find_opnd_use(op,OU_offset) ) ){
     if ( Is_Target_32bit() ) { // Bug 4666
       const ISA_REGISTER_CLASS rc = ISA_REGISTER_CLASS_integer;
-      const enum OPND_REG opnd_reg = Get_Opnd_Reg( topcode, opnd, rc );
+      const enum OPND_REG opnd_reg = Get_Opnd_Reg( op, opnd, rc );
       
       for( REGISTER reg = REGISTER_MIN; 
 	   reg <= REGISTER_CLASS_last_register( rc ); reg++ ){
@@ -3834,7 +3854,7 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
   if( ISA_OPERAND_VALTYP_Register_Class(vtype) == ISA_REGISTER_CLASS_integer ||
       ISA_OPERAND_VALTYP_Register_Class(vtype) == ISA_REGISTER_CLASS_float ){
     const ISA_REGISTER_CLASS rc = ISA_OPERAND_VALTYP_Register_Class(vtype);
-    const enum OPND_REG opnd_reg = Get_Opnd_Reg( topcode, opnd, rc );
+    const enum OPND_REG opnd_reg = Get_Opnd_Reg( op, opnd, rc );
 
     for( REGISTER reg = REGISTER_MIN; reg <= REGISTER_CLASS_last_register( rc ); reg++ ){
       const char* n = REGISTER_name( rc, reg );

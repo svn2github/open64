@@ -306,6 +306,18 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_vldsdx:
       case TOP_vldsdxx:
       case TOP_vstsdxx:
+      case TOP_vsthpd:
+      case TOP_vsthpdx:
+      case TOP_vsthpdxx:
+      case TOP_vsthps:
+      case TOP_vsthpsx:
+      case TOP_vsthpsxx:
+      case TOP_vstlpd:
+      case TOP_vstlpdx:
+      case TOP_vstlpdxx:
+      case TOP_vstlps:
+      case TOP_vstlpsx:
+      case TOP_vstlpsxx:
       case TOP_vstsd:
       case TOP_vstsd_n32:
       case TOP_vstsdx:

@@ -136,6 +136,30 @@ extern BOOL Target_3DNow_Set;
 extern BOOL Target_SSE4a;       // Generate 3DNow instructions?
 extern BOOL Target_SSE4a_Set;
 
+extern BOOL Target_SSSE3;       // Generate SSSE3 instructions?
+extern BOOL Target_SSSE3_Set;
+
+extern BOOL Target_SSE41;       // Generate SSE41 instructions?
+extern BOOL Target_SSE41_Set;
+
+extern BOOL Target_SSE42;       // Generate SSE42 instructions?
+extern BOOL Target_SSE42_Set;
+
+extern BOOL Target_AES;         // Generate AES instructions?
+extern BOOL Target_AES_Set;
+
+extern BOOL Target_PCLMUL;      // Generate PCLMUL instructions?
+extern BOOL Target_PCLMUL_Set;
+
+extern BOOL Target_AVX;         // Generate AVX instructions?
+extern BOOL Target_AVX_Set;
+
+extern BOOL Target_XOP;         // Generate XOP instructions?
+extern BOOL Target_XOP_Set;
+
+extern BOOL Target_FMA4;        // Generate FMA4 instructions?
+extern BOOL Target_FMA4_Set;
+
 
 extern int Target_x87_Precision;	// precision of x87 calculations
 

@@ -1550,8 +1550,10 @@ Br_Fuse_BB(BB *bp)
         if (ARC_kind(anti_arc) != CG_DEP_REGANTI) continue;
 
         // if the current def precedes the br we cannot perform the fuse.
-        if (OP_Precedes(succ_op, br))
+        if (OP_Precedes(succ_op, br)) {
+          CG_DEP_Delete_Graph (bp);
           return; 
+        }
       }
 
       BB_Move_Op_Before(bp, br, bp, cmp);

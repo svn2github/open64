@@ -4501,10 +4501,10 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_ADDSUBPS256;
       break;
     case GSBI_IX86_BUILTIN_ANDNPD256:
+      *iopc = INTRN_ANDNPD256;
+      break;
     case GSBI_IX86_BUILTIN_ANDNPS256:
-      wn = WN_Bnot(res_type, 
-                   WN_Band(res_type, arg0, arg1) );
-      *intrinsic_op = FALSE;
+      *iopc = INTRN_ANDNPS256;
       break;
     case GSBI_IX86_BUILTIN_ANDPD256:
     case GSBI_IX86_BUILTIN_ANDPS256:
@@ -4607,15 +4607,19 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       break;
     case GSBI_IX86_BUILTIN_MASKSTOREPD:
       *iopc = INTRN_MASKSTOREPD;
+      *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_MASKSTOREPD256:
       *iopc = INTRN_MASKSTOREPD256;
+      *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_MASKSTOREPS:
       *iopc = INTRN_MASKSTOREPS;
+      *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_MASKSTOREPS256:
       *iopc = INTRN_MASKSTOREPS256;
+      *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_MAXPD256:
     case GSBI_IX86_BUILTIN_MAXPS256:
@@ -4638,12 +4642,15 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       break;
     case GSBI_IX86_BUILTIN_MOVNTDQ256:
       *iopc = INTRN_MOVNTDQ256;
+      *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_MOVNTPD256:
       *iopc = INTRN_MOVNTPD256;
+      *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_MOVNTPS256:
       *iopc = INTRN_MOVNTPS256;
+      *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_MOVSHDUP256:
       *iopc = INTRN_MOVSHDUP256;
@@ -4721,12 +4728,15 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       break;
     case GSBI_IX86_BUILTIN_STOREDQU256:
       *iopc = INTRN_STOREDQU256;
+      *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_STOREUPD256:
       *iopc = INTRN_STOREUPD256;
+      *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_STOREUPS256:
       *iopc = INTRN_STOREUPS256;
+      *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_SUBPD256:
       *iopc = INTRN_SUBPD256;
@@ -4850,9 +4860,11 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       break;
     case GSBI_IX86_BUILTIN_VZEROALL:
       *iopc = INTRN_VZEROALL;
+      *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_VZEROUPPER:
       *iopc = INTRN_VZEROUPPER;
+      *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_XORPD256:
       *iopc = INTRN_XORPD256;

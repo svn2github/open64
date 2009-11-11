@@ -4058,9 +4058,13 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_vcvtdq2pd,      TOP_vcvtdq2pdx,	    TOP_vcvtdq2pdxx,	  TOP_vcvtdq2pdxxx,	    TOP_UNDEFINED},
   {TOP_vcvtdq2ps,      TOP_vcvtdq2psx,	    TOP_vcvtdq2psxx,	  TOP_vcvtdq2psxxx,	    TOP_UNDEFINED},
  {TOP_vcvtps2pd,       TOP_vcvtps2pdx,	    TOP_vcvtps2pdxx,	  TOP_vcvtps2pdxxx,	    TOP_UNDEFINED},
+  {TOP_vcvtpd2dq,      TOP_vcvtpd2dqx,	    TOP_vcvtpd2dqxx,	  TOP_vcvtpd2dqxxx,	    TOP_UNDEFINED},
+  {TOP_vcvtpd2dqy,     TOP_vcvtpd2dqyx,	    TOP_vcvtpd2dqyxx,	  TOP_vcvtpd2dqyxxx,	    TOP_UNDEFINED},
   {TOP_vcvtpd2ps,      TOP_vcvtpd2psx,	    TOP_vcvtpd2psxx,	  TOP_vcvtpd2psxxx,	    TOP_UNDEFINED},
+  {TOP_vcvtpd2psy,     TOP_vcvtpd2psyx,	    TOP_vcvtpd2psyxx,	  TOP_vcvtpd2psyxxx,	    TOP_UNDEFINED},
   {TOP_vcvttps2dq,     TOP_vcvttps2dqx,     TOP_vcvttps2dqxx,	  TOP_vcvttps2dqxxx,	    TOP_UNDEFINED},
   {TOP_vcvttpd2dq,     TOP_vcvttpd2dqx,     TOP_vcvttpd2dqxx,	  TOP_vcvttpd2dqxxx,	    TOP_UNDEFINED},
+  {TOP_vcvttpd2dqy,    TOP_vcvttpd2dqyx,    TOP_vcvttpd2dqyxx,	  TOP_vcvttpd2dqyxxx,	    TOP_UNDEFINED},
   // SSE 4.1:
   {TOP_mpsadbw,        TOP_mpsadbwx,        TOP_mpsadbwxx,        TOP_mpsadbwxxx,           TOP_UNDEFINED},
   {TOP_muldq,          TOP_muldqx,          TOP_muldqxx,          TOP_muldqxxx,             TOP_UNDEFINED},
@@ -4111,10 +4115,10 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_cmpeq128v64,    TOP_cmpeqx128v64,    TOP_cmpeqxx128v64,    TOP_cmpeqxxx128v64,       TOP_UNDEFINED},
   {TOP_packusdw,       TOP_packusdwx,       TOP_packusdwxx,       TOP_packusdwxxx,          TOP_UNDEFINED},
   // SSE4.2
-  {TOP_crc32b,         TOP_crcx32b,         TOP_crcxx32b,         TOP_crcxxx32b,            TOP_UNDEFINED},
-  {TOP_crc32w,         TOP_crcx32w,         TOP_crcxx32w,         TOP_crcxxx32w,            TOP_UNDEFINED},
-  {TOP_crc32d,         TOP_crcx32d,         TOP_crcxx32d,         TOP_crcxxx32d,            TOP_UNDEFINED},
-  {TOP_crc32q,         TOP_crcx32q,         TOP_crcxx32q,         TOP_crcxxx32q,            TOP_UNDEFINED},
+  {TOP_crc32b,         TOP_crc32bx,         TOP_crc32bxx,         TOP_crc32bxxx,            TOP_UNDEFINED},
+  {TOP_crc32w,         TOP_crc32wx,         TOP_crc32wxx,         TOP_crc32wxxx,            TOP_UNDEFINED},
+  {TOP_crc32d,         TOP_crc32dx,         TOP_crc32dxx,         TOP_crc32dxxx,            TOP_UNDEFINED},
+  {TOP_crc32q,         TOP_crc32qx,         TOP_crc32qxx,         TOP_crc32qxxx,            TOP_UNDEFINED},
   {TOP_cmpestri,       TOP_cmpestrix,       TOP_cmpestrixx,       TOP_cmpestrixxx,          TOP_UNDEFINED},
   {TOP_cmpestrm,       TOP_cmpestrmx,       TOP_cmpestrmxx,       TOP_cmpestrmxxx,          TOP_UNDEFINED},
   {TOP_cmpistri,       TOP_cmpistrix,       TOP_cmpistrixx,       TOP_cmpistrixxx,          TOP_UNDEFINED},
@@ -6106,6 +6110,9 @@ BOOL EBO_Load_Execution( OP* alu_op,
                                          result, ld_op, alu_op, 
                                          actual_tninfo);
   }
+
+  if( OP_opnds(alu_op) > 2 )
+    return FALSE;
 
   // Standard Load Execute processing
   if( mode == BASE_MODE ){

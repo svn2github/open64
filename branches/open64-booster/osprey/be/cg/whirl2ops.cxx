@@ -3520,6 +3520,24 @@ Handle_Imm_Op (WN * expr, INT * kidno /* counted from 0 */)
     case INTRN_PCMPISTRM128:
     // PCLMUL
     case INTRN_PCLMULQDQ128:
+    // AVX
+    case INTRN_BLENDPD256:
+    case INTRN_BLENDPS256:
+    case INTRN_CMPPD:
+    case INTRN_CMPPD256:
+    case INTRN_CMPPS:
+    case INTRN_CMPPS256:
+    case INTRN_CMPSD:
+    case INTRN_CMPSS:
+    case INTRN_DPPS256:
+    case INTRN_SHUFPD256:
+    case INTRN_SHUFPS256:
+    case INTRN_VINSERTF128PD256:
+    case INTRN_VINSERTF128PS256:
+    case INTRN_VINSERTF128SI256:
+    case INTRN_VPERM2F128PD256:
+    case INTRN_VPERM2F128PS256:
+    case INTRN_VPERM2F128SI256:
 #ifdef Is_True_On
       {
         const char * intrn_name = INTRN_c_name (id);
@@ -3541,6 +3559,16 @@ Handle_Imm_Op (WN * expr, INT * kidno /* counted from 0 */)
     case INTRN_PSHUFHW:
     // AES
     case INTRN_AESKEYGENASSIST128:
+    // AVX
+    case INTRN_ROUNDPD256:
+    case INTRN_ROUNDPS256:
+    case INTRN_EXTRACTF128PD256:
+    case INTRN_EXTRACTF128PS256:
+    case INTRN_EXTRACTF128SI256:
+    case INTRN_VPERMILPD:
+    case INTRN_VPERMILPD256:
+    case INTRN_VPERMILPS:
+    case INTRN_VPERMILPS256:
 #ifdef Is_True_On
       {
         const char * intrn_name = INTRN_c_name (id);

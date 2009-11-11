@@ -2938,11 +2938,8 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
         break;
 
       case OPR_ASHR:
-      case OPR_BAND:
-      case OPR_BIOR:
       case OPR_BNOR:
       case OPR_BNOT:
-      case OPR_BXOR:
       case OPR_COMPOSE_BITS:
       case OPR_CVTL:
       case OPR_DIVREM:
@@ -2958,6 +2955,13 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
       case OPR_XMPY:
         // [RTYPE] : i [DESC] : V
         valid = Is_MTYPE_i [rtype] && desc == MTYPE_V;
+        break;
+
+      case OPR_BAND:
+      case OPR_BIOR:
+      case OPR_BXOR:
+        // [RTYPE] : f,i [DESC] : V
+        valid = Is_MTYPE_f_i [rtype] && desc == MTYPE_V;
         break;
 
       case OPR_CALL:

@@ -258,6 +258,7 @@ set_flag_name(option_info_t *opt)
 	while (*pn != NIL) {
 		if (*pn == ' ') pn++;
 		if (*pn == '!') pn++;
+		if (*pn == '.') pn++;
 		if (*pn == '-') *pf = '_';
 		else if (*pn == '=') *pf = 'Q';
 		else if (*pn == '#') *pf = 'P';

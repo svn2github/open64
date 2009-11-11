@@ -104,6 +104,31 @@ BOOL Target_3DNow_Set = FALSE;
 BOOL Target_SSE4a = FALSE;       // -TARG:sse4a=on/off
 BOOL Target_SSE4a_Set = FALSE;
 
+BOOL Target_SSSE3 = FALSE;       // -TARG:ssse3=on/off
+BOOL Target_SSSE3_Set = FALSE;
+
+BOOL Target_SSE41 = FALSE;       // -TARG:sse41=on/off
+BOOL Target_SSE41_Set = FALSE;
+
+BOOL Target_SSE42 = FALSE;       // -TARG:sse42=on/off
+BOOL Target_SSE42_Set = FALSE;
+
+BOOL Target_AES = FALSE;         // -TARG:aes=on/off
+BOOL Target_AES_Set = FALSE;
+
+BOOL Target_PCLMUL = FALSE;      // -TARG:pclmul=on/off
+BOOL Target_PCLMUL_Set = FALSE;
+
+BOOL Target_AVX = FALSE;         // -TARG:avx=on/off
+BOOL Target_AVX_Set = FALSE;
+
+BOOL Target_XOP = FALSE;         // -TARG:xop=on/off
+BOOL Target_XOP_Set = FALSE;
+
+BOOL Target_FMA4 = FALSE;        // -TARG:fma4=on/off
+BOOL Target_FMA4_Set = FALSE;
+
+
 // bug 4327
 int Target_x87_Precision = 80;	// -TARG:x87_precision=32/64/80
 
@@ -153,6 +178,30 @@ static OPTION_DESC Options_TARG[] = {
     "Enable 3DNow extensions" },
   { OVK_BOOL,   OV_VISIBLE,     FALSE, "sse4a",         "sse4a",
     0, 0, 0,    &Target_SSE4a,  &Target_SSE4a_Set,
+    "Enable SSE4a extensions" },
+  { OVK_BOOL,   OV_VISIBLE,     FALSE, "ssse3",         "ssse3",
+    0, 0, 0,    &Target_SSSE3,  &Target_SSSE3_Set,
+    "Enable SSE4a extensions" },
+  { OVK_BOOL,   OV_VISIBLE,     FALSE, "sse41",         "sse41",
+    0, 0, 0,    &Target_SSE41,  &Target_SSE41_Set,
+    "Enable SSE4a extensions" },
+  { OVK_BOOL,   OV_VISIBLE,     FALSE, "sse42",         "sse42",
+    0, 0, 0,    &Target_SSE42,  &Target_SSE42_Set,
+    "Enable SSE4a extensions" },
+  { OVK_BOOL,   OV_VISIBLE,     FALSE, "aes",           "aes",
+    0, 0, 0,    &Target_AES,    &Target_AES_Set,
+    "Enable SSE4a extensions" },
+  { OVK_BOOL,   OV_VISIBLE,     FALSE, "pclmul",        "pclmul",
+    0, 0, 0,    &Target_PCLMUL, &Target_PCLMUL_Set,
+    "Enable SSE4a extensions" },
+  { OVK_BOOL,   OV_VISIBLE,     FALSE, "avx",           "avx",
+    0, 0, 0,    &Target_AVX,    &Target_AVX_Set,
+    "Enable SSE4a extensions" },
+  { OVK_BOOL,   OV_VISIBLE,     FALSE, "xop",           "xop",
+    0, 0, 0,    &Target_XOP,    &Target_XOP_Set,
+    "Enable SSE4a extensions" },
+  { OVK_BOOL,   OV_VISIBLE,     FALSE, "fma4",          "fma4",
+    0, 0, 0,    &Target_FMA4,   &Target_FMA4_Set,
     "Enable SSE4a extensions" },
 
   { OVK_INT32,	OV_VISIBLE,	FALSE, "x87-precision", "x87-precision",

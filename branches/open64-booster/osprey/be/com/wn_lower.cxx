@@ -11232,10 +11232,10 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
 	preg_st = Float_Preg;
 #endif
 #else
-	preg_st = (mtype==MTYPE_FQ || mtype==MTYPE_CQ)
-	  ? MTYPE_To_PREG(mtype) : Float_Preg;
+	preg_st = (mtype==MTYPE_FQ || mtype==MTYPE_CQ || MTYPE_is_vector(mtype) ) ?
+	             MTYPE_To_PREG(mtype) : Float_Preg;
 #endif
-      else preg_st = (mtype==MTYPE_I8 || mtype==MTYPE_U8) ? 
+      else preg_st = (mtype==MTYPE_I8 || mtype==MTYPE_U8 || MTYPE_is_vector(mtype) ) ? 
 	  		MTYPE_To_PREG(mtype) : Int_Preg;
 #ifdef TARG_NVISA
       preg_st = Standard_Preg_For_Mtype(mtype);
