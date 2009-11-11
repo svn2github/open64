@@ -5436,6 +5436,17 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       if( Fast_ANINT_Allowed )
         break;
     }
+    if( ( (INTRINSIC)WN_intrinsic(tree) == INTRN_I2POPCNT ||
+          (INTRINSIC)WN_intrinsic(tree) == INTRN_I4POPCNT ) &&
+        ( Is_Target_SSE42() || Is_Target_SSE4a() ) ) {
+      // SSE4.2(Intel) and SSE4a(AMD) supports I2 and I4 popcnt
+      break;
+    }
+    if( (INTRINSIC)WN_intrinsic(tree) == INTRN_I8POPCNT &&
+        Is_Target_64bit() && ( Is_Target_SSE42() || Is_Target_SSE4a() ) ) {
+      // SSE4.2(Intel) and SSE4a(AMD) supports I8 popcnt in 64-bit mode
+      break;
+    }
 #endif
 
 #ifdef KEY

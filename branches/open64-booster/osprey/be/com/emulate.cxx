@@ -4608,7 +4608,7 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_opteron");
     }
 #endif
-    else if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
+    else if (WN_intrinsic(tree) == INTRN_I4POPCNT &&
     	       MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4 &&
                Is_Target_32bit()) {
       st = Gen_Intrinsic_Function(ty, "__popcountsi2");
@@ -4626,13 +4626,13 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 
 #if 0  // Using __popcountsi2 fails at link-time on cross-compiler.
     ST *st = NULL;
-    if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
+    if (WN_intrinsic(tree) == INTRN_I4POPCNT &&
 	MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4) {
       st = Gen_Intrinsic_Function(ty, "__popcountsi2");
     } else
       st = Gen_Intrinsic_Function(ty, function);
 #else
-    if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
+    if (WN_intrinsic(tree) == INTRN_I4POPCNT &&
 	MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4) {
       // Zero extend U4 to U8
       // args[0] = WN_Cvt(MTYPE_U4, MTYPE_U8, args[0]);
@@ -4924,7 +4924,6 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
   case INTRN_I2POPCNT:
   case INTRN_I4POPCNT:
   case INTRN_I8POPCNT:
-  case INTRN_POPCOUNT:
     {
       INT bitsize = MTYPE_size_reg(WN_rtype(by_value(tree, 0)));
       switch (id) {

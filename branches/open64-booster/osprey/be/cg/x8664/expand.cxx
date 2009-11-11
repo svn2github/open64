@@ -8377,6 +8377,34 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Set_TN_size(op0, 16);
     Build_OP(TOP_vmovaps, result, op0, ops );
     break;
+   case INTRN_I2POPCNT:
+    if ( Is_Target_SSE42() || Is_Target_SSE4a() ) {
+      // SSE4.2(Intel) and SSE4a(AMD) supports popcnt
+      Build_OP(TOP_popcnt16, result, op0, ops);
+    }
+    else {
+      FmtAssert(FALSE, ("Target does not support popcount"));
+    }
+    break;
+   case INTRN_I4POPCNT:
+    if ( Is_Target_SSE42() || Is_Target_SSE4a() ) {
+      // SSE4.2(Intel) and SSE4a(AMD) supports popcnt
+      Build_OP(TOP_popcnt32, result, op0, ops);
+    }
+    else {
+      FmtAssert(FALSE, ("Target does not support popcount"));
+    }
+    break;
+   case INTRN_I8POPCNT:
+    if ( Is_Target_64bit() && 
+         ( Is_Target_SSE42() || Is_Target_SSE4a() ) ) {
+      // SSE4.2(Intel) and SSE4a(AMD) supports popcnt
+      Build_OP(TOP_popcnt64, result, op0, ops);
+    }
+    else {
+      FmtAssert(FALSE, ("Target does not support popcount"));
+    }
+    break;
    case INTRN_PTESTC256:
     Build_OP(TOP_vptest128, rflags, op0, op1, ops );
     Build_OP(TOP_setb, result_tmp, rflags, ops );

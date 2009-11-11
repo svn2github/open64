@@ -6620,9 +6620,15 @@ WFE_Expand_Expr (tree exp,
 	        break;
 	
 	      case BUILT_IN_POPCOUNT:
+                iopc = INTRN_I4POPCNT;
+                intrinsic_op = TRUE;
+                break;
 	      case BUILT_IN_POPCOUNTL:
+                iopc = Is_Target_32bit() ? INTRN_I4POPCNT : INTRN_I8POPCNT;
+                intrinsic_op = TRUE;
+                break;
 	      case BUILT_IN_POPCOUNTLL:
-	        iopc = INTRN_POPCOUNT;
+	        iopc = INTRN_I8POPCNT;
 		intrinsic_op = TRUE;
 		break;
 	
