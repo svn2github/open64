@@ -1514,6 +1514,9 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
 
   if (do_fiz_fuse) {
     Fiz_Fuse_Phase(WN_func_body(func_nd), ffi);
+#ifdef TARG_X8664
+    SNL_Lite_Phase(func_nd);
+#endif
 
 #ifdef Is_True_On
     MP_Sanity_Check_Func(func_nd);

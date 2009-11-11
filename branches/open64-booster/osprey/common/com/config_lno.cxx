@@ -178,8 +178,10 @@ static LNO_FLAGS Default_LNO = {
   FALSE,	/* Run_fiz_fuse */
 #ifdef TARG_X8664
   0,		/* Fission */
+  TRUE,		/* Serial_distribute */
 #else
   1,		/* Fission */
+  FALSE,	/* Serial_distribute */
 #endif
   0,		/* Fission_inner_register_limit */
   TRUE,		/* Forward_substitution */
@@ -382,8 +384,10 @@ LNO_FLAGS Initial_LNO = {
   FALSE,	/* Run_fiz_fuse */
 #ifdef TARG_X8664
   0,		/* Fission */
+  TRUE,		/* Serial_distribute */
 #else
   1,		/* Fission */
+  FALSE,	/* Serial_distribute */
 #endif
   0,		/* Fission_inner_register_limit */
   TRUE,		/* Forward_substitution */
@@ -690,8 +694,10 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "ff",			NULL,	Run_fiz_fuse ),
 #ifdef TARG_X8664
   LNOPT_U32  ( "fission",		"fis",	0,0,2,	Fission ),
+  LNOPT_BOOL ( "distribute",		NULL,	Serial_distribute ),
 #else
   LNOPT_U32  ( "fission",		"fis",	1,0,2,	Fission ),
+  LNOPT_BOOL ( "distribute",		NULL,	Serial_distribute ),
 #endif
   LNOPT_U32  ( "fission_inner_register_limit",	NULL,	32,0,99999,
 					Fission_inner_register_limit ),

@@ -54,4 +54,8 @@ static char *snl_test_rcs_id = snl_test_INCLUDED "$Revision$";
 
 extern void SNL_Phase(WN* func_nd);
 
+#ifdef TARG_X8664
+extern void SNL_Lite_Phase(WN* func_nd);
+#endif
+
 #endif

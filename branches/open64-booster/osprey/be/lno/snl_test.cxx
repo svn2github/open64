@@ -1357,6 +1357,79 @@ static BOOL Fix_Blockable_Dependences(WN* wn_outer,
   return TRUE; 
 } 
 
+static void SNL_Transform_Min(WN* wn,
+		              INT nloops)
+{
+  ARRAY_DIRECTED_GRAPH16* dg = Array_Dependence_Graph; 
+  WN* wn_original = wn; 
+  INT nloops_original = nloops; 
+  if (wn == NULL) 
+    return; 
+
+  // Remove non-permutable dependences, if BLOCKABLE directive was present
+  if (!Fix_Blockable_Dependences(wn, nloops))
+    return; 
+  // Attempt to fix index variables which have array dependences
+  if (!SNL_Fix_Array_Deps_On_Index_Variable(wn, nloops))
+    return; 
+  WN* wn_inner = SNL_Get_Inner_Snl_Loop(wn, nloops); 
+  WN* wn_ok = NULL; 
+  WN *wnn;
+  for (wnn = wn_inner; wnn != NULL; wnn = LWN_Get_Parent(wnn)) { 
+    if (WN_opcode(wnn) == OPC_DO_LOOP) {  
+      if (Need_Fix_Array_Deps_On_Index_Variable(wnn))
+        break;  
+      wn_ok = wnn;
+      if (wn_ok == wn) 
+	break; 
+    }
+  } 
+  if (wn_ok == NULL)
+    return; 
+  nloops -= Do_Loop_Depth(wn_ok) - Do_Loop_Depth(wn); 
+  wn = wn_ok; 
+
+  // This should never happen in real code, but do the right thing
+  // (look only at inner loops) if it does happen.
+
+  while (nloops > SNL_MAX_LOOPS) {
+    nloops--;
+    wn = Good_Do_Next_Innermost(wn);
+    FmtAssert(wn, ("Can't find loop in deep loop nest"));
+  }
+
+  while (nloops >= 2 && wn != NULL 
+    && (!Do_Loop_Is_Good(wn) || Do_Loop_Has_Calls(wn) ||
+	 Do_Loop_Has_Gotos(wn))) {
+    nloops--;
+    wn = Good_Do_Next_Innermost(wn);
+    // FmtAssert(wn, ("Can't find loop in deep loop nest"));
+  }
+
+  WN* wn_innermost_legotile = NULL;  
+  for (WN* wn_lego = wn; wn_lego != NULL; 
+    wn_lego = Good_Do_Next_Innermost(wn_lego)) {
+    DO_LOOP_INFO* dli = Get_Do_Loop_Info(wn_lego); 
+    if (dli->Is_Outer_Lego_Tile) 
+      wn_innermost_legotile = wn_lego; 
+  } 
+  if (wn_innermost_legotile != NULL) {
+    WN* wn_new = Good_Do_Next_Innermost(wn_innermost_legotile);
+    if (wn_new == NULL) 
+      return;  
+    nloops = nloops - (Do_Depth(wn_new) - Do_Depth(wn)); 
+    wn = wn_new; 
+  }
+  if (wn == NULL) 
+    return; 
+ 
+  WN* parent_wn=LWN_Get_Parent(LWN_Get_Parent(wn));
+  if (parent_wn && (WN_opcode(parent_wn) == OPC_DO_LOOP)) {
+    SNL_NEST_INFO ni(parent_wn, wn, nloops, &LNO_default_pool);
+  } 
+}
+
+
 static void SNL_Transform(WN* wn,
 		          INT nloops)
 {
@@ -1686,6 +1759,53 @@ extern void SNL_Phase(WN* func_nd)
       fprintf(LNO_Analysis,")\n");
   }
 }
+
+#ifdef TARG_X8664
+extern void SNL_Lite_Phase(WN* func_nd)
+{
+  if (Get_Trace(TP_LNOPT, TT_LNO_SKIP_PH2))
+    return; 
+  if (Get_Trace(TP_LNOPT2, TT_SHACKLE_ONLY))
+    return;
+  if (PU_has_mp (Get_Current_PU ()) || Early_MP_Processing ||
+      PU_mp(Get_Current_PU ()) || (OPT_unroll_level != 2))
+    return;
+  if (Get_Trace(TP_LNOPT2, TT_TILE_ONLY)) {
+    LNO_Run_Oinvar = FALSE; 
+    LNO_Outer_Unroll = 1; 
+  }
+
+  FIZ_FUSE_INFO* ffi=
+    CXX_NEW(FIZ_FUSE_INFO(&LNO_local_pool), &LNO_local_pool);
+  ffi->Build(func_nd);
+
+// Bug 6010: if the number of nests in a procedure exceeds
+// the limits, unrolling may require a large compilation time
+// memory. Setting to 1 will not directly affect any major LNO
+// optimizations 
+#ifdef KEY
+  if(ffi->Num_Snl() > MAX_NESTS_IN_FU)
+    LNO_Outer_Unroll = 1;
+#endif
+
+  if (LNO_Test_Dump)
+    for (INT i = 0; i < ffi->Num_Snl(); i++)
+      ffi->Print(i, TFile);
+
+  for (INT i = 0; i < ffi->Num_Snl(); i++) {
+    WN* wn = ffi->Get_Wn(i);
+    INT nloops = ffi->Get_Depth(i);
+    if (nloops < 1 || ffi->Get_Type(i) != Inner)
+      continue;
+    if (LNO_Analysis)
+      fprintf(LNO_Analysis, "(LNO_SNL\n");
+    SNL_Upper_Bound_Standardize(wn, nloops); 
+    SNL_Transform_Min(wn, nloops);
+    if (LNO_Analysis)
+      fprintf(LNO_Analysis,")\n");
+  }
+}
+#endif
 
 //-----------------------------------------------------------------------
 // NAME: RED_CLASS 

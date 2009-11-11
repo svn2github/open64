@@ -102,6 +102,7 @@ class SNL_NEST_INFO {
  public:
 
   SNL_NEST_INFO(WN* outer, INT nloops, MEM_POOL* pool, BOOL inner_only);
+  SNL_NEST_INFO(WN* outer, WN* inner, INT nloops, MEM_POOL* pool);
   ~SNL_NEST_INFO();
 
   DOLOOP_STACK&		Dostack() {return _dostack;}

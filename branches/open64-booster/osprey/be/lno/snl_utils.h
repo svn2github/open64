@@ -554,6 +554,12 @@ extern BOOL SNL_Is_Non_Varying_Access_Array(ACCESS_ARRAY* aa,
 
 extern WN* SNL_Get_Inner_Snl_Loop(WN* outer, INT nloops);
 
+extern BOOL SNL_Compare_Logic(WN *bound_exp,
+                        WN *bound_var,
+                        WN *loop,
+                        WN *stmt,
+                        BOOL is_first);
+
 extern BOOL SNL_Is_Invariant(DOLOOP_STACK *stack,
                         INT d,
                         INT dd);
