@@ -3193,9 +3193,15 @@ IPA_NODE::Is_Externally_Callable ()
     // still need to export them since in different .o (in same 
     // module), they can be called from there, and C doesn't require
     // inline function be defined in every translation unit.
-    if ( (ST_export (func_st) == EXPORT_INTERNAL ||
+    // for C++, One Definition Rule requires each inline function 
+    // be defined at every TU using the inline function, so
+    // these inline function can not be called by other .o
+    // in theory
+    if (PU_is_marked_inline(Pu_Table [ST_pu (func_st)]) &&
+        Is_Lang_CXX() &&
+        (ST_export (func_st) == EXPORT_INTERNAL ||
 	ST_export (func_st) == EXPORT_HIDDEN ))
-	return TRUE;
+	return FALSE;
 #endif // _LIGHTWEIGHT_INLINER
 
     return TRUE;
