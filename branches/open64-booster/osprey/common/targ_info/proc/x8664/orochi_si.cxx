@@ -366,7 +366,7 @@ int main (int argc, char *argv[])
 		     TOP_pextrw,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(4);
+  Any_Result_Available_Time(4); // ?
   Resource_Requirement(res_alu, 0);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_loadstore, 0);
@@ -481,7 +481,7 @@ int main (int argc, char *argv[])
 		    TOP_div32,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(39);
+  Any_Result_Available_Time(39); // ?
   Resource_Requirement(res_alu, 0);
   Resource_Requirement(res_issue, 0);
 
@@ -489,7 +489,7 @@ int main (int argc, char *argv[])
 		    TOP_div64,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(71);
+  Any_Result_Available_Time(71); // ?
   Resource_Requirement(res_alu, 0);
   Resource_Requirement(res_issue, 0);
 
@@ -497,7 +497,7 @@ int main (int argc, char *argv[])
 		    TOP_idiv32,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(42);
+  Any_Result_Available_Time(42); // ?
   Resource_Requirement(res_alu, 0);
   Resource_Requirement(res_issue, 0);
 
@@ -505,7 +505,7 @@ int main (int argc, char *argv[])
 		    TOP_idiv64,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(74);
+  Any_Result_Available_Time(74); // ?
   Resource_Requirement(res_alu, 0);
   Resource_Requirement(res_issue, 0);
 
@@ -546,11 +546,11 @@ int main (int argc, char *argv[])
 		    TOP_ldu16_64_off,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(4);
+  Any_Result_Available_Time(7);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_agu, 0);
   Resource_Requirement(res_loadstore, 0);
-  Load_Access_Time(4);
+  Load_Access_Time(7);
 
   Instruction_Group("load32/64",
 		    TOP_ld64,
@@ -924,15 +924,18 @@ int main (int argc, char *argv[])
 
   Instruction_Group( "vector cvt I",
 		     TOP_cvtdq2ps,
+		     TOP_vcvtdq2ps,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(9);
+  Any_Result_Available_Time(4);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "vector cvt II",
 		     TOP_cvtps2pd,
 		     TOP_cvtdq2pd,
+		     TOP_vcvtps2pd,
+		     TOP_vcvtdq2pd,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(7);
@@ -943,6 +946,9 @@ int main (int argc, char *argv[])
 		     TOP_cvtpd2ps,
 		     TOP_cvtpd2dq,
 		     TOP_cvttpd2dq,
+		     TOP_vcvtpd2ps,
+		     TOP_vcvtpd2dq,
+		     TOP_vcvttpd2dq,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(7);
@@ -954,6 +960,10 @@ int main (int argc, char *argv[])
 		     TOP_cvttps2dq,
 		     TOP_cvtdq2ps_x,
 		     TOP_cvtdq2ps_xx,
+		     TOP_vcvtps2dq,
+		     TOP_vcvttps2dq,
+		     TOP_vcvtdq2psx,
+		     TOP_vcvtdq2psxx,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(4);
@@ -964,7 +974,9 @@ int main (int argc, char *argv[])
 		     TOP_cvtdq2pd_x,
 		     TOP_cvtdq2pd_xx,
 		     TOP_cvtdq2pd_xxx,
-		     TOP_cvtdq2ps_xxx,
+		     TOP_vcvtdq2pdx,
+		     TOP_vcvtdq2pdxx,
+		     TOP_vcvtdq2pdxxx,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(7);
@@ -976,6 +988,9 @@ int main (int argc, char *argv[])
 		     TOP_cvtps2pd_x,
 		     TOP_cvtps2pd_xx,
 		     TOP_cvtps2pd_xxx,
+		     TOP_vcvtps2pdx,
+		     TOP_vcvtps2pdxx,
+		     TOP_vcvtps2pdxxx,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(12);
@@ -993,6 +1008,15 @@ int main (int argc, char *argv[])
                      TOP_cvtpd2dq_xxx,
 		     TOP_cvtpd2ps_xxx,
 		     TOP_cvttpd2dq_xxx,
+                     TOP_vcvtpd2dqx,
+		     TOP_vcvtpd2psx,
+		     TOP_vcvttpd2dqx,
+                     TOP_vcvtpd2dqxx,
+		     TOP_vcvtpd2psxx,
+		     TOP_vcvttpd2dqxx,
+                     TOP_vcvtpd2dqxxx,
+		     TOP_vcvtpd2psxxx,
+		     TOP_vcvttpd2dqxxx,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(12);
@@ -1004,9 +1028,17 @@ int main (int argc, char *argv[])
 		     TOP_cvtps2dq_x,
 		     TOP_cvtps2dq_xx,
 		     TOP_cvtps2dq_xxx,
+		     TOP_cvtdq2ps_xxx,
 		     TOP_cvttps2dq_x,
 		     TOP_cvttps2dq_xx,
 		     TOP_cvttps2dq_xxx,
+		     TOP_vcvtps2dqx,
+		     TOP_vcvtps2dqxx,
+		     TOP_vcvtps2dqxxx,
+		     TOP_vcvtdq2psxxx,
+		     TOP_vcvttps2dqx,
+		     TOP_vcvttps2dqxx,
+		     TOP_vcvttps2dqxxx,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(9);
@@ -1021,6 +1053,12 @@ int main (int argc, char *argv[])
 		     TOP_cvtsi2ssq_x,
 		     TOP_cvtsi2ssq_xx,
 		     TOP_cvtsi2ssq_xxx,
+		     TOP_vcvtsi2ssx,
+		     TOP_vcvtsi2ssxx,
+		     TOP_vcvtsi2ssxxx,
+		     TOP_vcvtsi2ssqx,
+		     TOP_vcvtsi2ssqxx,
+		     TOP_vcvtsi2ssqxxx,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(16);
@@ -1031,6 +1069,8 @@ int main (int argc, char *argv[])
   Instruction_Group( "int-2-float",
 		     TOP_cvtsi2ss,
 		     TOP_cvtsi2ssq,
+		     TOP_vcvtsi2ss,
+		     TOP_vcvtsi2ssq,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(9);
@@ -1039,6 +1079,7 @@ int main (int argc, char *argv[])
 
   Instruction_Group( "double-2-float",
 		     TOP_cvtsd2ss,
+		     TOP_vcvtsd2ss,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(4); //VectorPath
@@ -1049,6 +1090,9 @@ int main (int argc, char *argv[])
 		     TOP_cvtsd2ss_x,
 		     TOP_cvtsd2ss_xx,
 		     TOP_cvtsd2ss_xxx,
+		     TOP_vcvtsd2ssx,
+		     TOP_vcvtsd2ssxx,
+		     TOP_vcvtsd2ssxxx,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(9); //DirectPath
@@ -1059,6 +1103,8 @@ int main (int argc, char *argv[])
   Instruction_Group( "int-2-double",
 		     TOP_cvtsi2sd,
 		     TOP_cvtsi2sdq,
+		     TOP_vcvtsi2sd,
+		     TOP_vcvtsi2sdq,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(9); //11 opteron
@@ -1072,6 +1118,12 @@ int main (int argc, char *argv[])
 		     TOP_cvtsi2sdq_x,
 		     TOP_cvtsi2sdq_xx,
 		     TOP_cvtsi2sdq_xxx,
+		     TOP_vcvtsi2sdx,
+		     TOP_vcvtsi2sdxx,
+		     TOP_vcvtsi2sdxxx,
+		     TOP_vcvtsi2sdqx,
+		     TOP_vcvtsi2sdqxx,
+		     TOP_vcvtsi2sdqxxx,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(16); //6 opteron
@@ -1099,6 +1151,24 @@ int main (int argc, char *argv[])
 
   Instruction_Group( "float-2-int 2",
 		     TOP_cvtss2sd,
+		     TOP_vcvtss2sd,
+		     TOP_UNDEFINED );
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(4);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "float-2-int 2 mem opnd",
+		     TOP_vcvtss2sdx,
+		     TOP_vcvtss2sdxx,
+		     TOP_vcvtss2sdxxx,
+		     TOP_UNDEFINED );
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(9);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+  
+  Instruction_Group( "float-2-int 3",
 		     TOP_cvtss2si,
 		     TOP_cvtsd2si,
 		     TOP_cvtss2siq,
@@ -1107,17 +1177,33 @@ int main (int argc, char *argv[])
 		     TOP_cvttsd2si,
 		     TOP_cvttss2siq,
 		     TOP_cvttsd2siq,
+		     TOP_vcvtss2sd,
+		     TOP_vcvtss2si,
+		     TOP_vcvtsd2si,
+		     TOP_vcvtss2siq,
+		     TOP_vcvtsd2siq,
+		     TOP_vcvttss2si,
+		     TOP_vcvttsd2si,
+		     TOP_vcvttss2siq,
+		     TOP_vcvttsd2siq,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(8); //?
+  Any_Result_Available_Time(8);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
-  Instruction_Group( "float-2-int 3",
+  Instruction_Group( "float-2-int 3 mem opnd",
+		     TOP_UNDEFINED );
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(9);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+  
+  Instruction_Group( "float-2-int 4",
 		     TOP_pmovmskb128,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(5); //?
+  Any_Result_Available_Time(5);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
@@ -1165,6 +1251,12 @@ int main (int argc, char *argv[])
 		    TOP_fadd128v64,
 		    TOP_fsub128v32,
 		    TOP_fsub128v64,
+                    TOP_vfaddsub128v64,
+                    TOP_vfaddsub128v32,
+                    TOP_vfadd128v64,
+                    TOP_vfadd128v32,
+                    TOP_vfaddsd,
+                    TOP_vfaddss,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(6);
@@ -1202,6 +1294,24 @@ int main (int argc, char *argv[])
 		    TOP_faddxxx128v64,
 		    TOP_fsubxxx128v32,
 		    TOP_fsubxxx128v64,
+                    TOP_vfaddsubx128v64,
+                    TOP_vfaddsubxx128v64,
+                    TOP_vfaddsubxxx128v64,
+                    TOP_vfaddsubx128v32,
+                    TOP_vfaddsubxx128v32,
+                    TOP_vfaddsubxxx128v32,
+                    TOP_vfaddx128v64,
+                    TOP_vfaddxx128v64,
+                    TOP_vfaddxxx128v64,
+                    TOP_vfaddx128v32,
+                    TOP_vfaddxx128v32,
+                    TOP_vfaddxxx128v32,
+                    TOP_vfaddxsd,
+                    TOP_vfaddxxsd,
+                    TOP_vfaddxxxsd,
+                    TOP_vfaddxss,
+                    TOP_vfaddxxss,
+                    TOP_vfaddxxxss,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(11);
@@ -1501,6 +1611,7 @@ int main (int argc, char *argv[])
 
   Instruction_Group("float-alu for float vector class VII",
 		    TOP_fsqrt128v32,
+                    TOP_vfsqrt128v32,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(32); 
@@ -1509,6 +1620,7 @@ int main (int argc, char *argv[])
 
   Instruction_Group("float-alu for float vector class VIII",
 		    TOP_fsqrt128v64,
+                    TOP_vfsqrt128v64,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(41); 
@@ -2100,7 +2212,7 @@ int main (int argc, char *argv[])
   Any_Result_Available_Time(5);
   Resource_Requirement(res_issue, 0);
 
- Instruction_Group("SSE4A extract",
+ Instruction_Group("SSE4A extract reg opnd",
                     TOP_extrq,
                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
@@ -2108,7 +2220,7 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fmul, 0);
 
-  Instruction_Group("SSE4A insert",
+  Instruction_Group("SSE4A insert reg opnd",
                     TOP_insertq,
                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
@@ -2365,7 +2477,7 @@ int main (int argc, char *argv[])
                         TOP_blend128v16,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(5);
+  Any_Result_Available_Time(5); // ?
   Resource_Requirement(res_fadd, 0);
   Resource_Requirement(res_issue, 0);
 
@@ -2390,7 +2502,7 @@ int main (int argc, char *argv[])
                         TOP_blendxxx128v16,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(10);
+  Any_Result_Available_Time(10); // ?
   Resource_Requirement(res_fadd, 0);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
@@ -2509,9 +2621,15 @@ int main (int argc, char *argv[])
                         TOP_fdpx128v32,
                         TOP_fdpxx128v32,
                         TOP_fdpxxx128v32,
+                        TOP_vfdpx128v32,
+                        TOP_vfdpxx128v32,
+                        TOP_vfdpxxx128v32,
                         TOP_fdpx128v64,
                         TOP_fdpxx128v64,
                         TOP_fdpxxx128v64,
+                        TOP_vfdpx128v64,
+                        TOP_vfdpxx128v64,
+                        TOP_vfdpxxx128v64,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(9);
@@ -2680,7 +2798,7 @@ int main (int argc, char *argv[])
                         TOP_aesimc,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(10);
+  Any_Result_Available_Time(10); // ?
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
 
@@ -2705,7 +2823,7 @@ int main (int argc, char *argv[])
                         TOP_aesimcxxx,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(20);
+  Any_Result_Available_Time(20); // ?
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
@@ -2807,64 +2925,79 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "xop fma reg opnd",
-                        TOP_vpmacsdd,
-                        TOP_vpmacsdqh,
-                        TOP_vpmacsdql,
-                        TOP_vpmacssdd,
-                        TOP_vpmacssdqh,
-                        TOP_vpmacssdql,
-                        TOP_vpmacsswd,
-                        TOP_vpmacssww,
-                        TOP_vpmacswd,
-                        TOP_vpmacsww,
-                        TOP_vpmadcsswd,
-                        TOP_vpmadcswd,
-                        TOP_UNDEFINED);
+                     TOP_vpmacsdqh,
+                     TOP_vpmacsdql,
+                     TOP_vpmacssdqh,
+                     TOP_vpmacssdql,
+                     TOP_vpmacsswd,
+                     TOP_vpmacssww,
+                     TOP_vpmacswd,
+                     TOP_vpmacsww,
+                     TOP_vpmadcsswd,
+                     TOP_vpmadcswd,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(4);
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "xop fma mem opnd",
-                        TOP_vpmacsddx,
-                        TOP_vpmacsddxx,
-                        TOP_vpmacsddxxx,
-                        TOP_vpmacsdqhx,
-                        TOP_vpmacsdqhxx,
-                        TOP_vpmacsdqhxxx,
-                        TOP_vpmacsdqlx,
-                        TOP_vpmacsdqlxx,
-                        TOP_vpmacsdqlxxx,
-                        TOP_vpmacssddx,
-                        TOP_vpmacssddxx,
-                        TOP_vpmacssddxxx,
-                        TOP_vpmacssdqhx,
-                        TOP_vpmacssdqhxx,
-                        TOP_vpmacssdqhxxx,
-                        TOP_vpmacssdqlx,
-                        TOP_vpmacssdqlxx,
-                        TOP_vpmacssdqlxxx,
-                        TOP_vpmacsswdx,
-                        TOP_vpmacsswdxx,
-                        TOP_vpmacsswdxxx,
-                        TOP_vpmacsswwx,
-                        TOP_vpmacsswwxx,
-                        TOP_vpmacsswwxxx,
-                        TOP_vpmacswdx,
-                        TOP_vpmacswdxx,
-                        TOP_vpmacswdxxx,
-                        TOP_vpmacswwx,
-                        TOP_vpmacswwxx,
-                        TOP_vpmacswwxxx,
-                        TOP_vpmadcsswdx,
-                        TOP_vpmadcsswdxx,
-                        TOP_vpmadcsswdxxx,
-                        TOP_vpmadcswdx,
-                        TOP_vpmadcswdxx,
-                        TOP_vpmadcswdxxx,
-                        TOP_UNDEFINED);
+                     TOP_vpmacsdqhx,
+                     TOP_vpmacsdqhxx,
+                     TOP_vpmacsdqhxxx,
+                     TOP_vpmacsdqlx,
+                     TOP_vpmacsdqlxx,
+                     TOP_vpmacsdqlxxx,
+                     TOP_vpmacssdqhx,
+                     TOP_vpmacssdqhxx,
+                     TOP_vpmacssdqhxxx,
+                     TOP_vpmacssdqlx,
+                     TOP_vpmacssdqlxx,
+                     TOP_vpmacssdqlxxx,
+                     TOP_vpmacsswdx,
+                     TOP_vpmacsswdxx,
+                     TOP_vpmacsswdxxx,
+                     TOP_vpmacsswwx,
+                     TOP_vpmacsswwxx,
+                     TOP_vpmacsswwxxx,
+                     TOP_vpmacswdx,
+                     TOP_vpmacswdxx,
+                     TOP_vpmacswdxxx,
+                     TOP_vpmacswwx,
+                     TOP_vpmacswwxx,
+                     TOP_vpmacswwxxx,
+                     TOP_vpmadcsswdx,
+                     TOP_vpmadcsswdxx,
+                     TOP_vpmadcsswdxxx,
+                     TOP_vpmadcswdx,
+                     TOP_vpmadcswdxx,
+                     TOP_vpmadcswdxxx,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(9);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "xop fma II reg opnd",
+                     TOP_vpmacsdd,
+                     TOP_vpmacssdd,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(8);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "xop fma II mem opnd",
+                     TOP_vpmacsddx,
+                     TOP_vpmacsddxx,
+                     TOP_vpmacsddxxx,
+                     TOP_vpmacssddx,
+                     TOP_vpmacssddxx,
+                     TOP_vpmacssddxxx,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(13);
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
@@ -3072,414 +3205,420 @@ int main (int argc, char *argv[])
 
   /* AVX instructions */
   Instruction_Group( "avx int arith reg opnd",
-                        TOP_vfadd128v64,
-                        TOP_vfadd128v32,
-                        TOP_vfaddsd,
-                        TOP_vfaddss,
-                        TOP_vfaddsub128v64,
-                        TOP_vfaddsub128v32,
-                        TOP_vandpd,
-                        TOP_vfand128v64,
-                        TOP_vandps,
-                        TOP_vfand128v32,
-                        TOP_vandnpd,
-                        TOP_vfandn128v64,
-                        TOP_vandnps,
-                        TOP_vfandn128v32,
-                        TOP_vabs128v8,
-                        TOP_vabs128v32,
-                        TOP_vabs128v16,
-                        TOP_vadd128v8,
-                        TOP_vadd128v32,
-                        TOP_vadd128v64,
-                        TOP_vadd128v16,
-                        TOP_vadds128v8,
-                        TOP_vadds128v16,
-                        TOP_vaddus128v8,
-                        TOP_vaddus128v16,
-                        TOP_vand128v8,
-                        TOP_vand128v16,
-                        TOP_vand128v32,
-                        TOP_vand128v64,
-                        TOP_vandn128v8,
-                        TOP_vandn128v16,
-                        TOP_vandn128v32,
-                        TOP_vandn128v64,
-                        TOP_vpavgb,
-                        TOP_vpavgw,
-                        TOP_vmaxs128v8,
-                        TOP_vmaxs128v32,
-                        TOP_vmaxs128v16,
-                        TOP_vmaxu128v8,
-                        TOP_vmaxu128v32,
-                        TOP_vmaxu128v16,
-                        TOP_vmins128v8,
-                        TOP_vmins128v32,
-                        TOP_vmins128v16,
-                        TOP_vminu128v8,
-                        TOP_vminu128v32,
-                        TOP_vminu128v16,
-                        TOP_vor128v8,
-                        TOP_vor128v16,
-                        TOP_vor128v32,
-                        TOP_vor128v64,
-                        TOP_vpshuf128v8,
-                        TOP_vpshuf128v32,
-                        TOP_vpshufw64v16,
-                        TOP_vpshufhw,
-                        TOP_vpshuflw,
-                        TOP_vxor128v8,
-                        TOP_vxor128v16,
-                        TOP_vxor128v32,
-                        TOP_vxor128v64,
-                        TOP_UNDEFINED);
+                     TOP_vandpd,
+                     TOP_vfand128v64,
+                     TOP_vandps,
+                     TOP_vfand128v32,
+                     TOP_vandnpd,
+                     TOP_vfandn128v64,
+                     TOP_vandnps,
+                     TOP_vfandn128v32,
+                     TOP_vabs128v8,
+                     TOP_vabs128v32,
+                     TOP_vabs128v16,
+                     TOP_vadd128v8,
+                     TOP_vadd128v32,
+                     TOP_vadd128v64,
+                     TOP_vadd128v16,
+                     TOP_vadds128v8,
+                     TOP_vadds128v16,
+                     TOP_vaddus128v8,
+                     TOP_vaddus128v16,
+                     TOP_vand128v8,
+                     TOP_vand128v16,
+                     TOP_vand128v32,
+                     TOP_vand128v64,
+                     TOP_vandn128v8,
+                     TOP_vandn128v16,
+                     TOP_vandn128v32,
+                     TOP_vandn128v64,
+                     TOP_vpavgb,
+                     TOP_vpavgw,
+                     TOP_vmaxs128v8,
+                     TOP_vmaxs128v32,
+                     TOP_vmaxs128v16,
+                     TOP_vmaxu128v8,
+                     TOP_vmaxu128v32,
+                     TOP_vmaxu128v16,
+                     TOP_vmins128v8,
+                     TOP_vmins128v32,
+                     TOP_vmins128v16,
+                     TOP_vminu128v8,
+                     TOP_vminu128v32,
+                     TOP_vminu128v16,
+                     TOP_vor128v8,
+                     TOP_vor128v16,
+                     TOP_vor128v32,
+                     TOP_vor128v64,
+                     TOP_vpshuf128v8,
+                     TOP_vpshuf128v32,
+                     TOP_vpshufw64v16,
+                     TOP_vpshufhw,
+                     TOP_vpshuflw,
+                     TOP_vxor128v8,
+                     TOP_vxor128v16,
+                     TOP_vxor128v32,
+                     TOP_vxor128v64,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(2);
   Resource_Requirement(res_fadd, 0);
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "avx int arith mem opnd",
-                        TOP_vfaddx128v64,
-                        TOP_vfaddxx128v64,
-                        TOP_vfaddxxx128v64,
-                        TOP_vfaddx128v32,
-                        TOP_vfaddxx128v32,
-                        TOP_vfaddxxx128v32,
-                        TOP_vfaddxsd,
-                        TOP_vfaddxxsd,
-                        TOP_vfaddxxxsd,
-                        TOP_vfaddxss,
-                        TOP_vfaddxxss,
-                        TOP_vfaddxxxss,
-                        TOP_vfaddsubx128v64,
-                        TOP_vfaddsubxx128v64,
-                        TOP_vfaddsubxxx128v64,
-                        TOP_vfaddsubx128v32,
-                        TOP_vfaddsubxx128v32,
-                        TOP_vfaddsubxxx128v32,
-                        TOP_vfandx128v64,
-                        TOP_vfandxx128v64,
-                        TOP_vfandxxx128v64,
-                        TOP_vfandx128v32,
-                        TOP_vfandxx128v32,
-                        TOP_vfandxxx128v32,
-                        TOP_vfandnx128v64,
-                        TOP_vfandnxx128v64,
-                        TOP_vfandnxxx128v64,
-                        TOP_vfandnx128v32,
-                        TOP_vfandnxx128v32,
-                        TOP_vfandnxxx128v32,
-                        TOP_vabsx128v8,
-                        TOP_vabsxx128v8,
-                        TOP_vabsxxx128v8,
-                        TOP_vabsx128v32,
-                        TOP_vabsxx128v32,
-                        TOP_vabsxxx128v32,
-                        TOP_vabsx128v16,
-                        TOP_vabsxx128v16,
-                        TOP_vabsxxx128v16,
-                        TOP_vaddx128v8,
-                        TOP_vaddxx128v8,
-                        TOP_vaddxxx128v8,
-                        TOP_vaddx128v32,
-                        TOP_vaddxx128v32,
-                        TOP_vaddxxx128v32,
-                        TOP_vaddx128v64,
-                        TOP_vaddxx128v64,
-                        TOP_vaddxxx128v64,
-                        TOP_vaddx128v16,
-                        TOP_vaddxx128v16,
-                        TOP_vaddxxx128v16,
-                        TOP_vaddsx128v8,
-                        TOP_vaddsxx128v8,
-                        TOP_vaddsxxx128v8,
-                        TOP_vaddsx128v16,
-                        TOP_vaddsxx128v16,
-                        TOP_vaddsxxx128v16,
-                        TOP_vaddusx128v8,
-                        TOP_vaddusxx128v8,
-                        TOP_vaddusxxx128v8,
-                        TOP_vaddusx128v16,
-                        TOP_vaddusxx128v16,
-                        TOP_vaddusxxx128v16,
-                        TOP_vandx128v8,
-                        TOP_vandxx128v8,
-                        TOP_vandxxx128v8,
-                        TOP_vandx128v16,
-                        TOP_vandxx128v16,
-                        TOP_vandxxx128v16,
-                        TOP_vandx128v32,
-                        TOP_vandxx128v32,
-                        TOP_vandxxx128v32,
-                        TOP_vandx128v64,
-                        TOP_vandxx128v64,
-                        TOP_vandxxx128v64,
-                        TOP_vandnx128v8,
-                        TOP_vandnxx128v8,
-                        TOP_vandnxxx128v8,
-                        TOP_vandnx128v16,
-                        TOP_vandnxx128v16,
-                        TOP_vandnxxx128v16,
-                        TOP_vandnx128v32,
-                        TOP_vandnxx128v32,
-                        TOP_vandnxxx128v32,
-                        TOP_vandnx128v64,
-                        TOP_vandnxx128v64,
-                        TOP_vandnxxx128v64,
-                        TOP_vpavgbx,
-                        TOP_vpavgbxx,
-                        TOP_vpavgbxxx,
-                        TOP_vpavgwx,
-                        TOP_vpavgwxx,
-                        TOP_vpavgwxxx,
-                        TOP_vmaxsx128v8,
-                        TOP_vmaxsxx128v8,
-                        TOP_vmaxsxxx128v8,
-                        TOP_vmaxsx128v32,
-                        TOP_vmaxsxx128v32,
-                        TOP_vmaxsxxx128v32,
-                        TOP_vmaxsx128v16,
-                        TOP_vmaxsxx128v16,
-                        TOP_vmaxsxxx128v16,
-                        TOP_vmaxux128v8,
-                        TOP_vmaxuxx128v8,
-                        TOP_vmaxuxxx128v8,
-                        TOP_vmaxux128v32,
-                        TOP_vmaxuxx128v32,
-                        TOP_vmaxuxxx128v32,
-                        TOP_vmaxux128v16,
-                        TOP_vmaxuxx128v16,
-                        TOP_vmaxuxxx128v16,
-                        TOP_vminsx128v8,
-                        TOP_vminsxx128v8,
-                        TOP_vminsxxx128v8,
-                        TOP_vminsx128v32,
-                        TOP_vminsxx128v32,
-                        TOP_vminsxxx128v32,
-                        TOP_vminsx128v16,
-                        TOP_vminsxx128v16,
-                        TOP_vminsxxx128v16,
-                        TOP_vminux128v8,
-                        TOP_vminuxx128v8,
-                        TOP_vminuxxx128v8,
-                        TOP_vminux128v32,
-                        TOP_vminuxx128v32,
-                        TOP_vminuxxx128v32,
-                        TOP_vminux128v16,
-                        TOP_vminuxx128v16,
-                        TOP_vminuxxx128v16,
-                        TOP_vorx128v8,
-                        TOP_vorxx128v8,
-                        TOP_vorxxx128v8,
-                        TOP_vorx128v16,
-                        TOP_vorxx128v16,
-                        TOP_vorxxx128v16,
-                        TOP_vorx128v32,
-                        TOP_vorxx128v32,
-                        TOP_vorxxx128v32,
-                        TOP_vorx128v64,
-                        TOP_vorxx128v64,
-                        TOP_vorxxx128v64,
-                        TOP_vpshufx128v8,
-                        TOP_vpshufxx128v8,
-                        TOP_vpshufxxx128v8,
-                        TOP_vpshufx128v32,
-                        TOP_vpshufxx128v32,
-                        TOP_vpshufxxx128v32,
-                        TOP_vpshufwx64v16,
-                        TOP_vpshufwxx64v16,
-                        TOP_vpshufwxxx64v16,
-                        TOP_vpshufhwx,
-                        TOP_vpshufhwxx,
-                        TOP_vpshufhwxxx,
-                        TOP_vpshuflwx,
-                        TOP_vpshuflwxx,
-                        TOP_vpshuflwxxx,
-                        TOP_vxorx128v8,
-                        TOP_vxorxx128v8,
-                        TOP_vxorxxx128v8,
-                        TOP_vxorx128v16,
-                        TOP_vxorxx128v16,
-                        TOP_vxorxxx128v16,
-                        TOP_vxorx128v32,
-                        TOP_vxorxx128v32,
-                        TOP_vxorxxx128v32,
-                        TOP_vxorx128v64,
-                        TOP_vxorxx128v64,
-                        TOP_vxorxxx128v64,
-                        TOP_UNDEFINED);
+                     TOP_vfandx128v64,
+                     TOP_vfandxx128v64,
+                     TOP_vfandxxx128v64,
+                     TOP_vfandx128v32,
+                     TOP_vfandxx128v32,
+                     TOP_vfandxxx128v32,
+                     TOP_vfandnx128v64,
+                     TOP_vfandnxx128v64,
+                     TOP_vfandnxxx128v64,
+                     TOP_vfandnx128v32,
+                     TOP_vfandnxx128v32,
+                     TOP_vfandnxxx128v32,
+                     TOP_vabsx128v8,
+                     TOP_vabsxx128v8,
+                     TOP_vabsxxx128v8,
+                     TOP_vabsx128v32,
+                     TOP_vabsxx128v32,
+                     TOP_vabsxxx128v32,
+                     TOP_vabsx128v16,
+                     TOP_vabsxx128v16,
+                     TOP_vabsxxx128v16,
+                     TOP_vaddx128v8,
+                     TOP_vaddxx128v8,
+                     TOP_vaddxxx128v8,
+                     TOP_vaddx128v32,
+                     TOP_vaddxx128v32,
+                     TOP_vaddxxx128v32,
+                     TOP_vaddx128v64,
+                     TOP_vaddxx128v64,
+                     TOP_vaddxxx128v64,
+                     TOP_vaddx128v16,
+                     TOP_vaddxx128v16,
+                     TOP_vaddxxx128v16,
+                     TOP_vaddsx128v8,
+                     TOP_vaddsxx128v8,
+                     TOP_vaddsxxx128v8,
+                     TOP_vaddsx128v16,
+                     TOP_vaddsxx128v16,
+                     TOP_vaddsxxx128v16,
+                     TOP_vaddusx128v8,
+                     TOP_vaddusxx128v8,
+                     TOP_vaddusxxx128v8,
+                     TOP_vaddusx128v16,
+                     TOP_vaddusxx128v16,
+                     TOP_vaddusxxx128v16,
+                     TOP_vandx128v8,
+                     TOP_vandxx128v8,
+                     TOP_vandxxx128v8,
+                     TOP_vandx128v16,
+                     TOP_vandxx128v16,
+                     TOP_vandxxx128v16,
+                     TOP_vandx128v32,
+                     TOP_vandxx128v32,
+                     TOP_vandxxx128v32,
+                     TOP_vandx128v64,
+                     TOP_vandxx128v64,
+                     TOP_vandxxx128v64,
+                     TOP_vandnx128v8,
+                     TOP_vandnxx128v8,
+                     TOP_vandnxxx128v8,
+                     TOP_vandnx128v16,
+                     TOP_vandnxx128v16,
+                     TOP_vandnxxx128v16,
+                     TOP_vandnx128v32,
+                     TOP_vandnxx128v32,
+                     TOP_vandnxxx128v32,
+                     TOP_vandnx128v64,
+                     TOP_vandnxx128v64,
+                     TOP_vandnxxx128v64,
+                     TOP_vpavgbx,
+                     TOP_vpavgbxx,
+                     TOP_vpavgbxxx,
+                     TOP_vpavgwx,
+                     TOP_vpavgwxx,
+                     TOP_vpavgwxxx,
+                     TOP_vmaxsx128v8,
+                     TOP_vmaxsxx128v8,
+                     TOP_vmaxsxxx128v8,
+                     TOP_vmaxsx128v32,
+                     TOP_vmaxsxx128v32,
+                     TOP_vmaxsxxx128v32,
+                     TOP_vmaxsx128v16,
+                     TOP_vmaxsxx128v16,
+                     TOP_vmaxsxxx128v16,
+                     TOP_vmaxux128v8,
+                     TOP_vmaxuxx128v8,
+                     TOP_vmaxuxxx128v8,
+                     TOP_vmaxux128v32,
+                     TOP_vmaxuxx128v32,
+                     TOP_vmaxuxxx128v32,
+                     TOP_vmaxux128v16,
+                     TOP_vmaxuxx128v16,
+                     TOP_vmaxuxxx128v16,
+                     TOP_vminsx128v8,
+                     TOP_vminsxx128v8,
+                     TOP_vminsxxx128v8,
+                     TOP_vminsx128v32,
+                     TOP_vminsxx128v32,
+                     TOP_vminsxxx128v32,
+                     TOP_vminsx128v16,
+                     TOP_vminsxx128v16,
+                     TOP_vminsxxx128v16,
+                     TOP_vminux128v8,
+                     TOP_vminuxx128v8,
+                     TOP_vminuxxx128v8,
+                     TOP_vminux128v32,
+                     TOP_vminuxx128v32,
+                     TOP_vminuxxx128v32,
+                     TOP_vminux128v16,
+                     TOP_vminuxx128v16,
+                     TOP_vminuxxx128v16,
+                     TOP_vorx128v8,
+                     TOP_vorxx128v8,
+                     TOP_vorxxx128v8,
+                     TOP_vorx128v16,
+                     TOP_vorxx128v16,
+                     TOP_vorxxx128v16,
+                     TOP_vorx128v32,
+                     TOP_vorxx128v32,
+                     TOP_vorxxx128v32,
+                     TOP_vorx128v64,
+                     TOP_vorxx128v64,
+                     TOP_vorxxx128v64,
+                     TOP_vpshufx128v8,
+                     TOP_vpshufxx128v8,
+                     TOP_vpshufxxx128v8,
+                     TOP_vpshufx128v32,
+                     TOP_vpshufxx128v32,
+                     TOP_vpshufxxx128v32,
+                     TOP_vpshufwx64v16,
+                     TOP_vpshufwxx64v16,
+                     TOP_vpshufwxxx64v16,
+                     TOP_vpshufhwx,
+                     TOP_vpshufhwxx,
+                     TOP_vpshufhwxxx,
+                     TOP_vpshuflwx,
+                     TOP_vpshuflwxx,
+                     TOP_vpshuflwxxx,
+                     TOP_vxorx128v8,
+                     TOP_vxorxx128v8,
+                     TOP_vxorxxx128v8,
+                     TOP_vxorx128v16,
+                     TOP_vxorxx128v16,
+                     TOP_vxorxxx128v16,
+                     TOP_vxorx128v32,
+                     TOP_vxorxx128v32,
+                     TOP_vxorxxx128v32,
+                     TOP_vxorx128v64,
+                     TOP_vxorxx128v64,
+                     TOP_vxorxxx128v64,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(4);
+  Any_Result_Available_Time(7);
   Resource_Requirement(res_fadd, 0);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "avx fp arith reg opnd",
-                        TOP_vcmppd,
-                        TOP_vfcmp128v64,
-                        TOP_vcmpps,
-                        TOP_vfcmp128v32,
-                        TOP_vfcmpsd,
-                        TOP_vfcmpss,
-                        TOP_vfhadd128v64,
-                        TOP_vfhadd128v32,
-                        TOP_vfhsub128v64,
-                        TOP_vfhsub128v32,
-                        TOP_vfmax128v64,
-                        TOP_vfmax128v32,
-                        TOP_vfmaxsd,
-                        TOP_vfmaxss,
-                        TOP_vfmin128v64,
-                        TOP_vfmin128v32,
-                        TOP_vfminsd,
-                        TOP_vfminss,
-                        TOP_vorpd,
-                        TOP_vfor128v64,
-                        TOP_vorps,
-                        TOP_vfor128v32,
-                        TOP_vphadd128v16,
-                        TOP_vphsub128v32,
-                        TOP_vphsubs128v16,
-                        TOP_vphsub128v16,
-                        TOP_vround128v64,
-                        TOP_vround128v32,
-                        TOP_vroundsd,
-                        TOP_vroundss,
-                        TOP_UNDEFINED);
+                     TOP_vcmppd,
+                     TOP_vfcmp128v64,
+                     TOP_vcmpps,
+                     TOP_vfcmp128v32,
+                     TOP_vfcmpsd,
+                     TOP_vfcmpss,
+                     TOP_vfmax128v64,
+                     TOP_vfmax128v32,
+                     TOP_vfmaxsd,
+                     TOP_vfmaxss,
+                     TOP_vfmin128v64,
+                     TOP_vfmin128v32,
+                     TOP_vfminsd,
+                     TOP_vfminss,
+                     TOP_vorpd,
+                     TOP_vfor128v64,
+                     TOP_vorps,
+                     TOP_vfor128v32,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(2);
   Resource_Requirement(res_fadd, 0);
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "avx fp arith mem opnd",
-                        TOP_vfcmpx128v64,
-                        TOP_vfcmpxx128v64,
-                        TOP_vfcmpxxx128v64,
-                        TOP_vfcmpx128v32,
-                        TOP_vfcmpxx128v32,
-                        TOP_vfcmpxxx128v32,
-                        TOP_vfcmpxsd,
-                        TOP_vfcmpxxsd,
-                        TOP_vfcmpxxxsd,
-                        TOP_vfcmpxss,
-                        TOP_vfcmpxxss,
-                        TOP_vfcmpxxxss,
-                        TOP_vfhaddx128v64,
-                        TOP_vfhaddxx128v64,
-                        TOP_vfhaddxxx128v64,
-                        TOP_vfhaddx128v32,
-                        TOP_vfhaddxx128v32,
-                        TOP_vfhaddxxx128v32,
-                        TOP_vfhsubx128v64,
-                        TOP_vfhsubxx128v64,
-                        TOP_vfhsubxxx128v64,
-                        TOP_vfhsubx128v32,
-                        TOP_vfhsubxx128v32,
-                        TOP_vfhsubxxx128v32,
-                        TOP_vfmaxx128v64,
-                        TOP_vfmaxxx128v64,
-                        TOP_vfmaxxxx128v64,
-                        TOP_vfmaxx128v32,
-                        TOP_vfmaxxx128v32,
-                        TOP_vfmaxxxx128v32,
-                        TOP_vfmaxxsd,
-                        TOP_vfmaxxxsd,
-                        TOP_vfmaxxxxsd,
-                        TOP_vfmaxxss,
-                        TOP_vfmaxxxss,
-                        TOP_vfmaxxxxss,
-                        TOP_vfminx128v64,
-                        TOP_vfminxx128v64,
-                        TOP_vfminxxx128v64,
-                        TOP_vfminx128v32,
-                        TOP_vfminxx128v32,
-                        TOP_vfminxxx128v32,
-                        TOP_vfminxsd,
-                        TOP_vfminxxsd,
-                        TOP_vfminxxxsd,
-                        TOP_vfminxss,
-                        TOP_vfminxxss,
-                        TOP_vfminxxxss,
-                        TOP_vforx128v64,
-                        TOP_vforxx128v64,
-                        TOP_vforxxx128v64,
-                        TOP_vforx128v32,
-                        TOP_vforxx128v32,
-                        TOP_vforxxx128v32,
-                        TOP_vphaddx128v16,
-                        TOP_vphaddxx128v16,
-                        TOP_vphaddxxx128v16,
-                        TOP_vphsubx128v32,
-                        TOP_vphsubxx128v32,
-                        TOP_vphsubxxx128v32,
-                        TOP_vphsubsx128v16,
-                        TOP_vphsubsxx128v16,
-                        TOP_vphsubsxxx128v16,
-                        TOP_vphsubx128v16,
-                        TOP_vphsubxx128v16,
-                        TOP_vphsubxxx128v16,
-                        TOP_vroundx128v64,
-                        TOP_vroundxx128v64,
-                        TOP_vroundxxx128v64,
-                        TOP_vroundx128v32,
-                        TOP_vroundxx128v32,
-                        TOP_vroundxxx128v32,
-                        TOP_vroundxsd,
-                        TOP_vroundxxsd,
-                        TOP_vroundxxxsd,
-                        TOP_vroundxss,
-                        TOP_vroundxxss,
-                        TOP_vroundxxxss,
-                        TOP_vfxorx128v64,
-                        TOP_vfxorxx128v64,
-                        TOP_vfxorxxx128v64,
-                        TOP_UNDEFINED);
+                     TOP_vfcmpx128v64,
+                     TOP_vfcmpxx128v64,
+                     TOP_vfcmpxxx128v64,
+                     TOP_vfcmpx128v32,
+                     TOP_vfcmpxx128v32,
+                     TOP_vfcmpxxx128v32,
+                     TOP_vfcmpxsd,
+                     TOP_vfcmpxxsd,
+                     TOP_vfcmpxxxsd,
+                     TOP_vfcmpxss,
+                     TOP_vfcmpxxss,
+                     TOP_vfcmpxxxss,
+                     TOP_vfmaxx128v64,
+                     TOP_vfmaxxx128v64,
+                     TOP_vfmaxxxx128v64,
+                     TOP_vfmaxx128v32,
+                     TOP_vfmaxxx128v32,
+                     TOP_vfmaxxxx128v32,
+                     TOP_vfmaxxsd,
+                     TOP_vfmaxxxsd,
+                     TOP_vfmaxxxxsd,
+                     TOP_vfmaxxss,
+                     TOP_vfmaxxxss,
+                     TOP_vfmaxxxxss,
+                     TOP_vfminx128v64,
+                     TOP_vfminxx128v64,
+                     TOP_vfminxxx128v64,
+                     TOP_vfminx128v32,
+                     TOP_vfminxx128v32,
+                     TOP_vfminxxx128v32,
+                     TOP_vfminxsd,
+                     TOP_vfminxxsd,
+                     TOP_vfminxxxsd,
+                     TOP_vfminxss,
+                     TOP_vfminxxss,
+                     TOP_vfminxxxss,
+                     TOP_vforx128v64,
+                     TOP_vforxx128v64,
+                     TOP_vforxxx128v64,
+                     TOP_vforx128v32,
+                     TOP_vforxx128v32,
+                     TOP_vforxxx128v32,
+                     TOP_vfxorx128v64,
+                     TOP_vfxorxx128v64,
+                     TOP_vfxorxxx128v64,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(7);
   Resource_Requirement(res_fadd, 0);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
+  Instruction_Group( "avx fp arith II reg opnd",
+                     TOP_vfhadd128v64,
+                     TOP_vfhadd128v32,
+                     TOP_vfhsub128v64,
+                     TOP_vfhsub128v32,
+                     TOP_vphadd128v16,
+                     TOP_vphsub128v32,
+                     TOP_vphsubs128v16,
+                     TOP_vphsub128v16,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(10);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "avx fp arith II mem opnd",
+                     TOP_vfhaddx128v64,
+                     TOP_vfhaddxx128v64,
+                     TOP_vfhaddxxx128v64,
+                     TOP_vfhaddx128v32,
+                     TOP_vfhaddxx128v32,
+                     TOP_vfhaddxxx128v32,
+                     TOP_vfhsubx128v64,
+                     TOP_vfhsubxx128v64,
+                     TOP_vfhsubxxx128v64,
+                     TOP_vfhsubx128v32,
+                     TOP_vfhsubxx128v32,
+                     TOP_vfhsubxxx128v32,
+                     TOP_vphaddx128v16,
+                     TOP_vphaddxx128v16,
+                     TOP_vphaddxxx128v16,
+                     TOP_vphsubx128v32,
+                     TOP_vphsubxx128v32,
+                     TOP_vphsubxxx128v32,
+                     TOP_vphsubsx128v16,
+                     TOP_vphsubsxx128v16,
+                     TOP_vphsubsxxx128v16,
+                     TOP_vphsubx128v16,
+                     TOP_vphsubxx128v16,
+                     TOP_vphsubxxx128v16,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(15);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "avx fp arith III reg opnd",
+                     TOP_vround128v64,
+                     TOP_vround128v32,
+                     TOP_vroundsd,
+                     TOP_vroundss,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(4);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "avx fp arith III mem opnd",
+                     TOP_vroundx128v64,
+                     TOP_vroundxx128v64,
+                     TOP_vroundxxx128v64,
+                     TOP_vroundx128v32,
+                     TOP_vroundxx128v32,
+                     TOP_vroundxxx128v32,
+                     TOP_vroundxsd,
+                     TOP_vroundxxsd,
+                     TOP_vroundxxxsd,
+                     TOP_vroundxss,
+                     TOP_vroundxxss,
+                     TOP_vroundxxxss,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(9);
+  Resource_Requirement(res_fadd, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
   Instruction_Group( "avx fp mul reg opnd",
-                        TOP_vpmaddwd,
-                        TOP_vpmaddubsw128,
-                        TOP_UNDEFINED);
+                     TOP_vpmaddwd,
+                     TOP_vpmaddubsw128,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(4);
   Resource_Requirement(res_fadd, 0);
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "avx fp mul mem opnd",
-                        TOP_vpmaddwdx,
-                        TOP_vpmaddwdxx,
-                        TOP_vpmaddwdxxx,
-                        TOP_vpmaddubswx128,
-                        TOP_vpmaddubswxx128,
-                        TOP_vpmaddubswxxx128,
-                        TOP_UNDEFINED);
+                     TOP_vpmaddwdx,
+                     TOP_vpmaddwdxx,
+                     TOP_vpmaddwdxxx,
+                     TOP_vpmaddubswx128,
+                     TOP_vpmaddubswxx128,
+                     TOP_vpmaddubswxxx128,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(7);
+  Any_Result_Available_Time(9);
   Resource_Requirement(res_fadd, 0);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "avx fp rsqrt reg opnd",
-                        TOP_vfrsqrt128v32,
-                        TOP_vfrsqrtss,
-                        TOP_UNDEFINED);
+                     TOP_vfrsqrt128v32,
+                     TOP_vfrsqrtss,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(5);
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "avx fp rsqrt mem opnd",
-                        TOP_vfrsqrtx128v32,
-                        TOP_vfrsqrtxx128v32,
-                        TOP_vfrsqrtxxx128v32,
-                        TOP_vfrsqrtxss,
-                        TOP_vfrsqrtxxss,
-                        TOP_vfrsqrtxxxss,
-                        TOP_UNDEFINED);
+                     TOP_vfrsqrtx128v32,
+                     TOP_vfrsqrtxx128v32,
+                     TOP_vfrsqrtxxx128v32,
+                     TOP_vfrsqrtxss,
+                     TOP_vfrsqrtxxss,
+                     TOP_vfrsqrtxxxss,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(10);
   Resource_Requirement(res_fmul, 0);
@@ -3487,13 +3626,11 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "avx fp sqrt reg opnd",
-                        TOP_vfsqrt128v64,
-                        TOP_vfsqrt128v32,
-                        TOP_vfsqrtsd,
-                        TOP_vfsqrtss,
-                        TOP_UNDEFINED);
+                     TOP_vfsqrtsd,
+                     TOP_vfsqrtss,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(19);
+  Any_Result_Available_Time(41);
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
 
@@ -3512,89 +3649,113 @@ int main (int argc, char *argv[])
                         TOP_vfsqrtxxxss,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(21);
+  Any_Result_Available_Time(46);
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "avx div reg opnd",
-                        TOP_vfdiv128v64,
-                        TOP_vfdiv128v32,
-                        TOP_vdivsd,
-                        TOP_vdivss,
-                        TOP_UNDEFINED);
+                     TOP_vfdiv128v64,
+                     TOP_vdivsd,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(33);
+  Any_Result_Available_Time(30);
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "avx div mem opnd",
-                        TOP_vfdivx128v64,
-                        TOP_vfdivxx128v64,
-                        TOP_vfdivxxx128v64,
-                        TOP_vfdivx128v32,
-                        TOP_vfdivxx128v32,
-                        TOP_vfdivxxx128v32,
-                        TOP_vdivxsd,
-                        TOP_vdivxxsd,
-                        TOP_vdivxxxsd,
-                        TOP_vdivxss,
-                        TOP_vdivxxss,
-                        TOP_vdivxxxss,
-                        TOP_UNDEFINED);
+                     TOP_vfdivx128v64,
+                     TOP_vfdivxx128v64,
+                     TOP_vfdivxxx128v64,
+                     TOP_vdivxsd,
+                     TOP_vdivxxsd,
+                     TOP_vdivxxxsd,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(35);
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
+  Instruction_Group( "avx div II reg opnd",
+                     TOP_vfdiv128v32,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(27);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "avx div II mem opnd",
+                     TOP_vfdivx128v32,
+                     TOP_vfdivxx128v32,
+                     TOP_vfdivxxx128v32,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(32);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "avx div III reg opnd",
+                     TOP_vdivss,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(25);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "avx div III mem opnd",
+                     TOP_vdivxss,
+                     TOP_vdivxxss,
+                     TOP_vdivxxxss,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(30);
+  Resource_Requirement(res_fmul, 0);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
   Instruction_Group( "avx fp mul reg opnd",
-                        TOP_vfdp128v64,
-                        TOP_vfdp128v32,
-                        TOP_vmulhuw,
-                        TOP_vmulhrsw,
-                        TOP_vmulhw,
-                        TOP_vmulld,
-                        TOP_vmul128v16,
-                        TOP_vmuludq,
-                        TOP_vmuldq,
-                        TOP_UNDEFINED);
+                     TOP_vfdp128v64,
+                     TOP_vfdp128v32,
+                     TOP_vmulhuw,
+                     TOP_vmulhrsw,
+                     TOP_vmulhw,
+                     TOP_vmulld,
+                     TOP_vmul128v16,
+                     TOP_vmuludq,
+                     TOP_vmuldq,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(4);
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "avx fp mul mem opnd",
-                        TOP_vfdpx128v64,
-                        TOP_vfdpxx128v64,
-                        TOP_vfdpxxx128v64,
-                        TOP_vfdpx128v32,
-                        TOP_vfdpxx128v32,
-                        TOP_vfdpxxx128v32,
-                        TOP_vmulhuwx,
-                        TOP_vmulhuwxx,
-                        TOP_vmulhuwxxx,
-                        TOP_vmulhrswx,
-                        TOP_vmulhrswxx,
-                        TOP_vmulhrswxxx,
-                        TOP_vmulhwx,
-                        TOP_vmulhwxx,
-                        TOP_vmulhwxxx,
-                        TOP_vmulldx,
-                        TOP_vmulldxx,
-                        TOP_vmulldxxx,
-                        TOP_vmulx128v16,
-                        TOP_vmulxx128v16,
-                        TOP_vmulxxx128v16,
-                        TOP_vmuludqx,
-                        TOP_vmuludqxx,
-                        TOP_vmuludqxxx,
-                        TOP_vmuldqx,
-                        TOP_vmuldqxx,
-                        TOP_vmuldqxxx,
-                        TOP_UNDEFINED);
+                     TOP_vmulhuwx,
+                     TOP_vmulhuwxx,
+                     TOP_vmulhuwxxx,
+                     TOP_vmulhrswx,
+                     TOP_vmulhrswxx,
+                     TOP_vmulhrswxxx,
+                     TOP_vmulhwx,
+                     TOP_vmulhwxx,
+                     TOP_vmulhwxxx,
+                     TOP_vmulldx,
+                     TOP_vmulldxx,
+                     TOP_vmulldxxx,
+                     TOP_vmulx128v16,
+                     TOP_vmulxx128v16,
+                     TOP_vmulxxx128v16,
+                     TOP_vmuldqx,
+                     TOP_vmuldqxx,
+                     TOP_vmuldqxxx,
+                     TOP_vmuludqx,
+                     TOP_vmuludqxx,
+                     TOP_vmuludqxxx,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(7);
+  Any_Result_Available_Time(9);
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
@@ -3608,7 +3769,7 @@ int main (int argc, char *argv[])
                         TOP_vblend128v16,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(5);
+  Any_Result_Available_Time(5); // ?
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
 
@@ -3633,7 +3794,7 @@ int main (int argc, char *argv[])
                         TOP_vblendxxx128v16,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(10);
+  Any_Result_Available_Time(10); // ?
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
@@ -3678,7 +3839,7 @@ int main (int argc, char *argv[])
                         TOP_vcmpistrm,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(10);
+  Any_Result_Available_Time(10); // ?
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "avx aes mem opnd",
@@ -3738,7 +3899,7 @@ int main (int argc, char *argv[])
                         TOP_vcmpistrmxxx,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(20);
+  Any_Result_Available_Time(20); // ?
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
@@ -3801,7 +3962,6 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "avx int arith reg opnd",
-                        TOP_vpalignr128,
                         TOP_vextr128v8,
                         TOP_vextr128v32,
                         TOP_vextr128v64,
@@ -3811,141 +3971,179 @@ int main (int argc, char *argv[])
                         TOP_vinsr128v32,
                         TOP_vinsr128v64,
                         TOP_vinsr128v16,
-                        TOP_vpsadbw,
-                        TOP_vpsign128v8,
-                        TOP_vpsign128v32,
-                        TOP_vpsign128v16,
                         TOP_vpslldq,
                         TOP_vpsrldq,
-                        TOP_vpslld,
-                        TOP_vpslldi,
-                        TOP_vpsllq,
-                        TOP_vpsllqi,
-                        TOP_vpsllw,
-                        TOP_vpsllwi,
-                        TOP_vpsrad,
-                        TOP_vpsradi,
-                        TOP_vpsraw,
-                        TOP_vpsrawi,
-                        TOP_vpsrld,
-                        TOP_vpsrldi,
-                        TOP_vpsrlq,
-                        TOP_vpsrlqi,
-                        TOP_vpsrlw,
-                        TOP_vpsrlwi,
-                        TOP_vsub128v8,
-                        TOP_vsub128v32,
-                        TOP_vsub128v64,
-                        TOP_vsub128v16,
-                        TOP_vsubs128v8,
-                        TOP_vsubs128v16,
-                        TOP_vsubus128v8,
-                        TOP_vsubus128v16,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(2);
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "avx int arith mem opnd",
-                        TOP_vpalignrx128,
-                        TOP_vpalignrxx128,
-                        TOP_vpalignrxxx128,
-                        TOP_vextrx128v8,
-                        TOP_vextrxx128v8,
-                        TOP_vextrxxx128v8,
-                        TOP_vextrx128v32,
-                        TOP_vextrxx128v32,
-                        TOP_vextrxxx128v32,
-                        TOP_vextrx128v64,
-                        TOP_vextrxx128v64,
-                        TOP_vextrxxx128v64,
-                        TOP_vextrx128v16,
-                        TOP_vextrxx128v16,
-                        TOP_vextrxxx128v16,
-                        TOP_vphminposuwx,
-                        TOP_vphminposuwxx,
-                        TOP_vphminposuwxxx,
-                        TOP_vinsrx128v8,
-                        TOP_vinsrxx128v8,
-                        TOP_vinsrxxx128v8,
-                        TOP_vinsrx128v32,
-                        TOP_vinsrxx128v32,
-                        TOP_vinsrxxx128v32,
-                        TOP_vinsrx128v64,
-                        TOP_vinsrxx128v64,
-                        TOP_vinsrxxx128v64,
-                        TOP_vinsrx128v16,
-                        TOP_vinsrxx128v16,
-                        TOP_vinsrxxx128v16,
-                        TOP_vpsadbwx,
-                        TOP_vpsadbwxx,
-                        TOP_vpsadbwxxx,
-                        TOP_vpsignx128v8,
-                        TOP_vpsignxx128v8,
-                        TOP_vpsignxxx128v8,
-                        TOP_vpsignx128v32,
-                        TOP_vpsignxx128v32,
-                        TOP_vpsignxxx128v32,
-                        TOP_vpsignx128v16,
-                        TOP_vpsignxx128v16,
-                        TOP_vpsignxxx128v16,
-                        TOP_vpslldx,
-                        TOP_vpslldxx,
-                        TOP_vpslldxxx,
-                        TOP_vpsllqx,
-                        TOP_vpsllqxx,
-                        TOP_vpsllqxxx,
-                        TOP_vpsllwx,
-                        TOP_vpsllwxx,
-                        TOP_vpsllwxxx,
-                        TOP_vpsradx,
-                        TOP_vpsradxx,
-                        TOP_vpsradxxx,
-                        TOP_vpsrawx,
-                        TOP_vpsrawxx,
-                        TOP_vpsrawxxx,
-                        TOP_vpsrldx,
-                        TOP_vpsrldxx,
-                        TOP_vpsrldxxx,
-                        TOP_vpsrlqx,
-                        TOP_vpsrlqxx,
-                        TOP_vpsrlqxxx,
-                        TOP_vpsrlwx,
-                        TOP_vpsrlwxx,
-                        TOP_vpsrlwxxx,
-                        TOP_vsubx128v8,
-                        TOP_vsubxx128v8,
-                        TOP_vsubxxx128v8,
-                        TOP_vsubx128v32,
-                        TOP_vsubxx128v32,
-                        TOP_vsubxxx128v32,
-                        TOP_vsubx128v64,
-                        TOP_vsubxx128v64,
-                        TOP_vsubxxx128v64,
-                        TOP_vsubx128v16,
-                        TOP_vsubxx128v16,
-                        TOP_vsubxxx128v16,
-                        TOP_vsubsx128v8,
-                        TOP_vsubsxx128v8,
-                        TOP_vsubsxxx128v8,
-                        TOP_vsubsx128v16,
-                        TOP_vsubsxx128v16,
-                        TOP_vsubsxxx128v16,
-                        TOP_vsubusx128v8,
-                        TOP_vsubusxx128v8,
-                        TOP_vsubusxxx128v8,
-                        TOP_vsubusx128v16,
-                        TOP_vsubusxx128v16,
-                        TOP_vsubusxxx128v16,
-                        TOP_UNDEFINED);
+                     TOP_vextrx128v8,
+                     TOP_vextrxx128v8,
+                     TOP_vextrxxx128v8,
+                     TOP_vextrx128v32,
+                     TOP_vextrxx128v32,
+                     TOP_vextrxxx128v32,
+                     TOP_vextrx128v64,
+                     TOP_vextrxx128v64,
+                     TOP_vextrxxx128v64,
+                     TOP_vextrx128v16,
+                     TOP_vextrxx128v16,
+                     TOP_vextrxxx128v16,
+                     TOP_vphminposuwx,
+                     TOP_vphminposuwxx,
+                     TOP_vphminposuwxxx,
+                     TOP_vinsrx128v8,
+                     TOP_vinsrxx128v8,
+                     TOP_vinsrxxx128v8,
+                     TOP_vinsrx128v32,
+                     TOP_vinsrxx128v32,
+                     TOP_vinsrxxx128v32,
+                     TOP_vinsrx128v64,
+                     TOP_vinsrxx128v64,
+                     TOP_vinsrxxx128v64,
+                     TOP_vinsrx128v16,
+                     TOP_vinsrxx128v16,
+                     TOP_vinsrxxx128v16,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(3);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "avx int arith II reg opnd",
+                     TOP_vpalignr128,
+                     TOP_vpsign128v8,
+                     TOP_vpsign128v32,
+                     TOP_vpsign128v16,
+                     TOP_vsub128v8,
+                     TOP_vsub128v32,
+                     TOP_vsub128v64,
+                     TOP_vsub128v16,
+                     TOP_vsubs128v8,
+                     TOP_vsubs128v16,
+                     TOP_vsubus128v8,
+                     TOP_vsubus128v16,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(2);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "avx int arith II mem opnd",
+                     TOP_vpalignrx128,
+                     TOP_vpalignrxx128,
+                     TOP_vpalignrxxx128,
+                     TOP_vpsignx128v8,
+                     TOP_vpsignxx128v8,
+                     TOP_vpsignxxx128v8,
+                     TOP_vpsignx128v32,
+                     TOP_vpsignxx128v32,
+                     TOP_vpsignxxx128v32,
+                     TOP_vpsignx128v16,
+                     TOP_vpsignxx128v16,
+                     TOP_vpsignxxx128v16,
+                     TOP_vsubx128v8,
+                     TOP_vsubxx128v8,
+                     TOP_vsubxxx128v8,
+                     TOP_vsubx128v32,
+                     TOP_vsubxx128v32,
+                     TOP_vsubxxx128v32,
+                     TOP_vsubx128v64,
+                     TOP_vsubxx128v64,
+                     TOP_vsubxxx128v64,
+                     TOP_vsubx128v16,
+                     TOP_vsubxx128v16,
+                     TOP_vsubxxx128v16,
+                     TOP_vsubsx128v8,
+                     TOP_vsubsxx128v8,
+                     TOP_vsubsxxx128v8,
+                     TOP_vsubsx128v16,
+                     TOP_vsubsxx128v16,
+                     TOP_vsubsxxx128v16,
+                     TOP_vsubusx128v8,
+                     TOP_vsubusxx128v8,
+                     TOP_vsubusxxx128v8,
+                     TOP_vsubusx128v16,
+                     TOP_vsubusxx128v16,
+                     TOP_vsubusxxx128v16,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(7);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "avx int arith III reg opnd",
+                     TOP_vpsadbw,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(4);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "avx int arith III mem opnd",
+                     TOP_vpsadbwx,
+                     TOP_vpsadbwxx,
+                     TOP_vpsadbwxxx,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(9);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "avx int arith IV reg opnd",
+                     TOP_vpslld,
+                     TOP_vpslldi,
+                     TOP_vpsllq,
+                     TOP_vpsllqi,
+                     TOP_vpsllw,
+                     TOP_vpsllwi,
+                     TOP_vpsrad,
+                     TOP_vpsradi,
+                     TOP_vpsraw,
+                     TOP_vpsrawi,
+                     TOP_vpsrld,
+                     TOP_vpsrldi,
+                     TOP_vpsrlq,
+                     TOP_vpsrlqi,
+                     TOP_vpsrlw,
+                     TOP_vpsrlwi,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(3);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "avx int arith IV mem opnd",
+                     TOP_vpsllqx,
+                     TOP_vpsllqxx,
+                     TOP_vpsllqxxx,
+                     TOP_vpslldx,
+                     TOP_vpslldxx,
+                     TOP_vpslldxxx,
+                     TOP_vpsllwx,
+                     TOP_vpsllwxx,
+                     TOP_vpsllwxxx,
+                     TOP_vpsradx,
+                     TOP_vpsradxx,
+                     TOP_vpsradxxx,
+                     TOP_vpsrawx,
+                     TOP_vpsrawxx,
+                     TOP_vpsrawxxx,
+                     TOP_vpsrldx,
+                     TOP_vpsrldxx,
+                     TOP_vpsrldxxx,
+                     TOP_vpsrlqx,
+                     TOP_vpsrlqxx,
+                     TOP_vpsrlqxxx,
+                     TOP_vpsrlwx,
+                     TOP_vpsrlwxx,
+                     TOP_vpsrlwxxx,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(8);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "avx fp arith reg opnd",
-                        TOP_vcomisd,
-                        TOP_vcomiss,
                         TOP_vfextrf128,
                         TOP_vfextr128v32,
                         TOP_vfinsrf128,
@@ -3969,8 +4167,6 @@ int main (int argc, char *argv[])
                         TOP_vfperm128v32,
                         TOP_vfpermi128v32,
                         TOP_vfperm2f128,
-                        TOP_vphadd128v32,
-                        TOP_vphadds128v16,
                         TOP_vpmovmskb128,
                         TOP_vpmovsxbd,
                         TOP_vpmovsxbq,
@@ -4002,8 +4198,6 @@ int main (int argc, char *argv[])
                         TOP_vfsub128v32,
                         TOP_vsubsd,
                         TOP_vsubss,
-                        TOP_vucomisd,
-                        TOP_vucomiss,
                         TOP_vunpckh128v64,
                         TOP_vunpckh128v32,
                         TOP_vunpckl128v64,
@@ -4022,12 +4216,6 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "avx fp arith mem opnd",
-                        TOP_vcomixsd,
-                        TOP_vcomixxsd,
-                        TOP_vcomixxxsd,
-                        TOP_vcomixss,
-                        TOP_vcomixxss,
-                        TOP_vcomixxxss,
                         TOP_vfextrxf128,
                         TOP_vfextrxxf128,
                         TOP_vfextrxxxf128,
@@ -4076,12 +4264,6 @@ int main (int argc, char *argv[])
                         TOP_vfperm2xf128,
                         TOP_vfperm2xxf128,
                         TOP_vfperm2xxxf128,
-                        TOP_vphaddx128v32,
-                        TOP_vphaddxx128v32,
-                        TOP_vphaddxxx128v32,
-                        TOP_vphaddsx128v16,
-                        TOP_vphaddsxx128v16,
-                        TOP_vphaddsxxx128v16,
                         TOP_vpmovsxbdx,
                         TOP_vpmovsxbdxx,
                         TOP_vpmovsxbdxxx,
@@ -4166,12 +4348,6 @@ int main (int argc, char *argv[])
                         TOP_vsubxss,
                         TOP_vsubxxss,
                         TOP_vsubxxxss,
-                        TOP_vucomixsd,
-                        TOP_vucomixxsd,
-                        TOP_vucomixxxsd,
-                        TOP_vucomixss,
-                        TOP_vucomixxss,
-                        TOP_vucomixxxss,
                         TOP_vunpckhx128v64,
                         TOP_vunpckhxx128v64,
                         TOP_vunpckhxxx128v64,
@@ -4190,6 +4366,57 @@ int main (int argc, char *argv[])
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(7);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "avx fp arith II  reg opnd",
+                     TOP_vphadd128v32,
+                     TOP_vphadds128v16,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(5);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "avx fp arith II  mem opnd",
+                     TOP_vphaddx128v32,
+                     TOP_vphaddxx128v32,
+                     TOP_vphaddxxx128v32,
+                     TOP_vphaddsx128v16,
+                     TOP_vphaddsxx128v16,
+                     TOP_vphaddsxxx128v16,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(10);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "avx fp compare scalar ordered reg opnd",
+                     TOP_vcomisd,
+                     TOP_vcomiss,
+                     TOP_vucomisd,
+                     TOP_vucomiss,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(6);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group( "avx fp compare scalar ordered mem opnd",
+                     TOP_vcomixsd,
+                     TOP_vcomixxsd,
+                     TOP_vcomixxxsd,
+                     TOP_vcomixss,
+                     TOP_vcomixxss,
+                     TOP_vcomixxxss,
+                     TOP_vucomixsd,
+                     TOP_vucomixxsd,
+                     TOP_vucomixxxsd,
+                     TOP_vucomixss,
+                     TOP_vucomixxss,
+                     TOP_vucomixxxss,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(11);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
@@ -4284,177 +4511,114 @@ int main (int argc, char *argv[])
                         TOP_vfbroadcastxxf128,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(4);
+  Any_Result_Available_Time(4); // ?
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "avx fp mul reg opnd",
-                        TOP_vmpsadbw,
-                        TOP_vfmul128v64,
-                        TOP_vfmul128v32,
-                        TOP_vmulsd,
-                        TOP_vmulss,
-                        TOP_UNDEFINED);
+                     TOP_vmpsadbw,
+                     TOP_vfmul128v64,
+                     TOP_vfmul128v32,
+                     TOP_vmulsd,
+                     TOP_vmulss,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(4);
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "avx fp mul mem opnd",
-                        TOP_vmpsadbwx,
-                        TOP_vmpsadbwxx,
-                        TOP_vmpsadbwxxx,
-                        TOP_vfmulx128v64,
-                        TOP_vfmulxx128v64,
-                        TOP_vfmulxxx128v64,
-                        TOP_vfmulx128v32,
-                        TOP_vfmulxx128v32,
-                        TOP_vfmulxxx128v32,
-                        TOP_vmulxsd,
-                        TOP_vmulxxsd,
-                        TOP_vmulxxxsd,
-                        TOP_vmulxss,
-                        TOP_vmulxxss,
-                        TOP_vmulxxxss,
-                        TOP_UNDEFINED);
+                     TOP_vmpsadbwx,
+                     TOP_vmpsadbwxx,
+                     TOP_vmpsadbwxxx,
+                     TOP_vfmulx128v64,
+                     TOP_vfmulxx128v64,
+                     TOP_vfmulxxx128v64,
+                     TOP_vfmulx128v32,
+                     TOP_vfmulxx128v32,
+                     TOP_vfmulxxx128v32,
+                     TOP_vmulxsd,
+                     TOP_vmulxxsd,
+                     TOP_vmulxxxsd,
+                     TOP_vmulxss,
+                     TOP_vmulxxss,
+                     TOP_vmulxxxss,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(7);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "avx ptest reg opnd",
-                        TOP_vptest128,
-                        TOP_UNDEFINED);
+                     TOP_vptest128,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(5);
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group( "avx ptest mem opnd",
-                        TOP_vptestx128,
-                        TOP_vptestxx128,
-                        TOP_vptestxxx128,
-                        TOP_UNDEFINED);
+                     TOP_vptestx128,
+                     TOP_vptestxx128,
+                     TOP_vptestxxx128,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(10);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
-  Instruction_Group( "avx cvt reg opnd",
-                        TOP_vcvtdq2pd,
-                        TOP_vcvtdq2ps,
-                        TOP_vcvtpd2dq,
-                        TOP_vcvtpd2ps,
-                        TOP_vcvtps2dq,
-                        TOP_vcvtps2pd,
-                        TOP_vcvtsd2si,
-                        TOP_vcvtsd2siq,
-                        TOP_vcvtsd2ss,
-                        TOP_vcvtsi2sd,
-                        TOP_vcvtsi2sdq,
-                        TOP_vcvtsi2ss,
-                        TOP_vcvtsi2ssq,
-                        TOP_vcvtss2sd,
-                        TOP_vcvtss2si,
-                        TOP_vcvtss2siq,
-                        TOP_vcvttpd2dq,
-                        TOP_vcvttps2dq,
-                        TOP_vcvttsd2si,
-                        TOP_vcvttsd2siq,
-                        TOP_vcvttss2si,
-                        TOP_vcvttss2siq,
-                        TOP_UNDEFINED);
-  Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(5);
-  Resource_Requirement(res_issue, 0);
-
-  Instruction_Group( "avx cvt mem opnd",
-                        TOP_vcvtdq2pdx,
-                        TOP_vcvtdq2pdxx,
-                        TOP_vcvtdq2pdxxx,
-                        TOP_vcvtdq2psx,
-                        TOP_vcvtdq2psxx,
-                        TOP_vcvtdq2psxxx,
-                        TOP_vcvtpd2dqx,
-                        TOP_vcvtpd2dqxx,
-                        TOP_vcvtpd2dqxxx,
-                        TOP_vcvtpd2psx,
-                        TOP_vcvtpd2psxx,
-                        TOP_vcvtpd2psxxx,
-                        TOP_vcvtps2dqx,
-                        TOP_vcvtps2dqxx,
-                        TOP_vcvtps2dqxxx,
-                        TOP_vcvtps2pdx,
-                        TOP_vcvtps2pdxx,
-                        TOP_vcvtps2pdxxx,
-                        TOP_vcvtsd2ssx,
-                        TOP_vcvtsd2ssxx,
-                        TOP_vcvtsd2ssxxx,
-                        TOP_vcvtsi2sdx,
-                        TOP_vcvtsi2sdxx,
-                        TOP_vcvtsi2sdxxx,
-                        TOP_vcvtsi2sdqx,
-                        TOP_vcvtsi2sdqxx,
-                        TOP_vcvtsi2sdqxxx,
-                        TOP_vcvtsi2ssx,
-                        TOP_vcvtsi2ssxx,
-                        TOP_vcvtsi2ssxxx,
-                        TOP_vcvtsi2ssqx,
-                        TOP_vcvtsi2ssqxx,
-                        TOP_vcvtsi2ssqxxx,
-                        TOP_vcvtss2sdx,
-                        TOP_vcvtss2sdxx,
-                        TOP_vcvtss2sdxxx,
-                        TOP_vcvttpd2dqx,
-                        TOP_vcvttpd2dqxx,
-                        TOP_vcvttpd2dqxxx,
-                        TOP_vcvttps2dqx,
-                        TOP_vcvttps2dqxx,
-                        TOP_vcvttps2dqxxx,
-                        TOP_UNDEFINED);
+  Instruction_Group( "avx load mxcsr",
+                     TOP_vldmxcsr,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(7);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
-  Instruction_Group( "avx load store mxcsr",
-                        TOP_vldmxcsr,
-                        TOP_vstmxcsr,
-                        TOP_UNDEFINED);
+  Instruction_Group( "avx store mxcsr",
+                     TOP_vstmxcsr,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(14);
+  Any_Result_Available_Time(5);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "avx unalign store",
-                        TOP_vstupd,
-                        TOP_vstupdx,
-                        TOP_vstupdxx,
-                        TOP_vstupd_n32,
-                        TOP_vstups,
-                        TOP_vstupsx,
-                        TOP_vstupsxx,
-                        TOP_vstups_n32,
-                        TOP_UNDEFINED);
+                     TOP_vstupdx,
+                     TOP_vstupdxx,
+                     TOP_vstupd_n32,
+                     TOP_vstupsx,
+                     TOP_vstupsxx,
+                     TOP_vstups_n32,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(8);
+  Any_Result_Available_Time(5);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "avx unalign load",
-                        TOP_vlddqu,
-                        TOP_vlddqux,
-                        TOP_vlddquxx,
-                        TOP_vlddqu_n32,
-                        TOP_vldupd,
-                        TOP_vldupdx,
-                        TOP_vldupdxx,
-                        TOP_vldupd_n32,
-                        TOP_vldups,
-                        TOP_vldupsx,
-                        TOP_vldupsxx,
-                        TOP_vldups_n32,
-                        TOP_UNDEFINED);
+                     TOP_vlddqu,
+                     TOP_vlddqux,
+                     TOP_vlddquxx,
+                     TOP_vlddqu_n32,
+                     TOP_vldupdx,
+                     TOP_vldupdxx,
+                     TOP_vldupd_n32,
+                     TOP_vldupsx,
+                     TOP_vldupsxx,
+                     TOP_vldups_n32,
+                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(7);
+  Any_Result_Available_Time(2);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "avx unalign reg opnd transfer",
+                     TOP_vstupd,
+                     TOP_vstups,
+                     TOP_vldupd,
+                     TOP_vldups,
+                     TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(1);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
@@ -4522,7 +4686,7 @@ int main (int argc, char *argv[])
                         TOP_xfnmsub231ss,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(6);
+  Any_Result_Available_Time(6); // ?
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
 
@@ -4709,7 +4873,7 @@ int main (int argc, char *argv[])
                         TOP_xfnmsub231xxxss,
                         TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(11);
+  Any_Result_Available_Time(11); // ?
   Resource_Requirement(res_fmul, 0);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
