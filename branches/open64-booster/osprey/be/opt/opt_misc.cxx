@@ -39,6 +39,9 @@
 
 #include <stack>
 #include "opt_du.h"
+#include "bb_node_set.h"
+
+extern void Rename_CODEMAP(COMP_UNIT *);
 
 static void
 Analyze_pu_noreturn_attr (OPT_STAB* stab, PU* pu, ST* pu_st) {
@@ -533,3 +536,802 @@ void remove_redundant_mem_clears(WN *func,
   MEM_POOL_Pop(&mpool);
   MEM_POOL_Delete(&mpool);
 }
+
+//====================================================================
+// UselessStoreElimination is to remove useless store inside the
+// innermost loop. Here is the example:
+// The code is as following:
+//
+// for (i=0; i< N;i++) {
+//   c++;    
+//   if (c == 10000) c = 1;        <-- wrap around of c
+//   for (j=0; j< M;j++) a[j] = 0; <-- useless store
+//   d = c;
+//   a[x] = c;
+//   if (a[y] != d) printf(stdout,"%d\n",y);
+// }
+// free(a);
+//
+// The only use of a[y] is compared with d (copy of c). When comparing, 
+// a[y] can be two values 0[!c] or c. In every iteration, c is 
+// monotonically increased. So, even if the a[j] is not cleared
+// in each iteration, the semantics of (a[y] != d) does not change.
+// Since the previous iterations' values are all !c, which have the same 
+// semantics as 0 when comparing with c. 
+// However, for the first iteration, some of a[] may have value of c, thus a[] 
+// should be cleared. Another case that a[] needs be cleared is when c is
+// wrapped around.  Then there are already values existed in a[] from 
+// the previous round. Thus we need to clear a[].  
+// In the above example, we can guard the j loop by the condition  
+// "if (i==0 || c==1)".
+//
+// To elminate the useless store loop, we need to analyze the code as:
+// 1) find the innermost loop j that has only one istore stmt ==> clear_st 
+// 2) find its enclosing loop i and a is freed after loop i before any use
+// 3) traverse the loop i in reverse post order to check all the defs and
+//    uses of a[] using alias query
+// 3.1) record the first def's (after clear_st) rhs ==> c 
+// 3.2) record the copy of c ==> d 
+// 3.3) check the following defs' rhs is the same as c or d and the 
+//      following uses of a[] is in eq/ne and its rhs is the same as
+//      c or d
+// 3.4) check there is no other def of c or d in between
+// 4) traverse the loop i in reverse post order to find the defs of c
+// 4.1) the reaching def of c should be a monotical increment or 
+//      a store of const
+// 4.2) if def is increment stmt only, then guard the loop with
+//      "if (i==0)"
+// 4.3) if def is increase and a store of const, then guard the loop
+//      with "if (i== 0 || c == const)"
+//===================================================================
+
+UselessStoreElimination::UselessStoreElimination(COMP_UNIT* comp_unit)
+{
+    _comp_unit = comp_unit;
+    _cfg = comp_unit->Cfg();
+    _opt_stab = comp_unit->Opt_stab();
+    _alias_rule = _opt_stab->Rule();
+    _htable = comp_unit->Htable();
+    _opt_count = 0;
+
+    _tracing = Get_Trace(TP_WOPT2, ULSE_TRACE_FLAG);
+}
+
+void
+UselessStoreElimination::Perform_Useless_Store_Elimination()
+{
+
+    BB_LOOP* loop_list = _cfg->Analyze_loops();
+    if (loop_list == NULL) return;
+
+    BB_LOOP_ITER loop_iter(loop_list);
+    BB_LOOP* loop;
+
+    // loop_list contains all the outermost loop
+    FOR_ALL_NODE (loop, loop_iter, Init()) {
+        Traverse_Loops(loop);
+    }
+
+    if (_opt_count > 0) {
+        
+        if (_tracing)
+            fprintf(stdout, "[ULSE] %d useless store loops are removed\n", _opt_count);
+
+        // After changing cfg, invalidate loops and other rpo... data 
+        // structures and rename the codemap
+        _cfg->Invalidate_loops();
+        _cfg->Invalidate_and_update_aux_info(TRUE);
+        _cfg->Analyze_loops();
+
+        Rename_CODEMAP(_comp_unit);
+    }
+}
+
+
+// traverse each loop, check the innermost loop is candidate 
+// or not and then perform transformation
+void
+UselessStoreElimination::Traverse_Loops(BB_LOOP* loop)
+{
+    if (loop->Child())
+    {
+        BB_LOOP_ITER loop_iter(loop->Child());
+        BB_LOOP *child;
+        FOR_ALL_NODE(child, loop_iter, Init()) {
+            Traverse_Loops(child);
+        }
+    }
+    else
+    {
+        Candidate_Clear();
+
+        // check the inner most loop
+        // this loop should have a parent loop
+        BB_LOOP * parent = loop->Parent();
+        if (parent == NULL) return;
+
+        // 1) Is the innermost loop applicable?
+        // only has one istore stmt a[j] = 0
+        STMTREP * st_stmt = Is_Applicable_Innerloop(loop);
+        if (st_stmt == NULL) return;
+
+        POINTS_TO * pt = st_stmt->Lhs()->Points_to(_opt_stab);
+        if (pt == NULL) return;
+
+        if (_tracing)
+        {
+            fprintf(stdout, "[ULSE] =========have applicable loop===========\n");
+            loop->Print(stdout);
+        }
+                        
+        // 2) is a freed after the parent loop before any uses?
+        if (!Is_Freed_in_BB(parent->Merge(), st_stmt->Lhs()))
+        {
+            if (_tracing)
+                fprintf(stdout, "[ULSE] rejected: because of no free after loop\n");
+            return;
+        }    
+
+        // 3) check all the defs and uses of a[]
+        // we need two passes here, because as in the above example
+        // "d = c" is before "a[x] = c". We need to find "a[x]=c" in the
+        // first pass and then in the second pass, record the copy of c
+        RPOBB_ITER cfg_iter(_cfg);
+        BB_NODE * bb;
+        FOR_ALL_ELEM(bb, cfg_iter, Init())
+        {
+           if (!Check_Uses_Defs_in_Loop(parent, st_stmt, bb, pt, TRUE))
+           {
+                if (_tracing)
+                    fprintf(stdout, "[ULSE] rejected: could not find a legal def\n");
+                return;
+           }     
+
+           if (_candidate.def_defbb != NULL) break;
+        }
+        if (_candidate.def_defbb == NULL) 
+        {
+            if (_tracing)
+                fprintf(stdout, "[ULSE] rejected: could not find a legal def\n");
+            return;
+        }
+        
+        // In the second pass, keep track of defs and uses of a[], 
+        // the def and uses's rhs should be the same as c or its copy
+        // and there is no other def to c or d between def and use
+        FOR_ALL_ELEM(bb, cfg_iter, Init())
+        {
+            if (!Check_Uses_Defs_in_Loop(parent, st_stmt, bb, pt, FALSE))
+            {
+                if (_tracing)
+                    fprintf(stdout, "[ULSE] rejected: defs/uses have different rhs\n");
+                return;
+            }    
+        }
+
+        // 4) check the def of c: they should be a incr [and const]
+        pt = _candidate.def_stmt->Rhs()->Points_to(_opt_stab);
+        if (pt == NULL) return;
+        FOR_ALL_ELEM(bb, cfg_iter, Init())
+        {
+            if (Have_Increment_Def(parent, bb, pt)) break;
+        }
+        if (!_candidate.def_inc)
+        {   
+            if (_tracing)
+                fprintf(stdout, "[ULSE] rejected: there is no monotically increased def\n"); 
+            return;
+        }    
+
+        // now add condition to the loop
+        if (!Perform_transform(loop)) return;
+
+        _opt_count ++;
+    }
+
+}
+
+// check whether this innermost loop is a candidate
+// only one istore stmt in the loop
+// if yes, return istore stmt, otherwise return NULL
+STMTREP *
+UselessStoreElimination::Is_Applicable_Innerloop(BB_LOOP* loop)
+{
+    STMTREP * ret_stmt = NULL;
+
+    if (!loop->Parent()->Merge()) return NULL;
+
+    int inst_count = 0;
+    BB_NODE_SET_ITER bb_iter;
+    BB_NODE* bb;
+    FOR_ALL_ELEM(bb, bb_iter, Init(loop->True_body_set())) {
+        if (bb == loop->End()
+            || bb == loop->Step()
+            || bb == loop->Loopback()
+            || bb == loop->Tail()) continue;
+
+        STMTREP_ITER stmt_iter (bb->Stmtlist());
+        STMTREP* stmt;
+        // the loop has one stmt, which is a "istore x 0"
+        FOR_ALL_NODE (stmt, stmt_iter, Init()) {
+
+            if (stmt->Opr() == OPR_LABEL
+                || stmt->Op() == OPC_PRAGMA
+                || stmt->Op() == OPC_XPRAGMA)
+                continue;
+
+            inst_count ++;
+            if (stmt->Opr() == OPR_ISTORE
+                && stmt->Rhs()->Kind() == CK_CONST
+                && stmt->Rhs()->Const_val() == 0) {
+                    ret_stmt = stmt;
+                    _candidate.clear_bb = bb;
+            }
+
+            if (inst_count >= 2)
+                return NULL;
+        }
+    }
+    return ret_stmt;
+}
+    
+// check whether the coderep cr is aliased with pt
+// or has a child coderep that is aliased with pt
+BOOL
+UselessStoreElimination::Aliased_with_CR(CODEREP * cr, POINTS_TO* pt)
+{
+    if (cr->Kind() == CK_OP)
+    {
+        for (INT i = 0; i < cr->Kid_count(); i++)
+        {
+            if (Aliased_with_CR(cr->Get_opnd(i), pt))
+                return TRUE;
+        }
+    }
+    if (cr->Kind() == CK_IVAR)
+    {
+        POINTS_TO * pt1 = cr->Points_to(_opt_stab);
+        if(pt1 && _alias_rule->Aliased_Memop(pt1, pt))
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+BOOL
+UselessStoreElimination::Aliased_with_base(CODEREP * cr1, POINTS_TO * pt)
+{
+    if (cr1->Kind() == CK_IVAR &&
+        cr1->Ilod_base() &&
+        cr1->Ilod_base()->Points_to(_opt_stab) != NULL &&
+        _alias_rule->Aliased_Memop(cr1->Ilod_base()->Points_to(_opt_stab), pt))
+        return TRUE;
+                
+    return FALSE;
+}
+
+BOOL
+UselessStoreElimination::Is_Freed_in_BB(BB_NODE * bb, CODEREP * cr)
+{
+    POINTS_TO * pt = cr->Points_to(_opt_stab);
+    
+    Is_True(pt!= NULL, ("should find points_to set"));
+
+    STMTREP_ITER stmt_iter (bb->Stmtlist());
+    STMTREP * stmt;
+    FOR_ALL_NODE(stmt, stmt_iter, Init())
+    {
+        // a free call before any uses
+        if (stmt->Opr() == OPR_CALL)
+        {
+            if (!strcmp(ST_name(stmt->St()),"free") &&
+                Aliased_with_base(stmt->Rhs()->Get_opnd(0), pt)) 
+            {
+                return TRUE;
+            }
+
+            if (Call_Can_be_Negelect(stmt, pt))
+                continue;
+
+            return FALSE;    
+
+        }
+        // should have no other uses
+        if (stmt->Lhs() && Aliased_with_CR(stmt->Lhs(), pt))
+        {
+            return FALSE;
+        }
+        if (stmt->Rhs() && Aliased_with_CR(stmt->Rhs(), pt))
+        {
+            return FALSE;
+        }
+    }
+
+    if (bb->Succ() == NULL ||
+        bb->Succ()->Multiple_bbs()) 
+        return FALSE;
+
+    return Is_Freed_in_BB(bb->Succ()->Node(), cr);
+}
+
+
+// check whether this is a known_effect call that does not
+// mod the user globals 
+BOOL
+UselessStoreElimination::Call_Can_be_Negelect(STMTREP * call, POINTS_TO *  pt)
+{
+    Is_True(OPERATOR_is_call(call->Opr()), ("Should be a call"));
+
+    if (call->Opr() == OPR_CALL &&
+        (!strcmp(ST_name(call->St()), "free") ||
+         !strcmp(ST_name(call->St()), "malloc")))
+         return TRUE;
+    
+    // After vcall promotion change, there should no vcall
+    if (call->Opr() == OPR_ICALL)  return TRUE;
+
+    // intrinsic call should have no alias with pt
+    if (call->Opr() == OPR_INTRINSIC_CALL)
+    {
+        if (Aliased_with_CR(call->Rhs(), pt)) {
+            return FALSE;
+        }    
+        
+        return TRUE;
+    }
+   
+    if (_tracing)
+       fprintf(stdout, "[ULSE] rejected: have unexpected calls in the loop\n");
+       
+    return FALSE;    
+}
+
+
+// keep track of all the def and use of a[] in the loop
+// if first pass (first = TRUE), return TRUE when the first def of "a[]=c" 
+// (after "a[]=0") is found;
+// return FALSE when any unwanted def/use of a[] is found
+// if second pass, record the copy of c (d=c), check whether 1) all the 
+// def of a[] has the same rhs as c or d and 2) all the uses of a[] is in ne/eq and 
+// compared with c or d 3) there is no other def to c or d
+BOOL
+UselessStoreElimination::Check_Uses_Defs_in_Loop(
+    BB_LOOP* loop, STMTREP* st_stmt, BB_NODE * bb,
+    POINTS_TO * pt, BOOL first)
+{
+    if (!loop->True_body_set()->MemberP(bb))
+        return TRUE;
+
+    STMTREP_ITER stmt_iter(bb->Stmtlist());
+    STMTREP *stmt;
+    FOR_ALL_NODE(stmt, stmt_iter, Init())
+    {
+        if (stmt == st_stmt) continue;
+
+        if (OPERATOR_is_call(stmt->Opr()))
+        {
+            // skip these "known" calls
+            if (Call_Can_be_Negelect(stmt, pt)) continue;
+            
+            return FALSE;
+        }
+        // the first pass to find the first def of a[]
+        if (first)
+        {
+            if ((stmt->Lhs() && !Check_First_Def_Coderep(stmt, bb, stmt->Lhs(), pt, TRUE)) ||
+                (stmt->Rhs() && !Check_First_Def_Coderep(stmt, bb, stmt->Rhs(), pt, FALSE)))
+                return FALSE;
+
+            if (_candidate.def_defbb != NULL) return TRUE;
+        }
+        // the second pass to check all the defs and uses of a[]
+        else
+        {
+            if ((stmt->Lhs() && !Check_Uses_Defs_Coderep(stmt, stmt->Lhs(), pt, TRUE)) ||
+                (stmt->Rhs() && !Check_Uses_Defs_Coderep(stmt, stmt->Rhs(), pt, FALSE)))
+                return FALSE;
+        }
+
+    }
+
+    return TRUE;
+}
+
+
+// check this cr is the def of a[], left=TRUE means it comes from lhs of a stmt
+BOOL
+UselessStoreElimination::Check_First_Def_Coderep(
+    STMTREP* stmt, BB_NODE *bb, CODEREP * cr, POINTS_TO * pt, BOOL left)
+{
+    if (cr->Kind() == CK_OP)
+    {
+        for (INT i = 0; i < cr->Kid_count(); i++)
+        {
+            if (!Check_First_Def_Coderep(stmt, bb, cr->Get_opnd(i), pt, left))
+                return FALSE;
+        }
+    }
+
+    if (cr->Kind() == CK_IVAR)
+    {
+        POINTS_TO * pt1 = cr->Points_to(_opt_stab);
+        if(pt1 && _alias_rule->Aliased_Memop(pt1, pt))
+        {
+            // the use should be the left side of istore
+            if ((stmt->Opr() == OPR_ISTORE) && left)
+            {
+                // the first def should be after the clear store
+                // that is, the first def's bb should postdominates
+                // the block where the clear store is
+                if (Is_Def_Candidate(stmt->Rhs()) &&
+                    bb->Postdominates(_candidate.clear_bb))
+                {
+                    _candidate.def = stmt->Rhs();
+                    _candidate.def_defbb = stmt->Rhs()->Defbb();
+                    _candidate.def_stmt = stmt->Rhs()->Defstmt();
+                    return TRUE;
+                }
+            }
+
+            Candidate_Clear();
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
+// check wthether this cr is the def or use of a[]
+// left=TRUE means it comes from the lhs of a stmt
+// if it is the def, then its rhs should be same as c or its copy
+// if it is the use, it should be in eq/ne and it is compared with c or its copy
+// there is no other def to c or d
+BOOL
+UselessStoreElimination::Check_Uses_Defs_Coderep(
+    STMTREP* stmt, CODEREP * cr, POINTS_TO * pt, BOOL left)
+{
+    if (cr->Kind() == CK_OP)
+    {
+        for (INT i = 0; i < cr->Kid_count(); i++)
+        {
+            if (!Check_Uses_Defs_Coderep(stmt, cr->Get_opnd(i), pt, left))
+                return FALSE;
+        }
+    }
+
+    if (cr->Kind() == CK_IVAR)
+    {
+        POINTS_TO * pt1 = cr->Points_to(_opt_stab);
+        if(pt1 && _alias_rule->Aliased_Memop(pt1, pt))
+        {
+            // keep track of the defs of a[]: its rhs should be c or d
+            if ((stmt->Opr() == OPR_ISTORE) && left)
+            {
+                if (!Same_as_first_def(stmt->Rhs()))
+                    return FALSE;
+            }
+            // keep track of uses of a[]: in eq/ne and its rhs should be c or d
+            else if ((stmt->Opr() == OPR_FALSEBR || stmt->Opr() == OPR_TRUEBR)
+                 && (stmt->Rhs()->Opr() == OPR_EQ || stmt->Rhs()->Opr() == OPR_NE))
+            {
+                if (stmt->Rhs()->Opnd(0) == cr &&
+                    !Same_as_first_def(stmt->Rhs()->Opnd(1)))
+                {
+                    return FALSE;
+                }
+                else if (stmt->Rhs()->Opnd(1) == cr &&
+                    !Same_as_first_def(stmt->Rhs()->Opnd(0)))
+                {
+                    return FALSE;
+                }
+            }
+            // no other uses of a[]
+            else
+                return FALSE;
+        }
+    }
+    // keep track of the copy of c and whether there is redefinition of c 
+    // or its copy
+    if (cr->Kind() == CK_VAR)
+    {
+        // keep track of the copy of the def
+        // here only the first copy is kept since it is enough for astar case
+        // ideally, all the copies should be kept for more relaxed opportunity 
+        if (stmt->Opr() == OPR_STID &&
+            !left &&
+            _candidate.def_copy == NULL &&
+            cr->Aux_id() == _candidate.def->Aux_id()) 
+        {
+            _candidate.def_copy = stmt->Lhs();
+        }
+        else
+        {
+            // having the other def for def or def_copy?
+            if (stmt != _candidate.def_stmt &&
+                stmt->Opr() == OPR_STID &&
+                left &&
+                (cr->Aux_id() == _candidate.def->Aux_id() ||
+                 (_candidate.def_copy != NULL &&
+                  cr->Aux_id() == _candidate.def_copy->Aux_id())))
+                return FALSE;
+        }
+
+    }
+    
+    return TRUE;
+}
+
+BOOL
+UselessStoreElimination::Is_Def_Candidate(CODEREP * def)
+{
+    if (def->Kind() != CK_VAR) return FALSE;
+
+    // the address of this def is not taken
+    // we just need to keep track of the def of this def
+    if (_opt_stab->Addr_saved(def->Aux_id()) ||
+        _opt_stab->Addr_passed(def->Aux_id()))
+        return FALSE;
+
+    // def's def can be found    
+    if (!def->Defstmt() || 
+        def->Is_flag_set(CF_DEF_BY_PHI) || 
+        def->Is_flag_set(CF_DEF_BY_CHI))
+        return FALSE;
+        
+    return TRUE;
+}
+
+BOOL
+UselessStoreElimination::Same_as_first_def(CODEREP* cr)
+{
+    // because there is no redef beteen def and use
+    // so we just use aux_id to compare they are the same
+    if (cr->Aux_id() == _candidate.def->Aux_id() ||
+        (_candidate.def_copy != NULL &&
+         cr->Aux_id() == _candidate.def_copy->Aux_id()))
+        return TRUE;
+
+    return FALSE;
+}
+
+
+// check whether the def of c include a increment (or a wrap around)
+BOOL
+UselessStoreElimination::Have_Increment_Def(
+    BB_LOOP * loop, BB_NODE* bb, POINTS_TO * st_pt)
+{
+    if (!loop->True_body_set()->MemberP(bb))
+        return FALSE;
+
+    STMTREP_ITER stmt_iter(bb->Stmtlist());
+    STMTREP *stmt;
+    FOR_ALL_NODE(stmt, stmt_iter, Init())
+    {
+        // find the def stmt, end the collection
+        if (stmt == _candidate.def_stmt) return TRUE;
+
+        if (OPERATOR_is_call(stmt->Opr()))
+        {
+            // skip these "known effect" calls
+            if (Call_Can_be_Negelect(stmt, st_pt)) continue;
+            
+            return FALSE;
+
+        }
+        if (stmt->Opr() == OPR_ISTORE)
+        {
+            POINTS_TO * pt = stmt->Lhs()->Points_to(_opt_stab);
+            if (pt && _alias_rule->Aliased_Memop(pt, st_pt))
+            {
+                INT const_val;
+                INT ret = Istore_Inc_Const_Other(stmt, &const_val);
+                switch (ret)
+                {
+                case Inc_Store:
+                    _candidate.def_inc = TRUE;
+                    break;
+                case Const_Store:
+                    // currently only allow one store const def
+                    if (!_candidate.def_const)
+                    {
+                        _candidate.def_const = TRUE;
+                        _candidate.def_const_val = const_val;
+                        break;
+                    }
+                    // if more than one store const, go to the default case
+                default:
+                    Candidate_Clear();
+                    return FALSE;
+                }
+           }
+       }
+    }
+
+    return FALSE;
+
+}
+
+// return Inc_Store, if the store is an increment
+// rturn Const_Store, if the store is a istore const
+// return Other_Store, if the store is others
+UselessStoreElimination::Store_Type
+UselessStoreElimination::Istore_Inc_Const_Other(STMTREP * stmt, INT * const_val)
+{
+    Is_True(stmt->Opr() == OPR_ISTORE, ("something wrong"));
+
+    if (stmt->Rhs()->Kind() == CK_CONST)
+    {
+        *const_val = stmt->Rhs()->Const_val();
+        return Const_Store;
+    }
+
+    if (stmt->Rhs()->Kind() == CK_OP &&
+        stmt->Rhs()->Opr() == OPR_ADD &&
+        stmt->Rhs()->Get_opnd(1)->Kind() == CK_CONST &&
+        stmt->Rhs()->Get_opnd(1)->Const_val() != 0 &&
+        stmt->Rhs()->Get_opnd(0)->Ilod_base()->Aux_id() == stmt->Lhs()->Istr_base()->Aux_id())
+    {
+        return Inc_Store;
+    }
+
+    return Other_Store;
+}
+
+
+// transform the loop: add conditions to the loop
+// the first condition is whether this is the first iteration of i ("if (i==0)")
+// if there is a wrap around case, add another condition "OR (def == wrap_around_const)"
+BOOL
+UselessStoreElimination::Perform_transform(BB_LOOP *loop)
+{
+    // generate the conditions to guard the loop
+    // 1) first condition is whether the first iteration of i loop
+    CODEREP *iv_init, *iv, *iv_comp;
+    AUX_ID iv_id;
+    STMTREP_ITER stmt_iter(loop->Parent()->Preheader()->Stmtlist());
+    STMTREP *stmt;
+    FOR_ALL_NODE(stmt, stmt_iter, Init())
+    {
+        if (stmt->Opr() == OPR_STID)
+        {   
+            // get the iv's initial val
+            iv_init = stmt->Rhs();
+            iv_id = stmt->Lhs()->Aux_id();
+            break;
+        }    
+    }
+    STMTREP_ITER stmt_iter1(loop->Parent()->End()->Stmtlist());
+    MTYPE iv_type;
+    FOR_ALL_NODE(stmt, stmt_iter1, Init())
+    {
+        if (stmt->Opr() == OPR_FALSEBR)
+        {
+            // get iv of loop i
+            if (stmt->Rhs()->Get_opnd(0)->Aux_id() == iv_id)
+                iv = stmt->Rhs()->Get_opnd(0);
+            else if (stmt->Rhs()->Get_opnd(1)->Aux_id() == iv_id)
+                iv = stmt->Rhs()->Get_opnd(1);
+            else
+                return FALSE;
+            iv_type = iv->Dtyp();
+            break;
+        }
+    }
+    
+    // generate the comparison (iv == iv_init)
+    iv_comp = Alloc_stack_cr(2+IVAR_EXTRA_NODE_CNT);
+    iv_comp->Init_op(OPCODE_make_op(OPR_EQ, iv_type, iv_type), 2);
+    iv_comp->Set_opnd(0,iv);
+    iv_comp->Set_opnd(1, iv_init);
+    iv_comp = _htable->Hash_Op(iv_comp);
+
+    // generate the falsebr statement
+    INT32 label = loop->Merge()->Labnam();
+    STMTREP* br = CXX_NEW(STMTREP(OPC_FALSEBR), _cfg->Mem_pool());
+    br->Set_rhs(iv_comp);
+    br->Set_label_number(label);
+
+    if (_tracing)
+    {
+        fprintf(stdout, "[ULSE] loop transformed: the following condition is added to the loop\n");
+        iv_comp->Print(4,stdout);
+    }
+    // insert bb containing br before loop's preheader and 
+    // connect it to loop's merge block
+    BB_NODE * new_bb = _cfg->ULSE_insert_bb_and_merge(
+                        br, loop->Preheader(), loop->Merge());
+
+    
+    // 2) generate another condition for the wrap around case
+    // the condition is "def == wrap_around_const"
+    // the two conditions are OR relation
+    if (_candidate.def_const)
+    {
+        CODEREP * cond, *ldid, *ldconst;
+        MTYPE def_type = _candidate.def->Dtyp();
+        ldconst = Alloc_stack_cr(0);
+        ldconst->Init_const(OPCODE_make_op(OPR_INTCONST, def_type, MTYPE_V),
+                    _candidate.def_const_val);
+        ldconst = _htable->Hash_Const(ldconst);
+        cond = Alloc_stack_cr(2+IVAR_EXTRA_NODE_CNT);
+        cond->Init_op(OPCODE_make_op(OPR_EQ, def_type, def_type), 2);
+        cond->Set_opnd(0, ldconst);
+        cond->Set_opnd(1, _candidate.def_stmt->Rhs());
+        cond = _htable->Hash_Op(cond);
+    
+        label = loop->Preheader()->Labnam();
+        br = CXX_NEW(STMTREP(OPC_TRUEBR), _cfg->Mem_pool());
+        br->Set_rhs(cond);
+        br->Set_label_number(label);
+        
+        if (_tracing)
+        {
+            fprintf(stdout, "OR\n");
+            cond->Print(4, stdout);
+        }
+        // insert a block containing br before the previous condition block
+        // and connect it to loop's preheader
+        _cfg->ULSE_insert_bb_and_merge(br, new_bb, loop->Preheader());
+        
+    }
+
+    return TRUE;
+}
+
+//===================================================================
+// This function is to generate a condition block before before_bb
+// and connect to merge_bb
+//            before_bb's preds
+//                  |
+//                  V
+//            condition block
+//              /         \
+//             |           V
+//             |         before_bb
+//             |           |
+//             |           V
+//              \         ....
+//               \         |
+//                V        V
+//                 merge-bb
+//                    |
+//                    V
+//====================================================================
+BB_NODE *
+CFG::ULSE_insert_bb_and_merge(STMTREP * stmt, 
+    BB_NODE * before_bb, BB_NODE * merge_bb)
+{
+    BB_NODE* cond_bb = Create_and_allocate_bb (BB_LOGIF);
+    cond_bb->Append_stmtrep(stmt);
+
+    before_bb->Insert_Before(cond_bb);
+    BB_NODE* pred;
+    BB_LIST_ITER pred_iter;
+    FB_FREQ edge_freq = 0;
+    FOR_ALL_ELEM (pred, pred_iter, Init(before_bb->Pred()))
+    {
+        pred->Replace_succ (before_bb, cond_bb);
+        if (Feedback())
+            edge_freq = edge_freq +
+                Feedback()->Get_edge_freq(pred->Id(), before_bb->Id());
+    }
+
+    cond_bb->Set_pred(before_bb->Pred());
+    before_bb->Set_pred(NULL);
+    Connect_predsucc(cond_bb, before_bb);
+    Connect_predsucc(cond_bb, merge_bb); 
+
+    if (Feedback())
+    {
+        Feedback()->Add_node(cond_bb->Id());
+        Feedback()->Add_edge(cond_bb->Id(), before_bb->Id(),
+                            FB_EDGE_BRANCH_NOT_TAKEN, 0.5 * edge_freq);
+        Feedback()->Add_edge(cond_bb->Id(), merge_bb->Id(),
+                            FB_EDGE_BRANCH_TAKEN, 0.5 * edge_freq);
+    }
+
+    return cond_bb;
+
+}
+

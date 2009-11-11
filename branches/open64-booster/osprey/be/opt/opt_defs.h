@@ -202,6 +202,7 @@ Is_fortran(void)
 #define LCLSC_TRACE_FLAG 0x00000200 /* trace stack shrink optimization */
 #define PRO_TRANS_TRACE_FLAG 0x00000400 /* trace proactive loop fusion transformation */
 #define PRO_TRANS_DUMP_FLAG  0x00000800 /* dump proactive loop fusion transformation */
+#define ULSE_TRACE_FLAG      0x00001000 /* trace the useless store remove transformation */
 
 
 /* Flags associated with value numbering scheme and the 

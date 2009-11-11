@@ -714,6 +714,9 @@ public:
   // code generation for loop multiversioning.
   BOOL         LMV_eligible_for_multiversioning (const BB_LOOP*, BOOL);
   void         LMV_clone_loop (LMV_CFG_ADAPTOR*);
+
+  // for the phase of removing useless store loop
+  BB_NODE * ULSE_insert_bb_and_merge(STMTREP*, BB_NODE*, BB_NODE*);
   BOOL         If_convertible_cond(WN* wn);
   BOOL         If_conv_criteria_met(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then);
   BOOL         Screen_cand(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then);

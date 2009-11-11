@@ -1142,7 +1142,10 @@ BB_LOOP::Print(FILE *fp) const
     fprintf(fp, "not a well-formed loop\n");
   if (End() != NULL) {
     fprintf(fp, "SCF: START %d, END %d, BODY %d, MERGE %d\n",
-	    Start()->Id(), End()->Id(), Body()->Id(), Merge()->Id());
+	    Start() ? Start()->Id() : 0,
+        End() ? End()->Id() : 0, 
+        Body() ? Body()->Id() : 0 , 
+        Merge() ? Merge()->Id() : 0);
   }
 
   BOOL in_mainopt = Start() && Start()->Kind() == BB_DOHEAD;

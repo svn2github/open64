@@ -360,6 +360,7 @@
 #include "opt_misc.h"
 #include "opt_lmv.h"
 #include "opt_lmv_helper.h"
+
 #if defined(TARG_SL)
 #include "opt_lclsc.h"
 #endif
@@ -531,6 +532,7 @@ private:
   BOOL  _spre_before_ivr; // For running spre early
   BOOL  _bdce_before_ivr; // For running bdce early
   BOOL  _loop_multiver;   // loop multiversioning 
+  BOOL  _useless_store_elimination; // eliminate useless store in a loop
   BOOL _pro_loop_fusion_trans; 
   BOOL _mem_clear_remove;
   BOOL _bool_simp;
@@ -724,13 +726,17 @@ private:
       WOPT_Enable_Bdce_Before_Ivr = FALSE; // For running bdce early
     }
     
-    if (_phase != PREOPT_LNO_PHASE) {
-      WOPT_Enable_Loop_Multiver = FALSE;
-      WOPT_Enable_Mem_Clear_Remove = FALSE;
+    if (_phase != PREOPT_LNO_PHASE) 
+    {
+        WOPT_Enable_Loop_Multiver = FALSE;
+        WOPT_Enable_Mem_Clear_Remove = FALSE;
+        WOPT_Enable_Useless_Store_Elimination = FALSE;
     }
 
-    if (_phase != PREOPT_LNO1_PHASE)
+    if (_phase != PREOPT_LNO1_PHASE) 
+    {
       WOPT_Enable_Pro_Loop_Fusion_Trans = FALSE;
+    }
   }
 
   void Unadjust_Optimization(void) {
@@ -843,6 +849,7 @@ private:
 
     Alias_Pointer_Parms = _alias_pointer_parms;
     WOPT_Enable_Loop_Multiver = _loop_multiver;
+    WOPT_Enable_Useless_Store_Elimination = _useless_store_elimination;
   }
 
 public:
@@ -918,6 +925,7 @@ public:
     _spre_before_ivr = WOPT_Enable_Spre_Before_Ivr; // For running spre early
     _bdce_before_ivr = WOPT_Enable_Bdce_Before_Ivr; // For running bdce early
     _loop_multiver = WOPT_Enable_Loop_Multiver;
+    _useless_store_elimination = WOPT_Enable_Useless_Store_Elimination;
     _pro_loop_fusion_trans = WOPT_Enable_Pro_Loop_Fusion_Trans;
     _mem_clear_remove = WOPT_Enable_Mem_Clear_Remove;
     _bool_simp = WOPT_Enable_Bool_Simp;
@@ -1968,6 +1976,16 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
     if (WOPT_Enable_Loop_Multiver) {
       LOOP_MULTIVER lm (comp_unit);
       lm.Perform_loop_multiversioning ();
+    }
+
+
+    if (WOPT_Enable_Useless_Store_Elimination)
+    {
+        
+        SET_OPT_PHASE("Useless Store Elimination");
+
+        UselessStoreElimination ulse(comp_unit);
+        ulse.Perform_Useless_Store_Elimination();
     }
 
     SET_OPT_PHASE("Emitter");
