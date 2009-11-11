@@ -574,10 +574,21 @@ void INITO::Verify(UINT level) const
   Is_True(ST_is_initialized (St_Table[st_idx]),
 	   ("ST_IS_INITIALIZED not set"));
 #endif
-  Is_True(0 <  val && val < INITV_Table_Size(),
-           ("Invalid field for INITO: val"));
-  Is_True(level == ST_IDX_level(st_idx),
-	  ("INITO/st_idx level mismatch"));
+
+  ST& st = St_Table[st_idx];
+  const TY& ty = Ty_Table[ST_type(st)];
+  if (( TY_kind (ty) == KIND_ARRAY)
+      && (TY_size (ty) == 0))
+  { 
+    Is_True(0 == val,("Zero sized arrays can't have an initializer"));
+  } 
+  else
+  { 
+    Is_True(0 <  val && val < INITV_Table_Size(),
+             ("Invalid field for INITO: val"));
+    Is_True(level == ST_IDX_level(st_idx),
+	    ("INITO/st_idx level mismatch"));
+  }
 #endif
 }
 
