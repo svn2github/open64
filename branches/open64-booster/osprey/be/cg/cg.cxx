@@ -1631,6 +1631,10 @@ CG_Generate_Code(
 
 #else 
   IGLS_Schedule_Region (FALSE /* after register allocation */);
+  // use cflow to handle branch fusing cmp/jcc for Orochi and greater.
+  if (Is_Target_Orochi()) {
+    CFLOW_Optimize(CFLOW_BR_FUSE, "CFLOW (fifth pass)");
+  }
 #endif
 
 #if defined(TARG_MIPS) && !defined(TARG_SL)

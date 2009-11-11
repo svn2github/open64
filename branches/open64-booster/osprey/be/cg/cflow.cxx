@@ -1510,6 +1510,57 @@ Finalize_BB(BB *bp)
 }
 
 
+#ifdef TARG_X8664
+/* ====================================================================
+ *
+ * Br_Fuse_BB
+ *
+ * Do branch fuse processing for a BB -- mostly manipulating cmp instructions.
+ *
+ * ====================================================================
+ */
+static void
+Br_Fuse_BB(BB *bp)
+{
+  if (BBINFO_kind(bp) == BBKIND_LOGIF) {
+    OP *br = BB_branch_op(bp);
+    OP *cmp = BBINFO_compare_op(bp);
+    if (cmp != NULL && OP_bb(cmp) == bp) {
+      ARC_LIST *anti_arcs;
+      OP *cmp_next = OP_next(cmp);
+
+      // If we are already optimal, do nothing.
+      if (cmp_next == br)
+        return;
+
+      // Now check for a modifier to the use regs of the cmp.
+      CG_DEP_Compute_Graph ( bp,
+                             INCLUDE_ASSIGNED_REG_DEPS,
+                             NON_CYCLIC,
+                             NO_MEMREAD_ARCS,
+                             INCLUDE_MEMIN_ARCS,
+                             NO_CONTROL_ARCS,
+                             NULL);
+
+      // Check for anti-deps on the cmp's src operands
+      for (anti_arcs = OP_succs(cmp);
+           anti_arcs != NULL; anti_arcs = ARC_LIST_rest(anti_arcs)) {
+        ARC *anti_arc = ARC_LIST_first(anti_arcs);
+        OP *succ_op = ARC_succ(anti_arc);
+        if (ARC_kind(anti_arc) != CG_DEP_REGANTI) continue;
+
+        // if the current def precedes the br we cannot perform the fuse.
+        if (OP_Precedes(succ_op, br))
+          return; 
+      }
+
+      BB_Move_Op_Before(bp, br, bp, cmp);
+      CG_DEP_Delete_Graph (bp);
+    }
+  }
+}
+#endif
+
 /* ====================================================================
  *
  * Finalize_All_BBs
@@ -1540,6 +1591,29 @@ Finalize_All_BBs(void)
     EH_Prune_Range_List();
   }
 }
+
+
+#ifdef TARG_X8664
+/* ====================================================================
+ *
+ * Br_Fuse_All_BBs
+ *
+ * Do branch fuse processing for all BBs in the region.
+ *
+ * ====================================================================
+ */
+static void
+Br_Fuse_All_BBs(void)
+{
+  BB *bp;
+  BB *next;
+
+  for (bp = REGION_First_BB; bp; bp = next) {
+    next = BB_next(bp);
+    Br_Fuse_BB(bp);
+  }
+}
+#endif
 
 
 /* ====================================================================
@@ -7468,6 +7542,12 @@ CFLOW_Optimize(INT32 flags, const char *phase_name)
     }
     flow_change |= change;
   }
+
+#ifdef TARG_X8664
+  if (current_flags & CFLOW_BR_FUSE) {
+    Br_Fuse_All_BBs();
+  }
+#endif
 
   /* If we made any flow changes, re-create the preds and succs lists.
    */
