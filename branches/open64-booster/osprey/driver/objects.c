@@ -449,7 +449,7 @@ add_object (int flag, char *arg)
 
 	       break;
 	case O_WlC:
-	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
+	       if (ld_phase == P_ld || ld_phase == P_ldplus || ld_phase == P_ipa_link) {
 #ifdef TARG_SL
                  // ld didn't support -Wl in SL
                  add_string(objects, arg);
