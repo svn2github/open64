@@ -1011,13 +1011,13 @@ fixpoint_eliminate_subexp_from_nary (
             change = true;
             if (nout.size() == 0) {
                 nary_exp anewcseterm(AWN, cseterm.aop, cseterm.aopc);
-                anewcseterm.awn = WN_copy(cseterm.awn);
+                anewcseterm.awn = WN_COPY_Tree_With_Map(cseterm.awn);
                 WN_set_aux (anewcseterm.awn, WN_aux(cseterm.awn));
                 return anewcseterm;
             } else {
                 nary_exp outnary (NARY, from.aop, from.aopc);
                 nary_exp anewcseterm(AWN, cseterm.aop, cseterm.aopc);
-                anewcseterm.awn = WN_copy(cseterm.awn);
+                anewcseterm.awn = WN_COPY_Tree_With_Map(cseterm.awn);
                 WN_set_aux (anewcseterm.awn, WN_aux(cseterm.awn));
                 nout.push_back(anewcseterm);
                 outnary.anary = nout;
@@ -1135,8 +1135,8 @@ void eliminate_subexp (reasso_struct& rrec,
 #endif
     TY_IDX arg_type = ST_type(rrec.optstab->St(tmp_preg));
     WN *ldid = WN_CreateLdid(OPR_LDID, 
-                    TY_mtype(arg_type), 
-                    TY_mtype(arg_type),
+                    WN_rtype(what.awn), 
+                    WN_rtype(what.awn),
 		    rrec.optstab->St_ofst(tmp_preg), 
 		    ST_st_idx(rrec.optstab->St(tmp_preg)), 
                     arg_type);
@@ -1159,8 +1159,8 @@ void eliminate_subexp (reasso_struct& rrec,
 #endif
     arg_type = ST_type(rrec.optstab->St(tmp_preg_comp));
     WN *ldid_comp = WN_CreateLdid(OPR_LDID, 
-                    TY_mtype(arg_type), 
-                    TY_mtype(arg_type),
+                    WN_rtype(what.awn), 
+                    WN_rtype(what.awn),
 		    rrec.optstab->St_ofst(tmp_preg_comp), 
 		    ST_st_idx(rrec.optstab->St(tmp_preg_comp)), 
                     arg_type);
@@ -1169,8 +1169,10 @@ void eliminate_subexp (reasso_struct& rrec,
     cse_comp_term.awn = ldid_comp;
     pair<AUX_ID, WN*> apair_comp;
     apair_comp.first = WN_aux(ldid_comp);
+    WN* acop = WN_COPY_Tree_With_Map(ldid);
+    WN_set_aux(acop,(AUX_ID)tmp_preg);
     apair_comp.second = fold_neg_WHIRL(
-            WN_Unary(OPR_NEG, WN_rtype(ldid), WN_copy(ldid)));
+            WN_Unary(OPR_NEG, WN_rtype(ldid), acop));
     rrec.excised_subexps_stids_comp[cse_comp_name] = apair_comp;
 
     for (nari_it = rrec.canonicalized_input_trees.begin();
@@ -1345,12 +1347,12 @@ void do_reassociation(reasso_struct& reas_st,
                     Init(bb->Firststmt(), bb->Laststmt())) {
                 if (WHIRL_has_term(wn, (*mymait).second.first)
                         == true) {
-                    WN* awn = WN_copy ((*mymait).second.second);
+                    WN* awn = WN_COPY_Tree_With_Map ((*mymait).second.second);
                     WN * theldid = WHIRL_get_term (wn, 
                             (*mymait).second.first);
-                    TYPE_ID arg_type_id = WN_rtype(awn);
+                    TYPE_ID arg_type_id = OPCODE_desc(WN_opcode(theldid));
                     AUX_ID tmp_preg = WN_aux(theldid);
-                    WN *stid = WN_CreateStid(OPR_STID, TY_mtype(WN_ty(awn)), 
+                    WN *stid = WN_CreateStid(OPR_STID, MTYPE_V,
                             arg_type_id, reas_st.optstab->St_ofst(tmp_preg), 
 			    ST_st_idx(reas_st.optstab->St(tmp_preg)),
 			    Be_Type_Tbl(arg_type_id), awn);
@@ -1371,12 +1373,12 @@ there1:  ;
                     Init(bb->Firststmt(), bb->Laststmt())) {
                 if (WHIRL_has_term(wn, (*mymait).second.first)
                         == true) {
-                    WN* awn = WN_copy ((*mymait).second.second);
+                    WN* awn = WN_COPY_Tree_With_Map ((*mymait).second.second);
                     WN * theldid = WHIRL_get_term (wn, 
                             (*mymait).second.first);
-                    TYPE_ID arg_type_id = WN_rtype(awn);
+                    TYPE_ID arg_type_id = WN_rtype(theldid);
                     AUX_ID tmp_preg = WN_aux(theldid);
-                    WN *stid = WN_CreateStid(OPR_STID, TY_mtype(WN_ty(awn)), 
+                    WN *stid = WN_CreateStid(OPR_STID, MTYPE_V,
                             arg_type_id, reas_st.optstab->St_ofst(tmp_preg), 
 			    ST_st_idx(reas_st.optstab->St(tmp_preg)),
 			    Be_Type_Tbl(arg_type_id), awn);
@@ -2136,7 +2138,9 @@ build_associate_trees_collect_terms (
              snait = terms.begin(); snait != terms.end(); ++snait) {
                 // termset is used in the main routine
                 // toplvl_bb
-                termset.insert(WN_aux((*snait).awn));
+                if (WN_operator ((*snait).awn) == OPR_LDID) {
+                    termset.insert(WN_aux((*snait).awn));
+                }
             }
             // push canonicalized expressions into 
             // assovec for processing by do_reassociation

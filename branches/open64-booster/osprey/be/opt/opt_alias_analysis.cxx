@@ -3429,6 +3429,7 @@ OPT_STAB::Transfer_alias_class_to_occ_and_aux(RID *const rid,
 	    !REGION_has_black_regions(rid)) {
 	  if (sym_pt->Alias_class() == OPTIMISTIC_AC_ID) {
 	    Is_True(WOPT_Enable_Tail_Recur ||	// Tail recursion elim introduces PREGs.
+                    WOPT_Enable_Reassociation_CSE || 
 		    (opr == OPR_LDA &&
 		     ST_class(Aux_stab_entry(WN_aux(wn))->st) == CLASS_FUNC) ||
 		    Aux_stab_entry(WN_aux(wn))->Is_dedicated_preg(),
