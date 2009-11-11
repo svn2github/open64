@@ -306,6 +306,7 @@ extern BOOL  WOPT_Enable_Aggr_Pt_Keep_Track_Ptr;
 extern BOOL  WOPT_Enable_Noreturn_Attr_Opt;  // __attribute_((noreturn)) related opt
 extern BOOL  WOPT_Enable_Pt_Summary;  // Points-to summary/annotation
 extern BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans; // Enables proactive loop fusion transformation
+extern BOOL  WOPT_Enable_Mem_Clear_Remove;  // Enables removal of redundant mem clear after a calloc
 extern INT32 WOPT_Enable_Pro_Loop_Fusion_Func_Limit; // Enable proactive loop fusion transformation
                                                      // for functions within the limit.
 extern INT32 WOPT_Enable_If_Merge_Limit;  // Limit number of if-merging transformations per function.

@@ -330,6 +330,8 @@ INT32 WOPT_Enable_Pro_Loop_Fusion_Func_Limit = -1; // Enable proactive loop fusi
                                                   // functions within the limit.
 BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans = TRUE;  // Enables proactive loop fusion transformation
 
+BOOL  WOPT_Enable_Mem_Clear_Remove = TRUE;  // Enables removal of redundant mem clear after a calloc
+
 #ifdef KEY
 BOOL  WOPT_Enable_Preserve_Mem_Opnds = FALSE; // if TRUE, suppress EPRE on 
 				// iloads that are operands of FP operations
@@ -758,6 +760,8 @@ static OPTION_DESC Options_WOPT[] = {
     TRUE, 0, 0,	&WOPT_Enable_New_Phase_Ordering, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "pro_loop_fusion_trans", "pro_loop_fusion_trans",
     FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Fusion_Trans, NULL },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "mem_clear_remove", "mem_clear_remove",
+    FALSE, 0, 1, &WOPT_Enable_Mem_Clear_Remove, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "if_merge_limit",              "",
     INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_If_Merge_Limit, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "tail_dup_limit",              "",

@@ -254,6 +254,8 @@ static void Perform_Inline_Script_Analysis(IPA_CALL_GRAPH* cg, MEM_POOL* pool, M
 
 extern void IPA_struct_opt_legality (void);
 
+extern void IPA_identify_no_return_procs(void);
+
 //-------------------------------------------------------------------------
 // the main analysis phase at work! 
 //-------------------------------------------------------------------------
@@ -849,4 +851,5 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
     CGB_IPA_Terminate();
 #endif
 
+   IPA_identify_no_return_procs();
 }

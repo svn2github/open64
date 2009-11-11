@@ -2503,6 +2503,7 @@ block_is_straight_line_no_return(WN *wn)
   {
     if (WN_operator(wn) == OPR_PRAGMA ||
         WN_operator(wn) == OPR_CALL ||
+        WN_operator(wn) == OPR_ICALL ||
         WN_operator(wn) == OPR_STID)
     {
       // OK
@@ -2882,6 +2883,108 @@ find_reaching_def_for_tracked_global_var_st(WN *wn)
     wn = WN_next(wn);
   }
   return;
+}
+
+// Walks the func body to determine if the function has a call to 
+// either an exit sys call or to another function that never returns
+// Ideally, this is true if the block containing the exit call (or a call
+// to another function that does not return) post-dominates the entry block
+// For now we look for the most basic patterns to determine the same.
+static BOOL IPA_check_if_proc_does_not_return(IPA_NODE *node)
+{
+  PU& pu = node->Get_PU();
+  if (node->PU_Can_Throw() || PU_calls_setjmp(pu) || PU_calls_longjmp(pu))
+    return FALSE;
+
+  TY_IDX ret_type = TY_ret_type(PU_prototype(pu));
+  if (TY_kind(ret_type) != KIND_VOID)
+    return FALSE;
+
+  WN *func_entry = node->Whirl_Tree(FALSE);
+  if (WN_operator(func_entry) != OPR_FUNC_ENTRY)
+    return FALSE;
+
+  WN *func_body = WN_kid(func_entry, WN_kid_count(func_entry)-1);
+  if (WN_operator(func_body) != OPR_BLOCK)
+    return FALSE;
+
+  for (WN *wn = WN_first(func_body); wn; wn = WN_next(wn)) 
+  {
+    switch (WN_operator(wn)) {
+      case OPR_PRAGMA:
+      case OPR_LDID:
+      case OPR_STID:
+        break;
+      case OPR_IF:
+        // check if there is a return inside the then/else block 
+        if (!block_is_straight_line_no_return(WN_then(wn)) ||
+            !block_is_straight_line_no_return(WN_else(wn)))
+          return FALSE; 
+        break;
+      case OPR_CALL:
+        if (!strcmp("exit", ST_name(WN_st(wn))) ||
+            WN_Call_Never_Return(wn))
+          return TRUE;
+        break;
+      default: 
+        return FALSE;
+    }
+  }
+  return FALSE;
+}
+
+// Checks if the function does not return, and if so, sets the
+// no return bit at the call site and recursively checks for the
+// same for each of the callers.
+static void IPA_identify_no_return_proc_recursive(IPA_NODE *node)
+{
+  BOOL no_return = IPA_check_if_proc_does_not_return(node);
+
+  if (!no_return)
+    return;
+
+  // Mark its callers appropriately
+  IPA_PRED_ITER preds (node->Node_Index());
+  for (preds.First(); !preds.Is_Empty(); preds.Next())
+  {
+    IPA_EDGE * edge = preds.Current_Edge();
+    if (edge) 
+    {
+      IPA_NODE *caller = IPA_Call_Graph->Caller(edge);
+      IPA_NODE_CONTEXT context(caller);
+      caller->Whirl_Tree(TRUE);
+      IPA_Call_Graph->Map_Callsites(caller);
+      WN *call = edge->Whirl_Node();
+      WN_Set_Call_Never_Return(call);
+      IPA_identify_no_return_proc_recursive(caller);
+    }
+  }
+}
+
+// Identify if a procedure returns to its caller
+void IPA_identify_no_return_procs()
+{
+  IPA_NODE_ITER cg_iter(IPA_Call_Graph, DONTCARE);
+  for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next())
+  {
+    IPA_NODE *node = cg_iter.Current();
+    if (!node)
+      continue;
+
+    // We cannot process on nested PUs because IPL requires
+    // that their parent PUs be processed first
+    if (node->Is_Nested_PU() || node->Summary_Proc()->Is_alt_entry())
+      return;
+
+    // Start with the leaf nodes
+    IPA_SUCC_ITER succs(node->Node_Index());
+    succs.First();
+    if (succs.Is_Empty()) 
+    {
+      IPA_NODE_CONTEXT context(node);
+      IPA_identify_no_return_proc_recursive(node);
+    }
+  }
 }
 
 // This function identifies global vars inside the input function whose function

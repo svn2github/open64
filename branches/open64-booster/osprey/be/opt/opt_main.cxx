@@ -387,6 +387,11 @@ static PU_IDX    Opt_current_pu;
 
 static void identify_complete_struct_relayout_candidates(WN *wn);
 
+extern void 
+remove_redundant_mem_clears(WN *func,
+                            ALIAS_MANAGER *alias_mgr,
+                            DU_MANAGER *du_mgr);
+
 static void Opt_memory_init_pools(void)
 {
   OPT_POOL_Initialize(&Opt_global_pool, "Opt_global_pool", FALSE,
@@ -527,6 +532,7 @@ private:
   BOOL  _bdce_before_ivr; // For running bdce early
   BOOL  _loop_multiver;   // loop multiversioning 
   BOOL _pro_loop_fusion_trans; 
+  BOOL _mem_clear_remove;
   BOOL _bool_simp;
   BOOL _fold_lda_iload_istore;
   BOOL _no_return;
@@ -718,7 +724,10 @@ private:
       WOPT_Enable_Bdce_Before_Ivr = FALSE; // For running bdce early
     }
     
-    if (_phase != PREOPT_LNO_PHASE) WOPT_Enable_Loop_Multiver = FALSE;
+    if (_phase != PREOPT_LNO_PHASE) {
+      WOPT_Enable_Loop_Multiver = FALSE;
+      WOPT_Enable_Mem_Clear_Remove = FALSE;
+    }
 
     if (_phase != PREOPT_LNO1_PHASE)
       WOPT_Enable_Pro_Loop_Fusion_Trans = FALSE;
@@ -813,6 +822,7 @@ private:
     }
 
     WOPT_Enable_Pro_Loop_Fusion_Trans = _pro_loop_fusion_trans;
+    WOPT_Enable_Mem_Clear_Remove = _mem_clear_remove;
     WOPT_Enable_Noreturn_Attr_Opt = _no_return;
     WOPT_Enable_Simple_If_Conv = _simp_if_conv;
     WOPT_Enable_Bool_Simp = _bool_simp;
@@ -909,6 +919,7 @@ public:
     _bdce_before_ivr = WOPT_Enable_Bdce_Before_Ivr; // For running bdce early
     _loop_multiver = WOPT_Enable_Loop_Multiver;
     _pro_loop_fusion_trans = WOPT_Enable_Pro_Loop_Fusion_Trans;
+    _mem_clear_remove = WOPT_Enable_Mem_Clear_Remove;
     _bool_simp = WOPT_Enable_Bool_Simp;
     _fold_lda_iload_istore = WOPT_Enable_Fold_Lda_Iload_Istore;
     _no_return = WOPT_Enable_Noreturn_Attr_Opt;
@@ -2021,6 +2032,9 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
     if (This_preopt_renumbers_pregs(phase)) {
       Set_PU_Info_flags(Current_PU_Info, PU_PREGS_RENUMBERED);
     }
+
+    // Identify redudant mem clears that follow a calloc and remove them
+    remove_redundant_mem_clears(opt_wn, alias_mgr, du_mgr);
 
     CXX_DELETE(comp_unit, &Opt_global_pool);
     Opt_memory_terminate_pools();
