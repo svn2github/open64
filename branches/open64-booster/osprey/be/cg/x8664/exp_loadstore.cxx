@@ -179,6 +179,7 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
   case MTYPE_V8I1: 
   case MTYPE_V8I2: 
   case MTYPE_V8I4: 
+  case MTYPE_V8I8: 
   case MTYPE_V8F4:
   case MTYPE_M8I1:
   case MTYPE_M8I2:
@@ -190,6 +191,16 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
       return base != NULL ? TOP_ld64_2sse : TOP_ld64_2sse_n32;
     else
       return base != NULL ? TOP_ldlps : TOP_ldlps_n32;
+
+  case MTYPE_V32I1:
+  case MTYPE_V32I2:
+  case MTYPE_V32I4:
+  case MTYPE_V32I8:
+    return base != NULL ? TOP_vlddqa : TOP_vlddqa_n32;
+  case MTYPE_V32F4:
+    return base != NULL ? TOP_vldaps : TOP_vldaps_n32;
+  case MTYPE_V32F8:
+    return base != NULL ? TOP_vldapd : TOP_vldapd_n32;
 
   case MTYPE_V:
     if (rtype != MTYPE_V)
@@ -426,6 +437,7 @@ Pick_Store_Instruction( TYPE_ID mtype,
   case MTYPE_V8I1: 
   case MTYPE_V8I2: 
   case MTYPE_V8I4: 
+  case MTYPE_V8I8: 
   case MTYPE_V8F4:
   case MTYPE_M8I1:
   case MTYPE_M8I2:
@@ -437,6 +449,16 @@ Pick_Store_Instruction( TYPE_ID mtype,
       return base != NULL ? TOP_store64_fsse : TOP_store64_fsse_n32;
     else
       return base != NULL ? TOP_stlps : TOP_stlps_n32;
+
+  case MTYPE_V32I1:
+  case MTYPE_V32I2:
+  case MTYPE_V32I4:
+  case MTYPE_V32I8:
+    return base != NULL ? TOP_vstdqa : TOP_vstdqa_n32;
+  case MTYPE_V32F4:
+    return base != NULL ? TOP_vstaps : TOP_vstaps_n32;
+  case MTYPE_V32F8:
+    return base != NULL ? TOP_vstapd : TOP_vstapd_n32;
 
   default:  FmtAssert(FALSE, ("NYI: Pick_Store_Instruction mtype"));
     return TOP_UNDEFINED;
@@ -588,7 +610,7 @@ Expand_Misaligned_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT vari
     else Build_OP (TOP_lddqu_n32, result, disp, ops);    
   }
   else if (mtype == MTYPE_V8I1 || mtype == MTYPE_V8I2 ||
-	   mtype == MTYPE_V8I4) {
+	   mtype == MTYPE_V8I4 || mtype == MTYPE_V8I8) {
     if (base != NULL)
       Build_OP(!Is_Target_SSE2() ? TOP_ldlps : TOP_ld64_2sse, result, base, disp, ops);    
     else Build_OP(!Is_Target_SSE2() ? TOP_ldlps_n32 : TOP_ld64_2sse_n32, result, disp, ops);    
@@ -653,7 +675,7 @@ Expand_Misaligned_Store (TYPE_ID mtype, TN *obj_tn, TN *base_tn, TN *disp_tn, VA
       Build_OP (TOP_stdqu, obj_tn, base_tn, disp_tn, ops);
     else Build_OP (TOP_stdqu_n32, obj_tn, disp_tn, ops);
   }
-  else if (mtype == MTYPE_V8I1 || mtype == MTYPE_V8I2 || mtype == MTYPE_V8I4) {
+  else if (mtype == MTYPE_V8I1 || mtype == MTYPE_V8I2 || mtype == MTYPE_V8I4 || mtype == MTYPE_V8I8 ) {
     if (base_tn != NULL)
       Build_OP(!Is_Target_SSE2() ? TOP_stlps : TOP_store64_fsse, obj_tn, base_tn, disp_tn, ops);
     else Build_OP(!Is_Target_SSE2() ? TOP_stlps_n32 : TOP_store64_fsse_n32, obj_tn, disp_tn, ops);

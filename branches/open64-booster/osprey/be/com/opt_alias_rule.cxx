@@ -457,20 +457,27 @@ static hash_map<const TY_IDX, INT, __gnu_cxx::hash<TY_IDX>, TY_IDX_EQ> Stripped_
 #endif
 
 #ifdef TARG_X8664
-#define I1_VECTOR_TYPES    case MTYPE_V16I1: \
+#define I1_VECTOR_TYPES    case MTYPE_V32I1: \
+                           case MTYPE_V16I1: \
                            case MTYPE_V8I1:  \
                            case MTYPE_M8I1:
-#define I2_VECTOR_TYPES    case MTYPE_V16I2: \
+#define I2_VECTOR_TYPES    case MTYPE_V32I2: \
+                           case MTYPE_V16I2: \
                            case MTYPE_V8I2:  \
                            case MTYPE_M8I2:
-#define I4_VECTOR_TYPES    case MTYPE_V16I4: \
+#define I4_VECTOR_TYPES    case MTYPE_V32I4: \
+                           case MTYPE_V16I4: \
                            case MTYPE_V8I4:  \
                            case MTYPE_M8I4:
-#define I8_VECTOR_TYPES    case MTYPE_V16I8:
-#define F4_VECTOR_TYPES    case MTYPE_V16F4: \
+#define I8_VECTOR_TYPES    case MTYPE_V32I8: \
+                           case MTYPE_V16I8: \
+                           case MTYPE_V8I8:
+#define F4_VECTOR_TYPES    case MTYPE_V32F4: \
+                           case MTYPE_V16F4: \
                            case MTYPE_V8F4:  \
                            case MTYPE_M8F4:
-#define F8_VECTOR_TYPES    case MTYPE_V16F8:
+#define F8_VECTOR_TYPES    case MTYPE_V32F8: \
+                           case MTYPE_V16F8:
 #else
 #define I1_VECTOR_TYPES
 #define I2_VECTOR_TYPES

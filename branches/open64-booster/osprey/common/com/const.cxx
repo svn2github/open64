@@ -241,6 +241,9 @@ Make_Const ( TCON c )
     case MTYPE_V8I4:
       opc = OPC_V8I4CONST;
       break;
+    case MTYPE_V8I8:
+      opc = OPC_V8I8CONST;
+      break;
     case MTYPE_V16I1:
       opc = OPC_V16I1CONST;
       break;

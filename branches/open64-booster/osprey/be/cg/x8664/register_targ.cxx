@@ -355,6 +355,7 @@ void Init_Mtype_RegClass_Map(void)
   map[MTYPE_V8I1] = ISA_REGISTER_CLASS_float;
   map[MTYPE_V8I2] = ISA_REGISTER_CLASS_float;
   map[MTYPE_V8I4] = ISA_REGISTER_CLASS_float;
+  map[MTYPE_V8I8] = ISA_REGISTER_CLASS_float;
   map[MTYPE_V8F4] = ISA_REGISTER_CLASS_float;
   map[MTYPE_M8I1] = ISA_REGISTER_CLASS_mmx;
   map[MTYPE_M8I2] = ISA_REGISTER_CLASS_mmx;

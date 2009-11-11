@@ -150,22 +150,24 @@ struct TCON {
     union {
 	struct {
 #if HOST_IS_LITTLE_ENDIAN
-	    mINT32 v0, v1, v2, v3;	/* Individual signed words */
+	    mINT32 v0, v1, v2, v3, v4, v5, v6, v7;	/* Individual signed words */
 #else
-	    mINT32 v1, v0, v3, v2;	/* Individual signed words */
+	    mINT32 v1, v0, v3, v2, v5, v4, v7, v6;	/* Individual signed words */
 #endif
 	} ival;
 	struct {
 #if HOST_IS_LITTLE_ENDIAN
-	    mUINT32 u0, u1, u2, u3;	/* Individual unsigned words */
+	    mUINT32 u0, u1, u2, u3, u4, u5, u6, u7;	/* Individual unsigned words */
 #else
-	    mUINT32 u1, u0, u3, u2;	/* Individual unsigned words */
+	    mUINT32 u1, u0, u3, u2, u5, u4, u7, u6;	/* Individual unsigned words */
 #endif
 	} uval;
 #ifdef KEY 
 	struct {
 	    mINT64 ll0;
 	    mINT64 ll1;
+            mINT64 ll2;
+            mINT64 ll3;
 	} llval;
 #endif
 	mINT32 word0;			/* for getting the first integer word */
@@ -182,9 +184,9 @@ struct TCON {
     union {
 	struct {
 #if HOST_IS_LITTLE_ENDIAN
-	    mINT32 v0, v1, v2, v3;	/* Individual signed words */
+	    mINT32 v0, v1, v2, v3, v4, v5, v6, v7;	/* Individual signed words */
 #else
-	    mINT32 v1, v0, v3, v2;	/* Individual signed words */
+	    mINT32 v1, v0, v3, v2, v5, v4, v7, v6;	/* Individual signed words */
 #endif
 	} ival;
 #ifdef KEY

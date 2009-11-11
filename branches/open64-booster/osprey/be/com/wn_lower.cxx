@@ -422,6 +422,7 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_V8I1,     /* MTYPE_V8I1 */
   MTYPE_V8I2,     /* MTYPE_V8I2 */
   MTYPE_V8I4,     /* MTYPE_V8I4 */
+  MTYPE_V8I8,     /* MTYPE_V8I8 */
   MTYPE_V8F4,     /* MTYPE_V8F4 */
   MTYPE_M8I1,     /* MTYPE_M8I1 */
   MTYPE_M8I2,     /* MTYPE_M8I2 */
@@ -4456,6 +4457,7 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
     case MTYPE_V8I1:
     case MTYPE_V8I2:
     case MTYPE_V8I4:
+    case MTYPE_V8I8:
 #ifdef TARG_X8664
     case MTYPE_M8I1:
     case MTYPE_M8I2:

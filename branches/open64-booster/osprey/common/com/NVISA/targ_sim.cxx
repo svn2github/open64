@@ -523,6 +523,7 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
     case MTYPE_V8I1:
     case MTYPE_V8I2:
     case MTYPE_V8I4:
+    case MTYPE_V8I8:
       ploc.reg = 0; // pass in memory
       break;
 #endif

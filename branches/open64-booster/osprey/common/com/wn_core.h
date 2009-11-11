@@ -823,6 +823,8 @@ inline WN* WN_kid2 (const WN* wn) { return wn->u3.kids [2]; }
 inline WN*& WN_kid2 (WN* wn) { return wn->u3.kids [2]; }
 inline WN* WN_kid3 (const WN* wn) { return wn->u3.kids [3]; }
 inline WN*& WN_kid3 (WN* wn) { return wn->u3.kids [3]; }
+inline WN* WN_kid4 (const WN* wn) { return wn->u3.kids [4]; }
+inline WN*& WN_kid4 (WN* wn) { return wn->u3.kids [4]; }
 #pragma reset woff 1172
 inline INT64 WN_const_val (const WN* wn) { return wn->u3.const_val; }
 inline INT64& WN_const_val (WN* wn) { return wn->u3.const_val; }
@@ -920,6 +922,7 @@ inline void WN_Copy_sl_ext(WN* dst,  const WN* src)  { dst->sl_ext = src->sl_ext
 #define WN_kid1(x)              WN_kid((x),1)
 #define WN_kid2(x)              WN_kid((x),2)
 #define WN_kid3(x)              WN_kid((x),3)
+#define WN_kid4(x)              WN_kid((x),4)
 #define WN_const_val(x)         ((x)->u3.const_val)
 #define WN_label_flag(x)        ((x)->u3.label_flag_fields.label_flag)
 #define WN_first(x)             ((x)->u3.block.first)

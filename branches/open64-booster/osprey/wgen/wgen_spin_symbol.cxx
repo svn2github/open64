@@ -1290,6 +1290,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  TY_IDX elem_ty = Get_TY(gs_tree_type(type_tree));
 		  TYPE_ID elem_mtype = TY_mtype(elem_ty);
 		  switch (gs_n(gs_type_precision(type_tree))) {
+		    case 1: if (elem_mtype == MTYPE_I8)
+		    	      idx = MTYPE_To_TY(MTYPE_V8I8);
+			    break;
 		    case 2: if (elem_mtype == MTYPE_I4)
 		    	      idx = MTYPE_To_TY(MTYPE_V8I4);
 			    else if (elem_mtype == MTYPE_F4)
@@ -1326,6 +1329,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			     break;
                     case 32: if (elem_mtype == MTYPE_I1)
                                idx = MTYPE_To_TY(MTYPE_V32I1);
+                             break;
 		    default:
 		      Fail_FmtAssertion ("Get_TY: unexpected vector type element count");
 		  }
@@ -1341,7 +1345,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  }
 		  int num_elems = strtol(p, &p, 10);
                   if (strncasecmp(p, "DI", 2) == 0) {
-                    if (num_elems == 2)
+                    if (num_elems == 1)
+                      idx = MTYPE_To_TY(MTYPE_V8I8);
+                    else if (num_elems == 2)
                       idx = MTYPE_To_TY(MTYPE_V16I8);
                     else if (num_elems == 4)
                       idx = MTYPE_To_TY(MTYPE_V32I8);

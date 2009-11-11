@@ -3226,6 +3226,7 @@ Host_To_Targ(TYPE_ID ty, INT64 v)
     case MTYPE_V16I4:
     case MTYPE_V16I2:
     case MTYPE_V16I1:
+    case MTYPE_V8I8:
     case MTYPE_V8I4:
     case MTYPE_V8I2:
     case MTYPE_V8I1:
@@ -3323,6 +3324,11 @@ Create_Simd_Const (TYPE_ID ty, TCON t)
     (c).vals.ival.v2 = (t).vals.ival.v0;
     (c).vals.ival.v3 = (t).vals.ival.v0;
     break;
+  case MTYPE_V8I8:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.llval.ll0 = (t).vals.i0;
+    break;
   case MTYPE_V16I1:
     TCON_clear(c);
     TCON_ty(c) = ty;
@@ -3381,6 +3387,94 @@ Create_Simd_Const (TYPE_ID ty, TCON t)
     (c).vals.ival.v2 = (t).vals.ival.v0;
     (c).vals.ival.v3 = (t).vals.ival.v1;
     break;
+  case MTYPE_V32I1:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v1 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v2 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v3 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v4 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v5 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v6 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v7 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    break;
+  case MTYPE_V32I2:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0);
+    (c).vals.ival.v1 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0); 
+    (c).vals.ival.v2 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0); 
+    (c).vals.ival.v3 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0); 
+    (c).vals.ival.v4 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0);
+    (c).vals.ival.v5 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0); 
+    (c).vals.ival.v6 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0); 
+    (c).vals.ival.v7 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0); 
+    break;
+  case MTYPE_V32I4:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (t).vals.ival.v0;
+    (c).vals.ival.v1 = (t).vals.ival.v0;
+    (c).vals.ival.v2 = (t).vals.ival.v0;
+    (c).vals.ival.v3 = (t).vals.ival.v0;
+    (c).vals.ival.v4 = (t).vals.ival.v0;
+    (c).vals.ival.v5 = (t).vals.ival.v0;
+    (c).vals.ival.v6 = (t).vals.ival.v0;
+    (c).vals.ival.v7 = (t).vals.ival.v0;
+    break;
+  case MTYPE_V32I8:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.llval.ll0 = (t).vals.i0;
+    (c).vals.llval.ll1 = (t).vals.i0;
+    (c).vals.llval.ll2 = (t).vals.i0;
+    (c).vals.llval.ll3 = (t).vals.i0;
+    break;
+  case MTYPE_V32F4:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (t).vals.ival.v0;
+    (c).vals.ival.v1 = (t).vals.ival.v0;
+    (c).vals.ival.v2 = (t).vals.ival.v0;
+    (c).vals.ival.v3 = (t).vals.ival.v0;
+    (c).vals.ival.v4 = (t).vals.ival.v0;
+    (c).vals.ival.v5 = (t).vals.ival.v0;
+    (c).vals.ival.v6 = (t).vals.ival.v0;
+    (c).vals.ival.v7 = (t).vals.ival.v0;
+    break;
+  case MTYPE_V32F8:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (t).vals.ival.v0;
+    (c).vals.ival.v1 = (t).vals.ival.v1;
+    (c).vals.ival.v2 = (t).vals.ival.v0;
+    (c).vals.ival.v3 = (t).vals.ival.v1;
+    (c).vals.ival.v4 = (t).vals.ival.v0;
+    (c).vals.ival.v5 = (t).vals.ival.v1;
+    (c).vals.ival.v6 = (t).vals.ival.v0;
+    (c).vals.ival.v7 = (t).vals.ival.v1;
+    break;
+  case MTYPE_V32C4:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (t).vals.ival.v0;
+    (c).vals.ival.v1 = (t).vals.ival.v1;
+    (c).vals.ival.v2 = (t).vals.ival.v0;
+    (c).vals.ival.v3 = (t).vals.ival.v1;
+    (c).vals.ival.v4 = (t).vals.ival.v0;
+    (c).vals.ival.v5 = (t).vals.ival.v1;
+    (c).vals.ival.v6 = (t).vals.ival.v0;
+    (c).vals.ival.v7 = (t).vals.ival.v1;
+    break;
   }
 
   return c;
@@ -3426,6 +3520,52 @@ Create_Simd_Prog_Const (TYPE_ID ty, INT64 val)
     TCON_ty(c) = MTYPE_V16I8;
     (c).vals.llval.ll0 = val;
     (c).vals.llval.ll1 = val+1;
+    break;
+  case MTYPE_V32I1:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v7 = ((val+31)<<24)|((val+30)<<16)|((val+29)<<8)|(val+28);
+    (c).vals.ival.v6 = ((val+27)<<24)|((val+26)<<16)|((val+25)<<8)|(val+24);
+    (c).vals.ival.v5 = ((val+23)<<24)|((val+22)<<16)|((val+21)<<8)|(val+20);
+    (c).vals.ival.v4 = ((val+19)<<24)|((val+18)<<16)|((val+17)<<8)|(val+16);
+    (c).vals.ival.v3 = ((val+15)<<24)|((val+14)<<16)|((val+13)<<8)|(val+12);
+    (c).vals.ival.v2 = ((val+11)<<24)|((val+10)<<16)|((val+9)<<8)|(val+8);
+    (c).vals.ival.v1 = ((val+7)<<24)|((val+6)<<16)|((val+5)<<8)|(val+4);
+    (c).vals.ival.v0 = ((val+3)<<24)|((val+2)<<16)|((val+1)<<8)|val;
+    break;
+  case MTYPE_V32I2:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v7 = ((val+15)<<16)|(val+14);
+    (c).vals.ival.v6 = ((val+13)<<16)|(val+12); 
+    (c).vals.ival.v5 = ((val+11)<<16)|(val+10); 
+    (c).vals.ival.v4 = ((val+9)<<16)|(val+8); 
+    (c).vals.ival.v3 = ((val+7)<<16)|(val+6);
+    (c).vals.ival.v2 = ((val+5)<<16)|(val+4); 
+    (c).vals.ival.v1 = ((val+3)<<16)|(val+2); 
+    (c).vals.ival.v0 = ((val+1)<<16)|val; 
+    break;
+  case MTYPE_V32F4:
+  case MTYPE_V32I4:
+    TCON_clear(c);
+    TCON_ty(c) = MTYPE_V32I4;
+    (c).vals.ival.v7 = (val+7);
+    (c).vals.ival.v6 = (val+6);
+    (c).vals.ival.v5 = (val+5);
+    (c).vals.ival.v4 = (val+4);
+    (c).vals.ival.v3 = (val+3);
+    (c).vals.ival.v2 = (val+2);
+    (c).vals.ival.v1 = (val+1);
+    (c).vals.ival.v0 = val;
+    break;
+  case MTYPE_V32F8:
+  case MTYPE_V32I8:
+    TCON_clear(c);
+    TCON_ty(c) = MTYPE_V32I8;
+    (c).vals.llval.ll3 = val+3;
+    (c).vals.llval.ll2 = val+2;
+    (c).vals.llval.ll1 = val+1;
+    (c).vals.llval.ll0 = val;
     break;
   default: 
     FmtAssert(FALSE, ("NYI"));
@@ -5197,6 +5337,9 @@ Hash_TCON ( TCON * t, UINT32 modulus )
     case MTYPE_M8I4:
       hash += TCON_v0(*t) + TCON_v1(*t);
       break;
+    case MTYPE_V8I8:
+      hash += TCON_ll0(*t);
+      break;
 #endif
     case MTYPE_V16I1:
       hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
@@ -5213,6 +5356,26 @@ Hash_TCON ( TCON * t, UINT32 modulus )
     case MTYPE_V16F4:
     case MTYPE_V16F8:
       hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
+      break;
+    case MTYPE_V32I1:
+      hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t) +
+              TCON_v4(*t) + TCON_v5(*t) + TCON_v6(*t) + TCON_v7(*t);
+      break;
+    case MTYPE_V32I2:
+      hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t) +
+              TCON_v4(*t) + TCON_v5(*t) + TCON_v6(*t) + TCON_v7(*t);
+      break;
+    case MTYPE_V32I4:
+      hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t) +
+              TCON_v4(*t) + TCON_v5(*t) + TCON_v6(*t) + TCON_v7(*t);
+      break;
+    case MTYPE_V32I8:
+      hash += TCON_ll0(*t) + TCON_ll1(*t) + TCON_ll2(*t) + TCON_ll3(*t);
+      break;
+    case MTYPE_V32F4:
+    case MTYPE_V32F8:
+      hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
+              TCON_v4(*t) + TCON_v5(*t) + TCON_v6(*t) + TCON_v7(*t);
       break;
     default:
       ErrMsg ( EC_Inv_Mtype, Mtype_Name(TCON_ty(*t)), "Hash_TCON" );

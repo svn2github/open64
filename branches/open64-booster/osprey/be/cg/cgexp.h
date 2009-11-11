@@ -182,7 +182,7 @@ extern void Exp_Fetch_and_Xor( TN*, TN*, TYPE_ID, OPS* );
 extern TN*  Exp_Compare_and_Swap( TN*, TN*, TN*, TYPE_ID, OPS* );
 
 /* expand intrinsic op */
-extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TYPE_ID mtype, OPS *ops);
+extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, TN *op4, TYPE_ID mtype, OPS *ops);
 
 #elif defined(TARG_IA64) 
 extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, OPS *ops);

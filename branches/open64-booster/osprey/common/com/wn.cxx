@@ -2556,6 +2556,7 @@ WN *WN_UVConst( TYPE_ID type)
   case MTYPE_M8I1:
   case MTYPE_M8I2:
   case MTYPE_V8I4:
+  case MTYPE_V8I8:
   case MTYPE_M8I4:
 #endif
     return Make_Const (Host_To_Targ_UV(type));

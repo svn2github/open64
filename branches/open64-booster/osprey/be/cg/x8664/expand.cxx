@@ -1466,6 +1466,9 @@ Expand_Add (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     case MTYPE_V8I4:
       Build_OP (TOP_add128v32, result, src1, src2, ops);
       break;
+    case MTYPE_V8I8:
+      Build_OP (TOP_add128v64, result, src1, src2, ops);
+      break;
     case MTYPE_M8I1:
       Build_OP (TOP_add64v8, result, src1, src2, ops);
       break;
@@ -1578,6 +1581,9 @@ Expand_Sub (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       break;
     case MTYPE_V8I4:
       Build_OP (TOP_sub128v32, result, src1, src2, ops);
+      break;
+    case MTYPE_V8I8:
+      Build_OP (TOP_sub128v64, result, src1, src2, ops);
       break;
     case MTYPE_M8I1:
       Build_OP (TOP_sub64v8, result, src1, src2, ops);
@@ -3994,7 +4000,8 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
 
   } else if (fmtype == MTYPE_V16F8) {
     // imtype == V16I8: bug 3082 workaround
-    if (imtype == MTYPE_V16I4 || imtype == MTYPE_V8I4 || imtype == MTYPE_V16I8)
+    if (imtype == MTYPE_V16I4 || imtype == MTYPE_V8I4 || 
+        imtype == MTYPE_V16I8 || imtype == MTYPE_V8I8)
       top = TOP_cvtdq2pd;
     else if (imtype == MTYPE_U8 || imtype == MTYPE_I8) {
       top = TOP_cvtsi2sdq; // bug 3082 workaround, others should not reach here
@@ -6548,8 +6555,112 @@ Expand_Count_Leading_Zeros (TN *result, TN *op, TYPE_ID mtype,
 		     MTYPE_I4, ops );
 }
 
+// Exapnd blendv intrinsic (BLENDVPD, BLENDVPS, PBLENDVB)
+static void
+Expand_INTRN_BLENDV(INTRINSIC id, TN* result, TN* op0, TN* op1, TN* op2, OPS* ops)
+{
+  // blendv uses xmm0 as the mask, which is a hidden operand
+  TN* xmm0 = Build_TN_Like(op2);
+  Exp_COPY(xmm0, op2, ops);
+  TN* res = Build_TN_Like(result);
+  switch ( id ) {
+  case INTRN_BLENDVPD:
+    Build_OP(TOP_fblendv128v64, res, op0, xmm0, op1, ops );
+    break;
+  case INTRN_BLENDVPS:
+    Build_OP(TOP_fblendv128v32, res, op0, xmm0, op1, ops );
+    break;
+  case INTRN_PBLENDVB128:
+    Build_OP(TOP_blendv128v8, res, op0, xmm0, op1, ops );
+    break;
+  default:
+    FmtAssert( FALSE, ("Unknown intrn id in Expand_INTRN_BLENDV") );
+  }
+  Exp_COPY(result, res, ops);
+}
+
+static void
+Expand_INTRN_PCMPESTR(INTRINSIC id, TN* result, TN* op0, TN* op1, TN* op2, TN* op3, TN* op4, OPS* ops)
+{
+  TN* len1 = Build_TN_Like(op1);
+  Exp_COPY(len1, op1, ops);
+  TN* len2 = Build_TN_Like(op3);
+  Exp_COPY(len2, op2, ops);
+  TN* res  = Build_TN_Like(result);
+  if ( id == INTRN_PCMPESTRM128 ) {
+    Build_OP(TOP_cmpestrm, res, Rflags_TN(), op0, op1, op2, op3, op4, ops );
+    Exp_COPY(result, res, ops);
+  }
+  else if ( id == INTRN_PCMPESTRI128 ) {
+    Build_OP(TOP_cmpestri, res, Rflags_TN(), op0, op1, op2, op3, op4, ops );
+    Exp_COPY(result, res, ops);
+  }
+  else {
+    Build_OP(TOP_cmpestri, res, Rflags_TN(), op0, op1, op2, op3, op4, ops );
+    TN *flag = Build_TN_Of_Mtype(MTYPE_I1);
+    switch ( id ) {
+    case INTRN_PCMPESTRA128:
+      Build_OP(TOP_seta, flag, Rflags_TN(), ops);
+      break;
+    case INTRN_PCMPESTRC128:
+      Build_OP(TOP_setc, flag, Rflags_TN(), ops);
+      break;
+    case INTRN_PCMPESTRO128:
+      Build_OP(TOP_seto, flag, Rflags_TN(), ops);
+      break;
+    case INTRN_PCMPESTRS128:
+      Build_OP(TOP_sets, flag, Rflags_TN(), ops);
+      break;
+    case INTRN_PCMPESTRZ128:
+      Build_OP(TOP_setz, flag, Rflags_TN(), ops);
+      break;
+    default:
+      FmtAssert( FALSE, ("Unknown intrn id in Expand_INTRN_PCMPESTRI_Flag") );
+    }
+    Build_OP(TOP_movzbl, result, flag, ops);
+  }
+}
+
+static void
+Expand_INTRN_PCMPISTR(INTRINSIC id, TN* result, TN* op0, TN* op1, TN* op2, OPS* ops)
+{
+  TN* res  = Build_TN_Like(result);
+  if ( id == INTRN_PCMPISTRM128 ) {
+    Build_OP(TOP_cmpistrm, result, Rflags_TN(), op0, op1, op2, ops );
+    Exp_COPY(result, res, ops);
+  }
+  else if ( id == INTRN_PCMPISTRI128 ) {
+    Build_OP(TOP_cmpistri, res, Rflags_TN(), op0, op1, op2, ops );
+    Exp_COPY(result, res, ops);
+  }
+  else {
+    Build_OP(TOP_cmpistri, res, Rflags_TN(), op0, op1, op2, ops );
+    TN *flag = Build_TN_Of_Mtype(MTYPE_I1);
+    switch ( id ) {
+    case INTRN_PCMPISTRA128:
+      Build_OP(TOP_seta, flag, Rflags_TN(), ops);
+      break;
+    case INTRN_PCMPISTRC128:
+      Build_OP(TOP_setc, flag, Rflags_TN(), ops);
+      break;
+    case INTRN_PCMPISTRO128:
+      Build_OP(TOP_seto, flag, Rflags_TN(), ops);
+      break;
+    case INTRN_PCMPISTRS128:
+      Build_OP(TOP_sets, flag, Rflags_TN(), ops);
+      break;
+    case INTRN_PCMPISTRZ128:
+      Build_OP(TOP_setz, flag, Rflags_TN(), ops);
+      break;
+    default:
+      FmtAssert( FALSE, ("Unknown intrn id in Expand_INTRN_PCMPESTRI_Flag") );
+    }
+    Build_OP(TOP_movzbl, result, flag, ops);
+  }
+}
+
 void
-Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TYPE_ID mtype, OPS *ops)
+Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, TN *op4, TYPE_ID mtype, OPS *ops)
 {
   TN* rflags = Rflags_TN();
   TN *result_tmp = Build_TN_Of_Mtype( MTYPE_U1 );
@@ -7418,6 +7529,229 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TYPE_ID m
     break;
    case INTRN_INSERTQ:
     Build_OP(TOP_insertq, result, op0, op1, ops );
+    break;
+   // SSSE3 intrinsics
+   case INTRN_PABSB:
+    Build_OP(TOP_pabs128v8, result, op0, ops );
+    break;
+   case INTRN_PABSD:
+    Build_OP(TOP_pabs128v32, result, op0, ops );
+    break;
+   case INTRN_PABSW:
+    Build_OP(TOP_pabs128v16, result, op0, ops );
+    break;
+   case INTRN_PALIGNR:
+    Build_OP(TOP_palignr128, result, op0, op1, op2, ops );
+    break;
+   case INTRN_PHADDD:
+    Build_OP(TOP_phadd128v32, result, op0, op1, ops );
+    break;
+   case INTRN_PHADDSW:
+    Build_OP(TOP_phadds128v16, result, op0, op1, ops );
+    break;
+   case INTRN_PHADDW:
+    Build_OP(TOP_phadd128v16, result, op0, op1, ops );
+    break;
+   case INTRN_PHSUBD:
+    Build_OP(TOP_phsub128v32, result, op0, op1, ops );
+    break;
+   case INTRN_PHSUBSW:
+    Build_OP(TOP_phsubs128v16, result, op0, op1, ops );
+    break;
+   case INTRN_PHSUBW:
+    Build_OP(TOP_phsubs128v16, result, op0, op1, ops );
+    break;
+   case INTRN_PMADDUBSW:
+    Build_OP(TOP_pmaddubsw128, result, op0, op1, ops );
+    break;
+   case INTRN_PMULHRSW:
+    Build_OP(TOP_pmulhrsw128, result, op0, op1, ops );
+    break;
+   case INTRN_PSHUFB:
+    Build_OP(TOP_pshuf128v8, result, op0, op1, ops );
+    break;
+   case INTRN_PSIGNB:
+    Build_OP(TOP_psign128v8, result, op0, op1, ops );
+    break;
+   case INTRN_PSIGND:
+    Build_OP(TOP_psign128v32, result, op0, op1, ops );
+    break;
+   case INTRN_PSIGNW:
+    Build_OP(TOP_psign128v16, result, op0, op1, ops );
+    break;
+   // SSE4.1 intrinsics
+   case INTRN_BLENDPD:
+    Build_OP(TOP_fblend128v64, result, op0, op1, op2, ops );
+    break;
+   case INTRN_BLENDPS:
+    Build_OP(TOP_fblend128v32, result, op0, op1, op2, ops );
+    break;
+   case INTRN_BLENDVPD: 
+   case INTRN_BLENDVPS:
+   case INTRN_PBLENDVB128:
+    Expand_INTRN_BLENDV(id, result, op0, op1, op2, ops);
+    break;
+   case INTRN_DPPD:
+    Build_OP(TOP_fdp128v64, result, op0, op1, op2, ops );
+    break;
+   case INTRN_DPPS:
+    Build_OP(TOP_fdp128v32, result, op0, op1, op2, ops );
+    break;
+   case INTRN_INSERTPS128:
+    Build_OP(TOP_finsr128v32, result, op0, op1, op2, ops );
+    break;
+   case INTRN_MOVNTDQA:
+    Build_OP(TOP_ldntdqa, result, op0, Gen_Literal_TN(0, 4), ops );
+    break;
+   case INTRN_MPSADBW128:
+    Build_OP(TOP_mpsadbw, result, op0, op1, op2, ops );
+    break;
+   case INTRN_PACKUSDW128:
+    Build_OP(TOP_packusdw, result, op0, op1, ops );
+    break;
+   case INTRN_PBLENDW128:
+    Build_OP(TOP_blend128v16, result, op0, op1, op2, ops );
+    break;
+   case INTRN_PCMPEQQ:
+    Build_OP(TOP_cmpeq128v64, result, op0, op1, op2, ops );
+    break;
+   case INTRN_PHMINPOSUW128:
+    Build_OP(TOP_phminposuw, result, op0, ops );
+    break;
+   case INTRN_PMAXSB128:
+    Build_OP(TOP_maxs128v8, result, op0, op1, ops );
+    break;
+   case INTRN_PMAXSD128:
+    Build_OP(TOP_maxs128v32, result, op0, op1, ops );
+    break;
+   case INTRN_PMAXUD128:
+    Build_OP(TOP_maxu128v32, result, op0, op1, ops );
+    break;
+   case INTRN_PMAXUW128:
+    Build_OP(TOP_maxu128v16, result, op0, op1, ops );
+    break;
+   case INTRN_PMINSB128:
+    Build_OP(TOP_mins128v8, result, op0, op1, ops );
+    break;
+   case INTRN_PMINSD128:
+    Build_OP(TOP_mins128v32, result, op0, op1, ops );
+    break;
+   case INTRN_PMINUD128:
+    Build_OP(TOP_minu128v32, result, op0, op1, ops );
+    break;
+   case INTRN_PMINUW128:
+    Build_OP(TOP_minu128v16, result, op0, op1, ops );
+    break;
+   case INTRN_PMOVSXBD128:
+    Build_OP(TOP_pmovsxbd, result, op0, ops );
+    break;
+   case INTRN_PMOVSXBQ128:
+    Build_OP(TOP_pmovsxbq, result, op0, ops );
+    break;
+   case INTRN_PMOVSXBW128:
+    Build_OP(TOP_pmovsxbw, result, op0, ops );
+    break;
+   case INTRN_PMOVSXDQ128:
+    Build_OP(TOP_pmovsxdq, result, op0, ops );
+    break;
+   case INTRN_PMOVSXWD128:
+    Build_OP(TOP_pmovsxwd, result, op0, ops );
+    break;
+   case INTRN_PMOVSXWQ128:
+    Build_OP(TOP_pmovsxwq, result, op0, ops );
+    break;
+   case INTRN_PMOVZXBD128:
+    Build_OP(TOP_pmovzxbd, result, op0, ops );
+    break;
+   case INTRN_PMOVZXBQ128:
+    Build_OP(TOP_pmovzxbq, result, op0, ops );
+    break;
+   case INTRN_PMOVZXBW128:
+    Build_OP(TOP_pmovzxbw, result, op0, ops );
+    break;
+   case INTRN_PMOVZXDQ128:
+    Build_OP(TOP_pmovzxdq, result, op0, ops );
+    break;
+   case INTRN_PMOVZXWD128:
+    Build_OP(TOP_pmovzxwd, result, op0, ops );
+    break;
+   case INTRN_PMOVZXWQ128:
+    Build_OP(TOP_pmovzxwq, result, op0, ops );
+    break;
+   case INTRN_PMULDQ128:
+    Build_OP(TOP_muldq, result, op0, op1, ops );
+    break;
+   case INTRN_PMULLD128:
+    Build_OP(TOP_mul128v32, result, op0, op1, ops );
+    break;
+   case INTRN_VEC_SET_V16QI:
+    Build_OP(TOP_insr128v8, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VEC_SET_V2DI:
+    Build_OP(TOP_insr128v64, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VEC_SET_V4SF:
+    Build_OP(TOP_finsr128v32, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VEC_SET_V4SI:
+    Build_OP(TOP_insr128v32, result, op0, op1, op2, ops );
+    break;
+   // SSE4.2 instrinsics
+   case INTRN_CRC32DI:
+    Build_OP(TOP_crc32q, result, op0, op1, ops );
+    break;
+   case INTRN_CRC32HI:
+    Build_OP(TOP_crc32w, result, op0, op1, ops );
+    break;
+   case INTRN_CRC32QI:
+    Build_OP(TOP_crc32b, result, op0, op1, ops );
+    break;
+   case INTRN_CRC32SI:
+    Build_OP(TOP_crc32d, result, op0, op1, ops );
+    break;
+   case INTRN_PCMPESTRI128:
+   case INTRN_PCMPESTRM128:
+   case INTRN_PCMPESTRA128:
+   case INTRN_PCMPESTRC128:
+   case INTRN_PCMPESTRO128:
+   case INTRN_PCMPESTRS128:
+   case INTRN_PCMPESTRZ128:
+    Expand_INTRN_PCMPESTR(id, result, op0, op1, op2, op3, op4, ops);
+    break;
+   case INTRN_PCMPGTQ:
+    Build_OP(TOP_cmpgt128v64, result, op0, op1, ops );
+    break;
+   case INTRN_PCMPISTRI128:
+   case INTRN_PCMPISTRA128:
+   case INTRN_PCMPISTRC128:
+   case INTRN_PCMPISTRO128:
+   case INTRN_PCMPISTRS128:
+   case INTRN_PCMPISTRZ128:
+   case INTRN_PCMPISTRM128:
+    Expand_INTRN_PCMPISTR(id, result, op0, op1, op2, ops);
+    break;
+   // AES intrinsics
+   case INTRN_AESDEC128:
+    Build_OP(TOP_aesdec, result, op0, op1, ops );
+    break;
+   case INTRN_AESDECLAST128:
+    Build_OP(TOP_aesdeclast, result, op0, op1, ops );
+    break;
+   case INTRN_AESENC128:
+    Build_OP(TOP_aesenc, result, op0, op1, ops );
+    break;
+   case INTRN_AESENCLAST128:
+    Build_OP(TOP_aesenclast, result, op0, op1, ops );
+    break;
+   case INTRN_AESIMC128:
+    Build_OP(TOP_aesimc, result, op0, ops );
+    break;
+   case INTRN_AESKEYGENASSIST128:
+    Build_OP(TOP_aeskeygenassist, result, op0, op1, ops );
+    break;
+   // PCLMUL intrinsics
+   case INTRN_PCLMULQDQ128:
+    Build_OP(TOP_pclmulqdq, result, op0, op1, op2, ops );
     break;
   }
 
