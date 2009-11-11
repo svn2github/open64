@@ -8040,7 +8040,13 @@ WGEN_Expand_Expr (gs_t exp,
 #ifdef TARG_IA64
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
 #else	      
+#ifdef TARG_X8664
+	      wn = WN_CreateExp1 (OPR_FLOOR, MTYPE_FQ, MTYPE_FQ, arg_wn);
+	      if (ret_mtype != MTYPE_FQ)
+		wn = WN_Type_Conversion(wn, ret_mtype);
+#else
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
+#endif
 #endif
 	      whirl_generated = TRUE;
               break;
