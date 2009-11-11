@@ -5291,6 +5291,34 @@ WGEN_Expand_Expr (gs_t exp,
             FmtAssert(result_wn == NULL,
                       ("result_wn should be NULL for the result is passed as param."));
           }      
+	  //15210
+          else if (gs_tree_code(t) == GS_CALL_EXPR &&
+                   gs_tree_code(opnd0) == GS_COMPONENT_REF) {
+            WN *target_wn = WGEN_Address_Of(opnd0);
+            WN *result_wn = WGEN_Expand_Expr (t, TRUE /* for return_in_mem*/,
+                                              0, 0, 0, 0, FALSE, FALSE, target_wn);
+            wn = result_wn;
+            WN_set_rtype(wn, MTYPE_V);
+	    break;
+          }
+
+           // bug 15210
+           // Replace the VAR_DECL with the REF, for this case
+           //
+           else if (gs_tree_code(t) == GS_COND_EXPR &&
+                    gs_tree_code(opnd0) == GS_COMPONENT_REF &&
+                   gs_tree_code(gs_tree_operand(t,1)) == GS_TARGET_EXPR &&
+                   gs_tree_code(gs_tree_operand(t,2)) == GS_TARGET_EXPR ) {
+             gs_t t1, t2;
+ 
+             t1 = gs_tree_operand(t, 1);
+             t2 = gs_tree_operand(t, 2);
+             gs_set_tree_operand(t1, 0, opnd0);
+             gs_set_tree_operand(t2, 0, opnd0);
+             wn = WGEN_Expand_Expr(t);
+ 
+             break;
+          }
 
 	  // If the initializer returns the object in memory, then make sure
 	  // the type doesn't require a copy constructor, since such types
@@ -6410,10 +6438,18 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 
         FmtAssert( (wn0 != NULL), ("Child 0 of IF can not be NULL!"));
-
+	
+	//15210, generate IF-struct, and discard the LDIDs
+        bool typed_ite = false;
+        if( gs_tree_code(gs_tree_operand(exp, 1)) == GS_TARGET_EXPR &&
+            gs_tree_code(gs_tree_operand(exp, 2)) == GS_TARGET_EXPR ){
+	 typed_ite = ( gs_tree_code(gs_tree_operand(gs_tree_operand(exp ,1), 0)) == GS_COMPONENT_REF &&
+          gs_tree_code(gs_tree_operand(gs_tree_operand(exp ,2), 0)) == GS_COMPONENT_REF );
+ 	} 
 	if (TY_mtype (ty_idx)  == MTYPE_V ||
             TY_mtype (ty_idx1) == MTYPE_V ||
-            TY_mtype (ty_idx2) == MTYPE_V) {
+            TY_mtype (ty_idx2) == MTYPE_V 
+	    || typed_ite) {
 	  // If ty_idx is MTYPE_V, no return value is needed
 	  // We convert it into if...then...else
 	  WN *then_block = WN_CreateBlock ();
@@ -6429,9 +6465,14 @@ WGEN_Expand_Expr (gs_t exp,
          // "then" statement
           WGEN_Stmt_Push (then_block, wgen_stmk_if_then, Get_Srcpos());
           WGEN_Guard_Var_Push();
-          wn1 = WGEN_Expand_Expr (gs_tree_operand (exp, 1), FALSE);
-          gs_t guard_var1 = WGEN_Guard_Var_Pop();
-          if (wn1) {
+          if (!typed_ite)
+	    wn1 = WGEN_Expand_Expr (gs_tree_operand (exp, 1), FALSE);
+          else
+   	  {
+   	    wn1 = WGEN_Expand_Expr (gs_tree_operand(exp, 1), FALSE, 0, 0, 0, 0, FALSE, FALSE, target_wn);
+	  }
+	  gs_t guard_var1 = WGEN_Guard_Var_Pop();
+          if (wn1 && !typed_ite) {
             wn1 = WN_CreateEval (wn1);
             WGEN_Stmt_Append (wn1, Get_Srcpos());
           }
@@ -6445,9 +6486,12 @@ WGEN_Expand_Expr (gs_t exp,
           if (gs_tree_operand(exp, 2) != NULL) {
             WGEN_Stmt_Push (else_block, wgen_stmk_if_else, Get_Srcpos());
             WGEN_Guard_Var_Push();
-            wn2 = WGEN_Expand_Expr (gs_tree_operand (exp, 2), FALSE);
+            if(!typed_ite)
+ 	      wn2 = WGEN_Expand_Expr (gs_tree_operand (exp, 2), FALSE);
+            else
+   	      wn2 = WGEN_Expand_Expr (gs_tree_operand(exp, 2), FALSE, 0, 0, 0, 0, FALSE, FALSE, target_wn);
             gs_t guard_var2 = WGEN_Guard_Var_Pop();
-            if (wn2) {
+            if (wn2 && !typed_ite) {
               wn2 = WN_CreateEval (wn2);
               WGEN_Stmt_Append (wn2, Get_Srcpos());
             }
@@ -6802,6 +6846,35 @@ WGEN_Expand_Expr (gs_t exp,
             wn = WGEN_Expand_Expr(t);
             break;
           }
+
+           // bug 15210
+           // |-+COMPONENT_REF <this->m>
+           // |-+TARGET_EXPR
+           //   |-+VAR_DECL <tmp>
+           //   |-+COND_EXPR
+           // replace the VAR_DECL with the COMPONENT_REF, and do an EVAL to keep the code
+           // 1. g++fe would explicitly call copy constructor for operand 1 and 2, if the expression 
+	   //   is just a variable of the same type.
+           // 2. it would generate a target expr to hold the function call, if the expression is such a call, 
+	   //   which returns the same type.
+           // 3. constructor or conversion operators are called, if necessary, so we do not worry
+           else if (code == GS_INIT_EXPR &&
+               gs_tree_code(gs_tree_operand(exp, 0)) == GS_COMPONENT_REF &&
+               gs_tree_code(t) == GS_TARGET_EXPR
+              && gs_tree_code(gs_tree_operand(t, 1)) == GS_COND_EXPR &&
+             gs_tree_code(gs_tree_operand(gs_tree_operand(t,1), 1)) == GS_TARGET_EXPR &&
+             gs_tree_code(gs_tree_operand(gs_tree_operand(t,1), 2)) == GS_TARGET_EXPR ) {
+             WN *eval;
+ 
+             gs_set_tree_operand(t, 0, gs_tree_operand(exp,0));
+             WGEN_Expand_Expr(t,FALSE);
+//		eval = WN_CreateEval(WGEN_Expand_Expr(t));
+//             WGEN_Stmt_Append (eval, Get_Srcpos());
+ 
+             break;
+           }
+
+
 #endif
 	  DevWarn ("INIT_EXPR/MODIFY_EXPR kid1 is TARGET_EXPR, kid0 is %s\n",
 		   gs_code_name(gs_tree_code(gs_tree_operand(exp, 0))));
