@@ -4025,18 +4025,26 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_vfmaddsd,       TOP_vfmaddxsd,	    TOP_vfmaddxxsd,	  TOP_vfmaddxxxsd,          TOP_UNDEFINED},
   {TOP_vfmaddps,       TOP_vfmaddxps,	    TOP_vfmaddxxps,	  TOP_vfmaddxxxps,          TOP_UNDEFINED},
   {TOP_vfmaddpd,       TOP_vfmaddxpd,  	    TOP_vfmaddxxpd,	  TOP_vfmaddxxxpd,          TOP_UNDEFINED},
+  {TOP_vfmaddsubps,    TOP_vfmaddsubxps,    TOP_vfmaddsubxxps,	  TOP_vfmaddsubxxxps,       TOP_UNDEFINED},
+  {TOP_vfmaddsubpd,    TOP_vfmaddsubxpd,    TOP_vfmaddsubxxpd,	  TOP_vfmaddsubxxxpd,       TOP_UNDEFINED},
   {TOP_UNDEFINED,      TOP_vfmaddxrss,      TOP_vfmaddxxrss,      TOP_vfmaddxxxrss,         TOP_UNDEFINED},
   {TOP_UNDEFINED,      TOP_vfmaddxrsd,      TOP_vfmaddxxrsd,      TOP_vfmaddxxxrsd,         TOP_UNDEFINED},
   {TOP_UNDEFINED,      TOP_vfmaddxrps,      TOP_vfmaddxxrps,      TOP_vfmaddxxxrps,         TOP_UNDEFINED},
   {TOP_UNDEFINED,      TOP_vfmaddxrpd,      TOP_vfmaddxxrpd,      TOP_vfmaddxxxrpd,         TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmaddsubxrps,   TOP_vfmaddsubxxrps,   TOP_vfmaddsubxxxrps,      TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmaddsubxrpd,   TOP_vfmaddsubxxrpd,   TOP_vfmaddsubxxxrpd,      TOP_UNDEFINED},
   {TOP_vfmsubss,       TOP_vfmsubxss,	    TOP_vfmsubxxss,	  TOP_vfmsubxxxss,          TOP_UNDEFINED},
   {TOP_vfmsubsd,       TOP_vfmsubxsd,	    TOP_vfmsubxxsd,	  TOP_vfmsubxxxsd,          TOP_UNDEFINED},
   {TOP_vfmsubps,       TOP_vfmsubxps,	    TOP_vfmsubxxps,	  TOP_vfmsubxxxps,          TOP_UNDEFINED},
   {TOP_vfmsubpd,       TOP_vfmsubxpd,  	    TOP_vfmsubxxpd, 	  TOP_vfmsubxxxpd,          TOP_UNDEFINED},
+  {TOP_vfmsubaddps,    TOP_vfmsubaddxps,    TOP_vfmsubaddxxps,	  TOP_vfmsubaddxxxps,       TOP_UNDEFINED},
+  {TOP_vfmsubaddpd,    TOP_vfmsubaddxpd,    TOP_vfmsubaddxxpd, 	  TOP_vfmsubaddxxxpd,       TOP_UNDEFINED},
   {TOP_UNDEFINED,      TOP_vfmsubxrss,      TOP_vfmsubxxrss,      TOP_vfmsubxxxrss,         TOP_UNDEFINED},
   {TOP_UNDEFINED,      TOP_vfmsubxrsd,      TOP_vfmsubxxrsd,      TOP_vfmsubxxxrsd,         TOP_UNDEFINED},
   {TOP_UNDEFINED,      TOP_vfmsubxrps,      TOP_vfmsubxxrps,      TOP_vfmsubxxxrps,         TOP_UNDEFINED},
   {TOP_UNDEFINED,      TOP_vfmsubxrpd,      TOP_vfmsubxxrpd,      TOP_vfmsubxxxrpd,         TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmsubaddxrps,   TOP_vfmsubaddxxrps,   TOP_vfmsubaddxxxrps,      TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmsubaddxrpd,   TOP_vfmsubaddxxrpd,   TOP_vfmsubaddxxxrpd,      TOP_UNDEFINED},
   {TOP_icall,	       TOP_icallx,	    TOP_icallxx,	  TOP_icallxxx,	            TOP_UNDEFINED},
   {TOP_ijmp,	       TOP_ijmpx,	    TOP_ijmpxx,	          TOP_ijmpxxx,	            TOP_UNDEFINED},
   {TOP_cvtsd2ss,       TOP_cvtsd2ss_x,	    TOP_cvtsd2ss_xx,	  TOP_cvtsd2ss_xxx,	    TOP_UNDEFINED},
@@ -5731,6 +5739,12 @@ BOOL EBO_Process_SSE5_Load_Execute(TOP new_top,
   case TOP_vfmaddxpd:
   case TOP_vfmaddxxpd:
   case TOP_vfmaddxxxpd:
+  case TOP_vfmaddsubxps:
+  case TOP_vfmaddsubxxps:
+  case TOP_vfmaddsubxxxps:
+  case TOP_vfmaddsubxpd:
+  case TOP_vfmaddsubxxpd:
+  case TOP_vfmaddsubxxxpd:
   case TOP_vfnmaddxps:
   case TOP_vfnmaddxxps:
   case TOP_vfnmaddxxxps:
@@ -5755,6 +5769,12 @@ BOOL EBO_Process_SSE5_Load_Execute(TOP new_top,
   case TOP_vfmsubxpd:
   case TOP_vfmsubxxpd:
   case TOP_vfmsubxxxpd:
+  case TOP_vfmsubaddxps:
+  case TOP_vfmsubaddxxps:
+  case TOP_vfmsubaddxxxps:
+  case TOP_vfmsubaddxpd:
+  case TOP_vfmsubaddxxpd:
+  case TOP_vfmsubaddxxxpd:
   case TOP_vfnmsubxps:
   case TOP_vfnmsubxxps:
   case TOP_vfnmsubxxxps:
@@ -5785,6 +5805,12 @@ BOOL EBO_Process_SSE5_Load_Execute(TOP new_top,
   case TOP_vfmaddxrpd:
   case TOP_vfmaddxxrpd:
   case TOP_vfmaddxxxrpd:
+  case TOP_vfmaddsubxrps:
+  case TOP_vfmaddsubxxrps:
+  case TOP_vfmaddsubxxxrps:
+  case TOP_vfmaddsubxrpd:
+  case TOP_vfmaddsubxxrpd:
+  case TOP_vfmaddsubxxxrpd:
   case TOP_vfnmaddxrps:
   case TOP_vfnmaddxxrps:
   case TOP_vfnmaddxxxrps:
@@ -5809,6 +5835,12 @@ BOOL EBO_Process_SSE5_Load_Execute(TOP new_top,
   case TOP_vfmsubxrpd:
   case TOP_vfmsubxxrpd:
   case TOP_vfmsubxxxrpd:
+  case TOP_vfmsubaddxrps:
+  case TOP_vfmsubaddxxrps:
+  case TOP_vfmsubaddxxxrps:
+  case TOP_vfmsubaddxrpd:
+  case TOP_vfmsubaddxxrpd:
+  case TOP_vfmsubaddxxxrpd:
   case TOP_vfnmsubxrps:
   case TOP_vfnmsubxxrps:
   case TOP_vfnmsubxxxrps:
@@ -5840,10 +5872,14 @@ BOOL EBO_Is_FMA4( OP* alu_op)
   case TOP_vfmaddsd:
   case TOP_vfmaddps:
   case TOP_vfmaddpd:
+  case TOP_vfmaddsubps:
+  case TOP_vfmaddsubpd:
   case TOP_vfmsubss:
   case TOP_vfmsubsd:
   case TOP_vfmsubps:
   case TOP_vfmsubpd:
+  case TOP_vfmsubaddps:
+  case TOP_vfmsubaddpd:
     ret_val = TRUE;
     break;
   default:

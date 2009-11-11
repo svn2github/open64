@@ -2103,6 +2103,11 @@ main()
                            TOP_roundsd,
                            TOP_roundss,
                            TOP_fextr128v32,
+                           /* XOP instructions */
+                           TOP_vprotbi,
+                           TOP_vprotdi,
+                           TOP_vprotqi,
+                           TOP_vprotwi,
                            /* AVX instructions */
                            TOP_vfpermi128v64,
                            TOP_vfpermi128v32,
@@ -2121,6 +2126,11 @@ main()
                            TOP_roundx128v64,
                            TOP_roundxsd,
                            TOP_roundxss,
+                           /* XOP instructions */
+                           TOP_vprotbix,
+                           TOP_vprotdix,
+                           TOP_vprotqix,
+                           TOP_vprotwix,
                            /* AVX instructions */
                            TOP_vfpermix128v64,
                            TOP_vfpermix128v32,
@@ -2138,6 +2148,11 @@ main()
                            TOP_roundxx128v64,
                            TOP_roundxxsd,
                            TOP_roundxxss,
+                           /* XOP instructions */
+                           TOP_vprotbixx,
+                           TOP_vprotdixx,
+                           TOP_vprotqixx,
+                           TOP_vprotwixx,
                            /* AVX instructions */
                            TOP_vfpermixx128v64,
                            TOP_vfpermixx128v32,
@@ -2157,6 +2172,11 @@ main()
                            TOP_roundxxx128v64,
                            TOP_roundxxxsd,
                            TOP_roundxxxss,
+                           /* XOP instructions */
+                           TOP_vprotbixxx,
+                           TOP_vprotdixxx,
+                           TOP_vprotqixxx,
+                           TOP_vprotwixxx,
                            /* AVX instructions */
                            TOP_vfpermixxx128v64,
                            TOP_vfpermixxx128v32,
@@ -2266,10 +2286,6 @@ main()
                            /* PCLMUL instructions */
                            TOP_pclmulqdq,
                            /* XOP instructions */
-                           TOP_vprotbi,
-                           TOP_vprotdi,
-                           TOP_vprotqi,
-                           TOP_vprotwi,
                            TOP_vpcomb,
                            TOP_vpcomd,
                            TOP_vpcomq,
@@ -2322,10 +2338,6 @@ main()
                            /* PCLMUL instructions */
                            TOP_pclmulqdqx,
                            /* XOP instructions */
-                           TOP_vprotbix,
-                           TOP_vprotdix,
-                           TOP_vprotqix,
-                           TOP_vprotwix,
                            TOP_vpcombx,
                            TOP_vpcomdx,
                            TOP_vpcomqx,
@@ -2375,10 +2387,6 @@ main()
                            /* PCLMUL instructions */
                            TOP_pclmulqdqxx,
                            /* XOP instructions */
-                           TOP_vprotbixx,
-                           TOP_vprotdixx,
-                           TOP_vprotqixx,
-                           TOP_vprotwixx,
                            TOP_vpcombxx,
                            TOP_vpcomdxx,
                            TOP_vpcomqxx,
@@ -2430,10 +2438,6 @@ main()
                            /* PCLMUL instructions */
                            TOP_pclmulqdqxxx,
                            /* XOP instructions */
-                           TOP_vprotbixxx,
-                           TOP_vprotdixxx,
-                           TOP_vprotqixxx,
-                           TOP_vprotwixxx,
                            TOP_vpcombxxx,
                            TOP_vpcomdxxx,
                            TOP_vpcomqxxx,
@@ -2520,9 +2524,8 @@ main()
   Operand(3, uimm8, scale);
   Operand(4, simm32, offset);
 
-  Instruction_Group( "vector res reg reg reg",
+  Instruction_Group( "vector res reg reg",
                            /* XOP instructions */
-                           TOP_vpperm,
                            TOP_vprotb,
                            TOP_vprotd,
                            TOP_vprotq,
@@ -2535,6 +2538,140 @@ main()
                            TOP_vpshld,
                            TOP_vpshlq,
                            TOP_vpshlw,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, fp128, opnd2);
+
+  Instruction_Group( "vector res mem reg",
+                           /* XOP instructions */
+                           TOP_vprotbx,
+                           TOP_vprotdx,
+                           TOP_vprotqx,
+                           TOP_vprotwx,
+                           TOP_vpshabx,
+                           TOP_vpshadx,
+                           TOP_vpshaqx,
+                           TOP_vpshawx,
+                           TOP_vpshlbx,
+                           TOP_vpshldx,
+                           TOP_vpshlqx,
+                           TOP_vpshlwx,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+  Operand(2, fp128, opnd1);
+
+  Instruction_Group( "vector res reg mem",
+                           /* XOP instructions */
+                           TOP_vprotbxr,
+                           TOP_vprotdxr,
+                           TOP_vprotqxr,
+                           TOP_vprotwxr,
+                           TOP_vpshabxr,
+                           TOP_vpshadxr,
+                           TOP_vpshaqxr,
+                           TOP_vpshawxr,
+                           TOP_vpshlbxr,
+                           TOP_vpshldxr,
+                           TOP_vpshlqxr,
+                           TOP_vpshlwxr,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+
+  Instruction_Group( "vector res mem w/ scaled index w/ base reg",
+                           /* XOP instructions */
+                           TOP_vprotbxx,
+                           TOP_vprotdxx,
+                           TOP_vprotqxx,
+                           TOP_vprotwxx,
+                           TOP_vpshabxx,
+                           TOP_vpshadxx,
+                           TOP_vpshaqxx,
+                           TOP_vpshawxx,
+                           TOP_vpshlbxx,
+                           TOP_vpshldxx,
+                           TOP_vpshlqxx,
+                           TOP_vpshlwxx,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, int64, base);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+  Operand(4, fp128, opnd1);
+
+  Instruction_Group( "vector res reg mem w/ scaled index w/ base",
+                           /* XOP instructions */
+                           TOP_vprotbxxr,
+                           TOP_vprotdxxr,
+                           TOP_vprotqxxr,
+                           TOP_vprotwxxr,
+                           TOP_vpshabxxr,
+                           TOP_vpshadxxr,
+                           TOP_vpshaqxxr,
+                           TOP_vpshawxxr,
+                           TOP_vpshlbxxr,
+                           TOP_vpshldxxr,
+                           TOP_vpshlqxxr,
+                           TOP_vpshlwxxr,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, base);
+  Operand(2, int64, index);
+  Operand(3, uimm8, scale);
+  Operand(4, simm32, offset);
+
+  Instruction_Group( "vector res mem w/ scaled index w/o base reg",
+                           /* XOP instructions */
+                           TOP_vprotbxxx,
+                           TOP_vprotdxxx,
+                           TOP_vprotqxxx,
+                           TOP_vprotwxxx,
+                           TOP_vpshabxxx,
+                           TOP_vpshadxxx,
+                           TOP_vpshaqxxx,
+                           TOP_vpshawxxx,
+                           TOP_vpshlbxxx,
+                           TOP_vpshldxxx,
+                           TOP_vpshlqxxx,
+                           TOP_vpshlwxxx,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, int64, index);
+  Operand(1, uimm8, scale);
+  Operand(2, simm32, offset);
+  Operand(3, fp128, opnd1);
+
+  Instruction_Group( "vector res reg mem w/ scaled index w/o base",
+                           /* XOP instructions */
+                           TOP_vprotbxxxr,
+                           TOP_vprotdxxxr,
+                           TOP_vprotqxxxr,
+                           TOP_vprotwxxxr,
+                           TOP_vpshabxxxr,
+                           TOP_vpshadxxxr,
+                           TOP_vpshaqxxxr,
+                           TOP_vpshawxxxr,
+                           TOP_vpshlbxxxr,
+                           TOP_vpshldxxxr,
+                           TOP_vpshlqxxxr,
+                           TOP_vpshlwxxxr,
+                           TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+
+  Instruction_Group( "vector res reg reg reg",
+                           /* XOP instructions */
+                           TOP_vpperm,
                            TOP_vpcmov,
                            TOP_vpmacsdd,
                            TOP_vpmacsdqh,
@@ -2561,18 +2698,6 @@ main()
   Instruction_Group( "vector res reg mem reg",
                            /* XOP instructions */
                            TOP_vppermx,
-                           TOP_vprotbx,
-                           TOP_vprotdx,
-                           TOP_vprotqx,
-                           TOP_vprotwx,
-                           TOP_vpshabx,
-                           TOP_vpshadx,
-                           TOP_vpshaqx,
-                           TOP_vpshawx,
-                           TOP_vpshlbx,
-                           TOP_vpshldx,
-                           TOP_vpshlqx,
-                           TOP_vpshlwx,
                            TOP_vpcmovx,
                            TOP_vpmacsddx,
                            TOP_vpmacsdqhx,
@@ -2600,18 +2725,6 @@ main()
   Instruction_Group( "vector res reg mem reg w/ scaled index",
                            /* XOP instructions */
                            TOP_vppermxx,
-                           TOP_vprotbxx,
-                           TOP_vprotdxx,
-                           TOP_vprotqxx,
-                           TOP_vprotwxx,
-                           TOP_vpshabxx,
-                           TOP_vpshadxx,
-                           TOP_vpshaqxx,
-                           TOP_vpshawxx,
-                           TOP_vpshlbxx,
-                           TOP_vpshldxx,
-                           TOP_vpshlqxx,
-                           TOP_vpshlwxx,
                            TOP_vpcmovxx,
                            TOP_vpmacsddxx,
                            TOP_vpmacsdqhxx,
@@ -2641,18 +2754,6 @@ main()
   Instruction_Group( "vector res reg mem reg w/ scaled index w/o base",
                            /* XOP instructions */
                            TOP_vppermxxx,
-                           TOP_vprotbxxx,
-                           TOP_vprotdxxx,
-                           TOP_vprotqxxx,
-                           TOP_vprotwxxx,
-                           TOP_vpshabxxx,
-                           TOP_vpshadxxx,
-                           TOP_vpshaqxxx,
-                           TOP_vpshawxxx,
-                           TOP_vpshlbxxx,
-                           TOP_vpshldxxx,
-                           TOP_vpshlqxxx,
-                           TOP_vpshlwxxx,
                            TOP_vpcmovxxx,
                            TOP_vpmacsddxxx,
                            TOP_vpmacsdqhxxx,
@@ -2681,18 +2782,6 @@ main()
   Instruction_Group( "vector res reg reg memr",
                            /* XOP instructions */
                            TOP_vppermxr,
-                           TOP_vprotbxr,
-                           TOP_vprotdxr,
-                           TOP_vprotqxr,
-                           TOP_vprotwxr,
-                           TOP_vpshabxr,
-                           TOP_vpshadxr,
-                           TOP_vpshaqxr,
-                           TOP_vpshawxr,
-                           TOP_vpshlbxr,
-                           TOP_vpshldxr,
-                           TOP_vpshlqxr,
-                           TOP_vpshlwxr,
                            TOP_vpcmovxr,
                            TOP_UNDEFINED);
   Result(0, fp128);
@@ -2704,18 +2793,6 @@ main()
   Instruction_Group( "vector res reg reg memr w/ scaled index",
                            /* XOP instructions */
                            TOP_vppermxxr,
-                           TOP_vprotbxxr,
-                           TOP_vprotdxxr,
-                           TOP_vprotqxxr,
-                           TOP_vprotwxxr,
-                           TOP_vpshabxxr,
-                           TOP_vpshadxxr,
-                           TOP_vpshaqxxr,
-                           TOP_vpshawxxr,
-                           TOP_vpshlbxxr,
-                           TOP_vpshldxxr,
-                           TOP_vpshlqxxr,
-                           TOP_vpshlwxxr,
                            TOP_vpcmovxxr,
                            TOP_UNDEFINED);
   Result(0, fp128);
@@ -2729,18 +2806,6 @@ main()
   Instruction_Group( "vector res reg reg memr w/ scaled index w/o base",
                            /* XOP instructions */
                            TOP_vppermxxxr,
-                           TOP_vprotbxxxr,
-                           TOP_vprotdxxxr,
-                           TOP_vprotqxxxr,
-                           TOP_vprotwxxxr,
-                           TOP_vpshabxxxr,
-                           TOP_vpshadxxxr,
-                           TOP_vpshaqxxxr,
-                           TOP_vpshawxxxr,
-                           TOP_vpshlbxxxr,
-                           TOP_vpshldxxxr,
-                           TOP_vpshlqxxxr,
-                           TOP_vpshlwxxxr,
                            TOP_vpcmovxxxr,
                            TOP_UNDEFINED);
   Result(0, fp128);
@@ -5748,6 +5813,8 @@ main()
                     TOP_vfnmaddsd,
                     TOP_vfmaddps,
                     TOP_vfmaddpd,
+                    TOP_vfmaddsubps,
+                    TOP_vfmaddsubpd,
                     TOP_vfnmaddps,
                     TOP_vfnmaddpd,
                     TOP_vfmsubss,
@@ -5756,6 +5823,8 @@ main()
                     TOP_vfnmsubsd,
                     TOP_vfmsubps,
                     TOP_vfmsubpd,
+                    TOP_vfmsubaddps,
+                    TOP_vfmsubaddpd,
                     TOP_vfnmsubps,
                     TOP_vfnmsubpd,
                     TOP_UNDEFINED);
@@ -5771,6 +5840,8 @@ main()
                     TOP_vfnmaddxsd,
                     TOP_vfmaddxps,
                     TOP_vfmaddxpd,
+                    TOP_vfmaddsubxps,
+                    TOP_vfmaddsubxpd,
                     TOP_vfnmaddxps,
                     TOP_vfnmaddxpd,
                     TOP_vfmsubxss,
@@ -5779,6 +5850,8 @@ main()
                     TOP_vfnmsubxsd,
                     TOP_vfmsubxps,
                     TOP_vfmsubxpd,
+                    TOP_vfmsubaddxps,
+                    TOP_vfmsubaddxpd,
                     TOP_vfnmsubxps,
                     TOP_vfnmsubxpd,
                     TOP_UNDEFINED);
@@ -5795,6 +5868,8 @@ main()
                     TOP_vfnmaddxxsd,
                     TOP_vfmaddxxps,
                     TOP_vfmaddxxpd,
+                    TOP_vfmaddsubxxps,
+                    TOP_vfmaddsubxxpd,
                     TOP_vfnmaddxxps,
                     TOP_vfnmaddxxpd,
                     TOP_vfmsubxxss,
@@ -5803,6 +5878,8 @@ main()
                     TOP_vfnmsubxxsd,
                     TOP_vfmsubxxps,
                     TOP_vfmsubxxpd,
+                    TOP_vfmsubaddxxps,
+                    TOP_vfmsubaddxxpd,
                     TOP_vfnmsubxxps,
                     TOP_vfnmsubxxpd,
                     TOP_UNDEFINED);
@@ -5821,6 +5898,8 @@ main()
                     TOP_vfnmaddxxxsd,
                     TOP_vfmaddxxxps,
                     TOP_vfmaddxxxpd,
+                    TOP_vfmaddsubxxxps,
+                    TOP_vfmaddsubxxxpd,
                     TOP_vfnmaddxxxps,
                     TOP_vfnmaddxxxpd,
                     TOP_vfmsubxxxss,
@@ -5829,6 +5908,8 @@ main()
                     TOP_vfnmsubxxxsd,
                     TOP_vfmsubxxxps,
                     TOP_vfmsubxxxpd,
+                    TOP_vfmsubaddxxxps,
+                    TOP_vfmsubaddxxxpd,
                     TOP_vfnmsubxxxps,
                     TOP_vfnmsubxxxpd,
                     TOP_UNDEFINED);
@@ -5846,6 +5927,8 @@ main()
                     TOP_vfnmaddxrsd,
                     TOP_vfmaddxrps,
                     TOP_vfmaddxrpd,
+                    TOP_vfmaddsubxrps,
+                    TOP_vfmaddsubxrpd,
                     TOP_vfnmaddxrps,
                     TOP_vfnmaddxrpd,
                     TOP_vfmsubxrss,
@@ -5854,6 +5937,8 @@ main()
                     TOP_vfnmsubxrsd,
                     TOP_vfmsubxrps,
                     TOP_vfmsubxrpd,
+                    TOP_vfmsubaddxrps,
+                    TOP_vfmsubaddxrpd,
                     TOP_vfnmsubxrps,
                     TOP_vfnmsubxrpd,
                     TOP_UNDEFINED);
@@ -5870,6 +5955,8 @@ main()
                     TOP_vfnmaddxxrsd,
                     TOP_vfmaddxxrps,
                     TOP_vfmaddxxrpd,
+                    TOP_vfmaddsubxxrps,
+                    TOP_vfmaddsubxxrpd,
                     TOP_vfnmaddxxrps,
                     TOP_vfnmaddxxrpd,
                     TOP_vfmsubxxrss,
@@ -5878,6 +5965,8 @@ main()
                     TOP_vfnmsubxxrsd,
                     TOP_vfmsubxxrps,
                     TOP_vfmsubxxrpd,
+                    TOP_vfmsubaddxxrps,
+                    TOP_vfmsubaddxxrpd,
                     TOP_vfnmsubxxrps,
                     TOP_vfnmsubxxrpd,
                     TOP_UNDEFINED);
@@ -5896,6 +5985,8 @@ main()
                     TOP_vfnmaddxxxrsd,
                     TOP_vfmaddxxxrps,
                     TOP_vfmaddxxxrpd,
+                    TOP_vfmaddsubxxxrps,
+                    TOP_vfmaddsubxxxrpd,
                     TOP_vfnmaddxxxrps,
                     TOP_vfnmaddxxxrpd,
                     TOP_vfmsubxxxrss,
@@ -5904,6 +5995,8 @@ main()
                     TOP_vfnmsubxxxrsd,
                     TOP_vfmsubxxxrps,
                     TOP_vfmsubxxxrpd,
+                    TOP_vfmsubaddxxxrps,
+                    TOP_vfmsubaddxxxrpd,
                     TOP_vfnmsubxxxrps,
                     TOP_vfnmsubxxxrpd,
                     TOP_UNDEFINED);

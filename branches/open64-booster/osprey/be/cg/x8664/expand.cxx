@@ -6776,6 +6776,18 @@ Expand_INTRN_PCMPISTR(INTRINSIC id, TN* result, TN* op0, TN* op1, TN* op2, OPS* 
 void
 Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, TN *op4, TYPE_ID mtype, OPS *ops)
 {
+
+  enum XOP_VPCOMP_OP {
+    VPCOM_LT = 0,    /* less than */
+    VPCOM_LE = 1,    /* less than or equal */
+    VPCOM_GT = 2,    /* greater than */
+    VPCOM_GE = 3,    /* greater than or equal */
+    VPCOM_EQ = 4,    /* equal */
+    VPCOM_NE = 5,    /* not euqal */
+    VPCOM_FALSE = 6, /* false */
+    VPCOM_TRUE = 7,  /* ture */
+  };
+
   TN* rflags = Rflags_TN();
   TN *result_tmp = Build_TN_Of_Mtype( MTYPE_U1 );
   BOOL need_zero_ext = FALSE;	// if zero ext is needed, if yes, `movzb{l|q} result_tmp, result' is appended
@@ -8218,6 +8230,434 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     break;
    case INTRN_XORPS256:
     Build_OP(TOP_vfxor128v32, result, op0, op1, ops );
+    break;
+   /* FMA4 intrinsics */
+   case INTRN_VFMADDPD:
+   case INTRN_VFMADDPD256:
+    Build_OP(TOP_vfmaddpd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFMADDPS:
+   case INTRN_VFMADDPS256:
+    Build_OP(TOP_vfmaddps, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFMADDSD:
+    Build_OP(TOP_vfmaddsd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFMADDSS:
+    Build_OP(TOP_vfmaddss, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFMADDSUBPD:
+   case INTRN_VFMADDSUBPD256:
+    Build_OP(TOP_vfmaddsubpd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFMADDSUBPS:
+   case INTRN_VFMADDSUBPS256:
+    Build_OP(TOP_vfmaddsubps, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFMSUBADDPD:
+   case INTRN_VFMSUBADDPD256:
+    Build_OP(TOP_vfmsubaddpd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFMSUBADDPS:
+   case INTRN_VFMSUBADDPS256:
+    Build_OP(TOP_vfmsubaddps, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFMSUBPD:
+   case INTRN_VFMSUBPD256:
+    Build_OP(TOP_vfmsubpd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFMSUBPS:
+   case INTRN_VFMSUBPS256:
+    Build_OP(TOP_vfmsubps, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFMSUBSD:
+    Build_OP(TOP_vfmsubsd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFMSUBSS:
+    Build_OP(TOP_vfmsubss, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFNMADDPD:
+   case INTRN_VFNMADDPD256:
+    Build_OP(TOP_vfnmaddpd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFNMADDPS:
+   case INTRN_VFNMADDPS256:
+    Build_OP(TOP_vfnmaddps, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFNMADDSD:
+    Build_OP(TOP_vfnmaddsd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFNMADDSS:
+    Build_OP(TOP_vfnmaddss, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFNMSUBPD:
+   case INTRN_VFNMSUBPD256:
+    Build_OP(TOP_vfnmsubpd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFNMSUBPS:
+   case INTRN_VFNMSUBPS256:
+    Build_OP(TOP_vfnmsubps, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFNMSUBSD:
+    Build_OP(TOP_vfnmsubsd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFNMSUBSS:
+    Build_OP(TOP_vfnmsubss, result, op0, op1, op2, ops );
+    break;
+   /* XOP intrinsics */
+   case INTRN_VFRCZPD:
+   case INTRN_VFRCZPD256:
+    Build_OP(TOP_vfrczpd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFRCZPS:
+   case INTRN_VFRCZPS256:
+    Build_OP(TOP_vfrczps, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFRCZSD:
+    Build_OP(TOP_vfrczsd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VFRCZSS:
+    Build_OP(TOP_vfrczss, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPCMOV:
+   case INTRN_VPCMOV256:
+   case INTRN_VPCMOV_V16HI256:
+   case INTRN_VPCMOV_V16QI:
+   case INTRN_VPCMOV_V2DF:
+   case INTRN_VPCMOV_V2DI:
+   case INTRN_VPCMOV_V32QI256:
+   case INTRN_VPCMOV_V4DF256:
+   case INTRN_VPCMOV_V4DI256:
+   case INTRN_VPCMOV_V4SF:
+   case INTRN_VPCMOV_V4SI:
+   case INTRN_VPCMOV_V8HI:
+   case INTRN_VPCMOV_V8SF256:
+   case INTRN_VPCMOV_V8SI256:
+    Build_OP(TOP_vpcmov, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPCOMEQB:
+    Build_OP(TOP_vpcomb, result, op0, op1, Gen_Literal_TN(VPCOM_EQ, 4), ops );
+    break;
+   case INTRN_VPCOMEQD:
+    Build_OP(TOP_vpcomd, result, op0, op1, Gen_Literal_TN(VPCOM_EQ, 4), ops );
+    break;
+   case INTRN_VPCOMEQQ:
+    Build_OP(TOP_vpcomq, result, op0, op1, Gen_Literal_TN(VPCOM_EQ, 4), ops );
+    break;
+   case INTRN_VPCOMEQUB:
+    Build_OP(TOP_vpcomub, result, op0, op1, Gen_Literal_TN(VPCOM_EQ, 4), ops );
+    break;
+   case INTRN_VPCOMEQUD:
+    Build_OP(TOP_vpcomud, result, op0, op1, Gen_Literal_TN(VPCOM_EQ, 4), ops );
+    break;
+   case INTRN_VPCOMEQUQ:
+    Build_OP(TOP_vpcomuq, result, op0, op1, Gen_Literal_TN(VPCOM_EQ, 4), ops );
+    break;
+   case INTRN_VPCOMEQUW:
+    Build_OP(TOP_vpcomuw, result, op0, op1, Gen_Literal_TN(VPCOM_EQ, 4), ops );
+    break;
+   case INTRN_VPCOMEQW:
+    Build_OP(TOP_vpcomw, result, op0, op1, Gen_Literal_TN(VPCOM_EQ, 4), ops );
+    break;
+   case INTRN_VPCOMFALSEB:
+    Build_OP(TOP_vpcomb, result, op0, op1, Gen_Literal_TN(VPCOM_FALSE, 4), ops );
+    break;
+   case INTRN_VPCOMFALSED:
+    Build_OP(TOP_vpcomd, result, op0, op1, Gen_Literal_TN(VPCOM_FALSE, 4), ops );
+    break;
+   case INTRN_VPCOMFALSEQ:
+    Build_OP(TOP_vpcomq, result, op0, op1, Gen_Literal_TN(VPCOM_FALSE, 4), ops );
+    break;
+   case INTRN_VPCOMFALSEUB:
+    Build_OP(TOP_vpcomub, result, op0, op1, Gen_Literal_TN(VPCOM_FALSE, 4), ops );
+    break;
+   case INTRN_VPCOMFALSEUD:
+    Build_OP(TOP_vpcomud, result, op0, op1, Gen_Literal_TN(VPCOM_FALSE, 4), ops );
+    break;
+   case INTRN_VPCOMFALSEUQ:
+    Build_OP(TOP_vpcomuq, result, op0, op1, Gen_Literal_TN(VPCOM_FALSE, 4), ops );
+    break;
+   case INTRN_VPCOMFALSEUW:
+    Build_OP(TOP_vpcomuw, result, op0, op1, Gen_Literal_TN(VPCOM_FALSE, 4), ops );
+    break;
+   case INTRN_VPCOMFALSEW:
+    Build_OP(TOP_vpcomw, result, op0, op1, Gen_Literal_TN(VPCOM_FALSE, 4), ops );
+    break;
+   case INTRN_VPCOMGEB:
+    Build_OP(TOP_vpcomb, result, op0, op1, Gen_Literal_TN(VPCOM_GE, 4), ops );
+    break;
+   case INTRN_VPCOMGED:
+    Build_OP(TOP_vpcomd, result, op0, op1, Gen_Literal_TN(VPCOM_GE, 4), ops );
+    break;
+   case INTRN_VPCOMGEQ:
+    Build_OP(TOP_vpcomq, result, op0, op1, Gen_Literal_TN(VPCOM_GE, 4), ops );
+    break;
+   case INTRN_VPCOMGEUB:
+    Build_OP(TOP_vpcomub, result, op0, op1, Gen_Literal_TN(VPCOM_GE, 4), ops );
+    break;
+   case INTRN_VPCOMGEUD:
+    Build_OP(TOP_vpcomud, result, op0, op1, Gen_Literal_TN(VPCOM_GE, 4), ops );
+    break;
+   case INTRN_VPCOMGEUQ:
+    Build_OP(TOP_vpcomuq, result, op0, op1, Gen_Literal_TN(VPCOM_GE, 4), ops );
+    break;
+   case INTRN_VPCOMGEUW:
+    Build_OP(TOP_vpcomuw, result, op0, op1, Gen_Literal_TN(VPCOM_GE, 4), ops );
+    break;
+   case INTRN_VPCOMGEW:
+    Build_OP(TOP_vpcomw, result, op0, op1, Gen_Literal_TN(VPCOM_GE, 4), ops );
+    break;
+   case INTRN_VPCOMGTB:
+    Build_OP(TOP_vpcomb, result, op0, op1, Gen_Literal_TN(VPCOM_GT, 4), ops );
+    break;
+   case INTRN_VPCOMGTD:
+    Build_OP(TOP_vpcomd, result, op0, op1, Gen_Literal_TN(VPCOM_GT, 4), ops );
+    break;
+   case INTRN_VPCOMGTQ:
+    Build_OP(TOP_vpcomq, result, op0, op1, Gen_Literal_TN(VPCOM_GT, 4), ops );
+    break;
+   case INTRN_VPCOMGTUB:
+    Build_OP(TOP_vpcomub, result, op0, op1, Gen_Literal_TN(VPCOM_GT, 4), ops );
+    break;
+   case INTRN_VPCOMGTUD:
+    Build_OP(TOP_vpcomud, result, op0, op1, Gen_Literal_TN(VPCOM_GT, 4), ops );
+    break;
+   case INTRN_VPCOMGTUQ:
+    Build_OP(TOP_vpcomuq, result, op0, op1, Gen_Literal_TN(VPCOM_GT, 4), ops );
+    break;
+   case INTRN_VPCOMGTUW:
+    Build_OP(TOP_vpcomuw, result, op0, op1, Gen_Literal_TN(VPCOM_GT, 4), ops );
+    break;
+   case INTRN_VPCOMGTW:
+    Build_OP(TOP_vpcomw, result, op0, op1, Gen_Literal_TN(VPCOM_GT, 4), ops );
+    break;
+   case INTRN_VPCOMLEB:
+    Build_OP(TOP_vpcomb, result, op0, op1, Gen_Literal_TN(VPCOM_LE, 4), ops );
+    break;
+   case INTRN_VPCOMLED:
+    Build_OP(TOP_vpcomd, result, op0, op1, Gen_Literal_TN(VPCOM_LE, 4), ops );
+    break;
+   case INTRN_VPCOMLEQ:
+    Build_OP(TOP_vpcomq, result, op0, op1, Gen_Literal_TN(VPCOM_LE, 4), ops );
+    break;
+   case INTRN_VPCOMLEUB:
+    Build_OP(TOP_vpcomub, result, op0, op1, Gen_Literal_TN(VPCOM_LE, 4), ops );
+    break;
+   case INTRN_VPCOMLEUD:
+    Build_OP(TOP_vpcomud, result, op0, op1, Gen_Literal_TN(VPCOM_LE, 4), ops );
+    break;
+   case INTRN_VPCOMLEUQ:
+    Build_OP(TOP_vpcomuq, result, op0, op1, Gen_Literal_TN(VPCOM_LE, 4), ops );
+    break;
+   case INTRN_VPCOMLEUW:
+    Build_OP(TOP_vpcomuw, result, op0, op1, Gen_Literal_TN(VPCOM_LE, 4), ops );
+    break;
+   case INTRN_VPCOMLEW:
+    Build_OP(TOP_vpcomw, result, op0, op1, Gen_Literal_TN(VPCOM_LE, 4), ops );
+    break;
+   case INTRN_VPCOMLTB:
+    Build_OP(TOP_vpcomb, result, op0, op1, Gen_Literal_TN(VPCOM_LT, 4), ops );
+    break;
+   case INTRN_VPCOMLTD:
+    Build_OP(TOP_vpcomd, result, op0, op1, Gen_Literal_TN(VPCOM_LT, 4), ops );
+    break;
+   case INTRN_VPCOMLTQ:
+    Build_OP(TOP_vpcomq, result, op0, op1, Gen_Literal_TN(VPCOM_LT, 4), ops );
+    break;
+   case INTRN_VPCOMLTUB:
+    Build_OP(TOP_vpcomub, result, op0, op1, Gen_Literal_TN(VPCOM_LT, 4), ops );
+    break;
+   case INTRN_VPCOMLTUD:
+    Build_OP(TOP_vpcomud, result, op0, op1, Gen_Literal_TN(VPCOM_LT, 4), ops );
+    break;
+   case INTRN_VPCOMLTUQ:
+    Build_OP(TOP_vpcomuq, result, op0, op1, Gen_Literal_TN(VPCOM_LT, 4), ops );
+    break;
+   case INTRN_VPCOMLTUW:
+    Build_OP(TOP_vpcomuw, result, op0, op1, Gen_Literal_TN(VPCOM_LT, 4), ops );
+    break;
+   case INTRN_VPCOMLTW:
+    Build_OP(TOP_vpcomw, result, op0, op1, Gen_Literal_TN(VPCOM_LT, 4), ops );
+    break;
+   case INTRN_VPCOMNEB:
+    Build_OP(TOP_vpcomb, result, op0, op1, Gen_Literal_TN(VPCOM_NE, 4), ops );
+    break;
+   case INTRN_VPCOMNED:
+    Build_OP(TOP_vpcomd, result, op0, op1, Gen_Literal_TN(VPCOM_NE, 4), ops );
+    break;
+   case INTRN_VPCOMNEQ:
+    Build_OP(TOP_vpcomq, result, op0, op1, Gen_Literal_TN(VPCOM_NE, 4), ops );
+    break;
+   case INTRN_VPCOMNEUB:
+    Build_OP(TOP_vpcomub, result, op0, op1, Gen_Literal_TN(VPCOM_NE, 4), ops );
+    break;
+   case INTRN_VPCOMNEUD:
+    Build_OP(TOP_vpcomud, result, op0, op1, Gen_Literal_TN(VPCOM_NE, 4), ops );
+    break;
+   case INTRN_VPCOMNEUQ:
+    Build_OP(TOP_vpcomuq, result, op0, op1, Gen_Literal_TN(VPCOM_NE, 4), ops );
+    break;
+   case INTRN_VPCOMNEUW:
+    Build_OP(TOP_vpcomuw, result, op0, op1, Gen_Literal_TN(VPCOM_NE, 4), ops );
+    break;
+   case INTRN_VPCOMNEW:
+    Build_OP(TOP_vpcomw, result, op0, op1, Gen_Literal_TN(VPCOM_NE, 4), ops );
+    break;
+   case INTRN_VPCOMTRUEB:
+    Build_OP(TOP_vpcomb, result, op0, op1, Gen_Literal_TN(VPCOM_TRUE, 4), ops );
+    break;
+   case INTRN_VPCOMTRUED:
+    Build_OP(TOP_vpcomd, result, op0, op1, Gen_Literal_TN(VPCOM_TRUE, 4), ops );
+    break;
+   case INTRN_VPCOMTRUEQ:
+    Build_OP(TOP_vpcomq, result, op0, op1, Gen_Literal_TN(VPCOM_TRUE, 4), ops );
+    break;
+   case INTRN_VPCOMTRUEUB:
+    Build_OP(TOP_vpcomub, result, op0, op1, Gen_Literal_TN(VPCOM_TRUE, 4), ops );
+    break;
+   case INTRN_VPCOMTRUEUD:
+    Build_OP(TOP_vpcomud, result, op0, op1, Gen_Literal_TN(VPCOM_TRUE, 4), ops );
+    break;
+   case INTRN_VPCOMTRUEUQ:
+    Build_OP(TOP_vpcomuq, result, op0, op1, Gen_Literal_TN(VPCOM_TRUE, 4), ops );
+    break;
+   case INTRN_VPCOMTRUEUW:
+    Build_OP(TOP_vpcomuw, result, op0, op1, Gen_Literal_TN(VPCOM_TRUE, 4), ops );
+    break;
+   case INTRN_VPCOMTRUEW:
+    Build_OP(TOP_vpcomw, result, op0, op1, Gen_Literal_TN(VPCOM_TRUE, 4), ops );
+    break;
+   case INTRN_VPHADDBD:
+    Build_OP(TOP_vphaddbd, result, op0, ops );
+    break;
+   case INTRN_VPHADDBQ:
+    Build_OP(TOP_vphaddbq, result, op0, ops );
+    break;
+   case INTRN_VPHADDBW:
+    Build_OP(TOP_vphaddbw, result, op0, ops );
+    break;
+   case INTRN_VPHADDDQ:
+    Build_OP(TOP_vphadddq, result, op0, ops );
+    break;
+   case INTRN_VPHADDUBD:
+    Build_OP(TOP_vphaddubd, result, op0, ops );
+    break;
+   case INTRN_VPHADDUBQ:
+    Build_OP(TOP_vphaddubq, result, op0, ops );
+    break;
+   case INTRN_VPHADDUBW:
+    Build_OP(TOP_vphaddubw, result, op0, ops );
+    break;
+   case INTRN_VPHADDUDQ:
+    Build_OP(TOP_vphaddudq, result, op0, ops );
+    break;
+   case INTRN_VPHADDUWD:
+    Build_OP(TOP_vphadduwd, result, op0, ops );
+    break;
+   case INTRN_VPHADDUWQ:
+    Build_OP(TOP_vphadduwq, result, op0, ops );
+    break;
+   case INTRN_VPHADDWD:
+    Build_OP(TOP_vphaddwd, result, op0, ops );
+    break;
+   case INTRN_VPHADDWQ:
+    Build_OP(TOP_vphaddwq, result, op0, ops );
+    break;
+   case INTRN_VPHSUBBW:
+    Build_OP(TOP_vphsubbw, result, op0, ops );
+    break;
+   case INTRN_VPHSUBDQ:
+    Build_OP(TOP_vphsubdq, result, op0, ops );
+    break;
+   case INTRN_VPHSUBWD:
+    Build_OP(TOP_vphsubwd, result, op0, ops );
+    break;
+   case INTRN_VPMACSDD:
+    Build_OP(TOP_vpmacsdd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPMACSDQH:
+    Build_OP(TOP_vpmacsdqh, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPMACSDQL:
+    Build_OP(TOP_vpmacsdql, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPMACSSDD:
+    Build_OP(TOP_vpmacssdd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPMACSSDQH:
+    Build_OP(TOP_vpmacssdqh, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPMACSSDQL:
+    Build_OP(TOP_vpmacssdql, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPMACSSWD:
+    Build_OP(TOP_vpmacsswd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPMACSSWW:
+    Build_OP(TOP_vpmacssww, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPMACSWD:
+    Build_OP(TOP_vpmacswd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPMACSWW:
+    Build_OP(TOP_vpmacsww, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPMADCSSWD:
+    Build_OP(TOP_vpmadcsswd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPMADCSWD:
+    Build_OP(TOP_vpmadcswd, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPPERM:
+    Build_OP(TOP_vpperm, result, op0, op1, op2, ops );
+    break;
+   case INTRN_VPROTB:
+    Build_OP(TOP_vprotb, result, op0, op1, ops );
+    break;
+   case INTRN_VPROTB_IMM:
+    Build_OP(TOP_vprotbi, result, op0, op1, ops );
+    break;
+   case INTRN_VPROTD:
+    Build_OP(TOP_vprotd, result, op0, op1, ops );
+    break;
+   case INTRN_VPROTD_IMM:
+    Build_OP(TOP_vprotdi, result, op0, op1, ops );
+    break;
+   case INTRN_VPROTQ:
+    Build_OP(TOP_vprotq, result, op0, op1, ops );
+    break;
+   case INTRN_VPROTQ_IMM:
+    Build_OP(TOP_vprotqi, result, op0, op1, ops );
+    break;
+   case INTRN_VPROTW:
+    Build_OP(TOP_vprotw, result, op0, op1, ops );
+    break;
+   case INTRN_VPROTW_IMM:
+    Build_OP(TOP_vprotwi, result, op0, op1, ops );
+    break;
+   case INTRN_VPSHAB:
+    Build_OP(TOP_vpshab, result, op0, op1, ops );
+    break;
+   case INTRN_VPSHAD:
+    Build_OP(TOP_vpshad, result, op0, op1, ops );
+    break;
+   case INTRN_VPSHAQ:
+    Build_OP(TOP_vpshaq, result, op0, op1, ops );
+    break;
+   case INTRN_VPSHAW:
+    Build_OP(TOP_vpshaw, result, op0, op1, ops );
+    break;
+   case INTRN_VPSHLB:
+    Build_OP(TOP_vpshlb, result, op0, op1, ops );
+    break;
+   case INTRN_VPSHLD:
+    Build_OP(TOP_vpshld, result, op0, op1, ops );
+    break;
+   case INTRN_VPSHLQ:
+    Build_OP(TOP_vpshlq, result, op0, op1, ops );
+    break;
+   case INTRN_VPSHLW:
+    Build_OP(TOP_vpshlw, result, op0, op1, ops );
     break;
   }
 

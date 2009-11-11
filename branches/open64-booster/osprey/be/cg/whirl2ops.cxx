@@ -3559,6 +3559,11 @@ Handle_Imm_Op (WN * expr, INT * kidno /* counted from 0 */)
     case INTRN_PSHUFHW:
     // AES
     case INTRN_AESKEYGENASSIST128:
+    // XOP
+    case INTRN_VPROTB_IMM:
+    case INTRN_VPROTD_IMM:
+    case INTRN_VPROTQ_IMM:
+    case INTRN_VPROTW_IMM:
     // AVX
     case INTRN_ROUNDPD256:
     case INTRN_ROUNDPS256:

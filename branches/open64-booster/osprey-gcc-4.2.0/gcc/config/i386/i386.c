@@ -15963,6 +15963,464 @@ ix86_init_avx_builtins (void)
 static void
 ix86_init_xfc_builtins (void)
 {
+  /* define vector types */
+  tree V2DF_type_node = build_vector_type_for_mode(double_type_node, V2DFmode);
+  tree V2DI_type_node = build_vector_type_for_mode(intDI_type_node, V2DImode);
+  tree V4DF_type_node = build_vector_type_for_mode(double_type_node, V4DFmode);
+  tree V4DI_type_node = build_vector_type_for_mode(intDI_type_node, V4DImode);
+  tree V4SF_type_node = build_vector_type_for_mode(float_type_node, V4SFmode);
+  tree V4SI_type_node = build_vector_type_for_mode(intSI_type_node, V4SImode);
+  tree V8HI_type_node = build_vector_type_for_mode(intHI_type_node, V8HImode);
+  tree V8SF_type_node = build_vector_type_for_mode(float_type_node, V8SFmode);
+  tree V8SI_type_node = build_vector_type_for_mode(intSI_type_node, V8SImode);
+  tree V16HI_type_node = build_vector_type_for_mode(intHI_type_node, V16HImode);
+  tree V16QI_type_node = build_vector_type_for_mode(intQI_type_node, V16QImode);
+  tree V32QI_type_node = build_vector_type_for_mode(intQI_type_node, V32QImode);
+
+  /* define function types */
+  tree v2df_ftype_v2df_v2df_v2df
+    = build_function_type_list (V2DF_type_node,
+                                V2DF_type_node, V2DF_type_node, V2DF_type_node, NULL_TREE);
+  tree v4df_ftype_v4df_v4df_v4df
+    = build_function_type_list (V4DF_type_node,
+                                V4DF_type_node, V4DF_type_node, V4DF_type_node, NULL_TREE);
+  tree v4sf_ftype_v4sf_v4sf_v4sf
+    = build_function_type_list (V4SF_type_node,
+                                V4SF_type_node, V4SF_type_node, V4SF_type_node, NULL_TREE);
+  tree v8sf_ftype_v8sf_v8sf_v8sf
+    = build_function_type_list (V8SF_type_node,
+                                V8SF_type_node, V8SF_type_node, V8SF_type_node, NULL_TREE);
+  tree v16hi_ftype_v16hi_v16hi_v16hi
+    = build_function_type_list (V16HI_type_node,
+                                V16HI_type_node, V16HI_type_node, V16HI_type_node, NULL_TREE);
+  tree v16qi_ftype_v16qi_si
+    = build_function_type_list (V16QI_type_node,
+                                V16QI_type_node, integer_type_node, NULL_TREE);
+  tree v16qi_ftype_v16qi_v16qi
+    = build_function_type_list (V16QI_type_node,
+                                V16QI_type_node, V16QI_type_node, NULL_TREE);
+  tree v16qi_ftype_v16qi_v16qi_v16qi
+    = build_function_type_list (V16QI_type_node,
+                                V16QI_type_node, V16QI_type_node, V16QI_type_node, NULL_TREE);
+  tree v2df_ftype_v2df
+    = build_function_type_list (V2DF_type_node,
+                                V2DF_type_node, NULL_TREE);
+  tree v2df_ftype_v2df_v2df
+    = build_function_type_list (V2DF_type_node,
+                                V2DF_type_node, V2DF_type_node, NULL_TREE);
+  tree v2di_ftype_v16qi
+    = build_function_type_list (V2DI_type_node,
+                                V16QI_type_node, NULL_TREE);
+  tree v2di_ftype_v2di_si
+    = build_function_type_list (V2DI_type_node,
+                                V2DI_type_node, integer_type_node, NULL_TREE);
+  tree v2di_ftype_v2di_v2di
+    = build_function_type_list (V2DI_type_node,
+                                V2DI_type_node, V2DI_type_node, NULL_TREE);
+  tree v2di_ftype_v2di_v2di_v2di
+    = build_function_type_list (V2DI_type_node,
+                                V2DI_type_node, V2DI_type_node, V2DI_type_node, NULL_TREE);
+  tree v2di_ftype_v4si
+    = build_function_type_list (V2DI_type_node,
+                                V4SI_type_node, NULL_TREE);
+  tree v2di_ftype_v8hi
+    = build_function_type_list (V2DI_type_node,
+                                V8HI_type_node, NULL_TREE);
+  tree v32qi_ftype_v32qi_v32qi_v32qi
+    = build_function_type_list (V32QI_type_node,
+                                V32QI_type_node, V32QI_type_node, V32QI_type_node, NULL_TREE);
+  tree v4df_ftype_v4df
+    = build_function_type_list (V4DF_type_node,
+                                V4DF_type_node, NULL_TREE);
+  tree v4di_ftype_v4di_v4di_v4di
+    = build_function_type_list (V4DI_type_node,
+                                V4DI_type_node, V4DI_type_node, V4DI_type_node, NULL_TREE);
+  tree v4sf_ftype_v4sf
+    = build_function_type_list (V4SF_type_node,
+                                V4SF_type_node, NULL_TREE);
+  tree v4sf_ftype_v4sf_v4sf
+    = build_function_type_list (V4SF_type_node,
+                                V4SF_type_node, V4SF_type_node, NULL_TREE);
+  tree v4si_ftype_v16qi
+    = build_function_type_list (V4SI_type_node,
+                                V16QI_type_node, NULL_TREE);
+  tree v4si_ftype_v4si_si
+    = build_function_type_list (V4SI_type_node,
+                                V4SI_type_node, integer_type_node, NULL_TREE);
+  tree v4si_ftype_v4si_v4si
+    = build_function_type_list (V4SI_type_node,
+                                V4SI_type_node, V4SI_type_node, NULL_TREE);
+  tree v4si_ftype_v4si_v4si_v2di
+    = build_function_type_list (V4SI_type_node,
+                                V4SI_type_node, V4SI_type_node, V2DI_type_node, NULL_TREE);
+  tree v4si_ftype_v4si_v4si_v4si
+    = build_function_type_list (V4SI_type_node,
+                                V4SI_type_node, V4SI_type_node, V4SI_type_node, NULL_TREE);
+  tree v4si_ftype_v8hi
+    = build_function_type_list (V4SI_type_node,
+                                V8HI_type_node, NULL_TREE);
+  tree v8hi_ftype_v16qi
+    = build_function_type_list (V8HI_type_node,
+                                V16QI_type_node, NULL_TREE);
+  tree v8hi_ftype_v8hi_si
+    = build_function_type_list (V8HI_type_node,
+                                V8HI_type_node, integer_type_node, NULL_TREE);
+  tree v8hi_ftype_v8hi_v8hi
+    = build_function_type_list (V8HI_type_node,
+                                V8HI_type_node, V8HI_type_node, NULL_TREE);
+  tree v8hi_ftype_v8hi_v8hi_v4si
+    = build_function_type_list (V8HI_type_node,
+                                V8HI_type_node, V8HI_type_node, V4SI_type_node, NULL_TREE);
+  tree v8hi_ftype_v8hi_v8hi_v8hi
+    = build_function_type_list (V8HI_type_node,
+                                V8HI_type_node, V8HI_type_node, V8HI_type_node, NULL_TREE);
+  tree v8sf_ftype_v8sf
+    = build_function_type_list (V8SF_type_node,
+                                V8SF_type_node, NULL_TREE);
+  tree v8si_ftype_v8si_v8si_v8si
+    = build_function_type_list (V8SI_type_node,
+                                V8SI_type_node, V8SI_type_node, V8SI_type_node, NULL_TREE);
+
+  /* FMA4 intrinsics */
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmaddpd",
+               v2df_ftype_v2df_v2df_v2df, IX86_BUILTIN_VFMADDPD);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmaddpd256",
+               v4df_ftype_v4df_v4df_v4df, IX86_BUILTIN_VFMADDPD256);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmaddps",
+               v4sf_ftype_v4sf_v4sf_v4sf, IX86_BUILTIN_VFMADDPS);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmaddps256",
+               v8sf_ftype_v8sf_v8sf_v8sf, IX86_BUILTIN_VFMADDPS256);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmaddsd",
+               v2df_ftype_v2df_v2df_v2df, IX86_BUILTIN_VFMADDSD);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmaddss",
+               v4sf_ftype_v4sf_v4sf_v4sf, IX86_BUILTIN_VFMADDSS);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmaddsubpd",
+               v2df_ftype_v2df_v2df_v2df, IX86_BUILTIN_VFMADDSUBPD);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmaddsubpd256",
+               v4df_ftype_v4df_v4df_v4df, IX86_BUILTIN_VFMADDSUBPD256);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmaddsubps",
+               v4sf_ftype_v4sf_v4sf_v4sf, IX86_BUILTIN_VFMADDSUBPS);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmaddsubps256",
+               v8sf_ftype_v8sf_v8sf_v8sf, IX86_BUILTIN_VFMADDSUBPS256);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmsubaddpd",
+               v2df_ftype_v2df_v2df_v2df, IX86_BUILTIN_VFMSUBADDPD);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmsubaddpd256",
+               v4df_ftype_v4df_v4df_v4df, IX86_BUILTIN_VFMSUBADDPD256);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmsubaddps",
+               v4sf_ftype_v4sf_v4sf_v4sf, IX86_BUILTIN_VFMSUBADDPS);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmsubaddps256",
+               v8sf_ftype_v8sf_v8sf_v8sf, IX86_BUILTIN_VFMSUBADDPS256);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmsubpd",
+               v2df_ftype_v2df_v2df_v2df, IX86_BUILTIN_VFMSUBPD);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmsubpd256",
+               v4df_ftype_v4df_v4df_v4df, IX86_BUILTIN_VFMSUBPD256);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmsubps",
+               v4sf_ftype_v4sf_v4sf_v4sf, IX86_BUILTIN_VFMSUBPS);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmsubps256",
+               v8sf_ftype_v8sf_v8sf_v8sf, IX86_BUILTIN_VFMSUBPS256);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmsubsd",
+               v2df_ftype_v2df_v2df_v2df, IX86_BUILTIN_VFMSUBSD);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfmsubss",
+               v4sf_ftype_v4sf_v4sf_v4sf, IX86_BUILTIN_VFMSUBSS);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfnmaddpd",
+               v2df_ftype_v2df_v2df_v2df, IX86_BUILTIN_VFNMADDPD);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfnmaddpd256",
+               v4df_ftype_v4df_v4df_v4df, IX86_BUILTIN_VFNMADDPD256);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfnmaddps",
+               v4sf_ftype_v4sf_v4sf_v4sf, IX86_BUILTIN_VFNMADDPS);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfnmaddps256",
+               v8sf_ftype_v8sf_v8sf_v8sf, IX86_BUILTIN_VFNMADDPS256);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfnmaddsd",
+               v2df_ftype_v2df_v2df_v2df, IX86_BUILTIN_VFNMADDSD);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfnmaddss",
+               v4sf_ftype_v4sf_v4sf_v4sf, IX86_BUILTIN_VFNMADDSS);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfnmsubpd",
+               v2df_ftype_v2df_v2df_v2df, IX86_BUILTIN_VFNMSUBPD);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfnmsubpd256",
+               v4df_ftype_v4df_v4df_v4df, IX86_BUILTIN_VFNMSUBPD256);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfnmsubps",
+               v4sf_ftype_v4sf_v4sf_v4sf, IX86_BUILTIN_VFNMSUBPS);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfnmsubps256",
+               v8sf_ftype_v8sf_v8sf_v8sf, IX86_BUILTIN_VFNMSUBPS256);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfnmsubsd",
+               v2df_ftype_v2df_v2df_v2df, IX86_BUILTIN_VFNMSUBSD);
+  def_isa_builtin (OPTION_MASK_ISA_FMA4, "__builtin_ia32_vfnmsubss",
+               v4sf_ftype_v4sf_v4sf_v4sf, IX86_BUILTIN_VFNMSUBSS);
+
+  /* XOP intrinsics */
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vfrczpd",
+               v2df_ftype_v2df, IX86_BUILTIN_VFRCZPD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vfrczpd256",
+               v4df_ftype_v4df, IX86_BUILTIN_VFRCZPD256);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vfrczps",
+               v4sf_ftype_v4sf, IX86_BUILTIN_VFRCZPS);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vfrczps256",
+               v8sf_ftype_v8sf, IX86_BUILTIN_VFRCZPS256);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vfrczsd",
+               v2df_ftype_v2df_v2df, IX86_BUILTIN_VFRCZSD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vfrczss",
+               v4sf_ftype_v4sf_v4sf, IX86_BUILTIN_VFRCZSS);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov",
+               v2di_ftype_v2di_v2di_v2di, IX86_BUILTIN_VPCMOV);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov256",
+               v4di_ftype_v4di_v4di_v4di, IX86_BUILTIN_VPCMOV256);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov_v16hi256",
+               v16hi_ftype_v16hi_v16hi_v16hi, IX86_BUILTIN_VPCMOV_V16HI256);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov_v16qi",
+               v16qi_ftype_v16qi_v16qi_v16qi, IX86_BUILTIN_VPCMOV_V16QI);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov_v2df",
+               v2df_ftype_v2df_v2df_v2df, IX86_BUILTIN_VPCMOV_V2DF);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov_v2di",
+               v2di_ftype_v2di_v2di_v2di, IX86_BUILTIN_VPCMOV_V2DI);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov_v32qi256",
+               v32qi_ftype_v32qi_v32qi_v32qi, IX86_BUILTIN_VPCMOV_V32QI256);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov_v4df256",
+               v4df_ftype_v4df_v4df_v4df, IX86_BUILTIN_VPCMOV_V4DF256);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov_v4di256",
+               v4di_ftype_v4di_v4di_v4di, IX86_BUILTIN_VPCMOV_V4DI256);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov_v4sf",
+               v4sf_ftype_v4sf_v4sf_v4sf, IX86_BUILTIN_VPCMOV_V4SF);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov_v4si",
+               v4si_ftype_v4si_v4si_v4si, IX86_BUILTIN_VPCMOV_V4SI);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov_v8hi",
+               v8hi_ftype_v8hi_v8hi_v8hi, IX86_BUILTIN_VPCMOV_V8HI);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov_v8sf256",
+               v8sf_ftype_v8sf_v8sf_v8sf, IX86_BUILTIN_VPCMOV_V8SF256);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcmov_v8si256",
+               v8si_ftype_v8si_v8si_v8si, IX86_BUILTIN_VPCMOV_V8SI256);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomeqb",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMEQB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomeqd",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMEQD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomeqq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMEQQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomequb",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMEQUB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomequd",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMEQUD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomequq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMEQUQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomequw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMEQUW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomeqw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMEQW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomfalseb",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMFALSEB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomfalsed",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMFALSED);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomfalseq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMFALSEQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomfalseub",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMFALSEUB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomfalseud",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMFALSEUD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomfalseuq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMFALSEUQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomfalseuw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMFALSEUW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomfalsew",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMFALSEW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgeb",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMGEB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomged",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMGED);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgeq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMGEQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgeub",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMGEUB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgeud",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMGEUD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgeuq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMGEUQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgeuw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMGEUW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgew",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMGEW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgtb",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMGTB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgtd",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMGTD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgtq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMGTQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgtub",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMGTUB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgtud",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMGTUD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgtuq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMGTUQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgtuw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMGTUW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomgtw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMGTW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomleb",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMLEB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomled",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMLED);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomleq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMLEQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomleub",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMLEUB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomleud",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMLEUD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomleuq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMLEUQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomleuw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMLEUW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomlew",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMLEW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomltb",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMLTB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomltd",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMLTD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomltq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMLTQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomltub",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMLTUB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomltud",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMLTUD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomltuq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMLTUQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomltuw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMLTUW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomltw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMLTW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomneb",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMNEB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomned",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMNED);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomneq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMNEQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomneqb",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMNEB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomneqd",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMNED);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomneqq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMNEQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomnequb",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMNEUB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomnequd",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMNEUD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomnequq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMNEUQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomnequw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMNEUW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomneqw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMNEW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomneub",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMNEUB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomneud",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMNEUD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomneuq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMNEUQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomneuw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMNEUW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomnew",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMNEW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomtrueb",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMTRUEB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomtrued",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMTRUED);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomtrueq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMTRUEQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomtrueub",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPCOMTRUEUB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomtrueud",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPCOMTRUEUD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomtrueuq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPCOMTRUEUQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomtrueuw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMTRUEUW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpcomtruew",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPCOMTRUEW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphaddbd",
+               v4si_ftype_v16qi, IX86_BUILTIN_VPHADDBD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphaddbq",
+               v2di_ftype_v16qi, IX86_BUILTIN_VPHADDBQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphaddbw",
+               v8hi_ftype_v16qi, IX86_BUILTIN_VPHADDBW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphadddq",
+               v2di_ftype_v4si, IX86_BUILTIN_VPHADDDQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphaddubd",
+               v4si_ftype_v16qi, IX86_BUILTIN_VPHADDUBD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphaddubq",
+               v2di_ftype_v16qi, IX86_BUILTIN_VPHADDUBQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphaddubw",
+               v8hi_ftype_v16qi, IX86_BUILTIN_VPHADDUBW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphaddudq",
+               v2di_ftype_v4si, IX86_BUILTIN_VPHADDUDQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphadduwd",
+               v4si_ftype_v8hi, IX86_BUILTIN_VPHADDUWD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphadduwq",
+               v2di_ftype_v8hi, IX86_BUILTIN_VPHADDUWQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphaddwd",
+               v4si_ftype_v8hi, IX86_BUILTIN_VPHADDWD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphaddwq",
+               v2di_ftype_v8hi, IX86_BUILTIN_VPHADDWQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphsubbw",
+               v8hi_ftype_v16qi, IX86_BUILTIN_VPHSUBBW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphsubdq",
+               v2di_ftype_v4si, IX86_BUILTIN_VPHSUBDQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vphsubwd",
+               v4si_ftype_v8hi, IX86_BUILTIN_VPHSUBWD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpmacsdd",
+               v4si_ftype_v4si_v4si_v4si, IX86_BUILTIN_VPMACSDD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpmacsdqh",
+               v4si_ftype_v4si_v4si_v2di, IX86_BUILTIN_VPMACSDQH);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpmacsdql",
+               v4si_ftype_v4si_v4si_v2di, IX86_BUILTIN_VPMACSDQL);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpmacssdd",
+               v4si_ftype_v4si_v4si_v4si, IX86_BUILTIN_VPMACSSDD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpmacssdqh",
+               v4si_ftype_v4si_v4si_v2di, IX86_BUILTIN_VPMACSSDQH);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpmacssdql",
+               v4si_ftype_v4si_v4si_v2di, IX86_BUILTIN_VPMACSSDQL);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpmacsswd",
+               v8hi_ftype_v8hi_v8hi_v4si, IX86_BUILTIN_VPMACSSWD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpmacssww",
+               v8hi_ftype_v8hi_v8hi_v8hi, IX86_BUILTIN_VPMACSSWW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpmacswd",
+               v8hi_ftype_v8hi_v8hi_v4si, IX86_BUILTIN_VPMACSWD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpmacsww",
+               v8hi_ftype_v8hi_v8hi_v8hi, IX86_BUILTIN_VPMACSWW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpmadcsswd",
+               v8hi_ftype_v8hi_v8hi_v4si, IX86_BUILTIN_VPMADCSSWD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpmadcswd",
+               v8hi_ftype_v8hi_v8hi_v4si, IX86_BUILTIN_VPMADCSWD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpperm",
+               v16qi_ftype_v16qi_v16qi_v16qi, IX86_BUILTIN_VPPERM);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vprotb",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPROTB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vprotbi",
+               v16qi_ftype_v16qi_si, IX86_BUILTIN_VPROTB_IMM);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vprotd",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPROTD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vprotdi",
+               v4si_ftype_v4si_si, IX86_BUILTIN_VPROTD_IMM);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vprotq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPROTQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vprotqi",
+               v2di_ftype_v2di_si, IX86_BUILTIN_VPROTQ_IMM);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vprotw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPROTW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vprotwi",
+               v8hi_ftype_v8hi_si, IX86_BUILTIN_VPROTW_IMM);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpshab",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPSHAB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpshad",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPSHAD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpshaq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPSHAQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpshaw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPSHAW);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpshlb",
+               v16qi_ftype_v16qi_v16qi, IX86_BUILTIN_VPSHLB);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpshld",
+               v4si_ftype_v4si_v4si, IX86_BUILTIN_VPSHLD);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpshlq",
+               v2di_ftype_v2di_v2di, IX86_BUILTIN_VPSHLQ);
+  def_isa_builtin (OPTION_MASK_ISA_XOP, "__builtin_ia32_vpshlw",
+               v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_VPSHLW);
+
 }
 
 /* Set up all the MMX/SSE builtins.  This is not called if TARGET_MMX
