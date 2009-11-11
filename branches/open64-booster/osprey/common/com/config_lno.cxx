@@ -270,7 +270,8 @@ static LNO_FLAGS Default_LNO = {
   FALSE,	/* Unswitch_Verbose */
   FALSE,	/* Prefetch_Verbose */
   FALSE,        /* Build_Scalar_Reductions */
-  TRUE,        /* Invariant Factorization */
+  TRUE,         /* Invariant Factorization */
+  TRUE,         /* New_Invariant Factorization */
   FALSE,        /* Invar_Factor_Verbose*/
 #endif /* KEY */
   TRUE,		/* Run_oinvar */
@@ -477,6 +478,7 @@ LNO_FLAGS Initial_LNO = {
   FALSE,	/* Prefetch_Verbose */
   FALSE,        /* Build_Scalar_Reductions */
   TRUE,        /* Invariant Factorization */
+  TRUE,        /* New_Invariant Factorization */
   FALSE,        /* Invar_Factor_Verbose */
 #endif /* KEY */
   TRUE,		/* Run_oinvar */
@@ -845,6 +847,7 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "prefetch_verbose",	NULL,	Prefetch_Verbose ),
   LNOPT_BOOL ( "build_scalar_reductions",NULL,	Build_Scalar_Reductions ),
   LNOPT_BOOL ( "invar_factorization","invar_factor",  Invariant_Factorization),
+  LNOPT_BOOL ( "new_invar_factorization","new_invar_factor",  New_Invariant_Factorization),
   LNOPT_BOOL ( "invar_fact_verbose",   NULL,    Invar_Factor_Verbose),
 #endif /* KEY */  
   LNOPT_BOOL ( "oinvar",		NULL,	Run_oinvar ),

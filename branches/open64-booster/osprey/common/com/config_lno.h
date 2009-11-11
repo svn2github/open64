@@ -324,6 +324,7 @@ typedef struct lno_flags {
   BOOL    Prefetch_Verbose;
   BOOL    Build_Scalar_Reductions;
   BOOL    Invariant_Factorization;
+  BOOL    New_Invariant_Factorization;
   BOOL    Invar_Factor_Verbose;
 #endif /* KEY */
   BOOL	Run_oinvar;
@@ -560,6 +561,7 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Prefetch_Verbose            Current_LNO->Prefetch_Verbose
 #define LNO_Build_Scalar_Reductions     Current_LNO->Build_Scalar_Reductions
 #define LNO_Invariant_Factorization     Current_LNO->Invariant_Factorization
+#define LNO_New_Invariant_Factorization Current_LNO->New_Invariant_Factorization
 #define LNO_Invar_Factor_Verbose        Current_LNO->Invar_Factor_Verbose
 #endif /* KEY */
 #define LNO_Run_Oinvar			Current_LNO->Run_oinvar
