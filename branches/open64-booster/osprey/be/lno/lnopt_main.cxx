@@ -1001,6 +1001,8 @@ Fully_Unroll_Short_Loops(WN* wn)
       unrolled |= Fully_Unroll_Short_Loops(WN_kid(wn, kidno));
     }
   }
+
+  return unrolled;
 }
 
 //-----------------------------------------------------------------------
