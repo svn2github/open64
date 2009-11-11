@@ -220,8 +220,7 @@ static BOOL
 Unroll_before_Factorize(WN *wn);
 
 static 
-BOOL Outer_Unroll_For_Factorization(WN *func_nd);
-static BOOL  ignore_size_heuristic_for_unroll=FALSE;
+void Outer_Unroll_For_Factorization(WN *func_nd, STACK_OF_WN *inner_do_stack);
 
 //-----------------------------------------------------------------------
 // NAME: Prompf_Init 
@@ -951,8 +950,7 @@ Fully_Unroll_Short_Loops(WN* wn)
         //bug 11954, 11958: Regression caused by not multiplying trip_count, because
         //we need new LNO_Full_Unrolling_Loop_Size_Limit default.
         //TODO: re-investigate here after work bug 10644
-        //add a flag ignore_size_heuristic_for_unroll to always unroll a loop ignoring its size
-	if (!ignore_size_heuristic_for_unroll && Loop_Size(wn)*trip_count > LNO_Full_Unrolling_Loop_Size_Limit ||
+	if (Loop_Size(wn)*trip_count > LNO_Full_Unrolling_Loop_Size_Limit ||
             //bug 5159:  Loops having PREG with -ve offsets can not be unrolled since they are
             //ASM output values and duplicating them will break CG assumption.
             Has_Negative_Offset_Preg(WN_do_body(wn))){
@@ -1567,6 +1565,8 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       && Roundoff_Level >= ROUNDOFF_ASSOC){
       BOOL unrolled = Unroll_before_Factorize(func_nd);
       BOOL graph_is_ok = TRUE;
+      STACK_OF_WN *unroll_and_jammed_loops = CXX_NEW
+          (STACK_OF_WN(&LNO_default_pool),&LNO_default_pool);
       // Rebuild the array depenedence graph
       if (unrolled && Array_Dependence_Graph)
       { 
@@ -1579,8 +1579,11 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
             red_manager->Erase(func_nd);
              red_manager->Build(func_nd, TRUE, FALSE);//scalar
 	  }
-          unrolled = Outer_Unroll_For_Factorization(func_nd); 
-          if (unrolled)
+          Outer_Unroll_For_Factorization(func_nd, unroll_and_jammed_loops); 
+
+          // if we unrolled and jammed then rebuild the dependence graph.
+
+          if (unroll_and_jammed_loops->Elements() != 0)
 	  { 
             Array_Dependence_Graph->Erase_Graph();
             graph_is_ok =  Build_Array_Dependence_Graph (func_nd);
@@ -1601,10 +1604,17 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
 	    { 
            Minvariant_Removal(func_nd, Array_Dependence_Graph);
 	    }
-        // add another phase of unroll, ignoring loop size
-        ignore_size_heuristic_for_unroll=TRUE;
-        Fully_Unroll_Short_Loops(func_nd);
-        ignore_size_heuristic_for_unroll=FALSE;
+
+        for(INT ii=0; ii<unroll_and_jammed_loops->Elements(); ii++){
+            WN *loop = unroll_and_jammed_loops->Bottom_nth(ii);
+            INT64 trip_count = Num_Iters(loop);
+            if (trip_count >= 1 && trip_count <= LNO_Full_Unrolling_Limit) 
+            { 
+	       WN *first, *last;
+               Unroll_Loop_By_Trip_Count(loop,trip_count);
+               Remove_Unity_Trip_Loop(loop, TRUE, &first, &last, NULL, Du_Mgr);
+            }
+	}
       }
     }
 #endif
@@ -2528,13 +2538,13 @@ Unroll_before_Factorize(WN *func_nd)
   return unrolled; 
 }
 
-static BOOL
+static WN *
 Unroll_and_Jam(WN *loop, INT ufactor)
 { 
 
   INT nloops = 1 + Num_Inner_Loops(loop);
 
-  if (!Fully_Permutable_Permutation(loop, nloops)) return FALSE; 
+  if (!Fully_Permutable_Permutation(loop, nloops)) return NULL; 
 
   DO_LOOP_INFO *dli = Get_Do_Loop_Info(loop);
   SNL_NEST_INFO ni(loop, nloops, &LNO_default_pool, TRUE);
@@ -2550,13 +2560,12 @@ Unroll_and_Jam(WN *loop, INT ufactor)
 
   Remove_Unity_Trip_Loop(loop, TRUE, &first, &last, NULL, Du_Mgr);
 
-  return TRUE; 
+  return first; 
 } 
 
-BOOL
-Outer_Unroll_For_Factorization(WN *func_nd)
+void
+Outer_Unroll_For_Factorization(WN *func_nd, STACK_OF_WN *loops)
 { 
-   BOOL unrolled = FALSE; 
    //identify loops where full unrolling is delayed
    STACK_OF_WN *inner_do_stack = CXX_NEW
           (STACK_OF_WN(&LNO_default_pool),&LNO_default_pool);
@@ -2588,10 +2597,11 @@ Outer_Unroll_For_Factorization(WN *func_nd)
          INT64 trip_count = Num_Iters(outermost);
          if (trip_count >= 1 && trip_count <= LNO_Full_Unrolling_Limit) 
          { 
-           unrolled |= Unroll_and_Jam(outermost, trip_count);
+           WN *unrolled_loop =  Unroll_and_Jam(outermost, trip_count);
+           if (unrolled_loop)
+             loops->Push(unrolled_loop);
          }
    }
-   return unrolled;
 }
 
 
