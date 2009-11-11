@@ -6241,10 +6241,8 @@ Optimize_Cyclic_Chain(BBCHAIN *chain, BB_MAP chain_map)
     /* If we found a bigger gain, or the same gain but this is the
      * loophead of the outermost cycle, then this is best candidate so far.
      */
-    float epsilon=1e-6;
-
-    if (   (tail_gain > best_gain + epsilon*tail_gain)
-	   || ( abs(tail_gain - best_gain) < epsilon * abs(tail_gain)
+    if (   (tail_gain > best_gain)
+	|| (   tail_gain == best_gain
 	    && BB_loop_head_bb(next) == next
 	    && BB_loop_head_bb(bb) == next)
     ) {
