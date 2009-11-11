@@ -7381,6 +7381,15 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
       Build_OP( TOP_rsqrtss, result, op0, ops );
     }
     break;
+  case INTRN_SQRTSD:
+    if (Is_Target_Orochi() && Is_Target_AVX()) {
+      TN *xzero = Build_TN_Like(result);
+      Build_OP (TOP_xzero128v32, xzero, ops);
+      Build_OP( TOP_sqrtsd, result, op0, xzero, ops );
+    } else {
+      Build_OP( TOP_sqrtsd, result, op0, ops );
+    }
+    break;
   case INTRN_SQRTSS:
     if (Is_Target_Orochi() && Is_Target_AVX()) {
       TN *xzero = Build_TN_Like(result);

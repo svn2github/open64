@@ -3725,6 +3725,9 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_SQRTPS:
       *iopc = INTRN_SQRTPS;
       break;
+    case GSBI_IX86_BUILTIN_SQRTSD:
+      *iopc = INTRN_SQRTSD;
+      break;
     case GSBI_IX86_BUILTIN_RCPSS:
       *iopc = INTRN_RCPSS;
       break;
