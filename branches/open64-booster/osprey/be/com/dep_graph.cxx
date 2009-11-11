@@ -726,6 +726,7 @@ DOLOOP_STACK *stack, BOOL rebuild, BOOL skip_bad)
 	return(0);
   }
   Is_True(!calls->Elements() || Has_Call_Info(calls->Bottom_nth(0)->_call) ||
+    WN_operator(calls->Bottom_nth(0)->_call) == OPR_INTRINSIC_CALL ||
 	Do_Loop_Is_Concurrent_Call(Enclosing_Do_Loop(start)),
 	("Unexpected call in Build_Region"));
 
