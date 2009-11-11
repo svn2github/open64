@@ -1165,10 +1165,20 @@ Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
     Build_OP( TOP_fmov, result, src, ops );
 
   } else if( MTYPE_is_float(mtype) ){
-    if( Is_Target_SSE2() )
-      Build_OP( is_128bit ? TOP_movdq: 
-		(mtype == MTYPE_F8 ? TOP_movsd : TOP_movss), result, src, ops );
-    else
+    if( Is_Target_SSE2() ) {
+      if (Is_Target_Orochi()) {
+        if ( is_128bit ) {
+          Build_OP( TOP_movdq, result, src, ops );
+        } else {
+          Build_OP( (mtype == MTYPE_F8) ? TOP_movsd : TOP_movss, 
+                    result, src, src, ops );
+        }
+      } else {
+        Build_OP( is_128bit ? TOP_movdq: 
+		  (mtype == MTYPE_F8 ? TOP_movsd : TOP_movss), 
+                  result, src, ops );
+      }
+    } else
       Build_OP( TOP_fmov, result, src, ops );
 
   } else {
@@ -3583,7 +3593,12 @@ static void Expand_Unsigned_Int_To_Float_m32( TN* dest,
   }
 
   Cur_BB = bb_exit;
-  Build_OP( is_double ? TOP_movsd : TOP_movss, dest, tmp_dest, ops );
+  if (Is_Target_Orochi()) {
+    Build_OP( is_double ? TOP_movsd : TOP_movss, 
+              dest, tmp_dest, tmp_dest, ops );
+  } else {
+    Build_OP( is_double ? TOP_movsd : TOP_movss, dest, tmp_dest, ops );
+  }
 }
 
 
@@ -3686,7 +3701,13 @@ static void Expand_Unsigned_Long_To_Float( TN* dest, TN* src, TYPE_ID mtype, OPS
   }
 
   if( tmp_dest != dest ){
-    Build_OP( mtype == MTYPE_F8 ? TOP_movsd : TOP_movss, dest, tmp_dest, ops );
+    if (Is_Target_Orochi()) {
+      Build_OP( mtype == MTYPE_F8 ? TOP_movsd : TOP_movss, 
+                dest, tmp_dest, tmp_dest, ops );
+    } else {
+      Build_OP( mtype == MTYPE_F8 ? TOP_movsd : TOP_movss, 
+                dest, tmp_dest, ops );
+    }
   }
 
   Cur_BB = bb_exit;
@@ -3888,8 +3909,14 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
 	  return;
 	}
 
-	top = TOP_cvtsi2ssq;
-
+        if (Is_Target_Orochi()) {
+          TN *xzero = Build_TN_Like(dest);
+          Build_OP( TOP_xzero128v32, xzero, ops );
+          Build_OP( TOP_cvtsi2ssq, dest, xzero, src, ops );
+          return;
+        } else {
+	  top = TOP_cvtsi2ssq;
+        }
       } else {
 	if( Is_Target_32bit() ){
 	  Expand_Long_To_Float_m32( dest, src, imtype, fmtype, ops );
@@ -3922,7 +3949,14 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
         TN *tmp = Build_TN_Of_Mtype(MTYPE_I8);      
 	Build_OP(TOP_mov32, tmp, src, ops);
 	src = tmp;
-        top = TOP_cvtsi2ssq;       
+        if (Is_Target_Orochi()) {
+          TN *xzero = Build_TN_Like(dest);
+          Build_OP( TOP_xzero128v32, xzero, ops );
+          Build_OP( TOP_cvtsi2ssq, dest, xzero, src, ops );
+          return;
+        } else {
+	  top = TOP_cvtsi2ssq;
+        }
       }
     }
 
@@ -5710,6 +5744,10 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
     return;
   case OPC_F4RSQRT:
   case OPC_F4ATOMIC_RSQRT:	// bug 6123
+    if (Is_Target_Orochi()) {
+      src2 = Build_TN_Like(result);
+      Build_OP (TOP_xzero128v32, src2, ops);
+    }
     opc = TOP_rsqrtss;
     break;
   case OPC_V16F4RSQRT:
@@ -5830,7 +5868,11 @@ Expand_Reduce_Add (OPCODE op, TN *result, TN *op1, OPS *ops)
       TN* tmp_b = Build_TN_Like(op1);
       TN* tmp_c = Build_TN_Like(op1);
       TN* tmp_d = Build_TN_Like(op1);
-      Build_OP(TOP_movhlps, tmp_a, tmp, ops);
+      if (Is_Target_Orochi()) {
+        Build_OP(TOP_movhlps, tmp_a, tmp, tmp, ops);
+      } else {
+        Build_OP(TOP_movhlps, tmp_a, tmp, ops);
+      }
       Build_OP(TOP_fadd128v32, tmp_b, tmp, tmp_a, ops);
       Build_OP(TOP_movaps, tmp_c, tmp_b, ops);
       Build_OP(TOP_shufps, tmp_d, tmp_c, tmp_c, Gen_Literal_TN(1, 1), ops);
@@ -5956,7 +5998,11 @@ Expand_Reduce_Mpy (OPCODE op, TN *result, TN *op1, OPS *ops)
     TN* tmp_c = Build_TN_Like(op1);
     TN* tmp_d = Build_TN_Like(op1);
     Build_OP(TOP_movaps, tmp, op1, ops);
-    Build_OP(TOP_movhlps, tmp_a, tmp, ops);
+    if (Is_Target_Orochi()) {
+      Build_OP(TOP_movhlps, tmp_a, tmp, tmp, ops);
+    } else {
+      Build_OP(TOP_movhlps, tmp_a, tmp, ops);
+    }
     Build_OP(TOP_fmul128v32, tmp_b, tmp, tmp_a, ops);
     Build_OP(TOP_movaps, tmp_c, tmp_b, ops);
     Build_OP(TOP_shufps, tmp_d, tmp_c, tmp_c, Gen_Literal_TN(1, 1), ops);
@@ -6014,7 +6060,11 @@ Expand_Reduce_Max (OPCODE op, TN *result, TN *op1, OPS *ops)
     TN* tmp_c = Build_TN_Like(op1);
     TN* tmp_d = Build_TN_Like(op1);
     Build_OP(TOP_movaps, tmp, op1, ops);
-    Build_OP(TOP_movhlps, tmp_a, tmp, ops);
+    if (Is_Target_Orochi()) {
+      Build_OP(TOP_movhlps, tmp_a, tmp, tmp, ops);
+    } else {
+      Build_OP(TOP_movhlps, tmp_a, tmp, ops);
+    }
     Build_OP(TOP_fmax128v32, tmp_b, tmp, tmp_a, ops);
     Build_OP(TOP_movaps, tmp_c, tmp_b, ops);
     Build_OP(TOP_shufps, tmp_d, tmp_c, tmp_c, Gen_Literal_TN(1, 1), ops);
@@ -6082,7 +6132,11 @@ Expand_Reduce_Min (OPCODE op, TN *result, TN *op1, OPS *ops)
     TN* tmp_c = Build_TN_Like(op1);
     TN* tmp_d = Build_TN_Like(op1);
     Build_OP(TOP_movaps, tmp, op1, ops);
-    Build_OP(TOP_movhlps, tmp_a, tmp, ops);
+    if (Is_Target_Orochi()) {
+      Build_OP(TOP_movhlps, tmp_a, tmp, tmp, ops);
+    } else {
+      Build_OP(TOP_movhlps, tmp_a, tmp, ops);
+    }
     Build_OP(TOP_fmin128v32, tmp_b, tmp, tmp_a, ops);
     Build_OP(TOP_movaps, tmp_c, tmp_b, ops);
     Build_OP(TOP_shufps, tmp_d, tmp_c, tmp_c, Gen_Literal_TN(1, 1), ops);
@@ -6143,16 +6197,26 @@ Expand_Shuffle (OPCODE opc, TN* result, TN* op1, VARIANT variant, OPS *ops)
     break;
   case OPC_V16I8V16I8SHUFFLE:
   case OPC_V16F8V16F8SHUFFLE:
-    Build_OP(TOP_movhlps, result, op1, ops);
-    Build_OP(TOP_movlhps, result, op1, ops);
+    if (Is_Target_Orochi()) {
+      Build_OP(TOP_movhlps, result, op1, op1, ops);
+      Build_OP(TOP_movlhps, result, op1, op1, ops);
+    } else {
+      Build_OP(TOP_movhlps, result, op1, ops);
+      Build_OP(TOP_movlhps, result, op1, ops);
+    }
     Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
     break;    
   case OPC_V16I2V16I2SHUFFLE:
     {
       TN* tmp1 = Build_TN_Like(result);
       TN* tmp2 = Build_TN_Like(result);
-      Build_OP(TOP_movhlps, tmp1, op1, ops);
-      Build_OP(TOP_movlhps, tmp1, op1, ops);
+      if (Is_Target_Orochi()) {
+        Build_OP(TOP_movhlps, tmp1, op1, op1, ops);
+        Build_OP(TOP_movlhps, tmp1, op1, op1, ops);
+      } else {
+        Build_OP(TOP_movhlps, tmp1, op1, ops);
+        Build_OP(TOP_movlhps, tmp1, op1, ops);
+      }
       Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
       Build_OP(TOP_pshuflw, tmp2, tmp1, Gen_Literal_TN(0x1B, 1), ops);
       Build_OP(TOP_pshufhw, result, tmp2, Gen_Literal_TN(0x1B, 1), ops);
@@ -6340,8 +6404,17 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
       }
     } else if (tgt_rc == src_rc && tgt_rc == ISA_REGISTER_CLASS_float) {
       /* dedicated TNs always have size 8, so need to check both TNs */
-      Build_OP(is_128bit ? TOP_movdq: (is_64bit ? TOP_movsd : TOP_movss), 
-	       tgt_tn, src_tn, ops);
+      if (Is_Target_Orochi()) {
+        if (is_128bit) {
+          Build_OP(TOP_movdq, tgt_tn, src_tn, ops);
+        } else {
+          Build_OP(is_64bit ? TOP_movsd : TOP_movss, 
+	           tgt_tn, src_tn, src_tn, ops);
+        }
+      } else {
+        Build_OP(is_128bit ? TOP_movdq: (is_64bit ? TOP_movsd : TOP_movss), 
+	         tgt_tn, src_tn, ops);
+      }
       Set_OP_copy (OPS_last(ops));
 
     } else if( tgt_rc == src_rc && tgt_rc == ISA_REGISTER_CLASS_x87 ){

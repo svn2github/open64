@@ -2098,6 +2098,9 @@ INT CGTARG_Copy_Operand(OP *op)
   case TOP_movdq:
   case TOP_movapd:
   case TOP_movaps:
+  case TOP_vmovdqa:
+  case TOP_vmovapd:
+  case TOP_vmovaps:
   case TOP_fmov:
   case TOP_mov64_m:
   case TOP_movm_2i32:

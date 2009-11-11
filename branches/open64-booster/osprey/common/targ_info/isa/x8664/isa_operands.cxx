@@ -3547,6 +3547,8 @@ main()
   Instruction_Group("float load w/o base or index",
 		    TOP_ldsd_n32,
 		    TOP_ldss_n32,
+                    TOP_vldsd_n32,
+                    TOP_vldss_n32,
 		    TOP_UNDEFINED);
   Result(0, fp64);
   Operand(0, simm32, offset);
@@ -3687,6 +3689,8 @@ main()
   Instruction_Group("float store w/o base or index",
 		    TOP_stsd_n32,
 		    TOP_stss_n32,
+                    TOP_vstsd_n32,
+                    TOP_vstss_n32,
 		    TOP_UNDEFINED);
   Operand(0, fp64, storeval);
   Operand(1, simm32, offset);
@@ -4482,6 +4486,10 @@ main()
   Instruction_Group("fp ordered compare mem opnd",
 		    TOP_comixsd,
 		    TOP_comixss,
+		    TOP_vcomixsd,
+		    TOP_vcomixss,
+                    TOP_vucomixsd,
+                    TOP_vucomixss,
 		    TOP_UNDEFINED);
   Result(0, rflags);
   Operand(0, fp64, opnd1);
@@ -4491,6 +4499,10 @@ main()
   Instruction_Group("fp ordered compare mem opnd w/ scaled-index",
 		    TOP_comixxsd,
 		    TOP_comixxss,
+		    TOP_vcomixxsd,
+		    TOP_vcomixxss,
+                    TOP_vucomixxsd,
+                    TOP_vucomixxss,
 		    TOP_UNDEFINED);
   Result(0, rflags);
   Operand(0, fp64, opnd1);
@@ -4502,6 +4514,10 @@ main()
   Instruction_Group("fp ordered compare mem opnd w/ scaled-index w/o base",
 		    TOP_comixxxsd,
 		    TOP_comixxxss,
+		    TOP_vcomixxxsd,
+		    TOP_vcomixxxss,
+                    TOP_vucomixxxsd,
+                    TOP_vucomixxxss,
 		    TOP_UNDEFINED);
   Result(0, rflags);
   Operand(0, fp64, opnd1);

@@ -3766,6 +3766,7 @@ main()
 			   TOP_pshufw,
 			   TOP_pshuflw,
 			   TOP_pshufhw,
+                           TOP_pshuf128v8,
 			   TOP_UNDEFINED );
 
   /* shuffle_int */
@@ -3783,6 +3784,7 @@ main()
 			   TOP_pextrw,
 			   TOP_pinsrw,
 			   TOP_pshufw64v16,
+                           TOP_pshufx128v8,
 			   TOP_UNDEFINED );
 
   /* shift_packed */
