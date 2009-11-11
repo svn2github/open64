@@ -3137,9 +3137,9 @@ static void Init_OP_Name()
   OP_Name[TOP_zero32] = "xorl";
   OP_Name[TOP_zero64] = "xorq";
   OP_Name[TOP_xzero32] = "xorps";
-  OP_Name[TOP_xzero64] = "xorpd";
+  OP_Name[TOP_xzero64] = "xorps";
   OP_Name[TOP_xzero128v32] = "xorps";
-  OP_Name[TOP_xzero128v64] = "xorpd";
+  OP_Name[TOP_xzero128v64] = "xorps";
   OP_Name[TOP_inc8] = "incb";
   OP_Name[TOP_inc16] = "incw";
   OP_Name[TOP_inc32] = "incl";
