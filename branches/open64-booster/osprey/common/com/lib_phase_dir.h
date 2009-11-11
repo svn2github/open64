@@ -52,6 +52,9 @@
 
 #include <stamp.h>
 
+/* location of internal gcc binaries, relative to installation root */
+#define INTERNAL_GCC_BIN "open64-gcc-4.2.0/bin"
+
 #if defined(VENDOR_OSP)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

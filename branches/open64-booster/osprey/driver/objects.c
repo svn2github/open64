@@ -237,20 +237,21 @@ init_given_crt_path (char *crtname, char *prog_name, char *tmp_name)
         add_library_dir (&buf[0]);
 }
 
-/* Find out where libstdc++.so file is stored.
+/* Find out where libstdc++.so/libstdc++.a file is stored.
    Invoke gcc -print-file-name=libstdc++.so to find the path.
 */
-void init_stdc_plus_plus_path (void)
+void init_stdc_plus_plus_path (boolean is_shared)
 {
 #ifndef TARG_SL
         phases_t ld_phase = determine_ld_phase (FALSE);
         char buf[1024];
         char* p;
+        char* lib_name = is_shared ? "libstdc++.so" : "libstdc++.a";
         find_full_path_of_gcc_file (get_full_phase_name (ld_phase), 
-                                    "libstdc++.so",  &buf[0], sizeof(buf));
+                                    lib_name,  &buf[0], sizeof(buf));
         p = drop_path (&buf[0]);
         *p = '\0';
-        if (debug) fprintf(stderr, "libstdc++.so found in %s\n", &buf[0]);
+        if (debug) fprintf(stderr, "%s found in %s\n", lib_name, &buf[0]);
         add_library_dir (&buf[0]);
 #else
 	char *tmp_name = create_temp_file_name("sl");

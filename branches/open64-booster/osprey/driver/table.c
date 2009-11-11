@@ -66,6 +66,9 @@
 #define COMBINATIONS 2
 #endif
 
+/* dummy for option referenced in lang_defs.c */
+int external_gcc = 0;
+
 typedef enum {
 	normal, 
 	oneletter, 		/* single-letter option */

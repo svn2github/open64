@@ -94,6 +94,17 @@ static bool file_exists(const char* path)
 }
 
 
+static bool external_gcc_flag_exists(int argc, char** argv)
+{
+    int i;
+    for (i = 0; i < argc; i++)
+        if (strcmp(argv[i], "-external-gcc") == 0)
+            return true;
+
+    return false;
+}
+
+
 static const char* get_linker_name(int argc, char** argv)
 {
     const char * toolroot = getenv("TOOLROOT");
@@ -104,6 +115,20 @@ static const char* get_linker_name(int argc, char** argv)
 
     if (where_am_i) {
 	char *slash = strrchr (where_am_i, '/');
+
+        if (! external_gcc_flag_exists (argc, argv)) {
+
+            // Drop the last path component from COMPILER_BIN
+            int i = (int)(slash - where_am_i);
+            while (where_am_i[--i] != '/' && i > 0) ;
+
+            asprintf (&linker_name, "%.*s%s/%s", i, where_am_i, INTERNAL_GCC_BIN, LINKER_NAME);
+            if (file_exists (linker_name)) {
+                return linker_name;
+            }
+            free (linker_name);
+        }
+
 #if defined(VENDOR_PSC)
 	asprintf (&linker_name, "%.*s/../" PSC_TARGET "/bin/" LINKER_NAME,
 		  slash - where_am_i, where_am_i);

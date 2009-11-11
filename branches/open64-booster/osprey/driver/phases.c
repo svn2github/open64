@@ -2064,12 +2064,12 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	    	if (invoked_lang == L_CC) {
 			add_library(args, "stdc++");
 	    	}
-		if (invoked_lang == L_CC && !option_was_seen(O_static)) {
+		if (external_gcc == TRUE && invoked_lang == L_CC && !option_was_seen(O_static)) {
 			add_libgcc_s (args);
 		}
 		add_library (args, "gcc");
 		add_library (args, "c");
-		if (invoked_lang == L_CC && !option_was_seen(O_static))
+		if (external_gcc == TRUE && invoked_lang == L_CC && !option_was_seen(O_static))
 			add_libgcc_s (args);
 		add_library(args, "gcc");
 	}
@@ -2732,7 +2732,7 @@ add_instr_archive (string_list_t* args)
 
       add_library (args, "instr");
 #ifndef TARG_IA64
-      if (!option_was_seen(O_static))
+      if (external_gcc == TRUE && !option_was_seen(O_static))
 	add_libgcc_s (args);
 #endif
     } else {
@@ -3078,9 +3078,8 @@ run_ld (void)
 	    add_string(args, concat_strings("-INTERNAL:lang=", str));
 
 	    init_crt_paths ();
-	    if (invoked_lang == L_CC ||
-		instrumentation_invoked == TRUE ) {
-	      init_stdc_plus_plus_path();
+	    if (invoked_lang == L_CC || instrumentation_invoked == TRUE) {
+	      init_stdc_plus_plus_path(external_gcc == TRUE);
 	    }
 	}
 	ldpath = get_full_phase_name(ldphase);
