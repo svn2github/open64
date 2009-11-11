@@ -94,7 +94,7 @@ static void Check_Zero_Linear_Coefficients(WN* wn_ref, ACCESS_VECTOR *av)
   for (INTSYMB_NODE *lin_node=lin_iter.First(); !lin_iter.Is_Empty();
     lin_node = lin_iter.Next())
     SC_ASSERT(lin_node->Coeff != 0, 
-      ("Access vector for 0x%p has 0 linear coefficient", wn_ref));  
+      ("Access vector for %p has 0 linear coefficient", wn_ref));  
 }
 
 #endif 
@@ -108,7 +108,7 @@ static INT Check_Depth(WN* wn)
     depth++;
     DO_LOOP_INFO* dli = Get_Do_Loop_Info(wn);
     FmtAssert(dli->Depth == depth,
-              ("DO confusion: %d %d (loop %s: 0x%p)",
+              ("DO confusion: %d %d (loop %s: %p)",
                dli->Depth, depth, SYMBOL(WN_index(wn)).Name(), wn));
     return depth;
   }
@@ -607,7 +607,7 @@ static SANITY_CHECK_RVAL SNL_Sanity_Check_Loop(WN* wn, INT depth)
 
   DO_LOOP_INFO* dli = Get_Do_Loop_Info(wn);
   SC_ASSERT(dli->LB && dli->UB && dli->Step,
-	    ("sanity check failed: Missing LB, UB or Step (0x%p)", wn));
+	    ("sanity check failed: Missing LB, UB or Step (%p)", wn));
 
   if (!dli->LB->Too_Messy) {
     for (INT i = 0; i < dli->LB->Num_Vec(); i++) {
@@ -615,7 +615,7 @@ static SANITY_CHECK_RVAL SNL_Sanity_Check_Loop(WN* wn, INT depth)
       if (!av->Too_Messy) {
         INT lval = av->Loop_Coeff(dli->Depth);
         SC_ASSERT(lval < 0,
-                  ("sanity check failed: lbval=%d depth=%d index=%s (0x%p)",
+                  ("sanity check failed: lbval=%d depth=%d index=%s (%p)",
                    lval, dli->Depth, indexname, wn));
 	Check_Zero_Linear_Coefficients(wn, av); 
       }
@@ -627,7 +627,7 @@ static SANITY_CHECK_RVAL SNL_Sanity_Check_Loop(WN* wn, INT depth)
       if (!av->Too_Messy) {
         INT uval = av->Loop_Coeff(dli->Depth);
         SC_ASSERT(uval > 0,
-                  ("sanity check failed: ubval=%d depth=%d index=%s (0x%p)",
+                  ("sanity check failed: ubval=%d depth=%d index=%s (%p)",
                    uval, dli->Depth, indexname, wn));
 	Check_Zero_Linear_Coefficients(wn, av); 
       }
@@ -638,23 +638,23 @@ static SANITY_CHECK_RVAL SNL_Sanity_Check_Loop(WN* wn, INT depth)
 
   if (!r.has_io) {
     SC_ASSERT((r.has_loops == FALSE) == (dli->Is_Inner != FALSE),
-              ("sanity check failed: index=%s (0x%p): has_loops: %d %d",
+              ("sanity check failed: index=%s (%p): has_loops: %d %d",
                indexname, wn, r.has_loops, dli->Is_Inner));
 #if 0
     // this would be a good idea, but the malloc() and free() cannot
     // be marked bad without messing up the dependence graph, so
     // we have to make r.has_calls recognize that malloc/free are not calls.
     SC_ASSERT((r.has_calls == FALSE) == (dli->Has_Calls == FALSE),
-              ("sanity check failed: index=%s (0x%p): has_calls: %d %d",
+              ("sanity check failed: index=%s (%p): has_calls: %d %d",
                indexname, wn, r.has_calls, dli->Has_Calls));
 #endif
     SC_ASSERT(depth+1 == dli->Depth,
-              ("sanity check failed: index=%s (0x%p): depth: %d %d",
+              ("sanity check failed: index=%s (%p): depth: %d %d",
                indexname, wn, depth+1, dli->Depth));
 
     SC_ASSERT((dli->Has_Bad_Mem != 0) == (r.has_bad_mem != NULL) ||
               (dli->Has_Bad_Mem && (dli->Has_Calls || dli->Has_Gotos)),
-              ("sanity check failed: index=%s (0x%p): has_bad_mem: %d 0x%p",
+              ("sanity check failed: index=%s (%p): has_bad_mem: %d %p",
                indexname, wn, dli->Has_Bad_Mem, r.has_bad_mem));
   }
 
@@ -687,10 +687,10 @@ static SANITY_CHECK_RVAL SNL_Sanity_Check_If(WN* wn, INT depth)
   FmtAssert(ii->Condition, ("Missing If Condition"));
   if (!rt.has_io) {
     SC_ASSERT((rt.has_loops||re.has_loops) == (ii->Contains_Do_Loops!=FALSE),
-              ("Bad if info: has_loops disagreement: %d %d %d 0x%p",
+              ("Bad if info: has_loops disagreement: %d %d %d %p",
                rt.has_loops, re.has_loops, ii->Contains_Do_Loops, wn));
     SC_ASSERT((rt.has_regions||re.has_regions) == (ii->Contains_Regions!=FALSE),
-              ("Bad if info: has_regions disagreement: %d %d %d 0x%p",
+              ("Bad if info: has_regions disagreement: %d %d %d %p",
                rt.has_regions, re.has_regions, ii->Contains_Regions, wn));
   }
 
@@ -737,11 +737,9 @@ WN* SNL_Sanity_Check_Exp(WN* wn)
     if ((!ul || (!ul->Incomplete() && ul->Len() == 0)) &&
         !((ST_class(WN_st(wn))==CLASS_PREG)
            && Preg_Is_Dedicated(WN_offset(wn)))) {
-      fprintf(stdout,
-              "sanity check warning(%s): missing uses for def (0x%p) of %s <%s>\n",
+      DevWarn("sanity check warning(%s): missing uses for def (%p) of %s <%s>\n",
               Cur_PU_Name, wn, SYMBOL(wn).Name(),
               ul ? "empty list" : "missing list");
-      fflush(stdout);
     }
   }
   else if (opr == OPR_LDID) {
@@ -756,14 +754,10 @@ WN* SNL_Sanity_Check_Exp(WN* wn)
 #endif
     DEF_LIST* dl = Du_Mgr->Ud_Get_Def(wn);
     if (!dl || dl->Len() == 0) {
-      fprintf(stdout, "sanity check warning(%s): missing defs for use ",
-        Cur_PU_Name);
-      fprintf(stdout, "(0x%p) of %s <%s> <id %d:%d>\n", wn, SYMBOL(wn).Name(),
-	dl ? "empty list" : "missing list", OPCODE_mapcat(WN_opcode(wn)), 
-	WN_map_id(wn));
-      WN* prnt = LWN_Get_Parent(wn);
-      Dump_WN(prnt ? prnt : wn, stdout, 1, 2, 2);
-      fflush(stdout);
+      DevWarn("sanity check warning(%s): missing defs for use (%p) of %s <%s> <id %d:%d>\n",
+	      Cur_PU_Name, wn, SYMBOL(wn).Name(),
+	      dl ? "empty list" : "missing list", OPCODE_mapcat(WN_opcode(wn)), 
+	      WN_map_id(wn));
     }
   }
   else if (opr == OPR_INTRINSIC_OP) {
@@ -860,7 +854,7 @@ void SNL_Sanity_Check_Region(SNL_REGION region)
 {
 
   if (!Valid_SNL_Region(region)) { 
-    DevWarn("SNL_Sanity_Check_Region: Invalid SNL region 0x%p->0x%p", 
+    DevWarn("SNL_Sanity_Check_Region: Invalid SNL region %p->%p", 
       region.First, region.Last); 
     return;
   } 
@@ -1143,10 +1137,10 @@ void SNL_Print_Ldid_Pointers(WN* wn)
     if (OPCODE_operator(opc) == OPR_LDID) {
       DEF_LIST* dl = Du_Mgr->Ud_Get_Def(wn);
       if (dl == NULL)
-	printf("0x%p <missing deflist>\n", wn);
+	printf("%p <missing deflist>\n", wn);
       else {
 	WN* loop = dl->Loop_stmt();
-	printf("0x%p 0x%p %s\n", wn, loop,
+	printf("%p %p %s\n", wn, loop,
 	       loop ? SYMBOL(WN_index(loop)).Name() : "<none>");
       }
     }
@@ -2927,9 +2921,9 @@ static void Fix_Do_Du_Info_X(WN* wn, SNL_TRANS_INDEX_DATA* td,
 
   if (opr == OPR_DO_LOOP) {
     FmtAssert(Du_Mgr->Du_Get_Use(WN_start(wn)),
-              ("Didn't find uses for WN_index=0x%p", WN_index(wn)));
+              ("Didn't find uses for WN_index=%p", WN_index(wn)));
     FmtAssert(Du_Mgr->Du_Get_Use(WN_step(wn)),
-              ("Didn't find uses for WN_step=0x%p", WN_step(wn)));
+              ("Didn't find uses for WN_step=%p", WN_step(wn)));
   }
 }
 
