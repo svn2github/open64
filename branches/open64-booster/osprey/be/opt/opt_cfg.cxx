@@ -4664,9 +4664,9 @@ CFG::Dfs_vec(void)
     }
 
     _dfs_vec = (BB_NODE **)
-          CXX_NEW_ARRAY(BB_NODE*,Last_bb_id()+1,Mem_pool());
+       CXX_NEW_ARRAY(BB_NODE*,Total_bb_count(),Mem_pool());
     _po_vec = (BB_NODE **)
-          CXX_NEW_ARRAY(BB_NODE*,Last_bb_id()+1,Mem_pool());
+       CXX_NEW_ARRAY(BB_NODE*,Total_bb_count(),Mem_pool());
     
     BB_NODE *bb;
     CFG_ITER cfg_iter(this);
@@ -4746,7 +4746,7 @@ BB_NODE **
 CFG::Dpo_vec(void)
 {
   if (_dpo_vec == NULL) {
-    _dpo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Last_bb_id(), Mem_pool());
+    _dpo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Total_bb_count(), Mem_pool());
     INT id = 0;
     Init_dpo_vec(Entry_bb(), &id);
     _dpo_vec_sz = id;
@@ -4758,7 +4758,7 @@ BB_NODE **
 CFG::Pdo_vec(void)
 {
   if (_pdo_vec == NULL) {
-    _pdo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Last_bb_id(), Mem_pool());
+    _pdo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Total_bb_count(), Mem_pool());
     INT id = 0;
     Init_pdo_vec(Exit_bb(), &id);
     _pdo_vec_sz = id;
@@ -4830,7 +4830,7 @@ CFG::Ident_loop( BB_NODE *first_bb, BB_NODE *last_bb,
       {
       bb->Loop()->Set_header(bb);
       BB_NODE_SET *new_body_set = 
-	CXX_NEW(BB_NODE_SET(_last_bb_id, this, Mem_pool(), BBNS_EMPTY),
+         CXX_NEW(BB_NODE_SET(Total_bb_count(), this, Mem_pool(), BBNS_EMPTY),
 		Mem_pool());
       // this doend block is considered to be one of the body bbs as
       // well
@@ -4905,7 +4905,7 @@ void
 CFG::Set_loop_bb_set(BB_LOOP *loop)
 {
   if (_bb_set == NULL)
-    _bb_set = CXX_NEW(BB_NODE_SET(_last_bb_id, this, Mem_pool(), BBNS_EMPTY),
+     _bb_set = CXX_NEW(BB_NODE_SET(Total_bb_count(), this, Mem_pool(), BBNS_EMPTY),
                       Mem_pool());
 
   _bb_set->CopyD(loop->Body_set());
@@ -5009,7 +5009,7 @@ CFG::Compute_true_loop_body_set(BB_LOOP *loops)
     // allocate true_body_set
     if (loop->True_body_set() == NULL)
       loop->Set_true_body_set(
-	    CXX_NEW(BB_NODE_SET(_last_bb_id, this, Mem_pool(), BBNS_EMPTY),
+         CXX_NEW(BB_NODE_SET(Total_bb_count(), this, Mem_pool(), BBNS_EMPTY),
 		    Mem_pool()));
     else loop->True_body_set()->ClearD();
     loop->True_body_set()->Union1D(loop->Body()); // body first BB is member
@@ -5023,7 +5023,7 @@ CFG::Compute_true_loop_body_set(BB_LOOP *loops)
       }
     }
     // initialize non_true_body_set
-    _non_true_body_set->UniverseD(_last_bb_id);
+    _non_true_body_set->UniverseD(Total_bb_count());
     _non_true_body_set->DifferenceD(loop->Body_set());
     if (Trace()) {
       fprintf(TFile, "Determining true loop body set from body set: ");
@@ -5252,7 +5252,7 @@ Allocate_loop(BB_NODE *bb, BB_LOOP *parent, CFG *cfg)
   if (loop == NULL)
     loop = CXX_NEW( BB_LOOP(NULL, NULL, NULL, NULL, NULL, NULL),
 		    cfg->Mem_pool() );
-  loop->Set_true_body_set(CXX_NEW(BB_NODE_SET(cfg->Last_bb_id(), cfg,
+  loop->Set_true_body_set(CXX_NEW(BB_NODE_SET(cfg->Total_bb_count(), cfg,
 					      cfg->Mem_pool(), BBNS_EMPTY),
 				  cfg->Mem_pool()));
   loop->Set_body_set(NULL);  // body_set not supported in mainopt
@@ -5538,8 +5538,8 @@ CFG::Analyze_loops(void)
 
     if (_non_true_body_set == NULL ||
 	(bs_PBPB(_non_true_body_set->Alloc_size() - sizeof(BS_WORD)) < 
-	 _last_bb_id))
-      _non_true_body_set = CXX_NEW(BB_NODE_SET(_last_bb_id, this, Mem_pool(),
+	 Total_bb_count()))
+      _non_true_body_set = CXX_NEW(BB_NODE_SET(Total_bb_count(), this, Mem_pool(),
 					       BBNS_EMPTY), Mem_pool());
 
     Compute_true_loop_body_set(_loops);
