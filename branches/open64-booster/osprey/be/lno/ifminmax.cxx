@@ -622,7 +622,7 @@ static WN* IFMM_Convert(WN* wn_if,
     if (WN_kid(LWN_Get_Parent(wn_result_expr), i) == wn_result_expr)
       break;
   INT kid_count = i; 
-  TYPE_ID type_cmp = Max_Wtype(WN_rtype(wn_left), WN_rtype(wn_right));
+  TYPE_ID type_cmp = WN_desc(WN_if_test(wn_if));
   OPCODE op = OPCODE_make_op(ifmm_max ? OPR_MAX : OPR_MIN, type_cmp, MTYPE_V); 
   WN* wn_cmp = LWN_CreateExp2(op, wn_left, wn_right); 
   WN_kid0(WN_if_test(wn_if)) = NULL; 
