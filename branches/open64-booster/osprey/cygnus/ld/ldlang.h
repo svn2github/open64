@@ -593,4 +593,8 @@ extern void lang_update_definedness
 
 extern void add_excluded_libs (const char *);
 
+#ifdef IPA_LINK
+extern int allow_mixed_libraries;
+#endif
+
 #endif
