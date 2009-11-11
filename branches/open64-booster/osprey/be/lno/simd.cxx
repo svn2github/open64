@@ -3937,7 +3937,6 @@ static WN *Simd_Vectorize_Constants(WN *const_wn,//to be vectorized
    FmtAssert(const_wn && (WN_operator(const_wn)==OPR_INTCONST ||
              WN_operator(const_wn)==OPR_CONST),("not a constant operand"));
 
-   TYPE_ID desc = WN_desc(const_wn);
    TYPE_ID type;
    TCON tcon;
    ST *sym;
@@ -3945,6 +3944,10 @@ static WN *Simd_Vectorize_Constants(WN *const_wn,//to be vectorized
        type = WN_rtype(istore);
    else
        type = WN_desc(istore);
+
+   if (WN_operator(simd_op) == OPR_CVT || WN_operator(simd_op) == OPR_TRUNC)
+     type = WN_rtype(const_wn);
+
    if (WN_operator(simd_op) == OPR_PARM &&
           WN_operator(istore) == OPR_INTRINSIC_OP &&
           WN_intrinsic(istore) == INTRN_SUBSU2) {
