@@ -389,30 +389,30 @@ add_object (int flag, char *arg)
 
 			/* add -lmv -lmblah */
 			if (xpg_flag && invoked_lang == L_f77) {
-				add_library(lib_objects, "mv");
-				add_library(lib_objects, "m");
 #ifdef TARG_X8664
 				if (abi != ABI_N32)
 					add_library(objects, "acml_mv");
 #endif
+				add_library(lib_objects, "mv");
+				add_library(lib_objects, "m");
 			} else {
+#ifdef TARG_X8664
+				if (abi != ABI_N32)
+					add_library(objects, "acml_mv");
+#endif
 #ifndef TARG_SL
 				add_library(objects, "mv");
 #endif
 				add_library(objects, "m");
-#ifdef TARG_X8664
-				if (abi != ABI_N32)
-					add_library(objects, "acml_mv");
-#endif
 			}
 #ifndef TARG_SL
 			if (invoked_lang == L_CC) {
-			    add_library(cxx_prelinker_objects, "mv");
-			    add_library(cxx_prelinker_objects, "m");
 #ifdef TARG_X8664
 			    if (abi != ABI_N32)
 				add_library(objects, "acml_mv");
 #endif
+			    add_library(cxx_prelinker_objects, "mv");
+			    add_library(cxx_prelinker_objects, "m");
 			}
 #endif
 #ifdef TARG_X8664

@@ -2084,20 +2084,20 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	       provided by libmblah.a lib.
 	    */
 	    if (invoked_lang != L_cc) {
-	      add_library(args, "mv");			// bug 5527
-	      // add_library(args, "m" PSC_NAME_PREFIX);	// bug 3092
-              // OSP -lm is needed
-              add_library(args, "m");
 #ifdef TARG_X8664
 	      if (abi != ABI_N32) {
 		/* Sigh, g++ removes the first -lm since it is implicitly added by g++,
 		 * however adding two instances of -lm only removes one.
 		 */
                 if (invoked_lang == L_CC)
-		  add_library(args, "m");
 		add_library(args, "acml_mv");
+		  add_library(args, "m");
               }
 #endif
+	      add_library(args, "mv");			// bug 5527
+	      // add_library(args, "m" PSC_NAME_PREFIX);	// bug 3092
+              // OSP -lm is needed
+              add_library(args, "m");
 	    }
 #else
             if (invoked_lang == L_CC)
