@@ -1356,7 +1356,7 @@ extern STACK<WN*>* Scalar_Equivalence_Class(WN* ref, DU_MANAGER* du,
 
     if (potential_read) {
       DEF_LIST *def_list=du->Ud_Get_Def(scalar_ref);
-      if (def_list->Incomplete()) {
+      if (!def_list || def_list->Incomplete()) {
 	if (find_restrict) 
 	  *wn_outer_loop = NULL; 
         CXX_DELETE(class_stack, pool);
@@ -1388,7 +1388,7 @@ extern STACK<WN*>* Scalar_Equivalence_Class(WN* ref, DU_MANAGER* du,
 
     if (potential_write) {
       USE_LIST *use_list=du->Du_Get_Use(scalar_ref);
-      if (use_list && use_list->Incomplete()) {
+      if (!use_list || use_list->Incomplete()) {
 	if (find_restrict) 
 	  *wn_outer_loop = NULL; 
         CXX_DELETE(class_stack, pool);

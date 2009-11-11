@@ -114,7 +114,6 @@ static ARRAY_DIRECTED_GRAPH16 *adg;	// PU array dep. graph
 // Do not disturb the external reduction manager and we only care about scalar
 // reductions.
 static REDUCTION_MANAGER *simd_red_manager;	
-static REDUCTION_MANAGER *depanal_red_manager;	
 static REDUCTION_MANAGER *curr_simd_red_manager;	
 
 static void Simd_Mark_Code (WN* wn);
@@ -1716,7 +1715,6 @@ static void Copy_Def_Use (WN *from_tree,
       DEF_LIST *def_list = Du_Mgr->Ud_Get_Def(from_tree);
       DEF_LIST_ITER iter(def_list);
       const DU_NODE *node = iter.First();
-      Is_True(!iter.Is_Empty(),("Empty def list in Copy_Def_Use"));
       for(; !iter.Is_Empty();node=iter.Next()){
 	WN *def = (WN *) node->Wn();
 	Du_Mgr->Add_Def_Use(def, to_tree);
@@ -1797,6 +1795,8 @@ static void Update_Symbol_Use_Def (WN *src, WN *dest, SYMBOL symbol, BOOL flag)
 // Use SCC analysis to find out any loop-carried dependencies.
 BOOL Analyse_Dependencies(WN* innerloop) 
 {
+  REDUCTION_MANAGER *depanal_red_manager = 0;
+
   WN* body=WN_do_body(innerloop);
   WN* stmt;
   // main statement dependence graph for statements in the loop
@@ -1826,12 +1826,13 @@ BOOL Analyse_Dependencies(WN* innerloop)
   }
 
   if (LNO_Simd_Reduction && depanal_red_manager) {
-    CXX_DELETE(depanal_red_manager,&SIMD_default_pool);
     curr_simd_red_manager = simd_red_manager;
   }
 
   if (simd_ops->Elements()==0) { // no simd op in this loop
     CXX_DELETE(dep_g_p, &SIMD_default_pool);
+    if (depanal_red_manager)
+      CXX_DELETE(depanal_red_manager,&SIMD_default_pool);
     return TRUE;
   }
 
@@ -1890,6 +1891,8 @@ BOOL Analyse_Dependencies(WN* innerloop)
   if (vec_simd_ops->Elements()==0) {
     // no vecorizable op in this loop
     CXX_DELETE(dep_g_p, &SIMD_default_pool);
+    if (depanal_red_manager)
+      CXX_DELETE(depanal_red_manager,&SIMD_default_pool);
     return TRUE;
   }
 
@@ -1921,6 +1924,8 @@ BOOL Analyse_Dependencies(WN* innerloop)
   if (gather_status == -1) {
     DevWarn("Error in gathering references");
     CXX_DELETE(dep_g_p, &SIMD_default_pool);
+    if (depanal_red_manager)
+      CXX_DELETE(depanal_red_manager,&SIMD_default_pool);
     return TRUE;
   }
 
@@ -1929,6 +1934,8 @@ BOOL Analyse_Dependencies(WN* innerloop)
     if (v==0) {
       DevWarn("Statement dependence graph problem");
       CXX_DELETE(dep_g_p, &SIMD_default_pool);
+      if (depanal_red_manager)
+        CXX_DELETE(depanal_red_manager,&SIMD_default_pool);
       return TRUE;
     }
     stmt_to_vertex->Enter(stmt, v);
@@ -1978,13 +1985,19 @@ BOOL Analyse_Dependencies(WN* innerloop)
       CXX_DELETE(dep_g_p, &SIMD_default_pool);
       CXX_DELETE(sdg, &SIMD_default_pool);
       WN_MAP_Delete(sdm);
+      if (depanal_red_manager)
+        CXX_DELETE(depanal_red_manager,&SIMD_default_pool);
       return TRUE;
     }
   }
 
   BOOL status=Generate_Scalar_Dependence_For_Statement_Dependence_Graph(
-    innerloop, scalar_reads, scalar_writes, params, sdg, red_manager,
+    innerloop, scalar_reads, scalar_writes, params, sdg, depanal_red_manager,
     &Expandable_Scalar_Set, mapping_dictionary);
+
+  if (depanal_red_manager)
+    CXX_DELETE(depanal_red_manager,&SIMD_default_pool);
+
   if (status==FALSE) {
     DevWarn("Statement dependence graph problem");
     CXX_DELETE(dep_g_p, &SIMD_default_pool);
@@ -2130,6 +2143,57 @@ extern BOOL Is_Aggressive_Vintr_Loop(WN* innerloop)
     return Contain_Vectorizable_Intrinsic(body);
 }
 
+//copy from vloop to ploop
+static void Simd_Copy_Def_Use_For_Loop_Stmt(WN* vloop, WN *ploop)
+{
+
+    SYMBOL index(WN_index(vloop));
+
+    WN *vbody = WN_do_body(vloop);
+    WN *pbody = WN_do_body(ploop);
+    WN *vstmt, *pstmt;
+    for (vstmt=WN_first(vbody), pstmt=WN_first(pbody);
+         vstmt != NULL && pstmt != NULL;
+         vstmt=WN_next(vstmt), pstmt=WN_next(pstmt))
+      Copy_Def_Use(vstmt, pstmt, index, FALSE/*synch*/);
+
+    for (vstmt=WN_first(vbody), pstmt=WN_first(pbody);
+         vstmt != NULL && pstmt != NULL;
+         vstmt=WN_next(vstmt), pstmt=WN_next(pstmt))
+    {
+       if (WN_operator(vstmt) != OPR_PRAGMA &&
+           WN_operator(pstmt) != OPR_PRAGMA )
+         LWN_Copy_Def_Use(WN_kid0(vstmt),WN_kid0(pstmt), Du_Mgr);
+    }
+
+    for (vstmt=WN_first(vbody), pstmt=WN_first(pbody);
+         vstmt != NULL && pstmt != NULL;
+         vstmt=WN_next(vstmt), pstmt=WN_next(pstmt)){
+
+       if (WN_operator(vstmt) == OPR_STID) {
+         USE_LIST* use_list=Du_Mgr->Du_Get_Use(vstmt);
+        USE_LIST_ITER uiter(use_list);
+        DOLOOP_STACK sym_stack(&LNO_local_pool);
+        SYMBOL symbol(vstmt);
+        Find_Nodes(OPR_LDID, symbol, WN_do_body(ploop),&sym_stack);
+        for (INT j = 0; j < sym_stack.Elements(); j++) {
+          WN* wn_use =  sym_stack.Bottom_nth(j);
+          DEF_LIST *def_list = Du_Mgr->Ud_Get_Def(wn_use);
+          def_list->Set_loop_stmt(ploop);
+        }
+        if (use_list->Incomplete()) {
+          Du_Mgr->Create_Use_List(pstmt);
+          Du_Mgr->Du_Get_Use(pstmt)->Set_Incomplete();
+          continue;
+        }
+        for (DU_NODE* u=uiter.First(); !uiter.Is_Empty(); u=uiter.Next()) {
+          WN* use = u->Wn();
+          Du_Mgr->Add_Def_Use(pstmt, use);
+        }
+      }
+    }
+}
+
 
 extern BOOL Is_Vectorizable_Loop (WN* innerloop) 
 {
@@ -2207,10 +2271,21 @@ extern BOOL Is_Vectorizable_Loop (WN* innerloop)
     MEM_POOL_Delete(&SIMD_tmp_pool);
     return FALSE;
   }
+
+  Copy_Def_Use(WN_start(innerloop), WN_start(loop_copy),
+                WN_index(innerloop), FALSE /* synch */);
+  Copy_Def_Use(WN_end(innerloop), WN_end(loop_copy),
+                WN_index(innerloop), FALSE /* synch */);
+  Simd_Copy_Def_Use_For_Loop_Stmt(innerloop, loop_copy);
+
   MEM_POOL_Initialize(&SIMD_default_pool,"SIMD_default_pool",FALSE);
   MEM_POOL_Push(&SIMD_default_pool);
+
   BOOL Has_Dependencies = Analyse_Dependencies(loop_copy);
+
   LNO_Erase_Dg_From_Here_In(loop_copy, adg);
+  LWN_Update_Def_Use_Delete_Tree(loop_copy, Du_Mgr);
+
   MEM_POOL_Pop(&SIMD_default_pool);
   MEM_POOL_Delete(&SIMD_default_pool);
 
@@ -2943,12 +3018,20 @@ static BOOL SA_Loop_Has_Dependence_Cycles(WN *innerloop, char *verbose_msg)
     sprintf(verbose_msg, "Too many edges in Dependence graph.");
     return TRUE;
   }
+  Copy_Def_Use(WN_start(innerloop), WN_start(loop_copy),
+                WN_index(innerloop), FALSE /* synch */);
+  Copy_Def_Use(WN_end(innerloop), WN_end(loop_copy),
+                WN_index(innerloop), FALSE /* synch */);
+  Simd_Copy_Def_Use_For_Loop_Stmt(innerloop, loop_copy);
+
   if (Analyse_Dependencies(loop_copy)) {
     LNO_Erase_Dg_From_Here_In(loop_copy, adg);
     sprintf(verbose_msg, "Loop has dependencies.");
+    LWN_Update_Def_Use_Delete_Tree(loop_copy, Du_Mgr);
     return TRUE;
   }    
   LNO_Erase_Dg_From_Here_In(loop_copy, adg);
+  LWN_Update_Def_Use_Delete_Tree(loop_copy, Du_Mgr);
   return FALSE;
 }
 
@@ -3663,52 +3746,6 @@ static void Simd_Update_Loop_Info(WN *loop, WN *orig_loop,DO_LOOP_INFO *dli, BOO
       WN_Set_Loop_Unimportant_Misc(loop_info);
       DO_LOOP_INFO *dli_p = Get_Do_Loop_Info(loop);
       dli_p->Set_Generally_Unimportant();
-    }
-}
-//copy from vloop to ploop
-static void Simd_Copy_Def_Use_For_Loop_Stmt(WN* vloop, WN *ploop)
-{
-
-    SYMBOL index(WN_index(vloop));
-
-    WN *vbody = WN_do_body(vloop);
-    WN *pbody = WN_do_body(ploop);
-    WN *vstmt, *pstmt;
-    for (vstmt=WN_first(vbody), pstmt=WN_first(pbody);
-         vstmt != NULL && pstmt != NULL;
-         vstmt=WN_next(vstmt), pstmt=WN_next(pstmt))
-      Copy_Def_Use(vstmt, pstmt, index, FALSE/*synch*/);
-
-    for (vstmt=WN_first(vbody), pstmt=WN_first(pbody);
-         vstmt != NULL && pstmt != NULL;
-         vstmt=WN_next(vstmt), pstmt=WN_next(pstmt))
-       LWN_Copy_Def_Use(WN_kid0(vstmt),WN_kid0(pstmt), Du_Mgr);
-
-    for (vstmt=WN_first(vbody), pstmt=WN_first(pbody);
-         vstmt != NULL && pstmt != NULL;
-         vstmt=WN_next(vstmt), pstmt=WN_next(pstmt)){
-
-       if (WN_operator(vstmt) == OPR_STID) {
-         USE_LIST* use_list=Du_Mgr->Du_Get_Use(vstmt);
-        USE_LIST_ITER uiter(use_list);
-        DOLOOP_STACK sym_stack(&LNO_local_pool);
-        SYMBOL symbol(vstmt);
-        Find_Nodes(OPR_LDID, symbol, WN_do_body(ploop),&sym_stack);
-        for (INT j = 0; j < sym_stack.Elements(); j++) {
-          WN* wn_use =  sym_stack.Bottom_nth(j);
-          DEF_LIST *def_list = Du_Mgr->Ud_Get_Def(wn_use);
-          def_list->Set_loop_stmt(ploop);
-        }
-        if (use_list->Incomplete()) {
-          Du_Mgr->Create_Use_List(pstmt);
-          Du_Mgr->Du_Get_Use(pstmt)->Set_Incomplete();
-          continue;
-        }
-        for (DU_NODE* u=uiter.First(); !uiter.Is_Empty(); u=uiter.Next()) {
-          WN* use = u->Wn();
-          Du_Mgr->Add_Def_Use(pstmt, use);
-        }
-      }
     }
 }
 
