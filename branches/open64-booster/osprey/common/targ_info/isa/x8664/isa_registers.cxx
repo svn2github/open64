@@ -84,9 +84,11 @@ enum { XMM0=0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7,
 
 static int rax_reg[] = { RAX };
 static int rdx_reg[] = { RDX };
+static int rbx_reg[] = { RBX };
 static int rcx_reg[] = { RCX };
 static int rbp_reg[] = { RBP };
 static int rsp_reg[] = { RSP };
+static int rdi_reg[] = { RDI };
 static int r11_reg[] = { R11 };
 static int xmm0_reg[] = { XMM0 };
 static int m32_8bit_regs[] = {RAX, RBX, RCX, RDX};
@@ -142,9 +144,11 @@ main (int argc, char** argv)
 
   ISA_Register_Subclass_Create("rax", rc_integer, 1, rax_reg, NULL);
   ISA_Register_Subclass_Create("rdx", rc_integer, 1, rdx_reg, NULL);
+  ISA_Register_Subclass_Create("rbx", rc_integer, 1, rbx_reg, NULL);
   ISA_Register_Subclass_Create("rcx", rc_integer, 1, rcx_reg, NULL);
   ISA_Register_Subclass_Create("rbp", rc_integer, 1, rbp_reg, NULL);
   ISA_Register_Subclass_Create("rsp", rc_integer, 1, rsp_reg, NULL);
+  ISA_Register_Subclass_Create("rdi", rc_integer, 1, rdi_reg, NULL);
   ISA_Register_Subclass_Create("r11", rc_integer, 1, r11_reg, NULL);
 
   ISA_Register_Subclass_Create("xmm0", rc_fp, 1, xmm0_reg, NULL);

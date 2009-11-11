@@ -813,7 +813,7 @@ Split_Jumpy_BB (BB *bb) {
 /* Start a new basic block. Any OPs that have not been put into a BB
  * are added to the current basic block before we create a new one.
  */
-static BB *
+BB *
 Start_New_Basic_Block (void)
 {
   BB *bb = Cur_BB;

@@ -3025,6 +3025,10 @@ main()
 		     TOP_icallx,
 		     TOP_icallxx,
 		     TOP_icallxxx,
+                     TOP_tls_global_dynamic_64,
+                     TOP_tls_global_dynamic_32,
+                     TOP_tls_local_dynamic_64,
+                     TOP_tls_local_dynamic_32,
                      TOP_UNDEFINED);
 
   /* ===== Subprogram call operator ====== */
@@ -3035,6 +3039,10 @@ main()
 		     TOP_icallx,
 		     TOP_icallxx,
 		     TOP_icallxxx,
+                     TOP_tls_global_dynamic_64,
+                     TOP_tls_global_dynamic_32,
+                     TOP_tls_local_dynamic_64,
+                     TOP_tls_local_dynamic_32,
                      TOP_UNDEFINED);
 
   /* ===== Call/xfer is conditional ====== */
@@ -5085,6 +5093,10 @@ main()
   Instruction_Group (jump,
                      TOP_jmp,
 		     TOP_call,
+                     TOP_tls_global_dynamic_64,
+                     TOP_tls_global_dynamic_32,
+                     TOP_tls_local_dynamic_64,
+                     TOP_tls_local_dynamic_32,
                      TOP_UNDEFINED);
 
   /* ===== Indirect jump operator ====== */

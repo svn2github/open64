@@ -182,6 +182,8 @@ BOOL CG_file_scope_asm_seen = FALSE;
 
 BOOL gra_pre_create = TRUE;
 #ifdef TARG_X8664
+BOOL PU_has_local_dynamic_tls;
+TN*  Local_Dynamic_TLS_Base;
 BOOL PU_References_GOT;  // for -m32 -fpic
 BOOL PU_has_avx128;      // cause emit of vzeroupper 
 #endif
@@ -257,6 +259,10 @@ CG_PU_Initialize (WN *wn_pu)
       CG_load_execute = 1;
     }
   }
+
+  // for local dynamic tls, all tls objects can share the same base
+  PU_has_local_dynamic_tls = FALSE;
+  Local_Dynamic_TLS_Base = NULL;
 
   PU_References_GOT = FALSE;
 

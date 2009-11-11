@@ -895,7 +895,9 @@ EMT_Write_Qualified_Name (FILE *f, ST *st)
 	if (!strncmp (ST_name(st), ".range_table.", strlen(".range_table.")))
 		return;
 #endif // KEY
-	if ( ST_is_export_local(st) && ST_class(st) == CLASS_VAR) {
+	if ( ST_is_export_local(st) && 
+             ST_class(st) == CLASS_VAR &&
+             !ST_is_thread_local(st) ) {
 		// local var, but being written out.
 		// so add suffix to help .s file distinguish names.
 		// assume that statics in mult. pu's will 

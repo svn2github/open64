@@ -4325,6 +4325,46 @@ main()
                            TOP_vstmxcsr,
 			   TOP_UNDEFINED );
 
+  /* GNU compatible TLS global dynamic 64 */
+  ISA_PRINT_TYPE tls_gd_64 = ISA_Print_Type_Create("tls_gd_64", "# %s\\n\\t.byte \\t0x66\\n\\tleaq %s(%s), %%rdi\\n\\t.word \\t0x6666\\n\\trex64\\n\\tcall %s");
+  Name();
+  Operand(0); /* ST# */
+  Operand(1); /* rip */
+  Operand(2); /* __tls_get_addr */
+  Instruction_Print_Group( tls_gd_64,
+		           TOP_tls_global_dynamic_64,
+			   TOP_UNDEFINED );
+
+  /* GNU compatible TLS global dynamic 32 */
+  ISA_PRINT_TYPE tls_gd_32 = ISA_Print_Type_Create("tls_gd_32", "# %s\\n\\tleal %s(,%s,1), %%eax\\n\\tcall %s");
+  Name();
+  Operand(0); /* ST# */
+  Operand(1); /* ebx */
+  Operand(2); /* __tls_get_addr */
+  Instruction_Print_Group( tls_gd_32,
+		           TOP_tls_global_dynamic_32,
+			   TOP_UNDEFINED );
+
+  /* GNU compatible TLS local dynamic 64 */
+  ISA_PRINT_TYPE tls_ld_64 = ISA_Print_Type_Create("tls_ld_64", "# %s\\n\\tleaq %s(%s), %%rdi\\n\\tcall %s");
+  Name();
+  Operand(0); /* ST# */
+  Operand(1); /* rip */
+  Operand(2); /* __tls_get_addr */
+  Instruction_Print_Group( tls_ld_64,
+		           TOP_tls_local_dynamic_64,
+			   TOP_UNDEFINED );
+
+  /* GNU compatible TLS local dynamic 32 */
+  ISA_PRINT_TYPE tls_ld_32 = ISA_Print_Type_Create("tls_ld_32", "# %s\\n\\tleal %s(%s), %%eax\\n\\tcall %s");
+  Name();
+  Operand(0); /* ST# */
+  Operand(1); /* ebx */
+  Operand(2); /* __tls_get_addr */
+  Instruction_Print_Group( tls_ld_32,
+		           TOP_tls_local_dynamic_32,
+			   TOP_UNDEFINED );
+
   /* No results / no operands TODO */
   ISA_PRINT_TYPE no_rop = ISA_Print_Type_Create("no_rop", "%s");
   Name();

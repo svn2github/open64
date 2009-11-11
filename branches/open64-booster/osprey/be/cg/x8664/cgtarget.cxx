@@ -597,6 +597,7 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_ld32_64:
   case TOP_ldx32_64:
   case TOP_ldxx32_64:
+  case TOP_ld32_64_off:
   case TOP_ldss:
   case TOP_ldss_n32:
   case TOP_ldssx:
@@ -3753,7 +3754,8 @@ CGTARG_Is_Thread_Local_Memory_OP (OP* op)
   }
 
   int offset_opnd = TOP_Find_Operand_Use(code, OU_offset);
-  if (offset_opnd != -1 &&
+  // if already has the base, do not append the TLS segment register
+  if (offset_opnd != -1 && base_opnd == -1 && 
       (TN_relocs(OP_opnd(op, offset_opnd)) == TN_RELOC_X8664_TPOFF32 ||
        TN_relocs(OP_opnd(op, offset_opnd)) == TN_RELOC_X8664_TPOFF32_seg_reg)) {
     return TRUE;

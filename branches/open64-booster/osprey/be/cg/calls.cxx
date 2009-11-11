@@ -100,6 +100,7 @@
 #include "targ_abi_properties.h"
 #include "cxx_template.h"
 #include "targ_isa_registers.h"
+#include "tls.h"              // TLS_get_addr_st
 #if defined(TARG_PR)
 #include "cgexp_Internals.h"  // Expand_SR_Adj
 #endif
@@ -987,6 +988,12 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
      * whether or not it sets up a GP.
      */
     if (call_st == NULL) return NULL;
+
+
+    /* __tls_get_addr
+     * do not convert __tls_get_addr
+     */
+    if (call_st == TLS_get_addr_st) return NULL;
 
     /* 'C' does not setup a GP, so if we make 'B' into a tail call,
      * then 'C' may get an incorrect GP.

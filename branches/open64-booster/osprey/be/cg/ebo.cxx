@@ -1058,6 +1058,16 @@ merge_memory_offsets( OP *op,
   additive_immed_tn = OP_opnd(index_op,1);
   if (!TN_Is_Constant(additive_immed_tn)) return;
 
+#ifdef TARG_X8664
+  // disable merging memory offset on TLS initial-exec
+  if ( TN_is_symbol(immed_tn) &&
+        TN_relocs(immed_tn) == TN_RELOC_X8664_GOTTPOFF )
+    return;
+  if ( TN_is_symbol(additive_immed_tn) &&
+        TN_relocs(additive_immed_tn) == TN_RELOC_X8664_GOTTPOFF )
+    return;
+#endif
+
  /* Would the new index value be available for use? */
   if (!TN_Is_Constant(additive_index_tn) &&
       !EBO_tn_available(OP_bb(op), additive_index_tninfo)) {

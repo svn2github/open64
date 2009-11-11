@@ -143,6 +143,14 @@ main()
     ISA_Reg_Opnd_Type_Create("cl", ISA_REGISTER_CLASS_integer,
 			     ISA_REGISTER_SUBCLASS_rcx,
 			     8, SIGNED, INVALID);
+  const OPERAND_VALUE_TYPE rdi =
+    ISA_Reg_Opnd_Type_Create("rdi", ISA_REGISTER_CLASS_integer,
+			     ISA_REGISTER_SUBCLASS_rdi,
+			     64, SIGNED, INVALID);
+  const OPERAND_VALUE_TYPE ebx =
+    ISA_Reg_Opnd_Type_Create("ebx", ISA_REGISTER_CLASS_integer,
+			     ISA_REGISTER_SUBCLASS_rbx,
+			     32, SIGNED, INVALID);
   const OPERAND_VALUE_TYPE rsp =
     ISA_Reg_Opnd_Type_Create("rsp", ISA_REGISTER_CLASS_integer,
 			     ISA_REGISTER_SUBCLASS_rsp,
@@ -5573,6 +5581,23 @@ main()
   Result(0, fp128);
   Operand(0, fp128, opnd1);
   Operand(1, fp128, opnd2);
+
+  Instruction_Group("tls_get_addr_64",
+		    TOP_tls_global_dynamic_64,
+		    TOP_tls_local_dynamic_64,
+		    TOP_UNDEFINED);
+  Result(0, rdi);
+  Operand(0, simm32, offset);
+  Operand(1, int64, base);
+  Operand(2, pcrel32, target);
+
+  Instruction_Group("tls_get_addr_32",
+		    TOP_tls_global_dynamic_32,
+		    TOP_tls_local_dynamic_32,
+		    TOP_UNDEFINED);
+  Operand(0, simm32, offset);
+  Operand(1, int32, base);
+  Operand(2, pcrel32, target);
 
   Instruction_Group("vector fma4 xmm xmm xmm",
                     TOP_vfmaddss,

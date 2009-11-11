@@ -3339,6 +3339,12 @@ main ()
 	      "bsr32",
 	      "bsr64",
 
+              /* GNU compatible dynamic thread-local storage */
+	      "tls_global_dynamic_64",
+	      "tls_global_dynamic_32",
+	      "tls_local_dynamic_64",
+	      "tls_local_dynamic_32",
+
 	      /* Dummy instructions. */
 	      "begin_pregtn",
 	      "end_pregtn",

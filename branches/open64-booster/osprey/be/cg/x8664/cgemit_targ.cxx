@@ -457,6 +457,22 @@ CGEMIT_Relocs_In_Asm (TN *t, ST *st, vstring *buf, INT64 *val)
 	  *buf = vstr_concat(*buf,
 			     Is_Target_32bit() ? "@INDNTPOFF" : "@GOTTPOFF");
 	  return 0;
+        case TN_RELOC_X8664_GOTNTPOFF:
+          *buf = vstr_concat(*buf, ST_name(st));
+          *buf = vstr_concat(*buf, "@GOTNTPOFF");
+          return 0;
+        case TN_RELOC_X8664_DTPOFF:
+          *buf = vstr_concat(*buf, ST_name(st));
+          *buf = vstr_concat(*buf, "@DTPOFF");
+          return 0;
+        case TN_RELOC_X8664_TLSGD:
+          *buf = vstr_concat(*buf, ST_name(st));
+          *buf = vstr_concat(*buf, "@TLSGD");
+          return 0;
+        case TN_RELOC_X8664_TLSLD:
+          *buf = vstr_concat(*buf, ST_name(st));
+          *buf = vstr_concat(*buf, Is_Target_32bit() ? "@TLSLDM" : "@TLSLD");
+          return 0;
     	default:
 		#pragma mips_frequency_hint NEVER
     		FmtAssert (FALSE, ("relocs_asm: illegal reloc TN"));
@@ -3774,11 +3790,10 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
 #else /* defined(BUILD_OS_DARWIN) */
     // Add a reference to the PLT under -fPIC compilation.
     if ( Gen_PIC_Shared &&  
-	 !TN_is_label( OP_opnd(op,0) ) &&
-	 ( topcode == TOP_call || 
-	   // tail-call optimization 
-	   ( topcode == TOP_jmp && !TN_is_label( OP_opnd( op, 0))))) {
-      ST* function = TN_var(OP_opnd(op, 0));
+	 !TN_is_label( OP_opnd(op,opnd) ) &&
+         TOP_is_jump(topcode) &&
+         opnd == OP_find_opnd_use(op,OU_target) ) {
+      ST* function = TN_var(OP_opnd(op, opnd));
       // only preemptaible function need to use PLT, internal/hidden/protected
       // functions can be called directly from the module (linker resovles it)
       if ( function && ST_is_preemptible(function) ) 

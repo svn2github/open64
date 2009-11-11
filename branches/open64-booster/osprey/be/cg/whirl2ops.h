@@ -163,5 +163,5 @@ extern BOOL W2OPS_Pragma_Preamble_End_Seen (void);
  * for example: __tls_get_addr 
  */
 void Expand_New_Call_To_OPs(WN*, OPERATOR, OPS*);
-
+BB*  Start_New_Basic_Block();
 #endif /* whirl2ops_INCLUDED */

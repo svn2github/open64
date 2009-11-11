@@ -3340,7 +3340,10 @@ static TN* Compose_Addr_offset( TN* ofst1, TN* ofst2, TN* scale )
     ST* sym = TN_var(ofst1);
     const INT64 ofst = TN_value(ofst2) * TN_value(scale) + TN_offset(ofst1);
 
-    return Gen_Symbol_TN( sym, ofst, TN_RELOC_NONE );
+    // keep the relocs for TLS object
+    Is_True ( TN_relocs(ofst2) == TN_RELOC_NONE, ("bad TN relocs for ofst2") );
+    return Gen_Symbol_TN( sym, ofst,
+                          ST_is_thread_local(sym) ? TN_relocs(ofst1) : TN_RELOC_NONE );
   }
 
   if( TN_is_symbol(ofst2) ){
@@ -3350,7 +3353,10 @@ static TN* Compose_Addr_offset( TN* ofst1, TN* ofst2, TN* scale )
     ST* sym = TN_var(ofst2);
     const INT64 ofst = TN_value(ofst1) + TN_offset(ofst2);
 
-    return Gen_Symbol_TN( sym, ofst, TN_RELOC_NONE );
+    // keep the relocs for TLS object
+    Is_True ( TN_relocs(ofst1) == TN_RELOC_NONE, ("bad TN relocs for ofst1") );
+    return Gen_Symbol_TN( sym, ofst, 
+                          ST_is_thread_local(sym) ? TN_relocs(ofst2) : TN_RELOC_NONE );
   }
 
   const INT64 value = TN_value(ofst1) + TN_value(ofst2) * TN_value(scale);
@@ -4491,6 +4497,10 @@ BOOL EBO_Merge_Memory_Addr( OP* op,
 
   // TODO: support N32_MODE for -m32
   if( base_tn == NULL && index_tn == NULL )
+    return FALSE;
+
+  // disable merging memory addr on TLS initial-exec
+  if( TN_relocs(offset_tn) == TN_RELOC_X8664_GOTTPOFF )
     return FALSE;
 
   TN* rip = Rip_TN();

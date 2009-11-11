@@ -72,6 +72,9 @@
 #include "cgemit.h"	// for CG_emit_non_gas_syntax
 #include "cg_flags.h"	// for CG_valgrind_friendly
 
+#include "tls.h"        // for thread-local storage
+#include "whirl2ops.h"
+
 static void Exp_Ldst( OPCODE opcode,
 		      TN *tn,
 		      ST *sym,
@@ -735,6 +738,266 @@ CG_Set_Is_Stack_Used()
   is_stack_used = TRUE;
 }
 
+static TN*
+Get_TLS_Base_And_Offset(ST* sym, INT64 ofst, TN** base_tn, TN** ofst_tn, 
+                        BOOL is_lda, OPS *ops, VARIANT variant) {
+
+  // get base address and offset of TLS symbol
+  Is_True( ST_is_thread_local(sym), ("symbol is not a TLS") );
+
+  ST_TLS_MODEL tls_model = ST_tls_model(sym);
+  switch ( tls_model ) {
+    case TLS_LOCAL_DYNAMIC:
+      PU_has_local_dynamic_tls = TRUE;
+      // fall thru
+
+    case TLS_GLOBAL_DYNAMIC: {
+      TLS_init();
+      Allocate_Object(TLS_get_addr_st);
+
+      TN* sym_tn = Gen_Symbol_TN(sym, 0, 
+                                 tls_model == TLS_GLOBAL_DYNAMIC ?
+                                 TN_RELOC_X8664_TLSGD : TN_RELOC_X8664_TLSLD);
+      TN* func_tn = Gen_Symbol_TN(TLS_get_addr_st, 0, TN_RELOC_NONE);
+      
+      if ( tls_model == TLS_GLOBAL_DYNAMIC || 
+           (tls_model == TLS_LOCAL_DYNAMIC && Local_Dynamic_TLS_Base == NULL) ) {
+        // if global-dynamic or Cur_BB is REGION_First_BB, 
+        //   generate the call in Cur_BB, otherwise, generate the call into new BB
+        OPS local_ops;
+        OPS_Init( &local_ops);
+        BOOL use_cur_bb = tls_model == TLS_GLOBAL_DYNAMIC || 
+                          Cur_BB == REGION_First_BB ||
+                          W2OPS_Pragma_Preamble_End_Seen() == TRUE;
+        if ( ! use_cur_bb ) {
+          OP* preamble_op;
+          FOR_ALL_OPS_OPs ( &New_OPs, preamble_op ) {
+            if ( OP_first_after_preamble_end(preamble_op) ) {
+              use_cur_bb = TRUE;
+              break;
+            }
+          }
+          FOR_ALL_OPS_OPs ( ops, preamble_op ) {
+            if ( OP_first_after_preamble_end(preamble_op) ) {
+              use_cur_bb = TRUE;
+              break;
+            }
+          }
+        }
+        OPS* call_ops = use_cur_bb ? ops : &local_ops;
+        BB*  call_bb  = use_cur_bb ? Cur_BB : Gen_BB_Like(REGION_First_BB);
+
+        if ( Is_Target_64bit() ) {
+          TN* param_tn = PREG_To_TN(MTYPE_To_PREG(Pointer_Mtype), RDI);
+          Build_OP ( tls_model == TLS_GLOBAL_DYNAMIC ?
+                     TOP_tls_global_dynamic_64 : TOP_tls_local_dynamic_64, 
+                     param_tn, sym_tn, Rip_TN(), func_tn, call_ops);
+        }
+        else {
+          Build_OP ( tls_model == TLS_GLOBAL_DYNAMIC ?
+                     TOP_tls_global_dynamic_32 : TOP_tls_local_dynamic_32, 
+                     sym_tn, Ebx_TN(), func_tn, call_ops);
+          PU_References_GOT = TRUE;
+        }
+
+        // setup BB/PU attributes
+        CALLINFO* call_info = TYPE_PU_ALLOC (CALLINFO);
+        CALLINFO_call_st(call_info) = TLS_get_addr_st;
+        CALLINFO_call_wn(call_info) = WN_Create(OPR_CALL, Pointer_Mtype, MTYPE_V, 0);
+        BB_Add_Annotation (call_bb, ANNOT_CALLINFO, call_info);
+        Set_BB_call (call_bb);
+        PU_Has_Calls = TRUE;
+
+        if ( use_cur_bb ) {
+          // start new BB after Cur_BB
+          OPS_Append_Ops(&New_OPs, call_ops);
+          Start_New_Basic_Block ();
+          OPS_Init(call_ops);
+
+          // get address from return register
+          TN* result_tn = PREG_To_TN(MTYPE_To_PREG(Pointer_Mtype), RAX);
+          if ( *base_tn == NULL ) {
+            *base_tn = Build_TN_Of_Mtype(Pointer_Mtype);
+          }
+          Exp_COPY(*base_tn, result_tn, call_ops);
+        }
+        else {
+          // Find the BB contains the OP_MASK_FIRST_OP_AFTER_PREAMBLE_END
+          BB* preamble_bb = REGION_First_BB;
+          while ( preamble_bb != NULL ) {
+            OP* preamble_op;
+            FOR_ALL_BB_OPs ( preamble_bb, preamble_op ) {
+              if ( OP_first_after_preamble_end(preamble_op) ) {
+                break;
+              }
+            }
+            if ( preamble_op != NULL ) {
+              FmtAssert ( OP_first_after_preamble_end(preamble_op),
+                          ("unexpected preamble_op") );
+              break;
+            }
+            preamble_bb = BB_next(preamble_bb);
+          }
+          FmtAssert ( preamble_bb != NULL, ("can not find preamble_bb") );
+          // insert call_bb before preamble_bb
+          BB_next(call_bb) = preamble_bb;
+          BB_prev(call_bb) = BB_prev(preamble_bb);
+          if ( BB_prev(preamble_bb) )
+            BB_next(BB_prev(preamble_bb)) = call_bb;
+          BB_prev(preamble_bb) = call_bb;
+          // transfer info from preamble_bb to call_bb
+          BB* orig_first_bb = preamble_bb;
+          if ( preamble_bb == REGION_First_BB ) {
+            REGION_First_BB = call_bb;
+          }
+          if ( BB_entry(orig_first_bb) ) {
+            BB_Transfer_Entryinfo( orig_first_bb, call_bb );
+            Entry_BB_Head = BB_LIST_Delete( orig_first_bb, Entry_BB_Head );
+            Entry_BB_Head = BB_LIST_Push( call_bb, Entry_BB_Head, &MEM_pu_pool );
+          }
+          Chain_BBs( call_bb, orig_first_bb );
+          Link_Pred_Succ_with_Prob( call_bb, orig_first_bb, 1.0 );
+          BB_rid( call_bb ) = BB_rid( orig_first_bb );
+          BB_freq( call_bb ) = BB_freq( orig_first_bb );
+          if( BB_freq_fb_based( orig_first_bb ) )
+            Set_BB_freq_fb_based( call_bb );
+
+          // create new bb for copying the return value
+          BB* after_call_bb = Gen_And_Insert_BB_Before(orig_first_bb);
+          Chain_BBs(after_call_bb, orig_first_bb);
+          Link_Pred_Succ_with_Prob(after_call_bb, orig_first_bb, 1.0);
+          BB_rid(after_call_bb) = BB_rid(orig_first_bb);
+          BB_freq(after_call_bb) = BB_freq(orig_first_bb);
+          if (BB_freq_fb_based(orig_first_bb))
+            Set_BB_freq_fb_based(after_call_bb);
+          Change_Succ(call_bb, orig_first_bb, after_call_bb);
+
+          // move the OPs before preamble_end into new call_bb
+          //  to avoid conflicts between the params of caller and __tls_get_addr
+          OP *op_iter, *op_next;
+          for ( op_iter = BB_first_op(orig_first_bb); op_iter != NULL; op_iter = op_next ) {
+            op_next = OP_next(op_iter);
+            if ( OP_first_after_preamble_end(op_iter) )
+              break;
+            FmtAssert ( ! OP_xfer(op_iter), ("unexpected xfer op") );
+            BB_Move_Op_To_End(call_bb, orig_first_bb, op_iter);
+          }
+          FmtAssert ( op_iter != NULL && OP_first_after_preamble_end(op_iter),
+                      ("Can not find the first op after preamble_end") );
+          BB_Append_Ops( call_bb, call_ops );
+
+          // get address from return register
+          OPS_Init (&local_ops);
+          Local_Dynamic_TLS_Base = Build_TN_Of_Mtype(Pointer_Mtype);
+          TN* result_tn = PREG_To_TN(MTYPE_To_PREG(Pointer_Mtype), RAX);
+          Exp_COPY(Local_Dynamic_TLS_Base, result_tn, &local_ops);
+          BB_Append_Ops( after_call_bb, &local_ops);
+
+          *base_tn =  Local_Dynamic_TLS_Base;
+        }
+      }
+      else {
+        // reuse previous base for local dynamic tls
+        *base_tn =  Local_Dynamic_TLS_Base;
+      }
+
+      if ( tls_model == TLS_GLOBAL_DYNAMIC ) {
+        *ofst_tn =  Gen_Literal_TN(ofst, 4);
+      }
+      else {
+        *ofst_tn = Gen_Symbol_TN(sym, ofst, TN_RELOC_X8664_DTPOFF);
+      }
+      break;
+    }
+
+    case TLS_INITIAL_EXEC:
+      if ( is_lda ) {
+        if ( *base_tn == NULL )
+          *base_tn = Build_TN_Of_Mtype(Pointer_Mtype);
+
+        if ( Is_Target_64bit() ) {
+          TN* seg_ofst = Build_TN_Of_Mtype(Pointer_Mtype);
+          Build_OP( TOP_ld64, 
+                    seg_ofst,
+                    Rip_TN(),
+                    Gen_Symbol_TN(sym, 0, TN_RELOC_X8664_GOTTPOFF),
+                    ops );
+          TN* seg_base = Build_TN_Of_Mtype(Pointer_Mtype);
+          Build_OP( TOP_ld64_fs_seg_off,
+                    seg_base,
+                    Gen_Literal_TN(0, 4),
+                    ops );
+
+          Build_OP( TOP_add64, *base_tn, seg_base, seg_ofst, ops );
+          *ofst_tn =  Gen_Literal_TN(ofst, 4);
+        }
+        else {
+          TN* seg_base = Build_TN_Of_Mtype(Pointer_Mtype);
+          Build_OP( TOP_ld32_gs_seg_off,
+                    seg_base,
+                    Gen_Literal_TN(0, 4),
+                    ops );
+
+          if ( Gen_PIC_Shared ) {
+            TN* seg_ofst = Gen_Symbol_TN(sym, 0, TN_RELOC_X8664_GOTNTPOFF);
+            Build_OP( TOP_addx32, *base_tn, seg_base, Ebx_TN(), seg_ofst, ops );
+            PU_References_GOT = TRUE;
+          }
+          else {
+            TN* seg_ofst = Gen_Symbol_TN(sym, 0, TN_RELOC_X8664_GOTTPOFF);
+            Build_OP( TOP_addi32, *base_tn, seg_base, seg_ofst, ops );
+          }
+          *ofst_tn =  Gen_Literal_TN(ofst, 4);
+        }
+      }
+      else {
+        *base_tn = Build_TN_Of_Mtype(Pointer_Mtype);
+        if ( Is_Target_64bit() ) {
+          Build_OP( TOP_ld64, 
+                    *base_tn, 
+                    Rip_TN(),
+                    Gen_Symbol_TN(sym, 0, TN_RELOC_X8664_GOTTPOFF),
+                    ops );
+        }
+        else {
+          if ( Gen_PIC_Shared ) {
+            PU_References_GOT = TRUE;
+            Build_OP( TOP_ld32,
+                      *base_tn,
+                      Ebx_TN(),
+                      Gen_Symbol_TN(sym, 0, TN_RELOC_X8664_GOTNTPOFF),
+                      ops );
+          }
+          else {
+            Build_OP( TOP_ldc32, 
+                      *base_tn,
+                      Gen_Symbol_TN(sym, 0, TN_RELOC_X8664_GOTTPOFF),
+                      ops );
+          }
+        }
+        *ofst_tn = Gen_Literal_TN(ofst, 4);
+        Set_TN_is_thread_seg_ptr(*base_tn);
+      }
+      break;
+
+    case TLS_LOCAL_EXEC:
+      if ( is_lda ) {
+        *base_tn = Build_TN_Of_Mtype(Pointer_Mtype);
+        Build_OP( Is_Target_64bit() ? TOP_ld64_fs_seg_off : TOP_ld32_gs_seg_off, 
+                  *base_tn, 
+                  Gen_Literal_TN(0, 4),
+                  ops );
+      }
+      *ofst_tn = Gen_Symbol_TN(sym, ofst, 
+                               is_lda ? TN_RELOC_X8664_TPOFF32 : TN_RELOC_X8664_TPOFF32_seg_reg);
+      break;
+
+    default:
+      FmtAssert( FALSE, ("Unknown tls-model") );
+  }
+  return NULL;
+}
+
 static void
 Exp_Ldst (
   OPCODE opcode,
@@ -856,10 +1119,41 @@ Exp_Ldst (
 		    &newops );
 	}
       }
+      else if( ST_is_thread_local(base_sym) ) {
+        // reset TN rematerializable since it seems spill/fill is faster
+        if ( TN_is_rematerializable(tn) ) {
+          Reset_TN_is_rematerializable(tn);
+          Set_TN_home(tn, NULL);
+        }
+
+        TN* base_tn = base_ofst == 0 ? tn : Build_TN_Like(tn);
+        TN* ofst_tn = NULL;
+        Get_TLS_Base_And_Offset(base_sym, base_ofst, 
+                                &base_tn, &ofst_tn,
+                                TRUE, &newops, variant);
+
+        FmtAssert ( TN_is_constant(ofst_tn) ||
+                    ( ST_tls_model(base_sym) == TLS_INITIAL_EXEC && Is_Target_64bit() ),
+                    ("ofst_tn is not constant for non initial-exec model and 64bit target") );
+
+        if ( ST_tls_model(base_sym) == TLS_LOCAL_DYNAMIC ||
+             ST_tls_model(base_sym) == TLS_LOCAL_EXEC ) {
+          Build_OP ( Is_Target_64bit() ? TOP_lea64 : TOP_lea32,
+                     tn, base_tn, ofst_tn, &newops);
+        }
+        else if ( ! TN_is_constant(ofst_tn) ) {
+          Build_OP ( Is_Target_64bit() ? TOP_add64 : TOP_add32,
+                     tn, base_tn, ofst_tn, &newops);
+        }
+        else if ( base_ofst != 0 ) {
+          Build_OP ( Is_Target_64bit() ? TOP_addi64 : TOP_addi32,
+                     tn, base_tn, ofst_tn, &newops);
+        }
+      }
       else if( Is_Target_64bit() ){
+        FmtAssert(!ST_is_thread_local(base_sym),
+                  ("Exp_Ldst: thread-local storage should not be handled here"));
 	if (Gen_PIC_Shared) {
-	  FmtAssert(!ST_is_thread_local(base_sym),
-		    ("Exp_Ldst: thread-local storage NYI under PIC"));
 	  if ( !ST_is_export_local(base_sym) ) {
 	    TN *tmp = base_ofst == 0 ? tn : Build_TN_Like(tn);
 	    Build_OP( TOP_ld64, tmp, Rip_TN(), 
@@ -874,25 +1168,6 @@ Exp_Ldst (
 	  else Build_OP( TOP_lea64, tn, Rip_TN(), 
 			 Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE ),
 			 &newops );	      
-	} else if (ST_is_thread_local(base_sym)) {
-	  // Thread-local storage.  The address is:
-	  //   (symbol's offset from thread base ptr) + (thread base ptr)
-	  // The thread base pointer is at %fs:0.  %fs is the thread segment
-	  // register.
-	  TN *segment_base = Build_TN_Like(tn);
-	  Build_OP(TOP_ld64_fs_seg_off, segment_base, Gen_Literal_TN(0, 4),
-		   &newops);
-	  if (ST_sclass(base_sym) == SCLASS_EXTERN) {
-	    TN *segment_offset = Build_TN_Like(tn);
-	    Build_OP(TOP_ld64, segment_offset, Rip_TN(),
-		     Gen_Symbol_TN(base_sym, 0, TN_RELOC_X8664_GOTTPOFF),
-		     &newops);
-	    Build_OP(TOP_add64, tn, segment_base, segment_offset, &newops);
-	  } else {
-	    TN *segment_offset = Gen_Symbol_TN(base_sym, base_ofst,
-					       TN_RELOC_X8664_TPOFF32);
-	    Build_OP(TOP_addi64, tn, segment_base, segment_offset, &newops);
-	  }
 	} else if (ISA_LC_Value_In_Class(base_ofst, LC_simm32) &&
 		 mcmodel < MEDIUM ){
 	  Build_OP(TOP_ldc64, tn,
@@ -949,20 +1224,6 @@ Exp_Ldst (
 	  if( base_ofst != 0 ){
 	    Build_OP( TOP_addi32, tn, tmp, Gen_Literal_TN(base_ofst, 4), &newops );
 	  }
-	} else if (ST_is_thread_local(base_sym)) {
-	  // Thread-local storage.  The address is:
-	  //   (symbol's offset from thread base ptr) + (thread base ptr)
-	  // The thread base pointer is at %gs:0.  %gs is the thread segment
-	  // register.
-	  TN *segment_base = Build_TN_Like(tn);
-	  Build_OP(TOP_ld32_gs_seg_off, segment_base, Gen_Literal_TN(0, 4),
-		   &newops);
-
-	  TN_RELOCS relocs = (ST_sclass(base_sym) == SCLASS_EXTERN) ?
-			       TN_RELOC_X8664_GOTTPOFF : TN_RELOC_X8664_TPOFF32;
-	  TN *segment_offset = Gen_Symbol_TN(base_sym, base_ofst, relocs);
-
-	  Build_OP(TOP_addi32, tn, segment_base, segment_offset, &newops);
 	} else {
 	  Build_OP( TOP_ldc32, tn,
 		    Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE ),
@@ -972,29 +1233,28 @@ Exp_Ldst (
     }
 
   } else {
-    if( base_tn == NULL ){
+
+    if( ST_is_thread_local(sym) ) {
+      // reset TN gra homeable since it seems spill/fill is faster
+      if ( TN_is_gra_homeable(tn) ) {
+        Reset_TN_is_gra_homeable(tn);
+        Set_TN_home(tn, NULL);
+      }
+
+      // Thread Local load & store
+      Get_TLS_Base_And_Offset(base_sym, base_ofst, &base_tn, &ofst_tn,
+                              FALSE, &newops, variant);
+      base_ofst = 0;
+    }
+    else if( base_tn == NULL ){
       Is_True(! on_stack, ("Exp_Ldst: unexpected stack reference"));
 
-      if( Is_Target_64bit() ){
+      if( Is_Target_64bit() ) {
 
-	if (ST_is_thread_local(sym)) {
-	  FmtAssert(ISA_LC_Value_In_Class(base_ofst, LC_simm32),
-		    ("Exp_Ldst: thread-local storage base offset too large"));
-	  if (ST_sclass(sym) == SCLASS_EXTERN) {
-	    base_tn = Build_TN_Of_Mtype(Pointer_Mtype);
-	    Build_OP(TOP_ld64, base_tn, Rip_TN(),
-		     Gen_Symbol_TN(base_sym, 0,
-				   TN_RELOC_X8664_GOTTPOFF),
-		     &newops);
-	    ofst_tn = Gen_Literal_TN(base_ofst, 4);
-	    base_ofst = 0;
-	    Set_TN_is_thread_seg_ptr(base_tn);
-	  } else {
-	    ofst_tn = Gen_Symbol_TN(base_sym, base_ofst,
-				    TN_RELOC_X8664_TPOFF32_seg_reg);
-	    base_ofst = 0;
-	  }
-	} else if (mcmodel < MEDIUM &&
+        FmtAssert(!ST_is_thread_local(base_sym),
+                  ("Exp_Ldst: thread-local storage should not be handled here"));
+
+	if (mcmodel < MEDIUM &&
 		   ISA_LC_Value_In_Class(base_ofst, LC_simm32)) {
 	    base_tn = Rip_TN();
 	} else {
@@ -1061,8 +1321,7 @@ Exp_Ldst (
                               // section?
                              (ST_class(base_sym) == CLASS_BLOCK &&
                               STB_section(base_sym) /* bug 10097 */)) ){
-	FmtAssert(!ST_is_thread_local(base_sym),
-		  ("Exp_Ldst: thread-local storage NYI under PIC"));
+
 	if( Is_Target_64bit() ){
 	  TN *new_base = Build_TN_Of_Mtype(Pointer_Mtype);
 	  Build_OP (TOP_ld64, new_base, base_tn, 
@@ -1087,24 +1346,7 @@ Exp_Ldst (
 	}
       }
       else if( ofst_tn == NULL ){
-	if (ST_is_thread_local(base_sym) &&
-	    ST_sclass(sym) == SCLASS_EXTERN) {
-	  // The 64-bit case already handled above.
-	  FmtAssert(Is_Target_32bit(), ("Exp_Ldst: unexpected 64-bit target"));
-	  base_tn = Build_TN_Of_Mtype(Pointer_Mtype);
-	  Build_OP(TOP_ldc32, base_tn,
-		   Gen_Symbol_TN(base_sym, 0,
-				 TN_RELOC_X8664_GOTTPOFF),
-		   &newops);
-	  ofst_tn = Gen_Literal_TN(base_ofst, 4);
-	  base_ofst = 0;
-	  Set_TN_is_thread_seg_ptr(base_tn);
-	} else {
-	  ofst_tn = Gen_Symbol_TN(base_sym, base_ofst,
-				  ST_is_thread_local(base_sym) ?
-				    TN_RELOC_X8664_TPOFF32_seg_reg :
-				    TN_RELOC_NONE);
-	}
+	ofst_tn = Gen_Symbol_TN(base_sym, base_ofst, TN_RELOC_NONE);
       }
     }
 

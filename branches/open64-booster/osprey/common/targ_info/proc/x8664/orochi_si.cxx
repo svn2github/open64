@@ -434,6 +434,17 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_alu, 0);
   Resource_Requirement(res_issue, 0);
 
+  Instruction_Group( "dynamic tls call",
+		     TOP_tls_global_dynamic_64,
+		     TOP_tls_global_dynamic_32,
+		     TOP_tls_local_dynamic_64,
+		     TOP_tls_local_dynamic_32,
+		     TOP_UNDEFINED );
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(6);
+  Resource_Requirement(res_alu, 0);
+  Resource_Requirement(res_issue, 0);
+
   Instruction_Group( "indirect call/jump",
 		     TOP_icall,
 		     TOP_ijmp,

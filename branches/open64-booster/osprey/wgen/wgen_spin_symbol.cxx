@@ -100,6 +100,19 @@ extern gs_t decl_arguments;
 extern void Push_Deferred_Function(gs_t);
 extern char *WGEN_Tree_Node_Name(gs_t op);
 
+static enum ST_TLS_MODEL tls_stress_model = TLS_NONE;
+extern "C" void Process_TLS_Stress_Model(const char* p)
+{
+  if ( !strcmp(p, "global-dynamic") )
+    tls_stress_model = TLS_GLOBAL_DYNAMIC;
+  else if ( !strcmp(p, "local-dynamic") )
+    tls_stress_model = TLS_LOCAL_DYNAMIC;
+  else if ( !strcmp(p, "initial-exec") )
+    tls_stress_model = TLS_INITIAL_EXEC;
+  else if ( !strcmp(p, "local-exec") )
+    tls_stress_model = TLS_LOCAL_EXEC;
+}
+
 #ifdef KEY
 // =====================================================================
 // bug 8346: A function's VLA argument types should only be expanded
@@ -2133,6 +2146,17 @@ Create_ST_For_Tree (gs_t decl_node)
         break;
     }
     Set_ST_tls_model(st, tls_model);
+
+    if ( tls_stress_test ) {
+      // once tls_stress_test is set, make PSTATIC/FSTATIC variables to be TLS
+      if ( ST_sclass(st) == SCLASS_PSTATIC || ST_sclass(st) == SCLASS_FSTATIC ) {
+        Set_ST_is_thread_local(st);
+        if ( tls_stress_model == TLS_NONE ) {
+          tls_stress_model = ( gen_pic_code ) ? TLS_GLOBAL_DYNAMIC : TLS_LOCAL_EXEC;
+        }
+        Set_ST_tls_model(st, tls_stress_model);
+      }
+    }
 #endif // !TARG_NVISA
   }
 

@@ -46,22 +46,30 @@ void TLS_init()
 		Set_TY_align(ty_idx, 1);
 
 		TYLIST_IDX tylist_idx;
-		
 		Set_TYLIST_type (New_TYLIST (tylist_idx), MTYPE_To_TY(Pointer_Mtype));
 		Set_TY_tylist (ty_idx, tylist_idx);
 		Set_TYLIST_type (New_TYLIST (tylist_idx), MTYPE_To_TY(Pointer_Mtype));
+#if defined(TARG_IA64)
+		// On IA-64, __tls_get_addr take two parameters
 		Set_TYLIST_type (New_TYLIST (tylist_idx), MTYPE_To_TY(Pointer_Mtype));
+#endif
 		Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
 		//TY_IDX ty_idx = Make_Function_Type( MTYPE_To_TY(Pointer_Mtype));
 		TLS_get_addr_ty_idx = ty_idx;
+
 		// Create PU for this function call
-		ST* st = New_ST(GLOBAL_SYMTAB);
 		PU_IDX pu_idx;
 		PU&    pu = New_PU (pu_idx);
 		PU_Init (pu, ty_idx, GLOBAL_SYMTAB + 1);
 		// Create ST for this function call
-		//ST* st = New_ST(GLOBAL_SYMTAB);
-		ST_Init(st, Save_Str("__tls_get_addr"), CLASS_FUNC, SCLASS_EXTERN, EXPORT_PREEMPTIBLE, (TY_IDX)pu_idx);
+		ST* st = New_ST(GLOBAL_SYMTAB);
+#if defined(TARG_X8664)
+		const char* func_name = Is_Target_64bit() ? "__tls_get_addr" : "___tls_get_addr";
+#else
+		const char* func_name = "__tls_get_addr";
+#endif
+		ST_Init(st, Save_Str( func_name ), 
+                        CLASS_FUNC, SCLASS_EXTERN, EXPORT_PREEMPTIBLE, (TY_IDX)pu_idx);
 		TLS_get_addr_st = st;
 	}
 }

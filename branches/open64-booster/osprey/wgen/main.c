@@ -59,6 +59,9 @@ BOOL opt_regions = 0;
 BOOL lang_cplus = FALSE;
 BOOL c_omit_external = TRUE;
 BOOL keep_inline_functions=FALSE;
+BOOL gen_pic_code = FALSE;
+BOOL tls_stress_test = FALSE;
+extern void Process_TLS_Stress_Model(const char *p);
 #ifdef FE_GNU_4_2_0
 BOOL enable_cxx_openmp = TRUE;
 #endif
@@ -95,6 +98,8 @@ Process_Command_Line(INT argc, char **argv)
 		  ;
 	      else if (strcmp(cp, "no-emit-exceptions") == 0) 
 		  emit_exceptions = 0;
+              else if (strcmp(cp, "tls-stress-test") == 0)
+                  tls_stress_test = TRUE;
 	      else if (*(cp+1) != ',' && *(cp+1) != ':')
 		  ;
 	      else {                /* file options */
@@ -202,6 +207,9 @@ Process_Cc1_Command_Line(gs_t arg_list)
 	      if (!strcmp( cp, "no-exceptions" )) {
 		emit_exceptions = 0;
 	      }
+              if (!strcmp( cp, "pic" ) || !strcmp( cp, "PIC") ) {
+                gen_pic_code = TRUE;
+              }
 	      else if (lang_cplus && !strcmp( cp, "exceptions" )) {
 		emit_exceptions = 1;
 	      }
@@ -221,6 +229,9 @@ Process_Cc1_Command_Line(gs_t arg_list)
 #endif
               else if (!strcmp( cp, "keep-inline-functions")) {
                 keep_inline_functions = TRUE;
+              }
+              else if (!strncmp( cp, "tls-model=", sizeof("tls-model") ) ) {
+                Process_TLS_Stress_Model( cp + sizeof("tls-model") );
               }
 	      break;
 

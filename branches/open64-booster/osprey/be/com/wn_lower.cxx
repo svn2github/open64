@@ -5744,16 +5744,16 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       // OPR_CALL
       char local_name[64];
       ST* tls_st = WN_st(tree);
-      TYPE_ID tls_mtype = ST_mtype(tls_st);
+      TYPE_ID tls_mtype = WN_rtype(tree);
       snprintf(local_name, 64, "%s.local", ST_name(tls_st));
       ST* local_st = MTYPE_To_PREG(tls_mtype);
       PREG_NUM local_num = Create_Preg(tls_mtype, local_name);
-      WN* tls_ldid = WN_COPY_Tree(tree);
       WN* local_stid = WN_StidIntoPreg(tls_mtype, local_num,
-                                       local_st, tls_ldid);
+                                       local_st, tree);
+      WN_copy_linenum(tree, local_stid);
       WN_INSERT_BlockLast(block, local_stid);
       WN* local_ldid = WN_LdidPreg(tls_mtype, local_num );
-      WN_Delete(tree);
+      WN_copy_linenum(tree, local_ldid);
       return local_ldid;
     }
     break;
@@ -5841,12 +5841,12 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       snprintf(local_name, 64, "%s.local", ST_name(tls_st));
       ST* local_st = MTYPE_To_PREG(Pointer_type);
       PREG_NUM local_num = Create_Preg ( Pointer_type, local_name);
-      WN* tls_lda = WN_COPY_Tree(tree);
       WN* local_stid = WN_StidIntoPreg( Pointer_type, local_num, 
-                                        local_st, tls_lda);
+                                        local_st, tree);
+      WN_copy_linenum(tree, local_stid);
       WN_INSERT_BlockLast(block, local_stid);
       WN * local_ldid = WN_LdidPreg(Pointer_type, local_num);
-      WN_Delete(tree);
+      WN_copy_linenum(tree, local_ldid);
       return local_ldid;
     }
 #ifdef KEY  // if taking address of a nested function, replace it by the address
@@ -10383,9 +10383,7 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
   Is_True(OPERATOR_is_call(WN_operator(tree)),
 	  ("expected call node, not %s", OPERATOR_name(WN_operator(tree))));
 
-  // initialize the TLS if it's not initialized
-  TLS_init();
-  // If the tls_model is dynamic, we need to generate __tls_get_addr call.
+  // If ST's tls_model is dynamic, we need to generate __tls_get_addr call.
   // In order to avoid the output register conflict,
   // we need to promote the ldid/lda in actual parameter to up-level.
   // This is done in LOWER_TO_CG phase

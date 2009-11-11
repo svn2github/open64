@@ -129,6 +129,8 @@ extern BOOL opt_regions;		/* from main.c */
 extern gs_t program;			/* from main.c */
 extern BOOL lang_cplus;			/* from main.c */
 extern BOOL keep_inline_functions;	/* from main.c */
+extern BOOL gen_pic_code;                  /* from main.c, -fpic or -fPIC */
+extern BOOL tls_stress_test;               /* from main.c, do tls stress test or not */ 
 #ifdef FE_GNU_4_2_0
 #include "wn_util.h"
 extern BOOL enable_cxx_openmp;		/* from main.c */
