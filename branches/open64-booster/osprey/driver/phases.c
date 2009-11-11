@@ -923,11 +923,6 @@ add_file_args (string_list_t *args, phases_t index)
                   add_string(args, inc_path);
                 }
 #endif
-#ifdef TARG_X8664 
-		// Add a workaround for bug 3082 and bug 6186.
-		add_string(args, "-mfpmath=387");
-#endif
-		
 		add_string(args, input_source);
 		if (option_was_seen(O_E) && outfile != NULL) {
 			add_string(args, "-o");

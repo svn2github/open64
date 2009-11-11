@@ -2072,21 +2072,21 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Enable SSE extensions"
 -mno-sse	toggle(&sse,FALSE);toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	be	""
 	"Disable SSE2/SSE3/SSE4a extensions"
--msse2	toggle(&mmx,TRUE);toggle(&sse,TRUE);toggle(&sse2,TRUE);		ALL	be	""
+-msse2	toggle(&mmx,TRUE);toggle(&sse,TRUE);toggle(&sse2,TRUE);		ALL	CPP,cfe,be	self
 	"Enable SSE2 extensions"
--mno-sse2	toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	be	""
+-mno-sse2	toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	CPP,cfe,be	self
 	"Disable SSE2/SSE3 extensions"
--msse3	toggle(&sse2,TRUE);toggle(&sse3,TRUE);	ALL	be	""
+-msse3	toggle(&sse2,TRUE);toggle(&sse3,TRUE);	ALL	CPP,cfe,be	self
 	"Enable SSE3 extensions"
--mno-sse3	toggle(&sse3,FALSE);	ALL	be	""
+-mno-sse3	toggle(&sse3,FALSE);	ALL	CPP,cfe,be	self
 	"Disable SSE3 extensions"
--m3dnow		toggle(&m3dnow,TRUE);	ALL	be	""
+-m3dnow		toggle(&m3dnow,TRUE);	ALL	CPP,cfe,be	self
 	"Enable 3Dnow extensions"
--mno-3dnow	toggle(&m3dnow,FALSE);	ALL	be	""
+-mno-3dnow	toggle(&m3dnow,FALSE);	ALL	CPP,cfe,be	self
 	"Disable 3Dnow extensions"
--msse4a  toggle(&sse2,TRUE);toggle(&sse4a,TRUE);  ALL     be      ""
+-msse4a  toggle(&sse2,TRUE);toggle(&sse4a,TRUE);  ALL     CPP,cfe,be      self
         "Enable SSE4a extensions"
--mno-sse4a       toggle(&sse4a,FALSE);    ALL     be      ""
+-mno-sse4a       toggle(&sse4a,FALSE);    ALL     CPP,cfe,be      self
         "Disable SSE4a extensions"
 %%% x87
 -mx87-precision=%d	;	ALL	be	"-TARG:x87-precision=%d"
