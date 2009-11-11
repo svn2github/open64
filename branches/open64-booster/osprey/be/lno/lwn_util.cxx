@@ -983,6 +983,11 @@ void LWN_Delete_Tree(WN* wn)
       WN_MAP32_Set(Prompf_Id_Map, wn, 0); 
     }
   } 
+
+  // keep track of deleted loop
+  if (WN_opcode(wn) == OPC_DO_LOOP) {
+    Deleted_Loop_Map->Enter(wn, TRUE);
+  }    
 #endif
 
   if (WN_opcode(wn) == OPC_BLOCK) {

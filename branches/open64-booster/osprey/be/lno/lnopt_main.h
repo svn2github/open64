@@ -718,6 +718,8 @@
 
 #include "dep_graph.h"
 
+#include "cxx_hash.h"
+
 #ifdef KEY // bug 7422
 #define LNO_MAX_DO_LOOP_DEPTH 64
 #else
@@ -727,6 +729,8 @@ extern WN_MAP Parent_Map;  /* contains the mapping for the */
 			   /* parent pointers for all nodes */
 extern WN_MAP LNO_Info_Map;
 extern WN_MAP Array_Dependence_Map;
+// the map to keep track of deleted loop (because of unroll etc.)
+extern HASH_TABLE<WN*, BOOL> *Deleted_Loop_Map;
 extern MEM_POOL LNO_default_pool;
 extern MEM_POOL LNO_local_pool;
 extern INT snl_debug; 

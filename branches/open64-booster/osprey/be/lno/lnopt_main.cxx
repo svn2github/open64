@@ -167,6 +167,9 @@ typedef STACK<WN *> STACK_OF_WN;
   // Each statement/hcf maps a pointer to its parent
   WN_MAP Parent_Map;
 
+  // A map to keep track of deleted loop (because of unroll, etc)
+  HASH_TABLE<WN*,BOOL> *Deleted_Loop_Map;
+
   // Each array maps an ACCESS_ARRAY
   // Each do loop maps a BOUNDS
   // Each ldid maps an integer giving an id if it's the base of a scalar
@@ -218,6 +221,7 @@ Unroll_before_Factorize(WN *wn);
 
 static 
 BOOL Outer_Unroll_For_Factorization(WN *func_nd);
+static BOOL  ignore_size_heuristic_for_unroll=FALSE;
 
 //-----------------------------------------------------------------------
 // NAME: Prompf_Init 
@@ -947,7 +951,8 @@ Fully_Unroll_Short_Loops(WN* wn)
         //bug 11954, 11958: Regression caused by not multiplying trip_count, because
         //we need new LNO_Full_Unrolling_Loop_Size_Limit default.
         //TODO: re-investigate here after work bug 10644
-	if (Loop_Size(wn)*trip_count > LNO_Full_Unrolling_Loop_Size_Limit ||
+        //add a flag ignore_size_heuristic_for_unroll to always unroll a loop ignoring its size
+	if (!ignore_size_heuristic_for_unroll && Loop_Size(wn)*trip_count > LNO_Full_Unrolling_Loop_Size_Limit ||
             //bug 5159:  Loops having PREG with -ve offsets can not be unrolled since they are
             //ASM output values and duplicating them will break CG assumption.
             Has_Negative_Offset_Preg(WN_do_body(wn))){
@@ -1190,6 +1195,10 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
   Array_Dependence_Graph = NULL;
 
   Parent_Map = WN_MAP_Create(&LNO_default_pool);
+  Deleted_Loop_Map =CXX_NEW(
+         (HASH_TABLE<WN*, BOOL>) (100,&LNO_default_pool),
+         &LNO_default_pool);
+
   WN_SimpParentMap = Parent_Map;   // Let the simplifier know about it
   FmtAssert(Parent_Map != -1,("Ran out of mappings in Lnoptimizer"));
   LNO_Info_Map = WN_MAP_Create(&LNO_default_pool);
@@ -1589,9 +1598,13 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
         Array_Dependence_Graph->Erase_Graph();
         graph_is_ok =  Build_Array_Dependence_Graph (func_nd);
         if (graph_is_ok)
-	{ 
+	    { 
            Minvariant_Removal(func_nd, Array_Dependence_Graph);
-	} 
+	    }
+        // add another phase of unroll, ignoring loop size
+        ignore_size_heuristic_for_unroll=TRUE;
+        Fully_Unroll_Short_Loops(func_nd);
+        ignore_size_heuristic_for_unroll=FALSE;
       }
     }
 #endif

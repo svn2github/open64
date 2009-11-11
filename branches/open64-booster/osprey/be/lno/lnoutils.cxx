@@ -1760,6 +1760,8 @@ static void Unrolled_DU_Update_V(WN **bodies, UINT u,
   }
 }
 
+// the map to keep track of the deleted loops (because of unroll, etc)
+extern HASH_TABLE<WN*, BOOL> *Deleted_Loop_Map;
 
 // get the edges right for updating after unrolling
 //   Each edge in to or out of the region gets copied
@@ -1817,7 +1819,10 @@ static void Unrolled_DU_Update_E(UINT u, INT loopno,
       // shall we make an n^2 copy the internal edges
     BOOL copy_in_edges = FALSE;
     WN *loop_stmt = def_list->Loop_stmt();
-    if (loop_stmt) {
+    
+    // loop_stmt could be deleted, which is saved in a map
+    // Deleted_Loop_Map by LWN_Delete_Tree
+    if (loop_stmt && !Deleted_Loop_Map->Find(loop_stmt)) {
       INT loop_stmt_number = Do_Loop_Depth(loop_stmt);
       if (loop_stmt_number <= loopno) {
 	copy_in_edges = TRUE;
@@ -1885,7 +1890,9 @@ static void Unrolled_DU_Update_E(UINT u, INT loopno,
     }
   
     // copy loop_stmt
-    if (loop_stmt) {
+    // loop_stmt could be deleted, which is saved in a map
+    // Deleted_Loop_Map by LWN_Delete_Tree
+    if (loop_stmt && !Deleted_Loop_Map->Find(loop_stmt)) {
       for (INT i=1; i<u; i++) {
         DEF_LIST *def_list_copy = Du_Mgr->Ud_Get_Def(ldid_array[i]);
 	if (update_pointers) {
