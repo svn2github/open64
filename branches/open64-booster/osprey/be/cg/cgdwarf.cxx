@@ -2594,6 +2594,21 @@ Cg_Dwarf_Begin (BOOL is_64bit)
   cu_info = DST_INFO_IDX_TO_PTR (cu_idx);
   Dwarf_Language = Get_Dwarf_Language (cu_info);
 
+  if (Dwarf_Language != DW_LANG_C_plus_plus)
+  {
+    DST_INFO_IDX idx;
+
+    for( idx = DST_INFO_sibling(DST_INFO_IDX_TO_PTR(cu_idx)); !DST_IS_NULL(idx);
+                   idx = DST_INFO_sibling(DST_INFO_IDX_TO_PTR(idx)) )
+    {
+      if (DW_LANG_C_plus_plus == Get_Dwarf_Language ( DST_INFO_IDX_TO_PTR(idx) ))
+      {
+        Dwarf_Language = DW_LANG_C_plus_plus;
+        break;
+      }
+    }
+  }
+
 #ifdef KEY
   if (!CG_emit_unwind_info)
   dw_dbg = Em_Dwarf_Begin(is_64bit, Trace_Dwarf, 
