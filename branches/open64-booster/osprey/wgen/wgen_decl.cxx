@@ -1296,10 +1296,22 @@ WGEN_Start_Function(gs_t fndecl)
 	    gs_decl_namespace_scope_p (fndecl))))
 	    eclass = EXPORT_INTERNAL; // bug 7550
       else if (gs_tree_public(fndecl) || gs_decl_weak(fndecl)) {
-	if (gs_decl_inline(fndecl) || !gs_decl_weak(fndecl))
-	  eclass = EXPORT_PROTECTED;
-	else
-	  eclass = EXPORT_PREEMPTIBLE;
+        if (!gs_decl_declared_inline_p(fndecl)) {
+          // global non-inline function has to be preemptible
+          // unless it is changed by visibility option/attribute
+          eclass = EXPORT_PREEMPTIBLE;
+        }
+        else {
+          // inline function definition should be appeared in every 
+          // Translation Unit, it can be hidden (allow address be taken)
+          // one example of implicit address taken is dtor address be 
+          // used in __cxa_throw() arguments when the type is thrown
+          //
+          // gnu linker complains about protected symbol illegal relocation
+          // for taking its address, the hidden symbol' addres is ok to export 
+          // to other DSO or within the same module 
+          eclass = EXPORT_HIDDEN;
+	} 
       }
       else
 	 eclass = EXPORT_LOCAL;
