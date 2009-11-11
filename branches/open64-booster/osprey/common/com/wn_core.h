@@ -1383,6 +1383,9 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 /* Is the loop a upward countable loop */
 #define WN_LOOP_UP_TRIP   0x40
 
+/* Is the memory alias improved via loop multi-versioning */
+#define WN_LOOP_MULTIVERSION_ALIAS 0x80
+
 /* Is the loop an innermost loop */
 #define WN_Loop_Innermost(x)		(WN_loop_flag(x) & WN_LOOP_INNERMOST)
 #define WN_Set_Loop_Innermost(x)	(WN_loop_flag(x) |= WN_LOOP_INNERMOST)
@@ -1432,6 +1435,19 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 #define WN_Loop_Up_Trip(x)         (WN_loop_flag(x) & WN_LOOP_UP_TRIP)
 #define WN_Set_Loop_Up_Trip(x)     (WN_loop_flag(x) |= WN_LOOP_UP_TRIP)
 #define WN_Reset_Loop_Up_Trip(x)   (WN_loop_flag(x) &= ~WN_LOOP_UP_TRIP)
+
+/* Through the use of multi-versioning we can provide improved aliasing
+ * results for the memory refrences within a loop.  This flag is applied
+ * to the loop in the multi-version pair for which the memory references
+ * have been divided into mult-version alias groups to provide runtime
+ * verified disambiguation.
+ */
+#define WN_Loop_Multiversion_Alias(x) \
+  (WN_loop_flag(x) & WN_LOOP_MULTIVERSION_ALIAS)
+#define WN_Set_Multiversion_Alias(x) \
+  (WN_loop_flag(x) |= WN_LOOP_MULTIVERSION_ALIAS)
+#define WN_Reset_Multiversion_Alias(x) \
+  (WN_loop_flag(x) &= ~WN_LOOP_MULTIVERSION_ALIAS)
 
 #define WN_LABEL_HANDLER_BEGIN 0x2
 #define WN_Label_Is_Handler_Begin(x)	   (WN_label_flag(x) & \

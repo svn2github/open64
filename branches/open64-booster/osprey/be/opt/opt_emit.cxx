@@ -1112,8 +1112,10 @@ Raise_whiledo_stmt_to_doloop(EMITTER *emitter, BB_NODE *bb, BB_NODE *prev_bb, BB
   header->Set_loopstmt(rwn);
   emitter->Set_has_do_loop();
 
+  // A loop info may have been attached to the BB_LOOP by loop multiversion
+  WN *old_loop_info =loop ? loopbody->Label_loop_info() : NULL;
   if (WOPT_Enable_Add_Do_Loop_Info)
-    WN_set_do_loop_info(rwn, Build_new_loop_info(rwn, NULL));
+    WN_set_do_loop_info(rwn, Build_new_loop_info(rwn,old_loop_info));
 
 #if defined(TARG_NVISA)
   --cur_loop_depth;

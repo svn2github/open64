@@ -694,6 +694,9 @@ enum LOOP_FLAGS {
 				  // occurrence of the current
 				  // expression (for LFTR termination
 				  // guarantee).
+  LOOP_HAS_MV_ALIAS    = 0x200,   // Memory references in this loop are
+                                  // associated with loop multi-version
+                                  // alias groups
 };
 
 enum MP_TY { MP_REGION, MP_DOACROSS = 0x40, MP_PDO = 0x80};

@@ -1325,7 +1325,9 @@ extern FIZ_FUSE_INFO* Fiz_Fuse(WN* loop, FIZ_FUSE_INFO* snls, MEM_POOL* mpool) {
   // here, so the functionality really is exclusive.
   if ((LNO_Serial_Distribute!=0) && !Get_Do_Loop_Info(loop)->No_Fission &&
        !Do_Loop_Is_Mp(loop) && Do_Loop_Is_Inner(loop) && !Early_MP_Processing &&
-       (fusion_succeeded == FALSE) && (OPT_unroll_level == 2) &&
+       (fusion_succeeded == FALSE) && 
+       ((OPT_unroll_level == 2) || 
+        (Get_Do_Loop_Info(loop)->Multiversion_Alias)) &&
        (fission_succeeded == FALSE)) {
     FF_STMT_LIST stl_1;
     WN* wn1;

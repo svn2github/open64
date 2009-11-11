@@ -104,12 +104,16 @@ private:
   void Gen_precondioning_br (CODEREP* cond, BOOL falsebr);
   void Connect_dup_blocks (void);
   void Clone_BB_LOOP (void);
+  CODEREP* Gen_add_expr(CODEREP* ptr, CODEREP *val);
   CODEREP* Gen_add_expr (CODEREP* ptr, INT ofst);
+  CODEREP* Gen_range_expr(CODEREP *, const ADDR_LINEAR_EXPR_RANGE &,
+                          CODEREP *, const ADDR_LINEAR_EXPR_RANGE &);
+  CODEREP* Gen_range_and_expr(CODEREP *range1, CODEREP *range2);
   CODEREP* Gen_test_cond (LMV_CANDIDATE*);
   void Gen_precondioning_stuff (CODEREP*);
   void Annotate_alias_group (LMV_CANDIDATE*);
   void Annotate_alias_group_helper (const MEM_ACCESS_VECT&, LMV_ALIAS_GROUP); 
-  void Perform_transformation (LMV_CANDIDATE*);
+  BOOL Perform_transformation (LMV_CANDIDATE*);
   
   // Misc
   // 

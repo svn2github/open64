@@ -2133,6 +2133,7 @@ DO_LOOP_INFO::DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
     Is_Inner = is_inner;
     Has_Bad_Mem = FALSE;
     Has_Barriers = FALSE;
+    Multiversion_Alias = FALSE;
     Is_Ivdep = FALSE;
     Is_Concurrent_Call = FALSE;
     Concurrent_Directive = FALSE;
@@ -2228,6 +2229,7 @@ DO_LOOP_INFO::DO_LOOP_INFO(DO_LOOP_INFO *dli, MEM_POOL *pool) {
     Has_Exits = dli->Has_Exits;
     Has_Bad_Mem = dli->Has_Bad_Mem;
     Has_Barriers = dli->Has_Barriers;
+    Multiversion_Alias = dli->Multiversion_Alias;
     Is_Inner = dli->Is_Inner;
     Is_Ivdep = dli->Is_Ivdep;
     Is_Concurrent_Call = dli->Is_Concurrent_Call;

@@ -338,6 +338,7 @@ extern BOOL  WOPT_Enable_WOVP; // For running write-once variable promotion
 extern struct option_list *WOPT_Unroll_Skip;    // Skip unroll list 
 extern struct skiplist *WOPT_Unroll_Skip_List;  // Preprocessed unroll skip l 
 extern BOOL WOPT_Enable_Loop_Multiver;
+extern BOOL WOPT_Enable_Loop_Multiver_Aggressive;
 extern BOOL WOPT_Enable_Useless_Store_Elimination;
 #ifdef TARG_NVISA
 extern BOOL WOPT_Enable_Estr_Outer_Loop;  // strength reduce outer loops

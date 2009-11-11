@@ -354,6 +354,8 @@ BOOL WOPT_Enable_New_Vsym_Allocation = FALSE;
 #endif
 BOOL  WOPT_Enable_WOVP = TRUE; // For running write-once variable promotion
 BOOL WOPT_Enable_Loop_Multiver = FALSE; // For loop multiversioning
+BOOL WOPT_Enable_Loop_Multiver_Set = FALSE;
+BOOL WOPT_Enable_Loop_Multiver_Aggressive = FALSE;
 BOOL WOPT_Enable_Useless_Store_Elimination = TRUE;
 #if defined(TARG_SL)
 BOOL WOPT_Enable_STR_Short = FALSE; // multimedia apps are 16bit, the iv does not get > 16bits
@@ -817,7 +819,9 @@ static OPTION_DESC Options_WOPT[] = {
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "pt_summary",   NULL, 
     0, 0, 0,   &WOPT_Enable_Pt_Summary, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "loop_multiver",   NULL, 
-    0, 0, 0,   &WOPT_Enable_Loop_Multiver, NULL },
+    0, 0, 0,   &WOPT_Enable_Loop_Multiver, &WOPT_Enable_Loop_Multiver_Set },
+  { OVK_BOOL,  OV_INTERNAL,    TRUE, "loop_multiver_aggr",   NULL,
+    0, 0, 0,   &WOPT_Enable_Loop_Multiver_Aggressive, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "useless_store_elimination",   NULL,
     0, 0, 0,   &WOPT_Enable_Useless_Store_Elimination, NULL },
 #ifdef TARG_NVISA

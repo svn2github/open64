@@ -668,6 +668,10 @@ SNL_NEST_INFO::SNL_NEST_INFO(WN* outer, WN *inner, INT nloops, MEM_POOL* pool)
   if (nloops < 1)
     goto return_point2;
 
+  if ((OPT_unroll_level != 2) &&
+     (!Get_Do_Loop_Info(inner)->Multiversion_Alias))
+       goto return_point2;
+
   {
     Build_Doloop_Stack(inner, &_dostack);
     _innermost = Get_Do_Loop_Info(inner)->Is_Inner;
@@ -679,7 +683,7 @@ SNL_NEST_INFO::SNL_NEST_INFO(WN* outer, WN *inner, INT nloops, MEM_POOL* pool)
     if (!_innermost)
       goto return_point2;
 
-    if (nloops != (Do_Loop_Depth(outer) + 1)) 
+    if (Do_Loop_Depth(inner) != (Do_Loop_Depth(outer) + 1)) 
       goto return_point2;
     
     {

@@ -1426,6 +1426,13 @@ static void SNL_Transform_Min(WN* wn,
   WN* parent_wn=LWN_Get_Parent(LWN_Get_Parent(wn));
   if (parent_wn && (WN_opcode(parent_wn) == OPC_DO_LOOP)) {
     SNL_NEST_INFO ni(parent_wn, wn, nloops, &LNO_default_pool);
+  }
+  else if (parent_wn && WN_opcode(parent_wn) == OPC_IF &&
+      Get_Do_Loop_Info(wn)->Multiversion_Alias) {
+    WN *parent_wn2 = LWN_Get_Parent(LWN_Get_Parent(parent_wn));
+    if (parent_wn2 && (WN_opcode(parent_wn2) == OPC_DO_LOOP)) {
+      SNL_NEST_INFO ni(parent_wn2, wn, nloops, &LNO_default_pool);
+    }
   } 
 }
 
@@ -1777,7 +1784,7 @@ extern void SNL_Lite_Phase(WN* func_nd)
   if (Get_Trace(TP_LNOPT2, TT_SHACKLE_ONLY))
     return;
   if (PU_has_mp (Get_Current_PU ()) || Early_MP_Processing ||
-      PU_mp(Get_Current_PU ()) || (OPT_unroll_level != 2))
+      PU_mp(Get_Current_PU ()))
     return;
   if (Get_Trace(TP_LNOPT2, TT_TILE_ONLY)) {
     LNO_Run_Oinvar = FALSE; 

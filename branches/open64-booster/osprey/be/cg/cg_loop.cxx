@@ -6412,12 +6412,19 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup,
     SINGLE_BB_WHILELOOP_UNROLL,
     MULTI_BB_DOLOOP
   };
+  BOOL have_multiversion = FALSE;
 
 #ifdef TARG_IA64  
   if(IPFEC_Enable_Region_Formation){
       if(Home_Region(LOOP_DESCR_loophead(loop))->Is_No_Further_Opt())
           return FALSE;
   }
+#endif
+
+#ifdef TARG_X8664
+  LOOPINFO *info = LOOP_DESCR_loopinfo(loop);
+  UINT32 saved_unrolled_size_max;
+  UINT32 saved_unroll_times_max;
 #endif
 
   if (CG_LOOP_unroll_level == 0)
@@ -6496,6 +6503,17 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
            return FALSE;
   }
 #endif
+
+#ifdef TARG_X8664
+  if (info && LOOPINFO_multiversion(info)) {
+    saved_unrolled_size_max = CG_LOOP_unrolled_size_max;
+    saved_unroll_times_max = CG_LOOP_unroll_times_max;
+    have_multiversion = TRUE;
+    CG_LOOP_unrolled_size_max = 256;
+    CG_LOOP_unroll_times_max = 8;
+  }
+#endif
+
   switch (action) {
 #ifdef TARG_IA64
   case SINGLE_BB_DOLOOP_SWP_OR_UNROLL:
@@ -6753,7 +6771,7 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
       }
 
       Gen_Counted_Loop_Branch(cg_loop);
-      if (CG_LOOP_unroll_level == 2) {
+      if ((CG_LOOP_unroll_level == 2) || (have_multiversion)) {
 
         cg_loop.Recompute_Liveness();
         cg_loop.Build_CG_LOOP_Info(FALSE);
@@ -6789,6 +6807,13 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
   default:
     Is_True(FALSE, ("unknown loop opt action."));
   }
+
+#ifdef TARG_X8664
+  if (info && LOOPINFO_multiversion(info)) {
+    CG_LOOP_unrolled_size_max = saved_unrolled_size_max;
+    CG_LOOP_unroll_times_max =  saved_unroll_times_max;
+  }
+#endif
 
   return TRUE;
 }

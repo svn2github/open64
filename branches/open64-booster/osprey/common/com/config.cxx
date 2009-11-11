@@ -1192,6 +1192,11 @@ Configure_Ofast ( void )
     WOPT_Enable_Estr_FB_Injury_Set = TRUE;
   }
 
+  if ( ! WOPT_Enable_Loop_Multiver_Set ) {
+    WOPT_Enable_Loop_Multiver = TRUE;
+    WOPT_Enable_Loop_Multiver_Set = TRUE;
+  }
+
   /* Get platform and its associated options: */
   Configure_Platform ( Ofast );
 }

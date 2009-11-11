@@ -170,12 +170,14 @@ typedef struct loopinfo {
  WN *wn;			/* LOOP_INFO WHIRL node */
  struct tn *trip_count_tn;	/* TN holding trip count (if any) */
  SRCPOS srcpos;			/* source position of start of body */
+ BOOL   is_multiversion;
 } LOOPINFO;
 
 #define LOOPINFO_wn(x)			((x)->wn)
 #define LOOPINFO_srcpos(x)		((x)->srcpos)
 #define LOOPINFO_line(x)		(Srcpos_To_Line(LOOPINFO_srcpos(x)))
 #define LOOPINFO_trip_count_tn(x)	((x)->trip_count_tn)
+#define LOOPINFO_multiversion(x)	((x)->is_multiversion)
 
 
 typedef	struct entryinfo {

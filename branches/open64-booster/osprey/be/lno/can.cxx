@@ -410,6 +410,12 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
         FALSE,FALSE,FALSE,FALSE,TRUE), &LNO_default_pool);
       dli->Depth = depth;
       dli->Is_Backward = Do_Loop_Is_Backward(wn); 
+      WN *loop_info = WN_do_loop_info(wn);
+      if (loop_info) {
+        if (WN_Loop_Multiversion_Alias(loop_info))
+          fprintf(stderr,"Multiversion alias flag arrived in LNO...\n");
+        dli->Multiversion_Alias = (WN_Loop_Multiversion_Alias(loop_info) != 0);
+      }
       WN_MAP_Set(LNO_Info_Map,wn,(void *)dli);
     } else {
       dli->Has_Calls=FALSE;

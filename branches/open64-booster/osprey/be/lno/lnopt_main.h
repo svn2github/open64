@@ -881,6 +881,7 @@ public:
   mBOOL Not_Enough_Parallel_Work; 
   mBOOL Inside_Critical_Section;
   mBOOL Has_Barriers; 
+  mBOOL Multiversion_Alias;
   mINT8 Required_Unroll;
   mINT32 Tile_Size; 
   double Work_Estimate; 
