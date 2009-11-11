@@ -646,6 +646,27 @@ void SX_INFO::Handle_Other_Def(WN* wn_def,
         in_eq_class = TRUE; 
     } 
     SX_PNODE* sxp = Find(SYMBOL(wn_rep_def));
+
+    // a reduction definition need not be at the same depth
+    // as the defining def depth.
+    //  example:
+    //           I:
+    //            J: 
+    //              x = S()  (1)
+    //              L:
+    //                x = x +  (2)
+    //                M:
+    //                  x = x +  (3)
+    //              END
+    //              S() = x (4)
+    //            END
+    //           END
+    // In this example defining depth is (1) and we have 
+    // reduction defs at (2) and (3). 
+
+    if (sxp->_reduction_carried_by != NULL)
+      return; 
+
     if (!in_eq_class || depth != sxp->_defining_def_depth) { 
       sxp->_outer_se_reqd = depth + 1;
       sxp->_outer_se_not_reqd = depth + 1;

@@ -216,6 +216,9 @@ static INT prompf_dumped = FALSE;
 static BOOL
 Unroll_before_Factorize(WN *wn);
 
+static 
+BOOL Outer_Unroll_For_Factorization(WN *func_nd);
+
 //-----------------------------------------------------------------------
 // NAME: Prompf_Init 
 // FUNCTION: Initialize PROMPF processing for function 'func_nd'. 
@@ -1551,7 +1554,6 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
     //perform factorization only when the any loop is guarenteed to be executed
     //at least once
 
-
     if(!Get_Trace(TP_LNOPT, TT_LNO_GUARD) && LNO_Invariant_Factorization 
       && Roundoff_Level >= ROUNDOFF_ASSOC){
       BOOL unrolled = Unroll_before_Factorize(func_nd);
@@ -1561,11 +1563,37 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       { 
         Array_Dependence_Graph->Erase_Graph();
         graph_is_ok =  Build_Array_Dependence_Graph (func_nd);
+        if (graph_is_ok)
+        { 
+	  // rebuild scalar reductions
+          if(red_manager){
+            red_manager->Erase(func_nd);
+             red_manager->Build(func_nd, TRUE, FALSE);//scalar
+	  }
+          unrolled = Outer_Unroll_For_Factorization(func_nd); 
+          if (unrolled)
+	  { 
+            Array_Dependence_Graph->Erase_Graph();
+            graph_is_ok =  Build_Array_Dependence_Graph (func_nd);
+	    // rebuild scalar reductions
+            if(red_manager){
+               red_manager->Erase(func_nd);
+               red_manager->Build(func_nd, TRUE, FALSE);//scalar
+	    }
+          } 
+	} 
       }
       if (graph_is_ok)
+      { 
         Invariant_Factorization(func_nd);
+        Array_Dependence_Graph->Erase_Graph();
+        graph_is_ok =  Build_Array_Dependence_Graph (func_nd);
+        if (graph_is_ok)
+	{ 
+           Minvariant_Removal(func_nd, Array_Dependence_Graph);
+	} 
+      }
     }
-
 #endif
     if (Get_Trace(TP_LNOPT,TT_LNO_DEP2) || 
         Get_Trace(TP_LNOPT,TT_LNO_DEP)) {
@@ -2449,7 +2477,8 @@ Unroll_before_Factorize(WN *func_nd)
          if (WN_operator(wn) == OPR_DO_LOOP){
             DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
             if (dli->Delay_Full_Unroll == TRUE)
-  	    { 
+  	    {
+              Array_Substitution(wn); 
               for (LWN_ITER* itr2 = LWN_WALK_TreeIter(WN_do_body(wn));
                              itr2;
                    itr2 = LWN_WALK_TreeNext(itr2)){
@@ -2486,7 +2515,71 @@ Unroll_before_Factorize(WN *func_nd)
   return unrolled; 
 }
 
+static BOOL
+Unroll_and_Jam(WN *loop, INT ufactor)
+{ 
 
+  INT nloops = 1 + Num_Inner_Loops(loop);
+
+  if (!Fully_Permutable_Permutation(loop, nloops)) return FALSE; 
+
+  DO_LOOP_INFO *dli = Get_Do_Loop_Info(loop);
+  SNL_NEST_INFO ni(loop, nloops, &LNO_default_pool, TRUE);
+
+  EST_REGISTER_USAGE est_register_usage =
+      Get_Do_Loop_Info(loop)->Est_Register_Usage;
+  SNL_REGION ujm = SNL_Regtile_Loop(loop,ufactor,nloops, FALSE, est_register_usage, &ni.Privatizability_Info(), nloops - 1, TRUE, NULL, NULL);
+  ARRAY_DIRECTED_GRAPH16*       dg = Array_Dependence_Graph;
+  Renumber_Loops(ujm.First, ujm.Last, dg);
+  // remove the unity count outer loop. 
+
+  WN *first, *last;
+
+  Remove_Unity_Trip_Loop(loop, TRUE, &first, &last, NULL, Du_Mgr);
+
+  return TRUE; 
+} 
+
+BOOL
+Outer_Unroll_For_Factorization(WN *func_nd)
+{ 
+   BOOL unrolled = FALSE; 
+   //identify loops where full unrolling is delayed
+   STACK_OF_WN *inner_do_stack = CXX_NEW
+          (STACK_OF_WN(&LNO_default_pool),&LNO_default_pool);
+   for (LWN_ITER* itr = LWN_WALK_TreeIter(func_nd);
+        itr;
+        itr = LWN_WALK_TreeNext(itr)){
+         WN* wn = itr->wn;
+         if (WN_operator(wn) != OPR_DO_LOOP) continue; 
+
+         DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
+	 if (dli->Delay_Full_Unroll != TRUE) continue;
+
+         // Get the outermost loop. 
+         WN *outermost = NULL;
+         WN *outer = wn;
+         while (outer = LWN_Get_Parent(outer))
+         { 
+           OPCODE opc = WN_opcode(outer);
+           if (OPC_DO_LOOP == opc)
+           {
+             outermost = outer;
+             continue;
+	   }
+           if (OPC_BLOCK == opc)
+             continue;
+           break;
+	 }
+         if (outermost == NULL) continue;
+         INT64 trip_count = Num_Iters(outermost);
+         if (trip_count >= 1 && trip_count <= LNO_Full_Unrolling_Limit) 
+         { 
+           unrolled |= Unroll_and_Jam(outermost, trip_count);
+         }
+   }
+   return unrolled;
+}
 
 
 

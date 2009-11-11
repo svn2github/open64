@@ -251,7 +251,7 @@ extern void (*CG_Dump_Region_p) (FILE*, WN*);
 BOOL IR_dump_map_info = FALSE;
 BOOL IR_dump_region = FALSE;
 BOOL IR_DUMPDEP_info = FALSE;
-BOOL IR_dump_line_numbers = FALSE;
+BOOL IR_dump_line_numbers = TRUE;
 BOOL IR_dump_wn_addr = FALSE;
 
 WN_MAP IR_alias_map = WN_MAP_UNDEFINED;
