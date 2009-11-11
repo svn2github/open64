@@ -5895,11 +5895,6 @@ static BOOL EBO_Allowable_Unaligned_Vector( OP *alu_op )
   const TOP top = OP_code(alu_op);
   BOOL ret_val;
 
-  // If LNO prefetch ahead is 1, we do not want to load-exec peep
-  // unaligned loads to cvts
-  if (LNO_Prefetch_Ahead == 1)
-    return FALSE;
-
   switch (top) {
   case TOP_vcvtdq2pd:
   case TOP_vcvtps2pd:

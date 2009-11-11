@@ -2234,6 +2234,10 @@ comma_is_not_needed (WN * comma_block, WN * wn)
   if (WN_operator(last_stmt) != OPR_STID)
     return FALSE;
 
+  // if we have a nested COMMA expression, this comma is needed.
+  if (WN_operator(WN_kid0(last_stmt)) == OPR_COMMA)
+    return FALSE;
+
   ST * sym = WN_st(last_stmt);
 
   if (sym != WN_st(wn) ||
