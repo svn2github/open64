@@ -3679,6 +3679,7 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
 			 (TY_kind(TY_pointed(ST_type(old_st))) == KIND_ARRAY) &&
 			 (TY_size(TY_pointed(ST_type(old_st))) != 0));
   v->is_dynamic_array = (((vtype == VAR_LOCAL) || (vtype == VAR_LASTLOCAL) ||
+                          (vtype == VAR_REDUCTION_ARRAY_OMP) ||
 			  (vtype == VAR_FIRSTPRIVATE)) &&
 			 (TY_kind(ST_type(old_st)) == KIND_POINTER) &&
                          (ST_keep_name_w2f(old_st) || 
@@ -3734,8 +3735,7 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
     {
       if (kind == KIND_POINTER)
       {
-        if (v->is_static_array || vtype == VAR_REDUCTION_ARRAY
-               || vtype == VAR_REDUCTION_ARRAY_OMP)
+        if (v->is_static_array || vtype == VAR_REDUCTION_ARRAY)
           ty = TY_pointed(ty);
         else
           break;
@@ -6592,7 +6592,7 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 	    //The code are partly ported from be/vho/f90_lower.cxx
 
 	    // Create loop nest.
-	    ARB_HANDLE arb_base = TY_arb( ST_type( v->new_st ));
+	    ARB_HANDLE arb_base = TY_arb( TY_pointed(ST_type( v->new_st )));
 	    ndim_array = ARB_dimension( arb_base );
 	    Is_True(( ndim_array <= MAX_NDIM ) && ( ndim_array >= 0 ),
 	          ("dimension of array is not 0-7"));
@@ -6600,21 +6600,46 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 	    INT64 temp_size = 0;
 	    for(int j=0; j<ndim_array; j++)
 	    {
-		     ARB_HANDLE arb = arb_base[ ndim_array-1-j ];
-		     Is_True( ARB_const_lbnd( arb ) && ARB_const_ubnd( arb ),
-		            ("Lower and/or Upper bound of array is not const"));
-		     temp_size = ARB_ubnd_val( arb ) - ARB_lbnd_val( arb ) + 1;
-		     temp_size = ( temp_size > 0 ) ? temp_size : 0;
-		     sizes[ndim_array-j-1] = WN_CreateIntconst( OPC_I8INTCONST, 
-				                        temp_size );
-		     sizes_bak[j] = WN_CreateIntconst( OPC_I8INTCONST, temp_size );
-	    }
-
-	    for( int j=ndim_array; j<MAX_NDIM; j++ )
-	    {
-		     sizes[j] = NULL;
-		     sizes_bak[j] = NULL;
-	    }
+                ARB_HANDLE arb = arb_base[ ndim_array-1-j ];
+                WN* lb = NULL;
+                WN* ub = NULL;
+                WN* size = NULL;
+                TYPE_ID mtype = MTYPE_I8;
+                TY_IDX ty_idx = 0;
+                
+                if (ARB_const_lbnd(arb))
+                   lb = WN_Intconst(mtype, ARB_lbnd_val(arb));
+                else
+                {
+                   ST_IDX st_idx = ARB_lbnd_var(arb);
+                   ty_idx = ST_type(st_idx);
+                   lb = WN_Ldid(TY_mtype(ty_idx), 0, st_idx, ty_idx);
+                   lb = WN_Type_Conversion(lb, mtype);
+                }
+                
+                if (ARB_const_ubnd(arb))
+                   ub = WN_Intconst(mtype, ARB_ubnd_val(arb));
+                else
+                {
+                   ST_IDX st_idx = ARB_ubnd_var(arb);
+                   ty_idx = ST_type(st_idx);
+                   ub = WN_Ldid(TY_mtype(ty_idx), 0, st_idx, ty_idx);
+                   ub = WN_Type_Conversion(ub, mtype);
+                }
+                
+                size = WN_Add(mtype, 
+                WN_Sub(mtype, ub, lb),
+                WN_Intconst(mtype, 1));
+                
+                sizes[ndim_array-j-1] = size;
+                sizes_bak[j] = WN_COPY_Tree(size);
+            }
+                
+            for( int j=ndim_array; j<MAX_NDIM; j++ )
+            {
+                sizes[j] = NULL;
+                sizes_bak[j] = NULL;
+            }
 							
 	    stlist = create_doloop_nest( new_indices,&loopnest,
 	                           sizes,ndim_array );
@@ -6625,13 +6650,12 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 	    WN *wn_init_val = Make_Reduction_Identity( v->reduction_opr, v->mtype );
 
 	    // store the value.
-        OPCODE op_array = OPCODE_make_op( OPR_ARRAY, Pointer_type, MTYPE_V );
+            OPCODE op_array = OPCODE_make_op( OPR_ARRAY, Pointer_type, MTYPE_V );
 	    WN *local_array = WN_Create( op_array, 1+2*ndim_array );
-	    WN_element_size( local_array ) = TY_size( TY_AR_etype( v->ty ));
 
-	    WN_array_base( local_array ) = WN_CreateLda( 
-	    OPCODE_make_op( OPR_LDA, Pointer_type, MTYPE_V ),
-	              0, Make_Pointer_Type( v->ty ), v->new_st);
+	    WN_element_size( local_array ) = TY_size( TY_AR_etype( TY_pointed(v->ty) ));
+
+	    WN_array_base( local_array ) = WN_Ldid(Pointer_type, 0, v->new_st, v->ty);
 
 	    for( int j=0; j<ndim_array; j++ )
 	    {
@@ -6644,8 +6668,7 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 	    // Maybe need to set parent point of the array kids.
 
 	    WN *wn_store_val = WN_Istore( v->mtype, 0, 
-			    Make_Pointer_Type( v->ty ),
-	                    local_array, wn_init_val ); 
+			    v->ty, local_array, wn_init_val ); 
 
 	    WN_INSERT_BlockLast( stlist, wn_store_val );
 	    WN_INSERT_BlockLast( *init_block, loopnest );
@@ -6745,7 +6768,7 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
       lower_using_critical = TRUE;
       // stuff code for later use, will be clean up later. csc.
       // TODO:Insert combine code here.
-      ARB_HANDLE arb_base = TY_arb( ST_type( v->new_st ));
+      ARB_HANDLE arb_base = TY_arb( TY_pointed(ST_type( v->new_st )));
       ndim_array = ARB_dimension( arb_base );
       Is_True(( ndim_array <= MAX_NDIM ) && ( ndim_array >= 0 ),
               ("dimension of array is not 0-7"));
@@ -6754,13 +6777,39 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
       for(int j=0; j<ndim_array; j++)
       {
           ARB_HANDLE arb = arb_base[ ndim_array-1-j ];
-          Is_True( ARB_const_lbnd( arb ) && ARB_const_ubnd( arb ),
-                  ("Lower and/or Upper bound of array is not const"));
-	        temp_size = ARB_ubnd_val( arb ) - ARB_lbnd_val( arb ) + 1;
-	        temp_size = ( temp_size > 0 ) ? temp_size : 0;
-	        sizes[ndim_array-j-1] = WN_CreateIntconst( OPC_I8INTCONST,
-					                   temp_size );
-	        sizes_bak[j] = WN_CreateIntconst( OPC_I8INTCONST, temp_size );
+          WN* lb = NULL;
+          WN* ub = NULL;
+          WN* size = NULL;
+          TYPE_ID mtype = MTYPE_I8;
+          TY_IDX ty_idx = 0;
+
+          if (ARB_const_lbnd(arb))
+             lb = WN_Intconst(mtype, ARB_lbnd_val(arb));
+          else
+          {
+             ST_IDX st_idx = ARB_lbnd_var(arb);
+             ty_idx = ST_type(st_idx);
+             lb = WN_Ldid(TY_mtype(ty_idx), 0, st_idx, ty_idx);
+             lb = WN_Type_Conversion(lb, mtype);
+          }
+
+          if (ARB_const_ubnd(arb))
+             ub = WN_Intconst(mtype, ARB_ubnd_val(arb));
+          else
+          {
+             ST_IDX st_idx = ARB_ubnd_var(arb);
+             ty_idx = ST_type(st_idx);
+             ub = WN_Ldid(mtype, 0, st_idx, ST_type(st_idx));
+             ub = WN_Ldid(TY_mtype(ty_idx), 0, st_idx, ty_idx);
+             ub = WN_Type_Conversion(ub, mtype);
+          }
+
+          size = WN_Add(mtype, 
+                       WN_Sub(mtype, ub, lb),
+                       WN_Intconst(mtype, 1));
+
+          sizes[ndim_array-j-1] = size;
+          sizes_bak[j] = WN_COPY_Tree(size);
       }
 
       for( int j=ndim_array; j<MAX_NDIM; j++ )
@@ -6776,12 +6825,12 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
       WN *wn_init_val = Make_Reduction_Identity( v->reduction_opr, v->mtype );
       OPCODE op_array = OPCODE_make_op( OPR_ARRAY, Pointer_type, MTYPE_V );
       WN *new_array = WN_Create( op_array, 1+2*ndim_array );
-      WN_element_size( new_array ) = TY_size( TY_AR_etype( v->ty ));
-      WN_array_base( new_array ) = WN_Lda( Pointer_type, 0, v->new_st );
+      WN_element_size( new_array ) = TY_size( TY_AR_etype( TY_pointed(v->ty) ));
+      WN_array_base( new_array ) = WN_Ldid(Pointer_type, 0, v->new_st, v->ty);
 
       WN *old_array = WN_Create( op_array, 1+2*ndim_array );
-      WN_element_size( old_array ) = TY_size( TY_AR_etype( v->ty ));
-      WN_array_base( old_array ) = WN_Lda( Pointer_type, 0, v->orig_st );
+      WN_element_size( old_array ) = TY_size( TY_AR_etype( TY_pointed(v->ty) ));
+      WN_array_base( old_array ) = WN_Ldid(Pointer_type, 0, v->orig_st, v->ty);
 					          
       for( int j=0; j<ndim_array; j++ )
       {
@@ -6793,9 +6842,9 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 	     WN_array_dim( old_array, j ) =  sizes_bak[ndim_array-j-1];
       }
 			   // Maybe need to set parent point of the array kids.
-      WN *wn_old_val = WN_Iload( v->mtype, 0, Make_Pointer_Type( v->ty ),
+      WN *wn_old_val = WN_Iload( v->mtype, 0, v->ty,
 	                         WN_COPY_Tree( old_array ));
-      WN *wn_new_val = WN_Iload( v->mtype, 0, Make_Pointer_Type( v->ty ),
+      WN *wn_new_val = WN_Iload( v->mtype, 0, v->ty,
 	                         new_array );
 
       if(( v->reduction_opr == OPR_CAND || v->reduction_opr == OPR_CIOR) &&
@@ -6845,7 +6894,7 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 	              v->mtype != restype )
 	      result = WN_Cvt( restype, v->mtype, result );
 
-      WN *wn_store_val = WN_Istore( v->mtype, 0, Make_Pointer_Type( v->ty ),
+      WN *wn_store_val = WN_Istore( v->mtype, 0, v->ty,
                                     old_array, result );
       WN_INSERT_BlockLast( stlist, wn_store_val );
       WN_INSERT_BlockLast( *store_block, loopnest );
