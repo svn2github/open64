@@ -1777,7 +1777,11 @@ static TN_LIST *Count_Copies_Needed(BB *body, hTN_MAP tn_def_map,
     for (INT opnd = OP_opnds(op) - 1; opnd >= 0; --opnd) {
       TN *tn = OP_opnd(op, opnd);
       if ( ! TN_is_register(tn)) continue;
-      INT copies = OP_omega(op, opnd);
+      INT copies;
+      if( NULL == _CG_LOOP_info(op))
+        copies=0;
+      else
+        copies = OP_omega(op, opnd);
       OP *tn_def_op = (OP *) hTN_MAP_Get(tn_def_map, tn);
       if (tn_def_op == NULL || (tn_def_op == op && copies == 1))
 	--copies;
@@ -4362,6 +4366,14 @@ static BOOL unroll_multi_bb(LOOP_DESCR *loop, UINT8 ntimes)
     unroll_guard_unrolled_body(loop, unrolled_info, trip_count_tn, ntimes);
   }
 
+  /* Fixup epilog backpatches.  Replace body TNs and omegas as if
+   * they're uses in the last unrolling.
+   */
+  unroll_rename_backpatches(CG_LOOP_Backpatch_First(CG_LOOP_epilog, NULL),
+                           ntimes-1, ntimes);
+   
+  CG_LOOP_Remove_Notations(loop, CG_LOOP_prolog, CG_LOOP_epilog);
+  
   unroll_names_finish();
 
   if (trace_general) {
