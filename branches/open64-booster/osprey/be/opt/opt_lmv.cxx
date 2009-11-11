@@ -577,8 +577,9 @@ LOOP_MULTIVER::Pass_initial_screen (const BB_LOOP* loop) {
   CODEREP* iv;
   if (_agg_mode && (iv = loop->Iv()) && iv->Kind() == CK_CONST && 
      iv->Const_val () < LMV_HEURISTIC::Low_trip_count_threshold ()) {
-    fprintf (TFile, "The trip count is %d smaller than the threshold %d\n", 
-             (INT)iv->Const_val(), (INT)LMV_HEURISTIC::Low_trip_count_threshold ());
+    if (_tracing)
+      fprintf(TFile, "The trip count is %d smaller than the threshold %d\n",
+          (INT)iv->Const_val(), (INT)LMV_HEURISTIC::Low_trip_count_threshold ());
     return FALSE;
   }
 
