@@ -240,11 +240,10 @@ enum ISOP_FLAG {
   				// Fold_lda_iload_istore
   ISOP_LDAFOLD2_VISITED = 0x10000,// has been visited during second pass of
   				// Fold_lda_iload_istore
-#if defined(TARG_NVISA)
   ISOP_MTYPE_B_CR_VISITED = 0x20000,  // has been visited during m_mtype_b_cr
   ISOP_VERIFY_EXPR_VISITED = 0x40000, // has been visited during verify_version_expr
-  ISOP_DEF_BEFORE_VISITED = 0x80000,  // has been visited during Def_before_use     // at most 22 bits for this enumeration, due to size of isop_flags field
-#endif
+  ISOP_DEF_BEFORE_VISITED = 0x80000,  // has been visited during Def_before_use     
+  // at most 22 bits for this enumeration, due to size of isop_flags field
 };
 
 enum ISVAR_FLAG {
@@ -404,9 +403,7 @@ private:
       mINT32    _unused:6;	     // unused
       mUINT8    max_depth;           // used in estimating rehash cost (SSAPRE)
       IDTYPE    _temp_id:24;         // processing this CR in new PRE step1
-#if defined(TARG_NVISA)
       void * node_cache;             // Hold CR or BB pointer for parents on new differnt paths       
-#endif
       CODEREP  *kids[3];             // array of kid pointers
     } isop;
     struct {                         // for code kind IVAR(ILOD)
@@ -539,9 +536,7 @@ public:
       Set_temp_id(0);
       Reset_isop_flags();
       Set_max_depth(0);
-#if defined(TARG_NVISA)
       Set_ISOP_mtype_b_cache(NULL);
-#endif
     }
 
   void Init_var(MTYPE wt, IDTYPE st, mUINT16 ver, MTYPE dt, mINT32 ofst,
@@ -1269,7 +1264,6 @@ public:
   BOOL      Contains_only_constants(void) const;
   BOOL	    Has_volatile_content(void) const;
 
-#if defined(TARG_NVISA)
   /* Functions [G,S]et_ISOP_mtype_b_cache and [G,S]et_ISOP_def_before_use_cache
    * get and set the node cache in the ISOP structure. This cache is used to two
    * ways. In Do_mtype_b_cr it is used to hold the new CR node created for other
@@ -1294,7 +1288,6 @@ public:
 
   BB_NODE*  Get_ISOP_def_before_use_cache () const
   { return (BB_NODE*) u2.isop.node_cache; }
-#endif
 }; // end of class CODEREP
 
 // Functions to tell how much extra space should be allocated with a
