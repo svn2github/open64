@@ -176,7 +176,7 @@ extern BOOL profile_arcs;
 extern BOOL Asm_Memory;
 extern BOOL Align_Unsafe;
 extern INT32 Enable_WN_Simp_Expr_Limit;
-extern BOOL OPT_Lower_To_Memlib;
+extern UINT32 OPT_Lower_To_Memlib;
 extern INT32 OPT_Threshold_To_Memlib;
 extern INT32 OPT_Enable_Lower_To_Memlib_Limit;
 extern BOOL OPT_Enable_Simp_Fold;

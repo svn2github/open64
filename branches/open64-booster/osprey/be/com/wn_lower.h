@@ -164,6 +164,9 @@ extern FLD_HANDLE FLD_And_Offset_From_Field_Id (TY_IDX  struct_ty_idx,
 
 extern WN *WN_Lower(WN *tree, LOWER_ACTIONS actions, struct ALIAS_MANAGER *alias, const char *msg);
 
+//xur
+extern WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions, struct ALIAS_MANAGER *alias=NULL);
+
 /*
  * lower an scf node but not things underneath it 
  */

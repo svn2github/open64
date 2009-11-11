@@ -262,7 +262,6 @@ static WN *lower_conditional(WN *, WN *, LABEL_IDX, LABEL_IDX, BOOL,
 static WN *lower_tree_height(WN *, WN *, LOWER_ACTIONS);
 static void lower_madd_tree_height(WN *, WN *, LOWER_ACTIONS);
 
-static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions);
 static WN *Lower_Mistore_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions);
 static WN *Lower_STID_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions);
 
@@ -15895,7 +15894,7 @@ static WN *Memset_MD_Array(WN *block, WN *tree, LOWER_ACTIONS actions)
  *
  * ==================================================================== */
 
-static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
+WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions, struct ALIAS_MANAGER *alias)
 {
   WN *loop_info;
   WN *length_wn, *ind_init_val = NULL;
@@ -15914,6 +15913,8 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
      ("expected DO_LOOP node, not %s", OPCODE_name(WN_opcode(tree))));
 
   if (!OPT_Lower_To_Memlib) return tree;  // Return if the optimization is off
+
+  if (alias) alias_manager = alias;
 
   // If whirl feedbacks,  set freq_count
   if (Cur_PU_Feedback)    
@@ -15947,24 +15948,28 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
    Is_True(WN_opcode(loop_indvar), ("expected a non-NULL loop induction"));
 
    //If no count for this loop, return tree to ensure the benefit 
-   if (!Cur_PU_Feedback && !WN_operator_is(trip_count, OPR_INTCONST))
-      return tree;
+   // unless we are in aggressive mode.
+   if (OPT_Lower_To_Memlib != 2)
+   {
+      if (!Cur_PU_Feedback && !WN_operator_is(trip_count, OPR_INTCONST))
+         return tree;
 
-   // If the trip count is constant and too small, don't optimize
-   if (WN_operator_is(trip_count, OPR_INTCONST)) {
-       if (!Cur_PU_Feedback) 
-           freq_count = WN_const_val(trip_count);
-       else if (WN_const_val(trip_count) != freq_count)  {
-           freq_count = WN_const_val(trip_count);
-           DevWarn("Inconsistent constant trip count and feedback");
-       }
+      // If the trip count is constant and too small, don't optimize
+      if (WN_operator_is(trip_count, OPR_INTCONST)) {
+          if (!Cur_PU_Feedback) 
+              freq_count = WN_const_val(trip_count);
+          else if (WN_const_val(trip_count) != freq_count)  {
+              freq_count = WN_const_val(trip_count);
+              DevWarn("Inconsistent constant trip count and feedback");
+          }
+      } 
+
+      // If too small, < threshold, don't transform 
+      // If small, < 2*threshold, and not divisible by 8, don't transform 
+      if (freq_count < MEMLIB_THRESHOLD_BYTES || 
+         (freq_count < MEMLIB_THRESHOLD_BYTES * 2 && freq_count % 8 != 0))  
+             return tree;
    }
-
-   // If too small, < threshold, don't transform 
-   // If small, < 2*threshold, and not divisible by 8, don't transform 
-   if (freq_count < MEMLIB_THRESHOLD_BYTES || 
-      (freq_count < MEMLIB_THRESHOLD_BYTES * 2 && freq_count % 8 != 0))  
-          return tree;
 
   // Try to find the memset opportunity first
   // Check if only ISTORE of a constant or an invariant is in the loop body
@@ -15983,9 +15988,12 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
                 return return_wn; //transformed successfully
       } //otherwise continue with other optimization 
 
-      // Currently deal with only non-float types
+      // Currently deal with only non-float types for memset
       if (MTYPE_is_float(WN_desc(stmt)))
-         return tree;
+      {
+         opt_qualified = FALSE;
+         break;
+      }
 
       load_value_wn = WN_kid0(stmt);
       if (WN_operator(load_value_wn) == OPR_PAREN)
@@ -16097,11 +16105,12 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
                 WN_INSERT_BlockLast(return_block, ind_init_val);
            }
 
-          WN *call = Transform_To_Memset(store_addr_wn,0, desc_idx, load_value_wn, length_wn);
+          WN *call = Transform_To_Memset(store_addr_wn,0, desc_idx, WN_COPY_Tree(load_value_wn), length_wn);
 
           DevWarn("TRANSFORMED MEMSET Memlib (%s, %d) of %d\n", Src_File_Name, Srcpos_To_Line(current_srcpos), freq_count);
 
           if (call) {
+if (!alias)
              WN_Delete(stmt);
 #ifdef KEY // bug 11360
 	     if (Action(LOWER_CALL))
@@ -16215,6 +16224,12 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
       }
       else length_wn = trip_count;
 
+      // for unsigned, max with 0 does not work. we bail out
+      // for safe. To Be handled.
+      if (!WN_operator_is(length_wn, OPR_INTCONST) &&
+           MTYPE_is_unsigned(WN_rtype(length_wn))) 
+         return tree;
+
       if(Action(LOWER_ARRAY))
 	length_wn = lower_expr(block, WN_COPY_Tree(length_wn), LOWER_ARRAY);
 
@@ -16246,11 +16261,20 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
         
       } else
 //Bug 4789
-         ind_init_val = WN_CreateStid(OPCODE_make_op(OPR_STID, MTYPE_V, TY_mtype(ST_type(WN_st(loop_indvar)))), WN_idname_offset(loop_indvar), WN_st(loop_indvar),  Be_Type_Tbl(MTYPE_I4), lower_bound, 0); //to lower bound
+         ind_init_val = WN_CreateStid(OPCODE_make_op(OPR_STID, MTYPE_V, TY_mtype(ST_type(WN_st(loop_indvar)))), WN_idname_offset(loop_indvar), WN_st(loop_indvar),  Be_Type_Tbl(MTYPE_I4), WN_COPY_Tree(lower_bound), 0); //to lower bound
 
       if (ind_init_val) {
          DevWarn("Initial induction variable"); 
          WN_INSERT_BlockLast(return_block, ind_init_val);
+      }
+      // the trip cound is stop - start + 1, it could be negative.
+      // so we need to check.  
+      // more work to be done for unsigned...
+      if (!WN_operator_is(length_wn, OPR_INTCONST))
+      {
+        TYPE_ID mtyp = WN_rtype(length_wn);
+        OPCODE op = OPCODE_make_op(OPR_MAX, mtyp, MTYPE_V);
+        length_wn = WN_CreateExp2(op, length_wn, WN_Zerocon(mtyp));
       }
 
       WN * wn_intrinsic = Transform_To_Memcpy(store_addr_wn, load_addr_wn, 0, desc_idx, source_idx, length_wn); 
@@ -16264,6 +16288,7 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
 	   wn_intrinsic = lower_call(return_block, wn_intrinsic, actions);
 #endif
          WN_INSERT_BlockLast(return_block, wn_intrinsic);
+if (!alias)
          WN_Delete(stmt); // Delete the statement that is transformed
       }
       else

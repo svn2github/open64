@@ -137,6 +137,7 @@
 #include "ipa_section.h"
 #include "lnodriver.h"
 #include "ipa_lno_read.h"
+#include "wn_lower.h"
 #include "array_copy.h"
 
 
@@ -325,6 +326,49 @@ Num_Iters(WN* loop)
   MEM_POOL_Pop(&LNO_local_pool);
   return rval;
 }
+
+void Lower_To_Memlib_Walk(WN *block, WN *wn)
+{
+  OPCODE opc=WN_opcode(wn);
+  
+  if (!OPCODE_is_scf(opc))
+    return;
+  else if (opc==OPC_DO_LOOP) {
+    if (Do_Loop_Is_Good(wn) && Do_Loop_Is_Inner(wn) && !Do_Loop_Has_Calls(wn)
+        && !Do_Loop_Has_Gotos(wn)) {
+       WN* result = Lower_Memlib(NULL, wn, LOWER_TO_MEMLIB, Alias_Mgr);
+       if (WN_opcode(result) != OPC_DO_LOOP)
+       {
+         LWN_Insert_Block_Before(block,wn,result);
+         LWN_Parentize(block);
+         LWN_Delete_DU(wn);
+         LWN_Delete_Tree(wn);
+       }
+    } else
+      Lower_To_Memlib_Walk(block,WN_do_body(wn));
+  } else if (opc==OPC_BLOCK)
+    for (WN* stmt=WN_first(wn); stmt;) {
+      WN* next_stmt=WN_next(stmt);
+      Lower_To_Memlib_Walk(wn, stmt); 
+      stmt=next_stmt;
+    } 
+  else
+    for (UINT kidno=0; kidno<WN_kid_count(wn); kidno++) {
+      Lower_To_Memlib_Walk(block,WN_kid(wn,kidno));
+    }
+}
+
+// this is in common/com/config_opt.cxx
+extern UINT32 OPT_Lower_To_Memlib;
+
+void  LNO_Lower_Memlib(WN *wn)
+{
+  if (OPT_Lower_To_Memlib == 2)
+  {
+    Lower_To_Memlib_Walk(NULL, wn);
+  }
+}
+
 
 #define MAX_INNER_LOOPS 3
 
@@ -2064,6 +2108,8 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
                        ARRAY_DIRECTED_GRAPH16* Array_Dependence_Graph);
     Inner_Fission(func_nd,Array_Dependence_Graph);
   }
+
+  LNO_Lower_Memlib(func_nd);
 
 #ifdef TARG_X8664
   void Simd_Phase(WN* func_nd);

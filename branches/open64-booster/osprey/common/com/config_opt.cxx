@@ -283,7 +283,7 @@ UINT32 Div_Exe_Candidates = 2;  /* The top entries that will be considered. */
 UINT32 Mpy_Exe_Counter = 90000000;  
 UINT32 Mpy_Exe_Ratio = 100;      /* A cut-off percentage for value profiling. */
 BOOL   profile_arcs = FALSE;
-BOOL   OPT_Lower_To_Memlib = TRUE;  /* transform to library calls */
+UINT32 OPT_Lower_To_Memlib = 1;  /* transform to library calls */
 INT32  OPT_Threshold_To_Memlib = 256;    /* threshold to transform to mem calls */
 INT32  OPT_Enable_Lower_To_Memlib_Limit = -1;
 BOOL   OPT_Enable_Simp_Fold = TRUE;  /* enables new float/complex/str/intrinsic foldings */
@@ -681,8 +681,8 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,    &Enable_SWP,	&Enable_SWP_overridden,
     "Enable software pipelining" },
 
-  { OVK_BOOL,   OV_INTERNAL,    FALSE, "transform_to_memlib",   "transform",
-    0, 0, 0,    &OPT_Lower_To_Memlib, NULL,
+  { OVK_UINT32,   OV_INTERNAL,    FALSE, "transform_to_memlib",   "transform",
+    1, 0, 2,    &OPT_Lower_To_Memlib, NULL,
     "Allow loop or struct memory copy/set to be library calls" },
 
   { OVK_INT32,  OV_INTERNAL,    TRUE, "threshold_to_memlib",    "",
