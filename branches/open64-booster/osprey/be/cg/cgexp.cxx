@@ -555,7 +555,8 @@ Exp_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant, O
   			if (OP_next(last_OP)!=NULL) {
   				#pragma mips_frequency_hint NEVER
 	  			OP *op;
-		  		for (op = OP_next(last_OP); op && op != OP_next(OPS_last(ops)); op = OP_next(op)){
+		  		for (op = OP_next(last_OP); op && (OPS_last(ops) == NULL || 
+                                                                   op != OP_next(OPS_last(ops))); op = OP_next(op)){
 			  		fprintf(TFile, " into "); Print_OP (op);
 			  	}
 		  	}

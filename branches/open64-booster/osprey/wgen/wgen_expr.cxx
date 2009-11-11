@@ -6095,10 +6095,10 @@ WGEN_Expand_Expr (gs_t exp,
             // cvtsi2ss to convert the unsigned int to float, it treats the 
             // 32bit number as signed integer, so the round up is to the wrong
             // direction. To avoid the lost of precision, we should convert the 
-            // unsigned int to 64bit unsigned int first
+            // unsigned int to 64bit int first
             if (MTYPE_float(mtyp) && Is_Target_32bit() && 
                   WN_rtype(wn0) == MTYPE_U4) {
-	       wn0 = WN_Int_Type_Conversion(wn0, MTYPE_U8);
+	       wn0 = WN_Int_Type_Conversion(wn0, MTYPE_I8);
             }
 #endif // TARG_X8664
 #ifdef KEY // prevent zero extension when converting to 64-bit address type
