@@ -1511,6 +1511,12 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   comp_unit->Pro_loop_trans();
   comp_unit->Cfg()->Analyze_loops();
 
+  // redundancy elimination with reassociation 
+  if (phase == MAINOPT_PHASE) {
+    SET_OPT_PHASE("Reassociation enabled CSE");
+    comp_unit->Do_reasso();
+  }
+
   // Setup flow free alias information  --  CHI and MU list 
   SET_OPT_PHASE("Create MU and CHI list");
   comp_unit->Opt_stab()->Compute_FFA(comp_unit->Rid());

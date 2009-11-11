@@ -334,6 +334,8 @@ INT32 WOPT_Enable_Pro_Loop_Interchange_Func_Limit = -1; // Enable proactive loop
 BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans = TRUE;  // Enables proactive loop fusion transformation
 BOOL  WOPT_Enable_Pro_Loop_Interchange_Trans = TRUE; // Enables proactive loop interchange transformation
 
+BOOL  WOPT_Enable_Reassociation_CSE = TRUE;  // Enables Reassociation based CSE
+
 BOOL  WOPT_Enable_Mem_Clear_Remove = TRUE;  // Enables removal of redundant mem clear after a calloc
 
 #ifdef KEY
@@ -769,6 +771,8 @@ static OPTION_DESC Options_WOPT[] = {
     FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Fusion_Trans, NULL },
   { OVK_BOOL,	OV_VISIBLE, TRUE, "pro_loop_interchange_trans", "pro_loop_interchange_trans",
     FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Interchange_Trans, NULL },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "reasso_cse", "reasso_cse",
+    TRUE, 0, 1, &WOPT_Enable_Reassociation_CSE, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "mem_clear_remove", "mem_clear_remove",
     FALSE, 0, 1, &WOPT_Enable_Mem_Clear_Remove, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "if_merge_limit",              "",

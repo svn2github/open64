@@ -162,6 +162,7 @@ BE_OPT_CXX_SRCS = \
   opt_bool.cxx		\
   opt_canon.cxx		\
   opt_cfg.cxx		\
+  opt_reasso.cxx     \
   opt_cfg_trans.cxx	\
   opt_combine.cxx	\
   opt_cond_const.cxx	\
