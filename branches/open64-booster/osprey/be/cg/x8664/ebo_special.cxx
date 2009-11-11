@@ -5890,6 +5890,31 @@ BOOL EBO_Is_FMA4( OP* alu_op)
   return ret_val;
 }
 
+static BOOL EBO_Allowable_Unaligned_Vector( OP *alu_op )
+{
+  const TOP top = OP_code(alu_op);
+  BOOL ret_val;
+
+  // If LNO prefetch ahead is 1, we do not want to load-exec peep
+  // unaligned loads to cvts
+  if (LNO_Prefetch_Ahead == 1)
+    return FALSE;
+
+  switch (top) {
+  case TOP_vcvtdq2pd:
+  case TOP_vcvtps2pd:
+  case TOP_cvtdq2pd:
+  case TOP_cvtps2pd:
+    ret_val = TRUE;
+    break;
+
+  default:
+    ret_val = FALSE;
+    break;
+  }
+  return ret_val;
+}
+
 
 BOOL EBO_Load_Execution( OP* alu_op, 
                          TN** opnd_tn,     
@@ -6034,6 +6059,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
      a 16-byte boundary ..."
    */
   if( OP_unalign_mem( ld_op ) &&
+      !EBO_Allowable_Unaligned_Vector( alu_op ) &&
       TOP_is_vector_op( OP_code(ld_op) ) ){
     return FALSE;
   }
