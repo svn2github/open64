@@ -4335,7 +4335,7 @@ Emit_Loop_Note(BB *bb, FILE *file)
     if (CG_p2align) 
       fputs ("\t.p2align 6,,7\n", file);
     else if (CG_loop32) {
-      if (BB_innermost(bb) && Is_Target_Barcelona()) {
+      if (BB_innermost(bb) && (Is_Target_Barcelona() || Is_Target_Orochi())) {
         fputs ("\t.p2align 5,,\n", file);
       }
     }
@@ -9191,6 +9191,7 @@ Target_Name (TARGET_PROCESSOR t)
   {
     case TARGET_opteron: return "opteron";
     case TARGET_barcelona: return "barcelona";
+    case TARGET_orochi: return "orochi";
     case TARGET_athlon64: return "athlon64";
     case TARGET_athlon: return "athlon";
     case TARGET_em64t: return "em64t";

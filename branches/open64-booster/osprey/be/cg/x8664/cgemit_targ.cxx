@@ -887,6 +887,123 @@ static void Init_OP_Name()
   OP_Name[TOP_minxx128v16] = "pmaxsw";
   OP_Name[TOP_minxxx128v8] = "pmaxub";
   OP_Name[TOP_minxxx128v16] = "pmaxsw";
+
+  // Start BNI additions
+  OP_Name[TOP_vfmaddss]  = "vfmaddss";
+  OP_Name[TOP_vfmaddxss] = "vfmaddss";
+  OP_Name[TOP_vfmaddxxss] = "vfmaddss";
+  OP_Name[TOP_vfmaddxxxss] = "vfmaddss";
+  OP_Name[TOP_vfmaddxrss] = "vfmaddss";
+  OP_Name[TOP_vfmaddxxrss] = "vfmaddss";
+  OP_Name[TOP_vfmaddxxxrss] = "vfmaddss";
+  OP_Name[TOP_vfmaddsd]  = "vfmaddsd";
+  OP_Name[TOP_vfmaddxsd] = "vfmaddsd";
+  OP_Name[TOP_vfmaddxxsd] = "vfmaddsd";
+  OP_Name[TOP_vfmaddxxxsd] = "vfmaddsd";
+  OP_Name[TOP_vfmaddxrsd] = "vfmaddsd";
+  OP_Name[TOP_vfmaddxxrsd] = "vfmaddsd";
+  OP_Name[TOP_vfmaddxxxrsd] = "vfmaddsd";
+  OP_Name[TOP_vfmaddps]  = "vfmaddps";
+  OP_Name[TOP_vfmaddxps] = "vfmaddps";
+  OP_Name[TOP_vfmaddxxps] = "vfmaddps";
+  OP_Name[TOP_vfmaddxxxps] = "vfmaddps";
+  OP_Name[TOP_vfmaddxrps] = "vfmaddps";
+  OP_Name[TOP_vfmaddxxrps] = "vfmaddps";
+  OP_Name[TOP_vfmaddxxxrps] = "vfmaddps";
+  OP_Name[TOP_vfmaddpd]  = "vfmaddpd";
+  OP_Name[TOP_vfmaddxpd] = "vfmaddpd";
+  OP_Name[TOP_vfmaddxxpd] = "vfmaddpd";
+  OP_Name[TOP_vfmaddxxxpd] = "vfmaddpd";
+  OP_Name[TOP_vfmaddxrpd] = "vfmaddpd";
+  OP_Name[TOP_vfmaddxxrpd] = "vfmaddpd";
+  OP_Name[TOP_vfmaddxxxrpd] = "vfmaddpd";
+  OP_Name[TOP_vfnmaddss]  = "vfnmaddss";
+  OP_Name[TOP_vfnmaddxss] = "vfnmaddss";
+  OP_Name[TOP_vfnmaddxxss] = "vfnmaddss";
+  OP_Name[TOP_vfnmaddxxxss] = "vfnmaddss";
+  OP_Name[TOP_vfnmaddxrss] = "vfnmaddss";
+  OP_Name[TOP_vfnmaddxxrss] = "vfnmaddss";
+  OP_Name[TOP_vfnmaddxxxrss] = "vfnmaddss";
+  OP_Name[TOP_vfnmaddsd]  = "vfnmaddsd";
+  OP_Name[TOP_vfnmaddxsd] = "vfnmaddsd";
+  OP_Name[TOP_vfnmaddxxsd] = "vfnmaddsd";
+  OP_Name[TOP_vfnmaddxxxsd] = "vfnmaddsd";
+  OP_Name[TOP_vfnmaddxrsd] = "vfnmaddsd";
+  OP_Name[TOP_vfnmaddxxrsd] = "vfnmaddsd";
+  OP_Name[TOP_vfnmaddxxxrsd] = "vfnmaddsd";
+  OP_Name[TOP_vfnmaddps]  = "vfnmaddps";
+  OP_Name[TOP_vfnmaddxps] = "vfnmaddps";
+  OP_Name[TOP_vfnmaddxxps] = "vfnmaddps";
+  OP_Name[TOP_vfnmaddxxxps] = "vfnmaddps";
+  OP_Name[TOP_vfnmaddxrps] = "vfnmaddps";
+  OP_Name[TOP_vfnmaddxxrps] = "vfnmaddps";
+  OP_Name[TOP_vfnmaddxxxrps] = "vfnmaddps";
+  OP_Name[TOP_vfnmaddpd]  = "vfnmaddpd";
+  OP_Name[TOP_vfnmaddxpd] = "vfnmaddpd";
+  OP_Name[TOP_vfnmaddxxpd] = "vfnmaddpd";
+  OP_Name[TOP_vfnmaddxxxpd] = "vfnmaddpd";
+  OP_Name[TOP_vfnmaddxrpd] = "vfnmaddpd";
+  OP_Name[TOP_vfnmaddxxrpd] = "vfnmaddpd";
+  OP_Name[TOP_vfnmaddxxxrpd] = "vfnmaddpd";
+  OP_Name[TOP_vfmsubss]  = "vfmsubss";
+  OP_Name[TOP_vfmsubxss] = "vfmsubss";
+  OP_Name[TOP_vfmsubxxss] = "vfmsubss";
+  OP_Name[TOP_vfmsubxxxss] = "vfmsubss";
+  OP_Name[TOP_vfmsubxrss] = "vfmsubss";
+  OP_Name[TOP_vfmsubxxrss] = "vfmsubss";
+  OP_Name[TOP_vfmsubxxxrss] = "vfmsubss";
+  OP_Name[TOP_vfmsubsd]  = "vfmsubsd";
+  OP_Name[TOP_vfmsubxsd] = "vfmsubsd";
+  OP_Name[TOP_vfmsubxxsd] = "vfmsubsd";
+  OP_Name[TOP_vfmsubxxxsd] = "vfmsubsd";
+  OP_Name[TOP_vfmsubxrsd] = "vfmsubsd";
+  OP_Name[TOP_vfmsubxxrsd] = "vfmsubsd";
+  OP_Name[TOP_vfmsubxxxrsd] = "vfmsubsd";
+  OP_Name[TOP_vfmsubps]  = "vfmsubps";
+  OP_Name[TOP_vfmsubxps] = "vfmsubps";
+  OP_Name[TOP_vfmsubxxps] = "vfmsubps";
+  OP_Name[TOP_vfmsubxxxps] = "vfmsubps";
+  OP_Name[TOP_vfmsubxrps] = "vfmsubps";
+  OP_Name[TOP_vfmsubxxrps] = "vfmsubps";
+  OP_Name[TOP_vfmsubxxxrps] = "vfmsubps";
+  OP_Name[TOP_vfmsubpd]  = "vfmsubpd";
+  OP_Name[TOP_vfmsubxpd] = "vfmsubpd";
+  OP_Name[TOP_vfmsubxxpd] = "vfmsubpd";
+  OP_Name[TOP_vfmsubxxxpd] = "vfmsubpd";
+  OP_Name[TOP_vfmsubxrpd] = "vfmsubpd";
+  OP_Name[TOP_vfmsubxxrpd] = "vfmsubpd";
+  OP_Name[TOP_vfmsubxxxrpd] = "vfmsubpd";
+  OP_Name[TOP_vfnmsubss]  = "vfnmsubss";
+  OP_Name[TOP_vfnmsubxss] = "vfnmsubss";
+  OP_Name[TOP_vfnmsubxxss] = "vfnmsubss";
+  OP_Name[TOP_vfnmsubxxxss] = "vfnmsubss";
+  OP_Name[TOP_vfnmsubxrss] = "vfnmsubss";
+  OP_Name[TOP_vfnmsubxxrss] = "vfnmsubss";
+  OP_Name[TOP_vfnmsubxxxrss] = "vfnmsubss";
+  OP_Name[TOP_vfnmsubsd]  = "vfnmsubsd";
+  OP_Name[TOP_vfnmsubxsd] = "vfnmsubsd";
+  OP_Name[TOP_vfnmsubxxsd] = "vfnmsubsd";
+  OP_Name[TOP_vfnmsubxxxsd] = "vfnmsubsd";
+  OP_Name[TOP_vfnmsubxrsd] = "vfnmsubsd";
+  OP_Name[TOP_vfnmsubxxrsd] = "vfnmsubsd";
+  OP_Name[TOP_vfnmsubxxxrsd] = "vfnmsubsd";
+  OP_Name[TOP_vfnmsubps]  = "vfnmsubps";
+  OP_Name[TOP_vfnmsubxps] = "vfnmsubps";
+  OP_Name[TOP_vfnmsubxxps] = "vfnmsubps";
+  OP_Name[TOP_vfnmsubxxxps] = "vfnmsubps";
+  OP_Name[TOP_vfnmsubxrps] = "vfnmsubps";
+  OP_Name[TOP_vfnmsubxxrps] = "vfnmsubps";
+  OP_Name[TOP_vfnmsubxxxrps] = "vfnmsubps";
+  OP_Name[TOP_vfnmsubpd]  = "vfnmsubpd";
+  OP_Name[TOP_vfnmsubxpd] = "vfnmsubpd";
+  OP_Name[TOP_vfnmsubxxpd] = "vfnmsubpd";
+  OP_Name[TOP_vfnmsubxxxpd] = "vfnmsubpd";
+  OP_Name[TOP_vfnmsubxrpd] = "vfnmsubpd";
+  OP_Name[TOP_vfnmsubxxrpd] = "vfnmsubpd";
+  OP_Name[TOP_vfnmsubxxxrpd] = "vfnmsubpd";
+  OP_Name[TOP_vzeroupper] = "vzeroupper";
+  // End BNI subitions
+
   OP_Name[TOP_icall]    = "call";
   OP_Name[TOP_icallx]   = "call";
   OP_Name[TOP_icallxx]  = "call";
@@ -1396,6 +1513,7 @@ static void Init_OP_Name()
       !Is_Target_EM64T() &&
       !Is_Target_Core() &&
       !Is_Target_Wolfdale() &&
+      !Is_Target_Orochi() &&
       !Is_Target_Barcelona()){// bug 10295
     // Use movlpd only for loads.  Bug 5809.
     OP_Name[TOP_ldsd] = "movlpd";
@@ -1420,6 +1538,7 @@ static void Init_OP_Name()
     OP_Name[TOP_stsd_n32] = "movsd";
     OP_Name[TOP_storelpd] = "movsd";
     if (Is_Target_Barcelona() ||
+	Is_Target_Orochi()     || // em64t
 	Is_Target_EM64T()     || // em64t
         Is_Target_Wolfdale()  ||
 	Is_Target_Core()) {	 // use movapd for woodcrest for bug 11548

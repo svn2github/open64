@@ -506,6 +506,7 @@ INSTALL_MISC () {
         INSTALL_EXEC_SUB ${AREA}/targ_info/core.so ${PHASEPATH}/core.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/wolfdale.so ${PHASEPATH}/wolfdale.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/barcelona.so ${PHASEPATH}/barcelona.so
+        INSTALL_EXEC_SUB ${AREA}/targ_info/orochi.so ${PHASEPATH}/orochi.so
     fi
 #    if [ ! -z "$ROOT" ] ; then
 #        for i in gcc f77 as ld g++ gas as ; do

@@ -90,6 +90,10 @@ void Initialize_Targ_Info(void)
     proc = PROCESSOR_barcelona;
     break;
 
+  case TARGET_orochi:
+    proc = PROCESSOR_orochi;
+    break;
+
   case TARGET_pentium4:
   case TARGET_xeon:
   case TARGET_em64t:

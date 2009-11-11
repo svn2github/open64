@@ -118,6 +118,23 @@ void MHD::Initialize()
                      50);               // Pct_Excess_Writes_Nonhidable ?
     break;
 
+   case TARGET_orochi:
+    L[0] = MHD_LEVEL(MHD_TYPE_CACHE,    // Type
+                     64*1024,           // Size
+                     64,                // Line Size
+                     18,                // Clean Miss Penalty
+                     18,                // Dirty Miss Penalty
+                     64,                 // Associativity : (fully)
+                     32,                // TLB Entries
+                     4*1024,            // Page Size
+                     50,                // TLB Clean Miss Penalty ?
+                     50,                // TLB Dirty Miss Penalty ?
+                     6.0,               // Typical Outstanding Loads ?
+                     0.8,               // Load_OP_Overlap_1 ?
+                     0.4,               // Load_OP_Overlap_2 ?
+                     50);               // Pct_Excess_Writes_Nonhidable ?
+    break;
+
   case TARGET_athlon64:
     L[0] = MHD_LEVEL(MHD_TYPE_CACHE, 	// Type
                      64*1024, 		// Size
@@ -251,6 +268,24 @@ void MHD::Initialize()
                      150,
                      200, // ?
                      16,
+                     512,
+                     4*1024,
+                     50, // ?
+                     50, // ?
+                     LNO_Run_Prefetch ? 1.8: 1.0,  // ?
+                     LNO_Run_Prefetch ? 0.7 : 0.1,  // ?
+                     LNO_Run_Prefetch ? 0.3 : 0.05, // ?
+                     LNO_Run_Prefetch ? 25 : 50);  // ?
+    break;   
+ case TARGET_orochi:
+    // TODO: this might be too generous: in multiple processor situations,
+    // there is a cost to loading the shared bus/memory.
+    L[1] = MHD_LEVEL(MHD_TYPE_CACHE,
+                     2*1024*1024,
+                     64,
+                     150,
+                     200, // ?
+                     8,
                      512,
                      4*1024,
                      50, // ?

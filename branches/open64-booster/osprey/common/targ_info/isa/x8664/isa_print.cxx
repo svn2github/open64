@@ -1599,6 +1599,213 @@ main()
 			   TOP_pxor_mmx,
 			   TOP_UNDEFINED );
 
+  /* non destructive fma xmm xmm xmm */
+  ISA_PRINT_TYPE ndstvecreg =  ISA_Print_Type_Create("ndstvecreg", 
+                                                     "%s %s, %s, %s, %s");
+  Name();
+  Operand(2);
+  Operand(1);
+  Operand(0);
+  Result(0);
+  Instruction_Print_Group( ndstvecreg,
+                           TOP_vfmaddss,
+                           TOP_vfmaddsd,
+                           TOP_vfnmaddss,
+                           TOP_vfnmaddsd,
+                           TOP_vfmaddps,
+                           TOP_vfmaddpd,
+                           TOP_vfnmaddps,
+                           TOP_vfnmaddpd,
+                           TOP_vfmsubss,
+                           TOP_vfmsubsd,
+                           TOP_vfnmsubss,
+                           TOP_vfnmsubsd,
+                           TOP_vfmsubps,
+                           TOP_vfmsubpd,
+                           TOP_vfnmsubps,
+                           TOP_vfnmsubpd,
+                           TOP_UNDEFINED);
+
+  /* non destructive fma xmm xmm mem opnd */
+  ISA_PRINT_TYPE ndstvecregx =  ISA_Print_Type_Create("ndstvecregx", 
+						      "%s %s %s(%s), %s, %s, %s");
+  Name();
+  Segment();
+  Operand(3);
+  Operand(2);
+  Operand(1);
+  Operand(0);
+  Result(0);
+  Instruction_Print_Group( ndstvecregx,
+                           TOP_vfmaddxss,
+                           TOP_vfmaddxsd,
+                           TOP_vfnmaddxss,
+                           TOP_vfnmaddxsd,
+                           TOP_vfmaddxps,
+                           TOP_vfmaddxpd,
+                           TOP_vfnmaddxps,
+                           TOP_vfnmaddxpd,
+                           TOP_vfmsubxss,
+                           TOP_vfmsubxsd,
+                           TOP_vfnmsubxss,
+                           TOP_vfnmsubxsd,
+                           TOP_vfmsubxps,
+                           TOP_vfmsubxpd,
+                           TOP_vfnmsubxps,
+                           TOP_vfnmsubxpd,
+                           TOP_UNDEFINED);
+
+  /* non destructive fma xmm xmm mem opnd w/ scaled index */
+  ISA_PRINT_TYPE ndestvecregxx =  ISA_Print_Type_Create("ndestvecregxx", 
+						        "%s %s %s(%s,%s,%s), %s, %s, %s");
+  Name();
+  Segment();
+  Operand(5);
+  Operand(2);
+  Operand(3);
+  Operand(4);
+  Operand(1);
+  Operand(0);
+  Result(0);
+  Instruction_Print_Group( ndestvecregxx,
+                           TOP_vfmaddxxss,
+                           TOP_vfmaddxxsd,
+                           TOP_vfnmaddxxss,
+                           TOP_vfnmaddxxsd,
+                           TOP_vfmaddxxps,
+                           TOP_vfmaddxxpd,
+                           TOP_vfnmaddxxps,
+                           TOP_vfnmaddxxpd,
+                           TOP_vfmsubxxss,
+                           TOP_vfmsubxxsd,
+                           TOP_vfnmsubxxss,
+                           TOP_vfnmsubxxsd,
+                           TOP_vfmsubxxps,
+                           TOP_vfmsubxxpd,
+                           TOP_vfnmsubxxps,
+                           TOP_vfnmsubxxpd,
+                           TOP_UNDEFINED);
+
+  /* One result / two operands in x86 style w/ mem operand w/o base */
+  ISA_PRINT_TYPE ndestvecregxxx =  ISA_Print_Type_Create("ndestvecregxxx", 
+						         "%s %s %s(,%s,%s), %s, %s, %s");
+  Name();
+  Segment();
+  Operand(4);
+  Operand(2);
+  Operand(3);
+  Operand(1);
+  Operand(0);
+  Result(0);
+  Instruction_Print_Group( ndestvecregxxx,
+                           TOP_vfmaddxxxss,
+                           TOP_vfmaddxxxsd,
+                           TOP_vfnmaddxxxss,
+                           TOP_vfnmaddxxxsd,
+                           TOP_vfmaddxxxps,
+                           TOP_vfmaddxxxpd,
+                           TOP_vfnmaddxxxps,
+                           TOP_vfnmaddxxxpd,
+                           TOP_vfmsubxxxss,
+                           TOP_vfmsubxxxsd,
+                           TOP_vfnmsubxxxss,
+                           TOP_vfnmsubxxxsd,
+                           TOP_vfmsubxxxps,
+                           TOP_vfmsubxxxpd,
+                           TOP_vfnmsubxxxps,
+                           TOP_vfnmsubxxxpd,
+                           TOP_UNDEFINED);
+
+  /* non destructive fma xmm mem opnd xmm */
+  ISA_PRINT_TYPE ndstvecregxr =  ISA_Print_Type_Create("ndstvecregxr", 
+						       "%s %s %s, %s(%s), %s, %s");
+  Name();
+  Segment();
+  Operand(3);
+  Operand(2);
+  Operand(1);
+  Operand(0);
+  Result(0);
+  Instruction_Print_Group( ndstvecregxr,
+                           TOP_vfmaddxrss,
+                           TOP_vfmaddxrsd,
+                           TOP_vfnmaddxrss,
+                           TOP_vfnmaddxrsd,
+                           TOP_vfmaddxrps,
+                           TOP_vfmaddxrpd,
+                           TOP_vfnmaddxrps,
+                           TOP_vfnmaddxrpd,
+                           TOP_vfmsubxrss,
+                           TOP_vfmsubxrsd,
+                           TOP_vfnmsubxrss,
+                           TOP_vfnmsubxrsd,
+                           TOP_vfmsubxrps,
+                           TOP_vfmsubxrpd,
+                           TOP_vfnmsubxrps,
+                           TOP_vfnmsubxrpd,
+                           TOP_UNDEFINED);
+
+  /* non destructive fma xmm xmm mem opnd w/ scaled index */
+  ISA_PRINT_TYPE ndestvecregxxr =  ISA_Print_Type_Create("ndestvecregxxr", 
+						         "%s %s %s, %s(%s,%s,%s), %s, %s");
+  Name();
+  Segment();
+  Operand(5);
+  Operand(4);
+  Operand(1);
+  Operand(2);
+  Operand(3);
+  Operand(0);
+  Result(0);
+  Instruction_Print_Group( ndestvecregxxr,
+                           TOP_vfmaddxxrss,
+                           TOP_vfmaddxxrsd,
+                           TOP_vfnmaddxxrss,
+                           TOP_vfnmaddxxrsd,
+                           TOP_vfmaddxxrps,
+                           TOP_vfmaddxxrpd,
+                           TOP_vfnmaddxxrps,
+                           TOP_vfnmaddxxrpd,
+                           TOP_vfmsubxxrss,
+                           TOP_vfmsubxxrsd,
+                           TOP_vfnmsubxxrss,
+                           TOP_vfnmsubxxrsd,
+                           TOP_vfmsubxxrps,
+                           TOP_vfmsubxxrpd,
+                           TOP_vfnmsubxxrps,
+                           TOP_vfnmsubxxrpd,
+                           TOP_UNDEFINED);
+
+  /* One result / two operands in x86 style w/ mem operand w/o base */
+  ISA_PRINT_TYPE ndestvecregxxxr =  ISA_Print_Type_Create("ndestvecregxxxr", 
+						         "%s %s %s, %s(,%s,%s), %s, %s");
+  Name();
+  Segment();
+  Operand(4);
+  Operand(3);
+  Operand(1);
+  Operand(2);
+  Operand(0);
+  Result(0);
+  Instruction_Print_Group( ndestvecregxxxr,
+                           TOP_vfmaddxxxrss,
+                           TOP_vfmaddxxxrsd,
+                           TOP_vfnmaddxxxrss,
+                           TOP_vfnmaddxxxrsd,
+                           TOP_vfmaddxxxrps,
+                           TOP_vfmaddxxxrpd,
+                           TOP_vfnmaddxxxrps,
+                           TOP_vfnmaddxxxrpd,
+                           TOP_vfmsubxxxrss,
+                           TOP_vfmsubxxxrsd,
+                           TOP_vfnmsubxxxrss,
+                           TOP_vfnmsubxxxrsd,
+                           TOP_vfmsubxxxrps,
+                           TOP_vfmsubxxxrpd,
+                           TOP_vfnmsubxxxrps,
+                           TOP_vfnmsubxxxrpd,
+                           TOP_UNDEFINED);
+
   /* {st,ld}mxcsr */
   ISA_PRINT_TYPE stmxcsr =  ISA_Print_Type_Create("stmxcsr", "%s %s%s(%s)");
   Name();
@@ -1631,6 +1838,7 @@ main()
 			   TOP_emms,
 			   TOP_fcos,
 			   TOP_fsin,
+                           TOP_vzeroupper,
 			   TOP_UNDEFINED );
 
   ISA_Print_End();

@@ -140,6 +140,7 @@ typedef enum {
   TARGET_UNDEF,		/* Undefined */
   TARGET_opteron,	/* AMD Opteron and Athlon64 FX */
   TARGET_barcelona,     /* AMD Barcelona (opteron) */
+  TARGET_orochi,        /* AMD Orochi (opteron) */
   TARGET_athlon64,	/* AMD Athlon64 */
   TARGET_athlon,	/* AMD Athlon */
   TARGET_em64t,		/* Intel EM64T */
@@ -172,6 +173,7 @@ extern const char *Targ_Name (TARGET_PROCESSOR target);
 #define Is_Target_Anyx86()      (Target == TARGET_anyx86)
 #define Target_x87_precision()	(Target_x87_Precision+0)
 #define Is_Target_Barcelona()   (Target == TARGET_barcelona)
+#define Is_Target_Orochi()      (Target == TARGET_orochi)
 
 
 /* ========== */

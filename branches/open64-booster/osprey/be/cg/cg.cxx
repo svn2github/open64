@@ -183,6 +183,7 @@ BOOL CG_file_scope_asm_seen = FALSE;
 BOOL gra_pre_create = TRUE;
 #ifdef TARG_X8664
 BOOL PU_References_GOT;  // for -m32 -fpic
+BOOL PU_has_avx128;      // cause emit of vzeroupper 
 #endif
 
 BOOL edge_done = FALSE;
@@ -1648,10 +1649,15 @@ CG_Generate_Code(
 #ifdef TARG_X8664
   {
     /* Perform compute-to opts. */
-    if (Is_Target_Barcelona() && CG_compute_to) {
+    if ((Is_Target_Barcelona() || Is_Target_Orochi()) && CG_compute_to) {
       for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){
         EBO_Compute_To(bb);
       }
+    }
+
+    // Generate merge dependency clear if avx128 is being used.
+    if ((Is_Target_Barcelona() || Is_Target_Orochi()) && PU_has_avx128) {
+      Generate_Entry_Merge_Clear(region);
     }
 
     /* Convert all the x87 regs to stack-like regs. */

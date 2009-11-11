@@ -2500,7 +2500,7 @@ if(LNO_Run_Prefetch > SOME_PREFETCH && offset != 0 &&
 #ifdef TARG_X8664
      if(Is_Target_Core() || Is_Target_EM64T())
        fancy_offset_incr=8;
-     else if(Is_Target_Barcelona())
+     else if(Is_Target_Barcelona() || Is_Target_Orochi())
        fancy_offset_incr=28;
      else
 #endif

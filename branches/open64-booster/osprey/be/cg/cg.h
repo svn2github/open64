@@ -74,6 +74,7 @@ extern BOOL CG_file_scope_asm_seen;
 
 #ifdef TARG_X8664
 extern BOOL PU_References_GOT; // for -m32 -fpic
+extern BOOL PU_has_avx128; // cause emit of vzeroupper
 #endif
 
 extern BOOL CG_PU_Has_Feedback;

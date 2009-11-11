@@ -4548,7 +4548,7 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
     else if (WN_intrinsic(tree) == INTRN_MEMCPY &&
 	       OPT_Fast_Stdlib &&
 	       Is_Target_64bit()) {
-      if (Is_Target_Barcelona()) {
+      if (Is_Target_Barcelona() || Is_Target_Orochi()) {
         WN *child = WN_arg(tree, 2);
         if (Is_Integer_Constant(child)) {
           int memcpy_len = WN_const_val(child);

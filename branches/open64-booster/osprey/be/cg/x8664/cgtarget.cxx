@@ -207,6 +207,30 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_cvtsi2ss_x:
       case TOP_cvtsi2ss_xx:
       case TOP_cvtsi2ss_xxx:
+      case TOP_vfmaddxss:
+      case TOP_vfmaddxxss:
+      case TOP_vfmaddxxxss:
+      case TOP_vfmaddxrss:
+      case TOP_vfmaddxxrss:
+      case TOP_vfmaddxxxrss:
+      case TOP_vfnmaddxss:
+      case TOP_vfnmaddxxss:
+      case TOP_vfnmaddxxxss:
+      case TOP_vfnmaddxrss:
+      case TOP_vfnmaddxxrss:
+      case TOP_vfnmaddxxxrss:
+      case TOP_vfmsubxss:
+      case TOP_vfmsubxxss:
+      case TOP_vfmsubxxxss:
+      case TOP_vfmsubxrss:
+      case TOP_vfmsubxxrss:
+      case TOP_vfmsubxxxrss:
+      case TOP_vfnmsubxss:
+      case TOP_vfnmsubxxss:
+      case TOP_vfnmsubxxxss:
+      case TOP_vfnmsubxrss:
+      case TOP_vfnmsubxxrss:
+      case TOP_vfnmsubxxxrss:
 	return 4;
 
       case TOP_ldsd:		// 64 bit
@@ -248,6 +272,30 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_cvtsi2ssq_x:
       case TOP_cvtsi2ssq_xx:
       case TOP_cvtsi2ssq_xxx:
+      case TOP_vfmaddxsd:
+      case TOP_vfmaddxxsd:
+      case TOP_vfmaddxxxsd:
+      case TOP_vfmaddxrsd:
+      case TOP_vfmaddxxrsd:
+      case TOP_vfmaddxxxrsd:
+      case TOP_vfnmaddxsd:
+      case TOP_vfnmaddxxsd:
+      case TOP_vfnmaddxxxsd:
+      case TOP_vfnmaddxrsd:
+      case TOP_vfnmaddxxrsd:
+      case TOP_vfnmaddxxxrsd:
+      case TOP_vfmsubxsd:
+      case TOP_vfmsubxxsd:
+      case TOP_vfmsubxxxsd:
+      case TOP_vfmsubxrsd:
+      case TOP_vfmsubxxrsd:
+      case TOP_vfmsubxxxrsd:
+      case TOP_vfnmsubxsd:
+      case TOP_vfnmsubxxsd:
+      case TOP_vfnmsubxxxsd:
+      case TOP_vfnmsubxrsd:
+      case TOP_vfnmsubxxrsd:
+      case TOP_vfnmsubxxxrsd:
 	return 8;
 
       case TOP_lddqa:		// 128 bit

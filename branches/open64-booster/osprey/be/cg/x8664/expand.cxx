@@ -3454,7 +3454,7 @@ Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops)
       !MTYPE_is_quad( desc ) ){
     if (!MTYPE_is_vector(rtype)){
 #ifdef KEY //bug 14346: fp-fp scalar conversion for barcelona is special
-     if(Is_Target_Barcelona())
+     if(Is_Target_Barcelona() || Is_Target_Orochi())
       Build_OP( (rtype == MTYPE_F8) ? TOP_cvtps2pd : TOP_cvtpd2ps,
 		dest, src, ops );
      else
@@ -3875,7 +3875,7 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
     } else if( MTYPE_bit_size(imtype) == 32 ){
       if( MTYPE_is_signed(imtype) )
 #ifdef KEY //cvt signed integer to single precision scalar
-       if(Is_Target_Barcelona()){
+       if(Is_Target_Barcelona() || Is_Target_Orochi()){
          TN *tmp_dest = Build_TN_Like(dest);
          Build_OP(TOP_movg2x, tmp_dest, src, ops);
          src = tmp_dest;
@@ -3924,7 +3924,7 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
 
       if( MTYPE_is_signed(imtype) ){
 #ifdef KEY
-        if(Is_Target_Barcelona()){
+        if(Is_Target_Barcelona() || Is_Target_Orochi()){
          TN *tmp_dest = Build_TN_Like(dest);
          Build_OP(TOP_movg2x, tmp_dest, src, ops); 
          src = tmp_dest;

@@ -129,6 +129,11 @@ extern void Init_Callee_Saved_Regs_for_REGION( ST *pu, BOOL is_region );
 /* Init subprogram entry/exit code: */
 extern void Init_Entry_Exit_Code ( WN *pu_wn);
 
+#ifdef TARG_X8664
+/* Generate Clear of Merge dependencies for YMM regs */
+extern void Generate_Entry_Merge_Clear( BOOL is_region );
+#endif
+
 /* Produce subprogram entry/exit code: */
 extern void Generate_Entry_Exit_Code ( ST* pu, BOOL is_region );
 extern void Adjust_Entry_Exit_Code ( ST* pu );

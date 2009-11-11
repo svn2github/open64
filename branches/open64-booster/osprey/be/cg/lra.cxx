@@ -2256,6 +2256,7 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
     }
 
     if( opndnum == 0       &&
+        (OP_sse5( op ) == FALSE) &&
 	OP_x86_style( op ) &&
 	result_reg <= REGISTER_MAX ){
       prefer_reg = result_reg;
@@ -5091,6 +5092,9 @@ Adjust_X86_Style_For_BB (BB* bb, BOOL* redundant_code, MEM_POOL* pool)
     opnum++;
 
     if( !OP_x86_style( op ) )
+      continue;
+
+    if ( OP_sse5(op) )
       continue;
 
     TN* result = OP_result( op, 0 );

@@ -1655,8 +1655,9 @@ static struct
   { "xeon",	"xeon",			ABI_N32,	TRUE,	FALSE, FALSE},
   { "em64t",	"em64t",		ABI_64,		TRUE,	TRUE,  FALSE},
   { "core",	"core",			ABI_64,		TRUE,	TRUE,  FALSE},
-  { "wolfdale", "wolfdale",		ABI_64,		TRUE,	TRUE, FALSE},
-  { "barcelona","barcelona",		ABI_64,		TRUE,	TRUE, TRUE},
+  { "wolfdale", "wolfdale",		ABI_64,		TRUE,	TRUE,  FALSE},
+  { "orochi",   "orochi",		ABI_64,		TRUE,	TRUE,  TRUE},
+  { "barcelona","barcelona",		ABI_64,		TRUE,	TRUE,  TRUE},
   { NULL,	NULL, },
 };
   
@@ -1834,6 +1835,8 @@ get_auto_cpu_name ()
 	  return "opteron";
         case 16: 
 	  return "barcelona";   // Barcelona
+        case 21:
+	  return "orochi";      // Orochi
       }
     }
 

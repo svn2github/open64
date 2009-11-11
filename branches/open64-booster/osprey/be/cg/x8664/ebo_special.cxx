@@ -3924,7 +3924,22 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_test64,	TOP_testx64,	TOP_testxx64,	TOP_testxxx64,	TOP_UNDEFINED},
   {TOP_comiss,	TOP_comixss,	TOP_comixxss,	TOP_comixxxss,	TOP_UNDEFINED},
   {TOP_comisd,	TOP_comixsd,	TOP_comixxsd,	TOP_comixxxsd,	TOP_UNDEFINED},
-
+  {TOP_vfmaddss, TOP_vfmaddxss,	TOP_vfmaddxxss,	TOP_vfmaddxxxss, TOP_UNDEFINED},
+  {TOP_vfmaddsd, TOP_vfmaddxsd,	TOP_vfmaddxxsd,	TOP_vfmaddxxxsd, TOP_UNDEFINED},
+  {TOP_vfmaddps, TOP_vfmaddxps,	TOP_vfmaddxxps,	TOP_vfmaddxxxps, TOP_UNDEFINED},
+  {TOP_vfmaddpd, TOP_vfmaddxpd,	TOP_vfmaddxxpd,	TOP_vfmaddxxxpd, TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vfmaddxrss, TOP_vfmaddxxrss, TOP_vfmaddxxxrss, TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vfmaddxrsd, TOP_vfmaddxxrsd, TOP_vfmaddxxxrsd, TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vfmaddxrps, TOP_vfmaddxxrps, TOP_vfmaddxxxrps, TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vfmaddxrpd, TOP_vfmaddxxrpd, TOP_vfmaddxxxrpd, TOP_UNDEFINED},
+  {TOP_vfmsubss, TOP_vfmsubxss,	TOP_vfmsubxxss,	TOP_vfmsubxxxss, TOP_UNDEFINED},
+  {TOP_vfmsubsd, TOP_vfmsubxsd,	TOP_vfmsubxxsd,	TOP_vfmsubxxxsd, TOP_UNDEFINED},
+  {TOP_vfmsubps, TOP_vfmsubxps,	TOP_vfmsubxxps,	TOP_vfmsubxxxps, TOP_UNDEFINED},
+  {TOP_vfmsubpd, TOP_vfmsubxpd,	TOP_vfmsubxxpd,	TOP_vfmsubxxxpd, TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vfmsubxrss, TOP_vfmsubxxrss, TOP_vfmsubxxxrss, TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vfmsubxrsd, TOP_vfmsubxxrsd, TOP_vfmsubxxxrsd, TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vfmsubxrps, TOP_vfmsubxxrps, TOP_vfmsubxxxrps, TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vfmsubxrpd, TOP_vfmsubxxrpd, TOP_vfmsubxxxrpd, TOP_UNDEFINED},
   {TOP_icall,	TOP_icallx,	TOP_icallxx,	TOP_icallxxx,	TOP_UNDEFINED},
   {TOP_ijmp,	TOP_ijmpx,	TOP_ijmpxx,	TOP_ijmpxxx,	TOP_UNDEFINED},
 
@@ -5168,6 +5183,330 @@ BOOL EBO_Opt_Const_Array( OP* mem_op,
 }
 
 
+BOOL EBO_Process_SSE5_Load_Exectute_FMA_p1(TOP new_top, 
+                                           ADDR_MODE mode, 
+                                           TN* base, 
+                                           TN* scale, 
+                                           TN* index, 
+                                           TN* offset, 
+                                           TN* result,
+                                           OP* ld_op,
+                                           OP* alu_op,
+                                           EBO_TN_INFO** actual_tninfo)
+{
+  OP* new_op = NULL;
+  EBO_TN_INFO* tninfo;
+  TN *opnd0;
+  TN *opnd1;
+  BB* bb = OP_bb( alu_op );
+
+  // add load form: both mul opnds persist
+  tninfo = actual_tninfo[0];
+  opnd0 = tninfo->local_tn;
+  tninfo = actual_tninfo[1];
+  opnd1 = tninfo->local_tn;
+
+  if( mode == BASE_MODE ){
+    // base + offset
+    new_op = Mk_OP( new_top, result, opnd0, opnd1, base, offset );
+  } else if( mode == BASE_INDEX_MODE ){
+    // offset + base + index * scale
+    new_op = Mk_OP( new_top, result, opnd0, opnd1, base, index, scale, offset );
+  } else {
+    // offset + index * scale
+    new_op = Mk_OP( new_top, result, opnd0, opnd1, index, scale, offset );
+  }
+
+  Is_True( !EBO_in_loop, ("EBO_Process_SSE5_Load_Exectute_FMA_p1: NYI (1)") );
+
+  Set_OP_unrolling( new_op, OP_unrolling(alu_op) );
+  Set_OP_orig_idx( new_op, OP_map_idx(alu_op) );
+  Set_OP_unroll_bb( new_op, OP_unroll_bb(alu_op) );
+
+  Copy_WN_For_Memory_OP( new_op, ld_op );
+  if (OP_volatile(ld_op)) {
+    Reset_OP_volatile(ld_op);	// allow OP to be deleted
+    Set_OP_volatile(new_op);
+  }
+  OP_srcpos( new_op ) = OP_srcpos( alu_op );
+  BB_Insert_Op_After( bb, alu_op, new_op );
+
+  // If folding a restore of a spilled value, mark the spill store as needed
+  // even if all the restores are deleted.
+  ST *spill_loc = CGSPILL_OP_Spill_Location(ld_op);
+  if (spill_loc != (ST *)0) {		// It's a spill OP.
+    SPILL_SYM_INFO &info = CGSPILL_Get_Spill_Sym_Info(spill_loc);
+    info.Set_Used_By_Load_Exe();
+  }
+
+  if( EBO_Trace_Data_Flow ){
+    #pragma mips_frequency_hint NEVER
+    fprintf( TFile, "EBO_Process_SSE5_Load_Exectute_FMA_p1 merges " );
+    Print_OP_No_SrcLine( ld_op );
+    fprintf( TFile, "                   with   " );
+    Print_OP_No_SrcLine( alu_op );
+
+    fprintf( TFile, "                   new op " );
+    Print_OP_No_SrcLine( new_op );
+  }
+
+  return TRUE;
+}
+
+
+BOOL EBO_Process_SSE5_Load_Exectute_FMA_p2(TOP new_top, 
+                                           ADDR_MODE mode, 
+                                           TN* base, 
+                                           TN* scale, 
+                                           TN* index, 
+                                           TN* offset, 
+                                           TN* result,
+                                           OP* ld_op,
+                                           OP* alu_op,
+                                           EBO_TN_INFO** actual_tninfo)
+{
+  OP* new_op = NULL;
+  EBO_TN_INFO* tninfo;
+  TN *opnd0;
+  TN *opnd2;
+  BB* bb = OP_bb( alu_op );
+
+  // mul load form: the opnd0(the other mul opnd) and opnd2(add opnd) persist
+  tninfo = actual_tninfo[0];
+  opnd0 = tninfo->local_tn;
+  tninfo = actual_tninfo[2];
+  opnd2 = tninfo->local_tn;
+
+  if( mode == BASE_MODE ){
+    // base + offset
+    new_op = Mk_OP( new_top, result, opnd0, 
+                    base, offset, opnd2 );
+  } else if( mode == BASE_INDEX_MODE ){
+    // offset + base + index * scale
+    new_op = Mk_OP( new_top, result, opnd0, base, 
+                    index, scale, offset, opnd2 );
+  } else {
+    // offset + index * scale
+    new_op = Mk_OP( new_top, result, opnd0, 
+                    index, scale, offset, opnd2 );
+  }
+
+  Is_True( !EBO_in_loop, ("EBO_Process_SSE5_Load_Exectute_FMA_p1: NYI (1)") );
+
+  Set_OP_unrolling( new_op, OP_unrolling(alu_op) );
+  Set_OP_orig_idx( new_op, OP_map_idx(alu_op) );
+  Set_OP_unroll_bb( new_op, OP_unroll_bb(alu_op) );
+
+  Copy_WN_For_Memory_OP( new_op, ld_op );
+  if (OP_volatile(ld_op)) {
+    Reset_OP_volatile(ld_op);	// allow OP to be deleted
+    Set_OP_volatile(new_op);
+  }
+  OP_srcpos( new_op ) = OP_srcpos( alu_op );
+  BB_Insert_Op_After( bb, alu_op, new_op );
+
+  // If folding a restore of a spilled value, mark the spill store as needed
+  // even if all the restores are deleted.
+  ST *spill_loc = CGSPILL_OP_Spill_Location(ld_op);
+  if (spill_loc != (ST *)0) {		// It's a spill OP.
+    SPILL_SYM_INFO &info = CGSPILL_Get_Spill_Sym_Info(spill_loc);
+    info.Set_Used_By_Load_Exe();
+  }
+
+  if( EBO_Trace_Data_Flow ){
+    #pragma mips_frequency_hint NEVER
+    fprintf( TFile, "EBO_Process_SSE5_Load_Exectute_FMA_p1 merges " );
+    Print_OP_No_SrcLine( ld_op );
+    fprintf( TFile, "                   with   " );
+    Print_OP_No_SrcLine( alu_op );
+
+    fprintf( TFile, "                   new op " );
+    Print_OP_No_SrcLine( new_op );
+  }
+
+  return TRUE;
+}
+
+
+TOP EBO_Reset_Top(TOP top, ADDR_MODE mode)
+{
+  Addr_Mode_Group *group = Top_To_Addr_Mode_Group[top+4];
+  if (group != NULL) {
+    switch (mode) {
+      case BASE_MODE:           return group->base_mode;
+      case BASE_INDEX_MODE:     return group->base_index_mode;
+      case INDEX_MODE:          return group->index_mode;
+      case N32_MODE:            return group->n32_mode;
+    }
+    FmtAssert(FALSE, ("EBO_Reset_Top: address mode not handled"));
+  }
+  return TOP_UNDEFINED;
+}
+
+
+BOOL EBO_Process_SSE5_Load_Execute(TOP new_top, 
+                                   ADDR_MODE mode, 
+                                   int idx,
+                                   TN* base, 
+                                   TN* scale, 
+                                   TN* index, 
+                                   TN* offset, 
+                                   TN* result,
+                                   OP* ld_op,
+                                   OP* alu_op,
+                                   EBO_TN_INFO** actual_tninfo)
+{
+  // use the mul memopnd form if the add form is not present
+  if (idx != 2) {
+    Addr_Mode_Group *group = Top_To_Addr_Mode_Group[new_top];
+    new_top = EBO_Reset_Top(group->base_mode, mode);
+  }
+
+  switch (new_top) {
+
+  // pattern 1 - add src is memop
+  case TOP_vfmaddxss:
+  case TOP_vfmaddxxss:
+  case TOP_vfmaddxxxss:
+  case TOP_vfmaddxsd:
+  case TOP_vfmaddxxsd:
+  case TOP_vfmaddxxxsd:
+  case TOP_vfnmaddxss:
+  case TOP_vfnmaddxxss:
+  case TOP_vfnmaddxxxss:
+  case TOP_vfnmaddxsd:
+  case TOP_vfnmaddxxsd:
+  case TOP_vfnmaddxxxsd:
+  case TOP_vfmaddxps:
+  case TOP_vfmaddxxps:
+  case TOP_vfmaddxxxps:
+  case TOP_vfmaddxpd:
+  case TOP_vfmaddxxpd:
+  case TOP_vfmaddxxxpd:
+  case TOP_vfnmaddxps:
+  case TOP_vfnmaddxxps:
+  case TOP_vfnmaddxxxps:
+  case TOP_vfnmaddxpd:
+  case TOP_vfnmaddxxpd:
+  case TOP_vfnmaddxxxpd:
+  case TOP_vfmsubxss:
+  case TOP_vfmsubxxss:
+  case TOP_vfmsubxxxss:
+  case TOP_vfmsubxsd:
+  case TOP_vfmsubxxsd:
+  case TOP_vfmsubxxxsd:
+  case TOP_vfnmsubxss:
+  case TOP_vfnmsubxxss:
+  case TOP_vfnmsubxxxss:
+  case TOP_vfnmsubxsd:
+  case TOP_vfnmsubxxsd:
+  case TOP_vfnmsubxxxsd:
+  case TOP_vfmsubxps:
+  case TOP_vfmsubxxps:
+  case TOP_vfmsubxxxps:
+  case TOP_vfmsubxpd:
+  case TOP_vfmsubxxpd:
+  case TOP_vfmsubxxxpd:
+  case TOP_vfnmsubxps:
+  case TOP_vfnmsubxxps:
+  case TOP_vfnmsubxxxps:
+  case TOP_vfnmsubxpd:
+  case TOP_vfnmsubxxpd:
+  case TOP_vfnmsubxxxpd:
+    return EBO_Process_SSE5_Load_Exectute_FMA_p1(new_top, mode, base, 
+                                                 scale, index, offset, 
+                                                 result, ld_op,
+                                                 alu_op, actual_tninfo);
+
+  // pattern 2 - 2nd mul src is memop
+  case TOP_vfmaddxrss:
+  case TOP_vfmaddxxrss:
+  case TOP_vfmaddxxxrss:
+  case TOP_vfmaddxrsd:
+  case TOP_vfmaddxxrsd:
+  case TOP_vfmaddxxxrsd:
+  case TOP_vfnmaddxrss:
+  case TOP_vfnmaddxxrss:
+  case TOP_vfnmaddxxxrss:
+  case TOP_vfnmaddxrsd:
+  case TOP_vfnmaddxxrsd:
+  case TOP_vfnmaddxxxrsd:
+  case TOP_vfmaddxrps:
+  case TOP_vfmaddxxrps:
+  case TOP_vfmaddxxxrps:
+  case TOP_vfmaddxrpd:
+  case TOP_vfmaddxxrpd:
+  case TOP_vfmaddxxxrpd:
+  case TOP_vfnmaddxrps:
+  case TOP_vfnmaddxxrps:
+  case TOP_vfnmaddxxxrps:
+  case TOP_vfnmaddxrpd:
+  case TOP_vfnmaddxxrpd:
+  case TOP_vfnmaddxxxrpd:
+  case TOP_vfmsubxrss:
+  case TOP_vfmsubxxrss:
+  case TOP_vfmsubxxxrss:
+  case TOP_vfmsubxrsd:
+  case TOP_vfmsubxxrsd:
+  case TOP_vfmsubxxxrsd:
+  case TOP_vfnmsubxrss:
+  case TOP_vfnmsubxxrss:
+  case TOP_vfnmsubxxxrss:
+  case TOP_vfnmsubxrsd:
+  case TOP_vfnmsubxxrsd:
+  case TOP_vfnmsubxxxrsd:
+  case TOP_vfmsubxrps:
+  case TOP_vfmsubxxrps:
+  case TOP_vfmsubxxxrps:
+  case TOP_vfmsubxrpd:
+  case TOP_vfmsubxxrpd:
+  case TOP_vfmsubxxxrpd:
+  case TOP_vfnmsubxrps:
+  case TOP_vfnmsubxxrps:
+  case TOP_vfnmsubxxxrps:
+  case TOP_vfnmsubxrpd:
+  case TOP_vfnmsubxxrpd:
+  case TOP_vfnmsubxxxrpd:
+    return EBO_Process_SSE5_Load_Exectute_FMA_p2(new_top, mode, base, 
+                                                 scale, index, offset, 
+                                                 result, ld_op,
+                                                 alu_op, actual_tninfo);
+
+  // not yet implemented
+  default:
+    FmtAssert( FALSE, ("EBO_Process_SSE5_Load_Execute: NYI") );
+    break;
+  }
+
+  return FALSE;
+}
+
+
+BOOL EBO_Is_FMA4( OP* alu_op)
+{
+  const TOP top = OP_code(alu_op);
+  BOOL ret_val;
+
+  switch (top) {
+  case TOP_vfmaddss:
+  case TOP_vfmaddsd:
+  case TOP_vfmaddps:
+  case TOP_vfmaddpd:
+  case TOP_vfmsubss:
+  case TOP_vfmsubsd:
+  case TOP_vfmsubps:
+  case TOP_vfmsubpd:
+    ret_val = TRUE;
+    break;
+  default:
+    ret_val = FALSE;
+    break;
+  }
+
+  return ret_val;
+}
+
+
 BOOL EBO_Load_Execution( OP* alu_op, 
                          TN** opnd_tn,     
                          EBO_TN_INFO** actual_tninfo,
@@ -5207,6 +5546,28 @@ BOOL EBO_Load_Execution( OP* alu_op,
       opnd0_indx = OP_opnds(alu_op) - 1 - i;
       Is_True( opnd0_indx >= 0, ("NYI") );
     }
+#ifdef TARG_X8664
+  } else if ( EBO_Is_FMA4(alu_op) ) {
+    int i;
+    OP *mul_in_op = actual_tninfo[1]->in_op;
+    OP *add_sub_in_op2 = actual_tninfo[2]->in_op;
+
+    i = (mul_in_op && OP_load(mul_in_op)) ? 1 : -1;
+    if (i == -1) {
+      i = (add_sub_in_op2 && OP_load(add_sub_in_op2)) ? 2 : -1;
+    }
+    
+    // FMA4 ops can only have loads on opnd0 and opnd1.
+    if (i == -1)
+      return FALSE;
+    
+    alu_cmp_idx = i;
+    if( TN_is_register( OP_opnd( alu_op, i ) ) ){
+      tninfo = actual_tninfo[i];
+      opnd0_indx = OP_opnds(alu_op) - 1 - i;
+      Is_True( opnd0_indx >= 0, ("NYI") );
+    }
+#endif
   } else {
     for( int i = OP_opnds(alu_op) - 1; i >= 0; i-- ){
       if( TN_is_register( OP_opnd( alu_op, i ) ) ){
@@ -5388,6 +5749,14 @@ BOOL EBO_Load_Execution( OP* alu_op,
 
   OP* new_op = NULL;
 
+  if (OP_sse5(alu_op)) {
+    return EBO_Process_SSE5_Load_Execute(new_top, mode, alu_cmp_idx, base,
+                                         scale, index, offset,
+                                         result, ld_op, alu_op, 
+                                         actual_tninfo);
+  }
+
+  // Standard Load Execute processing
   if( mode == BASE_MODE ){
     // base + offset
     if( OP_opnds(alu_op) == 1 ){

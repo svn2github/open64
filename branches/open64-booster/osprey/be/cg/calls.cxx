@@ -1898,6 +1898,39 @@ Init_Entry_Exit_Code (WN *pu_wn)
   LC_Used_In_PU = FALSE;
 }
 
+#ifdef TARG_X8664
+/* ====================================================================
+ *
+ * Generate_Entry_Merge_Clear
+ *
+ * Generate Clear of Merge dependencies for YMM regs and usage of 
+ * avx 128-bit insns.
+ *
+ * ====================================================================
+ */
+
+void Generate_Entry_Merge_Clear(BOOL is_region)
+{
+  // If we have avx128 bit instructions, at the entry block, add a 
+  // vzeroupper insn to clear the upper 128bits and
+  // avoid merge dependencies on the machine.  Otherwise we would have
+  // to allow a 16 dst operand insn so that all the regs can show a def.
+  // Doing this after final scheduling means we do not need any special
+  // rules for placing this insn.
+  for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){
+    if (BB_entry(bb)) {
+      OP *vzup = Mk_OP(TOP_vzeroupper);
+      if (BB_first_op(bb) == NULL) {
+        // we are in a main block
+        BB *next = BB_next(bb);
+        BB_Insert_Op_Before(next, BB_first_op(next), vzup);
+      } else {
+        BB_Insert_Op_Before(bb, BB_first_op(bb), vzup);
+      }
+    }
+  }
+}
+#endif
 
 /* ====================================================================
  *

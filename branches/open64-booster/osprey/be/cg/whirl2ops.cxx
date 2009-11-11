@@ -4238,6 +4238,86 @@ Handle_Shift_Operation(WN* expr, TN* result)
   
   return result; 
 }
+
+#elif defined(TARG_X8664)
+
+void dump_op(const OP* op);
+
+static TN* 
+Handle_Fma_Operation(WN* expr, TN* result, WN *mul_wn, BOOL mul_kid0) 
+{
+  
+  WN* add_wn = (mul_kid0) ? WN_kid1(expr) : WN_kid0(expr); 
+  TN* opnd0; 
+  TN* opnd1; 
+  TN* opnd2;
+  TOP opcode; 
+  TYPE_ID rtype = OPCODE_rtype(WN_opcode(expr));
+  BOOL is_vector = MTYPE_is_mmx_vector(rtype);
+
+  opnd2 = Expand_Expr(add_wn, expr,  NULL); 
+  opnd1 = Expand_Expr(WN_kid1(mul_wn), mul_wn, NULL);
+  opnd0 = Expand_Expr(WN_kid0(mul_wn), mul_wn, NULL);
+ 
+  if (WN_opcode(mul_wn) == OPC_F8MPY) {
+    opcode = (is_vector) ? TOP_vfmaddpd : TOP_vfmaddsd;
+  } else if (WN_opcode(mul_wn) == OPC_F4MPY) {
+    opcode = (is_vector) ? TOP_vfmaddps : TOP_vfmaddss;
+  }
+  
+  if(result == NULL) 
+    result = Allocate_Result_TN(expr, NULL); 
+
+  // Position tn's from loads on the 2nd operand if possible.
+  if (OPCODE_is_load(WN_opcode(WN_kid0(mul_wn))))
+    Build_OP(opcode,  result,  opnd1,  opnd0, opnd2, &New_OPs); 
+  else
+    Build_OP(opcode,  result,  opnd0,  opnd1, opnd2, &New_OPs); 
+
+  // TODO: add operand size check for 256-bit
+  if (PU_has_avx128 == FALSE)
+    PU_has_avx128 = TRUE;
+  
+  return result; 
+}
+
+static TN* 
+Handle_Fms_Operation(WN* expr, TN* result, WN *mul_wn, BOOL mul_kid0) 
+{
+  WN* sub_wn = (mul_kid0) ? WN_kid1(expr) : WN_kid0(expr); 
+  TN* opnd0; 
+  TN* opnd1; 
+  TN* opnd2;
+  TOP opcode; 
+  TYPE_ID rtype = OPCODE_rtype(WN_opcode(expr));
+  BOOL is_vector = MTYPE_is_mmx_vector(rtype);
+
+  opnd2 = Expand_Expr(sub_wn, expr,  NULL); 
+  opnd1 = Expand_Expr(WN_kid1(mul_wn), mul_wn, NULL);
+  opnd0 = Expand_Expr(WN_kid0(mul_wn), mul_wn, NULL);
+ 
+  if (WN_opcode(mul_wn) == OPC_F8MPY) {
+    opcode = (is_vector) ? TOP_vfmsubpd : TOP_vfmsubsd;
+  } else if (WN_opcode(mul_wn) == OPC_F4MPY) {
+    opcode = (is_vector) ? TOP_vfmsubps : TOP_vfmsubss;
+  }
+  
+  if(result == NULL) 
+    result = Allocate_Result_TN(expr, NULL); 
+
+  // Position tn's from loads on the 2nd operand if possible.
+  if (OPCODE_is_load(WN_opcode(WN_kid0(mul_wn))))
+    Build_OP(opcode,  result,  opnd1,  opnd0, opnd2, &New_OPs); 
+  else
+    Build_OP(opcode,  result,  opnd0,  opnd1, opnd2, &New_OPs); 
+
+  // TODO: add operand size check for 256-bit
+  if (PU_has_avx128 == FALSE)
+    PU_has_avx128 = TRUE;
+  
+  return result; 
+}
+
 #endif
 
 
@@ -4775,6 +4855,37 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
       CG_SL2_enable_peephole &&  
       Has_Shift_Operation(expr)) {
       return Handle_Shift_Operation(expr, result); 
+    }
+#elif defined(TARG_X8664)
+  case OPR_SUB:
+  case OPR_ADD:
+    if ((CG_opt_level > 1) && Is_Target_Orochi()) {
+      TYPE_ID rtype = OPCODE_rtype(opcode);
+      WN *mul_wn = NULL;
+      // Looking for a fm{a/s} candidate via FMA4 insns
+      if (MTYPE_is_float(rtype)) {
+        if ((WN_operator(mul_wn = WN_kid(expr, 1)) == OPR_MPY) &&
+            (WN_opcode(mul_wn) != OPC_FQMPY)) {
+          rtype = OPCODE_rtype(WN_opcode (mul_wn));
+          if (MTYPE_is_float(rtype) || MTYPE_is_mmx_vector(rtype)) {
+            if (WN_operator(expr) == OPR_ADD) {
+              return Handle_Fma_Operation(expr, result, mul_wn, FALSE);
+            } else if (WN_operator(expr) == OPR_SUB) {
+              return Handle_Fms_Operation(expr, result, mul_wn, FALSE);
+            }
+          }
+        } else if ((WN_operator(mul_wn = WN_kid(expr, 0)) == OPR_MPY) &&
+                   (WN_opcode(mul_wn) != OPC_FQMPY)) {
+          rtype = OPCODE_rtype(WN_opcode (mul_wn));
+          if (MTYPE_is_float(rtype) || MTYPE_is_mmx_vector(rtype)) {
+            if (WN_operator(expr) == OPR_ADD) {
+              return Handle_Fma_Operation(expr, result, mul_wn, TRUE);
+            } else if (WN_operator(expr) == OPR_SUB) {
+              return Handle_Fms_Operation(expr, result, mul_wn, TRUE);
+            }
+          }
+        }
+      }
     }
 #endif 
 
@@ -6981,6 +7092,10 @@ Convert_WHIRL_To_OPs (WN *tree)
   Is_True(rid != NULL, ("Convert_WHIRL_To_OPs, NULL RID"));
   BOOL Trace_BBs = Get_Trace (TP_CGEXP, 512);
   Trace_WhirlToOp = Get_Trace (TP_CGEXP, 2);
+
+#ifdef TARG_X8664
+  PU_has_avx128 = FALSE;
+#endif
 
   // Initialization; some of this should be PU level others are region level
 

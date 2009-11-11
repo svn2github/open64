@@ -594,7 +594,7 @@ Expand_Misaligned_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT vari
     else Build_OP(!Is_Target_SSE2() ? TOP_ldlps_n32 : TOP_ld64_2sse_n32, result, disp, ops);    
   }
   else if (mtype == MTYPE_V16F8 || mtype == MTYPE_V16C8) {
-    if(Is_Target_Barcelona()){
+    if(Is_Target_Barcelona() || Is_Target_Orochi()){
      if(base != NULL)
        Build_OP (TOP_ldupd, result, base, disp, ops);
      else Build_OP (TOP_ldupd_n32, result, disp, ops);
@@ -614,7 +614,7 @@ Expand_Misaligned_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT vari
    }
   }
   else if (mtype == MTYPE_V16F4 || mtype == MTYPE_V16C4) {
-   if(Is_Target_Barcelona()){
+   if(Is_Target_Barcelona() || Is_Target_Orochi()){
      if(base != NULL)
        Build_OP (TOP_ldups, result, base, disp, ops);
      else Build_OP (TOP_ldups_n32, result, disp, ops);
