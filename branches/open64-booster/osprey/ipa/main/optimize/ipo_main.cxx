@@ -1912,6 +1912,9 @@ IPO_main (IPA_CALL_GRAPH* cg)
     // loop) we will perform the actual optimization (if it is legal)
 
     // same with array remapping optimization
+    if (!IPA_Enable_Scale)
+      // -mso (multi-core scaling optimization is not on
+      IPA_Enable_Struct_Opt = 0;
     for (IPA_NODE_VECTOR::iterator first = walk_order.begin();
          first != walk_order.end(); first++)
     {

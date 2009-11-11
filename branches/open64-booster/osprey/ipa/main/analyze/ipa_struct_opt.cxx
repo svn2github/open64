@@ -357,5 +357,8 @@ void IPA_struct_opt_legality (void)
   // no opportunities for structure splitting/peeling were found; try
   // complete_struct_relayout optimization
   complete_struct_relayout_type_id = 0;
-  Traverse_TYs_for_complete_struct_relayout();
+  // save some compile time, only do this if -mso (multi-core scaling
+  // optimization is on (otherwise nothing would have been marked anyway)
+  if (IPA_Enable_Scale)
+    Traverse_TYs_for_complete_struct_relayout();
 }
