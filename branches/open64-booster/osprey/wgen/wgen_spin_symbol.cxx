@@ -798,8 +798,8 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		TY_Init (ty, tsize, KIND_STRUCT, MTYPE_M, 
 			Save_Str(Get_Name(gs_type_name(type_tree))) );
 
-                if (gs_type_name(type_tree) == NULL)
-                    Set_TY_anonymous(ty);
+		if (gs_type_name(type_tree) == NULL || gs_type_anonymous_p(type_tree))
+		    Set_TY_anonymous(ty);
 
 		if (gs_tree_code(type_tree) == GS_UNION_TYPE) {
 			Set_TY_is_union(idx);
