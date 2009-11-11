@@ -1605,7 +1605,8 @@ EMITTER::Emit(COMP_UNIT *cu, DU_MANAGER *du_mgr,
 #if !defined(TARG_NVISA)
   {
     BOOL tr = _trace || Get_Trace (TP_GLOBOPT, ALIAS_DUMP_FLAG);
-    if (Opt_stab()->Phase() == PREOPT_LNO_PHASE) {
+    if (Opt_stab()->Phase() == PREOPT_LNO_PHASE
+        || Opt_stab()->Phase() == PREOPT_LNO1_PHASE) {
       Opt_stab()->Cr_sr_annot_mgr()->Export_annot 
                      (_opt_func, alias_mgr, FALSE, tr);
     } else {
