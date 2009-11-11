@@ -107,12 +107,14 @@ gs_void_t gs_write (const gs_string_t filename)
     p_in_memseg = (gs_t) (mem_seg + i);
     size = gspin_node_size(gs_code(t));
     memcpy(p_in_memseg, t, size);
+#ifdef CHECK_SPIN_LEAKS
 #ifdef Is_True_On
     _gs_em(p_in_memseg, false);
     if (gs_em(t) == false) {
       printf("leaked node: ");
       gs_dump(t);
     }
+#endif
 #endif
 
     if (gs_code_arity(gs_code(t)) > 0) { // convert kid pointers to indices
