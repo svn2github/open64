@@ -2994,6 +2994,11 @@ GRU_Fuse(void)
   // skip it if the optimization is not enabled
   if (!GRA_unspill_enable) return;
 
+  // GRA will free the dominator memory when loop splitting is on
+  if (GRA_loop_splitting) {
+    Calculate_Dominators();
+  }
+
   GRA_Init_Trace_Memory();
   MEM_POOL_Push ( &MEM_local_pool );
 
@@ -3017,6 +3022,11 @@ GRU_Fuse(void)
 			spill_count, priority_count);
   GRA_Trace_Memory("GRU_Fuse()");
   MEM_POOL_Pop ( &MEM_local_pool );
+
+  if (GRA_loop_splitting) {
+    Free_Dominators_Memory();
+  }
+
 }
 
 /////////////////////////////////////

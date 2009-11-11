@@ -451,12 +451,7 @@ GRU_Fuse_Global_Spills( BOOL is_region )
   Set_Error_Phase ("Fuse Global Spills");
   Start_Timer (T_GRU_CU);
 
-  // GRA will free the dominator memory when loop splitting is on
-  if (GRA_loop_splitting) {
-    Calculate_Dominators();
-  }
-
-  // Dump out OPs after GRA
+  // Dump out OPs before GRA
   if (Get_Trace(TKIND_IR, TP_GRA, REGION_First_BB))
     Trace_IR(TP_GRU, "GRU0", NULL);
 
@@ -465,10 +460,6 @@ GRU_Fuse_Global_Spills( BOOL is_region )
   // Dump out OPs after GRA
   if (Get_Trace(TKIND_IR, TP_GRU, REGION_First_BB))
     Trace_IR(TP_GRU, "GRU", NULL);
-
-  if (GRA_loop_splitting) {
-    Free_Dominators_Memory();
-  }
 
   Stop_Timer ( T_GRU_CU );
 #endif
