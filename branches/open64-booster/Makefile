@@ -272,12 +272,27 @@ $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a  libspin42:
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0 
 
 # GNU 4.2.0 based FE
+cc1plus: $(GNUFE_BUILD_DIR)/gcc/cc1plus
+cc1: $(GNUFE_BUILD_DIR)/gcc/cc1
+cc1plus: cc1
 $(GNUFE_BUILD_DIR)/gcc/cc1plus cc1plus: $(GNUFE_BUILD_DIR)/gcc/cc1
 $(GNUFE_BUILD_DIR)/gcc/cc1 cc1: $(GNUFE_BUILD_DIR)/Makefile Force
 	$(MAKE) -C $(GNUFE_BUILD_DIR)
 	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
 	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
-	    install-common install-headers install-libgcc install-cpp install-driver
+	    install-common
+	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
+	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
+	    install-headers
+	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
+	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
+	    install-libgcc
+	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
+	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
+	    install-cpp
+	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
+	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
+	    install-driver
 	$(MAKE) -C $(GNUFE_BUILD_DIR)/$(GNUFE_BUILD_HOST)/libstdc++-v3 \
 	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
 	    install
