@@ -3249,7 +3249,7 @@ lookup_cleanups (INITV_IDX& iv)
   for (int i=temp_cleanup_i; i>=0; --i)
   {
 	TEMP_CLEANUP_INFO t = temp_cleanup_stack[i];
-  	if (t.label_idx && t.cleanup_eh_only)
+  	if (t.label_idx)
 	{
 		// need to call the delete operator
 		temp_cleanup = temp_cleanup_stack[i].expr;
