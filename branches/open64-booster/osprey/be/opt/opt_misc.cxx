@@ -1306,6 +1306,11 @@ CFG::ULSE_insert_bb_and_merge(STMTREP * stmt,
     cond_bb->Append_stmtrep(stmt);
 
     before_bb->Insert_Before(cond_bb);
+    if (Feedback())
+    {
+        Feedback()->Add_node(cond_bb->Id());
+    }
+    
     BB_NODE* pred;
     BB_LIST_ITER pred_iter;
     FB_FREQ edge_freq = 0;
@@ -1313,8 +1318,11 @@ CFG::ULSE_insert_bb_and_merge(STMTREP * stmt,
     {
         pred->Replace_succ (before_bb, cond_bb);
         if (Feedback())
+        {
             edge_freq = edge_freq +
                 Feedback()->Get_edge_freq(pred->Id(), before_bb->Id());
+            Feedback()->Move_edge_dest(pred->Id(), before_bb->Id(), cond_bb->Id());    
+        }        
     }
 
     cond_bb->Set_pred(before_bb->Pred());
@@ -1324,7 +1332,6 @@ CFG::ULSE_insert_bb_and_merge(STMTREP * stmt,
 
     if (Feedback())
     {
-        Feedback()->Add_node(cond_bb->Id());
         Feedback()->Add_edge(cond_bb->Id(), before_bb->Id(),
                             FB_EDGE_BRANCH_NOT_TAKEN, 0.5 * edge_freq);
         Feedback()->Add_edge(cond_bb->Id(), merge_bb->Id(),
