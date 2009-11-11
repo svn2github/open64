@@ -999,7 +999,7 @@ static void ir_put_wn(WN * wn, INT indent)
 	    Is_True(OPCODE_operator(opcode) == OPR_INTRINSIC_OP ||
 		    OPCODE_operator(opcode) == OPR_INTRINSIC_CALL,
 		    ("ir_put_wn, expected an intrinsic"));
-#if defined(BACK_END) || defined(TARG_NVISA)
+#if defined(BACK_END) || defined(IR_TOOLS) || defined(TARG_NVISA)
 	    fprintf(ir_ofile, " <%d,%s>", WN_intrinsic(wn),
 		    INTRINSIC_name((INTRINSIC) WN_intrinsic(wn)));
 #endif
