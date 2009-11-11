@@ -3189,14 +3189,13 @@ IPA_NODE::Is_Externally_Callable ()
     // since we are in standalone inliner which is invoked for
     // single translation unit, all global functions are callable
     // by other TUs in the same modules (DSO or a.out)
-    // but for inline function  which is not preemptible we
-    // can assume it is defined in every translation unit (ODR)
-    // and can be thought as not external callable, so the function
-    // can be elimated
-    if (PU_is_marked_inline(Pu_Table [ST_pu (func_st)]) &&
-        (ST_export (func_st) == EXPORT_INTERNAL ||
+    // even for inline function  which is not preemptible we
+    // still need to export them since in different .o (in same 
+    // module), they can be called from there, and C doesn't require
+    // inline function be defined in every translation unit.
+    if ( (ST_export (func_st) == EXPORT_INTERNAL ||
 	ST_export (func_st) == EXPORT_HIDDEN ))
-	return FALSE;
+	return TRUE;
 #endif // _LIGHTWEIGHT_INLINER
 
     return TRUE;
