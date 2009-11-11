@@ -3843,9 +3843,7 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
          TOP_is_jump(topcode) &&
          opnd == OP_find_opnd_use(op,OU_target) ) {
       ST* function = TN_var(OP_opnd(op, opnd));
-      // only preemptaible function need to use PLT, internal/hidden/protected
-      // functions can be called directly from the module (linker resovles it)
-      if ( function && ST_is_preemptible(function) ) 
+      if ( function && !ST_is_export_local(function) )
         strcat( name, "@PLT" );
     }
 #endif /* defined(BUILD_OS_DARWIN) */
