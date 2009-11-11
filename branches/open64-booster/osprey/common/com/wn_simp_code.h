@@ -1112,7 +1112,7 @@ static BOOL is_ok_to_reassociate(OPCODE opc)
  * ====================================================================
  */
 
-static OPCODE get_inverse_relop( OPCODE opc )
+OPCODE get_inverse_relop( OPCODE opc )
 {
    OPCODE iopc;
    OPERATOR iopr;

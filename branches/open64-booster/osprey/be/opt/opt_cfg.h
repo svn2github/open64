@@ -246,6 +246,15 @@ private:
 			      ("Bad CFG preds and succs"));
 			  }
 			}
+  void       Prepend_predsucc (BB_NODE *p, BB_NODE *s)
+			{ if (!p->Succ()->Contains(s)) {
+			    p->Prepend_succ(s,_mem_pool);
+			    s->Prepend_pred(p,_mem_pool);
+			  } else {
+			    Is_True(s->Pred()->Contains(p), 
+			      ("Bad CFG preds and succs"));
+			  }
+			}
   void         DisConnect_predsucc (BB_NODE *p, BB_NODE *s)
 			{ p->Remove_succ(s,_mem_pool);
 			  s->Remove_pred(p,_mem_pool);
@@ -300,8 +309,8 @@ private:
 			  }
 			  _last_bb = bb;
 			  _current_bb = bb;
-			  if (Do_pro_loop_fusion_trans())
-			    Add_sc(bb, SC_BLOCK);
+			  if (Do_pro_loop_trans())
+                              Add_sc(bb, SC_BLOCK);
 			}
 
   void         Set_current_bb(BB_NODE *b)
@@ -702,6 +711,12 @@ public:
   SC_NODE *    Clone_sc(SC_NODE *, BOOL, float);
   // Create a SC node 
   SC_NODE *    Create_sc(SC_TYPE type);
+  void         Freq_propagate(SC_NODE *);
+  void         Freq_scale(SC_NODE *, float scale);
+  void         Freq_scale(BB_NODE *, SC_NODE *, float scale);
+  SC_NODE *    Split(SC_NODE *);
+  SC_NODE *    Insert_block_after(SC_NODE *);
+  void         Fix_info(SC_NODE *);
 
   // Create a new block and allocate it.
   BB_NODE     *Create_and_allocate_bb( BB_KIND k )
@@ -724,8 +739,8 @@ public:
 
   // Obtain root of the SC tree
   SC_NODE *   SC_root(void)           { return _sc_root; }
-  // Query whether to do proactive loop fusion transformations
-  BOOL Do_pro_loop_fusion_trans()     { return (_sc_root != NULL); }
+  // Query whether to do proactive loop nest optimization transformations
+  BOOL Do_pro_loop_trans()     { return (_sc_root != NULL); }
   // Free SC tree and related storages.
   void Free_sc(void);
   // Obtain the cloned version of a BB_NODE

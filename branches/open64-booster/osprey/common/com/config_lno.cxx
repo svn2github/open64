@@ -1042,7 +1042,7 @@ LNO_Push_Config ( BOOL use_default, LNO_FLAGS_MASK bitmask )
   LNO_FLAGS_mhd (new_flags) = &Mhd_Options;
 
   FmtAssert(LNO_Check_Bitmask(bitmask), ("Illegal bit mask for LNO flag configuration"));
-  LNO_FLAGS_bitmask(new_flags) |=  bitmask;
+  LNO_FLAGS_bitmask(new_flags) =  bitmask;
 
   Current_LNO = new_flags;
 }

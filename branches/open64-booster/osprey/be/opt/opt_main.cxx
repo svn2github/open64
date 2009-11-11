@@ -351,6 +351,7 @@
 
 #include "dep_graph.h"			/* for tracing Current_Dep_Graph */
 #include "wb_ipl.h"			/* whirl browser for ipl */ 
+#include "opt_du.h"
 
 #ifndef __MINGW32__
 #include "regex.h"                      // For regcomp and regexec
@@ -535,6 +536,7 @@ private:
   BOOL  _loop_multiver;   // loop multiversioning 
   BOOL  _useless_store_elimination; // eliminate useless store in a loop
   BOOL _pro_loop_fusion_trans; 
+  BOOL _pro_loop_interchange_trans;
   BOOL _mem_clear_remove;
   BOOL _bool_simp;
   BOOL _fold_lda_iload_istore;
@@ -699,7 +701,8 @@ private:
 	WOPT_Enable_DU_Full = TRUE;
       } 
 
-      if (WOPT_Enable_Pro_Loop_Fusion_Trans) {
+      if (WOPT_Enable_Pro_Loop_Fusion_Trans
+	  || WOPT_Enable_Pro_Loop_Interchange_Trans) {
 	WOPT_Enable_Noreturn_Attr_Opt = FALSE;
       }
       
@@ -737,6 +740,7 @@ private:
     if (_phase != PREOPT_LNO1_PHASE) 
     {
       WOPT_Enable_Pro_Loop_Fusion_Trans = FALSE;
+      WOPT_Enable_Pro_Loop_Interchange_Trans = FALSE;
     }
   }
 
@@ -829,6 +833,7 @@ private:
     }
 
     WOPT_Enable_Pro_Loop_Fusion_Trans = _pro_loop_fusion_trans;
+    WOPT_Enable_Pro_Loop_Interchange_Trans = _pro_loop_interchange_trans;
     WOPT_Enable_Mem_Clear_Remove = _mem_clear_remove;
     WOPT_Enable_Noreturn_Attr_Opt = _no_return;
     WOPT_Enable_Simple_If_Conv = _simp_if_conv;
@@ -928,6 +933,7 @@ public:
     _loop_multiver = WOPT_Enable_Loop_Multiver;
     _useless_store_elimination = WOPT_Enable_Useless_Store_Elimination;
     _pro_loop_fusion_trans = WOPT_Enable_Pro_Loop_Fusion_Trans;
+    _pro_loop_interchange_trans = WOPT_Enable_Pro_Loop_Interchange_Trans;
     _mem_clear_remove = WOPT_Enable_Mem_Clear_Remove;
     _bool_simp = WOPT_Enable_Bool_Simp;
     _fold_lda_iload_istore = WOPT_Enable_Fold_Lda_Iload_Istore;
@@ -1501,8 +1507,8 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   comp_unit->Cfg()->Compute_dom_frontier(); // create dominance frontier
   comp_unit->Cfg()->Compute_control_dependence(); // create control-dependence set
 
-  SET_OPT_PHASE("Proactive Loop Fusion Transformation");
-  comp_unit->Pro_loop_fusion_trans();
+  SET_OPT_PHASE("Proactive Loop Transformation");
+  comp_unit->Pro_loop_trans();
   comp_unit->Cfg()->Analyze_loops();
 
   // Setup flow free alias information  --  CHI and MU list 

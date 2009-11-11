@@ -170,6 +170,8 @@ extern WN *WN_SimplifyIstore(OPCODE opc, WN_OFFSET offset,
 
 extern INT32 WN_Simp_Compare_Trees(WN *t1, WN *t2);
 
+extern OPCODE get_inverse_relop(OPCODE opc);
+
 struct ALIAS_MANAGER;  /* Needed as a forward reference */
 
 extern WN *WN_Simplify_Tree(WN *tree, ALIAS_MANAGER *am=NULL);

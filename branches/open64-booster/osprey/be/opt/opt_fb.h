@@ -221,7 +221,7 @@ private:
   IDTYPE  Get_node_successor( IDTYPE nx ) const;
 
   void Remove_edge( IDTYPE ex );
-  void Change_edge_freq( IDTYPE ex, FB_FREQ new_freq );
+
   void Set_edge_dest( IDTYPE ex, IDTYPE nx_dst_new );
 
   // Compute unknown frequencies from known frequencies
@@ -232,6 +232,7 @@ private:
   void Freq_propagate_node_in( IDTYPE nx );   // requires unknown_in  < 2 
   void Freq_propagate_node_out( IDTYPE nx );  // requires unknown_out < 2
   void Freq_propagate();
+
 
   // Display frequencies using daVinci
   char *Node_label( IDTYPE nx ) const;
@@ -253,9 +254,11 @@ public:
   
   bool    Edge_has_freq( IDTYPE nx_src, IDTYPE nx_dst ) const;
   FB_FREQ Get_edge_freq( IDTYPE nx_src, IDTYPE nx_dst ) const;
+  IDTYPE  Get_edge(IDTYPE nx_src, IDTYPE nx_dst) const;
   FB_EDGE_TYPE Get_edge_type(IDTYPE nx_src, IDTYPE nx_dst ) const;
   float   Get_pred_prob( IDTYPE nx_src, IDTYPE nx_dst ) const;
   float   Get_succ_prob( IDTYPE nx_src, IDTYPE nx_dst ) const;
+  void Change_edge_freq( IDTYPE ex, FB_FREQ new_freq );
 
   void Delete_edge( IDTYPE nx_src, IDTYPE nx_dst );
   void Move_edge_dest( IDTYPE nx_src, IDTYPE nx_dst_old, IDTYPE nx_dst_new );
@@ -272,6 +275,8 @@ public:
   void Add_node( IDTYPE nx_new );
   void Add_edge( IDTYPE nx_src, IDTYPE nx_dst,
 		 FB_EDGE_TYPE edge_type, FB_FREQ freq );
+
+  void Freq_propagate(IDTYPE nx);
 
   void Print( FILE *fp = stderr ) const;
   FB_VERIFY_STATUS Verify( CFG *cfg, const char *const phase );

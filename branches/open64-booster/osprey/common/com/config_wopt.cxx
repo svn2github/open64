@@ -324,11 +324,15 @@ BOOL  WOPT_Enable_Noreturn_Attr_Opt = TRUE;
 BOOL  WOPT_Enable_Pt_Summary = FALSE;  // points-to summary/annotation 
 INT32 WOPT_Enable_If_Merge_Limit = -1;  // Limit number of if-merging transformations per function.
 INT32 WOPT_Enable_Tail_Dup_Limit = -1; // Limit number of tail-duplication transformations per function.
+INT32 WOPT_Enable_If_Cond_Limit = -1;  // Limit number of if-condition transformations per function.
 INT32 WOPT_Tail_Dup_Max_Clone = -1; // Limit code size bloats (in statement count)
                                                   // due to tail-duplication.
 INT32 WOPT_Enable_Pro_Loop_Fusion_Func_Limit = -1; // Enable proactive loop fusion transformation for
                                                   // functions within the limit.
+INT32 WOPT_Enable_Pro_Loop_Interchange_Func_Limit = -1; // Enable proactive loop interchange for 
+                                                        // functions within the limit.
 BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans = TRUE;  // Enables proactive loop fusion transformation
+BOOL  WOPT_Enable_Pro_Loop_Interchange_Trans = FALSE; // Enables proactive loop interchange transformation
 
 BOOL  WOPT_Enable_Mem_Clear_Remove = TRUE;  // Enables removal of redundant mem clear after a calloc
 
@@ -763,6 +767,8 @@ static OPTION_DESC Options_WOPT[] = {
     TRUE, 0, 0,	&WOPT_Enable_New_Phase_Ordering, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "pro_loop_fusion_trans", "pro_loop_fusion_trans",
     FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Fusion_Trans, NULL },
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "pro_loop_interchange_trans", "pro_loop_interchange_trans",
+    FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Interchange_Trans, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "mem_clear_remove", "mem_clear_remove",
     FALSE, 0, 1, &WOPT_Enable_Mem_Clear_Remove, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "if_merge_limit",              "",
@@ -771,9 +777,12 @@ static OPTION_DESC Options_WOPT[] = {
     INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Tail_Dup_Limit, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "tail_dup_max_clone",              "",
     INT32_MAX, 0, INT32_MAX,    &WOPT_Tail_Dup_Max_Clone, NULL },
+  { OVK_INT32,  OV_VISIBLE,    FALSE, "if_cond_limit",              "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_If_Cond_Limit, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "pro_loop_fusion_func_limit",              "",
     INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Pro_Loop_Fusion_Func_Limit, NULL },
-  
+  { OVK_INT32,  OV_VISIBLE,    FALSE, "pro_loop_interchange_func_limit",              "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Pro_Loop_Interchange_Func_Limit, NULL },
 
 #ifdef KEY
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "mem_opnds", "mem_opnds",

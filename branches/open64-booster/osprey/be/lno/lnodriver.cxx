@@ -292,7 +292,7 @@ Perform_Loop_Nest_Optimization (PU_Info* current_pu, WN *pu_wn,
     RID_level(REGION_get_rid(region_wn)) = RL_LNO_PREOPT;
     Is_True(REGION_consistency_check(region_wn),(""));
 
-    if (WOPT_Enable_Pro_Loop_Fusion_Trans) {
+    if (WOPT_Enable_Pro_Loop_Fusion_Trans || WOPT_Enable_Pro_Loop_Interchange_Trans) {
       Delete_Du_Manager(du_mgr, MEM_pu_nz_pool_ptr);
       du_mgr = Create_Du_Manager(MEM_pu_nz_pool_ptr);
       region_wn =
