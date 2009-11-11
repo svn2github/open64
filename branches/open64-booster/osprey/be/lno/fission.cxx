@@ -1004,7 +1004,7 @@ MEM_POOL* pool)
   i = 0;
   for (stmt = WN_first(WN_do_body(in_loop)); stmt; stmt = WN_next(stmt)) {
     VINDEX16 scc_id = dep_g_p->Get_Scc_Id(
-      (mUINT32)WN_MAP_Get(dep_graph_map, stmt));
+      (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt));
     FF_STMT_ITER s_iter(&scc[scc_id]);
     if (s_iter.Is_Empty())
       queue[i++] = scc_id;
@@ -1017,7 +1017,7 @@ MEM_POOL* pool)
   WN *first = WN_first(loop_body);
   WN *last = WN_last(loop_body);
   VINDEX16 last_scc_id = dep_g_p->Get_Scc_Id(
-    (mUINT32)WN_MAP_Get(dep_graph_map, last));
+    (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, last));
   SCC_DIRECTED_GRAPH16 *ac_g;
   ac_g = dep_g_p->Acyclic_Condensation(pool);
   mUINT16 *level = CXX_NEW_ARRAY(mUINT16,ac_g->Get_Vertex_Count()+1,pool);
