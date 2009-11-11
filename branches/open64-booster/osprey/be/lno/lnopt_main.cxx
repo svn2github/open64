@@ -937,9 +937,17 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
     LNO_Tlog = Get_Trace ( TP_PTRACE1, TP_PTRACE1_LNO );
   
     Hoist_Varying_Lower_Bounds(func_nd); 
+#ifndef TARG_X8664
+    // Move If_MinMax() after Array_Substutution() so that
+    // new peeling heuiristic could kick-in. Only do this
+    // for X8664.
     If_MinMax(func_nd);
+#endif
     Dead_Store_Eliminate_Arrays(Array_Dependence_Graph);
     Array_Substitution(func_nd);
+#ifdef TARG_X8664
+    If_MinMax(func_nd);
+#endif
     Reverse_Loops(func_nd);
 
 
@@ -1665,7 +1673,10 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
 #ifdef TARG_X8664
   void Simd_Phase(WN* func_nd);
   if (LNO_Run_Simd && LNO_Run_Simd_Set && !Skip_Simd && Is_Target_SSE2())
+  {
+    Array_Substitution(func_nd);
     Simd_Phase(func_nd);
+  }
   void HoistIf_Phase(WN* func_nd);
   if (LNO_Run_hoistif==TRUE && !Skip_HoistIf)
     HoistIf_Phase(func_nd);

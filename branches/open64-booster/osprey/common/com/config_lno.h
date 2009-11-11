@@ -353,6 +353,11 @@ typedef struct lno_flags {
   BOOL Apo_use_feedback;	// APO use loop freq from feedback data to
   				// decide whether to parallelize a loop
 #endif
+  BOOL  IfMinMax_Fix_Cond;
+  UINT32 IfMinMax_Limit;
+  UINT32 IfMinMax_Fix_Cond_Limit;
+  UINT32 IfMinMax_Trace; // 0: disable; 1: minimal; 2: normal; 3: maximum
+  
   /* This buffer area allows references to new fields to be added in
    * later revisions, from other DSOs, without requiring a new be.so
    * or running the risk of referencing illegal data.  Assuming that
@@ -571,6 +576,10 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Parallel_Overhead		Current_LNO->Parallel_overhead
 #define LNO_Prompl			Current_LNO->Prompl
 #define LNO_IfMinMax			Current_LNO->IfMinMax
+#define LNO_IfMinMax_Fix_Cond		Current_LNO->IfMinMax_Fix_Cond
+#define LNO_IfMinMax_Limit		Current_LNO->IfMinMax_Limit
+#define LNO_IfMinMax_Fix_Cond_Limit	Current_LNO->IfMinMax_Fix_Cond_Limit
+#define LNO_IfMinMax_Trace		Current_LNO->IfMinMax_Trace
 #define LNO_Run_call_info		Current_LNO->Run_call_info
 #define LNO_Shackle 			Current_LNO->Shackle 
 #define LNO_Cross_Loop 			Current_LNO->Cross_loop
