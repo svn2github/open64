@@ -149,7 +149,7 @@ BASIC_PHONY_TARGET = $(shell for i in $(BASIC_COMPONENTS); do basename "$$i" ; d
 CROSS_PHONY_TARGET = $(shell for i in $(CROSS_COMPONENTS); do basename "$$i" ; done)
 
 PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done) 
-.PHONY : $(PHONY_TARGET) install clean clobber 
+.PHONY : $(PHONY_TARGET) all build install clean clobber backend
 
 #define SKIP_DEP_BUILD will disable the unnecessary dependency check
 export SKIP_DEP_BUILD=1 
