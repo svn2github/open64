@@ -2151,9 +2151,11 @@ total_num_fields_in_struct(TY_IDX struct_ty_idx)
 static void
 identify_complete_struct_relayout_candidates(WN *wn)
 {
-  if (!OPT_Scale)
-    // -mso (multi-core scaling optimization is not on
-    continue_with_complete_struct_relayout_analysis = 0;
+  // comment out the following since this optimization benefits both mso as well
+  // as non-mso compilations
+  // if (!OPT_Scale)
+  //   -mso (multi-core scaling optimization is not on)
+  //   continue_with_complete_struct_relayout_analysis = 0;
   if (!(PU_src_lang(Get_Current_PU()) & PU_C_LANG))
     IPA_Enable_Struct_Opt = 0; // only do this for C programs
   if (IPA_Enable_Struct_Opt == 0 || wn == NULL ||
@@ -2340,7 +2342,7 @@ identify_array_remapping_candidates(WN *wn, ST *loop_index_st)
   int j;
 
   if (!OPT_Scale)
-    // -mso (multi-core scaling optimization is not on
+    // -mso (multi-core scaling optimization is not on)
     continue_with_array_remapping_analysis = 0;
   if (IPA_Enable_Struct_Opt == 0 || wn == NULL ||
       continue_with_array_remapping_analysis == 0)

@@ -358,7 +358,9 @@ void IPA_struct_opt_legality (void)
   // complete_struct_relayout optimization
   complete_struct_relayout_type_id = 0;
   // save some compile time, only do this if -mso (multi-core scaling
-  // optimization is on (otherwise nothing would have been marked anyway)
-  if (IPA_Enable_Scale)
-    Traverse_TYs_for_complete_struct_relayout();
+  // optimization is on) (otherwise nothing would have been marked anyway)
+  // comment out the following since this optimization benefits both mso as well
+  // as non-mso compilations
+  // if (IPA_Enable_Scale)
+  Traverse_TYs_for_complete_struct_relayout();
 }
