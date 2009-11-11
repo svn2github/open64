@@ -3873,6 +3873,18 @@ AGGINIT::Traverse_Aggregate_Vector (
   // bug 11615: If the entire vector has not been initialized, pad till the end
   INT pad = MTYPE_byte_size(mtyp) - emitted_bytes;
 
+#ifdef NEW_INITIALIZER
+    // When object size can't be obtained from mtyp, get it from
+    // the pointed-to object.
+    if ((MTYPE_byte_size(mtyp) == 0) && target 
+	&& (WN_operator(target) == OPR_LDA)) {
+      TY_IDX pointer_type = WN_ty(target);
+      TY_IDX object_type = TY_pointed(pointer_type);
+      UINT64 object_size = TY_size(object_type);
+      pad = object_size - emitted_bytes;
+    }
+#endif
+
   if (pad > 0)
 #ifdef NEW_INITIALIZER
     Traverse_Aggregate_Pad (target, gen_initv, pad, current_offset);
