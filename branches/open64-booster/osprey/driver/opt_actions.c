@@ -1581,7 +1581,7 @@ print_file_path (char *fname, int exe)
   asprintf(&argv[2], "-print-%s-name=%s", exe ? "prog" : "file", fname);
   argv[3] = NULL;
   /* MINGW doesn't support execvp, everyone supports execlp */
-  execlp(argv[0], argv[1], argv[2], NULL);
+  execlp(argv[0], argv[0], argv[1], argv[2], argv[3]);
   fprintf(stderr, "could not execute %s: %m\n", argv[0]);
   exit(1);
 }
@@ -1594,7 +1594,7 @@ print_multi_lib ()
   asprintf(&argv[1], "-print-multi-lib");
   argv[2] = NULL;
   /* MINGW doesn't support execvp, everyone supports execlp */
-  execlp(argv[0], argv[1], NULL);
+  execlp(argv[0], argv[0], argv[1], argv[2]);
   fprintf(stderr, "could not execute %s: %m\n", argv[0]);
   exit(1);
 }
