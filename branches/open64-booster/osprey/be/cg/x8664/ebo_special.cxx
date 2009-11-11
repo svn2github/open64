@@ -5990,13 +5990,6 @@ BOOL EBO_Load_Execution( OP* alu_op,
     return FALSE;
   }
 
-  if( TN_size(tninfo->local_tn) == 8 &&
-      TOP_is_vector_op( OP_code(alu_op) ) &&
-      TN_register_class(tninfo->local_tn) == ISA_REGISTER_CLASS_float ) {
-    // disable load-exec on vector operations with 64-bit fp operands
-    return FALSE;
-  }
-
   /* Check <index> and <base> will not be re-defined between
      <ld_op> and <alu_op>, inclusive.
   */
