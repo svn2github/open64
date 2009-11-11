@@ -829,10 +829,11 @@ static void Init_OP_Name()
   OP_Name[TOP_fxorx128v32] = "xorps";
   OP_Name[TOP_fxorxx128v32] = "xorps";
   OP_Name[TOP_fxorxxx128v32] = "xorps";
-  OP_Name[TOP_fxor128v64] = "xorpd";
-  OP_Name[TOP_fxorx128v64] = "xorpd";
-  OP_Name[TOP_fxorxx128v64] = "xorpd";
-  OP_Name[TOP_fxorxxx128v64] = "xorpd";
+  OP_Name[TOP_fxor128v64] = "xorps";
+  OP_Name[TOP_fxorx128v64] = "xorps";
+  OP_Name[TOP_fxorxx128v64] = "xorps";
+  OP_Name[TOP_fxorxxx128v64] = "xorps";
+  OP_Name[TOP_xorpd] = "xorps";
   OP_Name[TOP_fmax128v32] = "maxps";
   OP_Name[TOP_fmaxx128v32] = "maxps";
   OP_Name[TOP_fmaxxx128v32] = "maxps";
