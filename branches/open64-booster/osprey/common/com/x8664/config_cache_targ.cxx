@@ -120,11 +120,11 @@ void MHD::Initialize()
 
    case TARGET_orochi:
     L[0] = MHD_LEVEL(MHD_TYPE_CACHE,    // Type
-                     64*1024,           // Size
+                     16*1024,           // Size
                      64,                // Line Size
                      18,                // Clean Miss Penalty
                      18,                // Dirty Miss Penalty
-                     64,                 // Associativity : (fully)
+                     4,                 // Associativity
                      32,                // TLB Entries
                      4*1024,            // Page Size
                      50,                // TLB Clean Miss Penalty ?
@@ -285,7 +285,7 @@ void MHD::Initialize()
                      64,
                      150,
                      200, // ?
-                     8,
+                     16,
                      512,
                      4*1024,
                      50, // ?
