@@ -2549,9 +2549,11 @@ Unroll_and_Jam(WN *loop, INT ufactor)
   DO_LOOP_INFO *dli = Get_Do_Loop_Info(loop);
   SNL_NEST_INFO ni(loop, nloops, &LNO_default_pool, TRUE);
 
+  INT outer = Do_Depth(loop);
+
   EST_REGISTER_USAGE est_register_usage =
       Get_Do_Loop_Info(loop)->Est_Register_Usage;
-  SNL_REGION ujm = SNL_Regtile_Loop(loop,ufactor,nloops, FALSE, est_register_usage, &ni.Privatizability_Info(), nloops - 1, TRUE, NULL, NULL);
+  SNL_REGION ujm = SNL_Regtile_Loop(loop,ufactor,nloops, FALSE, est_register_usage, &ni.Privatizability_Info(), outer, TRUE, NULL, NULL);
   ARRAY_DIRECTED_GRAPH16*       dg = Array_Dependence_Graph;
   Renumber_Loops(ujm.First, ujm.Last, dg);
   // remove the unity count outer loop. 
