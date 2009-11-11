@@ -143,6 +143,9 @@ NATIVE_COMPONENTS = $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ)  \
 CROSS_COMPONENTS =  $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
                     $(GNU3_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
 
+
+BASIC_PHONY_TARGET = $(shell for i in $(BASIC_COMPONENTS); do basename "$$i" ; done)
+
 CROSS_PHONY_TARGET = $(shell for i in $(CROSS_COMPONENTS); do basename "$$i" ; done)
 
 PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done) 
@@ -311,6 +314,8 @@ cross: NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia32_ia64
 cross: CROSS_BUILD = true
 cross: $(CROSS_PHONY_TARGET)
 	echo $(CROSS_PHONY_TARGET)
+
+backend: $(BASIC_PHONY_TARGET)
 
 install: ;@./install_compiler.sh $(MACHINE_TYPE)
 install-cross: ;@./install_compiler.sh ia64-cross
