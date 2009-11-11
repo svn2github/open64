@@ -54,6 +54,8 @@
 #include "symtab.h"                     // for Scope_tab
 #endif
 
+#include "symtab_defs.h"
+
 // ======================================================================
 // Auxiliary functions used by ST::Verify()
 // ======================================================================
@@ -559,10 +561,39 @@ ST::Verify (UINT) const
 #endif // Is_True_On
 } // ST::Verify
 
+
+static BOOL
+zero_dim_array(ST_IDX st_idx)
+{ 
+  ST& st = St_Table[st_idx];
+  const TY& ty = Ty_Table[ST_type(st)];
+  if (( TY_kind (ty) != KIND_ARRAY)
+      ||   (ty.Arb() == 0)) 
+    return FALSE;
+
+  // Now check the bounds in each
+  // dimension. 
+
+  ARB_HANDLE arb(ty.Arb());
+  INT i,ndim;
+  ndim = ARB_dimension(arb);
+  for (i = 0; i < ndim; i++) {
+    if (ARB_const_lbnd (arb[i])
+        && ARB_const_ubnd(arb[i]))
+    { 
+      if (ARB_lbnd_val(arb[i]) > ARB_ubnd_val(arb[i]))
+	return TRUE;
+    } 
+  }
+  return FALSE; 
+}
+
 // ======================================================================
 //  INITO::Verify(): other INITO related checks go into this function
 // ======================================================================
 // (See table 25 and 26 in the Whirl Symbol Table Specification)
+
+
 
 void INITO::Verify(UINT level) const 
 {
@@ -575,14 +606,7 @@ void INITO::Verify(UINT level) const
 	   ("ST_IS_INITIALIZED not set"));
 #endif
 
-  ST& st = St_Table[st_idx];
-  const TY& ty = Ty_Table[ST_type(st)];
-  if (( TY_kind (ty) == KIND_ARRAY)
-      && (TY_size (ty) == 0))
-  { 
-    Is_True(0 == val,("Zero sized arrays can't have an initializer"));
-  } 
-  else
+  if (!zero_dim_array(st_idx))
   { 
     Is_True(0 <  val && val < INITV_Table_Size(),
              ("Invalid field for INITO: val"));
