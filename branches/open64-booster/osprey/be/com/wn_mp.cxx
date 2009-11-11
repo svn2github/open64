@@ -1087,7 +1087,7 @@ Get_Offset_From_Const_Array(WN* array)
 // with the same offset, return the first.
 // This routine can return empty fld handler.
 static FLD_HANDLE 
-Get_FLD_From_Offset_r(const TY_IDX ty_idx, const UINT64 offset)
+Get_FLD_From_Offset_r(const TY_IDX ty_idx, const UINT64 offset, UINT* field_id)
 {
   Is_True(Is_Structure_Type(ty_idx), ("need to be a structure type"));
 
@@ -1095,6 +1095,8 @@ Get_FLD_From_Offset_r(const TY_IDX ty_idx, const UINT64 offset)
 
   FLD_ITER fld_iter = Make_fld_iter(TY_fld(ty_idx));
   do {
+    if ( field_id != NULL )
+      (*field_id) ++;
     FLD_HANDLE fld(fld_iter);       
 
     // we assume that we will not see bit-fields here.
@@ -1116,7 +1118,7 @@ Get_FLD_From_Offset_r(const TY_IDX ty_idx, const UINT64 offset)
       // because of unions. 
       INT64 new_offset = offset - cur_offset;
       if (new_offset < 0) return FLD_HANDLE();
-      FLD_HANDLE fld1 = Get_FLD_From_Offset_r(cur_fld_idx, new_offset);
+      FLD_HANDLE fld1 = Get_FLD_From_Offset_r(cur_fld_idx, new_offset, field_id);
       if (!fld1.Is_Null()) return fld1;
     }
 
@@ -1129,10 +1131,11 @@ Get_FLD_From_Offset_r(const TY_IDX ty_idx, const UINT64 offset)
 // with the same offset, return the first.
 // This routine will assert if it cannot find a valid field.
 static FLD_HANDLE 
-Get_FLD_From_Offset(const TY_IDX ty_idx, const UINT64 offset)
+Get_FLD_From_Offset(const TY_IDX ty_idx, const UINT64 offset, UINT *field_id= NULL)
 {
-
-  FLD_HANDLE fld = Get_FLD_From_Offset_r(ty_idx, offset);
+  if (field_id != NULL)
+	  *field_id= 0;
+  FLD_HANDLE fld = Get_FLD_From_Offset_r(ty_idx, offset, field_id);
   FmtAssert(!fld.Is_Null(),("cannot find field from offset"));
   return fld;
 }
@@ -3742,7 +3745,7 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
       }else if (kind == KIND_STRUCT)
       {
         if (vtype == VAR_REDUCTION_SCALAR)
-           ty = FLD_type(TY_fld(ty));
+           ty = FLD_type(Get_FLD_From_Offset(ty, v->orig_offset));
         else if (vtype == VAR_REDUCTION_ARRAY)
         {
           WN* array = v->vtree;
@@ -5016,9 +5019,7 @@ Walk_and_Localize (WN * tree, VAR_TABLE * vtab, Localize_Parent_Stack * lps,
     old_offset = WN_offsetx(tree);
     for (w=vtab; w->orig_st; w++) {
       if ((w->orig_st == old_sym) &&
-#ifndef KEY
 	  (w->has_offset ? (w->orig_offset == old_offset) : TRUE ) &&
-#endif
           (w->vtype != VAR_REDUCTION_ARRAY) &&
 	  ! (w->is_non_pod && is_orphaned_worksharing)) {
 	if (w->is_static_array) {
@@ -5037,12 +5038,15 @@ Walk_and_Localize (WN * tree, VAR_TABLE * vtab, Localize_Parent_Stack * lps,
 	  opr = OPCODE_operator(op);
 	} else {
           WN_st_idx(tree) = ST_st_idx(w->new_st);
+	  // for reduction of a field of STRUCT, the TY_kind would be different
+	  // And, we need to fix the TY for the wn, the field_id, and offsetx
+	  // As the local_xxx symbol is always .predef..., so field_id should be 0
+	  if (TY_kind(ST_type(w->new_st)) != TY_kind(WN_ty(tree))){
+            WN_set_ty(tree, ST_type(w->new_st));
+	    WN_set_field_id(tree, 0);
+	  }
 	  if (w->has_offset)
-#ifdef KEY
-	    WN_set_offsetx(tree, old_offset);
-#else
 	    WN_set_offsetx(tree, w->new_offset);
-#endif
 	}
 	if (w->is_dynamic_array) {  // fix PV 553472 by updating aliases
             // child of ldst that's on the path to tree
@@ -5081,17 +5085,15 @@ Walk_and_Localize (WN * tree, VAR_TABLE * vtab, Localize_Parent_Stack * lps,
     for (w=vtab; w->orig_st; w++) {
       if ((w->vtree == NULL) &&
 	  (w->orig_st == old_sym) &&
-#ifndef KEY
 	  (w->has_offset ? (w->orig_offset == old_offset) : TRUE ) &&
-#endif
 	  ! (w->is_non_pod && is_orphaned_worksharing)) {
 	WN_st_idx(tree) = ST_st_idx(w->new_st);
+	if (TY_kind(ST_type(w->new_st)) != TY_kind(WN_ty(tree))){
+	  WN_set_ty(tree, ST_type(w->new_st));
+	  WN_set_field_id(tree, 0);
+	}
 	if (w->has_offset)
-#ifdef KEY
-	  WN_set_offsetx(tree, old_offset);
-#else
 	  WN_set_offsetx(tree, w->new_offset);
-#endif
 	break;
       }
     }
@@ -5817,51 +5819,58 @@ ST_IDX Make_MPRuntime_ST ( MPRUNTIME rop )
 }
 
 
-/*  Generate an appropriate load WN based on an ST.  */
-
-static WN * 
-Gen_MP_Load ( ST * st, WN_OFFSET offset, BOOL scalar_only )
+static void
+Gen_MP_LS_get_fld_id_and_ty(ST *st, WN_OFFSET offset, BOOL scalar_only, UINT &field_id, TY_IDX &ty, TY_IDX &result_ty)
 {
-  WN *wn;
-  TY_IDX ty = ST_type(st);
+  ty = ST_type(st);
+  result_ty = ty;
 #ifdef KEY // bug 7259
-  if (scalar_only && TY_kind(ty) == KIND_STRUCT)
-    ty = FLD_type(TY_fld(ty));
+  if (scalar_only && TY_kind(ty) == KIND_STRUCT )
+  {
+    FLD_HANDLE fld = Get_FLD_From_Offset(ty, offset, &field_id);
+    result_ty = FLD_type(fld);
+  }
 #endif
 #ifdef KEY // bug 10681
   if (scalar_only && TY_kind(ty) == KIND_ARRAY)
     ty = TY_etype(ty);
 #endif
+  return; 
+}
+/*  Generate an appropriate load WN based on an ST.  */
 
-  wn = WN_RLdid ( Promote_Type(TY_mtype(ty)),
-                  TY_mtype(ty), offset, st, ty );
+static WN *
+Gen_MP_Load( ST * st, WN_OFFSET offset, BOOL scalar_only )
+{
+  UINT field_id = 0;
+  WN *wn;
+  TY_IDX ty;
+  TY_IDX result_ty;
+  
+  Gen_MP_LS_get_fld_id_and_ty(st, offset, scalar_only, field_id, ty, result_ty);
+
+  wn = WN_Ldid ( TY_mtype(result_ty), offset, st, ty ,field_id);
 
   return (wn);
 }
 
-
 /*  Generate an appropriate store WN based on an ST.  */
 
-static WN * 
-Gen_MP_Store ( ST * st, WN_OFFSET offset, WN * value, BOOL scalar_only)
+static WN *
+Gen_MP_Store( ST * st, WN_OFFSET offset, WN * value, BOOL scalar_only)
 {
+  UINT  field_id = 0;
   WN *wn;
-  TY_IDX ty = ST_type(st);
-#ifdef KEY // bug 7259
-  if (scalar_only && TY_kind(ty) == KIND_STRUCT)
-    ty = FLD_type(TY_fld(ty));
-#endif
-#ifdef KEY // bug 10681
-  if (scalar_only && TY_kind(ty) == KIND_ARRAY)
-    ty = TY_etype(ty);
-#endif
+  TY_IDX ty;
+  TY_IDX result_ty;
 
-  wn = WN_Stid ( TY_mtype(ty), offset, st, ty, value );
+  Gen_MP_LS_get_fld_id_and_ty(st, offset, scalar_only, field_id, ty, result_ty);
+  
+  wn = WN_Stid ( TY_mtype(result_ty), offset, st, ty, value, field_id );
   WN_linenum(wn) = line_number;
 
   return (wn);
 }
-
 
 /*  Generate appropriate load/store WN's based on two ST's.  */
 
