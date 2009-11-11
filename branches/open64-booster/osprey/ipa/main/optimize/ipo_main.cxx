@@ -2510,7 +2510,8 @@ BOOL argument_in_wn_is_array_remapping_candidate_malloc(WN *wn,
   BOOL result;
 
   // found_a_call is meant to be checked when the entire function wn tree has
-  // been processed, not after each recursive call (because it is not reasonable  // to expect each block of wn's to contain such a call)
+  // been processed, not after each recursive call (because it is not reasonable
+  // to expect each block of wn's to contain such a call)
 
   if (wn == NULL || argument_num < 0 || callee == NULL)
     return FALSE;

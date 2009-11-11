@@ -1025,14 +1025,10 @@ static BOOL expr_contains_complete_struct_relayout(WN *wn)
     {
       child_ty_idx = WN_ty(child_wn);
       if (child_ty_idx != 0 &&
-          (TY_IDX_index(child_ty_idx) == complete_struct_relayout_type_id ||
-           TY_IDX_index(child_ty_idx) ==
-             another_complete_struct_relayout_type_id) ||
+          TY_IDX_index(child_ty_idx) == complete_struct_relayout_type_id ||
           (TY_kind(child_ty_idx) == KIND_POINTER &&
-           (TY_IDX_index(TY_pointed(child_ty_idx)) ==
-              complete_struct_relayout_type_id ||
-            TY_IDX_index(TY_pointed(child_ty_idx)) ==
-              another_complete_struct_relayout_type_id)))
+           TY_IDX_index(TY_pointed(child_ty_idx)) ==
+             complete_struct_relayout_type_id))
         return TRUE;
       if (child_ty_idx != 0 && TY_kind(child_ty_idx) == KIND_STRUCT &&
           WN_operator(child_wn) == OPR_ILOAD)
@@ -1154,8 +1150,7 @@ static WN *traverse_wn_tree_for_complete_struct_relayout_legality(WN *block_wn,
 
     case OPR_LDID:
     case OPR_STID:
-      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id ||
-          TY_IDX_index(WN_ty(wn)) == another_complete_struct_relayout_type_id)
+      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id)
       {
         continue_with_complete_struct_relayout = 0;
         if (Get_Trace(TP_IPA, 1))
@@ -1165,8 +1160,7 @@ static WN *traverse_wn_tree_for_complete_struct_relayout_legality(WN *block_wn,
       break;
 
     case OPR_ILOAD:
-      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id ||
-          TY_IDX_index(WN_ty(wn)) == another_complete_struct_relayout_type_id)
+      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id)
       {
         if (WN_operator(WN_kid0(wn)) == OPR_LDID &&
             (TY_kind(WN_ty(WN_kid0(wn))) != KIND_POINTER ||
@@ -1182,10 +1176,8 @@ static WN *traverse_wn_tree_for_complete_struct_relayout_legality(WN *block_wn,
 
     case OPR_ISTORE:
       if (TY_kind(WN_ty(wn)) == KIND_POINTER &&
-          (TY_IDX_index(TY_pointed(WN_ty(wn))) ==
-             complete_struct_relayout_type_id ||
-           TY_IDX_index(TY_pointed(WN_ty(wn))) ==
-             another_complete_struct_relayout_type_id))
+          TY_IDX_index(TY_pointed(WN_ty(wn))) ==
+            complete_struct_relayout_type_id)
       {
         if (WN_operator(WN_kid1(wn)) == OPR_LDID &&
             WN_ty(WN_kid1(wn)) != WN_ty(wn))
@@ -1208,10 +1200,8 @@ static WN *traverse_wn_tree_for_complete_struct_relayout_legality(WN *block_wn,
 
         TY_IDX ty_idx = WN_ty(WN_next(wn));
         if (TY_kind(ty_idx) == KIND_POINTER &&
-            (TY_IDX_index(TY_pointed(ty_idx)) ==
-               complete_struct_relayout_type_id ||
-             TY_IDX_index(TY_pointed(ty_idx)) ==
-               another_complete_struct_relayout_type_id))
+            TY_IDX_index(TY_pointed(ty_idx)) ==
+             complete_struct_relayout_type_id)
         {
           continue_with_complete_struct_relayout = 0;
           if (Get_Trace(TP_IPA, 1))
@@ -1228,10 +1218,8 @@ static WN *traverse_wn_tree_for_complete_struct_relayout_legality(WN *block_wn,
         TY_IDX ptr_to_struct_ty_idx = WN_ty(WN_kid0(WN_next(wn)));
         if (WN_ty(WN_next(wn)) != ptr_to_struct_ty_idx ||
             TY_kind(ptr_to_struct_ty_idx) != KIND_POINTER ||
-            (TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
-               complete_struct_relayout_type_id &&
-             TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
-               another_complete_struct_relayout_type_id))
+            TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
+              complete_struct_relayout_type_id)
           return wn;
 
         WN *arg0_wn = WN_kid0(WN_kid0(wn));
@@ -1384,8 +1372,7 @@ static WN *traverse_wn_tree_for_complete_struct_relayout(WN *block_wn,
       // Look for a load from our complete_struct_relayout.  Need to change
       // "= ptr->field_i" into
       // "= gptr_i[(ptr-gptr_0)/sizeof(complete_struct_relayout)]"
-      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id ||
-          TY_IDX_index(WN_ty(wn)) == another_complete_struct_relayout_type_id)
+      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id)
       {
         TYPE_ID desc;
         WN *ldid_ptr_wn;
@@ -1441,10 +1428,8 @@ static WN *traverse_wn_tree_for_complete_struct_relayout(WN *block_wn,
       // change "ptr->field_i = ..." into
       // "gptr_i[(ptr-gptr_0)/sizeof(complete_struct_relayout)] = ..."
       if (TY_kind(WN_ty(wn)) == KIND_POINTER &&
-          (TY_IDX_index(TY_pointed(WN_ty(wn))) ==
-             complete_struct_relayout_type_id ||
-           TY_IDX_index(TY_pointed(WN_ty(wn))) ==
-             another_complete_struct_relayout_type_id))
+          TY_IDX_index(TY_pointed(WN_ty(wn))) ==
+            complete_struct_relayout_type_id)
       {
         TYPE_ID desc;
         WN *ldid_ptr_wn;
@@ -1511,10 +1496,8 @@ static WN *traverse_wn_tree_for_complete_struct_relayout(WN *block_wn,
 
         TY_IDX ty_idx = WN_ty(WN_next(wn));
         if (TY_kind(ty_idx) == KIND_POINTER &&
-            (TY_IDX_index(TY_pointed(ty_idx)) ==
-               complete_struct_relayout_type_id ||
-             TY_IDX_index(TY_pointed(ty_idx)) ==
-               another_complete_struct_relayout_type_id))
+            TY_IDX_index(TY_pointed(ty_idx)) ==
+              complete_struct_relayout_type_id)
         {
           // fprintf(stderr, "disable5\n"); legailty taken care of
           return wn;
@@ -1529,10 +1512,8 @@ static WN *traverse_wn_tree_for_complete_struct_relayout(WN *block_wn,
         TY_IDX ptr_to_struct_ty_idx = WN_ty(WN_kid0(WN_next(wn)));
         if (WN_ty(WN_next(wn)) != ptr_to_struct_ty_idx ||
             TY_kind(ptr_to_struct_ty_idx) != KIND_POINTER ||
-            (TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
-               complete_struct_relayout_type_id &&
-             TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
-               another_complete_struct_relayout_type_id))
+            TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
+              complete_struct_relayout_type_id)
           return wn; // does not assign into our complete_struct_relayout
 
         // Yes, this is the special calloc.  Do the following for every such
@@ -1980,6 +1961,7 @@ static void traverse_wn_tree_for_array_remapping_legality_1(WN *wn,
           else if (WN_operator(wn2) == OPR_ISTORE &&
                    WN_operator(WN_kid0(wn2)) == OPR_LDID &&
                    WN_st(WN_kid0(wn2)) == malloc_st &&
+                   WN_st(WN_kid1(wn2)) != NULL &&
                    ST_class(WN_st(WN_kid1(wn2))) == CLASS_VAR)
           {
             temp_malloc_st = malloc_st;
@@ -2434,6 +2416,7 @@ static void traverse_wn_tree_for_array_remapping(WN *wn)
               array_remapping_candidate_mtype))
       {
         // legality tests assure us that this is not possible
+        FmtAssert(FALSE, ("Illegal array remapping construct 1."));
       }
       num_elements_in_pre_margin_wn = WN_CreateIntconst(OPCODE_make_op
         (OPR_INTCONST, MTYPE_U4, MTYPE_V),
@@ -2468,6 +2451,7 @@ static void traverse_wn_tree_for_array_remapping(WN *wn)
         if (array_element_size % array_remapping_candidate_mtype_size != 0)
         {
           // legality tests assure us that this is not possible
+          FmtAssert(FALSE, ("Illegal array remapping construct 2."));
         }
         if (array_element_size != array_remapping_candidate_mtype_size)
         {
@@ -2503,6 +2487,7 @@ static void traverse_wn_tree_for_array_remapping(WN *wn)
         if (array_element_size % array_remapping_candidate_mtype_size != 0)
         {
           // legality tests assure us that this is not possible
+          FmtAssert(FALSE, ("Illegal array remapping construct 3."));
         }
         if (array_element_size != array_remapping_candidate_mtype_size)
         {
@@ -2521,10 +2506,12 @@ static void traverse_wn_tree_for_array_remapping(WN *wn)
       else
       {
         // legality tests assure us that this is not possible
+        FmtAssert(FALSE, ("Illegal array remapping construct 4."));
       }
       if (WN_offset(wn) % array_remapping_candidate_mtype_size != 0)
       {
         // legality tests assure us that this is not possible
+        FmtAssert(FALSE, ("Illegal array remapping construct 5."));
       }
       if (WN_offset(wn) != 0)
       {
@@ -2779,10 +2766,9 @@ void IPO_WN_Update_For_Struct_Opt (IPA_NODE * node)
     Struct_update_index = IPA_Update_Struct;
   }
 
-#if 0
-  if (!Struct_split_candidate_index && complete_struct_relayout_type_id == 0)
-    return; // no structure splitting/peeling or complete_struct_relayout to do
-#endif
+  // before the addition of array remapping ...
+  // if (!Struct_split_candidate_index && complete_struct_relayout_type_id == 0)
+  //   return; no structure splitting/peeling or complete_struct_relayout to do
 
   WN * tree = node->Whirl_Tree();
   preg_id = 0;
@@ -2819,10 +2805,9 @@ void IPO_WN_Update_For_Struct_Opt (IPA_NODE * node)
         complete_struct_relayout_type_id == 0 ||
         continue_with_complete_struct_relayout == 0 ||
         encountered_calloc_for_complete_struct_relayout == 0)
-#if 0
-      return; // nothing to do
-#endif
     {
+      // before the addition of array remapping ...
+      // return; nothing to do
     }
     else
     {
@@ -2871,16 +2856,14 @@ void IPO_WN_Update_For_Struct_Opt (IPA_NODE * node)
           array_remapping_loop_num_iterations - 2 *
           array_remapping_num_elements_in_post_margin;
       }
-#if 0
       // the following is more exact, but the problem is that sometimes the
       // array_remapping_loop_num_iterations already *include* the pre/post-
       // margin size (e.g., to initialize the *entire* array, etc.)
-      else if (array_remapping_pre_margin_size != 0 &&
+      /* else if (array_remapping_pre_margin_size != 0 &&
           array_remapping_malloc_size == (array_remapping_candidate_mtype_size *
             array_remapping_num_groups * (array_remapping_loop_num_iterations +
             2 * array_remapping_pre_margin_size / array_remapping_num_groups /
-            array_remapping_candidate_mtype_size)))
-#endif
+            array_remapping_candidate_mtype_size))) */
       else if (array_remapping_pre_margin_size != 0 &&
           array_remapping_malloc_size == (array_remapping_candidate_mtype_size *
             array_remapping_num_groups * array_remapping_loop_num_iterations))
