@@ -1176,6 +1176,7 @@ COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
   // do not propagate in preopt if propagation is into branch in a loop
   // and it is not introduced by IVR
   if (expr->Non_leaf() && !stmt->Ivr_introduced() && Htable()->Phase() != MAINOPT_PHASE && 
+      Htable()->Phase() != PREOPT_LNO_PHASE &&
       Propagated_to_loop_branch(stmt->Bb(), curbb) && x == curversion)
     return NULL;
 
