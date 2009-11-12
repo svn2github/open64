@@ -1,0 +1,70 @@
+/*
+ * 	Copyright (c) 2005, 2006 Hong Kong ASTRI Company Limited
+ * 	All rights reserved.
+ */
+
+/*
+	Copyright (C) 2005, 2006.  Free Software Foundation, Inc.
+
+	This program is free software; you can redistribute it and/or modify it
+	under the terms of version 2 of the GNU General Public License as
+	published by the Free Software Foundation.
+
+	This program is distributed in the hope that it would be useful, but
+	WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+	Further, this software is distributed without any warranty that it is
+	free of the rightful claim of any third person regarding infringement
+	or the like.  Any license provided herein, whether implied or
+	otherwise, applies only to this software file.  Patent licenses, if
+	any, provided herein do not apply to combinations of this program with
+	other software, or any other product whatsoever.
+
+	You should have received a copy of the GNU General Public License along
+	with this program; if not, write the Free Software Foundation, Inc., 59
+	Temple Place - Suite 330, Boston MA 02111-1307, USA.
+*/
+
+#ifndef _MESSG_TAB_INCLUDED_
+#define _MESSG_TAB_INCLUDED_
+
+
+
+class Msg_Dsc Error_Tab[EM_SIZE] = {
+  { "Unknown", 
+	EM_Undef, 0, MT_UNKNOWN  },
+  { "Unimplemented Simulator Instruction %s", 
+	EM_UnImplem, 1, MT_STRING, 0, 0, 0 },
+  { "Object file %s is empty", 
+	EM_Empty_Objfile, 1, MT_STRING, 0, 0, 0 },
+  { "Cannot open object file %s", 
+	EM_No_Objfile, 1, MT_STRING },
+  { "Address (page) not allocated %x", 
+        EM_Addr_Not_Alloc, 1, MT_INT32 },	
+  { "Access (page) read protected memory %x", 
+        EM_Acc_R_Mem, 1, MT_INT32 },	
+  { "Modify (page) write protected memory %x", 
+        EM_Mod_W_Mem, 1, MT_INT32 },	
+  { "Modify text %x", 
+        EM_Mod_Exec, 1, MT_INT32 },	
+  { "Access violation %x", 
+        EM_Acc_Violate, 1, MT_INT32 },	
+  { "Illegal command", 
+        EM_Ill_Cmd, 0, MT_UNKNOWN },	
+  { "Illegal argument %s", 
+        EM_Ill_Arg, 1, MT_STRING },	
+  { "I/O error in mmapped object %s", 
+	EM_Objfile, 1, MT_STRING },
+  { "system signal", 
+	EM_Signal, 1, MT_STRING },
+  { "String table empty", 
+	EM_Strtab, 0, MT_UNKNOWN  },
+  { "Missing argument", 
+	EM_Missarg, 0, MT_UNKNOWN  },
+  { "Target processor not supported", 
+	EM_Wrong_Target, 0, MT_UNKNOWN  },
+};
+
+
+#endif // _MESSG_TAB_INCLUDED_
