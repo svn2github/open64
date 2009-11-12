@@ -278,7 +278,6 @@ inline void __ompc_barrier_wait(omp_team_t *team)
     pthread_mutex_lock(&(team->barrier_lock));
     pthread_cond_broadcast(&(team->barrier_cond));
     pthread_mutex_unlock(&(team->barrier_lock));
-    pthread_mutex_unlock(&(team->barrier_lock));
   } else {
     /* Wait for the last to reset te barrier*/
     /* We must make sure that every waiting thread get this
@@ -329,7 +328,6 @@ __ompc_check_num_threads(const int _num_threads)
   int num_threads = _num_threads;
   Is_Valid( num_threads > 0,
 	    ("number of threads must be positive!"));
-
 
   if (__omp_exe_mode & OMP_EXE_MODE_SEQUENTIAL) {
     /* request for level 1 threads*/
@@ -401,7 +399,6 @@ inline void __omp_get_available_processors()
 
   /* create the list to record available processors */
   __omp_list_processors = aligned_malloc(sizeof(int) * core_list_size, CACHE_LINE_SIZE);
-
   Is_True(__omp_list_processors != NULL,
           ("Can't allocate __omp_list_processors"));
 

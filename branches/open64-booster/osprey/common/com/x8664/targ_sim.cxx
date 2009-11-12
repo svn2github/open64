@@ -826,8 +826,9 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	}
 	break;
 	
-    case MTYPE_V8I8:
-    case MTYPE_V8I8:
+    case MTYPE_V8I1:
+    case MTYPE_V8I2:
+    case MTYPE_V8I4:
     case MTYPE_V8I8:
     case MTYPE_V8F4:
     case MTYPE_M8I1:

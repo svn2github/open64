@@ -269,22 +269,6 @@ __ompc_environment_variables()
     }
   }
  
-  env_var_str = getenv("O64_OMP_SPIN_USER_LOCK");
-  if (env_var_str != NULL) {
-    env_var_val = strncasecmp(env_var_str, "true", 4);
-
-    if (env_var_val == 0) {
-      __omp_spin_user_lock = 1;
-    } else {
-      env_var_val = strncasecmp(env_var_str, "false", 4);
-      if (env_var_val == 0) {
-        __omp_spin_user_lock = 0;
-      } else {
-        Not_Valid("O64_OMP_SPIN_USER_LOCK should be set to: true/false");
-      }
-    }
-  }
- 
   env_var_str = getenv("O64_OMP_SET_AFFINITY");
   if (env_var_str != NULL) {
     env_var_val = strncasecmp(env_var_str, "true", 4);
@@ -751,12 +735,6 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
      /* use default thread number decided from processor number and environment variable*/
       __omp_level_1_team_size = __omp_nthreads_var;
       __omp_level_1_team_manager.team_size = __omp_nthreads_var;
-    } else {
-      // expand the team when there is not enough threads
-      if (num_threads > __omp_level_1_team_alloc_size)
-        __ompc_expand_level_1_team(num_threads);
-      __omp_level_1_team_size = num_threads;
-      __omp_level_1_team_manager.team_size = num_threads;
     } else {
       // expand the team when there is not enough threads
       if (num_threads > __omp_level_1_team_alloc_size)
