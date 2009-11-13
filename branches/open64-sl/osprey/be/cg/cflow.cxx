@@ -1408,12 +1408,12 @@ Finalize_BB(BB *bp)
 	   */
 	  Exp_OP1(OPC_GOTO, NULL, lab_tn, &ops);
 #ifdef TARG_SL
-          // make up line info of GOTO instruction
-          if (BB_last_op(bp) && (OP_srcpos(BB_last_op(bp)) != 0)) {
-            OP_srcpos(OPS_last(&ops)) = OP_srcpos(BB_last_op(bp));
-          } else if (succ_bb && BB_last_op(succ_bb) && (OP_srcpos(BB_last_op(succ_bb)) != 0)) {
-            OP_srcpos(OPS_last(&ops)) = OP_srcpos(BB_last_op(succ_bb));
-          }
+	  // make up line info of GOTO instruction
+	  if (BB_last_op(bp) && (OP_srcpos(BB_last_op(bp)) != 0)) {
+	    OP_srcpos(OPS_last(&ops)) = OP_srcpos(BB_last_op(bp));
+	  } else if (succ_bb && BB_last_op(succ_bb) && (OP_srcpos(BB_last_op(succ_bb)) != 0)) {
+	    OP_srcpos(OPS_last(&ops)) = OP_srcpos(BB_last_op(succ_bb));
+	  }
 #endif
 	  if (   PROC_has_branch_delay_slot()
 	      && (fill_delay_slots || region_is_scheduled)) {

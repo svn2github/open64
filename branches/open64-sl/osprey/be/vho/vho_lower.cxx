@@ -5321,12 +5321,12 @@ vho_lower_asm_stmt (WN* wn, WN* block)
 
 #if defined(TARG_SL)
 void Add_function_before_return(WN *wn, WN* block) {
-  if (((WN_operator(wn) == OPR_RETURN) || (WN_operator(wn) == OPR_RETURN_VAL))
-    && (DEBUG_Stack_Check & STACK_FUNC_END_CHECK)) {
+  if ((DEBUG_Stack_Check & STACK_FUNC_END_CHECK)
+   && ((WN_operator(wn) == OPR_RETURN) || (WN_operator(wn) == OPR_RETURN_VAL))) {
     char * PU_name = ST_name(&St_Table[PU_Info_proc_sym(Current_PU_Info)]);
-    if ((strcmp(PU_name, "__stackcheck_end") != 0) && (strcmp(PU_name, "__stackcheck") != 0)) {
+    if ((strcmp(PU_name, INSERT_END_FUNC_NAME) != 0) && (strcmp(PU_name, INSERT_BEGIN_FUNC_NAME) != 0)) {
       TY_IDX ty = Make_Function_Type(MTYPE_To_TY(MTYPE_V ));
-      ST *st = Gen_Intrinsic_Function(ty, "__stackcheck_end" );
+      ST *st = Gen_Intrinsic_Function(ty, INSERT_END_FUNC_NAME);
       Clear_PU_no_side_effects(Pu_Table[ST_pu(st)]);
       Clear_PU_is_pure(Pu_Table[ST_pu(st)]);
       Set_PU_no_delete(Pu_Table[ST_pu(st)]);
@@ -5393,14 +5393,16 @@ vho_lower_stmt ( WN * wn, WN * block )
       
       wn = vho_lower_return ( wn, block );
 #if defined(TARG_SL)
-      Add_function_before_return(wn, block);
+      if (DEBUG_Stack_Check & STACK_FUNC_END_CHECK)
+        Add_function_before_return(wn, block);
 #endif
       break;
 
     case OPR_RETURN_VAL:
       wn = vho_lower_return_val ( wn, block );
-#if defined(TARG_SL)      
-      Add_function_before_return(wn, block);
+#if defined(TARG_SL)
+      if (DEBUG_Stack_Check & STACK_FUNC_END_CHECK)
+        Add_function_before_return(wn, block);
 #endif
       break;
 

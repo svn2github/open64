@@ -320,6 +320,9 @@ extern DEBUG_FLAGS Initial_DEBUG;
 #define STACK_FUNC_START_CHECK 4
 #define STACK_FUNC_END_CHECK 8
 
+#define INSERT_BEGIN_FUNC_NAME "__stackcheck"
+#define INSERT_END_FUNC_NAME   "__stackcheck_end"
+
 #define DEBUG_Stack_Check               (Current_DEBUG->stack_check)
 
 #define DEBUG_Dummy_Check_Sections        (Current_DEBUG->dummy_chk_section_list)

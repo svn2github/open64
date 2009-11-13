@@ -83,10 +83,6 @@ TOOL_SUBDIRS := \
 	wgen_4_2_0 \
 	libinstr \
 	lno 
-#	gccfe \
-#       g++fe \
-#	crayf90 
-
 
 SUBDIRS := $(INCLUDE_SUBDIRS) $(LIBRARY_SUBDIRS) $(TOOL_SUBDIRS)
 

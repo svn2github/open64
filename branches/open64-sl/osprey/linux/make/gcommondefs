@@ -150,8 +150,8 @@ ifeq ($(BUILD_COMPILER), GNU)
 endif # GNU
 
 ifeq ($(BUILD_COMPILER), SLC)
-CCNAME = $(TOOLROOT)/usr/bin/slcc
-C++NAME = $(TOOLROOT)/usr/bin/slCC
+  CCNAME = $(TOOLROOT)/usr/bin/slcc
+  C++NAME = $(TOOLROOT)/usr/bin/slCC
 endif
 
 ifeq ($(BUILD_COMPILER), PSC)

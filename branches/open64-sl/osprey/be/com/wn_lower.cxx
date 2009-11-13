@@ -13646,9 +13646,9 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
 #ifdef TARG_SL
   if (Action(LOWER_RETURN_VAL) && (WN_operator(tree) == OPR_FUNC_ENTRY) && (DEBUG_Stack_Check & STACK_FUNC_START_CHECK)) {
     char * PU_name = ST_name(&St_Table[PU_Info_proc_sym(Current_PU_Info)]);
-    if ((strcmp(PU_name, "__stackcheck") != 0) && (strcmp(PU_name, "__stackcheck_end") != 0)) {
+    if ((strcmp(PU_name, INSERT_BEGIN_FUNC_NAME) != 0) && (strcmp(PU_name, INSERT_END_FUNC_NAME) != 0)) {
       TY_IDX ty = Make_Function_Type(MTYPE_To_TY(MTYPE_V ));
-      ST *st = Gen_Intrinsic_Function(ty, "__stackcheck" );
+      ST *st = Gen_Intrinsic_Function(ty, INSERT_BEGIN_FUNC_NAME);
       Clear_PU_no_side_effects(Pu_Table[ST_pu(st)]);
       Clear_PU_is_pure(Pu_Table[ST_pu(st)]);
       Set_PU_no_delete(Pu_Table[ST_pu(st)]);

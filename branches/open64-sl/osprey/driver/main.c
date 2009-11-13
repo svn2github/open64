@@ -1447,7 +1447,7 @@ get_gcc_version(int *v, int nv)
 }
 
 #if defined(TARG_SL)
-  unsigned int SL_version = 0x00204000;	// version 002.03.xxx
+  unsigned int SL_version = 0x00204000;	// version 002.04.xxx
 #endif
 static void
 display_version(boolean dump_version_only)

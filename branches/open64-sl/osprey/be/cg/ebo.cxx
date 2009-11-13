@@ -654,11 +654,9 @@ inline BOOL op_is_needed_globally(OP *op)
     return TRUE;
   if (op == BB_exit_sp_adj_op(bb) || op == BB_entry_sp_adj_op(bb))
     return TRUE;
-#ifdef TARG_SL
    /* Can not remove volatile op */
   if (OP_volatile(op))
     return TRUE;
-#endif
   return FALSE;
 }
 

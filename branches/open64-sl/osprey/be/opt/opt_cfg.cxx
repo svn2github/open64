@@ -1436,38 +1436,6 @@ static BOOL Same_store_target(WN *wn1, WN *wn2)
   return Same_addr_expr(WN_kid1(wn1), WN_kid1(wn2));
 }
 
-#ifdef TARG_SL
-// ====================================================================
-// check if mode_wn is part of wn, and the parent of part is ILOAD.
-// check following case for if_conversion:
-//    if(p)
-//      res = p->a
-//    else
-//      res = 0;
-// ====================================================================
-static BOOL Is_Sub_ILOAD_Tree(WN *wn, WN *parent_wn, WN * mode_wn)
-{
-  if (parent_wn 
-   && ((WN_operator(parent_wn) == OPR_ILOAD) || (WN_operator(parent_wn) == OPR_ILOADX)
-    || (WN_operator(parent_wn) == OPR_MLOAD))
-   && (WN_Simp_Compare_Trees(wn, mode_wn) == 0)) 
-    return TRUE;
-
-  INT kids_cnt = WN_kid_count(wn);
-  if (kids_cnt == 0) {
-    return FALSE;
-  } else { 
-    int i;
-    for(i = 0; i< kids_cnt; i++) {
-      if (Is_Sub_ILOAD_Tree(WN_kid(wn, i), wn, mode_wn)) {
-        return TRUE;
-      }      
-    }
-    return FALSE;
-  }  
-}
-#endif
-
 BOOL CFG::Screen_cand(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then)
 {
   WN *if_test = WN_if_test(wn);
@@ -1673,6 +1641,39 @@ BOOL CFG::If_conv_criteria_met(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else
   return TRUE;
 }
 
+#if defined(TARG_SL)
+// ====================================================================
+// check whether mode_wn is sub-tree of wn, and the sub-tree of parent_wn is ILOAD.
+// check the such case for if_conversion:
+//    if(p)
+//      res = p->a
+//    else
+//      res = 0;
+//  
+//    p is mode_wn, p->a is parent_wn
+// ====================================================================
+BOOL CFG::Is_Sub_ILOAD_Tree(WN *wn, WN *parent_wn, WN * mode_wn)
+{
+  if (parent_wn 
+   && ((WN_operator(parent_wn) == OPR_ILOAD) || (WN_operator(parent_wn) == OPR_ILOADX)
+    || (WN_operator(parent_wn) == OPR_MLOAD))
+   && (WN_Simp_Compare_Trees(wn, mode_wn) == 0)) 
+    return TRUE;
+
+  INT kids_cnt = WN_kid_count(wn);
+  if (kids_cnt == 0) {
+    return FALSE;
+  } else { 
+    int i;
+    for(i = 0; i< kids_cnt; i++) {
+      if (Is_Sub_ILOAD_Tree(WN_kid(wn, i), wn, mode_wn)) {
+        return TRUE;
+      }      
+    }
+    return FALSE;
+  }  
+}
+#endif
 
 WN*
 CFG::Conv_to_select(WN* wn)

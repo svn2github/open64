@@ -1777,10 +1777,10 @@ static VARIANT Memop_Variant(WN *memop)
 	ty_align = TY_align(ty);
 	offset = WN_load_offset(memop);
 #if defined(TARG_SL) 
-      if (offset) {
-	INT offset_align = offset % required_alignment;
-	if (offset_align) ty_align = MIN(ty_align, offset_align);
-      }
+	if (offset) {
+	  INT offset_align = offset % required_alignment;
+	  if (offset_align) ty_align = MIN(ty_align, offset_align);
+	}
 #endif
       }
       break;
@@ -4528,15 +4528,15 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
 	/* If the constant is boolean 1, it is always available in p0.
 	 */
 	if (True_TN && WN_const_val(expr) == 1) return True_TN;
-      } else { 
-         /* If the constant is integer 0, it is always available in $0.*/
-#if !(defined(TARG_SL) && defined(EMULATE_LONGLONG))
-	if (Zero_TN && WN_const_val(expr) == 0) return Zero_TN;
+      } else {
+
+	/* If the constant is integer 0, it is always available in $0.
+	 */
+#if defined(TARG_SL)
+	if (Zero_TN && (WN_const_val(expr) == 0)
+  && (opcode == OPC_I4INTCONST || opcode == OPC_U4INTCONST)) return Zero_TN;
 #else
-        // bug fix 544
-        if (Zero_TN && WN_const_val(expr) == 0 )
-            if (opcode == OPC_I4INTCONST || opcode == OPC_U4INTCONST)
-               return Zero_TN;
+	if (Zero_TN && WN_const_val(expr) == 0) return Zero_TN;
 #endif
       }
     }

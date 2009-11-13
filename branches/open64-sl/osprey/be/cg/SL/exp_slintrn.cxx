@@ -1,38 +1,12 @@
-/*
-
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
-
-  This program is free software; you can redistribute it and/or modify it
-  under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation.
-
-  This program is distributed in the hope that it would be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-
-  Further, this software is distributed without any warranty that it is
-  free of the rightful claim of any third person regarding infringement 
-  or the like.  Any license provided herein, whether implied or 
-  otherwise, applies only to this software file.  Patent licenses, if 
-  any, provided herein do not apply to combinations of this program with 
-  other software, or any other product whatsoever.  
-
-  You should have received a copy of the GNU General Public License along
-  with this program; if not, write the Free Software Foundation, Inc., 59
-  Temple Place - Suite 330, Boston MA 02111-1307, USA.
-
-  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
-  Mountain View, CA 94043, or:
-
-  http://www.sgi.com
-
-  For further information regarding this notice, see:
-
-  http://oss.sgi.com/projects/GenInfo/NoticeExplan
-
-*/
+/********************************************************************\
+|*                                                                  *|   
+|*    Copyright (c) 2006 by SimpLight Nanoelectronics.              *|
+|*    All rights reserved                                           *|
+|*                                                                  *|   
+\********************************************************************/ 
 
 #define __STDC_LIMIT_MACROS
+#include <intrn_info.h>
 #include <stdint.h>
 #include <stdarg.h>
 #include "defs.h"
@@ -92,120 +66,11 @@ typedef enum {
   IMM_UNDEF
 } IMM_Type;
 
-const char * get_func_name_from_c3intrn (INTRINSIC intrn_id)
-{
-  switch (intrn_id) {
-    case INTRN_C3_INIT_ACC: 
-      return "SL1_L_acquire_acc";
-    case INTRN_C3_SAVE_ACC:
-      return "SL1_L_free_acc";
-    case INTRN_C3_MVFS:
-      return "SL1_L_copy_shr_acc";
-    case INTRN_C3_INIT_ADDR:
-      return "SL1_acquire_addr";
-    case INTRN_C3_SAVE_ADDR:
-      return "SL1_free_addr";
-    case INTRN_C3_INIT_DACC:
-      return "SL1_L_acquire_dacc";
-    case INTRN_C3_SAVE_DACC:
-      return "SL1_L_free_dacc";
-    case INTRN_C3_SET_ADDR:
-      return "SL1_set_addr";
-    case INTRN_C3_SET_CIRCBUF:
-      return "SL1_set_circularbuf";
-    case INTRN_C3AADDA: 
-      return "Sl1_aadda";
-    case INTRN_C3BITR:
-      return "Sl1_bitr";
-    case INTRN_C3CS:
-      return "Sl1_cs";
-    case INTRN_C3DADD:
-      return "Sl1_dadd";
-    case INTRN_C3DMAC:
-      return "Sl1_dmac";
-    case INTRN_C3DMAC_A:
-      return "Sl1_dmac_p";
-    case INTRN_C3DMULA:
-      return "Sl1_dmula";
-    case INTRN_C3DMULA_A:
-      return "Sl1_dmula_p";
-    case INTRN_C3DSHLL_I:
-      return "Sl1_dshll_i";
-    case INTRN_C3FFE:
-      return "Sl1_ffe";
-    case INTRN_C3LD:
-      return "Sl1_ld";
-    case INTRN_C3ST:
-      return "Sl1_st";
-    case INTRN_C3LEAD:
-      return "Sl1_lead";
-    case INTRN_C3MAC:
-      return "Sl1_mac";
-    case INTRN_C3MAC_A:
-      return "Sl1_mac_p";
-    case INTRN_C3MAC_AR:
-      return "Sl1_mac_v_p";
-    case INTRN_C3MAC_I:
-      return "Sl1_mac_i";
-    case INTRN_C3MULA:
-      return "Sl1_mula";
-    case INTRN_C3MULA_A:
-      return "Sl1_mula_p";
-    case INTRN_C3MULA_AR:
-      return "Sl1_mula_v_p";
-    case INTRN_C3MULA_I:
-      return "Sl1_mula_i";
-    case INTRN_C3MULS:
-      return "Sl1_muls_shl";
-    case INTRN_C3MULUS:
-      return "Sl1_mulus_shl";
-    case INTRN_C3REVB:
-      return "Sl1_revb";
-    case INTRN_C3ROUND:
-      return "Sl1_round";
-    case INTRN_C3SAADD_A:
-      return "Sl1_saadd_p";
-    case INTRN_C3SAADDH_A:
-      return "Sl1_saaddh_p";
-    case INTRN_C3SAADDS:
-      return "Sl1_saadds";
-    case INTRN_C3SAADDSH:
-      return "Sl1_saaddsh";
-    case INTRN_C3SADDA:
-      return "Sl1_sadda";
-    case INTRN_C3SADDA_A:
-      return "Sl1_sadda_p";
-    case INTRN_C3SAMULH_A:
-      return "Sl1_samulh_p";
-    case INTRN_C3SAMULSH:
-      return "Sl1_samulsh";
-    case INTRN_C3SHAV:
-      return "Sl1_shav";
-    case INTRN_C3SHLAFA_I:
-      return "Sl1_shlafa_i";
-    case INTRN_C3SHLATA_I:
-      return "Sl1_shlata_i";
-    case INTRN_C3SHLA_I:
-      return "Sl1_shla_i";
-    case INTRN_C3SUBC:
-      return "Sl1_subc";
-    case INTRN_C3NEGA:
-      return "Sl1_nega";
-    case INTRN_INIT_HI:
-      return "Sl1_init_hi";
-    case INTRN_COPY_HI:
-      return "Sl1_copy_hi";
-    default: 
-      FmtAssert(FALSE, ("NYI"));
-      return "";
-  }
-}
-
 void
 User_Error(WN* intrncall, const char *format, ...)
 {
   const char *func_name = Cur_PU_Name;
-  const char *file_name = Orig_Src_File_Name;
+  const char *file_name = Src_File_Name;
 
   extern SRCPOS current_srcpos;
   int line_no = SRCPOS_linenum(current_srcpos);
@@ -217,7 +82,7 @@ User_Error(WN* intrncall, const char *format, ...)
 
   if ((WN_intrinsic(intrncall) >= INTRN_C3_INIT_ACC) 
     && (WN_intrinsic(intrncall) <= INTRN_COPY_HI)) {
-    const char *intrn_name = get_func_name_from_c3intrn(WN_intrinsic(intrncall));
+    const char *intrn_name = INTRN_c_name(WN_intrinsic(intrncall));
     fprintf(stderr, "%s : ", intrn_name);
   }
   
@@ -271,17 +136,23 @@ void Initial_var2spe() {
   if (var2acc.size() > 0) {
     typedef std::map<INT32, TN*> Var2Acc;
     Var2Acc::iterator it = var2acc.begin();
-    for(;it != var2acc.end();++it)
+    Var2Acc::iterator tempit;
+    for(;it != var2acc.end();)
     {
-      var2acc.erase((*it).first);
+      tempit = it;
+      it++;
+      var2acc.erase((*tempit).first);
     }
   }
   if (var2addr.size() > 0) {
     typedef std::map<INT32, TN*> Var2Addr;
     Var2Addr::iterator it = var2addr.begin();
-    for(;it != var2addr.end();++it)
+    Var2Addr::iterator tempit;
+    for(;it != var2addr.end();)
     {
-      var2addr.erase((*it).first);
+      tempit = it;
+      it++;
+      var2addr.erase((*tempit).first);
     }
   }
   //bug fix 537
@@ -450,27 +321,27 @@ void Copy_Preg_MapInfo(WN *stid) {
       if (var2acc[tgtpreg]) {
         var2acc[srcpreg] = var2acc[tgtpreg];
         if (dotrace) {
-          fprintf(stdout, "HANDLE_STID::");
+          fprintf(TFile, "HANDLE_STID::");
           Print_Acc(var2acc[tgtpreg]);
         }
       } else if (var2addr[tgtpreg]) {
         var2addr[srcpreg] = var2addr[tgtpreg];
         if (dotrace) {
-          fprintf(stdout, "HANDLE_STID::");
+          fprintf(TFile, "HANDLE_STID::");
           Print_Addr(var2addr[tgtpreg]);
         }
       } else if (var2acc[srcpreg]) {
         tgtpreg = Get_VarWN_idx(stid);
         var2acc[tgtpreg] = var2acc[srcpreg];
         if (dotrace) {	
-          fprintf(stdout, "HANDLE_STID::");	
+          fprintf(TFile, "HANDLE_STID::");	
           Print_Acc(var2acc[srcpreg]);	
         }
       } else if (var2addr[srcpreg]) {
         tgtpreg = Get_VarWN_idx(stid);
         var2addr[tgtpreg] = var2addr[srcpreg];
         if (dotrace) {		
-          fprintf(stdout, "HANDLE_STID::");	
+          fprintf(TFile, "HANDLE_STID::");	
           Print_Addr(var2addr[srcpreg]);	
         }
       }
@@ -818,10 +689,13 @@ static void Erase_Var2Acc_Map(INT32 varidx) {
   // erase var2acc related with acctn
   typedef std::map<INT32, TN*> Var2Acc;
   Var2Acc::iterator it = var2acc.begin(); 
-  for(;it != var2acc.end();++it) 
+  Var2Acc::iterator tempit;
+  for(;it != var2acc.end();) 
   { 
-    if ((*it).second == acctn) {
-      var2acc.erase((*it).first);
+    tempit = it;
+    it++;
+    if ((*tempit).second == acctn) {
+      var2acc.erase((*tempit).first);
     }
   }   
   return;
@@ -861,10 +735,13 @@ static void Erase_Var2DualAcc_Map(WN *intrncall, INT32 varidx) {
   // erase var2acc related with acctn
   typedef std::map<INT32, TN*> Var2Acc;
   Var2Acc::iterator it = var2acc.begin(); 
-  for(;it != var2acc.end();++it) 
+  Var2Acc::iterator tempit;
+  for(;it != var2acc.end();) 
   { 
-    if (((*it).second == acctn) || ((*it).second == dacctn)) {
-      var2acc.erase((*it).first);
+    tempit = it;
+    it++;
+    if (((*tempit).second == acctn) || ((*tempit).second == dacctn)) {
+      var2acc.erase((*tempit).first);
     }
   }   
   return;
@@ -908,10 +785,13 @@ static void Erase_Var2Addr_Map(INT32 varidx) {
   // erase var2acc related with acctn
   typedef std::map<INT32, TN*> Var2Addr;
   Var2Addr::iterator it = var2addr.begin(); 
-  for(;it != var2addr.end();++it) 
-  { 
-    if ((*it).second == addtn) {
-      var2addr.erase((*it).first);
+  Var2Addr::iterator tempit;
+  for(;it != var2addr.end();) 
+  {
+    tempit = it;
+    it++;
+    if ((*tempit).second == addtn && (*tempit).first == varidx) {
+      var2addr.erase((*tempit).first);
     }
   }   
   return;

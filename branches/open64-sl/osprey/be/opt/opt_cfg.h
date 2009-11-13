@@ -666,6 +666,9 @@ public:
   BOOL         If_convertible_cond(WN* wn);
   BOOL         If_conv_criteria_met(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then);
   BOOL         Screen_cand(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then);
+#if defined(TARG_SL)
+  BOOL         Is_Sub_ILOAD_Tree(WN *wn, WN *parent_wn, WN * mode_wn);
+#endif
   WN*          Conv_to_select(WN* wn);
 
 };
