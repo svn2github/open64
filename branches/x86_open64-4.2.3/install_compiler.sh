@@ -37,8 +37,8 @@
 
 VER_MAJOR="4"
 VER_MINOR="2"
-#PATCH_LEVEL=""
-VERSION="${OPEN64_FULL_VERSION:-${VER_MAJOR}.${VER_MINOR}}"
+PATCH_LEVEL="2.99"
+VERSION="${OPEN64_FULL_VERSION:-${VER_MAJOR}.${VER_MINOR}.${PATCH_LEVEL}}"
 
 PREBUILT_LIB="./lib"
 PREBUILT_BIN="./bin"
@@ -557,6 +557,9 @@ INSTALL_CG
 INSTALL_WHIRL_STUFF 
 INSTALL_MISC
 INSTALL_NATIVE_HEADER
+
+# copy release notes to top level
+cp ReleaseNotes.txt $ROOT
 
 #cat << _EOF_
 # ------------------------------------------------------------------------

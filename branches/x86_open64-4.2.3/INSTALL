@@ -1,0 +1,86 @@
+Introduction
+------------
+
+This document explains how to compile and install x86 Open64 from source
+on an x86-64 based system. There are many variations on this process; for
+simplicity, we describe the steps that we used to build the x86 Open64
+4.2.2.99 binary packages available on http://developer.amd.com/cpu/open64.
+
+    * Prerequisites
+    * Obtaining the Source Code
+    * Compiling
+    * Installation
+
+
+Prerequisites
+-------------
+
+Although the x86 Open64 compiler suite can be built on 32-bit or 64-bit
+Linux systems, we always build on a 64-bit Linux system where both 32-bit
+and 64-bit code generation can be tested. We used 64-bit SUSE Linux
+Enterprise Server 10 with SP2 installed.
+
+By default, the build process will use GCC to build most compiler
+components. We used GCC 4.1.2 as provided with SLES 10 SP2.
+
+To build the x86 Open64 libraries, we used the x86 Open64 4.2.2.3 binary
+release for x86_64 as downloaded from www.open64.net. This document
+assumes that x86 Open64 4.2.2.3 is installed into /opt on the build
+system.
+
+
+Obtaining the Source Code
+-------------------------
+
+You can obtain the source code archive from the Downloads section at
+http://developer.amd.com/cpu/open64.
+
+To extract the source code, use the command:
+
+  tar xjvf x86_open64-4.2.2.99-1.src.tar.bz2
+
+
+Compiling
+---------
+
+First set your environment to use the installed x86 Open64 4.2.2.3 compiler. This
+step will be necessary to build the libraries. These commands assume you
+are using an sh-compatible shell, such as bash.
+
+  export TOOLROOT=/opt/x86_open64-4.2.2.3
+  export PATH=${TOOLROOT}/bin:$PATH
+
+Now, to build the x86 Open64 compiler components, switch to the
+x86_open64-4.2.3 directory and execute the following command:
+
+  make all MACHINE_TYPE=i386
+
+We build using 'MACHINE_TYPE=i386' because there are some known problems
+when using the 64-bit compiler binaries to generate 32-bit code. The
+compiler binaries can generate both 32-bit and 64-bit code regardless of
+how they are built.
+
+To build the libraries, execute the following commands:
+
+  make lib MACHINE_TYPE=i386 BUILD_COMPILER=OSP
+  make -C osprey/targx8664_builtonia32 BUILD_COMPILER=OSP
+
+
+Installation
+------------
+
+The install script will install the Open64 compiler and library components
+in the directory defined by the environment TOOLROOT. In this example,
+we install to the directory 'myopen64' in the current home directory:
+
+  export TOOLROOT=${HOME}/myopen64
+  ./install_compiler.sh i386
+
+To use the compiler, you just need to put the 'myopen64/bin' directory on
+your PATH. You could add a command like the following to your .bashrc:
+
+  export PATH=${HOME}/myopen64/bin:$PATH
+
+You do not normally need to set the TOOLROOT environment variable to run
+the compiler.
+
