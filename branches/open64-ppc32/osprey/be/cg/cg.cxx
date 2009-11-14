@@ -867,7 +867,11 @@ CG_Generate_Code(
   //while Generate_Entry_Exit_Code will do this instead, but it need to know
   //IPFEC_Enable_Edge_Profile in time.
   Config_Ipfec_Flags();
-#endif  
+#endif
+#if defined(TARG_PPC32)
+extern void Generate_Return_Address(void);
+  Generate_Return_Address();
+#endif
   Generate_Entry_Exit_Code ( Get_Current_PU_ST(), region );
 #ifdef TARG_IA64
   if (!CG_localize_tns) {
@@ -1299,7 +1303,7 @@ CG_Generate_Code(
   fat_self_recursive = FALSE;
   //Check_Self_Recursive();
   if (CG_opt_level > 1 && IPFEC_Enable_PRDB) PRDB_Init(region_tree);
-  
+
   if (IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1) {
     Start_Timer( T_GLRA_CU );
     GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
@@ -1314,7 +1318,6 @@ CG_Generate_Code(
   } else {
     IGLS_Schedule_Region (TRUE /* before register allocation */);
   }
-
   
   if (CG_opt_level > 1 && IPFEC_Enable_PRDB) PRDB_Init(region_tree);
   // bug fix for OSP_104, OSP_105, OSP_192

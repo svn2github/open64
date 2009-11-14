@@ -1399,7 +1399,7 @@ void Handle_Float_Int_Cvt(ROUND_MODE rm, TYPE_ID srcType, TN* dest, TN* src, OPS
     } else if (rm == ROUND_CHOP) {
         Build_OP(TOP_fctiwz, tn, src, ops);
     } else {
-        TN* savefr = Build_TN_Of_Mtype(MTYPE_I8);
+        TN* savefr = Build_TN_Of_Mtype(MTYPE_F8);
         Build_OP(TOP_mffs, savefr, ops);
         switch (rm)
         {
@@ -1422,7 +1422,7 @@ void Handle_Float_Int_Cvt(ROUND_MODE rm, TYPE_ID srcType, TN* dest, TN* src, OPS
         Build_OP(TOP_mtfsf, Gen_Literal_TN(255, 4), savefr, ops);
     }
     
-    ST* sym = CGSPILL_Get_TN_Spill_Location(tn, CGSPILL_LRA);
+    ST* sym = CGSPILL_Get_TN_Spill_Location(tn, CGSPILL_LCL);
     INT64 ofst = TN_offset(tn);
     ST* base_sym;
     INT64 base_ofst;
@@ -1527,7 +1527,7 @@ void Handle_Float_Uint_Cvt(ROUND_MODE rm, TYPE_ID srcType, TN* dest, TN* src, OP
         Build_OP(TOP_mtfsf, Gen_Literal_TN(255, 4), savefr, ops);
     }
     
-    ST* sym = CGSPILL_Get_TN_Spill_Location(fr2, CGSPILL_LRA);
+    ST* sym = CGSPILL_Get_TN_Spill_Location(fr2, CGSPILL_LCL);
     INT64 ofst = TN_offset(fr2);
     ST* base_sym;
     INT64 base_ofst;
@@ -1585,7 +1585,7 @@ void Handle_Int_Float_Cvt(TN * dest, TN * src, OPS * ops, bool isUnsigned, bool 
     Exp_Load(MTYPE_F8, MTYPE_F8, tmp, st, 0, ops, 0); // load magic value
 
     TN * tn   = Build_TN_Of_Mtype(MTYPE_F8);
-    ST * sym1 = CGSPILL_Get_TN_Spill_Location(tn, CGSPILL_LRA);
+    ST * sym1 = CGSPILL_Get_TN_Spill_Location(tn, CGSPILL_LCL);
     INT64 ofst;
     ST * sym;  
     Base_Symbol_And_Offset_For_Addressing(sym1, 0, &sym, &ofst);
@@ -1676,7 +1676,7 @@ void Handle_ULonglong_Float_Cvt(TN* dest, TN* src_high, TN* src_low, OPS* ops, b
         Build_OP(TOP_rlwinm, tn5, tn1, Gen_Literal_TN(3, 4),  Gen_Literal_TN(31, 4), Gen_Literal_TN(31, 4), ops);
         Build_OP(TOP_and, tn6, tn3, tn5, ops);
         Build_OP(TOP_add, tn7, tn4, tn6, ops);
-        ST * sym1 = CGSPILL_Get_TN_Spill_Location(dest, CGSPILL_LRA);
+        ST * sym1 = CGSPILL_Get_TN_Spill_Location(dest, CGSPILL_LCL);
         INT64 ofst;
         ST * sym;  
         Base_Symbol_And_Offset_For_Addressing(sym1, 0, &sym, &ofst);
@@ -1706,7 +1706,7 @@ void Handle_ULonglong_Float_Cvt(TN* dest, TN* src_high, TN* src_low, OPS* ops, b
         Build_OP(TOP_and, tn6, tn3, tn5, ops);
         Build_OP(TOP_add, tn7, tn4, tn6, ops);
         Build_OP(TOP_oris, tn8, tn0, Gen_Literal_TN(0x5f00, 4), ops);
-        ST * sym1 = CGSPILL_Get_TN_Spill_Location(dest, CGSPILL_LRA);
+        ST * sym1 = CGSPILL_Get_TN_Spill_Location(dest, CGSPILL_LCL);
         INT64 ofst;
         ST * sym;  
         Base_Symbol_And_Offset_For_Addressing(sym1, 0, &sym, &ofst);

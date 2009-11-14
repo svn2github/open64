@@ -693,9 +693,9 @@ Generate_Entry (BB *bb, BOOL gra_run )
       ST *ra_sv_sym = Find_Special_Return_Address_Symbol();
 #ifdef TARG_PPC32
       TN *ra_sv_tn = Build_TN_Like(RA_TN);
-      Set_TN_save_creg (ra_sv_tn, TN_class_reg(RA_TN));
       Set_TN_spill(ra_sv_tn, ra_sv_sym);
       Exp_COPY (ra_sv_tn, RA_TN, &ops);
+      Set_OP_no_move_before_gra(OPS_last(&ops));
       CGSPILL_Store_To_Memory (ra_sv_tn, ra_sv_sym, &ops, CGSPILL_LCL, bb);
 #else
       // bug fix for OSP_357
@@ -726,16 +726,11 @@ Generate_Entry (BB *bb, BOOL gra_run )
     }
 #if defined(TARG_PPC32)
     else if (PU_Has_Calls) {
-      ST *ra_sym = Find_Special_Return_Address_Symbol();
-      if (ra_sym == NULL) {
-        ra_sym = New_ST();
-        ST_Init (ra_sym, Save_Str ("__ra_sym"), CLASS_VAR, SCLASS_AUTO,
-	     EXPORT_LOCAL, Make_Pointer_Type (Be_Type_Tbl (MTYPE_V), FALSE));
-      }
+      ST *ra_sym = Find_Special_Return_Address_Symbol();     
       TN *ra_sv_tn = Build_TN_Like(RA_TN);
-      Set_TN_save_creg (ra_sv_tn, TN_class_reg(RA_TN));
       Set_TN_spill(ra_sv_tn, ra_sym);
       Exp_COPY (ra_sv_tn, RA_TN, &ops);
+      Set_OP_no_move_before_gra(OPS_last(&ops));
       CGSPILL_Store_To_Memory (ra_sv_tn, ra_sym, &ops, CGSPILL_LCL, bb);
     }
 #else
@@ -1709,7 +1704,6 @@ Generate_Exit (
     else if (PU_Has_Calls) {
       ST *ra_sv_sym = Find_Special_Return_Address_Symbol();
       TN *ra_sv_tn = Build_TN_Like(RA_TN);
-      Set_TN_save_creg (ra_sv_tn, TN_class_reg(RA_TN));
       Set_TN_spill(ra_sv_tn, ra_sv_sym);
       CGSPILL_Load_From_Memory (ra_sv_tn, ra_sv_sym, &ops, CGSPILL_LCL, bb_epi);
       Exp_COPY (RA_TN, ra_sv_tn, &ops);

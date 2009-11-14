@@ -988,7 +988,6 @@ void
 Set_OP_To_WN_Map(WN *wn)
 {
   OP *op;
-return;
   // We don't have aliasing information at -O0 and -O1.
   if (CG_opt_level < 2) return;
 
