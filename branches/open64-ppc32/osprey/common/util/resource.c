@@ -558,7 +558,6 @@ Resource_Report (
 	      res->stime.secs, res->stime.usecs/1000,
 	      res->etime.secs, res->etime.usecs/10000 );
 #endif
-    fprintf ( file, "\tmemory:\t%8x\n\tfree:\t%8x\n",
+    fprintf ( file, "\tmemory:\t%8lx\n\tfree:\t%8lx\n",
 	      res->memory, res->freemem );
 }
-

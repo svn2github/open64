@@ -72,7 +72,7 @@ public:
     void Print_IPA_CLASS_HIERARCHY() {
       FILE *_debug = fopen("class_hierarchy.trace", "w");
       fprintf(_debug, 
-          "Baseclass_relationship_size:%d; Subclass_relationship_size:%d\n", 
+          "Baseclass_relationship_size:%zu; Subclass_relationship_size:%zu\n", 
           baseclass.size(), subclass.size());
       fprintf(_debug, "basetypes\n");
       Print_helper(baseclass,_debug); 
@@ -128,4 +128,3 @@ extern IPA_CLASS_HIERARCHY* IPA_Class_Hierarchy;
 extern IPA_CLASS_HIERARCHY* Build_Class_Hierarchy();
 
 #endif
-

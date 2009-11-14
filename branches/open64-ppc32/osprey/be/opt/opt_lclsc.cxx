@@ -586,7 +586,7 @@ LOCAL_CLSC::Perform_clsc(CFG *cfg)
 //        if(ty0==ty1) {
 
           if(Tracing()) {
-            fprintf(TFile, "union %s and %s, size reduction: %d\n", ST_name(st0),ST_name(st1), TY_size(ty0));
+            fprintf(TFile, "union %s and %s, size reduction: %lld\n", ST_name(st0),ST_name(st1), TY_size(ty0));
           }
 
           //create common st base block for st0 and st1

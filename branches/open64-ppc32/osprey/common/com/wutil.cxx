@@ -72,7 +72,7 @@ static const struct {
 
 struct iostatement_name_table_t {
   IOSTATEMENT   opcode;
-  char        * name;
+  const char   *name;
 };
 
 struct iostatement_name_table_t  iostatement_name_table [] = {
@@ -114,8 +114,8 @@ struct iostatement_name_table_t  iostatement_name_table [] = {
 };
 
 struct ioitem_name_table_t {
-  IOITEM   opcode;
-  char   * name;
+  IOITEM      opcode;
+  const char *name;
 };
 
 struct ioitem_name_table_t ioitem_name_table [] = {

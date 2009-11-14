@@ -1577,7 +1577,7 @@ gs_dump_leaf(gs_t t, FILE *f,
   int j;
   if (t == (gs_t) NULL)
     return;
-  fprintf (f, "%s<%d> ", gs_code_name (gs_code (t)), 
+  fprintf (f, "%s<%ld> ", gs_code_name (gs_code (t)), 
   	   gs_mempool_address2byteofst(GS_ARENA, (char *)t));
   switch (gs_code (t)) {
     case GS_ERROR_MARK:
@@ -1691,7 +1691,7 @@ gs_dump_core(gs_t t, gs_count_t *indentation, FILE *f, bool concise,
   if (gs_em (t) == true ||
       (gs_code(t) == GS_FUNCTION_DECL && function_nest_level > 0 &&
        gs_decl_saved_tree(t) != NULL)) {
-    fprintf (f, "LINK %d\n", gs_mempool_address2byteofst(GS_ARENA, (char *)t));
+    fprintf (f, "LINK %ld\n", gs_mempool_address2byteofst(GS_ARENA, (char *)t));
     return;
   }
 
@@ -1703,7 +1703,7 @@ gs_dump_core(gs_t t, gs_count_t *indentation, FILE *f, bool concise,
     return;
   }
 
-  fprintf (f, "%s<%d> ", gs_code_name (gs_code (t)), 
+  fprintf (f, "%s<%ld> ", gs_code_name (gs_code (t)), 
   	   gs_mempool_address2byteofst(GS_ARENA, (char *)t));
 
   switch (gs_code (t)) {
