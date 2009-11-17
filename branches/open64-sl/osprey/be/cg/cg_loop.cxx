@@ -189,6 +189,7 @@
 #include "tag.h"
 #include "label_util.h"
 #include "profile_util.h"
+#include "cflow.h"
 #endif
 
 #if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
@@ -6601,7 +6602,7 @@ void CG_LOOP_Statistics(LOOP_DESCR *loop)
 
 
 #if defined(TARG_SL)
-static BOOL enable_zdl_with_branch = FALSE;
+static BOOL enable_zdl_with_branch = TRUE;
 static int zdl_seq_no = 0;
 
 static void Dead_Code_Elimination_Within_BB(TN* probably_not_liveout_tn)
@@ -7203,6 +7204,7 @@ CG_LOOP_Zdl_Ident_Rec( LOOP_DESCR* loop )
     return;
   }
 
+#if 0
   /* not single BB couldn't be zdl
    */
   BOOL single_bb = (BB_SET_Size(LOOP_DESCR_bbset(loop)) == 1);
@@ -7215,6 +7217,7 @@ CG_LOOP_Zdl_Ident_Rec( LOOP_DESCR* loop )
     }
     return;
   }
+#endif
 
   BOOL has_outside_br = FALSE;
   BOOL has_inside_br = FALSE;
@@ -7240,6 +7243,16 @@ CG_LOOP_Zdl_Ident_Rec( LOOP_DESCR* loop )
       return;
   }
 
+  // for case: OspreyTest/SingleSource/gcc.c.torture/double/compile/920710-2.c
+  if ( LOOP_DESCR_Find_Unique_Tail(loop) == NULL )
+  {
+	if( trace ){
+	  LOOP_DESCR_Dump_Loop_Brief( loop );
+	  fprintf( TFile, " 	   --- can NOT be zdl\n");
+	  fprintf( TFile, " 	   --- because tail not unique \n");
+	}
+    return;
+  }
   if( trace ){
     LOOP_DESCR_Dump_Loop_Brief( loop );
     fprintf( TFile, "        --- can be zdl, rnl=%i\n", curr_rnl );
@@ -7339,6 +7352,17 @@ CG_LOOP_Zdl_Gen_Rec( LOOP_DESCR* loop )
     return;
   /* Now, it's time to generate zdl */
   CG_LOOP cg_loop( loop );
+
+  // for loop which do NOT have prolog-BB or epilog-BB, we can't perform ZDL for them.
+  // refer case at: regressiontest/sl1/compiler/zero-delay-loop/tzeroloop_no_epilog.i
+  if (!cg_loop.Has_prolog_epilog()) {
+    Reset_Can_Zero_Delay( loop );
+    BB* tail = LOOP_DESCR_Find_Unique_Tail(loop);
+    FmtAssert(BB_length(tail)>0, ("empty tail bb of loop"));
+    Reset_BB_zdl_body(tail);
+    return;
+  }
+
   OP* br_op = CG_LOOP_Zdl_Internal_Gen_Code( cg_loop );
 
   /* recomputing liveness is necessary, since we need the NEW
@@ -7380,6 +7404,11 @@ CG_LOOP_Zdl_Gen_Rec( LOOP_DESCR* loop )
   if(BB_length(LOOP_DESCR_Find_Unique_Tail(loop))==0) {
     CG_LOOP_Adjust_Zdl_Body(cg_loop);
   }
+
+  // for loop body which contain multiple bb, we need to merge prolog, loop body, epilog into a single BB.
+  // otherwise, code emit will probably  emit  loop-body before prolog.
+  // please refer case at: regressiontest/sl1/compiler/zero-delay-loop/tzeroloop_multiple_bb.c
+  CFLOW_Optimize(CFLOW_MERGE, "In Zero-Delay-Loop(merge zero-delay-loop into one BB)");
 
   return;
 }

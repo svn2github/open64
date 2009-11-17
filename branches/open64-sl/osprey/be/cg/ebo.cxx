@@ -1727,7 +1727,12 @@ OP_can_change(OP* op)
   if ((OP_code(op) == TOP_c3_mvtacc) 
    || (OP_code(op) == TOP_c3_mvfacc)
    || (OP_code(op) == TOP_c3_mvtaddr)
-   || (OP_code(op) == TOP_c3_mvfaddr))
+   || (OP_code(op) == TOP_c3_mvfaddr)
+   || (OP_code(op) == TOP_mvtc)
+   || (OP_code(op) == TOP_mvtc16)
+   || (OP_code(op) == TOP_mvtc_i)
+   || (OP_code(op) == TOP_mvfc)
+   || (OP_code(op) == TOP_mvfc16))
     return FALSE;
 #endif
   return TRUE;

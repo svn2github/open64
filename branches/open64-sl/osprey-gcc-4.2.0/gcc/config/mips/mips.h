@@ -23,6 +23,9 @@ along with GCC; see the file COPYING.  If not, write to
 the Free Software Foundation, 51 Franklin Street, Fifth Floor,
 Boston, MA 02110-1301, USA.  */
 
+/* Specify wchar_t type.  */
+#define WCHAR_TYPE	"unsigned char"
+#define WCHAR_TYPE_SIZE BITS_PER_UNIT
 
 /* MIPS external variables defined in mips.c.  */
 
@@ -1069,6 +1072,12 @@ extern const struct mips_rtx_cost_data *mips_cost;
 
 /* There is no point aligning anything to a rounder boundary than this.  */
 #define BIGGEST_ALIGNMENT LONG_DOUBLE_TYPE_SIZE
+
+/* The published ABIs say that doubles should be aligned on word
+   boundaries, so lower the alignment for structure fields unless
+   -malign-double is set.  */
+#define ADJUST_FIELD_ALIGN(FIELD, COMPUTED) \
+   SL_field_alignment (FIELD, COMPUTED)
 
 /* All accesses must be aligned.  */
 #define STRICT_ALIGNMENT 1

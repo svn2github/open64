@@ -4509,6 +4509,8 @@ static WN *lower_mldid(WN *block, WN *tree, LOWER_ACTIONS actions)
 		     pty_idx, WN_st(tree));
   wn  = WN_CreateMload(0, pty_idx, awn, swn);
   WN_set_field_id(wn, WN_field_id(tree));
+  
+  set_original_wn (wn, tree);
   wn  = lower_expr(block, wn, actions);
 
   WN_Delete(tree);
@@ -4809,7 +4811,7 @@ static void lower_bit_field_id(WN *wn)
   UINT bsize = FLD_bsize(fld);
   UINT bofst = FLD_bofst(fld) + (field_offset-ofst) * 8;
   if ((bofst + bsize) > (bytes_accessed * 8)) {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
     if (bytes_accessed == MTYPE_byte_size(MTYPE_I8)){ 
 #else
     if (bytes_accessed == MTYPE_byte_size(Max_Int_Mtype)){ 
@@ -4828,7 +4830,7 @@ static void lower_bit_field_id(WN *wn)
       bsize &&				   // field size non-zero
 #endif
       (bytes_accessed * 8 % bsize) == 0 && // bytes_accessed multiple of bsize
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
       (bofst & 7) == 0
 #else
       (bofst % bsize) == 0		   // bofst multiple of bsize
@@ -6801,7 +6803,12 @@ static WN *lower_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
   wn  = WN_CreateMstore (0, pty_idx, WN_kid0(tree), awn, swn);
   WN_Set_Linenum(wn, current_srcpos);
   WN_set_field_id(wn, WN_field_id(tree));
+  
+  set_original_wn (wn, tree);
+  set_original_wn (WN_kid0(wn), WN_kid0(tree));
   wn  = lower_store (block, wn, actions);
+  set_original_wn (wn, NULL); 
+  set_original_wn (WN_kid0(wn), NULL);
 
   WN_Delete(tree);
   return wn;

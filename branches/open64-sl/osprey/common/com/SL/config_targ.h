@@ -120,6 +120,7 @@ extern TARGET_PROCESSOR Target;		/* -Tc */
 extern char *Targ_Name (TARGET_PROCESSOR target);
 
 #define Is_Target_Itanium()	(Target==TARGET_ITANIUM)
+#define Is_Target_32bit()   (Target_ABI==ABI_N32)
 
 
 /* ========== */

@@ -65,7 +65,7 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc)
       return Pick_Load_Instruction(rtype,rtype);
     // else fallthru
   default:  
-    FmtAssert(FALSE, ("NYI: Pick_Load_Instruction mtype"));
+    FmtAssert(FALSE, ("Pick_Load_Instruction: Unexpected type %d", desc));
     return TOP_UNDEFINED;
   }
 }
@@ -310,17 +310,21 @@ Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst, OPS *ops)
   if (!TN_has_value(ofst) || ISA_LC_Value_In_Class(TN_value(ofst), LC_simm16))
     Build_OP (top, src, base, ofst, ops);
   else {
-    TN *tmp_tn = Build_TN_Of_Mtype(Pointer_Mtype);
-    INT32 tmp = TN_value(ofst) >> 16;
-    if (tmp < 0) {
-      // immediate has been sign extended, chop off the top 4 bytes
-      if (Use_32_Bit_Pointers)
-	tmp &= 0xffff;
+    TN *tn_ofst, *tn_addr;
+    tn_addr = tn_ofst = Build_TN_Of_Mtype(Pointer_Mtype);
+    TN *tn_ofst_low = Build_TN_Of_Mtype(Pointer_Mtype);
+    INT32 ofst_up = TN_value(ofst) >> 16;
+    INT32 ofst_low = TN_value(ofst) & 0xffff;
+    if (ofst_up < 0) {
+       if (Use_32_Bit_Pointers) 
+         ofst_up &= 0xffff;
     }
-    Build_OP(TOP_lui, tmp_tn, Gen_Literal_TN(tmp, 4), ops);
-    Build_OP(Use_32_Bit_Pointers ? TOP_addu : TOP_daddu, tmp_tn, 
-	     tmp_tn, base, ops);
-    Build_OP(top, src, tmp_tn, Gen_Literal_TN(TN_value(ofst)&0xffff, 4), ops);
+
+    Build_OP(TOP_lui, tn_ofst, Gen_Literal_TN(ofst_up, 4), ops);
+    Build_OP(TOP_ori, tn_ofst_low, Zero_TN, Gen_Literal_TN(ofst_low, 4), ops);
+    Build_OP(Use_32_Bit_Pointers ? TOP_add : TOP_dadd, tn_ofst, tn_ofst, tn_ofst_low, ops);
+    Build_OP(Use_32_Bit_Pointers ? TOP_addu : TOP_daddu, tn_addr, tn_ofst, base, ops); 
+    Build_OP(top, src, tn_addr, Gen_Literal_TN(0,4), ops);
   }
 }
 

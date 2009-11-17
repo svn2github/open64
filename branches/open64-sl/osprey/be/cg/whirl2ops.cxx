@@ -1734,7 +1734,11 @@ Handle_Call_Site (WN *call, OPERATOR call_opr)
 static VARIANT Memop_Variant(WN *memop)
 {
   VARIANT variant = V_NONE;
+#if defined(TARG_SL)
+  INT     required_alignment = MTYPE_alignment(WN_desc(memop));
+#else
   INT     required_alignment = MTYPE_RegisterSize(WN_desc(memop));
+#endif
 
 #ifndef KEY
   /* If volatile, set the flag.
@@ -2593,6 +2597,19 @@ Handle_STID (WN *stid, OPCODE opcode)
       }
       else { // I8 <- I8 || I4 <- I4
         Expand_Expr(kid, stid, result);
+      }
+
+      // If the start address of a 64bit variable is the last param register($11) in wn_lower phase,
+      // Store the paired high-bit TN of it to stack. The paird TN of $11 should be $12.
+      // It should be consistent with ABI (targ_sim.cxx).
+      if ((MTYPE_byte_size(OPCODE_desc(opcode)) == 8) && (TN_number(result) == 12)) { 
+        TN *result_h = Get_TN_Pair(result);
+        if (result_h && (TN_number(result_h) == 13)) {         
+          Last_Mem_OP = OPS_last(&New_OPs);
+          TYPE_ID type_t = ((OPCODE_desc(opcode) == MTYPE_I8) ? MTYPE_I4 : MTYPE_U4); 
+          Exp_Store (type_t, result_h, SP_Sym, 0, &New_OPs, 0);
+          Set_OP_no_alias(OPS_last(&New_OPs));
+        }
       }
       
 #else   // TARG_SL && EMULATE_LONGLONG 

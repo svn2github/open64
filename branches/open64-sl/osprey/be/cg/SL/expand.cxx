@@ -58,6 +58,7 @@
 #include "exp_intrn_info.h"
 #include "exp_slintrn.h"
 #include "printsrc.h" /* print source line for debugging */ 
+#include "targ_const_private.h"
 extern void Set_OP_To_WN_Map(WN *wn);
 #endif 
 
@@ -592,8 +593,10 @@ Expand_64Bit_Abs(TN *result_low, TN *src_low, TYPE_ID mtype, OPS* ops)
   TN *sign_bit = Build_TN_Of_Mtype(MTYPE_U4);
   Build_OP(TOP_srl, sign_bit, src_high, Gen_Literal_TN(31, 4), ops);
   Build_OP(TOP_mc_abs, result_high, src_high, ops);
-  Build_OP(TOP_sub, result_high, result_high, sign_bit, ops);
   Build_OP(TOP_mc_zn_eq, result_low, sign_bit, src_low, Gen_Literal_TN(0, 4), ops);
+
+  Build_OP(TOP_mc_zc_ne, sign_bit, result_low, sign_bit, Gen_Literal_TN(0, 4), ops);
+  Build_OP(TOP_sub, result_high, result_high, sign_bit, ops);
 }
 
 static void 
@@ -610,7 +613,7 @@ Expand_64Bit_Cvtl(TN *result_low, TN *src_low, TN *len,
 
   INT64 l = TN_value(len);
   if (l <= 32) {
-    Expand_Convert_Length(result_low, src_low, len, mt, mt, ops);
+    Expand_Convert_Length(result_low, src_low, len, mt, signed_extension, ops);
 
     if (result_h != NULL) {
       if (signed_extension) {
@@ -624,7 +627,7 @@ Expand_64Bit_Cvtl(TN *result_low, TN *src_low, TN *len,
 
     Expand_Copy(result_low, src_low, MTYPE_I4, ops);
     Expand_Convert_Length(result_h, src_high, Gen_Literal_TN(l - 32, 4), mt, 
-        MTYPE_is_signed(mt), ops);
+        signed_extension, ops);
   }
 }
 
@@ -824,6 +827,7 @@ Exp_Immediate_Int (TN *dest, TN *src, TYPE_ID rtype, OPS *ops)
       }      
     }
     else {
+      FmtAssert(FALSE, ("Exp_Immediate_Int: Error value"));
       Build_OP (TOP_ori, tmp, Zero_TN, Gen_Literal_TN((val >> 16) & 0xffff, 4), ops);
       Build_OP (TOP_dsll, tmp, tmp, Gen_Literal_TN(16, 4), ops);
       Build_OP (TOP_ori, dest, tmp, Gen_Literal_TN(val & 0xffff, 4), ops);
@@ -1908,12 +1912,13 @@ Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     constant *= TN_has_value(src2) ? TN_value(src2) : WN_const_val(TN_home(src2));
     // Need to get the constant of the right length
     constant = Targ_To_Host(Host_To_Targ(mtype,constant));
-    #if defined(TARG_SL) 
-    	val_tn = Gen_Literal_TN(constant, 4);
-    #else
-        val_tn = Gen_Literal_TN(constant, 8);
-	  #endif
+#if defined(TARG_SL) 
+    val_tn = Gen_Literal_TN(constant, 4);
+    Exp_Immediate(result,val_tn,mtype,ops);
+#else
+    val_tn = Gen_Literal_TN(constant, 8);
     Exp_Immediate(result,val_tn,MTYPE_is_signed(mtype),ops);
+#endif
     return;
   }
 
@@ -2070,7 +2075,11 @@ void Expand_Mulshift (TN *result, TN *src1, TN *src2, TN *src3, TYPE_ID mtype, O
       constant = (constant << shift);
     }
     val_tn = Gen_Literal_TN(constant, 4);
+#ifdef TARG_SL
+    Exp_Immediate(result,val_tn,mtype,ops);
+#else
     Exp_Immediate(result,val_tn,MTYPE_is_signed(mtype),ops);
+#endif
     return;
   }
 
@@ -6610,6 +6619,8 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops,
 	  Exp_Store (MTYPE_I8, ded_tn, tmp_apply_arg, ofst, ops, 0);
 	  ofst+= 8;
 	}
+#if !defined(TARG_SL)
+	/* SL do not have float-point register */
 	for (par = 0; par < MAX_NUMBER_OF_REGISTER_PARAMETERS; par ++) {
 	  ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_float,
 				      par+13,
@@ -6617,6 +6628,7 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops,
 	  Exp_Store (MTYPE_F8, ded_tn, tmp_apply_arg, ofst, ops, 0);
 	  ofst+= 8;
 	}
+#endif
 
 	// return the pointer to the new structure
 	return_tn = Build_TN_Of_Mtype(MTYPE_I8);
@@ -6658,9 +6670,15 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops,
 	  ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer,
 				      par+5,
 				      8 /* assume 64 bit registers */);
+#if defined(TARG_SL)				      
+	  Build_OP(TOP_lw, ded_tn, op1, Gen_Literal_TN(ofst, 4), ops);
+#else
 	  Build_OP(TOP_ld, ded_tn, op1, Gen_Literal_TN(ofst, 4), ops);
+#endif
 	  ofst+= 8;
 	}
+#if !defined(TARG_SL)
+	/* SL do not have float-point register */
 	for (par = 0; par < MAX_NUMBER_OF_REGISTER_PARAMETERS; par ++) {
 	  ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_float,
 				      par+13,
@@ -6668,6 +6686,7 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops,
 	  Build_OP(TOP_ldc1, ded_tn, op1, Gen_Literal_TN(ofst, 4), ops);
 	  ofst+= 8;
 	}      
+#endif
       }
       return NULL;
     }
@@ -6676,10 +6695,15 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops,
       TN *ded_tn;
       ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer,
 		      		  3, 8);
+#if defined(TARG_SL)
+      /* SL do not have float-point register */
+      Build_OP(TOP_lw, ded_tn, op0, Gen_Literal_TN(0, 4), ops);
+#else
       Build_OP(TOP_ld, ded_tn, op0, Gen_Literal_TN(0, 4), ops);
       ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_float,
 		      		  1, 8);
       Build_OP(TOP_ldc1, ded_tn, op0, Gen_Literal_TN(8, 4), ops);
+#endif
       return NULL;
     }
     return NULL;	
@@ -6830,7 +6854,10 @@ void Expand_Const (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
 
       TN *pair = Get_TN_Pair(dest);	  
       if (pair != NULL) {
-        Build_OP(TOP_or, pair, Zero_TN, Zero_TN, ops);
+        if (TCON_u1(tcon) == 0x80000000) // -0.0
+          Expand_Immediate(pair, Gen_Literal_TN(0x80000000, 4), 0, ops);
+        else                             // +0.0
+          Build_OP(TOP_or, pair, Zero_TN, Zero_TN, ops);
       }
       return;
     }

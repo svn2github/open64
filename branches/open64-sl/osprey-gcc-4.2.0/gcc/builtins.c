@@ -4410,6 +4410,14 @@ gimplify_va_arg_expr (tree *expr_p, tree *pre_p, tree *post_p)
       /* We can, however, treat "undefined" any way we please.
 	 Call abort to encourage the user to fix the program.  */
       inform ("if this code is reached, the program will abort");
+
+#if defined(TARG_SL)
+      /* Fix gcc bug 38483 */
+      /* Before the abort, allow the evaluation of the va_list
+         expression to exit or longjmp.  */
+      gimplify_and_add (valist, pre_p);
+#endif
+
       t = build_function_call_expr (implicit_built_in_decls[BUILT_IN_TRAP],
 				    NULL);
       append_to_statement_list (t, pre_p);

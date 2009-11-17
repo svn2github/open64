@@ -1507,6 +1507,45 @@ May_Include_Vbuf_Offset(INTRINSIC iopc, WN* call) {
 }
 #endif 
 
+#ifdef TARG_SL
+/* For case: *p++(or --) op *p ... */
+static BOOL Is_Special_Case (WN* wn)
+{
+  WN * body;
+  WN * last;
+
+  FmtAssert(WN_operator(wn) == OPR_ISTORE, ("WGEN_Stmt_Add: FYI"));
+
+  body = WFE_Stmt_Top ();
+
+  if (body) {
+
+/* Here is just a simple match.
+ * 
+ * wn:   (*p)
+ *    .....
+ *   U4U4LDID 72 <1,4,.preg_U4> T<47,anon_ptr.,4> # <preg>
+ *  I4ISTORE 0im:0 T<47,anon_ptr.,4>
+ *
+ * last: (p++)
+ *    U4U4LDID 72 <1,4,.preg_U4> T<47,anon_ptr.,4> # <preg>
+ *    U4INTCONST 4 (0x4)
+ *   U4ADD
+ *  U4STID 0 <2,1,p> T<47,anon_ptr.,4>
+ */
+
+    last = WN_last(body);
+    if ((WN_operator(last) == OPR_STID )
+       && ((WN_operator(WN_kid0(last)) == OPR_ADD) 
+         || (WN_operator(WN_kid0(last)) == OPR_SUB)) 
+       && (WN_Equiv(WN_kid0(WN_kid0(last)) ,WN_kid1(wn))))    
+      return TRUE;
+    else
+      return FALSE;
+  }
+} 
+#endif
+
 
 /* rhs_wn is the WN representing the rhs of a MODIFY_EXPR node; this
  * routine processes the lhs of the node and generate the appropriate
@@ -1974,8 +2013,8 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
        * only POST(INC/DEC) differs from gcc.
        */
       tree post_inc_dec = TREE_OPERAND(lhs, 0);
-      if( TREE_CODE(post_inc_dec) == POSTINCREMENT_EXPR ||
-          TREE_CODE(post_inc_dec) == POSTDECREMENT_EXPR )
+      if(((TREE_CODE(post_inc_dec) == POSTINCREMENT_EXPR) ||
+          (TREE_CODE(post_inc_dec) == POSTDECREMENT_EXPR)) && Is_Special_Case(wn))
         WFE_Stmt_Prepend_Last(wn, Get_Srcpos());
       else 
 #endif
@@ -7876,22 +7915,6 @@ WFE_Expand_Expr (tree exp,
             WN_Intconst (Pointer_Mtype, rounded_size));
 	    } else
             /* Compute new value for AP.  */
-#if defined(TARG_SL) && (defined(EMULATE_LONGLONG) || defined(EMULATE_FLOAT_POINT))
-        if ((mtype == MTYPE_F8) || (mtype == MTYPE_I8) || (mtype == MTYPE_U8)
-            || (mtype == MTYPE_M && TY_fld(ty_idx).Entry() 
-              && MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty_idx))))==8)) {
-
-          /* Force 8byte align, ((offset + 15) << 3) >> 3 */
-          wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
-              WN_Intconst (Pointer_Mtype, 8*2-1));
-
-          wn = WN_Binary (OPR_LSHR, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, 3));
-          wn = WN_Binary (OPR_SHL, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, 3));
-          if (mtype == MTYPE_M && TY_fld(ty_idx).Entry() 
-              && MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty_idx))))==8)
-            wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, rounded_size-8));
-        } else
-#endif
         {
           wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
               WN_Intconst (Pointer_Mtype, rounded_size));

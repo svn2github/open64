@@ -2232,10 +2232,6 @@ CODEMAP::Canon_cvt(WN       *wn,
       MTYPE_size_min(OPCODE_rtype(op)) == MTYPE_size_min(OPCODE_desc(op))) 
     return propagated;
 
-#ifdef TARG_SL
-  extern BOOL Is_Target_32bit();
-#endif
-
   if ( WOPT_Enable_Cvt_Folding && 
 #if defined(TARG_X8664) || defined(TARG_NVISA) || defined (TARG_SL) // bug 5851
        ! Is_Target_32bit() &&

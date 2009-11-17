@@ -77,6 +77,9 @@ extern "C"{
 #include "wgen_stmt.h"
 #include <map>
 #include "erfe.h"
+#if defined(TARG_SL)
+#include "erglob.h"
+#endif
 #ifdef TARG_X8664
 #include <ctype.h>
 #endif
@@ -94,6 +97,7 @@ extern gs_t decl_arguments;
 
 extern void Push_Deferred_Function(gs_t);
 extern char *WGEN_Tree_Node_Name(gs_t op);
+extern void WGEN_ErrMsg (INT ecode, ...);
 
 #ifdef KEY
 // =====================================================================
@@ -421,11 +425,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 				Fail_FmtAssertion ("VLA at line %d not currently implemented", lineno);
 #else
 			// bugs 943, 11277, 10506
-			{
-			  // Should use ErrMsg (or something similar) instead.
-			  printf("pathcc: variable-length structure not yet implemented\n");
-			  exit(2);
-			}
+				WGEN_ErrMsg(EC_Unimplemented_Feature, "variable-length structure");
 #endif
 			variable_size = TRUE;
 			tsize = 0;
@@ -477,10 +477,16 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  TY_Init (ty, tsize, KIND_SCALAR, mtype, 
 		           Save_Str(Get_Name(gs_type_name(type_tree))) );
 		  Set_TY_no_ansi_alias (ty);
+#if defined(TARG_SL)
+		  // for -m32, it is not the predefined type, alignment shoule be set.
+		  // Corresponding to following code about bug#2932.
+		  if (!TARGET_64BIT)  
+		    Set_TY_align (idx, align);
+#endif
  		} else
 #endif
 		idx = MTYPE_To_TY (mtype);	// use predefined type
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
 		/* At least for -m32, the alignment is not the same as the data
 		   type's natural size. (bug#2932)
 		*/
@@ -1886,6 +1892,11 @@ Create_ST_For_Tree (gs_t decl_node)
     extern PREG_NUM Map_Reg_To_Preg []; // defined in common/com/arch/config_targ.cxx
     int reg = gs_decl_asmreg(decl_node);
     PREG_NUM preg = Map_Reg_To_Preg [reg];
+#if defined(TARG_SL)
+    if (preg < 0 || preg > 31)
+      WGEN_ErrMsg (EC_Unimplemented_Feature, "Variable in Special register");
+#endif
+
     FmtAssert (preg >= 0,
                ("mapping register %d to preg failed\n", reg));
     TY_IDX ty_idx = ST_type (st);

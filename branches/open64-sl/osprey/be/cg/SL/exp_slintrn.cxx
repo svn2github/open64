@@ -70,7 +70,7 @@ void
 User_Error(WN* intrncall, const char *format, ...)
 {
   const char *func_name = Cur_PU_Name;
-  const char *file_name = Src_File_Name;
+  const char *file_name = (Orig_Src_File_Name ? Orig_Src_File_Name : Src_File_Name);
 
   extern SRCPOS current_srcpos;
   int line_no = SRCPOS_linenum(current_srcpos);

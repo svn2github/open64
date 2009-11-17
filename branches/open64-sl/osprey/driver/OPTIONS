@@ -1429,6 +1429,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Warn about externs not at file scope level"
 -Wno-nested-externs	;		Cc	f	self
 	"Do not warn about externs not at file scope level"
+-Wold-style-definition ; Cc	f	self
+	"Warn if an old-style function definition is used. A warning is given even if there is a previous prototype."
+-Wno-old-style-definition ; Cc	f	self
+	"Do not warn about old stype fucntion definition"
 -Wparentheses	;		Cc	f	self
 	"Warn about possible missing parentheses"
 -Wno-parentheses	;		Cc	f	self
@@ -1437,17 +1441,17 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Warn about function pointer arithmetic"
 -Wno-pointer-arith	;		Cc	f	self
 	"Do not warn about function pointer arithmetic"
--Wpointer-sign	;		Cc,CPP	CPP,f	self
+-Wpointer-sign	;		Cc	f	self
 	"Warn for pointer asignments with different signedness"
--Wno-pointer-sign	;		Cc,CPP	CPP,f	self
+-Wno-pointer-sign	;		Cc	f	self
 	"Don't warn for pointer asignments with different signedness"
--Wpointer-to-int-cast        ;		Cc,CPP	CPP	self
+-Wpointer-to-int-cast        ;		Cc	f	self
 	"Warn for pointer casts to integer types of a different size"
--Wno-pointer-to-int-cast        ;		Cc,CPP	CPP	self
+-Wno-pointer-to-int-cast        ;		Cc	f	self
 	"Don't warn for pointer casts to integer types of a different size"
--Wno-int-to-pointer-cast        ;		Cc,CPP	CPP	self
+-Wno-int-to-pointer-cast        ;		Cc	f	self
 	"Don't warn for casts to pointers from integer types of a different size"
--Wint-to-pointer-cast        ;		Cc,CPP	CPP	self
+-Wint-to-pointer-cast        ;		Cc	f	self
 	"Warn for casts to pointers from integer types of a different size"
 -Wredundant-decls	;		Cc	f	self
 	"Warn about multiple declarations of the same object"

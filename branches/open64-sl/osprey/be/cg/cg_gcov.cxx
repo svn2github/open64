@@ -60,13 +60,9 @@
 #include "symtab_access.h"
 #include "unistd.h"
 
-#ifdef TARG_MIPS
-#if defined(TARG_SL)
-static BOOL inline Is_Target_32bit (void) { return TRUE; }
-#else
+#if defined(TARG_MIPS) && !defined(TARG_SL)
 //static BOOL inline Is_Target_64bit (void) { return TRUE; }
 static BOOL inline Is_Target_32bit (void) { return FALSE; }
-#endif
 #endif // TARG_MIPS
 
 MEM_POOL name_pool, *name_pool_ptr = NULL;

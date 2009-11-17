@@ -485,24 +485,6 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
     case MTYPE_A8:
     case MTYPE_F8:
       ploc.reg = Get_Current_Preg_Num (SIM_INFO.int_args);
-      /* If the current Preg number is odd, start_offset+=4,
-       * to make sure that the register of I8/U8/F8 parameter is start from even register 
-       */
-      if (ploc.reg & 0x1 == 1) {	// even align
-        ploc.start_offset += 4;
-        Current_Param_Num++;
-        if (Last_Fixed_Param < INT_MAX)
-          ++Last_Fixed_Param;
-        ploc.reg = Get_Current_Preg_Num (SIM_INFO.int_args);
-      }
-
-      /* If there is no Preg, the paremeter is stored in memory, 
-       * then Force the memory to be 8bytes-align 
-       */
-      if (ploc.reg == 0) {
-        ploc.start_offset = ((ploc.start_offset+4) >> 3) << 3;
-      }
-
       Current_Param_Num++;
       /* adjust Last_Fixed_Param in varargs case */
       if (Last_Fixed_Param < INT_MAX)
@@ -558,23 +540,6 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	    	Last_Fixed_Param += RETURN_INFO_count(info) - 1;
           } else {
             ploc.reg = Get_Current_Preg_Num (SIM_INFO.int_args);
-            if (TY_fld(ty).Entry() && (MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty))))==8)) {
-              if (ploc.reg & 0x1 == 1) {
-                ploc.start_offset += 4;
-                Current_Param_Num++;
-                if (Last_Fixed_Param < INT_MAX)
-                  ++Last_Fixed_Param;
-                ploc.reg = Get_Current_Preg_Num (SIM_INFO.int_args);
-              }
-
-              /* If there is no Preg, the paremeter is stored in memory, 
-               * then Force the memory to be 8bytes-align 
-               */
-              if (ploc.reg == 0) {
-                ploc.start_offset = ((ploc.start_offset+4) >> 3) << 3;
-              }
-            }
-
             Current_Param_Num += psize - 1;
             /* adjust Last_Fixed_Param in varargs case */
             if (Last_Fixed_Param < INT_MAX)

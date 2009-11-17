@@ -104,13 +104,9 @@ extern INT (*Push_Pop_Int_Saved_Regs_p)(void);
 #endif
 extern void Early_Terminate (INT status);
 
-#ifdef TARG_MIPS
-#if defined(TARG_SL)
-static BOOL inline Is_Target_32bit (void) { return TRUE; }
-#else
+#if defined(TARG_MIPS) && !defined(TARG_SL)
 //static BOOL inline Is_Target_64bit (void) { return TRUE; }
 static BOOL inline Is_Target_32bit (void) { return FALSE; }
-#endif
 #endif // TARG_MIPS
 
 #define ST_force_gprel(s)	ST_gprel(s)

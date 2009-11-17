@@ -822,6 +822,7 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args, "-m32");
 		}
 #elif defined(TARG_SL)
+		add_string(args, "-U__i386__");
 		add_string(args, "-D__JAVI__");
 		add_string(args, "-D__SL__");
 		add_string(args, "-D__MIPSEL__");

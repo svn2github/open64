@@ -512,10 +512,16 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
                   TY_Init (ty, tsize, KIND_SCALAR, mtype,
                            Save_Str(Get_Name(TYPE_NAME(type_tree))) );
                   Set_TY_no_ansi_alias (ty);
+#if defined(TARG_SL)
+                  // for -m32, it is not the predefined type, alignment shoule be set.
+                  // Corresponding to following code about bug#2932.
+                  if (!TARGET_64BIT)  
+                    Set_TY_align (idx, align);
+#endif
                 } else
 #endif
 		idx = MTYPE_To_TY (mtype);	// use predefined type
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
 		/* At least for -m32, the alignment is not the same as the data
 		   type's natural size. (bug#2932)
 		*/
