@@ -253,7 +253,7 @@ enum _sec_kind Get_Const_Var_Section()
 #if defined(TARG_SL)                
     return _SEC_DATA;
 #else              
-    return _SEC_RDATA 
+    return _SEC_RDATA;
 #endif
 }
 

@@ -304,7 +304,6 @@ BE_CG_TARG_CXX_SRCS =	\
   cgdwarf_targ.cxx	\
   cgemit_targ.cxx	\
   cgtarget.cxx		\
-  cgtarget_special.cxx		\
   ebo_special.cxx	\
   entry_exit_targ.cxx	\
   exp_branch.cxx	\
@@ -338,6 +337,7 @@ ifeq ($(BUILD_TARGET), SL)
   BE_CG_TARG_CXX_SRCS += loop_dce.cxx
   BE_CG_TARG_CXX_SRCS += loop_rce.cxx
   BE_CG_TARG_CXX_SRCS += gcm_licm.cxx
+  BE_CG_TARG_CXX_SRCS += cgtarget_special.cxx
 endif
 
 ifeq ($(BUILD_TARGET), X8664)

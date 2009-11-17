@@ -77,9 +77,7 @@ extern "C"{
 #include "wgen_stmt.h"
 #include <map>
 #include "erfe.h"
-#if defined(TARG_SL)
 #include "erglob.h"
-#endif
 #ifdef TARG_X8664
 #include <ctype.h>
 #endif
@@ -97,8 +95,9 @@ extern gs_t decl_arguments;
 
 extern void Push_Deferred_Function(gs_t);
 extern char *WGEN_Tree_Node_Name(gs_t op);
+#if defined(TARG_SL)
 extern void WGEN_ErrMsg (INT ecode, ...);
-
+#endif
 #ifdef KEY
 // =====================================================================
 // bug 8346: A function's VLA argument types should only be expanded
@@ -425,7 +424,11 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 				Fail_FmtAssertion ("VLA at line %d not currently implemented", lineno);
 #else
 			// bugs 943, 11277, 10506
+#if defined(TARG_SL)
 				WGEN_ErrMsg(EC_Unimplemented_Feature, "variable-length structure");
+#else
+				ErrMsg(EC_Unimplemented_Feature, "variable-length structure");
+#endif
 #endif
 			variable_size = TRUE;
 			tsize = 0;

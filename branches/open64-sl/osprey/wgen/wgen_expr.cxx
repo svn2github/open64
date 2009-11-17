@@ -4470,6 +4470,7 @@ get_wrapper_value (gs_t stmt)
 #endif // FE_GNU_4_2_0
 #endif // KEY
 
+#if defined(TARG_SL)
 extern char *Src_File_Name; /* source file */
 extern void ErrMsg_Report(INT ecode, INT line, const char *file, va_list vp);
 void WGEN_ErrMsg(INT ecode, ...)
@@ -4481,6 +4482,7 @@ void WGEN_ErrMsg(INT ecode, ...)
   ErrMsg_Report(ecode, lineno, file_name, vp);
   va_end(vp);
 }
+#endif
 
 WN * 
 WGEN_Expand_Expr (gs_t exp,
