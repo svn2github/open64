@@ -372,7 +372,7 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.so.1           ${PHASEPATH}/32/libmv.so.1
         INSTALL_DATA_SUB ${LIB32AREA}/libopenmp/libopenmp.a      ${PHASEPATH}/32/libopenmp.a
         INSTALL_DATA_SUB ${LIB32AREA}/libopenmp/libopenmp.so.1      ${PHASEPATH}/32/libopenmp.so.1
-        INSTALL_DATA_SUB ${LIB32AREA}/libacml_mv/libacml_mv.a ${PHASEPATH}/libacml_mv.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libacml_mv/libacml_mv.a ${PHASEPATH}/32/libacml_mv.a
 
         (cd ${PHASEPATH}; ln -sf libmv.so.1 libmv.so; ln -sf libopenmp.so.1 libopenmp.so)
         (cd ${PHASEPATH}/32; ln -sf libmv.so.1 libmv.so; ln -sf libopenmp.so.1 libopenmp.so)
