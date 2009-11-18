@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -358,6 +362,41 @@ typedef struct lno_flags {
 
 #define LNO_FLAGS_next(f)	(f->next)
 #define LNO_FLAGS_mhd(f)	(f->_mhd)
+/* Bit masks for saved fields */
+#define LNO_FLAGS_bitmask(f) ((f)->buffer[0])
+
+/* One bit per saved field, indicating whether the field's orginal value is 
+ * saved in the next element on the LNO configuration stack.
+ */
+typedef enum LNO_FLAGS_MASK {
+    LNO_FLAGS_UNDEF = 0,
+    OLF_UPPER_BOUND = 1,
+    LNO_FLAGS_BM_NEXT = 2 /* next unused bit mask */
+};
+
+/* He we gives an interface to dynamically change and restore LNO configuration flags:
+ * LNO_Save_Config(bitmask) saves a snap shot of Current_LNO on the LNO configuration stack
+ * and flag the bit mask for the field to be saved.
+ * LNO_Restore_Configs restores values for all saved fields and pop all temporary elements 
+ * from LNO configuration stack.
+ * Values saved earlier take precedence of values saved later.
+ *
+ *  LNO_Save_Config(bitmask)
+ * 
+ *  LNO_Restore_Configs()
+ *
+ * To add a new field that can be dynamically changed and restored:
+ * 1. Assign a bitmask for the field in LNO_FLAGS_MASK and increment LNO_FLAGS_BM_NEXT 
+ *    accordingly.
+ * 2. Add a case statement in LNO_Restore_Field for the field.
+ * 3. Add a call to LNO_Restore_Field in LNO_Restore_Fields for the field.
+ * 4. Use the LNO_Save_Config(bitmask) interface to save the field before the change.
+ *
+ * The default restoration points are at the end of LNO.
+ */
+
+#define LNO_Save_Config(x)  LNO_Push_Config(FALSE, (x))
+
 
 /* ====================================================================
  *
@@ -574,12 +613,16 @@ extern void LNO_Init_Config ( void );
 /* Push a new struct on top of stack, either a copy of the current
  * TOS, or the defaults:
  */
-extern void LNO_Push_Config ( BOOL use_default );
+extern void LNO_Push_Config ( BOOL use_default, LNO_FLAGS_MASK );
 
 /* Pop a struct from top of stack and return TRUE if the old TOS was
  * not the original TOS, or do nothing and return FALSE:
  */
-extern BOOL LNO_Pop_Config ( void );
+extern BOOL LNO_Pop_Config ( BOOL );
+
+/* Restore LNO configuration.
+ */
+extern void LNO_Restore_Configs( void );
 
 /* Configure the current top of stack struct: */
 extern void LNO_Configure ( void );

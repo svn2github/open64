@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -85,6 +89,10 @@
  *  BOOL CG_skip_local_sched
  *	Enable skipping of scheduling of basic blocks based on the 
  *	-CG:skip_local_[after,before,equal] options.
+ *
+ *  BOOL CG_cmp_load_exec
+ *     Enable cmp load exec EBO optimization which folds loads onto
+ *      cmp operations for X8664.
  *
  *  BOOL CG_skip_local_swp
  *	Enable skipping of pipelining of inner loops based on the 
@@ -504,6 +512,9 @@ extern BOOL CG_skip_local_hbf;
 extern BOOL CG_skip_local_loop;
 extern BOOL CG_skip_local_sched;
 extern BOOL CG_skip_local_swp;
+#ifdef TARG_X8664
+extern BOOL CG_cmp_load_exec;
+#endif
 extern INT CG_opt_level;
 extern BOOL CG_localize_tns;
 extern BOOL CG_localize_tns_Set;
@@ -820,6 +831,8 @@ extern BOOL CG_use_setcc;
 extern BOOL CG_use_short_form;
 extern BOOL CG_loadbw_execute;
 extern BOOL CG_p2align;
+extern BOOL CG_loop32;
+extern BOOL CG_compute_to;
 extern UINT64 CG_p2align_freq;
 extern UINT32 CG_p2align_max_skip_bytes;
 extern UINT32 CG_movnti;

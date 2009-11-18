@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -123,6 +127,7 @@ extern void Set_BB_pdom_set(BB *bb, BS *bs);
 
 #define BB_Has_Dominator_Info(bb) (BB_id(bb) < bb_dom_map.size)
 
+extern BOOL Are_Dominators_Calculated(void);
 extern void Calculate_Dominators(void);
 extern void BB_REGION_Calculate_Dominators(const BB_REGION& region);
 extern void BB_SET_Calculate_Dominators(BB_SET *bbset, BOOL compute_dom, BOOL compute_pdom);

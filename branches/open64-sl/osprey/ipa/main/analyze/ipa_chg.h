@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *
  * Copyright (C) 2006, 2007, Tsinghua University.  All Rights Reserved.
  *
@@ -29,8 +33,10 @@
 #include "ipc_symtab_merge.h"
 #include <vector>
 #include <ext/hash_map>
+#include <ext/hash_set>
 
 using __gnu_cxx::hash_map;
+using __gnu_cxx::hash_set;
 
 #define BASE_CLASS_NOT_FOUND (size_t)-1
 
@@ -58,6 +64,57 @@ public:
 
     size_t Get_Ancestor_Offset(TY_INDEX sub, TY_INDEX anc);
 
+    void Get_Sub_Class_Hierarchy (TY_INDEX declared_class,
+        hash_set<TY_INDEX>& targets);
+
+    int Num_Sub_Class_In_Hierarchy(TY_INDEX declared_class);
+
+    void Print_IPA_CLASS_HIERARCHY() {
+      FILE *_debug = fopen("class_hierarchy.trace", "w");
+      fprintf(_debug, 
+          "Baseclass_relationship_size:%zu; Subclass_relationship_size:%zu\n", 
+          baseclass.size(), subclass.size());
+      fprintf(_debug, "basetypes\n");
+      Print_helper(baseclass,_debug); 
+      fprintf(_debug, "subtypes\n");
+      Print_helper(subclass,_debug); 
+      fclose(_debug);
+    }
+
+
+    void Print_helper(CLASS_RELATIONSHIP myhier, FILE *_debug) {
+      CLASS_RELATIONSHIP::iterator _iterator;
+      fprintf(_debug, "in type ids\n");
+      for (_iterator = myhier.begin(); 
+          _iterator != myhier.end();
+          ++_iterator) {
+        fprintf(_debug, "%d:", _iterator->first);
+        _ty_idx_list::iterator _viterator;
+        _ty_idx_list _vect = _iterator->second;
+        for (_viterator = _vect.begin();
+            _viterator != _vect.end();
+            ++_viterator) {
+          fprintf (_debug, " %d", *_viterator);
+        }
+        fprintf (_debug, "\n");
+      }
+      fprintf(_debug, "in dump_type style\n");
+      for (_iterator = myhier.begin(); 
+          _iterator != myhier.end();
+          ++_iterator) {
+        Ty_tab[_iterator->first].Print(_debug);
+        _ty_idx_list::iterator _viterator;
+        _ty_idx_list _vect = _iterator->second;
+        for (_viterator = _vect.begin();
+            _viterator != _vect.end();
+            ++_viterator) {
+          fprintf (_debug, "+++++++");
+          Ty_tab[*_viterator].Print(_debug);
+          fprintf (_debug, "+++++++\n");
+        }
+      }
+    }
+
 private:
 
     CLASS_RELATIONSHIP baseclass;
@@ -71,4 +128,3 @@ extern IPA_CLASS_HIERARCHY* IPA_Class_Hierarchy;
 extern IPA_CLASS_HIERARCHY* Build_Class_Hierarchy();
 
 #endif
-

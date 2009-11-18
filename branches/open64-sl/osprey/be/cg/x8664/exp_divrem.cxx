@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -45,6 +49,7 @@
 
 #include <stdint.h>
 #include <signal.h>
+#include "pathscale_defs.h"
 #include "defs.h"
 #include "errors.h"
 #include "erglob.h"
@@ -1042,7 +1047,7 @@ Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
       if (src1_val == minintval && src2_val == -1) {
 	// Bug 952 - instead of asserting, generate a divide for a compile-only 	// test (Gcc compatible - but why can't Gcc compute this even at higher 	// optimization levels ?)
 	// FmtAssert (FALSE, ("Division overflow detected.\n"));
-	printf("pathcc - division overflow detected\n");
+	printf(OPEN64_NAME_PREFIX "cc - division overflow detected\n");
 	INT tn_size = MTYPE_is_size_double(mtype) ? 8 : 4;
 	src2 = Expand_Immediate_Into_Register(Gen_Literal_TN(src2_val, tn_size), 
 					      is_double, ops);

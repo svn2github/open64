@@ -267,7 +267,7 @@ endif
 
 ifneq ($(BUILD_VARIANT), STATIC)
 lw_inline: $(IPA_OBJS) $(IPA_CXX_OBJS)
-	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
+	if ! test -e be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 	$(link.c++f) -o $@ $(IPA_OBJS) $(IPA_CXX_OBJS) be.so  $(LDFLAGS)
 else
 lw_inline: $(IPA_OBJS) $(IPA_CXX_OBJS) $(TARG_BE_DIR)/libbe.a

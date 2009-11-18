@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -132,6 +136,8 @@ typedef enum {
 	T_LRA_Comp,	
 	T_GRA_CU,		/* Register allocation */
 	T_GRA_Comp,	
+        T_GRU_CU,		/* Fuse Spills */
+	T_GRU_COMP,
 	T_Emit_CU,		/* Code emission */
 	T_Emit_Comp,	
 	T_Region_Finalize_CU,	/* Region Finalize */

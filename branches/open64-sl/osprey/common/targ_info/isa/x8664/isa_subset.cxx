@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
@@ -129,20 +133,32 @@ main()
 		    TOP_icallxxx,
 		    TOP_cmp8,
 		    TOP_cmpx8,
+		    TOP_cmpxr8,
 		    TOP_cmpxx8,
+		    TOP_cmpxxr8,
 		    TOP_cmpxxx8,
+		    TOP_cmpxxxr8,
 		    TOP_cmp16,
 		    TOP_cmpx16,
+		    TOP_cmpxr16,
 		    TOP_cmpxx16,
+		    TOP_cmpxxr16,
 		    TOP_cmpxxx16,
+		    TOP_cmpxxxr16,
 		    TOP_cmp32,
 		    TOP_cmpx32,
+		    TOP_cmpxr32,
 		    TOP_cmpxx32,
+		    TOP_cmpxxr32,
 		    TOP_cmpxxx32,
+		    TOP_cmpxxxr32,
 		    TOP_cmp64,
 		    TOP_cmpx64,
+		    TOP_cmpxr64,
 		    TOP_cmpxx64,
+		    TOP_cmpxxr64,
 		    TOP_cmpxxx64,
+		    TOP_cmpxxxr64,
 		    TOP_cmpi32,
 		    TOP_cmpi64,
 		    TOP_cmpi8,

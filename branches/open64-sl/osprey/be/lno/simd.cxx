@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007, 2008 Pathscale, LLC. All Rights Reserved.
  */
 
@@ -4067,10 +4071,12 @@ static void Simd_Vectorize_Intrinsics(WN *simd_op)
           WN_set_rtype(WN_kid1(simd_op), MTYPE_V16F4);
           break;
 
+#if 0 // currently not supplied by libacml_mv.a
         case INTRN_F8EXPEXPR:
           WN_intrinsic(simd_op) = INTRN_V16F8EXPEXPR;
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
           break;
+#endif
         case INTRN_F4EXPEXPR:
           WN_intrinsic(simd_op) = INTRN_V16F4EXPEXPR;
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);

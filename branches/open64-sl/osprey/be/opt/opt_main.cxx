@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
@@ -381,6 +385,8 @@ static MEM_POOL  Opt_local_pool;
 static ST       *Opt_current_pu_st = NULL;
 static PU_IDX    Opt_current_pu;
 
+static void identify_complete_struct_relayout_candidates(WN *wn);
+
 static void Opt_memory_init_pools(void)
 {
   OPT_POOL_Initialize(&Opt_global_pool, "Opt_global_pool", FALSE,
@@ -520,6 +526,11 @@ private:
   BOOL  _spre_before_ivr; // For running spre early
   BOOL  _bdce_before_ivr; // For running bdce early
   BOOL  _loop_multiver;   // loop multiversioning 
+  BOOL _pro_loop_fusion_trans; 
+  BOOL _bool_simp;
+  BOOL _fold_lda_iload_istore;
+  BOOL _no_return;
+  BOOL _simp_if_conv;
 
   WOPT_SWITCHES(const WOPT_SWITCHES&);
   WOPT_SWITCHES& operator = (const WOPT_SWITCHES&);
@@ -654,6 +665,20 @@ private:
       break;
 #endif
 
+    case PREOPT_LNO1_PHASE: 
+      WOPT_Enable_SSA_PRE = FALSE;
+      WOPT_Enable_Goto = FALSE;
+      WOPT_Enable_Epre_Before_Ivr = FALSE;
+      WOPT_Enable_Lpre_Before_Ivr = FALSE;
+      WOPT_Enable_Spre_Before_Ivr = FALSE;
+      WOPT_Enable_Bdce_Before_Ivr = FALSE;
+      WOPT_Enable_IVR = FALSE;
+      WOPT_Enable_Copy_Propagate = FALSE;
+      WOPT_Enable_DCE = FALSE;
+      WOPT_Enable_Bool_Simp = FALSE;
+      WOPT_Enable_Fold_Lda_Iload_Istore = FALSE;
+      WOPT_Enable_Input_Prop = FALSE;
+  
     case PREOPT_LNO_PHASE: 
       if (Run_autopar && Current_LNO->IPA_Enabled
 #ifdef KEY // bug 6383
@@ -664,6 +689,11 @@ private:
 	WOPT_Enable_Zero_Version = FALSE;
 	WOPT_Enable_DU_Full = TRUE;
       } 
+
+      if (WOPT_Enable_Pro_Loop_Fusion_Trans) {
+	WOPT_Enable_Noreturn_Attr_Opt = FALSE;
+      }
+      
       // fall though 
     default:
       // if the global flag "Allow_wrap_around_opt" is off
@@ -689,6 +719,9 @@ private:
     }
     
     if (_phase != PREOPT_LNO_PHASE) WOPT_Enable_Loop_Multiver = FALSE;
+
+    if (_phase != PREOPT_LNO1_PHASE)
+      WOPT_Enable_Pro_Loop_Fusion_Trans = FALSE;
   }
 
   void Unadjust_Optimization(void) {
@@ -761,6 +794,13 @@ private:
       WOPT_Enable_DU_Full = _du_full;
       break;
 #endif
+    case PREOPT_LNO1_PHASE:
+      WOPT_Enable_SSA_PRE = _ssa_pre;
+      WOPT_Enable_Zero_Version = _zero_version;
+      WOPT_Enable_IVR = _ivr;
+      WOPT_Enable_Copy_Propagate = _lno_copy;
+      WOPT_Enable_DCE = _dce;
+      WOPT_Enable_Input_Prop = _input_prop;
     case PREOPT_LNO_PHASE:
       if (Run_autopar && Current_LNO->IPA_Enabled) { 
         WOPT_Enable_Call_Zero_Version = _call_zero_version;
@@ -772,6 +812,11 @@ private:
       break;
     }
 
+    WOPT_Enable_Pro_Loop_Fusion_Trans = _pro_loop_fusion_trans;
+    WOPT_Enable_Noreturn_Attr_Opt = _no_return;
+    WOPT_Enable_Simple_If_Conv = _simp_if_conv;
+    WOPT_Enable_Bool_Simp = _bool_simp;
+    WOPT_Enable_Fold_Lda_Iload_Istore = _fold_lda_iload_istore;
     Enable_WN_Simp = _wn_simp;
     WOPT_Enable_Goto = _goto;
     WOPT_Enable_Combine_Operations = _combine_operations;
@@ -863,6 +908,11 @@ public:
     _spre_before_ivr = WOPT_Enable_Spre_Before_Ivr; // For running spre early
     _bdce_before_ivr = WOPT_Enable_Bdce_Before_Ivr; // For running bdce early
     _loop_multiver = WOPT_Enable_Loop_Multiver;
+    _pro_loop_fusion_trans = WOPT_Enable_Pro_Loop_Fusion_Trans;
+    _bool_simp = WOPT_Enable_Bool_Simp;
+    _fold_lda_iload_istore = WOPT_Enable_Fold_Lda_Iload_Istore;
+    _no_return = WOPT_Enable_Noreturn_Attr_Opt;
+    _simp_if_conv = WOPT_Enable_Simple_If_Conv;
 
     Adjust_Optimization();
   }
@@ -1123,6 +1173,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   Is_True(phase == PREOPT_IPA0_PHASE ||
 	  phase == PREOPT_IPA1_PHASE ||
 	  phase == PREOPT_LNO_PHASE ||
+	  phase == PREOPT_LNO1_PHASE ||
 	  phase == PREOPT_DUONLY_PHASE ||
 	  phase == PREOPT_PHASE ||
 	  phase == MAINOPT_PHASE,
@@ -1188,10 +1239,14 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 	LOWER_IO_STATEMENT |
 	LOWER_ENTRY_EXIT |
 	LOWER_SHORTCIRCUIT |
-#ifdef KEY
-	LOWER_UPLEVEL |
-#endif
 	lower_region_exits_flag;	// this is a variable
+
+#ifdef KEY
+    // No uplevel reference spliting for openmp
+    if ((PU_has_mp (Get_Current_PU ()) == FALSE) && 
+        (PU_mp(Get_Current_PU ()) == FALSE))
+      actions |= LOWER_UPLEVEL;
+#endif
     
     if (WOPT_Enable_Bits_Load_Store)
 	actions |= LOWER_BIT_FIELD_ID;
@@ -1315,6 +1370,9 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 #endif
   }
 
+  if (phase == PREOPT_IPA0_PHASE) // ipl
+    identify_complete_struct_relayout_candidates(wn_tree);
+
   SET_OPT_PHASE("Preparation");
 
 #ifdef SKIP
@@ -1397,7 +1455,8 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   comp_unit->Cfg()->Create(comp_unit->Input_tree(), lower_fully,
 			   WOPT_Enable_Calls_Break_BB,
 			   rgn_level/*context*/, 
-			   comp_unit->Opt_stab(), do_tail_rec );
+			   comp_unit->Opt_stab(), do_tail_rec,
+			   Malloc_Mem_Pool);
 
   // Transfer feedback data from Whirl annotation (at Cur_PU_Feedback)
   // to optimizer CFG annotation (at comp_unit->Cfg()->Feedback())
@@ -1418,6 +1477,9 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   comp_unit->Cfg()->Remove_fake_entryexit_arcs();
   comp_unit->Cfg()->Compute_dom_frontier(); // create dominance frontier
   comp_unit->Cfg()->Compute_control_dependence(); // create control-dependence set
+
+  SET_OPT_PHASE("Proactive Loop Fusion Transformation");
+  comp_unit->Pro_loop_fusion_trans();
   comp_unit->Cfg()->Analyze_loops();
 
   // Setup flow free alias information  --  CHI and MU list 
@@ -1544,74 +1606,76 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   }
 #endif
 
-  for (INT i = 0; i < WOPT_Enable_Extra_Rename_Pass; ++i) {
+  if (phase != PREOPT_LNO1_PHASE) {
+    for (INT i = 0; i < WOPT_Enable_Extra_Rename_Pass; ++i) {
 
-    if (Get_Trace(TP_WOPT2, SECOND_RENAME_FLAG)) 
-      fprintf(TFile, "%sEXTRA RENAME PASS %d:\n%s", DBar, i+1, DBar);
+      if (Get_Trace(TP_WOPT2, SECOND_RENAME_FLAG)) 
+        fprintf(TFile, "%sEXTRA RENAME PASS %d:\n%s", DBar, i+1, DBar);
 
-    // only enable during MAINOPT_PHASE because the update of high level
-    // structure is not implemented.  -Raymond 5/29/98.
-    //
-    if (WOPT_Enable_CFG_Opt && phase == MAINOPT_PHASE) {
-      SET_OPT_PHASE("CFG optimization");
-      CFG_transformation(comp_unit,
-			 WOPT_Enable_CFG_Opt2 && i == 0, // first pass
-			 Get_Trace(TP_WOPT2, CFG_OPT_FLAG),
-			 WOPT_Enable_CFG_Display);
+      // only enable during MAINOPT_PHASE because the update of high level
+      // structure is not implemented.  -Raymond 5/29/98.
+      //
+      if (WOPT_Enable_CFG_Opt && phase == MAINOPT_PHASE) {
+        SET_OPT_PHASE("CFG optimization");
+        CFG_transformation(comp_unit,
+			   WOPT_Enable_CFG_Opt2 && i == 0, // first pass
+			   Get_Trace(TP_WOPT2, CFG_OPT_FLAG),
+			   WOPT_Enable_CFG_Display);
 
-      if ( comp_unit->Cfg()->Feedback() )
-	comp_unit->Cfg()->Feedback()->Verify( comp_unit->Cfg(),
-					      "after CFG Optimization" );
-    }
+        if ( comp_unit->Cfg()->Feedback() )
+	  comp_unit->Cfg()->Feedback()->Verify( comp_unit->Cfg(),
+					        "after CFG Optimization" );
+      }
 
-    SET_OPT_PHASE("Second rename");
-    Rename_CODEMAP(comp_unit);
+      SET_OPT_PHASE("Second rename");
+      Rename_CODEMAP(comp_unit);
 
-    if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
-      SET_OPT_PHASE("Skip verify Live-Range because timing trace is on");
-    } else {
-      SET_OPT_PHASE("Verify Live-Range");
-      comp_unit->Verify_version();
-    }
+      if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
+        SET_OPT_PHASE("Skip verify Live-Range because timing trace is on");
+      } else {
+        SET_OPT_PHASE("Verify Live-Range");
+        comp_unit->Verify_version();
+      }
 
-    // do flow free copy propagation
-    if (WOPT_Enable_Copy_Propagate) {
-      SET_OPT_PHASE("Copy Propagation");
-      comp_unit->Do_copy_propagate();
-    }
+      // do flow free copy propagation
+      if (WOPT_Enable_Copy_Propagate) {
+        SET_OPT_PHASE("Copy Propagation");
+        comp_unit->Do_copy_propagate();
+      }
 
-    if (WOPT_Enable_DCE) {
-      SET_OPT_PHASE("Dead Code Elimination");
-      BOOL paths_removed;
-      BOOL dce_renumber_pregs = This_preopt_renumbers_pregs(phase);
-      comp_unit->Do_dead_code_elim(TRUE, TRUE, TRUE, TRUE,
-				   WOPT_Enable_Copy_Propagate,
-				   dce_renumber_pregs,
-				   &paths_removed);
+      if (WOPT_Enable_DCE) {
+        SET_OPT_PHASE("Dead Code Elimination");
+        BOOL paths_removed;
+        BOOL dce_renumber_pregs = This_preopt_renumbers_pregs(phase);
+        comp_unit->Do_dead_code_elim(TRUE, TRUE, TRUE, TRUE,
+				     WOPT_Enable_Copy_Propagate,
+				     dce_renumber_pregs,
+				     &paths_removed);
 
       if ( comp_unit->Cfg()->Feedback() )
 	   comp_unit->Cfg()->Feedback()->Verify( comp_unit->Cfg(),
 						 "Dead Code Elimination" );
 
       if (!paths_removed) break;
-    }
+      }
 
 #ifdef KEY // moved here because renaming causes bad code when there is
     	   // overlapped live ranges, which can be created by copy propagation
-    if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
-      SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
-      comp_unit->Fold_lda_iload_istore();
-    }
+      if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
+        SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
+        comp_unit->Fold_lda_iload_istore();
+      }
 #endif
 
-    // synchronize CFG and feedback info
-    // comp_unit->Cfg()->Feedback().make_coherent();
+      // synchronize CFG and feedback info
+      // comp_unit->Cfg()->Feedback().make_coherent();
 
-    if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
-      SET_OPT_PHASE("Skip verify Live-Range because timing trace is on");
-    } else {
-      SET_OPT_PHASE("Verify Live-Range");
-      comp_unit->Verify_version();
+      if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
+        SET_OPT_PHASE("Skip verify Live-Range because timing trace is on");
+      } else {
+        SET_OPT_PHASE("Verify Live-Range");
+        comp_unit->Verify_version();
+      }
     }
   }
 
@@ -1998,4 +2062,201 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   WN_CopyMap(opt_wn, WN_MAP_FEEDBACK, wn_orig);
 
   return opt_wn;
+}
+
+// complete struct relayout optimization
+
+#include "symtab_access.h"
+
+#define MAX_NUM_COMPLETE_STRUCT_RELAYOUT_CANDIDATES 5
+#define MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE 32
+static TY_IDX complete_struct_relayout_candidate_ty_idx
+  [MAX_NUM_COMPLETE_STRUCT_RELAYOUT_CANDIDATES];
+static int complete_struct_relayout_candidate_total_num_fields
+  [MAX_NUM_COMPLETE_STRUCT_RELAYOUT_CANDIDATES];
+static int complete_struct_relayout_candidate_field_access_array
+  [MAX_NUM_COMPLETE_STRUCT_RELAYOUT_CANDIDATES]
+  [MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE];
+static int num_complete_struct_relayout_candidates = 0;
+static int continue_with_complete_struct_relayout_analysis = 1;
+static int start_counting = 0;
+
+// This function returns the total number of fields in the input structure.
+static int
+total_num_fields_in_struct(TY_IDX struct_ty_idx)
+{
+  int i = 0;
+  FLD_ITER field_iter = Make_fld_iter(TY_fld(struct_ty_idx));
+  do
+  {
+    i++;
+  } while (!FLD_last_field(field_iter++));
+  return i;
+}
+
+// This function visits all the loops in the input program and counts how many
+// different fields of each structure are accessed in the loops.  The answers
+// are stored in some static arrays that are global to all the functions being
+// compiled for the file.  After the last function is compiled, another function
+// will attempt to choose the best structure for complete_struct_relayout
+// optimization.
+static void
+identify_complete_struct_relayout_candidates(WN *wn)
+{
+  if (!(PU_src_lang(Get_Current_PU()) & PU_C_LANG))
+    IPA_Enable_Struct_Opt = 0; // only do this for C programs
+  if (IPA_Enable_Struct_Opt == 0 || wn == NULL ||
+      continue_with_complete_struct_relayout_analysis == 0)
+    return;
+  if (!OPCODE_is_leaf(WN_opcode(wn)))
+  {
+    if (start_counting == 1)
+    {
+      if (WN_operator(wn) == OPR_ILOAD || WN_operator(wn) == OPR_ISTORE)
+      {
+        if (WN_field_id(wn) != 0 &&
+            (TY_kind(WN_ty(wn)) == KIND_STRUCT ||
+             (TY_kind(WN_ty(wn)) == KIND_POINTER &&
+              TY_kind(TY_pointed(WN_ty(wn))) == KIND_STRUCT)))
+        {
+          // found an access to "structure.field"; record it
+          TY_IDX struct_ty_idx;
+          int i;
+          int j;
+          int n;
+
+          if (TY_kind(WN_ty(wn)) == KIND_STRUCT)
+            struct_ty_idx = WN_ty(wn);
+          else
+            struct_ty_idx = TY_pointed(WN_ty(wn));
+          for (i = 0; i < num_complete_struct_relayout_candidates; i++)
+          {
+            if (complete_struct_relayout_candidate_ty_idx[i] == struct_ty_idx)
+            {
+              // we have encountered this structure in some loops before; just
+              // update the field access
+              if (WN_field_id(wn) >=
+                  MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE)
+              {
+                continue_with_complete_struct_relayout_analysis = 0;
+                return;
+              }
+              complete_struct_relayout_candidate_field_access_array[i]
+                [WN_field_id(wn)] = 1; // careful, some C++ #fields >= MAX
+              break;
+            }
+          }
+          if (i == num_complete_struct_relayout_candidates)
+          {
+            // we have not encountered this structure in any loops before; enter
+            // it into the array
+            if (i >= MAX_NUM_COMPLETE_STRUCT_RELAYOUT_CANDIDATES)
+            {
+              continue_with_complete_struct_relayout_analysis = 0;
+              return; // too many such structures encountered in loops; give up
+            }
+            n = total_num_fields_in_struct(struct_ty_idx);
+            if (n >= MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE)
+            {
+              continue_with_complete_struct_relayout_analysis = 0;
+              return; // too many fields in this struct; give up
+            }
+            complete_struct_relayout_candidate_ty_idx[i] = struct_ty_idx;
+            complete_struct_relayout_candidate_total_num_fields[i] = n;
+            for (j = 0; j <
+                 MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE; j++)
+              complete_struct_relayout_candidate_field_access_array[i][j] = 0;
+            if (WN_field_id(wn) >=
+                MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE)
+            {
+              continue_with_complete_struct_relayout_analysis = 0;
+              return;
+            }
+            complete_struct_relayout_candidate_field_access_array[i]
+              [WN_field_id(wn)] = 1; // careful, some C++ #fields >= MAX
+            num_complete_struct_relayout_candidates++;
+          }
+        }
+      }
+    }
+    if (WN_operator(wn) == OPR_BLOCK)
+    {
+      WN *child = WN_first(wn);
+      while (child != NULL)
+      {
+        identify_complete_struct_relayout_candidates(child);
+        child = WN_next(child);
+      }
+    }
+    else
+    {
+      INT child_num;
+      WN *child;
+      if (WN_operator(wn) == OPR_DO_LOOP ||
+          WN_operator(wn) == OPR_WHILE_DO ||
+          WN_operator(wn) == OPR_DO_WHILE)
+        start_counting = 1; // only count structure field accesses in loops
+      for (child_num = 0; child_num < WN_kid_count(wn); child_num++)
+      {
+        child = WN_kid(wn, child_num);
+        if (child != NULL)
+          identify_complete_struct_relayout_candidates(child);
+      }
+      if (WN_operator(wn) == OPR_DO_LOOP ||
+          WN_operator(wn) == OPR_WHILE_DO ||
+          WN_operator(wn) == OPR_DO_WHILE)
+        start_counting = 0;
+    }
+  }
+  // not interested in any leaf nodes
+  return;
+}
+
+// This function is called after the last function in the file has been
+// compiled.  Among all the structures that have been marked (more precisely,
+// all the structures whose fields that were accessed in some loops have been
+// marked), choose one that is the most profitable for complete_struct_relayout
+// optimization.
+void
+choose_from_complete_struct_for_relayout_candidates()
+{
+  int i;
+  int j;
+  int num_fields_accessed;
+
+  // in case you think the following is a good structure splitting candidate,
+  // and want to perform structure splitting or peeling optimization instead,
+  // keep in mind that structure splitting/peeling analyses have already been
+  // performed and deemed it not a candidate; we will perform
+  // complete_struct_relayout optimization on it instead
+  if (IPA_Enable_Struct_Opt == 0 ||
+      continue_with_complete_struct_relayout_analysis == 0)
+    return; // we have given up already
+  for (i = 0; i < num_complete_struct_relayout_candidates; i++)
+  {
+    num_fields_accessed = 0;
+    for (j = 0; j < MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT_CANDIDATE; j++)
+      num_fields_accessed +=
+        complete_struct_relayout_candidate_field_access_array[i][j];
+    if (num_fields_accessed == 1)
+    {
+      // wow, only *1* field in this entire structure was accessed in all the
+      // loops in all the functions in this file; choose it if the entire
+      // structure matches some good heuristics in size and number of fields
+      if (complete_struct_relayout_candidate_total_num_fields[i] > 8 &&
+          TY_size(complete_struct_relayout_candidate_ty_idx[i]) < 128)
+      {
+        if (Get_Trace(TP_IPL, 1))
+          fprintf(TFile, "ipl -> complete_struct_relayout_candidate = %d %s\n",
+            complete_struct_relayout_candidate_ty_idx[i],
+            TY_name(complete_struct_relayout_candidate_ty_idx[i]));
+        // for some reason when we do the following *another* such type is
+        // created, making the complete_struct_relayout_type_id not unique,
+        // introducing a lot of confusion
+        Set_TY_complete_struct_relayout_candidate
+          (complete_struct_relayout_candidate_ty_idx[i]);
+      }
+    }
+  }
+  return;
 }

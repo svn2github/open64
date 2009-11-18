@@ -118,7 +118,8 @@ struct INITV
 
 	struct {
 	    LABEL_IDX lab;		// for INITVKIND_LABEL
-	    mINT32 flags;		// flags, see INITVLABELFLAGS
+	    mINT16 flags;		// flags, see INITVLABELFLAGS
+            mTYPE_ID mtype;             // type for label values
 	} lab;
 	
 	struct {
@@ -154,7 +155,8 @@ struct INITV
     INT32 Ofst () const			{ return u.sto.ofst; }
 
     LABEL_IDX Lab () const		{ return u.lab.lab; }
-    INT32 Lab_flags () const            { return u.lab.flags; }
+    INT16 Lab_flags () const            { return u.lab.flags; }
+    mTYPE_ID Lab_mtype () const         { return u.lab.mtype; }
 
     LABEL_IDX Lab1 () const		{ return u.stdiff.lab1; }
     ST_IDX St2 () const			{ return u.stdiff.st2; }

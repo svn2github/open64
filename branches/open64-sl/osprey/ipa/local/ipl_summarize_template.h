@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -1582,6 +1586,11 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 #endif
 #endif // KEY
 
+            if (!Cur_PU_Feedback && WN_Call_Is_Virtual(w2) 
+                    && IPA_Enable_Fast_Static_Analysis_VF == TRUE) {
+	        Process_virtual_function (proc, w2, loopnest, probability);
+            }
+
             proc->Incr_call_count ();
 #ifdef KEY
             Process_callsite (w2, proc->Get_callsite_count (), loopnest, probability);
@@ -1814,7 +1823,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
             {
               ST * thdprv_st = ST_ptr (WN_pragma_arg2(w2));
               Get_symbol_index (thdprv_st);  
-              WN_pragma_arg2(w2) = Get_symbol_index (thdprv_st);
               Record_global_ref (w2, thdprv_st, OPR_PRAGMA, TRUE);
 
               // increment modcount
@@ -2128,6 +2136,70 @@ SUMMARIZE<program>::Update_call_pragmas (SUMMARY_CALLSITE *callsite)
     }
 } // SUMMARIZE::Update_call_pragmas
 
+/*
+File 1: osprey/ipa/local/ipl_summarize_template.h
+Notes for File 1:
+    I added a Process_virtual_function function for use during ipl summarizing.
+    It is mandatory to call this function on a virtual function in order to 
+    get IPA to consider that function during virtual function transformation.
+    The prototype to Process_virtual_function is in ipl_summarize.h 
+
+    This contents of this function are just like Process_Icall function already in ipl.
+
+    Note: 
+        1: When feedback is available, the existing ICALL transformation pass 
+            applies icall transformation on virtual functions as well.
+            In order for my work to coexist with this framework, I do not call 
+            Process_virtual_function on WHIRLs in case Cur_PU_Feedback 
+            is not NULL, i.e. if there is feedback data available 
+            on the current PU. 
+
+*/
+
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+template <PROGRAM program>
+void
+SUMMARIZE<program>::Process_virtual_function (SUMMARY_PROCEDURE * proc, 
+        WN * wn, INT loopnest, float probability){
+  Is_True (WN_operator (wn) == OPR_ICALL, ("Process_virtual_function: ICALL expected"));
+
+  SUMMARY_CALLSITE * cs = New_callsite();
+  cs->Set_callsite_id (proc->Get_callsite_count());
+  cs->Set_loopnest (loopnest);
+  cs->Set_probability (probability);
+  cs->Set_param_count (WN_num_actuals (wn));
+  cs->Set_return_type (WN_rtype (wn));
+  static ST * st = NULL;
+
+  if (! st)
+  {
+    PU_IDX pu_idx;
+    PU& pu = New_PU (pu_idx);
+
+    // a dummy placeholder for prototype
+    PU_Init (pu, MTYPE_TO_TY_array[MTYPE_V], GLOBAL_SYMTAB+1);
+
+    st = New_ST (GLOBAL_SYMTAB);
+    ST_Init (st, Save_Str ("__dummy_virtual_function_target"),
+                 CLASS_FUNC, SCLASS_EXTERN, EXPORT_PREEMPTIBLE,
+                 TY_IDX (pu_idx));
+    vector<IPL_ST_INFO>& aux_st = Aux_Symbol_Info[GLOBAL_SYMTAB];
+    aux_st.insert (aux_st.end(), 1, IPL_ST_INFO ());
+  }
+  cs->Set_symbol_index (Get_symbol_index (st));
+  cs->Set_virtual_function_target();
+ 
+  for (INT i = 0; i < cs->Get_param_count (); i++)
+    Process_actual (WN_actual (wn, i));
+
+  if (cs->Get_param_count () > 0)
+    cs->Set_actual_index (Get_actual_idx () - cs->Get_param_count () + 1);
+
+  proc->Incr_callsite_count ();
+  proc->Incr_call_count ();
+}
+#endif // KEY && !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
+
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
 // If found suitable, generate a new callsite summary for the direct call
 // that IPA may add for this icall. Fix other summary data as if proc now
@@ -2220,6 +2292,7 @@ SUMMARIZE<program>::Process_icall (SUMMARY_PROCEDURE * proc, WN * wn,
 
   proc->Incr_callsite_count ();
   proc->Incr_call_count ();
+  return;
 } // SUMMARIZE::Process_icall
 #endif // KEY && !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
 

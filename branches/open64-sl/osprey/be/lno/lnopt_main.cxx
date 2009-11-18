@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -593,6 +597,7 @@ extern void Parallel_And_Padding_Phase(PU_Info* current_pu,
 }
 
 BOOL Run_autopar_save; 
+INT last_loop_num;
 
 #ifdef KEY
 static BOOL Skip_Simd;
@@ -606,10 +611,11 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
 {
   extern BOOL Run_lno;
   STDOUT = stdout;
+  last_loop_num = 0;
 
   MEM_POOL_Initialize(&ARA_memory_pool, "ARA_memory_pool", FALSE);
   MEM_POOL_Push(&ARA_memory_pool);
-  
+
 #ifdef KEY
   static INT pu_num = 0;
   
@@ -676,6 +682,7 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
 
     MEM_POOL_Pop(&ARA_memory_pool);
     MEM_POOL_Delete(&ARA_memory_pool);
+    LNO_Restore_Configs();
     return func_nd;
   }
 
@@ -831,7 +838,9 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       void Lego_Fix_IO(WN *func_nd, BOOL *has_do_loops);
       Lego_Fix_IO(func_nd,&has_do_loops);
     }
-  
+
+    // Enumerate loops for debugging purpose.
+    Enum_loops(func_nd);  
   
     // Build and map all access arrays
     Start_Timer ( T_LNOAccess_CU );
@@ -1164,6 +1173,7 @@ return_point:
   // fclose(LNO_Analysis); 
   MEM_POOL_Pop(&ARA_memory_pool);
   MEM_POOL_Delete(&ARA_memory_pool);
+  LNO_Restore_Configs();
   return func_nd;
 }
 
@@ -1681,6 +1691,7 @@ DO_LOOP_INFO::DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
 	BOOL has_unsummarized_call_cost, BOOL has_gotos, BOOL has_exits, 
 	BOOL has_gotos_this_level,BOOL is_inner) {
     _pool = pool;
+    _id = 0;
     LB = lb;
     UB = ub;
     Step = step;
@@ -1777,6 +1788,7 @@ extern BOOL Last_Value_Peeling()
 
 DO_LOOP_INFO::DO_LOOP_INFO(DO_LOOP_INFO *dli, MEM_POOL *pool) {
     _pool = pool;
+    _id = 0;
     if (dli->LB) LB = CXX_NEW(ACCESS_ARRAY(dli->LB,pool),pool);
     if (dli->UB) UB = CXX_NEW(ACCESS_ARRAY(dli->UB,pool),pool);
     if (dli->Step) Step = CXX_NEW(ACCESS_VECTOR(dli->Step,pool),pool);

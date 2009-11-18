@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -71,4 +75,7 @@ extern void Generate_Tlog(
   fprintf(Tlog_File, "{ %s }\n", aux_info_string);
 }
 
-
+extern FILE * Get_Tlog_File()
+{
+    return Tlog_File;
+}

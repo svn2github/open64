@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -303,6 +307,12 @@ Get_Current_PU ()
 #else
     return *Current_pu;
 #endif
+}
+
+inline TY_IDX
+Get_Current_PU_TY ()
+{
+    return PU_prototype( Get_Current_PU() );
 }
 
 // get PU at specified level

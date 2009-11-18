@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *
  * Copyright (C) 2006, 2007, Tsinghua University.  All Rights Reserved.
  *
@@ -115,6 +119,26 @@ IPA_CLASS_HIERARCHY::Is_Ancestor(TY_INDEX ancestor, TY_INDEX descendant) {
             return TRUE;
     }
     return FALSE;
+}
+
+void IPA_CLASS_HIERARCHY::Get_Sub_Class_Hierarchy (TY_INDEX declared_class,
+    hash_set<TY_INDEX>& targets) {
+    targets.insert(declared_class);
+    if (IPA_Class_Hierarchy->
+        Get_Num_Sub_Classes(declared_class) == 0)
+        return;
+    for (UINT scls = 0; 
+         scls < IPA_Class_Hierarchy->Get_Num_Sub_Classes(declared_class);
+         ++scls) {
+        TY_INDEX sub = IPA_Class_Hierarchy->Get_Sub_Class(declared_class, scls);
+        Get_Sub_Class_Hierarchy (sub, targets);
+    }
+}
+
+int IPA_CLASS_HIERARCHY::Num_Sub_Class_In_Hierarchy(TY_INDEX declared_class) {
+    hash_set<TY_INDEX> subclses;
+    Get_Sub_Class_Hierarchy (declared_class, subclses);
+    return subclses.size();
 }
 
 IPA_CLASS_HIERARCHY*

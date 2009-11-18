@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
  */
 
@@ -38,6 +42,7 @@ extern "C"{
 #else /* defined(BUILD_OS_DARWIN) */
 #include <values.h>
 #endif /* defined(BUILD_OS_DARWIN) */
+#include "pathscale_defs.h"
 #include "defs.h"
 #include "glob.h"
 #include "config.h"
@@ -5039,7 +5044,7 @@ WGEN_Expand_Expr (gs_t exp,
 	if (gs_tree_code(gs_tree_realpart(exp)) != GS_REAL_CST ||
 	    gs_tree_code(gs_tree_imagpart(exp)) != GS_REAL_CST) {
 	  printf("%s does not support complex integer data types "
-		 "(a GNU extension)\n", lang_cplus ? "pathCC" : "pathcc");
+		 "(a GNU extension)\n", lang_cplus ? OPEN64_NAME_PREFIX "CC" : OPEN64_NAME_PREFIX "cc");
 	  exit(2);
 	}
 #endif
@@ -5105,7 +5110,7 @@ WGEN_Expand_Expr (gs_t exp,
 	     code == GS_IMAGPART_EXPR) &&
 	    !MTYPE_float(mtyp)) {
 	  printf("%s does not support complex integer data types "
-		 "(a GNU extension)\n", lang_cplus ? "pathCC" : "pathcc");
+		 "(a GNU extension)\n", lang_cplus ? OPEN64_NAME_PREFIX "CC" : OPEN64_NAME_PREFIX "cc");
 	  exit(2);
 	}
 #endif
@@ -5699,7 +5704,7 @@ WGEN_Expand_Expr (gs_t exp,
 #ifdef KEY // Bug 11875
         if (code == GS_COMPLEX_EXPR && !MTYPE_float(WN_rtype(wn0))) {
 	  printf("%s does not support complex integer data types "
-		 "(a GNU extension)\n", lang_cplus ? "pathCC" : "pathcc");
+		 "(a GNU extension)\n", lang_cplus ? OPEN64_NAME_PREFIX "CC" : OPEN64_NAME_PREFIX "cc");
 	  exit(2);
 	}
 #endif
@@ -8885,7 +8890,10 @@ WGEN_Tree_Node_Name (gs_t exp)
 static bool
 WGEN_Call_Returns_Ptr_To_Member_Func (gs_t exp)
 {
-  TY_IDX exp_ty_idx = Get_TY(gs_tree_type(exp));
+  gs_t t = gs_tree_type(exp);
+  FmtAssert(t != NULL,
+            ("WGEN_Call_Returns_Ptr_To_Member_Func: tree type is NULL"));
+  TY_IDX exp_ty_idx = Get_TY(t);
   if (gs_tree_code(exp) == GS_CALL_EXPR &&
       gs_type_ptrmemfunc_p(gs_tree_type(exp)) &&
       TY_return_in_mem(exp_ty_idx)) {

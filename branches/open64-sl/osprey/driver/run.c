@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -76,6 +80,7 @@
 #include "file_names.h"
 #include "phases.h"
 #include "opt_actions.h"
+#include "option_seen.h"
 #include "file_utils.h"
 #include "pathscale_defs.h"
 #include "option_names.h"
@@ -96,6 +101,10 @@ static void init_time (void);
 static void print_time (char *phase);
 static void my_psema(void);
 static void my_vsema(void);
+
+extern boolean add_heap_limit;
+extern int heap_limit;
+extern int hugepage_attr;
 
 #define LOGFILE "/var/log/messages"
 
@@ -283,6 +292,18 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 	const boolean uses_message_system = 
 			(phase == P_f90_fe || phase == P_f90_cpp ||
 			 phase == P_cppf90_fe);
+
+        if (((phase == P_be) || (phase == P_ipl))
+            && add_heap_limit) {
+            char buf[100];
+            char * str;
+            sprintf(&buf[0],"%d", heap_limit);
+            str = concat_strings("-OPT:hugepage_heap_limit=", buf);
+            sprintf(&buf[0],"%d", hugepage_attr);
+            str = concat_strings(str, 
+                                 concat_strings(" -OPT:hugepage_attr=", buf));
+            add_string(args, str);
+        }
 	
 	if (show_flag) {
 		/* echo the command */

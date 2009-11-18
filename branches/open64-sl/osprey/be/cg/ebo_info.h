@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -251,6 +255,7 @@ extern EBO_OP_INFO *EBO_opinfo_table[EBO_MAX_OP_HASH];
 extern BOOL EBO_in_pre;
 extern BOOL EBO_in_loop;
 extern BOOL EBO_in_peep;
+extern BOOL EBO_flow_safe;
 
 extern TN_MAP EBO_tninfo_table;
 extern MEM_POOL EBO_pool;

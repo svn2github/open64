@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -227,8 +231,9 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
 #define TP_HBF		57	/* Hyperblock formation */
 #define TP_PQS		58	/* Predicate query system */
 #define TP_THR		59	/* Tree-Height reduction */
+#define TP_GRU          60      /* Fuse Spills */
 
-#define TP_TEMP		60	/* Temporary use */
+#define TP_TEMP		61	/* Temporary use */
 
 #define TP_IPFEC	61	/* Actualy several phases, but all IPFEC related */
 #define TP_A_GSCHED 	62  	/* "AGS", Ipfec global scheduler" */
@@ -299,6 +304,9 @@ extern void List_Phase_Numbers ( void );
  *  phase number	flag mask	Enable masked per-phase traces
  */
 extern void Set_Trace ( INT func, INT arg );
+
+/* Set a trace flag in all phases. */
+void Set_All_Trace ( INT func );
 
 /* Note a PU to be traced: */
 extern void Set_Trace_Pu ( char *name );

@@ -1,26 +1,29 @@
 /*
- *  Copyright (C) 2000, 2001 HPC,Tsinghua Univ.,China .  All Rights Reserved.
- *
- *      This program is free software; you can redistribute it and/or modify it
- *  under the terms of version 2 of the GNU General Public License as
- *  published by the Free Software Foundation.
- *
- *      This program is distributed in the hope that it would be useful, but
- *  WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *
- *      Further, this software is distributed without any warranty that it is
- *  free of the rightful claim of any third person regarding infringement
- *  or the like.  Any license provided herein, whether implied or
- *  otherwise, applies only to this software file.  Patent licenses, if
- *  any, provided herein do not apply to combinations of this program with
- *  other software, or any other product whatsoever.
- *
- *      You should have received a copy of the GNU General Public License along
- *  with this program; if not, write the Free Software Foundation, Inc., 59
- *  Temple Place - Suite 330, Boston MA 02111-1307, USA.
- *
- */
+
+  OpenMP runtime library to be used in conjunction with Open64 Compiler Suites.
+
+  Copyright (C) 2003 - 2009 Tsinghua University.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+  
+  Contact information: HPC Institute, Department of Computer Science and Technology,
+  Tsinghua University, Beijing 100084, CHINA, or:
+
+  http://hpc.cs.tsinghua.edu.cn
+  
+*/
 
 /*
  * File: omp_rtl.h
@@ -40,9 +43,13 @@
 #include "omp_lock.h"
 
 /* machine dependent values*/
-/* parameters for Itanium2 */
-#define CACHE_LINE_SIZE		64	/* L1D size */
-#define CACHE_LINE_SIZE_L2L3	128	/* L2,L3 size */
+#define CACHE_LINE_SIZE		64	// L1D cache line size 
+
+#ifdef TARG_IA64
+#define CACHE_LINE_SIZE_L2L3    128     // L2L3 cache line size
+#else
+#define CACHE_LINE_SIZE_L2L3     64      // L2L3 cache line size
+#endif
 
 /* default setting values*/
 #define OMP_NESTED_DEFAULT	0	
@@ -62,21 +69,22 @@
 /*
   #define OMP_ALLOC_UNIT		CACHE_LINE_SIZE_L2L3 / 8 
 */
-
+// The following def should not be changed
+// It should be consistent with def in wn_mp.cxx
 typedef enum {
-  OMP_SCHED_UNKNOWN 	= 0,
-  OMP_SCHED_STATIC 	= 1,
-  OMP_SCHED_STATIC_EVEN 	= 2,
-  OMP_SCHED_DYNAMIC 	= 3,
-  OMP_SCHED_GUIDED 	= 4,
-  OMP_SCHED_RUNTIME 	= 5,
+  OMP_SCHED_UNKNOWN     = 0,
+  OMP_SCHED_STATIC      = 1,
+  OMP_SCHED_STATIC_EVEN         = 2,
+  OMP_SCHED_DYNAMIC     = 3,
+  OMP_SCHED_GUIDED      = 4,
+  OMP_SCHED_RUNTIME     = 5,
 
-  OMP_SCHED_ORDERED_UNKNOWN	= 32,
-  OMP_SCHED_ORDERED_STATIC 	= 33,
-  OMP_SCHED_ORDERED_STATIC_EVEN 	= 34,
-  OMP_SCHED_ORDERED_DYNAMIC 	= 35,
-  OMP_SCHED_ORDERED_GUIDED 	= 36,
-  OMP_SCHED_ORDERED_RUNTIME 	= 37,
+  OMP_SCHED_ORDERED_UNKNOWN     = 32,
+  OMP_SCHED_ORDERED_STATIC      = 33,
+  OMP_SCHED_ORDERED_STATIC_EVEN         = 34,
+  OMP_SCHED_ORDERED_DYNAMIC     = 35,
+  OMP_SCHED_ORDERED_GUIDED      = 36,
+  OMP_SCHED_ORDERED_RUNTIME     = 37,
 
   OMP_SCHED_DEFAULT = OMP_SCHED_STATIC_EVEN
 } omp_sched_t;
@@ -103,8 +111,13 @@ extern volatile int __omp_dynamic;	  /* dynamic enable/disable */
 extern volatile int __omp_max_num_threads;
 /* stores the number of threads requested for future parallel regions. */
 extern volatile int __omp_nthreads_var;
+/* num of hardware processors */
+extern int __omp_num_hardware_processors;
 /* num of processors available*/
 extern int 	    __omp_num_processors; 
+/* list of processors available*/
+extern int *        __omp_list_processors;
+
 /* default schedule type and chunk size of runtime schedule*/
 extern omp_sched_t  __omp_rt_sched_type;
 extern int  	    __omp_rt_sched_size;
@@ -115,7 +128,7 @@ extern int 	    __omp_rtl_initialized;
 extern volatile unsigned long int __omp_stack_size;
 
 /* a system level lock, used for malloc in __ompc_get_thdprv ,by Liao*/
-extern ompc_lock_t _ompc_thread_lock;
+extern ompc_spinlock_t _ompc_thread_lock;
 
 /* The OMP_EXE_MODE_NESTED_SEQUENTIAL is of no use any longer*/
 typedef enum {
@@ -138,29 +151,23 @@ typedef struct omp_v_thread omp_v_thread_t;
 typedef struct omp_team	    omp_team_t;
 
 /* kernel thread*/
-/* Should be 64 Bytes, currently 24B*/
 struct omp_u_thread{
   pthread_t uthread_id;		/* pthread id*/
   omp_u_thread_t *hash_next;	/* hash link*/
   omp_v_thread_t *task;		/* task(vthread)*/
-  /* Maybe a few more bytes should be here for alignment.*/
-  /* TODO: stuff bytes*/
-  int stuff_byte[10];
-}; __attribute__ ((__aligned__(CACHE_LINE_SIZE)))
+} __attribute__ ((__aligned__(CACHE_LINE_SIZE))) ;
 
 /* team*/
-/* Should be 256 Bytes, currently 208B*/
 struct omp_team{
+  volatile int barrier_flag; // To indicate all arrived
   //	int	team_id;
   int	team_size;
   int	team_level;	/* team_level is not currently used yet*/
   int	is_nested;	
-  /* not used yet */
-  //	omp_v_thread_t **team_list;
 
   /* for loop schedule*/
 
-  ompc_lock_t	schedule_lock;
+  ompc_spinlock_t schedule_lock;
   volatile long loop_lower_bound;
   long	loop_upper_bound;
   long	loop_increament;
@@ -179,9 +186,15 @@ struct omp_team{
   /* for ordered schedule*/
   /* Using schedule_lock as the ordered lock*/
   volatile long	ordered_count;
+  // using a dummy field to make the following layout better
+  int dummy11;
+  // offset = 128, when -m64 
+  pthread_mutex_t barrier_lock;
+  pthread_cond_t barrier_cond;
   pthread_cond_t ordered_cond;
 
   /* for single*/
+  // offset = 264
   ompc_lock_t	single_lock;
   volatile int	single_count; 
   //	volatile int	single_open; /* Single section protector*/
@@ -191,23 +204,18 @@ struct omp_team{
 
   /* for team barrier*/
   /* TODO: optimize the barrier implementation, test the performance */
-  pthread_mutex_t barrier_lock;
-  pthread_cond_t barrier_cond;
+  // offset = 320
   volatile int barrier_count;
-  volatile int barrier_count2;
-  volatile int barrier_flag; /* To indicate all arrived */
 
   /* Still need a flag to indicate there are new tasks for level_1 team,
    * To avoid pthread allowed spurious wake up, and for nested teams,
    * use this as a semphore to synchronize all thread before they really start*/
   volatile int new_task;
-  /* Maybe a few more bytes should be here for alignment.*/
-  /* TODO: stuff bytes*/
-  int stuff_byte[7];
-}; __attribute__ ((__aligned__(CACHE_LINE_SIZE_L2L3)))
+  pthread_mutex_t ordered_mutex;
+
+} __attribute__ ((__aligned__(CACHE_LINE_SIZE_L2L3)));
 
 /* user thread*/
-/* Should be 64 Byte, currently 64 Byte*/
 struct omp_v_thread {
   int	vthread_id;
   int	team_size;	/* redundant with team->team_size */
@@ -230,9 +238,7 @@ struct omp_v_thread {
   int	loop_count;
   /* for 'lastprivate'? used ?*/
   //	int is_last;
-  /* Maybe a few more bytes should be here for alignment.*/
-  /* TODO: stuff bytes*/
-}; __attribute__ ((__aligned__(CACHE_LINE_SIZE)))
+} __attribute__ ((__aligned__(CACHE_LINE_SIZE)));
 
 /* The array for level 1 thread team, 
  * using vthread_id to index them
@@ -240,7 +246,7 @@ struct omp_v_thread {
 extern omp_v_thread_t *  __omp_level_1_team; 
 extern omp_u_thread_t *  __omp_level_1_pthread;
 extern int		 __omp_level_1_team_size;
-extern omp_team_t	 __omp_level_1_team_manager;
+extern volatile omp_team_t	 __omp_level_1_team_manager;
 extern int		 __omp_level_1_team_alloc_size;
 extern omp_u_thread_t *  __omp_uthread_hash_table[UTHREAD_HASH_SIZE]; 
 
@@ -302,5 +308,6 @@ extern void __ompc_end_serialized_parallel(int vthread_id);
 
 /* Support Pathscale OpenMP lowering, CWG */
 extern int __ompc_sug_numthreads;
+extern int __ompc_cur_numthreads;
 
 #endif /* __omp_rtl_basic_included */

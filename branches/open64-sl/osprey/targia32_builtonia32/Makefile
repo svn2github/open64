@@ -1,5 +1,7 @@
 #
 #
+#  Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -53,7 +55,9 @@ LIBRARY_SUBDIRS := \
 	libu \
 	libmv \
 	libinstr2 \
-	libopenmp
+	libopenmp \
+	libopen64rt \
+	libhugetlbfs
 
 	#libm \
 	#libF77

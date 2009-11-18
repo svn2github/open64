@@ -258,6 +258,7 @@ static source_info_t source_info[] = {
 	{"I"},				/* I */
 #endif
 	{"B"},				/* B */
+	{"P"},				/* P */
 	{"N"},				/* N */
 #if defined(TARG_NVISA)
 	/* windows doesn't distinguish between upper and lower case. */
@@ -666,6 +667,7 @@ get_source_lang (source_kind_t sk)
 	case S_i:
 	case S_B:
 	case S_I:
+	case S_P:
 	case S_N:
 	case S_O:
 		/* for intermediate file, determine type from invoker */

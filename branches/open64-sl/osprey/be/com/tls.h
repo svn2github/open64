@@ -32,32 +32,12 @@
 
 /* GCC compatible Thread-Local-Storage support for open64 compiler */
 
-// TLS Access Model, it's GCC compatible on LINUX
-typedef enum {
-  TLS_MODEL_UNKNOWN /* =0 */,
-  TLS_MODEL_GLOBAL_DYNAMIC,
-  TLS_MODEL_LOCAL_DYNAMIC,
-  TLS_MODEL_INITIAL_EXEC,
-  TLS_MODEL_LOCAL_EXEC,
-} TLS_MODEL;
-
-extern TLS_MODEL TLS_model;     	/* TLS Access Model, parse from command line */
 extern TY_IDX TLS_get_addr_ty_idx;      /* TY_IDX of Pointer_Mtype __tls_get_addr(U8, U8); */
 extern ST *TLS_get_addr_st;     	/* ST of '__tls_get_addr' */
 
 // These functions is implemented in tls.cxx
 extern void TLS_init();         /* Initialize the variables used by TLS */
 extern void TLS_fini();         /* Finalize the TLS variables */
-
-static inline BOOL ST_is_tls(const ST* st) {
-  if ( (ST_class(st) == CLASS_VAR && ST_is_thread_local(st) ) ||
-       (ST_class(st) == CLASS_BLOCK && SEC_is_tls(STB_section_idx(st)) ) ) {
-    return TRUE;
-  }
-  else {
-    return FALSE;
-  }
-}
 
 #endif  // be_com_tls_INCLUDED 
 

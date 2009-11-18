@@ -157,7 +157,11 @@ PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done)
 export SKIP_DEP_BUILD=1 
 
 all: build
-include:
+
+libiberty:
+	$(MAKE) -C $(NATIVE_BUILD_DIR)/libiberty
+
+include: libiberty
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/include
 
 libcomutil: include
@@ -165,9 +169,6 @@ libcomutil: include
 
 libcmplrs: include
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libcmplrs
-
-libiberty: include
-	$(MAKE) -C $(NATIVE_BUILD_DIR)/libiberty
 
 targ_info: include
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/targ_info
@@ -256,13 +257,19 @@ $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a: libcomutil
 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95 mfef95: libcomutil libcif arith
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/crayf90
 
+# some GNU components need different opt flags in debug/nodebug build
+ifeq ($(BUILD_OPTIMIZE), DEBUG)
+    GNU_CFLAGS = '-O0 -g -DIs_True_On'
+else
+    GNU_CFLAGS = '-O2'
+endif
 
 .PHONY: Force libspin libspin42 phony_targets first
 $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
 	$(MAKE) -C $(NATIVE_BUILD_DIR_LD)
 
 $(NATIVE_BUILD_DIR_LD)/Makefile:  
-	cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE
+	cd $(NATIVE_BUILD_DIR_LD); BUILD_OPTIMIZE=$(BUILD_OPTIMIZE) CFLAGS=$(GNU_CFLAGS) ./CONFIGURE
 
 $(NATIVE_BUILD_DIR)/libspin/libgspin.a libspin:
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin
@@ -276,7 +283,7 @@ $(GNUFE_BUILD_DIR)/gcc/cc1 cc1: $(GNUFE_BUILD_DIR)/Makefile Force
 	$(MAKE) -C $(GNUFE_BUILD_DIR)
 
 $(GNUFE_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin/libgspin.a
-	cd $(GNUFE_BUILD_DIR); ./CONFIGURE
+	cd $(GNUFE_BUILD_DIR); BUILD_OPTIMIZE=$(BUILD_OPTIMIZE) CFLAGS=$(GNU_CFLAGS) ./CONFIGURE
 
 # GNU 4.2.0 based FE
 $(GNUFE42_BUILD_DIR)/gcc/cc1plus42 cc1plus42: cc142 
@@ -284,7 +291,7 @@ $(GNUFE42_BUILD_DIR)/gcc/cc142 cc142: $(GNUFE42_BUILD_DIR)/Makefile Force
 	$(MAKE) -C $(GNUFE42_BUILD_DIR)
 
 $(GNUFE42_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a
-	cd $(GNUFE42_BUILD_DIR); ./CONFIGURE
+	cd $(GNUFE42_BUILD_DIR); BUILD_OPTIMIZE=$(BUILD_OPTIMIZE) CFLAGS=$(GNU_CFLAGS) ./CONFIGURE
 
 build:
 	$(MAKE) first
@@ -349,6 +356,8 @@ ifeq ($(MACHINE_TYPE), ia64)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/orc_ict clobber
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/orc_intel clobber
 endif
+	cd osprey-gcc/gcc; rm -f gspin-alloc.h  gspin-assert.h  gspin-base-types.h   gspin-io.h  gspin-list.h  gspin-mempool.h  gspin-tel.h  gspin-tree.h
+	cd osprey-gcc-4.2.0/gcc; rm -f gspin-alloc.h  gspin-assert.h  gspin-base-types.h   gspin-io.h  gspin-list.h  gspin-mempool.h  gspin-tel.h  gspin-tree.h
 	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER
 	cd $(GNUFE_BUILD_DIR); ./CLOBBER
 	cd $(GNUFE42_BUILD_DIR); ./CLOBBER

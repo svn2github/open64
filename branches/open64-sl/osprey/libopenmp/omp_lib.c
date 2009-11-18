@@ -1,26 +1,29 @@
 /*
- *  Copyright (C) 2000, 2001 HPC,Tsinghua Univ.,China .  All Rights Reserved.
- *
- *      This program is free software; you can redistribute it and/or modify it
- *  under the terms of version 2 of the GNU General Public License as
- *  published by the Free Software Foundation.
- *
- *      This program is distributed in the hope that it would be useful, but
- *  WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *
- *      Further, this software is distributed without any warranty that it is
- *  free of the rightful claim of any third person regarding infringement
- *  or the like.  Any license provided herein, whether implied or
- *  otherwise, applies only to this software file.  Patent licenses, if
- *  any, provided herein do not apply to combinations of this program with
- *  other software, or any other product whatsoever.
- *
- *      You should have received a copy of the GNU General Public License along
- *  with this program; if not, write the Free Software Foundation, Inc., 59
- *  Temple Place - Suite 330, Boston MA 02111-1307, USA.
- *
- */
+
+  OpenMP runtime library to be used in conjunction with Open64 Compiler Suites.
+
+  Copyright (C) 2003 - 2009 Tsinghua University.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+  
+  Contact information: HPC Institute, Department of Computer Science and Technology,
+  Tsinghua University, Beijing 100084, CHINA, or:
+
+  http://hpc.cs.tsinghua.edu.cn
+  
+*/
 
 /*
  * File: omp_lib.c
@@ -34,6 +37,7 @@
 
 #include "omp_rtl.h"
 #include "omp_lock.h" 
+#include "omp_util.h"
 
 #include <sys/time.h>
 
@@ -151,12 +155,20 @@ omp_int_t omp_get_nested_(void);
 /*
  * Lock Functions
  */
+extern int __omp_spin_user_lock;
 inline void
 omp_init_lock(volatile omp_lock_t *lock)
 {
-  ompc_lock_t *tmp_lp = malloc(sizeof(ompc_lock_t)); 
+  // put the lock aligned to cache line size and
+  // malloc a cache line for the lock to avoid
+  // false sharing
+  ompc_lock_t *tmp_lp;
+  tmp_lp = aligned_malloc(sizeof(ompc_lock_t), CACHE_LINE_SIZE);
+  Is_True(tmp_lp != NULL, "can not allocate tmp_lp");
+
+  tmp_lp->flag = __omp_spin_user_lock;
   __ompc_init_lock(tmp_lp);
-  (*lock) = (omp_lock_t*)tmp_lp; 
+  (*lock) = (omp_lock_t)tmp_lp; 
 }
 
 
@@ -166,7 +178,10 @@ void omp_init_lock_(volatile omp_lock_t *);
 inline void
 omp_init_nest_lock(volatile omp_nest_lock_t *lock)
 {
-  ompc_nest_lock_t *tmp_lp = malloc(sizeof(ompc_nest_lock_t)); 
+  // put the lock aligned to cache line size
+  ompc_nest_lock_t * tmp_lp;
+  tmp_lp = aligned_malloc(CACHE_LINE_SIZE, CACHE_LINE_SIZE); 
+  Is_True(tmp_lp != NULL, "can not allocate tmp_lp");
   __ompc_init_nest_lock(tmp_lp);
   (*lock) = (omp_lock_t*)tmp_lp; 
 }
@@ -179,7 +194,7 @@ inline void
 omp_destroy_lock(volatile omp_lock_t *lock)
 {
   __ompc_destroy_lock((ompc_lock_t*)(*lock));
-  free((ompc_lock_t*)(*lock)); 
+  aligned_free((ompc_lock_t*)(*lock)); 
 }
 
 
@@ -189,7 +204,7 @@ inline void
 omp_destroy_nest_lock(volatile omp_nest_lock_t *lock)
 {
   __ompc_destroy_nest_lock((ompc_nest_lock_t*)(*lock));
-  free((ompc_nest_lock_t*)(*lock)); 
+  aligned_free((ompc_nest_lock_t*)(*lock)); 
 }
 
 

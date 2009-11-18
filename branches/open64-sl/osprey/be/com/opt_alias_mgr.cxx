@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -88,6 +92,11 @@ static char *rcs_id = 	opt_alias_mgr_CXX"$Revision: 1.7 $";
 #include "opt_points_to.h"
 #include "region_util.h"
 #include "targ_sim.h"
+#include "glob.h"
+#include "pu_info.h"
+
+static BOOL in_ipa_pu_list(char *function_name);
+static BOOL in_pure_call_list(char *function_name);
 
 #define ALIAS_TRACE_FLAG  0x1000000 /* trace alias analysis for CG          */
 #define ALIAS_DUMP_FLAG      0x0800 /* trace alias analysis		    */
@@ -929,10 +938,32 @@ ALIAS_RESULT Aliased(const ALIAS_MANAGER *am, WN *wn1, WN *wn2,
   if (id2 == 0 && Is_PREG_ldst(wn2)) 
     am->Set_id(wn2, id2 = am->Preg_id());
   
+  if (FILE_INFO_ipa(File_info))
+  {
+    // if -ipa is in effect, and if wn1 or wn2 is a call wn, further check that
+    // the function called by wn1 or wn2 is not a user-defined function (seen by
+    // ipa), in which case it may be a nice library function and does not alias
+    char *called_pu_name;
+    if (WN_operator(wn1) == OPR_CALL)
+    {
+      called_pu_name = ST_name(WN_st_idx(wn1));
+      if (!in_ipa_pu_list(called_pu_name) &&
+          in_pure_call_list(called_pu_name))
+        return NOT_ALIASED;
+    }
+    if (WN_operator(wn2) == OPR_CALL)
+    {
+      called_pu_name = ST_name(WN_st_idx(wn2));
+      if (!in_ipa_pu_list(called_pu_name) &&
+          in_pure_call_list(called_pu_name))
+        return NOT_ALIASED;
+    }
+  }
+
   // Complain if the WNs have no alias information.
   if (id1 == 0 || id2 == 0) 
     return POSSIBLY_ALIASED;
-  
+
   //  If both are PREGs, they are not alias if
   //  their base ST is different or their offset is different.
   if (id1 == am->Preg_id() && id2 == am->Preg_id()) 
@@ -1618,4 +1649,42 @@ POINTS_TO *Points_to_copy(POINTS_TO *pt, MEM_POOL *rpool)
   POINTS_TO *tmp = CXX_NEW(POINTS_TO, rpool);
   tmp->Copy_fully(pt);
   return tmp;
+}
+
+// Is the function whose name is function_name in the list of functions seen by
+// ipa?
+static BOOL in_ipa_pu_list(char *function_name)
+{
+  PU_Info *pu;
+
+  for (pu = (PU_Info *)Global_PU_Tree; pu != NULL; pu = PU_Info_next(pu))
+  {
+    char *pu_name = ST_name(PU_Info_proc_sym(pu));
+    if (strcmp(pu_name, function_name) == 0)
+      return TRUE;
+  }
+  return FALSE;
+}
+
+// Is the function whose name is function_name in the list of nice library
+// functions?
+static BOOL in_pure_call_list(char *function_name)
+{
+  if (strcmp(function_name, "malloc") == 0)
+    return TRUE;
+  if (strcmp(function_name, "calloc") == 0)
+    return TRUE;
+  if (strcmp(function_name, "realloc") == 0)
+    return TRUE;
+  if (strcmp(function_name, "printf") == 0)
+    return TRUE;
+  if (strcmp(function_name, "fprintf") == 0)
+    return TRUE;
+  if (strcmp(function_name, "exit") == 0)
+    return TRUE;
+  if (strcmp(function_name, "free") == 0)
+    return TRUE;
+  
+  // add more
+  return FALSE;
 }

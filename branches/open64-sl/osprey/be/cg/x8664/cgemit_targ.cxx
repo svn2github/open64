@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
@@ -923,6 +927,9 @@ static void Init_OP_Name()
   OP_Name[TOP_cmpxi8]  = "cmpb";
   OP_Name[TOP_cmpxxi8] = "cmpb";
   OP_Name[TOP_cmpxxxi8]= "cmpb";
+  OP_Name[TOP_cmpxr8]  = "cmpb";
+  OP_Name[TOP_cmpxxr8] = "cmpb";
+  OP_Name[TOP_cmpxxxr8]= "cmpb";
   OP_Name[TOP_cmp16]   = "cmpw";
   OP_Name[TOP_cmpx16]  = "cmpw";
   OP_Name[TOP_cmpxx16] = "cmpw";
@@ -931,6 +938,9 @@ static void Init_OP_Name()
   OP_Name[TOP_cmpxi16]  = "cmpw";
   OP_Name[TOP_cmpxxi16] = "cmpw";
   OP_Name[TOP_cmpxxxi16]= "cmpw";
+  OP_Name[TOP_cmpxr16]  = "cmpw";
+  OP_Name[TOP_cmpxxr16] = "cmpw";
+  OP_Name[TOP_cmpxxxr16]= "cmpw";
   OP_Name[TOP_cmp32]   = "cmpl";
   OP_Name[TOP_cmpx32]  = "cmpl";
   OP_Name[TOP_cmpxx32] = "cmpl";
@@ -938,6 +948,9 @@ static void Init_OP_Name()
   OP_Name[TOP_cmpxi32]  = "cmpl";
   OP_Name[TOP_cmpxxi32] = "cmpl";
   OP_Name[TOP_cmpxxxi32]= "cmpl";
+  OP_Name[TOP_cmpxr32]  = "cmpl";
+  OP_Name[TOP_cmpxxr32] = "cmpl";
+  OP_Name[TOP_cmpxxxr32]= "cmpl";
   OP_Name[TOP_cmp64]   = "cmpq";
   OP_Name[TOP_cmpx64]  = "cmpq";
   OP_Name[TOP_cmpxx64] = "cmpq";
@@ -945,6 +958,9 @@ static void Init_OP_Name()
   OP_Name[TOP_cmpxi64]  = "cmpq";
   OP_Name[TOP_cmpxxi64] = "cmpq";
   OP_Name[TOP_cmpxxxi64]= "cmpq";
+  OP_Name[TOP_cmpxr64]  = "cmpq";
+  OP_Name[TOP_cmpxxr64] = "cmpq";
+  OP_Name[TOP_cmpxxxr64]= "cmpq";
   OP_Name[TOP_cmpi32]  = "cmpl";
   OP_Name[TOP_cmpi64]  = "cmpq";
   //OP_Name[TOP_dec32] = "decl";

@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -263,6 +267,9 @@ extern WN* (*Perform_Global_Optimization_p) (WN *, WN *, ALIAS_MANAGER *);
 extern WN* (*Pre_Optimizer_p) (INT32, WN*, DU_MANAGER*, ALIAS_MANAGER*);
 #define Pre_Optimizer (*Pre_Optimizer_p)
 
+extern void (*choose_from_complete_struct_for_relayout_candidates_p)();
+#define choose_from_complete_struct_for_relayout_candidates (*choose_from_complete_struct_for_relayout_candidates_p)
+
 extern DU_MANAGER* (*Create_Du_Manager_p) (MEM_POOL *);
 #define Create_Du_Manager (*Create_Du_Manager_p)
 
@@ -278,6 +285,7 @@ extern void Wopt_Fini ();
 extern WN* Perform_Preopt_Optimization (WN *, WN *);
 extern WN* Perform_Global_Optimization (WN *, WN *, ALIAS_MANAGER *);
 extern WN* Pre_Optimizer (INT32, WN*, DU_MANAGER*, ALIAS_MANAGER*);
+extern void choose_from_complete_struct_for_relayout_candidates();
 extern DU_MANAGER* Create_Du_Manager (MEM_POOL *);
 extern void Delete_Du_Manager (DU_MANAGER *, MEM_POOL *);
 extern BOOL Verify_alias (ALIAS_MANAGER *, WN *);
@@ -290,6 +298,7 @@ extern BOOL Verify_alias (ALIAS_MANAGER *, WN *);
 #pragma weak Perform_Global_Optimization
 #pragma weak Perform_Preopt_Optimization
 #pragma weak Pre_Optimizer
+#pragma weak choose_from_complete_struct_for_relayout_candidates
 #pragma weak Create_Du_Manager
 #pragma weak Delete_Du_Manager
 #pragma weak Verify_alias
@@ -630,7 +639,11 @@ Phase_Init (void)
 
     if (need_lno_output) {
 	Write_BE_Maps = TRUE;
-	ir_output = Open_Output_Info(New_Extension(output_file_name,".N"));
+	// Output IR after preopt to .P file, and IR after LNO to .N file.
+	if (Run_lno)
+	    ir_output = Open_Output_Info(New_Extension(output_file_name,".N"));
+	else
+	    ir_output = Open_Output_Info(New_Extension(output_file_name,".P"));
     }
     if (need_wopt_output) {
 	Write_ALIAS_CLASS_Map = TRUE;
@@ -878,7 +891,9 @@ Ipl_Processing (PU_Info *current_pu, WN *pu)
     if (Run_preopt) {
 	du_mgr = Create_Du_Manager(MEM_pu_nz_pool_ptr);
 	al_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr);
+	Check_for_IR_Dump_Before_Phase(TP_IPL, pu, "Pre_Optimizer");
 	pu = Pre_Optimizer(PREOPT_IPA0_PHASE, pu, du_mgr, al_mgr);
+	Check_for_IR_Dump(TP_IPL, pu, "Pre_Optimizer");
 #ifdef Is_True_On
 	if (Get_Trace (TKIND_ALLOC, TP_IPA)) {
 	    fprintf (TFile, "\n%s%s\tMemory allocation information after"
@@ -1891,6 +1906,11 @@ Postprocess_PU (PU_Info *current_pu)
     fprintf (Tlog_File, "END %s\n", ST_name(PU_Info_proc_sym(current_pu)));
   }
 
+  if (Run_ipl != 0 && (Run_wopt || Run_preopt))
+    choose_from_complete_struct_for_relayout_candidates(); // among all the
+    // structures marked by ipl while compiling all the functions in this file,
+    // choose the most profitable one
+
   Current_Map_Tab = PU_Info_maptab(current_pu);
  
   REGION_Finalize();
@@ -2282,6 +2302,7 @@ main (INT argc, char **argv)
   }
 #endif
 
+  Global_PU_Tree = (void *)pu_tree; // expose this pu_tree to the optimizer
   Stop_Timer (T_ReadIR_Comp);
 
   Initialize_Special_Global_Symbols ();
@@ -2295,6 +2316,8 @@ main (INT argc, char **argv)
 	Instrumentation_Enabled = FALSE;
 #ifdef KEY // bug 5684: deleting branches interferes with branch profiling
 	WOPT_Enable_Simple_If_Conv = FALSE;
+	// Proactive loop fusion transformation interferes with branch profiling.
+	WOPT_Enable_Pro_Loop_Fusion_Trans = FALSE;
 #endif
 	Instrumentation_Phase_Num = PROFILE_PHASE_NONE;
       }

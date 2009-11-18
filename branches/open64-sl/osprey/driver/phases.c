@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007 Pathscale, LLC.  All Rights Reserved.
  */
 
@@ -72,6 +76,7 @@
 #include "opt_actions.h"
 #include "profile_type.h"    /* for PROFILE_TYPE */
 #include "lib_phase_dir.h"   /* for LIBPATH */
+#include "get_options.h"
 
 int subverbose ;
 
@@ -1440,6 +1445,7 @@ add_file_args (string_list_t *args, phases_t index)
 		    }
 		    /* fall through */
 		case S_I:
+		case S_P:
 		case S_N:
 		case S_O:
 		    temp = the_file;
@@ -1915,19 +1921,12 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 {
 #ifdef TARG_X8664 
         extern boolean link_with_mathlib;
-#if 0 // Bug 4813 - acml_mv is not in yet.
-        if ((link_with_mathlib || source_lang == L_CC) && 
-	    option_was_seen(O_m64) && 
-	    strcmp(target_cpu, "em64t") && strcmp(target_cpu, "anyx86"))
-          // Bug 4680 - Link with libacml_mv by default.
-	  add_library(args, "acml_mv");
-#endif
 	if (option_was_seen(O_nodefaultlibs) || option_was_seen(O_nostdlib)) {
-	    // If -compat-gcc, link with pscrt even if -nostdlib.  Bug 4551.
+	    // If -compat-gcc, link with open64rt even if -nostdlib.  Bug 4551.
 	    if (option_was_seen(O_compat_gcc) &&
 		!option_was_seen(O_fno_fast_stdlib) &&
-		!option_was_seen(O_nolibpscrt)) {	// bug 9611
-	      // add_library(args, "pscrt");
+		!option_was_seen(O_nolibopen64rt)) {	// bug 9611
+	      // add_library(args, "open64rt");
 	    }
 	    return;
 	}
@@ -1979,6 +1978,10 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 		add_string(args, "-lmv");
 	//	add_string(args, "-lm" PSC_NAME_PREFIX);
 		add_string(args, "-lm");
+#ifdef TARG_X8664_WITH_LIBACML_MV
+		if (abi != ABI_N32)
+                    add_library(args, "acml_mv");
+#endif
 		add_library(args, "mv");
 	//	add_library(args, "m" PSC_NAME_PREFIX);
 		add_library(args, "m");
@@ -2010,12 +2013,16 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	}
 
 #ifdef TARG_X8664
-	// Put pscrt after all the libraries that are built with PathScale
+	// Put open64rt after all the libraries that are built with PathScale
 	// compilers, since those libraries could use PathScale routines.
 	// Bug 3995.
 	if (!option_was_seen(O_fno_fast_stdlib) &&
-	    !option_was_seen(O_nolibpscrt)) {	// bug 9611
-	    // add_library(args, "pscrt");
+	    !option_was_seen(O_nolibopen64rt)) {	// bug 9611
+            if (option_was_seen(O_shared)) {
+                add_library(args, "open64rt_shared");
+            } else {
+                add_library(args, "open64rt");
+            }
 	}
 #endif
 
@@ -2058,6 +2065,16 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	      // add_library(args, "m" PSC_NAME_PREFIX);	// bug 3092
               // OSP -lm is needed
               add_library(args, "m");
+#ifdef TARG_X8664_WITH_LIBACML_MV
+	      if (abi != ABI_N32) {
+		/* Sigh, g++ removes the first -lm since it is implicitly added by g++,
+		 * however adding two instances of -lm only removes one.
+		 */
+                if (invoked_lang == L_CC)
+		  add_library(args, "m");
+		add_library(args, "acml_mv");
+              }
+#endif
 	    }
 #else
 			if (invoked_lang == L_CC)
@@ -2180,12 +2197,14 @@ static void
 postprocess_ld_args (string_list_t *args)
 {
     string_item_t *p;
+    boolean add_huge_lib = FALSE;
+    boolean do_link = FALSE;
 
     if (option_was_seen(O_pg) && !option_was_seen(O_nostdlib)) {
 	if (prof_lib_exists("c"))
 	    add_library(args, "c");
     }
-	    
+
     /*
      * For some reason, our cross linker won't find libraries in some
      * directories unless it's told about them with -rpath-link.
@@ -2205,8 +2224,44 @@ postprocess_ld_args (string_list_t *args)
 	    dir = p->next->name;
 	}
 	if (dir) {
-	    add_after_string(args, p, concat_strings("-Wl,-rpath-link,", dir));
+            char * root_prefix = directory_path(get_executable_dir());
+            add_after_string(args, p, concat_strings("-Wl,-rpath-link,", dir));
+
+            if (strstr(dir, root_prefix) != NULL) {
+
+                add_after_string(args, p, concat_strings("-Wl,-rpath,", dir));
+
+                if (option_was_seen(O_HP) && instrumentation_invoked != TRUE) {
+                    HUGEPAGE_DESC desc;
+
+                    for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
+                        if (desc->alloc == ALLOC_BDT && !do_link) {
+                            /* libhugetlbfs linker script only supports dynamic link. 
+                             */
+                            if (!option_was_seen(O_static)) {
+                                if (desc->size == SIZE_2M)
+                                    dir = concat_strings(dir, "/elf.xBDT");
+                                else if (desc->size == SIZE_1G)
+                                    dir = concat_strings(dir, "/elf_1G.xBDT");
+                                
+                                add_after_string(args, p, concat_strings("-Wl,-T", dir));
+                                do_link = TRUE;
+                                add_huge_lib = TRUE;
+                            }
+                        }
+                        else if (desc->alloc == ALLOC_HEAP)
+                            add_huge_lib = TRUE;
+                    }
+
+                    if (add_huge_lib && option_was_seen(O_static))
+                        add_after_string(args, p, "-Wl,--undefined=setup_libhugetlbfs");
+                }
+            }
 	}
+    }
+
+    if (add_huge_lib) {
+        add_library(args, "hugetlbfs_open64");
     }
 }
 #endif
@@ -2464,6 +2519,7 @@ determine_phase_order (void)
 		next_phase = post_fe_phase ();
 		break;
 	case S_I:
+	case S_P:
 	case S_N:
 	case S_O:
 		next_phase = be_phase;
@@ -3181,7 +3237,6 @@ run_compiler (int argc, char *argv[])
 #endif
 
 	for (i = 0; phase_order[i] != P_NONE; i++) {
-
 	        /* special case where the frontend decided that
 		   inliner should not be run */
 	        if (
@@ -3192,7 +3247,7 @@ run_compiler (int argc, char *argv[])
 #endif
 		    phase_order[i] == P_inline)
 		    continue;
-		
+
 		if (is_matching_phase(get_phase_mask(phase_order[i]), P_any_ld)) {
 			source_kind = S_o;
 			/* reset source-lang to be invoked-lang for linking */
@@ -3204,6 +3259,7 @@ run_compiler (int argc, char *argv[])
 			args = init_string_list();
 			add_file_args_first (args, phase_order[i]);  // bug 6874
 			copy_phase_options (args, phase_order[i]);
+                        
 			if (!cmd_line_updated &&
 			    phase_order[i] > P_any_optfe &&
 			    phase_order[i] != P_c_gfe &&

@@ -1,26 +1,29 @@
 /*
- *  Copyright (C) 2000, 2001 HPC,Tsinghua Univ.,China .  All Rights Reserved.
- *
- *      This program is free software; you can redistribute it and/or modify it
- *  under the terms of version 2 of the GNU General Public License as
- *  published by the Free Software Foundation.
- *
- *      This program is distributed in the hope that it would be useful, but
- *  WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *
- *      Further, this software is distributed without any warranty that it is
- *  free of the rightful claim of any third person regarding infringement
- *  or the like.  Any license provided herein, whether implied or
- *  otherwise, applies only to this software file.  Patent licenses, if
- *  any, provided herein do not apply to combinations of this program with
- *  other software, or any other product whatsoever.
- *
- *      You should have received a copy of the GNU General Public License along
- *  with this program; if not, write the Free Software Foundation, Inc., 59
- *  Temple Place - Suite 330, Boston MA 02111-1307, USA.
- *
- */
+
+  OpenMP runtime library to be used in conjunction with Open64 Compiler Suites.
+
+  Copyright (C) 2003 - 2009 Tsinghua University.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+  
+  Contact information: HPC Institute, Department of Computer Science and Technology,
+  Tsinghua University, Beijing 100084, CHINA, or:
+
+  http://hpc.cs.tsinghua.edu.cn
+  
+*/
 
 /*
  * File: omp_thread.h
@@ -63,12 +66,26 @@ inline int __ompc_get_nested(void)
   return __omp_nested;
 }
 
+inline int __omp_get_cpu_num()
+{
+  cpu_set_t cpuset;
+  int return_val, i, cur_count = 0;
+
+  return_val = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+  Is_True(return_val == 0, ("Get affinity error"));
+
+  for (i = 0; i < __omp_num_hardware_processors; i++)
+    if (CPU_ISSET(i, &cpuset)) cur_count ++;
+
+  return cur_count;
+}
+
 inline int __ompc_get_max_threads(void)
 {
   if (__omp_rtl_initialized == 1)
     return __omp_nthreads_var;
   else
-    return Get_SMP_CPU_num();
+    return __omp_get_cpu_num();
 }
 
 inline int __ompc_get_num_procs(void)
@@ -76,20 +93,22 @@ inline int __ompc_get_num_procs(void)
   if (__omp_rtl_initialized == 1)
     return __omp_num_processors;
   else
-    return Get_SMP_CPU_num();
+    return __omp_get_cpu_num();
 }
 
-/* The caller must ensure the validity of __num_threads*/
 inline void __ompc_set_num_threads(const int __num_threads)
 {
-  /* The logic is perhaps wrong*/
-  Is_Valid( __num_threads > 0,
-	    (" number of threads must be possitive!"));
-  if (__num_threads > __omp_max_num_threads) {
-    Warning(" Exceed the threads number limit.");
-  }
-  /* Not try to modify the setting, adjust it at fork*/
-  __omp_nthreads_var = __num_threads;
+  int num_threads;
+
+  // check the validity of _num_threads
+  num_threads = __ompc_check_num_threads(__num_threads);
+
+  // expand the team when the current threads are fewer
+  if (num_threads > __omp_nthreads_var)
+     __ompc_expand_level_1_team(num_threads);
+
+  __omp_nthreads_var = num_threads; 
+ 
 }
 
 inline int __ompc_in_parallel(void)
@@ -233,6 +252,8 @@ inline omp_team_t * __ompc_get_current_team(void)
   }
 }
 
+extern long int __omp_spin_count; // defined in omp_thread.c
+
 /* Should not be called directly, use __ompc_barrier instead*/
 inline void __ompc_barrier_wait(omp_team_t *team)
 {
@@ -240,35 +261,32 @@ inline void __ompc_barrier_wait(omp_team_t *team)
   int barrier_flag;
   int reset_barrier = 0;
   int new_count;
-  int i, j;
+  long int i;
+  volatile int *barrier_flag_p = &(team->barrier_flag);
 
-  barrier_flag = team->barrier_flag;
+  barrier_flag = *barrier_flag_p;
   new_count = __ompc_atomic_inc(&team->barrier_count);
 
   if (new_count == team->team_size) {
     /* The last one reset flags*/
     team->barrier_count = 0;
-    team->barrier_count2 = 1;
     team->barrier_flag = barrier_flag ^ 1; /* Xor: toggle*/
-    for (i = 0; i < 300; i++)
-      if (team->barrier_count2 == team->team_size) {
-	return;
-      }
     pthread_mutex_lock(&(team->barrier_lock));
-    pthread_mutex_unlock(&(team->barrier_lock));
     pthread_cond_broadcast(&(team->barrier_cond));
+    pthread_mutex_unlock(&(team->barrier_lock));
   } else {
     /* Wait for the last to reset te barrier*/
     /* We must make sure that every waiting thread get this
      * signal */
-    for (i = 0; i < 5000; i++)
-      if (team->barrier_flag != barrier_flag) {
-	__ompc_atomic_inc(&team->barrier_count2);
+    for (i = 0; i < __omp_spin_count; i++)
+      if ((*barrier_flag_p) != barrier_flag) {
 	return;
       }
     pthread_mutex_lock(&(team->barrier_lock));
     while (team->barrier_flag == barrier_flag)
+    {
       pthread_cond_wait(&(team->barrier_cond), &(team->barrier_lock));
+    }
     pthread_mutex_unlock(&(team->barrier_lock));
   }
 
@@ -304,16 +322,12 @@ int
 __ompc_check_num_threads(const int _num_threads)
 {
   int num_threads = _num_threads;
-  int request_threads;
-  /* How about _num_threads == 1*/
   Is_Valid( num_threads > 0,
 	    (" number of threads must be possitive!"));
+
   if (__omp_exe_mode & OMP_EXE_MODE_SEQUENTIAL) {
     /* request for level 1 threads*/
-    request_threads = num_threads - __omp_level_1_team_alloc_size;
-    if (request_threads <= __omp_max_num_threads) {
-      /* OK. we can fulfill your request*/
-    } else {
+    if (num_threads - __omp_level_1_team_alloc_size > __omp_max_num_threads) {
       /* Exceed current limitat*/
       Warning(" Exceed the thread number limit: Reduce to Max");
       num_threads = __omp_level_1_team_alloc_size + __omp_max_num_threads;
@@ -322,12 +336,11 @@ __ompc_check_num_threads(const int _num_threads)
     if ((num_threads - 1) > __omp_max_num_threads) {
       /* Exceed current limit*/
       /* The master is already there, need not to be allocated*/
-      num_threads = __omp_max_num_threads + 1; 
       Warning(" Exceed the thread number limit: Reduce to Max");
-    } else {
-      /* OK. we can fulfill your request*/
-    }
+      num_threads = __omp_max_num_threads + 1; 
+    } 
   }
+
   return num_threads;
 }
 
@@ -355,5 +368,57 @@ inline void __ompc_end(void)
   /* do nothing */
 }
 
+inline void __omp_get_available_processors()
+{
+  cpu_set_t cpuset;
+  int return_val, i, cur_count=0;
+  int *ordered_core_list;
+
+  /* create the list to record available processors */
+  __omp_list_processors = aligned_malloc(sizeof(int) * __omp_num_processors, CACHE_LINE_SIZE);
+  Is_True(__omp_list_processors != NULL,
+          ("Can't allocate __omp_list_processors"));
+
+  // We try to bind pthreads to cores on one cpu first. Thus we need to know how
+  // cores are ordered. For example, some machine assign 0,4,8,12 to the cores
+  // on the first cpu/socket and 1,5,9,13 to the second cpu and etc. We get
+  // this info from /proc/cpuinfo. For any reason that we could not find the order,
+  // we will use the default order 0,1,2,3...  
+  ordered_core_list = (int*) malloc(sizeof(int) * __omp_num_hardware_processors);
+  Is_True(ordered_core_list!= NULL,
+          ("Can't allocate ordered_core_list"));
+  Get_Ordered_Corelist(ordered_core_list, __omp_num_hardware_processors);
+
+  return_val = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+  Is_True(return_val == 0, ("Get affinity error"));
+ 
+  for (i = 0; i < __omp_num_hardware_processors; i++) {
+     if (CPU_ISSET(ordered_core_list[i], &cpuset))
+       __omp_list_processors[cur_count++] = ordered_core_list[i];
+  }
+  Is_True( cur_count == __omp_num_processors, "Wrong with get avaible processors"); 
+
+  if (ordered_core_list!= NULL)
+    free(ordered_core_list);
+}
+
+static int cur_cpu_to_bind;
+
+/* bind the pthread to a specific cpu */
+inline void __ompc_bind_pthread_to_cpu(pthread_t thread)
+{
+  cpu_set_t cpuset;
+  int return_val;
+  
+  CPU_ZERO(&cpuset);
+  CPU_SET(__omp_list_processors[cur_cpu_to_bind],&cpuset);
+
+  return_val = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+  Is_True(return_val == 0, ("Set affinity error"));
+
+  // next cpu to bind
+  cur_cpu_to_bind = (cur_cpu_to_bind + 1) % __omp_num_processors; 
+
+}
 
 #endif /* __omp_rtl_thread_included */

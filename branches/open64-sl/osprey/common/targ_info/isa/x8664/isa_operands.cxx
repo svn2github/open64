@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
@@ -2024,6 +2028,114 @@ main()
   Operand(1, int64, index);
   Operand(2, uimm8, scale);
   Operand(3, simm32, offset);
+
+   Instruction_Group("int8 compare/test mem opnd",
+  		    TOP_cmpxr8,
+		    TOP_UNDEFINED);
+  Result(0,  eflags);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+  Operand(2, int8, opnd1);
+
+  Instruction_Group("int16 compare/test mem opnd",
+		    TOP_cmpxr16,
+		    TOP_UNDEFINED);
+  Result(0,  eflags);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+  Operand(2, int16, opnd1);
+
+  Instruction_Group("int32 compare/test mem opnd",
+		    TOP_cmpxr32,
+		    TOP_UNDEFINED);
+  Result(0,  eflags);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+  Operand(2, int32, opnd1);
+
+  Instruction_Group("int64 compare/test mem opnd",
+		    TOP_cmpxr64,
+		    TOP_UNDEFINED);
+  Result(0, rflags);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+  Operand(2, int64, opnd1);
+
+  Instruction_Group("int8 compare/test mem opnd w/ scaled-index",
+  		    TOP_cmpxxr8,
+		    TOP_UNDEFINED);
+  Result(0,  eflags);
+  Operand(0, int64, base);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+  Operand(4, int8, opnd1);
+
+  Instruction_Group("int16 compare/test mem opnd w/ scaled-index",
+		    TOP_cmpxxr16,
+		    TOP_UNDEFINED);
+  Result(0,  eflags);
+  Operand(0, int64, base);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+  Operand(4, int16, opnd1);
+
+  Instruction_Group("int32 compare/test mem opnd w/ scaled-index",
+		    TOP_cmpxxr32,
+		    TOP_UNDEFINED);
+  Result(0,  eflags);
+  Operand(0, int64, base);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+  Operand(4, int32, opnd1);
+
+  Instruction_Group("int64 compare/test mem opnd w/ scaled-index",
+		    TOP_cmpxxr64,
+		    TOP_UNDEFINED);
+  Result(0, rflags);
+  Operand(0, int64, base);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset);
+  Operand(4, int64, opnd1);
+
+  Instruction_Group("int8 compare/test mem opnd w/ scaled-index w/o base",
+  		    TOP_cmpxxxr8,
+		    TOP_UNDEFINED);
+  Result(0,  eflags);
+  Operand(0, int64, index);
+  Operand(1, uimm8, scale);
+  Operand(2, simm32, offset);
+  Operand(3, int8, opnd1);
+
+  Instruction_Group("int16 compare/test mem opnd w/ scaled-index w/o base",
+		    TOP_cmpxxxr16,
+		    TOP_UNDEFINED);
+  Result(0,  eflags);
+  Operand(0, int64, index);
+  Operand(1, uimm8, scale);
+  Operand(2, simm32, offset);
+  Operand(3, int16, opnd1);
+
+  Instruction_Group("int32 compare/test mem opnd w/ scaled-index w/o base",
+		    TOP_cmpxxxr32,
+		    TOP_UNDEFINED);
+  Result(0,  eflags);
+  Operand(0, int64, index);
+  Operand(1, uimm8, scale);
+  Operand(2, simm32, offset);
+  Operand(3, int32, opnd1);
+
+  Instruction_Group("int64 compare/test mem opnd w/ scaled-index w/o base",
+		    TOP_cmpxxxr64,
+		    TOP_UNDEFINED);
+  Result(0, rflags);
+  Operand(0, int64, index);
+  Operand(1, uimm8, scale);
+  Operand(2, simm32, offset);
+  Operand(3, int64, opnd1);
 
   Instruction_Group("fp ordered compare",
 		    TOP_comisd,

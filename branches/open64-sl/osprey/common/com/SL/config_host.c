@@ -1,9 +1,14 @@
 /********************************************************************\
 |*                                                                  *|   
-|*    Copyright (c) 2006 by SimpLight Nanoelectronics.              *|
-|*    All rights reserved                                           *|
-|*                                                                  *|   
-\********************************************************************/ 
+|*  Copyright (c) 2006 by SimpLight Nanoelectronics.                *|
+|*  All rights reserved                                             *|
+|*                                                                  *|
+|*  This program is free software; you can redistribute it and/or   *|
+|*  modify it under the terms of the GNU General Public License as  *|
+|*  published by the Free Software Foundation; either version 2,    *|
+|*  or (at your option) any later version.                          *|
+|*                                                                  *|
+\********************************************************************/
 
 static char *source_file = __FILE__;
 static char *rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/common/com/MIPS/config_host.c,v $ $Revision: 1.1 $";

@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -2881,8 +2885,8 @@ Replace_Substring(char* in, char* from, const char* to)
   // memory if need be. Due to the context, this is more efficient than finding
   // out the number of occurrences of 'from' in 'in'.
   UINT  buflen = strlen(in) + 5*strlen(to) + 64;
-  char* buf = CXX_NEW(char[buflen], &MEM_local_pool);
-  char* tmp = CXX_NEW(char[buflen], &MEM_local_pool);
+  char* buf = CXX_NEW_ARRAY(char, buflen, &MEM_local_pool);
+  char* tmp = CXX_NEW_ARRAY(char, buflen, &MEM_local_pool);
   char* cpy = in;
   char* p = NULL;
   char* q = NULL;
@@ -2996,9 +3000,9 @@ Replace_Substring(char* in, char* from, const char* to)
       times = 5; 
     }
   }
-  CXX_DELETE(tmp, &MEM_local_pool);
+  CXX_DELETE_ARRAY(tmp, &MEM_local_pool);
   if (strcmp(buf, "") == 0) {
-    CXX_DELETE(buf, &MEM_local_pool);
+    CXX_DELETE_ARRAY(buf, &MEM_local_pool);
     return cpy;
   }  
   strcat(buf, in);
@@ -3153,13 +3157,15 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
       name = ST_name( st );
 
 #if defined (TARG_X8664)
+      //remove "$" for  rodata section address reference
+      //https://bugs.open64.net/show_bug.cgi?id=494
       if (!memory /* bug 14399 */ && !strcmp (name, ".rodata")) {
         // This is the address of a string constant, treat it similar
         // to a numeric constant. (bug 14390)
         if( base_ofst == 0 )
-          sprintf( buf, "$%s", name );
+          sprintf( buf, "%s", name );
         else
-          sprintf( buf, "$%s+%d", name, (int)base_ofst );
+          sprintf( buf, "%s+%d", name, (int)base_ofst );
       }
       else {
 #endif
@@ -4360,6 +4366,11 @@ Emit_Loop_Note(BB *bb, FILE *file)
 #ifdef TARG_X8664
     if (CG_p2align) 
       fputs ("\t.p2align 6,,7\n", file);
+    else if (CG_loop32) {
+      if (BB_innermost(bb) && Is_Target_Barcelona()) {
+        fputs ("\t.p2align 5,,\n", file);
+      }
+    }
 #endif
     SRCPOS srcpos = BB_Loop_Srcpos(bb);
     INT32 lineno = SRCPOS_linenum(srcpos);
@@ -6428,7 +6439,8 @@ Write_Label (
   INT scn_idx,		/* Section to emit it in */
   Elf64_Word scn_ofst,	/* Section offset to emit it at */
   INT32	repeat,		/* Repeat count */
-  INT32 flags )         /* Label flag */
+  INT32 flags,          /* Label flag */
+  mTYPE_ID mtype )      /* mTYPE_ID for label value */
 {
   INT32 i;
   ST *basesym;
@@ -6509,9 +6521,26 @@ Write_Label (
       }
       else { // for Label values
         if ( flags == INITVLABELFLAGS_VALUES_FIRST ) {
-          fprintf (Asm_File, "\t%s\t",        
-                  (scn_ofst % address_size) == 0 ?    
-                  AS_ADDRESS : AS_ADDRESS_UNALIGNED);
+          Is_True( mtype != MTYPE_UNKNOWN, ("bad mtype for label value") );
+          INT size = MTYPE_byte_size(mtype);
+          const char* as_size = NULL;
+          switch (mtype) {
+            case MTYPE_I1:
+              as_size = AS_BYTE;
+              break;
+            case MTYPE_I2:
+              as_size = (scn_ofst % size) == 0 ? AS_HALF : AS_HALF_UNALIGNED;
+              break;
+            case MTYPE_I4:
+              as_size = (scn_ofst % size) == 0 ? AS_WORD : AS_WORD_UNALIGNED;
+              break;
+            case MTYPE_I8:
+              as_size = (scn_ofst % size) == 0 ? AS_DWORD : AS_DWORD_UNALIGNED;
+              break;
+            default:
+              FmtAssert(FALSE, ("bad mtype for label value"));
+          }
+          fprintf (Asm_File, "\t%s\t", as_size);     
         }
         if ( flags == INITVLABELFLAGS_VALUES_PLUS ) {
           fputs ("+", Asm_File);
@@ -6840,7 +6869,7 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
 	    break;
 	}
 #endif
-	scn_ofst = Write_Label (lab, 0, scn_idx, scn_ofst, INITV_repeat1(inv), INITV_lab_flags(inv));
+	scn_ofst = Write_Label (lab, 0, scn_idx, scn_ofst, INITV_repeat1(inv), INITV_lab_flags(inv), INITV_lab_mtype(inv));
 	break;
     case INITVKIND_SYMDIFF:
       scn_ofst = Write_Symdiff ( INITV_lab1(inv), INITV_st2(inv),

@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
@@ -149,6 +153,26 @@ OPT_FEEDBACK::Get_edge_freq( IDTYPE nx_src, IDTYPE nx_dst ) const
   return freq;
 }
 
+// Get the type of the first edge between nx_src and nx_dst.
+FB_EDGE_TYPE 
+OPT_FEEDBACK::Get_edge_type(IDTYPE nx_src, IDTYPE nx_dst) const
+{
+  VALIDATE_EDGE( nx_src, nx_dst, "Get_edge_type" );
+  Is_True( Edge_has_freq( nx_src, nx_dst ),
+	   ( "OPT_FEEDBACK::Get_edge_freq: edge (%d --> %d) not found",
+	     nx_src, nx_dst ) );
+
+  const OPT_FB_NODE& node = _fb_opt_nodes[nx_src];
+  FB_FREQ freq  = FB_FREQ_ZERO;
+  for ( INT t = node.outgoing_edges.size() - 1; t >= 0; t-- ) {
+    IDTYPE ex = node.outgoing_edges[t];
+    const OPT_FB_EDGE& edge = _fb_opt_edges[ex];
+    if (edge.destination == nx_dst)
+      return edge.edge_type;
+  }
+  FmtAssert(FALSE, ( "OPT_FEEDBACK::Get_edge_freq edge not found"));
+  return FB_EDGE_UNINIT;
+}
 
 // Returns the unique successor, or IDTYPE_NULL if none.
 IDTYPE
@@ -1392,7 +1416,7 @@ OPT_FEEDBACK::Move_edge_dest( IDTYPE nx_src,
     IDTYPE ex = node.outgoing_edges[t];
     if ( _fb_opt_edges[ex].destination == nx_dst_old ) {
       match = true;
-      Set_edge_dest( ex, nx_dst_new );
+     Set_edge_dest( ex, nx_dst_new );
     }
   }
   Is_True( match, ( "OPT_FEEDBACK::Move_edge_dest: edge (%d --> %d) not found",
