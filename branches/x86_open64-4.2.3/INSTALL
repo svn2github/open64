@@ -28,6 +28,10 @@ release for x86_64 as downloaded from www.open64.net. This document
 assumes that x86 Open64 4.2.2.3 is installed into /opt on the build
 system.
 
+On systems where the x86 Open64 4.2.2 release is not supported (SLES 11,
+for example), a compiler from the x86 Open64 4.2.3 series must be used
+instead.
+
 
 Obtaining the Source Code
 -------------------------

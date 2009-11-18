@@ -71,9 +71,10 @@ x86 Open64 4.2.3 Beta (4.2.2.99) Release Notes
    bandwidth utilization of multi-core processors.  (Invoked by
    specifying the new "-mso" flag.)
 
- o Improved gcc compatibility.
+ o Improved gcc compatibility, including support for more attributes,
+   command-line options, and built-in functions.
 
- o Expanded platform support.
+ o Expanded platform support, including SLES 11 and RHEL 5.4.
 
 
 
@@ -197,5 +198,13 @@ x86 Open64 4.2.3 Beta (4.2.2.99) Release Notes
 7. Known Issues and Limitations
 ===============================
 
+ o Linux Operating Systems are frequently configured with a soft limit on
+   process stack sizes. Programs that exceed these limits by methods such as
+   placing very large arrays on the stack will terminate with a segmentation
+   violation. You can query and alter these limits using the ulimit command
+   (ksh, sh and bash) or limit command (tcsh, csh).
 
+ o Running the Fortran compiler on systems with SELinux enabled may result in
+   the error message "cannot restore segment prot after reloc". The workaround
+   is to disable SELinux enforcing mode by running "/usr/sbin/setenforce 0".
 
