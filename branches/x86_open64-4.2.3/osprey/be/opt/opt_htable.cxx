@@ -2185,7 +2185,7 @@ CODEMAP::Canon_mpy(WN       *wn,
     MTYPE from_type;
     if (Prevent_fold_across_cvt(ccr,wn,from_type))
     {
-      // If we have decided not to propagate teh extracted constant,
+      // If we have decided not to propagate the extracted constant,
       // i.e. ccr->Scale() up to the parent we must rematerialize
       // the original CODEREP including the constant.  Here we make
       // sure that any necessary cvt operation is injected after
@@ -2218,7 +2218,7 @@ CODEMAP::Canon_mpy(WN       *wn,
     MTYPE from_type;
     if (Prevent_fold_across_cvt(&kid1,wn,from_type))
     {
-      // If we have decided not to propagate teh extracted constant,
+      // If we have decided not to propagate the extracted constant,
       // i.e. ccr->Scale() up to the parent we must rematerialize
       // the original CODEREP including the constant.  Here we make
       // sure that any necessary cvt operation is injected after
@@ -2226,7 +2226,7 @@ CODEMAP::Canon_mpy(WN       *wn,
       // we are propragating no constant up to the parent expression
       // so we set the ccr->Scale(0). 
       cr->Set_opnd(0, Add_const(WN_rtype(wn), ccr->Scale()));
-      cr->Set_opnd(1,ccr->Convert2cr(kid1.Tree()->Dtyp(),OPR_CVT,
+      cr->Set_opnd(1,kid1.Convert2cr(kid1.Tree()->Dtyp(),OPR_CVT,
                                      OPCODE_make_op(OPR_CVT,
                                                     WN_rtype(wn),
                                                     from_type),

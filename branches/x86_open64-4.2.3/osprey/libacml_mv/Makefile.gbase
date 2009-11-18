@@ -219,7 +219,11 @@ else
 # all architectures.  Thus we add an empty 32-bit ACML vector math
 # library.
 
-CFILES =
+dummy.c :
+	echo "void libacml_mv_placeholder() {}" > dummy.c
+
+CFILES = dummy.c
+LDIRT += dummy.c
 
 endif
 
