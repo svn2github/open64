@@ -120,9 +120,6 @@ static DEBUG_FLAGS Default_DEBUG = {
 #endif
 #ifdef TARG_SL
   FALSE,                        /* stack_check for SL*/
-  NULL ,        FALSE,          /* pad globals with dummy variable to check overflow */
-  0,                            /* default size of a dummy block which is placed before st */
-  4,                            /* default size of a dummy block which is placed after st */
 #endif
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
@@ -167,9 +164,6 @@ DEBUG_FLAGS Initial_DEBUG = {
 #endif
 #ifdef TARG_SL
   FALSE,                        /* stack_check for SL */
-  NULL ,        FALSE,          /* pad globals with dummy variable to check overflow */
-  0,                            /* default size of a dummy block which is placed before st */
-  4,                            /* default size of a dummy block which is placed after st */
 #endif
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
@@ -339,15 +333,6 @@ static OPTION_DESC Options_DEBUG[] = {
     { OVK_INT32, OV_VISIBLE, TRUE, "stack_check", "",
       0, 0, 15, &ID.stack_check, NULL,
       "stack overflow check"   },
-    { OVK_LIST, OV_VISIBLE, TRUE, "dummy_on", "",
-      0, 0, 0, &ID.dummy_chk_section_list, &ID.dummy_chk_seen,
-      "enable dummy variable to check overflow"   },
-    { OVK_INT32, OV_VISIBLE, TRUE, "chk_blk_size_before", "chk_blk_size_b", 
-      0, 0, 512, &ID.chk_blk_size_before, NULL, 
-      "default size of a dummy block which is placed before st." },
-    { OVK_INT32, OV_VISIBLE, TRUE, "chk_blk_size_after", "chk_blk_size_a", 
-      4, 0, 512, &ID.chk_blk_size_after, NULL, 
-      "default size of a dummy block which is placed after st." },
 #endif
 
     { OVK_COUNT }		    /* List terminator -- must be last */

@@ -100,7 +100,6 @@ extern INT (*Push_Pop_Int_Saved_Regs_p)(void);
 #include <vector>
 #include "fb_whirl.h"
 #include "config_debug.h"
-#include "file_util.h"
 #endif
 extern void Early_Terminate (INT status);
 
@@ -110,6 +109,7 @@ static BOOL inline Is_Target_32bit (void) { return FALSE; }
 #endif // TARG_MIPS
 
 #define ST_force_gprel(s)	ST_gprel(s)
+
 ST *SP_Sym;
 ST *FP_Sym;
 ST *Local_Spill_Sym;
@@ -256,7 +256,6 @@ enum _sec_kind Get_Const_Var_Section()
     return _SEC_RDATA;
 #endif
 }
-
 
 extern BOOL
 Is_Allocated (ST *st)
@@ -627,12 +626,6 @@ Assign_Offset (ST *blk, ST *base, INT32 lpad, INT32 rpad)
   }
 }
 
-#if defined(TARG_SL)
-
-static void Allocate_Dummy_For_Padding(ST* base, ST* st,  UINT32 space, BOOL before);
-
-#endif
-
 /* ====================================================================
  *
  * Allocate_Space
@@ -660,46 +653,13 @@ Allocate_Space(ST *base, ST *blk, INT32 lpad, INT32 rpad, INT64 maxsize)
   Set_STB_align(base, MAX(STB_align(base), align));
   if (!STB_decrement(base)) {
     old_offset = STB_size(base);
-#if defined(TARG_SL)
-     if (DEBUG_Dummy_Check_Seen) {
-         int left_pad_space = ROUNDUP(old_offset + lpad, align) - old_offset;
-         if (left_pad_space > 0) {
-            Allocate_Dummy_For_Padding(base, blk, left_pad_space, TRUE);
-         }
-     }
-#endif
     Set_ST_ofst(blk, ROUNDUP(old_offset + lpad, align));
-#if defined(TARG_SL)
-    if (DEBUG_Dummy_Check_Seen){
-       Set_STB_size(base, ST_ofst(blk) + size);
-       int right_pad_space = ROUNDUP(ST_ofst(blk) + size + rpad, align) - (ST_ofst(blk) + size);
-       if (right_pad_space > 0){
-           Allocate_Dummy_For_Padding(base, blk, right_pad_space, FALSE);
-       }
-    }
-#endif
     Set_STB_size(base, ROUNDUP(ST_ofst(blk) + size + rpad, align));
   }
   else {
     old_offset = STB_size(base);
     /* align object end */
-#if defined(TARG_SL)
-    if (DEBUG_Dummy_Check_Seen){
-       int left_pad_space = ROUNDUP(old_offset + lpad, align) - old_offset;
-       if (left_pad_space > 0){
-         // TODO: generate dummy for STB_decrement(base)
-       }
-    }
-#endif
-    Set_ST_ofst(blk, ROUNDUP(old_offset + lpad, align));
-#if defined(TARG_SL)
-    if (DEBUG_Dummy_Check_Seen){
-       int right_pad_space = ROUNDUP(ST_ofst(blk) + size + rpad, align) - (ST_ofst(blk) + size);
-       if (right_pad_space > 0){
-         // TODO: generate dummy for STB_decrement(base)
-       }
-    }
-#endif
+    Set_ST_ofst(blk, ROUNDUP(old_offset + lpad, align));	
     Set_ST_ofst(blk,
 	-(INT64) ROUNDUP(ST_ofst(blk) + size + rpad, align)); /* start */
     Set_STB_size(base, -ST_ofst(blk));
@@ -725,7 +685,7 @@ Allocate_Space(ST *base, ST *blk, INT32 lpad, INT32 rpad, INT64 maxsize)
 #ifdef KEY
 		  align
 #else
-		  TY_align(ST_type(blk)) 
+		  TY_align(ST_type(blk) 
 #endif // KEY
 		  );
   }
@@ -1126,7 +1086,7 @@ Assign_ST_To_Named_Section (ST *st, STR_IDX name)
 #ifdef KEY
     			if (ST_is_constant(st) &&	// bug 4743
 			    !ST_is_weak_symbol(st)) {	// bug 4823
-            sec = Get_Const_Var_Section();
+			  sec = Get_Const_Var_Section();
 			} else
 #endif
 #if defined(TARG_SL)
@@ -1175,9 +1135,6 @@ Assign_ST_To_Named_Section (ST *st, STR_IDX name)
 	else
 		FmtAssert(FALSE, ("unexpected section attribute"));
 }
-#if defined(TARG_SL)
-static void Allocate_Dummy_Space(ST* st, UINT32 space, BOOL before);
-#endif
 
 struct Assign_Section_Names 
 {
@@ -1188,19 +1145,7 @@ struct Assign_Section_Names
             return;
 	st = ST_ptr(ST_ATTR_st_idx(*st_attr));
 	name = ST_ATTR_section_name(*st_attr);
-        // st must be marked HAS_SECTION
-        Set_ST_has_named_section(st);    
-
-#if defined(TARG_SL)
-        if (DEBUG_Dummy_Check_Seen) 
-           Allocate_Dummy_Space(st, DEBUG_Chk_Blk_Size_Before, TRUE); 
-#endif
 	Assign_ST_To_Named_Section (st, name);
-#if defined(TARG_SL)
-        if (DEBUG_Dummy_Check_Seen) 
-           Allocate_Dummy_Space(st, DEBUG_Chk_Blk_Size_After, FALSE); 
-#endif
-
     }
 };
 
@@ -3386,7 +3331,6 @@ Allocate_Object ( ST *st )
       else
 #endif
 	sec = Get_Const_Var_Section();
-
     }
 
 #ifdef TARG_SL
@@ -3414,6 +3358,8 @@ Allocate_Object ( ST *st )
   } /* switch */
 
 }
+
+
 
 /* ====================================================================
  *
@@ -3484,24 +3430,8 @@ DevWarn("found commons with same name %s; merge together %d->%d", ST_name(st), S
       if (ST_class(st) == CLASS_VAR &&
           (ST_is_reshaped(st) || ST_is_fill_align(st))) 
         continue;
-#if defined(TARG_SL)
-      if (DEBUG_Dummy_Check_Seen)
-         if (Is_Allocated(st))
-           continue;
-#endif
-
-#if defined(TARG_SL)
-        if (DEBUG_Dummy_Check_Seen) 
-           Allocate_Dummy_Space(st, DEBUG_Chk_Blk_Size_Before,TRUE); 
-#endif
       Allocate_Object(st);
-#if defined(TARG_SL)
-        if (DEBUG_Dummy_Check_Seen) 
-           Allocate_Dummy_Space(st, DEBUG_Chk_Blk_Size_After,FALSE); 
-#endif
   }
-
-
 }
 
 
@@ -3635,417 +3565,3 @@ Stack_Frame_Has_Calls (void)
   return Frame_Has_Calls;
 }
 #endif
-
-#ifdef TARG_SL
-static BOOL Section_need_dummy_check(const char* st_section_name)
-{
-   OPTION_LIST *ol;
-   for ( ol = DEBUG_Dummy_Check_Sections; ol != NULL; ol = OLIST_next(ol) ) 
-      if ( strcmp ( OLIST_val(ol), st_section_name ) == 0 ) 
-        return TRUE;
- 
-   return FALSE;
-}
-
-static void Init_DGLOBAL_with_ZERO(ST* st, TYPE_ID mtype) {
-   // generate zero INITV
-   INITV_IDX zero_initv = New_INITV();
-   INITV_Init_Integer(zero_initv, mtype, 0);
-   // if st is DGLOBAL, then added_st must be init with a value. 
-   // we generate a INITO entry with initial value 0, and initialize added_st with the INITO entry.
-   if (ST_sclass(st) == SCLASS_DGLOBAL)
-   { 
-      New_INITO(st,zero_initv);
-      Set_ST_is_initialized(st);
-   }
-   Set_ST_pt_to_unique_mem(st);
-}
-
-BOOL Is_system_defined_section(SECTION_IDX sec_idx, const char* sec_name)
-{
-  if (sec_idx >= _SEC_UNKNOWN && sec_idx <= _SEC_DISTR_ARRAY) {
-    if (SEC_name(sec_idx) && 
-       !strcmp(sec_name, SEC_name(sec_idx)))
-    return TRUE;
-  }
-  return FALSE;
-}
-
-const char* Get_st_sec_name(ST* st)
-{
-   const char* st_section_name = NULL;
-   ST* base;
-   INT64 ofst;
-   Base_Symbol_And_Offset(st, &base, &ofst);
-
-   if (!Is_root_base(base))
-   {
-     return NULL;
-   }
-
-   if (ST_has_named_section(st))
-     st_section_name = Index_To_Str(Find_Section_Name_For_ST(st));
-   else
-     st_section_name = SEC_name(STB_section_idx(base)); 
-   return st_section_name;
-    
-}
-
-SECTION_IDX Get_st_sec_idx(ST* st)
-{
-   ST* base;
-   INT64 ofst;
-   Base_Symbol_And_Offset(st, &base, &ofst);
-
-   if (!Is_root_base(base))
-     FmtAssert(0,("Strange! Get_st_sec_name should have a section base.\n"));
-
-   return STB_section_idx(base); 
-    
-}
-
-void Copy_section_attribute(ST* new_st, ST* orig_st)
-{
-   ST_ATTR_IDX new_attr_idx;
-   ST_ATTR& new_attr = New_ST_ATTR(GLOBAL_SYMTAB, new_attr_idx);
-
-   SECTION_IDX sec;
-   const char* sec_name;
-   sec =  Get_st_sec_idx(orig_st); 
-   sec_name = Get_st_sec_name(orig_st);
-
-   if (Is_system_defined_section(sec, sec_name))
-   {
-       ST_ATTR_Init(new_attr, ST_st_idx(new_st),ST_ATTR_SECTION_NAME,sec);
-   }
-   else
-   {
-       STR_IDX name = Find_Section_Name_For_ST (orig_st); 
-       ST_ATTR_Init(new_attr, ST_st_idx(new_st),ST_ATTR_SECTION_NAME,name);
-   }
-}
-
-static std::map<ST*, BOOL> map_is_dummy_variable; 
-
-static inline BOOL Is_dummy_variable(ST* st)
-{
-  return map_is_dummy_variable[st];
-}
-static inline void Set_ST_is_dummy_variable(ST* st) {
-  map_is_dummy_variable[st] = TRUE;
-}
-
-static BOOL Should_Gen_Dummy_For_Padding(ST* st)
-{
-   if (ST_level(st) != GLOBAL_SYMTAB) return FALSE;
-
-   if (Is_dummy_variable(st)) return TRUE;
-  
-   // ignore PREG, function, extern global variable declaration.
-   if (ST_sclass(st) == SCLASS_REG || ST_sclass(st) == SCLASS_TEXT
-      || ST_sym_class(st) == CLASS_FUNC || ST_sym_class(st) == CLASS_CONST
-      || ST_sym_class(st) == CLASS_NAME || ST_sclass(st) == SCLASS_EXTERN) return FALSE;
-
-   // only handles:  DGLOBAL  UGLOBAL  PSTATIC  FSTATIC  COMMON
-   if (!(ST_sclass(st) == SCLASS_DGLOBAL || ST_sclass(st) == SCLASS_UGLOBAL
-      || ST_sclass(st) == SCLASS_PSTATIC || ST_sclass(st) == SCLASS_FSTATIC
-      || ST_sclass(st) == SCLASS_COMMON)) return FALSE;
-    
-   // if st is a section block st.
-   if (Is_root_base(st)) return FALSE; 
-  
-   /*if (!cared_section_name_list)
-     FmtAssert(0, ("Strange! cared_section_name_list should have been created before."));
-   */
-
-   const char* st_section_name = NULL;
-   st_section_name = Get_st_sec_name(st);
-   if (!st_section_name) return FALSE;
-   if (!Section_need_dummy_check(st_section_name)) return FALSE;
-      
-   return TRUE; 
-}
-
-
-static STR_IDX Create_DummyVar_Name(ST* st, UINT32 count, BOOL fill_gap, BOOL before);
-
-// Gen_Dummy_For_Padding: generate dummy-st to fill gap because of padding.
-// base: base st. it should be a section st. 
-// st: place st inside base, and that made padding occurs.
-// mtype: dummy type.
-// before: place dummy before or after st.
-static void Gen_Dummy_For_Padding(ST* base, ST* st, UINT32 dummy_index, TYPE_ID mtype_dummy, BOOL before) {
-   ST* added_st= New_ST();
-   ST_IDX stridx = Create_DummyVar_Name(st, dummy_index, TRUE, before);
-   ST_Init(added_st, stridx, CLASS_VAR, ST_sclass(st), ST_export(st), MTYPE_TO_TY_array[mtype_dummy]);
-   Init_DGLOBAL_with_ZERO(added_st, mtype_dummy);
-   Copy_section_attribute(added_st, st);
-   Set_ST_is_dummy_variable(added_st);   
-
-   UINT old_offset = STB_size(base);
-
-   Set_ST_base(added_st, base);
-   Set_STB_align(base, MAX(STB_align(base), MTYPE_alignment(mtype_dummy)));
-   if (!STB_decrement(base)) {
-      Set_ST_ofst(added_st, old_offset); 
-      Set_STB_size(base, old_offset + MTYPE_byte_size(mtype_dummy));
-   } else {
-      Set_ST_ofst(added_st, - (old_offset + MTYPE_byte_size(mtype_dummy)));
-      Set_STB_size(added_st, old_offset + MTYPE_byte_size(mtype_dummy));
-   }
-
-   if (Get_Trace(TP_DATALAYOUT, 1)) {
-      if (ST_class(added_st) == CLASS_CONST)
-   	  fprintf ( TFile, "Allocate <constant: %s>", Targ_Print(NULL,STC_val(added_st)));
-      else
-    	  fprintf ( TFile, "Allocate %s", ST_name(added_st));
-      if (ST_class(added_st) == CLASS_BLOCK || ST_class(added_st) == CLASS_FUNC)
-          fprintf (TFile, " to %s: offset = %lld, size = %lld\n",
-	                 ST_name(base), ST_ofst(added_st), ST_size(added_st));
-      else fprintf (TFile, " to %s: offset = %lld, size = %lld, align = %d\n",
-		         ST_name(base), ST_ofst(added_st), ST_size(added_st),
-#ifdef KEY
-		  Adjusted_Alignment(added_st)
-#else
-		  TY_align(ST_type(added_st))
-#endif // KEY
-		  );
-   }
-
-   if (Get_Trace(TP_DATALAYOUT, 1)) {
-     if (before)
-       fprintf(TFile, "Gen_Dummy : %s(%s) filling gap %s %s.\n", Index_To_Str(stridx), MTYPE_name(mtype_dummy), 
-                      "before", ST_name(st));
-     else
-       fprintf(TFile, "Gen_Dummy : %s(%s) filling gap %s %s.\n", Index_To_Str(stridx), MTYPE_name(mtype_dummy), 
-                      "after", ST_name(st));
-   }
-}
-
-/*
-    Allocate_Dummy_For_Padding:
-      base: st's base st, it should be a root-st.
-      st  : padding will be gen before or after st.
-     space: the padding space which will be filled with dummy variables.
-    before: the padding space is before/after st.
-*/
-static void Allocate_Dummy_For_Padding(ST* base, ST* st,  UINT32 space, BOOL before) {
-    if (!Should_Gen_Dummy_For_Padding(st)) return;
-
-    //  space will be filled in the following way:
-    //  first part is  [STB_offset(base),  4-byte aligned address], will be filled with dummy_char
-    //  second part the [4-byte aligned address, 4-byte aligned address], will be filled with dummy_int
-    //  remaining is a remaining space which is less than 4-bytes space, will be filled with dummy_char
-
-    UINT32 first_part, second_part, remaining;
-    UINT64 oldoffset = STB_size(base);
-    UINT32 dummy_index = 1;
-
-    first_part = ROUNDDOWN(oldoffset + MTYPE_byte_size(MTYPE_I4) - 1, 4) - oldoffset;
-    if (space > first_part) {
-      remaining = (space - first_part) % 4;
-      second_part = (space - first_part - remaining);
-    } else {
-      first_part = space;
-      second_part = remaining = 0; 
-    }
-
-    for (int i = 1; i <= first_part; i++) {
-      Gen_Dummy_For_Padding(base, st, dummy_index++, MTYPE_I1, before);
-    }
-    for (int j = 1; j <= second_part / MTYPE_byte_size(MTYPE_I4) ; j++) {
-      Gen_Dummy_For_Padding(base, st, dummy_index++, MTYPE_I4, before);
-    }
-    for (int k = 1; k <= remaining ; k++) {
-      Gen_Dummy_For_Padding(base, st, dummy_index++, MTYPE_I1, before);
-    }
-}
-
-// Should_Gen_Dummy_For_ST:
-//  used to dicide whether to generate dummy variable for a ST
-static BOOL Should_Gen_Dummy_For_ST (ST* st) {
-   // not to generate dummy for a dummy.
-   if (Is_dummy_variable(st)) return FALSE;
-
-   // ignore PREG, function, extern global variable declaration.
-   if (ST_sclass(st) == SCLASS_REG || ST_sclass(st) == SCLASS_TEXT
-      || ST_sym_class(st) == CLASS_FUNC || ST_sym_class(st) == CLASS_CONST
-      || ST_sym_class(st) == CLASS_NAME || ST_sclass(st) == SCLASS_EXTERN) return FALSE; 
-
-   // only handles:  DGLOBAL  UGLOBAL  PSTATIC  FSTATIC  COMMON
-   if (!(ST_sclass(st) == SCLASS_DGLOBAL || ST_sclass(st) == SCLASS_UGLOBAL
-      || ST_sclass(st) == SCLASS_PSTATIC || ST_sclass(st) == SCLASS_FSTATIC
-      || ST_sclass(st) == SCLASS_COMMON)) return FALSE;
-
-   // if st is a section block st.
-   if (Is_root_base(st)) return FALSE; 
-
-   /*if (!cared_section_name_list)
-     FmtAssert(0, ("Strange! cared_section_name_list should have been created before.")); 
-   */
-   const char* st_section_name = NULL;
-   st_section_name = Get_st_sec_name(st);
-   if (!st_section_name) return FALSE;
-   if (!Section_need_dummy_check(st_section_name)) return FALSE;
-
-   return TRUE;
-
-}
-
-
-// Get_Dummy_Var_Name  **
-// 1. how to name this dummy varible to avoid coinsidance with each other:
-//  (1.1) for FSTATIC, dummy vars look like:   dummy_<{before,after}>_<name_of_fstatic>_<file_name_of_fstatic>_<count>
-//  (1.2) for globals, dummy vars look like:   dummy_<{before,after}>_<name_of_globals>_<count>
-//  (1.3) for pad-holes, dummy vars look like: dummy_fill_gap_<{before,after}>_<name_of_st>_<count>
-//    the <count> start by 1 for each ST.
-//  fill_gap : for (1.1) & (1.2), fill_gap == 0; for (1.3), fill_gap == 1
-//  before :  before == 0 iff place dummy variable after st; before == 1 iff place dummy variable before st.
-static STR_IDX Create_DummyVar_Name(ST* st, UINT32 count, BOOL fill_gap, BOOL before) {
-   char *st_name = ST_name (st);
-   const char *file_name = (ST_sclass(st) == SCLASS_FSTATIC) ? 
-                            Remove_Extension(Last_Pathname_Component(Src_File_Name)) 
-                            : "";
-
-   char *prefix;
-   if (fill_gap) {
-      if (before)
-        prefix = "dummy_fill_gap_before_";
-      else
-        prefix = "dummy_fill_gap_after_";
-   } else {
-      if (before)
-        prefix = "dummy_before_";
-      else
-        prefix = "dummy_after_";
-   }
-
-   // calculate space needed to allocate.
-   UINT32 tmp = count , length = 0;
-   do {
-     tmp /= 10;
-     length ++;
-   } while (tmp > 0);
-   length += (strlen(prefix) + strlen(st_name) + strlen("_") + strlen(file_name) + strlen("_") + 1);
-
-   char *new_name = (char*) alloca( length ); 
-   
-   // now , make the new_name
-   char* p = new_name;
-   strcpy(p, prefix);
-   p += strlen(prefix);
-
-   strcpy (p, st_name);
-   p += strlen(st_name);
-
-   strcpy (p, "_");
-   p += strlen("_");
-
-   strcpy (p, file_name);
-   p += strlen(file_name);
-
-   strcpy (p, "_");
-   p += strlen("_");
-
-   tmp = count;
-   p = new_name + length - 2;
-   do {
-     *p-- = (tmp % 10) + '0';
-     tmp /= 10;
-   } while (tmp > 0);
-   
-   p = new_name + length - 1;
-   *p = 0; 
-
-   return Save_Str(new_name);
-}
-
-/*
-   Gen_Dummy_For_ST: generate dummy-st for a given st
-     st: given st
-     mtype_dummy: dummy's mtype.
-     dummy_index: used to create dummy name
-     before: place dummy-st before/after given st.
-*/
-static void Gen_Dummy_For_ST(ST* st, TYPE_ID mtype_dummy, UINT32 dummy_index, BOOL before) {
-   if (!before)  FmtAssert(Is_Allocated(st), ("Gen_Dummy_For_ST: st should have been allocated before."));
-
-   ST* base_st;
-   INT64 offset;
-   Base_Symbol_And_Offset(st, &base_st, &offset);
-   FmtAssert((ST_class(base_st)==CLASS_BLOCK && STB_section(base_st)), ("Gen_Dummy_For_ST: base_st does not correspond to a section."));
-
-   ST* added_st= New_ST();
-   ST_IDX stridx = Create_DummyVar_Name(st, dummy_index, FALSE, before);
-   ST_Init(added_st, stridx, CLASS_VAR, ST_sclass(st), ST_export(st), MTYPE_TO_TY_array[mtype_dummy]);
-   Init_DGLOBAL_with_ZERO(added_st, mtype_dummy);
-   Copy_section_attribute(added_st, st);
-   Set_ST_is_dummy_variable(added_st);
-
-   SECTION_IDX sec;
-   const char* sec_name;
-   sec =  Get_st_sec_idx(st);
-   sec_name = Get_st_sec_name(st);
-   //now, it is time to allocate st
-   if (Is_system_defined_section(sec, sec_name)) {
-      Allocate_Object_To_Section(added_st, sec, Adjusted_Alignment(added_st));
-   } else {
-      // it must be a user designated section
-      STR_IDX section_name = ST_name_idx(base_st);
-      Assign_ST_To_Named_Section (added_st, section_name);
-   }
-
-   if (Get_Trace(TP_DATALAYOUT, 1)) {
-       fprintf(TFile, "Gen_Dummy : %s(%s) %s %s.\n", Index_To_Str(stridx), MTYPE_name(mtype_dummy), 
-                      before ? "before": "after", ST_name(st));
-   }
-} 
-
-// Allocate_Dummy_Space **
-// How to handle holes which will occurs between ST & its dummy-variables, the holes occur because of different 
-//    alignment between ST & its dummy-variables.
-//    e.g,  for global st: char aaa; if we allocate a 32-bit-interger dummy behind, the real allocation will 
-//          probably like below:
-//              aaa  (1-byte) (1-byte) (1-byte) aaa_dummy_1
-//          the spaces between aaa & aaa_dummy_1 are left because of different align-requirement for "char" & "INT":
-//          char's alignment is 1, and integer's alignment is 4.
-//    (2.1) So, we need to fill in these holes with dummy_variables too, otherwise, we can't detect accesses
-//          to these holes.
-//    (2.2) These holes will be filled with dummy_vars, and their names will be named as below:
-//             gap_<{before,after}>_<name_of_st>_dummy_<count>
-//          the <count> will start by 1 for each hole.
-// 3. how to support COMMON:
-//    (3.1) COMMON will be allocated by Linker, and compiler can't guarenttee the layout by which COMMONs will take.
-//    (3.2) So, for commons, we do not generate dummy-variables, because we can't guarenttee a common-st will be 
-//          followed by its dummy-vars immediately
-//    (3.3) how to handle this: need to think about increase ST's size, e.g, for array, increase array dimension by 1
-//          will actually mean there will be a dummy-space behind the original array.
-// 4. Things still need to be considered:
-//    (4.1) should dummy-spaces be mentioned, so that size could be designated.
-//    (4.2) need to make code much reusable, concise.
-static void Allocate_Dummy_Space(ST* st, UINT32 space, BOOL before) {
-   if (before) {
-      // TODO: implement placing dummy space before st
-      if (Get_Trace(TP_DATALAYOUT, 1))
-          fprintf(TFile, "Allocate_Dummy_Space: sorry, Do not support placing dummy before ST yet.\n");
-      return;
-   }
-
-   if (!Should_Gen_Dummy_For_ST(st)) 
-     return;
-
-   // use bytes to generate dummy variable
-   UINT32 int_dummy  = space / 4;
-   UINT32 char_dummy = space % 4;
-
-   UINT32 dummy_index = 1;
-
-   for (int i = 1; i <= int_dummy; i++) {
-     Gen_Dummy_For_ST(st, MTYPE_I4, dummy_index++, before);
-   }
-   for (int j = 1; j <= char_dummy; j++) {
-     Gen_Dummy_For_ST(st, MTYPE_I1, dummy_index++, before);
-   }
-}
-#endif
-
