@@ -100,7 +100,7 @@ extern gs_t decl_arguments;
 extern void Push_Deferred_Function(gs_t);
 extern char *WGEN_Tree_Node_Name(gs_t op);
 #if defined(TARG_SL)
-extern void WGEN_ErrMsg (INT ecode, ...);
+extern char *Orig_Src_File_Name, *Src_File_Name;
 #endif
 #ifdef KEY
 // =====================================================================
@@ -429,7 +429,8 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 #else
 			// bugs 943, 11277, 10506
 #if defined(TARG_SL)
-				WGEN_ErrMsg(EC_Unimplemented_Feature, "variable-length structure");
+				ErrMsg(EC_Unimplemented_Feature, "variable-length structure",
+				  Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
 #else
 				ErrMsg(EC_Unimplemented_Feature, "variable-length structure");
 #endif
@@ -1903,7 +1904,8 @@ Create_ST_For_Tree (gs_t decl_node)
     PREG_NUM preg = Map_Reg_To_Preg [reg];
 #if defined(TARG_SL)
     if (preg < 0 || preg > 31)
-      WGEN_ErrMsg (EC_Unimplemented_Feature, "Variable in Special register");
+      ErrMsg (EC_Unimplemented_Feature, "Variable in Special register",
+        Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
 #endif
 
     FmtAssert (preg >= 0,

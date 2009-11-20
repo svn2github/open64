@@ -146,8 +146,13 @@ ERROR_DESC EDESC_Globals[] = {
     2, ET_STRING, ET_STRING, 0,0,0,0 },
 
 #ifdef KEY
+#if defined(TARG_SL)
+  { EC_Unimplemented_Feature,   EM_Compiler | ES_ERRABORT,	RAG_EN_NONE,
+    "%s not implemented in file %s in line %d", 3, ET_STRING, ET_STRING, ET_INT, 0,0,0 },
+#else
   { EC_Unimplemented_Feature,   EM_Compiler | ES_ERRABORT,	RAG_EN_NONE,
     "%s not implemented", 1, ET_STRING, 0,0,0,0,0 },
+#endif
   { EC_Misc_User_Abort,		EM_User | ES_ERRABORT,		RAG_EN_NONE,
     "%s", 1, ET_STRING, 0,0,0,0,0 },
 #endif // KEY

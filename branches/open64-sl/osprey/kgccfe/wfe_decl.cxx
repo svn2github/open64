@@ -302,7 +302,12 @@ WFE_Start_Function (tree fndecl)
 
 #ifdef KEY
     if (CURRENT_SYMTAB > 1)
+#if defined(TARG_SL)
+      ErrMsg (EC_Unimplemented_Feature, "Nested functions",
+        Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
+#else
       ErrMsg (EC_Unimplemented_Feature, "Nested functions");
+#endif
 #endif
     New_Scope (CURRENT_SYMTAB + 1, Malloc_Mem_Pool, TRUE);
 

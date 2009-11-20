@@ -1159,11 +1159,7 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
   return;
 }
 
-#if defined(TARG_SL)
-void
-#else
 static void
-#endif
 #ifdef TARG_NVISA
 ErrMsg_Report ( INT ecode, INT line, const char *file, const char *dname, va_list vp )
 #else

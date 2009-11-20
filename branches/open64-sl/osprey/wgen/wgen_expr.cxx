@@ -4475,20 +4475,6 @@ get_wrapper_value (gs_t stmt)
 #endif // FE_GNU_4_2_0
 #endif // KEY
 
-#if defined(TARG_SL)
-extern char *Src_File_Name; /* source file */
-extern void ErrMsg_Report(INT ecode, INT line, const char *file, va_list vp);
-void WGEN_ErrMsg(INT ecode, ...)
-{
-  va_list vp;
-  char *file_name = (Orig_Src_File_Name ? Orig_Src_File_Name : Src_File_Name);
-
-  va_start(vp, ecode);
-  ErrMsg_Report(ecode, lineno, file_name, vp);
-  va_end(vp);
-}
-#endif
-
 WN * 
 WGEN_Expand_Expr (gs_t exp,
 		  bool need_result,
@@ -7172,7 +7158,8 @@ WGEN_Expand_Expr (gs_t exp,
 		break;
 	      case GSBI_BUILT_IN_APPLY_ARGS:
 #if defined(TARG_SL)
-		WGEN_ErrMsg(EC_Unimplemented_Feature, "__builtin_apply_args");
+		ErrMsg(EC_Unimplemented_Feature, "__builtin_apply_args",
+		  Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
 #endif
 		Set_PU_has_alloca(Get_Current_PU());
 		iopc = INTRN_APPLY_ARGS;
@@ -7180,7 +7167,8 @@ WGEN_Expand_Expr (gs_t exp,
 	      case GSBI_BUILT_IN_APPLY:
 		{
 #if defined(TARG_SL)
-		  WGEN_ErrMsg(EC_Unimplemented_Feature, "__builtin_apply");
+		  ErrMsg(EC_Unimplemented_Feature, "__builtin_apply",
+		    Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
 #endif
 		  WN *load_wn, *sp_addr;
 
@@ -7312,7 +7300,8 @@ WGEN_Expand_Expr (gs_t exp,
 		}
 	      case GSBI_BUILT_IN_RETURN:
 #if defined(TARG_SL)
-		WGEN_ErrMsg(EC_Unimplemented_Feature, "__builtin_return");
+		ErrMsg(EC_Unimplemented_Feature, "__builtin_return",
+		  Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
 #endif
 		Set_PU_has_alloca(Get_Current_PU());
 		iopc = INTRN_RETURN;
