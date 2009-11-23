@@ -1,0 +1,62 @@
+/*
+	Copyright (C) 2005, 2006.  Free Software Foundation, Inc.
+
+	This program is free software; you can redistribute it and/or modify it
+	under the terms of version 2 of the GNU General Public License as
+	published by the Free Software Foundation.
+
+	This program is distributed in the hope that it would be useful, but
+	WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+	Further, this software is distributed without any warranty that it is
+	free of the rightful claim of any third person regarding infringement
+	or the like.  Any license provided herein, whether implied or
+	otherwise, applies only to this software file.  Patent licenses, if
+	any, provided herein do not apply to combinations of this program with
+	other software, or any other product whatsoever.
+
+	You should have received a copy of the GNU General Public License along
+	with this program; if not, write the Free Software Foundation, Inc., 59
+	Temple Place - Suite 330, Boston MA 02111-1307, USA.
+*/
+
+#ifndef _MESSG_DEF_INCLUDED_
+#define _MESSG_DEF_INCLUDED_
+
+
+/* Predefined error parameter types: */
+#define MT_UNKNOWN	0	/* Mistake */
+#define MT_INT		1	/* integer */
+#define MT_INT32	2	/* 32-bit integer */
+#define MT_INT64	3	/* 64-bit integer */
+#define MT_FLOAT	4	/* Pointer to float */
+#define MT_DOUBLE	5	/* Pointer to double float */
+#define MT_POINTER	6	/* Arbitrary pointer */
+#define MT_STRING	7	/* Standard character string */
+#define MT_SYSERR	8	/* Unix error code */
+#define MT_END		11	/* Last predefined kind */
+
+
+#define EM_BEGIN		0
+#define EM_Undef		(EM_BEGIN)		// none
+#define EM_UnImplem		(EM_BEGIN+1)		// str
+#define EM_Empty_Objfile	(EM_BEGIN+2)		// str
+#define EM_No_Objfile		(EM_BEGIN+3)		// str
+#define EM_Addr_Not_Alloc       (EM_BEGIN+4)		// pointer
+#define EM_Acc_R_Mem            (EM_BEGIN+5)		// pointer
+#define EM_Mod_W_Mem            (EM_BEGIN+6)		// pointer
+#define EM_Mod_Exec             (EM_BEGIN+7)		// pointer
+#define EM_Acc_Violate          (EM_BEGIN+8)		// pointer
+#define EM_Ill_Cmd              (EM_BEGIN+9)
+#define EM_Ill_Arg              (EM_BEGIN+10)		// str
+#define EM_Objfile		(EM_BEGIN+11)		// str
+#define EM_Signal		(EM_BEGIN+12)		// none
+#define EM_Strtab		(EM_BEGIN+13)		// none
+#define EM_Missarg		(EM_BEGIN+14)		// none
+#define EM_Wrong_Target		(EM_BEGIN+15)		// none
+#define EM_END			(EM_Wrong_Target)
+#define EM_SIZE			(EM_END+1)
+
+
+#endif // _MESSG_DEF_INCLUDED_
