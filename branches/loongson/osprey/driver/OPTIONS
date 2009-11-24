@@ -481,6 +481,14 @@ I-fini%s		;		CC	ld	"-fini %s"
 	"One trip DO loops"
 -1		;		f77	ffe	self
 	"One trip DO loops"
+#ifdef TARG_LOONGSON
+-loongson2e     toggle(&loongson_version,ISA_LOONGSON2e);               ALL     NONE    ""
+        "decoding to support loongson2e"
+-loongson2f     toggle(&loongson_version,ISA_LOONGSON2f);               ALL     NONE    ""
+        "decoding to support loongson2f"
+-loongson3      toggle(&loongson_version,ISA_LOONGSON3);                ALL     NONE    ""
+        "decoding to support loongson3"
+#endif
 -p	;		ALL	ld	self "-TENV:call_mcount"
 	""
 -pg	;		ALL	ld	self "-lm" "-TENV:call_mcount"
@@ -521,6 +529,12 @@ I-fini%s		;		CC	ld	"-fini %s"
         "Compile for 64-bit ABI"
 -w64	toggle(&abi,ABI_W64);	ALL	NONE	"-TARG:abi=w64"
 	"Compile for Windows 64-bit ABI"
+#endif
+#ifdef LOONGSON
+-n32    toggle(&abi,ABI_N32);   ALL     be      "-TARG:abi=n32"
+        "Compile for 32-bit ABI"
+-n64    toggle(&abi,ABI_64);    ALL     be      "-TARG:abi=n64"
+        "Compile for 64-bit ABI"
 #endif
 #ifdef KEY /* Bug 4210 */
 -module%s	Process_module(optargs);	F90	NONE	""

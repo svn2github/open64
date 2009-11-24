@@ -254,7 +254,7 @@ OUTPUT_FUNC_START_PROFILER::Fill_In_Func_Body(void)
     UINT32 size = zero_word_size + filename_size + counts_size + ncounts_size + next_size + sizeofbb_size + bb_function_info_size;
 #else
     UINT32 size;
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
     if (Is_Target_32bit())
       size = 7*4;
     else
@@ -266,7 +266,7 @@ OUTPUT_FUNC_START_PROFILER::Fill_In_Func_Body(void)
     TY& ty = New_TY(tyi);
     TY_Init(ty, size, KIND_STRUCT, MTYPE_M,
           STR_IDX_ZERO);
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
     Set_TY_align(tyi, Is_Target_32bit()? 4 : 32);
 #else
     Set_TY_align(tyi, 32);
@@ -276,7 +276,7 @@ OUTPUT_FUNC_START_PROFILER::Fill_In_Func_Body(void)
             CLASS_VAR, SCLASS_PSTATIC, EXPORT_PREEMPTIBLE, tyi);
     Set_ST_is_initialized(_lpbx_st);
     Set_ST_is_not_used(_lpbx_st);
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
     WN* parm_var_addr =
       WN_CreateLda (OPCODE_make_op(OPR_LDA, Pointer_type, MTYPE_V),
                     0,

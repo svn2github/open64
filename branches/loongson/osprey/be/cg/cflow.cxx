@@ -2537,6 +2537,21 @@ Convert_If_To_Goto ( BB *bp )
   tn1 = BBINFO_condval1(bp); 
   tn2 = BBINFO_condval2(bp); 
   compare_op = BBINFO_compare_op(bp);
+#ifdef TARG_LOONGSON
+  /* for loongson, there are some branch instructions with only one operand, such as:
+       "mipsbgez",
+       "mipsbgezal",
+       "mipsbgtz",
+       "mipsblez",
+       "mipsbltz",
+       "mipsbltzal",
+       for the instructions, there is only one operand and the second implicit operand is 
+       Zero_TN.
+    */
+  if (tn2 == NULL)  {     
+  	tn2 = Zero_TN;
+  }
+#endif
   
   Is_True(tn1 != NULL, ("compare with no operands in BB:%d", BB_id(bp)));
 

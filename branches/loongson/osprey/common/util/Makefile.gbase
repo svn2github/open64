@@ -107,7 +107,7 @@ CFILES	= \
 	tracing.c \
 	util.c \
 	vstring.c
-
+ifneq ($(BUILD_TARGET), LOONGSON)
 ifneq ($(BUILD_TARGET), NVISA)
 CFILES  += \
 	c_a_to_q.c \
@@ -122,6 +122,16 @@ CFILES  += \
 	c_qtenscale.c \
 	quadsim.c \
 	$(CFIL)
+endif
+endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+CFILES += \
+	 softfloat.c \
+	 c_a_to_q.c \
+	 c_q_to_a.c \
+	 quadsim.c \
+	 c_qtenscale.c \
+	$(CFIL)	 
 endif
 
 HFILES	= \
@@ -153,7 +163,6 @@ default:
 	$(MAKE) $(TARGETS)
 	$(MAKE) last
 
-
 include $(COMMONRULES)
 
 VPATH =  $(BUILD_BASE) $(BUILD_BASE)/$(BUILD_TARGET_DIR)
@@ -163,6 +172,11 @@ ifeq ($(BUILD_TARGET), IA64)
 c_qwmultu.o: $(BUILD_TOT)/common/util/ia32/IA32_host/c_qwmultu.c
 	$(CC) -c $(CFLAGS) $(BUILD_TOT)/common/util/ia32/IA32_host/c_qwmultu.c
 endif
+endif
+
+ifeq ($(BUILD_TARGET), LOONGSON)
+softfloat.o: $(BUILD_TOT)/common/util/loongson/softfloat.c
+	$(CCF) -c $(BUILD_TOT)/common/util/loongson/softfloat.c -o softfloat.o -O2 -I$(BUILD_TOT)/common/util/longson/ -DTARG_LOONGSON
 endif
 
 first:

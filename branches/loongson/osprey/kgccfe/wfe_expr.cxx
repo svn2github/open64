@@ -57,7 +57,7 @@
 #include "defs.h"
 #include "glob.h"
 #include "config.h"
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 #include "config_opt.h"
 #endif
 #include "wn.h"
@@ -1142,6 +1142,8 @@ WFE_Array_Expr(tree exp,
         wn1 = WN_Intconst(MTYPE_I4, 0);
       wn2 = WFE_Expand_Expr (TREE_OPERAND (exp, 1));
 #ifdef TARG_X8664 // bug 11705
+      // when a 32-bit integer is stored in a 64-bit register, 
+      // the high-order 32 bits are zero-extended for x8664
       if (WN_operator(wn2) == OPR_SUB)
         WN_set_rtype(wn2, Mtype_TransferSign(MTYPE_I4, WN_rtype(wn2)));
 #endif
@@ -4207,12 +4209,16 @@ WFE_Expand_Expr (tree exp,
           tcon = Host_To_Targ_Float (MTYPE_F8, *(double *) &rbuf);
 #endif
           break;
-#if defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_NVISA)
+#if defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_NVISA) || defined(TARG_LOONGSON)
         case MTYPE_FQ:
           REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, rbuf);
           for (i = 0; i < 4; i++)
             rbuf_w[i] = rbuf[i];
+#ifdef TARG_LOONGSON
+	    tcon = Host_To_Targ_Quad (*(QUAD_TYPE *)&rbuf_w);
+#else
           tcon = Host_To_Targ_Quad (*(long double *) &rbuf_w);
+#endif
           break;
 #endif /* TARG_IA32 */
 #endif
@@ -4315,8 +4321,12 @@ WFE_Expand_Expr (tree exp,
               rbuf_w[i] = rbuf[i];
 	      ibuf_w[i] = ibuf[i];
 	    }
+#ifdef TARG_LOONGSON
+            tcon = Host_To_Targ_Complex_Quad( *(QUAD_TYPE *)&rbuf_w, *(QUAD_TYPE *)&ibuf_w);
+#else
             tcon = Host_To_Targ_Complex_Quad( *(long double *) &rbuf_w,
                                  *(long double *) &ibuf_w );
+#endif
             break;
 #endif
 #endif
@@ -5311,7 +5321,7 @@ WFE_Expand_Expr (tree exp,
 		       || TREE_CODE (arg2) == INDIRECT_REF)
 		  arg2 = TREE_OPERAND (arg2, 0);
 		ST *st2 = Get_ST (arg2);
-#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
 		const int align = PARM_BOUNDARY / BITS_PER_UNIT;
 		wn = WN_Lda (Pointer_Mtype, 
                              ((TY_size (ST_type (st2)) + align-1) & (-align)),
@@ -5366,7 +5376,7 @@ WFE_Expand_Expr (tree exp,
 		   va_XYZ code; under -m32, the source address is wrong.  (bug#2601)
 		   (But even under -m64, the using of memcpy is unnecessary.)
 		 */
-#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
 		if( !TARGET_64BIT )
 #endif
                 {
@@ -7945,7 +7955,7 @@ WFE_Expand_Expr (tree exp,
 	  wn = WN_Mpy(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 8));
 	}
 #endif // TARG_X8664
-#ifdef TARG_MIPS // bug 12945: pad since long doubles are 16-byte aligned
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON) // bug 12945: pad since long doubles are 16-byte aligned
 	if (mtype == MTYPE_FQ) {
 	  wn = WN_Add(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 15));
 	  wn = WN_Div(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 16));

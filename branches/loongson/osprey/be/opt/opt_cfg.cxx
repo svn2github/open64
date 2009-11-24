@@ -1614,6 +1614,12 @@ BOOL CFG::If_conv_criteria_met(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else
     return FALSE;
 #endif
 
+  // During the creation of cfg in  RVI phase2, the  IF-THEN-ELSE block,
+  // which was converted from SELECT during wn_lower between RVI phase1
+  // and phase2, may be converted again which will expect the opt_stab is
+  // still valid.Return FALSE to stop the convertion.
+  if(_opt_stab == NULL)
+    return FALSE;
 
   if (
       // at least one of the then or else statement is non-empty

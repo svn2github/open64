@@ -5889,7 +5889,7 @@ static BOOL Skip_Loop_For_Reason(LOOP_DESCR *loop)
     {
       reason = "loop never exits";
     }
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
     else if( BB_freq_fb_based(head) && BB_freq(head) < 0.01 ){
       reason = "loop is barely executed";
     }

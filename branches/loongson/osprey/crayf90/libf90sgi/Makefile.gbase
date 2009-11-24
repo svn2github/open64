@@ -230,6 +230,22 @@ LIB_SRCS += \
 endif
 endif
 
+ifeq ($(BUILD_TARGET),LOONGSON)
+ifeq ($(BUILD_COMPILER),GNU)
+LIB_SRCS += \
+        _powci.c \
+        _powcl.c \
+        _powdi.c \
+        _powdl.c \
+        _powii.c \
+        _powll.c \
+        _powri.c \
+        _powrl.c \
+        _powzi.c \
+        _powzl.c
+endif
+endif
+
 F77FILES = z_sqrtf.F \
 	z_logf.F \
 	z_expf.F

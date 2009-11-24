@@ -804,7 +804,7 @@ static void EBO_Start()
     Regs_Delta_Map[cl] = OP_MAP32_Create();
   }
   
-#if defined(TARG_X8664) || (defined(TARG_MIPS) && !defined(TARG_SL))
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) || (defined(TARG_MIPS) && !defined(TARG_SL))
   EBO_Special_Start( &MEM_local_pool );
 #endif 
 }
@@ -1025,7 +1025,11 @@ merge_memory_offsets( OP *op,
 {
   EBO_TN_INFO *index_tninfo = opnd_tninfo[index_opnd];
   OP *index_op = (index_tninfo != NULL) ? index_tninfo->in_op : NULL;
+#ifdef TARG_LOONGSON
+  TN *immed_tn = opnd_tn[index_opnd-1];
+#else
   TN *immed_tn = opnd_tn[index_opnd+1];
+#endif
   ST *immed_sym = TN_is_symbol(immed_tn) ? TN_var(immed_tn) : NULL;
   INT64 immed_offset = TN_is_symbol(immed_tn) ? TN_offset(immed_tn) : TN_Value(immed_tn);
   EBO_OP_INFO *index_opinfo;
@@ -1047,7 +1051,11 @@ merge_memory_offsets( OP *op,
   index_opinfo = locate_opinfo_entry (index_tninfo);
   if (index_opinfo == NULL) return;
 
+#ifdef TARG_LOONGSON
+   additive_index_tn = OP_result(index_op,0);
+#else
   additive_index_tn = OP_opnd(index_op,0);
+#endif
   additive_index_tninfo = index_opinfo->actual_opnd[0];
 #ifdef TARG_X8664
   // Handling -fPIC in exp_loadstore.cxx exposes this bug when assembling bug 274
@@ -1123,6 +1131,19 @@ merge_memory_offsets( OP *op,
   if (EBO_in_loop) {
     Set_OP_omega (op, index_opnd, (additive_index_tninfo != NULL) ? additive_index_tninfo->omega : 0);
   }
+#ifdef TARG_LOONGSON
+  Set_OP_opnd(op, index_opnd-1, new_tn);
+  if (EBO_in_loop) {
+    Set_OP_omega (op, index_opnd-1, 0);
+  }
+  opnd_tn[index_opnd] = additive_index_tn;
+  opnd_tn[index_opnd-1] = new_tn;
+  opnd_tninfo[index_opnd] = additive_index_tninfo;
+  opnd_tninfo[index_opnd-1] = NULL;
+  actual_tninfo[index_opnd] = additive_index_tninfo;
+  actual_tninfo[index_opnd-1] = NULL;
+  
+#else
   Set_OP_opnd(op, index_opnd+1, new_tn);
   if (EBO_in_loop) {
     Set_OP_omega (op, index_opnd+1, 0);
@@ -1133,6 +1154,7 @@ merge_memory_offsets( OP *op,
   opnd_tninfo[index_opnd+1] = NULL;
   actual_tninfo[index_opnd] = additive_index_tninfo;
   actual_tninfo[index_opnd+1] = NULL;
+#endif
 
   if (EBO_Trace_Optimization) {
     #pragma mips_frequency_hint NEVER
@@ -1211,7 +1233,13 @@ find_duplicate_mem_op (BB *bb,
   INT succ_base_idx = TOP_Find_Operand_Use(OP_code(op),OU_base);
   INT succ_offset_idx = TOP_Find_Operand_Use(OP_code(op),OU_offset);
 
-  if ((succ_base_idx >= 0) && (succ_offset_idx >= 0) &&
+  if (
+#ifdef TARG_LOONGSON
+ /* In loongson, the first operand is predicate */
+      (succ_base_idx > 0) && (succ_offset_idx > 0) &&
+#else
+      (succ_base_idx >= 0) && (succ_offset_idx >= 0) &&
+#endif
       TN_Is_Constant(opnd_tn[succ_offset_idx])) {
    /* Look for merge-able expressions. */
     merge_memory_offsets (op, succ_base_idx, opnd_tn, actual_tninfo, opnd_tninfo);
@@ -1700,7 +1728,7 @@ find_duplicate_mem_op (BB *bb,
       if (must_not_delete==FALSE) op_replaced = delete_duplicate_op (op, opnd_tninfo, opinfo);
 #else
     op_replaced = delete_duplicate_op (op, opnd_tninfo, opinfo
-#if defined(TARG_X8664)
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 					   , actual_tninfo
 #endif
 		      );
@@ -2439,14 +2467,14 @@ Find_BB_TNs (BB *bb)
       }
 #endif
 
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON)
       if (OP_code(op) == TOP_jalr) {
 	dont_replace = TRUE;    // Bug 12505: Don't replace RA_TN in jalr
       }
 #endif
 
       if (tn != True_TN) {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 	TN* tmp_tn = CGTARG_Gen_Dedicated_Subclass_TN( op, opndnum, FALSE );
 	if( tmp_tn == NULL )
 	  tmp_tn = tn;
@@ -2860,6 +2888,13 @@ Find_BB_TNs (BB *bb)
         } else if (num_opnds > 1) {
           if (OP_results(op) > 0) {
            /* Consider special case optimizations. */
+#ifdef TARG_LOONGSON
+            INT o2_idx; /* TOP_Find_Operand_Use(OP_code(op),OU_opnd2) won't work for all the cases we care about */
+            INT o1_idx; /* TOP_Find_Operand_Use(OP_code(op),OU_opnd1) won't work for all the cases we care about */
+            /* In loongson, all ops have predicate tn  */		
+            o1_idx = (num_opnds > 2) ? TOP_Find_Operand_Use(OP_code(op),OU_opnd1) : -1;
+            o2_idx = (num_opnds > 3) ? TOP_Find_Operand_Use(OP_code(op),OU_opnd2) : -1;
+#else
             INT o2_idx; /* TOP_Find_Operand_Use(OP_code(op),OU_opnd2) won't work for all the cases we care about */
             INT o1_idx; /* TOP_Find_Operand_Use(OP_code(op),OU_opnd1) won't work for all the cases we care about */
             if (op_is_predicated) {
@@ -2875,6 +2910,7 @@ Find_BB_TNs (BB *bb)
               o1_idx = (num_opnds > 0) ? 0 : -1;
               o2_idx = (num_opnds > 1) ? 1 : -1;
             }
+#endif
 
             if (OP_same_res(op)) {
               op_replaced = EBO_Fix_Same_Res_Op (op, opnd_tn, opnd_tninfo);
@@ -2900,7 +2936,7 @@ Find_BB_TNs (BB *bb)
             op_replaced = Special_Sequence (op, opnd_tn, orig_tninfo);
           }
         }
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 	else if (num_opnds == 1) {
 	  if (OP_results(op) > 0) {
 	    if (!op_replaced) {
@@ -3537,8 +3573,13 @@ op_is_needed:
 #endif
       } else if (PROC_has_branch_delay_slot()) {
 	if (in_delay_slot && OP_code(op) == TOP_noop) {
+#ifdef TARG_LOONGSON
+          BB_Remove_Op(bb, op);
+          BB_Append_Op(bb, Mk_OP(TOP_nop, True_TN));
+#else
 	   // ugly hack for mips
 	   OP_Change_Opcode(op, noop_top);
+#endif
 	}
         in_delay_slot = OP_xfer(op);
       }

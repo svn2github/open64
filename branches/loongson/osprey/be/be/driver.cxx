@@ -1677,6 +1677,10 @@ Preprocess_PU (PU_Info *current_pu)
   /* read from mmap area */
   Start_Timer ( T_ReadIR_CU );
 
+#ifdef TARG_LOONGSON
+  if (Instrumentation_Enabled)
+    Instrumentation_Enabled_Before = TRUE;
+#endif
   // The current PU could already be memory as happens when the
   // compiler creates it during back end compilation of an earlier PU. 
   if (PU_Info_state (current_pu, WT_TREE) != Subsect_InMem) {

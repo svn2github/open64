@@ -1575,7 +1575,7 @@ static simpnode  simp_recip(OPCODE opc, simpnode k0, simpnode k1,
 
    if (op == OPR_RECIP) {
       switch (child_op) {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
       case OPR_MPY:
 	SHOW_RULE("RECIP(x*RSQRT(x)) RSQRT(x)");
 	    if (OPCODE_is_load(SIMPNODE_opcode(SIMPNODE_kid0(k0))) &&
@@ -2040,7 +2040,7 @@ static simpnode  simp_add_sub(OPCODE opc,
    INT32 num_const,num_ops,i,j,k,ic1,ic2,d1,d2;
    
    ty = OPCODE_rtype(opc);
-#ifdef TARG_MIPS // bug 13069
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON) // bug 13069
    if (ty == MTYPE_FQ)
      return 0;
 #endif

@@ -834,7 +834,7 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args, "-D__UCLIBC_HAS_FLOATS__");
 		  add_string(args, "-D__HAS_FPU__");
 		}
-#elif defined(TARG_MIPS)
+#elif defined(TARG_MIPS) || defined(TARG_LOONGSON)
 		if( abi == ABI_N32 )
 		  add_string(args, "-mabi=n32");
 		else
@@ -1273,6 +1273,11 @@ add_file_args (string_list_t *args, phases_t index)
 #if defined(TARG_X8664) || defined(TARG_NVISA)
 		if( abi == ABI_N32 )
 		  add_string(args, "-m32");
+#elif defined (TARG_LOONGSON)
+                if( abi == ABI_N32 )
+                  add_string(args, "-mabi=n32");
+                else if (abi == ABI_64) 
+                  add_string(args, "-mabi=64");
 #elif defined(TARG_MIPS)
 #ifndef TARG_SL
 		// endianness
@@ -1415,6 +1420,9 @@ add_file_args (string_list_t *args, phases_t index)
 	case P_be:
 #if defined(TARG_NVISA)
 	case P_bec:
+#endif
+#ifdef TARG_LOONGSON
+                add_string(args,"-TENV:pic2");
 #endif
 		add_language_option ( args );
 		add_targ_options ( args );
@@ -1559,11 +1567,30 @@ add_file_args (string_list_t *args, phases_t index)
 #if defined(TARG_X8664) || defined(TARG_NVISA)
 		  if( abi == ABI_N32 )
 		    add_string(args, "-m32");
-#elif defined(TARG_MIPS) && !defined(TARG_SL)
+#elif defined(TARG_LOONGSON) || defined(TARG_MIPS) && !defined(TARG_SL) 
 		if( abi == ABI_N32 )
 		  add_string(args, "-mabi=n32");
 		else
 		  add_string(args, "-mabi=64");
+#endif
+#if defined(TARG_LOONGSON)
+               add_string(args, "-EL");
+               add_string(args, "-g0");
+               switch (loongson_version) {
+               case ISA_LOONGSON2e: {
+                          add_string(args, "-march=loongson2e");
+                          break;
+                       }
+               case ISA_LOONGSON2f: {
+                          add_string(args, "-march=loongson2f");
+                          break;
+                       }
+               case ISA_LOONGSON3: {
+                          add_string(args, "-march=loongson3");
+                          break;
+                       }
+               default:   add_string(args, "-march=loongson2e");
+               }
 #endif
 
 		  // Add input source to args.  Append .s to input source if
@@ -1634,7 +1661,7 @@ add_file_args (string_list_t *args, phases_t index)
 #if defined(TARG_X8664) || defined(TARG_NVISA)
 		if( abi == ABI_N32 )
 		  add_string(args, "-m32");
-#elif defined(TARG_MIPS) && !defined(TARG_SL)
+#elif defined(TARG_LOONGSON) || defined(TARG_MIPS) && !defined(TARG_SL)
 		if( abi == ABI_N32 )
 		  add_string(args, "-mabi=n32");
 		else
@@ -1667,7 +1694,7 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args, "-m");
 		  add_string(args,"elf_i386");
 		}
-#elif defined(TARG_MIPS)
+#elif defined(TARG_MIPS) || defined(TARG_LOONGSON)
 		if( abi == ABI_N32 ) {
 #ifndef TARG_SL
 		  add_string(args, "-mabi=n32");
@@ -1682,7 +1709,7 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 		// Pass top level library dir to ipa so that
 		// it finds libraries like lib32/libc.so.6
-#ifndef ARCH_MIPS
+#if !defined(ARCH_MIPS) && !defined(TARG_LOONGSON)
 		add_library_dir (MIPS_CROSS_LIB_TOP_DIR);
 #endif
 #endif
@@ -1722,6 +1749,24 @@ add_file_args (string_list_t *args, phases_t index)
 		  sprintf(buf, "-IPA:propagate_annotation_file=%s", opt_file);
 		  add_string(args,buf);
 		}
+#if defined(TARG_LOONGSON)
+
+               switch (loongson_version) {
+               case ISA_LOONGSON2e: {
+                          add_string(args, "-loongson2e");
+                          break;
+                       }
+               case ISA_LOONGSON2f: {
+                          add_string(args, "-loongson2f");
+                          break;
+                       }
+               case ISA_LOONGSON3: {
+                          add_string(args, "-loongson3");
+                          break;
+                       }
+               default:   add_string(args, "-loongson2e");
+               }
+#endif
 
 		/* object file should be in list of options */
 		break;
@@ -3837,6 +3882,23 @@ save_ipl_commands (void)
 	    }
 	}
     }
+#ifdef TARG_LOONGSON
+          switch (loongson_version) {
+               case ISA_LOONGSON2e: {
+                          add_string(ipl_cmds, "-loongson2e");
+                          break;
+                       }
+               case ISA_LOONGSON2f: {
+                          add_string(ipl_cmds, "-loongson2f");
+                          break;
+                       }
+               case ISA_LOONGSON3: {
+                          add_string(ipl_cmds, "-loongson3");
+                          break;
+                       }
+               default:   add_string(ipl_cmds, "-loongson2e");
+               }
+#endif
 
     // Add -TARG options.
     add_targ_options(ipl_cmds);

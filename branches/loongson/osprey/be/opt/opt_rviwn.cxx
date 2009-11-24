@@ -550,7 +550,7 @@ RVI::Is_const_candidate( const WN *parent, const WN *constant, INT whichkid ) co
     ("RVI::Is_const_candidate: Bad const: %s", OPCODE_name(con_opc)) );
   const INT64 con_val = WN_const_val(constant);
 
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON)
   if (con_val == 0)
     return FALSE;
 #endif

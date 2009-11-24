@@ -91,7 +91,12 @@ typedef enum {
   ISA_COMPUTE_11 = 15,
   ISA_COMPUTE_12 = 16,
   ISA_COMPUTE_13 = 17,
-  ISA_SL         = 18
+  ISA_SL         = 18,
+#ifdef TARG_LOONGSON /* add support for 2e,2f and 3 decoding*/
+  ISA_LOONGSON2e =14,
+  ISA_LOONGSON2f =15,
+  ISA_LOONGSON3 =16
+#endif
 } ISA;
 
 extern boolean debug;		/* debugging turned on */

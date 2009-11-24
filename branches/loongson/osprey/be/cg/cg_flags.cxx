@@ -215,7 +215,7 @@ BOOL CG_tune_do_loop = TRUE;
 BOOL CG_enable_thr = FALSE;
 BOOL CG_cond_defs_allowed = FALSE;
 BOOL LOCS_Enable_Bundle_Formation = FALSE;
-#if defined(TARG_MIPS) && !defined(TARG_SL)
+#if defined(TARG_LOONGSON) || defined(TARG_MIPS) && !defined(TARG_SL)   
 BOOL CG_tail_call = FALSE;
 #else
 BOOL CG_tail_call = TRUE;
@@ -256,6 +256,17 @@ UINT32 CG_zdl_skip_a = INT32_MAX;
 UINT32 CG_zdl_skip_b = 0;
 BOOL CG_enable_opt_condmv = TRUE;
 #endif
+#ifdef TARG_LOONGSON
+BOOL CG_Enable_RVI_2_CG = FALSE;
+BOOL CG_enable_del_base_tn=FALSE;
+BOOL CG_enable_auto_add_op=FALSE;
+BOOL CG_enable_del_auto_add_op=FALSE;
+BOOL CG_enable_float_pointer_example=FALSE;
+BOOL CG_enable_too_many_spill=FALSE;
+BOOL CG_enable_improve_fp_efficiency=FALSE;
+BOOL CG_enable_all_ldst_is_lbsb=FALSE;
+BOOL CG_enable_improve_icache_efficiency=FALSE;
+#endif
 BOOL CG_enable_loop_optimizations = TRUE;
 BOOL GCM_Motion_Across_Calls = TRUE;
 BOOL GCM_Min_Reg_Usage = TRUE;
@@ -267,7 +278,7 @@ BOOL GCM_PRE_Enable_Scheduling = TRUE;
 BOOL GCM_POST_Enable_Scheduling = TRUE;
 BOOL GCM_Enable_Scheduling = TRUE;
 BOOL CGTARG_Enable_Brlikely = TRUE;
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 BOOL Enable_Fill_Delay_Slots = FALSE;
 BOOL GCM_Enable_Fill_Delay_Slots = FALSE;
 BOOL CG_use_movlpd = TRUE;
@@ -491,7 +502,7 @@ OPTION_LIST *Arc_Profile_Region = NULL;
 INT32 CG_cse_regs = INT32_MAX - 1000;
 INT32 CG_sse_cse_regs = INT32_MAX - 1000;
 #endif
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 INT32 CG_sse_load_execute = 0;
 INT32 CG_load_execute = 1;
 BOOL CG_loadbw_execute = FALSE;
@@ -499,6 +510,10 @@ BOOL CG_p2align = FALSE;
 BOOL CG_loop32 = FALSE;
 BOOL CG_compute_to = FALSE;
 BOOL CG_valgrind_friendly = TRUE;
+#endif
+#ifdef TARG_LOONGSON
+BOOL CGEXP_float_use_madd = FALSE;
+BOOL CGEXP_use_Loongson2e_MultDivMod = FALSE; 
 #endif
 
 // temporary flags for controlling algorithm selection for fdiv, sqrt, etc

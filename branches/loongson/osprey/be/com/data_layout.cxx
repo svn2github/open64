@@ -1746,7 +1746,7 @@ Get_Altentry_UpFormal_Symbol (ST *formal, PLOC ploc)
   if (PUSH_FRAME_POINTER_ON_STACK && PU_has_alloca(Get_Current_PU())) {
     offset += MTYPE_byte_size(Pointer_Mtype);
   }
-#ifdef TARG_X8664  // always reserve FP save location to maintain quad align
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)  // always reserve FP save location to maintain quad align
   else offset += MTYPE_byte_size(Pointer_Mtype);
 #endif
   if (PUSH_RETURN_ADDRESS_ON_STACK) {
@@ -1900,7 +1900,7 @@ Init_Segment_Descriptors(void)
 static void
 Init_Formal_Segments (INT32 formal_size, INT32 upformal_size)
 {
-#ifndef TARG_X8664
+#if !defined(TARG_X8664) && !defined(TARG_LOONGSON)
   SF_Maxsize ( SFSEG_UPFORMAL ) = ROUNDUP(upformal_size, stack_align);
   SF_Maxsize ( SFSEG_FORMAL ) = ROUNDUP(formal_size, stack_align);
 #endif
@@ -1997,7 +1997,7 @@ Merge_Fixed_Stack_Frame(ST *SP_baseST, ST *FP_baseST)
   BOOL pu_is_varargs = TY_is_varargs (ST_pu_type (Get_Current_PU_ST()));
   if (pu_is_varargs) {
 	orig_formal_size = STB_size(SF_Block(SFSEG_FORMAL));
-#ifndef TARG_X8664
+#if !defined(TARG_X8664) && !defined(TARG_LOONGSON)
   	Set_STB_size(SF_Block(SFSEG_FORMAL), SF_Maxsize(SFSEG_FORMAL));
 #endif
   }
@@ -3195,7 +3195,7 @@ Allocate_Object ( ST *st )
     }
 #endif
     else if (ST_is_initialized(st) && !ST_init_value_zero (st))
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
     {
       if (ST_is_constant(st))
         // GNU puts CLASS_CONST data in .rodata.
@@ -3305,7 +3305,7 @@ Allocate_Object ( ST *st )
     else if (ST_is_thread_local(st)) sec = _SEC_LDATA;
 #endif
     else if (ST_is_constant(st)) {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
       if (Gen_PIC_Shared)
 	sec = _SEC_DATA_REL_RO; // bug 6925
       else

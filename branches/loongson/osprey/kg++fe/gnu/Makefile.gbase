@@ -95,6 +95,12 @@ endif
 ifeq ($(BUILD_TARGET), SL)
 HOSTDEFS += -DTARGET_NAME=\"sl-linux\"
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+HOSTDEFS += -DTARGET_NAME=\"$(OPEN64_TARGET)\"
+HOSTDEFS += -DPREFIX=\"$(OPEN64_INSTALL_PREFIX)\"
+HOSTDEFS += -DGCC_INCLUDE_DIR=\"$(OPEN64_INCLUDE_DIR)\"
+HOSTDEFS += -DGPLUSPLUS_INCLUDE_DIR=\"$(OPEN64_INCLUDE_DIR)\"
+endif
 
 
 HOSTDEFS += -DLONGLONG
@@ -134,6 +140,10 @@ ifeq ($(BUILD_TARGET), SL)
 TARGDEFS += -DTARG_SL
 endif
 
+ifeq ($(BUILD_OS), LINUX)
+TARGDEFS = -D__MIPS_AND_IA64_ELF_H
+endif
+
 
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
@@ -166,6 +176,10 @@ GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/mips
 endif
 ifeq ($(BUILD_TARGET), SL)
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/sl
+endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+GNU_TARG_DIR = $(GNU_DIR)/loongson
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/loongson
 endif
 
 GNU_CP_DIR		= $(BUILD_BASE)/cp
@@ -356,6 +370,9 @@ ifeq ($(BUILD_TARGET), MIPS)
 endif
 ifeq ($(BUILD_TARGET), SL)
   GNU_SRCS += mips.c
+endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+  GNU_SRCS += $(GNU_CONFIG_DIR)/loongson/mips.c
 endif
 
 

@@ -288,11 +288,15 @@ typedef unsigned long	UINTPS;	/* Pointer-sized integer */
 #define HOST_SUPPORTS_QUAD_FLOAT 0
 #endif
 
+#ifndef TARG_LOONGSON
 #if HOST_SUPPORTS_QUAD_FLOAT
 /* Temporarily remove this to get rid of warnings: */
 typedef long double	QUADFP;		/* 128-bit floating point */
 #else 
 typedef double	QUADFP;		/* 128-bit floating point */
+#endif
+#else
+typedef struct { INT32 qval[4]; } QUADFP;
 #endif
 
 #endif /* HOST_SGI || __GNUC__ */

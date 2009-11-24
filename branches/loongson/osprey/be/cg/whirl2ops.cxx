@@ -189,7 +189,7 @@ OP_MAP OP_Ld_GOT_2_Sym_Map;
 
 OP_MAP OP_Asm_Map;
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 inline BOOL 
 WN_Is_Bool_Operator(WN* expr) 
 {
@@ -247,6 +247,7 @@ Is_Old_Boolean_Expression(WN* expr)
 }
 
 
+#ifndef TARG_LOONGSON
 /*
 This function is to transform poorly-handled boolean processing to predicated processing in IA64. 
 Predicates is returned as the result.
@@ -474,6 +475,7 @@ Handle_Bool_As_Predicate(WN*condition, WN*parent, BOOL invert)
     WN_set_rtype(condition, MTYPE_B);
     return (invert) ? predicate_result1 : predicate_result0;
 }
+#endif
 #endif
 
 TN *
@@ -887,6 +889,22 @@ Start_New_Basic_Block (void)
   return bb;
 }
 
+#ifdef TARG_LOONGSON
+/* wrapper for calling the static function */
+void Begin_New_Basic_Block ()
+{
+  Start_New_Basic_Block ();
+}
+/* wrapper for calling the static function */
+void Start_New_Label (LABEL_IDX lb_idx, LABEL *lb, const char *str)
+{
+  char * buf;
+  buf = (char *)alloca(strlen(str) + 32);
+  Add_Label (lb_idx);
+  sprintf (buf, "$PU%d_BB%d_%s", Current_PU_Count(), BB_id(Cur_BB), str);
+  LABEL_Init (*lb, Save_Str(buf), LKIND_DEFAULT);
+}
+#endif
 /* Check if we are over the threshold of how many instructions
  * we will allow in a single basic block. If we are, then call 
  * 'Start_New_Basic_Block' to start a new basic block.
@@ -2601,8 +2619,28 @@ Handle_STID (WN *stid, OPCODE opcode)
         return;
        }else
 #endif
+#ifdef TARG_LOONGSON
+    if ((WN_operator_is(kid, OPR_LDID)) && (WN_class(kid) == CLASS_PREG)
+    	&& ((opcode == OPC_U4STID && WN_opcode(kid) == OPC_U8U8LDID)
+	||(opcode == OPC_I4STID && WN_opcode(kid) == OPC_I8I8LDID))) {
+      //   U8U8LDID
+      // U4STID    	  
+      // Add U4U8CVT	between such stid and ldid
+      
+      //   I8I8LDID
+      // I4STID
+      // Add I4I8CVT    between such stid and ldid
+      TN *src_tn = PREG_To_TN (WN_st(kid), WN_load_offset(kid));    	     	 
+      TN *tmp = Build_TN_Like (src_tn);
+      Build_OP (TOP_sll, result, True_TN, src_tn, Gen_Literal_TN(0, 2), &New_OPs);
+    }
+    else{
+      Expand_Expr (kid, stid, result);	
+    }
+#else	
       //lets do something here, of course we need to handle this
       Expand_Expr (kid, stid, result); /// I would think this is the problem
+#endif
 
 #ifdef TARG_NVISA
       if (final_result != NULL) {
@@ -3377,7 +3415,12 @@ Handle_ALLOCA (WN *tree, TN *result)
   BOOL is_zero = is_const && WN_const_val(WN_kid0(tree)) == 0;
   TN *tsize = NULL;
   if (!is_zero) {
-    if (is_const) {
+    if (is_const 
+#ifdef TARG_LOONGSON
+	  // For LOONGSON, the length of the immediate operand is 16-bit.
+	  && ISA_LC_Value_In_Class(WN_const_val(WN_kid0(tree)), LC_i16)
+#endif
+	  ){
       // align the size
       INT64 size = WN_const_val(WN_kid0(tree));
       size += Stack_Alignment() - 1;
@@ -3576,7 +3619,7 @@ Handle_INTRINSIC_OP (WN *expr, TN *result)
     result = Allocate_Result_TN(expr, NULL);
   }
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
   Exp_Intrinsic_Op (id, result, kid0, kid1, &New_OPs);
 #elif defined(TARG_X8664) || defined(TARG_NVISA)
   const TYPE_ID mtype = WN_rtype( WN_kid0(expr) );
@@ -4294,7 +4337,7 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
 
   top = WHIRL_To_TOP (expr);
   if (TOP_is_noop(top)
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 	&& (opr == OPR_PAREN || opr == OPR_TAS || opr == OPR_PARM)) 
 #else
 	&& (opr == OPR_PAREN || 
@@ -4568,7 +4611,11 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
     else if (Is_CVTL_Opcode(opcode))
     {
       opnd_tn[0] = Expand_Expr (WN_kid0(expr), expr, NULL);
+#ifdef TARG_LOONGSON
+      opnd_tn[1] = Gen_Literal_TN (0, 4);
+#else
       opnd_tn[1] = Gen_Literal_TN (32, 4);
+#endif
       num_opnds = 2;
     }
     else
@@ -5357,7 +5404,28 @@ static void Build_CFG(void)
 	continue;	// no successor
       } 
       else {
+#ifdef TARG_LOONGSON	// in loongson2e, without rid, the codes have to be copied here.
+	br_op = BB_branch_op( bb );
+	if ( br_op == NULL ) {
+	  if ( BB_next( bb ) && !BB_exit( bb ) )
+	     // for some reason there is an empty block after a return 
+	     // block but this should not really be a successor 
+	     Link_Pred_Succ ( bb, BB_next( bb ) );
+	  }
+	  else {
+	    if ( OP_cond( br_op ) ) {
+	      if ( BB_next( bb ) ) Link_Pred_Succ ( bb, BB_next( bb ) );
+	    }
+	    target_tn = OP_opnd(br_op, OP_find_opnd_use(br_op, OU_target));
+	    FmtAssert( TN_is_label( target_tn ),
+	          ("target of branch is not a label") );
+	    label = TN_label( target_tn );
+	    if ( Get_Label_BB ( label ) != NULL )
+	       Link_BBs( bb, label );
+        }
+#else	
 	Link_Pred_Succ (bb, BB_next(bb));
+#endif
       }
     }
   }
@@ -5375,6 +5443,9 @@ static VARIANT
 WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
 {
   VARIANT variant = V_BR_NONE;
+#ifdef TARG_LOONGSON
+  BOOL need_negative = TRUE;
+#endif
   switch (opcode) {
 // >> WHIRL 0.30: replaced OPC_T1{EQ,NE,GT,GE,LT,LE} by OPC_BT1, OPC_I4T1 variants
 // TODO WHIRL 0.30: get rid of OPC_I4T1 variants
@@ -5398,9 +5469,17 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BF10EQ: case OPC_I4F10EQ: variant = V_BR_XEQ; break;
 #endif
   case OPC_U4F8EQ:
-  case OPC_BF8EQ: case OPC_I4F8EQ: variant = V_BR_DEQ; break;
+  case OPC_BF8EQ: case OPC_I4F8EQ: variant = V_BR_DEQ;
+#ifdef TARG_LOONGSON
+    need_negative = FALSE;
+#endif
+  break;
   case OPC_U4F4EQ:
-  case OPC_BF4EQ: case OPC_I4F4EQ: variant = V_BR_FEQ; break;
+  case OPC_BF4EQ: case OPC_I4F4EQ: variant = V_BR_FEQ;
+#ifdef TARG_LOONGSON
+    need_negative = FALSE;
+#endif
+	break;
   // ------------------------- OPR_NE -------------------------
   case OPC_U4I8NE:
   case OPC_BI8NE: case OPC_I4I8NE: variant = V_BR_I8NE; break;
@@ -5425,9 +5504,17 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BF10NE: case OPC_I4F10NE: variant = V_BR_XNE; break;
 #endif
   case OPC_U4F8NE:
-  case OPC_BF8NE: case OPC_I4F8NE: variant = V_BR_DNE; break;
+  case OPC_BF8NE: case OPC_I4F8NE: variant = V_BR_DNE;
+#ifdef TARG_LOONGSON
+    need_negative = FALSE;
+#endif
+	break;
   case OPC_U4F4NE:
-  case OPC_BF4NE: case OPC_I4F4NE: variant = V_BR_FNE; break;
+  case OPC_BF4NE: case OPC_I4F4NE: variant = V_BR_FNE; 
+#ifdef TARG_LOONGSON
+    need_negative = FALSE;
+#endif
+	break;
   // ------------------------- OPR_GT -------------------------
   case OPC_U4I8GT:
   case OPC_BI8GT: case OPC_I4I8GT: variant = V_BR_I8GT; break;
@@ -5452,9 +5539,17 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BF10GT: case OPC_I4F10GT: variant = V_BR_XGT; break;
 #endif
   case OPC_U4F8GT:
-  case OPC_BF8GT: case OPC_I4F8GT: variant = V_BR_DGT; break;
+  case OPC_BF8GT: case OPC_I4F8GT: variant = V_BR_DGT; 
+#ifdef TARG_LOONGSON
+    need_negative = FALSE;
+#endif
+	break;
   case OPC_U4F4GT:
-  case OPC_BF4GT: case OPC_I4F4GT: variant = V_BR_FGT; break;
+  case OPC_BF4GT: case OPC_I4F4GT: variant = V_BR_FGT; 
+#ifdef TARG_LOONGSON
+    need_negative = FALSE;
+#endif
+	break;
 
   // ------------------------- OPR_GE -------------------------
   case OPC_U4I8GE:
@@ -5480,9 +5575,17 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BF10GE: case OPC_I4F10GE: variant = V_BR_XGE; break;
 #endif
   case OPC_U4F8GE:
-  case OPC_BF8GE: case OPC_I4F8GE: variant = V_BR_DGE; break;
+  case OPC_BF8GE: case OPC_I4F8GE: variant = V_BR_DGE; 
+#ifdef TARG_LOONGSON
+    need_negative = FALSE;
+#endif
+	break;
   case OPC_U4F4GE:
-  case OPC_BF4GE: case OPC_I4F4GE: variant = V_BR_FGE; break;
+  case OPC_BF4GE: case OPC_I4F4GE: variant = V_BR_FGE; 
+#ifdef TARG_LOONGSON
+    need_negative = FALSE;
+#endif
+	break;
 
   // ------------------------- OPR_LT -------------------------
   case OPC_U4I8LT:
@@ -5508,9 +5611,17 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
 #ifdef TARG_IA64
   case OPC_BF10LT: case OPC_I4F10LT: variant = V_BR_XLT; break;
 #endif
-  case OPC_BF8LT: case OPC_I4F8LT: variant = V_BR_DLT; break;
+  case OPC_BF8LT: case OPC_I4F8LT: variant = V_BR_DLT; 
+#ifdef TARG_LOONGSON
+    need_negative = FALSE;
+#endif
+	break;
   case OPC_U4F4LT:
-  case OPC_BF4LT: case OPC_I4F4LT: variant = V_BR_FLT; break;
+  case OPC_BF4LT: case OPC_I4F4LT: variant = V_BR_FLT; 
+#ifdef TARG_LOONGSON
+    need_negative = FALSE;
+#endif
+	break;
 
   // ------------------------- OPR_LE -------------------------
   case OPC_U4I8LE:
@@ -5536,15 +5647,33 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BF10LE: case OPC_I4F10LE: variant = V_BR_XLE; break;
 #endif
   case OPC_U4F8LE:
-  case OPC_BF8LE: case OPC_I4F8LE: variant = V_BR_DLE; break;
+  case OPC_BF8LE: case OPC_I4F8LE: variant = V_BR_DLE; 
+#ifdef TARG_LOONGSON
+    need_negative = FALSE;
+#endif
+	break;
   case OPC_U4F4LE:
-  case OPC_BF4LE: case OPC_I4F4LE: variant = V_BR_FLE; break;
+  case OPC_BF4LE: case OPC_I4F4LE: variant = V_BR_FLE; 
+#ifdef TARG_LOONGSON
+    need_negative = FALSE;
+#endif
+	break;
 
   case OPC_BBNE: variant = V_BR_PNE; break;
   case OPC_BBEQ: variant = V_BR_PEQ; break;
 // << WHIRL 0.30: replaced OPC_T1{EQ,NE,GT,GE,LT,LE} by OPC_BT1, OPC_I4T1 variants
   }
-  if (invert) variant = Negate_BR_Variant(variant);
+  if (invert)
+#ifdef TARG_LOONGSON
+{
+	if (need_negative)
+		variant = Negate_BR_Variant (variant);
+	else
+		Set_V_false_br (variant);
+}
+#else
+		variant = Negate_BR_Variant (variant);
+#endif
 #ifdef Is_True_On
   if (variant == V_BR_NONE && OPERATOR_is_compare(OPCODE_operator(opcode)))
     DevWarn ("KEY: Unknown branch variant found for %s!", OPCODE_name(opcode));
@@ -5586,7 +5715,7 @@ Handle_CONDBR (WN *branch)
   }
   else {
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
     /* 
     Ideally MTYPE_B should be used for the return result type of the 
     condition operator. However, it is used for other purposes already.
@@ -5595,9 +5724,17 @@ Handle_CONDBR (WN *branch)
     */
     operand0 = NULL;  // set for old branch
     if (Is_Old_Boolean_Expression(condition)) {
+#ifdef TARG_LOONGSON
+      TN *binary_result;
+      binary_result = Build_TN_Of_Mtype (MTYPE_I8);
+      operand0 = Expand_Expr (condition, branch, binary_result);      
+      operand1 = Zero_TN;
+      variant = (invert) ? V_BR_I8EQ : V_BR_I8NE;
+#else
       operand0 = Handle_Bool_As_Predicate(condition, branch, invert);
       operand1 = NULL;
    		variant = V_BR_P_TRUE;
+#endif
     }
     
     if (operand0==NULL) {
@@ -6030,7 +6167,7 @@ Handle_ASM (const WN* asm_wn)
     }
     ISA_REGISTER_SUBCLASS subclass = ISA_REGISTER_SUBCLASS_UNDEFINED;
 
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
     TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass);
 #else
     TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, 
@@ -6095,7 +6232,7 @@ Handle_ASM (const WN* asm_wn)
     }
     ISA_REGISTER_SUBCLASS subclass = ISA_REGISTER_SUBCLASS_UNDEFINED;
 
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
     TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass);
 #else
     TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, 

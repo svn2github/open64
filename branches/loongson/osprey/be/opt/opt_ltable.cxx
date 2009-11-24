@@ -148,7 +148,7 @@ ETABLE::LPRE_bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
       Append_real_occurrence(cr, stmt, stmt_kid_num, depth, FALSE);
     break;
   case CK_RCONST: 
-#ifdef TARG_X8664 // bug 11268: need to keep the real and imag halves together 
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) // bug 11268: need to keep the real and imag halves together 
     if (cr->Dtyp() == MTYPE_C4 && parent && parent->Kind() == CK_IVAR && 
 	parent->Opr() == OPR_PARM)
       break;
@@ -170,7 +170,7 @@ ETABLE::LPRE_bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 
   case CK_VAR:	    // variable terminal rvi candidates
 
-#ifdef TARG_X8664 // bug 11268: need to keep the real and imag halves together 
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) // bug 11268: need to keep the real and imag halves together 
     if (cr->Dtyp() == MTYPE_C4 && parent && parent->Kind() == CK_IVAR && 
 	parent->Opr() == OPR_PARM)
       break;
@@ -626,7 +626,7 @@ CODEREP::Is_rvi_const_candidate(const CODEREP *parent, INT whichkid, const OPT_S
   const CODEKIND par_ck   = parent->Kind();
   const OPERATOR par_opr  = (par_ck == CK_VAR) ? OPR_STID : parent->Opr();
 
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON)
   if (con_val == 0)
     return FALSE;
 #endif

@@ -1424,8 +1424,10 @@ CG_Instrument_Arcs()
 	  // mips
 	  Build_OP( TOP_j, Gen_Label_TN(tgt_label, 0), &new_ops);
 #else
+#ifndef TARG_LOONGSON
           // ia64
           Build_OP (TOP_br, Gen_Enum_TN(ECV_ph_few), Gen_Enum_TN(ECV_dh), Gen_Label_TN(tgt_label, 0), &new_ops);
+#endif
 #endif
 	  FmtAssert(TN_is_label( tgt_tn ), ("should be branch target label"));
 	}

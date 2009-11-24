@@ -877,8 +877,12 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
     case 16:
       REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, buffer);
       WFE_Convert_To_Host_Order(buffer);
+#ifdef TARG_LOONGSON
+      tc = Host_To_Targ_Quad (*(QUAD_TYPE *) &buffer);
+#else
       //tc = Host_To_Targ_Quad (*(long double *) &buffer);
       tc = Host_To_Targ_Quad (WFE_Convert_Internal_Real_to_IEEE_Double_Extended (real));
+#endif
       break;
 #endif
     default:
@@ -921,10 +925,19 @@ WFE_Add_Aggregate_Init_Complex (REAL_VALUE_TYPE rval, REAL_VALUE_TYPE ival, INT 
       break;
     case 24:
     case 32:
+#ifdef TARG_LOONGSON
+      REAL_VALUE_TO_TARGET_LONG_DOUBLE (rval, buffer);
+      WFE_Convert_To_Host_Order(buffer);
+      rtc = Host_To_Targ_Quad (*(QUAD_TYPE *) &buffer);
+      REAL_VALUE_TO_TARGET_LONG_DOUBLE (ival, buffer);
+      WFE_Convert_To_Host_Order(buffer);
+      itc = Host_To_Targ_Quad (*(QUAD_TYPE *) &buffer);
+#else
       rtc = Host_To_Targ_Quad (
 	WFE_Convert_Internal_Real_to_IEEE_Double_Extended (rval));
       itc = Host_To_Targ_Quad (
 	WFE_Convert_Internal_Real_to_IEEE_Double_Extended (ival));
+#endif
       break;
     default:
       FmtAssert(FALSE, ("WFE_Add_Aggregate_Init_Complex unexpected size"));

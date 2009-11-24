@@ -199,6 +199,11 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	}
 	break;
   case OPR_ABS:
+#ifdef TARG_LOONGSON
+	if (MTYPE_is_float(rtype))
+		Expand_Flop (opcode, result, op1, op2, op3, ops);
+	else
+#endif
 	Expand_Abs (result, op1, rtype, ops);
 	break;
   case OPR_MPY:
@@ -209,7 +214,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 #endif
 		Expand_Flop (opcode, result, op1, op2, op3, ops);
 	else
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 		Expand_Multiply (result, op1, op2, rtype, ops, opcode);
 #else
 	Expand_Multiply (result, op1, op2, rtype, ops);
@@ -219,7 +224,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_High_Multiply (result, op1, op2, rtype, ops);
 	break;
   case OPR_REM:
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 	Expand_Rem (result, op1, op2, rtype, ops, opcode);
 #else
 	Expand_Rem (result, op1, op2, rtype, ops);
@@ -227,14 +232,14 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	break;
   case OPR_MOD:
 	if (MTYPE_is_signed(rtype))
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 		Expand_Mod (result, op1, op2, rtype, ops, opcode);
 #else
 	Expand_Mod (result, op1, op2, rtype, ops );
 #endif
 	else
 		// unsigned MOD acts like REM
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 		Expand_Rem (result, op1, op2, rtype, ops, opcode);
 #else
 	Expand_Rem (result, op1, op2, rtype, ops);
@@ -247,7 +252,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Divide (result, op1, op2, rtype, ops);
 	break;
   case OPR_DIVREM:
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 	Expand_DivRem(result, op1, op2, op3, rtype, ops, opcode);
 #else
         Expand_DivRem(result, op1, op2, op3, rtype, ops);
@@ -327,7 +332,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_CVT:
 	Is_True(rtype != MTYPE_B, ("conversion to bool unsupported"));
 	if (MTYPE_is_float(rtype) && MTYPE_is_float(desc)) {
-#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
 		Expand_Float_To_Float (result, op1, rtype, desc, ops);
 #else
 		Expand_Float_To_Float (result, op1, rtype, ops);
@@ -364,7 +369,11 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Convert (result, rtype, op1, desc, ops);
 #else
 		Expand_Convert_Length ( result, op1, op2, 
-			rtype, 
+#ifdef TARG_LOONGSON
+			desc,
+#else
+			rtype,
+#endif
 			(MTYPE_is_signed(desc)
 #ifdef TARG_IA64
 			 && (MTYPE_bit_size(desc) < MTYPE_bit_size(rtype) ) ),
@@ -532,6 +541,21 @@ Exp_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant, O
 	So instead of create a new OPS structure, the old one is added.
 	*/
 	if (OPS_length(ops)==0) {
+#ifdef TARG_LOONGSON
+  	/* For TARG_LOONGSON, when expanding op, the 'ops' should be New_OPs
+        because 'Start_New_Basic_Block' will check New_OPs to decide if 
+        a new  BB should be created. So, we cannot create a new OPs here.
+        */
+	Expand_OP (opcode, result, op1, op2, op3, variant, ops);
+  	if (Trace_Exp) {
+  		#pragma mips_frequency_hint NEVER
+  		OP *op;
+  		FOR_ALL_OPS_OPs (ops, op) {
+  			fprintf(TFile, " into "); Print_OP (op);
+  		}
+  	}
+
+#else
 		OPS new_ops;
   		OPS_Init(&new_ops);
   		Expand_OP (opcode, result, op1, op2, op3, variant, &new_ops);
@@ -547,6 +571,7 @@ Exp_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant, O
 			/* Add the new OPs to the end of the list passed in */
 			OPS_Append_Ops(ops, &new_ops);
   		}
+#endif
   	}
   	else {
 		OP *last_OP = OPS_last(ops);
