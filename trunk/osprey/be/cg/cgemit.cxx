@@ -1386,7 +1386,11 @@ put_TN_comment (TN *t, BOOL add_name, vstring *comment)
  * ====================================================================
  */
 
+#if defined(TARG_SL)
+BOOL
+#else
 static BOOL
+#endif
 r_apply_l_const (
   OP *op,		/* OP with constant operand */
   INT opidx,		/* OP index of constant TN of some sort */
@@ -3648,6 +3652,12 @@ int Compute_Asm_Num (const char *asm_string, BOOL emit_phase=TRUE) {
 }
 #endif // TARG_SL
 
+#if defined(TARG_SL)
+#define LDW_INSTR_STRING "ldw"
+#else
+#define LDW_INSTR_STRING "ld"
+#endif
+
 #ifdef TARG_SL
 char*
 #else
@@ -3741,14 +3751,16 @@ Generate_Asm_String (OP* asm_op, BB *bb)
     char *asm_string;
     asm_string = (char *)malloc(sizeof(char)*1024);
     sprintf(name, "%s", REGISTER_name(cl, reg));
-    sprintf(asm_string, "ld $4, 8(%s)\n", name);
-    sprintf(asm_string, "%s\tld $5, 16(%s)\n", asm_string, name);
-    sprintf(asm_string, "%s\tld $6, 24(%s)\n", asm_string, name);
-    sprintf(asm_string, "%s\tld $7, 32(%s)\n", asm_string, name);
-    sprintf(asm_string, "%s\tld $8, 40(%s)\n", asm_string, name);
-    sprintf(asm_string, "%s\tld $9, 48(%s)\n", asm_string, name);
-    sprintf(asm_string, "%s\tld $10, 56(%s)\n", asm_string, name);
-    sprintf(asm_string, "%s\tld $11, 64(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s $4, 8(%s)\n", LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $5, 16(%s)\n",  asm_string, LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $6, 24(%s)\n",  asm_string, LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $7, 32(%s)\n",  asm_string, LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $8, 40(%s)\n",  asm_string, LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $9, 48(%s)\n",  asm_string, LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $10, 56(%s)\n", asm_string, LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $11, 64(%s)\n", asm_string, LDW_INSTR_STRING, name);
+#if !defined(TARG_SL)
+    /* SL do not have float-point register */
     sprintf(asm_string, "%s\tldc1 $f12, 72(%s)\n", asm_string, name);
     sprintf(asm_string, "%s\tldc1 $f13, 80(%s)\n", asm_string, name);
     sprintf(asm_string, "%s\tldc1 $f14, 88(%s)\n", asm_string, name);
@@ -3757,6 +3769,7 @@ Generate_Asm_String (OP* asm_op, BB *bb)
     sprintf(asm_string, "%s\tldc1 $f17, 112(%s)\n", asm_string, name);
     sprintf(asm_string, "%s\tldc1 $f18, 120(%s)\n", asm_string, name);
     sprintf(asm_string, "%s\tldc1 $f19, 128(%s)", asm_string, name);
+#endif
     return asm_string;
   }
 #endif
@@ -4100,7 +4113,6 @@ Assemble_Bundles(BB *bb)
   return bb_cycle_count;
 #endif
 }
-
 
 /* Assemble the OPs in a BB an OP at a time.
  */
@@ -4119,14 +4131,32 @@ Assemble_Ops(BB *bb)
   FmtAssert(ISA_MAX_SLOTS == 1,
 	    ("Assemble_Ops shouldn't have been called"));
 
+#ifdef TARG_SL
+  if (CG_enable_CBUS_workaround && (Target == TARGET_sl1_dsp)) {
+    extern void CG_Reorder_Pop16_In_BB(BB *bb);
+    extern void CG_Add_Nop16_Workaround(BB* bb);
+    CG_Reorder_Pop16_In_BB(bb);
+    CG_Add_Nop16_Workaround(bb);
+  }
+#endif
+
   FOR_ALL_BB_OPs_FWD(bb, op) {
     ISA_BUNDLE bundle[ISA_PACK_MAX_INST_WORDS];
     INT words;
 
 #ifdef TARG_SL
+    if (CG_enable_LD_NOP_workaround && (Target == TARGET_sl1_dsp)) {
+      if (OP_load(op)) {
+        for (int i=0; i<4; i++) {
+          OP *op1 = Mk_OP(TOP_nop16);
+          BB_Insert_Op_After(bb, op, op1);
+        }
+      }
+    }
+
     // check mvtc and its consumer || mvfc ra and lnk : 
     // insert nop16 when needed
-    if (CG_check_quadword)
+    if (CG_check_quadword && (Is_Target_Sl1_pcore() || Is_Target_Sl1_dsp()))
       Check_QuadWord_Alignment(op, bb, bundle);
     if (Trace_PC) {
       fprintf(TFile, "pc = %x\t", PC);

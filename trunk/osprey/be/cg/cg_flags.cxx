@@ -255,6 +255,9 @@ UINT32 CG_zdl_skip_e = 0;
 UINT32 CG_zdl_skip_a = INT32_MAX;
 UINT32 CG_zdl_skip_b = 0;
 BOOL CG_enable_opt_condmv = TRUE;
+BOOL CG_enable_CBUS_workaround = FALSE;
+BOOL CG_enable_LD_NOP_workaround = FALSE;
+BOOL CG_enbale_C3_AR_dependence_workaround = FALSE;
 #endif
 BOOL CG_enable_loop_optimizations = TRUE;
 BOOL GCM_Motion_Across_Calls = TRUE;
@@ -332,6 +335,7 @@ INT32 CG_Max_Accreg = 4;
 INT32 CG_Max_Addreg = 8;
 BOOL CG_round_spreg = TRUE;
 BOOL CG_check_packed = TRUE;
+BOOL CG_branch_taken = TRUE; //option for sl1
 #else
 BOOL CGEXP_cvrt_int_div_to_mult = TRUE;
 BOOL CGEXP_cvrt_int_div_to_fdiv = TRUE;

@@ -625,7 +625,7 @@ void WFE_Stmt_Append_Extend_Intrinsic(WN *wn, WN *master_variable, SRCPOS src) {
      master_variable = WN_CreateParm(MTYPE_I4, master_variable, Be_Type_Tbl(MTYPE_I4), WN_PARM_BY_VALUE);
    } else {  
      TY_IDX  ti2 = WN_ty(master_variable);
-     TYPE_ID tm2 = TY_mtype(ti2);
+     TYPE_ID tm2 = WN_rtype(master_variable);
      master_variable = WN_CreateParm (Mtype_comparison (tm2), master_variable,
                                       ti2, WN_PARM_BY_VALUE);
    }
@@ -645,7 +645,7 @@ void WFE_Stmt_Append_Extend_Intrinsic(WN *wn, WN *master_variable, SRCPOS src) {
        continue;
      }
      TY_IDX  ti1 = WN_ty(op1);
-     TYPE_ID tm1 = TY_mtype(ti1);
+     TYPE_ID tm1 = WN_rtype(op1);
      op1 = WN_CreateParm (Mtype_comparison (tm1), op1,
 			  ti1, WN_PARM_BY_VALUE);
      kid1s[1]= op1;
@@ -1430,12 +1430,13 @@ static BOOL Same_Var( char* var_name, tree rhs )
         tempsame |= Same_Var( var_name, TREE_OPERAND(rhs,0) );
       } else
         return FALSE;
-    default:
-      if( TREE_OPERAND(rhs,0) )
-        tempsame |= Same_Var( var_name, TREE_OPERAND(rhs,0) );
-      if( TREE_OPERAND(rhs,1) )
-        tempsame |= Same_Var( var_name, TREE_OPERAND(rhs,1) );
       break;
+    default:
+      for (int i=0; i < TREE_CODE_LENGTH(TREE_CODE(rhs)); i++) {
+        if( TREE_OPERAND(rhs,i) )
+          tempsame |= Same_Var( var_name, TREE_OPERAND(rhs,i) );
+      }
+      break; 
   }
   /* I dont know how to get all the kids of a tree node,
    * but I use the common case : each node has only two kids
@@ -1505,6 +1506,45 @@ May_Include_Vbuf_Offset(INTRINSIC iopc, WN* call) {
   }
 }
 #endif 
+
+#ifdef TARG_SL
+/* For case: *p++(or --) op *p ... */
+static BOOL Is_Special_Case (WN* wn)
+{
+  WN * body;
+  WN * last;
+
+  FmtAssert(WN_operator(wn) == OPR_ISTORE, ("WGEN_Stmt_Add: FYI"));
+
+  body = WFE_Stmt_Top ();
+
+  if (body) {
+
+/* Here is just a simple match.
+ * 
+ * wn:   (*p)
+ *    .....
+ *   U4U4LDID 72 <1,4,.preg_U4> T<47,anon_ptr.,4> # <preg>
+ *  I4ISTORE 0im:0 T<47,anon_ptr.,4>
+ *
+ * last: (p++)
+ *    U4U4LDID 72 <1,4,.preg_U4> T<47,anon_ptr.,4> # <preg>
+ *    U4INTCONST 4 (0x4)
+ *   U4ADD
+ *  U4STID 0 <2,1,p> T<47,anon_ptr.,4>
+ */
+
+    last = WN_last(body);
+    if ((WN_operator(last) == OPR_STID )
+       && ((WN_operator(WN_kid0(last)) == OPR_ADD) 
+         || (WN_operator(WN_kid0(last)) == OPR_SUB)) 
+       && (WN_Equiv(WN_kid0(WN_kid0(last)) ,WN_kid1(wn))))    
+      return TRUE;
+    else
+      return FALSE;
+  }
+} 
+#endif
 
 
 /* rhs_wn is the WN representing the rhs of a MODIFY_EXPR node; this
@@ -1971,57 +2011,15 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
        *   p++;
        * This is to make our compiler consistent with gcc. So far,
        * only POST(INC/DEC) differs from gcc.
-       *
-       * NOTE! here, we are already in the INDIRECT_REF node, so I
-       * only need to make sure : (1) the last whirl stmt is for 
-       * the POST(INC/DEC); (2) the r.h.s doesnt re-define the 
-       * pointer 'p', but how to make sure about this ? 
        */
       tree post_inc_dec = TREE_OPERAND(lhs, 0);
-      tree var_node = TREE_OPERAND(post_inc_dec, 0);
-      if( TREE_CODE(post_inc_dec) == POSTINCREMENT_EXPR ||
-          TREE_CODE(post_inc_dec) == POSTDECREMENT_EXPR ){
-        /* Here I need to make sure it's of form *p++=.., and 
-         * 'p' is of a reasonable type which I can compare with the
-         * symbol name
-         */
-        Is_True( var_node && ( TREE_CODE(var_node)==VAR_DECL 
-                 || TREE_CODE(var_node)==PARM_DECL
-                 || TREE_CODE(var_node)==COMPONENT_REF
-                 || TREE_CODE(var_node)==INDIRECT_REF ), 
-                 ("Post{Inc|Dec} should be on variables or parameters, or component of struct"));
-
-        /* For indirect_ref, the actual symbol name for comparison is
-         * the first operand. However if the 1st operand is still a
-         * indirect ref, things will got too complex, just forget it
-         */
-        if( TREE_CODE(var_node) == INDIRECT_REF ) {
-          if( TREE_CODE(var_node) != PARM_DECL && 
-              TREE_CODE(var_node) != VAR_DECL ) {
-            DevWarn(" When handling *p++ consistent with gcc, there is *p++, p is a pointer to non-var-decl, non-parm-decl, NOT HANDLED yet!" );
-          } else 
-            var_node = TREE_OPERAND(var_node, 0);
-        }
-
-        sameness = FALSE;
-        /* for lhs being component ref (having no name), or lhs has 
-         * no name, I dont want to handle them, since too complex.
-         */
-        
-        if( DECL_NAME(var_node) && 
-            IDENTIFIER_POINTER(DECL_NAME(var_node)) )
-          sameness |= Same_Var( IDENTIFIER_POINTER(DECL_NAME(var_node)), rhs );
-        if( sameness ) {
-          DevWarn("ANSI C undefined behavior: *p++=...,p,.. or *p--=...,p,...");
-          WFE_Stmt_Prepend_Last(wn, Get_Srcpos());
-        }
-        else
-          WFE_Stmt_Append(wn, Get_Srcpos());
-      } else 
-        WFE_Stmt_Append(wn, Get_Srcpos());
-#else
-        WFE_Stmt_Append(wn, Get_Srcpos());
+      if(((TREE_CODE(post_inc_dec) == POSTINCREMENT_EXPR) ||
+          (TREE_CODE(post_inc_dec) == POSTDECREMENT_EXPR)) && Is_Special_Case(wn))
+        WFE_Stmt_Prepend_Last(wn, Get_Srcpos());
+      else 
 #endif
+        WFE_Stmt_Append(wn, Get_Srcpos());
+
 #if defined(TARG_SL)
       if (need_append) {
          WN *ldid_wn;
@@ -7917,22 +7915,6 @@ WFE_Expand_Expr (tree exp,
             WN_Intconst (Pointer_Mtype, rounded_size));
 	    } else
             /* Compute new value for AP.  */
-#if defined(TARG_SL) && (defined(EMULATE_LONGLONG) || defined(EMULATE_FLOAT_POINT))
-        if ((mtype == MTYPE_F8) || (mtype == MTYPE_I8) || (mtype == MTYPE_U8)
-            || (mtype == MTYPE_M && TY_fld(ty_idx).Entry() 
-              && MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty_idx))))==8)) {
-
-          /* Force 8byte align, ((offset + 15) << 3) >> 3 */
-          wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
-              WN_Intconst (Pointer_Mtype, 8*2-1));
-
-          wn = WN_Binary (OPR_LSHR, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, 3));
-          wn = WN_Binary (OPR_SHL, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, 3));
-          if (mtype == MTYPE_M && TY_fld(ty_idx).Entry() 
-              && MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty_idx))))==8)
-            wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, rounded_size-8));
-        } else
-#endif
         {
           wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
               WN_Intconst (Pointer_Mtype, rounded_size));

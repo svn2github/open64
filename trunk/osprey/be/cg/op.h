@@ -756,6 +756,7 @@ extern BOOL OP_use_return_value(OP*);
 #define OP_c3_load(o)	        (TOP_is_c3_load(OP_code(o)))
 #define OP_c3_store(o)          (TOP_is_c3_store(OP_code(o)))
 
+#define OP_sl_special_ldst(o) (OP_c3_load(o) | OP_c3_store(o))
 #endif 
 
 #define OP_operand_info(o)	(ISA_OPERAND_Info(OP_code(o)))

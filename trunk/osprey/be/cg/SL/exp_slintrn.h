@@ -1,3 +1,15 @@
+/********************************************************************\
+|*                                                                  *|   
+|*  Copyright (c) 2006 by SimpLight Nanoelectronics.                *|
+|*  All rights reserved                                             *|
+|*                                                                  *|
+|*  This program is free software; you can redistribute it and/or   *|
+|*  modify it under the terms of the GNU General Public License as  *|
+|*  published by the Free Software Foundation; either version 2,    *|
+|*  or (at your option) any later version.                          *|
+|*                                                                  *|
+\********************************************************************/
+
 #ifndef exp_slintrn_included
 #define exp_slintrn_included  "exp_slintrn.h"
 extern TN *Expand_C3_INIT_ACC (WN *intrncall, TN *result, OPS *ops);

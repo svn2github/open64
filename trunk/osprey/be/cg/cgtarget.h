@@ -890,4 +890,7 @@ void Fix_Cache_Conflict_latency( BB *bb);
 extern BOOL CGTARG_Is_Thread_Local_Memory_OP(OP *op);
 #endif
 
+#ifdef TARG_SL
+extern void CGTARG_Mem_AR_Dep(OP *pred_op, OP *succ_op, CG_DEP_KIND kind);
+#endif
 #endif /* CGTARGET_INCLUDED */

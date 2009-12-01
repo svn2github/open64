@@ -1734,7 +1734,11 @@ Handle_Call_Site (WN *call, OPERATOR call_opr)
 static VARIANT Memop_Variant(WN *memop)
 {
   VARIANT variant = V_NONE;
+#if defined(TARG_SL)
+  INT     required_alignment = MTYPE_alignment(WN_desc(memop));
+#else
   INT     required_alignment = MTYPE_RegisterSize(WN_desc(memop));
+#endif
 
 #ifndef KEY
   /* If volatile, set the flag.
@@ -1776,6 +1780,12 @@ static VARIANT Memop_Variant(WN *memop)
 	if (TY_kind(ty) == KIND_POINTER) ty = TY_pointed(ty);
 	ty_align = TY_align(ty);
 	offset = WN_load_offset(memop);
+#if defined(TARG_SL) 
+	if (offset) {
+	  INT offset_align = offset % required_alignment;
+	  if (offset_align) ty_align = MIN(ty_align, offset_align);
+	}
+#endif
       }
       break;
     case OPR_ISTORE:
@@ -2587,6 +2597,19 @@ Handle_STID (WN *stid, OPCODE opcode)
       }
       else { // I8 <- I8 || I4 <- I4
         Expand_Expr(kid, stid, result);
+      }
+
+      // If the start address of a 64bit variable is the last param register($11) in wn_lower phase,
+      // Store the paired high-bit TN of it to stack. The paird TN of $11 should be $12.
+      // It should be consistent with ABI (targ_sim.cxx).
+      if ((MTYPE_byte_size(OPCODE_desc(opcode)) == 8) && (TN_number(result) == 12)) { 
+        TN *result_h = Get_TN_Pair(result);
+        if (result_h && (TN_number(result_h) == 13)) {         
+          Last_Mem_OP = OPS_last(&New_OPs);
+          TYPE_ID type_t = ((OPCODE_desc(opcode) == MTYPE_I8) ? MTYPE_I4 : MTYPE_U4); 
+          Exp_Store (type_t, result_h, SP_Sym, 0, &New_OPs, 0);
+          Set_OP_no_alias(OPS_last(&New_OPs));
+        }
       }
       
 #else   // TARG_SL && EMULATE_LONGLONG 
@@ -4526,7 +4549,10 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
 
 	/* If the constant is integer 0, it is always available in $0.
 	 */
-#if !(defined(TARG_SL) && defined(EMULATE_LONGLONG))
+#if defined(TARG_SL)
+	if (Zero_TN && (WN_const_val(expr) == 0)
+  && (opcode == OPC_I4INTCONST || opcode == OPC_U4INTCONST)) return Zero_TN;
+#else
 	if (Zero_TN && WN_const_val(expr) == 0) return Zero_TN;
 #endif
       }
@@ -5333,6 +5359,7 @@ static void Build_CFG(void)
 	  && BB_rid(BB_next(bb)) != NULL
 	  && CGRIN_entry(RID_cginfo(BB_rid(BB_next(bb)))) != BB_next(bb)) {
 	BB *region_entry = CGRIN_entry(RID_cginfo(BB_rid(BB_next(bb))));
+	FmtAssert(region_entry, ("Build_CFG : entry is NULL"));
 	ANNOTATION *ant = ANNOT_Get (BB_annotations(region_entry), ANNOT_LABEL);
 	OPS ops;
 	OPS_Init(&ops);
@@ -6799,6 +6826,9 @@ Handle_INTRINSIC_CALL (WN *intrncall)
 #endif
 	       )
         ) {
+#if defined(TARG_SL)
+   if (!((OP_code(op) == TOP_depb) && (i == (OP_opnds(op)-1)))) // Don't replace the hiden operand of depb.
+#endif
 	  Set_OP_opnd (op, i, result);
 	}
       }

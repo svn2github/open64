@@ -1,41 +1,14 @@
-/*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
-
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
-
-  This program is free software; you can redistribute it and/or modify it
-  under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation.
-
-  This program is distributed in the hope that it would be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-
-  Further, this software is distributed without any warranty that it is
-  free of the rightful claim of any third person regarding infringement 
-  or the like.  Any license provided herein, whether implied or 
-  otherwise, applies only to this software file.  Patent licenses, if 
-  any, provided herein do not apply to combinations of this program with 
-  other software, or any other product whatsoever.  
-
-  You should have received a copy of the GNU General Public License along
-  with this program; if not, write the Free Software Foundation, Inc., 59
-  Temple Place - Suite 330, Boston MA 02111-1307, USA.
-
-  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
-  Mountain View, CA 94043, or:
-
-  http://www.sgi.com
-
-  For further information regarding this notice, see:
-
-  http://oss.sgi.com/projects/GenInfo/NoticeExplan
-
-*/
-
+/********************************************************************\
+|*                                                                  *|   
+|*  Copyright (c) 2006 by SimpLight Nanoelectronics.                *|
+|*  All rights reserved                                             *|
+|*                                                                  *|
+|*  This program is free software; you can redistribute it and/or   *|
+|*  modify it under the terms of the GNU General Public License as  *|
+|*  published by the Free Software Foundation; either version 2,    *|
+|*  or (at your option) any later version.                          *|
+|*                                                                  *|
+\********************************************************************/
 
 /* =======================================================================
  * =======================================================================
@@ -319,6 +292,16 @@ Expand_Extract_Bits (TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_size
     FmtAssert( FALSE, ("Handle this case"));
 }
 
+BOOL OP_is_hw_store(OP *op)
+{
+  return OP_code(op) == TOP_sh;
+}
+
+BOOL OP_is_byte_store(OP *op)
+{
+  return OP_code(op) == TOP_sb;
+}
+
 BOOL
 delete_subset_mem_op(OP *op,
                      EBO_TN_INFO **opnd_tninfo,
@@ -380,7 +363,7 @@ delete_subset_mem_op(OP *op,
 
   byte_offset = offset_succ - offset_pred;
 
-  if (!OP_store(pred_op) || !OP_load(op)) {
+  if (!OP_store(pred_op) || !OP_load(op)) { //What about ld ld
    /* Can only optimize Store - Load pattern. */
     return FALSE;
   }
@@ -400,7 +383,34 @@ delete_subset_mem_op(OP *op,
 
   if (offset_succ == offset_pred &&
       size_pred == size_succ) {
-    Build_OP(TOP_or, OP_result(op, 0), OP_opnd(pred_op, 0), Zero_TN, &ops);
+    if ((OP_is_hw_store(pred_op) || OP_is_byte_store(pred_op)) && OP_load(op)) {
+    /* Handle "stb, ldb" or "sth, ldh" 
+     * Special case:
+     *       stb $5, 1($7)
+     *       ldb $6, 1($7)
+     * 
+     * if we know that $5 is only one byte, then the case can be translated to
+     *       stb $5, 1($7)
+     *       or  $6, $5, 0 (it is a copy, it can be deleted in next EBO phase)
+     * 
+     * otherwise, it will be translated to be
+     *       stb $5, 1($7)
+     *       and.i $6, $5, 0xff (it can't be deleted)
+     */
+      WN *pred_wn = OP_hoisted(pred_op) ? NULL : Get_WN_From_Memory_OP(pred_op);
+
+      if (pred_wn && WN_kid0(pred_wn) && (WN_rtype(WN_kid0(pred_wn)) == WN_rtype(pred_wn))) {
+        Build_OP(TOP_or, OP_result(op, 0), OP_opnd(pred_op, 0), Zero_TN, &ops);
+      } else {
+        if (OP_is_hw_store(pred_op))
+          Build_OP(TOP_andi, OP_result(op, 0), OP_opnd(pred_op, 0), Gen_Literal_TN(0xFFFF, 4), &ops);
+
+        if (OP_is_byte_store(pred_op))
+          Build_OP(TOP_andi, OP_result(op, 0), OP_opnd(pred_op, 0), Gen_Literal_TN(0xFF, 4), &ops);
+      }
+    } else {
+      Build_OP(TOP_or, OP_result(op, 0), OP_opnd(pred_op, 0), Zero_TN, &ops);
+    }
     OP_srcpos(OPS_first(&ops)) = OP_srcpos(op);
     BB_Insert_Ops_After(OP_bb(op), op, &ops);
     return TRUE;
@@ -1002,7 +1012,7 @@ Resolve_Conditional_Branch (OP *op, TN **opnd_tn)
 
   if (OP_opnds(op) > 1)
   {
-    tn1 = opnd_tn[1];
+    tn1 = opnd_tn[1];    
     tn1_val = TN_Value (tn1);
     tn1_uval = TN_Value (tn1);
   }
@@ -1015,6 +1025,10 @@ Resolve_Conditional_Branch (OP *op, TN **opnd_tn)
     taken = (tn0_uval == tn1_uval);
   else if (top == TOP_bgez)
     taken = (tn0_val >= 0);
+  else if (top == TOP_bgtz)
+    taken = (tn0_val > 0);
+  else if (top == TOP_blez)
+    taken = (tn0_val <= 0);
   else if (top == TOP_bltz)
     taken = (tn0_val < 0);
   else if (top == TOP_bne) 
@@ -1073,7 +1087,7 @@ Resolve_Conditional_Branch (OP *op, TN **opnd_tn)
  * evaluate the expression.
  *
  * Supported operations are:
- *   add, sub, mult, and, or, xor, nor, sll, srl, slt
+ *   add, sub, mult, and, or, xor, nor, sll, srl, slt, setlt, setltu
  */
 BOOL
 Fold_Constant_Expression (OP *op,
@@ -1172,49 +1186,62 @@ Fold_Constant_Expression (OP *op,
 
   if (OP_opnds(op) > 1 && !TN_is_symbol(tn1))
   {
-    if (opcode == TOP_sub)
+    if (TOP_is_isub(opcode))  
     {
       result_val = tn0_val - tn1_val;
       goto Constant_Created;
     }
   }
 
-  /* Logical... */
+  /* Bitwise Logical... */
   
-  if (opcode == TOP_and)
+  if (TOP_is_iand(opcode))
   {
     result_val = tn0_uval & tn1_uval;
     goto Constant_Created;
   }
-  else if (opcode == TOP_or)
+  else if (TOP_is_ior(opcode))
   {
     result_val = tn0_uval | tn1_uval;
     goto Constant_Created;
   }
-  else if (opcode == TOP_xor)
+  else if (TOP_is_ixor(opcode))
   {
     result_val = tn0_uval ^ tn1_uval;
+    goto Constant_Created;
+  }
+  else if (opcode == TOP_nor)
+  {
+    result_val = ~ (tn0_uval | tn1_uval);
     goto Constant_Created;
   }
     
   /* Shift... */
 
-  if (opcode == TOP_sll)
+  if ((opcode == TOP_sll) || (opcode == TOP_sllv))
   {
     result_val = TRUNC_32(tn0_uval << tn1_uval);
     goto Constant_Created;
   }
-  else if (opcode == TOP_sra)
+  else if ((opcode == TOP_sra) || (opcode == TOP_srav))
   {
     result_val = tn0_val >> tn1_uval;
     goto Constant_Created;
   }
-  else if (opcode == TOP_srl)
+  else if ((opcode == TOP_srl) || (opcode == TOP_srlv))
   {
     result_val = TRUNC_32(tn0_val) >> tn1_uval;
     goto Constant_Created;
   }
 
+  /* Integer compare operator: setlt, setltu, setlt.i, setltu.i */
+
+  if (TOP_is_icmp(opcode)) 
+  {
+    result_val = tn0_val < tn1_val;
+    goto Constant_Created;
+  }
+  
   return FALSE;
 
   /* We've evaluated the expression, so replace it with the result. */
@@ -1633,6 +1660,19 @@ BOOL Special_Sequence (OP *op,
       }
       return TRUE;
     }    
+  }if ((OP_code(op) == TOP_slt) || (OP_code(op) == TOP_sltu)) {
+    TN *opnd0 = OP_opnd(op, 0);
+    TN *opnd1 = OP_opnd(op, 1);
+    if (TNs_Are_Equivalent(opnd0, opnd1)) {
+      OP *new_op;
+      OPS ops = OPS_EMPTY;
+      Expand_Copy(OP_result(op, 0), Zero_TN, MTYPE_I4, &ops);
+      BB_Insert_Ops(OP_bb(op), op, &ops, FALSE);
+      if (EBO_Trace_Optimization) {
+        fprintf(TFile, "setltu/setlt is changed to mv.\n");
+      }
+      return TRUE;
+    }
   }
 
   TOP top = OP_code(op);
@@ -1674,6 +1714,86 @@ BOOL Special_Sequence (OP *op,
   return FALSE;
 }
 
+static BOOL OP_is_shift (OP *op) 
+{
+  TOP top = OP_code(op);
+
+  if (top == TOP_srl || top == TOP_sra || top == TOP_sll
+      || top == TOP_dsrl || top == TOP_dsra || top == TOP_dsll 
+      || top == TOP_dsll32 || top == TOP_dsra32 || top == TOP_dsrl32)
+    return TRUE;
+  else
+    return FALSE;
+}
+ 
+/* see if the result register of OP is re-defined before block end */
+static BOOL Is_Result_Redefined(OP *op)
+{
+  TN *result = OP_result(op, 0);
+
+  for (OP* dw_op = OP_next(op); dw_op != NULL; dw_op = OP_next(dw_op)) {
+    if ((OP_code(dw_op) != TOP_asm) && OP_results(dw_op)) {
+      for (int i=0; i < OP_results(dw_op); i++) {
+        if (TN_is_register(OP_result(dw_op, i)) 
+            && (TN_register_class(OP_result(dw_op, i)) == TN_register_class(result)) 
+            && (TN_register(OP_result(dw_op, i)) == TN_register(result))) {
+          return TRUE;
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
+static BOOL Is_Res_Used_After_Src_Redef(OP *dw_op, TN *result, TN *src)
+{
+  /* result = src; (last copy op) 
+   * src = other;  (dw_op, other is not equal to result)
+   */
+  for (int i=0; i < OP_results(dw_op); i++) {
+    if (TN_is_register(OP_result(dw_op, i)) 
+        && TNs_Are_Equivalent(OP_result(dw_op, i), src)) {
+      /* search if 'result' is being used after dw_op */
+      for (OP* dw1_op = OP_next(dw_op); dw1_op != NULL; dw1_op = OP_next(dw1_op)){
+        for (int i = 0; i < OP_opnds(dw1_op); i++) {
+          if (TN_is_register(OP_opnd(dw1_op, i)) 
+              && TNs_Are_Equivalent(OP_opnd(dw1_op, i), result)) {
+            return TRUE;
+          } 
+        } 
+      } 
+    } 
+  } 
+  return FALSE;
+}
+
+static BOOL Is_Res_Or_Src_Redef(TN *src, TN *result, OP *dw_op, BOOL special_case)
+{
+  for (int i=0; i<OP_results(dw_op); i++) {
+    TN* tnr = OP_result(dw_op, i);
+  
+    if (TN_is_register(tnr) 
+        && (TNs_Are_Equivalent(tnr, result) 
+          || TNs_Are_Equivalent(tnr, src))) {
+      if (special_case) {
+        if ((CGTARG_Copy_Operand(dw_op) >= 0)
+          && (TNs_Are_Equivalent(tnr, src))
+          && (TNs_Are_Equivalent(OP_opnd(dw_op, CGTARG_Copy_Operand(dw_op)), src)))
+          /* res = src
+           * src = result    it has been replaced by "src = src" before Is_Res_Or_Src_Redef
+           * other = result  continure tranverse
+           */
+          return FALSE;
+        else 
+          return TRUE;
+      } else {
+        return TRUE;
+      }
+    }
+  }
+  return FALSE;
+}
+
 /* This is used to eliminate unnecessry shift operations like:
  *     TN78($2) :-  dsrl32 TN1($0) <const> ;
  * Replace uses of the result with Zero_TN, and eliminate the shift op.
@@ -1684,275 +1804,126 @@ BOOL Special_Sequence (OP *op,
  */
 void Redundancy_Elimination()
 {
-  for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next( bb ) ){
-    if( BB_rid(bb) && (RID_level(BB_rid(bb)) >= RL_CGSCHED) ){
-      // don't change bb's which have already been through CG
+  for (BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
+    if (BB_rid(bb) && (RID_level(BB_rid(bb)) >= RL_CGSCHED)) {
+      /* don't change bb's which have already been through CG */
       continue;
     }
-    if (CG_skip_local_ebo &&
-        ((BB_id(bb) < CG_local_skip_before) ||
-         (BB_id(bb) > CG_local_skip_after)  ||
-         (BB_id(bb) == CG_local_skip_equal)))
+    
+    if (CG_skip_local_ebo 
+     && ((BB_id(bb) < CG_local_skip_before) 
+      || (BB_id(bb) > CG_local_skip_after) 
+      || (BB_id(bb) == CG_local_skip_equal)))
       continue;
-    for( OP* op = BB_first_op( bb ); op != NULL; op = OP_next( op ) ){
+    
+    for (OP* op = BB_first_op(bb); op != NULL; op = OP_next(op)) {
       BOOL done = FALSE;
       INT copy_operand = CGTARG_Copy_Operand(op);
-      if (copy_operand >= 0) {
-	// Other ops could be rendered uselesss by the shift removal.
-	// Example:
-	//   TN969 :- srl TN1($0) (0x3) ;
-	//   TN969 :- xor TN969<defopnd> TN916 ; 
-	// Here, the xor operation is uselss if TN969 is not live 
-	// out of this block and can be replaced by TN916.
+      INT zero_shift   = (OP_is_shift(op) && (OP_opnd(op, 0) == Zero_TN));
 
-	/* The whole point is to get rid of result and replace 
-	   with copy_operand */
+      if (copy_operand >= 0 || zero_shift) {
 
-	TN* src = OP_opnd( op, copy_operand );
-	TN* result = OP_result( op, 0 );
-	
-	FmtAssert( TN_is_register( src ) && TN_is_register( result ), 
-		   ("src/result not registers in EBO_in_peep"));
-	
-	// do not delete assignment to result if result is live out
-	if (REG_LIVE_Outof_BB (TN_register_class(result), 
-			       TN_register(result), bb)) {
-	  // see if the register is re-defined before block end
-	  // we can still delete the op if there is a re-definition
-	  BOOL redefined = FALSE;
-	  for( OP* dw_op = OP_next( op ); dw_op != NULL; dw_op = OP_next( dw_op ) ){
-	    if ((OP_code(dw_op) != TOP_asm) && 
-		OP_results(dw_op) &&
-		TN_is_register(OP_result(dw_op, 0)) &&
-		(TN_register_class(OP_result(dw_op, 0)) == 
-		 TN_register_class(result)) &&
-		(TN_register(OP_result(dw_op, 0)) == TN_register(result))) {
-	      redefined = TRUE;
-	      break;
-	    }
-	  }
-	  if (redefined == FALSE)
-	    continue;
-	}
+        TN *src, *result;
+        if (zero_shift) {
+          src = Zero_TN;
+        } else {
+          src = OP_opnd(op, copy_operand);
+        }
+        result = OP_result(op, 0);
 
-	/* SPECIAL_CASE:
-	 * In the following scenario, the copy_op can not be deleted 
-	 *    a = b   << copy_op >>
-	 *      = a
-	 *    b =     << redef >>
-	 *      = a
-	 * NOTE: If redef is a copy op and copy operand is 'a'
-	 *       then copy_op can be removed
-	 *       In this special_case, we have to look beyond redef,
-	 *       and, delete all uses of 'a' until 'a' is re-defined.
-	 */
-	BOOL cannot_be_removed = FALSE;
-	BOOL special_case = FALSE;
-	for( OP* dw_op = OP_next( op ); dw_op != NULL; 
-	     dw_op = OP_next( dw_op ) ){
-	  if ((OP_code(dw_op) != TOP_asm) && 
-	      OP_results(dw_op) &&
-	      TN_is_register( OP_result( dw_op, 0)) &&
-	      TNs_Are_Equivalent( OP_result( dw_op, 0), src)) {
-	    
-	    // see NOTE above
-	    INT dw_op_copy_operand = CGTARG_Copy_Operand(dw_op);
-	    TN *dw_op_copy_operand_tn = 
-	      (dw_op_copy_operand>=0)?OP_opnd(dw_op, dw_op_copy_operand):NULL;
-	    if ((dw_op_copy_operand >= 0) && 
-		TN_is_register( dw_op_copy_operand_tn) &&
-		TNs_Are_Equivalent(dw_op_copy_operand_tn, result)) {
-	      special_case = TRUE;
-	      break;
-	    }
-	    
-	    // search if 'result' is being used after dw_op
-	    for( OP* dw1_op = OP_next( dw_op ); dw1_op != NULL; 
-		 dw1_op = OP_next( dw1_op ) ){
-#ifdef TARG_SL2 
-     /*   
-       *   [1] TN20($5) = TN16($6) TN1($0) ; copy
-       *   [2]               = TN20($5)  GTN30($sp) (sym:satd_acc_5+0) ;
-       *   [3] TN17($6) = 
-       *   [4] TN22($5) =
-       *   [5] TN19($6) = OP TN18($6) TN22($5)
-       */      
-             BOOL redef = FALSE;
-             for(int i = 0; i < OP_results(dw1_op); i++) {
-               if(TN_is_register(OP_result(dw1_op, i)) && 
-		      TNs_Are_Equivalent(OP_result(dw1_op, i), result)) {
-                        redef = TRUE;
-			   cannot_be_removed=TRUE;
-			   break; //redefined = true;
-               }			   
-	      }
-	      if(redef)
-		  break;
-#endif 
-	      for( int i = 0; i < OP_opnds( dw1_op ); i++ ){
-		if ( TN_is_register( OP_opnd( dw1_op, i)) &&
-		     TNs_Are_Equivalent( OP_opnd( dw1_op, i), result)) {
-		  cannot_be_removed = TRUE;
-		  break;
-		}
-	      }
-	    }
-	    if (cannot_be_removed)
-	      break;
-	  }
-#ifdef TARG_SL2	  
-         if(OP_same_res(dw_op) || (OP_code(dw_op) == TOP_c2_satd || 
-	      OP_code(dw_op) == TOP_c2_sad) || OP_code(dw_op) == TOP_c2_muls) {
-	     for (INT i = 0; i < OP_results(dw_op); i++) 
-              if(TNs_Are_Equivalent(result,  OP_result(dw_op, i)))  {
-	           cannot_be_removed = TRUE;
-		    break;
-              }			
-         }
-#endif 
-	}
-	if (cannot_be_removed)
-	  continue;	
+        FmtAssert(TN_is_register(src) && TN_is_register(result), 
+            ("src/result not registers in EBO_in_peep"));
 
-	/* Traverse downwards; replace result with src */
+        /* do not delete op if result is live out 
+         * we can still delete the op if there is a re-definition before block-end
+         */
+        if (REG_LIVE_Outof_BB (TN_register_class(result), TN_register(result), bb)) {
+          if (Is_Result_Redefined(op) == FALSE) continue;
+        }
 
-	for( OP* dw_op = OP_next( op ); dw_op != NULL; 
-	     dw_op = OP_next( dw_op ) ){
+        /* SPECIAL_CASE:
+         * In the following scenario, the copy_op can not be deleted 
+         *    a = b   << copy_op >>
+         *      = a
+         *    b =     << redef >>
+         *      = a
+         * NOTE: If redef is a copy op and copy operand is 'a'
+         *       then copy_op can be removed
+         *       In this special_case, we have to look beyond redef,
+         *       and, delete all uses of 'a' until 'a' is re-defined.
+         */
 
-	  for( int i = 0; i < OP_opnds( dw_op ); i++ ){
-	    if ( TN_is_register( OP_opnd( dw_op, i)) && 
-		 TNs_Are_Equivalent( OP_opnd( dw_op, i), result)) {
-	      Set_OP_opnd( dw_op, i, src );
-	      done = TRUE;
-	    }
-	  }
-/* need check instruction with two results */ 
-#ifdef TARG_SL2 
-	  if( OP_results( dw_op ) > 0 ){
-#else 
-	  if( OP_results( dw_op ) == 1 ){
-#endif 	  	
+        BOOL cannot_be_removed = FALSE;
+        BOOL special_case = FALSE;
+        BOOL result_replace = FALSE;
+        for (OP* dw_op = OP_next(op); dw_op != NULL; dw_op = OP_next(dw_op)) {
+          if ((OP_code(dw_op) != TOP_asm) && OP_results(dw_op)) {
 
-#ifdef TARG_SL2 
-	    TN* tnr = OP_result( dw_op, 0 );
-           if(OP_code(dw_op) == TOP_c2_sad || OP_code(dw_op) == TOP_c2_satd ||
-            OP_code(dw_op) == TOP_c2_muls)
-             tnr = OP_result(dw_op, 1);
-#else 
-	    TN* tnr = OP_result( dw_op, 0 );
-#endif 
+            INT dw_op_copy_operand = CGTARG_Copy_Operand(dw_op);
+            TN *dw_op_copy_operand_tn = (dw_op_copy_operand>=0)?OP_opnd(dw_op, dw_op_copy_operand):NULL;
+            if ((dw_op_copy_operand >= 0) 
+                && TN_is_register(dw_op_copy_operand_tn) 
+                && TNs_Are_Equivalent(dw_op_copy_operand_tn, result)) {
+              /* Special case 1: 
+               * result = src; src = result;
+               */
+              special_case = TRUE;
+              break;
+            } else if ((OP_same_res(dw_op)) 
+                    && (TNs_Are_Equivalent(OP_result(dw_op, 0), result))) {
+              /* Special case 2: 
+               * result = src; depb res, src
+               *      (hiden operator, not emit, it must be same with res), ...
+               */
+              cannot_be_removed = TRUE;
+              break;
+            } else {
+              if (Is_Res_Used_After_Src_Redef(dw_op, result, src) == TRUE) {
+                cannot_be_removed = TRUE;
+                break;
+              } 
+            }
+          } 
+        } 
 
-	    if( TN_is_register( tnr) && 
-		( TNs_Are_Equivalent( tnr, result ) || 
-		  TNs_Are_Equivalent( tnr, src ) )) {
-	      if (special_case) {
-		if (TNs_Are_Equivalent ( tnr, result ))
-		  break;
-	      } else {
-		break;
-	      }
-	    }
-	  }
-	}      
+        if (cannot_be_removed) continue;
 
-	if( done ){
-	  OP* dead = op;
-	  op = OP_prev( op );
-	  
-	  if( EBO_Trace_Optimization ){
-	    fprintf( TFile, 
-		     "Redundancy_Elimination removes simplified op - " );
-	    Print_OP_No_SrcLine( dead );
-	  }
-	  
-	  BB_Remove_Op( bb, dead );
-	  
-	  if( op == NULL )
-	    op = BB_first_op( bb );
-	}       
+        /* Traverse downwards; replace result with src 
+         * (1) result = src; ...; result = other op t; 
+         *  or result = src; ...; src = result op other; no use result;  
+         *     replace util src or result is redefined..
+         * (2) Special Case: 
+         *     result = src; src = result; ...; 
+         *     replace util src = other, or result is redefined 
+         */
+        for (OP* dw_op = OP_next(op); dw_op != NULL; dw_op = OP_next(dw_op)) {
+          for (int i = 0; i < OP_opnds(dw_op); i++) {
+            if (TN_is_register(OP_opnd(dw_op, i)) 
+             && TNs_Are_Equivalent(OP_opnd(dw_op, i), result)) {
+              Set_OP_opnd(dw_op, i, src);
+              done = TRUE;
+            }
+          }
 
-	continue; // end for this op
-      }
+          /* Tranverse done util result or src is redefined */ 
+          if (Is_Res_Or_Src_Redef(src, result, dw_op, special_case) == TRUE)
+            break;
+        }      
 
-      if (OP_code( op ) != TOP_srl && 
-	  OP_code( op ) != TOP_sra && 
-	  OP_code( op ) != TOP_sll && 
-	  OP_code( op ) != TOP_dsrl && 
-	  OP_code( op ) != TOP_dsra && 
-	  OP_code( op ) != TOP_dsll && 
-	  OP_code( op ) != TOP_dsll32 && 
-	  OP_code( op ) != TOP_dsra32 && 
-	  OP_code( op ) != TOP_dsrl32)
-	continue;
+        if (done) {
+          OP *dead = op;
+          op = OP_prev(op);
 
-      /* The whole point is to get rid of result. */
+          if (EBO_Trace_Optimization){
+            fprintf(TFile, "Redundancy_Elimination removes simplified op - ");
+            Print_OP_No_SrcLine(dead);
+          }
 
-      TN* src = OP_opnd( op, 0 );
-      TN* result = OP_result( op, 0 );
+          BB_Remove_Op(bb, dead);
 
-      FmtAssert( TN_is_register( src ) && TN_is_register( result ), 
-		 ("src/result not registers in EBO_in_peep"));
-      
-      if (OP_opnd( op, 0) != Zero_TN)
-	continue;
-
-      // do not delete assignment to result if result is live out
-      if (REG_LIVE_Outof_BB (TN_register_class(result), 
-			     TN_register(result), bb)) {
-	// see if the register is re-defined before block end
-	// we can still delete the op if there is a re-definition
-	BOOL redefined = FALSE;
-	for( OP* dw_op = OP_next( op ); dw_op != NULL; 
-	     dw_op = OP_next( dw_op ) ){
-	  if (OP_results(dw_op) &&
-	      TN_is_register(OP_result(dw_op, 0)) &&
-	      (TN_register_class(OP_result(dw_op, 0)) == 
-	       TN_register_class(result)) &&
-	      (TN_register(OP_result(dw_op, 0)) == TN_register(result))) {
-	    redefined = TRUE;
-	    break;
-	  }
-	}
-	if (redefined == FALSE)
-	  continue;
-      }
-
-      /* Traverse downwards; replace result with Zero_TN */
-
-      for( OP* dw_op = OP_next( op ); dw_op != NULL; 
-	   dw_op = OP_next( dw_op ) ){
-	for( int i = 0; i < OP_opnds( dw_op ); i++ ){
-	  if( TN_is_register(OP_opnd( dw_op, i)) && 
-	      (TN_register_class(OP_opnd(dw_op, i)) == 
-	       TN_register_class(result)) &&
-	      (TN_register(OP_opnd( dw_op, i )) == TN_register(result))) {
-	    Set_OP_opnd( dw_op, i, Zero_TN );
-	    done = TRUE;
-	  }
-	}
-
-	if( OP_results( dw_op ) == 1 ){
-	  TN* tnr = OP_result( dw_op, 0 );
-
-	  if( TN_is_register( tnr) && 
-	      TNs_Are_Equivalent( tnr, result ) )
-	    break;
-	}
-      }      
-
-      if( done ){
-	OP* dead = op;
-	op = OP_prev( op );
-
-	if( EBO_Trace_Optimization ){
-	  fprintf( TFile, "Redundancy_Elimination removes simplified op - " );
-	  Print_OP_No_SrcLine( dead );
-	}
-
-	BB_Remove_Op( bb, dead );
-
-	if( op == NULL )
-	  op = BB_first_op( bb );
+          if (op == NULL)
+            op = BB_first_op(bb);
+        }       
       }
     }
   }   

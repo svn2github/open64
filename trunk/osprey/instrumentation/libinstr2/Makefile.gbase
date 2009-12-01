@@ -107,7 +107,7 @@ CXXFLAGS += -O2 -fno-exceptions -nostdinc++ $(NO_UNWIND) -D_INCLUDED_FROM_LIBINS
 endif
 
 ifeq ($(BUILD_TARGET), SL)
-CXXFLAGS += -O2 -fno-exceptions -nostdinc++ -CG:emit_unwind_info=off -D_INCLUDED_FROM_LIBINSTR -msoft-float 
+CXXFLAGS += -O2 -fno-exceptions -nostdinc++ -CG:emit_unwind_info=off -D_INCLUDED_FROM_LIBINSTR -msoft-float -gnu42 -keep -show 
 endif
 
 #----------------------------------------------------------------------

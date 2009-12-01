@@ -60,7 +60,7 @@
 
 #include "defs.h"
 #include "mtypes.h"
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
 #include "config_targ.h"  // for Is_Target_32bit()
 #endif
 
@@ -71,13 +71,25 @@ TYPE_DESC Machine_Types[] =
   { MTYPE_I1,	 8,  8,	 8, 1,	1, 1,	1, 0, 0, "I1",MTYPE_CLASS_INTEGER,1, MTYPE_U1 },
   { MTYPE_I2,	16, 16,	16, 2,	2, 2,	1, 0, 0, "I2",MTYPE_CLASS_INTEGER,3, MTYPE_U2 },
   { MTYPE_I4,	32, 32,	32, 4,	4, 4,	1, 0, 0, "I4",MTYPE_CLASS_INTEGER,5, MTYPE_U4 },
+#if defined(TARG_SL)
+  { MTYPE_I8,	64, 64,	64, 4,	8, 8,	1, 0, 0, "I8",MTYPE_CLASS_INTEGER,7, MTYPE_U8 },
+#else
   { MTYPE_I8,	64, 64,	64, 8,	8, 8,	1, 0, 0, "I8",MTYPE_CLASS_INTEGER,7, MTYPE_U8 },
+#endif
   { MTYPE_U1,	 8,  8,	 8, 1,	1, 1,	0, 0, 0, "U1",MTYPE_CLASS_UNSIGNED_INTEGER,2, MTYPE_I1 },
   { MTYPE_U2,	16, 16,	16, 2,	2, 2,	0, 0, 0, "U2",MTYPE_CLASS_UNSIGNED_INTEGER,4, MTYPE_I2 },
   { MTYPE_U4,	32, 32,	32, 4,	4, 4,	0, 0, 0, "U4",MTYPE_CLASS_UNSIGNED_INTEGER,6, MTYPE_I4 },
+#if defined(TARG_SL)
+  { MTYPE_U8,	64, 64,	64, 4,	8, 8,	0, 0, 0, "U8",MTYPE_CLASS_UNSIGNED_INTEGER,8, MTYPE_I8 },
+#else
   { MTYPE_U8,	64, 64,	64, 8,	8, 8,	0, 0, 0, "U8",MTYPE_CLASS_UNSIGNED_INTEGER,8, MTYPE_I8 },
+#endif
   { MTYPE_F4,	32, 32,	32, 4,	4, 4,	1, 1, 0, "F4",MTYPE_CLASS_FLOAT,9, MTYPE_F4 },
+#ifdef TARG_SL
+  { MTYPE_F8,	64, 64,	64, 4,	8, 8,	1, 1, 0, "F8",MTYPE_CLASS_FLOAT,11, MTYPE_F8 },
+#else
   { MTYPE_F8,	64, 64,	64, 8,	8, 8,	1, 1, 0, "F8",MTYPE_CLASS_FLOAT,11, MTYPE_F8 },
+#endif
   { MTYPE_F10, 128,128,128,16, 16,16,	1, 1, 0, "F10",MTYPE_CLASS_FLOAT,13, MTYPE_F10 },
   { MTYPE_F16, 128,128,128,16, 16,16,	1, 1, 0, "F16",MTYPE_CLASS_FLOAT,15, MTYPE_F16 },
   { MTYPE_STR,	 0,  0,	 0, 1,	1, 4,	0, 0, 0, "STR",MTYPE_CLASS_STR,0, MTYPE_STR },
@@ -267,7 +279,7 @@ TYPE_ID Mtype_AlignmentClass(INT32 align, mUINT8 type_class)
 {
   INT32	i;
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
   /* Some callers, e.g., lower_bit_field_id(), assume the alignment is
      the same as the natural size. But that is not true under -m32 for
      MTYPE_I8 and MTYPE_U8, whose alignments are 4-byte-long.

@@ -347,6 +347,7 @@ struct tree_code_property {
  { GS_VEC_DELETE_EXPR,	13,	 GS_TCC_EXPRESSION, "GS_VEC_DELETE_EXPR" },
  { GS_VEC_NEW_EXPR,	13,	 GS_TCC_EXPRESSION, "GS_VEC_NEW_EXPR" },
  { GS_TEMPLATE_TEMPLATE_PARM,	27,	 GS_TCC_TYPE, "GS_TEMPLATE_TEMPLATE_PARM" },
+ { GS_FREQ_HINT_STMT,	13,	 GS_TCC_EXPRESSION, "GS_FREQ_HINT_STMT" },
 };
 
 // return storage size in bytes for the gspin node

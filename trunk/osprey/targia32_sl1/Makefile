@@ -54,7 +54,7 @@ LIBRARY_SUBDIRS := \
 	libelf \
 	libelfutil \
 	libiberty  \
-	libunwindP \ 
+	libunwindP \
 	libspin_4_2_0 \
 	libspin 
 
@@ -80,13 +80,9 @@ TOOL_SUBDIRS := \
 	gccfe \
 	g++fe  \
 	wgen	\
-	wgen_4_2_0   
-#	libinstr
-#	lno \
-#	gccfe \
-#       g++fe \
-#	crayf90 
-
+	wgen_4_2_0 \
+	libinstr \
+	lno 
 
 SUBDIRS := $(INCLUDE_SUBDIRS) $(LIBRARY_SUBDIRS) $(TOOL_SUBDIRS)
 

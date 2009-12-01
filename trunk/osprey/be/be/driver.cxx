@@ -2160,7 +2160,10 @@ void init_ti_target(void *handle) {
   } else if (Is_Target_Sl1_dsp()) {
     soname = (char*)alloca( strlen("sl1_dsp.so")+1 );
     strncpy( soname, "sl1_dsp.so", strlen("sl1_dsp.so")+1 );
-  }else if (Target == TARGET_UNDEF) {
+  } else if (Is_Target_Sl5()) {
+    soname = (char*)alloca( strlen("sl5.so")+1 );
+    strncpy( soname, "sl5.so", strlen("sl5.so")+1 );
+  } else if (Target == TARGET_UNDEF) {
     Is_True(0, ("undefined target"));
   }
   handle = dlopen(soname, RTLD_LAZY);

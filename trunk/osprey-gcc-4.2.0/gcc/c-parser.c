@@ -5588,6 +5588,11 @@ c_parser_expression_conv (c_parser *parser)
   struct c_expr expr;
   expr = c_parser_expression (parser);
   expr = default_function_array_conversion (expr);
+#ifdef TARG_SL
+  /* Verify sequence points for expr, Warning for undefined behaviors */
+  if (warn_sequence_point)
+    verify_sequence_points (expr.value);
+#endif
   return expr;
 }
 

@@ -1,41 +1,14 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
-
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
-
-  This program is free software; you can redistribute it and/or modify it
-  under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation.
-
-  This program is distributed in the hope that it would be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-
-  Further, this software is distributed without any warranty that it is
-  free of the rightful claim of any third person regarding infringement 
-  or the like.  Any license provided herein, whether implied or 
-  otherwise, applies only to this software file.  Patent licenses, if 
-  any, provided herein do not apply to combinations of this program with 
-  other software, or any other product whatsoever.  
-
-  You should have received a copy of the GNU General Public License along
-  with this program; if not, write the Free Software Foundation, Inc., 59
-  Temple Place - Suite 330, Boston MA 02111-1307, USA.
-
-  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
-  Mountain View, CA 94043, or:
-
-  http://www.sgi.com
-
-  For further information regarding this notice, see:
-
-  http://oss.sgi.com/projects/GenInfo/NoticeExplan
-
-*/
-
+/********************************************************************\
+|*                                                                  *|   
+|*  Copyright (c) 2006 by SimpLight Nanoelectronics.                *|
+|*  All rights reserved                                             *|
+|*                                                                  *|
+|*  This program is free software; you can redistribute it and/or   *|
+|*  modify it under the terms of the GNU General Public License as  *|
+|*  published by the Free Software Foundation; either version 2,    *|
+|*  or (at your option) any later version.                          *|
+|*                                                                  *|
+\********************************************************************/
 
 #ifndef config_targ_INCLUDED
 #define config_targ_INCLUDED
@@ -132,6 +105,7 @@ typedef enum {
   TARGET_sl1_dsp,
   TARGET_sl2_pcore,
   TARGET_sl2_mcore,
+  TARGET_sl5,
 } TARGET_PROCESSOR;
 #define Is_Target_Sb1() (Target == TARGET_sb1)
 #define Is_Target_R10K() (Target == TARGET_R10K)
@@ -140,6 +114,7 @@ typedef enum {
 #define Is_Target_Sl1_dsp() (Target == TARGET_sl1_dsp)
 #define Is_Target_Sl2_pcore() (Target == TARGET_sl2_pcore)
 #define Is_Target_Sl2_mcore() (Target == TARGET_sl2_mcore)
+#define Is_Target_Sl5() (Target == TARGET_sl5)
 #endif
 #define Is_Target_64bit() (Target_ABI == ABI_N64)
 #define Is_Target_Opteron() (0)
@@ -150,6 +125,7 @@ extern TARGET_PROCESSOR Target;		/* -Tc */
 extern char *Targ_Name (TARGET_PROCESSOR target);
 
 #define Is_Target_Itanium()	(Target==TARGET_ITANIUM)
+#define Is_Target_32bit()   (Target_ABI==ABI_N32)
 
 
 /* ========== */

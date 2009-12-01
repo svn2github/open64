@@ -647,6 +647,13 @@ static OPTION_DESC Options_CG[] = {
     INT32_MAX, 0, INT32_MAX, &CG_zdl_skip_b, NULL },
   { OVK_BOOL,  OV_INTERNAL, TRUE, "opt_condmv", "",
     0, 0, 0,   &CG_enable_opt_condmv, NULL},
+  { OVK_BOOL,  OV_INTERNAL, TRUE, "CBUS_workaround", "",
+    0, 0, 0,   &CG_enable_CBUS_workaround, NULL},
+  { OVK_BOOL,  OV_INTERNAL, TRUE, "LD_NOP_workaround", "",
+    0, 0, 0,   &CG_enable_LD_NOP_workaround, NULL},
+  { OVK_BOOL,  OV_INTERNAL, TRUE, "C3_AR_dependence_workaround", "",
+    0, 0, 0,   &CG_enbale_C3_AR_dependence_workaround, NULL},
+
   /* For SL2, I need a options to tell what application I'm comping.
    * So I can get the right LUT file
    */
@@ -1255,6 +1262,8 @@ static OPTION_DESC Options_CG[] = {
      0, 0, 0,     &CG_round_spreg, NULL},
   { OVK_BOOL,  OV_INTERNAL, TRUE, "check_packed", "",
      0, 0, 0,     &CG_check_packed, NULL},
+  { OVK_BOOL ,  OV_INTERNAL, TRUE, "br_taken","",
+     0, 0, 0,	  &CG_branch_taken, NULL},
   { OVK_BOOL,   OV_INTERNAL, TRUE,  "sl2", "",
      0, 0, 0,        &CG_sl2, NULL },
 // sl2 specific peephole optimization 

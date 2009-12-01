@@ -1,36 +1,14 @@
-/*
-
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
-
-  This program is free software; you can redistribute it and/or modify it
-  under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation.
-
-  This program is distributed in the hope that it would be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-
-  Further, this software is distributed without any warranty that it is
-  free of the rightful claim of any third person regarding infringement 
-  or the like.  Any license provided herein, whether implied or 
-  otherwise, applies only to this software file.  Patent licenses, if 
-  any, provided herein do not apply to combinations of this program with 
-  other software, or any other product whatsoever.  
-
-  You should have received a copy of the GNU General Public License along
-  with this program; if not, write the Free Software Foundation, Inc., 59
-  Temple Place - Suite 330, Boston MA 02111-1307, USA.
-
-  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
-  Mountain View, CA 94043, or:
-
-  http://www.sgi.com
-
-  For further information regarding this notice, see:
-
-  http://oss.sgi.com/projects/GenInfo/NoticeExplan
-
-*/  
+/********************************************************************\
+|*                                                                  *|   
+|*  Copyright (c) 2006 by SimpLight Nanoelectronics.                *|
+|*  All rights reserved                                             *|
+|*                                                                  *|
+|*  This program is free software; you can redistribute it and/or   *|
+|*  modify it under the terms of the GNU General Public License as  *|
+|*  published by the Free Software Foundation; either version 2,    *|
+|*  or (at your option) any later version.                          *|
+|*                                                                  *|
+\********************************************************************/
 
 //
 // Group TOPS with similar Printing format together. 
@@ -454,10 +432,10 @@ main()
   Operand(0);
   Operand(1);
   Instruction_Print_Group(ropop,
-	  		  TOP_add,
+			  TOP_add,
 #if !defined(TARG_SL)
 			  TOP_addu,
-                          TOP_subu,
+			  TOP_subu,
 #endif
 			  TOP_sub,
 			  TOP_dadd,
@@ -1446,7 +1424,8 @@ main()
   Instruction_Print_Group(mc_abs,
    	                  TOP_mc_abs,
    	                  TOP_UNDEFINED);
-  /* mc.z, mc.zn mc.r*/
+
+  /* mc.z, mc.zn, mc.r */
   ISA_PRINT_TYPE slmc = ISA_Print_Type_Create("slmc", "%s %s,%s,%s, %s");
   Name();
   Result(0);
@@ -1455,7 +1434,7 @@ main()
   Operand(2);
 
   Instruction_Print_Group(slmc,
-		          TOP_mc_z_eq,
+		    TOP_mc_z_eq,
 			  TOP_mc_z_ne,
 			  TOP_mc_z_gt,
 			  TOP_mc_z_ge,
@@ -1473,7 +1452,7 @@ main()
 			  TOP_mc_zc_ge,
 			  TOP_mc_zc_lt,
 			  TOP_mc_zc_le,
-            		  TOP_mc_r_eq,
+			  TOP_mc_r_eq,
 			  TOP_mc_r_ne,
 			  TOP_mc_r_gt,
 			  TOP_mc_r_ge,
@@ -1498,12 +1477,24 @@ main()
   ISA_PRINT_TYPE deposit_bit = ISA_Print_Type_Create("deposit_bit", "%s %s,%s,%s,%s");
   Name();
   Result(0);
-  Operand(1); //0 is hidden operand, = result
-  Operand(2);
-  Operand(3);
+  Operand(0); 
+  Operand(1);
+  Operand(2); // 3 is hidden operand, = result
   Instruction_Print_Group(deposit_bit,
 			  TOP_depb,
 			  TOP_UNDEFINED);			  
+
+/* sl5-smult */
+  ISA_PRINT_TYPE sl5_smult = ISA_Print_Type_Create("sl5-smult", "%s %s,%s,%s, %s");
+  Name();
+  Result(0);
+  Operand(0);
+  Operand(1);
+  Operand(2);
+
+  Instruction_Print_Group(slmc,
+			  TOP_smult,
+			  TOP_UNDEFINED);
 
 #endif
   ISA_Print_End();

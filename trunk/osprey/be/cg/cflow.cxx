@@ -1247,21 +1247,26 @@ Finalize_BB(BB *bp)
       target_offset = BBINFO_succ_offset(bp, 0);
       target_prob = BBINFO_succ_prob(bp, 0);
 #if defined(TARG_SL)
-      if (!CG_sl2) {
-	// SL1 has always taken policy
+      if ((Is_Target_Sl1_pcore() || Is_Target_Sl1_dsp()) && CG_branch_taken) {
+         /* Since sl1 use a branch always taken policy, we may need to change layout here. 
+            We negate branch for the three cases where  fall_through_prob > target_prob:
+            1. fall_through is the start of the next BB
+            2. target is the start of the next BB
+            3. neither succ is the next BB
+               Maybe we are too aggressive here.
+          */
         if (fall_through_prob > target_prob) {
-	  if (BBINFO_b_likely(bp)) {
-	    // ??
-	  } 
-	  else if (Negate_Branch(br)) {
-	    target = fall_through;
-	    target_offset = fall_through_offset;
-	    target_prob = fall_through_prob;
-	    fall_through = BBINFO_succ_bb(bp, 0);
-	    fall_through_offset = BBINFO_succ_offset(bp, 0);
-	    fall_through_prob = BBINFO_succ_prob(bp, 0);
-	  }
-	}
+	        if (BBINFO_b_likely(bp)) {
+      	    // ??
+      	  } else if (Negate_Branch(br)) {
+      	    target = fall_through;
+      	    target_offset = fall_through_offset;
+      	    target_prob = fall_through_prob;
+      	    fall_through = BBINFO_succ_bb(bp, 0);
+      	    fall_through_offset = BBINFO_succ_offset(bp, 0);
+      	    fall_through_prob = BBINFO_succ_prob(bp, 0);
+      	  }
+      	}
       }
       else
 #endif
@@ -1408,6 +1413,14 @@ Finalize_BB(BB *bp)
 	   * to the new target.
 	   */
 	  Exp_OP1(OPC_GOTO, NULL, lab_tn, &ops);
+#ifdef TARG_SL
+	  // make up line info of GOTO instruction
+	  if (BB_last_op(bp) && (OP_srcpos(BB_last_op(bp)) != 0)) {
+	    OP_srcpos(OPS_last(&ops)) = OP_srcpos(BB_last_op(bp));
+	  } else if (succ_bb && BB_last_op(succ_bb) && (OP_srcpos(BB_last_op(succ_bb)) != 0)) {
+	    OP_srcpos(OPS_last(&ops)) = OP_srcpos(BB_last_op(succ_bb));
+	  }
+#endif
 	  if (   PROC_has_branch_delay_slot()
 	      && (fill_delay_slots || region_is_scheduled)) {
 	    Exp_Noop(&ops);

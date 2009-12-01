@@ -99,16 +99,13 @@ extern INT (*Push_Pop_Int_Saved_Regs_p)(void);
 #include <map>
 #include <vector>
 #include "fb_whirl.h"
+#include "config_debug.h"
 #endif
 extern void Early_Terminate (INT status);
 
-#ifdef TARG_MIPS
-#if defined(TARG_SL)
-static BOOL inline Is_Target_32bit (void) { return TRUE; }
-#else
+#if defined(TARG_MIPS) && !defined(TARG_SL)
 //static BOOL inline Is_Target_64bit (void) { return TRUE; }
 static BOOL inline Is_Target_32bit (void) { return FALSE; }
-#endif
 #endif // TARG_MIPS
 
 #define ST_force_gprel(s)	ST_gprel(s)
@@ -250,6 +247,15 @@ static void Allocate_Label (ST *lab);
 // bug fix for OSP_138
 BOOL ST_has_Predefined_Named_Section (ST *, SECTION_IDX &);
 static void Allocate_Object_To_Predefined_Named_Section (ST *, SECTION_IDX);
+
+enum _sec_kind Get_Const_Var_Section()
+{
+#if defined(TARG_SL)                
+    return _SEC_DATA;
+#else              
+    return _SEC_RDATA;
+#endif
+}
 
 extern BOOL
 Is_Allocated (ST *st)
@@ -1069,7 +1075,7 @@ Assign_ST_To_Named_Section (ST *st, STR_IDX name)
 		case SCLASS_FSTATIC:
 		case SCLASS_PSTATIC:
 			// must be initialized
-    			if (ST_is_constant(st)) sec = _SEC_RDATA;
+  		if (ST_is_constant(st)) sec = Get_Const_Var_Section();
 		        // bug fix for OSP_129
 			else if ( ST_is_initialized(st) )
 				sec = _SEC_DATA;
@@ -1080,7 +1086,7 @@ Assign_ST_To_Named_Section (ST *st, STR_IDX name)
 #ifdef KEY
     			if (ST_is_constant(st) &&	// bug 4743
 			    !ST_is_weak_symbol(st)) {	// bug 4823
-			  sec = _SEC_RDATA;
+			  sec = Get_Const_Var_Section();
 			} else
 #endif
 #if defined(TARG_SL)
@@ -2546,14 +2552,16 @@ Is_String_Literal (ST *st)
 	if (ST_class(st) == CLASS_CONST && TCON_ty(STC_val(st)) == MTYPE_STR) {
 		return TRUE;
 	}
+#ifndef TARG_SL
 	/* sometimes strings are in const array vars */
 	else if (ST_class(st) == CLASS_VAR && ST_is_const_var(st)
-		&& ST_is_initialized(st) 
+		&& ST_is_initialized(st)
 		&& TY_kind(ST_type(st)) == KIND_ARRAY
 		&& TY_mtype(TY_AR_etype(ST_type(st))) == MTYPE_U1 )
 	{
 		return TRUE;
 	}
+#endif
 	return FALSE;
 }
 
@@ -2589,7 +2597,7 @@ Shorten_Section ( ST *st, SECTION_IDX sec )
    newsec = Corresponding_Short_Section (sec);
    if (newsec == sec) return sec;	// won't be shortened
 
-#ifdef TARG_X8664
+#if defined (TARG_X8664) || defined (TARG_SL) 
    /* bug#539
       Do not generate gprel load/store to <newsec> if <newsec> is not gprel.
     */
@@ -2701,7 +2709,7 @@ Allocate_Object_To_Section (ST *st, SECTION_IDX sec, UINT align)
   block = Get_Section_ST (sec, align, SCLASS_UNKNOWN /* cause varies */);
   max_size = SEC_max_sec_size(sec);
   if ( Trace_Frame ) {
-    fprintf(TFile, "Allocating %s to %s", ST_name(st), ST_name(block));
+    fprintf(TFile, "Allocating %s to %s\n", ST_name(st), ST_name(block));
   }
   ST_Block_Merge (block, st, 0, 0, max_size);
 }
@@ -3066,6 +3074,18 @@ ST_has_Predefined_Named_Section(ST *st, SECTION_IDX &sec_idx) {
  */
 static void
 Allocate_Object_To_Predefined_Named_Section(ST *st, SECTION_IDX sec_idx) {
+  // bug fix 572: for extern st, we should not allocate them.
+  if (ST_class(st) == CLASS_FUNC) {
+     if (ST_sclass(st) == SCLASS_EXTERN) {
+         return;
+     }
+  } else if (ST_class(st) == CLASS_VAR) {
+     if (ST_sclass(st) == SCLASS_EXTERN) {
+         return;
+     }
+  } else
+     FmtAssert(FALSE, ("unexpected section attribute"));
+
   Clear_ST_has_named_section(st);	// Clear st's flag for ST_HAS_NAMED_SECTION
   Set_ST_base_idx(st,ST_st_idx(st));	// Set st's base index equel to st index
   Set_ST_ofst(st,0);			// Set st's offset to 0
@@ -3310,7 +3330,7 @@ Allocate_Object ( ST *st )
 	sec = _SEC_DATA_REL_RO; // bug 6925
       else
 #endif
-      sec = _SEC_RDATA;
+	sec = Get_Const_Var_Section();
     }
 
 #ifdef TARG_SL

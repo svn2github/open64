@@ -741,8 +741,10 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 	      // Don't propagate copy if the copy source is a dedicated
 	      // register, since the omega code can't track dedicated registers
 	      // correctly.  See explanation in bug 4426.
+	      // Don't propagate copy if op has same_res properties.
 	      TN *copy_src_opnd = OP_opnd( op_src, OP_COPY_OPND );
-	      if ( TN_is_dedicated( copy_src_opnd ) ) {
+	      if (TN_is_dedicated(copy_src_opnd) 
+	      || (OP_same_res(op) && OP_Defs_TN(op, tn))) {
 		Reset_OP_flag1( op_src );
 		break;
 	      }

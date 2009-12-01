@@ -181,6 +181,8 @@ struct LOOP_DESCR {
 			(LOOP_DESCR_flags(loop) & LOOP_DESCR_Can_Zero_Delay)
 #define		Set_Can_Zero_Delay(loop)	\
 			(LOOP_DESCR_flags(loop) |= LOOP_DESCR_Can_Zero_Delay)
+#define		Reset_Can_Zero_Delay(loop)	\
+			(LOOP_DESCR_flags(loop) &= (~LOOP_DESCR_Can_Zero_Delay))
 #define         MVTC_Optimized(loop) \
                         (LOOP_DESCR_flags(loop) & LOOP_DESCR_MVTC_Optimized)
 #define         Set_MVTC_Optimized(loop) \
