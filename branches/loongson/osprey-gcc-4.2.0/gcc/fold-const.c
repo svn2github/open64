@@ -5652,6 +5652,10 @@ extract_muldiv_1 (tree t, tree c, enum tree_code code, tree wide_type,
             }
           break;
         }
+      /* If the constant is negative, we cannot simplify this.
+         Test case: gcc.c-torture/int/execute/pr34130.c */
+      if (tree_int_cst_sgn (c) == -1)
+        break;
       /* FALLTHROUGH */
     case NEGATE_EXPR:
       if ((t1 = extract_muldiv (op0, c, code, wide_type, strict_overflow_p))
@@ -8473,7 +8477,8 @@ fold_binary (enum tree_code code, tree type, tree op0, tree op1)
      safe for every expression, except for a comparison expression
      because its signedness is derived from its operands.  So, in
      the latter case, only strip conversions that don't change the
-     signedness.
+     signedness. MIN_EXPR/MAX_EXPR also need signedness of arguments
+     preserved.
 
      Note that this is done as an internal manipulation within the
      constant folder, in order to find the simplest representation
@@ -8481,7 +8486,9 @@ fold_binary (enum tree_code code, tree type, tree op0, tree op1)
      cases, the appropriate type conversions should be put back in
      the tree that will get out of the constant folder.  */
 
-  if (kind == tcc_comparison)
+  /* Fix gcc bug 36137: 
+     http://gcc.gnu.org/bugzilla/show_bug.cgi?id=36137 */ 
+  if (kind == tcc_comparison || code == MIN_EXPR || code == MAX_EXPR)
     {
       STRIP_SIGN_NOPS (arg0);
       STRIP_SIGN_NOPS (arg1);

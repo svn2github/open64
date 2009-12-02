@@ -1149,6 +1149,63 @@ static void warn_for_collisions (struct tlist *);
 static void warn_for_collisions_1 (tree, tree, struct tlist *, int);
 static struct tlist *new_tlist (struct tlist *, tree, tree);
 
+#ifdef TARG_SL
+static bool var_expr_equal(tree arg1, tree arg2)
+{
+  if ((arg1 == NULL && arg2 != NULL)
+      || (arg1 != NULL && arg2 == NULL))
+    return FALSE;
+
+  if (arg1 == arg2)
+    return TRUE;
+
+  enum tree_code code_1 = TREE_CODE (arg1);
+  enum tree_code code_2 = TREE_CODE (arg2);
+
+  if (code_1 != code_2)
+    return FALSE;
+
+  switch (code_1)
+  {
+    case VAR_DECL:
+    case PARM_DECL:
+    case FIELD_DECL:
+      return (arg1 == arg2);
+    case INDIRECT_REF:
+      return var_expr_equal (TREE_OPERAND (arg1, 0), TREE_OPERAND (arg2, 0));
+    case COMPONENT_REF:
+      return (var_expr_equal (TREE_OPERAND (arg1, 0), TREE_OPERAND (arg2, 0))
+          && var_expr_equal (TREE_OPERAND (arg1, 1), TREE_OPERAND (arg2, 1)));
+    default:
+      return 0;
+  }
+}
+
+/* Get variable name */
+static char * var_expr_name(tree var)
+{
+  if (var == NULL) return NULL;
+
+  enum tree_code code = TREE_CODE (var);
+
+  switch (code)
+  {
+    case VAR_DECL:
+    case PARM_DECL:
+    case FIELD_DECL:
+      return (IDENTIFIER_POINTER (DECL_NAME (var)));
+    case INDIRECT_REF:
+      return (IDENTIFIER_POINTER (DECL_NAME (TREE_OPERAND (var, 0))));
+    case COMPONENT_REF:
+      /* Just return the filed name */
+      return var_expr_name (TREE_OPERAND (var, 1));
+    default:
+      return NULL;
+  }
+
+}
+#endif
+
 /* Create a new struct tlist and fill in its fields.  */
 static struct tlist *
 new_tlist (struct tlist *next, tree t, tree writer)
@@ -1199,7 +1256,11 @@ merge_tlist (struct tlist **to, struct tlist *add, int copy)
       struct tlist *next = add->next;
 
       for (tmp2 = *to; tmp2; tmp2 = tmp2->next)
+#ifdef TARG_SL
+	if (var_expr_equal(tmp2->expr, add->expr))
+#else
 	if (tmp2->expr == add->expr)
+#endif
 	  {
 	    found = 1;
 	    if (!tmp2->writer)
@@ -1227,18 +1288,34 @@ warn_for_collisions_1 (tree written, tree writer, struct tlist *list,
 
   /* Avoid duplicate warnings.  */
   for (tmp = warned_ids; tmp; tmp = tmp->next)
+#ifdef TARG_SL
+    if (var_expr_equal(tmp->expr, written))
+#else
     if (tmp->expr == written)
+#endif
       return;
 
   while (list)
     {
+#ifdef TARG_SL
+      if (var_expr_equal(list->expr, written)
+#else
       if (list->expr == written
+#endif
 	  && list->writer != writer
 	  && (!only_writes || list->writer)
 	  && DECL_NAME (list->expr))
 	{
 	  warned_ids = new_tlist (warned_ids, written, NULL_TREE);
+#ifdef TARG_SL
+	  if (TREE_CODE(list->expr) == GS_COMPONENT_REF)
+	  error ("operation on structure field `%s' may be undefined",
+	       var_expr_name (list->expr));
+	  else
+	  error ("operation on %qE may be undefined", list->expr);
+#else
 	  warning (0, "operation on %qE may be undefined", list->expr);
+#endif
 	}
       list = list->next;
     }
@@ -1264,7 +1341,13 @@ warn_for_collisions (struct tlist *list)
 static int
 warning_candidate_p (tree x)
 {
-  return TREE_CODE (x) == VAR_DECL || TREE_CODE (x) == PARM_DECL;
+#ifdef TARG_SL
+    /* Treat COMPONENT_REF as a whole */
+    return TREE_CODE (x) == VAR_DECL || TREE_CODE (x) == PARM_DECL
+        || TREE_CODE (x) == COMPONENT_REF;
+#else
+    return TREE_CODE (x) == VAR_DECL || TREE_CODE (x) == PARM_DECL;
+#endif
 }
 
 /* Walk the tree X, and record accesses to variables.  If X is written by the

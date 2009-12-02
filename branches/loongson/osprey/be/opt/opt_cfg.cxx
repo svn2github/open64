@@ -1654,6 +1654,39 @@ BOOL CFG::If_conv_criteria_met(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else
   return TRUE;
 }
 
+#if defined(TARG_SL)
+// ====================================================================
+// check whether mode_wn is sub-tree of wn, and the sub-tree of parent_wn is ILOAD.
+// check the such case for if_conversion:
+//    if(p)
+//      res = p->a
+//    else
+//      res = 0;
+//  
+//    p is mode_wn, p->a is parent_wn
+// ====================================================================
+BOOL CFG::Is_Sub_ILOAD_Tree(WN *wn, WN *parent_wn, WN * mode_wn)
+{
+  if (parent_wn 
+   && ((WN_operator(parent_wn) == OPR_ILOAD) || (WN_operator(parent_wn) == OPR_ILOADX)
+    || (WN_operator(parent_wn) == OPR_MLOAD))
+   && (WN_Simp_Compare_Trees(wn, mode_wn) == 0)) 
+    return TRUE;
+
+  INT kids_cnt = WN_kid_count(wn);
+  if (kids_cnt == 0) {
+    return FALSE;
+  } else { 
+    int i;
+    for(i = 0; i< kids_cnt; i++) {
+      if (Is_Sub_ILOAD_Tree(WN_kid(wn, i), wn, mode_wn)) {
+        return TRUE;
+      }      
+    }
+    return FALSE;
+  }  
+}
+#endif
 
 WN*
 CFG::Conv_to_select(WN* wn)
@@ -1764,6 +1797,25 @@ CFG::Conv_to_select(WN* wn)
       (lanswer + ranswer) <= WOPT_Enable_If_Conv_Limit
 #endif
        ) {
+#ifdef TARG_SL
+
+      //
+      // For such case,
+      //    if(p)
+      //      res = p->a
+      //    else
+      //      res = 0;
+      // if_conversion is skipped as accessing ZERO-address is illegal for SL. 
+      //
+      WN *cond_kid0 = WN_kid0(if_test);
+      WN *cond_kid1 = WN_kid1(if_test);
+      OPERATOR opr = WN_operator(if_test);
+
+      if ((opr == OPR_EQ || opr == OPR_NE || opr == OPR_GE || opr == OPR_GT || opr == OPR_LE || opr == OPR_LT)  
+       && ((WN_operator(cond_kid1) == OPR_INTCONST) && (WN_const_val(cond_kid1) == 0))
+       && (Is_Sub_ILOAD_Tree(then_expr, NULL, cond_kid0) || Is_Sub_ILOAD_Tree(else_expr, NULL, cond_kid0))) 
+         return NULL;
+#endif
       // Generate a SELECT expression
       WN *sel = WN_Select( Mtype_comparison(dsctyp),
 			   WN_if_test(wn), then_expr, else_expr );
@@ -1959,22 +2011,73 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
 #endif
        ) {
 
-#ifdef TARG_SL      
+#ifdef TARG_SL 
+      //
+      // For such case,
+      //    if(p)
+      //      res = p->a
+      //    else
+      //      res = 0;
+      // if_conversion is skipped as accessing ZERO-address is illegal for SL. 
+      //
+       
       WN *cond_kid0 = WN_kid0(if_test);
       WN *cond_kid1 = WN_kid1(if_test);
       OPERATOR opr = WN_operator(if_test);
 
-      WN *then_kid0 = WN_kid0(then_expr);      
-      WN *else_kid0 = WN_kid0(else_expr);
-
       if ((opr == OPR_EQ || opr == OPR_NE || opr == OPR_GE || opr == OPR_GT || opr == OPR_LE || opr == OPR_LT)  
        && ((WN_operator(cond_kid1) == OPR_INTCONST) && (WN_const_val(cond_kid1) == 0))
-       && ((WN_operator(then_expr) == OPR_ILOAD) && (WN_Simp_Compare_Trees(cond_kid0, then_kid0) == 0) 
-        || ((WN_operator(else_expr) == OPR_ILOAD) && (WN_Simp_Compare_Trees(cond_kid0, else_kid0)==0)))) 
+       && (Is_Sub_ILOAD_Tree(then_expr, NULL, cond_kid0) || Is_Sub_ILOAD_Tree(else_expr, NULL, cond_kid0))) 
        goto skip_if_conversion;
 #endif
       // Generate a SELECT expression
-      WN *sel = WN_Select( Mtype_comparison(dsctyp),
+      WN *sel;
+#if defined(TARG_SL)
+      if (opr == OPR_GE || opr == OPR_GT || opr == OPR_LE) {
+        // SL only have one compare instruction, that is "<".
+        // So do following convert when generating "SELECT" for better
+        // optimization of CG phase.
+        // a >= b ? 5 : 3   ==>   a < b ? 3 : 5
+        // a >  b ? 5 : 3   ==>   b < a ? 5 : 3
+        // a <= b ? 5 : 3   ==>   b < a ? 3 : 5
+        WN *left_cond, *right_cond, *true_expr, *false_expr;
+        switch(opr) {
+          case OPR_GE:
+          {
+            left_cond  = cond_kid0;
+            right_cond = cond_kid1;
+            true_expr  = else_expr;
+            false_expr = then_expr;
+            break;
+          }
+          case OPR_GT:
+          {
+            left_cond  = cond_kid1;
+            right_cond = cond_kid0;
+            true_expr  = then_expr;
+            false_expr = else_expr;
+            break;          
+          }
+
+          case OPR_LE:
+          {
+            left_cond  = cond_kid1;
+            right_cond = cond_kid0;
+            true_expr  = else_expr;
+            false_expr = then_expr;
+            break;
+          }
+          default:
+            Fail_FmtAssertion("Lower_if_stmt: Unexpected compare operator");
+        }
+        
+        WN *test_wn = WN_CreateExp2(OPR_LT, WN_rtype(if_test), WN_desc(if_test), 
+                                      left_cond, right_cond);
+        sel = WN_Select( Mtype_comparison(dsctyp),
+                    test_wn, true_expr, false_expr );
+     } else
+#endif
+      sel = WN_Select( Mtype_comparison(dsctyp),
 			   WN_if_test(wn), then_expr, else_expr );
       WN_kid0(store) = sel;
       WN_Set_Linenum( store, WN_Get_Linenum(wn) );

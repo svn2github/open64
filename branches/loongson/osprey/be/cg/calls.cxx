@@ -2230,11 +2230,30 @@ Assign_Prolog_Temps(OP *first, OP *last, REGISTER_SET *temps)
  */
 static TN *
 Gen_Prolog_LDIMM64(UINT64 val, OPS *ops)
-{
+{  
+#ifdef TARG_SL
+  TN *src, *result;
+  if (val >= 0 && val <= UINT32_MAX) {
+    src = Gen_Literal_TN(val, 4);
+    result = Build_TN_Of_Mtype (MTYPE_U4);
+    Exp_Immediate (result, src, MTYPE_U4, ops);
+  } else if (val > UINT32_MAX && val <= UINT64_MAX) {
+    src = Gen_Literal_TN(val, 8);
+    result = Build_TN_Of_Mtype (MTYPE_U4);
+    TN *result_h = Build_TN_Of_Mtype (MTYPE_U4);
+    
+    extern void Add_TN_Pair(TN *key, TN *pair);
+    Add_TN_Pair(result, result_h);
+    Exp_Immediate (result, src, MTYPE_U8, ops);
+  } else {
+    FmtAssert(FALSE, ("Gen_Prolog_LDIMM64: error value"));
+  }
+#else
   TN *src = Gen_Literal_TN(val, 8);
   TN *result = Build_TN_Of_Mtype (MTYPE_I8);
 
   Exp_Immediate (result, src, TRUE, ops);
+#endif
 
   return result;
 }

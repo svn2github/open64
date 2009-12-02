@@ -187,12 +187,7 @@ static BOOL Delete_Dead_LRA_Spill(OP *op, BS **bs);
 /* Global Data:								 */
 /* ===================================================================== */
 
-#if defined(TARG_SL)
-/* set ebo default level to 0 to workaround deposit bug */
-INT32 EBO_Opt_Level_Default = 0;
-#else 
 INT32 EBO_Opt_Level_Default = 5;
-#endif
 INT32 EBO_Opt_Level = 5;
 #ifdef KEY
 INT32 EBO_Opt_Mask = -1;
@@ -668,6 +663,9 @@ inline BOOL op_is_needed_globally(OP *op)
    /* Calls may have side effects we don't understand */
     return TRUE;
   if (op == BB_exit_sp_adj_op(bb) || op == BB_entry_sp_adj_op(bb))
+    return TRUE;
+   /* Can not remove volatile op */
+  if (OP_volatile(op))
     return TRUE;
   return FALSE;
 }
@@ -1787,7 +1785,14 @@ OP_can_change(OP* op)
 {
 #if defined(TARG_SL)
   if ((OP_code(op) == TOP_c3_mvtacc) 
-      || (OP_code(op) == TOP_c3_mvfacc))
+   || (OP_code(op) == TOP_c3_mvfacc)
+   || (OP_code(op) == TOP_c3_mvtaddr)
+   || (OP_code(op) == TOP_c3_mvfaddr)
+   || (OP_code(op) == TOP_mvtc)
+   || (OP_code(op) == TOP_mvtc16)
+   || (OP_code(op) == TOP_mvtc_i)
+   || (OP_code(op) == TOP_mvfc)
+   || (OP_code(op) == TOP_mvfc16))
     return FALSE;
 #endif
   return TRUE;
@@ -3656,9 +3661,7 @@ EBO_Add_BB_to_EB (BB * bb)
     fprintf(TFile,"%sEBO optimization at BB:%d\n",EBO_trace_pfx,BB_id(bb));
   }
 
-#if !defined(TARG_SL)
   EBO_Remove_Unused_Ops(bb, normal_conditions);
-#endif
 
  /* Remove information about TN's and OP's in this block. */
   backup_tninfo_list(save_last_tninfo);
@@ -3719,12 +3722,11 @@ EBO_Process ( BB *first_bb )
     if (BB_rotating_kernel(bb)) Set_BB_visited(bb);
   }
 
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_SL)
   if (EBO_in_peep) // Can do this once after all transformations
     Redundancy_Elimination();
 #endif
 
-#if !defined(TARG_SL)
   for (bb = first_bb; bb != NULL; bb = BB_next(bb)) {
     RID *bbrid;
     if (( bbrid = BB_rid( bb )) &&
@@ -3751,7 +3753,6 @@ EBO_Process ( BB *first_bb )
 #endif
     }
   }
-#endif
 
  /* Clear the bb flag, in case some other phase uses it. */
   clear_bb_flag (first_bb);

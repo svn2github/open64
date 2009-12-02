@@ -8058,6 +8058,7 @@ gcc2gs (int code)
    case WITH_CLEANUP_EXPR: return GS_WITH_CLEANUP_EXPR;
    case WITH_SIZE_EXPR: return GS_WITH_SIZE_EXPR;
    case TEMPLATE_TEMPLATE_PARM: return GS_TEMPLATE_TEMPLATE_PARM;
+   case FREQ_HINT_STMT: return GS_FREQ_HINT_STMT;
  }
  gcc_assert(0);
  return (gs_code_t) 0;
@@ -8792,6 +8793,11 @@ gcc_built_in2gsbi (enum built_in_function code)
     case BUILT_IN_COMPLEX_DIV_MIN: return GSBI_BUILT_IN_COMPLEX_DIV_MIN;
     case BUILT_IN_COMPLEX_DIV_MAX: return GSBI_BUILT_IN_COMPLEX_DIV_MAX;
 #ifdef TARG_SL
+    case BUILT_IN_CVT64_HIGH:          return GSBI_BUILT_IN_CVT64_HIGH;
+    case BUILT_IN_CVT64_LOW:           return GSBI_BUILT_IN_CVT64_LOW;
+    case BUILT_IN_CVT32:               return GSBI_BUILT_IN_CVT32;
+    case BUILT_IN_LONGLONG_CVT64_HIGH: return GSBI_BUILT_IN_LONGLONG_CVT64_HIGH;
+    case BUILT_IN_LONGLONG_CVT64_LOW:  return GSBI_BUILT_IN_LONGLONG_CVT64_LOW;
     case BUILT_IN_C3AADDA:  return GSBI_BUILT_IN_C3AADDA;
     case BUILT_IN_C3NEGA:   return GSBI_BUILT_IN_C3NEGA;
     case BUILT_IN_C3BITR:   return GSBI_BUILT_IN_C3BITR;
@@ -10651,31 +10657,52 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 
           case REAL_CST:
             {
-  	      REAL_VALUE_TYPE d;
-  	      char string[16*8];
-              gs_t value_f;
-              gs_t value_d;
-              gs_t value_ld;
-    
-              _gs_bv (flags, GS_TREE_OVERFLOW, TREE_OVERFLOW (t));
-    
-              value_f =  __gs (IB_FLOAT);
-              value_d =  __gs (IB_DOUBLE);
-              value_ld = __gs (IB_LONG_DOUBLE);
 
-  	      d = TREE_REAL_CST (t);
+              REAL_VALUE_TYPE d;
+
+              d = TREE_REAL_CST (t);
+
+              _gs_bv (flags, GS_TREE_OVERFLOW, TREE_OVERFLOW (t));
               _gs_bv (flags, GS_REAL_VALUE_ISINF, REAL_VALUE_ISINF (d));
               _gs_bv (flags, GS_REAL_VALUE_ISNAN, REAL_VALUE_ISNAN (d));
-	      real_to_decimal (string, &d, sizeof (string), 0, 1);
 
-              _gs_f (value_f, strtof ((string), NULL));
+              long rval, rbuf [4];
+              int rbuf_w[4]; // this is needed when long is 64-bit
+              int i;
+
+              // float type value
+              gs_t value_f;
+              value_f =  __gs (IB_FLOAT);
+              REAL_VALUE_TO_TARGET_SINGLE (d, rval);
+              _gs_f (value_f, *(float *) &rval);
               gs_set_operand ((gs_t) GS_NODE (t), GS_TREE_REAL_CST_F, value_f);
-              _gs_d (value_d, strtod ((string), NULL));
+
+              // double type value
+              gs_t value_d;              
+              value_d =  __gs (IB_DOUBLE);
+              REAL_VALUE_TO_TARGET_DOUBLE (d, rbuf);
+              for (i = 0; i < 4; i++)
+                rbuf_w[i] = rbuf[i];               
+              _gs_d (value_d, *(double *) &rbuf_w);
               gs_set_operand ((gs_t) GS_NODE (t), GS_TREE_REAL_CST_D, value_d);
-              _gs_ld (value_ld, strtold ((string), NULL));
+
+              // long double type value
+              gs_t value_ld;             
+              value_ld = __gs (IB_LONG_DOUBLE);
+              REAL_VALUE_TO_TARGET_LONG_DOUBLE (d, rbuf);
+              for (i = 0; i < 4; i++)
+                rbuf_w[i] = rbuf[i];
+
+              long double ld_t;
+              if (LONG_DOUBLE_TYPE_SIZE == 64)
+                ld_t = *(double *) &rbuf_w;
+              else 
+                ld_t = *(long double *) &rbuf_w;
+
+              _gs_ld (value_ld, ld_t);
               gs_set_operand ((gs_t) GS_NODE (t), GS_TREE_REAL_CST_LD, value_ld);
             }
-	    break;
+            break;
 
 	  case VECTOR_CST:
 	    {

@@ -1486,6 +1486,9 @@ get_gcc_version(int *v, int nv)
 	return version;
 }
 
+#if defined(TARG_SL)
+  unsigned int SL_version = 0x00204000;	// version 002.04.xxx
+#endif
 static void
 display_version(boolean dump_version_only)
 {
@@ -1521,6 +1524,14 @@ display_version(boolean dump_version_only)
     return;
   }
 
+#if defined(TARG_SL)
+  fprintf(stderr, "Open64 version: %s.\n",OPEN64_FULL_VERSION);
+  fprintf(stderr, "GNU gcc version %s.\n", open64_gcc_version);
+  fprintf(stderr, "Simplnano internal release version %03x.%02x.%03x\n", (SL_version>>20), (SL_version>>12)&0xFF , SL_version&0xFFF);
+
+  fprintf(stderr, "Built on :%s \n", build_date);
+  fprintf(stderr, "Portions Copyright (c) 2006-2009 Simplnano Corporation\n");
+#else
   fprintf(stderr, "Open64 Compiler Suite: Version %s\n",
 	  compiler_version);
   if (show_version > 1) {
@@ -1528,11 +1539,13 @@ display_version(boolean dump_version_only)
     fprintf(stderr, "Built by: %s@%s in %s\n", build_user, build_host,
 	    build_root);
   }
+
   fprintf(stderr, "Built on: %s\n", build_date);
   fprintf(stderr, "Thread model: posix\n");	// Bug 4608.
-
   #ifdef PSC_TO_OPEN64
   fprintf(stderr, "GNU gcc version %s", open64_gcc_version);
   fprintf(stderr, " (Open64 " OPEN64_FULL_VERSION " driver)\n");
   #endif
+#endif
+
 }

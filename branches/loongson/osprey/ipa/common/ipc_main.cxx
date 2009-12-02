@@ -192,7 +192,7 @@ ipa_driver (INT argc, char **argv)
 
     // turn off these features until they are ported.
     IPA_Enable_Cloning = FALSE;
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
     IPA_Enable_AutoGnum = FALSE;
 #else
     IPA_Enable_AutoGnum = TRUE;

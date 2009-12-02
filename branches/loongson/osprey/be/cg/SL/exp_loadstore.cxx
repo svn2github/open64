@@ -1,41 +1,14 @@
-/*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
-
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
-
-  This program is free software; you can redistribute it and/or modify it
-  under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation.
-
-  This program is distributed in the hope that it would be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-
-  Further, this software is distributed without any warranty that it is
-  free of the rightful claim of any third person regarding infringement 
-  or the like.  Any license provided herein, whether implied or 
-  otherwise, applies only to this software file.  Patent licenses, if 
-  any, provided herein do not apply to combinations of this program with 
-  other software, or any other product whatsoever.  
-
-  You should have received a copy of the GNU General Public License along
-  with this program; if not, write the Free Software Foundation, Inc., 59
-  Temple Place - Suite 330, Boston MA 02111-1307, USA.
-
-  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
-  Mountain View, CA 94043, or:
-
-  http://www.sgi.com
-
-  For further information regarding this notice, see:
-
-  http://oss.sgi.com/projects/GenInfo/NoticeExplan
-
-*/
-
+/********************************************************************\
+|*                                                                  *|   
+|*  Copyright (c) 2006 by SimpLight Nanoelectronics.                *|
+|*  All rights reserved                                             *|
+|*                                                                  *|
+|*  This program is free software; you can redistribute it and/or   *|
+|*  modify it under the terms of the GNU General Public License as  *|
+|*  published by the Free Software Foundation; either version 2,    *|
+|*  or (at your option) any later version.                          *|
+|*                                                                  *|
+\********************************************************************/
 
 /* CGEXP routines for loads and stores */
 #include "elf_stuff.h"
@@ -97,7 +70,7 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc)
       return Pick_Load_Instruction(rtype,rtype);
     // else fallthru
   default:  
-    FmtAssert(FALSE, ("NYI: Pick_Load_Instruction mtype"));
+    FmtAssert(FALSE, ("Pick_Load_Instruction: Unexpected type %d", desc));
     return TOP_UNDEFINED;
   }
 }
@@ -342,17 +315,21 @@ Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst, OPS *ops)
   if (!TN_has_value(ofst) || ISA_LC_Value_In_Class(TN_value(ofst), LC_simm16))
     Build_OP (top, src, base, ofst, ops);
   else {
-    TN *tmp_tn = Build_TN_Of_Mtype(Pointer_Mtype);
-    INT32 tmp = TN_value(ofst) >> 16;
-    if (tmp < 0) {
-      // immediate has been sign extended, chop off the top 4 bytes
-      if (Use_32_Bit_Pointers)
-	tmp &= 0xffff;
+    TN *tn_ofst, *tn_addr;
+    tn_addr = tn_ofst = Build_TN_Of_Mtype(Pointer_Mtype);
+    TN *tn_ofst_low = Build_TN_Of_Mtype(Pointer_Mtype);
+    INT32 ofst_up = TN_value(ofst) >> 16;
+    INT32 ofst_low = TN_value(ofst) & 0xffff;
+    if (ofst_up < 0) {
+       if (Use_32_Bit_Pointers) 
+         ofst_up &= 0xffff;
     }
-    Build_OP(TOP_lui, tmp_tn, Gen_Literal_TN(tmp, 4), ops);
-    Build_OP(Use_32_Bit_Pointers ? TOP_addu : TOP_daddu, tmp_tn, 
-	     tmp_tn, base, ops);
-    Build_OP(top, src, tmp_tn, Gen_Literal_TN(TN_value(ofst)&0xffff, 4), ops);
+
+    Build_OP(TOP_lui, tn_ofst, Gen_Literal_TN(ofst_up, 4), ops);
+    Build_OP(TOP_ori, tn_ofst_low, Zero_TN, Gen_Literal_TN(ofst_low, 4), ops);
+    Build_OP(Use_32_Bit_Pointers ? TOP_add : TOP_dadd, tn_ofst, tn_ofst, tn_ofst_low, ops);
+    Build_OP(Use_32_Bit_Pointers ? TOP_addu : TOP_daddu, tn_addr, tn_ofst, base, ops); 
+    Build_OP(top, src, tn_addr, Gen_Literal_TN(0,4), ops);
   }
 }
 
@@ -436,13 +413,13 @@ Expand_Composed_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT varian
         Build_OP(TOP_lbu,  result, base, disp, ops);		 
 
         Build_OP(TOP_lbu,  load1, newbase, Gen_Literal_TN(1, 4), ops);	
-        Build_OP(TOP_depb, result, result, load1, Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), ops);
+        Build_OP(TOP_depb, result, load1, Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), result, ops);
 
         Build_OP(TOP_lbu,  load2, newbase, Gen_Literal_TN(2, 4), ops);		 
-        Build_OP(TOP_depb, result, result, load2, Gen_Literal_TN(23, 4), Gen_Literal_TN(8, 4), ops);     
+        Build_OP(TOP_depb, result, load2, Gen_Literal_TN(23, 4), Gen_Literal_TN(8, 4), result, ops);     
 
         Build_OP(TOP_lbu,  load3, newbase, Gen_Literal_TN(3, 4), ops);		 
-        Build_OP(TOP_depb, result, result, load3, Gen_Literal_TN(31, 4), Gen_Literal_TN(8, 4), ops);
+        Build_OP(TOP_depb, result, load3, Gen_Literal_TN(31, 4), Gen_Literal_TN(8, 4), result, ops);
 
         result = Get_TN_Pair(result);
         FmtAssert(result != NULL, ("result tn in Expand_Composed_Load not setup\n"));
@@ -450,13 +427,13 @@ Expand_Composed_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT varian
         Build_OP(TOP_lbu,  result, newbase, Gen_Literal_TN(4, 4), ops);		 
 
         Build_OP(TOP_lbu,  load1, newbase, Gen_Literal_TN(5, 4), ops);	
-        Build_OP(TOP_depb, result, result, load1, Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), ops);
+        Build_OP(TOP_depb, result, load1, Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), result, ops);
 
         Build_OP(TOP_lbu,  load2, newbase, Gen_Literal_TN(6, 4), ops);		 
-        Build_OP(TOP_depb, result, result, load2, Gen_Literal_TN(23, 4), Gen_Literal_TN(8, 4), ops);     
+        Build_OP(TOP_depb, result, load2, Gen_Literal_TN(23, 4), Gen_Literal_TN(8, 4), result, ops);     
 
         Build_OP(TOP_lbu,  load3, newbase, Gen_Literal_TN(7, 4), ops);		 
-        Build_OP(TOP_depb, result, result, load3, Gen_Literal_TN(31, 4), Gen_Literal_TN(8, 4), ops);
+        Build_OP(TOP_depb, result, load3, Gen_Literal_TN(31, 4), Gen_Literal_TN(8, 4), result, ops);
         return;
       case MTYPE_I4:
       case MTYPE_U4:
@@ -464,13 +441,13 @@ Expand_Composed_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT varian
 
         Expand_Add (newbase, base, disp, MTYPE_I4, ops);	
         Build_OP (TOP_lbu, load1, newbase, Gen_Literal_TN(1, 4), ops);	
-        Build_OP(TOP_depb, result, result, load1,  Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), ops);
+        Build_OP(TOP_depb, result, load1,  Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), result, ops);
 
         Build_OP (TOP_lbu, load2, newbase, Gen_Literal_TN(2, 4), ops);		 
-        Build_OP(TOP_depb, result, result, load2,  Gen_Literal_TN(23, 4), Gen_Literal_TN(8, 4), ops);     
+        Build_OP(TOP_depb, result, load2,  Gen_Literal_TN(23, 4), Gen_Literal_TN(8, 4), result, ops);     
 
         Build_OP (TOP_lbu, load3, newbase, Gen_Literal_TN(3, 4), ops);		 
-        Build_OP(TOP_depb, result, result, load3,  Gen_Literal_TN(31, 4), Gen_Literal_TN(8, 4), ops);
+        Build_OP(TOP_depb, result, load3,  Gen_Literal_TN(31, 4), Gen_Literal_TN(8, 4), result, ops);
 
         //Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
         return;
@@ -480,7 +457,7 @@ Expand_Composed_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT varian
 
         Expand_Add (newbase, base, disp, MTYPE_I4, ops);	
         Build_OP (TOP_lbu, load1, newbase, Gen_Literal_TN(1, 4), ops);	
-        Build_OP(TOP_depb, result, result, load1,  Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), ops);	    
+        Build_OP(TOP_depb, result, load1,  Gen_Literal_TN(15, 4), Gen_Literal_TN(8, 4), result, ops);	    
         return;
       default:
         FmtAssert (FALSE, ("Expand_Composed_Load: unexpected operand size\n"));
@@ -1085,8 +1062,8 @@ void Build_Depb_OP(TYPE_ID desc, TYPE_ID rtype, TN *tgt_tn, TN *src_tn,
     FmtAssert(pos == 31, ("Build_Extrb_OP: pos is out of range\n"));
     Expand_Copy(tgt_tn, src_tn, MTYPE_U4, ops);
   } else {
-    Build_OP(TOP_depb, tgt_tn, tgt_tn, src_tn, Gen_Literal_TN(pos, 4), 
-        Gen_Literal_TN(width, 4), ops);
+    Build_OP(TOP_depb, tgt_tn, src_tn, Gen_Literal_TN(pos, 4), 
+        Gen_Literal_TN(width, 4), tgt_tn, ops);
   }
 }
 
@@ -1286,7 +1263,7 @@ Exp_Deposit_Bits (TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_size,
           TN *temp_tn    = Build_TN_Like(src2_tn);          
           Build_OP(TOP_srl, temp_tn, src2_tn, Gen_Literal_TN(low_width, 4), ops);
 
-          Build_Depb_OP(desc, rtype, tgt_tn, temp_tn, high_pos, high_width, ops);
+          Build_Depb_OP(desc, rtype, tgt_high, temp_tn, high_pos, high_width, ops);
         }      
       } else {  // bit_offset > 32      
         // example: [33, 35(1,3)](33,3)        

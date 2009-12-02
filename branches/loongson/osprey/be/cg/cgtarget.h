@@ -897,4 +897,7 @@ void CGTARG_enable_FTZ(OPS& ops);
 INT CGTARG_branch_op_need_register_numbers(OP* , ISA_REGISTER_CLASS);
 #endif
 
+#ifdef TARG_SL
+extern void CGTARG_Mem_AR_Dep(OP *pred_op, OP *succ_op, CG_DEP_KIND kind);
+#endif
 #endif /* CGTARGET_INCLUDED */

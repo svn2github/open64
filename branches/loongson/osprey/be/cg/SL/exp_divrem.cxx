@@ -1,41 +1,14 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
-
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
-
-  This program is free software; you can redistribute it and/or modify it
-  under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation.
-
-  This program is distributed in the hope that it would be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-
-  Further, this software is distributed without any warranty that it is
-  free of the rightful claim of any third person regarding infringement 
-  or the like.  Any license provided herein, whether implied or 
-  otherwise, applies only to this software file.  Patent licenses, if 
-  any, provided herein do not apply to combinations of this program with 
-  other software, or any other product whatsoever.  
-
-  You should have received a copy of the GNU General Public License along
-  with this program; if not, write the Free Software Foundation, Inc., 59
-  Temple Place - Suite 330, Boston MA 02111-1307, USA.
-
-  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
-  Mountain View, CA 94043, or:
-
-  http://www.sgi.com
-
-  For further information regarding this notice, see:
-
-  http://oss.sgi.com/projects/GenInfo/NoticeExplan
-
-*/
-
+/********************************************************************\
+|*                                                                  *|   
+|*  Copyright (c) 2006 by SimpLight Nanoelectronics.                *|
+|*  All rights reserved                                             *|
+|*                                                                  *|
+|*  This program is free software; you can redistribute it and/or   *|
+|*  modify it under the terms of the GNU General Public License as  *|
+|*  published by the Free Software Foundation; either version 2,    *|
+|*  or (at your option) any later version.                          *|
+|*                                                                  *|
+\********************************************************************/
 
 /* CGEXP routines for expanding divide and rem */
 
@@ -116,6 +89,23 @@ Get_Power_Of_2 (INT64 val, TYPE_ID mtype)
   /* NOTREACHED */
 }
 
+extern void Add_TN_Pair(TN *key, TN *pair);
+
+TN *Build_TN_Of_Mtype_64(TYPE_ID mtype)
+{
+  TN *res;
+  TYPE_ID mtype_t;
+  BOOL is_double = MTYPE_is_size_double(mtype);
+  
+  if (is_double) {
+    mtype_t = (MTYPE_is_signed(mtype) ? MTYPE_I4 : MTYPE_U4);
+    res = Build_TN_Of_Mtype(mtype_t);
+    Add_TN_Pair(res, Build_TN_Of_Mtype(mtype_t));
+  } else {
+    res = Build_TN_Of_Mtype(mtype);
+  }
+  return res;
+}
 
 /* Expand the sequence for division by a power of two. It is the
  * caller's job to verify that divisor is a non-zero power of two.
@@ -123,57 +113,31 @@ Get_Power_Of_2 (INT64 val, TYPE_ID mtype)
 static void
 Expand_Power_Of_2_Divide (TN *result, TN *numer, INT64 dvsr, TYPE_ID mtype, OPS *ops)
 {
+  Is_True((MTYPE_is_integral(mtype)) , 
+          (" Expand_Power_Of_2_Divide:: mtype must be INTEGER" ));
+
   INT n = Get_Power_Of_2(dvsr, mtype);
   TN *tmp_result;
+  BOOL is_double = MTYPE_is_size_double(mtype);
 
   if (MTYPE_is_unsigned(mtype)) {
     Expand_Shift(result, numer, Gen_Literal_TN(n, 4), mtype, shift_lright, ops);
   } 
   else {
-    if (TN_is_dedicated(result)) {
-      tmp_result = Build_TN_Of_Mtype(mtype);
-    }
-    else
-      tmp_result = result;
- 
-    TN *t1 = Build_TN_Of_Mtype(mtype);
-    TN *t2 = dvsr < 0 ? Build_TN_Of_Mtype(mtype) : tmp_result;
     INT64 absdvsr = dvsr < 0 ? -dvsr : dvsr;
     BOOL is_double = MTYPE_is_size_double(mtype);
+    TN *t1 = Build_TN_Of_Mtype_64(mtype);
+    TN *t2 = Build_TN_Of_Mtype_64(mtype);
+    TN *t3 = Build_TN_Of_Mtype_64(mtype);
+    TN *t4 = Build_TN_Of_Mtype_64(mtype);
+    TN *t5 = (dvsr < 0) ? Build_TN_Of_Mtype_64(mtype) : result;
 
-#if defined(TARG_SL)
-    //  result = numer < 0 ? (numer + absdvsr - 1) : numer;
-    Expand_Add (t1, Gen_Literal_TN(absdvsr-1, is_double ? 8 : 4), 
-		numer, mtype, ops);
-    int unsignedflag = (mtype == MTYPE_U4) ? 1 : 0;    
-    Is_True((mtype == MTYPE_U4 || mtype==MTYPE_I4) , 
-            (" Expand_Power_Of_2_Divide:: mtype must be MTYPE_I4 or MTYPE_U4" ));
-    Exp_2inst_MC_Zero(TOP_mc_z_lt, tmp_result, t1, numer, numer, mtype, mtype, unsignedflag, ops);
-#else
-    TN *p1 = Build_TN_Of_Mtype(MTYPE_I4);
-    Build_OP(TOP_slt, p1, numer, Zero_TN, ops);
-    Expand_Add (t1, Gen_Literal_TN(absdvsr-1, is_double ? 8 : 4), 
-		numer, mtype, ops);
-    Build_OP(TOP_movz, t1, numer, p1, ops);
-    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
-#endif
-    if (n > 31 && is_double)
-#ifdef TARG_SL
-      Build_OP(TOP_dsra32, t2, tmp_result, Gen_Literal_TN(n-32, 4), ops);
-#else     
-      Build_OP(TOP_dsra32, t2, t1, Gen_Literal_TN(n-32, 4), ops);
-#endif       
-    else 
-#ifdef TARG_SL
-    Build_OP(is_double ? TOP_dsra : TOP_sra, t2, tmp_result, Gen_Literal_TN(n, 4), ops);
-    if (dvsr < 0) Expand_Neg(tmp_result, t2, mtype, ops);
-    if (tmp_result != result) {
-      Expand_Copy(result, tmp_result, mtype, ops);
-    }
-#else 
-    Build_OP(is_double ? TOP_dsra : TOP_sra, t2, t1, Gen_Literal_TN(n, 4), ops);
-    if (dvsr < 0) Expand_Neg(result, t2, mtype, ops);
-#endif     
+    Expand_Shift(t1, numer, Gen_Literal_TN(is_double?63:31, 4), mtype, shift_aright, ops);
+    Expand_Immediate (t2, Gen_Literal_TN (absdvsr - 1, is_double?8:4), mtype, ops);
+    Expand_Binary_And( t3, t1, t2, mtype, ops );
+    Expand_Add( t4, t3, numer, mtype, ops );
+    Expand_Shift(t5, t4, Gen_Literal_TN(n, 4), mtype, shift_aright, ops);
+    if (dvsr < 0) Expand_Neg(result, t5, mtype, ops);
   }
 }
 
@@ -322,7 +286,7 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
     }
 
     d_tn = Build_TN_Like (result);
-    Expand_Immediate (d_tn, Gen_Literal_TN (d, 8), is_signed, ops);
+    Expand_Immediate (d_tn, Gen_Literal_TN (d, 8), mtype, ops);
 
     /* Generate the absolute value of the numerator:
      */
@@ -429,7 +393,7 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
 
     d_tn = Build_TN_Like (result);
 
-    Expand_Immediate (d_tn, Gen_Literal_TN (d, 8), is_signed, ops);
+    Expand_Immediate (d_tn, Gen_Literal_TN (d, 8), mtype, ops);
 
     /* Generate a multiply upper:
      */
@@ -492,57 +456,38 @@ Expand_Power_Of_2_Rem (TN *result, TN *src1, INT64 src2_val, TYPE_ID mtype, OPS 
 {
   BOOL is_double = MTYPE_is_size_double(mtype);
   INT n = Get_Power_Of_2(src2_val, mtype);
-  INT64 nMask = (1LL << n) - 1;
-  TN *con = Gen_Literal_TN(nMask, is_double ? 8 : 4);
+  TN *con = Build_TN_Of_Mtype_64(mtype);
+  Expand_Immediate(con, Gen_Literal_TN((1LL<<n)-1, is_double?8:4), mtype, ops);
+
+  Is_True((MTYPE_is_integral(mtype)) ,
+          (" Expand_Power_Of_2_Rem:: mtype must be integer" )); 
+
 
   if (MTYPE_is_signed(mtype)) {
-    TN *tmp1, *tmp2;
-    TN *p1;
-    TOP opc;
+    TN *tmp1 = Build_TN_Of_Mtype_64(mtype);
+    TN *tmp2 = Build_TN_Of_Mtype_64(mtype);
 
-#if defined(TARG_SL)
     // tmp1 = src1 >= 0 ? src1 : -src1;
-    tmp1 = Build_TN_Of_Mtype(mtype);
-    Build_OP(TOP_mc_abs, tmp1, src1, ops);
-    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_UNC_DEF);
-#else
-    /* Test sign of src1
-     */
-    p1 = Build_TN_Of_Mtype(MTYPE_I4);
-    Build_OP(TOP_slt, p1, src1, Zero_TN, ops);
+    Expand_Abs (tmp1, src1, mtype, ops);
 
-    /* Get absolute value of src1
-     */
-    tmp1 = Build_TN_Of_Mtype(mtype);
-    if (is_double) 
-      Build_OP(TOP_dsubu, tmp1, Zero_TN, src1, ops);
-    else
-      Build_OP(TOP_subu, tmp1, Zero_TN, src1, ops);
-    Build_OP(TOP_movz, tmp1, src1, p1, ops);
-    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
-#endif
-
-    /* Perform the AND
-     */
-    tmp2 = Build_TN_Of_Mtype(mtype);
+    // Perform the AND
     Expand_Binary_And(tmp2, tmp1, con, mtype, ops);
 
-    /* Negate the result if src1 was negative
-     */
-#if defined(TARG_SL)
+    // Negate the result if src1 was negative
     // result = (src1 >= 0) ? tmp2 : -tmp2;
-    int unsignedflag = (mtype == MTYPE_U4) ? 1 : 0;
-    Is_True((mtype == MTYPE_U4 || mtype==MTYPE_I4) ,
-            (" Expand_Power_Of_2_Rem:: mtype must be MTYPE_I4 or MTYPE_U4" )); 
-    Build_OP(TOP_mc_zn_ge, result, src1, tmp2, Gen_Literal_TN(unsignedflag, 4), ops);
-#else
-    if (is_double) 
-      Build_OP(TOP_dsubu, result, Zero_TN, tmp2, ops);
-    else
-      Build_OP(TOP_subu, result, Zero_TN, tmp2, ops);
-    Build_OP(TOP_movz, result, tmp2, p1, ops);
-    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
-#endif
+    int unsignedflag = !MTYPE_is_signed(mtype);
+    if (is_double) {
+       TN *cond_tn = Build_TN_Of_Mtype_64(MTYPE_I4);
+       TN *tmp3 = Build_TN_Of_Mtype_64(mtype);
+       
+       extern void Expand_Int_Greater_Equal (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
+       Expand_Int_Greater_Equal(cond_tn, src1, Zero_TN, mtype, ops);
+       Expand_Neg(tmp3, tmp2, mtype, ops);
+       Exp_2inst_MC_Zero(TOP_mc_z_ne, result, tmp2, tmp3, cond_tn, 
+        mtype, mtype, unsignedflag, ops);      
+    } else {
+       Build_OP(TOP_mc_zn_ge, result, src1, tmp2, Gen_Literal_TN(unsignedflag, 4), ops);
+    }
   } else {
     Expand_Binary_And(result, src1, con, mtype, ops);
   }
@@ -569,16 +514,16 @@ Expand_Power_Of_2_Mod (TN *result, TN *src1, INT64 src2_val, TYPE_ID mtype, OPS 
   BOOL is_double = MTYPE_is_size_double(mtype);
   INT64 absval = src2_val < 0 ? -src2_val : src2_val;
   INT	n      = Get_Power_Of_2(absval, mtype);
-  INT64	nMask  = (1LL << n) - 1;
-  TN	*con   = Gen_Literal_TN(nMask, is_double ? 8 : 4);
+  TN *con = Build_TN_Of_Mtype_64(mtype);
+  Expand_Immediate(con, Gen_Literal_TN((1LL<<n)-1, is_double?8:4), mtype, ops);
 
   if (MTYPE_is_signed(mtype) && src2_val < 0) {
     TN *tmp1, *tmp2;
 
-    tmp1 = Build_TN_Of_Mtype(mtype);
+    tmp1 = Build_TN_Of_Mtype_64(mtype);
     Expand_Neg(tmp1, src1, mtype, ops);
 
-    tmp2 = Build_TN_Of_Mtype(mtype);
+    tmp2 = Build_TN_Of_Mtype_64(mtype);
     Expand_Binary_And(tmp2, tmp1, con, mtype, ops);
 
     Expand_Neg(result, tmp2, mtype, ops);
@@ -850,8 +795,13 @@ Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
     }
     BOOL is_signed = MTYPE_is_signed(mtype);
     INT tn_size = MTYPE_is_size_double(mtype) ? 8 : 4;
+#ifdef TARG_SL
+    Exp_Immediate(result, Gen_Literal_TN(quot_val, tn_size), mtype, ops);
+    Exp_Immediate(result2, Gen_Literal_TN(rem_val, tn_size), mtype, ops);
+#else
     Exp_Immediate(result, Gen_Literal_TN(quot_val, tn_size), is_signed, ops);
     Exp_Immediate(result2, Gen_Literal_TN(rem_val, tn_size), is_signed, ops);
+#endif
     return;
   }
 

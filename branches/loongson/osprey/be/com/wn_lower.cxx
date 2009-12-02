@@ -4086,8 +4086,10 @@ lower_field_id (WN* tree)
   Is_True (! fld.Is_Null (), ("invalid bit-field ID for %s",
 			      OPERATOR_name(opr)));
 
-  WN_set_ty (tree, (is_ptr_type ? Make_Pointer_Type (FLD_type (fld)) :
-		    FLD_type (fld)));
+  // keep volatile attribute if symbol of tree is volatile
+  TY_IDX fld_idx = TY_is_volatile(ty_idx) ? (FLD_type (fld) | TY_VOLATILE) : FLD_type (fld);
+  WN_set_ty (tree, (is_ptr_type ? Make_Pointer_Type (fld_idx) : fld_idx));
+   
   WN_set_field_id (tree, 0);
   return;
 } // lower_field_id
@@ -4522,6 +4524,8 @@ static WN *lower_mldid(WN *block, WN *tree, LOWER_ACTIONS actions)
 		     pty_idx, WN_st(tree));
   wn  = WN_CreateMload(0, pty_idx, awn, swn);
   WN_set_field_id(wn, WN_field_id(tree));
+  
+  set_original_wn (wn, tree);
   wn  = lower_expr(block, wn, actions);
 
   WN_Delete(tree);
@@ -4822,7 +4826,7 @@ static void lower_bit_field_id(WN *wn)
   UINT bsize = FLD_bsize(fld);
   UINT bofst = FLD_bofst(fld) + (field_offset-ofst) * 8;
   if ((bofst + bsize) > (bytes_accessed * 8)) {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
     if (bytes_accessed == MTYPE_byte_size(MTYPE_I8)){ 
 #else
     if (bytes_accessed == MTYPE_byte_size(Max_Int_Mtype)){ 
@@ -4841,7 +4845,7 @@ static void lower_bit_field_id(WN *wn)
       bsize &&				   // field size non-zero
 #endif
       (bytes_accessed * 8 % bsize) == 0 && // bytes_accessed multiple of bsize
-#if defined(TARG_X8664) || defined(TARG_LOONGSON)  
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_LOONGSON)
       (bofst & 7) == 0
 #else
       (bofst % bsize) == 0		   // bofst multiple of bsize
@@ -6818,7 +6822,12 @@ static WN *lower_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
   wn  = WN_CreateMstore (0, pty_idx, WN_kid0(tree), awn, swn);
   WN_Set_Linenum(wn, current_srcpos);
   WN_set_field_id(wn, WN_field_id(tree));
+  
+  set_original_wn (wn, tree);
+  set_original_wn (WN_kid0(wn), WN_kid0(tree));
   wn  = lower_store (block, wn, actions);
+  set_original_wn (wn, NULL); 
+  set_original_wn (WN_kid0(wn), NULL);
 
   WN_Delete(tree);
   return wn;
@@ -13723,11 +13732,11 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
   }
 
 #ifdef TARG_SL
-  if (Action(LOWER_RETURN_VAL) && (WN_operator(tree) == OPR_FUNC_ENTRY) && (DEBUG_Stack_Check & STACK_FUNC_CHECK)) {
+  if (Action(LOWER_RETURN_VAL) && (WN_operator(tree) == OPR_FUNC_ENTRY) && (DEBUG_Stack_Check & STACK_FUNC_START_CHECK)) {
     char * PU_name = ST_name(&St_Table[PU_Info_proc_sym(Current_PU_Info)]);
-    if (strcmp(PU_name, "__stackcheck") != 0) {
+    if ((strcmp(PU_name, INSERT_BEGIN_FUNC_NAME) != 0) && (strcmp(PU_name, INSERT_END_FUNC_NAME) != 0)) {
       TY_IDX ty = Make_Function_Type(MTYPE_To_TY(MTYPE_V ));
-      ST *st = Gen_Intrinsic_Function(ty, "__stackcheck" );
+      ST *st = Gen_Intrinsic_Function(ty, INSERT_BEGIN_FUNC_NAME);
       Clear_PU_no_side_effects(Pu_Table[ST_pu(st)]);
       Clear_PU_is_pure(Pu_Table[ST_pu(st)]);
       Set_PU_no_delete(Pu_Table[ST_pu(st)]);

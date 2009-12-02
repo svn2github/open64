@@ -331,7 +331,7 @@ static OPTION_DESC Options_DEBUG[] = {
 
 #ifdef TARG_SL
     { OVK_INT32, OV_VISIBLE, TRUE, "stack_check", "",
-      0, 0, 4, &ID.stack_check, NULL,
+      0, 0, 15, &ID.stack_check, NULL,
       "stack overflow check"   },
 #endif
 
