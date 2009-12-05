@@ -2834,7 +2834,7 @@ DST_Create_Subprogram (ST *func_st, gs_t fndecl)
 
     linkage_name = ST_name(func_st);
     ST_IDX fstidx = ST_st_idx(func_st);
-    if(Opt_Level >=2)
+    if((Opt_Level >=2) && (fndecl))
       inlin = gs_decl_inline(fndecl)?DW_INL_inlined:DW_INL_not_inlined;
     else
       inlin = DW_INL_not_inlined;
