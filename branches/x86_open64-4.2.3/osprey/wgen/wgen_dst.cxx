@@ -2718,6 +2718,7 @@ DST_INFO_IDX
 DST_Create_Subprogram (ST *func_st, gs_t fndecl)
 {
     USRCPOS src;
+    DST_inline inlin;
     USRCPOS_srcpos(src) = Get_Srcpos();
     DST_INFO_IDX dst = DST_INVALID_INIT;
     DST_INFO_IDX ret_dst = DST_INVALID_IDX;
@@ -2833,14 +2834,18 @@ DST_Create_Subprogram (ST *func_st, gs_t fndecl)
 
     linkage_name = ST_name(func_st);
     ST_IDX fstidx = ST_st_idx(func_st);
+    if((Opt_Level >=2) && (fndecl))
+      inlin = gs_decl_inline(fndecl)?DW_INL_inlined:DW_INL_not_inlined;
+    else
+      inlin = DW_INL_not_inlined;
 
     dst = DST_mk_subprogram(
         src,			// srcpos
         funcname,
         ret_dst,        	// return type
         DST_INVALID_IDX,        // Index to alias for weak is set later
-        fstidx,         // index to fe routine for st_idx
-        DW_INL_not_inlined,     // applies to C++
+        fstidx,                 // index to fe routine for st_idx
+        inlin,                  // applies to C++
         DW_VIRTUALITY_none,     // applies to C++
         0,                      // vtable_elem_location
         FALSE,                  // is_declaration

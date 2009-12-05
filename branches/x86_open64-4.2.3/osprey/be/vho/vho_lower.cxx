@@ -4420,7 +4420,7 @@ vho_lower_vector_mpy ( WN * wn, WN * block )
 static WN*
 vho_lower_vector_div ( WN * wn, WN * block )
 {
-  Is_True( WN_operator(wn) == OPR_MPY &&
+  Is_True( WN_operator(wn) == OPR_DIV &&
            MTYPE_is_vector(WN_rtype(wn)),
            ("Bad tree for vho_lower_vector_div") );
 

@@ -72,6 +72,7 @@ extern "C"{
 #define BITS_PER_UNIT 8
 
 extern void WGEN_Expand_Return(gs_t, gs_t);
+extern WN *guard_var_init_block = NULL; 
 
 LABEL_IDX loop_expr_exit_label = 0; // exit label for LOOP_EXPRs
 
@@ -655,7 +656,16 @@ WGEN_add_guard_var (gs_t guard_var, WN *value_wn, BOOL need_comma = TRUE)
   WN *zero_wn = WN_Intconst(MTYPE_I4, 0);
   stid = WN_Stid(MTYPE_I4, 0, Get_ST(guard_var), MTYPE_To_TY(MTYPE_I4),
 		 zero_wn, 0);
-  WGEN_Stmt_Append(stid, Get_Srcpos());
+
+  SRCPOS srcpos = Get_Srcpos(); 
+  if (srcpos)
+  { 
+    WN_Set_Linenum ( stid, srcpos );
+  }
+  WN *guard_var_init_block = WGEN_Guard_Init_Block_Stack_Top(); 
+  FmtAssert( (guard_var_init_block != NULL), ("Missing init block for guard variable init!"));
+  WN_INSERT_BlockLast(guard_var_init_block, stid);
+
 
   // Set the guard variable to 1 while evaluating the value of the conditional
   // expression.
@@ -5620,14 +5630,6 @@ unsupported:
     case GSBI_IX86_BUILTIN_PSRLD:
       is_mmx = TRUE;
       // fall thr
-    case GSBI_IX86_BUILTIN_PSRAWI128:
-    case GSBI_IX86_BUILTIN_PSRADI128:
-    case GSBI_IX86_BUILTIN_PSLLWI128:
-    case GSBI_IX86_BUILTIN_PSLLDI128:
-    case GSBI_IX86_BUILTIN_PSLLQI128:
-    case GSBI_IX86_BUILTIN_PSRLWI128:
-    case GSBI_IX86_BUILTIN_PSRLDI128:
-    case GSBI_IX86_BUILTIN_PSRLQI128:
       Is_True (wn == NULL, ("WGEN_target_builtins: null WN expected"));
       WN * args[2];
       // 1st argument
@@ -6829,6 +6831,28 @@ WGEN_Expand_Expr (gs_t exp,
 	wn0 = WGEN_Expand_Expr (gs_tree_operand (exp, 0),
 	                        need_result || (mtyp != MTYPE_V));
 #endif
+#ifdef TARG_X8664
+        if (mtyp != MTYPE_V && WN_operator(wn0) == OPR_COMMA &&
+             gs_tree_code(gs_tree_operand (exp, 0)) == GS_CALL_EXPR ) {
+          WN *ret_val = WN_kid1(wn0);
+          if (WN_operator(ret_val) == OPR_LDID) { // load return value
+            TYPE_ID rtype = WN_rtype(ret_val); // type in register
+            TYPE_ID desc =  WN_desc(ret_val);  // type in memory
+            // widen the value with proper sign/zero extension
+            // such that I4I1LDID will be sign extended and
+            // U4U2 will be zero extended
+            // Normally the call return value is handled in GS_NOP_EXPR,
+            // but for call expression which is the child of GS_CONVERT_EXPR
+            // (e.g. the bool retuval is explicitly added a convert ), 
+            // it should be handled here
+            if (MTYPE_is_integral(rtype) && MTYPE_is_integral(desc) &&
+                 MTYPE_byte_size( rtype ) > MTYPE_byte_size( desc )) {
+               wn0 = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(desc), MTYPE_V,
+			     MTYPE_size_min(desc), wn0);
+            }
+          }
+        }
+#endif // TARG_X8664
 	if (mtyp == MTYPE_V)
 	  wn = wn0;
 	else if (MTYPE_byte_size(mtyp) < 4 && MTYPE_is_integral(WN_rtype(wn0)))
@@ -9787,6 +9811,20 @@ WGEN_Expand_Expr (gs_t exp,
 
           wn  = WN_CreateComma (OPR_COMMA, WN_rtype (wn1), MTYPE_V,
                                 wn0, wn1);
+#ifdef TARG_X8664
+          if (WN_operator(wn1) == OPR_LDID) {
+            TYPE_ID rtype = WN_rtype(wn1); // type in register
+            TYPE_ID desc =  WN_desc(wn1);  // type in memory
+            // widen the value with proper sign/zero extension
+            // such that I4I1LDID will be sign extended and
+            // U4U2 will be zero extended
+            if (MTYPE_is_integral(rtype) && MTYPE_is_integral(desc) &&
+                 MTYPE_byte_size( rtype ) > MTYPE_byte_size( desc )) {
+               wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(desc), MTYPE_V,
+			     MTYPE_size_min(desc), wn);
+            }
+          }
+#endif
         }
       }
       break;

@@ -140,7 +140,8 @@ typedef enum {
   ANNOT_LOOPINFO  = 6,
   ANNOT_SWITCH 	  = 7,
   ANNOT_ROTATING_KERNEL = 8,
-  ANNOT_ASMINFO   = 9
+  ANNOT_ASMINFO   = 9,
+  ANNOT_INLINE    = 10
 } ANNOTATION_KIND;
 
 class WN;
@@ -168,6 +169,7 @@ typedef struct annotation {
 #define ANNOT_switch(a)		((ST *)ANNOT_info(a))
 #define ANNOT_rotating_kernel(a)   ((ROTATING_KERNEL_INFO*)ANNOT_info(a))
 #define ANNOT_asminfo(a)	((ASMINFO *)ANNOT_info(a))
+#define ANNOT_inline(a)         ((LABEL_IDX)(INTPTR)ANNOT_info(a))
 
 
 typedef struct loopinfo {

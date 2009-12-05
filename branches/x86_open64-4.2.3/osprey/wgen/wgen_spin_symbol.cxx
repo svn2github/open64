@@ -1309,7 +1309,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		    case 2: if (elem_mtype == MTYPE_I4)
 		    	      idx = MTYPE_To_TY(MTYPE_M8I4);
 			    else if (elem_mtype == MTYPE_F4)
-		    	      idx = MTYPE_To_TY(MTYPE_M8F4);
+		    	      idx = MTYPE_To_TY(MTYPE_V8F4);
 		    	    else if (elem_mtype == MTYPE_I8)
 		    	      idx = MTYPE_To_TY(MTYPE_V16I8);
 			    else if (elem_mtype == MTYPE_F8)
@@ -1381,7 +1381,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  }
 		  else if (strncasecmp(p, "SF", 2) == 0) {
 		    if (num_elems == 2)
-		      idx = MTYPE_To_TY(MTYPE_M8F4);
+		      idx = MTYPE_To_TY(MTYPE_V8F4);
 		    else if (num_elems == 4)
 		      idx = MTYPE_To_TY(MTYPE_V16F4);
                     else if (num_elems == 8)

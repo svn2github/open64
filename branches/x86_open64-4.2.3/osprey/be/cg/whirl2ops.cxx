@@ -2000,22 +2000,6 @@ Handle_LDID (WN *ldid, TN *result, OPCODE opcode)
         }
       }
 #elif  defined(TARG_X8664)
-      TYPE_ID rtype = OPCODE_rtype(opcode);
-      TYPE_ID dest_type = OPCODE_desc(opcode);
-      // if the load source object size is different with the result type size
-      // we need to insert a convl to do proper size/zero extension or truncation
-      if (!( OP_NEED_PAIR(dest_type) || OP_NEED_PAIR(rtype) )
-          && MTYPE_size_reg(dest_type) != MTYPE_size_reg(rtype) )
-      {
-        // insert cvt of register
-        if (result == NULL)
-           result = Build_TN_Of_Mtype(rtype);
-        Expand_Convert_Length (result, ldid_result, 
-                               Gen_Literal_TN(MTYPE_size_reg(dest_type), 4),
-                               dest_type, MTYPE_is_signed(dest_type), &New_OPs); 
-        return result;
-      }
-
       if( OP_NEED_PAIR( ST_mtype(WN_st(ldid) ) ) ){
         Expand_Copy( result, ldid_result, ST_mtype(WN_st(ldid)), &New_OPs );
       } else {
@@ -6801,7 +6785,24 @@ static void Expand_Statement (WN *stmt)
       else
 	BB_Add_Annotation(Cur_BB, ANNOT_PRAGMA, stmt);
     }
-#ifdef TARG_X8664 
+#ifdef TARG_X8664
+    if (WN_pragma(stmt) == WN_PRAGMA_INLINE_BODY_START)
+    {
+      OPCODE opcode = WN_opcode(stmt);
+      if (OPCODE_has_sym(opcode)){
+        BB_Add_Annotation (Cur_BB, ANNOT_INLINE, (void *)WN_st_idx(stmt));
+      }
+    }
+    if (WN_pragma(stmt) == WN_PRAGMA_INLINE_BODY_END)
+    { 
+      OPCODE opcode = WN_opcode(stmt);
+      if (OPCODE_has_sym(opcode)){
+        ST *st = WN_st(stmt);
+        BB_Add_Annotation (Cur_BB, 
+                           ANNOT_INLINE, 
+                           (void *)(WN_st_idx(stmt)+ST_index(st)));
+      }
+    }
     if (WN_pragma(stmt) == WN_PRAGMA_PREAMBLE_END)
       WN_pragma_preamble_end_seen = TRUE;
 #endif

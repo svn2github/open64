@@ -95,7 +95,7 @@ typedef enum {
 
 #define OMP_SCHEDULE_DEFAULT	2
 #define OMP_CHUNK_SIZE_DEFAULT	1
-#define OMP_SCHED_ORDERED_GAP	30
+#define OMP_SCHED_ORDERED_GAP	32
 
 
 /*  micro_task prototype.

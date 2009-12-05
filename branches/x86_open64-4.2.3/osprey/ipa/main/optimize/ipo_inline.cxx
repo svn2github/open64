@@ -66,12 +66,16 @@
 #include "ipl_summarize.h"		// for SUMMARY_CREF_SYMBOL
 #include "ipo_tlog_utils.h"		// for tlog
 #include "ipa_option.h"			// for Trace_IPA
-
+#include "dwarf_DST_producer.h"
+#include "dwarf_DST.h"
+#include "dwarf_DST_dump.h"
+#include "ipaa.h"
+#include "clone_DST_utils.h"
+#if 0
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
-#include "dwarf_DST_producer.h"		// for DST_*
-#include "clone_DST_utils.h"		// for DST_enter_inlined_subroutine
 #include "ipaa.h"			// IPAA_NODE_INFO
 #endif // _STANDALONE_INLINER
+#endif
 
 #include "ipo_inline.h"
 
@@ -83,6 +87,8 @@ WN_MAP Parent_Map;
 extern FILE *Y_inlining;
 static BOOL Identify_Partial_Inline_Candiate(IPA_NODE *, WN *,
                                              BOOL, IPO_INLINE_AUX *);
+extern DST_IDX
+get_abstract_origin(DST_IDX concrete_instance);
 
 // ======================================================================
 // For easy switching of Scope_tab
@@ -4499,10 +4505,21 @@ IPO_INLINE::Post_Process_Caller (IPO_INLINE_AUX& aux)
     const PU& pu = Pu_Table[ST_pu (Callee_node ()->Func_ST ())];
 
     {
+        DST_INFO_IDX dst1 = DST_INVALID_INIT;
 	INT64 lang = PU_src_lang (pu);
 	ST* cp = Callee_node ()->Func_ST ();
-	// pragma node that mark the begin and end of the inlined block
+        ST_IDX stidx = ST_st_idx(cp);
 
+        if(Caller_file_dst() == Callee_file_dst())
+        {
+          dst1 = DST_mk_inlined_subroutine(stidx,
+                                           stidx+ST_index(cp),
+                                           get_abstract_origin(Callee_dst()));
+          DST_RESET_assoc_fe (DST_INFO_flag(DST_INFO_IDX_TO_PTR(dst1)));
+          DST_append_child (Caller_dst(), dst1);       
+        }
+
+        // pragma node that mark the begin and end of the inlined block
 	WN* pragma_node_begin =
 	    WN_CreatePragma (WN_PRAGMA_INLINE_BODY_START, cp, lang, 0); 
   

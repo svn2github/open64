@@ -817,8 +817,10 @@ put_subprogram(DST_flag flag,
    	dwarf_add_AT_unsigned_const (dw_dbg, die, DW_AT_inline, 
 			DST_SUBPROGRAM_def_inline(attr), &dw_error);
     }
-    if (PU_has_inlines(Get_Current_PU()))
-	put_flag (DW_AT_MIPS_has_inlines, die);
+    if((&Get_Current_PU()) != NULL){
+      if (PU_has_inlines(Get_Current_PU()))
+       	put_flag (DW_AT_MIPS_has_inlines, die);
+    }
   }
 }
 
@@ -853,13 +855,14 @@ get_ofst_from_label_ASSOC_INFO (DST_ASSOC_INFO assoc_info)
 		DST_ASSOC_INFO_st_index(assoc_info) );
   } else {
 	LABEL_IDX lab;
-	lab = DST_ASSOC_INFO_st_index(assoc_info);
+	lab = DST_ASSOC_INFO_st_idx(assoc_info);
   	FmtAssert ((lab > 0 && lab <= LABEL_Table_Size(DST_ASSOC_INFO_st_level(assoc_info))), 
 	    ("get_ofst_from_label_ASSOC_INFO: bad dst info from fe? (%d,%d)",
 		DST_ASSOC_INFO_st_level(assoc_info), 
 		DST_ASSOC_INFO_st_index(assoc_info) ));
 	return Get_Label_Offset(lab);
   }
+
   FmtAssert ((st != NULL), 
 	("get_ofst_from_label_ASSOC_INFO: bad dst info from fe? (%d,%d)",
 		DST_ASSOC_INFO_st_level(assoc_info), 
@@ -867,6 +870,15 @@ get_ofst_from_label_ASSOC_INFO (DST_ASSOC_INFO assoc_info)
   return (st != NULL) ? ST_ofst(st) : 0;
 }
 
+static mINT32
+get_ofst_from_inline_label_ASSOC_INFO (DST_ASSOC_INFO assoc_info)
+{
+  LABEL_IDX lab;
+  lab = DST_ASSOC_INFO_st_idx(assoc_info);
+  FmtAssert(lab != 0,
+        ("Label is not Created for inline"));
+  return Get_Label_Offset(lab);
+}
 extern INT
 Offset_from_FP (ST *st)
 {
@@ -1128,7 +1140,6 @@ put_pc_value_symbolic (Dwarf_Unsigned pc_attr,
 			      &dw_error);
 }
 
-#if 0
 static void
 put_pc_value (Dwarf_Unsigned pc_attr, INT32 pc_value, Dwarf_P_Die die)
 {
@@ -1140,7 +1151,6 @@ put_pc_value (Dwarf_Unsigned pc_attr, INT32 pc_value, Dwarf_P_Die die)
       cur_text_index,
       &dw_error);
 }
-#endif
 
 static void
 put_lexical_block(DST_flag flag, DST_LEXICAL_BLOCK *attr, Dwarf_P_Die die)
@@ -1172,7 +1182,7 @@ put_lexical_block(DST_flag flag, DST_LEXICAL_BLOCK *attr, Dwarf_P_Die die)
 static void
 put_inlined_subroutine(DST_INLINED_SUBROUTINE *attr, Dwarf_P_Die die)
 {
-#if 1
+#if 0
   put_pc_value_symbolic (DW_AT_low_pc,
 			 Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
 					       (LABEL_IDX) DST_ASSOC_INFO_st_index(DST_LEXICAL_BLOCK_low_pc(attr)),
@@ -1185,14 +1195,13 @@ put_inlined_subroutine(DST_INLINED_SUBROUTINE *attr, Dwarf_P_Die die)
 					       cur_text_index),
 			 (Dwarf_Addr) 0,
 			 die);
-#else
+#endif
    put_pc_value (DW_AT_low_pc,
-	get_ofst_from_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_low_pc(attr)),
+	get_ofst_from_inline_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_low_pc(attr)),
 	die);
    put_pc_value (DW_AT_high_pc,
-	get_ofst_from_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_high_pc(attr)),
+	get_ofst_from_inline_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_high_pc(attr)),
 	die);
-#endif
 
    if (DST_IS_FOREIGN_OBJ (DST_INLINED_SUBROUTINE_abstract_origin(attr))) {
 	/* cross file inlining */

@@ -1917,10 +1917,12 @@ get_auto_cpu_name ()
 	    return "i386";
 
 	case 6:			// P6, Core, ...
-	  if (model == 23)
+	  if (model == 7 ||	// Harpertown	bug 14685
+	      model == 23 ||	// Wolfdale
+	      model == 26)	// Nehalem
 	    return "wolfdale";
 
-	  if (model == 15)
+	  if (model >= 15)
 	    return "core";
 
 	  // Treat the rest of the P6 family as generic x86 since we don't

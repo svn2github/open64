@@ -12510,7 +12510,10 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 	    copyin_nodes_end = WN_next(copyin_nodes_end) = cur_node;
 	  ++copyin_count;
           break;
-
+        
+	case WN_PRAGMA_DEFAULT:
+	  break;
+	  
 	  default:
 	    Fail_FmtAssertion (
 	       "out of context pragma (%s) in MP {top-level pragma} processing",
