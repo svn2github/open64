@@ -657,12 +657,13 @@ WGEN_add_guard_var (gs_t guard_var, WN *value_wn, BOOL need_comma = TRUE)
   stid = WN_Stid(MTYPE_I4, 0, Get_ST(guard_var), MTYPE_To_TY(MTYPE_I4),
 		 zero_wn, 0);
 
-  FmtAssert( (guard_var_init_block != NULL), ("Missing init block for guard variable init!"));
   SRCPOS srcpos = Get_Srcpos(); 
   if (srcpos)
   { 
     WN_Set_Linenum ( stid, srcpos );
   }
+  WN *guard_var_init_block = WGEN_Guard_Init_Block_Stack_Top(); 
+  FmtAssert( (guard_var_init_block != NULL), ("Missing init block for guard variable init!"));
   WN_INSERT_BlockLast(guard_var_init_block, stid);
 
 

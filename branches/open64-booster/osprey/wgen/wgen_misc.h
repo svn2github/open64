@@ -105,6 +105,7 @@ typedef enum {
   wgen_stmk_rcomma,
   wgen_stmk_temp_cleanup,
   wgen_stmk_dummy,	// does not generate code
+  wgen_stmk_guard_init,
   wgen_stmk_last
 } WGEN_STMT_KIND;
 
@@ -123,6 +124,19 @@ extern bool Check_For_Call_Region (void);
 extern bool Did_Not_Terminate_Region;
 extern WN * WGEN_Find_Stmt_In_Stack (WGEN_STMT_KIND);
 extern void Warning (const char *);
+
+
+void
+WGEN_Guard_Block_Stack_Init();
+
+void
+WGEN_Guard_Init_Block_Push(); 
+
+WN *
+WGEN_Guard_Init_Block_Pop(); 
+
+WN *
+WGEN_Guard_Init_Block_Stack_Top(); 
 
 extern BOOL wgen_invoke_inliner;	/* from main.c */
 extern char *asm_file_name;		/* from main.c */

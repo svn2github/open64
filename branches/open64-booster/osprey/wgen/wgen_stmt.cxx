@@ -69,8 +69,6 @@ extern int gs_decode_reg_name (const char *asmspec);
 }
 
 extern char *WGEN_Tree_Node_Name(gs_t exp);
-extern WN * guard_var_init_block; 
-
 #define ENLARGE(x) (x + (x >> 1))
 
 static BOOL  *if_else_info_stack;
@@ -4182,11 +4180,7 @@ WGEN_Expand_Stmt(gs_t stmt, WN* target_wn)
     if(gs_tree_has_location(stmt) == gs_true)
      WGEN_Set_Line_And_File (lineno, gs_expr_filename(stmt), TRUE);
 
-    // mark the current stack top to place
-    // any guard variable initialization if necessary
-
-    guard_var_init_block = WGEN_Stmt_Top();
-
+    WGEN_Guard_Init_Block_Push(); 
     if (lang_cplus) 
       switch (gs_tree_code_class(stmt)){
       case GS_TCC_REFERENCE:
@@ -4419,8 +4413,7 @@ WGEN_Expand_Stmt(gs_t stmt, WN* target_wn)
 	break;
       default: ;
       }
-
-    guard_var_init_block = NULL;
+     WGEN_Guard_Init_Block_Pop(); 
 } /* WGEN_Expand_Stmt */
 
 // RETVAL is a TARGET_EXPR that generates the function return value.  The
