@@ -2176,6 +2176,14 @@ void directive_stmt_semantics(void)
 #endif /* KEY Bug 10441 */
          open_mp_directive_semantics(Single_Omp);
          break;
+         
+      case  Parallelworkshare_Open_Mp_Opr:
+        open_mp_directive_semantics(Parallel_Workshare_Omp);
+        break;
+        
+      case Endparallelworkshare_Open_Mp_Opr:
+        end_blk_mp_semantics(TRUE);
+        break;
 
    }
 
