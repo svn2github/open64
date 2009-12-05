@@ -282,6 +282,22 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 
 	} else {
 	  WN *opnd = Gen_exp_wn(exp->Get_opnd(0), emitter);
+#if defined(TARG_X8664)
+          // cannot remove CVTL when loading value from return register,
+          // the return value needs to be zero/sign extended in order to
+          // mask off the possible trash value in upper part of the
+          // register
+          
+          if (WN_operator(opnd) == OPR_LDID && 
+                WN_st_idx(opnd) != (ST_IDX) 0 && (ST_class(WN_st(opnd)) == CLASS_PREG)) {
+            if (WN_st(opnd) == Return_Val_Preg ||
+                 ( Preg_Is_Dedicated(WN_offset(opnd)) && Preg_Offset_Is_Int(WN_offset(opnd)) &&
+                   Is_Return_Preg(WN_offset(opnd)) )) {
+               wn = WN_CreateCvtl(exp->Op(), (INT16)exp->Offset(), opnd);
+               break;
+            }
+          }
+#endif // TARG_X8664
 	  actual_type = Actual_cvtl_type(exp->Op(), exp->Offset());
 	  actual_opnd_type = Actual_result_type(opnd);
 

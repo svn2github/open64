@@ -9811,6 +9811,20 @@ WGEN_Expand_Expr (gs_t exp,
 
           wn  = WN_CreateComma (OPR_COMMA, WN_rtype (wn1), MTYPE_V,
                                 wn0, wn1);
+#ifdef TARG_X8664
+          if (WN_operator(wn1) == OPR_LDID) {
+            TYPE_ID rtype = WN_rtype(wn1); // type in register
+            TYPE_ID desc =  WN_desc(wn1);  // type in memory
+            // widen the value with proper sign/zero extension
+            // such that I4I1LDID will be sign extended and
+            // U4U2 will be zero extended
+            if (MTYPE_is_integral(rtype) && MTYPE_is_integral(desc) &&
+                 MTYPE_byte_size( rtype ) > MTYPE_byte_size( desc )) {
+               wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(desc), MTYPE_V,
+			     MTYPE_size_min(desc), wn);
+            }
+          }
+#endif
         }
       }
       break;
