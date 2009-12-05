@@ -1581,6 +1581,8 @@ BB_Add_Annotation (BB *bb, ANNOTATION_KIND kind, void *info)
   case ANNOT_ROTATING_KERNEL:
     Set_BB_rotating_kernel(bb);
     break;
+  case ANNOT_INLINE:
+    break;
   default:
     FmtAssert(FALSE, ("unexpected annotation kind: %d", kind));
     /*NOTREACHED*/

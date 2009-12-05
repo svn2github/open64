@@ -2727,6 +2727,7 @@ static void unroll_xfer_annotations(BB *unrolled_bb, BB *orig_bb)
 {
   if (BB_has_pragma(orig_bb)) {
     BB_Copy_Annotations(unrolled_bb, orig_bb, ANNOT_PRAGMA);
+    BB_Copy_Annotations(unrolled_bb, orig_bb, ANNOT_INLINE);
   }
 
   if (BB_exit(orig_bb)) {

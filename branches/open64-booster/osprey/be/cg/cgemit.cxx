@@ -5115,6 +5115,14 @@ Recompute_Label_Offset(INT32 pcs[2])
       lab = ANNOT_label(ant);
       Set_Label_Offset(lab, cur_pc);
     }
+    for (ant = ANNOT_First (BB_annotations(bb), ANNOT_INLINE);
+         ant != NULL;
+         ant = ANNOT_Next (ant, ANNOT_INLINE))
+    {
+      lab  = ANNOT_inline(ant);
+      Set_Label_Offset(lab,cur_pc);
+    }
+
     for (op = BB_first_op(bb); op; op = OP_next(op)) {
       if (OP_has_tag(op)) {
 	lab = Get_OP_Tag(op);

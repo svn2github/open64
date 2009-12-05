@@ -6801,7 +6801,24 @@ static void Expand_Statement (WN *stmt)
       else
 	BB_Add_Annotation(Cur_BB, ANNOT_PRAGMA, stmt);
     }
-#ifdef TARG_X8664 
+#ifdef TARG_X8664
+    if (WN_pragma(stmt) == WN_PRAGMA_INLINE_BODY_START)
+    {
+      OPCODE opcode = WN_opcode(stmt);
+      if (OPCODE_has_sym(opcode)){
+        BB_Add_Annotation (Cur_BB, ANNOT_INLINE, (void *)WN_st_idx(stmt));
+      }
+    }
+    if (WN_pragma(stmt) == WN_PRAGMA_INLINE_BODY_END)
+    { 
+      OPCODE opcode = WN_opcode(stmt);
+      if (OPCODE_has_sym(opcode)){
+        ST *st = WN_st(stmt);
+        BB_Add_Annotation (Cur_BB, 
+                           ANNOT_INLINE, 
+                           (void *)(WN_st_idx(stmt)+ST_index(st)));
+      }
+    }
     if (WN_pragma(stmt) == WN_PRAGMA_PREAMBLE_END)
       WN_pragma_preamble_end_seen = TRUE;
 #endif

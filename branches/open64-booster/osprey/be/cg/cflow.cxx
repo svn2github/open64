@@ -514,6 +514,7 @@ static void Move_LoopHead(BB *head)
        */
       BB_Copy_Annotations(new_head, head, ANNOT_LOOPINFO);
       BB_Copy_Annotations(new_head, head, ANNOT_PRAGMA);
+      BB_Copy_Annotations(new_head, head, ANNOT_INLINE);
       break;
     }
 
@@ -3924,6 +3925,7 @@ Merge_With_Pred ( BB *b, BB *pred )
   /* Copy pragmas to the pred.
    */
   BB_Copy_Annotations(pred, b, ANNOT_PRAGMA);
+  BB_Copy_Annotations(pred, b, ANNOT_INLINE);
 
   /* Update BB successor info if necessary.
    */
@@ -4582,6 +4584,7 @@ Append_Succ(
 
   BB_Copy_Annotations(b, suc, ANNOT_NOTE);
   BB_Copy_Annotations(b, suc, ANNOT_PRAGMA);
+  BB_Copy_Annotations(b, suc, ANNOT_INLINE);
 
   if ((num = BB_REGION_Exit(suc, b_rid)) != NO_REGION_EXIT) {
 
