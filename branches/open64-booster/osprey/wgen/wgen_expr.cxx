@@ -5620,14 +5620,6 @@ unsupported:
     case GSBI_IX86_BUILTIN_PSRLD:
       is_mmx = TRUE;
       // fall thr
-    case GSBI_IX86_BUILTIN_PSRAWI128:
-    case GSBI_IX86_BUILTIN_PSRADI128:
-    case GSBI_IX86_BUILTIN_PSLLWI128:
-    case GSBI_IX86_BUILTIN_PSLLDI128:
-    case GSBI_IX86_BUILTIN_PSLLQI128:
-    case GSBI_IX86_BUILTIN_PSRLWI128:
-    case GSBI_IX86_BUILTIN_PSRLDI128:
-    case GSBI_IX86_BUILTIN_PSRLQI128:
       Is_True (wn == NULL, ("WGEN_target_builtins: null WN expected"));
       WN * args[2];
       // 1st argument
