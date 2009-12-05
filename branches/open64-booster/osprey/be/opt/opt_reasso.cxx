@@ -2322,6 +2322,10 @@ toplvl_bb (CFG* acfg, BB_NODE *bb, OPT_STAB * optstab) {
                     continue;
                 if (optstab->Du_is_volatile(WN_ver(wn)) == true) 
                     continue;
+                if (WN_desc(wn) != MTYPE_V16F8 
+                        && WN_desc(wn) != MTYPE_V16F4
+                        && WN_desc(wn) != MTYPE_F8) 
+                    continue;
                 if(whirlmap.find(WN_ver(wn)) 
                             == whirlmap.end()) {
                     if (termset.find(WN_ver(wn)) == termset.end()) {
