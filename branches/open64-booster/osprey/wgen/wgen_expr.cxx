@@ -72,6 +72,7 @@ extern "C"{
 #define BITS_PER_UNIT 8
 
 extern void WGEN_Expand_Return(gs_t, gs_t);
+extern WN *guard_var_init_block = NULL; 
 
 LABEL_IDX loop_expr_exit_label = 0; // exit label for LOOP_EXPRs
 
@@ -655,7 +656,15 @@ WGEN_add_guard_var (gs_t guard_var, WN *value_wn, BOOL need_comma = TRUE)
   WN *zero_wn = WN_Intconst(MTYPE_I4, 0);
   stid = WN_Stid(MTYPE_I4, 0, Get_ST(guard_var), MTYPE_To_TY(MTYPE_I4),
 		 zero_wn, 0);
-  WGEN_Stmt_Append(stid, Get_Srcpos());
+
+  FmtAssert( (guard_var_init_block != NULL), ("Missing init block for guard variable init!"));
+  SRCPOS srcpos = Get_Srcpos(); 
+  if (srcpos)
+  { 
+    WN_Set_Linenum ( stid, srcpos );
+  }
+  WN_INSERT_BlockLast(guard_var_init_block, stid);
+
 
   // Set the guard variable to 1 while evaluating the value of the conditional
   // expression.
