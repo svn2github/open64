@@ -6821,6 +6821,28 @@ WGEN_Expand_Expr (gs_t exp,
 	wn0 = WGEN_Expand_Expr (gs_tree_operand (exp, 0),
 	                        need_result || (mtyp != MTYPE_V));
 #endif
+#ifdef TARG_X8664
+        if (mtyp != MTYPE_V && WN_operator(wn0) == OPR_COMMA &&
+             gs_tree_code(gs_tree_operand (exp, 0)) == GS_CALL_EXPR ) {
+          WN *ret_val = WN_kid1(wn0);
+          if (WN_operator(ret_val) == OPR_LDID) { // load return value
+            TYPE_ID rtype = WN_rtype(ret_val); // type in register
+            TYPE_ID desc =  WN_desc(ret_val);  // type in memory
+            // widen the value with proper sign/zero extension
+            // such that I4I1LDID will be sign extended and
+            // U4U2 will be zero extended
+            // Normally the call return value is handled in GS_NOP_EXPR,
+            // but for call expression which is the child of GS_CONVERT_EXPR
+            // (e.g. the bool retuval is explicitly added a convert ), 
+            // it should be handled here
+            if (MTYPE_is_integral(rtype) && MTYPE_is_integral(desc) &&
+                 MTYPE_byte_size( rtype ) > MTYPE_byte_size( desc )) {
+               wn0 = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(desc), MTYPE_V,
+			     MTYPE_size_min(desc), wn0);
+            }
+          }
+        }
+#endif // TARG_X8664
 	if (mtyp == MTYPE_V)
 	  wn = wn0;
 	else if (MTYPE_byte_size(mtyp) < 4 && MTYPE_is_integral(WN_rtype(wn0)))
