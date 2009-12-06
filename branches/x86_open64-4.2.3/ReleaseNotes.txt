@@ -1,8 +1,8 @@
 
-x86 Open64 4.2.3 Beta (4.2.2.99) Release Notes 
+x86 Open64 4.2.3 Release Notes 
 
 
-               November 16, 2009
+               December 14, 2009
 
 
 1. Overview
@@ -25,8 +25,7 @@ x86 Open64 4.2.3 Beta (4.2.2.99) Release Notes
 1. Overview
 ===========
 
- This is version 4.2.2.99 of the x86 Open64 compiler suite.  It is a beta
- release for version 4.2.3.
+ This is version 4.2.3 of the x86 Open64 compiler suite.
 
  x86 Open64 is an open source, optimizing compiler for 32-bit (x86) and
  64-bit (x86-64) achitectures. x86 Open64 supports Fortran 77/90/95, C (C89
@@ -83,17 +82,17 @@ x86 Open64 4.2.3 Beta (4.2.2.99) Release Notes
 
  This compiler is available in both binary and source-code forms.
 
- o x86_open64-4.2.2.99-1.src.tar.bz2
+ o x86_open64-4.2.3-1.src.tar.bz2
 
    This package contains the compiler's source code. To unpack the source, use
    the command:
 
-     tar xjvf x86_open64-4.2.2.99-1.src.tar.bz2
+     tar xjvf x86_open64-4.2.3-1.src.tar.bz2
 
    For instructions on how to build the compiler from source, see the included
    INSTALL file.
 
- o x86_open64-4.2.2.99-1.x86_64.tar.bz2
+ o x86_open64-4.2.3-1.x86_64.tar.bz2
 
    This package contains the binary code for x86-64 machines.
 
@@ -104,7 +103,7 @@ x86 Open64 4.2.3 Beta (4.2.2.99) Release Notes
    libraries. The x86 Open64 4.2.2.3 release can be downloaded from
    http://developer.amd.com/cpu/open64.
 
- o x86_open64-4.2.2.99-1.x86_64.rpm
+ o x86_open64-4.2.3-1.x86_64.rpm
 
    This package contains the same binaries as the tar.bz2 package in RPM form.
 
@@ -115,8 +114,8 @@ x86 Open64 4.2.3 Beta (4.2.2.99) Release Notes
 
  The two binary packages,
 
- o x86_open64-4.2.2.99-1.x86_64.tar.bz2
- o x86_open64-4.2.2.99-1.x86_64.rpm
+ o x86_open64-4.2.3-1.x86_64.tar.bz2
+ o x86_open64-4.2.3-1.x86_64.rpm
 
  are tested and validated on 64-bit Linux systems running:
 
@@ -142,11 +141,11 @@ x86 Open64 4.2.3 Beta (4.2.2.99) Release Notes
 
  To install the compiler from the bz2 package:
 
- o Expand x86_open64-4.2.2.99-1.x86_64.tar.bz2 with the command:
+ o Expand x86_open64-4.2.3-1.x86_64.tar.bz2 with the command:
 
-   tar xjvf x86_open64-4.2.2.99-1.x86_64.tar.bz2
+   tar xjvf x86_open64-4.2.3-1.x86_64.tar.bz2
 
- o If desired, move the x86_open64-4.2.2.99 directory to the final
+ o If desired, move the x86_open64-4.2.3 directory to the final
    installation location using the 'mv' command.
 
    The C, C++, FORTRAN compilers are now available in the 'bin'
@@ -160,15 +159,15 @@ x86 Open64 4.2.3 Beta (4.2.2.99) Release Notes
 
  To install the compiler from RPM:
 
- $ rpm -ivh x86_open64-4.2.2.99-1.x86_64.rpm
+ $ rpm -ivh x86_open64-4.2.3-1.x86_64.rpm
 
  This command will install the x86 Open64 compiler to
- /opt/x86_open64-4.2.2.99. The C, C++, FORTRAN compilers are in folder
- /opt/x86_open64-4.2.2.99/bin.
+ /opt/x86_open64-4.2.3. The C, C++, FORTRAN compilers are in folder
+ /opt/x86_open64-4.2.3/bin.
 
  To install the compiler to another location:
 
- $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.2.99-1.x86_64.rpm
+ $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.3-1.x86_64.rpm
 
  Then the compiler will be installed to /path/to/folder.
 
@@ -207,4 +206,32 @@ x86 Open64 4.2.3 Beta (4.2.2.99) Release Notes
  o Running the Fortran compiler on systems with SELinux enabled may result in
    the error message "cannot restore segment prot after reloc". The workaround
    is to disable SELinux enforcing mode by running "/usr/sbin/setenforce 0".
+
+ o Open64 does not support the following GCC extensions:
+   - complex integer data types
+   - decimal floating point types
+   - GCC vector types containing a single element
+   - GCC vector types whose base type is char and whose overall size is less
+     than 8 bytes
+   - the __builtin_object_size function
+   - the __builtin_apply function
+   - vector types other than MMX (8-byte) and SSE (16-bit)
+
+   The __builtin_return_address function is supported only with no
+   optimization.  The 'long double' implementation is not compatible with GCC.
+
+ o Open64 does not fully support C99 variable length arrays.
+
+ o To provide the best runtime performance, the compiler makes assumptions that
+   runtime integer arithmetic expressions that arise in certain contexts do not
+   overflow (that is, they do not produce values that are too high or too low
+   to represent).  These assumptions apply to expressions that are present in
+   user code as well as expressions that the compiler constructs.  Note that if
+   an integer arithmetic overflow assumption is violated, runtime behavior is
+   undefined.
+
+   Option '-OPT:wrap_around_unsafe=off' instructs the compiler to be
+   conservative about integer overflow assumptions and avoid performing
+   optimizations that are based on integer overflow assumptions, for example,
+   linear function test replacement.
 
