@@ -1073,7 +1073,7 @@ print_defaults(int argc, char *argv[])
   else
     internal_error("no default target cpu");
 
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON)
   // ABI
   switch (abi) {
     case ABI_N32:	fprintf(stderr, " -n32"); break;

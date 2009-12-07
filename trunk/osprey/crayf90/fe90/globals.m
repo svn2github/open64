@@ -490,7 +490,7 @@
      * its own definition which is always 32 bytes, both for consistency and
      * because SSE2 needs the member which was eliminated after FC1. */
 #   define IEEE_SAVE_SIZE			32
-# elif defined(TARG_MIPS)
+# elif defined(TARG_MIPS) || defined(TARG_LOONGSON)
 #   define IEEE_SAVE_SIZE			4
 # endif /* defined(TARG_whatever) */
 #endif /* _LINUX_LINUX */

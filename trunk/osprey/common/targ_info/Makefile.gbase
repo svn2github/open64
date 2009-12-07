@@ -189,6 +189,11 @@ LDIRT += pentium_si_gen
 SO_TARGETS = \
 	pentium.so
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+LDIRT += loongson_si_gen 
+SO_TARGETS = \
+	loongson.so
+endif
 
 HDRS_LOC = /usr/include/cmplrs/$(BUILD_TARGET_DIR)
 
@@ -1273,6 +1278,27 @@ pentium_si_gen: si_gen.a pentium_si.o topcode.o
 
 pentium_si.o: pentium_si.cxx targ_isa_subset.h topcode.h si_gen.h
 	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/pentium_si.cxx
+endif
+
+ifeq ($(BUILD_TARGET), LOONGSON)
+
+loongson.so: loongson.o init.o
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) loongson.o init.o -shared -o loongson.so
+
+loongson.o: loongson.c ti_si_types.h
+	$(cc) $(CFLAGS) -c loongson.c
+
+init.o: init.cxx topcode.h ti_si_types.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_GENERATE_DIR)/init.cxx
+
+loongson.c: loongson_si_gen
+	$(SETPATH) $(RUN) ./loongson_si_gen
+
+loongson_si_gen: si_gen.a loongson_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) loongson_si.o topcode.o si_gen.a -o loongson_si_gen
+
+loongson_si.o: loongson_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/loongson_si.cxx
 endif
 
 libtarginfo.a: $(LIBTARGINFO_OBJS)

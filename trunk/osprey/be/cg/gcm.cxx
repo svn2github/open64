@@ -649,6 +649,11 @@ OP_Has_Restrictions(OP *op, BB *source_bb, BB *target_bb, mINT32 motion_type)
     return TRUE;
 #endif
 
+#ifdef TARG_LOONGSON
+  if (OP_icmp(op))
+    return TRUE;
+#endif
+
   if (OP_has_hazard(op)) return TRUE;
 
   if ((cur_hbs_type & HBS_BEFORE_GRA) != 0 && OP_no_move_before_gra(op)) 
@@ -1173,7 +1178,7 @@ Null_Ptr_Deref_Spec(OP *deref_op, BB *src, BB *dest)
 	if (!taken_path) return FALSE;
   }
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
   const int base_idx = TOP_Find_Operand_Use( OP_code(deref_op),OU_base );
   if( base_idx < 0 )
     return FALSE;
@@ -3144,7 +3149,11 @@ Perform_Post_GCM_Steps(BB *bb, BB *cand_bb, OP *cand_op, mINT32 motion_type,
     // the succ arcs.
     if (CGTARG_Is_OP_Addr_Incr(cand_op) &&
 	!TN_is_sp_reg(OP_result(cand_op,0 /*???*/))) {
+#ifdef TARG_LOONGSON
+	INT64 addiu_const = TN_value (OP_opnd(cand_op,2));
+#else
 	INT64 addiu_const = TN_value (OP_opnd(cand_op,1));
+#endif
 	OP *succ_op;
 	for (succ_op = cand_op;
 	     succ_op != NULL;
@@ -3192,7 +3201,11 @@ Perform_Post_GCM_Steps(BB *bb, BB *cand_bb, OP *cand_op, mINT32 motion_type,
 		   (TN_number(OP_opnd(cand_op, base_opndnum)) ==
 		    TN_number(OP_result(succ_op,0 /*???*/)))))
 		{
+#ifdef TARG_LOONGSON
+		  INT64 addiu_const = TN_value (OP_opnd(succ_op,2));
+#else
 		  INT64 addiu_const = TN_value (OP_opnd(succ_op,1));
+#endif
 		  Fixup_Ldst_Offset (cand_op, addiu_const, -1, HBS_FROM_GCM);
 		  DevWarn ("Memory OP offset adjusted in GCM");
 		}

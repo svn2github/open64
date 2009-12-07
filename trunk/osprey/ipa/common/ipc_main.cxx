@@ -115,6 +115,12 @@ IP_set_target(void)
     Use_32_Bit_Pointers = IPA_Target_Type == IP_32_bit_ABI;
 #endif
 
+#ifdef TARG_LOONGSON
+    Target_ABI = IPA_Target_Type == IP_64_bit_ABI ? ABI_n64 : ABI_n32;
+    Target_ISA = TARGET_ISA_LOONGSON;
+    Use_32_Bit_Pointers = IPA_Target_Type == IP_32_bit_ABI;
+#endif
+
     IPA_Configure_Target ();
 }
 

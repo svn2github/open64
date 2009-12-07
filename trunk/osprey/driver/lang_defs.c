@@ -180,6 +180,8 @@ static phase_info_t phase_info[] = {
    {'a',  0x0000002000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE, TRUE}, /* gcc */
 #elif defined(TARG_SL)
    {'a',  0x0000002000000000LL, NAMEPREFIX "as", BINPATH, FALSE, FALSE},  /* as*/
+#elif defined(TARG_LOONGSON)
+   {'a',  0x0000002000000000LL,	"as", PHASEPATH, FALSE, FALSE}, /* as */
 #else
    {'a',  0x0000002000000000LL,	"as",	BINPATH,	FALSE, TRUE},	/* gas */
 #endif
@@ -191,8 +193,12 @@ static phase_info_t phase_info[] = {
 #else
    {'j',  0x0000010000000000LL, "ipa_link", BINPATH, TRUE, FALSE}, /* ipa_link */
 #endif
+#ifdef TARG_LOONGSON
+   {'l',  0x0000020000000000LL,	"collect2", GNUPHASEPATH,TRUE, FALSE},	/* collect */
+#else
    {'l',  0x0000020000000000LL,	"ld", BINPATH, TRUE, TRUE},	/* collect */
-#if defined(TARG_X8664) || ( defined(KEY) && !defined(CROSS_COMPILATION))
+#endif
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) || ( defined(KEY) && !defined(CROSS_COMPILATION))
    /* on x8664, we alwayse use gcc/g++ as the linker */
    {'l',  0x0000040000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE, TRUE}, /* ld */
    {'l',  0x0000080000000000LL,	NAMEPREFIX "g++", BINPATH, FALSE, TRUE}, /* ldplus */

@@ -532,6 +532,10 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
     case OPR_SHUFFLE:
     case OPR_ATOMIC_RSQRT:
 #endif
+#ifdef TARG_LOONGSON
+    case OPR_MPYU2:
+    case OPR_MPYI2:
+#endif
       if (visit_all)
 	Mark_tree_bits_live(cr->Opnd(0), Bits_in_type(dsctyp), stmt_visit);
       return;

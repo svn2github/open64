@@ -64,10 +64,15 @@ ARGV *current_ld_flags;
 ARGV *comma_list;
 UINT32 comma_list_byte_count = 0;
 
-#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_LOONGSON)
 
+#ifdef TARG_LOONGSON
+#define LINKER_NAME "mips64el-n32-linux-gcc"
+#define LINKER_NAME_WITH_SLASH "/mips64el-n32-linux-gcc"
+#else
 #define LINKER_NAME "gcc"
 #define LINKER_NAME_WITH_SLASH "/gcc"
+#endif //TARG_LOONGSON
 
 #if defined(TARG_IA64)
 #define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
@@ -154,7 +159,7 @@ ipa_init_link_line (int argc, char** argv)
     comma_list = CXX_NEW (ARGV, Malloc_Mem_Pool);
 
     // Push the path and name of the final link tool
-#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
 
 #if 0
     char *t_path = arg_vector[0];

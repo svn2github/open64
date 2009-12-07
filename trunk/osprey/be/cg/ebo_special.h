@@ -147,7 +147,7 @@ INT EBO_Copy_Operand (OP *op);
 BOOL delete_duplicate_op (OP *op,
                           EBO_TN_INFO **opnd_tninfo,
                           EBO_OP_INFO *opinfo
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
                           , EBO_TN_INFO **actual_tninfo = NULL
 #endif
 			  );

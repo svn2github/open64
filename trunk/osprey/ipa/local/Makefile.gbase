@@ -109,6 +109,9 @@ endif
 ifeq ($(BUILD_TARGET), NVISA)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
 
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest

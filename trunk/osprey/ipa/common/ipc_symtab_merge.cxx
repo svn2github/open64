@@ -1728,7 +1728,7 @@ Merge_Global_St(UINT                   idx,
     //
     char *st_name = &original_tabs.symstr_tab[ST_name_idx (original_st)];
 
-#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_LOONGSON)
     void *pext = ld_slookup_mext(st_name,
     	    	    	    	(ST_storage_class (original_st) == SCLASS_EXTERN));
 #else

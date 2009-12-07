@@ -81,6 +81,9 @@ endif
 ifeq ($(BUILD_TARGET), X8664)
 HOSTDEFS += -DTARGET_NAME=\"i686-pc-linux-gnu\"
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+HOSTDEFS += -DTARGET_NAME=\"longson-linux\"
+endif
 
 HOSTDEFS += -DLONGLONG
 HOSTDEFS += -DFRONT_END
@@ -153,6 +156,10 @@ endif
 ifeq ($(BUILD_TARGET), X8664)
 GNU_TARG_DIR = $(GNU_DIR)/i386
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
+endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+GNU_TARG_DIR = $(GNU_DIR)/loongson
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/loongson
 endif
 
 ############################################################

@@ -129,6 +129,11 @@ LIBINSTR_HEADER_DIRS    = \
 ifeq ($(BUILD_TARGET), SL)
 LIBINSTR_HEADER_DIRS += $(TOOLROOT)/usr/include
 endif
+
+ifeq ($(BUILD_TARGET), LOONGSON)
+LIBINSTR_HEADER_DIRS += $(BUILD_TOT)/common/com/loongson
+endif
+
 # These are the directories in which to look for source files.
 
 
@@ -163,6 +168,16 @@ LASINCS = $(LCINCS)
 ifeq ($(BUILD_TARGET), IA32)
 LCDEFS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 LC++DEFS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
+endif
+
+ifeq ($(BUILD_TARGET), LOONGSON)
+CC = mips64el-n32-linux-gcc
+CXX = mips64el-n32-linux-g++
+AR = mips64el-n32-linux-ar
+LD = mips64el-n32-linux-gcc
+RANLIB = mips64el-n32-linux-ranlib
+CFLAGS += -static -mabi=n32 -fno-exceptions -O3 -DTARG_LOONGSON
+CXXFLAGS += -static -mabi=n32 -fno-exceptions -O3 -DTARG_LOONGSON
 endif
 
 # setup stuff to build shared or non-shared

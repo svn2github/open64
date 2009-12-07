@@ -486,7 +486,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #endif 
 		  break;
 
-#if !defined(TARG_X8664) && !defined(TARG_MIPS) && !defined(TARG_IA64) || defined(TARG_SL)
+#if !defined(TARG_X8664) && !defined(TARG_MIPS) && !defined(TARG_IA64) && !defined(TARG_LOONGSON) || defined(TARG_SL) 
 #ifdef _LP64
 		case 16:  mtype = MTYPE_I8; break;
 #endif /* _LP64 */
@@ -550,7 +550,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #if defined(TARG_IA64)
                 case 12:
                 case 16: mtype = MTYPE_F10; break;
-#elif defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+#elif defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_LOONGSON)
                 case 12:
                 case 16: mtype = MTYPE_FQ; break;
 #else
