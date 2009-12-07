@@ -10657,52 +10657,31 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 
           case REAL_CST:
             {
-
-              REAL_VALUE_TYPE d;
-
-              d = TREE_REAL_CST (t);
-
+  	      REAL_VALUE_TYPE d;
+  	      char string[16*8];
+              gs_t value_f;
+              gs_t value_d;
+              gs_t value_ld;
+    
               _gs_bv (flags, GS_TREE_OVERFLOW, TREE_OVERFLOW (t));
+    
+              value_f =  __gs (IB_FLOAT);
+              value_d =  __gs (IB_DOUBLE);
+              value_ld = __gs (IB_LONG_DOUBLE);
+
+  	      d = TREE_REAL_CST (t);
               _gs_bv (flags, GS_REAL_VALUE_ISINF, REAL_VALUE_ISINF (d));
               _gs_bv (flags, GS_REAL_VALUE_ISNAN, REAL_VALUE_ISNAN (d));
+	      real_to_decimal (string, &d, sizeof (string), 0, 1);
 
-              long rval, rbuf [4];
-              int rbuf_w[4]; // this is needed when long is 64-bit
-              int i;
-
-              // float type value
-              gs_t value_f;
-              value_f =  __gs (IB_FLOAT);
-              REAL_VALUE_TO_TARGET_SINGLE (d, rval);
-              _gs_f (value_f, *(float *) &rval);
+              _gs_f (value_f, strtof ((string), NULL));
               gs_set_operand ((gs_t) GS_NODE (t), GS_TREE_REAL_CST_F, value_f);
-
-              // double type value
-              gs_t value_d;              
-              value_d =  __gs (IB_DOUBLE);
-              REAL_VALUE_TO_TARGET_DOUBLE (d, rbuf);
-              for (i = 0; i < 4; i++)
-                rbuf_w[i] = rbuf[i];               
-              _gs_d (value_d, *(double *) &rbuf_w);
+              _gs_d (value_d, strtod ((string), NULL));
               gs_set_operand ((gs_t) GS_NODE (t), GS_TREE_REAL_CST_D, value_d);
-
-              // long double type value
-              gs_t value_ld;             
-              value_ld = __gs (IB_LONG_DOUBLE);
-              REAL_VALUE_TO_TARGET_LONG_DOUBLE (d, rbuf);
-              for (i = 0; i < 4; i++)
-                rbuf_w[i] = rbuf[i];
-
-              long double ld_t;
-              if (LONG_DOUBLE_TYPE_SIZE == 64)
-                ld_t = *(double *) &rbuf_w;
-              else 
-                ld_t = *(long double *) &rbuf_w;
-
-              _gs_ld (value_ld, ld_t);
+              _gs_ld (value_ld, strtold ((string), NULL));
               gs_set_operand ((gs_t) GS_NODE (t), GS_TREE_REAL_CST_LD, value_ld);
             }
-            break;
+	    break;
 
 	  case VECTOR_CST:
 	    {
