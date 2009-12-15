@@ -280,6 +280,7 @@ ifdef BUILD_TARGET
  endif
  endif
  endif
+ endif
 else
   BUILD_TARGET = MIPS
 endif
