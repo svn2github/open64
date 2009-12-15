@@ -261,12 +261,13 @@ $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so orc_intel.so: cg.so
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/orc_intel
 
 $(NATIVE_BUILD_DIR)/targ_info/itanium.so itanium.so: targ_info
-elif ($(MACHINE_TYPE), ppc)
-$(NATIVE_BUILD_DIR)/targ_info/ppc.so:
-	$(MAKE) -C $(NATIVE_BUILD_DIR)/targ_info
+else
+ifeq ($(MACHINE_TYPE), ppc)
+$(NATIVE_BUILD_DIR)/targ_info/ppc.so ppc.so: targ_info
 else
 $(NATIVE_BUILD_DIR)/targ_info/opteron.so opteron.so: targ_info
 $(NATIVE_BUILD_DIR)/targ_info/em64t.so em64t.so: targ_info
+endif
 endif
 
 $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a: libcomutil

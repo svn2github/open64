@@ -995,26 +995,6 @@ Get_Vararg_Parameter_Location (PLOC prev)
   next.reg = 0;
   next.size = 0;
   return next;
-  
-#if 0
-  PLOC next;
-  Current_Param_Num++;
-  next.reg = Get_Current_Preg_Num (SIM_INFO.int_args);
-
-  if (next.reg > PR_last_reg(SIM_INFO.int_args))
-  {
-    next.reg = 0;
-    next.size = 0;
-  }
-  else
-  {
-    next.size = MTYPE_RegisterSize(SIM_INFO.int_type);
-  }
-  /* use Last_Param_Offset in case last fixed arg had padding */
-  next.start_offset = Last_Param_Offset;
-  Last_Param_Offset = next.start_offset + next.size;
-  return next;
-#endif  
 }
 
 BOOL Is_Caller_Save_GP;  /* whether GP is caller-save */

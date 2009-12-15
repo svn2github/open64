@@ -102,7 +102,7 @@
 #define LIBPATH		OPEN64_INSTALL_PREFIX "/lib"
 #define ALTLIBPATH	LIBPATH
 #define PHASEPATH	OPEN64_INSTALL_PREFIX "/lib"
-#define GNUPHASEPATH	OPEN64_INSTALL_PREFIX "/lib/gcc-lib/ppc32-open64-linux/4.0/"
+#define GNUPHASEPATH	OPEN64_INSTALL_PREFIX "/lib/gcc-lib/ppc32-open64-linux/" OPEN64_FULL_VERSION
 
 #else
     #define NAMEPREFIX	""
@@ -210,6 +210,12 @@
     #define OPEN64_PHASE_PATH "/usr/mips-linux/bin"
     #define OPEN64_CMPLR_NAME_PREFIX "mips"
     #define OPEN64_TARGET_NAME "mips"
+#elif defined(TARG_PPC32)
+    #define OPEN64_TARGET "ppc32-linux"
+    #define VERSION ""
+    #define OPEN64_PHASE_PATH "/usr/bin"
+    #define OPEN64_CMPLR_NAME_PREFIX ""
+    #define OPEN64_TARGET_NAME "ppc32"
 #endif // TARG_IA64
 
 #endif /* lib_phase_dir_INCLUDED */

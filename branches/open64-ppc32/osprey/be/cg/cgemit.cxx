@@ -223,25 +223,24 @@ extern BOOL PU_has_trampoline;  // defined in wn_lower.cxx
  *
  * ====================================================================
  */
-
-#if defined(TARG_PPC32) // turn off for now until we need to deal with dwarf
-BOOL CG_emit_asm_dwarf    = TRUE;  // Dwarf Error: wrong version in compilation unit header (is 296, should be 2)
-BOOL CG_emit_unwind_info  = TRUE;
-BOOL CG_emit_unwind_info_Set = FALSE;
-BOOL CG_emit_unwind_directives = FALSE;
-#else
 #if defined(TARG_IA64)
+BOOL CG_emit_asm_dwarf    = TRUE;
+BOOL CG_emit_unwind_info  = TRUE;
 BOOL CG_emit_unwind_directives = TRUE;
 #elif defined(TARG_NVISA)
 BOOL CG_emit_asm_dwarf    = FALSE;
 BOOL CG_emit_unwind_info  = FALSE;
+BOOL CG_emit_unwind_directives = FALSE;
+#elif defined(TARG_PPC32)
+BOOL CG_emit_asm_dwarf    = TRUE;  // Dwarf Error: wrong version in compilation unit header (is 296, should be 2)
+BOOL CG_emit_unwind_info  = TRUE;
+BOOL CG_emit_unwind_info_Set = FALSE;
 BOOL CG_emit_unwind_directives = FALSE;
 #else
 BOOL CG_emit_asm_dwarf    = TRUE;
 BOOL CG_emit_unwind_info  = TRUE;
 BOOL CG_emit_unwind_info_Set = FALSE;
 BOOL CG_emit_unwind_directives = FALSE;
-#endif
 #endif
 
 #ifdef KEY
@@ -6284,7 +6283,7 @@ Write_Symoff (
 		EMT_Write_Qualified_Name (Asm_File, sym);
 		fprintf (Asm_File, " %+lld\n", (INT64)sym_ofst);
 	}
-	if (ST_class(sym) == CLASS_FUNC) {
+	if ((ST_class(sym) == CLASS_FUNC)
 #ifdef TARG_PPC32
 	&& !CG_emit_non_gas_syntax
 #endif
