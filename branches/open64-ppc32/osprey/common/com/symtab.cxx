@@ -1353,7 +1353,7 @@ Preg_Increment (TYPE_ID mtype)
 #ifdef TARG_IA64
     case MTYPE_C10:
 #endif
-#ifndef TARG_X8664
+#if !defined(TARG_X8664) && !defined(TARG_LOONGSON)
     case MTYPE_FQ:
 #endif
 	return 2;

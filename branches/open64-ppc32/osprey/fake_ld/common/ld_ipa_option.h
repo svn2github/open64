@@ -112,6 +112,12 @@ typedef enum {
 	TOS_MIPS_64,
 	TOS_IA64_64,
 	TOS_IA64_32, 
+#ifdef TARG_LOONGSON
+	/* Add support for loongson2e , loongson2f and loongson3*/
+	TOS_LOONGSON_2e,
+	TOS_LOONGSON_2f,
+	TOS_LOONGSON_3,
+#endif
 	TOS_MAX
 }targos_enum;
 

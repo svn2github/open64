@@ -156,6 +156,12 @@ std::map<INT32, TN*> var2addr;
 int ACCreg[4]= {0,0,0,0};
 int Addreg[8]= {0,0,0,0,0,0,0,0};
 #endif
+#ifdef TARG_LOONGSON
+TN *HI_TN;
+TN *LO_TN;
+TN *SL_TN;
+TN *FPSR_TN;
+#endif
 /* The register TNs are in a table named TNvec, indexed by their TN
  * numbers in the range 1..Last_TN.  The first part of the table, the
  * range 1..Last_Dedicated_TN, consists of TNs for various dedicated
@@ -550,6 +556,16 @@ Init_Dedicated_TNs (void)
     RA_TN = ded_tns[REGISTER_CLASS_ra][REGISTER_ra];
 #endif
 
+#ifdef TARG_LOONGSON
+
+  HI_TN = ded_tns[REGISTER_CLASS_hi][REGISTER_hi];
+  LO_TN = ded_tns[REGISTER_CLASS_lo][REGISTER_lo];
+  FPSR_TN = ded_tns[REGISTER_CLASS_fsr][REGISTER_fsr];
+
+  // Static link register tn, only for F90
+  SL_TN = ded_tns[REGISTER_CLASS_static_link][REGISTER_static_link];
+#endif
+
   /* allocate gp tn.  this may use a caller saved register, so
    * we don't use the one allocated for $gp above.
    */
@@ -659,7 +675,7 @@ Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
   }
 #endif
 
-#if defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_PPC32)
+#if defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
   // check for I4 tns
   if (rclass == ISA_REGISTER_CLASS_integer
       && size != DEFAULT_RCLASS_SIZE(rclass) )

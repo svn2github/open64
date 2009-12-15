@@ -439,6 +439,12 @@ typedef struct op {
 #define Set_OP_opnd(o,opnd,tn) \
 	((o)->res_opnd[(opnd) + OP_opnd_offset(o)] = (tn))
 
+#ifdef TARG_LOONGSON
+#define Set_OP_bb(o,b)      ((o)->bb = (b))
+#define Set_OP_prev(o,p)    ((o)->prev = (p))
+#define Set_OP_next(o,n)    ((o)->next = (n))
+#endif
+
 /*
  * Define the OP cond def mask.
  *
@@ -708,7 +714,7 @@ extern BOOL OP_use_return_value(OP*);
 #endif
 #define OP_mem_fill_type(o)     (TOP_is_mem_fill_type(OP_code(o)))
 #define OP_call(o)		(TOP_is_call(OP_code(o)))
-#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_NVISA) || defined(TARG_MIPS) || defined(TARG_PPC32)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_NVISA) || defined(TARG_MIPS) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
 #define OP_xfer(o)		(TOP_is_xfer(OP_code(o)))
 #endif
 #define OP_cond(o)		(TOP_is_cond(OP_code(o)))
@@ -777,6 +783,7 @@ extern BOOL OP_use_return_value(OP*);
 #define OP_c3_load(o)	        (TOP_is_c3_load(OP_code(o)))
 #define OP_c3_store(o)          (TOP_is_c3_store(OP_code(o)))
 
+#define OP_sl_special_ldst(o) (OP_c3_load(o) | OP_c3_store(o))
 #endif 
 
 #define OP_operand_info(o)	(ISA_OPERAND_Info(OP_code(o)))
@@ -789,6 +796,10 @@ extern BOOL OP_use_return_value(OP*);
 #ifdef TARG_SL
 #define OP_memtrap(o)           (TOP_is_memtrap(OP_code(o))) /* memory operation*/
 #define OP_no_peephole(o)       (TOP_is_npeep(OP_code(o)))
+#endif
+
+#ifdef TARG_LOONGSON
+#define OP_unsigned(o)          (TOP_is_unsigned_ext(OP_code(o)))
 #endif
 
 #ifdef TARG_IA64

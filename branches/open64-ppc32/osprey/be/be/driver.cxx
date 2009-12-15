@@ -1677,6 +1677,10 @@ Preprocess_PU (PU_Info *current_pu)
   /* read from mmap area */
   Start_Timer ( T_ReadIR_CU );
 
+#ifdef TARG_LOONGSON
+  if (Instrumentation_Enabled)
+    Instrumentation_Enabled_Before = TRUE;
+#endif
   // The current PU could already be memory as happens when the
   // compiler creates it during back end compilation of an earlier PU. 
   if (PU_Info_state (current_pu, WT_TREE) != Subsect_InMem) {
@@ -2160,7 +2164,10 @@ void init_ti_target(void *handle) {
   } else if (Is_Target_Sl1_dsp()) {
     soname = (char*)alloca( strlen("sl1_dsp.so")+1 );
     strncpy( soname, "sl1_dsp.so", strlen("sl1_dsp.so")+1 );
-  }else if (Target == TARGET_UNDEF) {
+  } else if (Is_Target_Sl5()) {
+    soname = (char*)alloca( strlen("sl5.so")+1 );
+    strncpy( soname, "sl5.so", strlen("sl5.so")+1 );
+  } else if (Target == TARGET_UNDEF) {
     Is_True(0, ("undefined target"));
   }
   handle = dlopen(soname, RTLD_LAZY);

@@ -65,6 +65,9 @@ endif
 ifeq ($(BUILD_TARGET), PPC32)
 TARGDEFS +=-D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+TARGDEFS +=-D__MIPS_AND_IA64_ELF_H
+endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 # don't use is_true_on because ir_a2b doesn't have config info

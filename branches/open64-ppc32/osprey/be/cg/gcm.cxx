@@ -649,6 +649,11 @@ OP_Has_Restrictions(OP *op, BB *source_bb, BB *target_bb, mINT32 motion_type)
     return TRUE;
 #endif
 
+#ifdef TARG_LOONGSON
+  if (OP_icmp(op))
+    return TRUE;
+#endif
+
   if (OP_has_hazard(op)) return TRUE;
 
   if ((cur_hbs_type & HBS_BEFORE_GRA) != 0 && OP_no_move_before_gra(op)) 
@@ -1173,7 +1178,7 @@ Null_Ptr_Deref_Spec(OP *deref_op, BB *src, BB *dest)
 	if (!taken_path) return FALSE;
   }
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
   const int base_idx = TOP_Find_Operand_Use( OP_code(deref_op),OU_base );
   if( base_idx < 0 )
     return FALSE;
@@ -3144,7 +3149,11 @@ Perform_Post_GCM_Steps(BB *bb, BB *cand_bb, OP *cand_op, mINT32 motion_type,
     // the succ arcs.
     if (CGTARG_Is_OP_Addr_Incr(cand_op) &&
 	!TN_is_sp_reg(OP_result(cand_op,0 /*???*/))) {
+#ifdef TARG_LOONGSON
+	INT64 addiu_const = TN_value (OP_opnd(cand_op,2));
+#else
 	INT64 addiu_const = TN_value (OP_opnd(cand_op,1));
+#endif
 	OP *succ_op;
 	for (succ_op = cand_op;
 	     succ_op != NULL;
@@ -3192,7 +3201,11 @@ Perform_Post_GCM_Steps(BB *bb, BB *cand_bb, OP *cand_op, mINT32 motion_type,
 		   (TN_number(OP_opnd(cand_op, base_opndnum)) ==
 		    TN_number(OP_result(succ_op,0 /*???*/)))))
 		{
+#ifdef TARG_LOONGSON
+		  INT64 addiu_const = TN_value (OP_opnd(succ_op,2));
+#else
 		  INT64 addiu_const = TN_value (OP_opnd(succ_op,1));
+#endif
 		  Fixup_Ldst_Offset (cand_op, addiu_const, -1, HBS_FROM_GCM);
 		  DevWarn ("Memory OP offset adjusted in GCM");
 		}
@@ -4251,7 +4264,7 @@ static void Break_Dependency( OP_LIST * moved_loads, BB* cand_bb )
     Is_True(OP_results(op) == 1, ("strange load Op with more than one results"));
   
     TN *result_tn = OP_result(op, 0);
-    TN* new_tn = Dup_TN( result_tn );
+    TN* new_tn = Dup_TN_Even_If_Dedicated( result_tn );
     Set_OP_result( op, 0, new_tn );
   
     /* add a move instruction just behind the load */
@@ -4993,7 +5006,7 @@ static void Reduce_Loop_Count( LOOP_DESCR *loop, BB *src_bb )
     // we may got mvtc $lp0, 0
     if( lp_val < 1 )
       return;
-    TN *new_tn = Dup_TN( tn );
+    TN *new_tn = Dup_TN_Even_If_Dedicated( tn );
     Set_TN_value( new_tn, lp_val - 1  );
     Set_OP_opnd( mvtc, 0, new_tn );
 
@@ -5005,7 +5018,7 @@ static void Reduce_Loop_Count( LOOP_DESCR *loop, BB *src_bb )
     Is_True( OP_code(mvtc) == TOP_mvtc, ("incorrect mvtc") );
 
     TN *opnd_tn = OP_opnd(mvtc, 0);
-    TN *new_tn = Dup_TN( opnd_tn );
+    TN *new_tn = Dup_TN_Even_If_Dedicated( opnd_tn );
     Set_OP_opnd( mvtc, 0, new_tn );
   
     /* add a add.i instruction just before the mvtc */

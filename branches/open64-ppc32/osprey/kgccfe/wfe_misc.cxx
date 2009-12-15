@@ -412,6 +412,13 @@ WFE_Init (INT argc, char **argv, char **envp )
     ABI_Name = "n64";
   else ABI_Name = "n32";
 #endif
+#ifdef TARG_LOONGSON
+   // ABI_Name is valued here for Configure() to choose right Target_ABI
+   // mips_abi is valued in set_target_switch() as a middle value
+  if (mips_abi == ABI_n64)
+    ABI_Name = "n64";
+  else ABI_Name = "n32";
+#endif
   Init_Controls_Tbl();
   Argc = argc;
   Argv = argv;

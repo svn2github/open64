@@ -151,6 +151,11 @@ typedef enum
   EM_Q_LT,		/* quad less than */
   EM_SNGL_Q,		/* convert quad to single */
   EM_DBLE_Q,		/* convert quad to double */
+#ifdef TARG_LOONGSON
+  EM_Q_NEG,             /* quad negate */
+  EM_KU_QINT,		/* convert quad to unsigned 64 bits int */
+  EM_JU_QINT,		/* convert quad to unsigned 32 bits int */
+#endif
   EM_KI_QINT,		/* convert quad to 64 bits int */
   EM_JI_QINT,		/* convert quad to 32 bits int */
   EM_Q_EXT,		/* convert float to quad */
@@ -284,6 +289,37 @@ const EM_ROUTINES em_routines[]=
   EM_D_TRUNC_LL_D,  "__d_trunc_ll_d",PURE_NSE,  COERCE_none,
   EM_LL_BIT_EXTRACT,"__ll_bit_extract",PURE_NSE,COERCE_none,
   EM_LL_BIT_INSERT, "__ll_bit_insert",PURE_NSE, COERCE_none,
+#ifdef TARG_LOONGSON
+  EM_Q_ABS,         "fabsl",         PURE_NSE,  COERCE_none,
+  EM_Q_SQRT,        "__qsqrt",       PURE_NSE,  COERCE_none,
+  EM_Q_ADD,         "__addtf3",      PURE_NSE,  COERCE_none,
+  EM_Q_SUB,         "__subtf3",      PURE_NSE,  COERCE_none,
+  EM_Q_MPY,         "__multf3",      PURE_NSE,  COERCE_none,
+  EM_Q_DIV,         "__divtf3",      PURE_NSE,  COERCE_none,
+  EM_Q_MAX1,        "__q_max1",      PURE_NSE,  COERCE_none,
+  EM_Q_MIN1,        "__q_min1",      PURE_NSE,  COERCE_none,
+  EM_Q_EQ,          "__eqtf2",       PURE_NSE,  COERCE_none,
+  EM_Q_NE,          "__netf2",       PURE_NSE,  COERCE_none,
+  EM_Q_GE,          "__getf2",       PURE_NSE,  COERCE_none,
+  EM_Q_GT,          "__gttf2",       PURE_NSE,  COERCE_none,
+  EM_Q_LE,          "__letf2",       PURE_NSE,  COERCE_none,
+  EM_Q_LT,          "__lttf2",       PURE_NSE,  COERCE_none,
+  EM_SNGL_Q,        "__trunctfsf2",  PURE_NSE,  COERCE_none,
+  EM_DBLE_Q,        "__trunctfdf2",  PURE_NSE,  COERCE_none,
+  EM_Q_NEG,         "__negtf2",      PURE_NSE,  COERCE_none,
+  EM_KU_QINT,       "__fixunstfdi",  PURE_NSE,  COERCE_none,
+  EM_JU_QINT,       "__fixunstfsi",  PURE_NSE,  COERCE_none,
+  EM_KI_QINT,       "__fixtfdi",     PURE_NSE,  COERCE_none,
+  EM_JI_QINT,       "__fixtfsi",     PURE_NSE,  COERCE_none,
+  EM_Q_EXT,         "__extendsftf2", PURE_NSE,  COERCE_none,
+  EM_Q_EXTD,        "__extenddftf2", PURE_NSE,  COERCE_none,
+  EM_Q_FLOTK,       "__floatditf",   PURE_NSE,  COERCE_none,
+  EM_Q_FLOTKU,      "__floatunditf", PURE_NSE,  COERCE_none,
+  EM_Q_FLOTJ,       "__floatsitf",   PURE_NSE,  COERCE_none,
+  EM_Q_FLOTJU,      "__floatunsitf", PURE_NSE,  COERCE_none,
+  EM_KIQNNT,        "__kiqnnt",      PURE_NSE,  COERCE_none,
+  EM_JIQNNT,        "__jiqnnt",      PURE_NSE,  COERCE_none,
+#else  
   EM_Q_ABS,         "__qabs",        PURE_NSE,  COERCE_none,
   EM_Q_SQRT,        "__qsqrt",       PURE_NSE,  COERCE_none,
   EM_Q_ADD,         "__q_add",       PURE_NSE,  COERCE_none,
@@ -308,6 +344,7 @@ const EM_ROUTINES em_routines[]=
   EM_Q_FLOTKU,      "__q_flotku",    PURE_NSE,  COERCE_none,
   EM_Q_FLOTJ,       "__q_flotj",     PURE_NSE,  COERCE_none,
   EM_Q_FLOTJU,      "__q_flotju",    PURE_NSE,  COERCE_none,
+#endif
   EM_KIQNNT,        "__kiqnnt",      PURE_NSE,  COERCE_none,
   EM_JIQNNT,        "__jiqnnt",      PURE_NSE,  COERCE_none,
   EM_C4_SQRT,       "__csqrt",       PURE_NSE,  COERCE_split_complex,
@@ -686,12 +723,17 @@ static EMULATION WN_emulation(WN *tree)
       case OPR_SELECT:
       case OPR_LDID:
       case OPR_CONST:
+#ifndef TARG_LOONGSON
       case OPR_NEG:
+#endif    
 	break;
 
       case OPR_ABS:	return EM_Q_ABS;
       case OPR_ADD:	return EM_Q_ADD;
       case OPR_SUB:	return EM_Q_SUB;
+#ifdef TARG_LOONGSON
+      case OPR_NEG:	return EM_Q_NEG;
+#endif
       case OPR_MPY:	return EM_Q_MPY;
       case OPR_DIV:	return EM_Q_DIV;
       case OPR_MAX:	return EM_Q_MAX1;
@@ -735,6 +777,10 @@ static EMULATION WN_emulation(WN *tree)
 	{
 	case MTYPE_I4:	return EM_JI_QINT;
 	case MTYPE_I8:	return EM_KI_QINT;
+#ifdef TARG_LOONGSON
+	case MTYPE_U4:	return EM_JU_QINT;
+	case MTYPE_U8:	return EM_KU_QINT;
+#endif
 	}
 	break;
       case OPR_CEIL:
@@ -1326,7 +1372,7 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
 
       x_copy = WN_COPY_Tree(x);
     }    
-#if !defined (TARG_MIPS) && !defined (TARG_IA64) && !defined(TARG_PPC32)
+#if !defined (TARG_MIPS) && !defined (TARG_IA64) && !defined(TARG_PPC32) && !defined(TARG_LOONGSON)
     else if (ABS((trunc(n)+1.0/3) - n) < .0000001 && 
              ! (Is_Target_64bit() && !Is_Target_Anyx86() && OPT_Fast_Math))
     { // the pow in fast_math is faster than cbrt, so no point converting
@@ -2755,9 +2801,18 @@ static WN *em_alog10(WN *block, WN *x)
 		   WN_Floatconst(type, M_LOG10),
 		   log);
   } else {
+#ifdef TARG_LOONGSON
+     TCON t_log10;
+     t_log10.vals.qval.qval[0]=  0x555f5a68;
+     t_log10.vals.qval.qval[1] =  0xe32a6ab7;
+     t_log10.vals.qval.qval[2] =  0xb1526e50;
+     t_log10.vals.qval.qval[3] =  0x3ffdbcb7;
+     mpy = WN_Mpy(type, Make_Const(t_log10), log);
+#else
      mpy =  WN_Mpy(type, 
 		   Make_Const(Host_To_Targ_Quad(M_LOG10Q)),
 		   log);
+#endif
   }
   return mpy;
 }
@@ -5224,12 +5279,14 @@ extern WN *emulate(WN *block, WN *tree)
   {
     switch(WN_operator(tree))
     {
+#ifndef TARG_LOONGSON
     case OPR_NEG:
       if (MTYPE_is_quad(WN_rtype(tree)))
       {
 	wn = em_quad_neg(block, tree);
       }
       break;
+#endif
 
     case OPR_SELECT:
       if (MTYPE_is_quad(WN_rtype(tree)))

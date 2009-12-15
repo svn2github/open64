@@ -571,6 +571,15 @@ Get_Icall_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id)
     FB_Value_Vector& Stride_Table = pu_handle->Get_Stride_Table();
     return Stride_Table[id];
   }
+
+#ifdef TARG_LOONGSON
+ FB_Info_Cache&
+ Get_Cache_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id)
+ {
+    FB_Cache_Vector& Cache_Table = pu_handle->Get_Cache_Table();
+    return Cache_Table[id];
+ }
+#endif
 #endif // _BUILD_INSTR
 
 

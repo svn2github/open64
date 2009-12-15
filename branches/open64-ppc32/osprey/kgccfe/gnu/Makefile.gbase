@@ -92,6 +92,9 @@ endif
 ifeq ($(BUILD_TARGET), PPC32)
 HOSTDEFS += -DTARGET_NAME=\"ppc32-linux\"
 endif
+ifeq ($(BUILD_TARGET),LOONGSON)
+HOSTDEFS += -DTARGET_NAME=\"$(PSC_TARGET)\"
+endif
 
 HOSTDEFS += -DLONGLONG
 HOSTDEFS += -DFRONT_END
@@ -161,6 +164,10 @@ GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
 endif
 ifeq ($(BUILD_TARGET), PPC32)
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/rs6000
+endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+GNU_TARG_DIR = $(GNU_DIR)/loongson
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/loongson
 endif
 
 TARG_COMUTIL_DIR	= $(TARGDIR)/libcomutil
@@ -362,6 +369,9 @@ endif
 ifeq ($(BUILD_TARGET), PPC32)
   GNU_SRCS += rs6000-c.c \
               rs6000.c
+endif
+ifeq ($(BUILD_TARGET),LOONGSON)
+  GNU_SRCS += $(GNU_CONFIG_DIR)/loongson/mips.c
 endif
 
 GNU_SRCS += 		\

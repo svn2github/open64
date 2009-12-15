@@ -942,7 +942,7 @@ static char *operand_constraint_array[MAX_RECOG_OPERANDS];
 static BOOL
 constraint_by_address (const char *s)
 {
-#ifndef TARG_X8664
+#if !defined(TARG_X8664) || !defined(TARG_LOONGSON)
   if (strchr (s, 'm')) {
 #else
   if (strchr (s, 'm') || strchr (s, 'g')) {

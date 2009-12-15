@@ -168,6 +168,10 @@ ifeq ($(BUILD_TARGET), PPC32)
 SYS_DIRS = \
 	ia64
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+SYS_DIRS = \
+        ia64
+endif
 
 LIBELF_HFILES = \
 	elf_repl.h \

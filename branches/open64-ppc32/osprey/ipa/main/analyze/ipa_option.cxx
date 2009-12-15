@@ -145,6 +145,19 @@ Process_IPA_Options ( INT argc, char **argv )
 		/* Just toss it for now... */
 		break;
 
+#ifdef TARG_LOONGSON
+            /*add support for 2e and 2f in ipa_link*/
+            case 'l':
+                 if (strcmp(argv[i],"-loongson2e") == 0) {
+                     ld_ipa_opt[LD_IPA_ISA].flag = TOS_LOONGSON_2e; // used TOS_LOONGSON_2e in fake_ld
+                 } else if (strcmp(argv[i],"-loongson2f") == 0) {
+                    ld_ipa_opt[LD_IPA_ISA].flag = TOS_LOONGSON_2f;
+                 } else if (strcmp(argv[i],"-loongson3") == 0) {
+                    ld_ipa_opt[LD_IPA_ISA].flag = TOS_LOONGSON_3;
+                 }
+                 break;
+#endif
+
 	    default:			/* What's this? */
 		ErrMsg ( EC_Unknown_Flag, argv[i][0], argv[i] );
 		break;

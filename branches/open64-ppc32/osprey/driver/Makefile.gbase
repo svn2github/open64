@@ -68,6 +68,11 @@ LCDEFS += -DX8664
  endif
 endif
 
+ifeq ($(BUILD_TARGET), LOONGSON)
+LCDEFS += -DLOONGSON
+endif
+
+
 LCDEFS += -DOPEN64_PRODNAME='"Compiler"'
 
 LCDEFS += -DKEY 

@@ -280,8 +280,15 @@ typedef enum {
   OPERATOR_LAST = 139
 #endif
 #elif defined(KEY)
+#ifdef TARG_LOONGSON
+  OPR_MPYU2 = 139,
+  OPR_MPYI2 = 140,
+  OPR_PURE_CALL_OP = 141,
+  OPERATOR_LAST = 141
+#else
   OPR_PURE_CALL_OP = 139,
   OPERATOR_LAST = 139
+#endif
 #else
   OPERATOR_LAST = 138
 #endif /* TARG_X8664 */

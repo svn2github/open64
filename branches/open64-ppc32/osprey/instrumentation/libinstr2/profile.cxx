@@ -567,6 +567,8 @@ Profile_Icall(PU_PROFILE_HANDLE pu_handle, INT32 icall_id, void * called_fun_add
                                 tmp = ptnv->_counters[j-1];
                                 ptnv->_counters[j-1] = ptnv->_counters[j];
                                 ptnv->_counters[j] = tmp;
+
+                                j--;
                         }
                         break;
                 }
@@ -602,6 +604,8 @@ Profile_Icall(PU_PROFILE_HANDLE pu_handle, INT32 icall_id, void * called_fun_add
                                 tmp = ptnv->_counters[j-1];
                                 ptnv->_counters[j-1] = ptnv->_counters[j];
                                 ptnv->_counters[j] = tmp;
+
+                                j--;
                         }
                         break;
                 }

@@ -55,3 +55,7 @@
 #if defined TARG_PPC32
 #include "gnu/rs6000/config.h"
 #endif // TARG_PPC32
+#ifdef TARG_LOONGSON
+#include "gnu/loongson/config.h"
+#endif
+

@@ -66,6 +66,9 @@
 
 #include "fb_freq.h"
 #include "fb_tnv.h"
+#ifdef TARG_LOONGSON
+#include "fb_cache.h"
+#endif
 
 #ifdef _INCLUDED_FROM_LIBINSTR_
 #include "vector.h"
@@ -562,6 +565,15 @@ struct FB_Info_Stride{
       }
 };
 
+#ifdef TARG_LOONGSON
+struct FB_Info_Cache{     
+      FB_CACHE fb_cache;      
+      void Print( FILE *fp) const {   
+      	fprintf(fp, "FB--->Cache = ");  
+      	fb_cache.Print( fp );     
+      }
+};
+#endif
 // Print the entire FB_Info vector
 template <class T>
 void
@@ -604,6 +616,10 @@ typedef vector<FB_Info_Value, mempool_allocator<FB_Info_Value> >
 #ifdef KEY
 typedef vector<FB_Info_Value_FP_Bin, mempool_allocator<FB_Info_Value_FP_Bin> >
                                        FB_Value_FP_Bin_Vector;
+#endif
+#ifdef TARG_LOONGSON
+typedef vector<FB_Info_Cache, mempool_allocator<FB_Info_Cache> >
+                                       FB_Cache_Vector;
 #endif
 
 // ====================================================================

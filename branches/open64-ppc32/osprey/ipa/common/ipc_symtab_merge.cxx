@@ -1728,7 +1728,7 @@ Merge_Global_St(UINT                   idx,
     //
     char *st_name = &original_tabs.symstr_tab[ST_name_idx (original_st)];
 
-#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_LOONGSON)
     void *pext = ld_slookup_mext(st_name,
     	    	    	    	(ST_storage_class (original_st) == SCLASS_EXTERN));
 #else
@@ -1905,6 +1905,16 @@ Merge_Global_Inito(const INITO* inito_tab, UINT32 inito_tab_size,
     }
 } // Merge_Global_Inito
 
+static BOOL St_Attr_Entry_Existed(ST_IDX new_st_idx, ST_ATTR_KIND kind) {
+	UINT32 i;
+	ST_ATTR* st_attr_entry;
+	for (i = 0; i < ST_ATTR_Table_Size(GLOBAL_SYMTAB) && (st_attr_entry = &St_Attr_Table(GLOBAL_SYMTAB,i)); ++i) {
+	    if (st_attr_entry->kind == kind && st_attr_entry->st_idx == new_st_idx) {
+	      return TRUE;
+	    }
+	}
+	return FALSE;
+} // St_Attr_Entry_Existed
 
 static void
 Merge_Global_St_Attr(const ST_ATTR* st_attr_tab, UINT32 size)
@@ -1927,6 +1937,9 @@ Merge_Global_St_Attr(const ST_ATTR* st_attr_tab, UINT32 size)
 	ST_IDX st_idx = (*New_St_Idx) [ST_ATTR_st_idx (old_st_attr)];
 	Update_reference_count (&St_Table [st_idx], /*refcount*/ 1,
 				/*modcount*/ 0, /*is_cmod*/ FALSE);
+
+	if (St_Attr_Entry_Existed(st_idx, old_st_attr.kind)) continue;
+
 	ST_ATTR_KIND akind = old_st_attr.kind;
 	ST_ATTR_IDX new_st_attr_idx;
 	ST_ATTR&    new_st_attr = New_ST_ATTR (GLOBAL_SYMTAB, new_st_attr_idx);

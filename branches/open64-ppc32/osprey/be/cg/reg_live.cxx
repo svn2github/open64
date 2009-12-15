@@ -269,8 +269,9 @@ Compute_Return_Regs (ST *call_st, TY_IDX call_ty, REGSET return_regs)
 	Add_PREG_To_REGSET (retpreg[i], return_regs);
     }
 #if defined(TARG_SL)
-    FmtAssert(RETURN_INFO_count(return_info) <= 1, ("except 1 return register"));
-    if (MTYPE_byte_size(TY_mtype(call_ty)) == 8) { //I8/U8/F8
+    if (MTYPE_byte_size(TY_mtype(TY_ret_type(call_ty))) == 8) { //I8/U8/F8
+      FmtAssert (RETURN_INFO_count(return_info) <= 1, 
+        ("Compute_Return_Regs:  more return registers than can handle"));
       Add_PREG_To_REGSET (RETURN_INFO_preg(return_info, 0)+1, return_regs);
     }
 #endif   

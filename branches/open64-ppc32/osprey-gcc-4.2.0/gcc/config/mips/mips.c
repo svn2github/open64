@@ -10836,5 +10836,24 @@ mips_mode_rep_extended (enum machine_mode mode, enum machine_mode mode_rep)
 
   return UNKNOWN;
 }
+
+#if defined(TARG_SL)
+int
+SL_field_alignment (field, computed)
+     tree field;
+     int computed;
+{
+  enum machine_mode mode;
+  tree type = TREE_TYPE (field);
+
+  mode = TYPE_MODE (TREE_CODE (type) == ARRAY_TYPE
+		    ? get_inner_array_type (type) : type);
+  if (mode == DFmode || mode == DCmode
+      || GET_MODE_CLASS (mode) == MODE_INT
+      || GET_MODE_CLASS (mode) == MODE_COMPLEX_INT)
+    return MIN (32, computed);
+  return computed;
+}
+#endif
 
 #include "gt-mips.h"

@@ -736,6 +736,12 @@ extern  TN* C2_MVSEL_TN;        // TN for c2 mvsel internal
 extern  TN* C2_VLCS_TN;         // TN for c2 vlcs internal 
 extern  TN* C2_MOVPAT_TN;       // TN for c2 mov pat register
 #endif
+#ifdef TARG_LOONGSON
+extern  TN *HI_TN;		// Hi register used for mul/div
+extern  TN *LO_TN;		// Lo register used for mul/div
+extern  TN *SL_TN;		// Static link register only for f90
+extern  TN *FPSR_TN;
+#endif
 
 /* ====================================================================
  * Prototypes of external routines.

@@ -270,6 +270,7 @@ ifdef BUILD_TARGET
  ifneq ($(BUILD_TARGET), NVISA)
  ifneq ($(BUILD_TARGET), SL)
  ifneq ($(BUILD_TARGET), PPC32)
+ ifneq ($(BUILD_TARGET), LOONGSON)
    ABORT_BUILD = BUILD_TARGET has bad value - $(BUILD_TARGET)!
  endif
  endif
@@ -304,6 +305,10 @@ endif
 ifeq ($(BUILD_TARGET), PPC32)
 BUILD_TARGET_DIR = ppc32
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+BUILD_TARGET_DIR = loongson
+endif
+
 
 #
 #  Verify that BUILD_OPTIMIZE is defined and is not null.  It is either

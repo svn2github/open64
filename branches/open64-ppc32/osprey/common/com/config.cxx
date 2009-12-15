@@ -1021,7 +1021,7 @@ char *Inline_Path = 0;                    /* path to inline.so */
 #if defined(BACK_END) || defined(QIKKI_BE)
 char *Targ_Path = 0;		    /* path to targ_info .so */
 #endif /* defined(BACK_END) || defined(QIKKI_BE) */
-
+
 /* ====================================================================
  *
  * Preconfigure
@@ -1567,12 +1567,12 @@ Configure_Source ( char	*filename )
   /* IEEE arithmetic options: */
   if ( IEEE_Arithmetic > IEEE_ACCURATE ) {
     /* Minor roundoff differences for inexact results: */
-#if !defined(TARG_IA64) && !defined(TARG_X8664)
+#if !defined(TARG_IA64) && !defined(TARG_X8664) && !defined(TARG_LOONGSON)
     // facerec fails at -O3 if Recip_Allowed is true
     if ( ! Recip_Set )
       Recip_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
 #endif
-#if !defined(TARG_IA64) && !defined(TARG_X8664)
+#if !defined(TARG_IA64) && !defined(TARG_X8664) && !defined(TARG_LOONGSON)
     // apsi fails at -O3 because Rsqrt_Allowed is true
     if ( ! Rsqrt_Set )
       Rsqrt_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
@@ -1587,7 +1587,7 @@ Configure_Source ( char	*filename )
 #ifndef KEY
     Roundoff_Level = ROUNDOFF_ASSOC;
 #else
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
     Roundoff_Level = ROUNDOFF_ASSOC;
 #else
     Roundoff_Level = ROUNDOFF_SIMPLE;

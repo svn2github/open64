@@ -1,38 +1,14 @@
-
-/*
-
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
-
-  This program is free software; you can redistribute it and/or modify it
-  under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation.
-
-  This program is distributed in the hope that it would be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-
-  Further, this software is distributed without any warranty that it is
-  free of the rightful claim of any third person regarding infringement 
-  or the like.  Any license provided herein, whether implied or 
-  otherwise, applies only to this software file.  Patent licenses, if 
-  any, provided herein do not apply to combinations of this program with 
-  other software, or any other product whatsoever.  
-
-  You should have received a copy of the GNU General Public License along
-  with this program; if not, write the Free Software Foundation, Inc., 59
-  Temple Place - Suite 330, Boston MA 02111-1307, USA.
-
-  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
-  Mountain View, CA 94043, or:
-
-  http://www.sgi.com
-
-  For further information regarding this notice, see:
-
-  http://oss.sgi.com/projects/GenInfo/NoticeExplan
-
-*/
-
+/********************************************************************\
+|*                                                                  *|   
+|*  Copyright (c) 2006 by SimpLight Nanoelectronics.                *|
+|*  All rights reserved                                             *|
+|*                                                                  *|
+|*  This program is free software; you can redistribute it and/or   *|
+|*  modify it under the terms of the GNU General Public License as  *|
+|*  published by the Free Software Foundation; either version 2,    *|
+|*  or (at your option) any later version.                          *|
+|*                                                                  *|
+\********************************************************************/
 
 /*
  * This defines the ABI subprogram interface,
@@ -514,24 +490,6 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
     case MTYPE_A8:
     case MTYPE_F8:
       ploc.reg = Get_Current_Preg_Num (SIM_INFO.int_args);
-      /* If the current Preg number is odd, start_offset+=4,
-       * to make sure that the register of I8/U8/F8 parameter is start from even register 
-       */
-      if (ploc.reg & 0x1 == 1) {	// even align
-        ploc.start_offset += 4;
-        Current_Param_Num++;
-        if (Last_Fixed_Param < INT_MAX)
-          ++Last_Fixed_Param;
-        ploc.reg = Get_Current_Preg_Num (SIM_INFO.int_args);
-      }
-
-      /* If there is no Preg, the paremeter is stored in memory, 
-       * then Force the memory to be 8bytes-align 
-       */
-      if (ploc.reg == 0) {
-        ploc.start_offset = ((ploc.start_offset+4) >> 3) << 3;
-      }
-
       Current_Param_Num++;
       /* adjust Last_Fixed_Param in varargs case */
       if (Last_Fixed_Param < INT_MAX)
@@ -587,23 +545,6 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	    	Last_Fixed_Param += RETURN_INFO_count(info) - 1;
           } else {
             ploc.reg = Get_Current_Preg_Num (SIM_INFO.int_args);
-            if (TY_fld(ty).Entry() && (MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty))))==8)) {
-              if (ploc.reg & 0x1 == 1) {
-                ploc.start_offset += 4;
-                Current_Param_Num++;
-                if (Last_Fixed_Param < INT_MAX)
-                  ++Last_Fixed_Param;
-                ploc.reg = Get_Current_Preg_Num (SIM_INFO.int_args);
-              }
-
-              /* If there is no Preg, the paremeter is stored in memory, 
-               * then Force the memory to be 8bytes-align 
-               */
-              if (ploc.reg == 0) {
-                ploc.start_offset = ((ploc.start_offset+4) >> 3) << 3;
-              }
-            }
-
             Current_Param_Num += psize - 1;
             /* adjust Last_Fixed_Param in varargs case */
             if (Last_Fixed_Param < INT_MAX)

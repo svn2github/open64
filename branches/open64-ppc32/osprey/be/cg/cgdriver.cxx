@@ -121,7 +121,7 @@
 #include "cgdriver.h"
 #include "register.h"
 #include "pqs_cg.h"
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 #include "ipfec_options.h"
 #endif
 #ifdef KEY
@@ -647,6 +647,13 @@ static OPTION_DESC Options_CG[] = {
     INT32_MAX, 0, INT32_MAX, &CG_zdl_skip_b, NULL },
   { OVK_BOOL,  OV_INTERNAL, TRUE, "opt_condmv", "",
     0, 0, 0,   &CG_enable_opt_condmv, NULL},
+  { OVK_BOOL,  OV_INTERNAL, TRUE, "CBUS_workaround", "",
+    0, 0, 0,   &CG_enable_CBUS_workaround, NULL},
+  { OVK_BOOL,  OV_INTERNAL, TRUE, "LD_NOP_workaround", "",
+    0, 0, 0,   &CG_enable_LD_NOP_workaround, NULL},
+  { OVK_BOOL,  OV_INTERNAL, TRUE, "C3_AR_dependence_workaround", "",
+    0, 0, 0,   &CG_enbale_C3_AR_dependence_workaround, NULL},
+
   /* For SL2, I need a options to tell what application I'm comping.
    * So I can get the right LUT file
    */
@@ -780,6 +787,12 @@ static OPTION_DESC Options_CG[] = {
   { OVK_BOOL,	OV_INTERNAL, TRUE,"float_div_by_const", "",
     0, 0, 0, &CGEXP_opt_float_div_by_const, NULL },
 
+#ifdef TARG_LOONGSON
+  { OVK_BOOL,   OV_VISIBLE, TRUE,"use_loongson2e_multdivmod", "",
+    0, 0, 0, &CGEXP_use_Loongson2e_MultDivMod, NULL },
+  { OVK_BOOL,   OV_INTERNAL, TRUE,"float_use_madd", "",
+    0, 0, 0, &CGEXP_float_use_madd, NULL },
+#endif
   { OVK_NAME,	OV_INTERNAL, TRUE,"lfhint_L1", "",
     0, 0, 0, &CGEXP_lfhint_L1, NULL },
   { OVK_NAME,	OV_INTERNAL, TRUE,"lfhint_L2", "",
@@ -1226,6 +1239,44 @@ static OPTION_DESC Options_CG[] = {
     "Store x87 floating point variables to memory after each computation, in order to reduce the variable's precision from 80 bits to 32/64 bits.  Default off."
   },
 #endif
+#ifdef TARG_LOONGSON
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "opt_useless_mem_op",
+    "opt_useless_mem_op", 0, 0, 0,    &CG_Enable_Opt_Mem_OP, NULL,
+    "Remove useless st/ld op after EBO last time"
+  },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "opt_useless_st_in_loop",
+    "opt_useless_st_in_loop", 0, 0, 0, &CG_Enable_Opt_St_In_Loop, NULL,
+    "Remove useless st/ld op after EBO last time"
+  },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "enable_enhanced_lra",
+    "enable_enhanced_lra", 0, 0, 0,    &CG_Enable_Enhanced_LRA, NULL,
+    "Enable use another algorithm for LRA"
+  },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "enable_force_enhanced_lra",
+    "enable_force_enhanced_lra", 0, 0, 0,    &CG_Enable_Force_Enhanced_LRA, NULL,
+    "force to do another algorithm for LRA"
+  },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "enable_opt_ld_after_lra",
+    "enable_opt_ld_after_lra", 0, 0, 0,    &CG_Enable_Opt_Ld_After_LRA, NULL,
+    "Enable opt ld after EBO"
+  },
+  { OVK_INT32,   OV_VISIBLE,     TRUE, "enable_opt_entry_ra_reg",
+    "enable_opt_entry_ra_reg", 0, 0, INT32_MAX,    &CG_Enable_RA_OPT, NULL,
+    "Enable opt copy of RA reg in entry"
+  },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "enable_sorted_gra",
+    "enable_sorted_gra", 0, 0, 0,    &CG_Enable_Sorted_GRA, NULL,
+    "Enable opt copy of RA reg in entry"
+  },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "ftz",
+    "ftz", 0, 0, 0,    &CG_Enable_FTZ, NULL,
+    "Enable masking flush-to-zero bit in Floating-exception control register"
+  },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "nosched_div",
+    "nosched_div", 0, 0, 0,    &CG_NoSched_Divmfhimflo, NULL,
+    "not schedule div and mfhi/mflo"
+  },  
+#endif
 #if defined(TARG_SL)
   { OVK_BOOL ,  OV_INTERNAL, TRUE, "instr16","",
      0, 0, 0,	  &CG_Gen_16bit, NULL},
@@ -1255,6 +1306,8 @@ static OPTION_DESC Options_CG[] = {
      0, 0, 0,     &CG_round_spreg, NULL},
   { OVK_BOOL,  OV_INTERNAL, TRUE, "check_packed", "",
      0, 0, 0,     &CG_check_packed, NULL},
+  { OVK_BOOL ,  OV_INTERNAL, TRUE, "br_taken","",
+     0, 0, 0,	  &CG_branch_taken, NULL},
   { OVK_BOOL,   OV_INTERNAL, TRUE,  "sl2", "",
      0, 0, 0,        &CG_sl2, NULL },
 // sl2 specific peephole optimization 
@@ -1325,7 +1378,7 @@ static OPTION_DESC Options_CG[] = {
   { OVK_COUNT }
 };
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 /* Ipfec related options: */
 //The &IPFEC_... flags are changed into &ORC_... flags.
 static OPTION_DESC Options_IPFEC[] = {
@@ -1353,9 +1406,11 @@ static OPTION_DESC Options_IPFEC[] = {
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "force_if_conv", "", 
     0, 0, 0,    &ORC_Force_If_Conv, NULL, 
     "Use Ipfec if-convertor without profitablity consideration" },
+#ifndef TARG_LOONGSON
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "relaxed_if_conv", "",
     0, 0, 0,    &ORC_Relaxed_If_Conv, NULL,
     "Use Ipfec if-convertor with relaxed profability consideration" }, 
+#endif
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "combine_exit", "", 
     0, 0, 0,    &ORC_Combine_Exit, NULL, 
     "Enable the combine exits with identical targets" },
@@ -1395,12 +1450,14 @@ static OPTION_DESC Options_IPFEC[] = {
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "spec", "", 
     0, 0, 0,	&ORC_Enable_Speculation, NULL, 
     "Enable speculation" },
+#ifndef TARG_LOONGSON
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "fpld_spec", "", 
     0, 0, 0,	&ORC_Enable_FP_Ld_Speculation, NULL, 
     "Enable floating-point load speculation" },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "dsra", "", 
     0, 0, 0,	&ORC_Enable_Data_Spec_Res_Aware, NULL, 
     "Enable data speculation resource awareness" },
+#endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "data_spec", "", 
     0, 0, 0,	&ORC_Enable_Data_Speculation, NULL, 
     "Enable data speculation" },
@@ -1755,6 +1812,9 @@ OPTION_GROUP Cg_Option_Groups[] = {
   { "CYCLE", ':', '=', Options_CYCLE }, 
   { "VT", ':', '=', Options_VT },
   { "SKIP", ':', '=', Options_SKIP },
+#endif
+#ifdef TARG_LOONGSON
+  { "IPFEC", ':', '=', Options_IPFEC },
 #endif
   { NULL }		/* List terminator -- must be last */
 };
@@ -2527,7 +2587,7 @@ CG_Init (void)
     /* this has to be done after LNO has been loaded to grep
      * prefetch_ahead fromn LNO */
     Configure_prefetch_ahead();
-#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_NVISA)
+#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_NVISA) && !defined(TARG_LOONGSON)
     if (flag_test_coverage || profile_arcs)
       CG_Init_Gcov();
 
@@ -2552,7 +2612,7 @@ extern void CG_End_Final();
 void
 CG_Fini (void)
 {
-#if defined(KEY) && !defined(TARG_NVISA)
+#if defined(KEY) && !defined(TARG_NVISA) && !defined(TARG_LOONGSON)
     extern BOOL profile_arcs;
     if (profile_arcs)
         CG_End_Final();

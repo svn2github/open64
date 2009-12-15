@@ -184,6 +184,10 @@ extern "C" {
 extern void EETARG_Emit_IP_Calc_Func(void);
 #endif
 
+#ifdef TARG_LOONGSON
+#include "targ_const_private.h"
+#endif
+
 extern void Early_Terminate (INT status);
 
 #define PAD_SIZE_LIMIT	2048	/* max size to be padded in a section */
@@ -234,6 +238,11 @@ BOOL CG_emit_unwind_directives = FALSE;
 #elif defined(TARG_PPC32)
 BOOL CG_emit_asm_dwarf    = TRUE;  // Dwarf Error: wrong version in compilation unit header (is 296, should be 2)
 BOOL CG_emit_unwind_info  = TRUE;
+BOOL CG_emit_unwind_info_Set = FALSE;
+BOOL CG_emit_unwind_directives = FALSE;
+#elif defined(TARG_LOONGSON)
+BOOL CG_emit_asm_dwarf    = TRUE;
+BOOL CG_emit_unwind_info  = FALSE;
 BOOL CG_emit_unwind_info_Set = FALSE;
 BOOL CG_emit_unwind_directives = FALSE;
 #else
@@ -888,13 +897,43 @@ inline INT32 PC_Incr_N(INT32 pc, UINT32 incr)
 void
 EMT_Write_Qualified_Name (FILE *f, ST *st)
 {
+#ifdef TARG_LOONGSON
+  if (ST_class(st) == CLASS_CONST) {
+  	ST *base_st;
+	INT64 base_ofst;
+	Base_Symbol_And_Offset (st, &base_st, &base_ofst);
+
+	if (Emit_Global_Data)
+	   fprintf (f, "%s%s_symbol%s%lld", Label_Name_Prefix, 
+                    ST_name(base_st)+ 1,Label_Name_Separator, base_ofst);
+	else if (Read_Global_Data && strstr(ST_name(base_st), ".rdata_symbol") && base_ofst)
+           fprintf (f, "%s +%lld", ST_name(base_st), base_ofst);
+	else
+  	   fprintf (f, "%s%s%s%lld", Label_Name_Prefix, ST_name(base_st) + 1, 
+  	            Label_Name_Separator, base_ofst);
+
+       /* Compiling fortran, there is a st which occupies 0 byte in rdata section. */
+       TCON tcon = ST_tcon_val(st);
+       if(TCON_ty(tcon) == MTYPE_STRING && TCON_len(tcon) == 0)
+          fprintf (f, "%sNULL", Label_Name_Separator);
+  
+  }
+  else if (ST_name(st) && *(ST_name(st)) != '\0') {
+
+  /* If a st is an Fortran equivalence, its base_st will be used instead. */
+  if (ST_is_equivalenced(st) && ST_class(st) == CLASS_VAR) {
+	st = ST_base(st); 
+  } 
+  	
+#else  	
   if (ST_name(st) && *(ST_name(st)) != '\0') {
+#endif
 #if defined(BUILD_OS_DARWIN)
 	fputs(underscorify(ST_name(st)), f);
 #else /* defined(BUILD_OS_DARWIN) */
 	fputs(ST_name(st), f);
 #endif /* defined(BUILD_OS_DARWIN) */
-#if defined(KEY) && !defined(TARG_NVISA)
+#if defined(KEY) && !defined(TARG_NVISA) && !defined(TARG_LOONGSON)
 // This name is already unique, don't change it.
 	if (!strncmp (ST_name(st), ".range_table.", strlen(".range_table.")))
 		return;
@@ -920,7 +959,12 @@ EMT_Write_Qualified_Name (FILE *f, ST *st)
 		fputs(Symbol_Name_Suffix, f);
 	}
   } else {
+#ifdef TARG_LOONGSON
+	fprintf (f, "%s%s%s%lld", ST_name(ST_base(st)),Label_Name_Prefix, 
+	     Label_Name_Separator,ST_ofst(st));
+#else
 	fprintf (f, "%s %+lld", ST_name(ST_base(st)), ST_ofst(st));
+#endif
   }
 }
 
@@ -973,7 +1017,7 @@ static void Print_Label (FILE *pfile, ST *st, INT64 size)
 	EMT_Write_Qualified_Name(pfile, st);
 	fputc ('\n', pfile);
     }
-#if (defined(TARG_X8664) || defined(TARG_NVISA)) && !defined(BUILD_OS_DARWIN)
+#if (defined(TARG_X8664) || defined(TARG_NVISA) || defined(TARG_LOONGSON)) && !defined(BUILD_OS_DARWIN)
 	// Bug 1275 and 4351
 	// Always emit the function type
 	if (ST_class(st) == CLASS_FUNC) {
@@ -1439,7 +1483,11 @@ static vstring* str_at_move(vstring* vs)
  * ====================================================================
  */
 
+#if defined(TARG_SL)
+BOOL
+#else
 static BOOL
+#endif
 r_apply_l_const (
   OP *op,		/* OP with constant operand */
   INT opidx,		/* OP index of constant TN of some sort */
@@ -1630,7 +1678,7 @@ r_apply_l_const (
     print_TN_offset = FALSE;	/* because value used instead */
   }
   else if ( TN_has_value(t) ) {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
     vstr_sprintf (buf, vstr_len(*buf),  
 	(hexfmt ? "0x%" LL_FORMAT "x" : "%" LL_FORMAT "d"), TN_value(t) );
 #else
@@ -2242,7 +2290,7 @@ static INT r_assemble_binary ( OP *op, BB *bb, ISA_PACK_INST *pinst )
 	  if (ST_class(st) == CLASS_CONST || ST_is_export_local(st)) {
       	    val -= GP_DISP;
 	  }
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 	  if (!ISA_LC_Value_In_Class(val, LC_i16)) {
 #elif defined(TARG_X8664)
 	  if (!ISA_LC_Value_In_Class(val, LC_simm32)) {
@@ -2265,7 +2313,7 @@ static INT r_assemble_binary ( OP *op, BB *bb, ISA_PACK_INST *pinst )
 	      	val = 0;
 	  }
 	  else {
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 	    FmtAssert (ISA_LC_Value_In_Class(val, LC_i16),
 		("immediate value %lld too large for GPREL relocation", val));
 #elif defined(TARG_X8664)
@@ -2562,7 +2610,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 
   if (OP_prefetch(op)) Use_Prefetch = TRUE;
 
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_LOONGSON)
   static INT32 label_adjustsp_pu = -1;
   static INT32 pu_entry_count = -1;
   BOOL adjustsp_instr = FALSE;
@@ -2855,7 +2903,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
   }
 #endif // TARG_X8664
 
-#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_NVISA) && !defined(TARG_MIPS) && !defined(TARG_PPC32)
+#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_NVISA) && !defined(TARG_MIPS) && !defined(TARG_PPC32) && !defined(TARG_LOONGSON)
   // Bug 4204 - move the ctrl register setup after the preamble. This 
   // causes the debug information generated to let the debugger to stop
   // at the right spot for the main entry function. Otherwise, the parameters
@@ -3738,6 +3786,12 @@ int Compute_Asm_Num (const char *asm_string, BOOL emit_phase=TRUE) {
 }
 #endif // TARG_SL
 
+#if defined(TARG_SL)
+#define LDW_INSTR_STRING "ldw"
+#else
+#define LDW_INSTR_STRING "ld"
+#endif
+
 #ifdef TARG_SL
 char*
 #else
@@ -3835,14 +3889,16 @@ Generate_Asm_String (OP* asm_op, BB *bb)
     char *asm_string;
     asm_string = (char *)malloc(sizeof(char)*1024);
     sprintf(name, "%s", REGISTER_name(cl, reg));
-    sprintf(asm_string, "ld $4, 8(%s)\n", name);
-    sprintf(asm_string, "%s\tld $5, 16(%s)\n", asm_string, name);
-    sprintf(asm_string, "%s\tld $6, 24(%s)\n", asm_string, name);
-    sprintf(asm_string, "%s\tld $7, 32(%s)\n", asm_string, name);
-    sprintf(asm_string, "%s\tld $8, 40(%s)\n", asm_string, name);
-    sprintf(asm_string, "%s\tld $9, 48(%s)\n", asm_string, name);
-    sprintf(asm_string, "%s\tld $10, 56(%s)\n", asm_string, name);
-    sprintf(asm_string, "%s\tld $11, 64(%s)\n", asm_string, name);
+    sprintf(asm_string, "%s $4, 8(%s)\n", LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $5, 16(%s)\n",  asm_string, LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $6, 24(%s)\n",  asm_string, LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $7, 32(%s)\n",  asm_string, LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $8, 40(%s)\n",  asm_string, LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $9, 48(%s)\n",  asm_string, LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $10, 56(%s)\n", asm_string, LDW_INSTR_STRING, name);
+    sprintf(asm_string, "%s\t%s $11, 64(%s)\n", asm_string, LDW_INSTR_STRING, name);
+#if !defined(TARG_SL)
+    /* SL do not have float-point register */
     sprintf(asm_string, "%s\tldc1 $f12, 72(%s)\n", asm_string, name);
     sprintf(asm_string, "%s\tldc1 $f13, 80(%s)\n", asm_string, name);
     sprintf(asm_string, "%s\tldc1 $f14, 88(%s)\n", asm_string, name);
@@ -3851,6 +3907,7 @@ Generate_Asm_String (OP* asm_op, BB *bb)
     sprintf(asm_string, "%s\tldc1 $f17, 112(%s)\n", asm_string, name);
     sprintf(asm_string, "%s\tldc1 $f18, 120(%s)\n", asm_string, name);
     sprintf(asm_string, "%s\tldc1 $f19, 128(%s)", asm_string, name);
+#endif
     return asm_string;
   }
 #endif
@@ -3874,7 +3931,7 @@ Generate_Asm_String (OP* asm_op, BB *bb)
                                    OP_opnd(asm_op, i), bb);
   }
 
-#ifndef TARG_X8664
+#if !defined(TARG_X8664) && !defined(TARG_LOONGSON)
   CGTARG_Postprocess_Asm_String(asm_string);
 #else
   if (strstr(asm_string, "%%")) {
@@ -4194,7 +4251,6 @@ Assemble_Bundles(BB *bb)
   return bb_cycle_count;
 #endif
 }
-
 
 /* Assemble the OPs in a BB an OP at a time.
  */
@@ -4213,14 +4269,32 @@ Assemble_Ops(BB *bb)
   FmtAssert(ISA_MAX_SLOTS == 1,
 	    ("Assemble_Ops shouldn't have been called"));
 
+#ifdef TARG_SL
+  if (CG_enable_CBUS_workaround && (Target == TARGET_sl1_dsp)) {
+    extern void CG_Reorder_Pop16_In_BB(BB *bb);
+    extern void CG_Add_Nop16_Workaround(BB* bb);
+    CG_Reorder_Pop16_In_BB(bb);
+    CG_Add_Nop16_Workaround(bb);
+  }
+#endif
+
   FOR_ALL_BB_OPs_FWD(bb, op) {
     ISA_BUNDLE bundle[ISA_PACK_MAX_INST_WORDS];
     INT words;
 
 #ifdef TARG_SL
+    if (CG_enable_LD_NOP_workaround && (Target == TARGET_sl1_dsp)) {
+      if (OP_load(op)) {
+        for (int i=0; i<4; i++) {
+          OP *op1 = Mk_OP(TOP_nop16);
+          BB_Insert_Op_After(bb, op, op1);
+        }
+      }
+    }
+
     // check mvtc and its consumer || mvfc ra and lnk : 
     // insert nop16 when needed
-    if (CG_check_quadword)
+    if (CG_check_quadword && (Is_Target_Sl1_pcore() || Is_Target_Sl1_dsp()))
       Check_QuadWord_Alignment(op, bb, bundle);
     if (Trace_PC) {
       fprintf(TFile, "pc = %x\t", PC);
@@ -4597,7 +4671,7 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     }
   }
 #else // TARG_IA64
-#ifdef TARG_X8664 
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) 
   if (!BB_entry(bb)) {
     float fall_thru_freq = 0.0;
     float branch_in_freq = 0.0;
@@ -4692,7 +4766,7 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
 #endif
 
 // #ifdef KEY
-#ifndef TARG_IA64
+#if !defined(TARG_IA64) && !defined(TARG_LOONGSON)
     if (strcmp(ST_name(entry_sym), Cur_PU_Name) != 0 &&
         PU_ftn_lang(Get_Current_PU())) { // PU entry
       char *buf;
@@ -4864,7 +4938,7 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
 #endif
     }
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
     if (BB_has_note(bb)) {
       NOTE_BB_Act (bb, NOTE_PRINT_TO_FILE, Asm_File);
     }
@@ -4888,7 +4962,7 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   Init_Sanity_Checking_For_BB ();
 #endif
 
-#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_NVISA) && !defined(TARG_MIPS) && !defined(TARG_PPC32)
+#if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_NVISA) && !defined(TARG_MIPS) && !defined(TARG_PPC32) && !defined(TARG_LOONGSON)
 // Assumption: REGION_First_BB is the first BB in the PU. If in future,
 // we start having multiple regions in a PU here, we need to change the 
 // following. 
@@ -6823,7 +6897,7 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
       if (!emit_typeinfo)
       scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv),
 				etable, format);
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
       else if (Gen_PIC_Call_Shared || Gen_PIC_Shared) // emit_typeinfo
       {
   	fputs ("\t.long\t0\n", Asm_File);
@@ -7368,7 +7442,7 @@ Write_INITO (
       }
     } else {
 	INITV_IDX inv;
-#ifndef TARG_IA64
+#if !defined(TARG_IA64) && !defined(TARG_LOONGSON)
         char *name = ST_name (sym);
         bool range_table = (name != NULL) &&
                 (!strncmp (".range_table.", name,strlen(".range_table."))) &&
@@ -7383,7 +7457,7 @@ Write_INITO (
 	bool type_label_emitted = false;
 #endif // KEY
 	FOREACH_INITV (INITO_val(ino), inv) {
-#ifndef TARG_IA64
+#if !defined(TARG_IA64) && !defined(TARG_LOONGSON)
             if (range_table && !action_table_started &&
                   (INITV_flags (Initv_Table[inv]) == INITVFLAGS_ACTION_REC))
             {
@@ -7415,7 +7489,7 @@ Write_INITO (
 		scn_ofst = Write_INITV (inv, scn_idx, scn_ofst);
 #endif // KEY
         }
-#ifndef TARG_IA64
+#if !defined(TARG_IA64) && !defined(TARG_LOONGSON)
         if (range_table && !type_label_emitted)
             fprintf ( Asm_File, "%s:\n", LABEL_name(labels[1]));
 #endif // KEY
@@ -7464,7 +7538,7 @@ Generate_Exception_Table_Header (INT scn_idx, Elf64_Xword scn_ofst, LABEL_IDX *l
 
     // Generate TType format
     TCON ttype;
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
     if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
     	ttype = Host_To_Targ (MTYPE_I1, 0x9b);
     else
@@ -7546,7 +7620,7 @@ Change_Section_Origin (ST *base, INT64 ofst)
 #endif /* defined(BUILD_OS_DARWIN) */
 		}
 #ifndef TARG_MIPS
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 		if (strcmp(ST_name(base), ".except_table"))
 #endif // TARG_X8664
 		if (!CG_file_scope_asm_seen)
@@ -7818,6 +7892,9 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
         fprintf ( Asm_File, "\t%s\t0\n", AS_ALIGN );
 #elif !defined (TARG_IA64)
       fprintf ( Asm_File, "\t%s\t0\n", AS_ALIGN );
+#endif
+#ifdef TARG_LOONGSON
+      Print_Label (Asm_File, st, 0);
 #endif
       Write_TCON (&ST_tcon_val(st), STB_scninfo_idx(base), ofst, 1);
 #else
@@ -8242,7 +8319,12 @@ static LABEL_IDX       prev_pu_last_label  = LABEL_IDX_ZERO;
 static Dwarf_Unsigned  prev_pu_base_elfsym = 0;
 static PU_IDX          prev_pu_pu_idx      = (PU_IDX) 0;
 static Dwarf_Unsigned  prev_pu_end_offset_from_last_label = 0;
+#ifdef TARG_LOONGSON
+ /* We'd better use str_idx, not the str itself to avoid access trouble after alloc*/ 
+static STR_IDX	prev_pu_last_label_name_idx = 0;
+#else
 static char           *prev_pu_last_label_name = NULL;
+#endif
 static Dwarf_Unsigned  prev_pu_last_offset = 0;
 
 static void
@@ -8255,7 +8337,11 @@ cache_last_label_info(LABEL_IDX      label_idx,
   prev_pu_base_elfsym = base_elf_idx;
   prev_pu_pu_idx      = pu_idx;
   prev_pu_end_offset_from_last_label = end_offset;
+#ifdef TARG_LOONGSON
+  prev_pu_last_label_name_idx = Save_Str(LABEL_name(label_idx));
+#else
   prev_pu_last_label_name = LABEL_name(label_idx);
+#endif
   prev_pu_last_offset = Get_Label_Offset(label_idx);
 }
 
@@ -8269,7 +8355,11 @@ end_previous_text_region(pSCNINFO scninfo,
 							       prev_pu_last_label,
 							       prev_pu_base_elfsym,
 							       prev_pu_pu_idx,
+#ifdef TARG_LOONGSON
+							       Index_To_Str(prev_pu_last_label_name_idx),
+#else
 							       prev_pu_last_label_name,
+#endif
 							       prev_pu_last_offset),
 					 prev_pu_end_offset_from_last_label);
 }
@@ -8377,7 +8467,7 @@ Setup_Text_Section_For_PU (ST *pu)
     text_PC = text_PC + (i * INST_BYTES);
   }
 
-#if !defined(TARG_X8664) && !defined(TARG_NVISA)
+#if !defined(TARG_X8664) && !defined(TARG_NVISA) && !defined(TARG_LOONGSON)
   // hack for supporting dwarf generation in assembly (suneel)
   Last_Label = Gen_Label_For_BB (REGION_First_BB);
 
@@ -8594,7 +8684,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
     Em_Add_New_Event (EK_ENTRY, PC, 0, 0, 0, PU_section);
   }
   if ( Assembly ) {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
     if (CG_p2align) 
       fputs ("\t.p2align 4,,15\n", Asm_File);
     else if (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG) {
@@ -8763,10 +8853,10 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   fprintf(Asm_File, "//PU cycle count: %f\n", pu_cycle_count);
 #endif
 
-#if defined(TARG_X8664) || defined(TARG_NVISA)
+#if defined(TARG_X8664) || defined(TARG_NVISA) || defined(TARG_LOONGSON)
   // Emit Last_Label at the end of the PU to guide Dwarf DW_AT_high_pc
   fprintf( Asm_File, "%s:\n", LABEL_name(Last_Label));
-#if defined(TARG_X8664)
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
   Label_Last_BB_PU_Entry[pu_entries] = Last_Label;
 #if ! defined(BUILD_OS_DARWIN)
   // Mach-O as 1.38 doesn't support .size
@@ -8829,6 +8919,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
     Elf64_Word symindex;
     INT eh_offset;
     BOOL has_exc_scopes = PU_has_exc_scopes(ST_pu(pu));
+#ifndef TARG_LOONGSON
     if (Object_Code)
     	Em_Add_New_Event (EK_PEND, PC - INST_BYTES, 0, 0, 0, PU_section);
     /* get exception handling info */ 
@@ -8895,6 +8986,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 		// us specify ranges symbolically.
 		Initial_Pu_PC, PC);
 #endif // TARG_X8664
+#endif // TARG_LOONGSON
   }
   if (Run_prompf) {
     fputc ('\n', anl_file);
@@ -9171,6 +9263,10 @@ EMT_Begin_File (
 #endif
 
   if (Assembly) {
+#ifdef TARG_LOONGSON
+    if (Gen_PIC_Shared || Gen_PIC_Call_Shared)
+    ASM_DIR_ABICALLS();
+#endif
     ASM_DIR_NOREORDER();
     ASM_DIR_NOAT();
 #ifdef TARG_MIPS
@@ -9663,9 +9759,11 @@ EMT_End_File( void )
     if (! CG_emit_non_gas_syntax) {
 #endif
     if (CG_emit_asm_dwarf) {
+#ifndef TARG_LOONGSON
       Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs(Asm_File,
 						   dwarf_section_count,
 						   !Use_32_Bit_Pointers);
+#endif
     }
 #if defined(KEY) && !defined(TARG_NVISA) 
     // bug 5561: mark stack as non-executable

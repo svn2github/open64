@@ -479,7 +479,7 @@ static char *model_rcs_id = "$Source: ../../be/lno/SCCS/s.model.h $ $Revision: 1
 #ifndef MODEL_DELCARE
 #define MODEL_DELCARE
 
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON)
 #define	Target_INTRs	32
 #endif
 #ifdef TARG_PPC32

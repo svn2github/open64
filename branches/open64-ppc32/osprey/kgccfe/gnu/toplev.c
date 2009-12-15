@@ -4586,6 +4586,12 @@ independent_decode_option (argc, argv)
 				set_target_switch (arg + 1);
 #endif
 			break;
+#ifdef TARG_LOONGSON
+      /* Deal with options -n32/ -n64 */
+    case 'n':
+      set_target_switch (arg + 1);
+      break;
+#endif
     
 		case 'f':
       return decode_f_option (arg + 1);

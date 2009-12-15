@@ -148,13 +148,20 @@
 #include "scheduler.h"
 #include "disp_instr.h"
 #endif
+#ifdef TARG_LOONGSON
+#include "ipfec_defs.h"
+#include "ipfec_options.h"
+#include "lgra_opt_spill.h"
+#include "edge_profile.h"
+#include "config_opt.h"
+#endif
 
 MEM_POOL MEM_local_region_pool; /* allocations local to processing a region */
 MEM_POOL MEM_local_region_nz_pool;
 
 BOOL Trace_REGION_Interface = FALSE;
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 INT32 current_PU_handle = 0;
 INT32 rse_budget;
 #endif
@@ -639,7 +646,7 @@ Collect_Simd_Register_Usage()
 }
 #endif 
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 static void Config_Ipfec_Flags() {
  
   /* copy ORC_... Flags to Ipfec_... Flags */
@@ -661,7 +668,9 @@ static void Config_Ipfec_Flags() {
   IPFEC_Enable_Region_Formation = IPFEC_Enable_Region_Formation && CG_Enable_Ipfec_Phases && CG_opt_level > 1;
   IPFEC_Enable_If_Conversion = IPFEC_Enable_If_Conversion && CG_Enable_Ipfec_Phases;
   IPFEC_Force_If_Conv = IPFEC_Force_If_Conv && CG_Enable_Ipfec_Phases;
+#ifndef TARG_LOONGSON
   IPFEC_Relaxed_If_Conv = IPFEC_Relaxed_If_Conv && CG_Enable_Ipfec_Phases;
+#endif
   IPFEC_Force_Para_Comp_Gen = IPFEC_Force_Para_Comp_Gen && CG_Enable_Ipfec_Phases;
   IPFEC_Para_Comp_Gen = IPFEC_Para_Comp_Gen && CG_Enable_Ipfec_Phases;
   IPFEC_Disable_Merge_BB = IPFEC_Disable_Merge_BB && CG_Enable_Ipfec_Phases;
@@ -689,6 +698,9 @@ static void Config_Ipfec_Flags() {
   IPFEC_Enable_Post_Multi_Branch = IPFEC_Enable_Post_Multi_Branch && CG_Enable_Ipfec_Phases;
 
   ORC_Enable_Cache_Analysis = ORC_Enable_Cache_Analysis && CG_Enable_Ipfec_Phases; 
+#ifdef TARG_LOONGSON
+  IPFEC_Enable_Cache_Profile_Annot = IPFEC_Enable_Cache_Profile_Annot || Feedback_Enabled[PROFILE_PHASE_BEFORE_REGION];
+#endif
 
   if (IPFEC_Chk_Compact && locs_skip_bb) {
     DevWarn("Although chk_compact is turned on, it should be turned off since some BBs are forced to be skipped in local scheduling phase!");
@@ -804,7 +816,7 @@ CG_Generate_Code(
   }
 #endif
 
-#if defined(KEY) && !defined(TARG_SL)
+#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_LOONGSON)
   extern BOOL profile_arcs;
   if (flag_test_coverage || profile_arcs)
 //    CG_Compute_Checksum();
@@ -861,7 +873,7 @@ CG_Generate_Code(
 #endif // !TARG_NVISA
 
   Init_Callee_Saved_Regs_for_REGION( Get_Current_PU_ST(), region );
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
   //this is a hack for edge profiling
   //when invoke edge profiling, it does not save/restore b0
   //while Generate_Entry_Exit_Code will do this instead, but it need to know
@@ -871,6 +883,11 @@ CG_Generate_Code(
 #if defined(TARG_PPC32)
 extern void Generate_Return_Address(void);
   Generate_Return_Address();
+#endif
+#ifdef TARG_LOONGSON
+  if ( (IPFEC_Enable_Edge_Profile || IPFEC_Enable_Stride_Profile || IPFEC_Enable_Cache_Profile)
+       && (CG_opt_level>1)) 
+     PU_Has_Calls = TRUE;
 #endif
   Generate_Entry_Exit_Code ( Get_Current_PU_ST(), region );
 #ifdef TARG_IA64
@@ -944,6 +961,20 @@ extern void Generate_Return_Address(void);
   }
 #endif
   if (CG_localize_tns && !value_profile_need_gra ) {
+#elif TARG_LOONGSON
+  if (IPFEC_Enable_Edge_Profile && (CG_opt_level>1)) {
+    Set_Error_Phase ( "edge profile instrument" );
+    Start_Timer ( T_Ipfec_Profiling_CU );
+    CG_Edge_Profile_Instrument ( RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION );
+    Stop_Timer ( T_Ipfec_Profiling_CU );
+    Check_for_Dump ( TP_A_PROF, NULL );
+    Set_Frame_Has_Calls ( TRUE );
+  } else if (IPFEC_Enable_Edge_Profile_Annot && (CG_opt_level>1)) {
+    Set_Error_Phase ( "edge profile annotation" );
+    CG_Edge_Profile_Annotation ( RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION );
+    Check_for_Dump ( TP_A_PROF, NULL );
+  }
+  if (CG_localize_tns) {
 #else // TARG_IA64
   if (CG_localize_tns
 #ifdef TARG_X8664
@@ -1120,7 +1151,7 @@ extern void Generate_Return_Address(void);
 #else
       // Initialize the predicate query system in the hyperblock formation phase
       HB_Form_Hyperblocks(region ? REGION_get_rid(rwn) : NULL, NULL);
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_LOONGSON)
       // We do not have a slot in the BB structure to store predicate TNs.
       // Instead, we remember the last seen block and the associated 
       // predicate TNs. So, we need to reinitialize the TNs and the basic block
@@ -1443,6 +1474,7 @@ extern void Generate_Return_Address(void);
   }
   Check_for_Dump_ALL ( TP_CGEXP, NULL, "Pre LIS" );
 
+#if 0 /* EBO is turn on*/
   /* for now we don't turn on ebo, it causes that there are lots of 
    * jump to jump not converted to direct jump implemented in 
    * CFLOW_Optimize in EBO_Post_Process_Region so we call 
@@ -1458,6 +1490,7 @@ extern void Generate_Return_Address(void);
   }
 
   Check_for_Dump_ALL ( TP_CGEXP, NULL, "after Sched" );
+#endif
 #else
   GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
   GRA_LIVE_Rename_TNs();
@@ -1466,6 +1499,10 @@ extern void Generate_Return_Address(void);
 #endif 
 
 #endif // TARG_SL
+#endif
+
+#ifdef TARG_LOONGSON
+  current_PU_handle++;
 #endif
 
 #ifdef TARG_IA64
@@ -1523,6 +1560,10 @@ extern void Generate_Return_Address(void);
 #if defined(TARG_SL)
   if (Run_ipisr)
     IPISR_Insert_Spills();
+#endif
+
+#ifdef TARG_LOONGSON
+  Initialize_Optimized_LRA_And_EBO();
 #endif
 
 #ifdef TARG_IA64
@@ -1649,6 +1690,23 @@ extern void Generate_Return_Address(void);
 
 #else 
 #if !defined(TARG_PPC32)
+#ifdef TARG_LOONGSON
+  // Mainly concerns about ld from GRA
+  if (!CG_localize_tns){
+     if (IPFEC_Enable_RA_OPT!=0){
+         Optimize_St_In_Entry_BB();
+     }
+     if (IPFEC_Enable_Opt_Ld_After_LRA) {
+        REG_LIVE_Analyze_Region();
+        Optimize_Ld_In_Dom();
+        REG_LIVE_Finish();
+     }
+     if (IPFEC_Enable_Opt_Mem_OP){
+           Optimize_For_Needless_OP ();
+     }
+  }
+  Finalize_Optimized_LRA_And_EBO();
+#endif
   IGLS_Schedule_Region (FALSE /* after register allocation */);
 #endif
 #endif

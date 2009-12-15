@@ -98,5 +98,9 @@ extern void Assign_Temp_Regs (OPS *ops, BB *bb);
  */
 extern REGISTER Single_Register_Subclass (ISA_REGISTER_SUBCLASS subclass);
 #endif
+#ifdef TARG_LOONGSON
+extern BOOL Is_OP_Spill_Store (OP *op, ST *spill_loc);
+extern BOOL Is_OP_Spill_Load (OP *op, ST *spill_loc);
+#endif
 
 #endif /* lra_INCLUDED */

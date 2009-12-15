@@ -105,11 +105,13 @@ ST_is_const_initialized (const ST* st)
     if (BE_ST_unknown_const(st))
       return FALSE;
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA) || defined(TARG_SL)
     // if is extern const, then is same as unknown const
     if (ST_sclass(st) == SCLASS_EXTERN)
 	return FALSE;
+#endif
 
+#ifdef TARG_NVISA
     if (ST_in_shared_mem(st))
     	// may be readonly but don't know initial value
 	return FALSE;

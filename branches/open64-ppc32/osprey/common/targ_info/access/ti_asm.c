@@ -263,7 +263,9 @@ static INT Format_Operand(
 
   if (ISA_OPERAND_VALTYP_Is_PCRel(vtype)) {
     val += pc;
+#ifndef TARG_LOONGSON
     if (PROC_has_branch_delay_slot()) val += sizeof(ISA_BUNDLE);
+#endif
     return sprintf(buf, "0x%llx", val) + 1;
   } else if (ISA_OPERAND_VALTYP_Is_Signed(vtype)) {
     return sprintf(buf, "%lld", val) + 1;

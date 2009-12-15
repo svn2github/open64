@@ -117,7 +117,7 @@ extern void Result (int result_index);
 extern void Instruction_Print_Group ( ISA_PRINT_TYPE print_type, TOP top, ... );
 extern void ISA_Print_End(void);
 extern void Set_AsmName_Func(const char *(*asmname_func)(TOP topcode));
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 extern void Segment (void);
 #endif
 

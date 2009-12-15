@@ -351,7 +351,7 @@ const static char *rcs_id = "$Source: ../../be/lno/SCCS/s.model.cxx $ $Revision:
 
 typedef HASH_TABLE<WN*,INT> WN2INT;
 
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON)
 #define Reserved_Int_Regs	9	// $0, $26-$29, loop ub, fudge (3)
 #endif
 #ifdef TARG_PPC32
@@ -690,6 +690,12 @@ LOOP_MODEL::Model(WN* wn,
     _issue_rate = 4.0;
     _base_fp_regs = 18;
     _num_mem_units = 2.0;
+#endif
+#ifdef TARG_LOONGSON
+  }else if (Is_Target_Loongson()) {
+    _issue_rate = 4.0;
+    _base_fp_regs = 14;
+    _num_mem_units = 1.0;
 #endif
   } else {
     Lmt_DevWarn(1, ("TODO: LNO machine model parameters are just wild guesses"));
@@ -1837,6 +1843,10 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
         case OPR_SELECT:
           *num_instr += LNOTARGET_Int_Select_Res(resource_count, rtype);
           break;
+#elif defined(TARG_LOONGSON)
+        case OPR_SELECT:
+          *num_instr += LNOTARGET_Int_Select_Res(resource_count, double_word);
+	break;
 #else
         case OPR_SELECT:
           *num_instr += LNOTARGET_Int_Select_Res(resource_count);
@@ -1846,6 +1856,8 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
 #ifdef TARG_X8664
           *num_instr += LNOTARGET_Int_Cvtl_Res(resource_count, rtype, 
 					       WN_cvtl_bits(wn));
+#elif defined(TARG_LOONGSON)
+          *num_instr += LNOTARGET_Int_Cvtl_Res(resource_count, desc, rtype);
 #else
           *num_instr += LNOTARGET_Int_Cvtl_Res(resource_count);
 #endif /* TARG_X8664 */
@@ -1854,7 +1866,11 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
           *num_instr += LNOTARGET_Int_Neg_Res(resource_count, double_word);
           break;
         case OPR_ABS:
+#ifdef TARG_LOONGSON
+          *num_instr += LNOTARGET_Int_Abs_Res(resource_count, double_word, rtype);
+#else
           *num_instr += LNOTARGET_Int_Abs_Res(resource_count, double_word);
+#endif //TARG_LOONGSON
           break;
         case OPR_PAREN: 
           break;
@@ -2015,8 +2031,13 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
         case OPR_MAX:
         case OPR_MIN:
         case OPR_MINMAX:
+#ifdef TARG_LOONGSON
+          *num_instr += LNOTARGET_Int_Min_Max_Res(resource_count,
+                                                  oper == OPR_MINMAX, double_word);
+#else
           *num_instr += LNOTARGET_Int_Min_Max_Res(resource_count,
                                                   oper == OPR_MINMAX);
+#endif //TARG_LOONGSON
           break;
         case OPR_BAND: 
           *num_instr += LNOTARGET_Int_Band_Res(resource_count);
