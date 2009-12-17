@@ -627,9 +627,8 @@ void ACCESS_VECTOR::Print_Analysis_Info(FILE *fp,
   for (INT32 i=0; i< Nest_Depth(); i++) {
     if (Loop_Coeff(i) != 0) {
 
-      if (i >=  do_stack.Elements()) {
-	FmtAssert(i < do_stack.Elements(), ("Print_Analysis_Info : loop mismatch"));
-      }
+      if (i >=  do_stack.Elements()) 
+        continue;
 
       SYMBOL sym(WN_index(do_stack.Bottom_nth(i)));
       if (!seen_something) {

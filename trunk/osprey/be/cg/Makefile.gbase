@@ -1,5 +1,7 @@
 # -*- Makefile -*-
 #
+#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -888,6 +890,10 @@ include $(COMMONRULES)
 ifneq ($(BUILD_TARGET), SL)
 ifeq (gcc,$(firstword $(CCNAME)))
 # work around gcc bug optimizing this file on ia32
+ifeq ($(BUILD_OPTIMIZE), DEBUG)
+cg_loop.o: OPTIMIZER = -O0 -g
+else
 cg_loop.o: OPTIMIZER = -O0
+endif
 endif
 endif

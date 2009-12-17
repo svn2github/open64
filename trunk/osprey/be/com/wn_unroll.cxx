@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -855,8 +859,22 @@ WN_UNROLL_suitable(WN *tree)
 void
 WN_unroll(WN *tree)
 {
+#ifdef TARG_X8664
+  UINT32 saved_unrolled_size_max;
+  UINT32 saved_unroll_times_max;
+#endif
+
   if (WOPT_Enable_WN_Unroll == 0)
     return;
+
+#ifdef TARG_X8664
+  if (WN_Loop_Multiversion_Alias(tree)) {
+    saved_unrolled_size_max = OPT_unroll_size;
+    saved_unroll_times_max = OPT_unroll_times;
+    OPT_unroll_size = 256;
+    OPT_unroll_times = 8;
+  }
+#endif
 
   Start_Timer(T_Lower_CU);
   Set_Error_Phase("WN_unroll");
@@ -874,6 +892,13 @@ WN_unroll(WN *tree)
   WN_Lower_Checkdump("After wn_unroll", tree, 0);   
 
   WN_verifier(tree);
+
+#ifdef TARG_X8664
+  if (WN_Loop_Multiversion_Alias(tree)) {
+    OPT_unroll_size = saved_unrolled_size_max;
+    OPT_unroll_times = saved_unroll_times_max;
+  }
+#endif
 
   return;
 }

@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -792,7 +796,13 @@ void Prefetch_Driver ( WN* func_nd, ARRAY_DIRECTED_GRAPH16 * ) {
     }
     VB_PRINT (printf ("No manual prefetches\n"));
     if (LNO_Run_Prefetch) {
+      PF_PRINT ( fprintf(TFile,"Prefetch_Driver: before invoking Prefetch_Auto\n");
+                 fdump_tree(TFile, func_nd); );
+
       Prefetch_Auto (func_nd, Array_Dependence_Graph);
+
+      PF_PRINT ( fprintf(TFile,"Prefetch_Driver: after invoking Prefetch_Auto\n");
+                 fdump_tree(TFile, func_nd); );
     }
 
     Is_True (mpf_syms || !LNO_Run_Prefetch_Manual,

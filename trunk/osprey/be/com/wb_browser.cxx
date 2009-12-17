@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2005-2007 NVIDIA Corporation.  All rights reserved.
  */
 
@@ -333,7 +337,7 @@ void WB_BROWSER::This_Node(WN* wn,
   fprintf(stdout, "%s ", ch);
   if (Fancy_Level() >= 3)
     if (OPCODE_has_next_prev(WN_opcode(wn)))
-      fprintf(stdout, "(%d) ", (INT) WN_linenum(wn));
+      fprintf(stdout, "(%d) ", Srcpos_To_Line(WN_linenum(wn)));
   if (Fancy_Level() >= 3 && Prompf_Id_Map() == -1) 
     fprintf(stdout, "<%d> ", WN_MAP32_Get(Prompf_Id_Map(), wn));
   if (WN_operator(wn) == OPR_INTCONST) {
@@ -1467,10 +1471,10 @@ void WB_BROWSER::Loops_Walk(WN* wn,
     name = WB_Whirl_Symbol(wn);
     if (Prompf_Id_Map() != -1) {
       fprintf(fp, "[%d] 0x%p DOLOOP (%d) <%d> %s\n", Carray().Next_Index(), wn,
-	(INT) WN_linenum(wn), WN_MAP32_Get(Prompf_Id_Map(), wn), name);
+	Srcpos_To_Line(WN_linenum(wn)), WN_MAP32_Get(Prompf_Id_Map(), wn), name);
     } else {
       fprintf(fp, "[%d] 0x%p DOLOOP (%d) %s\n", Carray().Next_Index(), wn,
-	(INT) WN_linenum(wn), name);
+	Srcpos_To_Line(WN_linenum(wn)), name);
     }
     Carray().Enter_This_Node(wn); 
     Loops_Walk(WN_do_body(wn), fp, spaces + increment, increment);

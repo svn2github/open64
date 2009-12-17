@@ -1369,8 +1369,7 @@ ALIAS_CLASSIFICATION::Expr_may_contain_pointer (WN* const expr) {
 
   if (MTYPE_byte_size (res) < Pointer_Size ||
       (MTYPE_is_void (res)    || MTYPE_is_float (res) || 
-       MTYPE_is_complex (res) || MTYPE_is_vector (res) || 
-       MTYPE_is_boolean (res))) {
+       MTYPE_is_complex (res) || MTYPE_is_vector (res))) {
      return FALSE;
   }
    

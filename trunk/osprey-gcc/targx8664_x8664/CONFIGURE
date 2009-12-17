@@ -1,5 +1,7 @@
 #!/bin/bash
 #
+# Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 # Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
 #
 # This program is free software; you can redistribute it and/or modify it
@@ -30,8 +32,9 @@ fi
 # create symbol link to libgspin.a
 ln -s -f ../../osprey/targx8664_x8664/libspin/libgspin.a libgspin.a
 
-# copy all header files in libspin to gcc
-cp -f ../../libspin/*.h ../gcc/
+# remove gspin headers from the gcc directory (use -I to get them
+# directly from the libspin directory).
+rm -f ../gcc/gspin-[abilmt]*.h
 
 # configure the osprey-gcc
 CC='gcc -m64 -DTARG_X8664' ../configure --prefix=/usr --program-prefix=open64- --program-suffix=-4.0.2 --with-gnu-as --with-gnu-ld --enable-languages=c,c++ --disable-shared --disable-multilib --disable-libmudflap --enable-threads=posix --disable-checking --enable-tls --with-system-zlib --enable-__cxa_atexit --host=x86_64-redhat-linux

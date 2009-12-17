@@ -242,6 +242,8 @@ I-include=%D  ;		FTN     ffe,PFA     "-include=%D"
 	"Do not use faster versions of standard library functions"
 -nolibopen64rt	;	LINK	ld	""
 	"Do not link with libopen64rt"
+-external-gcc	toggle(&external_gcc,TRUE);	ALL	ipap	self
+	"Do not use internal gcc to preprocess and link"
 %I-split_common	;		LINK	ld	"-split_common"
 %	"check split COMMON for inconsistencies and fix them"
 
@@ -666,6 +668,8 @@ I-D_LANGUAGE_FORTRAN	;		FTN	CPP	self
 	"Optimize for space"
 -mspace toggle(&ospace,TRUE);	ALL	CMP	"-OPT:space"
 	""
+-mso    toggle(&oscale,TRUE);   ALL     CMP,ipap,	 ""
+        "Optimize for multicore scalability"
 -g	toggle(&glevel,2);		ALL	CMP	"-g2"
 	"full debug info"
 -g0	toggle(&glevel,0);		ALL	CMP	self
@@ -911,7 +915,7 @@ I-xall		;	FTN	ffe	self
 -Wno-error=%s   warn_ignored(option_name);      ALL     NONE    ""
         "makes -Ws warnings not be error"
 -ftls-model=%s	check_opt_tls_model(optargs);		Cc	cfe	"-ftls-model=%s"
-	"Thread-Local Storage model. \n\t\tShould be one of `global-dynamic', `local-dynamic', `initial-exec' or `local-exec'.\n\t\tThe default without -fpic is `initial-exec'; with -fpic the default is `global-dynamic`."
+	"Thread-Local Storage model. \n\t\tShould be one of `global-dynamic', `local-dynamic', `initial-exec' or `local-exec'.\n\t\tThe default without -fpic is `local-exec'; with -fpic the default is `global-dynamic`."
 -varargs	;		f77	ffe	self
 	"MATRA varargs"
 %-nocode last_phase=earliest_phase(P_any_fe,last_phase);  FTN ffe   self
@@ -1330,6 +1334,10 @@ I-u%s		;		Cc	ld	"-u %s"
 -fwritable-strings	;		Cc	f	self
 	"Attempt to support writable-strings K&R style C"
 -fno-writable-strings	;		Cc	f	self
+	""
+-fshow-column	;		Cc	f	self
+	"Show column numbers in diagnostics when available"
+-fno-show-column	;		Cc	f	self
 	""
 -ftraditional	;		Cc	f	self
 	""
@@ -1927,35 +1935,30 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -fcall-used-%s	;		Cc	NONE	""
 	""
-% KEY: Because of limitation on derived flags, we repeat the -fexceptions
-% in the implied list.  This is to find the parent flag so action is done.
 #ifdef X8664
--fexceptions	;	ALL	cfe	"-fexceptions -fgnu-exceptions -TENV:frame_pointer=on"
+-fexceptions	;	Cc	CPP,cfe	"-fexceptions -TENV:frame_pointer=on"
 	"Enable exception handling"
 #else
--fexceptions	;	ALL	cfe	"-fexceptions -fgnu-exceptions"
+-fexceptions	;	Cc	CPP,cfe	self
 	"Enable exception handling"
 -foptimize-regions  ;   Cc  cfe "-foptimize-regions -TENV:omit_ue_destroy_frame=on"
-    "Enable optimization of EH regions formation"
+	"Enable optimization of EH regions formation"
 #endif
--fhandle-exceptions	;	Cc	cpp,cfe	self
-	"Enable exception handling"
-#ifndef SL
--fno-exceptions	;	Cc	CPP,cfe	"-fno-exceptions -fno-gnu-exceptions"
-	"Disable exception handling"
-#else
+-fhandle-exceptions	;	Cc	CPP,cfe	self
+	""
 -fno-exceptions	;	Cc	CPP,cfe	"-fno-exceptions"
 	"Disable exception handling"
-#endif
+-fno-emit-exceptions	;	Cc	w	self
+	"Do not emit code to handle exceptions"
 -fno-optimize-regions	;	Cc	cfe	self
 	"Enable optimization of EH regions formation"
--fno-handle-exceptions	;	Cc	cfe	self
-	"Disable exception handling"
-#ifdef KEY	/* bug 11732 */
--fgnu-exceptions	toggle(&gnu_exceptions,TRUE);	C	cfe	""
-	"Enable exception handling in the GNU front-end"
--fno-gnu-exceptions	toggle(&gnu_exceptions,FALSE);	C	cfe	""
-	"Disable exception handling in the GNU front-end"
+-fno-handle-exceptions	;	Cc	CPP,cfe	self
+	""
+#ifdef KEY     /* bug 11732 */
+-fgnu-exceptions	;	Cc	CPP,cfe	"-fexceptions"
+	""
+-fno-gnu-exceptions	;	Cc	CPP,cfe     "-fno-exceptions"
+	""
 #endif
 -ffixed-%s	;		Cc	NONE	"-TENV:registers_not_allocatable=%s"
 	""
@@ -2095,22 +2098,54 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Enable SSE extensions"
 -mno-sse	toggle(&sse,FALSE);toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	be	""
 	"Disable SSE2/SSE3/SSE4a extensions"
--msse2	toggle(&mmx,TRUE);toggle(&sse,TRUE);toggle(&sse2,TRUE);		ALL	be	""
+-msse2	toggle(&mmx,TRUE);toggle(&sse,TRUE);toggle(&sse2,TRUE);		ALL	CPP,cfe		self
 	"Enable SSE2 extensions"
--mno-sse2	toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	be	""
+-mno-sse2	toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	CPP,cfe		self
 	"Disable SSE2/SSE3 extensions"
--msse3	toggle(&sse2,TRUE);toggle(&sse3,TRUE);	ALL	be	""
+-msse3	toggle(&sse2,TRUE);toggle(&sse3,TRUE);	ALL	CPP,cfe		self
 	"Enable SSE3 extensions"
--mno-sse3	toggle(&sse3,FALSE);	ALL	be	""
+-mno-sse3	toggle(&sse3,FALSE);	ALL	CPP,cfe		self
 	"Disable SSE3 extensions"
--m3dnow		toggle(&m3dnow,TRUE);	ALL	be	""
+-m3dnow		toggle(&m3dnow,TRUE);	ALL	CPP,cfe		self
 	"Enable 3Dnow extensions"
--mno-3dnow	toggle(&m3dnow,FALSE);	ALL	be	""
+-mno-3dnow	toggle(&m3dnow,FALSE);	ALL	CPP,cfe		self
 	"Disable 3Dnow extensions"
--msse4a  toggle(&sse2,TRUE);toggle(&sse4a,TRUE);  ALL     be      ""
-        "Enable SSE4a extensions"
--mno-sse4a       toggle(&sse4a,FALSE);    ALL     be      ""
-        "Disable SSE4a extensions"
+-msse4a	toggle(&sse2,TRUE);toggle(&sse4a,TRUE);	ALL	CPP,cfe		self
+	"Enable SSE4a extensions"
+-mno-sse4a	toggle(&sse4a,FALSE);	ALL	CPP,cfe		self
+	"Disable SSE4a extensions"
+-mssse3	toggle(&sse2,TRUE);toggle(&ssse3,TRUE);	ALL	CPP,cfe		self
+	"Enable SSSE3 extensions"
+-mno-ssse3	toggle(&ssse3,FALSE);	ALL	CPP,cfe		self
+	"Disable SSSE3 extensions"
+-msse4.1	toggle(&sse2,TRUE);toggle(&sse41,TRUE);	ALL	CPP,cfe		self
+	"Enable SSE4.1 extensions"
+-mno-sse4.1	toggle(&sse41,FALSE);	ALL	CPP,cfe		self
+	"Disable SSE4.1 extensions"
+-msse4.2	toggle(&sse2,TRUE);toggle(&sse42,TRUE);	ALL	CPP,cfe		self
+	"Enable SSE4.2 extensions"
+-mno-sse4.2	toggle(&sse42,FALSE);	ALL	CPP,cfe		self
+	"Disable SSE4.2 extensions"
+-maes	toggle(&sse2,TRUE);toggle(&aes,TRUE);	ALL	CPP,cfe		self
+	"Enable AES extensions"
+-mno-aes	toggle(&aes,FALSE);	ALL	CPP,cfe		self
+	"Disable AES extensions"
+-mpclmul	toggle(&sse2,TRUE);toggle(&pclmul,TRUE);	ALL	CPP,cfe		self
+	"Enable PCLMUL extensions"
+-mno-pclmul	toggle(&pclmul,FALSE);	ALL	CPP,cfe		self
+	"Disable PCLMUL extensions"
+-mavx	toggle(&sse2,TRUE);toggle(&avx,TRUE);	ALL	CPP,cfe		self
+	"Enable AVX extensions"
+-mno-avx	toggle(&avx,FALSE);	ALL	CPP,cfe		self
+	"Disable AVX extensions"
+-mxop	toggle(&sse2,TRUE);toggle(&xop,TRUE);	ALL	CPP,cfe		self
+	"Enable XOP extensions"
+-mno-xop	toggle(&xop,FALSE);	ALL	CPP,cfe		self
+	"Disable XOP extensions"
+-mfma4	toggle(&sse2,TRUE);toggle(&fma4,TRUE);	ALL	CPP,cfe		self
+	"Enable FMA4 extensions"
+-mno-fma4	toggle(&fma4,FALSE);	ALL	CPP,cfe		self
+	"Disable FMA4 extensions"
 %%% x87
 -mx87-precision=%d	;	ALL	be	"-TARG:x87-precision=%d"
 	"Specify the precision of x87 floating-point calculations (32/64/80-bit)"

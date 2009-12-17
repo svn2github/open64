@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -65,6 +69,9 @@
 #if 0
 #define COMBINATIONS 2
 #endif
+
+/* dummy for option referenced in lang_defs.c */
+int external_gcc = 0;
 
 typedef enum {
 	normal, 
@@ -258,6 +265,7 @@ set_flag_name(option_info_t *opt)
 	while (*pn != NIL) {
 		if (*pn == ' ') pn++;
 		if (*pn == '!') pn++;
+		if (*pn == '.') pn++;
 		if (*pn == '-') *pf = '_';
 		else if (*pn == '=') *pf = 'Q';
 		else if (*pn == '#') *pf = 'P';

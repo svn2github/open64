@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -154,6 +158,10 @@
 
 #include "w2c_weak.h"
 #include "w2f_weak.h"
+#include "ir_reader.h"
+
+#include "opt_du.h"
+#include "wn_tree_util.h"               // for tree iterators
 
 #define INT_INFINITY 9999
 #define absof(x) (((x)>0) ? (x) : (0-(x)))
@@ -166,6 +174,7 @@
 #endif
 
 extern WN_MAP LNO_Info_Map;
+extern void LWN_Parentize_One_Level(const WN* wn);
 
 inline mINT16 PF_LG::Get_Dim ()     {
   return _myugs->Get_BA()->Get_Dim ();
@@ -729,7 +738,7 @@ BOOL PF_LG::Add_Ref (WN* ref, mINT16 bitpos) {
    *    - same dvec, but differ in constant along stride-one dimension
    *    - different dvec
    */
-    
+
   for (i=_depth; i<maxdepth; i++) 
     if (dvec[i].N() != 0) break;
 
@@ -795,6 +804,7 @@ BOOL PF_LG::Add_Ref (WN* ref, mINT16 bitpos) {
       // if leading reference didn't change, then just add it and return
       if (distance > _max_dist) _max_dist = distance;
       else if (distance < _min_dist) _min_dist = distance;
+
       _refvecs.Push (CXX_NEW(PF_REFVEC(bitpos, maxdepth, dvec, distance),
                              PF_mpool));
       CXX_DELETE_ARRAY (dvec, PF_mpool);
@@ -940,8 +950,62 @@ BOOL PF_LG::Add_Ref (WN* ref, mINT16 bitpos) {
   return TRUE;
 } /* PF_LG::Add_Ref () */
 
+/* Compute the constant offset of ref from the base address for an
+   inductive base addr cases.
+ */
+INT64 PF_LG::Offset_to_Base_Addr (WN* array) 
+{
+  int kid;
+  INT64 offset = 0;
 
+  FmtAssert (_myugs->Get_BA()->Get_Inductive_Base(),
+             ("Expect an inductive base address. \n"));
+  FmtAssert (WN_operator(array) == OPR_ARRAY, ("Expect an array op.\n"));
 
+  int n = WN_num_dim(array);
+  for(kid = 1; kid < n+1; kid++) {
+      FmtAssert (WN_operator(WN_kid(array, kid)) == OPR_INTCONST,
+                 ("Expect a constant dimension.\n"));
+      FmtAssert (WN_operator(WN_kid(array, kid + n)) == OPR_INTCONST,
+                 ("Expect a constant subscript.\n"));
+
+      offset *= WN_const_val(WN_kid(array, kid));
+      offset += WN_const_val(WN_kid(array, kid + n));
+  }
+  offset *= WN_element_size(array);
+  WN *parent = LWN_Get_Parent(array);
+  FmtAssert (WN_operator(parent) == OPR_ILOAD || 
+             WN_operator(parent) == OPR_ISTORE,
+             ("Expect an ILOAD or ISTORE.\n"));
+  // TODO: to be precie, we should take into account the field id in the parent ref 
+  // (iload or istore).
+  return offset;
+}
+
+/* This is similar to PF_LG::Add_Ref except that it adds a reference
+   to PF_REFLIST for an inductive base addr case.
+ */
+BOOL PF_LG::Add_Induc_Base_Ref (WN* ref, mINT16 bitpos) {
+  INT64 offset = Offset_to_Base_Addr(ref);
+
+  // Instead of distance to the leading ref, we use the distance field 
+  // to store the offset to the (inductive) base address.
+  _refvecs.Push (CXX_NEW(PF_REFVEC(bitpos, 0, NULL, offset),
+                 PF_mpool));
+
+  // The one with the smallest offset will be the _leading_ref.
+  if (_myugs->Stride_Forward () >= 0) {
+    if (offset < _refvecs.Bottom_nth(_leading_ref)->Distance()) {
+      _leading_ref = bitpos;
+    }
+  } else {
+    if (offset > _refvecs.Bottom_nth(_leading_ref)->Distance()) {
+      _leading_ref = bitpos;
+    }
+  }
+}
+
+    
 /***********************************************************************
  *
  * add a locality group (union lg with "this")
@@ -1685,6 +1749,12 @@ static PF_SORTED_REFS* Sort_Refvecs (PF_REFVEC_DA* refvecs, mINT16 leadingref){
       srefs[j].refvecnum = i;
     }
   }
+
+  PF_PRINT( fprintf(TFile,"Sort_Refvecs:\n");
+            for (INT i=0; i<(refvecs->Elements()+1); i++) {
+              fprintf(TFile, "PF_SORTED_REFS: dist %d, refnum %d, refvecnum %d, lrnum %d\n",
+                      srefs[i].dist, srefs[i].refnum, srefs[i].refvecnum, srefs[i].lrnum);
+            } );
 
 #ifdef Is_True_On
   {
@@ -2500,7 +2570,7 @@ if(LNO_Run_Prefetch > SOME_PREFETCH && offset != 0 &&
 #ifdef TARG_X8664
      if(Is_Target_Core() || Is_Target_EM64T())
        fancy_offset_incr=8;
-     else if(Is_Target_Barcelona())
+     else if(Is_Target_Barcelona() || Is_Target_Orochi())
        fancy_offset_incr=28;
      else
 #endif
@@ -2586,7 +2656,10 @@ if(LNO_Run_Prefetch > SOME_PREFETCH && offset != 0 &&
    while(do_loop && WN_operator(do_loop) != OPR_DO_LOOP)
      do_loop = LWN_Get_Parent(do_loop); //stop at current
 
-   WN *invariant_stride=Simple_Invariant_Stride_Access(ref, do_loop);
+   BOOL inductive_use = FALSE;
+   BOOL indirect_use = FALSE;
+   WN *invariant_stride=Simple_Invariant_Stride_Access(ref, do_loop, FALSE,
+                                      &inductive_use, &indirect_use);
    if(NULL == invariant_stride) //all good
       pfnode = LWN_CreatePrefetch (offset, flag, arraynode);
    else{
@@ -3057,6 +3130,259 @@ void PF_LG::Gen_Prefetch (PF_DESC *pfdesc,
   CXX_DELETE_ARRAY (srefs, PF_mpool);
 }
 
+/* This function is similar to Gen_Pref_Node(), but this deals with
+   the cases where the base address of an ARRAY being inductive.
+ */
+void PF_LG::Gen_Induc_Base_Pref_Node (PF_SORTED_REFS* srefs, mINT16 srefnum)
+{
+  UINT32 flag = 0;
+  INT j, increment = 0;
+  WN* wn_array = Get_Ref (srefs[srefnum].refnum);
+
+  WN *parent = LWN_Get_Parent(wn_array);
+  WN_OFFSET offset = WN_offset(parent);
+  WN *wn_loop = parent;
+  /* Find the enclosing loop. */
+  while (wn_loop && (WN_opcode(wn_loop)!=OPC_DO_LOOP)) {
+    wn_loop = LWN_Get_Parent(wn_loop);
+  }
+  WN *wn_block = NULL;
+  if (!wn_loop) {
+    FmtAssert(FALSE, ("Expect DO_LOOP!\n"));
+  } else {
+    wn_block = WN_do_body(wn_loop);
+  }
+
+  // Since there are special heuristics downstream to remove prefetches 
+  // for stores, we mark the prefetches inserted for inductive base
+  // address cases as READ.
+  PF_SET_READ(flag);
+  PF_SET_CONFIDENCE(flag, AGGRESSIVE_PREFETCH);
+  PF_SET_NON_TEMPORAL(flag); //prefetchnta
+  PF_SET_KEEP_ANYWAY(flag);  // Tell CG not to remove this prefetch.
+  UINT32 save_flag = flag;
+
+  PF_SET_STRIDE_1L(flag,1);
+  WN *arraynode = LWN_Copy_Tree(wn_array,TRUE,LNO_Info_Map);
+  LWN_Copy_Def_Use(wn_array, arraynode, Du_Mgr);
+  WN *base;
+  BOOL indirect_base = FALSE;
+  BOOL inductive_base = FALSE;
+  mINT32 stride_val = 0;
+
+#if (defined(TARG_X8664) || defined(TARG_IA64))
+  Inductive_Base_Addr_Const_Stride(wn_array, wn_loop, &base,
+                     &inductive_base, &indirect_base, &stride_val);
+#endif
+
+  UINT32 local_prefetch_iters_ahead = LNO_Prefetch_Iters_Ahead;
+
+  if (!indirect_base) {
+    /* Determine how far down the distance should be for the given
+       prefetch.
+     */
+    if (stride_val < Cache.LineSize(1)) {
+      if (LNO_Prefetch_Ahead != 0) {
+        increment =  LNO_Prefetch_Ahead * Cache.LineSize(1);
+      } else if (LNO_Prefetch_Iters_Ahead != 0) {
+        increment =  LNO_Prefetch_Iters_Ahead * stride_val;
+      } else {
+        increment =  2 * Cache.LineSize(1);
+      }
+    } else if (stride_val >= 8 * Cache.LineSize(1)) {
+      // stride >= 512B
+      local_prefetch_iters_ahead = LNO_Prefetch_Iters_Ahead * 3;
+      increment = stride_val * local_prefetch_iters_ahead;
+    } else {
+      // 64B <= stride < 512B
+      local_prefetch_iters_ahead = LNO_Prefetch_Iters_Ahead;
+      increment = stride_val * local_prefetch_iters_ahead;
+    }
+    offset += increment;
+  }
+
+  WN* pfnode = LWN_CreatePrefetch (offset, flag, arraynode);
+  WN *pf_array_base = NULL;
+  BOOL base_tree_prev_def = FALSE;
+  WN* prior_def = NULL;
+
+  if (WN_operator(WN_kid0(pfnode)) == OPR_ARRAY &&
+      WN_operator(WN_kid0(WN_kid0(pfnode))) == OPR_LDID) {
+    pf_array_base = WN_kid0(WN_kid0(pfnode));
+    // Get its def 
+    DEF_LIST* def_list=Du_Mgr->Ud_Get_Def(pf_array_base);
+    DEF_LIST_ITER d_iter(def_list);
+    /* Since we did not consider the incomplete cases during the
+       candidate selection in Inductive_Base_Addr_Const_Stride(),
+       no need to consider them here.
+     */
+    for (DU_NODE* dnode=d_iter.First(); !d_iter.Is_Empty();
+                  dnode=d_iter.Next()) {
+      FmtAssert(prior_def == NULL, ("Encounter multiple defs"));
+      prior_def=dnode->Wn();
+      base_tree_prev_def = TRUE;
+    }
+  }
+
+  // If the base addr tree has a def in a preceding tree, insert
+  // the prefetch after the def to ensure all uses after their defs.
+  // Otherwise, we can insert the prefetch at the beginning of the
+  // block.
+  if (!base_tree_prev_def ) {
+    LWN_Insert_Block_Before (wn_block, WN_first(wn_block), pfnode);
+  } else {
+    WN *wn_parent = prior_def;
+    while (wn_parent && LWN_Get_Parent(wn_parent) != wn_block) {
+      wn_parent = LWN_Get_Parent(wn_parent);
+    }
+    FmtAssert(wn_parent, ("prior_def not in this loop!"));
+
+    LWN_Insert_Block_After (wn_block, wn_parent, pfnode);
+  }
+
+  LWN_Copy_Frequency_Tree (pfnode, WN_first(wn_block));
+
+  PF_PRINT( fprintf(TFile, "Gen_Induc_Base_Pref_Node: offset %d, increment %d, stride_val %d, LNO_Prefetch_Ahead %d, LNO_Prefetch_Iters_Ahead %d\n", 
+            offset, increment, stride_val, LNO_Prefetch_Ahead, LNO_Prefetch_Iters_Ahead);
+            fdump_tree(TFile, arraynode);
+            fdump_tree(TFile, pfnode); );
+
+  // Establish the prefetch map with its associated memory op. Note that
+  // we generate only one prefetch and link to both L1 and L2 prefetches.
+  PF_POINTER* tmp = (PF_POINTER*) WN_MAP_Get (WN_MAP_PREFETCH, parent);
+  if (tmp == NULL) {
+    extern MEM_POOL PF_CG_mpool;
+    tmp = CXX_NEW (PF_POINTER, &PF_CG_mpool);
+    WN_MAP_Set (WN_MAP_PREFETCH, parent, tmp);
+    PF_PTR_flag(tmp) = 0;
+    SET_AUTO(tmp);
+    PF_PTR_lrnum_1L(tmp) = 0;
+  }
+  PF_PTR_wn_pref_1L(tmp) = pfnode;
+  PF_PTR_distance_1L(tmp) = offset;
+  PF_PTR_set_conf_1L(tmp, AGGRESSIVE_PREFETCH);
+
+  PF_PTR_wn_pref_2L(tmp) = NULL;
+  PF_PTR_lrnum_2L(tmp) = 0; 
+  PF_PTR_distance_2L(tmp) = 0;
+  PF_PTR_set_conf_2L(tmp, 0);
+
+  if (indirect_base) {
+    /* Since this is an indirect inductive base address case, we need to
+       modify the tree by incrementing some iterations ahead.
+       If the base address has a load defined in a prior tree, we want to
+       merge the def (a duplicate) to the WN tree of the base address.
+     */
+    if (base_tree_prev_def) {
+      if (WN_operator(prior_def) == OPR_STID) {
+        WN *new_def = LWN_Copy_Tree(prior_def,TRUE,LNO_Info_Map);
+        // Replace the base LDID with a copy of the kid of STID.
+        WN_kid0(WN_kid0(pfnode)) = WN_kid0(new_def);
+        LWN_Parentize_One_Level(WN_kid0(pfnode));
+        pf_array_base = WN_kid0(WN_kid0(pfnode));
+      }
+    }
+    FmtAssert(pf_array_base, ("Unable to locate the array base for a prefetch!\n"));
+
+    // Search for an loop index load in the tree.
+    WN *loop_index_ld = NULL; 
+    for (WN_TREE_ITER<PRE_ORDER, WN*> iter (pf_array_base);
+         iter.Wn () != NULL; ++iter) {
+      WN *wn = iter.Wn ();
+
+      if (WN_operator(wn) == OPR_LDID &&
+          SYMBOL(wn) == SYMBOL(WN_index(wn_loop))) {
+        // This tree should have no more than one loop index load.
+        FmtAssert(loop_index_ld == NULL, ("Have more than one inductive var!\n"));
+          loop_index_ld = wn;
+      }
+    }
+
+    FmtAssert(loop_index_ld, ("Unable to locate an induction var!\n"));
+    WN *ld_parent = LWN_Get_Parent(loop_index_ld);
+
+    FmtAssert(WN_operator(ld_parent) == OPR_CVT ||
+              WN_operator(ld_parent) == OPR_ADD ||
+              WN_operator(ld_parent) == OPR_MPY,
+              ("Unexpected operator for an inductive load."));
+
+    /* Generate the expression to increment the iteration indexing. */
+    WN* iconst_wn = LWN_Make_Icon(MTYPE_I4, local_prefetch_iters_ahead );
+    WN* add_wn = LWN_CreateExp2(OPCODE_make_op(OPR_ADD, MTYPE_I4, 
+                                MTYPE_V), iconst_wn, loop_index_ld);
+    if (WN_operator(ld_parent) == OPR_CVT) {
+      WN_kid0(ld_parent) = add_wn;
+    } else if (WN_operator(ld_parent) == OPR_MPY ||
+               WN_operator(ld_parent) == OPR_ADD) {
+      if( WN_kid0(ld_parent) == loop_index_ld) {
+        WN_kid0(ld_parent) = add_wn;
+      } else {
+        WN_kid1(ld_parent) = add_wn;
+      }
+    }
+    LWN_Parentize_One_Level(ld_parent);
+
+    PF_PRINT( fprintf(TFile, "A new inductive and indirect base prefetch node:\n"); 
+              fdump_tree(TFile, pfnode); );
+  } else {
+    PF_PRINT( fprintf(TFile, "A new inductive base prefetch node:\n"); 
+              fdump_tree(TFile, pfnode); );
+  }
+}
+
+/* Note that the current volume and locality analyses are too inaccurate
+   to the inductive base address cases. Hence, while we are reusing the
+   data structures, such as PF_BASE_ARRAY and PF_UGS, which were constructed
+   at PF_LOOPNODE::Process_Refs(), we discard PF_LG constructed earlier and
+   the analysis from the current framework by Mowry for the inductive base
+   address cases.
+     Instead we are using the following framework for the inductive base
+   address cases.
+
+   Santhanam, Gornish, & Hsu, Data Prefetching on the HP PA-8000, ISCA 97.
+
+   This is a simple and effective framework, in particular sufficient for
+   less complicated and overlapped access patterns.
+
+   The part that we leverage is where we represent the same partition of
+   linear inductive address expressions (a1*i + b1 and a2*i + b2, where 
+   a1 = a2) as one PF_LG. We sort refs in the PF_LG based on the 
+   constant offset terms. We then select leaders, where any ref whose
+   offset within 1 cache line of the previous leader will not be a leader.
+   We will then insert prefetches only for the leaders.
+
+   Sharing the same data structures makes it easier to integrate the two
+   approach under one framework in the future. However, it's unclear what
+   would be the best way to integrate them yet given the strengths and 
+   weaknesses of the two approaches.
+ */ 
+void PF_LG::Gen_Induc_Base_Prefetch ()
+{
+  PF_SORTED_REFS* srefs = Sort_Refvecs (&_refvecs, _leading_ref);
+  INT num = _refvecs.Elements()+1;
+
+  mINT16 leader = 0; // starting index
+  Gen_Induc_Base_Pref_Node (srefs, leader);
+
+  for (mINT16 i=1; i<num; i++) {
+    INT64 gap = (srefs[i].dist-srefs[leader].dist);
+
+    PF_PRINT( fprintf(TFile, "Gen_Induc_Base_Prefetch PF_SORTED_REFS: dist %d, refnum %d, refvecnum %d, lrnum %d, gap %d, leader %d\n", 
+              srefs[i].dist, srefs[i].refnum, srefs[i].refvecnum, 
+              srefs[i].lrnum, gap, leader); );
+
+    // Find the next leader which is equal to or more than one cache line
+    // away from the previous leader.
+    if (gap >= Cache.LineSize(1) ||
+        gap <= (-1) * Cache.LineSize(1)) {
+      leader = i;
+      Gen_Induc_Base_Pref_Node (srefs, leader);
+    }
+  }
+
+  CXX_DELETE_ARRAY (srefs, PF_mpool);
+}
+
 void PF_LG::Print (FILE *fp) {
   fprintf (fp, "        Locality group: (0x%p)\n", this);
   fprintf (fp, "          depth       : %d\n", _depth);
@@ -3400,6 +3726,24 @@ void PF_UGS::Build_Base_LGs () {
   }
 }
 
+void PF_UGS::Build_Induc_Base_LG () {
+  WN* tref;
+  PF_LG_DA* lglist;
+  INT depth = Get_Depth()+1;  // innermost loop
+  
+  lglist = _lg[depth];
+  tref = _refs.Bottom_nth(0);
+  PF_LG* tmp_lg = CXX_NEW(PF_LG(tref, 0, depth, this), PF_mpool);
+  lglist->Push (tmp_lg);
+
+  for (INT i=0; i<_refs.Elements(); i++) {
+    tref = _refs.Bottom_nth(i);
+    tmp_lg->Add_Induc_Base_Ref (tref, i);
+  }
+
+  
+}
+
 /***********************************************************************
  *
  * Make non-base locality group, at given depth.
@@ -3508,7 +3852,10 @@ static BOOL Pseudo_Temporal_Locality(WN *array)
   //of the loop(NOT different iters!!!)
   //TODO: ...
 #if (defined(TARG_X8664) || defined(TARG_IA64)) //bug 10953
-  if(Simple_Invariant_Stride_Access(array, loop))
+  BOOL inductive_use = FALSE;
+  BOOL indirect_use = FALSE;
+  if(Simple_Invariant_Stride_Access(array, loop, TRUE,
+                                    &inductive_use, &indirect_use))
     return TRUE;
 #endif
 
@@ -3858,6 +4205,21 @@ void PF_UGS::Gen_Prefetch (PF_SPLIT_VECTOR* split_vec) {
   PF_LOCLOOP locloop = Get_Loop()->Get_locloop ();
   mINT16 loopdepth = Get_Depth() + 1;
 
+  /* Generate prefetches for the cases of inductive base addresses only on 
+     TARG_X8664 and TARG_IA64.
+   */
+#if (defined(TARG_X8664) || defined(TARG_IA64))
+  if (_myba->Get_Inductive_Base()) {
+    Build_Induc_Base_LG();
+    PF_PRINT( fprintf(TFile, "Inductive base address case: printing UGS and LG\n");
+              Print(TFile); );
+
+    curlg = _lg[loopdepth];
+    curlg->Bottom_nth(curlg->Elements() - 1)->Gen_Induc_Base_Prefetch ();
+    return;
+  }
+#endif
+
   /* OK: We now have the way the loops were split (in split_vec),
    * and we have the desired prefetch vector (in _pfdesc).
    * We can now get arbitrarily smart in deciding how to prefetch.
@@ -3961,7 +4323,7 @@ extern BOOL Steady_Base (WN* wn_array) {
  * a reference known to belong because of incomplete DU-chains.
  *
  ***********************************************************************/
-BOOL PF_BASE_ARRAY::Add_Ref (WN* wn_array, BOOL do_check) {
+BOOL PF_BASE_ARRAY::Add_Ref (WN* wn_array, BOOL do_check, BOOL induc_base) {
   if (do_check) {
     ACCESS_ARRAY* aa = (ACCESS_ARRAY*) WN_MAP_Get(LNO_Info_Map, wn_array);
     // number of dimensions must be the same
@@ -3980,23 +4342,47 @@ BOOL PF_BASE_ARRAY::Add_Ref (WN* wn_array, BOOL do_check) {
         return FALSE;
       }
     }
+
+    /* If they don't match, this ref cannot be in this PF_BASE_ARRAY. */
+    if (induc_base != _inductive_base)  return FALSE;
       
-    switch (DEPV_COMPUTE::Base_Test(LWN_Get_Parent(wn_array),NULL,
+    if (!induc_base) {
+      switch (DEPV_COMPUTE::Base_Test(LWN_Get_Parent(wn_array),NULL,
                                     LWN_Get_Parent(_sample_wn_array),NULL)) {
-    case DEP_CONTINUE:
-      // add the reference
-      break;
-    case DEP_INDEPENDENT:
-      // might be references to the same struct
-    {
-      if (Tree_Equiv(wn_array, _sample_wn_array)) {
-        // yes, these are struct references
+      case DEP_CONTINUE:
+        // add the reference
         break;
+      case DEP_INDEPENDENT:
+        // might be references to the same struct
+      {
+        if (Tree_Equiv(wn_array, _sample_wn_array)) {
+          // yes, these are struct references
+          break;
+        }
+        else {
+          return FALSE;
+        }
       }
-      else return FALSE;
-    }
-    default:
-      return FALSE;
+      default:
+        return FALSE;
+      }
+    } else {
+      /* The dependence test does not give the precise info for the cases
+         with inductive base addresses to accurately classify UGS.
+       */
+      WN *this_base_addr = WN_kid0(_sample_wn_array);
+      WN *new_base_addr = WN_kid0(wn_array);
+      /* If the base address sub-trees are identical, it is enough to put
+         them under the same UGS since the index var and stride match already.
+         we know the subscript expressions in all dim are constants 
+         (possibly with different values. We don't care whether the field id 
+         on the parent memory ops are the same or not. Those affect only the
+         constant offsets, and they won't affect the classification of UGS
+         though they will affect the partitioning of LGs.
+       */
+      if (!Tree_Equiv(new_base_addr, this_base_addr)) {
+        return FALSE;
+      }
     }
   }
 
@@ -4011,7 +4397,10 @@ BOOL PF_BASE_ARRAY::Add_Ref (WN* wn_array, BOOL do_check) {
   }
   if (i == _ugs.Elements ()) {
     // didn't find a ugs for it, create new one
+    PF_PRINT( fprintf(TFile,"creating a new UGS\n"); );
     _ugs.Push (CXX_NEW (PF_UGS(wn_array, this), PF_mpool));
+  } else {
+    PF_PRINT( fprintf(TFile,"adding into an existing UGS\n"); );
   }
   return TRUE;
 }
@@ -4057,6 +4446,12 @@ void PF_BASE_ARRAY::Print (FILE* fp) {
   if (_ugs.Elements() == 0)
     fprintf (fp, "    No uniformly generated sets\n");
   else {
+    if (_inductive_base) {
+      fprintf (fp, ", -induc_base,");
+    }
+    if (_indirect_base) {
+      fprintf (fp, ", -indir_base,");
+    }
     fprintf (fp, "    %d uniformly generated sets\n", _ugs.Elements());
     for (INT i=0; i<_ugs.Elements(); i++) {
       _ugs.Bottom_nth(i)->Print (fp);

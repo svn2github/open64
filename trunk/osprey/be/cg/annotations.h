@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -136,7 +140,8 @@ typedef enum {
   ANNOT_LOOPINFO  = 6,
   ANNOT_SWITCH 	  = 7,
   ANNOT_ROTATING_KERNEL = 8,
-  ANNOT_ASMINFO   = 9
+  ANNOT_ASMINFO   = 9,
+  ANNOT_INLINE    = 10
 } ANNOTATION_KIND;
 
 class WN;
@@ -164,18 +169,21 @@ typedef struct annotation {
 #define ANNOT_switch(a)		((ST *)ANNOT_info(a))
 #define ANNOT_rotating_kernel(a)   ((ROTATING_KERNEL_INFO*)ANNOT_info(a))
 #define ANNOT_asminfo(a)	((ASMINFO *)ANNOT_info(a))
+#define ANNOT_inline(a)         ((LABEL_IDX)(INTPTR)ANNOT_info(a))
 
 
 typedef struct loopinfo {
  WN *wn;			/* LOOP_INFO WHIRL node */
  struct tn *trip_count_tn;	/* TN holding trip count (if any) */
  SRCPOS srcpos;			/* source position of start of body */
+ BOOL   is_multiversion;
 } LOOPINFO;
 
 #define LOOPINFO_wn(x)			((x)->wn)
 #define LOOPINFO_srcpos(x)		((x)->srcpos)
 #define LOOPINFO_line(x)		(Srcpos_To_Line(LOOPINFO_srcpos(x)))
 #define LOOPINFO_trip_count_tn(x)	((x)->trip_count_tn)
+#define LOOPINFO_multiversion(x)	((x)->is_multiversion)
 
 
 typedef	struct entryinfo {

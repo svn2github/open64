@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -305,11 +305,18 @@ extern BOOL  WOPT_Enable_Pt_Keep_Track_Ptr;  // POINTS_TO keep track pointer of 
 extern BOOL  WOPT_Enable_Aggr_Pt_Keep_Track_Ptr;  
 extern BOOL  WOPT_Enable_Noreturn_Attr_Opt;  // __attribute_((noreturn)) related opt
 extern BOOL  WOPT_Enable_Pt_Summary;  // Points-to summary/annotation
+extern BOOL  WOPT_Enable_Reassociation_CSE; // Enables reassociative CSE
 extern BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans; // Enables proactive loop fusion transformation
+extern BOOL  WOPT_Enable_Pro_Loop_Interchange_Trans; // Enables proactive loop interchange transformation.
+extern BOOL  WOPT_Enable_Mem_Clear_Remove;  // Enables removal of redundant mem clear after a calloc
 extern INT32 WOPT_Enable_Pro_Loop_Fusion_Func_Limit; // Enable proactive loop fusion transformation
                                                      // for functions within the limit.
+extern INT32 WOPT_Enable_Pro_Loop_Interchange_Func_Limit; // Enable proactive loop interchange
+                                                          // transformation for functions within the limit.
+                                                         
 extern INT32 WOPT_Enable_If_Merge_Limit;  // Limit number of if-merging transformations per function.
 extern INT32 WOPT_Enable_Tail_Dup_Limit;  // Limit number of tail-duplication transformations per function.
+extern INT32 WOPT_Enable_If_Cond_Limit; // Limit number of if-condition transformations per function.
 extern INT32 WOPT_Tail_Dup_Max_Clone; // Limit code size bloats (in statement count)
                                                     // due to tail-duplication.
 
@@ -337,6 +344,8 @@ extern BOOL  WOPT_Enable_WOVP; // For running write-once variable promotion
 extern struct option_list *WOPT_Unroll_Skip;    // Skip unroll list 
 extern struct skiplist *WOPT_Unroll_Skip_List;  // Preprocessed unroll skip l 
 extern BOOL WOPT_Enable_Loop_Multiver;
+extern BOOL WOPT_Enable_Loop_Multiver_Aggressive;
+extern BOOL WOPT_Enable_Useless_Store_Elimination;
 #ifdef TARG_NVISA
 extern BOOL WOPT_Enable_Estr_Outer_Loop;  // strength reduce outer loops
 extern BOOL WOPT_Enable_Estr_Const_Opnds; // strength reduce ops with const kids

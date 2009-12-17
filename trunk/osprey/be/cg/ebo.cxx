@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1064,6 +1064,16 @@ merge_memory_offsets( OP *op,
   additive_immed_tn = OP_opnd(index_op,1);
   if (!TN_Is_Constant(additive_immed_tn)) return;
 
+#ifdef TARG_X8664
+  // disable merging memory offset on TLS initial-exec
+  if ( TN_is_symbol(immed_tn) &&
+        TN_relocs(immed_tn) == TN_RELOC_X8664_GOTTPOFF )
+    return;
+  if ( TN_is_symbol(additive_immed_tn) &&
+        TN_relocs(additive_immed_tn) == TN_RELOC_X8664_GOTTPOFF )
+    return;
+#endif
+
  /* Would the new index value be available for use? */
   if (!TN_Is_Constant(additive_index_tn) &&
       !EBO_tn_available(OP_bb(op), additive_index_tninfo)) {
@@ -1997,6 +2007,30 @@ find_duplicate_op (BB *bb,
 
         }
     }
+
+#ifdef TARG_X8664
+    //check the rflags, op like sbb32 will be affected by the rflags,consider the following
+    // TN172 :- sbb32 TN154 TN154  #1
+    // TN173 :- sub32 TN161 TN162  #2
+    // TN174 :- sbb32 TN154 TN154  #3
+    // because the op #2 will change the rflags and op #3 will read the rflags, then
+    // op #2 is not a duplicate of op #1
+
+    if( hash_op_matches  && TOP_is_read_rflags( OP_code(op) ) ){
+      for( OP* iop = pred_op; iop != op && iop != NULL ; iop = OP_next( iop ) ){
+       if( TOP_is_change_rflags( OP_code(iop)) ){
+         hash_op_matches = FALSE;
+         if (EBO_Trace_Hash_Search) {
+            #pragma mips_frequency_hint NEVER
+            fprintf(TFile,"%sExpression match found, but the predicates do not match because of rflag dependency\n\t",
+                   EBO_trace_pfx);
+            Print_OP_No_SrcLine(pred_op);
+          }
+         break;
+       }
+      }
+    }
+#endif  //TARG_X8664
 
     if (hash_op_matches) {
 
@@ -3038,7 +3072,8 @@ Find_BB_TNs (BB *bb)
         INT cix = copy_operand(op);
         TN *tnr = OP_result(op, 0);
 
-        if ((tnr != NULL) && (tnr != True_TN) && (tnr != Zero_TN)) {
+        // do not propagate copy if the copy has side effect
+        if ((tnr != NULL) && (tnr != True_TN) && (tnr != Zero_TN) && !Op_has_side_effect(op)) {
           tninfo = EBO_last_opinfo->actual_rslt[0];
 
           if (!OP_glue(op) && (cix >= 0)) {
@@ -3271,7 +3306,7 @@ void EBO_Remove_Unused_Ops (BB *bb, BOOL BB_completely_processed)
 
      /* Copies to and from the same register are not needed. */
       if (EBO_in_peep &&
-          OP_effectively_copy(op) &&
+          OP_effectively_copy(op) && !Op_has_side_effect(op) &&
           has_assigned_reg(tn) &&
           (copy_operand(op) >= 0) &&
           has_assigned_reg(OP_opnd(op,copy_operand(op))) &&

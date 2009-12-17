@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -60,6 +64,8 @@
 
 #include "ipc_weak.h"
 
+#include "ipc_link.h"
+#include "config_ipa.h"
 
 /***************************************************************************/
 /* gets the ABI type from the linker                */
@@ -177,6 +183,76 @@ static int get_num_procs (void)
 }
 #endif // KEY
 
+extern ARGV *ld_flags_part2;
+
+// list of known system libraries, this list is not complete
+
+static char * known_library[] = {
+    "-lgcc", "-lc", "-lopenmp", "-lopen64rt", "-lm", "-lmv",
+    "-lacml_mv", "-lffio","-lfortran", "-lhugetlbfs_open64", "-linstr",
+    "-lopen64rt_shared","-lrt","-lrpcsvc","-lpthread",
+    "-lstdc++", "-lgcc_s", "-ldl",
+    ""
+};
+
+
+// detect whether it is in whole program mode
+static void detect_whole_program_mode()
+{
+    // user already specify whole program mode
+    if (IPA_Enable_Whole_Program_Mode_Set)
+        return;
+        
+    //1) all the libraries are known system libraries
+    BOOL no_unknown_library = TRUE;
+    ARGV::iterator i;
+    for (i=ld_flags_part2->begin();i!=ld_flags_part2->end();i++)
+    {
+        if (strncmp(*i,"-l",2) == 0)
+        {
+            BOOL found = false;
+            int j = 0;
+            const char * lib = known_library[0];
+            while(strcmp(lib, ""))
+            {
+                if (!strcmp(lib, *i)) {
+                    found = true;
+                    break;
+                }    
+                lib = known_library[++j];
+            }    
+            if (!found) 
+            {
+                no_unknown_library = false;
+                return;
+            }    
+        }    
+    }
+
+    //2) no dlopen
+    // we are conservative here: we go through the global
+    // symbol table, if we find dlopen symbol then we are not in
+    // whole program mode
+    BOOL no_dlopen = true;
+    for (ST_IDX sts = 1; sts < ST_Table_Size(GLOBAL_SYMTAB) ; ++sts) {
+        ST* cur_st = &St_Table(GLOBAL_SYMTAB,sts);
+        if (!strcmp(ST_name(cur_st), "dlopen"))
+        {
+            no_dlopen = false;
+            return;
+        }    
+    }
+
+    //3) we are build a.out (i.e., not -r or not -shared)
+    if((ld_ipa_opt[LD_IPA_SHARABLE].flag != F_MAKE_SHARABLE) &&
+        (ld_ipa_opt[LD_IPA_SHARABLE].flag != F_RELOCATABLE))
+    {    
+        Is_True((no_unknown_library == true && no_dlopen == true), 
+            ("already checked"));
+        IPA_Enable_Whole_Program_Mode = true;
+    }    
+}
+
 void
 ipa_driver (INT argc, char **argv)
 {
@@ -205,6 +281,8 @@ ipa_driver (INT argc, char **argv)
 
     Process_IPA_Options (argc, argv);
 
+    detect_whole_program_mode();
+    
 #ifdef KEY
     if (Annotation_Filename == NULL ) // no feedback
       IPA_Enable_PU_Reorder = REORDER_DISABLE;

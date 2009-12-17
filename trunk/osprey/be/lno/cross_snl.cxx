@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -59,7 +63,7 @@
 #include "cross_snl.h"
 #include "snl_utils.h"
 #include "cross_cache.h"
-#define NOMINAL_PROCS 8
+#include "parmodel.h" 
 
 static INT cross_loop_debug_level = 2;
 BOOL running_cross_loop_analysis = FALSE;

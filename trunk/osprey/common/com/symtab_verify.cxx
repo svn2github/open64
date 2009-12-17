@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -53,6 +57,8 @@
 #ifndef symtab_INCLUDED
 #include "symtab.h"                     // for Scope_tab
 #endif
+
+#include "symtab_defs.h"
 
 // ======================================================================
 // Auxiliary functions used by ST::Verify()
@@ -171,8 +177,11 @@ ST_Verify_Sclass_Export (ST_SCLASS storage_class, ST_EXPORT export_class,
         ST_IDX base_idx = ST_base_idx (st);
         Is_True ( base_idx != ST_st_idx (st),
 		  (msg, Export_Name(export_class), Sclass_Name (storage_class)));
-        Is_True ( storage_class == ST_sclass(St_Table[base_idx]),
-		  (msg, Export_Name(export_class), Sclass_Name (storage_class)));
+        if (! (ST_sclass(St_Table[base_idx]) == SCLASS_UNKNOWN &&
+               ST_class(St_Table[base_idx])  == CLASS_BLOCK) )
+          Is_True ( storage_class == ST_sclass(St_Table[base_idx]),
+                    (msg, Export_Name(export_class),
+                     Sclass_Name (storage_class)) );
       }
       else {
         Is_True (export_class == EXPORT_LOCAL ||
@@ -556,10 +565,39 @@ ST::Verify (UINT) const
 #endif // Is_True_On
 } // ST::Verify
 
+
+static BOOL
+zero_dim_array(ST_IDX st_idx)
+{ 
+  ST& st = St_Table[st_idx];
+  const TY& ty = Ty_Table[ST_type(st)];
+  if (( TY_kind (ty) != KIND_ARRAY)
+      ||   (ty.Arb() == 0)) 
+    return FALSE;
+
+  // Now check the bounds in each
+  // dimension. 
+
+  ARB_HANDLE arb(ty.Arb());
+  INT i,ndim;
+  ndim = ARB_dimension(arb);
+  for (i = 0; i < ndim; i++) {
+    if (ARB_const_lbnd (arb[i])
+        && ARB_const_ubnd(arb[i]))
+    { 
+      if (ARB_lbnd_val(arb[i]) > ARB_ubnd_val(arb[i]))
+	return TRUE;
+    } 
+  }
+  return FALSE; 
+}
+
 // ======================================================================
 //  INITO::Verify(): other INITO related checks go into this function
 // ======================================================================
 // (See table 25 and 26 in the Whirl Symbol Table Specification)
+
+
 
 void INITO::Verify(UINT level) const 
 {
@@ -571,10 +609,14 @@ void INITO::Verify(UINT level) const
   Is_True(ST_is_initialized (St_Table[st_idx]),
 	   ("ST_IS_INITIALIZED not set"));
 #endif
-  Is_True(0 <  val && val < INITV_Table_Size(),
-           ("Invalid field for INITO: val"));
-  Is_True(level == ST_IDX_level(st_idx),
-	  ("INITO/st_idx level mismatch"));
+
+  if (!zero_dim_array(st_idx))
+  { 
+    Is_True(0 <  val && val < INITV_Table_Size(),
+             ("Invalid field for INITO: val"));
+    Is_True(level == ST_IDX_level(st_idx),
+	    ("INITO/st_idx level mismatch"));
+  }
 #endif
 }
 

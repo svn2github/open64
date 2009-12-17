@@ -1031,7 +1031,7 @@ extern void Fission_DU_Update(DU_MANAGER* Du_Mgr, REDUCTION_MANAGER* Red_Mgr,
           }
 
           DEF_LIST* def_list=Du_Mgr->Ud_Get_Def(use);
-          if (def_list->Loop_stmt()==loops[0])
+          if (def_list && def_list->Loop_stmt()==loops[0])
             def_list->Set_loop_stmt(loops[i]);
         }
         if (red_type!=RED_NONE)

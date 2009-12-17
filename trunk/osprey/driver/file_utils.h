@@ -45,6 +45,9 @@ extern char *drop_path (char *s);
 /* drops the last component of the path, leaving only the directory */
 extern char *directory_path (char *s);
 
+/* append path separator and component to directory */
+extern char *concat_path (char *d, char *f);
+
 /* check whether file exists */
 extern boolean file_exists (char *path);
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 /* Output variables, constants and external declarations, for GNU compiler.
@@ -5082,10 +5086,11 @@ assemble_alias (tree decl, tree target)
 	  TREE_CHAIN (alias) = target;
 #endif
 	}
-#ifndef KEY /* bug 12561 */
+#ifdef KEY /* bug 12561 */
+      if (!flag_spin_file)
+#endif
       if (TREE_PUBLIC (decl))
 	error ("weakref %q+D must have static linkage", decl);
-#endif
     }
   else
     {

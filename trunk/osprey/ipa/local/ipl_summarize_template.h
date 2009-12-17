@@ -1581,12 +1581,16 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
             // This ifdef is redundant, but just for clarity.
-            if (Cur_PU_Feedback && WN_operator(w2) == OPR_ICALL)
+            if (Cur_PU_Feedback && WN_operator(w2) == OPR_ICALL
+                // Ignore virtual function candidate for icall_opt and let
+                // devirtualization to handle them. This is a workaround to  
+                // to let icall_opt and devirtualization working together
+                && !WN_Call_Is_Virtual(w2))
 	      Process_icall (proc, w2, loopnest, probability);
 #endif
 #endif // KEY
 
-            if (!Cur_PU_Feedback && WN_Call_Is_Virtual(w2) 
+            if (/*!Cur_PU_Feedback && */ WN_Call_Is_Virtual(w2)
                     && IPA_Enable_Fast_Static_Analysis_VF == TRUE) {
 	        Process_virtual_function (proc, w2, loopnest, probability);
             }

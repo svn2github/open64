@@ -243,6 +243,7 @@ typedef struct lno_flags {
   BOOL	Fancy_tile;
   BOOL	Run_fiz_fuse;
   UINT32 Fission;
+  BOOL  Serial_distribute;
   UINT32 Fission_inner_register_limit;
   BOOL	Forward_substitution;
   UINT32 Fusion;
@@ -289,6 +290,8 @@ typedef struct lno_flags {
   UINT32 Prefetch_iters_ahead;
   UINT32 Prefetch_cache_factor;
   BOOL	Prefetch_indirect;
+  BOOL	Prefetch_inductive;
+  BOOL	Prefetch_induc_indir;
   BOOL	Run_prefetch_manual;
   BOOL	Run_prefetch_manual_set;
   BOOL	Power_of_two_hack;
@@ -323,6 +326,7 @@ typedef struct lno_flags {
   BOOL    Prefetch_Verbose;
   BOOL    Build_Scalar_Reductions;
   BOOL    Invariant_Factorization;
+  BOOL    New_Invariant_Factorization;
   BOOL    Invar_Factor_Verbose;
 #endif /* KEY */
   BOOL	Run_oinvar;
@@ -344,6 +348,7 @@ typedef struct lno_flags {
   UINT32 Local_pad_size;
   UINT32 Full_unrolling;  
 #ifdef KEY
+  BOOL   Peel_2D_triangle_loop;
   UINT32 Full_unrolling_loop_size_limit;
   BOOL   Full_Unroll_Outer;
   UINT32 Num_Processors;	// 0 means unknown
@@ -351,6 +356,12 @@ typedef struct lno_flags {
   BOOL Apo_use_feedback;	// APO use loop freq from feedback data to
   				// decide whether to parallelize a loop
 #endif
+  BOOL   IfMinMax_Fix_Cond;
+  UINT32 IfMinMax_Limit;
+  UINT32 IfMinMax_Fix_Cond_Limit;
+  UINT32 IfMinMax_Trace; // 0: disable; 1: minimal; 2: normal; 3: maximum
+  BOOL   Struct_Array_Copy;
+  
   /* This buffer area allows references to new fields to be added in
    * later revisions, from other DSOs, without requiring a new be.so
    * or running the risk of referencing illegal data.  Assuming that
@@ -474,6 +485,7 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Fancy_Tile			Current_LNO->Fancy_tile
 #define LNO_Run_Fiz_Fuse		Current_LNO->Run_fiz_fuse
 #define LNO_Fission			Current_LNO->Fission
+#define LNO_Serial_Distribute		Current_LNO->Serial_distribute
 #define LNO_Fission_Inner_Register_Limit	\
 	Current_LNO->Fission_inner_register_limit
 #define LNO_Forward_Substitution	Current_LNO->Forward_substitution
@@ -524,6 +536,8 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Prefetch_Iters_Ahead	Current_LNO->Prefetch_iters_ahead
 #define LNO_Prefetch_Cache_Factor	Current_LNO->Prefetch_cache_factor
 #define LNO_Prefetch_Indirect		Current_LNO->Prefetch_indirect
+#define LNO_Prefetch_Inductive		Current_LNO->Prefetch_inductive
+#define LNO_Prefetch_Induc_Indir	Current_LNO->Prefetch_induc_indir
 #define LNO_Run_Prefetch_Manual		Current_LNO->Run_prefetch_manual
 #define LNO_Run_Prefetch_Manual_Set	Current_LNO->Run_prefetch_manual_set
 #define LNO_Power_Of_Two_Hack		Current_LNO->Power_of_two_hack
@@ -558,6 +572,7 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Prefetch_Verbose            Current_LNO->Prefetch_Verbose
 #define LNO_Build_Scalar_Reductions     Current_LNO->Build_Scalar_Reductions
 #define LNO_Invariant_Factorization     Current_LNO->Invariant_Factorization
+#define LNO_New_Invariant_Factorization Current_LNO->New_Invariant_Factorization
 #define LNO_Invar_Factor_Verbose        Current_LNO->Invar_Factor_Verbose
 #endif /* KEY */
 #define LNO_Run_Oinvar			Current_LNO->Run_oinvar
@@ -567,6 +582,10 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Parallel_Overhead		Current_LNO->Parallel_overhead
 #define LNO_Prompl			Current_LNO->Prompl
 #define LNO_IfMinMax			Current_LNO->IfMinMax
+#define LNO_IfMinMax_Fix_Cond		Current_LNO->IfMinMax_Fix_Cond
+#define LNO_IfMinMax_Limit		Current_LNO->IfMinMax_Limit
+#define LNO_IfMinMax_Fix_Cond_Limit	Current_LNO->IfMinMax_Fix_Cond_Limit
+#define LNO_IfMinMax_Trace		Current_LNO->IfMinMax_Trace
 #define LNO_Run_call_info		Current_LNO->Run_call_info
 #define LNO_Shackle 			Current_LNO->Shackle 
 #define LNO_Cross_Loop 			Current_LNO->Cross_loop
@@ -599,6 +618,7 @@ extern LNO_FLAGS Initial_LNO;
 // Unroll loops with trip count <= LNO_Full_Unrolling_Limit
 #define LNO_Full_Unrolling_Limit	Current_LNO->Full_unrolling
 #ifdef KEY
+#define LNO_Peel_2D_Triangle_LOOP Current_LNO->Peel_2D_triangle_loop
 #define LNO_Full_Unrolling_Loop_Size_Limit \
 Current_LNO->Full_unrolling_loop_size_limit
 #define LNO_Full_Unroll_Outer           Current_LNO->Full_Unroll_Outer
@@ -606,6 +626,7 @@ Current_LNO->Full_unrolling_loop_size_limit
 #define LNO_Parallel_per_proc_overhead  Current_LNO->Parallel_per_proc_overhead
 #define LNO_Apo_use_feedback  		Current_LNO->Apo_use_feedback
 #endif
+#define LNO_Struct_Array_Copy           Current_LNO->Struct_Array_Copy
 
 /* Initialize the current top of stack to defaults: */
 extern void LNO_Init_Config ( void );

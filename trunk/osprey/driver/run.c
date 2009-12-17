@@ -293,18 +293,22 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 			(phase == P_f90_fe || phase == P_f90_cpp ||
 			 phase == P_cppf90_fe);
 
-        if (((phase == P_be) || (phase == P_ipl))
-            && add_heap_limit) {
-            char buf[100];
-            char * str;
-            sprintf(&buf[0],"%d", heap_limit);
-            str = concat_strings("-OPT:hugepage_heap_limit=", buf);
-            sprintf(&buf[0],"%d", hugepage_attr);
-            str = concat_strings(str, 
-                                 concat_strings(" -OPT:hugepage_attr=", buf));
-            add_string(args, str);
+        if (((phase == P_be) || (phase == P_ipl))) {
+            if (add_heap_limit) {
+                char buf[100];
+                char * str;
+                sprintf(&buf[0],"%d", heap_limit);
+                str = concat_strings("-OPT:hugepage_heap_limit=", buf);
+                sprintf(&buf[0],"%d", hugepage_attr);
+                str = concat_strings(str, 
+                                     concat_strings(" -OPT:hugepage_attr=", buf));
+                add_string(args, str);
+            }
+
+            if (oscale == TRUE)
+                add_string(args, "-OPT:scale=ON");
         }
-	
+
 	if (show_flag) {
 		/* echo the command */
 		fprintf(stderr, "%s ", name);

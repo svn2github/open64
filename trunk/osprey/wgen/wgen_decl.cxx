@@ -1296,10 +1296,35 @@ WGEN_Start_Function(gs_t fndecl)
 	    gs_decl_namespace_scope_p (fndecl))))
 	    eclass = EXPORT_INTERNAL; // bug 7550
       else if (gs_tree_public(fndecl) || gs_decl_weak(fndecl)) {
-	if (gs_decl_inline(fndecl) || !gs_decl_weak(fndecl))
-	  eclass = EXPORT_PROTECTED;
-	else
-	  eclass = EXPORT_PREEMPTIBLE;
+        if (!gs_decl_declared_inline_p(fndecl)) {
+          // global non-inline function has to be preemptible
+          // unless it is changed by visibility option/attribute
+          eclass = EXPORT_PREEMPTIBLE;
+        }
+        else {
+          // inline function definition should be appeared in every 
+          // Translation Unit, it can be hidden (allow address be taken)
+          // one example of implicit address taken is dtor address be 
+          // used in __cxa_throw() arguments when the type is thrown
+          //
+          // gnu linker complains about protected symbol illegal relocation
+          // for taking its address, the hidden symbol' addres is ok to export 
+          // to other DSO or within the same module 
+          if (!interface_only || keep_inline_functions || 
+              !gs_decl_weak (fndecl)) {
+            // there are inline functions not weak function, such as
+            // global function's local class member, they have the same
+            // export class as hosting function
+            //
+            // if the inline function is under pragma implementation,
+            // or -fkeep-inline-function, it should be PREEMPTIBLE,
+            // so it will not be DFEed
+            eclass = EXPORT_PREEMPTIBLE;
+          }
+          else {
+            eclass = EXPORT_HIDDEN;
+          }
+	} 
       }
       else
 	 eclass = EXPORT_LOCAL;
@@ -1368,6 +1393,34 @@ WGEN_Start_Function(gs_t fndecl)
       wgen_invoke_inliner = TRUE;
     }
     Set_ST_export (func_st, eclass);
+
+#if 1 // GCC_COMPAT
+    gs_symbol_visibility_kind_t vk = 
+      (gs_symbol_visibility_kind_t) gs_decl_visibility(fndecl);
+    if (gs_tree_public(fndecl) && 
+        (gs_decl_visibility_specified(fndecl) ||
+         GS_VISIBILITY_DEFAULT != vk)) {
+      ST_EXPORT export_class = EXPORT_PREEMPTIBLE;
+      switch (vk) {
+        case GS_VISIBILITY_DEFAULT:
+          export_class = EXPORT_PREEMPTIBLE;
+          break;
+        case GS_VISIBILITY_PROTECTED:
+          export_class = EXPORT_PROTECTED;
+          break;
+        case GS_VISIBILITY_HIDDEN:
+          export_class = EXPORT_HIDDEN;
+          break;
+        case GS_VISIBILITY_INTERNAL:
+          export_class = EXPORT_INTERNAL;
+          break;
+        default:
+          GS_ASSERT(0, "unknown decl visibility");
+          break;
+      }
+      Set_ST_export (func_st, export_class);
+    }
+#endif
 
     // For extern inline in C++, we ensure the function is inlined at > -O0,
     // when inlining is not disabled. IF the inliner thinks it appropriate,
@@ -1440,6 +1493,31 @@ WGEN_Start_Function(gs_t fndecl)
 	  else if (is_attribute("used", attr))
 	    Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);  // bug 3697
 #endif
+#if 0
+          else if (is_attribute("visibility", attr)) {
+            // process __attribute__ ((visibility ("default   |
+            //                                      hidden    |
+            //                                      internal  |
+            //                                      protected  ")))
+            gs_t value = gs_tree_value (nd);
+            Is_True (gs_tree_code(value) == GS_TREE_LIST,
+                     ("Expected TREE_LIST"));
+            value = gs_tree_value (value);
+            if (gs_tree_code(value) == GS_STRING_CST) {
+              const char *str = 
+                const_cast<char*>(gs_tree_string_pointer(value));
+              if (strcasecmp(str, "default") == 0) {
+                Set_ST_export (func_st, EXPORT_PREEMPTIBLE);
+              } else if (strcasecmp(str, "internal") == 0) {
+                Set_ST_export (func_st, EXPORT_INTERNAL);
+              } else if (strcasecmp(str, "hidden") == 0) {
+                Set_ST_export (func_st, EXPORT_HIDDEN);
+              } else if (strcasecmp(str, "protected") == 0) {
+                Set_ST_export (func_st, EXPORT_PROTECTED);
+              }
+            }
+	  }
+#endif
 	}
       } 
     }
@@ -1464,7 +1542,7 @@ WGEN_Start_Function(gs_t fndecl)
 // Insert special variables into the local symtab, store their id's
 // in the PU_TAB, to be accessed later in the front-end, WN Lowerer,
 // inliner/ipa, and back-end.
-    if (key_exceptions)
+    if (emit_exceptions)
        Setup_Entry_For_EH ();
     else
        Dummy_Exc_Ptr_Expr = NULL;
@@ -1797,8 +1875,7 @@ WGEN_Finish_Function (gs_t fndecl)
     if (lang_cplus) {
       // Add any handler code
       Do_Handlers ();
-      // if (flag_exceptions)// check if exceptions are enabled
-      if (key_exceptions)
+      if (emit_exceptions)
 	Do_EH_Tables ();
     }
 
@@ -3795,6 +3872,18 @@ AGGINIT::Traverse_Aggregate_Vector (
 
   // bug 11615: If the entire vector has not been initialized, pad till the end
   INT pad = MTYPE_byte_size(mtyp) - emitted_bytes;
+
+#ifdef NEW_INITIALIZER
+    // When object size can't be obtained from mtyp, get it from
+    // the pointed-to object.
+    if ((MTYPE_byte_size(mtyp) == 0) && target 
+	&& (WN_operator(target) == OPR_LDA)) {
+      TY_IDX pointer_type = WN_ty(target);
+      TY_IDX object_type = TY_pointed(pointer_type);
+      UINT64 object_size = TY_size(object_type);
+      pad = object_size - emitted_bytes;
+    }
+#endif
 
   if (pad > 0)
 #ifdef NEW_INITIALIZER

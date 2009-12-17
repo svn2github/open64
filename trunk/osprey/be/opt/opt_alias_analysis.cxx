@@ -94,7 +94,6 @@
 #pragma hdrstop
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"			// INT32, INT64
 
@@ -1513,6 +1512,8 @@ OPT_STAB::Create_entry_chi(void)
       AUX_ID auxid;
       FOR_ALL_NODE(auxid, aux_stab_iter, Init()) {
         AUX_STAB_ENTRY *sym = Aux_stab_entry(auxid);
+        if (sym->Stype() == VT_UNKNOWN)
+          continue; 
 	if ( !sym->Is_volatile() ) {
 	  CHI_NODE *cnode = chi->New_chi_node(auxid, Occ_pool());
 	  cnode->Set_opnd(auxid);
@@ -2978,6 +2979,9 @@ OPT_STAB::Generate_exit_mu(WN *wn)
     // examining all variables (including volatile virtuals)
     // but excluding the default vsym.
 
+    if (psym->Stype() == VT_UNKNOWN) 
+      continue;
+
     if (psym->Is_volatile()) continue;
     if (idx == Default_vsym()) continue;
 
@@ -3429,6 +3433,7 @@ OPT_STAB::Transfer_alias_class_to_occ_and_aux(RID *const rid,
 	    !REGION_has_black_regions(rid)) {
 	  if (sym_pt->Alias_class() == OPTIMISTIC_AC_ID) {
 	    Is_True(WOPT_Enable_Tail_Recur ||	// Tail recursion elim introduces PREGs.
+                    WOPT_Enable_Reassociation_CSE || 
 		    (opr == OPR_LDA &&
 		     ST_class(Aux_stab_entry(WN_aux(wn))->st) == CLASS_FUNC) ||
 		    Aux_stab_entry(WN_aux(wn))->Is_dedicated_preg(),

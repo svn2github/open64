@@ -2220,7 +2220,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
 
   // The init statement goes in its own block
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = Add_sc(NULL, SC_LOOP);
     _sc_parent_stack->Push(sc);
     sc = Add_sc(NULL, SC_LP_START);
@@ -2233,7 +2233,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   }
   else {
     start_bb = _current_bb;
-    if (Do_pro_loop_fusion_trans()) {
+    if (Do_pro_loop_trans()) {
       SC_NODE * sc = Unlink_sc(start_bb);
       if (sc == NULL)
 	Add_sc(start_bb, SC_BLOCK);
@@ -2255,7 +2255,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   Is_True(start_wn != NULL, ("CFG::Add_one_do_loop_stmt: NULL start"));
   Add_one_stmt( start_wn, NULL );
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_START), ("Expect a SC_LP_START"));
   }
@@ -2270,7 +2270,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   WN *end_cond = WN_CreateFalsebr(merge_bb->Labnam(), WN_end(wn));
   WN_Set_Linenum( end_cond, WN_Get_Linenum(WN_end(wn)) );
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = Add_sc(NULL, SC_LP_COND);
     _sc_parent_stack->Push(sc);
   }
@@ -2281,7 +2281,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   if ( cond_bb->Labnam() == 0 )
     Append_label_map(Alloc_label(), cond_bb);
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_COND), ("Expect a SC_LP_COND"));
     sc = Add_sc(NULL, SC_LP_BODY);
@@ -2296,7 +2296,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   END_BLOCK body_end;
   Add_one_stmt(WN_do_body(wn), &body_end);
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_BODY), ("Expect a SC_LP_BODY"));
     sc = Add_sc(NULL, SC_LP_STEP);
@@ -2316,7 +2316,7 @@ CFG::Add_one_do_loop_stmt( WN *wn, END_BLOCK *ends_bb )
   WN *gotocond = WN_CreateGoto(cond_bb->Labnam());
   Add_one_stmt( gotocond, NULL );
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_STEP), ("Expect a SC_LP_STEP"));
     sc = _sc_parent_stack->Pop();
@@ -2373,7 +2373,7 @@ CFG::Add_one_while_do_stmt( WN *wn, END_BLOCK *ends_bb )
 {
   Set_cur_loop_depth( Cur_loop_depth() + 1 );
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = Add_sc(NULL, SC_LOOP);
     _sc_parent_stack->Push(sc);
     sc = Add_sc(NULL, SC_LP_COND);
@@ -2398,7 +2398,7 @@ CFG::Add_one_while_do_stmt( WN *wn, END_BLOCK *ends_bb )
   Add_one_stmt( end_cond, NULL );
   cond_bb->Set_kind( BB_WHILEEND );
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_COND), ("Expect a SC_LP_COND"));
     sc = Add_sc(NULL, SC_LP_BODY);
@@ -2411,7 +2411,7 @@ CFG::Add_one_while_do_stmt( WN *wn, END_BLOCK *ends_bb )
   Add_one_stmt( WN_while_body(wn), &body_end );
 
   
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_BODY), ("Expect a SC_LP_BODY"));
     sc = Add_sc(NULL, SC_LP_BACKEDGE);
@@ -2424,7 +2424,7 @@ CFG::Add_one_while_do_stmt( WN *wn, END_BLOCK *ends_bb )
   WN *gotocond = WN_CreateGoto(cond_bb->Labnam());
   Add_one_stmt( gotocond, NULL );
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_BACKEDGE), ("Expect a SC_LP_BACKEDGE"));
     sc = _sc_parent_stack->Pop();
@@ -2467,7 +2467,7 @@ CFG::Add_one_do_while_stmt( WN *wn, END_BLOCK *ends_bb )
 
   BB_NODE *body_bb = NULL;
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = Add_sc(NULL, SC_LOOP);
     _sc_parent_stack->Push(sc);
     sc = Add_sc(NULL, SC_LP_BODY);
@@ -2484,7 +2484,7 @@ CFG::Add_one_do_while_stmt( WN *wn, END_BLOCK *ends_bb )
   END_BLOCK body_end;
   Add_one_stmt( WN_while_body(wn), &body_end );
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_BODY), ("Expect a SC_LP_BODY"));
     sc = Add_sc(NULL, SC_LP_COND);
@@ -2501,7 +2501,7 @@ CFG::Add_one_do_while_stmt( WN *wn, END_BLOCK *ends_bb )
   Add_one_stmt( end_cond, NULL );
   cond_bb->Set_kind(BB_REPEATEND);
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_LP_COND), ("Expect a SC_LP_COND"));
     sc = _sc_parent_stack->Pop();
@@ -2551,7 +2551,7 @@ CFG::Add_one_if_stmt( WN *wn, END_BLOCK *ends_bb )
   BB_NODE *cond_bb = _current_bb;
   Add_one_stmt( end_cond, NULL );
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = Add_sc(cond_bb, SC_IF);
     _sc_parent_stack->Push(sc);
   }
@@ -2560,7 +2560,7 @@ CFG::Add_one_if_stmt( WN *wn, END_BLOCK *ends_bb )
   BB_NODE *merge_bb = Create_bb();
   merge_bb->Set_ifmerge();
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = Add_sc(NULL, SC_THEN);
     _sc_parent_stack->Push(sc);
   }
@@ -2579,7 +2579,7 @@ CFG::Add_one_if_stmt( WN *wn, END_BLOCK *ends_bb )
     Connect_predsucc(_current_bb, merge_bb);
   }
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc =_sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_THEN), ("Expect a SC_THEN"));
     sc = Add_sc(NULL, SC_ELSE);
@@ -2593,7 +2593,7 @@ CFG::Add_one_if_stmt( WN *wn, END_BLOCK *ends_bb )
   if ( block_end != END_BREAK )
     Connect_predsucc(_current_bb, merge_bb);
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_ELSE), ("Expect a SC_ELSE"));
     sc = _sc_parent_stack->Pop();
@@ -2631,7 +2631,7 @@ CFG::Add_one_compgoto_stmt( WN *wn, END_BLOCK *ends_bb )
 {
   INT32 new_num_entries = WN_num_entries(wn);
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = Add_sc(_current_bb, SC_COMPGOTO);
     _sc_parent_stack->Push(sc);
   }
@@ -2655,7 +2655,7 @@ CFG::Add_one_compgoto_stmt( WN *wn, END_BLOCK *ends_bb )
       Append_label_map(WN_label_number(def_goto), def_blk);
     }
     else {
-      FmtAssert(!Do_pro_loop_fusion_trans(), ("Unexpected def_blk"));
+      FmtAssert(!Do_pro_loop_trans(), ("Unexpected def_blk"));
     }
 
     _current_bb->Set_switchdefault(def_blk);
@@ -2696,7 +2696,7 @@ CFG::Add_one_compgoto_stmt( WN *wn, END_BLOCK *ends_bb )
   if ( ends_bb )
     *ends_bb = END_BREAK;
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     SC_NODE * sc = _sc_parent_stack->Pop();
     FmtAssert((sc->Type() == SC_COMPGOTO), ("Expect a SC_COMPGOTO"));
   }
@@ -2797,7 +2797,7 @@ CFG::Add_one_region( WN *wn, END_BLOCK *ends_bb )
 {
   RID *rid = REGION_get_rid(wn);
 
-  if (Do_pro_loop_fusion_trans()) {
+  if (Do_pro_loop_trans()) {
     Free_sc();
     // FmtAssert(FALSE, ("TODO. region"));
   }
@@ -3910,7 +3910,7 @@ CFG::Create(WN *func_wn, BOOL lower_fully, BOOL calls_break,
 
   SC_init();
 
-  if (WOPT_Enable_Pro_Loop_Fusion_Trans) {
+  if (WOPT_Enable_Pro_Loop_Fusion_Trans || WOPT_Enable_Pro_Loop_Interchange_Trans) {
     if (opr == OPR_FUNC_ENTRY) {
       PU &pu = Pu_Table[ST_pu(WN_st(func_wn))];
 
@@ -4773,9 +4773,9 @@ CFG::Dfs_vec(void)
     }
 
     _dfs_vec = (BB_NODE **)
-          CXX_NEW_ARRAY(BB_NODE*,Last_bb_id()+1,Mem_pool());
+       CXX_NEW_ARRAY(BB_NODE*,Total_bb_count(),Mem_pool());
     _po_vec = (BB_NODE **)
-          CXX_NEW_ARRAY(BB_NODE*,Last_bb_id()+1,Mem_pool());
+       CXX_NEW_ARRAY(BB_NODE*,Total_bb_count(),Mem_pool());
     
     BB_NODE *bb;
     CFG_ITER cfg_iter(this);
@@ -4855,7 +4855,7 @@ BB_NODE **
 CFG::Dpo_vec(void)
 {
   if (_dpo_vec == NULL) {
-    _dpo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Last_bb_id()+1, Mem_pool());
+    _dpo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Total_bb_count(), Mem_pool());
     INT id = 0;
     Init_dpo_vec(Entry_bb(), &id);
     _dpo_vec_sz = id;
@@ -4867,7 +4867,7 @@ BB_NODE **
 CFG::Pdo_vec(void)
 {
   if (_pdo_vec == NULL) {
-    _pdo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Last_bb_id()+1, Mem_pool());
+    _pdo_vec = (BB_NODE **) CXX_NEW_ARRAY(BB_NODE*, Total_bb_count(), Mem_pool());
     INT id = 0;
     Init_pdo_vec(Exit_bb(), &id);
     _pdo_vec_sz = id;
@@ -4939,7 +4939,7 @@ CFG::Ident_loop( BB_NODE *first_bb, BB_NODE *last_bb,
       {
       bb->Loop()->Set_header(bb);
       BB_NODE_SET *new_body_set = 
-	CXX_NEW(BB_NODE_SET(_last_bb_id, this, Mem_pool(), BBNS_EMPTY),
+         CXX_NEW(BB_NODE_SET(Total_bb_count(), this, Mem_pool(), BBNS_EMPTY),
 		Mem_pool());
       // this doend block is considered to be one of the body bbs as
       // well
@@ -5014,7 +5014,7 @@ void
 CFG::Set_loop_bb_set(BB_LOOP *loop)
 {
   if (_bb_set == NULL)
-    _bb_set = CXX_NEW(BB_NODE_SET(_last_bb_id, this, Mem_pool(), BBNS_EMPTY),
+     _bb_set = CXX_NEW(BB_NODE_SET(Total_bb_count(), this, Mem_pool(), BBNS_EMPTY),
                       Mem_pool());
 
   _bb_set->CopyD(loop->Body_set());
@@ -5118,7 +5118,7 @@ CFG::Compute_true_loop_body_set(BB_LOOP *loops)
     // allocate true_body_set
     if (loop->True_body_set() == NULL)
       loop->Set_true_body_set(
-	    CXX_NEW(BB_NODE_SET(_last_bb_id, this, Mem_pool(), BBNS_EMPTY),
+         CXX_NEW(BB_NODE_SET(Total_bb_count(), this, Mem_pool(), BBNS_EMPTY),
 		    Mem_pool()));
     else loop->True_body_set()->ClearD();
     loop->True_body_set()->Union1D(loop->Body()); // body first BB is member
@@ -5132,7 +5132,7 @@ CFG::Compute_true_loop_body_set(BB_LOOP *loops)
       }
     }
     // initialize non_true_body_set
-    _non_true_body_set->UniverseD(_last_bb_id);
+    _non_true_body_set->UniverseD(Total_bb_count());
     _non_true_body_set->DifferenceD(loop->Body_set());
     if (Trace()) {
       fprintf(TFile, "Determining true loop body set from body set: ");
@@ -5361,7 +5361,7 @@ Allocate_loop(BB_NODE *bb, BB_LOOP *parent, CFG *cfg)
   if (loop == NULL)
     loop = CXX_NEW( BB_LOOP(NULL, NULL, NULL, NULL, NULL, NULL),
 		    cfg->Mem_pool() );
-  loop->Set_true_body_set(CXX_NEW(BB_NODE_SET(cfg->Last_bb_id()+1, cfg,
+  loop->Set_true_body_set(CXX_NEW(BB_NODE_SET(cfg->Total_bb_count(), cfg,
 					      cfg->Mem_pool(), BBNS_EMPTY),
 				  cfg->Mem_pool()));
   loop->Set_body_set(NULL);  // body_set not supported in mainopt
@@ -5647,8 +5647,8 @@ CFG::Analyze_loops(void)
 
     if (_non_true_body_set == NULL ||
 	(bs_PBPB(_non_true_body_set->Alloc_size() - sizeof(BS_WORD)) < 
-	 _last_bb_id))
-      _non_true_body_set = CXX_NEW(BB_NODE_SET(_last_bb_id, this, Mem_pool(),
+	 Total_bb_count()))
+      _non_true_body_set = CXX_NEW(BB_NODE_SET(Total_bb_count(), this, Mem_pool(),
 					       BBNS_EMPTY), Mem_pool());
 
     Compute_true_loop_body_set(_loops);
@@ -6327,6 +6327,120 @@ void CFG::Delete_empty_BB()
   }
 }
 
+// Fix if info and loop info for the given sc.
+void
+CFG::Fix_info(SC_NODE * sc)
+{
+  SC_NODE * sc_tmp;
+  BB_NODE * bb_tmp;
+  BB_LIST_ITER bb_list_iter;
+  SC_TYPE type = sc->Type();
+  
+  if (type == SC_IF) {
+    BB_NODE * bb_head = sc->Head();
+    BB_IFINFO * ifinfo = bb_head->Ifinfo();
+    
+    sc_tmp = sc->Find_kid_of_type(SC_THEN);
+    ifinfo->Set_then(sc_tmp->First_bb());
+    sc_tmp = sc->Find_kid_of_type(SC_ELSE);
+    ifinfo->Set_else(sc_tmp->First_bb());
+    sc_tmp = sc->Next_sibling();
+    ifinfo->Set_merge(sc_tmp->First_bb());
+  }    
+  else if (type == SC_LOOP) {
+    BB_LOOP * loop = sc->Loopinfo();
+    sc_tmp = sc->Find_kid_of_type(SC_LP_BODY);
+    if (sc_tmp)
+    loop->Set_body(sc_tmp->First_bb());
+
+    sc_tmp = sc->Find_kid_of_type(SC_LP_STEP);
+    if (sc_tmp)
+      loop->Set_step(sc_tmp->First_bb());
+
+    sc_tmp = sc->Find_kid_of_type(SC_LP_START);
+    if (sc_tmp)
+      loop->Set_start(sc_tmp->First_bb());
+
+    sc_tmp = sc->Find_kid_of_type(SC_LP_COND);
+    if (sc_tmp)
+      loop->Set_end(sc_tmp->First_bb());
+
+    sc_tmp = sc->Next_sibling();
+    if (sc_tmp)
+      loop->Set_merge(sc_tmp->First_bb());
+    else {
+      sc_tmp = sc->Find_kid_of_type(SC_LP_COND);
+      if (sc_tmp) {
+	FOR_ALL_ELEM(bb_tmp, bb_list_iter, Init(sc_tmp->Last_bb()->Succ())) {
+	  if (!sc->Contains(bb_tmp)) {
+	    loop->Set_merge(bb_tmp);
+	    break;
+	  }
+	}
+      }
+    }
+  }
+}
+
+// Split given SC_BLOCK into multiple ones so that each of them only contains one BB_NODE.
+SC_NODE *
+CFG::Split(SC_NODE * sc)
+{
+  FmtAssert((sc->Type() == SC_BLOCK), ("Expect a SC_BLOCK"));
+  BB_LIST * bb_list = sc->Get_bbs();
+
+  if (bb_list->Len() > 1) {
+    BB_NODE * bb = sc->Last_bb();
+    bb_list = bb_list->Remove(bb, sc->Get_pool());
+    sc->Set_bbs(bb_list);
+    SC_NODE * sc_new = Create_sc(SC_BLOCK);
+    sc_new->Append_bbs(bb);
+    sc->Insert_after(sc_new);
+  }
+
+  return sc;
+}
+
+// Insert an empty SC_BLOCK after a SC_BLOCK.  Return the inserted SC_BLOCK.
+SC_NODE *
+CFG::Insert_block_after(SC_NODE * sc)
+{
+  FmtAssert((sc->Type() == SC_BLOCK), ("Expect a SC_BLOCK"));
+  BB_NODE * bb_new = Create_and_allocate_bb(BB_GOTO);
+  SC_NODE * sc_new = Create_sc(SC_BLOCK);
+  sc_new->Append_bbs(bb_new);
+
+  BB_NODE * bb_last = sc->Last_bb();
+  BB_NODE * bb_next = bb_last->Succ()->Node();
+  
+  bb_last->Replace_succ(bb_next, bb_new);
+  bb_next->Replace_pred(bb_last, bb_new);
+  
+  MEM_POOL * pool = Mem_pool();
+  BB_LIST * bb_list = CXX_NEW(BB_LIST(bb_next), pool);
+  bb_new->Set_succ(bb_list);
+  bb_list = CXX_NEW(BB_LIST(bb_last), pool);
+  bb_new->Set_pred(bb_list);
+
+  BB_NODE * bb_tmp = bb_last->Next();
+  bb_last->Set_next(bb_new);
+  bb_new->Set_prev(bb_last);
+  bb_new->Set_next(bb_tmp);
+  bb_tmp->Set_prev(bb_new);
+
+  if (Feedback()) {
+    Feedback()->Add_node(bb_new->Id());
+    Feedback()->Move_edge_dest(bb_last->Id(), bb_next->Id(), bb_new->Id());
+    FB_FREQ freq = Feedback()->Get_edge_freq(bb_last->Id(), bb_new->Id());
+    Feedback()->Add_edge(bb_new->Id(), bb_next->Id(), FB_EDGE_OUTGOING, freq);
+  }
+
+  sc->Insert_after(sc_new);
+  Fix_info(sc->Parent());
+
+  return sc_new;
+}
+
 // Obtained cloned equivalent of given bb
 BB_NODE * 
 CFG::Get_cloned_bb(BB_NODE * bb)
@@ -6575,7 +6689,12 @@ void CFG::Clone_bbs
       FOR_ALL_ELEM(old_pred, bb_list_iter, Init(bb_cur->Pred())) {
 	BB_NODE * new_pred = Get_cloned_bb(old_pred);
 	FmtAssert(new_pred, ("Cloned BB_NODE not found"));
-	Connect_predsucc(new_pred, bb_new);
+
+	// Preserve the order of last(fall-through) successor.
+	if (bb_cur != old_pred->Last_succ()) 
+	  Prepend_predsucc(new_pred, bb_new);
+	else
+	  Connect_predsucc(new_pred, bb_new);	  
 	
 	if (Feedback()) {
 	  Feedback()->Clone_edge(old_pred->Id(), bb_cur->Id(),
@@ -6738,4 +6857,95 @@ CFG::Clone_sc(SC_NODE * sc, BOOL is_root, float scale)
   }
 
   return sc_new;
+}
+
+// Propagate edge frequency for all nodes in the given sc.
+void 
+CFG::Freq_propagate(SC_NODE * sc)
+{
+  BB_NODE * bb = sc->Get_bb_rep();
+
+  if (bb != NULL)
+    Feedback()->Freq_propagate(bb->Id());
+  
+  BB_LIST * bb_list = sc->Get_bbs();
+
+  if (bb_list != NULL) {
+    BB_LIST_ITER bb_list_iter(bb_list);
+    BB_NODE * tmp;
+    
+    FOR_ALL_ELEM(tmp, bb_list_iter, Init()) {
+      Feedback()->Freq_propagate(tmp->Id());
+    }
+  }
+
+  SC_LIST * kids = sc->Kids();
+
+  if (kids != NULL) {
+    SC_LIST_ITER sc_list_iter(kids);
+    SC_NODE *tmp;
+
+    FOR_ALL_ELEM(tmp, sc_list_iter, Init()) {
+      Freq_propagate(tmp);
+    }
+  }
+}
+
+// Scale given BB_NODE's successor edges excluding those end at the given sc.
+void
+CFG::Freq_scale(BB_NODE * bb, SC_NODE * sc, float scale)
+{
+  BB_NODE * bb_tmp;
+  BB_LIST_ITER bb_list_iter;
+  FB_FREQ freq;
+  IDTYPE edge;
+
+  FOR_ALL_ELEM(bb_tmp, bb_list_iter, Init(bb->Succ())) {
+    if ((sc != NULL) && sc->Contains(bb_tmp))
+      continue;
+    
+    edge = Feedback()->Get_edge(bb->Id(), bb_tmp->Id());
+    freq = Feedback()->Get_edge_freq(bb->Id(), bb_tmp->Id());
+    Feedback()->Change_edge_freq(edge, freq * scale);
+  }
+}
+
+// Scale successor edges of the nodes in the given sc excluding those
+// end at loops.
+void
+CFG::Freq_scale(SC_NODE * sc, float scale)
+{
+  SC_TYPE sc_type = sc->Type();
+  SC_NODE * sc_tmp = NULL;
+    
+  if (sc_type == SC_LP_COND) 
+    sc_tmp = sc->Parent()->Find_kid_of_type(SC_LP_BODY);
+
+  BB_NODE * bb = sc->Get_bb_rep();
+  if (bb != NULL)
+    Freq_scale(bb, sc_tmp, scale);
+
+  BB_LIST * bb_list = sc->Get_bbs();
+
+  if (bb_list != NULL) {
+    BB_LIST_ITER bb_list_iter;
+    BB_NODE * bb_tmp;
+    
+    FOR_ALL_ELEM(bb_tmp, bb_list_iter, Init(bb_list)) {
+      Freq_scale(bb_tmp, sc_tmp, scale);
+    }
+  }
+  
+  SC_LIST * kids = sc->Kids();
+
+  if (kids != NULL) {
+    SC_LIST_ITER sc_list_iter;
+
+    FOR_ALL_ELEM(sc_tmp, sc_list_iter, Init(sc->Kids())) {
+      sc_type = sc_tmp->Type();
+
+      if ((sc_type != SC_LP_BODY) && (sc_type != SC_LP_STEP))
+	Freq_scale(sc_tmp, scale);
+    }
+  }
 }

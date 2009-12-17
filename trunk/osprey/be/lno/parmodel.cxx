@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -1248,7 +1252,7 @@ static double SNL_Inner_Cache_Cost(WN* wn_outer,
   }
   est_iters[outer_depth + permutation[parallel_depth - outer_depth]] =
     (est_iters[outer_depth + permutation[parallel_depth - outer_depth]] 
-    + NOMINAL_PROCS) / NOMINAL_PROCS;
+    + NOMINAL_PROCS - 1) / NOMINAL_PROCS;
   for (i = 0; i <= depth; i++)
     if (est_iters[i] <= 0)
       est_iters[i] = 1; 

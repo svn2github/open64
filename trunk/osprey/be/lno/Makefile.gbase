@@ -1,5 +1,7 @@
 # -*- Makefile -*-
 #
+#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -286,7 +288,8 @@ BE_LNOPT_NLX_CXX_SRCS = \
   cross_snl.cxx			\
   cross_cache.cxx		\
   lnotarget.cxx			\
-  init.cxx	
+  init.cxx			\
+  array_copy.cxx
 
 ifeq ($(BUILD_TARGET), X8664)
 BE_LNOPT_NLX_CXX_SRCS += simd.cxx

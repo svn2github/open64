@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -182,5 +182,6 @@ extern INT32 EBO_Opt_Mask;
 #define EBO_FOLD_LOAD_DUPLICATE     	0x4000000
 #endif
 extern BOOL  CG_skip_local_ebo;
+extern bool Op_has_side_effect(OP *op);
 
 #endif /* EBO_INCLUDED */

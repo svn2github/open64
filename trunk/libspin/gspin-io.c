@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
   Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
@@ -109,10 +113,12 @@ gs_void_t gs_write (const gs_string_t filename)
     memcpy(p_in_memseg, t, size);
 #ifdef Is_True_On
     _gs_em(p_in_memseg, false);
+#ifdef CHECK_SPIN_LEAKS
     if (gs_em(t) == false) {
       printf("leaked node: ");
       gs_dump(t);
     }
+#endif
 #endif
 
     if (gs_code_arity(gs_code(t)) > 0) { // convert kid pointers to indices

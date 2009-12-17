@@ -621,6 +621,11 @@ TYPE_ID INTR_return_mtype(INTRINSIC id)
   case IRETURN_C4:	return MTYPE_C4;
   case IRETURN_C8:	return MTYPE_C8;
   case IRETURN_CQ:	return MTYPE_CQ;
+#if defined(TARG_X8664)
+  case IRETURN_M8I1:    return MTYPE_M8I1;
+  case IRETURN_M8I2:    return MTYPE_M8I2;
+  case IRETURN_M8I4:    return MTYPE_M8I4;
+#endif
   case IRETURN_V:	return MTYPE_V;
   case IRETURN_PV:
   case IRETURN_PU1:
@@ -1562,7 +1567,7 @@ static WN *em_exp_int(WN *block, WN *x, WN *pow, TYPE_ID type)
     INT32	absN = ABS(n);
     WN		*exp=  NULL;
 
-    if (em_exp_int_max < absN)
+    if (em_exp_int_max < absN || absN < 0) //in case absN == 0x80000000
       return NULL;
 
     switch(n) {
@@ -4603,7 +4608,7 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
     else if (WN_intrinsic(tree) == INTRN_MEMCPY &&
 	       OPT_Fast_Stdlib &&
 	       Is_Target_64bit()) {
-      if (Is_Target_Barcelona()) {
+      if (Is_Target_Barcelona() || Is_Target_Orochi()) {
         WN *child = WN_arg(tree, 2);
         if (Is_Integer_Constant(child)) {
           int memcpy_len = WN_const_val(child);
@@ -4658,7 +4663,7 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_opteron");
     }
 #endif
-    else if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
+    else if (WN_intrinsic(tree) == INTRN_I4POPCNT &&
     	       MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4 &&
                Is_Target_32bit()) {
       st = Gen_Intrinsic_Function(ty, "__popcountsi2");
@@ -4676,13 +4681,13 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 
 #if 0  // Using __popcountsi2 fails at link-time on cross-compiler.
     ST *st = NULL;
-    if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
+    if (WN_intrinsic(tree) == INTRN_I4POPCNT &&
 	MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4) {
       st = Gen_Intrinsic_Function(ty, "__popcountsi2");
     } else
       st = Gen_Intrinsic_Function(ty, function);
 #else
-    if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
+    if (WN_intrinsic(tree) == INTRN_I4POPCNT &&
 	MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4) {
       // Zero extend U4 to U8
       // args[0] = WN_Cvt(MTYPE_U4, MTYPE_U8, args[0]);
@@ -4974,7 +4979,6 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
   case INTRN_I2POPCNT:
   case INTRN_I4POPCNT:
   case INTRN_I8POPCNT:
-  case INTRN_POPCOUNT:
     {
       INT bitsize = MTYPE_size_reg(WN_rtype(by_value(tree, 0)));
       switch (id) {

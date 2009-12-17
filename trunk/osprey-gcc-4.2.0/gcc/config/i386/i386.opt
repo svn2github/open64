@@ -201,6 +201,65 @@ msse4a
 Target Report Mask(SSE4A)
 Support MMX, SSE, SSE2, SSE3 and SSE4A built-in functions and code generation
 
+; ssse 3 support in open64
+mssse3
+Target Report Mask(ISA_SSSE3) Var(ix86_isa_flags)
+Support SSSE3 built-in functions and code generation
+
+; sse 4.1 and sse 4.2 support in Open64
+msse4.1
+Target Report Mask(ISA_SSE4_1) Var(ix86_isa_flags)
+Support MMX, SSE, SSE2, SSE3 and SSE4.1 built-in functions and code generation
+
+msse4.2
+Target Report Mask(ISA_SSE4_2) Var(ix86_isa_flags)
+Support MMX, SSE, SSE2, SSE3, SSE4.1 and SSE4.2 built-in functions and code generation
+
+msse4
+Target Report Mask(ISA_SSE4_2) MaskExists Var(ix86_isa_flags)
+Support MMX, SSE, SSE2, SSE3, SSE4.1 and SSE4.2 built-in functions and code generation
+
+; aes, pclmul, avx, fma4, xop, xfc(Xop, Fma4, Cvt16) support in Open64
+maes
+Target Report Mask(ISA_AES) Var(ix86_isa_flags)
+Support AES built-in functions and code generation
+
+mpclmul
+Target Report Mask(ISA_PCLMUL) Var(ix86_isa_flags)
+Support PCLMUL built-in function and code generation
+
+mavx
+Target Report Mask(ISA_AVX) Var(ix86_isa_flags)
+Support AVX built-in functions and code generation
+
+mno-avx
+Target RejectNegative Negative(ISA_AVX) Report InverseMask(ISA_AVX) MaskExists Var(ix86_isa_flags)
+Support AVX built-in functions and code generation
+
+mfma4
+Target Report Mask(ISA_FMA4) Var(ix86_isa_flags)
+Support AMD FMA4 built-in functions and code generation
+
+mno-fma4
+Target RejectNegative Negative(ISA_FMA4) Report InverseMask(ISA_FMA4) MaskExists Var(ix86_isa_flags)
+Not support AMD FMA4 built-in functions and code generation
+
+mxop
+Target Report Mask(ISA_XOP) Var(ix86_isa_flags)
+Support AMD XOP built-in functions and code generation
+
+mno-xop
+Target RejectNegative Negative(ISA_XOP) Report InverseMask(ISA_XOP) MaskExists Var(ix86_isa_flags)
+Not support AMD XOP built-in functions and code generation
+
+mxfc
+Target Report Mask(ISA_XFC) Var(ix86_isa_flags)
+Support AMD XOP, FMA4 and CVT16 built-in functions and code generation
+
+mno-xfc
+Target RejectNegative Negative(ISA_XFC) Report InverseMask(ISA_XFC) MaskExists Var(ix86_isa_flags)
+Not support AMD XOP, FMA4 and CVT16 built-in functions and code generation
+
 msseregparm
 Target RejectNegative Mask(SSEREGPARM)
 Use SSE register passing conventions for SF and DF mode

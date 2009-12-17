@@ -609,6 +609,10 @@ ipa_search_command_line(int argc,
 		blank_arg(argv,i);
 	    	continue;
 	    }
+	    else if ((strcmp(string,"-external-gcc")) == 0) {
+		blank_arg(argv,i);
+	    	continue;
+	    }
 	    if ((strncmp (string, "-DEFAULT:", strlen ("-DEFAULT:")) == 0)) {
 	    	ipa_opt(&argv[i]);
 		blank_arg(argv,i);

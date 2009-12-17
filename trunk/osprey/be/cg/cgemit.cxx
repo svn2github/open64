@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -934,7 +934,9 @@ EMT_Write_Qualified_Name (FILE *f, ST *st)
 	if (!strncmp (ST_name(st), ".range_table.", strlen(".range_table.")))
 		return;
 #endif // KEY
-	if ( ST_is_export_local(st) && ST_class(st) == CLASS_VAR) {
+	if ( ST_is_export_local(st) && 
+             ST_class(st) == CLASS_VAR &&
+             !ST_is_thread_local(st) ) {
 		// local var, but being written out.
 		// so add suffix to help .s file distinguish names.
 		// assume that statics in mult. pu's will 
@@ -989,6 +991,29 @@ static void Print_Dynsym (FILE *pfile, ST *st)
 	break;
     }
   }
+  else {
+#if defined(TARG_X8664)
+    const char *eclass_label = NULL;
+    switch (ST_export(st)) {
+      case EXPORT_INTERNAL:
+        eclass_label = AS_INTERNAL;
+        break;
+      case EXPORT_HIDDEN:
+        eclass_label = AS_HIDDEN;
+        break;
+      case EXPORT_PROTECTED:
+        eclass_label = AS_PROTECTED;
+        break;
+      default:
+        break;
+    }
+    if (eclass_label) {
+      fprintf ( pfile, "\t%s\t", eclass_label);
+      EMT_Write_Qualified_Name(pfile, st);
+      putc ('\n', pfile);
+    }
+#endif
+  }
 }
 
 static void Print_Label (FILE *pfile, ST *st, INT64 size)
@@ -1000,19 +1025,15 @@ static void Print_Label (FILE *pfile, ST *st, INT64 size)
 	fprintf ( pfile, "\t%s\t", AS_WEAK);
 	EMT_Write_Qualified_Name(pfile, st);
 	fputc ('\n', pfile);
-#ifdef KEY // bug 12145: write .hidden
-	if (ST_export(st) == EXPORT_HIDDEN) {
-	  fprintf ( pfile, "\t.hidden\t");
-	  EMT_Write_Qualified_Name(pfile, st);
-	  fputc ('\n', pfile);
-	}
-#endif
     }
     else if (!ST_is_export_local(st)) {
-	fprintf ( pfile, "\t%s\t", AS_GLOBAL);
+	fprintf ( pfile, "%s\t", AS_GLOBAL);
 	EMT_Write_Qualified_Name(pfile, st);
 	fputc ('\n', pfile);
     }
+
+    Print_Dynsym (pfile, st);
+
 #if (defined(TARG_X8664) || defined(TARG_NVISA) || defined(TARG_LOONGSON)) && !defined(BUILD_OS_DARWIN)
 	// Bug 1275 and 4351
 	// Always emit the function type
@@ -1050,7 +1071,6 @@ static void Print_Label (FILE *pfile, ST *st, INT64 size)
     Base_Symbol_And_Offset (st, &base_st, &base_ofst);
     EMT_Write_Qualified_Name (pfile, st);
     fprintf ( pfile, ":\t%s 0x%" LL_FORMAT "x\n", ASM_CMNT, base_ofst);
-    Print_Dynsym (pfile, st);
 }
 
 static void
@@ -1079,20 +1099,20 @@ Print_Common (FILE *pfile, ST *st)
 #else
     fprintf ( pfile, "\t%s\t", AS_COM);
     EMT_Write_Qualified_Name(pfile, st);
-#ifdef TARG_X8664
-#if defined(BUILD_OS_DARWIN) /* .comm alignment arg not allowed */
+ #ifdef TARG_X8664
+  #if defined(BUILD_OS_DARWIN) /* .comm alignment arg not allowed */
     fprintf ( pfile, ", %" LL_FORMAT "d\n", TY_size(ST_type(st)));
-#else /* defined(BUILD_OS_DARWIN) */
+  #else /* !defined(BUILD_OS_DARWIN) */
     if (LNO_Run_Simd && Simd_Align && TY_size(ST_type(st)) >= 16)
       fprintf ( pfile, ", %" LL_FORMAT "d, 16\n", TY_size(ST_type(st)));
     else
       fprintf ( pfile, ", %" LL_FORMAT "d, %d\n", 
  	TY_size(ST_type(st)), TY_align(ST_type(st)));
-#endif /* defined(BUILD_OS_DARWIN) */
-#else
+  #endif /* defined(BUILD_OS_DARWIN) */
+ #else  // !TARG_X8664
     fprintf ( pfile, ", %" LL_FORMAT "d, %d\n", 
 		TY_size(ST_type(st)), TY_align(ST_type(st)));
-#endif
+ #endif
     Print_Dynsym (pfile, st);
 #endif // TARG_NVISA
     // this is needed so that we don't emit commons more than once
@@ -1700,7 +1720,11 @@ static void r_assemble_list (
   OP *op,		/* The operation being listed */
   BB *bb)
 {
+#ifdef TARG_X8664
+  const char *result[ISA_OPERAND_max_results+1];
+#else
   const char *result[ISA_OPERAND_max_results];
+#endif
   const char *opnd[ISA_OPERAND_max_operands];
   vstring buf = vstr_begin(LBUF_LEN);
   INT i;
@@ -3120,7 +3144,8 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
     name = (char*) REGISTER_name(cl, reg);
 #ifdef TARG_X8664
     // Rename an integer register based on the size of the variable.
-    if (cl == ISA_REGISTER_CLASS_integer) {
+    if (cl == ISA_REGISTER_CLASS_integer ||
+        cl == ISA_REGISTER_CLASS_float ) {
        name = (char*) CGTARG_Modified_Asm_Opnd_Name('r', tn, name);
     }
     // Check if you need to modify st0/st1 into parenthesised format.
@@ -4411,7 +4436,7 @@ Emit_Loop_Note(BB *bb, FILE *file)
     if (CG_p2align) 
       fputs ("\t.p2align 6,,7\n", file);
     else if (CG_loop32) {
-      if (BB_innermost(bb) && Is_Target_Barcelona()) {
+      if (BB_innermost(bb) && (Is_Target_Barcelona() || Is_Target_Orochi())) {
         fputs ("\t.p2align 5,,\n", file);
       }
     }
@@ -5166,6 +5191,14 @@ Recompute_Label_Offset(INT32 pcs[2])
       lab = ANNOT_label(ant);
       Set_Label_Offset(lab, cur_pc);
     }
+    for (ant = ANNOT_First (BB_annotations(bb), ANNOT_INLINE);
+         ant != NULL;
+         ant = ANNOT_Next (ant, ANNOT_INLINE))
+    {
+      lab  = ANNOT_inline(ant);
+      Set_Label_Offset(lab,cur_pc);
+    }
+
     for (op = BB_first_op(bb); op; op = OP_next(op)) {
       if (OP_has_tag(op)) {
 	lab = Get_OP_Tag(op);
@@ -9289,6 +9322,7 @@ Target_Name (TARGET_PROCESSOR t)
   {
     case TARGET_opteron: return "opteron";
     case TARGET_barcelona: return "barcelona";
+    case TARGET_orochi: return "orochi";
     case TARGET_athlon64: return "athlon64";
     case TARGET_athlon: return "athlon";
     case TARGET_em64t: return "em64t";
@@ -9386,6 +9420,30 @@ Emit_Options (void)
 
     if (Is_Target_SSE4a()) fputs ("-msse4a ", Asm_File);
     else fputs ("-mno-sse4a ", Asm_File);
+
+    if (Is_Target_SSSE3()) fputs ("-mssse3 ", Asm_File);
+    else fputs ("-mno-ssse3 ", Asm_File);
+
+    if (Is_Target_SSE41()) fputs ("-msse41 ", Asm_File);
+    else fputs ("-mno-sse41 ", Asm_File);
+
+    if (Is_Target_SSE42()) fputs ("-msse42 ", Asm_File);
+    else fputs ("-mno-sse42 ", Asm_File);
+
+    if (Is_Target_AES()) fputs ("-maes ", Asm_File);
+    else fputs ("-mno-aes ", Asm_File);
+
+    if (Is_Target_PCLMUL()) fputs ("-mpclmul ", Asm_File);
+    else fputs ("-mno-pclmul ", Asm_File);
+
+    if (Is_Target_AVX()) fputs ("-mavx ", Asm_File);
+    else fputs ("-mno-avx ", Asm_File);
+
+    if (Is_Target_XOP()) fputs ("-mxop ", Asm_File);
+    else fputs ("-mno-xop ", Asm_File);
+
+    if (Is_Target_FMA4()) fputs ("-mfma4 ", Asm_File);
+    else fputs ("-mno-fma4 ", Asm_File);
 
     if (Is_Target_64bit()) fputs ("-m64", Asm_File);
     else fputs ("-m32", Asm_File);

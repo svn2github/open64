@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007, 2008.  Pathscale, LLC. All Rights Reserved.
  */
 
@@ -90,6 +94,7 @@ main()
   Processor_Group (out_of_order, 
 		   PROCESSOR_opteron,
                    PROCESSOR_barcelona,
+                   PROCESSOR_orochi,
 		   PROCESSOR_em64t,
 		   PROCESSOR_core,
 		   PROCESSOR_wolfdale,
@@ -101,6 +106,7 @@ main()
   Processor_Group (superscalar,
 		   PROCESSOR_opteron,
                    PROCESSOR_barcelona,
+                   PROCESSOR_orochi,
 		   PROCESSOR_em64t,
 		   PROCESSOR_core,
 		   PROCESSOR_wolfdale,

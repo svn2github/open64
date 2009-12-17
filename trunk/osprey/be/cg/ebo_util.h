@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -371,7 +375,7 @@ EBO_OPS_predicate(TN *predicate_tn, OPS *ops)
 }
 
 
-
+extern void Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
 
 inline
 void

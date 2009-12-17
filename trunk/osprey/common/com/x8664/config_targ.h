@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007, 2008. Pathscale, LLC. All Rights Reserved.
  */
 
@@ -127,6 +131,14 @@ extern BOOL Target_SSE2;
 extern BOOL Target_SSE3;
 extern BOOL Target_3DNow;
 extern BOOL Target_SSE4a;
+extern BOOL Target_SSSE3;
+extern BOOL Target_SSE41;
+extern BOOL Target_SSE42;
+extern BOOL Target_AES;
+extern BOOL Target_PCLMUL;
+extern BOOL Target_AVX;
+extern BOOL Target_XOP;
+extern BOOL Target_FMA4;
 extern int Target_x86_Precision;
 
 /* ================ */
@@ -140,6 +152,7 @@ typedef enum {
   TARGET_UNDEF,		/* Undefined */
   TARGET_opteron,	/* AMD Opteron and Athlon64 FX */
   TARGET_barcelona,     /* AMD Barcelona (opteron) */
+  TARGET_orochi,        /* AMD Orochi (opteron) */
   TARGET_athlon64,	/* AMD Athlon64 */
   TARGET_athlon,	/* AMD Athlon */
   TARGET_em64t,		/* Intel EM64T */
@@ -165,6 +178,14 @@ extern const char *Targ_Name (TARGET_PROCESSOR target);
 #define Is_Target_SSE3()        (Target_SSE3 == TRUE)
 #define Is_Target_3DNow()       (Target_3DNow == TRUE)
 #define Is_Target_SSE4a()       (Target_SSE4a == TRUE)
+#define Is_Target_SSSE3()       (Target_SSSE3 == TRUE)
+#define Is_Target_SSE41()       (Target_SSE41 == TRUE)
+#define Is_Target_SSE42()       (Target_SSE42 == TRUE)
+#define Is_Target_AES()         (Target_AES   == TRUE)
+#define Is_Target_PCLMUL()      (Target_PCLMUL == TRUE)
+#define Is_Target_AVX()         (Target_AVX   == TRUE)
+#define Is_Target_XOP()         (Target_XOP   == TRUE)
+#define Is_Target_FMA4()        (Target_FMA4  == TRUE)
 #define Is_Target_Pentium4()    (Target == TARGET_pentium4)
 #define Is_Target_EM64T()	(Target == TARGET_em64t)
 #define Is_Target_Core()	(Target == TARGET_core)
@@ -172,6 +193,7 @@ extern const char *Targ_Name (TARGET_PROCESSOR target);
 #define Is_Target_Anyx86()      (Target == TARGET_anyx86)
 #define Target_x87_precision()	(Target_x87_Precision+0)
 #define Is_Target_Barcelona()   (Target == TARGET_barcelona)
+#define Is_Target_Orochi()      (Target == TARGET_orochi)
 
 
 /* ========== */

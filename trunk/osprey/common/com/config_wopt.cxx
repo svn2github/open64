@@ -324,11 +324,19 @@ BOOL  WOPT_Enable_Noreturn_Attr_Opt = TRUE;
 BOOL  WOPT_Enable_Pt_Summary = FALSE;  // points-to summary/annotation 
 INT32 WOPT_Enable_If_Merge_Limit = -1;  // Limit number of if-merging transformations per function.
 INT32 WOPT_Enable_Tail_Dup_Limit = -1; // Limit number of tail-duplication transformations per function.
+INT32 WOPT_Enable_If_Cond_Limit = -1;  // Limit number of if-condition transformations per function.
 INT32 WOPT_Tail_Dup_Max_Clone = -1; // Limit code size bloats (in statement count)
                                                   // due to tail-duplication.
 INT32 WOPT_Enable_Pro_Loop_Fusion_Func_Limit = -1; // Enable proactive loop fusion transformation for
                                                   // functions within the limit.
+INT32 WOPT_Enable_Pro_Loop_Interchange_Func_Limit = -1; // Enable proactive loop interchange for 
+                                                        // functions within the limit.
 BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans = TRUE;  // Enables proactive loop fusion transformation
+BOOL  WOPT_Enable_Pro_Loop_Interchange_Trans = TRUE; // Enables proactive loop interchange transformation
+
+BOOL  WOPT_Enable_Reassociation_CSE = TRUE;  // Enables Reassociation based CSE
+
+BOOL  WOPT_Enable_Mem_Clear_Remove = TRUE;  // Enables removal of redundant mem clear after a calloc
 
 #ifdef KEY
 BOOL  WOPT_Enable_Preserve_Mem_Opnds = FALSE; // if TRUE, suppress EPRE on 
@@ -352,6 +360,9 @@ BOOL WOPT_Enable_New_Vsym_Allocation = FALSE;
 #endif
 BOOL  WOPT_Enable_WOVP = TRUE; // For running write-once variable promotion
 BOOL WOPT_Enable_Loop_Multiver = FALSE; // For loop multiversioning
+BOOL WOPT_Enable_Loop_Multiver_Set = FALSE;
+BOOL WOPT_Enable_Loop_Multiver_Aggressive = FALSE;
+BOOL WOPT_Enable_Useless_Store_Elimination = TRUE;
 #if defined(TARG_SL)
 BOOL WOPT_Enable_STR_Short = FALSE; // multimedia apps are 16bit, the iv does not get > 16bits
 #else
@@ -758,15 +769,24 @@ static OPTION_DESC Options_WOPT[] = {
     TRUE, 0, 0,	&WOPT_Enable_New_Phase_Ordering, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "pro_loop_fusion_trans", "pro_loop_fusion_trans",
     FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Fusion_Trans, NULL },
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "pro_loop_interchange_trans", "pro_loop_interchange_trans",
+    FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Interchange_Trans, NULL },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "reasso_cse", "reasso_cse",
+    TRUE, 0, 1, &WOPT_Enable_Reassociation_CSE, NULL },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "mem_clear_remove", "mem_clear_remove",
+    FALSE, 0, 1, &WOPT_Enable_Mem_Clear_Remove, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "if_merge_limit",              "",
     INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_If_Merge_Limit, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "tail_dup_limit",              "",
     INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Tail_Dup_Limit, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "tail_dup_max_clone",              "",
     INT32_MAX, 0, INT32_MAX,    &WOPT_Tail_Dup_Max_Clone, NULL },
+  { OVK_INT32,  OV_VISIBLE,    FALSE, "if_cond_limit",              "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_If_Cond_Limit, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "pro_loop_fusion_func_limit",              "",
     INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Pro_Loop_Fusion_Func_Limit, NULL },
-  
+  { OVK_INT32,  OV_VISIBLE,    FALSE, "pro_loop_interchange_func_limit",              "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Pro_Loop_Interchange_Func_Limit, NULL },
 
 #ifdef KEY
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "mem_opnds", "mem_opnds",
@@ -812,7 +832,11 @@ static OPTION_DESC Options_WOPT[] = {
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "pt_summary",   NULL, 
     0, 0, 0,   &WOPT_Enable_Pt_Summary, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "loop_multiver",   NULL, 
-    0, 0, 0,   &WOPT_Enable_Loop_Multiver, NULL },
+    0, 0, 0,   &WOPT_Enable_Loop_Multiver, &WOPT_Enable_Loop_Multiver_Set },
+  { OVK_BOOL,  OV_INTERNAL,    TRUE, "loop_multiver_aggr",   NULL,
+    0, 0, 0,   &WOPT_Enable_Loop_Multiver_Aggressive, NULL },
+  { OVK_BOOL,  OV_INTERNAL,    TRUE, "useless_store_elimination",   NULL,
+    0, 0, 0,   &WOPT_Enable_Useless_Store_Elimination, NULL },
 #ifdef TARG_NVISA
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "estr_outer_loop",        "",
     0, 0, 0,    &WOPT_Enable_Estr_Outer_Loop, NULL },

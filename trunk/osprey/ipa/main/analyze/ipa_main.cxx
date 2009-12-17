@@ -254,6 +254,8 @@ static void Perform_Inline_Script_Analysis(IPA_CALL_GRAPH* cg, MEM_POOL* pool, M
 
 extern void IPA_struct_opt_legality (void);
 
+extern void IPA_identify_no_return_procs(void);
+
 //-------------------------------------------------------------------------
 // the main analysis phase at work! 
 //-------------------------------------------------------------------------
@@ -581,7 +583,8 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
         IPA_Fast_Static_Analysis_VF ();
     }
 #endif // KEY && !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
-    // The following if-block is left by earlier developer. IPA_Enable_Devirtualization is not active in open64 4.2-1.
+    // Devirtualization using IPA_Enable_Devirtualization enabled path is not used from open64 4.2.2-1. Please use IPA_Enable_Fast_Static_Analysis_VF enabled path for understanding devirtualization.
+
     if (IPA_Enable_Devirtualization) { 
         Temporary_Error_Phase ephase ("IPA Devirtualization"); 
         IPA_Class_Hierarchy = Build_Class_Hierarchy(); 
@@ -848,4 +851,5 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
     CGB_IPA_Terminate();
 #endif
 
+   IPA_identify_no_return_procs();
 }

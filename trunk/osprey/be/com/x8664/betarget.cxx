@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -154,9 +158,12 @@ TAS_To_TOP (WN *tas_wn)
 	return TOP_UNDEFINED;
       return MTYPE_float(kid_mtype) ? TOP_movx2g : TOP_nop;
     case OPC_F8TAS:
-      if (Is_Target_32bit())
+      if (MTYPE_float(kid_mtype))
+        return TOP_nop;
+      else if (Is_Target_32bit())
 	return TOP_UNDEFINED;
-      return MTYPE_float(kid_mtype) ? TOP_nop : TOP_movg2x64;
+      else
+        return TOP_movg2x64;
     case OPC_F4TAS:
       if (Is_Target_32bit() && !Is_Target_SSE2())
 	return TOP_UNDEFINED;

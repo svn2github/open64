@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
  */
 
@@ -88,6 +92,10 @@ void Initialize_Targ_Info(void)
 
   case TARGET_barcelona:
     proc = PROCESSOR_barcelona;
+    break;
+
+  case TARGET_orochi:
+    proc = PROCESSOR_orochi;
     break;
 
   case TARGET_pentium4:

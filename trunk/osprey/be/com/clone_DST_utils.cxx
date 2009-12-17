@@ -91,7 +91,7 @@ create_ipa_internal_name(void)
 #endif //  !defined(_STANDALONE_INLINER)
 
 
-static DST_IDX
+DST_IDX
 get_abstract_origin(DST_IDX concrete_instance)
 {
     DST_INFO *dst = DST_INFO_IDX_TO_PTR(concrete_instance);

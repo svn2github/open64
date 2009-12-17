@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
 */ 
 /* 
@@ -1163,7 +1167,8 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
                           idx = MTYPE_To_TY (MTYPE_M8I2);
                           break;
                         case 4:
-                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)                            idx = MTYPE_To_TY (MTYPE_V8I4);
+                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)
+                            idx = MTYPE_To_TY (MTYPE_V8I4);
                           else
                             idx = MTYPE_To_TY (MTYPE_M8F4);
                           break;
@@ -1180,12 +1185,14 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
                           idx = MTYPE_To_TY (MTYPE_V16I2);
                           break;
                         case 4:
-                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)                            idx = MTYPE_To_TY (MTYPE_V16I4);
+                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)
+                            idx = MTYPE_To_TY (MTYPE_V16I4);
                           else
                             idx = MTYPE_To_TY (MTYPE_V16F4);
                           break;
                         case 8:
-                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)                            idx = MTYPE_To_TY (MTYPE_V16I8);
+                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)
+                            idx = MTYPE_To_TY (MTYPE_V16I8);
                           else
                             idx = MTYPE_To_TY (MTYPE_V16F8);
                           break;

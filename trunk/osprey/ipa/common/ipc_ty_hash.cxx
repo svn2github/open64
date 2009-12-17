@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -140,9 +144,21 @@ namespace
             if (k1.size != k2.size || 
                 k1.kind != k2.kind || 
                 k1.mtype != k2.mtype ||
-                k1.flags != k2.flags ||
                 k1.u1.fld != k2.u1.fld)
                 return FALSE;
+            
+            // for struct types, the TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE
+            // flag may be set.  This should not block type merging.
+            UINT k1_flags_copy = k1.flags;
+            UINT k2_flags_copy = k2.flags;
+            if (k1.kind == KIND_STRUCT)
+            {
+              k1_flags_copy &= ~TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE;
+              k2_flags_copy &= ~TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE;
+            }
+            if (k1_flags_copy != k2_flags_copy)
+              return FALSE;
+
             // Struct and array maybe anonymous.
             // Do not compare their names if the 2 TY are both anonymous
             if (TY_kind(k1) == KIND_STRUCT || TY_kind(k1) == KIND_ARRAY) {
@@ -661,7 +677,12 @@ namespace
         const TY& ty = Is_File_Idx (idx) ?
                        ty_table[Get_Idx (idx)] : Ty_Table[make_TY_IDX (idx)];
         const UINT32* p = reinterpret_cast<const UINT32*> (&ty);
-        size_t value = p[0] + p[1] + p[2];
+        // TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE flag may be set on
+        // this type, but should not affect type merging.  Strip out
+        // that flag value before computing hash value
+        // TY_flags is 10th word in TY entry
+        UINT32 p_2 = p[2] & ~(TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE << 16);
+        size_t value = p[0] + p[1] + p_2;
         switch (TY_kind (ty)) {
             case KIND_SCALAR:
             case KIND_VOID:
@@ -765,7 +786,8 @@ namespace
 		ty_table[Get_Idx (idx)] : Ty_Table[make_TY_IDX (idx)];
 
 	    const UINT32* p = reinterpret_cast<const UINT32*> (&ty);
-	    size_t value = p[0] + p[1] + p[2];
+            UINT32 p_2 = p[2] & ~(TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE << 16);
+	    size_t value = p[0] + p[1] + p_2;
 
 	    switch (TY_kind (ty)) {
 	    case KIND_SCALAR:
@@ -876,12 +898,19 @@ namespace
 		    (*str_map)[TY_name_idx (new_ty)] != TY_name_idx (merged_ty))
 		    return FALSE;
 
-	        const UINT32* p1 = reinterpret_cast<const UINT32*> (&new_ty);
-	        const UINT32* p2 = reinterpret_cast<const UINT32*> (&merged_ty);
 
-	        if (p1[2] != p2[2])
-		    return FALSE;
-	    
+                if (TY_kind(new_ty) != TY_kind(merged_ty))
+                  return FALSE;
+                
+                if (TY_mtype(new_ty) != TY_mtype(merged_ty))
+                  return FALSE;
+                
+                if ((TY_flags(new_ty) & 
+                     ~TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE) !=
+                    (TY_flags(merged_ty) &
+                     ~TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE))
+                  return FALSE;
+
 	        switch (TY_kind (new_ty)) {
 	        case KIND_SCALAR:
 	        case KIND_VOID:
@@ -946,10 +975,15 @@ namespace
                         return FALSE;
                 }
           
-                const UINT32* p1 = reinterpret_cast<const UINT32*> (&ty1);
-                const UINT32* p2 = reinterpret_cast<const UINT32*> (&ty2);
-                if (p1[2] != p2[2])
-                    return FALSE;
+                if (TY_mtype(ty1) != TY_mtype(ty2))
+                  return FALSE;
+                
+                // byte 10 contains TY_flags.  Strip out
+                // TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE flag which
+                // should not influence type merging
+                if (TY_flags(ty1) & ~TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE !=
+                    TY_flags(ty2) & ~TY_COMPLETE_STRUCT_RELAYOUT_CANDIDATE)
+                  return FALSE;
           
                 switch (TY_kind (ty1)) {
                     case KIND_SCALAR:

@@ -244,20 +244,21 @@ init_given_crt_path (char *crtname, char *prog_name, char *tmp_name)
         add_library_dir (&buf[0]);
 }
 
-/* Find out where libstdc++.so file is stored.
+/* Find out where libstdc++.so/libstdc++.a file is stored.
    Invoke gcc -print-file-name=libstdc++.so to find the path.
 */
-void init_stdc_plus_plus_path (void)
+void init_stdc_plus_plus_path (boolean is_shared)
 {
 #ifndef TARG_SL
         phases_t ld_phase = determine_ld_phase (FALSE);
         char buf[1024];
         char* p;
+        char* lib_name = is_shared ? "libstdc++.so" : "libstdc++.a";
         find_full_path_of_gcc_file (get_full_phase_name (ld_phase), 
-                                    "libstdc++.so",  &buf[0], sizeof(buf));
+                                    lib_name,  &buf[0], sizeof(buf));
         p = drop_path (&buf[0]);
         *p = '\0';
-        if (debug) fprintf(stderr, "libstdc++.so found in %s\n", &buf[0]);
+        if (debug) fprintf(stderr, "%s found in %s\n", lib_name, &buf[0]);
         add_library_dir (&buf[0]);
 #else
 	char *tmp_name = create_temp_file_name("sl");
@@ -395,30 +396,30 @@ add_object (int flag, char *arg)
 
 			/* add -lmv -lmblah */
 			if (xpg_flag && invoked_lang == L_f77) {
-				add_library(lib_objects, "mv");
-				add_library(lib_objects, "m");
-#ifdef TARG_X8664_WITH_LIBACML_MV
+#ifdef TARG_X8664
 				if (abi != ABI_N32)
 					add_library(objects, "acml_mv");
 #endif
+				add_library(lib_objects, "mv");
+				add_library(lib_objects, "m");
 			} else {
+#ifdef TARG_X8664
+				if (abi != ABI_N32)
+					add_library(objects, "acml_mv");
+#endif
 #ifndef TARG_SL
 				add_library(objects, "mv");
 #endif
 				add_library(objects, "m");
-#ifdef TARG_X8664_WITH_LIBACML_MV
-				if (abi != ABI_N32)
-					add_library(objects, "acml_mv");
-#endif
 			}
 #ifndef TARG_SL
 			if (invoked_lang == L_CC) {
-			    add_library(cxx_prelinker_objects, "mv");
-			    add_library(cxx_prelinker_objects, "m");
-#ifdef TARG_X8664_WITH_LIBACML_MV
+#ifdef TARG_X8664
 			    if (abi != ABI_N32)
 				add_library(objects, "acml_mv");
 #endif
+			    add_library(cxx_prelinker_objects, "mv");
+			    add_library(cxx_prelinker_objects, "m");
 			}
 #endif
 #ifdef TARG_X8664
@@ -455,7 +456,7 @@ add_object (int flag, char *arg)
 
 	       break;
 	case O_WlC:
-	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
+	       if (ld_phase == P_ld || ld_phase == P_ldplus || ld_phase == P_ipa_link) {
 #ifdef TARG_SL
                  // ld didn't support -Wl in SL
                  add_string(objects, arg);

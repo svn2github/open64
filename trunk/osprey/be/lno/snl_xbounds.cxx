@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -368,8 +372,6 @@ void SNL_BOUNDS_INFO::Reset_Bounds_To(INT rows_le, INT rows_eq, INT cols)
 
 void SNL_BOUNDS_INFO::Canonicize(INT nloops, DOLOOP_STACK* stack, INT stk_first)
 {
-  Is_True(stk_first == _outermost_depth, ("Problem in Canonicize"));
-
   SYSTEM_OF_EQUATIONS*		soeb = &Bounds();
   SYSTEM_OF_EQUATIONS*		soec = &Conditionals();
 

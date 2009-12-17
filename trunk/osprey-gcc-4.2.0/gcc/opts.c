@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 /* Command line option handling.
@@ -1026,6 +1030,9 @@ common_handle_option (size_t scode, const char *arg, int value,
     case OPT_spinfile:
       flag_spin_file = 1;
       spin_file_name = arg;
+
+      /* Disable GNU inlining when generating SPIN.  */
+      flag_no_inline = 1;
       break;
 #endif
 

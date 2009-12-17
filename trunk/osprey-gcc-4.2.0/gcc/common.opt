@@ -1,4 +1,6 @@
 ;
+; Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+;
 ; Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
 ;
 ; Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
@@ -419,9 +421,8 @@ femit-class-debug-always
 Common Report Var(flag_emit_class_debug_always) Init(1)
 Do not suppress C++ class debug information.
 
-; KEY
 fexceptions
-Common Report Var(key_exceptions)
+Common Report Var(flag_exceptions)
 Enable exception handling
 
 fexpensive-optimizations
@@ -488,11 +489,6 @@ Common Report Var(flag_gcse_after_reload)
 Perform global common subexpression elimination after register allocation
 has finished
 
-; KEY
-fgnu-exceptions
-Common Report Var(flag_exceptions)
-Enable GNU exception handling
-
 fguess-branch-probability
 Common Report Var(flag_guess_branch_prob)
 Enable guessing of branch probabilities
@@ -540,10 +536,8 @@ Do not generate .size directives
 ; static inline functions; instead, `inlines' are written out
 ; only when actually used.  Used in conjunction with -g.  Also
 ; does the right thing with #pragma interface.
-;
-; KEY: Disable GNU inlining
 finline
-Common Report Var(flag_no_inline,0) Init(1)
+Common Report Var(flag_no_inline,0) Init(2)
 Pay attention to the \"inline\" keyword
 
 finline-functions
