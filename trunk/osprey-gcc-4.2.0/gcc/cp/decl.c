@@ -2658,8 +2658,7 @@ finish_case_label (tree low_value, tree high_value)
   if (!check_switch_goto (switch_stack->level))
     return error_mark_node;
 
-  r = c_add_case_label (switch_stack->cases, cond, 
-            SWITCH_STMT_TYPE (switch_stack->switch_stmt),
+  r = c_add_case_label (switch_stack->cases, cond, TREE_TYPE (cond),
 			low_value, high_value);
 
   /* After labels, make any new cleanups in the function go into their
