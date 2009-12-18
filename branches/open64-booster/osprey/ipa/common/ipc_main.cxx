@@ -121,6 +121,12 @@ IP_set_target(void)
     Use_32_Bit_Pointers = IPA_Target_Type == IP_32_bit_ABI;
 #endif
 
+#ifdef TARG_LOONGSON
+    Target_ABI = IPA_Target_Type == IP_64_bit_ABI ? ABI_n64 : ABI_n32;
+    Target_ISA = TARGET_ISA_LOONGSON;
+    Use_32_Bit_Pointers = IPA_Target_Type == IP_32_bit_ABI;
+#endif
+
     IPA_Configure_Target ();
 }
 
@@ -262,7 +268,7 @@ ipa_driver (INT argc, char **argv)
 
     // turn off these features until they are ported.
     IPA_Enable_Cloning = FALSE;
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
     IPA_Enable_AutoGnum = FALSE;
 #else
     IPA_Enable_AutoGnum = TRUE;

@@ -112,6 +112,10 @@
 #include "gra_para_region.h" // for gra_para_region_mgr
 #endif
 #include "tag.h"
+#ifdef TARG_LOONGSON
+#include "ipfec_options.h"
+#include "lgra_opt_spill.h"
+#endif
 
 #ifdef KEY
 static BOOL large_asm_clobber_set[ISA_REGISTER_CLASS_MAX+1];
@@ -998,7 +1002,11 @@ Setup_Live_Ranges (BB *bb, BOOL in_lra, MEM_POOL *pool)
 }
 
 
+#ifdef TARG_LOONGSON
+BOOL
+#else
 static BOOL
+#endif
 Is_OP_Spill_Load (OP *op, ST *spill_loc)
 {
   if (!OP_load(op)) return FALSE;
@@ -1017,7 +1025,11 @@ Is_OP_Spill_Load (OP *op, ST *spill_loc)
           TN_var(ctn) == spill_loc);
 }
 
+#ifdef TARG_LOONGSON
+BOOL
+#else
 static BOOL
+#endif
 Is_OP_Spill_Store (OP *op, ST *spill_loc)
 {
   if (!OP_store(op)) return FALSE;
@@ -2071,7 +2083,7 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
                 }
 
                 BB_Remove_Op (bb, op);
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
                 Reset_BB_scheduled(bb);
 #endif
                 return TRUE;
@@ -2309,6 +2321,12 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 	OP_x86_style( op ) &&
 	result_reg <= REGISTER_MAX ){
       prefer_reg = result_reg;
+    }
+#endif
+#ifdef TARG_LOONGSON
+    if (OP_call(op) &&
+          (regclass==ISA_REGISTER_CLASS_integer)) {
+       must_use = REGISTER_SET_Difference1(must_use,REGISTER_ra);
     }
 #endif
     
@@ -5941,8 +5959,20 @@ LRA_examine_last_op_needs (BB *bb, ISA_REGISTER_CLASS cl)
 
   if (PROC_has_branch_delay_slot() &&
       (last_op != NULL) &&
-      (OP_prev(last_op) != NULL)) last_op = OP_prev(last_op);
+#ifdef TARG_LOONGSON      
+      (OP_prev(last_op) != NULL) &&
+      !OP_xfer(last_op)
+#else 
+      (OP_prev(last_op) != NULL) 
+#endif
+      )
+        last_op = OP_prev(last_op);
 
+#ifdef TARG_LOONGSON
+  /* We do a precise count of registers needed.*/
+  if (last_op != NULL && OP_xfer(last_op))
+    min_regs = CGTARG_branch_op_need_register_numbers(last_op,cl);
+#else
   if (last_op != NULL && OP_xfer(last_op)) {
     INT i;
     TN *tn;
@@ -5957,6 +5987,7 @@ LRA_examine_last_op_needs (BB *bb, ISA_REGISTER_CLASS cl)
     }
 
   }
+#endif
 
   if ((min_regs == 0) && (cl == ISA_REGISTER_CLASS_integer)) {
    /* We need to have at least 1 so that we can insert a spill, if needed. */

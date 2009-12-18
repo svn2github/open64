@@ -130,6 +130,9 @@ endif
 ifeq ($(BUILD_TARGET), NVISA)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 HOSTDEFS += -DIs_True_On
@@ -371,6 +374,13 @@ COMMON_TARG_INFO_ACCESS_SRCS = \
   ti_res_res.c
 endif
 
+ifeq ($(BUILD_TARGET), LOONGSON)
+COMMON_TARG_INFO_ACCESS_SRCS = \
+  ti_init.c		\
+  ti_res.c              \
+  ti_res_count.c        \
+  ti_res_res.c
+endif
 
 ifeq ($(BUILD_TARGET), X8664)
 COMMON_UTIL_QUAD_SRCS = \
@@ -420,10 +430,18 @@ else
           quadsim.c
       endif
     else
-      COMMON_UTIL_QUAD_SRCS =
+      ifeq ($(BUILD_TARGET), LOONGSON)
+        COMMON_UTIL_QUAD_SRCS = \
+          softfloat.c           \
+          c_q_to_a.c            \
+          c_qtenscale.c         \
+          c_qwmultu.c           \
+          quadsim.c		
+      else
+        COMMON_UTIL_QUAD_SRCS = 	
+      endif
     endif
   endif
-
 endif
 
 COMMON_UTIL_SRCS =	\
@@ -567,7 +585,12 @@ ifeq ($(BUILD_TARGET), SL)
 COMMON_UTIL_TARG_AS_SRCS = \
   c_qwmultu.s
 else
+ifeq ($(BUILD_TARGET), LOONGSON)
+COMMON_UTIL_TARG_AS_SRCS = \
+  c_qwmultu.s
+else
 COMMON_UTIL_TARG_AS_SRCS =
+endif
 endif
 endif
 
@@ -689,6 +712,9 @@ TARGET_SO = pentium.so
 endif
 ifeq ($(BUILD_TARGET), X8664)
 TARGET_SO = opteron.so
+endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+TARGET_SO = loongson.so
 endif
 
 VPATH    =  $(SRC_DIRS)

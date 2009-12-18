@@ -62,7 +62,7 @@ extern void Expand_Sub (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 extern void Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
 extern void Expand_Aux_Sign (TN *result, TN *x, TN *y, TYPE_ID mtype, OPS *ops);
 extern void Expand_Abs (TN *result, TN *x, TYPE_ID mtype, OPS *ops);
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 extern void Expand_Multiply (TN *result, TN *x, TN *y, TYPE_ID mtype, OPS *ops, OPCODE opcode);
 #else
 extern void Expand_Multiply (TN *result, TN *x, TN *y, TYPE_ID mtype, OPS *ops);
@@ -96,7 +96,7 @@ extern void Expand_Convert_Length (TN *dest, TN *src, TN *length, TYPE_ID mtype,
 #ifdef TARG_NVISA
 extern void Expand_Convert (TN *result, TYPE_ID rtype, TN *src, TYPE_ID stype, OPS *ops);
 #endif
-#if defined(TARG_X8664) || defined(TARG_MIPS)
+#if defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
 extern void Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
 #else
 extern void Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID mtype, OPS *ops);
@@ -143,7 +143,7 @@ TN* Create_TN_Pair( TN*, TYPE_ID );
 void Create_TN_Pair( TN*, TN* );
 #endif /* TARG_X8664 */
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 extern TN* Expand_Immediate_Into_Register (TN *src, OPS *ops);
 #else
 extern TN* Expand_Immediate_Into_Register (TN *src, BOOL is_64bit, OPS *ops);
@@ -182,7 +182,7 @@ extern TOP Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops);
 
 /* in exp_divrem: */
 extern TN* Expand_Divide (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 extern void Expand_DivRem (TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops, OPCODE opcode);
 extern void Expand_Rem (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops, OPCODE opcode);
 extern void Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops, OPCODE opcode);

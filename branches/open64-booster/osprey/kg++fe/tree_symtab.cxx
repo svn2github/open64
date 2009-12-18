@@ -490,7 +490,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #endif 
 		  break;
 
-#if !defined(TARG_X8664) && !defined(TARG_MIPS) && !defined(TARG_IA64) || defined(TARG_SL)
+#if !defined(TARG_X8664) && !defined(TARG_MIPS) && !defined(TARG_IA64) && !defined(TARG_LOONGSON) || defined(TARG_SL) 
 #ifdef _LP64
 		case 16:  mtype = MTYPE_I8; break;
 #endif /* _LP64 */
@@ -516,10 +516,16 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
                   TY_Init (ty, tsize, KIND_SCALAR, mtype,
                            Save_Str(Get_Name(TYPE_NAME(type_tree))) );
                   Set_TY_no_ansi_alias (ty);
+#if defined(TARG_SL)
+                  // for -m32, it is not the predefined type, alignment shoule be set.
+                  // Corresponding to following code about bug#2932.
+                  if (!TARGET_64BIT)  
+                    Set_TY_align (idx, align);
+#endif
                 } else
 #endif
 		idx = MTYPE_To_TY (mtype);	// use predefined type
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
 		/* At least for -m32, the alignment is not the same as the data
 		   type's natural size. (bug#2932)
 		*/
@@ -548,7 +554,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #if defined(TARG_IA64)
                 case 12:
                 case 16: mtype = MTYPE_F10; break;
-#elif defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+#elif defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_LOONGSON)
                 case 12:
                 case 16: mtype = MTYPE_FQ; break;
 #else
@@ -607,12 +613,12 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		if (TREE_CODE(TYPE_SIZE(TREE_TYPE(type_tree))) == INTEGER_CST) {
 			Set_ARB_const_stride (arb);
 			Set_ARB_stride_val (arb, 
-				Get_Integer_Value (TYPE_SIZE(TREE_TYPE(type_tree))) 
-				/ BITSPERBYTE);
+				Get_Integer_Value (TYPE_SIZE_UNIT(TREE_TYPE(type_tree))));
 		}
 		else {
 			WN *swn;
-			swn = WFE_Expand_Expr (TYPE_SIZE(TREE_TYPE(type_tree)));
+			swn = WFE_Expand_Expr (TYPE_SIZE_UNIT(TREE_TYPE(type_tree)));
+			
 			if (WN_opcode (swn) == OPC_U4I4CVT ||
 			    WN_opcode (swn) == OPC_U8I8CVT) {
 				swn = WN_kid0 (swn);
@@ -623,9 +629,8 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			// and use LDID of that stored address as swn.
 			// Copied from Wfe_Save_Expr in wfe_expr.cxx
 			if (WN_operator (swn) != OPR_LDID) {
-			  TY_IDX    ty_idx  = 
-			    Get_TY (TREE_TYPE (type_size));
-			  TYPE_ID   mtype   = TY_mtype (ty_idx);
+			  TYPE_ID   mtype   = WN_rtype(swn);
+			  TY_IDX    ty_idx  = MTYPE_To_TY(mtype);
 			  ST       *st;
 			  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
 			  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
@@ -672,7 +677,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			TY_IDX ty_idx;
 			WN *wn;
 			if (WN_operator (uwn) != OPR_LDID) {
-				ty_idx = Get_TY (TREE_TYPE (TYPE_MAX_VALUE (TYPE_DOMAIN (type_tree)) ) );
+				ty_idx  = MTYPE_To_TY(WN_rtype(uwn));
 				st = Gen_Temp_Symbol (ty_idx, "__vla_bound");
 #ifdef KEY
 			  	WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
@@ -697,7 +702,9 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		}
 		if (variable_size) {
 			WN *swn, *wn;
-			swn = WFE_Expand_Expr (type_size);
+
+			swn = WFE_Expand_Expr (TYPE_SIZE_UNIT(type_tree));
+
 			if (TY_size(TY_etype(ty))) {
 				if (WN_opcode (swn) == OPC_U4I4CVT ||
 				    WN_opcode (swn) == OPC_U8I8CVT) {
@@ -709,12 +716,11 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				// and use LDID of that stored address as swn.
 				// Copied from Wfe_Save_Expr in wfe_expr.cxx
 				if (WN_operator (swn) != OPR_LDID) {
-				  TY_IDX    ty_idx  = 
-				    Get_TY (TREE_TYPE (type_size));
-				  TYPE_ID   mtype   = TY_mtype (ty_idx);
+				  TYPE_ID   mtype   = WN_rtype(swn);
+				  TY_IDX    ty_idx  = MTYPE_To_TY(mtype);
 				  ST       *st;
 				  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
-			  	  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+				  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
 				  WFE_Set_ST_Addr_Saved (swn);
 				  swn = WN_Stid (mtype, 0, st, ty_idx, swn);
 				  WFE_Stmt_Append (swn, Get_Srcpos());
@@ -726,7 +732,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				ST *st = WN_st (swn);
 				TY_IDX ty_idx = ST_type (st);
 				TYPE_ID mtype = TY_mtype (ty_idx);
-				swn = WN_Div (mtype, swn, WN_Intconst (mtype, BITSPERBYTE));
+
 				wn = WN_Stid (mtype, 0, st, ty_idx, swn);
 				WFE_Stmt_Append (wn, Get_Srcpos());
 			}

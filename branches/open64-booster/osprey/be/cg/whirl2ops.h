@@ -159,6 +159,11 @@ extern BB_MAP outer_label_map;
 #if defined(TARG_X8664) || defined(TARG_SL)
 extern BOOL W2OPS_Pragma_Preamble_End_Seen (void);
 #endif
+#ifdef TARG_LOONGSON
+/* wrapper for calling the static functions */
+extern void Begin_New_Basic_Block(void);
+extern void Start_New_Label(LABEL_IDX lb_idx, LABEL *lb, const char *str);
+#endif
 
 /* For new call inserted during whirl to ops, 
  * we need to finish current BB and start new bb

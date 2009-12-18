@@ -302,7 +302,12 @@ WFE_Start_Function (tree fndecl)
 
 #ifdef KEY
     if (CURRENT_SYMTAB > 1)
+#if defined(TARG_SL)
+      ErrMsg (EC_Unimplemented_Feature, "Nested functions",
+        Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
+#else
       ErrMsg (EC_Unimplemented_Feature, "Nested functions");
+#endif
 #endif
     New_Scope (CURRENT_SYMTAB + 1, Malloc_Mem_Pool, TRUE);
 
@@ -877,8 +882,12 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
     case 16:
       REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, buffer);
       WFE_Convert_To_Host_Order(buffer);
+#ifdef TARG_LOONGSON
+      tc = Host_To_Targ_Quad (*(QUAD_TYPE *) &buffer);
+#else
       //tc = Host_To_Targ_Quad (*(long double *) &buffer);
       tc = Host_To_Targ_Quad (WFE_Convert_Internal_Real_to_IEEE_Double_Extended (real));
+#endif
       break;
 #endif
     default:
@@ -921,10 +930,19 @@ WFE_Add_Aggregate_Init_Complex (REAL_VALUE_TYPE rval, REAL_VALUE_TYPE ival, INT 
       break;
     case 24:
     case 32:
+#ifdef TARG_LOONGSON
+      REAL_VALUE_TO_TARGET_LONG_DOUBLE (rval, buffer);
+      WFE_Convert_To_Host_Order(buffer);
+      rtc = Host_To_Targ_Quad (*(QUAD_TYPE *) &buffer);
+      REAL_VALUE_TO_TARGET_LONG_DOUBLE (ival, buffer);
+      WFE_Convert_To_Host_Order(buffer);
+      itc = Host_To_Targ_Quad (*(QUAD_TYPE *) &buffer);
+#else
       rtc = Host_To_Targ_Quad (
 	WFE_Convert_Internal_Real_to_IEEE_Double_Extended (rval));
       itc = Host_To_Targ_Quad (
 	WFE_Convert_Internal_Real_to_IEEE_Double_Extended (ival));
+#endif
       break;
     default:
       FmtAssert(FALSE, ("WFE_Add_Aggregate_Init_Complex unexpected size"));
@@ -2619,11 +2637,9 @@ WFE_Alloca_ST (tree decl)
   Set_ST_is_temp_var (alloca_st);
   Set_ST_pt_to_unique_mem (alloca_st);
   Set_ST_base_idx (st, ST_st_idx (alloca_st));
-  WN *swn = WFE_Expand_Expr (TYPE_SIZE(TREE_TYPE(decl)));
-#ifdef KEY  // TYPE_SIZE is size of array in bits.  Convert to bytes.  Bug 6887.
-  TYPE_ID mtype = WN_rtype(swn);
-  swn = WN_Div(mtype, swn, WN_Intconst(mtype, BITSPERBYTE));
-#endif
+
+  WN *swn = WFE_Expand_Expr (TYPE_SIZE_UNIT(TREE_TYPE(decl)));
+
   WN *wn  = WN_CreateAlloca (swn);
   wn = WN_Stid (Pointer_Mtype, 0, alloca_st, ST_type (alloca_st), wn);
   WFE_Stmt_Append (wn, Get_Srcpos());

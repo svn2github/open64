@@ -1742,6 +1742,9 @@ static OP *addr_base_offset(OP *op, ST **initial_sym, ST **sym, TN **base_tn, IN
         defop_offset_tn = OP_opnd(defop, 1);
 #ifdef TARG_IA64    // in pathscale-3.0 is #ifdef KEY
         defop_base_tn = OP_opnd(defop, 2);
+#elif TARG_LOONGSON
+        defop_offset_tn = OP_opnd(defop, 2);
+        defop_base_tn = OP_opnd(defop, 1);
 #else
         defop_base_tn = OP_opnd(defop, 0);
 #endif
@@ -1749,6 +1752,8 @@ static OP *addr_base_offset(OP *op, ST **initial_sym, ST **sym, TN **base_tn, IN
           *base_tn = defop_base_tn;
 #ifdef TARG_IA64
 	  base_num = 2;
+#elif TARG_LOONGSON
+          base_num = 1;
 #else
           base_num = 0;
 #endif
@@ -1878,7 +1883,7 @@ succ_initial_sym) != SCLASS_UNKNOWN)) {
           return TRUE;  
         } else {
 	  /* The base symbols are the same so we can use offsets to determine conflicts. */
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 	  /* Given the same symbols, we need to check base registers, too. */
 	  if( pred_base != succ_base )
 	    return FALSE;
@@ -1888,7 +1893,7 @@ succ_initial_sym) != SCLASS_UNKNOWN)) {
        /* The index computations have a common origin so we can use offsets 
 to determine conflicts. */
       } else {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 	if( pred_base != succ_base ||
 	    pred_root != pred_op   ||
 	    succ_root != succ_op ){
@@ -2142,6 +2147,8 @@ static SAME_ADDR_RESULT CG_DEP_Address_Analyze(OP *pred_op, OP *succ_op)
 #if defined (TARG_SL)
   if (CG_ignore_mem_alias)
     return DONT_KNOW;
+  if(OP_sl_special_ldst(pred_op) || OP_sl_special_ldst(succ_op))
+    return DONT_KNOW;
 #endif
   
 #ifndef TARG_X8664
@@ -2235,7 +2242,7 @@ inline BOOL under_same_cond_tn(OP *pred_op, OP *succ_op, UINT8 omega)
  * ---------------------------------------------------------------------
  */
 {
-#ifdef TARG_X8664 // merged from pathscale-3.0
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) // merged from pathscale-3.0
 #ifdef KEY
   // CIO can not do WW elimination because MIPS is not predicated 
   // architecture
@@ -3284,6 +3291,9 @@ CG_DEP_Can_OP_Move_Across_Call(OP *cur_op, OP *call_op, BOOL forw,
 	if (reg == REGISTER_UNDEFINED) continue;
 	// Is_True(reg != REGISTER_UNDEFINED, ("reg should not be REGISTER_UNDEFINED"));
 #endif
+#ifdef TARG_LOONGSON
+     	if (!reg) return FALSE;
+#endif
 	ISA_REGISTER_CLASS rclass = TN_register_class (result);
 	 
 	// prune out regs which have implicit meaning.
@@ -3802,7 +3812,13 @@ void add_mem_arcs_from(UINT16 op_idx)
     }
 
     if (get_mem_dep(op, succ, &definite, cyclic ? &omega : NULL)) {
-
+#ifdef TARG_SL
+    // insert nop when c3 mem op points to same location of normal mem op in same BB
+    if (!cyclic && (Is_Target_Sl1_pcore() || Is_Target_Sl1_dsp()) 
+      && (OP_bb(op) == OP_bb(succ))) {
+      CGTARG_Mem_AR_Dep(op, succ, kind);
+    }
+#endif
       // For OOO machine (eg. T5), non-definite memory dependences can be 
       // relaxed to edges with zero latency. The belief is that this can 
       // help avoid creating false dependences with biased critical info. 

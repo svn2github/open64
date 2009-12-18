@@ -1,3 +1,15 @@
+/********************************************************************\
+|*                                                                  *|   
+|*  Copyright (c) 2006 by SimpLight Nanoelectronics.                *|
+|*  All rights reserved                                             *|
+|*                                                                  *|
+|*  This program is free software; you can redistribute it and/or   *|
+|*  modify it under the terms of the GNU General Public License as  *|
+|*  published by the Free Software Foundation; either version 2,    *|
+|*  or (at your option) any later version.                          *|
+|*                                                                  *|
+\********************************************************************/
+
 /*
  * Module: disp_instr.cxx
  *
@@ -901,6 +913,23 @@ void SL1_patch() {
             OP *nop = Mk_OP(TOP_nop);
             OPS_Insert_Op_Before(&(bb->ops), op, nop);
           }
+        }
+      }
+    }
+
+    // Insert nop if bb's entry has c3_load or c3_store instruction to make sure
+    // the correctness if there is a store instruction in the prev-BB.
+    if (CG_enbale_C3_AR_dependence_workaround) {
+      INT num_nop = nops;
+      for (op = BB_first_op(bb); (op != NULL) && (num_nop >= 0); op = OP_next(op)) {
+        if (OP_c3_load(op) || OP_c3_store(op)) {
+          for (UINT i=0; i<num_nop; i++) {
+            OP *op1 = Mk_OP(TOP_nop);
+            BB_Insert_Op_Before(bb, op, op1);
+          }
+          break;
+        } else if (OP_code(op) != TOP_noop){
+          num_nop--;
         }
       }
     }

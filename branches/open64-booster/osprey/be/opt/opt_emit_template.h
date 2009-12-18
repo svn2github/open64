@@ -436,7 +436,7 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       wn = WN_Tas(exp->Dtyp(), 
 		  exp->Ty_index(), 
 		  Gen_exp_wn(exp->Get_opnd(0), emitter));
-#ifdef TARG_X8664 // bug 11752: make sure operand type has same size
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) // bug 11752: make sure operand type has same size
       if (MTYPE_byte_size(WN_rtype(wn)) > MTYPE_byte_size(WN_rtype(WN_kid0(wn))) &&
           WN_operator(WN_kid0(wn)) == OPR_INTCONST)
         WN_set_rtype(WN_kid0(wn), Mtype_TransferSize(MTYPE_I8, WN_rtype(WN_kid0(wn))));
@@ -1193,14 +1193,14 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       if(srep->SL2_internal_mem_ofst())
         WN_Set_is_internal_mem_ofst(rwn); 
 #endif 
-#ifdef TARG_X8664 // bug 6910
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) // bug 6910
       if (emitter->Htable()->Phase() != MAINOPT_PHASE &&
 	  WN_operator(rhs_wn) == OPR_INTCONST &&
 	  MTYPE_byte_size(WN_rtype(rhs_wn)) < MTYPE_byte_size(lhs->Dsctyp()) &&
 	  lhs->Dsctyp() != MTYPE_BS /* bug 14453 */)
 	WN_set_rtype(rhs_wn, Mtype_TransferSize(lhs->Dsctyp(), WN_rtype(rhs_wn)));
 #endif
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) 
       if (Is_Target_32bit() && MTYPE_byte_size(WN_rtype(rhs_wn)) == 8 &&
 	  WN_operator(rhs_wn) == OPR_INTCONST && 
 	  MTYPE_byte_size(lhs->Dsctyp()) < 8 &&

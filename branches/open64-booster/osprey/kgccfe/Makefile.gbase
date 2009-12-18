@@ -84,6 +84,9 @@ endif
 ifeq ($(BUILD_TARGET), NVISA)
 HOSTDEFS += -DTARGET_NAME=\"nvisa\"
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+HOSTDEFS += -DTARGET_NAME=\"loongson-linux\"
+endif
 
 HOSTDEFS += -DLONGLONG
 HOSTDEFS += -DFRONT_END
@@ -153,6 +156,10 @@ endif
 ifeq ($(BUILD_TARGET), NVISA)
 GNU_TARG_DIR = $(GNU_DIR)/i386
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
+endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+GNU_TARG_DIR = $(GNU_DIR)/loongson
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/loongson
 endif
 
 TARG_COMUTIL_DIR	= $(TARGDIR)/libcomutil

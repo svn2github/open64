@@ -153,7 +153,7 @@ void Initialize_C_Int_Model( void ) {
 #ifdef KEY
   if (TARGET_64BIT)
     Target_Int_Model = TARGET_INT_LP64;  
-#if !defined(TARG_IA32) && !defined(TARG_X8664) && !defined(TARG_NVISA)
+#if !defined(TARG_IA32) && !defined(TARG_X8664) && !defined(TARG_NVISA) && !defined(TARG_LOONGSON)
   if (TARGET_BIG_ENDIAN)
     Target_Byte_Sex = BIG_ENDIAN;
   else Target_Byte_Sex = LITTLE_ENDIAN;

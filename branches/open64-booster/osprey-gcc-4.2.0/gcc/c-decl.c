@@ -6361,30 +6361,6 @@ store_parm_decls_oldstyle (tree fndecl, const struct c_arg_info *arg_info)
   tree parmids = arg_info->parms;
   struct pointer_set_t *seen_args = pointer_set_create ();
 
-#ifdef TARG_SL
-/* Don't support old-style function definition for float/double type */
-  tree parm_t;
-  int float_flag = 0;
-  for (parm_t = parmids; parm_t != NULL; parm_t = TREE_CHAIN(parm_t))
-  {
-      tree type_node = TYPE_MAIN_VARIANT(TREE_TYPE((I_SYMBOL_BINDING (TREE_VALUE (parm_t))->decl)));
-      if (type_node == float_type_node || type_node == double_type_node) 
-      {
-          float_flag = 1;
-          break;
-      }
-  }
-  if (float_flag == 1)
-  {
-     error("Old-style function definition is not supported for float/double type");
-  }
-  else
-  {
-     warning(0, "Old-style function definition");
-  }
-#endif
-
-
   if (!in_system_header)
     warning (OPT_Wold_style_definition, "%Jold-style function definition",
 	     fndecl);
@@ -6444,6 +6420,29 @@ store_parm_decls_oldstyle (tree fndecl, const struct c_arg_info *arg_info)
       TREE_PURPOSE (parm) = decl;
       pointer_set_insert (seen_args, decl);
     }
+
+#ifdef TARG_SL
+  /* Don't support old-style function definition for float/double type */
+    tree parm_t;
+    int float_flag = 0;
+    for (parm_t = parmids; parm_t != NULL; parm_t = TREE_CHAIN(parm_t))
+    {
+        tree type_node = TYPE_MAIN_VARIANT(TREE_TYPE((I_SYMBOL_BINDING (TREE_VALUE (parm_t))->decl)));
+        if (type_node == float_type_node || type_node == double_type_node) 
+        {
+            float_flag = 1;
+            break;
+        }
+    }
+    if (float_flag == 1)
+    {
+       error("Old-style function definition is not supported for float/double type");
+    }
+    else
+    {
+       warning(0, "Old-style function definition");
+    }
+#endif
 
   /* Now examine the parms chain for incomplete declarations
      and declarations with no corresponding names.  */

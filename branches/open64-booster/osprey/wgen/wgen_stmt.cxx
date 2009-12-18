@@ -4524,9 +4524,32 @@ Add_Current_Scope_Alloca_St (ST * st, int idx)
 void
 WGEN_Expand_Pragma (gs_t exp)
 {
+  gs_code_t code = gs_tree_code(exp);
+
+  switch(code) {
+
+    case GS_FREQ_HINT_STMT:
+    { 
+      // pragma mips_frequency_hint
+      MIPS_FREQUENCY_HINT freq_hint;
+      Is_True (gs_tree_code (gs_tree_operand(exp, 0)) == GS_STRING_CST,
+               ("Expected string constant with mips_frequency_hint"));
+      const char * hint = gs_tree_string_pointer (gs_tree_operand(exp, 0));                                                                                
+      if (!strcmp (hint, "never")) 
+        freq_hint = FREQUENCY_HINT_NEVER;
+      else if (!strcmp (hint, "init")) 
+        freq_hint = FREQUENCY_HINT_INIT;
+      else if (!strcmp (hint, "frequent")) 
+        freq_hint = FREQUENCY_HINT_FREQUENT;
+      else // Invalid mips_frequency_hint
+        break;
+                                                                                
+      WN * wn = WN_CreatePragma (WN_PRAGMA_MIPS_FREQUENCY_HINT, (ST*)NULL, freq_hint, 0);
+      WGEN_Stmt_Append (wn, Get_Srcpos());
+      break;
+    }
+    
 #if 0 // wgen TODO
-  switch (exp->omp.choice)
-  {
     case options_dir:
     { // pragma options
       TCON tcon;
@@ -4542,22 +4565,10 @@ WGEN_Expand_Pragma (gs_t exp)
       WN_INSERT_BlockLast (WN_func_pragmas(func_wn), wn);
       break;
     }
-    case exec_freq_dir:
-    { // pragma mips_frequency_hint
-      MIPS_FREQUENCY_HINT freq_hint;
-      Is_True (gs_tree_code ((gs_t) exp->omp.omp_clause_list) == STRING_CST,
-               ("Expected string constant with mips_frequency_hint"));
-      const char * hint = TREE_STRING_POINTER ((gs_t) exp->omp.omp_clause_list);                                                                                
-      if (!strcmp (hint, "never")) freq_hint = FREQUENCY_HINT_NEVER;
-      else if (!strcmp (hint, "init")) freq_hint = FREQUENCY_HINT_INIT;
-      else if (!strcmp (hint, "frequent")) freq_hint = FREQUENCY_HINT_FREQUENT;
-      else // Invalid mips_frequency_hint
-        break;
-                                                                                
-      WN * wn = WN_CreatePragma (WN_PRAGMA_MIPS_FREQUENCY_HINT, (ST*)NULL, freq_hint, 0);
-      WGEN_Stmt_Append (wn, Get_Srcpos());
-      break;
+#endif
+    default:
+    {
+       FmtAssert(FALSE, ("WGEN_Expand_Pragma: no yet implemented pragma %s", gs_code_name(code)));
     }
   }
-#endif
 }

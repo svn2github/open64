@@ -414,7 +414,11 @@ int warn_main;
 
 /* Nonzero means warn about possible violations of sequence point rules.  */
 
+#ifdef TARG_SL
+int warn_sequence_point = 1;
+#else
 int warn_sequence_point;
+#endif
 
 /* Nonzero means to warn about compile-time division by zero.  */
 int warn_div_by_zero = 1;
@@ -1572,7 +1576,68 @@ static int warning_candidate_p PARAMS ((tree));
 static void warn_for_collisions PARAMS ((struct tlist *));
 static void warn_for_collisions_1 PARAMS ((tree, tree, struct tlist *, int));
 static struct tlist *new_tlist PARAMS ((struct tlist *, tree, tree));
+#ifdef TARG_SL
+void verify_sequence_points PARAMS ((tree));
+#else
 static void verify_sequence_points PARAMS ((tree));
+#endif
+
+#ifdef TARG_SL
+static bool var_expr_equal(tree arg1, tree arg2)
+{
+  if ((arg1 == NULL && arg2 != NULL)
+      || (arg1 != NULL && arg2 == NULL))
+    return FALSE;
+
+  if (arg1 == arg2)
+    return TRUE;
+
+  enum tree_code code_1 = TREE_CODE (arg1);
+  enum tree_code code_2 = TREE_CODE (arg2);
+
+  if (code_1 != code_2)
+    return FALSE;
+
+  switch (code_1)
+  {
+    case VAR_DECL:
+    case PARM_DECL:
+    case FIELD_DECL:
+      return (arg1 == arg2);
+    case INDIRECT_REF:
+      return var_expr_equal (TREE_OPERAND (arg1, 0), TREE_OPERAND (arg2, 0));
+    case COMPONENT_REF:
+      return (var_expr_equal (TREE_OPERAND (arg1, 0), TREE_OPERAND (arg2, 0))
+          && var_expr_equal (TREE_OPERAND (arg1, 1), TREE_OPERAND (arg2, 1)));
+    default:
+      return 0;
+  }
+}
+
+/* Get variable name */
+static char * var_expr_name(tree var)
+{
+  if (var == NULL) return NULL;
+
+  enum tree_code code = TREE_CODE (var);
+
+  switch (code)
+  {
+    case VAR_DECL:
+    case PARM_DECL:
+    case FIELD_DECL:
+      return (IDENTIFIER_POINTER (DECL_NAME (var)));
+    case INDIRECT_REF:
+      return (IDENTIFIER_POINTER (DECL_NAME (TREE_OPERAND (var, 0))));
+    case COMPONENT_REF:
+      /* Just return the filed name */
+      return var_expr_name (TREE_OPERAND (var, 1));
+    default:
+      return NULL;
+  }
+
+}
+#endif
 
 /* Create a new struct tlist and fill in its fields.  */
 static struct tlist *
@@ -1634,7 +1699,11 @@ merge_tlist (to, add, copy)
       struct tlist *next = add->next;
 
       for (tmp2 = *to; tmp2; tmp2 = tmp2->next)
+#ifdef TARG_SL
+	if (var_expr_equal(tmp2->expr, add->expr))
+#else
 	if (tmp2->expr == add->expr)
+#endif
 	  {
 	    found = 1;
 	    if (! tmp2->writer)
@@ -1664,18 +1733,35 @@ warn_for_collisions_1 (written, writer, list, only_writes)
 
   /* Avoid duplicate warnings.  */
   for (tmp = warned_ids; tmp; tmp = tmp->next)
+#ifdef TARG_SL
+    if (var_expr_equal(tmp->expr, written))
+#else
     if (tmp->expr == written)
+#endif
       return;
 
   while (list)
     {
+#ifdef TARG_SL
+      if (var_expr_equal(list->expr, written)
+#else
       if (list->expr == written
+#endif
 	  && list->writer != writer
 	  && (! only_writes || list->writer))
 	{
 	  warned_ids = new_tlist (warned_ids, written, NULL_TREE);
+#ifdef TARG_SL
+	  if (TREE_CODE(list->expr) == COMPONENT_REF)
+	  error ("operation on structure field `%s' may be undefined",
+		   var_expr_name (list->expr));
+	  else
+	  error ("operation on `%s' may be undefined",
+		   IDENTIFIER_POINTER (DECL_NAME (list->expr)));
+#else
 	  warning ("operation on `%s' may be undefined",
 		   IDENTIFIER_POINTER (DECL_NAME (list->expr)));
+#endif
 	}
       list = list->next;
     }
@@ -1703,7 +1789,13 @@ static int
 warning_candidate_p (x)
      tree x;
 {
+#ifdef TARG_SL
+  /* Treat COMPONENT_REF as a whole */
+  return TREE_CODE (x) == VAR_DECL || TREE_CODE (x) == PARM_DECL
+      || TREE_CODE (x) == COMPONENT_REF;
+#else
   return TREE_CODE (x) == VAR_DECL || TREE_CODE (x) == PARM_DECL;
+#endif
 }
 
 /* Walk the tree X, and record accesses to variables.  If X is written by the
@@ -1929,7 +2021,11 @@ verify_tree (x, pbefore_sp, pno_sp, writer)
 /* Try to warn for undefined behavior in EXPR due to missing sequence
    points.  */
 
+#ifdef TARG_SL
+void
+#else
 static void
+#endif
 verify_sequence_points (expr)
      tree expr;
 {
@@ -2835,6 +2931,13 @@ c_common_truthvalue_conversion (expr)
       break;
     }
 #endif /* 0 */
+
+#ifdef TARG_SL
+    /* Verify sequence points for cond expr, Warning for undefined behaviors */
+    extern void verify_sequence_points (tree expr);
+    if (warn_sequence_point)
+      verify_sequence_points (expr);
+#endif
 
   switch (TREE_CODE (expr))
     {

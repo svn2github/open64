@@ -287,6 +287,10 @@ static const char *operator_table[OPERATOR_LAST + 1] =
   "PURE_CALL_OP",
   "SHUFFLE",
   "ATOMIC_RSQRT",
+#elif defined(TARG_LOONGSON)
+  "MPYU2",
+  "MPYI2",
+  "PURE_CALL_OP",
 #elif defined(TARG_MIPS)
   "PURE_CALL_OP",
 #endif

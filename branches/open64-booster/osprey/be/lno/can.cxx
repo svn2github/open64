@@ -1560,7 +1560,7 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
 
 #ifdef KEY // Bug 2565
   if (
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
       Is_Target_64bit() &&
 #endif
       (addr_oper == OPR_ADD || addr_oper == OPR_SUB)) {

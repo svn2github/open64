@@ -60,13 +60,9 @@
 #include "symtab_access.h"
 #include "unistd.h"
 
-#ifdef TARG_MIPS
-#if defined(TARG_SL)
-static BOOL inline Is_Target_32bit (void) { return TRUE; }
-#else
+#if defined(TARG_MIPS) && !defined(TARG_SL)
 //static BOOL inline Is_Target_64bit (void) { return TRUE; }
 static BOOL inline Is_Target_32bit (void) { return FALSE; }
-#endif
 #endif // TARG_MIPS
 
 MEM_POOL name_pool, *name_pool_ptr = NULL;
@@ -1424,8 +1420,10 @@ CG_Instrument_Arcs()
 	  // mips
 	  Build_OP( TOP_j, Gen_Label_TN(tgt_label, 0), &new_ops);
 #else
+#ifndef TARG_LOONGSON
           // ia64
           Build_OP (TOP_br, Gen_Enum_TN(ECV_ph_few), Gen_Enum_TN(ECV_dh), Gen_Label_TN(tgt_label, 0), &new_ops);
+#endif
 #endif
 	  FmtAssert(TN_is_label( tgt_tn ), ("should be branch target label"));
 	}

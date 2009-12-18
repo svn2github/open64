@@ -17,7 +17,7 @@
 #include "sytb.h"
 #include "s_globals.h"
 
-#if defined(TARG_X8664) || defined(TARG_IA32) || defined(TARG_MIPS) || defined(TARG_IA64)
+#if defined(TARG_X8664) || defined(TARG_IA32) || defined(TARG_MIPS) || defined(TARG_IA64) || defined(TARG_LOONGSON)
 /* True if this type is interoperable with C. */
 static unsigned char interoperable_types[] = {
   0,	/* Type_Void */

@@ -157,7 +157,11 @@ PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done)
 export SKIP_DEP_BUILD=1 
 
 all: build
-include:
+
+libiberty:
+	$(MAKE) -C $(NATIVE_BUILD_DIR)/libiberty
+
+include: libiberty
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/include
 
 libcomutil: include
@@ -165,9 +169,6 @@ libcomutil: include
 
 libcmplrs: include
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libcmplrs
-
-libiberty: include
-	$(MAKE) -C $(NATIVE_BUILD_DIR)/libiberty
 
 targ_info: include
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/targ_info
@@ -370,6 +371,8 @@ ifeq ($(MACHINE_TYPE), ia64)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/orc_ict clobber
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/orc_intel clobber
 endif
+	cd osprey-gcc/gcc; rm -f gspin-alloc.h  gspin-assert.h  gspin-base-types.h   gspin-io.h  gspin-list.h  gspin-mempool.h  gspin-tel.h  gspin-tree.h
+	cd osprey-gcc-4.2.0/gcc; rm -f gspin-alloc.h  gspin-assert.h  gspin-base-types.h   gspin-io.h  gspin-list.h  gspin-mempool.h  gspin-tel.h  gspin-tree.h
 	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER
 	cd $(GNUFE_BUILD_DIR); ./CLOBBER
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \

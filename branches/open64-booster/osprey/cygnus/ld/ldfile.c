@@ -437,8 +437,14 @@ ldfile_open_file_search (const char *arch,
 	  return TRUE;
 	}
 
+#ifndef TARG_LOONGSON
+      /* Bug 13174:  In LOONGSON compiler, IPA receives an absolute path as
+       * /libc/libc.so.6 -- Workaround this problem by pretending it is
+       * not an absolute path.
+       */
       if (IS_ABSOLUTE_PATH (entry->filename))
 	return FALSE;
+#endif
     }
 
   for (search = search_head; search != NULL; search = search->next)

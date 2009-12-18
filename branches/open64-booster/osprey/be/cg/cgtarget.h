@@ -806,7 +806,7 @@ extern void CGTARG_Init_Asm_Constraints (void);
 /* Given a constraint for an ASM parameter, and the load of the matching
  * argument passed to ASM (possibly NULL), choose an appropriate TN for it
  */
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 extern TN* CGTARG_TN_For_Asm_Operand(const char* constraint, 
                                      const WN* load,
                                      TN* pref_tn,
@@ -890,4 +890,14 @@ void Fix_Cache_Conflict_latency( BB *bb);
 extern BOOL CGTARG_Is_Thread_Local_Memory_OP(OP *op);
 #endif
 
+#ifdef TARG_LOONGSON
+// Emit code to turn on flush-to-zero mode when doing floating point calculation
+void CGTARG_enable_FTZ(OPS& ops);
+// Count how many registers a branch OP need of register class <cl>
+INT CGTARG_branch_op_need_register_numbers(OP* , ISA_REGISTER_CLASS);
+#endif
+
+#ifdef TARG_SL
+extern void CGTARG_Mem_AR_Dep(OP *pred_op, OP *succ_op, CG_DEP_KIND kind);
+#endif
 #endif /* CGTARGET_INCLUDED */

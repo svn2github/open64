@@ -8062,6 +8062,7 @@ gcc2gs (int code)
    case WITH_CLEANUP_EXPR: return GS_WITH_CLEANUP_EXPR;
    case WITH_SIZE_EXPR: return GS_WITH_SIZE_EXPR;
    case TEMPLATE_TEMPLATE_PARM: return GS_TEMPLATE_TEMPLATE_PARM;
+   case FREQ_HINT_STMT: return GS_FREQ_HINT_STMT;
  }
  gcc_assert(0);
  return (gs_code_t) 0;
@@ -8796,6 +8797,11 @@ gcc_built_in2gsbi (enum built_in_function code)
     case BUILT_IN_COMPLEX_DIV_MIN: return GSBI_BUILT_IN_COMPLEX_DIV_MIN;
     case BUILT_IN_COMPLEX_DIV_MAX: return GSBI_BUILT_IN_COMPLEX_DIV_MAX;
 #ifdef TARG_SL
+    case BUILT_IN_CVT64_HIGH:          return GSBI_BUILT_IN_CVT64_HIGH;
+    case BUILT_IN_CVT64_LOW:           return GSBI_BUILT_IN_CVT64_LOW;
+    case BUILT_IN_CVT32:               return GSBI_BUILT_IN_CVT32;
+    case BUILT_IN_LONGLONG_CVT64_HIGH: return GSBI_BUILT_IN_LONGLONG_CVT64_HIGH;
+    case BUILT_IN_LONGLONG_CVT64_LOW:  return GSBI_BUILT_IN_LONGLONG_CVT64_LOW;
     case BUILT_IN_C3AADDA:  return GSBI_BUILT_IN_C3AADDA;
     case BUILT_IN_C3NEGA:   return GSBI_BUILT_IN_C3NEGA;
     case BUILT_IN_C3BITR:   return GSBI_BUILT_IN_C3BITR;

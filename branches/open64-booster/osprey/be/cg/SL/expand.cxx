@@ -1,41 +1,14 @@
-/*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
-
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
-
-  This program is free software; you can redistribute it and/or modify it
-  under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation.
-
-  This program is distributed in the hope that it would be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-
-  Further, this software is distributed without any warranty that it is
-  free of the rightful claim of any third person regarding infringement 
-  or the like.  Any license provided herein, whether implied or 
-  otherwise, applies only to this software file.  Patent licenses, if 
-  any, provided herein do not apply to combinations of this program with 
-  other software, or any other product whatsoever.  
-
-  You should have received a copy of the GNU General Public License along
-  with this program; if not, write the Free Software Foundation, Inc., 59
-  Temple Place - Suite 330, Boston MA 02111-1307, USA.
-
-  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
-  Mountain View, CA 94043, or:
-
-  http://www.sgi.com
-
-  For further information regarding this notice, see:
-
-  http://oss.sgi.com/projects/GenInfo/NoticeExplan
-
-*/
-
+/********************************************************************\
+|*                                                                  *|   
+|*  Copyright (c) 2006 by SimpLight Nanoelectronics.                *|
+|*  All rights reserved                                             *|
+|*                                                                  *|
+|*  This program is free software; you can redistribute it and/or   *|
+|*  modify it under the terms of the GNU General Public License as  *|
+|*  published by the Free Software Foundation; either version 2,    *|
+|*  or (at your option) any later version.                          *|
+|*                                                                  *|
+\********************************************************************/
 
 /* ====================================================================
  * ====================================================================
@@ -90,6 +63,7 @@
 #include "exp_intrn_info.h"
 #include "exp_slintrn.h"
 #include "printsrc.h" /* print source line for debugging */ 
+#include "targ_const_private.h"
 extern void Set_OP_To_WN_Map(WN *wn);
 #endif 
 
@@ -321,7 +295,9 @@ Expand_64Bit_ALU_OP(OPERATOR opr, TYPE_ID mtype,
       }
     case OPR_MPY: 
       {
-
+        extern char *Processor_Name;
+        FmtAssert(Is_Target_Sl1_pcore() || Is_Target_Sl1_dsp(),
+          ("Expand_64Bit_ALU_OP: 64-bit multiple operation for %s processer is not implemented", Processor_Name));
         TN *zero_tn  = Gen_Literal_TN(0, 4);
         TN *carry_low_low  = Build_TN_Of_Mtype(MTYPE_U4);
         TN *carry_low_high = Build_TN_Of_Mtype(mt_high);
@@ -622,8 +598,10 @@ Expand_64Bit_Abs(TN *result_low, TN *src_low, TYPE_ID mtype, OPS* ops)
   TN *sign_bit = Build_TN_Of_Mtype(MTYPE_U4);
   Build_OP(TOP_srl, sign_bit, src_high, Gen_Literal_TN(31, 4), ops);
   Build_OP(TOP_mc_abs, result_high, src_high, ops);
-  Build_OP(TOP_sub, result_high, result_high, sign_bit, ops);
   Build_OP(TOP_mc_zn_eq, result_low, sign_bit, src_low, Gen_Literal_TN(0, 4), ops);
+
+  Build_OP(TOP_mc_zc_ne, sign_bit, result_low, sign_bit, Gen_Literal_TN(0, 4), ops);
+  Build_OP(TOP_sub, result_high, result_high, sign_bit, ops);
 }
 
 static void 
@@ -640,7 +618,7 @@ Expand_64Bit_Cvtl(TN *result_low, TN *src_low, TN *len,
 
   INT64 l = TN_value(len);
   if (l <= 32) {
-    Expand_Convert_Length(result_low, src_low, len, mt, mt, ops);
+    Expand_Convert_Length(result_low, src_low, len, mt, signed_extension, ops);
 
     if (result_h != NULL) {
       if (signed_extension) {
@@ -654,7 +632,7 @@ Expand_64Bit_Cvtl(TN *result_low, TN *src_low, TN *len,
 
     Expand_Copy(result_low, src_low, MTYPE_I4, ops);
     Expand_Convert_Length(result_h, src_high, Gen_Literal_TN(l - 32, 4), mt, 
-        MTYPE_is_signed(mt), ops);
+        signed_extension, ops);
   }
 }
 
@@ -680,7 +658,7 @@ Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
       FmtAssert(FALSE, ("Expand_Copy: Unexpected float type"));
     }
   }
-  else {    
+  else if (MTYPE_is_integral(mtype)){    
     if (MTYPE_is_longlong(mtype)) {
       TN *result_pair = Get_TN_Pair(result);
       TN *src_pair = Get_TN_Pair(src);
@@ -699,9 +677,9 @@ Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
       Build_OP(TOP_or, result, src, Zero_TN, ops);            
       Set_OP_copy(OPS_last(ops));
     }
-  }  
-  Build_OP(TOP_or, result, src, Zero_TN, ops);            
-  Set_OP_copy(OPS_last(ops));
+  } else {
+    Fail_FmtAssertion("Expand_Copy: Undexpected type");
+  }
 }
 
 /* Copy operation for Handle_LDID, there needs two type, mtype is the result type of LDID,
@@ -854,6 +832,7 @@ Exp_Immediate_Int (TN *dest, TN *src, TYPE_ID rtype, OPS *ops)
       }      
     }
     else {
+      FmtAssert(FALSE, ("Exp_Immediate_Int: Error value"));
       Build_OP (TOP_ori, tmp, Zero_TN, Gen_Literal_TN((val >> 16) & 0xffff, 4), ops);
       Build_OP (TOP_dsll, tmp, tmp, Gen_Literal_TN(16, 4), ops);
       Build_OP (TOP_ori, dest, tmp, Gen_Literal_TN(val & 0xffff, 4), ops);
@@ -1938,12 +1917,13 @@ Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     constant *= TN_has_value(src2) ? TN_value(src2) : WN_const_val(TN_home(src2));
     // Need to get the constant of the right length
     constant = Targ_To_Host(Host_To_Targ(mtype,constant));
-    #if defined(TARG_SL) 
-    	val_tn = Gen_Literal_TN(constant, 4);
-    #else
-        val_tn = Gen_Literal_TN(constant, 8);
-	  #endif
+#if defined(TARG_SL) 
+    val_tn = Gen_Literal_TN(constant, 4);
+    Exp_Immediate(result,val_tn,mtype,ops);
+#else
+    val_tn = Gen_Literal_TN(constant, 8);
     Exp_Immediate(result,val_tn,MTYPE_is_signed(mtype),ops);
+#endif
     return;
   }
 
@@ -1971,18 +1951,21 @@ Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   }
 
   FmtAssert(!TN_is_constant(src1),("Expand_Multiply: unexpected constant operand"));
+  
 #if defined(TARG_SL)
-   Is_True(!(MTYPE_is_size_double(mtype)), ("Expand_Multiply: unsupport 64-bit compute"));
+  Is_True(!(MTYPE_is_size_double(mtype)), ("Expand_Multiply: unsupport 64-bit compute"));
  
-   if (CG_sl2) {
-   	top = TOP_c2_muls;
-   } else {
-       top = MTYPE_signed(mtype) ? TOP_c3_muls : TOP_c3_mulus;
-   }
+  if (CG_sl2) {
+    top = TOP_c2_muls;
+  } else if (Is_Target_Sl5()) {
+    top = TOP_smult;
+  } else {
+    top = MTYPE_signed(mtype) ? TOP_c3_muls : TOP_c3_mulus;
+  }
 #else
-   if (! MTYPE_is_size_double(mtype))
-     top = MTYPE_signed(mtype) ? TOP_mult : TOP_multu;
-   else top = MTYPE_signed(mtype) ? TOP_dmult : TOP_dmultu;
+  if (! MTYPE_is_size_double(mtype))
+    top = MTYPE_signed(mtype) ? TOP_mult : TOP_multu;
+  else top = MTYPE_signed(mtype) ? TOP_dmult : TOP_dmultu;
 #endif
 
 #if defined(TARG_SL)
@@ -1990,8 +1973,11 @@ Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   if (CG_sl2) {
     TN *hi_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_cop_creg, 8, 0);
     Build_OP(top, result, hi_tn, src1, src2, zero_tn, Zero_TN, zero_tn, ops);	
+  } else if (Is_Target_Sl5()) {
+    INT unsignedflag = MTYPE_signed(mtype) ? 0 : 1;
+    Build_OP(top, result, src1, src2, Gen_Literal_TN(unsignedflag, 4), ops);
   } else {
-    Build_OP(top, HI_TN, result, src1, src2,zero_tn,ops);
+    Build_OP(top, HI_TN, result, src1, src2, zero_tn, ops);
   }
 #else
   Build_OP(top, Hilo_TN(), src1, src2, ops);
@@ -2005,24 +1991,26 @@ Expand_High_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 {
   TOP top;
   FmtAssert(!TN_is_constant(src1),("Expand_High_Multiply: unexpected constant operand"));
+  FmtAssert(Is_Target_Sl1_pcore() || Is_Target_Sl1_dsp(), ("Expand_High_Multiply: No support"));
 
 #if defined(TARG_SL)
-   Is_True(!(MTYPE_is_size_double(mtype)), ("Expand_High_Multiply: unsupport 64-bit compute"));
-   top = MTYPE_signed(mtype) ? TOP_c3_muls : TOP_c3_mulus;
+  Is_True(!(MTYPE_is_size_double(mtype)), ("Expand_High_Multiply: unsupport 64-bit compute"));
+  top = MTYPE_signed(mtype) ? TOP_c3_muls : TOP_c3_mulus;
 #else
-   if (!MTYPE_is_size_double(mtype))
-     top = MTYPE_signed(mtype) ? TOP_mult : TOP_multu;
-   else top = MTYPE_signed(mtype) ? TOP_dmult : TOP_dmultu;
+  if (!MTYPE_is_size_double(mtype))
+    top = MTYPE_signed(mtype) ? TOP_mult : TOP_multu;
+  else 
+    top = MTYPE_signed(mtype) ? TOP_dmult : TOP_dmultu;
 #endif
 
- if (TN_is_constant(src2))
+  if (TN_is_constant(src2))
     src2 = Expand_Immediate_Into_Register(src2, MTYPE_is_size_double(mtype), ops);
   
 #if defined(TARG_SL)
-   TN *lo_tn = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
-   TN *zero_tn = Gen_Literal_TN(0, 4);
-   Build_OP(top, HI_TN, lo_tn, src1, src2, zero_tn, ops);
-   Build_OP(TOP_c3_mvfs, result, HI_TN, zero_tn, ops);
+  TN *lo_tn = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
+  TN *zero_tn = Gen_Literal_TN(0, 4);
+  Build_OP(top, HI_TN, lo_tn, src1, src2, zero_tn, ops);
+  Build_OP(TOP_c3_mvfs, result, HI_TN, zero_tn, ops);
 #else
   Build_OP(top, Hilo_TN(), src1, src2, ops);
   Build_OP(TOP_mfhi, result, Hilo_TN(), ops);
@@ -2032,10 +2020,12 @@ Expand_High_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 #if defined(TARG_SL)
 void Expand_MulShift_Hi (TN *result, TN *src1, TN *src2, TN *src3, TYPE_ID mtype, OPS *ops)
 {
+  FmtAssert(Is_Target_Sl1_pcore() || Is_Target_Sl1_dsp(), ("Expand_MulShift_Hi: No support"));
+
    TOP top;
    TN *low_tn = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
    TN *zero_tn = Gen_Literal_TN(0, 4);
-   Is_True(!TN_is_constant(src1),("Expand_High_Multiply: unexpected constant operand"));
+   Is_True(!TN_is_constant(src1),("Expand_MulShift_Hi: unexpected constant operand"));
 
    top = MTYPE_signed(mtype) ? TOP_c3_muls : TOP_c3_mulus;
 
@@ -2049,12 +2039,14 @@ void Expand_MulShift_Hi (TN *result, TN *src1, TN *src2, TN *src3, TYPE_ID mtype
 
 void Expand_Unsigned_MulShift_Hi (TN *result, TN *src1, TN *src2, TN *src3, TYPE_ID mtype, OPS *ops)
 {
-   TOP top;
-   TN *low_tn = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
-   TN *zero_tn = Gen_Literal_TN(0, 4);
-   Is_True(!TN_is_constant(src1),("Expand_Unsigned_MulShift_Hi: unexpected constant operand"));
-   Is_True(MTYPE_is_unsigned(mtype), ("Expand_Unsigned_MulShift_Hi: should be unsigned"));
-   top = MTYPE_signed(mtype) ? TOP_c3_muls : TOP_c3_mulus;
+  FmtAssert(Is_Target_Sl1_pcore() || Is_Target_Sl1_dsp(), ("Expand_Unsigned_MulShift_Hi: No support"));
+  
+  TOP top;
+  TN *low_tn = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
+  TN *zero_tn = Gen_Literal_TN(0, 4);
+  Is_True(!TN_is_constant(src1),("Expand_Unsigned_MulShift_Hi: unexpected constant operand"));
+  Is_True(MTYPE_is_unsigned(mtype), ("Expand_Unsigned_MulShift_Hi: should be unsigned"));
+  top = MTYPE_signed(mtype) ? TOP_c3_muls : TOP_c3_mulus;
 
   if (TN_is_constant(src2))
     src2 = Expand_Immediate_Into_Register(src2, MTYPE_is_size_double(mtype), ops);
@@ -2064,7 +2056,9 @@ void Expand_Unsigned_MulShift_Hi (TN *result, TN *src1, TN *src2, TN *src3, TYPE
   Build_OP(TOP_c3_mvfs, result, HI_TN,  zero_tn, ops);
 }
 
-void Expand_Mulshift (TN *result, TN *src1, TN *src2, TN *src3, TYPE_ID mtype, OPS *ops) {
+void Expand_Mulshift (TN *result, TN *src1, TN *src2, TN *src3, TYPE_ID mtype, OPS *ops) 
+{
+  FmtAssert(Is_Target_Sl1_pcore() || Is_Target_Sl1_dsp(), ("Expand_Mulshift: No support"));
   Is_True(TN_has_value(src3), ("Expand_Mulshift:: shift num must be immediate"));
   
   TOP top;
@@ -2086,7 +2080,11 @@ void Expand_Mulshift (TN *result, TN *src1, TN *src2, TN *src3, TYPE_ID mtype, O
       constant = (constant << shift);
     }
     val_tn = Gen_Literal_TN(constant, 4);
+#ifdef TARG_SL
+    Exp_Immediate(result,val_tn,mtype,ops);
+#else
     Exp_Immediate(result,val_tn,MTYPE_is_signed(mtype),ops);
+#endif
     return;
   }
 
@@ -2128,7 +2126,9 @@ void Expand_Mulshift (TN *result, TN *src1, TN *src2, TN *src3, TYPE_ID mtype, O
   Build_OP(top, HI_TN, result, src1, src2, src3, ops);
 }
 
-TN *Expand_Mul_Shift (WN *intrncall, TN *result, OPS *ops, BOOL highpart=FALSE) {
+TN *Expand_Mul_Shift (WN *intrncall, TN *result, OPS *ops, BOOL highpart=FALSE) 
+{
+  FmtAssert(Is_Target_Sl1_pcore() || Is_Target_Sl1_dsp(), ("Expand_Mul_Shift: No support"));
   Is_True( (WN_kid0(intrncall)!=NULL && WN_kid1(intrncall)!=NULL && WN_kid2(intrncall)!=NULL),
                  ("Expand_Mul_Shift:: one parameter is null"));
 
@@ -2832,85 +2832,55 @@ Optimize_Select (
  * tn are equals if tn_registers_identical ||
  * they're const Tn and have the same value
  */
-static BOOL tns_are_equals (TN *tn1, TN *tn2){
-  if (tn_registers_identical(tn1, tn2)) {
+static BOOL tns_are_equals (TN *tn1, TN *tn2)
+{
+
+  TN *tn1_high = Get_TN_Pair(tn1);
+  TN *tn2_high = Get_TN_Pair(tn2);
+  
+  if (tn_registers_identical(tn1, tn2) && tn_registers_identical(tn1_high, tn2_high)) {
     return TRUE;
   }
-  else if (TN_is_constant(tn1)&&TN_is_constant(tn2)&&(TN_value(tn1)==TN_value(tn2))) {
+  else if (TN_is_constant(tn1) && TN_is_constant(tn2) && (TN_value(tn1) == TN_value(tn2))
+        && TN_is_constant(tn1_high) && TN_is_constant(tn2_high) && (TN_value(tn1_high) == TN_value(tn2_high))) {
     return TRUE;
   }
   return FALSE;
 }
 
-/*
- * expand unoptimized conditional move to 2 instructions
- * result = cond_tn cond 0 ? true_tn : false_tn
- * ==>  mc.z.cond  result, cond_tn, true_tn
- *      mc.z.!cond result, cond_tn, false_tn
- */
-extern void Exp_2inst_MC_Zero ( 
-    TOP mc_op,
-    TN *dest_tn,
-    TN *true_tn,
-    TN *false_tn,
-    TN *cond_tn, 
-    TYPE_ID true_type,
-    TYPE_ID false_type,
-    int unsignedflag,
-    OPS* ops )
+/* tn is zero when tn is Zero_Tn or tn is const and value is 0 */
+static BOOL 
+tn_is_zero (TN *tn, TYPE_ID type)
 {
-  TOP op2;
-  TN *flag_tn = Gen_Literal_TN(unsignedflag, 4);
-
-  switch(mc_op) {
-    case TOP_mc_z_ne:
-      op2 = TOP_mc_z_eq;
-      break;
-    case TOP_mc_z_eq:
-      op2 = TOP_mc_z_ne;
-      break;
-    case TOP_mc_z_lt:
-      op2 = TOP_mc_z_ge;
-      break; 
-    case TOP_mc_z_gt:
-      op2 = TOP_mc_z_le;
-      break;
-    case TOP_mc_z_le:
-      op2 = TOP_mc_z_gt;
-      break;
-    case TOP_mc_z_ge:
-      op2 = TOP_mc_z_lt;
-      break;
-    default:
-      FmtAssert(FALSE, ("Unknown opcode %s", mc_op));
+  TN *tn_high = NULL;
+  if (MTYPE_is_longlong(type) && TN_is_register(tn)) { 
+    tn_high = Get_TN_Pair(tn);
+    FmtAssert(tn_high, ("tn_is_zero: Get tn_high fail"));
   }
+  return ((TN_is_constant(tn) && TN_value(tn) ==0) 
+      || (MTYPE_is_longlong(type) && tn_registers_identical(tn, Zero_TN) && tn_registers_identical(tn_high, Zero_TN))
+      || (!MTYPE_is_longlong(type) && tn_registers_identical(tn, Zero_TN)));
+}
 
-  Build_OP(mc_op, dest_tn, cond_tn, true_tn, flag_tn, dest_tn, ops); 
-  Build_OP(op2, dest_tn, cond_tn, false_tn, flag_tn, dest_tn, ops);
-
-  if ((MTYPE_bit_size(true_type) == 64) || (MTYPE_bit_size(false_type) == 64)) {
-
-    TN *dest_tn_high = Get_TN_Pair(dest_tn);
-    FmtAssert (dest_tn_high, ("Exp_2inst_MC_Zero: get dest_tn_high failed"));
-
-    TN *true_tn_high = Get_TN_Pair(true_tn);
-
-    if (true_tn_high == NULL) {
-      DevWarn("true_tn_high is null");
-      true_tn_high = Get_64Bit_High_TN(true_tn, true_type, ops);
+static BOOL Equiv (WN* wn1, WN* wn2)
+{
+  if (!WN_Equiv(wn1,wn2)) return(FALSE);
+  for (INT kidno=0; kidno<WN_kid_count(wn1); kidno++) {
+    if (!Equiv(WN_kid(wn1,kidno),WN_kid(wn2,kidno))) {
+      return(FALSE);
     }
-
-    Build_OP(mc_op, dest_tn_high, cond_tn, true_tn_high, flag_tn, dest_tn_high, ops);
-
-    TN *false_tn_high = Get_TN_Pair(false_tn);
-    if (false_tn_high == NULL) {
-      DevWarn("false_tn_high is null");
-      false_tn_high = Get_64Bit_High_TN(false_tn, false_type, ops);
-    }
-    Build_OP(op2, dest_tn_high, cond_tn, false_tn_high, flag_tn, dest_tn_high, ops);
   }
+  return(TRUE);
+}
 
-  return;
+/* If result_tn is equal to cond_tn, do a copy operation */
+void Check_TN_Equal(TN **result_tn, TN **cond_tn, OPS* ops)
+{
+  if (tns_are_equals(*result_tn, *cond_tn)) {
+    TN *cond_tn_t = Build_TN_Like(*cond_tn);
+    Build_OP(TOP_add, cond_tn_t, *cond_tn, Zero_TN, ops);
+    *cond_tn = cond_tn_t;
+  }
 }
 
 /*
@@ -3072,6 +3042,55 @@ static TOP Get_MC_ZC_TOP(OPERATOR opr, BOOL true_eq_zero = TRUE) {
 }
 
 /*
+ * Get mc.zn.cond according to operator
+ *   result = cond_tn cond 0 ? true_tn : -true_tn
+ */
+static TOP Get_MC_ZN_TOP(OPERATOR opr, BOOL true_is_neg = TRUE) {
+  TOP mczn;
+  switch (opr) {
+    case OPR_LE:  
+      if (true_is_neg) 
+        mczn = TOP_mc_zn_gt;
+      else
+        mczn = TOP_mc_zn_le;
+      break;
+    case OPR_GE:  
+      if (true_is_neg)	
+        mczn = TOP_mc_zn_lt;
+      else 
+        mczn = TOP_mc_zn_ge;
+      break;
+    case OPR_LT:    
+      if (true_is_neg)
+        mczn = TOP_mc_zn_ge;
+      else
+        mczn = TOP_mc_zn_lt;
+      break;
+    case OPR_GT: 
+      if (true_is_neg)
+        mczn = TOP_mc_zn_le; 
+      else
+        mczn = TOP_mc_zn_gt;
+      break;
+    case OPR_EQ: 
+      if (true_is_neg)
+        mczn = TOP_mc_zn_ne;
+      else
+        mczn = TOP_mc_zn_eq;
+      break;
+    case OPR_NE:   
+      if (true_is_neg)
+        mczn = TOP_mc_zn_eq;
+      else 
+        mczn = TOP_mc_zn_ne;
+      break;
+    default:
+      FmtAssert(FALSE, ("Unknown opcode"));
+  }
+  return mczn;
+}
+
+/*
   * expand compare
   */
 void Exp_Compare(OPCODE compare,TN *p, TN *cmp_kid1, TN *cmp_kid2, OPS *ops) {
@@ -3115,29 +3134,166 @@ void Exp_Compare(OPCODE compare,TN *p, TN *cmp_kid1, TN *cmp_kid2, OPS *ops) {
   }
 }
 
-static BOOL 
-tn_is_zero (TN *tn, TYPE_ID type)
+BOOL top_is_sl1_mc(TOP top)
 {
-  TN *tn_high = NULL;
-  if (MTYPE_is_longlong(type) && TN_is_register(tn)) { 
-    tn_high = Get_TN_Pair(tn);
-    FmtAssert(tn_high, ("tn_is_zero: Get tn_high fail"));
+  switch(top) {
+    case TOP_mc_z_eq:
+    case TOP_mc_z_ne:
+    case TOP_mc_z_gt:
+    case TOP_mc_z_ge:
+    case TOP_mc_z_lt:
+    case TOP_mc_z_le:
+      
+    case TOP_mc_zn_eq:
+    case TOP_mc_zn_ne:
+    case TOP_mc_zn_gt:
+    case TOP_mc_zn_ge:
+    case TOP_mc_zn_lt:
+    case TOP_mc_zn_le:
+
+    case TOP_mc_r_ge:
+    case TOP_mc_r_le:
+    case TOP_mc_r_lt:
+    case TOP_mc_r_gt:
+    case TOP_mc_r_eq:
+    case TOP_mc_r_ne:
+
+    case TOP_mc_abs:
+
+    case TOP_mc_zc_le:
+    case TOP_mc_zc_lt:
+    case TOP_mc_zc_gt:
+    case TOP_mc_zc_ge:
+    case TOP_mc_zc_eq:
+    case TOP_mc_zc_ne:
+      return TRUE;
+    default:
+      return FALSE;
   }
-  return ((TN_is_constant(tn) && TN_value(tn) ==0) 
-      || (MTYPE_is_longlong(type) && tn_registers_identical(tn, Zero_TN) && tn_registers_identical(tn_high, Zero_TN))
-      || (!MTYPE_is_longlong(type) && tn_registers_identical(tn, Zero_TN)));
 }
 
-static BOOL Equiv (WN* wn1, WN* wn2)
+/* Build move conditional OP */
+static void Build_MC_OP(TOP top, TN *result, TN *cond_tn, TN *src_tn, TN *flag_tn,
+      TYPE_ID select_type, OPS *ops)
 {
-  if (!WN_Equiv(wn1,wn2)) return(FALSE);
-  for (INT kidno=0; kidno<WN_kid_count(wn1); kidno++) {
-    if (!Equiv(WN_kid(wn1,kidno),WN_kid(wn2,kidno))) {
-      return(FALSE);
+  Is_True((select_type == MTYPE_U4 || select_type == MTYPE_I4 
+         || select_type == MTYPE_U8 || select_type == MTYPE_I8 
+         || select_type == MTYPE_F4 || select_type == MTYPE_F8),
+      ("Build_MC_OP:: Unexpected type, %d", select_type));
+
+  Is_True(top_is_sl1_mc(top), ("Build_MC_OP: Unexpected top"));
+
+  BOOL top_is_mcz = ((top == TOP_mc_z_eq) || (top == TOP_mc_z_ne) || (top == TOP_mc_z_ge)
+       || (top == TOP_mc_z_gt) || (top == TOP_mc_z_le) || (top == TOP_mc_z_lt));
+
+  if (top_is_mcz) {
+    Build_OP(top, result, cond_tn, src_tn, flag_tn, result, ops);
+  } else {
+    Build_OP(top, result, cond_tn, src_tn, flag_tn, ops);
+  }
+  
+  if (MTYPE_bit_size(select_type) == 64) {
+
+    /* U8/I8/F8 SELECT */
+    TN *src_tn_high = Get_TN_Pair(src_tn);
+    TN *result_high = Get_TN_Pair(result);
+
+    FmtAssert(src_tn_high, ("Build_MC_OP: Get true_tn_high fail"));
+    FmtAssert(result_high, ("Build_MC_OP: Get result_high fail"));
+
+    Check_TN_Equal(&result_high, &cond_tn, ops);
+    if (top_is_mcz) {
+      Build_OP(top, result_high, cond_tn, src_tn_high, flag_tn, result_high, ops);
+    } else {
+      Build_OP(top, result_high, cond_tn, src_tn_high, flag_tn, ops);
     }
   }
-  return(TRUE);
+  return;
 }
+
+/*
+ * expand unoptimized conditional move to 2 instructions
+ * result = cond_tn cond 0 ? true_tn : false_tn
+ * ==>  mc.z.cond  result, cond_tn, true_tn
+ *      mc.z.!cond result, cond_tn, false_tn
+ */
+extern void Exp_2inst_MC_Zero ( 
+    TOP mc_op,
+    TN *dest_tn,
+    TN *true_tn,
+    TN *false_tn,
+    TN *cond_tn, 
+    TYPE_ID true_type,
+    TYPE_ID false_type,
+    int unsignedflag,
+    OPS* ops )
+{
+  TOP op2;
+  TN *flag_tn = Gen_Literal_TN(unsignedflag, 4);
+
+  switch(mc_op) {
+    case TOP_mc_z_ne:
+      op2 = TOP_mc_z_eq;
+      break;
+    case TOP_mc_z_eq:
+      op2 = TOP_mc_z_ne;
+      break;
+    case TOP_mc_z_lt:
+      op2 = TOP_mc_z_ge;
+      break; 
+    case TOP_mc_z_gt:
+      op2 = TOP_mc_z_le;
+      break;
+    case TOP_mc_z_le:
+      op2 = TOP_mc_z_gt;
+      break;
+    case TOP_mc_z_ge:
+      op2 = TOP_mc_z_lt;
+      break;
+    default:
+      FmtAssert(FALSE, ("Exp_2inst_MC_Zero: Unknown opcode %s", mc_op));
+  }
+
+  Check_TN_Equal(&dest_tn, &cond_tn, ops);
+
+  TYPE_ID type = (MTYPE_bit_size(true_type) > MTYPE_bit_size(false_type) ? true_type : false_type);
+
+  Expand_Copy(dest_tn, false_tn, false_type, ops);
+  Build_MC_OP(mc_op, dest_tn, cond_tn, true_tn, flag_tn, type, ops); 
+  return;
+}
+
+/* ====================================================================
+ * Copied from "wn_simp_code.h"
+ * OPCODE get_inverse_relop( OPCODE opc )
+ *
+ * For a relational operator, return the inverse operator. Return 0
+ * for non-relational operators.
+ *
+ * ====================================================================
+ */
+
+static OPCODE get_inverse_relop( OPCODE opc )
+{
+   OPCODE iopc;
+   OPERATOR iopr;
+
+   switch (OPCODE_operator(opc)) {
+   case OPR_LT: iopr = OPR_GE; break;
+   case OPR_LE: iopr = OPR_GT; break;
+   case OPR_GT: iopr = OPR_LE; break;
+   case OPR_GE: iopr = OPR_LT; break;
+   case OPR_EQ: iopr = OPR_NE; break;
+   case OPR_NE: iopr = OPR_EQ; break;
+   default: return OPCODE_UNKNOWN;
+   }
+
+   iopc = OPCODE_make_op(iopr, OPCODE_rtype(opc), OPCODE_desc(opc));
+   return iopc;
+}
+
+#define WN_is_constant_expr(wn) \
+   (WN_operator(wn) == OPR_INTCONST || WN_operator(wn) == OPR_CONST)
 
 /*
  *  optimize conditional move : result = cmp1 cond cmp2 ? true_tn : false_tn
@@ -3150,6 +3306,7 @@ static BOOL Equiv (WN* wn1, WN* wn2)
  *  4) true_tn = false + 1  --> setltu/setltu.i tmp,cmp1,cmp2 ; add result, false_tn, tmp
  *  5) true_tn == result  --> mc.z.!cond
  *      false_tn == result  --> mc.z.cond
+ *  6) true_tn == -false_tn --> mc.zn.cond
  *  default:    mc.z.cond ; mc.z.!cond
  */
 extern BOOL Exp_Opt_Select_And_Condition (WN *select, 
@@ -3182,8 +3339,83 @@ extern BOOL Exp_Opt_Select_And_Condition (WN *select,
   Is_True ((select_opc == OPC_U4SELECT || select_opc == OPC_I4SELECT 
         || select_opc == OPC_U8SELECT || select_opc == OPC_I8SELECT 
         || select_opc == OPC_F4SELECT || select_opc == OPC_F8SELECT),
-      ("Handle_Select:: Unexpected select operator, %d", select_opc)) ;
+      ("Exp_Opt_Select_And_Condition:: Unexpected select operator, %d", select_opc)) ;
 
+
+  /*
+   * whirl node compare: 
+   * case 1:  
+   *    if (x cond y)
+   *      t = z+1;
+   *    else
+   *      t = z;
+   *    convert to 2 instruction  t = z + (x cond y)
+   */
+  if (WN_operator(true_wn) == OPR_ADD && 
+      ((WN_operator(WN_kid0(true_wn)) == OPR_INTCONST && 
+        WN_const_val(WN_kid0(true_wn)) == 1 &&
+        Equiv(WN_kid1(true_wn), false_wn)) 
+       /* z = z + 1*/
+       || (WN_operator(WN_kid1(true_wn)) == OPR_INTCONST &&
+         WN_const_val(WN_kid1(true_wn)) == 1 &&
+         Equiv(WN_kid0(true_wn), false_wn)) )) 
+       /* z = 1 + z */
+  {
+    TN *tmp = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
+    Exp_Compare(WN_opcode(compare), tmp, cmp_kid1, cmp_kid2, &new_ops);
+    Expand_Add(result, false_tn, tmp, mtype, &new_ops);
+
+    DevWarn("Conditional move::Exp_Opt_Select_And_Condition (setlt) 4 instruction ");
+    goto DONE;
+  }
+
+  /*
+   * whirl node compare: 
+   * case 2:
+   *    if (x cond y)
+   *      t = z;
+   *    else
+   *      t = z+1; or t = 1+z
+   *    convert to 2 instruction  t = z + (x !cond y)
+   */
+
+  if (WN_operator(false_wn) == OPR_ADD && 
+      ((WN_operator(WN_kid0(false_wn)) == OPR_INTCONST && 
+        WN_const_val(WN_kid0(false_wn)) == 1 &&
+        Equiv(WN_kid1(false_wn), true_wn)) 
+       /* z = z + 1*/
+       || (WN_operator(WN_kid1(false_wn)) == OPR_INTCONST &&
+         WN_const_val(WN_kid1(false_wn)) == 1 &&
+         Equiv(WN_kid0(false_wn), true_wn)) )) 
+       /* z = 1 + z */
+  {
+    TN *tmp = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
+    Exp_Compare(get_inverse_relop(WN_opcode(compare)), tmp, cmp_kid1, cmp_kid2, &new_ops);
+    Expand_Add(result, true_tn, tmp, mtype, &new_ops);
+
+    DevWarn("Conditional move::Exp_Opt_Select_And_Condition (setlt) 4 instruction ");
+    goto DONE;
+  }
+
+
+  /* 
+   * whirl node compare:  
+   * case 3:  if (x > y)    y = x  <==> x > y ? x : y
+   *          if (x > y)    x = y  <==> x > y ? y : x <==> x <= y ? x : y
+   */
+  if ((select_opc == OPC_U4SELECT || select_opc == OPC_I4SELECT || select_opc == OPC_F4SELECT)
+   && ((Equiv(true_wn, cmp1_wn) && Equiv(false_wn, cmp2_wn))
+       || (Equiv(true_wn, cmp2_wn) && Equiv(false_wn, cmp1_wn)))) {
+  
+    BOOL true_tn_eq_cmp1 = (Equiv(true_wn, cmp1_wn) && Equiv(false_wn, cmp2_wn));
+    TOP mcr=Get_MC_R_TOP(compare_opr, true_tn_eq_cmp1);
+    if (true_tn_eq_cmp1)
+      Build_OP(mcr, result, true_tn, false_tn, flag_tn, &new_ops);
+    else 
+      Build_OP(mcr, result, false_tn, true_tn, flag_tn, &new_ops);
+    goto DONE;
+
+  }   
 
   /* 
    * result = cmp_kid1 cond cmp_kid2 ? true_tn : true_tn
@@ -3194,201 +3426,70 @@ extern BOOL Exp_Opt_Select_And_Condition (WN *select,
     goto DONE;
   } 
 
-  /*
-   * case 1:  if (x cond y) z=z+1   convert to 2 instruction  z = z + (x cond y)
-   */
-  if (WN_operator(true_wn) == OPR_ADD && (WN_kid_count(false_wn) == 1) && 
-      ((WN_operator(WN_kid0(true_wn)) == OPR_INTCONST && 
-        WN_const_val(WN_kid0(true_wn)) == 1 &&
-        WN_Equiv(WN_kid1(true_wn), false_wn)) 
-       /* z = z + 1*/
-       || (WN_operator(WN_kid1(true_wn)) == OPR_INTCONST &&
-         WN_const_val(WN_kid1(true_wn)) == 1 &&
-         Equiv(WN_kid0(true_wn), false_wn)) )) 
-    /* z = 1 + z */
-  {
-    TN *tmp = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
-    Exp_Compare(WN_opcode(compare), tmp, cmp_kid1, cmp_kid2, &new_ops);
-    Expand_Add(result, false_tn, tmp, mtype, &new_ops);
 
-    DevWarn("Conditional move::Exp_Opt_Select_And_Condition (setlt) 4 instruction ");
-    goto DONE;
+  TN *cond_tn;
+  if (!MTYPE_is_longlong(cmp1_type) && tn_is_zero(cmp_kid2, cmp2_type)) {
+
+    /* I4 cond 0 ? true_tn : false_tn */
+    cond_tn = cmp_kid1;
+
+  } else {
+  
+    /* I8 cond 0 || I8 cond I8 || I8 cond I4 || I4 cond I4 
+     * Do compare first, then the slect will be  
+     * I4 != 0 ? true_tn : false_tn
+     */
+    cond_tn = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
+    Exp_Compare(WN_opcode(compare), cond_tn, cmp_kid1, cmp_kid2, &new_ops);
+    compare_opr = OPR_NE;
   }
 
-  if (select_opc == OPC_U4SELECT || select_opc == OPC_I4SELECT || select_opc == OPC_F4SELECT) {
+  if (tn_is_zero(false_tn, false_type) || tn_is_zero(true_tn, true_type)){
 
-    if ((Equiv(true_wn, cmp1_wn) && Equiv(false_wn, cmp2_wn))
-        || (Equiv(true_wn, cmp2_wn) && Equiv(false_wn, cmp1_wn))) {
+    /*
+     * result = cond_tn cond 0 ? 0 : false_tn  
+     * result = cond_tn cond 0 ? true_tn : 0
+     */
+    BOOL true_tn_is_zero = tn_is_zero(true_tn, true_type);
+    TN *src_tn = true_tn_is_zero ? false_tn: true_tn;
+    TOP mczc = Get_MC_ZC_TOP(compare_opr, true_tn_is_zero);
+    Build_MC_OP(mczc, result, cond_tn, src_tn, flag_tn, mtype, &new_ops);
+    
+  } else if (tns_are_equals(result, true_tn) || tns_are_equals(result, false_tn)) {
 
-      /* 
-       * whirl node compare:  
-       * case 2:  if (x > y)    y = x  <==> x > y ? x : y
-       *          if (x > y)    x = y  <==> x > y ? y : x <==> x <= y ? x : y
-       */
-      BOOL true_tn_eq_cmp1 = (WN_Equiv(true_wn, cmp1_wn) && WN_Equiv(false_wn, cmp2_wn));
-      TOP mcr=Get_MC_R_TOP(compare_opr, true_tn_eq_cmp1);
-      if (true_tn_eq_cmp1)
-        Build_OP(mcr, result, true_tn, false_tn, flag_tn, &new_ops);
-      else 
-        Build_OP(mcr, result, false_tn, true_tn, flag_tn, &new_ops);
-      goto DONE;
-    }   
+    /* 
+     * result = cond_tn cond 0 ? result : false_tn 
+     * result = cond_tn cond 0 ? true_tn : result  
+     */
+    BOOL result_eq_true = tns_are_equals(result, true_tn);
+    TN *src_tn = result_eq_true ? false_tn: true_tn;
+    TOP mcz = Get_MC_ZERO_TOP(compare_opr, result_eq_true);
+    Build_MC_OP(mcz, result, cond_tn, src_tn, flag_tn, mtype, &new_ops);
 
-    if ((tns_are_equals (cmp_kid1, true_tn) && tns_are_equals(cmp_kid2, false_tn))
-        ||(tns_are_equals (cmp_kid1, false_tn) && tns_are_equals(cmp_kid2, true_tn))) {
+  } else if ((true_type == false_type) && MTYPE_is_signed(true_type) 
+          && ((select_opc == OPC_I4SELECT) || (select_opc == OPC_U4SELECT))
+          &&((WN_is_constant_expr(true_wn) && WN_is_constant_expr(false_wn)
+               && (WN_const_val(true_wn) == -WN_const_val(false_wn))) 
+           || ((WN_operator(true_wn) == OPR_NEG) && (Equiv(WN_kid0(true_wn),false_wn)))
+           || ((WN_operator(false_wn) == OPR_NEG) && (Equiv(WN_kid0(false_wn), true_wn))))) {
 
-      /* 
-       * result = cmp_kid1 cond cmp_kid2 ? cmp_kid1 : cmp_kid2 
-       * result = cmp_kid1 cond cmp_kid2 ? cmp_kid2 : cmp_kid1 
-       */
-      BOOL kid1_eq_truetn = tns_are_equals (cmp_kid1, true_tn) && tns_are_equals(cmp_kid2, false_tn);
-      TOP mcr=Get_MC_R_TOP(compare_opr, kid1_eq_truetn);
-      Build_OP(mcr, result, cmp_kid1, cmp_kid2, flag_tn, &new_ops);
-      goto DONE;
-    } 
+   /*
+    * result = cond_tn cond 0 ? true_tn : (OPR_NEG)true_tn
+    * result = cond_tn cond 0 ? (OPR_NEG)false_tn : false_tn
+    */
+    BOOL true_wn_is_neg = (WN_operator(true_wn) == OPR_NEG);
+    TN *src_tn = true_wn_is_neg ? false_tn : true_tn;
+    TOP mczn = Get_MC_ZN_TOP(compare_opr, true_wn_is_neg);
+    Build_MC_OP(mczn, result, cond_tn, src_tn, flag_tn, mtype, &new_ops);
 
-    if (!MTYPE_is_longlong(cmp1_type) && tn_is_zero(cmp_kid2, cmp2_type)) {
-      /* I4 op 0 */
-      if (tn_is_zero(false_tn, false_type) || tn_is_zero(true_tn, true_type)){
-        /*
-         * result = cmp_kid1 cond 0 ? 0 : false_tn	
-         * result = cmp_kid1 cond 0 ? true_tn : 0
-         */
-        BOOL true_tn_is_zero = tn_is_zero(true_tn, true_type);
-        TN *src_tn = true_tn_is_zero ? false_tn: true_tn;
-        TOP mczc = Get_MC_ZC_TOP(compare_opr, true_tn_is_zero);
-        Build_OP(mczc, result, cmp_kid1, src_tn, flag_tn, &new_ops);
-      } else if (tns_are_equals(result, true_tn) || tns_are_equals(result, false_tn)) {
-        /* 
-         * result = cmp_kid1 cond 0 ? result : false_tn	
-         * result = cmp_kid1 cond 0 ? true_tn : result	
-         */
-        BOOL result_eq_true = tns_are_equals(result, true_tn);
-        TN *src_tn = result_eq_true ? false_tn: true_tn;
-        TOP mcz = Get_MC_ZERO_TOP(compare_opr, result_eq_true);
-        Build_OP(mcz, result, cmp_kid1, src_tn, flag_tn, Zero_TN, &new_ops);
-        Set_OP_cond_def_kind(OPS_last(&new_ops), OP_ALWAYS_COND_DEF);   
-      } else {
+  } else {
 
-        /* result = cmp_kid1 cond 0 ? true_tn : false_tn */
-        TOP mcz = Get_MC_ZERO_TOP(compare_opr, FALSE);
-        Exp_2inst_MC_Zero(mcz, result, true_tn, false_tn, cmp_kid1, true_type, false_type, unsignedflag, &new_ops);
-        DevWarn("Conditional move::Exp_Opt_Select_And_Condition (mc_zero) 2 instruction ");	   
+    /* result = cond_tn cond 0 ? true_tn : false_tn */
+    TOP mcz = Get_MC_ZERO_TOP(compare_opr, FALSE);
+    Exp_2inst_MC_Zero(mcz, result, true_tn, false_tn, cond_tn, true_type, false_type, unsignedflag, &new_ops);
+    DevWarn("Conditional move::Exp_Opt_Select_And_Condition (mc_zero) 2 instruction ");    
 
-      }
-    } else {
-      /* I8 op 0 || I8 op I8 || I8 op I4 || I4 op I4 */
-      TN *cond_tn = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
-      Exp_Compare(WN_opcode(compare), cond_tn, cmp_kid1, cmp_kid2, &new_ops);
-      if (tn_is_zero(false_tn, false_type) || tn_is_zero(true_tn, true_type)){
-        /* 
-         * result = cmp_kid1 cond cmp_kid2 ? 0 : false_tn	
-         * result = cmp_kid1 cond cmp_kid2 ? true_tn : 0
-         */
-        BOOL true_tn_is_zero = tn_is_zero(true_tn, true_type);
-        TN *src_tn = true_tn_is_zero ? false_tn: true_tn;
-        TOP mczc = true_tn_is_zero? TOP_mc_zc_eq: TOP_mc_zc_ne;
-        Build_OP(mczc, result, cond_tn, src_tn, flag_tn, &new_ops);
-      } else if (tns_are_equals(result, true_tn) || tns_are_equals(result, false_tn)) {
-        /*
-         * result = cmp_kid1 cond cmp_kid2 ? result : false_tn	
-         * result = cmp_kid1 cond cmp_kid2 ? true_tn : result
-         */
-        BOOL result_eq_true = tns_are_equals(result, true_tn);
-        TN *src_tn = result_eq_true ? false_tn: true_tn;
-        TOP mcz = result_eq_true ? TOP_mc_z_eq : TOP_mc_z_ne ;
-        Build_OP(mcz, result, cond_tn, src_tn, flag_tn, Zero_TN, &new_ops);
-        Set_OP_cond_def_kind(OPS_last(&new_ops), OP_ALWAYS_COND_DEF); 
-      }
-      else { 
-        /* result = cmp_kid1 cond cmp_kid2 ? true_tn : false_tn */
-        TOP mcz = TOP_mc_z_ne;
-        Exp_2inst_MC_Zero(mcz, result, true_tn, false_tn, cond_tn, true_type, false_type, unsignedflag, &new_ops);
-        DevWarn("Conditional move::Exp_Opt_Select_And_Condition (mc_zero) 2 instruction ");	   
-      }
-    }
-  }else if (select_opc == OPC_U8SELECT || select_opc == OPC_I8SELECT || select_opc == OPC_F8SELECT){
-    TN *true_tn_high = Get_TN_Pair(true_tn);
-    TN *false_tn_high = Get_TN_Pair(false_tn);
-    TN *result_high = Get_TN_Pair(result);
-
-    FmtAssert(true_tn_high, ("Exp_Opt_Select_And_Condition: Get true_tn_high fail"));
-    FmtAssert(false_tn_high, ("Exp_Opt_Select_And_Condition: Get false_tn_high fail"));
-
-    if (tn_is_zero(cmp_kid2, cmp2_type) && !MTYPE_is_longlong(cmp1_type)) {
-      /*I4 op 0*/
-      if (tn_is_zero(false_tn, false_type) || tn_is_zero(true_tn, true_type)) {
-        /* 
-         * cmp_kid1 cond 0 ? true_tn: 0 
-         * cmp_kid1 cond 0 ? 0: false_tn 
-         */
-        BOOL true_tn_is_zero = tn_is_zero(true_tn, true_type);
-        TN *src_tn = true_tn_is_zero ? false_tn: true_tn;
-        TN *src_tn_high = true_tn_is_zero ? false_tn_high: true_tn_high;			
-        TOP mczc = Get_MC_ZC_TOP(compare_opr, true_tn_is_zero);
-        Build_OP(mczc, result, cmp_kid1, src_tn, flag_tn, &new_ops);
-        Build_OP(mczc, result_high, cmp_kid1, src_tn_high, flag_tn, &new_ops);
-
-      } else if ((tns_are_equals(result, true_tn) && tns_are_equals(result_high, true_tn_high)) 
-          || (tns_are_equals(result, false_tn) && tns_are_equals(result_high, false_tn_high))) {
-        /* 
-         * result = cmp_kid1 cond 0 ? result : false_tn 
-         * result = cmp_kid1 cond 0 ? true_tn : result 
-         */
-        BOOL result_eq_true = tns_are_equals(result, true_tn) && tns_are_equals(result_high, true_tn_high);
-        TN *src_tn = result_eq_true ? false_tn: true_tn;
-        TN *src_tn_high = result_eq_true ? false_tn_high: true_tn_high;
-        TOP mcz = Get_MC_ZERO_TOP(compare_opr, result_eq_true);
-        Build_OP(mcz, result, cmp_kid1, src_tn, flag_tn, Zero_TN, &new_ops);
-        Set_OP_cond_def_kind(OPS_last(&new_ops), OP_ALWAYS_COND_DEF);   
-        Build_OP(mcz, result_high, cmp_kid1, src_tn_high, flag_tn, Zero_TN, &new_ops);
-        Set_OP_cond_def_kind(OPS_last(&new_ops), OP_ALWAYS_COND_DEF);   
-      } else {
-        TOP mcz = Get_MC_ZERO_TOP(compare_opr, FALSE);
-        Exp_2inst_MC_Zero(mcz, result, true_tn, false_tn, cmp_kid1, true_type, false_type, unsignedflag, &new_ops);
-        DevWarn("Conditional move::Exp_Opt_Select_And_Condition (mc_zero) 4 instruction ");	   
-      }
-    } else {
-
-      TN *cond_tn = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
-      Exp_Compare(WN_opcode(compare), cond_tn, cmp_kid1, cmp_kid2, &new_ops);
-
-      if (tn_is_zero(false_tn, false_type) || tn_is_zero(true_tn, true_type)) {
-        /* 
-         * cmp_kid1 cond cmp_kid2 ? true_tn: 0 
-         * cmp_kid1 cond 0 ? 0: false_tn
-         */			
-        BOOL true_tn_is_zero = tn_is_zero(true_tn, true_type);
-        TN *src_tn = true_tn_is_zero? false_tn: true_tn;
-        TN *src_tn_high = true_tn_is_zero? false_tn_high: true_tn_high;
-        TOP mczc = true_tn_is_zero ? TOP_mc_zc_eq : TOP_mc_zc_ne;
-        Build_OP(mczc, result, cond_tn, src_tn, flag_tn, &new_ops);
-        Build_OP(mczc, result_high, cond_tn, src_tn_high, flag_tn, &new_ops);
-
-      } else if ((tns_are_equals(result, true_tn) && tns_are_equals(result_high, true_tn_high)) 
-          || (tns_are_equals(result, false_tn) && tns_are_equals(result_high, false_tn_high))) {
-        /* 
-         * result = cmp_kid1 cond cmp_kid2 ? result : false_tn 
-         * result = cmp_kid1 cond cmp_kid2 ? true_tn : result 
-         */
-        BOOL result_eq_true = tns_are_equals(result, true_tn) && tns_are_equals(result_high, true_tn_high);
-        TN *src_tn = result_eq_true ? false_tn: true_tn;
-        TN *src_tn_high = result_eq_true ? false_tn_high: true_tn_high;			
-        TOP mcz = result_eq_true ? TOP_mc_z_eq : TOP_mc_z_ne;
-        Build_OP(mcz, result, cond_tn, src_tn, flag_tn, Zero_TN, &new_ops);
-        Set_OP_cond_def_kind(OPS_last(&new_ops), OP_ALWAYS_COND_DEF);  
-        Build_OP(mcz, result_high, cond_tn, src_tn_high, flag_tn, Zero_TN, &new_ops);
-        Set_OP_cond_def_kind(OPS_last(&new_ops), OP_ALWAYS_COND_DEF);  
-      } else {
-
-        /* result = cmp_kid1 cond cmp_kid2 ? true_tn : false_tn */
-        TOP mcz = TOP_mc_z_ne;
-        Exp_2inst_MC_Zero(mcz, result, true_tn, false_tn, cond_tn, true_type, false_type, TRUE, &new_ops);
-        DevWarn("Conditional move::Exp_Select_And_Condition (mc_zero) 2 instruction ");	   
-      }
-    }
   }
-
 
 DONE:
   if (OPS_length(&new_ops) == 0) {
@@ -3431,77 +3532,48 @@ Expand_Select (
 {
   const BOOL is_float = MTYPE_is_float(mtype);
 
-  Is_True((mtype == MTYPE_U4 || mtype==MTYPE_I4 || mtype == MTYPE_U8 ||
-        mtype == MTYPE_I8) , ("mtype must be MTYPE_I4/U4/I8/U8\n" ));
+  Is_True((mtype == MTYPE_U4 || mtype == MTYPE_I4 || mtype == MTYPE_F4
+        || mtype == MTYPE_U8 || mtype == MTYPE_I8 || mtype == MTYPE_F8),
+           ("mtype must be MTYPE_I4/U4/F4/I8/U8/F8"));
 
-  if (TN_register_class(cond_tn) == ISA_REGISTER_CLASS_integer) {
+  Is_True(((TN_register_class(cond_tn) == ISA_REGISTER_CLASS_integer)),
+          ("cond_tn must be integer"));
 
-    if (MTYPE_bit_size(mtype) == 32) {
-      TN *flag_tn = Gen_Literal_TN(1, 4); 
-      if (tns_are_equals(true_tn, false_tn)) {
-        Build_OP(TOP_addu, dest_tn, true_tn, Zero_TN, ops);
-        DevWarn("Conditional move::  Expand_Select(1 instructions -copy) ");
-      } else if (tns_are_equals(Zero_TN, true_tn)) {
-        Build_OP(TOP_mc_zc_eq, dest_tn, cond_tn, false_tn, flag_tn, ops);
-      } else if (tns_are_equals(Zero_TN, false_tn)) {
-        Build_OP(TOP_mc_zc_ne, dest_tn, cond_tn, true_tn, flag_tn, ops);
-      } else if (tns_are_equals(dest_tn, false_tn)) {
-        Build_OP(TOP_mc_z_ne, dest_tn, cond_tn, true_tn, flag_tn, Zero_TN, ops);
-        Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);  
-      } else if (tns_are_equals(dest_tn, true_tn)) {
-        Build_OP(TOP_mc_z_eq, dest_tn, cond_tn, false_tn, flag_tn, Zero_TN, ops);
-        Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);  
-      } else {
-        Exp_2inst_MC_Zero (TOP_mc_z_ne, dest_tn, true_tn, false_tn, cond_tn, mtype, mtype, TRUE, ops);
-        DevWarn("Conditional move::  Expand_Select(2 instructions) ");
-      }
+  TN *flag_tn = Gen_Literal_TN(1, 4); 
+  
+  if (tns_are_equals(true_tn, false_tn)) {
+    
+    Expand_Copy(dest_tn, true_tn, mtype, ops);
+    DevWarn("Conditional move::  Expand_Select(1 instructions -copy) ");
+    
+  } else if (tn_is_zero(true_tn, mtype)) {
+  
+    /* dest_tn = cond_tn ? 0 : false_tn */
+    Build_MC_OP(TOP_mc_zc_eq, dest_tn, cond_tn, false_tn, flag_tn, mtype, ops);
+    
+  } else if (tn_is_zero(false_tn, mtype)) {
+  
+    /* dest_tn = cond_tn ? true_tn: 0 */
+    Build_MC_OP(TOP_mc_zc_ne, dest_tn, cond_tn, true_tn, flag_tn, mtype, ops);
+    
+  } else if (tns_are_equals(dest_tn, true_tn)) {
+  
+    /* dest_tn = cond_tn? dest_tn : false_tn */
+    Build_MC_OP(TOP_mc_z_eq, dest_tn, cond_tn, false_tn, flag_tn, mtype, ops);
 
-    } else if (MTYPE_bit_size(mtype) == 64) {
-      TN *true_tn_high = Get_TN_Pair(true_tn);
-      TN *false_tn_high = Get_TN_Pair(false_tn);
-      TN *dest_tn_high = Get_TN_Pair(dest_tn);
-
-      FmtAssert(true_tn_high, ("Exp_Opt_Select_And_Condition: Get true_tn_high fail"));
-      FmtAssert(false_tn_high, ("Exp_Opt_Select_And_Condition: Get false_tn_high fail"));
-      if (tn_is_zero(false_tn, mtype) || tn_is_zero(true_tn, mtype)) {
-
-        /* cond_tn ? true_tn: 0 
-         * cond_tn ? 0 : false_tn
-         */
-
-        BOOL true_tn_is_zero = tn_is_zero(true_tn, mtype);
-        TN *src_tn = true_tn_is_zero? false_tn: true_tn;
-        TN *src_tn_high = true_tn_is_zero? false_tn_high: true_tn_high;
-        TOP mczc = true_tn_is_zero ? TOP_mc_zc_eq : TOP_mc_zc_ne;
-
-        Build_OP(mczc, dest_tn, cond_tn, src_tn, Gen_Literal_TN(1, 4), ops);
-        Build_OP(mczc, dest_tn_high, cond_tn, src_tn_high, Gen_Literal_TN(1, 4), ops); 		
-
-      } else if ((tns_are_equals(dest_tn, true_tn) && tns_are_equals(dest_tn_high, true_tn_high)) 
-          || (tns_are_equals(dest_tn, false_tn) && tns_are_equals(dest_tn_high, false_tn_high))) {
-        /*    dest_tn = cond_tn? dest_tn : false_tn 
-         * || dest_tn = cond_tn? true_tn : dest_tn 
-         */
-        BOOL dest_tn_eq_true = tns_are_equals(dest_tn, true_tn) && tns_are_equals(dest_tn_high, true_tn_high);
-        TN *src_tn = dest_tn_eq_true ? false_tn: true_tn;
-        TN *src_tn_high = dest_tn_eq_true ? false_tn_high: true_tn_high;			
-        TOP mcz = dest_tn_eq_true ? TOP_mc_z_eq : TOP_mc_z_ne;
-        Build_OP(mcz, dest_tn, cond_tn, src_tn, Gen_Literal_TN(1, 4), Zero_TN, ops);
-        Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);  
-        Build_OP(mcz, dest_tn_high, cond_tn, src_tn_high, Gen_Literal_TN(1, 4), Zero_TN, ops);
-        Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);  
-      } else {
-        Exp_2inst_MC_Zero(TOP_mc_z_ne, dest_tn, true_tn, false_tn, cond_tn, mtype, mtype, TRUE, ops);
-        DevWarn("Conditional move::Exp_Select_And_Condition (mc_zero) 2 instruction ");	   
-      }
-    } else {
-      FmtAssert(FALSE, ("Expand_Select: Unexpected mtype"));
-    }
-  } else if (TN_register_class(cond_tn) == ISA_REGISTER_CLASS_float) {
-    FmtAssert(FALSE, ("Expand_Select: cond_tn type is float which isnot expected"));
+  } else if (tns_are_equals(dest_tn, false_tn)) {
+    
+    /* dest_tn = cond_tn? true_tn : dest_tn */
+    Build_MC_OP(TOP_mc_z_ne, dest_tn, cond_tn, true_tn, flag_tn, mtype, ops);
+  
   } else {
-    FmtAssert(FALSE, ("UNIMPLEMENTED"));
+
+    /* dest_tn = cond_tn? true_tn : false_tn */
+    Exp_2inst_MC_Zero (TOP_mc_z_ne, dest_tn, true_tn, false_tn, cond_tn, mtype, mtype, TRUE, ops);
+    DevWarn("Conditional move::  Expand_Select(2 instructions) ");
+
   }
+
 }
 #else
 
@@ -3574,16 +3646,20 @@ Expand_Min (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 
   if (mtype == MTYPE_U4 || mtype == MTYPE_I4) {
 
+    /* Min(int, int) */
     int unsignedflag = (mtype == MTYPE_U4) ? 1 :0;	    
     Build_OP(TOP_mc_r_le, dest, src1, src2, Gen_Literal_TN(unsignedflag, 4), ops);
     DevWarn("Conditional move::  Expand_Min(1 instruction) ");
 
   } 
   else if (mtype == MTYPE_U8 || mtype == MTYPE_I8) {
+
+    /* Min(long long, long long) */
     TN *cond_tn = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
     Expand_Int_Compare(OPR_LE, cond_tn, src1, src2, mtype, ops);
     Exp_2inst_MC_Zero(TOP_mc_z_ne, dest, src1, src2, cond_tn, mtype, mtype, TRUE, ops);
     DevWarn("Conditional move::  Expand_Min(7 instruction) ");
+
   }
   else {
     Is_True(FALSE, ("Expand_Min:: mtype must be U4 or I4 or U8 or I8"));
@@ -3645,16 +3721,19 @@ Expand_Max (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 
   if (mtype == MTYPE_U4 || mtype == MTYPE_I4) {
 
+    /* Max(int, int) */
     int unsignedflag = (mtype == MTYPE_U4) ? 1 :0;	    
     Build_OP(TOP_mc_r_ge, dest, src1, src2, Gen_Literal_TN(unsignedflag, 4), ops);
-    DevWarn("Conditional move::  Expand_Max(1 instruction) ");
+    DevWarn("Conditional move::  Expand_Max(1 instruction)");
+    
   } else if (mtype == MTYPE_U8 || mtype == MTYPE_I8) {
 
+    /* Max(long long, long long) */
     TN *cond_tn = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
     Expand_Int_Compare(OPR_GE, cond_tn, src1, src2, mtype, ops);
     Exp_2inst_MC_Zero(TOP_mc_z_ne, dest, src1, src2, cond_tn, mtype, mtype, TRUE, ops);
 
-    DevWarn("Conditional move::  Expand_Max(7 instruction) ");
+    DevWarn("Conditional move::  Expand_Max(7 instruction)");
   } else {
     Is_True(FALSE, ("Expand_Max:: mtype must be U4 or I4 or U8 or I8"));
   }
@@ -3715,6 +3794,7 @@ Expand_MinMax (TN *dest, TN *dest2, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 
   if (mtype == MTYPE_U4 || mtype == MTYPE_I4) {
 
+    /* Max(int, int) Min(int, int) */
     int unsignedflag = (mtype == MTYPE_U4) ? 1 :0;	 
     TN *flag_tn = Gen_Literal_TN(unsignedflag, 4);
     Build_OP (TOP_mc_r_ge, dest, src1, src2, flag_tn, ops);
@@ -3722,11 +3802,14 @@ Expand_MinMax (TN *dest, TN *dest2, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     DevWarn("Conditional move::  Expand_MinMax() ");
 
   } else if (mtype == MTYPE_U8 || mtype == MTYPE_I8) {
+  
+    /* Min(long long, long long) Max(long long, long long) */
     TN *cond_tn = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
     Expand_Int_Compare(OPR_GE, cond_tn, src1, src2, mtype, ops);
     Exp_2inst_MC_Zero(TOP_mc_z_ne, dest, src1, src2, cond_tn, mtype, mtype, TRUE, ops);
     Exp_2inst_MC_Zero(TOP_mc_z_eq, dest2, src1, src2, cond_tn, mtype, mtype, TRUE, ops);
     DevWarn("Conditional move::  Expand_Min(7 instruction) ");
+    
   } else {
     Is_True(FALSE, ("Expand_MinMax:: mtype must be U4 or I4 or U8 or I8"));
   }  
@@ -4371,7 +4454,17 @@ Init_CG_Expand (void)
   Trace_Exp = Get_Trace (TP_CGEXP, 1);
   /* whirl2ops uses -ttexp:2 */
   Trace_Exp2 = Get_Trace (TP_CGEXP, 4);
-  Disable_Const_Mult_Opt = Get_Trace (TP_CGEXP, 32);
+  
+  if (Is_Target_Sl5()) { 
+    // SL5 do not support zero-delay-loop
+    extern BOOL CG_enable_zero_delay_loop;
+    CG_enable_zero_delay_loop = FALSE;
+
+    // multiple operation of SL5 only need one cycle.
+    Disable_Const_Mult_Opt = TRUE;
+  } else {
+    Disable_Const_Mult_Opt = Get_Trace (TP_CGEXP, 32);
+  }
   
   if (Initialized) return;
   Initialized = TRUE;
@@ -6466,10 +6559,24 @@ TN * Exp_SL_Intrinsic_Call (INTRINSIC id, WN *intrncall,
   UINT32 bank, row, op_type, imm5, ext_op, c_type, sign;
   TN *result, *result_0, *result_1, *result_2, *result_3, *opnd_0, *opnd_1;
   result = NULL;
+
+  extern void User_Error(WN* intrncall, const char *format, ...);
+  extern char *Processor_Name;
+  
   if( (id >= INTRN_SL_INTRN_BGN) && (id <= INTRN_SL_INTRN_END )) {
+
+    if (!(Is_Target_Sl2_mcore() || Is_Target_Sl2_pcore())) {
+      User_Error(intrncall, "No support c2-intrinsic for %s processor", Processor_Name);
+    }
+    
     result = Build_SL_Intrinsic_OP(id, intrncall, ops, result_tn);
     return result;
   } else if ((id >= INTRN_C3_INTRINSIC_BEGIN) && (id <= INTRN_C3_INTRINSIC_END)) {
+  
+    if (!(Is_Target_Sl1_pcore() || Is_Target_Sl1_dsp())) {
+      User_Error(intrncall, "No support c3-intrinsic for %s processor", Processor_Name);
+    }
+  
     result = Build_C3_Intrinsic_OP(id, intrncall, ops, result_tn);
     return result;	
   }  else {
@@ -6517,6 +6624,8 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops,
 	  Exp_Store (MTYPE_I8, ded_tn, tmp_apply_arg, ofst, ops, 0);
 	  ofst+= 8;
 	}
+#if !defined(TARG_SL)
+	/* SL do not have float-point register */
 	for (par = 0; par < MAX_NUMBER_OF_REGISTER_PARAMETERS; par ++) {
 	  ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_float,
 				      par+13,
@@ -6524,6 +6633,7 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops,
 	  Exp_Store (MTYPE_F8, ded_tn, tmp_apply_arg, ofst, ops, 0);
 	  ofst+= 8;
 	}
+#endif
 
 	// return the pointer to the new structure
 	return_tn = Build_TN_Of_Mtype(MTYPE_I8);
@@ -6565,9 +6675,15 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops,
 	  ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer,
 				      par+5,
 				      8 /* assume 64 bit registers */);
+#if defined(TARG_SL)				      
+	  Build_OP(TOP_lw, ded_tn, op1, Gen_Literal_TN(ofst, 4), ops);
+#else
 	  Build_OP(TOP_ld, ded_tn, op1, Gen_Literal_TN(ofst, 4), ops);
+#endif
 	  ofst+= 8;
 	}
+#if !defined(TARG_SL)
+	/* SL do not have float-point register */
 	for (par = 0; par < MAX_NUMBER_OF_REGISTER_PARAMETERS; par ++) {
 	  ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_float,
 				      par+13,
@@ -6575,6 +6691,7 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops,
 	  Build_OP(TOP_ldc1, ded_tn, op1, Gen_Literal_TN(ofst, 4), ops);
 	  ofst+= 8;
 	}      
+#endif
       }
       return NULL;
     }
@@ -6583,10 +6700,15 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops,
       TN *ded_tn;
       ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer,
 		      		  3, 8);
+#if defined(TARG_SL)
+      /* SL do not have float-point register */
+      Build_OP(TOP_lw, ded_tn, op0, Gen_Literal_TN(0, 4), ops);
+#else
       Build_OP(TOP_ld, ded_tn, op0, Gen_Literal_TN(0, 4), ops);
       ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_float,
 		      		  1, 8);
       Build_OP(TOP_ldc1, ded_tn, op0, Gen_Literal_TN(8, 4), ops);
+#endif
       return NULL;
     }
     return NULL;	
@@ -6737,7 +6859,10 @@ void Expand_Const (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
 
       TN *pair = Get_TN_Pair(dest);	  
       if (pair != NULL) {
-        Build_OP(TOP_or, pair, Zero_TN, Zero_TN, ops);
+        if (TCON_u1(tcon) == 0x80000000) // -0.0
+          Expand_Immediate(pair, Gen_Literal_TN(0x80000000, 4), 0, ops);
+        else                             // +0.0
+          Build_OP(TOP_or, pair, Zero_TN, Zero_TN, ops);
       }
       return;
     }

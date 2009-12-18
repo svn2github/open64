@@ -32,6 +32,10 @@ Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
    the compound literal.  */
 DEFTREECODE (COMPOUND_LITERAL_EXPR, "compound_literal_expr", tcc_expression, 1)
 
+/* A FREQ_HINT_STMT is representation of "#pragma frequency_hint hint-name".
+   The operand is a string points to the <hint-name> */
+DEFTREECODE (FREQ_HINT_STMT, "freq_hint_stmt", tcc_expression, 1)
+
 /*
 Local variables:
 mode:c

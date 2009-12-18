@@ -287,6 +287,10 @@ endif
 ifeq ($(BUILD_TARGET), X8664)
 LIBRARIES += $(F90SGI_TARG_DIR)/libf90sgi.a
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+LIBRARIES += $(F90SGI_TARG_DIR)/libf90sgi.a
+endif
+
 
 LLDLIBS += $(LIBRARIES)
 ifeq ($(BUILD_ARCH), IA64)
@@ -333,6 +337,9 @@ ifndef SKIP_DEP_BUILD
  ifeq ($(BUILD_TARGET),X8664)
 	$(call submake,$(F90SGI_TARG_DIR))
  endif
+ ifeq ($(BUILD_TARGET),LOONGSON)
+       $(call submake,$(F90SGI_TARG_DIR))
+ endif
 endif
 
 #----------------------------------------------------------------------
@@ -378,7 +385,11 @@ else
 ifeq ($(BUILD_TARGET),X8664)
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(F90_RTLIBS) -lm
 else
+ifeq ($(BUILD_TARGET), LOONGSON)
+	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(F90_RTLIBS) -lm 
+else
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $$($(F90) -m32 -print-file-name=libfortran.a)
+endif
 endif
 endif
 else

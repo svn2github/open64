@@ -610,7 +610,7 @@ Compute_Force_TNs(void)
   }
 #endif
 
-#ifndef TARG_X8664
+#if !defined(TARG_X8664) && !defined(TARG_LOONGSON)
   // OSP_426, always mark Caller_GP_TN global
   if (Caller_GP_TN != NULL) {
     Force_Live_Add(Caller_GP_TN);
@@ -2461,7 +2461,12 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
       if (TN_is_dedicated(tn) || OP_cond_def(op) || OP_same_res(op)) continue;
 
       OP *last_def = (OP *) TN_MAP_Get (op_for_tn, tn);
-      if (last_def != NULL) {
+#ifdef TARG_LOONGSON
+      if ((last_def != NULL) && (OP_code(op) != TOP_ldl && OP_code(op) != TOP_lwl))
+#else
+      if (last_def != NULL)
+#endif
+      {
         // rename tn to new_tn between last_def and op.
         Rename_TN_In_Range (tn, last_def, op);
       }

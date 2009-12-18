@@ -373,7 +373,11 @@ add_special_options (void)
 			toggle(&gnum,8);
 		}
 		sprintf(buf, "%d", gnum);
+#ifdef TARG_SL
+		flag = add_string_option(O_G8, buf);
+#else
 		flag = add_string_option(O_G__, buf);
+#endif
 		prepend_option_seen(flag);
 	}
 
@@ -460,11 +464,11 @@ add_special_options (void)
 	    /*
 	     * Determine which back end phase(s) need to be run.
 	     *
-	     *			-O0/-O1	-O2		-O3
-	     *			===========================
-	     *		.B,.I:	cg	wopt/cg		lno/wopt/cg
-	     *		.N:	cg	wopt/cg		wopt/cg
-	     *		.O:	cg	cg		cg
+	     *				-O0/-O1	-O2		-O3
+	     *				===========================
+	     *		.B,.I,.P:	cg	wopt/cg		lno/wopt/cg
+	     *		.N:		cg	wopt/cg		wopt/cg
+	     *		.O:		cg	cg		cg
 	     */
 	    if (source_kind == S_O)
 		warning("compiles of WOPT-generated .O files will usually fail due to missing state information");

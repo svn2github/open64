@@ -193,6 +193,7 @@
 #include "tag.h"
 #include "label_util.h"
 #include "profile_util.h"
+#include "cflow.h"
 #endif
 
 #if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
@@ -5925,7 +5926,7 @@ static BOOL Skip_Loop_For_Reason(LOOP_DESCR *loop)
     {
       reason = "loop never exits";
     }
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
     else if( BB_freq_fb_based(head) && BB_freq(head) < 0.01 ){
       reason = "loop is barely executed";
     }
@@ -6918,8 +6919,54 @@ void CG_LOOP_Statistics(LOOP_DESCR *loop)
 
 
 #if defined(TARG_SL)
-static BOOL enable_zdl_with_branch = FALSE;
+static BOOL enable_zdl_with_branch = TRUE;
 static int zdl_seq_no = 0;
+
+static void Dead_Code_Elimination_Within_BB(TN* probably_not_liveout_tn)
+{
+  for (BB *bb = REGION_First_BB; bb != NULL; bb = BB_next(bb))
+  {
+     OP* next_op;
+
+     if (GRA_LIVE_TN_Live_Outof_BB(probably_not_liveout_tn, bb))
+ 	continue;
+     for (OP* op = BB_first_op(bb); op!=NULL; op = next_op)
+     {
+       next_op = OP_next(op);
+       //check every local TN in BB
+       bool can_be_removed = TRUE;
+       if (OP_results(op)==1)
+       {
+ 	   TN* result = OP_result(op,0);
+	   if (!TN_is_register(result)) continue;
+       }
+       if (OP_results(op)== 1 && TNs_Are_Equivalent(probably_not_liveout_tn,OP_result(op,0)))
+       {
+          for (OP* op_after = OP_next(op); op_after != NULL; op_after = OP_next(op_after))
+          {
+              for (int i = 0; i < OP_opnds(op_after); i++)
+              {
+                 if (TNs_Are_Equivalent(probably_not_liveout_tn, OP_opnd(op_after, i)))
+                   can_be_removed = FALSE;
+              }
+              if (can_be_removed == FALSE)
+	        break;
+          }
+	  if (can_be_removed == TRUE)
+	  {
+  	     if (Get_Trace(TP_CGLOOP,0x1))
+	     {
+	        fprintf(TFile,"--------------Dead_Code_Elimination_Within-----------\n");
+	        Print_OP(op);
+		fprintf(TFile,"----------------------------------------\n\n");
+	     }
+	  }
+          if (can_be_removed == TRUE)
+              BB_Remove_Op( bb, op );
+       }
+    }
+  } 
+}
 
 /* This is procedure to generate detail code for zdl
  * It is called by CG_LOOP_Zdl_Ident_Rec 
@@ -7018,7 +7065,26 @@ CG_LOOP_Zdl_Internal_Gen_Code( CG_LOOP& cl)
 
   /* remove the old branch op*/
   if (br_op)
+  {
+    MEM_POOL TN_mempool;
+    MEM_POOL_Initialize(&TN_mempool, "branch_tn_probably_not_liveout", TRUE);
+    int opnd_num = OP_opnds(br_op);
+    TN **use_value = CXX_NEW_ARRAY(TN*, opnd_num, &TN_mempool);
+    //first,  copy TNs in branch-op
+    for (int i = 0; i < opnd_num; i++)
+      use_value[i] = OP_opnd(br_op, i);
+    //second, remove branch-op
     BB_Remove_Op( tail, br_op );
+    //third, re-calculate live-out
+    GRA_LIVE_Init(NULL);
+    //fourth, delete branch-op not live-out TN in previous BB.
+    for (int i = 0; i < opnd_num; i++)
+    {
+      if (TN_is_register(use_value[i]))
+        Dead_Code_Elimination_Within_BB(use_value[i]);
+    }
+    MEM_POOL_Delete(&TN_mempool);
+  }
 
   /* Set the tag of the last op in the tail BB of loop */
 
@@ -7253,7 +7319,9 @@ CG_LOOP_ZDL_Remove_Idx_GTN( LOOP_DESCR * loop, CG_LOOP &cl, OP* br_op )
       }
     }
   }
-  
+  GRA_LIVE_Init(NULL);
+  Dead_Code_Elimination_Within_BB(ind_var_gtn); 
+ 
   return;
 }
 #endif
@@ -7451,6 +7519,7 @@ CG_LOOP_Zdl_Ident_Rec( LOOP_DESCR* loop )
     return;
   }
 
+#if 0
   /* not single BB couldn't be zdl
    */
   BOOL single_bb = (BB_SET_Size(LOOP_DESCR_bbset(loop)) == 1);
@@ -7463,6 +7532,7 @@ CG_LOOP_Zdl_Ident_Rec( LOOP_DESCR* loop )
     }
     return;
   }
+#endif
 
   BOOL has_outside_br = FALSE;
   BOOL has_inside_br = FALSE;
@@ -7488,6 +7558,16 @@ CG_LOOP_Zdl_Ident_Rec( LOOP_DESCR* loop )
       return;
   }
 
+  // for case: OspreyTest/SingleSource/gcc.c.torture/double/compile/920710-2.c
+  if ( LOOP_DESCR_Find_Unique_Tail(loop) == NULL )
+  {
+	if( trace ){
+	  LOOP_DESCR_Dump_Loop_Brief( loop );
+	  fprintf( TFile, " 	   --- can NOT be zdl\n");
+	  fprintf( TFile, " 	   --- because tail not unique \n");
+	}
+    return;
+  }
   if( trace ){
     LOOP_DESCR_Dump_Loop_Brief( loop );
     fprintf( TFile, "        --- can be zdl, rnl=%i\n", curr_rnl );
@@ -7587,6 +7667,16 @@ CG_LOOP_Zdl_Gen_Rec( LOOP_DESCR* loop )
     return;
   /* Now, it's time to generate zdl */
   CG_LOOP cg_loop( loop );
+
+  /* for loop which do NOT have prolog-BB or epilog-BB, we can't perform ZDL for them. */
+  if (!cg_loop.Has_prolog_epilog()) {
+    Reset_Can_Zero_Delay( loop );
+    BB* tail = LOOP_DESCR_Find_Unique_Tail(loop);
+    FmtAssert(BB_length(tail)>0, ("empty tail bb of loop"));
+    Reset_BB_zdl_body(tail);
+    return;
+  }
+
   OP* br_op = CG_LOOP_Zdl_Internal_Gen_Code( cg_loop );
 
   /* recomputing liveness is necessary, since we need the NEW
@@ -7624,10 +7714,16 @@ CG_LOOP_Zdl_Gen_Rec( LOOP_DESCR* loop )
   EBO_Process_Region(NULL);
   EBO_Opt_Level = oldvalue;
 
-  //adjust tail bb tag if tail bb become empty
+  /* adjust tail bb tag if tail bb become empty */
   if(BB_length(LOOP_DESCR_Find_Unique_Tail(loop))==0) {
     CG_LOOP_Adjust_Zdl_Body(cg_loop);
   }
+
+  /* for loop body which contain multiple bb, we need to merge prolog, loop body,
+   * epilog into a single BB. otherwise, code emit will probably emit loop-body 
+   * before prolog.
+   */
+  CFLOW_Optimize(CFLOW_MERGE, "In Zero-Delay-Loop(merge zero-delay-loop into one BB)");
 
   return;
 }

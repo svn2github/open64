@@ -342,6 +342,11 @@ ML_WHIRL_EMITTER::Build_loop_info( BB_NODE *label_bb )
 				Opt_stab()->St(iv->Aux_id()),
 				iv->Lod_ty(),
 				iv->Field_id());
+#ifdef TARG_LOONGSON
+      // Need to change operator of induction to OPT_LDBITS when induction is BITs variable
+      if (iv->Points_to(Opt_stab())->Bit_Size() != 0)
+        WN_set_operator(induction, OPR_LDBITS);
+#endif
       if (Do_rvi() && ST_class(WN_st(induction)) != CLASS_PREG) {
 	Warn_todo("ML_WHIRL_EMITTER::Build_loop_info: do not adjust bitpos by 1" );
 	Rvi()->Map_bitpos(induction, iv->Bitpos() + 1);

@@ -78,6 +78,7 @@ typedef enum {
 	S_S,
 	S_I,
 	S_B,
+	S_P,
 	S_N,
 	S_O,
 	S_o,
@@ -153,6 +154,9 @@ typedef enum {
 
 	/* because -Y can also modify libraries, we include library places */
 	P_startup,
+#if defined(TARG_SL)
+	P_sl5_startup,
+#endif
 	P_include,
 	P_library,
 	P_alt_library,	/* alternate library path */

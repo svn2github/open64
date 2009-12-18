@@ -313,7 +313,12 @@ extern DEBUG_FLAGS Initial_DEBUG;
 /* Values for stack check option -- independent bits (3 => both): */
 #define STACK_ENTRY_CHECK 1
 #define STACK_EXIT_CHECK 2
-#define STACK_FUNC_CHECK 4
+#define STACK_FUNC_START_CHECK 4
+#define STACK_FUNC_END_CHECK 8
+
+#define INSERT_BEGIN_FUNC_NAME "__stackcheck"
+#define INSERT_END_FUNC_NAME   "__stackcheck_end"
+
 #define DEBUG_Stack_Check               (Current_DEBUG->stack_check)
 #endif
 

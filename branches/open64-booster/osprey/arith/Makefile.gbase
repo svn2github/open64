@@ -123,8 +123,14 @@ ARITH_SRC += \
 	native.c \
 	test_ar_intrin.c
 else
+ifeq ($(BUILD_TARGET), LOONGSON)
+ARITH_SRC += \
+	native.c \
+	test_ar_intrin.c
+else
 ARITH_SRC += \
 	simulate.c
+endif
 endif
 endif
 endif
@@ -196,6 +202,18 @@ FFILES= \
 	fintrin_dc_irix_tmp.f \
 	fintrin_irix_tmp.f
 endif
+
+ifeq ($(BUILD_TARGET), LOONGSON)
+#
+# these files have the routines stubed out.
+# When we can fold these and compile with f90
+# we will use the regular files.
+#
+FFILES= \
+        fintrin_dc_irix_tmp.f \
+        fintrin_irix_tmp.f
+endif
+
 
 
 FC_COMPILER = $(shell echo $(FC) | awk '{print $$1}' )

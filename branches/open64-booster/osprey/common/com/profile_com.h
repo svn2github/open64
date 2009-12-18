@@ -158,8 +158,13 @@ struct Pu_Hdr {
   ULONG pu_instr_count;
   ULONG pu_instr_exec_count;
 #ifdef KEY
+#ifndef TARG_LOONGSON
   ULONG pu_values_offset;
   ULONG pu_values_fp_bin_offset;
+#else
+  ULONG pu_mem_count;
+  ULONG pu_cache_offset;
+#endif
 #else  // KEY
   ULONG pu_value_offset;
 #endif
@@ -181,8 +186,10 @@ struct Pu_Hdr {
     pu_icall_offset=333;
     pu_num_icall_entries=0;
 #ifdef KEY
+#ifndef TARG_LOONGSON
     pu_values_offset=444;
     pu_values_fp_bin_offset=666;
+#endif
 #else
     pu_value_offset=444;
 #endif
@@ -231,8 +238,13 @@ struct Pu_Hdr {
   	fprintf(fp, "pu_instr_count = %u\n", pu_instr_count);
   	fprintf(fp, "pu_instr_exec_count = %u\n", pu_instr_exec_count);
 #ifdef KEY
+#ifndef TARG_LOONGSON
   	fprintf(fp, "pu_values_offset = %u\n", pu_values_offset);
   	fprintf(fp, "pu_values_fp_bin_offset = %u\n", pu_values_fp_bin_offset);
+#else
+	fprintf(fp, "pu_mem_count = %u\n", pu_mem_count);
+  	fprintf(fp, "pu_cache_offset = %u\n", pu_cache_offset);
+#endif
 #else
   	fprintf(fp, "pu_value_offset = %u\n", pu_value_offset);
 #endif

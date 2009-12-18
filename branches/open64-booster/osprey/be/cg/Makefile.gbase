@@ -120,6 +120,9 @@ endif
 ifeq ($(BUILD_TARGET), NVISA)
 TARGDEFS = -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+TARGDEFS = -D__MIPS_AND_IA64_ELF_H
+endif
 
 TARG_TARG_INFO = $(TARGDIR)/targ_info
 ifeq ($(BUILD_OS), IRIX)
@@ -154,6 +157,7 @@ BE_CG_GRA_DIR		= $(BE_CG_DIR)/gra_mon
 BE_CG_TARG_DIR		= $(BE_CG_DIR)/$(BUILD_TARGET_DIR)
 BE_COM_DIR 		= $(BE_DIR)/com
 
+ifneq ($(BUILD_TARGET), LOONGSON)
 ifneq ($(BUILD_TARGET), SL)
 ifneq ($(BUILD_TARGET), MIPS)
 BE_ORC_ICT_DIR		= $(BE_CG_DIR)/orc_ict
@@ -171,6 +175,7 @@ BE_ORC_ICT_DIR          =
 BE_ORC_INTEL_DIR        =
 BE_CG_REGION_DIR	= $(BE_DIR)/cg/region
 BE_CG_GSCHED_DIR	= $(BE_DIR)/cg/sched
+endif
 endif
 BE_REGION_DIR 		= $(BE_DIR)/region
 BE_PROMPF_DIR		= $(BE_DIR)/prompf_anl
@@ -339,6 +344,15 @@ ifeq ($(BUILD_TARGET), SL)
   BE_CG_TARG_CXX_SRCS += loop_dce.cxx
   BE_CG_TARG_CXX_SRCS += loop_rce.cxx
   BE_CG_TARG_CXX_SRCS += gcm_licm.cxx
+  BE_CG_TARG_CXX_SRCS += cgtarget_special.cxx
+endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+  BE_CG_TARG_CXX_SRCS += db_dump.cxx
+  BE_CG_TARG_CXX_SRCS += ipfec_options.cxx
+  BE_CG_TARG_CXX_SRCS += edge_profile.cxx
+  BE_CG_TARG_CXX_SRCS += dump_feedback.cxx
+  BE_CG_TARG_CXX_SRCS += lgra_opt_spill.cxx
+  BE_CG_TARG_CXX_SRCS += profile_util.cxx  
 endif
 
 ifeq ($(BUILD_TARGET), X8664)
@@ -608,6 +622,9 @@ endif
 ifeq ($(BUILD_TARGET), X8664)
 TARGET_SO = opteron.so
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+TARGET_SO = loongson.so
+endif
 
 ifeq ($(BUILD_OS), IRIX)
 LLDLIBS += -lelf_xtnd -ldwarf_xtnd -lelfutil_xtnd -lm -lc
@@ -658,6 +675,9 @@ ifndef SKIP_DEP_BUILD
 	$(call submake,$(TARG_LIBUNWIND))
   endif
   ifeq ($(BUILD_TARGET), SL)
+	$(call submake,$(TARG_LIBUNWIND))
+  endif
+  ifeq ($(BUILD_TARGET), LOONGSON)
 	$(call submake,$(TARG_LIBUNWIND))
   endif
  endif

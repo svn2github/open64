@@ -692,6 +692,22 @@ ipa_search_command_line(int argc,
 		blank_arg(argv,i);
 		continue;
 	    }
+#ifdef TARG_LOONGSON
+            /* add support for loongson*/
+            else if (strcmp(string,"-loongson2e") == 0)  {
+                ipa_opt(&argv[i]);
+                blank_arg(argv,i);
+                continue;
+            }else if (strcmp(string,"-loongson2f") == 0){
+                ipa_opt(&argv[i]);
+                blank_arg(argv,i);
+                continue;
+            }else if (strcmp(string,"-loongson3") == 0){
+                ipa_opt(&argv[i]);
+                blank_arg(argv,i);
+                continue;
+            }
+#endif
 	    else if (needs_argument(&string[1],FALSE)) {
 	    	(*p_ipa_add_link_flag) (argv[i++]);
 		(*p_ipa_add_link_flag) (argv[i]);

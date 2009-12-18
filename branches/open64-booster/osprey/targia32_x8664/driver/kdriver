@@ -11,8 +11,6 @@ ARGS=$@
 OPENCC_OPTS=" -O2 "
 #Use gcc 4 front end for x86 machine
 OPENCC_OPTS=" $OPENCC_OPTS -m32 -gnu4 "
-#Open64 Debug mode
-OPENCC_OPTS=" $OPENCC_OPTS -keep -show "
 #speculation off for kernel compilation
 #It's only for IA64. If you are compileing kernel for IA64, uncomment next line
 #OPENCC_OPTS=" $OPENCC_OPTS -Wb,-IPFEC:spec=off -IPFEC:spec=off "
@@ -64,7 +62,7 @@ case $ARG in
 | -mpreferred-stack-boundary=2 | -march=* | -malign-functions=* 	\
 | -malign-jumps=* | -malign-loops=* | -gstabs				\
 | -fno-optimize-sibling-calls \
-| -mconstant-gp \
+| -mconstant-gp | -mno-mmx | -fno-asynchronous-unwind-tables \
 | -mtune=* \
 | -msoft-float | -mregparm=3 | -maccumulate-outgoing-args \
 | -dynamic-linker )

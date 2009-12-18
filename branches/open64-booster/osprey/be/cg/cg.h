@@ -90,6 +90,18 @@ extern BOOL CG_PU_Has_Feedback;
 extern BOOL RGN_Formed;
 #endif
 
+#ifdef TARG_LOONGSON
+extern BOOL edge_done;
+
+typedef struct {
+  char *name;
+  struct bb *dominator;
+}Info_Global_Name;
+
+extern Info_Global_Name Global_Name_Executed[];
+extern int iter_executed;
+#endif
+
 /* WOPT alias manager */
 extern struct ALIAS_MANAGER *Alias_Manager;
 

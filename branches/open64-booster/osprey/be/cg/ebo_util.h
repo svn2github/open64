@@ -282,7 +282,7 @@ add_to_hash_table ( BOOL in_delay_slot,
     }
 #endif
     if ((tnr != NULL) && (tnr != True_TN) && (tnr != Zero_TN)) {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
       TN* tmp_tn = CGTARG_Gen_Dedicated_Subclass_TN( op, idx, TRUE );
       if( tmp_tn == NULL )
 	tmp_tn = tnr;

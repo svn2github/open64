@@ -63,7 +63,8 @@ LIBRARY_SUBDIRS := \
 	libmv \
 	libmsgi \
 	libspin \
-	libspin_4_2_0 
+	libspin_4_2_0 \
+	libunwindP \
 
 
 #

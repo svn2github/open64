@@ -145,12 +145,6 @@ BOOL POINTS_TO::Same_base(const POINTS_TO *pt) const
 {
   BASE_ACTION a = base_action_tbl[this->Base_kind()][pt->Base_kind()];
   if ((a == COMP_BASE || a == SAME_BASE)) {
-#if defined(TARG_SL)
-    if(this->Base_kind()==BASE_IS_FIXED && pt->Base_kind()==BASE_IS_FIXED) {
-      if(Get_ST_base(this->Base())==Get_ST_base(pt->Base()))
-        return TRUE;
-    }  else  
-#endif
     if(this->Base() == pt->Base())
       return TRUE;
   }

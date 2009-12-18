@@ -483,7 +483,7 @@ typedef	struct bb {
 #ifdef KEY
   struct bb     *aux;
 #endif 
-#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
   INT		bb_cycle; 
 #if !defined(TARG_SL)
   mBB_NUM       id_before_profile;  /* old trace number before any profile process*/
@@ -520,7 +520,7 @@ typedef	struct bb {
 
 /* rvalue field accessors */
 #define	BB_id(b)	(CAN_USE_BB(b)->id+0)
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 #define BB_id_before_profile(b) (CAN_USE_BB(b)->id_before_profile+0)
 #endif
 #define	BB_first_op(b)	(CAN_USE_BB(b)->ops.first+0)
@@ -574,10 +574,10 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_AFTER_PIC_ENTRY     0x00800000 /* BB is the original entry after PIC entry on IA-32 with -fPIC */
 #endif
 
-#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
 #define BBM_EDGE_SPLITTING      0x00800000 /* BB is used for edge splitting */
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 #define BBM_RECOVERY            0x01000000 /* BB is a recovery block */
 #define BBM_CHK_SPLIT           0x02000000 /* BB splitted from another because of chk insertion */
 #define BBM_EMITTED             0x04000000 /* BB has been emitted */
@@ -653,7 +653,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #ifdef KEY
 #define	BB_has_non_local_label(x)	(BB_flag(x) & BBM_NON_LOCAL_LABEL)
 #endif
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 #define BB_recovery(x)          (BB_flag(x) & BBM_RECOVERY)
 #define BB_chk_split(x)         (BB_flag(x) & BBM_CHK_SPLIT)
 #define BB_chk_split_head(x)    (BB_flag(x) & BBM_CHK_SPLIT_HEAD)
@@ -694,7 +694,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define	Set_BB_has_non_local_label(x)	(BB_flag(x) |= BBM_NON_LOCAL_LABEL)
 #endif
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 #define Set_BB_recovery(x)          (BB_flag(x) |= BBM_RECOVERY)
 #define Set_BB_chk_split(x)         (BB_flag(x) |= BBM_CHK_SPLIT)
 #define Set_BB_chk_split_head(x)    (BB_flag(x) |= BBM_CHK_SPLIT_HEAD)
@@ -732,7 +732,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Reset_BB_predicate_promote(bb) 	(BB_flag(bb) &= ~BBM_PREDICATE_PROMOTE)
 #define	Reset_BB_has_post_label(x)	(BB_flag(x) &= ~BBM_POST_LABEL)
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 #define Reset_BB_recovery(x)          (BB_flag(x) &= ~BBM_RECOVERY)
 #define Reset_BB_chk_split(x)         (BB_flag(x) &= ~BBM_CHK_SPLIT)
 #define Reset_BB_chk_split_head(x)    (BB_flag(x) &= ~BBM_CHK_SPLIT_HEAD)
@@ -809,7 +809,7 @@ typedef	struct bblist {
     BB		  *item;	/* The BB list element       */
     struct bblist *next;	/* The next list component   */
     float	   prob;	/* probability for this edge */
-#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
     float	   freq;	/* frequency for this edge */    
 #endif
     mUINT16        flags;       /* flags                     */
@@ -819,7 +819,7 @@ typedef	struct bblist {
 #define	BBLIST_next(b)	((b)->next)
 #define BBLIST_prob(b)	((b)->prob) /*** Only valid for succ edges ***/
 #define BBLIST_flags(b) ((b)->flags)
-#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
 #define BBLIST_freq(b)	((b)->freq) /*** Only valid for succ edges ***/
 #endif
 

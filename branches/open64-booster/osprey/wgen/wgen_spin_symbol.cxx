@@ -86,7 +86,7 @@ extern "C"{
 #include <ctype.h>
 #endif
 //#include "tree_cmp.h"
-
+#include <erglob.h>
 #include <ext/hash_set>
 using __gnu_cxx::hash_set;
 typedef struct {
@@ -99,7 +99,9 @@ extern gs_t decl_arguments;
 
 extern void Push_Deferred_Function(gs_t);
 extern char *WGEN_Tree_Node_Name(gs_t op);
-
+#if defined(TARG_SL)
+extern char *Orig_Src_File_Name, *Src_File_Name;
+#endif
 static enum ST_TLS_MODEL tls_stress_model = TLS_NONE;
 extern "C" void Process_TLS_Stress_Model(const char* p)
 {
@@ -439,11 +441,12 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 				Fail_FmtAssertion ("VLA at line %d not currently implemented", lineno);
 #else
 			// bugs 943, 11277, 10506
-			{
-			  // Should use ErrMsg (or something similar) instead.
-			  printf(OPEN64_NAME_PREFIX "cc: variable-length structure not yet implemented\n");
-			  exit(2);
-			}
+#if defined(TARG_SL)
+				ErrMsg(EC_Unimplemented_Feature, "variable-length structure",
+				  Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
+#else
+				ErrMsg(EC_Unimplemented_Feature, "variable-length structure");
+#endif
 #endif
 			variable_size = TRUE;
 			tsize = 0;
@@ -495,10 +498,16 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  TY_Init (ty, tsize, KIND_SCALAR, mtype, 
 		           Save_Str(Get_Name(gs_type_name(type_tree))) );
 		  Set_TY_no_ansi_alias (ty);
+#if defined(TARG_SL)
+		  // for -m32, it is not the predefined type, alignment shoule be set.
+		  // Corresponding to following code about bug#2932.
+		  if (!TARGET_64BIT)  
+		    Set_TY_align (idx, align);
+#endif
  		} else
 #endif
 		idx = MTYPE_To_TY (mtype);	// use predefined type
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
 		/* At least for -m32, the alignment is not the same as the data
 		   type's natural size. (bug#2932)
 		*/
@@ -612,8 +621,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		if (gs_tree_code(gs_type_size(gs_tree_type(type_tree))) == GS_INTEGER_CST) {
 			Set_ARB_const_stride (arb);
 			Set_ARB_stride_val (arb, 
-				gs_get_integer_value (gs_type_size(gs_tree_type(type_tree))) 
-				/ BITSPERBYTE);
+				gs_get_integer_value (gs_type_size_unit(gs_tree_type(type_tree))));
 		}
 #ifdef KEY /* bug 8346 */
 		else if (!expanding_function_definition &&
@@ -627,7 +635,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 #endif
 		else {
 			WN *swn;
-			swn = WGEN_Expand_Expr (gs_type_size(gs_tree_type(type_tree)));
+			swn = WGEN_Expand_Expr (gs_type_size_unit(gs_tree_type(type_tree)));
 			if (WN_opcode (swn) == OPC_U4I4CVT ||
 			    WN_opcode (swn) == OPC_U8I8CVT) {
 				swn = WN_kid0 (swn);
@@ -638,9 +646,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			// and use LDID of that stored address as swn.
 			// Copied from Wfe_Save_Expr in wfe_expr.cxx
 			if (WN_operator (swn) != OPR_LDID) {
-			  TY_IDX    ty_idx  = 
-			    Get_TY (gs_tree_type (type_size));
-			  TYPE_ID   mtype   = TY_mtype (ty_idx);
+
+			  TYPE_ID   mtype   = WN_rtype(swn);
+			  TY_IDX    ty_idx  = MTYPE_To_TY(mtype);
 			  ST       *st;
 			  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
 #ifdef FE_GNU_4_2_0
@@ -705,7 +713,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			TY_IDX ty_idx;
 			WN *wn;
 			if (WN_operator (uwn) != OPR_LDID) {
-				ty_idx = Get_TY (gs_tree_type (gs_type_max_value (gs_type_domain (type_tree)) ) );
+				ty_idx  = MTYPE_To_TY(WN_rtype(uwn));
 				st = Gen_Temp_Symbol (ty_idx, "__vla_bound");
 #ifdef FE_GNU_4_2_0
 			  	WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
@@ -743,7 +751,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 #endif
 		   {
 			WN *swn, *wn;
-			swn = WGEN_Expand_Expr (type_size);
+			swn = WGEN_Expand_Expr (gs_type_size_unit(type_tree));
 			if (TY_size(TY_etype(ty))) {
 				if (WN_opcode (swn) == OPC_U4I4CVT ||
 				    WN_opcode (swn) == OPC_U8I8CVT) {
@@ -755,9 +763,8 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 				// and use LDID of that stored address as swn.
 				// Copied from Wfe_Save_Expr in wfe_expr.cxx
 				if (WN_operator (swn) != OPR_LDID) {
-				  TY_IDX    ty_idx  = 
-				    Get_TY (gs_tree_type (type_size));
-				  TYPE_ID   mtype   = TY_mtype (ty_idx);
+				  TYPE_ID   mtype   = WN_rtype(swn);
+				  TY_IDX    ty_idx  = MTYPE_To_TY(mtype);
 				  ST       *st;
 				  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
 #ifdef FE_GNU_4_2_0
@@ -774,7 +781,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 				ST *st = WN_st (swn);
 				TY_IDX ty_idx = ST_type (st);
 				TYPE_ID mtype = TY_mtype (ty_idx);
-				swn = WN_Div (mtype, swn, WN_Intconst (mtype, BITSPERBYTE));
+
 				wn = WN_Stid (mtype, 0, st, ty_idx, swn);
 				WGEN_Stmt_Append (wn, Get_Srcpos());
 			}
@@ -1833,15 +1840,17 @@ Create_ST_For_Tree (gs_t decl_node)
             }
           }
         }
-	// Make g++ guard variables global in order to make them weak.  Ideally
-	// guard variables should be "common", but for some reason the back-end
-	// currently can't handle C++ commons.  As a work around, make the
-	// guard variables weak.  Since symtab_verify.cxx don't like weak
-	// locals, make the guard variables global.
+        // Make g++ guard variables local unless it's weak.
 	if (guard_var) {
 	  level = GLOBAL_SYMTAB;
-	  sclass = SCLASS_UGLOBAL;
-	  eclass = EXPORT_PREEMPTIBLE;
+          if ( gs_decl_weak(decl_node) ) {
+	    sclass = SCLASS_UGLOBAL;
+	    eclass = EXPORT_PREEMPTIBLE;
+          }
+          else {
+            sclass = SCLASS_PSTATIC;
+            eclass = EXPORT_LOCAL;
+          }
 	}
 
 	// The tree under DECL_ARG_TYPE(decl_node) could reference decl_node.
@@ -1955,6 +1964,12 @@ Create_ST_For_Tree (gs_t decl_node)
     extern PREG_NUM Map_Reg_To_Preg []; // defined in common/com/arch/config_targ.cxx
     int reg = gs_decl_asmreg(decl_node);
     PREG_NUM preg = Map_Reg_To_Preg [reg];
+#if defined(TARG_SL)
+    if (preg < 0 || preg > 31)
+      ErrMsg (EC_Unimplemented_Feature, "Variable in Special register",
+        Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
+#endif
+
     FmtAssert (preg >= 0,
                ("mapping register %d to preg failed\n", reg));
     TY_IDX ty_idx = ST_type (st);
@@ -2037,7 +2052,9 @@ Create_ST_For_Tree (gs_t decl_node)
   }
   // See comment above about guard variables.
   else if (guard_var) {
-    Set_ST_is_weak_symbol (st);
+    if ( gs_decl_weak(decl_node) ) {
+      Set_ST_is_weak_symbol (st);
+    }
     Set_ST_init_value_zero (st);
     Set_ST_is_initialized (st);
   }

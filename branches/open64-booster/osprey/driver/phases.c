@@ -557,7 +557,10 @@ set_library_paths(string_list_t *args)
 		asprintf(&our_path, "%s/" LIBPATH "/32",
 			 global_toolroot);
 #else
-                asprintf(&our_path, "%s/lib/",root_prefix);
+    if (use_sl5 == TRUE)
+      asprintf(&our_path, "%s/libsl5/",root_prefix);
+    else
+      asprintf(&our_path, "%s/lib/",root_prefix);
 #endif
 	} else {
 		asprintf(&our_path, "%s/" LIBPATH, global_toolroot);
@@ -864,6 +867,7 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args, "-m32");
 		}
 #elif defined(TARG_SL)
+		add_string(args, "-U__i386__");
 		add_string(args, "-D__JAVI__");
 		add_string(args, "-D__SL__");
 		add_string(args, "-D__MIPSEL__");
@@ -874,7 +878,7 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args, "-D__UCLIBC_HAS_FLOATS__");
 		  add_string(args, "-D__HAS_FPU__");
 		}
-#elif defined(TARG_MIPS)
+#elif defined(TARG_MIPS) || defined(TARG_LOONGSON)
 		if( abi == ABI_N32 )
 		  add_string(args, "-mabi=n32");
 		else
@@ -936,24 +940,24 @@ add_file_args (string_list_t *args, phases_t index)
                 
 
 #if defined(TARG_SL)
-                char *comp_target_root = getenv("COMP_TARGET_ROOT");
-                char *root_prefix;
-                char *inc_path;
-                if (comp_target_root != NULL) {
-                  root_prefix = comp_target_root;
-                  asprintf(&inc_path, "%s/usr/include", root_prefix);
-                }
-                else {
-                  root_prefix = directory_path(get_executable_dir());
-                  asprintf(&inc_path, "%s/include", root_prefix);
-                }
-                add_string(args, "-isystem");
-                add_string(args, inc_path);
-                if (source_lang == L_CC) {
-                  asprintf(&inc_path, "%s/usr/include/c++", root_prefix);
-                  add_string(args, "-isystem");
-                  add_string(args, inc_path);
-                }
+		char *comp_target_root = getenv("COMP_TARGET_ROOT");
+		char *root_prefix;
+		char *inc_path;
+		if (comp_target_root != NULL) {
+			root_prefix = comp_target_root;
+			asprintf(&inc_path, "%s/usr/include", root_prefix);
+		}
+		else {
+			root_prefix = directory_path(get_executable_dir());
+			asprintf(&inc_path, "%s/include", root_prefix);
+		}
+		add_string(args, "-isystem");
+		add_string(args, inc_path);
+		if (source_lang == L_CC) {
+			asprintf(&inc_path, "%s/usr/include/c++", root_prefix);
+			add_string(args, "-isystem");
+			add_string(args, inc_path);
+		}
 #endif
 		add_string(args, input_source);
 		if (option_was_seen(O_E) && outfile != NULL) {
@@ -1297,6 +1301,11 @@ add_file_args (string_list_t *args, phases_t index)
 #if defined(TARG_X8664) || defined(TARG_NVISA)
 		if( abi == ABI_N32 )
 		  add_string(args, "-m32");
+#elif defined (TARG_LOONGSON)
+                if( abi == ABI_N32 )
+                  add_string(args, "-mabi=n32");
+                else if (abi == ABI_64) 
+                  add_string(args, "-mabi=64");
 #elif defined(TARG_MIPS)
 #ifndef TARG_SL
 		// endianness
@@ -1329,7 +1338,7 @@ add_file_args (string_list_t *args, phases_t index)
 		if( ffast_math == 1 )
 		  add_string(args, "-ffast-math");
 #ifdef TARG_SL
-                if (index == P_cplus_gfe) {
+                if ((index == P_cplus_gfe) || (index == P_spin_cc1plus)) {
                   // no exception support for embedded systems
                   add_string(args, "-fno-exceptions");
                   add_string(args, "-fno-rtti");
@@ -1443,6 +1452,9 @@ add_file_args (string_list_t *args, phases_t index)
 #if defined(TARG_NVISA)
 	case P_bec:
 #endif
+#ifdef TARG_LOONGSON
+		add_string(args,"-TENV:pic2");
+#endif
 		add_language_option ( args );
 		add_targ_options ( args );
 
@@ -1468,6 +1480,7 @@ add_file_args (string_list_t *args, phases_t index)
 		    }
 		    /* fall through */
 		case S_I:
+		case S_P:
 		case S_N:
 		case S_O:
 		    temp = the_file;
@@ -1585,11 +1598,30 @@ add_file_args (string_list_t *args, phases_t index)
 #if defined(TARG_X8664) || defined(TARG_NVISA)
 		  if( abi == ABI_N32 )
 		    add_string(args, "-m32");
-#elif defined(TARG_MIPS) && !defined(TARG_SL)
+#elif defined(TARG_LOONGSON) || defined(TARG_MIPS) && !defined(TARG_SL) 
 		if( abi == ABI_N32 )
 		  add_string(args, "-mabi=n32");
 		else
 		  add_string(args, "-mabi=64");
+#endif
+#if defined(TARG_LOONGSON)
+               add_string(args, "-EL");
+               add_string(args, "-g0");
+               switch (loongson_version) {
+               case ISA_LOONGSON2e: {
+                          add_string(args, "-march=loongson2e");
+                          break;
+                       }
+               case ISA_LOONGSON2f: {
+                          add_string(args, "-march=loongson2f");
+                          break;
+                       }
+               case ISA_LOONGSON3: {
+                          add_string(args, "-march=loongson3");
+                          break;
+                       }
+               default:   add_string(args, "-march=loongson2e");
+               }
 #endif
 
 		  // Add input source to args.  Append .s to input source if
@@ -1608,16 +1640,18 @@ add_file_args (string_list_t *args, phases_t index)
 		add_string(args, "-c");		// gcc -c
 #endif
 #ifdef TARG_SL
-	        //add_string(args, "-mips4");
-	        add_string(args, "-mips64");
-           	add_string(args, "-qwa2");
-                if (target_cpu != NULL) {
-                  if (strcmp(target_cpu, "sl1_dsp") == 0 || (strcmp(target_cpu, "sl1_pcore") == 0)) {
-                    add_string(args, "-march=sl1");
-                  } else if (strcmp(target_cpu, "sl2_pcore") == 0) {
-                    add_string(args, "-march=sl2");
-                  } 
-                }
+		//add_string(args, "-mips4");
+		add_string(args, "-mips64");
+		add_string(args, "-qwa2");
+		if (target_cpu != NULL) {
+			if (strcmp(target_cpu, "sl1_dsp") == 0 || (strcmp(target_cpu, "sl1_pcore") == 0)) {
+				add_string(args, "-march=sl1");
+			} else if (strcmp(target_cpu, "sl2_pcore") == 0) {
+				add_string(args, "-march=sl2");
+			} else if (strcmp(target_cpu, "sl5") == 0) {
+				add_string(args, "-march=sl5");
+			} 
+		}
 #endif
 		add_string(args, "-o");
 		/* cc -c -o <file> puts output from as in <file>,
@@ -1660,7 +1694,7 @@ add_file_args (string_list_t *args, phases_t index)
 #if defined(TARG_X8664) || defined(TARG_NVISA)
 		if( abi == ABI_N32 )
 		  add_string(args, "-m32");
-#elif defined(TARG_MIPS) && !defined(TARG_SL)
+#elif defined(TARG_LOONGSON) || defined(TARG_MIPS) && !defined(TARG_SL)
 		if( abi == ABI_N32 )
 		  add_string(args, "-mabi=n32");
 		else
@@ -1675,14 +1709,14 @@ add_file_args (string_list_t *args, phases_t index)
 			add_string(args, find_obj_path("ftz.o"));
 		}
 #ifdef TARG_SL
- 	        if (!option_was_seen(O_nostdlib)) {
-  	          add_string(args, find_crt_path("crt1.o"));
-                  add_string(args, find_crt_path("crti.o"));
-                  if (index == P_ldplus) {
-                    // for SL, we place all crt's in the same place
-                    add_string(args, find_crt_path("crtbegin.o"));
-                  } 
-                }
+		if (!option_was_seen(O_nostdlib)) {
+			add_string(args, find_crt_path("crt1.o"));
+			add_string(args, find_crt_path("crti.o"));
+			if (index == P_ldplus) {
+				// for SL, we place all crt's in the same place
+				add_string(args, find_crt_path("crtbegin.o"));
+			} 
+		}
 #endif
 		break;
 	case P_ipa_link:
@@ -1696,7 +1730,7 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args, "-m");
 		  add_string(args,"elf_i386");
 		}
-#elif defined(TARG_MIPS)
+#elif defined(TARG_MIPS) || defined(TARG_LOONGSON)
 		if( abi == ABI_N32 ) {
 #ifndef TARG_SL
 		  add_string(args, "-mabi=n32");
@@ -1711,7 +1745,7 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 		// Pass top level library dir to ipa so that
 		// it finds libraries like lib32/libc.so.6
-#ifndef ARCH_MIPS
+#if !defined(ARCH_MIPS) && !defined(TARG_LOONGSON)
 		add_library_dir (MIPS_CROSS_LIB_TOP_DIR);
 #endif
 #endif
@@ -1751,6 +1785,24 @@ add_file_args (string_list_t *args, phases_t index)
 		  sprintf(buf, "-IPA:propagate_annotation_file=%s", opt_file);
 		  add_string(args,buf);
 		}
+#if defined(TARG_LOONGSON)
+
+               switch (loongson_version) {
+               case ISA_LOONGSON2e: {
+                          add_string(args, "-loongson2e");
+                          break;
+                       }
+               case ISA_LOONGSON2f: {
+                          add_string(args, "-loongson2f");
+                          break;
+                       }
+               case ISA_LOONGSON3: {
+                          add_string(args, "-loongson3");
+                          break;
+                       }
+               default:   add_string(args, "-loongson2e");
+               }
+#endif
 
 		/* object file should be in list of options */
 		break;
@@ -1956,31 +2008,31 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 #endif
 #ifdef TARG_SL
 	if (option_was_seen(O_nodefaultlibs) || option_was_seen(O_nostdlib)) {
-          // link script for various SL systems
-          char *cmd_path;
-          char *cmp_tgt_root = NULL;
-          if (ldscript_file) {
-            cmp_tgt_root = getenv("LINK_SCRIPT");
-            if (cmp_tgt_root == NULL) {
-              error("Environment var LINK_SCRIPT not set");
-            }
-            else {
-              add_string(args, "-T");
-              asprintf(&cmd_path, "%s", cmp_tgt_root);
-              add_string(args, cmd_path);
-            }
-          } else {
-            cmp_tgt_root = getenv("COMP_TARGET_ROOT");
-            if (use_bblibs == TRUE) {
-              add_string(args, "-T");
-              asprintf(&cmd_path, "%s/usr/lib/ldscripts/sl1-bb-common.ld", cmp_tgt_root);
-              add_string(args, cmd_path);
-            } 
-          }
+		// link script for various SL systems
+		char *cmd_path;
+		char *cmp_tgt_root = NULL;
+		if (ldscript_file) {
+			cmp_tgt_root = getenv("LINK_SCRIPT");
+			if (cmp_tgt_root == NULL) {
+				error("Environment var LINK_SCRIPT not set");
+			}
+			else {
+				add_string(args, "-T");
+				asprintf(&cmd_path, "%s", cmp_tgt_root);
+				add_string(args, cmd_path);
+			}
+		} else {
+			error("No link script");
+		}
 		/* add soft math libray: libsl1m.a */
 		if ((Long_Long_Support == TRUE) || (Float_Point_Support == TRUE))
 		{
-			add_string(args, "-lsl1m");
+		    if (use_sl5 == TRUE) {
+		        /* Support -mlong-long option for uclibc error as longlong mapping to long (ShenRuifen) */
+		        //error("long long/float/double type is not supported for SL5 processor");          
+		    } else {
+		        add_string(args, "-lsl1m");
+		    }
 		}
     return;
   }
@@ -2100,44 +2152,49 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
               add_library(args, "m");
 	    }
 #else
-            if (invoked_lang == L_CC)
-              add_string(args, "-lstdc++");
-            if ((Long_Long_Support == TRUE) || (Float_Point_Support == TRUE))
-            {
-              /* add uclibc libray with float/double/long long supporting: libcx.a */
-              add_string(args, "-lcx");
-		          
-              /* add soft math libray: libsl1m.a */
-              add_string(args, "-lsl1m");
-            }
-            else
-            {
-              /* add uclibc libray without float/double/long long supporting: libc.a */
-              add_string(args, "-lc");
-            }
+			if (invoked_lang == L_CC)
+				add_string(args, "-lstdc++");
+			if ((Long_Long_Support == TRUE) || (Float_Point_Support == TRUE)) {
+			  if (use_sl5 == TRUE) {    
+				/* Support -mlong-long option for uclibc error as longlong mapping to long (ShenRuifen) */
+				add_string(args, "-lc");
+				// error("long long/float/double type is not supported for SL5 processor");          
+			  } else {
+				/* add uclibc libray with float/double/long long supporting: libcx.a */
+				add_string(args, "-lcx");
 
-	    // link script for various SL systems
-            char *cmd_path;
-            char *cmp_tgt_root = NULL;
-            if (ldscript_file) {
-              cmp_tgt_root = getenv("LINK_SCRIPT");
-              if (cmp_tgt_root == NULL) {
-                error("Environment var LINK_SCRIPT not set");
-              }
-              else {
-                add_string(args, "-T");
-                asprintf(&cmd_path, "%s", cmp_tgt_root);
-                add_string(args, cmd_path);
-              }
-            }
-            else {
-              add_string(args, "-T");
-              cmp_tgt_root = getenv("COMP_TARGET_ROOT");
-              if (use_bblibs == TRUE)
-                asprintf(&cmd_path, "%s/usr/lib/ldscripts/sl1-bb-common.ld", cmp_tgt_root);
-              else
-                asprintf(&cmd_path, "%s/usr/lib/ldscripts/sl1-core-common.ld", cmp_tgt_root);
-              add_string(args, cmd_path);
+				/* add soft math libray: libsl1m.a */
+				add_string(args, "-lsl1m");
+			  }
+			} else {
+				/* add uclibc libray without float/double/long long supporting: libc.a */
+				add_string(args, "-lc");
+			}
+
+			// link script for various SL systems
+			char *cmd_path;
+			char *cmp_tgt_root = NULL;
+			if (ldscript_file) {
+				cmp_tgt_root = getenv("LINK_SCRIPT");
+				if (cmp_tgt_root == NULL) {
+					error("Environment var LINK_SCRIPT not set");
+				}
+				else {
+					add_string(args, "-T");
+					asprintf(&cmd_path, "%s", cmp_tgt_root);
+					add_string(args, cmd_path);
+				}
+			}
+			else {
+				add_string(args, "-T");
+				cmp_tgt_root = getenv("COMP_TARGET_ROOT");
+				if (use_sl1_dsp == TRUE)
+					asprintf(&cmd_path, "%s/usr/lib/ldscripts/sl1-bb-common.ld", cmp_tgt_root);
+				else if (use_sl5 == TRUE)
+					asprintf(&cmd_path, "%s/usr/libsl5/ldscripts/sl5-common.ld", cmp_tgt_root);
+				else // use_sl1_pcore or default target
+					asprintf(&cmd_path, "%s/usr/lib/ldscripts/sl1-core-common.ld", cmp_tgt_root);
+				add_string(args, cmd_path);
             }
 
             if (invoked_lang == L_CC) {
@@ -2537,6 +2594,7 @@ determine_phase_order (void)
 		next_phase = post_fe_phase ();
 		break;
 	case S_I:
+	case S_P:
 	case S_N:
 	case S_O:
 		next_phase = be_phase;
@@ -3864,6 +3922,23 @@ save_ipl_commands (void)
 	    }
 	}
     }
+#ifdef TARG_LOONGSON
+          switch (loongson_version) {
+               case ISA_LOONGSON2e: {
+                          add_string(ipl_cmds, "-loongson2e");
+                          break;
+                       }
+               case ISA_LOONGSON2f: {
+                          add_string(ipl_cmds, "-loongson2f");
+                          break;
+                       }
+               case ISA_LOONGSON3: {
+                          add_string(ipl_cmds, "-loongson3");
+                          break;
+                       }
+               default:   add_string(ipl_cmds, "-loongson2e");
+               }
+#endif
 
     // Add -TARG options.
     add_targ_options(ipl_cmds);

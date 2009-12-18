@@ -1,41 +1,14 @@
-/*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
-
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
-
-  This program is free software; you can redistribute it and/or modify it
-  under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation.
-
-  This program is distributed in the hope that it would be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-
-  Further, this software is distributed without any warranty that it is
-  free of the rightful claim of any third person regarding infringement 
-  or the like.  Any license provided herein, whether implied or 
-  otherwise, applies only to this software file.  Patent licenses, if 
-  any, provided herein do not apply to combinations of this program with 
-  other software, or any other product whatsoever.  
-
-  You should have received a copy of the GNU General Public License along
-  with this program; if not, write the Free Software Foundation, Inc., 59
-  Temple Place - Suite 330, Boston MA 02111-1307, USA.
-
-  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
-  Mountain View, CA 94043, or:
-
-  http://www.sgi.com
-
-  For further information regarding this notice, see:
-
-  http://oss.sgi.com/projects/GenInfo/NoticeExplan
-
-*/
-
+/********************************************************************\
+|*                                                                  *|   
+|*  Copyright (c) 2006 by SimpLight Nanoelectronics.                *|
+|*  All rights reserved                                             *|
+|*                                                                  *|
+|*  This program is free software; you can redistribute it and/or   *|
+|*  modify it under the terms of the GNU General Public License as  *|
+|*  published by the Free Software Foundation; either version 2,    *|
+|*  or (at your option) any later version.                          *|
+|*                                                                  *|
+\********************************************************************/
 
 /* CGEXP routines for expanding branches */
 
@@ -364,6 +337,12 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
 	  // because src2 is zero, and comparison is unsigned
 	  case V_BR_U8LE:
 	          *variant = V_BR_U8EQ; break;
+	  // because src2 is zero, and comparison is unsigned
+	  case V_BR_U4GT: 
+	          *variant = V_BR_U4NE; break;
+	  // because src2 is zero, and comparison is unsigned
+	  case V_BR_U8GT:
+	          *variant = V_BR_U8NE; break;
 	  }
   }
 
@@ -399,7 +378,8 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
 
   case V_BR_I8GT:	
   case V_BR_I4GT:
-    if (TN_has_value(*src2)) { // add 1 to value and handle as GE
+    if (TN_is_zero(*src2)) {
+    } else if (TN_has_value(*src2)) { // add 1 to value and handle as GE
       val = TN_value(*src2);
       *src2 = Gen_Literal_TN(val+1, TN_size(*src2));
       cmp_i = TOP_slti; cmp = TOP_slt; 
@@ -415,7 +395,8 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
     break;
   case V_BR_U8GT:
   case V_BR_U4GT:
-    if (TN_has_value(*src2)) { // add 1 to value and handle as GE
+    if (TN_is_zero(*src2)) {
+    } else if (TN_has_value(*src2)) { // add 1 to value and handle as GE
       val = TN_value(*src2);
       if (val == -1) {
 	*variant = V_BR_NEVER;
@@ -436,7 +417,8 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
 
   case V_BR_I8LE:
   case V_BR_I4LE:
-    if (TN_has_value(*src2)) { // subtract 1 from value and handle as LT
+    if (TN_is_zero(*src2)) {
+    } else if (TN_has_value(*src2)) { // subtract 1 from value and handle as LT
       val = TN_value(*src2);
       *src2 = Gen_Literal_TN(val+1, TN_size(*src2));
       cmp_i = TOP_slti; cmp = TOP_slt; 
@@ -452,7 +434,8 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
     break;
   case V_BR_U8LE:
   case V_BR_U4LE:
-    if (TN_has_value(*src2)) { // subtract 1 from value and handle as LT
+    if (TN_is_zero(*src2)) {
+    } else if (TN_has_value(*src2)) { // subtract 1 from value and handle as LT
       val = TN_value(*src2);
       if (val == -1) {
 	*variant = V_BR_ALWAYS;

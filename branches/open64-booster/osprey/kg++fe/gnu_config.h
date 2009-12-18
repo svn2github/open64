@@ -54,3 +54,6 @@
 #undef ASM_OUTPUT_DEF
 #define ASM_OUTPUT_DEF
 #endif /* TARG_IA32 */
+#ifdef TARG_LOONGSON
+#include "gnu/loongson/config.h"
+#endif

@@ -94,7 +94,12 @@ RENAMING_SCOPE::~RENAMING_SCOPE()
  * Must be F77/F90, either SCLASS_COMMON or SCLASS_DGLOBAL (for initialized)
  ***********************************************************************/
 
-static BOOL ST_Is_Common_Block (ST *st)
+#ifdef TARG_LOONGSON
+BOOL
+#else
+static BOOL
+#endif 
+ST_Is_Common_Block (ST *st)
 {
 
     // N.B.: COMMON blocks are always in the global symtab

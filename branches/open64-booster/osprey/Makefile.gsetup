@@ -266,7 +266,9 @@ ifdef BUILD_TARGET
  ifneq ($(BUILD_TARGET), X8664)
  ifneq ($(BUILD_TARGET), NVISA)
  ifneq ($(BUILD_TARGET), SL)
+ ifneq ($(BUILD_TARGET), LOONGSON)
    ABORT_BUILD = BUILD_TARGET has bad value - $(BUILD_TARGET)!
+ endif
  endif
  endif
  endif
@@ -296,6 +298,10 @@ endif
 ifeq ($(BUILD_TARGET), NVISA)
 BUILD_TARGET_DIR = NVISA
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+BUILD_TARGET_DIR = loongson
+endif
+
 
 #
 #  Verify that BUILD_OPTIMIZE is defined and is not null.  It is either

@@ -258,10 +258,17 @@ I-include=%D  ;		FTN     ffe,PFA     "-include=%D"
 -s		;		LINK	ld	self
 	"Strip symbol table and relocation information"
 
+#ifdef SL
+-G8	    toggle(&gnum,optargd);		ALL	ffe,be	"-G8"
+	""
+-Gspace8	;		ALL	be	"-TENV:Gspace=8"
+	""
+#else
 -G%d	toggle(&gnum,optargd);		ALL	ffe,be	"-G%d"
 	""
 -Gspace%d	;		ALL	be	"-TENV:Gspace=%d"
 	""
+#endif
 % encourage people to replace -K with -keep
 -keep	keep_flag=TRUE;		ALL	ipap	self
 	"keep intermediate files"
@@ -483,6 +490,14 @@ I-fini%s		;		CC	ld	"-fini %s"
 	"One trip DO loops"
 -1		;		f77	ffe	self
 	"One trip DO loops"
+#ifdef TARG_LOONGSON
+-loongson2e     toggle(&loongson_version,ISA_LOONGSON2e);               ALL     NONE    ""
+        "decoding to support loongson2e"
+-loongson2f     toggle(&loongson_version,ISA_LOONGSON2f);               ALL     NONE    ""
+        "decoding to support loongson2f"
+-loongson3      toggle(&loongson_version,ISA_LOONGSON3);                ALL     NONE    ""
+        "decoding to support loongson3"
+#endif
 -p	;		ALL	ld	self "-TENV:call_mcount"
 	""
 -pg	;		ALL	ld	self "-lm" "-TENV:call_mcount"
@@ -497,11 +512,11 @@ I-fini%s		;		CC	ld	"-fini %s"
         "Compile for 32-bit ABI"
 -mips4  toggle(&isa,ISA_MIPS4);         ALL     as      "-mips4" "-TARG:isa=mips4"
         "compile for mips4 instruction set"
--bblib  toggle(&use_bblibs,TRUE);	ALL  NONE  "-CG:dsp_thread=on -TARG:processor=sl1_dsp"
-        ""
--sl1_dsp toggle(&use_sl1,TRUE); 	ALL	NONE	"-CG:dsp_thread=on -TARG:processor=sl1_dsp -march=sl1"
+-sl1_dsp   toggle(&use_sl1_dsp,TRUE); 	ALL	 NONE	"-CG:dsp_thread=on -TARG:processor=sl1_dsp -march=sl1"
 	""
--sl1_pcore toggle(&use_sl1,TRUE);	ALL     NONE    "-TARG:processor=sl1_pcore -march=sl1"
+-sl1_pcore toggle(&use_sl1_pcore,TRUE);	ALL  NONE   "-TARG:processor=sl1_pcore -march=sl1"
+	""
+-sl5       toggle(&use_sl5,TRUE);	ALL  NONE   "-TARG:processor=sl5 -march=sl5"
 	""
 -mlong-long      Long_Long_Support=TRUE;   Cc,cpp f self
 	"Supporting 64bit Long Long for SL"
@@ -523,6 +538,12 @@ I-fini%s		;		CC	ld	"-fini %s"
         "Compile for 64-bit ABI"
 -w64	toggle(&abi,ABI_W64);	ALL	NONE	"-TARG:abi=w64"
 	"Compile for Windows 64-bit ABI"
+#endif
+#ifdef LOONGSON
+-n32    toggle(&abi,ABI_N32);   ALL     be      "-TARG:abi=n32"
+        "Compile for 32-bit ABI"
+-n64    toggle(&abi,ABI_64);    ALL     be      "-TARG:abi=n64"
+        "Compile for 64-bit ABI"
 #endif
 #ifdef KEY /* Bug 4210 */
 -module%s	Process_module(optargs);	F90	NONE	""
@@ -1459,6 +1480,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Warn about externs not at file scope level"
 -Wno-nested-externs	;		Cc	f	self
 	"Do not warn about externs not at file scope level"
+-Wold-style-definition ; Cc	f	self
+	"Warn if an old-style function definition is used. A warning is given even if there is a previous prototype."
+-Wno-old-style-definition ; Cc	f	self
+	"Do not warn about old style fucntion definition"
 -Wparentheses	;		Cc	f	self
 	"Warn about possible missing parentheses"
 -Wno-parentheses	;		Cc	f	self
@@ -1467,17 +1492,17 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Warn about function pointer arithmetic"
 -Wno-pointer-arith	;		Cc	f	self
 	"Do not warn about function pointer arithmetic"
--Wpointer-sign	;		Cc,CPP	CPP,f	self
+-Wpointer-sign	;		Cc	f	self
 	"Warn for pointer asignments with different signedness"
--Wno-pointer-sign	;		Cc,CPP	CPP,f	self
+-Wno-pointer-sign	;		Cc	f	self
 	"Don't warn for pointer asignments with different signedness"
--Wpointer-to-int-cast        ;		Cc,CPP	CPP	self
+-Wpointer-to-int-cast        ;		Cc	f	self
 	"Warn for pointer casts to integer types of a different size"
--Wno-pointer-to-int-cast        ;		Cc,CPP	CPP	self
+-Wno-pointer-to-int-cast        ;		Cc	f	self
 	"Don't warn for pointer casts to integer types of a different size"
--Wno-int-to-pointer-cast        ;		Cc,CPP	CPP	self
+-Wno-int-to-pointer-cast        ;		Cc	f	self
 	"Don't warn for casts to pointers from integer types of a different size"
--Wint-to-pointer-cast        ;		Cc,CPP	CPP	self
+-Wint-to-pointer-cast        ;		Cc	f	self
 	"Warn for casts to pointers from integer types of a different size"
 -Wredundant-decls	;		Cc	f	self
 	"Warn about multiple declarations of the same object"
@@ -1950,8 +1975,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -mconstant-gp	;		Cc	NONE	"-TENV:constant_gp=on"
 	""
+#ifndef SL
 -mno-sdata	;		Cc	NONE	"-G0"
 	""
+#endif
 -finstrument-functions	;	ALL	NONE	"-OPT:cyg_instr=4"
 	""
 -finhibit-size-directive	;		Cc	be	"-CG:inhibit_size_directive=1:emit_asm_dwarf=0"

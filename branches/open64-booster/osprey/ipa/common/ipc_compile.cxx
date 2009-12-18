@@ -212,7 +212,7 @@ static char* proper_name(char *name){
 
 static const char* abi()
 {
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON)
     // 12343: Use IPA_Target_Type instead of ld_ipa_opt[LD_IPA_TARGOS].flag
     // to distinguish between n32 and 64 in IPA
     return IPA_Target_Type == IP_64_bit_ABI ? "-64" : "-n32";
@@ -297,7 +297,7 @@ ipa_compile_init ()
 
   const char* toolroot = getenv("TOOLROOT");
 
-#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_LOONGSON)
 
   static char* smake_base = ALTBINPATH "/usr/bin/make";
 
@@ -1044,6 +1044,10 @@ void ipacom_doit (const char* ipaa_filename)
 	    tmpdir, symlinksdir, link_cmdfile_name);
 #endif // TARG_SL
     fprintf(makefile, "\trm -r %s\n", symlinksdir);
+#elif defined(TARG_LOONGSON)
+    fprintf(makefile, "\t%s `cat %s `\n",
+            link_line->front(),
+            link_cmdfile_name);
 #else
     fprintf(makefile, "\t%s -from %s\n",
             link_line->front(),
@@ -1120,7 +1124,7 @@ void ipacom_doit (const char* ipaa_filename)
     if (!symtab_extra_args)
       symtab_extra_args = get_extra_args(0);
 
-#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_LOONGSON)
 
     if (IPA_Enable_Cord) {
     	const char * obj_listfile_name = create_tmp_file((const string)"obj_file_list");
@@ -1195,7 +1199,7 @@ void ipacom_doit (const char* ipaa_filename)
             tmpdir_macro, elf_symtab_name,
             tmpdir_macro, whirl_symtab_name,
             tmpdir_macro, (*infiles)[i]);
-#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL)
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_LOONGSON)
     if (Feedback_Filename) {
         fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off\n",
                 tmpdir_macro, (*commands)[i], Feedback_Filename, extra_args);
@@ -1313,7 +1317,7 @@ void ipacom_doit (const char* ipaa_filename)
     // SEGV should be here too; we're leaving it out because 6.2 sh doesn't
     // like it.
     fprintf(sh_cmdfile, "trap 'cleanup; exit 2' ");
-#if !defined(TARG_IA64) && !defined(TARG_X8664) && !defined(TARG_MIPS) && !defined(TARG_SL)
+#if !defined(TARG_IA64) && !defined(TARG_X8664) && !defined(TARG_MIPS) && !defined(TARG_SL) && !defined(TARG_LOONGSON)
     fprintf(sh_cmdfile, "ABRT EMT SYS POLL ");
 #endif
     fprintf(sh_cmdfile, "HUP INT QUIT ILL TRAP FPE ");
@@ -1517,6 +1521,21 @@ static const char* get_extra_args(const char* ipaa_filename)
     default:
       break;
     }
+  }
+#endif
+#ifdef TARG_LOONGSON
+  switch(ld_ipa_opt[LD_IPA_ISA].flag) {
+  case TOS_LOONGSON_2e:
+    args.push_back("-loongson2e");
+    break;
+  case TOS_LOONGSON_2f:
+    args.push_back("-loongson2f");
+    break;
+  case TOS_LOONGSON_3:
+    args.push_back("-loongson2f");
+    break;
+  default: // loongson2e
+    break;
   }
 #endif
 

@@ -1283,7 +1283,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
  
     wn_tree = WN_Lower(wn_orig, actions, alias_mgr, "Pre_Opt");
 
-#if defined(TARG_X8664) || defined(TARG_NVISA)
+#if defined(TARG_X8664) || defined(TARG_NVISA) || defined(TARG_LOONGSON)
     BOOL target_64bit = Is_Target_64bit();
 #elif defined(TARG_SL)
     BOOL target_64bit = FALSE;

@@ -1845,7 +1845,7 @@ extern BOOL SC_type_has_rep(SC_TYPE type);
 extern BOOL SC_type_has_bbs(SC_TYPE type);
 extern BOOL SC_type_is_marker(SC_TYPE type);
 
-static char * sc_type_name[] = 
+static const char * sc_type_name[] =
   {"NONE", "IF", "THEN", "ELSE", "LOOP", "BLOCK", "FUNC",
    "LP_START", "LP_COND", "LP_STEP", "LP_BACKEDGE", "LP_BODY", "COMPGOTO", "OTHER"};
 
@@ -1889,7 +1889,7 @@ public:
   void         Add_flag(int i)          { if (!Has_flag(i)) {_flag += i; } }
   SC_TYPE      Type(void)        const { return type; }
   void         Set_type(SC_TYPE i)     { type = i; }
-  char *       Type_name(void) const   { return sc_type_name[type]; }
+  const char * Type_name(void) const   { return sc_type_name[type]; }
   BB_NODE *    Get_bb_rep()    const   { return (SC_type_has_rep(type) ? u1.bb_rep : NULL); }
   void         Set_bb_rep(BB_NODE * i) 
   { 

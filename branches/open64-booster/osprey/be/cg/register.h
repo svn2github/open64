@@ -746,6 +746,9 @@ typedef struct {
   REGISTER_SET      shrink_wrap;
   REGISTER_SET	    stacked;
   REGISTER_SET      rotating;
+#ifdef TARG_LOONGSON
+  REGISTER_SET      assembler_temporary;
+#endif
 //#ifdef TARG_X8664
 //  /* Set of registers that are eight-bit addressable. */
 //  REGISTER_SET      eight_bit_regs;
@@ -796,6 +799,10 @@ REGISTER_CLASS_info[ISA_REGISTER_CLASS_MAX + 1];
                                 (REGISTER_CLASS_info[x].can_store)
 #define REGISTER_CLASS_multiple_save(x)				\
                                 (REGISTER_CLASS_info[x].multiple_save)
+#ifdef TARG_LOONGSON
+#define REGISTER_CLASS_assembler_temporary(x)               \
+                                (REGISTER_CLASS_info[x].assembler_temporary)
+#endif
 //#ifdef TARG_X8664
 //#define REGISTER_CLASS_eight_bit_regs(x)			\
 //                                (REGISTER_CLASS_info[x].eight_bit_regs)
@@ -1106,6 +1113,29 @@ extern CLASS_REG_PAIR         CLASS_REG_PAIR_c2vlcs;
 #define REGISTER_c2vlcs       CLASS_REG_PAIR_reg(CLASS_REG_PAIR_c2vlcs)
 #define REGISTER_CLASS_c2vlcs CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_c2vlcs)
 #define CLASS_AND_REG_c2vlcs  CLASS_REG_PAIR_class_n_reg(CLASS_REG_PAIR_c2vlcs)
+
+#endif
+
+#ifdef TARG_LOONGSON
+extern CLASS_REG_PAIR         CLASS_REG_PAIR_at;
+#define REGISTER_at           CLASS_REG_PAIR_reg(CLASS_REG_PAIR_at)
+#define REGISTER_CLASS_at     CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_at)
+#define CLASS_AND_REG_at      CLASS_REG_PAIR_class_n_reg(CLASS_REG_PAIR_at)
+
+extern CLASS_REG_PAIR         CLASS_REG_PAIR_hi;
+#define REGISTER_hi           CLASS_REG_PAIR_reg(CLASS_REG_PAIR_hi)
+#define REGISTER_CLASS_hi     CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_hi)
+#define CLASS_AND_REG_hi      CLASS_REG_PAIR_class_n_reg(CLASS_REG_PAIR_hi)
+
+extern CLASS_REG_PAIR         CLASS_REG_PAIR_lo;
+#define REGISTER_lo           CLASS_REG_PAIR_reg(CLASS_REG_PAIR_lo)
+#define REGISTER_CLASS_lo     CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_lo)
+#define CLASS_AND_REG_lo      CLASS_REG_PAIR_class_n_reg(CLASS_REG_PAIR_lo)
+
+extern CLASS_REG_PAIR          CLASS_REG_PAIR_fsr;
+#define REGISTER_fsr           CLASS_REG_PAIR_reg(CLASS_REG_PAIR_fsr)
+#define REGISTER_CLASS_fsr     CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_fsr)
+#define CLASS_AND_REG_fsr      CLASS_REG_PAIR_class_n_reg(CLASS_REG_PAIR_fsr)
 
 #endif
 

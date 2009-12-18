@@ -115,6 +115,9 @@
 #ifdef TARG_SL
 #include "config_debug.h"    // insert break op in debug mode
 #endif
+#ifdef TARG_LOONGSON
+#include "ipfec_options.h"
+#endif
 
 INT64 Frame_Len;
 extern BOOL IPFEC_Enable_Edge_Profile;
@@ -282,7 +285,7 @@ Setup_GP_TN_For_PU( ST *pu)
    * have enough information to perform this optimization if regions
    * are present.
    */
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON)
   reg = REGISTER_gp;
 #else
   if ( Use_Scratch_GP(GP_Setup_Code == need_code) ) {
@@ -569,7 +572,9 @@ Generate_Entry (BB *bb, BOOL gra_run )
 
   if (!BB_handler(bb)) {
 
+#ifndef TARG_LOONGSON // loongson doesn't support pfs
     EETARG_Save_Pfs (Caller_Pfs_TN, &ops);	// alloc
+#endif
 
 #ifdef ABI_PROPERTY_stack_ptr
 #ifdef TARG_X8664
@@ -745,6 +750,9 @@ Generate_Entry (BB *bb, BOOL gra_run )
       // is a simulated OP, cgdwarf_targ.cxx will make an assertion that no simulated OP appears.
       // I think this should be a bug. This solution is just to work around it.
       if ( TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
+#elif defined(TARG_LOONGSON)
+    else { 
+      if ( TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
 #else
     else {
       if (gra_run && PU_Has_Calls 
@@ -808,6 +816,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
     // don't generate prolog (that references altentry ST).
     if (ST_is_not_used(st))
 	;
+#ifndef TARG_LOONGSON
     else if (Gen_PIC_Call_Shared && CGEXP_gp_prolog_call_shared 
 	&& (MTYPE_byte_size(Pointer_Mtype) == MTYPE_byte_size(MTYPE_I4)) )
     {
@@ -818,7 +827,40 @@ Generate_Entry (BB *bb, BOOL gra_run )
 	Set_TN_size(gp_value_tn, 4);  /* text addresses are always 32bits */
 	Exp_OP1 (OPC_I4INTCONST, GP_TN, gp_value_tn, &ops);
     }
+#endif
     else {
+#ifdef TARG_LOONGSON  // loongson generate setup gp here
+     
+    if (GP_Setup_Code == need_code) 
+    {
+	/* added gp reference after usual gp setup time,
+	 * so now need to add in gp setup. */
+	/* Create a symbolic expression for ep-gp */
+	/* Generate_Entry() and Handle_Call_Site() have handled GP save and restore */
+ 	ST *st = ENTRYINFO_name(
+		      ANNOT_entryinfo(ANNOT_Get(BB_annotations(bb),ANNOT_ENTRYINFO)));
+		      OPS ops = OPS_EMPTY;
+
+	TN *cur_pu_got_disp_tn = Gen_Symbol_TN(st, 0, TN_RELOC_HI_GPSUB);		   
+	Set_TN_size(cur_pu_got_disp_tn, 2);
+	TN *tmp=Build_TN_Of_Mtype(MTYPE_I4);      
+	Build_OP (TOP_lui, tmp, True_TN, cur_pu_got_disp_tn, &ops);      
+
+	cur_pu_got_disp_tn = Gen_Symbol_TN(st, 0, TN_RELOC_LO_GPSUB);
+	Set_TN_size(cur_pu_got_disp_tn, 2);	      
+	Build_OP (TOP_addiu, tmp, True_TN, tmp, cur_pu_got_disp_tn, &ops);
+	Build_OP (TOP_daddu, GP_TN, True_TN, tmp, Ep_TN, &ops);
+
+	/* Insert the ops at the top of the current BB */
+	BB_Prepend_Ops (bb, &ops);
+
+	if (Trace_EE) {
+	  #pragma mips_frequency_hint NEVER
+	  fprintf(TFile, "%s<calls> Insert spill and setup of GP for BB:%d\n", DBar, BB_id(bb));
+	   Print_OPS(&ops);
+	 }
+    }
+#else
 	/* Create a symbolic expression for ep-gp */
 	TN *cur_pu_got_disp_tn = Gen_Symbol_TN(st, 0, TN_RELOC_GPSUB);
 	TN *got_disp_tn = Gen_Register_TN (
@@ -829,6 +871,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
 
 	/* Add it to ep to get the new GP: */
 	Exp_ADD (Pointer_Mtype, GP_TN, Ep_TN, got_disp_tn, &ops);
+#endif
     }
   } 
   else if (Is_Caller_Save_GP && PU_Has_Calls && !Constant_GP
@@ -839,6 +882,15 @@ Generate_Entry (BB *bb, BOOL gra_run )
 	Caller_GP_TN = PREG_To_TN_Array[ Caller_GP_Preg ];
       	Exp_COPY (Caller_GP_TN, GP_TN, &ops);
   }
+#ifdef TARG_LOONGSON
+  if (CG_Enable_FTZ 
+	&& (PU_is_mainpu(Pu_Table[ST_pu(st)]) || (strcmp(ST_name(st), "main") == 0) 
+	     || (strcmp(ST_name(st), "MAIN__") == 0)) )
+  {
+       // We turn on flush-to-zero mode at the entry of function.
+       CGTARG_enable_FTZ(ops);
+  }
+#endif
 #endif
 
   /* set the srcpos field for all the entry OPs */
@@ -1710,6 +1762,9 @@ Generate_Exit (
     else if( PU_Has_Calls || IPFEC_Enable_Edge_Profile) {
       // Please see comment in similar place in "Generate_Entry" PU.
       if ( TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
+#elif defined(TARG_LOONGSON)
+    else { 
+      if (TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
 #else
     else {
       if (gra_run && PU_Has_Calls 
@@ -1767,7 +1822,9 @@ Generate_Exit (
 #endif
 
   if (PU_Has_Calls) {
+#ifndef TARG_LOONGSON  // loongson doesn't support pfs
   	EETARG_Restore_Pfs (Caller_Pfs_TN, &ops);
+#endif
   }
 
 #ifdef ABI_PROPERTY_stack_ptr
@@ -2011,6 +2068,7 @@ Adjust_GP_Entry(BB *bb)
 	FmtAssert(FALSE, ("NYI"));
 	return;
 #endif
+#ifndef TARG_LOONGSON // loongson already setup GP
 	ST *st = ENTRYINFO_name(	/* The entry's symtab entry */
 		ANNOT_entryinfo(ANNOT_Get(BB_annotations(bb),ANNOT_ENTRYINFO)));
 	TN *got_disp_tn = Gen_Register_TN (
@@ -2041,6 +2099,7 @@ Adjust_GP_Entry(BB *bb)
     		fprintf(TFile, "%s<calls> Insert spill and setup of GP for BB:%d\n", DBar, BB_id(bb));
 		Print_OPS(&ops);
 	}
+#endif
   }
 }
 
@@ -2235,11 +2294,30 @@ Assign_Prolog_Temps(OP *first, OP *last, REGISTER_SET *temps)
  */
 static TN *
 Gen_Prolog_LDIMM64(UINT64 val, OPS *ops)
-{
+{  
+#ifdef TARG_SL
+  TN *src, *result;
+  if (val >= 0 && val <= UINT32_MAX) {
+    src = Gen_Literal_TN(val, 4);
+    result = Build_TN_Of_Mtype (MTYPE_U4);
+    Exp_Immediate (result, src, MTYPE_U4, ops);
+  } else if (val > UINT32_MAX && val <= UINT64_MAX) {
+    src = Gen_Literal_TN(val, 8);
+    result = Build_TN_Of_Mtype (MTYPE_U4);
+    TN *result_h = Build_TN_Of_Mtype (MTYPE_U4);
+    
+    extern void Add_TN_Pair(TN *key, TN *pair);
+    Add_TN_Pair(result, result_h);
+    Exp_Immediate (result, src, MTYPE_U8, ops);
+  } else {
+    FmtAssert(FALSE, ("Gen_Prolog_LDIMM64: error value"));
+  }
+#else
   TN *src = Gen_Literal_TN(val, 8);
   TN *result = Build_TN_Of_Mtype (MTYPE_I8);
 
   Exp_Immediate (result, src, TRUE, ops);
+#endif
 
   return result;
 }
@@ -2614,7 +2692,7 @@ Adjust_Alloca_Code (void)
 			continue;
 		}
   		OPS_Init(&ops);
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 		if (OP_spadjust_plus(op)) {
 #else
 		if (OP_variant(op) == V_ADJUST_PLUS) {
@@ -2625,7 +2703,7 @@ Adjust_Alloca_Code (void)
 			  	OP_opnd(op, OP_find_opnd_use(op, OU_opnd2)),
 			  	&ops);
 		}
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 		else if (OP_spadjust_minus(op)) {
 #else
                 else if (OP_variant(op) == V_ADJUST_MINUS) {
@@ -2650,7 +2728,7 @@ Adjust_Alloca_Code (void)
 		BB_Insert_Ops_Before(bb, op, &ops);
     		BB_Remove_Op(bb, op);
 		op = OPS_last(&ops);
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 		Reset_BB_scheduled(bb);
 #endif
 	}

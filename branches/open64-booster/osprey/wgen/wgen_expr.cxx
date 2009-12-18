@@ -68,6 +68,10 @@ extern "C"{
 #include "omp_types.h"
 #include "wgen_omp_directives.h"
 #endif
+#if defined(TARG_SL)
+#include "erglob.h"
+#include "stdarg.h"
+#endif
 
 #define BITS_PER_UNIT 8
 
@@ -355,6 +359,7 @@ struct operator_from_tree_t {
  GS_VEC_DELETE_EXPR,		OPERATOR_UNKNOWN,
  GS_VEC_NEW_EXPR,		OPERATOR_UNKNOWN,
  GS_TEMPLATE_TEMPLATE_PARM,	OPERATOR_UNKNOWN,
+ GS_FREQ_HINT_STMT,		OPERATOR_UNKNOWN,
 };
 
 #ifdef FE_GNU_4_2_0
@@ -568,7 +573,7 @@ void WFE_Stmt_Append_Extend_Intrinsic(WN *wn, WN *master_variable, SRCPOS src) {
      master_variable = WN_CreateParm(MTYPE_I4, master_variable, Be_Type_Tbl(MTYPE_I4), WN_PARM_BY_VALUE);
    } else {
      TY_IDX  ti2 = WN_ty(master_variable);
-     TYPE_ID tm2 = TY_mtype(ti2);
+     TYPE_ID tm2 = WN_rtype(master_variable);
      master_variable = WN_CreateParm (Mtype_comparison (tm2), master_variable,
                                       ti2, WN_PARM_BY_VALUE);
    }
@@ -588,7 +593,7 @@ void WFE_Stmt_Append_Extend_Intrinsic(WN *wn, WN *master_variable, SRCPOS src) {
        continue;
      }
      TY_IDX  ti1 = WN_ty(op1);
-     TYPE_ID tm1 = TY_mtype(ti1);
+     TYPE_ID tm1 = WN_rtype(op1);
      op1 = WN_CreateParm (Mtype_comparison (tm1), op1,
                           ti1, WN_PARM_BY_VALUE);
      kid1s[1]= op1;
@@ -1329,6 +1334,45 @@ WGEN_fixup_result_decl (gs_t exp)
 }
 #endif
 
+#ifdef TARG_SL
+/* For case: *p++(or --) op *p ... */
+static BOOL Is_Special_Case (WN* wn)
+{
+  WN * body;
+  WN * last;
+
+  FmtAssert(WN_operator(wn) == OPR_ISTORE, ("WGEN_Stmt_Add: FYI"));
+
+  body = WGEN_Stmt_Top ();
+
+  if (body) {
+
+/* Here is just a simple match.
+ * 
+ * wn:   (*p)
+ *    .....
+ *   U4U4LDID 72 <1,4,.preg_U4> T<47,anon_ptr.,4> # <preg>
+ *  I4ISTORE 0im:0 T<47,anon_ptr.,4>
+ *
+ * last: (p++)
+ *    U4U4LDID 72 <1,4,.preg_U4> T<47,anon_ptr.,4> # <preg>
+ *    U4INTCONST 4 (0x4)
+ *   U4ADD
+ *  U4STID 0 <2,1,p> T<47,anon_ptr.,4>
+ */
+
+    last = WN_last(body);
+    if ((WN_operator(last) == OPR_STID )
+       && ((WN_operator(WN_kid0(last)) == OPR_ADD) 
+         || (WN_operator(WN_kid0(last)) == OPR_SUB)) 
+       && (WN_Equiv(WN_kid0(WN_kid0(last)) ,WN_kid1(wn))))    
+      return TRUE;
+    else
+      return FALSE;
+  }
+} 
+#endif
+
 /* rhs_wn is the WN representing the rhs of a MODIFY_EXPR node; this
  * routine processes the lhs of the node and generate the appropriate
  * form of store.
@@ -1906,6 +1950,19 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
         wn = WN_CreateIstore(OPR_ISTORE, MTYPE_V, desc, component_offset, 
 			     Make_Pointer_Type (hi_ty_idx, FALSE),
 			     rhs_wn, addr_wn, field_id);
+#ifdef TARG_SL
+        /* so far I only handle *p++=... cases, change this case to 
+         *   *p = ... ;
+         *   p++;
+         * This is to make our compiler consistent with gcc. So far,
+         * only POST(INC/DEC) differs from gcc.
+         */
+        gs_code_t post_inc_dec_code = gs_tree_code(gs_tree_operand(lhs, 0));
+        if (((post_inc_dec_code == GS_POSTINCREMENT_EXPR)
+          || (post_inc_dec_code == GS_POSTDECREMENT_EXPR)) && Is_Special_Case(wn))
+        WGEN_Stmt_Prepend_Last(wn, Get_Srcpos());
+        else 
+#endif
         WGEN_Stmt_Append(wn, Get_Srcpos());
 #if defined(TARG_SL)
         if (need_append) {
@@ -6886,11 +6943,13 @@ WGEN_Expand_Expr (gs_t exp,
 		wn = WN_Cvt(MTYPE_I4, mtyp, wn0);
 	      else wn = WN_Cvt(WN_rtype(wn0), mtyp, wn0);
 	    }
+#if !defined(TARG_SL)
 	    // bug 14430: Generate a CVT with the same signedness.
 	    else if (MTYPE_signed(WN_rtype(wn0)) != MTYPE_signed(mtyp) &&
 	             MTYPE_bit_size(WN_rtype(wn0)) > MTYPE_bit_size(mtyp)) {
 	      wn = WN_Cvt(Mtype_TransferSign(mtyp, WN_rtype(wn0)), mtyp, wn0);
 	    }
+#endif
 	    else
 #endif
 	    wn = WN_Cvt(WN_rtype(wn0), mtyp, wn0);
@@ -8069,7 +8128,7 @@ WGEN_Expand_Expr (gs_t exp,
 		       || gs_tree_code(arg2) == GS_INDIRECT_REF)
 		  arg2 = gs_tree_operand (arg2, 0);
 		ST *st2 = Get_ST (arg2);
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
 		const int align = TARGET_64BIT ? 8 : 4;
 		wn = WN_Lda (Pointer_Mtype, 
                              ((TY_size (ST_type (st2)) + align-1) & (-align)),
@@ -8102,7 +8161,7 @@ WGEN_Expand_Expr (gs_t exp,
                 TY_IDX arg_ty_idx = Get_TY (gs_tree_type (arg1));
 
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_SL)
 		/* Under -m32, convert a __builtin_va_copy to an assignment if the
 		   type of va_list is not array.
 		   Also, the original code seems to only work for -m64, like other
@@ -8847,11 +8906,19 @@ WGEN_Expand_Expr (gs_t exp,
 		intrinsic_op = TRUE;
 		break;
 	      case GSBI_BUILT_IN_APPLY_ARGS:
+#if defined(TARG_SL)
+		ErrMsg(EC_Unimplemented_Feature, "__builtin_apply_args",
+		  Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
+#endif
 		Set_PU_has_alloca(Get_Current_PU());
 		iopc = INTRN_APPLY_ARGS;
 		break;	
 	      case GSBI_BUILT_IN_APPLY:
 		{
+#if defined(TARG_SL)
+		  ErrMsg(EC_Unimplemented_Feature, "__builtin_apply",
+		    Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
+#endif
 		  WN *load_wn, *sp_addr;
 
 		  Set_PU_has_alloca(Get_Current_PU());
@@ -8957,10 +9024,13 @@ WGEN_Expand_Expr (gs_t exp,
 		  store = WN_Stid(MTYPE_I8, 
 				  (WN_OFFSET)0, tmpst, Spill_Int_Type, load);
 		  WGEN_Stmt_Append (store, Get_Srcpos());		
+#if !defined(TARG_SL)
+		  // SL do not have float-point register
 		  load = WN_LdidPreg(MTYPE_F8, 32); //$f0
 		  store = WN_Stid(MTYPE_F8, 
 				  (WN_OFFSET)8, tmpst, Spill_Int_Type, load);
 		  WGEN_Stmt_Append (store, Get_Srcpos());		
+#endif
 		  wn = WN_Lda (Pointer_Mtype, 0, tmpst, 
 			       Make_Pointer_Type (ST_type(tmpst), FALSE));
 
@@ -8978,6 +9048,10 @@ WGEN_Expand_Expr (gs_t exp,
 		  break;
 		}
 	      case GSBI_BUILT_IN_RETURN:
+#if defined(TARG_SL)
+		ErrMsg(EC_Unimplemented_Feature, "__builtin_return",
+		  Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
+#endif
 		Set_PU_has_alloca(Get_Current_PU());
 		iopc = INTRN_RETURN;
 		break;	
@@ -9202,6 +9276,26 @@ WGEN_Expand_Expr (gs_t exp,
 */
 #endif
 #ifdef TARG_SL
+              case GSBI_BUILT_IN_CVT64_HIGH:
+                iopc = INTRN_CVT64_HIGH;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_CVT64_LOW:
+                iopc = INTRN_CVT64_LOW;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_CVT32:
+                iopc = INTRN_CVT32;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_LONGLONG_CVT64_HIGH:
+                iopc = INTRN_LONGLONG_CVT64_HIGH;
+                intrinsic_op = TRUE;
+                break;
+              case GSBI_BUILT_IN_LONGLONG_CVT64_LOW:
+                iopc = INTRN_LONGLONG_CVT64_LOW;
+                intrinsic_op = TRUE;
+                break;
               case GSBI_BUILT_IN_C3AADDA:
                 iopc = INTRN_C3AADDA;
                 intrinsic_op = TRUE;
@@ -10061,7 +10155,7 @@ WGEN_Expand_Expr (gs_t exp,
         /* Compute the rounded size of the type.  */
 	align = TARGET_64BIT ? 8 : 4;
 	rounded_size = ((TY_size(Get_TY(type)) + align - 1) / align) * align;
-#ifdef TARG_MIPS // bug 12916: further align to double-word boundary
+#if defined(TARG_MIPS) && !defined(TARG_SL) // bug 12916: further align to double-word boundary
 	rounded_size = ((rounded_size + 7) / 8) * 8;
 #endif
 
@@ -10129,22 +10223,6 @@ WGEN_Expand_Expr (gs_t exp,
 	} else
 
 	/* Compute new value for AP.  */
-#if defined(TARG_SL) && (defined(EMULATE_LONGLONG) || defined(EMULATE_FLOAT_POINT))
-    if ((mtype == MTYPE_F8) || (mtype == MTYPE_I8) || (mtype == MTYPE_U8)
-        || (mtype == MTYPE_M && TY_fld(ty_idx).Entry() 
-          && MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty_idx))))==8)) {
-
-      /* Force 8byte align, ((offset + 15) << 3) >> 3 */
-      wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
-          WN_Intconst (Pointer_Mtype, 8*2-1));
-
-      wn = WN_Binary (OPR_LSHR, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, 3));
-      wn = WN_Binary (OPR_SHL, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, 3));
-      if (mtype == MTYPE_M && TY_fld(ty_idx).Entry() 
-          && MTYPE_byte_size(TY_mtype(FLD_type(TY_fld(ty_idx))))==8)
-        wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn, WN_Intconst (Pointer_Mtype, rounded_size-8));
-    } else
-#endif
     {
       wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
           WN_Intconst (Pointer_Mtype, rounded_size));
@@ -10398,6 +10476,10 @@ WGEN_Expand_Expr (gs_t exp,
       WGEN_Expand_Stmt(exp, target_wn);
       break;
 #endif
+
+    case GS_FREQ_HINT_STMT:
+      WGEN_Expand_Pragma(exp);
+      break;
       
     default:
        FmtAssert(FALSE,

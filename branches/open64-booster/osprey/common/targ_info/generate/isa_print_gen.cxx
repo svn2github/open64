@@ -82,7 +82,7 @@
 typedef enum {
 	END	= 0,			// end of list marker
 	NAME	= 1,			// instruction name/mnemonic
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
    	SEGMENT = 2,			// address segment prefix
 	OPND    = 3,			// OPND+n => operand n
 #else
@@ -188,7 +188,7 @@ const char* Print_Name(int print_index)
 	comp_name[i] = "ISA_PRINT_COMP_end";
       } else if (i == NAME) {
 	comp_name[i] = "ISA_PRINT_COMP_name";
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
       } else if (i == SEGMENT) {
 	comp_name[i] = "ISA_PRINT_COMP_segment";
 #endif
@@ -360,6 +360,7 @@ void ISA_Print_End(void)
   int top;
   bool err;
 
+#ifndef TARG_LOONGSON
   for (err = false, top = 0; top < TOP_count; ++top) {
     bool is_dummy = TOP_is_dummy((TOP)top);
     bool is_simulated = TOP_is_simulated((TOP)top);
@@ -380,6 +381,7 @@ void ISA_Print_End(void)
     }
   }
   if (err) exit(EXIT_FAILURE);
+#endif
 
   fprintf(cfile,"#include <string.h>\n");
   fprintf(cfile,"#include \"topcode.h\"\n");
@@ -394,7 +396,7 @@ void ISA_Print_End(void)
   fprintf(hfile, "\ntypedef enum {\n"
 	"  %-21s = %d,  /* %s */\n"
 	"  %-21s = %d,  /* %s */\n"
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 	"  %-21s = %d,  /* %s */\n"
 #endif
 	"  %-21s = %d,  /* %s */\n"
@@ -403,7 +405,7 @@ void ISA_Print_End(void)
 	"} ISA_PRINT_COMP;\n",
 	Print_Name(END), END, "End of list marker",
 	Print_Name(NAME), NAME, "Instruction name",
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 	Print_Name(SEGMENT), SEGMENT, "Address segment prefix",
 #endif
 	Print_Name(OPND), OPND, "OPND+n => operand n",
@@ -543,7 +545,7 @@ void ISA_Print_End(void)
   Emit_Footer (hfile);
 }
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 /////////////////////////////////////
 void Segment (void)
 /////////////////////////////////////

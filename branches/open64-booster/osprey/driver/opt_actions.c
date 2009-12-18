@@ -542,6 +542,15 @@ Process_Targ_Group ( char *targ_args )
 	    toggle(&avx, FALSE);
           }
 #endif
+#ifdef TARG_LOONGSON
+	  if ( strncasecmp ( cp+4, "n32", 3 ) == 0 ) {
+            add_option_seen ( O_n32 );
+            toggle ( &abi, ABI_N32 );
+          } else if ( strncasecmp ( cp+4, "n64", 3 ) == 0 ) {
+            add_option_seen ( O_n64 );
+            toggle ( &abi, ABI_64 );
+          }
+#endif
 #if defined(TARG_NVISA)
 	  if ( strncasecmp ( cp+4, "w64", 3 ) == 0 ) {
 	    add_option_seen ( O_w64 );
@@ -758,7 +767,7 @@ Check_Target ( void )
 #elif TARG_IA32
 	toggle(&abi, ABI_IA32);
     	add_option_seen ( O_ia32 );
-#elif TARG_SL
+#elif defined(TARG_SL) || defined(TARG_LOONGSON)
         toggle(&abi, ABI_N32);
         add_option_seen ( O_n32 );
 #elif TARG_MIPS
@@ -889,6 +898,12 @@ Check_Target ( void )
       case ABI_W64:
 	opt_val = ISA_COMPUTE_10;
 	toggle ( &isa, opt_val );
+	break;
+#elif TARG_LOONGSON
+      case ABI_N32:
+      case ABI_64:
+	  opt_val = ISA_LOONGSON3;
+	  toggle ( &isa, opt_val );
 	break;
 #endif
       case ABI_I32:

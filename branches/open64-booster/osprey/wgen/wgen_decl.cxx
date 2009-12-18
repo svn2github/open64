@@ -4757,7 +4757,7 @@ WGEN_Alloca_ST (gs_t decl)
   Set_ST_is_temp_var (alloca_st);
   Set_ST_pt_to_unique_mem (alloca_st);
   Set_ST_base_idx (st, ST_st_idx (alloca_st));
-  WN *swn = WGEN_Expand_Expr (gs_type_size(gs_tree_type(decl)));
+  WN *swn = WGEN_Expand_Expr (gs_type_size_unit(gs_tree_type(decl)));
   WN *wn  = WN_CreateAlloca (swn);
   wn = WN_Stid (Pointer_Mtype, 0, alloca_st, ST_type (alloca_st), wn);
   WGEN_Stmt_Append (wn, Get_Srcpos());

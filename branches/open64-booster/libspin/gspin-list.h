@@ -38,4 +38,4 @@ gs_t gs_index (gs_t list, gs_count_t index);
 void gs_set_index (gs_t list, gs_count_t index, gs_t value);
 #endif
 
-#endif // __GSPIN_LIST_H__
+#endif /* __GSPIN_LIST_H__ */

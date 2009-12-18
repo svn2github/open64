@@ -1027,6 +1027,16 @@ struct OPERATOR_info_struct OPERATOR_info[OPERATOR_LAST+1] = {
    1 /* nkids */,
    OPERATOR_MAPCAT_OEXP /* mapcat */,
    OPERATOR_PROPERTY_expression},
+#elif TARG_LOONGSON
+  {"OPR_MPYU2",
+   2 /* nkids */,
+   OPERATOR_MAPCAT_OEXP /* mapcat */,
+   OPERATOR_PROPERTY_expression},
+
+  {"OPR_MPYI2",
+   2 /* nkids */,
+   OPERATOR_MAPCAT_OEXP /* mapcat */,
+   OPERATOR_PROPERTY_expression},
 #endif
 
 #ifdef KEY

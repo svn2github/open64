@@ -7355,7 +7355,7 @@ grokdeclarator (const cp_declarator *declarator,
       }
       else
       {
-        warning("\"unsigned long long\" is mapped to \"unsinged long\" in declaration %s, "
+        warning(0, "\"unsigned long long\" is mapped to \"unsinged long\" in declaration %s, "
                 "Please use \"-mlong-long\" option to enbale long long type supporting", name);
     	  type = long_unsigned_type_node;
       }
@@ -7385,7 +7385,7 @@ grokdeclarator (const cp_declarator *declarator,
       }
       else
       {
-        warning("\"long long\" is mapped to \"long\" in declaration %s, "
+        warning(0, "\"long long\" is mapped to \"long\" in declaration %s, "
                 "Please use \"-mlong-long\" option to enbale long long type supporting", name);
     	  type = long_integer_type_node;
       }

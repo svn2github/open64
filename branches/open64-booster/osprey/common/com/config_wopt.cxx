@@ -94,7 +94,7 @@ BOOL  WOPT_Enable_Aggressive_Doloop_Promotion = FALSE;
 BOOL  WOPT_Enable_Aggressive_IVR = TRUE;
 BOOL  WOPT_Enable_Aggressive_Lftr = TRUE;
 BOOL  WOPT_Enable_Aggressive_Phi_Simp = TRUE;
-#if defined(TARG_X8664) || defined(TARG_IA32)
+#if defined(TARG_X8664) || defined(TARG_IA32) || defined(TARG_LOONGSON)
 INT32 WOPT_Enable_Autoaggstr_Reduction_Threshold = 11;
 #else
 INT32 WOPT_Enable_Autoaggstr_Reduction_Threshold = 24;
@@ -229,7 +229,7 @@ BOOL  WOPT_Enable_Replace_Second_IV = TRUE;
 BOOL  WOPT_Enable_Replace_While_Loop_Second_IV = TRUE;
 BOOL  WOPT_Enable_Restricted_Map = TRUE;
 INT32 WOPT_Enable_Rsv_Bits = 16;	/* reserve bit count in itable */
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 BOOL  WOPT_Enable_RVI = FALSE;		/* perform both rvi1 and rvi2 */
 #else
 BOOL  WOPT_Enable_RVI = TRUE;		/* perform both rvi1 and rvi2 */
