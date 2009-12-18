@@ -951,6 +951,7 @@ Print_LOOPINFO(LOOPINFO *info)
   if (WN_Loop_Nz_Trip(loop_info)) fprintf(TFile, "NZ_TRIP ");
   if (WN_Loop_Symb_Trip(loop_info)) fprintf(TFile, "SYMB_TRIP ");
   if (WN_Loop_Up_Trip(loop_info)) fprintf(TFile, "UP_TRIP ");
+  if (LOOPINFO_multiversion(info)) fprintf(TFile, "LMV");
   fprintf(TFile, "\n");
   if (LOOPINFO_trip_count_tn(info)) {
     fprintf(TFile, "    trip count TN = ");
@@ -1588,6 +1589,8 @@ BB_Add_Annotation (BB *bb, ANNOTATION_KIND kind, void *info)
     break;
   case ANNOT_ROTATING_KERNEL:
     Set_BB_rotating_kernel(bb);
+    break;
+  case ANNOT_INLINE:
     break;
   default:
     FmtAssert(FALSE, ("unexpected annotation kind: %d", kind));

@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -1764,6 +1768,8 @@ ST::Print (FILE *f, BOOL verbose) const
 	    if (TY_has_sseregister_parm(ty_idx)) fprintf (f, " sseregisterparm");
 	    INT register_parms = TY_register_parm(ty_idx);
 	    if (register_parms) fprintf (f, " %d-registerparm", register_parms);
+            if (TY_has_stdcall(ty_idx))    fprintf (f, " stdcall");
+            if (TY_has_fastcall(ty_idx))   fprintf (f, " fastcall");
 #endif
 	    fprintf (f, "\n");
 	}

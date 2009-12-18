@@ -1,6 +1,8 @@
 # Makefile for GNU Compiler Collection
 # Run 'configure' to generate Makefile from Makefile.in
 
+# Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+
 # Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
 
 # Copyright (C) 1987, 1988, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
@@ -136,9 +138,7 @@ SUBDIRS =@subdirs@ build
 
 # Selection of languages to be made.
 CONFIG_LANGUAGES = @all_selected_languages@
-# LANGUAGES = c gcov$(exeext) gcov-dump$(exeext) $(CONFIG_LANGUAGES)
-# KEY: disable build of phases that are not required.
-LANGUAGES = c $(CONFIG_LANGUAGES)
+LANGUAGES = c gcov$(exeext) gcov-dump$(exeext) $(CONFIG_LANGUAGES)
 
 # Selection of languages to be made during stage1 build.
 BOOT_LANGUAGES = c @all_boot_languages@
@@ -663,9 +663,7 @@ GCC_PASSES=xgcc$(exeext) cc1$(exeext) specs $(EXTRA_PASSES)
 
 # List of things which should already be built whenever we try to use xgcc
 # to link anything.
-# GCC_PARTS=$(GCC_PASSES) $(LIBGCC) $(EXTRA_PROGRAMS) $(COLLECT2) $(EXTRA_PARTS)
-# KEY: disable build of collect2
-GCC_PARTS=$(GCC_PASSES) $(LIBGCC) $(EXTRA_PROGRAMS) $(EXTRA_PARTS)
+GCC_PARTS=$(GCC_PASSES) $(LIBGCC) $(EXTRA_PROGRAMS) $(COLLECT2) $(EXTRA_PARTS)
 
 # Directory to link to, when using the target `maketest'.
 DIR = ../gcc
@@ -822,9 +820,7 @@ TREE_DATA_REF_H = tree-data-ref.h $(LAMBDA_H)
 VARRAY_H = varray.h $(MACHMODE_H) $(SYSTEM_H) coretypes.h $(TM_H)
 TREE_INLINE_H = tree-inline.h $(VARRAY_H) $(SPLAY_TREE_H)
 REAL_H = real.h $(MACHMODE_H)
-GSPIN_H = gspin-alloc.h gspin-assert.h gspin-base-types.h \
-	  gspin-gcc-interface.h gspin-io.h gspin-list.h gspin-mempool.h \
-	  gspin-tel.h gspin-tree.h
+GSPIN_H = gspin-gcc-interface.h 
 
 #
 # Now figure out from those variables how to compile and link.
@@ -892,6 +888,7 @@ BUILD_ERRORS = build/errors.o
 # libintl.h will be found in ../intl if we are using the included libintl.
 INCLUDES = -I. -I$(@D) -I$(srcdir) -I$(srcdir)/$(@D) \
 	   -I$(srcdir)/../include @INCINTL@ \
+	   -I$(srcdir)/../../libspin \
 	   $(CPPINC) $(GMPINC) $(DECNUMINC)
 
 .c.o:
@@ -1292,28 +1289,22 @@ config.status: $(srcdir)/configure $(srcdir)/config.gcc
 # --------
 
 #all.internal: start.encap rest.encap doc
-# For Open64 compiler
-#  We only build cc1/cc1plus, how about jc1?
-all.internal: start.encap
+# For Open64 compiler, omit doc
+all.internal: start.encap rest.encap
 
 # This is what to compile if making a cross-compiler.
 all.cross: native gcc-cross$(exeext) cpp$(exeext) specs \
 	$(LIBGCC) $(EXTRA_PARTS) lang.all.cross doc @GENINSRC@ srcextra
 # This is what must be made before installing GCC and converting libraries.
-# start.encap: native xgcc$(exeext) cpp$(exeext) specs \
+start.encap: native xgcc$(exeext) cpp$(exeext) specs \
 	xlimits.h lang.start.encap @GENINSRC@ srcextra
-# KEY: disable build of libraries.
-start.encap: native
 # These can't be made until after GCC can run.
-# rest.encap: $(STMP_FIXPROTO) $(LIBGCC) $(EXTRA_PARTS) lang.rest.encap
-# KEY: disable build of unused components.
-rest.encap:
+rest.encap: $(STMP_FIXPROTO) $(LIBGCC) $(EXTRA_PARTS) lang.rest.encap
 # This is what is made with the host's compiler
 # whether making a cross compiler or not.
 
-# KEY: disable build of collect2.
 native: config.status auto-host.h build-@POSUB@ $(LANGUAGES) \
-	$(EXTRA_PASSES) $(EXTRA_PROGRAMS)
+	$(EXTRA_PASSES) $(EXTRA_PROGRAMS) $(COLLECT2)
 
 # Define the names for selecting languages in LANGUAGES.
 c: cc1$(exeext)
@@ -1850,8 +1841,6 @@ tree.o : tree.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) $(TREE_H) \
    toplev.h $(GGC_H) $(HASHTAB_H) $(TARGET_H) output.h $(TM_P_H) langhooks.h \
    $(REAL_H) gt-tree.h tree-iterator.h $(BASIC_BLOCK_H) $(TREE_FLOW_H) \
    $(OBSTACK_H) pointer-set.h \
-   gspin-alloc.h gspin-assert.h gspin-base-types.h \
-   gspin-gcc-interface.h gspin-io.h gspin-list.h gspin-mempool.h \
    $(GSPIN_H)
 tree-dump.o: tree-dump.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) \
    $(TREE_H) langhooks.h toplev.h $(SPLAY_TREE_H) $(TREE_DUMP_H) \

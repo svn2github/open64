@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -116,15 +120,25 @@ static char *mtypes_rcs_id = "$Source: common/com/SCCS/s.mtypes.h $ $Revision: 1
 #define MTYPE_V8I1      36      /* 64-bit vector of signed bytes */
 #define MTYPE_V8I2      37      /* 64-bit vector of signed short ints */
 #define MTYPE_V8I4      38      /* 64-bit vector of signed ints */
-#define MTYPE_V8F4      39      /* 64-bit vector of signed floats */
+#define MTYPE_V8I8      39      /* 64-bit vector of signed ints */
+#define MTYPE_V8F4      40      /* 64-bit vector of signed floats */
 
-#define MTYPE_M8I1      40      /* 64-bit MMX vector of signed bytes */
-#define MTYPE_M8I2      41      /* 64-bit MMX vector of signed short ints */
-#define MTYPE_M8I4      42      /* 64-bit MMX vector of signed ints */
-#define MTYPE_M8F4      43      /* 64-bit MMX vector of signed floats */
+#define MTYPE_M8I1      41      /* 64-bit MMX vector of signed bytes */
+#define MTYPE_M8I2      42      /* 64-bit MMX vector of signed short ints */
+#define MTYPE_M8I4      43      /* 64-bit MMX vector of signed ints */
+#define MTYPE_M8F4      44      /* 64-bit MMX vector of signed floats */
+
+#define MTYPE_V32C4     45      /* 256-bit vector of C4                    */
+#define MTYPE_V32C8     46      /* 256-bit vector of C8                    */
+#define MTYPE_V32I1     47      /* 256-bit vector of signed bytes          */
+#define MTYPE_V32I2     48      /* 256-bit vector of signed short ints     */
+#define MTYPE_V32I4     49      /* 256-bit vector of signed ints           */
+#define MTYPE_V32I8     50      /* 256-bit vector of signed long long ints */
+#define MTYPE_V32F4     51      /* 256-bit vector of floats                */
+#define MTYPE_V32F8     52      /* 256-bit vector of doubles               */
 
 /* must define MTYPE_LAST as the index of the last one defined. */
-#define MTYPE_LAST	43	/* Must be defined */
+#define MTYPE_LAST	52	/* Must be defined */
 #elif !defined(TARG_SL)
 #define MTYPE_LAST	27	/* Must be defined */
 #else // TARG_SL
@@ -165,11 +179,10 @@ typedef mUINT8	mTYPE_ID;
 #define MTYPE_CLASS_UNSIGNED	0x08
 #define MTYPE_CLASS_STR		0x10
 #define MTYPE_CLASS_VECTOR	0x20
-#ifdef KEY
-#define MTYPE_CLASS_SVECTOR	0x60 // 2 bits for short vector (64-bit vector)
-#endif
 #ifdef TARG_X8664
-#define MTYPE_CLASS_MVECTOR	0xa0 // 2 bits for MMX vector (64-bit vector)
+#define MTYPE_CLASS_SVECTOR	0x60  // 2 bits for short vector (64-bit vector)
+#define MTYPE_CLASS_MVECTOR	0xa0  // 2 bits for MMX vector (64-bit vector)
+#define MTYPE_CLASS_AVECTOR	0x120 // 2 bits for AVX vector (256-bit vector)
 #endif
 #define MTYPE_CLASS_UNSIGNED_INTEGER (MTYPE_CLASS_UNSIGNED|MTYPE_CLASS_INTEGER)
 #define MTYPE_CLASS_COMPLEX_FLOAT (MTYPE_CLASS_COMPLEX|MTYPE_CLASS_FLOAT)
@@ -188,7 +201,7 @@ typedef struct type_desc {
   mBOOL		float_type;	/* Floating point type? */
   mCLASS_INDEX	dummy4;		/* remove when incompatible change */
   const char   *name;		/* Print name */
-  mUINT8        type_class_bits;/* The classification bits used by the simplifier */
+  mUINT16        type_class_bits;/* The classification bits used by the simplifier */
   mUINT8        type_order;	/* The order of types (I8 > I4 for example) */
   mCLASS_INDEX	complement;	/* complementary signed partner (ex. U1 -> I1) */
 } TYPE_DESC;
@@ -299,6 +312,9 @@ extern TYPE_ID  Mtype_comparison( TYPE_ID );
 extern TYPE_ID  Mtype_next_alignment( TYPE_ID);
 extern TYPE_ID  Mtype_prev_alignment( TYPE_ID);
 
+#if defined (TARG_X8664)
+extern TYPE_ID  Mtype_vector_elemtype( TYPE_ID);
+#endif
 
 #ifdef __cplusplus
 }

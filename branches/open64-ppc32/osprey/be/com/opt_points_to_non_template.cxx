@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -846,6 +846,8 @@ void POINTS_TO::Lower_to_base(WN *wn)
       return;
     }
 
+    if (TY_kind(ST_type(base)) == KIND_ARRAY)
+	Set_is_array();
     Expand_ST_into_base_and_ofst (base, 0, &base, &ofst);
 
     // if the pt already has an offset, shift it.
@@ -1157,6 +1159,10 @@ void POINTS_TO::Print(FILE *fp) const
     pr_separator = "|";
   }
 #endif
+  if (Is_array()) {
+    fprintf(fp, "%sis_array", pr_separator);
+    pr_separator = "|";
+  }
 
 #ifdef _LP64
 #define UNDEFINED_PTR    (void *)0xa5a5a5a5a5a5a5a5LL

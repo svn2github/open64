@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007. PathScale, LLC.  All rights reserved.
  */
 /*
@@ -1226,25 +1230,24 @@ void WGEN_expand_end_for ( )
 //    WGEN_check_for (wn);
     WGEN_Stmt_Pop (wgen_stmk_scope);
 
-    if (lang_cplus)
-    {
-      WN *wn = WGEN_Stmt_Top ();
-      // Output DO loop side-effects
-      for (INT i=0; i<doloop_side_effects.size(); i++)
-        WN_INSERT_BlockFirst (wn, doloop_side_effects[i]);
-      doloop_side_effects.clear ();
+    WN *wn = WGEN_Stmt_Top ();
+    WN *anchor = WN_first(wn);
 
-      // Note the FOR is still in stack. If there is no enclosing
-      // (parallel) region, then process and pop the enclosing EH
-      // region.
-      if (!WGEN_CS_enclose())
-      {
-        WGEN_maybe_call_dtors (wn);
-        WGEN_maybe_localize_vars (wn);
-        WGEN_maybe_do_eh_cleanups ();
-        // Pop enclosing EH region body.
-        WGEN_Stmt_Pop (wgen_stmk_region_body);
-      }
+    // Output DO loop side-effects
+    for (INT i=0; i<doloop_side_effects.size(); i++)
+      WN_INSERT_BlockBefore(wn, anchor, doloop_side_effects[i]);
+    doloop_side_effects.clear ();
+
+    // Note the FOR is still in stack. If there is no enclosing
+    // (parallel) region, then process and pop the enclosing EH
+    // region.
+    if (lang_cplus && !WGEN_CS_enclose())
+    {
+      WGEN_maybe_call_dtors (wn);
+      WGEN_maybe_localize_vars (wn);
+      WGEN_maybe_do_eh_cleanups ();
+      // Pop enclosing EH region body.
+      WGEN_Stmt_Pop (wgen_stmk_region_body);
     }
     WGEN_CS_pop(wgen_omp_for);
 }

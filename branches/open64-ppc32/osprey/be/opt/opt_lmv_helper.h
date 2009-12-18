@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 // ====================================================================
 // ====================================================================
@@ -42,6 +46,7 @@ class MA_POINTER;
 class MA_OFFSET;
 class MA_PTR_MGR;
 class MEM_ACCESS_ANALYZER;
+class MEM_GROUP;
 
 // classes about cost model 
 class LMV_HEURISTIC; 
@@ -67,6 +72,12 @@ typedef std::vector<MEM_ACCESS*, MEM_ACCESS_ALLOC>  MEM_ACCESS_VECT;
 typedef MEM_ACCESS_VECT::iterator MEM_ACCESS_VECT_ITER;
 typedef MEM_ACCESS_VECT::const_iterator MEM_ACCESS_VECT_CITER;
 
+typedef mempool_allocator<MEM_GROUP *> MEM_GROUP_ALLOC;
+typedef std::vector<MEM_GROUP*, MEM_GROUP_ALLOC> MEM_GROUP_VECT;
+typedef MEM_GROUP_VECT::iterator MEM_GROUP_VECT_ITER;
+typedef MEM_GROUP_VECT::const_iterator MEM_GROUP_VECT_CITER;
+
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 //   LMV_LOOP_INFO: Collect the loop info 
@@ -76,17 +87,21 @@ typedef MEM_ACCESS_VECT::const_iterator MEM_ACCESS_VECT_CITER;
 class LMV_LOOP_INFO {
 private:  
   MEM_POOL* _mp;
-  BB_LOOP* _loop;
+  BB_LOOP*  _loop;
+  BOOL      _trace;
   ID_MAP<VAR_VAL_RANGE*, AUX_ID> _val_range_map;
-  AUX_ID _iv;
-
-  BOOL Get_iv_upperbound (INT& upbound);
+  ID_MAP<IV_CAND*, AUX_ID> _iv_map;
 
 public:
-  LMV_LOOP_INFO (BB_LOOP* loop, MEM_POOL* mp);
+  LMV_LOOP_INFO (BB_LOOP* loop, MEM_POOL* mp,
+                 IVR &ivr, BOOL tracing);
 
   BB_LOOP* Loop(void) const { return  _loop; }
-  AUX_ID Iv(void) const { return _iv; }
+
+  ID_MAP<IV_CAND *,AUX_ID> &Iv_map(void) { return _iv_map; }
+
+  BOOL Equivalent_iv(CODEREP *coderep, AUX_ID aux_id);
+  BOOL Get_iv_upperbound (IV_CAND *iv,VAR_VAL_RANGE *vr);
 
   // Analyze the value range of <var> of given <ver>. If <ver> is 
   // not specified (i.e ver=0), this function tries to figure out 
@@ -117,8 +132,7 @@ private:
   // linear expr is in the form of "_coeff * _var + _const"
   INT _coeff; 
   INT _const; 
-  AUX_ID _var;
-  VER_ID _ver;
+  CODEREP *_cr;
 
   void Reset_const (void) { _flags &= ~ALE_CONST; }
   void Reset_nonconst (void) { _flags &= ~ALE_NON_CONST; }
@@ -134,12 +148,11 @@ private:
        }
 
 public:
-  void Set_linear_expr 
-         (INT coeff, AUX_ID var, VER_ID ver, INT const_part) { 
-         _coeff = coeff; _var = var; 
-         _ver = ver; _const = const_part; 
-         if (var != (AUX_ID)0) Set_nonconst(); else Set_const();
-       }
+  void Set_linear_expr
+           (INT coeff, CODEREP *cr, INT const_part) {
+           _coeff = coeff; _cr = cr; _const = const_part;
+           if (cr != NULL) Set_nonconst(); else Set_const();
+         }
 
   void Set_const_expr (INT val) { Set_const(); _const = val; }
 
@@ -149,8 +162,9 @@ public:
 
   INT Coefficient (void) const { Chk_non_const (); return _coeff; }
   INT Const_part (void) const { Chk_non_const (); return _const; } 
-  AUX_ID Var (void) const { Chk_non_const (); return _var; }
-  VER_ID Var_ver (void) const { Chk_non_const(); return _ver; }
+  CODEREP *cr(void) const { Chk_non_const(); return _cr; }
+  AUX_ID Var (void) const { Chk_non_const (); return _cr->Aux_id(); }
+  VER_ID Var_ver (void) const { Chk_non_const(); return _cr->Version(); }
 
   INT Const_val (void) const { Chk_const (); return _const; }
 
@@ -164,9 +178,8 @@ public:
 
   ADDR_LINEAR_EXPR (void) { _flags = 0; }
   ADDR_LINEAR_EXPR (INT v) { _flags = 0; Set_const_expr (v); }
-  ADDR_LINEAR_EXPR (INT coeff, AUX_ID var, VER_ID ver, INT c) 
-     { _flags = 0; Set_linear_expr (coeff, var, ver, c); }
-
+  ADDR_LINEAR_EXPR (INT coeff, CODEREP *cr, INT c)
+     { _flags = 0; Set_linear_expr (coeff, cr, c); }
   void Init (void) { _flags = 0; }
   void Print (FILE* f);
 };
@@ -332,9 +345,9 @@ public:
   CODEREP* Expr (void) const { return _expr; }
   void Set_expr (CODEREP* cr) { _expr = cr; }
 
-  void Set_linear_ofst (INT coeff, AUX_ID var, VER_ID ver, INT const_part) 
-     { _kind = (var != (AUX_ID)0) ? MA_OFST_LINEAR: MA_OFST_FIXED;
-       _ofst.low.Set_linear_expr (coeff, var, ver, const_part);
+  void Set_linear_ofst (INT coeff, CODEREP *cr, INT const_part)
+     { _kind = (cr != NULL) ? MA_OFST_LINEAR: MA_OFST_FIXED;
+       _ofst.low.Set_linear_expr (coeff, cr, const_part);
      }
   void Set_fixed_ofst (INT ofst) 
      { _kind = MA_OFST_FIXED; _ofst.low.Set_const_expr (ofst); }
@@ -378,8 +391,7 @@ public:
      if (la->Is_const ()) { 
        Set_fixed_ofst (la->Const_val());
      } else if (la->Is_nonconst()) {
-       Set_linear_ofst (la->Coefficient (), la->Var(), 
-                        la->Var_ver(), la->Const_part());
+       Set_linear_ofst (la->Coefficient (), la->cr(), la->Const_part());
      } else {
        FmtAssert (FALSE, ("Invalid linear address"));
      }
@@ -575,6 +587,28 @@ public:
   void Print (FILE* f);
 };
 
+class MEM_GROUP {
+private:
+  BOOL _write;      // Does the memory group contain a write?
+  MEM_ACCESS_VECT&  _mem_accesses;
+  MEM_RANGE *       _mem_range;
+
+public:
+  MEM_GROUP(MEM_ACCESS_VECT &accesses, MEM_RANGE *range, BOOL write)
+  : _write(write),
+    _mem_accesses(accesses),
+    _mem_range(range)
+    {}
+
+  ~MEM_GROUP() {}
+
+  BOOL Write(void) const { return _write; }
+  MEM_ACCESS_VECT& Mem_accesses(void) { return _mem_accesses; }
+  MEM_RANGE* Mem_range(void) { return _mem_range; }
+
+  void Print(FILE *f);
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 //   class MEM_ACCESS_ANALYZER: Analyzer of the mem-ops of given innermost loop
@@ -642,6 +676,9 @@ public:
 
   void Analyze_mem_access (void);
 
+  BOOL Assemble_aliased_mem_groups(const ALIAS_RULE *alias_rule,
+                                   MEM_GROUP_VECT &groups);
+
   void Print (FILE* f);
 };
 
@@ -705,18 +742,20 @@ private:
     HIGH_IS_CONST  = 8,
     HIGH_IS_CR = 16, 
     HIGH_IS_INVALID = 32,
+    HIGH_IS_CR_SUBONE = 64,
   };
   UINT _flags;
   
   void Set_low_is_const (void) 
-    { _flags &= ~(LOW_IS_CR|HIGH_IS_INVALID), _flags |= LOW_IS_CONST; }
+    { _flags &= ~(LOW_IS_CR|LOW_IS_INVALID), _flags |= LOW_IS_CONST; }
   void Set_low_is_cr (void) 
-    { _flags |= LOW_IS_CR, _flags = ~(LOW_IS_CONST|HIGH_IS_INVALID); }
+    { _flags |= LOW_IS_CR, _flags &= ~(LOW_IS_CONST|LOW_IS_INVALID); }
 
   void Set_high_is_const (void) 
     { _flags &= ~(HIGH_IS_CR|HIGH_IS_INVALID), _flags |= HIGH_IS_CONST; }
   void Set_high_is_cr (void) 
-    { _flags |= HIGH_IS_CR, _flags = ~(HIGH_IS_CONST|HIGH_IS_INVALID); }
+    { _flags |= HIGH_IS_CR, _flags &= ~(HIGH_IS_CONST|HIGH_IS_INVALID); }
+
 
 public:
   void Init (void) {_flags = HIGH_IS_INVALID|LOW_IS_INVALID; }
@@ -738,6 +777,7 @@ public:
 
   BOOL High_is_const (void) const { return _flags & HIGH_IS_CONST; }
   BOOL High_is_cr (void) const { return _flags & HIGH_IS_CR; }
+  BOOL High_is_cr_subone(void) const { return _flags & HIGH_IS_CR_SUBONE; }
   BOOL High_is_invalid(void) const { return _flags & HIGH_IS_INVALID; } 
   INT  High_val (void) const { 
          Is_True (High_is_const (), ("high should be const"));
@@ -749,6 +789,7 @@ public:
        }
   void Set_high (INT v) { Set_high_is_const();  _high_val = v; }
   void Set_high (CODEREP* v) { Set_high_is_cr(); _high_cr = v; }
+  void Set_high_is_cr_subone(void) { _flags |= HIGH_IS_CR_SUBONE; }
 
   RANGE_COMP Compare (INT v, LMV_LOOP_INFO* loopinfo);
   void Print (FILE* f);
@@ -775,6 +816,18 @@ private:
   // perform loop multiversioning.
   static const INT _low_trip_count;
 
+  // Upper bound on the number of allowable access vectors
+  // to disambiguate at runtime
+  static const INT _max_access_vectors;
+
+  // The number of runtime checks is proportional to the
+  // number of write vectors * the total number of vectors
+  static const INT _max_write_vectors;
+
+  // We need at least one write vector for multiversoning
+  // to make sense
+  static const INT _min_write_vectors;
+
 public:
 
   LMV_HEURISTIC (MEM_POOL* mp, LOOP_MULTIVER* lm, LMV_LOOP_INFO* loopinfo, 
@@ -794,27 +847,22 @@ public:
 
   BB_LOOP* Loop (void) const { return _loopinfo->Loop(); }
 
-  static INT Low_trip_count_threshold (void)
-     { return _low_trip_count; }
+  static INT Low_trip_count_threshold(void) { return _low_trip_count; }
+  static INT Max_access_vectors(void) { return _max_access_vectors; }
+  static INT Max_write_vectors(void)  { return _max_write_vectors; }
+  static INT Min_write_vectors(void)  { return _min_write_vectors; }
 
-  // Figure out two groups of memory accesses with any mem-op in one group being 
-  // assumed not alias with any mem-op in another group. The memory access ranges 
-  // of the groups are also returned.
-  //
-  // return FALSE iff it is not possible to figure out such groups 
-  // 
-  BOOL Figureout_assumed_noalias_mem_ranges 
-     (MEM_ACCESS_VECT& mem_grp1, MEM_ACCESS_VECT& mem_grp2,
-      MEM_RANGE* r1, MEM_RANGE* r2);
+  // Returns true of LMV is beneficial based on the selected memory groups
+  BOOL Apply(MEM_GROUP_VECT &groups);
 };
 
 ////////////////////////////////////////////////////////////////////
 //
 //  class LMV_CANDIDATE
 // 
-//  It will cause code explosion if we perform transoformation upon 
+//  It will cause code explosion if we perform transformation upon
 // any candidate. Therefore, the transformation should be postponed
-// until all candidate are indentified. At that time, few best 
+// until all candidate are identified. At that time, few best
 // candidates are carefully selected for the transformation. Now that
 // there is a time gap between analysis and transformation, some 
 // essential information should be recorded down and pass from analysis
@@ -825,38 +873,42 @@ public:
 class LMV_CANDIDATE {
 private:
   MEM_ACCESS_ANALYZER* _mem_analyzer;
-  MEM_ACCESS_VECT _mem_grp1, _mem_grp2;
-  MEM_RANGE _r1, _r2;
+  MEM_GROUP_VECT _mem_groups;
   BB_LOOP* _loop;
   INT _stmt_num;
   float _code_sz_percentage; 
 
 public:
-  LMV_CANDIDATE (MEM_POOL* mp) : _mem_grp1(mp), _mem_grp2(mp)
-    { _mem_analyzer = NULL; _loop = NULL; 
-      _stmt_num = 0; _code_sz_percentage = 0.0f;
-    }
+  LMV_CANDIDATE (MEM_POOL* mp) :
+    _mem_analyzer(NULL),
+    _mem_groups(mp),
+    _loop(NULL),
+    _stmt_num(0),
+    _code_sz_percentage(0.0f)
+    {}
+
   MEM_ACCESS_ANALYZER* Mem_access_analyzer (void) const 
     { return _mem_analyzer; } 
-  const MEM_RANGE& Mem_range_1 (void) const { return _r1; }
-  const MEM_RANGE& Mem_range_2 (void) const { return _r2; }
-  const MEM_ACCESS_VECT& Mem_op_group1 (void) const { return  _mem_grp1; }
-  const MEM_ACCESS_VECT& Mem_op_group2 (void) const { return  _mem_grp2; }
+  //const MEM_RANGE& Mem_range_1 (void) const { return _r1; }
+  //const MEM_RANGE& Mem_range_2 (void) const { return _r2; }
+  //const MEM_ACCESS_VECT& Mem_op_group1 (void) const { return  _mem_grp1; }
+  //const MEM_ACCESS_VECT& Mem_op_group2 (void) const { return  _mem_grp2; }
+  const MEM_GROUP_VECT &Mem_groups(void) const { return _mem_groups; }
 
   BB_LOOP* Loop (void) const { return _loop; }
   INT Stmt_num (void) const { return _stmt_num; } 
   float Code_sz_percentage (void) const { return _code_sz_percentage; }
 
   void Set_mem_access_analyzer (MEM_ACCESS_ANALYZER* t) { _mem_analyzer = t;}
-  void Set_range (const MEM_RANGE& r1, const MEM_RANGE& r2) 
-        { _r1 = r1; _r2 = r2; }
-  void Set_mem_group (const MEM_ACCESS_VECT& grp1, 
-                      const MEM_ACCESS_VECT& grp2) {
-         _mem_grp1 = grp1, _mem_grp2 = grp2;
-       }
+  void Set_mem_groups(const MEM_GROUP_VECT &groups)
+  {
+      _mem_groups = groups;
+  }
   void Set_loop (BB_LOOP* loop) { _loop = loop; }
   void Set_stmt_num (INT stmt_num) { _stmt_num = stmt_num; }
   void Set_code_sz_percentage (float f) { _code_sz_percentage = f; }
+
+  void Print_mem_groups(FILE *f);
 };
 
 #endif /*opt_lmv_helper_INCLUDED*/

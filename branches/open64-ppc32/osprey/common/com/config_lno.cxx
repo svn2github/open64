@@ -178,8 +178,10 @@ static LNO_FLAGS Default_LNO = {
   FALSE,	/* Run_fiz_fuse */
 #ifdef TARG_X8664
   0,		/* Fission */
+  TRUE,		/* Serial_distribute */
 #else
   1,		/* Fission */
+  FALSE,	/* Serial_distribute */
 #endif
   0,		/* Fission_inner_register_limit */
   TRUE,		/* Forward_substitution */
@@ -236,6 +238,8 @@ static LNO_FLAGS Default_LNO = {
 #endif
   2,		/* Prefetch_cache_factor */
   FALSE,	/* Prefetch_indirect */
+  TRUE,		/* Prefetch_inductive */
+  TRUE,		/* Prefetch_induc_indir */
   FALSE, FALSE,	/* Run_prefetch_manual */
   TRUE,		/* Power_of_two_hack */
   TRUE,		/* Sclrze */
@@ -268,7 +272,8 @@ static LNO_FLAGS Default_LNO = {
   FALSE,	/* Unswitch_Verbose */
   FALSE,	/* Prefetch_Verbose */
   FALSE,        /* Build_Scalar_Reductions */
-  TRUE,        /* Invariant Factorization */
+  TRUE,         /* Invariant Factorization */
+  TRUE,         /* New_Invariant Factorization */
   FALSE,        /* Invar_Factor_Verbose*/
 #endif /* KEY */
   TRUE,		/* Run_oinvar */
@@ -306,7 +311,8 @@ static LNO_FLAGS Default_LNO = {
   8,            /* Full_unrolling */
 #endif
 #ifdef KEY
-  2000,         /* Full_unrolling_loop_size_limit */
+  TRUE,         /* Peel_2D_triangle_loop */
+  2500,         /* Full_unrolling_loop_size_limit */
 #ifdef TARG_IA64
   TRUE,		/* Full_Unroll_Outer */
 #else
@@ -316,6 +322,11 @@ static LNO_FLAGS Default_LNO = {
   128,		/* Parallel_per_proc_overhead */ 
   FALSE,	/* Apo_use_feedback */
 #endif
+  TRUE,        /* IfMinMax_Fix_Cond */
+  UINT32_MAX,  /* IfMinMax_Limit */
+  UINT32_MAX,  /* IfMinMax_Fix_Cond_Limit */
+  0,           /* IfMinMax_Trace */
+  TRUE,        /* Struct_Array_Copy */
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
 
@@ -382,8 +393,10 @@ LNO_FLAGS Initial_LNO = {
   FALSE,	/* Run_fiz_fuse */
 #ifdef TARG_X8664
   0,		/* Fission */
+  TRUE,		/* Serial_distribute */
 #else
   1,		/* Fission */
+  FALSE,	/* Serial_distribute */
 #endif
   0,		/* Fission_inner_register_limit */
   TRUE,		/* Forward_substitution */
@@ -440,6 +453,8 @@ LNO_FLAGS Initial_LNO = {
 #endif
   2,		/* Prefetch_cache_factor */
   FALSE,	/* Prefetch_indirect */
+  TRUE,		/* Prefetch_inductive */
+  TRUE,		/* Prefetch_induc_indir */
   FALSE, FALSE,	/* Run_prefetch_manual */
   TRUE,		/* Power_of_two_hack */
   TRUE,		/* Sclrze */
@@ -473,6 +488,7 @@ LNO_FLAGS Initial_LNO = {
   FALSE,	/* Prefetch_Verbose */
   FALSE,        /* Build_Scalar_Reductions */
   TRUE,        /* Invariant Factorization */
+  TRUE,        /* New_Invariant Factorization */
   FALSE,        /* Invar_Factor_Verbose */
 #endif /* KEY */
   TRUE,		/* Run_oinvar */
@@ -510,7 +526,8 @@ LNO_FLAGS Initial_LNO = {
   8,            /* Full_unrolling */
 #endif
 #ifdef KEY
-  2000,         /* Full_unrolling_loop_size_limit */
+  TRUE,         /* Peel_2D_triangle_loop */
+  2500,         /* Full_unrolling_loop_size_limit */
 #ifdef TARG_IA64
   TRUE,		/* Full_Unroll_Outer */
 #else
@@ -520,6 +537,11 @@ LNO_FLAGS Initial_LNO = {
   128,		/* Parallel_per_proc_overhead */ 
   FALSE,	/* Apo_use_feedback */
 #endif
+  TRUE,        /* IfMinMax_Fix_Cond */
+  1000000,     /* IfMinMax_Limit */
+  1000000,     /* IfMinMax_Fix_Cond_Limit */
+  0,           /* IfMinMax_Trace */
+  TRUE,        /* Struct_Array_Copy */
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
 
@@ -690,8 +712,10 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "ff",			NULL,	Run_fiz_fuse ),
 #ifdef TARG_X8664
   LNOPT_U32  ( "fission",		"fis",	0,0,2,	Fission ),
+  LNOPT_BOOL ( "distribute",		NULL,	Serial_distribute ),
 #else
   LNOPT_U32  ( "fission",		"fis",	1,0,2,	Fission ),
+  LNOPT_BOOL ( "distribute",		NULL,	Serial_distribute ),
 #endif
   LNOPT_U32  ( "fission_inner_register_limit",	NULL,	32,0,99999,
 					Fission_inner_register_limit ),
@@ -784,6 +808,8 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_U32  ( "prefetch_cache_factor",	NULL,	1,1,50,	Prefetch_cache_factor),
   LNOPT_U32  (   "pf_cf",		NULL,	1,1,50,	Prefetch_cache_factor),
   LNOPT_BOOL ( "prefetch_indirect",	"",	Prefetch_indirect ),
+  LNOPT_BOOL ( "prefetch_inductive",	"",	Prefetch_inductive ),
+  LNOPT_BOOL ( "prefetch_induc_indir",	"",	Prefetch_induc_indir ),
   MHOPT_BOOL_DUP ( "prefetch_level",	Prefetch_Level ),
   MHOPT_BOOL_DUP ( "pf",		Prefetch_Level ),
   LNOPT_BOOL_SET ( "prefetch_manual",	"",	Run_prefetch_manual,
@@ -839,6 +865,7 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "prefetch_verbose",	NULL,	Prefetch_Verbose ),
   LNOPT_BOOL ( "build_scalar_reductions",NULL,	Build_Scalar_Reductions ),
   LNOPT_BOOL ( "invar_factorization","invar_factor",  Invariant_Factorization),
+  LNOPT_BOOL ( "new_invar_factorization","new_invar_factor",  New_Invariant_Factorization),
   LNOPT_BOOL ( "invar_fact_verbose",   NULL,    Invar_Factor_Verbose),
 #endif /* KEY */  
   LNOPT_BOOL ( "oinvar",		NULL,	Run_oinvar ),
@@ -874,8 +901,9 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_U32  ( "local_pad_size", 	NULL,   0,0,1000,Local_pad_size),
   LNOPT_U32  ( "full_unroll", 	        "fu",   0,0,100,Full_unrolling),
 #ifdef KEY
+  LNOPT_BOOL ( "peel_triangle_loop",   NULL,	Peel_2D_triangle_loop ),
   LNOPT_U32  ( "full_unroll_size", 	NULL,   
-	       2000,0,10000,Full_unrolling_loop_size_limit),
+	       2500,0,10000,Full_unrolling_loop_size_limit),
   LNOPT_BOOL ( "full_unroll_outer",	NULL,	Full_Unroll_Outer ),
   LNOPT_U32  ( "processors", 	NULL,   
 	       0,0,10000,Num_Processors),
@@ -883,7 +911,14 @@ static OPTION_DESC Options_LNO[] = {
 	       128,0,0x7fffffff, Parallel_per_proc_overhead),
   LNOPT_BOOL ( "apo_use_feedback",	NULL,	Apo_use_feedback ),
 #endif
-
+  LNOPT_BOOL ( "ifmm_fix_cond",	NULL,	IfMinMax_Fix_Cond),
+  LNOPT_U32  ( "ifmm_limit", 	NULL,   
+	       UINT32_MAX,0,UINT32_MAX, IfMinMax_Limit),
+  LNOPT_U32  ( "ifmm_fc_limit", NULL,   
+	       UINT32_MAX,0,UINT32_MAX, IfMinMax_Fix_Cond_Limit),
+  LNOPT_U32  ( "ifmm_trace", 	NULL,   
+	       0,0,3, IfMinMax_Trace),
+  LNOPT_BOOL ( "struct_array_copy", NULL, Struct_Array_Copy),
   { OVK_COUNT }		    /* List terminator -- must be last */
 };
 
@@ -1007,7 +1042,7 @@ LNO_Push_Config ( BOOL use_default, LNO_FLAGS_MASK bitmask )
   LNO_FLAGS_mhd (new_flags) = &Mhd_Options;
 
   FmtAssert(LNO_Check_Bitmask(bitmask), ("Illegal bit mask for LNO flag configuration"));
-  LNO_FLAGS_bitmask(new_flags) |=  bitmask;
+  LNO_FLAGS_bitmask(new_flags) =  bitmask;
 
   Current_LNO = new_flags;
 }

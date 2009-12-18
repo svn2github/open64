@@ -1,5 +1,7 @@
 # -*- Makefile -*-
 #
+#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
 #
 #  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
@@ -181,10 +183,11 @@ SO_TARGETS = \
 	ppc.so
 endif
 ifeq ($(BUILD_TARGET), X8664)
-LDIRT += opteron_si_gen barcelona_si_gen em64t_si_gen core_si_gen wolfdale_si_gen
+LDIRT += opteron_si_gen barcelona_si_gen orochi_si_gen em64t_si_gen core_si_gen wolfdale_si_gen
 SO_TARGETS = \
 	opteron.so \
         barcelona.so \
+        orochi.so \
 	em64t.so \
 	core.so \
 	wolfdale.so
@@ -1233,6 +1236,22 @@ barcelona_si_gen: si_gen.a barcelona_si.o topcode.o
 
 barcelona_si.o: barcelona_si.cxx targ_isa_subset.h topcode.h si_gen.h
 	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/barcelona_si.cxx
+
+## orochi ##
+orochi.so: orochi.o init.o
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) orochi.o init.o -shared -o orochi.so
+
+orochi.o: orochi.c ti_si_types.h
+	$(cc) $(CFLAGS) -c orochi.c
+
+orochi.c: orochi_si_gen
+	$(SETPATH) $(RUN) ./orochi_si_gen
+
+orochi_si_gen: si_gen.a orochi_si.o topcode.o
+	$(cxx) $(CXXLDFLAGS) orochi_si.o topcode.o si_gen.a -o orochi_si_gen
+
+orochi_si.o: orochi_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(cxx) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/orochi_si.cxx
 
 ## em64t ##
 

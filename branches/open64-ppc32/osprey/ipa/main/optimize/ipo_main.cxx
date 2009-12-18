@@ -135,6 +135,7 @@
 #else
 extern void IPO_WN_Update_For_Struct_Opt (IPA_NODE *);
 extern void IPO_WN_Update_For_Complete_Structure_Relayout_Legality(IPA_NODE *);
+extern void IPO_WN_Update_For_Array_Remapping_Legality(IPA_NODE *, int, int *);
 #endif  /* KEY */
 #include "ipa_reorder.h" //IPO_Modify_WN_for_field_reorder ()
 
@@ -1860,6 +1861,9 @@ check_for_nested_PU (IPA_NODE * node)
 vector<mINT32> ipisr_cg;
 #endif
 
+static void mark_argument_array_remapping_candidate_malloc(WN *wn,
+  int argument_num, IPA_NODE *callee);
+
 static void
 IPO_main (IPA_CALL_GRAPH* cg)
 {
@@ -1906,17 +1910,72 @@ IPO_main (IPA_CALL_GRAPH* cg)
     // we will use the following loop to check whether it is legal to perform
     // the complete structure relayout optimization; later (in the subsequent
     // loop) we will perform the actual optimization (if it is legal)
+
+    // same with array remapping optimization
+
+    // comment out the following since this optimization benefits both mso as
+    // well as non-mso compilations; besides, the following will disable
+    // structure peeling also
+    // if (!IPA_Enable_Scale)
+    //   -mso (multi-core scaling optimization is not on
+    //   IPA_Enable_Struct_Opt = 0;
     for (IPA_NODE_VECTOR::iterator first = walk_order.begin();
          first != walk_order.end(); first++)
     {
+      int argument_num;
+
       if (IPA_Enable_Struct_Opt != 0 &&
           PU_src_lang((*first)->Get_PU()) & PU_C_LANG)
       {
         IPA_NODE_CONTEXT context(*first);
         IPO_WN_Update_For_Complete_Structure_Relayout_Legality(*first);
+
+        argument_num = -1;
+        IPO_WN_Update_For_Array_Remapping_Legality(*first, 1, &argument_num);
+        if (argument_num != -1)
+        {
+          // argument_num != -1 means that an array remapping candidate was
+          // found inside the function (*first), and that it was nicely
+          // malloced, but that this candidate is an argument into the function
+          // (*first).  When this happens, we need to propagate this finding
+          // upward to all the callers of (*first)
+          IPA_PRED_ITER pred_iter(*first);
+          for (pred_iter.First(); !pred_iter.Is_Empty(); pred_iter.Next())
+          {
+            IPA_EDGE *edge = pred_iter.Current_Edge();
+            if (edge != NULL)
+            {
+              IPA_NODE *caller = IPA_Call_Graph->Caller(edge);
+              IPA_NODE_CONTEXT context(caller);
+              WN *wn_tree = WN_func_body(caller->Whirl_Tree());
+              // look for all the calls to (*first) inside this wn_tree, and
+              // mark the corresponding argument of all these calls as an array
+              // remapping candidate that has been malloced
+              mark_argument_array_remapping_candidate_malloc(wn_tree,
+                argument_num, *first);
+            }
+          }
+        }
       }
       else
         IPA_Enable_Struct_Opt = 0; // only do this for C programs
+    }
+
+    // normally we only need the above loop to check for legality, but in the
+    // case of array remapping optimization, there is a phase ordering problem:
+    // we need to mark all the array remapping candidates' malloc bit before we
+    // can decide if they are valid candidates to apply the stringent legality
+    // checks on, but unfortunately they cannot both occur in the same pass,
+    // since we cannot rely on the order the functions are compiled.  Let's run
+    // another loop
+    if (IPA_Enable_Struct_Opt != 0)
+    {
+      for (IPA_NODE_VECTOR::iterator first = walk_order.begin();
+           first != walk_order.end(); first++)
+      {
+        IPA_NODE_CONTEXT context(*first);
+        IPO_WN_Update_For_Array_Remapping_Legality(*first, 2, NULL);
+      }
     }
 
     for (IPA_NODE_VECTOR::iterator first = walk_order.begin ();
@@ -2394,4 +2453,169 @@ Print_inline_decision (void) {
 
   fprintf(orc_script, "\n#END_INLINE\n\n");
   fclose (orc_script);
+}
+
+// Visit the input wn and look for a call to "callee".  Locate the argument in
+// this call statement corresponding to the input argument number, and mark that
+// argument as an array remapping candidate that has been malloced.
+static void mark_argument_array_remapping_candidate_malloc(WN *wn,
+  int argument_num, IPA_NODE *callee)
+{
+  if (wn == NULL || argument_num < 0 || callee == NULL)
+    return;
+  if (!OPCODE_is_leaf(WN_opcode(wn)))
+  {
+    if (WN_opcode(wn) == OPC_BLOCK)
+    {
+      WN *child_wn = WN_first(wn);
+      while (child_wn != NULL)
+      {
+        mark_argument_array_remapping_candidate_malloc(child_wn, argument_num,
+          callee);
+        child_wn = WN_next(child_wn);
+      }
+    }
+    else
+    {
+      INT child_num;
+      WN *child_wn;
+      for (child_num = 0; child_num < WN_kid_count(wn); child_num++)
+      {
+        child_wn = WN_kid(wn, child_num);
+        if (child_wn != NULL)
+          mark_argument_array_remapping_candidate_malloc(child_wn, argument_num,
+            callee);
+      }
+    }
+  }
+  switch (WN_operator(wn))
+  {
+    case OPR_CALL:
+      if (callee->Func_ST() == WN_st(wn) &&
+          WN_operator(WN_kid(wn, argument_num)) == OPR_PARM &&
+          WN_operator(WN_kid0(WN_kid(wn, argument_num))) == OPR_LDA)
+        // it's the right call, and &argument is passed (inside the callee we
+        // have *argument = malloc()
+        Set_ST_is_array_remapping_candidate_malloc(WN_st(WN_kid0(WN_kid(wn,
+          argument_num))));
+      break;
+
+    default:
+      break;
+  }
+  return;
+}
+
+// Visit the input wn and look for a call to "callee".  Locate the argument in
+// this call statement corresponding to the input argument number, and see if
+// that argument is an array remapping candidate that has been malloced.  This
+// function returns TRUE if the above is true for all such calls in the input
+// wn.
+BOOL argument_in_wn_is_array_remapping_candidate_malloc(WN *wn,
+  int argument_num, IPA_NODE *callee, BOOL *found_a_call)
+{
+  BOOL result;
+
+  // found_a_call is meant to be checked when the entire function wn tree has
+  // been processed, not after each recursive call (because it is not reasonable
+  // to expect each block of wn's to contain such a call)
+
+  if (wn == NULL || argument_num < 0 || callee == NULL)
+    return FALSE;
+  result = TRUE;
+  if (!OPCODE_is_leaf(WN_opcode(wn)))
+  {
+    if (WN_opcode(wn) == OPC_BLOCK)
+    {
+      WN *child_wn = WN_first(wn);
+      while (child_wn != NULL)
+      {
+        result = result && argument_in_wn_is_array_remapping_candidate_malloc
+          (child_wn, argument_num, callee, found_a_call);
+        if (result == FALSE)
+          return FALSE; // no need to continue
+        child_wn = WN_next(child_wn);
+      }
+    }
+    else
+    {
+      INT child_num;
+      WN *child_wn;
+      for (child_num = 0; child_num < WN_kid_count(wn); child_num++)
+      {
+        child_wn = WN_kid(wn, child_num);
+        if (child_wn != NULL)
+        {
+          result = result && argument_in_wn_is_array_remapping_candidate_malloc
+            (child_wn, argument_num, callee, found_a_call);
+          if (result == FALSE)
+            return FALSE; // no need to continue
+        }
+      }
+    }
+  }
+  switch (WN_operator(wn))
+  {
+    case OPR_CALL:
+      if (callee->Func_ST() == WN_st(wn))
+      {
+        // right call
+        *found_a_call = TRUE;
+        if (WN_operator(WN_kid(wn, argument_num)) == OPR_PARM &&
+            WN_operator(WN_kid0(WN_kid(wn, argument_num))) == OPR_LDID)
+          return ST_is_array_remapping_candidate_malloc(WN_st(WN_kid0(WN_kid(wn,
+            argument_num))));
+        else
+          return FALSE; // something's wrong
+      }
+      break;
+
+    default:
+      break;
+  }
+  return result;
+}
+
+// Given a node (e.g. "foo") in the call graph and an argument number, this
+// function returns TRUE if the corresponding argument of *all* the callers of
+// foo is an array remapping candidate that has been malloced.  (Usage note:  if
+// this function returns TRUE, then the caller of this function can mark the
+// array corresponding to the argument number as an array remapping candidate
+// that has been malloced also.)
+BOOL argument_in_callers_is_array_remapping_candidate_malloc(IPA_NODE *node,
+  int argument_num)
+{
+  BOOL result;
+  BOOL found_a_caller;
+  BOOL found_a_call;
+
+  if (node == NULL || argument_num < 0)
+    return FALSE;
+  result = TRUE;
+  found_a_caller = FALSE;
+  // visit all the callers of node
+  IPA_PRED_ITER pred_iter(node);
+  for (pred_iter.First(); !pred_iter.Is_Empty(); pred_iter.Next())
+  {
+    IPA_EDGE *edge = pred_iter.Current_Edge();
+    if (edge != NULL)
+    {
+      IPA_NODE *caller = IPA_Call_Graph->Caller(edge);
+      IPA_NODE_CONTEXT context(caller);
+      found_a_caller = TRUE;
+      WN *wn_tree = WN_func_body(caller->Whirl_Tree());
+      // look for all the calls to node inside this wn_tree, and see if the
+      // corresponding argument of all these calls is an array remapping
+      // candidate that has been malloced
+      result = result && argument_in_wn_is_array_remapping_candidate_malloc
+        (wn_tree, argument_num, node, &found_a_call);
+      if (result == FALSE)
+        return FALSE; // no need to continue
+      if (found_a_call == FALSE)
+        return FALSE; // something is wrong:  the call graph says there is a
+                      // call to node, but no such call was found
+    }
+  }
+  return (result && found_a_caller); // to prevent returning TRUE when there are
+                                     // no callers at all
 }

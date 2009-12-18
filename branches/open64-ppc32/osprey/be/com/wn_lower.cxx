@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -260,7 +260,6 @@ static WN *lower_conditional(WN *, WN *, LABEL_IDX, LABEL_IDX, BOOL,
 static WN *lower_tree_height(WN *, WN *, LOWER_ACTIONS);
 static void lower_madd_tree_height(WN *, WN *, LOWER_ACTIONS);
 
-static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions);
 static WN *Lower_Mistore_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions);
 static WN *Lower_STID_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions);
 
@@ -408,7 +407,7 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_UNKNOWN,  /* MTYPE_C16 */
   MTYPE_UNKNOWN,  /* MTYPE_I16 */
   MTYPE_UNKNOWN,  /* MTYPE_U16 */
-#if defined(TARG_X8664) || defined(VECTOR_MTYPES)
+#if defined(TARG_X8664)
   MTYPE_V16C4,    /* MTYPE_V16C4 */
   MTYPE_V16C8,    /* MTYPE_V16C8 */
   MTYPE_V16I1,    /* MTYPE_V16I1 */
@@ -420,14 +419,21 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_V8I1,     /* MTYPE_V8I1 */
   MTYPE_V8I2,     /* MTYPE_V8I2 */
   MTYPE_V8I4,     /* MTYPE_V8I4 */
+  MTYPE_V8I8,     /* MTYPE_V8I8 */
   MTYPE_V8F4,     /* MTYPE_V8F4 */
-#if defined(TARG_X8664)
   MTYPE_M8I1,     /* MTYPE_M8I1 */
   MTYPE_M8I2,     /* MTYPE_M8I2 */
   MTYPE_M8I4,     /* MTYPE_M8I4 */
-  MTYPE_M8F4      /* MTYPE_M8F4 */
+  MTYPE_M8F4,     /* MTYPE_M8F4 */
+  MTYPE_V32C4,    /* MTYPE_V32C4 */
+  MTYPE_V32C8,    /* MTYPE_V32C8 */
+  MTYPE_V32I1,    /* MTYPE_V32I1 */
+  MTYPE_V32I2,    /* MTYPE_V32I2 */
+  MTYPE_V32I4,    /* MTYPE_V32I4 */
+  MTYPE_V32I8,    /* MTYPE_V32I8 */
+  MTYPE_V32F4,    /* MTYPE_V32F4 */
+  MTYPE_V32F8,    /* MTYPE_V32F8 */
 #endif // TARG_X8664
-#endif // (TARG_X8664) || (VECTOR_MTYPES)
 #endif // KEY
 };
 
@@ -4516,7 +4522,7 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
     case MTYPE_U1:
     case MTYPE_U2:
     case MTYPE_U4:
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA) || defined(TARG_X8664)
       WN_st_idx(tree) = ST_st_idx(Int32_Preg);
 #else
       WN_st_idx(tree) = ST_st_idx(Int_Preg);
@@ -4567,6 +4573,12 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
       return tree;
 
 #if defined(TARG_X8664) || defined(VECTOR_MTYPES)
+    case MTYPE_V32I1:
+    case MTYPE_V32I2:
+    case MTYPE_V32I4:
+    case MTYPE_V32I8:
+    case MTYPE_V32F4:
+    case MTYPE_V32F8:
     case MTYPE_V16I1:
     case MTYPE_V16I2:
     case MTYPE_V16I4:
@@ -4576,6 +4588,8 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
     case MTYPE_V8I1:
     case MTYPE_V8I2:
     case MTYPE_V8I4:
+    case MTYPE_V8I8:
+    case MTYPE_V8F4:
 #ifdef TARG_X8664
     case MTYPE_M8I1:
     case MTYPE_M8I2:
@@ -5643,6 +5657,17 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       if( Fast_ANINT_Allowed )
         break;
     }
+    if( ( (INTRINSIC)WN_intrinsic(tree) == INTRN_I2POPCNT ||
+          (INTRINSIC)WN_intrinsic(tree) == INTRN_I4POPCNT ) &&
+        ( Is_Target_SSE42() || Is_Target_SSE4a() ) ) {
+      // SSE4.2(Intel) and SSE4a(AMD) supports I2 and I4 popcnt
+      break;
+    }
+    if( (INTRINSIC)WN_intrinsic(tree) == INTRN_I8POPCNT &&
+        Is_Target_64bit() && ( Is_Target_SSE42() || Is_Target_SSE4a() ) ) {
+      // SSE4.2(Intel) and SSE4a(AMD) supports I8 popcnt in 64-bit mode
+      break;
+    }
 #endif
 
 #ifdef KEY
@@ -5950,16 +5975,16 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       // OPR_CALL
       char local_name[64];
       ST* tls_st = WN_st(tree);
-      TYPE_ID tls_mtype = ST_mtype(tls_st);
+      TYPE_ID tls_mtype = WN_rtype(tree);
       snprintf(local_name, 64, "%s.local", ST_name(tls_st));
       ST* local_st = MTYPE_To_PREG(tls_mtype);
       PREG_NUM local_num = Create_Preg(tls_mtype, local_name);
-      WN* tls_ldid = WN_COPY_Tree(tree);
       WN* local_stid = WN_StidIntoPreg(tls_mtype, local_num,
-                                       local_st, tls_ldid);
+                                       local_st, tree);
+      WN_copy_linenum(tree, local_stid);
       WN_INSERT_BlockLast(block, local_stid);
       WN* local_ldid = WN_LdidPreg(tls_mtype, local_num );
-      WN_Delete(tree);
+      WN_copy_linenum(tree, local_ldid);
       return local_ldid;
     }
     break;
@@ -6047,12 +6072,12 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       snprintf(local_name, 64, "%s.local", ST_name(tls_st));
       ST* local_st = MTYPE_To_PREG(Pointer_type);
       PREG_NUM local_num = Create_Preg ( Pointer_type, local_name);
-      WN* tls_lda = WN_COPY_Tree(tree);
       WN* local_stid = WN_StidIntoPreg( Pointer_type, local_num, 
-                                        local_st, tls_lda);
+                                        local_st, tree);
+      WN_copy_linenum(tree, local_stid);
       WN_INSERT_BlockLast(block, local_stid);
       WN * local_ldid = WN_LdidPreg(Pointer_type, local_num);
-      WN_Delete(tree);
+      WN_copy_linenum(tree, local_ldid);
       return local_ldid;
     }
 #ifdef KEY  // if taking address of a nested function, replace it by the address
@@ -6245,12 +6270,40 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 
   case OPR_SELECT:
     {
-#ifdef KEY // f90 front-end sometimes generate inconsistent types; fix them
-      if (MTYPE_size_min(type) != MTYPE_size_min(WN_rtype(WN_kid1(tree))))
-	WN_kid1(tree) = WN_Cvt(WN_rtype(WN_kid1(tree)), type, WN_kid1(tree));
-      if (MTYPE_size_min(type) != MTYPE_size_min(WN_rtype(WN_kid2(tree))))
-	WN_kid2(tree) = WN_Cvt(WN_rtype(WN_kid2(tree)), type, WN_kid2(tree));
+      // Due unknown issues with the Fortran front-end we insert convert
+      // operations if the types do not match.  Doing this unconditionally
+      // can result in issues for X8664 if the necessary conversion would
+      // be a sign extension, when there is actually an implicit zero extend.
+      // As such we only insert zero extensions for unsigned types, e.g.
+      //
+      //        .....
+      //      I4I4NE 
+      //      U4 INTCONST  64
+      //      U4 INTCONST  32
+      //    U8 SELECT 
+      if (MTYPE_size_min(type) != MTYPE_size_min(WN_rtype(WN_kid1(tree)))) {
+#ifdef TARG_X8664
+         if (PU_ftn_lang(*Current_pu)) 
 #endif
+            WN_kid1(tree) = WN_Cvt(WN_rtype(WN_kid1(tree)), type, WN_kid1(tree));
+#ifdef TARG_X8664
+         else if (WN_operator_is(WN_kid1(tree),OPR_INTCONST) &&
+                  MTYPE_is_unsigned(WN_rtype(WN_kid1(tree))))
+            WN_kid1(tree) = WN_Cvt(WN_rtype(WN_kid1(tree)), type, WN_kid1(tree));
+#endif
+      }
+      if (MTYPE_size_min(type) != MTYPE_size_min(WN_rtype(WN_kid2(tree)))) {
+#ifdef TARG_X8664
+         if (PU_ftn_lang(*Current_pu))
+#endif
+            WN_kid2(tree) = WN_Cvt(WN_rtype(WN_kid2(tree)), type, WN_kid2(tree));
+#ifdef TARG_X8664
+         else if (WN_operator_is(WN_kid2(tree),OPR_INTCONST) &&
+                  MTYPE_is_unsigned(WN_rtype(WN_kid2(tree))))
+            WN_kid2(tree) = WN_Cvt(WN_rtype(WN_kid2(tree)), type, WN_kid2(tree));
+#endif
+      }
+
       WN * const kid0 = WN_kid0(tree);	// the condition expression
       if (WN_operator_is(kid0, OPR_INTCONST))
       {
@@ -9084,7 +9137,33 @@ static WN *compute_new_size(WN *tree, WN *size, INT32 align)
   return size;
 }
 
-
+/* 
+ * The struct consists of cxx empty struct members and other padding area, 
+ * whose contents are not defined.
+ */
+static BOOL is_struct_content_padding(TY_IDX ty, INT32 offset, INT32 len)
+{
+  FLD_IDX fld_idx = Ty_Table[ty].Fld();
+  if (fld_idx == 0) return TRUE;
+  do {
+    FLD_HANDLE fld(fld_idx);
+    if (TY_kind(FLD_type(fld)) != KIND_STRUCT) 
+    {
+      INT32 myoffset, myend;
+      myoffset = FLD_ofst(fld);
+      myend= myoffset + TY_size(FLD_type(fld));
+      if (myoffset <= offset && myend > offset ||
+        myoffset < offset + len && myend >= offset + len ||
+        offset <= myoffset && offset + len > myoffset)
+        return FALSE;
+    }else if (!is_struct_content_padding(FLD_type(fld), offset - FLD_ofst(fld), len ))
+      return FALSE;
+    if (FLD_last_field(fld))
+      break;
+    fld_idx++;
+  } while (1);
+  return TRUE;
+} 
 
 
 /* ====================================================================
@@ -9804,7 +9883,16 @@ static void lower_mload_actual (WN *block, WN *mload, PLOC ploc,
 		type = MTYPE_F4;
 		reg = MTYPE_To_PREG(type);
 	}
-
+#ifdef TARG_X8664
+        if (PLOC_size(ploc) < MTYPE_size_reg(type) && type == MTYPE_F8 && 
+		is_struct_content_padding(mloadTY, mloadOffset, PLOC_size(ploc)))
+        {
+	 // void MSTRUCT in SSE register, simply ignore 
+            mloadOffset += PLOC_size(ploc);
+            ploc = Get_Struct_Output_Parameter_Location(ploc);
+	    continue;
+        }
+#endif
        /*
 	*  special case "small" structs (or remainder of struct)
 	*  we will try not to run off the end of the structure (as bad)
@@ -9927,7 +10015,16 @@ static void lower_mload_formal(WN *block, WN *mload, PLOC ploc,
 		type = MTYPE_F4;
 		reg = MTYPE_To_PREG(type);
 	}
-
+#ifdef TARG_X8664
+	if (PLOC_size(ploc) < MTYPE_size_reg(type) && type == MTYPE_F8 && 
+		is_struct_content_padding(symTY, offset, PLOC_size(ploc)))
+	{
+	 // void MSTRUCT in SSE register, simply ignore
+		offset += PLOC_size(ploc);
+		ploc = Get_Struct_Input_Parameter_Location(ploc);
+		continue;
+	}
+#endif
 	ldid = WN_LdidPreg(type, regNo);
        /*
 	*  special case "small" structs (or remainder of struct)
@@ -10748,9 +10845,7 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
   Is_True(OPERATOR_is_call(WN_operator(tree)),
 	  ("expected call node, not %s", OPERATOR_name(WN_operator(tree))));
 
-  // initialize the TLS if it's not initialized
-  TLS_init();
-  // If the tls_model is dynamic, we need to generate __tls_get_addr call.
+  // If ST's tls_model is dynamic, we need to generate __tls_get_addr call.
   // In order to avoid the output register conflict,
   // we need to promote the ldid/lda in actual parameter to up-level.
   // This is done in LOWER_TO_CG phase
@@ -11608,10 +11703,10 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
 	preg_st = Float_Preg;
 #endif
 #else
-	preg_st = (mtype==MTYPE_FQ || mtype==MTYPE_CQ)
-	  ? MTYPE_To_PREG(mtype) : Float_Preg;
+	preg_st = (mtype==MTYPE_FQ || mtype==MTYPE_CQ || MTYPE_is_vector(mtype) ) ?
+	             MTYPE_To_PREG(mtype) : Float_Preg;
 #endif
-      else preg_st = (mtype==MTYPE_I8 || mtype==MTYPE_U8) ? 
+      else preg_st = (mtype==MTYPE_I8 || mtype==MTYPE_U8 || MTYPE_is_vector(mtype) ) ? 
 	  		MTYPE_To_PREG(mtype) : Int_Preg;
 #ifdef TARG_NVISA
       preg_st = Standard_Preg_For_Mtype(mtype);
@@ -15200,6 +15295,20 @@ WN *WN_Lower(WN *tree, LOWER_ACTIONS actions, struct ALIAS_MANAGER *alias,
 
   actions = lower_actions(tree, actions);
 
+  /*  
+   * LOWER_RETURN_VAL has side effects: a fake paramter may be added.
+   * We should not do this for OMP outlined routines.
+   * Otherwise we add two fake paramters: this lowering happens
+   * before omp lowering, and the outlined routine will be feed back to
+   * this lowering again.
+   */         
+  if (PU_mp_lower_generated(Get_Current_PU()) && Action(LOWER_RETURN_VAL))
+  {
+    if (LOWER_RETURN_VAL == actions)
+      return tree;
+    actions ^= LOWER_RETURN_VAL;
+  }
+
 #ifdef TARG_X8664
   if (Is_Target_SSE3() && Vcast_Complex &&
       Action(LOWER_COMPLEX) &&
@@ -16305,7 +16414,7 @@ static WN *Memset_MD_Array(WN *block, WN *tree, LOWER_ACTIONS actions)
  *
  * ==================================================================== */
 
-static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
+WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions, struct ALIAS_MANAGER *alias)
 {
   WN *loop_info;
   WN *length_wn, *ind_init_val = NULL;
@@ -16324,6 +16433,8 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
      ("expected DO_LOOP node, not %s", OPCODE_name(WN_opcode(tree))));
 
   if (!OPT_Lower_To_Memlib) return tree;  // Return if the optimization is off
+
+  if (alias) alias_manager = alias;
 
   // If whirl feedbacks,  set freq_count
   if (Cur_PU_Feedback)    
@@ -16357,24 +16468,28 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
    Is_True(WN_opcode(loop_indvar), ("expected a non-NULL loop induction"));
 
    //If no count for this loop, return tree to ensure the benefit 
-   if (!Cur_PU_Feedback && !WN_operator_is(trip_count, OPR_INTCONST))
-      return tree;
+   // unless we are in aggressive mode.
+   if (OPT_Lower_To_Memlib != 2)
+   {
+      if (!Cur_PU_Feedback && !WN_operator_is(trip_count, OPR_INTCONST))
+         return tree;
 
-   // If the trip count is constant and too small, don't optimize
-   if (WN_operator_is(trip_count, OPR_INTCONST)) {
-       if (!Cur_PU_Feedback) 
-           freq_count = WN_const_val(trip_count);
-       else if (WN_const_val(trip_count) != freq_count)  {
-           freq_count = WN_const_val(trip_count);
-           DevWarn("Inconsistent constant trip count and feedback");
-       }
+      // If the trip count is constant and too small, don't optimize
+      if (WN_operator_is(trip_count, OPR_INTCONST)) {
+          if (!Cur_PU_Feedback) 
+              freq_count = WN_const_val(trip_count);
+          else if (WN_const_val(trip_count) != freq_count)  {
+              freq_count = WN_const_val(trip_count);
+              DevWarn("Inconsistent constant trip count and feedback");
+          }
+      } 
+
+      // If too small, < threshold, don't transform 
+      // If small, < 2*threshold, and not divisible by 8, don't transform 
+      if (freq_count < MEMLIB_THRESHOLD_BYTES || 
+         (freq_count < MEMLIB_THRESHOLD_BYTES * 2 && freq_count % 8 != 0))  
+             return tree;
    }
-
-   // If too small, < threshold, don't transform 
-   // If small, < 2*threshold, and not divisible by 8, don't transform 
-   if (freq_count < MEMLIB_THRESHOLD_BYTES || 
-      (freq_count < MEMLIB_THRESHOLD_BYTES * 2 && freq_count % 8 != 0))  
-          return tree;
 
   // Try to find the memset opportunity first
   // Check if only ISTORE of a constant or an invariant is in the loop body
@@ -16393,9 +16508,12 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
                 return return_wn; //transformed successfully
       } //otherwise continue with other optimization 
 
-      // Currently deal with only non-float types
+      // Currently deal with only non-float types for memset
       if (MTYPE_is_float(WN_desc(stmt)))
-         return tree;
+      {
+         opt_qualified = FALSE;
+         break;
+      }
 
       load_value_wn = WN_kid0(stmt);
       if (WN_operator(load_value_wn) == OPR_PAREN)
@@ -16507,11 +16625,12 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
                 WN_INSERT_BlockLast(return_block, ind_init_val);
            }
 
-          WN *call = Transform_To_Memset(store_addr_wn,0, desc_idx, load_value_wn, length_wn);
+          WN *call = Transform_To_Memset(store_addr_wn,0, desc_idx, WN_COPY_Tree(load_value_wn), length_wn);
 
           DevWarn("TRANSFORMED MEMSET Memlib (%s, %d) of %d\n", Src_File_Name, Srcpos_To_Line(current_srcpos), freq_count);
 
           if (call) {
+if (!alias)
              WN_Delete(stmt);
 #ifdef KEY // bug 11360
 	     if (Action(LOWER_CALL))
@@ -16625,6 +16744,12 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
       }
       else length_wn = trip_count;
 
+      // for unsigned, max with 0 does not work. we bail out
+      // for safe. To Be handled.
+      if (!WN_operator_is(length_wn, OPR_INTCONST) &&
+           MTYPE_is_unsigned(WN_rtype(length_wn))) 
+         return tree;
+
       if(Action(LOWER_ARRAY))
 	length_wn = lower_expr(block, WN_COPY_Tree(length_wn), LOWER_ARRAY);
 
@@ -16656,11 +16781,20 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
         
       } else
 //Bug 4789
-         ind_init_val = WN_CreateStid(OPCODE_make_op(OPR_STID, MTYPE_V, TY_mtype(ST_type(WN_st(loop_indvar)))), WN_idname_offset(loop_indvar), WN_st(loop_indvar),  Be_Type_Tbl(MTYPE_I4), lower_bound, 0); //to lower bound
+         ind_init_val = WN_CreateStid(OPCODE_make_op(OPR_STID, MTYPE_V, TY_mtype(ST_type(WN_st(loop_indvar)))), WN_idname_offset(loop_indvar), WN_st(loop_indvar),  Be_Type_Tbl(MTYPE_I4), WN_COPY_Tree(lower_bound), 0); //to lower bound
 
       if (ind_init_val) {
          DevWarn("Initial induction variable"); 
          WN_INSERT_BlockLast(return_block, ind_init_val);
+      }
+      // the trip cound is stop - start + 1, it could be negative.
+      // so we need to check.  
+      // more work to be done for unsigned...
+      if (!WN_operator_is(length_wn, OPR_INTCONST))
+      {
+        TYPE_ID mtyp = WN_rtype(length_wn);
+        OPCODE op = OPCODE_make_op(OPR_MAX, mtyp, MTYPE_V);
+        length_wn = WN_CreateExp2(op, length_wn, WN_Zerocon(mtyp));
       }
 
       WN * wn_intrinsic = Transform_To_Memcpy(store_addr_wn, load_addr_wn, 0, desc_idx, source_idx, length_wn); 
@@ -16674,6 +16808,7 @@ static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
 	   wn_intrinsic = lower_call(return_block, wn_intrinsic, actions);
 #endif
          WN_INSERT_BlockLast(return_block, wn_intrinsic);
+if (!alias)
          WN_Delete(stmt); // Delete the statement that is transformed
       }
       else

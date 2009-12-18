@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
@@ -1063,7 +1067,17 @@ DSE::Propagate_vsym_bb( BB_NODE *bb ) const
           CHI_NODE *chi;
           FOR_ALL_NODE( chi, chi_iter, Init(chi_list)) {
           // propagate into the chi node's operand
-            chi->Set_opnd( Prop_vsym_new_result( chi->Opnd() ));
+          //
+          // only do this for a non-dead chi; otherwise, we can have
+          // live-range overlap when we resurrenct this dead chi:
+          // resurrecting only updates along the def chain, not the
+          // use chain. 
+          // not updating the dead chi here is ok since all the uses
+          // below this should be dead (or we have an overlapped
+          // live range already).
+          //
+            if (chi->Live())
+              chi->Set_opnd( Prop_vsym_new_result( chi->Opnd() ));
           }
         }
       }

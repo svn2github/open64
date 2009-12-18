@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -2184,8 +2188,8 @@ REGION_UN::Is_Included(const REGION_UN &a, const ARA_LOOP_INFO &ara_info)
 	break;
       }
 
-      if (!covered) return FALSE;
     }
+    if (!covered) return FALSE;
   }
 
   return TRUE;

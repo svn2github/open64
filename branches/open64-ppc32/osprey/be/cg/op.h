@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -721,6 +725,7 @@ extern BOOL OP_use_return_value(OP*);
 #define OP_likely(o)		(TOP_is_likely(OP_code(o)))
 #define OP_dummy(o)		(TOP_is_dummy(OP_code(o)))
 #define OP_flop(o)		(TOP_is_flop(OP_code(o)))
+#define OP_sse5(o)		(TOP_is_non_destructive(OP_code(o)))
 #define OP_fadd(o)		(TOP_is_fadd(OP_code(o)))
 #define OP_fdiv(o)		(TOP_is_fdiv(OP_code(o)))
 #define OP_fmul(o)		(TOP_is_fmul(OP_code(o)))
@@ -1125,6 +1130,10 @@ inline void OPS_Remove_Ops(OPS *ops, OPS *remove_ops)
   first->prev = last->next = NULL;
   ops->length -= OPS_length(remove_ops);
 }
+
+#ifdef TARG_X8664
+void Init_LegacySSE_To_Vex_Group(void);
+#endif
 
 void OPS_Insert_Op_Before(OPS *ops, OP *point, OP *op);
 void OPS_Insert_Op_After(OPS *ops, OP *point, OP *op);

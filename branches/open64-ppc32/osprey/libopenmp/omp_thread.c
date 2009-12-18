@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   OpenMP runtime library to be used in conjunction with Open64 Compiler Suites.
 
@@ -53,6 +57,9 @@ int __omp_num_hardware_processors;
 
 /* num of available processors */
 int __omp_num_processors;
+
+/* num of cores that used in affinity setting*/
+int __omp_core_list_size;
 
 /* list of the available processors */
 int * __omp_list_processors;
@@ -131,7 +138,7 @@ __ompc_environment_variables()
   env_var_str = getenv("OMP_NUM_THREADS");
   if (env_var_str != NULL) {
     sscanf(env_var_str, "%d", &env_var_val);
-    Is_Valid(env_var_val > 0, ("OMP_NUM_THREAD should > 0"));
+    Is_Valid(env_var_val > 0, ("OMP_NUM_THREADS should be positive")); 
     if (env_var_val > __omp_max_num_threads)
       env_var_val = __omp_max_num_threads;
     __omp_nthreads_var = env_var_val;
@@ -189,13 +196,13 @@ __ompc_environment_variables()
 		
     if (*env_var_str != '\0') {
       Is_Valid(*env_var_str == ',', 
-	       ("An ',' is expected before the chunksize"));
+	       ("a ',' is expected before the chunksize"));
       env_var_str = Trim_Leading_Spaces(++env_var_str);
       Is_Valid(isdigit((int)(*env_var_str)),
-	       ("number expected for chunksize"));
+	       ("positive number expected for chunksize"));
       sscanf(env_var_str, "%d", &env_var_val);
       Is_Valid(env_var_val > 0, 
-	       ("Positive number expected"));
+	       ("positive number expected for chunksize"));
       __omp_rt_sched_size = env_var_val;
     } else { /* no chunk size specified */
       if(__omp_rt_sched_type == OMP_SCHED_STATIC)
@@ -290,21 +297,25 @@ __ompc_level_1_barrier(const int vthread_id)
   long int counter;
   int team_size = __omp_level_1_team_size;
   long int max_count = __omp_spin_count;
-
-  __sync_fetch_and_add(&__omp_level_1_exit_count,1);
+  int myrank;
+  
+  myrank = 1 + __sync_fetch_and_add(&__omp_level_1_exit_count,1);
 
   if (vthread_id == 0) {
-    for( counter = 0; __omp_level_1_exit_count != team_size; counter++) {
-      if (counter > max_count) {
-        pthread_mutex_lock(&__omp_level_1_barrier_mutex);
-        while (__omp_level_1_exit_count != team_size)
-          pthread_cond_wait(&__omp_level_1_barrier_cond, &__omp_level_1_barrier_mutex);
-        pthread_mutex_unlock(&__omp_level_1_barrier_mutex);
+    if (myrank != team_size)
+    {
+      for( counter = 0; __omp_level_1_exit_count != team_size; counter++) {
+        if (counter > max_count) {
+          pthread_mutex_lock(&__omp_level_1_barrier_mutex);
+          while (__omp_level_1_exit_count != team_size)
+            pthread_cond_wait(&__omp_level_1_barrier_cond, &__omp_level_1_barrier_mutex);
+          pthread_mutex_unlock(&__omp_level_1_barrier_mutex);
+        }
       }
     }
     __omp_level_1_exit_count = 0;
   } else 
-  if (__omp_level_1_exit_count == team_size )
+  if (myrank == team_size )
   {
     // here we do need the mutex lock! otherwise, 
     // Otherwise, it's possible that cond_signal may fail to wake up the master thread.
@@ -400,6 +411,8 @@ __ompc_nested_slave(void * _v_thread)
 void
 __ompc_fini_rtl(void) 
 {
+  int i;
+  
   /* clean up job*/
   if (__omp_level_1_team != NULL)
     aligned_free(__omp_level_1_team);
@@ -419,6 +432,7 @@ __ompc_init_rtl(int num_threads)
   int threads_to_create;
   int i;
   int return_value;
+  void *stack_pointer;
 
 
   Is_True(__omp_rtl_initialized == 0, 
@@ -453,7 +467,6 @@ __ompc_init_rtl(int num_threads)
   /* setup pthread attributes */
   pthread_attr_init(&__omp_pthread_attr);
   pthread_attr_setscope(&__omp_pthread_attr, PTHREAD_SCOPE_SYSTEM);
-  pthread_attr_setstacksize(&__omp_pthread_attr, __omp_stack_size);
   /* need to set up barrier attributes */
 
   /* initial global locks*/
@@ -532,11 +545,42 @@ __ompc_init_rtl(int num_threads)
     __ompc_bind_pthread_to_cpu(__omp_root_thread_id);
   }
 
+/*
+ * This routine is called by dynamic loader, which is before
+ * user-defined main() where various bits in mxcsr are set.
+ * This means those bits are not set to the threads
+ * created here.
+ * Here I only do a paritial fix that sets flush-to-zero
+ * bit in X86.
+ * ToDo:
+ * 1. fix other bits in X86 (like masks controlled by options)
+ * 2. fix for other platforms
+ * We should have checked if SSE is avaliable as
+ * x87 uses a different register.
+ */
+#if defined(TARG_X8664) || defined(TARG_IA32)
+
+#define MM_FLUSH_ZERO_ON     0x8000
+  {
+    unsigned int cr;
+    __asm__  __volatile__("stmxcsr %0" : "=m" (*&cr));
+    cr = cr | MM_FLUSH_ZERO_ON; 
+    __asm__  __volatile__("ldmxcsr %0" : : "m" (*&cr));
+  }
+#endif
+
+
   for (i=1; i< threads_to_create; i++) {
+    stack_pointer = malloc(__omp_stack_size);
+    Is_True(stack_pointer != NULL, ("Cannot allocate stack for slave"));
+    return_value = pthread_attr_setstack(&__omp_pthread_attr, stack_pointer, __omp_stack_size); 
+    Is_True(return_value == 0, ("Cannot set stack pointer for thread"));
     return_value = pthread_create( &(__omp_level_1_pthread[i].uthread_id),
 				   &__omp_pthread_attr, (pthread_entry) __ompc_level_1_slave, 
 				   (void *)((unsigned long int)i));
-    Is_True(return_value == 0, ("Can not create more pthread"));
+    Is_True(return_value == 0, ("Cannot create more pthreads"));
+
+    __omp_level_1_pthread[i].stack_pointer = stack_pointer;
 
     if (__omp_set_affinity) {
       // bind pthread to a specific cpu
@@ -568,11 +612,15 @@ __ompc_expand_level_1_team(int new_num_threads)
   int return_value;
   omp_u_thread_t *new_u_team;
   omp_v_thread_t *new_v_team;
+  void *stack_pointer;
 
-  new_u_team = (omp_u_thread_t *) realloc((void *) __omp_level_1_pthread,
-					  sizeof(omp_u_thread_t) * new_num_threads);
+  new_u_team = (omp_u_thread_t *) aligned_realloc((void *) __omp_level_1_pthread,
+                        sizeof(omp_u_thread_t) * __omp_level_1_team_alloc_size, 
+                        sizeof(omp_u_thread_t) * new_num_threads,
+                        CACHE_LINE_SIZE);
+                        
 
-  Is_True(new_u_team != NULL, ("Can not realloc level 1 pthread data structure"));
+  Is_True(new_u_team != NULL, ("Cannot realloc level 1 pthread data structure"));
 
   if (new_u_team != __omp_level_1_pthread) {
     /* squash hash_table */
@@ -593,10 +641,12 @@ __ompc_expand_level_1_team(int new_num_threads)
 
   }
 
-  new_v_team = (omp_v_thread_t *) realloc((void *) __omp_level_1_team, 
-					  sizeof(omp_v_thread_t) * new_num_threads);
+  new_v_team = (omp_v_thread_t *) aligned_realloc((void *) __omp_level_1_team, 
+                      sizeof(omp_v_thread_t) * __omp_level_1_team_alloc_size,
+					  sizeof(omp_v_thread_t) * new_num_threads, 
+                      CACHE_LINE_SIZE);
 
-  Is_True(new_v_team != NULL, ("Can not realloc level 1 team data structure"));
+  Is_True(new_v_team != NULL, ("Cannot realloc level 1 team data structure"));
 
   if (new_v_team != __omp_level_1_team) {
     __omp_level_1_team = new_v_team;
@@ -624,10 +674,16 @@ __ompc_expand_level_1_team(int new_num_threads)
     __omp_level_1_pthread[i].task = &__omp_level_1_team[i];
 
     /* for u_thread */
+    stack_pointer = malloc(__omp_stack_size);
+    Is_True(stack_pointer != NULL, ("Cannot allocate stack for slave"));
+    return_value = pthread_attr_setstack(&__omp_pthread_attr, stack_pointer, __omp_stack_size);
+    Is_True(return_value == 0, ("Cannot set stack pointer for thread"));
     return_value = pthread_create( &(__omp_level_1_pthread[i].uthread_id),
 				   &__omp_pthread_attr, (pthread_entry) __ompc_level_1_slave, 
 				   (void *)((unsigned long int)i));
-    Is_True(return_value == 0, ("Can not create more pthread"));
+    Is_True(return_value == 0, ("Cannot create more pthreads"));
+
+    __omp_level_1_pthread[i].stack_pointer = stack_pointer;
 
     if (__omp_set_affinity) {
       // bind pthread to a specific cpu
@@ -662,6 +718,7 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
   omp_u_thread_t *nest_u_thread_team;
   omp_u_thread_t *current_u_thread;
   omp_v_thread_t *original_v_thread;
+  void * stack_pointer;
 
   Is_True(__omp_rtl_initialized != 0,
           (" RTL should have been initialized!"));
@@ -738,12 +795,12 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
 
     nest_v_thread_team = aligned_malloc(sizeof(omp_v_thread_t) * num_threads, CACHE_LINE_SIZE); 
     Is_True(nest_v_thread_team != NULL, 
-	    ("Can't allocate nested v_thread team"));
+	    ("Cannot allocate nested v_thread team"));
 
     /* nest_u_thread_team[0] is of no use currently*/
     nest_u_thread_team = aligned_malloc(sizeof(omp_u_thread_t) * num_threads, CACHE_LINE_SIZE);
     Is_True(nest_u_thread_team != NULL,
-	    ("Can't allocate nested u_thread team"));
+	    ("Cannot allocate nested u_thread team"));
 
     /* A lock is needed to protect global variables */
     /* TODO: need a global lock*/
@@ -760,10 +817,16 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
 
       nest_u_thread_team[i].hash_next = NULL;
       nest_u_thread_team[i].task = &(nest_v_thread_team[i]);
+
+      stack_pointer = malloc(__omp_stack_size);
+      Is_True(stack_pointer != NULL, ("Cannot allocate stack for slave"));
+      return_value = pthread_attr_setstack(&__omp_pthread_attr, stack_pointer, __omp_stack_size);
+      Is_True(return_value == 0, ("Cannot set stack pointer for thread"));
+  
       return_value = pthread_create(&(nest_u_thread_team[i].uthread_id),
 				    &__omp_pthread_attr, (pthread_entry) __ompc_nested_slave, 
 				    (void *)(&(nest_v_thread_team[i])));
-      Is_True(return_value == 0, ("Can not create more pthread"));
+      Is_True(return_value == 0, ("Cannot create more pthreads"));
 
       // TODO: may need to bind pthread to a specific cpu for nested threads
 
@@ -805,6 +868,7 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
     original_v_thread = current_u_thread->task;
 
     temp_v_thread.team_size = 1;
+    temp_v_thread.vthread_id = 0;
     temp_v_thread.single_count = 0;
     temp_v_thread.loop_count = 0;
     temp_v_thread.executor = current_u_thread;
@@ -843,6 +907,7 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
 
     __ompc_destroy_spinlock(&(temp_team.schedule_lock));
     __ompc_destroy_lock(&(temp_team.single_lock));
+    current_u_thread->task = original_v_thread;
   }
 }
 

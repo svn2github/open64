@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -512,7 +516,7 @@ static void Print_Distribution(FILE* file,
   } 
   fprintf(file, ") at ("); 
   for (i = outer; i <= inner; i++) { 
-    fprintf(file, "%d", (INT) WN_linenum(stack->Bottom_nth(i))); 
+    fprintf(file, "%d", Srcpos_To_Line(WN_linenum(stack->Bottom_nth(i)))); 
     if (i < inner) 
       fprintf(file, ","); 
   } 

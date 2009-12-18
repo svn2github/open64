@@ -2320,9 +2320,11 @@ main (INT argc, char **argv)
 	Instrumentation_Enabled = FALSE;
 #ifdef KEY // bug 5684: deleting branches interferes with branch profiling
 	WOPT_Enable_Simple_If_Conv = FALSE;
-	// Proactive loop fusion transformation interferes with branch profiling.
-	WOPT_Enable_Pro_Loop_Fusion_Trans = FALSE;
 #endif
+	// Proactive loop nest transformation interferes with branch profiling.
+	WOPT_Enable_Pro_Loop_Fusion_Trans = FALSE;
+	WOPT_Enable_Pro_Loop_Interchange_Trans = FALSE;
+	
 	Instrumentation_Phase_Num = PROFILE_PHASE_NONE;
       }
   }

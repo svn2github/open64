@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -179,13 +183,8 @@ extern void Exp_Savexmms_Intrinsic(WN *intrncall, TN *rax_tn, LABEL_IDX *label,
 
 extern void Exp_Landingpadentry_Intrinsic (ST *dest1, ST *dest2, OPS* ops);
 
-extern void Exp_Fetch_and_And( TN*, TN*, TYPE_ID, OPS* );
-extern void Exp_Fetch_and_Or( TN*, TN*, TYPE_ID, OPS* );
-extern void Exp_Fetch_and_Xor( TN*, TN*, TYPE_ID, OPS* );
-extern TN*  Exp_Compare_and_Swap( TN*, TN*, TN*, TYPE_ID, OPS* );
-
 /* expand intrinsic op */
-extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TYPE_ID mtype, OPS *ops);
+extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, TN *op4, TYPE_ID mtype, OPS *ops);
 
 #elif defined(TARG_IA64) || defined(TARG_LOONGSON)
 extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, OPS *ops);

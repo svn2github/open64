@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 // ====================================================================
 // ====================================================================
@@ -32,7 +36,7 @@
 #include "opt_base.h"
 #include "bb_node_set.h"
 #include "opt_lmv_helper.h"
-
+#include "opt_ivr.h"
 
 // get_field_type() 
 //   return the field type of aggregate type <agg_ty>
@@ -93,7 +97,7 @@ ADDR_LINEAR_EXPR::operator == (const ADDR_LINEAR_EXPR& that) const {
   }
   if (Is_const ()) return _const == that._const;
   return _coeff == that._coeff && _const == that._const && 
-         _var == that._var && _ver == that._ver;
+         _cr == that._cr;
 }
 
 //
@@ -120,10 +124,7 @@ ADDR_LINEAR_EXPR::Add (const ADDR_LINEAR_EXPR &that) {
   }
 
   // not "compatible"
-  if (that.Var () != _var) return FALSE;
-  
-  // forget version if versions don't match
-  if (that.Var_ver() == _ver) _ver = 0;
+  if (that._cr != _cr) return FALSE;
   
   _coeff += that._coeff;
   _const += that._const;
@@ -236,10 +237,17 @@ MA_OFFSET::Add (MA_OFFSET* adjust) {
           _kind = MA_OFST_LINEAR;
       }
     } else if (adjust->Kind() == MA_OFST_RANGE) {
+
       const ADDR_LINEAR_EXPR_RANGE* r = adjust->Linear_ofst_range ();
-      add_succ = _ofst.low.Add (r->low); 
-      if (add_succ) 
-        add_succ = _ofst.low.Add (r->high);
+      ADDR_LINEAR_EXPR low_expr = _ofst.low;
+      ADDR_LINEAR_EXPR high_expr = _ofst.low;
+      add_succ = low_expr.Add(r->low);
+      _ofst.low = low_expr;
+      if (add_succ) {
+        add_succ = high_expr.Add(r->high);
+        _ofst.high = high_expr;
+      }
+      _kind = MA_OFST_RANGE;
     } else {
       Set_unknown_ofst ();
     }
@@ -251,7 +259,7 @@ MA_OFFSET::Add (MA_OFFSET* adjust) {
         adjust->Kind() == MA_OFST_LINEAR) { 
       add_succ = _ofst.low.Add (*adjust->Linear_ofst());
       if (add_succ) 
-        _ofst.high.Add (*adjust->Linear_ofst()); 
+        _ofst.high.Add (*adjust->Linear_ofst());
     } else if (adjust->Kind() == MA_OFST_RANGE) {
       const ADDR_LINEAR_EXPR_RANGE* r = adjust->Linear_ofst_range ();
       add_succ = _ofst.low.Add (r->low); 
@@ -318,14 +326,42 @@ MA_OFFSET::Union (const MA_OFFSET* that, LMV_LOOP_INFO* loopinfo) {
       {
         VAR_VAL_RANGE vr;
         that->Linear_ofst()->Get_range (&vr,loopinfo);
-        if (vr.Low_is_const() && vr.High_is_const()) {
-          low = high = Get_fixed_ofst();
+        ADDR_LINEAR_EXPR low_expr;
+        ADDR_LINEAR_EXPR high_expr;
+        if (vr.Low_is_const()) {
+          low = Get_fixed_ofst();
           low = MIN(low, vr.Low_val());
-          high = MAX(high, vr.High_val());
-          Set_linear_ofst_range (ADDR_LINEAR_EXPR(low), 
-                                 ADDR_LINEAR_EXPR(high));
-          return;
+          low_expr.Set_const_expr(low);
         }
+        else {
+          // Non-const lower bound not supported yet...
+          break;
+        }
+
+        if (vr.High_is_const()) {
+          high = Get_fixed_ofst();
+          high = MAX(high, vr.High_val());
+          high_expr.Set_const_expr(high);
+        }
+        else {
+          Is_True(vr.Low_is_const(),("Unsupported non-const lower bound\n"));
+          // Skip if fixed offset is > lower bound as we cannot
+          // determine if it is < non-const upper bound
+
+          // While this may make sense, the artificial initial value
+          // of offset == 0 is problematic, need a better initial state.
+
+          //if (Get_fixed_ofst() > vr.Low_val())
+          //  break;
+          const ADDR_LINEAR_EXPR *ofst_expr = that->Linear_ofst();
+          INT const_val = ofst_expr->Const_part();
+          if ( vr.High_is_cr_subone() )
+            const_val -= 1;
+          high_expr.Set_linear_expr(ofst_expr->Coefficient(),
+              vr.High_cr(),const_val);
+        }
+        Set_linear_ofst_range(low_expr,high_expr);
+        return;
       }
       break;
 
@@ -395,63 +431,93 @@ MA_OFFSET::Union (const MA_OFFSET* that, LMV_LOOP_INFO* loopinfo) {
                     that->_ofst.low.Var_ver(), 
                     &that_vr);
 
-        if (!that_vr.Low_is_const() || !that_vr.High_is_const()) {
+        // No non-const lower bound for now...
+        if (!that_vr.Low_is_const())
           break;
-        }
 
         loopinfo->Analyze_var_value_range 
            (_ofst.low.Var(), _ofst.low.Var_ver(), &this_vr);
 
-        if (!this_vr.Low_is_const() || !this_vr.High_is_const())
+        // Non non-const lower bound for now...
+        if (!this_vr.Low_is_const())
           break;
    
+        // The lower bound of the combined range is simply the
+        // minimum of the two ranges.
         low = MIN(that_vr.Low_val(), this_vr.Low_val());
-        high = MAX(that_vr.High_val(), that_vr.High_val());
 
-        Set_linear_ofst_range (ADDR_LINEAR_EXPR(low), ADDR_LINEAR_EXPR(high));
+        // When computing the upper bound, either both must be
+        // constant or both non-const
+        ADDR_LINEAR_EXPR high_expr;
+        if (that_vr.High_is_const()) {
+          if (!this_vr.High_is_const())
+            break;
+          high = MAX(that_vr.High_val(), that_vr.High_val());
+          high_expr.Set_const_expr(high);
+        }
+        else {
+          if (!this_vr.High_is_cr())
+            break;
+          if (this_vr.High_cr()->Aux_id() != that_vr.High_cr()->Aux_id() ||
+              this_vr.High_cr()->Version() != that_vr.High_cr()->Version())
+            break;
+          high_expr.Set_linear_expr(1,this_vr.High_cr(),
+              MAX(this_vr.High_is_cr_subone()?-1:0,
+                  that_vr.High_is_cr_subone()?-1:0));
+        }
+
+        Set_linear_ofst_range (ADDR_LINEAR_EXPR(low), high_expr);
         return;
       }
       break;
    
     case MA_OFST_RANGE:
       {
+        VAR_VAL_RANGE this_vr;
+        loopinfo->Analyze_var_value_range (
+                            this->_ofst.low.Var(),
+                            this->_ofst.low.Var_ver(),
+                            &this_vr);
+
+        // No non-const lower bound for now...
+        if (!this_vr.Low_is_const())
+          break;
+
+        ADDR_LINEAR_EXPR low_expr;
+        ADDR_LINEAR_EXPR high_expr;
+        const ADDR_LINEAR_EXPR *this_expr = this->Linear_ofst();
         const ADDR_LINEAR_EXPR_RANGE* r = that->Linear_ofst_range ();
 
-        MA_OFFSET tl(&r->low), th(&r->high);
-        tl.Union (this, loopinfo);
-        th.Union (this, loopinfo);
-        
-        const ADDR_LINEAR_EXPR* addr1, *addr2;
-        addr1 = addr2 = NULL;
-        switch (tl.Kind()) {
-        case MA_OFST_FIXED:
-          Is_True (FALSE, ("it is impossible to be fixed ofst"));  
-          break;
-        case MA_OFST_LINEAR:
-          addr1 = tl.Linear_ofst(); break; 
- 
-        case MA_OFST_RANGE:
-          addr1 = &tl.Linear_ofst_range ()->low; break;
-        default:
-          break;
+        Is_True(r->low.Is_const(),("Expected const lower bound"));
+        // Compute the lower bound of the linear offset from the
+        // and merge it into the range offset. We keep the minimum.
+        INT linear_low = this_expr->Coefficient() * this_vr.Low_val() +
+            this_expr->Const_part();
+        low_expr.Set_const_expr(MIN(linear_low,r->low.Const_val()));
+
+        // Now we do the same for the upper bound of the linear offset
+        if (this_vr.High_is_const()) {
+          if (!r->high.Is_const())
+            break;
+          INT linear_high = this_expr->Coefficient() * this_vr.High_val() +
+              this_expr->Const_part();
+          high_expr.Set_const_expr(MAX(linear_high,r->high.Const_val()));
+        }
+        else {
+          if (!this_vr.High_is_cr())
+            break;
+          if (this_vr.High_cr() != r->high.cr())
+            break;
+
+          INT const_val = this_expr->Const_part();
+          if (this_vr.High_is_cr_subone())
+            const_val -= 1;
+          high_expr.Set_linear_expr(this_expr->Coefficient(),this_vr.High_cr(),
+              MAX(const_val,r->high.Const_part()));
         }
 
-        switch (th.Kind()) {
-        case MA_OFST_FIXED:
-          Is_True (FALSE, ("it is impossible to be fixed ofst"));  
-          break;
-        case MA_OFST_LINEAR:
-          addr2 = th.Linear_ofst(); break; 
- 
-        case MA_OFST_RANGE:
-          addr2 = &th.Linear_ofst_range ()->high; break;
-        default:
-          break;
-        }
-        if (addr1 && addr2) {
-          Set_linear_ofst_range (*addr1, *addr2);
-          return;
-        }
+        Set_linear_ofst_range(low_expr,high_expr);
+        return;
       }
       break;
 
@@ -511,14 +577,14 @@ MEM_ACCESS_ANALYZER::MEM_ACCESS_ANALYZER
   _mp(mp), _opt_stab(opt_stab), _cfg(opt_stab->Cfg()), _loopinfo(loopinfo), 
   _ma_map (256, NULL, _mp, FALSE), _ptr_mgr (_mp), _all_ma(_mp) {
 
-  Is_True (_loopinfo->Loop()->Header()->Loopdepth() == 1, 
-           ("MEM_ACCESS_ANALYZER can handle only inner most loops"));
+    Is_True(_loopinfo->Loop()->Child() == NULL,
+        ("MEM_ACCESS_ANALYZER can handle only inner most loops"));
 
-  _ma_map.Init ();
-  _read_cnt = _write_cnt = 0;
-  _last_ma_id = 1;
-  _trace = trace;
-  _trace_detail = FALSE;
+    _ma_map.Init ();
+    _read_cnt = _write_cnt = 0;
+    _last_ma_id = 1;
+    _trace = trace;
+    _trace_detail = trace;
 }
 
 inline MEM_ACCESS*
@@ -889,7 +955,7 @@ MEM_ACCESS_ANALYZER::Analyze_ofst_helper (CODEREP* ofst, MA_OFFSET* res) {
         if (t.Kind() == MA_OFST_LINEAR) {
           const ADDR_LINEAR_EXPR* r = t.Linear_ofst ();
           t.Set_linear_ofst (r->Coefficient() * scale, 
-                             r->Var(), r->Var_ver(), r->Const_part () * scale);
+                             r->cr(), r->Const_part () * scale);
         } else if (t.Kind() == MA_OFST_RANGE) {
           ADDR_LINEAR_EXPR_RANGE r = *t.Linear_ofst_range(); 
           r.low.Multiply (scale);
@@ -913,7 +979,7 @@ MEM_ACCESS_ANALYZER::Analyze_ofst_helper (CODEREP* ofst, MA_OFFSET* res) {
       }
       MA_OFFSET t1, t2;
       Analyze_ofst (ofst->Opnd(0), &t1);
-      Analyze_ofst (ofst->Opnd(0), &t2);
+      Analyze_ofst (ofst->Opnd(1), &t2);
       t1.Add (&t2);
       *res = t1;
       }
@@ -924,9 +990,24 @@ MEM_ACCESS_ANALYZER::Analyze_ofst_helper (CODEREP* ofst, MA_OFFSET* res) {
     res->Set_fixed_ofst (ofst->Const_val());
     return;
   } else if (ofst->Kind() == CK_VAR) {
-    if (ofst->Aux_id() == _loopinfo->Iv()) {
-       res->Set_linear_ofst (1, ofst->Aux_id(), (VER_ID)0, 0);
-       return;
+    if (_loopinfo->Iv_map().Lookup(ofst->Aux_id()) != NULL)
+    {
+      res->Set_linear_ofst (1, ofst, 0);
+      return;
+    }
+    else if (ofst->Defstmt() != NULL &&
+         !ofst->Is_flag_set ((CR_FLAG)(CF_DEF_BY_PHI|CF_DEF_BY_CHI))) {
+       STMTREP* stmt = ofst->Defstmt();
+       if (stmt->Opr() == OPR_STID &&
+           stmt->Rhs()->Kind() == CK_VAR)
+       {
+         AUX_ID rhs_var = stmt->Rhs()->Aux_id();
+         if (_loopinfo->Iv_map().Lookup(rhs_var) != NULL)
+         {
+           res->Set_linear_ofst(1,stmt->Rhs(),0);
+           return;
+         }
+       }
     }
   }
 
@@ -1070,6 +1151,107 @@ MEM_ACCESS_ANALYZER::Analyze_mem_access (void) {
   }
 }
 
+BOOL
+MEM_ACCESS_ANALYZER::Assemble_aliased_mem_groups(const ALIAS_RULE *alias_rule,
+                                                 MEM_GROUP_VECT &groups)
+{
+  if (_ptr_mgr.Ptr_sum() < 2) {
+    // there is no more than one group of mem-ops. No chance for
+    // multiversioning.
+    return FALSE;
+  }
+
+  // Generate a MEM_GROUP for the accesses of MA_POINTER that alias
+  // with an MA_POINTER that contains write accesses.
+  ID_MAP<MEM_GROUP *,MA_POINTER*> group_created(32,NULL,_mp,FALSE);
+  group_created.Init();
+
+  BOOL add_write = FALSE;
+  MA_PTR_VECT& vect = _ptr_mgr.All_ptrs();
+  for (MA_PTR_VECT_ITER write_iter = vect.begin();
+      write_iter != vect.end(); write_iter++) {
+    MA_POINTER *ptr1 = *write_iter;
+    if (ptr1->St_cnt() && !group_created.Lookup(ptr1)) {
+      for (MA_PTR_VECT_ITER all_iter = vect.begin();
+          all_iter != vect.end(); all_iter++) {
+        MA_POINTER *ptr2 = *all_iter;
+        if (ptr2 == ptr1) continue;
+        if (group_created.Lookup(ptr2)) continue;
+
+        MEM_ACCESS_VECT& v1 = ptr1->All_mem_access();
+        MEM_ACCESS_VECT& v2 = ptr2->All_mem_access();
+        /* Paranoia. If for some reason we have an empty access vector
+         * punt out.  Clearly there exists a write reference in the
+         * loop for 'ptr1', as to why there may not be any accesses???
+         */
+        if (v1.size() == 0 || v2.size() == 0)
+          return FALSE;
+
+        if (!alias_rule->Aliased_Memop (v1[0]->Points_to(_opt_stab),
+            v2[0]->Points_to(_opt_stab), (TY_IDX)0, (TY_IDX)0))
+          continue;
+
+        /* If we have found an alias and one of the involved access
+         * vectors is too messy for us to have computed the access
+         * range, then we give up.
+         */
+        if (ptr1->Kind() == MA_PTR_TOO_MESSY ||
+            ptr2->Kind() == MA_PTR_TOO_MESSY)
+          return FALSE;
+
+        MA_OFFSET ofst;
+        ofst.Set_fixed_ofst(0);
+        INT sz = 0;
+
+        for (MEM_ACCESS_VECT_ITER iter = v2.begin ();
+            iter != v2.end (); iter++) {
+          ofst.Union (&(*iter)->Ofst(), _loopinfo);
+          sz = MAX(sz, (*iter)->Byte_size());
+        }
+
+        MEM_RANGE *r = CXX_NEW(MEM_RANGE(), _mp);
+        r->Set_base_ptr (ptr2);
+        r->Set_access_range (&ofst, _loopinfo, sz);
+        if (!r->Access_range().low.Is_const ())
+          return FALSE;
+
+        MEM_GROUP *mg = CXX_NEW(MEM_GROUP(v2,r,ptr2->St_cnt()>0),_mp);
+        groups.push_back(mg);
+        add_write = TRUE;
+
+        group_created.Insert(ptr2,mg);
+      }
+      if (add_write) {
+        Is_True(!group_created.Lookup(ptr1),
+            ("Attempt to add access vector to groups more than once"));
+        MA_OFFSET ofst;
+        ofst.Set_fixed_ofst(0);
+        INT sz = 0;
+
+        MEM_ACCESS_VECT &v = ptr1->All_mem_access();
+        for (MEM_ACCESS_VECT_ITER iter = v.begin ();
+            iter != v.end (); iter++) {
+          ofst.Union (&(*iter)->Ofst(), _loopinfo);
+          sz = MAX(sz, (*iter)->Byte_size());
+        }
+
+        MEM_RANGE *r = CXX_NEW(MEM_RANGE(), _mp);
+        r->Set_base_ptr (ptr1);
+        r->Set_access_range (&ofst, _loopinfo, sz);
+        if (!r->Access_range().low.Is_const ())
+          return FALSE;
+
+        MEM_GROUP *mg = CXX_NEW(MEM_GROUP(v,r,TRUE),_mp);
+        groups.push_back(mg);
+        add_write = FALSE;
+
+        group_created.Insert(ptr1,mg);
+      }
+    }
+  }
+
+  return groups.size() > 1;
+}
 
 ///////////////////////////////////////////////////////////////
 //
@@ -1086,7 +1268,6 @@ MEM_RANGE::Set_access_range (MA_OFFSET* ofst, LMV_LOOP_INFO*
   case MA_OFST_LINEAR:
     _access_range.low = *ofst->Linear_ofst ();
     _access_range.high = _access_range.low;
-    _access_range.high.Add (access_sz);
     break;
 
   case MA_OFST_RANGE: 
@@ -1094,7 +1275,6 @@ MEM_RANGE::Set_access_range (MA_OFFSET* ofst, LMV_LOOP_INFO*
     const ADDR_LINEAR_EXPR_RANGE* r = ofst->Linear_ofst_range ();
     _access_range.low = r->low; 
     _access_range.high = r->high;
-    _access_range.high.Add (access_sz);
     }
     break; 
 
@@ -1126,12 +1306,62 @@ MEM_RANGE::Set_access_range (MA_OFFSET* ofst, LMV_LOOP_INFO*
 }
 
 
-LMV_LOOP_INFO::LMV_LOOP_INFO (BB_LOOP* loop, MEM_POOL* mp) :
-  _loop(loop), _mp(mp), 
+LMV_LOOP_INFO::LMV_LOOP_INFO (BB_LOOP* loop, MEM_POOL* mp,
+                              IVR &ivr, BOOL trace)
+ :_loop(loop),
+  _mp(mp),
+  _trace(trace),
   //32: a medium-sized loop normally has less than this much pointers 
-  _val_range_map(32, NULL, _mp, FALSE) {
-  _val_range_map.Init ();
-  _iv = _loop->Iv() ? _loop->Iv()->Aux_id() : (AUX_ID)0;
+  _val_range_map(32, NULL, _mp, FALSE),
+  _iv_map(32,NULL,_mp,FALSE)
+{
+  _val_range_map.Init();
+  _iv_map.Init();
+
+  /* Here we perform induction variable analysis to identify
+   * the ivs within the loop.  We will add additional AUX_IDs
+   * to the map as we find symbols that are copys from these
+   * initial ivs.
+   */
+  if ( _trace )
+    fprintf(TFile,"=== Start Induction Variables===\n");
+  ivr.Ident_all_iv_cands(loop,loop->Header());
+  vector<IV_CAND*>::iterator iv_cand_iter;
+  for (iv_cand_iter = ivr.Get_iv_candidates().begin();
+      iv_cand_iter != ivr.Get_iv_candidates().end();
+      iv_cand_iter++) {
+    IV_CAND *cur_iv = *iv_cand_iter;
+    if ( _trace )
+      cur_iv->Print(TFile);
+    _iv_map.Insert(cur_iv->Var()->Aux_id(),cur_iv);
+  }
+  if ( _trace )
+    fprintf(TFile,"=== End Induction Variables===\n");
+}
+
+BOOL
+LMV_LOOP_INFO::Equivalent_iv(CODEREP *coderep, AUX_ID aux_id)
+{
+  IV_CAND *iv = _iv_map.Lookup(aux_id);
+  Is_True(coderep->Kind() == CK_VAR,("Expecting CK_VAR here"));
+  Is_True(iv != NULL, ("Must be valid iv"));
+
+  if (coderep->Aux_id() == aux_id)
+      return TRUE;
+  else if (coderep->Defstmt() != NULL &&
+      !coderep->Is_flag_set ((CR_FLAG)(CF_DEF_BY_PHI|CF_DEF_BY_CHI))) {
+    STMTREP* stmt = coderep->Defstmt();
+    if (stmt->Opr() == OPR_STID &&
+        stmt->Rhs()->Kind() == CK_VAR)
+    {
+      AUX_ID rhs_var = stmt->Rhs()->Aux_id();
+      if (rhs_var == aux_id) {
+        _iv_map.Insert(coderep->Aux_id(),iv);
+        return TRUE;
+      }
+    }
+  }
+  return FALSE;
 }
 
 // Determine the upper boundary of induction variable in a while-do 
@@ -1141,14 +1371,15 @@ LMV_LOOP_INFO::LMV_LOOP_INFO (BB_LOOP* loop, MEM_POOL* mp) :
 // This function returnr TRUE iff upper boundary is determined.
 // Borrow much code from code-emit phase
 BOOL
-LMV_LOOP_INFO::Get_iv_upperbound (INT& upbound) {
-
+LMV_LOOP_INFO::Get_iv_upperbound (IV_CAND *iv_cand, VAR_VAL_RANGE *vr)
+{
   if (!_loop->Well_formed() || _loop->Exit_early()) {
     return FALSE;
   }
 
   if (_loop->Flags() != LOOP_WHILE && 
-      _loop->Flags() != LOOP_PRE_WHILE) {
+      _loop->Flags() != LOOP_PRE_WHILE &&
+      _loop->Flags() != LOOP_PRE_DO) {
     return FALSE;
   }
 
@@ -1159,16 +1390,6 @@ LMV_LOOP_INFO::Get_iv_upperbound (INT& upbound) {
 
   if (loopback_opnd_num != 1) {
     return FALSE; // too complex
-  }
-
-  STMTREP_ITER stmt_iter(header->Stmtlist());
-  STMTREP *sr;
-  FOR_ALL_NODE( sr, stmt_iter, Init() ) {
-    if (sr->Op() != OPC_LABEL && sr != header->Last_stmtrep()) {
-      // it is supposed to be : statement LABEL followed by 
-      // FALSEBR/TRUEBR.
-      return FALSE;
-    }
   }
   
   STMTREP *cond_br = header->Branch_stmtrep();
@@ -1192,12 +1413,22 @@ LMV_LOOP_INFO::Get_iv_upperbound (INT& upbound) {
  
   CODEREP* iv, *upbound_cr; 
   iv = upbound_cr = NULL;
-  if (cmp->Opnd(0)->Kind() == CK_CONST) {
-    upbound_cr = cmp->Opnd(0); iv = cmp->Opnd(1);
-  } else if (cmp->Opnd(1)->Kind() == CK_CONST) {
-    upbound_cr = cmp->Opnd(1); iv = cmp->Opnd(0);
+
+  // Which operand of the compare is the induction variable?
+  if (cmp->Opnd(0)->Kind() == CK_VAR &&
+      Equivalent_iv(cmp->Opnd(0),iv_cand->Var()->Aux_id()))
+  {
+    iv = cmp->Opnd(0);
+    upbound_cr = cmp->Opnd(1);
   }
-  if (!iv || iv->Kind() != CK_VAR || iv->Aux_id() != _iv) 
+  else if (cmp->Opnd(1)->Kind() == CK_VAR &&
+        Equivalent_iv(cmp->Opnd(1),iv_cand->Var()->Aux_id()))
+  {
+    iv = cmp->Opnd(1);
+    upbound_cr = cmp->Opnd(0);
+  }
+
+  if (!iv)
     return FALSE;
 
   BOOL reverse = FALSE;
@@ -1215,10 +1446,28 @@ LMV_LOOP_INFO::Get_iv_upperbound (INT& upbound) {
     }
   }
   
-  if (cond_opr == OPR_LE) {
-    upbound = upbound_cr->Const_val(); return TRUE;
-  } else if (cond_opr == OPR_LT) {
-    upbound = upbound_cr->Const_val()-1; return TRUE;
+  if (!(upbound_cr->Kind() == CK_CONST ||
+        upbound_cr->Kind() == CK_VAR ))
+    return FALSE;
+
+  if (cond_opr == OPR_LE || cond_opr == OPR_GE)
+  {
+    if (upbound_cr->Kind() == CK_CONST)
+      vr->Set_high(upbound_cr->Const_val());
+    else
+      vr->Set_high(upbound_cr);
+    return TRUE;
+  }
+  else if (cond_opr == OPR_LT || cond_opr == OPR_GT)
+  {
+      if ( upbound_cr->Kind() == CK_CONST)
+        vr->Set_high(upbound_cr->Const_val()-1);
+      else
+      {
+        vr->Set_high(upbound_cr);
+        vr->Set_high_is_cr_subone();
+      }
+      return TRUE;
   }
 
   return FALSE;
@@ -1248,69 +1497,47 @@ LMV_LOOP_INFO::Analyze_var_value_range
   }
 
   val->Init();
-  if (_iv == (AUX_ID)0 || var != _iv) {
-    return;
-  }
+
+  // If the variable is not a known induction variable, we give up
+  IV_CAND *iv = _iv_map.Lookup(var);
+  if ( iv == NULL )
+      return;
 
   vr = CXX_NEW (VAR_VAL_RANGE, _mp);
 
-  // Now, try to figure out the value range of primary induction variable.
-  // Firstly, find the phi for the IV.
-  PHI_LIST_ITER phi_iter;
-  PHI_NODE* phi;
-  BOOL found = FALSE;
-  FOR_ALL_ELEM (phi, phi_iter, Init(_loop->Header()->Phi_list())) {
-    if (!phi->Live()) continue;
-    CODEREP* res = phi->RESULT();
-    if (res->Aux_id() == _iv) { found = TRUE; break; }
-  }
-  Is_True (found, 
-           ("Can't find the phi node for the primary IV in loop-BB:%d", 
-           _loop->Header()->Id()));
-
-  // Then, go ahead to find the init value
-  BB_NODE* pred;
-  BB_LIST_ITER bb_iter;
-  FOR_ALL_ELEM (pred, bb_iter, Init(_loop->Header()->Pred())) {
-    CODEREP* opnd = phi->OPND(bb_iter.Idx());
-    if (_loop->Invariant_cr(opnd)) {
-      if (opnd->Kind() == CK_CONST) {
-        vr->Set_low (opnd->Const_val ());
-        break;
-      }
-      // It can be following scenario. So looking ahead a bit may be useful.
-      //    LDC 
-      //  STID 256 cr-x  // out-side loop
-      //  ...
-      //  loop-head-block:
-      //   iv = phi(cr-x, cr-y)
-      //
-      if (opnd->Defstmt() != NULL &&
-          !opnd->Is_flag_set ((CR_FLAG)(CF_DEF_BY_PHI|CF_DEF_BY_CHI))) {
-        STMTREP* stmt = opnd->Defstmt();  
-        if (stmt->Opr() == OPR_STID && 
-            stmt->Rhs()->Kind() == CK_CONST) {
-          vr->Set_low (stmt->Rhs()->Const_val ());
-          break;
-        }
-      }
-      vr->Set_low (opnd); 
-      break;
+  // Now, determine the lower and upper bounds on the induction variable
+  CODEREP *init_value = iv->Init_value();
+  Is_True(init_value != NULL, ("Expected iv to have initial value\n"));
+  if ( init_value->Kind() == CK_CONST )
+    vr->Set_low(init_value->Const_val());
+  // It can be following scenario. So looking ahead a bit may be useful.
+  //    LDC
+  //  STID 256 cr-x  // out-side loop
+  //  ...
+  //  loop-head-block:
+  //   iv = phi(cr-x, cr-y)
+  //
+  else if (init_value->Defstmt() != NULL &&
+      !init_value->Is_flag_set ((CR_FLAG)(CF_DEF_BY_PHI|CF_DEF_BY_CHI))) {
+    STMTREP* stmt = init_value->Defstmt();
+    if (stmt->Opr() == OPR_STID &&
+        stmt->Rhs()->Kind() == CK_CONST) {
+      vr->Set_low (stmt->Rhs()->Const_val ());
     }
   }
+  else {
+     // Not yet supported non-const lower bound.
+  }
 
-  // Find the upper bound
+  // Now, determine the uppper bound
   CODEREP* trip = _loop->Trip_count_expr();
   if (trip) {
     if (trip->Kind() == CK_CONST && vr->Low_is_const ()) {
       vr->Set_high (trip->Const_val() + vr->Low_val() - 1);
     }
-  } else {
-    INT upperbound; 
-    if (Get_iv_upperbound (upperbound)) {
-      vr->Set_high (upperbound);
-    }
   }
+  else
+    Get_iv_upperbound(iv,vr);
 
   _val_range_map.Insert (var, vr);
   *val = *vr;
@@ -1331,15 +1558,25 @@ ADDR_LINEAR_EXPR::Get_range
     VAR_VAL_RANGE t;
     loopinfo->Analyze_var_value_range (Var(), Var_ver(), &t);
 
-    if (t.Low_is_const() && t.High_is_const()) {
-      INT low = Coefficient() * t.Low_val() + Const_part ();
-      INT high = Coefficient() * t.High_val() + Const_part ();
+    if (!t.Low_is_invalid() && !t.High_is_invalid()) {
+      if (t.Low_is_const()) {
+        INT low = Coefficient() * t.Low_val() + Const_part ();
+        low = MIN(low, Const_part ());
+        vr->Set_low (low);
+      }
+      else
+        ; // Non-const lower bound not supported yet....
 
-      low = MIN(low, Const_part ());
-      high = MAX(high, Const_part ());
-
-      vr->Set_low (low);
-      vr->Set_high (high);
+      if (t.High_is_const()) {
+        INT high = Coefficient() * t.High_val() + Const_part ();
+        high = MAX(high, Const_part ());
+        vr->Set_high (high);
+      }
+      else {
+        vr->Set_high(t.High_cr());
+        if (t.High_is_cr_subone())
+          vr->Set_high_is_cr_subone();
+      }
     }
   }
 }
@@ -1490,7 +1727,7 @@ ADDR_LINEAR_EXPR::Print (FILE* f) {
     fprintf (f, "%d ", Const_val());
   } else if (Is_nonconst ()) { 
     fprintf (f, "%d*aux%dv%d+%d ", Coefficient (),
-             (INT)Var(), (INT)Var_ver(), Const_val());   
+             (INT)Var(), (INT)Var_ver(), Const_part());
   } else {
     fprintf (f, "invalid ");
   }
@@ -1523,4 +1760,42 @@ MEM_RANGE::Print (FILE* f) {
 }
 
 void VAR_VAL_RANGE::Print(FILE* f) {
+  if (Low_is_const())
+    fprintf(f,"low: %d,",Low_val());
+  else if (Low_is_cr()) {
+    fprintf(f,"low: aux%dv%d,",Low_cr()->Aux_id(),Low_cr()->Version());
+  }
+  else
+    fprintf(f,"low: invalid,");
+  if (High_is_const())
+     fprintf(f,"high: %d\n",High_val());
+   else if (High_is_cr()) {
+     fprintf(f,"high: aux%dv%d",High_cr()->Aux_id(),High_cr()->Version());
+     if (High_is_cr_subone())
+       fprintf(f,"-1");
+     fprintf(f,"\n");
+   }
+   else
+     fprintf(f,"high: invalid\n");
+}
+
+void LMV_CANDIDATE::Print_mem_groups(FILE *f)
+{
+  for (MEM_GROUP_VECT_CITER val_iter = Mem_groups().begin();
+      val_iter != Mem_groups().end(); val_iter++) {
+      (*val_iter)->Print(f);
+  }
+}
+
+void MEM_GROUP::Print(FILE *f)
+{
+  fprintf(f,"Write: %d\n",Write());
+  fprintf(f,"Accesses:\n");
+  // go through all MEM_ACCESS
+  for (MEM_ACCESS_VECT_ITER iter = Mem_accesses().begin();
+      iter != Mem_accesses().end(); iter++) {
+    (*iter)->Print(f);
+  }
+  fprintf(f,"Range:\n");
+  Mem_range()->Print(f);
 }

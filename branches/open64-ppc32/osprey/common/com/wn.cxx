@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -1537,7 +1541,8 @@ WN *WN_CreateXpragma(WN_PRAGMA_ID pragma_name, ST_IDX st, INT16 kid_count)
   WN_pragma(wn) = pragma_name;
   WN_st_idx(wn) = st;
   WN_pragma_flags(wn) = 0;
-  WN_pragma_arg64(wn) = 0;
+  WN_pragma_arg2(wn) = 0;
+  WN_kid(wn, 0) = NULL;
 
   return(wn);
 }
@@ -2555,6 +2560,7 @@ WN *WN_UVConst( TYPE_ID type)
   case MTYPE_M8I1:
   case MTYPE_M8I2:
   case MTYPE_V8I4:
+  case MTYPE_V8I8:
   case MTYPE_M8I4:
 #endif
     return Make_Const (Host_To_Targ_UV(type));

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -189,7 +189,10 @@ BOOL CG_file_scope_asm_seen = FALSE;
 
 BOOL gra_pre_create = TRUE;
 #ifdef TARG_X8664
+BOOL PU_has_local_dynamic_tls;
+TN*  Local_Dynamic_TLS_Base;
 BOOL PU_References_GOT;  // for -m32 -fpic
+BOOL PU_has_avx128;      // cause emit of vzeroupper 
 #endif
 
 BOOL edge_done = FALSE;
@@ -267,6 +270,10 @@ CG_PU_Initialize (WN *wn_pu)
       CG_load_execute = 1;
     }
   }
+
+  // for local dynamic tls, all tls objects can share the same base
+  PU_has_local_dynamic_tls = FALSE;
+  Local_Dynamic_TLS_Base = NULL;
 
   PU_References_GOT = FALSE;
 
@@ -1708,6 +1715,10 @@ extern void Generate_Return_Address(void);
   Finalize_Optimized_LRA_And_EBO();
 #endif
   IGLS_Schedule_Region (FALSE /* after register allocation */);
+  // use cflow to handle branch fusing cmp/jcc for Orochi and greater.
+  if (Is_Target_Orochi()) {
+    CFLOW_Optimize(CFLOW_BR_FUSE, "CFLOW (fifth pass)");
+  }
 #endif
 #endif
 
@@ -1727,10 +1738,15 @@ extern void Generate_Return_Address(void);
 #ifdef TARG_X8664
   {
     /* Perform compute-to opts. */
-    if (Is_Target_Barcelona() && CG_compute_to) {
+    if ((Is_Target_Barcelona() || Is_Target_Orochi()) && CG_compute_to) {
       for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){
         EBO_Compute_To(bb);
       }
+    }
+
+    // Generate merge dependency clear if avx128 is being used.
+    if (Is_Target_Orochi() && Is_Target_AVX() && PU_has_avx128) {
+      Generate_Entry_Merge_Clear(region);
     }
 
     /* Convert all the x87 regs to stack-like regs. */
@@ -1739,6 +1755,9 @@ extern void Generate_Return_Address(void);
 
     /* When a function returns a structure under -m32, the value of SP will be
        increased by 4 bytes.
+       For a function which has stdcall or fastcall attrubute, the SP also
+       will be adjusted by the same amount which popped at the function
+       return time. 
     */
     if( Is_Target_32bit() ){
       for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){

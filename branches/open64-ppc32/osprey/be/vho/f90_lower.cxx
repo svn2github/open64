@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -3839,13 +3843,23 @@ static BOOL F90_Do_Copies(WN *stmt, WN *block)
 	 }
 	 WN_kid0(assignment) = new_rhs;
       } else {
-	 /* It's a CASSIGNSTMT statement, create an MLOAD of the RHS (kid1), and move
+	 /* It's a CASSIGNSTMT or CALL statement, create an MLOAD of the RHS (kid1), and move
 	  * it to a temp.
 	  */
+	 TY_IDX ety;
+	 WN *wn_size;
 	 copy_adata = F90_Lower_Copy_Aux_Data(adata);
 	 rhs = WN_kid0(WN_kid1(assignment));
-	 ty = WN_ty(WN_kid0(assignment));
-	 rhs = WN_CreateMload(0,ty,rhs,WN_COPY_Tree(WN_kid0(WN_kid(assignment,3)))); 
+	 if (assign_opr == OPR_CALL)
+	 {
+	    ety = TY_AR_etype(ST_type(WN_st(WN_kid0(WN_kid0(rhs)))));
+	    wn_size = WN_CreateIntconst(OPCint, TY_size(ety));
+	    ty = Make_Pointer_Type(ety);
+	 } else {
+	    ty = WN_ty(WN_kid0(assignment));
+	    wn_size = WN_COPY_Tree(WN_kid0(WN_kid(assignment,3)));
+	 }
+	 rhs = WN_CreateMload(0,ty,rhs, wn_size); 
 	 new_rhs = F90_Lower_Copy_To_ATemp(&ALLOC_PRELIST(copy_adata), &DEALLOC_POSTLIST(adata),
 					   &copy_store,rhs,
 					   ITER_COUNT_PTR(adata), NDIM(adata));

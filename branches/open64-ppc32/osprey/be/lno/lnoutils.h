@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -890,7 +890,7 @@ extern void Constant_Propogate(WN *stid, INT64 const_val);
 extern WN* Messy_Subscript(WN* wn_array);
 extern void Replace_Index_Variable(WN* loop, WN* cp_loop, const char prefix[]);
 extern WN* Enclosing_Proper_Do_Loop(WN* wn_ref);
-extern void Create_Single_Region(WN* wn_single, WN* wn_end); 
+extern void Create_Single_Region(WN* wn_parent, WN* wn_single, WN* wn_end); 
 
 #ifdef Is_True_On
 extern void LNO_Check_Du(WN* orig);
@@ -899,7 +899,11 @@ extern void  MP_Sanity_Check_Func(WN *func_nd);
 #endif
 
 #ifdef TARG_X8664 //introduced by bug 10953
-extern WN *Simple_Invariant_Stride_Access(WN *array, WN *loop);
+extern WN *Inductive_Base_Addr_Const_Stride(WN *array, WN *loop, WN **base, 
+               BOOL *inductive_use, BOOL *indirect_base, mINT32 *stride_val);
+
+extern WN *Simple_Invariant_Stride_Access(WN *array, WN *loop, BOOL ck_induc_base,
+                                  BOOL *inductive_use, BOOL *indirect_use);
 #endif
 
 #endif // LNOUTILS_DECLARE

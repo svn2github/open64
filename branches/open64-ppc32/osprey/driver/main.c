@@ -523,15 +523,6 @@ main (int argc, char *argv[])
 	    add_option_seen(O_fcxx_openmp);
 	    toggle(&fcxx_openmp,1);
 	  }
-	} else {	// not GNU 4
-	  if (option_was_seen(O_fgnu_exceptions) ||	// bug 11732
-	      option_was_seen(O_fno_gnu_exceptions)) {
-	    warning("ignored -fgnu-exceptions/-fno-gnu-exceptions because"
-		    " option is for GNU GCC 4 only");
-	    set_option_unseen(O_fgnu_exceptions);
-	    set_option_unseen(O_fno_gnu_exceptions);
-	    gnu_exceptions = UNDEFINED;
-	  }
 	}
 
 	// Select the appropriate GNU version front-end.
@@ -636,6 +627,7 @@ main (int argc, char *argv[])
 		if ( option_was_seen(O_E) 
 			|| (source_lang != L_NONE && source_kind != S_o)) 
 		{
+		        run_inline = UNDEFINED;
 			run_compiler(argc, argv);
 		}
 		else {
@@ -1067,6 +1059,9 @@ print_defaults(int argc, char *argv[])
   else
     fprintf(stderr, " -O%d", olevel);
 
+  if (oscale == TRUE)
+      fprintf(stderr, "-mso");
+
   // target CPU
   if (target_cpu != NULL)
     fprintf(stderr, " -mcpu=%s", target_cpu);
@@ -1096,6 +1091,17 @@ print_defaults(int argc, char *argv[])
   fprintf(stderr, " %s", sse3 == TRUE ? "-msse3" : "-mno-sse3");
   fprintf(stderr, " %s", m3dnow == TRUE ? "-m3dnow" : "-mno-3dnow");
   fprintf(stderr, " %s", sse4a == TRUE ? "-msse4a" : "-mno-sse4a");
+  // SSSE3, SSE41, SSE42
+  fprintf(stderr, " %s", ssse3 == TRUE ? "-mssse3" : "-mno-ssse3");
+  fprintf(stderr, " %s", sse41 == TRUE ? "-msse41" : "-mno-sse41");
+  fprintf(stderr, " %s", sse42 == TRUE ? "-msse42" : "-mno-sse42");
+  // AES, PCLMUL
+  fprintf(stderr, " %s", aes == TRUE ? "-maes" : "-mno-aes");
+  fprintf(stderr, " %s", pclmul == TRUE ? "-mpclmul" : "-mno-pclmul");
+  // AVX, XOP, FMA4
+  fprintf(stderr, " %s", avx == TRUE ? "-mavx" : "-mno-avx");
+  fprintf(stderr, " %s", xop == TRUE ? "-mxop" : "-mno-xop");
+  fprintf(stderr, " %s", fma4 == TRUE ? "-mfma4" : "-mno-fma4");
 #endif
 
   // -gnu3/-gnu4

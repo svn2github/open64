@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -2172,6 +2176,14 @@ void directive_stmt_semantics(void)
 #endif /* KEY Bug 10441 */
          open_mp_directive_semantics(Single_Omp);
          break;
+         
+      case  Parallelworkshare_Open_Mp_Opr:
+        open_mp_directive_semantics(Parallel_Workshare_Omp);
+        break;
+        
+      case Endparallelworkshare_Open_Mp_Opr:
+        end_blk_mp_semantics(TRUE);
+        break;
 
    }
 
@@ -5968,6 +5980,26 @@ static void open_mp_directive_semantics(open_mp_directive_type directive)
                }
                else {
 	          ATD_TASK_REDUCTION(attr_idx) = TRUE;
+
+                if (ATD_CLASS(attr_idx) == Variable &&
+                    ATD_AUTOMATIC(attr_idx) &&
+                    ATD_AUTO_BASE_IDX(attr_idx) != NULL_IDX &&
+                    ! ATD_TASK_REDUCTION(ATD_AUTO_BASE_IDX(attr_idx))) {
+
+                     ATD_TASK_REDUCTION(ATD_AUTO_BASE_IDX(attr_idx)) = TRUE;
+
+                     NTR_IR_LIST_TBL(list3_idx);
+                     IL_PREV_LIST_IDX(IL_IDX(list_idx)) = list3_idx;
+                     IL_NEXT_LIST_IDX(list3_idx) = IL_IDX(list_idx);
+                     IL_IDX(list_idx) = list3_idx;
+                     IL_LIST_CNT(list_idx)++;
+
+                     IL_FLD(list3_idx) = AT_Tbl_Idx;
+                     IL_IDX(list3_idx) = ATD_AUTO_BASE_IDX(attr_idx);
+                     IL_LINE_NUM(list3_idx) = IL_LINE_NUM(list2_idx);
+                     IL_COL_NUM(list3_idx) = IL_COL_NUM(list2_idx);
+              }
+
 	       }
        
 	       list2_idx = IL_NEXT_LIST_IDX(list2_idx);

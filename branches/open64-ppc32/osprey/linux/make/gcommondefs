@@ -185,7 +185,7 @@ ifeq ($(BUILD_COMPILER), OSP)
   CCNAME = opencc
   C++NAME = openCC
   F90 = openf90
-  F90_RTLIBS = -lfortran
+  F90_RTLIBS = -Wl,-Bstatic -lfortran -Wl,-Bdynamic
 
   ifeq ($(BUILD_TARGET), X8664)
     CCNAME  += -march=anyx86

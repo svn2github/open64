@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -371,11 +375,16 @@ typedef enum {
   TN_RELOC_X8664_TPOFF32    = 0x34,	 /* thread-local storage (TLS) */
   TN_RELOC_X8664_TPOFF32_seg_reg = 0x35, /* like above, with segment register */
   TN_RELOC_X8664_GOTTPOFF   = 0x36,	 /* TLS with GOT entry */
+  TN_RELOC_X8664_GOTNTPOFF  = 0x37,      /* TLS with GOT entry under PIC */
+  TN_RELOC_X8664_DTPOFF     = 0x38,      /* Local Dynamic TLS */
+  TN_RELOC_X8664_TLSGD      = 0x39,      /* Global Dynamic TLS */
+  TN_RELOC_X8664_TLSLD      = 0x3a,      /* Local Dynamic TLS  */
 
 				     /* IA-32 relocations start at 0x40 */
   TN_RELOC_IA32_ALL   = 0x40,	     /* All 32 bits of a symbol value. */
   TN_RELOC_IA32_GOT   = 0x41,
-  TN_RELOC_IA32_GLOBAL_OFFSET_TABLE = 0x42
+  TN_RELOC_IA32_GLOBAL_OFFSET_TABLE = 0x42,
+  TN_RELOC_IA32_GOTOFF              = 0x43   /* 32 bit offset to GOT */
 #endif
 #if defined(TARG_SL)
 TN_RELOC_GPREL_V1 = 0x41,
@@ -421,7 +430,23 @@ inline TN * CAN_USE_REG_TN (const TN *t)
 #define     TN_size(t)		(CAN_USE_TN(t)->size+0)
 #define Set_TN_size(t,x)	(CAN_USE_TN(t)->size = (x))
 #define     TN_number(t)	(CAN_USE_REG_TN(t)->u1.reg_tn.number+0)
-#define Set_TN_number(t,x)	(CAN_USE_REG_TN(t)->u1.reg_tn.number = (x))
+
+#ifdef Is_True_On
+extern int trace_tn_number_;
+extern void set_trace_tn(int n);
+extern void reset_trace_tn();
+extern void gdb_stop_here();
+#endif
+
+inline void  Set_TN_number(TN *t, int x)
+{
+   (CAN_USE_REG_TN(t)->u1.reg_tn.number = (x));
+#ifdef Is_True_On
+   if (trace_tn_number_ == x)
+      gdb_stop_here();
+#endif
+}
+
 #define	    TN_class_reg(t)	(CAN_USE_REG_TN(t)->u1.reg_tn.class_reg)
 #define	Set_TN_class_reg(t,x)	(CAN_USE_REG_TN(t)->u1.reg_tn.class_reg = (x))
 #define     TN_register(t)	\

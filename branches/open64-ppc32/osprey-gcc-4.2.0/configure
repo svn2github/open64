@@ -1643,7 +1643,7 @@ case "${target}" in
     noconfigdirs="$noconfigdirs target-libiberty target-libstdc++-v3 ${libgcj}"
     ;;
   *-*-linux* | *-*-gnu* | *-*-k*bsd*-gnu)
-    noconfigdirs="$noconfigdirs target-newlib target-libgloss target-libstdc++-v3"
+    noconfigdirs="$noconfigdirs target-newlib target-libgloss"
     ;;
   *-*-lynxos*)
     noconfigdirs="$noconfigdirs target-newlib target-libgloss ${libgcj}"

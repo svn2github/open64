@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1778,7 +1778,11 @@ static TN_LIST *Count_Copies_Needed(BB *body, hTN_MAP tn_def_map,
     for (INT opnd = OP_opnds(op) - 1; opnd >= 0; --opnd) {
       TN *tn = OP_opnd(op, opnd);
       if ( ! TN_is_register(tn)) continue;
-      INT copies = OP_omega(op, opnd);
+      INT copies;
+      if( NULL == _CG_LOOP_info(op))
+        copies=0;
+      else
+        copies = OP_omega(op, opnd);
       OP *tn_def_op = (OP *) hTN_MAP_Get(tn_def_map, tn);
       if (tn_def_op == NULL || (tn_def_op == op && copies == 1))
 	--copies;
@@ -2613,7 +2617,7 @@ static void note_not_unrolled(BB *head, const char *reason, ...)
 
 
 
-inline UINT16 log2(UINT32 n)
+inline UINT16 log2_u32(UINT32 n)
 /* -----------------------------------------------------------------------
  * Requires: n > 0.
  * Return the base-2 logarithm of <n> (truncated if <n> isn't a power of
@@ -2665,14 +2669,14 @@ static void unroll_guard_unrolled_body(LOOP_DESCR *loop,
 
     /* We know <orig_trip_count_tn's> value is positive, and <ntimes> is a power
    * of two, so we can divide <orig_trip_count_tn> by <ntimes> with:
-   *   <new_trip_count_tn> <- [d]sra <orig_trip_count_tn> log2(ntimes)
+   *   <new_trip_count_tn> <- [d]sra <orig_trip_count_tn> log2_u32(ntimes)
    * and guard the unrolled loop with:
    *   beq continuation_lbl <new_trip_count_tn> 0
    */
     Exp_OP2(trip_size == 4 ? OPC_I4ASHR : OPC_I8ASHR,
 	    new_trip_count_tn,
 	    orig_trip_count_tn,
-	    Gen_Literal_TN(log2(ntimes), trip_size),
+	    Gen_Literal_TN(log2_u32(ntimes), trip_size),
 	    &ops);
 #ifdef TARG_X8664 //bug 12956: x8664/exp_branch.cxx does not accept Zero_TN
     Exp_OP3v(OPC_FALSEBR,
@@ -2729,6 +2733,7 @@ static void unroll_xfer_annotations(BB *unrolled_bb, BB *orig_bb)
 {
   if (BB_has_pragma(orig_bb)) {
     BB_Copy_Annotations(unrolled_bb, orig_bb, ANNOT_PRAGMA);
+    BB_Copy_Annotations(unrolled_bb, orig_bb, ANNOT_INLINE);
   }
 
   if (BB_exit(orig_bb)) {
@@ -4380,6 +4385,14 @@ static BOOL unroll_multi_bb(LOOP_DESCR *loop, UINT8 ntimes)
     unroll_guard_unrolled_body(loop, unrolled_info, trip_count_tn, ntimes);
   }
 
+  /* Fixup epilog backpatches.  Replace body TNs and omegas as if
+   * they're uses in the last unrolling.
+   */
+  unroll_rename_backpatches(CG_LOOP_Backpatch_First(CG_LOOP_epilog, NULL),
+                           ntimes-1, ntimes);
+   
+  CG_LOOP_Remove_Notations(loop, CG_LOOP_prolog, CG_LOOP_epilog);
+  
   unroll_names_finish();
 
   if (trace_general) {
@@ -4640,7 +4653,7 @@ void Unroll_Do_Loop(CG_LOOP& cl, UINT32 ntimes)
       Exp_OP2(trip_size == 4 ? OPC_I4ASHR : OPC_I8ASHR,
 	      unrolled_trip_count,
 	      trip_count_tn,
-	      Gen_Literal_TN(log2(ntimes), trip_size),
+	      Gen_Literal_TN(log2_u32(ntimes), trip_size),
 	      &ops);
     else
       Exp_OP2(trip_size == 4 ? OPC_U4DIV : OPC_U8DIV,
@@ -5032,6 +5045,29 @@ bool CG_LOOP::Determine_Unroll_Fully(BOOL count_multi_bb)
     return false;
   }
 
+  // filter out those loops in which indirect branch has a succ
+  // that is inside the loop, because unroll_multi_bb could not
+  // handle such loops. Here, the check is  
+  // the same as in line 4214 (i.e., not yet retargeting
+  // intra-loop indirect branches)
+  BB *loop_bb;
+  FOR_ALL_BB_SET_members(LOOP_DESCR_bbset(loop), loop_bb) {
+    WN *stmt = BB_branch_wn(loop_bb);
+    OP *br_op = BB_branch_op(loop_bb);
+    if (stmt != NULL && 
+        (!br_op || !TN_is_label(OP_opnd(br_op, Branch_Target_Operand(br_op)))))
+    {
+      BBLIST *succs;
+      FOR_ALL_BB_SUCCS(loop_bb, succs) {
+        BB *succ = BBLIST_item(succs);
+        if (BB_SET_MemberP(LOOP_DESCR_bbset(loop), succ))
+        {
+          return false;
+        }
+      }
+    }
+ }   
+  
   // This preserves the legacy behavior
   if (count_multi_bb) {
     BB *cur_bb;
@@ -5153,7 +5189,7 @@ void CG_LOOP::Determine_Unroll_Factor()
       UINT32 ntimes = OPT_unroll_times;
       ntimes = MIN(ntimes, CG_LOOP_unroll_times_max);
       if (!is_power_of_two(ntimes)) {
-	ntimes = 1 << log2(ntimes); 
+	ntimes = 1 << log2_u32(ntimes); 
 	if (trace)
 	  fprintf(TFile, "<unroll> rounding down to power of two = %d times\n", ntimes);
       }
@@ -6418,12 +6454,19 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup,
     SINGLE_BB_WHILELOOP_UNROLL,
     MULTI_BB_DOLOOP
   };
+  BOOL have_multiversion = FALSE;
 
 #ifdef TARG_IA64  
   if(IPFEC_Enable_Region_Formation){
       if(Home_Region(LOOP_DESCR_loophead(loop))->Is_No_Further_Opt())
           return FALSE;
   }
+#endif
+
+#ifdef TARG_X8664
+  LOOPINFO *info = LOOP_DESCR_loopinfo(loop);
+  UINT32 saved_unrolled_size_max;
+  UINT32 saved_unroll_times_max;
 #endif
 
   if (CG_LOOP_unroll_level == 0)
@@ -6502,6 +6545,17 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
            return FALSE;
   }
 #endif
+
+#ifdef TARG_X8664
+  if (info && LOOPINFO_multiversion(info)) {
+    saved_unrolled_size_max = CG_LOOP_unrolled_size_max;
+    saved_unroll_times_max = CG_LOOP_unroll_times_max;
+    have_multiversion = TRUE;
+    CG_LOOP_unrolled_size_max = 256;
+    CG_LOOP_unroll_times_max = 8;
+  }
+#endif
+
   switch (action) {
 #ifdef TARG_IA64
   case SINGLE_BB_DOLOOP_SWP_OR_UNROLL:
@@ -6759,7 +6813,7 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
       }
 
       Gen_Counted_Loop_Branch(cg_loop);
-      if (CG_LOOP_unroll_level == 2) {
+      if ((CG_LOOP_unroll_level == 2) || (have_multiversion)) {
 
         cg_loop.Recompute_Liveness();
         cg_loop.Build_CG_LOOP_Info(FALSE);
@@ -6795,6 +6849,13 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
   default:
     Is_True(FALSE, ("unknown loop opt action."));
   }
+
+#ifdef TARG_X8664
+  if (info && LOOPINFO_multiversion(info)) {
+    CG_LOOP_unrolled_size_max = saved_unrolled_size_max;
+    CG_LOOP_unroll_times_max =  saved_unroll_times_max;
+  }
+#endif
 
   return TRUE;
 }

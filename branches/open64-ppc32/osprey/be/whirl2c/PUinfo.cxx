@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -289,12 +293,22 @@ Mtype_to_Ukind(MTYPE mtype)
    case MTYPE_V8I1:
    case MTYPE_V8I2:
    case MTYPE_V8I4:
+   case MTYPE_V8I8:
    case MTYPE_V8F4:
 
    case MTYPE_M8I1:
    case MTYPE_M8I2:
    case MTYPE_M8I4:
    case MTYPE_M8F4:
+
+   case MTYPE_V32C4:
+   case MTYPE_V32C8:
+   case MTYPE_V32I1:
+   case MTYPE_V32I2:
+   case MTYPE_V32I4:
+   case MTYPE_V32I8:
+   case MTYPE_V32F4:
+   case MTYPE_V32F8:
      ukind = PREG_AS_IEEE64;
      break;
 #endif
@@ -1065,7 +1079,8 @@ Accumulate_Expr_PUinfo(WN *root)
 	 case OPR_LDID:
 	    if (ST_sym_class(WN_st(wn)) == CLASS_PREG)
 	    {
-	       Accumulate_Preg_Info(ST_type(WN_st(wn)), WN_load_offset(wn));
+              if (!IS_RETURN_PREG(wn))
+                Accumulate_Preg_Info(ST_type(WN_st(wn)), WN_load_offset(wn));
 
 	       /* If we encounter an unexpected load of a return
 		* register, then update the CALLSITE to indicate that

@@ -190,20 +190,43 @@ INSTALL_DRIVER () {
     return 0
 }
 
+# Install internal gcc distribution
+INSTALL_GCC () {
+    pushd ${GNUFE42_AREA}
+
+    for j in '*/*' '*/*/*' '*/*/*/*' '*/*/*/*/*' '*/*/*/*/*/*' '*/*/*/*/*/*/*' '*/*/*/*/*/*/*/*'; do
+        for i in open64-gcc-4.2.0/$j; do
+            if [ -e $i ] && [ ! -d $i ]; then
+                INSTALL_EXEC_SUB $i ${ROOT}/$i
+            fi
+        done
+    done
+
+    # Make links to gcc runtime libraries
+    cd ${ROOT}
+    for i in open64-gcc-4.2.0/lib64/lib*.so*; do
+        (cd $PHASEPATH; ln -sf ../../../../$i `basename $i`)
+    done
+    for i in open64-gcc-4.2.0/lib/lib*.so*; do
+        (cd $PHASEPATH/32; ln -sf ../../../../../$i `basename $i`)
+    done
+
+    popd
+
+    return 0
+}
+
 # Install front-end components
 INSTALL_FE () {
 
     # GNU3 based FE
     INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
     INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
-    # GNU 4.0.2 based FE
-    INSTALL_EXEC_SUB ${AREA}/wgen/wgen ${PHASEPATH}/wgen
-    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1 ${PHASEPATH}/cc1
-    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1plus ${PHASEPATH}/cc1plus
     # GNU 4.2.0 based FE
     INSTALL_EXEC_SUB ${AREA}/wgen_4_2_0/wgen42 ${PHASEPATH}/wgen42
-    INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc142 ${PHASEPATH}/cc142
-    INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc1plus42 ${PHASEPATH}/cc1plus42
+    LIBEXEC=libexec/gcc/x86_64-redhat-linux/4.2.0
+    (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1 cc142)
+    (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1plus cc1plus42)
 
     if [ -f ${AREA}/crayf90/sgi/mfef95 ] ; then 
       INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef95   ${PHASEPATH}/mfef95
@@ -361,38 +384,29 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         LIB32AREA=osprey/targia32_builtonia32
         # 64bit libraries
         INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a
+        INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.so ${PHASEPATH}/libfortran.so
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
+        INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.so          ${PHASEPATH}/libffio.so
         #INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.so.1           ${PHASEPATH}/libmv.so.1
         INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
         INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.so.1      ${PHASEPATH}/libopenmp.so.1
-        if [ -f libacml_mv/libacml_mv.a ] ; then
-            INSTALL_DATA_SUB libacml_mv/libacml_mv.a ${PHASEPATH}/libacml_mv.a
-            INSTALL_DATA_SUB libacml_mv/LICENSE-LIBACML_MV ${PHASEPATH}/LICENSE-LIBACML_MV
-        fi
+        INSTALL_DATA_SUB ${LIBAREA}/libacml_mv/libacml_mv.a ${PHASEPATH}/libacml_mv.a
         # 32bit libraries
         INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.a ${PHASEPATH}/32/libfortran.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.so ${PHASEPATH}/32/libfortran.so
         INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.so          ${PHASEPATH}/32/libffio.so
         #INSTALL_DATA_SUB ${LIB32AREA}/libm/libmsgi.a       ${PHASEPATH}/32/libmsgi.a
         INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.a           ${PHASEPATH}/32/libmv.a
         INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.so.1           ${PHASEPATH}/32/libmv.so.1
         INSTALL_DATA_SUB ${LIB32AREA}/libopenmp/libopenmp.a      ${PHASEPATH}/32/libopenmp.a
         INSTALL_DATA_SUB ${LIB32AREA}/libopenmp/libopenmp.so.1      ${PHASEPATH}/32/libopenmp.so.1
+        INSTALL_DATA_SUB ${LIB32AREA}/libacml_mv/libacml_mv.a ${PHASEPATH}/32/libacml_mv.a
 
         (cd ${PHASEPATH}; ln -sf libmv.so.1 libmv.so; ln -sf libopenmp.so.1 libopenmp.so)
         (cd ${PHASEPATH}/32; ln -sf libmv.so.1 libmv.so; ln -sf libopenmp.so.1 libopenmp.so)
-
-        # The special processing of the -lm option in the compiler driver should
-        # be delayed until all of the options have been parsed.  Until the
-        # driver is cleaned up, it is important that processing be the same on
-        # all architectures.  Thus we add an empty 32 bit ACML vector math
-        # library.
-        if [ -f libacml_mv/libacml_mv.a -a ! -f ${PHASEPATH}/32/libacml_mv.a ] ; then
-	    ar rc ${PHASEPATH}/32/libacml_mv.a
-	    echo An empty 32-bit libacml_mv.a was added to work around a problem > ${PHASEPATH}/32/README_ACML
-	    echo with the Open64 compiler driver. >> ${PHASEPATH}/32/README_ACML
-	fi
     fi 
     return 0
 }
@@ -541,6 +555,7 @@ INSTALL_MISC () {
         INSTALL_EXEC_SUB ${AREA}/targ_info/core.so ${PHASEPATH}/core.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/wolfdale.so ${PHASEPATH}/wolfdale.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/barcelona.so ${PHASEPATH}/barcelona.so
+        INSTALL_EXEC_SUB ${AREA}/targ_info/orochi.so ${PHASEPATH}/orochi.so
     fi
 #    if [ ! -z "$ROOT" ] ; then
 #        for i in gcc f77 as ld g++ gas as ; do
@@ -567,6 +582,7 @@ if [ "$TARG_HOST" = "x8664" -a ! -d "${NATIVE_LIB_DIR}/32" ]; then
 fi
 
 INSTALL_DRIVER 
+INSTALL_GCC
 INSTALL_FE 
 INSTALL_BE 
 INSTALL_IPA 

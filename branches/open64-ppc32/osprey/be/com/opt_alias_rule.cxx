@@ -457,20 +457,27 @@ static hash_map<const TY_IDX, INT, __gnu_cxx::hash<TY_IDX>, TY_IDX_EQ> Stripped_
 #endif
 
 #ifdef TARG_X8664
-#define I1_VECTOR_TYPES    case MTYPE_V16I1: \
+#define I1_VECTOR_TYPES    case MTYPE_V32I1: \
+                           case MTYPE_V16I1: \
                            case MTYPE_V8I1:  \
                            case MTYPE_M8I1:
-#define I2_VECTOR_TYPES    case MTYPE_V16I2: \
+#define I2_VECTOR_TYPES    case MTYPE_V32I2: \
+                           case MTYPE_V16I2: \
                            case MTYPE_V8I2:  \
                            case MTYPE_M8I2:
-#define I4_VECTOR_TYPES    case MTYPE_V16I4: \
+#define I4_VECTOR_TYPES    case MTYPE_V32I4: \
+                           case MTYPE_V16I4: \
                            case MTYPE_V8I4:  \
                            case MTYPE_M8I4:
-#define I8_VECTOR_TYPES    case MTYPE_V16I8:
-#define F4_VECTOR_TYPES    case MTYPE_V16F4: \
+#define I8_VECTOR_TYPES    case MTYPE_V32I8: \
+                           case MTYPE_V16I8: \
+                           case MTYPE_V8I8:
+#define F4_VECTOR_TYPES    case MTYPE_V32F4: \
+                           case MTYPE_V16F4: \
                            case MTYPE_V8F4:  \
                            case MTYPE_M8F4:
-#define F8_VECTOR_TYPES    case MTYPE_V16F8:
+#define F8_VECTOR_TYPES    case MTYPE_V32F8: \
+                           case MTYPE_V16F8:
 #else
 #define I1_VECTOR_TYPES
 #define I2_VECTOR_TYPES
@@ -790,6 +797,17 @@ BOOL ALIAS_RULE::Aliased_Disjoint(const POINTS_TO *mem1, const POINTS_TO *mem2) 
 //
 BOOL ALIAS_RULE::Same_location(const WN *wn1, const WN *wn2, const POINTS_TO *mem1, const POINTS_TO *mem2) const
 {
+  // The analysis performed in Same_location is quite weak and assumes
+  // that no dependence analysis is done.  This wasn't recognized
+  // early since Same_location returns FALSE for references to arrays
+  // with more than one element.  The problem is exposed for single
+  // element arrays, which are sometimes used in Fortran 77 to
+  // implement dynamic array allocation (that is, in each reference to
+  // the allocated array, an index base appears as a term in the
+  // index expression, where the index base points to the first
+  // element of the allocated array).
+  if (mem1->Is_array())
+    return FALSE;
   if (mem1->Same_base(mem2) &&
       mem1->Ofst_kind() == OFST_IS_FIXED &&
       mem2->Ofst_kind() == OFST_IS_FIXED &&

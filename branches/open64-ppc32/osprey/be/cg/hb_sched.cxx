@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -2918,7 +2922,15 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
 
     //    Is_True(cur_time < cycle_fn->Bound(),("Invalid cycle boundary, HB_SCHED"));
 
+    // bug fixed for 15264. After this loop, the process of Inserting the scheduled list
+    // assume that "Clock" be the smallest scycle of all the scheduled op in this bb. But Clock
+    // may not be when if the first few ops are independency. So use min_clock to record the 
+    // smallest scycle. 
+    INT min_clock;
+    min_clock = Clock;
     Add_OP_To_Sched_Vector(cur_op, priority_fn->Is_Fwd_Schedule());
+    if (! priority_fn->Is_Fwd_Schedule())
+      Clock = MIN(min_clock, Clock);
   }
     
   if( BB_length(bb) != VECTOR_count(_sched_vector) ){

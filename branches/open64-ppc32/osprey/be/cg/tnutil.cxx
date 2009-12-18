@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -200,6 +204,20 @@ TN **TN_Vec = NULL;		/* TN_number (TN_Vec[i]) == i */
 
 
 static TN_LIST *Hash_Table[HASH_TABLE_SIZE];
+
+#ifdef Is_True_On
+int trace_tn_number_ = -1;
+
+void set_trace_tn(int n) { trace_tn_number_ = n; }
+
+void reset_trace_tn() { trace_tn_number_ = -1; }
+
+void gdb_stop_here()
+{
+   return ;
+}
+
+#endif
 
 
 /* ====================================================================
@@ -411,6 +429,7 @@ static TN *f10_ded_tns[REGISTER_MAX + 1];
 #ifdef KEY
 #ifndef TARG_NVISA
 static TN *v16_ded_tns[REGISTER_MAX + 1];
+static TN *v32_ded_tns[REGISTER_MAX + 1];
 static TN *i1_ded_tns[REGISTER_MAX + 1];
 static TN *i2_ded_tns[REGISTER_MAX + 1];
 static TN *i4_ded_tns[REGISTER_MAX + 1];
@@ -593,9 +612,13 @@ Init_Dedicated_TNs (void)
 	Set_TN_size(f10_ded_tns[reg], 16);
 
 #endif
-#ifdef KEY
+#if defined(TARG_X8664)
+        ++tnum;
         v16_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
   	Set_TN_size(v16_ded_tns[reg], 16);
+        ++tnum;
+        v32_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
+        Set_TN_size(v32_ded_tns[reg], 32);
 #endif
     }
 
@@ -670,6 +693,7 @@ Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
       case 4:  return f4_ded_tns[reg];
 #if defined(TARG_X8664) 
       case 16: return v16_ded_tns[reg];
+      case 32: return v32_ded_tns[reg];
 #endif // TARG_X8664
     }
   }
@@ -717,7 +741,7 @@ Gen_Register_TN (ISA_REGISTER_CLASS rclass, INT size)
   	Check_TN_Vec_Size ();
   	Set_TN_number(tn,++Last_TN);
   	TNvec(Last_TN) = tn;
-  	if ( size > 16 ) ErrMsg ( EC_TN_Size, size );
+  	if ( size > 32 ) ErrMsg ( EC_TN_Size, size );
   	Set_TN_size(tn, size);
 #if !defined(TARG_SL)
   	if ( rclass == ISA_REGISTER_CLASS_float)  Set_TN_is_float(tn);

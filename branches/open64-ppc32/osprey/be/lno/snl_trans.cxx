@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -550,8 +554,8 @@ extern void Print_Interchange(FILE* file,
   }
   fprintf(file, ") at ("); 
   for (i = 0; i < nloops; i++) {
-    fprintf(file, "%d", (INT) WN_linenum(SNL_Get_Inner_Snl_Loop(outer_loop, 
-      i + 1)));
+    fprintf(file, "%d", Srcpos_To_Line(WN_linenum(SNL_Get_Inner_Snl_Loop(outer_loop, 
+      i + 1))));
     if (i < nloops - 1)
       fprintf(file, ",");
   }

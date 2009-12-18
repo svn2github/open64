@@ -30,8 +30,9 @@ fi
 # create symbol link to libgspin42.a
 ln -s -f ../../osprey/targia32_sl1/libspin_4_2_0/libgspin42.a libgspin42.a
 
-# create symbol linke to all header files in libspin
-ln -s -f ../../libspin/*.h ../gcc/
+# remove gspin headers from the gcc directory (use -I to get them
+# directly from the libspin directory).
+rm -f ../gcc/gspin-[abilmt]*.h
 
 # configure the osprey-gcc
 CC='gcc -m32 -DTARG_SL' ../configure --prefix=/usr --program-prefix=open64- --program-suffix=-4.2.0 --with-gnu-as --with-gnu-ld --enable-languages=c,c++ --disable-bootstrap --disable-shared --disable-multilib --disable-libmudflap --disable-libssp --enable-threads=posix --disable-checking --with-system-zlib --enable-__cxa_atexit --host=mips-redhat-linux

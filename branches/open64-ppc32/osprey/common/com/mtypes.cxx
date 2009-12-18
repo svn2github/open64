@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -120,11 +124,20 @@ TYPE_DESC Machine_Types[] =
   { MTYPE_V8I1, 64,64,64,8, 8,8,	0, 1, 0, "V8I1",MTYPE_CLASS_INTEGER|MTYPE_CLASS_SVECTOR,8, MTYPE_V8I1 },
   { MTYPE_V8I2, 64,64,64,8, 8,8,	0, 1, 0, "V8I2",MTYPE_CLASS_INTEGER|MTYPE_CLASS_SVECTOR,8, MTYPE_V8I2 },
   { MTYPE_V8I4, 64,64,64,8, 8,8,	0, 1, 0, "V8I4",MTYPE_CLASS_INTEGER|MTYPE_CLASS_SVECTOR,8, MTYPE_V8I4 },
+  { MTYPE_V8I8, 64,64,64,8, 8,8,	0, 1, 0, "V8I8",MTYPE_CLASS_INTEGER|MTYPE_CLASS_SVECTOR,8, MTYPE_V8I8 },
   { MTYPE_V8F4, 64,64,64,8, 8,8,	0, 1, 0, "V8F4",MTYPE_CLASS_FLOAT|MTYPE_CLASS_SVECTOR,8, MTYPE_V8F4 },
   { MTYPE_M8I1, 64,64,64,8, 8,8,	0, 1, 0, "M8I1",MTYPE_CLASS_INTEGER|MTYPE_CLASS_MVECTOR,8, MTYPE_M8I1 },
   { MTYPE_M8I2, 64,64,64,8, 8,8,	0, 1, 0, "M8I2",MTYPE_CLASS_INTEGER|MTYPE_CLASS_MVECTOR,8, MTYPE_M8I2 },
   { MTYPE_M8I4, 64,64,64,8, 8,8,	0, 1, 0, "M8I4",MTYPE_CLASS_INTEGER|MTYPE_CLASS_MVECTOR,8, MTYPE_M8I4 },
-  { MTYPE_M8F4, 64,64,64,8, 8,8,	0, 1, 0, "M8F4",MTYPE_CLASS_FLOAT|MTYPE_CLASS_MVECTOR,8, MTYPE_M8F4 }
+  { MTYPE_M8F4, 64,64,64,8, 8,8,	0, 1, 0, "M8F4",MTYPE_CLASS_FLOAT|MTYPE_CLASS_MVECTOR,8, MTYPE_M8F4 },
+  { MTYPE_V32C4, 256,256,256,32, 32,32,        0, 1, 0, "V32C4",MTYPE_CLASS_COMPLEX_FLOAT|MTYPE_CLASS_AVECTOR,32, MTYPE_V32C4 },
+  { MTYPE_V32C8, 256,256,256,32, 32,32,        0, 1, 0, "V32C8",MTYPE_CLASS_COMPLEX_FLOAT|MTYPE_CLASS_AVECTOR,32, MTYPE_V32C8 },
+  { MTYPE_V32I1, 256,256,256,32, 32,32,        0, 1, 0, "V32I1",MTYPE_CLASS_INTEGER|MTYPE_CLASS_AVECTOR,32, MTYPE_V32I1 },
+  { MTYPE_V32I2, 256,256,256,32, 32,32,        0, 1, 0, "V32I2",MTYPE_CLASS_INTEGER|MTYPE_CLASS_AVECTOR,32, MTYPE_V32I2 },
+  { MTYPE_V32I4, 256,256,256,32, 32,32,        0, 1, 0, "V32I4",MTYPE_CLASS_INTEGER|MTYPE_CLASS_AVECTOR,32, MTYPE_V32I4 },
+  { MTYPE_V32I8, 256,256,256,32, 32,32,        0, 1, 0, "V32I8",MTYPE_CLASS_INTEGER|MTYPE_CLASS_AVECTOR,32, MTYPE_V32I8 },
+  { MTYPE_V32F4, 256,256,256,32, 32,32,        0, 1, 0, "V32F4",MTYPE_CLASS_FLOAT|MTYPE_CLASS_AVECTOR,32, MTYPE_V32F4 },
+  { MTYPE_V32F8, 256,256,256,32, 32,32,        0, 1, 0, "V32F8",MTYPE_CLASS_FLOAT|MTYPE_CLASS_AVECTOR,32, MTYPE_V32F8 },
 #endif // TARG_X8664
 #if defined(TARG_SL)
   { MTYPE_SB1,	 8,  8,	 8, 1,	1, 1,	1, 0, 0, "SB1",MTYPE_CLASS_INTEGER,1, MTYPE_SBU1 },
@@ -460,3 +473,54 @@ TYPE_ID Mtype_prev_alignment(TYPE_ID type)
 {
   return Machine_Prev_Alignment[type];
 }
+
+#if defined(TARG_X8664)
+/* ====================================================================
+ *
+ * TYPE_ID Mtype_vector_elemtype(TYPE_ID)
+ *
+ * Return element mtype of the vector mtype
+ *
+ * ====================================================================
+ */
+TYPE_ID  Mtype_vector_elemtype(TYPE_ID type)
+{
+  switch (type) {
+    case MTYPE_V32F8:
+    case MTYPE_V16F8:
+      return MTYPE_F8;
+
+    case MTYPE_V32F4:
+    case MTYPE_V16F4:
+    case MTYPE_V8F4:
+    case MTYPE_M8F4:
+      return MTYPE_F4;
+
+    case MTYPE_V32I8:
+    case MTYPE_V16I8:
+    case MTYPE_V8I8:
+      return MTYPE_I8;
+
+    case MTYPE_V32I4:
+    case MTYPE_V16I4:
+    case MTYPE_V8I4:
+    case MTYPE_M8I4:
+      return MTYPE_I4;
+
+    case MTYPE_V32I2:
+    case MTYPE_V16I2:
+    case MTYPE_V8I2:
+    case MTYPE_M8I2:
+      return MTYPE_I2;
+
+    case MTYPE_V32I1:
+    case MTYPE_V16I1:
+    case MTYPE_V8I1:
+    case MTYPE_M8I1:
+      return MTYPE_I1;
+
+    default:
+      return type;
+  }
+}
+#endif

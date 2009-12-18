@@ -102,6 +102,19 @@ extern char *WGEN_Tree_Node_Name(gs_t op);
 #if defined(TARG_SL)
 extern char *Orig_Src_File_Name, *Src_File_Name;
 #endif
+static enum ST_TLS_MODEL tls_stress_model = TLS_NONE;
+extern "C" void Process_TLS_Stress_Model(const char* p)
+{
+  if ( !strcmp(p, "global-dynamic") )
+    tls_stress_model = TLS_GLOBAL_DYNAMIC;
+  else if ( !strcmp(p, "local-dynamic") )
+    tls_stress_model = TLS_LOCAL_DYNAMIC;
+  else if ( !strcmp(p, "initial-exec") )
+    tls_stress_model = TLS_INITIAL_EXEC;
+  else if ( !strcmp(p, "local-exec") )
+    tls_stress_model = TLS_LOCAL_EXEC;
+}
+
 #ifdef KEY
 // =====================================================================
 // bug 8346: A function's VLA argument types should only be expanded
@@ -805,8 +818,8 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		TY_Init (ty, tsize, KIND_STRUCT, MTYPE_M, 
 			Save_Str(Get_Name(gs_type_name(type_tree))) );
 
-                if (gs_type_name(type_tree) == NULL)
-                    Set_TY_anonymous(ty);
+		if (gs_type_name(type_tree) == NULL || gs_type_anonymous_p(type_tree))
+		    Set_TY_anonymous(ty);
 
 		if (gs_tree_code(type_tree) == GS_UNION_TYPE) {
 			Set_TY_is_union(idx);
@@ -1253,6 +1266,7 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		if (!TARGET_64BIT && !TY_is_varargs(idx))
 		{
 		  // Ignore m{sse}regparm and corresponding attributes at -m64.
+		  // Ignore stdcall/fastcall attributes at -m64 and varargs.
 		  if (SSE_Reg_Parm ||
 		      lookup_attribute("sseregparm",
 		                       gs_type_attributes(type_tree)))
@@ -1269,6 +1283,19 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  }
 		  else if (Reg_Parm_Count)
 		    Set_TY_register_parm (idx, Reg_Parm_Count);
+
+                  if (gs_t attr = lookup_attribute("stdcall",
+		      gs_type_attributes(type_tree)))
+		  {
+		    gs_t value = gs_tree_value (attr);
+		    Set_TY_has_stdcall (idx);
+		  }
+                  else if (gs_t attr = lookup_attribute("fastcall",
+		            gs_type_attributes(type_tree)))
+		  {
+		    gs_t value = gs_tree_value (attr);
+		    Set_TY_has_fastcall (idx);
+		  }
 		}
 #endif
 		} // end FUNCTION_TYPE scope
@@ -1283,8 +1310,11 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		  TY_IDX elem_ty = Get_TY(gs_tree_type(type_tree));
 		  TYPE_ID elem_mtype = TY_mtype(elem_ty);
 		  switch (gs_n(gs_type_precision(type_tree))) {
+		    case 1: if (elem_mtype == MTYPE_I8)
+		    	      idx = MTYPE_To_TY(MTYPE_V8I8);
+			    break;
 		    case 2: if (elem_mtype == MTYPE_I4)
-		    	      idx = MTYPE_To_TY(MTYPE_V8I4);
+		    	      idx = MTYPE_To_TY(MTYPE_M8I4);
 			    else if (elem_mtype == MTYPE_F4)
 		    	      idx = MTYPE_To_TY(MTYPE_V8F4);
 		    	    else if (elem_mtype == MTYPE_I8)
@@ -1292,21 +1322,34 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 			    else if (elem_mtype == MTYPE_F8)
 		    	      idx = MTYPE_To_TY(MTYPE_V16F8);
 			    break;
-		    case 4: if (elem_mtype == MTYPE_I4)
+		    case 4: if (elem_mtype == MTYPE_I2)
+		    	      idx = MTYPE_To_TY(MTYPE_M8I2);
+		    	    else if (elem_mtype == MTYPE_I4)
 		    	      idx = MTYPE_To_TY(MTYPE_V16I4);
+                            else if (elem_mtype == MTYPE_I8)
+                              idx = MTYPE_To_TY(MTYPE_V32I8);
 			    else if (elem_mtype == MTYPE_F4)
 		    	      idx = MTYPE_To_TY(MTYPE_V16F4);
-		    	    else if (elem_mtype == MTYPE_I2)
-		    	      idx = MTYPE_To_TY(MTYPE_M8I2);
+                            else if (elem_mtype == MTYPE_F8)
+                              idx = MTYPE_To_TY(MTYPE_V32F8);
 			    break;
 		    case 8: if (elem_mtype == MTYPE_I1)
 		    	      idx = MTYPE_To_TY(MTYPE_M8I1);
 		    	    else if (elem_mtype == MTYPE_I2)
 		    	      idx = MTYPE_To_TY(MTYPE_V16I2);
+                            else if (elem_mtype == MTYPE_I4)
+                              idx = MTYPE_To_TY(MTYPE_V32I4);
+                            else if (elem_mtype == MTYPE_F4)
+                              idx = MTYPE_To_TY(MTYPE_V32F4);
 			    break;
 		    case 16: if (elem_mtype == MTYPE_I1)
 		    	       idx = MTYPE_To_TY(MTYPE_V16I1);
+                             else if (elem_mtype == MTYPE_I2)
+                               idx = MTYPE_To_TY(MTYPE_V32I2);
 			     break;
+                    case 32: if (elem_mtype == MTYPE_I1)
+                               idx = MTYPE_To_TY(MTYPE_V32I1);
+                             break;
 		    default:
 		      Fail_FmtAssertion ("Get_TY: unexpected vector type element count");
 		  }
@@ -1321,39 +1364,51 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		    else Fail_FmtAssertion("Get_TY: NYI");
 		  }
 		  int num_elems = strtol(p, &p, 10);
-		  if (strncasecmp(p, "DI", 2) == 0) 
-		    idx = MTYPE_To_TY(MTYPE_V16I8);
-		  else if (strncasecmp(p, "DF", 2) == 0) 
-		    idx = MTYPE_To_TY(MTYPE_V16F8);
+                  if (strncasecmp(p, "DI", 2) == 0) {
+                    if (num_elems == 1)
+                      idx = MTYPE_To_TY(MTYPE_V8I8);
+                    else if (num_elems == 2)
+                      idx = MTYPE_To_TY(MTYPE_V16I8);
+                    else if (num_elems == 4)
+                      idx = MTYPE_To_TY(MTYPE_V32I8);
+                  }
+                  else if (strncasecmp(p, "DF", 2) == 0) {
+                    if (num_elems == 2)
+                      idx = MTYPE_To_TY(MTYPE_V16F8);
+                    else if (num_elems == 4)
+                      idx = MTYPE_To_TY(MTYPE_V32F8);
+                  }
 		  else if (strncasecmp(p, "SI", 2) == 0) {
 		    if (num_elems == 2)
-		      if ( Is_Target_64bit())
-			idx = MTYPE_To_TY(MTYPE_V8I4);
-		      else
-			idx = MTYPE_To_TY(MTYPE_M8I4);
+		      idx = MTYPE_To_TY(MTYPE_M8I4);
 		    else if (num_elems == 4)
 		      idx = MTYPE_To_TY(MTYPE_V16I4);
+		    else if (num_elems == 8)
+		      idx = MTYPE_To_TY(MTYPE_V32I4);
 		  }
 		  else if (strncasecmp(p, "SF", 2) == 0) {
 		    if (num_elems == 2)
-		      if ( Is_Target_64bit())
-			idx = MTYPE_To_TY(MTYPE_V8F4);
-		      else
-			idx = MTYPE_To_TY(MTYPE_M8F4);
+		      idx = MTYPE_To_TY(MTYPE_V8F4);
 		    else if (num_elems == 4)
 		      idx = MTYPE_To_TY(MTYPE_V16F4);
+                    else if (num_elems == 8)
+                      idx = MTYPE_To_TY(MTYPE_V32F4);
 		  }
 		  else if (strncasecmp(p, "HI", 2) == 0) {
 		    if (num_elems == 4)
 		      idx = MTYPE_To_TY(MTYPE_M8I2);
 		    else if (num_elems == 8)
 		      idx = MTYPE_To_TY(MTYPE_V16I2);
+                    else if (num_elems == 16)
+                      idx = MTYPE_To_TY(MTYPE_V32I2);
 		  }
 		  else if (strncasecmp(p, "QI", 2) == 0) {
 		    if (num_elems == 8)
 		      idx = MTYPE_To_TY(MTYPE_M8I1);
 		    else if (num_elems == 16)
 		      idx = MTYPE_To_TY(MTYPE_V16I1);
+                    else if (num_elems == 32)
+                      idx = MTYPE_To_TY(MTYPE_V32I1);
 		  }
 		}
 		if (idx == 0)
@@ -1608,6 +1663,13 @@ Create_ST_For_Tree (gs_t decl_node)
       }
       break;
 
+    case GS_INDIRECT_REF:
+        if (gs_tree_code(gs_tree_operand(decl_node, 0)) == GS_RESULT_DECL &&
+            DECL_ST(gs_tree_operand(decl_node,0)))
+            return DECL_ST(gs_tree_operand(decl_node,0));
+            
+        Fail_FmtAssertion("Create_ST_For_Tree: not expected GS_INDIRECT_REF");
+        
 #ifdef KEY
     case GS_RESULT_DECL: // bug 3878
 #if 0
@@ -2023,6 +2085,16 @@ Create_ST_For_Tree (gs_t decl_node)
     }
   }
 
+  // For external variable without an initializer, if it has
+  // a "const" qualifier, we mark the symbol const var.
+  if (gs_tree_code(decl_node) == GS_VAR_DECL && 
+      gs_tree_readonly(decl_node) && !gs_tree_this_volatile(decl_node) &&
+      gs_tree_public(decl_node) && gs_decl_external(decl_node) &&
+      !ST_is_initialized(st)) 
+  {
+    Set_ST_is_const_var(st);
+  }
+
 #if defined(TARG_IA64)
   //lookup syscall_linkage attribute for FUNCTION_DECL
   if (gs_tree_code (decl_node) == GS_FUNCTION_DECL)
@@ -2049,8 +2121,35 @@ Create_ST_For_Tree (gs_t decl_node)
 
   if (gs_tree_code (decl_node) == GS_VAR_DECL)
   {
-#if !defined(TARG_NVISA)
-    gs_tls_model_kind_t tlsk =
+    // for function decls visibility, needs to delay the process to WGEN_Start_Function
+    gs_symbol_visibility_kind_t vk = 
+      (gs_symbol_visibility_kind_t) gs_decl_visibility(decl_node);
+    if (gs_tree_public (decl_node) &&
+        (gs_decl_visibility_specified(decl_node) ||
+        GS_VISIBILITY_DEFAULT != vk) ) {
+      ST_EXPORT export_class = EXPORT_PREEMPTIBLE;
+      switch (vk) {
+        case GS_VISIBILITY_DEFAULT:
+          export_class = EXPORT_PREEMPTIBLE;
+          break;
+        case GS_VISIBILITY_PROTECTED:
+          export_class = EXPORT_PROTECTED;
+          break;
+        case GS_VISIBILITY_HIDDEN:
+          export_class = EXPORT_HIDDEN;
+          break;
+        case GS_VISIBILITY_INTERNAL:
+          export_class = EXPORT_INTERNAL;
+          break;
+        default:
+          GS_ASSERT(0, "unknown decl visibility");
+          break;
+      }
+      Set_ST_export (*st, export_class);
+    }
+
+#ifndef TARG_NVISA
+    gs_tls_model_kind_t tlsk = 
       (gs_tls_model_kind_t) gs_decl_tls_model(decl_node);
     enum ST_TLS_MODEL tls_model = TLS_NONE;
     switch (tlsk) {
@@ -2068,7 +2167,18 @@ Create_ST_For_Tree (gs_t decl_node)
         break;
     }
     Set_ST_tls_model(st, tls_model);
-#endif
+
+    if ( tls_stress_test ) {
+      // once tls_stress_test is set, make PSTATIC/FSTATIC variables to be TLS
+      if ( ST_sclass(st) == SCLASS_PSTATIC || ST_sclass(st) == SCLASS_FSTATIC ) {
+        Set_ST_is_thread_local(st);
+        if ( tls_stress_model == TLS_NONE ) {
+          tls_stress_model = ( gen_pic_code ) ? TLS_GLOBAL_DYNAMIC : TLS_LOCAL_EXEC;
+        }
+        Set_ST_tls_model(st, tls_stress_model);
+      }
+    }
+#endif // !TARG_NVISA
   }
 
   if(Debug_Level >= 2) {

@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -576,6 +580,34 @@ For_all_until (const TYPE_TABLE&, const PREDICATE& pred)
 
 #define FOREACH_INITV(init,v) \
 	for (v = init; v != 0; v = Initv_Table[v].next)
+
+//
+// The following utility function Find_Section_Name_For_ST() is moved
+// from data_layout.cxx for reuse in ipc_symtab_merge.cxx
+//
+
+// return section name for corresponding ST via st_attr table
+struct find_st_attr_secname {
+        ST_IDX st;
+        find_st_attr_secname (const ST *s) : st (ST_st_idx (*s)) {}
+ 
+        BOOL operator () (UINT, const ST_ATTR *st_attr) const {
+            return (ST_ATTR_kind (*st_attr) == ST_ATTR_SECTION_NAME &&
+                    ST_ATTR_st_idx (*st_attr) == st);
+        }
+};
+ 
+inline STR_IDX
+Find_Section_Name_For_ST (const ST *st)
+{
+    ST_IDX idx = ST_st_idx (*st);
+    ST_ATTR_IDX d;
+
+    d = For_all_until (St_Attr_Table, ST_IDX_level (idx),
+                          find_st_attr_secname(st));
+    FmtAssert(d != 0, ("didn't find section name for ST %s", ST_name(*st)));
+    return ST_ATTR_section_name(St_Attr_Table(ST_IDX_level (idx), d));
+}
 
 #endif /* symtab_utils_INCLUDED */
 

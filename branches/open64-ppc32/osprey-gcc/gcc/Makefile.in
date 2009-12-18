@@ -1,6 +1,8 @@
 # Makefile for GNU Compiler Collection
 # Run 'configure' to generate Makefile from Makefile.in
 
+# Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+
 # Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
 
 # Copyright (C) 1987, 1988, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
@@ -740,9 +742,7 @@ C_PRETTY_PRINT_H = c-pretty-print.h $(PRETTY_PRINT_H) $(C_COMMON_H) $(TREE_H)
 SCEV_H = tree-scalar-evolution.h $(GGC_H) tree-chrec.h
 LAMBDA_H = lambda.h tree.h vec.h $(GGC_H)
 TREE_DATA_REF_H = tree-data-ref.h $(LAMBDA_H)
-GSPIN_H = gspin-alloc.h gspin-assert.h gspin-base-types.h \
-	  gspin-gcc-interface.h gspin-io.h gspin-list.h gspin-mempool.h \
-	  gspin-tel.h gspin-tree.h
+GSPIN_H = gspin-gcc-interface.h 
 
 #
 # Now figure out from those variables how to compile and link.
@@ -814,6 +814,7 @@ BUILD_VARRAY = build/varray.o
 # libintl.h will be found in ../intl if we are using the included libintl.
 INCLUDES = -I. -I$(@D) -I$(srcdir) -I$(srcdir)/$(@D) \
 	   -I$(srcdir)/../include @INCINTL@ \
+	   -I$(srcdir)/../../libspin \
 	   $(CPPINC) $(GMPINC)
 
 .c.o:
@@ -1613,8 +1614,6 @@ tree.o : tree.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) $(TREE_H) \
    $(FLAGS_H) function.h $(PARAMS_H) \
    toplev.h $(GGC_H) $(HASHTAB_H) $(TARGET_H) output.h $(TM_P_H) langhooks.h \
    real.h gt-tree.h tree-iterator.h \
-   gspin-alloc.h gspin-assert.h gspin-base-types.h \
-   gspin-gcc-interface.h gspin-io.h gspin-list.h gspin-mempool.h \
    $(GSPIN_H) \
    $(BASIC_BLOCK_H) $(TREE_FLOW_H)
 tree-dump.o: tree-dump.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) $(TREE_H) \

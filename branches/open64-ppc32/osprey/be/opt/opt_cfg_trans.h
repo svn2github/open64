@@ -728,7 +728,10 @@ typedef enum IF_MERGE_PASS {
   PASS_LOCAL = 0x2
 };
 
+class PRO_LOOP_INTERCHANGE_TRANS;
+
 class IF_MERGE_TRANS {
+friend class PRO_LOOP_INTERCHANGE_TRANS;
 private:
   COMP_UNIT * _cu;
   BOOL _trace;
@@ -740,7 +743,9 @@ private:
   PRO_LOOP_FUSION_TRANS * _tail_dup;
   IF_MERGE_ACTION _action;
   IF_MERGE_PASS _pass;
-
+  MAP * _invar_map;  // hash BB_NODE Id to SC_NODE *
+  MAP * _def_cnt_map; // hash aux id to def count
+  int _region_id;    // Id of currently processed region.
 private:
   void Delete_val_map();
   void Init_val_map(WN *, BOOL);
@@ -761,15 +766,21 @@ private:
   BOOL Maybe_assigned_expr(SC_NODE *, SC_NODE *);
   BOOL Maybe_assigned_expr(BB_NODE *, BB_NODE *);  
   BOOL Maybe_assigned_expr(BB_NODE *, SC_NODE *);
-
+  MAP * Get_invar_map() { return _invar_map ; }
+  void New_invar_map();
+  void Delete_invar_map();
+  void Delete_branch(BB_NODE *);
 public:
   void      Top_down_trans(SC_NODE * sc);
   BOOL      Is_cand(SC_NODE *, SC_NODE *, BOOL);
   SC_NODE * Do_merge(SC_NODE *, SC_NODE *);
   void      Set_trace(BOOL i)                { _trace = i; }
   void      Set_dump(BOOL i)                 { _dump = i; }
+  PRO_LOOP_FUSION_TRANS *  Get_tail_dup()    { return _tail_dup; }
   void      Set_tail_dup(PRO_LOOP_FUSION_TRANS * i) { _tail_dup = i; }
   void      Set_pass(IF_MERGE_PASS i) { _pass = i; }
+  void      Set_count(int i) { _count = i; }
+  void      Set_region_id(int i) { _region_id = i; }
 
   IF_MERGE_TRANS(void) { Clear(); }
   IF_MERGE_TRANS(COMP_UNIT * i) { Clear(); _cu = i; }
@@ -784,10 +795,21 @@ public:
   void Merge_SC(SC_NODE *, SC_NODE *);
   BOOL Has_dependency(SC_NODE *, SC_NODE *);
   BOOL Has_dependency(SC_NODE *, BB_NODE *);
+  BOOL Has_dependency(BB_NODE *, BB_NODE *);
+  BOOL Has_dependency(SC_NODE * , WN *);
+  BOOL Has_dependency(BB_NODE *, WN *);
   BOOL Is_aliased(WN *, WN *);
   BOOL Can_be_speculative(SC_NODE *);
   BOOL Can_be_speculative(BB_NODE *);
   BOOL Can_be_speculative(WN *);
+  BOOL Is_executable_stmt(OPERATOR i) { return ((i != OPR_PRAGMA) && (i != OPR_LABEL)); }
+  BOOL Has_side_effect(WN *);
+  void Hash_def_map(SC_NODE *);
+  void Hash_def_map(BB_NODE *);
+  void Delete_def_map();
+  unsigned long Get_def_cnt(AUX_ID i) 
+      { return (unsigned long) _def_cnt_map->Get_val((POINTER) i); }
+  ST * Get_st(WN *);
 };
 
 class PRO_LOOP_FUSION_TRANS {
@@ -834,5 +856,101 @@ public:
   void Do_tail_duplication(SC_NODE *, SC_NODE *);
 };
 
+// bit mask for proactive loop interchange actions.
+typedef enum PRO_LOOP_INTERCHANGE_ACTION {
+    DO_INTERCHANGE_NONE = 0x0,
+    DO_TREE_HEIGHT_RED = 0x1,  // do if-condition tree height reduction
+    DO_IF_COND_DIS = 0x2,  // do if-condition distribution
+    DO_REV_LOOP_UNS = 0x4,  // do reverse loop-unswitching
+    DO_LOOP_UNS = 0x8  // do loop-unswitching
+};
+
+typedef enum CANON_ACTION {
+    CANON_NONE = 0x0,
+    SPLIT_IF_HEAD = 0x1, // Split head of SC_IF so that it only contains one statement.
+    HEAD_DUP = 0x2, // Head duplicate preceding siblings of SC_IF's head.
+    TAIL_DUP = 0x4  // Tail duplicate SC_IF's merge.
+};
+
+class PRO_LOOP_INTERCHANGE_TRANS {
+private:
+    COMP_UNIT * _cu;
+    BOOL _trace;
+    BOOL _dump;
+    int _transform_count;
+    IF_MERGE_TRANS * _if_merge;
+    MEM_POOL * _pool;
+    STACK<SC_NODE *> * _outer_stack; // a stack of outer SC_LOOPs. 
+    STACK<SC_NODE *> * _inner_stack; // a stack of inner SC_LOOPs. 
+    STACK<SC_NODE *> * _local_stack; // scratch field.
+    STACK<SC_NODE *> * _restart_stack; // a stack of SC_NODEs where restarting occurs.
+    STACK<SC_NODE *> * _tmp_stack; // scratch field.
+    int _action;
+    MAP * _def_map; //  Map symbol auxiliary Id to definition WN *.
+    STACK<SC_NODE *> * _unlink_sc; // A stack of unlinked SC_NODE *.
+private:
+    int Nonrecursive_trans(SC_NODE *, SC_NODE *);
+    BOOL Is_candidate(SC_NODE *, SC_NODE *);
+    BOOL Is_invariant(SC_NODE *, SC_NODE *, AUX_ID);
+    BOOL Is_invariant(SC_NODE *, BB_NODE *, AUX_ID);
+    BOOL Is_invariant(BB_NODE *, BB_NODE *, AUX_ID);
+    BOOL Is_invariant(BB_NODE *, WN * wn, AUX_ID);
+    BOOL Is_invariant(SC_NODE *, WN * wn, AUX_ID);
+    WN * Get_cond(SC_NODE *, BOOL);
+    WN * Merge_cond(WN *, WN *, OPERATOR);
+    BOOL Do_if_cond_tree_height_reduction(SC_NODE *, SC_NODE *);
+    BOOL Do_loop_unswitching(SC_NODE *, SC_NODE *);
+    BOOL Do_reverse_loop_unswitching(SC_NODE *, SC_NODE *, SC_NODE *);
+    SC_NODE * Do_loop_dist(SC_NODE *, BOOL);
+    BOOL Do_if_cond_dist(SC_NODE *);
+    BOOL Can_reorder_cond(WN *, WN *);
+    void Do_hoist(SC_NODE * sc1, SC_NODE * sc2);
+    void Do_if_cond_wrap(BB_NODE *, SC_NODE *, BOOL);
+    BOOL Check_sibling(SC_NODE *, SC_NODE *);
+    void Do_canon(SC_NODE *, SC_NODE *, int);
+    void Hash_invar(BB_NODE *, SC_NODE *);
+    void Remove_block(SC_NODE *);
+    void Remove_block(BB_NODE *);
+    void Invalidate_invar(SC_NODE *);
+    void Invalidate_invar(BB_NODE *);
+    SC_NODE * Split(SC_NODE *, SC_NODE *);
+    SC_NODE * Do_pre_dist(SC_NODE *, SC_NODE *);
+    SC_NODE * Do_partition(SC_NODE *);
+    SC_NODE * Do_loop_fusion(SC_NODE *);
+    void Do_lock_step_fusion(SC_NODE *, SC_NODE *);
+    BOOL Do_loop_interchange(SC_NODE *, SC_NODE *);
+    void Swap_stmt(BB_NODE *, BB_NODE *);
+    void Add_def_map(AUX_ID, WN *);
+    void Copy_prop(SC_NODE * sc);
+    void Copy_prop(BB_NODE * bb);
+    void Copy_prop(WN *);
+    BOOL Get_unique_ref(SC_NODE *, SC_NODE *, WN **);
+    BOOL Get_unique_ref(BB_NODE *, SC_NODE *, WN **);
+    BOOL Get_unique_ref(WN *, SC_NODE *, WN **);
+    BOOL Compare_trees(WN *, SC_NODE *, WN *, SC_NODE *);
+    BOOL Hoist_succ_blocks(SC_NODE *);
+    WN * Get_index_load(SC_NODE *);
+    WN * Get_index_load(WN *, ST *);
+    BOOL Is_perfect_loop_nest(SC_NODE *);
+    BOOL Check_iteration(SC_NODE *, SC_TYPE, SC_NODE *);
+    BOOL Check_index(SC_NODE *);
+    SC_NODE * Find_fusion_buddy(SC_NODE *, STACK<SC_NODE *> *);
+    void Do_split_if_head(SC_NODE *);
+    SC_NODE * Find_dist_cand(SC_NODE *);
+    BOOL Can_interchange(SC_NODE *, SC_NODE *);
+    BOOL Can_fuse(SC_NODE *);
+public:
+    void Clear();
+    PRO_LOOP_INTERCHANGE_TRANS(void) { Clear(); }
+    PRO_LOOP_INTERCHANGE_TRANS(COMP_UNIT * i) { Clear(); _cu = i; }
+    void Set_trace(BOOL i) { _trace = i; }
+    void Set_dump(BOOL i)  { _dump = i; }
+    void Set_if_merge(IF_MERGE_TRANS * i) { _if_merge = i; }
+    void Set_pool(MEM_POOL * i) { _pool = i; }
+    MEM_POOL * Loc_pool() { return _pool; }
+    int Transform_count() { return _transform_count; }
+    void Inc_transform_count() { _transform_count++; }
+    BOOL Top_down_trans(SC_NODE *, BOOL);
+};
 
 #endif

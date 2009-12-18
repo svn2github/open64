@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -221,7 +225,7 @@ static void Lego_Fix_Local_Rec(WN *wn, BOOL in_a_parallel_region)
 	      if (in_a_parallel_region) {
 		FmtAssert(WN_next(mp_region) != NULL, 
 		  ("Lego_Fix_Local_Rec: Expecting non-NULL pointer"));
-		Create_Single_Region(WN_next(mp_region), 
+		Create_Single_Region(LWN_Get_Parent(mp_region), WN_next(mp_region), 
 		  WN_next(WN_next(mp_region))); 
 	      }
 
@@ -237,7 +241,7 @@ static void Lego_Fix_Local_Rec(WN *wn, BOOL in_a_parallel_region)
               WN* copy_in_store=Copy_Array(di, st_new, mp_region, NULL, FALSE);
 
 	      if (in_a_parallel_region) 
-	        Create_Single_Region(WN_prev(mp_region), mp_region);
+	        Create_Single_Region(LWN_Get_Parent(mp_region), WN_prev(mp_region), mp_region);
 
               WN* copy_in_load=WN_kid0(copy_in_store);
 

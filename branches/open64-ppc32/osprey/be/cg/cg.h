@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -73,7 +77,11 @@ extern BOOL CG_file_scope_asm_seen;
 #endif
 
 #ifdef TARG_X8664
+struct tn;
+extern BOOL PU_has_local_dynamic_tls;         // for local-dynamic tls
+extern struct tn*  Local_Dynamic_TLS_Base;    // return value for __get_tls_addr
 extern BOOL PU_References_GOT; // for -m32 -fpic
+extern BOOL PU_has_avx128; // cause emit of vzeroupper
 #endif
 
 extern BOOL CG_PU_Has_Feedback;
