@@ -326,7 +326,7 @@ $(GNUFE_BUILD_DIR)/gcc/cc1 cc1: $(GNUFE_BUILD_DIR)/Makefile Force
 
 $(GNUFE_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a
 	cd $(GNUFE_BUILD_DIR); BUILD_OPTIMIZE=$(BUILD_OPTIMIZE) CFLAGS=$(GNU_CFLAGS) ./CONFIGURE
-
+endif
 build:
 	$(MAKE) first
 	$(MAKE) phony_targets 
