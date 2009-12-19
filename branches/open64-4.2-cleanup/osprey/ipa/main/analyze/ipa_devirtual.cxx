@@ -1275,7 +1275,7 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Apply_Virtual_Function_Transform (
 
 
 #ifdef TARG_IA64
-         WN* copy_load = WN_COPY_Tree_With_Map(WN_kid(WN_kid(old_wn,
+         WN* copy_load = WN_COPY_Tree_With_Map(WN_kid(old_wn,
                  WN_kid_count(old_wn)-1));
 #else
          WN* copy_load = WN_COPY_Tree_With_Map(WN_kid(WN_kid(old_wn,
