@@ -106,7 +106,7 @@
 #include "targ_isa_registers.h"
 #include "tls.h"              // TLS_get_addr_st
 #if defined(TARG_PR) || defined(TARG_PPC32)
-#include "cgexp_Internals.h"  // Expand_SR_Adj
+#include "cgexp_internals.h"  // Expand_SR_Adj
 #endif
 #ifdef KEY
 #include "gtn_universe.h"
