@@ -1,0 +1,196 @@
+Installing Open64
+=================
+
+
+Introduction
+------------
+
+This document explains how to compile and install Open64 on an IA64/X86_64 
+based system. The documentation is split into 5 steps:
+
+    * Prerequisites
+    * Obtaining the Source Code
+    * Compiling
+    * Environment Variables
+    * Installation
+
+We encourage you to pay attention to the Prerequisites in order to avoid un-
+necessary problems later in the build process. Should you ever encounter any
+problems with one of the steps, please take a look in the FAQ, the forum or
+leave a comment on our web site http://www.open64.net.
+
+
+Prerequisites
+-------------
+
+In order to compile Open64 successfully, you should meet the following 
+requirements:
+
+    * Linux based OS
+      Currently, Open64 is intensively tested on Linux on IA64/X86_64/IA32.
+
+    * IA64/X86_64/IA32 based machine
+      In this release, Open64 is supported and tested for the Itanium 2 and  
+      X86_64 architectures. Itanium 1 and generic IA32 is also supported, but 
+      not tested carefully.
+
+    * GNU Make
+      You should use a up to date version of Make. Unfortunately the current GNU
+      Make version 3.81, which is shipped with the latest Linux distributions,
+      causes some trouble--this version leads to a Makefile error. To solve this
+      problem, just run the Makefile again and the error will not appear. To 
+      avoid this error, please install GNU Make version 3.80. This version has 
+      been tested and works with our Makefile.
+
+    * GCC (GNU Compiler Collection)
+      In order to compile the Open64 source code, you need GCC 3.2.x - 3.4.x. 
+      Support for GCC 2.x has been dropped since release 1.0 and is not yet 
+      available for GCC 4.x. If you don't have any of the suggested GCC versions
+      above, we recommend that you to install GCC 3.4.6.
+      Open64 has been tested and successfully compiled with GCC 3.3.x and 3.4.x.
+
+
+Obtaining the Source Code
+-------------------------
+
+To compile Open64 you need to obtain the source code first.
+
+There are two ways:
+
+    * Obtain the Source Code as Archive
+      You can download the source code from Sourceforge.net
+      You will find the links to the different versions in our download section.
+      (http://www.open64.net/download.html)
+
+      You have to obtain the source code and the prebuild libraries/binaries!
+      NOTE:we put the prebuild package into the source code release,so you don't
+      need to download it seperately, but if you obtain the code frm svn repository
+      you have to download it and put them into trunk/, see the svn sections below.
+          
+
+      Extract the source code and the prebuild binaries/libraries
+        
+        tar xzf open64-4.2.tar.gz
+
+    * Obtain the Source Code from our Subversion Repository
+      You can also obtain the latest version of our source code from the sub-
+      version repository.
+      To get the latest version issue the following command:
+        
+        svn export https://svn.open64.net/svnroot/open64/trunk open64
+
+      This will copy the latest code to the directory open64.
+      
+      (X86_64 only): To build the compiler driver to automatically
+      include libacml_mv.a (the source to this library will be
+      included with the Open64 compiler in the near future), perform
+      the following steps to import libacml_mv.a into your build tree:
+ 
+        cd open64
+        svn export https://svn.open64.net/svnroot/open64/branches/open64-booster/libacml_mv
+
+      This is currently the recommended way to build the compiler when checking
+      SPEC performance on X86-64.
+
+      Now checkout the latest prebuild package:
+        svn checkout  https://svn.open64.net/svnroot/open64/branches/open64-prebuild/ prebuild
+      then copy the bin/ and lib/ directory into the trunk, such as:
+        cp -r prebuild/lib  open64/
+        cp -r prebuld/bin  open64/
+ 
+      You can also surf through our subversion repository online.
+      (http://svn.open64.net)
+
+      You also need to obtain the prebuild libraries/binaries and extract them 
+      to the root directory of the Open64 source code.
+
+    NOTE:prebuild libraries/binaries contains two parts
+          --prebuilt libraries, such as libmv.a, libopenmp.a,etc so you don't need to build them explicitly.
+          --a prebuild FORTRAN FE, since the FORTRAN FE source file contain some FORTRAN file, so if you don't have 
+            a FORTRAN compiler in your PATH, you can't build the FORTRAN FE by default, see the Compiler section if you
+            want to build a FORTRAN FE.
+Compiling
+---------
+
+Switch to the Open64 directory and execute the following command:
+  
+  gmake all
+
+If you want to build a debugable version of Open64, please use the following 
+command:
+
+  gmake all BUILD_OPTIMIZE=DEBUG
+
+NOTE:
+  1. Building the FORTRAN FE.
+    If you don't have FORTRAN compiler in your PATH, you will meet the following 
+    waring during your building process:
+    "Warning: The FORTRAN Front End is not build!..........."
+    you can build the FORTRAN  FE following  any  of the  way below:
+    a. download an open64 compiler binary, and install them, put into the PATH, then 
+       "make V=1"   to build the FE.
+    b. make sure the prebuild package had been put into the trunk/
+       ls trunk/bin
+       ls trunk/lib
+       then install the compiler just built with the prebuild FE.
+       make sure the "openf90" is in your PATH now:
+       "which openf90"
+       finally rebuild the compiler again with:
+       "make V=1"  
+    
+  2. some tips on Ubuntu machines
+  If you are building the compiler on Ubuntu machine, you need to install the following
+  tools first:
+  awk, csh, bash, gmake, flex and bison, On some Ubuntu distributions, you need to
+  change the symbol link '/bin/sh' to '/bin/bash' to make the scripts work.
+  If you met the following error:
+  ##./table INTERNAL ERROR: Unexpected line: Abort
+  ##sh: line 1: 27052 Segmentation fault      ./table <OPTIONS.P
+  you need to make sure the awk is linked to mawk on your ubuntu machine
+
+Environment Variables
+---------------------
+
+Before the installation, and later when you want use Open64, the environment 
+variable TOOLROOT should always be set. If the TOOLROOT is not set, a path 
+will be prompted during installation.
+
+Depending on whether you are root or a user add the following lines to your 
+/etc/bashrc or ~/.bashrc:
+
+  export TOOLROOT=/opt/open64 or
+  export TOOLROOT=/home/{user name}/local/open64 or
+  export TOOLROOT=/somewhere/you/have/write/permission
+ 
+This defines where to install the Open64 and where later Open64 has to search 
+for libraries and binaries.
+
+You should also add the Open64 binary directory to you path.
+
+  export PATH=$TOOLROOT/bin:$PATH
+ 
+Don't forget to source your updated .bashrc file.
+
+  source ~/.bashrc
+ 
+Warning!!!
+If you have more the one version of Open64 installed, be aware of the following 
+fact:
+Lets assume that one version is installed in /opt/open64-1 and the other in 
+/opt/open64-2 and that your TOOLROOT is set to /opt/open64-1. Now, even if you 
+start Open64 in /opt/open64-2, it will execute Open64 in /opt/open64-1 because 
+the TOOLROOT is set to this directory.
+
+
+Installation
+------------
+
+We are almost done. Now, you have just to start the install script and Open64 
+will be installed in the directory defined by the environment variable TOOLROOT.
+
+  make install
+
+Congratulations. You have succsessfully installed Open64. Have fun.
+
+Your Open64 Team
+
