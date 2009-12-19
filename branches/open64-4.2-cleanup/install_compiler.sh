@@ -178,8 +178,8 @@ INSTALL_DRIVER () {
 
 # Install internal gcc distribution
 INSTALL_GCC () {
-    pushd ${GNUFE42_AREA}
-
+    old_dir=`pwd`
+    cd ${GNUFE42_AREA}
     for j in '*/*' '*/*/*' '*/*/*/*' '*/*/*/*/*' '*/*/*/*/*/*' '*/*/*/*/*/*/*' '*/*/*/*/*/*/*/*'; do
         for i in open64-gcc-4.2.0/$j; do
             if [ -e $i ] && [ ! -d $i ]; then
@@ -190,14 +190,20 @@ INSTALL_GCC () {
 
     # Make links to gcc runtime libraries
     cd ${ROOT}
-    for i in open64-gcc-4.2.0/lib64/lib*.so*; do
-        (cd $PHASEPATH; ln -sf ../../../../$i `basename $i`)
-    done
-    for i in open64-gcc-4.2.0/lib/lib*.so*; do
-        (cd $PHASEPATH/32; ln -sf ../../../../../$i `basename $i`)
-    done
-
-    popd
+    if [ "$TARG_HOST" = "ia64" ]
+    then
+	for i in open64-gcc-4.2.0/lib/lib*.so*; do
+            (cd $PHASEPATH; ln -sf ../../../../$i `basename $i`)
+	done
+    else
+	for i in open64-gcc-4.2.0/lib64/lib*.so*; do
+            (cd $PHASEPATH; ln -sf ../../../../$i `basename $i`)
+	done
+	for i in open64-gcc-4.2.0/lib/lib*.so*; do
+            (cd $PHASEPATH/32; ln -sf ../../../../../$i `basename $i`)
+	done
+    fi
+    cd $old_dir
 
     return 0
 }
@@ -346,7 +352,7 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         # libmsgi.a is no longer needed
         #INSTALL_DATA_SUB ${LIBAREA}/libmsgi/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
-        INSTALL_DATA_SUB ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/libm.a ${PHASEPATH}/libm.a
+        #INSTALL_DATA_SUB ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/libm.a ${PHASEPATH}/libm.a
 	INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
     else
         LIBAREA=osprey/targx8664_builtonia32
