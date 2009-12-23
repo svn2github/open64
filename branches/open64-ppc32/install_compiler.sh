@@ -582,7 +582,9 @@ if [ "$TARG_HOST" = "x8664" -a ! -d "${NATIVE_LIB_DIR}/32" ]; then
 fi
 
 INSTALL_DRIVER 
+if [ "$TARG_HOST" != "ppc32"  ]; then
 INSTALL_GCC
+fi
 INSTALL_FE 
 INSTALL_BE 
 INSTALL_IPA 

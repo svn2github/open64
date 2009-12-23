@@ -1594,7 +1594,7 @@ void Handle_Int_Float_Cvt(TN * dest, TN * src, OPS * ops, bool isUnsigned, bool 
     Build_OP(TOP_lis, tmp1, Gen_Literal_TN(0x4330, Pointer_Size), ops);
     Exp_Store(MTYPE_I4, tmp1, sym1, 0, ops, V_NONE);
 
-    TN* tn1 = Build_TN_Like(dest);
+    TN* tn1 = Build_TN_Of_Mtype(MTYPE_F8);
     if (!isUnsigned) {
         TN* tmp2 = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4); 
         Build_OP(TOP_xoris, tmp2, src, Gen_Literal_TN(0x8000, Pointer_Size), ops);

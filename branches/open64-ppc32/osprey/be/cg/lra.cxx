@@ -4317,7 +4317,7 @@ Fix_LRA_Blues (BB *bb, TN *tn, HB_Schedule *Sched)
     for (INT i = ISA_REGISTER_CLASS_MIN; i <= ISA_REGISTER_CLASS_MAX; i++) {
       regs_avail[i] = REGISTER_SET_Size (avail_set[i]);
     }
-
+#if !defined(TARG_PPC32)
     if (!Sched) {
       Sched = CXX_NEW(HB_Schedule(), &MEM_local_pool);
     }
@@ -4328,6 +4328,7 @@ Fix_LRA_Blues (BB *bb, TN *tn, HB_Schedule *Sched)
 		regs_avail);
     Sched->Schedule_BB(bb, NULL);
     Reset_BB_scheduled (bb);
+#endif
 #ifdef KEY
     // Fix memory leak - call the appropriate destructor to pop and delete
     // _hb_pool after it is used.

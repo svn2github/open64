@@ -1222,10 +1222,8 @@ extern void Generate_Return_Address(void);
         Perform_Loop_Optimizations();
       }
 #else
-#if !defined(TARG_PPC32) // there are bugs 
       // Optimize loops (mostly innermost)
       Perform_Loop_Optimizations();
-#endif
 #endif // TARG_IA64
       // detect GTN
       GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);

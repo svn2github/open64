@@ -9817,7 +9817,7 @@ EMT_End_File( void )
     if (! CG_emit_non_gas_syntax) {
 #endif
     if (CG_emit_asm_dwarf) {
-#ifndef TARG_LOONGSON
+#if !defined(TARG_LOONGSON) && !defined(TARG_PPC32)
       Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs(Asm_File,
 						   dwarf_section_count,
 						   !Use_32_Bit_Pointers);
