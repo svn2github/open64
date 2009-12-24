@@ -1,0 +1,254 @@
+#!/bin/bash
+#
+#
+#  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of version 2 of the GNU General Public License as
+#  published by the Free Software Foundation.
+#
+#  This program is distributed in the hope that it would be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+#
+#  Further, this software is distributed without any warranty that it is
+#  free of the rightful claim of any third person regarding infringement 
+#  or the like.  Any license provided herein, whether implied or 
+#  otherwise, applies only to this software file.  Patent licenses, if 
+#  any, provided herein do not apply to combinations of this program with 
+#  other software, or any other product whatsoever.  
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write the Free Software Foundation, Inc., 59
+#  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+#
+#  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+#  Mountain View, CA 94043, or:
+#
+#  http://www.sgi.com
+#
+#  For further information regarding this notice, see:
+#
+#  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+#
+#
+echo $TOOLROOT
+
+VER_MAJOR="1"
+VER_MINOR="0"
+#PATCH_LEVEL=""
+#VERSION="${VER_MAJOR}.${VER_MINOR}"
+VERSION="3.1"
+    # set the build host
+BUILD_HOST="ia32" ; 
+
+    # set the target host, it must be "ia64"
+TARG_HOST="loongson"
+
+    # set the TARGET O.S, only linux is supported currently 
+TARG_OS="linux"
+
+    # set the building host's O.S, currently only linux is supported.
+BUILD_OS="linux" 
+
+    # everything we will install is under $ROOT
+ROOT=${TOOLROOT}/
+INTERPOSE=${TARG_HOST}-${TARG_OS}
+
+AREA="targ${BUILD_HOST}_${TARG_HOST}"
+
+LIBPATH=${ROOT}/${INTERPOSE}/lib
+PHASEPATH=${ROOT}/${INTERPOSE}/lib
+NATIVE_LIB_DIR=${LIBPATH}/32
+BIN_DIR=${ROOT}/${INTERPOSE}/bin
+
+INSTALL="/usr/bin/install -D"
+INSTALL_DATA="/usr/bin/install -D -m 644"
+
+INSTALL_EXEC_SUB () {
+
+    [ $# -ne 2 ] && echo "Usage: INSTALL_EXEC_SUB SRC_file DEST_file" && return 1
+    
+    [ ! -e "$1" ] && echo "$1 does not exist" && return 1
+
+    echo -e "$2 : $1 \n\t${INSTALL} $1 $2\n" | make -f - |\
+    grep -v "Entering directory\|Leaving directory\|up to date"
+
+    return 0;
+}
+
+INSTALL_DATA_SUB () {
+
+    [ $# -ne 2 ] && echo "Usage: INSTALL_DATA_SUB SRC_file DEST_file" && exit 1
+
+    [ ! -e "$1" ] && echo "$1 does not exist" && return 1
+
+    echo -e "$2 : $1 \n\t${INSTALL_DATA} $1 $2\n" | make -f - |\
+    grep -v "Entering directory\|Leaving directory\|up to date"
+
+    return 0
+}
+
+
+INSTALL_DRIVER () {
+
+    [ ! -d ${BIN_DIR}       ] && mkdir -p ${BIN_DIR}
+    [ ! -d ${LIBPATH}	    ] && mkdir -p ${LIBPATH}
+    [ ! -d ${NATIVE_LIB_DIR}	    ] && mkdir -p ${NATIVE_LIB_DIR}
+
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/loongcc
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/loongCC
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/loongf90
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/loongf95
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/loongcc-${VERSION}
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/loongCC-${VERSION}
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/loongf90-${VERSION}
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/loongf95-${VERSION}
+#    INSTALL_EXEC_SUB ../misc/mips64el-n32-linux-gcc ${BIN_DIR}/mips64el-n32-linux-gcc
+#    INSTALL_EXEC_SUB ../misc/mips64el-n32-linux-g++ ${BIN_DIR}/mips64el-n32-linux-g++
+    INSTALL_EXEC_SUB ../misc/as  ${LIBPATH}/as
+    INSTALL_EXEC_SUB ../misc/ld  ${LIBPATH}/ld
+    INSTALL_EXEC_SUB ../misc/cc1  ${LIBPATH}/cc1
+    INSTALL_EXEC_SUB ../misc/collect2  ${LIBPATH}/collect2
+    return 0
+}
+
+   # Install front-end components
+INSTALL_FE () {
+
+    INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
+    INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
+
+    # Currently we do not install fortran 90 front-end
+    INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef95   ${PHASEPATH}/mfef95
+    INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/cf95.cat ${PHASEPATH}/cf95.cat
+
+    return 0
+}
+
+  # Install back-end components 
+INSTALL_BE () {
+    INSTALL_EXEC_SUB ${AREA}/be/be  ${PHASEPATH}/be
+    INSTALL_EXEC_SUB ${AREA}/be/be.so ${PHASEPATH}/be.so
+
+    return 0
+}
+
+  # Install IPA-related components
+INSTALL_IPA () {
+
+    INSTALL_EXEC_SUB ${AREA}/ipa/ipa.so ${PHASEPATH}/ipa.so
+    INSTALL_EXEC_SUB ${AREA}/ipl/ipl.so ${PHASEPATH}/ipl.so
+
+    ld_new_dir="targcygnus_${BUILD_HOST}_${TARG_HOST}/ld"
+
+    INSTALL_EXEC_SUB ${ld_new_dir}/ld-new  ${PHASEPATH}/ipa_link
+    ln -sf be ${PHASEPATH}/ipl 
+
+    return 0
+}
+
+INSTALL_CG () {
+    INSTALL_EXEC_SUB ${AREA}/cg/cg.so                ${PHASEPATH}/cg.so
+    return 0
+}
+
+INSTALL_WHIRL_STUFF () {
+
+    INSTALL_EXEC_SUB  ${AREA}/whirl2c/whirl2c   ${PHASEPATH}/whirl2c
+    INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f   ${PHASEPATH}/whirl2f
+    INSTALL_EXEC_SUB  ${AREA}/whirl2c/whirl2c.so ${PHASEPATH}/whirl2c.so
+    INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f.so ${PHASEPATH}/whirl2f.so
+
+    (cd ${PHASEPATH}; ln -sf be whirl2c_be) 
+    (cd ${PHASEPATH}; ln -sf be whirl2f_be) 
+
+    INSTALL_EXEC_SUB  ${AREA}/ir_tools/ir_b2a    ${BIN_DIR}/ir_b2a
+
+    return 0
+}
+
+
+
+    # Install those archieves that are deemed as part of compiler, so 
+    # we put them where the orcc-phases reside.
+INSTALL_PHASE_SPECIFIC_ARCHIVES () {
+
+    d="targia32_loongson"
+  
+    INSTALL_DATA_SUB $d/libinstr2/libinstr.a      ${NATIVE_LIB_DIR}/libinstr.a
+    INSTALL_DATA_SUB $d/libinstr2/libinstr_p.a      ${NATIVE_LIB_DIR}/libinstr_p.a
+    INSTALL_DATA_SUB $d/libinstr2/libinstr.so.1      ${NATIVE_LIB_DIR}/libinstr.so.1
+    cd ${NATIVE_LIB_DIR} && ln -sf libinstr.so.1 libinstr.so && cd -
+
+    INSTALL_DATA_SUB $d/libcginstr/libcginstr.a      ${NATIVE_LIB_DIR}/libcginstr.a
+
+}
+
+   
+INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
+
+#    d="targ${TARG_HOST}/"
+
+#    INSTALL_DATA_SUB ${d}/libfortran/libfortran.a ${NATIVE_LIB_DIR}/libfortran.a 
+#    INSTALL_DATA_SUB ${d}/libu/libffio.a          ${NATIVE_LIB_DIR}/libffio.a
+#    INSTALL_DATA_SUB ${d}/libmsgi/libmsgi.a       ${NATIVE_LIB_DIR}/libmsgi.a
+#    INSTALL_DATA_SUB ${d}/libmv/libmv.a           ${NATIVE_LIB_DIR}/libmv.a
+        
+        # It seems libm.so sometimes could not work, so we put it at ${PHASEPATH}
+        #
+#    INSTALL_DATA_SUB ../lib/${TARG_HOST}-${TARG_OS}/gnu/libm.a ${PHASEPATH}/libm.a
+
+#    return 0
+
+
+    cp ../misc/n32-lib/* ${NATIVE_LIB_DIR}
+
+    return 0
+
+}
+
+
+INSTALL_NATIVE_HEADER () {
+
+    INSTALL_DATA_SUB include/whirl2c.h  ${ROOT}/${INTERPOSE}/include/${VERSION}/whirl2c.h
+    INSTALL_DATA_SUB include/whirl2f.h  ${ROOT}/${INTERPOSE}/include/${VERSION}/whirl2f.h
+
+    INSTALL_DATA_SUB ${AREA}/include/dwarf.h  ${ROOT}/${INTERPOSE}/include/${VERSION}/dwarf.h
+    INSTALL_DATA_SUB ${AREA}/include/libdwarf.h  ${ROOT}/${INTERPOSE}/include/${VERSION}/libdwarf.h
+    INSTALL_DATA_SUB  ${AREA}/include/libelf/libelf.h  ${ROOT}/${INTERPOSE}/include/${VERSION}/libelf/libelf.h
+    INSTALL_DATA_SUB  ${AREA}/include/libelf/sys_elf.h  ${ROOT}/${INTERPOSE}/include/${VERSION}/libelf/sys_elf.h
+
+    return 0
+
+
+}
+
+
+INSTALL_MISC () {
+
+    INSTALL_EXEC_SUB ${AREA}/wopt/wopt.so         ${PHASEPATH}/wopt.so
+    INSTALL_EXEC_SUB ${AREA}/lw_inline/lw_inline  ${PHASEPATH}/inline
+    INSTALL_EXEC_SUB ${AREA}/lno/lno.so           ${PHASEPATH}/lno.so
+    INSTALL_EXEC_SUB ${AREA}/targ_info/loongson.so ${PHASEPATH}/loongson.so
+
+    return 0
+}
+
+cd `dirname $0`
+
+INSTALL_DRIVER 
+INSTALL_FE 
+INSTALL_BE 
+INSTALL_IPA 
+INSTALL_CG 
+INSTALL_WHIRL_STUFF 
+
+INSTALL_PHASE_SPECIFIC_ARCHIVES 
+[ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_NATIVE_HEADER 
+INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES
+
+
+INSTALL_MISC
+
+exit 0
