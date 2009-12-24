@@ -891,7 +891,6 @@ OPT_FEEDBACK::OPT_FEEDBACK( CFG *cfg, MEM_POOL *pool )
 
       OPERATOR opr = WN_operator( wn_last );
 
-#ifdef KEY
       node.orig_wn = NULL;
 
       if( opr == OPR_ICALL ){
@@ -914,7 +913,6 @@ OPT_FEEDBACK::OPT_FEEDBACK( CFG *cfg, MEM_POOL *pool )
 	  node.orig_wn = NULL;
 	}
       }
-#endif
 
       switch ( opr ) {
 
@@ -935,9 +933,7 @@ OPT_FEEDBACK::OPT_FEEDBACK( CFG *cfg, MEM_POOL *pool )
 
       case OPR_RETURN:
       case OPR_RETURN_VAL:
-#ifdef KEY
       case OPR_GOTO_OUTER_BLOCK:
-#endif
 	break;
 
       case OPR_TRUEBR:
@@ -1187,9 +1183,7 @@ OPT_FEEDBACK::Emit_feedback( WN *wn, BB_NODE *bb ) const
 
   case OPR_RETURN:
   case OPR_RETURN_VAL:
-#ifdef KEY
   case OPR_GOTO_OUTER_BLOCK:
-#endif
     {
       // Use node.freq_total_in as a guess
       FB_FREQ freq_guess = node.freq_total_in;
@@ -1321,7 +1315,6 @@ OPT_FEEDBACK::Emit_feedback( WN *wn, BB_NODE *bb ) const
     // Cur_PU_Feedback->Annot(wn, FB_EDGE_CALL_OUTGOING, node.freq_total_in );
     // Cur_PU_Feedback->Annot(wn, FB_EDGE_CALL_INCOMING, node.freq_total_out);
     }
-#ifdef KEY
     if( opr == OPR_ICALL &&
 	node.orig_wn != NULL ){
       FB_Info_Icall fb_info_icall = Cur_PU_Feedback->Query_icall(node.orig_wn);
@@ -1343,7 +1336,6 @@ OPT_FEEDBACK::Emit_feedback( WN *wn, BB_NODE *bb ) const
 	*/
       }
     }
-#endif // KEY
     break;
 
   case OPR_IO:
@@ -1880,21 +1872,13 @@ OPT_FEEDBACK::Print( FILE *fp ) const
   fprintf( fp, "OPT_FEEDBACK annotation:\n" );
 
   // Display nodes
-#ifdef KEY /* Mac port */
   fprintf( fp, "%ld nodes:\n", (long) (_fb_opt_nodes.size() - 1) );
-#else /* KEY Mac port */
-  fprintf( fp, "%d nodes:\n", (INT)(_fb_opt_nodes.size() - 1) );
-#endif
   for ( IDTYPE nx = 1; nx < _fb_opt_nodes.size(); nx++ ) {
     _fb_opt_nodes[nx].Print( nx, fp );
   }
 
   // Display edges
-#ifdef KEY /* Mac port */
   fprintf( fp, "%ld edges:\n", (long) (_fb_opt_edges.size() - 1) );
-#else /* KEY Mac port */
-  fprintf( fp, "%d edges:\n", (INT)(_fb_opt_edges.size() - 1) );
-#endif
   for ( IDTYPE ex = 1; ex < _fb_opt_edges.size(); ex++ ) {
     _fb_opt_edges[ex].Print( ex, fp );
   }
@@ -2015,13 +1999,8 @@ OPT_FEEDBACK::Verify( CFG *cfg, const char *const phase )
     if ( bb->Id() >= _fb_opt_nodes.size() ) {
       valid = false;
       if ( _trace )
-#ifdef KEY /* Mac port */
 	fprintf( TFile, "  CFG bb%d missing feedback! (_fb_opt_nodes.size()"
 		 " = %ld)\n", bb->Id(), (long) _fb_opt_nodes.size() );
-#else /* KEY Mac port */
-	fprintf( TFile, "  CFG bb%d missing feedback! (_fb_opt_nodes.size()"
-		 " = %d)\n", bb->Id(), (INT)_fb_opt_nodes.size() );
-#endif
     }
     const OPT_FB_NODE& node = _fb_opt_nodes[bb->Id()];
 

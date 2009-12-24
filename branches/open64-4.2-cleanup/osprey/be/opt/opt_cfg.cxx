@@ -1467,7 +1467,7 @@ BOOL CFG::Screen_cand(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL em
   if (WN_operator(stmt) == OPR_STID || WN_operator(stmt) == OPR_STBITS) {
     if (_opt_stab->Is_volatile(WN_aux(stmt)))
       return TRUE;	
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
       // shared memory is semi-volatile, in that we can't write multiple
       // different values at the same time.
       if (ST_in_shared_mem(_opt_stab->St(WN_aux(stmt)))) {
@@ -1797,7 +1797,7 @@ CFG::Conv_to_select(WN* wn)
       (lanswer + ranswer) <= WOPT_Enable_If_Conv_Limit
 #endif
        ) {
-#ifdef TARG_SL
+#if defined(TARG_SL)
 
       //
       // For such case,
@@ -1969,7 +1969,7 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
 	if (MTYPE_byte_size(rtype) < MTYPE_byte_size(dsctyp))
 	  rtype = dsctyp;// rtype should never be smaller than dsctyp (bug 6910)
 	else rtype = Mtype_TransferSign(dsctyp, rtype);
-#ifdef TARG_SL
+#if defined(TARG_SL)
         if (rtype == MTYPE_I2 && dsctyp == MTYPE_I2) {
           rtype = MTYPE_I4;
         }
@@ -2011,7 +2011,7 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
 #endif
        ) {
 
-#ifdef TARG_SL 
+#if defined(TARG_SL)
       //
       // For such case,
       //    if(p)
@@ -3032,11 +3032,9 @@ CFG::Process_entry( WN *wn, END_BLOCK *ends_bb )
   }
   else/* if (opr == OPR_ALTENTRY || opr == OPR_LABEL)*/ {
     if ( ends_bb ) *ends_bb = END_NOT;
-#ifdef KEY
     if (opr == OPR_LABEL && 
         LABEL_target_of_goto_outer_block(WN_label_number(wn)))
       Connect_predsucc(last_bb, _current_bb);
-#endif
   }
   return retv;
 }
@@ -3255,9 +3253,7 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
 
   case OPR_RETURN:
   case OPR_RETURN_VAL:
-#ifdef KEY
   case OPR_GOTO_OUTER_BLOCK:
-#endif
     {
     Append_wn_in(_current_bb, wn);
     _current_bb->Set_hasujp();
@@ -3277,9 +3273,7 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
     {
       // Look up the _label_map to see if it's forward declared by goto
       if (WN_Label_Is_Handler_Begin(wn)
-#ifdef KEY
 	  || LABEL_target_of_goto_outer_block(WN_label_number(wn))
-#endif
 	 ) {
 	// make sure we haven't already seen a goto to this label
 	// because we are not inserting the real label.

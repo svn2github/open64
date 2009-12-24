@@ -289,7 +289,6 @@ ESSA::Ilod_modified_phi_result(const BB_NODE *phi_bb, const CODEREP *cr) const
     STMTREP *sr = vsym->Defstmt();
     if (sr == NULL || !OPCODE_is_store(sr->Op())) return TRUE;
 
-#ifdef KEY // bug 7814
 #ifdef TARG_NVISA
 // bug 7814 is for a fortran program that was too aggressive in optimizing.
 // But for nvidia's bug 417551, this is a safe optimization that helps perf.
@@ -301,7 +300,6 @@ ESSA::Ilod_modified_phi_result(const BB_NODE *phi_bb, const CODEREP *cr) const
 #endif
     if (vsym->Aux_id() == Opt_stab()->Default_vsym())
       return TRUE;
-#endif
 
     //since the ansi rule is turned on by default, but now there're
     //still some unsafe things. we need to do a fix here

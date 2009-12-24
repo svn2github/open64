@@ -746,9 +746,7 @@ CODEREP::Propagatable_along_path(const BB_NODE *dest /* inclusive */,
       if (! Opnd(i)->Propagatable_along_path(dest, src))
 	return FALSE;
     if (Opr() == OPR_INTRINSIC_OP
-#ifdef KEY
 	|| Opr() == OPR_PURE_CALL_OP
-#endif
        )
       return FALSE;
     return TRUE;
@@ -784,9 +782,7 @@ CODEREP::Propagatable_into_loop(const BB_LOOP *loop) const
       if (! Opnd(i)->Propagatable_into_loop(loop))
 	return FALSE;
     if (Opr() == OPR_INTRINSIC_OP
-#ifdef KEY
 	|| Opr() == OPR_PURE_CALL_OP
-#endif
 #if defined(TARG_IA32) || defined(TARG_X8664)
 	|| Opr() == OPR_SELECT
 	|| Opr() == OPR_MIN
@@ -833,9 +829,7 @@ CODEREP::Propagatable_for_ivr(OPT_STAB *sym) const
     // Reference 644395 for situations when INTRINSIC_OP cannot be
     // copy propagated.
     if (Opr() == OPR_INTRINSIC_OP
-#ifdef KEY
 	|| Opr() == OPR_PURE_CALL_OP
-#endif
        )
       return FALSE;
     return TRUE;
@@ -877,46 +871,29 @@ CODEMAP::Convert_to_loop_invar(CODEREP *cr, BB_LOOP *loop)
 
   // Try to generate a copy of the initial value into a temp
   MTYPE temp_type;
-#ifdef KEY
   MTYPE temp_rtype; 
-#endif
   if ( cr->Kind() == CK_VAR ) {
     // come up with a preg-sized mtype
     temp_type = TY_mtype(ST_type(MTYPE_To_PREG(cr->Dsctyp())));
-#ifdef KEY
     temp_rtype = TY_mtype(ST_type(MTYPE_To_PREG(cr->Dtyp())));
-#endif
-#ifdef KEY // bug 11467
     if (temp_type == MTYPE_BS)
       temp_type = temp_rtype;
-#endif
   }
   else {
     temp_type = cr->Dtyp();
-#ifdef KEY
     temp_rtype = cr->Dtyp();
-#endif
   }
-#ifdef KEY
-// Bug 1640
+
   static INT Temp_Index = 0;
   UINT len = strlen("_temp_") + 17;
   char *new_str = (char *) alloca (len);
   sprintf(new_str, "%s%d", "_temp_", Temp_Index++);
   IDTYPE new_temp = Opt_stab()->Create_preg( temp_type, new_str );
-#else
-  IDTYPE new_temp = Opt_stab()->Create_preg( temp_type, new_str );
-#endif
+
   Add_new_auxid_to_entry_chis(new_temp, Cfg(), this, Opt_stab());
-#ifdef KEY
   CODEREP *new_cr = Add_def(new_temp, 1, NULL, temp_rtype, temp_type,
 			    Opt_stab()->Aux_stab_entry(new_temp)->St_ofst(),
 			    MTYPE_To_TY(cr->Dtyp()), 0, TRUE);
-#else
-  CODEREP *new_cr = Add_def(new_temp, 1, NULL, temp_type, temp_type,
-			    Opt_stab()->Aux_stab_entry(new_temp)->St_ofst(),
-			    MTYPE_To_TY(cr->Dtyp()), 0, TRUE);
-#endif
 
   Insert_var_phi(new_cr, loop->Preheader());
 
@@ -977,19 +954,7 @@ IVR::Generate_step(CODEREP *nv, CODEREP *iv) const
       }
     }
   }
-  
-#if 0
-  Disable this temp because iv has no type!  Bugs in htable?
-  
-  // call the simplifier to deal with more complicated expressions
-  if (delta == NULL && MTYPE_is_integral(nv->Dtyp())) {
-    OPCODE subop = OPCODE_make_op(OPR_SUB, dtype, MTYPE_V);
-    delta =  Htable()->Add_bin_node_and_fold(subop, 
-					     nv->Insert_CVTL(dtype,Htable()), 
-					     iv);
-  }
-#endif
-  
+    
   // The step expression contains the induction variable, either the
   // simplifier is not good enough, or it is not a valid candidate.
   if (delta && delta->Contains(iv))
@@ -1020,10 +985,8 @@ IVR::Ident_all_iv_cands(const BB_LOOP *loop, const BB_NODE *bb)
 
   if (bb->Pred()->Len() != 2) return;
   
-#ifdef KEY
 #ifdef Is_True_On
   static INT32 ivr_cand_idx = 0;
-#endif
 #endif
   //  Iterate through each phi-node
   PHI_LIST_ITER phi_iter;
@@ -1068,14 +1031,8 @@ IVR::Ident_all_iv_cands(const BB_LOOP *loop, const BB_NODE *bb)
       // the incr cannot be a volatile stmt (i.e., cannot contain
       // volatile var) it is sufficient to check just the incr stmt
       // here because expand_expr will not expand volatiles.
-#ifdef KEY 
-// BUG 510
       if (!incr->Is_flag_set(CF_DEF_BY_PHI) && incr->Defstmt() &&
 	  incr->Defstmt()->Volatile_stmt()) break;
-#else
-      if (!incr->Is_flag_set(CF_DEF_BY_PHI) &&
-	  incr->Defstmt()->Volatile_stmt()) break;
-#endif
       
       // Expand the phi opnds (but do not modify the program)
       INT32 limit = WOPT_Enable_IVR_Expand_Limit;
@@ -1113,12 +1070,10 @@ IVR::Ident_all_iv_cands(const BB_LOOP *loop, const BB_NODE *bb)
 
       IV_CAND *new_cand =
         CXX_NEW(IV_CAND(phi, init, incr, step, dtype), Mem_pool());
-#ifdef KEY
 #ifdef Is_True_On
       if (WOPT_Enable_Ivr_Cand_Limit != -1 && ivr_cand_idx >= WOPT_Enable_Ivr_Cand_Limit)
         break;
       ivr_cand_idx++;
-#endif
 #endif
       iv_cand_container.push_back(new_cand);
       break;
@@ -1217,10 +1172,6 @@ Primary_IV_preference(IV_CAND *iv, OPT_STAB *opt_stab)
   AUX_STAB_ENTRY *psym = opt_stab->Aux_stab_entry(aux_id);
   INT32 score = 1;
 
-#if 0	// IRM no longer supported
-  if (psym->Irm_generated())    // IRM generated, has no i=i insertion
-    score += 1000;
-#endif
 
   if (!psym->Points_to()->No_alias())  // has alias, unlikely to be dead
     score += 100;
@@ -1286,7 +1237,6 @@ IVR::Choose_primary_IV(const BB_LOOP *loop)
 
       IDTYPE new_temp = Opt_stab()->Create_preg( mtype, "whiledo_var" );
 
-#ifdef KEY // bug 5778
       if (ST_class(Opt_stab()->St(new_temp)) != CLASS_PREG &&
 	  Phase() != MAINOPT_PHASE && loop->Body()->MP_region()) {
 	// add a WN_PRAGMA_LOCAL pragma to the enclosing OMP parallel region
@@ -1301,7 +1251,6 @@ IVR::Choose_primary_IV(const BB_LOOP *loop)
 	  pragmastmt->Set_orig_wn(pragmawn);
 	}
       }
-#endif
 
       Add_new_auxid_to_entry_chis(new_temp, Cfg(), Htable(), Opt_stab());
 
@@ -1340,12 +1289,8 @@ IVR::Choose_primary_IV(const BB_LOOP *loop)
 
       STMTREP *incr_stmt =
 	incr_rhs->Create_cpstmt(incr_cr, Htable()->Mem_pool());
-// Bug 2569
-# ifdef KEY
+
       Loop()->Loopback()->Append_stmt_before_branch(incr_stmt);
-# else
-      Loop()->Loopback()->Append_stmtrep(incr_stmt);
-# endif
       incr_stmt->Set_bb(Loop()->Loopback());
 
       Htable()->Enter_var_phi_hash(phi);
@@ -1603,7 +1548,7 @@ IVR::Compute_trip_count(const OPCODE cmp_opc,
   INT32 slt_adjustment;  // delta for the bound expr if slt opt is performed
   BOOL  allow_remainder;
   enum {UP, DOWN, DONT_CARE} direction;
-#ifndef TARG_X8664 
+#if !defined(TARG_X8664) 
   BOOL  need_slt_opt = TRUE;
 #else
   BOOL  need_slt_opt = FALSE;
@@ -1690,12 +1635,10 @@ IVR::Compute_trip_count(const OPCODE cmp_opc,
       apply_cxx_pointer_rule = TRUE;
       break;
     case OPR_EQ:
-#ifdef KEY // bug 10986: special case where trip count is 1
       if (init == bound &&
 	  step->Kind() == CK_CONST && step->Const_val() != 0)
         return Htable()->Add_const(MTYPE_I4, 1);
       // fall thru
-#endif
     default:
       return NO_TRIP_COUNT;
     }
@@ -1916,7 +1859,7 @@ IVR::Compute_trip_count(const OPCODE cmp_opc,
 	else if (adjustment == -1)
 	  tmp_cr = Htable()->Add_bin_node_and_fold(subop, tmp_cr, one);
 		   
-#ifdef TARG_SL
+#if defined(TARG_SL)
         //step > 0, if tmp_cr is unsigned, set tripcount_type unsigned
         tripcount_type = (tmp_cr->Dtyp() == MTYPE_U4) ? MTYPE_U4 : tripcount_type;
 #endif		   
@@ -1944,13 +1887,11 @@ IVR::Compute_trip_count(const OPCODE cmp_opc,
 	// (init - bound) / (-step)
 	OPCODE subop = OPCODE_make_op(OPR_SUB, dtype, MTYPE_V);
 	CODEREP *diff = Htable()->Add_bin_node_and_fold(subop, init, bound);
-#ifdef KEY // bug 3738
 	if (MTYPE_byte_size(var->Dsctyp()) < 4) {
 	  diff = Htable()->Add_unary_node(
 	  			OPCODE_make_op(OPR_CVTL, dtype, MTYPE_V), diff);
 	  diff->Set_offset(MTYPE_size_min(var->Dsctyp()));
 	}
-#endif
 	CODEREP *neg_step = Htable()->Add_const(tripcount_type, -
                                                 step->Const_val());
 
@@ -2369,7 +2310,6 @@ IVR::Determine_trip_IV_and_exit_count(BB_LOOP *loopinfo,
   if (trip_init == NULL || trip_step == NULL || trip_bound == NULL)
     return;
 
-#ifdef KEY // bug 13728: if there is wraparound, do not continue
   if (trip_init->Kind() == CK_CONST && trip_step->Kind() == CK_CONST &&
       trip_bound->Kind() == CK_CONST) {
     if (MTYPE_signed(trip_cand->Var()->Dtyp()))
@@ -2391,7 +2331,6 @@ IVR::Determine_trip_IV_and_exit_count(BB_LOOP *loopinfo,
 	  return;
       }
   }
-#endif
 
   if (loopinfo->Test_at_entry()) {
     // the following trip equations only applies to DO_LOOP in preopt
@@ -2576,13 +2515,8 @@ IVR::Replace_secondary_IV(const IV_CAND *primary,
 
   // secondary->Incr()->Reset_flag(CF_DONT_PROP);
   //  this must be done after the BB of the newstmt be set.
-// Bug #564
-#ifdef KEY
   if (!loop->Exit_early())
     Reset_dont_prop(secondary->Incr_var(), loop);
-#else
-  Reset_dont_prop(secondary->Incr_var(), loop);
-#endif
 
   // Replace the phi result by a zero version
   // Generate a new version.
@@ -2834,9 +2768,7 @@ IVR::Convert_all_ivs(BB_LOOP *loop)
   if (primary && trip_iv && ivr_generated_primary) {
     AUX_ID primary_id = primary->Var()->Aux_id();
     ST *trip_st = Opt_stab()->St(trip_iv->Var()->Aux_id());
-#ifdef KEY
     if (ST_class(Opt_stab()->St(primary_id)) == CLASS_PREG)
-#endif
     Set_Preg_Name((PREG_NUM) Opt_stab()->St_ofst(primary_id),
 		  ST_name(trip_st));
     if (_trace)
@@ -2899,7 +2831,6 @@ IVR::Convert_all_ivs(BB_LOOP *loop)
   if (!WOPT_Enable_Replace_Second_IV)
     return;
 
-  // Fix 553115
   if (!WOPT_Enable_Replace_While_Loop_Second_IV &&
       loop->Exit_early())
     return;
@@ -2928,7 +2859,7 @@ IVR::Convert_all_ivs(BB_LOOP *loop)
       continue;
     }
 
-#ifdef TARG_X8664  // skip secondary IVs that are MTYPE_U4 for performance
+#if defined(TARG_X8664)  // skip secondary IVs that are MTYPE_U4 for performance
     		   // reason 
     if (secondary->Dtype() == MTYPE_U4) {
       if (_trace) 
@@ -3327,10 +3258,8 @@ COMP_UNIT::Do_iv_recognition(void)
 
   // Identify loops
   BB_LOOP *loop_list = _cfg->Analyze_loops();
-#ifdef KEY
 #ifdef Is_True_On
   INT32 ivr_idx = 0;
-#endif
 #endif
   if (loop_list != NULL) {
     IVR iv_recog(this, trace_ivr);
@@ -3338,12 +3267,10 @@ COMP_UNIT::Do_iv_recognition(void)
     BB_LOOP *loop;
 
     FOR_ALL_NODE(loop, loop_iter, Init()){
-#ifdef KEY
 #ifdef Is_True_On
       if (WOPT_Enable_Ivr_Limit != -1 && ivr_idx >= WOPT_Enable_Ivr_Limit)
         break;
       ivr_idx++;
-#endif
 #endif
       iv_recog.Process_one_loop(loop);
     }

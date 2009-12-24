@@ -116,7 +116,6 @@
 #pragma hdrstop
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "erglob.h"
@@ -157,9 +156,7 @@ inline BOOL Vn_Tracing(VN::EXPRID id)
 inline INT Need_Integral_Conversion(MTYPE from_ty, MTYPE to_ty, OPCODE *opc)
 {
    if (MTYPE_is_integral(from_ty) && MTYPE_is_integral(to_ty)
-#ifdef KEY
        && !MTYPE_is_vector(from_ty)
-#endif
 	)
       return Need_type_conversion(from_ty, to_ty, opc);
    else
@@ -256,31 +253,7 @@ VN::_set_valnum(EXPRID           id,
    // number do we need to change the _exprid_to_vn mapping.
    //
    if (exprid_to_vn[id] != vn)
-   {
-#if 0
-      // Turn this on to debug iterative redefinitions of valnums
-      //
-      if (_no_of_iterations > 1)
-      {
-	 if (&exprid_to_vn == &_exprid_to_vn)
-	    fprintf(stderr, "Changed primary valnum for cr%d "
-		    "from %d to %d in iteration %d %s\n",
-		    (INT32)id,
-		    (INT32)exprid_to_vn[id].ordinal(),
-		    (INT32)vn.ordinal(),
-		    (INT32)_no_of_iterations,
-		    (locked_to_vn[id]? "locked" : "unlocked"));
-	 else
-	    fprintf(stderr, "Changed second valnum for cr%d "
-		    "from %d to %d in iteration %d %s\n",
-		    (INT32)id,
-		    (INT32)exprid_to_vn[id].ordinal(),
-		    (INT32)vn.ordinal(),
-		    (INT32)_no_of_iterations,
-		    (locked_to_vn[id]? "locked" : "unlocked"));
-      }
-#endif
-      
+   {      
       _status.changed = TRUE;
       exprid_to_vn[id] = vn;
 
@@ -427,7 +400,7 @@ VN::_valnum_vn_expr(EXPRID         exprid,   // Coderep (or WHIRL?) id
 	    "in VN::_valnum_vn_expr()", (INT32)exprid));
    
    if (simplified->get_kind() == VN_EXPR::LITERAL && 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
        !MTYPE_is_vector(TCON_ty(simplified->get_tcon())) &&
 #endif
        MTYPE_is_integral(TCON_ty(simplified->get_tcon())))
@@ -595,7 +568,6 @@ VN::_valnum_op(CODEREP *cr)
 			       _exprid_to_vn, *_status.locked_to_vn);
 
    }
-#ifdef KEY
    else if (OPCODE_operator(opc) == OPR_PURE_CALL_OP)
    {
       vn_expr_ptr = VN_EXPR::Create_Call_Op(cr->Call_op_aux_id(),
@@ -613,7 +585,6 @@ VN::_valnum_op(CODEREP *cr)
       valnum = _valnum_vn_expr(exprid, vn_expr_ptr,
                                _exprid_to_vn, *_status.locked_to_vn);
    }
-#endif
    else if (OPCODE_operator(opc) == OPR_ARRAY)
    {
       vn_expr_ptr = VN_EXPR::Create_Array_Addr(cr->Elm_siz(), cr->Num_dim());
@@ -858,7 +829,7 @@ VN::_valnum_lhs(EXPRID      lhs_exprid,
 					rhs_dty != MTYPE_M);
    BOOL do_cvt1 = 
       Need_Integral_Conversion(rhs_dty, lhs_dscty, NULL) != NOT_AT_ALL;
-#ifdef KEY // bug 11738: honor truncation effect of store
+   // honor truncation effect of store
    if (! do_cvt1 &&
        MTYPE_is_integral(lhs_dscty) &&
        MTYPE_byte_size(lhs_dscty) <= 4) {
@@ -881,7 +852,6 @@ VN::_valnum_lhs(EXPRID      lhs_exprid,
        }
      }
    }
-#endif
 
    const BOOL do_cvt2 = 
       Need_Integral_Conversion(lhs_dscty, lhs_dty, NULL) != NOT_AT_ALL;

@@ -99,7 +99,6 @@
 #pragma hdrstop
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "errors.h"
@@ -211,9 +210,6 @@ BITWISE_DCE::Fill_lower_bits(UINT64 bitmask)
 inline UINT64
 BITWISE_DCE::Bits_in_type(MTYPE dt)
 {
-#ifndef KEY
-  Is_True(dt != MTYPE_UNKNOWN, ("BITWISE_DCE::Bits_in_type: type is unknown"));
-#endif
   if (dt == MTYPE_V || dt == MTYPE_M || dt == MTYPE_UNKNOWN)
     return UINT64_MAX;
   UINT64 vsize = MTYPE_size_min(dt);
@@ -329,11 +325,7 @@ BITWISE_DCE::Mark_var_bits_live(CODEREP *cr, UINT64 live_bits,
   }
   else { // def is real stid
     if (cr->Defstmt()) {       	    // defstmt is NULL if volatile
-#ifdef KEY // bug 2666
       Mark_tree_bits_live(cr->Defstmt()->Rhs(), live_bits, stmt_visit);
-#else
-      Mark_tree_bits_live(cr->Defstmt()->Rhs(), live_bits, FALSE);
-#endif
     }
 //  Make_bb_live(cr->Defstmt()->Bb()); not needed because all BBs already live
   }
@@ -496,14 +488,12 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
 	new_livebits |= sign_bit_mask; // make only the most 
 						   // significant bit live
       }
-#ifdef KEY
       if (Target_Byte_Sex == BIG_ENDIAN)
         Mark_tree_bits_live(cr->Opnd(0), new_livebits << 
 	      (MTYPE_bit_size(dtyp) - cr->Op_bit_offset() - cr->Op_bit_size()),
 			    stmt_visit);
       else
-#endif
-      Mark_tree_bits_live(cr->Opnd(0), new_livebits << cr->Op_bit_offset(),
+        Mark_tree_bits_live(cr->Opnd(0), new_livebits << cr->Op_bit_offset(),
 			  stmt_visit);
       return;
 
@@ -633,7 +623,6 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
 #elif TARG_IA64
         if ((shift_amt < 0) || (shift_amt >= MTYPE_size_min(dtyp))) shift_amt = MTYPE_size_min(dtyp) -1;
 #endif
-#ifdef KEY // need to do extra work to determine if the sign bit is live
         UINT64 sign_livebits;
 	if (MTYPE_size_min(dtyp) < MTYPE_size_min(MTYPE_U8)) {
 	  if (shift_amt <= 31 && (live_bits >> (31 - shift_amt)))
@@ -645,13 +634,10 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
 	    sign_livebits = 0x1000000000000000ULL;
 	  else sign_livebits = 0;
 	}
-#endif
         Mark_tree_bits_live(cr->Opnd(0),
 		      ((Bits_in_type(dsctyp) & live_bits) << shift_amt) &
 		      Bits_in_type(dsctyp) 
-#ifdef KEY
 		      | sign_livebits
-#endif
 		      , stmt_visit);
       }
       else Mark_tree_bits_live(cr->Opnd(0), Bits_in_type(dsctyp), stmt_visit);
@@ -673,23 +659,19 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
       return;
 
     case OPR_COMPOSE_BITS:
-#ifdef KEY
       if (Target_Byte_Sex == BIG_ENDIAN)
         new_livebits = Livebits(cr) & 
 		~(Bitmask_of_size(cr->Op_bit_size()) << 
 	      (MTYPE_bit_size(dtyp) - cr->Op_bit_offset() - cr->Op_bit_size()));
       else
-#endif
-      new_livebits = Livebits(cr) & 
+        new_livebits = Livebits(cr) & 
 		~(Bitmask_of_size(cr->Op_bit_size()) << cr->Op_bit_offset());
       Mark_tree_bits_live(cr->Opnd(0), new_livebits, stmt_visit);
-#ifdef KEY
       if (Target_Byte_Sex == BIG_ENDIAN)
         new_livebits = (Livebits(cr) >> (MTYPE_bit_size(dtyp) - cr->Op_bit_offset() - cr->Op_bit_size())) & 
 		       Bitmask_of_size(cr->Op_bit_size());
       else
-#endif
-      new_livebits = (Livebits(cr) >> cr->Op_bit_offset()) & 
+        new_livebits = (Livebits(cr) >> cr->Op_bit_offset()) & 
 		     Bitmask_of_size(cr->Op_bit_size());
       Mark_tree_bits_live(cr->Opnd(1), new_livebits, stmt_visit);
       return;
@@ -718,9 +700,7 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
     case OPR_FORWARD_BARRIER: case OPR_BACKWARD_BARRIER:
     case OPR_ALLOCA: case OPR_DEALLOCA:
     case OPR_ASM_STMT: case OPR_ASM_INPUT:
-#ifdef KEY
     case OPR_PURE_CALL_OP:
-#endif
       if (visit_all) {
 	for (i = 0; i < cr->Kid_count(); i++) {
 	  Mark_tree_bits_live(cr->Opnd(i), UINT64_MAX, stmt_visit);
@@ -967,9 +947,7 @@ BITWISE_DCE::Find_and_mark_return_live(BB_NODE *bb)
   FOR_ALL_NODE_REVERSE(stmt, stmt_iter, Init()) {
     if (stmt->Opr() == OPR_RETURN || 
 	stmt->Opr() == OPR_RETURN_VAL ||
-#ifdef KEY
   	stmt->Opr() ==  OPR_GOTO_OUTER_BLOCK ||
-#endif
 	stmt->Opr() == OPR_REGION_EXIT) {
       return_found = TRUE;
       Mark_stmt_live(stmt);
@@ -1154,15 +1132,12 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
     switch(opr) {
 
     case OPR_CVTL:
-#ifdef KEY
       // if the opnd is newly created, the usecnt should be 0.
       // Therefore, it doesn't contain any livebits information. In addition,
       // since it is new cr, it will not be marked as dead by bdce in early phase.
-      // The bug 2656 will not expose for this case.
       if (opnd->Usecnt() > 0  && 
           (Livebits(opnd) & ~Bitmask_of_size(opnd->Offset())) == 0)
 	return FALSE; // this current node will be deleted any way (bug 2656)
-#endif
       if (MTYPE_is_signed(dtyp) == sign_xtd) {
 #ifndef TARG_X8664
 	return from_bit >= opnd->Offset();
@@ -1182,12 +1157,10 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
       if (! MTYPE_is_integral(dsctyp) ||
 	  MTYPE_size_min(dtyp) <= MTYPE_size_min(dsctyp))
 	return FALSE;
-#ifdef KEY
       if (MTYPE_size_min(dtyp) > MTYPE_size_min(dsctyp) &&
           opnd->Usecnt() > 0 && 
 	  (Livebits(opnd) & ~Bits_in_type(dsctyp)) == 0)
-	return FALSE; // this current node will be deleted any way (bug 2656)
-#endif
+	return FALSE; // this current node will be deleted any way
       return MTYPE_is_signed(dtyp) == sign_xtd && 
 	     from_bit >= MTYPE_size_min(dsctyp);
 
@@ -1196,7 +1169,6 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
     case OPR_LNOT:
     case OPR_LAND: case OPR_LIOR:
       return ! sign_xtd || from_bit != 1;
-#ifdef KEY
     case OPR_BAND: 
       { CODEREP *kopnd;
         if (sign_xtd)
@@ -1209,7 +1181,6 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
 	UINT64 uval64 = kopnd->Const_val();
 	return uval64 <= ((0x1ll << from_bit) - 1);
       }
-#endif
 #ifdef TARG_SL
     case OPR_ASHR:
       //       I4I4LDID 0 <2,1,a>
@@ -1265,11 +1236,6 @@ BITWISE_DCE::Copy_propagate(CODEREP *cr, STMTREP *use_stmt) {
   Is_True(cr->Defstmt()->Opr() == OPR_STID,
 	  ("BITWISE_DCE::Copy_propagate: cr->Defstmt()->Opr() != OPR_STID"));
 
-#ifndef KEY
-  // For now, just test if the definition immediately preceeds the use.
-  if (use_stmt->Prev() != cr->Defstmt())
-    return NULL;
-#else
   // Relax to improve coverage
   if (use_stmt->Prev() != cr->Defstmt()) {
     if (WOPT_Enable_Bdceprop_Limit != -1 &&
@@ -1280,15 +1246,11 @@ BITWISE_DCE::Copy_propagate(CODEREP *cr, STMTREP *use_stmt) {
 		!use_stmt->Iv_update() /* bug 10449 */) )
       return NULL;
   }
-#endif
 
 #ifndef TARG_NVISA
-#ifdef KEY // bug 8335: this may prevent CG from knowing what register name
-	   // 		to use when handling the asm statemet
   if (use_stmt->Opr() == OPR_ASM_STMT &&
       ST_class(Opt_stab()->St(cr->Aux_id())) == CLASS_PREG)
     return NULL;
-#endif
 #endif
 
   CODEREP *new_expr = cr->Defstmt()->Rhs();
@@ -1327,9 +1289,7 @@ CODEREP *
 BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
 {
   if (MTYPE_is_integral(cr->Dtyp()) && Livebits(cr) == 0
-#ifdef KEY // bug 14142
       && ! cr->Has_volatile_content()
-#endif
       ) { // a dead use
     // replace node by dummy 0 (otherwise, can cause live range overlap)
     cr->DecUsecnt_rec();
@@ -1388,9 +1348,7 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
       if (((Livebits(cr) & ~Bitmask_of_size(cr->Offset())) == 0) ||
 	  Redundant_cvtl(MTYPE_is_signed(cr->Dtyp()), 
 			 MTYPE_size_min(cr->Dtyp()), cr->Offset(), 
-#ifdef KEY
 			 x ? x : 
-#endif
 			 cr->Opnd(0))) {
         if (Tracing()) fprintf(TFile, "delete cvtl (cr%d)\n", cr->Coderep_id());
 	// delete the node
@@ -1419,9 +1377,7 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
           if (((Livebits(cr) & ~Bits_in_type(dsctyp)) == 0) ||
 	      Redundant_cvtl(MTYPE_is_signed(dsctyp), 
 			     MTYPE_size_min(dtyp), MTYPE_size_min(dsctyp), 
-#ifdef KEY
 			     x ? x : 
-#endif
 			     cr->Opnd(0))) {
 	    // delete the node
 	    cr->DecUsecnt();
@@ -1611,8 +1567,7 @@ BITWISE_DCE::Bitwise_dce(void)
   Repair_Injured_AuxIntrnOP();
 #endif
 
-// NVISA:  not sure what problem is, but it breaks cgemm so ifdef for now
-#if !defined(KEY) || defined(TARG_NVISA)  // bug 8499
+#if defined(TARG_NVISA)
   // revisit STID stmts that were visited but not marked live
   if ( _copy_propagate ) {
     FOR_ALL_NODE( bb, cfg_iter, Init() ) {

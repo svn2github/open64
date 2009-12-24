@@ -260,11 +260,7 @@ EXP_WORKLST::Estimate_cost(ETABLE *etable, PRE_KIND pre_kind)
 
   if (Get_Trace(TP_WOPT2, FB_PRE_FLAG)) {
     fprintf(TFile, "==== Estimate cost ====\n");
-#ifdef KEY /* Mac port */
     fprintf(TFile, " num components=%ld\n", (long) component.size());
-#else /* KEY Mac port */
-    fprintf(TFile, " num components=%d\n", (INT)component.size());
-#endif /* KEY Mac port */
     for (int i = 0; i < component.size(); ++i) {
       if (original_count[i] > 0) {
 	fprintf(TFile, "%s: enum=%d %s=%lld no_opt=%d pre=%d fb_pre=%d\n",

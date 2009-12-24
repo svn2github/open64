@@ -1995,9 +1995,7 @@ private:
   STMTREP        *Entry_chi(void) const    { return _entry_chi; }
   void            Set_entry_chi(STMTREP *entry_chi) { _entry_chi = entry_chi; }
 
-#ifdef KEY
   void            Mark_phi_live(PHI_NODE *phi);
-#endif
 public:
                   ETABLE(CFG      *cfg,
                          OPT_STAB *opt_stab,

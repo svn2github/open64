@@ -87,7 +87,6 @@
 
 // For the interface to clients, see opt_alias_class.h
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <set>
 #include <math.h>
@@ -108,9 +107,7 @@
 extern "C" {
 #include "bitset.h"
 }
-#ifdef KEY
 extern BOOL ST_Has_Dope_Vector(ST *st);
-#endif
 
 IDTYPE ALIAS_CLASS_REP::_last_id_used;
 BOOL   ALIAS_CLASS_REP::_structure_not_frozen;
@@ -700,11 +697,6 @@ ALIAS_CLASS_REP::Process_pending(ALIAS_CLASSIFICATION &ac)
   Is_True(Is_pointer_class(),
 	  ("ACR::Process_pending: Must be pointer class"));
 
-#if 0
-  fprintf(TFile, "Process pending for ");
-  Print(TFile);
-#endif
-
   while (_pending != NULL) {
     ALIAS_CLASS_REP *item = _pending->Node()->Alias_class();
     _pending = ac.Release_pending(_pending);
@@ -712,7 +704,6 @@ ALIAS_CLASS_REP::Process_pending(ALIAS_CLASSIFICATION &ac)
   }
 }
 
-#ifdef KEY
 BOOL
 ALIAS_CLASS_REP::Pending_rep_match(ALIAS_CLASS_REP *rep)
 {
@@ -725,7 +716,7 @@ ALIAS_CLASS_REP::Pending_rep_match(ALIAS_CLASS_REP *rep)
   }
   return FALSE;
 }
-#endif
+
 void
 ALIAS_CLASS_REP::Merge_pending(ALIAS_CLASS_REP &that)
 {
@@ -1075,8 +1066,6 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
 	if (expr_must_point && !ref->Is_pointer_class()) {
 	  ALIAS_CLASS_MEMBER *obj_dummy = New_alias_class_member();
 	  ref->Set_class_pointed_to(New_alias_class(obj_dummy));
-#ifdef KEY
-// Fix for Bug 328
 /*
           AUX_ID lhs_aux_id = WN_aux(expr);
           ST *lhs_st = Opt_stab()->Aux_stab_entry(lhs_aux_id)->St();
@@ -1088,7 +1077,6 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
 	    }
 	  }
 */
-#endif
 	  ref->Process_pending(*this);
 	}
 	if (WOPT_Enable_Verbose && Tracing()) {
@@ -1285,8 +1273,6 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
       ALIAS_CLASS_REP    *obj_acr   = New_alias_class(dummy_acm);
       t.Set_obj_class(obj_acr);
       t.Ref_class()->Set_class_pointed_to(obj_acr);
-#ifdef KEY
-// Fix for Bug 328
 /*
       if (WOPT_Enable_Unique_Pt_Vsym){
         for (INT i = 0; i < WN_kid_count(expr); i++) {
@@ -1296,7 +1282,6 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
         }
       }
 */
-#endif
       t.Ref_class()->Process_pending(*this);
     }
     if (WOPT_Enable_Verbose && Tracing()) {
@@ -1553,12 +1538,10 @@ ALIAS_CLASSIFICATION::Callee_changes_no_points_to(const WN *const call_wn,
   else if (WN_Call_Does_Mem_Free(call_wn)) {
     return TRUE;
   }
-#if 1
   else if ((WN_operator(call_wn) == OPR_CALL) &&
 	   (strcmp("free", ST_name(WN_st(call_wn))) == 0)) {
     return TRUE;
   }
-#endif
   else if (Callee_returns_new_memory(call_wn)) {
     return TRUE;
   }
@@ -1595,11 +1578,7 @@ ALIAS_CLASSIFICATION::WN_is_alloca_intrinsic(const WN *const call_wn)
     return TRUE;
   }
   else {
-#ifdef KEY
     return Callee_returns_new_memory(call_wn);
-#else
-    return FALSE;
-#endif
   }
 }
 
@@ -1607,9 +1586,6 @@ ALIAS_CLASSIFICATION::WN_is_alloca_intrinsic(const WN *const call_wn)
 BOOL
 ALIAS_CLASSIFICATION::Callee_returns_new_memory(const WN *const call_wn)
 {
-#ifndef KEY
-  return WN_Call_Does_Mem_Alloc(call_wn);
-#else
   if (WN_Call_Does_Mem_Alloc(call_wn))
     return TRUE;
   if (WN_operator(call_wn) == OPR_CALL) {
@@ -1634,7 +1610,6 @@ ALIAS_CLASSIFICATION::Callee_returns_new_memory(const WN *const call_wn)
     }
   }
   return FALSE;
-#endif
 }
 
 
@@ -2246,13 +2221,6 @@ ALIAS_CLASSIFICATION::Finalize_ac_map_wn(WN *wn)
       // gives the alias class member corresponding to the WN.
       ALIAS_CLASS_MEMBER *acm =
 	(ALIAS_CLASS_MEMBER *) WN_MAP_Get(Indir_classification_map(), wn);
-#if 0
-      if (Tracing()) {
-	fprintf(TFile, "Got 0x%p from indir map %u on\n", acm,
-		Indir_classification_map());
-	Dump_wn_tree(TFile, wn);
-      }
-#endif
       ALIAS_CLASS_REP    *acr = acm->Alias_class();
 
       if (Tracing()) {

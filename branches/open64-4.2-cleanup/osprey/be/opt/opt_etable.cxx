@@ -89,9 +89,8 @@
 
 #include "data_layout.h"	// for ST_has_formal_preg_num
 
-#ifdef KEY
 #include "opt_alias_mgr.h"	// for ALIAS_MANAGER
-#endif
+
 
 
 const char *pre_kind_name(PRE_KIND kind)
@@ -507,7 +506,7 @@ CODEREP::Rvi_home_wn( OPT_STAB *opt_stab ) const
   case CK_CONST:
     home_wn = WN_CreateIntconst (OPR_INTCONST, Dtyp(), MTYPE_V, Const_val());
     break;
-#ifdef TARG_NVISA // other targets don't know how to rematerialize these
+#if defined(TARG_NVISA) // other targets don't know how to rematerialize these
   case CK_OP:
     // add ability to create preg home for expression,
     // so can later still find the base of the temporary.
@@ -579,10 +578,6 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 // ia32,x86,ia64,nvisa,sl all don't want to do this cause it can cause 
 // inconsistent sizes for the same symbol
 #if defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_NVISA) || defined(TARG_SL)
-#if 0 // this can cause inconsistent sizes for the same symbol
-    if (vsize <= 32 && dtyp == MTYPE_U8 && (signess & SIGN_0_EXTD)) 
-      dtyp = MTYPE_U4;
-#endif
 #elif !defined(TARG_IA64)
     // ia64 has similar problem (inconsistent sizes for the same symbol)
     // -- OSP_185
@@ -593,7 +588,7 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
   
   if (wk->Preg() == 0) {
     WN *home_wn = NULL;
-#ifdef TARG_NVISA // only do for nvisa till other targets learn rematerialize
+#if defined(TARG_NVISA) // only do for nvisa till other targets learn rematerialize
     home_wn = exp->Rvi_home_wn(htable->Sym());
 #endif
     switch (wk->Pre_kind()) {
@@ -602,7 +597,7 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 	 // This is similar to the EPRE case, but we do not set sign extension
 	 // specially for loads.
 	 // 
-#ifndef TARG_NVISA
+#if !defined(TARG_NVISA)
         AUX_ID          id = htable->Sym()->Create_preg(dtyp);
 #else
         AUX_ID id = htable->Sym()->Create_preg(dtyp, "vnfre_cst", home_wn);
@@ -628,7 +623,7 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 
     case PK_EPRE:
       {
-#ifndef TARG_NVISA
+#if !defined(TARG_NVISA)
         AUX_ID id = htable->Sym()->Create_preg(dtyp);
 #else
         AUX_ID id = htable->Sym()->Create_preg(dtyp, "epre_cst", home_wn);
@@ -658,7 +653,7 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
       }
     case PK_LPRE:
       {
-#ifndef TARG_NVISA // done above
+#if !defined(TARG_NVISA) // done above
 	WN *home_wn = exp->Rvi_home_wn(htable->Sym());
 #endif
 	if (inCODEKIND(exp->Kind(), CK_LDA|CK_RCONST|CK_CONST)) {
@@ -669,11 +664,10 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 	  if (signess & SIGN_1_EXTD) aux_preg->Set_sign_extd();
 	  if (signess & SIGN_0_EXTD) aux_preg->Set_zero_extd();
 	} else {
-#ifdef KEY // Bug 9821: Set the alias map id.
+    // Set the alias map id.  
 	  if (home_wn)
 	    htable->Sym()->Alias_Mgr()->Gen_alias_id (home_wn,
 	                                       exp->Points_to(htable->Sym()));
-#endif
 	  // Set the home location for the preg
 	  AUX_ID aux_id = exp->Aux_id();
 	  const char *aux_name = htable->Sym()->Aux_stab_entry(aux_id)->St_name();
@@ -711,9 +705,7 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
   // At this point, we require a new Temp_cr().
   Set_temp_cr(htable->Add_def(wk->Preg(), wk->Cur_e_version(), NULL, 
 			      dtyp, dtyp, htable->Sym()->St_ofst(wk->Preg()), 
-#ifdef KEY
 		      Occurrence()->Kind() == CK_VAR ? Occurrence()->Lod_ty() :
-#endif
 			      ST_type(MTYPE_To_PREG(dtyp)), 
 			      0, TRUE));
   wk->New_e_version();
@@ -757,7 +749,7 @@ ETABLE::New_temp_cr(MTYPE dtype, ADDRESSABILITY addressable, CODEREP *rhs)
    Is_True(vsize >= 32, 
 	   ("Unexpected size of result type in EXP_OCCURS::New_temp_cr"));
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
    WN *home_wn = rhs->Rvi_home_wn(Htable()->Sym());
    AUX_ID          id = Htable()->Sym()->Create_preg(dtype, "new_cst", home_wn);
 #else
@@ -1663,11 +1655,9 @@ EXP_WORKLST::Is_the_same_as(const CODEREP *cr)
     if (cr->Opr() == OPR_INTRINSIC_OP &&
 	cr->Intrinsic() != Exp()->Intrinsic())
       return FALSE;
-#ifdef KEY
     else if (cr->Opr() == OPR_PURE_CALL_OP &&
              cr->Call_op_aux_id() != Exp()->Call_op_aux_id())
       return FALSE;
-#endif
     else if (cr->Opr() == OPR_CVTL && cr->Offset() != Exp()->Offset())
       return FALSE;
     else if ((cr->Opr() == OPR_EXTRACT_BITS || cr->Opr() == OPR_COMPOSE_BITS)
@@ -2053,7 +2043,7 @@ ETABLE::Remove_real_occurrence(EXP_WORKLST_CONTAINER *worklist,
 BOOL 
 Subsumable_by_branch(CODEREP *cr)
 {
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS)
   // The following only applies to the MIPS instruction set
   // It might make sense to move target dependent code into
   // a separate file.  -Raymond 12/3/98.
@@ -2114,8 +2104,7 @@ ETABLE::Remove_real_occurrence(CODEREP *old_cr, STMTREP *stmt)
   // This is a problem happen in earlier phase
   Is_True(FALSE, ("ETABLE::Remove_real_occurrences, logic error"));
 }
-//Bug# 1153
-#ifdef KEY
+
 void
 ETABLE::Mark_phi_live(PHI_NODE *phi)
 {  
@@ -2130,7 +2119,7 @@ ETABLE::Mark_phi_live(PHI_NODE *phi)
       Mark_phi_live(cr->Defphi());
   }
 }
-#endif
+
 //  Generate an expr with current versions for the opnd_num-th operand
 //  of the phi_occur node.  Real_occ is the expr with current versions
 //  at the phi result.
@@ -2151,7 +2140,7 @@ ETABLE::Generate_cur_expr(const BB_NODE *bb, INT opnd_num, CODEREP *newcr, BOOL 
 		 "node bb:%d Aux:%d.", bb->Id(), newcr->Aux_id()));
 	if (fix_zero_ver && var_phi->OPND(opnd_num)->Is_flag_set(CF_IS_ZERO_VERSION))
 	  Htable()->Fix_zero_version(var_phi, opnd_num);
-#ifdef KEY // bug 7916
+
 	if (var_phi->OPND(opnd_num)->Dsctyp() == MTYPE_UNKNOWN ||
 	    var_phi->OPND(opnd_num)->Is_flag_set(CF_MADEUP_TYPE)) {
 	  Is_True(newcr->Dsctyp() != MTYPE_UNKNOWN,
@@ -2167,7 +2156,7 @@ ETABLE::Generate_cur_expr(const BB_NODE *bb, INT opnd_num, CODEREP *newcr, BOOL 
 	  var_phi->OPND(opnd_num)->Set_sign_extension_flag();
 	  var_phi->OPND(opnd_num)->Reset_flag(CF_MADEUP_TYPE);
 	}
-#endif
+
 	newcr = var_phi->OPND(opnd_num);
       }
     }
@@ -2224,10 +2213,10 @@ ETABLE::Generate_cur_expr(const BB_NODE *bb, INT opnd_num, CODEREP *newcr, BOOL 
     if (newcr->Ivar_mu_node() != NULL) {
       PHI_NODE *var_phi = Lookup_var_phi(bb, newcr->Ivar_occ()->Aux_id());
       if (var_phi != NULL) {
-#ifdef KEY
+
         if (!var_phi->Live())
           Mark_phi_live(var_phi);
-#endif
+
 	Is_True(var_phi->Live(),
 		("ETABLE::Generate_cur_expr: encounter dead phi node."));
 	Is_True(var_phi->OPND(opnd_num) != NULL,
@@ -2256,7 +2245,7 @@ ETABLE::Generate_cur_expr(const BB_NODE *bb, INT opnd_num, CODEREP *newcr, BOOL 
 		       "node bb:%d Aux:%d.", bb->Id(), kid->Aux_id()));
 	      if (fix_zero_ver && var_phi->OPND(opnd_num)->Is_flag_set(CF_IS_ZERO_VERSION))
 		Htable()->Fix_zero_version(var_phi, opnd_num);
-#ifdef KEY // bug 3070
+
 	      if (var_phi->OPND(opnd_num)->Dsctyp() == MTYPE_UNKNOWN ||
 		  var_phi->OPND(opnd_num)->Is_flag_set(CF_MADEUP_TYPE)) {
 		var_phi->OPND(opnd_num)->Set_dtyp(kid->Dtyp());
@@ -2268,7 +2257,7 @@ ETABLE::Generate_cur_expr(const BB_NODE *bb, INT opnd_num, CODEREP *newcr, BOOL 
 		var_phi->OPND(opnd_num)->Set_sign_extension_flag();
 		var_phi->OPND(opnd_num)->Reset_flag(CF_MADEUP_TYPE);
 	      }
-#endif
+
 	      newcr->Set_opnd(i, var_phi->OPND(opnd_num));
 	    }
 	  }
@@ -2378,9 +2367,7 @@ ETABLE::Alloc_and_generate_cur_expr(const CODEREP *result_expr,
       newcr->Set_ivar_mu_node(CXX_NEW(MU_NODE(*result_expr->Ivar_mu_node()), mpool));
 					      
     } else if (newcr->Kind() == CK_OP && (newcr->Opr() == OPR_INTRINSIC_OP
-#ifdef KEY
 	       || newcr->Opr() == OPR_PURE_CALL_OP
-#endif
       )) {
       for (INT i = 0; i < newcr->Kid_count(); i++) {
 	CODEREP *kid = result_expr->Opnd(i);
@@ -2540,15 +2527,14 @@ ETABLE::Perform_deferred_ocopy_and_get_new_exprs(EXP_WORKLST *const worklist)
       Bottom_up_cr(stmt, 0, new_rhs, FALSE, URGENT_INSERT,
 		   0, OPCODE_UNKNOWN, worklist->Exclude_sr_cand());
     }
-#ifdef KEY // bug 4674: restore original expression in occurrence node so later
-    	   // reapplication of SSAPRE due to second order effect will be OK
+    // restore original expression in occurrence node so later
+    // reapplication of SSAPRE due to second order effect will be OK
     if (occ->Occurrence()->Kind() != worklist->Exp()->Kind()) {
       Is_True(occ->Occurrence()->Opr() == OPR_CVT ||
               occ->Occurrence()->Opr() == OPR_CVTL,
 	      ("ETABLE::Deferred_ocopy: inconsistent expression operation\n"));
       occ->Set_occurrence(occ->Occurrence()->Opnd(0));
     }
-#endif
   }
 }
 
@@ -2764,7 +2750,7 @@ ETABLE::Check_lftr_non_candidate(STMTREP *stmt, CODEREP *cr, OPCODE opc)
   }
 }
 
-#ifdef TARG_SL2
+#if defined(TARG_SL2)
 
 /* this function is used to decide if nth parameter in following intrinsic function can 
   * be etable candiate. These parameter is address  expression and is offset from
@@ -2814,13 +2800,7 @@ ETABLE::Bottom_up_stmt(STMTREP *stmt)
 	   (TFile, "----- stmt: %s -----\n", OPCODE_name(stmt->Op())));
   Is_Trace_cmd(Tracing(),stmt->Print(TFile));
     
-#if 0
-  // Assign each statement a unique statement number for LFTR
-  if (Lftr()->Lftr_on())
-    Lftr()->Assign_stmt_no(stmt);
-#else
   stmt->Set_stmt_id(Cfg()->Get_stmt_id());
-#endif
 
   // for each statement see if they have a rhs and lhs and traverse
   // any expressions there
@@ -2838,7 +2818,7 @@ ETABLE::Bottom_up_stmt(STMTREP *stmt)
 
   if (OPCODE_is_fake(stmt->Op())) {
     for (INT32 i = 0; i < rhs->Kid_count(); i++) {
-#ifdef TARG_SL2
+#if defined(TARG_SL2)
            if(rhs->Opr()==OPR_INTRINSIC_CALL && Is_Intrncall_Nth_Parm_Candidate(rhs->Intrinsic(), i)) {
                  continue;
 	    }
@@ -2916,7 +2896,7 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 	}
 	if (cr->Opr() == OPR_ILOADX)
 	  Warn_todo("ETABLE::Bottom_up_cr: Indexed load.");
-#ifdef TARG_SL
+#if defined(TARG_SL)
         if (cr->Dtyp() == MTYPE_I2 && cr->Dsctyp() == MTYPE_I2) {
             cr->Set_dtyp(MTYPE_I4);
         } 
@@ -2927,7 +2907,6 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 	      ! cr->Is_ivar_volatile()) {
 	    Check_lftr_non_candidate(stmt, cr->Ilod_base(), cr->Op());
 	    if (same_base && WOPT_Enable_Ivar_PRE && cr->Ivar_has_e_num()) {
-#ifdef KEY
 	      if (WOPT_Enable_Preserve_Mem_Opnds && opc != OPCODE_UNKNOWN &&
 		  (OPCODE_operator(opc) == OPR_ADD ||
 		   OPCODE_operator(opc) == OPR_SUB ||
@@ -2935,7 +2914,6 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 		   OPCODE_operator(opc) == OPR_MPY)) {
 	      }
 	      else
-#endif
 	      if (urgent == NOT_URGENT) {
 		Is_Trace(Tracing(),
 			 (TFile,"====== ETABLE::Bottom_up_cr, Append coderep:\n"));
@@ -2949,11 +2927,6 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 		Insert_real_occurrence(cr, stmt, stmt_kid_num, depth, FALSE,
 				       urgent == URGENT_INSERT);
 	      }
-#if 0
-	      // How can the following ever do anything?!? *cr is an
-	      // ILOAD, not a comparison.
-	      Lftr()->Insert_comp_occurrence(cr, stmt, stmt_kid_num);
-#endif
 	    }
 	  } else {
 	    Bottom_up_cr(stmt, stmt_kid_num, cr->Ilod_base(), FALSE, urgent, 
@@ -2978,11 +2951,6 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 		Is_Trace_cmd(Tracing(),cr->Print(2,TFile));
 		Insert_real_occurrence(cr, stmt, stmt_kid_num, depth, FALSE, urgent);
 	      }
-#if 0
-	      // How can the following ever do anything?!? *cr is an
-	      // ILOAD, not a comparison.
-	      Lftr()->Insert_comp_occurrence(cr, stmt, stmt_kid_num);
-#endif
 	    }
 	  } else {
 	    Bottom_up_cr(stmt, stmt_kid_num, cr->Istr_base(), FALSE, urgent,
@@ -3061,7 +3029,7 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 	    }
 	    else Check_lftr_non_candidate(stmt, kid, cr->Op());
 	  }
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
 	  // check if all the kids are const (used below)
 	  BOOL all_kids_are_const = TRUE;
 	  switch (cr->Opr()) {
@@ -3123,7 +3091,7 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 			  opr == OPR_GT || opr == OPR_GE)) {
 		cr->Set_omitted();
 #endif
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
 	      // if all kids are const or const_var, and op is arith, then omit
 	      } else if (!WOPT_Enable_Const_Op_PRE && all_kids_are_const) {
 		Is_Trace(Tracing(),
@@ -3201,16 +3169,8 @@ EXP_OCCURS::Load_use_cr(ETABLE *etable, CODEREP * old_cr, CODEREP *cr)
     break;
   }
 
-#ifndef KEY
-  if (Split_64_Bit_Int_Ops && MTYPE_size_min(cr->Dtyp()) == 32 &&
-      MTYPE_size_min(old_cr->Dtyp()) == 64) {
-    opc = MTYPE_signed(old_cr->Dtyp()) ? OPC_I8I4CVT : OPC_U8U4CVT;
-    new_cr->Init_expr(opc, cr);
-    return etable->Rehash_exp(new_cr, etable->Gvn(cr));
-  }
-#else
+
   cr = cr->Fixup_type(old_cr->Dtyp(), etable->Htable());
-#endif
 
   return cr; // to satisfy the compiler
 }
@@ -3245,14 +3205,10 @@ EXP_WORKLST::Save_use_cr(const ETABLE *etable, CODEREP * old_cr)
 	old_cr->Set_dtyp(MTYPE_U8);
 	old_cr->Set_dsctyp(MTYPE_U4);
 	old_cr->Set_sign_extension_flag();
-#ifndef KEY
-      } else if (opc == OPC_U4U8CVT) {
-	old_cr->Set_dtyp(MTYPE_U4);
-#else
+
       } else if (opc == OPC_I8I4CVT) {
 	old_cr->Set_dtyp(MTYPE_I8);
 	old_cr->Set_dsctyp(MTYPE_I4);
-#endif
 	old_cr->Set_sign_extension_flag();
       } else {
 	Is_True(FALSE, ("EXP_WORKLST::Save_use_cr: wrong type conversion"));
@@ -3552,7 +3508,6 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
     if (Pre_kind() == PK_VNFRE)
        VNFRE::replace_occurs(original_cr, x, occur->Stmt());
 
-#ifdef KEY
     if (WOPT_Enable_Preserve_Mem_Opnds && opc != OPCODE_UNKNOWN &&
 	MTYPE_is_float(OPCODE_rtype(opc)) &&
 	(OPCODE_operator(opc) == OPR_ADD ||
@@ -3560,7 +3515,6 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
 	 OPCODE_operator(opc) == OPR_SUB)) {
     }
     else
-#endif
     if (Pre_kind() == PK_EPRE && 
 	all_kids_are_terminal &&
 	OPERATOR_is_scalar_iload (x->Opr()) &&
@@ -3616,7 +3570,7 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
       cr->Copy(*x);	
       cr->Set_usecnt(0);
       for  (INT32 i = 0; i < x->Kid_count(); i++) {
-	// bug 12471: __builtin_expect's first kid must be constant
+	// __builtin_expect's first kid must be constant
 	if (cr->Opr() == OPR_INTRINSIC_OP && cr->Intrinsic() == INTRN_EXPECT &&
 	    i == 1)
 	  continue;
@@ -3787,7 +3741,7 @@ ETABLE::Replace_occurs(EXP_OCCURS *occur, OCCUR_REPLACEMENT *repl)
 	CODEREP *new_rhs = Rehash_and_replace(stmt->Rhs(), occur, repl, FALSE,
 					      stmt->Op());
 
-#ifdef KEY // bug 5980: there can be duplicate real occur nodes inserted due
+       // there can be duplicate real occur nodes inserted due
 	   // to LFTR
 	if (new_rhs == NULL) {
 #ifdef Is_True_On
@@ -3805,10 +3759,6 @@ ETABLE::Replace_occurs(EXP_OCCURS *occur, OCCUR_REPLACEMENT *repl)
 #endif
 	  break;
 	}
-#else
-	Is_True(new_rhs != NULL,
-		("ETABLE::Replace_occurs: RHS must need rehash"));
-#endif
 	stmt->Set_rhs(new_rhs);
 
 	// Let the IV update status of the statement be reanalyzed.
@@ -4700,14 +4650,6 @@ ETABLE::Perform_PRE_optimization(void)
              cur_worklst->Dense_ssa_count(),
              cur_worklst->Dense_ssa_count() * 100 / (bb_cnt+edge_cnt));
 
-#if 0
-    // this line is to generate statistics for journal paper
-    fprintf(TFile, "journal statistics: (phis, realoccs, inserts, deletes, bb_cnt, ssa_edge_cnt, edge_cnt) %d %d %d %d %d %d %d\n",
-	    cur_worklst->Phi_count(), cur_worklst->Realocc_count(),
-	    cur_worklst->Insert_count(), cur_worklst->Reload_count(), bb_cnt, 
-	    cur_worklst->Ssa_edge_count(), edge_cnt);
-#endif
-
     total_phi_count += cur_worklst->Phi_count();
     total_opt_ssa_count += cur_worklst->Optimistic_ssa_count();
     total_dense_ssa_count += cur_worklst->Dense_ssa_count();
@@ -5248,9 +5190,7 @@ XTABLE::Is_compound(CODEREP *cr) const
   if (cr->Is_isop_flag_set(ISOP_SSAPRE_OMITTED))
     return TRUE;
   if (cr->Opr() != OPR_INTRINSIC_OP
-#ifdef KEY
       && cr->Opr() != OPR_PURE_CALL_OP
-#endif
      ) {
     for (INT32 i = 0; i < cr->Kid_count(); i++)
       if (! cr->Opnd(i)->Is_non_volatile_terminal(_opt_stab)) 
@@ -5326,9 +5266,7 @@ XTABLE::Bottom_up_cr(CODEREP *cr)
     }
   case CK_OP: {
     if (cr->Opr() != OPR_INTRINSIC_OP
-#ifdef KEY
         && cr->Opr() != OPR_PURE_CALL_OP
-#endif
        ) {
       for (INT32 i=0; i < cr->Kid_count(); i++) 
         Bottom_up_cr(cr->Opnd(i));
@@ -5384,14 +5322,6 @@ ETABLE::Count_lex_ident_exprs(INT32 simple_count)
 
   fprintf(TFile, "%8d simple and %8d compound expressions seen by SSAPRE in PU %s\n",
 	  simple_count, xtable._compound_count, Cur_PU_Name);
-#if 0
-  // for following assertion to pass, needs to compile with 
-  // -WOPT:lftr2=0:new_sr=0:second=0:ocopy=0
-  Is_True(simple_count + xtable._compound_count >= xtable._expr_count && 
-      xtable._expr_count >= 0.98 * (simple_count + xtable._compound_count),
-	  ("Etable::Count_lex_ident_exprs: error in counting: total is %d",
-	   xtable._expr_count));
-#endif
 
   OPT_POOL_Pop(&local_pool, -1);
   OPT_POOL_Delete(&local_pool, -1);

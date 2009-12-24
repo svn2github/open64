@@ -939,9 +939,7 @@ CODEMAP::Convert_iload_to_loop_invariant(BB_LOOP *loop, CODEREP *cr)
 
       BB_NODE *startbb = loop->Header();
 	
-#ifdef KEY
       if (! WOPT_Enable_Invariant_Loop_Bounds)
-#endif
       // Use alias analysis to see if the vsym is an invariant
       // If vsym aliases with any STID/ISTORE/MSTORE is the loop, then
       // don't replace it.
@@ -1046,9 +1044,7 @@ BOOL ref_iter(STMTREP *stmt, BOOL_FUNC f)
     if (expr_iter(stmt->Rhs(), f))
       return TRUE;
   if (OPERATOR_is_scalar_istore (stmt->Opr())
-#ifdef KEY
       || stmt->Opr() == OPR_MSTORE
-#endif
 	  ) {
     if (expr_iter(stmt->Lhs(), f)) return TRUE;
   }

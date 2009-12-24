@@ -334,7 +334,6 @@ BOOL OPT_TAIL::Exit_is_well_behaved(BB_NODE *bb)
     }
 
     // check for passing the address of a locally allocated variable
-    // see pv #405171
     WN *arg_kid = WN_kid0(arg);
     const OPERATOR arg_kid_opr = WN_operator(arg_kid);
     if ( arg_kid_opr == OPR_LDA ) {
@@ -478,20 +477,15 @@ void OPT_TAIL::Fixup_exit(BB_NODE *bb)
     TYPE_ID arg_type_id = WN_rtype(arg);
 
     arg = WN_kid0(arg);
-#ifdef KEY
-// Bug 1640
     static INT Temp_Index = 0;
     UINT len = strlen("_temp_") + 17;
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
     char *new_str = (char *) __builtin_alloca (len);
 #else
     char *new_str = (char *) alloca (len);
 #endif /* __MINGW32__ */
     sprintf(new_str, "%s%d", "_temp_", Temp_Index++);
     AUX_ID tmp_preg = _opt_stab->Create_preg(arg_type_id, new_str);
-#else
-    AUX_ID tmp_preg = _opt_stab->Create_preg(arg_type_id);
-#endif
     WN *stid = WN_CreateStid(OPR_STID, MTYPE_V, arg_type_id, 
 			     _opt_stab->St_ofst(tmp_preg), 
 			     ST_st_idx(_opt_stab->St(tmp_preg)),

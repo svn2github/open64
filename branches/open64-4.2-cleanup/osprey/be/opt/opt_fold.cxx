@@ -71,7 +71,6 @@
 static char *rcs_id = opt_fold_CXX"$Revision: 1.9 $";
 #endif /* _KEEP_RCS_ID */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "errors.h"
@@ -159,10 +158,8 @@ FOLD::Fold_Expr(CODEREP *cr)
   if (!WOPT_Enable_Fold2const)	// do nothing if OFF
     return NOHASH;
 
-#ifdef KEY
   if (cr->Kind() == CK_IVAR)
     return CR_Simplify_Iload(cr);
-#endif
 
   if (cr->Kind() != CK_OP)
     return NOHASH;
@@ -296,9 +293,7 @@ FOLD::CR_Simplify_Tree(CODEREP *cr)
     return NOHASH;
 
   if (opr == OPR_INTRINSIC_OP
-#ifdef KEY
       || opr == OPR_PURE_CALL_OP
-#endif
      ) {
     for (i=0; i<numkids; i++) {
       k0 = CR_Simplify_Tree(cr->Opnd(i));
@@ -308,11 +303,9 @@ FOLD::CR_Simplify_Tree(CODEREP *cr)
 	found = TRUE;
       cr->Set_opnd(i,k0);
     }
-#ifdef KEY
     if (opr == OPR_PURE_CALL_OP)
       result = NULL;
     else
-#endif
     result = SIMPNODE_SimplifyIntrinsic(op, SIMPNODE_intrinsic(cr), numkids,
 					cr->Opnd_ptr());
     if (result) {
@@ -459,10 +452,8 @@ FOLD::CR_Simplify_Expr(CODEREP *cr)
       } else
 	result = NOHASH;
 
-#ifdef KEY
    } else if (opr == OPR_PURE_CALL_OP) {
       result = NOHASH;
-#endif
    } else if (numkids == 1) {	// unary operators and IVAR
 
       CODEREP *k0 = SIMPNODE_kid0(cr); // could be CK_OP or CK_IVAR
@@ -521,13 +512,9 @@ FOLD::CR_Simplify_Expr(CODEREP *cr)
 	  tmp->Set_opnd(1,k1);
 	  result = fold_htable->Rehash(tmp);
 	} else
-#ifndef KEY
-	  result = NOHASH;
-#else // bug 8581
 	  result = Combine_bits_any_nzero_test(cr);
 	  if (result == NOHASH)
 	    result = Combine_bits_all_zero_test(cr);
-#endif
       }
 
    } else if (numkids == 3) {	// trinary operators
@@ -558,7 +545,6 @@ FOLD::CR_Simplify_Expr(CODEREP *cr)
    return result;
 }
 
-#ifdef KEY
 static CODEREP *CR_CreateIntconst(OPCODE opc, INT64 val);
 
 // return value:
@@ -751,7 +737,6 @@ CODEREP *Combine_bits_all_zero_test(CODEREP *cr)
 				    OPCODE_make_op(OPR_INTCONST, lvar->Dtyp(), MTYPE_V),
 				    0));
 }
-#endif
 
 BOOL
 FOLD::check_convert(CODEREP *cr, CODEREP **k, INT kid)
@@ -911,7 +896,7 @@ CR_opcode(CODEREP *cr)
       // cr->Dsctyp() is meaningless for FP constants
       return OPCODE_make_op(OPR_CONST, cr->Dtyp(), MTYPE_V);
     case CK_VAR:
-#ifdef TARG_SL
+#if defined(TARG_SL)
       if ( cr->Dtyp() == MTYPE_I2 &&  cr->Dsctyp() == MTYPE_I2) {
         return OPCODE_make_op(cr->Bit_field_valid() ? OPR_LDBITS : OPR_LDID,
 			      MTYPE_I4, cr->Dsctyp());
@@ -975,10 +960,8 @@ CR_st(CODEREP *cr)
     case CK_RCONST:
       return cr->Const_id();
     case CK_OP:
-#ifdef KEY
       if (cr->Opr() == OPR_PURE_CALL_OP)
         return &St_Table[cr->Call_op_aux_id()];
-#endif
     case CK_CONST:
     case CK_IVAR:
     default:

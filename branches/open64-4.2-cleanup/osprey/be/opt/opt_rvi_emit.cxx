@@ -111,7 +111,6 @@ RVI_EMIT::Emit_bb( BB_NODE *bb )
       // statement in the block, so just add it before any others
       bb->Prepend_wn_after_labels( bb->Entrywn() );
     }
-#ifdef KEY
     else if ( fopc == OPC_LABEL &&
 	      LABEL_target_of_goto_outer_block(WN_label_number(bb->Entrywn())))
     {
@@ -119,7 +118,6 @@ RVI_EMIT::Emit_bb( BB_NODE *bb )
       // real statement in the block, so just add it before any others
       bb->Prepend_wn_after_labels( bb->Entrywn() );
     }
-#endif
   }
 
   WN *first = bb->Firststmt();
@@ -211,12 +209,11 @@ RVI_EMIT::Emit_wn_annotations( BB_NODE *bb, WN *wn, WN **new_wn ) const
     // handle kids if necessary, deal with case of constant child
     for ( INT ikid = 0; ikid < WN_kid_count(wn); ikid++ ) {
       WN *new_kid;
-#ifdef KEY // bug 12471: __builtin_expect's first kid must be constant
+      // __builtin_expect's first kid must be constant
       if (WN_operator(wn) == OPR_INTRINSIC_OP &&
 	  ((INTRINSIC) WN_intrinsic(wn)) == INTRN_EXPECT &&
 	  ikid == 1)
 	continue;
-#endif
       Emit_wn_annotations( bb, WN_kid(wn,ikid), &new_kid );
 
       // see if this kid needs to be replaced

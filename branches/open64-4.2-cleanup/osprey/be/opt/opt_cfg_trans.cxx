@@ -439,14 +439,12 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
 	      branch_sr->Init_Goto( NULL, goto_bb->Labnam(), 0);
 	      bb->Append_stmtrep( branch_sr);
 	    } else {
-#ifdef KEY // bug 12839
 	      if (branch_sr->Op() == OPC_AGOTO) {
 		branch_sr->Set_op(OPC_GOTO);
 		branch_sr->Rhs()->DecUsecnt();
 		branch_sr->Set_rhs(NULL);
 		bb->Set_kind(BB_GOTO);
 	      }
-#endif
 	      Is_True(branch_sr->Op() == OPC_GOTO, ("expected OPC_GOTO"));
 	      branch_sr->Set_label_number(goto_bb->Labnam());
 	    }
@@ -571,19 +569,17 @@ void print_zone(FILE *fp, zone& zone)
 struct comp_zones {
   zone_container *zones;
   bool operator()(int x, int y) {
-#ifdef KEY
     /* If this function is compiled with x87 stack register,
        the result is undeterministic depending on the value
        of (*zones)[x/y].priority(). One simply solution is
        to add the following comparision to avoid any surprise
-       introduce by x87 operations.       (bug#3532)
+       introduce by x87 operations.
        BTW, I did not use TARG_X8664, since the following stmt
        can speed up the running time.
      */
     if( x == y ){
       return false;
     }
-#endif
 
     // Work around g++ bug!
     //   g++ can't compare results of two double functions.

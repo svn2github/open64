@@ -172,7 +172,7 @@ RVI_CTAB::Hash( const WN *wn ) const
     else {
       // lda case
       // hash the opcode, the st's val, and the offset
-#ifdef TARG_SL
+#if defined(TARG_SL)
       return (((UINT32)opc+val+(UINT32)WN_lda_offset(wn) + (UINT32)WN_is_internal_mem_ofst(wn)) % RVI_CTAB_SIZE);
 #else 
       return (((UINT32)opc+val+(UINT32)WN_lda_offset(wn)) % RVI_CTAB_SIZE);

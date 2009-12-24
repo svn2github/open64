@@ -171,10 +171,8 @@ public:
   BOOL	       Verify_IR(CFG *, CODEMAP *, INT);// consistency check
   BOOL         Verify_CODEMAP(void);
   void         Verify_version(void);
-#ifdef KEY
   void	       Find_uninitialized_locals(void); // find uninitialized local vars
   void	       Find_uninit_locals_for_entry(BB_NODE*); // find uninitialized local vars for an entry to the PU
-#endif
   void         Pro_loop_trans();         // The driver for proactive loop transformations.
 
   // member access functions

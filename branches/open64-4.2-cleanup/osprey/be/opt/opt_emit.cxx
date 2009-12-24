@@ -76,7 +76,6 @@ static char *rcs_id = 	opt_emit_CXX"$Revision: 1.13 $";
 // standard types.
 #define USE_STANDARD_TYPES
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "tracing.h"
@@ -184,9 +183,7 @@ Create_block_stmt(BB_NODE *ff, BB_NODE *ll)
   //  is to rely on STMTREP * to screen out empty BBs.
   // 
   while (ff->First_stmtrep() == NULL &&
-#ifdef KEY
          ff->Firststmt() == NULL &&
-#endif
 	 ff->Kind() == BB_GOTO &&
 	 ff != ll)
     ff = ff->Next();
@@ -290,7 +287,6 @@ EMITTER::Raise_func_entry(BB_NODE *bb, BB_NODE *last_bb)
     WN_Set_Linenum(_opt_func, bb->Linenum());
     // update region used-in sets from entry CHI list
     if (bb->First_stmtrep() && bb->First_stmtrep()->Op() == OPC_OPT_CHI)
-// RFE: 454057
 // TODO: these routines need to be rewritten to use SSA to be more exact.
 // Only call for performance regions.
 //      REGION_live_in_from_chi(Cfg()->Rid(), bb->First_stmtrep()->Chi_list(),
@@ -464,7 +460,7 @@ Valid_doloop_condition( BB_NODE *bb_end, const OPT_STAB *opt_stab )
     return FALSE;
   }
 
-  // Fix 481888, as long as LHS or RHS based strictly on index var,
+  // as long as LHS or RHS based strictly on index var,
   // return TRUE.
   BOOL found_one_side_use_index = FALSE;
   for (INT i = 0; i < rhs->Kid_count(); i++)
@@ -1032,9 +1028,7 @@ Raise_whiledo_stmt_to_doloop(EMITTER *emitter, BB_NODE *bb, BB_NODE *prev_bb, BB
     prev_bb->Set_laststmt(WN_prev(init_stmt));
   WN_prev(init_stmt) = WN_next(init_stmt) = NULL;
 
-#ifdef KEY
   if (preheader->Last_stmtrep())
-#endif
   preheader->Remove_stmtrep( preheader->Last_stmtrep());
 
   STMTREP *goto_end = loopback->Branch_stmtrep();
@@ -1142,13 +1136,11 @@ Raise_whiledo_stmt(EMITTER *emitter, BB_NODE *bb, BB_NODE *prev_bb, BB_NODE **ne
   {
      WN_CopyMap(rwn, Prompf_Id_Map, bb->Loop()->Orig_wn());
   }
-#ifdef KEY
   if (bb->Loop()->Orig_wn() != NULL &&
       WN_MAP32_Get(WN_MAP_FEEDBACK, bb->Loop()->Orig_wn()) != 0)
   {
     WN_CopyMap(rwn, WN_MAP_FEEDBACK, bb->Loop()->Orig_wn());
   }
-#endif
   return rwn;
 }
 
@@ -1372,9 +1364,7 @@ EMITTER::Gen_wn(BB_NODE *first_bb, BB_NODE *last_bb)
 	else if ( entry_opc == OPC_ALTENTRY ||
 		  (entry_opc == OPC_LABEL && 
 		   (WN_Label_Is_Handler_Begin(bb->Entrywn())
-#ifdef KEY
 		   || LABEL_target_of_goto_outer_block(WN_label_number(bb->Entrywn()))
-#endif
 		   )) )
 	{
 	  BOOL skip_curbb = Raise_altentry( bb );
@@ -1497,7 +1487,6 @@ EMITTER::Gen_wn(BB_NODE *first_bb, BB_NODE *last_bb)
 	  } else {
 	    prev_bb->Set_firststmt(bb->Firststmt());
 	    prev_bb->Set_laststmt(bb->Laststmt());
-#ifdef KEY // bug 1294
 	    if (bb != last_bb && bb->Succ() && !bb->Succ()->Multiple_bbs() &&
 		bb->Succ()->Node() == bb->Next()) { 
 	      // only 1 successor: delete this BB
@@ -1513,7 +1502,6 @@ EMITTER::Gen_wn(BB_NODE *first_bb, BB_NODE *last_bb)
 	      bb = bb->Next(); // delete this BB
 	      break;
 	    }
-#endif
 	  }
 	}
       }
@@ -1680,8 +1668,7 @@ EMITTER::Can_raise_to_scf(BB_NODE *bb)
     bb_end = bb_start->Loopend();
     bb_step = bb_start->Loopstep();
     bb_merge = bb_start->Loopmerge();
-#ifdef KEY // bug 8327: the incr stmt has been optimized to something else
-    // bugs 13605, 13624: A DOSTEP originally contains the step WN followed
+    // A DOSTEP originally contains the step WN followed
     // by a goto to the DOEND. DCE sometimes introduces a label at the start,
     // and sometimes is not able to delete the goto. So the actual STEP wn
     // may be neither the head nor the tail of the stmtlist. If DCE is later
@@ -1696,7 +1683,6 @@ EMITTER::Can_raise_to_scf(BB_NODE *bb)
 	  bb_step->Stmtlist()->Tail()->Prev()->Rhs()->Kind() != CK_OP)))
       ;
     else
-#endif
     if (bb_step->Succ()->Contains(bb_end) &&
 	bb_end->Succ()->Contains(bb_merge))
       return TRUE;

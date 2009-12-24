@@ -265,12 +265,6 @@ LFTR::Lftr_comparison(CODEREP *cr, STMTREP *stmt, INT32 stmt_kid_num)
     Is_Trace(Trace(),
 	   (TFile,"LFTR::Lftr_comparison, found comparison inside a loop\n"));
   } else {		// comparison is outside a loop
-#if 0 // we may want to re-visit non-loop LFTR some day
-    if (rhs && rhs->Kind() != CK_CONST) {   // 5) RHS is not a constant
-      Is_Trace(Trace(),
-	  (TFile,"LFTR::Lftr_comparison, return 5 - RHS is not a constant\n"));
-    }
-#endif
     Is_Trace(Trace(),
 	   (TFile,"LFTR::Lftr_comparison, found comparison outside a loop\n"));
     return;
@@ -984,12 +978,7 @@ LFTR::Replace_comparison(EXP_OCCURS *comp, BOOL cur_expr_is_sr_candidate)
 	Is_Trace(Trace(),(TFile,"LFTR return 6 - temp not found\n"));
 	return; // 1, 2
       }
-//Bug# 1164
-#ifdef KEY
       if (iv_defstmt->Iv_update() && iv_defstmt->Repaired() && tempcr->Aux_id() == cr->Aux_id()) {
-#else
-      if (iv_defstmt->Iv_update() && tempcr->Aux_id() == cr->Aux_id()) {
-#endif
 	// 3
 	Is_True(tempcr != cr, ("LFTR::Replace_comparison, tempcr is same"));
 	tempcr = cr;
@@ -1101,21 +1090,6 @@ LFTR::Replace_comparison(EXP_OCCURS *comp, BOOL cur_expr_is_sr_candidate)
       MTYPE_is_unsigned(comp->Occurrence()->Dsctyp()) && ! eq_neq)
     return;
 
-#if 0
-  // not needed any more because of addition of other checks
-  // check the unsign comp operator with 0 on the RHS and the tos
-  // expression contains + or -.
-  {
-    CODEREP *comp_cr = comp->Occurrence();
-    if (MTYPE_is_unsigned(comp_cr->Dsctyp()) &&
-        comp_cr->Opr() != OPR_EQ &&
-        comp_cr->Opr() != OPR_NE &&
-        comp_cr->Opnd(1)->Kind() == CK_CONST &&
-        comp_cr->Opnd(1)->Const_val() == 0)
-      if (tos->Occurrence()->Opr() != OPR_MPY)
-        return;
-  }
-#endif
 
   // if the multiply factor is unknown, we cannot perform fenceposting
   // because the invariant might be 0.
@@ -1181,7 +1155,7 @@ LFTR::Replace_comparison(EXP_OCCURS *comp, BOOL cur_expr_is_sr_candidate)
 			      comp->Occurrence()->Opnd(1));
     OPERATOR opr = new_cr->Opr();
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
     if (opr != OPR_CVT)
 #endif
     {
@@ -1237,20 +1211,10 @@ LFTR::Replace_comparison(EXP_OCCURS *comp, BOOL cur_expr_is_sr_candidate)
 
     // adjust operator of new comparison
     OPERATOR new_compare_opr = comparison_cr->Opr();
-#ifdef KEY
     MTYPE new_compare_type = tempcr->Dtyp();
     // do not change signedness of comparison since that could change semantics
     new_compare_type = Mtype_TransferSign(comparison_cr->Dsctyp(), 
 					  new_compare_type);
-#else
-    MTYPE new_compare_type = comparison_cr->Dsctyp();
-    if (addressable == ADDRESSABILITY_IS_ADDRESS &&
-	MTYPE_is_signed(new_compare_type)) {
-      // force new comparison to be unsigned comparison
-      new_compare_type = Mtype_from_mtype_class_and_size(MTYPE_CLASS_UNSIGNED,
-				MTYPE_size_min(new_compare_type)/8);
-    }
-#endif
     if (factor.Value() < 0 && ! eq_neq) {
       switch (new_compare_opr) {
       case OPR_LT:
@@ -1363,13 +1327,11 @@ LFTR::Replace_lftr_var(CODEREP *templt, AUX_ID lftr_var, CODEREP *new_expr)
 	CODEREP *kid = templt->Opnd(i);
 	CODEREP *tmp = Replace_lftr_var(kid, lftr_var, new_expr);
 	if (tmp != NULL && tmp != kid) {
-#ifdef KEY // bug 12770
 	  CODEREP *cr = Alloc_stack_cr(0);
 	  if (MTYPE_byte_size(templt->Dtyp()) > MTYPE_byte_size(tmp->Dtyp())) {
 	    cr->Init_expr(OPC_I8I4CVT, tmp);
 	    tmp = Htable()->Rehash(cr);
 	  }
-#endif
 	  templt->Set_opnd(i,tmp);
 	}
       }

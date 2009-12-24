@@ -218,7 +218,7 @@ public:
 
 
 enum OPT_VAR_TYPE {
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
   VT_UNKNOWN_HACK  = 0,        // illegal value for error detection
 #else
   VT_UNKNOWN       = 0,        // illegal value for error detection
@@ -245,17 +245,13 @@ enum AUXF_FLAGS {
   AUXF_MP_REDUCTION  = 0x200,      // marked reduction in MP pragma
   AUXF_DONT_REPLACE_IV = 0x400,    // do not replace this IV by another IV
   AUXF_NO_SPRE       = 0x800,      // disable SPRE for this var
-#ifdef KEY
   AUXF_MP_NO_DSE     = 0x800,	   // disable dead store elim due to MP regions
   				   // (not when phase is MAINOPT_PHASE)
-#endif
   AUXF_EPRE_TEMP     = 0x1000,     // PREG introduced by EPRE
   AUXF_SPRE_TEMP     = 0x2000,     // PREG introduced by SPRE
   AUXF_SIGN_EXTD     = 0x4000,     // Is sign extended set by LPRE
   AUXF_DISABLE_LOCAL_RVI  = 0x8000, // Is live out of current REGION
-#ifdef KEY
   AUXF_INDIRECT_ACCESS = 0x10000,  // indirect access of variable?
-#endif
 };
 
 
@@ -345,10 +341,8 @@ private:
   mUINT16      _value_size;            // size of its content value    
   mUINT16      _version;               // Current SSA version
   CODEREP     *_zero_cr;	       // pt to the zero version coderep node
-#ifdef KEY
   WN		*_wn;		       // to help create identity assignment
   				       // for BS vars
-#endif
 
   //  Take a union of the following field to conserve space
   //	synonym is used during canonicalization for regular variables
@@ -389,9 +383,7 @@ private:
 		  _home_symbol = ILLEGAL_AUX_ID;
 		  _value_size = 0;
 		  _zero_cr = NULL;
-#ifdef KEY
 		  _wn = NULL;
-#endif
 		};
   ~AUX_STAB_ENTRY(void);
   AUX_STAB_ENTRY(const AUX_STAB_ENTRY&);
@@ -440,10 +432,8 @@ public:
   void     Set_value_size(UINT vsize) { _value_size = vsize; }
   CODEREP *Zero_cr(void) const        { return _zero_cr; }
   void     Set_zero_cr(CODEREP *p)     { _zero_cr = p; }
-#ifdef KEY
   WN      *Wn(void) const             { return _wn; }
   void     Set_wn(WN *w)              { _wn = w; }
-#endif
   BOOL     Equivalent(AUX_STAB_ENTRY *);
   void     Prepend_def_bbs(BB_NODE *bb, MEM_POOL *p)
                                       { if ( u.def_bbs == NULL ||
@@ -487,10 +477,8 @@ public:
   void     Set_dont_replace_iv(void)  { _flags |= AUXF_DONT_REPLACE_IV; }
   BOOL     No_spre(void) const        { return _flags & AUXF_NO_SPRE; }
   void     Set_no_spre(void)          { _flags |= AUXF_NO_SPRE; }
-#ifdef KEY
   BOOL     Mp_no_dse(void) const        { return _flags & AUXF_MP_NO_DSE; }
   void     Set_mp_no_dse(void)          { _flags |= AUXF_MP_NO_DSE; }
-#endif
   BOOL     EPRE_temp(void) const      { return _flags & AUXF_EPRE_TEMP; }
   void     Set_EPRE_temp(void)        { _flags |= AUXF_EPRE_TEMP; }
   BOOL     SPRE_temp(void) const      { return _flags & AUXF_SPRE_TEMP; }
@@ -499,10 +487,8 @@ public:
   void     Set_LPRE_sign_extd(void)   { _flags |= AUXF_SIGN_EXTD; }
   BOOL     Disable_local_rvi(void) const{ return _flags & AUXF_DISABLE_LOCAL_RVI;}
   void     Set_disable_local_rvi(void)  { _flags |= AUXF_DISABLE_LOCAL_RVI; }
-#ifdef KEY
   BOOL     Indirect_access(void) const{ return _flags & AUXF_INDIRECT_ACCESS;}
   void     Set_indirect_access(void)  { _flags |= AUXF_INDIRECT_ACCESS; }
-#endif
   BOOL     Has_store_in_PU(void) const{ return _more_flags & AUXF2_HAS_STORE_IN_PU; }
   void     Set_has_store_in_PU(void)  { _more_flags |= AUXF2_HAS_STORE_IN_PU; }
   BOOL     Is_sign_extd(void) const   { return _more_flags & AUXF2_IS_SIGN_EXTD; }
@@ -795,9 +781,7 @@ private:
   CODEMAP                   *htable;
   const ALIAS_RULE          *_rule;
   WN                        *pu_wn;
-#ifdef KEY
   ALIAS_MANAGER             *_alias_mgr;
-#endif
   OPT_PU_POINTS_TO_SUMMARIZER _pt_sum;
   BOOL			    _rgn_trace;
 
@@ -842,10 +826,8 @@ private:
   BOOL                      _has_exc_handler;
   POINTS_TO		   *_points_to_globals;
   BOOL                      _is_varargs_func;
-#ifdef KEY
   BOOL                      _is_prototyped_func;
   BOOL                      _has_nonlocal_goto_target;
-#endif
 
   // ------------------------------------------------------------------
   // Bit vectors of the OPT_ST attributes
@@ -1005,11 +987,7 @@ public:
   AUX_ID   Create_vsym(EXPR_KIND k);
   AUX_ID   Create_preg(MTYPE preg_ty, const char *name = NULL, WN *home_wn = NULL);
   AUX_ID   Find_vsym_with_base(ST *);
-#ifdef KEY
   AUX_ID   Find_vsym_with_st(ST *, BOOL, POINTS_TO * = NULL);
-#else
-  AUX_ID   Find_vsym_with_st(ST *);
-#endif
   AUX_ID   Find_vsym_with_base_ofst_and_size(ST *, INT64, INT64, UINT8, UINT8);
   AUX_ID   Find_sym_with_st_and_ofst(ST *, INT64);
   void     Clear_coderep(void);
@@ -1018,9 +996,7 @@ public:
   void     New_stack(MEM_POOL *pool);
   void     Check_stack(void);
   WN       *Pu(void) const               { return pu_wn; }
-#ifdef KEY
   ALIAS_MANAGER *Alias_Mgr(void) const   { return _alias_mgr; }
-#endif
   OPT_PU_POINTS_TO_SUMMARIZER* Points_to_summarizer (void) 
                                          { return &_pt_sum; }
   void     check_ipa_mod_ref_info (const ST * , const ST * , INT *, INT *);
@@ -1030,10 +1006,8 @@ public:
   CFG      *Cfg(void) const              { return _cfg; }
   const ALIAS_RULE *Rule(void) const     { return _rule; }
   BOOL     Is_varargs_func(void) const   { return _is_varargs_func; }
-#ifdef KEY
   BOOL     Is_prototyped_func(void) const{ return _is_prototyped_func; }
   BOOL     Has_nonlocal_goto_target(void) const   { return _has_nonlocal_goto_target; }
-#endif
   BOOL     Allow_sim_type(void) const    { return _allow_sim_type; }
   BOOL     Has_exc_handler(void) const   { return _has_exc_handler; }
 
@@ -1126,9 +1100,7 @@ public:
 			BOOL is_volatile, WN* wn = NULL);
   AUX_ID   Enter_ded_preg(ST *, INT64, TY_IDX, INT32);
   AUX_ID   Identify_vsym(WN *);
-#ifdef KEY
   AUX_ID   Allocate_vsym(WN *, POINTS_TO *);
-#endif
 
   //  Enter into VER_STAB
   void     Enter_du(AUX_ID du, WN *wn, BB_NODE *bb)
@@ -1346,25 +1318,17 @@ public:
   //  Various PRINT functions
   // ------------------------------------------------------------------
 
-#ifdef KEY
   void     Print(FILE *fp=stderr, WN* entry_wn=NULL);
-#endif
   void     Print_aux_entry(AUX_ID i, FILE *fp=stderr); // if fp == 0, fp is stderr
   void     Print_alias_info(FILE *fp=stderr);
-#ifdef KEY
   void     Print_occ_tab(FILE *fp=stderr, WN* entry_wn=NULL);
-#endif
   void     Print_top_nth_coderep(AUX_ID i, INT n, FILE *fp=stderr);
 
   // ------------------------------------------------------------------
   // manage the OCC_TAB
   // ------------------------------------------------------------------
 
-#ifdef KEY
   OCC_TAB_ENTRY *Enter_occ_tab(WN *, AUX_ID, POINTS_TO * = NULL);
-#else
-  OCC_TAB_ENTRY *Enter_occ_tab(WN *, AUX_ID);
-#endif
   OCC_TAB_ENTRY *Get_occ(const WN *) const;
   CHI_LIST *Get_mem_chi_list(const WN *) const;
   MU_NODE  *Get_mem_mu_node(const WN *) const;
@@ -1410,10 +1374,7 @@ public:
   void     Convert_EH_pragmas(WN *wn);
 
   BOOL     Safe_to_speculate(AUX_ID);
-
-#ifdef KEY
   AUX_ID   Part_of_reg_size_symbol(AUX_ID);
-#endif
 
   ST      *St_ptr(WN *wn) const      { return aux_stab[WN_aux(wn)].St(); }
   void    Summarize_points_to (void);

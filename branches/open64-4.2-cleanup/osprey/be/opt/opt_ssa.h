@@ -104,9 +104,7 @@ private:
   CODEREP  *Du2cr( CODEMAP *htable, OPT_STAB *opt_stab, VER_ID du, STMTREP *stmt);
   CODEREP  *Revive_phi_chi_opnd(VER_ID du);
   void	    Make_live_phi_chi_opnd(VER_ID du);
-#ifdef KEY
   void      Print_ssa_ver_for_wn(WN* wn);
-#endif
 public:
             SSA(MEM_POOL *gpool,
 		MEM_POOL *lpool){mem_pool=gpool; loc_pool=lpool; }

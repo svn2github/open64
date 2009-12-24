@@ -1008,12 +1008,11 @@ RVI::Get_wn_local_attributes( BB_NODE *bb, WN *wn, BOOL *check_const )
     for ( INT ikid = 0; ikid < WN_kid_count(wn); ikid++ ) {
       WN *kid = WN_kid(wn,ikid);
       BOOL is_const;
-#ifdef KEY // bug 12471: __builtin_expect's first kid must be constant
+      // __builtin_expect's first kid must be constant
       if (WN_operator(wn) == OPR_INTRINSIC_OP &&
 	  ((INTRINSIC) WN_intrinsic(wn)) == INTRN_EXPECT &&
 	  ikid == 1)
 	continue;
-#endif
       Get_wn_local_attributes( bb, kid, &is_const );
 
       // if this kid was constant, need to do some more checks
@@ -1374,7 +1373,7 @@ RVI::Get_wn_local_lda_attributes( BB_NODE *bb, WN *wn, BOOL *check_lda )
     for ( INT ikid = 0; ikid < WN_kid_count(wn); ikid++ ) {
       BOOL is_lda;
 
-#ifdef TARG_SL
+#if defined(TARG_SL)
       // the parameter one in the two intrinsic functions are used as offset relative to 
       // vbuf start address. We don't want to these two parameter to be screening out
       // since we need allocate special handling when expanding the intrinsic call 

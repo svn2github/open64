@@ -166,7 +166,7 @@ private:
 		case OPR_ADD: // PPP add more cases later
 		case OPR_SUB:
 		case OPR_MPY:
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 		case OPR_CVT:
 #endif
       			return TRUE;

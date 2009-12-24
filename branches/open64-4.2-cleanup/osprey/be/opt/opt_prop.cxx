@@ -265,7 +265,7 @@ COPYPROP::Invertible_occurrences(CODEREP *var, CODEREP *cr)
       return -1;
     if (cr->Opr() == OPR_NEG)
       return Invertible_occurrences(var, cr->Opnd(0));
-#ifndef TARG_IA64 // IA-64 has post-incr/decr, so suppress inverse function
+#if !defined(TARG_IA64) // IA-64 has post-incr/decr, so suppress inverse function
     if (cr->Opr() == OPR_ADD || cr->Opr() == OPR_SUB) {
       INT32 res0, res1;
 
@@ -294,10 +294,9 @@ COPYPROP::Is_function_of_cur(CODEREP *var, CODEREP *cur_var)
     return FALSE;
   STMTREP *dstmt = cur_var->Defstmt();
   if (dstmt == NULL) return FALSE;
-#ifdef KEY // bug 11440: don't reverse the effect of i=i propagation
+  // don't reverse the effect of i=i propagation
   if (dstmt->Is_identity_assignment_removable() && WOPT_Enable_DCE)
     return FALSE;
-#endif
   return Invertible_occurrences(var, dstmt->Rhs()) == 1;
 }
 
@@ -424,7 +423,7 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
     if (OPERATOR_is_volatile(x->Opr()))
       return NOT_PROPAGATABLE;
 
-#ifdef TARG_SL
+#if defined(TARG_SL)
     // temporary hack
     if (x->Opr() == OPR_INTRINSIC_OP && x->Is_C3_Intrinsic())
       return NOT_PROPAGATABLE;
@@ -435,9 +434,7 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
     // intrinsic op may by lowered into a call, so propagating it past the
     // def of a return preg is wrong
     if (Past_ret_reg_def() && (x->Opr() == OPR_INTRINSIC_OP
-#ifdef KEY
         || x->Opr() == OPR_PURE_CALL_OP
-#endif
        ))
       return NOT_PROPAGATABLE;
 
@@ -588,12 +585,11 @@ CODEREP::Convert_type(CODEMAP *htable, CODEREP *expr, BOOL icopy_phase)
   MTYPE    rhs_type = expr->Dtyp();
   MTYPE    dsc_type = Dsctyp();
 
-#ifdef KEY // bug 2668: screen out obvious case where no conversion is needed
+  // screen out obvious case where no conversion is needed
   if (expr->Kind() == CK_VAR && Kind() == CK_VAR && expr->Aux_id() == Aux_id()
       && /* bug 10220 */ ! Is_flag_set(CF_IS_ZERO_VERSION)
       && /* bug 11616 */ MTYPE_signed(expr->Dtyp()) == MTYPE_signed(Dtyp()))
     return expr;
-#endif
   if ( MTYPE_is_integral(rhs_type) && MTYPE_is_integral(dsc_type) ) {
     cvt_kind = NOT_AT_ALL;
     if (dsc_type == MTYPE_BS)
@@ -1099,7 +1095,7 @@ COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
   if (x->Is_flag_set((CR_FLAG)(CF_DEF_BY_PHI|CF_DEF_BY_CHI)) )
     return NULL;
 
-#ifdef KEY // bug 6220: do not propagate anything to the fields of a dope vector
+   // do not propagate anything to the fields of a dope vector
   if (Htable()->Phase() != PREOPT_IPA0_PHASE && 
       Htable()->Phase() != PREOPT_IPA1_PHASE &&
       ! WOPT_Enable_Prop_Dope) {
@@ -1109,14 +1105,13 @@ COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
 	strncmp(TY_name(ST_type(st)), ".dope.", 6) == 0)
       return NULL;
   }
-#endif
 
   stmt = x->Defstmt();
   if (! stmt) return NULL;
 
   expr = stmt->Rhs();
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   // disable copy prop for float-pt pregs (except for leaf nodes) in
   // mainopt because they may be created by LNO for cross-iteration CSEs,
   // whose assignments wopt will not be able to delete
@@ -1139,13 +1134,11 @@ COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
        (expr->Kind() == CK_VAR && expr->Aux_id() != x->Aux_id())))
     return NULL;
 
-#ifdef KEY // bug 5131
   if (x->Mp_shared())
     return NULL;
-#endif
 
-#ifdef KEY // bug 1596: do not propagate an ARRAY node to the base field of
-	   // 		a dope vector
+  // do not propagate an ARRAY node to the base field of
+  // 		a dope vector
   if (expr->Kind() == CK_OP && expr->Opr() == OPR_ARRAY) {
     ST *st = Opt_stab()->St(x->Aux_id());
     if (ST_class(st) == CLASS_VAR && 
@@ -1154,7 +1147,6 @@ COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
         strncmp(TY_name(ST_type(st)), ".dope.", 6) == 0)
       return NULL;
   }
-#endif
 
   // Fix 658173: In IPL's preopt, don't propagate through
   // PT_TO_UNIQUE_MEM objects. The reason is that IPL's preopt doesn't
@@ -1192,12 +1184,10 @@ COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
       x == curversion)
     return NULL;
 
-#ifdef KEY // bug 10577
   if (no_complex_preg && expr->Kind() == CK_VAR && 
       MTYPE_is_complex(expr->Dtyp()) &&
       ST_class(Opt_stab()->Aux_stab_entry(expr->Aux_id())->St()) == CLASS_PREG)
     return NULL;
-#endif
 
   BOOL prop;
   INT32 height, weight;
@@ -1260,10 +1250,8 @@ COPYPROP::Prop_ivar(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
 {
 
   if (! WOPT_Enable_Prop_Ivar) return NULL;
-#ifdef KEY // bug 5804
   if (Htable()->Phase() != MAINOPT_PHASE && PU_has_mp(Get_Current_PU())) 
     return NULL;
-#endif
   if (x->Is_ivar_volatile()) return NULL;
 
   STMTREP *stmt = x->Ivar_defstmt();
@@ -1283,12 +1271,10 @@ COPYPROP::Prop_ivar(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
       Propagated_to_loop_branch(stmt->Bb(), curbb)) 
     return NULL;
 
-#ifdef KEY // bug 10577
   if (no_complex_preg && expr->Kind() == CK_VAR && 
       MTYPE_is_complex(expr->Dtyp()) &&
       ST_class(Opt_stab()->Aux_stab_entry(expr->Aux_id())->St()) == CLASS_PREG)
     return NULL;
-#endif
 
   PROPAGATABILITY prop;
   INT32 height, weight;
@@ -1368,12 +1354,10 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
       inside_cse = inside_cse || x->Usecnt() > 1;
       CODEREP *id_cr = Prop_identity_assignment(x);
      if (id_cr) {
-#ifdef KEY // bug 3009
       if (id_cr->Is_flag_set(CF_IS_ZERO_VERSION)) {
 	Htable()->Fix_zero_version(x->Defchi(), x->Defstmt());
 	id_cr = x->Defchi()->OPND();
       }
-#endif
       if (id_cr->Dsctyp() == MTYPE_UNKNOWN ||
          id_cr->Is_flag_set(CF_MADEUP_TYPE)) {
          id_cr->Set_dtyp(x->Dtyp());
@@ -1386,10 +1370,8 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
          id_cr->Set_sign_extension_flag();
          id_cr->Reset_flag(CF_MADEUP_TYPE);
       }
-#ifdef KEY // bug 3009
       if (Prop_identity_assignment(id_cr)) // bug 3091
         return Copy_propagate_cr(id_cr, curbb, inside_cse, in_array); // recurse
-#endif
       id_cr = x->Convert_type(Htable(), id_cr, FALSE);
       return id_cr;
      }
@@ -1411,9 +1393,7 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
     }
     inside_cse = inside_cse || x->Usecnt() > 1;
     expr = Copy_propagate_cr(x->Ilod_base(), curbb, inside_cse, in_array
-#ifdef KEY // bug 10577
     			     , TRUE
-#endif
     			    );
     {
       CODEREP *ilod_base = (expr != NULL) ? expr : x->Ilod_base();
@@ -1498,7 +1478,7 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
 	  if ( i > 0 )
 	    in_array = TRUE;
 	}
-#if defined(KEY) && !defined(TARG_NVISA)
+#if !defined(TARG_NVISA)
         if (opr != OPR_ASM_INPUT ||
             (x->Opnd(i)->Kind() != CK_VAR && x->Opnd(i)->Kind() != CK_IVAR) )
 	  expr = Copy_propagate_cr(x->Opnd(i), curbb, inside_cse, in_array);
@@ -1848,7 +1828,7 @@ COPYPROP::Propagatable_thru_phis(CODEREP *lexp, CODEREP *rexp,
       return FALSE;
     if (lexp->Opr() == OPR_ARRAY && rexp->Opr() == OPR_ARRAY &&
 	lexp->Elm_siz() != rexp->Elm_siz()) return FALSE;
-#ifdef KEY // bug 1795: need to verify boffset and bsize are identical
+    // need to verify boffset and bsize are identical
     if (lexp->Opr() == OPR_EXTRACT_BITS &&
 	(lexp->Op_bit_offset() != rexp->Op_bit_offset() ||
 	 lexp->Op_bit_size() != rexp->Op_bit_size()))
@@ -1859,17 +1839,14 @@ COPYPROP::Propagatable_thru_phis(CODEREP *lexp, CODEREP *rexp,
         (lexp->Op_bit_offset() != rexp->Op_bit_offset() ||
          lexp->Op_bit_size() != rexp->Op_bit_size()))
         return FALSE;
-#endif
     if (lexp->Opr() == OPR_INTRINSIC_OP && rexp->Opr() == OPR_INTRINSIC_OP
-        && lexp->Intrinsic() != rexp->Intrinsic())  // fix 804479
+        && lexp->Intrinsic() != rexp->Intrinsic())
       return FALSE;
-#ifdef KEY
     if (lexp->Opr() == OPR_PURE_CALL_OP && rexp->Opr() == OPR_PURE_CALL_OP
         && lexp->Call_op_aux_id() != rexp->Call_op_aux_id())
       return FALSE;
     if (lexp->Kid_count() != rexp->Kid_count())
       return FALSE;
-#endif
     PROP_THRU_PHI_PREFERENCE pref0;
     BOOL can_prop = TRUE;
     *ppref = EITHER_SIDE;
@@ -2020,11 +1997,9 @@ COPYPROP::Identical_phi_opnd(PHI_NODE *phi, BB_NODE *bb)
   STMTREP *rdefstmt = ropnd->Get_defstmt();
   if (ldefstmt == NULL || rdefstmt == NULL)
     return NULL;
-#ifdef KEY 
-  // bug 7228: if there is chi, DCE wont be able to delete the dead stores
+  // if there is chi, DCE wont be able to delete the dead stores
   if (ldefstmt->Chi_list() || rdefstmt->Chi_list())
     return NULL;
-#endif
   if (! OPERATOR_is_scalar_store (ldefstmt->Opr()) ||
       ! OPERATOR_is_scalar_store (rdefstmt->Opr()))
     return NULL;
@@ -2109,7 +2084,7 @@ COPYPROP::Copy_propagate(BB_NODE *bb)
   Is_True(! Past_ret_reg_def(), 
           ("COPYPROP::Copy_propagate: _past_ret_reg_def flag set incorrectly"));
 
-  // Fix 377535:  a DO-loop cannot be raised back if phi-simp
+  // a DO-loop cannot be raised back if phi-simp
   // inserted a stmt into the DOEND block.
   if (Htable()->Phase() == MAINOPT_PHASE || bb->Kind() != BB_DOEND) {
 
@@ -2131,9 +2106,7 @@ COPYPROP::Copy_propagate(BB_NODE *bb)
 	    cr->Set_dsctyp(phi->OPND(0)->Dsctyp());
 	    cr->Set_lod_ty(phi->OPND(0)->Lod_ty());
 	    cr->Set_field_id(phi->OPND(0)->Field_id());
-#ifdef KEY // bug 7228
 	    cr->Set_offset(phi->OPND(0)->Offset());
-#endif
 	    if (phi->OPND(0)->Bit_field_valid())
 	      cr->Set_bit_field_valid();
 	    cr->Set_sign_extension_flag();
@@ -2154,11 +2127,7 @@ COPYPROP::Copy_propagate(BB_NODE *bb)
   // copy propagated and breaks the emitter.
   INT32 saved_prop_limit = WOPT_Enable_Prop_Limit;
   if (bb->Kind() == BB_DOEND) 
-#ifdef KEY // bug 6097, bug 11784, bug 13003
     WOPT_Enable_Prop_Limit = WOPT_Enable_Doend_Prop_Limit;
-#else
-    WOPT_Enable_Prop_Limit = 9999;
-#endif
 
   // iterate through each statement in this bb
   STMTREP_ITER stmt_iter(bb->Stmtlist());
@@ -2210,9 +2179,7 @@ COPYPROP::Copy_propagate(BB_NODE *bb)
     else if (stmt->Opr() == OPR_RETURN || 
 	     stmt->Opr() == OPR_RETURN_VAL ||
 	     stmt->Opr() == OPR_REGION
-#ifdef KEY
   	     || stmt->Opr() == OPR_GOTO_OUTER_BLOCK
-#endif
 	    )
       Reset_past_ret_reg_def();
 

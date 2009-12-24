@@ -98,10 +98,10 @@ Combine_div_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
   const MTYPE rtype = OPCODE_rtype(old_wn_opc);
   const MTYPE desc  = OPCODE_desc(old_wn_opc);
 
-#ifdef TARG_X8664 // Bug 1960
+#if defined(TARG_X8664)
   if (old_wn_opc == OPC_V16F8DIV || old_wn_opc == OPC_V16C4DIV)
     return FALSE; // because there is no such thing as OPC_V16F8RECIP
-                  // Bug 10543 - for SSE3 we have V16C4DIV, but no V16C4RECIP
+                  // for SSE3 we have V16C4DIV, but no V16C4RECIP
 #endif
   if ( MTYPE_is_float(rtype) || MTYPE_is_complex(rtype) ) {
     // Transform:  DIV        MPY
@@ -341,10 +341,8 @@ Uncombine_mpy_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
   const OPCODE   kid1_opc = WN_opcode(kid1);
   const OPERATOR kid1_opr = OPCODE_operator(kid1_opc);
 
-#ifdef KEY
   if (Recip_Allowed)
     return FALSE;
-#endif
 
   if ( kid1_opr == OPR_RECIP ) {
     // Transform:  MPY       into  DIV

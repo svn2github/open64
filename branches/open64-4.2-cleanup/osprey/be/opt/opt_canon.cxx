@@ -100,7 +100,7 @@ CANON_CR::Convert2cr(WN *wn, CODEMAP *htable, BOOL foldit) const
 
   if (typ == MTYPE_V) 
     typ = WN_desc(wn);
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   else if (WN_opcode(wn) == OPC_U8U4CVT ||
            WN_opcode(wn) == OPC_U8U4LDID || // bug 13382
 	   WN_opcode(wn) == OPC_U8U4ILOAD)
@@ -125,16 +125,14 @@ CANON_CR::Convert2cr(MTYPE typ, OPERATOR opr, OPCODE opc, CODEMAP *htable, BOOL 
        Tree(), htable->Add_const(MTYPE_I8, Scale()));
 #endif
 
-#ifdef KEY
     // If the original operator was a convert to unsigned and the new operator is signed,
     // change the new operator to an unsigned because the convert is about to be deleted.
     // This corrects a regression introduced by a fix in file opt_htable.cxx method
-    // CODEMAP::Canon_add_sub (search for string "bug 14605").
+    // CODEMAP::Canon_add_sub
     if( opr == OPR_CVT &&
         !MTYPE_signed(OPCODE_rtype(opc)) && MTYPE_signed(cr->Dtyp()) ) {
       cr->Set_dtyp(Mtype_TransferSign(MTYPE_U4, cr->Dtyp()));
     }
-#endif
 
     return cr;
   }
@@ -661,25 +659,21 @@ CODEMAP::Separate_iv_invar(CODEREP *cr, BB_NODE *curbb)
 	  {
 	    OPCODE subop = OPCODE_make_op(OPR_SUB, OPCODE_rtype(iv->Op()), MTYPE_V);
 	    if (curbb->Innermost()->Invariant_cr(iv->Opnd(0))) {
-#ifdef KEY // bug 4959 wraparound will cause problem
 	      if (OPCODE_rtype(subop) == MTYPE_U4 &&
 		  invar->Kind() == CK_CONST && iv->Opnd(0)->Kind() ==CK_CONST &&
 		  invar->Const_val() < iv->Opnd(0)->Const_val()) {
 	        cont = FALSE;
 		break;
 	      }
-#endif
 	      invar = Add_bin_node_and_fold(subop, invar, iv->Opnd(0));
 	      iv = iv->Opnd(1);
 	    } else {
-#ifdef KEY // bug 4959 wraparound will cause problem
 	      if (OPCODE_rtype(subop) == MTYPE_U4 &&
 		  invar->Kind() == CK_CONST && iv->Opnd(1)->Kind() ==CK_CONST &&
 		  invar->Const_val() < iv->Opnd(1)->Const_val()) {
 	        cont = FALSE;
 		break;
 	      }
-#endif
 	      invar = Add_bin_node_and_fold(subop, invar, iv->Opnd(1));
 	      iv = iv->Opnd(0);
 	    }

@@ -301,7 +301,6 @@
 
 #define opt_main_CXX	"opt_main.cxx"
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #define USE_STANDARD_TYPES
 #include <alloca.h>
@@ -666,7 +665,7 @@ private:
 
       break; // end MAINOPT_PHASE
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
     case PREOPT_CMC_PHASE:
       WOPT_Enable_Goto = TRUE;
       WOPT_Enable_Call_Zero_Version = FALSE;
@@ -692,9 +691,7 @@ private:
   
     case PREOPT_LNO_PHASE: 
       if (Run_autopar && Current_LNO->IPA_Enabled
-#ifdef KEY // bug 6383
 	  && PU_WN_BB_Cnt < 2000
-#endif
 	  ) { 
 	WOPT_Enable_Call_Zero_Version = FALSE;
 	WOPT_Enable_Zero_Version = FALSE;
@@ -806,7 +803,7 @@ private:
       WOPT_Enable_LNO_Copy_Propagate  = _lno_copy;
       WOPT_Enable_Zero_Version   = _zero_version;
       break;
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
     case PREOPT_CMC_PHASE:
       WOPT_Enable_Goto = _goto;
       WOPT_Enable_Call_Zero_Version = _call_zero_version;
@@ -1267,12 +1264,10 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 	LOWER_SHORTCIRCUIT |
 	lower_region_exits_flag;	// this is a variable
 
-#ifdef KEY
     // No uplevel reference spliting for openmp
     if ((PU_has_mp (Get_Current_PU ()) == FALSE) && 
         (PU_mp(Get_Current_PU ()) == FALSE))
       actions |= LOWER_UPLEVEL;
-#endif
     
     if (WOPT_Enable_Bits_Load_Store)
 	actions |= LOWER_BIT_FIELD_ID;
@@ -1291,12 +1286,10 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
     BOOL target_64bit = TRUE;
 #endif
 
-#ifdef KEY
     if (target_64bit && WOPT_Enable_Retype_Expr)
       WN_retype_expr(wn_tree);
-#endif
 
-#if defined(KEY) && !(defined(TARG_IA64) || defined(TARG_SL))
+#if !(defined(TARG_IA64) || defined(TARG_SL))
     WN_unroll(wn_tree);
 #endif
 
@@ -1366,18 +1359,17 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   if (WOPT_Enable_Goto &&
       (phase == PREOPT_LNO_PHASE 
        || phase == PREOPT_PHASE
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
        || phase == PREOPT_CMC_PHASE
 #endif
        )) {
-#ifdef KEY
+
     // goto_skip_equal, goto_skip_before, goto_skip_after PU count specified
     if ( Query_Skiplist ( Goto_Skip_List, Current_PU_Count() ) ) {
       if ( Show_Progress )
         ErrMsg(EC_Skip_PU, " goto conversion", Current_PU_Count(), Cur_PU_Name);
     }
     else {
-#endif
     SET_OPT_PHASE("Goto conversion");
     OPT_POOL_Push( &Opt_local_pool, MEM_DUMP_FLAG+2 );
     {
@@ -1391,9 +1383,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       fprintf( TFile, "%sAfter Goto Conversion\n%s",DBar,DBar );
       fdump_tree(TFile, wn_tree);
     }
-#ifdef KEY
     }
-#endif
   }
 
   if (phase == PREOPT_IPA0_PHASE) // ipl
@@ -1581,7 +1571,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   Is_True(comp_unit->Verify_IR(comp_unit->Cfg(), comp_unit->Htable(), 1),
 	  ("Verify CFG wrong after Htable"));
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   // want to do partial preopt for unrolling, but not full preopt
   // (need to create cfg for unroller, and codemap for emitter).
   if (phase == MAINOPT_PHASE || phase == PREOPT_CMC_PHASE) {
@@ -1626,18 +1616,15 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 					       "after Dead Code Elimination" );
   }
 
-#ifdef KEY
   if (WOPT_Enable_Warn_Uninit && phase == MAINOPT_PHASE)
     comp_unit->Find_uninitialized_locals();
-#endif
 
-#ifdef KEY // moved here because renaming causes bad code when there is
-    	   // overlapped live ranges, which can be created by copy propagation
+  // moved here because renaming causes bad code when there is
+  // overlapped live ranges, which can be created by copy propagation
   if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
     SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
     comp_unit->Fold_lda_iload_istore();
   }
-#endif
 
   if (phase != PREOPT_LNO1_PHASE) {
     for (INT i = 0; i < WOPT_Enable_Extra_Rename_Pass; ++i) {
@@ -1692,13 +1679,12 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       if (!paths_removed) break;
       }
 
-#ifdef KEY // moved here because renaming causes bad code when there is
-    	   // overlapped live ranges, which can be created by copy propagation
+      // moved here because renaming causes bad code when there is
+      // overlapped live ranges, which can be created by copy propagation
       if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
         SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
         comp_unit->Fold_lda_iload_istore();
       }
-#endif
 
       // synchronize CFG and feedback info
       // comp_unit->Cfg()->Feedback().make_coherent();
@@ -1757,7 +1743,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
      wovp.Do_wovp();
   }
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   } // MAINOPT_PHASE
 #endif
 
@@ -1933,10 +1919,6 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 						  Get_Trace(TP_GLOBOPT,
 							    EPRE_DUMP_FLAG)),
 				    &Opt_local_pool));
-#if 0
-	// Screen out the variables with multiple signess from RVI
-	comp_unit->Opt_stab()->Screen_rvi_candidates();
-#endif
       }
 
       // create RVI instance before emitting anything

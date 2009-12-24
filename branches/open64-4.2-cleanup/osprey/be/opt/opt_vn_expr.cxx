@@ -64,7 +64,6 @@
 #pragma hdrstop
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "erglob.h"
@@ -338,9 +337,7 @@ FREE_STACK *VN_PHI_EXPR::_Free = NULL;
 FREE_STACK *VN_LDA_ADDR_EXPR::_Free = NULL;
 FREE_STACK *VN_ARRAY_ADDR_EXPR::_Free = NULL;
 FREE_STACK *VN_MEMLOC_EXPR::_Free = NULL;
-#ifdef KEY
 FREE_STACK *VN_CALL_OP_EXPR::_Free = NULL;
-#endif
 
 
 void 
@@ -356,9 +353,7 @@ VN_EXPR::Init_Free_Lists(MEM_POOL *mpool)
    VN_LDA_ADDR_EXPR::Init_Free_List();
    VN_ARRAY_ADDR_EXPR::Init_Free_List();
    VN_MEMLOC_EXPR::Init_Free_List();
-#ifdef KEY
    VN_CALL_OP_EXPR::Init_Free_List();
-#endif
 } // VN_EXPR::Init_Free_Lists
 
 
@@ -376,9 +371,7 @@ VN_EXPR::Reclaim_Free_Lists()
       VN_LDA_ADDR_EXPR::Reclaim_Free_List();
       VN_ARRAY_ADDR_EXPR::Reclaim_Free_List();
       VN_MEMLOC_EXPR::Reclaim_Free_List();
-#ifdef KEY
       VN_CALL_OP_EXPR::Reclaim_Free_List();
-#endif
    }
 } // VN_EXPR::Reclaim_Free_Lists
 
@@ -459,13 +452,11 @@ VN_EXPR::Create_Memloc(MTYPE            dsctype,
 }
 
 
-#ifdef KEY
 VN_EXPR::PTR 
 VN_EXPR::Create_Call_Op(ST_IDX aux_id, UINT32 num_opnds)
 {
    return VN_CALL_OP_EXPR::Create(aux_id, num_opnds);
-}
-#endif   
+}   
 
 VN_VALNUM 
 VN_EXPR::get_opnd(UINT) const 
@@ -577,14 +568,12 @@ VN_EXPR::get_vsym(UINT) const
    return VN_VALNUM::Bottom();
 }
 
-#ifdef KEY
 ST_IDX
 VN_EXPR::get_aux_id() const
 {
    Unimplemented("VN_EXPR::get_aux_id");
    return 0;
 }
-#endif
 
 //------------- Implementation of VN_LITERAL_EXPR  -------------
 //--------------------------------------------------------------
@@ -629,8 +618,7 @@ VN_LITERAL_EXPR::is_equal_to(CONST_PTR expr) const
 		strncmp(Targ_String_Address(_tcon),
 			Targ_String_Address(other_tcon),
 			Targ_String_Length(_tcon))); 
-#ifdef KEY
-	 // fix bug 2691: when both are floating-point zero, use integer
+	 // when both are floating-point zero, use integer
 	 // comparison so +0 and -0 will be regarded as different for value
 	 // numbering purpose
 	 else if (this_mty == MTYPE_F8 && 
@@ -639,7 +627,6 @@ VN_LITERAL_EXPR::is_equal_to(CONST_PTR expr) const
 	 else if (this_mty == MTYPE_F4 && 
 	          TCON_R4(other_tcon) == 0 && TCON_R4(_tcon) == 0)
 	    truth = TCON_word0(other_tcon) == TCON_word0(_tcon);
-#endif
 	 else
 	 {
 	    BOOL folded;
@@ -702,7 +689,7 @@ VN_UNARY_EXPR::simplify(VN *v)
    {
      // for IA-32, do not fold away I8I4CVT
      if (
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
          !Split_64_Bit_Int_Ops ||
 #endif
 	 opr != OPR_CVT ||
@@ -1266,12 +1253,12 @@ VN_BINARY_EXPR::simplify(VN *v)
    const BOOL     is_integral = 
       (OPERATOR_is_compare(opr)? 
        MTYPE_is_integral(OPCODE_desc(_opc)) 
-#ifdef TARG_X8664 // bug 7554
+#if defined(TARG_X8664)
        	&& ! MTYPE_is_vector(OPCODE_desc(_opc))
 #endif
        :
        MTYPE_is_integral(rty)
-#ifdef TARG_X8664 // bug 7554
+#if defined(TARG_X8664)
        	&& ! MTYPE_is_vector(rty)
 #endif
        );
@@ -1921,7 +1908,6 @@ VN_MEMLOC_EXPR::simplify(VN *v)
 } // VN_MEMLOC_EXPR::simplify
 
 
-#ifdef KEY
 //------------- Implementation of VN_CALL_OP_EXPR  -------------
 //--------------------------------------------------------------
 
@@ -1967,4 +1953,3 @@ VN_CALL_OP_EXPR::simplify(VN *)
    }
    return simplified;
 } // VN_CALL_OP_EXPR::simplify
-#endif

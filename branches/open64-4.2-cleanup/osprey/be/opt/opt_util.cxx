@@ -69,7 +69,6 @@
 static char *rcs_id = 	opt_util_CXX"$Revision: 1.8 $";
 #endif /* _KEEP_RCS_ID */
 
-#define __STDC_LIMIT_MACROS
 #include <stdarg.h>
 #include <stdio.h>
 #include <strings.h>
@@ -217,7 +216,6 @@ Set_tlog_phase(const INT32 phase)
 
 
 // ====================================================================
-#if 1
 const INT32    PHASE_STRLEN = 72;
 const INT32    MAX_SUBPHASES = 200;
 static char    phase_name[PHASE_STRLEN];
@@ -244,7 +242,7 @@ INT Set_opt_phase(INT32 *phase_id, const char *subphase)
 
   if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
     curr_time = CLOCK_IN_MS();
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
     DevWarn("sbrk not supported on Win NT");
 #else
     curr_mem  = sbrk(0);
@@ -312,8 +310,6 @@ INT Report_statistics()
   return 1;
 }
 
-#endif
-
 
 static inline INT32 Sign(INT64 v)
 {
@@ -356,7 +352,7 @@ NUMBER::Eval2(OPERATOR opr, NUMBER *n1, NUMBER *n2)
       if (Sign(v1) * Sign(v2) != Sign(value) ||
 	  value / v2 != v1)
 	Set_desc(NUMBER_OVERFLOW);
-#ifdef TARG_X8664 // bug 8229: such situations are dangerous
+#if defined(TARG_X8664)
       else if (value > UINT32_MAX && v1 <= UINT32_MAX && v2 <= UINT32_MAX)
 	Set_desc(NUMBER_OVERFLOW);
 #endif
@@ -458,7 +454,7 @@ Find_one_variant(BB_NODE *bb, CODEREP *vr, CODEREP *cr, NUMBER *factor,
 
     case OPR_CVT:
       /* CVTL-RELATED start (performance)  */
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS)
       if (opc == OPC_U8I4CVT) {
 	r0 = Find_one_variant(bb, vr, cr->Opnd(0), factor, htable);
 	return r0;

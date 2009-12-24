@@ -216,7 +216,7 @@ STR_RED::Is_cvt_linear( const CODEREP *cr ) const
 
     Is_True(cr->Opnd(0)->Kind() == CK_VAR, 
 	    ("STR_RED::Is_cvt_linear:  invalid str red expr."));
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
     // MIPS had this check, but no one remembers why it would be a problem now;
     // U8U4CVT is not a nop for nvisa, but we want to optimize these,
     // so ifdef this out, but leave in for safety for other targets.
@@ -248,7 +248,7 @@ STR_RED::Is_implicit_cvt_linear(MTYPE opc_type, const CODEREP *cr) const
   // Is_True( Need_type_conversion(opc_type, opnd_type, NULL) == NOT_AT_ALL,
   //  ("STR_RED::Is_implicit_cvt_linear:  cvt is not implicit."));
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   // Restrict strength reduction of implicit U8U4CVT as we do in Is_cvt_linear
   if ((opc_type == MTYPE_U8 || opc_type == MTYPE_I8) &&
       opnd_type == MTYPE_U4)
@@ -1028,7 +1028,7 @@ STR_RED::Candidate( const CODEREP *cr,
 		    CODEREP *use_opnd0, CODEREP *use_opnd1,
 		    BB_NODE *use_bb ) const
 {
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   BB_LOOP *bb_loop = NULL;
   Is_Trace(Tracing(), (TFile, "estr candidate Operation: "));
   Is_Trace_cmd(Tracing(), cr->Print_node(0,TFile));
@@ -1075,7 +1075,7 @@ STR_RED::Candidate( const CODEREP *cr,
   switch ( opr ) {
     case OPR_ADD:
     case OPR_SUB:
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
 	Is_Trace(Tracing(), (TFile, 
 	  "Number of uses of this add/sub operation=%d\n", cr->Usecnt()));
 	if ( ! WOPT_Enable_Estr_Const_Opnds
@@ -1124,7 +1124,7 @@ STR_RED::Candidate( const CODEREP *cr,
     case OPR_NEG:
 	Is_Trace(Tracing(), (TFile, 
           "Number of uses of this neg operation=%d\n", cr->Usecnt()));
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
 	if ( ! WOPT_Enable_Estr_Used_Once && !(cr->Usecnt() > 1) ) {
 	    // Don't consider for strength reduction, 
 	    // if SR variable is not used in more than one place
@@ -1132,7 +1132,7 @@ STR_RED::Candidate( const CODEREP *cr,
 	}
 	// else fallthru
 #endif
-#ifdef TARG_X8664 // avoid U4 due to zero-extension to high-order 32 bits
+#if defined(TARG_X8664) // avoid U4 due to zero-extension to high-order 32 bits
       if (cr->Dtyp() == MTYPE_U4)
 	return FALSE;
 #endif
@@ -1207,7 +1207,7 @@ STR_RED::Candidate_phi_res( const CODEREP *cr,
       break;
 
     case OPR_NEG:
-#ifdef TARG_X8664 // avoid U4 due to zero-extension to high-order 32 bits
+#if defined(TARG_X8664) // avoid U4 due to zero-extension to high-order 32 bits
       if (cr->Dtyp() == MTYPE_U4)
 	return FALSE;
 #endif
@@ -1395,7 +1395,7 @@ STR_RED::Find_iv_and_mult_phi_res( const EXP_OCCURS *def, CODEREP **iv_def,
         *multiplier = use_cr->Opnd(0);
       }
       else if ( opr == OPR_SUB) {
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
         *multiplier = Htable()->Add_const(OPCODE_rtype(use_cr->Op()),-1);
 #else // bug 4518
         *multiplier = Htable()->Add_const(Mtype_TransferSign(MTYPE_I4, OPCODE_rtype(use_cr->Op())),-1);
@@ -1428,7 +1428,7 @@ STR_RED::Find_iv_and_mult_phi_res( const EXP_OCCURS *def, CODEREP **iv_def,
     *iv_use = use_cr->Opnd(0);
     // *iv_def already set
     if ( opr == OPR_NEG ) {
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
       CODEREP *multi = Htable()->Add_const(OPCODE_rtype(use_cr->Op()),-1);
 #else // bug 4518
       CODEREP *multi = Htable()->Add_const(Mtype_TransferSign(MTYPE_I4, OPCODE_rtype(use_cr->Op())),-1);
@@ -1456,55 +1456,6 @@ STR_RED::Find_iv_and_mult_phi_res( const EXP_OCCURS *def, CODEREP **iv_def,
 // which means we will exclude it from being a strength-reduction
 // candidate
 //======================================================================
-// Unused?
-#if 0
-void
-EXP_WORKLST::Exclude_strength_reduction_cands(ETABLE *etable)
-{
-  EXP_OCCURS        *exp_occ;
-  EXP_OCCURS_ITER    exp_occ_iter;
-
-  // if we're not enabled, this everything is excluded
-  if ( ! WOPT_Enable_New_SR ) {
-    Set_exclude_sr_cand();
-    return;
-  }
-
-#ifdef EXCLUDE_IV_RHS_FROM_SR
-  // is it even something we would accept as an iv update?
-  //
-
-  // if it's not an op, we don't consider it as an rhs of iv-update
-  if ( Exp()->Kind() != CK_OP ) {
-    return;
-  }
-
-  // if it's not an add/sub, we don't consider it as an rhs of iv-update
-  const OPERATOR exp_opr = Exp()->Opr();
-  if ( exp_opr != OPR_ADD && exp_opr != OPR_SUB ) {
-    return;
-  }
-
-  // we now have an expression that *may* show up on the rhs of an
-  // iv update, so see if it ever does
-  FOR_ALL_NODE (exp_occ, exp_occ_iter, Init(Real_occurs().Head())) {
-    STMTREP *occ_stmt = exp_occ->Enclosed_in_stmt();
-    if ( occ_stmt->Rhs() == exp_occ->Occurrence() &&
-         etable->Str_red()->Determine_iv_update(occ_stmt,NULL) )
-    {
-      // we'll have to exclude this expression from strength-reduction
-      Set_exclude_sr_cand();
-
-      Is_Trace(etable->Tracing(),
-	(TFile,"Exclude_strength_reduction_cands: excluded iv rhs\n"));
-
-      break;
-    }
-  }
-#endif // EXCLUDE_IV_RHS_FROM_SR
-
-}
-#endif
 
 void
 STR_RED::Perform_per_expr_cleanup(void)

@@ -127,9 +127,7 @@ CODEREP::Exp_has_e_num(void) const
     return FALSE;
   case OPR_INTRINSIC_OP:
     return WOPT_Enable_Move_Intrinsicop;
-#ifdef KEY
   case OPR_PURE_CALL_OP:
-#endif
   case OPR_CVT:
 //    return !Cvt_is_nop();
   case OPR_CVTL:
@@ -164,11 +162,6 @@ CODEREP::Is_non_volatile_terminal(OPT_STAB *opt_stab) const
     if (Is_ivar_volatile()) return FALSE;
     if (Opr() == OPR_PARM && Ivar_mu_node() == NULL && WOPT_Enable_Move_Intrinsicop)
       return Ilod_base()->Is_non_volatile_terminal(opt_stab);
-#if 0
-    if ((Opr() == OPR_CVT && Cvt_is_nop()) || 
-	(Opr() == OPR_CVTL && Cvtl_is_nop()))
-      return Opnd(0)->Is_non_volatile_terminal(opt_stab);
-#endif
   default:
     return FALSE;
   }
@@ -200,13 +193,11 @@ EOCC::Collect_real_occurrences( void )
 	  CODEREP *rhs_cr = stmt->Rhs();
 	  CODEREP *lhs = stmt->Lhs();
 	  if (WOPT_Enable_Cvt_Folding && rhs_cr->Kind() == CK_OP && 
-#ifdef KEY // bug 11797
 	      ! MTYPE_is_vector(rhs_cr->Dsctyp()) &&
 	      ! MTYPE_is_vector(rhs_cr->Dtyp()) &&
-#endif
 	      (rhs_cr->Opr() == OPR_CVT && MTYPE_is_integral(rhs_cr->Dsctyp()) 
 	       || rhs_cr->Opr() == OPR_CVTL) &&
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 	      !MTYPE_is_vector(lhs->Dsctyp()) &&
 #endif
 	      MTYPE_is_integral(rhs_cr->Dtyp()) && 

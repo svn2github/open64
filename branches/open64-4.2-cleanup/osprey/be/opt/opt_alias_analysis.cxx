@@ -173,7 +173,7 @@ void OPT_STAB::Analyze_Range(WN *wn_arr, POINTS_TO *pt)
   if (product < 0) {
     // Negative element size signifies non-contiguous array. There are
     // no address bounds implicit in a non-contiguous array access, so
-    // we can't do anything. (bug 708002)
+    // we can't do anything. 
     pt->Set_byte_ofst(0);
     pt->Set_byte_size(0);
     pt->Set_ofst_kind( OFST_IS_UNKNOWN );
@@ -327,9 +327,7 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
 	    ai->Shift_ofst( alias1.Int_const_val());
           } 
 	  else 
-#ifdef KEY
 	  if (!ai->Is_field()) {
-#endif
 	    ai->Set_ofst_kind(OFST_IS_UNKNOWN);
 	    ai->Set_iofst_kind(OFST_IS_UNKNOWN);
 	  }
@@ -345,9 +343,7 @@ void OPT_STAB::Simplify_Pointer_Arith(WN *wn_expr, POINTS_TO *ai)
 	    ai->Shift_ofst( alias0.Int_const_val());
 	  }
 	  else 
-#ifdef KEY
 	  if (!ai->Is_field()) {
-#endif
 	    ai->Set_ofst_kind(OFST_IS_UNKNOWN);
 	    ai->Set_iofst_kind(OFST_IS_UNKNOWN);
 	  }
@@ -1745,26 +1741,9 @@ OPT_STAB::REGION_verify_bound(RID *rid, AUX_ID aux_id)
   Is_True(st != NULL, ("OPT_STAB::REGION_verify_bound, NULL st"));
 
   if (st && ST_class(st) == CLASS_PREG) { // pregs
-#if 1
     // ignore all pregs, they can be created by IVR or goto conversion
     return TRUE;
-#else
-    PREG_NUM pr = psym->St_ofst();
 
-    // ignore all dedicated pregs, they come from black regions
-    if (pr < 72)
-      return TRUE;
-
-    Is_True(REGION_search_preg_set(RID_pregs_in(rid), pr),
-	 ("OPT_STAB::REGION_verify_bound, PREG %d not in preg-in set, RGN %d",
-	  pr,RID_id(rid)));
-    if (RID_pregs_out(rid)) {
-      for (INT i=0; i<RID_num_exits(rid); i++)
-	Is_True(REGION_search_preg_set(RID_pregs_out_i(rid, i), pr),
-	  ("OPT_STAB::REGION_verify_bound, PREG %d not in preg-in set, RGN %d",
-		 pr,RID_id(rid)));
-    }
-#endif
   } else { // variables
 
     // if const LDA, ignore
@@ -1841,7 +1820,6 @@ OPT_STAB::Update_aux_id_list(AUX_ID vp_idx)
        }
 }
 
-#ifdef KEY
 extern BOOL ST_Has_Dope_Vector(ST *);
 
 // ======================================================================
@@ -1899,7 +1877,7 @@ OPT_STAB::Allocate_vsym(WN * memop_wn, POINTS_TO *memop_pt)
     INT64 offset = (opr == OPR_PARM || opr == OPR_ASM_INPUT ? (INT64) 0
                                                         : WN_offset(memop_wn));
                                                                                 
-    // Raymond says to delete the (offset == 0) clause. -- RK 981106
+    // Raymond says to delete the (offset == 0) clause. --
     BOOL direct_use = ((addr_wn != NULL) &&
                        (WN_operator(addr_wn) == OPR_LDID) &&
                        (offset == 0));
@@ -1969,7 +1947,7 @@ OPT_STAB::Allocate_vsym(WN * memop_wn, POINTS_TO *memop_pt)
           vp_idx = vsym_id;
           break;
         }
-        // bug 9582: Don't give unique vsyms to dope vectors.
+        // Don't give unique vsyms to dope vectors.
         if (WOPT_Enable_Vsym_Unique && !ST_Has_Dope_Vector(st)) {
           vsym_id = Find_vsym_with_st(st, !direct_use, memop_pt);
           if (vsym_id == 0) {
@@ -2042,20 +2020,10 @@ OPT_STAB::Allocate_vsym(WN * memop_wn, POINTS_TO *memop_pt)
       return vp_idx;
     }
     else {
-#if 0
-      vp_idx = Find_vsym_with_base(occ->Based_sym());
-      if (vp_idx == NULL) {
-	vp_idx = Create_vsym(EXPR_IS_ANY);
-	AUX_STAB_ENTRY *vsym = Aux_stab_entry(vp_idx);
-	vsym->Points_to()->Set_based_sym(occ->Based_sym());
-	// What about vsym->Set_stype(something) here?
-      }
-#else
       // Replace the Based_sym() in the AUX_STAB_ENTRY with the
       // Based_sym() of the OCC_TAB_ENTRY. This should happen only
       // once, and we should never switch it back!
       pt->Set_based_sym(memop_pt->Based_sym());
-#endif
       return vp_idx;
     }
   }
@@ -2109,7 +2077,6 @@ OPT_STAB::Allocate_vsym(WN * memop_wn, POINTS_TO *memop_pt)
 
   return vp_idx;
 }
-#endif
 
 // ======================================================================
 //
@@ -2149,20 +2116,10 @@ OPT_STAB::Adjust_vsym(AUX_ID vp_idx, OCC_TAB_ENTRY *occ)
       return vp_idx;
     }
     else {
-#if 0
-      vp_idx = Find_vsym_with_base(occ->Based_sym());
-      if (vp_idx == NULL) {
-	vp_idx = Create_vsym(EXPR_IS_ANY);
-	AUX_STAB_ENTRY *vsym = Aux_stab_entry(vp_idx);
-	vsym->Points_to()->Set_based_sym(occ->Based_sym());
-	// What about vsym->Set_stype(something) here?
-      }
-#else
       // Replace the Based_sym() in the AUX_STAB_ENTRY with the
       // Based_sym() of the OCC_TAB_ENTRY. This should happen only
       // once, and we should never switch it back!
       pt->Set_based_sym(occ->Points_to()->Based_sym());
-#endif
       return vp_idx;
     }
   }
@@ -2208,18 +2165,11 @@ OPT_STAB::Adjust_vsym(AUX_ID vp_idx, OCC_TAB_ENTRY *occ)
   if (vp_idx == Default_vsym())
     pt->Set_default_vsym();
 
-#ifdef KEY
   Is_True(WOPT_Enable_Vsym_Unique || vp_idx == Default_vsym() ||
           pt->Base_is_fixed() || pt->Based_sym() ||
 	  (pt->Expr_kind() == EXPR_IS_ADDR && pt->Ofst_kind() == OFST_IS_UNKNOWN) ||
           aux_stab[vp_idx].Unique_vsym(),
           ("OPT_STAB::Adjust_vsym: base is disrupted."));
-
-#else
-  Is_True(vp_idx == Default_vsym() || pt->Base_is_fixed() ||
-	  pt->Based_sym() || aux_stab[vp_idx].Unique_vsym(),
-	  ("OPT_STAB::Adjust_vsym: base is disrupted."));
-#endif
 
   return vp_idx;
 }
@@ -2267,7 +2217,6 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   case OPR_ILDBITS:
   case OPR_MLOAD:
   case OPR_ILOADX:
-#ifdef KEY
     if (WOPT_Enable_New_Vsym_Allocation) {
       POINTS_TO pt;
       pt.Init();
@@ -2283,7 +2232,6 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
       vp_idx = Allocate_vsym(wn, &pt);
       occ = Enter_occ_tab(wn , vp_idx, &pt);
     } else
-#endif
     {
       vp_idx = Identify_vsym(wn);
       occ = Enter_occ_tab(wn, vp_idx);
@@ -2305,7 +2253,6 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   case OPR_ISTBITS:
   case OPR_MSTORE:
   case OPR_ISTOREX:
-#ifdef KEY
     if (WOPT_Enable_New_Vsym_Allocation) {
       POINTS_TO pt;
       pt.Init();
@@ -2320,8 +2267,8 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
       pt.Set_ip_alias_class(ip_alias_class);
       vp_idx = Allocate_vsym(wn, &pt);
       occ = Enter_occ_tab(wn , vp_idx, &pt);
-    } else
-#endif
+    }
+    else
     {
       vp_idx = Identify_vsym(wn);
       occ = Enter_occ_tab(wn, vp_idx);
@@ -2346,9 +2293,7 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
     break;
 
   case OPR_INTRINSIC_OP:
-#ifdef KEY
   case OPR_PURE_CALL_OP:
-#endif
     // no more mu-list for INTRINSIC_OP
     break;
 
@@ -2358,18 +2303,12 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
 #else
     if ( WN_Parm_By_Reference(wn) ) {
 #endif
-#ifdef KEY
       if (WOPT_Enable_New_Vsym_Allocation) {
         POINTS_TO pt;
         pt.Init();
         pt.Set_base_kind(BASE_IS_UNKNOWN);
         pt.Set_ofst_kind(OFST_IS_INVALID);
 
-#if 0   // This is "HACK" from Enter_occ_tab, so we disable it until
-	// we know why it is required.
-        if (WN_operator(wn) == OPR_PARM && aux_id == _default_vsym)
-	        occ->Points_to()->Set_expr_kind(EXPR_IS_ANY);
-#endif
         pt.Analyze_Parameter_Base(WN_kid0(wn), *this);
         Update_From_Restricted_Map(wn, &pt);
         Is_True(pt.Alias_class() == OPTIMISTIC_AC_ID ||
@@ -2383,8 +2322,8 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
         pt.Set_alias_class(Alias_classification()->Alias_class(wn));
         vp_idx = Allocate_vsym(wn, &pt);
         occ = Enter_occ_tab(wn , vp_idx, &pt);
-      } else
-#endif
+      } 
+      else
       {
         vp_idx = Identify_vsym(wn);
         occ = Enter_occ_tab(wn, vp_idx); // treat OPR_PARM as ILOAD
@@ -2417,9 +2356,7 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
   case OPR_PREFETCH:
   case OPR_RETURN:
   case OPR_RETURN_VAL:
-#ifdef KEY
   case OPR_GOTO_OUTER_BLOCK:
-#endif
     Enter_occ_tab(wn, 0);
     break;
 
@@ -2542,7 +2479,6 @@ OPT_STAB::Generate_call_mu_chi_by_ref(WN *wn, ST *call_st,
 	  }
 	}
       }
-#ifdef KEY // bug 8607
     if (WN_operator(wn) == OPR_CALL)
       if (WN_st(wn) && strcmp(ST_name(WN_st(wn)), "_Copyin" ) == 0)  {
 	/* if (Aux_stab_entry(idx)->Is_real_var())*/ {
@@ -2560,9 +2496,7 @@ OPT_STAB::Generate_call_mu_chi_by_ref(WN *wn, ST *call_st,
 	    how = NO_READ_NO_WRITE;
 	}
       }
-#endif
-#ifdef KEY
-//Bug 1976
+
     if ( Aux_stab_entry(idx)->St() && IS_FORTRAN && (idx != Return_vsym() || idx != Default_vsym())){
 
       if (strncmp(Aux_stab_entry(idx)->St_name(), "cray_fcd_", 8) ==0 || 
@@ -2579,7 +2513,7 @@ OPT_STAB::Generate_call_mu_chi_by_ref(WN *wn, ST *call_st,
 
         for (INT32 i = 0; i < WN_kid_count(wn); i++) {
           OCC_TAB_ENTRY *occ = Get_occ(WN_kid(wn, i));
-// Bug 2450. default vsym can be aliased with any other idx.
+// Bug default vsym can be aliased with any other idx.
 	  if (occ != NULL &&
 	      (occ->Aux_id() == idx || 
 	       Aux_stab_entry(idx)->St()==Aux_stab_entry(occ->Aux_id())->St() ||
@@ -2595,7 +2529,6 @@ OPT_STAB::Generate_call_mu_chi_by_ref(WN *wn, ST *call_st,
       }
 
     }
-#endif
     if (how & READ)
       mu->New_mu_node(idx, Occ_pool());
 
@@ -2649,7 +2582,6 @@ OPT_STAB::Has_read_only_parm(AUX_ID idx, WN *wn, INT32 num_parms)
   return FALSE;
 }
 
-#ifdef KEY
 #include "be_ipa_util.h"
 // Brute force method for now
 // TODO: Keep a map internal to wopt so that we need to search once for a pu
@@ -2711,7 +2643,6 @@ OPT_STAB::check_ipa_same_entry_exit_value_or_1_info(const ST *call_st,
   }
   return;
 }
-#endif
 
 
 //  Call by value
@@ -2759,7 +2690,6 @@ OPT_STAB::Generate_call_mu_chi_by_value(WN *wn, ST *call_st,
         how = READ;
     }
     
-#ifdef KEY
     // TODO: Check if the code above can add redundant READ, when
     //       how == WRITE.
     // For vintrinsic_call to memcpy for example, call_st is null. Why
@@ -2795,8 +2725,7 @@ OPT_STAB::Generate_call_mu_chi_by_value(WN *wn, ST *call_st,
 		  " due to IPA REF information.\n", idx);
       }
     }
-#endif
-
+    
     if (how & READ)
       mu->New_mu_node(idx, Occ_pool());
     if (how & WRITE)
@@ -2847,7 +2776,6 @@ OPT_STAB::Add_nested_call_mu_chi(WN *wn, ST *call_st,
 	  mu->New_mu_node_no_dups(idx, Occ_pool());
 	  chi->New_chi_node_no_dups(idx, Occ_pool());
 	} else if ( aux_stab[idx].Points_to()->F_param() ) {
-	  // WORKAROUND for 345188!
 	  mu->New_mu_node_no_dups(idx, Occ_pool());
 	  chi->New_chi_node_no_dups(idx, Occ_pool());
 	}
@@ -2868,7 +2796,7 @@ void
 OPT_STAB::Generate_asm_mu_chi(WN *wn, MU_LIST *mu, CHI_LIST *chi)
 {
   AUX_ID idx;
-  // fix 762155: very variable can be modified by asm-statement.
+  // very variable can be modified by asm-statement.
   // const BS *alias_set = Rule()->Alias_Set_Asm(this);
 
   BOOL asm_clobbers_mem = WN_Asm_Clobbers_Mem(wn);
@@ -2887,17 +2815,12 @@ OPT_STAB::Generate_asm_mu_chi(WN *wn, MU_LIST *mu, CHI_LIST *chi)
     // (they cannot be modified by asm statements).
     if (Aux_stab_entry(idx)->Is_preg()) 
       continue;
-#ifdef KEY //Bug 607 && bug 1672 and bug 5022
-    if (idx == Return_vsym()){ // bug 1524
+    if (idx == Return_vsym()){
       how = READ_AND_WRITE;
       goto label_how;
     }
 
     if (Asm_Memory || asm_clobbers_mem)
-#if 0 // bug 10016
-      if (Addr_saved(idx) || Addr_passed(idx) || Addr_used_locally(idx) ||
-	  idx == Default_vsym()) 
-#endif
       {
 	how = READ_AND_WRITE;
 	goto label_how;
@@ -2928,12 +2851,6 @@ OPT_STAB::Generate_asm_mu_chi(WN *wn, MU_LIST *mu, CHI_LIST *chi)
     if (!asm_clobbers_mem && !WN_Asm_Volatile(wn))
       continue;
 #endif
-#else
-    if (!asm_clobbers_mem)   // non-volatile asm cannot modify memory
-      continue;
-    
-    how |= Rule()->Aliased_with_Asm(wn, aux_stab[idx].Points_to());
-#endif //KEY
 
 label_how:
     if (how & READ) {
@@ -2990,14 +2907,13 @@ OPT_STAB::Generate_exit_mu(WN *wn)
       mu->New_mu_node(idx, mem_pool);
     }
     // for copy-out parameters
-    // Does this need a pv790096 fix also?  Don't think so....
     else if ((st = psym->Points_to()->Based_sym()) != NULL
 	     && ST_sclass(st) == SCLASS_FORMAL
 	     && !ST_is_value_parm(st)) {
       mu->New_mu_node(idx, mem_pool);
     }
     // for copy-out parameters
-    // pv790096 -- if PU has syscall_linkage attribute, treat all
+    // -- if PU has syscall_linkage attribute, treat all
     // paramenters as live out
     else if ((st = psym->St()) != NULL
 	     && (ST_sclass(st) == SCLASS_FORMAL_REF
@@ -3210,9 +3126,7 @@ OPT_STAB::Generate_mu_and_chi_list(WN *wn, BB_NODE *bb)
     break;
 
   case OPR_INTRINSIC_OP:
-#ifdef KEY
   case OPR_PURE_CALL_OP:
-#endif
     {
       for (INT32 i = 0; i < WN_kid_count(wn); i++) {
 	occ = Get_occ(WN_kid(wn, i));
@@ -3322,9 +3236,7 @@ OPT_STAB::Generate_mu_and_chi_list(WN *wn, BB_NODE *bb)
     
   case OPR_RETURN: 
   case OPR_RETURN_VAL: 
-#ifdef KEY
   case OPR_GOTO_OUTER_BLOCK:
-#endif
     Generate_exit_mu(wn);
     break;
   
@@ -3541,23 +3453,19 @@ OPT_STAB::Transfer_alias_class_to_occ_and_aux(RID *const rid,
       if (occ != NULL) {
 	POINTS_TO *occ_pt = occ->Points_to();
 	IDTYPE alias_class = Alias_classification()->Alias_class(wn);
-#ifdef KEY
 	Is_True (!WOPT_Enable_New_Vsym_Allocation ||
 	         occ_pt->Alias_class() == alias_class ||
 	         (opr != OPR_ILOAD && opr != OPR_ISTORE),
 	         ("Transfer_alias_class_to_occ_and_aux: Alias class "
 	          "mismatch at -WOPT:new_vsym=on"));
-#endif
 	occ_pt->Set_alias_class(alias_class);
 
 	IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn);
-#ifdef KEY
 	Is_True (!WOPT_Enable_New_Vsym_Allocation ||
 	         occ_pt->Ip_alias_class() == ip_alias_class ||
 	         (opr != OPR_ILOAD && opr != OPR_ISTORE),
 	         ("Transfer_alias_class_to_occ_and_aux: IP alias class "
 	          "mismatch at -WOPT:new_vsym=on"));
-#endif
 	occ_pt->Set_ip_alias_class(ip_alias_class);
 	if (ip_alias_class != OPTIMISTIC_AC_ID) {
 	  found_ip_alias_class_info = TRUE;
@@ -3605,13 +3513,13 @@ OPT_STAB::Transfer_alias_class_to_occ_and_aux(RID *const rid,
 	  // Such pointers should always be defined by entry chi,
 	  // though, so the assertion should be OK.
 	  //
-	  // 981116: Assertion removed because it really asserts the
-	  // wrong thing, as exposed by bug 651815. The assertion says
+	  // Assertion removed because it really asserts the
+	  // wrong thing. The assertion says
 	  // "this pointer can point to only one block of memory,"
 	  // which is wrong. The correct thing to say is, essentially,
 	  // "Only this pointer can point to the memory it points to."
 	  //
-	  // The 651815 case began with both properties, i.e., a
+	  // 
 	  // one-to-one correspondence between the pointer and its
 	  // memory. But LNO's tiling duplicated some code including
 	  // the memory allocation for that pointer. As a result, in
@@ -3635,12 +3543,6 @@ OPT_STAB::Transfer_alias_class_to_occ_and_aux(RID *const rid,
 	  // and the copy overlap. The discarding of the alias class
 	  // information (and the IP alias class information) happens
 	  // inside POINTS_TO::Meet_info_from_alias_class(). -- RK
-#if 0
-	  Is_True((vsym_pt->Alias_class() == OPTIMISTIC_AC_ID) ||
-		  (vsym_pt->Alias_class() == alias_class),
-		  ("Transfer_alias_class_to_occ_and_aux: Inconsistent alias "
-		   "class for vsym"));
-#endif
 	  // Note: Since the above assertion doesn't hold in general,
 	  if (alias_class != OPTIMISTIC_AC_ID &&
 	      alias_class != PESSIMISTIC_AC_ID &&
@@ -3672,14 +3574,6 @@ OPT_STAB::Transfer_alias_class_to_occ_and_aux(RID *const rid,
 	  }
 	  // The following assertion removed 981116; see comments
 	  // above for the per-PU case that explain why. -- RK
-#if 0
-	  Is_True((vsym_pt->Ip_alias_class() == OPTIMISTIC_AC_ID) ||
-		  (vsym_pt->Ip_alias_class() ==
-		   WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn)) ||
-		  (WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn) == OPTIMISTIC_AC_ID),
-		  ("Transfer_alias_class_to_occ_and_aux: Inconsistent IP alias "
-		   "class for vsym"));
-#endif
 #if Is_True_On
 	  if ((WOPT_Ip_Alias_Class_Limit == UINT32_MAX) &&
 	      (WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn) ==
@@ -4060,13 +3954,11 @@ void OPT_STAB::Compute_FFA(RID *const rid)
 	    DBar,DBar);
     Print_alias_info(TFile);
     fprintf( TFile, "%sOcc table after flow free alias analysis\n%s", DBar, DBar );
-#ifdef KEY
     FOR_ALL_ELEM (bb, cfg_iter, Init(_cfg)) {
       FOR_ALL_ELEM (wn, stmt_iter, Init(bb->Firststmt(), bb->Laststmt())) {
          Print_occ_tab(TFile,wn);
       }
     }
-#endif
     Cr_sr_annot_mgr()->Print (TFile); 
   }
 }
@@ -4232,7 +4124,6 @@ OPT_STAB::Compute_FSA_stmt_or_expr(WN *wn)
       cnode = chi_list->Head();
       while (cnode != NULL) {
 	AUX_ID v = cnode->Aux_id();
-#ifdef KEY // work around bug 7421: return_vsym aliases with a fixed global var
 	if (v == Return_vsym() && 
 	    occ->Points_to()->Base_kind() == BASE_IS_FIXED &&
 	    occ->Points_to()->Not_addr_saved() && occ->Points_to()->Global()) {
@@ -4240,7 +4131,6 @@ OPT_STAB::Compute_FSA_stmt_or_expr(WN *wn)
 	  cnode = prev_cnode->Next();
 	}
 	else
-#endif
 	// no need to remove UNIQUE_MEM for the chi list. 
 	if (aux_stab[v].Stype() != VT_UNIQUE_VSYM &&
 	    !Rule()->Aliased_Memop(occ->Points_to(),

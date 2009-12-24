@@ -105,7 +105,7 @@ class DSE {
     WN_MAP _live_wns;		// map of live WNs
 
     BOOL _tracing;		// are we tracing?
-#ifdef TARG_SL
+#if defined(TARG_SL)
     vector <WN *> *_injury_aux_intrnop;
 #endif
     vector <WN *> *_last_store_vec;
@@ -140,9 +140,7 @@ class DSE {
     void Set_Required_CHI( CHI_NODE *chi, BOOL *chi_is_live ) const;
     void Set_Required_WN( WN *wn ) const;
     void Add_EH_exposed_use(WN *call) const;
-#ifdef KEY
     void Add_entry_exposed_uses(WN *call) const;
-#endif
     void Update_MU_list_for_call(BB_NODE *bb) const;
     // some inlined functions
     BOOL Live_wn( WN *wn ) const
@@ -182,7 +180,7 @@ class DSE {
       {
 	// create a map to track live WNs
 	_live_wns = WN_MAP32_Create(Loc_pool());
-#ifdef TARG_SL
+#if defined(TARG_SL)
         _injury_aux_intrnop = CXX_NEW(vector<WN *>, pool);
 #endif
 
@@ -253,15 +251,14 @@ DSE::Required_istore(const WN *wn) const
       occ->Points_to()->Restricted())
     return TRUE;
 
-#ifdef KEY // deleting fetch of MTYPE_M return value can cause lowerer to omit
-  	   // inserting the fake parm
+  // deleting fetch of MTYPE_M return value can cause lowerer to omit
+  // inserting the fake parm
   if (Opt_stab()->Phase() == PREOPT_IPA0_PHASE && WN_desc(wn) == MTYPE_M &&
       WN_opcode(WN_kid0(wn)) == OPC_MMLDID) {
     ST *s = Opt_stab()->St(Opt_stab()->Du_aux_id(WN_ver(WN_kid0(wn))));
     if (ST_class(s) == CLASS_PREG && Preg_Is_Dedicated(WN_offset(wn)))
       return TRUE;
   }
-#endif
 
   return FALSE;
 }
@@ -294,21 +291,18 @@ DSE::Required_stid( const WN *wn ) const
   if (ST_sclass(s) == SCLASS_FORMAL)  // leave the details to DCE
     return TRUE;   
 
-#ifdef KEY // bugs 5401 and 5267
   if (Opt_stab()->Aux_stab_entry(Opt_stab()->Du_aux_id(du))->Mp_no_dse())
     return TRUE;   
-#endif
 
-#ifdef KEY // deleting fetch of MTYPE_M return value can cause lowerer to omit
-  	   // inserting the fake parm
+  // deleting fetch of MTYPE_M return value can cause lowerer to omit
+  // inserting the fake parm
   if (Opt_stab()->Phase() == PREOPT_IPA0_PHASE && WN_desc(wn) == MTYPE_M &&
       WN_opcode(WN_kid0(wn)) == OPC_MMLDID) {
     s = Opt_stab()->St(Opt_stab()->Du_aux_id(WN_ver(WN_kid0(wn))));
     if (ST_class(s) == CLASS_PREG && Preg_Is_Dedicated(WN_offset(wn)))
       return TRUE;
   }
-#endif
-#ifdef TARG_SL
+#if defined(TARG_SL)
   if (WN_Intrinsic_OP_Slave(WN_kid0(wn))) {
     Append_Injured_AuxIntrnOp((WN *)wn);
   }
@@ -524,76 +518,6 @@ DSE::Set_Required_MU( MU_NODE *mu, BOOL real_use ) const
   Set_Required_VSE( ver, real_use, NULL );
 }
 
-
-#if 0  // OSP_468, remove Set_Required_Imp_VSE()
-void 
-DSE::Set_Required_Imp_VSE( VER_ID vid, BOOL real_use) const
-{
-  VER_STAB_ENTRY *vse = Opt_stab()->Ver_stab_entry(vid);
-  AUX_ID vaid = vse->Aux_id();
-
-  STMT_TYPE vtype = vse->Type();
-  switch ( vtype ) {
-    case WHIRL_STMT: 
-    case CHI_STMT:
-      {
-        WN *wn;
-	if (vtype  == WHIRL_STMT)
-	  wn = vse->Wn();
-	else
-	  wn = vse->Chi_wn();
-
-        CHI_LIST *chi_list = Opt_stab()->Get_generic_chi_list(wn);
-        FmtAssert(OPERATOR_is_scalar_store ( WN_operator(wn) ) || chi_list, 
-                          ("DSE::Set_Required_Implicit_Use: chi list is null."));
-        if(chi_list == NULL) 
-          break;
-        CHI_LIST_ITER chi_iter;
-        CHI_NODE *cnode;
-        FOR_ALL_NODE( cnode, chi_iter, Init(chi_list)) {
-          AUX_ID caid = cnode->Aux_id();
-          if(caid != vaid && Aliased_aux(caid, vaid)) {
-            FmtAssert( vid != cnode->Result(), ("DSE::Set_Required_Imp_VSE: confused version"));
-            VER_STAB_ENTRY *cvse = Opt_stab()->Ver_stab_entry(cnode->Result());
-            Set_last_store(caid, NULL); //from a implicit use, so reset last store
-            Set_Required_VSE(cvse, real_use, NULL);
-          }
-        }
-      }
-      break;
-
-    case PHI_STMT:
-      {
-	BB_NODE *bb = Opt_stab()->Ver_stab_entry(vid)->Bb();
-	PHI_LIST_ITER phi_iter;
-	PHI_NODE *phi;
-	FOR_ALL_ELEM (phi, phi_iter, Init(bb->Phi_list())) {
-          AUX_ID paid = phi->Aux_id();
-          if( paid != vaid && Aliased_aux(paid, vaid)) {
-            FmtAssert( vid != phi->Result(), ("DSE::Set_Required_Imp_VSE: confused version"));
-            VER_STAB_ENTRY *pvse = Opt_stab()->Ver_stab_entry(phi->Result());
-            Set_last_store(paid, NULL); //from a implicit use, so reset last store
-            Set_Required_VSE(pvse, real_use, NULL);
-          }
-	}
-      }
-      break;
-
-    case ENTRY_STMT:
-      // no need to handle
-      break;
-
-    case MU_STMT:   // mu could not define anything
-    case NO_STMT:
-    default:
-      ErrMsg( EC_Misc_Int, "DSE::Set_Required_Implicit_Use invalid type", vse->Type() );
-      break;
-  }
-  return;
-
-}
-#endif
-
 static bool Is_identity_asgn(WN *wn, OPT_STAB *opt_stab)
 {
   OPERATOR opr = WN_operator(wn);
@@ -728,7 +652,6 @@ DSE::Set_Required_CHI( CHI_NODE *chi, BOOL *chi_is_live ) const
     if (real_use)
       Opt_stab()->Ver_stab_entry(chi->Result())->Set_Real_use();
   } else if (Is_identity_asgn(chiwn, Opt_stab())) {
-    // Fix 623783 -- 
     //   keep the chi result of identity assignment to have non-zero
     //   version because otherwise identity assignment cannot be deleted 
     Opt_stab()->Ver_stab_entry(chi->Result())->Set_Real_use();
@@ -1226,9 +1149,7 @@ DSE::Dead_store_elim( void ) const
   }
 
   if (Opt_stab()->Has_exc_handler()
-#ifdef KEY
       || Opt_stab()->Has_nonlocal_goto_target()
-#endif
       ) {
     Add_MU_list_for_calls();
 
@@ -1395,7 +1316,6 @@ DSE::Add_EH_exposed_use(WN *call) const
 }
 
 
-#ifdef KEY
 void
 DSE::Add_entry_exposed_uses(WN *call) const
 {
@@ -1430,7 +1350,6 @@ DSE::Add_entry_exposed_uses(WN *call) const
     }
   }
 }
-#endif
 
 // ====================================================================
 // Visit the dominator tree to add mu to all calls nested inside any
@@ -1462,14 +1381,10 @@ void DSE::Update_MU_list_for_call(BB_NODE *bb) const
 
     // Process Calls
     if ( opr == OPR_CALL || opr == OPR_ICALL ) {
-#ifdef KEY
       if (_opt_stab->Has_exc_handler())
-#endif
       Add_EH_exposed_use(wn);
-#ifdef KEY
       else if (_opt_stab->Has_nonlocal_goto_target())
 	Add_entry_exposed_uses(wn);
-#endif
     }
 
     // Process Lhs

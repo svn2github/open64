@@ -379,29 +379,9 @@ struct CACHE_TEMPLATE : public PER_PU_CACHE {
 };
 
 
-#if 0
-struct SHARED_CACHE : public CACHE_TEMPLATE<UINT32> {
-  static UINT32 _next_key;
-  UINT32 Alloc_key() { 
-    if (_next_key == 0) Clear_visited(); 
-    return _next_key++;
-  }
-};
-
-SHARED_CACHE::_next_key = 1;
-
-STMTREP   *Get_cache_key(STMTREP *, STMTREP *stmt, BB_NODE *bb, INT32 temp_key) { return stmt; }
-BB_NODE   *Get_cache_key(BB_NODE *, STMTREP *stmt, BB_NODE *bb, INT32 temp_key) { return bb; }
-COMP_UNIT *Get_cache_key(COMP_UNIT *, STMTREP *stmt, BB_NODE *bb, INT32 temp_key) { return NULL; }
-INT32      Get_cache_key(INT32, STMTREP *stmt, BB_NODE *bb, INT32 temp_key) { return temp_key; }
-
-#else
-
 inline STMTREP   *Get_cache_key(STMTREP *, STMTREP *stmt, BB_NODE *bb) { return stmt; }
 inline BB_NODE   *Get_cache_key(BB_NODE *, STMTREP *stmt, BB_NODE *bb) { return bb; }
 inline COMP_UNIT *Get_cache_key(COMP_UNIT *, STMTREP *stmt, BB_NODE *bb) { return NULL; }
-
-#endif
 
 
 typedef CACHE_TEMPLATE<STMTREP*>   PER_SR_CACHE;
@@ -501,16 +481,14 @@ UPDATE<TRANSFORM, CACHE, VERSION>::Process_CR_no_repeat(CODEREP *cr, bool is_mu,
       if (ilod_base || mload_size || mu) {
 	CODEREP *newcr = Alloc_stack_cr(cr->Extra_ptrs_used());
 	newcr->Copy(*cr);  
-#ifdef KEY // bug 12390: without this, would do wrong ivar copy propagation
+    // without this, would do wrong ivar copy propagation
 	newcr->Set_ivar_defstmt(NULL);
-#endif
 	if (ilod_base) 
 	  newcr->Set_ilod_base(ilod_base);
 	newcr->Set_istr_base(NULL);
 	if (mload_size)
 	  newcr->Set_mload_size(mload_size);
 	if (mu) {
-	  // Fix 622235, 621101:
 	  //   Clone the mu-node.  Update the version of mu-operand.
 	  //   Rehash the CK_IVAR node if mu-operand has been changed.
 	  MU_NODE *mnode = (MU_NODE*) CXX_NEW(MU_NODE, Htable()->Mem_pool());
@@ -521,7 +499,7 @@ UPDATE<TRANSFORM, CACHE, VERSION>::Process_CR_no_repeat(CODEREP *cr, bool is_mu,
 	newcr->Set_ivar_occ(cr->Ivar_occ());
 
 	CODEREP *ret = Htable()->Add_expr_and_fold(newcr);
-	// Fix 620842:  copy prop expects all C_P_PROCESSED must be cleared
+	//  copy prop expects all C_P_PROCESSED must be cleared
 	//  only clear newly rehashed ones,  opt_rename.cxx does not see
 	//  these nodes and therefore not able to clear them.
 	ret->Reset_flag(CF_C_P_PROCESSED);
@@ -544,12 +522,9 @@ UPDATE<TRANSFORM, CACHE, VERSION>::Process_CR_no_repeat(CODEREP *cr, bool is_mu,
       }
       if (need_rehash) {
 	CODEREP *ret = Htable()->Add_expr_and_fold(newcr);
-	// Fix 620842:  copy prop expects all C_P_PROCESSED must be cleared
+	// copy prop expects all C_P_PROCESSED must be cleared
 	ret->Reset_flag(CF_C_P_PROCESSED);
-// Fix bug 1614
-#ifdef KEY
-        if (ret->Kind() == CK_OP)
-#endif
+    if (ret->Kind() == CK_OP)
 	  ret->Reset_flag(CF_C_P_REHASHED);
 	return ret;
       }

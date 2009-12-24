@@ -160,9 +160,7 @@ Rehash_tree_rec(CODEREP *newcr,
         Is_Trace(htable->Tracing(), (TFile, "  with:"));
         Is_Trace_cmd(htable->Tracing(), rhs->Print(0,TFile));
         *changed = TRUE;
-#ifdef KEY // fix bug 2657
 	rhs = newcr->Convert_type(htable, rhs, FALSE);
-#endif
         return rhs;
       }
     }
@@ -239,10 +237,8 @@ Rehash_tree_rec(CODEREP *newcr,
       } else
 	newcr = cr_after_simp;
 
-#ifdef KEY // bug 5285
       if (newcr->Kind() == CK_CONST)
 	return newcr;
-#endif
 
       // Why isn't CK_VAR possible here?
       Is_True(newcr->Kind()==CK_IVAR || (newcr->Kind()==CK_OP &&

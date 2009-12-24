@@ -154,7 +154,7 @@ ETABLE::LPRE_bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
       break;
 #endif
     if ( LPRE_do_consts() ) {
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
       // on this targ, even floats can be immediates so we need that check
       if (!cr->Is_rvi_const_candidate(parent, whichkid, Opt_stab()))
         break;
@@ -181,7 +181,7 @@ ETABLE::LPRE_bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
          !Opt_stab()->Aux_stab_entry(cr->Aux_id())->No_register() &&
 	 ST_class( Opt_stab()->St(cr->Aux_id()) ) != CLASS_PREG )
     {
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
       if (Tracing())
               Opt_stab()->St(cr->Aux_id())->Print(TFile);
       if (!WOPT_Enable_Const_Var_PRE 
@@ -256,11 +256,10 @@ ETABLE::LPRE_bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 	cr->Set_max_depth( ( depth <= 255 ) ? depth : 255 );
 	
       for (INT32 i=0; i<cr->Kid_count(); i++)	{ 
-#ifdef KEY // bug 12471: __builtin_expect's first kid must be constant
+    // __builtin_expect's first kid must be constant
 	if (cr->Opr() == OPR_INTRINSIC_OP && cr->Intrinsic() == INTRN_EXPECT &&
 	    i == 1)
 	  continue;
-#endif
 	LPRE_bottom_up_cr(stmt, stmt_kid_num, cr->Opnd(i), FALSE, (depth+1), cr, i);
       }
       break;
@@ -606,7 +605,7 @@ CODEREP::Is_rvi_const_candidate(const CODEREP *parent, INT whichkid, const OPT_S
 {
   if ( parent == NULL ) return FALSE;
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   // On this TARG, float constants(CK_RCONST) can be immediates
   // Using separate function to avoid any confusion since
   // Can_Be_Immediate has implicit assumption of being integer const

@@ -102,7 +102,7 @@
 #include "opt_alias_mgr.h"
 #include "bb_node_set.h"
 
-#ifdef _LP64
+#if defined(_LP64)
 #define UNDEFINED_PTR	(void *)0xa5a5a5a5a5a5a5a5LL
 #else
 #define UNDEFINED_PTR	(void *)0xa5a5a5a5
@@ -1014,10 +1014,8 @@ Verify_version_expr(CODEREP *expr, OPT_STAB *opt_stab, BB_NODE *bb, INT32 linenu
 
       FmtAssert(! past_ret_reg_def || expr->Opr() != OPR_INTRINSIC_OP,
 		("cr%d is INTRINSIC_OP appearing after the def of a return register", expr->Coderep_id()));
-#ifdef KEY
       FmtAssert(! past_ret_reg_def || expr->Opr() != OPR_PURE_CALL_OP,
 		("cr%d is PURE_CALL_OP appearing after the def of a return register", expr->Coderep_id()));
-#endif
     }
     return;
     
@@ -1188,38 +1186,4 @@ COMP_UNIT::Verify_version(void)
 void
 CODEMAP::Verify_hashing(void)
 {
-#ifndef KEY // bug 13042: this is found to cause the WHIRL output by wopt to
-  	    // have some operands of ADD arbitrarily swapped
-#ifdef Is_True_On
-  CODEREP_ITER cr_iter;
-  CODEREP *cr,*bucket;
-  CODEMAP_ITER codemap_iter;
-
-  FOR_ALL_ELEM(bucket, codemap_iter, Init(this)) {
-    IDX_32 hash_idx = codemap_iter.Cur();
-    FOR_ALL_NODE(cr, cr_iter, Init(bucket)) {
-      switch (cr->Kind()) {
-      case CK_VAR:	
-	break;
-      case CK_IVAR:  
-        break;   // do not check until the rehash of istore is resolved.
-      case CK_OP:
-	if (OPERATOR_is_call(cr->Opr()))
-	  break;
-      case CK_LDA:	
-      case CK_CONST: 
-      case CK_RCONST:
-	// Make this into assertion after bug fixes
-	if (hash_idx != Hash(cr)) {
-#if 0	  
-	  DevWarn("CODEMAP::Verify_hashing:  cr%d does not belong to hash bucket %d, "
-		  "should be in bucket %d.",
-		  cr->Coderep_id(), hash_idx, Hash(cr));
-#endif
-	}
-      }
-    }
-  }
-#endif
-#endif
 }

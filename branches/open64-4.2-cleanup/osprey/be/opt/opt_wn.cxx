@@ -233,10 +233,8 @@ MTYPE Mtype_from_class_size(MTYPE t1, MTYPE t2)
   	  ("Mtype_from_class_size: MTYPE_BS not handled here."));
   if ((MTYPE_type_class(t1) & MTYPE_CLASS_UNSIGNED_INTEGER) == 0)
     return t1;
-#ifdef KEY
   if (MTYPE_is_vector(t1))
     return t1;
-#endif
   if (MTYPE_signed(t1))
     switch (MTYPE_size_best(t2)) {
     case 8: return MTYPE_I1;
@@ -265,7 +263,6 @@ BOOL WN_has_chi(const WN *wn, const REGION_LEVEL region_level)
     RID *rid = REGION_get_rid(wn);
     Is_True(rid != NULL, ("WN_has_chi, NULL RID"));
     if (RID_TYPE_mp(rid) || RID_TYPE_eh(rid) ||
-	// kludge for 7.2, see PV 457243
 	region_level == RL_LNO_PREOPT || region_level == RL_PREOPT ||
 	region_level == RL_IPA_PREOPT)
       return FALSE;
@@ -311,9 +308,7 @@ BOOL WN_has_mu( const WN *wn, const REGION_LEVEL region_level )
 {
   const OPCODE opc = WN_opcode(wn);
   switch ( OPCODE_operator(opc) ) {
-#ifdef KEY
     case OPR_ASM_STMT:
-#endif
     case OPR_ILOAD:
     case OPR_ILDBITS:
     case OPR_ILOADX:
@@ -327,9 +322,7 @@ BOOL WN_has_mu( const WN *wn, const REGION_LEVEL region_level )
     case OPR_FORWARD_BARRIER:
     case OPR_BACKWARD_BARRIER:
     case OPR_REGION_EXIT:
-#ifdef KEY
     case OPR_GOTO_OUTER_BLOCK:
-#endif
       return TRUE;
     case OPR_REGION:	// this can be a black-box or MP region
     {
@@ -360,9 +353,7 @@ BOOL WN_has_mu( const WN *wn, const REGION_LEVEL region_level )
 BOOL OPERATOR_has_mu( OPERATOR opr )
 {
   switch ( opr ) {
-#ifdef KEY
     case OPR_ASM_STMT:
-#endif
     case OPR_ILOAD:
     case OPR_ILDBITS:
     case OPR_ILOADX:
@@ -1082,7 +1073,6 @@ void Print_pf_pointer(FILE *fp, PF_POINTER *p)
 
 
 // Check if a LDID/STID contains any volatility
-#ifdef KEY
 #include <ext/hash_map>
 
 struct TY_IDX_EQ
@@ -1120,26 +1110,6 @@ Lod_TY_is_volatile(TY_IDX ty)
   }
   return FALSE;
 }
-#else
-BOOL
-Lod_TY_is_volatile(TY_IDX ty)
-{
-  if (ty == TY_IDX_ZERO) return FALSE;
-  if (TY_is_volatile(ty)) return TRUE;
-  if (TY_kind(ty) == KIND_STRUCT) {
-    if (!TY_fld (ty).Is_Null ()) {
-      FLD_ITER fld_iter = Make_fld_iter (TY_fld (ty));
-      do {
-	TY_IDX fld_ty = FLD_type (fld_iter);
-	if (Lod_TY_is_volatile(fld_ty))
-	  return TRUE;
-      } while (!FLD_last_field (fld_iter++));
-    }
-  }
-  return FALSE;
-}
-#endif // KEY
-
 
 // Check if a ILOAD/ISTORE accesses/contains any volatility
 BOOL
@@ -1203,27 +1173,6 @@ WN_get_const_val(WN *wn)
   } val;
 
   val.i8 = WN_const_val(wn);
-#if 0
-  MTYPE rtype = WN_rtype(wn);
-  switch (rtype) {
-  case MTYPE_I1: 
-    return (INT64) val.i1.b1;
-  case MTYPE_I2: 
-    return (INT64) val.i2.s1;
-  case MTYPE_I4: 
-    return (INT64) val.i4.lo;
-  case MTYPE_I8: 
-    return (INT64) val.i8;
-  case MTYPE_U1: 
-    return (INT64) val.u1.ub1;
-  case MTYPE_U2: 
-    return (INT64) val.u2.us1;
-  case MTYPE_U4:
-    return (INT64) val.u4.ulo;
-  case MTYPE_U8: 
-    return (INT64) val.u8;
-  }
-#endif
   return val.i8;
 }
 
@@ -1402,11 +1351,9 @@ Identity_assignment_type( AUX_STAB_ENTRY *sym, OPT_PHASE phase )
   while (TY_kind(ty) == KIND_ARRAY && sym->Byte_size() < TY_size(ty))
     ty = TY_AR_etype(ty);
 
-#ifdef KEY // bug 3091: avoid generating bad identity assignments for bitfields
   if (phase != MAINOPT_PHASE && sym->Field_id() != 0 && sym->Bit_size() > 0 &&
       Is_Structure_Type(ty))
     return ty;
-#endif
 
   // the size needs to match
   if ( sym->Byte_size() != TY_size(ty) )
@@ -1423,10 +1370,8 @@ Identity_assignment_type( AUX_STAB_ENTRY *sym, OPT_PHASE phase )
     else {
         mtype = Mtype_from_mtype_class_and_size(sym->Mclass(),
 						  sym->Byte_size());
-#ifdef KEY // bug 8186
 	if (MTYPE_is_unsigned(sym->Mtype()))
 	  mtype = Mtype_TransferSign(MTYPE_U4, mtype);
-#endif
     }
 
     if ( mtype == MTYPE_UNKNOWN )
@@ -1515,15 +1460,12 @@ Create_identity_assignment(AUX_STAB_ENTRY *sym, AUX_ID aux_id, TY_IDX ty)
     else { // if field id != 0, then it is MTYPE_BS, not LD_BITS
       WN_set_desc(rhs, MTYPE_BS);
       WN_set_desc(copy, MTYPE_BS);
-#ifdef KEY // bug 3091: get field id, offset field and ty from a good WN
-      	   // 		(the offset field in opt_stab is not what we want)
       WN_set_field_id(rhs, WN_field_id(sym->Wn()));
       WN_load_offset(rhs) = WN_offset(sym->Wn());
       WN_set_ty(rhs, WN_ty(sym->Wn()));
       WN_set_field_id(copy, WN_field_id(sym->Wn()));
       WN_load_offset(copy) = WN_offset(sym->Wn());
       WN_set_ty(copy, WN_ty(sym->Wn()));
-#endif
     }
   }
   WN_set_aux(rhs, aux_id);
@@ -1545,9 +1487,6 @@ Get_MP_modref(const WN *pragma_list, const POINTS_TO *pt,
   ST *st, *base;
   mINT64 ofst;
 
-  // Fix 366737.
-  // Hack to make mp-x6.f work!  Assume all parameter-addr are required by a MP-call.
-  // This won't be necessary once we changed the F-param strategy after MR.
   if (IS_FORTRAN && pt->Const() && pt->Base_is_fixed() && ST_sclass(pt->Base()) == SCLASS_FORMAL)
     return READ;
   

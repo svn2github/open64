@@ -332,17 +332,15 @@ ML_WHIRL_EMITTER::Build_loop_info( BB_NODE *label_bb )
          !Do_rvi()))
     {
       MTYPE ivtype = TY_mtype(iv->Lod_ty());
-#ifdef KEY // bug 5645
       if (ivtype == MTYPE_M)
 	ivtype = iv->Dtyp();
-#endif
 
       induction = WN_CreateLdid(Ldid_from_mtype(ivtype),
 				iv->Offset(),
 				Opt_stab()->St(iv->Aux_id()),
 				iv->Lod_ty(),
 				iv->Field_id());
-#ifdef TARG_LOONGSON
+#if defined(TARG_LOONGSON)
       // Need to change operator of induction to OPT_LDBITS when induction is BITs variable
       if (iv->Points_to(Opt_stab())->Bit_Size() != 0)
         WN_set_operator(induction, OPR_LDBITS);
@@ -423,9 +421,7 @@ ML_WHIRL_EMITTER::Emit(void)
 	   (WN_opcode(bb->Entrywn()) == OPC_ALTENTRY ||
 	    (WN_opcode(bb->Entrywn()) == OPC_LABEL &&
 	     (WN_Label_Is_Handler_Begin(bb->Entrywn())
-#ifdef KEY
 	      || LABEL_target_of_goto_outer_block(WN_label_number(bb->Entrywn()))
-#endif
 	     ))) )
       {
         Insert_wn( bb->Entrywn() );

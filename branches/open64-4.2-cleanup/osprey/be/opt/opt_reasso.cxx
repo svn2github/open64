@@ -1118,12 +1118,8 @@ void eliminate_subexp (reasso_struct& rrec,
     string csename(cseostr.str());
     what.awn = WHIRL_of_nary_exp(what);
     TYPE_ID arg_type_id = WN_rtype(what.awn);
-#ifdef KEY            
     AUX_ID tmp_preg = rrec.optstab->Create_preg(arg_type_id, 
                             csename.c_str());
-#else
-    AUX_ID tmp_preg = rrec.optstab->Create_preg(arg_type_id);
-#endif
     TY_IDX arg_type = ST_type(rrec.optstab->St(tmp_preg));
     WN *ldid = WN_CreateLdid(OPR_LDID, 
                     WN_rtype(what.awn), 
@@ -1145,12 +1141,8 @@ void eliminate_subexp (reasso_struct& rrec,
     ostringstream cse_comp_ostr;
     cse_comp_ostr << "__reasso__temp_comp__" << rrec.cse_start_id;
     string cse_comp_name(cse_comp_ostr.str());
-#ifdef KEY
     AUX_ID tmp_preg_comp = rrec.optstab->Create_preg(arg_type_id, 
                             cse_comp_name.c_str());
-#else
-    AUX_ID tmp_preg_comp = rrec.optstab->Create_preg(arg_type_id);
-#endif
     arg_type = ST_type(rrec.optstab->St(tmp_preg_comp));
     WN *ldid_comp = WN_CreateLdid(OPR_LDID, 
                     WN_rtype(what.awn), 

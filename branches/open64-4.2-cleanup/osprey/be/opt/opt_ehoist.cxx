@@ -417,11 +417,9 @@ BOOL CR_match_kids(CODEREP *cr1, CODEREP *cr2)
       if (OPCODE_operator(cr1->Op()) == OPR_INTRINSIC_OP &&
 	  cr1->Intrinsic() != cr2->Intrinsic())
 	return FALSE;
-#ifdef KEY
       if (OPCODE_operator(cr1->Op()) == OPR_PURE_CALL_OP &&
           cr1->Call_op_aux_id() != cr2->Call_op_aux_id())
         return FALSE;
-#endif
       if (OPCODE_operator(cr1->Op()) == OPR_CVTL && 
 	  cr1->Offset() != cr2->Offset())
 	return FALSE;

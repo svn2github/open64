@@ -678,12 +678,10 @@ SSA::Pointer_Alias_Analysis(void)
       _opt_stab->Print_alias_info(TFile);
       
       fprintf( TFile, "%sOcc table after flow sensitive alias analysis\n%s", DBar, DBar );
-#ifdef KEY
       FOR_ALL_ELEM (bb, cfg_iter, Init(Cfg())) {
         FOR_ALL_ELEM (wn, stmt_iter, Init(bb->Firststmt(), bb->Laststmt()))
          _opt_stab->Print_occ_tab(TFile,wn);
       }
-#endif
       //_opt_stab->Print_occ_tab(TFile);
     }
   }
@@ -806,7 +804,6 @@ SSA::Find_zero_versions(void)
 
     v->Set_cr_list(NULL);    // initialize this field unioned with nonzerophis
     }
-#ifdef KEY
   if ( Get_Trace(TP_GLOBOPT, SSA_DUMP_FLAG)) {
     CFG_ITER cfg_iter;
     BB_NODE *bb;
@@ -834,10 +831,8 @@ SSA::Find_zero_versions(void)
       }
     }
   }
-#endif
   OPT_POOL_Pop(loc_pool, SSA_DUMP_FLAG);
 }
-#ifdef KEY
 void SSA::Print_ssa_ver_for_wn(WN* wn)
 {
   OPCODE opc = WN_opcode(wn);
@@ -853,7 +848,6 @@ void SSA::Print_ssa_ver_for_wn(WN* wn)
   for (INT32 i = 0; i < WN_kid_count(wn); i++)
     Print_ssa_ver_for_wn(WN_kid(wn,i));
 }
-#endif
 void
 SSA::Create_CODEMAP(void)
 {
@@ -864,7 +858,7 @@ SSA::Create_CODEMAP(void)
     extern BOOL Simp_Canonicalize;
     BOOL save_simp_canon = Simp_Canonicalize;
     COPYPROP copyprop(_htable, _opt_stab, _cfg, loc_pool);
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
     // in first pass, only want to handle loops, not do optimization
     // (which may cause performance issues because propagates into loop,
     // emits whirl, then does mainopt which may not hoist if originates
@@ -892,7 +886,7 @@ SSA::Create_CODEMAP(void)
 	      _htable->Num_iloadfolds(), _htable->Num_istorefolds() );
     Opt_tlog( "INPUTPROP", 0, "%d copy propagations",
 	      Htable()->Num_inputprops() );
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
     if (Htable()->Phase() == PREOPT_PHASE)
       copyprop.Reset_disabled();
 #endif
@@ -1025,18 +1019,15 @@ SSA::Get_zero_version_CR(AUX_ID aux_id, OPT_STAB *opt_stab, VER_ID du)
     AUX_STAB_ENTRY *sym = opt_stab->Aux_stab_entry(aux_id);
    
     if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype())
-#ifdef KEY // bug 7733: if dedicated-preg, Mtype() is MTYPE_UNKNOWN
+      // if dedicated-preg, Mtype() is MTYPE_UNKNOWN
         || (sym->Mclass() & MTYPE_CLASS_VECTOR)
-#endif
        )
         rtype = sym->Mtype();
     else {
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
 						    sym->Byte_size());
-#ifdef KEY // bug 8186
 	if (MTYPE_is_unsigned(sym->Mtype()))
 	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
-#endif
 	}
 
     dtype = rtype;
@@ -1045,10 +1036,8 @@ SSA::Get_zero_version_CR(AUX_ID aux_id, OPT_STAB *opt_stab, VER_ID du)
           sym->Byte_size() < (MTYPE_size_min(MTYPE_I4)/8)) {
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(),
                                                 MTYPE_size_min(MTYPE_I4)/8);
-#ifdef KEY // bug 8186
 	if (MTYPE_is_unsigned(sym->Mtype()))
 	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
-#endif
       }
       ty = MTYPE_To_TY(rtype);
     }
@@ -1095,7 +1084,7 @@ SSA::Du2cr( CODEMAP *htable, OPT_STAB *opt_stab, VER_ID du,
       dtype = OPCODE_desc(opc);
       Is_True(!(dtype==MTYPE_I2 && rtype== MTYPE_I2), ("Create illegal coderep i2i2"));
 
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
       // Fix 770676
       // before u64 lowering, I8I4LDID and I4I4LDID are equivalent,
       // use I4I4 to simplify IVR.
@@ -1130,10 +1119,9 @@ SSA::Du2cr( CODEMAP *htable, OPT_STAB *opt_stab, VER_ID du,
       else {
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
 						    sym->Byte_size()); 
-#ifdef KEY // bug 8186
+
 	if (MTYPE_is_unsigned(sym->Mtype()))
 	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
-#endif
 	}
 
       dtype = rtype;
@@ -1143,10 +1131,8 @@ SSA::Du2cr( CODEMAP *htable, OPT_STAB *opt_stab, VER_ID du,
             sym->Byte_size() < (MTYPE_size_min(MTYPE_I4)/8)) {
           rtype = Mtype_from_mtype_class_and_size(sym->Mclass(),
                                                   MTYPE_size_min(MTYPE_I4)/8);
-#ifdef KEY // bug 8186
 	  if (MTYPE_is_unsigned(sym->Mtype()))
 	    rtype = Mtype_TransferSign(MTYPE_U4, rtype);
-#endif
 	}
         ty = MTYPE_To_TY(rtype);
       }
@@ -1220,15 +1206,6 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
     if (OPERATOR_is_scalar_store (WN_operator(wn)) &&
 	! opt_stab->Du_any_use(WN_ver(wn)))
       continue; // skip the statement that DSE has recongnized dead code
-#ifndef KEY // move deletion to emit phase because htable.cxx needs to mark
-	    // with DONT_PROP flag
-    else if (Htable()->Phase() == MAINOPT_PHASE && 
-	     WN_operator(wn) == OPR_XPRAGMA &&
-	     WN_pragma(wn) == WN_PRAGMA_COPYIN_BOUND)
-      continue; // mainopt needs to delete such xpragmas because remaining
-		// phases do not need it and it may cause problem for mainopt
-		// (see bug 659146)
-#endif
     else if ((OPERATOR_is_scalar_istore (WN_operator(wn)) ||
 	      WN_operator(wn) == OPR_MSTORE) &&
 	     WOPT_Enable_Dse_Aggressive &&
@@ -1246,11 +1223,9 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
 	istore_live = TRUE;
       else if (TY_kind(ty) == KIND_POINTER && Ilod_TY_is_volatile(ty))
 	istore_live = TRUE;
-#ifdef KEY
       else if ((WN_operator(WN_kid1(wn)) == OPR_LDA || WN_operator(WN_kid1(wn)) ==OPR_ILDA) &&
                TY_kind(WN_ty(WN_kid1(wn))) == KIND_POINTER && Ilod_TY_is_volatile(WN_ty(WN_kid1(wn))))
 	istore_live = TRUE;
-#endif
       else {
 	FOR_ALL_NODE( cnode, chi_iter, Init(chi_list) ) {
 	  if (cnode->Live()) {
@@ -1274,7 +1249,7 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
     // add new stmtrep with Wn set
     stmt = bb->Add_stmtnode(wn, mem_pool);
 
-#ifdef TARG_SL //fork_joint
+#if defined(TARG_SL) //fork_joint
     if(WN_is_compgoto_para(wn)) 
        stmt->Set_fork_stmt_flags(TRUE);
     else if(WN_is_compgoto_for_minor(wn)) 
@@ -1287,7 +1262,6 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
     stmt->Enter_rhs(htable, opt_stab, copyprop, exc);
     stmt->Enter_lhs(htable, opt_stab, copyprop);
 
-#ifdef KEY // bug 3130
     // Simplification of CVT in identity assignments as in:
     //   I8I4LDID sym10
     //  I4I8CVT
@@ -1308,32 +1282,6 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
 	rhs_cr->DecUsecnt();
       }
     }
-#endif
-
-#if 0
-    // Simplification of CVT/CVTL
-    OPERATOR stmt_opr = stmt->Opr();
-    if (stmt_opr == OPR_STID &&
-	ST_class(opt_stab->St(stmt->Lhs()->Aux_id())) != CLASS_PREG ||
-	stmt_opr == OPR_ISTORE ||
-	stmt_opr == OPR_ISTOREX) {
-      CODEREP *rhs_cr = stmt->Rhs();
-      CODEREP *lhs = stmt->Lhs();
-      if (WOPT_Enable_Cvt_Folding &&
-	  rhs_cr->Kind() == CK_OP && 
-	  (rhs_cr->Opr() == OPR_CVT && MTYPE_is_integral(rhs_cr->Dsctyp()) 
-	   || rhs_cr->Opr() == OPR_CVTL) &&
-	  MTYPE_is_integral(rhs_cr->Dtyp()) && 
-	  MTYPE_is_integral(lhs->Dsctyp())
-	  ) {
-	MTYPE actual_type = (rhs_cr->Opr() == OPR_CVT) ? 
-	  rhs_cr->Dsctyp() : Actual_cvtl_type(rhs_cr->Op(),rhs_cr->Offset());
-	if (MTYPE_size_min(lhs->Dsctyp()) <= MTYPE_size_min(actual_type)) {
-	  stmt->Set_rhs(rhs_cr->Get_opnd(0));
-	}
-      }
-    }
-#endif
     
     INT32 linenum = Srcpos_To_Line(stmt->Linenum());	// for debugging
 
@@ -1353,9 +1301,7 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
 
       stmt->Set_mu_list( opt_stab->Get_stmt_mu_list(wn) );
       if (stmt->Opr() == OPR_RETURN || stmt->Opr() == OPR_RETURN_VAL
-#ifdef KEY
 	  || stmt->Opr() == OPR_GOTO_OUTER_BLOCK
-#endif
 	 )
 	stmt->Mu_list()->Delete_def_at_entry_mus(opt_stab);
       FOR_ALL_NODE( mnode, mu_iter, Init(stmt->Mu_list()) ) {
@@ -1443,9 +1389,7 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
       copyprop->Set_past_ret_reg_def();
     else if (stmt->Opr() == OPR_RETURN || 
 	     stmt->Opr() == OPR_RETURN_VAL ||
-#ifdef KEY
   	     stmt->Opr() ==  OPR_GOTO_OUTER_BLOCK ||
-#endif
 	     stmt->Opr() == OPR_REGION)
       copyprop->Reset_past_ret_reg_def();
 

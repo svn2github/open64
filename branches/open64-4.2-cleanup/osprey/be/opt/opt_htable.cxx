@@ -168,7 +168,6 @@ CODEREP::Is_ivar_volatile( void ) const
   return FALSE;
 }
 
-#ifdef KEY
 // ====================================================================
 // Check if the region node BB contains a WN_PRAGMA_LOCAL pragma for the symbol
 // ====================================================================
@@ -220,7 +219,6 @@ static BOOL Symbol_mp_local_in_region(BB_NODE *bb,
   }
   return FALSE;
 }
-#endif
 
 /* CVTL-RELATED start (correctness) */
 static BOOL Sign_extended(MTYPE dtyp, MTYPE dsctyp)
@@ -316,16 +314,12 @@ CODEREP::Copy(const CODEREP &cr)
       break;
     case OPR_ASM_INPUT:
       Set_asm_constraint(cr.Asm_constraint());
-#ifdef KEY
       Set_asm_input_rtype(cr.Asm_input_rtype());
       Set_asm_input_dsctype(cr.Asm_input_dsctype());
-#endif
       break;
-#ifdef KEY
     case OPR_PURE_CALL_OP:
       Set_call_op_aux_id (cr.Call_op_aux_id());
       break;
-#endif
     }
   }
   else if (kind == CK_IVAR) {
@@ -472,7 +466,7 @@ CODEREP::Match(CODEREP* cr, INT32 mu_vsym_depth, OPT_STAB *sym)
   case CK_LDA:
     if (Lda_base_st() == cr->Lda_base_st() && Offset() == cr->Offset() &&
 	Is_flag_set(CF_LDA_LABEL) == cr->Is_flag_set(CF_LDA_LABEL) &&
-#ifdef TARG_SL2
+#if defined(TARG_SL2)
        Is_flag_set(CF_INTERNAL_MEM_OFFSET) == cr->Is_flag_set(CF_INTERNAL_MEM_OFFSET) &&
 #endif 
 	Afield_id() == cr->Afield_id()) 
@@ -480,26 +474,7 @@ CODEREP::Match(CODEREP* cr, INT32 mu_vsym_depth, OPT_STAB *sym)
     else
       return FALSE;
 
-#if 0	// CK_VAR nodes never need to be matched
-  case CK_VAR:
-    if (Aux_id() == cr->Aux_id() &&  Version() == cr->Version() &&
-	! Is_var_volatile())
-      return TRUE;
-    else
-      return FALSE;
-#endif
-
   case CK_OP:
-#if 0
-    if (OPCODE_commutative_op(Op()) == Op()) {
-      // commutative ops must have only 2 kids
-      // TODO: handle opcodes that are commutative with different opcode
-      //       e.g. a <= b becoming b >= a
-      return Get_opnd(0) == cr->Get_opnd(0) && Get_opnd(1) == cr->Get_opnd(1)
-        || Get_opnd(1) == cr->Get_opnd(0) && Get_opnd(0) == cr->Get_opnd(1);
-    }
-    else
-#endif
     if (Op() == cr->Op() && Kid_count() == cr->Kid_count()) {
       for (INT i = 0; i < Kid_count(); i++)
 	if (Get_opnd(i) != cr->Get_opnd(i))
@@ -533,12 +508,10 @@ CODEREP::Match(CODEREP* cr, INT32 mu_vsym_depth, OPT_STAB *sym)
 	if (Intrinsic() != cr->Intrinsic())
 	  return FALSE;
 	break;
-#ifdef KEY
       case OPR_PURE_CALL_OP:
         if (Call_op_aux_id() != cr->Call_op_aux_id())
 	  return FALSE;
 	break;
-#endif
       }
       return TRUE;
     } else
@@ -603,24 +576,14 @@ CODEREP::Match(CODEREP* cr, INT32 mu_vsym_depth, OPT_STAB *sym)
 	TY_IDX ivar_addr_ty = Ilod_base_ty();
 	TY_IDX cr_addr_ty = cr->Ilod_base_ty();
 	if (ivar_addr_ty != cr_addr_ty) {
-#ifdef KEY // bug 3621
 	  if (Dsctyp() == MTYPE_BS || cr->Dsctyp() == MTYPE_BS)
 	    return FALSE;
-#endif
 	  if (! ivar_addr_ty || ! cr_addr_ty)
 	    return FALSE;
 	  if (TY_kind(ivar_addr_ty) != KIND_POINTER)
 	    return FALSE;
 	  if (TY_kind(cr_addr_ty) != KIND_POINTER)
 	    return FALSE;
-#if 0
-	  // These code below cause some problems in some Fortran Cases and 416.gamess
-	  //   at -O3 with SIMD Opt. Some SIMD tys have the same type but diff align
-	  // With these code, the two cr will be different, which may cayse problems
-	  //   in EPRE or CG
-	  if (Ilod_ty() != cr->Ilod_ty())
-	    return FALSE;
-#endif
 	  if (TY_align_exp(TY_pointed(ivar_addr_ty)) !=
 	      TY_align_exp(TY_pointed(cr_addr_ty)))
 	    return FALSE;
@@ -869,11 +832,9 @@ CODEREP::Print_node(INT32 indent, FILE *fp) const
     case OPR_ASM_INPUT:
       fprintf(fp, " opnd:%d", Asm_opnd_num());
       break;
-#ifdef KEY
     case OPR_PURE_CALL_OP:
       fprintf(fp, " %d", Call_op_aux_id());
       break;
-#endif
     }
     break;
   case CK_IVAR:
@@ -902,7 +863,7 @@ CODEREP::Print_node(INT32 indent, FILE *fp) const
     fprintf(fp, "LDA %s sym%d %d", MTYPE_name(Dtyp()),Lda_aux_id(),Offset());
     break;
   case CK_VAR:
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
     // maybe it is just me, but I find it confusing that loads were printed
     // as dsctyp dtyp when whirl has them ordered as dtyp dsctyp.
     // So switch the order.
@@ -945,9 +906,6 @@ CODEREP::Print_node(INT32 indent, FILE *fp) const
       fprintf(fp, " (vol)");
     break;
   case CK_IVAR:
-#if 0 //TODO: put in after ilod is recognized CSE
-    if (Op_defstmt() == NULL) fprintf(fp, " (no-def)");
-#endif
     if (Is_ivar_volatile()) 
       fprintf(fp, " (vol)");
     break;
@@ -1068,9 +1026,7 @@ Operand_type( OPCODE op, INT which_kid, INT num_kids )
   case OPR_INTRINSIC_CALL:
   case OPR_INTRINSIC_OP:
   case OPR_TAS:
-#ifdef KEY
   case OPR_PURE_CALL_OP:
-#endif
     return MTYPE_UNKNOWN;
 
   case OPR_CEIL:
@@ -1306,7 +1262,6 @@ CODEREP::Create_cpstmt(CODEREP *a, MEM_POOL*p)
   STMTREP *cpstmt = CXX_NEW(STMTREP,p);
   IncUsecnt();
 
-#if 1
   // The dsctyp is wrong.
   Is_True(a->Dsctyp() != MTYPE_UNKNOWN || Dsctyp() != MTYPE_UNKNOWN
 	  || Kind() == CK_CONST || Kind() == CK_RCONST || Kind() == CK_LDA,
@@ -1332,14 +1287,6 @@ CODEREP::Create_cpstmt(CODEREP *a, MEM_POOL*p)
   cpstmt->Init(a, this, OPCODE_make_op(a->Bit_field_valid() ? 
 				OPR_STBITS : OPR_STID, MTYPE_V, a->Dsctyp()));
 
-#else
-
-  // for testing
-  Warn_todo("Create_cpstmt has the wrong dsctype.");
-  cpstmt->Init(a, this, OPCODE_make_op(a->Bit_field_valid() ?
-				OPR_STBITS : OPR_STID, MTYPE_V, MTYPE_U8));
-
-#endif
 
   // NOTE:  we can set the mu/chi lists to null here because this store
   // is guaranteed not to have side-effects.  If there other stores
@@ -1831,11 +1778,7 @@ CODEMAP::Hash_Ivar(CODEREP *cr, INT32 mu_vsym_depth)
 #endif
 
     if (exist_cr->Is_sign_extd()==cr->Is_sign_extd()) { // no type conversion
-#ifdef KEY
       return exist_cr->Fixup_type(cr->Dtyp(), this);
-#else
-      return exist_cr;
-#endif
     }
 
     need_cvt =
@@ -1966,11 +1909,9 @@ CODEMAP::Add_bin_node_and_fold(OPCODE op,
     else {
       // here NOT select #ifdef KEY from pathscale, cause I'm afraid that osprey 
       // had modified #ifdef KEY to #ifdef TARG_X8664 in last merge.
-#ifdef KEY // bug 4518
       if (crtmp->Kind() == CK_CONST && crtmp->Dtyp() == MTYPE_U4 && 
 	  (MTYPE_signed(kid0->Dtyp()) || MTYPE_signed(kid1->Dtyp()))) 
 	return Add_const(MTYPE_I4, crtmp->Const_val());
-#endif
       return crtmp;
     }
   }
@@ -2012,10 +1953,6 @@ CODEMAP::Add_const(MTYPE typ, INT64 val)
   CODEREP *cr = Alloc_stack_cr(0);
   cr->Init_const(typ, val);
   cr = Hash_Const(cr);
-#ifndef KEY // this is bad for performance
-  if (Split_64_Bit_Int_Ops && MTYPE_size_min(cr->Dtyp()) < MTYPE_size_min(typ))
-    cr = Add_unary_node(OPCODE_make_op(OPR_CVT, typ, cr->Dtyp()), cr);
-#endif
   return cr;
 }
 
@@ -2057,28 +1994,21 @@ CODEMAP::Canon_add_sub(WN       *wn,
   if (opr == OPR_ADD)
     ccr->Set_scale(ccr->Scale() + kid1.Scale());
   else ccr->Set_scale(ccr->Scale() - kid1.Scale());
-#ifdef KEY // bug 5557
   if (MTYPE_byte_size(WN_rtype(wn)) == 4 &&
       (INT32)ccr->Scale() < 0x80000 /* bug8517 */)
     ccr->Set_scale(ccr->Scale() << 32 >> 32);
-#endif
   if (kid1.Tree() == NULL) 
     return propagated;
   if (ccr->Tree() == NULL) {
     if (opr == OPR_ADD)
       ccr->Set_tree(kid1.Tree());
     else
-#ifdef KEY // bug 14605: force to signed because generating negate
+     // force to signed because generating negate
       ccr->Set_tree(Add_unary_node(
                       OPCODE_make_op(OPR_NEG,
                         Mtype_TransferSign(MTYPE_I4, OPCODE_rtype(op)),
                         MTYPE_V),
                       kid1.Tree()));
-#else
-      ccr->Set_tree(Add_unary_node(
-                        OPCODE_make_op(OPR_NEG, OPCODE_rtype(op), MTYPE_V), 
-                        kid1.Tree()));
-#endif
     return propagated;
   }
   if (kid1.Tree() == NULL) {
@@ -2166,12 +2096,11 @@ CODEMAP::Canon_mpy(WN       *wn,
   propagated1 = Add_expr(WN_kid(wn, 1), opt_stab, stmt, &kid1, copyprop);
   if (ccr->Tree() == NULL && kid1.Tree() == NULL) {
     ccr->Set_scale(ccr->Scale() * kid1.Scale());
-#ifdef KEY // bug 2846: check for need to truncate the folded result
+    // check for need to truncate the folded result
     if (WN_rtype(wn) == MTYPE_I4)
       ccr->Set_scale((INT32) ccr->Scale());
     else if (WN_rtype(wn) == MTYPE_U4)
       ccr->Set_scale((UINT32) ccr->Scale());
-#endif
     return propagated+propagated1;
   }
   if (kid1.Tree() == NULL) {
@@ -2374,7 +2303,7 @@ CODEMAP::Add_def(IDTYPE st, mINT16 version, STMTREP *stmt,
       dtyp = dsctyp;  // necessary canonicalization
   }
   
-#ifdef TARG_SL
+#if defined(TARG_SL)
   if (dtyp == MTYPE_I2 && dsctyp == MTYPE_I2) {
     dtyp = MTYPE_I4;
   }
@@ -2744,9 +2673,7 @@ CODEREP::Var_type_conversion(CODEMAP *htable, MTYPE to_dtyp,
     }
   }
   
-#ifdef KEY
   retval = retval->Fixup_type(to_dtyp, htable);
-#endif
 
   return retval;
 }
@@ -2792,12 +2719,10 @@ CODEMAP::Cur_def(WN *wn, OPT_STAB *opt_stab)
              ! opt_stab->Du_is_volatile( du ),
       ("CODEMAP::Cur_def: Cached volatile reference [%3d]", retv->Aux_id()) );
 
-#ifdef KEY // bug 9656 Comment 2
     if (retv->Field_id() == 0 && WN_field_id(wn) != 0) {
       retv->Set_field_id(WN_field_id(wn));
       retv->Set_lod_ty(WN_ty(wn));
     }
-#endif
 
     /* CVTL-RELATED start (correctness) */
     // change {I,U}4{I,U}8LDID to {I,U}4{I,U}8CVT({I,U}8{I,U}8LDID)
@@ -2976,9 +2901,7 @@ CODEMAP::Iload_folded(WN *wn, 			// the iload node
 	  0 == base_ccr->Tree()->Offset() && // TODO: not needed if canonicalize in preopt
 	  Get_mtype_class(retv->Dtyp()) == Get_mtype_class(OPCODE_rtype(op)) &&
 	  MTYPE_size_min(retv->Dsctyp()) == MTYPE_size_min(OPCODE_desc(op)) &&
-#ifdef KEY
 	  (OPCODE_rtype(op) != MTYPE_M || TY_size(WN_ty(wn)) == TY_size(retv->Lod_ty())) &&
-#endif
 	  (opr == OPR_ILOAD && ! retv->Bit_field_valid() &&
 	   (WN_desc(wn) != MTYPE_BS && retv->Dsctyp() != MTYPE_BS ||
 	    WN_desc(wn) == MTYPE_BS && WN_field_id(wn) == retv->Field_id()) ||
@@ -3169,7 +3092,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
             // and the kid1 is a constant, pull the constant out.
             OPERATOR opr = retv->Opr();
             CODEREP *retv_op = retv;
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
             // may have CVT of ADD/SUB, so look under the CVT;
             // but then need to move cvt to non-const operand.
             // but only do this if integer cvt and op under cvt
@@ -3185,7 +3108,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
             if (WOPT_Enable_CRSIMP &&
                 (opr == OPR_ADD || opr == OPR_SUB) &&
                 retv_op->Get_opnd(1)->Kind() == CK_CONST 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
                 // Don't fold constants across implicit unsigned conversions,
                 // we must preserve the modulo behavior of unsigned arithmetic
                 && !(MTYPE_is_unsigned(retv->Dtyp()) &&
@@ -3193,7 +3116,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 #endif
                ) {
                   CODEREP *cr = retv_op->Get_opnd(0);
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
                   if (retv->Opr() == OPR_CVT) {
                     // need to preserve cvt
                     // changing CVT(ADD(x,c)) to scale(CVT(x),c)
@@ -3249,7 +3172,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
       Is_True(opt_stab->Base(WN_aux(wn)) != NULL, ("base st is null."));
       cr->Init_lda(OPCODE_rtype(op), WN_aux(wn), 
 		   (INT32)ofst, (TY_IDX) WN_ty(wn), lda_st, WN_field_id(wn));
-#ifdef TARG_SL2
+#if defined(TARG_SL2)
       if(WN_is_internal_mem_ofst(wn)) {
         cr->Set_flag(CF_INTERNAL_MEM_OFFSET);
       }
@@ -3376,16 +3299,12 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 	    CODEREP *crtmp = ftmp.Fold_Expr(retv);
 	    if (crtmp != NULL) retv = Hash_Const(crtmp);
 	  }
-#ifdef KEY // bug 3054
 	  if (retv->Kind() == CK_CONST) {
-#endif
 	  retv->DecUsecnt();
 	  ccr->Set_tree(NULL);
 	  ccr->Set_scale(retv->Const_val());
 	  return TRUE;
-#ifdef KEY // bug 3054
 	  }
-#endif
         }
 	if (retv->Kind() == CK_OP) {
 	  // if CRSIMP flag is turned on, the opr is +,-,
@@ -3519,11 +3438,8 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
   }
   else if ( oper == OPR_PARM ) {
     CODEREP *kid = Add_expr(WN_kid0(wn), opt_stab, stmt, &propagated, copyprop
-#ifdef KEY // bug 10577
     			    , TRUE
-#endif
 			    );
-#ifdef KEY
   // If the PARM is signed, its child is unsigned, the new child is signed and the size
   // of the original child is less than the size of the  PARM, then change the new operator
   // to an unsigned.  Otherwise a negative result will be (incorrectly) sign extened.
@@ -3535,10 +3451,8 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
   {
     kid->Set_dtyp(Mtype_TransferSign(MTYPE_U4, kid->Dtyp()));
   }
-#endif
 
     /* CVTL-RELATED start (correctness) */
-#if 1
     // Attempt of fix 370390.  However, this breaks testn32/test_overall/longs.c
     // Because no CVT was inserted between the PARM node and LDID.
     cr->Init_ivar( op, WN_rtype(wn),
@@ -3547,14 +3461,6 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
                    kid/*lbase*/,
                    NULL/*sbase*/, WN_flag(wn)/*ofst*/, 0/*base_ty*/,
 		   0/*field_id*/ );
-#else
-    cr->Init_ivar( op, kid->Dtyp(),
-                   opt_stab->Get_occ(wn)/*occ*/, 
-                   MTYPE_V/*dsctyp*/, WN_ty(wn)/*ldty*/,
-                   kid/*lbase*/,
-                   NULL/*sbase*/, WN_flag(wn)/*ofst*/, NULL/*base_ty*/,
-		   0/*field_id*/);
-#endif
     /* CVTL-RELATED finish */
 
     MU_NODE *mnode = opt_stab->Get_mem_mu_node(wn);
@@ -3571,9 +3477,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 	    oper == OPR_ICALL ||
 	    oper == OPR_INTRINSIC_CALL ||
 	    oper == OPR_INTRINSIC_OP ||
-#ifdef KEY
 	    oper == OPR_PURE_CALL_OP ||
-#endif
 	    oper == OPR_FORWARD_BARRIER ||
 	    oper == OPR_BACKWARD_BARRIER) {
     if ( WOPT_Enable_Combine_Operations ) {
@@ -3599,18 +3503,13 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
       cr->Set_intrinsic(WN_intrinsic(wn));
     }
     else if ( oper == OPR_INTRINSIC_OP
-#ifdef KEY
 	      || oper == OPR_PURE_CALL_OP
-#endif
             ) {
 
-#ifdef KEY
       if (oper == OPR_PURE_CALL_OP)
         cr->Set_call_op_aux_id (WN_st_idx(wn));
       else
-#endif
       cr->Set_intrinsic(WN_intrinsic(wn));
-      // pv324295
       if (propagated) { // may have propagated all constants to the INTR_OP
 	FOLD ftmp;
 	retv = ftmp.Fold_Expr(cr);
@@ -3673,19 +3572,17 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
         WOPT_Enable_Input_Prop = FALSE;
 #endif
       FmtAssert(i == 0, ("Asm_Input should have only one kid")); 
-#ifdef KEY
-// Bug 1575
+
       cr->Set_asm_input_rtype(WN_rtype(WN_kid(wn, i)));
       cr->Set_asm_input_dsctype(WN_desc(WN_kid(wn, i)));
       if (cr->Asm_input_dsctype() == MTYPE_V)
 	cr->Set_asm_input_dsctype(cr->Asm_input_rtype());
-#endif
       CODEREP *kid = Add_expr(WN_kid(wn, i),
 			      opt_stab,
 			      stmt,
 			      &propagated,
 			      copyprop);
-#if defined(KEY) && !defined(TARG_NVISA)
+#if !defined(TARG_NVISA)
       if (OPERATOR_is_scalar_load (WN_operator(WN_kid(wn, i))) || OPERATOR_is_scalar_iload (WN_operator(WN_kid(wn, i))))
         WOPT_Enable_Input_Prop = save_flag;
 #endif
@@ -3727,7 +3624,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 	break;
       case OPR_CVT:
 	if ((MTYPE_type_class(OPCODE_rtype(op)) & MTYPE_CLASS_INTEGER) != 0
-#ifdef TARG_X8664 // bug 7733
+#if defined(TARG_X8664)
 	    && ! MTYPE_is_vector(OPCODE_rtype(op)) 
 	    && ! MTYPE_is_vector(OPCODE_desc(op)) 
 #endif
@@ -3773,11 +3670,9 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 	cr->Set_op_bit_offset(WN_bit_offset(wn));
 	cr->Set_op_bit_size(WN_bit_size(wn));
 	break;
-#ifdef KEY
       case OPR_PURE_CALL_OP:
 	cr->Set_call_op_aux_id (WN_st_idx(wn));
         break;
-#endif
     }
 
     BOOL do_canonicalization = TRUE;
@@ -3864,9 +3759,7 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
   case OPR_DO_WHILE:
   case OPR_IF:
   case OPR_RETURN:
-#ifdef KEY
   case OPR_GOTO_OUTER_BLOCK:
-#endif
     // skip these cases
     break;
 
@@ -3889,20 +3782,6 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
     // WN_st is not converted to ver_stab index!
     Set_rhs(htable->Add_expr(WN_kid0(Wn()),
 			     opt_stab, this, &proped, copyprop));
-#if 0 // not needed because same call done in Add_expr, and if calling
-      // Fold_Expr again, will undo the canonicalization of compare (492340)
-    // simplifies 1 < 10 type expressions
-    if (WOPT_Enable_Input_Prop && proped) {
-      FOLD ftmp;
-      CODEREP *retv;
-      if (WOPT_Enable_Fast_Simp)
-	retv = ftmp.Fold_Expr(Rhs()); // look at top stmt
-      else
-	retv = ftmp.Fold_Tree(Rhs()); // look at whole RHS
-      if (retv != NULL)
-	Set_rhs(retv);
-    }
-#endif
     Set_label_number(WN_label_number(Wn()));
     break;
 
@@ -3913,14 +3792,9 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
       CODEREP *cr = htable->Add_expr(WN_kid0(Wn()),
                                      opt_stab, this,  &proped, copyprop);
       Set_rhs(cr);
-#ifdef KEY // since its value may consist of MAX, prevent its copy propagation
+      // since its value may consist of MAX, prevent its copy propagation
       if (htable->Phase() == MAINOPT_PHASE && cr->Kind() == CK_VAR)
         cr->Set_flag(CF_DONT_PROP);
-#endif
-#if 0
-      STMTREP *defstmt = cr->Defstmt();
-      defstmt->Set_volatile_stmt();
-#endif
       copyprop->Reset_disabled();
     }
     else
@@ -4157,7 +4031,7 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
       opt_stab->Du_set_coderep(du, Lhs());
     }
 
-#ifdef KEY // bug 5131: mark mp-shared variables defined in MP region 
+    // mark mp-shared variables defined in MP region 
     if (htable->Phase() != MAINOPT_PHASE && PU_has_mp(Get_Current_PU())) {
       BOOL is_mp_local = FALSE;
       if (Bb()->MP_region()) {
@@ -4171,7 +4045,6 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
       if (! is_mp_local)
 	Lhs()->Set_mp_shared();
     }
-#endif
 
     opt_stab->Push_coderep(Lhs()->Aux_id(), Lhs());
 
@@ -4200,7 +4073,7 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
         }
         dtyp = Mtype_from_class_size(dsctyp, dtyp);
       }
-#ifdef TARG_SL
+#if defined(TARG_SL)
         if (dtyp == MTYPE_I2 && dsctyp == MTYPE_I2) {
           dtyp = MTYPE_I4;
         }
@@ -4451,11 +4324,7 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
 
   case OPR_ASM_STMT:
     Set_asm_string_idx(WN_st_idx(Wn()));
-#ifndef KEY
-    _u4._asm_stmt_flags = _u3._wn->u1u2.uu.ua.asm_flag;
-#else
     Set_asm_stmt_flags(WN_asm_flag(Wn()));
-#endif
     return;
 
   case OPR_ASSERT:
@@ -4463,9 +4332,7 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
   case OPR_RETURN_VAL:
   case OPR_PRAGMA:
   case OPR_XPRAGMA:
-#ifdef KEY
   case OPR_GOTO_OUTER_BLOCK:
-#endif
     copy_wn = WN_CopyNode(Wn());
     WN_set_map_id(copy_wn, WN_map_id(Wn()));
     Set_orig_wn(copy_wn);
@@ -4680,9 +4547,7 @@ STMTREP::Points_to(OPT_STAB *opt_stab) const
       opr == OPR_ILOADX  || opr == OPR_ISTOREX)
     return Lhs()->Points_to(opt_stab);
   else if ( opr == OPR_RETURN || opr == OPR_RETURN_VAL
-#ifdef KEY
   	    || opr == OPR_GOTO_OUTER_BLOCK
-#endif
     	  )
     return opt_stab->Points_to_globals();
   else
@@ -5466,45 +5331,6 @@ CODEMAP::Print(FILE *fp) const
   fprintf(fp, "- - - Default vsym is sym%1d\n", Sym()->Default_vsym());
   fprintf(fp, "- - - Return vsym is sym%1d\n", Sym()->Return_vsym());
 
-#ifndef KEY
-  // print coderep nodes in htable:
-  count = 0;
-  FOR_ALL_ELEM(bucket, codemap_iter, Init(this)) {
-    UINT32 bucket_len = 0;
-    if (bucket)
-      fprintf(fp, "----bucket %d\n", codemap_iter.Cur());
-    FOR_ALL_NODE(cr, cr_iter, Init(bucket)) {
-      Print_CR(cr, fp);
-      count++;
-      if (cr->Kind() == CK_IVAR && cr->Opr() != OPR_PREFETCH) 
-        ivar_count++;
-      bucket_len++;
-    }
-    if (bucket_len != 0) {
-      ++num_nonempty_buckets;
-    }
-    sum_bucket_len += bucket_len;
-    ssq_bucket_len += bucket_len * bucket_len;
-    max_bucket_len = MAX(max_bucket_len, bucket_len);
-  }
-  fprintf(fp, "%d of %d buckets are nonempty.\n",
-	  num_nonempty_buckets, size);
-  fprintf(fp, "Average nonempty bucket (chain) length: %g\n",
-	  ((double) sum_bucket_len) / num_nonempty_buckets);
-  fprintf(fp, "Average          bucket (chain) length: %g\n",
-	  ((double) sum_bucket_len) / size);
-  fprintf(fp, "Bucket len  (nonempty)  std. deviation: %g\n",
-	  (double) sqrt(((double) num_nonempty_buckets * ssq_bucket_len -
-			 sum_bucket_len * sum_bucket_len) /
-			(num_nonempty_buckets * num_nonempty_buckets)));
-  fprintf(fp, "Bucket length           std. deviation: %g\n",
-	  (double) sqrt(((double) size * ssq_bucket_len -
-			 sum_bucket_len * sum_bucket_len) /
-			(size * size)));
-  fprintf(fp, "Maximum         bucket          length: %u\n\n",
-	  max_bucket_len);
-#endif
-
   CFG_ITER cfg_iter;
   STMTREP *stmt;
   BB_NODE *bb;
@@ -5697,7 +5523,7 @@ CODEMAP::Insert_var_phi(CODEREP *new_lhs, BB_NODE *bb)
   FOR_ALL_ELEM (bb_phi, df_iter, Init(bb->Dom_frontier())) {
     PHI_NODE *phi = Lookup_var_phi(bb_phi, aux);
 
-    // Fix 471645:  phis inserted by EPRE/LPRE are annotated with the INCOMPLETE flag.
+    // phis inserted by EPRE/LPRE are annotated with the INCOMPLETE flag.
     // The flag means a phi might not be found on this definition's dominance frontier.
     // For this reason, Insert_var_phi should recursively visit all DF+ to check
     // if phi should be inserted.

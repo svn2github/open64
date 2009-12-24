@@ -93,7 +93,6 @@
 #include "opt_etable.h"
 #include "opt_ssu.h"
 
-#ifdef KEY
 static void
 // =====================================================================
 // x's dtyp and dsctyp fields are not initialized; initialize them with
@@ -108,7 +107,6 @@ Fix_var_mtypes(CODEREP *x, AUX_STAB_ENTRY *aux) {
       x->Set_dsctyp(cr->Dsctyp());
     }
 }
-#endif
 
 // =====================================================================
 // cr must be a CK_VAR node; determine if it is a candidate for SPRE, and
@@ -139,15 +137,10 @@ EXP_WORKLST * SSU::SPRE_candidate(CODEREP *cr)
   // if LPRE has not been run or there is no load, home_sym will be 0;
   // create a new preg and set home_sym
   if (aux->Home_sym() == 0) {
-#ifndef KEY
-    Is_True(cr->Dtyp() != MTYPE_V && cr->Dtyp() != MTYPE_UNKNOWN,
-	    ("SSU::SPRE_candidate: dtyp is void or unknown"));
-#else
     // fix bug no OSP_52
     if (cr->Dtyp() == MTYPE_V || cr->Dtyp() == MTYPE_UNKNOWN ||
 	cr->Dsctyp() == MTYPE_V || cr->Dsctyp() == MTYPE_UNKNOWN)
       Fix_var_mtypes(cr, aux);
-#endif
     WN *home_wn = cr->Rvi_home_wn(Opt_stab());
     AUX_ID home_auxid = Opt_stab()->Create_preg(cr->Dtyp(),aux->St_name(),home_wn);
     // call to Create_preg may cause aux_stab to be re-allocated
@@ -601,11 +594,7 @@ void SSU::Traverse_cr_rw(CODEREP *cr,
 
   case CK_IVAR:
     {
-#ifdef KEY
       Traverse_cr_rw( ! is_store ? 
-#else
-      Traverse_cr_rw( cr->Ilod_base() ? 
-#endif
 		     cr->Ilod_base() : cr->Istr_base(), bb, FALSE);
       if ( cr->Opr() == OPR_MLOAD ) {
 	Traverse_cr_rw( cr->Mload_size() ? 
@@ -936,11 +925,6 @@ void SSU::Rename(BB_NODE *bb)
 		  occur->Exp_phi()->Set_opnd(pos, spre_stack->Top()->Def_occur());
 	      }
 	    } // otherwise, leave as NULL iphi operand
-#if 0
-	    // create iphi_succ (phi_pred) occurrence node 
-	    // create it later to save memory
-	    _etable->Append_iphi_succ_occurrence(bb, wk);
-#endif
 	  }
 	}
       }
@@ -1084,16 +1068,4 @@ void SSU::Construct(void)
   }
 
   OPT_POOL_Pop(Loc_pool(), SSA_DUMP_FLAG);
-  
-#if 0
-  if ( Get_Trace(TP_GLOBOPT, SSU_DUMP_FLAG)) {
-    // Dump iphi functions
-    fprintf(TFile, "IPHI INSERTION: \n");
-    FOR_ALL_ELEM (bb, cfg_iter, Init(cfg)) 
-      if (bb->Iphi_list()->Len() > 0) {
-	fprintf(TFile, "BB%d: \n", bb->Id());
-	bb->Iphi_list()->PRINT(TFile);
-      }
-  }
-#endif
 }

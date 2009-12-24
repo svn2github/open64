@@ -320,9 +320,7 @@ class DCE {
     void Find_assumed_goto_blocks( BB_NODE_SET *assumed_goto ) const;
     void Insert_required_gotos( void ) const;
     void Update_branch_to_bb_labels( BB_NODE *bb ) const;
-#ifdef KEY
     void Update_branch_to_bbs_labels( BB_LIST *bbs ) const;
-#endif
     BOOL Remove_dead_statements( void ) ;
     BOOL Enable_dce_global( void ) const { return _enable_dce_global; }
     BOOL Enable_dce_alias( void ) const  { return _enable_dce_alias; }
@@ -346,9 +344,7 @@ class DCE {
 		    case OPR_RETURN:
 		    case OPR_RETURN_VAL:
 		    case OPR_TRUEBR:
-#ifdef KEY
 		    case OPR_GOTO_OUTER_BLOCK:
-#endif
 		      return TRUE;
 		    default:
 		      return FALSE;
@@ -679,11 +675,9 @@ DCE::Check_constant_cond_br( BB_NODE *bb ) const
       return ( FALSE );
 
     case BB_WHILEEND:  // ending condition for while statement
-#ifdef KEY // bug 7905: to enable while (1) to be preserved by ipl's preopt
-      if (_opt_phase == PREOPT_IPA0_PHASE)
-	return ( FALSE ); 
-      // fall thru
-#endif
+    //to enable while (1) to be preserved by ipl's preopt
+    if (_opt_phase == PREOPT_IPA0_PHASE)
+	  return ( FALSE ); 
     case BB_LOGIF:     // logical if
     case BB_VARGOTO:   // variable goto
     case BB_DOEND:     // ending condition
@@ -1240,10 +1234,8 @@ Eval_redundant_cond_br( CODEREP *origcond, CODEREP *evalcond, COND_EVAL eval )
 	  return EVAL_UNKNOWN;
 	}
       }
-#ifdef KEY // bug 11685
      if (origcond->Dsctyp() != evalcond->Dsctyp())
        return EVAL_UNKNOWN;
-#endif
 
       // canonicalize so we can always assume comparison is true
       // (dealing with false is not just a matter of negating result
@@ -1413,9 +1405,7 @@ DCE::Check_for_label( BB_NODE *bb ) const
     // Allocate label number
     if (bb->Labnam() == 0) {
       bb->Set_labnam( _cfg->Alloc_label());
-#ifdef KEY // bug 3152
       _cfg->Append_label_map( bb->Labnam(), bb );
-#endif
     }
 
     // Generate label STMTREP
@@ -1605,10 +1595,6 @@ void Remove_region_entry(BB_NODE *bb)
   RID_Delete2(rid);
 
   // the region entry BB will soon be a BB_GOTO, don't point to it anymore
-#ifndef KEY // bug 5714
-  bb_region->Set_region_start(NULL);
-  bb_region->Set_rid(NULL);
-#endif
   bb->Set_regioninfo(NULL);
 }
 
@@ -1911,44 +1897,6 @@ DCE::Find_current_version( const STMTREP *ref_stmt, const CODEREP *cr ) const
   return NULL;	  // not found
 }
 
-
-#if 0
-// Do not use this function.  Use the one defined in opt_htable 
-// because COPYPROP and DCE need to cooperate.
-//
-// ====================================================================
-// Determine if the assignment is " i = i "
-// ====================================================================
-
-BOOL
-DCE::Is_identity_assignment( const STMTREP *stmt ) const
-{
-  if ( ! Allow_dce_prop() )
-    return FALSE;
-
-  Is_True ( stmt->Opr() == OPR_STID,
-    ("DCE::Is_identity_assignment: non-STID operator") );
-
-  const CODEREP *lhs = stmt->Lhs();
-
-  // store to a volatile location?
-  if (lhs->Is_var_volatile())
-    return ( FALSE );
-
-  // statements of form i = i are not required (unless volatile)
-  //  (even it stores a dedicated register)
-  if (stmt->Rhs()->Kind() == CK_VAR &&
-      stmt->Rhs()->Aux_id() == stmt->Lhs()->Aux_id() &&
-      !stmt->Rhs()->Is_var_volatile() &&
-      Find_current_version(stmt, stmt->Rhs()) == stmt->Rhs() )
-  {
-    return ( TRUE );
-  }
-
-  return ( FALSE );
-}
-#endif
-
 // ====================================================================
 // Required_store -  Is this direct   store statement required?
 // Required_istore - Is this indirect store statement required?
@@ -2001,14 +1949,13 @@ DCE::Required_store( const STMTREP *stmt, OPERATOR oper ) const
     }
   }
 
-#ifdef KEY // deleting fetch of MTYPE_M return value can cause lowerer to omit
-  	   // inserting the fake parm
+  // deleting fetch of MTYPE_M return value can cause lowerer to omit
+  // inserting the fake parm
   if (Opt_stab()->Phase() == PREOPT_IPA0_PHASE && lhs->Dsctyp() == MTYPE_M &&
       stmt->Rhs()->Kind() == CK_VAR &&
       ST_class(Opt_stab()->St(stmt->Rhs()->Aux_id())) == CLASS_PREG &&
       Preg_Is_Dedicated(stmt->Rhs()->Offset())) 
     return TRUE;
-#endif
 
   // maybe it just isn't required
   return ( FALSE );
@@ -2023,14 +1970,6 @@ DCE::Required_istore( const STMTREP *stmt, OPERATOR oper ) const
   if (stmt->Lhs()->Is_ivar_volatile())
     return ( TRUE );
 
-  // remove the following as part of the fix for 597561.
-#if 0
-  // istore to unqiue pt
-  if (stmt->Lhs()->Points_to(Opt_stab())->Unique_pt()) {
-    Warn_todo("Handle unique pts.");
-    return TRUE;
-  }
-#endif
   // istore to restrict pt
   // All items aliased with dereferences of __restrict pointers are
   // assumed to be live because of C scoping rules. A __restrict
@@ -2044,14 +1983,13 @@ DCE::Required_istore( const STMTREP *stmt, OPERATOR oper ) const
   if (stmt->Lhs()->Points_to(Opt_stab())->Restricted()) 
     return TRUE;
 
-#ifdef KEY // deleting fetch of MTYPE_M return value can cause lowerer to omit
+  // deleting fetch of MTYPE_M return value can cause lowerer to omit
   	   // inserting the fake parm
   if (Opt_stab()->Phase() == PREOPT_IPA0_PHASE && stmt->Lhs()->Dsctyp() == MTYPE_M &&
       stmt->Rhs()->Kind() == CK_VAR &&
       ST_class(Opt_stab()->St(stmt->Rhs()->Aux_id())) == CLASS_PREG &&
       Preg_Is_Dedicated(stmt->Rhs()->Offset())) 
     return TRUE;
-#endif
 
   return ( FALSE );
 }
@@ -2136,9 +2074,7 @@ inline BOOL
 DCE::Required_pragma( const STMTREP *stmt ) const
 {
   WN_PRAGMA_ID pragma = (WN_PRAGMA_ID)WN_pragma(stmt->Orig_wn());
-#ifdef KEY
   if (pragma == WN_PRAGMA_UNROLL) return TRUE;
-#endif
   if (Loop_pragma(pragma)) return FALSE;
 
   switch ( pragma ) {
@@ -2172,11 +2108,9 @@ DCE::Required_stmt( const STMTREP *stmt ) const
   if ( WOPT_Enable_Zero_Version && stmt->Has_zver())
     return TRUE;
 
-#ifdef KEY // bugs 5401 and 5267
   if (OPERATOR_is_scalar_store(opr) && 
       Opt_stab()->Aux_stab_entry(stmt->Lhs()->Aux_id())->Mp_no_dse())
     return TRUE;
-#endif
 
   CHI_LIST_ITER  chi_iter;
   CHI_NODE      *cnode;
@@ -2201,11 +2135,9 @@ DCE::Required_stmt( const STMTREP *stmt ) const
     return ( !Enable_aggressive_dce() );
 
   case OPR_COMPGOTO:
-#ifdef KEY 
     if ((PU_has_mp(Get_Current_PU()) || PU_mp_lower_generated(Get_Current_PU()))
 	&& Early_MP_Processing)
-      return TRUE; // deleting COMPGOTO related to SECTIONS caused bug 5553
-#endif
+      return TRUE; // deleting COMPGOTO related to SECTIONS
     return ( !Enable_aggressive_dce() );
 
   case OPR_LABEL:
@@ -2229,10 +2161,8 @@ DCE::Required_stmt( const STMTREP *stmt ) const
   case OPR_RETURN:
   case OPR_RETURN_VAL:
   case OPR_REGION_EXIT:
-  case OPR_OPT_CHI: // entry chi is required, pv 454154
-#ifdef KEY
+  case OPR_OPT_CHI: // entry chi is required,
   case OPR_GOTO_OUTER_BLOCK:
-#endif
     return TRUE;
 
   case OPR_CALL:
@@ -2411,56 +2341,6 @@ DCE::Mark_chinode_live( CHI_NODE *chi, STMTREP *def_stmt ) const
        chi->OPND()->Aux_id() == Return_vsym() )
     return;
  
-#if 0
-  // These optimizations are turned off because they create overlapped 
-  // live-ranges
-
-  // may not need to make this chi live if it's not aliased
-  if ( Enable_dce_alias() && def_stmt != NULL &&
-	Points_to_stack()->Elements() > 0 )
-  {
-    if ( ! Aliased( def_stmt->Points_to(Opt_stab()), 
-		    Points_to_stack()->Top() ) )
-    {
-      MU_NODE *tos_mu = Mu_stack()->Top();
-      CODEREP *old_opnd = tos_mu->OPND();
-
-      // the "current" mu is not really defined by this chi, but is
-      // instead possibly defined by what defines its operand
-      Warn_todo( "DCE::Mark_chinode_live: update pvl list?" );
-      tos_mu->Set_OPND( chi->OPND() );
-
-      if ( Tracing() ) {
-	fprintf( TFile, "DCE::Mark_chinode_live: revising chi from\n" );
-	old_opnd->Print( 0, TFile );
-	fprintf( TFile, "  to\n" );
-	chi->OPND()->Print( 0, TFile );
-      }
-
-      // no need to follow the chi-chain any further
-      return;
-    }
-  }
-
-
-  CODEREP *opnd = chi->OPND();
-  CODEREP *res  = chi->RESULT();
-  
-  //  For eliminating 
-  //    *p = ...
-  //    *p = ...
-  if ( Allow_dce_prop() && opnd->Is_flag_set(CF_DEF_BY_CHI) ) {
-    Is_True(res->Kind() == CK_VAR && opnd->Kind() == CK_VAR, ("chi must contain CK_VAR."));
-    if (res->Defstmt()->Same_lhs(opnd->Defstmt())) {
-      // update the chi opnd to skip this definition.
-      chi->Set_OPND( opnd->Defchi()->OPND());
-      // follow the chi-chain.
-      Mark_chinode_live( chi, def_stmt );
-      return;
-    }
-  }
-#endif
-
   CODEREP *cr = Dce_prop(chi->OPND());
   if (cr != NULL) {
     AUX_STAB_ENTRY *aux_entry = Opt_stab()->Aux_stab_entry(cr->Aux_id());
@@ -3122,15 +3002,10 @@ DCE::Prop_return_vsym_new_result( CODEREP *cr ) const
     else {
       // dead statements skip over this, so return the chi operand
       // which should have been updated to the correct value by now
-//Bug 2659
-# ifdef KEY
       if (!cr->Defchi()->Live())
         return Prop_return_vsym_new_result(cr->Defchi()->OPND());
       else
         return cr->Defchi()->OPND();
-# else
-      return cr->Defchi()->OPND();
-# endif
     }
   }
   else {
@@ -3563,12 +3438,6 @@ DCE::Mark_block_live( BB_NODE *bb ) const
 void
 DCE::Mark_statements_dead( void ) const
 {
-#if 0
-  // Clear all the DCE_VISITED flags to allow DCE to be called for
-  // the second time
-  Htable()->Reset_DCE_visited_flags();
-#endif
-
   CFG_ITER cfg_iter(_cfg);
   BB_NODE *bb;
 
@@ -3775,10 +3644,8 @@ DCE::Replace_control_dep_succs( BB_NODE *bb ) const
 {
   BOOL all_cd = TRUE;
 
-#ifdef KEY
   if (bb->Succ() == NULL)
     return;
-#endif
   // just remove paths to any control-dep successors
   BB_LIST *succlist, *nextsucc = NULL;
   for ( succlist = bb->Succ(); succlist != NULL; succlist = nextsucc ) {
@@ -4199,11 +4066,6 @@ DCE::Update_region_information( void ) const
       // branch. (547802)
       // first need to check it is still a region start, it might be deleted
       if (regbb->Kind() == BB_REGIONSTART && regbb->Succ() != NULL && regbb->Succ()->Len() == 1) {
-#ifndef KEY
-	Is_True(regbb->Succ() != NULL && regbb->Succ()->Len() == 1,
-		("DCE::Update_region_information, multiple successors "
-		 "for region start"));
-#endif
 	BB_NODE *succ = regbb->Succ()->Node();
 	if (!succ->Reached())
 	  Keep_unreached_bb(succ);
@@ -4442,7 +4304,7 @@ DCE::Find_required_statements( void ) const
     }
 
   } // end loop through blocks
-#ifdef TARG_SL
+#if defined(TARG_SL)
   Repair_Injured_AuxIntrnOP();
 #endif
 
@@ -4477,7 +4339,6 @@ DCE::Find_required_statements( void ) const
 // Update_branch_to_bb_labels update labels and branch statements so
 // that all branches to this block target its successor instead.
 // ====================================================================
-#ifdef KEY
 void
 DCE::Update_branch_to_bbs_labels( BB_LIST *bbs ) const
 {
@@ -4543,7 +4404,6 @@ DCE::Update_branch_to_bbs_labels( BB_LIST *bbs ) const
     }
   }
 }
-#endif
 
 void
 DCE::Update_branch_to_bb_labels( BB_NODE *bb ) const
@@ -4679,14 +4539,12 @@ DCE::Remove_dead_statements( void )
         Is_True( _cfg->Removable_bb(bb),
 	  ("DCE::Remove_dead_statements: BB%d not removable",
 	   bb->Id()) );
-#ifdef KEY
         if (WOPT_Enable_Aggressive_dce_for_bbs)
           removable_bbs = removable_bbs->Append(bb, _cfg->Loc_pool());
         else{
 	  Update_branch_to_bb_labels( bb );
 	  _cfg->Delete_bb( bb, _mod_phis );
         }
-#endif
 	changed_cflow = TRUE;
 
 	if ( Tracing() ) {
@@ -4696,14 +4554,11 @@ DCE::Remove_dead_statements( void )
       else {
 	bb->Set_reached();
       }
-#ifdef KEY
       if ( !removable_bbs->Contains(bb) || !WOPT_Enable_Aggressive_dce_for_bbs ) 
-#endif
         Remove_unreached_statements( bb );
     }
   } // end loop through blocks
-//Bug# 1278
-#ifdef KEY  
+
   if ( !Enable_aggressive_dce() || !WOPT_Enable_Aggressive_dce_for_bbs) 
     return  ( changed_cflow );
 
@@ -4740,7 +4595,6 @@ DCE::Remove_dead_statements( void )
     }
     
     if ( removable_bb_chain && removable_bb_chain->Len() > 1 && last_bb_unique_succ){
-//Bug 1507
       Update_branch_to_bbs_labels( removable_bb_chain );
       _cfg->Delete_bbs( removable_bb_chain, _mod_phis ); 
       FOR_ALL_ELEM( bb, bb_iter, Init(removable_bb_chain) ){
@@ -4748,7 +4602,7 @@ DCE::Remove_dead_statements( void )
       }
     }
     else if ( removable_bb_chain ){
-// If the last basic block has more than one successor, remove basic block one by one. It fixes bug 2379.
+// If the last basic block has more than one successor, remove basic block one by one.
       FOR_ALL_ELEM( bb, bb_iter, Init(removable_bb_chain) ){
         Update_branch_to_bb_labels( bb );
         _cfg->Delete_bb( bb, _mod_phis );
@@ -4756,7 +4610,6 @@ DCE::Remove_dead_statements( void )
       }
     }
   }
-#endif
   return ( changed_cflow );
 }
 
@@ -4913,7 +4766,6 @@ DCE::Insert_required_gotos( void ) const
     if (bb->Last_stmtrep() && bb->Last_stmtrep()->Opr() == OPR_REGION )
       continue;
 
-#ifdef KEY // needed due to fix for bug 8690
     if (bb->MP_region() && _opt_phase != MAINOPT_PHASE &&
         bb->Kind() == BB_REGIONSTART) {
       // see if the assumed goto is due to a SINGLE pragma
@@ -4930,7 +4782,6 @@ DCE::Insert_required_gotos( void ) const
       if (single_pragma_found)
 	continue;
     }
-#endif
 
     // at this point, we know we don't have a branch, assumed or
     // otherwise.  Check if our only successor is a fall-through
@@ -5053,7 +4904,6 @@ COMP_UNIT::Do_dead_code_elim(BOOL do_unreachable,
   OPT_POOL_Pop( Cfg()->Loc_pool(), DCE_DUMP_FLAG);
 }
 
-#ifdef KEY
 #include "../../include/gnu/demangle.h"
 extern "C" char *cplus_demangle (const char *, int);
 
@@ -5143,4 +4993,3 @@ COMP_UNIT::Find_uninitialized_locals(void)
     }
   }
 }
-#endif

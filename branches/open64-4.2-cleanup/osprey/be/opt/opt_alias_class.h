@@ -356,9 +356,7 @@ public:
   void              Merge_pending(ALIAS_CLASS_REP &);
   void              Process_pending(ALIAS_CLASSIFICATION &);
   PENDING_LIST     &Pending(void) { return _pending; }
-#ifdef KEY
   BOOL              Pending_rep_match(ALIAS_CLASS_REP *);
-#endif
   void              Join_object_class(ALIAS_CLASS_REP &,
 				      ALIAS_CLASSIFICATION &);
 
@@ -380,13 +378,6 @@ public:
     {
       Is_True(cpt->Representative() != NULL,
 	      ("object class has no representative"));
-#if 0
-      if (Pending() != NULL) {
-	fprintf(TFile, "\n");
-	Print(TFile);
-	fprintf(TFile, " is becoming a pointer. Should see pending:\n");
-      }
-#endif
       _member_of_class_pointed_to = cpt->Representative();
     }
 

@@ -227,16 +227,10 @@ SPRE_insert_load_to_preg(CODEREP *v, IDTYPE preg, BOOL sign_extd, BB_NODE *bb, E
 	    v->Set_dtyp(MTYPE_U8);
 	    v->Set_dsctyp(MTYPE_U4);
 	    v->Set_sign_extension_flag();
-#ifndef KEY
-          } else if (opc == OPC_U4U8CVT) {
-            v->Set_dtyp(MTYPE_U4);
-            v->Set_sign_extension_flag();
-#else
           } else if (opc == OPC_I8I4CVT) {
             v->Set_dtyp(MTYPE_I8);
 	    v->Set_dsctyp(MTYPE_I4);
             v->Set_sign_extension_flag();
-#endif
 	  } else Is_True(FALSE, ("SPRE_isnert_load_to_preg: wrong type conversion"));
 	}
 	else {
@@ -446,23 +440,6 @@ EXP_WORKLST::SPRE_perform_insert_delete(ETABLE *etable)
   CHI_NODE *chi;
   EXP_OCCURS_ITER occ_iter;
 
-#if 0
-  BB_NODE *succ_bb;
-  // process iphi's (just to check correctness)
-  FOR_ALL_NODE(occur, occ_iter, Init(Phi_occurs().Head())) {
-    bb = occur->Bb();
-    iphi = occur->Exp_phi();
-    INT32 pos = 0;
-    BB_NODE *bb_succ;
-    FOR_ALL_ELEM(bb_succ, bb_iter, Init(bb->Succ())) {
-      if (iphi->Opnd(pos) == NULL)
-        Is_True(iphi->Null_ssu_version(pos),
-		("EXP_WORKST::SPRE_perform_insert_delete: a NULL iphi operand does not have NULL_SSU_VERSION flag set"));
-      pos++;
-    }
-  }
-#endif
-
   // process insertions
   FOR_ALL_NODE(occur, occ_iter, Init(Phi_pred_occurs().Head())) {
     CODEREP *old_lhs;
@@ -533,12 +510,10 @@ EXP_WORKLST::SPRE_perform_insert_delete(ETABLE *etable)
     rhs->IncUsecnt();	// increment use count of preg
 
     // create a new coderep node for the lhs of the store being inserted
-#ifdef KEY // bug 5798
     if (old_lhs->Dtyp() == MTYPE_UNKNOWN) {
       old_lhs->Set_dsctyp(Exp()->Dsctyp());
       old_lhs->Set_dtyp(Exp()->Dtyp());
     }
-#endif
     CODEREP *new_lhs = etable->Htable()->Add_def(old_lhs->Aux_id(), -1,
 	  NULL /* defstmt */, old_lhs->Dtyp(), old_lhs->Dsctyp(),
 	  old_lhs->Offset(), old_lhs->Lod_ty(), old_lhs->Field_id(), TRUE);

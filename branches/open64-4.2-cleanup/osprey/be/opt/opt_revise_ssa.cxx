@@ -192,9 +192,6 @@ OPT_REVISE_SSA::Get_new_occ(CODEREP *cr, BOOL is_store)
   if (_tracing)
     fdump_wn(TFile, wn);
 
-#if 0  // cannot use Identify_vsym because it requires address expr in wn also
-  AUX_ID vsym_id = _opt_stab->Identify_vsym(wn);
-#endif
   AUX_ID vsym_id;	// the vsym to be used for the new ivar node
    // first, see if we can use the same vsym as the bit-field ivar
   AUX_ID old_vsym_id = cr->Ivar_occ()->Aux_id();
@@ -279,7 +276,6 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld_cr(CODEREP *cr)
       if (_tracing && idx >= _first_new_aux_id)
         _opt_stab->Print_aux_entry(idx, TFile);
     }
-#ifdef KEY
     else if (cr->Dtyp() != MTYPE_M && MTYPE_byte_size(cr->Dsctyp()) < 4 &&
 	     (idx = _opt_stab->Part_of_reg_size_symbol(cr->Aux_id())) != 0) {
       cr->Set_promote_to_reg_size(); // flag this cr for processing in step 2
@@ -289,7 +285,6 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld_cr(CODEREP *cr)
       if (_tracing) 
 	fprintf(TFile, "replace %d by extract of %d\n", cr->Aux_id(), idx); 
     }
-#endif
     return;
   case CK_IVAR:
     Find_scalars_from_lowering_bitfld_cr(cr->Ilod_base());
@@ -303,11 +298,9 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld_cr(CODEREP *cr)
     }
     return;
   case CK_OP:
-#ifdef KEY
     if (cr->Is_isop_flag_set(ISOP_XLOWER_VISITED))
       return;
     cr->Set_isop_flag(ISOP_XLOWER_VISITED);
-#endif
     for (i = 0; i < cr->Kid_count(); i++) 
       Find_scalars_from_lowering_bitfld_cr(cr->Opnd(i));
     return;
@@ -351,7 +344,6 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld(void)
       if (OPERATOR_is_store(opr)) {
 	CODEREP *lhs = stmt->Lhs();
         switch (opr) {
-#ifdef KEY // bug 9179
 	case OPR_STID: {
 
 	  AUX_ID idx;
@@ -368,7 +360,6 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld(void)
 	  }
 	  break;
 	}
-#endif
 	case OPR_STBITS: {
 	  _symbols_to_revise->Union1D(lhs->Aux_id()); // pv 805267
 
@@ -447,19 +438,16 @@ OPT_REVISE_SSA::Find_scalars_from_lda_iloads(CODEREP *cr)
 	cr->Is_ivar_volatile() ||
 	cr->Opr() == OPR_PARM)
       return;
-#ifdef KEY // to limit compilation time explosion (bug 2081)
     if (_opt_stab->Lastidx() > WOPT_Enable_Folded_Scalar_Limit) {
       cr->Set_scalar_aux_id(0);
       return;
     }
-#endif
     // this indirect can be folded
     CODEREP *lda = cr->Ilod_base();
     WN_set_operator(&wn, cr->Opr() == OPR_ILOAD ? OPR_LDID : OPR_LDBITS);
     WN_set_desc(&wn, cr->Dsctyp());
     WN_set_rtype(&wn, cr->Dtyp());
     WN_store_offset(&wn) = cr->Offset() + lda->Offset();
-#if 1 // bug fix aug-14-02
     ST *lda_st;
     INT64 ofst;
     Expand_ST_into_base_and_ofst(_opt_stab->St(lda->Lda_aux_id()),
@@ -473,7 +461,6 @@ OPT_REVISE_SSA::Find_scalars_from_lda_iloads(CODEREP *cr)
 	WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
       }
     } else
-#endif
     WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
     WN_set_ty(&wn, cr->Ilod_ty());
     WN_set_field_id(&wn, cr->I_field_id());
@@ -496,11 +483,9 @@ OPT_REVISE_SSA::Find_scalars_from_lda_iloads(CODEREP *cr)
     return;
     }
   case CK_OP:
-#ifdef KEY
     if (cr->Is_isop_flag_set(ISOP_LDAFOLD_VISITED))
       return;
     cr->Set_isop_flag(ISOP_LDAFOLD_VISITED);
-#endif
     for (i = 0; i < cr->Kid_count(); i++) 
       Find_scalars_from_lda_iloads(cr->Opnd(i));
     return;
@@ -557,12 +542,11 @@ OPT_REVISE_SSA::Find_scalars_from_lda_indirects(void)
 	  }
 	  if (lhs->Is_ivar_volatile())
 	    break;
-#ifdef KEY // to limit compilation time explosion (bug 2081)
+      // to limit compilation time explosion (bug 2081)
 	  if (_opt_stab->Lastidx() > WOPT_Enable_Folded_Scalar_Limit) {
 	    lhs->Set_scalar_aux_id(0);
 	    break;
 	  }
-#endif
 	  // this indirect can be folded
 	  CODEREP *lda = lhs->Istr_base();
           BZERO(&wn, sizeof(WN));
@@ -570,7 +554,6 @@ OPT_REVISE_SSA::Find_scalars_from_lda_indirects(void)
 	  WN_set_desc(&wn, stmt->Desc());
 	  WN_set_rtype(&wn, MTYPE_V);
 	  WN_store_offset(&wn) = lhs->Offset() + lda->Offset();
-#if 1 // bug fix aug-14-02
 	  ST *lda_st;
 	  INT64 ofst;
 	  Expand_ST_into_base_and_ofst(_opt_stab->St(lda->Lda_aux_id()),
@@ -584,7 +567,6 @@ OPT_REVISE_SSA::Find_scalars_from_lda_indirects(void)
 	      WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
 	    }
 	  } else
-#endif
 	  WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
 	  WN_set_ty(&wn, lhs->Ilod_ty());
 	  WN_set_field_id(&wn, lhs->I_field_id());
@@ -656,18 +638,15 @@ OPT_REVISE_SSA::Update_phis(BB_NODE *bb)
       else {
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
 						    sym->Byte_size());
-#ifdef KEY // bug 8186
 	if (MTYPE_is_unsigned(sym->Mtype()))
 	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
-#endif
       }
 #endif //TARG_NVISA
       MTYPE desc = rtype;
-#ifdef KEY // promote to register type size
+      // promote to register type size
       if (i != _opt_stab->Default_vsym() && 
 	  desc != MTYPE_UNKNOWN && desc != MTYPE_M)
         rtype = OPCODE_rtype(Ldid_from_mtype(desc));
-#endif
       if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
         ty = MTYPE_To_TY(rtype);
       }      
@@ -719,18 +698,15 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
 	else {
 	    rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
 							sym->Byte_size()); 
-#ifdef KEY // bug 8186
 	    if (MTYPE_is_unsigned(sym->Mtype()))
 	      rtype = Mtype_TransferSign(MTYPE_U4, rtype);
-#endif
         }
 #endif
 	MTYPE desc = rtype;
-#ifdef KEY // promote to register type size
+    // promote to register type size
 	if (i != _opt_stab->Default_vsym() && 
 	    desc != MTYPE_UNKNOWN && desc != MTYPE_M)
 	  rtype = OPCODE_rtype(Ldid_from_mtype(desc));
-#endif
 
 	if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
 	  ty = MTYPE_To_TY(rtype);
@@ -760,18 +736,15 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
 	else {
 	    rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
 							sym->Byte_size()); 
-#ifdef KEY // bug 8186
 	    if (MTYPE_is_unsigned(sym->Mtype()))
 	      rtype = Mtype_TransferSign(MTYPE_U4, rtype);
-#endif
         }
 #endif
 	MTYPE desc = rtype;
-#ifdef KEY // promote to register type size
+    // promote to register type size
 	if (i != _opt_stab->Default_vsym() && 
 	    desc != MTYPE_UNKNOWN && desc != MTYPE_M)
 	  rtype = OPCODE_rtype(Ldid_from_mtype(desc));
-#endif
 	    
 	if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
 	  ty = MTYPE_To_TY(rtype);
@@ -823,9 +796,7 @@ OPT_REVISE_SSA::Insert_mu_and_chi_list_for_new_var(STMTREP *stmt, AUX_ID i)
     }
   }
   else if (opr == OPR_RETURN
-#ifdef KEY
     	   || opr == OPR_GOTO_OUTER_BLOCK
-#endif
     	  ) {
     if (! _opt_stab->Aux_stab_entry(i)->Points_to()->Local() ||
 	_opt_stab->Local_static(i))
@@ -889,18 +860,15 @@ OPT_REVISE_SSA::Insert_mu_and_chi_list_for_new_var(STMTREP *stmt, AUX_ID i)
     else {
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
 						    sym->Byte_size());  
-#ifdef KEY // bug 8186
 	if (MTYPE_is_unsigned(sym->Mtype()))
 	  rtype = Mtype_TransferSign(MTYPE_U4, rtype);
-#endif
     }
 #endif
     MTYPE desc = rtype;
-#ifdef KEY // promote to register type size
+    // promote to register type size
     if (i != _opt_stab->Default_vsym() && 
 	desc != MTYPE_UNKNOWN && desc != MTYPE_M)
       rtype = OPCODE_rtype(Ldid_from_mtype(desc));
-#endif
 
 	if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
 	  ty = MTYPE_To_TY(rtype);
@@ -967,17 +935,6 @@ OPT_REVISE_SSA::Create_COMPOSE_BITS(INT bit_offset, INT bit_size,
 				    CODEREP *v, CODEREP *rhs)
 {
   CODEREP stack_cr; 
-#if 0
-  if (MTYPE_bit_size(v->Dtyp()) != MTYPE_bit_size(rhs->Dtyp())) {
-    CODEREP cvt_cr;
-    FOLD ftmp;
-    OPCODE opc = OPCODE_make_op(OPR_CVT, v->Dtyp(), rhs->Dtyp());
-    cvt_cr.Init_expr(opc, rhs);
-    rhs = ftmp.Fold_Expr(&cvt_cr);
-    if (!rhs)
-      rhs = _htable->Rehash(&cvt_cr);
-  }
-#endif
   stack_cr.Init_expr(OPCODE_make_op(OPR_COMPOSE_BITS, v->Dtyp(), MTYPE_V), v);
   stack_cr.Set_kid_count(2);
   stack_cr.Set_opnd(1, rhs);
@@ -1029,26 +986,18 @@ OPT_REVISE_SSA::Form_extract(CODEREP *cr)
       // generate a zero version of the new scalar variable
       x = _htable->Ssa()->Get_zero_version_CR(cr->Scalar_aux_id(), _opt_stab,0);
       AUX_STAB_ENTRY *sym = _opt_stab->Aux_stab_entry(cr->Scalar_aux_id());
-#ifdef KEY
       if (sym->Is_volatile())
 	x->Set_var_volatile();
-#endif
       x->Set_dtyp(cr->Dtyp());
       x->Set_dsctyp(Mtype_from_mtype_class_and_size(MTYPE_type_class(cr->Dtyp()), sym->Byte_size()));
-#ifdef KEY
       x->Set_sign_extension_flag();
-#endif
-#ifndef KEY
-      return Create_EXTRACT_BITS(cr->Bit_offset(), cr->Bit_size(), x, cr->Dtyp());
-#else
+
       INT32 adjust = 0;
       if (Target_Byte_Sex == BIG_ENDIAN)
         adjust = MTYPE_bit_size(cr->Dtyp()) - MTYPE_bit_size(x->Dsctyp());
       return Create_EXTRACT_BITS(cr->Bit_offset()+adjust, cr->Bit_size(), x, 
 	      			 cr->Dtyp());
-#endif
     }
-#ifdef KEY
     else if (cr->Promote_to_reg_size()) {
       // generate a zero version of the new scalar variable
       x = _htable->Ssa()->Get_zero_version_CR(cr->Scalar_aux_id(), _opt_stab,0);
@@ -1074,7 +1023,6 @@ OPT_REVISE_SSA::Form_extract(CODEREP *cr)
       }
       return x;
     }
-#endif
     return NULL;
   case CK_IVAR:
     x = Form_extract(cr->Ilod_base());
@@ -1122,10 +1070,6 @@ OPT_REVISE_SSA::Form_extract(CODEREP *cr)
     new_cr->Ivar_mu_node()->Set_OPND(_htable->Ssa()->Get_zero_version_CR(new_cr->Ivar_occ()->Aux_id(), _opt_stab, 0));
     cr->DecUsecnt();
     x = _htable->Rehash(new_cr);
-#ifndef KEY
-    return Create_EXTRACT_BITS(cr->I_bit_offset(), cr->I_bit_size(), x, 
-			       cr->Dtyp());
-#else
     {
       INT32 adjust = 0;
       if (Target_Byte_Sex == BIG_ENDIAN)
@@ -1133,7 +1077,6 @@ OPT_REVISE_SSA::Form_extract(CODEREP *cr)
       return Create_EXTRACT_BITS(cr->I_bit_offset()+adjust, cr->I_bit_size(), x,
 			         cr->Dtyp());
     }
-#endif
   case CK_OP:
     need_rehash = FALSE;
     new_cr->Copy(*cr);
@@ -1222,9 +1165,7 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 	
 	// lower STBITS and ISTBITS
 	if (opr == OPR_STBITS
-#ifdef KEY // bug 9179
 	    || (opr == OPR_STID && lhs->Promote_to_reg_size()) 
-#endif
 	   ) {
 
           TY_IDX stbits_tyidx = Void_Type;
@@ -1251,19 +1192,14 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 	  v = _htable->Ssa()->Get_zero_version_CR(lhs->Scalar_aux_id(),
 						  _opt_stab, 0);
 	  AUX_STAB_ENTRY *sym = _opt_stab->Aux_stab_entry(lhs->Scalar_aux_id());
-#ifdef KEY
 	  if (sym->Is_volatile())
 	    v->Set_var_volatile();
-#endif
 	  v->Set_dsctyp(Mtype_from_mtype_class_and_size(MTYPE_type_class(lhs->Dtyp()), sym->Byte_size()));
 	  v->Set_dtyp(OPCODE_rtype(Ldid_from_mtype(v->Dsctyp())));
-#ifdef KEY
 	  v->Set_sign_extension_flag();
-#endif
 	  INT32 adjust = 0;
 	  if (Target_Byte_Sex == BIG_ENDIAN)
 	    adjust = MTYPE_bit_size(v->Dtyp()) - MTYPE_bit_size(v->Dsctyp());
-#ifdef KEY // bug 9179
 	  if (opr == OPR_STID) {
 	    AUX_STAB_ENTRY *osym = _opt_stab->Aux_stab_entry(lhs->Aux_id());
 	    INT32 bofst = (osym->Base_byte_ofst() - sym->Base_byte_ofst()) * 8;
@@ -1272,15 +1208,12 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 	    stmt->Set_rhs(Create_COMPOSE_BITS(bofst+adjust, MTYPE_bit_size(lhs->Dsctyp()), v, rhs));
 	  }
 	  else 
-#endif
 	  stmt->Set_rhs(Create_COMPOSE_BITS(lhs->Bit_offset()+adjust, lhs->Bit_size(), v, rhs));
 	  // generate a new version of the new scalar variable
-#ifdef KEY // bug 9179
 	  if (opr == OPR_STID)
 	    stmt->Set_lhs(_htable->Add_def(v->Aux_id(), -1, stmt, 
 	      v->Dtyp(), v->Dsctyp(), v->Offset(), stbits_tyidx, 0, TRUE));
 	  else
-#endif
 	  stmt->Set_lhs(_htable->Add_def(lhs->Scalar_aux_id(), -1, stmt, 
 	    lhs->Dtyp(), lhs->Dsctyp(), lhs->Offset(), stbits_tyidx, 0, TRUE));
 
@@ -1306,15 +1239,11 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 	  mu->Set_OPND(_htable->Ssa()->Get_zero_version_CR(new_cr->Ivar_occ()->Aux_id(), _opt_stab, 0));
 	  new_cr->Set_ivar_mu_node(mu);
 	  v = _htable->Rehash(new_cr);
-#ifndef KEY
-	  stmt->Set_rhs(Create_COMPOSE_BITS(lhs->I_bit_offset(), lhs->I_bit_size(), v, rhs));
-#else
+
 	  INT32 adjust = 0;
 	  if (Target_Byte_Sex == BIG_ENDIAN)
 	    adjust = MTYPE_bit_size(v->Dtyp()) - MTYPE_bit_size(v->Dsctyp());
 	  stmt->Set_rhs(Create_COMPOSE_BITS(lhs->I_bit_offset()+adjust, lhs->I_bit_size(), v, rhs));
-#endif
-
 	  // generate a new version of the new ivar node 
 	  stmt->Set_lhs(_htable->Add_idef(
 			  OPCODE_make_op(OPR_ILOAD, lhs->Dtyp(), lhs->Dsctyp()),
@@ -1383,33 +1312,25 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
 	cr->Opr() == OPR_ILOADX || 
 	cr->Opr() == OPR_MLOAD)
       return NULL;
-#ifdef KEY
     if (cr->Scalar_aux_id() == 0) // not folding because folded_scalar_limit reached 
       return NULL;
-#endif
     // this indirect load can be folded
     // generate a load of the zero version of the new scalar variable
     x = _htable->Ssa()->Get_zero_version_CR(cr->Scalar_aux_id(), _opt_stab, 0);
-#ifdef KEY // bug 8933
     if (_opt_stab->Is_volatile(cr->Scalar_aux_id())) 
       x->Set_var_volatile();
-#endif
-#if 1 // bug fix aug-26-02
     // indirect load is not volatile, but folded-to scalar is volatile
     if (x->Is_var_volatile()) 
       return NULL;
-#endif
     if (x->Dsctyp() == 0 ||
         (MTYPE_is_integral(x->Dsctyp()) &&
          MTYPE_byte_size(cr->Dsctyp()) != MTYPE_byte_size(x->Dsctyp())))
         x->Set_dsctyp(cr->Dsctyp());
     x->Set_lod_ty(TY_pointed(cr->Ilod_base_ty()));
     x->Set_field_id(cr->I_field_id());
-#if 1 // bug fix sep-4-02
     if (x->Field_id() == 0 && x->Dsctyp() != MTYPE_M && 
 	TY_size(x->Lod_ty()) != MTYPE_byte_size(x->Dsctyp()))
       x->Set_lod_ty(MTYPE_To_TY(x->Dsctyp()));
-#endif
     if (cr->Dsctyp() == MTYPE_BS) // cannot use offset from opt_stab
       x->Set_offset(cr->Offset()+cr->Ilod_base()->Offset());
     if (cr->Opr() == OPR_ILDBITS) 
@@ -1428,10 +1349,8 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
     cr->DecUsecnt();
     return x;
   case CK_OP:
-#ifdef KEY // bug 3064
     if (cr->Is_isop_flag_set(ISOP_LDAFOLD2_VISITED))
       return NULL;
-#endif
     need_rehash = FALSE;
     new_cr->Copy(*cr);
     new_cr->Set_usecnt(0);
@@ -1449,9 +1368,7 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
       cr->DecUsecnt();
       return _htable->Rehash(new_cr);
     }
-#ifdef KEY // bug 3064
     cr->Set_isop_flag(ISOP_LDAFOLD2_VISITED);
-#endif
     return NULL;
   }
 }
@@ -1526,15 +1443,11 @@ OPT_REVISE_SSA::Fold_lda_indirects(void)
 	  if (lhs->Is_ivar_volatile())
 	    break;
 	  vaux = lhs->Scalar_aux_id();
-#ifdef KEY
 	  if (vaux == 0) // not folding because folded_scalar_limit reached 
 	    break;
-#endif
-#if 1 // bug fix aug-26-02
       	  // indirect load is not volatile, but folded-to scalar is volatile
 	  if (_opt_stab->Is_volatile(vaux)) 
 	    break;
-#endif
 	  // this indirect can be folded
 	  // first, generate a new version of the new scalar variable
 	  stmt->Set_lhs(_htable->Add_def(vaux, -1, stmt, 
@@ -1542,11 +1455,9 @@ OPT_REVISE_SSA::Fold_lda_indirects(void)
 			_opt_stab->St_ofst(vaux),
 			TY_pointed(lhs->Ilod_base_ty()), lhs->I_field_id(), 
 			TRUE));
-#if 1 // bug fix sep-4-02
 	  if (stmt->Lhs()->Field_id() == 0 && stmt->Lhs()->Dsctyp() != MTYPE_M && 
 	      TY_size(stmt->Lhs()->Lod_ty()) != MTYPE_byte_size(stmt->Lhs()->Dsctyp()))
 	    stmt->Lhs()->Set_lod_ty(MTYPE_To_TY(stmt->Lhs()->Dsctyp()));
-#endif
 	  if (lhs->Dsctyp() == MTYPE_BS) // cannot use offset from opt_stab
 	    stmt->Lhs()->Set_offset(lhs->Offset()+lhs->Istr_base()->Offset());
 	  if (stmt->Opr() == OPR_ISTORE)

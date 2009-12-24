@@ -169,10 +169,7 @@ static void sir_put_wn(WN *wn)
     }
 
     if (OPCODE_operator(opcode) == OPR_INTRINSIC_OP
-#ifdef KEY
-	|| OPCODE_operator(opcode) == OPR_PURE_CALL_OP
-#endif
-       ) {
+	|| OPCODE_operator(opcode) == OPR_PURE_CALL_OP) {
       SPRINTF_ADV(ir_oidx, (ir_oidx, " %d", WN_kid_count(wn)));
     }
 

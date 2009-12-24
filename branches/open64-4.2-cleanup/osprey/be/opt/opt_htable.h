@@ -212,7 +212,7 @@ enum CR_FLAG {
   CF_IS_ZERO_VERSION= 0x80,// is a zero version
   CF_FOLDED_LDID   = 0x100,// is folded from (ILOAD(LDA)) 
   CF_MADEUP_TYPE   = 0x200,// the type is made up by SSA
-#ifdef TARG_SL
+#if defined(TARG_SL)
   // offset relative to internal memory (vbuf & sbuf)  and used as parameter 
   // in intrinisc_vbuf_offset and intrinsic_sbuf_offset
   CF_INTERNAL_MEM_OFFSET = 0x400, 
@@ -253,12 +253,10 @@ enum ISOP_FLAG {
 enum ISVAR_FLAG {
   ISVAR_SAFE_TO_RENUMBER_PREG = 0x01,
   ISVAR_BIT_FIELD_VALID       = 0X02,	// Bit_size() and Bit_offset() valid
-#ifdef KEY
   ISVAR_PROMOTE_TO_REG_SIZE   = 0x04,   // promotable byte- and half-sized vars
   					// to register size (4- or 8-bytes) via
   					// extract/compose
   ISVAR_MP_SHARED	      = 0x08,   // shared variable in MP region
-#endif
 };
 
 enum ISCONST_FLAG {
@@ -316,7 +314,7 @@ private:
   CODEKIND  kind:7;                  // code kind
   MTYPE     _dtyp:6;                 // data type
   MTYPE     dsctyp:6;                // descriptor type for various opcode
-#ifdef TARG_SL
+#if defined(TARG_SL)
   UINT32    usecnt:12;               // number of times this node's
                                      // expression appears.
                                      // not used for ISCONST and ISLDA
@@ -353,9 +351,7 @@ private:
 	  mUINT8 op_bit_size;	     // for EXTRACT_BITS and COMPOSE_BITS
 	} op_bit_offset_size;
 	INTRINSIC intrinsic;         // for INTRINSIC_CALL
-#ifdef KEY
 	ST_IDX   call_op_aux_id;     // for PURE_CALL_OP
-#endif
         CODEREP *index;              // index register for ILOADX
         TY_IDX   ty_index;           // for TAS
 	ST_IDX   asm_constraint;     // for ASM_INPUT
@@ -516,9 +512,7 @@ public:
     {
       Init(CK_LDA); Set_dtyp(wt);  Set_lda_ty(tt); Set_offset(ofst);
       Set_lda_aux_id(st); Set_lda_base_st(bas); Set_afield_id(field_id);
-#ifdef KEY
       Set_dsctyp(MTYPE_V);
-#endif
 
     }
 
@@ -536,18 +530,14 @@ public:
 #endif
       else Set_dtyp_const_val(wt, v);
 
-#ifdef KEY
       Set_dsctyp(MTYPE_V);
-#endif
 
     }
 
   void Init_rconst(MTYPE wt, ST *v)
     {
       Init(CK_RCONST); Set_dtyp(wt); Set_const_id(v);
-#ifdef KEY
       Set_dsctyp(MTYPE_V);
-#endif
 
     }
 
@@ -653,12 +643,10 @@ public:
   void      Set_dtyp(MTYPE dt)        { Is_True(Kind() != CK_CONST,
 					  ("CODEREP::Set_dtyp, illegal kind"));
 					_dtyp = dt; }
-#ifdef KEY
   MTYPE     Asm_input_rtype(void)  const    { return u2.isop._asm_input_dtyp; }
   void      Set_asm_input_rtype(MTYPE dt)   { u2.isop._asm_input_dtyp = dt; }
   MTYPE     Asm_input_dsctype(void) const   { return u2.isop._asm_input_dsctyp; }
   MTYPE     Set_asm_input_dsctype(MTYPE dt) {  u2.isop._asm_input_dsctyp = dt; }
-#endif
 #if defined(TARG_SL) || defined(TARG_NVISA)
   void	    Set_dtyp_const_val(MTYPE dt, INT64 v) { 
 					Is_True(Kind() == CK_CONST,
@@ -685,7 +673,7 @@ public:
 					u2.isconst.const_val = v; }
 #endif // TARG_SL
 #else  // TARG_X8664 || TARG_IA64
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
   void	    Set_dtyp_const_val(MTYPE dt, INT64 v) { Is_True(Kind() == CK_CONST,
 					    ("CODEREP::Set_dtyp_const_val, illegal kind"));
 					if (v == (v << 32) >> 32)
@@ -751,10 +739,8 @@ public:
   BOOL      Is_C3_Intrinsic()         { ((u1.nonarr.u11.intrinsic >= INTRN_C3_INTRINSIC_BEGIN) &&
 			                (u1.nonarr.u11.intrinsic <= INTRN_C3_INTRINSIC_END)); };
 #endif
-#ifdef KEY
   ST_IDX    Call_op_aux_id(void) const { return u1.nonarr.u11.call_op_aux_id; }
   void      Set_call_op_aux_id(ST_IDX i) { u1.nonarr.u11.call_op_aux_id = i; }
-#endif
   TY_IDX    Ty_index(void) const      { return u1.nonarr.u11.ty_index; }
   void      Set_ty_index(TY_IDX i)    { u1.nonarr.u11.ty_index = i; }
   ST_IDX    Asm_constraint(void) const{ return u1.nonarr.u11.asm_constraint; }
@@ -856,7 +842,6 @@ public:
     return u2.isvar._isvar_flags & ISVAR_BIT_FIELD_VALID;
   }
 
-#ifdef KEY
   void Set_promote_to_reg_size() {
     u2.isvar._isvar_flags |= ISVAR_PROMOTE_TO_REG_SIZE;
   }
@@ -876,7 +861,6 @@ public:
   BOOL Mp_shared() const {
     return u2.isvar._isvar_flags & ISVAR_MP_SHARED;
   }
-#endif
 #if defined(TARG_SL)
   void Set_RVI_Candidate() {
     u2.isconst.isconst_val._isconst_flags |= ISCONST_RVI_CANDIDATE; 
@@ -1015,7 +999,7 @@ public:
 					return OPCODE_make_op(Opr(), Dtyp(), Dsctyp()); }
   OPERATOR  Opr(void) const           { Is_True(Non_leaf(),
 				                ("CODEREP::Opr, illegal kind"));
-#ifndef __GNUC__
+#if !defined(__GNUC__)
 					return Kind() == CK_OP ? u2.isop._opr :
 							u2.isivar._opr; }
 #else
@@ -1582,7 +1566,7 @@ public:
   // hash functions that search htable and create new node if not found
   CODEREP    *Hash_Lda(CODEREP *cr)
     { Is_True(cr->Kind() == CK_LDA,("CODEMAP::Hash_Lda, wrong kind"));
-#ifdef TARG_SL
+#if defined(TARG_SL)
       IDX_32 hash_idx = Hash_lda(cr->Lda_base_st(),(IDTYPE)(cr->Offset() + cr->Is_flag_set(CF_INTERNAL_MEM_OFFSET)));
 #else 
       IDX_32 hash_idx = Hash_lda(cr->Lda_base_st(),(IDTYPE)cr->Offset());
@@ -1877,9 +1861,6 @@ private:
 
   union {
     UINT32     _label_flags;  // the label flags
-#ifndef KEY
-    UINT32     _asm_stmt_flags;  // the ASM_STMT flags
-#endif
     MU_LIST   *_mu_list;      // list of possibly ref'd values
 //    MTYPE      _rhs_type;     // rhs type for assignment statements
   } _u4;
@@ -1892,7 +1873,6 @@ private:
   UINT        _proj_op_uses : 2; // number of uses of the unique
 				 // projectible operation on the RHS
 				 // of STID.
-#ifdef KEY
   UINT32      _str_red_num: 4;  // for IV update stmts, # of induction exprs
   				// injured by it during EPRE
   UINT32      _asm_stmt_flags:3;  // the ASM_STMT flags
@@ -1904,20 +1884,14 @@ private:
 #else  
   UINT        _unused : 5;      // allocate new flag bits from here.
 #endif
-#else
-  UINT        _unused : 12;      // allocate new flag bits from here.
-#endif
 
   // initializer to be called by all constructors
   void Init(void)		{ _lhs = _rhs = NULL;
 				  _opr = OPERATOR_UNKNOWN;
 				  _rtype = _desc = MTYPE_UNKNOWN;
 				  bb = NULL;
-#ifndef KEY
-				  _flags = SRF_NONE;
-#else // need this if all optimization phases are disabled
+
 				  _flags = SRF_LIVE_STMT;
-#endif
 				  _linenum = (SRCPOS)0;
 				  _u4._mu_list = NULL;
 				  _chi_list = NULL;
@@ -2191,7 +2165,7 @@ public:
   UINT32     Str_red_num(void) const	{ return _str_red_num; }
   void	     Inc_str_red_num(void)	{ _str_red_num++; }
 
-#ifdef TARG_SL //fork_joint
+#if defined(TARG_SL) //fork_joint
   // we need passing fork compgoto flag from whirl node to stmtrep 
   BOOL      Fork_stmt_flags(void) const       { return _sl2_compgoto_para; }
   void      Set_fork_stmt_flags(BOOL f)       { _sl2_compgoto_para = f; }
@@ -2202,13 +2176,8 @@ public:
 #endif 
 
   // for the ASM_STMT flags
-#ifdef KEY
   UINT32     Asm_stmt_flags(void) const    { return _asm_stmt_flags; }
   void       Set_asm_stmt_flags(UINT32 f)  { _asm_stmt_flags = f; }
-#else
-  UINT32     Asm_stmt_flags(void) const    { return _u4._asm_stmt_flags; }
-  void       Set_asm_stmt_flags(UINT32 f)  { _u4._asm_stmt_flags = f; }
-#endif
 
   IDX_32    Bitpos(void) const          { return _u5._bitpos; }
   void      Set_Bitpos(IDX_32 bp)     	{ _u5._bitpos = bp; }

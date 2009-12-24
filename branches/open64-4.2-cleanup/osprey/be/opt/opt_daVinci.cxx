@@ -60,7 +60,7 @@
 #include <sys/types.h>              // for pid_t
 #include <unistd.h>                 // for fork(), pipe(), etc.
 #include <signal.h>                 // for SIGINT
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
 #if defined(__CYGWIN__) || defined(__APPLE__)
 #include <sys/wait.h>
 #elif defined(BUILD_OS_DARWIN)
@@ -107,7 +107,7 @@ public:
 
 DAVINCI::DAVINCI(void)
 {
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
   to_display = from_display = NULL;
   
   if (isatty (1) == 0 && isatty (2) == 0)
@@ -200,7 +200,7 @@ DAVINCI::wait_for (const char *str)
 void
 DAVINCI::cleanup (void)
 {
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
   int stat;
   
   display_ok = FALSE;
