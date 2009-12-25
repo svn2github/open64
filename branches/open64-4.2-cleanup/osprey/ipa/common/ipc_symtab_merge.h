@@ -38,7 +38,7 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef ipc_symtab_merge_INCLUDED
+#if !defined(ipc_symtab_merge_INCLUDED)
 #define ipc_symtab_merge_INCLUDED
 
 /* The following constant values are shared by both ld and ipa.  Each
@@ -56,7 +56,7 @@
 #define WHIRL_ST_IDX_UNINITIALIZED (0)
 #define WHIRL_ST_IDX_NOT_AVAILABLE (-1)
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 
 #include <map>	
 
@@ -85,31 +85,31 @@ enum AUX_ST_FLAG
 extern "C" void
 Sync_symbol_attributes (ST_IDX st_idx, UINT32 sym_attr, BOOL is_weak,
 			UINT32 export_class);
-#ifdef SHARED_BUILD
+#if defined(SHARED_BUILD)
 #pragma weak Sync_symbol_attributes
 #endif
 
 extern "C" void
 Linker_mark_not_gp_rel (ST_IDX st_idx);
-#ifdef SHARED_BUILD
+#if defined(SHARED_BUILD)
 #pragma weak Linker_mark_not_gp_rel
 #endif
 
 #endif 
 
-#ifndef _LD_IPA_INTERFACE
+#if !defined(_LD_IPA_INTERFACE)
 
 #include <vector>
 
-#ifndef mempool_allocator_INCLUDED
+#if !defined(mempool_allocator_INCLUDED)
 #include "mempool_allocator.h"
 #endif
 
-#ifndef symtab_INCLUDED
+#if !defined(symtab_INCLUDED)
 #include "symtab.h"
 #endif
 
-#ifndef ipa_cg_INCLUDED
+#if !defined(ipa_cg_INCLUDED)
 #include "ipa_cg.h"			// for CALL_GRAPH_NODE
 #endif 
 

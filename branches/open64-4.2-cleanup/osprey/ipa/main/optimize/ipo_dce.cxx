@@ -62,9 +62,7 @@ Compute_Return_Pregs(TY_IDX callee_ty)
     TYPE_ID ty1, ty2;
     TY_IDX typ;
 
-#ifdef KEY
     BOOL ret_via_first_arg = FALSE;
-#endif
 
     // get the return type from the callee's opcode
     if (typ = Tylist_Table[TY_tylist(Ty_Table[callee_ty])])
@@ -80,9 +78,7 @@ Compute_Return_Pregs(TY_IDX callee_ty)
 		    ty2 = RETURN_INFO_mtype (return_info, 1);
 		    Reg1 = RETURN_INFO_preg (return_info, 0);
 		    Reg2 = RETURN_INFO_preg (return_info, 1);
-#ifdef KEY
 		    ret_via_first_arg = RETURN_INFO_return_via_first_arg (return_info);
-#endif
 		}
 
 		else
@@ -97,9 +93,7 @@ Compute_Return_Pregs(TY_IDX callee_ty)
 	    if (Reg1 && Reg2)
 		return 2;
 	    else if (Reg1 || Reg2
-#ifdef KEY
 	             || ret_via_first_arg
-#endif
 	            )
 		return 1;
 	}

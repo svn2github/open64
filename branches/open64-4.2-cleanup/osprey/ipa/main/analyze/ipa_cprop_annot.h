@@ -38,7 +38,7 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef cxx_ipa_cprop_annot_INCLUDED
+#if !defined(cxx_ipa_cprop_annot_INCLUDED)
 #define cxx_ipa_cprop_annot_INCLUDED
 
 extern BOOL

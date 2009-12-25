@@ -63,13 +63,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
 #include <sys/mman.h>
 #endif
 #include <ctype.h>
 #include <string.h>
 #include <ar.h>         /* for support of -INLINE:library= */
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
 #include <sys/errno.h>  /* for EBADF */
 #endif // __MINGW32__
 #include "defs.h"
@@ -207,7 +207,7 @@ Is_Skip_Equal(char *name)
     return (User_Specified_Skip_Info(name) == SKIP_EQUAL);
 }
 
-#ifdef _STANDALONE_INLINER
+#if defined(_STANDALONE_INLINER)
 
 #include "ipc_type_merge.h"
 #include "ipc_utils.h"
@@ -349,18 +349,14 @@ Process_Non_Local_Libraries()
 template <class DATA, class ACTION>
 static void
 Add_Symbols(char *args, DATA data, ACTION perform_action
-#ifdef KEY
 , const char * opt
-#endif
 )
 {
-#ifdef KEY
   if (! args)
   {
     ErrMsg (EC_No_Opt_Val, opt, "INLINE");
     return;
   }
-#endif // KEY
   BOOL more_symbols = TRUE;
 
   do {
@@ -382,7 +378,7 @@ Add_Symbols(char *args, DATA data, ACTION perform_action
 }
 
 
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
 
 /* ====================================================================
  *
@@ -476,7 +472,7 @@ Process_Inline_Options ( void )
 {
   OPTION_LIST *ol;
 
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
   /* Walk the specfile list.  Since new -INLINE:specfile options add
    * the element to the end of the list, this will handle nested
    * references just fine.  We also use the general common group
@@ -491,7 +487,6 @@ Process_Inline_Options ( void )
 #endif /* __MINGW32__ */
 
   /* Walk the list of must/never options: */
-#ifdef KEY
 // Get rid of some compiler crashes and assertion failures and replace with
 // appropriate error messages
   for ( ol = INLINE_List_Names; ol != NULL; ol = OLIST_next(ol) ) {
@@ -511,7 +506,7 @@ Process_Inline_Options ( void )
     else if ( strcmp ( OLIST_opt(ol), "in_edge" ) == 0 ) {
       Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Edges_For_Inlining(), "in" );
     }
-#ifdef _STANDALONE_INLINER
+#if defined(_STANDALONE_INLINER)
 // not yet enabled
     else if ( strcmp ( OLIST_opt(ol), "file" ) == 0 ) {
       Add_Symbols( OLIST_val(ol), NULL, Process_Specified_Files(), "file" );
@@ -526,38 +521,6 @@ Process_Inline_Options ( void )
 	ErrMsg (EC_Not_In_Grp, OLIST_opt(ol), "INLINE", flag);
     }
  }
-#else
-  for ( ol = INLINE_List_Names; ol != NULL; ol = OLIST_next(ol) ) {
-    if ( strcmp ( OLIST_opt(ol), "must" ) == 0 ) {
-      Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Symbols_For_Inlining());
-    } 
-    else if ( strcmp ( OLIST_opt(ol), "never" ) == 0 ) {
-      Add_Symbols( OLIST_val(ol), USER_NO_INLINE, Hash_Symbols_For_Inlining() );
-    } 
-    else if ( strcmp ( OLIST_opt(ol), "skip" ) == 0 ) {
-      Add_Symbols( OLIST_val(ol), USER_NO_INLINE, Hash_Edges_For_Inlining() );
-    }
-    else if ( strcmp ( OLIST_opt(ol), "edge" ) == 0 ) {
-      INLINE_None = TRUE;
-      Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Edges_For_Inlining() );
-    }
-    else if ( strcmp ( OLIST_opt(ol), "in_edge" ) == 0 ) {
-      Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Edges_For_Inlining() );
-    }
-#ifdef _STANDALONE_INLINER
-    else if ( strcmp ( OLIST_opt(ol), "file" ) == 0 ) {
-      Add_Symbols( OLIST_val(ol), NULL, Process_Specified_Files() );
-    } 
-    else if ( strcmp ( OLIST_opt(ol), "library" ) == 0 ) {
-      Add_Symbols( OLIST_val(ol), NULL, Process_Specified_Libraries() );
-    } 
-#endif // _STANDALONE_INLINER
-    else {
-	FmtAssert ( FALSE,
-		   ( "Unknown -INLINE option: %s", OLIST_opt(ol) ) );
-    }
- }
-#endif // KEY
 
   /* Check that we don't have conflicting defaults: */
   if ( INLINE_All && INLINE_None ) {
@@ -567,7 +530,7 @@ Process_Inline_Options ( void )
   }
 }
 
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
 /* ====================================================================
  *
  * Process_IPA_Skip_Options
@@ -586,11 +549,7 @@ Process_IPA_Skip_Options ( void )
   /* only implement skip_equal for now */
   for ( ol = IPA_Skip; ol != NULL; ol = OLIST_next(ol) ) {
     if ( strcmp ( OLIST_opt(ol), "skip_equal" ) == 0 ) {
-#ifdef KEY
       Add_Symbols( OLIST_val(ol), SKIP_EQUAL, Hash_Symbols_For_Skipping(), "skip_equal");
-#else
-      Add_Symbols( OLIST_val(ol), SKIP_EQUAL, Hash_Symbols_For_Skipping());
-#endif
     } 
     else {
 	FmtAssert ( FALSE,

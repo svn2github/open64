@@ -38,7 +38,7 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef ipc_ty_hash_INCLUDED
+#if !defined(ipc_ty_hash_INCLUDED)
 #define ipc_ty_hash_INCLUDED
 
 // we steal a TY_IDX bit for temporary marking of merge state

@@ -38,7 +38,7 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef ipo_const_INCLUDED
+#if !defined(ipo_const_INCLUDED)
 #define ipo_const_INCLUDED
 
 //------------------------------------------------------------------

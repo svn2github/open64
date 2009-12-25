@@ -39,7 +39,7 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#ifndef cxx_ipa_section_prop_INCLUDED
+#if !defined(cxx_ipa_section_prop_INCLUDED)
 #define cxx_ipa_section_prop_INCLUDED
 
 extern MEM_POOL IPA_array_prop_pool;

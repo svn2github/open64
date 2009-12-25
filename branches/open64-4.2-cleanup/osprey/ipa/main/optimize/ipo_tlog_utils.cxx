@@ -62,7 +62,7 @@
 //        -IPA -Wl,-tt1:19 -keep : generates a.out.tlog for IPA
 //     	  -Wi,-tt1:17 -keep : generates file.tlog for STANDALONE INLINER
 // ====================================================================
-#ifdef _KEEP_RCS_ID
+#if defined(_KEEP_RCS_ID)
 #define ipo_tlog_utils_CXX	"ipo_tlog_utils.cxx"
 static char *rcs_id = 	ipo_tlog_utils_CXX"$Revision: 1.4 $";
 #endif /* _KEEP_RCS_ID *///-*-c++-
@@ -71,7 +71,7 @@ static char *rcs_id = 	ipo_tlog_utils_CXX"$Revision: 1.4 $";
 #include <strings.h>
 #include <time.h>
 
-#ifndef USE_STANDARD_TYPES
+#if !defined(USE_STANDARD_TYPES)
 #define USE_STANDARD_TYPES
 #endif
 #include "defs.h"
@@ -141,7 +141,6 @@ Set_ipa_tlog_phase(const INT32 i)
     tlog_phase = "INLINER";
 }
 
-#ifdef KEY
 extern "C" PHASE_NAME
 Get_ipa_tlog_phase(void)
 {
@@ -151,7 +150,6 @@ Get_ipa_tlog_phase(void)
   	return PHASE_IPA;
   return PHASE_INLINER;
 }
-#endif
 
 extern "C" void 
 Ipa_tlog(const char *keyword, SRCPOS srcpos, const char *fmt, ...)

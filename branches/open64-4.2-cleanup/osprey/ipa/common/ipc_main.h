@@ -37,24 +37,24 @@
 */
 
 
-#ifndef __IPC_MAIN_H__
+#if !defined(__IPC_MAIN_H__)
 #define __IPC_MAIN_H__
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
 extern void ipa_driver (int, char **);
 extern void ipa_dot_so_init (void);
 
-#ifdef _LD_IPA_INTERFACE
+#if defined(_LD_IPA_INTERFACE)
 
 #pragma weak ipa_driver
 #pragma weak ipa_dot_so_init
 
 #endif
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 

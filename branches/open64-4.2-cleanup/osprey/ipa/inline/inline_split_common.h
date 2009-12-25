@@ -38,7 +38,7 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef inline_split_common_INCLUDED
+#if !defined(inline_split_common_INCLUDED)
 #define inline_split_common_INCLUDED
 
 extern void INLINE_Split_Common ();

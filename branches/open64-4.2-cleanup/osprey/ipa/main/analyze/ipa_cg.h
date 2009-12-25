@@ -42,64 +42,64 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef cxx_ipa_cg_INCLUDED
+#if !defined(cxx_ipa_cg_INCLUDED)
 #define cxx_ipa_cg_INCLUDED
 
 #include <vector>
 
-#ifndef mempool_allocator_INCLUDED
+#if !defined(mempool_allocator_INCLUDED)
 #include <mempool_allocator.h>
 #endif
 
-#ifndef pu_info_INCLUDED
+#if !defined(pu_info_INCLUDED)
 #include "pu_info.h"
 #endif /* pu_info_INCLUDED */
 
-#ifndef ip_graph_INCLUDED
+#if !defined(ip_graph_INCLUDED)
 #include "ip_graph.h"
 #endif
 
-#ifndef cxx_ip_graph_trav_INCLUDED
+#if !defined(cxx_ip_graph_trav_INCLUDED)
 #include "ip_graph_trav.h"
 #endif
 
-#ifndef xstats_INCLUDED
+#if !defined(xstats_INCLUDED)
 #include "xstats.h"
 #endif
 
-#ifndef ipl_summary_INCLUDED
+#if !defined(ipl_summary_INCLUDED)
 #include "ipl_summary.h"
 #endif
 
-#ifndef ip_call_INCLUDED
+#if !defined(ip_call_INCLUDED)
 #include "ip_call.h"
 #endif // ip_call_INCLUDED
 
-#ifndef dwarf_DST_mem_INCLUDED
+#if !defined(dwarf_DST_mem_INCLUDED)
 #include "dwarf_DST_mem.h"            // Needed by ipc_file.h
 #endif // dwarf_DST_mem_INCLUDED
 
-#ifndef ipc_file_INCLUDED
+#if !defined(ipc_file_INCLUDED)
 #include "ipc_file.h"
 #endif
 
-#ifndef ip_bwrite_INCLUDED
+#if !defined(ip_bwrite_INCLUDED)
 #include "ipc_bwrite.h"
 #endif
 
-#ifndef cxx_ipa_cprop_INCLUDED
+#if !defined(cxx_ipa_cprop_INCLUDED)
 #include "ipa_cprop.h"
 #endif
 
-#ifndef cxx_ipa_summary_INCLUDED
+#if !defined(cxx_ipa_summary_INCLUDED)
 #include "ipa_summary.h"
 #endif
 
-#ifndef ipc_pu_size_INCLUDED
+#if !defined(ipc_pu_size_INCLUDED)
 #include "ipc_pu_size.h"
 #endif
 
-#ifndef fb_whirl_INCLUDED
+#if !defined(fb_whirl_INCLUDED)
 #include "fb_whirl.h"
 #endif
 
@@ -162,7 +162,7 @@ public:
 
 typedef vector<IPA_ICALL_NODE*> IPA_ICALL_LIST;
 
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
 typedef vector<char*> INLINED_BODY_LIST;
 #endif // _LIGHTWEIGHT_INLINER
 
@@ -195,7 +195,6 @@ private:
   static const mUINT32 _quasi_clone =        0x20000;   
   static const mUINT32 _preoptimized =       0x40000;   
   static const mUINT32 _has_aliased_formal = 0x80000;
-#ifdef KEY
   static const mUINT32 _builtin =           0x100000;	// IPA builtin
   static const mUINT32 _pu_write_complete = 0x200000;	// all EH info processed
   static const mUINT32 _recursive =	    0x400000;	// recursive
@@ -203,7 +202,6 @@ private:
   static const mUINT32 _can_throw = 	   0x1000000;   // PU can throw exc.
   static const mUINT32 _ehinfo_updated =   0x2000000;   // summary updated
   static const mUINT32 _pending_icalls =   0x4000000;   // need icall conversion
-#endif
   static const mUINT32 _part_inl_candidate = 0x8000000; // whether this PU 
                                                         // a partial inlining
                                                         // candidate
@@ -232,11 +230,9 @@ private:
   mINT32             _emit_id;          // emit id of the PU in the *.I, start from 0
 #endif // TARG_SL
 
-#ifdef KEY
   struct pu_info    *_builtin_pu_info;
   mUINT32	    _sizeof_eh_spec;	// # of types in eh-specification
   mINT32	    _file_id;		// id of the file containing this pu
-#endif
 
   IPAA_NODE_INFO*        _mod_ref_info; // mod/ref information
   VALUE_DYN_ARRAY*       _cprop_annot;  // annotation for parameter constants
@@ -257,7 +253,7 @@ private:
 
   mUINT32          _flags;		// various Boolean attribute flags
   INT32            _partition_num;
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
   INLINED_BODY_LIST  _inlined_list;     // Hold pts to all inlined callees
                                         // for this node
 #endif // _LIGHTWEIGHT_INLINER
@@ -296,19 +292,16 @@ public:
     _icall_list (),
     _ocall_list (),
     _max_region_id (0),
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
     _inlined_list (),
 #endif // _LIGHTWEIGHT_INLINER
     _flags (0),
     _partition_num(0)
-#ifdef KEY
     ,_builtin_pu_info (NULL)
     ,_sizeof_eh_spec (0)
     ,_file_id (-1)
-#endif
     ,_leftover_body (NULL)
   {
-#ifdef KEY
     // If we are constructing for a builtin, then skip the info that a builtin
     // doesn't have.
     if (_file_index == -1) {
@@ -318,7 +311,6 @@ public:
       Is_True(st != 0, ("IPA NODE must have valid st"));
       return;
     }
-#endif
 
     SUMMARY_PROCEDURE* summary_proc = this->Summary_Proc();
     _pu_size.Set_PU_Size (summary_proc->Get_bb_count (), 
@@ -416,7 +408,7 @@ public:
   void Clear_Flags (UINT32 flags)	{ _flags &= ~flags; }
   UINT32 Flags () const		        { return _flags; }
 
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
   INLINED_BODY_LIST& Inlined_list ()    { return _inlined_list; }
 #endif // _LIGHTWEIGHT_INLINER
 
@@ -529,7 +521,6 @@ public:
   void Set_Preoptimized ()      { _flags |= _preoptimized; }
   BOOL Is_Preoptimized () const { return _flags & _preoptimized; }
 
-#ifdef KEY
   // node is for a IPA builtin
   void Set_Builtin ()           { _flags |= _builtin; }
   BOOL Is_Builtin () const      { return _flags & _builtin; }
@@ -565,7 +556,6 @@ public:
   BOOL Has_Pending_Virtual_Functions () const { return _flags & _pending_vfuns; }
 
   static mINT32 next_file_id; // public field
-#endif
 
   // node contains SCLASS_FORMAL variables that are based on another formal.
   // When we convert a formal parameter to a local variable, we need to know
@@ -636,9 +626,7 @@ public:
 
   BOOL Is_Lang_F77() const      { return PU_f77_lang (Get_PU()); }
   BOOL Is_Lang_F90() const      { return PU_f90_lang (Get_PU()); }
-#ifdef KEY
   BOOL Is_Lang_CXX() const      { return PU_cxx_lang (Get_PU()); }
-#endif
 
 
   UINT32 Weight (void) const	{ return _pu_size.Weight (); }
@@ -682,27 +670,16 @@ public:
   struct pu_info *PU_Info(void) const 
   {
     Is_True(_func_st != 0, ("IPA NODE must have valid st"));
-#if 0
-    Is_True(&St_Table[PU_Info_proc_sym(IP_FILE_HDR_proc_info(
-                                                             File_Header())[Proc_Info_Index()].info)]
-            == _func_st,
-            ("IPA_NODE: file/proc indices [%d:%d] inconsistent with st",
-             _file_index, _proc_info_index));
-#endif
 
-#ifdef KEY
     if (this->Is_Builtin())
       return _builtin_pu_info;
-#endif
 
     return IP_FILE_HDR_proc_info (File_Header())[Proc_Info_Index()].info;
   }
 
-#ifdef KEY
   void Set_Builtin_PU_Info (struct pu_info *p) { _builtin_pu_info = p; }
 
   struct pu_info *Builtin_PU_Info() { return _builtin_pu_info; }
-#endif
 
   WN_MAP_TAB* Map_Table() const
   {
@@ -769,7 +746,6 @@ public:
 #if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
     return NULL;
 #else 
-#ifdef KEY
     /* If a proc is never invoked, then Summary_Proc()->Get_feedback_index()
        will always return 0 by default, which will give ipa some other function's
        feedback info.
@@ -777,7 +753,6 @@ public:
     if( Summary_Proc()->Is_Never_Invoked() ){
       return NULL;
     }
-#endif
     return IPA_get_feedback_array (this) + Summary_Proc()->Get_feedback_index ();
 #endif 
   }
@@ -803,14 +778,12 @@ public:
     return (fb? fb->Get_cycle_count (): FB_FREQ_UNKNOWN);
   };
 
-#ifdef KEY
   UINT64 Get_func_runtime_addr () {
     SUMMARY_FEEDBACK * fb = Get_feedback();
     return (fb ? fb->Get_func_runtime_addr () : 0);
   }
-#endif
 
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
   void Add_to_inlined_list (char *body) {
     _inlined_list.push_back(body);
   }
@@ -826,7 +799,6 @@ public:
 
 }; // IPA_NODE
 
-#ifdef KEY
 #include <ext/hash_map>
 #include <functional>
 struct option_cmp : public std::binary_function<char *, char *, bool>
@@ -868,7 +840,6 @@ class Nodes_To_Edge
   	return (caller_id == o->caller_id && callee_id == o->callee_id);
   }
 };
-#endif
 
 class IPA_EDGE
 {
@@ -887,11 +858,9 @@ private:
   IPA_EDGE_INDEX _array_index;		// index into the IPA_EDGE_ARRAY
   SUMMARY_CALLSITE *_c;                 // summary information
   WN *_w;				// WHIRL node of the callsite
-#ifdef KEY
   WN *_eh_wn;				// enclosing eh-region wn
   LABEL_IDX try_label;			// try label from enclosing try-region if any
   WN *_mp_wn;				// enclosing mp-region wn
-#endif
 
   VALUE_DYN_ARRAY       *_cprop_annot;  // constant propagation annotation
 
@@ -909,11 +878,9 @@ public:
     _array_index (array_index),
     _c(c),
     _w(0),
-#ifdef KEY
     _eh_wn(0),
     try_label(0),
     _mp_wn(0),
-#endif
     _cprop_annot(0),
     _flags(0),
     _readonly_actuals(0),
@@ -938,7 +905,6 @@ public:
   void Set_Whirl_Node (WN* w)   { _w = w; }
   WN* Whirl_Node () const       { return _w; }
 
-#ifdef KEY
   void Set_EH_Whirl_Node (WN* w) { _eh_wn = w; }
   WN* EH_Whirl_Node () const	 { return _eh_wn; }
 
@@ -948,7 +914,6 @@ public:
 
   void Set_MP_Whirl_Node (WN * w) { _mp_wn = w; }
   WN * MP_Whirl_Node () const     { return _mp_wn; }
-#endif
 
   void Set_Cprop_Annot (VALUE_DYN_ARRAY* annot)	{ _cprop_annot = annot; }
   VALUE_DYN_ARRAY* Cprop_Annot () const	        { return _cprop_annot; }
@@ -1043,12 +1008,10 @@ public:
     return Summary_Callsite() ?  Summary_Callsite()->Get_frequency_count() : FB_FREQ_UNKNOWN;
   }
 
-#ifdef KEY
   void Set_frequency ( FB_FREQ freq ) {
     if (Summary_Callsite()) 
     	Summary_Callsite()->Set_frequency_count (freq) ;
   }
-#endif
 
 }; // IPA_EDGE
 
@@ -1183,9 +1146,7 @@ public:
     return NODE_level(&GRAPH_v_i(_graph, node->Node_Index()));
   }
 
-#ifdef KEY
   void Merge_Nodes (NODE_INDEX, NODE_INDEX);
-#endif
 
   // Number of edges from the caller to the callee
   INT32 Num_Calls (IPA_NODE* caller, IPA_NODE* callee) const;
@@ -1256,10 +1217,8 @@ extern BOOL IPA_Call_Graph_Built;
 
 extern void IPA_Process_File (IP_FILE_HDR& hdr);
 extern void Build_Call_Graph ();
-#ifdef KEY
 extern IPA_CALL_GRAPH *IPA_Graph_Undirected;
 extern void IPA_Convert_Icalls( IPA_CALL_GRAPH* );
-#endif
 
 //INLINING_TUNING^
 extern UINT32 Orig_Prog_WN_Count;
@@ -1341,7 +1300,7 @@ public:
 
     ~AUX_IPA_NODE () { MEM_POOL_FREE (pool, data); }
 
-// KEY: Added '|| !_STANDALONE_INLINER' to enable code for IPA in all the 
+// Added '|| !_STANDALONE_INLINER' to enable code for IPA in all the 
 // following functions
     NODE& operator[] (const IPA_NODE* node) {
 #if defined(_LIGHTWEIGHT_INLINER) || !defined(_STANDALONE_INLINER)
@@ -1580,12 +1539,12 @@ extern IPA_NODE* Main_Entry (IPA_NODE* ipan_alt);
 extern void IPA_update_summary_st_idx (const IP_FILE_HDR& hdr);
 extern char* IPA_Node_Name(IPA_NODE* node);
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
 extern void Mark_PUs_With_File_Id (PU_Info *, UINT);
 extern BOOL Opt_Options_Inconsistent;
-#endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+#endif // !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
 
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
 extern BOOL Is_Node_Inlinable_In_Call_Graph(ST_IDX idx);
 
 extern IPA_NODE* Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& index);

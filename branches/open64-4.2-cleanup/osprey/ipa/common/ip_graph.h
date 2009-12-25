@@ -57,10 +57,10 @@
  * ====================================================================
  */
 
-#ifndef ip_graph_INCLUDED
+#if !defined(ip_graph_INCLUDED)
 #define ip_graph_INCLUDED
 
-#ifndef mempool_INCLUDED
+#if !defined(mempool_INCLUDED)
 #include "mempool.h"
 #endif
 

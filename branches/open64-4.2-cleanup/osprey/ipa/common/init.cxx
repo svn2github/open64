@@ -31,7 +31,7 @@
 // This file define initialization of pointer variables to symbols defined
 // in ipa.so but referenced in be/be.so.
 
-#ifdef __linux__
+#if defined(__linux__)
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>

@@ -37,7 +37,7 @@
 */
 
 
-#ifndef ipo_parent_INCLUDED
+#if !defined(ipo_parent_INCLUDED)
 #define ipo_parent_INCLUDED
 
 #include "defs.h"

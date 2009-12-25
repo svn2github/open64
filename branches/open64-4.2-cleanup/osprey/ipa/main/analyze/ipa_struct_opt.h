@@ -26,7 +26,7 @@
 // Temple Place - Suite 330, Boston MA 02111-1307, USA.
 ////////////////////////////////////////////////////////////////////////////
 
-#ifndef cxx_ipa_struct_opt_INCLUDED
+#if !defined(cxx_ipa_struct_opt_INCLUDED)
 #define cxx_ipa_struct_opt_INCLUDED
 
 #include "defs.h"

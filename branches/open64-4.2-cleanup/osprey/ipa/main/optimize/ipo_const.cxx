@@ -333,29 +333,6 @@ Update_wn_types (WN* pu, const TY_TO_TY_MAP* old_to_new_ty_map)
   }
 }
 
-#if 0
-// -----------------------------------------------------------------
-// Replace an LDID node with the constant and update parent pointers
-// -----------------------------------------------------------------
-static void
-Replace_ldid_with_constant (WN* ldid_wn, WN* const_wn)
-{
-  WN* parent = LWN_Get_Parent(ldid_wn);
-  Is_True (parent, ("Replace_ldid_with_constant: no parent for LDID node"));
-
-  INT k = 0; 
-  while (k < WN_kid_count(parent) && WN_kid(parent,k) != ldid_wn) {
-    ++k;
-  }
-  Is_True(k < WN_kid_count(parent), 
-          ("Replace_ldid_with_constant: broken parent pointer"));
-
-  WN_Delete(ldid_wn);
-  WN_kid(parent,k) = WN_COPY_Tree(const_wn);
-  LWN_Set_Parent(WN_kid(parent, k), parent);
-}
-#endif  
-
 // -----------------------------------------------------------------------
 // After constant formals have been substituted in array bound expressions
 // simplify STIDs to symbolic bound variables to try to make them constant
@@ -392,12 +369,10 @@ Update_array_bounds (WN* pu)
           }
           // replace all LDIDs of the formal by the constant
           else if (opr == OPR_LDID && WN_st(node) == st
-#ifdef KEY
           // Bug 14197: Above, the STID was to the ST with offset 0, so
           // we can only replace offset 0 LDIDs. Also note, there is really
           // no check to limit this replacement to only formals.
                    && WN_offset(node) == 0
-#endif
 		   ) {
             iter.Replace(WN_COPY_Tree(rhs));
           }
@@ -481,15 +456,11 @@ IPA_constant_in_array_bounds (const SUMMARY_VALUE& value,
     }
     // replace all LDIDs of the formal by the constant
     else if (opr == OPR_LDID && WN_st(wn) == formal_st) {
-#ifdef KEY
       TYPE_ID rtype = WN_rtype(wn);
-#endif
       iter.Replace(WN_COPY_Tree(const_wn));
-#ifdef KEY
       // bug 8666: The usage type of the constant may be different than
       // the inherent type, e.g. I4 constant used as I8. Use the proper type.
       WN_set_rtype (iter.Wn(), rtype);
-#endif
       found_formal_ldid = TRUE;
     }
     ++iter;
@@ -501,21 +472,7 @@ IPA_constant_in_array_bounds (const SUMMARY_VALUE& value,
   return found_formal_ldid;
 }
 
-#if 0
-//-------------------------------------------------------------------
-// generate the assignment statement
-//-------------------------------------------------------------------
-static WN*
-Create_Stmt (ST* formal, WN* const_wn, TYPE_ID desc)
-{
-    WN* result = WN_Stid (desc, 0, formal, ST_type (formal), const_wn);
-    LWN_Set_Parent (const_wn, result);
-    return result;
-    
-} // Create_Stmt
-#endif
-
-#ifdef Is_True_On
+#if defined(Is_True_On)
 // create assert statement to verify if "formal" has value equals to
 // "const_wn" 
 static inline WN*
@@ -568,11 +525,7 @@ Gen_WN_Const (const SUMMARY_VALUE& value)
 // create a global ST from the given SUMMARY_VALUE, return NULL if symbol
 // is not global
 static ST*
-#ifdef KEY
 Create_Global_ST (const SUMMARY_VALUE& value, BOOL * incompatible = NULL)
-#else
-Create_Global_ST (const SUMMARY_VALUE& value)
-#endif
 {
     Is_True (value.Is_addr_of (), ("Expecting a memory address"));
 
@@ -587,12 +540,10 @@ Create_Global_ST (const SUMMARY_VALUE& value)
 	else {
 	    TYPE_ID mtype = value.Is_addr_of () ? value.Target_mtype () :
 		value.Get_mtype (); 
-#ifdef KEY
 	    if (!MTYPE_is_integral (mtype) && incompatible) {
 	      *incompatible = TRUE;
 	      return NULL;
 	    }
-#endif
 	    return New_Const_Sym (Enter_tcon (Host_To_Targ (mtype,
 							    value.Get_int_const_value ())),
 				  MTYPE_To_TY (mtype));
@@ -652,7 +603,7 @@ Generate_Assignment_Stmt (ST* formal, WN* block, WN* const_wn)
     LWN_Set_Parent (const_wn, stmt);
     WN_INSERT_BlockBefore(block, NULL, stmt);
 	    
-#ifdef Is_True_On
+#if defined(Is_True_On)
     if (IPA_Enable_Assert && !IPA_Enable_Cprop2) {
 	WN_INSERT_BlockBefore (block, stmt,
 			       Create_Assert (formal, const_wn, desc));
@@ -777,9 +728,9 @@ Replace_Icall (TREE_ITER& iter, const WN* icall, ST* actual)
     for (INT i = 0; i < WN_kid_count (icall) - 1; ++i) {
 	WN_kid (call, i) = WN_kid (icall, i);
     }
-#ifdef KEY // bug 1050
+// bug 1050
     WN_call_flag(call) = WN_call_flag(icall);
-#endif
+    
     iter.Replace (call);
 } // Replace_Icall
 
@@ -815,7 +766,6 @@ Replace_Formal_By_LDA (WN* func_body, ST_IDX formal, ST* actual)
 	    if (WN_operator (WN_kid0 (wn)) == OPR_LDID &&
 		WN_st_idx (WN_kid0 (wn)) == formal) {
 		if (WN_field_id (wn)) {
-#ifdef KEY
 	            // Bug 942
 	            // Should pass down appropriate rtypes for bit-fields.
 		    // replace indirect load by direct load
@@ -823,12 +773,6 @@ Replace_Formal_By_LDA (WN* func_body, ST_IDX formal, ST* actual)
 		    				 WN_desc (wn), WN_offset (wn),
 						 actual, WN_ty (wn),
 						 WN_field_id (wn)));
-#else
-		    // replace indirect load by direct load
-		    iter.Replace (WN_Ldid (WN_desc (wn), WN_offset (wn),
-					   actual, WN_ty (wn),
-					   WN_field_id (wn)));
-#endif
 		} else if (WN_offset (WN_kid0 (wn)) == 0) {
 		    // replace indirect load by direct load
 		    iter.Replace (WN_Ldid (WN_desc (wn), WN_offset (wn),
@@ -945,7 +889,6 @@ Check_If_Global_Has_Const_Value (IPA_NODE* node,
   }
 }
 
-#ifdef KEY
 BOOL
 Store_To_Formal ( ST* formal, WN* w )
 {
@@ -969,7 +912,6 @@ Store_To_Formal ( ST* formal, WN* w )
   }
   return FALSE;
 }
-#endif
 //-------------------------------------------------------------------
 // propagate the constant value to the formal parameter by either
 // generating an assignment statement or a global replacement
@@ -995,12 +937,10 @@ Propagate_Constants (IPA_NODE* node, WN* w, VALUE_DYN_ARRAY* cprop_annot)
 	ST* formal = WN_st(WN_formal(w,i));
 	ST* const_st = NULL;
 
-#ifdef KEY
         // complex formal passed by value
         if (ST_sclass (formal) != SCLASS_FORMAL_REF &&
             MTYPE_is_complex(TY_mtype(ST_type(formal))))
             continue;
-#endif
 	// check if constant can be propagated into array bounds
 	if (IPA_constant_in_array_bounds(annot_node, w, formal)) {
           need_to_update_array_bounds = TRUE;
@@ -1046,7 +986,6 @@ Propagate_Constants (IPA_NODE* node, WN* w, VALUE_DYN_ARRAY* cprop_annot)
 		}
 	    }
 	} else {
-#ifdef KEY
 	// Source program can intentionally change the value of 
 	// formal parameters. In C, actual parameters are not modified 
 	// (unless passed by reference) and in Fortran, actual parameters are
@@ -1061,7 +1000,6 @@ Propagate_Constants (IPA_NODE* node, WN* w, VALUE_DYN_ARRAY* cprop_annot)
 	if (Store_To_Formal (formal /* the formal parameter */, 
 			     w      /* current_pu */ ))
 	  continue;				  
-#endif
     //here we will met the recursive case, where in the following case
     //   caller(){
     //       x       = 0, y =0;
@@ -1094,16 +1032,12 @@ Propagate_Constants (IPA_NODE* node, WN* w, VALUE_DYN_ARRAY* cprop_annot)
 		    ! mod_ref_info->Is_formal_dmod_elmt (i) &&
 		    ! mod_ref_info->Is_formal_imod_elmt (i))
 		    annot_node.Set_convertible_to_global ();
-#ifdef KEY
 		// bug 9205: We may be passing integer constant for an
 		// addr_of node, where it is an address of a non-integer.
 		// Don't propagate the constant in this case.
 		BOOL incompatible = FALSE;
 		const_st = Create_Global_ST (annot_node, &incompatible);
 		if (incompatible) continue;
-#else
-		const_st = Create_Global_ST (annot_node);
-#endif
 		if (const_st) {
                   if (annot_node.Is_global()) {
                     Check_If_Global_Has_Const_Value(node, block, const_st);
@@ -1219,14 +1153,12 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
 	    state_formal_array = (STATE_ARRAY*) sec->Get_formals();
     }
     INT k=0;
-#ifdef KEY
     TYLIST_IDX tylist_idx;
     TYLIST_IDX from_idx = TY_tylist(PU_prototype(Pu_Table[ST_pu(WN_st(w))]));
     // function return type
     Set_TYLIST_type (New_TYLIST (tylist_idx), Tylist_Table[from_idx]);
     Set_TY_tylist (PU_prototype(Pu_Table[ST_pu(WN_st(w))]), tylist_idx);
     ++from_idx;
-#endif
 
     for (i = 0; i < WN_num_formals(w); i++) {
 	WN* id = WN_kid(w,i);
@@ -1243,19 +1175,13 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
 	} else {
 	    WN_kid(func_node,k) = id;
 	    ++k;
-#ifdef KEY
 	    Set_TYLIST_type (New_TYLIST (tylist_idx), Tylist_Table[from_idx]);
-#endif
 
 	}
-#ifdef KEY
 	++from_idx;
-#endif
 
     }
-#ifdef KEY
     Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
-#endif
 
     if (n->Has_Aliased_Formal ()) {
 	// there are STs that are based on the deleted formals, so we
@@ -1276,11 +1202,7 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
 static UINT32
 Compute_param_count (INT kid, const VALUE_DYN_ARRAY& cprop_annot)
 {
-#ifdef KEY
     INT last = MIN (kid, cprop_annot.Lastidx () + 1);
-#else
-    INT last = min (kid, cprop_annot.Lastidx () + 1);
-#endif
 
     for (INT i = 0; i < last; ++i) {
 	if (cprop_annot[i].Is_remove_param())
@@ -1343,9 +1265,7 @@ Reset_param_list (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     WN* new_call = WN_Call (rtype, desc, used_param_count + fake_param_count,
 			    WN_st(call));
     WN_call_flag (new_call) = WN_call_flag (call);
-#ifdef KEY
     WN_Set_Linenum (new_call, WN_Get_Linenum (call));
-#endif // KEY
 
     if (caller->Has_frequency ())
 	IPA_WN_MAP32_Set (Current_Map_Tab, WN_MAP_FEEDBACK, new_call,
@@ -1385,7 +1305,6 @@ Reset_param_list (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
 	} 
     }
 
-#ifdef KEY
     // bug 2636
     // We have created used_param_count+fake_param_count kids, but it won't
     // always have that many kids.
@@ -1394,7 +1313,6 @@ Reset_param_list (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
 
     // Also update the # of parameters in the summary_callsite.
     edge->Summary_Callsite()->Set_param_count (WN_kid_count (new_call));
-#endif
 
     if (Trace_IPA || Trace_Perf)
 	fputc ('\n', TFile);
@@ -1441,9 +1359,6 @@ Create_Const_ST (const SUMMARY_VALUE& value)
   return 0;
 } 
 
-#if 0
-typedef HASH_TABLE<ST_IDX,ST_IDX> ST_IDX_HASH_TABLE;
-#endif
 
 //-------------------------------------------------------------------
 // propagate globals into this PU
@@ -1451,16 +1366,6 @@ typedef HASH_TABLE<ST_IDX,ST_IDX> ST_IDX_HASH_TABLE;
 extern void
 IPO_propagate_globals(IPA_NODE *n)
 {
-#if 0
-  static MEM_POOL Temp_pool;
-  static BOOL Temp_pool_initialized = FALSE;
-  
-  if (!Temp_pool_initialized) {
-    Temp_pool_initialized = TRUE;
-    MEM_POOL_Initialize(&Temp_pool, "temp pool", 0);
-  }
-  MEM_POOL_Push(&Temp_pool);
-#endif
 
   IPAA_NODE_INFO* modref_info = n->Mod_Ref_Info();
   GLOBAL_ANNOT* gannot = n->Global_Annot();
@@ -1470,9 +1375,8 @@ IPO_propagate_globals(IPA_NODE *n)
     BOOL need_to_update_array_bounds = FALSE;
     WN* new_block = WN_CreateBlock();
     WN* pu = n->Whirl_Tree();
-#ifdef KEY // bug 12371
+// bug 12371
     LWN_Parentize(pu);
-#endif
     // ST_IDX_HASH_TABLE current_hash_table(8, &Temp_pool);
     
     for (UINT32 i = 0; i < GLOBAL_ANNOT::Size; ++i) {
@@ -1524,34 +1428,6 @@ IPO_propagate_globals(IPA_NODE *n)
     WN_verifier(pu);
   }
 
-#if 0
-  MEM_POOL_Pop(&Temp_pool);
-#endif
 }
 
-
-#if 0
-//-------------------------------------------------------------------------
-// update whirl, change the st's to be sts to the newly created constants
-//-------------------------------------------------------------------------
-static void 
-update_whirl(WN* w, ST_IDX_HASH_TABLE *table)
-{
-  // replace all instances of the current ST with the ST in the temp
-  OPCODE opc =  WN_opcode(w);
-  if (OPCODE_has_sym(opc) && WN_st(w) && table->Find(WN_st_idx(w))) {
-    WN_st_idx(w) = table->Find(WN_st_idx(w));
-  }
-  if (opc == OPC_BLOCK) {
-    for (WN* wn = WN_first(w); wn; wn = WN_next(wn)) {
-      update_whirl(wn, table);
-    }
-  }
-  else {
-    for (INT kid=0; kid<WN_kid_count(w); kid++) {
-      update_whirl(WN_kid(w,kid),table);
-    }
-  }
-}
-#endif
 

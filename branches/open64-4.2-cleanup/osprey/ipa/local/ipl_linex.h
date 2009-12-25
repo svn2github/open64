@@ -39,14 +39,14 @@
 
 //* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#ifndef ipl_linex_INCLUDED
+#if !defined(ipl_linex_INCLUDED)
 #define ipl_linex_INCLUDED
 
-#ifndef loop_info_INCLUDED
+#if !defined(loop_info_INCLUDED)
 #include "loop_info.h"
 #endif
 
-#ifndef ipa_section_INCLUDED
+#if !defined(ipa_section_INCLUDED)
 #include "ipa_section.h"
 #endif
 

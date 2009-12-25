@@ -38,7 +38,7 @@
  *          06/20/2007, updated by He Jiangzhou, Tsinghua Univ.
  * 
  */
-#ifndef __omp_rtl_basic_included
+#if !defined(__omp_rtl_basic_included)
 #define __omp_rtl_basic_included
 
 #include "omp_util.h"
@@ -49,7 +49,7 @@
 /* machine dependent values*/
 #define CACHE_LINE_SIZE		64	// L1D cache line size 
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
 #define CACHE_LINE_SIZE_L2L3    128     // L2L3 cache line size
 #else
 #define CACHE_LINE_SIZE_L2L3     64      // L2L3 cache line size

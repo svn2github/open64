@@ -39,18 +39,18 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#ifndef cxx_ipa_cprop_INCLUDED
+#if !defined(cxx_ipa_cprop_INCLUDED)
 #define cxx_ipa_cprop_INCLUDED
 
-#ifndef cxx_hash_INCLUDED
+#if !defined(cxx_hash_INCLUDED)
 #include "cxx_hash.h"
 #endif 
 
-#ifndef cxx_template_INCLUDED
+#if !defined(cxx_template_INCLUDED)
 #include "cxx_template.h"
 #endif
 
-#ifndef cxx_ipa_df_INCLUDED
+#if !defined(cxx_ipa_df_INCLUDED)
 #include "ipa_df.h"
 #endif
 

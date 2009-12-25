@@ -38,11 +38,11 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef __cplusplus
+#if !defined(__cplusplus)
 #error This header must be compiled as C++
 #endif
 
-#ifndef IPC_DST_MERGE_included
+#if !defined(IPC_DST_MERGE_included)
 #define IPC_DST_MERGE_included
 
 #define USE_DST_INTERNALS

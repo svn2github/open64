@@ -38,12 +38,8 @@
 #include "cxx_template.h" 	// for STACK
 #include "wn_core.h" 	//for WN_field_id(wn)
 #include "ipa_cg.h"	//for IPA_NODE, IPA_NODE_ITER
-#ifdef KEY
 #include <ext/hash_map>
-#else
-#include <hash_map.h>
-#endif // KEY
-#ifndef CXX_MEMORY_INCLUDED
+#if !defined(CXX_MEMORY_INCLUDED)
 #include "cxx_memory.h"
 #endif
 #define cache_block 32	//later will use machine model 
@@ -53,9 +49,7 @@ typedef mUINT64 COUNT;
 typedef mUINT64 FLD_OFST;
 typedef FLD_OFST TY_SIZE;
 
-#ifdef KEY
 using namespace std;
-#endif // KEY
 
 typedef list<INDEX> TYPE_LIST;	//just contains struct_type, pointer_ty put to another list
 
@@ -64,10 +58,8 @@ struct FLD_ACCESS{
    FIELD_ID old_field_id; //kid_count in WN is mINT16
    FIELD_ID new_field_id;
    WN_OFFSET offset; //new_offset
-#ifdef KEY
    WN_OFFSET old_offset; //old_offset
    mUINT32 align; // field/sub-struct alignment
-#endif // KEY
 }; //using for storing mappings
 struct TOP_FIELD{
    FIELD_ID field_id;

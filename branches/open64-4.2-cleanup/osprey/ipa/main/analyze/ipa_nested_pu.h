@@ -38,10 +38,10 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef cxx_ipa_nested_pu_INCLUDED
+#if !defined(cxx_ipa_nested_pu_INCLUDED)
 #define cxx_ipa_nested_pu_INCLUDED
 
-#ifndef cxx_ipa_cg_INCLUDED
+#if !defined(cxx_ipa_cg_INCLUDED)
 #include "ipa_cg.h"			// CXX_NEW, etc.
 #endif /* cxx_ipa_cg_INCLUDED */
 

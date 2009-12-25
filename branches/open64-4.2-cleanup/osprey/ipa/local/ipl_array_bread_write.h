@@ -38,16 +38,16 @@
 
 
 //* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef ipl_array_bread_write_INCLUDED
+#if !defined(ipl_array_bread_write_INCLUDED)
 #define ipl_array_bread_write_INCLUDED
 
-#ifndef cxx_template_INCLUDED
+#if !defined(cxx_template_INCLUDED)
 #include "cxx_template.h"       // DYN_ARRAY
 #endif
-#ifndef cxx_hash_INCLUDED
+#if !defined(cxx_hash_INCLUDED)
 #include "cxx_hash.h"           // HASH_TABLE
 #endif
-#ifndef ipa_section_INCLUDED
+#if !defined(ipa_section_INCLUDED)
 #include "ipa_section.h"        // Classes for array sections
 #endif
 

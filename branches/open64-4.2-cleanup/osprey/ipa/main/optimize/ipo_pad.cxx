@@ -151,23 +151,6 @@ Create_ST_TO_FLD_MAP(COMMON_SNODE_TBL* common_snode_tbl)
 FLD_HANDLE
 Get_FLD(ST* s, ST* common_st, ST_TO_FLD_MAP_ARRAY& st_to_fld_map)
 {
-#if 0
-    FLD_ITER fld_iter = 
-	Make_fld_iter(TY_fld(Ty_Table[ST_type(common_st)]));
-    do {
-	FLD_HANDLE current_fld (fld_iter);
-	TY& fld_type = Ty_Table[FLD_type(current_fld)];
-	if (FLD_ofst(current_fld) == ST_ofst(s) && 
-	    (FLD_type(current_fld) == ST_type(s)))
-	    {
-		return current_fld;
-	    }
-    } while (!FLD_last_field(fld_iter++));
-    
-    Is_True(0, ("FLD not found in Get_FLD \n"));
-    return;
-}
-#endif       
 
   ST* st = NULL;
   FLD_HANDLE fld;
@@ -189,10 +172,6 @@ ST *
 Get_ST(FLD_HANDLE fld, ST_TO_FLD_MAP_ARRAY& st_to_fld_map)
 {
   ST  * st = NULL;
-#if 0
-  ST_IDX idx = FLD_st(fld);
-  return &St_Table[idx];
-#endif
   for (mUINT32 idx = 0; idx < st_to_fld_map.Elements(); idx++)
     {
       ST_TO_FLD_MAP *entry = &(st_to_fld_map)[idx];
@@ -220,13 +199,8 @@ Is_Const_Bounds(ARB_HANDLE arb)
 static INT64
 Num_Elements(ARB_HANDLE arb)
 {
-#ifdef KEY
 // bug 2132: for dimensions -n1:n1, # of elements is n1 - (-n1) + 1
    return abs(ARB_ubnd_val(arb) - ARB_lbnd_val(arb)) + 1;
-#else
- INT64 count = 0;
-   return abs(abs(ARB_ubnd_val(arb)) - abs((ARB_lbnd_val(arb)))) + 1;
-#endif
 }
 // ===========================================================
 // DESCR: Create_New_Array_Type
@@ -808,7 +782,7 @@ IPO_Pad_Whirl(IPA_NODE* node)
   WN *w = node->Whirl_Tree();
   Is_True(w != NULL, (" NULL whirl encountered \n"));
   IPO_Pad_Arrays(w);
-#ifdef Is_True  
+#if defined(Is_True_On)  
   WN_verifier(w);
   Verify_GLOBAL_SYMTAB();
 #endif

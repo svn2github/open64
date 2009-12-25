@@ -71,11 +71,6 @@
 #include "dwarf_DST_dump.h"
 #include "ipaa.h"
 #include "clone_DST_utils.h"
-#if 0
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
-#include "ipaa.h"			// IPAA_NODE_INFO
-#endif // _STANDALONE_INLINER
-#endif
 
 #include "ipo_inline.h"
 
@@ -300,7 +295,7 @@ Do_Linearize (WN* actual, ST* formal_st)
     }
   } 
 
-#ifdef _WEIRD_CASE_
+#if defined(_WEIRD_CASE_)
   else {
     if (base == actual || Subscripts_All_0(actual, 0)) {
       for (INT a_idx = 0, f_idx = f_dims - a_dims; 
@@ -334,12 +329,11 @@ IPA_Do_Linearization (IPA_NODE* callee_node, WN* call, SCOPE* caller_scope)
   WN* callee_wn = callee_node->Whirl_Tree();
   INT num_formals = WN_num_formals(callee_wn);
 
-#ifdef KEY // bug 3898
+// bug 3898
   // Currently we do inlining even if # of actuals != # of formals. So
   // be careful!
   if (num_formals > WN_kid_count (call))
     num_formals = WN_kid_count (call);
-#endif // KEY
 
   vector<ST*> formals;
   formals.reserve (num_formals);
@@ -373,7 +367,6 @@ IPA_Do_Linearization (IPA_NODE* callee_node, WN* call, SCOPE* caller_scope)
 
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
 
-#ifdef KEY
 static BOOL 
 Match_Loop_Indexes (WN* wn, vector<ST*> formals, INT num_formals)
 {
@@ -444,7 +437,6 @@ Formal_Is_Loop_Index (IPA_NODE* callee, const IPA_EDGE* edge)
 
   return FALSE;
 }
-#endif
 // Final verification for incompatible parameters, etc.
 // Should move to inline analysis phase.
 BOOL
@@ -696,7 +688,6 @@ Get_actual_st_if_passed (WN *actual)
 		    break;
 		return st;
 	    }
-#ifdef KEY
 	case OPR_BLOCK:
 	    {
 	        WN * parent = p.Get_parent_wn();
@@ -705,7 +696,6 @@ Get_actual_st_if_passed (WN *actual)
 	    	    continue;
 	        }
 	    }
-#endif
 	}
 	++p;
     }
@@ -748,12 +738,12 @@ Set_Tables (IPA_NODE* node)
 BOOL
 IPO_INLINE::SubstituteFormal (ST* formal, WN* actual, INT position)
 {
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
     return FALSE;
     // This code will be totally rewritten later, NO NEED TO PORT
     // IPA MODE
 #else
-#ifndef _STANDALONE_INLINER
+#if !defined(_STANDALONE_INLINER)
   
     if (!IPA_Enable_Copy_Prop)
 	return FALSE;
@@ -930,7 +920,7 @@ IPO_INLINE::SubstituteFormal (ST* formal, WN* actual, INT position)
 #endif
 }
 
-#ifdef KEY // taken from wn_mp.cxx
+// taken from wn_mp.cxx
 static const char * const dope_str_prefix = ".dope." ;
 static const INT dope_str_prefix_len = 6;
                                                                                 
@@ -952,7 +942,6 @@ ST_Has_Dope_Vector(const ST *st) {
                                                                                 
   return FALSE;
 }
-#endif
 
 static BOOL
 ST_might_be_modified (const ST* st)
@@ -970,9 +959,8 @@ ST_might_be_modified (const ST* st)
 	    return FALSE;
     }
 
-#ifdef KEY // bug 7871
+// bug 7871
     if (ST_Has_Dope_Vector (st)) return FALSE;
-#endif
 
     return TRUE;
 } // ST_might_be_modified
@@ -1002,14 +990,9 @@ Update_Caller_MP_Pragmas(ST* s, WN *wn)
   }
 
   if (ST_sclass(s) == SCLASS_AUTO)
-#ifdef KEY
       // bug 5149
       Add_Pragma_To_MP_Regions (&wnv, WN_PRAGMA_LOCAL,
                             s, 0, Parent_Map, TRUE);
-#else
-      Add_Pragma_To_MP_Regions (&wnv, WN_PRAGMA_LOCAL,
-                            s, 0, Parent_Map, FALSE);
-#endif // KEY
   else
       Add_Pragma_To_MP_Regions (&wnv, WN_PRAGMA_SHARED,
                             s, 0, Parent_Map, FALSE);
@@ -1128,7 +1111,7 @@ Copy_Subscript_Expressions (IPO_INLINE_AUX& aux, IPO_INLINE& inliner)
 // check if the bits need to be set
 //--------------------------------------------------------------------------
 // TK: Also do this in standalone inliner
-#ifdef _STANDALONE_INLINER
+#if defined(_STANDALONE_INLINER)
 static void
 Reset_Addr_Bits(ST* s, INT position, IPA_EDGE* edge, IPA_NODE* callee) 
 {
@@ -1469,14 +1452,6 @@ IPO_INLINE::IPO_INLINE (IPA_NODE *caller_node,
     _caller_node(caller_node), _callee_node(callee_node), _call_edge(edge)
 {
    
-#if 0
-    {
-	// force both caller and callee to be read into memory
-	// for ipa, this has been guaranteed.
-	IPA_NODE_CONTEXT caller_context (caller_node);
-	IPA_NODE_CONTEXT callee_context (caller_node);
-    }
-#endif
 
   IP_FILE_HDR& file_hdr_caller = Caller_node()->File_Header ();
   IP_FILE_HDR& file_hdr_callee = Callee_node()->File_Header ();
@@ -1495,7 +1470,7 @@ IPO_INLINE::IPO_INLINE (IPA_NODE *caller_node,
 
   Set_symtab(NULL);
 
-#ifndef _LIGHTWEIGHT_INLINER
+#if !defined(_LIGHTWEIGHT_INLINER)
   WN_mem_pool_ptr = Caller_node()->Mem_Pool();
 #else // _LIGHTWEIGHT_INLINER
   if (INLINE_Use_Malloc_Mempool)
@@ -1800,7 +1775,7 @@ IPO_INLINE::Clone_Callee(BOOL same_file)
 	      fb->Set_frequency_count (callee_freq - call_freq);
 	  }
 	  
-#ifdef _DEBUG_TEST
+#if defined(_DEBUG_TEST)
 printf("scale for %s in %s is %f", Callee_node()->Name(), Caller_node()->Name(), scale);
 printf(", callee_freq = %f", callee_freq.Value());
 printf(", call_freq = %f\n", call_freq.Value());
@@ -1859,7 +1834,6 @@ IPO_INLINE::Process_OPR_REGION(WN* wn, IPA_NODE* caller_node)
 		Set_INITO_val(init_idx,
 		    Symtab()->Clone_INITVs_For_EH(INITO_val(init_idx), init_idx)); 
 	    }
-#ifdef KEY
 // For certain cases we don't have enclosing EH regions across a function
 // call. e.g. a function with empty specification is NOT supposed to throw,
 // so we do not enclose a call to it inside an EH region.
@@ -1942,7 +1916,6 @@ IPO_INLINE::Process_OPR_REGION(WN* wn, IPA_NODE* caller_node)
 		    }
 		}
 	    }
-#endif
 	}
 	//The following code creat a new TY for the ST that is updated
 	//above.In the code above, it changes the INITO which is 
@@ -2021,13 +1994,13 @@ void
 IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 {
     WN* wn = iter.Wn ();
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     // bug 3060
     // Give everything the linenum of the callsite
     // bug 6170: for lw-inliner, maintain the callee's line# information
     if (OPERATOR_has_next_prev(WN_operator(wn)))
       WN_Set_Linenum (wn, WN_Get_Linenum (Call_Wn()));
-#endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+#endif // !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
     OPERATOR oper = WN_operator (wn);
     switch(oper) {
     case OPR_RETURN_VAL:
@@ -2056,11 +2029,7 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	}
 	if (WN_rtype (WN_kid0 (wn)) == MTYPE_M) {
 	    ST* tmp_st = aux.rp.find_st ();
-#ifdef KEY
 	    TY_IDX stid_ty = ST_type(tmp_st);
-#else
-	    TY_IDX stid_ty = WN_ty(WN_kid0(wn));
-#endif // KEY
 
 #if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
 	    if (stid_ty == 0) { // This is potentially a COMMA node
@@ -2082,11 +2051,9 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	// we should have generated a real OPR_RETURN node, but a fake
 	// should be enough in this case
 	WN_set_operator (wn, OPR_RETURN);
-#ifdef KEY
 	// make sure we have proper types
 	WN_set_rtype (wn, MTYPE_V);
 	WN_set_desc (wn, MTYPE_V);
-#endif
 	return;
 	
     case OPR_RETURN:
@@ -2138,13 +2105,6 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	}
 	break;
 	
-#if 0
-    case OPR_PARM:
-       if (IPA_Enable_Inline_Var_Dim_Array && Callee_Summary_Proc()->Has_var_dim_array())
-	   fix_var_dim_array(WN_ty(wn), Symtab());
-	break;
-#endif
-#ifdef KEY
     case OPR_CALL:
     {
         WN * kid0;
@@ -2215,7 +2175,7 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	      FmtAssert (INITV_kind (i) != INITVKIND_ZERO, ("Unexpected 0 st_idx for cmp operand"));
 	      current_st = TCON_uval (INITV_tc_val (i));
 	    }
-#ifdef Is_True_On
+#if defined(Is_True_On)
 	    {// DGLOBAL: user defined types. EXTERN: builtin types like 'char'
 	    	ST_SCLASS s = ST_sclass (St_Table[current_st]);
 	    	FmtAssert (s == SCLASS_DGLOBAL || s == SCLASS_EXTERN, ("Typeinfo symbol should be global"));
@@ -2242,7 +2202,6 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	    WN_const_val (WN_kid1 (wn)) = TCON_uval (INITV_tc_val (INITV_next (INITV_blk (ttable))));
 	}
         break;
-#endif
 
     default:
 	break;
@@ -2756,7 +2715,7 @@ IPO_INLINE::Reshape_Array (TREE_ITER& iter, PARAMETER_ATTRIBUTES& parm,
 }
 
 
-#ifdef Is_True_On
+#if defined(Is_True_On)
 // create assert statement to verify if "formal" has value equals to
 // "const_wn" 
 static inline WN*
@@ -2772,7 +2731,6 @@ Create_Assert (ST* formal, WN* const_wn, TYPE_ID desc)
 void
 IPO_INLINE::Process_Formal_ST (TREE_ITER& iter, ST* cp, IPO_INLINE_AUX& aux)
 { 
-#ifdef KEY
     WN *wn = iter.Wn ();
     PARM_ITER p = Lookup_Parm (aux.parm_attr, cp);
     if (p == aux.parm_attr.end())
@@ -2793,10 +2751,6 @@ IPO_INLINE::Process_Formal_ST (TREE_ITER& iter, ST* cp, IPO_INLINE_AUX& aux)
 	return;
     }
     PARAMETER_ATTRIBUTES& parm = *p;
-#else
-    PARAMETER_ATTRIBUTES& parm = *(Lookup_Parm (aux.parm_attr, cp));
-    WN *wn = iter.Wn ();
-#endif
 
     switch (parm.Fixup_Method ()) {
 	WN* new_wn;
@@ -2835,7 +2789,7 @@ IPO_INLINE::Process_Formal_ST (TREE_ITER& iter, ST* cp, IPO_INLINE_AUX& aux)
 	}
 	else { // Anything else is invalid, just delete the code
 	    iter.Delete ();
-#ifdef Is_True_On
+#if defined(Is_True_On)
 	    Create_Assert(WN_st(wn), parm.Actual_Wn (), TY_mtype (ST_type (WN_st(wn))));
 #endif // Is_True_On
 	}
@@ -2918,10 +2872,6 @@ IPO_INLINE::Process_ST (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	return;
     }
   
-#if 0
-    if (IPA_Enable_Inline_Var_Dim_Array && Callee_Summary_Proc()->Has_var_dim_array())
-	fix_var_dim_array(ST_type(cp), Symtab());
-#endif
 
     // update the caller pragma list
     SUMMARY_PROCEDURE* caller_proc = Caller_node()->Summary_Proc ();
@@ -2956,11 +2906,11 @@ IPO_INLINE::Process_ST (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 		Set_ST_export(ST_ptr(ST_base_idx(cp)), ST_export(cp));
 	    }
 	}
-#if (defined(KEY) && (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER)))
+#if ((defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER)))
         if ((Is_DoAcross)  || (Is_MP_Region)) {
 	    Update_Caller_MP_Pragmas(cp, Call_Wn());
  	}
-#endif // KEY && _STANDALONE_INLINER
+#endif // _STANDALONE_INLINER
   
         break;
       
@@ -3057,9 +3007,8 @@ IPO_INLINE::Create_Copy_In_Symbol (ST* formal_st)
     Clear_ST_is_not_used (copy_st);
     Clear_ST_is_optional_argument (copy_st);
     Set_ST_is_temp_var (copy_st);
-#ifdef KEY // bug 6674
+// bug 6674
     Clear_TY_is_restrict (copy_st->u2.type);
-#endif
 
     // update the caller pragma list
     SUMMARY_PROCEDURE* caller_proc = Caller_node()->Summary_Proc ();
@@ -3087,11 +3036,8 @@ static WN*
 Copy_Struct (ST* dest, WN* src, UINT64 size)
 {
     if (WHIRL_Mldid_Mstid_On)
-#ifdef KEY // bug 7760: src may not be M type due to fix to bug 7741.
+// bug 7760: src may not be M type due to fix to bug 7741.
 	return WN_Stid (WN_rtype(src), 0, dest, ST_type (dest), src);  
-#else
-	return WN_Stid (MTYPE_M, 0, dest, ST_type (dest), src);  
-#endif
     else
 	return WN_CreateMstore (0, Make_Pointer_Type (ST_type (dest)),
 				src, WN_Lda (Pointer_Mtype, 0, dest),
@@ -3489,14 +3435,10 @@ IPO_INLINE::Process_Formals (IPO_INLINE_AUX& aux)
 
     // initialize the vector holding all the aux. data structures for each
     // parameter 
-#ifdef KEY
     INT num_params = Call_edge()->Num_Actuals() < WN_num_formals(callee) ?
     		Call_edge()->Num_Actuals() : WN_num_formals(callee);
 
     for (INT j=0; j < num_params; ++j)
-#else
-    for (INT j=0; j < WN_num_formals(callee); ++j)
-#endif
     {
         ST* ste = get_formal(Callee_Scope(), WN_formal(callee,j));
 	ste = Symtab()->Get_ST(ste);	// Get the ST version in the caller side
@@ -3513,7 +3455,6 @@ IPO_INLINE::Process_Formals (IPO_INLINE_AUX& aux)
 	parm_attr.push_back (PARAMETER_ATTRIBUTES (actual, ste)); 
     }
 
-#ifdef KEY
     // For formals that are missing from the list of actuals, store the
     // dummy ST with which to replace it.
     for (; num_params < WN_num_formals(callee); ++num_params)
@@ -3526,7 +3467,6 @@ IPO_INLINE::Process_Formals (IPO_INLINE_AUX& aux)
 	formal_to_replace_st param (ste, ST_st_idx (sym.first));
 	aux.replace_st.push_back (param);
     }
-#endif
 
     aux.copy_in_block = WN_CreateBlock(); // Empty block into which assignments
 					  // to formals will go
@@ -3606,7 +3546,6 @@ IPO_INLINE::Walk_and_Update_Callee (IPO_INLINE_AUX& aux)
     aux.inlined_body = Simplify_Tree(aux.inlined_body);
 }
 
-#ifdef KEY
 void
 IPO_INLINE::Merge_EH_Spec_Tables (void)
 {
@@ -3638,7 +3577,7 @@ IPO_INLINE::Merge_EH_Spec_Tables (void)
     }
     if (!Callee_node()->EH_spec_size())
     	Callee_node()->Set_EH_spec_size (callee_spec_size);
-#ifdef Is_True_On
+#if defined(Is_True_On)
     else FmtAssert (Callee_node()->EH_spec_size() == callee_spec_size, ("EH specification size mismatch"));
     FmtAssert (!callee_spec_types.empty(), ("EH Specification merge error"));
 #endif
@@ -3661,7 +3600,7 @@ IPO_INLINE::Merge_EH_Spec_Tables (void)
     }
     if (!Caller_node()->EH_spec_size())
     	Caller_node()->Set_EH_spec_size (caller_spec_size);
-#ifdef Is_True_On
+#if defined(Is_True_On)
     else FmtAssert (Caller_node()->EH_spec_size() == caller_spec_size, ("EH specification size mismatch"));
 #endif
 
@@ -3826,7 +3765,6 @@ IPO_INLINE::Merge_EH_Tables (void)
     Merge_EH_Typeinfo_Tables ();
     Merge_EH_Spec_Tables ();
 }
-#endif
 
 /* Prune the WN tree in the leftover (cloned) callee.
 */
@@ -4336,19 +4274,6 @@ IPO_INLINE::Process_Callee (IPO_INLINE_AUX& aux, BOOL same_file)
 	     Caller_Summary_Proc()->Use_lowered_return_preg (),
 	     ("Incompatible WHIRL between caller and callee"));
 
-#ifndef KEY
-// The following modifies the caller to change the store of return value
-// after the callee is inlined. For recursive inlining, caller == callee.
-// So, change the caller (i.e. the callee) after the callee is cloned below.
-//
-    // CALLEE SIDE OPTIMIZATION
-    Compute_Return_Preg_Offset (Callee_Wn (), aux.rp, use_lowered_return_preg,
-				Caller_Scope(), Caller_level()); 
-
-    if (aux.rp.size () > 0 && WN_opcode (Call_Wn ()) != OPC_VCALL)
-	Fix_Return_Pregs(Call_Wn (), aux.rp);
-#endif // !KEY
-
     Set_Tables (Callee_node ());
 
     /* Exclude recursive callees from partial inlining for now since
@@ -4437,11 +4362,8 @@ IPO_INLINE::Process_Callee (IPO_INLINE_AUX& aux, BOOL same_file)
     WN_Parentize (aux.inlined_body, Caller_node()->Parent_Map(),
 		  Caller_Map_Table()); 
 
-#ifdef KEY
     Merge_EH_Tables();
-#endif
     Set_Tables (Caller_node ());
-#ifdef KEY
     // CALLEE SIDE OPTIMIZATION
     Compute_Return_Preg_Offset (Callee_Wn (), aux.rp, use_lowered_return_preg,
 				Caller_Scope(), Caller_level()); 
@@ -4449,7 +4371,6 @@ IPO_INLINE::Process_Callee (IPO_INLINE_AUX& aux, BOOL same_file)
     if (aux.rp.size () > 0 && WN_opcode (Call_Wn ()) != OPC_VCALL) {
 	Fix_Return_Pregs(Call_Wn (), aux.rp);
     }
-#endif // !KEY
     Walk_and_Update_Callee (aux);
     
     // This walk involves:
@@ -4487,10 +4408,8 @@ IPO_INLINE::Post_Process_Caller (IPO_INLINE_AUX& aux)
 {
     Set_Tables (Caller_node ());	// Set the globals: Scope_tab,
 					// Current_scope, Current_pu  
-#ifdef KEY
     Caller_node()->Set_EH_spec_size (Caller_node()->EH_spec_size() +
     				     Callee_node()->EH_spec_size());
-#endif
     WN* call = Call_Wn ();
     WN* parent_wn = WN_Get_Parent(call, Parent_Map, Current_Map_Tab);
 
@@ -4714,7 +4633,7 @@ IPO_INLINE::Process()
   // propagate flags from callee to caller,
   Propagate_Flags (Caller_node (), Callee_node ());
 
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
   if (INLINE_Use_Malloc_Mempool) {
       WN* wn = WN_func_body(Callee_Wn ());
       UINTPS inlined_body = (UINTPS)aux_info.inlined_body;
@@ -4725,7 +4644,6 @@ IPO_INLINE::Process()
 #endif
 
   if (Cur_PU_Feedback) {
-#ifdef KEY
     const FB_VERIFY_STATUS status = Cur_PU_Feedback->Verify("IPA/inline");
     if( status == FB_VERIFY_UNBALANCED ){
       ;
@@ -4734,13 +4652,6 @@ IPO_INLINE::Process()
       DevWarn( "Feedback Verify fails after inlining %s to %s",
 	       Callee_node()->Name(), Caller_node()->Name() );
     }
-#else
-    BOOL not_pass = Cur_PU_Feedback->Verify("IPA/inline");
-    if ( not_pass ) { //FB_VERIFY_CONSISTENT = 0 
-      DevWarn("Feedback Verify fails after inlining %s to %s",
-	      Callee_node()->Name (), Caller_node()->Name ());
-    }
-#endif // KEY
   }
 
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))

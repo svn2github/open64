@@ -39,14 +39,14 @@
 
 #include <stdio.h>
 #include <sys/time.h>
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 #include <time.h>
 #else
 #include <sys/resource.h>
 #endif /* __MINGW32__ */
 #include "timelib.h"
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -54,7 +54,7 @@ extern "C" {
 
 static double get_cpu()
 {
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
    return clock();
 #else
     struct rusage ru;
@@ -177,6 +177,6 @@ double get_timer_time (int timer)
 }
 
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif

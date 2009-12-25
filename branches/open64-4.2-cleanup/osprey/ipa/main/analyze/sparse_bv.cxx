@@ -68,7 +68,7 @@ SPARSE_BV::Set_Bit (UINT32 index)
     } else 
 	(*data)[(*buffer)[idx]] |= 1LL << (index % mUINT64_BIT);
 
-#ifdef Is_True_On
+#if defined(Is_True_On)
     //    Verify ();
 #endif
 } // SPARSE_BV::Set_Bit
@@ -95,7 +95,7 @@ SPARSE_BV::Union_2_Core (const SPARSE_BV& vec, BUFFER_ITER vec_iter,
 	++iter;
     }
 
-#ifdef Is_True_On
+#if defined(Is_True_On)
     //    Verify ();
 #endif
 } // Union_2_Core
@@ -123,7 +123,7 @@ SPARSE_BV::Union_2 (const SPARSE_BV& vec)
     
     Union_2_Core (vec, vec.buffer->begin (), buffer->begin ());
 
-#ifdef Is_True_On
+#if defined(Is_True_On)
     //    Verify ();
 #endif
     
@@ -178,7 +178,7 @@ SPARSE_BV::Union_2_Diff_Core (const SPARSE_BV& vec)
 } // Union_2_Diff_Core
 
 
-#ifdef Is_True_On
+#if defined(Is_True_On)
 
 void
 SPARSE_BV::Verify () const

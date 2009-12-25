@@ -38,7 +38,7 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef ipa_main_INCLUDED
+#if !defined(ipa_main_INCLUDED)
 #define ipa_main_INCLUDED
 
 extern void

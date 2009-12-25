@@ -53,7 +53,7 @@
 // ====================================================================
 // ====================================================================
 
-#ifndef cxx_ipa_df_INCLUDED
+#if !defined(cxx_ipa_df_INCLUDED)
 #define cxx_ipa_df_INCLUDED
 
 /* specify the direction of the dataflow problem */

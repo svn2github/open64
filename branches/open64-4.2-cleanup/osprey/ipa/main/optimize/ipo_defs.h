@@ -41,15 +41,15 @@
 
 // Definitions that are needed by almost every ipo_*.cxx.
 
-#ifndef ipo_defs_INCLUDED
+#if !defined(ipo_defs_INCLUDED)
 #define ipo_defs_INCLUDED
 
 
-#ifndef symtab_INCLUDED
+#if !defined(symtab_INCLUDED)
 #include "symtab.h"
 #endif
 
-#ifndef cxx_ipa_cg_INCLUDED
+#if !defined(cxx_ipa_cg_INCLUDED)
 #include "ipa_cg.h"
 #endif
 
@@ -95,7 +95,6 @@ public:
         dst = Current_DST;
 	feedback = Cur_PU_Feedback;
 
-#ifdef KEY
 	// Support these as necessary.
 	if (node->Is_Builtin()) {
 	  MEM_src_pool_ptr = NULL;
@@ -103,7 +102,6 @@ public:
 	  Current_DST = NULL;
 	  Parent_Map = 0;
 	} else
-#endif
 	{
 	MEM_src_pool_ptr = IP_FILE_HDR_mem_pool (node->File_Header ());
 	Current_PU_Info = node->PU_Info ();

@@ -176,7 +176,7 @@ Write_Elf_Symtab (Output_File* fl, const ELF& tag)
     For_all (St_Table, GLOBAL_SYMTAB,
 	     st_to_elfsym<ELFSYMTAB, ELF> (&symtab, tag));
 
-#ifndef __GNUC__
+#if !defined(__GNUC__)
     UINT align = __builtin_alignof(typename ELF::Elf_Sym);
 #else
     UINT align = __alignof(typename ELF::Elf_Sym);
@@ -195,7 +195,7 @@ IPL_Write_Elf_Symtab (Output_File *fl)
     if (! IPL_Generate_Elf_Symtab)
 	return;
     
-#ifndef __ALWAYS_USE_64BIT_ELF__
+#if !defined(__ALWAYS_USE_64BIT_ELF__)
     if (Use_32_Bit_Pointers)
 	Write_Elf_Symtab (fl, ELF32());
     else

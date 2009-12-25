@@ -38,7 +38,7 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef ipc_pu_size_INCLUDED
+#if !defined(ipc_pu_size_INCLUDED)
 #define ipc_pu_size_INCLUDED
 
 // Estimated weight of a PU used by the inlining heuristic.  Weight is

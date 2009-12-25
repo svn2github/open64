@@ -59,7 +59,7 @@
 // ====================================================================
 
 #define __STDC_LIMIT_MACROS
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 #include <WINDOWS.h>
 #endif /* __MINGW32__ */
 #include <stdint.h>
@@ -74,9 +74,6 @@
 #include "ipa_summary.h"
 #include "ipc_symtab_merge.h"		// IPC_GLOBAL_IDX_MAP
 #include "ir_reader.h"                  // fdump_tree
-#if 0
-#include "ipo_defs.h"			// IPA_NODE_CONTEXT
-#endif
 
 #include "symtab_access.h"
 
@@ -124,10 +121,10 @@ OPCODE Stid_Opcode [MTYPE_LAST + 1] = {
   OPC_U8STID,     /* MTYPE_U8 */
   OPC_F4STID,     /* MTYPE_F4 */
   OPC_F8STID,     /* MTYPE_F8 */
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   OPC_F10STID,    /* MTYPE_F10 */
   OPC_F16STID,    /* MTYPE_F16 */
-#elif TARG_X8664
+#elif defined(TARG_X8664)
   OPC_UNKNOWN,    /* MTYPE_F10 */ 
   OPC_UNKNOWN,    /* MTYPE_F16 */ 
 #endif
@@ -138,7 +135,6 @@ OPCODE Stid_Opcode [MTYPE_LAST + 1] = {
   OPC_C8STID,     /* MTYPE_C8 */
   OPC_CQSTID,     /* MTYPE_CQ */
   OPC_UNKNOWN     /* MTYPE_V */
-#ifdef KEY
   ,OPC_BSSTID,    /* MTYPE_BS */
   OPC_A4STID,     /* MTYPE_A4 */
   OPC_A8STID,     /* MTYPE_A8 */
@@ -146,7 +142,7 @@ OPCODE Stid_Opcode [MTYPE_LAST + 1] = {
   OPC_UNKNOWN,    /* MTYPE_C16 */
   OPC_UNKNOWN,    /* MTYPE_I16 */
   OPC_UNKNOWN     /* MTYPE_U16 */
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   ,OPC_V16C4STID, /* MTYPE_V16C4 */
   OPC_V16C8STID,  /* MTYPE_V16C8 */
   OPC_V16I1STID,  /* MTYPE_V16I1 */
@@ -173,10 +169,9 @@ OPCODE Stid_Opcode [MTYPE_LAST + 1] = {
   OPC_V32F4STID,  /* MTYPE_V32F4 */
   OPC_V32F8STID,  /* MTYPE_V32F8 */
 #endif // TARG_X8664
-#endif // KEY
 };
 
-#ifdef TODO
+#if defined(TODO)
 // IPA Feedback - need inline/noinline identifiers
 extern IPA_FEEDBACK_STRINGS * IPA_Fbk_Strings;
 #endif
@@ -237,8 +232,8 @@ if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING))
  	fprintf(N_inlining, "Report_Reason:[%s] not inlined into [%s]  (edge# %d):\n", callee_name, caller_name,edge->Edge_Index () ); 
 	fprintf ( N_inlining, "\t {reason: %s}\n", reason  );
 }
-#ifdef TODO
-#ifndef _STANDALONE_INLINER
+#if defined(TODO)
+#if !defined(_STANDALONE_INLINER)
   if( IPA_Enable_Feedback ) {
     /* need pragma plus the reason */
     IPA_idx = IPA_Fbk_Strings->Emit_id_string( callee_name);
@@ -298,8 +293,8 @@ if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING))
 	fprintf ( N_inlining, reason, limit1, limit2 );
 	fprintf(N_inlining, "}\n");
 }
-#ifdef TODO
-#ifndef _STANDALONE_INLINER
+#if defined(TODO)
+#if !defined(_STANDALONE_INLINER)
   if( IPA_Enable_Feedback ) {
     /* need pragma plus the reason */
     IPA_idx = IPA_Fbk_Strings->Emit_id_string( callee_name);
@@ -342,11 +337,7 @@ Get_combined_weight (PU_SIZE s1, PU_SIZE s2, IPA_NODE *callee)
     s1 += s2;
     /* 1 less bb and 1 less callfrom removing the call, add copy stmt for
        formals */ 
-#ifdef KEY
     s1.Inc_PU_Size (-1, 0, -1);
-#else
-    s1.Inc_PU_Size (-1, callee->Num_Formals(), -1);
-#endif
     return s1.Weight ();
 }
 
@@ -373,11 +364,7 @@ Get_combined_olimit (PU_SIZE s1, PU_SIZE s2, IPA_NODE *callee)
     s1 += s2;
     /* 1 less bb and 1 less callfrom removing the call, add copy stmt for
        formals */ 
-#ifdef KEY
     s1.Inc_PU_Size (-1, 0, -1);
-#else
-    s1.Inc_PU_Size (-1, callee->Num_Formals(), -1);
-#endif
     return s1.Olimit ();
 }
 
@@ -410,10 +397,8 @@ Init_inline_parameters (void)
 
 	Real_Orig_WN_Count = Orig_Prog_WN_Count; //INLINING_TUNING
 
-#ifdef KEY
     if (INLINE_Ignore_Bloat && ! IPA_Bloat_Factor_Set)
       IPA_Bloat_Factor = UINT32_MAX;
-#endif // KEY
 
     bloat_size = current_size * (UINT64) IPA_Bloat_Factor;
 
@@ -495,9 +480,7 @@ Update_Total_Prog_Size (const IPA_NODE *caller, IPA_NODE *callee,
 	return;
     }
     if (
-#ifdef KEY
 	OPT_Cyg_Instrument == 0 &&  // Bug 750; TODO: Relax restriction
-#endif
 	! callee->Is_Undeletable () &&
 	! callee->Should_Be_Skipped() &&
 	All_Calls_Inlined (callee, cg) &&
@@ -521,7 +504,7 @@ compute_hotness (IPA_EDGE *edge, IPA_NODE *callee, INT callee_size)
     return (result_float);
 }
 
-UINT32 // KEY
+UINT32 
 Effective_weight (const IPA_NODE* node)  {
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
     if (IPA_Use_Effective_Size && node->Has_frequency ()) {
@@ -548,7 +531,6 @@ Effective_weight (const IPA_NODE* node)  {
 	return node->Weight ();
 }
 
-#ifdef KEY
 void inline_do_it (IPA_EDGE * ed, IPA_NODE * caller, IPA_NODE * callee,
                    const IPA_CALL_GRAPH * cg)
 {
@@ -563,7 +545,7 @@ void inline_do_it (IPA_EDGE * ed, IPA_NODE * caller, IPA_NODE * callee,
 	fprintf (TFile, "%s (size: %d + %d = %d)   (edge# %d) \n", DEMANGLE (caller->Name()), callee_weight, caller_weight, combined_weight, ed->Edge_Index());
     }
     
-#ifdef TODO
+#if defined(TODO)
     if( IPA_Enable_Feedback ) {
 	/* check for cross-file inlining */
 	if( callee->File_Index() !=  caller->File_Index()) {
@@ -599,7 +581,6 @@ trivially_ok_to_inline (const IPA_NODE * node, const IPA_CALL_GRAPH * cg)
          cg->Num_Out_Edges (node) == 1 &&
          node->Summary_Proc()->Get_bb_count() == 1;
 }
-#endif // KEY
 
 #include<string>
 #include<sstream>
@@ -620,12 +601,8 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
     if (PU_is_operator(callee->Get_PU()) && ed->Num_Actuals() <= 2)
       combined_weight = 1;
 
-#ifdef KEY
     float hotness = callee->Get_feedback() == NULL ? 0.0 :
       compute_hotness (ed, callee, callee_weight);       
-#else
-    float  hotness = compute_hotness (ed, callee, callee_weight); 
-#endif
 
     //pengzhao
     if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
@@ -645,25 +622,19 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
          callee->Summary_Proc()->Is_Never_Invoked() == FALSE) {
 
         if (callee_weight <= TINY_SIZE
-#ifdef KEY
 	    || (callee_weight < INLINE_Callee_Limit && PU_is_marked_inline(callee->Get_PU()))
 	    || trivially_ok_to_inline (caller, cg) // ok to inline into caller?
-#endif
 	   )
 	{
-#ifdef KEY
 	    // don't use goto
 	    inline_do_it(ed, caller, callee, cg);
 	    return TRUE;
-#else
-            goto inline_do_it;
-#endif
         }             
      } 
     
     if (IPA_Force_Depth_Set) {
 	if (!callee->Has_Noinline_Attrib() && cg->Node_Depth(callee) <= IPA_Force_Depth
-#ifdef TODO
+#if defined(TODO)
 	&& !ed->IsICall()
 #endif
 	) {
@@ -716,27 +687,14 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
     ) {
 	
 	if (Total_Prog_Size >= Max_Total_Prog_Size) {
-#ifndef KEY
-	    static BOOL reported = FALSE;
-	    
-	    if ( ! reported ) {
-#endif // !KEY
 		if ( Trace_IPA || Trace_Perf ) {
 		    fprintf ( TFile, "Inlining stopped because total " "program size limit exceeded\n" );
 		}
-#ifdef KEY
                 Report_Reason (callee, caller, 
 		               "Total program size limit exceeded", ed);
                 if ( INLINE_List_Actions ) {
                     fprintf ( stderr, "Total program size (%d) exceeds the limit (%d)\n", Total_Prog_Size, Max_Total_Prog_Size);
                 }
-#else
-		if ( INLINE_List_Actions ) {
-		    fprintf ( stderr, "Inlining stopped because total " "program size limit exceeded\n" );
-		}
-		reported = TRUE;
-	    }
-#endif
 	    return FALSE;
 	}// if (Total_Prog_Size >= Max_Total_Prog_Size) 
 	
@@ -751,11 +709,7 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	}
 	
 	if (ed->Has_frequency ()) {
-#ifdef KEY
 	    if(ed->Get_frequency ().Value() == 0.0f)
-#else
-	    if(ed->Get_frequency ()._value == 0.0f)
-#endif
 	    {
 		ed->Set_reason_id(32);
 		Report_Reason (callee, caller, "Edge is never invoked", ed);
@@ -814,7 +768,7 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
                     if(density > IPA_Max_Density) {
                         ed->Set_reason_id(33);
                         ed->Set_reason_data(density);
-			// KEY: use %f for IPA_Max_Density
+			// use %f for IPA_Max_Density
                         Report_Limit_Reason (callee, caller, ed, "Density (%f) > Max_density (%f)", density, (float)IPA_Max_Density);
                         return FALSE;
 		    }
@@ -863,7 +817,7 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	    } else {
 		// inlining since pu size is less than minimum pu size
 		
-#ifdef TODO
+#if defined(TODO)
 		if (ed->IsICall () && (IPA_Enable_Cloning && callee->Is_Clone_Candidate()))
 		// until cprop handles indirect call, we can never
 		// inline a cloned PU
@@ -904,7 +858,6 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	    return FALSE;
 	}
 
-#ifdef KEY
 	if (IPA_Enable_Branch_Heuristic)
 	{
 	    // ********** REMOVE THIS ************* 
@@ -917,10 +870,9 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 		return FALSE;
 	    }
 	}
-#endif
     }//
     
-#ifdef TODO
+#if defined(TODO)
     if (ed->IsICall () && (IPA_Enable_Cloning && callee->Is_Clone_Candidate())) {
 	// if we decide to clone, we cannot inline
 	Report_Reason (callee, caller, "cannot inline indirect call to cloned PU", ed);
@@ -929,54 +881,7 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 #endif
     
     /* Finally, we decide to inline this call */
-#ifdef KEY
     inline_do_it (ed, caller, callee, cg);
-#else
-    inline_do_it: if (Trace_IPA || Trace_Perf) {
-	fprintf (stderr, "%s inlined into %s", callee->Name(),caller->Name());
-	fprintf (TFile, "%s inlined into ", DEMANGLE (callee->Name()));
-	fprintf (TFile, "%s (size: %d + %d = %d)   (edge# %d) \n",
-                 DEMANGLE (caller->Name()), callee_weight, caller_weight, combined_weight, ed->Edge_Index());
-    }
-    
-    //pengzhao
-    if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
-	if (inline_it==FALSE) {
-            ostringstream ed_ind;
-            ed_ind << ed->Edge_Index();
-            tmp_decision_st = string ("*[") + string(DEMANGLE(callee->Name())) + string("]") +
-                              string("will be Inlined into [") + string (DEMANGLE(caller->Name())) + string("] (edge=") +
-                              ed_ind.str() + string(")");
-        }
-        ostringstream alis;
-        alis << callee_weight << "+" << caller_weight << "=" << combined_weight << ")\n";
-        tmp_reason_st = string("  and the limits donot filter it out},(size") + alis.str();
-        reason_st = reason_st + tmp_reason_st;
-	fprintf(Y_inlining, tmp_decision_st.c_str());
-	fprintf(Y_inlining, reason_st.c_str());
-    }
-    
-#ifdef TODO
-    if( IPA_Enable_Feedback ) {
-	/* check for cross-file inlining */
-	if( callee->File_Index() !=  caller->File_Index()) {
-	    (callee->Get_fbk_ptr() )->Set_Cross_File_Fnd();
-	}
-    }
-#endif
-    
-    Total_Prog_Size += (combined_weight - caller_weight);
-    caller->UpdateSize (callee, ed);
-    
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
-    if (IPA_Enable_DFE)
-	Update_Total_Prog_Size (caller, callee, cg);
-#endif // _STANDALONE_INLINER
-    
-    if (callee->Summary_Proc()->Has_var_dim_array()) {  // propagate the bit up
-	caller->Summary_Proc()->Set_has_var_dim_array();
-    }
-#endif // KEY
     return TRUE;
 } // check-size-and-freq
 
@@ -1067,7 +972,6 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
         else
     	    actual_is_array = (TY_kind(ty_actual) == KIND_ARRAY);
     
-#ifdef KEY
 	UINT64 formal_type_size, actual_type_size;
 
 	if (INLINE_Check_Compatibility == RELAXED_CHECK)
@@ -1102,7 +1006,6 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 	      return TRUE;
 	  }
 	}
-#endif // KEY
 
         // PV 374125, don't inline in this case
         // where one of the parameters is an array and the
@@ -1127,7 +1030,6 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
         if (formal_element_size == actual_element_size)
     	    return TRUE;
 
-#ifdef KEY
 	if (INLINE_Check_Compatibility == RELAXED_CHECK)
 	{
 	  if (actual_is_array && formal_is_array &&
@@ -1162,16 +1064,8 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 	      return TRUE;
 	  }
 	}
-#endif // KEY
 
-#if 0
-        else
-    	    return FALSE;
-#endif
     }
-#if 0
-    else { 	
-#endif
 	
         TYPE_ID desc = BASETYPE(ty_formal);
 	if ((desc == 0) && (TY_kind (ty_formal) == KIND_FUNCTION)) {
@@ -1197,15 +1091,8 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 
 	TYPE_ID rtype = BASETYPE(ty_actual);
 	TYPE_ID ltype = OPCODE_desc(stid);
-#ifdef KEY
         if (INLINE_Type_Mismatch || IPO_Types_Are_Compatible(ltype, rtype))
-#else
-        if (IPO_Types_Are_Compatible(ltype, rtype))
-#endif
 	    return TRUE;
-#if 0
-    }
-#endif
 
     return FALSE;
 }
@@ -1216,14 +1103,10 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 static BOOL
 param_types_are_compatible (IPA_NODE* caller_node, IPA_NODE* callee_node, IPA_EDGE *ed)
 {
-#ifdef KEY
     // num_formals is actually the lesser of the # of actual parameters and
     // # of formal parameters.
     INT num_formals = ed->Num_Actuals() < callee_node->Num_Formals() ? 
     			ed->Num_Actuals() : callee_node->Num_Formals();
-#else
-    INT num_formals = callee_node->Num_Formals();
-#endif
 
     if (!num_formals) // No types to check
 	return TRUE;
@@ -1245,9 +1128,6 @@ param_types_are_compatible (IPA_NODE* caller_node, IPA_NODE* callee_node, IPA_ED
     BOOL lang = ((callee_node->Summary_Proc()->Get_lang() == LANG_F77) || 
     		(callee_node->Summary_Proc()->Get_lang() == LANG_F90));
 
-#if 0
-    IPA_NODE_CONTEXT context(callee_node);
-#endif
 
     for (INT i=0; i<num_formals; ++i) {
 	TY_IDX ty_formal = formals[i].Get_ty();
@@ -1328,11 +1208,7 @@ IPA_NODE::UpdateSize (IPA_NODE *callee, IPA_EDGE *ed)
     } 
 
     _pu_size += callee->PU_Size();
-#ifdef KEY
     _pu_size.Inc_PU_Size (-1, 0, -1);
-#else
-    _pu_size.Inc_PU_Size (-1, callee->Num_Formals(), -1);
-#endif
 
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
     if (IPA_Use_Effective_Size && Has_frequency() &&
@@ -1399,7 +1275,6 @@ no_inline_pu_with_nested_pus(IPA_NODE* caller, IPA_GRAPH* cg)
     return FALSE;
 }
 
-#ifdef KEY
 #include "ir_bread.h"		// for WN_get_section_base
 #include "sys/elf_whirl.h"	// for WT_COMP_FLAGS
 // Fills in the vector with options
@@ -1519,7 +1394,6 @@ formal_is_loop_index (IPA_NODE * caller_node, IPA_NODE * callee_node, IPA_EDGE *
     return FALSE;
 }
 #endif // ! _STANDALONE_INLINER && ! _LIGHTWEIGHT_INLINER
-#endif // KEY
 
 /*-------------------------------------------------------------*/
 /* check to see if we should be inlining                       */
@@ -1531,7 +1405,6 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
     BOOL result = TRUE;
     const char *reason = 0;
 
-#ifdef KEY
     if (cg->Graph()->Is_Recursive_Edge (ed->Edge_Index ())) {
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
 	if (caller == callee)
@@ -1552,18 +1425,6 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 #endif //  _STANDALONE_INLINER
 	    callee->Set_Recursive_In_Edge();
     }
-#endif
-#if 0
-    // caller and callee are not from the same partition AND the
-    // callee is not from the COMMON partition (partiton with value 0)
-    // or the caller is from the COMMON partition but not the callee
-    if ((IPA_Enable_GP_Partition ||
-	 (IPA_Enable_SP_Partition && (IPA_Space_Access_Mode == SAVE_SPACE_MODE))) &&
-	    ((caller->Get_partition_group() == COMMON_PARTITION) || 
-	    (callee->Get_partition_group() != COMMON_PARTITION)) && 
-	    (caller->Get_partition_group() != callee->Get_partition_group())) 
-	return FALSE;
-#endif
 
     if (callee->Should_Be_Skipped()) {
 	reason = "callee is skipped";
@@ -1599,7 +1460,6 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	ed->Set_reason_id (5);
 	callee->Set_Noinline_Attrib ();
 	result = FALSE;
-#ifdef KEY
 // Do recursive inlining only under ipa
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
     } else if (cg->Graph()->Is_Recursive_Edge (ed->Edge_Index ()) &&
@@ -1607,21 +1467,6 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 #else
     } else if (cg->Graph()->Is_Recursive_Edge (ed->Edge_Index ())) {
 #endif
-#else	// for KEY
-    } else if (cg->Graph()->Is_Recursive_Edge (ed->Edge_Index ())) {
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
-	BOOL set_recursive_in_edge = TRUE;
-	if (ed->Has_frequency () && callee->Has_frequency () &&
-		 ed->Get_frequency().Known() && callee->Get_frequency ().Known()) {
-	    if (compute_hotness (ed, callee, Effective_weight (callee))
-		< IPA_Min_Hotness)
-		set_recursive_in_edge = FALSE;
-	}
-
-	if (set_recursive_in_edge)
-#endif //  _STANDALONE_INLINER
-	    callee->Set_Recursive_In_Edge ();
-#endif	// KEY
 	result = FALSE;
 	reason = "callee is recursive";
 	ed->Set_reason_id (6);
@@ -1649,12 +1494,8 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	reason = "function with alternate entry point";
 	ed->Set_reason_id (8);
     }
-#ifdef KEY
     else if (!INLINE_Param_Mismatch 
     	     && ed->Num_Actuals() < callee->Num_Formals())
-#else
-    else if (ed->Num_Actuals() < callee->Num_Formals())
-#endif
     {
 	result = FALSE;
 	reason = "number of parameters mismatched";
@@ -1759,13 +1600,13 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	        ed->Set_reason_id (22);
 	result = FALSE;
     }
-    else if (INLINE_Check_Compatibility != AGGRESSIVE && // KEY
+    else if (INLINE_Check_Compatibility != AGGRESSIVE && 
              !param_types_are_compatible(caller, callee, ed)) {
 	reason = "incompatible parameter types";
 	        ed->Set_reason_id (23);
 	result = FALSE;
     } 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     else if (Opt_Options_Inconsistent && 
     	     caller->File_Id() != callee->File_Id()) {
     // The caller and callee come from different files, check if they
@@ -1800,8 +1641,7 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
             reason = "formal parameter is a loop index";
             ed->Set_reason_id (37);
     }
-#endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
-#ifdef KEY
+#endif // !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
     else if (PU_is_nested_func(caller->Get_PU()) ||
              PU_is_nested_func(callee->Get_PU()) ||
              PU_uplevel(callee->Get_PU())) {
@@ -1809,7 +1649,6 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
             reason = "not inlining nested functions";
             ed->Set_reason_id (38);
     } 
-#endif
     // The following else-if must be last
     else if (!IPA_Enable_Lang) {
 	if ((callee->Summary_Proc()->Get_lang() == LANG_F77) || 
@@ -1837,11 +1676,7 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	return FALSE;
     } 
 
-#if 0 // def _STANDALONE_INLINER
-    return result;
-#else
     return check_size_and_freq (ed, caller, callee, cg);
-#endif // _STANDALONE_INLINER
 } // do_inline
 
 
@@ -1952,22 +1787,17 @@ Analyze_call (IPA_NODE* caller, IPA_EDGE* edge, const IPA_CALL_GRAPH* cg)
     if (IPA_Enable_DCE) {
 	// Do dead call elimination analysis
 		
-	if (!callee->Summary_Proc()->Has_pragma_side_effect() && // KEY
+	if (!callee->Summary_Proc()->Has_pragma_side_effect() && 
 	    ((edge->Is_Deletable () || // set by const. propagation
 
 	      (
-#ifdef KEY
 	       callee->Summary_Proc()->Get_callsite_count() == 0 &&
-#else
-	       cg->Node_Depth (callee) == 0 &&
-#endif
 	       !callee->Has_Direct_Mod_Ref() &&
 	       !callee->Summary_Proc()->Is_alt_entry () &&
 	       !callee->Summary_Proc()->Has_alt_entry () &&
 	       !caller->Summary_Proc()->Is_alt_entry () &&
 	       return_types_are_compatible (callee, edge))))) {
 
-	    // KEY
 	    Is_True (callee->Summary_Proc()->Get_callsite_count() ||
 	             !callee->Summary_Proc()->Get_call_count(),
 		     ("Callsite and call counts don't match"));
@@ -2009,10 +1839,6 @@ Analyze_call (IPA_NODE* caller, IPA_EDGE* edge, const IPA_CALL_GRAPH* cg)
         if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
             fprintf(Verbose_inlining,"NNN\t(%p)%-20s -------<%p>--------> (%p)%-20s\n",caller,caller->Name(),edge,callee,callee->Name());
 	}
-#if 0
-	if (callee->Has_Must_Inline_Attrib())
-	    callee->Clear_Must_Inline_Attrib ();
-#endif
 	if (callee->Has_Inline_Attrib())
 	    callee->Clear_Inline_Attrib ();
 	Total_Not_Inlined++;
@@ -2024,7 +1850,6 @@ Analyze_call (IPA_NODE* caller, IPA_EDGE* edge, const IPA_CALL_GRAPH* cg)
 /* Solve the interprocedural analysis phase of inlining.                   */
 /*-------------------------------------------------------------------------*/
 
-#ifdef KEY
 
 // invocation freq for each IPA_EDGE during inline analysis
 typedef AUX_IPA_EDGE<float> INVOCATION_FREQ;
@@ -2121,7 +1946,6 @@ void Perform_Inline_Analysis2( IPA_CALL_GRAPH* cg, MEM_POOL* pool )
 
   //return Perform_Inline_Analysis( cg, pool );
 }
-#endif // KEY
 
 void
 Perform_Inline_Analysis (IPA_CALL_GRAPH* cg, MEM_POOL* pool)
@@ -2173,7 +1997,7 @@ Perform_Inline_Analysis (IPA_CALL_GRAPH* cg, MEM_POOL* pool)
 
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
 
-#ifdef TODO
+#if defined(TODO)
     /* Feedback needs inline counters, so use before cleaned up */
     if( IPA_Enable_Feedback ) {
 	fprintf(IPA_Feedback_prg_fd,"\nINLINING SUCCESS INFO\n\n");

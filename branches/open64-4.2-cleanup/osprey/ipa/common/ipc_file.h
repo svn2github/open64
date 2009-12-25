@@ -38,14 +38,14 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef ipc_file_INCLUDED
+#if !defined(ipc_file_INCLUDED)
 #define ipc_file_INCLUDED
 
-#ifndef symtab_INCLUDED
+#if !defined(symtab_INCLUDED)
 #include "symtab.h"			// for FILE_INFO
 #endif
 
-#ifndef dwarf_DST_mem_INCLUDED
+#if !defined(dwarf_DST_mem_INCLUDED)
 #define USE_DST_INTERNALS
 #include "dwarf_DST_mem.h"
 #endif
@@ -212,16 +212,6 @@ Set_IP_FILE_HDR_new_pu_list (IP_FILE_HDR& hdr, struct pu_info* pu)
 
 inline UINT32
 IP_FILE_HDR_num_procs (const IP_FILE_HDR& hdr) {
-#if 0
-    Is_True(hdr.num_procs ==
-            IP_FILE_HDR_PUs_in_state(hdr, IPA_ORIG) +
-            IP_FILE_HDR_PUs_in_state(hdr, IPA_MODIFIED) +
-            IP_FILE_HDR_PUs_in_state(hdr, IPA_WRITTEN) +
-            IP_FILE_HDR_PUs_in_state(hdr, IPA_UNUSED) +
-            IP_FILE_HDR_PUs_in_state(hdr, IPA_DELETED),
-            ("File header %s has inconsistent proc count %s",
-             hdr.file_name, hdr.num_procs));
-#endif
     return hdr.num_procs;
 }
 inline void
@@ -235,16 +225,6 @@ Inc_IP_FILE_HDR_num_procs (IP_FILE_HDR& hdr) {
 
 inline UINT32
 IP_FILE_HDR_num_procs_processed (const IP_FILE_HDR& hdr) {
-#if 0
-    Is_True(hdr.num_procs_processed ==
-            IP_FILE_HDR_PUs_in_state(hdr, IPA_WRITTEN) +
-            IP_FILE_HDR_PUs_in_state(hdr, IPA_DELETED),
-            ("File hdr %s has inconsistent processed count %d, should be %d",
-             hdr.file_name,
-             hdr.num_procs_processed,
-             IP_FILE_HDR_PUs_in_state(hdr, IPA_WRITTEN) +
-             IP_FILE_HDR_PUs_in_state(hdr, IPA_DELETED)));
-#endif
     return hdr.num_procs_processed;
 }
 

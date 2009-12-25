@@ -213,7 +213,7 @@ IPA_FEEDBACK_STRINGS::Emit_id_string ( const char *name )
 // phases.
 //
 // ====================================================================
-#ifdef TODO
+#if defined(TODO)
 
 INT32
 C_Emit_id_string ( const char *name )

@@ -43,14 +43,14 @@
 
 #include "wn.h"
 struct ip_file_hdr;
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
 /*ARGSUSED*/
 void IP_WRITE_pu ( struct ip_file_hdr *s, INT pindex ) {}
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 

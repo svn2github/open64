@@ -37,7 +37,7 @@
 */
 
 
-#ifndef ipl_outline_INCLUDED
+#if !defined(ipl_outline_INCLUDED)
 #define ipl_outline_INCLUDED
 
 extern const WN*

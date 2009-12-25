@@ -56,10 +56,10 @@
  * ====================================================================
  */
 
-#ifndef cxx_ipo_split_INCLUDED
+#if !defined(cxx_ipo_split_INCLUDED)
 #define cxx_ipo_split_INCLUDED
 
-#ifndef cxx_ipa_cg_INCLUDED
+#if !defined(cxx_ipa_cg_INCLUDED)
 #include "ipa_cg.h"
 #endif
 extern void

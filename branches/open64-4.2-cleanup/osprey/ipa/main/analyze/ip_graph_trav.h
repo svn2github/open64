@@ -39,10 +39,10 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#ifndef cxx_ip_graph_trav_INCLUDED
+#if !defined(cxx_ip_graph_trav_INCLUDED)
 #define cxx_ip_graph_trav_INCLUDED
 
-#ifndef CXX_MEMORY_INCLUDED
+#if !defined(CXX_MEMORY_INCLUDED)
 #include "cxx_memory.h"
 #endif
 

@@ -29,16 +29,12 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ipl_reorder_INCLUDED
+#if !defined(ipl_reorder_INCLUDED)
 #define ipl_reorder_INCLUDED
 #include "defs.h" 	//for mUINT32
 #include "symtab.h"
 #include "symtab_defs.h"  //for all tables,such as Ty_tab[]and Ty_Table etc.
-#ifdef KEY
 #include <ext/hash_map>
-#else
-#include <hash_map.h>
-#endif // KEY
 #include <vector>
 extern
 MEM_POOL  reorder_ipl_pool;

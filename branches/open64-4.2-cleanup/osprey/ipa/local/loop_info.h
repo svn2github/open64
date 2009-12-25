@@ -68,34 +68,34 @@
 //	
 //---------------------------------------------------------------------------
 
-#ifndef loop_info_INCLUDED
+#if !defined(loop_info_INCLUDED)
 #define loop_info_INCLUDED
 
-#ifndef defs_INCLUDED
+#if !defined(defs_INCLUDED)
 #include "defs.h"
 #endif
 
-#ifndef wn_INCLUDED
+#if !defined(wn_INCLUDED)
 #include "wn.h"
 #endif
 
-#ifndef access_vector_INCLUDED
+#if !defined(access_vector_INCLUDED)
 #include "access_vector.h"
 #endif
 
-#ifndef cxx_memory_INCLUDED
+#if !defined(cxx_memory_INCLUDED)
 #include "cxx_memory.h"
 #endif
 
-#ifndef cxx_base_INCLUDED
+#if !defined(cxx_base_INCLUDED)
 #include "cxx_base.h"
 #endif
 
-#ifndef if_info_INCLUDED
+#if !defined(if_info_INCLUDED)
 #include "if_info.h"
 #endif
 
-#ifndef reduction_INCLUDED
+#if !defined(reduction_INCLUDED)
 #include "reduction.h"
 #endif
 
@@ -161,10 +161,8 @@ public:
   void Set_step(ACCESS_VECTOR *step) { _step = step;};
   ACCESS_VECTOR* Get_step() const { return _step;};
 
-#if defined(KEY) && defined(SHARED_BUILD)
+#if defined(SHARED_BUILD)
   void Print(FILE *fp, INT = 0) __attribute__((weak));
-#else
-  void Print(FILE *fp, INT = 0);
 #endif
 
   ~DO_LOOP_INFO_BASE() {

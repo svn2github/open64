@@ -37,18 +37,18 @@
 */
 
 
-#ifndef cxx_ipa_lno_write_INCLUDED
+#if !defined(cxx_ipa_lno_write_INCLUDED)
 #define cxx_ipa_lno_write_INCLUDED 
 
-#ifndef cxx_hash_INCLUDED
+#if !defined(cxx_hash_INCLUDED)
 #include "cxx_hash.h"
 #endif
 
-#ifndef ipa_section_INCLUDED
+#if !defined(ipa_section_INCLUDED)
 #include "ipa_section.h" 
 #endif
 
-#ifndef ipa_lno_summary_INCLUDED
+#if !defined(ipa_lno_summary_INCLUDED)
 #include "ipa_lno_summary.h" 
 #endif 
 

@@ -107,7 +107,6 @@ IPA_get_struct_access_file_array (const IP_FILE_HDR& hdr, INT32& size)
   return NULL;
 }
 
-#ifdef KEY
 SUMMARY_TY_INFO*
 IPA_get_ty_info_file_array (const IP_FILE_HDR& hdr, INT32& size)
 {
@@ -118,7 +117,6 @@ IPA_get_ty_info_file_array (const IP_FILE_HDR& hdr, INT32& size)
   } 
   return NULL;
 }
-#endif
 
 static SUMMARY_GLOBAL*
 get_global_array (const IPA_NODE* node)

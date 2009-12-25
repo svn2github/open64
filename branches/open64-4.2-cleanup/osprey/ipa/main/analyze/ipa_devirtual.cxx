@@ -26,7 +26,7 @@
  *
  */
 
-#ifndef __STDC_LIMIT_MACROS
+#if !defined(__STDC_LIMIT_MACROS)
 #define __STDC_LIMIT_MACROS
 #endif
 
@@ -190,7 +190,7 @@ Find_virtual_function(TY_IDX actual_class,
         return ST_IDX_ZERO;
     do {
         if (offset == 0) {
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
             Is_True(INITV_kind(initv_idx) == INITVKIND_SYMIPLT,
                     ("Wrong INITV for virtual function."));
 #else
@@ -212,7 +212,7 @@ Find_virtual_function(TY_IDX actual_class,
             offset -= Pointer_Size;
             initv_idx = INITV_next(initv_idx);
             break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
         case INITVKIND_SYMIPLT:
             offset -= (Pointer_Size << 1);
             initv_idx = INITV_next(initv_idx);
@@ -1274,7 +1274,7 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Apply_Virtual_Function_Transform (
                  method->Map_Table());
 
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
          WN* copy_load = WN_COPY_Tree_With_Map(WN_kid(old_wn,
                  WN_kid_count(old_wn)-1));
 #else
@@ -1741,13 +1741,13 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Locate_Virtual_Function_In_Virtual_Table (
     }
     do {
         if (offset == 0) {
-    #ifdef TARG_IA64
+#if defined(TARG_IA64)
             Is_True(INITV_kind(initv_idx) == INITVKIND_SYMIPLT,
                     ("Wrong INITV for virtual function."));
-    #else
+#else
             Is_True(INITV_kind(initv_idx) == INITVKIND_SYMOFF,
                     ("Wrong INITV for virtual function."));
-    #endif
+#endif
             st_id = INITV_st(initv_idx);
             break;
         }
@@ -1764,12 +1764,12 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Locate_Virtual_Function_In_Virtual_Table (
                 offset -= Pointer_Size;
                 initv_idx = INITV_next(initv_idx);
                 break;
-    #ifdef TARG_IA64
+#if defined(TARG_IA64)
             case INITVKIND_SYMIPLT:
                 offset -= (Pointer_Size << 1);
                 initv_idx = INITV_next(initv_idx);
                 break;
-    #endif
+#endif
             default:
                 Is_True(FALSE, ("Unexcepted INITV kind."));
             }

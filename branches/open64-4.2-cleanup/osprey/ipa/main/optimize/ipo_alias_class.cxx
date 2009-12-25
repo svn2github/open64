@@ -65,7 +65,7 @@
 
 // For the interface to clients, see ipo_alias_class.h
 
-#ifdef USE_PCH
+#if defined(USE_PCH)
 #include "opt_pch.h"
 #endif // USE_PCH
 #pragma hdrstop
@@ -654,21 +654,6 @@ IP_ALIAS_CLASSIFICATION::Class_of_base_id(const IDTYPE base_id) const
   return _base_id_map[base_id]->Base_member().Alias_class();
 }
 
-#if 0
-BOOL
-IP_ALIAS_CLASS_REP::In_pending(IP_ALIAS_CLASS_REP *acr)
-{
-  for (PENDING_SET::iterator p_item = Pending().begin();
-       p_item != Pending().end();
-       ++p_item) {
-    if ((*p_item)->Alias_class() == acr) {
-      return TRUE;
-    }
-  }
-  return FALSE;
-}
-#endif
-
 void
 IP_ALIAS_CLASS_REP::Add_pending(IP_ALIAS_CLASS_REP *item,
 				BOOL                trace)
@@ -680,9 +665,6 @@ IP_ALIAS_CLASS_REP::Add_pending(IP_ALIAS_CLASS_REP *item,
     fprintf(TFile, "Pending(%d) += %d\n", Id(), item->Id());
   }
 
-#if 0
-  if (!In_pending(acr))
-#endif
     _pending.push_front(item->Representative());
 }
 
@@ -872,17 +854,11 @@ IP_AC_LAMBDA_TYPE_REP::Union_func_args(      IP_AC_LAMBDA_TYPE_REP &that,
     Join(*(that.remaining_args->Alias_class()->Func_class_pointed_to()),
 	 pool, trace);
 
-#ifdef KEY // bug 8109
+  // bug 8109
   Return_class_member()->Alias_class()->Data_class_pointed_to()->
     Join(*(that.Return_class_member()->Alias_class()->Data_class_pointed_to()), pool, trace);
   Return_class_member()->Alias_class()->Func_class_pointed_to()->
     Join(*(that.Return_class_member()->Alias_class()->Func_class_pointed_to()), pool, trace);
-#else
-  Returns()->Alias_class()->Data_class_pointed_to()->
-    Join(*(that.Returns()->Alias_class()->Data_class_pointed_to()), pool, trace);
-  Returns()->Alias_class()->Func_class_pointed_to()->
-    Join(*(that.Returns()->Alias_class()->Func_class_pointed_to()), pool, trace);
-#endif
 }
 
 void
@@ -1149,10 +1125,8 @@ IP_ALIAS_CLASSIFICATION::Classify_deref_of_expr(IP_ALIAS_CLASS_MEMBER        *lh
 	  IP_ALIAS_CLASS_MEMBER *rhs_member =
 	    Class_of_base_id(WN_base_id(expr))->Representative();
 	  if (rhs_member->Alias_class()->Sort() == IP_ACR_REF_TYPE) {
-#ifdef KEY
 	    if (Ty_Table[WN_ty (expr)].kind == KIND_POINTER)
 	      directly_dereferenced = TRUE;
-#endif // KEY
 	    if (directly_dereferenced) {
 	      // Join unconditionally; the lhs_member's class should
 	      // eventually become a pointer, even if it isn't
@@ -1555,9 +1529,6 @@ IP_ALIAS_CLASSIFICATION::Callee_saves_no_parms(const WN *const call_wn)
 BOOL
 IP_ALIAS_CLASSIFICATION::Callee_returns_new_memory(const WN *const call_wn)
 {
-#ifndef KEY
-  return WN_Call_Does_Mem_Alloc(call_wn);
-#else
   if (WN_Call_Does_Mem_Alloc(call_wn))
     return TRUE;
   if (WN_operator(call_wn) == OPR_CALL) {
@@ -1581,14 +1552,12 @@ IP_ALIAS_CLASSIFICATION::Callee_returns_new_memory(const WN *const call_wn)
     }
   }
   return FALSE;
-#endif
 }
 
 /* ARGSUSED */
 BOOL
 IP_ALIAS_CLASSIFICATION::Callee_returns_new_memory(const ST *const st)
 {
-#ifdef KEY
   // Cheap hack for now, to test performance. This should be based on
   // some real mechanism in the future instead of cheesebag hacks.
   if ((strcmp("malloc", ST_name(st)) == 0) ||
@@ -1600,9 +1569,6 @@ IP_ALIAS_CLASSIFICATION::Callee_returns_new_memory(const ST *const st)
   else {
     return FALSE;
   }
-#else
-  return FALSE;
-#endif
 }
 
 BOOL
@@ -1726,10 +1692,6 @@ IP_ALIAS_CLASSIFICATION::Handle_call(WN *const call_wn)
       // Direct call. We get the callee descriptor from the (base of
       // the) ST specified in the call WN.
       ST_IDX callee_st_idx = WN_st_idx(call_wn);
-#ifndef KEY // Bug 8433
-      Is_True(ST_base_idx(St_Table[callee_st_idx]) == callee_st_idx,
-	      ("AC:Handle_call: Called routine must not have based address"));
-#endif
       callee_member = Class_of_base_id(WN_base_id(call_wn))->Representative();
     }
     else {
@@ -1969,9 +1931,7 @@ IP_ALIAS_CLASSIFICATION::Finalize_ac_map_wn(WN *wn)
       fprintf(TFile, "   placed in ");
     }
     if (opr == OPR_LDID || opr == OPR_STID || opr == OPR_LDA
-#ifdef KEY
 	|| opr == OPR_LDBITS
-#endif
 	) {
       // Direct memop; translation through base_id.
       IDTYPE class_id = Class_of_base_id(WN_base_id(wn))->Id();
@@ -2209,19 +2169,9 @@ IP_ALIAS_CLASSIFICATION::Alias_class(const WN *wn) const
 void
 IP_ALIAS_CLASSIFICATION::Release_resources(void)
 {
-#if 0
-  if (Tracing()) {
-    (void) fprintf(TFile,
-		   "Freeing IP alias class resources; "
-		   "recycled %lu ACR's of %lu\n",
-		   IP_ALIAS_CLASS_REP::_recycled_acr_nodes,
-		   IP_ALIAS_CLASS_REP::_last_id_used);
-  }
-#else
   DevWarn("Recycled %u of %d ACR's",
 	  IP_ALIAS_CLASS_REP::_recycled_acr_nodes,
 	  IP_ALIAS_CLASS_REP::_last_id_used);
-#endif
 
   _base_id_map.Free_array();
   if (_maps_initialized) {

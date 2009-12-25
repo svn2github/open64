@@ -38,7 +38,7 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef ipc_pic_INCLUDED
+#if !defined(ipc_pic_INCLUDED)
 #define ipc_pic_INCLUDED 
 
 extern void

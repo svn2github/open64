@@ -37,26 +37,26 @@
 */
 
 
-#ifndef cg_browser_INCLUDED
+#if !defined(cg_browser_INCLUDED)
 #define cg_browser_INCLUDED "cg_browser.h"
 
-#ifndef wb_buffer_INCLUDED
+#if !defined(wb_buffer_INCLUDED)
 #include "wb_buffer.h"
 #endif
 
-#ifndef cgb_carray_INCLUDED
+#if !defined(cgb_carray_INCLUDED)
 #include "cgb_carray.h"
 #endif
 
-#ifndef ipa_section_INCLUDED
+#if !defined(ipa_section_INCLUDED)
 #include "ipa_section.h"
 #endif 
 
-#ifndef cxx_ipa_df_INCLUDED
+#if !defined(cxx_ipa_df_INCLUDED)
 #include "ipa_df.h"
 #endif 
 
-#ifndef cxx_ipa_cprop_INCLUDED
+#if !defined(cxx_ipa_cprop_INCLUDED)
 #include "ipa_cprop.h"
 #endif 
 

@@ -55,7 +55,7 @@ v $
  */
 
 
-#ifndef ipc_utils_INCLUDED
+#if !defined(ipc_utils_INCLUDED)
 #define ipc_utils_INCLUDED
 
 

@@ -31,7 +31,7 @@
  * History: 04/23/2003, built by Jiang Hongshan, Tsinghua Univ.
  * 
  */
-#ifndef __omp_rtl_type_included
+#if !defined(__omp_rtl_type_included)
 #define __omp_rtl_type_included
 
 /* This header file defines all the type alias used in

@@ -528,9 +528,6 @@ Mismatched_Types(IPA_NODE* ipan_caller,
     } 
   }
   else if (ST_IDX_level(ss_caller->St_idx()) == GLOBAL_SYMTAB) {
-#if 0
-    // return FALSE, if the common block has equivalences
-#endif
     if (TY_size(TY_etype(ST_type(ss_caller->St_idx())))
         != ra_callee->Get_element_size()) { 
       if (Get_Trace(TP_IPA, IPA_TRACE_SECTION_CORRECTNESS))
@@ -670,9 +667,6 @@ extern BOOL Try_Reshape_Callee_Formal(IPA_NODE* ipan_caller,
     }
   } 
   else if (ST_IDX_level(ss_caller->St_idx()) == GLOBAL_SYMTAB) {
-#if 0
-    // return FALSE, if the common block has equivalences
-#endif
     if (TY_size(TY_etype(ST_type(ss_caller->St_idx())))
 	!= ra_callee->Get_element_size()) { 
       if (Get_Trace(TP_IPA, IPA_TRACE_SECTION_CORRECTNESS))

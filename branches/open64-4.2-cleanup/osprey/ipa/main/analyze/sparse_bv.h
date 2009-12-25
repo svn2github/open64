@@ -38,7 +38,7 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef cxx_sparse_bv_INCLUDED
+#if !defined(cxx_sparse_bv_INCLUDED)
 #define cxx_sparse_bv_INCLUDED
 
 #include <vector>
@@ -135,7 +135,7 @@ public:
 	}
     }
 
-#ifdef Is_True_On
+#if defined(Is_True_On)
     // debugging and tracing
 
     // verify consistency of the bit vector

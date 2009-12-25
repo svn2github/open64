@@ -38,26 +38,26 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef cxx_ipa_section_annot_INCLUDED
+#if !defined(cxx_ipa_section_annot_INCLUDED)
 #define cxx_ipa_section_annot_INCLUDED
 
-#ifndef cxx_hash_INCLUDED
+#if !defined(cxx_hash_INCLUDED)
 #include "cxx_hash.h"
 #endif
 
-#ifndef cxx_template_INCLUDED
+#if !defined(cxx_template_INCLUDED)
 #include "cxx_template.h"
 #endif
 
-#ifndef ipl_summary_INCLUDED
+#if !defined(ipl_summary_INCLUDED)
 #include "ipl_summary.h"
 #endif
 
-#ifndef mempool_INCLUDED
+#if !defined(mempool_INCLUDED)
 #include "mempool.h"
 #endif 
 
-#ifndef ipa_section_INCLUDED
+#if !defined(ipa_section_INCLUDED)
 #include "ipa_section.h"
 #endif
 

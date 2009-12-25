@@ -55,54 +55,54 @@
  * ====================================================================
  */
 
-#ifndef ipl_summarize_INCLUDED
+#if !defined(ipl_summarize_INCLUDED)
 #define ipl_summarize_INCLUDED
 
-#ifndef cxx_template_INCLUDED
+#if !defined(cxx_template_INCLUDED)
 #include "cxx_template.h"
 #endif // cxx_template_INCLUDED
 
-#ifndef cxx_hash_INCLUDED
+#if !defined(cxx_hash_INCLUDED)
 #include "cxx_hash.h"
 #endif // cxx_hash_INCLUDED
 
-#ifndef wn_util_INCLUDED
+#if !defined(wn_util_INCLUDED)
 #include "wn_util.h"                    // for WN, iterators,
 #endif // wn_util_INCLUDED
 
-#ifndef wn_map_INCLUDED
+#if !defined(wn_map_INCLUDED)
 #include "wn_map.h"			// for WN mappings
 #endif // wn_map_INCLUDED
 
-#ifndef lwn_util_INCLUDED
+#if !defined(lwn_util_INCLUDED)
 #include "lwn_util.h"                   // for LWN_Parentize
 #endif // lwn_util_INCLUDED
 
-#ifndef config_ipa_INCLUDED
+#if !defined(config_ipa_INCLUDED)
 #include "config_ipa.h"			// for INLINE_Enable_Copy_Prop
 #endif // config_ipa_INCLUDED
 
-#ifndef opt_du_INCLUDED
+#if !defined(opt_du_INCLUDED)
 #include "opt_du.h"                     // for DU-manager
 #endif // opt_du__INCLUDED
 
-#ifndef opt_alias_interface_INCLUDED
+#if !defined(opt_alias_interface_INCLUDED)
 #include "opt_alias_interface.h"        // for alias manager
 #endif // opt_alias_interface_INCLUDED
 
-#ifndef opt_ssa_INCLUDED
+#if !defined(opt_ssa_INCLUDED)
 #include "opt_ssa.h"			// for PHI_NODE
 #endif // opt_ssa_INCLUDED
 
-#ifndef ipl_summary_INCLUDED
+#if !defined(ipl_summary_INCLUDED)
 #include "ipl_summary.h"                // summary info data structures
 #endif // ipl_summary_INCLUDED
 
-#ifndef CXX_MEMORY_INCLUDED
+#if !defined(CXX_MEMORY_INCLUDED)
 #include "cxx_memory.h" //CXX_DELETE()  for reorder
 #endif
 
-#ifndef ipl_reorder_INCLUDED // for reorder_ipl_pool
+#if !defined(ipl_reorder_INCLUDED) // for reorder_ipl_pool
 #include "ipl_reorder.h"
 #endif
 
@@ -326,9 +326,7 @@ private:
     DYN_ARRAY<INLINE_ATTR> _inline_attr;
     DYN_ARRAY<SUMMARY_STRUCT_ACCESS> _struct_access;//reordering
     
-#ifdef KEY
     DYN_ARRAY<SUMMARY_TY_INFO> _ty_info;
-#endif
     BOOL Trace_Modref;			// trace mod/ref analysis
 
     /* used as cache to keep track of which global symbols have been
@@ -344,10 +342,8 @@ private:
     typedef hash_map<mUINT32, mUINT32> TY_TO_ACCESS_MAP;
     TY_TO_ACCESS_MAP *Ty_to_access_map;// mapping ty_index to SUMMARY_STRUCT_ACCESS
 
-#ifdef KEY
     typedef HASH_TABLE<UINT32, INT> TY_INFO_HASH_TABLE;
     TY_INFO_HASH_TABLE * Ty_info_hash_table;
-#endif
 
     typedef STACK<UINT64> LOOP_COUNT_STACK;
 	LOOP_COUNT_STACK *loop_count_stack;
@@ -490,17 +486,15 @@ private:
 	return new_idx;
     }
 
-#ifdef KEY
     SUMMARY_TY_INFO *New_ty_info () {
 	INT new_idx = _ty_info.Newidx ();
 	_ty_info[new_idx].Init ();
 	return &(_ty_info[new_idx]);
     }
-#endif
 
     void Process_alt_procedure (WN *w, INT formal_index, INT formal_count);
     void Process_callsite (WN *w, INT id, INT loopnest, float =-1);
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     void Process_icall (SUMMARY_PROCEDURE *, WN *, INT, float);
 #endif
 /*
@@ -570,9 +564,7 @@ private:
     	return num_ele;
     };
 
-#ifdef KEY
     void Record_ty_info_for_type (TY_IDX ty, TY_FLAGS flags);
-#endif
 
     // Functions needed for execution cost analysis
     INT IPL_GEN_Value(WN* wn_value, DYN_ARRAY<SUMMARY_VALUE>* sv,
@@ -595,10 +587,8 @@ private:
       DYN_ARRAY<SUMMARY_EXPR>* sx, BOOL constant_estimate);
     void IPL_Execution_Cost(WN* wn_func, SUMMARY_PROCEDURE* sp, 
       MEM_POOL* mem_pool, BOOL constant_estimate);
-#ifdef KEY
     void Process_eh_globals (void);
     void Process_eh_region (WN *);
-#endif
 
     // Helper function of Process_procedure() 
     void Identify_switch_clause_labels (WN* node, INT& default_lab_num, 
@@ -655,9 +645,7 @@ public:
     INLINE_ATTR *Get_inline_attr (INT idx) const { return &(_inline_attr[idx]); }
     SUMMARY_STRUCT_ACCESS * Get_struct_access(INT idx)const{return &(_struct_access[idx]);}
     
-#ifdef KEY
     SUMMARY_TY_INFO *Get_ty_info (INT idx) const      { return &(_ty_info[idx]); }
-#endif
     
     BOOL Has_procedure_entry () const	{ return _procedure.Lastidx () != -1; }
     BOOL Has_proc_info_entry () const	{ return _proc_info.Lastidx () != -1; }
@@ -681,9 +669,7 @@ public:
 					    () != -1; }
     BOOL Has_global_stid_entry () const	{ return _global_stid.Lastidx () != -1; }
     BOOL Has_struct_access_entry() const{return _struct_access.Lastidx()!=-1;}
-#ifdef KEY
     BOOL Has_ty_info_entry() const      { return _ty_info.Lastidx () != -1; }
-#endif
 
     INT Get_procedure_idx () const	{ return _procedure.Lastidx (); }
     INT Get_proc_info_idx () const	{ return _proc_info.Lastidx (); }
@@ -706,9 +692,7 @@ public:
     INT Get_inline_attr_idx () const	{ return _inline_attr.Lastidx (); }
     INT Get_global_stid_idx () const	{ return _global_stid.Lastidx (); }
     INT Get_struct_access_idx() const	{return _struct_access.Lastidx();}
-#ifdef KEY
     INT Get_ty_info_idx () const        { return _ty_info.Lastidx (); }
-#endif
 
     // constructor
 
@@ -737,9 +721,7 @@ public:
 	_inline_attr.Set_Mem_Pool (m);
 	_global_stid.Set_Mem_Pool (m);
 	_struct_access.Set_Mem_Pool (m);
-#ifdef KEY
 	_ty_info.Set_Mem_Pool (m);
-#endif
 	Trace_Modref = FALSE;
 	entry_point = NULL;
 	File_Pragmas = FALSE;
@@ -754,9 +736,7 @@ public:
 	//reorder added:
     	Ty_to_access_map=CXX_NEW(TY_TO_ACCESS_MAP(20),mem);
 	loop_count_stack=CXX_NEW(LOOP_COUNT_STACK(mem),mem);;
-#ifdef KEY
     	Ty_info_hash_table = CXX_NEW (TY_INFO_HASH_TABLE(113, mem), mem);
-#endif
 
 	Init_Aux_Symbol_Info (GLOBAL_SYMTAB);
 
@@ -802,7 +782,7 @@ public:
   
 }; // SUMMARIZE
 
-#ifdef IPA_SUMMARY
+#if defined(IPA_SUMMARY)
 
 #define PROGRAM_NAME IPL
 

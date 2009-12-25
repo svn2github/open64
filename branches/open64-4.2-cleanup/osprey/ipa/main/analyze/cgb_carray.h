@@ -37,18 +37,18 @@
 */
 
 
-#ifndef cgb_carray_INCLUDED
+#if !defined(cgb_carray_INCLUDED)
 #define cgb_carray_INCLUDED "cgb_carray.h"
 
-#ifndef dwarf_DST_INCLUDED
+#if !defined(dwarf_DST_INCLUDED)
 #include "dwarf_DST.h"
 #endif
 
-#ifndef ipc_file_INCLUDED
+#if !defined(ipc_file_INCLUDED)
 #include "ipc_file.h"
 #endif
 
-#ifndef cxx_ipa_cg_INCLUDED
+#if !defined(cxx_ipa_cg_INCLUDED)
 #include "ipa_cg.h"
 #endif 
 

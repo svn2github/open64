@@ -394,12 +394,8 @@ process_whirl (an_object_file_ptr p_obj, int nsec, const Shdr* section_table,
     pair<Sym *, UINT> ext_symtab = walk_st_list (gtabs, elf_symtab);
 
     if (ext_symtab.second  > 0) {
-#if 1
     	an_elf_sym_record *p_sym = (an_elf_sym_record *)ext_symtab.first;
 	merge_ext (p_sym,
-#else
-	merge_ext (reinterpret_cast<an_elf_sym_record *> (ext_symtab.first),
-#endif
 		   ld_get_section_base (p_obj, strtab_idx),
 		   ext_symtab.second, p_obj);
     }
@@ -427,11 +423,9 @@ process_whirl (an_object_file_ptr p_obj, int nsec, const Shdr* section_table,
 
 static BOOL ipa_dot_so_initialized = FALSE;
 
-#ifdef KEY
 #include "ipc_defs.h"
 
  IP_TARGET_TYPE IPA_Target_Type;
-#endif
 
 extern "C" void
 process_whirl32 (an_object_file_ptr p_obj, INT nsec,
@@ -439,9 +433,7 @@ process_whirl32 (an_object_file_ptr p_obj, INT nsec,
 		 BOOL check_whirl_revision, const char* file_name, off_t mmap_size) 
 {
     if (!ipa_dot_so_initialized) {
-#ifdef KEY
         IPA_Target_Type = IP_32_bit_ABI;
-#endif
 	ipa_dot_so_initialized = TRUE;
 	ipa_dot_so_init ();
     }
@@ -457,9 +449,7 @@ process_whirl64 (an_object_file_ptr p_obj, INT nsec,
 		 BOOL check_whirl_revision, const char* file_name, off_t mmap_size)
 { 
     if (!ipa_dot_so_initialized) {
-#ifdef KEY
         IPA_Target_Type = IP_64_bit_ABI;
-#endif
 	ipa_dot_so_initialized = TRUE;
 	ipa_dot_so_init ();
     }

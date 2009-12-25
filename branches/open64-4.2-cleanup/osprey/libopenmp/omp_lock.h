@@ -36,7 +36,7 @@
  * 
  */
 
-#ifndef __omp_lock_included
+#if !defined(__omp_lock_included)
 #define __omp_lock_included
 
 #define ALIGN_SIZE 64
@@ -57,7 +57,7 @@ typedef struct {
   }lock;
 }__attribute__ ((__aligned__(ALIGN_SIZE))) ompc_lock_t;
 
-#ifndef __OPENMP_LOCK_TYPE_DEFINED_
+#if !defined(__OPENMP_LOCK_TYPE_DEFINED_)
 #define __OPENMP_LOCK_TYPE_DEFINED_
 
 typedef struct {

@@ -26,7 +26,7 @@
  *
  */
 
-#ifndef cxx_ipa_chg_INCLUDED
+#if !defined(cxx_ipa_chg_INCLUDED)
 #define cxx_ipa_chg_INCLUDED
 
 #include "symtab.h"

@@ -121,9 +121,7 @@ BOOL IPL_Generate_Elf_Symtab = TRUE;
 #else
 BOOL IPL_Generate_Elf_Symtab = FALSE;
 #endif // __linux__
-#ifdef KEY
 UINT32 IPL_Ignore_Small_Loops = 0;
-#endif
 
 // temporary placeholder until feedback is fixed
 // BOOL FB_PU_Has_Feedback = FALSE;
@@ -146,10 +144,8 @@ static OPTION_DESC Options_IPL[] = {
       0, 0, 0,  &IPL_Enable_Unknown_Frequency, NULL},
     { OVK_BOOL, OV_INTERNAL,	FALSE, "elf_symtab", "",
       0, 0, 0,	&IPL_Generate_Elf_Symtab, NULL},
-#ifdef KEY
     { OVK_UINT32, OV_INTERNAL,	FALSE, "ignore_small_loops", "",
       0, 0, UINT32_MAX, &IPL_Ignore_Small_Loops, NULL},
-#endif
     { OVK_COUNT }		    // List terminator -- must be last
 };
 
@@ -309,9 +305,6 @@ Ipl_Fini (void)
 void
 Ipl_Extra_Output (Output_File *ir_output)
 {
-#ifndef KEY
-	if(IPA_Enable_Reorder)/*&&Feedback_Enabled[PROFILE_PHASE_BEFORE_VHO] )*/
-#endif // !KEY
 		Summary->Finish_collect_struct_access();// reorder, free pointers, set hot_flds
     IPA_write_summary(IPA_irb_write_summary, ir_output);
 

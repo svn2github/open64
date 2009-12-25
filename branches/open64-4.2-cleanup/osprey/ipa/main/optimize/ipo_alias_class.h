@@ -90,7 +90,7 @@
 //     alias classification is actually done.
 // ======================================================================
 
-#ifndef opt_alias_class_INCLUDED
+#if !defined(opt_alias_class_INCLUDED)
 #define opt_alias_class_INCLUDED "opt_alias_class.h"
 
 #include "cxx_memory.h"
@@ -101,7 +101,7 @@
 #include "opt_union_find.h"
 #include "opt_wn.h"
 #include "id_map.h"
-#ifndef opt_points_to_INCLUDED
+#if !defined(opt_points_to_INCLUDED)
 #include "opt_points_to.h"
 #endif
 
@@ -109,9 +109,7 @@ extern "C" {
 #include "bitset.h"
 }
 
-#ifdef KEY
 using idmap::ID_MAP;
-#endif
 
 class IP_ALIAS_CLASS_REP;
 class IP_ALIAS_CLASSIFICATION;
@@ -304,7 +302,6 @@ public:
       return returns;
     }
 
-#ifdef KEY
   IP_ALIAS_CLASS_MEMBER *Return_class_member(void) const
     {
       if (returns_new_memory)
@@ -312,7 +309,6 @@ public:
       else
         return returns;
     }
-#endif
 
   IP_ALIAS_CLASS_MEMBER
   *Memory_allocator_return_class_member(IP_ALIAS_CLASSIFICATION *ac) const;
@@ -444,9 +440,6 @@ public:
       return _type_info._sort;
     }
 
-#if 0
-  BOOL              In_pending(IP_ALIAS_CLASS_REP *);
-#endif
   void              Add_pending(IP_ALIAS_CLASS_REP *, BOOL);
   void              Merge_pending(IP_ALIAS_CLASS_REP &, BOOL);
   void              Process_pending(IP_ALIAS_CLASS_MEMBER *,

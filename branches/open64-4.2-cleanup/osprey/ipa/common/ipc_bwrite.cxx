@@ -50,9 +50,7 @@
 #endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/types.h> 
 
-#ifdef KEY
 #include <linux/limits.h>
-#endif
 
 #include "defs.h"
 #include "symtab.h"			// symbol table
@@ -60,7 +58,7 @@
 #define USE_DST_INTERNALS		// needed by pu_info.h
 #include "pu_info.h"			// needed by ir_bwrite.h
 
-#ifndef BACK_END
+#if !defined(BACK_END)
 #define BACK_END			// needed by ir_bwrite.h
 #endif
 #include "ir_bwrite.h"			// low-level WHIRL output routines
@@ -82,11 +80,9 @@
 #include "ld_ipa_option.h"      // For ld_ipa_opt 
 #include "ipc_weak.h"           
 
-#ifdef KEY
 #include "ipa_builtins.h"
 #include "ir_bcom.h"
 #include "be_ipa_util.h"
-#endif
 
 
 extern "C" void add_to_tmp_file_list (char*);
@@ -171,10 +167,8 @@ extern "C" void IP_write_global_symtab(void)
 
   WN_write_globals(symtab_file);
   WN_write_strtab(Index_To_Str(0), STR_Table_Size(), symtab_file);
-#ifdef KEY
   if (Mod_Ref_Info_Table_Size() != 0)
     IPA_write_summary (IPA_irb_write_mod_ref_info, symtab_file);
-#endif
   WN_write_revision(symtab_file);  
 
   add_to_tmp_file_list(symtab_file_name);
@@ -368,7 +362,6 @@ void free_pu_cg_resources(PU_Info* pu, Vector& file_hdr_list)
   for ( ; pu ; pu = PU_Info_next(pu)) {
     IPA_NODE* node = Get_Node_From_PU(pu);
 
-#ifdef KEY
     // Builtins don't have file headers and their mem pool is not initialized.
     if (node->Is_Builtin()) {
       if (node->Mod_Ref_Info ())
@@ -376,7 +369,6 @@ void free_pu_cg_resources(PU_Info* pu, Vector& file_hdr_list)
       node->Set_Processed();
       continue;
     }
-#endif
 
     // Save a pointer to the header.
     IP_FILE_HDR& hdr = node->File_Header();
@@ -539,7 +531,6 @@ bool output_queue::should_flush(const IPA_NODE* node)
   static UINT32 count = 0;
   count += node->Weight ();
 
-#ifdef KEY
   if (IPA_Enable_Source_PU_Order || Opt_Options_Inconsistent)
   {
       if (IPA_NODE::next_file_id != -1 &&
@@ -555,13 +546,10 @@ bool output_queue::should_flush(const IPA_NODE* node)
 	return TRUE;
       }
   }
-#endif
 
   if (
-#ifdef KEY
       // Do not consider output file size if following source code order.
       !IPA_Enable_Source_PU_Order && !Opt_Options_Inconsistent &&
-#endif
       count >= IPA_Max_Output_File_Size) {
       if (ProMP_Listing) {
 	ProMP_next_idx = promp_id;
@@ -605,7 +593,6 @@ void output_queue::push(PU_Info* pu) {
     tail = new_pu;
   }
 
-#ifdef KEY
   // Write out any builtin function created by IPA.  Don't put the builtin at
   // the head of the pu infos list because output_queue::flush passes the head
   // pu to ipacom_process_file, which passes it to get_command_line, which then
@@ -641,13 +628,11 @@ void output_queue::push(PU_Info* pu) {
       tail = new_pu;
     }
   }
-#endif
 
   Is_True(!this->empty(), ("output_queue::push() failed"));
           
 }
 
-#ifdef KEY
 // Return the number of '\n' in pu_name.
 static int
 count_new_lines (const char * pu_name)
@@ -685,7 +670,6 @@ fill_in_buffer (char * buf, int count, const char * pu_name)
   }
   *buf = '\0';
 }
-#endif
 
 size_t
 output_queue::pu_tree_add_comments(size_t index, size_t count, PU_Info* head)
@@ -701,13 +685,9 @@ output_queue::pu_tree_add_comments(size_t index, size_t count, PU_Info* head)
     
     char* buf = 0;
     const size_t pu_len = strlen(pu_name);
-#ifdef KEY
     // Bug 14465: Count new-lines.
     int num_new_lines = count_new_lines(pu_name);
     const int total_len = pu_len + padding + num_new_lines * 5;
-#else
-    const int total_len = pu_len + padding;
-#endif
 
     if (total_len < bufsize)
       buf = static_buf;
@@ -717,13 +697,11 @@ output_queue::pu_tree_add_comments(size_t index, size_t count, PU_Info* head)
         ErrMsg (EC_No_Mem, "pu_tree_add_comment"); 
     }
 
-#ifdef KEY
     // Bug 14465: Update buffer with makefile comments in
     // multiple names.
     if (num_new_lines)
       fill_in_buffer (buf, count++, pu_name);
     else
-#endif
 
     sprintf(buf, " %lu: %s", (unsigned long)(count++), pu_name);
     ipacom_add_comment(index, buf);
@@ -885,10 +863,8 @@ extern "C" void IP_WRITE_pu (IP_FILE_HDR *s , INT pindex)
 	       CURRENT_SYMTAB,
 	       GLOBAL_SYMTAB + 1));
 
-#ifdef KEY
       // Bug 14465: dummy function for global-scope ASM?
       if (ST_class(St_Table[PU_Info_proc_sym(pu)]) != CLASS_NAME)
-#endif
       Ip_alias_class->Classify_memops(PU_Info_tree_ptr(pu));
 
       // Classify the initialized data after seeing the code so we get

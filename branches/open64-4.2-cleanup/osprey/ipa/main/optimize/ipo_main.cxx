@@ -125,18 +125,12 @@
 #include "ipc_option.h"
 
 #include "ipa_devirtual.h"
-#ifdef KEY
 #include "ipa_builtins.h"
 #include "ipo_parent.h"
-#endif
 
-#ifndef KEY
-#include "inline_script_parser.h"
-#else
 extern void IPO_WN_Update_For_Struct_Opt (IPA_NODE *);
 extern void IPO_WN_Update_For_Complete_Structure_Relayout_Legality(IPA_NODE *);
 extern void IPO_WN_Update_For_Array_Remapping_Legality(IPA_NODE *, int, int *);
-#endif  /* KEY */
 #include "ipa_reorder.h" //IPO_Modify_WN_for_field_reorder ()
 
 extern "C" void add_to_tmp_file_list (char*);
@@ -214,7 +208,6 @@ static MEM_POOL Recycle_mem_pool;
 MEM_POOL IPA_LNO_mem_pool; 
 static IPA_LNO_WRITE_SUMMARY* IPA_LNO_Summary = NULL; 
 
-#ifdef KEY
 // For recursive inlining, ie. when caller == callee, we process the entire
 // node before inlining the recursive edge(s). Store the node and edge in
 // a vector of this struct for inlining later.
@@ -224,7 +217,6 @@ struct inline_info {
     inline_info (IPA_NODE *n, IPA_EDGE *e) : _node(n), _edge(e) {}
 };
 vector<inline_info> inline_list;
-#endif
 
 //----------------------------------------------------------------------
 // Aux. info for keeping track of the transformation process:
@@ -272,11 +264,9 @@ PU_Deleted (const IPA_GRAPH* cg, NODE_INDEX idx, const IP_FILE_HDR* fhdr)
     if (node == NULL)
 	return TRUE;
 
-#ifdef KEY
     // For builtins, Proc_Info_Index returns -1.  proc_info[-1] is illegal.
     if (node->Is_Builtin())
       return FALSE;
-#endif
 
     const IP_PROC_INFO* proc_info = IP_FILE_HDR_proc_info (*fhdr);
 
@@ -284,7 +274,6 @@ PU_Deleted (const IPA_GRAPH* cg, NODE_INDEX idx, const IP_FILE_HDR* fhdr)
 	IPA_DELETED;
 } // PU_Deleted
     
-#ifdef KEY
 static BOOL
 PU_Written (const IPA_GRAPH* cg, const IPA_NODE* node, const IP_FILE_HDR* fhdr)
 {
@@ -296,7 +285,6 @@ PU_Written (const IPA_GRAPH* cg, const IPA_NODE* node, const IP_FILE_HDR* fhdr)
     return IP_PROC_INFO_state (proc_info[node->Proc_Info_Index ()]) ==
 	IPA_WRITTEN;
 } // PU_Written
-#endif // KEY
 
 // this is basically a post-order iteration of the call graph, with the
 // exception that any nested procedure is always processed before its
@@ -323,10 +311,8 @@ Trans_Order_Walk (IPA_NODE_VECTOR& vect, mBOOL* visited, IPA_GRAPH* cg,
     if (node == NULL)
 	return;
 
-#ifdef KEY
     if (node->Is_Builtin())
       return;
-#endif
 
     if (node->Summary_Proc ()->Is_alt_entry ()) {
 	IPA_SUCC_ITER succ_iter (node);
@@ -390,10 +376,8 @@ Build_BFS_Order (IPA_NODE_VECTOR& vect, IPA_GRAPH* cg,
             IPA_NODE* node = cg->Node_User (cur);
             if (node == NULL)
                 continue;
-#ifdef KEY
             if (node->Is_Builtin())
                 continue;
-#endif
             //printf("BFS - Pushing node (%d): %s\n", node->Node_Index(), IPA_Node_Name(node));
             vect.push_back(node);
         }
@@ -432,7 +416,7 @@ Rename_Call_To_Cloned_PU (IPA_NODE *caller,
 
 } // Rename_Call_To_Cloned_PU
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
 static void Fixup_EHinfo_In_PU (IPA_NODE* node, WN * w = NULL)
 {
   if (w && WN_operator(w) == OPR_REGION && WN_region_is_EH (w) &&
@@ -499,7 +483,6 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     if (!Can_Inline_Call (caller, callee, edge))
 	return FALSE;
 
-#ifdef KEY
     Get_enclosing_region (caller, edge);
 #if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     // For C++, fix-up the summarized information in EH regions now, because
@@ -523,7 +506,6 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
       callee->Set_EHinfo_Updated();
     }
 #endif // !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
-#endif // KEY
 
 #if Is_True_On
     if ( Get_Trace ( TKIND_ALLOC, TP_IPA) ) {
@@ -572,7 +554,7 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
 
 	// Generate an inlining action log for verifying purpose
 	// The file open/close operation could be placed in higher level to reduce time cost	
-#ifdef Enable_ISP_Verify
+#if defined(Enable_ISP_Verify)
 	FILE *inline_action = fopen(inline_action_log, "a+");
 	char *caller_key, *callee_key;
     	
@@ -625,11 +607,9 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
 
 } // Inline_Call
 
-#ifdef KEY
 extern void IPO_Process_Virtual_Functions (IPA_NODE *);
 extern void IPO_Process_Icalls (IPA_NODE *);
 extern void IPA_update_ehinfo_in_pu (IPA_NODE *);
-#endif
 
 static IPA_NODE *
 IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
@@ -648,14 +628,12 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
 
   IPA_NODE_CONTEXT context (node);	// switch to this node's context
 
-#ifdef KEY
   if (PU_src_lang (node->Get_PU()) & PU_CXX_LANG)
     IPA_update_ehinfo_in_pu (node);
 
   if (IPA_Enable_Icall_Opt && node->Has_Pending_Icalls()) {
     IPO_Process_Icalls (node);
   }
-#endif
   if (IPA_Enable_Fast_Static_Analysis_VF && 
       node->Has_Pending_Virtual_Functions()) {
     IPO_Process_Virtual_Functions (node);
@@ -670,10 +648,8 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
     IPO_propagate_globals(node);
   }
   
-#ifdef KEY
   if (IPA_Enable_Struct_Opt)
     IPO_WN_Update_For_Struct_Opt(node);
-#endif
 
   if(IPA_Enable_Reorder && reorder_candidate.size)
     IPO_Modify_WN_for_field_reorder(node) ;
@@ -709,7 +685,7 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
 				      !is_fortran &&
 				      !node->Has_No_Aggr_Cprop()));
 	
-#if 0	/* sample code sequence for calling preopt */
+/* sample code sequence for calling preopt 
 	WN *pu_wn = node->Whirl_Tree();
 	REGION_Initialize(pu_wn, FALSE);
 
@@ -729,7 +705,7 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
 	Delete_Alias_Manager(alias_mgr,MEM_pu_nz_pool_ptr);
 
 	MEM_POOL_Pop(&MEM_local_pool);
-#endif
+  */
   }
 
   return node;
@@ -750,7 +726,7 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 	    
     BOOL action_taken = FALSE;
 
-#ifdef TODO
+#if defined(TODO)
     if (IPA_Enable_Array_Sections) {
 	if (callee->Has_use_kill()) {
 	    Mark_use_kill_param(caller, callee, edge);
@@ -778,14 +754,14 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 	action_taken = Delete_Call (caller, callee, edge, cg);
     else if (IPA_Enable_Inline && edge->Has_Inline_Attrib () &&
 		!callee->Has_Noinline_Attrib()) {
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
       if (caller != callee) {
 #endif
 	MEM_POOL_Popper ipo_pool (&Ipo_mem_pool);
 	action_taken = Inline_Call (caller, callee, edge, cg);
 	if (action_taken) 
 	    IPO_Total_Inlined++;
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
       } else {
 	// It is a recursive call, we cannot inline it until the node and all
 	// its edges have been processed.
@@ -796,7 +772,7 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 #endif
     }
     
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     static INT pure_call_opt_count = 0;
     if (!action_taken &&
          IPA_Enable_Pure_Call_Opt && 
@@ -873,15 +849,9 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 	if (IPA_Enable_Cord) {
 	    fprintf (Call_graph_file, "%s\t%s\t%f\t%f\t%f\n", caller->Name (),
 		     callee->Name (), edge->Has_frequency () ?
-#ifdef KEY
 		     (edge->Get_frequency()).Value() : 0,
 		     (caller->Get_frequency()).Value(),
 		     (callee->Get_frequency()).Value()
-#else
-		     (edge->Get_frequency())._value : 0,
-		     (caller->Get_frequency())._value,
-		     (callee->Get_frequency())._value
-#endif
 		     );
 	}
 //#endif
@@ -890,7 +860,7 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 
     ++(*Num_In_Calls_Processed)[callee];
     ++(*Num_Out_Calls_Processed)[caller];
-#ifdef _DEBUG_CALL_GRAPH
+#if defined(_DEBUG_CALL_GRAPH)
     printf("Processed %s   -->   %s\n", caller->Name(), callee->Name());
 #endif // _DEBUG_CALL_GRAPH
     edge->Set_Processed ();
@@ -917,7 +887,7 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 
     Is_True (caller != NULL, ("Invalid IPA_NODE"));
 	
-#ifdef TODO
+#if defined(TODO)
     // Only process those nodes that has the same partition group
     // as "partition_num" if files need to be unmapped DUE to
     // space problem.  This is assuming if IPA encounters the
@@ -947,12 +917,10 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	IPA_EDGE *edge = succ_iter.Current_Edge ();
 	IPA_NODE *callee = cg->Callee (edge);
 	    
-#ifdef KEY
 	if (caller->Is_Recursive())
 	    callee->Set_Undeletable();
-#endif
 
-#ifdef _DEBUG_CALL_GRAPH
+#if defined(_DEBUG_CALL_GRAPH)
         printf("%s   ---->    %s\n", caller->Name(), callee->Name());
 #endif // _DEBUG_CALL_GRAPH
 
@@ -960,7 +928,7 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	if (cg->Graph()->Is_Recursive_Edge(edge->Edge_Index()))
 	    callee->Clear_Clone_Candidate();
 
-#ifdef TODO
+#if defined(TODO)
 	if (!callee->Is_Processed () && // (!IPA_Enable_SP_Partition ||
 	    ((IPA_Space_Access_Mode != SAVE_SPACE_MODE) || 
 	     (callee->Get_partition_group () == COMMON_PARTITION) || 
@@ -975,12 +943,6 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	}
 #endif // TODO
 	    
-#if 0
-	if (cg->Graph()->Is_Recursive_Edge(edge->Edge_Index())) {
-	    caller->Set_Undeletable();
-	    callee->Set_Undeletable();
-	}
-#endif
 	    
 	if (!edge->Is_Processed ())
 	    IPO_Process_edge (caller, callee, edge, cg);
@@ -988,7 +950,7 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	if (caller == callee)
 	    continue;
 	    
-#ifdef TODO
+#if defined(TODO)
 	if (IPA_Space_Access_Mode == SAVE_SPACE_MODE &&
 	    callee->Get_partition_group() != partition_num &&
 	    /* Below is for STATIC functions with user-specified
@@ -1006,26 +968,22 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	    } else {
 		if (IPA_Enable_Array_Sections)
 		    IPA_LNO_Map_Node(callee, IPA_LNO_Summary);
-#ifdef KEY
 		if (IPA_Enable_PU_Reorder == REORDER_DISABLE && 
 		    !Opt_Options_Inconsistent &&
 		    !IPA_Enable_Source_PU_Order)
 		{
-#endif // KEY
 		IPA_Rename_Builtins(callee);
 		callee->Write_PU ();
-#ifdef _DEBUG_CALL_GRAPH
+#if defined(_DEBUG_CALL_GRAPH)
 	    	printf("Writing   %s \n", callee->Name());
 #endif // _DEBUG_CALL_GRAPH
-#ifdef KEY
 		}
-#endif // KEY
 	    }
 	}
 
     }
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     // Inline the recursive edges now.
     for (vector<inline_info>::iterator iter = inline_list.begin(); 
     	 iter != inline_list.end(); ++iter)
@@ -1049,7 +1007,7 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	}
     	++(*Num_In_Calls_Processed)[r_callee];
     	++(*Num_Out_Calls_Processed)[r_caller];
-#ifdef _DEBUG_CALL_GRAPH
+#if defined(_DEBUG_CALL_GRAPH)
     	printf("Processed %s   -->   %s\n", r_caller->Name(), r_callee->Name());
 #endif // _DEBUG_CALL_GRAPH
     	r_edge->Set_Processed ();
@@ -1075,25 +1033,21 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	else {
 	    if (IPA_Enable_Array_Sections)
 		IPA_LNO_Map_Node(caller, IPA_LNO_Summary);
-#ifdef KEY
 	    if (IPA_Enable_PU_Reorder == REORDER_DISABLE && 
 	        !Opt_Options_Inconsistent &&
 	        !IPA_Enable_Source_PU_Order)
 	    {
-#endif // KEY
 	    IPA_Rename_Builtins(caller);
 	    caller->Write_PU ();
-#ifdef _DEBUG_CALL_GRAPH
+#if defined(_DEBUG_CALL_GRAPH)
    	    printf("Writing   %s \n", caller->Name());
 #endif // _DEBUG_CALL_GRAPH
-#ifdef KEY
 	    }
-#endif // KEY
 
 	}
     }
 
-#ifdef TODO
+#if defined(TODO)
     if (IPA_Enable_Recycle) {
 	caller->Cleanup_State(cg);
 	MEM_POOL_Pop(&Recycle_mem_pool);   
@@ -1118,11 +1072,6 @@ Preorder_annotate_PU_and_kids(const char *const input_file_name,
   // Read the analyzed PU from the input file
   Read_Local_Info(MEM_pu_nz_pool_ptr, current_pu);
 
-#if 0
-  if (PU_Info_state(current_pu, WT_AC_INTERNAL) != Subsect_InMem) {
-    ErrMsg(EC_IR_Scn_Read, "alias class internal map", input_file_name);
-  }
-#endif
 
   Ip_alias_class->Finalize_memops(PU_Info_tree_ptr(current_pu));
 
@@ -1173,11 +1122,7 @@ Perform_Alias_Class_Annotation(void)
     // somewhere. We apparently have to write it after the PU's are
     // written.
     if (WN_get_dst(input_file) == -1) {
-#ifdef KEY
       ErrMsg(EC_IR_Scn_Read, "dst", *name);
-#else
-      ErrMsg(EC_IR_Scn_Read, "dst", name);
-#endif
     }
 
     // Note that no Read_Global_Info is needed because the global
@@ -1678,7 +1623,6 @@ Stacked_Regs_Distribution(IPA_CALL_GRAPH *cg) {
     } 
 }
 
-#ifdef KEY
 #include <queue>
 struct order_node_by_freq {
     bool operator() (IPA_NODE * first, IPA_NODE * second)
@@ -1818,7 +1762,7 @@ check_for_nested_PU (IPA_NODE * node)
 	  child = PU_Info_next (child);
 	  continue;
 	}
-#ifdef Is_True_On
+#if defined(Is_True_On)
 	int lexical_level = PU_lexical_level (child_node->Func_ST());
 	Is_True (lexical_level > GLOBAL_SYMTAB+1, 
 	         ("Nested PU's level should be greater than 2"));
@@ -1847,7 +1791,6 @@ check_for_nested_PU (IPA_NODE * node)
       }
     }
 }
-#endif // KEY
 
 #if defined(TARG_SL)
 // ipisr_cg is the call graph used for interprocedural ISR register
@@ -1894,18 +1837,14 @@ IPO_main (IPA_CALL_GRAPH* cg)
 
     Init_Num_Calls_Processed (cg, ipo_pool.Pool ());
 
-#ifdef KEY
     IPA_Create_Builtins();
-#endif
 
     IPA_NODE_VECTOR walk_order;
      
     Build_Transformation_Order (walk_order, cg->Graph(), cg->Root());
 
-#ifdef KEY
     if (IPA_Enable_EH_Region_Removal)
     	IPA_Remove_Regions (walk_order, cg); // Remove EH regions that are not required
-#endif
 
     // we will use the following loop to check whether it is legal to perform
     // the complete structure relayout optimization; later (in the subsequent
@@ -2059,7 +1998,6 @@ IPO_main (IPA_CALL_GRAPH* cg)
     }
 #endif // TARG_SL
 
-#ifdef KEY
     { // PU reordering heuristics
       if (IPA_Enable_Source_PU_Order || Opt_Options_Inconsistent)
       { // We cannot do any PU-reordering
@@ -2148,7 +2086,6 @@ IPO_main (IPA_CALL_GRAPH* cg)
     	}
       }
     }
-#endif // KEY
 
     if(IPA_Enable_Reorder)
        IPO_Finish_reorder(); //MEM_POOL_Pop (&reorder_local_pool);pop reorder_candidate
@@ -2242,9 +2179,7 @@ Perform_Interprocedural_Optimization (void)
       exit (RC_SYSTEM_ERROR); // should never reach here
     } else {
       Signal_Cleanup (0);
-#ifdef KEY
       exit(1);	// Moved exit(1) from Signal_Cleanup to here.
-#endif
     }
   }
 
@@ -2254,7 +2189,7 @@ Perform_Interprocedural_Optimization (void)
     ipa_compile_init ();
   }
 
-#ifdef TODO
+#if defined(TODO)
   // should move to analysis phase
   if( IPA_Enable_Feedback ) {
     setup_IPA_feedback();
@@ -2267,7 +2202,7 @@ Perform_Interprocedural_Optimization (void)
                                 // Must be called before any of the output
                                 // files are written, since symtab must be
                                 // compiled first.
-#ifdef Is_True_On
+#if defined(Is_True_On)
   CGB_IPA_Initialize(IPA_Call_Graph);
 #endif
 
@@ -2362,13 +2297,13 @@ Perform_Interprocedural_Optimization (void)
   BE_Symtab_Finalize();
 
   if (IPA_Enable_ipacom) {
-#ifdef Is_True_On
+#if defined(Is_True_On)
       CGB_IPA_Terminate();
 #endif
       ipacom_doit (IPA_Enable_Opt_Alias ? Ipa_File_Name : NULL);
       exit (RC_SYSTEM_ERROR);		// should never reach here
   } else {
-#ifdef Is_True_On
+#if defined(Is_True_On)
       CGB_IPA_Terminate();
 #endif
       kill (getpid (), SIGQUIT);

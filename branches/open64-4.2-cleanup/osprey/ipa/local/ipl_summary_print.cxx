@@ -139,11 +139,7 @@ SUMMARY_PROCEDURE::Print (FILE *fp, INT32 id) const
     if (Has_mp_needs_lno() )
       fputs (", mp needs lno", fp);
 
-#ifdef KEY
     if (Has_pragma_side_effect() )
-#else
-    if (Has_side_effect() )
-#endif
       fputs (", has side effect pragmas", fp);
 
     if (Has_messy_regions() )
@@ -1255,7 +1251,6 @@ SUMMARY_STRUCT_ACCESS::Trace ( INT32 id ) const
     Print ( TFile, id );
 }
 
-#ifdef KEY
 void
 SUMMARY_TY_INFO::Print ( FILE *fp ) const
 {
@@ -1286,6 +1281,5 @@ SUMMARY_TY_INFO::Trace ( void ) const
 {
   Print ( TFile );
 }
-#endif
 
 

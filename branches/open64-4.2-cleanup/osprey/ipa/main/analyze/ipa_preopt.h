@@ -39,7 +39,7 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#ifndef ipa_preopt_INCLUDED
+#if !defined(ipa_preopt_INCLUDED)
 #define ipa_preopt_INCLUDED
 
 class IPA_NODE;

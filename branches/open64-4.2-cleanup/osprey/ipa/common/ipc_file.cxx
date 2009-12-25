@@ -56,7 +56,7 @@ Setup_File_Header (const char *file_name, void *mmap_addr, off_t mmap_size)
     IP_FILE_HDR& file_header = IP_File_header.New_entry (index);
     new (&file_header) IP_FILE_HDR (file_name, mmap_addr, mmap_size);
 
-#ifdef TODO
+#if defined(TODO)
     NAME(IP_get_malloced_info)(p_obj, &(s[i].str_table),
 			       (void **)&(s[i].pu_list),
 			       (void **)&(s[i].summary)); 

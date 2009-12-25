@@ -809,11 +809,7 @@ print_frame_inst_bytes(Dwarf_Debug dbg,
 		break;
 	    case DW_CFA_expression       : /* DWARF3 */
 		break;
-#ifdef KEY
             case DW_CFA_offset_extended_sf : /* DWARF3 */
-#else
-            case DW_CFA_cfa_offset_extended_sf : /* DWARF3 */
-#endif
 		break;
             case DW_CFA_def_cfa_sf       :        /* DWARF3 */
 		break;

@@ -137,11 +137,9 @@ struct PIC_OPT
 	    export_class == EXPORT_LOCAL_INTERNAL) {
 	    if (ST_class (st) == CLASS_FUNC) {
 		Set_ST_name_idx (st, Create_Unique_Name (ST_name (st)));
-#ifdef KEY
 // Reset the flag so that cg does not remove this function. Applies only to C functions.
 		if (!IPA_Enable_Inline)
 		    Clear_PU_is_extern_inline (Pu_Table [ST_pu (st)]);
-#endif
 
 		if (address_taken)
 		    Set_ST_export (st, EXPORT_HIDDEN);
@@ -279,11 +277,9 @@ struct fix_static_func
 	    if (eclass == EXPORT_LOCAL) {
 		Set_ST_name_idx (st, Create_Unique_Name (ST_name (st)));
 		Set_ST_export (st, EXPORT_HIDDEN);
-#ifdef KEY
 // Reset the flag so that cg does not remove this function. Applies only to C functions.
 		if (!IPA_Enable_Inline)
 		    Clear_PU_is_extern_inline (Pu_Table [ST_pu (st)]);
-#endif
 	    } else if (eclass == EXPORT_LOCAL_INTERNAL) {
 		Set_ST_name_idx (st, Create_Unique_Name (ST_name (st)));
 		Set_ST_export (st, EXPORT_INTERNAL);
@@ -599,7 +595,7 @@ IP_tag_symbol_gp_rel (INT avail_gp_area)
 	    }
 	    gp_area_left -= TY_size (ST_type(st));
 	    Set_ST_gprel (st);
-#ifdef TODO
+#if defined(TODO)
 	    /* Need to port this for Ipa_tlog */
 	    IPO_Gprel_Sym_Count++;
 #endif
@@ -753,11 +749,7 @@ static inline UINT
 Gp_Area_Size ()
 {
     UINT32 max_gpa_size = IP_get_max_gpa_size ();
-#ifdef KEY
     return MIN (max_gpa_size, IPA_Gspace);
-#else
-    return min (max_gpa_size, IPA_Gspace);
-#endif
 }
 
 static void 

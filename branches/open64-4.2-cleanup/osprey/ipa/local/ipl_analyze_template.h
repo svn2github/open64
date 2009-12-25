@@ -53,27 +53,27 @@
  * ====================================================================
  */
 
-#ifndef ipl_analyze_template_INCLUDED
+#if !defined(ipl_analyze_template_INCLUDED)
 #define ipl_analyze_template_INCLUDED
 
-#ifndef ipl_summarize_util_INCLUDED
+#if !defined(ipl_summarize_util_INCLUDED)
 #include "ipl_summarize_util.h"
 #endif // ipl_summarize_util_INCLUDED
 
-#ifndef opt_base_INCLUDED
+#if !defined(opt_base_INCLUDED)
 #include "opt_base.h"			// needed by opt_mu_chi.h
 #endif
 
-#ifndef opt_emit_INCLUDED
+#if !defined(opt_emit_INCLUDED)
 #include "opt_emit.h"			// for EMITTER class
 #endif // opt_emit_INCLUDED
 
-#ifndef opt_mu_chi_INCLUDED
+#if !defined(opt_mu_chi_INCLUDED)
 #include "opt_mu_chi.h"			// for MU_NODE class
 #endif // opt_mu_chi_INCLUDED
 
 extern "C" {
-#ifdef SHARED_BUILD
+#if defined(SHARED_BUILD)
  // is replaced in ipa build but not for inliner
  void _ZN10DU_MANAGER14CD_is_br_takenEj(void) __attribute__ ((weak));
  void _ZN10DU_MANAGER15CD_is_fall_thruEj(void) __attribute__((weak));
@@ -136,7 +136,7 @@ SUMMARIZE<program>::Restore_from_check_point (const SUMMARY_CHECK_POINT *cp)
 	_phi.Setidx (phi_idx);
     }
 
-#if Is_True_On
+#if defined(Is_True_On)
     for (first_phi = Hashed_Phis->begin (); first_phi != Hashed_Phis->end ();
 	 ++first_phi) {
 	PHI_NODE_TO_INT_MAP::const_iterator iter =
@@ -164,7 +164,7 @@ SUMMARIZE<program>::Restore_from_check_point (const SUMMARY_CHECK_POINT *cp)
 	_chi.Setidx (chi_idx);
     }
 
-#if Is_True_On
+#if defined(Is_True_On)
     for (first = Hashed_Chis->begin(); first != Hashed_Chis->end (); ++first) {
 	CHI_CR_TO_INT_MAP::const_iterator iter = Chi_To_Idx_Map->find (*first);
 	if (iter != Chi_To_Idx_Map->end () && iter->second > chi_idx)
@@ -275,14 +275,6 @@ SUMMARIZE<program>::Process_phi_jump_function (WN *orig_wn, PHI_NODE *phi)
 
     CODEREP *cr0 = phi->OPND (0);
     CODEREP *cr1 = phi->OPND (1);
-#if 0
-    CODEREP *res = phi->RESULT ();
-    printf("sym%dv%d (cr%d) = PHI[sym%dv%d (cr%d), sym%dv%d (cr%d)]\n",
-           res->Aux_id(), res->Version(), res->Coderep_id(),
-           cr0->Aux_id(), cr0->Version(), cr0->Coderep_id(),
-           cr1->Aux_id(), cr1->Version(), cr1->Coderep_id());
-    fflush(stdout);
-#endif    
     if (cr0->Is_flag_set(CF_IS_ZERO_VERSION) ||
 	cr1->Is_flag_set(CF_IS_ZERO_VERSION))
 	return -1;
@@ -399,10 +391,6 @@ INT
 SUMMARIZE<program>::Process_chi_jump_function (WN *wn,
 					       const SUMMARY_DESC &desc)
 {
-#if 0
-    FmtAssert (! desc.Is_addr_of (),
-	       ("LDA of a symbol cannot have chi node"));
-#endif
 
     CODEREP *cr = desc.Get_chi_cr ()->Defchi ()->OPND ();
 
@@ -413,26 +401,13 @@ SUMMARIZE<program>::Process_chi_jump_function (WN *wn,
     if (stmt == NULL)
 	return -1;			// could be volatile
 
-#ifdef KEY
     // bug 3121
     // We should not create a chi for const. Also, such a summary_chi
     // will have symbol_index == -1 (invalid). TODO: check if it is coming
     // from preopt, and fix it there.
     if (WN_st (wn) && ST_sym_class (*WN_st (wn)) == CLASS_CONST)
         return -1;
-#endif // KEY
 
-#if 0
-    printf("sym%dv%d (cr%d) = CHI[sym%dv%d (cr%d)]\n",
-           desc.Get_chi_cr()->Aux_id(),
-           desc.Get_chi_cr()->Version(),
-           desc.Get_chi_cr()->Coderep_id(),
-           cr->Aux_id(),
-           cr->Version(),
-           cr->Coderep_id());
-    fflush(stdout);
-#endif
-    
     // Check the hash table based on CODEREP/PHI_NODE pointers
     {
 	CHI_CR_TO_INT_MAP::const_iterator result =
@@ -704,11 +679,6 @@ SUMMARIZE<program>::Mismatched_load_store (CODEREP *cr, BOOL is_ptr_var,
             depot[idx].ret_val = TRUE;
             return TRUE;
         }
-#ifndef KEY
-        depot[idx].ret_val =
-          Mismatched_load_store (cr->Defchi()->OPND(), is_ptr_var, 
-                                 st, load_offset, load_type);
-#else
 // The following code looks same as above, but depot is a vector which would
 // be changed in the callee. So depot[idx] calculated before the call can 
 // be invalid after the callee returns. So separate it out.
@@ -716,7 +686,6 @@ SUMMARIZE<program>::Mismatched_load_store (CODEREP *cr, BOOL is_ptr_var,
           Mismatched_load_store (cr->Defchi()->OPND(), is_ptr_var, 
                                  st, load_offset, load_type);
         depot[idx].ret_val = r;
-#endif // !KEY
         return depot[idx].ret_val;
     }
     
@@ -830,18 +799,18 @@ SUMMARIZE<program>::Classify_indirect (SUMMARY_DESC &result, WN *w)
 
     switch (TY_kind(ST_type(st))) {
     case KIND_SCALAR:
-#ifdef KEY // bug 6229
+    // bug 6229
     case KIND_ARRAY:
-#endif
+    // bug 6229
 	if (ST_class(st) == CLASS_CONST) {
 	    // symbolic constant (e.g. floating point constant)
 	    result.Set_type (VALUE_CONST);
 	    return;
 	}
 
-#ifdef KEY // bug 7718
+// bug 7718
 	if (TY_kind(ST_type(st)) == KIND_ARRAY) return;
-#endif
+// bug 7718
 	break;
     case KIND_POINTER:
 	if (is_ptr_variable)
@@ -1149,9 +1118,9 @@ SUMMARIZE<program>::Classify_const_value (SUMMARY_DESC &result, WN *w)
     st = WN_st (w);
     switch (TY_kind(ST_type(st))) {
     case KIND_SCALAR:
-#ifdef KEY // bug 6229
+// bug 6229
     case KIND_ARRAY:
-#endif
+// bug 6229
     case KIND_POINTER:
 	break;
     default:
@@ -1164,9 +1133,9 @@ SUMMARIZE<program>::Classify_const_value (SUMMARY_DESC &result, WN *w)
 	return;
     }
 
-#ifdef KEY // bug 7718
+// bug 7718
     if (TY_kind(ST_type(st)) == KIND_ARRAY) return;
-#endif
+// bug 7718
 
     // by now, it can only be a variable
 
@@ -1281,9 +1250,7 @@ SUMMARIZE<program>::Process_jump_function (SUMMARY_DESC *desc)
           if (idx == -1)
 	  {
             value->Set_global_st_idx (ST_st_idx (st));
-#ifdef KEY
             value->Set_is_global_st_idx ();
-#endif
 	  }
         }
 	break;
@@ -1421,9 +1388,7 @@ SUMMARIZE<program>::Process_jump_function (WN *w, INT value_idx)
 	    if (idx == -1)
 	    {
 		value->Set_global_st_idx (ST_st_idx (st));
-#ifdef KEY
 		value->Set_is_global_st_idx ();
-#endif
 	    }
 	}
 	break;
@@ -1459,7 +1424,6 @@ SUMMARIZE<program>:: Record_global_ref (WN* w, ST *s, OPERATOR op, BOOL refcount
 {
     SUMMARY_GLOBAL *global = NULL;
 
-#ifdef KEY
     FmtAssert((WN_operator(w) == OPR_LDID) ||
 	      (WN_operator(w) == OPR_ILOAD) ||
 	      (WN_operator(w) == OPR_LDA) ||
@@ -1471,19 +1435,6 @@ SUMMARIZE<program>:: Record_global_ref (WN* w, ST *s, OPERATOR op, BOOL refcount
 	(ST_class(s) == CLASS_PREG)) {
 	return;
     }
-#else
-    FmtAssert((WN_operator(w) == OPR_LDID) ||
-	      (WN_operator(w) == OPR_ILOAD) ||
-	      (WN_operator(w) == OPR_LDA),
-	      ("Expecting OPR_LDID/OPR_ILOAD/OPR_LDA in Record_Global_Ref "));
-
-
-    // don't bother with constants and register variables
-    if ((ST_class(WN_st(w)) == CLASS_CONST) ||
-	(ST_class(WN_st(w)) == CLASS_PREG)) {
-	return;
-    }
-#endif
 
     if ( Trace_Modref ) {
 	fprintf ( TFile, " global %s referenced", ST_name(s) );
@@ -1509,10 +1460,8 @@ SUMMARIZE<program>:: Record_global_ref (WN* w, ST *s, OPERATOR op, BOOL refcount
 	global->Set_dref();
 	break;
     case OPR_ILOAD:
-#ifdef KEY
         if (IPA_Enable_Pure_Call_Opt)
           Get_procedure (Get_procedure_idx())->Set_has_side_effect();
-#endif
 	global->Set_iref();
 	break;
     case OPR_LDA:
@@ -1553,10 +1502,8 @@ SUMMARIZE<program>:: Record_ref_formal ( WN* w )
     switch ( WN_operator(w) ) {
 
     case OPR_ILOAD:
-#ifdef KEY
         if (IPA_Enable_Pure_Call_Opt)
           Get_procedure (Get_procedure_idx())->Set_has_side_effect();
-#endif
 	switch ( WN_operator(WN_kid0(w)) ) {
 	case OPR_ARRAY:
 	    w2 = WN_array_base(WN_kid0(w));
@@ -1684,10 +1631,8 @@ SUMMARIZE<program>:: Record_ref_all_formal ( WN* w, BOOL parm_store )
 
     switch ( WN_operator(w) ) {
     case OPR_ILOAD:
-#ifdef KEY
         if (IPA_Enable_Pure_Call_Opt)
           Get_procedure (Get_procedure_idx())->Set_has_side_effect();
-#endif
 	switch ( WN_operator(WN_kid0(w)) ) {
 	case OPR_ARRAY:
 	    w2 = WN_array_base(WN_kid0(w));
@@ -1867,12 +1812,10 @@ SUMMARIZE<program>:: Record_ref (WN *w)
     if ( Trace_Modref )
 	fprintf (TFile, "<mr> Record_Ref -- %s:", OPCODE_name(WN_opcode(w)) );
 
-#ifdef KEY
     // Covers all ILOADs.
     if (WN_operator (w) == OPR_ILOAD)
       if (IPA_Enable_Pure_Call_Opt)
         Get_procedure (Get_procedure_idx())->Set_has_side_effect();
-#endif // KEY
 
     // note, we should NOT be recording actual parameters as being
     // referenced (seema).
@@ -1906,7 +1849,6 @@ SUMMARIZE<program>:: Record_ref (WN *w)
     } else
 	s = NULL;
 
-#ifdef KEY
     // Consider any access of globals
     if (s)
       switch (ST_sclass(s))
@@ -1923,7 +1865,6 @@ SUMMARIZE<program>:: Record_ref (WN *w)
 	default:
 	  break;
       }
-#endif // KEY
 
     switch (WN_operator(w)) {
 
@@ -1931,7 +1872,6 @@ SUMMARIZE<program>:: Record_ref (WN *w)
 
     case OPR_LDID:
 
-#ifdef KEY
 	{
 	  TY_IDX st_type = ST_type(s);
 	  TY_IDX wn_type = WN_ty(w);
@@ -1947,7 +1887,6 @@ SUMMARIZE<program>:: Record_ref (WN *w)
 	      Record_ty_info_for_type (TY_pointed(wn_type), TY_NO_SPLIT);
 	  }
 	}
-#endif
 	parent_w = LWN_Get_Parent(w); 
 	// don't record this as a direct ref since it is actually an
 	// indirect ref that was captured by OPR_ILOAD
@@ -1987,13 +1926,11 @@ SUMMARIZE<program>:: Record_ref (WN *w)
 	break;
 
     case OPR_LDA:
-#ifdef KEY
 	{
 	  TY_IDX type = WN_type(w);
 	  if (TY_kind(type) == KIND_STRUCT)
 	    Record_ty_info_for_type (type, TY_NO_SPLIT);
 	}
-#endif
 	if (Inliner_copy_prop)
 	    break;
 	
@@ -2106,10 +2043,8 @@ SUMMARIZE<program>::Record_global_dmod (const WN* w, const WN *rhs,
 	fprintf ( TFile, " global %s modified", ST_name(WN_st(w)) );
     }
 
-#ifdef KEY
     if (IPA_Enable_Pure_Call_Opt)
       Get_procedure (Get_procedure_idx())->Set_has_side_effect();
-#endif
 
     INT index = Global_hash_table->Find (s);
 
@@ -2150,7 +2085,6 @@ SUMMARIZE<program>:: Record_mod_formal ( WN* w )
     INT i;
     WN* w2;
 
-#ifdef KEY
     if (IPA_Enable_Pure_Call_Opt)
     {
       ST * tmp_st = WN_st (w);
@@ -2160,7 +2094,6 @@ SUMMARIZE<program>:: Record_mod_formal ( WN* w )
       if (ST_sclass (tmp_st) == SCLASS_FORMAL_REF)
         Get_procedure (Get_procedure_idx())->Set_has_side_effect();
     }
-#endif
 
     switch ( WN_operator(w) ) {
 
@@ -2253,10 +2186,8 @@ SUMMARIZE<program>:: Record_mod_common (WN *w, const ST *st)
     return;
   }
 
-#ifdef KEY
   if (IPA_Enable_Pure_Call_Opt)
     Get_procedure (Get_procedure_idx())->Set_has_side_effect();
-#endif
 
   SUMMARY_GLOBAL* global;
   INT index = Global_hash_table->Find(st);
@@ -2313,12 +2244,10 @@ SUMMARIZE<program>:: Record_mod (WN* w)
     const ST* st;
     const WN* w2;
 
-#ifdef KEY
     // Consider all ISTOREs
     if (WN_operator (w) == OPR_ISTORE)
       if (IPA_Enable_Pure_Call_Opt)
         Get_procedure (Get_procedure_idx())->Set_has_side_effect();
-#endif // KEY
 
     switch (PU_src_lang (Get_Current_PU ())) {
     case PU_C_LANG:
@@ -2344,11 +2273,9 @@ SUMMARIZE<program>:: Record_mod (WN* w)
 		case SCLASS_FSTATIC:
 		    Record_global_dmod (w2, WN_kid0(w), st);
 		    break;
-#ifdef KEY
                 default:
     		    if (IPA_Enable_Pure_Call_Opt)
       		      Get_procedure (Get_procedure_idx())->Set_has_side_effect();
-#endif
 		}
 	    } else {
 		// can't find the mod target, record as an indirect mod
@@ -2371,7 +2298,6 @@ SUMMARIZE<program>:: Record_mod (WN* w)
 	    st = WN_st (w);
 	    if (ST_st_idx (st) != ST_base_idx (st) && !ST_is_weak_symbol (st))
 		st = ST_base (st);
-#ifdef KEY
 	    // TODO: Find the actual base from the potentially complex
 	    // rhs expression.
 	    if (WN_operator(WN_kid0(w)) == OPR_LDID) {
@@ -2390,7 +2316,6 @@ SUMMARIZE<program>:: Record_mod (WN* w)
 	          Record_ty_info_for_type (TY_pointed(w_ty), TY_NO_SPLIT);
 	      }
 	    }
-#endif
 	    
 	    switch ( ST_sclass(st) ) {
 	    case SCLASS_AUTO:
@@ -2527,13 +2452,11 @@ SUMMARIZE<program>::Process_cd_for_phi_node (IDTYPE cd_bb_idx)
 
     WN *cond_stmt = du->Get_last_stmt (cd_bb_idx);
 
-#ifdef KEY
     // Bug 9110: WOPT may have inserted a dummy edge to represent the
     // control-dependence for OpenMP single pragma, which does not have
     // corresponding WN.
     if (!cond_stmt)
       return -1;
-#endif
     switch (WN_opcode (cond_stmt)) {
     case OPC_TRUEBR:
     case OPC_FALSEBR:
@@ -2601,13 +2524,11 @@ SUMMARIZE<program>::Process_control_dependence (WN *w, INT node_index)
       if (cd_bb_idx == 0) 
 	return FALSE;
       cond_stmt = du->Get_last_stmt(cd_bb_idx);
-#ifdef KEY
       // Bug 9088: WOPT may have inserted a dummy edge to represent the
       // control-dependence for OpenMP single pragma, which does not have
       // corresponding WN.
       if (!cond_stmt)
         return FALSE;
-#endif
       switch (WN_opcode(cond_stmt)) {
       case OPC_TRUEBR:
       case OPC_FALSEBR:

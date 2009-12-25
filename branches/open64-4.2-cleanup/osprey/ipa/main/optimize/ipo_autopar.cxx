@@ -69,7 +69,7 @@ Mark_use_kill_param (IPA_NODE *caller, IPA_NODE *callee,
       WN *call = edge->Whirl_Node();
       if (callee->Get_PU().src_lang == PU_F77_LANG)
 	{
-#ifdef TODO
+#if defined(TODO)
 	  INT actual_count = WN_num_actuals (call);
 	  INT formal_count = callee->Num_Formals();
 	  INT count = 0;

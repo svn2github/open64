@@ -35,7 +35,7 @@
  * History: 04/23/2003, built by Jiang Hongshan, Tsinghua Univ.
  * 
  */
-#ifndef __omp_rtl_utility_included
+#if !defined(__omp_rtl_utility_included)
 #define __omp_rtl_utility_included
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,7 +44,7 @@
 
 #define Is_True_On
 /* Assertion stuff */
-#ifdef Is_True_On
+#if defined(Is_True_On)
 #define Is_True(Cond, ParmList)\
     ( Cond ? (void) 1 : \
     ( fprintf(stderr, "Assertion Failed at %s:%d ", __FILE__, __LINE__), \

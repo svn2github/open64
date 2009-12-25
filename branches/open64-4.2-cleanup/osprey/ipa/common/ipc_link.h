@@ -37,10 +37,10 @@
 */
 
 
-#ifndef __IPC_LINK_H__
+#if !defined(__IPC_LINK_H__)
 #define __IPC_LINK_H__
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif 
 
@@ -61,7 +61,7 @@ ipa_add_comma_list (const char* name);
 extern void
 ipa_compose_comma_list (const char* name);
 
-#ifdef _LD_IPA_INTERFACE
+#if defined(_LD_IPA_INTERFACE)
 
 #pragma weak ipa_init_link_line
 #pragma weak ipa_add_link_flag
@@ -71,12 +71,12 @@ ipa_compose_comma_list (const char* name);
 
 #endif /* _LD_IPA_INTERFACE */
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 
 
-#ifndef _LD_IPA_INTERFACE
+#if !defined(_LD_IPA_INTERFACE)
 
 /* These are NOT exported to ld */
 

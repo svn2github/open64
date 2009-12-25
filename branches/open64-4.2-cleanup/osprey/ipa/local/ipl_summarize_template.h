@@ -59,26 +59,26 @@
  * ====================================================================
  */
 
-#ifndef ipl_summarize_template_INCLUDED
+#if !defined(ipl_summarize_template_INCLUDED)
 #define ipl_summarize_template_INCLUDED
 
-#ifndef wn_tree_util_INCLUDED
+#if !defined(wn_tree_util_INCLUDED)
 #include "wn_tree_util.h"
 #endif
 
-#ifndef ipl_summarize_util_INCLUDED
+#if !defined(ipl_summarize_util_INCLUDED)
 #include "ipl_summarize_util.h"
 #endif // ipl_summarize_util_INCLUDED
 
-#ifndef loop_info_INCLUDED
+#if !defined(loop_info_INCLUDED)
 #include "loop_info.h"			// for Record_scalar_flow ()
 #endif // loop_info_INCLUDED
 
-#ifndef ipl_linex_INCLUDED
+#if !defined(ipl_linex_INCLUDED)
 #include "ipl_linex.h"
 #endif
 
-#ifndef ipl_reorder_INCLUDED // for Ptr_to_ty_vector, local_cands
+#if !defined(ipl_reorder_INCLUDED) // for Ptr_to_ty_vector, local_cands
 #include "ipl_reorder.h"
 #endif
 
@@ -106,9 +106,7 @@ extern void IPL_Finalize_Projected_Regions(SUMMARY_PROCEDURE *p);
 extern DYN_ARRAY<char*>* Ipl_Symbol_Names;
 extern DYN_ARRAY<char*>* Ipl_Function_Names; 
 
-#ifdef KEY
 static BOOL proc_has_pstatics = FALSE;
-#endif
 
 // helper functions
 static inline BOOL
@@ -263,7 +261,7 @@ Set_Addr_Taken_Attrib (const WN *proc_entry, SUMMARIZE<program>* sum)
 	} else {
 	    INT i;
 	    switch (opr) {
-#ifdef TODO
+#if defined(TODO)
 	    case OPR_ICALL:
 		// Normally, we should ignore the function pointer of an
 		// ICALL, in the same way we ignore LDA under ILOAD.
@@ -308,7 +306,7 @@ Set_Addr_Taken_Attrib (const WN *proc_entry, SUMMARIZE<program>* sum)
 
 struct update_symtab
 {
-#ifdef Is_True_On
+#if defined(Is_True_On)
     BOOL trace;
 
     update_symtab () : trace (Get_Trace (TP_IPL, TT_IPL_VERBOSE)) {}
@@ -321,7 +319,7 @@ struct update_symtab
 	else if (ST_addr_saved (st) && !ST_has_nested_ref (st)) {
 	    Clear_ST_addr_saved (st);
 	    st_info.addr_saved_reset = TRUE;
-#ifdef Is_True_On
+#if defined(Is_True_On)
 	    if (trace)
 		fprintf (TFile, "Clearing addr_saved for %s\n", ST_name (st));
 #endif
@@ -332,15 +330,15 @@ struct update_symtab
 	    Set_ST_addr_passed (st);
 	else if (ST_addr_passed (st) && !ST_has_nested_ref (st)) {
 	    Clear_ST_addr_passed (st);
-#ifdef Is_True_On
+#if defined(Is_True_On)
 	    if (trace)
 		fprintf (TFile, "Clearing addr_passed for %s\n", ST_name (st));
 #endif
 	}
-#ifdef KEY // bug 11801
+// bug 11801
 	if (ST_sclass(st) == SCLASS_PSTATIC)
 	  proc_has_pstatics = TRUE;
-#endif
+// bug 11801
     }
 	    
 }; // update_symtab
@@ -355,7 +353,7 @@ search_for_symoff_initv (INITV_IDX initv_idx)
     while (initv_idx) {
 	const INITV& initv = Initv_Table[initv_idx];
 	if (INITV_kind (initv) == INITVKIND_SYMOFF
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
 		 	|| INITV_kind (initv) == INITVKIND_SYMIPLT
 #endif
 			) {
@@ -406,7 +404,7 @@ Recompute_Addr_Taken (const WN *proc_entry, SUMMARIZE<program>* sum)
     // update(override) the symtab addr_taken attributes based on our own
     // analysis 
     //
-    // KEY bug 11801: Also while we are traversing the local symbol
+    // bug 11801: Also while we are traversing the local symbol
     // table, check for any pstatic symbol that may need to be
     // promoted in IPA. This step is required if that symbol is not
     // referenced in whirl.
@@ -431,9 +429,7 @@ SUMMARIZE<program>::Summarize (WN *w)
 
   Init_Aux_Symbol_Info (CURRENT_SYMTAB);
     
-#ifdef KEY
   proc_has_pstatics = FALSE;
-#endif
 
   Recompute_Addr_Taken (w, this);
 
@@ -503,10 +499,8 @@ SUMMARIZE<program>::Summarize (WN *w)
     _alt_entry.Resetidx();
   }
 
-#ifdef KEY
   if (Get_Trace (TP_IPL, TT_IPL_SUMMARY))
     Trace (TFile);
-#endif
 
   // clean up the maps
   if (!Has_alt_entry()) {
@@ -536,7 +530,7 @@ struct process_compile_time_addr_saved
 
     void operator() (UINT32, const INITV* initv) const {
 	if (INITV_kind (*initv) != INITVKIND_SYMOFF
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
 			&& INITV_kind (*initv) != INITVKIND_SYMIPLT
 #endif
 			)
@@ -554,7 +548,6 @@ struct process_compile_time_addr_saved
     }
 }; // process_compile_time_addr_saved
 
-#ifdef KEY
 // bug 2954
 #include <sys/param.h> // MAXPATHLEN
 #include <unistd.h>
@@ -619,12 +612,11 @@ struct set_local_static_to_global
         Set_ST_name (st, newname);
     }
 };
-#endif
 
 template <PROGRAM program>
 struct set_global_addr_taken_attrib
 {
-#ifdef Is_True_On
+#if defined(Is_True_On)
     BOOL trace;
 #endif
     SUMMARIZE<program>* const sum;
@@ -632,14 +624,14 @@ struct set_global_addr_taken_attrib
 
     set_global_addr_taken_attrib (SUMMARIZE<program>* const s) :
 	sum (s),
-#ifdef Is_True_On
+#if defined(Is_True_On)
 	trace (Get_Trace (TP_IPL, TT_IPL_VERBOSE)),
 #endif
 	aux_st_info (Aux_Symbol_Info[GLOBAL_SYMTAB]) {}
 
     void operator() (UINT32 idx, ST* st) const {
 
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
 	if (INLINE_Inlined_Pu_Call_Graph && (idx >= aux_st_info.size()))
 	  return;	// This symbol was added by the inliner
 #endif
@@ -652,13 +644,13 @@ struct set_global_addr_taken_attrib
 	// update the addr_taken attributes in the symbol table
 	if (st_info.addr_saved)
 	    Set_ST_addr_saved (st);
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
 	else if (!INLINE_Inlined_Pu_Call_Graph && ST_addr_saved (st)) {
 #else // _LIGHTWEIGHT_INLINER
 	else if (ST_addr_saved (st)) {
 #endif // _LIGHTWEIGHT_INLINER
 	    Clear_ST_addr_saved (st);
-#ifdef Is_True_On
+#if defined(Is_True_On)
 	    if (trace)
 		fprintf (TFile, "Clearing addr_saved for %s\n", ST_name (st));
 #endif
@@ -710,10 +702,8 @@ SUMMARIZE<program>::Set_global_addr_taken_attrib (void)
     // well as the ST attributes.
     For_all (St_Table, GLOBAL_SYMTAB,
 	     set_global_addr_taken_attrib<program> (this));
-#ifdef KEY
     if (program == IPL)
       For_all (St_Table, GLOBAL_SYMTAB, set_local_static_to_global<program> (this));
-#endif
 } // Set_global_addr_taken_attrib
 
 
@@ -949,7 +939,6 @@ Last_Node (WN_TREE_ITER<PRE_ORDER, WN*> i)
     return i.Wn () == NULL;
 }
 
-#ifdef KEY
 // TODO: We don't need to replace the stidx with the summary table index.
 //       We can just use the old-stidx -> new-stidx map in IPA.
 template <PROGRAM program>
@@ -1147,7 +1136,6 @@ static inline INT get_loopnest (WN * w)
 
   return loopnest;
 }
-#endif
 
 static BOOL
 is_variable_dim_array(TY_IDX ty)
@@ -1174,7 +1162,6 @@ is_variable_dim_array(TY_IDX ty)
     return FALSE;
 }
 
-#ifdef KEY
 // This function is similar to the versions available in ipc_bread.cxx
 // and xstats.cxx. This function however is called by IPA summary phase
 // and can potentially be smarter by analyzing the context of the WN node.
@@ -1246,7 +1233,6 @@ struct eq_oper
 
 // Map from label number to label usage information
 typedef hash_map<INT, label_wn, __gnu_cxx::hash<INT>, eq_oper> LABEL_WN_MAP;
-#endif
   
 //-----------------------------------------------------------
 // summary procedure node
@@ -1259,9 +1245,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     SUMMARY_PROCEDURE *proc = New_procedure ();
     WN* w2, *alt_wn;
     ST *st = WN_st (w);
-#ifndef KEY
-    INT loopnest = 0;
-#endif // !KEY
     INT pu_first_formal_idx = 0;
     INT pu_last_formal_idx = 0;
     INT pu_first_actual_idx = 0;
@@ -1272,16 +1255,12 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     BOOL Has_return_already = FALSE;
     BOOL Has_pdo_pragma = FALSE;
     BOOL Has_local_pragma = FALSE;
-#ifdef KEY
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback;
 #if defined(VENDOR_PSC)
     Do_reorder = FALSE;
 #endif
     LABEL_WN_MAP label_use_map;     
     UINT64 PU_invoke_count = 0;
-#else
-    BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback&& IPA_Enable_Reorder;//and other things, such as Feedback_Enabled[PROFILE_PHASE_BEFORE_LNO]
-#endif // KEY
 
     UINT fld_id,i, pop_loops;
     BOOL cur_pu_is_reorder_cand=FALSE;
@@ -1290,14 +1269,12 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     WN* wn_tmp;
     UINT num_struct_access;//just for debug, ,Finish_PU_process_struct_access()
 
-#ifdef KEY
     // Now that preopt has run, recompute PU size estimates
     Initialize_PU_Stats();
 
     // bug 11801
     if (proc_has_pstatics)
       proc->Set_has_pstatic ();
-#endif
 
     Trace_Modref = Get_Trace ( TP_IPL, TT_IPL_MODREF );
     
@@ -1337,29 +1314,20 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     if (Cur_PU_Feedback) { // was FB_PU_Has_Feedback
 	FB_FREQ freq = (Cur_PU_Feedback->Query_invoke(w)).freq_invoke;
 
-#ifdef KEY
 	SUMMARY_FEEDBACK *fb = New_feedback ();
 	proc->Set_feedback_index (Get_feedback_idx ());
-#endif
 
 	if (freq.Known()) {
 	    proc->Set_has_PU_freq ();
-#ifdef KEY
 	    PU_invoke_count = (UINT64) freq.Value();
-#else
-	    SUMMARY_FEEDBACK *fb = New_feedback ();
-	    proc->Set_feedback_index (Get_feedback_idx ());
-#endif
 	    fb->Set_frequency_count (freq);
 	}
 	else {
 	  // FB_PU_Has_Feedback = FALSE;
 	    DevWarn ("Unknown invoke frequency found in %s so no feedback info in this procedure will be considered", ST_name(WN_st(w)));
 	}
-#ifdef KEY
 	// Runtime address of the current procedure based on feedback data.
 	fb->Set_func_runtime_addr (Cur_PU_Feedback->Get_Runtime_Func_Addr());
-#endif
     }
 	else //INLINING_TUNING^
 	{
@@ -1421,9 +1389,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     if (DoPreopt)
 	phi_index = Get_phi_idx ();	// record initial phi node index
     
-#ifdef KEY
     Process_eh_globals ();
-#endif
 
     BOOL found = FALSE;
 
@@ -1459,14 +1425,11 @@ SUMMARIZE<program>::Process_procedure (WN* w)
    	if (st && (is_variable_dim_array(ST_type(st)))) 
 	    proc->Set_has_var_dim_array();
 
-#ifdef KEY
 	// Recompute bb and statement count
         Count_WN (w2, PU_WN_BB_Cnt, PU_WN_Stmt_Cnt, PU_WN_Call_Cnt);
-#endif // KEY
 
 	switch ( WN_operator(w2) ) {
 	case OPR_DO_LOOP:
-#ifdef KEY
 	    {
 	      // Check if a reference parameter is used as the do-loop index.
 	      WN * index = WN_index(w2);
@@ -1490,12 +1453,8 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    	  }
 	        }
 	    } // fall-through
-#endif
 	case OPR_WHILE_DO:
 	case OPR_DO_WHILE:
-#ifndef KEY // disable buggy loopnest computation
-	    loopnest++;
-#endif // !KEY
 	    if(Do_reorder){
 	    	FB_Info_Loop fb_info=Cur_PU_Feedback->Query_loop( w2);
 		loop_count=(UINT64) fb_info.freq_iterate.Value();
@@ -1505,7 +1464,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 
 	    break;
 
-#ifdef KEY
 	case OPR_IF:
 	    {
 		// Remove the use of this flag in future
@@ -1550,7 +1508,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 		if_map[w2].not_taken = not_taken;
 	    }
 	    break;
-#endif
 	case OPR_ICALL:
 	case OPR_CALL: {
             // ignore fake call from exception handling block
@@ -1558,7 +1515,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
                 (WN_Fake_Call_EH_Region(w2, Parent_Map)))
               break;
 
-#ifdef KEY
 	    float probability = -1;
 	    // Remove the use of this flag in future
 	    if ( IPA_Enable_Branch_Heuristic && Cur_PU_Feedback && 
@@ -1579,7 +1535,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    }
             INT loopnest = get_loopnest (w2);
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
             // This ifdef is redundant, but just for clarity.
             if (Cur_PU_Feedback && WN_operator(w2) == OPR_ICALL
                 // Ignore virtual function candidate for icall_opt and let
@@ -1588,7 +1544,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
                 && !WN_Call_Is_Virtual(w2))
 	      Process_icall (proc, w2, loopnest, probability);
 #endif
-#endif // KEY
 
             if (/*!Cur_PU_Feedback && */ WN_Call_Is_Virtual(w2)
                     && IPA_Enable_Fast_Static_Analysis_VF == TRUE) {
@@ -1596,12 +1551,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
             }
 
             proc->Incr_call_count ();
-#ifdef KEY
             Process_callsite (w2, proc->Get_callsite_count (), loopnest, probability);
-#else
-            Process_callsite (w2, proc->Get_callsite_count (), loopnest);
-            Direct_Mod_Ref = TRUE;
-#endif
             proc->Incr_callsite_count ();
 
             // update actual parameter count
@@ -1613,12 +1563,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
         } 
 
 	case OPR_INTRINSIC_CALL:
-#ifdef KEY
 	    Process_callsite (w2, proc->Get_callsite_count (), get_loopnest (w2));
-#else
-	    Process_callsite (w2, proc->Get_callsite_count (), loopnest);
-	    Direct_Mod_Ref = TRUE;
-#endif
 	    proc->Incr_callsite_count ();
 	    break;
 	    
@@ -1651,11 +1596,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	case OPR_LDA:
 	case OPR_LDID:
 	case OPR_ILOAD:
-#ifndef KEY
-	    Direct_Mod_Ref = TRUE;
-#endif
 	    Record_ref (w2);
-#ifdef KEY
 	    if (Do_reorder) {
 	      loop_count = PU_invoke_count;
 	      if (!loop_count_stack->Is_Empty())
@@ -1663,12 +1604,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	      if (loop_count)
 	        Record_struct_access(w2,loop_count);
 	    }
-#else
-	    if(Do_reorder && !loop_count_stack->Is_Empty() ){
-		loop_count=loop_count_stack->Top();
-	        Record_struct_access(w2,loop_count);
-	    }
-#endif
 	    break;
 	  
 	case OPR_STID:
@@ -1684,7 +1619,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	case OPR_MSTORE:
 	    Direct_Mod_Ref = TRUE;
 	    Record_mod (w2);
-#ifdef KEY
 	    if (Do_reorder) {
 	      loop_count = PU_invoke_count;
 	      if (!loop_count_stack->Is_Empty())
@@ -1692,26 +1626,17 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	      if (loop_count)
 	        Record_struct_access(w2,loop_count);
 	    }
-#else
-            if(Do_reorder && !loop_count_stack->Is_Empty() ) {
-	        loop_count=loop_count_stack->Top();
-	         Record_struct_access(w2,loop_count);
-            }
-#endif
  	    break;
 
 	case OPR_IO:
-#ifdef KEY
 // Set mod_ref for fortran io statements like 'write', otherwise a routine
 // just containing a 'write' can get deleted by ipa-dce
 	    Direct_Mod_Ref = TRUE;
 	    proc->Set_has_side_effect ();
-#endif
 	    Process_IO(w2);
 	    break;
 	case OPR_ILDA:
 	case OPR_MLOAD:
-#ifdef KEY
 	    if (Do_reorder) {
 	      loop_count = PU_invoke_count;
 	      if (!loop_count_stack->Is_Empty())
@@ -1719,12 +1644,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	      if (loop_count)
 	        Record_struct_access(w2,loop_count);
 	    }
-#else
-	    if(Do_reorder && !loop_count_stack->Is_Empty() ) {
-		    loop_count=loop_count_stack->Top();
-		    Record_struct_access(w2,loop_count);
-            }
-#endif
 		break;
 
 	    // Exceptions now come as REGIONS (not as EXC_SCOPE_BEGINS)
@@ -1736,9 +1655,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	case OPR_REGION:
 	    if (WN_region_is_EH(w2))
 	    {
-#ifdef KEY
 		Process_eh_region (w2);
-#endif
 		proc->Set_exc_inline();
 	    }
 	    if (WN_region_kind(w2)== REGION_KIND_TRY)
@@ -1803,10 +1720,8 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    if ((WN_pragma(w2) == WN_PRAGMA_DOACROSS) ||
 		(WN_pragma(w2) == WN_PRAGMA_PARALLEL_DO) ||
 		(WN_pragma(w2) == WN_PRAGMA_PARALLEL_BEGIN) ||
-#ifdef KEY
 		// bug 4543
 		(WN_pragma(w2) == WN_PRAGMA_THREADPRIVATE) ||
-#endif // KEY
 		(WN_pragma(w2) == WN_PRAGMA_PARALLEL_SECTIONS)) 
 		proc->Set_has_noinline_parallel_pragma();
 
@@ -1816,13 +1731,8 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 		Has_pdo_pragma = TRUE;
 
 	    if (WN_has_pragma_with_side_effect(w2))
-#ifdef KEY
                 proc->Set_has_pragma_side_effect();
-#else
-                proc->Set_has_side_effect();
-#endif
 
-#ifdef KEY
             if (WN_pragma(w2) == WN_PRAGMA_THREADPRIVATE)
             {
               ST * thdprv_st = ST_ptr (WN_pragma_arg2(w2));
@@ -1847,7 +1757,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
               // ref count so that IPA DVE does not remove it.
               Record_global_ref (w2, st, OPR_PRAGMA, TRUE);
             }
-#endif
               
 	    // now, inline pragmas are part of the function body
 	    Process_pragma_node (w2);
@@ -1896,7 +1805,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    }
 	    break;
 
-#ifdef KEY
 	// label definition
 	case OPR_LABEL:
 	    {
@@ -1936,7 +1844,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	case OPR_ASM_STMT:
 	    Direct_Mod_Ref = TRUE;
 	    break;
-#endif
 	}
 
 	if (WN_next(w2) == NULL) {
@@ -1949,9 +1856,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 		    case OPC_DO_LOOP:
 		    case OPC_WHILE_DO:
 		    case OPC_DO_WHILE:
-#ifndef KEY // disable buggy loopnest computation
-			loopnest--;
-#endif // !KEY
 			if(Do_reorder){
 			    loop_count_stack->Pop();
 			}
@@ -1968,7 +1872,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    if (ST_level (st2) == CURRENT_SYMTAB) {
 		// local symtab
 		if (ST_sclass (st2) == SCLASS_PSTATIC) {
-		    // KEY
 		    Is_True (proc->Has_pstatic(),
 		             ("Has_pstatic should already be set"));
 		    proc->Set_has_pstatic ();
@@ -1980,7 +1883,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 
     }
     
-#ifdef KEY
     {
       // Update bb and stmt count
       proc->Set_bb_count (PU_WN_BB_Cnt);
@@ -2012,7 +1914,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
       }
     }
     if_map.clear ();
-#endif // KEY
 
     /*loop_count_stack may not be empty! and loopnest may not be empty!!*/
     if (proc->Get_callsite_count () > 0)
@@ -2026,17 +1927,9 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	if (Cur_PU_Feedback) { // was FB_PU_Has_Feedback
 	    INT bb_count = 0;
 	    INT stmt_count = 0;
-#ifdef KEY
  	    FB_FREQ cycle_count(0.0);
-#else
- 	    FB_FREQ cycle_count(0);
-#endif
 	    UINT16 WN_Count = 0; //INLINING_TUNING
-#ifdef KEY
 	    FB_FREQ Cycle_Count2(0.0); //INLINING_TUNING
-#else
-	    FB_FREQ Cycle_Count2(0); //INLINING_TUNING
-#endif
 	    SUMMARY_FEEDBACK *fb = Get_feedback (proc->Get_feedback_index ());
  	    FB_FREQ freq_count = fb->Get_frequency_count();
 //	    Count_tree_size (*Cur_PU_Feedback, Get_entry_point (), bb_count, stmt_count, cycle_count, freq_count);
@@ -2160,7 +2053,7 @@ Notes for File 1:
 
 */
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
 template <PROGRAM program>
 void
 SUMMARIZE<program>::Process_virtual_function (SUMMARY_PROCEDURE * proc, 
@@ -2202,9 +2095,9 @@ SUMMARIZE<program>::Process_virtual_function (SUMMARY_PROCEDURE * proc,
   proc->Incr_callsite_count ();
   proc->Incr_call_count ();
 }
-#endif // KEY && !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
+#endif // !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
 // If found suitable, generate a new callsite summary for the direct call
 // that IPA may add for this icall. Fix other summary data as if proc now
 // has another callsite.
@@ -2298,7 +2191,7 @@ SUMMARIZE<program>::Process_icall (SUMMARY_PROCEDURE * proc, WN * wn,
   proc->Incr_call_count ();
   return;
 } // SUMMARIZE::Process_icall
-#endif // KEY && !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
+#endif // !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
 
 //-----------------------------------------------------------
 // store the callsite information, set the actual parameter information
@@ -2315,9 +2208,7 @@ SUMMARIZE<program>::Process_callsite (WN *w, INT id, INT loopnest, float probabi
 
     callsite->Set_callsite_id (id);
     callsite->Set_loopnest (loopnest);
-#ifdef KEY
     callsite->Set_probability (probability);
-#endif
     callsite->Set_param_count (WN_num_actuals(w));
     callsite->Set_return_type (WN_rtype(w));
 
@@ -2369,10 +2260,6 @@ SUMMARIZE<program>::Process_callsite (WN *w, INT id, INT loopnest, float probabi
 	    break;
 	}
 
-#if 0
-	if (!INLINE_Enable_Copy_Prop)
-	    return;
-#endif
     } else {
 
 	/* ipl case */
@@ -2410,7 +2297,7 @@ SUMMARIZE<program>::Process_callsite (WN *w, INT id, INT loopnest, float probabi
             if (WN_Call_Is_Virtual(w)) { 
                 callsite->Set_is_virtual_call(); 
                 WN *last = WN_kid(w, WN_kid_count(w)-1); 
-#ifdef TARG_IA64 
+#if defined(TARG_IA64) 
                 if (WN_operator_is(last, OPR_ADD)) { 
                     FmtAssert(WN_kid_count(last) == 2, ("Incorrect virtual call site.")); 
                     WN *addr = WN_kid0(last); 
@@ -2433,7 +2320,7 @@ SUMMARIZE<program>::Process_callsite (WN *w, INT id, INT loopnest, float probabi
                     callsite->Set_vtable_offset(0); 
                 } 
 #endif 
-#ifdef TARG_X8664 
+#if defined(TARG_X8664) 
                 FmtAssert(WN_operator_is(last, OPR_ILOAD), 
                           ("Virtual function call does node use ILOAD.")); 
                 callsite->Set_vtable_offset(WN_load_offset(last)); 
@@ -2602,7 +2489,6 @@ Parm_Type_Equal_To_Etype(TY_IDX parm_ty, WN* array_wn)
   return FALSE;
 }
 
-#ifdef KEY
 // This function traverses down an expression node and returns any LDA.
 // Input: actual parameter
 // Modifies: nothing
@@ -2627,17 +2513,14 @@ static WN * traverse_actual (WN * w)
   }
   return NULL;
 }
-#endif
 
 template <PROGRAM program>
 void 
 SUMMARIZE<program>::Process_actual (WN* w)
 {
   SUMMARY_ACTUAL* actual = New_actual ();
-#ifdef KEY
   // Save the pointer before overwriting it.
   const WN * param = w;
-#endif
 
   OPERATOR opr = WN_operator(w);
   if (opr == OPR_PARM) {
@@ -2683,7 +2566,6 @@ SUMMARIZE<program>::Process_actual (WN* w)
       if (OPERATOR_has_sym(opr)) {
         actual->Set_symbol_index(Get_symbol_index(WN_st(w)));
       }
-#ifdef KEY
       else {
         // Traverse down actual parm looking for an LDA
         WN * lda = traverse_actual (w);
@@ -2692,7 +2574,6 @@ SUMMARIZE<program>::Process_actual (WN* w)
           opr = WN_operator (lda);
         }
       }
-#endif
     }
   }
 
@@ -2747,12 +2628,10 @@ SUMMARIZE<program>::Process_actual (WN* w)
       actual->Set_pass_type(PASS_LDA);
       break;
 
-#ifdef KEY
     case OPR_ARRAY:
       if (WN_Parm_By_Reference(param))
         actual->Set_pass_type(PASS_ARRAY);
       break;
-#endif
 
     default:
       actual->Set_pass_type(PASS_UNKNOWN);
@@ -3067,10 +2946,8 @@ SUMMARIZE<program>::Trace(FILE* fp)
     Get_common_shape(0)->Print_array(fp, Get_common_shape_idx()+1);
   if (Has_struct_access_entry()) //reorder
   	Get_struct_access(0)->Print_array(fp, Get_struct_access_idx()+1);
-#ifdef KEY
   if (Has_ty_info_entry())
   	Get_ty_info(0)->Print_array(fp, Get_ty_info_idx()+1);
-#endif
 }
 
 template <PROGRAM program>
@@ -3128,20 +3005,12 @@ SUMMARIZE<program>:: Record_struct_access(WN *wn, mUINT64 loop_count)
             cur_summary_idx=iter1->second;
         else{//not found summary
             cur_summary_idx=New_struct_access(struct_index,flatten_flds);
-#ifdef KEY
             Ty_to_access_map->insert(std::make_pair(struct_index,cur_summary_idx));
-#else
-            Ty_to_access_map->insert(make_pair(struct_index,cur_summary_idx));
-#endif // KEY
             for(ptr_iter=Ptr_to_ty_vector->begin();
                 ptr_iter!=Ptr_to_ty_vector->end();
                 ptr_iter++){
                 if(ptr_iter->pt_index==struct_index)
-#ifdef KEY
                     Ty_to_access_map->insert(std::make_pair(ptr_iter->ty_index,cur_summary_idx));
-#else
-                    Ty_to_access_map->insert(make_pair(ptr_iter->ty_index,cur_summary_idx));
-#endif // KEY
             }// fill in all such pointer_tys
         }
     }
@@ -3152,17 +3021,14 @@ SUMMARIZE<program>:: Record_struct_access(WN *wn, mUINT64 loop_count)
     Is_True(cur_summary != NULL,
             ("cur_summary is NULL"));
 
-#ifdef KEY
     Is_True(fld_id <= cur_summary->Get_flatten_flds(),
 	    ("Record_struct_access: illegal field ID"));
-#endif
 
     // process wn, Inc access_info to cur_summary
     cur_summary->Inc_fld_count(fld_id, loop_count);
     return;
 }
 
-#ifdef KEY
 template <PROGRAM program>
 void
 SUMMARIZE<program>::Record_ty_info_for_type (TY_IDX ty, TY_FLAGS flags)
@@ -3187,7 +3053,6 @@ SUMMARIZE<program>::Record_ty_info_for_type (TY_IDX ty, TY_FLAGS flags)
   if (flags & TY_NO_SPLIT)
     ty_info->Set_ty_no_split();
 }
-#endif
 
 #endif // ipl_summarize_template_INCLUDED
 

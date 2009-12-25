@@ -78,12 +78,8 @@
 
 #include "ipo_defs.h"
 
-#ifndef KEY
-#include "inline_script_parser.h"
-#else
 extern void (*Preprocess_struct_access_p)(void);
 #define Preprocess_struct_access (*Preprocess_struct_access_p)
-#endif /* KEY */
 #include "ipa_reorder.h"
 
 FILE* STDOUT = stdout; 
@@ -137,120 +133,6 @@ static void Print_Array_Sections(const char buffer[])
   }
 }
 
-#ifndef KEY
-//-----------------------------------------------------------------------
-// NAME: Perform_Inline_Script_Analysis
-// FUNCTION: Perform inlining analysis based on a context sensitive inlining specification file
-//-----------------------------------------------------------------------
-static void Perform_Inline_Script_Analysis(IPA_CALL_GRAPH* cg, MEM_POOL* pool, MEM_POOL* parser_pool)
-{
-    BOOL result = FALSE;
-    IPA_NODE_ITER cg_iter (cg, LEVELORDER, pool);
-
-#ifdef Enable_ISP_Verify // Additional debug information -- to be removed
-    int null_caller_count = 0;
-    int null_callee_count = 0;
-#endif
-
-    // traverse the call-graph, with visiting all nodes at levelorder first
-    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
-      IPA_NODE* caller = cg_iter.Current();
-      if(caller) {
- 	IPA_NODE_CONTEXT context (caller);
-	cg->Map_Callsites (caller);
-		
-	IPA_SUCC_ITER edge_iter (cg, caller);
-        for (edge_iter.First (); !edge_iter.Is_Empty (); edge_iter.Next ()) {
-	    IPA_EDGE *edge = edge_iter.Current_Edge ();
-            if (edge) {
-                // Restore the WHIRL node information
-            	IPA_NODE* callee = cg->Callee (edge);
-    		WN* call_wn = edge->Whirl_Node();
-
-    		// Retrieve the source line number, caller/callee file name and function name
-    		INT32 callsite_linenum;
-		USRCPOS callsite_srcpos;
-    		char  *caller_filename, *callee_filename;
-    		char  *caller_funcname, *callee_funcname;
-
-    		IP_FILE_HDR& caller_hdr = caller->File_Header ();
-    		IP_FILE_HDR& callee_hdr = callee->File_Header ();
-
-    		if (call_wn == NULL) {
-       			fprintf (stderr, "Warning: no source line number found for call-edge [%s --> %s]\n",
-       	       			 caller->Name(), callee->Name());
-       	  		callsite_linenum = 0;
-    		}
-  		else {
-      			USRCPOS_srcpos(callsite_srcpos) = WN_Get_Linenum (call_wn);
-      			callsite_linenum = USRCPOS_linenum(callsite_srcpos);
-    		}
-
-      		caller_filename = (char *) alloca(strlen(caller_hdr.file_name)+1);
-		strcpy(caller_filename, caller_hdr.file_name);
-		callee_filename = (char *) alloca(strlen(callee_hdr.file_name)+1);
-		strcpy(callee_filename, callee_hdr.file_name);      		
-      		
-#ifdef Enable_ISP_Verify // Additional debug information -- to be removed
-		fprintf (stderr, "Inline script analysis for call pair");
-		fprintf (stderr, "(Name: %s, Line: %d, File: %s) -> callee (Name: %s, File: %s)\n",
-         		caller->Name(), callsite_linenum, caller_filename,
-         		callee->Name(), callee_filename);
-#endif
-    		
-                // Assemble the caller_key and call_key for inquiry into the inlining record
-    		char *caller_key, *callee_key;
-    		ISP_Fix_Filename(caller_filename);
-		caller_funcname = (char *) alloca(strlen(DEMANGLE (caller->Name()))+1);
-		strcpy(caller_funcname, DEMANGLE (caller->Name()));    		
-    		ISP_Fix_Filename(caller_funcname);
-    		
-    		caller_key = (char *) alloca(strlen(caller_filename)+strlen(caller_funcname)+2);
-    		strcpy(caller_key, "");
-    		strcat(caller_key, caller_filename);
-    		strcat(caller_key, caller_funcname);
-
-    		ISP_Fix_Filename(callee_filename);
-		callee_funcname = (char *) alloca(strlen(DEMANGLE (callee->Name()))+1);
-		strcpy(callee_funcname, DEMANGLE (callee->Name()));	    		
-    		ISP_Fix_Filename(callee_funcname);
-    		// Assumption: the line number of integer type should not exceed 30 digits (base-10)   		
-    		char callsite_linestr[30];
-    		sprintf(callsite_linestr, "%d", callsite_linenum);
-    		
-    		callee_key = (char *) alloca(strlen(callsite_linestr)+strlen(callee_filename)+strlen(callee_funcname)+3);
-    		strcpy(callee_key, "");
-    		strcat(callee_key, callsite_linestr);
-    		strcat(callee_key, callee_filename);
-    		strcat(callee_key, callee_funcname);
-
-    		result = Check_Inline_Script(INLINE_Script_Name, caller_key, callee_key, parser_pool);
-    		
-    		// Set the call edge inlining attribute according to the inlining checking results
-    		if(result == TRUE) {
-    		    edge->Set_Must_Inline_Attrib();
-    		} else {
-    		    edge->Set_Noinline_Attrib();
-    		}
-            }
-#ifdef Enable_ISP_Verify // Additional debug information -- to be removed
-	    else null_callee_count++;
-#endif	
-	}
-      }
-#ifdef Enable_ISP_Verify // Additional debug information -- to be removed
-      else null_caller_count++;
-#endif
-    }	
-
-#ifdef Enable_ISP_Verify // Additional debug information -- to be removed
-    fprintf (stderr, "Inline script DEBUG null_caller = %d, null_callee = %d\n", null_caller_count, null_callee_count);
-#endif
-#ifdef Enable_ISP_Verify
-    Verify_Inline_Script();
-#endif
-}
-#endif /* KEY */
 
 extern void IPA_struct_opt_legality (void);
 
@@ -287,15 +169,14 @@ Perform_Interprocedural_Analysis ()
     }
 
     if (run_autopar) {
-#ifndef KEY
-      // enable multi_cloning and preopt for parallelization analysis
+/*      // enable multi_cloning and preopt for parallelization analysis
       if (!IPA_Max_Node_Clones_Set) {
         IPA_Max_Node_Clones = 5; // default number of clones per PU
       }
       if (!IPA_Enable_Preopt_Set) {
         IPA_Enable_Preopt = TRUE;
       }
-#endif // !KEY
+*/
     }
     else {
       // array section analysis is done only with -ipa -pfa
@@ -343,14 +224,12 @@ Perform_Interprocedural_Analysis ()
 	  if(tmp_call_graph != NULL)
 	  {	  
 	    fprintf(tmp_call_graph, "\t+++++++++++++++++++++++++++++++++++++++\n");
-	    // KEY
   	    IPA_Call_Graph->Print_vobose(tmp_call_graph);
 	    fprintf(tmp_call_graph, "\t+++++++++++++++++++++++++++++++++++++++\n");
 	  }
 	  fclose(tmp_call_graph);
 	}
 
-#ifdef KEY
         {
           IPA_NODE_ITER cg_iter(IPA_Call_Graph, POSTORDER);
 	  // Traverse the call graph and mark C++ nodes as PU_Can_Throw
@@ -393,24 +272,11 @@ Perform_Interprocedural_Analysis ()
 	      Mark_PUs_With_File_Id (IP_FILE_HDR_pu_list (IP_File_header[i]), i);
 	    }
         }
-#endif
 
 	// INLINING TOOL
 	if (INLINE_Enable_Script) {
-#ifdef KEY
 	        fprintf (stdout, "inline script not implemented\n");
 		exit (1);
-#else
-	        MEM_POOL script_parser_pool;
-	        MEM_POOL_Initialize(&script_parser_pool, "inlining script parser pool", FALSE);
-	        MEM_POOL_Push(&script_parser_pool);
-	        	
-		MEM_POOL_Popper inline_script_pool (MEM_local_nz_pool_ptr);
-		Perform_Inline_Script_Analysis(IPA_Call_Graph, inline_script_pool.Pool(), &script_parser_pool);
-		
-		MEM_POOL_Pop(&script_parser_pool);
-		MEM_POOL_Delete(&script_parser_pool);
-#endif /* KEY */
 	}
         // INLINING TOOL END
 	
@@ -423,7 +289,7 @@ Perform_Interprocedural_Analysis ()
 	}
     }
     
-#ifdef Is_True_On
+#if defined(Is_True_On)
     CGB_IPA_Initialize(IPA_Call_Graph);
 #endif
 
@@ -433,7 +299,7 @@ Perform_Interprocedural_Analysis ()
     if (Trace_IPA || Trace_Perf)
 	fprintf (TFile, "\t<<<Call Graph Construction completed>>>\n");
 
-#ifdef TODO
+#if defined(TODO)
     if (IPA_Enable_daVinci) {
 	cg_display = (daVinci *)
 	    CXX_NEW (daVinci (IPA_Call_Graph->Graph (), Malloc_Mem_Pool),
@@ -488,7 +354,7 @@ Perform_Interprocedural_Analysis ()
 	}
 	if (Trace_IPA || Trace_Perf)
 	    fprintf (TFile, "\t<<<Global Variable Optimization begins>>>\n");
-#ifdef TODO
+#if defined(TODO)
         if( IPA_Enable_Feedback ) {
                 setup_IPA_feedback_phase();
 	    fprintf(IPA_Feedback_dve_fd,
@@ -501,7 +367,7 @@ Perform_Interprocedural_Analysis ()
 	if (Trace_IPA || Trace_Perf)
 	    fprintf  (TFile,
 		      "\t<<<Global Variable Optimization completed>>>\n");
-#ifdef TODO
+#if defined(TODO)
         if( IPA_Enable_Feedback ) {
                 cleanup_IPA_feedback_phase ();
                 fflush(IPA_Feedback_dve_fd);
@@ -512,10 +378,8 @@ Perform_Interprocedural_Analysis ()
     if(IPA_Enable_Reorder && !merged_access->empty())
 		IPA_reorder_legality_process(); 	
 
-#ifdef KEY
     if (IPA_Enable_Struct_Opt)
         IPA_struct_opt_legality();
-#endif
 
     //  mark all unreachable nodes that are either EXPORT_LOCAL (file
     //  static) or EXPORT_INTERNAL *AND* do not have address taken as
@@ -527,7 +391,7 @@ Perform_Interprocedural_Analysis ()
 	    fprintf (stderr, "Dead functions elimination ...");
 	    fflush (stderr);
 	}
-#ifdef TODO
+#if defined(TODO)
         if( IPA_Enable_Feedback ) {
             //
             // Functions completely inlined to their callers are handled in
@@ -546,7 +410,7 @@ Perform_Interprocedural_Analysis ()
 	Total_Prog_Size = Orig_Prog_Weight - Total_Dead_Function_Weight;
 	if (Trace_IPA || Trace_Perf)
 	     fprintf (TFile, "\t<<<Dead Functions Elimination completed>>>\n");
-#ifdef TODO
+#if defined(TODO)
         if( IPA_Enable_Feedback ) {
                 cleanup_IPA_feedback_phase ();
                 fflush(IPA_Feedback_dfe_fd);
@@ -578,11 +442,11 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
 }
 */
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     if (IPA_Enable_Fast_Static_Analysis_VF == TRUE) {
         IPA_Fast_Static_Analysis_VF ();
     }
-#endif // KEY && !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
+#endif // !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
     // Devirtualization using IPA_Enable_Devirtualization enabled path is not used from open64 4.2.2-1. Please use IPA_Enable_Fast_Static_Analysis_VF enabled path for understanding devirtualization.
 
     if (IPA_Enable_Devirtualization) { 
@@ -700,15 +564,6 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
         IPA_Call_Graph->Print(TFile);
       }
     
-#if 0
-      // Optionally, we could remove quasi clones without making them real
-      for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
-        IPA_NODE* node = (IPA_NODE*) cg_iter.Current();
-        if (node && node->Is_Quasi_Clone()) {
-          IPA_Call_Graph->Remove_Quasi_Clone(node);
-        }
-      }
-#endif
     
       if (IPA_Enable_Common_Const) {
         MEM_POOL_Pop(&local_cprop_pool);
@@ -723,7 +578,7 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
       }
       Ipa_tlog( "Cprop", 0, "Count %d", IPA_Constant_Count);
 
-#ifdef TODO
+#if defined(TODO)
       // check for IPA:feedback=ON - get constant info if so
       if( IPA_Enable_Feedback ) {
         fprintf(IPA_Feedback_con_fd,"\nCONSTANTS FOUND\n\n");
@@ -744,10 +599,8 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
       }
     }
 
-#ifdef KEY
     if (IPA_Enable_Preopt)
       Preprocess_struct_access();
-#endif // KEY
 
     // Call preopt on each node if requested
     if (IPA_Enable_Preopt_Set && IPA_Enable_Preopt) {
@@ -821,7 +674,7 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
 	Temporary_Error_Phase ephase ("IPA Inlining Analysis");
 	if (Trace_IPA || Trace_Perf)
 	    fprintf (TFile, "\t<<<Inlining analysis begins>>>\n");
-#ifdef TODO
+#if defined(TODO)
         if( IPA_Enable_Feedback ) {
             setup_IPA_feedback_phase();
             fprintf(IPA_Feedback_prg_fd,"\nINLINING FAILURE INFO\n\n");
@@ -835,7 +688,7 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
 		     Total_Prog_Size);
 	    fprintf (TFile, "\t<<<Inlining analysis completed>>>\n");
 	}
-#ifdef TODO
+#if defined(TODO)
         if( IPA_Enable_Feedback ) {
                 cleanup_IPA_feedback_phase ();
                 fflush(IPA_Feedback_prg_fd);
@@ -847,7 +700,7 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
     }
 
     /* print the call graph */
-#ifdef Is_True_On
+#if defined(Is_True_On)
     CGB_IPA_Terminate();
 #endif
 

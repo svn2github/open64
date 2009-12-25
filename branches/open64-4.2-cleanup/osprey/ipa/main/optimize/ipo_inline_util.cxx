@@ -47,9 +47,7 @@
 #include "config_targ.h"             // for Pointer_type, Pointer_Size
 #include "region_util.h"             // for REGION_is_mp 
 #include "lwn_util.h"                // for LWN_Get_Parent(), etc
-#ifdef KEY
 #include "ipo_parent.h"		     // for WN_Get_Parent
-#endif
 
 // ======================================================================
 // Processing related to Regions
@@ -275,7 +273,6 @@ Fix_Return_Pregs (WN *Call, const RETURN_PREG& rp)
     }
 } // Fix_Return_Pregs
 
-#ifdef KEY
 // Get enclosing region information around callsite 'e' in caller 'n'
 //
 // An alternate way the search for an appropriate region can be handled is
@@ -319,4 +316,3 @@ Get_enclosing_region (IPA_NODE * n, IPA_EDGE * e)
     // restore old scope
     Scope_tab = old_scope;
 }
-#endif

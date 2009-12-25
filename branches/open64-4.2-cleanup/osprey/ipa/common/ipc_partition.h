@@ -37,10 +37,10 @@
 */
 
 
-#ifndef ipc_partition_INCLUDED
+#if !defined(ipc_partition_INCLUDED)
 #define ipc_partition_INCLUDED
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -53,7 +53,7 @@ extern "C" {
     * symbol table.
     */
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 

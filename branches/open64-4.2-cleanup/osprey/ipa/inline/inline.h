@@ -37,10 +37,10 @@
 */
 
 
-#ifndef ip_inline_INCLUDED
+#if !defined(ip_inline_INCLUDED)
 #define ip_inline_INCLUDED
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 extern BOOL Inliner(char* input_name, char* output_name);
@@ -50,7 +50,7 @@ extern SCOPE** Inliner_Aux_Pu_Table;
 extern void Process_Nonlocal_File(char *filename, void *);
 
 #endif
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 
 #endif

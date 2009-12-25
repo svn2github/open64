@@ -142,10 +142,6 @@ IPO_Clone (IPA_NODE* orig_node, IPA_NODE* clone_node)
                    clone_node->Mem_Pool(), 
                    clone_node->Mem_Pool());
 
-#if 0
-  // set lobal tables 
-  IP_READ_file_info (orig_node->File_Header());
-#endif
   
   // save current pointers to standard memory pools
   MEM_POOL* save_pu_pool_ptr = MEM_pu_pool_ptr;
@@ -174,7 +170,6 @@ IPO_Clone (IPA_NODE* orig_node, IPA_NODE* clone_node)
   Set_PU_Info_state (clone_pu_info, WT_PROC_SYM, Subsect_InMem);
   //Set_PU_Info_state (clone_pu_info, WT_FEEDBACK, Subsect_InMem);
 
-#ifdef KEY
   if (orig_node->Has_Feedback () && clone_node->Has_Feedback ())
   {
       IP_PROC_INFO& info = IP_FILE_HDR_proc_info (file_hdr)[orig_node->Proc_Info_Index()];
@@ -211,7 +206,6 @@ IPO_Clone (IPA_NODE* orig_node, IPA_NODE* clone_node)
                     orig_node->Whirl_Tree (FALSE), clone.Get_Cloned_PU(),
                     clone_freq/orig_freq);
   }
-#endif
 
   DST_IDX clone_dst = DST_INVALID_IDX;
   // this is a way to tell dbx to do more work for the given CU

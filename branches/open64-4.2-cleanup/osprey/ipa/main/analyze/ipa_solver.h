@@ -64,21 +64,21 @@
 // ====================================================================
 // ====================================================================
 
-#ifdef _KEEP_RCS_ID
+#if defined(_KEEP_RCS_ID)
 static char *ipa_solver_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/ipa/main/analyze/ipa_solver.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
-#ifndef cxx_ipa_solver_INCLUDED
+#if !defined(cxx_ipa_solver_INCLUDED)
 #define cxx_ipa_solver_INCLUDED
 
 // This header requires prior inclusion of erglob.h, ip_graph.h.
 
 
-#ifndef cxx_ipa_df_INCLUDED
+#if !defined(cxx_ipa_df_INCLUDED)
 #include "ipa_df.h"                 // DF_DIRECTION
 #endif
 
-#ifndef ipa_option_INCLUDED
+#if !defined(ipa_option_INCLUDED)
 #include "ipa_option.h"
 #endif
 

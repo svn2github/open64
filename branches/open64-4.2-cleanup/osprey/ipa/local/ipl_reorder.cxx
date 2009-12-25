@@ -42,10 +42,9 @@ TY_TO_FLDNUM_MAP *local_cands;    //<ty_index,flatten_flds>
 void Comput_flatten_flds(mUINT32 ty_index,mUINT32 &field_id)
 {
     FLD_IDX start_fld_idx=Ty_tab[ty_index].u1.fld;
-#ifdef KEY // check for 0-sized structs
+// check for 0-sized structs
     if (start_fld_idx == FLD_IDX_ZERO)
       return;
-#endif
     for(;;start_fld_idx++){
         TY_IDX  cur_idx= Fld_Table[start_fld_idx].type;
         field_id++;
@@ -96,11 +95,7 @@ void Preprocess_struct_access(void)
             Comput_flatten_flds(struct_index,flatten_flds);
             if(flatten_flds>=min_fld_num_reorder &&
                     iter->size>cache_block){
-#ifdef KEY
                 local_cands->insert(std::make_pair(struct_index,flatten_flds));
-#else
-                local_cands->insert(make_pair(struct_index,flatten_flds));
-#endif // KEY
             }
             else continue;
         } //just handle struct type
@@ -113,11 +108,7 @@ void Preprocess_struct_access(void)
             iter_cand=local_cands->find(point_to_ty);
             if (iter_cand==local_cands->end ()) // point_to_ty not a candidate
                 continue;
-#ifdef KEY
             local_cands->insert(std::make_pair(ty_index,0)); // a pointer_ty has a flatten_flds of 0;
-#else
-            local_cands->insert(make_pair(ty_index,0)); // a pointer_ty has a flatten_flds of 0;
-#endif // KEY
             item.ty_index=ty_index;
             item.pt_index=point_to_ty;
             Ptr_to_ty_vector->push_back(item);

@@ -37,7 +37,7 @@
 */
 
 
-#ifndef ipo_dce_INCLUDED
+#if !defined(ipo_dce_INCLUDED)
 #define ipo_dce_INCLUDED
 
 /* ====================================================================

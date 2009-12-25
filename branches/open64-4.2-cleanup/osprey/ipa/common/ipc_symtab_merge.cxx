@@ -1165,12 +1165,10 @@ Synch_Pu_With_Pu (PU& merged_pu, const PU& original_pu)
     merged_pu.flags = merged_flags;
 
     merged_pu.src_lang |= original_pu.src_lang;
-#ifdef KEY
     if (!merged_pu.misc)
     	merged_pu.misc = original_pu.misc; // EH/C nested function information
 
     merged_pu.unused = original_pu.unused;
-#endif
 } // Synch_Pu_With_Pu
 
 
@@ -1188,13 +1186,8 @@ Synch_TY_IDX (TY_IDX merged_ty_idx, TY_IDX original_ty_idx)
     if (TY_is_volatile (merged_ty_idx) || TY_is_volatile (original_ty_idx))
 	Set_TY_is_volatile (result);
 
-#ifdef KEY
     Set_TY_align_exp (result, MAX (TY_align_exp (merged_ty_idx),
 				   TY_align_exp (original_ty_idx)));
-#else
-    Set_TY_align_exp (result, max (TY_align_exp (merged_ty_idx),
-				   TY_align_exp (original_ty_idx)));
-#endif
     return result;
 } // Synch_TY_IDX
 
@@ -1338,12 +1331,10 @@ Enter_Original_St(const IPC_GLOBAL_TABS& original_tabs,
 	Set_ST_name_idx(new_st, (*New_Symstr_Idx)[ST_name_idx(original_st)]);
 
 	if (ST_sym_class(original_st) == CLASS_FUNC
-#ifdef KEY
 	    // Bug 14465: Merge the PU for a dummy function representing
 	    // a global-scope ASM, so that merged symbol table entries
 	    // get the updated PU idx.
 	    || ST_sym_class(original_st) == CLASS_NAME
-#endif
 	   ) {
 	    PU_IDX new_pu_idx = 
 		Merge_Global_Pu (ST_pu(original_st), original_tabs);
@@ -1535,13 +1526,8 @@ Merge_St_With_St(const IPC_GLOBAL_TABS &original_tabs,
 #endif // _STANDALONE_INLINER
 
     if (ST_sym_class (original_st) != ST_sym_class (merged_st)) {
-#ifdef KEY
 	// bug 2461
 	ErrMsg (EC_Inc_Types, ST_name (merged_st)); 
-#else
-	Fail_FmtAssertion ("symbol %s declared both as function and variable",
-			   ST_name (merged_st)); 
-#endif
     }
 
     if (ST_sym_class (original_st) == CLASS_FUNC) {
@@ -1732,13 +1718,9 @@ Merge_Global_St(UINT                   idx,
     if (ST_export(original_st) == EXPORT_LOCAL ||
 	ST_export(original_st) == EXPORT_LOCAL_INTERNAL) {
 
-#ifdef KEY
 	// Bug 8443: A function cannot be a common block element.
 	if (ST_raw_base_idx (original_st) == ST_st_idx (original_st) ||
 	    ST_sym_class (original_st) == CLASS_FUNC)
-#else
-	if (ST_raw_base_idx (original_st) == ST_st_idx (original_st))
-#endif
 	    return Enter_Original_St (original_tabs, original_st);
 	else
 	    // this might be a common block element
@@ -1840,7 +1822,7 @@ Merge_Global_Initv(UINT                  initv_idx,
     //
     switch (INITV_kind(original_initv)) {
     case INITVKIND_SYMOFF:
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
     case INITVKIND_SYMIPLT:
 #endif
 	st_idx = INITV_symoff_st(original_initv);
@@ -1856,12 +1838,12 @@ Merge_Global_Initv(UINT                  initv_idx,
 	break;
 	 
     case INITVKIND_BLOCK:
-#ifdef KEY // fixes bug 1010
-        if (INITV_block_first(original_initv) == INITV_IDX_ZERO)
+        // fixes bug 1010
+	if (INITV_block_first(original_initv) == INITV_IDX_ZERO)
 	  nested_initv_idx = INITV_IDX_ZERO;
 	else
-#endif
-	nested_initv_idx = 
+	// fixes bug 1010
+	  nested_initv_idx = 
 	    Merge_Global_Initv(INITV_block_first(original_initv), 
 			       original_tabs, initv_map);
 	Set_INITV_block_first(new_initv, nested_initv_idx);
@@ -2081,7 +2063,7 @@ IPC_merge_global_tab (const IPC_GLOBAL_TABS &original_tabs,
     New_St_Idx = &idx_map->st;
     New_Symstr_Idx = &idx_map->sym_str;
    
-#ifdef Is_True_On
+#if defined(Is_True_On)
     if (getenv ("no_fast_merge")) {
 	UINT idx;
 	for (idx = 1; idx < original_tabs.ty_tab_size; idx++)
@@ -2096,7 +2078,7 @@ IPC_merge_global_tab (const IPC_GLOBAL_TABS &original_tabs,
 	Merge_All_Types (original_tabs, *idx_map);
 
     UINT idx;
-#ifdef Is_True_On
+#if defined(Is_True_On)
 
     // verify the map
     for (idx = 1; idx < original_tabs.ty_tab_size; ++idx)

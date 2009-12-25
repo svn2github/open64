@@ -37,7 +37,7 @@
 */
 
 
-#ifndef wb_ipa_INCLUDED
+#if !defined(wb_ipa_INCLUDED)
 #define wb_ipa_INCLUDED
 
 extern void WB_IPA_Initialize(WN* wn_global, PU* pu);

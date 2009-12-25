@@ -37,9 +37,9 @@
 */
 
 
-#ifndef cxx_ipo_across_file_utils_INCLUDED
+#if !defined(cxx_ipo_across_file_utils_INCLUDED)
 #define cxx_ipo_across_file_utils_INCLUDED
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif /* __cplusplus */
 
@@ -48,7 +48,7 @@ extern "C" {
 extern void 
 Init_ty_maps(IP_FILE_HDR *shd_callee, IP_FILE_HDR *shd_caller,
 	     SYMTAB *caller_gs);
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif /* __cplusplus */
     

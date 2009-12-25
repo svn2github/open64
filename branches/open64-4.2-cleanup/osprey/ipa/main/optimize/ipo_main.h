@@ -37,11 +37,11 @@
 */
 
 
-#ifndef cxx_ipo_main_INCLUDED
+#if !defined(cxx_ipo_main_INCLUDED)
 #define cxx_ipo_main_INCLUDED
 
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif /* __cplusplus */
 
@@ -57,7 +57,7 @@ extern vector<mINT32> ipisr_cg;
 
 extern void Perform_Interprocedural_Optimization (void);
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif /* __cplusplus */
     

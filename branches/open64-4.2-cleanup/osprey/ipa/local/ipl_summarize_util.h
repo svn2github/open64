@@ -50,12 +50,12 @@
  * ====================================================================
  */
 
-#ifndef ipl_summarize_util_INCLUDED
+#if !defined(ipl_summarize_util_INCLUDED)
 #define ipl_summarize_util_INCLUDED
 
 #include <vector>
 
-#ifndef FB_WHIRL_INCLUDED
+#if !defined(FB_WHIRL_INCLUDED)
 #include "fb_whirl.h"
 #endif
 

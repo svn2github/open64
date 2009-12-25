@@ -35,7 +35,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
 #include <sys/mman.h>
 #endif
 #if defined(BUILD_OS_DARWIN)
@@ -99,7 +99,7 @@ round (UINT64 addr, UINT64 align)
 }
 
 
-#ifndef __GNUC__
+#if !defined(__GNUC__)
 #pragma pack(1)
 struct unalign_word {
     UINT32 w;
@@ -117,7 +117,7 @@ struct unalign_longlong {
 } __attribute__ ((aligned (1), packed));
 #endif
 
-#ifndef _LIGHTWEIGHT_INLINER
+#if !defined(_LIGHTWEIGHT_INLINER)
 void *
 Digest_Archive (void* handle, MEM_POOL* m, INT64 file_size)
 {

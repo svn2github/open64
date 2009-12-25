@@ -59,7 +59,7 @@
 #include <strings.h>
 #include <time.h>
 
-#ifndef USE_STANDARD_TYPES
+#if !defined(USE_STANDARD_TYPES)
 #define USE_STANDARD_TYPES
 #endif
 #include "defs.h"

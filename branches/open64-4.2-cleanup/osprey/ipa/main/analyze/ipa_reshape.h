@@ -37,7 +37,7 @@
 */
 
 
-#ifndef ipa_reshape_INCLUDED
+#if !defined(ipa_reshape_INCLUDED)
 #define ipa_reshape_INCLUDED "ipa_reshape.h"
 
 extern PROJECTED_REGION* Projected_Region_To_Memory(IPA_NODE* node,

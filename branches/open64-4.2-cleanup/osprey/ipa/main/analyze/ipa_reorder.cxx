@@ -65,9 +65,7 @@
 #include "ipa_cg.h"     //for IPA_NODE, IPA_NODE_ITER
 #include "ipa_reorder.h"
 #include "ir_reader.h"  //fdump_tree() for IPO_Modify_WN_for_field_reorder()
-#ifdef KEY
 #include "ipo_parent.h"	// for WN_Get_Parent
-#endif // KEY
 
 typedef hash_map<mUINT32,CAND_ITEM*> TY_TO_CAND_MAP;
 struct PTR_AND_TY
@@ -217,9 +215,7 @@ struct TOP_FIELD_INFO{
     FIELD_ID field_id;
     TY_IDX ty_idx; //0 means scalar type,else STRUCT type
     TY_SIZE size; //size of this field
-#ifdef KEY
     mUINT32 align; // alignment of this field
-#endif // KEY
 }; //just for top field , used for creating new ordering 
 
 typedef list<TOP_FIELD_INFO> TOP_FLD_LIST; //top field to field_id
@@ -291,30 +287,19 @@ mUINT64  Handle_access_count(INDEX ty_index, TOP_FLD_DESC&    idlist,
             idlist.size++;
             top_field.field_id=field_id;
             top_field.size=cur_ty->size; //get its size, for later compute new offset
-#ifdef KEY
             if( is_struct)
                 top_field.ty_idx=cur_idx;
             else
                 top_field.ty_idx=0;
 	    top_field.align = TY_align (cur_idx);
-#else
-            if( is_struct)
-                top_field.ty_idx=cur_idx;
-            else
-                top_field.ty_idx=0;
-#endif // KEY
             idlist.list.push_back(top_field);
         }else{ //sum all access_count, disperse them 
             this_count=p_cand->fld_info.map[field_id-1].count;
             sum+=this_count;
             //add to sub_cand's corresponding fld
-#ifdef KEY
 // just checking for sub_cand is not enough. sub_cand is allocated before
 // this function is called, but NOT sub_cand->top_field_info.list.
 	    if (sub_cand && sub_cand->top_field_info.list) {
-#else
-            if(sub_cand){
-#endif // KEY
                 sub_fld_id=sub_cand->top_field_info.list[i].field_id;
                 sub_cand->fld_info.map[sub_fld_id-1].count+=this_count; //add to sub_struct
             }
@@ -457,7 +442,6 @@ void check_reorder_legality_of_type(INDEX ty_index)//
     if (visited[ty_index])
         return;
     FmtAssert(ty->kind==KIND_STRUCT,("the checked type must be STRUCT"));
-#ifdef KEY
     if (!ty->size || !ty->u1.fld)
     {
 	// don't set invalidate and let it be processed below.
@@ -473,7 +457,6 @@ void check_reorder_legality_of_type(INDEX ty_index)//
     	visited[ty_index] = TRUE;
 	return;
     }
-#endif // KEY
     if (ty->flags &TY_IS_UNION)
         invalidate=TRUE;
     //check in all top-level-field, find if it is legal to reorder, if not, propagate it!
@@ -504,12 +487,6 @@ void check_reorder_legality_of_type(INDEX ty_index)//
                 invalidate_it(*iter);
     }
     else{
-#ifndef KEY
-// We disable reordering of fields in a sub-struct
-// Assumption: a struct sub-type points to the same entry in Ty_tab as the normal type
-        for (iter=low_level_tys.begin();iter!=low_level_tys.end();iter++)
-            check_reorder_legality_of_type(*iter);
-#endif // !KEY
         if(!visited[ty_index]) //avoid to record twice
             can_be_reordered_types.push_back(ty_index);
     }
@@ -553,13 +530,11 @@ void check_gsymbol_for_invalid_type()
             else if(ST_is_weak_symbol(*cur_st))
                 invalidate_it(ty_index);
         }
-#ifdef KEY
 	else if (Ty_tab[ty_index].kind == KIND_POINTER) {
 	    INDEX pointed = TY_pointed (Ty_tab[ty_index]) >> 8;
 	    if (Ty_tab[pointed].kind == KIND_STRUCT)
 	    	invalidate_it (pointed);
 	}
-#endif // KEY
         else if(cur_st->sym_class == CLASS_FUNC 
             ||(cur_st->sym_class == CLASS_NAME 
             &&(cur_st->flags & ST_ASM_FUNCTION_ST)))
@@ -765,7 +740,6 @@ public:
     };
 };
 
-#ifdef KEY
 
 INT
 Cmp_NAME_IDX(const void *p1,const void*p2)
@@ -849,7 +823,6 @@ handle_duplicates (void)
     }
 }
 
-#endif // KEY
 
 /*----------------------------------------------------------------------------*/
 /*function : IPA_reorder_legality_process()                                   */
@@ -923,25 +896,19 @@ void IPA_reorder_legality_process()
         memset(p_cand->fld_info.map,0,sizeof(FLD_ACCESS)*flatten_flds);
 
         this_map=p_cand->fld_info.map;
-#ifdef KEY
 	FLD_ACCESS * get_old_ofst = handle_ty.Get_unaltered_map();
-#endif // KEY
         for(i=0;i<flatten_flds;i++){
             if(cur_merge)
                 this_map[i].count=cur_merge->count[i];
             this_map[i].old_field_id=i+1;/*init all fld_info.map[].field_id ascending, offset =0*/
             this_map[i].offset=0;
-#ifdef KEY
 	    this_map[i].old_offset = get_old_ofst[i].offset;
-#endif // KEY
         }
     }
-#ifdef KEY
 // We need to remove duplicates from reorder_candidate before we can
 // do field-reordering, otherwise we will end up reordering the same struct
 // fields differently in different instances!
     handle_duplicates ();
-#endif // KEY
     for(cnt=1,p_cand=reorder_candidate.list;cnt<=size;
         p_cand++,cnt++) {
         cur_struct=p_cand->ty_index;
@@ -965,9 +932,7 @@ void IPA_reorder_legality_process()
             p_cand->top_field_info.list[i].field_id=field_id;
             p_cand->top_field_info.list[i].ty_idx=id_iter->ty_idx;
             p_cand->fld_info.map[field_id-1].offset=size; //record num of child-fields here!
-#ifdef KEY
             p_cand->fld_info.map[field_id-1].align=id_iter->align; //record alignment of field here
-#endif // KEY
             pre_ty_index=id_iter->ty_idx>>8;
             pre_id=field_id;
         }
@@ -1006,7 +971,6 @@ Cmp_old_field_id(const void *p1,const void*p2)
     return 0;
 }
 
-#ifdef KEY
 static void
 undo_field_reordering (FLD_ACCESS * flds, int count)
 {
@@ -1016,7 +980,6 @@ undo_field_reordering (FLD_ACCESS * flds, int count)
     flds[i].offset = flds[i].old_offset;
   }
 }
-#endif // KEY
 
 /*------------------------------------------------------------------*/
 /*function name :   IPO_get_new_ordering()                          */
@@ -1078,11 +1041,10 @@ void IPO_get_new_ordering()
         qsort( be_sorted_list,fld_num, sizeof(FLD_ACCESS), Cmp_FLD_ACCESS);
         //fill in new_field_id , and offset
         cur_offset=0;
-	int max_align = 0; // KEY
+	int max_align = 0; 
         for(k=0;k<fld_num;k++){
             be_sorted_list[k].new_field_id=k+1;
             cur_size=be_sorted_list[k].offset;
-#ifdef KEY
             if(!cur_size && k) // a sub-field
 	    {
                 be_sorted_list[k].offset = be_sorted_list[k-1].offset;
@@ -1106,16 +1068,7 @@ void IPO_get_new_ordering()
                     cur_offset+=cur_size;
 		}
             }
-#else
-            if(!cur_size && k) // a sub-field
-                be_sorted_list[k].offset=be_sorted_list[k-1].offset;
-            else{
-                be_sorted_list[k].offset=cur_offset;
-                cur_offset+=cur_size;
-            }
-#endif // KEY
         }
-#ifdef KEY
 	// cur_offset is now the size of the struct
 	{
 	    // The ABI says that the size must be multiple of the largest
@@ -1127,7 +1080,6 @@ void IPO_get_new_ordering()
 	// if size changes, we cannot reorder it
 	if (Ty_tab [p_cand->ty_index].size != cur_offset)
 	    undo_field_reordering (be_sorted_list, fld_num);
-#endif // KEY
         //sort according to old_field_id in ascending order
         qsort( be_sorted_list,fld_num, sizeof(FLD_ACCESS), Cmp_old_field_id);
         // for all parent-fld, refill its mapping of fld_id& offset
@@ -1142,15 +1094,11 @@ void IPO_get_new_ordering()
         for(k=0;k<top_size;k++){
             if(cur_ty_index=ref_list[k].ty_idx>>8){
                 sub_cand=find_in_reorder_candidate(cur_ty_index);
-#ifdef KEY
 		FmtAssert (!sub_cand || sub_cand->fld_info.map, 
 			("Field reordering information not available"));
                 if(!sub_cand || !sub_cand->fld_info.map[0].new_field_id){ 
 		// sub struct is not a candidate, or new_field_id for this
 		// candidate has not been assigned yet.
-#else
-                if(!sub_cand){ //sub struct is not a candidate!
-#endif // KEY
                     Handle_ty_map_and_flatten_fields handle_ty(&reorder_local_pool,cur_ty_index);
                     sub_map=handle_ty.Get_unaltered_map();
                     sub_fld_num=handle_ty.Get_flatten_fields();
@@ -1180,12 +1128,10 @@ void IPO_get_new_ordering()
             }
         } //check if changed, new ordering!
         if( p_cand->flag.changed){
-#ifdef KEY
 	    if (Trace_it)
 	    	fprintf (stderr,"CHANGED: Name: %s, size: %lld\n", 
 			&Str_Table[Ty_tab [p_cand->ty_index].name_idx], 
 			Ty_tab[p_cand->ty_index].size);
-#endif // KEY
             cur_struct=p_cand->ty_index;
             Ty_to_cand_map.insert(make_pair(cur_struct,p_cand));
             //insert all pointer_types
@@ -1209,7 +1155,6 @@ void IPO_get_new_ordering()
         {
             TY& ty=Ty_tab[p_cand->ty_index];
             fld_num=p_cand->fld_info.flatten_fields;
-#ifdef KEY	// give some more information
 // Note: Different entries in Ty_tab can have the same type_name
 	    if (!p_cand->flag.changed) continue;
             fprintf(TFile,"type name: %s, type id: %d, flatten_fields: %d, changed: %d\n",
@@ -1217,12 +1162,6 @@ void IPO_get_new_ordering()
 		p_cand->ty_index,
                 fld_num,
                 p_cand->flag.changed);
-#else
-            fprintf(TFile,"type name :%s, flatten_fields:%d, changed=%d\n",
-                Index_To_Str(ty.name_idx),
-                fld_num,
-                p_cand->flag.changed);
-#endif // KEY
             fprintf(TFile,"\nmapping for field_id:\n");
             for(UINT j=0;j<fld_num; j++){
                 fprintf(TFile," %4d",p_cand->fld_info.map[j].new_field_id);
@@ -1232,11 +1171,7 @@ void IPO_get_new_ordering()
             }
             fprintf(TFile,"\nmapping for offset:\n");
             for(UINT j=0;j<fld_num; j++){
-#ifdef KEY
                 fprintf(TFile," %d",p_cand->fld_info.map[j].offset);
-#else
-                fprintf(TFile,"%5d",p_cand->fld_info.map[j].offset);
-#endif // KEY
                 if(j%16==0 && j)
                     fprintf(TFile,"\n");
     
@@ -1302,16 +1237,12 @@ void IPO_reorder_Fld_Tab()
     tmp_fld= (FLD*)MEM_POOL_Alloc_P(&reorder_local_pool,
             sizeof(FLD),TRUE,NULL);
     size=reorder_candidate.size;
-#ifdef KEY
     bool Trace_it=Get_Trace ( TP_IPA,IPA_TRACE_TUNING_NEW );
     FLD *tmp_fld1 = (FLD*)MEM_POOL_Alloc_P(&reorder_local_pool,
                 sizeof(FLD),TRUE,NULL);
-#endif // KEY
     for(i=0,p_cand=reorder_candidate.list; i<size; i++,p_cand++)
     {
-#ifdef KEY
 	bool changed = false;
-#endif // KEY
         MEM_POOL_Push (&reorder_local_pool);
         UINT start_fld_idx=Ty_tab[p_cand->ty_index].u1.fld;
         top_size=p_cand->top_field_info.size;
@@ -1322,14 +1253,10 @@ void IPO_reorder_Fld_Tab()
             //firstly, fill in field_id, later modify to top_id
             trans_list[k].new_top_id=p_cand->fld_info.map[old_id-1].new_field_id-1; 
             trans_list[k].old_top_id=k; 
-#ifdef KEY
 	    if (trans_list[k].old_top_id != trans_list[k].new_top_id)
 	    	changed = true;
-#endif // KEY
         }
-#ifdef KEY
 	if (!changed) continue;
-#endif // KEY
         //sort according to new_fld_id in descending order
         qsort( trans_list,top_size, sizeof(TOP_FLD_ID_TRANS), Cmp_new_top_id);
         for(k=0;k<top_size;k++){
@@ -1347,7 +1274,6 @@ void IPO_reorder_Fld_Tab()
 
         for(ii=0;ii<top_size;ii++){
         //ii<top_size-1 will be right, but we'll fill in ofst for all!
-#ifdef KEY
 // the following loop is entered only once, so it does not change the 'Order' of the loop
 	    for (j=0, k=0; (ii==0) && (j<top_size); j++) {
 	    // move Fld_Table[start_fld_idx+j] to Fld_Table[start_fld_idx+addr_list[j]]
@@ -1366,23 +1292,6 @@ void IPO_reorder_Fld_Tab()
                 memcpy(tmp_fld1,tmp_fld, sizeof(FLD));
 		FmtAssert (k != addr_list[k], ("Field reordering error"));
 	    }
-#else
-            if(addr_list[ii]!=ii){
-                j=ii;
-                memcpy(tmp_fld,&Fld_Table[ii+start_fld_idx],sizeof(FLD));
-                /*class FLD has no copy-constructor, so cannot use"assignment"*/
-                while(addr_list[j]!=ii){
-                    k=addr_list[j];
-                    memcpy(&Fld_Table[j+start_fld_idx],
-                           &Fld_Table[k+start_fld_idx],
-                           sizeof(FLD));
-                    addr_list[j]=j;
-                    j=k;
-                } //of while (addr_list[j]!=ii)
-                memcpy(&Fld_Table[j+start_fld_idx],tmp_fld,sizeof(FLD));
-                addr_list[j]=j;
-            }//of if addr_list[ii]!=ii
-#endif // KEY
             //ii is new_top_id
             //find its old_top_id;
             for(k=0;k<top_size;k++)
@@ -1391,16 +1300,12 @@ void IPO_reorder_Fld_Tab()
             FIELD_ID old_top_id=trans_list[k].old_top_id; //trans_list[ii].old_top_id;
             FIELD_ID old_field_id=top_list[old_top_id].field_id;
             Fld_Table[start_fld_idx+ii].ofst=ref_list[old_field_id-1].offset;
-#ifdef KEY
 	    if (Trace_it)
 	    {
-#endif // KEY
             fprintf(stderr,"<%lld>",Fld_Table[start_fld_idx+ii].ofst);
             if((ii+1)%10==0)
                 fprintf(stderr,"\n");
-#ifdef KEY
 	    }
-#endif // KEY
             if(ii!=top_size-1)
                 //clear last_field_flag
                 Fld_Table[start_fld_idx+ii].flags &= ~FLD_LAST_FIELD;
@@ -1408,9 +1313,7 @@ void IPO_reorder_Fld_Tab()
                 //set last_field_flag
                 Fld_Table[start_fld_idx+ii].flags |= FLD_LAST_FIELD;
         }//of while ii!=top_size
-#ifdef KEY
 	if (Trace_it)
-#endif // KEY
         fprintf(stderr,"\n");
         FLD_OFST pre_ofst;
         for(j=0;j<top_size;j++){
@@ -1499,7 +1402,6 @@ void IPO_Modify_WN_for_field_reorder (IPA_NODE* node)
         wn = itr->wn;
         old_offset=WN_offset(wn);
 
-#ifdef KEY
 	if (WN_operator(wn) == OPR_LDID)
 	{
 	    WN * kid;
@@ -1532,7 +1434,6 @@ void IPO_Modify_WN_for_field_reorder (IPA_NODE* node)
 	    	}
 	    }
 	}
-#endif // KEY
 
         switch (WN_operator(wn)) {
         case OPR_ILOAD:{
@@ -1561,10 +1462,10 @@ void IPO_Modify_WN_for_field_reorder (IPA_NODE* node)
             }
         }// of al cases
     }
-    #ifdef Is_True  
+#if defined(Is_True_On) 
     WN_verifier(wn1);
     Verify_GLOBAL_SYMTAB();
-    #endif
+#endif
     node->Set_Whirl_Tree(wn1);
     if(Get_Trace ( TP_IPA,IPA_TRACE_TUNING_NEW ))
         fdump_tree(TFile, wn1);

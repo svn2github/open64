@@ -739,7 +739,7 @@ INLINE_Split_Common ()
     
     if (Split_Analysis (split_common_tbl, split_pool())) {
 	Split_Commons (split_common_tbl);
-#ifdef Is_True_On
+#if defined(Is_True_On)
 	Verify_SYMTAB (GLOBAL_SYMTAB);
 #endif
     }

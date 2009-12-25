@@ -35,7 +35,7 @@
  * History: 06/20/2007, built by He Jiangzhou, Tsinghua Univ.
  * 
  */
-#ifndef __omp_sys_included
+#if !defined(__omp_sys_included)
 #define __omp_sys_included
 
 /*

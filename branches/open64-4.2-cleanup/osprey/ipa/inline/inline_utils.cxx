@@ -51,7 +51,7 @@
 // ====================================================================
 
 #define __STDC_LIMIT_MACROS
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 #include <WINDOWS.h>
 #endif /* __MINGW32__ */
 #include <stdint.h>
@@ -242,11 +242,11 @@ Fix_Aliased_Commons ()
     }
 } // Fix_Aliased_Commons
 
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
 
 #include <unistd.h>                 /* for unlink() */
 #include <fcntl.h>                  /* for open() */
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
 #include <sys/mman.h>               /* for mmap() */
 #endif /* __MINGW32__ */
 #if defined(BUILD_OS_DARWIN)
@@ -284,7 +284,7 @@ Need_To_Inline_Callee (WN *w)
 
 	//    if (Is_Node_Inlinable_In_Call_Graph(ST_st_idx(WN_st(w2)))) {
 	    if (PU_is_inline_function(Pu_Table[ST_pu(WN_st(w2))])) {
-#ifdef DEBUG
+#if defined(DEBUG)
 	        printf ("Need to inline %s into %s\n", ST_name(WN_st(w2)), ST_name(WN_st(w));
 
 #endif // DEBUG
@@ -308,7 +308,7 @@ Copy_Input_Info_To_Output(char *input_name, char *output_name)
 {
 
     off_t mapped_size;
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
     HANDLE handle;
     void *i_handle = WN_open_input (input_name, &mapped_size, 0, &handle);
 #else

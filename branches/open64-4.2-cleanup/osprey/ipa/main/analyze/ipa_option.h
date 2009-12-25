@@ -58,26 +58,26 @@
  * ====================================================================
  */
 
-#ifndef ipa_option_INCLUDED
+#if !defined(ipa_option_INCLUDED)
 #define ipa_option_INCLUDED
 
 #include "config_ipa.h"		/* For -INLINE/-IPA group options */
 
-#ifndef ipa_trace_INCLUDED
+#if !defined(ipa_trace_INCLUDED)
 #include "ipa_trace.h"
 #endif
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
-#ifndef _LIGHTWEIGHT_INLINER
-#ifndef __DEM_H__
+#if !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(__DEM_H__)
 #include "ld_dem.h"		    /* for C++ demangler */
 #endif
 #endif // _LIGHTWEIGHT_INLINER
 
-#ifndef ipc_weak_INCLUDED
+#if !defined(ipc_weak_INCLUDED)
 #include "ipc_weak.h"		    /* make demangle() weak extern */
 #endif
 
@@ -96,22 +96,13 @@ extern BOOL Demangle;		    /* demangle C++ identifiers in error msg */
 
 extern BOOL ProMP_Listing;
 
-#ifdef KEY
 extern INT32 OPT_Cyg_Instrument;     /* Limits DFE if on */
-#endif
 #undef DEMANGLE
 #define DEMANGLE(name) (name)
-#if 0
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
-#define DEMANGLE(name) (name)
-#else
-#define DEMANGLE(name) (always_demangle (name, (char) Demangle))
-#endif /* __STANDALONE_INLINER */
-#endif
     
 extern void Process_IPA_Options ( INT argc, char **argv );
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 

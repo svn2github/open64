@@ -39,10 +39,10 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#ifndef cxx_ip_call_INCLUDED
+#if !defined(cxx_ip_call_INCLUDED)
 #define cxx_ip_call_INCLUDED
 
-#ifndef clone_INCLUDED
+#if !defined(clone_INCLUDED)
 #include "clone.h"	    // for IPO_ADDR_HASH
 #endif // clone_INCLUDED
 

@@ -37,7 +37,7 @@
 */
 
 
-#ifndef ipa_trace_INCLUDED
+#if !defined(ipa_trace_INCLUDED)
 #define ipa_trace_INCLUDED
 
 /* Trace Options -- Please put them here, and not in arbitrary places */

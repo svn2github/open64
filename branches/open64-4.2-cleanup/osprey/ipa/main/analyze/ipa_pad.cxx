@@ -456,7 +456,7 @@ Update_Summaries (COMMON_SNODE_TBL* common_snode_tbl, INT num_ir)
 extern INT64
 Common_Array_Pad_Size (INT column_size)
 {
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   if (column_size % 16 != 0)
     return column_size % 16;
 #endif
@@ -1030,9 +1030,7 @@ Compute_Split_Regions(SPLIT_COMMON_DYN_ARRAY *split_common_shape)
       // conditions 1 and 2
       if ((size_bytes >= Primary_Cache) && 
 	  (offset >= Primary_Cache - Primary_Delta)
-#ifdef KEY
 	  && (i != 0)	// Don't split first field.  Bug 8784.
-#endif
 	  )
 	{
 	  offset = offset - current_split;

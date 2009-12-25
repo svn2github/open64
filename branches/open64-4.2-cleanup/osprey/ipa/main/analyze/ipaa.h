@@ -55,10 +55,10 @@
  * ====================================================================
  */
 
-#ifndef ipaa_INCLUDED
+#if !defined(ipaa_INCLUDED)
 #define ipaa_INCLUDED
 
-#ifndef cxx_sparse_bv_INCLUDED
+#if !defined(cxx_sparse_bv_INCLUDED)
 #include "sparse_bv.h"
 #endif
 

@@ -129,13 +129,8 @@ Evaluate_phi (const SUMMARY_PHI *phi, SUMMARY_VALUE &return_value);
 static void
 Evaluate_expr (const SUMMARY_EXPR *expr, SUMMARY_VALUE &return_value);
 
-#ifdef KEY
 static void
 Evaluate_value (const SUMMARY_VALUE&, SUMMARY_VALUE&, WN * = NULL);
-#else
-static void
-Evaluate_value (const SUMMARY_VALUE& value, SUMMARY_VALUE &return_value);
-#endif
 
 
 //-----------------------------
@@ -953,19 +948,17 @@ Evaluate_chi (const SUMMARY_CHI *chi, SUMMARY_VALUE &return_value)
 	    return;
 	}
 
-#if 0
         // nenad, 03/01/00, 783636:
         // This seems completely bogus --
         // it doesn't matter at all if sym is DMOD-ified in this procedure,
         // but whether the call described in the CHI node may modify it.
-
+	/*
 	if (!sym.Is_dmod ()) {
 	    // is not modified at all
 	    Get_chi_operand (chi, return_value);
 	    return;
 	}
-#endif
-
+	*/
 	// last hope:  if this symbol is passed by reference in this
 	// particular callsite, and is not indirectly modified, we can
 	// still proceed.
@@ -1273,7 +1266,6 @@ Evaluate_common_const (const SUMMARY_SYMBOL* sym,
 }
 
 
-#ifdef KEY
 // Return TRUE if symbol idx is "private" (in OpenMP sense) in MP-region
 // region.
 static BOOL
@@ -1314,10 +1306,6 @@ Var_is_private (ST_IDX idx, WN * region)
 static void
 Evaluate_value (const SUMMARY_VALUE& value, SUMMARY_VALUE& return_value,
                 WN * mp_region)
-#else
-static void
-Evaluate_value (const SUMMARY_VALUE& value, SUMMARY_VALUE &return_value)
-#endif // KEY
 {
     EVAL_HASH::const_iterator idx = eval_hash->find (&value);
 
@@ -1446,12 +1434,10 @@ Evaluate_value (const SUMMARY_VALUE& value, SUMMARY_VALUE &return_value)
 	return_value.Set_global_st_idx (st_idx);
 	return_value.Set_global_index (-1);
 
-#ifdef KEY
         if (mp_region && Var_is_private (st_idx, mp_region)) {
 	  return_value.Set_not_const ();
 	  return;
 	}
-#endif // KEY
         if (!ST_is_const_var (St_Table[st_idx])) {
           if (Evaluate_common_const(sym, value, return_value)) {
             return;
@@ -1622,7 +1608,6 @@ Process_cond_branches (BOOL *call_deleted)
     
 } // Process_cond_branches
 
-#ifdef KEY
 #include "ipo_parent.h"
 // Find any MP region enclosing callsite 'e' in caller 'c'. If found,
 // set corresponding field in 'e'.
@@ -1655,9 +1640,8 @@ Get_enclosing_mp_region (IPA_NODE * c, IPA_EDGE * e)
       }
   }
 }
-#endif // KEY
 
-// KEY: The following function has been extracted out of 
+// The following function has been extracted out of 
 // Intra_PU_Formal_Cprop.
 // Called by:
 //    Intra_PU_Formal_Cprop
@@ -1677,7 +1661,6 @@ Get_cprop_annot (IPA_NODE *node)
       return NULL;
     }
 
-#ifdef KEY
     {
         // Also if there is a recursive in-edge, we cannot propagate the
         // formal parameter value down. Because the const-ness of the
@@ -1691,7 +1674,6 @@ Get_cprop_annot (IPA_NODE *node)
             }
         }
     }
-#endif
 
     return node->Cprop_Annot();
 }
@@ -1744,7 +1726,6 @@ Evaluate_actuals (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge)
           if (symbol_idx != -1 && ipa_symbol[symbol_idx].Is_formal()) {
             INT position = 
               ipa_formal[ipa_symbol[symbol_idx].Get_findex()].Get_position();
-#ifdef KEY
             // See if the formal belongs to the caller or to a parent PU
             INT func_st_idx = ipa_symbol[symbol_idx].Get_st_idx_func();
             if (func_st_idx != ST_st_idx (caller->Func_ST())) {
@@ -1768,7 +1749,6 @@ Evaluate_actuals (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge)
                 continue;
               }
             } else
-#endif
             if (formal_value &&
                 !caller_info->Is_formal_dmod_elmt(position) &&
                 !caller_info->Is_formal_imod_elmt(position)) {
@@ -1788,7 +1768,6 @@ Evaluate_actuals (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge)
           actual = &ipa_value[value_idx];
         }
         
-#ifdef KEY
 	// If the callsite is inside an MP region, and this parameter
 	// is a global variable marked private, then it cannot be
 	// const-propagated.
@@ -1797,10 +1776,6 @@ Evaluate_actuals (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge)
 	WN * mp_region = edge->MP_Whirl_Node ();
 
 	Evaluate_value (*actual, (*annot)[i], mp_region);
-#else
-
-	Evaluate_value (*actual, (*annot)[i]);
-#endif // KEY
 
 	if (check_for_readonly_ref &&
 	    ipa_actual[actual_idx].Get_pass_type() == PASS_LDID) {
@@ -1878,7 +1853,6 @@ Intra_PU_Formal_Cprop (IPA_NODE *node)
       formal_value = 0;
     }
 
-#ifdef KEY
     {
         // Also if there is a recursive in-edge, we cannot propagate the
         // formal parameter value down. Because the const-ness of the
@@ -1893,7 +1867,6 @@ Intra_PU_Formal_Cprop (IPA_NODE *node)
             }
         }
     }
-#endif
     // set up summary info arrays
     Set_summary_info (node);
 
@@ -2570,11 +2543,8 @@ Intra_PU_Global_Cprop (IPA_NODE* node)
 
   BOOL change = FALSE;
 
-#ifdef KEY // bug 2175
+  // bug 2175
   if (IPA_Enable_DFE && PU_is_dead(node, &change))
-#else
-  if (PU_is_dead(node, &change))
-#endif
   {
     return change;
   }

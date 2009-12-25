@@ -43,31 +43,31 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#ifndef cxx_ipo_inline_INCLUDED
+#if !defined(cxx_ipo_inline_INCLUDED)
 #define cxx_ipo_inline_INCLUDED
 
 
-#ifndef defs_INCLUDED
+#if !defined(defs_INCLUDED)
 #include "defs.h"
 #endif
 
-#ifndef wn_INCLUDED
+#if !defined(wn_INCLUDED)
 #include "wn.h"                     // WN
 #endif
 
-#ifndef wn_util_INCLUDED
+#if !defined(wn_util_INCLUDED)
 #include  "wn_util.h"               // WN_ITER
 #endif
 
-#ifndef mempool_INCLUDED
+#if !defined(mempool_INCLUDED)
 #include "mempool.h"                 // MEM_POOL
 #endif
 
-#ifndef irbdata_INCLUDED
+#if !defined(irbdata_INCLUDED)
 #include "irbdata.h"                // INITO
 #endif
 
-#ifndef wn_tree_util_INCLUDED
+#if !defined(wn_tree_util_INCLUDED)
 #include "wn_tree_util.h"
 #endif
 
@@ -208,7 +208,6 @@ typedef PARM_ATTR_VEC::iterator PARM_ITER;
 
 typedef std::set<ST_IDX, std::less<ST_IDX>, mempool_allocator<ST_IDX> > PROCESSED_SET;
 
-#ifdef KEY
 struct formal_to_replace_st
 {
     ST * formal;
@@ -218,7 +217,6 @@ struct formal_to_replace_st
 
 typedef vector<formal_to_replace_st, mempool_allocator<formal_to_replace_st> >
 	replace_st_vec;
-#endif
 #include "clone.h"
 
 #include "ipa_cg.h"
@@ -241,9 +239,7 @@ struct IPO_INLINE_AUX
                                         // site to the leftover function 
                                         // after partial inlining.
     PROCESSED_SET processed_local_syms; // Set of symbols that have PRAGMA LOCAL processed
-#ifdef KEY
     replace_st_vec replace_st;
-#endif
     
     IPO_INLINE_AUX (INT num_formals, MEM_POOL* pool) : 
 	parm_attr (pool),
@@ -255,9 +251,7 @@ struct IPO_INLINE_AUX
 	copy_out_block (NULL),
 	inlined_body (NULL),
         part_inl_leftover_call_site (NULL)
-#ifdef KEY
 	, replace_st (pool)
-#endif
     {
 
 	parm_attr.reserve (num_formals);
@@ -291,12 +285,10 @@ private:
     mUINT32  _flags;			// various Boolean attribute flags
     INT _callee_cross_file_id;		// For Debugging purpose
 
-#ifdef KEY
     // Merge callee's exception typeinfo table into caller's
     void Merge_EH_Typeinfo_Tables (void);
     // Merge callee's exception specification table into caller's
     void Merge_EH_Spec_Tables (void);
-#endif
 public:
     // ======================================================================
     // member functions
@@ -406,10 +398,8 @@ public:
 
     // Insert inline pragmas, alloca-code
     void Post_Process_Caller (IPO_INLINE_AUX& aux);
-#ifdef KEY
     // Merge callee's exception tables into caller's
     void Merge_EH_Tables (void);
-#endif
 
 public:
     // Externally callable functions

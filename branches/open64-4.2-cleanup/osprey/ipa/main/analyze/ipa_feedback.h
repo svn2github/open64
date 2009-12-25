@@ -55,7 +55,7 @@
  * ====================================================================
  */
 
-#ifndef ipa_feedback_INCLUDED
+#if !defined(ipa_feedback_INCLUDED)
 #define ipa_feedback_INCLUDED
 
 

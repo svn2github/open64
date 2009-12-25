@@ -37,7 +37,7 @@
 */
 
 
-#ifndef ip_inline_utils_INCLUDED
+#if !defined(ip_inline_utils_INCLUDED)
 #define ip_inline_utils_INCLUDED
 
 #include "dwarf_DST_mem.h"      // Needed by ipc_file.h
@@ -49,7 +49,7 @@ Setup_Inliner_File_Header (char *input_name, void *mmap_addr);
 extern void
 Fix_Aliased_Commons ();
 
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
 #include "wn_tree_util.h"
 
 extern BOOL

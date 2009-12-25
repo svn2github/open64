@@ -359,9 +359,7 @@ namespace
 		for (UINT i = 0; i < dim; ++i) {
 		    value += (arb->Lbnd_val () + arb->Ubnd_val () +
 			      arb->Stride_val ()) << i;
-#ifdef KEY // bug 9181
 		    ++arb;
-#endif
 		} 
 	    } else {
 		ARB_ITER arb_iter = Make_arb_iter (ARB_HANDLE (key));
@@ -1038,8 +1036,8 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
     // may varies from system to system. - sxyang, 3/19/2006
     
     // check if the assumption used by fast comparision of structs are valid
-#ifdef  __GNUC__
-#ifndef TARG_SL
+#if defined(__GNUC__)
+#if !defined(TARG_SL)
     Is_True (sizeof(TY)  == 28 && __alignof__(TY)  == 4 &&
 	     sizeof(FLD) == 28 && __alignof__(FLD) == 4 &&
 	     sizeof(ARB) == 32 && __alignof__(ARB) == 4,

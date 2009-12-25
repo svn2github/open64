@@ -57,21 +57,17 @@
  * ====================================================================
  */
 
-#ifndef ipo_tlog_util_INCLUDED
+#if !defined(ipo_tlog_util_INCLUDED)
 #define ipo_tlog_util_INCLUDED	"ipo_tlog_util.h"
-#ifdef _KEEP_RCS_ID
+#if defined(_KEEP_RCS_ID)
 static char *rcs_id = 	ipo_tlog_util_INCLUDE"$Revision: 1.4 $";
 #endif /* _KEEP_RCS_ID */
 
-#ifndef srcpos_INCLUDED
+#if !defined(srcpos_INCLUDED)
 #include "srcpos.h"
 #endif /* srcpos_INCLUDED */
-#ifndef KEY
-enum PHASE_NAME {PHASE_INLINER, PHASE_IPA};
-#else
 enum PHASE_NAME {PHASE_INLINER, PHASE_IPA, INVALID};
 extern "C" PHASE_NAME Get_ipa_tlog_phase(void);
-#endif // !KEY
 extern "C" void Set_ipa_tlog_phase(const INT32 phase);
 
 // TLOG interface for reporting optimizations

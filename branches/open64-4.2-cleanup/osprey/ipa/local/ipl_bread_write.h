@@ -38,12 +38,12 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef cxx_ipl_bread_write_INCLUDED
+#if !defined(cxx_ipl_bread_write_INCLUDED)
 #define cxx_ipl_bread_write_INCLUDED
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 
-#ifndef cxx_template_INCLUDED
+#if !defined(cxx_template_INCLUDED)
 #include "cxx_template.h"
 #endif
 
@@ -68,7 +68,7 @@ IPA_Trace_Summary_File (FILE *f,
 			DYN_ARRAY<char*>* symbol_names,
 			DYN_ARRAY<char*>* function_names);
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif /* __cplusplus */
     

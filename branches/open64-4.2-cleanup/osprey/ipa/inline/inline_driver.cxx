@@ -58,7 +58,7 @@
 #include <elf.h>
 #endif /* defined(BUILD_OS_DARWIN) */ 
 #include <cmplrs/rcodes.h>	    /* for exit return status */
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 #include <WINDOWS.h>
 void CG_force_link(void);
 
@@ -231,13 +231,6 @@ Process_Command_Line (INT argc, char **argv)
     
     IPA_Enable_BarrierFarg = FALSE;
 
-#if 0
-    /* Start timers if we're tracing: */
-    if ( Tracing_Enabled ) {
-      Initialize_Timing (TRUE); /* Compile when timers actually in use */
-    }
-#endif
-
     if ( Get_Trace ( TKIND_ALLOC, TP_INLINE ) ) {
       MEM_Tracing_Enable ();
     }
@@ -286,10 +279,6 @@ Process_Command_Line (INT argc, char **argv)
       List_Phase_Numbers ();
     }
 
-#if 0 /* Compile when timers actually in use */
-    if (Get_Trace (TKIND_INFO, TINFO_TIME))
-      Tim_File = TFile;
-#endif
 
 }
 
@@ -323,7 +312,7 @@ main (INT argc, char **argv)
     Set_Error_Line ( ERROR_LINE_UNKNOWN );
     Set_Error_File (NULL);
 
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
     Set_Error_Phase ( "Lightweight Inliner" );
 #else // _LIGHTWEIGHT_INLINER
     Set_Error_Phase ( "Inliner" );
@@ -338,7 +327,7 @@ main (INT argc, char **argv)
       /* first need to delete existing file, if doesn't exist this
 	 gives a message but we ignore it. */
       unlink(Irb_Output_Name);
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
       rc = symlink(Irb_File_Name, Irb_Output_Name);
       if (rc != 0)
 #else
@@ -353,9 +342,6 @@ main (INT argc, char **argv)
       Init_Operator_To_Opcode_Table();
       BOOL close_output = Inliner(Irb_File_Name, Irb_Output_Name);
  
-#if 0
-      Finish_Compilation_Timing ( Tim_File, Src_File_Name );  /* Compile when timers actually in use */
-#endif
 
       if ( Get_Trace ( TKIND_ALLOC, TP_IPA ) ) {
 	fprintf ( TFile,

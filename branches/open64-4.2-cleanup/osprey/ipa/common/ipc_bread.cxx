@@ -349,7 +349,6 @@ inline T* convert_offset(T* p, char* base) {
   return reinterpret_cast<T*>(base + reinterpret_cast<INTPTR>(p));
 }
 
-#ifdef KEY
 // This function is similar to the versions at ipl_summarize_template.h
 // and xstats.cxx. This function is called when IPA reads in PUs. It
 // must only access wn, and hence cannot have any context info.
@@ -410,7 +409,6 @@ Count_WN (WN * wn, INT32& bbs, INT32& stmts, INT32& calls)
         ++bbs;
     }
 }
-#endif // KEY
 
 // The following two functions are almost identical to the corresponding
 // functions in common/com/ir_bread.cxx.  They are duplicated because, in
@@ -428,7 +426,6 @@ IP_READ_fix_tree (WN *node, char *base, Elf64_Word size,
       if (ST_IDX_level(idx) == GLOBAL_SYMTAB) // Global symbol
         WN_st_idx(node) = idx_map->st[idx];
     }
-#ifdef KEY
     if (OPCODE_operator(opcode) == OPR_PRAGMA &&
         WN_pragma(node) == WN_PRAGMA_THREADPRIVATE) {
       const ST_IDX idx = WN_pragma_arg2(node);
@@ -437,7 +434,6 @@ IP_READ_fix_tree (WN *node, char *base, Elf64_Word size,
         WN_pragma_arg2(node) = idx_map->st[idx];
       }
     }
-#endif
     if (OPCODE_has_1ty(opcode)) {
       WN_set_ty(node, idx_map->ty[WN_ty(node)]);
     }
@@ -452,7 +448,7 @@ IP_READ_fix_tree (WN *node, char *base, Elf64_Word size,
     
              
     
-#ifndef CFE
+#if !defined(CFE)
     if (opcode == OPC_REGION)
         Set_Max_Region_Id (WN_region_id(node));
 #endif
@@ -462,11 +458,7 @@ IP_READ_fix_tree (WN *node, char *base, Elf64_Word size,
         Set_PU_has_altentry (Get_Current_PU ());
     
     /* Count whirl nodes that are useful for Olimit and other stats */
-#ifdef KEY
     Count_WN (node, PU_WN_BB_Cnt, PU_WN_Stmt_Cnt, PU_WN_Call_Cnt);
-#else
-    Count_WN_Opcode (opcode, &PU_WN_BB_Cnt, &PU_WN_Stmt_Cnt);
-#endif // KEY
 #endif
 
     if (opcode == OPC_BLOCK) {
@@ -564,7 +556,7 @@ IP_READ_get_tree (void *handle, PU_Info *pu,
     Elf64_Word first_node = *(Elf64_Word *)tree_base;
     WN* wn = (WN *) (tree_base + first_node);
 
-#ifndef CFE
+#if !defined(CFE)
     Set_Max_Region_Id(0);       // Reset max id for pu 
 #endif
 
@@ -784,7 +776,7 @@ IP_READ_pu (IPA_NODE* node, IP_FILE_HDR& s, INT p_index, MEM_POOL *pool)
     fix_local_preg_tab(IP_FILE_HDR_idx_maps(s));
     fix_local_inito_tab(CURRENT_SYMTAB, IP_FILE_HDR_idx_maps(s));
 
-#ifdef BACK_END
+#if defined(BACK_END)
     if (WN_get_depgraph (fhandle, pu) == (void *) -1) {
       ErrMsg ( EC_IR_Scn_Read, "dependence graph", IP_FILE_HDR_file_name(s));
     }
@@ -802,7 +794,6 @@ IP_READ_pu (IPA_NODE* node, IP_FILE_HDR& s, INT p_index, MEM_POOL *pool)
     if (PU_Info_state (pu, WT_FEEDBACK) == Subsect_InMem) {
 	const Pu_Hdr* pu_hdr = (const Pu_Hdr*)
 	    PU_Info_feedback_ptr (pu);
-#ifdef KEY
 	Cur_PU_Feedback = CXX_NEW (FEEDBACK (PU_Info_tree_ptr (pu),
 					     pool,
 					     pu_hdr->pu_num_inv_entries,
@@ -816,18 +807,6 @@ IP_READ_pu (IPA_NODE* node, IP_FILE_HDR& s, INT p_index, MEM_POOL *pool)
 					    pu_hdr->pu_num_value_fp_bin_entries,
 					     pu_hdr->runtime_fun_address),
 				   pool);
-#else
-	Cur_PU_Feedback = CXX_NEW (FEEDBACK (PU_Info_tree_ptr (pu),
-					     pool,
-					     pu_hdr->pu_num_inv_entries,
-					     pu_hdr->pu_num_br_entries,
-					     pu_hdr->pu_num_loop_entries,
-					     pu_hdr->pu_num_scircuit_entries,
-					     pu_hdr->pu_num_call_entries,
-					     pu_hdr->pu_num_icall_entries,
-					     pu_hdr->pu_num_switch_entries),
-				   pool);
-#endif
 	Read_Feedback_Info (Cur_PU_Feedback, PU_Info_tree_ptr (pu), *pu_hdr);
 	// FB_PU_Has_Feedback = TRUE;
 	IPA_Has_Feedback = TRUE;

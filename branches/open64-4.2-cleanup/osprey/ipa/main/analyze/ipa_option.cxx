@@ -57,7 +57,7 @@
  * ====================================================================
  */
 
-#ifdef _KEEP_RCS_ID
+#if defined(_KEEP_RCS_ID)
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/ipa/main/analyze/ipa_option.cxx,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
@@ -145,7 +145,7 @@ Process_IPA_Options ( INT argc, char **argv )
 		/* Just toss it for now... */
 		break;
 
-#ifdef TARG_LOONGSON
+#if defined(TARG_LOONGSON)
             /*add support for 2e and 2f in ipa_link*/
             case 'l':
                  if (strcmp(argv[i],"-loongson2e") == 0) {
@@ -174,7 +174,7 @@ Process_IPA_Options ( INT argc, char **argv )
     /* Specfile- and post-processing of -INLINE options: */
     Process_Inline_Options ();
 
-#ifndef _STANDALONE_INLINER
+#if !defined(_STANDALONE_INLINER)
     /* Specfile- and post-processing of GP partition options: */
     Process_IPA_Specfile_Options ();
 #endif

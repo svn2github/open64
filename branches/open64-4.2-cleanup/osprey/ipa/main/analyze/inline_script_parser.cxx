@@ -80,7 +80,7 @@ static void Parse_inline_script(const char *script_name, MEM_POOL *parser_pool)
   infile.open(script_name, ifstream::in);
   FmtAssert((infile.good()), ("Inline script parsing error: can't open the inlining description file"));
 
-#ifdef Enable_ISP_Verify
+#if defined(Enable_ISP_Verify)
   FILE *inline_script = fopen(inline_script_log, "a+");
   FmtAssert((inline_script != NULL), ("Inline script parsing error: can't open file"));
 #endif
@@ -118,7 +118,7 @@ static void Parse_inline_script(const char *script_name, MEM_POOL *parser_pool)
       strcpy(key_temp, cur_caller_key);   	     	
       cur_callee_htable = &inline_spec_table[key_temp];
 
-#ifdef ISP_DEBUG
+#if defined(ISP_DEBUG)
 cout << "Inline script parsing info : added caller_key " << cur_caller_key << endl;
 #endif     	      	
     }
@@ -141,7 +141,7 @@ cout << "Inline script parsing info : added caller_key " << cur_caller_key << en
       strcat(callee_key, callsite_ln);
       strcat(callee_key, callee_file);
       strcat(callee_key, callee_func);
-#ifdef Enable_ISP_Verify
+#if defined(Enable_ISP_Verify)
       fprintf(inline_script, "[%s] inlined into [%s]\n",
               callee_key, cur_caller_key);
 #endif
@@ -152,7 +152,7 @@ cout << "Inline script parsing info : added caller_key " << cur_caller_key << en
       strcpy(key_temp, callee_key);
       (*cur_callee_htable)[key_temp] = callee_info;
 
-#ifdef ISP_DEBUG
+#if defined(ISP_DEBUG)
 cout << "Inline script parsing info : added INLINE type callee_key " << callee_key << endl;
 #endif
       callsite_ln = NULL; 
@@ -198,7 +198,7 @@ cout << "Inline script parsing info : added INLINE type callee_key " << callee_k
       strcpy(key_temp, callee_key);
       (*cur_callee_htable)[key_temp] = callee_info;
 
-#ifdef ISP_DEBUG
+#if defined(ISP_DEBUG)
 cout << "Inline script parsing info : added CALL type callee_key " << callee_key << endl;
 #endif
       callsite_ln = NULL;
@@ -210,7 +210,7 @@ cout << "Inline script parsing info : added CALL type callee_key " << callee_key
       // Default action
     }    	    	
   } 
-#ifdef Enable_ISP_Verify
+#if defined(Enable_ISP_Verify)
   fclose(inline_script);
 #endif
   infile.close();
@@ -222,7 +222,7 @@ cout << "Inline script parsing info : added CALL type callee_key " << callee_key
 //--------------------------------------------------------
 BOOL Check_Inline_Script(const char *script_name, const char *caller_key, const char *callee_key, MEM_POOL* parser_pool)
 {
-#ifdef ISP_DEBUG
+#if defined(ISP_DEBUG)
 cout << "Inline script check info: analyze call-pair (" << caller_key << " --> " << callee_key << ")" << endl;
 #endif
 
@@ -234,13 +234,13 @@ cout << "Inline script check info: analyze call-pair (" << caller_key << " --> "
 
   // Check if the hash map contains the element being inquired
   if (inline_spec_table.find(caller_key) == inline_spec_table.end()) {
-#ifdef ISP_DEBUG
+#if defined(ISP_DEBUG)
     fprintf(stderr, "  ...... check failed: caller \"%s\" not found in inline description file %s\n",
     	   caller_key, script_name);
 #endif
     return FALSE;
   } else if ((inline_spec_table[caller_key]).find(callee_key) == (inline_spec_table[caller_key]).end()) {
-#ifdef ISP_DEBUG
+#if defined(ISP_DEBUG)
     fprintf(stderr, "  ...... check failed: callee \"%s\" not found in inline description file %s\n",
     	   callee_key, script_name);
 #endif
@@ -249,13 +249,13 @@ cout << "Inline script check info: analyze call-pair (" << caller_key << " --> "
   else {
     if ((inline_spec_table[caller_key])[callee_key].attrib == INLINE) {
       (inline_spec_table[caller_key])[callee_key].process_flag += 1;
-#ifdef ISP_DEBUG
+#if defined(ISP_DEBUG)
       fprintf(stderr, "  ...... check successful: the call-site is inlined\n");
 #endif
       return TRUE;
     }
     else {
-#ifdef ISP_DEBUG
+#if defined(ISP_DEBUG)
       fprintf(stderr, "  ...... check failed: the call-site is not inlined (type = %d)\n",
     	      (inline_spec_table[caller_key])[callee_key].attrib);
 #endif
@@ -275,10 +275,10 @@ void Verify_Inline_Script(void)
   CALLEE_HTABLE::iterator callee_it;
   int total_inline_count = 0;
 
-#ifdef ISP_DEBUG
+#if defined(ISP_DEBUG)
   fprintf(stderr, "### Inline script verify info ### \n");
 #endif
-#ifdef Enable_ISP_Verify
+#if defined(Enable_ISP_Verify)
   FILE *inline_action = fopen(inline_action_log, "a+");
   FmtAssert((inline_action != NULL), ("Inline script parsing error: can't open file"));
 #endif
@@ -288,27 +288,27 @@ void Verify_Inline_Script(void)
         total_inline_count++;
 
       if( ((*callee_it).second.attrib == INLINE) && ((*callee_it).second.process_flag == 0)) {
-#ifdef ISP_DEBUG
+#if defined(ISP_DEBUG)
         fprintf(stderr, "  ...... callsite is specified but not processed [%s] --> [%s] \n",
                 (*caller_it).first, (*callee_it).first);
 #endif
-#ifdef Enable_ISP_Verify
+#if defined(Enable_ISP_Verify)
         fprintf(inline_action, "[%s] inlined into [%s]\n",
                 (*callee_it).first, (*caller_it).first);
 #endif
       }
-#ifdef ISP_DEBUG
+#if defined(ISP_DEBUG)
       else if(((*callee_it).second.attrib == INLINE) && ((*callee_it).second.process_flag > 1))
         fprintf(stderr, "  ...... callsite was queried %d times [%s] --> [%s] \n",
                 (*callee_it).second.process_flag, (*caller_it).first, (*callee_it).first);
 #endif
     }
   }
-#ifdef Enable_ISP_Verify
+#if defined(Enable_ISP_Verify)
   fprintf(inline_action, "(The above call-sites are actually not processed!)\n");
   fclose(inline_action);
 #endif
-#ifdef ISP_DEBUG
+#if defined(ISP_DEBUG)
   fprintf(stderr, "  ...... The total number of inlined call-sites in the description file is %d \n",
           total_inline_count);
 #endif

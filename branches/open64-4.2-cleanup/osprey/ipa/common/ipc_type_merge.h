@@ -38,10 +38,10 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef ipc_type_merge_INCLUDED
+#if !defined(ipc_type_merge_INCLUDED)
 #define ipc_type_merge_INCLUDED
 
-#ifndef ipc_symtab_merge_INCLUDED
+#if !defined(ipc_symtab_merge_INCLUDED)
 #include "ipc_symtab_merge.h"
 #endif
 

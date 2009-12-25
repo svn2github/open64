@@ -38,22 +38,22 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef cxx_ipa_pad_INCLUDED
+#if !defined(cxx_ipa_pad_INCLUDED)
 #define cxx_ipa_pad_INCLUDED
 #define USE_STANDARD_TYPES
-#ifndef defs_INCLUDED
+#if !defined(defs_INCLUDED)
 #include "defs.h"
 #endif
 
-#ifndef cxx_hash_INCLUDED
+#if !defined(cxx_hash_INCLUDED)
 #include "cxx_hash.h"
 #endif
 
-#ifndef cxx_base_INCLUDED
+#if !defined(cxx_base_INCLUDED)
 #include "cxx_base.h"
 #endif
 
-#ifndef cxx_template_INCLUDED
+#if !defined(cxx_template_INCLUDED)
 #include "cxx_template.h"
 #endif
 

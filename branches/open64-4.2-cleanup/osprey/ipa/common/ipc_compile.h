@@ -37,14 +37,14 @@
 */
 
 
-#ifndef __IPC_COMPILE_H__
+#if !defined(__IPC_COMPILE_H__)
 #define __IPC_COMPILE_H__
 
-#ifndef __IPC_LINK_H__
+#if !defined(__IPC_LINK_H__)
 #include "ipc_link.h"
 #endif
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -55,7 +55,7 @@ size_t ipacom_process_file (char* input_file, const PU_Info* pu,
 void ipacom_add_comment(size_t n, const char* comment);
 void ipacom_doit ( char *ipa_filename );
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 } // Close extern "C"
 #endif
 

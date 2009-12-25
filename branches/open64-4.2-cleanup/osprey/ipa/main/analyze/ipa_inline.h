@@ -42,14 +42,14 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef cxx_ipa_inline_INCLUDED
+#if !defined(cxx_ipa_inline_INCLUDED)
 #define cxx_ipa_inline_INCLUDED
 
-#ifndef mempool_INCLUDED
+#if !defined(mempool_INCLUDED)
 #include "mempool.h"			// MEM_POOL
 #endif
 
-#ifndef cxx_ipa_cg_INCLUDED
+#if !defined(cxx_ipa_cg_INCLUDED)
 #include "ipa_cg.h"			// IPA_NODE
 #endif
 

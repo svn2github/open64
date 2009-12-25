@@ -60,7 +60,7 @@
 #include <stdint.h>
 #include <dlfcn.h>                      // sgidladd, dlerror
 
-#ifndef BACK_END
+#if !defined(BACK_END)
 #define BACK_END                        // config.h needs it
 #endif
 #include "be_symtab.h"                  // BE_ST
@@ -529,9 +529,7 @@ IPA_update_procedure (IPA_NODE* node,
   INT32 old_sym_idx = IPA_map_symbol_index(node, new_symbols[new_sym_idx]);
   new_proc->Set_symbol_index (old_sym_idx);
 
-#ifdef KEY
   new_proc->Set_size (PU_WN_BB_Cnt, PU_WN_Stmt_Cnt, new_proc->Get_call_count());
-#endif
 
   // copy everything from the new SUMMARY_PROCEDURE to the old one
   *(node->Summary_Proc()) = *new_proc;
@@ -581,7 +579,6 @@ IPA_Preopt_Finalize ()
   }
 }
 
-#ifdef KEY
 // Computes PU size after calling preopt
 // Modifies: PU_WN_BB_Cnt, PU_WN_Stmt_Cnt, PU_WN_Call_Cnt
 // Modeled after Count_tree_size()
@@ -651,7 +648,6 @@ Compute_PU_Size (WN * wn)
     }
     Count_WN_Operator (WN_operator (wn), WN_rtype (wn) , PU_WN_BB_Cnt, PU_WN_Stmt_Cnt, PU_WN_Call_Cnt);
 }
-#endif // KEY
 
 // -------------------------------------------------------------
 // When constants are discovered in IPA, propagate them into PU,
@@ -703,9 +699,7 @@ IPA_Preoptimize (IPA_NODE* node)
   // run preopt and from within it call ipl summary phase
   Run_preopt = TRUE;
   Run_ipl = TRUE;
-#ifndef KEY
-  Do_Par = TRUE;
-#endif
+  //Do_Par = TRUE;
 
   BE_symtab_alloc_scope_level(CURRENT_SYMTAB);
   Scope_tab[CURRENT_SYMTAB].st_tab->
@@ -731,11 +725,9 @@ IPA_Preoptimize (IPA_NODE* node)
 
   REGION_Finalize();
 
-#ifdef KEY
   // Don't reset all PU stats
   PU_WN_BB_Cnt = PU_WN_Stmt_Cnt = PU_WN_Call_Cnt = 0;
   Compute_PU_Size (opt_wn);
-#endif
 
   if (Get_Trace(TP_IPA, IPA_TRACE_PREOPT_IPL)) {
     fprintf (TFile, "\n%s after preopt\n", node->Name());
@@ -766,7 +758,7 @@ IPA_Preoptimize (IPA_NODE* node)
   }
 
 #define _IPA_ITERATE_PREOPT_
-#ifdef _IPA_ITERATE_PREOPT_
+#if defined(_IPA_ITERATE_PREOPT_)
   if (Summary->Has_global_stid_entry()) {
     IPA_update_stid_symbol_indices (node, Summary);
   }

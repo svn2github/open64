@@ -29,7 +29,7 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */          
 
-#ifndef ISP_file_INCLUD
+#if !defined(ISP_file_INCLUD)
 #define ISP_file_INCLUD
 
 #include <ipc_option.h>

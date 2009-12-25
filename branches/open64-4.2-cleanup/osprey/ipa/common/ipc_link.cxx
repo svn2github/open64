@@ -66,7 +66,7 @@ UINT32 comma_list_byte_count = 0;
 
 #if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_LOONGSON)
 
-#ifdef TARG_LOONGSON
+#if defined(TARG_LOONGSON)
 #define LINKER_NAME "mips64el-n32-linux-gcc"
 #define LINKER_NAME_WITH_SLASH "/mips64el-n32-linux-gcc"
 #else
@@ -76,7 +76,7 @@ UINT32 comma_list_byte_count = 0;
 
 #if defined(TARG_IA64)
 #define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
-#endif /* KEY */
+#endif /* TARG_IA64 */
 
 static char* concat_names(const char* a , const char* b)
 {
@@ -186,27 +186,6 @@ ipa_init_link_line (int argc, char** argv)
     // Push the path and name of the final link tool
 #if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
 
-#if 0
-    char *t_path = arg_vector[0];
-    char *t_name;
-    char *buf;
-    int len = strlen(t_path);
-    int i,new_len;
-    
-    t_name = t_path + (len-1);
-    for (i=0; i<len; i++,t_name--) {
-    	if (*t_name == '/')
-	    break;
-    }
-    new_len = len-i;
-    buf = (char *)malloc(strlen(LINKER_NAME)+new_len+1);
-    
-    strncpy(buf,t_path,new_len);
-    strcat(buf,LINKER_NAME);
-    ld_flags_part1->push_back (buf);
-    
-    free(buf);
-#endif
     ld_flags_part1->push_back (get_linker_name(arg_count, arg_vector));
 #if defined(TARG_IA64) && defined(CROSS_COMPILATION) 
     ld_flags_part1->push_back (DYNAMIC_LINKER);
@@ -248,7 +227,6 @@ ipa_modify_link_flag (char* lname, char* fname)
   }
 } // ipa_modify_link_flag
 
-#ifdef KEY
 // Prepend "../" to name if it is a relative pathname.
 extern "C" char *
 ipa_add_parent_dir_to_relative_pathname (const char *name)
@@ -296,7 +274,6 @@ ipa_erase_link_flag (const char* str)
     }
   } while (changed);
 } // ipa_erase_link_flag
-#endif
 
 
 // mark where the list of .I's should be inserted
@@ -392,7 +369,7 @@ ipa_link_line_argv (const ARGV* output_files,
     return argv;
 } // ipa_link_line_argv
 
-#ifdef TODO
+#if defined(TODO)
 void
 process_cord_obj_list (FILE *f)
 {

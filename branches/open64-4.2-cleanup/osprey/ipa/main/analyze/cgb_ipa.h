@@ -37,7 +37,7 @@
 */
 
 
-#ifndef cgb_ipa_INCLUDED
+#if !defined(cgb_ipa_INCLUDED)
 #define cgb_ipa_INCLUDED
 
 class IPA_CALL_GRAPH;

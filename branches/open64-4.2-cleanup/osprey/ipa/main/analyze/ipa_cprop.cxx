@@ -217,7 +217,6 @@ Edge_has_new_cprop_annot(const IPA_EDGE* edge,
   return TRUE;
 }
 
-#ifdef KEY
 static void
 Clone_Trace (const IPA_NODE * clone, const IPA_EDGE * e)
 {
@@ -290,7 +289,7 @@ Node_should_be_cloned (IPA_NODE * n /* callee */, IPA_EDGE * e)
   if (formals == NULL || actuals == NULL ||
       formals == (void*)-1 || actuals == (void*)-1)
   {
-#ifdef Is_True_On
+#if defined(Is_True_On)
     if (formals == (void*)-1 || actuals == (void*)-1)
       DevWarn ("cprop_annot == -1 during ipa cloning analysis");
 #endif
@@ -327,7 +326,6 @@ Node_should_be_cloned (IPA_NODE * n /* callee */, IPA_EDGE * e)
 
   return TRUE;
 }
-#endif // KEY
 
 // ----------------------------------------------------
 // check if the node can be further cloned 
@@ -396,9 +394,7 @@ IPA_CPROP_DF_FLOW::Meet (void*, void* vertex, INT* change)
 
         // Apply the more precise union ehnanced by cloning
         if (num_clone_edges < IPA_Max_Node_Clones && Node_can_be_cloned(n)
-#ifdef KEY
 	    && Node_should_be_cloned(n, e)
-#endif
 	) {
           IPA_CLONING_ACTION action = 
             Union_Formal_Cprop_Annot_With_Cloning(n, e);
@@ -438,7 +434,6 @@ IPA_CPROP_DF_FLOW::Meet (void*, void* vertex, INT* change)
                 n->Input_File_Name(), 
                 IPA_Node_Name(clone_node));
       }
-#ifdef KEY
       if (IPA_Clone_List_Actions)
       {
         extern char* IPA_Node_Name(IPA_NODE*);
@@ -448,7 +443,6 @@ IPA_CPROP_DF_FLOW::Meet (void*, void* vertex, INT* change)
 		DEMANGLE (IPA_Call_Graph->Caller (clone_edges[i])->Name()));
         Clone_Trace (clone_node, clone_edges[i]);
       }
-#endif
     }
 
     extern BOOL IPA_Should_Rebuild_DFN;
@@ -524,7 +518,7 @@ IPA_CPROP_DF_FLOW::Print_constants(FILE* fp, IPA_NODE* n)
   INT idx = outc->Lastidx();
   INT i;
 
-#ifdef TODO
+#if defined(TODO)
   if( fp == IPA_Feedback_con_fd ) {
     BOOL has_printed = FALSE;
     for (i = 0; i <= idx; i++) {
@@ -563,7 +557,7 @@ IPA_CPROP_DF_FLOW::Print_constants(FILE* fp, IPA_NODE* n)
       }
     }
 
-#ifdef TODO
+#if defined(TODO)
   }
 #endif
 }
@@ -667,7 +661,7 @@ IPA_CPROP_DF_FLOW::PerformCloning (IPA_NODE* node)
 			to_node->Set_No_Aggr_Cprop();
 		  }
 
-#ifdef TODO
+#if defined(TODO)
 		Total_Prog_Size += node->Weight ();
 #endif
 		fix_caller = TRUE;
@@ -706,7 +700,7 @@ IPA_CPROP_DF_FLOW::PerformCloning (IPA_NODE* node)
 void
 IPA_CPROP_DF_FLOW::Delete_dead_call (IPA_NODE* node)
 {
-#ifdef TODO
+#if defined(TODO)
     if (node->Should_Be_Skipped())
 	return;
 #endif // TODO
@@ -774,7 +768,7 @@ Connect_indirect_call (IPA_NODE* caller)
           caller->Ocall_List().push_back(opq);
         }
 
-#ifdef TODO
+#if defined(TODO)
 	if (call->Has_callsite_freq ())
 	    Total_call_freq += call->Get_frequency_count ();
 #endif

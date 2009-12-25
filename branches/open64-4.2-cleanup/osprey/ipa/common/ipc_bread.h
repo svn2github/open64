@@ -38,7 +38,7 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef ipc_bread_INCLUDED
+#if !defined(ipc_bread_INCLUDED)
 #define ipc_bread_INCLUDED
 
 /*

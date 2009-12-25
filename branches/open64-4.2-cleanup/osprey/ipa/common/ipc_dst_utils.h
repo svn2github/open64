@@ -38,7 +38,7 @@
 
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
-#ifndef __cplusplus
+#if !defined(__cplusplus)
 #error This header must be compiled as C++
 #endif
 
@@ -48,7 +48,7 @@
 // the type DST_Type, you must define the macro USE_DST_INTERNALS before
 // including dwarf_dst_mem.h.
 
-#ifndef IPC_DST_UTILS_included
+#if !defined(IPC_DST_UTILS_included)
 #define IPC_DST_UTILS_included
 
 #define USE_STANDARD_TYPES

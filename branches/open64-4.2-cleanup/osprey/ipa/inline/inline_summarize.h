@@ -53,7 +53,7 @@
  * ====================================================================
  */
 
-#ifndef inline_summarize_INCLUDED
+#if !defined(inline_summarize_INCLUDED)
 #define inline_summarize_INCLUDED
 
 // define dummy variables referenced by ipl_summarize_template.h that are
@@ -189,7 +189,7 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 	    IPA_Enable_DFE_Set = TRUE;
     }
 
-#if defined (KEY) && defined (_LIGHTWEIGHT_INLINER)
+#if defined (_LIGHTWEIGHT_INLINER)
 // If we don't set formal_count here, the lw_inliner gets it as zero.
     if (WN_num_formals(w)) {
 	 if (WN_operator(w) == OPR_FUNC_ENTRY)
@@ -197,9 +197,9 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 	 else
 	     proc->Set_formal_count(WN_num_formals(w));
     }
-#endif	// KEY && _LIGHTWEIGHT_INLINER
+#endif	// _LIGHTWEIGHT_INLINER
 
-#ifndef _LIGHTWEIGHT_INLINER
+#if !defined(_LIGHTWEIGHT_INLINER)
 
     // set the formal count
     if (WN_num_formals(w)) {
@@ -306,7 +306,7 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 	    } 
 	    break;
 
-#ifndef _LIGHTWEIGHT_INLINER
+#if !defined(_LIGHTWEIGHT_INLINER)
 
 	    // record that its a ref
 	case OPR_LDA:
@@ -350,7 +350,7 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 	    break;
 
 	case OPR_PRAGMA:
-#ifndef _LIGHTWEIGHT_INLINER
+#if !defined(_LIGHTWEIGHT_INLINER)
 	    if (WN_st(w2)) {
 	      if ((ST_sclass(WN_st(w2)) == SCLASS_FORMAL ||
 		   ST_sclass(WN_st(w2)) == SCLASS_FORMAL_REF)  &&
@@ -411,7 +411,7 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
                 proc->Set_has_parallel_region_pragma();
             }
 
-#ifndef _LIGHTWEIGHT_INLINER
+#if !defined(_LIGHTWEIGHT_INLINER)
             if ((WN_pragma(w2) == WN_PRAGMA_DOACROSS) ||
                 (WN_pragma(w2) == WN_PRAGMA_PARALLEL_DO) ||
                 (WN_pragma(w2) == WN_PRAGMA_PARALLEL_BEGIN) ||
@@ -429,7 +429,7 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 	case OPR_REGION:
 	    if (REGION_is_mp(w2))
 	      proc->Set_has_parallel_region_pragma();
-#ifndef _LIGHTWEIGHT_INLINER
+#if !defined(_LIGHTWEIGHT_INLINER)
 	    if (WN_region_is_EH(w2))
 	      proc->Set_exc_inline();
 	    if (WN_region_kind(w2)== REGION_KIND_TRY)
@@ -492,7 +492,7 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 		    	!ST_class (st2) == CLASS_CONST)
                 proc->Set_has_fstatic ();
 
-#ifndef _LIGHTWEIGHT_INLINER
+#if !defined(_LIGHTWEIGHT_INLINER)
 	    if (is_variable_dim_array(ST_type(st2))) 
                 proc->Set_has_var_dim_array();
 #endif // _LIGHTWEIGHT_INLINER
@@ -518,7 +518,7 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 	// MEM_POOL_Pop ( &Temp_pool );
       }
 
-#ifndef _LIGHTWEIGHT_INLINER
+#if !defined(_LIGHTWEIGHT_INLINER)
     if ( Has_local_pragma && Has_pdo_pragma)
         proc->Set_has_pdo_pragma();
 #endif // _LIGHTWEIGHT_INLINER

@@ -37,10 +37,10 @@
 */
 
 
-#ifndef cgb_INCLUDED
+#if !defined(cgb_INCLUDED)
 #define cgb_INCLUDED
 
-#ifndef cgb_browser_INCLUDED
+#if !defined(cgb_browser_INCLUDED)
 #include "cg_browser.h"
 #endif
 

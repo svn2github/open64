@@ -126,13 +126,11 @@ void initialize_dst_map(dst_hash_map& M, pu_info* pu)
   while (pu) {
     IPA_NODE* cg_node = Get_Node_From_PU(pu);
 
-#ifdef KEY
     // IPA builtins don't have dst.
     if (cg_node->Is_Builtin()) {
       pu = PU_Info_next(pu);
       continue;
     }
-#endif
 
     DST_TYPE dst = IP_FILE_HDR_dst(cg_node->File_Header());
     Is_True(dst != 0, ("No dst"));

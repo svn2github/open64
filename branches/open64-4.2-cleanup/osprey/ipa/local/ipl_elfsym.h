@@ -50,10 +50,10 @@
  * ====================================================================
  */
 
-#ifndef ipl_elfsym_INCLUDED
+#if !defined(ipl_elfsym_INCLUDED)
 #define ipl_elfsym_INCLUDED
 
-#ifndef __IR_BWRITE_H__
+#if !defined(__IR_BWRITE_H__)
 #include "ir_bwrite.h"
 #endif // __IR_BWRITE_H__
 

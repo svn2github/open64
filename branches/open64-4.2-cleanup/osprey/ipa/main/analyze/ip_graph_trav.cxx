@@ -122,7 +122,7 @@ void ORDERED_NODE_ITER::MarkRecursive(mUINT8 visit[], NODE_INDEX r)
   if (visit[vi] != 2)
    {
     Set_EDGE_recursive(&GRAPH_e_i(g,vitr.Current_Edge_Index()));
-#ifdef IPA_DEBUG
+#if defined(IPA_DEBUG)
     fprintf ( TFile, "edge is recursive %d %d \n", 
 	      GRAPH_e_i(g,vitr.Current_Edge_Index()).from,
 	      GRAPH_e_i(g,vitr.Current_Edge_Index()).to );

@@ -73,7 +73,7 @@
 static void 
 IP_set_target(void)
 {
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS)
     // 12343: Use IPA_Target_Type instead of ld_ipa_opt[LD_IPA_TARGOS].flag
     // to distinguish between n32 and 64 in IPA
     Target_ABI = IPA_Target_Type == IP_64_bit_ABI ? ABI_N64 : ABI_N32;
@@ -98,30 +98,30 @@ IP_set_target(void)
     Use_32_Bit_Pointers = (Target_ABI == ABI_N32);
 #endif
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
     Target_ABI = ABI_I64;
     Target_ISA = TARGET_ISA_I1;
     Use_32_Bit_Pointers = FALSE;
 #endif
 
-#ifdef TARG_IA32
+#if defined(TARG_IA32)
     Target_ABI = ABI_I32;
     Target_ISA = TRUE;
 #endif
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
     Target_ABI = IPA_Target_Type == IP_64_bit_ABI ? ABI_n64 : ABI_n32;
     Target_ISA = TARGET_ISA_x86_64;
     Use_32_Bit_Pointers = IPA_Target_Type == IP_32_bit_ABI;
 #endif
 
-#ifdef TARG_SL
+#if defined(TARG_SL)
     Target_ABI = IPA_Target_Type == IP_64_bit_ABI ? ABI_N64 : ABI_N32;
     Target_ISA = TARGET_ISA_M4;
     Use_32_Bit_Pointers = IPA_Target_Type == IP_32_bit_ABI;
 #endif
 
-#ifdef TARG_LOONGSON
+#if defined(TARG_LOONGSON)
     Target_ABI = IPA_Target_Type == IP_64_bit_ABI ? ABI_n64 : ABI_n32;
     Target_ISA = TARGET_ISA_LOONGSON;
     Use_32_Bit_Pointers = IPA_Target_Type == IP_32_bit_ABI;
@@ -161,7 +161,6 @@ ipa_dot_so_init ()
 
 } /* ipa_dot_so_init */
 
-#ifdef KEY
 // Returns number of processors on success, otherwise returns 0
 static int get_num_procs (void)
 {
@@ -181,7 +180,6 @@ static int get_num_procs (void)
   fclose (fp);
   return cpus;
 }
-#endif // KEY
 
 extern ARGV *ld_flags_part2;
 
@@ -273,28 +271,22 @@ ipa_driver (INT argc, char **argv)
 #else
     IPA_Enable_AutoGnum = TRUE;
 #endif
-#if 1
     IPA_Enable_DST = FALSE;
-#else
-    IPA_Enable_DST = TRUE;
-#endif
 
     Process_IPA_Options (argc, argv);
 
     detect_whole_program_mode();
     
-#ifdef KEY
     if (Annotation_Filename == NULL ) // no feedback
       IPA_Enable_PU_Reorder = REORDER_DISABLE;
 
     // Enable parallel backend build after ipa
     if (IPA_Max_Jobs == 0)
       IPA_Max_Jobs = get_num_procs ();
-#endif // KEY
 
     create_tmpdir ( Tracing_Enabled || List_Cite );
 
-#ifdef TODO
+#if defined(TODO)
     if (IPA_Target_Type == IP_32_bit_ABI)
         IP_update_space_status32();
     else
@@ -329,7 +321,6 @@ Signal_Cleanup (INT sig)
     /* now do the ld part */
     /* we fake a fatal error instead of copying all the cleanup code here */
 
-#ifdef KEY
     // Let caller do exit(1) as necessary, because not all callers want
     // exit(1).  For example, if ipa_link calls ErrMsg to report a user error,
     // then the correct behavior is to have the error trickle down to
@@ -341,7 +332,6 @@ Signal_Cleanup (INT sig)
     // message even when it's user error.
     fprintf(stderr,"IPA processing aborted\n");
     return;
-#endif
 
 #if defined(TARG_IA64)
     fprintf(stderr,"IPA processing aborted");

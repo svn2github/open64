@@ -54,7 +54,7 @@
  * ====================================================================
  */
 
-#ifndef ipc_daVinci_INCLUDED
+#if !defined(ipc_daVinci_INCLUDED)
 #define ipc_daVinci_INCLUDED
 
 class daVinci {

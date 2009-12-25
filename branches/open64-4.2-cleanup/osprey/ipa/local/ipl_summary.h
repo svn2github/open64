@@ -61,35 +61,35 @@
  * ====================================================================
  */
 
-#ifndef ipl_summary_INCLUDED
+#if !defined(ipl_summary_INCLUDED)
 #define ipl_summary_INCLUDED
 
-#ifndef language_INCLUDED
+#if !defined(language_INCLUDED)
 #include "language.h"
 #endif // language_INCLUDED
 
-#ifndef opcode_INCLUDED
+#if !defined(opcode_INCLUDED)
 #include "opcode.h"
 #endif // opcode_INCLUDED
 
-#ifndef tracing_INCLUDED
+#if !defined(tracing_INCLUDED)
 #include "tracing.h"			// for TFile
 #endif // tracing_INCLUDED
 
-#ifndef xstats_INCLUDED
+#if !defined(xstats_INCLUDED)
 #include "xstats.h"			// for bb counts
 #endif // xstats_INCLUDED
 
-#ifndef cxx_template_INCLUDED
+#if !defined(cxx_template_INCLUDED)
 #include "cxx_template.h" 
 #endif 
 
-#ifndef fb_whirl_INCLUDED
+#if !defined(fb_whirl_INCLUDED)
 #include "fb_whirl.h" 
 #endif 
 
 #include <search.h> //for  qsort in reorder's Set_hot_fld()
-#ifndef mempool_INCLUDED
+#if !defined(mempool_INCLUDED)
 #include "mempool.h" //for MEM_POOL in SUMMARY_STRUCT_ACCESS
 #endif
 
@@ -133,9 +133,7 @@ private:
   Elf64_Word _global_offset;
   Elf64_Word _common_offset, _common_shape_offset;
   Elf64_Word _struct_access_offset;
-#ifdef KEY
   Elf64_Word _ty_info_offset;
-#endif
 
   // array section flow sensitive analysis information
   Elf64_Word _scalar_node_offset, _cfg_node_offset, _regions_array_offset;
@@ -151,9 +149,7 @@ private:
   mINT32 _value_size, _expr_size, _phi_size, _chi_size, _global_size;
   mINT32 _common_size, _common_shape_size, _global_stid_size;
   mINT32 _struct_access_size;
-#ifdef KEY
   mINT32 _ty_info_size;
-#endif
 
   // array section flow sensitive analysis information
   mINT32 _scalar_node_size, _cfg_node_size, _regions_array_size; 
@@ -169,9 +165,7 @@ private:
   mINT32 _chi_entry_size, _global_entry_size;
   mINT32 _common_entry_size, _common_shape_entry_size, _global_stid_entry_size;
   mUINT32 _struct_access_entry_size;
-#ifdef KEY
   mUINT32 _ty_info_entry_size;
-#endif
    // array section flow sensitive analysis information
   mINT32 _scalar_node_entry_size, _cfg_node_entry_size;
   mINT32 _regions_array_entry_size; 
@@ -207,9 +201,7 @@ public:
   void Set_common_shape_offset(Elf64_Word s) { _common_shape_offset = s;};
   void Set_global_stid_offset(Elf64_Word s) { _global_stid_offset = s;};
   void Set_struct_access_offset(Elf64_Word s) { _struct_access_offset =	 s;};
-#ifdef KEY
   void Set_ty_info_offset(Elf64_Word s) { _ty_info_offset = s;};
-#endif
 
 
   void Set_opt_level(mUINT8 opt_level) { _opt_level = opt_level;};
@@ -250,9 +242,7 @@ s;};
   void Set_global_stid_size(mINT32 s) { _global_stid_size =
 s;};
   void Set_struct_access_size(mINT32 s) { _struct_access_size = s;};
-#ifdef KEY
   void Set_ty_info_size(mINT32 s) { _ty_info_size = s;};
-#endif
 
   // array section flow sensitive analysis information
   void Set_scalar_node_size(mINT32 s) { _scalar_node_size = s;};
@@ -287,9 +277,7 @@ s;};
     _global_stid_entry_size = s;};
   void Set_struct_access_entry_size(mINT32 s) {
     _struct_access_entry_size = s;};
-#ifdef KEY
   void Set_ty_info_entry_size(mINT32 s) { _ty_info_entry_size = s;};
-#endif   
 
   void Set_scalar_node_entry_size(mINT32 s) { _scalar_node_entry_size = s;};
   void Set_cfg_node_entry_size(mINT32 s) {_cfg_node_entry_size = s;};
@@ -325,9 +313,7 @@ s;};
   Elf64_Word Get_common_shape_offset() const { return _common_shape_offset;};
   Elf64_Word Get_global_stid_offset() const { return _global_stid_offset;};
   Elf64_Word Get_struct_access_offset() const { return _struct_access_offset;};
-#ifdef KEY
   Elf64_Word Get_ty_info_offset() const    { return _ty_info_offset;};
-#endif
 
   mUINT8  Get_opt_level() const { return _opt_level;};
 
@@ -369,9 +355,7 @@ s;};
   mINT32 Get_common_shape_size() const	{ return _common_shape_size;};
   mINT32 Get_global_stid_size() const	{ return _global_stid_size;};
   mINT32 Get_struct_access_size() const	{ return _struct_access_size;};
-#ifdef KEY
   mINT32 Get_ty_info_size() const          { return _ty_info_size;};
-#endif
   
   // array section flow sensitive analysis information
   mINT32 Get_scalar_node_size()  const { return _scalar_node_size; };
@@ -401,9 +385,7 @@ s;};
   mINT32 Get_common_entry_size() { return _common_entry_size;};
   mINT32 Get_common_shape_entry_size() { return _common_shape_entry_size;};
   mINT32 Get_struct_access_entry_size() { return _struct_access_entry_size;};
-#ifdef KEY
   mINT32 Get_ty_info_entry_size() { return _ty_info_entry_size;};
-#endif
     
   mINT32 Get_scalar_node_entry_size() const  { 
     return _scalar_node_entry_size ;};
@@ -455,23 +437,17 @@ private:
 
     mUINT32 _state;
 
-#ifdef KEY // bug 10289
+// bug 10289
     mUINT32 _bb_count;
     mUINT32 _stmt_count;
     mUINT32 _call_count;
-#else
-    mUINT16 _bb_count;
-    mUINT16 _stmt_count;
-    mUINT16 _call_count;
-#endif
+// bug 10289
     // number of alternate entry points in the procedure
     mUINT16 _alt_entry_count; 
 
-#ifdef KEY // bug 10289
+// bug 10289
     mUINT32 _callsite_count;
-#else
-    mUINT16 _callsite_count;
-#endif
+// bug 10289
     mUINT16 _ctrl_dep_count;
     mUINT16 _formal_count;
     mUINT16 _global_count;
@@ -497,21 +473,13 @@ private:
 #define PROC_HAS_PARALLEL_REGION_PRAGMA 0x00010000
 #define PROC_HAS_FSTATIC		0x00020000
 #define PROC_USE_LOWERED_RETURN_PREG	0x00040000 // should be removed by 7.3
-#ifdef KEY
 #define PROC_HAS_SIDE_EFFECT		0x00080000
-#else
-// obsolete				0x00080000
-#endif
 #define PROC_HAS_UNKNOWN_CALLS		0x00100000 // this PU has unknown calls
 #define PROC_HAS_INCOMPLETE_ARRAY_INFO  0x00200000 
 #define PROC_HAS_MP_NEEDS_LNO		0x00400000 // this PU's local symtab has 
 						   // bit SYMTAB_mp_needs_lno set
 #define PROC_HAS_EXC_TRY_REGION		0x00800000 // does it have a try region?
-#ifdef KEY
 #define PROC_HAS_PRAGMA_SIDE_EFFECT	0x01000000 // this PU's contains pragma 
-#else
-#define PROC_HAS_SIDE_EFFECT		0x01000000 // this PU's contains pragma 
-#endif
                                                    // with side effect
 #define PROC_HAS_MESSY_REGIONS		0x02000000 // messy PROJECTED_REGIONs
 #define PROC_HAS_EARLY_RETURNS		0x04000000 // has RETURN stmts not
@@ -550,7 +518,6 @@ public:
     void Set_symbol_index (INT32 s)		{ _symbol_index = s; }
     INT32 Get_symbol_index () const		{ return _symbol_index; }
 
-#ifdef KEY
     void Set_bb_count (UINT16 bbs)		{ _bb_count = bbs; }
     void Set_stmt_count (UINT16 stmts)		{ _stmt_count = stmts; }
     void Set_call_count (UINT16 calls)		{ _call_count = calls; }
@@ -565,16 +532,6 @@ public:
 
     void Set_formal_index (mINT32 f)		{ _formal_index = f;}
     mINT32 Get_formal_index () const		{ return _formal_index;}
-#else
-    void Set_callsite_index (mUINT16 c)		{ _callsite_index = c;}
-    mUINT16 Get_callsite_index () const		{ return _callsite_index;}
-
-    void Set_ctrl_dep_index (mUINT16 c)		{ _ctrl_dep_index = c;}
-    mUINT16 Get_ctrl_dep_index () const		{ return _ctrl_dep_index;}
-
-    void Set_formal_index (mUINT16 f)		{ _formal_index = f;}
-    mUINT16 Get_formal_index () const		{ return _formal_index;}
-#endif
     
     void Set_global_index (INT g)		{ _global_index = g;}
     INT Get_global_index() const		{ return _global_index;}
@@ -710,10 +667,8 @@ public:
     BOOL Has_exc_try() const { return _state &
 				 PROC_HAS_EXC_TRY_REGION; };
 
-#ifdef KEY
     void Set_has_pragma_side_effect ()  { _state |= PROC_HAS_PRAGMA_SIDE_EFFECT; }
     BOOL Has_pragma_side_effect () const { return _state & PROC_HAS_PRAGMA_SIDE_EFFECT; }
-#endif
     void Set_has_side_effect ()  { _state |= PROC_HAS_SIDE_EFFECT; }
     BOOL Has_side_effect () const { return _state & PROC_HAS_SIDE_EFFECT; }
 
@@ -772,10 +727,8 @@ private:
     mUINT16 _effective_stmt_count;	// # of stmt with non-zero freq.
 	UINT16	_wn_count;	//INLINING_TUNING
 	FB_FREQ	_cycle_count_2;	//INLINING_TUNING
-#ifdef KEY
     UINT64  _func_runtime_addr;         // Function runtime addr used
                                         // by -IPA:icall_opt.
-#endif
     
 public:
 
@@ -812,14 +765,12 @@ public:
 	_effective_stmt_count += count;
     }
 
-#ifdef KEY
     void Set_func_runtime_addr (UINT64 addr) {
 	_func_runtime_addr = addr;
     }
     UINT64 Get_func_runtime_addr () const {
 	return _func_runtime_addr;
     }
-#endif
 
     /* operations */
 
@@ -846,9 +797,7 @@ class SUMMARY_CALLSITE
 #define IPL_CALL_MUST_INLINE	0x08
 #define IPL_CALL_NO_INLINE	0x10
 
-#ifdef KEY
 #define IPL_ICALL_TARGET        0x20  
-#endif
 
 #define IPL_IN_CASE_CLAUSE      0x40
 #define IPL_IS_VIRTUAL_CALL     0x80
@@ -892,9 +841,7 @@ private:
     FB_FREQ _frequency;			// callsite frequency count;
     mUINT16 _callsite_id;		// postorder number
     mUINT16 _loopnest;			// 0 = not in loop, n = nth-level nested loop
-#ifdef KEY
     float _probability;			// if inside a branch, probability of it being taken
-#endif
     TYPE_ID _return_type;		// Return type of this CALL
 
     TY_IDX _virtual_class;              // the class of the virtual function 
@@ -911,10 +858,8 @@ public:
     void Set_map_id (mINT32 map_id)	{ u1._map_id = map_id;}
     INT32 Get_map_id () const		{ return u1._map_id;}
 
-#ifdef KEY
     void Set_targ_runtime_addr (mUINT64 addr)	{ u1._targ_runtime_addr = addr;}
     mUINT64 Get_targ_runtime_addr () const	{ return u1._targ_runtime_addr;}
-#endif
 
     void Set_symbol_index (mINT32 s) {
 	Is_True (!Is_func_ptr (),
@@ -950,14 +895,12 @@ public:
     BOOL Is_func_ptr () const		{ return (_state & IPL_FUNC_PTR); }
     void Reset_func_ptr ()              { _state &= ~IPL_FUNC_PTR; }
 
-#ifdef KEY
     void Set_icall_target ()		{ _state |= IPL_ICALL_TARGET; }
     void Reset_icall_target ()		{ _state &= ~IPL_ICALL_TARGET; }
     BOOL Is_icall_target () const	{ return (_state & IPL_ICALL_TARGET); }
 
     void Set_probability (float p)	{ _probability = p; }
     float Get_probability () const	{ return _probability; }
-#endif
 
     BOOL Is_in_case_clause (void) const	{ return (_state & IPL_IN_CASE_CLAUSE); }
     void Set_in_case_clause (void)	{ _state |= IPL_IN_CASE_CLAUSE; }
@@ -1034,10 +977,8 @@ private:
     // Attribute flags for a formal:
 #define IPL_FORMAL_REF_PARM		0x01 // if this is a reference argument
 #define IPL_FORMAL_VAR_DIM_ARRAY	0x02 // if this is a variable-dim array
-#ifdef KEY
 #define IPL_FORMAL_LOOP_INDEX		0x04 // ref_parm used as a loop index,
                             		     // REF_PARM must be also set.
-#endif
 
     mINT16 _flags;    	
 
@@ -1064,10 +1005,8 @@ public:
     void Set_is_var_dim_array ()	{ _flags |= IPL_FORMAL_VAR_DIM_ARRAY; }
     BOOL Is_var_dim_array () const	{ return (_flags & IPL_FORMAL_VAR_DIM_ARRAY); }
 
-#ifdef KEY
     void Set_is_loop_index ()		{ _flags |= IPL_FORMAL_LOOP_INDEX; }
     BOOL Is_loop_index () const		{ return (_flags & IPL_FORMAL_LOOP_INDEX); }
-#endif
 
     void Set_position (mINT32 position) { _position = position;}
     mINT32 Get_position () const	{ return _position;};
@@ -1160,9 +1099,7 @@ typedef enum ipa_pass_type
     PASS_MLOAD = 3,			// passed as *p for structures
     PASS_LDA = 4,			// passed as &p 
     PASS_ARRAY_SECTION = 5,             // passed array section
-#ifdef KEY
     PASS_ARRAY = 6,                     // passed as OPR_ARRAY
-#endif
 } IPA_PASS_TYPE;
 
 
@@ -2552,11 +2489,9 @@ public:
     void Set_flatten_flds(mUINT32 flatten_flds) {_flatten_flds=flatten_flds;}
     mUINT32 Get_flatten_flds() const { return _flatten_flds;};
     void  Inc_fld_count(mUINT32 fld_id, mUINT64 add_count)
-#ifdef KEY // bug 5372
+// bug 5372
     	{_u.flds[fld_id-1].count+=add_count;};
-#else
-    	{_u.flds[fld_id].count+=add_count;};
-#endif
+// bug 5372
     char* Get_ty_name (void) const { TY& ty=Ty_tab[_ty];
 		 return Index_To_Str(ty.name_idx); }
 
@@ -2598,9 +2533,6 @@ public:
 	    _u.flds= (STRUCT_ACCESS*)MEM_POOL_Alloc_P(_mem,
 			sizeof(STRUCT_ACCESS)*flatten_flds,
 			TRUE,NULL);
-#ifndef KEY
-	    fprintf(stderr,"new summary: type%d, \n",ty_index);
-#endif // !KEY
   }
 
 	/*assist subroutine*/
@@ -2615,7 +2547,6 @@ public:
 
 }; // class SUMMARY_STRUCT_ACCESS
 
-#ifdef KEY
 class SUMMARY_TY_INFO
 {
   private:
@@ -2638,7 +2569,6 @@ class SUMMARY_TY_INFO
     void Print(FILE *f) const;
     void Trace(void) const;
 };
-#endif
 
 extern SUMMARY_SYMBOL *Ipl_Summary_Symbol;
 extern BOOL IPA_Trace_Mod_Ref;          /* Trace log for Mod_Ref */

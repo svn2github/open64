@@ -47,7 +47,7 @@
 // This file define initialization of pointer variables to symbols defined
 // in ipl.so but referenced in be/be.so.
 
-#ifdef __linux__
+#if defined(__linux__)
 
 #define __STDC_LIMIT_MACROS
 #include "defs.h"
@@ -55,9 +55,7 @@
 #include "pu_info.h"
 #include "ir_bwrite.h"
 #include "ipl_driver.h"
-#ifdef KEY
 #include "ipl_reorder.h"
-#endif
 #include "wb_browser.h"
 #include "loop_info.h"
 
@@ -70,9 +68,7 @@ extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
 						  ALIAS_MANAGER*, void*);
 extern void (*WB_BROWSER_Summary_p) (FILE*, WB_BROWSER*);
 extern void (*Print_DO_LOOP_INFO_BASE_p) (FILE*, DO_LOOP_INFO_BASE*);
-#ifdef KEY
 extern void (*Preprocess_struct_access_p) (void);
-#endif
 
 struct IPL_INIT
 {
@@ -84,9 +80,9 @@ struct IPL_INIT
 	Perform_Procedure_Summary_Phase_p = Perform_Procedure_Summary_Phase;
 	WB_BROWSER_Summary_p = WB_BROWSER_Summary;
 	Print_DO_LOOP_INFO_BASE_p = Print_DO_LOOP_INFO_BASE;
-#ifdef KEY	// bug 3672
+// bug 3672
 	Preprocess_struct_access_p = Preprocess_struct_access;
-#endif
+// bug 3672
     }
 } Ipl_Initializer;
 

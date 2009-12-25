@@ -37,9 +37,9 @@
 */
 
 
-#ifndef timelib_INCLUDED
+#if !defined(timelib_INCLUDED)
 #define timelib_INCLUDED
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -100,7 +100,7 @@ extern "C" {
    void clear_timer(int timer) ;
    double get_timer_time (int timer);
    
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 #endif /* timelib_INCLUDED */

@@ -39,7 +39,7 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#ifndef ipo_autopar_INCLUDED
+#if !defined(ipo_autopar_INCLUDED)
 #define ipo_autopar_INCLUDED
 
 extern void

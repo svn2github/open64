@@ -58,16 +58,16 @@
  * ====================================================================
  */
 
-#ifndef ipc_option_INCLUDED
+#if !defined(ipc_option_INCLUDED)
 #define ipc_option_INCLUDED
 
-#ifndef strtab_INCLUDED
+#if !defined(strtab_INCLUDED)
 #include "strtab.h"             // STRTAB_TYPE
 #endif
 
 #include <ext/hash_map>
 
-#ifndef mempool_allocator_INCLUDED
+#if !defined(mempool_allocator_INCLUDED)
 #include "mempool_allocator.h"
 #endif
 
@@ -98,7 +98,7 @@ extern BOOL Is_User_Not_Specified(UINT);
 extern BOOL Is_Skip_Not_Specified(char * );
 extern BOOL Is_Skip_Equal(char * );
 
-#ifdef _STANDALONE_INLINER
+#if defined(_STANDALONE_INLINER)
 extern void Process_Non_Local_Files();
 extern void Process_Non_Local_Libraries();
 #endif // _STANDALONE_INLINER
@@ -106,14 +106,14 @@ extern void Process_Non_Local_Libraries();
 
 extern INT number_of_partitions;
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif /* __cplusplus */
 
 extern void Process_Inline_Options ( void );
 extern void Process_IPA_Specfile_Options( void );
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif /* __cplusplus */
     

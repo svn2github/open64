@@ -26,7 +26,7 @@
  *
  */
 
-#ifndef cxx_ipa_devirtual_INCLUDED
+#if !defined(cxx_ipa_devirtual_INCLUDED)
 #define cxx_ipa_devirtual_INCLUDED
 
 /*

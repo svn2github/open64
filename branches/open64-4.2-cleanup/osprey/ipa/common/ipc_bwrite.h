@@ -37,10 +37,10 @@
 */
 
 
-#ifndef ip_bwrite_INCLUDED
+#if !defined(ip_bwrite_INCLUDED)
 #define ip_bwrite_INCLUDED
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -56,7 +56,7 @@ extern void IP_flush_output(void);
 extern char* IP_global_symtab_name(void);
 extern void IP_write_global_symtab(void);
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 

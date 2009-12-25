@@ -110,7 +110,6 @@
 #include "ipa_option.h"         // for IPA_Enable_Reorder and Merge_struct_access();
 
 IPA_CALL_GRAPH* IPA_Call_Graph;     // "The" call graph of IPA
-#ifdef KEY
 // Temporary graph built for pu-reordering based on edge frequencies.
 IPA_CALL_GRAPH* IPA_Graph_Undirected;
 // IPA_Call_Graph is a global variable used widely, even in member functions
@@ -125,7 +124,6 @@ static IPA_CALL_GRAPH* IPA_Call_Graph_Tmp = NULL;
 // vice versa.
 static hash_map<IPA_NODE*, IPA_NODE*, hashfn, eqnode> node_map;
 static vector<Nodes_To_Edge *> q_order;
-#endif
 BOOL IPA_Call_Graph_Built = FALSE;
 
 typedef hash_map<NODE_INDEX, NODE_INDEX> ALT_ENTRY_MAP;
@@ -137,22 +135,13 @@ UINT32 Orig_Prog_Weight = 0;
 //INLINING_TUNING^
 UINT32 Orig_Prog_WN_Count = 0;
 UINT32 Total_Dead_Function_WN_Count = 0;
-#ifdef KEY
 FB_FREQ Total_cycle_count_2(0.0);
-#else
-FB_FREQ Total_cycle_count_2(0);
-#endif
 //INLINING_TUNING$
 
 INT Total_Must_Inlined = 0;
 INT Total_Must_Not_Inlined = 0;
-#ifdef KEY
 FB_FREQ Total_call_freq(0.0);
 FB_FREQ Total_cycle_count(0.0);
-#else
-FB_FREQ Total_call_freq(0);
-FB_FREQ Total_cycle_count(0);
-#endif
 
 //-----------------------------------------------------------------------
 // NAME: Main_Entry
@@ -177,7 +166,7 @@ extern IPA_NODE* Main_Entry(IPA_NODE* ipan_alt)
 } 
 
 
-#ifndef _LIGHTWEIGHT_INLINER
+#if !defined(_LIGHTWEIGHT_INLINER)
 
 // ---------------------------------------------------------------
 // Update summary ST_IDX's so that they point to the merged symtab
@@ -265,7 +254,6 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
     }
   }
 
-#ifdef KEY
   INT32 num_ty_infos;
   SUMMARY_TY_INFO* ty_infos = IPA_get_ty_info_file_array(hdr, num_ty_infos);
   for (i = 0; i < num_ty_infos; ++i) {
@@ -277,7 +265,6 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
         Set_TY_no_split (ty_infos[i].Get_ty());
     }
   }
-#endif
 
   // process all ty_idxs found in SUMMARY_STRUCT_ACCESS, and sum them up!
   if(IPA_Enable_Reorder){
@@ -343,7 +330,6 @@ IPA_mark_commons_used_in_io (const IP_FILE_HDR& hdr)
   }
 }
 
-#ifdef KEY
 void
 IPA_update_ehinfo_in_pu (IPA_NODE *node)
 {
@@ -527,7 +513,6 @@ IPA_update_pragma_in_pu (IPA_NODE *node)
         }
         
 }
-#endif
 
 //-------------------------------------------------------------------------
 // for each file record the file offset for the whirl section and the 
@@ -536,10 +521,8 @@ IPA_update_pragma_in_pu (IPA_NODE *node)
 void
 IPA_Process_File (IP_FILE_HDR& hdr)
 {
-#ifdef KEY
   if (IPA_Check_Options)
     IPA_Check_Optimization_Options (hdr);
-#endif
   IP_READ_pu_infos (hdr);
 
   IPA_update_summary_st_idx (hdr);
@@ -671,12 +654,8 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     // symbol resolution should have set the NOT_USED bit of duplicated
     // PUs
 
-#ifdef KEY
     if (IPA_Call_Graph_Tmp == NULL /*Do it only the first pass */ && 
         AUX_PU_file_hdr (Aux_Pu_Table[ST_pu (st)]) != &s)
-#else
-    if (AUX_PU_file_hdr (Aux_Pu_Table[ST_pu (st)]) != &s)
-#endif
     {
 	Is_True (ST_export (st) != EXPORT_LOCAL &&
 		     ST_export (st) != EXPORT_LOCAL_INTERNAL,
@@ -710,7 +689,6 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     ipa_node = 
           IPA_Call_Graph->Add_New_Node (st, file_idx, i, i);
 
-#ifdef KEY
     if (IPA_Enable_PU_Reorder == REORDER_BY_EDGE_FREQ && IPA_Call_Graph_Tmp)
     {
 	// Get the original node from THE call graph
@@ -720,7 +698,6 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     }
     else
     {
-#endif
 //;;printf( "PU   %-50s (freq = %.1f) \n", IPA_Node_Name(ipa_node), (ipa_node->Get_frequency())._value);//pengzhao
     NODE_INDEX cg_node = ipa_node->Node_Index ();
 	
@@ -755,12 +732,10 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 	reported = TRUE;
     }
 
-#ifdef KEY
     // Has static variables
     if (IPA_Enable_Pure_Call_Opt &&
         ipa_node->Summary_Proc()->Has_pstatic())
       ipa_node->Summary_Proc()->Set_has_side_effect();
-#endif // KEY
 #endif // _STANDALONE_INLINER
 
     Orig_Prog_Weight += ipa_node->Weight ();
@@ -771,9 +746,9 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
      	IPA_Has_Fortran = TRUE;
 
 
-#ifdef TODO
+#if defined(TODO)
 
-#ifndef _STANDALONE_INLINER
+#if !defined(_STANDALONE_INLINER)
 	// for partitioning, setting the user-specified partitions
     if (IPA_Enable_GP_Partition || IPA_Enable_SP_Partition) {
 	void *pext = linker->IP_get_mext(nme);
@@ -794,11 +769,9 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     // Mark overrides for externally visible routines
 
     Mark_inline_overrides(ipa_node, st);
-#ifdef KEY
     } // else of '(REORDER_BY_EDGE_FREQ && IPA_Call_Graph_Tmp)'
-#endif
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     // bug 4880
     // If lang of main pu is C++, -IPA:pu_reorder defaults to 1 w/ feedback
     if (!IPA_Enable_PU_Reorder_Set && Annotation_Filename &&
@@ -813,7 +786,7 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 
     const UINT64 runtime_addr = ipa_node->Get_func_runtime_addr ();
     if (runtime_addr) addr_node_map[runtime_addr] = ipa_node;
-#endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+#endif // !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
     return ipa_node;
 	
 }
@@ -850,7 +823,6 @@ append_icall_list (IPA_ICALL_LIST& ilist, SUMMARY_CALLSITE *c)
     ilist.push_back (cnode);
 }
 
-#ifdef KEY
 // Check if we already have an edge between the 2 nodes (in ne).
 static vector<Nodes_To_Edge *>::iterator 
 find_if_equal (vector<Nodes_To_Edge*>::iterator b, vector<Nodes_To_Edge*>::iterator e, Nodes_To_Edge * ne)
@@ -869,12 +841,11 @@ find_if_equal (vector<Nodes_To_Edge*>::iterator b, vector<Nodes_To_Edge*>::itera
 // Update frequency of the edge with the frequency in the callsite
 static void Update_freq (SUMMARY_CALLSITE *, IPA_EDGE *);
 static bool Check_Heuristic(IPA_NODE *, IPA_NODE *, INT64, IPA_CALL_GRAPH *);
-#endif
 
 void
 Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMARY_SYMBOL* symbol_array)
 {
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     BOOL has_icalls = FALSE;
 #endif
 
@@ -894,11 +865,9 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 
     NODE_INDEX caller_idx = AUX_PU_node (Aux_Pu_Table[ST_pu(caller_st)]);
     IPA_NODE* caller;
-#ifdef KEY
     if (IPA_Call_Graph_Tmp) // Actual call graph
       caller = IPA_Call_Graph_Tmp->Graph()->Node_User (caller_idx);
     else
-#endif
       caller = IPA_Call_Graph->Graph()->Node_User (caller_idx);
     SUMMARY_CALLSITE *callsite_array = IPA_get_callsite_array (caller);
     
@@ -907,24 +876,22 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 	
     for (INT j = 0; j < callsite_count; ++j, ++callsite_index) {
 
-#ifdef KEY
       if (IPA_Enable_Pure_Call_Opt &&
 	  (callsite_array[callsite_index].Is_func_ptr() ||
 	   callsite_array[callsite_index].Is_intrinsic()))
 	caller->Summary_Proc()->Set_has_side_effect ();
-#endif	       
 
       // for indirect call sites
       if ( callsite_array[callsite_index].Is_func_ptr() ) {
-      	if (!IPA_Call_Graph_Tmp) { // KEY
-#ifdef _LIGHTWEIGHT_INLINER
+      	if (!IPA_Call_Graph_Tmp) { 
+#if defined(_LIGHTWEIGHT_INLINER)
           if (!INLINE_Inlined_Pu_Call_Graph)
 #endif // _LIGHTWEIGHT_INLINER
               append_icall_list (caller->Icall_List(), 
                            &callsite_array[callsite_index]);
-	} // KEY
+	}  
       } 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
       else if (callsite_array[callsite_index].Is_icall_target()) {
 
         has_icalls = TRUE;
@@ -966,7 +933,7 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
         // No longer an icall target, treat like a normal call.
         callsite_array[callsite_index].Reset_icall_target();
       }
-#endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+#endif // !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
       // for direct calls
       else if (!callsite_array[callsite_index].Is_intrinsic()) {
 
@@ -974,7 +941,7 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
         temp_st_idx = symbol_array[sindex].St_idx ();
         ST* callee_st = &St_Table[temp_st_idx];
 
-#ifdef TODO
+#if defined(TODO)
         // if static function, then force same partition
         if (Symbol_array[sindex].Is_local()) {
           // local functions should have the same partition number
@@ -997,7 +964,6 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 
         NODE_INDEX callee_idx = AUX_PU_node (Aux_Pu_Table[ST_pu (callee_st)]);
 
-#ifdef KEY
         if (callee_idx == INVALID_NODE_INDEX &&
             ST_export (callee_st) == EXPORT_LOCAL) {
           // Bugs 3224, 7842
@@ -1047,18 +1013,16 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
                          ("Unexpected export scope for func %s", node->Name()));
                 Set_ST_name_idx (callee_st, ST_name_idx (node->Func_ST()));
 #endif
-#ifndef Is_True_On
+#if !defined(Is_True_On)
                 break;
 #endif // !Is_True_On
               }
             }
           }
         }
-#endif
         // If the callee is not in a WHIRL IR file, its index will 
         // be invalid. In that case we do not add the edge, but we
         // add the callsite to a special list of opaque calls.
-#ifdef KEY
 	if (callee_idx != INVALID_NODE_INDEX && 
 	    IPA_Enable_PU_Reorder == REORDER_BY_EDGE_FREQ && 
 	    IPA_Call_Graph_Tmp) {
@@ -1087,7 +1051,6 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 	  delete ne;
 	  continue;
 	}
-#endif
         if (callee_idx != INVALID_NODE_INDEX) {
           IPA_EDGE* ipa_edge = 
             IPA_Call_Graph->Add_New_Edge (&callsite_array[callsite_index],
@@ -1099,14 +1062,13 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 	  Mark_inline_edge_overrides(ipa_edge);
         }
         else {
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
             if (INLINE_Inlined_Pu_Call_Graph)
 	        continue;
 	    else 
 #endif // _LIGHTWEIGHT_INLINER
                 append_icall_list (caller->Ocall_List(), 
                              &callsite_array[callsite_index]);
-#ifdef KEY
 		// If we have no WHIRL, we assume any C++ PU can throw
 		if (IPA_Enable_EH_Region_Removal &&
 		    (PU_src_lang (Pu_Table [ST_pu (caller->Func_ST())]) & 
@@ -1116,12 +1078,11 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 		// If we have no WHIRL, assume it may have side-effect
 		if (IPA_Enable_Pure_Call_Opt)
 		    caller->Summary_Proc()->Set_has_side_effect ();
-#endif
         }
       }
     }
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     if (has_icalls) {
       // Need to fix up the callsite ids.
       // If icall opt is disabled, we need to fix up callsite id of all
@@ -1267,7 +1228,6 @@ struct add_edges
     }
 }; // add_edges
 
-#ifdef KEY
 // Used by sort.
 struct order : public binary_function<IPA_EDGE *, IPA_EDGE *, bool>
 {
@@ -1388,7 +1348,7 @@ struct matching : public unary_function<IPA_EDGE *, bool>
 // optimize phase.
 vector<IPA_NODE *> emit_order;
 // Determine_Affinity is currently not called.
-#ifdef TODO_KEY
+#if defined(TODO_KEY)
 static void
 Determine_Affinity (vector<IPA_NODE *> v)
 {
@@ -1478,7 +1438,7 @@ Determine_Emit_Order (IPA_CALL_GRAPH * cg)
   }
   sort (edges.begin(), edges.end(), order());
 
-#ifdef TODO_KEY
+#if defined(TODO_KEY)
   vector<IPA_NODE *> last;
 #endif
   while (!edges.empty())
@@ -1490,7 +1450,7 @@ Determine_Emit_Order (IPA_CALL_GRAPH * cg)
     NODE_INDEX caller_idx = caller->Node_Index();
     NODE_INDEX callee_idx = callee->Node_Index();
 
-#ifdef TODO_KEY
+#if defined(TODO_KEY)
     if (last.empty())
     {
     	if (!caller->Is_Merged())
@@ -1532,25 +1492,21 @@ Determine_Emit_Order (IPA_CALL_GRAPH * cg)
     sort (edges.begin(), edges.end(), order());
   }
 }
-#endif
 
 void
 Build_Call_Graph ()
 {
   IPA_Call_Graph = CXX_NEW(IPA_CALL_GRAPH(Malloc_Mem_Pool), Malloc_Mem_Pool);
-#ifdef KEY
   if (IPA_Enable_PU_Reorder == REORDER_BY_EDGE_FREQ)
       IPA_Graph_Undirected = CXX_NEW(IPA_CALL_GRAPH(Malloc_Mem_Pool), Malloc_Mem_Pool);
   for (int iter=0; iter<2; ++iter)
   {
-#endif
 
     For_all_entries (IP_File_header, add_nodes ());
 
     For_all_entries (IP_File_header, add_edges ());
 
     Connect_call_graph();
-#ifdef KEY
     if (IPA_Enable_PU_Reorder != REORDER_BY_EDGE_FREQ)
     	break;
     else if (!iter)
@@ -1568,7 +1524,6 @@ Build_Call_Graph ()
 	node_map.clear();
     }
   }
-#endif
 
   IPA_Call_Graph_Built = TRUE;
 
@@ -2137,7 +2092,7 @@ Mark_Deletable_Funcs (NODE_INDEX v, DFE_ACTION action, mUINT8 *visited)
     case MARK_DELETED:
 	if (node->Is_Externally_Callable () || node->Is_Undeletable() ||
 	    PU_has_global_pragmas (node->Get_PU ())
-#ifdef TODO
+#if defined(TODO)
 	    || node->Should_Be_Skipped()
 #endif
 	    ) {
@@ -2155,9 +2110,7 @@ Mark_Deletable_Funcs (NODE_INDEX v, DFE_ACTION action, mUINT8 *visited)
 	break;
     }
 
-#ifdef KEY
     BOOL alt_entry_update = FALSE;
-#endif
 
     if (alt_entry_index != INVALID_NODE_INDEX && action == MARK_USED &&
 	visited[alt_entry_index] != VISITED_AND_KEEP) {
@@ -2170,12 +2123,10 @@ Mark_Deletable_Funcs (NODE_INDEX v, DFE_ACTION action, mUINT8 *visited)
 	    n->Set_Undeletable();
 	}
 	visited[alt_entry_index] = VISITED_AND_KEEP;
-#ifdef KEY 
 	alt_entry_update = TRUE;
-#endif
     }
 
-#ifdef TODO
+#if defined(TODO)
     if (IPA_Enable_daVinci) {
 	switch (action) {
 	case MARK_USED:
@@ -2195,7 +2146,6 @@ Mark_Deletable_Funcs (NODE_INDEX v, DFE_ACTION action, mUINT8 *visited)
 	    Mark_Deletable_Funcs (vi, action, visited);
     }
    
-#ifdef KEY 
     if (alt_entry_update)
     {
       // Bug 12048: It has been decided to keep the alternate entry point,
@@ -2209,12 +2159,11 @@ Mark_Deletable_Funcs (NODE_INDEX v, DFE_ACTION action, mUINT8 *visited)
           Mark_Deletable_Funcs (vi, action, visited);
       }
     }
-#endif
  
 } // Mark_Deletable_Funcs
 
 
-#ifndef _LIGHTWEIGHT_INLINER
+#if !defined(_LIGHTWEIGHT_INLINER)
 /* reset the mod/ref count corresponding to the deleted functions */
 static void
 Reset_modref_count (IPA_NODE *node)
@@ -2271,7 +2220,7 @@ Delete_Function (NODE_INDEX node, BOOL update_modref_count, mUINT8 *visited)
 	fprintf (TFile, "%s deleted (unused)\n",
 		 ipa_node->Name ());
 
-#ifndef _LIGHTWEIGHT_INLINER
+#if !defined(_LIGHTWEIGHT_INLINER)
 
     if (update_modref_count) 
         Reset_modref_count (ipa_node);
@@ -2423,10 +2372,8 @@ IPA_NODE::Scope()
 
     if (_scope_tab != NULL) {
 	Scope_tab = _scope_tab;
-#ifdef KEY
 	// read pu only if not builtin
         if (!this->Is_Builtin())
-#endif
         read_pu_including_parents(this); // Tree somehow has been read already,
 					 // as in the case of the standalone inliner
 	Scope_tab = old_scope;
@@ -2441,20 +2388,12 @@ IPA_NODE::Scope()
 
     // Copy only the Global SYMTAB info
     memcpy(new_scope_tab, Scope_tab, sizeof(SCOPE)*2);
-#if 0
-    SYMTAB_IDX i;
-    for (i = 0; i < Lexical_Level(); ++i) {
-	new_scope_tab[i] = Scope_tab[i];
-    }
-#endif
 
     Scope_tab = new_scope_tab;
 
     // Read in itself and all its parents
-#ifdef KEY
     // read pu only if not builtin
     if (!this->Is_Builtin())
-#endif
     read_pu_including_parents(this);
 
     Scope_tab = old_scope;
@@ -2486,7 +2425,7 @@ IPA_NODE::Set_Whirl_Tree (WN *wn)
     Set_PU_Info_state(pu, WT_TREE, Subsect_InMem);
 }
 
-#if defined(KEY) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_LIGHTWEIGHT_INLINER)
 #include "be_ipa_util.h"
 
 // This function returns TRUE if the input block of WN is a simple straight line
@@ -3111,7 +3050,7 @@ Add_Mod_Ref_Info (IPA_NODE * node)
   // This can be optimized later, and be different for different PUs
   Mod_Ref_Info_Table[index].size = bv_size;
 }
-#endif // KEY && !_LIGHTWEIGHT_INLINER
+#endif // !_LIGHTWEIGHT_INLINER
 
 // --------------------
 // Write PU out to file
@@ -3127,7 +3066,7 @@ IPA_NODE::Write_PU ()
     Inc_IP_FILE_HDR_num_procs_processed (file_hdr);
   } else {
     IPA_NODE_CONTEXT context(this);
-#ifdef Is_True
+#if defined(Is_True_On)
     WN* w = Whirl_Tree(FALSE);
     if (w && !Is_Nested_PU()) {
       WN_verifier(w);
@@ -3135,17 +3074,15 @@ IPA_NODE::Write_PU ()
 #endif
     if ((IP_PROC_INFO_state (proc_info) != IPA_WRITTEN) || !Has_Recursive_In_Edge())
     {
-#if defined(KEY) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_LIGHTWEIGHT_INLINER)
         // Use IPA mod/ref before IP_WRITE_pu frees resources
         if (Mod_Ref_Info())
           Add_Mod_Ref_Info (this);
 #endif
         IP_WRITE_pu(&file_hdr, Proc_Info_Index()); 
-#ifdef KEY
 // Mark this node as written, which actually implies all its EH information
 // have been processed and must not be processed if this PU is written again.
         Set_PU_Write_Complete ();
-#endif
     }
   }
 /* To enable this code once resolving Write_PU() of a newly created PU from
@@ -3176,7 +3113,7 @@ IPA_NODE::Is_Externally_Callable ()
         ST_export (func_st) == EXPORT_LOCAL)
 	return FALSE;
 
-#ifndef _LIGHTWEIGHT_INLINER
+#if !defined(_LIGHTWEIGHT_INLINER)
     const AUX_ST& aux_st = Aux_St_Table[ST_st_idx (func_st)];
 
     if (AUX_ST_flags (aux_st, USED_IN_OBJ|USED_IN_DSO|ADDR_TAKEN_IN_OBJ))
@@ -3280,7 +3217,6 @@ IPA_NODE* Get_Node_From_PU(PU_Info* pu)
   NODE_INDEX node_idx = AUX_PU_node(Aux_Pu_Table[pu_idx]);
   IPA_NODE* result = IPA_Call_Graph->Graph()->Node_User(node_idx);
 
-#ifdef KEY
   // bug 11647: Verify that the node is sane. The node may be null if
   // it has been deleted by DFE (see PU_Deleted()). The caller should
   // handle a null return value in such a case.
@@ -3290,10 +3226,6 @@ IPA_NODE* Get_Node_From_PU(PU_Info* pu)
   // If it's a builtin, skip checks for info it doesn't have.
   if (result->Is_Builtin())
     return result;
-#else
-  // Verify that the node is sane.
-  Is_True(result != 0, ("Get_Node_From_PU: null call graph node"));
-#endif
   Is_True(result->PU_Info() != 0, ("Get_Node_From_PU: node has null pu"));
   Is_True(PU_Info_proc_sym(result->PU_Info()) == idx,
           ("Get_Node_From_PU: pu has st idx %ld, node has st_idx %ld",
@@ -3974,15 +3906,10 @@ IPA_CALL_GRAPH::Print_vobose (FILE* fp, TRAVERSAL_ORDER order)
   float hotness2=-1.0;
   float density = -1.0;
   vector<IPA_EDGE_INDEX> callsite_list;
-#ifdef KEY
 // An effort to at least partially fix the problem that we use the call-graph
 // global variable everywhere. Similar changes follow.
   IPA_NODE_ITER cg_iter(this, order);
   AUX_IPA_EDGE<INT32> cost_vector (this, _pool);
-#else
-  IPA_NODE_ITER cg_iter(IPA_Call_Graph, order);
-  AUX_IPA_EDGE<INT32> cost_vector (IPA_Call_Graph, _pool);
-#endif
 
 fprintf(fp, "Finally, Total_Prog_Size = %d\n", Total_Prog_Size);
 fprintf(fp, SBar);
@@ -4021,13 +3948,11 @@ fprintf(fp, "Reason30: small, but $combined_weight exceeds hard function size li
 fprintf(fp, "Reason31: Olimit $Get_combined_olimit(caller->PU_Size(), callee->PU_Size(), callee) exceeds -OPT:Olimit= %d\n", Olimit);
 fprintf(fp, "Reason32: Edge is never invoked\n");
 fprintf(fp, "Reason33: Density is too high (infrequent called but contains hot loops) > %d\n",IPA_Max_Density);
-#ifdef KEY
 fprintf(fp, "Reason34: optimization options are different for caller and callee\n");
 fprintf(fp, "Reason35: Trying to do pure-call-optimization for this callsite\n");
 fprintf(fp, "Reason36: not inlining C++ with exceptions into non-C++\n");
 fprintf(fp, "Reason37: formal parameter is a loop index\n");
 fprintf(fp, "Reason38: not inlining nested functions\n");
-#endif
 fprintf(fp, SBar);
   
   for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) //all nodes
@@ -4035,23 +3960,14 @@ fprintf(fp, SBar);
     IPA_NODE* node = cg_iter.Current();
     if (node) {
 	  IPA_NODE_CONTEXT context (node);
-#ifdef KEY
 	  Map_Callsites (node);
-#else
-	  IPA_Call_Graph->Map_Callsites (node);
-#endif
 
 	  float caller_freq=-1.0;
 	  float cycle = -1.0;
 	  UINT16 wn_count = 0;
 	  if(node->Has_frequency ()) {
-#ifdef KEY
 	    caller_freq = (node->Get_frequency()).Value();
             cycle = node->Get_cycle_count_2().Value();
-#else
-	    caller_freq = (node->Get_frequency())._value;
-            cycle = node->Get_cycle_count_2()._value;
-#endif
             wn_count=node->Get_wn_count();
 	  }
 	  
@@ -4059,18 +3975,10 @@ fprintf(fp, SBar);
 
           BOOL seen_callee = FALSE;
           callsite_list.clear ();
-#ifdef KEY
           Get_Sorted_Callsite_List(node, this, cost_vector, callsite_list);
-#else
-          Get_Sorted_Callsite_List(node, IPA_Call_Graph, cost_vector, callsite_list);
-#endif
           vector<IPA_EDGE_INDEX>::const_iterator last = callsite_list.end ();
 	  for(vector<IPA_EDGE_INDEX>::iterator first = callsite_list.begin (); first != last; ++first) {
-#ifdef KEY
               IPA_EDGE* tmp_edge = Edge (*first) ; 
-#else
-              IPA_EDGE* tmp_edge = IPA_Call_Graph->Edge (*first) ; 
-#endif
               IPA_EDGE_INDEX idx = tmp_edge->Array_Index ();
               INT32 callsite_linenum;
               WN* call_wn = tmp_edge->Whirl_Node();
@@ -4114,24 +4022,15 @@ fprintf(fp, SBar);
     INT32 cost = EFFECTIVE_WEIGHT (callee); 
 #endif
 	      if(callee->Has_frequency ()) {
-#ifdef KEY
                   callee_freq = (callee->Get_frequency()).Value();
                   callee_cycle_count = (callee->Get_cycle_count()).Value();
-#else
-                  callee_freq = (callee->Get_frequency())._value;
-                  callee_cycle_count = callee->Get_cycle_count()._value;
-#endif
               }else{
                   callee_freq = -1.0;
                   callee_cycle_count = -1.0;
               }
 		  
               if(tmp_edge->Has_frequency()) {
-#ifdef KEY
                   edge_freq = (tmp_edge->Get_frequency()).Value();
-#else
-                  edge_freq = (tmp_edge->Get_frequency())._value;
-#endif
               }else{
                   edge_freq = -1.0;
               }
@@ -4152,11 +4051,7 @@ fprintf(fp, SBar);
                     callee->Get_cycle_count_2 ()) / Total_cycle_count_2;
 
                float size_ratio = (float) (callee->Get_wn_count()) / (float) Orig_Prog_WN_Count;
-#ifdef KEY
                hotness2 = (cycle_ratio.Value() / size_ratio * 100.0);
-#else
-               hotness2 = (cycle_ratio._value / size_ratio * 100.0);
-#endif /* KEY */
                density = (float) callee->Get_cycle_count().Value() / ((float)EFFECTIVE_WEIGHT (callee) * (float)callee->Get_frequency().Value());
            }else if(callee->Summary_Proc()->Is_Never_Invoked()) {
                hotness = -1.0;
@@ -4217,24 +4112,15 @@ IPA_NODE::Print(FILE *fp, IPA_CALL_GRAPH *cg)
 void 
 IPA_CALL_GRAPH::Print (FILE* fp, TRAVERSAL_ORDER order)
 {
-#ifdef KEY
   IPA_NODE_ITER cg_iter(this, order);
-#else
-  IPA_NODE_ITER cg_iter(IPA_Call_Graph, order);
-#endif
   for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
 
     IPA_NODE* node = cg_iter.Current();
     if (node) {
 
 //pengzhao
-#ifdef KEY
       fprintf(fp, "PU    %s (freq = %.1f) \n", IPA_Node_Name(node),
 	      (node->Get_frequency()).Value());
-#else
-      fprintf(fp, "PU    %s (freq = %.1f) \n", IPA_Node_Name(node),
-	      (node->Get_frequency())._value);
-#endif
       BOOL seen_callee = FALSE;
 
       IPA_SUCC_ITER succ_iter(node);
@@ -4246,21 +4132,12 @@ IPA_CALL_GRAPH::Print (FILE* fp, TRAVERSAL_ORDER order)
           }
 //pengzhao
 //          fprintf(fp, "\t%s\n", IPA_Node_Name(callee));
-#ifdef KEY
 	    fprintf(fp, "    %s(%f)->%s(ef= %.1f,cf=%.1f)\n",
 		    IPA_Node_Name(node),
 		    (node->Get_frequency()).Value(),
 		    IPA_Node_Name(callee),
 		    (succ_iter.Current_Edge()->Get_frequency()).Value(),
 		    (callee->Get_frequency()).Value());
-#else
-	    fprintf(fp, "    %s(%f)->%s(ef= %.1f,cf=%.1f)\n",
-		    IPA_Node_Name(node),
-		    (node->Get_frequency())._value,
-		    IPA_Node_Name(callee),
-		    (succ_iter.Current_Edge()->Get_frequency())._value,
-		    (callee->Get_frequency())._value);
-#endif /* KEY */
         }
       }
 
@@ -4273,7 +4150,7 @@ IPA_CALL_GRAPH::Print (FILE* fp, TRAVERSAL_ORDER order)
 }
 
 
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER)
 void 
 IPA_NODE::Free_inlined_list()
 {
@@ -4308,12 +4185,6 @@ Pred_Is_Root(const IPA_NODE* node)
         IPA_EDGE *edge = pred_iter.Current_Edge ();
 
         if (edge) {
-#if 0
-            IPA_NODE* caller = IPA_Call_Graph->Caller (edge);
-
-            if (caller->Node_Index() == IPA_Call_Graph->Root()) 
-	        return TRUE;
-#endif
         }
 	else
 	    return TRUE;  	// NULL edge connected to ROOT

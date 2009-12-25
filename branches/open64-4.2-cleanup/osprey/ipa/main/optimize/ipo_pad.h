@@ -56,10 +56,10 @@
  * ====================================================================
  */
 
-#ifndef cxx_ipo_pad_INCLUDED
+#if !defined(cxx_ipo_pad_INCLUDED)
 #define cxx_ipo_pad_INCLUDED
 
-#ifndef cxx_ipa_pad_INCLUDED
+#if !defined(cxx_ipa_pad_INCLUDED)
 #include "ipa_pad.h"
 #endif
 

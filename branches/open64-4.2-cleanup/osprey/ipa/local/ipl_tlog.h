@@ -53,10 +53,10 @@
  * ====================================================================
  */
 
-#ifndef ipl_tlog_INCLUDED
+#if !defined(ipl_tlog_INCLUDED)
 #define ipl_tlog_INCLUDED  "ipl_tlog.h"
 
-#ifndef srcpos_INCLUDED
+#if !defined(srcpos_INCLUDED)
 #include "srcpos.h"
 #endif /* srcpos_INCLUDED */
 // TLOG interface

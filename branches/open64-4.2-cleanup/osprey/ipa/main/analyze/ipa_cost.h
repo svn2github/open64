@@ -37,7 +37,7 @@
 */
 
 
-#ifndef ipa_cost_INCLUDED
+#if !defined(ipa_cost_INCLUDED)
 
 extern void Update_Execution_Cost(IPA_NODE* ipan,
                                   MEM_POOL* mem_pool);

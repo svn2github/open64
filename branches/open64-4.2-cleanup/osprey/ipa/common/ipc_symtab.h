@@ -37,16 +37,16 @@
 */
 
 
-#ifndef __IPC_SYMTAB_H__
+#if !defined(__IPC_SYMTAB_H__)
 #define __IPC_SYMTAB_H__
 
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif 
 
-#ifdef _LD_IPA_INTERFACE
+#if defined(_LD_IPA_INTERFACE)
 
 /* Given a WHIRL file, this routine will merge the global symbol-table
    in with the current merged global symbol table which should already
@@ -69,7 +69,7 @@ process_whirl64 (an_object_file_ptr p_obj, int nsec,
                  boolean check_whirl_revision, const char* file_name, off_t);
 
 
-#ifdef _64BIT_OBJECTS
+#if defined(_64BIT_OBJECTS)
 
 #pragma weak process_whirl64
 
@@ -87,7 +87,7 @@ extern void enter_mext64 (ST *st, LD_OBJECT_FILE *p_obj);
 
 #endif /* _LD_IPA_INTERFACE */
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 

@@ -39,13 +39,13 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#ifndef ipo_clone_INCLUDED
+#if !defined(ipo_clone_INCLUDED)
 #define ipo_clone_INCLUDED
 
 // to avoid extra includes; 
 struct ip_file_hdr;
 
-#ifndef cxx_base_INCLUDED
+#if !defined(cxx_base_INCLUDED)
 #include "cxx_base.h"
 #endif
 

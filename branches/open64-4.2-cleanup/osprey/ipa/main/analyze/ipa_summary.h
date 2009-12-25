@@ -48,7 +48,7 @@
 // the call graph is built. For those, we provide dual interfaces.
 // -------------------------------------------------------------------
 
-#ifndef cxx_ipa_summary_INCLUDED
+#if !defined(cxx_ipa_summary_INCLUDED)
 #define cxx_ipa_summary_INCLUDED
 
 class IPA_NODE;
@@ -79,9 +79,7 @@ class TERM;
 class IVAR;
 class SCALAR_INFO;
 class SUMMARY_STRUCT_ACCESS;
-#ifdef KEY
 class SUMMARY_TY_INFO;
-#endif
 
 class IPL_SUMMARY_PTRS
 {
@@ -118,7 +116,7 @@ IPA_get_actual_file_array (const IP_FILE_HDR& hdr, INT32& size);
 extern IVAR* 
 IPA_get_ivar_file_array (const IP_FILE_HDR& hdr, INT32& size);
 
-#ifdef _STANDALONE_INLINER
+#if defined(_STANDALONE_INLINER)
 
 /*ARGSUSED*/
 
@@ -134,10 +132,8 @@ SUMMARY_GLOBAL*
 IPA_get_global_file_array (const IP_FILE_HDR& hdr, INT32& size);
 SUMMARY_STRUCT_ACCESS*
 IPA_get_struct_access_file_array (const IP_FILE_HDR& hdr, INT32& size);
-#ifdef KEY
 SUMMARY_TY_INFO*
 IPA_get_ty_info_file_array (const IP_FILE_HDR& hdr, INT32& size);
-#endif
 
 
 // ---------------------------------------------------------------
@@ -186,10 +182,8 @@ SUMMARY_CALLSITE*
 IPA_get_callsite_file_array (const IP_FILE_HDR& hdr, INT32& size); 
 SUMMARY_STRUCT_ACCESS*
 IPA_get_struct_access_file_array (const IP_FILE_HDR& hdr, INT32& size);
-#ifdef KEY
 SUMMARY_TY_INFO*
 IPA_get_ty_info_file_array (const IP_FILE_HDR& hdr, INT32& size);
-#endif
 
 
 // ----------------------------------------------------------------
