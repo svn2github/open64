@@ -1272,7 +1272,7 @@ CGTARG_Can_Be_Speculative( OP *op )
 
   // TOP_Can_Be_Speculative is a test for OPs that _cannot_ be speculated.
   // Don't assume OP can be speculated just because TOP_Can_Be_Speculative
-  // returns TRUE.  Bug 13958.
+  // returns TRUE.
   if (!TOP_Can_Be_Speculative(OP_code(op))) return FALSE;
 
   if (!OP_load(op)) return FALSE;
@@ -1724,7 +1724,7 @@ VARIANT CGTARG_Analyze_Branch(
     *tn2 = Gen_Literal_TN( 0, 4 );
   }
 
-  /* bug#1407
+  /* 
      Don't miss the 64-bit comparisions.
    */
   const bool is_64bit = OP_result_size(cmp_op,0) == 64;
@@ -2288,8 +2288,7 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
   FmtAssert( OP_bb(pred_op) == OP_bb(succ_op), ("NYI") );
 
   /* Do not change the relative order for operations that store callee-saved
-     registers for exception handling code. Refer to bug#1928 for detail.
-     (bug#2205)
+     registers for exception handling code. 
   */
 
   if( PU_Has_Exc_Handler ){
@@ -2344,7 +2343,7 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
     }
   }
 
-  /* Bug #336
+  /* 
      Don't schedule an op before/after the entry/exit stack
      adjustment code; otherwise will cause spilling error if
      this op is spilled later (before the stack is formed).
@@ -2378,7 +2377,7 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
       return TRUE;
   }
 
-  /* Dependence exists between emms and x87/MMX OP.  Bug 11800. */
+  /* Dependence exists between emms and x87/MMX OP.  */
   {
     BOOL pred_is_x87_mmx = (OP_x87(pred_op) || OP_mmx(pred_op)) ? TRUE : FALSE;
     BOOL succ_is_x87_mmx = (OP_x87(succ_op) || OP_mmx(succ_op)) ? TRUE : FALSE;
@@ -2441,7 +2440,7 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
 	// dedicated register R, Preallocate_Single_Register_Subclasses() will
 	// insert a move to copy the original operand into R and replace the
 	// operand with R.  Thus, an implicit WAR exists between PRED_OP and
-	// SUCC_OP.  Bug 352.
+	// SUCC_OP.  
 	if (OP_Reads_Dedicated_TN(pred_op, tmp_tn)) {
 	  // SUCC_OP's operand is not yet a dedicated register.  A copy will be
 	  // inserted.
@@ -2449,7 +2448,7 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
 	    return TRUE;
 
 	  // SUCC_OP's operand is not the correct dedicated register.  A copy
-	  // will be inserted.  Bug 11781.
+	  // will be inserted.  
 	  else if (TN_register(OP_opnd(succ_op, i)) != TN_register(tmp_tn))
 	    return TRUE;
 	}
@@ -2646,7 +2645,6 @@ static BOOL CGTARG_live_out_of ( TN* tn, BB* tail, LOOP_DESCR *loop )
  *    (2) free a register used as a temporary to hold the loop
  *        control variable (instead we count down the upper bound).
  *
- * - inspired by bug 1254.
  *
  * ====================================================================
  */
@@ -2833,7 +2831,7 @@ static TOP Movnti_Top(TOP old_top)
    return TOP_UNDEFINED;
 }
 
-// Bug 3774 - Compute total working set size by counting
+// Compute total working set size by counting
 // all disjoint source and destination bytes in the loop.
 BOOL Op_In_Working_Set ( OP* op )
 {
@@ -2932,7 +2930,7 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
       if( pfhint == ECV_pfhint_L1_store )
 	OP_Change_To_Noop( op );
       
-      // Bug 5280 - prefetch ahead by 10 lines automatically if 
+      // prefetch ahead by 10 lines automatically if
       // stores are to be converted to non-temporal stores.
       // Assumes cache line size is 64 bytes.
       else if ( pfhint == ECV_pfhint_L1_L2_load && LNO_Prefetch_Ahead == 2 ) {
@@ -2965,12 +2963,11 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
        Perform the change only if the store doesn't involve a cache line that
        is reused.  Detect reuse by looking for OPs that load the same memory
        location.  It doesn't matter if the load is before or after the store,
-       since the load will involve the same cache line.  Bug 11853. */
+       since the load will involve the same cache line. */
  /* temporarily disable this changeset for two reasons:
   (1) we may need to consider load forwarding (even though there are reuses, no
       cache line is required)
   (2) this change provents performance tuning using -CG:movnti in some case 
-      (bug 12036)
  */
     TOP new_top = TOP_UNDEFINED;
     switch( OP_code(op) ){
@@ -3004,7 +3001,7 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
     case TOP_store64:
     case TOP_storex64:
     case TOP_storexx64: {
-// Bug 14393 : TOP_is_vector_op restriction added
+// TOP_is_vector_op restriction added
          if(Is_Target_SSE2() && TOP_is_vector_op(OP_code(op)))
 	  new_top = Movnti_Top(OP_code(op));
          break;
@@ -3130,7 +3127,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   // prefer register/memory over immediates; this isn't optimal, 
   // but we may not always be able to generate an immediate
   static const char* immediates = "inIJKLMNO";
-  // Bug 950
+
   // The '#' in a constraint is inconsequential or it is just a typo
   static const char* hash = "#";
   if (!strstr(constraint, hash)) {
@@ -3140,7 +3137,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       }
   }
 
-  // Bug 14409: In contrast to what the above comment says about
+  // In contrast to what the above comment says about
   // preferring register to immediates, immediates should always be
   // preferred if it is possible to generate one. Otherwise, if it
   // is a constant, it is not easy to decode any type cast it may have,
@@ -3176,13 +3173,13 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
     {
       ret_tn = Gen_Literal_TN(WN_const_val(load), 
                               MTYPE_bit_size(WN_rtype(load))/8);
-      // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
+      // safety check from gnu/config/i386/i386.h.
       FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), *constraint), 
        ("The value of immediate operand supplied is not within expected range."));
     }
     else
     {
-      // Bug 14390: string constant with an immediate constraint
+      // string constant with an immediate constraint
       ST * base;
       INT64 ofst;
       // Allocate the string to the rodata section
@@ -3216,15 +3213,14 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
 	   (*constraint == 'S') || (*constraint == 'D') || 
 	   (*constraint == 'A') || (*constraint == 'q') || 
 	   (*constraint == 'Q') || 
-	   (*constraint == 'Z') ||  // bug 14413: handle 'Z' similar to 'e'.
+	   (*constraint == 'Z') ||  // handle 'Z' similar to 'e'.
 	   (*constraint == 'e' && *(constraint+1) == 'r'))
   {
     TYPE_ID rtype;
     
     if (load != NULL) {
-      // Bugs 482, 505, 626, 1045
       rtype = (WN_desc(load) == MTYPE_V) ? WN_rtype(load) : WN_desc(load);
-      if (WN_operator(load) == OPR_CVTL) { // Bug 3223
+      if (WN_operator(load) == OPR_CVTL) { 
 	switch (WN_cvtl_bits(load)) { 
 	// Don't care signed/unsigned but the width should be set right.
 	case 32: rtype = MTYPE_U4; break;
@@ -3233,11 +3229,11 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
 	default: FmtAssert(FALSE, ("NYI")); 
 	}
       }
-      else if (WN_operator(load) == OPR_CVT /* bug 14419 */ ||
+      else if (WN_operator(load) == OPR_CVT ||
                // CVT may have been folded into the load, but the rtype
                // cannot always be taken, for example, in U4U2LDID.
                (WN_operator(load) == OPR_LDID &&
-                WN_desc(load) == MTYPE_U4)) // bug 14427
+                WN_desc(load) == MTYPE_U4)) 
         rtype = WN_rtype(load);
     } else {
       /* We can't figure out what type the operand is, probably because the
@@ -3262,7 +3258,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       case 'A': reg = RAX; break;       
       }
       ret_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg, 
-      				  // Bug 1880 - now that we have dedicated 
+                                  // now that we have dedicated
 				  // TNs of sizes < 4 bytes, use the appropriate
 				  // size.
 				  MTYPE_byte_size(rtype));
@@ -3274,7 +3270,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       // registers, use only AX/BX/CX/DX for the 8-bit 'q' constraint.  An ASM,
       // such as "%h1", may ask for the second least significant byte of the
       // register to be the 8-bit register, for example "ah".  Only AX/BX/CX/DX
-      // allows this type of addressing.  Bug 9598.
+      // allows this type of addressing. 
       *subclass = ISA_REGISTER_SUBCLASS_m32_8bit_regs;
     }
   }
@@ -3297,7 +3293,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       mtype = WN_rtype(load);
     ret_tn = (pref_tn ? pref_tn : Build_TN_Of_Mtype(mtype));
   }
-  else if (*constraint == 'X') // bug 11884
+  else if (*constraint == 'X') 
   {
     TYPE_ID mtype = MTYPE_I4;    
     if (load)
@@ -3487,7 +3483,7 @@ CGTARG_Modified_Asm_Opnd_Name(char modifier, TN* tn, char *tn_name)
    The fix here is to remove the op that computes the address,
    and put the offset tn into opnd[num_opnds]. According this
    offset tn, later phase in Modify_Asm_String will generate
-   the right offset and base info.   (bug#3111)
+   the right offset and base info.  
 */
 TN* CGTARG_Process_Asm_m_constraint( WN* load, void** offset, OPS* ops )
 {

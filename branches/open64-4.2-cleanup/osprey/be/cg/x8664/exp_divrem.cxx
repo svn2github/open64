@@ -360,7 +360,7 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
 	Expand_Shift(tmp4_tn, tmp2_tn, Gen_Literal_TN(s, 4),
 		mtype, shift_aright, ops);
 	Expand_Sub(result, tmp4_tn, tmp3_tn, mtype, ops);
-	// Bug 1447 
+
 	if (e > 0)
 	  Expand_Sub(result, tmp4_tn, tmp3_tn, mtype, ops);
 	else
@@ -421,7 +421,6 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
 	  Expand_Copy(tmp3_tn, shift_tn, mtype, ops);
 
 	if( e < 0 ) 
-	  // Bug 1214
 	  Expand_Sub(result, tmp2_tn, tmp3_tn, mtype, ops);
 	else
 	  Expand_Sub(result, tmp3_tn, tmp2_tn, mtype, ops);
@@ -496,7 +495,6 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
       }
       return TRUE;
     } else {
-      // Bug 1214
       TN* tmp1_tn = Build_TN_Of_Mtype(MTYPE_I4);
       TN* tmp2_tn = Build_TN_Of_Mtype(MTYPE_I4);
       TN* tmp3_tn = Build_TN_Of_Mtype(MTYPE_I4);
@@ -837,7 +835,7 @@ Extend_Dividend (TN **dividend_lo, TN **dividend_hi, TYPE_ID mtype,
     // result.  This is because DIVIDEND_LO may be read-only in WHIRL.  In
     // general, CG cannot redefine TNs representing read-only WHIRL symbols,
     // because other parts of CG assume these TNs are read-only.  For example,
-    // GRA assumes these TNs don't require spilling.  Bug 12283.
+    // GRA assumes these TNs don't require spilling. 
     TN *new_dividend_lo = Build_TN_Like(*dividend_lo);
     Build_OP(is_double ? TOP_cqto : TOP_cltd, new_dividend_lo, *dividend_hi,
 	     *dividend_lo, ops);
@@ -918,7 +916,7 @@ Expand_Rem (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       return;
     }
 
-    /* Bug:147
+    /* 
        Don't expand integer divide by constant, if the value of this
        constant is 0.
     */
@@ -1045,7 +1043,9 @@ Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
     if (MTYPE_is_signed(mtype)) {
       const INT64 minintval = is_double ? INT64_MIN : INT32_MIN;
       if (src1_val == minintval && src2_val == -1) {
-	// Bug 952 - instead of asserting, generate a divide for a compile-only 	// test (Gcc compatible - but why can't Gcc compute this even at higher 	// optimization levels ?)
+        // instead of asserting, generate a divide for a compile-only         
+        // test (Gcc compatible - but why can't Gcc compute this even at higher        
+        // optimization levels ?)
 	// FmtAssert (FALSE, ("Division overflow detected.\n"));
 	printf(OPEN64_NAME_PREFIX "cc - division overflow detected\n");
 	INT tn_size = MTYPE_is_size_double(mtype) ? 8 : 4;

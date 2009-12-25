@@ -1511,7 +1511,6 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
     }
 
     // Treat clobbered registers as though they are result registers.
-    // Bug 4579.
     if (OP_code(xop) == TOP_asm) {
       ASM_OP_ANNOT *asm_info = (ASM_OP_ANNOT *) OP_MAP_Get(OP_Asm_Map, xop);
       if (asm_info) {
@@ -1580,7 +1579,7 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
     GRA_PREF_LIVE* gpl_src = (GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn_src);
 
     // Do the same tests as below to see if a preferencing copy is allowed, but
-    // do it for dedicated registers.  Bug 4579.
+    // do it for dedicated registers.
     BOOL allow_copy = TRUE;
 
     // Disallow copy if src is a dedicated register that is redefined later.

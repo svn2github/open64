@@ -682,6 +682,5 @@ void Init_Mtype_RegClass_Map(void)
   map[MTYPE_F8] = ISA_REGISTER_CLASS_float;
   map[MTYPE_F10] = ISA_REGISTER_CLASS_float;
   map[MTYPE_F16] = ISA_REGISTER_CLASS_UNDEFINED;
-  // bug fix for OSP_87
   map[MTYPE_A8] = ISA_REGISTER_CLASS_branch;
 }

@@ -1042,7 +1042,7 @@ merge_memory_offsets( OP *op,
 #endif
   additive_index_tninfo = index_opinfo->actual_opnd[0];
 #ifdef TARG_X8664
-  // Handling -fPIC in exp_loadstore.cxx exposes this bug when assembling bug 274
+  // Handling -fPIC in exp_loadstore.cxx exposes this bug
   if ( additive_index_tn == Rip_TN() )
     return;
 #endif
@@ -1245,7 +1245,7 @@ find_duplicate_mem_op (BB *bb,
 #ifdef TARG_X8664
   const INT succ_index_idx = TOP_Find_Operand_Use(OP_code(op),OU_index);
   const INT succ_scale_idx = TOP_Find_Operand_Use(OP_code(op),OU_scale);
-  // For bug 5809, don't CSE "xmm = mov offset(base)" because this increases
+  // don't CSE "xmm = mov offset(base)" because this increases
   // xmm registers pressure, causing LRA to spill a lot.
   if (CG_sse_load_execute != 0 &&
       OP_load(op) &&
@@ -1840,7 +1840,7 @@ find_duplicate_op (BB *bb,
 
   if (!OP_results(op)) return FALSE;
 
-  /* Bug#459.
+  /* 
      We cannot replace a "duplicated" cond_def operation by
      a mov operation without knowing the condition.
    */
@@ -1878,7 +1878,7 @@ find_duplicate_op (BB *bb,
 
     hash_search_length++;
     hash_op_matches =    (pred_op != NULL)
-      /* bug#480
+      /* 
 	 Do not consider a wild op whose owner bb is unknown.
 	 TODO:
 	 Routines inside ebo_special.cxx should not call BB_Remove_Op() directly.
@@ -2436,7 +2436,7 @@ Find_BB_TNs (BB *bb)
 	  if (OP_result(op, i) == tn)
 	    dont_replace = TRUE;
 
-	// Bug 2408 - asm constraints may force us to use particular registers.
+	// asm constraints may force us to use particular registers.
 	// To really optimize this case, we have to look at the constraints for
 	// each of the operand(s) and result(s) from the ASM WN that generated
 	// this asm 'op'.
@@ -2446,7 +2446,7 @@ Find_BB_TNs (BB *bb)
       }
 
       /* Don't replace a gra homeable gtn; otherwise, gra will do the wrong
-	 spilling.  (bug#2913)
+	 spilling. 
       */
       if( !EBO_in_peep     &&
 	  !CG_localize_tns &&
@@ -2464,7 +2464,7 @@ Find_BB_TNs (BB *bb)
 
 #if defined(TARG_MIPS) || defined(TARG_LOONGSON)
       if (OP_code(op) == TOP_jalr) {
-	dont_replace = TRUE;    // Bug 12505: Don't replace RA_TN in jalr
+	dont_replace = TRUE;    // Don't replace RA_TN in jalr
       }
 #endif
 
@@ -3606,7 +3606,7 @@ EBO_Add_BB_to_EB (BB * bb)
       }
 
       if (!BB_call(bb) &&
-	  !BB_asm(bb)  && 	  /* bug#1777 Don't cross asm bb. */
+	  !BB_asm(bb)  && 	  /* Don't cross asm bb. */
           (BB_preds_len(succ) == 1) &&
           !BB_visited(succ) &&
           (BB_rid(bb) == BB_rid(succ))) {

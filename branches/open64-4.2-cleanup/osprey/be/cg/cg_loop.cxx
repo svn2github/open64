@@ -2300,7 +2300,7 @@ static void unroll_names_init_tn(TN *result, UINT16 ntimes, MEM_POOL *pool)
        in the loop epilog, where <result> is a gra homeable non_body tn;
        otherwise, redundant spill code could be generated.
      */
-     /* bug 13064: Because Dup_TN "Reset_TN_is_global_reg", we don't keep
+     /* Because Dup_TN "Reset_TN_is_global_reg", we don't keep
         the original TN for the last iteration if it is global. Instead, we
         make a duplicate TN as other iterations below */
     else if( unrolling == ntimes - 1 && /*!TN_is_global_reg(result) &&*/ 
@@ -2312,7 +2312,6 @@ static void unroll_names_init_tn(TN *result, UINT16 ntimes, MEM_POOL *pool)
       /* If the <result> has a use outside of the body, and the omega is
 	 greater than 0, we should nullify the home of the copied tn of
 	 <result>; otherwise, gra cannot tell which home is the real home.
-	 (bug#2698)
       */
       if( reset_gra_home &&
 	  unrolling < ntimes - 1 ){
@@ -2323,7 +2322,6 @@ static void unroll_names_init_tn(TN *result, UINT16 ntimes, MEM_POOL *pool)
   }
 }
 
-// Bug 1064 & Bug 1221
 static BOOL TN_is_cond_def_of_another_op(BB *bb, TN *tn, OP *cand_op)
 {
   OP *op;
@@ -2657,7 +2655,7 @@ static void unroll_guard_unrolled_body(LOOP_DESCR *loop,
 	    orig_trip_count_tn,
 	    Gen_Literal_TN(log2_u32(ntimes), trip_size),
 	    &ops);
-#ifdef TARG_X8664 //bug 12956: x8664/exp_branch.cxx does not accept Zero_TN
+#ifdef TARG_X8664 // x8664/exp_branch.cxx does not accept Zero_TN
     Exp_OP3v(OPC_FALSEBR,
              NULL,
              Gen_Label_TN(continuation_lbl,0),
@@ -3432,7 +3430,7 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
 	       Gen_Literal_TN(-1, trip_size),
 	       &body_ops );
 
-#ifdef TARG_X8664 //bug 12956: x8664/exp_branch.cxx does not accept Zero_TN
+#ifdef TARG_X8664 // x8664/exp_branch.cxx does not accept Zero_TN
       Exp_OP3v( OPC_TRUEBR,
 		NULL,
 		Gen_Label_TN( Gen_Label_For_BB(new_body),0 ),
@@ -3564,7 +3562,7 @@ void unroll_remove_notations(BB *fully_unrolled_body)
       if (omega) {
 	TN *old_tn = OP_opnd(op,i);
 	TN *new_tn;
-	// Dedicated TNs are not backpatched.  Bug 5176.
+	// Dedicated TNs are not backpatched. 
 	if (!TN_is_register(old_tn) || TN_is_dedicated(old_tn))
 	  new_tn = old_tn;
 	else
@@ -3767,7 +3765,7 @@ static BOOL unroll_multi_make_remainder_loop(LOOP_DESCR *loop, UINT8 ntimes,
 	    trip_count,
 	    Gen_Literal_TN(ntimes-1, trip_size),
 	    &ops);
-#ifdef TARG_X8664 //bug 12956: x8664/exp_branch.cxx does not accept Zero_TN
+#ifdef TARG_X8664 // x8664/exp_branch.cxx does not accept Zero_TN
     Exp_OP3v(OPC_FALSEBR,
              NULL,
              Gen_Label_TN(continuation_label,0),
@@ -3918,7 +3916,7 @@ static BOOL unroll_multi_make_remainder_loop(LOOP_DESCR *loop, UINT8 ntimes,
 	    trip_counter,
 	    Gen_Literal_TN(-1, trip_size),
 	    &ops);
-#ifdef TARG_X8664 //bug 12956: x8664/exp_branch.cxx does not accept Zero_TN
+#ifdef TARG_X8664 // x8664/exp_branch.cxx does not accept Zero_TN
     Exp_OP3v(OPC_TRUEBR,
              NULL,
              Gen_Label_TN(Gen_Label_For_BB(head), 0),
@@ -5120,7 +5118,6 @@ void CG_LOOP::Determine_Unroll_Factor()
 	 *   (b2) OPT:unroll_size=0 and OPT:unroll_times_max >= trip count
 	 */
 	(
-	 // For bug#109
 	 body_len * (UINT64)const_trip_count <= CG_LOOP_unrolled_size_max ||
 	 CG_LOOP_unrolled_size_max == 0 &&
 	 CG_LOOP_unroll_times_max >= const_trip_count)) {
@@ -5172,7 +5169,7 @@ void CG_LOOP::Determine_Unroll_Factor()
 	continue;
 
       /* After unrolling, more than one tn will store to the same home
-	 location.  (bug#3471)
+	 location. 
       */
       if( Aliased( Alias_Manager, TN_home(tn), wn ) == SAME_LOCATION ){
       	Reset_TN_is_gra_homeable( tn );
@@ -5181,7 +5178,6 @@ void CG_LOOP::Determine_Unroll_Factor()
     }    
   }
 
-//Bug 1520
   ANNOTATION *info_ant = ANNOT_Get(BB_annotations(head), ANNOT_LOOPINFO);
   info = info_ant ? ANNOT_loopinfo(info_ant) : NULL;
   BOOL unroll_pragma = FALSE;

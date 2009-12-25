@@ -1602,7 +1602,7 @@ GRA_LIVE_Region_Compute_Global_Live_Info(void)
   Region_Boundary_Fixup();
 
 #ifdef TARG_MIPS
-  Handler_Boundary_Fixup();	// Bug 12703
+  Handler_Boundary_Fixup();
 #endif
 
   /* We'll keep iterating so long as either the defreach or live
@@ -2439,7 +2439,6 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
 
   FOR_ALL_BB_OPs_FWD (bb, op) {
     // Rename local TNs starting at rename_local_TN_op, if it exists,
-    // Bug 4327.
     rename_local_TNs |= (rename_local_TN_op == op);
     for (INT i = 0; i < OP_results(op); i++) {
       TN *tn = OP_result(op, i);
@@ -2513,7 +2512,7 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
       else if (rename_local_TNs &&
 	       !TN_is_global_reg(tn) &&
 	       !TN_is_const_reg(tn)) {
-        // Rename local TN to new local TN between op and end of bb.  Bug 4327.
+        // Rename local TN to new local TN between op and end of bb.  
 	Rename_TN_In_Range (tn, op, NULL);
       }
       TN_MAP_Set (op_for_tn, OP_result(op, i), op);

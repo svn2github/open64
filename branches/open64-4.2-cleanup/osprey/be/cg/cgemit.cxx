@@ -933,7 +933,6 @@ EMT_Write_Qualified_Name (FILE *f, ST *st)
 		// assume that statics in mult. pu's will 
 		// get moved to global symtab, so don't need pu-num
                 if (ST_level(st) == GLOBAL_SYMTAB) {
-                    // bug 14517, OSP 490
                     if (Emit_Global_Data || ST_sclass(st) == SCLASS_PSTATIC)
                         fprintf (f, "%s%d", Label_Name_Separator, ST_index(st));
                 }
@@ -1024,7 +1023,6 @@ static void Print_Label (FILE *pfile, ST *st, INT64 size)
     Print_Dynsym (pfile, st);
 
 #if (defined(TARG_X8664) || defined(TARG_NVISA) || defined(TARG_LOONGSON)) && !defined(BUILD_OS_DARWIN)
-	// Bug 1275 and 4351
 	// Always emit the function type
 	if (ST_class(st) == CLASS_FUNC) {
 	  fprintf ( pfile, "\t%s\t", AS_TYPE);
@@ -1109,11 +1107,10 @@ Print_Common (FILE *pfile, ST *st)
   }
   else {
     // Emit symbol even though type size is 0, in order to avoid undefined
-    // symbol in C++.  Bug 3739.
+    // symbol in C++.
     //
     // For ipa's symtab.I, can't use PU_src_lang(Get_Current_PU()) to check for
     // C++ because the PU isn't defined.  So, add the 1 byte for all languages.
-    // Bug 3923.
     fprintf ( pfile, "\t%s\t", AS_COM);
     EMT_Write_Qualified_Name(pfile, st);
 #if defined(BUILD_OS_DARWIN) /* .comm alignment arg not allowed */
@@ -2465,7 +2462,7 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
 #endif // Is_True_On && !defined(TARG_NVISA)
 
 //********************************************************
-//Bug 11034: implement dymanic allocation of pu tables to
+//implement dymanic allocation of pu tables to
 //various information for dwarf
 //********************************************************
 static INT32 num_pus = 64; /*initialized as 64*/
@@ -2560,7 +2557,6 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
   // Determine if OP is the first OP in the BB.  Cannot rely on
   // "BB_first_op(bb) == op" because Assemble_Simulated_OP does not update
   // BB_first_op when it expands the first BB OP into the current OP.
-  // Bug 14305.
   static BB *prev_bb = NULL;
   static INT32 prev_pu_count = -1;
   INT32 cur_pu_count = Current_PU_Count();
@@ -2573,7 +2569,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
   if ( BB_entry(bb) && CG_emit_unwind_info ) {
     // Replace uses of entry_name with uses of ST_name, since inserting
     // new elements into StrTab can realloc it and this pointer would be
-    // invalid: bug 4222
+    // invalid
     // char* entry_name;
 
     ST *entry_sym; 
@@ -2592,7 +2588,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 	pu_entries ++;
 	pu_entry_count ++;
       }
-      //bug 11034 : dynamic allocation and reallocation if necessary
+      //dynamic allocation and reallocation if necessary
       if(!dw_pu_tables_allocated){ // this should not happen
         Is_True (FALSE, ("r_assemble_op: dwarf pu tables not allocated."));
         init_dwarf_pu_tables(); 
@@ -2645,7 +2641,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
       fprintf( Asm_File, "%s:\n", LABEL_name(Label_adjustsp[pu_entries]));
       label_adjustsp_pu = pu_entry_count;
       adjustsp_instr = TRUE;
-      // Bug 2929 - The exact position of the last Callee Saved Register
+      // The exact position of the last Callee Saved Register
       // spill does not matter. So, we could emit the csr label immediately
       // after adjustsp label (this order is important). The positions of
       // the callee saved register(s) on the stack will be emitted in the 
@@ -2846,7 +2842,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 #endif // TARG_X8664
 
 #if !defined(TARG_IA64) && !defined(TARG_SL) && !defined(TARG_NVISA) && !defined(TARG_MIPS) && !defined(TARG_LOONGSON)
-  // Bug 4204 - move the ctrl register setup after the preamble. This 
+  // move the ctrl register setup after the preamble. This 
   // causes the debug information generated to let the debugger to stop
   // at the right spot for the main entry function. Otherwise, the parameters
   // would be displayed incorrectly. 
@@ -2908,7 +2904,7 @@ if (Get_Trace ( TP_EMIT,0x100 )) {
   }
   else {
 #if !defined(TARG_X8664) && !defined(TARG_NVISA)
-    // Bug 2468 - can not update offset/PC for x86 target (variable length)
+    // can not update offset/PC for x86 target (variable length)
     Offset_From_Last_Label = PC_Incr_N(Offset_From_Last_Label, words);
 #endif
   }
@@ -2944,7 +2940,7 @@ Replace_Substring(char* in, char* from, const char* to)
 
     leftover = p + strlen(from);
 
-    // Bug 7825 happened because in the earlier implementation, we used to 
+    // Bug happened because in the earlier implementation, we used to 
     // replace the 'from' instance by 'to' even if the 'from' instance happened
     // to be a prefix of a larger instance of the token class that the incoming 
     // 'from' belonged to. 
@@ -3183,9 +3179,9 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
 #if defined (TARG_X8664)
       //remove "$" for  rodata section address reference
       //https://bugs.open64.net/show_bug.cgi?id=494
-      if (!memory /* bug 14399 */ && !strcmp (name, ".rodata")) {
+      if (!memory && !strcmp (name, ".rodata")) {
         // This is the address of a string constant, treat it similar
-        // to a numeric constant. (bug 14390)
+        // to a numeric constant. 
         if( base_ofst == 0 )
           sprintf( buf, "%s", name );
         else
@@ -3290,7 +3286,7 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
   }
 #elif defined(TARG_X8664)
   if (TN_is_register(tn)) {
-    // Bug 3141: Support the 'y' modifier in operand references within
+    // Support the 'y' modifier in operand references within
     //           the asm template.
     // Note that we only modify %st0 into %st(0) [and %st1 into %st(1)];
     // so, we need to check for %st too (Which is what %y is about anyways).
@@ -3326,11 +3322,11 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
     if (strstr(asm_string, "%c")) {
       char replace[5];
       sprintf(replace, "%%c%d", position);
-      // Drop the '$' in name.  Bug 7406.
+      // Drop the '$' in name.
       asm_string = Replace_Substring(asm_string, replace, name+1);
     }
     if (strstr(asm_string, "%n")) {
-      // Bug 3141: One of the problems found was that we did not support
+      // One of the problems found was that we did not support
       // %n<num> in the asm() assembler template.
       // The assembler downstream handles compile-time constant expressions as 
       // immediates in instructions, so we are fine just prefixing a '-' to the 
@@ -3388,9 +3384,6 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
   // Handle modifier between % and the operand number, such as %b0, %h0.  The
   // modifier controls how the register or instruction name is printed.
   {
-    // Need to test bugs 504, 2455, 3141 
-    // if any change is made in this function.
-   
     // Handle x86 style asm operand constraints after all regular constraints.
     // This avoids replacing same register names multiple times.
     char x86pattern[5];
@@ -3694,9 +3687,7 @@ Generate_Asm_String (OP* asm_op, BB *bb)
   char* asm_string = strdup(WN_asm_string(ASM_OP_wn(asm_info)));
 
 #ifndef TARG_IA64
-  //#if 1
-
-  // Bug 5009: ASM: need to check operand number
+  // ASM: need to check operand number
   UINT n, index_count;
   char *p, *q, c;
 
@@ -3752,7 +3743,6 @@ Generate_Asm_String (OP* asm_op, BB *bb)
     else p++;
   }
 
-  // Bug 2486
   static INT asm_unique_number = 111; // each asm with a %= has a unique number
   if (strstr(asm_string, "%=")) {
     char pattern[3];
@@ -4576,7 +4566,6 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     float branch_in_ratio = branch_in_freq / fall_thru_freq;
     bool add_p2align = FALSE;
 
-    // bug 2191
     if (branch_in_freq > 100000000.0 &&
 	branch_in_ratio > 50.0) {
       max_skip_bytes = 15;
@@ -4702,7 +4691,7 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
 
     if ( Assembly ) {
 
-      // bug 14483: It's not clear why we need to avoid emitting labels
+      // It's not clear why we need to avoid emitting labels
       // for ASM bbs, other than reducing the size of the assembly file.
       // So the code below is disabled. If we really need this optimization,
       // the rest of CG should say which labels are actually required,
@@ -4713,11 +4702,10 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
 
       /* We need to emit label for bb that has a label used to mark the
 	 beginning or ending of an exception-handling region or exception handler.
-	 (bug#3068)
       */
       BOOL emit_label = TRUE;
       if( !BB_Has_Exc_Label(bb) ){
-	if (/* Bug 3815 - this was probably added to avoid generating
+	if (/* this was probably added to avoid generating
 	     * too many asm labels. But we don't need to worry about 
 	     * it until we hit glibc kind of code. Avoid this under 
 	     * 0 optimization level when we can have code snippets like
@@ -5912,7 +5900,6 @@ static void Pad_BB_With_Noops(BB *bb, INT num)
     } while (--num);
   }
 #ifdef TARG_IA64
-  // bug fix for OSP_139
   Set_OP_end_group(BB_last_op(bb));
 #endif
 }
@@ -6017,8 +6004,6 @@ Trace_Init_Loc ( INT scn_idx, Elf64_Xword scn_ofst, INT32 repeat)
    * add context-specific information:
    */
 #ifdef TARG_IA64
-  // bug fix for OSP_227
-  //
   if (em_scn[scn_idx].sym)
 #endif
     fprintf ( TFile, "<init>: Section %s (offset %4lld x%d): ",
@@ -7605,7 +7590,6 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
 
 #ifndef TARG_IA64
   // Don't search GLOBAL_SYMTAB for unprocessed constants if there aren't any.
-  // Bug 8756.
   static int prev_global_ST_Table_Size = -1;
   static BOOL unprocessed_global_constants = TRUE;
   if (prev_global_ST_Table_Size == ST_Table_Size(GLOBAL_SYMTAB) &&
@@ -7718,7 +7702,7 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
       // by offset, because they are allocated on the fly as we
       // expand the whirl nodes.  So always reset the origin.
 #ifndef TARG_IA64
-      // Bug 617 - do not emit zero length strings 
+      // do not emit zero length strings 
       // (data_layout assigns same offset to two different constants
       // when one of them is a zero length constant).
       if ((TCON_ty(ST_tcon_val(st)) != MTYPE_STR &&
@@ -7857,11 +7841,11 @@ Process_Bss_Data (SYMTAB_IDX stab)
   INT64 next_ofst;
   INT64 size;
   INT64 size_to_skip;
-  INT64 not_yet_skip_amt = 0; // bug 10678
-  ST*   last_base = NULL;     // bug 10678
+  INT64 not_yet_skip_amt = 0; 
+  ST*   last_base = NULL;     
   PU    *pu = &Get_Current_PU();
 
-  // bug 13829: if not inside any PU, get 1st PU
+  // if not inside any PU, get 1st PU
   if (pu == NULL && Pu_Table.Size() > 1)
     pu = &(Pu_Table[(PU_IDX)1]);
 
@@ -7890,14 +7874,13 @@ Process_Bss_Data (SYMTAB_IDX stab)
 #ifdef EMIT_DATA_SECTIONS
 
         // Compute SIZE now.  The x86-64 code below relies on SIZE to determine
-        // if Change_Section_Origin is needed.  Bug 13863.
+        // if Change_Section_Origin is needed.
         size = TY_size(ST_type(sym));
         // C++ requires empty classes to have unique addresses.
-        if (size == 0 && (pu == NULL || PU_cxx_lang(*pu)/*bug 13826*/))
+        if (size == 0 && (pu == NULL || PU_cxx_lang(*pu)))
           size = 1;
 
 #ifdef TARG_X8664
-	// Fix bug 617
 	// Do not emit .org for any symbols with section attributes.
 	{
 	  ST* tmp_base = sym;
@@ -7964,7 +7947,7 @@ Process_Bss_Data (SYMTAB_IDX stab)
 		    ST_base_idx(sym) != ST_st_idx(sym) &&
 		    !ST_is_equivalenced(sym) &&
 		    ST_class(ST_base(sym)) != CLASS_BLOCK &&
-                    pu != NULL && ! PU_ftn_lang(*pu) /* bug 13585 */)
+                    pu != NULL && ! PU_ftn_lang(*pu) )
 		  goto skip_definition;
 		size = TY_size(ST_type(sym));
 		// C++ requires empty classes to have unique addresses.
@@ -7987,7 +7970,7 @@ Process_Bss_Data (SYMTAB_IDX stab)
 			else if (next_base == base && next_ofst < (ofst+size)) {
 				// have label in middle of structure,
 				// so don't emit space for full structure.
-				not_yet_skip_amt = MAX(not_yet_skip_amt, size); // bug 10678
+				not_yet_skip_amt = MAX(not_yet_skip_amt, size); 
 				size_to_skip = next_ofst - ofst;
 			}
                         else if (next_base == base && next_ofst > (ofst+size))
@@ -8002,7 +7985,7 @@ Process_Bss_Data (SYMTAB_IDX stab)
 		    else
 #endif
 		    ASM_DIR_SKIP(Asm_File, size_to_skip);
-		    not_yet_skip_amt = MAX(0, not_yet_skip_amt-size_to_skip); // bug 10678
+		    not_yet_skip_amt = MAX(0, not_yet_skip_amt-size_to_skip);
 		}
 	}
 skip_definition:
@@ -8342,7 +8325,7 @@ Setup_Text_Section_For_PU (ST *pu)
     }
     if (generate_dwarf) {
 #if !defined(TARG_SL)  /* TARG_X8664 */
-      // Bug 2468 - use the appropriate labels for the debug_aranges
+      // use the appropriate labels for the debug_aranges
       LABEL_IDX Text_Label = LABEL_IDX_ZERO;
       Text_Label = Gen_Label_For_BB (REGION_First_BB);
       Em_Dwarf_Start_Text_Region_Semi_Symbolic (
@@ -8394,19 +8377,16 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   }
 #endif
 
-  // bugs 2178, 2152
-  // fix bug OSP_115
   // "__inline__" is a reserved keyword in C so it's 
   // safe(ish) to use in headers, including sys/*.h
   // when PU is marked extern _inline_ in C, 
   // needn't emit anything.
   if ( PU_is_extern_inline (Pu_Table[ST_pu(pu)]) ) {
     if ( OPT_Cyg_Instrument >= 4 && ! PU_no_instrument(Pu_Table[ST_pu(pu)]) ) {
-      // Bug 13801
       DevWarn( "Keeping %s for -finstrument-functions", ST_name(pu) );
     } else return;
   }
-  // Notes on bugs 2839 and 2934: CG_emit_asm_dwarf controls generate_dwarf
+  // CG_emit_asm_dwarf controls generate_dwarf
   // and generate_elf_symbols. generate_dwarf and generate_elf_symbols are
   // used interchangeably in cgemit for generating dwarf code as well as to 
   // emit other useful info such as "weak" symbols. This is why we can not
@@ -8421,8 +8401,8 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 #endif
 
   Init_Unwind_Info (trace_unwind);
-  // bug 3031, 4814: initialize these unconditionally
-  // bug 11034 : dynamic memory allocation
+  // initialize these unconditionally
+  // dynamic memory allocation
   init_dwarf_pu_tables();
 
   /* In the IA-32 case, we need to convert fp register references
@@ -8448,12 +8428,12 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 #ifndef TARG_IA64
   static BOOL CG_LNO_Alignment_Overridden = FALSE;
 
-  // Bug 2028 - If the source language is Fortran, we always generate
+  // If the source language is Fortran, we always generate
   // 16 byte alignment, so we do not have to look at the 
   // CG_LNO_Alignment_Overridden flag now. In general, it is okay to emit
   // alignment directive for common blocks as many times as long as the new
   // alignments are equal or more restrictive than previous versions.
-  // For bug 2028 though, there is a user local variable with the same name as
+  // there is a user local variable with the same name as
   // a common block in a different PU and that causes the assembler to complain
   // about the alignment re-directives. For other languages we should not have 
   // this naming clash and that is the convenience to check for F77 or F90 here.
@@ -8683,7 +8663,6 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   Label_Last_BB_PU_Entry[pu_entries] = Last_Label;
 #if ! defined(BUILD_OS_DARWIN)
   // Mach-O as 1.38 doesn't support .size
-  // Bug 1275
   fprintf( Asm_File, "\t.size %s, %s-%s\n", 
 	   ST_name(pu), LABEL_name(Last_Label), ST_name(pu));
 #endif /* defined(BUILD_OS_DARWIN) */
@@ -9366,7 +9345,7 @@ EMT_End_File( void )
                 if (ST_is_not_used (sym)) continue;
                 EMT_Put_Elf_Symbol (sym);
         }
-	/* Emit .weak directive for the used weak symbol. (bug#3202)
+	/* Emit .weak directive for the used weak symbol.
 	 */
 	if( ST_is_weak_symbol(sym) &&
 	    !ST_is_not_used(sym) ){
@@ -9602,7 +9581,7 @@ EMT_End_File( void )
 #endif
     }
 #if defined(KEY) && !defined(TARG_NVISA) 
-    // bug 5561: mark stack as non-executable
+    // mark stack as non-executable
 #if defined(BUILD_OS_DARWIN)
     fprintf ( Asm_File, "\t%s\t.note.GNU-stack,\"\"\n", AS_SECTION);
 #else

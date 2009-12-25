@@ -114,7 +114,6 @@ void EETARG_Generate_PIC_Entry_Code( BB* bb, OPS* ops )
   }
 
   /* Put saved location info of %ebx for dwarf generation when gra is not running.
-     (bug#2676)
    */
   {
     SAVE_REG_LOC sr;
@@ -233,7 +232,7 @@ void EETARG_Generate_PIC_Entry_Code( BB* bb, OPS* ops )
     OPS_Remove_All( ops );
 
     // Create ADD.  Put it in a BB by itself to avoid LRA, which might
-    // otherwise insert spill OPs before the ADD (bug 14452).
+    // otherwise insert spill OPs before the ADD 
     Exp_ADD(Pointer_Mtype,
             ebx_tn, ebx_tn,
             Gen_Symbol_TN(st, 0, TN_RELOC_IA32_GLOBAL_OFFSET_TABLE), ops);

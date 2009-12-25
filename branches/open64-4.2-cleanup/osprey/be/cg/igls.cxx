@@ -327,7 +327,7 @@ IGLS_Schedule_Region (BOOL before_regalloc)
   should_we_do_thr = CG_enable_thr;
   L_Save();
 
-  // 12581: In "main" entry, always keep spadjust at top, so that debugging
+  // In "main" entry, always keep spadjust at top, so that debugging
   // info and ctrl register setup occur in correct order.
   if (!strcmp(Cur_PU_Name, "MAIN__") || !strcmp(Cur_PU_Name, "main")) {
     Set_BB_scheduled(REGION_First_BB);

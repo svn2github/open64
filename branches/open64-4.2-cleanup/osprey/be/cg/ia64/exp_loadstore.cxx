@@ -412,7 +412,6 @@ Expand_Misaligned_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT vari
       {
 	TN *TRs = Build_TN_Of_Mtype(MTYPE_U8);
 	TN *TRx = Build_TN_Of_Mtype(MTYPE_U8);
-	// bug fix for OSP_176
 	TN *TRd = Gen_Adjusted_TN (disp, 8);
 
 	/*

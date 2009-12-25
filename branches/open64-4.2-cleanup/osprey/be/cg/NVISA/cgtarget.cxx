@@ -1552,8 +1552,7 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
 
   FmtAssert( FALSE, ("NYI") );
   /* Do not change the relative order for operations that store callee-saved
-     registers for exception handling code. Refer to bug#1928 for detail.
-     (bug#2205)
+     registers for exception handling code. 
   */
 
   if( PU_Has_Exc_Handler ){
@@ -1590,7 +1589,7 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
       return TRUE;
   }
 
-  /* Bug #336
+  /* 
      Don't schedule an op before/after the entry/exit stack
      adjustment code; otherwise will cause spilling error if
      this op is spilled later (before the stack is formed).
@@ -1625,7 +1624,7 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
 	if( OP_Writes_Dedicated_TN( pred_op, tmp_tn ) )
 	  return TRUE;
 
-	/* Bug#352
+	/* 
 	   For an operation like shift, its opnd will be re-defined at
 	   function Preallocate_Single_Register_Subclasses().
 	   Thus, an implicit WAR is imposed here.
@@ -1715,7 +1714,6 @@ BOOL CGTARG_OP_is_counted_loop(OP *op)
  *    (2) free a register used as a temporary to hold the loop
  *        control variable (instead we count down the upper bound).
  *
- * - inspired by bug 1254.
  *
  * ====================================================================
  */
@@ -2114,7 +2112,7 @@ CGTARG_Modified_Asm_Opnd_Name(char modifier, TN* tn, char *tn_name)
     if (TN_size(tn) == 8)
       return tn_name;
     else { 
-      // Bugs 482, 505, 626
+
       INT sub_reg_class = 2; // DWORD_REG
       if (TN_size(tn) == 2)
 	sub_reg_class = 1;   // WORD_REG
@@ -2143,7 +2141,7 @@ CGTARG_Modified_Asm_Opnd_Name(char modifier, TN* tn, char *tn_name)
    The fix here is to remove the op that computes the address,
    and put the offset tn into opnd[num_opnds]. According this
    offset tn, later phase in Modify_Asm_String will generate
-   the right offset and base info.   (bug#3111)
+   the right offset and base info.  
 */
 TN* CGTARG_Process_Asm_m_constraint( WN* load, void** offset, OPS* ops )
 {

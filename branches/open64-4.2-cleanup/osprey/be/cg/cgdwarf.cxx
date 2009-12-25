@@ -203,7 +203,6 @@ Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
     pu = ST_pu(Get_Current_PU_ST());
   }
   // Speed up search by looking at CGD_Symtab entries specific to the PU.
-  // Bug 8756.
   CGD_SYMTAB_ENTRY *p;
   Dwarf_Unsigned idx = PU_IDX_To_CGD_SYMTAB_OFFSET[pu];
   for (p = &CGD_Symtab[idx]; !p->next_is_null(); p = &CGD_Symtab[p->next])
@@ -534,7 +533,6 @@ put_const_attribute (DST_CONST_VALUE cval, Dwarf_Half ref_attr, Dwarf_P_Die die)
 	      DST_CONST_VALUE_form_data8(cval), &dw_error);
       break;
 #else
-      // Bug 1188
   case DST_FORM_DATA1:
     dwf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
 				   DST_CONST_VALUE_form_data1(cval),
@@ -711,7 +709,7 @@ put_subprogram(DST_flag flag,
 	        die, 
 	        DST_IS_external(flag) ? pb_pubname : pb_funcname);
     }
-    // Bug 4311 - The front-end does not set up the correct type information
+    // The front-end does not set up the correct type information
     // in the DST tree for the subprogram. In such cases, we use the top-level
     // DST tree to derive the return type from a variable of same name as the
     // subroutine. We check only the first child entry of the top level node
@@ -894,7 +892,8 @@ put_location (
   Base_Symbol_And_Offset (st, &base_st, &base_ofst);
 
 #ifdef TARG_IA64
-  if (ST_is_not_used(base_st)) return;	/* For fixing undefined refernece bug, Added By: Mike Murphy, 22 Apr 2001 */
+  /* For fixing undefined refernece bug */
+  if (ST_is_not_used(base_st)) return;	
 #endif
 #ifdef TARG_NVISA
     // Don't emit location if static local and not accessed;
@@ -919,7 +918,7 @@ put_location (
 	&& ST_sclass(st) != SCLASS_COMMON && ST_sclass(st) != SCLASS_EXTERN) 
   {
 	/* symbol was not allocated, so doesn't have dwarf location */
-	// Bug 4723 - Allocate any object not allocated because the rest of 
+	// Allocate any object not allocated because the rest of 
 	// compilation never encountered that object. Note that ST_is_not_used 
 	// is not set for this object.
 	Allocate_Object(st);
@@ -1025,7 +1024,7 @@ put_location (
       break;
     default:
       // Treat unknown sclass variables as SCLASS_AUTO if 
-      // the base points to the stack. Fix bug #380, also bug 11302 
+      // the base points to the stack. 
       if ((base_st == FP_Sym || base_st == SP_Sym) && ST_sclass(st) == SCLASS_UNKNOWN) {
         if (DST_IS_base_deref(flag)) { /* f90 formal dope  */
 	  
@@ -1250,7 +1249,8 @@ put_formal_parameter(DST_flag flag, DST_FORMAL_PARAMETER *attr, Dwarf_P_Die die)
    put_reference (DST_FORMAL_PARAMETER_default_val(attr),
 		  DW_AT_default_value, 
 	          die);
-   put_reference (DST_FORMAL_PARAMETER_type(attr), DW_AT_type, die);            // bug 1735: need the type for the formal paras
+   // need the type for the formal paras
+   put_reference (DST_FORMAL_PARAMETER_type(attr), DW_AT_type, die); 
    put_flag (DW_AT_declaration, die);
   } else {
 
@@ -1389,7 +1389,7 @@ put_lower_bound (DST_flag flag, DST_SUBRANGE_TYPE *attr, Dwarf_P_Die die)
   if (DST_IS_lb_cval(flag)) {
     cval = DST_SUBRANGE_TYPE_lower_cval(attr);
 #ifndef TARG_X8664 
-    // Bug 2706 - was this meant for the debuggers on the MIPS platform? -
+    // - was this meant for the debuggers on the MIPS platform? -
     // - For us, we will emit lower bound no matter what the bound is.
     switch (Dwarf_Language) {
       case DW_LANG_C89:
@@ -1542,7 +1542,7 @@ put_member(DST_flag flag, DST_MEMBER *attr, Dwarf_P_Die die)
 				      DW_AT_data_member_location, expr, &dw_error);
 	}
   }
-  // Bug 1419 - add information about accessibility
+  // add information about accessibility
   if (Dwarf_Language == DW_LANG_C_plus_plus &&
       DST_MEMBER_accessibility(attr) != 0)
     dwarf_add_AT_unsigned_const(dw_dbg, die, DW_AT_accessibility, 
@@ -1577,7 +1577,6 @@ put_inheritance(DST_flag flag, DST_INHERITANCE *attr, Dwarf_P_Die die)
 
   put_reference (DST_INHERITANCE_type(attr), DW_AT_type, die);
   expr = dwarf_new_expr (dw_dbg, &dw_error);
-  // Bug 3107
   // Quote from Dave's last fix:
   // the dwarf spec says that the location expression for a structure member
   // assumes that the location of the struct itself is on the stack.  This
@@ -1587,7 +1586,7 @@ put_inheritance(DST_flag flag, DST_INHERITANCE *attr, Dwarf_P_Die die)
     dwarf_add_expr_gen (expr, DW_OP_plus_uconst, DST_INHERITANCE_memb_loc(attr), 
 			0, &dw_error);
   else {
-    // Bug 1737 - handle virtual base class
+    // handle virtual base class
     dwarf_add_expr_gen (expr, DW_OP_dup, 0, 0, &dw_error);
     dwarf_add_expr_gen (expr, DW_OP_deref, 0, 0, &dw_error);
     dwarf_add_expr_gen (expr, DW_OP_lit0+DST_INHERITANCE_memb_loc(attr), 
@@ -1604,7 +1603,7 @@ put_inheritance(DST_flag flag, DST_INHERITANCE *attr, Dwarf_P_Die die)
 			        DST_INHERITANCE_virtuality(attr),
 				&dw_error);
   }
-  // Bug 1419 - add information about accessibility
+  // add information about accessibility
   dwarf_add_AT_unsigned_const(dw_dbg, die, DW_AT_accessibility, 
   			      DST_INHERITANCE_accessibility(attr), &dw_error);
 }
@@ -1855,7 +1854,7 @@ Write_Attributes (
       put_string_type (flag, 
 	  DST_ATTR_IDX_TO_PTR(iattr, DST_STRING_TYPE), die);
     break;
-    // Bug 3704 - handle namelist and namelist items for Fortran.
+    // handle namelist and namelist items for Fortran.
     case DW_TAG_namelist:
       put_namelist (DST_ATTR_IDX_TO_PTR(iattr, DST_NAMELIST), die);
       break;
@@ -2140,7 +2139,6 @@ Traverse_DST (ST *PU_st, DST_IDX pu_idx)
   PU_attr = DST_ATTR_IDX_TO_PTR(DST_INFO_attributes(info), DST_SUBPROGRAM);
   assoc_info = DST_SUBPROGRAM_def_st(PU_attr);
   
-  // bug fix for OSP_95
   // When a PU is declared extern and later defined in the current
   // file with an attribute, then there will be two ST entries corresponding
   // to that PU. If that is the case, then the assoc_info may point to
@@ -3545,7 +3543,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	    fprintf(asm_file, "-.");
 #endif
 	break;
-      case dwarf_drt_cie_label: // bug 2463
+      case dwarf_drt_cie_label: 
 #if defined(BUILD_OS_DARWIN)
 	/* GCC sets this to 0, so we do likewise */
         fprintf(asm_file, "\t%s\t0", reloc_name);
@@ -3588,7 +3586,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	    CG_emit_non_gas_syntax ? 
 	    (Use_32_Bit_Pointers ? ".word" : ".dword") :
 #endif
-	    AS_ADDRESS; // bug 12573
+	    AS_ADDRESS;
 #endif /* defined(BUILD_OS_DARWIN) */
 	  fprintf(asm_file, "\t.weak __dm_%s\n\t%s\t__dm_%s\n", module_name,
 	    reloc_name, module_name);
@@ -3617,7 +3615,6 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	static int count=1;
 	int this_count=count++;
 	fprintf(asm_file,".LFDE%d:\n",this_count);
-	// bug 2729
 	fprintf(asm_file, "\t%s\t.LFDE%d - .LEHCIE", reloc_name, this_count);
 #else
 #if defined(BUILD_OS_DARWIN)
@@ -3628,7 +3625,6 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	  "%s\t%s\n",
 	  diff, dwarf_begin, reloc_name, diff);
 #else /* defined(BUILD_OS_DARWIN) */
-	// bug 2729
 	fprintf(asm_file, "\t%s\t%s - .LEHCIE", reloc_name, dwarf_begin);
 #endif /* defined(BUILD_OS_DARWIN) */
 #endif
@@ -3735,7 +3731,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 		(long)current_reloc_size);
       }
 #ifdef TARG_X8664
-      // Bug 5357 - we emit 0x0 for the CIE_ID for eh_frame (in accordance with
+      // we emit 0x0 for the CIE_ID for eh_frame (in accordance with
       // g++). The following code will skip that 4byte if that is the case.
       if (ofst == 0 && cur_byte == 4 && strcmp(section_name, EH_FRAME_SECTNAME) == 0) 
 	fprintf(asm_file, "\t%s 0x%llx", reloc_name, (unsigned long long)ofst);
@@ -4057,7 +4053,7 @@ Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs (FILE *asm_file,
     // We could remove the reference to .debug_line from .debug_info but
     // we will just match Gcc's output.
     // The .debug_line will be generated from the .loc directives by the 
-    // assembler. - bug 2779 (why did it get exposed now?)
+    // assembler. (why did it get exposed now?)
     else if (strcmp(section_name, DEBUG_LINE_SECTNAME) == 0)
 #if defined(BUILD_OS_DARWIN)
       gen_debug_line_section_header(asm_file, section_name);
@@ -4097,7 +4093,7 @@ Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs (FILE *asm_file,
       // We could remove the reference to .debug_line from .debug_info but
       // we will just match Gcc's output.
       // The .debug_line will be generated from the .loc directives by the 
-      // assembler. - bug 2779 (why did it get exposed now?)
+      // assembler. (why did it get exposed now?)
       else if (strcmp(section_name, DEBUG_LINE_SECTNAME) == 0)
 #if defined(BUILD_OS_DARWIN)
 	gen_debug_line_section_header(asm_file, section_name);

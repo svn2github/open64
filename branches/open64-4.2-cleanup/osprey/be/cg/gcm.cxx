@@ -435,7 +435,7 @@ OP_Offset_Within_Limit(OP *mem_op1, OP *mem_op2, INT lower_bound,
   return FALSE;
 }
 
-// Bug 8298: Split_BB() splits a basic block into blocks that are 
+// Split_BB() splits a basic block into blocks that are 
 // (approximately) half or 3/4-th the Split_BB_Length value in 
 // length each. Hence we do a (/2) - as the more conservative of the
 // two divisions. We retain the (- 60).
@@ -483,7 +483,7 @@ Check_If_Ignore_BB(BB *bb, LOOP_DESCR *loop)
 
 
 #ifdef TARG_X8664
-  // Don't mess with GOT computation.  Bug 14452.
+  // Don't mess with GOT computation.  
   if (Avoid_GOT_BB(bb))
     return TRUE;
 #endif
@@ -581,7 +581,7 @@ Similar_Ptr_Addrs_Match (OP *pred_op, OP *succ_op)
   INT pred_base_num = TOP_Find_Operand_Use(OP_code(pred_op), OU_base);
   INT succ_base_num = TOP_Find_Operand_Use(OP_code(succ_op),  OU_base);
 
-  // Don't know anything about the addresses.  Assume they match.  Bug 14376.
+  // Don't know anything about the addresses.  Assume they match. 
   if (pred_base_num < 0 ||
       succ_base_num < 0) {
     return TRUE;
@@ -812,7 +812,7 @@ OP_Has_Restrictions(OP *op, BB *source_bb, BB *target_bb, mINT32 motion_type)
   //
   // During the GCM_BEFORE_GRA pass, if GCM moves ld32_m to target_BB, GCM
   // would insert it before "TN100 = %rax", giving bad code since ld32_m kills
-  // the previous %rax value.  Bug 9466.
+  // the previous %rax value.  
   ASM_OP_ANNOT* asm_info = (OP_code(op) == TOP_asm) ?
     (ASM_OP_ANNOT*) OP_MAP_Get(OP_Asm_Map, op) : NULL;
 
@@ -1215,7 +1215,6 @@ Can_Mem_Op_Be_Moved(OP *mem_op, BB *cur_bb, BB *src_bb, BB *dest_bb,
 #ifdef TARG_X8664
   /* Do not allow a load operation under -mcmodel=medium to across a
      call, since such load will overwrite %rax that holds the return value.
-     (bug#2419)
 
      TODO ???:
      The right fix should be done inside OP_To_Move(), but <failed_reg_defs>
@@ -1990,7 +1989,7 @@ Can_OP_Move(OP *cur_op, BB *src_bb, BB *tgt_bb, BB_SET **pred_bbs,
 #ifdef TARG_X8664
    BOOL op_access_mem = OP_memory(cur_op) || OP_load_exe(cur_op);
 
-   /* bug#1470
+   /* 
       An asm instruction could access memory also.
     */
    if( !op_access_mem &&
@@ -2105,7 +2104,7 @@ Can_OP_Move(OP *cur_op, BB *src_bb, BB *tgt_bb, BB_SET **pred_bbs,
 
                    // Continue the above workaround.  Check
 		   // liveness for assigned registers since they are globals
-		   // too.  Bug 8726.
+		   // too.  
 		   || (result_reg != REGISTER_UNDEFINED &&
 		       GTN_SET_MemberP(BB_live_in(succ_bb),
 				       Build_Dedicated_TN(result_cl,
@@ -2708,7 +2707,7 @@ Determine_Candidate_Blocks(BB *bb, LOOP_DESCR *loop, mINT32 motion_type,
     if (cand_bb == bb) continue;
 
 #ifdef TARG_X8664
-    // Don't mess with GOT computation.  Bug 14452.
+    // Don't mess with GOT computation. 
     if (Avoid_GOT_BB(cand_bb))
       continue;
 #endif
@@ -2725,7 +2724,7 @@ Determine_Candidate_Blocks(BB *bb, LOOP_DESCR *loop, mINT32 motion_type,
     BOOL equiv_fwd  = 	BS_MemberP (BB_pdom_set(cand_bb), BB_id(bb)) &&
 			BS_MemberP (BB_dom_set(bb), BB_id(cand_bb));
 
-    /* Fix for bug#1406
+    /*
        Although <cand_bb> dominates <bb>, and <bb> post-dominates <cand_bb>,
        it does not mean they are really equivalent, if <cand_bb> has two branches,
        and one lead to another loop.

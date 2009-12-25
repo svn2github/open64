@@ -705,7 +705,7 @@ Create_LR_For_TN (TN *tn, BB *bb, BOOL in_lra, MEM_POOL *pool)
   else if (LR_tn(lr) != orig_tn) {
 #ifdef TARG_X8664
     // Make LR_tn(lr) be the widest enclosing register so that all parts of the
-    // register are spilled.  Bug 7613.
+    // register are spilled.  
     Is_True(TN_is_dedicated(tn), ("Create_LR_For_TN: not dedicated TN"));
     if (TN_size(tn) >= TN_size(LR_tn(lr)))
       LR_tn(lr) = tn;
@@ -781,7 +781,7 @@ Mark_Use (TN *tn, OP *op, INT opnum, BB *bb, BOOL in_lra,
     LR_use_cnt(clr)++;
     // If the live range is not live-out, then set the last use so that we can
     // determine which OPs the live range spans.  This is needed for making the
-    // live range a candidate for spilling.  Bug 7649.
+    // live range a candidate for spilling.  
     if (LR_last_use(clr) != BB_length(bb)+1)
       LR_last_use(clr) = opnum;
   }
@@ -2080,7 +2080,7 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 
       // Always free the result register, even for ASM OPs.  For ASM
       // early_clobber result, free it after all ASM input operands are
-      // allocated.  Bug 13348.
+      // allocated.  
       bool ok_to_free_result = TRUE;
       // Don't free result if result is a read-modifiy-write.
       ok_to_free_result = ok_to_free_result && !OP_cond_def(op);
@@ -2204,7 +2204,7 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
     ISA_REGISTER_CLASS regclass = TN_register_class(tn);
     REGISTER_SET must_use = Usable_Registers(tn, clr);
  // If ASM uses a callee-saved register, then add the register to
- // Callee_Saved_ Regs_Used. Bug 13100.
+ // Callee_Saved_ Regs_Used. 
   if (asm_info &&
      LRA_TN_register( tn) != REGISTER_UNDEFINED) 
   {
@@ -2289,7 +2289,7 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
     reg = Allocate_Register (tn, uniq_result, result_cl, must_use, result_reg, opnum);
 
 #ifdef TARG_X8664
-    /* bug#379
+    /* 
        Try to use a register that is used by an inline asm; otherwise, there is
        no register can be allocated for op like div and shift.
     */
@@ -2795,7 +2795,7 @@ Can_Use_Be_Moved (
 #if defined(TARG_MIPS) && !defined(TARG_SL)
   // Don't lengthen the live range of a fcc register in order to prevent
   // spilling.  Spilling fcc is not possible because there is no load/store
-  // instruction for fcc.  Bug 13241.
+  // instruction for fcc.  
   if (OP_results(use_op) == 1 &&
       TN_register_class(OP_result(use_op, 0)) == ISA_REGISTER_CLASS_fcc)
     return FALSE;
@@ -3233,7 +3233,7 @@ Analyze_Spilling_Live_Range (
     // Don't spill the live range if it is a dedicated register that is
     // preallocated to some OP's operand or result.  Spilling such a live range
     // is useless because Preallocate_Single_Register_Subclasses would
-    // preallocate the register back to the operand/result.  Bug 5744.
+    // preallocate the register back to the operand/result.  
     for (INT opndnum = 0; opndnum < OP_opnds(op); opndnum++) {
       TN* opnd_tn = OP_opnd(op, opndnum);
       if (TN_is_register(opnd_tn) &&
@@ -3575,7 +3575,7 @@ Spill_Live_Range (
   INT last_def;
   INT last_opnum;
 
-  last_def = 0;		// Bug 14315, uninitialized variable.
+  last_def = 0;		
 
   if (Do_LRA_Trace(Trace_LRA_Spill)) {
     fprintf (TFile, "LRA_SPILL>> spill lr at OP:%d", spill_opnum);
@@ -3625,7 +3625,6 @@ Spill_Live_Range (
       DevWarn ("Used short-offset spill location in BB%d", BB_id(bb));
     }
     else {
-      /* kludge to fix bug 386428 */
       if (GP_TN != NULL && TN_is_rematerializable (spill_tn) && BB_exit (bb)) {
 	LIVE_RANGE *gp_lr = LR_For_TN (GP_TN);
 	if (gp_lr != NULL && 
@@ -3707,7 +3706,7 @@ Spill_Live_Range (
 #ifdef TARG_IA64
           !already_spilled && (i == last_use) 
           && OP_code(op)==TOP_st8_spill) {
-        // fix bug by llx for delete useful store but not spill store
+        // delete useful store but not spill store
 #else
           !already_spilled && (i == last_use)) {
 #endif
@@ -3827,7 +3826,7 @@ Spill_Live_Range (
 
       if ((OP_same_res(op)
 #ifdef TARG_X8664
-           || OP_x86_style(op)		// bug 4721
+           || OP_x86_style(op)		
 #endif
 	  )
           && TN_Pair_In_OP(op, spill_tn, prev_tn)) {
@@ -3861,7 +3860,7 @@ Spill_Live_Range (
         // the same as one of the operands. We need to find out which one 
         // it is and not assume that it's always result 0. 
 #ifndef TARG_IA64
-        resnum = TN_Resnum_In_OP (op, spill_tn, TRUE);	// bug 9489
+        resnum = TN_Resnum_In_OP (op, spill_tn, TRUE);
 #else
         resnum = TN_Resnum_In_OP (op, spill_tn);
 #endif
@@ -3886,7 +3885,7 @@ Spill_Live_Range (
       }
 
       else if ((OP_results(op) > 1) && (OP_result(op, 0) != spill_tn)) {
-	// TNs_Are_Equivalent gives more accurate result. (bug#3568)
+	// TNs_Are_Equivalent gives more accurate result.
         for( resnum = OP_results(op)-1; resnum >= 0; resnum-- ){
           if( TNs_Are_Equivalent( spill_tn, OP_result(op,resnum) ) )
 	    break;
@@ -4174,7 +4173,7 @@ Fix_LRA_Blues (BB *bb, TN *tn, HB_Schedule *Sched)
   BOOL allow_reordering = Check_Allow_Reorder() || (LRA_do_reorder == TRUE);
 
   // Build the dependence graph only if it's needed to find reloadable LRs or
-  // doing reordering.  Bug 8026.
+  // doing reordering.  
   need_dep_graph = ((need_dep_graph &&
 		     Need_Dep_Graph_For_Mark_Reloadable_Live_Ranges) ||
 		    allow_reordering);
@@ -4184,7 +4183,7 @@ Fix_LRA_Blues (BB *bb, TN *tn, HB_Schedule *Sched)
   INT failure_point;
   INT opnum;
 
-  if (Trip_Count > MAX_TRIP_COUNT &&		// Bug 12183
+  if (Trip_Count > MAX_TRIP_COUNT &&		
       large_asm_clobber_set[cl]) {
     ErrMsg(EC_Misc_Asm,
 	 "Local register allocation unsuccessful due to large ASM clobber set");
@@ -4310,7 +4309,7 @@ Fix_LRA_Blues (BB *bb, TN *tn, HB_Schedule *Sched)
   else {
     // Prefer the lightweight version of Mark_Reloadable_Live_Ranges whenever
     // possible, since it doesn't need the dependence graph (building dep graph
-    // is expensive).  Bug 8026.
+    // is expensive).  
     Quick_Mark_Reloadable_Live_Ranges (cl);
   }
 #endif
@@ -4336,7 +4335,7 @@ Fix_LRA_Blues (BB *bb, TN *tn, HB_Schedule *Sched)
   }
 
   // The fatpoint can be less than zero at an ASM with more than one result.
-  // In that case, fudge the fatpoint to be 0 and continue.  Bug 13697.
+  // In that case, fudge the fatpoint to be 0 and continue.  
   if (fatpoint < 0) {
     OP *op = OP_VECTOR_element(Insts_Vector, failure_point);
     FmtAssert(OP_code(op) == TOP_asm && OP_results(op) > 1,
@@ -5014,7 +5013,7 @@ Adjust_one_eight_bit_reg( BB* bb, OP* op, int opnd_idx, BOOL is_opnd )
   OPS ops = OPS_EMPTY;
   // Although RESULT must be assigned a byteble register, it does not mean the
   // size of RESULT is 1-byte.  An ASM can have a 'q' constraint for an operand
-  // that is greater than 1-byte.  Bug 14468.
+  // that is greater than 1-byte.  
   TN* result = Gen_Register_TN(cl, TN_size(opnd));
 
   if( is_opnd ){
@@ -5025,7 +5024,7 @@ Adjust_one_eight_bit_reg( BB* bb, OP* op, int opnd_idx, BOOL is_opnd )
 
   } else {
     // Do sign/zero extend instead of regular copy.  Needed for "sete" which
-    // doesn't clear the upper bits.  Bug 5621.
+    // doesn't clear the upper bits.  
     Exp_COPY_Ext(TN_size(result) == 2 ? TOP_movzwl : TOP_movzbl,
 		 opnd, result, &ops );
     OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
@@ -5033,7 +5032,7 @@ Adjust_one_eight_bit_reg( BB* bb, OP* op, int opnd_idx, BOOL is_opnd )
     Set_OP_result( op, opnd_idx, result );
 
     // "sete" is no longer cond_def because movzbl extends sete's 1-byte result
-    // to full 32 bits, making all 32 bits completely determined.  Bug 8850.
+    // to full 32 bits, making all 32 bits completely determined.
     Set_OP_cond_def_kind(op, OP_ALWAYS_UNC_DEF);
   }
 }
@@ -5353,7 +5352,7 @@ Preallocate_Single_Register_Subclasses (BB* bb)
   FOR_ALL_BB_OPs_REV (bb, op) {
     // Don't insert copies after the SP adjust OP at the end of the BB.  LRA
     // calls CGSPILL_Append_Ops to spill around the BB, and CGSPILL_Append_Ops
-    // relies on the SP ajust to mark the end of the BB.  Bug 14363.
+    // relies on the SP ajust to mark the end of the BB.  
     if ((BB_exit(bb) &&
 	 OP_code(op) == TOP_spadjust) ||
 	OP_code(op) == TOP_asm) {	// the ASM at the end of the BB
@@ -5449,7 +5448,7 @@ Preallocate_Single_Register_Subclasses (BB* bb)
       OP_srcpos(OPS_last(&pre_ops)) = OP_srcpos(op);
 
 #ifdef TARG_X8664
-      /* Bug_151:
+      /* 
 	 Maintain the "result==OP_opnd(op,0)" property for x86-style operations
 	 after register preallocation.
       */
@@ -5483,7 +5482,7 @@ Preallocate_Single_Register_Subclasses (BB* bb)
 	// other TNs.  In the case of parameter and return registers, the WHIRL
 	// defines the dedicated TN directly.  Replace these definitions with
 	// regular TNs, and copy to the dedicated TNs at the end of the BB.
-	// (Bug 12744.)  For example, change:
+	// For example, change:
 	//   rax = ...
 	//   ... = idiv ...	; operand and results need preallocation
 	// to:
@@ -5501,7 +5500,7 @@ Preallocate_Single_Register_Subclasses (BB* bb)
 	  // use).
 	  //
 	  // For ASM BBs, the parameter to the ASM has two non-exposed-use's
-	  // (appearance in ASM opnd, and live-out).  Bug 14432.
+	  // (appearance in ASM opnd, and live-out).  
 	  int non_exposed_use_cnt = LR_use_cnt(ded_lr) - LR_exposed_use(ded_lr);
 	  if (LR_last_use(ded_lr) > orig_bb_length &&
 	      LR_def_cnt(ded_lr) == 1 &&
@@ -5643,7 +5642,6 @@ LRA_Allocate_Registers (BOOL lra_for_pu)
 
      My current fix is to scan through all the BBs, and use float_reg_could_be_128bit
      to indicate whether the size of a float register could be 128-bit or not.
-     (bug#2801)
 
      TODO:
      Look for an accurate way to get the global register info.

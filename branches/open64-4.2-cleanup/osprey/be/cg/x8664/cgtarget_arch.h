@@ -155,7 +155,7 @@ CGTARG_Is_OP_Barrier(OP *op)
     extern OP_MAP OP_Asm_Map;
     ASM_OP_ANNOT* asm_info = (ASM_OP_ANNOT*) OP_MAP_Get(OP_Asm_Map, op);
     return (WN_Asm_Clobbers_Mem(ASM_OP_wn(asm_info)) || Asm_Memory);
-  } else if (OP_code(op) == TOP_fwd_bar ||	// bug 4850
+  } else if (OP_code(op) == TOP_fwd_bar ||
 	     OP_code(op) == TOP_bwd_bar ||
 	     OP_code(op) == TOP_stmxcsr ||
 	     OP_code(op) == TOP_ldmxcsr) {

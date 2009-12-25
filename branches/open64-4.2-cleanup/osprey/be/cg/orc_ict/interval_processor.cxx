@@ -225,7 +225,6 @@ INTERVAL_PROCESSOR::Collect_Backedges(void) {
             _backedges.push_back(e);
         }        
         else {
-            // bug fix for OSP_110
             _impedges.push_back(e);
            /*
             if (Find_In_Vector(src,_improper_node) == _improper_node.end()) {
@@ -239,7 +238,7 @@ INTERVAL_PROCESSOR::Collect_Backedges(void) {
     }
 }
 
-// bug fix for OSP_110
+
 //====================================================================
 //
 // Collect_Improper_Nodes
@@ -403,7 +402,6 @@ INTERVAL_PROCESSOR::Construct_Loops(void) {
             
             tar_edges = temp;
 
-            // bug fix for OSP_110
             //---------------------------------------------------
             // update the improper edges
             //---------------------------------------------------
@@ -647,7 +645,6 @@ INTERVAL_PROCESSOR::Process(void) {
         fprintf(TFile,"Finish construct loops from backedges.\n Begin find sccs.\n");
     }
 
-// bug fix for OSP_110
     Collect_Improper_Nodes();
 
     if (Get_Trace(TP_A_REGION, TT_RGN_SUMMERY)) {

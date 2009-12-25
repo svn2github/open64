@@ -208,7 +208,6 @@ Get_Qualified_Name (ST *st, char* str)
 		// assume that statics in mult. pu's will 
 		// get moved to global symtab, so don't need pu-num
 		if (ST_level(st) == GLOBAL_SYMTAB) {
-                    // bug 14517, OSP 490
                     if (Emit_Global_Data || ST_sclass(st) == SCLASS_PSTATIC){
 		   	strcat(str,Label_Name_Separator);
 		   	sprintf( buffer, "%d", ST_index(st));

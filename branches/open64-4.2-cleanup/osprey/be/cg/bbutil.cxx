@@ -286,7 +286,7 @@ Gen_BB_Like (BB *model)
 BB *
 Gen_And_Append_BB (BB *prev_bb) 
 {
-  /* bug#448
+  /* 
      The rid info from <prev_bb> should be propagated.
    */
   BB *bb = Gen_BB_Like(prev_bb);
@@ -804,7 +804,7 @@ BB_kind(BB *bb)
 #ifdef TARG_IA64
   /* A chk bb end with a chk op
    */
-  if (BB_Last_chk_op(bb)) return BBKIND_CHK;// bug fix for OSP_104, OSP_105, OSP_192
+  if (BB_Last_chk_op(bb)) return BBKIND_CHK;
 #endif
 
   /* Get the branch OP and the number of successors.
@@ -988,7 +988,6 @@ Print_BB_Header ( BB *bp, BOOL flow_info_only, BOOL print_tn_info )
 #ifdef TARG_IA64
   if (BB_chk_split(bp)) 	fprintf ( TFile, "  Check split block\n" );
   if (BB_chk_split_head(bp)) 	fprintf ( TFile, "  Check split head block\n" );
-  //bug fix for OSP_212
   if (BB_chk_split_tail(bp))    fprintf ( TFile, "  Check split tail block\n" );
   if (BB_recovery(bp)) 	fprintf ( TFile, "  Recovery block\n" );
   if (BB_scheduled(bp)) 	fprintf ( TFile, "  Scheduled BB\n" );
@@ -2157,7 +2156,7 @@ BB_MAP BB_Depth_First_Map(BB_SET *region, BB *entry)
       // BB_LIST_rest(Entry_BB_Head). So needn't do map_depth_first twice for the same BB.
       FmtAssert ((region == NULL || BB_SET_MemberP(region, BB_LIST_first(entries))),
 		 ("BB_Depth_First_Map visited BB:%d twice", BB_id(BB_LIST_first(entries)))); 
-      /* bug#1458
+      /* 
 	 Don't visit an unrecognizable region twice.
        */
       if( BB_MAP32_Get( dfo_map, BB_LIST_first(entries) ) != 0 ){
@@ -2839,7 +2838,7 @@ static void Split_BB(BB *bb)
       }
 #endif
 
-      /* Fix bug#1820
+      /* 
 	 While splitting a big bb, don't violate the assumption that
 	 a definition of an argument register should be in the call block.
        */
@@ -2940,7 +2939,7 @@ static void Split_BB(BB *bb)
     bb_prev = bb_tmp;
   }
 
-  // Bug 13664: Propagate BB_has_globals flag to new blocks for localize
+  // Propagate BB_has_globals flag to new blocks for localize
   // Faster: Insert "if (BB_has_globals(bb)) Set_BB_has_globals(new_bb);"
   // in code above.
   if (BB_has_globals(bb)) {

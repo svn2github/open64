@@ -270,7 +270,7 @@ static void Expand_Split_Load( OPCODE opcode,
 
     } else {
       /* Don't use a dedicated tn as operand; otherwise, later localization
-	 will be confused. (bug#2777)
+	 will be confused. 
       */
       TN* tmp = result;
 
@@ -1070,13 +1070,12 @@ Exp_Ldst (
 	Build_OP( TOP_ldc64, tmp_tn, Gen_Literal_TN(base_ofst,8), &newops);
 	// Preserve x86-style property for add64 because this OP can be created
 	// by LRA for spilling callee-saved regs in the prologue/epilog, after
-	// LRA has changed OPs to x86-style.  Bug 7304.
+	// LRA has changed OPs to x86-style.  
 	// We are not allowed to overwrite base_tn.  Instead, add to tmp_tn and
-	// call it base_tn.  Bug 9188.
-
+	// call it base_tn. 
 	// Use "lea" instead of "add" in order not to modify rflags.  Register
 	// allocation can insert spill code between OPs that define and use
-	// rflags.  Bug 14104.
+	// rflags.  
 	Build_OP(TOP_leax64, tmp_tn, base_tn, tmp_tn, Gen_Literal_TN(1, 4),
 		 Gen_Literal_TN(0, 4), &newops);
 	base_tn = tmp_tn;
@@ -1208,7 +1207,7 @@ Exp_Ldst (
 	                       ST_class(base_sym) == CLASS_FUNC ||
 	                       // section?
 	                       (ST_class(base_sym) == CLASS_BLOCK &&
-	                        STB_section(base_sym) /* bug 10097 */)) ){
+	                        STB_section(base_sym)  )) ){
 	  FmtAssert(!ST_is_thread_local(base_sym),
 		    ("Exp_Ldst: thread-local storage NYI under PIC"));
 	  TN* tmp = base_ofst == 0 ? tn : Build_TN_Like(tn);
@@ -1266,7 +1265,6 @@ Exp_Ldst (
 	  }
 
 	  if( base_ofst != 0 ){
-// Bug 4461
             base_tn = Build_TN_Of_Mtype(Pointer_Mtype);
 
             Build_OP( TOP_movabsq,
@@ -1318,7 +1316,7 @@ Exp_Ldst (
       if( Gen_PIC_Shared && (!ST_is_export_local (base_sym) ||
                               // section?
                              (ST_class(base_sym) == CLASS_BLOCK &&
-                              STB_section(base_sym) /* bug 10097 */)) ){
+                              STB_section(base_sym) )) ){
 
 	if( Is_Target_64bit() ){
 	  TN *new_base = Build_TN_Of_Mtype(Pointer_Mtype);
@@ -1350,7 +1348,7 @@ Exp_Ldst (
 
     if( is_store ){
       if ( opcode == OPC_V16C8STID || 
-	   V_align_all(variant) != 0 ) // Bug 3623 - check if misaligned STID
+	   V_align_all(variant) != 0 ) // check if misaligned STID
 	Expand_Misaligned_Store (OPCODE_desc(opcode), tn, base_tn, ofst_tn, 
 	                         variant, &newops);
       else
@@ -1358,7 +1356,7 @@ Exp_Ldst (
 
     } else if( is_load ){
       if ( opcode == OPC_V16C8V16C8LDID ||
-	   V_align_all(variant) != 0 ) // Bug 3623 - check if misaligned LDID
+	   V_align_all(variant) != 0 ) // check if misaligned LDID
 	Expand_Misaligned_Load ( opcode, tn, base_tn, ofst_tn,
 			         variant, &newops );
       else
@@ -1408,7 +1406,7 @@ Exp_Load (
   OPCODE opcode = OPCODE_make_op (OPR_LDID, rtype, desc);
   Exp_Ldst (opcode, tgt_tn, sym, ofst, FALSE, FALSE, TRUE, ops, variant);
   if (TN_register_class(tgt_tn) == ISA_REGISTER_CLASS_mmx)
-    Build_OP(TOP_emms, ops); // bug 11800
+    Build_OP(TOP_emms, ops); 
 }
 
 void
@@ -1423,7 +1421,7 @@ Exp_Store (
   OPCODE opcode = OPCODE_make_op(OPR_STID, MTYPE_V, mtype);
   Exp_Ldst (opcode, src_tn, sym, ofst, FALSE, TRUE, FALSE, ops, variant);
   if (TN_register_class(src_tn) == ISA_REGISTER_CLASS_mmx)
-    Build_OP(TOP_emms, ops); // bug 11800
+    Build_OP(TOP_emms, ops); 
 }
 
 static ISA_ENUM_CLASS_VALUE
@@ -1613,7 +1611,7 @@ void Exp_Deposit_Bits2(TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_si
 void Exp_Deposit_Bits (TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_size,
 		       TN *tgt_tn, TN *src1_tn, TN *src2_tn, OPS *ops)
 {
-  if (CG_valgrind_friendly) { // bug 9672
+  if (CG_valgrind_friendly) { 
     Exp_Deposit_Bits2(rtype, desc, bit_offset, bit_size, tgt_tn, src1_tn, src2_tn, ops);
     return;
   }

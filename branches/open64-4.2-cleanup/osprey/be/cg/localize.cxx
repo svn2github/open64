@@ -361,10 +361,10 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 			;	// okay
 #endif // TARG_IA32
 #if defined(TARG_X8664) || defined(TARG_SL)
-		/* An inline asm could read whatever it wants (bug#3059,3257). */
+		/* An inline asm could read whatever it wants */
 		else if (BB_asm(current_bb))
 			;	// okay
-		/* An inline asm could write whatever it wants (bug#3059). */
+		/* An inline asm could write whatever it wants */
 		else if (!def && is_func_arg
 			 && BB_prev(current_bb) != NULL 
 			 && BB_asm(BB_prev(current_bb)))
@@ -421,7 +421,6 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 		else if (!def && is_func_arg && BB_call(current_bb))
 			;	// okay.  CSE might have replaced a use of a
 				// non-dedicated TN with a use of a param reg,
-				// bug 7219.
 #ifdef TARG_X8664
 		else if (!def && regnum == RAX && BB_entry(current_bb)) 
 			;	// okay because RAX gives number of xmm args
@@ -625,7 +624,7 @@ Find_Global_TNs ( RID *rid )
             /* this use is just a copy of the def */
             continue;
 	  }
-	  /* Bug#931
+	  /* 
 	     We cannot assume <op> has only one result. An extension
 	     of the previous checking.
 	   */
@@ -1340,7 +1339,7 @@ Localize_or_Replace_Dedicated_TNs(void)
     FOR_ALL_BB_OPs (bb, op) {
 
 #if defined(TARG_X8664) || defined(TARG_SL)
-      /* Do not replace dedicated tn inside an inline asm. (bug#3067)
+      /* Do not replace dedicated tn inside an inline asm. 
        */
       if( OP_code(op) == TOP_asm ){
 	continue;
@@ -1363,7 +1362,7 @@ Localize_or_Replace_Dedicated_TNs(void)
 	  continue;
 #ifdef TARG_X8664
 	// Almost all x86 insns have the OP_same_res property even though they
-	// are not recorded as such in isa_properties.cxx.  Bug 6866.
+	// are not recorded as such in isa_properties.cxx. 
 	if ( tn == OP_result(op,0) )
 	  continue;
 #endif

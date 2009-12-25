@@ -625,7 +625,6 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
 	Expand_Split_Branch( cmp_opcode, src1, src2, jmp_opcode, targ, ops );
 
       } else {
-	// Bug#330
 	if (Force_IEEE_Comparisons && 
 	    TOP_is_flop( cmp_opcode ) ){
 	  Expand_Ordered_Branch( cmp_opcode, src1, src2, jmp_opcode, targ, ops);

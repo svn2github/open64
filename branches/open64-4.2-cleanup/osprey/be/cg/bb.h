@@ -573,7 +573,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_PROFILE_ADDED       0x20000000 /* BB is new bb added by profile*/
 #define BBM_CHK_SPLIT_HEAD      0x40000000 /* BB splitted from another because of chk insertion */
 #define BBM_PARTIAL_BUNDLE      0x80000000 /* BB partial bundle for across boundary*/
-#define BBM_CHK_SPLIT_TAIL     0x200000000 /* BB is splited tail *///bug fix for OSP_212
+#define BBM_CHK_SPLIT_TAIL     0x200000000 /* BB is splited tail */
 #elif defined(TARG_SL)
 #define BBM_ZDL_PROLOG          0x01000000 
 #define BBM_ZDL_BODY            0x02000000        
@@ -647,7 +647,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BB_profile_changed(x)    (BB_flag(x) & BBM_PROFILE_CHANGED)
 #define BB_profile_added(x)    (BB_flag(x) & BBM_PROFILE_ADDED)
 #define BB_partial_bundle(x)	(BB_flag(x) & BBM_PARTIAL_BUNDLE)
-#define BB_chk_split_tail(x)    (BB_flag(x) & BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
+#define BB_chk_split_tail(x)    (BB_flag(x) & BBM_CHK_SPLIT_TAIL)
 #endif
 #if defined(TARG_X8664)
 #define BB_after_pic_entry(x)   (BB_flag(x) & BBM_AFTER_PIC_ENTRY)
@@ -686,7 +686,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Set_BB_profile_changed(x)    (BB_flag(x) |= BBM_PROFILE_CHANGED)
 #define Set_BB_profile_added(x)    (BB_flag(x) |= BBM_PROFILE_ADDED)
 #define Set_BB_partial_bundle(x)    (BB_flag(x) |= BBM_PARTIAL_BUNDLE)
-#define Set_BB_chk_split_tail(x)    (BB_flag(x) |= BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
+#define Set_BB_chk_split_tail(x)    (BB_flag(x) |= BBM_CHK_SPLIT_TAIL)
 #endif
 #if defined(TARG_X8664)
 #define Set_BB_after_pic_entry(x)   (BB_flag(x) |= BBM_AFTER_PIC_ENTRY)
@@ -724,7 +724,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Reset_BB_profile_changed(x)    (BB_flag(x) &= ~BBM_PROFILE_CHANGED)
 #define Resset_BB_profile_added(x)    (BB_flag(x) &= ~BBM_PROFILE_ADDED)
 #define Reset_BB_partial_bundle(x)    (BB_flag(x) &= ~BBM_PARTIAL_BUNDLE)
-#define Reset_BB_chk_split_tail(x)    (BB_flag(x) &= ~BBM_CHK_SPLIT_TAIL)//bug fix for OSP_212
+#define Reset_BB_chk_split_tail(x)    (BB_flag(x) &= ~BBM_CHK_SPLIT_TAIL)
 #endif
 #if defined(TARG_X8664)
 #define Reset_BB_after_pic_entry(x)  (BB_flag(x) &= ~BBM_AFTER_PIC_ENTRY)

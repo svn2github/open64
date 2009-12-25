@@ -385,7 +385,7 @@ Initialize_Register_Class(
     // Any better way to get rid of this itch?
     if (bit_size == 64 &&
 	Is_Target_32bit() &&
-	rclass != ISA_REGISTER_CLASS_float) {	// Bug 9109
+	rclass != ISA_REGISTER_CLASS_float) {
       bit_size = 32;
     }
 #endif

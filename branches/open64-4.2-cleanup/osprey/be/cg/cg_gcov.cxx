@@ -144,7 +144,7 @@ static ST * get_symbol(const char* sym_name)
   }
   return NULL;
 }
-// Bug 3806
+
 void Gcov_BB_Prepend_Ops(BB *bb, OPS *ops)
 {
 #ifdef TARG_X8664
@@ -1277,7 +1277,6 @@ CG_Instrument_Arcs()
     if (BB_exit(bb))
       exit_bb = bb;
   }
-  // Bug 456
   if (!exit_bb){
     exit_bb = REGION_First_BB;
     while (BB_next(exit_bb)) exit_bb = BB_next(exit_bb);

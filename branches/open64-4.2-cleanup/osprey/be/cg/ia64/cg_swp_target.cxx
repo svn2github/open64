@@ -459,7 +459,6 @@ void Hoist_MOVL(CG_LOOP& cl, bool trace)
     TN *new_tn = Dup_TN(tn);
     OPS ops = OPS_EMPTY;
     Exp_COPY(tn, new_tn, &ops);
-    // bug fix for OSP_190
     // should set the predicate control operand for the 
     // new added op with predicate oprand tn of previous op
     if (OP_has_predicate(op)) {

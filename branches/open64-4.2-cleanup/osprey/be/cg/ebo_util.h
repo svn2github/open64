@@ -127,7 +127,6 @@ EBO_tn_available(BB *bb,
   // Don't extend the live-range of homeable GTNs.  If the live-range is
   // extended and GRA spills in the extended region, the spill could overwrite
   // a store in the extended region that stores to the home location.
-  // Bug 14294.
   if (Opt_Level >= 2 &&		// Global TN's aren't supported at low levels
       TN_is_global_reg(tn) &&	// of optimization.
       TN_is_gra_homeable(tn) &&
@@ -191,14 +190,14 @@ EBO_hash_op (OP *op,
     // The above test doesn't catch all cases of EBO_SPILL_MEM_HASH:
     // 1)  TN_has_spill may be false even for spill OP.  This occurs for a
     //     spill store when EBO has substituted the storeval with another TN
-    //     whose TN_has_spill is false.  Bug 12965.
+    //     whose TN_has_spill is false.
     // 2)  It is possible TN_var(ctn) != TN_spill(spill_tn).  For example:
     //       TN100($11) = ld .. (sym:gra_spill_temp_200)
     //       sd TN100($11) .. (sym:gra_spill_temp_201)
     //     For the "sd":
     //	     spill_tn is TN100($11); TN_spill(spill_tn) is gra_spill_temp_200
     //	     ctn is (sym:gra_spill_temp_201); TN_var(ctn) is gra_spill_temp_201
-    //	   TN_spill is different from TN_var.  Bug 13223.
+    //        TN_spill is different from TN_var. 
     if (hash_value != EBO_SPILL_MEM_HASH) {
       const INT n = TOP_Find_Operand_Use(OP_code(op), OU_offset);
       if (n >= 0) {

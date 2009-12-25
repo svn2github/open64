@@ -205,7 +205,7 @@ extern BOOL Is_Dwarf_Section_To_Emit(const char *name)
 	    return FALSE;
 	  }
 	}
-        // Bug 1516 - do not emit .debug_* sections if not -g
+        // do not emit .debug_* sections if not -g
 	if (Debug_Level < 1 &&
 #if defined(BUILD_OS_DARWIN)
 	is_debug_section(name)

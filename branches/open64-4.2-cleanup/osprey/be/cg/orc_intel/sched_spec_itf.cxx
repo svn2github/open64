@@ -105,7 +105,7 @@ SCHED_SPEC_HANDSHAKE :: Change_Load_Spec_Form
         return FALSE; /* obviously */ 
     }
 
-    // fix bug no. OSP_76 for implicit use of Actuals 
+    // fix bug for implicit use of Actuals
     for (OP* prev_op = OP_prev(op); prev_op; prev_op = OP_prev(prev_op)){
         if (!OP_Scheduled(prev_op) && OP_ANNOT_OP_Def_Actual_Para (prev_op))
             return FALSE;

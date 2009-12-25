@@ -293,7 +293,7 @@ SCHEDULER::Collect_And_Analyse_Unresolved_Dep
         move_around_paths.Resize 
             (_cflow_mgr.Get_Exec_Path_Mgr()->Path_In_Total ());
     }
-    // fix bug no. OSP_76 for implicit use of Actuals 
+    // fix bug for implicit use of Actuals
     BOOL cannotspec = FALSE;
     for (OP* prev_op = OP_prev(cand_op); prev_op; prev_op = OP_prev(prev_op)){
         if (!OP_Scheduled(prev_op) && OP_ANNOT_OP_Def_Actual_Para (prev_op)){
@@ -1217,7 +1217,7 @@ SCHEDULER::Insert_Check (OP * ld, BB * home_bb, OP* pos) {
     OP_ANNOT_Set_Cannot_Spec (chk_op);
 
     if (BB_call(OP_bb(chk_op))) {
-      // fix bug no. OSP_76 for implicit use of Actuals 
+      // fix bug for implicit use of Actuals
 	for (CAND_LIST_ITER cand_iter(_cand_mgr.M_Ready_Cand_List ()); 
 			        !cand_iter.done ();) {
             CANDIDATE* cand = cand_iter.cur ();
@@ -2047,7 +2047,7 @@ SCHEDULER::Verify (void) {
     }
 
 }
-// fix bug no. OSP_76 for implicit use of Actuals 
+// fix bug for implicit use of Actuals
 // rewrite this function using PLOC structure to get actual argument information
 void
 SCHEDULER::Identify_Actual_Argument_Defs (BB* bb) {

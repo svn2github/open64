@@ -1660,7 +1660,7 @@ Priority_Selector::Is_OP_Better (OP *cur_op, OP *best_op)
 #if defined(TARG_MIPS) && !(TARG_SL)
   // Schedule definitions of fcc as close as possible to their uses, in order
   // to shorten the fcc's live range to prevent spilling.  Spilling fcc is not
-  // possible because there is no load/store instruction for fcc.  Bug 13241.
+  // possible because there is no load/store instruction for fcc. 
   if (cur_scycle >= best_scycle &&
       OP_results(cur_op) == 1 &&
       TN_register_class(OP_result(cur_op, 0)) == ISA_REGISTER_CLASS_fcc)
@@ -2186,7 +2186,7 @@ Priority_Selector::Get_Next_Element(HB_Schedule *Cur_Sched)
     // have preallocated TNs as close as possible to the copies that move the
     // preallocated TNs to/from regular TNs.  This is needed to shorten the
     // live range of the registers corresponding to the preallocated TNs;
-    // otherwise LRA can run out of registers and die.  Bug 6081.
+    // otherwise LRA can run out of registers and die.  
     if (Cur_Sched->HBS_Minimize_Regs()) {
       INT status = Sched_OP_With_Preallocated_TN(cur_op);
       if (status == 1) {		// Must pick cur_op.
@@ -2824,7 +2824,7 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
 
     //    Is_True(cur_time < cycle_fn->Bound(),("Invalid cycle boundary, HB_SCHED"));
 
-    // bug fixed for 15264. After this loop, the process of Inserting the scheduled list
+    // After this loop, the process of Inserting the scheduled list
     // assume that "Clock" be the smallest scycle of all the scheduled op in this bb. But Clock
     // may not be when if the first few ops are independency. So use min_clock to record the 
     // smallest scycle. 
@@ -3053,7 +3053,7 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
 #if defined(TARG_LOONGSON) || defined(TARG_MIPS) && !defined(TARG_SL)
 	  // Backward scheduling performs delay slot filling.  Don't add
 	  // control flow dependencies because they eliminate all delay slot
-	  // candidates.  Bug 11943.
+	  // candidates.  
 	  scheduling_algorithm == 0 ? NO_CONTROL_ARCS : INCLUDE_CONTROL_ARCS,
 #else
 	  INCLUDE_CONTROL_ARCS,

@@ -785,7 +785,6 @@ extern BOOL OP_use_return_value(OP*);
 #endif
 
 #ifdef TARG_IA64
-// bug fix for OSP_87 and OSP_88
 #define OP_asm(o)              (OP_code(o)==TOP_asm)
 
 inline BOOL OP_float_chk(OP *op)

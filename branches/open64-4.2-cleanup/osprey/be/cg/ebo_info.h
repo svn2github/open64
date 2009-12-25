@@ -454,7 +454,6 @@ tn_info_def (BB *current_bb, OP *current_op, TN *local_tn,
     // tninfo->redefined_before_block_end to TRUE.  Since result 1 is never
     // used, EBO would think both results are not used, and the OP can be
     // deleted.  To avoid this, don't set redefined_before_block_end.
-    // Bug 12744.
     if (tninfo_prev->in_op != current_op)
 #endif
     tninfo_prev->redefined_before_block_end = TRUE;
@@ -490,7 +489,7 @@ tn_info_use (BB *current_bb, OP *current_op, TN *local_tn,
 	 if (tninfo->predicate_tninfo == NULL ||
 	     (TN_is_global_reg(tninfo->predicate_tninfo->local_tn) && 
 	      TN_is_global_reg(predicate_tn)) &&
-	     (use_tn_or_reg(tninfo->predicate_tninfo->local_tn) == use_tn_or_reg(predicate_tn))) //bug OSP_320
+	     (use_tn_or_reg(tninfo->predicate_tninfo->local_tn) == use_tn_or_reg(predicate_tn))) 
 	   /* The previous fix's assumption is that dominate TN is spilled by previous BB.
 	      So, the two TNs at least are global TNs, I'm not sure if the condition is enough.
 	      Maybe we should strengthen this conditon later.*/

@@ -391,7 +391,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	break;
 #ifdef TARG_X8664
   case OPR_TAS:
-        if (MTYPE_is_vector(rtype)) // bugs 11797 11876
+        if (MTYPE_is_vector(rtype))
           Expand_Int_To_Vect_Tas(result, op1, rtype, ops);
         else if (MTYPE_is_integral(rtype))
           Expand_Float_To_Int_Tas(result, op1, rtype, ops);
@@ -448,7 +448,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_RECIP:
   case OPR_RSQRT:
 #ifdef TARG_X8664
-  case OPR_ATOMIC_RSQRT:	// bug 6123
+  case OPR_ATOMIC_RSQRT:
 #endif
 	Expand_Flop (opcode, result, op1, op2, op3, ops);
 	break;
@@ -484,7 +484,6 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 #ifdef TARG_X8664
   /* For comparsions, the upper 32-bit of the result is ignored.
      Thus under -m32, the value of the higher 32-bit part is undefined.
-     (bug#2499)
   */
   if( OPCODE_is_compare( opcode ) &&
       OP_NEED_PAIR( rtype ) ){

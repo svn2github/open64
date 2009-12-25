@@ -737,7 +737,7 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 	    if ( OP_flag1( op_src ) ) {
 	      // Don't propagate copy if the copy source is a dedicated
 	      // register, since the omega code can't track dedicated registers
-	      // correctly.  See explanation in bug 4426.
+	      // correctly.  
 	      // Don't propagate copy if op has same_res properties.
 	      TN *copy_src_opnd = OP_opnd( op_src, OP_COPY_OPND );
 	      if (TN_is_dedicated(copy_src_opnd) 
@@ -781,7 +781,7 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 	  OP *op_src = cio_copy_table[index].op;
 	  if ( ! OP_flag1( op_src ) )
 	    break;
-	  // Avoid infinite recursion.  Bugs 21, 8929.
+	  // Avoid infinite recursion.  
 	  if (OP_opnd(op_src, OP_COPY_OPND) == tn)
 	    break;
 	  tn = OP_opnd( op_src, OP_COPY_OPND );
@@ -809,7 +809,7 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 	  if ( cio_copy_table[index].tn_result == tn ) {
 	    OP *op_src = cio_copy_table[index].op;
 	    if ( OP_flag1( op_src )
-		 /* Bug125:
+		 /* 
 		    No need to propagate opnd again, which had happened at the
 		    previous stage. The original algorithm does not expect to see
 		    a copy operation that has the same opnd and result.
@@ -837,7 +837,7 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 
     /* Don't update the prolog and epilog if source and result are
        the same TNs; otherwise the original omega value will be overwritten
-       by CG_LOOP_Backpatch_Replace_Body_TN().  (bug#2484)
+       by CG_LOOP_Backpatch_Replace_Body_TN(). 
 
        Or should we use CG_LOOP_Backpatch_Add instead to resolve the
        conflicts ???
@@ -943,7 +943,7 @@ CIO_RWTRAN::Mark_Op_For_Prolog( OP *op, const UINT8 omega )
   // Arcs between rflags setters and rflags users are labeled as MISC.  When
   // copying an insn to the prologue, only REGIN preds are copied along with
   // the insn; MISC preds are not copied.  As a workaround, don't copy rflags
-  // users into the prologue.  Bug 4991.
+  // users into the prologue.  
   if (OP_reads_rflags(op))
     return NULL;
 #endif
@@ -1625,7 +1625,7 @@ inline BOOL
 CIO_RWTRAN::Read_CICSE_Candidate_Op( OP *op )
 {
 #ifdef TARG_X8664
-  /* Bug096: a cmp operations is not suitable for read elimination or
+  /* a cmp operations is not suitable for read elimination or
      cross iteration cse. */
   if( OP_icmp(op ) )
     return FALSE;
@@ -1942,7 +1942,7 @@ CIO_RWTRAN::Replace_Tn( BB *body, TN *tn_old, TN *tn_new, UINT8 omega_change )
     }
   }
 
-  // Update any occurances in the prolog backpatch list.  Bug 11749.
+  // Update any occurances in the prolog backpatch list.  
   CG_LOOP_Backpatch_Replace_Body_TN( CG_LOOP_prolog,
 				     tn_old, tn_new, omega_change );
 
@@ -2069,7 +2069,6 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 	source = hTN_MAP32_Get( tn_last_op, opnd_op );
 #ifdef TARG_X8664
 	// If OP uses rflag, don't eliminate the source OP that sets rflag.
-	// Bug 4934.
 	if (opnd_op == rflags_tn) {
 	  CICSE_entry &source_entry = cicse_table[source];
 	  Reset_OP_flag1(source_entry.op);
@@ -2080,7 +2079,6 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
       }
 
       // Don't eliminate OP if its result is a global TN.  See example in
-      // bug 6255.
       for (INT res = OP_results(op) - 1; res >= 0; res--) {
 	TN *tn = OP_result(op, res);
 	if (TN_is_global_reg(tn)) {
@@ -2115,7 +2113,7 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
       entry.result_unique[res] = ( old_index == index );
     }
 #ifdef TARG_X8664
-    // rflag is an implicit result.  Bug 4934.
+    // rflag is an implicit result.  
     if (TOP_is_change_rflags(OP_code(op))) {
       hTN_MAP32_Set( tn_last_op, rflags_tn, index);
     }
@@ -2365,7 +2363,6 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 	  INT opnd;
 	  for ( opnd = OP_opnds( entry2.op ) - 1; opnd >= 0; --opnd )
 	    if ( entry1.opnd_source[opnd] != entry2.opnd_source[opnd] ||
-		 //Bug fix for OSP_239
 		 //TODO: This bug fix could be refined
 		 (entry1.opnd_source[opnd] > index1 && entry1.opnd_source[opnd] < index2) ||
 		 entry1.opnd_result[opnd] != entry2.opnd_result[opnd] )
@@ -2494,7 +2491,7 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
       // If source TN occurs later as a result, then new TN is required
       // NOT ALWAYS NECESSARY!  IMPROVE THIS!
       INT tn_index = hTN_MAP32_Get( tn_last_op, change.new_tns[0] );
-      /* fix bug#1989 where the store value is not put in the table. */
+      /* fix bug where the store value is not put in the table. */
       if( tn_index == 0 )
 	change.new_tns[0] = Build_TN_Like( change.new_tns[0] );      
       else
@@ -2546,7 +2543,7 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
     }
 
     /* To avoid a body tn in the prolog being re-defined, we need to create a
-       new tn, and a copy for it. (bug#358, bug#2912)
+       new tn, and a copy for it.
     */
     for( int start_omega = 1; start_omega <= change.omega; start_omega++ ){
       for( INT res = OP_results( change.op ) - 1; res >= 0; --res ){

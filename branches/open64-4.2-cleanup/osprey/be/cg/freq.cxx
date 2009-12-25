@@ -213,7 +213,7 @@ typedef struct edge {
 
 #define EF_PROB_FB_BASED        0x0001
 #define EF_FB_PROPAGATED	0x0002
-#define EF_PROB_HINT_BASED	0x0004    /* bug 6693 */
+#define EF_PROB_HINT_BASED	0x0004   
 
 /* Indicate if this edge probability is based on feedback.
  */
@@ -1277,7 +1277,6 @@ Is_Branch_With_Goto_Succ (BB *bb, BB **goto_succ, BB **non_goto_succ,
  *     ...
  *   L: 
  *
- * For bug 8546.
  * ====================================================================
  */
 static BOOL

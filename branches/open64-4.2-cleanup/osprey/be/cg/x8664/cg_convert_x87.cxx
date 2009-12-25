@@ -820,7 +820,6 @@ static void Initialize_Stack( BB* bb )
      fake load and store to balance the x87 stack.
      Some of the problems are caused by control flow optimizations,
      and some of them are caused by the front-end that x87 fails to handle.
-     (bug#2469)
    */
   {
     if( BB_preds( bb ) == NULL )
@@ -942,7 +941,7 @@ static void Handle_Asm( Stack* stack, OP* op )
     int st_idx = Get_Stack_Index( stack, TN_register(opnd) );
     FmtAssert( st_idx >= 0, ("NYI") );
 
-    /* bug#1646
+    /* 
        For x87 inline asm, if the opnd and result are the same register,
        then always put the opnd to the top of the x87 stack.
      */

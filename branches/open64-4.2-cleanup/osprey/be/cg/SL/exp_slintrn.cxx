@@ -159,7 +159,6 @@ void Initial_var2spe() {
       var2addr.erase((*tempit).first);
     }
   }
-  //bug fix 537
   for (int i = 0; i < 4; i++ )
     ACCreg[i] = 0;
   for (int i = 0; i < 8; i++ )
@@ -195,7 +194,7 @@ static INT Get_VarWN_idx (WN *stmt) {
   } else if (WN_class(stmt) == CLASS_VAR) {
     return (-WN_st_idx(stmt));
   } else if (WN_class(stmt) == CLASS_BLOCK) {
-    return WN_st_idx(stmt); // bug fix 634
+    return WN_st_idx(stmt); 
   } else {
     Is_True(0, ("NYI"));
   }
@@ -318,7 +317,7 @@ void Copy_Preg_MapInfo(WN *stid) {
       return;
     }
     INT32 srcpreg = Get_VarWN_idx(ldid);
-    // fix bug 232: st of stid is mapped to acc
+    // st of stid is mapped to acc
     INT32 tgtpreg; 
     if (Has_VarWN_idx(stid)) {
       tgtpreg = Get_VarWN_idx(stid);

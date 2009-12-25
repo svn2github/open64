@@ -250,7 +250,7 @@ CG_PU_Initialize (WN *wn_pu)
 #ifdef TARG_X8664
   if (! cg_load_execute_overridden) {
     if ((Is_Target_EM64T() || Is_Target_Core() || Is_Target_Wolfdale()) &&
-         PU_src_lang(Get_Current_PU()) != PU_C_LANG) {   // bug 10233
+         PU_src_lang(Get_Current_PU()) != PU_C_LANG) {
       CG_load_execute = 0;
     } else if (! Is_Target_32bit() &&
 	(PU_src_lang(Get_Current_PU()) == PU_F77_LANG ||
@@ -290,9 +290,9 @@ CG_PU_Initialize (WN *wn_pu)
   }
 
   if (PU_cxx_lang(Get_Current_PU()) && Is_Target_64bit()) {// C++ & m64
-    if (!GRA_prioritize_by_density_set)		// bug 14357
+    if (!GRA_prioritize_by_density_set)
       GRA_prioritize_by_density = TRUE;
-    if (!GRA_optimize_boundary_set)		// bug 14357
+    if (!GRA_optimize_boundary_set)
       GRA_optimize_boundary = TRUE;
   }
 #endif
@@ -737,7 +737,7 @@ CG_Generate_Code(
   	CG_emit_unwind_info = Force_Frame_Pointer;
 
   // Don't eliminate prologue OPs in main because they guide cgemit.cxx on
-  // where to insert OPs to set up the control registers.  Bug 8141.
+  // where to insert OPs to set up the control registers.
   {
     static BOOL min_stack_size = CG_min_stack_size;
     CG_min_stack_size = min_stack_size;
@@ -773,7 +773,7 @@ CG_Generate_Code(
     FmtAssert(Assembly && !Object_Code,
 	      ("Cannot produce non-assembly output with file-scope asm"));
     fprintf(Asm_File, "\n%s\n", ST_name(WN_st(rwn)));
-    // Bug 14460: If the program has file-scope asm, it may have directly
+    // If the program has file-scope asm, it may have directly
     // used the .section attribute to allocate objects. As a result the 
     // compiler does not know the correct origin of objects to be allocated
     // after it. In this scenario, don't emit .org. Also emit a
@@ -993,10 +993,8 @@ CG_Generate_Code(
 #endif    
     ) {
       // ebo's optimization may break the live info, we need to
-      // update the info before first pass cflow use these wrong info. see bug 313
+      // update the info before first pass cflow use these wrong info.
       GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
-      // bug fix for OSP_326
-      //
       GRA_LIVE_Rename_TNs();
     }
     Stop_Timer ( T_EBO_CU );
@@ -1160,7 +1158,7 @@ CG_Generate_Code(
 #endif
 
     if (CG_enable_loop_optimizations) {
-      /* bug#1443
+      /* 
 	 Earlier phase, like cflow, does not maintain GTN info if -CG:localize is on,
 	 we have to call GRA_LIVE_Init again to rebuild the consistency.
        */
@@ -1202,7 +1200,7 @@ CG_Generate_Code(
       if (frequency_verify)
 	FREQ_Verify("CGLOOP");
 
-      /* bug#1442
+      /* 
 	 Loop optimization will introduce new GTNs. If -CG:localize is on,
 	 we should localize all the new created GTNs.
        */
@@ -1324,7 +1322,6 @@ CG_Generate_Code(
 
   
   if (CG_opt_level > 1 && IPFEC_Enable_PRDB) PRDB_Init(region_tree);
-  // bug fix for OSP_104, OSP_105, OSP_192
   /* actually GIS and recovery phase are two parts of one phase,
    * we shouldn't add a cflow between them, because they should 
    * see the same cfg, 3rd cflow should after recovery phase.
@@ -1419,7 +1416,7 @@ CG_Generate_Code(
   // compute register requests (called from scheduling).
   //
   // (Also, earlier phase, like cflow, does not maintain GTN info if
-  // -CG:localize is on.  Rebuild the consistency for GCM.  Bug 7219.)
+  // -CG:localize is on.  Rebuild the consistency for GCM.)
 
 #ifdef TARG_SL //fork_joint
   //only opt level greater than 1, we recaluculate liveness informatino
@@ -1485,7 +1482,7 @@ CG_Generate_Code(
 #else
       if (GRA_redo_liveness
                 // Inaccurate liveness info will break GRA's boundary BB code.
-                // But don't always redo liveness, bug 4781.
+                // But don't always redo liveness.
         || GRA_optimize_boundary
 	  )
 	{
@@ -1529,7 +1526,7 @@ CG_Generate_Code(
 
 #if defined(KEY) && !defined(TARG_SL)
   /* Optimize control flow (third pass).  Callapse empty GOTO BBs which GRA
-     didn't find useful in placing spill code.  Bug 9063. */
+     didn't find useful in placing spill code.*/
   if (CFLOW_opt_after_cgprep &&
       !CG_localize_tns) {
     CFLOW_Optimize(CFLOW_BRANCH|CFLOW_UNREACHABLE, "CFLOW (third pass)");

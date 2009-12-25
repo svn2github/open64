@@ -321,14 +321,12 @@ void
 CGEMIT_Weak_Alias (ST *sym, ST *strongsym) 
 {
         fprintf ( Asm_File, "\t%s\t%s#\n", AS_WEAK, ST_name(sym));
-        // bug fix for OSP_145
 	CGEMIT_Alias(sym, strongsym);
 }
 
 void
 CGEMIT_Alias (ST *sym, ST *strongsym) 
 {
-        // bug fix for OSP_145
 	fprintf ( Asm_File, "\t.set %s#, ", ST_name(sym));
 	if ( ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
 		// file scope local symbol

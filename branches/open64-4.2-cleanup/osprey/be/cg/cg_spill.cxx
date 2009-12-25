@@ -557,7 +557,7 @@ CGSPILL_Get_TN_Spill_Location (TN *tn, CGSPILL_CLIENT client)
       TY_IDX mem_type = TN_is_float(tn) || TN_is_fcc_register(tn) ? 
 		        Spill_Float_Type : Spill_Int_Type;
 #ifdef TARG_X8664
-      /* bug#1741
+      /* 
 	 For -m32, the size of long double is 96-bit long.
        */
       if( TN_size(tn) == 16 || TN_size(tn) == 12 ){
@@ -868,7 +868,7 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
 	break;
       case OPC_U4INTCONST:
 #ifdef TARG_X8664
-	/* Opteron will zero-out the higher 32-bit. (bug#3387) */
+	/* Opteron will zero-out the higher 32-bit. */
 	const_tn = Gen_Literal_TN ((UINT32) WN_const_val(home), 4);
 #else
 	/* even for U4 we sign-extend the value

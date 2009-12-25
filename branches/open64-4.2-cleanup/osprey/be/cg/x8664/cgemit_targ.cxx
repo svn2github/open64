@@ -184,7 +184,7 @@ void
 CGEMIT_Prn_Scn_In_Asm (ST *st, ST *cur_section)
 {
   UINT32 tmp, power;
-  // Bug 511
+
   // Do not emit section attributes for the __libc_ sections. Assumes that
   // user inline assembly will do the job. We will avoid duplicate entries.
   {
@@ -291,12 +291,12 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
 #if ! defined(BUILD_OS_DARWIN)
     /* Mach-O linker rejects non-local labels in debug sections, but we are
      * already generating a local label for each section elsewhere. */
-    if (strcmp(scn_name, DEBUG_FRAME_SECTNAME) == 0) // bug 2463
+    if (strcmp(scn_name, DEBUG_FRAME_SECTNAME) == 0) 
       fprintf(asm_file, "\n.LCIE:");
 #endif /* defined(BUILD_OS_DARWIN) */
 
     // Generate a label at the start of the .eh_frame CIE
-    if (!strcmp (scn_name, EH_FRAME_SECTNAME)) // bug 2729
+    if (!strcmp (scn_name, EH_FRAME_SECTNAME)) 
       fprintf (asm_file, "\n.LEHCIE:");
 #endif
   }
@@ -619,12 +619,11 @@ void CGEMIT_Write_Literal_Symbol (ST *lit_st, ST *sym,
 
 void CGEMIT_Alias (ST *sym, ST *strongsym) 
 {
-  // bug 14491: alias statement should write out the qualified name
+  // alias statement should write out the qualified name
   fprintf ( Asm_File, "\t%s = %s", ST_name(sym), ST_name(strongsym));
   if (ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
-    // modelled after EMT_Write_Qualified_Name (bug 6899)
+    // modelled after EMT_Write_Qualified_Name 
     if (ST_level(strongsym) == GLOBAL_SYMTAB) {
-      // bug 14517, OSP 490
       if (Emit_Global_Data || ST_sclass(strongsym) == SCLASS_PSTATIC)
         fprintf ( Asm_File, "%s%d", Label_Name_Separator, ST_index(strongsym));
     }
@@ -3341,7 +3340,7 @@ static void Init_OP_Name()
   OP_Name[TOP_cvttps2dq_xxx] = "cvttps2dq";
   OP_Name[TOP_cvttpd2dq_xxx] = "cvttpd2dq";
 //**********************************************************
-// For barcelona (bug 13108)
+// For barcelona 
 // (1) "movlpd reg, mem"  ==> "movsd reg, mem"
 // (2) "movsd reg, reg"   ==> "movapd reg, reg"
 // NOTE: there are regardless of CG_use_movlpd TRUE or FALSE
@@ -3352,8 +3351,8 @@ static void Init_OP_Name()
       !Is_Target_Core() &&
       !Is_Target_Wolfdale() &&
       !Is_Target_Orochi() &&
-      !Is_Target_Barcelona()){// bug 10295
-    // Use movlpd only for loads.  Bug 5809.
+      !Is_Target_Barcelona()){
+    // Use movlpd only for loads.
     OP_Name[TOP_ldsd] = "movlpd";
     OP_Name[TOP_ldsd_n32] = "movlpd";
     OP_Name[TOP_stsdx]  = "movsd";
@@ -3380,7 +3379,7 @@ static void Init_OP_Name()
     if (Is_Target_Barcelona() ||
 	Is_Target_EM64T()     || // em64t
         Is_Target_Wolfdale()  ||
-	Is_Target_Core()) {	 // use movapd for woodcrest for bug 11548
+	Is_Target_Core()) {	 // use movapd for woodcrest 
       OP_Name[TOP_movsd] = "movaps"; 
     } else if (Is_Target_Orochi()) {
       OP_Name[TOP_movsd] = "movaps";  
@@ -3487,9 +3486,6 @@ static void Init_OP_Name()
   return;
 }
 
-
-/* bug#1592 */
-// bug 3699
 #define NAME_LEN 8192
 
 enum OPND_REG { BYTE_REG = 0, WORD_REG, DWORD_REG, QWORD_REG, SSE2_REG, AVX_REG };
@@ -3610,7 +3606,7 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
   if( TOP_is_ijump( topcode ) &&
       ( opnd == OP_find_opnd_use(op,OU_target) ||
 	opnd == OP_find_opnd_use(op,OU_offset) ) ){
-    if ( Is_Target_32bit() ) { // Bug 4666
+    if ( Is_Target_32bit() ) { 
       const ISA_REGISTER_CLASS rc = ISA_REGISTER_CLASS_integer;
       const enum OPND_REG opnd_reg = Get_Opnd_Reg( op, opnd, rc );
       
@@ -3635,7 +3631,6 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
   // Handle case where opnd is an imm. field.
 
   if( ISA_OPERAND_VALTYP_Is_Literal(vtype) ){
-    // Bug 578
 #if defined(BUILD_OS_DARWIN)
     // Mach-O linker evidently handles this automatically
 #else /* defined(BUILD_OS_DARWIN) */
@@ -3661,7 +3656,6 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
       Str_Prepend(name, '$');
     }
 
-    // Bug 506
     {
       char *nl = strstr(name, "\n");
       if (nl) {
@@ -3816,7 +3810,7 @@ INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f
 
 void CGEMIT_Setup_Ctrl_Register( FILE* f )
 {
-  // Set x87 precision (32/64/80-bit).  Bug 4327.
+  // Set x87 precision (32/64/80-bit).
   int x87_mask;
   switch (Target_x87_precision()) {
     case 32:  x87_mask = 0; break;	// single precision
@@ -3874,7 +3868,7 @@ void CGEMIT_Setup_Ctrl_Register( FILE* f )
     fprintf( f, "\t%s\n", "stmxcsr (%rsp)"        );
     if (IEEE_Arithmetic > IEEE_ACCURATE)
       fprintf( f, "\torq $%d, (%%rsp)\n", mask);
-    else if (is_MAIN__)				// bug 8926
+    else if (is_MAIN__)				
       fprintf( f, "\tandq $%d, (%%rsp)\n", ~mask);
     if ( !SIMD_IMask || DEBUG_Trap_Uv)		// trap invalid operands
       fprintf( f, "\tandq $%d, (%%rsp)\n", simd_imask );
@@ -3896,7 +3890,7 @@ void CGEMIT_Setup_Ctrl_Register( FILE* f )
     fprintf( f, "\t%s\n", "stmxcsr (%esp)"        );
     if (IEEE_Arithmetic > IEEE_ACCURATE)
       fprintf( f, "\torl $%d, (%%esp)\n", mask);
-    else if (is_MAIN__)				// bug 8926
+    else if (is_MAIN__)				
       fprintf( f, "\tandl $%d, (%%esp)\n", ~mask);
     if ( !SIMD_IMask || DEBUG_Trap_Uv)		// trap invalid operands
       fprintf( f, "\tandl $%d, (%%esp)\n", simd_imask );
@@ -3917,7 +3911,7 @@ void CGEMIT_Setup_Ctrl_Register( FILE* f )
   return;
 }
 
-// Emits function used to retrieve the Instruction Pointer (bug 9675)
+// Emits function used to retrieve the Instruction Pointer 
 void CGEMIT_Setup_IP_Calc (void)
 {
   fprintf (Asm_File, "\n\t.section .gnu.linkonce.t.%s,\"ax\",@progbits\n", ip_calc_funcname);

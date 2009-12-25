@@ -990,8 +990,6 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
   INT bbid;
   UINT lwhen = 0;
   ue_iter = ue_list.begin();
-  // bug fix for OSP_226
-  //
   bool label_state = FALSE;
   bool copy_state = FALSE;
   for (BB *bb = REGION_First_BB; bb; bb = BB_next(bb)) {
@@ -1031,7 +1029,7 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 			// comes after create_frame.
 			while (ue_iter != ue_list.end() && ue_iter->bb == bb) {
 				if (ue_iter->kind == UE_CREATE_FRAME) {
-					// bug fix for OSP_226
+
 					//
 					label_state = TRUE;
 					++ue_iter;
@@ -1043,8 +1041,6 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 			}
 		}
 		else {  
-			// bug fix for OSP_226
-			//
 			label_state = TRUE;
 			Add_UE (UE_LABEL, ++last_label, lwhen, bb);
 		}

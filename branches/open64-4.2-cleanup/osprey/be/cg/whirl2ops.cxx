@@ -962,7 +962,7 @@ Allocate_Result_TN (WN *wn, TN **opnd_tn)
 #ifdef TARG_X8664 
   if (Is_Target_64bit() && WN_operator(wn) == OPR_INTRINSIC_OP &&
       ((INTRINSIC) WN_intrinsic(wn)) == INTRN_CTZ)
-    // bug 11315: use PARM's rtype because bsfq's result needs to be 64-bit reg
+    // use PARM's rtype because bsfq's result needs to be 64-bit reg
     return Build_TN_Of_Mtype (WN_rtype(WN_kid0(wn)));
   else
 #endif
@@ -1254,7 +1254,7 @@ PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num)
       /* create a TN for this PREG. */
       TYPE_ID mtype = TY_mtype(preg_ty);
 #ifdef TARG_X8664
-      /* bug#512
+      /* 
 	 MTYPE_C4 is returned in one SSE register. (check wn_lower.cxx)
       */
       if( mtype == MTYPE_C4 ){
@@ -1738,7 +1738,7 @@ static VARIANT Memop_Variant(WN *memop)
        */
       offset = WN_load_offset(memop);
       ty_align = ST_alignment(WN_st(memop));
-#if defined(TARG_X8664) || defined(TARG_SL) // bug 8198: in absence of pointed-to type's alignment, need this
+#if defined(TARG_X8664) || defined(TARG_SL) // in absence of pointed-to type's alignment, need this
       if (offset) {
 	INT offset_align = offset % required_alignment;
 	if (offset_align) ty_align = MIN(ty_align, offset_align);
@@ -2505,7 +2505,7 @@ Handle_STID (WN *stid, OPCODE opcode)
       // register, first write to a temp TN with the correct size and then copy
       // the TN to the return register.  This is work in conjunction with
       // Generate_Unique_Exit to generate the move of the correct size when
-      // copying into the return register in the exit BB.  Bug 14259.
+      // copying into the return register in the exit BB.  
       TN *old_result = NULL;
       TYPE_ID dtype = WN_rtype(kid);
       if (MTYPE_is_float(dtype) &&
@@ -2588,7 +2588,7 @@ Handle_STID (WN *stid, OPCODE opcode)
       
 #else   // TARG_SL && EMULATE_LONGLONG 
 
-#ifdef TARG_X8664 // bug 11088
+#ifdef TARG_X8664 
         if(OPCODE_is_compare(WN_opcode(kid)) && 
                   MTYPE_is_vector(WN_desc(kid))){
         
@@ -2998,7 +2998,7 @@ Handle_SELECT(WN *select, TN *result, OPCODE opcode)
     	cond = Expand_Expr (compare, select, NULL);
 	Exp_OP3 (opcode, result, cond, trueop, falseop, &New_OPs);
   } 
-#ifdef TARG_X8664 //bug 11088
+#ifdef TARG_X8664 
   else if (WN_operator_is(compare, OPR_LDID) && 
                           WN_class(compare) == CLASS_PREG){
         Is_True(variant == V_BR_NONE && MTYPE_is_vector(WN_desc(compare)),
@@ -3197,7 +3197,7 @@ Is_CVT_Noop(WN *cvt, WN *parent)
 
 #ifdef TARG_X8664
   {
-    // Bug 3082: Ignore cvt between mmx integer types. This may not be
+    // Ignore cvt between mmx integer types. This may not be
     // correct, we may need to explicitly handle some of these CVTs.
     TYPE_ID desc = WN_desc (cvt);
     TYPE_ID rtype = WN_rtype (cvt);
@@ -3257,7 +3257,7 @@ Is_CVT_Noop(WN *cvt, WN *parent)
       */
       if (U4ExprHasUpperBitZero(WN_kid0(cvt))
 #ifdef TARG_X8664
-          && !Is_Target_32bit() // bug 6134
+          && !Is_Target_32bit()
 #endif // TARG_X8664
          )
       {
@@ -3270,13 +3270,13 @@ Is_CVT_Noop(WN *cvt, WN *parent)
 #ifdef TARG_X8664
      /*
       *  Skip the truncation if the truncation result is used by a 32-bit OP,
-      *  since the 32-bit OP would ignore the upper 32-bit anyway.  Bug 12108.
+      *  since the 32-bit OP would ignore the upper 32-bit anyway.  
       */
      if (Is_Target_64bit() &&
 	 parent != NULL &&
 	 MTYPE_byte_size(WN_rtype(parent)) == 4 &&
          // Multiplies and divides can get expanded into large code sequences
-         // which may assume the upper bits are all zeros.  Bug 14339.
+         // which may assume the upper bits are all zeros. 
          WN_operator(parent) != OPR_MPY &&
          WN_operator(parent) != OPR_DIV &&
          WN_operator(parent) != OPR_REM &&
@@ -3427,7 +3427,7 @@ Handle_ALLOCA (WN *tree, TN *result)
 
 #ifdef TARG_X8664
 	/* Make the stack pointer be 16-byte aligned after alloca even under -m32.
-	   ( Is it a requirement ??? bug#2599)
+	   ( Is it a requirement ??? )
 	 */
 	if( Is_Target_32bit() ){
 	  Exp_BAND( Pointer_Mtype,
@@ -4528,7 +4528,6 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
   // instead of LAND/LIOR and boolean data is interpreted as 0/1(false/true).
 
   if (Is_Old_Boolean_Expression(expr)) {
-    // bug fix for OSP_148
     // Not all cases need the context for expanding this expr
     // which means the parent may be NULL in some cases
     if (parent && WN_operator(parent)==OPR_SELECT) {
@@ -4764,7 +4763,7 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
 #ifdef TARG_NVISA
       if (WN_desc(expr) == MTYPE_B && WN_operator_is(WN_kid0(expr), OPR_LNOT)) {
 	// TODO:  undo this and pass through to Logical_Not and Bool_To_Int 
-	// when bug 283684 is fixed and we use predicated set;
+	// when bug is fixed and we use predicated set;
 	// but for now is more efficient if we pass child of not and
 	// then tell convert to negate it.
 	DevWarn("special-case handling of CVT of LNOT");
@@ -5597,7 +5596,7 @@ static void Build_CFG(void)
  * set the false_br flag if invert, because NaN comparisons
  * cannot be inverted.  But integer compares can be inverted.
  */
- // KEY: (bug 11573) Added opcodes with U4 rtype, so that an appropriate
+ // Added opcodes with U4 rtype, so that an appropriate
  // variant is returned.
 static VARIANT
 WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
@@ -5903,11 +5902,11 @@ Handle_CONDBR (WN *branch)
       operand1 = Zero_TN;
       variant = (invert) ? V_BR_I8EQ : V_BR_I8NE;
 #else
-    if (TN_size(operand0) == 8 // 64-bit operands under m64, bug 9701
+    if (TN_size(operand0) == 8 // 64-bit operands under m64
 #ifdef TARG_NVISA
         || MTYPE_is_size_double(WN_rtype(condition)))
 #else
-	// 64-bit operands under m32, bug 9700.
+	// 64-bit operands under m32
 	|| OP_NEED_PAIR(OPCODE_rtype(WN_opcode(condition)))) 
 #endif
     {
@@ -6201,7 +6200,7 @@ Handle_ASM (const WN* asm_wn)
       Is_True(WN_operator(idname) == OPR_IDNAME,
               ("Wrong kid operator for ASM clobber PREG"));
 #if !defined(TARG_NVISA)
-      // bug 4583: keep track of asm clobbered callee-saved registers, we
+      // keep track of asm clobbered callee-saved registers, we
       // will generate save/restore of these later.
       {
 	PREG_NUM preg = WN_offset (idname);
@@ -6375,14 +6374,14 @@ Handle_ASM (const WN* asm_wn)
     /* To save some registers, we need some special handling for
        the "m" constraint.
     */
-    /* Bug 5575 - do this only when -fPIC is not used. 
-       CGTARG_Process_Asm_m_constraint (added to address bug 3111) is not 
+    /* do this only when -fPIC is not used. 
+       CGTARG_Process_Asm_m_constraint (added to address) is not 
        designed to work when -fPIC is used. 
     */
     if (ASM_OP_opnd_memory(asm_info)[num_opnds] &&
 	(!Gen_PIC_Shared ||
 	 // Local symbols can be calculated using one instruction without a
-	 // separate add, just like non-PIC code.  Bug 12605.
+	 // separate add, just like non-PIC code.  
 	 (WN_operator(load) == OPR_LDA &&
 	  ST_is_export_local(WN_st(load))))) {
       TN* new_opnd_tn =
@@ -6406,7 +6405,7 @@ Handle_ASM (const WN* asm_wn)
   OPS_Append_Op(&New_OPs, asm_op);
   OP_MAP_Set(OP_Asm_Map, asm_op, asm_info);
 
-  // Create ASM BB annotation.  Bug 14636.
+  // Create ASM BB annotation.  
   {
     int i;
     ISA_REGISTER_CLASS rc;
@@ -6942,7 +6941,7 @@ Handle_INTRINSIC_CALL (WN *intrncall)
     Expand_Statement (next_stmt);
     next_stmt = WN_next(next_stmt);
     FOR_ALL_OPS_OPs_REV (&New_OPs, op) {
-      if (op == last_op_from_intrn_call)	// bug 14415
+      if (op == last_op_from_intrn_call)	
   	break;
 
 #if defined(TARG_SL)
@@ -7054,7 +7053,7 @@ convert_stmt_list_to_OPs(WN *stmt)
 	  EH_Set_End_Label(RID_eh_range_ptr(rid));
 	  /* When a region is ended, always force to create a new bb, so
 	     that the next region will not share any common bb with the
-	     current region. (bug#3140)
+	     current region. 
 	   */
 	  {
 	    BB* old_bb = Cur_BB;
@@ -7196,7 +7195,7 @@ Convert_WHIRL_To_OPs (WN *tree)
   }
 
 #ifndef TARG_IA64
-  // Bug 1509 - reset preamble seen at the beginning of a PU.
+  // reset preamble seen at the beginning of a PU.
   WN_pragma_preamble_end_seen = FALSE;
 #endif
   if ( stmt )

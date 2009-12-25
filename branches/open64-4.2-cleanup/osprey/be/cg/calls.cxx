@@ -598,7 +598,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
         	if ( stn = PREG_To_TN_Array[ Caller_FP_Preg ] )
   			Caller_FP_TN = stn;
         	else {
-			// Bug 13316: FP can hold 64 bit (non pointer) value
+			// FP can hold 64 bit (non pointer) value
   			Caller_FP_TN = Gen_Register_TN ( 
 			  ISA_REGISTER_CLASS_integer, TY_size(Spill_Int_Type));
   			Set_TN_save_creg (Caller_FP_TN, TN_class_reg(FP_TN));
@@ -629,7 +629,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
 #endif
 
 #if defined(KEY) && !defined(TARG_NVISA)
-    // bug 4583: save callee-saved registers that may get clobbered 
+    // save callee-saved registers that may get clobbered 
     // by inline asm
     for (INT i = 0; i < Saved_Callee_Saved_Regs.Elements(); i++) {
       SAVE_REG_LOC sr = Saved_Callee_Saved_Regs.Top_nth(i);
@@ -692,7 +692,6 @@ Generate_Entry (BB *bb, BOOL gra_run )
       // accessible as 4(%ebp), but it is never in a register.  Nor
       // does it need to be saved.
       ST *ra_sv_sym = Find_Special_Return_Address_Symbol();
-      // bug fix for OSP_357
       // When gra is enabled, we build this instruction:
       //       branch_reg1 (save register) copy.br branch_reg
       // just like the floating point/integer registers
@@ -1001,7 +1000,7 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
   pred = BB_Unique_Predecessor(exit_bb);
   if (!pred || !BB_call(pred)) return NULL;
 
-  /* Bug 13846: The tail-call transformation discards the exit block's
+  /* The tail-call transformation discards the exit block's
    * labels.  Make sure a label is not marked addr_saved.
    */
   if (BB_Has_Addr_Taken_Label(exit_bb)) return NULL;
@@ -1080,7 +1079,7 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
     }
   }
 
-  /* Bug 12718: If the callee uses __builtin_return_address, we need
+  /* If the callee uses __builtin_return_address, we need
    * to preserve the call. */
   if (call_st && PU_has_return_address(Pu_Table[ST_pu(call_st)]))
     return NULL;
@@ -1119,7 +1118,7 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
 
 #ifdef TARG_X8664
   /* Don't perform tail call optimization if the caller does not write the result to
-     the x87 stack, but the callee does. (bug#2841)
+     the x87 stack, but the callee does.
    */
   if( Is_Target_32bit() ){
     bool caller_uses_stack = false;
@@ -1393,7 +1392,7 @@ Target_Unique_Exit (
 	if ( new_tn == NULL ) {
 	  new_tn = Dup_TN_Even_If_Dedicated(tn);
 	  if (TN_is_float(tn)) {
-	    /* For bug#478
+	    /*
 	       OP_result_size measures a TN size in bits; yet
 	       TN_size measures a TN size in bytes.
 	     */
@@ -1404,7 +1403,7 @@ Target_Unique_Exit (
 	    // copy the TN to the return register.  Get the size from this TN
 	    // since it has the correct size.  The correct size is needed to
 	    // select the correct move OP code when copying from the temp TN to
-	    // the return register in the exit BB.  Bug 14259.
+	    // the return register in the exit BB.
 	    if (OP_copy(op))
 	      tn_size = TN_size(OP_opnd(op, OP_COPY_OPND));
 	    Set_TN_size(new_tn, tn_size);
@@ -1585,7 +1584,7 @@ void Adjust_SP_After_Call( BB* bb )
 
   INT adjust_size = 0;
   /* The C++ front-end will add the first fake param, then convert the
-     function return type to void. (bug#2424)
+     function return type to void. 
    */
   if( RETURN_INFO_return_via_first_arg(return_info) ||
       TY_return_to_param( call_ty ) ){
@@ -1836,7 +1835,7 @@ Generate_Exit (
       if ( stn = PREG_To_TN_Array[ Caller_FP_Preg ] )
 	Caller_FP_TN = stn;
       else {
-	// Bug 13316: FP can hold 64 bit (non pointer) value
+	// FP can hold 64 bit (non pointer) value
 	Caller_FP_TN = Gen_Register_TN (
 	  ISA_REGISTER_CLASS_integer,  TY_size(Spill_Int_Type));
 	TN_MAP_Set( TN_To_PREG_Map, Caller_FP_TN, (void *)(INTPTR)Caller_FP_Preg );
@@ -1919,7 +1918,7 @@ Set_Frame_Len (INT64 val)
 {
 #ifdef TARG_X8664
   if (CG_min_stack_size &&
-      !Stack_Frame_Has_Calls()) {	// Align stack before calls.  Bug 8017.
+      !Stack_Frame_Has_Calls()) {	// Align stack before calls.
     extern BOOL Is_Stack_Used();
     if( !Is_Stack_Used() )
       val = 0;

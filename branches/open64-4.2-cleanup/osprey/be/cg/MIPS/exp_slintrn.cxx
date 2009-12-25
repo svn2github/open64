@@ -241,7 +241,7 @@ void Copy_Preg_MapInfo(WN *stid) {
       return;
     }
     INT32 srcpreg = Get_VarWN_idx(ldid);
-    // fix bug 232: st of stid is mapped to acc
+    // st of stid is mapped to acc
     INT32 tgtpreg; 
     if (Has_VarWN_idx(stid)) {
       tgtpreg = Get_VarWN_idx(stid);

@@ -1341,7 +1341,6 @@ CGTARG_Preg_Register_And_Class(
     regnum = preg - Float_Preg_Min_Offset;
     rclass = ISA_REGISTER_CLASS_float;
   }
-  // bug fix for OSP_87
   else if (Preg_Offset_Is_Branch(preg)) {
     regnum = preg - Branch_Preg_Min_Offset;
     rclass = ISA_REGISTER_CLASS_branch;
@@ -3621,7 +3620,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
                 ("Cannot find immediate operand for ASM"));
       ret_tn = Gen_Literal_TN(WN_const_val(load),
                               MTYPE_bit_size(WN_rtype(load))/8);
-      // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
+      // safety check from gnu/config/i386/i386.h.
       //FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), *constraint),
       //          ("The value of immediate operand supplied is not within expected range."));
     }
@@ -4549,7 +4548,7 @@ OP *OP_Replace_With_Noop(BB *bb, OP *op)
         unit = OP_m_unit(op)? ISA_EXEC_PROPERTY_M_Unit : ISA_EXEC_PROPERTY_I_Unit;
     else  unit =  ISA_EXEC_Unit_Prop(OP_code(op));
 
-    // Fix bug when unit is B and B2 unit, 
+    // Fix bug when unit is B and B2 unit,
     if (EXEC_PROPERTY_is_B_Unit(OP_code(op))) { unit = ISA_EXEC_PROPERTY_B_Unit; }
 
     new_op = Mk_OP (CGTARG_Noop_Top(unit), True_TN, Gen_Literal_TN(0, 4));

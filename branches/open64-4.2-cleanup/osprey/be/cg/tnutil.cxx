@@ -1400,7 +1400,6 @@ TN_Reaching_Value_At_Op(
 	  FOR_ALL_BB_PREDS(bb, edge) {
 	    cur_bb = BBLIST_item(edge);
 	    // Ignore cur_bb only if cur_bb doesn't redefine the register.
-	    // Bug 6104.
 	    if (cur_bb == bb) {
 	      OP *op;
 	      bool redefined = FALSE;
@@ -1504,7 +1503,6 @@ TN_Reaching_Value_At_Op(
 	  FOR_ALL_BB_PREDS(bb, edge) {
 	    cur_bb = BBLIST_item(edge);
 	    // Ignore cur_bb only if cur_bb doesn't redefine the TN.
-	    // Bug 6104.
 	    if (cur_bb == bb) {
 	      OP *op;
 	      bool redefined = FALSE;
@@ -1724,7 +1722,7 @@ Rematerializable_IntConst(
   case OPC_I8INTCONST:
   case OPC_U8INTCONST:
 #ifdef TARG_X8664 
-  // Bug 3262 - zero-extend; to be complete, we should zero-extend 
+  // zero-extend; to be complete, we should zero-extend 
   // OPC_I4INTCONST also. We will be conservative, since this case
   // might have been handled already in the back-end.
   case OPC_U4INTCONST:

@@ -676,7 +676,6 @@ Choose_Register( LRANGE* lrange, GRA_REGION* region )
   if ( lrange->Has_Wired_Register() ) {
 #if defined(TARG_IA64)
 //Comment out the assertion temporarily.
-//See Bug 443 for detail
 //    if (! PU_Has_Nonlocal_Goto_Target)
 //      DevAssert( REGISTER_SET_MemberP(allowed, lrange->Reg()),
 //      	 ("LRANGE not allowed its wired register"));
@@ -783,7 +782,7 @@ Find_Single_Register_Subclasses(GRA_BB *gbb)
   // If the last OP in BB is a ijump or icall, make sure LRA have enough
   // register(s) for it.  LRA cannot spill around the OP because it cannot
   // insert reloads after it.  Don't give parameter registers, and don't give
-  // RAX which is set to 0 before the call.  Bug 7366.
+  // RAX which is set to 0 before the call.
   OP *last_op = BB_last_op(gbb->Bb());
   if (last_op) {
     switch (OP_code(last_op)) {
@@ -1509,7 +1508,7 @@ GRA_Color_Complement( GRA_REGION* region )
 	priority_count += split_alloc_lr->Priority();
       } else if (Choose_Register(lr, region)) {
 	priority_count += lr->Priority();
-      } else if (lr->Tn_Is_Save_Reg()) { // bug 3552: never split saved-TNs
+      } else if (lr->Tn_Is_Save_Reg()) { // never split saved-TNs
 	GRA_Note_Spill(lr);
       } else if (LRANGE_Split(lr, &iter, &split_alloc_lr) &&
 		 (split_alloc_lr->Priority() >= 0.0F ||

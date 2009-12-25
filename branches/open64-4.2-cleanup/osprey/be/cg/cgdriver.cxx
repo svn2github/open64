@@ -2120,7 +2120,7 @@ Configure_CG_Options(void)
     CG_use_xortozero = TRUE;
   }
 
-  if (OPT_Space && !CG_use_xortozero_Set)	// Bug 9717
+  if (OPT_Space && !CG_use_xortozero_Set)
     CG_use_xortozero = TRUE;
 
   if (((Target == TARGET_barcelona) || (Target == TARGET_orochi)) && 
@@ -2342,7 +2342,7 @@ Prepare_Source (void)
     if ( Obj_File_Name == NULL ) {
 #if defined(KEY) && !defined(TARG_NVISA) 
 	// nvisa doesn't need tempnam, which will cause gcc complaint
-	/* bug 2025
+	/*
 	   Always create the object file in /tmp, since the current dir might
 	   not be writable.
 	 */
@@ -2579,7 +2579,7 @@ CG_Fini (void)
     MEM_POOL_Delete (&MEM_local_region_nz_pool);
 
     // Check to see if the asm file was written correctly.  Do this by writing
-    // one extra char and checking its status.  Bug 11361.
+    // one extra char and checking its status.
     if (Assembly) {
       int n = fprintf(Asm_File, "\n");
       if (n != 1) {

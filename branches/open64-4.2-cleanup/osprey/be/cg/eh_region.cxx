@@ -612,7 +612,7 @@ void EH_Set_Has_Call(EH_RANGE* p)
  *  (0) ** KEY ** CG cflow (cflow_unreachable) may have deleted 
  *      BBs which will result in removal of EHRANGEs. If such
  *      a range is a parent of another range, fix the parent
- *      pointer in the kid. (bug 5600)
+ *      pointer in the kid. 
  *
  *  (1) The adjustment field of each range is set to the number
  *      of ranges prior to this one which contain no call and
@@ -1002,7 +1002,7 @@ Get_TF_Map_and_EH_Spec_List(PU& pu, TF_MAP& tfmap)
 }
 
 
-// bug 3416: The exception ranges in exception table must be sorted in
+// The exception ranges in exception table must be sorted in
 // increasing order of call-site address. The problem shows up when we
 // generate nested regions due to code like "if (foo()) bar();".
 // So flatten the regions here to remove overlap between parent and child
@@ -1018,7 +1018,7 @@ Get_TF_Map_and_EH_Spec_List(PU& pu, TF_MAP& tfmap)
 //
 // R2_end - R2_begin  ===>    R2_begin - R1_begin
 // R1_end - R1_begin          R2_end - R2_begin
-//                            R1_end - R2_end (bug 3736)
+//                            R1_end - R2_end 
 //
 // TODO: Check if the new regions created have any call, if not, don't
 // create, or delete the region.

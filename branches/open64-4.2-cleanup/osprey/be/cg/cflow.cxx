@@ -1201,7 +1201,6 @@ Finalize_BB(BB *bp)
 {
   BOOL fill_delay_slots = (current_flags & CFLOW_FILL_DELAY_SLOTS) != 0;
 #ifdef TARG_IA64
-  // bug fix for OSP_105 & OSP_192
   // As to those BBs, whose unreachable_bb flag is set to TRUE, 
   // Except BBs which include EH related labels, which may not be deleted;
   // this means that these BBs holds a dangle speculative load or chk, 
@@ -1215,7 +1214,7 @@ Finalize_BB(BB *bp)
   switch (BBINFO_kind(bp)) {
   case BBKIND_LOGIF:
 #ifdef TARG_IA64
-  case BBKIND_CHK: // bug fix for OSP_104, OSP_105, OSP_192
+  case BBKIND_CHK: 
 #endif
   {
       INT tfirst;
@@ -1230,7 +1229,7 @@ Finalize_BB(BB *bp)
       INT64 target_offset;
       OP *br = BB_branch_op(bp);
 #ifdef TARG_IA64
-      if ((br == NULL) || OP_noop(br))// bug fix for OSP_104, OSP_105, OSP_192
+      if ((br == NULL) || OP_noop(br))
       {
          br = BB_Last_chk_op(bp);
       }
@@ -1858,7 +1857,7 @@ Initialize_BB_Info(void)
 
     case BBKIND_LOGIF:
 #ifdef TARG_IA64
-    case BBKIND_CHK: // bug fix for OSP_104, OSP_105, OSP_192
+    case BBKIND_CHK:
 #endif
 #if defined(TARG_SL)
     case BBKIND_ZDL_BODY:
@@ -1873,7 +1872,7 @@ Initialize_BB_Info(void)
 	BBLIST *fall_through_edge;
 	OP *br = BB_branch_op(bb);
 #ifdef TARG_IA64
-	if ((br == NULL) || OP_noop(br))// bug fix for OSP_104, OSP_105, OSP_192
+	if ((br == NULL) || OP_noop(br))
        {
           br = BB_Last_chk_op(bb);  
        }
@@ -1990,7 +1989,7 @@ Initialize_BB_Info(void)
 	}
 	bbinfo->nsuccs = nsuccs;
 
-	/* bug#1047
+	/* 
 	   An indirect goto could have no successor in the
 	   current pu, like
 	      int jump () { goto * (int (*) ()) 0xbabebec0; }
@@ -3413,7 +3412,7 @@ Optimize_Branches(void)
 	  }
 #endif // TARG_IA64
 	  /* If both false branch and true branch target to the
-	     same bb, then it is not a LOGIF bb any more. (bug#3515)
+	     same bb, then it is not a LOGIF bb any more.
 	  */
 	  if( BBINFO_succ_bb(bp, 0) == BBINFO_succ_bb(bp, 1) ){
 	    if( !Convert_Indirect_Goto_To_Direct( bp ) ){
@@ -3639,7 +3638,7 @@ Delete_Unreachable_Blocks(void)
 			       LABEL_name(lab), BB_id(bp));
 	      }
 	      BB_annotations(bp) = ANNOT_Unlink(BB_annotations(bp), ant);
-	      if (ANNOT_First(BB_annotations(bp), ANNOT_LABEL) == NULL) //bug fix for OSP_358
+	      if (ANNOT_First(BB_annotations(bp), ANNOT_LABEL) == NULL) 
 	        Reset_BB_has_label(bp);//no label annotate, reset has_lable flag
 	      Set_Label_BB(lab, NULL);
 	      eh_label_removed = TRUE;
@@ -3661,7 +3660,7 @@ Delete_Unreachable_Blocks(void)
 			       LABEL_name(lab), BB_id(bp));
 	      }
 	      BB_annotations(bp) = ANNOT_Unlink(BB_annotations(bp), ant);
-	      if (ANNOT_First(BB_annotations(bp), ANNOT_LABEL) == NULL) //bug fix for OSP_358
+	      if (ANNOT_First(BB_annotations(bp), ANNOT_LABEL) == NULL)
 	        Reset_BB_has_label(bp);//no label annotate, reset has_lable flag
 	      Set_Label_BB(lab, NULL);
 	      eh_label_removed = TRUE;
@@ -3753,7 +3752,7 @@ Merge_With_Pred ( BB *b, BB *pred )
   case BBKIND_VARGOTO:
   case BBKIND_INDGOTO:
 #ifdef TARG_IA64
-  case BBKIND_CHK:// bug fix for OSP_104, OSP_105, OSP_192
+  case BBKIND_CHK:
 #endif
 #if defined(TARG_SL) 
   case BBKIND_ZDL_BODY:
@@ -4078,7 +4077,7 @@ Can_Append_Succ(
     return FALSE;
   }
 
-  if (BB_last_OP_computes_got(b) ||		// bug 14452
+  if (BB_last_OP_computes_got(b) ||
       BB_first_OP_computes_got(suc)) {
     return FALSE;
   }
@@ -4332,7 +4331,7 @@ Append_Succ(
   else {
     // Rename duplicated local TNs.  Otherwise, those (non-GTN) TNs would
     // appear in <suc> as well as in the merged BB, causing LRA's
-    // Consistency_Check to complain.  Bug 4327.
+    // Consistency_Check to complain.
     Rename_TNs_For_BB(b, NULL, first_new_op);
   }
 #endif
@@ -4621,7 +4620,7 @@ Merge_Blocks ( BOOL in_cgprep )
 	}
 
 	if (BB_first_OP_computes_got(b) ||
-	    BB_last_OP_computes_got(b)) {	// bug 14452
+	    BB_last_OP_computes_got(b)) {
 	  break;
 	}
 #endif
@@ -7711,7 +7710,7 @@ Initialize_BB_Info_For_Delete(void)
       continue;
 
     case BBKIND_LOGIF:
-    case BBKIND_CHK:// bug fix for OSP_104, OSP_105, OSP_192
+    case BBKIND_CHK:
       {
 	INT tfirst;
 	INT tcount;
@@ -7800,7 +7799,6 @@ CFLOW_Delete_Empty_BB(void)
 	 // BB with EH Range labels can not be removed, even
 	 // though its length is 0 and it has no succ,
 	 // coz these labels are required by LSDA construction.
-	 // bug fix for OSP_350
          if (BB_Has_Exc_Label(bp)
 		|| BB_Has_Addr_Taken_Label(bp)
 		|| BB_Has_Outer_Block_Label(bp))
@@ -7809,8 +7807,6 @@ CFLOW_Delete_Empty_BB(void)
 	 // Be caution to the empty GOTO BB bp, if BB_next(bp) == NULL;
 	 // In this situation, we can remove it only when none of it's
 	 // predecessors is GOTO or LOGIF.
-	 // bug fix for OSP_208
-	 //
 	 if (BBINFO_nsuccs(bp) == 0 && next_bb == NULL) {
 	   BOOL is_removeable = TRUE;
 	   for ( prev_bbs = BB_preds(bp); prev_bbs != NULL; prev_bbs = next_bbs) {
@@ -7907,7 +7903,7 @@ CFLOW_Delete_Empty_BB(void)
 #if defined(KEY) && (defined(TARG_MIPS) && !defined(TARG_SL))
 
 
-// Fix for bugs 8748 and 11720:  Build a long jump using the jr instruction.
+// Build a long jump using the jr instruction.
 // Save and restore own temp register.
 static void
 Build_Long_Goto(BB *targ_bb, OPS *ops)
@@ -7934,7 +7930,7 @@ Build_Long_Goto(BB *targ_bb, OPS *ops)
 
   if (MTYPE_byte_size(Pointer_Mtype) == 8) {    // 64-bit address
     // Cannot use TN_RELOC_HIGH16/TN_RELOC_LOW16 because that will produce a
-    // 32-bit address only.  Bug 12662.
+    // 32-bit address only.
     TN *target_tn = Gen_Symbol_TN(st, 0, TN_RELOC_GOT_DISP);
     Build_OP(TOP_ld, tmp_reg, GP_TN, target_tn, ops);
   } else {                                      // 32-bit address
@@ -8106,7 +8102,6 @@ CFLOW_Fixup_Long_Branches()
             // If <bb> branch delay slot is empty (because we just moved out
             // the delay slot OP, or because GCM deliberately deleted the NOP
             // -- see Fill_From_Successor in gcm.cxx), then insert NOP.
-            // (Fixes bug 11776)
             if (delay_op == NULL && (fill_delay_slots || region_is_scheduled)) {
               OPS ops = OPS_EMPTY;
               Exp_Noop(&ops);

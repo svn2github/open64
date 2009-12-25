@@ -286,7 +286,7 @@ UINT64 CG_p2align_freq = 10000;
 UINT32 CG_p2align_max_skip_bytes = 3;
 UINT32 CG_movnti = 1000;
 BOOL CG_use_incdec = FALSE;
-BOOL CG_use_xortozero = TRUE; // bug 8592
+BOOL CG_use_xortozero = TRUE;
 BOOL CG_use_xortozero_Set = FALSE;
 BOOL CG_use_test = FALSE;
 BOOL CG_fold_shiftadd = FALSE;
@@ -364,7 +364,7 @@ BOOL CG_sl2 = FALSE;
 #ifdef TARG_X8664
 BOOL LRA_prefer_legacy_regs = FALSE;
 #endif
-BOOL LRA_prefer_lru_reg = TRUE;		// bug 14303
+BOOL LRA_prefer_lru_reg = TRUE;	
 BOOL LRA_prefer_lru_reg_Set = FALSE;
 INT32 LRA_inflate_reg_request = 0;
 INT32 LRA_inflate_reg_request_Set = FALSE;

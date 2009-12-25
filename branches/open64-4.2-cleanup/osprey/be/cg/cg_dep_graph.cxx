@@ -2809,8 +2809,6 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
     /* First try the LNO dependence graph */
     if (!CG_DEP_Ignore_LNO && Current_Dep_Graph != NULL &&
 #ifdef TARG_X8664
-	/* bug#1964
-	 */
 	!TOP_is_vector_op(OP_code(pred_op)) &&
 	!TOP_is_vector_op(OP_code(succ_op)) &&
 #endif
@@ -3638,14 +3636,12 @@ static void adjust_arc_for_rw_elim(ARC *arc, BOOL is_succ, ARC *shortest,
    */
   if (kind == CG_DEP_MEMIN &&
       ((
-	// Bug088
 	( OP_results(succ) > 0 ) &&
 	(TN_is_float(OP_opnd(pred, 0)) ^ TN_is_float(OP_result(succ,0 /*???*/)))) ||
        CGTARG_Mem_Ref_Bytes(pred) != CGTARG_Mem_Ref_Bytes(succ))) {
     /* invalidate for r/w elimination */
     Set_ARC_is_definite(arc, FALSE);
   } else if (kind == CG_DEP_MEMREAD &&
-// Bug #517
 	     OP_results(succ) > 0 &&
 	     OP_results(pred) > 0 &&
 	     ((TN_is_float(OP_result(pred,0 /*???*/)) ^ TN_is_float(OP_result(succ,0 /*???*/))) ||
@@ -4101,7 +4097,6 @@ static void Add_MEM_Arcs(BB *bb)
   if (BB_exit(bb)) {
     OP *exit_sp_adj = BB_exit_sp_adj_op(bb);
     /* <exit_sp_adj> could reside in a different bb, say _epilog_bb
-       for bug#3241.
      */
     if (exit_sp_adj &&
 	OP_bb(exit_sp_adj) == bb)
@@ -4178,7 +4173,7 @@ static void Add_MEM_Arcs(BB *bb)
   // Add memory arcs between OPs whose TNs have home locations and the
   // load/stores of those home locations.  This is so that when GRA inserts
   // spill code around the OPs, the spill code will read/write memory in the
-  // correct order relative to the load/stores.  Bug 7847.
+  // correct order relative to the load/stores.
   add_home_mem_arcs(bb);
 
   MEM_POOL_Pop(&MEM_local_pool);
@@ -4216,9 +4211,7 @@ static void Add_Vbuf_MEM_Arcs(BB *bb)
    */
   if (BB_exit(bb)) {
     OP *exit_sp_adj = BB_exit_sp_adj_op(bb);
-    /* <exit_sp_adj> could reside in a different bb, say _epilog_bb
-       for bug#3241.
-     */
+    /* <exit_sp_adj> could reside in a different bb, say _epilog_bb */
     if (exit_sp_adj &&
 	OP_bb(exit_sp_adj) == bb)
       {
@@ -6045,7 +6038,6 @@ DAG_BUILDER::Build_Mem_Arcs(OP *op)
          * the dependence is indefinite to prevent removal by r/w elimination.
          * So, we need futher checking. 
          */
-	// bug fix for OSP_88
 	if ((!OP_volatile (pred) || !OP_volatile(op))
 #if !defined(TARG_SL) && !defined(TARG_MIPS)
 	    && !OP_asm(pred)

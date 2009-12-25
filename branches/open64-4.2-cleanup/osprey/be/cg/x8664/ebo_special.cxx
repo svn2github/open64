@@ -385,7 +385,7 @@ BOOL Combine_L1_L2_Prefetches( OP* op, TN** opnd_tn, EBO_TN_INFO** opnd_tninfo )
     OP* new_op = Dup_OP( op );
     Set_OP_opnd( new_op, 0 , Gen_Enum_TN( ECV_pfhint_L1_L2_load ) );
 
-    //Bug 13609 : keep prefetchnta suggested by LNO
+    // keep prefetchnta suggested by LNO
     BOOL nt = (OP_code(op)==TOP_prefetchnta);
     TOP  new_top = nt?TOP_prefetchnta:TOP_prefetcht0;
    
@@ -930,7 +930,7 @@ Special_Store_Load_Sequence (OP *load_op,
 	  ("Special_Store_Load_Sequence: invalid storeval index"));
   TN *storeval_tn = OP_opnd(store_opinfo->in_op, storeval_idx);
 
-  // Replace:			; bug 7602
+  // Replace:                   ;
   //   xmm     = load mem1	; first_load_op
   //   mem2    = store xmm	; store_op
   //   int_reg = load mem2	; load_op
@@ -940,7 +940,7 @@ Special_Store_Load_Sequence (OP *load_op,
   //   int_reg = load mem1	; change to load from mem1
   if (TN_register_class(OP_result(load_op,0)) == ISA_REGISTER_CLASS_integer &&
       TN_register_class(storeval_tn) == ISA_REGISTER_CLASS_float &&
-      TN_size(OP_result(load_op, 0)) == TN_size(storeval_tn)) {	// bug 11321
+      TN_size(OP_result(load_op, 0)) == TN_size(storeval_tn)) {	
     OP *store_op = store_opinfo->in_op;
     EBO_TN_INFO *storeval_tninfo = store_opinfo->actual_opnd[storeval_idx];
     if (storeval_tninfo != NULL &&
@@ -1285,7 +1285,7 @@ delete_memory_op (OP *op,
 
     if (TN_is_dedicated(storeval_tn) && 
 	(TN_register(storeval_tn) == RCX || TN_register(storeval_tn) == RDX)) 
-    { // bug 3842
+    { 
       if (EBO_Trace_Data_Flow)
 	fprintf(TFile,"%sShould not move special dedicated registers RCX and RDX.\n",
 		EBO_trace_pfx);
@@ -2169,7 +2169,7 @@ Fold_Constant_Expression (OP *op,
   {
     result_val = tn0_val >> tn1_uval;
 
-    // Set the most significant bits according to the sign bit.  Bug 9150.
+    // Set the most significant bits according to the sign bit.
     if ((opcode == TOP_sar32 ||
 	 opcode == TOP_sari32) &&
 	(tn0_val & 0x80000000)) {
@@ -2586,14 +2586,14 @@ static BOOL move_ext_is_replaced( OP* op, const EBO_TN_INFO* tninfo )
 
     const TYPE_ID mtype = op_size_ext_info.dest_size == 4 ? MTYPE_I4 : MTYPE_I8;
     
-    /* bug#1711
+    /* 
        Now we only got one situation that <pred> performs zero ext, and
        <op> performs sign ext.
     */
     const bool sign_ext =
       ( op_size_ext_info.src_size <= pred_size_ext_info.src_size ) ?
       op_size_ext_info.sign_ext : pred_size_ext_info.sign_ext;
-    // bug 6871 - choose the min size to sign-extend or zero-extend.
+    // choose the min size to sign-extend or zero-extend.
     const INT size = 
       ( op_size_ext_info.src_size <= pred_size_ext_info.src_size ) ?
       op_size_ext_info.src_size : pred_size_ext_info.src_size;
@@ -2709,7 +2709,7 @@ BOOL Delete_Unwanted_Prefetches ( OP* op )
 
   INT prefetch_offset = WN_offset(mem_wn);
 
-  // bug 10953: LNO tells me this prefetch must be kept
+  // LNO tells me this prefetch must be kept
   if(PF_GET_KEEP_ANYWAY(WN_prefetch_flag(mem_wn)))
    return FALSE;
   if (OP_find_opnd_use( op, OU_base ) >= 0)
@@ -2983,7 +2983,7 @@ BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
     //   t = x >> (b-a)
     //   y = movz t	; movzbq, movzwq, movzlq depending on field size
     // movz is perferred over the second shift because sometimes we have to mov
-    // into a special register anyway, such as rax for returning y (bug 8594).
+    // into a special register anyway, such as rax for returning y 
     //
     // There's no advantage in doing this optimization after register
     // allocation.
@@ -3028,7 +3028,7 @@ BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
   else if (top == TOP_shli32 ||
 	   top == TOP_shli64) {
 
-    if (EBO_in_peep)	// Can't break the x86-style property.  Bug 14424.
+    if (EBO_in_peep)	// Can't break the x86-style property.  
       return FALSE;
 
     // Replace:
@@ -3644,7 +3644,7 @@ static BOOL Compose_Addr( OP* mem_op, EBO_TN_INFO* pt_tninfo,
 
       } else {
 	if( !TNs_Are_Equivalent( b.base, a.base ) ) {
-	  // Bug 3724 - If a.base and a.index are identical, 
+          // If a.base and a.index are identical,
 	  // then we could still fold a.base into b.index
 	  // and adjust the scale.
 	  if ( !TNs_Are_Equivalent ( a.base, a.index ) )
@@ -3673,7 +3673,7 @@ static BOOL Compose_Addr( OP* mem_op, EBO_TN_INFO* pt_tninfo,
       !ISA_LC_Value_In_Class( TN_value(*offset), LC_simm32 ) )
     return FALSE;
 
-  /* Bug 14488: under -mcmodel=kernel, if the offset is with
+  /* under -mcmodel=kernel, if the offset is with
      respect to a section name, check for a smaller offset size,
      so that the final relocation produced by the linker using
      possibly custom linker scripts can fit R_X86_64_32S. */
@@ -4409,7 +4409,7 @@ Compose_Mem_Op_And_Copy_Info(OP* op, TN* index_tn, TN* offset_tn, TN* scale_tn,
   OP *new_op = Compose_Mem_Op(op, index_tn, offset_tn, scale_tn, base_tn);
 
   Copy_WN_For_Memory_OP(new_op, op);
-  if (OP_volatile(op)) // Bug 4245 - copy "volatile" flag
+  if (OP_volatile(op)) // copy "volatile" flag
     Set_OP_volatile(new_op);
   OP_srcpos(new_op) = OP_srcpos(op);
 
@@ -4538,7 +4538,7 @@ static BOOL Check_loadbw_execute( int ld_bytes, OP* ex_op )
     return TRUE;
 
   /* Check all the opnds of <ex_op> to make sure it is safe for
-     <ex_op> to perform 8-bit or 16-bit operation.  (bug#131)
+     <ex_op> to perform 8-bit or 16-bit operation.  
   */
 
   OP* ld_op[] = { NULL, NULL };
@@ -4559,7 +4559,7 @@ static BOOL Check_loadbw_execute( int ld_bytes, OP* ex_op )
 	/* If the opnd is coming from a zero-extension operation,
 	   then don't consider using a shorter format for <ex_op>, because
 	   we don't know the run-time msb value of this opnd, and we do not
-	   have unsigned cmp. (bug#2197)
+	   have unsigned cmp. 
 	 */
 	struct SIZE_EXT_INFO pred_size_ext_info;
 	Get_Size_Ext_Info( OP_code(pred_op), &pred_size_ext_info );
@@ -4769,7 +4769,7 @@ static BOOL test_is_replaced( OP* alu_op, OP* test_op, const EBO_TN_INFO* tninfo
       !TOP_is_iand( top ) ){
 
     // The conversion from test -> cmpi was intended to facilitate address 
-    // folding and bug 5517 has proved that it is detrimental to performance.
+    // folding has proved that it is detrimental to performance.
     if (CG_use_test)
       return FALSE;
 
@@ -4796,7 +4796,7 @@ static BOOL test_is_replaced( OP* alu_op, OP* test_op, const EBO_TN_INFO* tninfo
     return FALSE;
   }
 
-  /* Fix bug#963 and bug#1054
+  /* 
      A test is redundant only if the source is coming from an AND operation.
      TODO:
      Add TOP_js and TOP_jns so that more test or cmp operations can be removed.
@@ -6029,7 +6029,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
   }
 #endif
 
-  /* bug#1480
+  /* 
      The memory opnd of an alu op must be aligned.
      According to Section 4.4.4. (Data Alignment) of Volumn 1,
      "128-bit media instructions that access a 128-bit operand in memory
@@ -6080,7 +6080,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
   }
 
   /* Make sure the value from <ld_op> will be not over-written by
-     any store located between <ld_op> and <alu_op>. (bug#2680)
+     any store located between <ld_op> and <alu_op>. 
   */
 
   {
@@ -6095,7 +6095,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
 
       /* It is quite expensive to check the aliasing info here. */
       if(
-         pred_op &&	// Bug 7596
+         pred_op &&	
 	 OP_store( pred_op ) )
 	return FALSE;
 
@@ -6262,7 +6262,6 @@ Check_No_Use_Between (OP* from, OP* to, TN* result)
 
 	// Account for fp uses when testing for sp uses.  We may need to adjust
 	// the sp before using the fp in order to make the fp access legal.
-	// Bug 11209.
 	if (result == SP_TN &&
 	    TNs_Are_Equivalent(FP_TN, opnd))
 	  return FALSE;
@@ -6276,7 +6275,7 @@ Check_No_Use_Between (OP* from, OP* to, TN* result)
 static BOOL
 alu_op_defines_rflags_used (OP* alu_op, OP* op)
 {
-  // Bug 2040 - if alu_op changes rflags and there is an operaton between
+  // if alu_op changes rflags and there is an operaton between
   // op and alu_op that reads the rflags, then we can not delete alu_op.
   if (TOP_is_change_rflags( OP_code(alu_op) )) {
     BOOL rflags_read = FALSE;
@@ -6566,7 +6565,7 @@ EBO_Lea_Insertion( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 	}
       }
      
-      // Bug 1563 - dont let this module place SP or FP as the index register.
+      // dont let this module place SP or FP as the index register.
       if (OP_opnd(op, 1) == SP_TN || OP_opnd(op, 1) == FP_TN) {
 	// Can not push things around after Adjust_X86_Style_Op
 	if (EBO_in_peep) break; 

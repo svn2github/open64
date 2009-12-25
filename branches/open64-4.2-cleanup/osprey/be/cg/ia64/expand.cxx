@@ -3349,7 +3349,6 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN * op1, OPS *ops)
     }
     break;
   case INTRN_CTZ:
-    // Bug fix for OSP_433
     // expand the intrinsic __builtin_ctzl, which returns the bit index of the least significant bit
     //
     {

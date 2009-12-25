@@ -675,7 +675,7 @@ Spill_Homeable_TN(
 	       OP_result(op, 0) == orig_tn)) {
 	    // Both OPs in a stlpd/sthpd pair have the same WN, yet the sthpd
 	    // should not be deleted.  The second of such pair is always marked
-	    // cond_def, so check for it.  Bug 10550.
+            // cond_def, so check for it.
 	    if (!OP_cond_def(op))
 	      {
 		GRA_Trace_Home_Removal(orig_tn, gbb, op);
@@ -689,7 +689,7 @@ Spill_Homeable_TN(
 	    // def of the tn is found
 	    //
             // Don't need store at bottom of BB only if the earlier store
-	    // stores the same TN.  Bug 9429.
+       // stores the same TN.
             if (OP_opnd(op, st_op_num) == orig_tn) {
 	      need_store = FALSE;
 	      op_is_homing_store = TRUE;
@@ -2726,7 +2726,7 @@ Optimize_Placement(void)
 		   // It tests if all of gbb's succs are also inside lrange and
 		   // without restores.  If so, the spill in gbb is not needed.
 		   // If gbb is outside lrange, then the spill in gbb is always
-		   // needed.  Bug 6835.
+                   // needed.
 		   split_lrange->Contains_BB(gbb) &&
 		   No_Successor_Has_Restore(sl, split_lrange)) {
 	  //

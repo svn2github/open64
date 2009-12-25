@@ -1600,7 +1600,7 @@ TN_Pair_In_OP(OP* op, struct tn *tn_res, struct tn *tn_opnd)
     TN_size(tn_res);	// TK debug
     // If tn_res has an assigned register, check if it matches a result.  (This
     // changes the semantics of TN_Pair_In_OP, but that's ok since the only
-    // user of TN_Pair_In_OP is LRA, which wants this check.)  Bug 9489.
+    // user of TN_Pair_In_OP is LRA, which wants this check.)  
     BOOL result_match = FALSE;
     if (TN_register(tn_res) != REGISTER_UNDEFINED) {
       for (int j = 0; j < OP_results(op); j++) {

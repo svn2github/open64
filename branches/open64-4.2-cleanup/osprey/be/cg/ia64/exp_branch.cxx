@@ -313,7 +313,6 @@ void Exp_Call (OPERATOR opr, TN *return_address, TN *target, OPS *ops)
       OPCODE opc = OPCODE_make_op (OPR_LDID, Pointer_Mtype, Pointer_Mtype);
       TN *tmp1 = Build_TN_Of_Mtype (Pointer_Mtype);
 
-      // bug fix for OSP_144
       // Do not change gp with -mconstant-gp
       if (!Constant_GP)
 	Expand_Load (opc, GP_TN, target, Gen_Literal_TN(8, 4), V_NONE, ops);

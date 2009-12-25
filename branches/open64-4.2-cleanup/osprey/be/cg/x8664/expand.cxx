@@ -1020,7 +1020,7 @@ static void Expand_Split_Shift( SHIFT_DIRECTION shift_dir,
       // Go to the then block if the shift count is in the range [32,63].  If
       // it is < 32, the shrd/shr combo already produces the correct result.
       // If it is > 63, it is treated as modulo 64.  This means go to the then
-      // block only if (32 & shift count) is 1.  Bug 9687.
+      // block only if (32 & shift count) is 1.  
 
       TN *rflags = Rflags_TN();
       Build_OP(TOP_testi32, rflags, shift, Gen_Literal_TN(32, 4), ops);
@@ -1245,7 +1245,6 @@ void Expand_Convert_Length ( TN *dest, TN *src, TN *length_tn, TYPE_ID mtype,
   TOP new_opcode = TOP_UNDEFINED;
 
   if( val != 8 && val != 16  && val != 32 ){
-    // Bug046
     if( signed_extension || val >= 32 ){
       TN* tmp1 = Build_TN_Like( dest );
       TN* tmp2 = Build_TN_Like( dest );
@@ -1293,7 +1292,7 @@ void Expand_Convert_Length ( TN *dest, TN *src, TN *length_tn, TYPE_ID mtype,
 	if( OP_NEED_PAIR(mtype) ){
 	  Expand_Split_Cvtl( mtype, TOP_mov32, dest, src, ops );
 	} else {
-	  /* Fix bug#1363.
+	  /* 
 	     We are doing the OPC_U8U4CVT here.
 	   */
 	  Build_OP( TOP_movzlq, dest, src, ops);
@@ -1302,7 +1301,7 @@ void Expand_Convert_Length ( TN *dest, TN *src, TN *length_tn, TYPE_ID mtype,
       }
     }
     else if( MTYPE_bit_size(mtype) == 32 ){
-      // Bug 4117 - use a move here without setting the copy bits 
+      // use a move here without setting the copy bits
       // (that is, don't call Expand_Copy).
       // We use a movzlq instead of a mov32 to prevent the copy from
       // being treated as a nop when both the target and destination
@@ -1674,7 +1673,7 @@ Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
       Build_OP(is_64bit ? TOP_xorpd: TOP_xorps, result, src, tmp, ops);
       break;
     }
-    //Bug 5701 13347: Vectorize Neg of Integers
+    // Vectorize Neg of Integers
     case MTYPE_V16I1:
     case MTYPE_V16I2:
     case MTYPE_V16I4:
@@ -2541,7 +2540,6 @@ static void Expand_Int_Cmp( TN* dest, TN* src1, TN* src2,
   if (TN_has_value( src1 )){
     FmtAssert( !TN_has_value( src2 ), ("src2 has value") );    
     TOP top = TOP_UNDEFINED;
-    // Bug:084
     switch( set_opcode ){
     case TOP_sete:
     case TOP_setne:  top = set_opcode;  break;
@@ -2798,7 +2796,7 @@ Expand_Long_Double_To_Int(TN* dest, TN* src, TYPE_ID imtype, OPS* ops)
       case MTYPE_I2:    top = TOP_fistps;   break;
       case MTYPE_I4:    top = TOP_fistpl;   break;
       case MTYPE_U4:
-	/* bug#658
+	/* 
 	   We need bigger space for TOP_fistpll.
 	 */
 	mem_ty = MTYPE_To_TY( MTYPE_U8 );
@@ -3039,7 +3037,7 @@ Expand_Float_To_Int (ROUND_MODE rm, TN *dest, TN *src, TYPE_ID imtype, TYPE_ID f
 	top = TOP_cvttss2siq;
       else {
 	/* For "float" to "unsigned long long" conversion, operation
-	   cvttss2siq will lose some accuracy.  (bug#2867)
+	   cvttss2siq will lose some accuracy.  
 	*/
 	Expand_Float_To_Long_m32( dest, src, imtype, fmtype, ops );
 	return;
@@ -3061,7 +3059,7 @@ Expand_Float_To_Int (ROUND_MODE rm, TN *dest, TN *src, TYPE_ID imtype, TYPE_ID f
 	top = TOP_cvttsd2siq;
       else {
 	/* For "double" to "unsigned long long" conversion, operation
-	   cvttsd2siq will lose some accuracy.  (bug#2867)
+	   cvttsd2siq will lose some accuracy.  
 	*/
 	Expand_Float_To_Long_m32( dest, src, imtype, fmtype, ops );
 	return;
@@ -3082,17 +3080,17 @@ Expand_Float_To_Int (ROUND_MODE rm, TN *dest, TN *src, TYPE_ID imtype, TYPE_ID f
     if (imtype == MTYPE_V16I4)
       top = TOP_cvttps2dq;
     else if (imtype == MTYPE_V16I8)
-      top = TOP_movdq;	// bug 12731
+      top = TOP_movdq;	
     else
       FmtAssert(FALSE, ("Expand_Float_To_Int: NYI"));
   }
 
   else if ( fmtype == MTYPE_V16F8 ) {
-    // Workaround for bug 3082, not supposed to generate correct code
+    // Workaround: not supposed to generate correct code
     top = TOP_cvttpd2dq;
   }
   else if ( fmtype == MTYPE_V32F8 ) {
-    // Workaround for bug 3082, not supposed to generate correct code
+    // Workaround: not supposed to generate correct code
     top = TOP_vcvttpd2dqy;
   }
 
@@ -3747,7 +3745,7 @@ static void Expand_Int_To_Long_Double( TN* result, TN* src,
     imtype = MTYPE_I8;
     if (Is_Target_32bit()) {
       // Create the high 32 bits and rely on the fact that Expand_Split_Store
-      // will automatically store the high part of the pair.  Bug 5688.
+      // will automatically store the high part of the pair.  
       TN *src_h = Create_TN_Pair(src, MTYPE_I8);
       Build_OP(TOP_ldc32, src_h, Gen_Literal_TN(0, 4), ops);
     } else {
@@ -3905,7 +3903,6 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
 
   /* Without the support of sse2 registers, the conversion from
      U8 to float need to be handled well to preserve the accuracy.
-     (bug#2600)
   */
   if( !Is_Target_SSE2() ){
     TN* x87_dest =
@@ -4049,12 +4046,12 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
     }
 
   } else if (fmtype == MTYPE_V16F8) {
-    // imtype == V16I8: bug 3082 workaround
+    // imtype == V16I8
     if (imtype == MTYPE_V16I4 || imtype == MTYPE_V8I4 || 
         imtype == MTYPE_V16I8 || imtype == MTYPE_V8I8)
       top = TOP_cvtdq2pd;
     else if (imtype == MTYPE_U8 || imtype == MTYPE_I8) {
-      top = TOP_cvtsi2sdq; // bug 3082 workaround, others should not reach here
+      top = TOP_cvtsi2sdq; // workaround, others should not reach here
       if (Is_Target_Orochi() && Is_Target_AVX()) {
         TN *xzero = Build_TN_Like(dest);
         Build_OP( TOP_xzero128v32, xzero, ops );
@@ -4068,7 +4065,7 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
     if (imtype == MTYPE_V16I4)
       top = TOP_cvtdq2ps;    
     else if (imtype == MTYPE_U8 || imtype == MTYPE_I8) {
-      top = TOP_cvtsi2sdq; // bug 3082 workaround, others should not reach here
+      top = TOP_cvtsi2sdq; // workaround, others should not reach here
       if (Is_Target_Orochi() && Is_Target_AVX()) {
         TN *xzero = Build_TN_Like(dest);
         Build_OP( TOP_xzero128v32, xzero, ops );
@@ -4143,7 +4140,7 @@ Expand_Select (
     true_tn = tmp;
   }
 
-  if( dest_tn == cond_tn ){ // bug 13180
+  if( dest_tn == cond_tn ){ 
     TN* tmp = Build_TN_Like( cond_tn );
     Expand_Copy( tmp, cond_tn, mtype, ops );
     cond_tn = tmp;
@@ -4255,13 +4252,13 @@ Expand_Min (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       Build_OP( TOP_movdq, tmp2, tmp1, ops );
       Build_OP( TOP_movdq, tmp3, src2, ops );
       switch(mtype){
-        case MTYPE_V16I1: //added for bug 5695, refer to 8676
+        case MTYPE_V16I1: 
             Build_OP( TOP_xor128v8, tmp4, tmp1, tmp3, ops );
             Build_OP( TOP_cmpgt128v8, tmp5, tmp3, tmp2, ops );
             Build_OP( TOP_and128v8, tmp6, tmp5, tmp4, ops );
             Build_OP( TOP_xor128v8, dest, tmp6, tmp3, ops );
             break;
-        case MTYPE_V16I2: //added for bug 5695, refer to 8676
+        case MTYPE_V16I2: 
             Build_OP( TOP_xor128v16, tmp4, tmp1, tmp3, ops );
             Build_OP( TOP_cmpgt128v16, tmp5, tmp3, tmp2, ops );
             Build_OP( TOP_and128v16, tmp6, tmp5, tmp4, ops );
@@ -4376,13 +4373,13 @@ Expand_Max (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       Build_OP( TOP_movdq, tmp2, tmp1, ops );
       Build_OP( TOP_movdq, tmp3, src2, ops );
       switch(mtype){
-        case MTYPE_V16I1: /// added for bug 8676
+        case MTYPE_V16I1: 
             Build_OP( TOP_xor128v8, tmp4, tmp1, tmp3, ops );
             Build_OP( TOP_cmpgt128v8, tmp5, tmp2, tmp3, ops );
             Build_OP( TOP_and128v8, tmp6, tmp5, tmp4, ops );
             Build_OP( TOP_xor128v8, dest, tmp6, tmp3, ops );
             break;
-        case MTYPE_V16I2: /// added for bug 8676
+        case MTYPE_V16I2: 
 	    Build_OP( TOP_xor128v16, tmp4, tmp1, tmp3, ops );
             Build_OP( TOP_cmpgt128v16, tmp5, tmp2, tmp3, ops );
             Build_OP( TOP_and128v16, tmp6, tmp5, tmp4, ops );
@@ -4697,7 +4694,7 @@ static void Expand_non_SSE2_Float_Select( TN* dest, VARIANT variant,
 }
 
 //implemented to handle storing vectorized floating-point comparison
-//to a preg for bug 11088
+//to a preg
 extern void 
 Exp_Stid_And_VComp(
         OPCODE stid, TN *result, TN *cmp_kid1, TN *cmp_kid2,
@@ -4724,7 +4721,7 @@ Exp_Stid_And_VComp(
 }
 
 //implemented to handle select with vectorized ldid as condition
-//for bug 11088
+
 extern void
 Exp_Select_And_VLdid(
         OPCODE select, TN *result, TN *true_tn, TN *false_tn,
@@ -4800,7 +4797,7 @@ Exp_Select_And_Condition (
   BOOL is_ssize_double = MTYPE_is_size_double(desc);
   const OPERATOR compare_opr = OPCODE_operator(compare);
 
-  /* Fix bug#1325
+  /* 
      Before expanding, make sure <result> is none of its operands.
    */
 
@@ -4869,7 +4866,7 @@ Exp_Select_And_Condition (
 	if( TN_size( cmp_kid2 ) == 4 )
 	  val = (INT32)val;
 
-	// Bug 5084 - The following should expand val as an integer and not 
+        // The following should expand val as an integer and not
 	// a float because we are going to convert this int back to float.
 	//TCON tcon = Host_To_Targ_Float( is_rsize_double ? MTYPE_F8 : MTYPE_F4, val );
 	TCON tcon = Host_To_Targ( is_rsize_double ? MTYPE_I8 : MTYPE_I4, val );
@@ -4902,7 +4899,7 @@ Exp_Select_And_Condition (
     TN* ctrl = Generate_Cmp_Ctrl_TN( compare_opr );
     BOOL zero_tn = FALSE;
 
-    // Bug 2297 - optimize the case where true_tn is 0.0
+    // optimize the case where true_tn is 0.0
     // TODO_1.2 : false_tn could also be 0.0 in which case we have to reverse 
     // the compare and set a flag and fall thru. This is not not relevant to
     // this bug.
@@ -4944,7 +4941,7 @@ Exp_Select_And_Condition (
         if (!is_ssize_double && is_rsize_double) {
 	  // cmpss sets the low-order 32 bits.  Extend these 32 bits to 64
 	  // bits.  Do this by replicating them across the entire 128-bit xmm
-	  // register.  Bug 9497.
+          // register.
 	  TN* cmp_64bit_result = Build_TN_Like(result);
 	  Build_OP(TOP_pshufd, cmp_64bit_result, tmp1, Gen_Literal_TN(0, 4),
 		   &new_ops);
@@ -4971,7 +4968,6 @@ Exp_Select_And_Condition (
       if (!is_ssize_double && is_rsize_double) {
 	// cmpss sets the low-order 32 bits.  Extend these 32 bits to 64 bits.
 	// Do this by replicating them across the entire 128-bit xmm register.
-	// Bug 9497.
 	TN* cmp_64bit_result = Build_TN_Like(result);
 	Build_OP(TOP_pshufd, cmp_64bit_result, tmp1, Gen_Literal_TN(0, 4),
 		 &new_ops);
@@ -5039,7 +5035,6 @@ Exp_Select_And_Condition (
     if( result != false_tn || 
 	( Force_IEEE_Comparisons && 
 	  TOP_is_flop( cmp_opcode ))) {
-      // Fix bug091.
       FmtAssert( result != true_tn,
 		 ("Exp_Select_And_Condition: result and true_tn are identical") );
       Expand_Copy( result, false_tn, select_type, &new_ops );
@@ -5079,7 +5074,6 @@ Exp_Select_And_Condition (
       // Ugly hack to preserve the interaface to Expand_Ordered_Select_Compare,
       // which parses a straight line code involving cmov.  Expand_Cmov, which
       // was added later, breaks this interface by introducing basic blocks.
-      // Bug 8087.
       if (Force_IEEE_Comparisons && TOP_is_flop(cmp_opcode)) {
 	Build_OP(cmov_top, result, true_tn, rflags, &new_ops);
 	Set_OP_cond_def_kind(OPS_last(&new_ops), OP_ALWAYS_COND_DEF);
@@ -5470,7 +5464,7 @@ static void Expand_Recip( TN* result, TN* src2, TYPE_ID mtype, OPS* ops )
     TN *tmp3 = Build_TN_Like(result);
     TN *tmp4 = Build_TN_Like(result);
     Build_OP( TOP_frcp128v32, tmp1, src2, ops );
-    // Bug 7218 - add a Newton-Raphson iteration to recip computation.
+    // add a Newton-Raphson iteration to recip computation.
     Build_OP( TOP_fmul128v32, tmp2, src2, tmp1, ops );
     Build_OP( TOP_fmul128v32, tmp3, tmp2, tmp1, ops );
     Build_OP( TOP_fadd128v32, tmp4, tmp1, tmp1, ops );
@@ -5758,7 +5752,7 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
     Expand_Recip( result, src1, OPCODE_rtype(opcode), ops );
     return;
   case OPC_F4RSQRT:
-  case OPC_F4ATOMIC_RSQRT:	// bug 6123
+  case OPC_F4ATOMIC_RSQRT:	
     if (Is_Target_Orochi() && Is_Target_AVX()) {
       src2 = Build_TN_Like(result);
       Build_OP (TOP_xzero128v32, src2, ops);
@@ -5766,7 +5760,7 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
     opc = TOP_rsqrtss;
     break;
   case OPC_V16F4RSQRT:
-  case OPC_V16F4ATOMIC_RSQRT:	// bug 6123
+  case OPC_V16F4ATOMIC_RSQRT:	
     opc = TOP_frsqrt128v32;
     break;
 
@@ -6376,10 +6370,10 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
   // move OP in order to track the usage info of src_tn.
 
   // In m64, src_tn and tgt_tn can have different sizes.  If the sizes differ,
-  // use 64-bit copy.  (See example in bug 14429.)
+  // use 64-bit copy.
   // 
   // In m32, EBO can copy from 8-byte TN to 4-byte TN.  This means a 4-byte
-  // copy where the src is a 4-byte hi/lo part of a 8-byte value (bug 14418).
+  // copy where the src is a 4-byte hi/lo part of a 8-byte value 
   const BOOL is_64bit = Is_Target_64bit() ?
 			  (TN_size(src_tn) == 8) :
 			  (TN_size(src_tn) == 8 && TN_size(tgt_tn) == 8);
@@ -6398,7 +6392,7 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
       Build_OP( is_64bit ? TOP_mov64 : TOP_mov32, tgt_tn, src_tn, ops );
       Set_OP_copy (OPS_last(ops));
 
-      // Copy the hi part of a TN pair.  Bug 8755.
+      // Copy the hi part of a TN pair.
       if (copy_pair) {
 	TN *hi_src_tn = NULL;
 	TN *hi_tgt_tn = NULL;
@@ -6455,7 +6449,6 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
 
     } else if( tgt_rc == ISA_REGISTER_CLASS_integer &&
 	       src_rc == ISA_REGISTER_CLASS_float ){
-      // Exposed by Bug 955
       Expand_Float_To_Int_Trunc( tgt_tn, src_tn, 
 				 TN_size(tgt_tn) == 8 ? MTYPE_I8 : MTYPE_I4,
 				 TN_size(src_tn) == 8 ? MTYPE_F8 : MTYPE_F4,
@@ -6607,7 +6600,7 @@ Expand_Count_Leading_Zeros (TN *result, TN *op, TYPE_ID mtype,
        mtype != MTYPE_I8 && mtype != MTYPE_U8 )
     Fail_FmtAssertion("Expand_Count_Leading_Zeros: unexpected mtype");
 
-  // Bug 14167: Don't use bsr64 on 32-bit target
+  // Don't use bsr64 on 32-bit target
   if ( (mtype == MTYPE_I8 || mtype == MTYPE_U8) && Is_Target_32bit() ) {
     Expand_Split_Leading_Zeros( result, op, mtype, safezero, ops );
     return;
@@ -6821,7 +6814,7 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Build_OP( TOP_subus128v16, result, op0, op1, ops );
     break;
 //****************************************************************************
-// Bug 9140: generate code for vector F8SIGN and F4SIGN
+// generate code for vector F8SIGN and F4SIGN
 // algoeirhm: sign(x,y) = abs(x) | sign(y)
 //            (1) remove sign bit of x
 //            (2) extract sign bit of y
@@ -9542,7 +9535,7 @@ void Expand_Const (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
 
     TCON tcon = STC_val(TN_var(src));
 
-    // Must use Targ_Is_Zero to check for positive zero.  Bug 9734.
+    // Must use Targ_Is_Zero to check for positive zero.
     if (TCON_ty(tcon) == MTYPE_F4 && Targ_Is_Zero(tcon)) {
       FmtAssert(TCON_ty(tcon) == mtype || mtype == MTYPE_V16F4, 
 		("Expand_Const: inconsistent mtypes"));
@@ -9624,7 +9617,7 @@ Exp_Spadjust (TN *dest, TN *size, VARIANT variant, OPS *ops)
   // A temp register is needed if the adjustment size can't fit in the
   // immediate field of an add instruction.  spadjust is converted into add
   // after register allocation, at which time there are no more registers.  So
-  // create a temp TN now.  Bug 9051.
+  // create a temp TN now.  
   if (TN_is_constant(size) &&
       TN_has_value(size) &&
       !CGTARG_Can_Fit_Immediate_In_Add_Instruction(TN_value(size))) {
@@ -10104,7 +10097,6 @@ Store_To_Temp_Stack(TYPE_ID desc, TN *src, const char *sym_name, TN **mem_base_t
 }
 
 // This function attempts to handle a range of to/from vector conversions,
-// exposed by bug 3082 and friends.
 void Expand_Conv_To_Vector (TN * dest, TN * src, TYPE_ID desc, TYPE_ID rtype,
                            OPS *ops)
 {

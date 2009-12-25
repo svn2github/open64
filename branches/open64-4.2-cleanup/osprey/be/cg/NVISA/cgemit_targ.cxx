@@ -168,7 +168,7 @@ void
 CGEMIT_Prn_Scn_In_Asm (ST *st, ST *cur_section)
 {
   UINT32 tmp, power;
-  // Bug 511
+
   // Do not emit section attributes for the __libc_ sections. Assumes that
   // user inline assembly will do the job. We will avoid duplicate entries.
   {
@@ -400,7 +400,7 @@ CGEMIT_Weak_Alias (ST *sym, ST *strongsym)
   fprintf ( Asm_File, "\t%s\t%s\n", AS_WEAK, ST_name(sym));
   fprintf ( Asm_File, "\t%s = %s", ST_name(sym), ST_name(strongsym));
   if (ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
-    // modelled after EMT_Write_Qualified_Name (bug 6899)
+    // modelled after EMT_Write_Qualified_Name 
     if (ST_level(strongsym) == GLOBAL_SYMTAB)
       fprintf ( Asm_File, "%s%d", Label_Name_Separator, ST_index(strongsym));
     else
