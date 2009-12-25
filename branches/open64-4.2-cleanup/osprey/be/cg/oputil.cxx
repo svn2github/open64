@@ -1176,7 +1176,6 @@ OP_Refs_Reg(const OP *op, ISA_REGISTER_CLASS cl, REGISTER reg)
     }
   }
 
-#ifdef KEY
   if( OP_cond_def( op ) ){
     for ( num = 0; num < OP_results(op); num++ ) {
       TN* result_tn = OP_result( op, num );
@@ -1187,7 +1186,6 @@ OP_Refs_Reg(const OP *op, ISA_REGISTER_CLASS cl, REGISTER reg)
       }      
     }
   }
-#endif
 
   /* if we made it here, we must not have found it */
   return FALSE;
@@ -1239,14 +1237,12 @@ OP_Refs_TN( const OP *op, const struct tn *opnd )
     }
   }
 
-#ifdef KEY
   if( OP_cond_def( op ) ){
     for ( num = 0; num < OP_results(op); num++ ) {
       if( OP_result( op, num ) == opnd )
 	return TRUE;
     }
   }
-#endif
 
   /* if we made it here, we must not have found it */
   return( FALSE );
@@ -1582,7 +1578,6 @@ Add_Hidden_Operands (OP* op, const vector<TN*>& hopnds) {
 #endif // TARG_IA64
 
 
-#ifdef KEY
 /* ====================================================================
  *
  * TN_Pair_In_OP
@@ -1654,7 +1649,6 @@ TN_Resnum_In_OP (OP* op, struct tn *tn, BOOL match_assigned_reg)
              ("TN_resnum_in_OP: Could not find <tn> in results list\n"));
   return -1;
 }
-#endif
 
 #if defined(TARG_SL) || defined(TARG_MIPS)
 #include "targ_sim.h"

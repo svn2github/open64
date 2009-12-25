@@ -136,9 +136,7 @@ void EBO_Process_Region(RID *rid);
 
 void EBO_Post_Process_Region(RID *rid);
 
-#ifdef KEY
 void EBO_Post_Process_Region_2(RID *rid);
-#endif
 
 void EBO_Compute_To( BB *bb );
 
@@ -149,7 +147,6 @@ extern BOOL OP_ld_st_unat(OP *op);
 #endif
 extern INT32 EBO_Opt_Level_Default;
 extern INT32 EBO_Opt_Level;
-#ifdef KEY
 extern BOOL EBO_can_delete_branch_delay_OP;
 extern BOOL EBO_no_liveness_info_available;
 extern INT32 EBO_Opt_Mask;
@@ -180,7 +177,6 @@ extern INT32 EBO_Opt_Mask;
 #define EBO_LOAD_EXECUTION              0x1000000
 #define EBO_CONSTANT_OPERAND0     	0x2000000
 #define EBO_FOLD_LOAD_DUPLICATE     	0x4000000
-#endif
 extern BOOL  CG_skip_local_ebo;
 extern bool Op_has_side_effect(OP *op);
 

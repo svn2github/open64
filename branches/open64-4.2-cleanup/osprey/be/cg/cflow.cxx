@@ -108,9 +108,7 @@
 
 #include "cflow.h"
 
-#ifdef KEY
 #include <float.h> // needed to pick up FLT_MAX at PathScale
-#endif
 #ifdef TARG_IA64
 #include "region.h"
 #include "region_bb_util.h"
@@ -135,9 +133,7 @@ static BOOL have_eh_regions;
  */
 static float br_taken_cost;
 static float br_fall_cost;
-#ifdef KEY
 static float br_static_cost;
-#endif
 
 /* Option control:
  */
@@ -1437,35 +1433,6 @@ Finalize_BB(BB *bp)
 
   case BBKIND_VARGOTO:
   case BBKIND_INDGOTO:
-#if 0
-    {
-      INT i;
-      INT nsuccs = BBINFO_nsuccs(bp);
-      struct succedge *edges = (struct succedge *)alloca(nsuccs * sizeof(struct succedge));
-      INT n = 0;
-      for (i = 0; i < nsuccs; ++i) {
-	INT j;
-	for (j = 0; j < n; ++j) {
-	  if (edges[j].bb == BBINFO_succ_bb(bp, i)) break;
-	}
-	if (j == n) {
-	  edges[j].bb = BBINFO_succ_bb(bp, i);
-	  edges[j].prob = BBINFO_succ_prob(bp, i);
-	  ++n;
-	} else {
-	  edges[j].prob += BBINFO_succ_prob(bp, i);
-	}
-      }
-      for (i = 0; i < n; ++i) {
-	BB *succ = edges[i].bb;
-	float prob = edges[i].prob;
-	BBLIST *edge = BB_Find_Succ(bp, succ);
-	Is_True(edge, ("BB:%d preds/succs don't match BBINFO", BB_id(bp)));
-	Is_True(!freqs_computed || (BBLIST_prob(edge) == prob),
-		("BB:%d preds/succs don't match BBINFO", BB_id(bp)));
-      }
-    }
-#endif
 #if Is_True_On
     if (BBINFO_kind(bp) == BBKIND_VARGOTO) {
       ANNOTATION *ant = ANNOT_Get(BB_annotations(bp), ANNOT_SWITCH);
@@ -2023,7 +1990,6 @@ Initialize_BB_Info(void)
 	}
 	bbinfo->nsuccs = nsuccs;
 
-#ifdef KEY
 	/* bug#1047
 	   An indirect goto could have no successor in the
 	   current pu, like
@@ -2034,7 +2000,6 @@ Initialize_BB_Info(void)
 	  DevWarn( "%s BB:%d has no successors", 
 		   BBKIND_Name(bbkind), BB_id(bb) );
 	} else
-#endif
 
 	  FmtAssert(nsuccs, ("%s BB:%d has no successors", 
 			     BBKIND_Name(bbkind), BB_id(bb)));
@@ -2333,7 +2298,6 @@ Redundant_Logif(BB *pred, BB *succ, BOOL *pnegated)
   }
 #endif
 
-#ifdef KEY
   /* A BBINFO_condval could be re-defined by an op which is scheduled
      at the delay slot. */
   if( PROC_has_branch_delay_slot() ){
@@ -2349,7 +2313,6 @@ Redundant_Logif(BB *pred, BB *succ, BOOL *pnegated)
       }
     }
   }
-#endif
 
   /* They're redundant!
    */
@@ -2807,9 +2770,7 @@ try_identities:
       if (Force_IEEE_Comparisons) break;
       /*FALLTHROUGH*/
     case V_BR_I4LT: 
-#ifdef KEY
     case V_BR_I4GT:
-#endif
     case V_BR_U4GT: 
     case V_BR_U4LT: 
     case V_BR_I4NE: 
@@ -3006,14 +2967,6 @@ Convert_Goto_To_If ( BB *bp, mBOOL *used_branch_around )
      * consideration given to which branch is best replaced.
      */
     used_branch_around[BB_id(targ)] = TRUE;
-#if 0
-  } else if ( ) {
-
-    /* It might be useful to detect other targets which we believe
-     * could be reordered later. This wouldn't be all that different
-     * than the branches-around case above.
-     */
-#endif
   } else {
 
     /* We weren't convinced this was profitiable.
@@ -3459,7 +3412,6 @@ Optimize_Branches(void)
 	    Cflow_Change_Succ(bp, 1, old_tgt, new_tgt);
 	  }
 #endif // TARG_IA64
-#ifdef KEY
 	  /* If both false branch and true branch target to the
 	     same bb, then it is not a LOGIF bb any more. (bug#3515)
 	  */
@@ -3468,7 +3420,6 @@ Optimize_Branches(void)
 	      FmtAssert( FALSE, ("Optimize_Branches: fail to merge") );
 	    }
 	  }
-#endif
 	}
 	break;
       case BBKIND_GOTO:
@@ -3661,9 +3612,7 @@ Delete_Unreachable_Blocks(void)
 
       ant = ANNOT_First(BB_annotations(bp), ANNOT_LABEL);
 
-#ifdef KEY
       Is_True(ant != NULL, ("Delete_Unreachable_Blocks: BB has no label"));
-#endif
 
       do {
 	LABEL_IDX lab = ANNOT_label(ant);
@@ -4321,67 +4270,6 @@ Can_Append_Succ(
 }
 
 
-#if 0
-/* I was going to use this for cloning VARGOTO blocks, but it is not
- * good enough just to copy the jump table and set the annotation and
- * WN_st, the code needs to be modified as well! I'm not sure to how
- * guarantee that I can find the code. Perhaps it could just be
- * regenerated and the old code dead-code eliminated. But it seems
- * that we can just share the jump tables, so we'll just keep this
- * fine piece of code in case we ever need it. Ken, 4-feb-98
- */
-
-/* ====================================================================
- *
- * Copy_Jump_Table
- *
- * Copy the [switch] jump table specified by the symbol <old_listvar>
- * and return the new symbol by function value.
- *
- * ====================================================================
- */
-static ST *
-Copy_Jump_Table(ST *old_listvar)
-{
-  TY_IDX table;
-  ST *listvar;
-  INITO_IDX old_ino;
-  INITV_IDX old_inv;
-  INITO_IDX ino;
-  INITV_IDX inv;
-  INITV_IDX prev_inv;
-  INT num_entries;
-
-  /* Get INITO for old table
-   */
-  old_ino = Find_INITO_For_Symbol(old_listvar);
-
-  /* Find how many entries in the table (can't use number of succs
-   * of VARGOTO BB since it doesn't count duplicates).
-   */
-  num_entries = 0;
-  FOREACH_INITV(INITO_val(old_ino), old_inv) ++num_entries;
-
-  /* Create the symbol for the new table.
-   */
-  table = Make_Array_Type(Pointer_type, 1, num_entries);
-  listvar = Gen_Read_Only_Symbol(table, "jump_table");
-  Set_ST_is_initialized(listvar);    /* so goes in rdata section */
-
-  /* Finally create and copy the jump target labels (INITVs).
-   */
-  ino = New_INITO(listvar);
-  prev_inv = INITV_IDX_ZERO;
-  FOREACH_INITV(INITO_val(old_ino), old_inv) {
-    LABEL_IDX lab = INITV_lab(old_inv);
-    inv = New_INITV();
-    INITV_Init_Label (inv, lab);
-    prev_inv = Append_INITV (inv, ino, prev_inv);
-  }
-
-  return listvar;
-}
-#endif
 
 
 /* ====================================================================
@@ -4404,9 +4292,7 @@ Append_Succ(
   INT i;
   RID *b_rid = BB_rid(b);
   INT nsuccs = BBINFO_nsuccs(suc);
-#ifdef KEY
   OP *first_new_op = NULL;
-#endif
 
   /* If the block we're merging into ended in a branch, remove it.
    */
@@ -4423,10 +4309,8 @@ Append_Succ(
       OP *new_op = Dup_OP(op);
       if (OP_memory(op)) Copy_WN_For_Memory_OP(new_op, op);
       BB_Append_Op(b, new_op);
-#ifdef KEY
       if (first_new_op == NULL)
 	first_new_op = new_op;
-#endif
 
       // After an OP is duplicated, its TN becomes GTN.
       if (!CG_localize_tns) {
@@ -5606,13 +5490,6 @@ Create_Cold_Region(BBCHAIN *cold)
   RID_parent(r) = parent;
   RID_cginfo(r) = NULL; /* ?? this should have a value */
 
-#if 0
-  INT i;
-  for ( i = SWP_replication_factor - 1; i >= 0; --i ) {
-    INT32 rep_num = Rep_Index_To_Number(i);
-    if ( Is_Exit_Replication(rep_num) ) ++RID_num_exits(r);
-  }
-#endif
 
   if ( parent ) RID_Add_kid(r, parent);
 
@@ -6315,9 +6192,7 @@ static BBCHAIN *
 Grow_Chains(BBCHAIN *chains, EDGE *edges, INT n_edges, BB_MAP chain_map)
 {
   INT i;
-#ifdef KEY
   INT j;
-#endif
 
   /* Visit the succ edges from heaviest weight to lightest.
    */
@@ -6328,7 +6203,6 @@ Grow_Chains(BBCHAIN *chains, EDGE *edges, INT n_edges, BB_MAP chain_map)
     BBCHAIN *pchain = BB_Chain(chain_map, pred);
     BBCHAIN *schain = BB_Chain(chain_map, succ);
 
-#ifdef KEY
     if (CFLOW_Enable_Freq_Order_On_Heuristics){
       if (e->freq == 0) 
         continue;
@@ -6341,7 +6215,6 @@ Grow_Chains(BBCHAIN *chains, EDGE *edges, INT n_edges, BB_MAP chain_map)
           continue;
       }
     }
-#endif
 
     // keep loops with flow that are unrolled together
     BOOL can_combine = TRUE;
@@ -6580,12 +6453,6 @@ Freq_Order_Blocks(void)
   BBCHAIN *chains;
   BB_MAP chain_map;
 
-#if 0
-// 11-sep-97 re-enable for 7.3 -- it seems to work now
-  /* Temporary workaround -- see pv468701
-   */
-  if (have_eh_regions) return FALSE;
-#endif
 
   /* Find the BBs that hint pragmas indicate are never executed.
    */
@@ -7447,15 +7314,6 @@ CFLOW_Optimize(INT32 flags, const char *phase_name)
   // Reset the mapping between BBs and hyperblocks.
   Setup_HB_bb_map();
 
-#if 0
-// this is not ready for prime-time. It is general solution to fix
-// the problem uncovered by pv661478.
-  if (   PROC_has_branch_delay_slot()
-      && current_flags & CFLOW_FILL_DELAY_SLOTS)
-  {
-    flow_change |= Normalize_Delay_Slots();
-  }
-#endif
 
   if (CFLOW_Trace_Detail) {
     #pragma mips_frequency_hint NEVER

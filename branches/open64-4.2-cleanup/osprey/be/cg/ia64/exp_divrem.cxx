@@ -127,7 +127,6 @@ Expand_SGI_F10_Divide(TN *result, TN *src1, TN *src2, OPS *ops)
 }
 
 
-#ifdef OSP_OPT
 static void
 Expand_I8_I8_Divide(TN *result, TN *src1, TN *src2, OPS *ops)
 {
@@ -185,7 +184,6 @@ Expand_I8_I8_Divide(TN *result, TN *src1, TN *src2, OPS *ops)
   // Copy in case result overlaps one of the sources
   Exp_COPY(result, f10, ops);
 }
-#endif
 
 static void
 Expand_SGI_F8_Divide(TN *result, TN *src1, TN *src2, OPS *ops)
@@ -1934,7 +1932,6 @@ Expand_Power_Of_2_Divide (TN *result, TN *numer, INT64 dvsr, TYPE_ID mtype, OPS 
   }
 }
 
-#ifdef OSP_OPT
 /* Expand the sequence for division and/or remainder by a variable.
  */
 static void
@@ -2058,7 +2055,6 @@ Expand_NonConst_DivRem (TN *quot, TN *rem, TN *x, TN *y, TYPE_ID mtype, OPS *ops
     Build_OP(TOP_getf_sig, quot, qp, f2a, ops);
   }
 }
-#endif
 
 /******************************************************************************
  *

@@ -63,7 +63,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 #include <stdio.h>
@@ -287,14 +286,10 @@ Gen_BB_Like (BB *model)
 BB *
 Gen_And_Append_BB (BB *prev_bb) 
 {
-#ifdef KEY
   /* bug#448
      The rid info from <prev_bb> should be propagated.
    */
   BB *bb = Gen_BB_Like(prev_bb);
-#else
-  BB *bb = Gen_BB();
-#endif
 
   if (prev_bb != NULL) {
     Is_True (BB_next(prev_bb) == NULL, 
@@ -366,9 +361,6 @@ Append_Region_BBs(BB *prev, RID *rid)
      */
     REGION_First_BB = first_bb;
   }
-#if 0
-  return CGRIN_last_bb( cgrin );
-#endif
   BB *bb;
   for (bb = first_bb; BB_next(bb) != NULL; bb = BB_next(bb))
 	;
@@ -2097,12 +2089,10 @@ BB_Mark_Unreachable_Blocks (void)
      */
     if (!BB_unreachable(bb)) continue;
 
-#ifdef KEY
     if (BB_has_non_local_label(bb)) {
       Mark_Reachable(bb);
       continue;
     }
-#endif
 
     if (!BB_entry(bb)) continue;
 
@@ -2167,7 +2157,6 @@ BB_MAP BB_Depth_First_Map(BB_SET *region, BB *entry)
       // BB_LIST_rest(Entry_BB_Head). So needn't do map_depth_first twice for the same BB.
       FmtAssert ((region == NULL || BB_SET_MemberP(region, BB_LIST_first(entries))),
 		 ("BB_Depth_First_Map visited BB:%d twice", BB_id(BB_LIST_first(entries)))); 
-#ifdef KEY
       /* bug#1458
 	 Don't visit an unrecognizable region twice.
        */
@@ -2176,11 +2165,9 @@ BB_MAP BB_Depth_First_Map(BB_SET *region, BB *entry)
 		   ("BB_Depth_First_Map visited a region twice") );
 	continue;
       }
-#endif
       max_id = map_depth_first(dfo_map, region, BB_LIST_first(entries),
 			       max_id);
     }
-#ifdef KEY
     // Visit predecessor-less BBs that are non-local goto targets.  They behave
     // like entry points.
     if (PU_Has_Nonlocal_Goto_Target) {
@@ -2200,7 +2187,6 @@ BB_MAP BB_Depth_First_Map(BB_SET *region, BB *entry)
 	}
       }
     }
-#endif
   }
   return dfo_map;
 }
@@ -2776,7 +2762,6 @@ ST *BB_st(BB *bb)
 }
 
 
-#ifdef KEY
 static BOOL OP_defs_argument( OP* op )
 {
   for( int resnum = 0; resnum < OP_results(op); resnum++ ){
@@ -2788,7 +2773,6 @@ static BOOL OP_defs_argument( OP* op )
 
   return FALSE;
 }
-#endif
 
 
 /* =======================================================================
@@ -2855,7 +2839,6 @@ static void Split_BB(BB *bb)
       }
 #endif
 
-#ifdef KEY
       /* Fix bug#1820
 	 While splitting a big bb, don't violate the assumption that
 	 a definition of an argument register should be in the call block.
@@ -2866,7 +2849,6 @@ static void Split_BB(BB *bb)
 	  min_idx--;
 	}
       }
-#endif
       splits[split_idx++] = min_idx;
       if (len - min_idx <= Split_BB_Length) break;
       i = min_idx + low;

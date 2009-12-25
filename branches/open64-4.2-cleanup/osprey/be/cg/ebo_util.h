@@ -94,10 +94,8 @@
  * =======================================================================
  */
 
-#ifdef KEY
 #define EBO_REG(regs, cl, op_num)	\
   (regs[((op_num) * (ISA_REGISTER_CLASS_MAX+1)) + (cl)])
-#endif
 
 inline
 BOOL
@@ -126,7 +124,6 @@ EBO_tn_available(BB *bb,
       ((bb != tn_bb) &&
        has_assigned_reg(tn))) return FALSE;
 
-#ifdef KEY
   // Don't extend the live-range of homeable GTNs.  If the live-range is
   // extended and GRA spills in the extended region, the spill could overwrite
   // a store in the extended region that stores to the home location.
@@ -137,7 +134,6 @@ EBO_tn_available(BB *bb,
       !GRA_LIVE_TN_Live_Into_BB(tn, bb)) {
     return FALSE;
   }
-#endif
 
   return TRUE;
 }
@@ -183,7 +179,6 @@ EBO_hash_op (OP *op,
       }
     }
 #endif
-#ifdef KEY
     if (spill_tn && TN_has_spill(spill_tn)) {
       INT n = TOP_Find_Operand_Use(OP_code(op), OU_offset);
       if (n >= 0) {
@@ -214,9 +209,6 @@ EBO_hash_op (OP *op,
         }
       }
     }
-#else
-    if (spill_tn && TN_has_spill(spill_tn)) hash_value = EBO_SPILL_MEM_HASH;
-#endif
   } else if (OP_effectively_copy(op)) {
     hash_value = EBO_COPY_OP_HASH;
   } else {
@@ -274,13 +266,11 @@ add_to_hash_table ( BOOL in_delay_slot,
   for (idx = 0; idx < OP_results(op); idx++) {
     EBO_TN_INFO *tninfo = NULL;
     TN *tnr = OP_result(op, idx);
-#ifdef KEY
     if (OP_cond_def(op)) {
       EBO_TN_INFO *prev_tninfo = get_tn_info(tnr);
       if (prev_tninfo != NULL)
 	inc_ref_count(prev_tninfo);
     }
-#endif
     if ((tnr != NULL) && (tnr != True_TN) && (tnr != Zero_TN)) {
 #if defined(TARG_X8664) || defined(TARG_LOONGSON)
       TN* tmp_tn = CGTARG_Gen_Dedicated_Subclass_TN( op, idx, TRUE );
@@ -443,7 +433,6 @@ mark_tn_live_into_BB (TN *tn, BB *into_bb, BB *outof_bb)
             block.  Otherwise, the Def information was already
             determined for this TN and we shouldn't change it. */
           GRA_LIVE_Add_Live_Def_GTN(outof_bb, tn);
-#ifdef KEY
 	  /* Before promoting a local tn to a global tn across different bbs,
 	     make sure to set that it is not homable to avoid confusing GRA.
 	  */
@@ -451,7 +440,6 @@ mark_tn_live_into_BB (TN *tn, BB *into_bb, BB *outof_bb)
 	    Reset_TN_is_gra_homeable( tn );
 	    Set_TN_home( tn, NULL );
 	  }
-#endif
         }
         GRA_LIVE_Add_Live_Out_GTN(outof_bb, tn);
         GRA_LIVE_Add_Defreach_Out_GTN(outof_bb, tn);

@@ -210,10 +210,8 @@ BOOL EBO_Can_Eliminate_Zero_Opnd_OP(OP *);
 
 BOOL EBO_Can_Merge_Into_Offset (OP *op);
 
-#ifdef KEY
 void EBO_Special_Start( MEM_POOL* );
 void EBO_Special_Finish();
 #if !defined(TARG_IA64) && !defined(TARG_SL)
 BOOL Combine_L1_L2_Prefetches( OP*, TN**, EBO_TN_INFO** );
 #endif
-#endif // KEY

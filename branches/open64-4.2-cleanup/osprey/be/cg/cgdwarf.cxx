@@ -73,9 +73,7 @@
 #include <libelf/libelf.h>
 #include <libdwarf/libdwarf.h>
 #include <vector>
-#ifdef KEY /* Bug 3507 */
 #include <ctype.h>
-#endif /* KEY Bug 3507 */
 #include <alloca.h>
 
 #define	USE_STANDARD_TYPES 1
@@ -110,11 +108,9 @@
 #include "vstring.h"
 #include "cgemit_targ.h"
 #include "cgdwarf_targ.h"
-#ifdef KEY
 #include "config_debug.h" // for DEBUG_Emit_Ehframe.
 #include <strings.h>
 #include <string.h>
-#endif
 #include "be_symtab.h"
 
 BOOL Trace_Dwarf;
@@ -151,30 +147,22 @@ struct CGD_SYMTAB_ENTRY {
       // I think the ELF symbol index tells us everything we need to know.
     } elfsym_info;
   };
-#ifdef KEY
   Dwarf_Unsigned   next;	// CGD_Symtab index of next entry from same PU
   Dwarf_Unsigned   CGD_Symtab_offset;	// index in CGD_Symtab
-#endif
 
   CGD_SYMTAB_ENTRY(CGD_SYMTAB_ENTRY_TYPE entry_type, Dwarf_Unsigned idx) :
     type(entry_type), index(idx)
-#ifdef KEY
     , next(~0), CGD_Symtab_offset(~0)
-#endif
       {}
-#ifdef KEY
   bool next_is_null() { return next == ~0; }
-#endif
 };
 
 std::vector <CGD_SYMTAB_ENTRY, mempool_allocator<CGD_SYMTAB_ENTRY> > CGD_Symtab;
 
-#ifdef KEY
 // Map PU to CGD_Symtab entries specific to that PU.
 hash_map<PU_IDX, Dwarf_Unsigned> PU_IDX_To_CGD_SYMTAB_OFFSET;
 
 static DST_INFO_IDX Current_Top_Level_Idx = DST_INVALID_IDX;
-#endif
 
 #if defined(BUILD_OS_DARWIN)
 /* Darwin asm doesn't like subtraction of labels when one of the labels occurs
@@ -214,51 +202,33 @@ Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
   if (type == CGD_LABIDX && pu == (PU_IDX) 0) {
     pu = ST_pu(Get_Current_PU_ST());
   }
-#ifdef KEY
   // Speed up search by looking at CGD_Symtab entries specific to the PU.
   // Bug 8756.
   CGD_SYMTAB_ENTRY *p;
   Dwarf_Unsigned idx = PU_IDX_To_CGD_SYMTAB_OFFSET[pu];
   for (p = &CGD_Symtab[idx]; !p->next_is_null(); p = &CGD_Symtab[p->next])
-#else
-  std::vector <CGD_SYMTAB_ENTRY,
-	  mempool_allocator<CGD_SYMTAB_ENTRY> >::iterator p;
-  for (p = CGD_Symtab.begin(); p != CGD_Symtab.end(); ++p)
-#endif
   {
     if (p->type == type &&
 	p->index == index) {
       switch (type) {
       case CGD_LABIDX:
 	if (p->label_info.pu_idx == pu) {
-#ifdef KEY
 	  return p->CGD_Symtab_offset;
-#else
-	  return p - CGD_Symtab.begin();
-#endif
 	}
 	break;
       case CGD_ELFSYM:
-#ifdef KEY
 	return p->CGD_Symtab_offset;
-#else
-	return p - CGD_Symtab.begin();
-#endif
       default:
 	Fail_FmtAssertion("Illegal CGD_Symtab entry type");
 	break;
       }
     }
   }
-#ifdef KEY
   CGD_SYMTAB_ENTRY new_entry = CGD_SYMTAB_ENTRY(type, index);
   new_entry.next = PU_IDX_To_CGD_SYMTAB_OFFSET[pu];
   new_entry.CGD_Symtab_offset = CGD_Symtab.size();
   PU_IDX_To_CGD_SYMTAB_OFFSET[pu] = new_entry.CGD_Symtab_offset;
   CGD_Symtab.push_back(new_entry);
-#else
-  CGD_Symtab.push_back(CGD_SYMTAB_ENTRY(type, index));
-#endif
 
   if (Trace_Dwarf) {
     fprintf(TFile,
@@ -277,10 +247,8 @@ Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
     // Put label-specific fields in place
     CGD_Symtab[handle].label_info.pu_idx = pu;
     if (label_name == NULL) {
-#ifdef KEY
       if (LABEL_IDX_level(index) == 0)
 	index = make_LABEL_IDX(index, CURRENT_SYMTAB);
-#endif
       CGD_Symtab[handle].label_info.name_idx = LABEL_name_idx(index);
       CGD_Symtab[handle].label_info.offset = Get_Label_Offset(index);
     }
@@ -743,7 +711,6 @@ put_subprogram(DST_flag flag,
 	        die, 
 	        DST_IS_external(flag) ? pb_pubname : pb_funcname);
     }
-#ifdef KEY
     // Bug 4311 - The front-end does not set up the correct type information
     // in the DST tree for the subprogram. In such cases, we use the top-level
     // DST tree to derive the return type from a variable of same name as the
@@ -784,7 +751,6 @@ put_subprogram(DST_flag flag,
 	}
       }
     } else
-#endif
     put_reference (DST_SUBPROGRAM_def_type(attr), DW_AT_type, die);
     if (DST_IS_external(flag))  put_flag (DW_AT_external, die);
     if (DST_IS_prototyped(flag)) put_flag (DW_AT_prototyped, die);
@@ -922,9 +888,8 @@ put_location (
 	st =	Get_ST_formal_ref_base(st);
   if (st == NULL) return;
   if (ST_is_not_used(st)) return;
-#ifdef KEY	// Ignore asm string names.  Bug 7604.
+  // Ignore asm string names. 
   if (ST_sym_class(st) == CLASS_NAME) return;
-#endif
 
   Base_Symbol_And_Offset (st, &base_st, &base_ofst);
 
@@ -954,15 +919,11 @@ put_location (
 	&& ST_sclass(st) != SCLASS_COMMON && ST_sclass(st) != SCLASS_EXTERN) 
   {
 	/* symbol was not allocated, so doesn't have dwarf location */
-#ifndef KEY
-	return;
-#else
 	// Bug 4723 - Allocate any object not allocated because the rest of 
 	// compilation never encountered that object. Note that ST_is_not_used 
 	// is not set for this object.
 	Allocate_Object(st);
 	Base_Symbol_And_Offset (st, &base_st, &base_ofst);
-#endif
   }
 
   switch (ST_sclass(st)) {
@@ -980,23 +941,15 @@ put_location (
       		}
 #else
 		dwarf_add_expr_addr_b (expr,
-#ifdef KEY
 			           // need to add base offset because if the symbol
                                    // has a base, the offset is not necessarily set
 			           base_ofst + offs, 
-#else
-				       ST_ofst(st) + offs,
-#endif
 				       Cg_Dwarf_Symtab_Entry(CGD_ELFSYM,
 							     EMT_Put_Elf_Symbol(base_st)),
 				       &dw_error);
 		if (Trace_Dwarf) {
 	  		fprintf (TFile,"LocExpr: symbol = %s, offset = %lld\n", 
-#ifdef KEY
 			      ST_name(base_st), base_ofst + ST_ofst(st) + offs);
-#else
-			      ST_name(base_st), ST_ofst(st) + offs);
-#endif
 		}
 #endif // NVISA
 		break;
@@ -1037,23 +990,15 @@ put_location (
       if (base_st != NULL) {
 #endif
 	dwarf_add_expr_addr_b (expr,
-#ifdef KEY      
 	               	       // need to add base offset because if the symbol
 			       // has a base, the offset is not necessarily set
 			       base_ofst + offs,
-#else
-			       ST_ofst(st) + offs, 
-#endif
 			       Cg_Dwarf_Symtab_Entry(CGD_ELFSYM,
 						     EMT_Put_Elf_Symbol(base_st)),
 			       &dw_error);
 	if (Trace_Dwarf) {
 	  fprintf (TFile,"LocExpr: symbol = %s, offset = %lld\n", 
-#ifdef KEY
 			      ST_name(base_st), base_ofst + ST_ofst(st) + offs); 
-#else
-			      ST_name(base_st), ST_ofst(st) + offs); 
-#endif
 	}
       }
       else {
@@ -1079,7 +1024,6 @@ put_location (
       }
       break;
     default:
-#ifdef KEY
       // Treat unknown sclass variables as SCLASS_AUTO if 
       // the base points to the stack. Fix bug #380, also bug 11302 
       if ((base_st == FP_Sym || base_st == SP_Sym) && ST_sclass(st) == SCLASS_UNKNOWN) {
@@ -1098,7 +1042,6 @@ put_location (
 	}
 	break;
       }
-#endif
       ErrMsg (EC_Unimplemented, "put_location: sclass");
       return;
   }
@@ -1156,7 +1099,6 @@ static void
 put_lexical_block(DST_flag flag, DST_LEXICAL_BLOCK *attr, Dwarf_P_Die die)
 {
   put_name (DST_LEXICAL_BLOCK_name(attr), die, pb_none);
-#if 1
   put_pc_value_symbolic (DW_AT_low_pc,
 			 Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
 					       (LABEL_IDX) DST_ASSOC_INFO_st_index(DST_LEXICAL_BLOCK_low_pc(attr)),
@@ -1169,33 +1111,11 @@ put_lexical_block(DST_flag flag, DST_LEXICAL_BLOCK *attr, Dwarf_P_Die die)
 					       cur_text_index),
 			 (Dwarf_Addr) 0,
 			 die);
-#else
-  put_pc_value (DW_AT_low_pc, 
-	get_ofst_from_label_ASSOC_INFO(DST_LEXICAL_BLOCK_low_pc(attr)),
-	die);
-  put_pc_value (DW_AT_high_pc,
-	get_ofst_from_label_ASSOC_INFO(DST_LEXICAL_BLOCK_high_pc(attr)),
-	die);
-#endif
 }
 
 static void
 put_inlined_subroutine(DST_INLINED_SUBROUTINE *attr, Dwarf_P_Die die)
 {
-#if 0
-  put_pc_value_symbolic (DW_AT_low_pc,
-			 Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
-					       (LABEL_IDX) DST_ASSOC_INFO_st_index(DST_LEXICAL_BLOCK_low_pc(attr)),
-					       cur_text_index),
-			 (Dwarf_Addr) 0,
-			 die);
-  put_pc_value_symbolic (DW_AT_high_pc,
-			 Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
-					       (LABEL_IDX) DST_ASSOC_INFO_st_index(DST_LEXICAL_BLOCK_high_pc(attr)),
-					       cur_text_index),
-			 (Dwarf_Addr) 0,
-			 die);
-#endif
    put_pc_value (DW_AT_low_pc,
 	get_ofst_from_inline_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_low_pc(attr)),
 	die);
@@ -1226,10 +1146,6 @@ put_concrete_subprogram (DST_INFO_IDX abstract_idx,
 			 INT32        high_pc,
 			 Dwarf_P_Die  die)
 {
-#if 0
-   put_pc_value (DW_AT_low_pc, low_pc, die);
-   put_pc_value (DW_AT_high_pc, high_pc, die);
-#endif
    put_reference( abstract_idx, DW_AT_abstract_origin, die);
 }
 
@@ -1247,16 +1163,12 @@ static void
 put_variable(DST_flag flag, DST_VARIABLE *attr, Dwarf_P_Die die)
 {
   if (DST_IS_const(flag))  /* Not yet supported */ {
-#ifndef KEY
-    ErrMsg (EC_Unimplemented, "put_variable: DST_IS_const");
-#else
     DST_CONSTANT *attr_tmp = (DST_CONSTANT *)attr;
     FmtAssert (!DST_IS_declaration(flag), ("put_constant of non-def"));
     put_decl(DST_CONSTANT_def_decl(attr_tmp), die);
     put_name (DST_CONSTANT_def_name(attr_tmp), die, pb_none);
     put_reference (DST_CONSTANT_def_type(attr_tmp), DW_AT_type, die);
     put_const_attribute (DST_CONSTANT_def_cval(attr_tmp), DW_AT_const_value, die);    
-#endif
   }
   else if (DST_IS_memdef(flag))  /* Not yet supported */ {
     ErrMsg (EC_Unimplemented, 
@@ -1268,11 +1180,9 @@ put_variable(DST_flag flag, DST_VARIABLE *attr, Dwarf_P_Die die)
     put_reference (DST_VARIABLE_decl_type(attr), DW_AT_type, die);
     put_flag (DW_AT_declaration, die);
     if (DST_IS_external(flag)) put_flag (DW_AT_external, die);
-#ifdef KEY
     if (!DST_IS_NULL (DST_VARIABLE_decl_linkage_name(attr))) {
         put_string (DST_VARIABLE_decl_linkage_name(attr), DW_AT_MIPS_linkage_name, die) ;
     }
-#endif
   }
   else if (DST_IS_comm(flag)) { /* definition of a common block variable. */
     put_decl(DST_VARIABLE_comm_decl(attr), die);
@@ -1315,11 +1225,9 @@ put_variable(DST_flag flag, DST_VARIABLE *attr, Dwarf_P_Die die)
 		die);
     }
     /* else if is cross-file inlined, will use name for matching */
-#ifdef KEY
     if (!DST_IS_NULL (DST_VARIABLE_decl_linkage_name(attr))) {
         put_string (DST_VARIABLE_def_linkage_name(attr), DW_AT_MIPS_linkage_name, die) ;
     }
-#endif
   }
 }
 
@@ -1613,17 +1521,12 @@ put_member(DST_flag flag, DST_MEMBER *attr, Dwarf_P_Die die)
 	 * so use decl flag. */
   	/* For now, assume that the member location is always a constant. */
   	expr = dwarf_new_expr (dw_dbg, &dw_error);
-#ifdef KEY
         // the dwarf spec says that the location expression for a structure member
         // assumes that the location of the struct itself is on the stack.  This
         // implies that we need to add a constant, not just push one
         // (DWARF2 page 41)
   	dwarf_add_expr_gen (expr, DW_OP_plus_uconst, DST_MEMBER_memb_loc(attr), 0, 
 		&dw_error);
-#else
-  	dwarf_add_expr_gen (expr, DW_OP_consts, DST_MEMBER_memb_loc(attr), 0, 
-		&dw_error);
-#endif
 #if pv292951
 	/* according to the spec, we should do this, but dbx doesn't like it */
 	dwarf_add_expr_gen (expr, DW_OP_plus, 0, 0, &dw_error);
@@ -1639,13 +1542,11 @@ put_member(DST_flag flag, DST_MEMBER *attr, Dwarf_P_Die die)
 				      DW_AT_data_member_location, expr, &dw_error);
 	}
   }
-#ifdef KEY
   // Bug 1419 - add information about accessibility
   if (Dwarf_Language == DW_LANG_C_plus_plus &&
       DST_MEMBER_accessibility(attr) != 0)
     dwarf_add_AT_unsigned_const(dw_dbg, die, DW_AT_accessibility, 
 				DST_MEMBER_accessibility(attr), &dw_error);
-#endif
 
 }
 
@@ -1676,7 +1577,6 @@ put_inheritance(DST_flag flag, DST_INHERITANCE *attr, Dwarf_P_Die die)
 
   put_reference (DST_INHERITANCE_type(attr), DW_AT_type, die);
   expr = dwarf_new_expr (dw_dbg, &dw_error);
-#ifdef KEY
   // Bug 3107
   // Quote from Dave's last fix:
   // the dwarf spec says that the location expression for a structure member
@@ -1696,10 +1596,6 @@ put_inheritance(DST_flag flag, DST_INHERITANCE *attr, Dwarf_P_Die die)
     dwarf_add_expr_gen (expr, DW_OP_deref, 0, 0, &dw_error);
     dwarf_add_expr_gen (expr, DW_OP_plus, 0, 0, &dw_error);
   }
-#else
-  dwarf_add_expr_gen (expr, DW_OP_consts, DST_INHERITANCE_memb_loc(attr), 0, 
-		      &dw_error);
-#endif
   if (expr != NULL) {
     dwarf_add_AT_location_expr (dw_dbg, die, DW_AT_data_member_location, 
 	expr, &dw_error);
@@ -1708,11 +1604,9 @@ put_inheritance(DST_flag flag, DST_INHERITANCE *attr, Dwarf_P_Die die)
 			        DST_INHERITANCE_virtuality(attr),
 				&dw_error);
   }
-#ifdef KEY
   // Bug 1419 - add information about accessibility
   dwarf_add_AT_unsigned_const(dw_dbg, die, DW_AT_accessibility, 
   			      DST_INHERITANCE_accessibility(attr), &dw_error);
-#endif
 }
 
 static void
@@ -1778,7 +1672,6 @@ put_common_inclusion (DST_flag flag, DST_COMMON_INCL *attr, Dwarf_P_Die die)
   put_reference (DST_COMMON_INCL_com_blk(attr), DW_AT_common_reference, die);
 }
 
-#ifdef KEY /* Bug 3507 */
 static void
 put_imported_decl (DST_flag flag, DST_IMPORTED_DECL *attr, Dwarf_P_Die die)
 {
@@ -1793,7 +1686,6 @@ put_module (DST_flag flag, DST_MODULE *attr, Dwarf_P_Die die)
   put_name (DST_MODULE_name(attr), die, pb_none);
   put_decl (DST_MODULE_decl(attr), die);
 }
-#endif /* KEY Bug 3507 */
 
 static void 
 put_string_type (DST_flag flag, DST_STRING_TYPE *attr, Dwarf_P_Die die)
@@ -1819,7 +1711,6 @@ put_string_type (DST_flag flag, DST_STRING_TYPE *attr, Dwarf_P_Die die)
   }
 }
 
-#ifdef KEY
 static void
 put_namelist (DST_NAMELIST *attr, Dwarf_P_Die die)
 {
@@ -1831,7 +1722,6 @@ put_namelist_item (DST_NAMELIST_ITEM *attr, Dwarf_P_Die die)
 {
   put_name (DST_NAMELIST_ITEM_name(attr), die, pb_none);
 }
-#endif
 
 static void
 Write_Attributes (
@@ -1965,7 +1855,6 @@ Write_Attributes (
       put_string_type (flag, 
 	  DST_ATTR_IDX_TO_PTR(iattr, DST_STRING_TYPE), die);
     break;
-#ifdef KEY
     // Bug 3704 - handle namelist and namelist items for Fortran.
     case DW_TAG_namelist:
       put_namelist (DST_ATTR_IDX_TO_PTR(iattr, DST_NAMELIST), die);
@@ -1973,7 +1862,6 @@ Write_Attributes (
     case DW_TAG_namelist_item:
       put_namelist_item (DST_ATTR_IDX_TO_PTR(iattr, DST_NAMELIST_ITEM), die);
       break;
-#ifdef KEY /* Bug 3507 */
     case DW_TAG_imported_declaration:
       put_imported_decl(flag, 
                         DST_ATTR_IDX_TO_PTR(iattr, DST_IMPORTED_DECL), die);
@@ -1981,9 +1869,6 @@ Write_Attributes (
     case DW_TAG_module:
       put_module(flag, DST_ATTR_IDX_TO_PTR(iattr, DST_MODULE), die);
       break;
-#endif /* KEY Bug 3507 */
-#endif
-      
    default:
       ErrMsg (EC_Unimplemented, "Write_Attributes: TAG not handled");
       break;
@@ -2062,9 +1947,7 @@ preorder_visit (
     }
   }
 
-#ifdef KEY
   Current_Top_Level_Idx = idx;
-#endif
   //Current_Tree_Level = tree_level;
   Write_Attributes (tag,
 		   flag,
@@ -2096,14 +1979,9 @@ preorder_visit (
        child_idx = DST_INFO_sibling(DST_INFO_IDX_TO_PTR(child_idx)))
   {
     info = DST_INFO_IDX_TO_PTR (child_idx);
-#ifdef KEY /* Bug 3507 */
     if ((DST_INFO_tag(info) != DW_TAG_subprogram &&
           DST_INFO_tag(info) != DW_TAG_entry_point)
 	|| DST_IS_declaration(DST_INFO_flag(info)) )
-#else /* KEY Bug 3507 */
-    if (DST_INFO_tag(info) != DW_TAG_subprogram
-	|| DST_IS_declaration(DST_INFO_flag(info)) )
-#endif /* KEY Bug 3507 */
     {
       left_sibling = 
         preorder_visit (child_idx, parent, left_sibling, tree_level + 1, visit_children);
@@ -2115,7 +1993,6 @@ preorder_visit (
   return die;
 }
 
-#ifdef KEY /* Bug 3507 */
 #include <map>
 using namespace std;
 /*
@@ -2151,7 +2028,6 @@ build_map(DST_INFO_IDX parent_idx, Dwarf_P_Die parent_p_die)
     }
   }
 }
-#endif /* KEY Bug 3507 */
 
 /* traverse all DSTs and handle the non-pu info */
 static void
@@ -2179,15 +2055,11 @@ Traverse_Global_DST (void)
      * of the compile_unit die.
      */
     parent = CGD_enclosing_proc[GLOBAL_LEVEL];
-#ifdef KEY /* Bug 3507 */
     Dwarf_P_Die die = preorder_visit (idx, parent, NULL, LOCAL_LEVEL,
       TRUE /* visit children */);
     if (DST_INFO_tag(info) == DW_TAG_module) {
       build_map(idx, die);
     }
-#else /* KEY Bug 3507 */
-    (void) preorder_visit (idx, parent, NULL, LOCAL_LEVEL, TRUE /* visit children */);
-#endif /* KEY Bug 3507 */
     DST_SET_info_mark(DST_INFO_flag(info));	/* mark has been traversed */
   }
 }
@@ -2297,12 +2169,10 @@ Traverse_DST (ST *PU_st, DST_IDX pu_idx)
   // so reset that to 1, and keep globals combined into 0.
   nestlevel = CURRENT_SYMTAB - 1;
   parent = CGD_enclosing_proc[nestlevel-1];
-#ifdef KEY /* Bug 3507 */
   /* Special case: procedure is an immediate child of a module */
   if (DST_INFO_map.find(info) != DST_INFO_map.end()) {
     parent = DST_INFO_map[info];
   }
-#endif /* KEY Bug 3507 */
   die = preorder_visit (pu_idx, parent, NULL, nestlevel, TRUE /*visit_children*/);
   Set_Enclosing_Die (die, nestlevel);
 
@@ -2444,20 +2314,6 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
     dwarf_add_expr_gen (expr, 
                         Is_Target_64bit() ? DW_OP_breg7 : DW_OP_breg4, 
 			Frame_Len, 0, &dw_error) ;           
-#if 0
-  /* isa_registers.cxx order of registers is different from that of gdb 
-   * Try "info registers".  
-   * If we change the order in isa_registers now, it is total chaos.
-   */
-  if (Current_PU_Stack_Model != SMODEL_SMALL)
-    dwarf_add_expr_gen (expr, DW_OP_bregx,
-	6 /* REGISTER_machine_id (TN_register_class(FP_TN), TN_register(FP_TN)) */,
-	0, &dw_error);
-  else
-    dwarf_add_expr_gen (expr, DW_OP_bregx,
-	7 /* REGISTER_machine_id (TN_register_class(SP_TN), TN_register(SP_TN)) */,
-	Frame_Len, &dw_error);
-#endif 
 #endif /* TARG_X8664 */
 
   dwarf_add_AT_location_expr(dw_dbg, PU_die, DW_AT_frame_base, expr, &dw_error);
@@ -2622,13 +2478,11 @@ Cg_Dwarf_Begin (BOOL is_64bit)
     }
   }
 
-#ifdef KEY
   if (!CG_emit_unwind_info)
   dw_dbg = Em_Dwarf_Begin(is_64bit, Trace_Dwarf, 
 			  0,
 			  Cg_Dwarf_Enter_Elfsym);
   else
-#endif
   dw_dbg = Em_Dwarf_Begin(is_64bit, Trace_Dwarf, 
 			  (Dwarf_Language == DW_LANG_C_plus_plus),
 			  Cg_Dwarf_Enter_Elfsym);
@@ -2754,7 +2608,6 @@ void Cg_Dwarf_Gen_Asm_File_Table (void)
 
 }
 
-#ifdef KEY
 void Cg_Dwarf_Gen_Macinfo (void)
 {
   DST_IDX idx;
@@ -2845,7 +2698,6 @@ Print_Directives_For_All_Files(void) {
   fputc ('\n', Asm_File);
 #endif /* defined(BUILD_OS_DARWIN) */
 }
-#endif
 
 
 static void
@@ -2924,10 +2776,8 @@ print_source (SRCPOS srcpos)
   }
 }
 
-#ifdef KEY
 BOOL Cg_Dwarf_First_Op_After_Preamble_End = FALSE;
 BOOL Cg_Dwarf_BB_First_Op = FALSE;
-#endif
 
 // THis adds line info and, as a side effect,
 // builds tables in dwarf2 for the file numbers
@@ -2951,14 +2801,10 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 
   if (srcpos == 0 && last_srcpos == 0)
 	DevWarn("no valid srcpos at PC %d\n", code_address);
-#ifndef KEY
-  if (srcpos == 0 || srcpos == last_srcpos) return;
-#else
   if (srcpos == 0 || 
       (!Cg_Dwarf_First_Op_After_Preamble_End && !Cg_Dwarf_BB_First_Op &&
        srcpos == last_srcpos))
     return;
-#endif
 
 #ifdef TARG_IA64
   // TODO:  figure out what to do about line changes in middle of bundle ???
@@ -3031,24 +2877,6 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 #endif
 	}
 #ifdef linux
-#ifndef KEY	// skip here because already generated at beginning
-	// For linux, emit .file whenever file changes,
-	// as it applies to all following  line directives,
-	// whatever the spelling.
-  	if (Assembly) {
-		include_idx = file_table[file_idx].incl_index;
-#ifdef TARG_SL
-	      if (include_idx == 0)
-                CGEMIT_Prn_File_Dir_In_Asm(usrcpos,
-			NULL,
-			file_table[file_idx].filename);
-	      else
-#endif			  		
-                CGEMIT_Prn_File_Dir_In_Asm(usrcpos,
-			incl_table[include_idx].path_name,
-			file_table[file_idx].filename);
-	}
-#endif
 #endif
   }
 
@@ -3626,11 +3454,9 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 
   virtual_section_position vsp(buffer_cnt, buffers);
 
-#ifdef KEY
 #define buflen 30
   char dwarf_begin[buflen], dwarf_end[buflen];
   const int alignment = Use_32_Bit_Pointers ? 4 : 8;
-#endif
 
   Dwarf_Unsigned k = 0;
   while (k <= reloc_count) {
@@ -3719,7 +3545,6 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	    fprintf(asm_file, "-.");
 #endif
 	break;
-#ifdef KEY
       case dwarf_drt_cie_label: // bug 2463
 #if defined(BUILD_OS_DARWIN)
 	/* GCC sets this to 0, so we do likewise */
@@ -3729,7 +3554,6 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 #endif /* defined(BUILD_OS_DARWIN) */
 	++k; // skip the DEBUG_FRAME label that is there just as a place-holder
 	break;
-#ifdef KEY /* Bug 3507 */
       case dwarf_drt_module:
 	{
 #if ! defined(BUILD_OS_DARWIN)
@@ -3773,7 +3597,6 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	  // vsp_bytes.
 	  continue; 
 	}
-#endif /* KEY Bug 3507 */
       case dwarf_drt_data_reloc_by_str_id:
 	// it should be __gxx_personality_v0
         if ((Gen_PIC_Call_Shared || Gen_PIC_Shared) && 
@@ -3812,7 +3635,6 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	++k;
 	}
 	break;
-#endif	// KEY
       case dwarf_drt_first_of_length_pair:
 	Is_True(k + 1 < reloc_count, ("unpaired first_of_length_pair"));
 	Is_True((reloc_buffer[k + 1].drd_type ==
@@ -3833,7 +3655,6 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
       case dwarf_drt_second_of_length_pair:
 	Fail_FmtAssertion("unpaired first/second_of_length_pair");
 	break;
-#ifdef KEY
       // CIE begin
       case dwarf_drt_cie_begin:
         {
@@ -3895,7 +3716,6 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	  fprintf (asm_file, "%s:", dwarf_begin);
 	}
 	break;
-#endif // KEY
       default:
 	break;
       }
@@ -3921,11 +3741,9 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	fprintf(asm_file, "\t%s 0x%llx", reloc_name, (unsigned long long)ofst);
 #endif
       if (ofst != 0) {
-#ifdef KEY
 	if (reloc_buffer[k].drd_type == dwarf_drt_none)
 	    fprintf(asm_file, "\t%s 0x%llx", reloc_name, (unsigned long long)ofst);
 	else
-#endif // KEY
 	 fprintf(asm_file, " + 0x%llx", (unsigned long long)ofst);
       }
       fputc ('\n', asm_file);
@@ -3934,7 +3752,6 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
     ++k;
   }
 
-#ifdef KEY
   if (!strcmp (section_name, EH_FRAME_SECTNAME)){
     // End preceding frame/cie
 #if defined(BUILD_OS_DARWIN)
@@ -3945,7 +3762,6 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
     if (strcmp (dwarf_end, ""))
       fprintf (asm_file, "%s:\n", dwarf_end);
   }
-#endif
 
   fflush(asm_file);
 }

@@ -715,18 +715,15 @@ HB_Block_Select(HB* candidate, BOOL profitable_ifc)
   // hyperblock
   //
 
-#ifdef KEY
   // Identify hammocks that have successive conditional branches between join 
   // points. We do not handle > 1 branch level and hence we should ignore such
   // such hyperblocks when we If-Convert.
   BB *bb_succ;
   BOOL no_hammock = FALSE;
-#endif
   for (bb_j = HB_Entry(candidate); bb_j && HB_Contains_Block(candidate, bb_j); ) {
     if (BB_SET_MemberP(BB_pdom_set(HB_Entry(candidate)),bb_j)) {
       join_list.push_back(bb_j);
     }
-#ifdef KEY
     if (!no_hammock) {
       FOR_ALL_BB_SUCCS(bb_j, succs) {
 	bb_succ = BBLIST_item(succs);
@@ -740,7 +737,6 @@ HB_Block_Select(HB* candidate, BOOL profitable_ifc)
 	}   
       }
     }
-#endif
     succs = BB_succs(bb_j);
     if (succs) {
       bb_j = BBLIST_item(succs);
@@ -763,10 +759,8 @@ HB_Block_Select(HB* candidate, BOOL profitable_ifc)
   visited_blocks = BB_SET_Create_Empty(PU_BB_Count+2, &MEM_local_pool);
   retval = TRUE;
   
-#ifdef KEY
   if (join_list.size() > 1 && !no_hammock)
     hammock_region = TRUE;
-#endif
   for (i=0; i<join_list.size()-1; i++) {
     hb_paths.clear();
     if (!Enumerate_Paths(candidate, 
@@ -784,11 +778,7 @@ HB_Block_Select(HB* candidate, BOOL profitable_ifc)
       break; // Stop looking
     }
     if (HB_Trace(HB_TRACE_SELECT)) {
-#ifdef KEY /* Mac port */
       fprintf(HB_TFile, "<HB> examining %ld paths\n", (long) hb_paths.size());
-#else /* KEY Mac port */
-      fprintf(HB_TFile, "<HB> examining %d paths\n", hb_paths.size());
-#endif /* KEY Mac port */
     }
     if (hb_paths.size() > HB_MAX_PATHS) {
       if (HB_Trace(HB_TRACE_SELECT)) {

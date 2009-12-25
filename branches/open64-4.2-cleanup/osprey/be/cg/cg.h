@@ -70,11 +70,9 @@ extern BOOL GRA_optimize_restore_ar_lc;
 extern BOOL EBO_data_spec;
 extern BOOL edge_done;
 #endif
-#ifdef KEY
 extern BOOL PU_Has_Exc_Handler;
 extern BOOL PU_Has_Nonlocal_Goto_Target;
 extern BOOL CG_file_scope_asm_seen;
-#endif
 
 #ifdef TARG_X8664
 struct tn;

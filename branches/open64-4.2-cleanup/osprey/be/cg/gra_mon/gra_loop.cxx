@@ -63,11 +63,9 @@ void
 GRA_LOOP::Make_Register_Used( ISA_REGISTER_CLASS rc, REGISTER reg,
 			      BOOL reclaim  )
 {
-#ifdef KEY
   // Nothing to do for reclaiming, since REG was already marked used.
   if (reclaim)
     return;
-#endif
 
   if (this == NULL) return;
 
@@ -79,7 +77,6 @@ GRA_LOOP::Make_Register_Used( ISA_REGISTER_CLASS rc, REGISTER reg,
 }
 
 
-#ifdef KEY
 /////////////////////////////////////
 // Return the set of registers referenced in the loop.
 REGISTER_SET
@@ -99,7 +96,6 @@ GRA_LOOP::Registers_Referenced (ISA_REGISTER_CLASS rc)
   return referenced;
 }
 
-#endif
 
 /////////////////////////////////////
 //  create a GRA_LOOP node for a loop represented by LOOP_DESCR ld.
@@ -111,10 +107,8 @@ GRA_LOOP_MGR::Create(LOOP_DESCR *ld)
   ISA_REGISTER_CLASS rc;
 
   GRA_LOOP* gloop = TYPE_MEM_POOL_ALLOC(GRA_LOOP, GRA_pool);
-#ifdef KEY
   BZERO( gloop, sizeof(gloop[0]) );
   gloop->Loop_Descr_Set(ld);
-#endif
   gloop->Nest_Level_Set(LOOP_DESCR_nestlevel(ld));
   gloop->Loop_Head_Set(LOOP_DESCR_loophead(ld));
   BB_MAP_Set(_map, LOOP_DESCR_loophead(ld), (void *) gloop);

@@ -418,12 +418,10 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 		}
 		else if (!def && is_func_arg && BB_entry(current_bb)) 
 			;	// okay
-#ifdef KEY
 		else if (!def && is_func_arg && BB_call(current_bb))
 			;	// okay.  CSE might have replaced a use of a
 				// non-dedicated TN with a use of a param reg,
 				// bug 7219.
-#endif
 #ifdef TARG_X8664
 		else if (!def && regnum == RAX && BB_entry(current_bb)) 
 			;	// okay because RAX gives number of xmm args
@@ -627,7 +625,6 @@ Find_Global_TNs ( RID *rid )
             /* this use is just a copy of the def */
             continue;
 	  }
-#ifdef KEY
 	  /* Bug#931
 	     We cannot assume <op> has only one result. An extension
 	     of the previous checking.
@@ -635,7 +632,6 @@ Find_Global_TNs ( RID *rid )
 	  if( OP_same_res(op) && OP_Defs_TN(op,tn) ){
 	    continue;
 	  }
-#endif
 	  if (OP_copy(op) && tn == OP_result(op,0)) {
             /* this use is just a self-copy, will disappear */
             continue;
@@ -766,10 +762,8 @@ Get_Local_TN_For_Global (TN *global_tn, TN_MAP spill_tns, BB *bb, BOOL reuse)
 			global_tn, CGSPILL_LCL));
 		tninfo->callee_save = FALSE;
 		preg = (PREG_NUM)(INTPTR) TN_MAP_Get( TN_To_PREG_Map, global_tn );
-#ifdef KEY
 		Is_True(preg >= 0, ("Get_Local_TN_For_Global: "
 				    "negative index to PREG_To_TN_Array"));
-#endif
 		if (preg) PREG_To_TN_Array[preg] = local_tn;
 	}
 	tninfo->local_tn = local_tn;
@@ -822,9 +816,7 @@ Insert_Spills_Of_Globals (void)
       for (opndnum = 0; opndnum < OP_opnds(op); opndnum++) {
         tn = OP_opnd(op, opndnum);
         if (tn != NULL && TN_is_global_reg(tn)
-#ifdef KEY
 	    && !TN_is_dedicated(tn)
-#endif
 #ifdef TARG_X8664
 	    // Localize all if CG_localize_tns=1, else localize only floats.
 	    && (CG_localize_tns || TN_is_float(tn))
@@ -848,9 +840,7 @@ Insert_Spills_Of_Globals (void)
       for (resnum = 0; resnum < OP_results(op); resnum++) {
         tn = OP_result(op, resnum);
         if (TN_is_global_reg(tn)
-#ifdef KEY
 	    && !TN_is_dedicated(tn)
-#endif
 #ifdef TARG_X8664
 	    // Localize all if CG_localize_tns=1, else localize only floats.
 	    && (CG_localize_tns || TN_is_float(tn))

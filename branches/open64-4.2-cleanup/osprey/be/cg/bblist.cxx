@@ -176,9 +176,7 @@ BBlist_Add_BB (BBLIST **lst, BB *bb)
 BBLIST *
 BBlist_Add_BB_with_Prob (BBLIST **lst, BB *bb, float prob,
 			 BOOL via_feedback, BOOL set_prob
-#ifdef KEY
                          ,BOOL via_hint
-#endif
 			 ,BOOL incr_prob)
 {
   BBLIST *p, *last;
@@ -260,9 +258,7 @@ Link_Pred_Succ (BB *pred, BB *succ)
 void
 Link_Pred_Succ_with_Prob (BB *pred, BB *succ, float prob,
                           BOOL via_feedback, BOOL set_prob
-#ifdef KEY
                           , BOOL via_hint
-#endif
                           , BOOL incr_prob
                          )
 {
@@ -272,9 +268,7 @@ Link_Pred_Succ_with_Prob (BB *pred, BB *succ, float prob,
   BBLIST *pedge;
   BBlist_Add_BB_with_Prob (&BB_succs(pred), succ, prob,
                            via_feedback, set_prob
-#ifdef KEY
                            , via_hint
-#endif
                            , incr_prob
                           );
   pedge = BBlist_Add_BB (&BB_preds(succ), pred);

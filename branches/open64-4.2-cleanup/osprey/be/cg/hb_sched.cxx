@@ -96,15 +96,12 @@
 #include "ti_bundle.h"
 #include "whirl2ops.h"
 #include "tag.h"
-#ifdef KEY
 #include <float.h>	// FLT_MAX
 #include "opsch_set.h"
-#endif
 
 // ======================================================================
 // Declarations (macros, variables)
 // ======================================================================
-#ifdef KEY
 OPSCH_SET *fp_opschs = NULL;
 static int OPSCH_count = 0;
 static int unsched_prefetch_count = 0;
@@ -112,7 +109,6 @@ static int deleted_prefetch_count = 0;
 
 OPSCH **OPSCH_Vec;	// Map OPSCH_id to OPSCH.
 int OPSCH_Vec_Count;
-#endif
 
 BOOL Trace_HB = FALSE;
 
@@ -132,7 +128,6 @@ Print_OPSCH (OP *op, BB_MAP value_map)
     OPSCH_estart(opsch), OPSCH_lstart(opsch), 
     OPSCH_num_succs(opsch), OPSCH_num_preds(opsch));
 
-#ifdef KEY
   if (OPSCH_least_constrained_int(opsch) != NULL) {
     fprintf(TFile, " int:%d",
 	    OPSCH_num_blockers(OPSCH_least_constrained_int(opsch)));
@@ -141,7 +136,6 @@ Print_OPSCH (OP *op, BB_MAP value_map)
     fprintf(TFile, " fp:%d",
 	    OPSCH_num_blockers(OPSCH_least_constrained_fp(opsch)));
   }
-#endif
   fprintf (TFile, ">\n");
 }
 
@@ -502,11 +496,9 @@ HB_Schedule::Adjust_Ldst_Offsets (void)
     ARC_LIST *arcs;
     for (arcs = OP_succs(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
       ARC *arc = ARC_LIST_first(arcs);
-#ifdef KEY
       if( ARC_kind(arc) != CG_DEP_REGIN ){
 	continue;
       }
-#endif
       OP *succ_op = ARC_succ(arc);
       OPSCH *succ_opsch = OP_opsch (succ_op, _hb_map);
       if (OPSCH_ldst (succ_opsch) && OPSCH_visited (succ_opsch)) {
@@ -516,7 +508,6 @@ HB_Schedule::Adjust_Ldst_Offsets (void)
     for (arcs = OP_preds(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
       ARC *arc = ARC_LIST_first(arcs);
       OP *pred_op = ARC_pred(arc);
-#ifdef KEY
       if (ARC_kind(arc) != CG_DEP_REGANTI){
 	// We only care about any REGANTI really.
 	// And there may be multiple arcs between two nodes.
@@ -524,7 +515,6 @@ HB_Schedule::Adjust_Ldst_Offsets (void)
 	// To avoid such cases, we will skip arcs of kind CG_DEP_MISC.
 	continue;
       }
-#endif /* KEY */
       OPSCH *pred_opsch = OP_opsch (pred_op, _hb_map);
       if (OPSCH_ldst (pred_opsch) && !OPSCH_visited (pred_opsch)) {
 	Fixup_Ldst_Offset (pred_op, addiu_const, -1, type());
@@ -533,7 +523,6 @@ HB_Schedule::Adjust_Ldst_Offsets (void)
   }
 }
 
-#ifdef KEY
 
 void HB_Schedule::Adjust_Ldst_Offsets( BOOL is_fwd )
 {
@@ -585,7 +574,6 @@ void HB_Schedule::Adjust_Ldst_Offsets( BOOL is_fwd )
   }
 }
 
-#endif
 
 // ======================================================================
 // Set_Resource_Usage
@@ -650,7 +638,6 @@ Init_OPSCH_For_BB (BB *bb, BB_MAP value_map,  BOOL compute_bitsets,
   ARC *arc;
   OPSCH *opsch;
 
-#ifdef KEY
   OPSCH_count = 0;
   OPSCH_Vec_Count = BB_length(bb);
   OPSCH_Vec = TYPE_MEM_POOL_ALLOC_N(OPSCH *, pool, OPSCH_Vec_Count + 1);
@@ -658,7 +645,6 @@ Init_OPSCH_For_BB (BB *bb, BB_MAP value_map,  BOOL compute_bitsets,
 	        OPSCH_SET_Create_Empty(BB_length(bb), pool) : NULL;
   unsched_prefetch_count = 0;
   deleted_prefetch_count = 0;
-#endif
 
   FOR_ALL_BB_OPs_FWD (bb, op) {
     opsch = TYPE_MEM_POOL_ALLOC (OPSCH, pool);
@@ -666,7 +652,6 @@ Init_OPSCH_For_BB (BB *bb, BB_MAP value_map,  BOOL compute_bitsets,
     OPSCH_lstart(opsch) = 0x7fff;
     BB_OP_MAP bb_map = (BB_OP_MAP) BB_MAP_Get(value_map, bb);
     BB_OP_MAP_Set (bb_map, op, opsch);
-#ifdef KEY
     OPSCH_op(opsch) = op;
     OPSCH_id(opsch) = ++OPSCH_count;
     OPSCH_Vec[OPSCH_id(opsch)] = opsch;
@@ -680,7 +665,6 @@ Init_OPSCH_For_BB (BB *bb, BB_MAP value_map,  BOOL compute_bitsets,
     // Count number of prefetches.
     if (OP_prefetch(op))
       unsched_prefetch_count++;
-#endif
   }
 
   FOR_ALL_BB_OPs_FWD (bb, op) {
@@ -751,7 +735,6 @@ sort_by_slack (const void *opsch1, const void *opsch2)
   return ((OPSCH*)(INTPTR) slack1 < (OPSCH*)(INTPTR) slack2);
 }
  
-#ifdef KEY
 // ======================================================================
 // Find the depth of <op> in the dependence graph and mark it in the
 // OPSCH_depth field.
@@ -852,7 +835,6 @@ Update_Blocker_Info (OPSCH *blocker, OPSCH *blockee)
     OPSCH_least_constrained_int(blocker) = OPSCH_least_constrained_int(blockee);
   }
 }
-#endif
 
 // ======================================================================
 // Recursive depth first search of the dep-graph starting at <op>. The 
@@ -866,10 +848,8 @@ DFS_Search (OP *op, BB_MAP value_map, BOOL is_fwd)
 
   if (OPSCH_visited(opsch)) return;
 
-#ifdef KEY
   OPSCH *least_constrained_int = NULL;
   OPSCH *least_constrained_fp = NULL;
-#endif
 
   OPSCH_dfsnum(opsch) = cur_dfsnum;
   Set_OPSCH_visited(opsch);
@@ -883,13 +863,10 @@ DFS_Search (OP *op, BB_MAP value_map, BOOL is_fwd)
       OPSCH *succ_opsch = OP_opsch (succ_op, value_map);
       if (!OPSCH_visited(succ_opsch)) 
 	DFS_Search (succ_op, value_map, TRUE);
-#ifdef KEY
       Update_Blocker_Info(opsch, succ_opsch);
-#endif
     }
   } else {
     // visit all the predecessors.
-#ifdef KEY
     // Heuristic for DFS ordering.  When picking a child to continue the
     // depth-first traversal (in the reverse direction), choose a child with
     // the lowest depth in the dependence graph.  The hope is that this child's
@@ -922,13 +899,10 @@ DFS_Search (OP *op, BB_MAP value_map, BOOL is_fwd)
 	if (!Is_Ldst_Addiu_Pair (pred_opsch, opsch, pred_op, op)) {
 	  if (!OPSCH_visited(pred_opsch))
 	    DFS_Search(pred_op, value_map, FALSE);
-#ifdef KEY
 	  Update_Blocker_Info(opsch, pred_opsch);
-#endif
 	}
       }
     } else
-#endif
     for (arcs = OP_preds(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
       ARC *arc = ARC_LIST_first(arcs);
       OP *pred_op = ARC_pred(arc);
@@ -936,9 +910,7 @@ DFS_Search (OP *op, BB_MAP value_map, BOOL is_fwd)
       if (!Is_Ldst_Addiu_Pair (pred_opsch, opsch, pred_op, op)) {
 	if (!OPSCH_visited(pred_opsch)) 
 	  DFS_Search (pred_op, value_map, FALSE);
-#ifdef KEY
 	Update_Blocker_Info(opsch, pred_opsch);
-#endif
       }
     }
   }
@@ -952,14 +924,12 @@ Compute_DFO (HB_Schedule *sched, BB_MAP value_map, BOOL is_fwd)
 {
   INT i;
 
-#ifdef KEY
   OP *op;
   BB *bb = OP_bb(OP_VECTOR_element(sched->ready_vector(), 0));
   FOR_ALL_BB_OPs_FWD(bb, op) {
     if (OP_preds(op) == NULL)
       Compute_Depth(op, value_map);
   }
-#endif
 
   cur_dfsnum = 1;
   for (i = 0; i < VECTOR_count(sched->ready_vector()); i++) {
@@ -1085,9 +1055,7 @@ Compute_Fwd_OPSCH (BB *bb, BB_MAP value_map, INT *max_lstart,
 
   // Initialize the OPSCH_estart and OPSCH_num_succs fields of all OPs.
   // Also compute the max_lstart.
-#ifdef KEY
   // Compute OPSCH_ancestors.
-#endif
   FOR_ALL_BB_OPs_FWD (bb, op) {
     OPSCH *opsch = OP_opsch(op, value_map);
     INT op_estart = OPSCH_estart(opsch);
@@ -1102,7 +1070,6 @@ Compute_Fwd_OPSCH (BB *bb, BB_MAP value_map, INT *max_lstart,
           OPSCH_estart(succ_opsch) = cur_estart;
         }
         OPSCH_num_succs(opsch)++;
-#ifdef KEY
 	// Compute OPSCH_ancestors.
 	if (compute_bitsets) {
 	  OPSCH_ancestors(succ_opsch) =
@@ -1111,7 +1078,6 @@ Compute_Fwd_OPSCH (BB *bb, BB_MAP value_map, INT *max_lstart,
 	  OPSCH_ancestors(succ_opsch) =
 	    OPSCH_SET_Union1D(OPSCH_ancestors(succ_opsch), opsch, pool);
 	}
-#endif
       }
     }
     *max_lstart = MAX (*max_lstart, op_estart);
@@ -1129,9 +1095,7 @@ Compute_Bkwd_OPSCH (BB *bb, BB_MAP value_map, INT max_lstart,
 
   // Initialize the OPSCH_scycle, OPSCH_lstart and OPSCH_num_preds fields of
   // all OPs.
-#ifdef KEY
   // Compute OPSCH_descendants.
-#endif
   FOR_ALL_BB_OPs_REV (bb, op) {
     OPSCH *opsch = OP_opsch(op, value_map);
     ARC_LIST *arcs;
@@ -1147,7 +1111,6 @@ Compute_Bkwd_OPSCH (BB *bb, BB_MAP value_map, INT max_lstart,
           OPSCH_lstart(pred_opsch) = cur_lstart;
         }
         OPSCH_num_preds(opsch)++;
-#ifdef KEY
 	if (compute_bitsets) {
 	  // Compute OPSCH_descendants.
 	  OPSCH_descendants(pred_opsch) =
@@ -1156,13 +1119,11 @@ Compute_Bkwd_OPSCH (BB *bb, BB_MAP value_map, INT max_lstart,
 	  OPSCH_descendants(pred_opsch) =
 	    OPSCH_SET_Union1D(OPSCH_descendants(pred_opsch), opsch, pool);
 	}
-#endif
       }
     }
   }
 }
 
-#ifdef KEY
 // ======================================================================
 // Compute the number of nodes blocking each node.
 // ======================================================================
@@ -1180,7 +1141,6 @@ Compute_OPSCH_Blockers (BB *bb, BB_MAP value_map, BOOL is_fwd, MEM_POOL *pool)
     }
   }
 }
-#endif
 
 // ======================================================================
 // Given a <bb>, build the OPSCH data structure for it.
@@ -1197,10 +1157,8 @@ Compute_OPSCH (BB *bb, BB_MAP value_map, MEM_POOL *pool, BOOL compute_bitsets,
 
   Compute_Bkwd_OPSCH (bb, value_map, max_lstart, compute_bitsets, pool);
 
-#ifdef KEY
   if (compute_bitsets)
     Compute_OPSCH_Blockers(bb, value_map, is_fwd, pool);
-#endif
 }
 
 // ======================================================================
@@ -1275,7 +1233,6 @@ HB_Schedule::Compute_BBSCH (BB *bb, BBSCH *bbsch)
 
 }
 
-#ifdef KEY
 // ======================================================================
 // Drop the remaining unscheduled prefetches because there are no more
 // unused issue slots.
@@ -1401,7 +1358,6 @@ HB_Schedule::Update_Schedule_Parameters()
     _unsched_fp_percentage = (unsched_fp_count * 100) / _unsched_count;
   }
 }
-#endif
 
 // ======================================================================
 // Add the selected <op> to the list of scheduled instructions. Update
@@ -1415,13 +1371,11 @@ HB_Schedule::Add_OP_To_Sched_Vector (OP *op, BOOL is_fwd)
 
   Set_OPSCH_scheduled (opsch);
 
-#ifdef KEY
   if (OP_prefetch(op))
     unsched_prefetch_count--;
 
   if (_scheduled_opschs != NULL)
     _scheduled_opschs = OPSCH_SET_Union1D(_scheduled_opschs, opsch, &_hb_pool);
-#endif
 
   // Adjust the resource table to account for this OP. Change 'Clock' 
   // to be the scycle of this OP.
@@ -1434,11 +1388,9 @@ HB_Schedule::Add_OP_To_Sched_Vector (OP *op, BOOL is_fwd)
   // Remove <op> from Ready_Vector.
   VECTOR_Delete_Element (_ready_vector, op);
 
-#ifdef KEY
   if (HBS_Balance_Ready_Types() ||
       HBS_Balance_Unsched_Types())
     Update_Least_Constrained(opsch, is_fwd);
-#endif
 
   INT count = VECTOR_count(_ready_vector);
 
@@ -1520,7 +1472,6 @@ HB_Schedule::Add_OP_To_Sched_Vector (OP *op, BOOL is_fwd)
       }  // if (!OPSCH_scheduled(succ_opsch)) {
     }  // for (arcs = OP_succs(op; ...
 
-#ifdef KEY
     // If current OP is a load/store, check if it has been scheduled before 
     // an addiu. If yes, we need to account for the latency between the 
     // addiu and the current OP.
@@ -1539,7 +1490,6 @@ HB_Schedule::Add_OP_To_Sched_Vector (OP *op, BOOL is_fwd)
 	}
       }
     }
-#endif
 
   } else {
     // Add any OPs that are now ready to be scheduled to the Ready_Vector.
@@ -1595,14 +1545,11 @@ HB_Schedule::Add_OP_To_Sched_Vector (OP *op, BOOL is_fwd)
     fprintf (TFile, "Cycle: %d :: ", Clock);
     Print_OP_No_SrcLine (op);
   }
-#ifdef KEY
   // Extract scheduling parameters from the schedule in progress.  These
   // parameters will guide future scheduling.
   Update_Schedule_Parameters();
-#endif
 }
 
-#ifdef KEY
 // ======================================================================
 // Decide if scheduling CUR_OPSCH will expose more OPs of a type lacking
 // in the ready vector.  Return 1 if yes, -1 if no, and 0 if undecided.
@@ -1688,7 +1635,6 @@ Is_OP_Better_For_Balance_Unsched_Types(OPSCH *cur_opsch, OPSCH *best_opsch,
     return -1;
   return 0;
 }
-#endif
 
 // ======================================================================
 // Compare two OPs to see which one is better for scheduling.
@@ -1701,7 +1647,6 @@ Priority_Selector::Is_OP_Better (OP *cur_op, OP *best_op)
   INT cur_scycle = OPSCH_scycle(cur_opsch);
   INT best_scycle = OPSCH_scycle(best_opsch);
 
-#ifdef KEY
   // Schedule non-prefetches first.
   if (_cur_sched->HBS_Drop_Unsched_Prefetches()) {
     if (OP_prefetch(cur_op) && !OP_prefetch(best_op) &&
@@ -1711,7 +1656,6 @@ Priority_Selector::Is_OP_Better (OP *cur_op, OP *best_op)
 	cur_scycle >= best_scycle)
       return TRUE;
   }
-#endif
 
 #if defined(TARG_MIPS) && !(TARG_SL)
   // Schedule definitions of fcc as close as possible to their uses, in order
@@ -1800,7 +1744,6 @@ Priority_Selector::Is_OP_Better (OP *cur_op, OP *best_op)
   }
 #endif
 
-#ifdef KEY
   if (_hbs_type & HBS_BALANCE_UNSCHED_TYPES) {
     int status =
       Is_OP_Better_For_Balance_Unsched_Types(cur_opsch, best_opsch, 
@@ -1809,7 +1752,6 @@ Priority_Selector::Is_OP_Better (OP *cur_op, OP *best_op)
     if (status == 1)  return TRUE;
     if (status == -1) return FALSE;
   }
-#endif
 
   if (_hbs_type & HBS_DEPTH_FIRST) {
     return (OPSCH_dfsnum(cur_opsch) < OPSCH_dfsnum(best_opsch));
@@ -1826,7 +1768,6 @@ Priority_Selector::Is_OP_Better (OP *cur_op, OP *best_op)
     if (OPSCH_estart(cur_opsch) < OPSCH_estart(best_opsch)) return FALSE;
   }
 
-#ifdef KEY
   if (_hbs_type & HBS_BALANCE_READY_TYPES) {
     int status =
       Is_OP_Better_For_Balance_Ready_Types(cur_opsch, best_opsch,
@@ -1835,7 +1776,6 @@ Priority_Selector::Is_OP_Better (OP *cur_op, OP *best_op)
     if (status == 1)  return TRUE;
     if (status == -1) return FALSE;
   }
-#endif
 
   return FALSE;
 }
@@ -1881,12 +1821,6 @@ Priority_Selector::Select_OP_For_Delay_Slot (OP *xfer_op)
     // Don't put instructions that have hazards in the delay slot.
     if (OP_has_hazard(cur_op)) continue;
 
-#ifndef KEY
-    // R10k chip bug workaround: Avoid placing integer mult/div in delay
-    // slots of unconditional branches. (see pv516598) for more details.
-    if (OP_uncond(xfer_op) && (OP_imul(cur_op) || OP_idiv(cur_op)))
-      continue;
-#endif
 
     // Don't put manual prefetches into delay slots as well.
     if (OP_prefetch(cur_op)) {
@@ -1981,7 +1915,6 @@ HB_Schedule::Put_Sched_Vector_Into_BB (BB *bb, BBSCH *bbsch, BOOL is_fwd)
   INT i;
   INT32 cur_cycle = 0;
   INT prefetches_to_delete = 0;
-#ifdef KEY
   INT *old_scycle = (INT *) alloca(VECTOR_count(_sched_vector) * sizeof(INT));
 
   // Find the number of prefetches to be deleted.  These prefetches are located
@@ -2002,7 +1935,6 @@ HB_Schedule::Put_Sched_Vector_Into_BB (BB *bb, BBSCH *bbsch, BOOL is_fwd)
       prev_prefetch_opsch = opsch;
     }
   }
-#endif
 
   // Set the OP_scycle field for all the OPs. Also, reset the OPSCH_visited
   // flag. It is used in the Adjust_Ldst_Offsets routine.
@@ -2010,9 +1942,7 @@ HB_Schedule::Put_Sched_Vector_Into_BB (BB *bb, BBSCH *bbsch, BOOL is_fwd)
     OP *op = OP_VECTOR_element(_sched_vector, i);
     OPSCH *opsch = OP_opsch(op, _hb_map);
     Reset_OPSCH_visited (opsch);
-#ifdef KEY
     old_scycle[i] = OP_scycle(op);	// Save the old scycle.
-#endif
 #if ! defined(TARG_X8664)
     OP_scycle(op) = (is_fwd) ? OPSCH_scycle(opsch) : OPSCH_scycle(opsch) - Clock;
 #else
@@ -2035,11 +1965,7 @@ HB_Schedule::Put_Sched_Vector_Into_BB (BB *bb, BBSCH *bbsch, BOOL is_fwd)
   // the Sched_Vector buffer. Otherwise, preserve the previous one.
 
   if (cur_cycle < _max_sched) {
-#ifdef KEY
     Adjust_Ldst_Offsets( is_fwd );
-#else
-    Adjust_Ldst_Offsets ();
-#endif
 
     if (bbsch != NULL) {
       Compute_BBSCH (bb, bbsch);
@@ -2054,7 +1980,6 @@ HB_Schedule::Put_Sched_Vector_Into_BB (BB *bb, BBSCH *bbsch, BOOL is_fwd)
 	 (is_fwd) ? i++ : i--) {
       OP *op = OP_VECTOR_element(_sched_vector, i);
       BB_Append_Op(bb, op);
-#ifdef KEY
       // Mark the prefetches deleted by the current schedule.
       if (OP_prefetch(op)) {
 	if (prefetches_to_delete > 0) {
@@ -2064,10 +1989,8 @@ HB_Schedule::Put_Sched_Vector_Into_BB (BB *bb, BBSCH *bbsch, BOOL is_fwd)
 	  Reset_OP_prefetch_deleted(op);
 	}
       }
-#endif
     }
   }
-#ifdef KEY
   // Reusing the old schedule.  Restore the old scycle numbers for more
   // accurate asm annotation.
   else {
@@ -2076,7 +1999,6 @@ HB_Schedule::Put_Sched_Vector_Into_BB (BB *bb, BBSCH *bbsch, BOOL is_fwd)
       OP_scycle(op) = old_scycle[i];
     }
   }
-#endif
 }
 
 // ======================================================================
@@ -2165,10 +2087,8 @@ List_Based_Bkwd::List_Based_Bkwd (BB *bb, HB_Schedule *sched, HBS_TYPE type,
   Build_Ready_Vector (bb, this->Is_Fwd_Schedule());
 
   BOOL traverse_dag = sched->HBS_Depth_First();
-#ifdef KEY
   traverse_dag |= sched->HBS_Balance_Ready_Types();
   traverse_dag |= sched->HBS_Balance_Unsched_Types();
-#endif
 
   if (traverse_dag)
     Compute_DFO (sched, sched->hb_map(), this->Is_Fwd_Schedule());
@@ -2186,10 +2106,8 @@ List_Based_Bkwd::List_Based_Bkwd (std::list<BB*> bblist, HB_Schedule *sched,
   Build_Ready_Vector (bblist, this->Is_Fwd_Schedule());
 
   BOOL traverse_dag = sched->HBS_Depth_First();
-#ifdef KEY
   traverse_dag |= sched->HBS_Balance_Ready_Types();
   traverse_dag |= sched->HBS_Balance_Unsched_Types();
-#endif
 
   if (traverse_dag)
     Compute_DFO(sched, sched->hb_map(), this->Is_Fwd_Schedule());
@@ -2212,7 +2130,6 @@ Priority_Selector::Get_Next_Element(HB_Schedule *Cur_Sched)
   if (Trace_HB) {
     #pragma mips_frequency_hint NEVER
     fprintf (TFile, "-------------------------------------------\n");
-#ifdef KEY
     if (Cur_Sched->HBS_Balance_Ready_Types()) {
       fprintf(TFile, "Ready vector OPs:%d (%d%% fp)\n",
 	      Cur_Sched->Ready_Count(), Cur_Sched->Ready_Fp_Percentage());
@@ -2221,7 +2138,6 @@ Priority_Selector::Get_Next_Element(HB_Schedule *Cur_Sched)
       fprintf(TFile, "Unscheduled OPs:%d (%d%% fp)\n",
 	      Cur_Sched->Unsched_Count(), Cur_Sched->Unsched_Fp_Percentage());
     }
-#endif
     fprintf (TFile, "Candidates for Scheduling:\n");
     fprintf (TFile, "-------------------------------------------\n");
   }
@@ -2358,7 +2274,6 @@ List_Based_Fwd::Is_OP_Better (OP *cur_op, OP *best_op)
        < DEFAULT_BRP_BRANCH_LIMIT)) 
     return TRUE;
 
-#ifdef KEY
   if (_hbs_type & HBS_BALANCE_UNSCHED_TYPES) {
     int status =
       Is_OP_Better_For_Balance_Unsched_Types(cur_opsch, best_opsch, 
@@ -2367,7 +2282,6 @@ List_Based_Fwd::Is_OP_Better (OP *cur_op, OP *best_op)
     if (status == 1)  return TRUE;
     if (status == -1) return FALSE;
   }
-#endif
 
   if (_hbs_type & HBS_DEPTH_FIRST) {
     return (OPSCH_dfsnum(cur_opsch) < OPSCH_dfsnum(best_opsch));
@@ -2432,7 +2346,6 @@ List_Based_Fwd::Is_OP_Better (OP *cur_op, OP *best_op)
   }
 #endif
 
-#ifdef KEY
   if (_hbs_type & HBS_BALANCE_READY_TYPES) {
     int status =
       Is_OP_Better_For_Balance_Ready_Types(cur_opsch, best_opsch,
@@ -2441,7 +2354,6 @@ List_Based_Fwd::Is_OP_Better (OP *cur_op, OP *best_op)
     if (status == 1)  return TRUE;
     if (status == -1) return FALSE;
   }
-#endif
 
   return FALSE;
 }
@@ -2455,10 +2367,8 @@ List_Based_Fwd::List_Based_Fwd (BB *bb, HB_Schedule *sched, HBS_TYPE type,
   Build_Ready_Vector (bb, this->Is_Fwd_Schedule());
 
   BOOL traverse_dag = sched->HBS_Depth_First();
-#ifdef KEY
   traverse_dag |= sched->HBS_Balance_Ready_Types();
   traverse_dag |= sched->HBS_Balance_Unsched_Types();
-#endif
 
   if (traverse_dag)
     Compute_DFO(sched, sched->hb_map(), this->Is_Fwd_Schedule());
@@ -2476,10 +2386,8 @@ List_Based_Fwd::List_Based_Fwd (std::list<BB*> bblist, HB_Schedule *sched,
   Build_Ready_Vector (bblist, this->Is_Fwd_Schedule());
 
   BOOL traverse_dag = sched->HBS_Depth_First();
-#ifdef KEY
   traverse_dag |= sched->HBS_Balance_Ready_Types();
   traverse_dag |= sched->HBS_Balance_Unsched_Types();
-#endif
 
   if (traverse_dag)
     Compute_DFO(sched, sched->hb_map(), this->Is_Fwd_Schedule());
@@ -2499,7 +2407,6 @@ List_Based_Fwd::Get_Next_Element(HB_Schedule *Cur_Sched)
   if (Trace_HB) {
     #pragma mips_frequency_hint NEVER
     fprintf (TFile, "-------------------------------------------\n");
-#ifdef KEY
     if (Cur_Sched->HBS_Balance_Ready_Types()) {
       fprintf(TFile, "Ready vector OPs:%d (%d%% fp)\n",
 	      Cur_Sched->Ready_Count(), Cur_Sched->Ready_Fp_Percentage());
@@ -2508,7 +2415,6 @@ List_Based_Fwd::Get_Next_Element(HB_Schedule *Cur_Sched)
       fprintf(TFile, "Unscheduled OPs:%d (%d%% fp)\n",
 	      Cur_Sched->Unsched_Count(), Cur_Sched->Unsched_Fp_Percentage());
     }
-#endif
     fprintf (TFile, "Candidates for Scheduling:\n");
     fprintf (TFile, "-------------------------------------------\n");
   }
@@ -2537,9 +2443,7 @@ List_Based_Fwd::Get_Next_Element(HB_Schedule *Cur_Sched)
     }
   }
 
-#ifdef KEY
   _last_sched_op = _best_op;
-#endif // KEY
 
   return (void *) _best_op;
 }
@@ -2804,13 +2708,11 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
 {
   _sched_vector = VECTOR_Init (BB_length(bb), &_hb_pool);
 
-#ifdef KEY
   _scheduled_opschs = NULL;
   if (HBS_Balance_Unsched_Types() ||
       HBS_Drop_Unsched_Prefetches()) {
     _scheduled_opschs = OPSCH_SET_Create_Empty(BB_length(bb), &_hb_pool);
   }
-#endif
 
   std::list<BB*> blocks;
   blocks.push_back(bb);
@@ -3060,9 +2962,7 @@ HB_Schedule::Init(BB *bb, HBS_TYPE hbs_type, INT32 max_sched,
 
   _ready_vector = VECTOR_Init (BB_length(bb), &_hb_pool);
 
-#ifdef KEY
   _one_set_counter = 0;
-#endif
 }
 
 void
@@ -3085,9 +2985,7 @@ HB_Schedule::Init(std::list<BB*> bblist, HBS_TYPE hbs_type, mINT8 *regs_avail)
 
   _ready_vector = VECTOR_Init (length, &_hb_pool);
 
-#ifdef KEY
   _one_set_counter = 0;
-#endif
 }
 
 void
@@ -3126,7 +3024,6 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
 	BBs_Processed, BB_id(bb));
   }
 
-#ifdef KEY
   // -1 means caller didn't specify scheduling algorithm.  Use the
   // LOCS_Scheduling_Algorithm value.
   if (scheduling_algorithm == -1)
@@ -3139,7 +3036,6 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
       scheduling_algorithm > 1) {
     scheduling_algorithm = 0;		// backward scheduling
   }
-#endif
 
   if (BB_length(bb) > 0 && !skip_sched) {
     if (BB_length(bb) > 1) {

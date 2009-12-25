@@ -394,9 +394,7 @@ typedef struct op {
 
 /* Define the access functions: */
 #define OP_srcpos(o)	((o)->srcpos)
-#ifdef KEY
 #define OP_variant(o)	((o)->variant)
-#endif
 #define OP_scycle(o)	((o)->scycle)
 #define OP_flags(o)	((o)->flags)
 #ifdef TARG_IA64
@@ -1349,61 +1347,9 @@ BOOL Is_Delay_Slot_Op (OP *xfer_op, OP *op);
 
 extern void OP_Base_Offset_TNs(OP *memop, struct tn **base_tn, struct tn **offset_tn);
 
-#ifdef KEY
 extern BOOL TN_Pair_In_OP(OP* op, struct tn *tn_res, struct tn *tn_opnd);
-#else
-/***********************************************************************
- *
- *      Return a boolean to indicate if <tn> is both an operand and a
- *      result in the given <op>, i.e. is same_res.
- *
- ***********************************************************************/
 
-inline BOOL 
-TN_Pair_In_OP(OP* op, struct tn *tn_res, struct tn *tn_opnd) 
-{
-  INT i;
-  for (i = 0; i < OP_results(op); i++) {
-    if (tn_res == OP_result(op,i)) {
-      break; 
-    }
-  }
-  if (i == OP_results(op)) {
-    return FALSE;
-  }
-  for (i = 0; i < OP_opnds(op); i++) {
-    if (tn_opnd == OP_opnd(op,i)) {
-      return TRUE; 
-    }
-  }
-  return FALSE;
-}
-#endif	// KEY
-
-#ifdef KEY
 INT TN_Resnum_In_OP (OP* op, struct tn *tn, BOOL match_assigned_reg = FALSE); 
-#else
-/***********************************************************************
- *
- *      This routine assumes that the given <tn> is a result in <op>.
- *      It returns an INT that is the value of the result-number for
- *      this <tn> in this <op>.
- *
- ***********************************************************************/
-
-inline INT 
-TN_Resnum_In_OP (OP* op, struct tn *tn) 
-{
-  for (INT i = 0; i < OP_results(op); i++) {
-    if (tn == OP_result(op,i)) {
-      return i;
-    }
-  }
-  FmtAssert (FALSE,
-             ("TN_resnum_in_OP: Could not find <tn> in results list\n"));
-  return -1;
-}
-#endif	// KEY
 
 /***********************************************************************
  *

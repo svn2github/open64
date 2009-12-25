@@ -378,11 +378,6 @@ Initialize_Register_Class(
         if ( ABI_PROPERTY_Is_stacked(rclass, isa_reg) )
           stacked = REGISTER_SET_Union1(stacked, reg);
 #endif
-#if 0  // These code has been removed from PSC 3.2
-	if( ABI_PROPERTY_Is_eight_bit_reg(rclass, isa_reg) ){
-	  eight_bit_regs = REGISTER_SET_Union1( eight_bit_regs, reg );
-	}
-#endif
       }
     }
 

@@ -480,9 +480,7 @@ typedef	struct bb {
   WN           *branch_wn;	/* terminating branch whirl node  */
   struct bbregs *bbregs;	/* auxiliary register info (bbregs.h) */
   struct annotation *annotations; /* annotations attached to bb   */
-#ifdef KEY
   struct bb     *aux;
-#endif 
 #if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
   INT		bb_cycle; 
 #if !defined(TARG_SL)
@@ -502,13 +500,6 @@ typedef	struct bb {
 #define	BB_preds(x)	 (CAN_USE_BB(x)->preds)
 #define	BB_succs(x)	 (CAN_USE_BB(x)->succs)
 #define BB_cycle(x)	 (CAN_USE_BB(x)->bb_cycle)
-#if 0
-/* Don't define BB_ops! OPs must only be manipulated with the provided
- * utility routines in order to keep automatically maintained data structures
- * correct.
- */
-#define BB_ops(x)        (CAN_USE_BB(x)->ops)
-#endif
 #define	BB_flag(b)	(CAN_USE_BB(b)->flags)
 #define	BB_nest_level(b) (CAN_USE_BB(b)->nest_level)
 #define	BB_rid(b)	(CAN_USE_BB(b)->rid)
@@ -528,9 +519,7 @@ typedef	struct bb {
 #define BB_unrollings(b) (CAN_USE_BB(b)->unrollings+0)
 #define BB_loop_head_bb(b) (CAN_USE_BB(b)->loop_head_bb+0)
 #define BB_loophead(bb) (BB_loop_head_bb(bb) == (bb))
-#ifdef KEY
 #define BB_aux(b)       (CAN_USE_BB(b)->aux)
-#endif
 /* mutators */
 inline void Set_BB_unrollings(BB *bb, UINT16 u) {
   bb->unrollings = u;
@@ -566,9 +555,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_POST_LABEL          0x00200000 /* BB has a post-label, i.e. a 
 					    label at the end of the BB, rather
 					    than at the beginning */
-#ifdef KEY
 #define BBM_NON_LOCAL_LABEL     0x00400000 /* BB has a non-local label */
-#endif
 
 #if defined(TARG_X8664)
 #define BBM_AFTER_PIC_ENTRY     0x00800000 /* BB is the original entry after PIC entry on IA-32 with -fPIC */
@@ -650,9 +637,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BB_asm(bb) 		(BB_flag(bb) & BBM_ASM)
 #define BB_predicate_promote(bb) (BB_flag(bb) & BBM_PREDICATE_PROMOTE)
 #define	BB_has_post_label(x)		(BB_flag(x) & BBM_POST_LABEL)
-#ifdef KEY
 #define	BB_has_non_local_label(x)	(BB_flag(x) & BBM_NON_LOCAL_LABEL)
-#endif
 #if defined(TARG_IA64) || defined(TARG_LOONGSON)
 #define BB_recovery(x)          (BB_flag(x) & BBM_RECOVERY)
 #define BB_chk_split(x)         (BB_flag(x) & BBM_CHK_SPLIT)
@@ -690,9 +675,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Set_BB_asm(bb) 		(BB_flag(bb) |= BBM_ASM)
 #define Set_BB_predicate_promote(bb) 	(BB_flag(bb) |= BBM_PREDICATE_PROMOTE)
 #define	Set_BB_has_post_label(x)	(BB_flag(x) |= BBM_POST_LABEL)
-#ifdef KEY
 #define	Set_BB_has_non_local_label(x)	(BB_flag(x) |= BBM_NON_LOCAL_LABEL)
-#endif
 
 #if defined(TARG_IA64) || defined(TARG_LOONGSON)
 #define Set_BB_recovery(x)          (BB_flag(x) |= BBM_RECOVERY)
@@ -747,9 +730,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Reset_BB_after_pic_entry(x)  (BB_flag(x) &= ~BBM_AFTER_PIC_ENTRY)
 #endif
 
-#ifdef KEY
 #define	Reset_BB_has_non_local_label(x)	(BB_flag(x) &= ~BBM_NON_LOCAL_LABEL)
-#endif
 #define BB_tail_call(bb)	(   (BB_flag(bb) & (BBM_CALL | BBM_EXIT)) \
 				 == (BBM_CALL | BBM_EXIT))
 

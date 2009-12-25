@@ -277,23 +277,17 @@ GRA_Split_Entry_And_Exit_BBs(BOOL is_region)
   BB* next_bb = NULL;   // avoid stupid used before set warning
   BB_LIST *elist;
 
-#ifdef KEY
   GRA_pu_has_handler = FALSE;
   Is_True(GRA_split_entry_exit_blocks, 
       ("GRA will not work correctly under -GRA:split_entry_exit_blocks=off"));
-#else
-  if ( ! GRA_split_entry_exit_blocks ) return;
-#endif
 
   entry_bbs = NULL;
   exit_bbs = NULL;
 
   for ( bb = REGION_First_BB; bb != NULL; bb = next_bb ) {
     next_bb = BB_next(bb);
-#ifdef KEY
     if (BB_handler(bb))
       GRA_pu_has_handler = TRUE;
-#endif
     if ( BB_entry(bb) ) {
       DevAssert(is_region == FALSE,
 		("Procedure/Function entry block in region.\n"));

@@ -187,9 +187,7 @@ extern INT32 GCM_From_BB;
 extern INT32 GCM_To_BB;
 extern INT32 GCM_Result_TN;
 extern BOOL CG_Skip_GCM;
-#ifdef KEY
 extern INT32 GCM_BB_Limit;
-#endif
 
 extern void GCM_Schedule_Region (HBS_TYPE locs_type);
 

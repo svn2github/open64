@@ -108,10 +108,8 @@
 #if defined(TARG_PR)
 #include "cgexp_Internals.h"  // Expand_SR_Adj
 #endif
-#ifdef KEY
 #include "gtn_universe.h"
 #include "gtn_set.h"
-#endif
 #ifdef TARG_SL
 #include "config_debug.h"    // insert break op in debug mode
 #endif
@@ -127,9 +125,7 @@ extern void Clean_Up(BB* bb);
 SAVE_REG *Callee_Saved_Regs;
 INT32 Callee_Saved_Regs_Count;
 
-#ifdef KEY
 STACK<SAVE_REG_LOC> Saved_Callee_Saved_Regs(Malloc_Mem_Pool);
-#endif
 
 /* Special PREGs associated with save locations for Callee Saved registers */
 PREG_NUM *Callee_Saved_Pregs;
@@ -345,15 +341,10 @@ Init_Callee_Saved_Regs_for_REGION ( ST *pu, BOOL is_region )
     if ( stn = PREG_To_TN_Array[ Return_Preg ] )
       SAVE_tn(Return_Address_Reg) = stn;
     else {
-#if 1 // this is left here for reference in case RA is a special register - SC
       // we assume even if RA_TN is not integer, 
       // there must be a way to save RA to regular int regs
       SAVE_tn(Return_Address_Reg) = Build_RCLASS_TN(ISA_REGISTER_CLASS_integer);
       Set_TN_save_creg (SAVE_tn(Return_Address_Reg), TN_class_reg(RA_TN));
-#else
-      SAVE_tn(Return_Address_Reg) = Build_TN_Like(RA_TN);
-      Set_TN_save_creg (SAVE_tn(Return_Address_Reg), TN_class_reg(RA_TN));
-#endif
       TN_MAP_Set( TN_To_PREG_Map, SAVE_tn(Return_Address_Reg),
 		  (void *)(INTPTR)Return_Preg );
       PREG_To_TN_Array[ Return_Preg ] = SAVE_tn(Return_Address_Reg);
@@ -1072,7 +1063,6 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
       if (addr_op == NULL) return NULL;
       tn = OP_opnd(addr_op, addr_opnd);
       if (TN_is_reloc_call16(tn)) {
-#if 1
 	/* RE: pv812245, originally we changed the preemptible symbol
 	 * to non-preemptible and made it weak. The later causes
 	 * symbol preemption to behave differently than it should
@@ -1080,9 +1070,6 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
 	 * in case we decide to do it under some special switch.
 	 */
 	return NULL;
-#else
-	if (!Enable_GOT_Call_Conversion) return NULL;
-#endif
       } else if (TN_is_reloc_got_disp(tn)) {
 	/* ok as is */
 	addr_op = NULL;
@@ -1093,12 +1080,10 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
     }
   }
 
-#ifdef KEY
   /* Bug 12718: If the callee uses __builtin_return_address, we need
    * to preserve the call. */
   if (call_st && PU_has_return_address(Pu_Table[ST_pu(call_st)]))
     return NULL;
-#endif
 
   /* If any stack variables have had their address taken, it is
    * possible they might be used by the called PU, but if we do the
@@ -1413,7 +1398,6 @@ Target_Unique_Exit (
 	       TN_size measures a TN size in bytes.
 	     */
 	    INT tn_size = OP_result_size(op,i) / 8;
-#ifdef KEY
 	    // When storing a value into a function return register where the
 	    // size of the value is smaller than the size of the return
 	    // register, Handle_STID will store the value into a temp TN and
@@ -1423,7 +1407,6 @@ Target_Unique_Exit (
 	    // the return register in the exit BB.  Bug 14259.
 	    if (OP_copy(op))
 	      tn_size = TN_size(OP_opnd(op, OP_COPY_OPND));
-#endif
 	    Set_TN_size(new_tn, tn_size);
 	  }
 	}
@@ -1974,9 +1957,7 @@ Init_Entry_Exit_Code (WN *pu_wn)
       Debug_Level > 0)
     Gen_Frame_Pointer = TRUE;// because return address always stored at offset 0
 #endif
-#ifdef KEY
   Saved_Callee_Saved_Regs.Clear();
-#endif
 
   // target-specific code (e.g. for stacked registers)
   EETARG_Init_Entry_Exit_Code (pu_wn, Gen_Frame_Pointer);
@@ -2618,9 +2599,7 @@ Adjust_Exit(ST *pu_st, BB *bb)
    */
   if (Gen_Frame_Pointer && PUSH_FRAME_POINTER_ON_STACK) {
     OP* op = EETARG_High_Level_Procedure_Exit ();
-#ifdef KEY // bug 3600
     OP_srcpos(op) = OP_srcpos(sp_adj);
-#endif
 #ifdef TARG_X8664
     if (W2OPS_Pragma_Preamble_End_Seen())
       Set_OP_first_after_preamble_end(op);
@@ -2768,7 +2747,6 @@ Adjust_Entry_Exit_Code( ST *pu )
   }
 }
 
-#ifdef KEY
 // See the interface description
 
 BOOL Is_Unique_Callee_Saved_Reg (TN * new_tn)
@@ -2795,7 +2773,6 @@ ST* Cgdwarf_Nth_Callee_Saved_Reg_Location (INT n)
 {
   return Saved_Callee_Saved_Regs.Top_nth(n).temp;
 }
-#endif
 
 #ifdef TARG_X8664
 INT Push_Pop_Int_Saved_Regs(void)

@@ -506,9 +506,7 @@ Convert_Candidate_Leaves(std::list<HB_CAND_TREE*>& candidate_regions,
   }
 }
 
-#ifdef KEY
 BOOL hammock_region;
-#endif
 /////////////////////////////////////
 void
 Form_Hyperblocks(HB_CAND_TREE*        cand, 
@@ -552,9 +550,7 @@ Form_Hyperblocks(HB_CAND_TREE*        cand,
     }
 
     orig_blocks = BB_SET_CopyD(orig_blocks,HB_Blocks(hb), &MEM_local_pool);
-#ifdef KEY
     hammock_region = FALSE;
-#endif
     if (HB_Block_Select(hb, FALSE)) {
       HB_bb_list duplicate_bbs;
       if (HB_Tail_Duplicate(hb, duplicate, duplicate_bbs,

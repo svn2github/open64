@@ -59,7 +59,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "cg_pch.h"
@@ -426,7 +425,6 @@ static TN *f4_ded_tns[REGISTER_MAX + 1];
 #ifdef TARG_IA64
 static TN *f10_ded_tns[REGISTER_MAX + 1];
 #endif
-#ifdef KEY
 #ifndef TARG_NVISA
 static TN *v16_ded_tns[REGISTER_MAX + 1];
 static TN *v32_ded_tns[REGISTER_MAX + 1];
@@ -434,7 +432,6 @@ static TN *i1_ded_tns[REGISTER_MAX + 1];
 static TN *i2_ded_tns[REGISTER_MAX + 1];
 static TN *i4_ded_tns[REGISTER_MAX + 1];
 #endif
-#endif // KEY
 #if defined(TARG_SL)
 static TN *a4_ded_tns[REGISTER_MAX +1];
 #endif
@@ -618,7 +615,6 @@ Init_Dedicated_TNs (void)
 #endif
     }
 
-#ifdef KEY
     for (reg = REGISTER_MIN; 
 	 reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_integer);
 	 reg++
@@ -633,7 +629,6 @@ Init_Dedicated_TNs (void)
         i4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg);
   	Set_TN_size(i4_ded_tns[reg], 4);
     }
-#endif // KEY
 #endif // ! NVISA
 
 #if defined(TARG_SL)	 
@@ -738,7 +733,6 @@ Gen_Register_TN (ISA_REGISTER_CLASS rclass, INT size)
   }
 }
 
-#ifdef KEY
 TN *
 Gen_Typed_Register_TN (TYPE_ID mtype, INT size)
 {
@@ -777,7 +771,6 @@ Gen_Typed_Register_TN (TYPE_ID mtype, INT size)
 
   return tn;
 } 
-#endif
 
 // gen unique literal tn
 TN *
@@ -1406,7 +1399,6 @@ TN_Reaching_Value_At_Op(
 	if (reaching_def) {
 	  FOR_ALL_BB_PREDS(bb, edge) {
 	    cur_bb = BBLIST_item(edge);
-#ifdef KEY
 	    // Ignore cur_bb only if cur_bb doesn't redefine the register.
 	    // Bug 6104.
 	    if (cur_bb == bb) {
@@ -1420,9 +1412,6 @@ TN_Reaching_Value_At_Op(
 	      }
 	      if (!redefined) continue;
 	    }
-#else
-	    if (cur_bb == bb) continue;	// ignore self predecessor
-#endif
 	    BOOL live_out = REG_LIVE_Outof_BB(rc, reg, cur_bb);
 	    val_cnt += (live_out) ? 1 : 0;
 	    val_bb = (live_out) ? cur_bb : val_bb;
@@ -1514,7 +1503,6 @@ TN_Reaching_Value_At_Op(
 	if (reaching_def) {
 	  FOR_ALL_BB_PREDS(bb, edge) {
 	    cur_bb = BBLIST_item(edge);
-#ifdef KEY
 	    // Ignore cur_bb only if cur_bb doesn't redefine the TN.
 	    // Bug 6104.
 	    if (cur_bb == bb) {
@@ -1528,9 +1516,6 @@ TN_Reaching_Value_At_Op(
 	      }
 	      if (!redefined) continue;
 	    }
-#else
-	    if (cur_bb == bb) continue;	// ignore self predecessor
-#endif
 	    BOOL live_out = GRA_LIVE_TN_Live_Outof_BB(tn, cur_bb);
 	    val_cnt += (live_out) ? 1 : 0;
 	    val_bb = (live_out) ? cur_bb : val_bb;

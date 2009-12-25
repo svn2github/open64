@@ -179,14 +179,9 @@ Add_PREG_To_REGSET (PREG_NUM preg, REGSET regset)
     ISA_REGISTER_CLASS cl;
     REGISTER reg;
 
-#ifdef KEY
     if( !CGTARG_Preg_Register_And_Class(preg, &cl, &reg) ){
       FmtAssert( FALSE, ("Don't know how to handle PREG%d", preg) );
     }
-#else
-    FmtAssert(CGTARG_Preg_Register_And_Class(preg, &cl, &reg),
-	      ("Don't know how to handle PREG%d", preg));
-#endif // KEY
 
     regset[cl] = REGISTER_SET_Union1 (regset[cl], reg);
   }

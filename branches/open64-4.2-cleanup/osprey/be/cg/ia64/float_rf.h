@@ -58,11 +58,7 @@
 #endif
 
 #ifdef linux
-#ifndef __STDC_LIMIT_MACROS
- #define __STDC_LIMIT_MACROS
 #endif
-#ifndef __STDC_LIMIT_MACROS
- #define __STDC_LIMIT_MACROS
  #include <stdint.h>
 #endif
 #else
@@ -74,8 +70,6 @@
 #ifndef _STRUCTS_H_
 #define _STRUCTS_H_
 
-#ifndef __STDC_LIMIT_MACROS
- #define __STDC_LIMIT_MACROS
 #endif
 #include <stdint.h>
 

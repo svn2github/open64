@@ -89,11 +89,9 @@
 #ifdef TARG_IA64
 #define TRACE_REMAT 0x2
 #endif
-#ifdef KEY
 static SPILL_SYM_INFO_MAP spill_sym_info_map;
 static void CGSPILL_Record_Spill (ST *spill_loc, OP *spill_op);
 void CGSPILL_Inc_Restore_Count (ST *spill_loc);
-#endif
 
 static BOOL Trace_Remat; /* Trace rematerialization */
 static BOOL Trace_GRA_spill_placement;
@@ -165,10 +163,8 @@ static LOCAL_SPILLS lra_x87_spills;
 static LOCAL_SPILLS lra_mmx_spills;
 #endif /* TARG_X8664 */
 
-#ifdef KEY
 static LOCAL_SPILLS lra_float32_spills;
 static LOCAL_SPILLS lra_int32_spills;
-#endif
 
 /*
  * only rematerialize LDID's homeable by gra if spilling in service
@@ -396,10 +392,8 @@ CGSPILL_Reset_Local_Spills (void)
   LOCAL_SPILLS_Reset(&lra_mmx_spills);
 #endif /* TARG_X8664 */
 
-#ifdef KEY
   LOCAL_SPILLS_Reset(&lra_float32_spills);
   LOCAL_SPILLS_Reset(&lra_int32_spills);
-#endif
 }
 
 
@@ -448,7 +442,6 @@ CGSPILL_Initialize_For_PU(void)
   LOCAL_SPILLS_used(slc) = NULL;
 #endif /* TARG_X8664 */
 
-#ifdef KEY
   slc = &lra_int32_spills;
   LOCAL_SPILLS_mem_type(slc) = Spill_Int32_Type;
   LOCAL_SPILLS_free(slc) = NULL;
@@ -460,7 +453,6 @@ CGSPILL_Initialize_For_PU(void)
   LOCAL_SPILLS_used(slc) = NULL;
 
   spill_sym_info_map.clear();
-#endif // KEY
 
   Trace_Remat = Get_Trace(TP_CG, 4);
   Trace_GRA_spill_placement = Get_Trace(TP_GRA, 0x2000);
@@ -578,14 +570,12 @@ CGSPILL_Get_TN_Spill_Location (TN *tn, CGSPILL_CLIENT client)
       }
 #endif /* TARG_X8664 */
 
-#ifdef KEY
       if( CG_min_spill_loc_size && TN_size(tn) <= 4 ){
 	mem_type = TN_is_float(tn) ? Spill_Float32_Type : Spill_Int32_Type;
       }
 #if defined(TARG_SL)
       if (TN_size(tn) <= MTYPE_byte_size(TY_mtype(mem_type)))
         DevWarn("TN size is larger than the size of spill type.") ;
-#endif
 #endif
 
       if (client == CGSPILL_GRA) {
@@ -613,11 +603,9 @@ CGSPILL_Get_TN_Spill_Location (TN *tn, CGSPILL_CLIENT client)
       }
 #endif /* TARG_X8664 */
 
-#ifdef KEY
       if( CG_min_spill_loc_size && TN_size(tn) <= 4 ){
 	slc = TN_is_float(tn) ? &lra_float32_spills : &lra_int32_spills;
       }
-#endif
 
       mem_location = LOCAL_SPILLS_Get_Spill_Location (slc, SYM_ROOT_LRA);
       Set_TN_spill(tn, mem_location);
@@ -682,7 +670,6 @@ CGSPILL_OP_Spill_Location (OP *op)
 	       ) {
       spill_tn = OP_opnd(op,TOP_Find_Operand_Use(OP_code(op), OU_storeval));
     }
-#ifdef KEY
     if( spill_tn != NULL &&
 	TN_has_spill( spill_tn ) ){
       INT n = TOP_Find_Operand_Use( OP_code(op), OU_offset );
@@ -693,9 +680,6 @@ CGSPILL_OP_Spill_Location (OP *op)
 	  mem_loc = TN_spill( ctn );
       }
     }
-#else
-    if (spill_tn) mem_loc = TN_spill(spill_tn);
-#endif
 
     if (mem_loc &&
 	(ST_level(mem_loc) > max_spill_level ||
@@ -916,9 +900,7 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
 #ifdef TARG_IA64
     ld_2_ld_fill (ops);
 #endif
-#ifdef KEY
     CGSPILL_Inc_Restore_Count(mem_loc);
-#endif
   }
   Max_Sdata_Elt_Size = max_sdata_save;
 #ifdef TARG_IA64
@@ -971,12 +953,10 @@ CGSPILL_Store_To_Memory (TN *src_tn, ST *mem_loc, OPS *ops,
     if(ops->last)
 	   Set_OP_spill_restore(ops->last);
 #endif
-#ifdef KEY
     // Looks like a bug in the Open64 compiler. 
     // In the case of entry/exit BBs, the Max_Sdata_Elt_Size might get
     // reset and never set back if the next return is executed.
     Max_Sdata_Elt_Size = max_sdata_save;  
-#endif
     return;
   }
 
@@ -990,9 +970,7 @@ CGSPILL_Store_To_Memory (TN *src_tn, ST *mem_loc, OPS *ops,
 	 Set_OP_spill_restore(ops->last);
 #endif
 
-#ifdef KEY
   CGSPILL_Record_Spill(mem_loc, OPS_last(ops));
-#endif
 }
 
 
@@ -1064,14 +1042,6 @@ CGSPILL_Prepend_Ops (BB *bb, OPS *ops)
 {
   if (OPS_first(ops) == NULL) return;
 
-#if 0
-  OP *op;
-  SRCPOS srcpos = 0;
-  /* want ops srcpos associated with beginning of bb */
-  srcpos = BB_first_op(bb) ? OP_srcpos(BB_first_op(bb)) 
-	: OP_srcpos(BB_last_op(BB_prev(bb)));
-  FOR_ALL_OPS_OPs(ops, op) OP_srcpos(op) = srcpos;
-#endif
 
   Reset_BB_scheduled (bb);
 
@@ -1660,7 +1630,6 @@ void CGSPILL_Attach_Const_Remat(TN *tn, TYPE_ID typ, ST *st)
 }
 
 
-#ifdef KEY
 // Record that SPILL_OP is associated with SPILL_LOC.
 void
 CGSPILL_Record_Spill (ST *spill_loc, OP *spill_op)
@@ -1686,4 +1655,3 @@ CGSPILL_Get_Spill_Sym_Info (ST *spill_loc)
 {
   return spill_sym_info_map[ST_IDX((INTPTR)spill_loc)];
 }
-#endif

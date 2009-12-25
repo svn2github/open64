@@ -1929,14 +1929,6 @@ GRA_LIVE_Merge_Blocks( BB *dst, BB *a, BB *b )
   GTN_SET *live_use;
   GTN_SET *live_def;
 
-#if 0
-  /* The 'in' vectors of the merged block is the same as the 'in'
-   * vectors of the first block. Since the first block will become
-   * the merged block, there's nothing to do.
-   */
-  BB_live_in(dst) = GTN_SET_CopyD(BB_live_in(a),&liveness_pool);
-  BB_defreach_in(dst) = GTN_SET_CopyD(BB_defreach_in(a),&liveness_pool);
-#endif
 
   /* The 'out' vectors of the merged block are the 'out' vectors of the
    * block being merged in.
@@ -2438,23 +2430,17 @@ Clear_Defreach(
 // Detect TNs that should be renamed in the <bb>. 
 void 
 Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
-#ifdef KEY
 		   , OP *rename_local_TN_op
-#endif
 		   )
 {
   TN_MAP op_for_tn = TN_MAP_Create ();
   OP *op;
-#ifdef KEY
   BOOL rename_local_TNs = FALSE;
-#endif
 
   FOR_ALL_BB_OPs_FWD (bb, op) {
-#ifdef KEY
     // Rename local TNs starting at rename_local_TN_op, if it exists,
     // Bug 4327.
     rename_local_TNs |= (rename_local_TN_op == op);
-#endif
     for (INT i = 0; i < OP_results(op); i++) {
       TN *tn = OP_result(op, i);
       // Don't rename under the following conditions.
@@ -2514,38 +2500,22 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
           }
 #else // TARG_IA64
           defreach_tn = tn;
-#ifndef KEY
-	  // Purify_pools (trace) on exposes the MEM_POOL bug. The bug is that
-	  // the following code should be using MEM_local_pool - look at caller
-	  // - instead of gra_live_pool which is already popped out. Bug #24
-	  // can expose this problem.
-          BB_VISITED_COUNTER counter_data(&gra_live_pool);
-#else
           BB_VISITED_COUNTER counter_data(&MEM_local_pool);
-#endif
           BB_VISITED_COUNTER *counter = &counter_data;
           counter->Init();
           BB_REGION_Forward_Depth_First_Visit_BB (bb, counter, Clear_Defreach, Do_Nothing);
-#ifndef KEY
-	  // see comments above. Actually, this could be a real bug because
-	  // gra_live_pool is already popped out before the caller calls this 
-	  // function. The bug was not exposed.
-          MEM_POOL_Pop(&gra_live_pool);
-#endif
 #endif // TARG_IA64
 	  Reset_TN_is_global_reg (tn);
 
 	}
 
       }
-#ifdef KEY
       else if (rename_local_TNs &&
 	       !TN_is_global_reg(tn) &&
 	       !TN_is_const_reg(tn)) {
         // Rename local TN to new local TN between op and end of bb.  Bug 4327.
 	Rename_TN_In_Range (tn, op, NULL);
       }
-#endif
       TN_MAP_Set (op_for_tn, OP_result(op, i), op);
     }
   }

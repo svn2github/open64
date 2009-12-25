@@ -250,21 +250,17 @@ void GRA_Trace_Grant_Unused_Caller_Saved();
 void GRA_Trace_Split_Removing_Block(GRA_BB* gbb);
 void GRA_Trace_Split_Add_Priority(GRA_BB* gbb, BOOL is_store);
 void GRA_Trace_Split_Sub_Priority(GRA_BB* gbb, BOOL is_store);
-#ifdef KEY
 void GRA_Trace_Split_Reclaim_Add_Priority(GRA_BB* gbb, BOOL is_store,
 					  float priority);
 void GRA_Trace_Split_Reclaim_Sub_Priority(GRA_BB* gbb, BOOL is_store,
 					  float priority);
-#endif
 void GRA_Trace_Split_Priority_On(const char* msg);
 void GRA_Trace_Split_Priority_Off();
 void GRA_Trace_Preference_Conflict(LRANGE* lrange0,
 				   LRANGE* lrange1,
 				   GRA_BB* gbb );
 void GRA_Trace_LRANGE_Allocate(LRANGE* lrange);
-#ifdef KEY
 void GRA_Trace_LRANGE_Choose(LRANGE* lrange, REGISTER_SET allowed);
 void GRA_Trace_LRANGE_Choose_Reclaimable(LRANGE* lrange, REGISTER_SET allowed);
-#endif
 
 #endif

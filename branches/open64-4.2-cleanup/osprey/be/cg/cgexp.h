@@ -325,12 +325,10 @@ extern void Exp_Generic_Pred_Calc(TN* result1, TN *result2, COMPARE_TYPE ctype,
  */
 extern void Exp_True_False_Preds_For_Block(BB *bb,
 					   TN* &true_tn, TN * &false_tn);
-#ifdef KEY
 /*
  * Used to reinitilalize Predicate TNs for HB 
  */
 extern void HB_Reinit_Pred ();
-#endif
 
 #ifdef TARG_X8664
 extern void Expand_Start();

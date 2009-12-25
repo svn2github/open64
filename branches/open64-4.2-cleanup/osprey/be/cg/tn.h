@@ -788,9 +788,7 @@ extern	void Init_TNs_For_REGION (void);
 
 extern TN* Gen_Register_TN (ISA_REGISTER_CLASS rclass, INT size);
 
-#ifdef KEY
 extern TN* Gen_Typed_Register_TN (TYPE_ID mtype, INT size);
-#endif
 
 extern  TN *Build_Dedicated_TN ( ISA_REGISTER_CLASS rclass, REGISTER reg, INT size);
 

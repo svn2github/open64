@@ -135,9 +135,7 @@
 #define can_invoke_profile_with_current_cg_opt_level (CG_opt_level>1)
 //#define can_invoke_profile_with_current_cg_opt_level (1)
 #endif
-#ifdef KEY
 #include "cg_gcov.h"
-#endif
 #ifdef TARG_NVISA
 #include "dominate.h"
 #include "vector_loadstore.h"
@@ -181,11 +179,9 @@ typedef std::vector<INT, INT_ALLOC>  INT_CONTAINER;
 BOOL RGN_Formed = FALSE;
 #endif
 
-#ifdef KEY
 BOOL PU_Has_Exc_Handler;
 BOOL PU_Has_Nonlocal_Goto_Target;
 BOOL CG_file_scope_asm_seen = FALSE;
-#endif
 
 BOOL gra_pre_create = TRUE;
 #ifdef TARG_X8664
@@ -248,10 +244,8 @@ CG_PU_Initialize (WN *wn_pu)
   EBO_data_spec=FALSE;
 #endif
 
-#ifdef KEY
   PU_Has_Exc_Handler = FALSE;
   PU_Has_Nonlocal_Goto_Target = PU_has_nonlocal_goto_label(Get_Current_PU());
-#endif
 
 #ifdef TARG_X8664
   if (! cg_load_execute_overridden) {
@@ -779,7 +773,6 @@ CG_Generate_Code(
     FmtAssert(Assembly && !Object_Code,
 	      ("Cannot produce non-assembly output with file-scope asm"));
     fprintf(Asm_File, "\n%s\n", ST_name(WN_st(rwn)));
-#ifdef KEY
     // Bug 14460: If the program has file-scope asm, it may have directly
     // used the .section attribute to allocate objects. As a result the 
     // compiler does not know the correct origin of objects to be allocated
@@ -788,7 +781,6 @@ CG_Generate_Code(
     // .align 0.
     if (LANG_Enable_Global_Asm)
       CG_file_scope_asm_seen = TRUE;
-#endif
     return rwn;
   }
 
@@ -976,9 +968,8 @@ CG_Generate_Code(
     /* turn all global TNs into local TNs */
     Set_Error_Phase ( "Localize" );
     Start_Timer ( T_Localize_CU );
-#ifdef KEY  // gra_live is called even if localize is on
+    // gra_live is called even if localize is on
     GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
-#endif
     Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
     Stop_Timer ( T_Localize_CU );
     Check_for_Dump ( TP_LOCALIZE, NULL );
@@ -1106,12 +1097,8 @@ CG_Generate_Code(
     // Perform hyperblock formation (if-conversion).  Only works for
     // IA-64 at the moment. 
     //
-#ifdef KEY
     // At Key, we form Hyperblocks although MIPS is not predicated architecture
     if (1) {
-#else     
-    if (CGTARG_Can_Predicate()) {
-#endif	    
 #ifdef TARG_IA64
       if (IPFEC_Enable_If_Conversion) {
         Set_Error_Phase( "Ipfec if conversion"); 
@@ -1173,7 +1160,6 @@ CG_Generate_Code(
 #endif
 
     if (CG_enable_loop_optimizations) {
-#ifdef KEY 
       /* bug#1443
 	 Earlier phase, like cflow, does not maintain GTN info if -CG:localize is on,
 	 we have to call GRA_LIVE_Init again to rebuild the consistency.
@@ -1186,7 +1172,6 @@ CG_Generate_Code(
 	Set_Error_Phase( "Global Live Range Analysis" );
 	GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
       }
-#endif
       Set_Error_Phase("CGLOOP");
       Start_Timer(T_Loop_CU);
 #ifdef TARG_IA64
@@ -1217,7 +1202,6 @@ CG_Generate_Code(
       if (frequency_verify)
 	FREQ_Verify("CGLOOP");
 
-#ifdef KEY
       /* bug#1442
 	 Loop optimization will introduce new GTNs. If -CG:localize is on,
 	 we should localize all the new created GTNs.
@@ -1233,7 +1217,6 @@ CG_Generate_Code(
 	Stop_Timer ( T_Localize_CU );
 	Check_for_Dump ( TP_LOCALIZE, NULL );
       }
-#endif
     }
 
     /* Optimize control flow (second pass) */
@@ -1431,7 +1414,6 @@ CG_Generate_Code(
   current_PU_handle++;
 #endif // TARG_IA64
   
-#ifdef KEY 
   // Earlier phases (esp. CFLOW) might have introduced local definitions and
   // uses for global TNs. Rename them to local TNs so that LRA can accurately
   // compute register requests (called from scheduling).
@@ -1464,29 +1446,11 @@ CG_Generate_Code(
   }
   Check_for_Dump_ALL ( TP_CGEXP, NULL, "Pre LIS" );
 
-#if 0 /* EBO is turn on*/
-  /* for now we don't turn on ebo, it causes that there are lots of 
-   * jump to jump not converted to direct jump implemented in 
-   * CFLOW_Optimize in EBO_Post_Process_Region so we call 
-   * CFLOW_Optimize once immediately before Local scheduling as 
-   * walkaround.  After ebo turn on, we need back to use original 
-   * function call in ebo.
-   */
-  if( CG_Enable_Regional_Global_Sched && 
-      CG_Enable_REGION_formation &&
-      CG_opt_level > 1) {
-     CFLOW_Optimize( CFLOW_BRANCH | CFLOW_UNREACHABLE | CFLOW_MERGE | 
-                      CFLOW_REORDER, "CFLOW (third pass)");
-  }
-
-  Check_for_Dump_ALL ( TP_CGEXP, NULL, "after Sched" );
-#endif
 #else
   GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
   GRA_LIVE_Rename_TNs();
   IGLS_Schedule_Region (TRUE /* before register allocation */);
 #endif // TARG_SL
-#endif
 
 #ifdef TARG_LOONGSON
   current_PU_handle++;
@@ -1520,10 +1484,9 @@ CG_Generate_Code(
     if (GRA_redo_liveness || IPFEC_Enable_Prepass_GLOS && (CG_opt_level > 1 || value_profile_need_gra)) {
 #else
       if (GRA_redo_liveness
-#ifdef KEY      // Inaccurate liveness info will break GRA's boundary BB code.
+                // Inaccurate liveness info will break GRA's boundary BB code.
                 // But don't always redo liveness, bug 4781.
         || GRA_optimize_boundary
-#endif
 	  )
 	{
 #endif

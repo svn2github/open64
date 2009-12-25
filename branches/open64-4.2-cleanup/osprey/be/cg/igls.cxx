@@ -56,7 +56,6 @@
 // =======================================================================
 // =======================================================================
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 #include <math.h>
@@ -146,7 +145,6 @@ static bool GCM_Should_Skip( int puid )
 }
 #endif
 
-#ifdef KEY
 // Delete prefetches that are dropped by the scheduler.
 static void
 Delete_Unscheduled_Prefetches (BB *bb)
@@ -253,18 +251,15 @@ Run_Sched (HB_Schedule *Sched, BB *bb, HBS_TYPE hbs_type, INT32 max_sched)
     Sched->Schedule_BB(bb, NULL, LOCS_Scheduling_Algorithm);
   }
 
-#ifdef KEY
   // Delete prefetches that didn't fit into idle issue slots.
   if (hbs_type & HBS_DROP_UNSCHED_PREFETCHES)
     Delete_Unscheduled_Prefetches(bb);
-#endif
 
   if (Trace_HB &&
       best_name != NULL) {
     fprintf(TFile, "Best scheduling heuristic: %s\n", best_name);
   }
 }
-#endif
 
 // ======================================================================
 // IGLS_Schedule_Region 
@@ -356,12 +351,10 @@ IGLS_Schedule_Region (BOOL before_regalloc)
 				    GCM_Enable_Scheduling)));
 
     hbs_type = HBS_BEFORE_GRA | HBS_BEFORE_LRA | HBS_DEPTH_FIRST;
-#ifdef KEY
     if (LOCS_Balance_Ready_Types)
       hbs_type |= HBS_BALANCE_READY_TYPES;
     if (LOCS_Balance_Unsched_Types)
       hbs_type |= HBS_BALANCE_UNSCHED_TYPES;
-#endif
     if (Trace_HB) {
       #pragma mips_frequency_hint NEVER
       fprintf (TFile, "***** HYPERBLOCK SCHEDULER (before GRA) *****\n");
@@ -387,12 +380,10 @@ IGLS_Schedule_Region (BOOL before_regalloc)
     hbs_type = HBS_CRITICAL_PATH;
     if (PROC_has_bundles()) hbs_type |= HBS_MINIMIZE_BUNDLES;
 
-#ifdef KEY
     if (LOCS_Balance_Ready_Types)
       hbs_type |= HBS_BALANCE_READY_TYPES;
     if (LOCS_Balance_Unsched_Types)
       hbs_type |= HBS_BALANCE_UNSCHED_TYPES;
-#endif
 
     // allow data-speculation if (-O > O1) and -OPT:space is turned off.
     should_we_do_thr = should_we_do_thr && (CG_opt_level > 1) && !OPT_Space;
@@ -457,12 +448,7 @@ IGLS_Schedule_Region (BOOL before_regalloc)
 	if (!Sched) {
 	  Sched = CXX_NEW(HB_Schedule(), &MEM_local_pool);
 	}
-#ifdef KEY
 	Run_Sched(Sched, bb, hbs_type, INT32_MAX);
-#else
-	Sched->Init(bb, hbs_type, INT32_MAX, NULL, NULL);
-	Sched->Schedule_BB(bb, NULL, LOCS_Scheduling_Algorithm);
-#endif
       }
     }
   }
@@ -483,11 +469,9 @@ IGLS_Schedule_Region (BOOL before_regalloc)
     // requires GRA spill support, and conditionally invoke the phase
     // after register allocation.
 
-#ifdef KEY
     // Drop prefetches that can't be scheduled into an unused issue slot.
     if (LOCS_Reduce_Prefetch)
       hbs_type |= HBS_DROP_UNSCHED_PREFETCHES;
-#endif
 
     if (should_we_do_thr) {
       Stop_Timer (T_Sched_CU);
@@ -560,14 +544,10 @@ IGLS_Schedule_Region (BOOL before_regalloc)
 
       if (should_we_do_thr && !skip_bb) Remove_Unnecessary_Check_Instrs(bb);
 
-#ifdef KEY_1873
       /* The original code with Reschedule_BB is meanlingless. I think the original
 	 author meant BB_scheduled(bb), not Reschedule_BB(bb).
       */
       const BOOL resched = FALSE;
-#else
-      BOOL resched = !skip_bb && Reschedule_BB(bb); /* FALSE; */      
-#endif // KEY
       if (should_we_schedule && should_we_local_schedule &&
 	  (!skip_bb || resched)) {
 #ifdef TARG_IA64
@@ -577,7 +557,6 @@ IGLS_Schedule_Region (BOOL before_regalloc)
 #endif  
 	// TODO: try locs_type = LOCS_DEPTH_FIRST also.
 	INT32 max_sched = (resched) ?  OP_scycle(BB_last_op(bb))+1 : INT32_MAX;
-#ifdef KEY
 	// Reschedule if new OPs were added since the last time the BB was
 	// scheduled.  This includes spill OPs added by the register allocator.
 	if (max_sched < INT32_MAX) {
@@ -589,17 +568,11 @@ IGLS_Schedule_Region (BOOL before_regalloc)
 	    }
 	  }
 	}
-#endif
 	if (LOCS_Enable_Scheduling) {
 	  if (!Sched) {
 	    Sched = CXX_NEW(HB_Schedule(), &MEM_local_pool);
 	  }
-#ifdef KEY
 	  Run_Sched(Sched, bb, hbs_type, max_sched);
-#else
-	  Sched->Init(bb, hbs_type, max_sched, NULL, NULL);
-	  Sched->Schedule_BB(bb, NULL, LOCS_Scheduling_Algorithm);
-#endif
 	}
       }
       Handle_All_Hazards (bb);

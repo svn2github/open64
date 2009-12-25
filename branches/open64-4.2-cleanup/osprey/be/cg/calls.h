@@ -79,9 +79,7 @@
 /* for ST */
 #include "symtab.h"
 #include "wn.h"
-#ifdef KEY
 #include "bb.h"
-#endif
 #include "tn.h"
 
 /* ================================================================= */
@@ -161,7 +159,6 @@ void Adjust_SP_After_Call( BB* );
 extern INT Push_Pop_Int_Saved_Regs (void);
 #endif
 
-#ifdef KEY
 // The following are interfaces into calls.cxx Callee saved registers stack
 typedef struct save_reg_loc {
   TN	 	*ded_tn; /* the dedicated TN for the callee-saved register */
@@ -177,7 +174,6 @@ extern INT Cgdwarf_Num_Callee_Saved_Regs (void);
 extern TN* Cgdwarf_Nth_Callee_Saved_Reg (INT n);
 // The location on the stack that corresponds to the nth TN on the stack.
 extern ST* Cgdwarf_Nth_Callee_Saved_Reg_Location (INT n);
-#endif
 #ifdef TARG_MIPS
 extern TN *Caller_GP_TN;
 #endif

@@ -215,7 +215,7 @@ SWP_OP_vector::SWP_OP_vector(BB *body, BOOL doloop, MEM_POOL *pool)
   tn_invariants = TN_SET_Difference(tn_uses, tn_defs, pool);
   tn_non_rotating = TN_SET_UnionD(tn_non_rotating, tn_invariants, pool);
 #ifndef TARG_IA64
-  //#ifdef KEY
+  //#if 1
   FOR_ALL_BB_OPs(body, op) {
     for (INT j = 0; j < OP_opnds(op); j++) {
       TN *tn = OP_opnd(op, j);

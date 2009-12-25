@@ -56,7 +56,6 @@
  * =======================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 #include "defs.h"
@@ -124,10 +123,8 @@ BOOL CG_Skip_GCM = FALSE;
 INT32 GCM_From_BB = -1;
 INT32 GCM_To_BB = -1;
 INT32 GCM_Result_TN = -1;
-#ifdef KEY
 INT32 GCM_BB_Limit = -1;
 INT32 cumulative_cand_bb;
-#endif
 
 // Internal state flags to store speculative information
 #define SPEC_NONE		0x00	// no speculative motion
@@ -290,7 +287,6 @@ static BOOL barriered = FALSE;
 static INT
 sort_by_bb_frequency (const void *bb1, const void *bb2)
 {
-#ifdef KEY
   const BB* A = *(BB**)bb1;  
   const BB* B = *(BB**)bb2;
 
@@ -301,11 +297,6 @@ sort_by_bb_frequency (const void *bb1, const void *bb2)
 
   return BB_id(A) < BB_id(B) ? -1 : 1;
 
-#else
-  if (BB_freq((BB *)bb1) > BB_freq((BB *)bb2)) return 1;
-  else if (BB_freq((BB *)bb1) < BB_freq((BB *)bb2)) return -1;  
-  else return 0;
-#endif
 }
 
 // =======================================================================
@@ -490,18 +481,6 @@ Check_If_Ignore_BB(BB *bb, LOOP_DESCR *loop)
 #endif
     return TRUE;
 
-#if 0
-  // If PRE-GCM enabled, invok POST-GCM phase, only if the register 
-  // allocator has inserted any spill instructions (i.e. reset the bb_schedule
-  // flag. Otherwise, we expect that the PRE-GCM phase has explored all
-  // previous possibilities.
-  if (!GCM_POST_Force_Scheduling && 
-      (Cur_Gcm_Type & GCM_AFTER_GRA) &&
-      GCM_PRE_Pass_Enabled) {
-    if (BB_scheduled(bb) && !BB_scheduled_hbs(bb))
-      return TRUE;
-  }
-#endif
 
 #ifdef TARG_X8664
   // Don't mess with GOT computation.  Bug 14452.
@@ -602,13 +581,11 @@ Similar_Ptr_Addrs_Match (OP *pred_op, OP *succ_op)
   INT pred_base_num = TOP_Find_Operand_Use(OP_code(pred_op), OU_base);
   INT succ_base_num = TOP_Find_Operand_Use(OP_code(succ_op),  OU_base);
 
-#ifdef KEY
   // Don't know anything about the addresses.  Assume they match.  Bug 14376.
   if (pred_base_num < 0 ||
       succ_base_num < 0) {
     return TRUE;
   }
-#endif
 
   TN *pred_base_tn = OP_opnd(pred_op, pred_base_num); 
   TN *succ_base_tn = OP_opnd(succ_op, succ_base_num);
@@ -963,11 +940,7 @@ Eager_Ptr_Deref_Spec(OP *deref_op, BB *dest_bb, BOOL forw)
   INT dbase_num = TOP_Find_Operand_Use(OP_code(deref_op), OU_base);
   INT doffset_num = TOP_Find_Operand_Use(OP_code(deref_op), OU_offset);
 
-#ifdef KEY
   deref_base_tn = dbase_num >= 0 ? OP_opnd(deref_op, dbase_num) : NULL;
-#else
-  deref_base_tn = OP_opnd(deref_op, dbase_num);
-#endif // KEY
 
   for (cur_op = (forw) ? BB_last_op(dest_bb) : BB_first_op(dest_bb);
        cur_op && cur_op != limit_op;
@@ -988,11 +961,7 @@ Eager_Ptr_Deref_Spec(OP *deref_op, BB *dest_bb, BOOL forw)
       INT cbase_num = TOP_Find_Operand_Use(OP_code(cur_op), OU_base);
       INT coffset_num = TOP_Find_Operand_Use(OP_code(cur_op), OU_offset);
 
-#ifdef KEY
       TN *cur_base_tn = cbase_num >= 0 ? OP_opnd(cur_op, cbase_num) : NULL;
-#else
-      TN *cur_base_tn = OP_opnd(cur_op, cbase_num);
-#endif // KEY
       TN *cur_result_tn = OP_load(cur_op) ? OP_result(cur_op, 0) : NULL;
 
       if (!Similar_Ptr_Addrs_Match(cur_op, deref_op)) {
@@ -1005,9 +974,7 @@ Eager_Ptr_Deref_Spec(OP *deref_op, BB *dest_bb, BOOL forw)
 	    // Need to check if the OP doesn;t modify the base.
 
 	    BOOL modifies_base = cur_result_tn &&
-#ifdef KEY
 	      ( cur_base_tn != NULL ) &&
-#endif // KEY
 	      TNs_Are_Equivalent(cur_result_tn, cur_base_tn);
 
 	    if (!modifies_base && 
@@ -1051,9 +1018,7 @@ Eager_Ptr_Deref_Spec(OP *deref_op, BB *dest_bb, BOOL forw)
       break;
     }
 #else // TARG_IA64
-#ifdef KEY
     if( deref_base_tn != NULL )
-#endif // KEY
       {
 	BOOL base_redef = FALSE;
 	for (INT i = 0; i < OP_results(cur_op); ++i) {
@@ -1956,37 +1921,6 @@ Can_OP_Move(OP *cur_op, BB *src_bb, BB *tgt_bb, BB_SET **pred_bbs,
                                motion_type, &cur_spec_type))
        return FALSE;
 
-#if 0
-     /* HD - I don't think we need to check so many un-certain conditions.
-      *      The implementation of Null_Ptr_Deref_Spec is so ugly, and I cannot
-      *      understand it at all. I skipped this, and I can turn on this 
-      *      later when necessary.
-      */
-     // detect cases where movement of mem ops past the null ptr test
-     // condition can be possible and allow them only when the
-     // corresponding flags are true.
-     if (OP_memory(cur_op) &&
-         Null_Ptr_Deref_Spec(cur_op, src_bb, cur_bb)) {
-       if (!(GCM_Pointer_Spec && GCM_Eager_Null_Ptr_Deref)) {
-         return FALSE;
-       } else {
-         Set_EAGER_NULL_PTR_SPEC(cur_spec_type);
-         Use_Page_Zero = TRUE;
-       }
-     }
-
-     *spec_type |= cur_spec_type;
-
-     // if <cur_op> can't be speculated (as shown by <can_spec>) and
-     // that the eager_null_ptr test returned FALSE (as shown by <spec_type>)
-     // then it's safe to conclude that <cur_op> can't be speculated.
-
-     if ( can_spec || 
-          (*spec_type & SPEC_EAGER_NULL_PTR) ||
-          (*spec_type & SPEC_EAGER_PTR) || 
-          (*spec_type & SPEC_CIRC_PTR_ABOVE) )
-       return FALSE;
-#endif
      /* HD - But I like to set Use_Page_Zero aggresively */
      Use_Page_Zero = TRUE;
 #else // TARG_SL
@@ -2169,14 +2103,13 @@ Can_OP_Move(OP *cur_op, BB *src_bb, BB *tgt_bb, BB_SET **pred_bbs,
 		   (TN_is_global_reg(result) &&
 		    GTN_SET_MemberP(BB_live_in(succ_bb), result))
 
-#ifdef KEY	   // Continue the above workaround for #776729.  Check
+                   // Continue the above workaround.  Check
 		   // liveness for assigned registers since they are globals
 		   // too.  Bug 8726.
 		   || (result_reg != REGISTER_UNDEFINED &&
 		       GTN_SET_MemberP(BB_live_in(succ_bb),
 				       Build_Dedicated_TN(result_cl,
 							  result_reg, 0)))
-#endif
 		   )
 		 return FALSE;
 	     } else {
@@ -2236,7 +2169,6 @@ Can_OP_Move(OP *cur_op, BB *src_bb, BB *tgt_bb, BB_SET **pred_bbs,
 	 }
        }
 
-#ifdef KEY
        // Accumulate all clobbers, which are treated like defs.  SiCortex 5044.
        ASM_OP_ANNOT *asm_info = (OP_code(op) == TOP_asm) ?
 		      (ASM_OP_ANNOT *) OP_MAP_Get(OP_Asm_Map, op) : NULL;
@@ -2256,7 +2188,6 @@ Can_OP_Move(OP *cur_op, BB *src_bb, BB *tgt_bb, BB_SET **pred_bbs,
 	   }
 	 }
        }
-#endif
 
        // accumulate all the mid_uses
        for (i = 0; i < OP_opnds(op); ++i) {
@@ -2794,7 +2725,6 @@ Determine_Candidate_Blocks(BB *bb, LOOP_DESCR *loop, mINT32 motion_type,
     BOOL equiv_fwd  = 	BS_MemberP (BB_pdom_set(cand_bb), BB_id(bb)) &&
 			BS_MemberP (BB_dom_set(bb), BB_id(cand_bb));
 
-#ifdef KEY
     /* Fix for bug#1406
        Although <cand_bb> dominates <bb>, and <bb> post-dominates <cand_bb>,
        it does not mean they are really equivalent, if <cand_bb> has two branches,
@@ -2802,7 +2732,6 @@ Determine_Candidate_Blocks(BB *bb, LOOP_DESCR *loop, mINT32 motion_type,
        Should we fix up <equiv_bkwd> here ???
      */
     equiv_fwd = equiv_fwd && BB_Has_One_Succ( cand_bb );
-#endif
 
     BOOL equiv = equiv_fwd && equiv_bkwd;
 
@@ -3046,7 +2975,6 @@ Perform_Post_GCM_Steps(BB *bb, BB *cand_bb, OP *cand_op, mINT32 motion_type,
 	  GCM_Loop_Prolog = CG_LOOP_Gen_And_Prepend_To_Prolog(bb, loop);
 #endif // TARG_SL
 	  GRA_LIVE_Compute_Liveness_For_BB(GCM_Loop_Prolog);
-#ifdef KEY
 	  // Need to update register liveness info for newly generated blocks.
 	  // There is no procedure to copy liveness info from one block to 
 	  // another. Better run REG_LIVE_Analyze_Region once.
@@ -3054,7 +2982,6 @@ Perform_Post_GCM_Steps(BB *bb, BB *cand_bb, OP *cand_op, mINT32 motion_type,
 	    REG_LIVE_Finish();
 	    REG_LIVE_Analyze_Region();
 	  }
-#endif	
 	  if (Trace_GCM) {
 #pragma mips_frequency_hint NEVER
 	    fprintf (TFile, "GCM: Circular Motion:\n");
@@ -3968,7 +3895,6 @@ Is_Schedule_Worse(BB *bb, BB *cand_bb, BBSCH *new_bbsch,
       UINT8 delta_from = new_from_regcost[i] - old_from_regcost[i];
       UINT8 delta_to = new_to_regcost[i] - old_to_regcost[i];
 
-#ifdef KEY
       // Implementing the TODO: need to consider register class and 
       // consider costs separately for each class
       improve_reg_pressure =  improve_reg_pressure &&
@@ -3976,13 +3902,6 @@ Is_Schedule_Worse(BB *bb, BB *cand_bb, BBSCH *new_bbsch,
 	 old_to_regcost[i] <= REGISTER_CLASS_info[i].register_count &&
 	 ((old_from_regcost[i] + delta_from) <= REGISTER_CLASS_info[i].register_count) &&
 	 ((old_to_regcost[i] + delta_to) <= REGISTER_CLASS_info[i].register_count));
-#else
-      improve_reg_pressure =  improve_reg_pressure &&
-	(old_from_regcost[i] <= REGISTER_MAX &&
-	 old_to_regcost[i] <= REGISTER_MAX &&
-	 ((old_from_regcost[i] + delta_from) <= REGISTER_MAX) &&
-	 ((old_to_regcost[i] + delta_to) <= REGISTER_MAX));
-#endif
     }
   }
 
@@ -4532,7 +4451,7 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
 
       if( Trace_GCM ){
         INT i, count = VECTOR_count(cand_bbvector);
-        #ifdef KEY
+        #if 1
         FmtAssert(count <= VECTOR_size(cand_bbvector), ("VECTOR overflow"));
         #else
         FmtAssert(count < VECTOR_size(cand_bbvector), ("VECTOR overflow"));
@@ -4608,12 +4527,10 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
 	  
         if (cand_bb_limit-- <= 0) break;
 
-#ifdef KEY
 	// Consider at most GCM_BB_Limit number of candidate bb's.
 	if (GCM_BB_Limit != -1 &&
 	    cumulative_cand_bb++ >= GCM_BB_Limit)
 	  break;
-#endif
 
   	/* don't make the target basic block too large. */
   	if (BB_length(cand_bb) >= (Split_BB_Length - 50)) 
@@ -4761,7 +4678,6 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
 
 	    Set_BB_SCHEDULE(bbsch);
 	    Set_BB_SCHEDULE(cand_bbsch);
-#ifdef KEY
 	    // Due to the way the control is organized, it is possible that
 	    // the bb, and cand_bb never get scheduled again.
 	    // see compilation of gcc.c-torture/compile/950922-1.c
@@ -4769,7 +4685,6 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
 	    // is latest and is going to be passed around to other modules.
 	    bbsch = Schedule_BB_For_GCM (bb, from_hbs_type, &Sched);
 	    cand_bbsch = Schedule_BB_For_GCM (cand_bb, to_hbs_type, &Sched);
-#endif
 	  }
 	  else {
 #if defined(TARG_SL)
@@ -5295,9 +5210,7 @@ void GCM_Schedule_Region (HBS_TYPE hbs_type)
     if (!GCM_POST_Enable_Scheduling) return;
   }
 
-#ifdef KEY
   cumulative_cand_bb = 0;
-#endif
 
   if (Trace_GCM) {
     #pragma mips_frequency_hint NEVER

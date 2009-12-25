@@ -93,17 +93,13 @@ extern void Cg_Dwarf_Process_PU (Elf64_Word  scn_index,
 #endif // TARG_X8664
 // To force a line number entry after the end of preamble in entry BB.
 extern BOOL Cg_Dwarf_First_Op_After_Preamble_End;
-#ifdef KEY
 // To force a line number entry at the start op of every BB.
 extern BOOL Cg_Dwarf_BB_First_Op;
-#endif
 
 extern void Cg_Dwarf_Gen_Asm_File_Table (void);
 
-#ifdef KEY
 extern void Cg_Dwarf_Gen_Macinfo (void);
 extern void Print_Directives_For_All_Files (void);
-#endif
 
 extern void Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs(FILE *asm_file,
 							 INT   section_count,

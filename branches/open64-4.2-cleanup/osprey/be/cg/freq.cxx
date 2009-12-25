@@ -112,9 +112,7 @@ static BB_MAP  dfo_map;		// Depth-first order mapping
 static BB    **dfo_vec;		// Vector of BBs ordered depth-first
 static INT32   max_dfo_id;	// Max value in dfo_map
 static float   EH_Freq;		// Freq that exc hndlrs are executed
-#ifdef KEY
 static float   Non_Local_Target_Freq;	// Freq that non-local targs are exec'd.
-#endif
 static LOOP_DESCR *loop_list;	// Loop descriptors for the PU
 
 
@@ -339,13 +337,11 @@ Initialize_Freq_Edges(void)
       EDGE_slst(edge) = slst;
       EDGE_succ(edge) = succ;
       BB_succ_edges(bb) = edge;
-#ifdef KEY
       if (BBLIST_prob(slst) != 0.0 &&
           BBLIST_prob_hint_based(slst)) {
         EDGE_prob(edge) = BBLIST_prob(slst);
         Set_EDGE_prob_hint_based(edge);
       }
-#endif
 
       FOR_ALL_BB_PREDS(succ, plst) {
         if (BBLIST_item(plst) == bb) break;
@@ -506,9 +502,7 @@ Trace_Frequencies(void)
 #define PROB_OH  0.84		/* Opcode Heuristic */
 #define PROB_PH  0.60		/* Pointer Heuristic */
 #define PROB_SH  0.55		/* Store Heuristic */
-#ifdef KEY	// bug 8546
 #define PROB_SBH 0.04		/* Sequential Branch Heuristic */
-#endif
 
 /* Declare the interface of a heuristic function. A heuristic function
  * analyzes the branch and returns a boolean value to indicate if the
@@ -531,9 +525,7 @@ static BOOL Loop_Exit_Heuristic(BB *, BB *, BB *, LOOP_DESCR *, double *);
 static BOOL Opcode_Heuristic(BB *, BB *, BB *, LOOP_DESCR *, double *);
 static BOOL Pointer_Heuristic(BB *, BB *, BB *, LOOP_DESCR *, double *);
 static BOOL Store_Heuristic(BB *, BB *, BB *, LOOP_DESCR *, double *);
-#ifdef KEY
 static BOOL Sequential_Branch_Heuristic(BB *, BB *, BB *, LOOP_DESCR *, double *);
-#endif
 
 /* A list of heuristic function pointers and their names.
  */
@@ -550,9 +542,7 @@ static const struct heuristic_info heuristic[] = {
   { Opcode_Heuristic,		"OH"  },
   { Pointer_Heuristic,		"PH"  },
   { Store_Heuristic,		"SH"  },
-#ifdef KEY
   { Sequential_Branch_Heuristic, "SBH" },
-#endif
 };
 
 
@@ -655,13 +645,6 @@ BOOL WN_Is_Pointer(WN *wn)
     return TRUE;
 
   case OPR_LDID:
-#if 0
-    if (WN_class(wn) == CLASS_PREG) {
-
-      /* need to handle pregs specially, but how...
-       */
-    }
-#endif
     /*FALLTHROUGH*/
 
   case OPR_ILOAD:
@@ -1234,7 +1217,6 @@ Return_Heuristic(
   }
 }
 
-#ifdef KEY
 /* ====================================================================
  *
  *  Detect if BB is an IF that branches to a BB that ends in GOTO:
@@ -1353,7 +1335,6 @@ Sequential_Branch_Heuristic(
   // BB doesn't precede or follow 2 IFs of that type.
   return FALSE;
 }
-#endif
 
 
 /* ====================================================================
@@ -2022,7 +2003,6 @@ Compute_Branch_Probabilities(void)
 	EDGE_prob(edge) = 1.0 / n_succs;
       }
     }
-#ifdef KEY
     else if (EDGE_prob_hint_based(BB_succ_edges(bb)) &&
              EDGE_prob_hint_based(EDGE_next_succ(BB_succ_edges(bb)))) {
       if (CFLOW_Trace_Freq) {
@@ -2039,7 +2019,6 @@ Compute_Branch_Probabilities(void)
                       EDGE_prob(edge1), EDGE_prob(edge2));
       }
     }
-#endif
     else {
 
       /* 2-way branch
@@ -2398,7 +2377,6 @@ Compute_Frequencies(void)
   BB_SET_UniverseD(to_visit, PU_BB_Count + 2, NULL);
   BB_SET_ClearD(visited);
 
-#ifdef KEY
   // Assign frequencies to non-local goto targets that don't have predecessor
   // BBs.
   if (PU_Has_Nonlocal_Goto_Target) {
@@ -2410,7 +2388,6 @@ Compute_Frequencies(void)
       }
     }
   }
-#endif
 
   if (Compiling_Proper_REGION) {
 
@@ -2614,7 +2591,6 @@ Normalize_BB_Frequencies(void)
  */
 BB_SET *FREQ_Find_Never_BBs(MEM_POOL *pool)
 {
-#if 1
   BB_SET *pragma_bbs;
   BB_SET *never_bbs;
   BB *bb;
@@ -2681,75 +2657,6 @@ BB_SET *FREQ_Find_Never_BBs(MEM_POOL *pool)
   } while (!BB_SET_EmptyP(pragma_bbs));
 
   Free_Dominators_Memory();
-#endif
-#if 0
-  BB_SET *never_bbs;
-  INT32 i;
-  BB *bb;
-  BB_MAP topo_map;
-  INT32 max_topo_idx;
-  BB **topo_vec;
-  BOOL never_bbs_added;
-
-  Find_Freq_Hint_Pragmas(&never_bbs, NULL, pool);
-  if (never_bbs == NULL) return NULL;
-
-  topo_map = BB_Topological_Map(NULL, NULL);
-  topo_vec = (BB **)alloca(sizeof(BB *) * PU_BB_Count);
-  bzero(topo_vec, sizeof(BB *) * PU_BB_Count);
-  max_topo_idx = 0;
-  for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
-    INT32 topo_id = BB_MAP32_Get(topo_map, bb);
-    DevAssert(topo_id >= 0 && topo_id <= PU_BB_Count, ("bad <topo_map> value"));
-    if (topo_id > 0) {
-      max_topo_idx = MAX(topo_id, max_topo_idx);
-      topo_vec[topo_id - 1] = bb;
-    }
-  }
-  BB_MAP_Delete(topo_map);
-
-  do {
-    never_bbs_added = FALSE;
-
-    for (i = 0; i <= max_topo_idx; ++i) {
-      BBLIST *edge;
-      BB *bb = topo_vec[i];
-
-     if (bb == NULL) continue;
-
-      if (BB_preds(bb) && !BB_SET_MemberP(never_bbs, bb)) {
-	FOR_ALL_BB_PREDS(bb, edge) {
-	  BB *pred = BBLIST_item(edge);
-	  if (!BB_SET_MemberP(never_bbs, pred)) goto next_fwd_bb;
-	}
-	BB_SET_Union1D(never_bbs, bb, NULL);
-	never_bbs_added = TRUE;
-      }
-
-    next_fwd_bb:
-      ;
-    }
-
-    for (i = max_topo_idx; i >= 0; --i) {
-      BBLIST *edge;
-      BB *bb = topo_vec[i];
-
-      if (bb == NULL) continue;
-
-      if (BB_succs(bb) && !BB_SET_MemberP(never_bbs, bb)) {
-	FOR_ALL_BB_SUCCS(bb, edge) {
-	  BB *succ = BBLIST_item(edge);
-	  if (!BB_SET_MemberP(never_bbs, succ)) goto next_rev_bb;
-	}
-	BB_SET_Union1D(never_bbs, bb, NULL);
-	never_bbs_added = TRUE;
-      }
-
-    next_rev_bb:
-      ;
-    }
-  } while (never_bbs_added);
-#endif
 
   return never_bbs;
 }
@@ -2894,9 +2801,7 @@ FREQ_Region_Initialize(void)
   if (!inited) {
     Frequent_Never_Ratio = atof(FREQ_frequent_never_ratio);
     EH_Freq = atof(FREQ_eh_freq);
-#ifdef KEY
     Non_Local_Target_Freq = atof(FREQ_non_local_targ_freq);
-#endif
     inited = TRUE;
   }
   FREQ_freqs_computed = FALSE;

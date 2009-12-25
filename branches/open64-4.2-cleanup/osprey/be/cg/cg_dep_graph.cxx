@@ -65,7 +65,6 @@
 #endif // USE_PCH
 #pragma hdrstop
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 
 #define USE_STANDARD_TYPES
@@ -1740,7 +1739,7 @@ static OP *addr_base_offset(OP *op, ST **initial_sym, ST **sym, TN **base_tn, IN
 
         result_num = 0;
         defop_offset_tn = OP_opnd(defop, 1);
-#ifdef TARG_IA64    // in pathscale-3.0 is #ifdef KEY
+#ifdef TARG_IA64
         defop_base_tn = OP_opnd(defop, 2);
 #elif TARG_LOONGSON
         defop_offset_tn = OP_opnd(defop, 2);
@@ -1873,10 +1872,8 @@ static BOOL symbolic_addr_subtract(OP *pred_op, OP *succ_op, SAME_ADDR_RESULT *r
 succ_initial_sym) != SCLASS_UNKNOWN)) {
         if ((pred_sym != succ_sym) ||
             (ST_sclass(pred_initial_sym) != ST_sclass(succ_initial_sym)
-#ifdef KEY   // Bug 14319.
 	     && ST_sclass(pred_initial_sym) != SCLASS_EXTERN
 	     && ST_sclass(succ_initial_sym) != SCLASS_EXTERN
-#endif
 	    )) {
          /* Different base symbols imply different locations. */
           *res = DISTINCT;
@@ -2243,7 +2240,6 @@ inline BOOL under_same_cond_tn(OP *pred_op, OP *succ_op, UINT8 omega)
  */
 {
 #if defined(TARG_X8664) || defined(TARG_LOONGSON) // merged from pathscale-3.0
-#ifdef KEY
   // CIO can not do WW elimination because MIPS is not predicated 
   // architecture
   if (omega >= 1 && OP_store(pred_op) && OP_store(succ_op))
@@ -2273,7 +2269,6 @@ inline BOOL under_same_cond_tn(OP *pred_op, OP *succ_op, UINT8 omega)
     if (!not_predicated)
       return FALSE;
   }      
-#endif
 #endif // TARG_X8664
 
   TN *pred_guard, *succ_guard;
@@ -2633,9 +2628,7 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
    * is marked as not definite to prevent removal by r/w elimination).
    */
   if ((OP_volatile(pred_op) && OP_volatile(succ_op))
-#ifdef KEY	// bug 4850
       || (CGTARG_Is_OP_Barrier(pred_op) || CGTARG_Is_OP_Barrier(succ_op))
-#endif
      ) {
     *definite = FALSE;
     if (omega) *omega = lex_neg;
@@ -2788,14 +2781,6 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
 
     } else {
 
-#if 0
-      /* Warning disabled for now since we get these for SWP
-       * windup/winddown memory refs (there's no corresponding
-       * WHIRL node since these refs are specialized for particular
-       * iterations.
-       */
-      DevWarn("get_mem_dep: can't find WHIRL node for memory OP");
-#endif
       /* Fallback: Treat as possibly aliased unless addr analysis says
        * they're definitely aliased.
        */
@@ -3180,7 +3165,6 @@ CG_DEP_Mem_Ops_Alias(OP *memop1, OP *memop2, BOOL *identical)
       }
     } else if (spill_st1 || spill_st2) {
       /* One's a spill, and the other's not, so they're independent.  */
-#ifdef KEY
       // they may still be the same spill location because EBO's folding can
       // cause CGSPILL_OP_Spill_Location to fail to recognize a spill op 
       if (OP_opnd(memop1, TOP_Find_Operand_Use(OP_code(memop1), OU_offset)) ==
@@ -3189,7 +3173,6 @@ CG_DEP_Mem_Ops_Alias(OP *memop1, OP *memop2, BOOL *identical)
 	return TRUE;
       }
       else
-#endif
       return FALSE;
     }
 
@@ -3655,20 +3638,16 @@ static void adjust_arc_for_rw_elim(ARC *arc, BOOL is_succ, ARC *shortest,
    */
   if (kind == CG_DEP_MEMIN &&
       ((
-#ifdef KEY
 	// Bug088
 	( OP_results(succ) > 0 ) &&
-#endif	
 	(TN_is_float(OP_opnd(pred, 0)) ^ TN_is_float(OP_result(succ,0 /*???*/)))) ||
        CGTARG_Mem_Ref_Bytes(pred) != CGTARG_Mem_Ref_Bytes(succ))) {
     /* invalidate for r/w elimination */
     Set_ARC_is_definite(arc, FALSE);
   } else if (kind == CG_DEP_MEMREAD &&
-#ifdef KEY
 // Bug #517
 	     OP_results(succ) > 0 &&
 	     OP_results(pred) > 0 &&
-#endif
 	     ((TN_is_float(OP_result(pred,0 /*???*/)) ^ TN_is_float(OP_result(succ,0 /*???*/))) ||
 	      CGTARG_Mem_Ref_Bytes(pred) != CGTARG_Mem_Ref_Bytes(succ))) {
     /* non-definite MEMREAD arcs aren't useful */
@@ -3902,7 +3881,6 @@ void add_mem_arcs_from(UINT16 op_idx)
 		       shortest_to_store);
 }
 
-#ifdef KEY
 // OP has a homeable TN.  Add memory arcs between OP and memory OPs accessing
 // the home location.  PREV_MEM_OPS_SEEN is the number of memory OPs preceeding
 // OP in the BB.
@@ -3956,7 +3934,6 @@ add_home_mem_arcs (BB *bb)
     }
   }
 }
-#endif
 
 inline BOOL op_defines_sp(OP *op)
 {
@@ -4032,13 +4009,9 @@ static STACKREF_KIND Memory_OP_References_Stack(OP *op)
     ST *st = NULL;
     if (WN_has_sym(wn)) {
       st = WN_st(wn);
-#ifdef KEY
       Is_True(ST_class(st) == CLASS_VAR || ST_class(st) == CLASS_CONST ||
               ST_class(st) == CLASS_FUNC || ST_class(st) == CLASS_BLOCK, 
       	      ("expected CLASS_VAR/CONST/FUNC/BLOCK symbol"));
-#else
-      Is_True(ST_class(st) == CLASS_VAR, ("expected CLASS_VAR symbol"));
-#endif
     } else {
       WN *lda = NULL;
       switch (WN_operator(wn)) {
@@ -4052,12 +4025,10 @@ static STACKREF_KIND Memory_OP_References_Stack(OP *op)
       case OPR_ISTOREX:
 	lda = WN_kid1(wn);
 	break;
-#ifdef KEY
       case OPR_CVT:
 	return STACKREF_MAYBE;
       default:
 	return STACKREF_MAYBE;
-#endif
       }
       if (WN_operator_is(lda, OPR_LDA)) st = WN_st(lda);
     }
@@ -4129,13 +4100,11 @@ static void Add_MEM_Arcs(BB *bb)
    */
   if (BB_exit(bb)) {
     OP *exit_sp_adj = BB_exit_sp_adj_op(bb);
-#ifdef KEY
     /* <exit_sp_adj> could reside in a different bb, say _epilog_bb
        for bug#3241.
      */
     if (exit_sp_adj &&
 	OP_bb(exit_sp_adj) == bb)
-#endif // KEY
       {
 	for (op = exit_sp_adj; op != NULL; op = OP_prev(op)) {
 	  maybe_add_exit_sp_adj_arc (op, exit_sp_adj);
@@ -4143,7 +4112,6 @@ static void Add_MEM_Arcs(BB *bb)
       }
   }
 
-#ifdef KEY
   // To fix the position of asm ops w.r.t. other operations, create 
   // dependency with all other ops. 
   // TODO: Need to find out if the better way is to create a new BB for 
@@ -4167,7 +4135,6 @@ static void Add_MEM_Arcs(BB *bb)
       }
     }
   }
-#endif
   if (!cyclic && num_mem_ops == 1) return;
 
   /* Initialize data structures used by add_mem_arcs_from */
@@ -4195,10 +4162,8 @@ static void Add_MEM_Arcs(BB *bb)
       if (op_defines_sp(op)) {
 	--sp_defs;
 	for (i = 0; i < num_mem_ops; i++) {
-#ifdef KEY
 	  if (op == mem_ops[i])
 	    continue;
-#endif
 	  if (CG_DEP_Alloca_Aliases(mem_ops[i])) {
 	    if (OP_Precedes(op, mem_ops[i]))
 	      new_arc(CG_DEP_MISC, op, mem_ops[i], 0, 0, FALSE);
@@ -4210,13 +4175,11 @@ static void Add_MEM_Arcs(BB *bb)
     }
   }
 
-#ifdef KEY
   // Add memory arcs between OPs whose TNs have home locations and the
   // load/stores of those home locations.  This is so that when GRA inserts
   // spill code around the OPs, the spill code will read/write memory in the
   // correct order relative to the load/stores.  Bug 7847.
   add_home_mem_arcs(bb);
-#endif
 
   MEM_POOL_Pop(&MEM_local_pool);
 
@@ -4253,13 +4216,11 @@ static void Add_Vbuf_MEM_Arcs(BB *bb)
    */
   if (BB_exit(bb)) {
     OP *exit_sp_adj = BB_exit_sp_adj_op(bb);
-#ifdef KEY
     /* <exit_sp_adj> could reside in a different bb, say _epilog_bb
        for bug#3241.
      */
     if (exit_sp_adj &&
 	OP_bb(exit_sp_adj) == bb)
-#endif // KEY
       {
 	for (op = exit_sp_adj; op != NULL; op = OP_prev(op)) {
 	  maybe_add_exit_sp_adj_arc (op, exit_sp_adj);
@@ -4267,7 +4228,6 @@ static void Add_Vbuf_MEM_Arcs(BB *bb)
       }
   }
 
-#ifdef KEY
   // To fix the position of asm ops w.r.t. other operations, create 
   // dependency with all other ops. 
   // TODO: Need to find out if the better way is to create a new BB for 
@@ -4291,7 +4251,6 @@ static void Add_Vbuf_MEM_Arcs(BB *bb)
       }
     }
   }
-#endif
   if (!cyclic && num_mem_ops == 1) return;
 
   /* Initialize data structures used by add_mem_arcs_from */

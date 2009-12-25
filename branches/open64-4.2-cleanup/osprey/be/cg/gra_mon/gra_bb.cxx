@@ -130,7 +130,6 @@ GRA_BB::Make_Register_Used( ISA_REGISTER_CLASS  rc, REGISTER reg,
   loop->Make_Register_Used(rc, reg, reclaim);
   registers_used[rc] = REGISTER_SET_Union1(registers_used[rc],reg);
 
-#ifdef KEY
   // Record that REG is owned by LRANGE.
   if (GRA_reclaim_register)
     Set_LRANGE_Owner(rc, reg, lrange);
@@ -448,7 +447,6 @@ GRA_BB::Make_Register_Used( ISA_REGISTER_CLASS  rc, REGISTER reg,
       Usage_End_Index_Set(rc, reg, end_index);
     }
   }
-#endif
 }
 
 
@@ -468,7 +466,6 @@ GRA_BB::Registers_Used( ISA_REGISTER_CLASS  rc)
   }
 }
 
-#ifdef KEY
 /////////////////////////////////////
 // Add <reg> to the set of registers referenced in the given <gbb> and <rc>.
 void
@@ -486,7 +483,6 @@ GRA_BB::Registers_Referenced( ISA_REGISTER_CLASS rc)
 	    ("Registers_Referenced: lrange type not implemented"));
   return registers_referenced[rc];
 }
-#endif
 
 /////////////////////////////////////
 // Check if <lrange> in the set of LRANGEs to be spilled above <gbb>.
@@ -626,7 +622,6 @@ GBB_MGR::Create(BB* bb, GRA_REGION* region)
     gbb->unpreferenced_wired_lranges[rc] = NULL;
     gbb->spill_above[rc] = NULL;
     gbb->restore_below[rc] = NULL;
-#ifdef KEY
     if (GRA_optimize_boundary) {
       gbb->usage_live_in[rc] = REGISTER_SET_EMPTY_SET;
       gbb->usage_live_out[rc] = REGISTER_SET_EMPTY_SET;
@@ -640,7 +635,6 @@ GBB_MGR::Create(BB* bb, GRA_REGION* region)
 	gbb->lrange_owner[rc][i] = NULL;
       }
     }
-#endif
   }
 
   BB_MAP_Set(map,bb,(void*) gbb);

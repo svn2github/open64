@@ -62,7 +62,6 @@
  */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <ctype.h>
 #include <fcntl.h>
@@ -71,9 +70,7 @@
 #include <errno.h>
 #include <bstring.h>
 #include "elf_stuff.h"
-#ifdef KEY /* Mac port */
 #include "dwarf_stuff.h"
-#endif /* KEY Mac port */
 #include <elfaccess.h>
 #include <alloca.h>
 #include <stdlib.h>
@@ -170,10 +167,8 @@ extern "C" {
 #include "pro_encode_nm.h"
 }
 
-#ifdef KEY
 #include "config_lno.h" // for LNO_Run_Simd
 #include "config_opt.h" // for OPT_Cyg_Instrument
-#endif
 
 #ifdef TARG_SL
 #include "disp_instr.h"
@@ -216,10 +211,8 @@ enum { IHOT=FALSE, ICOLD=TRUE };
 #define Reset_BB_cold	Reset_BB_local_flag1
 
 extern const char __Release_ID[];
-#ifdef KEY
 extern BOOL profile_arcs;
 extern BOOL PU_has_trampoline;  // defined in wn_lower.cxx
-#endif
 
 /* ====================================================================
  *
@@ -248,13 +241,11 @@ BOOL CG_emit_unwind_info_Set = FALSE;
 BOOL CG_emit_unwind_directives = FALSE;
 #endif
 
-#ifdef KEY
 BOOL CG_emit_non_gas_syntax = FALSE;
 #ifdef TARG_NVISA
 BOOL CG_inhibit_size_directive = TRUE;
 #else
 BOOL CG_inhibit_size_directive = FALSE;
-#endif
 #endif
 
 #ifndef TARG_NVISA
@@ -942,10 +933,8 @@ EMT_Write_Qualified_Name (FILE *f, ST *st)
 		// assume that statics in mult. pu's will 
 		// get moved to global symtab, so don't need pu-num
                 if (ST_level(st) == GLOBAL_SYMTAB) {
-#ifdef KEY
                     // bug 14517, OSP 490
                     if (Emit_Global_Data || ST_sclass(st) == SCLASS_PSTATIC)
-#endif
                         fprintf (f, "%s%d", Label_Name_Separator, ST_index(st));
                 }
 		else
@@ -1118,7 +1107,6 @@ Print_Common (FILE *pfile, ST *st)
     // this is needed so that we don't emit commons more than once
     if (!generate_elf_symbols) Set_ST_elf_index(st, 1);
   }
-#ifdef KEY
   else {
     // Emit symbol even though type size is 0, in order to avoid undefined
     // symbol in C++.  Bug 3739.
@@ -1134,7 +1122,6 @@ Print_Common (FILE *pfile, ST *st)
     fputs (", 1, 1\n", pfile);
 #endif /* defined(BUILD_OS_DARWIN) */
   }
-#endif
 }
 
 
@@ -1255,9 +1242,7 @@ mINT32 EMT_Put_Elf_Symbol (ST *sym)
 #endif
 	case SCLASS_DGLOBAL:
 	case SCLASS_UGLOBAL:
-#ifdef KEY
 	case SCLASS_EH_REGION:
-#endif // KEY 
 	  symindex = Em_Add_New_Symbol (
 			ST_name(sym), base_ofst, TY_size(sym_type), 
 			symbind, STT_OBJECT, symother,
@@ -2148,7 +2133,6 @@ static void Verify_Instruction(OP *op)
     Verify_Operand(oinfo, op, i, FALSE);
   }
 
-#ifdef KEY
   // Check for unique operand and result registers.
   if (OP_uniq_res(op)) {
     for (i = 0; i < results; i++) {
@@ -2164,7 +2148,6 @@ static void Verify_Instruction(OP *op)
       }
     }
   }
-#endif
 
 }
 
@@ -2377,11 +2360,6 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
   INT i;
   BOOL predicated = OP_has_predicate(op) != 0;
 
-#if 0	// wait until srcpos are more robust
-  if (!OP_noop(op) && SRCPOS_linenum(OP_srcpos(op)) == 0) {
-	DevWarn("0 linenum on op at PC 0x%x", PC);
-  }
-#endif
   for (i = 0; i < OP_opnds(op); i++) {
     tn = OP_opnd (op, i);
     if (TN_is_register(tn)) {
@@ -2486,7 +2464,6 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
 #define Perform_Sanity_Checks_For_OP(op, check_def)
 #endif // Is_True_On && !defined(TARG_NVISA)
 
-#ifdef KEY
 //********************************************************
 //Bug 11034: implement dymanic allocation of pu tables to
 //various information for dwarf
@@ -2541,7 +2518,6 @@ static void double_dwarf_pu_tables()
 }
 
 static INT32 pu_entries = 0;
-#endif // KEY
 
 #ifdef TARG_X8664
 static inline BOOL
@@ -2941,7 +2917,6 @@ if (Get_Trace ( TP_EMIT,0x100 )) {
 }
 
 
-#ifdef KEY
 #include "cxx_memory.h"
 
 static char* 
@@ -3076,26 +3051,6 @@ Replace_Substring(char* in, char* from, const char* to)
   strcat(buf, in);
   return buf;
 }
-#else
-static char* 
-Replace_Substring(char* in, char* from, const char* to)
-{
-  UINT  buflen = strlen(in) + 64;
-  char* buf = (char*) alloca(buflen);
-  char* p;
-  while ((p = strstr(in, from)) != NULL) {
-    char* leftover = p + strlen(from);
-    *p = '\0';
-    while (strlen(in) + strlen(to) + strlen(leftover) >= buflen) {
-      buflen = buflen * 2;
-      buf = (char*) alloca(buflen);
-    }
-    sprintf(buf, "%s%s%s", in, to, leftover);
-    in = strdup(buf);
-  }
-  return in;
-}
-#endif /* KEY */
 
 #ifdef TARG_X8664
 static const char* int_reg_names[5][16] = {
@@ -3739,7 +3694,7 @@ Generate_Asm_String (OP* asm_op, BB *bb)
   char* asm_string = strdup(WN_asm_string(ASM_OP_wn(asm_info)));
 
 #ifndef TARG_IA64
-  //#ifdef KEY
+  //#if 1
 
   // Bug 5009: ASM: need to check operand number
   UINT n, index_count;
@@ -3760,9 +3715,7 @@ Generate_Asm_String (OP* asm_op, BB *bb)
       p++; // (Consume the '%').
       // In case there is a modifer, get past it, taking care not to overshoot
       if (*p != '\0' && !isdigit(*p)
-#ifdef KEY // bug 11651
           && *p != 'r' && *p != 'R'
-#endif
          ) p++;
       // Save the start location and scan ahead, looking for a number.
       q = p;
@@ -4680,10 +4633,6 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     }
   }
   if ( BB_entry(bb) ) {
-#ifndef KEY
-    // replace uses of entry_name with ST_name(entry_sym)
-    char *entry_name;
-#endif
     ST *entry_sym; 
     ENTRYINFO *ent;
     SRCPOS entry_srcpos;
@@ -4691,12 +4640,8 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     ent = ANNOT_entryinfo(ant);
     entry_srcpos = ENTRYINFO_srcpos(ent);
     entry_sym = ENTRYINFO_name(ent);
-#ifndef KEY
-    // replace uses of entry_name with ST_name(entry_sym)
-    entry_name = ST_name(entry_sym);
-#endif
 
-// #ifdef KEY
+// #if 1
 #if !defined(TARG_IA64) && !defined(TARG_LOONGSON)
     if (strcmp(ST_name(entry_sym), Cur_PU_Name) != 0 &&
         PU_ftn_lang(Get_Current_PU())) { // PU entry
@@ -4756,7 +4701,6 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     LABEL_IDX lab = ANNOT_label(ant);
 
     if ( Assembly ) {
-#ifdef KEY
 
       // bug 14483: It's not clear why we need to avoid emitting labels
       // for ASM bbs, other than reducing the size of the assembly file.
@@ -4794,12 +4738,7 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
       if (emit_label)
 #endif
         fprintf ( Asm_File, "%s:\n", LABEL_name(lab)); 
-#else
-      fprintf ( Asm_File, "%s:\t%s 0x%" LL_FORMAT "x\n", 
-			  LABEL_name(lab), ASM_CMNT, Get_Label_Offset(lab) );
-#endif
     }
-#ifdef KEY
     static BOOL seen_asm = FALSE;
     static WN *rwn_tmp = NULL;
     if (rwn_tmp != rwn) {
@@ -4809,12 +4748,9 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     if (BB_asm(bb)) { 
       seen_asm = TRUE;
     }            
-#endif
 #if !defined (TARG_IA64)
     if (Get_Label_Offset(lab) != PC) {
-#ifdef KEY
       if (!seen_asm)
-#endif
 	DevWarn ("label %s offset %lld doesn't match PC %d", 
 		LABEL_name(lab), Get_Label_Offset(lab), PC);
     }
@@ -6140,12 +6076,10 @@ Write_TCON (
   INT scn_idx,		/* Section to emit it into */
   Elf64_Xword scn_ofst,	/* Section offset to emit it at */
   INT32 repeat          /* Repeat count */
-#ifdef KEY
 #if !defined(TARG_IA64)
   , bool etable = 0
   , int format = 0
 #endif
-#endif // KEY
   )
 {
   BOOL add_null = TCON_add_null(*tcon);
@@ -6651,9 +6585,7 @@ Write_Symdiff (
 #ifdef TARG_IA64
   , bool beh = false)
 #else
-#ifdef KEY
   , bool etable = 0
-#endif // KEY
   )
 #endif
 {
@@ -6706,11 +6638,9 @@ Write_Symdiff (
       fprintf(Asm_File, "%s", LABEL_name(lab1));
       fprintf (Asm_File, "-");
 #else
-#ifdef KEY
       if (etable)
         fputs ("\t.uleb128\t", Asm_File);
       else
-#endif // KEY 
        fprintf (Asm_File, "\t%s\t", (size == 2 ? AS_HALF : AS_WORD));
        fputs (LABEL_name(lab1), Asm_File);
        fputc ('-', Asm_File);
@@ -6726,7 +6656,6 @@ Write_Symdiff (
   return scn_ofst;
 }
 
-#ifdef KEY
 #include <map>
 std::map<const ST*, const ST*> st_to_pic_st;
 // Emit PIC version of a symbol, here, a typeinfo symbol
@@ -6755,7 +6684,6 @@ Emit_PIC_version (ST * st, Elf64_Word scn_ofst)
   fprintf (Asm_File, "\t.long\tDW.ref.%s-.\n", ST_name (st));
   return scn_ofst + 4;
 }
-#endif
 
 /* ====================================================================
  *
@@ -7152,12 +7080,10 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
   INITV_IDX type_inv = (INITV_IDX)TCON_uval(INITV_tc_val(act_inv));
   INITV_IDX eh_spec_inv = (INITV_IDX)TCON_uval(INITV_tc_val(type_inv));
 
-#ifdef OSP_OPT
   // Check_Initv(first, stdout);
   // if no corresponding call site information, doesn't emit at all 
   if (INITV_next(first) == act_inv)
     return;
-#endif
 
   static int nRangeTable = 0;
   nRangeTable++;
@@ -7289,12 +7215,10 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
 }
 
 #else // TARG_IA64
-#ifdef KEY
 static Elf64_Xword
 Generate_Exception_Table_Header (INT scn_idx,
                                  Elf64_Xword scn_ofst,
                                  LABEL_IDX *);
-#endif // KEY
 #endif // TARG_IA64
 /* Emit the initialized object to the object file */
 static void
@@ -7425,7 +7349,7 @@ Write_INITO (
 }
 
 #ifndef TARG_IA64
-//#ifdef KEY
+//#if 1
 static Elf64_Word
 Write_Diff (
   LABEL_IDX lab1,       /* left symbol */
@@ -7730,13 +7654,12 @@ Process_Initos_And_Literals (SYMTAB_IDX stab)
     ST* base;
     ST* st = *st_iter;
 
-#ifdef KEY // for PUs with nested functions, the INITO is used only to record
-	   // the list of nested functions only, since the STs of the nested
-	   // functions can only be entered in the global symbol table
+     // for PUs with nested functions, the INITO is used only to record
+     // the list of nested functions only, since the STs of the nested
+     // functions can only be entered in the global symbol table
      if (ST_class(st) == CLASS_PREG && 
          strncmp(ST_name(st), ".nested_functions", 17) == 0)
        continue;
-#endif
 
     ST_INITO_MAP::iterator st_inito_entry = st_inito_map.find(ST_st_idx(st));
 
@@ -7895,7 +7818,7 @@ Process_Bss_Data (SYMTAB_IDX stab)
       continue;	// not a leaf symbol
     if (!Has_Base_Block(sym))
       continue;	// not a data symbol
-#ifdef KEY // bug 3182: to avoid .org backwards with cray pointers
+    // to avoid .org backwards with cray pointers
     if (ST_sclass(sym) == SCLASS_PSTATIC &&
 	(&Get_Current_PU() != NULL) && PU_ftn_lang(Get_Current_PU()) && 
 	ST_class(ST_base(sym)) != CLASS_BLOCK &&
@@ -7904,7 +7827,6 @@ Process_Bss_Data (SYMTAB_IDX stab)
       DevWarn("Process_Bss_Data: skipped symbol %s because based on cray pointer", ST_name(sym));
       continue; // is based on a cray pointer
     }
-#endif
     if (ST_sclass(sym) == SCLASS_UGLOBAL ||
         ST_sclass(sym) == SCLASS_FSTATIC ||
 #ifdef TARG_NVISA
@@ -7936,14 +7858,12 @@ Process_Bss_Data (SYMTAB_IDX stab)
   INT64 size;
   INT64 size_to_skip;
   INT64 not_yet_skip_amt = 0; // bug 10678
-#ifdef KEY // bug 10678
   ST*   last_base = NULL;     // bug 10678
   PU    *pu = &Get_Current_PU();
 
   // bug 13829: if not inside any PU, get 1st PU
   if (pu == NULL && Pu_Table.Size() > 1)
     pu = &(Pu_Table[(PU_IDX)1]);
-#endif
 
   for (bssp = bss_list.begin(); bssp != bss_list.end(); ++bssp) {
 
@@ -7955,7 +7875,6 @@ Process_Bss_Data (SYMTAB_IDX stab)
 	  continue;
 	}
 #endif  /* defined(BUILD_OS_DARWIN) */
-#ifdef KEY // bug 10678
 	if (base != last_base) {
 	  if (last_base != NULL && not_yet_skip_amt > 0)
 	    ASM_DIR_SKIP(Asm_File, not_yet_skip_amt);
@@ -7963,7 +7882,6 @@ Process_Bss_Data (SYMTAB_IDX stab)
 	  last_base = base;
 	  not_yet_skip_amt = 0;
 	}
-#endif
 	if (ST_class(base) != CLASS_BLOCK || !STB_section(base))
 		continue;	/* not allocated */
 	if (!STB_nobits(base))
@@ -7971,14 +7889,12 @@ Process_Bss_Data (SYMTAB_IDX stab)
 
 #ifdef EMIT_DATA_SECTIONS
 
-#ifdef KEY
         // Compute SIZE now.  The x86-64 code below relies on SIZE to determine
         // if Change_Section_Origin is needed.  Bug 13863.
         size = TY_size(ST_type(sym));
         // C++ requires empty classes to have unique addresses.
         if (size == 0 && (pu == NULL || PU_cxx_lang(*pu)/*bug 13826*/))
           size = 1;
-#endif
 
 #ifdef TARG_X8664
 	// Fix bug 617
@@ -8043,21 +7959,18 @@ Process_Bss_Data (SYMTAB_IDX stab)
 	Change_Section_Origin (base, ofst);
 #endif
 	if (Assembly) {
-#ifdef KEY // bug 11593: do not generate a definition for aliased variables
+          // do not generate a definition for aliased variables
 		if (ST_class(sym) == CLASS_VAR &&
 		    ST_base_idx(sym) != ST_st_idx(sym) &&
 		    !ST_is_equivalenced(sym) &&
 		    ST_class(ST_base(sym)) != CLASS_BLOCK &&
                     pu != NULL && ! PU_ftn_lang(*pu) /* bug 13585 */)
 		  goto skip_definition;
-#endif
 		size = TY_size(ST_type(sym));
-#ifdef KEY
 		// C++ requires empty classes to have unique addresses.
 		if (size == 0)
 		  Print_Label (Asm_File, sym, 1);
 		else
-#endif
 		Print_Label (Asm_File, sym, size);
 		size_to_skip = size;
 		// before emitting space,
@@ -8102,12 +8015,10 @@ skip_definition:
 	}
 #endif // EMIT_DATA_SECTIONS
   }
-#ifdef KEY // bug 10678
   if (bss_list.size() > 0) {
     if (not_yet_skip_amt > 0)
       ASM_DIR_SKIP(Asm_File, not_yet_skip_amt);
   }
-#endif
 }
 
 
@@ -8510,11 +8421,9 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 #endif
 
   Init_Unwind_Info (trace_unwind);
-#ifdef KEY /* TARG_X8664 */
   // bug 3031, 4814: initialize these unconditionally
   // bug 11034 : dynamic memory allocation
   init_dwarf_pu_tables();
-#endif // TARG_X8664
 
   /* In the IA-32 case, we need to convert fp register references
    * so that they reference entries in the fp register stack with the
@@ -8743,17 +8652,6 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   }
 #endif
   
-#if 0
-      // This code has been moved to EMT_Assemble_BB with the aim of emitting
-      // it at the start of the 1st BB in the PU.
-#ifdef TARG_X8664
-      if( Assembly &&
-	  ( strcmp( Cur_PU_Name, "MAIN__" ) == 0 ||
-	    strcmp( Cur_PU_Name, "main" ) == 0 ) ){
-	CGEMIT_Setup_Ctrl_Register( Asm_File );
-      }
-#endif
-#endif // 0
 #ifdef TARG_SL
   if (Trace_PC) {
     fprintf(TFile, "\n\n%s\n" , ST_name(pu));
@@ -8862,16 +8760,12 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 	Base_Symbol_And_Offset (sym, &base, &ofst);
 	eh_offset = ofst;
 	Init_Section(base);	/* make sure eh_region is inited */
-#ifdef KEY /* TARG_X8664 */
 // emit the begin label instead of the section name, since the section name
 // is same for different PUs, the label is different.
 	symindex = EMT_Put_Elf_Symbol (sym);
 // the above calculated offset is w.r.t the base, since we are not using the
 // base, the offset is 0.
 	eh_offset = 0;
-#else
-	symindex = ST_elf_index(base);
-#endif // TARG_X8664
       } else {
 	eh_offset = symindex = (Elf64_Word)DW_DLX_NO_EH_OFFSET;
       }
@@ -9186,9 +9080,7 @@ EMT_Begin_File (
     Cg_Dwarf_Begin (!Use_32_Bit_Pointers);
   }
   Cg_Dwarf_Gen_Asm_File_Table ();
-#ifdef KEY
   Cg_Dwarf_Gen_Macinfo ();
-#endif
 
   if (Assembly) {
 #ifdef TARG_LOONGSON
@@ -9221,10 +9113,8 @@ EMT_Begin_File (
     	fprintf ( Asm_File, "\t%s%s\t%s\n", ASM_CMNT, "ism", ism_name);
     List_Compile_Options ( Asm_File, "\t"ASM_CMNT, FALSE, TRUE, TRUE );
 
-#ifdef KEY 
     if (! CG_emit_non_gas_syntax)
       Print_Directives_For_All_Files();
-#endif
 
     /* TODO: do we need to do .interface stuff for asm files? */
   }
@@ -9308,7 +9198,6 @@ Em_Options_Scn(void)
 
 
 //#ifndef TARG_IA64
-#ifdef KEY
 // stores the command line arguments passed to 'be'
 extern char ** be_command_line_args;
 extern INT be_command_line_argc;
@@ -9452,7 +9341,6 @@ Emit_Options (void)
     fputs ("\"\n", Asm_File);
   }
 }
-#endif // KEY
 
 void
 EMT_End_File( void )
@@ -9478,14 +9366,12 @@ EMT_End_File( void )
                 if (ST_is_not_used (sym)) continue;
                 EMT_Put_Elf_Symbol (sym);
         }
-#ifdef KEY
 	/* Emit .weak directive for the used weak symbol. (bug#3202)
 	 */
 	if( ST_is_weak_symbol(sym) &&
 	    !ST_is_not_used(sym) ){
 	  EMT_Put_Elf_Symbol(sym);
 	}
-#endif
   }
 
   if (Emit_Global_Data) {
@@ -9571,10 +9457,6 @@ EMT_End_File( void )
       ST *strongsym = ST_strong(sym);
       unsigned char symtype;
 
-#ifndef KEY // the strong symbol can be another weak one linked to a strong one
-      if ( ! Has_Base_Block(strongsym))
-	continue;	/* strong not allocated, so ignore weak */
-#endif
 
       if (ST_class(sym) == CLASS_FUNC) {
 	symtype = STT_FUNC;

@@ -176,14 +176,12 @@ typedef UINT64 VARIANT;
 
 #else // TARG_IA64
 
-#ifdef KEY
 #define V_BR_I4EQ0	55	/* Signed integer A = 0 */
 #define V_BR_I4NE0	56	/* Signed integer A != 0 */
 #define V_BR_I4GT0	57	/* Signed integer A > 0 */
 #define V_BR_I4GE0	58	/* Signed integer A >= 0 */
 #define V_BR_I4LT0	59	/* Signed integer A < 0 */
 #define V_BR_I4LE0	60	/* Signed integer A <= 0 */
-#endif
 
 #define V_BR_I4EQ	61	/* 4-byte signed integer A = B */
 #define V_BR_I4NE	62	/* 4-byte signed integer A != B */
@@ -192,14 +190,12 @@ typedef UINT64 VARIANT;
 #define V_BR_I4LT	65	/* 4-byte signed integer A < B */
 #define V_BR_I4LE	66	/* 4-byte signed integer A <= B */
 
-#ifdef KEY
 #define V_BR_U4EQ0	67	/* Unsigned integer A = 0 */
 #define V_BR_U4NE0	68	/* Unsigned integer A != 0 */
 #define V_BR_U4GT0	69	/* Unsigned integer A > 0 */
 #define V_BR_U4GE0	70	/* Unsigned integer A >= 0 */
 #define V_BR_U4LT0	71	/* Unsigned integer A < 0 */
 #define V_BR_U4LE0	72	/* Unsigned integer A <= 0 */
-#endif
 
 #define V_BR_U4EQ	73	/* 4-byte unsigned integer A = B */
 #define V_BR_U4NE	74	/* 4-byte unsigned integer A != B */
@@ -404,7 +400,6 @@ extern const char *BR_Variant_Name(VARIANT variant);
 #define Reset_V_spadjust_plus(v)	((v) &= ~V_SPADJUST_PLUS)
 #define Reset_V_spadjust_minus(v)	((v) &= ~V_SPADJUST_MINUS)
 
-#ifdef KEY
 /* ====================================================================
  *
  * Variants for Shuffle
@@ -413,6 +408,5 @@ extern const char *BR_Variant_Name(VARIANT variant);
  */
 #define V_SHUFFLE_REVERSE	0x0000	/* Reverse */
 // TODO : add more shuffle operations
-#endif
 
 #endif /* variants_INCLUDED */

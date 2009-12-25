@@ -186,9 +186,7 @@ public:
   RID_POST_ITER& operator++();
   RID_POST_ITER  operator++(int);
   friend bool operator==(const RID_POST_ITER&, const RID_POST_ITER&);
-#ifdef KEY
   friend bool operator!=(const RID_POST_ITER&, const RID_POST_ITER&);
-#endif
 };
 
 RID_POST_ITER::RID_POST_ITER(RID * p): start(p), own(p) {
@@ -227,12 +225,10 @@ inline bool operator==(const RID_POST_ITER& x, const RID_POST_ITER & y)
   return x.own == y.own;
 }
 
-#ifdef KEY
 inline bool operator!=(const RID_POST_ITER& x, const RID_POST_ITER & y)
 {
   return x.own != y.own;
 }
-#endif
 
 class RID_PARENT_ITER {
 private:
@@ -252,20 +248,16 @@ public:
     return tmp;
   }
   friend bool operator==(const RID_PARENT_ITER&, const RID_PARENT_ITER &);
-#ifdef KEY
   friend bool operator!=(const RID_PARENT_ITER&, const RID_PARENT_ITER &);
-#endif
 };
 
 bool operator==(const RID_PARENT_ITER& x, const RID_PARENT_ITER& y) {
   return x.p == y.p;
 }
 
-#ifdef KEY
 bool operator!=(const RID_PARENT_ITER& x, const RID_PARENT_ITER& y) {
   return x.p != y.p;
 }
-#endif
 
 struct IS_EH_RID
 {
@@ -376,11 +368,8 @@ public:
   EH_RANGE_LIST_PARENT_ITER(EH_RANGE_LIST::iterator x): iter(x) {}
   EH_RANGE& operator*() {return *iter;}
   EH_RANGE_LIST_PARENT_ITER& operator++() {
-#ifdef KEY // workaround g++ 3.2 problem
+  // workaround g++ 3.2 problem
     iter = EH_RANGE_LIST::iterator(iter->parent); return *this;}
-#else
-    iter = iter->parent; return *this;}
-#endif
   EH_RANGE_LIST_PARENT_ITER operator++(int) {
     EH_RANGE_LIST_PARENT_ITER tmp = *this;
     ++*this;
@@ -388,10 +377,8 @@ public:
   }
   friend bool operator==(const EH_RANGE_LIST_PARENT_ITER&,
 			 const EH_RANGE_LIST_PARENT_ITER&);
-#ifdef KEY 
   friend bool operator!=(const EH_RANGE_LIST_PARENT_ITER&,
 			 const EH_RANGE_LIST_PARENT_ITER&);
-#endif
 };
 
 inline bool operator==(const EH_RANGE_LIST_PARENT_ITER & x,
@@ -399,12 +386,10 @@ inline bool operator==(const EH_RANGE_LIST_PARENT_ITER & x,
   return x.iter == y.iter;
 }
 
-#ifdef KEY 
 inline bool operator!=(const EH_RANGE_LIST_PARENT_ITER & x,
 		       const EH_RANGE_LIST_PARENT_ITER &y) {
   return x.iter != y.iter;
 }
-#endif
 
 /* There is always just one EH_RANGE_LIST which belongs to
  * eh_region.cxx and which is cleared at the beginning of
@@ -417,7 +402,6 @@ static EH_RANGE_LIST range_list;
  * for_each as we iterate over the RID using RID_POST_ITER.
  * This will add a range for every EH region.
  */
-#ifdef KEY
 // workaround for g++ 3.2 bug, the function object below does not
 // get called properly
 void ADD_EH_RANGE (RID * rid)
@@ -429,15 +413,6 @@ void ADD_EH_RANGE (RID * rid)
 	    Set_ST_is_not_used (INITO_st(WN_ereg_supp(RID_rwn(rid))));
     }
 }
-#else
-struct ADD_EH_RANGE {
-  void operator()(RID * rid) {
-    if (RID_TYPE_eh(rid)) {
-      range_list.add_range(rid);
-    }
-  }
-};
-#endif // KEY
 
 /* The function object SET_PARENT finds the nearest ancestor 
  * EH region and sets the parent accordingly.
@@ -483,11 +458,8 @@ EH_Generate_Range_List(WN * pu)
   EH_RANGE_LIST::iterator list_last (range_list.end());
 
   for (EH_RANGE_LIST::iterator p = list_first; p!=list_last; p++)
-#ifdef KEY	// workaround g++ 3.2 problem
+    // workaround g++ 3.2 problem
     RID_eh_range_ptr(p->rid) = &(*p);
-#else
-    RID_eh_range_ptr(p->rid) = p;
-#endif
 
   std::for_each(list_first, list_last, SET_PARENT());
 }
@@ -560,13 +532,9 @@ EH_Set_Start_Label(EH_RANGE* p)
     return;
 #endif
   if (p->kind == ehk_guard) {
-#ifdef KEY
     EH_RANGE_LIST::reverse_iterator rfirst = range_list.rbegin();
     while (&(*rfirst) != p)
       rfirst++;
-#else
-    EH_RANGE_LIST::reverse_iterator rfirst(p);
-#endif
     EH_RANGE_LIST::reverse_iterator rlast  = range_list.rend();
     EH_RANGE_LIST::reverse_iterator riter =
       std::find_if(rfirst, rlast, IS_SIB_RANGE(p));
@@ -627,13 +595,10 @@ void EH_Set_Has_Call(EH_RANGE* p)
   p->has_call = TRUE;
   if (p->kind == ehk_mask) {
     // set has_call for associated guard region also
-#ifdef KEY // workaround constructor call bug in g++ 3.2
+    // workaround constructor call bug in g++ 3.2
     EH_RANGE_LIST::reverse_iterator rfirst = range_list.rbegin();
     while (&(*rfirst) != p)
       rfirst++;
-#else
-    EH_RANGE_LIST::reverse_iterator rfirst(p);
-#endif
     EH_RANGE_LIST::reverse_iterator rlast  = range_list.rend();
     rfirst = std::find_if(rfirst, rlast, IS_SIB_RANGE(p));
     Is_True(rfirst != rlast && rfirst->kind == ehk_guard,
@@ -674,7 +639,6 @@ struct HAS_NO_CALL_OR_HAS_NULL_OR_UNREACHABLE_LABEL {
     }
 };
 
-#ifdef KEY
 struct FIX_PARENT
 {
   bool operator() (EH_RANGE& r)
@@ -684,7 +648,6 @@ struct FIX_PARENT
       r.parent = r.parent->parent;
   }
 };
-#endif // KEY
 
 struct SET_ADJUSTMENT {
   INT32 amount;
@@ -769,7 +732,7 @@ reorder_range_list()
   INT32 bb_count;
   size_t i;
 
-#ifdef KEY	// Speed up the original code.  Bug 10289.
+  // Speed up the original code. 
   {
     INT32 *bb_counts = (INT32 *) alloca(sizeof(INT32) * (PU_BB_Count + 1));
 #if Is_True_On
@@ -787,17 +750,6 @@ reorder_range_list()
       range_list[i].id = &range_list[i];
     }
   }
-#else
-  for (bb = REGION_First_BB, bb_count = 0;
-       bb != NULL;
-       bb = BB_next(bb), ++bb_count) {
-    for (i = 0; i < range_list.size(); ++i) {
-      if (range_list[i].end_bb == bb)
-	range_list[i].key = bb_count;
-      range_list[i].id = &range_list[i];
-    }
-  }
-#endif
 
   EH_RANGE_LIST::iterator first(range_list.begin());
   EH_RANGE_LIST::iterator last (range_list.end());
@@ -823,13 +775,8 @@ struct IS_CLEANUP_RANGE {
 struct FIX_MASK_PARENT {
   void operator()(EH_RANGE& r) {
     if (r.kind == ehk_mask) {
-#ifdef KEY
       EH_RANGE_LIST_PARENT_ITER first(EH_RANGE_LIST::iterator(r.parent));
       EH_RANGE_LIST_PARENT_ITER last(EH_RANGE_LIST::iterator(NULL));
-#else
-      EH_RANGE_LIST_PARENT_ITER first(r.parent);
-      EH_RANGE_LIST_PARENT_ITER last (NULL);
-#endif
 #if (__GNUC__ < 4 || __GNUC_MINOR__ == 0)
       first = find_if(first, last, IS_CLEANUP_RANGE(), std::__iterator_category(first));
 #else
@@ -904,24 +851,18 @@ ST_For_Range_Table(WN * wn)
 		      2 * offset_size;
   UINT32 size = header_size + number_of_ranges * range_size;
 
-#ifdef KEY
 // This is a temporary solution. The above 'size' is not properly
 // calculated. TODO: Fix the size above.
   size = 0;	// don't output the size
-#endif // KEY
 
   TY_IDX tyi;
   TY& ty = New_TY(tyi);
   TY_Init(ty, size, KIND_STRUCT, MTYPE_M,
 	  Save_Str2(".range_table.",ST_name(pu)));
-#ifdef KEY
   if (Is_Target_64bit())
     Set_TY_align(tyi, 8);
   else
     Set_TY_align(tyi, 4);
-#else
-  Set_TY_align(tyi, 4);
-#endif
   st = New_ST(CURRENT_SYMTAB);
   ST_Init(st, TY_name_idx(ty),
 	  CLASS_VAR, SCLASS_EH_REGION, EXPORT_LOCAL, tyi);
@@ -1614,12 +1555,10 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
     
     INITV_IDX first = INITV_blk(blk);
 
-#ifdef OSP_OPT
     if ((INITV_kind(first) != INITVKIND_LABEL) &&
 	        PU_is_mainpu (Get_Current_PU ())) {
       continue;
     }
-#endif
     /*
      * struct CallSiteRecord
      * {
@@ -1785,7 +1724,6 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
 
 /* implementation on X8664. 
  */
-#ifdef KEY
 static void
 Create_INITO_For_Range_Table(ST * st, ST * pu)
 {
@@ -1823,12 +1761,6 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
     INITO_IDX ereg = range_list[i].ereg_supp;
     INITV_IDX first_initv = INITV_blk (INITO_val (ereg));
     Set_ST_is_not_used (*(INITO_st (ereg)));
-#if 0
-    if ((INITV_kind(first_initv) != INITVKIND_LABEL) &&
-                PU_is_mainpu (Get_Current_PU ())) {
-      continue;
-    }
-#endif
 
     LABEL_IDX pad_label=0;
     if (INITV_kind(first_initv) != INITVKIND_ZERO)
@@ -2042,64 +1974,6 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
   type_filter_map.clear();
 }
 
-#else
-/* The first implementation, not conform to the C++ ABI.
-   NO call site table, type table, action table, .etc. 
- */
-static void
-Create_INITO_For_Range_Table(ST * st, ST * pu)
-{
-  INITO_IDX inito = New_INITO(st);
-  INITV_IDX inv_blk = New_INITV ();
-  INITV_IDX inv;
-  INITV_IDX prev_inv;
-
-  // create block of blocks
-  prev_inv = Append_INITV (inv_blk, inito, INITV_IDX_ZERO);
-  inv_blk = New_INITV ();
-  INITV_Init_Block(prev_inv, inv_blk);
-  // header: pad(31), short/long(1), version(16), count(16)
-  inv = New_INITV ();
-  INITV_Init_Integer (inv, MTYPE_I4, 
-               	         (Use_Long_EH_Range_Offsets() ? LONG_OFFSETS 
-						      : SHORT_OFFSETS) );
-  INITV_Init_Block (inv_blk, inv);
-  prev_inv = inv;
-  inv = New_INITV ();
-  INITV_Init_Integer (inv, MTYPE_I2, HEADER_VERSION);
-  prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
-  inv = New_INITV ();
-  INITV_Init_Integer (inv, MTYPE_I2, range_list.size());
-  prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
-
-  for (INT32 i = 0; i < range_list.size(); i++) {
-    /* block for each range */
-    inv_blk = Append_INITV (New_INITV (), INITO_IDX_ZERO, inv_blk);
-    // supp(32), parent(16), pad(14), kind(2), low(16/32), high(16/32)
-    inv = New_INITV();
-    if (range_list[i].ereg_supp == 0)
-        INITV_Init_Integer (inv, MTYPE_I4, 0);
-    else
-        INITV_Init_Symoff (inv, INITO_st(range_list[i].ereg_supp), 0);
-    INITV_Init_Block (inv_blk, inv);
-    prev_inv = inv;
-    inv = New_INITV();
-    INITV_Init_Integer (inv, MTYPE_I2, parent_offset(i));
-    prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
-    inv = New_INITV();
-    INITV_Init_Integer (inv, MTYPE_I2, range_list[i].kind);
-    prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
-    inv = New_INITV();
-    INITV_Init_Symdiff (inv, range_list[i].start_label,
-			   pu, !Use_Long_EH_Range_Offsets());
-    prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
-    inv = New_INITV();
-    INITV_Init_Symdiff (inv, range_list[i].end_label,
-			   pu, !Use_Long_EH_Range_Offsets());
-    prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
-  }
-}
-#endif // KEY
 #endif // TARG_IA64 
 
 
@@ -2239,7 +2113,6 @@ EH_Write_Range_Table(WN * wn)
     return;
   }
 
-#ifdef KEY
   // C++ exceptions not yet supported within MP regions.
   if (!LANG_Enable_CXX_Openmp && PU_mp_lower_generated (Get_Current_PU ()))
   {
@@ -2249,14 +2122,11 @@ EH_Write_Range_Table(WN * wn)
     eh_pu_range_st = NULL;
     return;
   }
-#endif // KEY
 
   fix_mask_ranges();
   reorder_range_list();
-#ifdef KEY
   flatten_regions();
   reorder_range_list();
-#endif
 
   ST * st = ST_For_Range_Table(wn);
   eh_pu_range_st = st;

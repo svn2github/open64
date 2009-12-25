@@ -636,11 +636,7 @@ typedef enum {
 } PEAK_RATE_CLASS;
 
 typedef struct {
-#ifdef KEY
   mUINT16 refs[PRC_LAST];
-#else
-  mINT16 refs[PRC_LAST];
-#endif
 } PRC_INFO;
 
 extern void CGTARG_Peak_Rate( PEAK_RATE_CLASS prc, PRC_INFO *info, INT ratio[2] );
@@ -885,10 +881,8 @@ void Fix_MM_Latency ( BB *bb, TOP_SET *src_op_class, TOP_SET *tgt_op_class, UINT
 void Fix_Cache_Conflict_latency( BB *bb);
 #endif
 
-#ifdef KEY
 // Return TRUE if OP accesses thread-local memory.
 extern BOOL CGTARG_Is_Thread_Local_Memory_OP(OP *op);
-#endif
 
 #ifdef TARG_LOONGSON
 // Emit code to turn on flush-to-zero mode when doing floating point calculation

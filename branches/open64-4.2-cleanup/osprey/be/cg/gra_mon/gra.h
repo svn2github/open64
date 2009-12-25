@@ -110,9 +110,7 @@ extern float GRA_spill_count_factor;
 extern INT GRA_local_forced_max;
 extern BOOL GRA_avoid_glue_references_for_locals;
 extern BOOL GRA_split_entry_exit_blocks;
-#ifdef KEY
 extern BOOL GRA_pu_has_handler;
-#endif
 
 // interface with cgdriver
 extern BOOL GRA_split_lranges; 		// controlled by -GRA:split_lranges
@@ -122,14 +120,12 @@ extern BOOL GRA_optimize_placement;	// controlled by -GRA:optimize_placement
 #ifdef TARG_X8664
 extern BOOL GRA_unspill_enable;		// controlled by -GRA:unspill
 #endif
-#ifdef KEY
 extern BOOL GRA_optimize_boundary;	// controlled by -GRA:optimize_boundary
 extern BOOL GRA_optimize_boundary_set;
 extern BOOL GRA_reclaim_register;	// controlled by -GRA:reclaim
 extern BOOL GRA_reclaim_register_set;
 extern BOOL GRA_prioritize_by_density;	// controlled by -GRA:prioritize_by_density
 extern BOOL GRA_prioritize_by_density_set;
-#endif
 
 #ifdef TARG_X8664
 extern BOOL GRA_grant_special_regs;	// controlled by -GRA:grant_special_regs

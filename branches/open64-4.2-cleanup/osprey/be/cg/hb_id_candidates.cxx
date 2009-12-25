@@ -292,10 +292,8 @@ Check_BB_For_HB_Suitability(BB* bb, BB* bb_entry)
 //
 /////////////////////////////////////
 {
-#ifdef KEY
   if (BB_asm(bb)) // we do not want to If-convert BBs with asms.
     return FALSE;
-#endif
   //
   // Want simple branches to deal with.
   //
@@ -352,9 +350,7 @@ Check_BB_For_HB_Suitability(BB* bb, BB* bb_entry)
     return FALSE;
   }
 
-#ifdef KEY
   if (bb != bb_entry) { // Entry BB will not be predicated and so it is okay
-#endif
   //
   // Bail if we find an op that requires guards, i.e. it cannot execute
   // without side effects.  Note that this will have to become more 
@@ -412,9 +408,7 @@ Check_BB_For_HB_Suitability(BB* bb, BB* bb_entry)
       } /* if (!TN_is_global_reg ...) */
     } /* if (!TN_is_true_pred ...) */
   } /* FOR_ALL_.. */
-#ifdef KEY
   }
-#endif
 
   return TRUE;
 }
@@ -1089,7 +1083,6 @@ HB_Identify_Hammock_Candidates(std::list<HB_CAND_TREE*>& candidates,
 
       if ( ! Check_HB_For_PQS_Suitability(blocks, dom)) continue;
 
-#ifdef KEY
       // We want cg_loop to handle all loops.
       BBLIST *succs;
       BB *succ;
@@ -1108,7 +1101,6 @@ HB_Identify_Hammock_Candidates(std::list<HB_CAND_TREE*>& candidates,
       }
       if (skip_this_hammock)
 	continue;
-#endif
       if ( HB_skip_hammocks ) {
 	// We have an unfortunate bug where if we form hyperblocks on
 	// hammocks, and then later come back with force_if_convert

@@ -121,9 +121,7 @@
 #define OP_NEED_PAIR(t) (0)
 #define Create_TN_Pair(x,y) 
 #endif
-#ifdef KEY
 #include "cxx_template.h" // for STACK
-#endif
 
 #ifdef EMULATE_LONGLONG
 extern void Add_TN_Pair (TN*, TN*);
@@ -149,12 +147,8 @@ static void region_stack_push(RID *value);
 static void region_stack_eh_set_has_call(void);
 static VARIANT WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert);
 
-#ifdef KEY
 // Expose the vars to the target-specific expand routines.
 #define WHIRL2OPS_STATIC
-#else
-#define WHIRL2OPS_STATIC static
-#endif
 
 /* The cgexp routines now take as input an OPS to which the
  * expanded OPs are added.
@@ -611,11 +605,7 @@ static void region_stack_eh_set_has_call(void)
 {
   RID ** p;
   for (p = region_stack_ptr - 1; p >= region_stack_base; --p)
-#ifdef KEY
     if (RID_TYPE_eh(*p) && RID_eh_range_ptr(*p))
-#else
-    if (RID_TYPE_eh(*p))
-#endif
       EH_Set_Has_Call(RID_eh_range_ptr(*p));
 }
   
@@ -634,9 +624,6 @@ BOOL W2OPS_Pragma_Preamble_End_Seen ()
  * of number of OPs in the BB. We check if any of the new OPs have
  * a reference to GP and remember the fact.
  */
-#ifndef KEY
-static
-#endif
 void
 Process_New_OPs (void)
 {
@@ -918,21 +905,6 @@ Process_OPs_For_Stmt (void)
 {
   Process_New_OPs ();
 
-#if 0	// now done later in Split_BBs()
-  if (Enable_BB_Splitting && (total_bb_insts > Split_BB_Length)) {
-    /* We assume in LRA that the number of instructions in a BB fits
-     * in 16 bits.
-     */
-    FmtAssert (total_bb_insts < 32768,
-  	  ("Convert_WHIRL_To_OPs: Too many instructions for 1 statment (%d)\n", 
-	   total_bb_insts));
-    if (Trace_WhirlToOp) {
-          fprintf (TFile, "Convert_WHIRL_To_OPs: splitting a large BB (%d)\n", 
-		    total_bb_insts);
-    }
-    Start_New_Basic_Block ();
-  }
-#endif
 }
 
 
@@ -1017,11 +989,6 @@ Set_OP_To_WN_Map(WN *wn)
   op = Last_Mem_OP ? OP_next(Last_Mem_OP) : OPS_first(&New_OPs);
   for ( ; op != NULL; op = OP_next(op)) {
     if ( (!OP_memory(op) 
-#ifndef KEY // GRA's homing rely on WN node to determine if an op is a home
-	    // location load/store; since no_alias variables are also homeable,
-	    // need to remove !no_alias as condition to create the WN mapping
-			 || OP_no_alias(op)
-#endif
 					) && !OP_call(op) 
 	&& !CGTARG_Is_OP_Barrier(op) && OP_code(op) != TOP_spadjust) 
 	continue;
@@ -1099,12 +1066,10 @@ Preg_Is_Rematerializable(PREG_NUM preg, BOOL *gra_homeable)
     ST *basesym = Base_Symbol(sym);
     TYPE_ID rtype = OPCODE_rtype(opc);
 
-#ifdef KEY
     if (ST_sclass(sym) == SCLASS_FORMAL_REF)
       return NULL; // the dereferenced value has no home location
     if (ST_is_uplevelTemp(sym))
       return NULL; // homing to the uplevel stack location is expensive
-#endif
 
     /* can't handle quad's without lowerer support.  defer for now.
      * shouldn't see complex as they're expanded when the optimizer
@@ -1136,9 +1101,7 @@ Preg_Is_Rematerializable(PREG_NUM preg, BOOL *gra_homeable)
 	  || ST_on_stack(sym)) 
 #endif
       {
-#ifdef KEY
 	if( gra_homeable != NULL )
-#endif
 	  *gra_homeable = TRUE;
 	return home;
       }
@@ -1201,9 +1164,7 @@ PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num)
 	   preg_num, Get_Preg_Num(PREG_Table_Size(CURRENT_SYMTAB))));
 
   tn = PREG_To_TN_Array[preg_num];
-#ifdef KEY
   Is_True(preg_num > 0, ("PREG_To_TN: non-positive preg_num"));
-#endif
   if (tn == NULL)
   {
     ISA_REGISTER_CLASS rclass;
@@ -1409,7 +1370,6 @@ PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num)
       } 
 #endif
     }
-#ifdef KEY
     // Do the same for integer class; we have separate set of dedicated TNs
     // of size 4 bytes
     if (!TN_is_float(tn) &&
@@ -1422,7 +1382,6 @@ PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num)
                                TN_register(tn),
                                TY_size(preg_ty));
     }
-#endif
 #if defined(TARG_SL) && (defined(EMULATE_LONGLONG) || defined(EMULATE_FLOAT_POINT))
     // for dedicated TN, tn is the high part, we should return the low part
     if (mtype == MTYPE_I8 || mtype == MTYPE_U8 || mtype == MTYPE_F8) {      
@@ -1759,12 +1718,6 @@ static VARIANT Memop_Variant(WN *memop)
   INT     required_alignment = MTYPE_RegisterSize(WN_desc(memop));
 #endif
 
-#ifndef KEY
-  /* If volatile, set the flag.
-   */
-  if(WN_Is_Volatile_Mem(memop)) 
-    Set_V_volatile(variant);
-#endif
 
   /* Determine the alignment related variants. We have to check both 
    * ty alignment and the offset alignment.
@@ -1832,12 +1785,6 @@ static VARIANT Memop_Variant(WN *memop)
     }
 #endif
 
-#ifndef KEY // bug 8640: for enabling generation of 128-bit-aligned accesses from SIMD
-    if (offset) {
-      INT offset_align = offset % required_alignment;
-      if (offset_align) align = MIN(ty_align, offset_align);
-    }
-#endif
 
     if (align < required_alignment) {
 #ifdef TARG_IA64
@@ -1876,14 +1823,12 @@ static VARIANT Memop_Variant(WN *memop)
   }
   if (pf_wn) Set_V_pf_flags(variant, WN_prefetch_flag(pf_wn));
 
-#ifdef KEY
   /* If volatile, set the flag.
    */
 #ifndef TARG_NVISA // want to know volatile even if no other variant
   if (variant)
 #endif
     if (WN_Is_Volatile_Mem(memop)) Set_V_volatile(variant);
-#endif
   return variant;
 }
 
@@ -2556,7 +2501,6 @@ Handle_STID (WN *stid, OPCODE opcode)
       }
 #endif
 
-#ifdef KEY
       // When returning a float that is smaller than the size of the fp return
       // register, first write to a temp TN with the correct size and then copy
       // the TN to the return register.  This is work in conjunction with
@@ -2582,7 +2526,6 @@ Handle_STID (WN *stid, OPCODE opcode)
       }
 #endif
 
-#endif
 
 #if defined(TARG_IA32)
       if (TN_is_dedicated(result)) {
@@ -2687,11 +2630,9 @@ Handle_STID (WN *stid, OPCODE opcode)
       }
 #endif
 
-#ifdef KEY
       if (old_result != NULL) {
 	Exp_COPY(old_result, result, &New_OPs);
       }
-#endif
 #endif  // TARG_SL && EMULATE_LONGLONG
 
 #ifdef TARG_X8664
@@ -2777,10 +2718,8 @@ Handle_STBITS (WN *stbits)
   TN *bits_tn = Allocate_Result_TN (kid, NULL);
   const TYPE_ID desc = Mtype_TransferSign(MTYPE_U4, WN_desc(stbits));
   TYPE_ID rtype = Mtype_TransferSize(WN_rtype(kid), desc);
-#ifdef KEY // bug 7418
   if (MTYPE_bit_size(rtype) < MTYPE_bit_size(desc))
     rtype = desc;
-#endif
 
   Expand_Expr (kid, stbits, bits_tn);
 
@@ -3050,12 +2989,8 @@ Handle_SELECT(WN *select, TN *result, OPCODE opcode)
 
 
   variant = WHIRL_Compare_To_OP_variant (WN_opcode(compare), FALSE);
-#ifndef KEY
-  if (Check_Select_Expansion (WN_opcode(compare)) || (variant == V_BR_NONE)) {
-#else
   if (Check_Select_Expansion (WN_opcode(compare)) || 
       (variant == V_BR_NONE && !MTYPE_is_vector(WN_desc(compare)))) {
-#endif
 	Is_True(   WN_desc(select) != MTYPE_B
 		|| (   WN_operator_is(compare, OPR_LDID) 
 		    && WN_class(compare) == CLASS_PREG),
@@ -4152,9 +4087,6 @@ Get_Non_Local_Label_Name (SYMTAB_IDX level, LABEL_IDX index)
 // It is much simpler since now we don't need to create STs for
 // label numbers.  The only thing we might need to do is create a
 // LABEL_name.
-#ifndef KEY
-static
-#endif
 LABEL_IDX
 Get_WN_Label (WN *wn, BOOL *is_non_local_label = NULL)
 {
@@ -4168,19 +4100,15 @@ Get_WN_Label (WN *wn, BOOL *is_non_local_label = NULL)
 	     LABEL_IDX_index(label) <= LABEL_Table_Size(LABEL_IDX_level(label)),
 	("Get_WN_Label: label %d greater than last label %d", 
 	 label, LABEL_Table_Size(LABEL_IDX_level(label))));
-#ifdef KEY
   if (is_non_local_label != NULL)
 	*is_non_local_label = FALSE;
-#endif
 
   if (LABEL_name_idx(label) == 0) {
 	if (LABEL_target_of_goto_outer_block(label)) {
 		Set_LABEL_name_idx (Label_Table[label], 
 			Get_Non_Local_Label_Name (CURRENT_SYMTAB, label) );
-#ifdef KEY
 		if (is_non_local_label != NULL)
 			*is_non_local_label = TRUE;
-#endif
 	}
 	else {
 		label_prefix = LABEL_PREFIX "t";
@@ -4645,20 +4573,6 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
     num_opnds = 1;
     break;
 
-#ifndef KEY
-  case OPR_GOTO_OUTER_BLOCK:
-    // create a st that matches the label name
-    // that we can then use with a relocation in the lda.
-    {
-        ST *st = New_ST (CURRENT_SYMTAB);
-        ST_Init (st, Get_Non_Local_Label_Name (
-			WN_label_level(expr), WN_label_number(expr) ),
-		CLASS_NAME, SCLASS_UNKNOWN, EXPORT_LOCAL, WN_ty(expr));
-    	opnd_tn[0] = Gen_Symbol_TN (st, 0, 0);
-    }
-    num_opnds = 1;
-    break;
-#endif
 
   case OPR_ILOAD:
     return Handle_ILOAD (expr, result, opcode);
@@ -5313,9 +5227,7 @@ BOOL Has_External_Branch_Target( BB *bb )
   case OPC_FALSEBR:
   case OPC_GOTO:
     return label_is_external( &j, branch_wn, bb );
-#ifdef KEY
   case OPC_GOTO_OUTER_BLOCK:
-#endif
   case OPC_REGION_EXIT:
     return TRUE;
   case OPC_COMPGOTO:
@@ -5362,9 +5274,7 @@ BOOL Has_External_Fallthru( BB *bb )
   switch ( WN_opcode( branch_wn ) ) {
   case OPC_GOTO:
   case OPC_COMPGOTO:
-#ifdef KEY
   case OPC_GOTO_OUTER_BLOCK:
-#endif
     return FALSE;
   case OPC_REGION_EXIT:
     return TRUE;
@@ -5375,7 +5285,6 @@ BOOL Has_External_Fallthru( BB *bb )
   }
 }
 
-#ifdef KEY
 // Takes a BB. If the branch condition had a __builtin_expect, then
 // return the user-expected probability the branch would be taken.
 // Return -1 if unable to compute a probability.
@@ -5419,7 +5328,6 @@ static float get_branch_confidence (BB * bb)
  else return 0.10;
 }
 
-#endif
 
 /* Build the control flow graph for the code generator. */
 static void Build_CFG(void)
@@ -5508,16 +5416,12 @@ static void Build_CFG(void)
 	      }
 #endif
 	    } 
-#ifdef KEY
 // Generally we have num_exits==0 while creating cgrin, so CGRIN_exits is
 // NULL. With exceptions disabled, PU_has_region is generally not set for
 // any PU, hence while creating the bb, we assign NULL to BB_rid. So, without
 // exceptions we have rid==0 here. With exceptions we set BB_rid, but 
 // num_exits is still 0, so we need the extra check.
 	    else if ( rid && CGRIN_exits ( RID_cginfo( rid ) ) ) 
-#else
-	    else if ( rid ) 
-#endif
 	    {
 	      label_is_external( &num, branch_wn, bb );
 	      CGRIN_exit_i( RID_cginfo( rid ), num) = bb;
@@ -5538,7 +5442,6 @@ static void Build_CFG(void)
       case OPC_GOTO:
       case OPC_REGION_EXIT:
 	if ( ! label_is_external( &num, branch_wn, bb ) ) { /*internal label*/
-#ifdef KEY
 	  if ((WN_opcode(branch_wn) == OPC_TRUEBR ||
 	       WN_opcode(branch_wn) == OPC_FALSEBR) &&
 	      confidence != -1.0) {
@@ -5546,7 +5449,6 @@ static void Build_CFG(void)
 	                             Get_Label_BB(Get_WN_Label(branch_wn)),
 	                             1 - confidence, FALSE, TRUE, TRUE);
 	  } else
-#endif
 	  Link_BBs(bb, Get_WN_Label(branch_wn));
 	} else if ( rid ) {
 	  WN *new_exit;
@@ -5709,15 +5611,11 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
 // TODO WHIRL 0.30: get rid of OPC_I4T1 variants
   case OPC_U4I8EQ:
   case OPC_BI8EQ: case OPC_I4I8EQ: variant = V_BR_I8EQ; break;
-#ifdef KEY
   case OPC_I8I4EQ: case OPC_U8I4EQ:
   case OPC_U4I4EQ:
-#endif
   case OPC_BI4EQ: case OPC_I4I4EQ: variant = V_BR_I4EQ; break;
-#ifdef KEY
   case OPC_U8U8EQ:
   case OPC_U4U8EQ:
-#endif
   case OPC_BU8EQ: case OPC_I4U8EQ: variant = V_BR_U8EQ; break;
   case OPC_U4U4EQ:
   case OPC_BU4EQ: case OPC_I4U4EQ: variant = V_BR_U4EQ; break;
@@ -5741,20 +5639,14 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   // ------------------------- OPR_NE -------------------------
   case OPC_U4I8NE:
   case OPC_BI8NE: case OPC_I4I8NE: variant = V_BR_I8NE; break;
-#ifdef KEY
   case OPC_I8I4NE: case OPC_U8I4NE:
   case OPC_U4I4NE:
-#endif
   case OPC_BI4NE: case OPC_I4I4NE: variant = V_BR_I4NE; break;
-#ifdef KEY
   case OPC_U8U8NE:
   case OPC_U4U8NE:
-#endif
   case OPC_BU8NE: case OPC_I4U8NE: variant = V_BR_U8NE; break;
-#ifdef KEY
   case OPC_U8U4NE:
   case OPC_U4U4NE:
-#endif
   case OPC_BU4NE: case OPC_I4U4NE: variant = V_BR_U4NE; break;
   case OPC_U4FQNE:
   case OPC_BFQNE: case OPC_I4FQNE: variant = V_BR_QNE; break;
@@ -5776,20 +5668,14 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   // ------------------------- OPR_GT -------------------------
   case OPC_U4I8GT:
   case OPC_BI8GT: case OPC_I4I8GT: variant = V_BR_I8GT; break;
-#ifdef KEY
   case OPC_I8I4GT: case OPC_U8I4GT:
   case OPC_U4I4GT:
-#endif
   case OPC_BI4GT: case OPC_I4I4GT: variant = V_BR_I4GT; break;
-#ifdef KEY
   case OPC_U8U8GT:
   case OPC_U4U8GT:
-#endif
   case OPC_BU8GT: case OPC_I4U8GT: variant = V_BR_U8GT; break;
-#ifdef KEY
   case OPC_U8U4GT:
   case OPC_U4U4GT:
-#endif
   case OPC_BU4GT: case OPC_I4U4GT: variant = V_BR_U4GT; break;
   case OPC_U4FQGT:
   case OPC_BFQGT: case OPC_I4FQGT: variant = V_BR_QGT; break;
@@ -5812,20 +5698,14 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   // ------------------------- OPR_GE -------------------------
   case OPC_U4I8GE:
   case OPC_BI8GE: case OPC_I4I8GE: variant = V_BR_I8GE; break;
-#ifdef KEY
   case OPC_I8I4GE: case OPC_U8I4GE:
   case OPC_U4I4GE:
-#endif
   case OPC_BI4GE: case OPC_I4I4GE: variant = V_BR_I4GE; break;
-#ifdef KEY
   case OPC_U8U8GE:
   case OPC_U4U8GE:
-#endif
   case OPC_BU8GE: case OPC_I4U8GE: variant = V_BR_U8GE; break;
-#ifdef KEY
   case OPC_U8U4GE:
   case OPC_U4U4GE:
-#endif
   case OPC_BU4GE: case OPC_I4U4GE: variant = V_BR_U4GE; break;
   case OPC_U4FQGE:
   case OPC_BFQGE: case OPC_I4FQGE: variant = V_BR_QGE; break;
@@ -5848,20 +5728,14 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   // ------------------------- OPR_LT -------------------------
   case OPC_U4I8LT:
   case OPC_BI8LT: case OPC_I4I8LT: variant = V_BR_I8LT; break;
-#ifdef KEY
   case OPC_I8I4LT: case OPC_U8I4LT:
   case OPC_U4I4LT:
-#endif
   case OPC_BI4LT: case OPC_I4I4LT: variant = V_BR_I4LT; break;
-#ifdef KEY
   case OPC_U8U8LT:
   case OPC_U4U8LT:
-#endif
   case OPC_BU8LT: case OPC_I4U8LT: variant = V_BR_U8LT; break;
-#ifdef KEY
   case OPC_U8U4LT:
   case OPC_U4U4LT:
-#endif
   case OPC_BU4LT: case OPC_I4U4LT: variant = V_BR_U4LT; break;
   case OPC_U4FQLT:
   case OPC_BFQLT: case OPC_I4FQLT: variant = V_BR_QLT; break;
@@ -5884,20 +5758,14 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   // ------------------------- OPR_LE -------------------------
   case OPC_U4I8LE:
   case OPC_BI8LE: case OPC_I4I8LE: variant = V_BR_I8LE; break;
-#ifdef KEY
   case OPC_I8I4LE: case OPC_U8I4LE:
   case OPC_U4I4LE:
-#endif
   case OPC_BI4LE: case OPC_I4I4LE: variant = V_BR_I4LE; break;
-#ifdef KEY
   case OPC_U8U8LE:
   case OPC_U4U8LE:
-#endif
   case OPC_BU8LE: case OPC_I4U8LE: variant = V_BR_U8LE; break;
-#ifdef KEY
   case OPC_U8U4LE:
   case OPC_U4U4LE:
-#endif
   case OPC_BU4LE: case OPC_I4U4LE: variant = V_BR_U4LE; break;
   case OPC_U4FQLE:
   case OPC_BFQLE: case OPC_I4FQLE: variant = V_BR_QLE; break;
@@ -6110,9 +5978,7 @@ Convert_Branch (WN *branch)
   switch (opcode) {
   case OPC_GOTO:
   case OPC_REGION_EXIT:
-#ifdef KEY
   case OPC_GOTO_OUTER_BLOCK:
-#endif
     target_tn =  Gen_Label_TN (Get_WN_Label (branch), 0);
     Exp_OP1 (OPC_GOTO, NULL, target_tn, &New_OPs);
     break;
@@ -6178,7 +6044,6 @@ static void Handle_Entry (WN *entry)
         PU&    pu = New_PU (pu_idx);
         PU_Init (pu, ty, CURRENT_SYMTAB);
         entry_st = New_ST (GLOBAL_SYMTAB);
-#ifdef KEY
 	char *name = (char *) alloca (strlen("Handler")+1+8+1);
 	sprintf (name, "Handler.%d", Current_PU_Count());
         ST_Init (entry_st, Save_Str2i (name, ".", Get_WN_Label(entry)),
@@ -6186,10 +6051,6 @@ static void Handle_Entry (WN *entry)
 #ifndef TARG_IA64
 	PU_Has_Exc_Handler = TRUE;
 #endif
-#else
-        ST_Init (entry_st, Save_Str2i ("Handler", ".", Get_WN_Label(entry)),
-                 CLASS_FUNC, SCLASS_TEXT, EXPORT_LOCAL, (TY_IDX) pu_idx);
-#endif // KEY
 	Allocate_Object(entry_st);
   }
   else {
@@ -6245,10 +6106,9 @@ Find_Asm_Out_Parameter_Load (const WN* stmt, PREG_NUM preg_num, ST** ded_st)
 {
   WN* ret_load = NULL;
   for(; stmt != NULL; stmt = WN_next(stmt)) {
-#ifdef KEY // bug 5733: need to stop searching at the next ASM statement
+    // need to stop searching at the next ASM statement
     if (WN_operator(stmt) == OPR_ASM_STMT)
       return NULL;
-#endif
     if (OPERATOR_is_store(WN_operator(stmt))) {
       WN* load = WN_kid0(stmt);
       OPERATOR opr = WN_operator(load);
@@ -6278,7 +6138,6 @@ Find_Asm_Out_Parameter_Load (const WN* stmt, PREG_NUM preg_num, ST** ded_st)
   return ret_load;
 }
 
-#ifdef KEY
 TYPE_ID
 Find_Preg_Type ( ST_IDX st_idx )
 {
@@ -6293,7 +6152,6 @@ Find_Preg_Type ( ST_IDX st_idx )
     return MTYPE_I8;
   return MTYPE_I4;
 }
-#endif
 // This function handles ASM statements using the newly built support
 // for OPs with variable numbers of results and operands. Unlike
 // Handle_Asm, which allocates registers for ASM operands very early,
@@ -6330,18 +6188,6 @@ Handle_ASM (const WN* asm_wn)
   ASM_OP_wn(asm_info) = asm_wn;
 
 #ifdef TARG_IA32
-#if 0  
-  // Adding eflags register to the clobber set causes a problem
-  // in LRA, because a live range that includes such an ASM OP
-  // cannot use eflags register for allocation. Given that we
-  // currently don't do any dependence-based transformations for
-  // IA-32, it should be safe to ignore Asm_Clobbers_Cc flag.
-  //
-  if (WN_Asm_Clobbers_Cc(asm_wn)) {
-    ASM_OP_clobber_set(asm_info)[ISA_REGISTER_CLASS_eflags] = 
-      REGISTER_SET_Union1(REGISTER_SET_EMPTY_SET, REGISTER_MIN);
-  }
-#endif
 #endif
 
   // process ASM clobber list
@@ -6415,9 +6261,7 @@ Handle_ASM (const WN* asm_wn)
     PREG_NUM preg = WN_pragma_asm_copyout_preg(out_pragma);
     ST* pref_st = NULL;
     WN* load = Find_Asm_Out_Parameter_Load(WN_next(asm_wn), preg, &pref_st);
-#ifdef KEY
     TYPE_ID default_type = Find_Preg_Type(WN_st_idx(out_pragma));
-#endif
     TN* pref_tn = NULL;
     if (pref_st) {
       pref_tn = PREG_To_TN(MTYPE_To_PREG(ST_mtype(pref_st)),
@@ -6562,7 +6406,6 @@ Handle_ASM (const WN* asm_wn)
   OPS_Append_Op(&New_OPs, asm_op);
   OP_MAP_Set(OP_Asm_Map, asm_op, asm_info);
 
-#ifdef KEY
   // Create ASM BB annotation.  Bug 14636.
   {
     int i;
@@ -6607,7 +6450,6 @@ Handle_ASM (const WN* asm_wn)
 
   /* Terminate the basic block */
   Start_New_Basic_Block ();
-#endif
 }
 
 
@@ -6825,9 +6667,7 @@ static void Expand_Statement (WN *stmt)
   case OPC_COMPGOTO:
   case OPC_XGOTO:
   case OPC_REGION_EXIT:
-#ifdef KEY
   case OPC_GOTO_OUTER_BLOCK:
-#endif
 #ifdef TARG_SL2   //fork_joint
   case OPC_SL2_FORK_MAJOR:
   case OPC_SL2_FORK_MINOR:
@@ -6916,14 +6756,10 @@ static void Expand_Statement (WN *stmt)
 	Set_Label_BB (label,bb);
     } else {
     	/* start of a new basic block */
-#ifdef KEY
 	BOOL is_non_local_label;
     	bb = Add_Label(Get_WN_Label (stmt, &is_non_local_label));
 	if (is_non_local_label)
 	  Set_BB_has_non_local_label(bb);
-#else
-    	bb = Add_Label(Get_WN_Label (stmt));
-#endif
     }
     if (info) {
       BB_Add_Annotation(bb, ANNOT_LOOPINFO, info);
@@ -7005,9 +6841,7 @@ Handle_INTRINSIC_CALL (WN *intrncall)
   LABEL_IDX label = LABEL_IDX_ZERO;
   OPS loop_ops;
 
-#ifdef KEY
   OP *last_op_from_intrn_call = NULL;
-#endif
 
 #if !defined(TARG_SL)
   FmtAssert(WN_num_actuals(intrncall) <= max_intrinsic_opnds,
@@ -7049,9 +6883,7 @@ Handle_INTRINSIC_CALL (WN *intrncall)
   }
 #endif
 
-#ifdef KEY
   opnd_tn[0] = opnd_tn[1] = opnd_tn[2] = NULL;
-#endif
 
 #if defined(TARG_SL)
   if ((id >= INTRN_SL_INTRN_BGN) && (id <= INTRN_SL_INTRN_END) || 
@@ -7077,9 +6909,7 @@ Handle_INTRINSIC_CALL (WN *intrncall)
   result = Exp_Intrinsic_Call (id, 
 	opnd_tn[0], opnd_tn[1], opnd_tn[2], &New_OPs, &label, &loop_ops);
 
-#ifdef KEY
   last_op_from_intrn_call = OPS_last(&New_OPs);
-#endif
 
   if (OPS_first(&loop_ops) != NULL && label != LABEL_IDX_ZERO) {
 	BB *bb = Start_New_Basic_Block ();
@@ -7095,9 +6925,7 @@ Handle_INTRINSIC_CALL (WN *intrncall)
  }
 #endif
 
-#ifdef KEY
   cont:
-#endif
 
   /* Expand the next statement and check if it has a use of $2. If any
    * use of $2 is found, replace it by the 'result' TN of the intrncall.
@@ -7114,12 +6942,8 @@ Handle_INTRINSIC_CALL (WN *intrncall)
     Expand_Statement (next_stmt);
     next_stmt = WN_next(next_stmt);
     FOR_ALL_OPS_OPs_REV (&New_OPs, op) {
-#ifdef KEY
       if (op == last_op_from_intrn_call)	// bug 14415
   	break;
-#else
-      if (OP_code(op) == TOP_intrncall) break;
-#endif
 
 #if defined(TARG_SL)
       if (SL_Intrinsic_Has_ReturnP(OP_code(op)))
@@ -7226,13 +7050,8 @@ convert_stmt_list_to_OPs(WN *stmt)
 	if (RID_is_glue_code(rid)) {
 		In_Glue_Region = FALSE;
 	}
-#ifdef KEY
 	if (RID_TYPE_eh(rid) && RID_eh_range_ptr(rid)) {
-#else
-	if (RID_TYPE_eh(rid)) {
-#endif
 	  EH_Set_End_Label(RID_eh_range_ptr(rid));
-#ifdef KEY
 	  /* When a region is ended, always force to create a new bb, so
 	     that the next region will not share any common bb with the
 	     current region. (bug#3140)
@@ -7245,7 +7064,6 @@ convert_stmt_list_to_OPs(WN *stmt)
 	      BB_rid(Cur_BB) = Non_Transparent_RID(current_region);
 	    }
 	  }
-#endif
         }
 	rid = region_stack_pop();
       } else {			/* the region has been lowered to OPs */

@@ -501,6 +501,4 @@ extern void HB_Remove_Deleted_Blocks(void);
 extern void Setup_HB_bb_map(void);
 
 #endif
-#ifdef KEY
 extern BOOL hammock_region;
-#endif

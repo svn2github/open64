@@ -90,10 +90,8 @@ static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon
 #include "whirl2ops.h"
 #endif
 
-#ifdef KEY
 BOOL GRA_reclaim_register = FALSE;
 BOOL GRA_reclaim_register_set = FALSE;
-#endif
 
 INT32 GRA_local_forced_max = DEFAULT_FORCED_LOCAL_MAX;
     // How many locals to force allocate (out of the number requested by LRA)?
@@ -432,9 +430,7 @@ Choose_Best_Register(REGISTER* reg, ISA_REGISTER_CLASS rc,
 /////////////////////////////////////
 static BOOL
 Choose_Preference( LRANGE* lrange, REGISTER_SET allowed, GRA_REGION* region 
-#ifdef KEY
 		   , BOOL reclaim = FALSE
-#endif
 		 )
 /////////////////////////////////////
 //
@@ -449,14 +445,10 @@ Choose_Preference( LRANGE* lrange, REGISTER_SET allowed, GRA_REGION* region
     LRANGE* p_lrange = iter.Current();
 
     if ( REGISTER_SET_MemberP(allowed,p_lrange->Reg()) ) {
-#ifdef KEY
       if (reclaim) {
 	LRANGE_Split_Reclaimed_BBs(lrange, p_lrange->Reg());
       }
       Update_Register_Info(lrange, p_lrange->Reg(), reclaim);
-#else
-      Update_Register_Info(lrange, p_lrange->Reg());
-#endif
       GRA_Trace_Preference_Attempt(lrange, p_lrange, region, TRUE);
       return TRUE;
     }
@@ -469,9 +461,7 @@ Choose_Preference( LRANGE* lrange, REGISTER_SET allowed, GRA_REGION* region
 /////////////////////////////////////
 static BOOL
 Choose_Avoiding_Neighbor_Preferences( LRANGE* lrange, REGISTER_SET allowed 
-#ifdef KEY
 				      , BOOL reclaim = FALSE
-#endif
 				    )
 /////////////////////////////////////
 //
@@ -517,14 +507,10 @@ Choose_Avoiding_Neighbor_Preferences( LRANGE* lrange, REGISTER_SET allowed
   if (Choose_Best_Register(&reg, rc, allowed,
 			   REGISTER_Has_Stacked_Registers(rc),
 			   !(lrange->Spans_A_Call() || lrange->Spans_Infreq_Call()))) {
-#ifdef KEY
     if (reclaim) {
       LRANGE_Split_Reclaimed_BBs(lrange, reg);
     }
     Update_Register_Info(lrange, reg, reclaim);
-#else
-    Update_Register_Info(lrange,reg);
-#endif
     return TRUE;
   }
 
@@ -579,9 +565,7 @@ Allocate_Stacked_Register(LRANGE* lrange)
 /////////////////////////////////////
 static BOOL
 Choose_Noones_Preference( LRANGE* lrange, REGISTER_SET allowed 
-#ifdef KEY
 			  , BOOL reclaim = FALSE
-#endif
 			)
 /////////////////////////////////////
 //
@@ -598,14 +582,10 @@ Choose_Noones_Preference( LRANGE* lrange, REGISTER_SET allowed
   if ( Choose_Best_Register(&reg,rc,allowed,
 			    REGISTER_Has_Stacked_Registers(rc),
 			    (lrange->Spans_A_Call() || lrange->Spans_Infreq_Call())) ) {
-#ifdef KEY
     if (reclaim) {
       LRANGE_Split_Reclaimed_BBs(lrange, reg);
     }
     Update_Register_Info(lrange, reg, reclaim);
-#else
-    Update_Register_Info(lrange,reg);
-#endif
     return TRUE;
   }
   return FALSE;
@@ -614,10 +594,8 @@ Choose_Noones_Preference( LRANGE* lrange, REGISTER_SET allowed
 /////////////////////////////////////
 static BOOL
 Choose_Anything( LRANGE* lrange, REGISTER_SET allowed 
-#ifdef KEY
 		 , BOOL reclaim = FALSE
 	       )
-#endif
 /////////////////////////////////////
 //
 //  Take any register from the 'allowed' set for 'lrange'.  Return TRUE if
@@ -631,23 +609,17 @@ Choose_Anything( LRANGE* lrange, REGISTER_SET allowed
 
   if ( Choose_Best_Register(&reg,rc,allowed, has_stacked,
 			    !(lrange->Spans_A_Call() || lrange->Spans_Infreq_Call())) ) {
-#ifdef KEY
     if (reclaim) {
       LRANGE_Split_Reclaimed_BBs(lrange, reg);
     }
     Update_Register_Info(lrange, reg, reclaim);
-#else
-    Update_Register_Info(lrange,reg);
-#endif
     return TRUE;
   }
 
   //
   // If stacked registers are available, try to get a new one.
   //
-#ifdef KEY
   if (!reclaim)
-#endif
   if (has_stacked && Allocate_Stacked_Register(lrange)) {
     return TRUE;
   }
@@ -657,14 +629,10 @@ Choose_Anything( LRANGE* lrange, REGISTER_SET allowed
   // could have been used to satisfy a preference).
   //
   if (Choose_Best_Register(&reg,rc,allowed, FALSE, FALSE)) {
-#ifdef KEY
     if (reclaim) {
       LRANGE_Split_Reclaimed_BBs(lrange, reg);
     }
     Update_Register_Info(lrange, reg, reclaim);
-#else
-    Update_Register_Info(lrange,reg);
-#endif
     return TRUE;
   }
 
@@ -707,11 +675,9 @@ Choose_Register( LRANGE* lrange, GRA_REGION* region )
 
   if ( lrange->Has_Wired_Register() ) {
 #if defined(TARG_IA64)
-#ifdef KEY
 //Comment out the assertion temporarily.
 //See Bug 443 for detail
 //    if (! PU_Has_Nonlocal_Goto_Target)
-#endif
 //      DevAssert( REGISTER_SET_MemberP(allowed, lrange->Reg()),
 //      	 ("LRANGE not allowed its wired register"));
 #endif
@@ -870,23 +836,7 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
     rc_local_forced_max = Min(GRA_LOCAL_FORCED_MAX(rc), rc_size/8);
 #endif
   } else {
-#ifndef KEY // cannot use this code because with user-assigned registers via
-	// asm("reg-name"), there will be less allocatable registers resulting
-	// in 0 register granted to LRA (bug 3663)
-    INT rc_size = REGISTER_SET_Size(REGISTER_CLASS_allocatable(rc));
-    if (rc_size <= 8) {
-     /* There are not enough registers in this class to support this option. */
-      return;
-    }
-    if (rc_size < GRA_LOCAL_FORCED_MAX(rc)*2) {
-     /* Don't allow a request for more than half of the available registers. */
-      rc_local_forced_max = rc_size/2;
-    } else {
-#endif
       rc_local_forced_max = GRA_LOCAL_FORCED_MAX(rc);
-#ifndef KEY
-    }
-#endif
   }
   
   for (iter.Init(region); ! iter.Done(); iter.Step()) {
@@ -960,10 +910,8 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
           || Choose_Best_Register(&reg,rc,allowed,FALSE,FALSE)
       ) {
         gbb->Make_Register_Used(rc,reg);
-#ifdef KEY
 	if (GRA_reclaim_register)
 	  gbb->Make_Register_Referenced(rc, reg);
-#endif
         GRA_GRANT_Local_Register(gbb,rc,reg);
 #ifdef TARG_SL //minor_reg_alloc
         if(BB_rid(gbb->Bb()) && RID_TYPE_minor(BB_rid(gbb->Bb()))) {
@@ -988,7 +936,6 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
   }
 }
 
-#ifdef KEY
 //  Reclaim registers ...
 //////////////////////////////////////////////////////////////////////////
 //
@@ -1036,7 +983,6 @@ Choose_Reclaimable_Register (LRANGE *lrange, GRA_REGION *region)
   else
     return Choose_Anything(lrange, reclaimable, TRUE);
 }
-#endif
 
 
 //  Simplification
@@ -1159,13 +1105,6 @@ Simplify_Initialize( GRA_REGION* region, ISA_REGISTER_CLASS rc,
       lr->Neighbors_Left_Initialize();
       lr->Calculate_Priority();
 
-#ifndef KEY // for key, leave ready queue empty; rank purely based on priority
-      if ( lr->Neighbors_Left() < lr->Candidate_Reg_Count() ) {
-        LRPRQ_Insert(ready,lr);
-        lrange_mgr.One_Set_Union1(lr);
-      }
-      else
-#endif
         LRPRQ_Insert(not_ready,lr);
     }
   }
@@ -1193,45 +1132,6 @@ Simplify( GRA_REGION* region, ISA_REGISTER_CLASS rc, LRANGE_CLIST* cl )
   MEM_POOL_Push(&prq_pool);
   Simplify_Initialize(region,rc,cl,&pcl,&ready,&not_ready);
 
-#ifndef KEY // for key, leave ready queue empty; rank purely based on priority
-  for (;;) {
-    if ( LRPRQ_Size(&ready) != 0 )
-      lr = LRPRQ_Delete_Top(&ready);
-    else if ( LRPRQ_Size(&not_ready) != 0) {
-      // Chose one at a Briggs point.
-      lr = LRPRQ_Delete_Top(&not_ready);
-      GRA_Trace_Color_LRANGE("Briggs point.",lr);
-    }
-    else
-      break;
-
-    FmtAssert(! lr->Allocated(),("LRANGE already allocated"));
-
-    cl->Push(lr);
-    GRA_Trace_Color_LRANGE("Listing.",lr);
-    lr->Listed_Set();
-
-    for (iter.Init(lr, region); ! iter.Done(); iter.Step()) {
-      LRANGE* nlr = iter.Current();
-
-      FmtAssert(! nlr->Allocated(),("LRANGE already allocated"));
-
-      // We want to preserve the neighbors left field of the simplified
-      // LRANGEs.  They will be used during splitting.  See gra_lrange.h.
-      if ( ! ( nlr->Listed() || nlr->Has_Wired_Register() ) &&
-           nlr->Neighbors_Left_Decrement() == nlr->Candidate_Reg_Count() - 1) {
-        LRPRQ_Remove(&not_ready,nlr);
-
-        DevAssert(! lrange_mgr.One_Set_MemberP(nlr),
-                  ("Adding a lrange to coloring ready queue twice"));
-        lrange_mgr.One_Set_Union1(nlr);
-
-        LRPRQ_Insert(&ready,nlr);
-
-      }
-    }
-  }
-#else
   while (LRPRQ_Size(&not_ready) != 0) { 
     lr = LRPRQ_Delete_Top(&not_ready);
 
@@ -1241,7 +1141,6 @@ Simplify( GRA_REGION* region, ISA_REGISTER_CLASS rc, LRANGE_CLIST* cl )
     GRA_Trace_Color_LRANGE("Listing.",lr);
     lr->Listed_Set();
   }
-#endif
 
   // Any live ranges that must be allocated to particular live ranges are now
   // prepended to the front of the coloring list.  Notice how these have been
@@ -1328,12 +1227,6 @@ GRA_Color_Prev_Allocated_Region( GRA_REGION* region )
       continue;
     else {
       // Skip the following to disable coloring of SWP region
-#if 0
-      if ( ! Color_Region_With_Preferences(region,rc) ) {
-      // If we can't get what we want, just take what we already had.
-      DevWarn("Couldn't recolor a previously allocated region. "
-              "Keeping original.");
-#endif
       Choose_Original_Registers(region,rc);
     }
   }
@@ -1603,7 +1496,6 @@ GRA_Color_Complement( GRA_REGION* region )
       // hosed.  we'll definitely get bad code if we've got these kind
       // of bogus frequencies, but its better than incorrect code.
       //
-#ifdef KEY
       if (lr->Priority() < 0.0F && !lr->Has_Wired_Register() && !Must_Split(lr)
 	  || lr->No_Appearance()) {
         GRA_Note_Spill(lr);
@@ -1627,16 +1519,6 @@ GRA_Color_Complement( GRA_REGION* region )
 			      split_alloc_lr->Format(buff)));
 	priority_count += split_alloc_lr->Priority();
       }
-#if 0
-      // Allocate a reclaimable register to the lrange.  Skip this step because
-      // finding a reclaimable register over the entire lrange is unlikely to
-      // be successful due to high register pressure.  The code is fully
-      // implemented but requires more testing.
-      else if (GRA_reclaim_register &&
-	       Choose_Reclaimable_Register(split_alloc_lr, region)) {
-	priority_count += lr->Priority();
-      }
-#endif
       // Split lrange to fit in a reclaimable register.
       else if (GRA_reclaim_register &&
 	       LRANGE_Split(lr, &iter, &split_alloc_lr, TRUE) &&
@@ -1650,33 +1532,6 @@ GRA_Color_Complement( GRA_REGION* region )
       } else {
 	GRA_Note_Spill(split_alloc_lr);
       }
-#else	// KEY
-      if (lr->Priority() < 0.0F && !lr->Has_Wired_Register() && !Must_Split(lr)
-	  || lr->No_Appearance()) {
-        GRA_Note_Spill(lr);
-      } else if (lr->Spans_Infreq_Call() &&
-                 (!lr->Tn_Is_Save_Reg() ||
-                  !REGISTER_SET_MemberP(REGISTER_CLASS_callee_saves(lr->Rc()),TN_save_reg(lr->Tn()))) &&
-		 LRANGE_Split(lr, &iter, &split_alloc_lr)) {
-	BOOL did_choose = Choose_Register(split_alloc_lr, region);
-	FmtAssert(did_choose,("Failed to choose a register for a split across infreq call of %s",
-			      split_alloc_lr->Format(buff)));
-	priority_count += split_alloc_lr->Priority();
-      } else if (!Choose_Register(lr, region)) {
-        if (!LRANGE_Split(lr,&iter,&split_alloc_lr) ||
-	    (split_alloc_lr->Priority() < 0.0F &&
-	     !Must_Split(split_alloc_lr))) {
-          GRA_Note_Spill(split_alloc_lr);
-        } else {
-          BOOL did_choose = Choose_Register(split_alloc_lr, region);
-	  FmtAssert(did_choose,("Failed to choose a register for a split of %s",
-			        split_alloc_lr->Format(buff)));
-	  priority_count += split_alloc_lr->Priority();
-        }
-      } else {
-	priority_count += lr->Priority();
-      }
-#endif	// KEY
     }
 
 #ifdef TARG_IA64

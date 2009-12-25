@@ -207,11 +207,9 @@
  *	The frequency (relative to the entry point) that an exception
  *	handler is executed.
  *
-#ifdef KEY
  *  const char *FREQ_non_local_targ_freq
  *	The frequency (relative to the entry point) that an non-local target
  *	is executed.  The target has no predecessor BB.
-#endif
  *  CGSPILL_Rematerialize_Constants
  *	Enable rematerialization of constants instead of spilling them.
  *
@@ -312,10 +310,8 @@
  *	Generate a floating divide operation in place of a 32 bit
  *	integer divide.
  *
-#ifdef KEY
  *  CGEXP_cvrt_int_mult_to_add_shift
  *	Generate a sequence of adds and shifts in place of an integer multiply.
-#endif
  *
  *  CGEXP_fast_imul
  *	Generate an alternative sequence for integer multiplies
@@ -437,9 +433,7 @@
 #ifndef cg_flags_INCLUDED
 #define cg_flags_INCLUDED
 
-#ifdef KEY
 #include "flags.h"
-#endif
 
 extern BOOL CG_warn_bad_freqs;
 extern BOOL CG_enable_loop_optimizations;
@@ -582,18 +576,14 @@ extern const char *CFLOW_cold_threshold;
 #if defined (TARG_SL)
 extern const char *CFLOW_hot_threshold;
 #endif
-#ifdef KEY
 extern BOOL CFLOW_Enable_Freq_Order_On_Heuristics;
-#endif
 /* FREQ:
  */
 extern BOOL FREQ_enable;
 extern BOOL FREQ_view_cfg;
 extern const char *FREQ_frequent_never_ratio;
 extern const char *FREQ_eh_freq;
-#ifdef KEY
 extern const char *FREQ_non_local_targ_freq;
-#endif
 
 extern BOOL CG_enable_rename;
 
@@ -694,9 +684,7 @@ extern BOOL CGEXP_float_consts_from_ints;
 extern BOOL CGEXP_cvrt_int_div_to_mult;
 extern BOOL CGEXP_cvrt_int_div_to_fdiv;
 extern BOOL CGEXP_opt_float_div_by_const;
-#ifdef KEY
 extern BOOL CGEXP_cvrt_int_mult_to_add_shift;
-#endif
 
 // 10/17/00: these are temporary for osprey tuning -- remove later
 extern const char *CGEXP_lfhint_L1;
@@ -720,12 +708,10 @@ extern BOOL CG_Enable_Macro_Instr_Combine;
 #ifdef TARG_X8664
 extern BOOL LRA_prefer_legacy_regs;
 #endif
-#ifdef KEY
 extern BOOL LRA_prefer_lru_reg;
 extern BOOL LRA_prefer_lru_reg_Set;
 extern INT32 LRA_inflate_reg_request;
 extern BOOL LRA_inflate_reg_request_Set;
-#endif
 
 extern BOOL GRA_use_old_conflict;
 extern BOOL GRA_shrink_wrap;
@@ -745,16 +731,12 @@ extern INT32 GRA_non_home_hi;
 extern INT32 GRA_non_home_lo;
 extern const char* GRA_call_split_freq_string;
 extern const char* GRA_spill_count_factor_string;
-#ifdef KEY
 extern BOOL GRA_exclude_callee_saved_regs;
 extern BOOL GRA_eh_exclude_callee_saved_regs;
 extern BOOL GRA_fp_exclude_callee_saved_regs;
-#endif
 
 extern BOOL  HB_formation;
-#ifdef KEY
 extern INT32 HB_if_conversion_cut_off;
-#endif
 extern BOOL  HB_static_freq_heuristics;
 extern const char* HB_call_hazard_multiplier;
 extern const char* HB_memory_hazard_multiplier;
@@ -804,7 +786,6 @@ extern BOOL CG_LOOP_interleave_posti_specified;
 extern BOOL CG_LOOP_reassociate;
 extern BOOL CG_LOOP_reassociate_specified;
 extern INT32 CG_LOOP_recurrence_min_omega;
-#ifdef KEY
 extern INT32 CG_LOOP_recurrence_max_omega;
 extern BOOL LOCS_Best;
 extern BOOL LOCS_Best_set;
@@ -834,7 +815,6 @@ extern UINT32 LOCS_Balance_Unsched_Fp;
 extern BOOL LOCS_Balance_Unsched_Fp_set;
 extern BOOL LOCS_Reduce_Prefetch;
 extern BOOL LOCS_Reduce_Prefetch_set;
-#endif
 #if defined(TARG_X8664) || defined(TARG_LOONGSON)
 extern INT32 CG_sse_load_execute;
 extern INT32 CG_load_execute;

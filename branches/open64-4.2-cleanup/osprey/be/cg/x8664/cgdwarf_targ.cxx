@@ -193,17 +193,6 @@ static const char *drop_these[] = {
       // don't output it.
 	DEBUG_LINE_SECTNAME,
 #endif /* defined(BUILD_OS_DARWIN) */
-#if 0 || defined(BUILD_OS_DARWIN)
-     /* Note following comment: if gdb doesn't use them, why aren't we omitting
-      * them? */
-     // gdb does not use the MIPS sections
-     // debug_weaknames, etc.
-	DEBUG_VARNAMES_SECTNAME,
-	DEBUG_TYPENAMES_SECTNAME,
-	DEBUG_WEAKNAMES_SECTNAME,
-	DEBUG_FUNCNAMES_SECTNAME,
-     // we don't use debug_frame in IA-64.
-#endif
 	0
 };
 // return TRUE if we want to emit the section (IA-64).

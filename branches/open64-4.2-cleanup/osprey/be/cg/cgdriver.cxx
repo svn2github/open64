@@ -64,7 +64,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 
 #include <errno.h>
@@ -124,10 +123,8 @@
 #if defined(TARG_IA64) || defined(TARG_LOONGSON)
 #include "ipfec_options.h"
 #endif
-#ifdef KEY
 #include "cg_gcov.h"
 #include "flags.h"
-#endif
 #include "cg_swp.h"
 
 extern void Set_File_In_Printsrc(char *);	/* defined in printsrc.c */
@@ -186,9 +183,7 @@ static BOOL Integer_Divide_Use_Float_overridden = FALSE;
 static BOOL CGPREP_fold_expanded_daddiu_overridden = FALSE;
 static BOOL CG_LOOP_create_loop_prologs_overridden = FALSE;
 #endif
-#ifdef KEY
 static BOOL Integer_Multiply_By_Constant_overridden = FALSE;
-#endif
 static BOOL CG_DEP_Mem_Arc_Pruning_overridden = FALSE;
 static BOOL clone_incr_overridden = FALSE;
 static BOOL clone_min_incr_overridden = FALSE;
@@ -391,7 +386,6 @@ static OPTION_DESC Options_GRA[] = {
     0, 0, 0,	&GRA_spill_count_factor_string, NULL,
     "Factor by which count of spills affects the priority of a split.  Only valid under OPT:space [Default 0.5]"
   },    
-#ifdef KEY
   { OVK_BOOL,   OV_INTERNAL, TRUE,"exclude_saved_regs", "",
     0, 0, 0,	&GRA_exclude_callee_saved_regs, NULL,
     "If true, callee-saved registers are never used to allocate to variables by GRA"
@@ -416,7 +410,6 @@ static OPTION_DESC Options_GRA[] = {
     0,0,0,      &GRA_reclaim_register, &GRA_reclaim_register_set,
     "Enable/disable reclaiming of registers after they have been allocated [Default FALSE]."
   },
-#endif // KEY
 #ifdef TARG_X8664
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "grant_special_regs", "",
     0,0,0,      &GRA_grant_special_regs, NULL,
@@ -505,7 +498,6 @@ static OPTION_DESC Options_CG[] = {
   { OVK_BOOL, OV_INTERNAL, TRUE,  "enable_cycle_counting", "enable_cycle",
     0,0,0,      &CG_Enable_Cycle_Count, NULL },
 #endif
-#ifdef KEY
   { OVK_BOOL, OV_INTERNAL, TRUE,  "test_coverage", "",
     0, 0, 0,    &flag_test_coverage, NULL},
   { OVK_LIST, OV_INTERNAL, FALSE, "profile_proc", "",
@@ -518,7 +510,6 @@ static OPTION_DESC Options_CG[] = {
     0, INT32_MIN, INT32_MAX,    &CG_cse_regs, NULL},
   { OVK_INT32,  OV_INTERNAL, FALSE,  "sse_cse_regs", "",
     0, INT32_MIN, INT32_MAX,    &CG_sse_cse_regs, NULL},
-#endif
 #ifdef TARG_X8664
   { OVK_INT32,  OV_INTERNAL, TRUE,  "sse_load_execute", "sse_load_exe",
     0, 0, INT32_MAX,    &CG_sse_load_execute, NULL},
@@ -624,12 +615,10 @@ static OPTION_DESC Options_CG[] = {
 		&CG_LOOP_reassociate_specified },
   { OVK_INT32, OV_INTERNAL, TRUE, "recurrence_min_omega", "",
     0, 0, INT32_MAX, &CG_LOOP_recurrence_min_omega, NULL },
-#ifdef KEY
   { OVK_INT32, OV_INTERNAL, TRUE, "recurrence_max_omega", "",
     0, 0, 16, &CG_LOOP_recurrence_max_omega, NULL },
   { OVK_INT32, OV_INTERNAL, TRUE, "loop_limit", "",
     INT32_MAX, 0, INT32_MAX, &CG_Enable_Loop_Opt_Limit, NULL },
-#endif
 #ifdef TARG_X8664
   { OVK_BOOL,	OV_INTERNAL, TRUE, "cloop", "",
     0, 0, 0,	&CG_LOOP_cloop, NULL },
@@ -700,10 +689,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CFLOW_opt_after_cgprep, NULL },
   { OVK_INT32,  OV_INTERNAL, TRUE,"ebo_level", "ebo",
     0, INT32_MIN, INT32_MAX, &EBO_Opt_Level, &EBO_Opt_Level_overridden },
-#ifdef KEY
   { OVK_INT32,  OV_INTERNAL, TRUE,"ebo_opt_mask", "",
     0, INT32_MIN, INT32_MAX, &EBO_Opt_Mask, NULL },
-#endif
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow", NULL,
     0, 0, 0, &CFLOW_Enable, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_unreachable", "",
@@ -716,17 +703,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CFLOW_Enable_Reorder, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_clone", "",
     0, 0, 0, &CFLOW_Enable_Clone, &CFLOW_Enable_Clone_overridden },
-#ifdef KEY
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order", "cflow_freq_order",
     0, 0, 0, &CFLOW_Enable_Freq_Order, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order_on_heu", "cflow_freq_order_on_heu",
     0, 0, 0, &CFLOW_Enable_Freq_Order_On_Heuristics, NULL },
-#else
-  { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order", "",
-    0, 0, 0, &CFLOW_Enable_Freq_Order, NULL },
-  { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order_on_heu", "",
-    0, 0, 0, &CFLOW_Enable_Freq_Order_On_Heuristics, NULL },
-#endif // KEY
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_opt_all_br_to_bcond", "",
     0, 0, 0, &CFLOW_opt_all_br_to_bcond, NULL },
   { OVK_NAME,	OV_INTERNAL, TRUE,"cflow_heuristic_tolerance", "",
@@ -748,10 +728,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &FREQ_enable, NULL },
   { OVK_NAME,	OV_INTERNAL, TRUE,"eh_freq", "",
     0, 0, 0, &FREQ_eh_freq, NULL },
-#ifdef KEY
   { OVK_NAME,	OV_INTERNAL, TRUE,"non_local_targ_freq", "",
     0, 0, 0, &FREQ_non_local_targ_freq, NULL },
-#endif
   { OVK_NAME,	OV_INTERNAL, TRUE,"freq_frequent_never_ratio", "",
     0, 0, 0, &FREQ_frequent_never_ratio, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "freq_view_cfg", "",
@@ -772,10 +750,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CGEXP_normalize_logical, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"gp_prolog_call_shared", "gp_prolog",
     0, 0, 0, &CGEXP_gp_prolog_call_shared, NULL },
-#ifdef KEY
   { OVK_BOOL,	OV_INTERNAL, TRUE,"integer_multiply_by_constant", "integer_multiply_by_constant",
     0, 0, 0, &CGEXP_cvrt_int_mult_to_add_shift, &Integer_Multiply_By_Constant_overridden },
-#endif
   { OVK_BOOL,	OV_INTERNAL, TRUE,"integer_divide_by_constant", "integer_divide_by_constant",
     0, 0, 0, &CGEXP_cvrt_int_div_to_mult, &Integer_Divide_By_Constant_overridden },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"integer_divide_use_float", "integer_divide_use_float",
@@ -844,7 +820,6 @@ static OPTION_DESC Options_CG[] = {
   { OVK_BOOL,	OV_INTERNAL, FALSE, "prefer_legacy_regs", "",
     0, 0, 0, &LRA_prefer_legacy_regs, NULL },
 #endif
-#ifdef KEY
   { OVK_INT32,	OV_INTERNAL, TRUE, "inflate_reg_request", "inflate_reg",
     0, 0, 100, &LRA_inflate_reg_request, &LRA_inflate_reg_request_Set,
     "Inflate LRA register request by this percentage for innermost loops [Default 0]"},
@@ -858,7 +833,6 @@ static OPTION_DESC Options_CG[] = {
     0,0,0,      &CG_min_stack_size, NULL,
     "Turn on/off minimize stack size [Default TRUE]"
   }, 
-#endif
 
   // Global Code Motion (GCM) options.
 
@@ -902,11 +876,9 @@ static OPTION_DESC Options_CG[] = {
     0, 0, INT32_MAX, &GCM_To_BB, NULL },
   { OVK_INT32,	OV_INTERNAL, TRUE,"gcm_result_tn", "",
     0, 0, INT32_MAX, &GCM_Result_TN, NULL },
-#ifdef KEY
   // Consider no more than this number of candidate target bb's.
   { OVK_INT32,	OV_INTERNAL, TRUE,"gcm_bb_limit", "",
     0, 0, INT32_MAX, &GCM_BB_Limit, NULL },
-#endif
 
   // Local Scheduling (LOCS) and HyperBlock Scheduling (HBS) options.
 
@@ -1020,7 +992,6 @@ static OPTION_DESC Options_CG[] = {
   { OVK_BOOL,   OV_INTERNAL, TRUE,"rgn_local_schedule", "rgn_local_sched",
     0, 0, 0, &CG_Enable_Regional_Local_Sched , NULL }, 
 #endif
-#ifdef KEY
   { OVK_BOOL, OV_INTERNAL, TRUE, "local_fwd_scheduler", "local_fwd_sched",
     0, 0, 0, &LOCS_Fwd_Scheduling, &LOCS_Fwd_Scheduling_set },
   { OVK_UINT32,	OV_INTERNAL, TRUE,"local_sched_algorithm", "local_sched_alg",
@@ -1052,7 +1023,6 @@ static OPTION_DESC Options_CG[] = {
   { OVK_BOOL,	OV_INTERNAL, TRUE, "locs_reduce_prefetch", "",
     0, 0, 0, &LOCS_Reduce_Prefetch, &LOCS_Reduce_Prefetch_set,
     "Delete prefetches that cannot be scheduled in an unused issue slot" },
-#endif
 
   // Turns of all scheduling (LOCS, HBS, GCM) for triaging.
   { OVK_BOOL,	OV_INTERNAL, TRUE,"all_scheduler", "all_sched",
@@ -1064,12 +1034,10 @@ static OPTION_DESC Options_CG[] = {
     0,0,0,      &HB_formation, NULL,
     "Turn on/off hyperblock formation [Default ON]"
   },    
-#ifdef KEY
   { OVK_INT32,	OV_INTERNAL, TRUE,  "ifc_cutoff", "",
     4,0,100,      &HB_if_conversion_cut_off, NULL,
     "What is the cut-off for doing If-conversion"
   },    
-#endif
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "hb_static_freq_heuristics", "",
     0,0,0,      &HB_static_freq_heuristics, NULL,
     "Turn on/off hyperblock formation's use of different heuristics in the presence of static frequency analysis [Default ON]"
@@ -1339,10 +1307,6 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,    &CG_SCHED_EST_use_locs, NULL },
   { OVK_INT32,   OV_INTERNAL, TRUE, "sched_est_call_cost", "",
     0, 0, INT32_MAX, &CG_SCHED_EST_call_cost, NULL },
-#ifndef KEY
-  { OVK_BOOL,	OV_INTERNAL, TRUE, "enable_feedback", "",
-    0, 0, 0,	&CG_enable_feedback, NULL },
-#endif
   { OVK_INT32, OV_INTERNAL, TRUE, "mispredict_branch", "mispredict",
     0, 0, INT32_MAX, &CG_branch_mispredict_penalty, NULL },
   { OVK_INT32, OV_INTERNAL, TRUE, "mispredict_factor", "",
@@ -2018,17 +1982,13 @@ Configure_CG_Options(void)
   }
 
   if (!Integer_Divide_By_Constant_overridden
-#ifdef KEY
       && CGEXP_cvrt_int_div_to_mult
-#endif
 	  ) {
     CGEXP_cvrt_int_div_to_mult = (!OPT_Space) && (CG_opt_level > 0);
   } 
 
   if (!Integer_Divide_Use_Float_overridden
-#ifdef KEY
       && CGEXP_cvrt_int_div_to_fdiv
-#endif
 	  ) {
     CGEXP_cvrt_int_div_to_fdiv =    !Kernel_Code
 				 && Enable_Idiv_In_FPU_For_Target()
@@ -2036,12 +1996,10 @@ Configure_CG_Options(void)
 				 && CG_opt_level > 0;
   }
 
-#ifdef KEY
   if (!Integer_Multiply_By_Constant_overridden &&
       CGEXP_cvrt_int_mult_to_add_shift) {
     CGEXP_cvrt_int_mult_to_add_shift = (!OPT_Space) && (CG_opt_level > 0);
   }
-#endif
 
   if (Kernel_Code && !CG_tail_call_overridden) CG_tail_call = FALSE;
 
@@ -2396,11 +2354,6 @@ Prepare_Source (void)
 #endif
     }
 
-#if 0
-    /* already called by main */
-    /* Configure internal options for this source file */
-    Configure_Source ( NULL );
-#endif
 }
 
 static void
@@ -2500,10 +2453,8 @@ Mark_Specified_Registers_As_Not_Allocatable (void)
   }
 }
 
-#ifdef KEY
 char ** be_command_line_args = NULL;
 INT be_command_line_argc = 0;
-#endif // KEY
 
 /* ====================================================================
  *
@@ -2529,10 +2480,8 @@ CG_Process_Command_Line (INT cg_argc, char **cg_argv, INT be_argc, char **be_arg
     Set_Error_Descriptor (EP_CG, EDESC_CG);
 #endif
 
-#ifdef KEY
     be_command_line_args = be_argv;
     be_command_line_argc = be_argc;
-#endif // KEY
 
     /* Perform preliminary command line processing: */
     Build_Option_String ( be_argc, be_argv );
@@ -2606,9 +2555,7 @@ CG_Init (void)
 #endif // KEY
 } /* CG_Init */
 
-#ifdef KEY
 extern void CG_End_Final();
-#endif
 /* Terimination routines for cg */
 void
 CG_Fini (void)
@@ -2631,7 +2578,6 @@ CG_Fini (void)
     MEM_POOL_Delete (&MEM_local_region_pool);
     MEM_POOL_Delete (&MEM_local_region_nz_pool);
 
-#ifdef KEY
     // Check to see if the asm file was written correctly.  Do this by writing
     // one extra char and checking its status.  Bug 11361.
     if (Assembly) {
@@ -2641,6 +2587,5 @@ CG_Fini (void)
 	Terminate(1);
       }
     }
-#endif
 } /* CG_Fini */
 

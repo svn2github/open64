@@ -71,9 +71,7 @@ typedef INTERFERE_DEREF *INTERFERE;
 class LRANGE_SET_SUBUNIVERSE;
 class LRANGE_SUBUNIVERSE;
 class GRA_REGION;
-#ifdef KEY
 class LRANGE_BOUNDARY_BB;
-#endif
 
 //      There are three distinct types of LRANGEs:
 //
@@ -208,12 +206,10 @@ private:
       TN*       original_tn;	// original GTN (before any spilling) from which
 				// this lrange was created
       LRANGE*   next_split_list_lrange;
-#ifdef KEY
       BB_SET*   internal_bb_set; // to maintain the set of internal BBs in the
 				 // range; it is same as live_bb_set but without
 				 // the boundary bbs
       LRANGE_BOUNDARY_BB*	boundary_bbs;	// List of boundary bbs.
-#endif
     } c;
     struct lrange_region_specific {
       TN*       tn;             // Corresponding to the LRANGE
@@ -262,7 +258,6 @@ public:
   REGISTER Orig_Reg(void)	{ return orig_reg; }
   INT32 Priority_Queue_Index(void) { return priority_queue_index; }
   void Priority_Queue_Index_Set(INT32 index) { priority_queue_index = index; }
-#ifdef KEY
   BB_SET* Internal_BB_Set(void)	{ return u.c.internal_bb_set; }
   void Clear_Internal_BBs(void)	{ BB_SET_ClearD(u.c.internal_bb_set); }
 
@@ -270,7 +265,6 @@ public:
   void *Set_Boundary_BBs(LRANGE_BOUNDARY_BB *x)	{ u.c.boundary_bbs = x; }
   LRANGE_BOUNDARY_BB* Get_Boundary_Bb(BB *target);
   LRANGE_BOUNDARY_BB* Remove_Boundary_Bb(BB *target);
-#endif
 
   // flags
   BOOL Listed(void)		{ return flags & LRANGE_FLAGS_listed; }
@@ -365,9 +359,7 @@ public:
   void Add_LUNIT( LUNIT* lunit );
   void Add_Lunit(  LUNIT* lunit );
   REGISTER_SET Allowed_Registers(GRA_REGION* region);
-#ifdef KEY
   REGISTER_SET Reclaimable_Registers(GRA_REGION* region);
-#endif
   BOOL Interferes( LRANGE* lr1 );
   void Region_Interference( LRANGE* lrange1,
 			    GRA_REGION* region );
@@ -379,14 +371,12 @@ public:
   void Preference_Copy(LRANGE* lrange1, GRA_BB* gbb );
   void Recompute_Preference(void);
   char* Format( char* buff );
-#ifdef KEY
   void Add_Internal_BB(GRA_BB *gbb);
   void Remove_Internal_BB(GRA_BB *gbb);
   BOOL Contains_Internal_BB(GRA_BB *gbb);
   void Add_Boundary_BB(GRA_BB *gbb);
   void Boundary_BBs_Push(LRANGE_BOUNDARY_BB *x);
   void Update_Boundary_BBs(void);
-#endif
 };
 
 #ifdef TARG_IA64
@@ -525,10 +515,8 @@ public:
 
   void Replace_Current(LRANGE *lrange);
   void Splice(LRANGE *lrange);
-#ifdef KEY
   void Push(LRANGE *lrange);
 //                      Insert <lrange> before the current element of <iter>.
-#endif
 };
 
 // looping over an internally linked BB_local_List
@@ -599,7 +587,6 @@ public:
   void Step(void)               { current = BB_SET_Choose_Next(set, current); }
 };
 
-#ifdef KEY
 class LRANGE_BOUNDARY_BB {
   LRANGE_BOUNDARY_BB*	next;
   LRANGE*		lrange;
@@ -645,7 +632,6 @@ public:
   BOOL Is_Live_In(void);
   BOOL Is_Live_Out(void);
 };
-#endif
 
 // these functions are used by the generated lrange_set package
 extern INT32 LRANGE_INT( LRANGE* lr );
@@ -657,7 +643,5 @@ LRANGE_Universe_ID_S( LRANGE* lrange, LRANGE_SET_SUBUNIVERSE* sub ) {
 
 extern LRANGE_MGR lrange_mgr;
 
-#ifdef KEY
 extern REGISTER_SET Global_Preferenced_Regs(LRANGE* lrange, GRA_BB* gbb);
-#endif
 #endif

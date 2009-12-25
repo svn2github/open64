@@ -215,7 +215,6 @@ GRA_Trace_Split_Sub_Priority(GRA_BB* gbb, BOOL is_store)
   }
 }
 
-#ifdef KEY
 /////////////////////////////////////
 void
 GRA_Trace_Split_Reclaim_Add_Priority(GRA_BB* gbb, BOOL is_store, float priority)
@@ -245,7 +244,6 @@ GRA_Trace_Split_Reclaim_Sub_Priority(GRA_BB* gbb, BOOL is_store, float priority)
 	    BB_id(gbb->Bb()));
   }
 }
-#endif
 
 /////////////////////////////////////
 void
@@ -704,7 +702,6 @@ GRA_Trace_LRANGE_Allocate(LRANGE* lrange )
   }
 }
 
-#ifdef KEY
 /////////////////////////////////////
 void
 GRA_Trace_LRANGE_Choose(LRANGE* lrange, REGISTER_SET allowed)
@@ -725,7 +722,6 @@ GRA_Trace_LRANGE_Choose_Reclaimable(LRANGE* lrange, REGISTER_SET reclaimable)
     fprintf(TFile, " for GTN%d\n", TN_number(lrange->Tn()));
   }
 }
-#endif
 
 /////////////////////////////////////
 void

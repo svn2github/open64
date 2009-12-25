@@ -637,14 +637,12 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 	INT index;
 	for ( index = cio_copy_table_size - 1; index >= 0; --index )
 	  if ( cio_copy_table[index].tn_result == tn ){
-#ifdef KEY
 	    /* cond_def OPs prevent the removal of earlier copy OPs
 	       with the same result TNs.
 	     */
 	    if( OP_cond_def( op ) ){
 	      Reset_OP_flag1( cio_copy_table[index].op );	      
 	    }
-#endif
 	    break;
 	  }
 	if ( index < 0 && OP_flag1( op ) ) {
@@ -737,7 +735,6 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 	  if ( cio_copy_table[index].tn_result == tn ) {
 	    OP *op_src = cio_copy_table[index].op;
 	    if ( OP_flag1( op_src ) ) {
-#ifdef KEY
 	      // Don't propagate copy if the copy source is a dedicated
 	      // register, since the omega code can't track dedicated registers
 	      // correctly.  See explanation in bug 4426.
@@ -748,7 +745,6 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 		Reset_OP_flag1( op_src );
 		break;
 	      }
-#endif
 	      Set_OP_opnd( op, opnd, OP_opnd( op_src, OP_COPY_OPND ) );
 	      Set_OP_omega( op, opnd, OP_omega( op, opnd )
 			    + OP_omega( op_src, OP_COPY_OPND ) );
@@ -785,11 +781,9 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 	  OP *op_src = cio_copy_table[index].op;
 	  if ( ! OP_flag1( op_src ) )
 	    break;
-#ifdef KEY
 	  // Avoid infinite recursion.  Bugs 21, 8929.
 	  if (OP_opnd(op_src, OP_COPY_OPND) == tn)
 	    break;
-#endif
 	  tn = OP_opnd( op_src, OP_COPY_OPND );
 	  Set_OP_opnd( op, OP_COPY_OPND, tn );
 	  Set_OP_omega( op, OP_COPY_OPND, OP_omega( op, OP_COPY_OPND )
@@ -815,14 +809,12 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 	  if ( cio_copy_table[index].tn_result == tn ) {
 	    OP *op_src = cio_copy_table[index].op;
 	    if ( OP_flag1( op_src )
-#ifdef KEY
 		 /* Bug125:
 		    No need to propagate opnd again, which had happened at the
 		    previous stage. The original algorithm does not expect to see
 		    a copy operation that has the same opnd and result.
 		  */
 		 && ( OP_result(op_src,0) != OP_opnd(op_src,0) )
-#endif
 		 ) {
 	      Set_OP_opnd( op, opnd, OP_opnd( op_src, OP_COPY_OPND ) );
 	      Set_OP_omega( op, opnd, OP_omega( op, opnd )
@@ -843,7 +835,6 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
     TN *tn_old = cio_copy_table[index].tn_result;
     TN *tn_new = OP_opnd( op, OP_COPY_OPND );
 
-#ifdef KEY
     /* Don't update the prolog and epilog if source and result are
        the same TNs; otherwise the original omega value will be overwritten
        by CG_LOOP_Backpatch_Replace_Body_TN().  (bug#2484)
@@ -854,7 +845,6 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
     if( tn_old == tn_new ){
       continue;
     }
-#endif // KEY
 
     UINT8 omega_change = OP_omega( op, OP_COPY_OPND );
     CG_LOOP_Backpatch_Replace_Body_TN( CG_LOOP_epilog,
@@ -960,10 +950,8 @@ CIO_RWTRAN::Mark_Op_For_Prolog( OP *op, const UINT8 omega )
 
   // Step (3)  Duplicate the OP, but don't insert it anywhere yet
   OP *op_prolog = Dup_OP( op );
-#ifdef KEY
   CG_LOOP_Init_Op(op_prolog);
   Copy_WN_For_Memory_OP( op_prolog, op );
-#endif
   if ( Is_DB_OP_Init( op ) )
     DB_Copy_Aux_OP( op_prolog, op );
 
@@ -1142,168 +1130,6 @@ CIO_RWTRAN::Copy_Ops_To_Prolog()
 // ======================================================================
 
 
-#if 0  // Would prefer to use preceding algorithms
-
-
-OP *
-CIO_RWTRAN::Mark_Op_For_Prolog( const OP *op, const UINT8 omega )
-{
-  // NOTE:  Handle OP_load( op ) differently?  Like:
-  //   tn = CG_LOOP_Backpatch_Find_Non_Body_TN( CG_LOOP_prolog, opnd, omega );
-  //   FmtAssert( tn, ( "missing prolog backpatch for TN%d[%d]",
-  //		        TN_number( opnd ), omega ) );
-  //   return tn;
-
-  // Step (1)  Check to see if the pair (op, omega) already has a copy
-  op_copy_map_prolog::iterator
-    copy_find = _op_prolog_map.find( OP_OMEGA( op, omega ) );
-  if ( copy_find != _op_prolog_map.end() )
-    return copy_find->second;
-
-  // Step (2)  Some OPs should not be copied to the prolog -- abort!
-  if ( OP_has_implicit_interactions( op ) )
-    return NULL;
-
-  // Step (3)   Recursively copy definitions of all operands into prolog
-  ARC_LIST *arcs = ARC_LIST_Find( OP_preds( op ), CG_DEP_REGIN, DONT_CARE );
-  while ( arcs ) {
-    ARC *arc = ARC_LIST_first( arcs );
-    if ( omega >= ARC_omega( arc ) ) {
-      OP *op_new = Mark_Op_For_Prolog( ARC_pred( arc ),
-				       omega - ARC_omega( arc ) );
-      if ( op_new == NULL )
-	return NULL;
-    }
-    arcs = ARC_LIST_Find( ARC_LIST_rest( arcs ), CG_DEP_REGIN, DONT_CARE );
-  }
-
-  // Step (4)  If op is predicated, then copy definitions of all results
-  //           into prolog
-  if ( OP_cond_def( op ) ) {
-    ARC_LIST *arcs = ARC_LIST_Find( OP_preds( op ), CG_DEP_REGOUT, DONT_CARE );
-    while ( arcs ) {
-      ARC *arc = ARC_LIST_first( arcs );
-      if ( omega >= ARC_omega( arc ) ) {
-	OP *op_new = Mark_Op_For_Prolog( ARC_pred( arc ),
-					 omega - ARC_omega( arc ) );
-	if ( op_new == NULL )
-	  return NULL;
-      }
-      arcs = ARC_LIST_Find( ARC_LIST_rest( arcs ), CG_DEP_REGOUT, DONT_CARE );
-    }
-  }
-
-  // Step (5)  Duplicate the OP, but don't insert it anywhere yet
-  OP *op_prolog = Dup_OP( op );
-  if ( Is_DB_OP_Init( op ) )
-    DB_Copy_Aux_OP( op_prolog, op );
-
-  // Step (6)  Record (op, omega) --> op_prolog and return the new instruction
-  if ( _trace_CG_RTran ) {
-    #pragma mips_frequency_hint NEVER
-    fprintf( TFile,
-	     "<cio> Mark_Op_For_Prolog(op 0x%lx, omega %u) ---> op 0x%lx\n\t",
-	     op, omega, op_prolog );
-    Print_OP_No_SrcLine( op );
-    fprintf( TFile, "\t" );
-    Print_OP_No_SrcLine( op_prolog );
-  }
-  _op_prolog_map[ OP_OMEGA( op, omega ) ] = op_prolog;
-  return op_prolog;
-}
-
-
-void
-CIO_RWTRAN::Copy_Ops_To_Prolog()
-{
-  if ( _trace_CG_RTran ) {
-    #pragma mips_frequency_hint NEVER
-    fprintf( TFile, "<cio> Copy_Ops_To_Prolog copying:\n" );
-  }
-
-  typedef std::pair< TN *, UINT8 >                      TN_OMEGA;
-  typedef std::pair< TN_OMEGA, TN * >                   tn_copy_pair;
-  typedef std:map< TN_OMEGA, TN *, less< TN_OMEGA >,
-    mempool_allocator< tn_copy_pair > >            tn_copy_map;
-
-  tn_copy_map tn_prolog_map;
-
-  // Iterate through all of the OP duplicates, ordered first by omega
-  // and then by the order of the original OPs within the loop body.
-  for ( op_copy_map_prolog::const_iterator op_iter = _op_prolog_map.begin();
-	op_iter != _op_prolog_map.end();
-	++op_iter ) {
-
-    UINT8 omega = op_iter->first.second;
-    OP   *op    = op_iter->second;
-
-    // Replace the old OP's operand TNs with new TNs
-    for ( UINT8 i = 0; i < OP_opnds( op ); ++i ) {
-      TN *tn_old   = OP_opnd( op, i );
-      if ( ! TN_is_register( tn_old ) ) continue;
-
-      // Look for a replacement TN
-      UINT8 tn_om = omega - OP_OMEGA( op, i );
-      tn_copy_map::iterator
-	tn_find = tn_prolog_map.find( TN_OMEGA( tn_old, tn_om ) );
-      while ( tn_find == tn_prolog_map.end() && tn_om > 0 ) {
-	--tn_om;
-	tn_find = tn_prolog_map.find( TN_OMEGA( tn_old, tn_om ) );
-      }
-
-      // If one is found, then replace the old TN
-      if ( tn_find != tn_prolog_map.end() )
-	Set_OP_opnd( op, i, tn_find->second );
-    }
-
-    // Replace the old OP's result TNs with new TNs
-    if ( OP_cond_def( op ) ) {
-
-      // If the OP is predicated, then look for replacement TNs
-      for ( UINT8 i = 0; i < OP_results( op ); ++i ) {
-	TN   *tn_old   = OP_result( op, i );
-	UINT8 tn_om = omega;
-
-	// Look for a replacement TN
-	tn_copy_map::iterator
-	  tn_find = tn_prolog_map.find( TN_OMEGA( tn_old, tn_om ) );
-	while ( tn_find == tn_prolog_map.end() && tn_om > 0 ) {
-	  --tn_om;
-	  tn_find = tn_prolog_map.find( TN_OMEGA( tn_old, tn_om ) );
-	}
-
-	// If one is found, then replace the old TN.  If not, then copy the
-	// old TN value into a new TN.
-	TN *tn_new;
-	if ( tn_find != tn_prolog_map.end() )
-	  tn_new = tn_find->second;
-	else {
-	  tn_new = CGPREP_Dup_TN( tn_old );
-	  CGPREP_Copy_TN_Into_BB( tn_new, tn_old, CG_LOOP_prolog,
-				  NULL, 0, FALSE );
-	}
-	Set_OP_result( op, i, tn_new );
-	tn_prolog_map[ TN_OMEGA( tn_old, omega ) ] = tn_new;
-      }
-
-    } else {  // ! OP_cond_def( op )
-
-      // If the OP is not predicated, generate all new result TNs.
-      for ( UINT8 i = 0; i < OP_results( op ); ++i ) {
-	TN *tn_old = OP_result( op, i );
-	TN *tn_new = CGPREP_Dup_TN( tn_old );
-	Set_OP_result( op, i, tn_new );
-	tn_prolog_map[ TN_OMEGA( tn_old, omega ) ] = tn_new;
-      }
-    }
-
-    // Append the OP
-    BB_Insert_Op( CG_LOOP_prolog, NULL, op, FALSE );
-  }
-  _op_prolog_map.clear();
-}
-
-#endif
 
 
 // ======================================================================
@@ -2116,20 +1942,9 @@ CIO_RWTRAN::Replace_Tn( BB *body, TN *tn_old, TN *tn_new, UINT8 omega_change )
     }
   }
 
-#ifdef KEY
   // Update any occurances in the prolog backpatch list.  Bug 11749.
   CG_LOOP_Backpatch_Replace_Body_TN( CG_LOOP_prolog,
 				     tn_old, tn_new, omega_change );
-#else
-  // Delete all prolog backpatches for tn_old;
-  // Calling procedure must guarantee that tn_new has appropriate backpatches
-  CG_LOOP_BACKPATCH *bp, *bp_next = NULL;
-  for ( bp = CG_LOOP_Backpatch_First( CG_LOOP_prolog, tn_old );
-	bp != NULL; bp = bp_next ) {
-    bp_next = CG_LOOP_Backpatch_Next( bp );
-    CG_LOOP_Backpatch_Delete( CG_LOOP_prolog, bp );
-  }
-#endif  
 
   // Update any occurances in the epilog backpatch list
   CG_LOOP_Backpatch_Replace_Body_TN( CG_LOOP_epilog,
@@ -2264,7 +2079,6 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 #endif
       }
 
-#ifdef KEY
       // Don't eliminate OP if its result is a global TN.  See example in
       // bug 6255.
       for (INT res = OP_results(op) - 1; res >= 0; res--) {
@@ -2277,7 +2091,6 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 	  break;
 	}
       }
-#endif
       entry.opnd_source[opnd] = source;
       entry.opnd_omega[opnd]  = OP_omega( op, opnd );
 
@@ -2552,11 +2365,9 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 	  INT opnd;
 	  for ( opnd = OP_opnds( entry2.op ) - 1; opnd >= 0; --opnd )
 	    if ( entry1.opnd_source[opnd] != entry2.opnd_source[opnd] ||
-#ifdef OSP_OPT
 		 //Bug fix for OSP_239
 		 //TODO: This bug fix could be refined
 		 (entry1.opnd_source[opnd] > index1 && entry1.opnd_source[opnd] < index2) ||
-#endif
 		 entry1.opnd_result[opnd] != entry2.opnd_result[opnd] )
 	      break;
 	  // Add code to handle ADD and other commutative OPs
@@ -2614,12 +2425,10 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
   Is_True( oppor_count > 0,
 	   ( "CIO_RWTRAN::CICSE_Transform didn't abort early" ) );
 
-#ifdef KEY
   // A heuristic to avoid imposing too much pressure on register allocation.
   if( oppor_count >= ( REGISTER_MAX >> 1 ) ){
     return FALSE;
   }
-#endif
 
   // Store the opportunites into CIO_RWTRAN.opportunities
   CICSE_change *opportunities
@@ -2685,12 +2494,10 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
       // If source TN occurs later as a result, then new TN is required
       // NOT ALWAYS NECESSARY!  IMPROVE THIS!
       INT tn_index = hTN_MAP32_Get( tn_last_op, change.new_tns[0] );
-#ifdef KEY
       /* fix bug#1989 where the store value is not put in the table. */
       if( tn_index == 0 )
 	change.new_tns[0] = Build_TN_Like( change.new_tns[0] );      
       else
-#endif // KEY
       if ( OP_Precedes( change.source, cicse_table[tn_index].op ) )
 	change.new_tns[0] = Build_TN_Like( change.new_tns[0] );
 
@@ -2726,7 +2533,6 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 	  ( ! entry.result_unique[res] ||
 	    GRA_LIVE_TN_Live_Outof_BB( tn_result, CG_LOOP_epilog ) ||
 	    change.new_tns[res] == tn_result /* Fix for pv779607 */ );
-#ifdef KEY
 	/* A copy is needed if <tn_result> is exposed. */
 	if( !change.need_copy[res] ){
 	  for( index_dup = oppor_index - 2; index_dup >= 0; index_dup-- ){
@@ -2736,11 +2542,9 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 	    }
 	  }
 	}
-#endif
       }
     }
 
-#ifdef KEY
     /* To avoid a body tn in the prolog being re-defined, we need to create a
        new tn, and a copy for it. (bug#358, bug#2912)
     */
@@ -2754,7 +2558,6 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 	}
       }
     }
-#endif
   }
 
   // Display opportunities
@@ -3169,11 +2972,7 @@ CIO_RWTRAN::Write_Removal( BB *body )
   // Until the alternate predication code is ready, only remove writes
   // if the trip count is a known constant value, or if predication is
   // available on this target.
-#ifndef KEY
-  if ( ! TN_has_value( _trip_count_tn ) && ! CGTARG_Can_Predicate() ) {
-#else
   if ( 0 ) {
-#endif
     DevWarn( "CIO_RWTRAN::Read_Write_Removal predication not activated" );
     return FALSE;
   }

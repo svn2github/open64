@@ -101,9 +101,7 @@ static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon
 #pragma hdrstop
 
 #include <math.h>
-#if 1 // workaround at PathScale for build problem
 #include <float.h>      // FLT_MAX
-#endif
 #include <limits.h>
 
 #include "defs.h"
@@ -143,9 +141,7 @@ extern BOOL fat_self_recursive;
 #endif
 BOOL GRA_split_lranges = TRUE;
 INT GRA_non_split_tn_id = -1;
-#ifdef KEY
 BOOL GRA_pu_has_handler = FALSE;
-#endif
 
 static LRANGE*  split_lrange;           // The LRANGE to split
 static LRANGE*  alloc_lrange;           // The part to allocate
@@ -176,47 +172,6 @@ static INT split_lunit_count;
 
 // Here are some things I found useful for debugging this module.
 //
-#if 0
-
-/////////////////////////////////////
-static void
-Print_Globals(GRA_BB* gbb, ISA_REGISTER_CLASS rc)
-/////////////////////////////////////
-//
-//  Print the globals that are live in <gbb> and <rc> (from the
-//  BB_LIVE_GLOBALs set).
-//
-/////////////////////////////////////
-{
-  INTERFERE_ITER iter;
-
-  for (iter.Init(gbb->Global_Lranges(rc), gbb->Region()->Subuniverse(rc));
-       ! iter.Done(); iter.Step()) {
-    LRANGE* global_lrange = iter.Current();
-
-    fprintf(stderr,"TN%d\n",TN_number(LRANGE_tn(global_lrange)));
-  }
-}
-
-/////////////////////////////////////
-static void
-Print_Globals_N(INT n, ISA_REGISTER_CLASS rc)
-/////////////////////////////////////
-//
-//  Print the globals that are live in the GRA_BB corresponding to the BB with
-//  _id == <n> (and register class <rc>.
-//
-/////////////////////////////////////
-{
-  BB *bb;
-
-  for ( bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ) {
-    if ( BB_id(bb) == n )
-      Print_Globals(GRA_BB_Get(bb),rc);
-  }
-}
-
-#endif
 
 /////////////////////////////////////
 static BOOL
@@ -283,7 +238,6 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
 //  complement region, and its region contains a call, we'll also add the
 //  caller saves registers.
 //
-#ifdef KEY
 //  If GRA_optimize_boundary is TRUE:
 //  Change the semantics of the function to return the registers in <rc> that
 //  are unavailable to hold <tn> in <gbb>.  A register is unavailable only if
@@ -293,7 +247,6 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
 //  Change the semantics of the function to return the registers in <rc> that
 //  are unavailable to hold <tn> in <gbb>.  A register is unavailable if it is
 //  not reclaimable, where reclaimable means allocated and not referenced.
-#endif
 /////////////////////////////////////
 {
   REGISTER_SET used  = gbb->Registers_Used(rc);
@@ -308,7 +261,6 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
     return REGISTER_CLASS_allocatable(ISA_REGISTER_CLASS_mmx);
 #endif
 
-#ifdef KEY
    // In the context of this function, USED means not available.  For register
   // reclaiming, a register is not available if it is not reclaimable.
   if (reclaim) {
@@ -335,7 +287,6 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
       }
     }
   }
-#endif
 
   LUNIT*       lunit = gbb_mgr.Split_LUNIT(gbb);
 
@@ -356,11 +307,9 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
 	GTN_SET_MemberP(BB_live_out(gbb->Bb()),tn)) {
       used = REGISTER_SET_Union(used, REGISTER_CLASS_caller_saves(rc));
 #ifdef HAS_STACKED_REGISTERS
-#ifdef KEY
       // Figure out how register reclaiming interacts with stack regs.
       FmtAssert(!reclaim,
 		("Regs_Used: reclaiming not yet supported for stack regs"));
-#endif
       if (REGISTER_Has_Stacked_Registers(rc)) 
         used = REGISTER_SET_Union(used, stacked_caller_used);
 #endif
@@ -369,11 +318,9 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
     }
   }
   if (BB_mod_rotating_registers(gbb->Bb())) {
-#ifdef KEY
     // Figure out how register reclaiming interacts with rotating regs.
     FmtAssert(!reclaim,
 	      ("Regs_Used: reclaiming not yet supported for rotating regs"));
-#endif
     used = REGISTER_SET_Union(used, REGISTER_CLASS_rotating(rc));
   }
   else if (BB_mod_pred_rotating_registers(gbb->Bb()) &&
@@ -553,7 +500,6 @@ Check_Interior_Predecessor_Spill_Cost(GRA_BB* gbb, float priority)
   return priority;
 }
 
-#ifdef KEY
 /////////////////////////////////////
 static void
 Calculate_Interim_Reclaim_Cost(GRA_BB *gbb, BOOL find_spills, float *priority)
@@ -675,7 +621,6 @@ Calculate_Interim_Reclaim_Saving(GRA_BB *gbb, BOOL find_spills, float *priority)
     GRA_Trace_Split_Reclaim_Add_Priority(gbb, TRUE, cost);
   }
 }
-#endif	// KEY
 
 /////////////////////////////////////
 static void
@@ -823,7 +768,6 @@ Calculate_Interim_Split_Priority(GRA_BB* gbb, INT spills_needed,
     }
   }
 
-#ifdef KEY
   // Determine the cost of the reclaim due to the addition of GBB to the
   // reclaimed region.  Similar to the cost of the split, there are four
   // components to the cost of the reclaim:
@@ -847,7 +791,6 @@ Calculate_Interim_Split_Priority(GRA_BB* gbb, INT spills_needed,
     //          into the reclaimed region.
     Calculate_Interim_Reclaim_Saving(gbb, FALSE, &priority);
   }
-#endif
 
   // set new interim split priority
   split_alloc_priority += priority;
@@ -957,7 +900,6 @@ Avoid_Unit_Spill(GRA_BB* gbb, REGISTER_SET allowed_regs,
 						region->Registers_Used(rc));
       } else {
 	REGISTER_SET unavailable = gloop->Registers_Used(rc);
-#ifdef KEY
 	// Make the loop-reclaimable registers available.  A register is
 	// loop-reclaimable if it is used in the loop but is not referenced
 	// (used or defined) in the loop.
@@ -966,7 +908,6 @@ Avoid_Unit_Spill(GRA_BB* gbb, REGISTER_SET allowed_regs,
 	    REGISTER_SET_Intersection(unavailable,
 				      gloop->Registers_Referenced(rc));
 	}
-#endif
 	*loop_allowed = REGISTER_SET_Difference(*loop_allowed, unavailable); 
       }
       if (REGISTER_SET_EmptyP(*loop_allowed)) {
@@ -1307,9 +1248,6 @@ Add_Spills_And_Restores(void)
 }
 
 /////////////////////////////////////
-#ifndef KEY
-static
-#endif
 BOOL
 Has_Live_In_Successor( GRA_BB* gbb, LRANGE* lrange )
 /////////////////////////////////////
@@ -1663,7 +1601,6 @@ Add_Deferred_To_Coloring_List( LRANGE_CLIST_ITER* client_iter )
 {
   LRANGE_CLIST_ITER dup_iter;
 
-#ifdef KEY
   for (dup_iter.Init_Following(client_iter);
        !dup_iter.Done();
        dup_iter.Step()) {
@@ -1674,47 +1611,6 @@ Add_Deferred_To_Coloring_List( LRANGE_CLIST_ITER* client_iter )
     }
   }
   dup_iter.Push(deferred_lrange);
-#else
-  if ( lranges_to_pass_count == 0 ) {
-    client_iter->Splice(deferred_lrange);
-    return;
-  }
-
-  for (dup_iter.Init_Following(client_iter); ; dup_iter.Step()) {
-    LRANGE* lrange = dup_iter.Current();
-
-    if ( lrange->Interferes(deferred_lrange) ) {
-      lrange->Neighbors_Left_Decrement();
-      deferred_lrange->Neighbors_Left_Increment();
-
-      if ( lrange_mgr.One_Set_MemberP(lrange) ) {
-        if ( --lranges_to_pass_count == 0 ) {
-
-          // At this point we have moved past all the neighbors of
-          // deferred_lrange that:
-          //
-          //    1. are more urgent than deferred_lrange,
-          //
-          //    2. are Briggs points already or would be if deferred_lrange
-          //       came first in the coloring list.
-          //
-          // So we have maintained the property that the Briggs points are in
-          // order.  Now we *could* worry about the non-Briggs points and keep
-          // moving 'deferred_lrange' down the priority list until we pass
-          // it's last neighbor of higher priority.  Is this a good idea?
-          // It's good if splitting subsequent splitting makes one of the guys
-          // we would pass become a Briggs point.  It's bad if resplitting
-          // deferred_lrange picks out a sub LRANGE that has higher priority
-          // than the guys we would pass.  So I can't tell what to do.  We'll
-          // come down on the side of doing the cheaper thing -- nothing.
-
-	  dup_iter.Splice(deferred_lrange);
-          return;
-        }
-      }
-    }
-  }
-#endif
 }
 
 /////////////////////////////////////
@@ -1845,7 +1741,6 @@ Fix_x86_Info( LRANGE* lrange )
 }
 #endif
 
-#ifdef KEY
 /////////////////////////////////////
 static void
 Make_Boundary_BBs_At_Border(GRA_BB* border_gbb, GRA_BB* alloc_gbb)
@@ -1929,7 +1824,6 @@ Fix_Boundary_BBs(void)
   deferred_lrange->Update_Boundary_BBs();
   alloc_lrange->Update_Boundary_BBs();
 }
-#endif
 
 /////////////////////////////////////
 static void
@@ -2157,13 +2051,12 @@ LRANGE_Do_Split( LRANGE* lrange, LRANGE_CLIST_ITER* iter,
   GRA_Trace_Color_LRANGE("Splitting",lrange);
 #endif
 
-#ifdef KEY // don't split the saved-TNs if PU has any handler entry point
+  // don't split the saved-TNs if PU has any handler entry point
   if (lrange->Tn_Is_Save_Reg() && GRA_pu_has_handler)
     return FALSE;
 
   if (PU_Has_Nonlocal_Goto_Target)
     return FALSE;
-#endif
 
   GRA_Trace_Color_LRANGE(reclaim ? "Splitting (with reclaim)" : "Splitting",
 			 lrange);
@@ -2209,10 +2102,8 @@ LRANGE_Do_Split( LRANGE* lrange, LRANGE_CLIST_ITER* iter,
   Fix_TN_Live_Info();
   Rename_TN_References();
 
-#ifdef KEY
   if (GRA_optimize_boundary)
     Fix_Boundary_BBs();
-#endif
 
   deferred_lrange->Calculate_Priority();
   Fix_Interference();
@@ -2388,7 +2279,6 @@ LRANGE_Split_Mixed_x87_MMX (LRANGE* lrange, LRANGE_CLIST_ITER* iter,
 }
 #endif
 
-#ifdef KEY
 /////////////////////////////////////
 void
 LRANGE_Split_Reclaimed_BBs (LRANGE *lrange, REGISTER reg)
@@ -2500,4 +2390,3 @@ LRANGE_Split_Reclaimed_BBs (LRANGE *lrange, REGISTER reg)
     }
   }
 }
-#endif

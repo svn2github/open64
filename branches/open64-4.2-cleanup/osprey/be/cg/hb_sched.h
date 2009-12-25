@@ -80,17 +80,11 @@
 #define HBS_FROM_GCM_FROM_BB		0x0800
 #define HBS_FROM_GCM_TO_BB		0x1000
 #define HBS_MINIMIZE_BUNDLES		0x2000
-#ifdef KEY
 #define HBS_BALANCE_READY_TYPES		0x4000
 #define HBS_BALANCE_UNSCHED_TYPES	0x8000
 #define HBS_DROP_UNSCHED_PREFETCHES	0x10000
-#endif
 
-#ifdef KEY
 typedef UINT32 HBS_TYPE;
-#else
-typedef UINT16 HBS_TYPE;
-#endif
 
 // Accessors:
 #define OP_VECTOR_element(v,i)	((OP *)VECTOR_element(v,i))
@@ -108,7 +102,6 @@ typedef struct OPSCH_struct {
   mUINT16 dfsnum;
   mINT16  regcost;
   mUINT16 flags;
-#ifdef KEY
   mUINT16 depth;
   mUINT16 id;
   OP	  *op;
@@ -130,10 +123,8 @@ typedef struct OPSCH_struct {
 
   // For one set operations.
   INT32 one_set_mark;
-#endif
 } OPSCH;
 
-#ifdef KEY
 extern OPSCH **OPSCH_Vec;
 extern int OPSCH_Vec_Count;
 
@@ -145,7 +136,6 @@ OPSCHvec(int idx) {
 
 #include "opsch_set.h"
 
-#endif
 
 #define OPSCH_num_succs(opsch)	((opsch)->num_succs)
 #define OPSCH_num_preds(opsch)	((opsch)->num_preds)
@@ -156,7 +146,6 @@ OPSCHvec(int idx) {
 #define OPSCH_regcost(opsch)	((opsch)->regcost)
 #define OPSCH_flags(opsch)	((opsch)->flags)
 
-#ifdef KEY
 #define OPSCH_depth(opsch)			((opsch)->depth)
 #define OPSCH_id(opsch)				((opsch)->id)
 #define OPSCH_op(opsch)				((opsch)->op)
@@ -166,7 +155,6 @@ OPSCHvec(int idx) {
 #define OPSCH_least_constrained_fp(opsch)	((opsch)->least_constrained_fp)
 #define OPSCH_num_blockers(opsch)		((opsch)->num_blockers)
 #define OPSCH_one_set_mark(opsch)		((opsch)->one_set_mark)
-#endif
 
 //
 // Define all the flags used to associate information with OPs in the 
@@ -290,9 +278,7 @@ protected:
   BB* _curbb;
   std::list<BB*> _curbb_list;
   OP *_best_op;
-#ifdef KEY
   OP* _last_sched_op;
-#endif
   HB_Schedule *_cur_sched;
   MEM_POOL *_pool; 
   HBS_TYPE _hbs_type;
@@ -302,15 +288,11 @@ public:
   // Constructor/destructor:
   Priority_Selector(std::list<BB*> bblist, HB_Schedule *sched, HBS_TYPE type, MEM_POOL *pool) 
     { _curbb_list = bblist; _cur_sched = sched; _hbs_type = type; _pool = pool;
-#ifdef KEY
     _last_sched_op = NULL;
-#endif // KEY
     }
   Priority_Selector(BB* bb, HB_Schedule *sched, HBS_TYPE type, MEM_POOL *pool) 
     { _curbb = bb; _cur_sched = sched; _hbs_type = type; _pool = pool;
-#ifdef KEY
     _last_sched_op = NULL;
-#endif // KEY    
     }
   ~Priority_Selector() {}
 
@@ -326,9 +308,7 @@ public:
     _curbb = p._curbb; 
     _curbb_list = p._curbb_list; 
     _best_op = p._best_op;
-#ifdef KEY
     _last_sched_op = p._last_sched_op;
-#endif
   }
 
   // Iterator functions:
@@ -338,9 +318,7 @@ public:
 
   // utility functions:
   void Add_Element_Sorted(VECTOR vector, void* element, VECTOR_ELEMENT_COMPARE comp_func);
-#ifdef KEY
   int Sched_OP_With_Preallocated_TN(OP *op);
-#endif
 
   // Extraneous functions:
   OP* Select_OP_For_Delay_Slot(OP*);
@@ -484,14 +462,12 @@ private:
   TI_RES_RES*       _rr_tab;
   TI_BUNDLE         *_bundle;
   INT32		    _max_sched;
-#ifdef KEY
   OPSCH_SET	    *_scheduled_opschs;
   INT32		    _ready_count;
   INT32		    _unsched_count;
   INT32		    _ready_fp_percentage;
   INT32		    _unsched_fp_percentage;
   INT32		    _one_set_counter;
-#endif
 
   // private functions:
   BOOL Avoid_Processing_HB(std::list<BB*>);
@@ -512,17 +488,12 @@ private:
   void Compute_BBSCH (BB*, BBSCH*);
   BOOL Can_Schedule_Op (OP *cur_op, INT cur_time);
   void Initialize (); 
-#ifdef KEY
   void Schedule_Block (BB*, BBSCH*, int scheduling_algorithm);
-#else
-  void Schedule_Block (BB*, BBSCH*); 
-#endif
   void Schedule_Blocks (std::list<BB*>&); 
   void Put_Sched_Vector_Into_BB (BB*, BBSCH*, BOOL);
   void Put_Sched_Vector_Into_HB (std::list<BB*>&);
   void Add_OP_To_Sched_Vector (OP*, BOOL);
   void Adjust_Ldst_Offsets (void);
-#ifdef KEY
   void Adjust_Ldst_Offsets (BOOL is_fwd);
   void Update_Least_Constrained (OPSCH *, BOOL);
   void DFS_Update_Least_Constrained (OPSCH *, BOOL);
@@ -536,7 +507,6 @@ private:
     { OPSCH_one_set_mark(opsch) = _one_set_counter; }
   void One_Set_Difference1(OPSCH *opsch)
     { OPSCH_one_set_mark(opsch) = _one_set_counter - 1; }
-#endif
   void Init_Register_Map (BB*);
   void Init_RFlag_Table (std::list<BB*>&, BOOL);
   void Update_Regs_For_OP (OP*);
@@ -565,11 +535,9 @@ public:
   void Set_hbs_from_pre_gcm_sched(void) { _hbs_type = (HBS_TYPE) (_hbs_type | HBS_FROM_PRE_GCM_SCHED); }   
   void Set_hbs_from_post_gcm_sched(void) { _hbs_type = (HBS_TYPE) (_hbs_type | HBS_FROM_POST_GCM_SCHED); }   
   void Set_hbs_minimize_bundles(void) { _hbs_type = (HBS_TYPE) (_hbs_type | HBS_MINIMIZE_BUNDLES); }
-#ifdef KEY
   void Set_hbs_balance_ready_types(void) { _hbs_type = (HBS_TYPE) (_hbs_type | HBS_BALANCE_READY_TYPES); }
   void Set_hbs_balance_unsched_types(void) { _hbs_type = (HBS_TYPE) (_hbs_type | HBS_BALANCE_UNSCHED_TYPES); }
   void Set_hbs_drop_unsched_prefetches(void) { _hbs_type = (HBS_TYPE) (_hbs_type | HBS_DROP_UNSCHED_PREFETCHES); }
-#endif
 
   // Member access functions:
   HBS_TYPE type(void)        const { return _hbs_type; }
@@ -579,11 +547,9 @@ public:
   BOOL HBS_Depth_First(void) const { return _hbs_type & HBS_DEPTH_FIRST; }
   BOOL HBS_Minimize_Regs(void) const { return _hbs_type & HBS_MINIMIZE_REGS; }
   BOOL HBS_Minimize_Bundles(void) const { return _hbs_type & HBS_MINIMIZE_BUNDLES; }
-#ifdef KEY
   BOOL HBS_Balance_Ready_Types(void) const { return _hbs_type & HBS_BALANCE_READY_TYPES; }
   BOOL HBS_Balance_Unsched_Types(void) const { return _hbs_type & HBS_BALANCE_UNSCHED_TYPES; }
   BOOL HBS_Drop_Unsched_Prefetches(void) const { return _hbs_type & HBS_DROP_UNSCHED_PREFETCHES; }
-#endif
   BOOL HBS_From_GCM(void) const { return _hbs_type & HBS_FROM_GCM; }
   BOOL HBS_From_CGPREP(void) const { return _hbs_type & HBS_FROM_CGPREP; }
   BOOL HBS_From_Pre_GCM_Sched(void) const { return _hbs_type & HBS_FROM_PRE_GCM_SCHED; }
@@ -594,7 +560,6 @@ public:
   TI_BUNDLE* bundle(void)    { return _bundle; }
   hTN_MAP regs_map(void) { return _regs_map; }
   TI_RES_RES* rr_tab(void) { return _rr_tab; }
-#ifdef KEY
   void Update_Schedule_Parameters(void);
   INT32 Ready_Vector_Fp_Count(void);
 
@@ -602,18 +567,13 @@ public:
   INT32 Ready_Fp_Percentage(void)	    { return _ready_fp_percentage; }
   INT32 Unsched_Count(void)		    { return _unsched_count; }
   INT32 Unsched_Fp_Percentage(void)	    { return _unsched_fp_percentage; }
-#endif
 
   // Exported functions:
   void Init (BB*, HBS_TYPE, INT32, BBSCH*, mINT8*);
   void Init (std::list<BB*>, HBS_TYPE, mINT8*);
   INT Find_Schedule_Cycle(OP*, BOOL);
   void Estimate_Reg_Cost_For_OP (OP*);
-#ifdef KEY
   void Schedule_BB (BB*, BBSCH*, int scheduling_algorithm = -1);
-#else
-  void Schedule_BB (BB*, BBSCH*);   
-#endif
   void Schedule_HB (std::list<BB*>);   
 };
 

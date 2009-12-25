@@ -147,7 +147,6 @@ extern void TN_CORRESPOND_Free(void);
 
 extern BB * Add_Label(LABEL_IDX);
 
-#ifdef KEY
 extern OPS New_OPs;
 extern OP *Last_Processed_OP;
 extern SRCPOS current_srcpos;
@@ -155,7 +154,6 @@ extern INT total_bb_insts;
 extern BB *Cur_BB;
 extern void Process_New_OPs(void);
 extern BB_MAP outer_label_map;
-#endif
 #if defined(TARG_X8664) || defined(TARG_SL)
 extern BOOL W2OPS_Pragma_Preamble_End_Seen (void);
 #endif

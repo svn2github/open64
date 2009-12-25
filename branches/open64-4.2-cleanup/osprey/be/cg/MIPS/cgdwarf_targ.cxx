@@ -187,11 +187,8 @@ CIE_dump2asm(Dwarf_P_Cie cie)
     fprintf(Asm_File, "\t%s\t\"%s\"\n", AS_ASCII, cie->cie_aug); 
   else
      fprintf(Asm_File, "\t%s \"\\000\"\n", ".ascii");
-#if 0 // we must set 1 here, don't know why
   fprintf(Asm_File, fmt_string, AS_ULEBW, cie->cie_code_align); 
-#else
   fprintf(Asm_File, fmt_string, AS_ULEBW, 1); 
-#endif
   fprintf(Asm_File, fmt_string, AS_SLEBW, cie->cie_data_align); 
   fprintf(Asm_File, fmt_string, AS_1BYTE, cie->cie_ret_reg); 
 	  
@@ -1074,7 +1071,6 @@ static BOOL
 Is_Unwind_Simple (void)
 {
   if (has_asm) return FALSE;
-#if 0
   for (ue_iter = ue_list.begin(); ue_iter != ue_list.end(); ++ue_iter) {
     	// if not first or last bb, then not a simple unwind
     	if (BB_prev(ue_iter->bb) != NULL && BB_next(ue_iter->bb) != NULL) {
@@ -1085,7 +1081,6 @@ Is_Unwind_Simple (void)
 		return FALSE;
 	}
   }
-#endif
 
   return TRUE;
 }
@@ -1100,7 +1095,6 @@ Init_Unwind_Info (BOOL trace)
 
   //  Find_Unwind_Info ();
   simple_unwind = Is_Unwind_Simple();
-#if 0
 
   last_label = 0;
   next_when = 0;
@@ -1113,7 +1107,6 @@ Init_Unwind_Info (BOOL trace)
 	if ( ! has_asm) simple_unwind = TRUE;
   }
   Compute_Region_Sizes();
-#endif
   if (Trace_Unwind) {
 	fprintf (TFile, "%s unwind\n", (simple_unwind ? "simple" : "complicated"));
 	//	Print_All_Unwind_Elem ("unwind2");

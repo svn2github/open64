@@ -838,7 +838,6 @@ Create_Live_BB_Sets(void)
 
   GRA_Init_Trace_Memory();
 
-#ifdef KEY
   GTN_SET *incoming_GTNs;
   GTN_SET *outgoing_GTNs;
   if (GRA_optimize_boundary) {
@@ -847,12 +846,10 @@ Create_Live_BB_Sets(void)
     // Those GTNs that are live_out and defreach_out.
     outgoing_GTNs = GTN_SET_Create(GTN_UNIVERSE_size, &MEM_local_pool);
   }
-#endif
 
   for ( bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ) {
     GRA_BB* gbb = gbb_mgr.Get(bb);
 
-#ifdef KEY
     if (GRA_optimize_boundary) {
       /*	TODO:  Define GTN_SET_IntersectionR in gtn_set.h.
       GTN_SET_IntersectionR(incoming_GTNs, BB_live_in(bb), BB_defreach_in(bb));
@@ -861,7 +858,6 @@ Create_Live_BB_Sets(void)
       BS_IntersectionR(incoming_GTNs, BB_live_in(bb), BB_defreach_in(bb));
       BS_IntersectionR(outgoing_GTNs, BB_live_out(bb), BB_defreach_out(bb));
     }
-#endif
 
     for ( tn = GTN_SET_Intersection_Choose(BB_live_in(bb),
                                            BB_defreach_in(bb));
@@ -872,7 +868,6 @@ Create_Live_BB_Sets(void)
     ) {
       if ( TN_Is_Allocatable(tn) ) {
 	lrange_mgr.Get(tn)->Add_Live_BB(gbb);
-#ifdef KEY
 	if (GRA_optimize_boundary) {
 	  // The lrange enters the BB.  If the lrange also exits the BB, then
 	  // the BB is an internal BB, else the BB is a boundary BB.  (Ignore
@@ -883,7 +878,6 @@ Create_Live_BB_Sets(void)
 	  else
 	    lrange_mgr.Get(tn)->Add_Boundary_BB(gbb);
 	}
-#endif
       }
     }
 
@@ -899,7 +893,6 @@ Create_Live_BB_Sets(void)
 
         lrange->Add_Live_BB(gbb);
 
-#ifdef KEY
 	if (GRA_optimize_boundary) {
 	  // The lrange exits the BB.  If the lrange also enters the BB, then
 	  // the BB is an internal BB, else the BB is a boundary BB.  (Ignore
@@ -909,7 +902,6 @@ Create_Live_BB_Sets(void)
 	  else
 	    lrange->Add_Boundary_BB(gbb);
 	}
-#endif
 
         if ( BB_call(gbb->Bb()) ) {
           if (    lrange->Type() == LRANGE_TYPE_COMPLEMENT
@@ -1518,7 +1510,6 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
       }
     }
 
-#ifdef KEY
     // Treat clobbered registers as though they are result registers.
     // Bug 4579.
     if (OP_code(xop) == TOP_asm) {
@@ -1544,7 +1535,6 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 	} 
       }
     }
-#endif
 
     if ( CGTARG_Is_Preference_Copy(xop) )
       Complement_Copy(xop, gbb, pref_list);
@@ -1589,7 +1579,6 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
     GRA_PREF_LIVE* gpl_dest = (GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn_dest);
     GRA_PREF_LIVE* gpl_src = (GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn_src);
 
-#ifdef KEY
     // Do the same tests as below to see if a preferencing copy is allowed, but
     // do it for dedicated registers.  Bug 4579.
     BOOL allow_copy = TRUE;
@@ -1617,7 +1606,6 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 	   gpl_dedicated_dest->Num_Defs() > 1))
 	allow_copy = FALSE;
     }
-#endif
 
     //
     // If the source of the preferencing copy is redefined after
@@ -1627,9 +1615,7 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
     //
     if (gpl_src->Last_Def() < gpl_dest->Last_Def() &&
 	!gpl_dest->Exposed_Use() && gpl_dest->Num_Defs() == 1
-#ifdef KEY
 	&& allow_copy
-#endif
 	) {
 
       //

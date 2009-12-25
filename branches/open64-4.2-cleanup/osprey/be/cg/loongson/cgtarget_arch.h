@@ -44,9 +44,7 @@
  * ====================================================================
  * ====================================================================
  */
-#ifdef KEY
 #include "config_opt.h"
-#endif
 
 #define INST_BYTES 4
 #define DEFAULT_LONG_BRANCH_LIMIT (30000 * INST_BYTES)

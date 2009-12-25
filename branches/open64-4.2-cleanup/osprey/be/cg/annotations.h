@@ -250,7 +250,6 @@ struct ROTATING_KERNEL_INFO {
 #define ROTATING_KERNEL_INFO_copyout(x)       ((x)->copyout)
 #define ROTATING_KERNEL_INFO_localdef(x)      ((x)->localdef)
 
-#ifdef KEY 
 typedef struct asminfo {
   REGISTER_SET livein[ISA_REGISTER_CLASS_MAX+1];
   REGISTER_SET liveout[ISA_REGISTER_CLASS_MAX+1];
@@ -260,7 +259,6 @@ typedef struct asminfo {
 #define ASMINFO_livein(x)	((x)->livein)
 #define ASMINFO_liveout(x)	((x)->liveout)
 #define ASMINFO_kill(x)		((x)->kill)
-#endif
 
 extern ANNOTATION *ANNOT_Add (
   ANNOTATION *annot_list, 
@@ -300,9 +298,7 @@ struct ASM_OP_ANNOT
   ISA_REGISTER_SUBCLASS opnd_subclass[ASM_OP_size];
   mUINT32 opnd_position[ASM_OP_size];
   bool opnd_memory[ASM_OP_size];
-#ifdef KEY
   void* opnd_offset[ASM_OP_size];
-#endif
 };
 
 #define ASM_OP_wn(x)			((x)->wn)
@@ -317,8 +313,6 @@ struct ASM_OP_ANNOT
 #define ASM_OP_opnd_position(x)		((x)->opnd_position)
 #define ASM_OP_opnd_memory(x)		((x)->opnd_memory)
 
-#ifdef KEY
 #define ASM_OP_opnd_offset(x)		((x)->opnd_offset)
-#endif
 #endif /* ANNOTATIONS_INCLUDED */
 

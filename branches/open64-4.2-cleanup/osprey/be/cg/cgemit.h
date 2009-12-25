@@ -91,10 +91,8 @@ extern BOOL CG_emit_unwind_directives;
 #ifdef TARG_X8664
 extern BOOL CG_emit_unwind_info_Set;
 #endif
-#ifdef KEY
 extern BOOL CG_emit_non_gas_syntax;
 extern BOOL CG_inhibit_size_directive;
-#endif
 
 /* Write a qualified name to a file. */
 extern void EMT_Write_Qualified_Name (FILE *f, ST *st);

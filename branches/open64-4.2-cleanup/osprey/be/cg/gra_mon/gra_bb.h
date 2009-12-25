@@ -128,10 +128,8 @@ private:
   REGISTER_SET  glue_registers_used[ISA_REGISTER_CLASS_MAX+1];
     // the set of registers used in this <gbb> and <rc> only in glue copy 
     // references.
-#ifdef KEY
   REGISTER_SET  registers_referenced[ISA_REGISTER_CLASS_MAX+1];
     // the set of registers referenced in this <gbb> for <rc>.
-#endif
   GRA_BB*       region_next;
     // Used by GRA_REGION's to keep track of their blocks.
   INT32         split_mark;
@@ -187,7 +185,6 @@ private:
     // the number of local LRANGEs for this <gbb> and <rc>.
   GRA_LOOP*	loop;
   UINT8		flags;
-#ifdef KEY
   // ------------ Support optimizing for boundary BBs. ------------
   mUINT16	OPs_count;	// Number of OPs in the BB.
   REGISTER_SET  usage_live_in[ISA_REGISTER_CLASS_MAX+1];
@@ -243,7 +240,6 @@ private:
     // boundary BB with two lranges sharing the same register, lrange_owner is
     // the latest lranges that was allocated the register, since lrange_owner
     // is updated as the registers are allocated.
-#endif
 
 public:
   GRA_BB(void) {}
@@ -311,7 +307,6 @@ public:
   BOOL mmx_OP(void)		{ return flags & GRA_BB_FLAGS_mmx_OP; }
   void mmx_OP_Set(void)    	{ flags |= (UINT) GRA_BB_FLAGS_mmx_OP; }
 #endif
-#ifdef KEY
   // Return TRUE if BB has OPs the clobber the register class RC.
   BOOL Clobbers_Reg_Class(ISA_REGISTER_CLASS rc) {
 #ifdef TARG_X8664
@@ -347,7 +342,6 @@ public:
 	{ lrange_owner[rc][reg] = lrange; }
   LRANGE *Get_LRANGE_Owner(ISA_REGISTER_CLASS rc, REGISTER reg)
 	{ return lrange_owner[rc][reg]; }
-#endif
 
   // inline functions
   GRA_BB* Split_List_Push( GRA_BB* new_elt ) { new_elt->split_list_next = this;
@@ -388,11 +382,9 @@ public:
   void Make_Register_Used(ISA_REGISTER_CLASS rc, REGISTER reg,
 			  LRANGE* lrange = NULL, BOOL reclaim = FALSE);
   REGISTER_SET Registers_Used(ISA_REGISTER_CLASS  rc);
-#ifdef KEY
   void Make_Register_Referenced(ISA_REGISTER_CLASS rc, REGISTER reg,
 				LRANGE* lrange = NULL);
   REGISTER_SET Registers_Referenced(ISA_REGISTER_CLASS  rc);
-#endif
   BOOL Spill_Above_Check(LRANGE *lrange);
   void Spill_Above_Set(LRANGE *lrange);
   void Spill_Above_Reset(LRANGE *lrange);

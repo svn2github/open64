@@ -82,15 +82,11 @@ static char *gra_split_rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/
 extern BOOL
 LRANGE_Split( LRANGE* lrange, LRANGE_CLIST_ITER* iter,
                               LRANGE**           alloc_lrange
-#ifdef KEY
                               , BOOL reclaim = FALSE
-#endif
 	      );
 
-#ifdef KEY
 extern void LRANGE_Split_Reclaimed_BBs (LRANGE *lrange, REGISTER reg);
 extern BOOL Has_Live_In_Successor (GRA_BB *gbb, LRANGE *lrange);
-#endif
 
 #ifdef TARG_X8664
 extern BOOL

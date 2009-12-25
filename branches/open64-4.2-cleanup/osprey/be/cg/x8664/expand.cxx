@@ -100,9 +100,7 @@
 #include "targ_const_private.h"
 #include "config_opt.h" /* For Force_IEEE_Comparisons */
 #include "intrn_info.h" // for INTRN_rt_name
-#ifdef KEY
 #include "ebo.h"
-#endif
 
 BOOL Reuse_Temp_TNs = FALSE;
 
@@ -1340,9 +1338,7 @@ static void Exp_Immediate (TN *dest, TN *src, OPS *ops)
 
   if( Is_Target_32bit()     &&
       /* TN_is_dedicated(dest) && */
-#ifdef KEY // bug 14228
       ! (TN_is_symbol(src) && ST_sym_class(TN_var(src)) == CLASS_NAME) &&
-#endif
       Get_TN_Pair(dest) != NULL ){
     Expand_Split_UOP( OPR_INTCONST, MTYPE_I8, dest, src, ops );
     
@@ -1678,7 +1674,6 @@ Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
       Build_OP(is_64bit ? TOP_xorpd: TOP_xorps, result, src, tmp, ops);
       break;
     }
-#ifdef KEY
     //Bug 5701 13347: Vectorize Neg of Integers
     case MTYPE_V16I1:
     case MTYPE_V16I2:
@@ -1699,7 +1694,6 @@ Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
       Expand_Sub (result, tmp, src, mtype, ops);
       break;
     }
-#endif
     default:
       FmtAssert(FALSE, ("Expand_Neg: unknown mtype"));
       break;
@@ -1718,7 +1712,6 @@ Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
     Build_OP( TOP_fchs, result, src, ops );
 
   } else {
-#if 1
     // Perform neg operation by flipping the msb.
     TCON tcon = is_64bit ? Host_To_Targ (MTYPE_I8, 0x8000000000000000ULL) :
       Host_To_Targ (MTYPE_I4, 0x80000000);
@@ -1739,27 +1732,6 @@ Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
 
     Set_OP_no_alias( OPS_last(ops)  );
     Build_OP(is_64bit ? TOP_xorpd: TOP_xorps, result, src, tmp, ops);
-#else
-    // Perform neg operation by a sub operation from 0.0.
-    TCON tcon = Host_To_Targ_Float( is_64bit ? MTYPE_F8 : MTYPE_F4, 0.0 );
-    ST *sym = New_Const_Sym (Enter_tcon (tcon), Be_Type_Tbl( TCON_ty(tcon) ) );
-    Allocate_Object(sym);
-    ST *base_sym; INT64 base_ofst;
-
-    Base_Symbol_And_Offset_For_Addressing (sym, 0, &base_sym, &base_ofst);
-
-    TN *tmp = Build_TN_Like(result);
-    if( Is_Target_64bit() ){
-      Build_OP(is_64bit ? TOP_ldsd : TOP_ldss, tmp, Rip_TN(),
-	       Gen_Symbol_TN(base_sym, base_ofst, TN_RELOC_NONE), ops);
-    } else {
-      Build_OP(is_64bit ? TOP_ldsd_n32 : TOP_ldss_n32, tmp,
-	       Gen_Symbol_TN(base_sym, base_ofst, TN_RELOC_NONE), ops);
-    }
-
-    Set_OP_no_alias( OPS_last(ops)  );
-    Build_OP(is_64bit ? TOP_subsd: TOP_subss, result, tmp, src, ops);
-#endif
   }
 }
 
@@ -3511,12 +3483,11 @@ Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops)
       !MTYPE_is_quad( rtype ) &&
       !MTYPE_is_quad( desc ) ){
     if (!MTYPE_is_vector(rtype)){
-#ifdef KEY //bug 14346: fp-fp scalar conversion for barcelona is special
+     // fp-fp scalar conversion for barcelona is special
      if(Is_Target_Barcelona() || Is_Target_Orochi())
       Build_OP( (rtype == MTYPE_F8) ? TOP_cvtps2pd : TOP_cvtpd2ps,
 		dest, src, ops );
      else
-#endif
       Build_OP( (rtype == MTYPE_F8) ? TOP_cvtss2sd : TOP_cvtsd2ss,
                 dest, src, ops );
     }
@@ -3977,7 +3948,7 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
 
     } else if( MTYPE_bit_size(imtype) == 32 ){
       if( MTYPE_is_signed(imtype) )
-#ifdef KEY //cvt signed integer to single precision scalar
+       //cvt signed integer to single precision scalar
        if(Is_Target_Barcelona() || Is_Target_Orochi()){
          TN *tmp_dest = Build_TN_Like(dest);
          Build_OP(TOP_movg2x, tmp_dest, src, ops);
@@ -3985,7 +3956,6 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
 	 top = TOP_cvtdq2ps;
        }
        else
-#endif 
         top = TOP_cvtsi2ss;
 
       else {
@@ -4040,14 +4010,12 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
 		 ("Expand_Int_To_Float: size of imtype is not 32-bit-long") );
 
       if( MTYPE_is_signed(imtype) ){
-#ifdef KEY
         if(Is_Target_Barcelona() || Is_Target_Orochi()){
          TN *tmp_dest = Build_TN_Like(dest);
          Build_OP(TOP_movg2x, tmp_dest, src, ops); 
          src = tmp_dest;
          top = TOP_cvtdq2pd;
         }else
-#endif
         {
           top = TOP_cvtsi2sd;
           if (Is_Target_Orochi() && Is_Target_AVX()) {
@@ -4199,9 +4167,6 @@ Expand_Select (
       TN *true_tn_hi = Get_TN_Pair(true_tn);
       dest_tn_hi = Get_TN_Pair(dest_tn);
       false_tn_hi = Get_TN_Pair(false_tn);
-#if 0 // bug 11709: not needed because last Expand_Copy includes the hi part
-      Expand_Copy(dest_tn_hi, true_tn_hi, mtype, ops );
-#endif
     }
     Expand_Cmov(non_sse2_fp ? TOP_fcmove : TOP_cmove, dest_tn, false_tn, p,
 		ops, dest_tn_hi, false_tn_hi);
@@ -4225,9 +4190,6 @@ Expand_Select (
 		  is_double?MTYPE_I8:MTYPE_I4, shift_aright, ops);
     /* Don't use Expand_Int_To_Float, which will convert the all 1's
        value to fp format. */
-#if 0
-    Build_OP( TOP_movg2x, tmp3, tmp2, ops );
-#else
     //TY_IDX ty = Spill_Int_Type;
     TY_IDX ty = MTYPE_To_TY( imtype );
     ST* st = Gen_Temp_Symbol( ty, "movd" );
@@ -4236,7 +4198,6 @@ Expand_Select (
     //TYPE_ID imtype = TY_mtype(ST_type(st));
     Exp_Store( imtype, tmp2, st, 0, ops, 0 );
     Exp_Load( fmtype, fmtype, tmp3, st, 0, ops, 0 );
-#endif
     Build_OP( is_double ? TOP_andpd : TOP_andps, tmp4, true_tn, tmp3, ops );
     Build_OP( is_double ? TOP_andnpd : TOP_andnps, tmp5, tmp3, false_tn, ops );
     Build_OP( is_double ? TOP_orpd : TOP_orps, dest_tn, tmp5, tmp4, ops );
@@ -5513,30 +5474,7 @@ static void Expand_Recip( TN* result, TN* src2, TYPE_ID mtype, OPS* ops )
     Build_OP( TOP_fmul128v32, tmp2, src2, tmp1, ops );
     Build_OP( TOP_fmul128v32, tmp3, tmp2, tmp1, ops );
     Build_OP( TOP_fadd128v32, tmp4, tmp1, tmp1, ops );
-#if 1
     Build_OP( TOP_fsub128v32, result, tmp4, tmp3, ops );      
-#else
-    // multiply result by 1.0
-    TN *tmp5 = Build_TN_Like(result);
-    TN *tmp6 = Build_TN_Like(result);
-    Build_OP( TOP_fsub128v32, tmp5, tmp4, tmp3, ops );
-    
-    // Create vector {1.0, 1.0, 1.0, 1.0}
-    TCON tcon;
-    ST *sym;
-    tcon = Create_Simd_Const ( MTYPE_V16F4,  
-			       Host_To_Targ_Float_4 ( MTYPE_F4, 1.0 ) );
-    sym = New_Const_Sym( Enter_tcon(tcon),  Be_Type_Tbl( TCON_ty(tcon) ) );
-    ST* base_sym = NULL;
-    INT64 base_ofst = 0;      
-    Allocate_Object(sym);
-    Base_Symbol_And_Offset_For_Addressing( sym, 0, &base_sym, &base_ofst );
-    
-    Expand_Const( tmp6, Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE ), 
-		  mtype, ops );
-    
-    Build_OP( TOP_fmul128v32, result, tmp5, tmp6, ops );      
-#endif
     return;
   } 
     
@@ -6547,15 +6485,6 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
     } else {
       /* dedicated TNs always have size 8, so need to check both TNs */
       FmtAssert( FALSE, ("UNIMPLEMENTED") );
-#if 0
-      if (src_rc == ISA_REGISTER_CLASS_integer) { // tgt_tc is float class
-	Build_OP(is_double ? TOP_dmtc1 : TOP_mtc1, tgt_tn, src_tn, ops);
-      } else if (src_rc == ISA_REGISTER_CLASS_float) { // tgt_tc is integer class
-	Build_OP(is_double ? TOP_dmfc1 : TOP_mfc1, tgt_tn, src_tn, ops);
-      } else {
-	FmtAssert(FALSE, ("Unimplemented Copy.\n"));
-      }
-#endif
     }
   }
 }

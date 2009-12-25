@@ -67,10 +67,8 @@
 #include "hb.h"
 #include "hb_trace.h"
 #include "hb_id_candidates.h" // For use in Force_If_Convert
-#ifdef KEY
 #include "ti_res.h" // For TI_RES_Cycle_Count
 #include "data_layout.h" // For Allocate_Temp_To_Memory
-#endif
 
 /////////////////////////////////////
 static void 
@@ -365,9 +363,7 @@ Add_Block(BB *bb, BB *bb_to_add, std::list<HB_CAND_TREE*>& candidate_regions)
 }
 
 
-#ifdef KEY
 static BOOL merge_failed;
-#endif
 /////////////////////////////////////
 static void
 Merge_Blocks(HB*                  hb, 
@@ -580,16 +576,6 @@ AND_Predicate_To_OP (OP *op, TN *ptn1, TN *ptn2,
 	// defines new ptn1, and then use ptn1 on op.
 	// Can get into use before def problems if ptn1 and ptn2 are
 	// defined in separate bb's, so check for that.
-#if 0
-	DEF_KIND kind;
-	compare_op = TN_Reaching_Value_At_Op(ptn1, op, &kind, TRUE);
-	if (compare_op == NULL 
-		|| kind != VAL_KNOWN 
-		|| OP_cond_def(compare_op)) 
-	{
-		compare_op = NULL;
-	}
-#else
 	// TN_Reaching_Value_At_Op doesn't work,
 	// because hbf has unlinked some of the previous bbs
 	// in the hb.  So instead do brute search in hb
@@ -618,7 +604,6 @@ AND_Predicate_To_OP (OP *op, TN *ptn1, TN *ptn2,
 		}
 	    }
 	}
-#endif
 	FmtAssert(def_ptn1_op != NULL, ("and_pred no def; try recompiling with -CG:hb_exclude_pgtns=on"));
 	FmtAssert(def_ptn2_op != NULL, ("and_pred2 no def; try recompiling with -CG:hb_exclude_pgtns=on"));
 	FmtAssert(OP_has_predicate(def_ptn1_op), ("and_pred no qp; try recompiling with -CG:hb_exclude_pgtns=on")); 
@@ -1829,7 +1814,7 @@ Setup_True_False_Predicates(BB *bb, control_dep_data *bb_cdep_data)
 
 
 #ifndef TARG_IA64
-//#ifdef KEY
+//#if 1
 static BOOL multiple_dependencies;
 #endif
 /////////////////////////////////////
@@ -2278,11 +2263,9 @@ Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
   HB *hb=&hbs;
   std::list<HB_CAND_TREE*> candidate_regions;
 
-#ifdef KEY
   // CG_LOOP_Optimize may call even though HB_formation is false
   if (!HB_formation)
     return NULL;
-#endif
   MEM_POOL_Push(&MEM_local_pool);
   fall_thru_block = NULL;
   // Turn the BB_REGION into a "hyperblock"
@@ -2300,12 +2283,10 @@ Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
     return bb_entry;
   }
 
-#ifdef KEY
   // Set Speculation Level to highest for a loop
   // We can switch it back later.
   EAGER_LEVEL Eager_Level_Temp = Eager_Level;
   Eager_Level = EAGER_MEMORY;
-#endif
   HB_Blocks_Set(hb, bbs);
   HB_Entry_Set(hb, bb_entry);
   
@@ -2409,9 +2390,7 @@ Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
   }    
 
   MEM_POOL_Pop(&MEM_local_pool);
-#ifdef KEY
   // Reset Speculation Level
   Eager_Level = Eager_Level_Temp;
-#endif
   return single_bb;
 }

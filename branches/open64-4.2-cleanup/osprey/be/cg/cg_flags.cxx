@@ -60,7 +60,6 @@
  */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "config_targ.h"
@@ -159,9 +158,7 @@ BOOL CFLOW_Enable_Branch = TRUE;
 BOOL CFLOW_Enable_Merge = TRUE;
 BOOL CFLOW_Enable_Reorder = FALSE;
 BOOL CFLOW_Enable_Freq_Order = TRUE;
-#ifdef KEY
 BOOL CFLOW_Enable_Freq_Order_On_Heuristics = FALSE;
-#endif
 BOOL CFLOW_Enable_Clone = TRUE;
 BOOL CFLOW_opt_all_br_to_bcond = FALSE;
 const char *CFLOW_heuristic_tolerance;
@@ -175,9 +172,7 @@ BOOL FREQ_enable = TRUE;
 BOOL FREQ_view_cfg = FALSE;
 const char *FREQ_frequent_never_ratio = "1000.0";
 const char *FREQ_eh_freq = "0.1";
-#ifdef KEY
 const char *FREQ_non_local_targ_freq = "0.1";
-#endif
 
 BOOL CG_enable_rename = TRUE;
 BOOL CG_enable_prefetch = FALSE;
@@ -352,9 +347,7 @@ BOOL CGEXP_cvrt_int_div_to_mult = TRUE;
 BOOL CGEXP_cvrt_int_div_to_fdiv = TRUE;
 #endif
 BOOL CGEXP_opt_float_div_by_const = TRUE;
-#ifdef KEY
 BOOL CGEXP_cvrt_int_mult_to_add_shift = TRUE;
-#endif
 
 const char *CGEXP_lfhint_L1;
 const char *CGEXP_lfhint_L2;
@@ -371,12 +364,10 @@ BOOL CG_sl2 = FALSE;
 #ifdef TARG_X8664
 BOOL LRA_prefer_legacy_regs = FALSE;
 #endif
-#ifdef KEY
 BOOL LRA_prefer_lru_reg = TRUE;		// bug 14303
 BOOL LRA_prefer_lru_reg_Set = FALSE;
 INT32 LRA_inflate_reg_request = 0;
 INT32 LRA_inflate_reg_request_Set = FALSE;
-#endif
 
 BOOL GRA_use_old_conflict = FALSE;
 BOOL GRA_shrink_wrap      = TRUE;
@@ -400,19 +391,13 @@ INT32 GRA_non_home_hi = -1;
 INT32 GRA_non_home_lo = INT32_MAX;
 const char* GRA_call_split_freq_string = "0.1";
 const char* GRA_spill_count_factor_string = "0.5";
-#ifdef KEY
 BOOL GRA_exclude_callee_saved_regs = FALSE;
 BOOL GRA_eh_exclude_callee_saved_regs = FALSE;
 BOOL GRA_fp_exclude_callee_saved_regs = FALSE;
-#endif
 
-#ifdef KEY
 // By default OFF, unless specified by the user
 BOOL  HB_formation = FALSE;
 INT32 HB_if_conversion_cut_off = 10;
-#else
-BOOL  HB_formation = TRUE;
-#endif
 #if defined(TARG_SL) || defined(TARG_IA64)
 BOOL CG_Enable_REGION_formation = FALSE;
 BOOL CG_Enable_Regional_Global_Sched = FALSE;
@@ -472,7 +457,6 @@ INT32 CG_LOOP_recurrence_max_omega = 16;  // ia64
 #else
 INT32 CG_LOOP_recurrence_max_omega = 4;   // mips
 #endif
-#ifdef KEY
 BOOL LOCS_Best = FALSE;
 BOOL LOCS_Best_set = FALSE;
 BOOL LOCS_Fwd_Scheduling = FALSE;
@@ -505,7 +489,6 @@ BOOL flag_test_coverage = FALSE;
 OPTION_LIST *Arc_Profile_Region = NULL;
 INT32 CG_cse_regs = INT32_MAX - 1000;
 INT32 CG_sse_cse_regs = INT32_MAX - 1000;
-#endif
 #if defined(TARG_X8664) || defined(TARG_LOONGSON)
 INT32 CG_sse_load_execute = 0;
 INT32 CG_load_execute = 1;

@@ -77,9 +77,7 @@
 #include "targ_sim.h"   /* To generate stores of param registers in builtin_apply_args */
 #include "targ_const_private.h"
 #include "config_opt.h" /* For Force_IEEE_Comparisons */
-#ifdef KEY
 #include "ebo.h"
-#endif
 
 BOOL Reuse_Temp_TNs = FALSE;
 
@@ -1007,14 +1005,6 @@ void
 Expand_Bool_To_Int (TN *dest, TN *src, VARIANT v, TYPE_ID rtype, OPS *ops)
 {
   // something like I4BCVT
-#if 0
-  // could change to set.eq.or when that works.
-  // problem is that set returns -1 or 0, not 1 or 0.
-  TOP opc = TOP_set_cmpb_u32_u32_lit;
-  TN *zero_tn = Gen_Literal_TN_Of_Mtype(0, rtype);
-  Build_OP (opc, dest, Gen_Enum_TN(ECV_cmp_eq), Gen_Enum_TN(ECV_boolop_or), 
-	zero_tn, zero_tn, src, ops);
-#else
   // use selp to set dest based on predicate.
   TOP opc = (TOP) (TOP_selp_s8_lit + Mtype_Index(rtype));
   TN *true_tn = Gen_Literal_TN_Of_Mtype(1,rtype);
@@ -1027,7 +1017,6 @@ Expand_Bool_To_Int (TN *dest, TN *src, VARIANT v, TYPE_ID rtype, OPS *ops)
   }
   // mark that it is still boolean
   Set_TN_is_boolean(dest);
-#endif
 }
 
 void

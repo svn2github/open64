@@ -275,7 +275,6 @@ extern void st_2_st_spill(OPS *ops, BOOL force);
 extern void ld_2_ld_fill(OPS *ops, BOOL force);
 #endif
 
-#ifdef KEY
 extern void CGSPILL_Inc_Restore_Count (ST *spill_loc);
 
 // Keep track of the spills and restores for a spill symbol, so that EBO knows
@@ -311,6 +310,5 @@ typedef hash_map<ST_IDX,
 		 std::equal_to<ST_IDX> > SPILL_SYM_INFO_MAP;
 
 SPILL_SYM_INFO &CGSPILL_Get_Spill_Sym_Info (ST *spill_loc);
-#endif
 
 #endif /* cgspill_INCLUDED */
