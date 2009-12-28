@@ -1958,16 +1958,10 @@ CG_Generate_Code(
 
 void
 Trace_IR(
-#ifdef TARG_IA64
   INT phase,        /* Phase after which we're printing */
   const char *pname,    /* Print name for phase */
   BB *cur_bb,       /* BB to limit traces to */
   BOOL after)
-#else
-  INT phase,            /* Phase after which we're printing */
-  const char *pname,    /* Print name for phase */
-  BB *cur_bb)           /* BB to limit traces to */
-#endif
 {
   INT cur_bb_id = cur_bb ? BB_id(cur_bb) : 0;
   if (   Get_Trace(TKIND_IR, phase)
