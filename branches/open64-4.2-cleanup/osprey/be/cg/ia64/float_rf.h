@@ -57,11 +57,7 @@
 #define TARGETEB 1
 #endif
 
-#ifdef linux
-#endif
- #include <stdint.h>
-#endif
-#else
+#ifndef linux
 #include <inttypes.h>
 #endif
 
@@ -70,7 +66,6 @@
 #ifndef _STRUCTS_H_
 #define _STRUCTS_H_
 
-#endif
 #include <stdint.h>
 
 typedef	struct {
