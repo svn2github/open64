@@ -198,6 +198,9 @@ RID *Current_Rid;
 TN_MAP TN_To_PREG_Map;
 #ifdef TARG_X8664
 BB_MAP BBs_Map = NULL;
+#endif
+
+#ifdef TARG_X8664
 extern BOOL cg_load_execute_overridden;
 #endif
 
@@ -213,40 +216,6 @@ extern BOOL fat_self_recursive;
 #if defined(TARG_SL) || defined(TARG_MIPS)
 REGISTER_SET caller_saved_regs_used[ISA_REGISTER_CLASS_MAX+1];
 #endif
-
-static BOOL 
-Is_PU_Skipped(INT pu_num) { 
-  BOOL skip = false; 
-#if defined(TARG_SL)
-  /* Check whether the PU should be skipped for optimization
-   *      We need to consider the intersection parts
-   */
-
-  if( CG_skip_before > 0 ) {
-    if( CG_skip_after < INT32_MAX ) {
-      if( pu_num > CG_skip_after && pu_num < CG_skip_before )
-        skip = true;
-    } else if ( pu_num < CG_skip_before ){
-      skip = true;
-    }
-  } else {
-    if( CG_skip_after >= 0 ) 
-      if( pu_num > CG_skip_after )
-        skip = true;
-  }
-
-  if( CG_skip_equal >= 0 ) {
-    if( pu_num == CG_skip_equal )
-      skip = true;
-  }
-#else
-  skip = (pu_num < CG_skip_before ||
-		 pu_num > CG_skip_after ||
-	        pu_num == CG_skip_equal); 
-#endif // TARG_SL
-
-  return skip; 
-} 
 
 /* Stuff that needs to be done at the start of each PU in cg. */
 void
@@ -329,9 +298,37 @@ CG_PU_Initialize (WN *wn_pu)
 #endif
 
   Regcopies_Translated = FALSE;
+#if defined(TARG_SL)
+  /* HD - Check whether the PU should be skipped for optimization
+   *      We need to consider the intersection parts
+   */
+  bool skip = false;
 
-  CG_Configure_Opt_Level( Is_PU_Skipped(pu_num)  ? 0 : Opt_Level);
+  if( CG_skip_before > 0 ) {
+    if( CG_skip_after < INT32_MAX ) {
+      if( pu_num > CG_skip_after && pu_num < CG_skip_before )
+        skip = true;
+    } else if ( pu_num < CG_skip_before ){
+      skip = true;
+    }
+  } else {
+    if( CG_skip_after >= 0 ) 
+      if( pu_num > CG_skip_after )
+        skip = true;
+  }
 
+  if( CG_skip_equal >= 0 ) {
+    if( pu_num == CG_skip_equal )
+      skip = true;
+  }
+
+  CG_Configure_Opt_Level( skip ? 0 : Opt_Level);
+#else
+  CG_Configure_Opt_Level((   pu_num < CG_skip_before
+			  || pu_num > CG_skip_after
+			  || pu_num == CG_skip_equal)
+			 ? 0 : Opt_Level);
+#endif // TARG_SL
   pu_num++;
 
   if (PU_has_syscall_linkage(Get_Current_PU())) {
@@ -542,12 +539,8 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
 }
 
 static int trace_count = 0;
-
-/* Used for target TARG_SL */ 
-static void 
-Check_for_Dump_ALL(INT32 pass, BB *bb, char *s )
+static void Check_for_Dump_ALL(INT32 pass, BB *bb, char *s )
 {
-#ifdef TARG_SL
   trace_count++;
   char count_buf[20];
   int count = sprintf(count_buf, "%d: ", trace_count);
@@ -556,11 +549,12 @@ Check_for_Dump_ALL(INT32 pass, BB *bb, char *s )
   strcat(phase_buf, s);
   Set_Error_Phase(phase_buf);
   Check_for_Dump(pass, bb);
-#endif   
 }
 
 #if defined(TARG_SL)
-// assert minor region doesn't have any function call
+// check minor region is used to check if there is a call in minor region 
+// if a call exist, give an assertion
+
 void 
 Check_Minor_Region() 
 {
@@ -571,7 +565,10 @@ Check_Minor_Region()
   }
   return; 
 }
+#endif
 
+
+#if defined(TARG_SL)
 void 
 Collect_Simd_Register_Usage()
 {
@@ -644,8 +641,7 @@ Collect_Simd_Register_Usage()
 
 
 #if defined(TARG_IA64) || defined(TARG_LOONGSON)
-static void 
-Config_Ipfec_Flags() {
+static void Config_Ipfec_Flags() {
  
   /* copy ORC_... Flags to Ipfec_... Flags */
   Copy_Ipfec_Flags();
@@ -711,115 +707,6 @@ Config_Ipfec_Flags() {
 }
 #endif
 
-static BOOL
-Localize_TNs() { 
-#ifdef TARG_X8664
-  return (CG_localize_tns || CG_localize_x87_tns); 
-#else 
-  return CG_localize_tns; 
-#endif 
-} 
-
-#ifdef TARG_X8664 
-static void 
-Perform_Compute_To_Opt(BOOL region) { 
-    /* Perform compute-to opts. */
-    if ((Is_Target_Barcelona() || Is_Target_Orochi()) && CG_compute_to) {
-      for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){
-        EBO_Compute_To(bb);
-      }
-    }
-
-    // Generate merge dependency clear if avx128 is being used.
-    if (Is_Target_Orochi() && Is_Target_AVX() && PU_has_avx128) {
-      Generate_Entry_Merge_Clear(region);
-    }
-
-    /* Convert all the x87 regs to stack-like regs. */
-    extern void Convert_x87_Regs( MEM_POOL* );
-    Convert_x87_Regs( &MEM_local_region_pool );
-
-    /* When a function returns a structure under -m32, the value of SP will be
-       increased by 4 bytes.
-       For a function which has stdcall or fastcall attrubute, the SP also
-       will be adjusted by the same amount which popped at the function
-       return time. 
-    */
-    if( Is_Target_32bit() ){
-      for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){
-	if( BB_call(bb) )
-	  Adjust_SP_After_Call( bb );
-      }
-    }
-} 
-#endif 
-
-static WN*
-Handle_Region(
-   WN *rwn, 
-   struct ALIAS_MANAGER *alias_mgr)
-{ 
-#ifdef TARG_NVISA
-    FmtAssert(FALSE, ("regions not supported"));
-    return rwn;
-#else
-    /*--------------------------------------------------------------------*/
-    /* old region: rwn, rid_orig                      */
-    /* new region: rwn_new, rid_new (encloses old region)         */
-    /*--------------------------------------------------------------------*/
-    WN  *inner_body, *outer_body, *exitBlock, *comment;
-    WN  *rwn_new, *result_block_before, *result_block_after;
-    RID *rid_orig;
-    char str[100];
-
-    Is_True(REGION_consistency_check(rwn),("CG_Generate_Code"));
-    rid_orig = REGION_get_rid(rwn);
-
-    /* don't delete rwn, it contains the stub that helps find the MOPS
-       that the region has been lowered to */
-
-    outer_body = WN_CreateBlock();
-    /* put inner region inside outer containment block */
-    WN_INSERT_BlockFirst(outer_body, rwn);
-    /* we assembled the new exit block earlier in Build_CFG()       */
-    exitBlock = CGRIN_nested_exit(RID_cginfo(rid_orig));
-    WN_region_exits(rwn) = exitBlock; /* PPP ??? */
-
-    rwn_new = outer_body;
-
-    /* put a note in the inner body that the code isn't there anymore */
-    inner_body = WN_CreateBlock();
-    WN_region_body(rwn) = inner_body; /* overwrite old body, now in MOPs */
-    sprintf(str,"RGN %d has been lowered to MOPs, level=%s",
-	    RID_id(rid_orig), RID_level_str(rid_orig));
-    comment = WN_CreateComment(str);
-    WN_INSERT_BlockFirst(inner_body, comment);
-
-    /* Need to split result block for glue code into two parts: before and
-       after the region body. The reason we can't just insert the glue code
-       directly before or after the region directly is that we need to keep
-       it separate for updating the alias info.
-       If CG_LOOP has made some WHIRL glue, it is inserted in result_block. */
-    result_block_before = WN_CreateBlock();
-    result_block_after = WN_CreateBlock();
-
-    /* fill-in blocks with glue code */
-    Set_Error_Phase("Region Finalize");
-    Start_Timer(T_Region_Finalize_CU);
-    CG_Region_Finalize( result_block_before, result_block_after,
-                       rwn, alias_mgr, TRUE /* generate_glue_code */ );
-    Stop_Timer(T_Region_Finalize_CU);
-
-    /* generate alias information for glue code */
-    REGION_update_alias_info(result_block_before, alias_mgr);
-    REGION_update_alias_info(result_block_after, alias_mgr);
-
-    /* insert glue code before and after */
-    WN_INSERT_BlockFirst( rwn_new, result_block_before );
-    WN_INSERT_BlockLast( rwn_new, result_block_after );
-    return rwn_new; 
-}
-
 /* Can be called two ways:
    1) on a region (pu_dst is NULL, returns code)
    2) on a PU (pu_dst is no NULL, returns NULL)
@@ -866,6 +753,14 @@ CG_Generate_Code(
   CG_PU_Has_Feedback = ((Cur_PU_Feedback != NULL) && CG_enable_feedback);
   BOOL frequency_verify = Get_Trace( TP_FEEDBACK, TP_CG_FEEDBACK );
 
+#ifdef TARG_IA64  
+  if (FALSE) {
+     ST *func_st = Get_Current_PU_ST();
+     rse_budget = PU_gp_group(Pu_Table [ST_pu (func_st)]);
+     if (rse_budget == 0) DevWarn("FAINT THE RSE BUDGET IS ZERO!");
+  }
+#endif
+        
   CG_Region_Initialize ( rwn, alias_mgr );
 
   Set_Error_Phase ( "Code_Expansion" );
@@ -909,7 +804,7 @@ CG_Generate_Code(
   }
 #endif
 
-#if !defined(TARG_SL) && !defined(TARG_LOONGSON)
+#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_LOONGSON)
   extern BOOL profile_arcs;
   if (flag_test_coverage || profile_arcs)
 //    CG_Compute_Checksum();
@@ -919,7 +814,7 @@ CG_Generate_Code(
     CG_Instrument_Arcs();
 #endif
 
-  // split large bb's to minimize compile time and register pressure
+  // split large bb's to minimize compile speed and register pressure
   Split_BBs();
 
   if ( ! CG_localize_tns ) {
@@ -1047,7 +942,7 @@ CG_Generate_Code(
     Is_True((current_PU_handle<=Max_Instr_Pu_Id)&&(current_PU_handle>=Min_Instr_Pu_Id),("The number of PU exceed the boundery !"));
 //    CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
   }
-#endif // _value_profile_before_region_formation
+#endif
   if (CG_localize_tns && !value_profile_need_gra ) {
 #elif TARG_LOONGSON
   if (IPFEC_Enable_Edge_Profile && (CG_opt_level>1)) {
@@ -1062,8 +957,14 @@ CG_Generate_Code(
     CG_Edge_Profile_Annotation ( RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION );
     Check_for_Dump ( TP_A_PROF, NULL );
   }
-#endif // TARG_IA64  
-  if (Localize_TNs()) {
+  if (CG_localize_tns) {
+#else // TARG_IA64
+  if (CG_localize_tns
+#ifdef TARG_X8664
+      || CG_localize_x87_tns
+#endif
+      ) {
+#endif // TARG_IA64
     /* turn all global TNs into local TNs */
     Set_Error_Phase ( "Localize" );
     Start_Timer ( T_Localize_CU );
@@ -1112,7 +1013,9 @@ CG_Generate_Code(
 		   "CFLOW (first pass)");
     if (frequency_verify && CG_PU_Has_Feedback)
       FREQ_Verify("CFLOW (first pass)");
+#if defined(TARG_SL)
     Check_for_Dump_ALL ( TP_CGEXP, NULL,"CFLOW 1" );
+#endif
   }
 
 #ifdef TARG_IA64
@@ -1193,7 +1096,7 @@ CG_Generate_Code(
     // IA-64 at the moment. 
     //
     // At Key, we form Hyperblocks although MIPS is not predicated architecture
-    {
+    if (1) {
 #ifdef TARG_IA64
       if (IPFEC_Enable_If_Conversion) {
         Set_Error_Phase( "Ipfec if conversion"); 
@@ -1224,7 +1127,7 @@ CG_Generate_Code(
 #else
       // Initialize the predicate query system in the hyperblock formation phase
       HB_Form_Hyperblocks(region ? REGION_get_rid(rwn) : NULL, NULL);
-#if !defined(TARG_LOONGSON)
+#if defined(KEY) && !defined(TARG_LOONGSON)
       // We do not have a slot in the BB structure to store predicate TNs.
       // Instead, we remember the last seen block and the associated 
       // predicate TNs. So, we need to reinitialize the TNs and the basic block
@@ -1259,7 +1162,11 @@ CG_Generate_Code(
 	 Earlier phase, like cflow, does not maintain GTN info if -CG:localize is on,
 	 we have to call GRA_LIVE_Init again to rebuild the consistency.
        */
-      if (Localize_TNs()){
+      if (CG_localize_tns
+#ifdef TARG_X8664
+	  || CG_localize_x87_tns
+#endif
+         ){
 	Set_Error_Phase( "Global Live Range Analysis" );
 	GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
       }
@@ -1278,8 +1185,7 @@ CG_Generate_Code(
         }
         Verify_Region_Tree(region_tree, REGION_First_BB);
 #endif
-      } 
-      else {
+      } else {
         Perform_Loop_Optimizations();
       }
 #else
@@ -1298,7 +1204,11 @@ CG_Generate_Code(
 	 Loop optimization will introduce new GTNs. If -CG:localize is on,
 	 we should localize all the new created GTNs.
        */
-      if (Localize_TNs()) {
+      if (CG_localize_tns
+#ifdef TARG_X8664
+	  || CG_localize_x87_tns
+#endif
+         ){
 	Set_Error_Phase ( "Localize (after CGLOOP)" );
 	Start_Timer ( T_Localize_CU );
 	Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
@@ -1309,17 +1219,17 @@ CG_Generate_Code(
 
     /* Optimize control flow (second pass) */
     if (CFLOW_opt_after_cgprep) {
-
-      CFLOW_Optimize((CFLOW_ALL_OPTS
-#ifdef TARG_SL
-                                   | CFLOW_IN_CGPREP)
-                                   & ~(CFLOW_COLD_REGION)
-                                   & ~(CFLOW_FREQ_ORDER)
-#endif                        
-                                  ), "CFLOW (second pass)");
-
+#if defined (TARG_SL)
+    CFLOW_Optimize(  (CFLOW_ALL_OPTS|CFLOW_IN_CGPREP)
+                   & ~(CFLOW_COLD_REGION)
+                   & ~(CFLOW_FREQ_ORDER),
+		   "CFLOW (second pass)");
+#else
+      CFLOW_Optimize(CFLOW_ALL_OPTS, "CFLOW (second pass)");
+#endif
+#if defined(TARG_SL)
       Check_for_Dump_ALL ( TP_CGEXP, NULL,"CFLOW 1" );
-
+#endif
       if (frequency_verify)
         FREQ_Verify("CFLOW (second pass)");
 #ifdef TARG_IA64
@@ -1497,7 +1407,7 @@ CG_Generate_Code(
         }
   }
   DevWarn("Now we are testing instrumentation after RegionFormation!");
-#endif // _value_profile_before_region_formation
+#endif 
   current_PU_handle++;
 #endif // TARG_IA64
   
@@ -1508,7 +1418,7 @@ CG_Generate_Code(
   // (Also, earlier phase, like cflow, does not maintain GTN info if
   // -CG:localize is on.  Rebuild the consistency for GCM.)
 
-#ifdef TARG_SL
+#ifdef TARG_SL //fork_joint
   //only opt level greater than 1, we recaluculate liveness informatino
   //otherwise it will reset GTN flag in glue code when compiling base on
   // region. This will cause assertion. 
@@ -1581,7 +1491,9 @@ CG_Generate_Code(
       GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
       Stop_Timer ( T_GLRA_CU );
       Check_for_Dump ( TP_FIND_GLOB, NULL );
+#if defined(TARG_SL)
       Check_for_Dump_ALL ( TP_CGEXP, NULL, "GLRA" );
+#endif
     }
 
     GRA_Allocate_Global_Registers( region );
@@ -1589,7 +1501,9 @@ CG_Generate_Code(
 
   LRA_Allocate_Registers (!region);
 
+#ifdef TARG_X8664
   GRU_Fuse_Global_Spills (!region);
+#endif
 
 #if defined(TARG_SL)
   if (Run_ipisr)
@@ -1610,7 +1524,7 @@ CG_Generate_Code(
     GRA_Finalize_Grants();
   }
 
-#if !defined(TARG_SL)
+#if defined(KEY) && !defined(TARG_SL)
   /* Optimize control flow (third pass).  Callapse empty GOTO BBs which GRA
      didn't find useful in placing spill code.*/
   if (CFLOW_opt_after_cgprep &&
@@ -1633,8 +1547,9 @@ CG_Generate_Code(
     Adjust_Entry_Exit_Code ( Get_Current_PU_ST() );
   }
 
+#if defined(TARG_SL)
   Check_for_Dump_ALL ( TP_CGEXP, NULL, "Adj Ent/exit" );
-
+#endif
 #ifdef TARG_IA64
   if (CG_opt_level > 0 && Enable_EBO_Post_Proc_Rgn) {
 #else
@@ -1721,7 +1636,8 @@ CG_Generate_Code(
     Check_Br16();	
   }
 
-#elif  TARG_LOONGSON
+#else 
+#ifdef TARG_LOONGSON
   // Mainly concerns about ld from GRA
   if (!CG_localize_tns){
      if (IPFEC_Enable_RA_OPT!=0){
@@ -1737,12 +1653,7 @@ CG_Generate_Code(
      }
   }
   Finalize_Optimized_LRA_And_EBO();
-  IGLS_Schedule_Region (FALSE /* after register allocation */);
-  // use cflow to handle branch fusing cmp/jcc for Orochi and greater.
-  if (Is_Target_Orochi()) {
-    CFLOW_Optimize(CFLOW_BR_FUSE, "CFLOW (fifth pass)");
-  }
-#else 
+#endif
   IGLS_Schedule_Region (FALSE /* after register allocation */);
   // use cflow to handle branch fusing cmp/jcc for Orochi and greater.
   if (Is_Target_Orochi()) {
@@ -1764,10 +1675,39 @@ CG_Generate_Code(
 #endif
 
 #ifdef TARG_X8664
-  Perform_Compute_To_Opt(region); 
+  {
+    /* Perform compute-to opts. */
+    if ((Is_Target_Barcelona() || Is_Target_Orochi()) && CG_compute_to) {
+      for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){
+        EBO_Compute_To(bb);
+      }
+    }
+
+    // Generate merge dependency clear if avx128 is being used.
+    if (Is_Target_Orochi() && Is_Target_AVX() && PU_has_avx128) {
+      Generate_Entry_Merge_Clear(region);
+    }
+
+    /* Convert all the x87 regs to stack-like regs. */
+    extern void Convert_x87_Regs( MEM_POOL* );
+    Convert_x87_Regs( &MEM_local_region_pool );
+
+    /* When a function returns a structure under -m32, the value of SP will be
+       increased by 4 bytes.
+       For a function which has stdcall or fastcall attrubute, the SP also
+       will be adjusted by the same amount which popped at the function
+       return time. 
+    */
+    if( Is_Target_32bit() ){
+      for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){
+	if( BB_call(bb) )
+	  Adjust_SP_After_Call( bb );
+      }
+    }
+  }
 #endif
 
-#if (defined(TARG_MIPS) && !defined(TARG_SL))
+#if defined(KEY) && (defined(TARG_MIPS) && !defined(TARG_SL))
   CFLOW_Fixup_Long_Branches();
 #endif
 
@@ -1855,14 +1795,69 @@ CG_Generate_Code(
 #endif // TARG_NVISA
   
   if (region) {
-     WN* rwn_new = Handle_Region(rwn, alias_mgr); 
+#ifdef TARG_NVISA
+    FmtAssert(FALSE, ("regions not supported"));
+    return rwn;
+#else
+    /*--------------------------------------------------------------------*/
+    /* old region: rwn, rid_orig                      */
+    /* new region: rwn_new, rid_new (encloses old region)         */
+    /*--------------------------------------------------------------------*/
+    WN  *inner_body, *outer_body, *exitBlock, *comment;
+    WN  *rwn_new, *result_block_before, *result_block_after;
+    RID *rid_orig;
+    char str[100];
 
-     GRA_LIVE_Finish_REGION();
+    Is_True(REGION_consistency_check(rwn),("CG_Generate_Code"));
+    rid_orig = REGION_get_rid(rwn);
 
-     PQSCG_term();
+    /* don't delete rwn, it contains the stub that helps find the MOPS
+       that the region has been lowered to */
+
+    outer_body = WN_CreateBlock();
+    /* put inner region inside outer containment block */
+    WN_INSERT_BlockFirst(outer_body, rwn);
+    /* we assembled the new exit block earlier in Build_CFG()       */
+    exitBlock = CGRIN_nested_exit(RID_cginfo(rid_orig));
+    WN_region_exits(rwn) = exitBlock; /* PPP ??? */
+
+    rwn_new = outer_body;
+
+    /* put a note in the inner body that the code isn't there anymore */
+    inner_body = WN_CreateBlock();
+    WN_region_body(rwn) = inner_body; /* overwrite old body, now in MOPs */
+    sprintf(str,"RGN %d has been lowered to MOPs, level=%s",
+	    RID_id(rid_orig), RID_level_str(rid_orig));
+    comment = WN_CreateComment(str);
+    WN_INSERT_BlockFirst(inner_body, comment);
+
+    /* Need to split result block for glue code into two parts: before and
+       after the region body. The reason we can't just insert the glue code
+       directly before or after the region directly is that we need to keep
+       it separate for updating the alias info.
+       If CG_LOOP has made some WHIRL glue, it is inserted in result_block. */
+    result_block_before = WN_CreateBlock();
+    result_block_after = WN_CreateBlock();
+
+    /* fill-in blocks with glue code */
+    Set_Error_Phase("Region Finalize");
+    Start_Timer(T_Region_Finalize_CU);
+    CG_Region_Finalize( result_block_before, result_block_after,
+                       rwn, alias_mgr, TRUE /* generate_glue_code */ );
+    Stop_Timer(T_Region_Finalize_CU);
+
+    /* generate alias information for glue code */
+    REGION_update_alias_info(result_block_before, alias_mgr);
+    REGION_update_alias_info(result_block_after, alias_mgr);
+
+    /* insert glue code before and after */
+    WN_INSERT_BlockFirst( rwn_new, result_block_before );
+    WN_INSERT_BlockLast( rwn_new, result_block_after );
+
+    GRA_LIVE_Finish_REGION();
+    PQSCG_term();
 
     Stop_Timer ( T_CodeGen_CU );
-
     Set_Error_Phase ( "Codegen Driver" );
 
 #ifdef TARG_IA64
@@ -1872,8 +1867,9 @@ CG_Generate_Code(
     return rwn_new;
 #endif // TARG_NVISA
   } /* if (region */
-  else { /* PU */
+
 #if defined(TARG_IA64)
+  else { /* PU */
     // dump EH entry info
     if (Get_Trace (TP_EH, 0x0001)) {
       Print_PU_EH_Entry(Get_Current_PU(), WN_st(rwn), TFile);
@@ -1891,10 +1887,13 @@ CG_Generate_Code(
     if (Get_Trace (TP_EH, 0x0008)) {
       EH_Dump_LSDA (TFile);
     }
-#elif !defined(TARG_NVISA)
+#else
+  else { /* PU */
+#if !defined(TARG_NVISA)
     if (PU_has_exc_scopes(Get_Current_PU())) {
       EH_Write_Range_Table(rwn);
     }
+#endif
 #endif //TARG_IA64 This is not a good merge compared to the code in trunk
 
 #if defined(TARG_SL)
@@ -1953,15 +1952,22 @@ CG_Generate_Code(
   }
 }
 
+
 /* ================================================================= */
 /* routines for dumping/tracing the program */
 
 void
 Trace_IR(
+#ifdef TARG_IA64
   INT phase,        /* Phase after which we're printing */
   const char *pname,    /* Print name for phase */
   BB *cur_bb,       /* BB to limit traces to */
-  BOOL after)       /* for TARG_IA64 */
+  BOOL after)
+#else
+  INT phase,            /* Phase after which we're printing */
+  const char *pname,    /* Print name for phase */
+  BB *cur_bb)           /* BB to limit traces to */
+#endif
 {
   INT cur_bb_id = cur_bb ? BB_id(cur_bb) : 0;
   if (   Get_Trace(TKIND_IR, phase)
