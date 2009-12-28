@@ -7900,7 +7900,7 @@ CFLOW_Delete_Empty_BB(void)
 }
 #endif
 
-#if defined(KEY) && (defined(TARG_MIPS) && !defined(TARG_SL))
+#if (defined(TARG_MIPS) && !defined(TARG_SL))
 
 
 // Build a long jump using the jr instruction.

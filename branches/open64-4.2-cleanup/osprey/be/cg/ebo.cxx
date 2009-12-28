@@ -3818,7 +3818,6 @@ EBO_before_unrolling(BB_REGION *bbr )
 
   if ((EBO_Opt_Level < 4) && ((EBO_Opt_Level > 0) || (EBO_Opt_Level != -4))) return;
 
-#if defined(TARG_IA64) || defined(KEY)
   for (i = 0; i < bbr->entries.size(); i++) {
     clear_bb_flag (bbr->entries[i]);
   }
@@ -3826,7 +3825,6 @@ EBO_before_unrolling(BB_REGION *bbr )
     Set_BB_visited (bbr->exits[i]);
   }
   EBO_Process (bbr->entries[0]);
-#endif
 }
 
   
@@ -3854,7 +3852,6 @@ EBO_after_unrolling(BB_REGION *bbr, LOOP_DESCR *loop, int loop_iter_size)
 
   if ((EBO_Opt_Level < 3) && ((EBO_Opt_Level > 0) || (EBO_Opt_Level != -3))) return;
 
-#if defined(TARG_IA64) || defined(KEY)
   for (i = 0; i < bbr->entries.size(); i++) {
     clear_bb_flag (bbr->entries[i]);
   }
@@ -3862,7 +3859,6 @@ EBO_after_unrolling(BB_REGION *bbr, LOOP_DESCR *loop, int loop_iter_size)
     Set_BB_visited (bbr->exits[i]);
   }
   EBO_Process (bbr->entries[0]);
-#endif
 
   EBO_loop = NULL;
 }

@@ -1115,19 +1115,11 @@ extern void Link_Pred_Succ_with_Prob(BB *pred, BB *succ, float prob,
 #endif
 extern BBLIST *BBlist_Add_BB(BBLIST **lst, BB *bb);
 extern void BBlist_Delete_BB(BBLIST **lst, BB *bb);
-#if defined(KEY)
 extern BBLIST *BBlist_Add_BB_with_Prob(BBLIST **lst, BB *bb, float prob,
 				       BOOL via_feedback = FALSE,
 				       BOOL set_prob     = FALSE,
 				       BOOL via_hint = FALSE,
 				       BOOL incr_prob = TRUE);
-
-#else
-extern BBLIST *BBlist_Add_BB_with_Prob(BBLIST **lst, BB *bb, float prob,
-				       BOOL via_feedback = FALSE,
-				       BOOL set_prob     = FALSE,
-				       BOOL incr_prob = TRUE);
-#endif
 
 /* Unlink the pred and succ basic blocks. */
 extern void Unlink_Pred_Succ (BB *pred, BB *succ);

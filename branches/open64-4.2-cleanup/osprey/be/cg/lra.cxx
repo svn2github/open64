@@ -1812,13 +1812,11 @@ Usable_Registers (TN* tn, LIVE_RANGE* lr)
     }
 
     for (INT resnum = 0; resnum < OP_results(op); resnum++) {
-#if defined(KEY)
       if (asm_info) {
         if (TN_is_register(OP_result(op, resnum)) && 
             (TN_register_class(OP_result(op, resnum)) != cl) )
 	  continue;
       } else
-#endif
       if (OP_result_reg_class(op, resnum) != cl) {
         continue;
       }
@@ -1853,13 +1851,11 @@ Usable_Registers (TN* tn, LIVE_RANGE* lr)
     }
           
     for (INT opndnum = 0; opndnum < OP_opnds(op); opndnum++) {
-#if defined(KEY) 
       if (asm_info) {
         if (TN_is_register(OP_opnd(op, opndnum)) &&
             (TN_register_class(OP_opnd(op, opndnum)) != cl) )
 	  continue;
       } else
-#endif
       if (OP_opnd_reg_class(op, opndnum) != cl) {
         continue;
       }

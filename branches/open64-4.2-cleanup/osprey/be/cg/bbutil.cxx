@@ -2539,11 +2539,6 @@ void Change_Succ(BB *pred, BB *old_succ, BB *new_succ)
   BBLIST_item(succs) = new_succ;
   if (FREQ_Frequencies_Computed()) {
     adjust = BB_freq(pred) * BBLIST_prob(succs);
-#if !defined(TARG_SL) && !defined(KEY)   // embedded systems uses int for feedback
-    if ((BB_freq(pred) == 0) && (BBLIST_prob(succs) >= 0) && 
-	!(adjust == adjust)) /* the result of NaN compare will always be false */
-	adjust = 0;
-#endif
   } else if (BB_freq_fb_based(pred)) {
     /* Guess that P(succ) is same for all succs */
     adjust = BB_freq(pred) / BBlist_Len(BB_succs(pred));

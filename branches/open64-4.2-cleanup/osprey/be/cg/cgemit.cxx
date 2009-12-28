@@ -9580,7 +9580,7 @@ EMT_End_File( void )
 						   !Use_32_Bit_Pointers);
 #endif
     }
-#if defined(KEY) && !defined(TARG_NVISA) 
+#if !defined(TARG_NVISA) 
     // mark stack as non-executable
 #if defined(BUILD_OS_DARWIN)
     fprintf ( Asm_File, "\t%s\t.note.GNU-stack,\"\"\n", AS_SECTION);

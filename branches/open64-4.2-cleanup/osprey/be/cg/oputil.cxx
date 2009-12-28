@@ -261,7 +261,7 @@ Dup_OP ( OP *op )
   if ( TOP_is_vector_high_loadstore ( OP_code ( new_op ) ) )
     Set_OP_cond_def_kind(new_op, OP_ALWAYS_COND_DEF);
 #endif
-#if defined(KEY) && !defined(TARG_NVISA)
+#if !defined(TARG_NVISA)
   // If OP is a restore, increment the spill location's restore count.
   if (OP_load(op)) {
     ST *spill_loc = CGSPILL_OP_Spill_Location(op);

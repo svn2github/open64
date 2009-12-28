@@ -191,10 +191,8 @@ BBlist_Add_BB_with_Prob (BBLIST **lst, BB *bb, float prob,
       Set_BBLIST_prob_fb_based(p);
     } if (set_prob || FREQ_Frequencies_Computed()) {
       BBLIST_prob(p) = prob;
-#if defined(KEY)
       if(via_hint)
         Set_BBLIST_prob_hint_based(p);
-#endif
       Reset_BBLIST_prob_fb_based(p);
     }
     *lst = p;
@@ -223,15 +221,11 @@ BBlist_Add_BB_with_Prob (BBLIST **lst, BB *bb, float prob,
     BBLIST_prob(p) = prob;
     Set_BBLIST_prob_fb_based(p);
   } if (
-#if defined(KEY) 
       set_prob ||
-#endif
       FREQ_Frequencies_Computed()) {
     BBLIST_prob(p) = prob;
-#if defined(KEY)
       if(via_hint)
         Set_BBLIST_prob_hint_based(p);
-#endif
     Reset_BBLIST_prob_fb_based(p);
   }
   return p;

@@ -710,7 +710,7 @@ EH_Prune_Range_List(void)
     last);
   std::for_each  (range_list.begin(), range_list.end(), ADJUST_PARENT());
 
-#if defined(KEY) && defined(Is_True_On)
+#if defined(Is_True_On)
   for (INT i=0; i<range_list.size(); i++)
     Is_True (&range_list[i] != range_list[i].parent,
        ("EH_Prune_Range_List end: kid == parent"));
