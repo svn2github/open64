@@ -3339,13 +3339,8 @@ SCHEDULER::Schedule_BB_Driver()
  * 
  * =======================================================================
  */
-#if defined (TARG_SL2)
-void
-SCHEDULER::Schedule_BB (BOOL reschd) {
-#else 
 void
 SCHEDULER::Schedule_BB (void) {
-#endif 
 
   _heur_mgr.Adjust_Heur_Stuff_When_BB_Changed (_target_bb,_src_bb_mgr);
 

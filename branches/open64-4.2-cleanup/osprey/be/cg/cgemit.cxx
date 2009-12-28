@@ -213,7 +213,6 @@ enum { IHOT=FALSE, ICOLD=TRUE };
 extern const char __Release_ID[];
 extern BOOL profile_arcs;
 extern BOOL PU_has_trampoline;  // defined in wn_lower.cxx
-
 /* ====================================================================
  *
  * Global data
@@ -880,7 +879,7 @@ inline INT32 PC_Incr_N(INT32 pc, UINT32 incr)
 #endif
   return pc;
 }
-
+
 void
 EMT_Write_Qualified_Name (FILE *f, ST *st)
 {
@@ -905,26 +904,26 @@ EMT_Write_Qualified_Name (FILE *f, ST *st)
           fprintf (f, "%sNULL", Label_Name_Separator);
   
   }
-  else if (ST_name(st) && *(ST_name(st)) != '\0') {
+  else 
+#endif     
+    if (ST_name(st) && *(ST_name(st)) != '\0') {
 
+#ifdef TARG_LOONGSON
   /* If a st is an Fortran equivalence, its base_st will be used instead. */
   if (ST_is_equivalenced(st) && ST_class(st) == CLASS_VAR) {
 	st = ST_base(st); 
   } 
-  	
-#else  	
-  if (ST_name(st) && *(ST_name(st)) != '\0') {
-#endif
+#endif   	
 #if defined(BUILD_OS_DARWIN)
 	fputs(underscorify(ST_name(st)), f);
 #else /* defined(BUILD_OS_DARWIN) */
 	fputs(ST_name(st), f);
 #endif /* defined(BUILD_OS_DARWIN) */
-#if defined(KEY) && !defined(TARG_NVISA) && !defined(TARG_LOONGSON)
+#if !defined(TARG_NVISA) && !defined(TARG_LOONGSON)
 // This name is already unique, don't change it.
 	if (!strncmp (ST_name(st), ".range_table.", strlen(".range_table.")))
 		return;
-#endif // KEY
+#endif
 	if ( ST_is_export_local(st) && 
              ST_class(st) == CLASS_VAR &&
              !ST_is_thread_local(st) ) {
@@ -1130,17 +1129,15 @@ Print_Common (FILE *pfile, ST *st)
  * ====================================================================
  */
 
-#if defined(BUILD_OS_DARWIN)
 /*
  * sym			symbol to add
  * which		(optional) if present and not DO_UNDERSCORE, then this
  *			symbol must be accessed indirectly to permit dynamic
  *			linking on Darwin
+ * Note: 
+ *    the second parameter "which" only used for BUILD_OS_DARWIN
  */
 mINT32 EMT_Put_Elf_Symbol (ST *sym, darwin_indirect_t which)
-#else /* defined(BUILD_OS_DARWIN) */
-mINT32 EMT_Put_Elf_Symbol (ST *sym)
-#endif /* defined(BUILD_OS_DARWIN) */
 {
   unsigned char symbind;
   unsigned char symother;
@@ -1390,7 +1387,6 @@ EMT_Change_Symbol_To_Weak (ST *sym)
   Em_Set_Symbol_Binding (symindex, STB_WEAK);
 }
 
-
 // if TN is symbol TN, add info about it to comment buffer
 static void
 put_TN_comment (TN *t, BOOL add_name, vstring *comment)
@@ -1432,11 +1428,7 @@ put_TN_comment (TN *t, BOOL add_name, vstring *comment)
  * ====================================================================
  */
 
-#if defined(TARG_SL)
 BOOL
-#else
-static BOOL
-#endif
 r_apply_l_const (
   OP *op,		/* OP with constant operand */
   INT opidx,		/* OP index of constant TN of some sort */
@@ -1664,7 +1656,7 @@ r_apply_l_const (
   }
   return add_name;
 }
-
+
 /* ====================================================================
  * print_prefetch_info(char *comment, WN *wn)
  *   add prefetch info comments to the assembler listing.
@@ -1834,18 +1826,18 @@ static void r_assemble_list (
       ANNOTATION *annot = ANNOT_Get(BB_annotations(bb), ANNOT_ROTATING_KERNEL);
       ROTATING_KERNEL_INFO *info = ANNOT_rotating_kernel(annot);
       INT ii = info->ii;
-#ifdef TARG_IA64
       fprintf (Asm_File, "%d*II+%d", OP_scycle(op) / ii, OP_scycle(op) % ii);
     } else if (BB_scheduled(bb)) {
+#ifdef TARG_IA64
     if(!OP_noop(op))
       fprintf (Asm_File, "%d", OP_scycle(op));
       fprintf (Asm_File, ":%d", Srcpos_To_Line(OP_srcpos(op)));
-    }
-  fprintf (Asm_File, "]");
-#else
-    fprintf (Asm_File, " [%d*II+%d]", OP_scycle(op) / ii, OP_scycle(op) % ii);
-    } else if (BB_scheduled(bb))
+#else 
         fprintf (Asm_File, " [%d]", OP_scycle(op));
+#endif 
+    }
+#ifdef TARG_IA64     
+  fprintf (Asm_File, "]");
 #endif
   if (vstr_len(comment) == 0) {
     WN *wn = Get_WN_From_Memory_OP (op);
@@ -2147,6 +2139,21 @@ static void Verify_Instruction(OP *op)
   }
 
 }
+
+static BOOL
+LC_Value_In_Class (INT64 val) { 
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
+  return ISA_LC_Value_In_Class(val, LC_i16); 
+#elif defined(TARG_X8664)
+  return ISA_LC_Value_In_Class(val, LC_simm32) ; 
+#elif defined(TARG_SL) || defined(TARG_MIPS)
+  return ISA_LC_Value_In_Class(val, LC_simm16); 
+#elif defined(TARG_NVISA)
+  return TRUE; 
+#endif
+
+} 
+
 
 /* ====================================================================
  *
@@ -2236,15 +2243,7 @@ static INT r_assemble_binary ( OP *op, BB *bb, ISA_PACK_INST *pinst )
 	  if (ST_class(st) == CLASS_CONST || ST_is_export_local(st)) {
       	    val -= GP_DISP;
 	  }
-#if defined(TARG_IA64) || defined(TARG_LOONGSON)
-	  if (!ISA_LC_Value_In_Class(val, LC_i16)) {
-#elif defined(TARG_X8664)
-	  if (!ISA_LC_Value_In_Class(val, LC_simm32)) {
-#elif defined(TARG_SL) || defined(TARG_MIPS)
-	  if (!ISA_LC_Value_In_Class(val, LC_simm16)) {
-#elif defined(TARG_NVISA)
-	  if (FALSE) {
-#endif
+	  if (!LC_Value_In_Class(val)) {
 		/* 
 		 * Put in addend instead of in instruction,
 		 * and put gprel in rela section.
@@ -2259,17 +2258,9 @@ static INT r_assemble_binary ( OP *op, BB *bb, ISA_PACK_INST *pinst )
 	      	val = 0;
 	  }
 	  else {
-#if defined(TARG_IA64) || defined(TARG_LOONGSON)
-	    FmtAssert (ISA_LC_Value_In_Class(val, LC_i16),
+#ifndef TARG_NVISA
+	    FmtAssert (LC_Value_In_Class(val),
 		("immediate value %lld too large for GPREL relocation", val));
-#elif defined(TARG_X8664)
-	    FmtAssert (ISA_LC_Value_In_Class(val, LC_simm32),
-		("immediate value %lld too large for GPREL relocation", val));
-#elif defined(TARG_SL) || defined(TARG_MIPS)
-	    FmtAssert (ISA_LC_Value_In_Class(val, LC_simm16),
-		("immediate value %lld too large for GPREL relocation", val));
-#elif defined(TARG_NVISA)
-	    //Do nothing
 #endif
 	    Em_Add_New_Rel (EMT_Put_Elf_Symbol (st), R_MIPS_GPREL, PC,
 			  PU_section);
@@ -2549,7 +2540,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 
   if (OP_prefetch(op)) Use_Prefetch = TRUE;
 
-#if defined(KEY) && !defined(TARG_LOONGSON)
+#if !defined(TARG_LOONGSON)
   static INT32 label_adjustsp_pu = -1;
   static INT32 pu_entry_count = -1;
   BOOL adjustsp_instr = FALSE;
@@ -2674,7 +2665,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
         BB_prev(bb) && BB_First_Pred(bb) != BB_prev(bb))))
     Cg_Dwarf_BB_First_Op = TRUE; 
     // Does this make Cg_Dwarf_First_Op_After_Preamble_End redundant?
-#endif // KEY
+#endif
   Cg_Dwarf_Add_Line_Entry (PC, OP_srcpos(op));
   if (Assembly) {
 #ifdef TARG_SL
@@ -3068,14 +3059,11 @@ static const char* int_reg_names[5][16] = {
     "%r8",  "%r9",  "%r10", "%r11", "%r12", "%r13", "%r14", "%r15" },
 };
 #endif  
+
 static char* 
-#ifdef TARG_IA64
-Modify_Asm_String (char* asm_string, UINT32 position, bool memory, TN* tn, BB *bb)
-#else
 Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
-		     TN* offset_tn,  /* for memory opnd */
+		     TN* offset_tn,  /* for memory opnd, TARG_IA64 doesn't use this parameter*/
 		     TN* tn, BB *bb)
-#endif
 {
   char* name = NULL;
 #ifdef TARG_X8664
@@ -3675,11 +3663,7 @@ int Compute_Asm_Num (const char *asm_string, BOOL emit_phase=TRUE) {
 #define LDW_INSTR_STRING "ld"
 #endif
 
-#ifdef TARG_SL
 char*
-#else
-static char*
-#endif
 Generate_Asm_String (OP* asm_op, BB *bb)
 {
   UINT i;
@@ -3784,7 +3768,7 @@ Generate_Asm_String (OP* asm_op, BB *bb)
 #endif
     return asm_string;
   }
-#endif
+#endif //TARG_IA64
   for (i = 0; i < OP_results(asm_op); i++) {
     asm_string = Modify_Asm_String(asm_string, 
                                    ASM_OP_result_position(asm_info)[i], 
@@ -3912,19 +3896,18 @@ Assemble_Simulated_OP(OP *op, BB *bb)
 }
 
 /* Assemble the OPs in a BB a bundle at a time.
+  * Note: 
+  *   bb_cycle_count used for TARG_IA64, 
+  *   for other targets, return 0. 
  */
-#ifdef TARG_IA64
 static INT
-#else
-static void
-#endif
 Assemble_Bundles(BB *bb)
 {
   OP *op;
 
   FmtAssert(ISA_MAX_SLOTS > 1,("Assemble_Bundles shouldn't have been called"));
-#ifdef TARG_IA64
   INT bb_cycle_count = 0; //used to count the cycle for the bb cbq
+#ifdef TARG_IA64
   extern INT EMIT_count_cycles;
   extern INT Track_Split(INT template_index, UINT stop_mask, BOOL &extra);
   OP *last = NULL;
@@ -4120,25 +4103,22 @@ Assemble_Bundles(BB *bb)
   if (Assembly) {
     fputc ('\n', Asm_File);
   }
-#ifdef TARG_IA64
+#ifdef TARG_IA64   
   bb_cycle_count = BB_length(bb) ? BB_cycle(bb) : 0;
+#endif 
   return bb_cycle_count;
-#endif
 }
 
 /* Assemble the OPs in a BB an OP at a time.
+ * Note: 
+ *    bb_cycle_count only  used for TARG_IA64
+ *    for other target, return 0; 
  */
-#ifdef TARG_IA64
 static INT
-#else
-static void
-#endif
 Assemble_Ops(BB *bb)
 {
   OP *op;
-#ifdef TARG_IA64
   INT bb_cycle_count = 0;
-#endif
 
   FmtAssert(ISA_MAX_SLOTS == 1,
 	    ("Assemble_Ops shouldn't have been called"));
@@ -4194,9 +4174,7 @@ Assemble_Ops(BB *bb)
 			  INST_BYTES * words, INST_BYTES);
     }
   }
-#ifdef TARG_IA64
   return bb_cycle_count;
-#endif
 }
 
 #ifdef TARG_IA64
@@ -4454,16 +4432,13 @@ Emit_Loop_Note(BB *bb, FILE *file)
  * ====================================================================
  */
 
-#ifdef TARG_IA64
 static INT
-#else
-static void
-#endif
 EMT_Assemble_BB ( BB *bb, WN *rwn )
 {
   ST *st;
   ANNOTATION *ant;
   RID *rid = BB_rid(bb);
+  INT bb_cycle_count = 0;
 
 #ifdef TARG_SL
   if (BB_zdl_body(bb)) {
@@ -4480,7 +4455,6 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
 #endif
 
 #ifdef TARG_IA64
-  INT bb_cycle_count = 0;
   ROTATING_KERNEL_INFO *info ;
 
   if (Trace_Inst) {
@@ -4630,7 +4604,6 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     entry_srcpos = ENTRYINFO_srcpos(ent);
     entry_sym = ENTRYINFO_name(ent);
 
-// #if 1
 #if !defined(TARG_IA64) && !defined(TARG_LOONGSON)
     if (strcmp(ST_name(entry_sym), Cur_PU_Name) != 0 &&
         PU_ftn_lang(Get_Current_PU())) { // PU entry
@@ -4757,9 +4730,7 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   st = BB_st(bb);
   if (st) {
     if ( Assembly ) {
-#ifdef TARG_IA64
-      // fprintf ( Asm_File, "%s:\t%s 0x%llx\n", ST_name(st), ASM_CMNT, ST_ofst(st));
-#else
+#ifndef TARG_IA64
       fprintf ( Asm_File, "%s:\t%s 0x%" LL_FORMAT "x\n", ST_name(st), ASM_CMNT, ST_ofst(st));
 #endif
     }
@@ -4784,10 +4755,8 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     }
     if (BB_annotations(bb) && 
 	ANNOT_Get(BB_annotations(bb), ANNOT_ROTATING_KERNEL)){
-#if defined(KEY) && defined(TARG_MIPS) 
-#if !defined(TARG_SL)
+#if defined(TARG_MIPS) && !defined(TARG_SL)
       Emit_KEY_SWP_Note( bb, Asm_File );
-#endif
 #elif !defined(TARG_NVISA)
       Emit_SWP_Note(bb, Asm_File);
 #endif
@@ -4834,25 +4803,15 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   }
 #endif
   if (ISA_MAX_SLOTS > 1) {
-#ifdef TARG_IA64
     bb_cycle_count = Assemble_Bundles(bb);
-#else
-    Assemble_Bundles(bb);
-#endif
   } else {
-#ifdef TARG_IA64
     bb_cycle_count = Assemble_Ops(bb);
-#else
-    Assemble_Ops(bb);
-#endif
   }
 
   if (Object_Code && BB_exit(bb)) {
     Em_Add_New_Event (EK_EXIT, PC - 2*INST_BYTES, 0, 0, 0, PU_section);
   }
-#ifdef TARG_IA64
   return bb_cycle_count;
-#endif
 } 
 
 
@@ -8640,16 +8599,12 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 
   /* Assemble each basic block in the PU */
   for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
-#ifdef TARG_IA64
     int bb_cycle_count;
-#endif
     Setup_Text_Section_For_BB(bb);
-#ifdef TARG_IA64
     bb_cycle_count = EMT_Assemble_BB (bb, rwn);
     /* count the cycle for the PU  cbq */
+#ifdef TARG_IA64
     pu_cycle_count = pu_cycle_count + bb_cycle_count * bb->freq;
-#else
-    EMT_Assemble_BB (bb, rwn);
 #endif
   }
 #ifdef TARG_IA64

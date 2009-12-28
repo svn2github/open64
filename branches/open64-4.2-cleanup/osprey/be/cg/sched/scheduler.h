@@ -276,7 +276,7 @@ private:
     void Verify (void) ;
     void Dump_OP_Verbose_Info (OP* op, FILE * f=stderr);
 
-#if defined(TARG_SL) ||defined(TARG_SL2)
+#if defined(TARG_SL) || defined(TARG_SL2)
     void ReShuffle_Whole_List(std::list <model_kind>&  model ); 
 #endif 
     /* exported interface */
@@ -287,7 +287,7 @@ public:
 #endif 
                     ) ;
     ~SCHEDULER (void) ;
-    void Schedule_BB (BOOL reschd = FALSE);
+    void Schedule_BB ();
     void Schedule_BB_Driver (void);
 
     /* Misc */

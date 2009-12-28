@@ -595,7 +595,7 @@ put_compile_unit(DST_COMPILE_UNIT *attr, Dwarf_P_Die die)
 {
    put_name (DST_COMPILE_UNIT_name(attr), die, pb_none);
 #ifdef TARG_SL
-   /* NOTE! Wenbo/2007-04-26: If the DT_AT_name of a compile unit is a 
+   /* NOTE: If the DT_AT_name of a compile unit is a 
       full path name, we need not emit the DW_AT_comp_dir(follow GCC).
       Because it has no use if a full path is assigned to file, and 
       this can save some space. GDB expect this too. 
@@ -610,10 +610,9 @@ put_compile_unit(DST_COMPILE_UNIT *attr, Dwarf_P_Die die)
      /* Do nothing. */
      ;
    else
-     put_string (DST_COMPILE_UNIT_comp_dir(attr), DW_AT_comp_dir, die);
-#else
-   put_string (DST_COMPILE_UNIT_comp_dir(attr), DW_AT_comp_dir, die);
 #endif
+     put_string (DST_COMPILE_UNIT_comp_dir(attr), DW_AT_comp_dir, die);
+
    if (DEBUG_Optimize_Space && Debug_Level == 0)
 	// don't emit producer string if not debug and want to save space
 	dwarf_add_AT_string (dw_dbg, die, DW_AT_producer, "", &dw_error);
@@ -2874,8 +2873,6 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 		}
 #endif
 	}
-#ifdef linux
-#endif
   }
 
   // now do line number:

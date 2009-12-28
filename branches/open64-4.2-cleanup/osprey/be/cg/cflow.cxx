@@ -114,8 +114,6 @@
 #include "region_bb_util.h"
 #include "vt_region.h"
 #include "ipfec_options.h"
-#endif
-#ifdef TARG_IA64
 #include "speculation.h"
 #endif
 
@@ -573,13 +571,11 @@ static INT *ListVar_RefCount(ST *listvar)
  * (because the CG succ list contains only one entry per succ
  * the probablities of the individual edges are lost).
  *
+ * note: 
+ *    if target is not IA64, always return TRUE
  * ====================================================================
  */
-#if defined (TARG_IA64) 
 static BOOL
-#else
-static void
-#endif
 Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
 {
 #if defined (TARG_IA64)
@@ -646,7 +642,7 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
       }
 #else
       Link_Pred_Succ_with_Prob(bb, new_succ, prob);
-      return;
+      return TRUE;
 #endif
     }
   }
@@ -656,23 +652,16 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
       RGN_Link_Pred_Succ_With_Prob(bb,new_succ,prob);
   } else {
       Unlink_Pred_Succ(bb, old_succ);
-#if defined(KEY)
   Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE,
                            BBLIST_prob_hint_based(old_edge) != 0, !prob_acced);
-#else
-  Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE);
-#endif  
   }
 
   return TRUE;
 #else
   Unlink_Pred_Succ(bb, old_succ);
-#if defined(KEY)
   Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE,
                            BBLIST_prob_hint_based(old_edge) != 0);
-#else
-  Link_Pred_Succ_with_Prob(bb, new_succ, prob, FALSE, TRUE);
-#endif
+  return TRUE;
 #endif
 }
 
@@ -1858,8 +1847,7 @@ Initialize_BB_Info(void)
     case BBKIND_LOGIF:
 #ifdef TARG_IA64
     case BBKIND_CHK:
-#endif
-#if defined(TARG_SL)
+#elif defined(TARG_SL)
     case BBKIND_ZDL_BODY:
     case BBKIND_FORK:
 #endif
@@ -3293,13 +3281,11 @@ Optimize_Branches(void)
   float edge_freq = 0.0;
   BOOL changed;
 
-#ifdef TARG_IA64
   //-----------------------------------------------------------------
   // Indicate whether change succ success.This is because of region
   // formation.It is initialized to FALSE.
   //-----------------------------------------------------------------
   BOOL chan_succ = FALSE;
-#endif
  
   used_branch_around = (mBOOL *)alloca((PU_BB_Count + 2) * sizeof(*used_branch_around));
   BZERO(used_branch_around, (PU_BB_Count + 2) * sizeof(*used_branch_around));
@@ -3427,13 +3413,8 @@ Optimize_Branches(void)
 	old_tgt = BBINFO_succ_bb(bp, 0);
 	new_tgt = Collapse_Empty_Goto(bp, old_tgt, BB_freq(bp));
 	if (new_tgt != old_tgt) {
-#ifdef TARG_IA64
 	  chan_succ = Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
 	  if (chan_succ) changed = TRUE;
-#else
-	  changed = TRUE; 
-	  Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
-#endif
 	}
         if (new_tgt != BB_next(bp)) {
           if (   Convert_Goto_To_If(bp, used_branch_around)
@@ -3467,11 +3448,7 @@ Optimize_Branches(void)
 
 	      
 	  if (new_tgt != old_tgt) {
-#ifdef TARG_IA64
 	    chan_succ = Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
-#else
-	    Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
-#endif
 	  }
 	  
 	  changed = TRUE;
@@ -3492,13 +3469,8 @@ Optimize_Branches(void)
 	    if (new_tgt == old_tgt) continue;
 
 	    if (!Change_Switchtable_Entries(st, old_tgt, new_tgt)) continue;
-#ifdef TARG_IA64
       chan_succ = Cflow_Change_Succ(bp, i, old_tgt, new_tgt);
       if (chan_succ) changed = TRUE;
-#else
-      changed = TRUE;  
-      Cflow_Change_Succ(bp, i, old_tgt, new_tgt);
-#endif
 	  }
 	}
 	break;
@@ -3511,13 +3483,8 @@ Optimize_Branches(void)
 	  new_tgt = Collapse_Empty_Goto(bp, old_tgt, BB_freq(bp));
 
 	  if (new_tgt != old_tgt) {
-#ifdef TARG_IA64
 	    chan_succ = Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
 	    if (chan_succ) changed = TRUE;
-#else
-	    changed = TRUE;      
-	    Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
-#endif
 	  }
 	}
 	break;

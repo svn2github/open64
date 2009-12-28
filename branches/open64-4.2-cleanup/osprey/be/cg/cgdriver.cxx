@@ -1957,7 +1957,7 @@ Configure_CG_Options(void)
   }
 
   if (CG_opt_level > 2 && !OPT_unroll_size_overridden )
-#if defined(KEY) && defined(TARG_X8664) //adjust unroll_size default for em64t and core
+#if defined(TARG_X8664) //adjust unroll_size default for em64t and core
     if (Is_Target_EM64T() || Is_Target_Core())
       OPT_unroll_size = 256;
     else
@@ -2340,7 +2340,7 @@ Prepare_Source (void)
 
     /* Prepare relocatable object file name: */
     if ( Obj_File_Name == NULL ) {
-#if defined(KEY) && !defined(TARG_NVISA) 
+#if !defined(TARG_NVISA) 
 	// nvisa doesn't need tempnam, which will cause gcc complaint
 	/*
 	   Always create the object file in /tmp, since the current dir might
@@ -2537,7 +2537,7 @@ CG_Init (void)
     /* this has to be done after LNO has been loaded to grep
      * prefetch_ahead fromn LNO */
     Configure_prefetch_ahead();
-#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_NVISA) && !defined(TARG_LOONGSON)
+#if !defined(TARG_SL) && !defined(TARG_NVISA) && !defined(TARG_LOONGSON)
     if (flag_test_coverage || profile_arcs)
       CG_Init_Gcov();
 
@@ -2552,7 +2552,7 @@ CG_Init (void)
 			" conflicts with -CG:local_sched_alg\n");
       }
     }
-#endif // KEY
+#endif
 } /* CG_Init */
 
 extern void CG_End_Final();
@@ -2560,7 +2560,7 @@ extern void CG_End_Final();
 void
 CG_Fini (void)
 {
-#if defined(KEY) && !defined(TARG_NVISA) && !defined(TARG_LOONGSON)
+#if !defined(TARG_NVISA) && !defined(TARG_LOONGSON)
     extern BOOL profile_arcs;
     if (profile_arcs)
         CG_End_Final();

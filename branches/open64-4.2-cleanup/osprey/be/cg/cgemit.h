@@ -61,7 +61,6 @@ extern void EMT_End_File ( void );
 extern void EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn);
 
 /* put symbol in elf symbol table */ 
-#if defined(BUILD_OS_DARWIN)
 /* Generally, global-scope symbols require a preceding underscore
  * Calls to external functions require a jump to a stub
  * Other references to external functions require an indirect pointer
@@ -69,9 +68,6 @@ extern void EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn);
 typedef enum { DO_UNDERSCORE, DO_STUB, DO_NON_LAZY_PTR } darwin_indirect_t;
 extern mINT32 EMT_Put_Elf_Symbol (ST *sym,
   darwin_indirect_t indirect = DO_UNDERSCORE);
-#else
-extern mINT32 EMT_Put_Elf_Symbol (ST *sym);
-#endif /* defined(BUILD_OS_DARWIN) */
 
 /* change existing elf symbol to undefined */
 extern void EMT_Change_Symbol_To_Undefined (ST *sym);

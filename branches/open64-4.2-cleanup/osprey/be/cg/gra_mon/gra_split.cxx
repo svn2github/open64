@@ -127,7 +127,7 @@ static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon
 #include "gra_region.h"
 #include "gra_trace.h"
 #include "gra_interfere.h"
-#ifdef TARG_SL //minor_reg_alloc
+#ifdef TARG_SL
 #include "gra_para_region.h"
 #endif 
 // Generate a priority queue type for GRA_BBs

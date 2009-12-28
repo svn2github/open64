@@ -475,7 +475,7 @@ vararg_st8_2_st8_spill (BB * bb) {
 }
 #endif
 
-#if defined(KEY) && !defined(TARG_NVISA)
+#if !defined(TARG_NVISA)
 struct Save_user_allocated_saved_regs
 {
   OPS *ops;
@@ -505,6 +505,15 @@ struct Save_user_allocated_saved_regs
   }
 };
 #endif
+
+BOOL 
+Copy_Back_RA() { 
+#ifdef TARG_SL 
+  return (CG_opt_level <= 1); 
+#else 
+  return TRUE; 
+#endif 
+} 
 
 /* ====================================================================
  *
@@ -628,7 +637,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
     }
 #endif
 
-#if defined(KEY) && !defined(TARG_NVISA)
+#if !defined(TARG_NVISA)
     // save callee-saved registers that may get clobbered 
     // by inline asm
     for (INT i = 0; i < Saved_Callee_Saved_Regs.Elements(); i++) {
@@ -761,11 +770,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
 	}
 	Exp_COPY (ra_intsave_tn, RA_TN, &ops );
       }
-#if defined(TARG_SL) 
-      else if (CG_opt_level <= 1) {
-#else
-      else {
-#endif
+      else if (Copy_Back_RA()) {
         Exp_COPY (SAVE_tn(Return_Address_Reg), RA_TN, &ops );
       }
       Set_OP_no_move_before_gra(OPS_last(&ops));
@@ -1564,7 +1569,7 @@ Generate_Unique_Exit(void)
   }
 }
 
-#ifdef TARG_X8664 // do we need this for other processors? - SC
+#ifdef TARG_X8664 // do we need this for other processors?
 void Adjust_SP_After_Call( BB* bb )
 {
   OP* op = BB_last_op(bb);
@@ -1762,11 +1767,7 @@ Generate_Exit (
 	Exp_COPY (RA_TN, ra_intsave_tn, &ops );
 	Set_OP_no_move_before_gra(OPS_last(&ops));
       }
-#if defined(TARG_SL) 
-      else if (CG_opt_level <= 1) {
-#else
-      else {
-#endif
+      else if (Copy_Back_RA()) {
         /* Copy back the return address register from the save_tn. */
       	Exp_COPY ( RA_TN, SAVE_tn(Return_Address_Reg), &ops );
 	Set_OP_no_move_before_gra(OPS_last(&ops));
@@ -1787,7 +1788,7 @@ Generate_Exit (
     }
   }
 
-#if defined(KEY) && !defined(TARG_NVISA)
+#if !defined(TARG_NVISA)
   /* restore callee-saved registers allocated to local user variables */
   for (INT i = 0; i < Saved_Callee_Saved_Regs.Elements(); i++) {
     SAVE_REG_LOC sr = Saved_Callee_Saved_Regs.Top_nth(i);
@@ -2804,7 +2805,6 @@ INT Push_Pop_Int_Saved_Regs(void)
 	generate data for gprof.
  * ====================================================================
  */
-#ifdef TARG_IA64
 void
 Instru_Call_Mcount(void)
 {
@@ -2814,8 +2814,6 @@ Instru_Call_Mcount(void)
     EETARG_Call_Mcount(BB_LIST_first(elist));
   }
 }
-#endif
-
 
 extern void Handle_All_Hazards(BB *bb);
 INT R32;		/* first stack register */

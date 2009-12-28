@@ -752,7 +752,7 @@ extern BOOL OP_use_return_value(OP*);
 #define OP_mmx(o)		(TOP_is_mmx(OP_code(o)))
 #endif
 
-#if defined(TARG_SL) //fork_joint
+#if defined(TARG_SL)
 #define OP_fork(o)              (TOP_is_fork_instr(OP_code(o)))
 #define OP_vbuf_load(o)         (TOP_is_c2_v_load(OP_code(o)))
 #define OP_sbuf_load(o)         (TOP_is_c2_s_load(OP_code(o)))

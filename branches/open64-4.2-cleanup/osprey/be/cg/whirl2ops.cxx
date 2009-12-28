@@ -5429,7 +5429,7 @@ static void Build_CFG(void)
 
 	    if ( br_op == NULL ) break;
 	  }
-#ifdef TARG_SL2 //fork_joint
+#ifdef TARG_SL2
          else if( OP_fork(br_op) )  {
             if(BB_next(bb)) 
                Link_Pred_Succ ( bb, BB_next( bb ) );				
@@ -5467,7 +5467,7 @@ static void Build_CFG(void)
 	  WN_INSERT_BlockLast(CGRIN_nested_exit(cgrin),new_exit);
 	}
 	break;
-#ifdef TARG_SL   //fork_joint
+#ifdef TARG_SL
       case OPC_SL2_FORK_MAJOR:
       case OPC_SL2_FORK_MINOR:	  	
 	if(BB_next(bb)) 
@@ -5982,7 +5982,7 @@ Convert_Branch (WN *branch)
     Exp_OP1 (OPC_GOTO, NULL, target_tn, &New_OPs);
     break;
 
-#ifdef TARG_SL //fork_joint
+#ifdef TARG_SL
   case OPC_SL2_FORK_MAJOR:
   case OPC_SL2_FORK_MINOR:  	
     target_tn =  Gen_Label_TN (Get_WN_Label (branch), 0);
@@ -5995,10 +5995,9 @@ Convert_Branch (WN *branch)
     Handle_CONDBR (branch);
     break;
   case OPC_XGOTO:
-#ifdef TARG_SL //fork_joint
+#ifdef TARG_SL
     if(WN_is_compgoto_para(branch) || WN_is_compgoto_for_minor(branch))  {
 	opcode = WN_is_compgoto_para(branch) ? OPC_SL2_FORK_MAJOR : OPC_SL2_FORK_MINOR;
-//        branch = WN_CreateFork(WN_label_number(WN_last(WN_kid1(branch))),  WN_is_compgoto_para(branch));
         WN* fork_branch = WN_CreateFork(WN_label_number(WN_last(WN_kid1(branch))),  WN_is_compgoto_para(branch));
 
         WN_CopyMap(fork_branch, WN_MAP_FEEDBACK, branch);
@@ -6667,7 +6666,7 @@ static void Expand_Statement (WN *stmt)
   case OPC_XGOTO:
   case OPC_REGION_EXIT:
   case OPC_GOTO_OUTER_BLOCK:
-#ifdef TARG_SL2   //fork_joint
+#ifdef TARG_SL2
   case OPC_SL2_FORK_MAJOR:
   case OPC_SL2_FORK_MINOR:
 #endif   	
@@ -7013,7 +7012,7 @@ convert_stmt_list_to_OPs(WN *stmt)
       if ( RID_level( rid ) < RL_CG ) { /* the region is still WHIRL */
 	region_stack_push( rid );
 
-#ifdef TARG_SL //fork_joint 
+#ifdef TARG_SL
 /* generate cg region info for region which don't need seperate compilation and included in 
   * function entry node. So the cg region info is NULL. We need create such information for 
   * our fork region just as Convert_WHIRL_To_OPs does. 

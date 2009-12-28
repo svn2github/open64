@@ -91,7 +91,7 @@ static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon
 #include "gra_cflow.h"
 #include "gra_pref.h"
 #include "register.h"
-#ifdef TARG_SL2 //para_region_mgr
+#ifdef TARG_SL2
 #include "gra_para_region.h"
 #endif 
 #include "tracing.h"
@@ -477,7 +477,7 @@ Create_GRA_BBs_And_Regions(void)
     region->Add_GBB(gbb);
     gra_loop_mgr.Set_GBB_Loop(gbb);
 
-#ifdef TARG_SL //minor_reg_mgr
+#ifdef TARG_SL
     RID * rid = BB_rid(bb);
     GRA_PARA_REGION* para_region = gra_para_region_mgr.Get(rid);
     if(rid && RID_TYPE_minor(rid)) {
@@ -2223,10 +2223,10 @@ Compute_GRA_Fat_Point(void) {
 }
 #endif // TARG_IA64
 
-#ifdef TARG_SL //minor_reg_alloc
-/* this function is used to mark flag for lrange which spans multi regions and 
-  * this flags is used to update exclude set for each parallel body in minor mode
-  */
+#ifdef TARG_SL
+/* mark lrange spans multi regions for updating exclude set
+ * of each parallel body in minor mode
+ */
 void 
 Mark_Lrange_For_Minor_Thread()
 {

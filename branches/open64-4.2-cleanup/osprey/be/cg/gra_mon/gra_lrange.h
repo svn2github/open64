@@ -312,7 +312,7 @@ public:
 #endif
 
 
-#ifdef TARG_SL //minor_reg_alloc
+#ifdef TARG_SL
   BOOL Spans_Multiregions(void)	{ return flags & LRANGE_FLAGS_spans_multiregions; }
   void Spans_Multiregions_Set(void)	{ flags = (LR_FLAG)(flags|LRANGE_FLAGS_spans_multiregions); }
 #endif 

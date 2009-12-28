@@ -134,13 +134,8 @@ extern void Init_gen_quad_preg(void);
 extern void Trace_IR (
   INT phase,		/* Phase after which to print */
   const char *pname,	/* Print name of phase */
-#ifdef TARG_IA64
   struct bb *bb,	/* BB to print, or NULL */
-  BOOL after = TRUE
-#else
-  struct bb *bb		/* BB to print, or NULL */
-#endif
-);
+  BOOL after = TRUE);
 
 /* Print IR, ST, TNs for a program unit after a phase, if enabled: */
 extern void Check_for_Dump (

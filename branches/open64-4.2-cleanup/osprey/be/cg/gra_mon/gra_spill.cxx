@@ -926,7 +926,7 @@ LUNIT_Spill(LUNIT* lunit)
       }
 
       gbb->Rename_TN_References(tn,ltn);    
-#ifdef TARG_IA64  // zhc
+#ifdef TARG_IA64
       BOOL restore_above = FALSE;
       //
       //delete unecessary restore and spill during GRA
