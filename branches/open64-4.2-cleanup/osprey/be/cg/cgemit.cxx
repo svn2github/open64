@@ -3062,7 +3062,9 @@ static const char* int_reg_names[5][16] = {
 
 static char* 
 Modify_Asm_String (char* asm_string, UINT32 position, bool memory,
+#ifndef TARG_IA64
 		     TN* offset_tn,  /* for memory opnd, TARG_IA64 doesn't use this parameter*/
+#endif 		     
 		     TN* tn, BB *bb)
 {
   char* name = NULL;
@@ -4627,14 +4629,14 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     if ( ST_is_not_used(entry_sym)) {
     	// don't emit alt-entry if marked as not-used
 	DevWarn("CG reached entry marked as unused; will ignore it (%s)\n", 
-		ST_name(entry_sym)); // KEY
+		ST_name(entry_sym)); 
     }
     else {
     	Set_ST_ofst(entry_sym, PC);
-    	if (strcmp( Cur_PU_Name, ST_name(entry_sym) ) != 0) /* KEY */{ 
+    	if (strcmp( Cur_PU_Name, ST_name(entry_sym) ) != 0) { 
 		// alt-entry
       		if ( Assembly ) {
-			fprintf ( Asm_File, "\t%s\t%s\n", AS_AENT, ST_name(entry_sym)); // KEY
+			fprintf ( Asm_File, "\t%s\t%s\n", AS_AENT, ST_name(entry_sym)); 
 			Print_Label (Asm_File, entry_sym, 0 );
       		}
 		EMT_Put_Elf_Symbol (entry_sym);
@@ -6042,7 +6044,7 @@ Write_TCON (
     if (etable)
         Targ_Emit_EH_Const ( Asm_File, *tcon, add_null, repeat, scn_ofst32, format );
     else
-#endif // KEY
+#endif
     Targ_Emit_Const ( Asm_File, *tcon, add_null, repeat, scn_ofst32 );
   } 
   if (Object_Code) {
@@ -6643,7 +6645,7 @@ static Elf64_Word
 Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst, bool etable=0, int format=0)
 #else
 Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
-#endif // KEY
+#endif 
 {
   INT32 i;
   INITV_IDX ninv;
@@ -6731,7 +6733,7 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
       scn_ofst = Write_TCON (&tcon, scn_idx, scn_ofst, INITV_repeat2 (inv)
 #ifndef TARG_IA64
 				, etable, format
-#endif // KEY
+#endif
 			     );
 #endif // TARG_SL
       break;
@@ -7248,7 +7250,7 @@ Write_INITO (
         }
         bool action_table_started = false;
 	bool type_label_emitted = false;
-#endif // KEY
+#endif
 	FOREACH_INITV (INITO_val(ino), inv) {
 #if !defined(TARG_IA64) && !defined(TARG_LOONGSON)
             if (range_table && !action_table_started &&
@@ -7280,12 +7282,12 @@ Write_INITO (
 	    }
 #else
 		scn_ofst = Write_INITV (inv, scn_idx, scn_ofst);
-#endif // KEY
+#endif 
         }
 #if !defined(TARG_IA64) && !defined(TARG_LOONGSON)
         if (range_table && !type_label_emitted)
             fprintf ( Asm_File, "%s:\n", LABEL_name(labels[1]));
-#endif // KEY
+#endif 
     }
     if (Assembly) {
     	fprintf ( Asm_File, "\t%s end of initialization for %s\n", ASM_CMNT, ST_name(sym) );
@@ -7397,7 +7399,7 @@ Generate_Exception_Table_Header (INT scn_idx, Elf64_Xword scn_ofst, LABEL_IDX *l
     fprintf ( Asm_File, "%s:\n", LABEL_name(csb));
     return scn_ofst;
 }
-#endif // KEY
+#endif 
 
 /* change to a new section and new origin */
 static void
@@ -7892,7 +7894,7 @@ Process_Bss_Data (SYMTAB_IDX stab)
 			TY_align( ST_type ( sym ) )
 #endif /* defined(BUILD_OS_DARWIN) */
 			);
-#endif /* KEY */
+#endif
 	    } else // if ( !STB_align( base ) )
 	      fprintf( Asm_File, "\t%s\t0\n", AS_ALIGN );
 	  }
