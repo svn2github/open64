@@ -361,7 +361,7 @@ RVI::Map_chi_list ( WN *wn, CHI_LIST *chi_list )
   const BOOL is_scalar = (opr == OPR_STID);
   const BOOL is_istore = (opr == OPR_ISTORE);
 
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if ( Tracing() ) {
   fprintf( TFile, "RVI::Map_chi_list: WN <%d:%d>\n",
     OPCODE_mapcat(WN_opcode(wn)), WN_map_id(wn) );
@@ -373,7 +373,7 @@ if ( Tracing() ) {
     CODEREP *chi_res = chi->RESULT();
     if ( chi_res != NULL ) {
 
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if ( Tracing() ) {
   fprintf( TFile, "..chi=" );
   chi->Print(TFile);
@@ -384,7 +384,7 @@ if ( Tracing() ) {
 	  chi_set = CXX_NEW( IDX_32_SET(Initial_set_size(), Rvi_gpool(),
 				       OPTS_FALSE), Rvi_gpool() );
 	chi_set->Union1D( chi_res->Bitpos()+1 );
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if ( Tracing() ) {
   fprintf( TFile, "  chi_res->Bitpos() != ILLEGAL_BP\n" );
 }
@@ -394,7 +394,7 @@ if ( Tracing() ) {
 	AUX_STAB_ENTRY *sym = Opt_stab()->Aux_stab_entry(chi_res->Aux_id());
 	if ( sym->Is_real_var() ) {
 	  // regular variable
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if ( Tracing() ) {
   fprintf( TFile, "  regular variable\n" );
 }
@@ -404,7 +404,7 @@ if ( Tracing() ) {
 	      chi_set = CXX_NEW( IDX_32_SET(Initial_set_size(), Rvi_gpool(),
 					   OPTS_FALSE), Rvi_gpool() );
 	    chi_set->Union1D( sym->Itab_bitpos()+1 );
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if ( Tracing() ) {
   fprintf( TFile, "  sym->Itab_bitpos() != ILLEGAL_BP\n" );
 }
@@ -413,13 +413,13 @@ if ( Tracing() ) {
 	}
 	else {
 	  // virtual variable
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if ( Tracing() ) {
   fprintf( TFile, "  virtual variable\n" );
 }
 #endif
 	  if ( WOPT_Enable_Rvivsym ) {
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if ( Tracing() ) {
   fprintf( TFile, "  skipping vsym\n" );
 }
@@ -431,7 +431,7 @@ if ( Tracing() ) {
 	    // if this is an indirect store, we can skip virtual
 	    // variables because each of the scalars it kills is in
 	    // the chi list as a real variable.  (Right, Raymond?)
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if ( Tracing() ) {
   fprintf( TFile, "  is_istore, so skip virtual variable\n" );
 }
@@ -439,7 +439,7 @@ if ( Tracing() ) {
 	    continue;
 	  }
 	  if ( sym->Aux_id_list() != NULL ) {
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if ( Tracing() ) {
   fprintf( TFile, "  Aux_id_list() != NULL\n" );
 }
@@ -447,7 +447,7 @@ if ( Tracing() ) {
 	    AUX_ID_LIST_ITER id_list_iter;
 	    AUX_ID_NODE *id_node;
 	    FOR_ALL_ELEM( id_node, id_list_iter, Init(sym->Aux_id_list()) ) {
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if ( Tracing() ) {
   fprintf( TFile, "  Inside Aux_id_list() iter\n" );
 }
@@ -465,7 +465,7 @@ if ( Tracing() ) {
 		if ( ! is_scalar ) {
 		  chi_set->Union1D( (IDX_32)(id_node->Aux_id()+1) );
 		}
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if ( Tracing() ) {
   fprintf( TFile, "  id_node->Aux_id() != ILLEGAL_BP\n" );
 }

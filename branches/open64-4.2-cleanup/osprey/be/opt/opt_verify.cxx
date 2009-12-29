@@ -422,7 +422,7 @@ BOOL Verify_alias(ALIAS_MANAGER *am, WN *wn)
   // verify it has alias information
   if (OPERATOR_is_load(opr) || OPERATOR_is_store(opr)) {
     if (Valid_alias(am,wn) == FALSE) {
-#ifdef WARN_TODO
+#ifdef OPT_WARN_TODO
       Warn_todo("Verify_alias: WN has no alias information");
       fprintf(TFile,"Verify_alias: WN has no alias information\n");
       fdump_wn_no_st(TFile, wn);

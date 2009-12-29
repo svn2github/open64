@@ -1181,7 +1181,8 @@ EXP_ALL_OCCURS_ITER::EXP_ALL_OCCURS_ITER(EXP_WORKLST *worklst,
 			    lftr->Len()));
   }
 
-#ifdef XXX
+#ifdef FASTER_EXP_ALL_OCCURS_ITER
+  // faster iterator is not used now.
   // now allocate array and fill in
   _fast_array = (EXP_OCCURS **) CXX_NEW_ARRAY(EXP_OCCURS, size, mem_pool);
 

@@ -834,13 +834,13 @@ RVI::Analyze_live_range( RVI_LR *live_range ) const
       RVI_LR_INFO lr_info;
       live_range->Analyze_preds( bb, this, &lr_info );
 
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if(Tracing()){
   fprintf( TFile, "Analyze_preds for bitpos:%d in bb:%d\n", bitpos,
 	   bb->Id());
   lr_info.Print();
 }
-#endif // DEBUGGING
+#endif // RVI_DEBUGGING
 
       if ( lr_info.Pred_out() > 0 ) {
 	// does this block store to the value for its first reference?
@@ -888,13 +888,13 @@ if(Tracing()){
 	RVI_LR_INFO lr_info;
 	live_range->Analyze_succs( bb, this, &lr_info );
 
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if(Tracing()){
   fprintf( TFile, "Analyze_succs for bitpos:%d in bb:%d\n", bitpos,
 	   bb->Id());
   lr_info.Print();
 }
-#endif // DEBUGGING
+#endif // RVI_DEBUGGING
 
 	// Note that we may need to store before the iref, and after
 	// it as well if the iref wn also defines this variable.
@@ -957,12 +957,12 @@ if(Tracing()){
 	  }
 	}
 
-#ifdef DEBUGGING
+#ifdef RVI_DEBUGGING
 if(Tracing()){
   fprintf( TFile, "  may_need_to_store_after=%d\n",
 		     may_need_to_store_after );
 }
-#endif // DEBUGGING
+#endif // RVI_DEBUGGING
 
 	if ( may_need_to_store_after ) {
 	  if ( lr_info.Succ_has_load() ) {

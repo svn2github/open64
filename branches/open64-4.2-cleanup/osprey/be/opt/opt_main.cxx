@@ -1394,7 +1394,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
   SET_OPT_PHASE("Preparation");
 
-#ifdef SKIP
+#ifdef OPT_CHECK_STRUCT_SIZE
   // check for inadvertent increase in size of data structures
   Is_True(sizeof(CODEREP) == 48,
     ("Size of CODEREP has been changed (is now %d)!",sizeof(CODEREP)));

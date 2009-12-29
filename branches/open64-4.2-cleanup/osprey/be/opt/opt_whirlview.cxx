@@ -65,7 +65,7 @@
 #include "wn.h"		/* Whirl Node descriptor */
 #include "wn_simp.h"    /* Whirl simplifier (can be stubs) */
 
-#ifdef TODO_IGNORE_SOURCE
+#ifdef DAVINCI_PRINT_SRCPOS
 #include "dwarf_DST.h"
 #include "dwarf_DST_mem.h"
 #endif
@@ -421,10 +421,6 @@ dV_WN_end()
 (void) fprintf(dV_fp, "]))\n");
 free((void *) id_supplement);
 free((void *) dV_WN_stack);
-
-#ifdef TODO_DONT_CLOSE_PIPE
-fclose(dV_fp);
-#endif
 }
 
 /* Place a dummy node corresponding to a spot in the tree where the
@@ -721,7 +717,7 @@ dV_tree_stmt(WN *wn, DU_MANAGER *du_mgr)
   WN *wn2;
   char buf[64];
 
-#ifdef TODO_IGNORE_SOURCE
+#ifdef DAVINCI_PRINT_SRCPOS
   USRCPOS srcpos;
   OPCODE opc = WN_opcode(wn);
   
@@ -750,16 +746,6 @@ dV_tree_stmt(WN *wn, DU_MANAGER *du_mgr)
       (void) sprintf(buf, "blkkid%d", kid_num);
       kid_num++;
       dV_place_arc(id_str(wn2), DV_ARC_KID, buf);
-
-#ifdef TODO_DV_SYNTAX_SNAG
-      wn3 = WN_next(wn2);
-      if (wn3) {
-**-->	dV_place_arc(wn2, wn3, DV_ARC_NEXTPREV, "<-- PV/NX -->");
-      }
-      wn2 = wn3;
-#else
-      wn2 = WN_next(wn2);
-#endif
     }
     break;
   }

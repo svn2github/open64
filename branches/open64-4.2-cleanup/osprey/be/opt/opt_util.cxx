@@ -98,7 +98,7 @@ static int n_msgs = 0;
 //
 void Warn_todo(const char *msg, ... )
 {
-#ifdef WARN_TODO
+#ifdef OPT_WARN_TODO
   va_list vp;
   char msg_buf[MAX_WARN_LEN];
   int len;
