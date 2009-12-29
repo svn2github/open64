@@ -657,11 +657,12 @@ CGSPILL_OP_Spill_Location (OP *op)
   if (spill_ids) {
     TN *spill_tn = NULL;
 
-    if (OP_load(op) && (OP_results(op) == 1)
+    if (OP_load(op) && 
 #ifdef TARG_IA64
-	&& OP_spill_restore(op)
+	OP_spill_restore(op) &&
 #endif
-	) {
+	(OP_results(op) == 1)) {
+	
       spill_tn = OP_result(op,0);
     } else if (OP_store(op)
 #ifdef TARG_IA64

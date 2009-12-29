@@ -156,11 +156,7 @@ EBO_hash_op (OP *op,
              EBO_TN_INFO **based_on_tninfo)
 {
   INT hash_value = 0;
-  if (OP_memory(op)
-#ifdef TARG_X8664
-      || OP_load_exe(op)
-#endif
-      ) {
+  if (OP_Memory(op) ) {
     TN * spill_tn = NULL;
     hash_value = EBO_DEFAULT_MEM_HASH;
     if (OP_no_alias(op)) hash_value = EBO_NO_ALIAS_MEM_HASH;

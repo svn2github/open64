@@ -3351,8 +3351,6 @@ SCHEDULER::Schedule_BB (void) {
   }
 #if defined(TARG_SL)
   moved_op_num = 0; 
-#endif 
-#if defined(TARG_SL)
   if ((!_prepass) && (!_global) && 
       CG_Gen_16bit && ((CG_localsch_pre_size > 1) || ((CG_localsch_pre_size == 1) && !BB_loop_head_bb(_target_bb)))) 
   {
@@ -3884,7 +3882,6 @@ extern void SCHED_Dump_IR (BOOL prepass,
 
 
 
-//#ifdef TARG_IA64
     /* ==============================================================
      * ==============================================================
      *
@@ -3923,12 +3920,14 @@ Local_Insn_Sched (BOOL prepass)
 
         /* local scheduling before register allocation */
         if (prepass) { 
-#ifdef TARG_SL
-            if (!BB_Should_Skip(bb) && !BB_scheduled(bb) && !BB_reg_alloc(bb) &&
-                !BB_entry(bb) && !BB_exit(bb)) {
-#else 
-        	if (!BB_scheduled(bb) && !BB_reg_alloc(bb)) {
-#endif 
+            if (!BB_scheduled(bb) && 
+#ifdef TARG_SL                
+                !BB_Should_Skip(bb) && 
+                !BB_entry(bb) && 
+                !BB_exit(bb) &&
+#endif                 
+                !BB_reg_alloc(bb)) {
+
                 SCHEDULER local_scheduler(bb, prepass);
                 local_scheduler.Schedule_BB_Driver();
        	}
@@ -4004,7 +4003,6 @@ Local_Insn_Sched (BOOL prepass)
     Stop_Timer(T_Ipfec_LOCS_CU);
 #endif 
 }
-//#endif
 
 /* ================================================================
  *

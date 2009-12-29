@@ -739,7 +739,6 @@ Get_Internal_Buf_Reloc_Type( ST* st, INTRINSIC id) {
 #endif 
 
 
-#ifdef TARG_SL 
 static void
 Exp_Ldst (
   OPCODE opcode,
@@ -752,19 +751,6 @@ Exp_Ldst (
   OPS *ops,
   VARIANT variant,
   BOOL is_internal_mem_ofst = FALSE)
-#else 
-static void
-Exp_Ldst (
-  OPCODE opcode,
-  TN *tn,
-  ST *sym,
-  INT64 ofst,
-  BOOL indirect_call,
-  BOOL is_store,
-  BOOL is_load,
-  OPS *ops,
-  VARIANT variant)
-#endif   
 {
   ST *base_sym;
   INT64 base_ofst;
@@ -940,7 +926,6 @@ Exp_Ldst (
   OPS_Append_Ops(ops, &newops);
 }
 
-#ifdef TARG_SL
 void Exp_Lda ( 
   TYPE_ID mtype, 
   TN *tgt_tn, 
@@ -949,26 +934,11 @@ void Exp_Lda (
   OPERATOR call_opr,
   OPS *ops,
   BOOL is_internal_mem_ofst)
-#else 
-void Exp_Lda ( 
-  TYPE_ID mtype, 
-  TN *tgt_tn, 
-  ST *sym, 
-  INT64 ofst, 
-  OPERATOR call_opr,
-  OPS *ops)
-#endif   
 {
   OPCODE opcode = OPCODE_make_op(OPR_LDA, mtype, MTYPE_V);
-#ifdef TARG_SL
   Exp_Ldst (opcode, tgt_tn, sym, ofst, 
 	(call_opr == OPR_ICALL),
 	FALSE, FALSE, ops, 0, is_internal_mem_ofst);
-#else 
-  Exp_Ldst (opcode, tgt_tn, sym, ofst, 
-	(call_opr == OPR_ICALL),
-	FALSE, FALSE, ops, 0);
-#endif 	
 }
 
 void

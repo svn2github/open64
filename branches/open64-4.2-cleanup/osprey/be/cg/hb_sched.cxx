@@ -2213,7 +2213,7 @@ Priority_Selector::Get_Next_Element(HB_Schedule *Cur_Sched)
     _best_op = last_choice_op;
 
   _last_sched_op = _best_op;
-#endif // KEY
+#endif
 
   return (void *) _best_op;
 }

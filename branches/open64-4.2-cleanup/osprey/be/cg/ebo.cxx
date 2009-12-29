@@ -1299,11 +1299,7 @@ find_duplicate_mem_op (BB *bb,
 #endif
 
     if ((pred_op != NULL) &&
-        (OP_load(pred_op) || OP_store(pred_op)
-#ifdef TARG_X8664
-	 || OP_load_exe(pred_op)
-#endif
-	 )) {
+        (OP_Load(pred_op) || OP_store(pred_op))) {
      /* Determine the address components of the predecessor memory op. */
       pred_base_idx = TOP_Find_Operand_Use(OP_code(pred_op),OU_base);
       pred_offset_idx = TOP_Find_Operand_Use(OP_code(pred_op),OU_offset);
@@ -1328,11 +1324,7 @@ find_duplicate_mem_op (BB *bb,
     }
 
     BOOL hash_op_matches = ((pred_op != NULL) &&
-#ifdef TARG_X8664
-                            (OP_memory(pred_op) || OP_load_exe(pred_op)) &&
-#else
-                            OP_memory(pred_op) &&
-#endif
+                            OP_Memory(pred_op) &&
 #ifdef TARG_X8664
 			    (CGTARG_Is_Thread_Local_Memory_OP(op) ==
 			     CGTARG_Is_Thread_Local_Memory_OP(pred_op)) &&
@@ -1340,10 +1332,7 @@ find_duplicate_mem_op (BB *bb,
 			    (pred_index_tninfo == succ_index_tninfo) &&
 			    (pred_scale_tn == succ_scale_tn)         &&
 			    (pred_scale_tninfo == succ_scale_tninfo) &&
-#else
-                            OP_memory(pred_op) &&
-#endif
-
+#endif 
                             (pred_base_tn == succ_base_tn) &&           /* The base  index must match */
                             (pred_base_tninfo == succ_base_tninfo) &&   /* The base   info must match */
                             (pred_offset_tninfo == succ_offset_tninfo)) /* The offset info must match */

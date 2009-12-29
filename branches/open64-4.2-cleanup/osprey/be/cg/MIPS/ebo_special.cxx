@@ -1829,18 +1829,14 @@ void Redundancy_Elimination()
 /* need check instruction with two results */ 
 #ifdef TARG_SL2 
 	  if( OP_results( dw_op ) > 0 ){
-#else 
-	  if( OP_results( dw_op ) == 1 ){
-#endif 	  	
-
-#ifdef TARG_SL2 
-	    TN* tnr = OP_result( dw_op, 0 );
+     	    TN* tnr = OP_result( dw_op, 0 );
            if(OP_code(dw_op) == TOP_c2_sad || OP_code(dw_op) == TOP_c2_satd ||
             OP_code(dw_op) == TOP_c2_muls)
              tnr = OP_result(dw_op, 1);
 #else 
-	    TN* tnr = OP_result( dw_op, 0 );
-#endif 
+	  if( OP_results( dw_op ) == 1 ){
+     	    TN* tnr = OP_result( dw_op, 0 );
+#endif 	  	
 
 	    if( TN_is_register( tnr) && 
 		( TNs_Are_Equivalent( tnr, result ) || 

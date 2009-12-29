@@ -204,17 +204,9 @@ Copy_Asm_OP_Annot(OP* new_op, OP* op)
  */
 
 static OP *
-#ifdef TARG_IA64
-New_OP ( INT results, INT opnds, INT hidden_opnds)
-#else
-New_OP ( INT results, INT opnds )
-#endif
+New_OP ( INT results, INT opnds, INT hidden_opnds = 0)
 {
-  OP *op = OP_Alloc ( OP_sizeof(results, opnds
-#if defined(TARG_IA64)
-				+hidden_opnds
-#endif
-				) );
+  OP *op = OP_Alloc (OP_sizeof(results, opnds + hidden_opnds)); 
   PU_OP_Cnt++;
   Set_OP_opnds(op, opnds);
   Set_OP_results(op, results);
@@ -236,12 +228,11 @@ Dup_OP ( OP *op )
 {
   INT results = OP_results(op);
   INT opnds = OP_opnds(op);
+  INT hidden_opnds = 0; 
 #ifdef TARG_IA64
-  INT hidden_opnds = CGTARG_Max_Number_of_Hidden_Opnd (OP_code(op)); 
+  hidden_opnds = CGTARG_Max_Number_of_Hidden_Opnd (OP_code(op)); 
+#endif 
   OP *new_op = New_OP (results, opnds, hidden_opnds);
-#else
-  OP *new_op = New_OP ( results, opnds );
-#endif
 
   memcpy(new_op, op, OP_sizeof(results, opnds));
   new_op->next = new_op->prev = NULL;
@@ -866,6 +857,7 @@ Mk_OP(TOP opr, ...)
   INT results;
   INT opnds;
   OP *op;
+  INT hidden_opnds = 0; 
 
 #ifdef TARG_X8664
   opr = Remap_topcode(op, opr);
@@ -875,10 +867,11 @@ Mk_OP(TOP opr, ...)
   opnds = TOP_fixed_opnds(opr);
 
 #ifdef TARG_IA64
-  op = New_OP(results, opnds, CGTARG_Max_Number_of_Hidden_Opnd(opr));
-#else
-  op = New_OP(results, opnds);
-#endif
+  hidden_opnds = CGTARG_Max_Number_of_Hidden_Opnd(opr); 
+#endif 
+
+  op = New_OP(results, opnds, hidden_opnds);
+
 
   FmtAssert(!TOP_is_var_opnds(opr), ("Mk_OP not allowed with variable operands"));
   FmtAssert(opr != TOP_UNDEFINED,   ("Mk_OP not allowed with TOP_UNDEFINED"));
@@ -961,11 +954,13 @@ Mk_VarOP(TOP opr, INT results, INT opnds, TN **res_tn, TN **opnd_tn)
   }
 
   INT i;
+  INT hidden_opnds = 0;   
+
 #ifdef TARG_IA64
-  OP *op = New_OP(results, opnds, CGTARG_Max_Number_of_Hidden_Opnd(opr));
-#else
-  OP *op = New_OP(results, opnds);
-#endif
+  hidden_opnds = CGTARG_Max_Number_of_Hidden_Opnd(opr); 
+#endif 
+
+  OP *op = New_OP(results, opnds, hidden_opnds);
 
   FmtAssert(opr != TOP_UNDEFINED,   ("Mk_VarOP not allowed with TOP_UNDEFINED"));
   Set_OP_code(op, opr);
@@ -1411,11 +1406,7 @@ BOOL OP_has_implicit_interactions(OP *op)
  */
 void OP_Base_Offset_TNs(OP *memop, TN **base_tn, TN **offset_tn)
 {
-#ifdef TARG_X8664
-  Is_True(OP_load(memop) || OP_load_exe(memop) || OP_store(memop), ("not a load or store"));
-#else
-  Is_True(OP_load(memop) || OP_store(memop), ("not a load or store"));
-#endif
+  Is_True(OP_Load(memop) || OP_store(memop), ("not a load or store"));
 
   INT offset_num = OP_find_opnd_use (memop, OU_offset);
   INT base_num   = OP_find_opnd_use (memop, OU_base);

@@ -686,13 +686,18 @@ extern BOOL OP_use_return_value(OP*);
 #if defined(TARG_SL)        
 #define OP_alu(o)              (TOP_is_alu_instr(OP_code(o)))
 #endif
+
 #ifdef TARG_X8664
 #define OP_load_exe(o)		(TOP_is_load_exe(OP_code(o)))
 #define OP_load_exe_store(o)	(TOP_is_load_exe_store(OP_code(o)))
 #define OP_memory(o)		(OP_load(o) | OP_store(o) | OP_prefetch(o))
+#define OP_Load(o)                   ( OP_load(o) | OP_load_exe(o) )
 #else
 #define OP_memory(o)		(OP_load(o) | OP_store(o) | OP_prefetch(o))
+#define OP_Load(o)                   OP_load(o)
 #endif
+#define OP_Memory(o)              (OP_Load(o) | OP_store(o) | OP_prefetch(o))
+
 #define OP_mem_fill_type(o)     (TOP_is_mem_fill_type(OP_code(o)))
 #define OP_call(o)		(TOP_is_call(OP_code(o)))
 #if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_NVISA) || defined(TARG_MIPS) || defined(TARG_LOONGSON)

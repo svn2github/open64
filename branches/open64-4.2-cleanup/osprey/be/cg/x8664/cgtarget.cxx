@@ -1165,11 +1165,11 @@ CGTARG_Compute_PRC_INFO(
 
     info->refs[PRC_INST] += num_insts;
 
-    if( OP_memory(op) || OP_load_exe(op) ){
+    if( OP_Memory(op)){
       ++info->refs[PRC_MEMREF];
     }
 
-    if( OP_memory(op) && !OP_load_exe(op) ){
+    if( OP_Memory(op) && !OP_load_exe(op) ){
       ;
     }
     else if ( OP_flop(op) ) {
@@ -2329,15 +2329,13 @@ BOOL CGTARG_Dependence_Required( OP* pred_op, OP* succ_op )
    */
   {
     if( TOP_is_unknown_memdata( OP_code(pred_op) ) ){
-      if( OP_memory( succ_op )   ||
-	  OP_load_exe( succ_op ) ||
+      if( OP_Memory( succ_op ) ||
 	  TOP_is_unknown_memdata( OP_code(succ_op) ) )
 	return TRUE;
     }
 
     if( TOP_is_unknown_memdata( OP_code(succ_op) ) ){
-      if( OP_memory( pred_op )   ||
-	  OP_load_exe( pred_op ) ||
+      if( OP_Memory( pred_op ) ||
 	  TOP_is_unknown_memdata( OP_code(pred_op) ) )
 	return TRUE;
     }
@@ -2515,13 +2513,10 @@ CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, IN
   // Add latency between pointer load and pointer use.
   if (CG_ptr_load_use_latency != 0 &&
       kind == CG_DEP_REGIN &&
-      (OP_load(pred_op) ||
-       // Load-execute computes pointer, treat it like a pointer load.
-       OP_load_exe(pred_op)) &&
+      OP_Load(pred_op) &&
       // Detect pointer use.
-      (OP_load(succ_op) ||
+      (OP_Load(succ_op) ||
        OP_store(succ_op) ||
-       OP_load_exe(succ_op) ||
        OP_load_exe_store(succ_op))) {
     int base_idx = OP_find_opnd_use(succ_op, OU_base);
     int index_idx = OP_find_opnd_use(succ_op, OU_index);

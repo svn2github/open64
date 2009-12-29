@@ -224,9 +224,7 @@ Run_Sched (HB_Schedule *Sched, BB *bb, HBS_TYPE hbs_type, INT32 max_sched)
       // forward scheduling
 
       Run_One_Sched(Sched, 1, bb, base_hbs_type 
-#if defined (KEY)
                     & ~HBS_DROP_UNSCHED_PREFETCHES
-#endif
 		    , "forward", &best_cycles, &best_name);
     }
 

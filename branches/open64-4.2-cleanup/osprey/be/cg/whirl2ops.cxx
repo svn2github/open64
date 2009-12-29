@@ -1848,24 +1848,17 @@ Handle_LDA (WN *lda, WN *parent, TN *result, OPCODE opcode)
   }
 
   Last_Mem_OP = OPS_last(&New_OPs);
-#if defined(TARG_SL)
   Exp_Lda (
       OPCODE_rtype(opcode),
       result,
       WN_st(lda), 
       WN_lda_offset(lda),
       call_op,
-      &New_OPs,
-      WN_is_internal_mem_ofst(lda));
-#else   
-  Exp_Lda (
-      OPCODE_rtype(opcode),
-      result,
-      WN_st(lda), 
-      WN_lda_offset(lda),
-      call_op,
-      &New_OPs);
-#endif
+      &New_OPs
+#if defined(TARG_SL)      
+      ,WN_is_internal_mem_ofst(lda)
+#endif       
+      );
   Set_OP_To_WN_Map(lda);
 
   return result;
@@ -6228,7 +6221,7 @@ Handle_ASM (const WN* asm_wn)
           }
 	}
       }
-#endif // KEY
+#endif
       TN* tn = PREG_To_TN(WN_st(idname), WN_offset(idname));
       FmtAssert(tn && TN_is_register(tn) && TN_is_dedicated(tn),
                 ("Wrong TN for PREG from ASM clobber list"));

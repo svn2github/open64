@@ -163,12 +163,6 @@
 #define inline static
 #endif
 
-#ifdef TARG_X8664
-#define OP_Load(o)   ( OP_load(o) || OP_load_exe(o) )
-#else
-#define OP_Load(o)   OP_load(o)
-#endif
-
 #define Set_OP_opnds(o,n)	((o)->opnds = (n))
 #define Set_OP_results(o,n)	((o)->results = (n))
 
@@ -1893,13 +1887,9 @@ to determine conflicts. */
 #if defined(TARG_X8664) || defined(TARG_LOONGSON)
 	if( pred_base != succ_base ||
 	    pred_root != pred_op   ||
-	    succ_root != succ_op ){
-	  return FALSE;
-	}
-#else
-       /* We can't tell so give up. */
+	    succ_root != succ_op ) 
+#endif 	    
         return FALSE;
-#endif
       }
 
      /* Use offsets and sizes to determine conflicts. */

@@ -385,7 +385,7 @@ Merge_Blocks(HB*                  hb,
   BB *succ;
   BBLIST *bl;
 
-#if defined KEY && defined TARG_MIPS
+#if defined (TARG_MIPS)
   // If we already found out that we can not merge the two blocks return now
   if (merge_failed)
     return;
@@ -496,7 +496,7 @@ Merge_Blocks(HB*                  hb,
   }
 
   Replace_Block(bb_first,bb_second,candidate_regions);
-#if defined KEY && defined TARG_MIPS
+#if defined(TARG_MIPS)
   // We will end up having the branches from the 
   // 'then' block and the 'else' block merged. Search for 'beq' on
   // opposite predicate TNs and merge the two into a jump (unc)
@@ -690,7 +690,7 @@ AND_Predicate_To_OP (OP *op, TN *ptn1, TN *ptn2,
 	}
 }
 
-#if defined KEY && defined TARG_MIPS
+#if defined(TARG_MIPS)
 // ===================================================================
 // The code is borrowed from cio_rwtran
 //
@@ -824,7 +824,7 @@ Predicate_Block(BB* bb, TN *pred_tn, BB_SET *hb_blocks)
   
   if (pred_tn && pred_tn != True_TN) {
     for (OP* op = BB_first_op(bb); op != NULL; op = OP_next(op)) {
-#if defined KEY && defined TARG_MIPS
+#if defined(TARG_MIPS)
       switch(op->opr) {
       case TOP_j: 
 	{
@@ -1348,7 +1348,7 @@ Compute_Block_Frequencies(std::vector<BB *> &block_order, BB_MAP freq_map)
 }
 
 
-#if defined KEY && defined TARG_MIPS
+#if defined(TARG_MIPS)
 BOOL Okay_To_Predicate_BB (BB *bb, BB *prev_bb)
 {
   if (BB_branch_op(bb) && BB_branch_op(prev_bb) &&
@@ -1618,7 +1618,7 @@ Remove_Branches(HB*                  hb,
        FmtAssert(0,("Unknown block classification"));
      }
            
-#if defined KEY && defined TARG_MIPS
+#if defined(TARG_MIPS)
      merge_failed = FALSE;
 
      if (last_block) {
@@ -1890,7 +1890,7 @@ Insert_Predicates(HB* hb, BB_MAP control_dependences, BB_MAP true_edges,
     BB_MAP_Set(control_dep_info,bb,bb_cdep_data);
   }
   
-#if defined KEY && defined TARG_MIPS
+#if defined(TARG_MIPS)
   // If more than one block end in a conditional branch,
   // then do not do If-conversion.
   BOOL countBranch = FALSE;
@@ -2091,7 +2091,7 @@ HB_Safe_For_If_Conversion(HB* hb)
 }
 
 
-#if defined KEY && defined TARG_MIPS
+#if defined(TARG_MIPS)
 // Compute the cost of If-Converting basic blocks in a hyper-block.
 // The original cost is the static weighted average of latencies of ops before 
 // predicating each (non-entry) basic block MINUS other savings. The cost after
@@ -2152,7 +2152,7 @@ HB_If_Convert(HB* hb, std::list<HB_CAND_TREE*>& candidate_regions)
 //
 /////////////////////////////////////
 {
-#if defined KEY && defined TARG_MIPS
+#if defined(TARG_MIPS)
   // Compute cost-benefit and return if too costly
   if (HB_If_Convert_Cost_Diff(hb) > (float)HB_if_conversion_cut_off)
     return;

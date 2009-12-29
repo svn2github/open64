@@ -725,8 +725,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
       }
 #endif // ! TARG_NVISA
     }
-#ifdef TARG_IA64
-    else if (PU_Has_Calls || IPFEC_Enable_Edge_Profile){
+    else { 
       // Some points need to be noted here:
       // First,
       //Currently we know there are two cases need to save/restore b0:
@@ -748,15 +747,13 @@ Generate_Entry (BB *bb, BOOL gra_run )
       // appears, it will become "b6 :- copy.br p0 b0" after register allocation. The problem is: "copy.br"
       // is a simulated OP, cgdwarf_targ.cxx will make an assertion that no simulated OP appears.
       // I think this should be a bug. This solution is just to work around it.
-      if ( TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
-#elif defined(TARG_LOONGSON)
-    else { 
-      if ( TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
-#else
-    else {
-      if (gra_run && PU_Has_Calls 
-	&& TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
-#endif
+      if (
+#ifdef TARG_IA64
+          (PU_Has_Calls || IPFEC_Enable_Edge_Profile) && 
+#elif !defined(TARG_LOONGSON)
+      gra_run && PU_Has_Calls &&
+#endif 
+      TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer) 
       {
 	// because has calls, gra will need to spill this.
 	// but if it is not already in an integer reg,
@@ -1745,19 +1742,16 @@ Generate_Exit (
       Exp_COPY (RA_TN, ra_sv_tn, &ops);
 #endif
     }
-#ifdef TARG_IA64
-    else if( PU_Has_Calls || IPFEC_Enable_Edge_Profile) {
-      // Please see comment in similar place in "Generate_Entry" PU.
-      if ( TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
-#elif defined(TARG_LOONGSON)
     else { 
-      if (TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
-#else
-    else {
-      if (gra_run && PU_Has_Calls 
-	&& TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
-#endif
-      {
+      if (
+#ifdef TARG_IA64
+          // Please see comment in similar place in "Generate_Entry" PU.
+          (PU_Has_Calls || IPFEC_Enable_Edge_Profile) && 
+#elif !defined(TARG_LOONGSON)
+      gra_run && PU_Has_Calls &&
+#endif       
+      TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
+       {
 	// because has calls, gra will need to spill this.
 	// but if it is not already in an integer reg,
 	// then gra will spill to memory whereas for ia64
@@ -1805,9 +1799,7 @@ Generate_Exit (
 #endif
 
   if (PU_Has_Calls) {
-#ifndef TARG_LOONGSON  // loongson doesn't support pfs
   	EETARG_Restore_Pfs (Caller_Pfs_TN, &ops);
-#endif
   }
 
 #ifdef ABI_PROPERTY_stack_ptr

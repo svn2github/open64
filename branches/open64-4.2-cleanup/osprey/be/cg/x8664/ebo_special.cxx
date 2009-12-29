@@ -2745,7 +2745,7 @@ BOOL Delete_Unwanted_Prefetches ( OP* op )
 
   next = BB_first_op( bb );
   while (next && !load_store) {
-    if ((OP_memory(next) || OP_load_exe(next)) &&
+    if (OP_Memory(next) &&
 	OP_find_opnd_use( next, OU_base ) >= 0 &&
 	base == OP_opnd( next, OP_find_opnd_use( next, OU_base ))) {
       INT load_store_offset = 

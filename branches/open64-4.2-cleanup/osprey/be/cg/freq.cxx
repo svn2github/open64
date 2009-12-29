@@ -2040,6 +2040,9 @@ Compute_Branch_Probabilities(void)
       if (Trip_Loop_Exit_Prob(bb, succ1, succ2, loops, &prob_succ1)) {
 	prob_succ2 = 1.0 - prob_succ1;
       } else {
+
+	prob_succ1 = 0.5;
+	prob_succ2 = 0.5;      
 #ifdef TARG_IA64
 	if (IPFEC_Enable_Random_Prob) {
 	  double freq_succ1 = (double)(random() + 1);
@@ -2047,14 +2050,6 @@ Compute_Branch_Probabilities(void)
 	  prob_succ1 = freq_succ1 / (freq_succ1 + freq_succ2);
           prob_succ2 = freq_succ2 / (freq_succ1 + freq_succ2);
         } 
-	else {
-          prob_succ1 = 0.5;
-          prob_succ2 = 0.5;
-        }
-#else
-	prob_succ1 = 0.5;
-	prob_succ2 = 0.5;
-
 #endif
 
 	/* Using "Dempster-Shafer" combine probabilities for each

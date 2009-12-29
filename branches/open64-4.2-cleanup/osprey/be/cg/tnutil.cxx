@@ -434,8 +434,6 @@ static TN *i4_ded_tns[REGISTER_MAX + 1];
 #endif
 #if defined(TARG_SL)
 static TN *a4_ded_tns[REGISTER_MAX +1];
-#endif
-#if defined(TARG_SL)
 TN* C2_ACC_TN = NULL;
 TN* C2_COND_TN = NULL;
 TN* C2_MVSEL_TN = NULL;
@@ -455,10 +453,10 @@ static TN *
 Create_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg)
 {
   INT size = REGISTER_bit_size(rclass, reg) / 8;
-#ifndef TARG_SL
   BOOL is_float = rclass == ISA_REGISTER_CLASS_float;
-#else
-  BOOL is_float = FALSE;
+
+#ifdef TARG_SL
+  is_float = FALSE;
 #endif
 
 #ifdef TARG_X8664
@@ -554,8 +552,6 @@ Init_Dedicated_TNs (void)
   Addrsize5_TN = ded_tns[REGISTER_CLASS_addsize5][REGISTER_addsize5];
   Addrsize6_TN = ded_tns[REGISTER_CLASS_addsize6][REGISTER_addsize6];
   Addrsize7_TN = ded_tns[REGISTER_CLASS_addsize7][REGISTER_addsize7];
-#endif
-#if defined(TARG_SL)
   C2_ACC_TN = ded_tns[REGISTER_CLASS_c2acc][REGISTER_c2acc];
   C2_COND_TN = ded_tns[REGISTER_CLASS_c2cond][REGISTER_c2cond];
   C2_MVSEL_TN = ded_tns[REGISTER_CLASS_c2mvsel][REGISTER_c2mvsel]; 
@@ -603,7 +599,6 @@ Init_Dedicated_TNs (void)
 	++tnum;
 	f10_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
 	Set_TN_size(f10_ded_tns[reg], 16);
-
 #endif
 #if defined(TARG_X8664)
         ++tnum;
@@ -1426,11 +1421,11 @@ TN_Reaching_Value_At_Op(
 	}
 	bb = (val_cnt > 1) ? NULL : val_bb;
 
-#ifdef TARG_IA64
-	if (bb == NULL || BB_call(bb) || BB_rotating_kernel(bb)) break;
-#else
-	if (bb == NULL || BB_call(bb)) break;
-#endif
+	if (bb == NULL || 
+#ifdef TARG_IA64         
+           BB_rotating_kernel(bb) || 
+#endif 
+           BB_call(bb)) break; 
 
 	value_op = (reaching_def) ? BB_last_op(bb) : BB_first_op(bb);
       }

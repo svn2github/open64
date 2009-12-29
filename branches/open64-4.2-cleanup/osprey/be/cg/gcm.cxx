@@ -1283,17 +1283,8 @@ Can_Mem_Op_Be_Moved(OP *mem_op, BB *cur_bb, BB *src_bb, BB *dest_bb,
       } else continue;
     }
     
-    if (OP_memory(cur_op) 
-#ifdef TARG_X8664
-	|| OP_load_exe(cur_op)
-#endif
-	) {
-#ifdef TARG_X8664
-      read_read_dep = ( OP_load(cur_op) || OP_load_exe(cur_op) ) &&
-	( OP_load(mem_op) || OP_load_exe(mem_op) );
-#else
-      read_read_dep = OP_load(cur_op) && OP_load(mem_op);
-#endif
+    if (OP_Memory(cur_op) ) {
+      read_read_dep = OP_Load(cur_op) && OP_Load(mem_op);
 
       // No need to process read-read memory dependences
       if (!read_read_dep &&
@@ -1986,9 +1977,9 @@ Can_OP_Move(OP *cur_op, BB *src_bb, BB *tgt_bb, BB_SET **pred_bbs,
 
    // If memory_op and either it's safe to speculate or has been proven to
    // be safe, by other safety tests, then proceed further.
-#ifdef TARG_X8664
-   BOOL op_access_mem = OP_memory(cur_op) || OP_load_exe(cur_op);
+   BOOL op_access_mem = OP_Memory(cur_op);
 
+#ifdef TARG_X8664
    /* 
       An asm instruction could access memory also.
     */
@@ -2005,12 +1996,9 @@ Can_OP_Move(OP *cur_op, BB *src_bb, BB *tgt_bb, BB_SET **pred_bbs,
 	 op_access_mem = TRUE;
      }     
    }
-
+#endif 
    if (op_access_mem && (can_spec || safe_spec)) {
-#else
-   if (OP_memory(cur_op) && (can_spec || safe_spec)) {
-#endif // TARG_X8664
-     
+    
      FOR_ALL_BB_SET_members (*pred_bbs, cur_bb) {
      
        if (CG_Skip_GCM && BB_id(cur_bb) == GCM_To_BB)
@@ -4454,7 +4442,7 @@ GCM_For_Loop (LOOP_DESCR *loop, BB_SET *processed_bbs, HBS_TYPE hb_type)
         FmtAssert(count <= VECTOR_size(cand_bbvector), ("VECTOR overflow"));
         #else
         FmtAssert(count < VECTOR_size(cand_bbvector), ("VECTOR overflow"));
-        #endif // KEY
+        #endif 
         fprintf( TFile, "current cand BBs: " );
         for (i = 0; i < count; i++) {
           fprintf( TFile, "%d ", BB_id((BB*)VECTOR_element(cand_bbvector,i)) );

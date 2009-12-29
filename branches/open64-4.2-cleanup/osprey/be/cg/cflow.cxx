@@ -8089,5 +8089,5 @@ CFLOW_Fixup_Long_Branches()
 }
 
 
-#endif  // KEY and TARG_MIPS
+#endif  // TARG_MIPS
 

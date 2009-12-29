@@ -1326,7 +1326,7 @@ CIO_RWTRAN::Predicate_Write( OPS *ops, OP *op, TN *tn_predicate )
 
   TN *tn_base = OP_opnd( op, opnd_base );
   TN *tn_safe_base  = Build_TN_Like( tn_base );
-#if defined KEY && defined TARG_MIPS
+#if defined(TARG_MIPS)
   Build_OP(TOP_or, tn_safe_base, tn_base, Zero_TN, ops);
   if (TN_register_class(tn_predicate) == ISA_REGISTER_CLASS_fcc)
     Build_OP(TOP_movt, tn_safe_base, tn_hole_base, tn_predicate, ops);
