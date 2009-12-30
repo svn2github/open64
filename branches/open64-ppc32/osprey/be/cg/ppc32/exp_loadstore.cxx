@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2006-2009 Tsinghua University.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -843,7 +847,6 @@ Exp_Ldst (
   }
   else if (is_lda) {
     if ( ST_sclass(sym) == SCLASS_FORMAL && MTYPE_is_m(TY_mtype(ST_type(sym))) ) {
-      printf("\n\nZZZZXXXX %d %d \n\n", (int)TN_value(ofst_tn), (int) ofst);
       base_tn = SP_TN;
       Build_OP(TOP_lwz, tn, base_tn, Gen_Symbol_TN(sym, 0, 0), &newops);
       if (ofst > 0)

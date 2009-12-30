@@ -100,12 +100,12 @@
 
 #elif defined(TARG_PPC32)
 #define NAMEPREFIX	 ""
-#define BINPATH		OPEN64_INSTALL_PREFIX "/bin"
+#define BINPATH		"/bin"
 #define ALTBINPATH	BINPATH
-#define LIBPATH		OPEN64_INSTALL_PREFIX "/lib"
+#define LIBPATH		"/lib/gcc-lib/ppc32-open64-linux/" OPEN64_FULL_VERSION
 #define ALTLIBPATH	LIBPATH
-#define PHASEPATH	OPEN64_INSTALL_PREFIX "/lib"
-#define GNUPHASEPATH	OPEN64_INSTALL_PREFIX "/lib/gcc-lib/ppc32-open64-linux/" OPEN64_FULL_VERSION
+#define PHASEPATH	"/lib/gcc-lib/ppc32-open64-linux/" OPEN64_FULL_VERSION
+#define GNUPHASEPATH	"/lib/gcc-lib/ppc32-open64-linux/" OPEN64_FULL_VERSION
 
 #elif defined(TARG_LOONGSON)
     #ifndef CROSS_COMPILATION
@@ -230,7 +230,7 @@
 #elif defined(TARG_PPC32)
     #define OPEN64_TARGET "ppc32-linux"
     #define VERSION ""
-    #define OPEN64_PHASE_PATH "/usr/bin"
+    #define OPEN64_PHASE_PATH "bin"
     #define OPEN64_CMPLR_NAME_PREFIX ""
     #define OPEN64_TARGET_NAME "ppc32"
 #elif defined(TARG_LOONGSON)

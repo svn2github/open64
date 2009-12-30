@@ -1,13 +1,30 @@
 /*
- *
- * Sibyte SB1 scheduling information
- *
- * For documentation on the opcodes and pipelines, see
- * Section 3 of the SB-1 User Manual.
- *
- * Greg Lindahl, 27Nov2002
- *
- */
+  Copyright (C) 2006-2009 Tsinghua University.  All Rights Reserved.
+
+  This program is free software; you can redistribute it and/or modify it
+  under the terms of version 2 of the GNU General Public License as
+  published by the Free Software Foundation.
+
+  This program is distributed in the hope that it would be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+
+  Further, this software is distributed without any warranty that it is
+  free of the rightful claim of any third person regarding infringement 
+  or the like.  Any license provided herein, whether implied or 
+  otherwise, applies only to this software file.  Patent licenses, if 
+  any, provided herein do not apply to combinations of this program with 
+  other software, or any other product whatsoever.  
+
+  You should have received a copy of the GNU General Public License along
+  with this program; if not, write the Free Software Foundation, Inc., 59
+  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+
+*/
+
+/*PPC32 processor scheduling information
+  Generate a scheduling description of a PPC32 processor via the si_gen interface.
+*/
 
 #include "si_gen.h"
 #include "targ_isa_subset.h"
@@ -20,7 +37,6 @@ int
 main (int argc, char *argv[])
 {
   Machine("powerpc5", ISA_SUBSET_POWERPC5, argc, argv);
-#if 1
   res_IBox = RESOURCE_Create ("IBox", 4);
   res_EX = RESOURCE_Create ("Execution", 2);
   res_LS = RESOURCE_Create ("LoadStore", 2);
@@ -82,8 +98,6 @@ main (int argc, char *argv[])
 			  TOP_lhau, /* type 14, lat 0 */			  
 			  TOP_lwz, /* type 14, lat 0 */
 			  TOP_lwzu, /* type 14, lat 0 */
-//			  TOP_lwl, /* type 14, lat 0 */
-//			  TOP_lwr, /* type 14, lat 0 */
 			  TOP_stb, /* type 14, lat 0 */
 			  TOP_sth, /* type 14, lat 0 */
 			  TOP_stw, /* type 14, lat 0 */
@@ -106,22 +120,6 @@ main (int argc, char *argv[])
       	TOP_sthux,
       	TOP_stwx,
       	TOP_stwux,
-//			  TOP_swl, /* type 14, lat 0 */
-//			  TOP_swr, /* type 14, lat 0 */
-//			  TOP_ll, /* type 14, lat ? */
-//			  TOP_sc, /* type 14, lat ? */
-//			  TOP_sync, /* type 14, lat ? */
-//			  TOP_lwu, /* type 14, lat 0 */
-//			  TOP_ld, /* type 14, lat 0 */
-//			  TOP_ldl, /* type 14, lat 0 */
-//			  TOP_ldr, /* type 14, lat 0 */
-//			  TOP_lld, /* type 14, lat 0 */
-//			  TOP_sd, /* type 14, lat 0 */
-//			  TOP_sdl, /* type 14, lat 0 */
-//			  TOP_sdr, /* type 14, lat 0 */
-//			  TOP_scd, /* type 14, lat 0 */
-//			  TOP_pref, /* type 14, lat ? */
-//			  TOP_prefx, /* type 14, lat ? */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (1);
@@ -148,8 +146,6 @@ main (int argc, char *argv[])
 			  TOP_li,
 			  TOP_lis,
 			  TOP_mr,
-//			  TOP_addiu, /* type 1, lat 1 */
-//			  TOP_addu, /* type 1, lat 1 */
 			  TOP_subf, /* type 1, lat 1 */
 			  TOP_subfc,
 			  TOP_subfe,
@@ -160,13 +156,6 @@ main (int argc, char *argv[])
 				TOP_subfmeo,
 				TOP_subfze,
 				TOP_subfzeo,
-//			  TOP_subu, /* type 1, lat 1 */
-//			  TOP_dadd, /* type 1, lat 1 */
-//			  TOP_daddi, /* type 1, lat 1 */
-//			  TOP_daddiu, /* type 1, lat 1 */
-//			  TOP_daddu, /* type 1, lat 1 */
-//			  TOP_dsub, /* type 1, lat 1 */
-//			  TOP_dsubu, /* type 1, lat 1 */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (1);
@@ -191,7 +180,6 @@ main (int argc, char *argv[])
 			  TOP_divwo,
               TOP_divwu,
               TOP_divwuo,
-//			  TOP_divu, /* type 10, lat 36 */ /* not pipelined */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (36);
@@ -205,7 +193,6 @@ main (int argc, char *argv[])
               TOP_mullwo,
               TOP_mulhw,
               TOP_mulhwu,
-//			  TOP_multu, /* type 10, lat 3 */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (3);
@@ -214,8 +201,6 @@ main (int argc, char *argv[])
   Resource_Requirement (res_EX1, 0);
 
   Instruction_Group ("Integer ALU group 4",
-//			  TOP_ddiv, /* type 10, lat 68 */ /* not pipelined */
-//			  TOP_ddivu, /* type 10, lat 68 */ /* not pipelined */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (68);
@@ -224,8 +209,6 @@ main (int argc, char *argv[])
   Resource_Requirement (res_EX1, 0);
 
   Instruction_Group ("Integer ALU group 4",
-//			  TOP_dmult, /* type 10, lat 4 */ /* half pipelined */
-//			  TOP_dmultu, /* type 10, lat 4 */ /* half pipelined */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (4);
@@ -239,7 +222,6 @@ main (int argc, char *argv[])
 			  TOP_and, /* type 1, lat 1 */
 			  TOP_andc, 
 			  TOP_andi_,
-//			  TOP_lui, /* type 3, lat 1 */
 			  TOP_nor, /* type 1, lat 1 */
 			  TOP_or, /* type 1, lat 1 */
 			  TOP_ori, /* type 1, lat 1 */
@@ -271,10 +253,6 @@ main (int argc, char *argv[])
 		    /* Table 6: CPU Move Instructions */
 
   Instruction_Group ("CPU move 1",
-//			  TOP_mfhi, /* type 11, lat 1 */ /* can not co-issue, so it's essentally lat 1 */
-//			  TOP_mflo, /* type 11, lat 1 */ /* can not co-issue, so it's essentally lat 1 */
-//			  TOP_mthi, /* type 11, lat 1 */ /* can not co-issue, so it's essentally lat 1 */
-//			  TOP_mtlo, /* type 11, lat 1 */ /* can not co-issue, so it's essentally lat 1 */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (1);
@@ -283,10 +261,6 @@ main (int argc, char *argv[])
   Resource_Requirement (res_EX1, 0);
 
   Instruction_Group ("CPU move 2",
-//			  TOP_movf, /* type 12, lat 1 */
-//			  TOP_movn, /* type 13, lat 1 */
-//			  TOP_movt, /* type 12, lat 1 */
-//			  TOP_movz, /* type 13, lat 1 */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (1);
@@ -302,15 +276,6 @@ main (int argc, char *argv[])
 			  TOP_sraw, /* type 2, lat 1 */
 			  TOP_srwi, /* type 2, lat 1 */
 			  TOP_srw, /* type 2, lat 1 */
-//			  TOP_dsll, /* type 2, lat 1 */
-//			  TOP_dsll32, /* type 2, lat 1 */
-//			  TOP_dsllv, /* type 2, lat 1 */
-//			  TOP_dsra, /* type 2, lat 1 */
-//			  TOP_dsra32, /* type 2, lat 1 */
-//			  TOP_dsrav, /* type 2, lat 1 */
-//			  TOP_dsrl, /* type 2, lat 1 */
-//			  TOP_dsrl32, /* type 2, lat 1 */
-//			  TOP_dsrlv, /* type 2, lat 1 */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (1);
@@ -478,18 +443,13 @@ main (int argc, char *argv[])
 		    /* Table 9: CPU Trap Instructions */
 
   Instruction_Group ("CPU Trap",
-//			  TOP_break, /* type 7, lat 1 */
 			  TOP_sc, /* type 7, lat 1 */
 			  TOP_tweq, /* type 7, lat 1 */
 			  TOP_tweqi, /* type 7, lat 1 */
 			  TOP_twge, /* type 7, lat 1 */
 			  TOP_twgei, /* type 7, lat 1 */
-//			  TOP_tgeiu, /* type 7, lat 1 */
-//			  TOP_tgeu, /* type 7, lat 1 */
 			  TOP_twlt, /* type 7, lat 1 */
 			  TOP_twlti, /* type 7, lat 1 */
-//			  TOP_tltiu, /* type 7, lat 1 */
-//			  TOP_tltu, /* type 7, lat 1 */
 			  TOP_twne, /* type 7, lat 1 */
 			  TOP_twnei, /* type 7, lat 1 */
 			  TOP_UNDEFINED);
@@ -507,10 +467,6 @@ main (int argc, char *argv[])
           TOP_lfd, /* type 14, lat 0 */
           TOP_stfs, /* type 14, lat 0 */
           TOP_stfd, /* type 14, lat 0 */
-//			  TOP_lwc1, /* type 14, lat 0 */
-//			  TOP_swc1, /* type 14, lat 0 */
-//			  TOP_ldc1, /* type 14, lat 0 */
-//			  TOP_sdc1, /* type 14, lat 0 */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (0);
@@ -522,10 +478,6 @@ main (int argc, char *argv[])
           TOP_lfdx, /* type 15, lat 0 */
           TOP_stfsx, /* type 15, lat 0 */
           TOP_stfdx, /* type 15, lat 0 */
-//			  TOP_lwxc1, /* type 15, lat 0 */
-//			  TOP_ldxc1, /* type 15, lat 0 */
-//			  TOP_swxc1, /* type 15, lat 0 */
-//			  TOP_sdxc1, /* type 15, lat 0 */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (0);
@@ -536,16 +488,13 @@ main (int argc, char *argv[])
     /* Table 23: FPU Arithmetic Instructions (missing paired single) */
 
   Instruction_Group ("FPU Arithmatic group 0",
-//			  TOP_abs_s, /* type 19, lat 4 */
 			  TOP_fabs, /* type 19, lat 4 */
 			  TOP_fnabs,
         TOP_fadds, /* type 19, lat 4 */
 			  TOP_fadd, /* type 19, lat 4 */
 
-//			  TOP_mul_s, /* type 19, lat 4 */
         TOP_fmuls, /* type 19, lat 4 */
 			  TOP_fmul, /* type 19, lat 4 */
-//			  TOP_neg_s, /* type 19, lat 4 */
 			  TOP_fneg, /* type 19, lat 4 */
         TOP_fsubs, /* type 19, lat 4 */
 			  TOP_fsub, /* type 19, lat 4 */
@@ -560,70 +509,6 @@ main (int argc, char *argv[])
   Instruction_Group ("FPU Arithmatic group 0a",
           TOP_fcmpu,
           TOP_fcmpo,
-//			  TOP_c_f_s, /* type 20, lat 4 */
-//			  TOP_c_f_d, /* type 20, lat 4 */
-//			  TOP_c_t_s, /* type 20, lat 4 */
-//			  TOP_c_t_d, /* type 20, lat 4 */
-//			  TOP_c_un_s, /* type 20, lat 4 */
-//			  TOP_c_un_d, /* type 20, lat 4 */
-//			  TOP_c_or_s, /* type 20, lat 4 */
-//			  TOP_c_or_d, /* type 20, lat 4 */
-//			  TOP_c_eq_s, /* type 20, lat 4 */
-//			  TOP_c_eq_d, /* type 20, lat 4 */
-//			  TOP_c_neq_s, /* type 20, lat 4 */
-//			  TOP_c_neq_d, /* type 20, lat 4 */
-//			  TOP_c_ueq_s, /* type 20, lat 4 */
-//			  TOP_c_ueq_d, /* type 20, lat 4 */
-//			  TOP_c_olg_s, /* type 20, lat 4 */
-//			  TOP_c_olg_d, /* type 20, lat 4 */
-//			  TOP_c_olt_s, /* type 20, lat 4 */
-//			  TOP_c_olt_d, /* type 20, lat 4 */
-//			  TOP_c_uge_s, /* type 20, lat 4 */
-//			  TOP_c_uge_d, /* type 20, lat 4 */
-//			  TOP_c_ult_s, /* type 20, lat 4 */
-//			  TOP_c_ult_d, /* type 20, lat 4 */
-//			  TOP_c_oge_s, /* type 20, lat 4 */
-//			  TOP_c_oge_d, /* type 20, lat 4 */
-//			  TOP_c_ole_s, /* type 20, lat 4 */
-//			  TOP_c_ole_d, /* type 20, lat 4 */
-//			  TOP_c_ugt_s, /* type 20, lat 4 */
-//			  TOP_c_ugt_d, /* type 20, lat 4 */
-//			  TOP_c_ule_s, /* type 20, lat 4 */
-//			  TOP_c_ule_d, /* type 20, lat 4 */
-//			  TOP_c_ogt_s, /* type 20, lat 4 */
-//			  TOP_c_ogt_d, /* type 20, lat 4 */
-//			  TOP_c_sf_s, /* type 20, lat 4 */
-//			  TOP_c_sf_d, /* type 20, lat 4 */
-//			  TOP_c_st_s, /* type 20, lat 4 */
-//			  TOP_c_st_d, /* type 20, lat 4 */
-//			  TOP_c_ngle_s, /* type 20, lat 4 */
-//			  TOP_c_ngle_d, /* type 20, lat 4 */
-//			  TOP_c_gle_s, /* type 20, lat 4 */
-//			  TOP_c_gle_d, /* type 20, lat 4 */
-//			  TOP_c_seq_s, /* type 20, lat 4 */
-//			  TOP_c_seq_d, /* type 20, lat 4 */
-//			  TOP_c_sne_s, /* type 20, lat 4 */
-//			  TOP_c_sne_d, /* type 20, lat 4 */
-//			  TOP_c_ngl_s, /* type 20, lat 4 */
-//			  TOP_c_ngl_d, /* type 20, lat 4 */
-//			  TOP_c_gl_s, /* type 20, lat 4 */
-//			  TOP_c_gl_d, /* type 20, lat 4 */
-//			  TOP_c_lt_s, /* type 20, lat 4 */
-//			  TOP_c_lt_d, /* type 20, lat 4 */
-//			  TOP_c_nlt_s, /* type 20, lat 4 */
-//			  TOP_c_nlt_d, /* type 20, lat 4 */
-//			  TOP_c_nge_s, /* type 20, lat 4 */
-//			  TOP_c_nge_d, /* type 20, lat 4 */
-//			  TOP_c_ge_s, /* type 20, lat 4 */
-//			  TOP_c_ge_d, /* type 20, lat 4 */
-//			  TOP_c_le_s, /* type 20, lat 4 */
-//			  TOP_c_le_d, /* type 20, lat 4 */
-//			  TOP_c_nle_s, /* type 20, lat 4 */
-//			  TOP_c_nle_d, /* type 20, lat 4 */
-//			  TOP_c_ngt_s, /* type 20, lat 4 */
-//			  TOP_c_ngt_d, /* type 20, lat 4 */
-//			  TOP_c_gt_s, /* type 20, lat 4 */
-//			  TOP_c_gt_d, /* type 20, lat 4 */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (5);
@@ -715,13 +600,12 @@ main (int argc, char *argv[])
 
   Instruction_Group ("FPU Move From",
 			  TOP_mcrfs, /* type 19, lat 1 */
-			  TOP_mflr, //			  TOP_mfc1, /* type 19, lat 1 */
+			  TOP_mflr, 
 			  TOP_mcrf,
 			  TOP_mfctr,
 			  TOP_mfcr,
 			  TOP_mtfsb0,
 				TOP_mtfsb1,
-//			  TOP_dmfc1, /* type 19, lat 1 */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (1);
@@ -730,7 +614,7 @@ main (int argc, char *argv[])
 
   Instruction_Group ("FPU Move To",
 			  TOP_mtfsf, /* type 19, lat 4 */
-			  TOP_mtlr, //			  TOP_mtc1, /* type 19, lat 4 */
+			  TOP_mtlr, 
 			  TOP_mtctr,
 			  TOP_mffs,
 			  TOP_UNDEFINED);
@@ -757,8 +641,6 @@ main (int argc, char *argv[])
     /* Table 26: FPU Branch Instructions */
 
   Instruction_Group ("FPU Branch",
-//			  TOP_bc1f, /* type 5, lat 1 */
-//			  TOP_bc1t, /* type 5, lat 1 */
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time (0);
   Any_Result_Available_Time (1);
@@ -785,7 +667,6 @@ main (int argc, char *argv[])
 			  TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(1);
-  
-#endif
+
   Machine_Done("ppc.c");
 }

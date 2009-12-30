@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2006-2009 Tsinghua University.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 

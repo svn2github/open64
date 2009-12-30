@@ -1,3 +1,28 @@
+/*
+
+  Copyright (C) 2006-2009 Tsinghua University.  All Rights Reserved.
+
+  This program is free software; you can redistribute it and/or modify it
+  under the terms of version 2 of the GNU General Public License as
+  published by the Free Software Foundation.
+
+  This program is distributed in the hope that it would be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+
+  Further, this software is distributed without any warranty that it is
+  free of the rightful claim of any third person regarding infringement 
+  or the like.  Any license provided herein, whether implied or 
+  otherwise, applies only to this software file.  Patent licenses, if 
+  any, provided herein do not apply to combinations of this program with 
+  other software, or any other product whatsoever.  
+
+  You should have received a copy of the GNU General Public License along
+  with this program; if not, write the Free Software Foundation, Inc., 59
+  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+
+*/
+
 #include <cstdio>
 #include <string>
 #include <cctype>
@@ -87,22 +112,8 @@ FILE* log_file;
 }
 
 
-void split(const string& s, string lim, vector<string>& v)
-{
-	int i=0,j;
-	v.clear();
-	while(1){
-		j = s.find(lim, i);
-		if(j == string::npos)
-			break;
-		v.push_back(s.substr(i,j-i));
-		i = j+lim.size();
-	}
-	v.push_back(s.substr(i));
-}
-
 string trim(const string& s){
-	int i,j;
+	size_t i,j;
 	i=s.find_first_not_of(" \t");
 	if(i==string::npos){
 		return "";
@@ -113,11 +124,25 @@ string trim(const string& s){
 
 
 void split(string s, vector<string>& v, string lim){
-	int i=0,j;
+	size_t i=0, j;
 	do{
 		j=s.find(lim, i);
 		v.push_back(s.substr(i,j-i));
 		i=j+lim.length();
+	}while(j<string::npos);
+}
+
+void splitBetween(string s, vector<string>& v, string begin, string end){
+	size_t i=0, j;
+	do{
+		j=s.find(begin, i);
+		v.push_back(s.substr(i,j-i));
+		if(j==string::npos)
+			break;
+		i=j+begin.length();
+		j=s.find(end, i);
+		v.push_back(s.substr(i,j-i));
+		i=j+end.length();
 	}while(j<string::npos);
 }
 
@@ -128,6 +153,15 @@ void Replace(string& s, string _old, string _new){
 	s=v[0];
 	for(i=1;i<v.size();i++)
 		s+= _new + v[i];
+}
+
+void eraseBetween(string& s, string begin, string end){
+	int i;
+	vector<string> v;
+	splitBetween(s, v, begin, end);
+	s="";
+	for(i=0;i<v.size();i+=2)
+		s+=v[i];
 }
 
 class InstructionSet{
@@ -187,7 +221,7 @@ void SplitRules(const string& content, vector<string>& v){
 void ParseForRules(const string& content, vector<string>& rules, string& begin, string& end)
 {
 	vector<string> v;
-	split(content, "%%", v);
+	split(content, v, "%%");
 
 	begin = v[0];
 	end = v[2];
@@ -209,7 +243,7 @@ bool ParseRule(string rule)
 	j=rule.find("\n",i);
 	s=rule.substr(i,j-i);
 
-	split(s," ",v);
+	split(s,v," ");
 	for(i=0;i<v.size();i++){
 		if(!inslist.hasIns(trim(v[i]))){
 			log_printf("rule not supported by this architecture: lacking instruction \"%s\"\n%s\n",v[i].c_str(), rule.c_str());
@@ -224,7 +258,8 @@ void ParseFile(const char* fn)
 	int i;
 	string content,begin,end;
 	ReadToEnd(fn, content);
-	
+	eraseBetween(content, "/*", "*/");
+
 	vector<string> rules;
 	ParseForRules(content, rules, begin, end);
 
@@ -240,10 +275,11 @@ void ParseFile(const char* fn)
 		log_file("used instruction: %s\n", it->c_str());
 	}
 
-	Replace(begin, "NOOLIVE", 
+	content=begin;
+	Replace(content, "NOOLIVE", 
 		"aa=1;$0->result = Expand_Expr($0->wn, $0->parent, $0->result);return;");
-	Replace(begin, "NOolive", "");
-	WriteFile(fn, begin);
+	Replace(content, "NOolive", "");
+	WriteFile(fn, content);
 }
 
 int main(int argc, char* argv[])

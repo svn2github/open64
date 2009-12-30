@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2006-2009 Tsinghua University.  All Rights Reserved.
  * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it

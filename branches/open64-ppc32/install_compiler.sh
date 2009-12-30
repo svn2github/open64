@@ -39,6 +39,7 @@ VER_MAJOR="4"
 VER_MINOR="2"
 #PATCH_LEVEL=""
 VERSION="${OPEN64_FULL_VERSION:-${VER_MAJOR}.${VER_MINOR}}"
+HOST_MACHINE_TYPE=`uname -m`
 
 PREBUILT_LIB="./lib"
 PREBUILT_BIN="./bin"
@@ -163,7 +164,7 @@ INSTALL_DATA_SUB () {
 # install the driver
 INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${PHASEPATH}/driver
-    if [ "$TARG_HOST" = "ia64" ]; then
+    if [ "$TARG_HOST" = "ia64" ] || [ "$TARG_HOST" = "x8664" ]; then
       INSTALL_EXEC_SUB ${AREA}/driver/kdriver  ${PHASEPATH}/kdriver
     fi
     if [ "$TARG_HOST" = "ppc32" ]; then
@@ -180,7 +181,7 @@ INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf90-${VERSION}
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95-${VERSION}
 
-    if [ "$TARG_HOST" = "ia64" ]; then
+    if [ "$TARG_HOST" = "ia64" ] || [ "$TARG_HOST" = "x8664" ]; then
       INSTALL_EXEC_SUB ${AREA}/driver/kdriver ${BIN_DIR}/kopencc
     fi
     if [ "$TARG_HOST" = "ppc32" ]; then
@@ -224,7 +225,7 @@ INSTALL_FE () {
     INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
     # GNU 4.2.0 based FE
     INSTALL_EXEC_SUB ${AREA}/wgen_4_2_0/wgen42 ${PHASEPATH}/wgen42
-    LIBEXEC=libexec/gcc/x86_64-redhat-linux/4.2.0
+    LIBEXEC=libexec/gcc/${HOST_MACHINE_TYPE}-redhat-linux/4.2.0
     (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1 cc142)
     (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1plus cc1plus42)
 
