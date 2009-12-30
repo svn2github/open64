@@ -90,7 +90,7 @@ IDTYPE              IP_ALIAS_CLASS_REP::_last_id_used;
 IP_ACR_SLIST        IP_ALIAS_CLASS_REP::_free_list;
 UINT32              IP_ALIAS_CLASS_REP::_recycled_acr_nodes;
 
-#if Is_True_On
+#if defined(Is_True_On)
 static const int num_acr_table_entries = 100;
 IP_ALIAS_CLASS_REP *acr_table[num_acr_table_entries];
 
@@ -145,7 +145,7 @@ public:
     _pu_st_idx(pu_st_idx), _base_st_idx(base_st_idx),
     _base_member(base_id)
       {
-#if Is_True_On
+#if defined(Is_True_On)
 	if (next_acm_idx < num_acm_table_entries) {
 	  acm_table[next_acm_idx++] = &_base_member;
 	}
@@ -175,7 +175,7 @@ IP_ALIAS_CLASSIFICATION::New_alias_class(const IP_ACR_TYPE_SORT sort,
     retval = CXX_NEW(IP_ALIAS_CLASS_REP(Pool()), Pool());
   }
 
-#if Is_True_On
+#if defined(Is_True_On)
   if (retval->Id() < num_acr_table_entries) {
     acr_table[retval->Id()] = retval;
   }
@@ -223,7 +223,7 @@ IP_ALIAS_CLASSIFICATION::New_alias_class_member(void) const
 {
   IP_ALIAS_CLASS_MEMBER *acm = CXX_NEW(IP_ALIAS_CLASS_MEMBER, Pool());
 
-#if Is_True_On
+#if defined(Is_True_On)
   if (next_acm_idx < num_acm_table_entries) {
     acm_table[next_acm_idx++] = acm;
   }
@@ -239,7 +239,7 @@ IP_ALIAS_CLASSIFICATION::New_alias_class_member(const IDTYPE base_id) const
   IP_ALIAS_CLASS_MEMBER *acm = CXX_NEW(IP_ALIAS_CLASS_MEMBER(base_id),
 				       Pool());
 
-#if Is_True_On
+#if defined(Is_True_On)
   if (next_acm_idx < num_acm_table_entries) {
     acm_table[next_acm_idx++] = acm;
   }
@@ -255,7 +255,7 @@ IP_ALIAS_CLASSIFICATION::New_alias_class_member(const WN *wn) const
   IP_ALIAS_CLASS_MEMBER *acm = CXX_NEW(IP_ALIAS_CLASS_MEMBER(wn),
 				       Pool());
 
-#if Is_True_On
+#if defined(Is_True_On)
   if (next_acm_idx < num_acm_table_entries) {
     acm_table[next_acm_idx++] = acm;
   }
@@ -720,7 +720,7 @@ IP_ALIAS_CLASS_REP::Merge_pending(      IP_ALIAS_CLASS_REP &that,
 void
 IP_ALIAS_CLASS_REP::Free_acr(void)
 {
-#if Is_True_On
+#if defined(Is_True_On)
   if (Id() < num_acr_table_entries) {
     acr_table[Id()] = NULL;
   }
@@ -854,7 +854,6 @@ IP_AC_LAMBDA_TYPE_REP::Union_func_args(      IP_AC_LAMBDA_TYPE_REP &that,
     Join(*(that.remaining_args->Alias_class()->Func_class_pointed_to()),
 	 pool, trace);
 
-  // bug 8109
   Return_class_member()->Alias_class()->Data_class_pointed_to()->
     Join(*(that.Return_class_member()->Alias_class()->Data_class_pointed_to()), pool, trace);
   Return_class_member()->Alias_class()->Func_class_pointed_to()->
@@ -1258,7 +1257,7 @@ IP_ALIAS_CLASSIFICATION::Classify_deref_of_expr(IP_ALIAS_CLASS_MEMBER        *lh
       fprintf(TFile, "     expr_class is ");
       expr_class->Print(TFile, Global_data_class());
       Print(TFile);
-#if Is_True_On
+#if defined(Is_True_On)
       print_table();
 #endif
     }
@@ -1452,7 +1451,7 @@ IP_ALIAS_CLASSIFICATION::Handle_assignment(WN *const stmt)
       Class_of_base_id(WN_base_id(stmt))->Print(TFile, Global_data_class());
     }
     Print(TFile);
-#if Is_True_On
+#if defined(Is_True_On)
     print_table();
 #endif
   }
@@ -1475,7 +1474,7 @@ IP_ALIAS_CLASSIFICATION::Handle_return_val(WN *const stmt)
     fprintf(TFile, "    RETURN_VAL placed in ");
     pu_acr->Signature().Return_class()->Print(TFile, Global_data_class());
     Print(TFile);
-#if Is_True_On
+#if defined(Is_True_On)
     print_table();
 #endif
   }
@@ -1813,7 +1812,7 @@ IP_ALIAS_CLASSIFICATION::Handle_call(WN *const call_wn)
   if (_verbose && Tracing()) {
     fprintf(TFile, "  after handling call:\n");
     Print(TFile);
-#if Is_True_On
+#if defined(Is_True_On)
     print_table();
 #endif
   }
@@ -1888,7 +1887,7 @@ IP_ALIAS_CLASSIFICATION::Handle_function_definition(WN *entry_wn)
   if (Tracing()) {
     fprintf(TFile, "  after handling function arguments:\n");
     Print(TFile);
-#if Is_True_On
+#if defined(Is_True_On)
     print_table();
 #endif
   }

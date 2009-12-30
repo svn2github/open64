@@ -38,7 +38,6 @@
 */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <limits.h>                     // for PATH_MAX
 #include <unistd.h>                     // for read(2)/write(2)
@@ -347,7 +346,7 @@ ipa_compile_init ()
 
 	      if (s) {
 		  // Invoke the C/C++/Fortran compiler depending on the source
-		  // language.  Bug 8620.
+		  // language.  
 		  const char *compiler_name_suffix;
 		  if (!strcmp(IPA_lang, "F77") ||
 		      !strcmp(IPA_lang, "F90")) {
@@ -772,7 +771,7 @@ Get_Annotation_Filename_With_Path (void) {
     else if (*Annotation_Filename == '/') {
         strcpy (buf, Annotation_Filename);
     }else {
-        strcpy (buf, "$$dir/");		// bug 11686
+        strcpy (buf, "$$dir/");		
         strcat (buf, Annotation_Filename);
     }
      
@@ -830,8 +829,7 @@ void ipacom_doit (const char* ipaa_filename)
     fprintf(makefile, ".PHONY: default\n");
     fprintf(makefile, "default: %s\n\n", executable_macro);
     fprintf(makefile, ".IGNORE: %s\n\n", executable_macro);
-    // bug 2487
-    // bug 3594: emit backslash if there is only symtab.o
+    // emit backslash if there is only symtab.o
     fprintf(makefile, "%s%s%s\n", executable_macro, TARGET_DELIMITER,
 	    outfiles->size() || strlen(elf_symtab_name) ? "\\" : "");
 
@@ -877,7 +875,7 @@ void ipacom_doit (const char* ipaa_filename)
       // Since we are using GCC to link, don't print out the run-time support
       // files.
       char *p;
-#if !defined(TARG_SL) // jczhang: use slcc specific crt*.o
+#if !defined(TARG_SL) //  use slcc specific crt*.o
       if (((p = strstr(*i, "/crt1.o")) && p[7] == '\0') ||
 	  ((p = strstr(*i, "/crti.o")) && p[7] == '\0') ||
 	  ((p = strstr(*i, "/crtbegin.o")) && p[11] == '\0') ||
@@ -966,7 +964,7 @@ void ipacom_doit (const char* ipaa_filename)
 	    tmpdir, link_cmdfile_name,
 	    tmpdir[0] == '/' ? "" : "$$d/",
 	    symlinksdir);
-#if defined(TARG_SL) //jczhang: link with SL's ld instead of gcc
+#if defined(TARG_SL) // link with SL's ld instead of gcc
     char *toolroot = getenv("TOOLROOT");
     fprintf(makefile, "\t%s%s `sed 's:%s:%s:' %s`\n",
 	    toolroot, BINPATH"/ld", tmpdir, symlinksdir, link_cmdfile_name);
@@ -1220,7 +1218,6 @@ void ipacom_doit (const char* ipaa_filename)
 
     // Remove the directory.
     fprintf(sh_cmdfile, "'rm' -rf %s > /dev/null 2>&1 ; true\n", tmpdir);
-    // fix for bug 254
     fprintf(sh_cmdfile,
             "'rm' %s > /dev/null 2>&1 ; true\n", sh_cmdfile_buf);
     fprintf(sh_cmdfile, "}\n\n");   // End of cleanup function.
@@ -1257,7 +1254,6 @@ void ipacom_doit (const char* ipaa_filename)
           ("Full pathname for smake not set up"));
   const char* smake_name = (*command_map)[MAKE_STRING];
   
-  // bug 2487
   fprintf(sh_cmdfile, "rm -f %s\n", outfilename);
   
   fprintf(sh_cmdfile, "%s -f %s ", smake_name, makefile_name);

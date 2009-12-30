@@ -43,7 +43,6 @@
 
 //* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 
@@ -369,7 +368,7 @@ Update_array_bounds (WN* pu)
           }
           // replace all LDIDs of the formal by the constant
           else if (opr == OPR_LDID && WN_st(node) == st
-          // Bug 14197: Above, the STID was to the ST with offset 0, so
+          // Above, the STID was to the ST with offset 0, so
           // we can only replace offset 0 LDIDs. Also note, there is really
           // no check to limit this replacement to only formals.
                    && WN_offset(node) == 0
@@ -458,7 +457,7 @@ IPA_constant_in_array_bounds (const SUMMARY_VALUE& value,
     else if (opr == OPR_LDID && WN_st(wn) == formal_st) {
       TYPE_ID rtype = WN_rtype(wn);
       iter.Replace(WN_COPY_Tree(const_wn));
-      // bug 8666: The usage type of the constant may be different than
+      //  The usage type of the constant may be different than
       // the inherent type, e.g. I4 constant used as I8. Use the proper type.
       WN_set_rtype (iter.Wn(), rtype);
       found_formal_ldid = TRUE;
@@ -728,7 +727,6 @@ Replace_Icall (TREE_ITER& iter, const WN* icall, ST* actual)
     for (INT i = 0; i < WN_kid_count (icall) - 1; ++i) {
 	WN_kid (call, i) = WN_kid (icall, i);
     }
-// bug 1050
     WN_call_flag(call) = WN_call_flag(icall);
     
     iter.Replace (call);
@@ -766,7 +764,6 @@ Replace_Formal_By_LDA (WN* func_body, ST_IDX formal, ST* actual)
 	    if (WN_operator (WN_kid0 (wn)) == OPR_LDID &&
 		WN_st_idx (WN_kid0 (wn)) == formal) {
 		if (WN_field_id (wn)) {
-	            // Bug 942
 	            // Should pass down appropriate rtypes for bit-fields.
 		    // replace indirect load by direct load
 		    iter.Replace (WN_CreateLdid (OPR_LDID, WN_rtype(wn), 
@@ -1032,7 +1029,7 @@ Propagate_Constants (IPA_NODE* node, WN* w, VALUE_DYN_ARRAY* cprop_annot)
 		    ! mod_ref_info->Is_formal_dmod_elmt (i) &&
 		    ! mod_ref_info->Is_formal_imod_elmt (i))
 		    annot_node.Set_convertible_to_global ();
-		// bug 9205: We may be passing integer constant for an
+		// We may be passing integer constant for an
 		// addr_of node, where it is an address of a non-integer.
 		// Don't propagate the constant in this case.
 		BOOL incompatible = FALSE;
@@ -1305,7 +1302,6 @@ Reset_param_list (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
 	} 
     }
 
-    // bug 2636
     // We have created used_param_count+fake_param_count kids, but it won't
     // always have that many kids.
     if (WN_kid_count (new_call) > last)
@@ -1375,7 +1371,6 @@ IPO_propagate_globals(IPA_NODE *n)
     BOOL need_to_update_array_bounds = FALSE;
     WN* new_block = WN_CreateBlock();
     WN* pu = n->Whirl_Tree();
-// bug 12371
     LWN_Parentize(pu);
     // ST_IDX_HASH_TABLE current_hash_table(8, &Temp_pool);
     

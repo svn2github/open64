@@ -246,7 +246,7 @@ extern "C" void
 ipa_erase_link_flag (const char* str)
 {
   ARGV::iterator p;
-  bool changed; /* bug 9772 */
+  bool changed; 
 
   do {
     changed = FALSE;

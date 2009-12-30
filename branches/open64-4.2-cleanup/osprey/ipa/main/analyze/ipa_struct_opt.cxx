@@ -26,7 +26,6 @@
 // Temple Place - Suite 330, Boston MA 02111-1307, USA.
 ////////////////////////////////////////////////////////////////////////////
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <stdlib.h>
 

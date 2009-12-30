@@ -62,7 +62,6 @@
 // ====================================================================
 // ====================================================================
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>
@@ -355,7 +354,6 @@ IPA_update_ehinfo_in_pu (IPA_NODE *node)
                     continue;
                 }
                 int st_idx = TCON_uval (INITV_tc_val (st_entry));
-		// bug fix for OSP_317
 		// 
                 if (st_idx < 0 || st_idx >= sym_size)
                 {
@@ -772,7 +770,6 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     } // else of '(REORDER_BY_EDGE_FREQ && IPA_Call_Graph_Tmp)'
 
 #if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
-    // bug 4880
     // If lang of main pu is C++, -IPA:pu_reorder defaults to 1 w/ feedback
     if (!IPA_Enable_PU_Reorder_Set && Annotation_Filename &&
         ipa_node && !strcmp (ipa_node->Name(), "main") &&
@@ -1537,8 +1534,8 @@ Build_Call_Graph ()
 } // Build_Call_Graph
 
 
-#if 0
-// NEVER called, comment them out so far, jianxin.lai@hp.com, 2008-09-16
+/*
+// NEVER called, comment them out so far, 2008-09-16
 #include "wn_util.h"
 #include "ir_reader.h"
 #include <map>
@@ -1576,8 +1573,7 @@ static BOOL Is_Return_Store_Stmt( WN *wn )
   return FALSE;
 }
 
-#endif
-
+*/
 static bool Check_Heuristic( IPA_NODE* caller,
 			     IPA_NODE* callee,
 			     INT64     edge_freq,
@@ -1677,8 +1673,8 @@ static bool Check_Heuristic( IPA_NODE* caller,
   return true;
 }
 
-#if 0
-// NEVER called, comment them out so far, jianxin.lai@hp.com, 2008-09-16
+/*
+ // NEVER called, comment them out so far, 2008-09-16
 static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
 {
   if( node == NULL            ||
@@ -1703,7 +1699,7 @@ static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
   int intr_call_count = 0;
   int callsite_id = 0;
 
-  /* First, we need to the callsite_id for each wn. */
+  // First, we need to the callsite_id for each wn. 
   std::map<WN*,UINT16> wn_cs_id_map;
   int* new_call_id =
     (int*)alloca( sizeof(new_call_id[0]) * node_summary->Get_callsite_count() );
@@ -1763,10 +1759,9 @@ static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
       if( info_icall.Is_uninit() )
 	continue;
 
-      /* Repair the icall freq info which is distorted by earlier phase.
-	 Now it is only a work-around to get rid of later warning mesg.
-	 TODO: fix it in the first place.
-      */
+      // Repair the icall freq info which is distorted by earlier phase.
+      // Now it is only a work-around to get rid of later warning mesg.
+      // TODO: fix it in the first place.
 
       if( info_icall.tnv._exec_counter < info_call.freq_entry.Value() ){
 	const UINT64 gap = (UINT64)info_call.freq_entry.Value() -
@@ -1808,9 +1803,8 @@ static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
       TY_IDX ty_callee = ST_pu_type( st_callee );
       char* callee_name = callee->Name();
 
-      /* Heuristic check to favor the inline phase.
-	 But how is the impact for the cprop phase ???
-      */
+      // Heuristic check to favor the inline phase.
+      // But how is the impact for the cprop phase ???
 
       if( !Check_Heuristic( node, callee, callee_counter , cg ) ){
 	//cg->Graph()->Delete_Edge( edge->Edge_Index() );
@@ -1859,8 +1853,7 @@ static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
 					 node->Node_Index(),
 					 callee->Node_Index() );
 
-      /* Perform icall to call conversion here.
-       */
+      // Perform icall to call conversion here.
 
       WN* tmpkid0 = WN_CreateLda( Use_32_Bit_Pointers ? OPC_U4LDA : OPC_U8LDA,
 				  0, Make_Pointer_Type(ty_callee),st_callee );
@@ -1922,7 +1915,7 @@ static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
 
   WN_verifier( node->Whirl_Tree(FALSE) );
 
-  /* First, sort the callsite_array. */
+  // First, sort the callsite_array. 
 
   const int callsite_count = node_summary->Get_call_count() + intr_call_count;
   node_summary->Set_callsite_count( callsite_count );
@@ -1954,7 +1947,7 @@ static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
     callsite_array[i].Set_callsite_id( i );
   }
 
-  /* Second, update summary_callsite for each edge. */
+  // Second, update summary_callsite for each edge. 
 
   EDGE_INDEX* out_edges = 
     (EDGE_INDEX*) alloca (cg->Num_Out_Edges(node) * sizeof(EDGE_INDEX));
@@ -2029,8 +2022,7 @@ void IPA_Convert_Icalls( IPA_CALL_GRAPH* cg )
     Convert_Icall( cg, cg_iter.Current() );
   }
 }
-#endif
-
+*/
 
 // ======================================================================
 // Dead function elimination
@@ -2148,7 +2140,7 @@ Mark_Deletable_Funcs (NODE_INDEX v, DFE_ACTION action, mUINT8 *visited)
    
     if (alt_entry_update)
     {
-      // Bug 12048: It has been decided to keep the alternate entry point,
+      // It has been decided to keep the alternate entry point,
       // traverse its successors to note they are reachable.
       Is_True (alt_entry_index != INVALID_NODE_INDEX,
                ("Mark_Deletable_Funcs: Invalid alternate entry point"));
@@ -3217,7 +3209,7 @@ IPA_NODE* Get_Node_From_PU(PU_Info* pu)
   NODE_INDEX node_idx = AUX_PU_node(Aux_Pu_Table[pu_idx]);
   IPA_NODE* result = IPA_Call_Graph->Graph()->Node_User(node_idx);
 
-  // bug 11647: Verify that the node is sane. The node may be null if
+  // Verify that the node is sane. The node may be null if
   // it has been deleted by DFE (see PU_Deleted()). The caller should
   // handle a null return value in such a case.
   if (result == NULL)

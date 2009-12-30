@@ -37,7 +37,6 @@
 */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 
@@ -200,8 +199,6 @@ struct PIC_OPT
 	      return;
 	}
 	if(f_call_shared) {
-	    // bug fix for OSP_219
-	    //
 	    if (AUX_ST_flags(Aux_St_Table[ST_st_idx (st)], (USED_IN_DSO|OBJ_COMMON))){
 		/* common can be preempted by the def. in a DSO or OBJ_COMMON. 
 		 */

@@ -437,17 +437,13 @@ private:
 
     mUINT32 _state;
 
-// bug 10289
     mUINT32 _bb_count;
     mUINT32 _stmt_count;
     mUINT32 _call_count;
-// bug 10289
     // number of alternate entry points in the procedure
     mUINT16 _alt_entry_count; 
 
-// bug 10289
     mUINT32 _callsite_count;
-// bug 10289
     mUINT16 _ctrl_dep_count;
     mUINT16 _formal_count;
     mUINT16 _global_count;
@@ -2489,9 +2485,7 @@ public:
     void Set_flatten_flds(mUINT32 flatten_flds) {_flatten_flds=flatten_flds;}
     mUINT32 Get_flatten_flds() const { return _flatten_flds;};
     void  Inc_fld_count(mUINT32 fld_id, mUINT64 add_count)
-// bug 5372
     	{_u.flds[fld_id-1].count+=add_count;};
-// bug 5372
     char* Get_ty_name (void) const { TY& ty=Ty_tab[_ty];
 		 return Index_To_Str(ty.name_idx); }
 

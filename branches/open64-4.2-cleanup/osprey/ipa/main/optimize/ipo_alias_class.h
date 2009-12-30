@@ -339,7 +339,7 @@ class IP_ACR_SLIST;
 class IP_ALIAS_CLASS_REP : public U_F_REP<IP_ALIAS_CLASS_MEMBER> {
   friend class IP_ALIAS_CLASSIFICATION;
   friend class IP_ACR_SLIST;
-#if Is_True_On
+#if defined(Is_True_On)
   friend void  print_table(void);
 #endif
 

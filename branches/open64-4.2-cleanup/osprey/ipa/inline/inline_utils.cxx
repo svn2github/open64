@@ -50,7 +50,6 @@
 //  Copied from ld/process.c
 // ====================================================================
 
-#define __STDC_LIMIT_MACROS
 #if defined(__MINGW32__)
 #include <WINDOWS.h>
 #endif /* __MINGW32__ */

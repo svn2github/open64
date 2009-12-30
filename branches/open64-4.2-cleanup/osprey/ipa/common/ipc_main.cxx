@@ -41,7 +41,6 @@
 */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "linker.h"			/* linker headers */
 #include "process.h"                    /* For create_tmpdir. */

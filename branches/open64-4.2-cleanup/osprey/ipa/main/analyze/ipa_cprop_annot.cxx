@@ -37,7 +37,6 @@
 */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>
@@ -473,7 +472,7 @@ Values_are_cprop_equivalent(const SUMMARY_VALUE* val1,
 //---------------------------------------------------------
 // Check if two IPA_EDGEs are equivalent with respect to
 // constant actual arguments that are passed to the callee
-// TODO: nenad, 12/31/97
+// TODO:  12/31/97
 // This really should be a method on IPA_EDGE
 //---------------------------------------------------------
 extern BOOL
@@ -948,7 +947,7 @@ Evaluate_chi (const SUMMARY_CHI *chi, SUMMARY_VALUE &return_value)
 	    return;
 	}
 
-        // nenad, 03/01/00, 783636:
+        //  03/01/00, 783636:
         // This seems completely bogus --
         // it doesn't matter at all if sym is DMOD-ified in this procedure,
         // but whether the call described in the CHI node may modify it.
@@ -2543,7 +2542,6 @@ Intra_PU_Global_Cprop (IPA_NODE* node)
 
   BOOL change = FALSE;
 
-  // bug 2175
   if (IPA_Enable_DFE && PU_is_dead(node, &change))
   {
     return change;

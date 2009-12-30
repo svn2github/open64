@@ -57,7 +57,6 @@
 // ====================================================================
 // ====================================================================
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>
@@ -199,7 +198,7 @@ Is_Const_Bounds(ARB_HANDLE arb)
 static INT64
 Num_Elements(ARB_HANDLE arb)
 {
-// bug 2132: for dimensions -n1:n1, # of elements is n1 - (-n1) + 1
+// for dimensions -n1:n1, # of elements is n1 - (-n1) + 1
    return abs(ARB_ubnd_val(arb) - ARB_lbnd_val(arb)) + 1;
 }
 // ===========================================================

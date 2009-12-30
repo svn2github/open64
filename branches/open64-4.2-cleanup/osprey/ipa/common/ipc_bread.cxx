@@ -37,7 +37,6 @@
 */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>
@@ -746,7 +745,7 @@ IP_READ_pu (IPA_NODE* node, IP_FILE_HDR& s, INT p_index, MEM_POOL *pool)
              CURRENT_SYMTAB,
              ST_name(St_Table[PU_Info_proc_sym(pu)])));
 
-#if Is_True_On
+#if defined(Is_True_On)
     for (UINT i = GLOBAL_SYMTAB; i < CURRENT_SYMTAB; ++i) {
       Is_True(Scope_tab[i].st_tab != NULL,
 	      ("Parent PU's symtab must be set up"));

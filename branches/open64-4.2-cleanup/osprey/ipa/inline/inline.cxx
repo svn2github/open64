@@ -56,7 +56,6 @@
 // ====================================================================
 // ====================================================================
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <stdio.h>
 #if defined(BUILD_OS_DARWIN)
@@ -437,7 +436,7 @@ Write_callee(IPA_NODE* callee, BOOL non_local, BOOL inline_performed)
 {
     if (All_Calls_Processed (callee, IPA_Call_Graph)) {
       if (IPA_Enable_DFE
-	  && OPT_Cyg_Instrument == 0  // Bug 750; TODO: Relax restriction
+	  && OPT_Cyg_Instrument == 0  // TODO: Relax restriction
 	  && All_Calls_Inlined (callee, IPA_Call_Graph)
 	  && !callee->Is_Externally_Callable ()
 	    && ! PU_no_delete(Pu_Table[ST_pu(callee->Func_ST())])

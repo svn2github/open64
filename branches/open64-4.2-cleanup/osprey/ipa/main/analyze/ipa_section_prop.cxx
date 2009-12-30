@@ -56,7 +56,6 @@
 // ====================================================================
 // ====================================================================
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 
@@ -769,7 +768,7 @@ IPA_ARRAY_DF_FLOW::PostProcessIO(void* n)
       else {
         PROJECTED_REGION* mod = formal->Get_projected_mod_region();
         PROJECTED_REGION* ref = formal->Get_projected_ref_region();
-        // TODO: nenad, 98/12/19
+        // TODO: 
         // to be precise in the case when mod region is not messsy,
         // we should check that mod and ref regions are not disjoint
         if (mod && (mod->Is_messy_region() || ref)) {

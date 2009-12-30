@@ -335,10 +335,8 @@ struct update_symtab
 		fprintf (TFile, "Clearing addr_passed for %s\n", ST_name (st));
 #endif
 	}
-// bug 11801
 	if (ST_sclass(st) == SCLASS_PSTATIC)
 	  proc_has_pstatics = TRUE;
-// bug 11801
     }
 	    
 }; // update_symtab
@@ -404,7 +402,7 @@ Recompute_Addr_Taken (const WN *proc_entry, SUMMARIZE<program>* sum)
     // update(override) the symtab addr_taken attributes based on our own
     // analysis 
     //
-    // bug 11801: Also while we are traversing the local symbol
+    // Also while we are traversing the local symbol
     // table, check for any pstatic symbol that may need to be
     // promoted in IPA. This step is required if that symbol is not
     // referenced in whirl.
@@ -548,7 +546,6 @@ struct process_compile_time_addr_saved
     }
 }; // process_compile_time_addr_saved
 
-// bug 2954
 #include <sys/param.h> // MAXPATHLEN
 #include <unistd.h>
 static unsigned int
@@ -578,7 +575,6 @@ hash_of_full_path_name (int index)
   return (unsigned int) hfn (fullname);
 }
 
-//bug# 555
 template <PROGRAM program>
 struct set_local_static_to_global
 {
@@ -1272,7 +1268,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     // Now that preopt has run, recompute PU size estimates
     Initialize_PU_Stats();
 
-    // bug 11801
     if (proc_has_pstatics)
       proc->Set_has_pstatic ();
 
@@ -1720,7 +1715,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    if ((WN_pragma(w2) == WN_PRAGMA_DOACROSS) ||
 		(WN_pragma(w2) == WN_PRAGMA_PARALLEL_DO) ||
 		(WN_pragma(w2) == WN_PRAGMA_PARALLEL_BEGIN) ||
-		// bug 4543
 		(WN_pragma(w2) == WN_PRAGMA_THREADPRIVATE) ||
 		(WN_pragma(w2) == WN_PRAGMA_PARALLEL_SECTIONS)) 
 		proc->Set_has_noinline_parallel_pragma();
@@ -1840,7 +1834,6 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    label_use_map [WN_label_number (w2)].seen = TRUE;
 	    break;
 
-	// bug 8479
 	case OPR_ASM_STMT:
 	    Direct_Mod_Ref = TRUE;
 	    break;

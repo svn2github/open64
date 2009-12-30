@@ -40,7 +40,6 @@
 
 */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <ext/hash_set>
 #include <ext/functional>
@@ -1031,9 +1030,9 @@ static UINT collecting_recursive_ty = 0;
 void
 Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
 {
-#if 0
+/*
     // why make following assumption?, the sizeof() and __alignof__ 
-    // may varies from system to system. - sxyang, 3/19/2006
+    // may varies from system to system.
     
     // check if the assumption used by fast comparision of structs are valid
 #if defined(__GNUC__)
@@ -1065,7 +1064,7 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
 	      sizeof(TY), __builtin_alignof(TY), sizeof(FLD),
 	      __builtin_alignof(FLD), sizeof(ARB), __builtin_alignof(ARB)));
 #endif // __GNUC__
-#endif // 0
+*/
     ty_hash_table = CXX_NEW (NEW_TY_HASH_TABLE (1000, TY_HASH (), TY_IS_EQUIVALENT(), 
 					    TY_EXTRACT_KEY (), pool),
 			     pool);

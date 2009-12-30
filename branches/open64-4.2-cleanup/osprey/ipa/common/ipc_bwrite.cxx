@@ -41,7 +41,6 @@
 */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>
@@ -685,7 +684,7 @@ output_queue::pu_tree_add_comments(size_t index, size_t count, PU_Info* head)
     
     char* buf = 0;
     const size_t pu_len = strlen(pu_name);
-    // Bug 14465: Count new-lines.
+    // Count new-lines.
     int num_new_lines = count_new_lines(pu_name);
     const int total_len = pu_len + padding + num_new_lines * 5;
 
@@ -697,7 +696,7 @@ output_queue::pu_tree_add_comments(size_t index, size_t count, PU_Info* head)
         ErrMsg (EC_No_Mem, "pu_tree_add_comment"); 
     }
 
-    // Bug 14465: Update buffer with makefile comments in
+    // Update buffer with makefile comments in
     // multiple names.
     if (num_new_lines)
       fill_in_buffer (buf, count++, pu_name);
@@ -863,7 +862,7 @@ extern "C" void IP_WRITE_pu (IP_FILE_HDR *s , INT pindex)
 	       CURRENT_SYMTAB,
 	       GLOBAL_SYMTAB + 1));
 
-      // Bug 14465: dummy function for global-scope ASM?
+      // dummy function for global-scope ASM?
       if (ST_class(St_Table[PU_Info_proc_sym(pu)]) != CLASS_NAME)
       Ip_alias_class->Classify_memops(PU_Info_tree_ptr(pu));
 

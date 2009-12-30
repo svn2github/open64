@@ -401,7 +401,6 @@ SUMMARIZE<program>::Process_chi_jump_function (WN *wn,
     if (stmt == NULL)
 	return -1;			// could be volatile
 
-    // bug 3121
     // We should not create a chi for const. Also, such a summary_chi
     // will have symbol_index == -1 (invalid). TODO: check if it is coming
     // from preopt, and fix it there.
@@ -799,18 +798,14 @@ SUMMARIZE<program>::Classify_indirect (SUMMARY_DESC &result, WN *w)
 
     switch (TY_kind(ST_type(st))) {
     case KIND_SCALAR:
-    // bug 6229
     case KIND_ARRAY:
-    // bug 6229
 	if (ST_class(st) == CLASS_CONST) {
 	    // symbolic constant (e.g. floating point constant)
 	    result.Set_type (VALUE_CONST);
 	    return;
 	}
 
-// bug 7718
 	if (TY_kind(ST_type(st)) == KIND_ARRAY) return;
-// bug 7718
 	break;
     case KIND_POINTER:
 	if (is_ptr_variable)
@@ -1118,9 +1113,7 @@ SUMMARIZE<program>::Classify_const_value (SUMMARY_DESC &result, WN *w)
     st = WN_st (w);
     switch (TY_kind(ST_type(st))) {
     case KIND_SCALAR:
-// bug 6229
     case KIND_ARRAY:
-// bug 6229
     case KIND_POINTER:
 	break;
     default:
@@ -1133,9 +1126,7 @@ SUMMARIZE<program>::Classify_const_value (SUMMARY_DESC &result, WN *w)
 	return;
     }
 
-// bug 7718
     if (TY_kind(ST_type(st)) == KIND_ARRAY) return;
-// bug 7718
 
     // by now, it can only be a variable
 
@@ -2452,7 +2443,7 @@ SUMMARIZE<program>::Process_cd_for_phi_node (IDTYPE cd_bb_idx)
 
     WN *cond_stmt = du->Get_last_stmt (cd_bb_idx);
 
-    // Bug 9110: WOPT may have inserted a dummy edge to represent the
+    // WOPT may have inserted a dummy edge to represent the
     // control-dependence for OpenMP single pragma, which does not have
     // corresponding WN.
     if (!cond_stmt)
@@ -2524,7 +2515,7 @@ SUMMARIZE<program>::Process_control_dependence (WN *w, INT node_index)
       if (cd_bb_idx == 0) 
 	return FALSE;
       cond_stmt = du->Get_last_stmt(cd_bb_idx);
-      // Bug 9088: WOPT may have inserted a dummy edge to represent the
+      // WOPT may have inserted a dummy edge to represent the
       // control-dependence for OpenMP single pragma, which does not have
       // corresponding WN.
       if (!cond_stmt)

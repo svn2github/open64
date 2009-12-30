@@ -48,7 +48,6 @@
 // the call graph is built. For those, we provide dual interfaces.
 // -------------------------------------------------------------------
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "ipa_cg.h"                     // IPA_NODE, IPA_Call_Graph_Built
 #include "ipa_summary.h"        

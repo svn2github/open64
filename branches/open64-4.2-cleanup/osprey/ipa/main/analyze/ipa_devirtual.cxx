@@ -26,9 +26,6 @@
  *
  */
 
-#if !defined(__STDC_LIMIT_MACROS)
-#define __STDC_LIMIT_MACROS
-#endif
 
 #include <queue>
 #include <ext/hash_map>

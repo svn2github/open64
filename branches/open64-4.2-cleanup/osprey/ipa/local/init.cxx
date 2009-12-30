@@ -49,7 +49,6 @@
 
 #if defined(__linux__)
 
-#define __STDC_LIMIT_MACROS
 #include "defs.h"
 #include "wn.h"
 #include "pu_info.h"
@@ -80,9 +79,7 @@ struct IPL_INIT
 	Perform_Procedure_Summary_Phase_p = Perform_Procedure_Summary_Phase;
 	WB_BROWSER_Summary_p = WB_BROWSER_Summary;
 	Print_DO_LOOP_INFO_BASE_p = Print_DO_LOOP_INFO_BASE;
-// bug 3672
 	Preprocess_struct_access_p = Preprocess_struct_access;
-// bug 3672
     }
 } Ipl_Initializer;
 

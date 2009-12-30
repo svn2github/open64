@@ -37,7 +37,6 @@
 */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 // This file contains utilities used during inlining.
 // These utilities should not be member functions of IPO_INLINE
@@ -243,13 +242,13 @@ Fix_Return_Pregs (WN *Call, const RETURN_PREG& rp)
 	    // loading of the return preg must immediately followed the call
 	    if (WN_operator (node) == OPR_STID
 #if !(defined(_STANDALONE_INLINER) && defined(_LIGHTWEIGHT_INLINER))
-        //bug fix for OSP_277, let ipa_inliner handle
+        //let ipa_inliner handle
 		// MCALL
 		//  MLDID PRE_RETURN
 		// MRETURN_VAL
 		//
 		   || WN_operator(node) == OPR_RETURN_VAL
-       //bug fix for OSP_327, let ipa_inliner handle
+       //let ipa_inliner handle
 		// MCALL
 		//  MLDID PRE_RETURN
 		// MISTORE

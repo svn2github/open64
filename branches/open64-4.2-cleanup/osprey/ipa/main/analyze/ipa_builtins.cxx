@@ -34,7 +34,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 #include "wn.h"	                        // WN
@@ -383,7 +382,7 @@ IPA_Rename_Builtins (IPA_NODE *node)
       WN *wn;
       WN *block = WN_ITER_wn(wni);
       for (wn = WN_first(block); wn != NULL; wn = WN_next(wn)) {
-#if 0	// Currently there are no IPA builtins.
+/*	// Currently there are no IPA builtins.
 	if (WN_operator(wn) == OPR_INTRINSIC_CALL) {
 	  std::vector<IPA_BUILTIN*>::iterator it;
 	  for (it = IPA_builtins_list.begin(); 
@@ -408,7 +407,7 @@ IPA_Rename_Builtins (IPA_NODE *node)
 	    }
 	  }
 	} else
-#endif
+*/
 	// See if WN is a call to a C library function that returns the address
 	// of arrays used in ctype.h.  Change the call to a LDA of our own
 	// array.

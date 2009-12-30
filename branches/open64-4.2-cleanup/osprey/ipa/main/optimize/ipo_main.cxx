@@ -69,7 +69,6 @@
 // the full (old symtab) version of the file.
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -507,7 +506,7 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     }
 #endif // !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
 
-#if Is_True_On
+#if defined(Is_True_On)
     if ( Get_Trace ( TKIND_ALLOC, TP_IPA) ) {
 	fprintf ( TFile, "\n%s%s\tMemory allocation information before inlining\n%s%s\n",
 		  DBar, DBar, DBar, DBar );
@@ -518,7 +517,7 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     IPO_INLINE ip_inline (caller, callee, edge); 
     ip_inline.Process ();
 
-#if Is_True_On
+#if defined(Is_True_On)
     if ( Get_Trace ( TKIND_ALLOC, TP_IPA) ) {
 	fprintf ( TFile, "\n%s%s\tMemory allocation information after inlining\n%s%s\n",
 		  DBar, DBar, DBar, DBar );
@@ -845,7 +844,6 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 	   inlining is done. */
 	callee->Set_Undeletable();
 
-//#ifdef TODO
 	if (IPA_Enable_Cord) {
 	    fprintf (Call_graph_file, "%s\t%s\t%f\t%f\t%f\n", caller->Name (),
 		     callee->Name (), edge->Has_frequency () ?
@@ -854,7 +852,6 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 		     (callee->Get_frequency()).Value()
 		     );
 	}
-//#endif
     }
     
 
@@ -1638,7 +1635,7 @@ struct order_node_by_freq {
 struct order_node_by_file_id {
     bool operator() (IPA_NODE * first, IPA_NODE * second)
     {
-      // (bug 11837) Fortran alternate-entry points do not get their
+      // Fortran alternate-entry points do not get their
       // own pu_info, so their file_id will be -1 (uninitialized). We
       // also do not bother because they will never be emitted
       // separately, but as part of the containing procedure. If we do
@@ -1741,7 +1738,7 @@ IPA_Remove_Regions (IPA_NODE_VECTOR v, IPA_CALL_GRAPH * cg)
     Scope_tab = old_scope;
 }
 
-// Bug 4244: Check if the PU we are going to write has child-PUs. If 
+// Check if the PU we are going to write has child-PUs. If 
 // yes, then write them out (writing them out of course does not write 
 // all their sections). See IP_WRITE_pu for more details on handling 
 // of PUs with lexical-level > 2.
@@ -1758,7 +1755,7 @@ check_for_nested_PU (IPA_NODE * node)
       {
 	IPA_NODE * child_node = Get_Node_From_PU (child);
 	if (child_node == NULL)
-	{ // bug 11647: the node may have been deleted by DFE.
+	{ // the node may have been deleted by DFE.
 	  child = PU_Info_next (child);
 	  continue;
 	}
@@ -1954,7 +1951,6 @@ IPO_main (IPA_CALL_GRAPH* cg)
                 !PU_Written (cg->Graph(), emit,    // written
                                 &emit->File_Header())
             ) {
-	          // bug 4668
 	          check_for_nested_PU (emit);
 	          IPA_Rename_Builtins(emit);
 	          emit->Write_PU();
@@ -2018,7 +2014,6 @@ IPO_main (IPA_CALL_GRAPH* cg)
 	    if (!PU_Written (cg->Graph(), emit,
 	        &emit->File_Header()))
 	    {
-	      // bug 4244
 	      check_for_nested_PU (emit);
 	      IPA_Rename_Builtins(emit);
 	      IPA_NODE::next_file_id = emit_order.empty() ? -1 : emit_order.top()->File_Id();
@@ -2078,7 +2073,6 @@ IPO_main (IPA_CALL_GRAPH* cg)
 	    if (!PU_Written (cg->Graph(), emit,
 	        &emit->File_Header()))
 	    {
-	      // bug 4668
 	      check_for_nested_PU (emit);
 	      IPA_Rename_Builtins(emit);
 	      emit->Write_PU();
@@ -2228,7 +2222,7 @@ Perform_Interprocedural_Optimization (void)
     Ip_alias_class->Init_maps();
   }
 
-#if Is_True_On
+#if defined(Is_True_On)
   if ( Get_Trace ( TKIND_ALLOC, TP_IPA) ) {
     fprintf ( TFile,
 	      "\n%s%s\tMemory allocation information before IPO_main\n%s%s\n",
@@ -2245,7 +2239,7 @@ Perform_Interprocedural_Optimization (void)
 
   IPO_main (IPA_Call_Graph);
 
-#if Is_True_On
+#if defined(Is_True_On)
   if ( Get_Trace ( TKIND_ALLOC, TP_IPA) ) {
     fprintf ( TFile,
 	      "\n%s%s\tMemory allocation information after IPO_main\n%s%s\n",
@@ -2268,7 +2262,7 @@ Perform_Interprocedural_Optimization (void)
     Perform_Alias_Class_Annotation();
   }
 
-#if Is_True_On
+#if defined(Is_True_On)
   if ( Get_Trace ( TKIND_ALLOC, TP_IPA) ) {
     fprintf ( TFile,
 	      "\n%s%s\tMemory allocation information after alias class annotation\n%s%s\n",
@@ -2280,7 +2274,7 @@ Perform_Interprocedural_Optimization (void)
   Ip_alias_class->Release_resources();
   Ip_alias_class = NULL;
 
-#if Is_True_On
+#if defined(Is_True_On)
   {
     for (IP_FILE_HDR_TABLE::iterator f = IP_File_header.begin();
          f != IP_File_header.end();

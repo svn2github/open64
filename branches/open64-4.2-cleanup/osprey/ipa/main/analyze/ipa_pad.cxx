@@ -50,7 +50,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>
@@ -1030,7 +1029,7 @@ Compute_Split_Regions(SPLIT_COMMON_DYN_ARRAY *split_common_shape)
       // conditions 1 and 2
       if ((size_bytes >= Primary_Cache) && 
 	  (offset >= Primary_Cache - Primary_Delta)
-	  && (i != 0)	// Don't split first field.  Bug 8784.
+	  && (i != 0)	// Don't split first field.  
 	  )
 	{
 	  offset = offset - current_split;

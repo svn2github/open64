@@ -47,7 +47,6 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 
@@ -329,7 +328,6 @@ IPA_Do_Linearization (IPA_NODE* callee_node, WN* call, SCOPE* caller_scope)
   WN* callee_wn = callee_node->Whirl_Tree();
   INT num_formals = WN_num_formals(callee_wn);
 
-// bug 3898
   // Currently we do inlining even if # of actuals != # of formals. So
   // be careful!
   if (num_formals > WN_kid_count (call))
@@ -959,7 +957,6 @@ ST_might_be_modified (const ST* st)
 	    return FALSE;
     }
 
-// bug 7871
     if (ST_Has_Dope_Vector (st)) return FALSE;
 
     return TRUE;
@@ -990,7 +987,6 @@ Update_Caller_MP_Pragmas(ST* s, WN *wn)
   }
 
   if (ST_sclass(s) == SCLASS_AUTO)
-      // bug 5149
       Add_Pragma_To_MP_Regions (&wnv, WN_PRAGMA_LOCAL,
                             s, 0, Parent_Map, TRUE);
   else
@@ -1995,9 +1991,8 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 {
     WN* wn = iter.Wn ();
 #if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
-    // bug 3060
     // Give everything the linenum of the callsite
-    // bug 6170: for lw-inliner, maintain the callee's line# information
+    // for lw-inliner, maintain the callee's line# information
     if (OPERATOR_has_next_prev(WN_operator(wn)))
       WN_Set_Linenum (wn, WN_Get_Linenum (Call_Wn()));
 #endif // !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
@@ -3007,7 +3002,6 @@ IPO_INLINE::Create_Copy_In_Symbol (ST* formal_st)
     Clear_ST_is_not_used (copy_st);
     Clear_ST_is_optional_argument (copy_st);
     Set_ST_is_temp_var (copy_st);
-// bug 6674
     Clear_TY_is_restrict (copy_st->u2.type);
 
     // update the caller pragma list
@@ -3036,7 +3030,7 @@ static WN*
 Copy_Struct (ST* dest, WN* src, UINT64 size)
 {
     if (WHIRL_Mldid_Mstid_On)
-// bug 7760: src may not be M type due to fix to bug 7741.
+//  src may not be M type due to fix to 7741.
 	return WN_Stid (WN_rtype(src), 0, dest, ST_type (dest), src);  
     else
 	return WN_CreateMstore (0, Make_Pointer_Type (ST_type (dest)),

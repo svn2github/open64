@@ -112,7 +112,6 @@ class IPL_SUMMARY_PTRS;
 
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// nenad, 04/21/97:
 // 1. IPA_ICALL_NODE and IPA_ICALL_LIST will go away
 //    when call graph is updated to contain dummy nodes
 //    and edges corresponding to indirect calls

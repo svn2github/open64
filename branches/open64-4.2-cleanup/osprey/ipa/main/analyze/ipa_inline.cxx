@@ -58,7 +58,6 @@
 // ====================================================================
 // ====================================================================
 
-#define __STDC_LIMIT_MACROS
 #if defined(__MINGW32__)
 #include <WINDOWS.h>
 #endif /* __MINGW32__ */
@@ -409,7 +408,7 @@ Init_inline_parameters (void)
 
     non_aggr_callee_limit = IPA_PU_Minimum_Size + (IPA_PU_Minimum_Size / 2);
 
-    //Adaptive inlining here, pengzhao
+    //Adaptive inlining here, 
     if( IPA_Min_Hotness == 10) //DEFAULT_MIN_HOTNESS
     {
       if(Real_Orig_Prog_Weight< MINI_APPLICATION)
@@ -480,7 +479,7 @@ Update_Total_Prog_Size (const IPA_NODE *caller, IPA_NODE *callee,
 	return;
     }
     if (
-	OPT_Cyg_Instrument == 0 &&  // Bug 750; TODO: Relax restriction
+	OPT_Cyg_Instrument == 0 &&  // TODO: Relax restriction
 	! callee->Is_Undeletable () &&
 	! callee->Should_Be_Skipped() &&
 	All_Calls_Inlined (callee, cg) &&
@@ -604,7 +603,6 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
     float hotness = callee->Get_feedback() == NULL ? 0.0 :
       compute_hotness (ed, callee, callee_weight);       
 
-    //pengzhao
     if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
 	
 	SUMMARY_FEEDBACK *fb = callee->Get_feedback();
@@ -643,7 +641,6 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 		fprintf (TFile, "%s:  because of force depth = (%d)\n", DEMANGLE (caller->Name()), IPA_Force_Depth);
 	    }
 	    
-	    //pengzhao
 	    if (Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
 		inline_it = TRUE;
                 ostringstream ed_ind;
@@ -829,7 +826,6 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 		    fprintf (TFile, "%s: forced because of small size (%d)  (edge# %d)\n", DEMANGLE (caller->Name()), callee_weight, ed->Edge_Index() );
 		}
 		
-		//pengzhao
 		if (Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
 		    inline_it = TRUE;
                     ostringstream ed_ind;

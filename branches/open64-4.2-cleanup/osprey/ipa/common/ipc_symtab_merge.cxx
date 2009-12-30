@@ -67,7 +67,6 @@
 // ====================================================================
 //
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "linker.h"
 
@@ -1331,7 +1330,7 @@ Enter_Original_St(const IPC_GLOBAL_TABS& original_tabs,
 	Set_ST_name_idx(new_st, (*New_Symstr_Idx)[ST_name_idx(original_st)]);
 
 	if (ST_sym_class(original_st) == CLASS_FUNC
-	    // Bug 14465: Merge the PU for a dummy function representing
+	    // Merge the PU for a dummy function representing
 	    // a global-scope ASM, so that merged symbol table entries
 	    // get the updated PU idx.
 	    || ST_sym_class(original_st) == CLASS_NAME
@@ -1364,7 +1363,7 @@ Enter_Original_St(const IPC_GLOBAL_TABS& original_tabs,
 
 #if defined(TARG_X8664) || defined(TARG_SL)
     if ( ST_sclass(new_st) != SCLASS_COMMON &&
-	 // Avoid Fortran Equivalenced arrays (to complete fix for bug 1988)
+	 // Avoid Fortran Equivalenced arrays 
 	 !ST_is_equivalenced(new_st) &&
          ST_sym_class(new_st) == CLASS_VAR ) {
       TY_IDX ty = ST_type(new_st);
@@ -1526,7 +1525,6 @@ Merge_St_With_St(const IPC_GLOBAL_TABS &original_tabs,
 #endif // _STANDALONE_INLINER
 
     if (ST_sym_class (original_st) != ST_sym_class (merged_st)) {
-	// bug 2461
 	ErrMsg (EC_Inc_Types, ST_name (merged_st)); 
     }
 
@@ -1549,7 +1547,7 @@ Merge_St_With_St(const IPC_GLOBAL_TABS &original_tabs,
     (*New_St_Idx).set_map (ST_st_idx(original_st), ST_st_idx(merged_st));
 #if defined(TARG_X8664) || defined(TARG_SL)
     if ( ST_sclass(merged_st) != SCLASS_COMMON &&
-	 // Avoid Fortran Equivalenced arrays (to complete fix for bug 1988)
+	 // Avoid Fortran Equivalenced arrays 
 	 !ST_is_equivalenced(merged_st) &&
          ST_sym_class(merged_st) == CLASS_VAR ) {
       TY_IDX ty = ST_type(merged_st);
@@ -1718,7 +1716,7 @@ Merge_Global_St(UINT                   idx,
     if (ST_export(original_st) == EXPORT_LOCAL ||
 	ST_export(original_st) == EXPORT_LOCAL_INTERNAL) {
 
-	// Bug 8443: A function cannot be a common block element.
+	// A function cannot be a common block element.
 	if (ST_raw_base_idx (original_st) == ST_st_idx (original_st) ||
 	    ST_sym_class (original_st) == CLASS_FUNC)
 	    return Enter_Original_St (original_tabs, original_st);
@@ -1838,11 +1836,9 @@ Merge_Global_Initv(UINT                  initv_idx,
 	break;
 	 
     case INITVKIND_BLOCK:
-        // fixes bug 1010
 	if (INITV_block_first(original_initv) == INITV_IDX_ZERO)
 	  nested_initv_idx = INITV_IDX_ZERO;
 	else
-	// fixes bug 1010
 	  nested_initv_idx = 
 	    Merge_Global_Initv(INITV_block_first(original_initv), 
 			       original_tabs, initv_map);
