@@ -100,12 +100,8 @@ static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_dope.cxx $ $Revision: 1.8
 
 static void  cwh_dope_store_bound(INT32 offset, INT32 dim) ;
 static void  cwh_dope_read_bound(INT32 offset, INT32 dim) ;
-#ifdef KEY /* Bug 6845 */
 static void  cwh_dope_initialize(ST *st, WN * wa, TY_IDX ty, WN *dp[DOPE_USED],
   WN **bd, INT16 num_bnds, WN **alloc_cpnt, int n_alloc_cpnt);
-#else /* KEY Bug 6845 */
-static void  cwh_dope_initialize(ST *st, WN * wa, TY_IDX ty, WN *dp[DOPE_USED],WN **bd, INT16 num_bnds ) ;
-#endif /* KEY Bug 6845 */
 static void  cwh_dope_store (ST *st, WN *wa, OFFSET_64 off, TY_IDX  ty, WN *rhs) ;
 
 
@@ -124,11 +120,7 @@ static void  cwh_dope_store (ST *st, WN *wa, OFFSET_64 off, TY_IDX  ty, WN *rhs)
  *===============================================
  */ 
 extern void 
-#ifdef KEY /* Bug 6845 */
 fei_dv_def(INT32 num_dims, INT32 n_alloc_cpnt )
-#else /* KEY Bug 6845 */
-fei_dv_def(INT32 num_dims )
-#endif /* KEY Bug 6845 */
 {
   WN * dp[DOPE_USED];
   WN * bd[BOUND_NM * MAX_ARY_DIMS];
@@ -139,12 +131,10 @@ fei_dv_def(INT32 num_dims )
 
   INT16 n,i;
 
-#ifdef KEY /* Bug 6845 */
   WN ** alloc_cpnt = (WN **) alloca(n_alloc_cpnt * sizeof *alloc_cpnt);
   for (i = n_alloc_cpnt - 1; i >= 0; i -= 1) {
     alloc_cpnt[i] = cwh_expr_operand(NULL);
   }
-#endif /* KEY Bug 6845 */
 
   n = num_dims * BOUND_NM ;
 
@@ -173,11 +163,7 @@ fei_dv_def(INT32 num_dims )
      st = NULL;
      ty = 0;
   }
-#ifdef KEY /* Bug 6845 */
   cwh_dope_initialize(st,wa,ty,dp,bd,n,alloc_cpnt,n_alloc_cpnt);
-#else /* KEY Bug 6845 */
-  cwh_dope_initialize(st,wa,ty,dp,bd,n);
-#endif /* KEY Bug 6845 */
 
   /* These are going to be ignored */
   cwh_stk_push(st,ST_item);
@@ -336,11 +322,7 @@ fei_dv_deref(TYPE result)
  *===============================================
  */ 
 extern void 
-#ifdef KEY /* Bug6845 */
 fei_get_dv_hdr_fld(dv_idx_type field)
-#else /* KEY Bug6845 */
-fei_get_dv_hdr_fld(INT32 field)
-#endif /* KEY Bug6845 */
 {
    INT32 offset;
    INT32 rshift;
@@ -348,11 +330,7 @@ fei_get_dv_hdr_fld(INT32 field)
    TYPE_ID ty;
 
    ST *st;
-#ifdef KEY /* Bug 10177 */
    WN *wn = 0;
-#else /* KEY Bug 10177 */
-   WN *wn;
-#endif /* KEY Bug 10177 */
 
    /* Get the information about the appropriate fields needed */
    cwh_types_get_dope_info(field, &offset, &rshift, &mask, &ty);
@@ -397,11 +375,7 @@ fei_get_dv_hdr_fld(INT32 field)
  *===============================================
  */ 
 extern void 
-#ifdef KEY /* Bug6845 */
 fei_set_dv_hdr_fld(dv_idx_type field)
-#else /* KEY Bug6845 */
-fei_set_dv_hdr_fld(INT32 field)
-#endif /* KEY Bug6845 */
 {
    INT32 offset;
    INT32 rshift;
@@ -421,11 +395,7 @@ fei_set_dv_hdr_fld(INT32 field)
    needs_load = FALSE;
 
    /* Special cases for 1 and 9 base_address and orig_base */
-#ifdef KEY /* Bug6845 */
    if (field == DV_BASE_IDX || field == DV_ORIG_BASE_IDX)
-#else /* KEY Bug6845 */
-   if (field == 1 || field == 9)
-#endif /* KEY Bug6845 */
    {
       arg = cwh_expr_address(f_NONE);
    } else {
@@ -444,9 +414,7 @@ fei_set_dv_hdr_fld(INT32 field)
    }
    mask_complement = ~mask_complement;
       
-#ifdef KEY /* Bug 8128 */
    int tos_class = cwh_stk_get_class();
-#endif /* KEY Bug 8128 */
    switch(cwh_stk_get_class()) {
     case ST_item:
     case ST_item_whole_array:
@@ -467,11 +435,7 @@ fei_set_dv_hdr_fld(INT32 field)
 	 }
       }
 
-#ifdef KEY /* Bug6845 */
       if (field == DV_BASE_IDX || field == DV_ORIG_BASE_IDX)
-#else /* KEY Bug6845 */
-      if (field == 1 || field == 9)
-#endif /* KEY Bug6845 */
       {
          if (TY_kind(addr_ty) == KIND_POINTER) addr_ty = TY_pointed(addr_ty);
 
@@ -511,11 +475,7 @@ fei_set_dv_hdr_fld(INT32 field)
 	 }
       }
 
-#ifdef KEY /* Bug6845 */
       if (field == DV_BASE_IDX || field == DV_ORIG_BASE_IDX)
-#else /* KEY Bug6845 */
-      if (field == 1 || field == 9)
-#endif /* KEY Bug6845 */
       {
          if (TY_kind(addr_ty) == KIND_POINTER) addr_ty = TY_pointed(addr_ty);
 
@@ -528,7 +488,6 @@ fei_set_dv_hdr_fld(INT32 field)
       } else {
          addr_ty = Be_Type_Tbl(ty);
       }
-#ifdef KEY /* Bug 8128 */
       /*
        * Special case: array of structure containing a member of type pointer.
        * Can't generate a whole-array or array-section reference to such a
@@ -540,7 +499,6 @@ fei_set_dv_hdr_fld(INT32 field)
          OPR_ARRSECTION == WN_operator(WN_kid(wn, 0))) {
 	 wn = F90_Wrap_ARREXP(wn) ;
       }
-#endif /* KEY Bug 8128 */
       cwh_addr_store_WN(wn,offset,addr_ty,arg); 
       break ;
       
@@ -609,11 +567,7 @@ fei_dv_ptr_asg(void)
    addr = cwh_expr_address(f_T_SAVED);
    arrsection_to_array(addr);
    cwh_stk_push(addr,WN_item);
-#ifdef KEY /* Bug6845 */
    fei_set_dv_hdr_fld(DV_BASE_IDX); /* store it */
-#else /* KEY Bug6845 */
-   fei_set_dv_hdr_fld(1); /* store it */
-#endif /* KEY Bug6845 */
 }
 
 /*===============================================
@@ -630,11 +584,7 @@ static void
 cwh_dope_read_bound(INT32 offset, INT32 dim)
 {
   WN  * wa ;
-#ifdef KEY /* Bug 10177 */
   WN  * wn = 0;
-#else /* KEY Bug 10177 */
-  WN  * wn ;
-#endif /* KEY Bug 10177 */
   ST  * st ;
   WN_OFFSET off;
 
@@ -724,11 +674,7 @@ cwh_dope_store_bound(INT32 offset, INT32 dim)
 static INT64
 cwh_dope_get_dope_fudge_factor(TY_IDX ty)
 {
-#ifdef KEY /* Bug 10177 */
    TY_IDX base_ty = 0;
-#else /* KEY Bug 10177 */
-   TY_IDX base_ty;
-#endif /* KEY Bug 10177 */
    TYPE_ID t;
 
    TY& tt = Ty_Table[ty];
@@ -818,11 +764,7 @@ WN *craytype_wn)
   }
 
   DevAssert((se),("Can't find an array section or an array to use"));
-#ifdef KEY
   DevAssert((tarray != 0),("Missing TY"));
-#else
-  DevAssert((tarray != NULL),("Missing TY"));
-#endif
 
   element_size = WN_element_size(se);
   if (element_size < 0) {
@@ -931,20 +873,14 @@ WN *craytype_wn)
 
   /* Create the dope vector */
   ty = cwh_types_dope_TY(nd,tarray,FALSE,FALSE,
-#ifdef KEY /* Bug6845 */
     /* I hope this can't be an array of derived types having allocatable
      * components. If that's ever possible, we need to figure out from the
      * source type how many allocatable components there are. */
     0
-#endif /* KEY Bug 6845 */
     );
   wn = cwh_expr_temp(ty,NULL,f_T_PASSED);
-#ifdef KEY /* Bug 6845 */
   dp[10] = WN_Intconst(MTYPE_U4, 0);
   cwh_dope_initialize(WN_st(wn),NULL,0,dp,bd,nd*BOUND_NM,0,0);  
-#else /* KEY Bug 6845 */
-  cwh_dope_initialize(WN_st(wn),NULL,0,dp,bd,nd*BOUND_NM);  
-#endif /* KEY Bug 6845 */
   return(wn);
 
 }
@@ -959,12 +895,8 @@ WN *craytype_wn)
  *===============================================
  */ 
 static void
-#ifdef KEY /* Bug 6845 */
 cwh_dope_initialize(ST *st, WN *wa, TY_IDX dope_ty, WN *dp[DOPE_USED],WN **bd,
   INT16 num_bnds, WN **alloc_cpnt, INT16 n_alloc_cpnt)
-#else /* KEY Bug 6845 */
-cwh_dope_initialize(ST *st, WN *wa, TY_IDX dope_ty, WN *dp[DOPE_USED],WN **bd, INT16 num_bnds )
-#endif /* KEY Bug 6845 */
 {
   INT16  i ;
   INT16 sz ;
@@ -976,11 +908,7 @@ cwh_dope_initialize(ST *st, WN *wa, TY_IDX dope_ty, WN *dp[DOPE_USED],WN **bd, I
   WN  * wr ;
   WN  * wt ;
 
-#ifdef KEY /* Bug 10177 */
   OFFSET_64 off = 0;
-#else /* KEY Bug 10177 */
-  OFFSET_64 off;
-#endif /* KEY Bug 10177 */
   OFFSET_64 invar_off;
   INT shift;
 
@@ -1046,11 +974,9 @@ cwh_dope_initialize(ST *st, WN *wa, TY_IDX dope_ty, WN *dp[DOPE_USED],WN **bd, I
       dh1.a_contig = 0;
      ft = FLD_next(ft);
 
-#ifdef KEY /* Bug 6845 */
   // alloc_cpnt
     dh1.alloc_cpnt = WN_const_val(dp[10]);
     ft = FLD_next(ft);
-#endif /* KEY Bug 6845 */
 
     dh1.unused = 0;
 
@@ -1134,7 +1060,6 @@ cwh_dope_initialize(ST *st, WN *wa, TY_IDX dope_ty, WN *dp[DOPE_USED],WN **bd, I
      }
   }
 
-#ifdef KEY /* Bug 6845 */
   /* If this is an allocatable array whose element is a derived type having
    * component(s) which are themselves allocatable, emit a list of byte offsets
    * within the structure to each of the allocatable components, preceded by
@@ -1151,7 +1076,6 @@ cwh_dope_initialize(ST *st, WN *wa, TY_IDX dope_ty, WN *dp[DOPE_USED],WN **bd, I
        off += DOPE_bound_sz;
      }
   }
-#endif /* KEY Bug 6845 */
 }
 
 /*===============================================

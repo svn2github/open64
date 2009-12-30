@@ -66,7 +66,6 @@ static char USMID[] = "\n@(#)5.0_pl/sources/s_directiv.c	5.12	10/28/99 10:03:56\
 # include "sytb.h"
 # include "s_globals.h"
 
-#ifdef KEY /* Bug 4889 */
 /* Set to the sh_idx when we see an OpenMP "do" or "paralleldo" directive,
  * cleared when we reach the "do" statement itself.
  */
@@ -75,7 +74,6 @@ int			 inside_paralleldo;
  * we reach the OpenMP "endparallel"
  */
 int			 inside_parallel;
-#endif /* KEY Bug 4889 */
 
 /*****************************************************************\
 |* function prototypes of static functions declared in this file *|
@@ -708,10 +706,8 @@ void directive_stmt_semantics(void)
          else {
             cdir_switches.unroll_count_idx	= CN_INTEGER_ZERO_IDX;
             cdir_switches.unroll_dir		= TRUE;
-#ifdef KEY /* Bug 7489 */
 	    IR_IDX_L(ir_idx)		= CN_INTEGER_ZERO_IDX;
 	    IR_FLD_L(ir_idx)		= CN_Tbl_Idx;
-#endif /* KEY Bug 7489 */
          }
          break;
 
@@ -1322,17 +1318,6 @@ void directive_stmt_semantics(void)
             exp_desc.rank = 0;
             ok &= expr_semantics(&opnd, &exp_desc);
 
-# if 0
-            if (OPND_FLD(opnd) == CN_Tbl_Idx &&
-                exp_desc.rank  == 0          &&
-                exp_desc.type  == Integer)   {
-
-               if (compare_cn_and_value(OPND_IDX(opnd), 0, Lt_Opr) {
-                  find_opnd_line_and_column(&opnd, &line, &column);
-                  PRINTMSG(line, 796, Error, column);
-               }
-            }
-# endif
 
             COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
@@ -1475,10 +1460,8 @@ void directive_stmt_semantics(void)
          else {
             cdir_switches.unroll_count_idx	= CN_INTEGER_ZERO_IDX;
             cdir_switches.unroll_dir		= TRUE;
-#ifdef KEY /* Bug 7489 */
 	    IR_IDX_L(ir_idx)		= CN_INTEGER_ZERO_IDX;
 	    IR_FLD_L(ir_idx)		= CN_Tbl_Idx;
-#endif /* KEY Bug 7489 */
 #endif /* TARG_IA64 */
          }
          break;
@@ -1501,7 +1484,6 @@ void directive_stmt_semantics(void)
          prefetch_ref_semantics();
          break;
 
-#ifdef KEY /* Bug 2660 */
       /* Syntax is c*$*options "somestring" */
       case Options_Dir_Opr:
          if (IR_FLD_L(ir_idx) != CN_Tbl_Idx) {
@@ -1509,7 +1491,6 @@ void directive_stmt_semantics(void)
             PRINTMSG(line, 1378, Error, column, "OPTIONS");
 	 }
          break;
-#endif /* KEY Bug 2660 */
 
       case Prefetch_Star_Opr:
          if (IR_FLD_L(ir_idx) != CN_Tbl_Idx ||
@@ -2062,9 +2043,7 @@ void directive_stmt_semantics(void)
          break;
 
       case Do_Open_Mp_Opr:
-#ifdef KEY /* Bug 4889 */
          inside_paralleldo = curr_stmt_sh_idx;
-#endif /* KEY Bug 4889 */
          open_mp_directive_semantics(Do_Omp);
          break;
 
@@ -2072,23 +2051,17 @@ void directive_stmt_semantics(void)
          break;
 
       case Enddo_Open_Mp_Opr:
-#ifdef KEY /* Bug 4889 */
          inside_paralleldo = NULL_IDX;
-#endif /* KEY Bug 4889 */
          end_blk_mp_semantics(TRUE);
          break;
 
       case Endparallel_Open_Mp_Opr:
-#ifdef KEY /* Bug 4889 */
 	 inside_parallel = NULL_IDX;
-#endif /* KEY Bug 4889 */
          end_blk_mp_semantics(TRUE);
          break;
 
       case Endparalleldo_Open_Mp_Opr:
-#ifdef KEY /* Bug 4889 */
 	 inside_paralleldo = NULL_IDX;
-#endif /* KEY Bug 4889 */
          end_blk_mp_semantics(TRUE);
          break;
 
@@ -2107,11 +2080,9 @@ void directive_stmt_semantics(void)
          break;
 
       case Endsingle_Open_Mp_Opr:
-      	  //open_mp_copyprivate_semantics(); /* by jhs, 02/7/22 */
+      	  //open_mp_copyprivate_semantics();
          end_blk_mp_semantics(TRUE);
-#ifdef KEY /* Bug 10441 */
          cdir_switches.single = FALSE;
-#endif /* KEY Bug 10441 */
          break;
 
       case Flush_Open_Mp_Opr:
@@ -2146,16 +2117,12 @@ void directive_stmt_semantics(void)
          break;
 
       case Parallel_Open_Mp_Opr:
-#ifdef KEY /* Bug 4889 */
 	 inside_parallel = curr_stmt_sh_idx;
-#endif /* KEY Bug 4889 */
          open_mp_directive_semantics(Parallel_Omp);
          break;
 
       case Paralleldo_Open_Mp_Opr:
-#ifdef KEY /* Bug 4889 */
 	 inside_paralleldo = curr_stmt_sh_idx;
-#endif /* KEY Bug 4889 */
          open_mp_directive_semantics(Parallel_Do_Omp);
          break;
 
@@ -2171,9 +2138,7 @@ void directive_stmt_semantics(void)
          break;
 
       case Single_Open_Mp_Opr:
-#ifdef KEY /* Bug 10441 */
          cdir_switches.single = TRUE;
-#endif /* KEY Bug 10441 */
          open_mp_directive_semantics(Single_Omp);
          break;
          
@@ -4414,11 +4379,7 @@ static void set_mp_task_flags(int       ir_idx,
 
 {
    int                  attr_idx;
-#ifdef KEY /* Bug 10177 */
    mp_directive_type    directive = Doacross;
-#else /* KEY Bug 10177 */
-   mp_directive_type    directive;
-#endif /* KEY Bug 10177 */
    int                  i;
    int                  list_array[MP_DIR_LIST_CNT];
    int                  list_idx;
@@ -4976,24 +4937,20 @@ static boolean assert_semantics(void)
          break;
 
       case ASSERT_PERMUTATION:
-#ifdef KEY /* Bug 12497 */
          if (IR_FLD_R(ir_idx) == IL_Tbl_Idx) {
 	    attr_idx = IL_IDX(IR_IDX_R(ir_idx));
 	 }
 	 else
-#endif /* KEY Bug 12497 */
          attr_idx = IR_IDX_R(ir_idx);
          while (AT_ATTR_LINK(attr_idx)) {
             attr_idx = AT_ATTR_LINK(attr_idx);
             AT_LOCKED_IN(attr_idx) = TRUE;
          }
 
-#ifdef KEY /* Bug 12497 */
          if (IR_FLD_R(ir_idx) == IL_Tbl_Idx) {
 	    IL_IDX(IR_IDX_R(ir_idx)) = attr_idx;
 	 }
 	 else
-#endif /* KEY Bug 12497 */
          IR_IDX_R(ir_idx) = attr_idx;
          break;
 
@@ -5178,7 +5135,7 @@ static void open_mp_directive_semantics(open_mp_directive_type directive)
       }
    }
 
-   /* by jhs, 02/7/20 */
+
    if (open_mp_clause_allowed[directive][Num_Threads_Omp_Clause]) {
       list_idx = list_array[OPEN_MP_NUM_THREADS];
 
@@ -5313,9 +5270,7 @@ static void open_mp_directive_semantics(open_mp_directive_type directive)
     
 	 while (list2_idx) {
     
-#ifdef KEY /* Bug 6075 */
             if (IL_FLD(list2_idx) == AT_Tbl_Idx) {
-#endif /* KEY Bug 6075 */
 
 	       attr_idx = IL_IDX(list2_idx);
 	       AT_LOCKED_IN(attr_idx) = TRUE;
@@ -5378,13 +5333,11 @@ static void open_mp_directive_semantics(open_mp_directive_type directive)
 		     IL_COL_NUM(list3_idx) = IL_COL_NUM(list2_idx);
 		  }
 	       }
-#ifdef KEY /* Bug 6075 */
             }
 	    else {
                /* SB_Tbl_Idx here */
                add_common_blk_objects_to_list(list2_idx, list_idx);
 	    }
-#endif /* KEY Bug 6075 */
     
 	    list2_idx = IL_NEXT_LIST_IDX(list2_idx);
 	 }
@@ -5685,17 +5638,6 @@ static void open_mp_directive_semantics(open_mp_directive_type directive)
                            AT_OBJ_NAME_PTR(attr_idx),
                            open_mp_dir_str[directive]);
                }
-// Bug 4516
-#ifndef KEY
-               else if (ATD_POINTER(attr_idx)) {
-
-                  PRINTMSG(IL_LINE_NUM(list2_idx), 1484, Error,
-                           IL_COL_NUM(list2_idx),
-                           "Pointer",
-                           AT_OBJ_NAME_PTR(attr_idx),
-                           open_mp_dir_str[directive]);
-               }
-#endif
                else if (ATD_ALLOCATABLE(attr_idx)) {
 
                   PRINTMSG(IL_LINE_NUM(list2_idx), 1484, Error,
@@ -5912,16 +5854,6 @@ static void open_mp_directive_semantics(open_mp_directive_type directive)
                            AT_OBJ_NAME_PTR(attr_idx),
                            "REDUCTION", open_mp_dir_str[directive]);
                }
-               /* the following is deleted by jhs, 02.9.10 */
-#if 0
-		else if (ATD_ARRAY_IDX(attr_idx) != NULL_IDX) {
-                  PRINTMSG(IL_LINE_NUM(list2_idx), 1483, Error,
-                           IL_COL_NUM(list2_idx),
-                           AT_OBJ_NAME_PTR(attr_idx),
-                           open_mp_dir_str[directive]);
-               }
-#endif
-	       /* the above is deleted by jhs, 02.9.10 */
                else if (ATD_CLASS(attr_idx) == CRI__Pointee) {
                   PRINTMSG(IL_LINE_NUM(list2_idx), 1477, Error,
                            IL_COL_NUM(list2_idx),
@@ -6032,28 +5964,6 @@ static void open_mp_directive_semantics(open_mp_directive_type directive)
                AT_LOCKED_IN(attr_idx) = TRUE;
             }
 
-# if 0
-  /* do not do this for open mp. pv 658750 */
-
-            if (! ATD_TASK_PRIVATE(attr_idx) &&
-                ! ATD_TASK_FIRSTPRIVATE(attr_idx) &&
-                ! ATD_TASK_LASTPRIVATE(attr_idx)) {
-
-               NTR_IR_LIST_TBL(list3_idx);
-               IL_NEXT_LIST_IDX(list3_idx) =
-                         IL_IDX(cdir_switches.lastprivate_list_idx);
-               if (IL_IDX(cdir_switches.lastprivate_list_idx) != NULL_IDX) {
-                  IL_PREV_LIST_IDX(IL_IDX(cdir_switches.lastprivate_list_idx))=
-                                          list3_idx;
-               }
-               IL_IDX(cdir_switches.lastprivate_list_idx) = list3_idx;
-               IL_FLD(cdir_switches.lastprivate_list_idx) = IL_Tbl_Idx;
-               IL_LIST_CNT(cdir_switches.lastprivate_list_idx)++;
-               IL_FLD(list3_idx) = AT_Tbl_Idx;
-               IL_IDX(list3_idx) = attr_idx;
-               ATD_TASK_LASTPRIVATE(attr_idx) = TRUE;
-            }
-# endif
 
             IL_IDX(list2_idx) = attr_idx;
             list2_idx = IL_NEXT_LIST_IDX(list2_idx);
@@ -6325,7 +6235,6 @@ static void open_mp_directive_semantics(open_mp_directive_type directive)
 
 }  /* open_mp_directive_semantics */
 
-/* the following are added by jhs, 02/7/21 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -6496,7 +6405,6 @@ static void open_mp_copyprivate_semantics()
 
 }  /* open_mp_copyprivate_semantics */
 
-/* the above are added by jhs, 02/7/21 */
 
 /******************************************************************************\
 |*                                                                            *|
@@ -6544,11 +6452,6 @@ static void end_blk_mp_semantics(boolean	open_mp)
       set_mp_task_flags(ir_idx, FALSE);
    }
 
-# if 0
-      {extern char *operator_str[];
-      printf(" ending block for %s\n", operator_str[IR_OPR(ir_idx)]);
-      }
-# endif
 
    pop_task_blk();
 
@@ -6603,11 +6506,7 @@ static void set_open_mp_task_flags(int		ir_idx,
 
 {
    int                  	attr_idx;
-#ifdef KEY /* Bug 10177 */
    open_mp_directive_type	directive = Doacross;
-#else /* KEY Bug 10177 */
-   open_mp_directive_type	directive;
-#endif /* KEY Bug 10177 */
    int                  	i;
    int                  	list_array[OPEN_MP_LIST_CNT];
    int                  	list_idx;
@@ -6663,15 +6562,11 @@ static void set_open_mp_task_flags(int		ir_idx,
 
          while (list2_idx) {
 
-#ifdef KEY /* Bug 6075 */
             if (IL_FLD(list2_idx) == AT_Tbl_Idx) {
-#endif /* KEY Bug 6075 */
 	       attr_idx = IL_IDX(list2_idx);
 
 	       ATD_TASK_SHARED(attr_idx) = flag;
-#ifdef KEY /* Bug 6075 */
             }
-#endif /* KEY Bug 6075 */
 
             list2_idx = IL_NEXT_LIST_IDX(list2_idx);
          }

@@ -77,14 +77,10 @@ static void Parse_script(const char *script_name)
   infile.open(script_name, ifstream::in);
 
   strcpy(callee_key, "");
-#ifdef KEY /* Bug 6121 */
   if (!infile.good()) {
     PRINTMSG(0, 1676, Log_Error, 0, script_name, strerror(errno));
     return;
   }
-#else
-  FmtAssert((infile.good()), ("Ff2c abi script parsing error: can't open the ff2c abi description file"));
-#endif /* KEY Bug 6121 */
 
   // Read in the file line by line,
   // Perform syntax analysis based on the keywords of call-site type specification

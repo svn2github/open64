@@ -74,19 +74,10 @@
 # define FIXED_SRC_LINE_SIZE_72 72		/* std fixed src line size    */
 # define FIXED_SRC_LINE_SIZE_80 80		/* alt fixed src line size    */
 # define FIXED_SRC_LINE_SIZE_132	132	/* alt fixed src line size    */
-#ifdef KEY /* Bug 3632 */
 # define FREE_SRC_LINE_SIZE	2048		/* std free src line size     */
 # define MAX_SRC_LINE_SIZE	(FREE_SRC_LINE_SIZE+3)	/* maximum source line size   */
-#else
-# define FREE_SRC_LINE_SIZE	132		/* std free src line size     */
-# define MAX_SRC_LINE_SIZE	135		/* maximum source line size   */
-#endif /* KEY Bug 3632 */
 						/* it is 1 based, not 0 */
-#ifdef KEY /* Bug 3449 */
 # define MAX_STMT_CHAR_SIZE     33750           /* maximum statement size     */
-#else
-# define MAX_STMT_CHAR_SIZE     13500           /* maximum statement size     */
-#endif /* KEY */
 
 /* max number of source lines per statement */
 

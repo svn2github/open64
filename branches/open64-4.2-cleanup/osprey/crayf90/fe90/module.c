@@ -205,9 +205,6 @@ static	void	check_ir_for_attrs (int);
 static	void	check_il_for_attrs (int);
 static	void	compress_tbls (int, boolean);
 static	void	compress_type_tbl (int);
-# if 0
-static	void	create_module_list_from_str_pool (void);
-# endif
 
 # if defined(_TARGET_OS_SOLARIS) && defined(_MODULE_TO_DOT_o)
 static	boolean	do_elf_notes_section(Elf_Data *, int, int);
@@ -508,17 +505,9 @@ static	void allocate_mod_link_tbl(int		size)
 |*	false if we printed error 855 saying we won't create module file      *|
 |*									      *|
 \******************************************************************************/
-#ifdef KEY /* Bug 3477 */
 extern	boolean	create_mod_info_file(void)
-#else
-extern	void	create_mod_info_file(void)
-#endif /* KEY Bug 3477 */
 {
-#ifdef KEY /* Bug 10177 */
    		int		 ga_idx = 0;
-#else /* KEY Bug 10177 */
-   		int		 ga_idx;
-#endif /* KEY Bug 10177 */
 		FILE		*fp_file_ptr;
    		int		 fp_idx			= NULL_IDX;
    		int		 idx;
@@ -609,13 +598,7 @@ extern	void	create_mod_info_file(void)
                   AT_DEF_COLUMN(module_attr_idx),
                   AT_OBJ_NAME_PTR(module_attr_idx));
 
-#ifdef KEY /* Bug 3477 */
 	 return FALSE;
-#else
-         if (SCP_IN_ERR(MAIN_SCP_IDX)) {
-            return;
-         }
-#endif /* KEY Bug 3477 */
       }
       else {  /* Inline information file */
          PRINTMSG(AT_DEF_LINE(module_attr_idx), 1322, Error,
@@ -758,9 +741,6 @@ extern	void	create_mod_info_file(void)
 
          /* KAY - Use for running the frontend alone. */
 
-# if 0
-         strcpy(src_name_ptr, ".m");      /* Backend will delete this. */
-# endif
 
          strcpy(src_name_ptr, ".mn");     /* Backend will not delete this. */
 
@@ -919,11 +899,7 @@ extern	void	create_mod_info_file(void)
 
    TRACE (Func_Exit, "create_mod_info_file", NULL);
 
-#ifdef KEY /* Bug 3477 */
    return TRUE;
-#else
-   return;
-#endif /* KEY Bug 3477 */
 
 }  /* create_mod_info_file */
 
@@ -1253,14 +1229,12 @@ static	void  set_mod_link_tbl_for_attr(int	attr_idx)
          ML_NP_KEEP_ME(SB_NAME_IDX(sb_idx))	= TRUE;
          ML_NP_IDX(SB_NAME_IDX(sb_idx))		= SB_NAME_IDX(sb_idx);
          ML_NP_LEN(SB_NAME_IDX(sb_idx))		= SB_NAME_LEN(sb_idx);
-#ifdef KEY /* Bug 14150 */
 	 int sb_ext_name_idx = SB_EXT_NAME_IDX(sb_idx);
 	 if (sb_ext_name_idx) {
 	   ML_NP_KEEP_ME(sb_ext_name_idx) = TRUE;
 	   ML_NP_IDX(sb_ext_name_idx) = sb_ext_name_idx;
 	   ML_NP_LEN(sb_ext_name_idx) = SB_EXT_NAME_LEN(sb_idx);
 	 }
-#endif /* KEY Bug 14150 */
 
          if (SB_FIRST_ATTR_IDX(sb_idx) != NULL_IDX) {
             KEEP_ATTR(SB_FIRST_ATTR_IDX(sb_idx));
@@ -2509,10 +2483,6 @@ static void  compress_tbls(int		al_idx,
    int		start_idx;
    int		typ_idx;
 
-# if 0
-   int		end_old_idx;
-   int		start_old_idx;
-# endif
 
 
    TRACE (Func_Entry, "compress_tbls", NULL);
@@ -2549,41 +2519,6 @@ static void  compress_tbls(int		al_idx,
 
    start_idx	= at_idx+1;
 
-# if 0
-   mod_idx	= start_idx;
-
-   do {
-
-      while (mod_idx <= attr_tbl_idx && !ML_AT_KEEP_ME(mod_idx)) {
-         mod_idx++;
-      }
-
-      if (mod_idx <= attr_tbl_idx) {
-         start_old_idx	= mod_idx;
-
-         while (mod_idx <= attr_tbl_idx && ML_AT_KEEP_ME(mod_idx)) {
-            mod_idx++;
-         }
-
-         end_old_idx	= mod_idx - 1;
-         ++at_idx;
-
-         if (start_old_idx != at_idx) {
-            (void) memmove ((void *) &attr_tbl[at_idx],
-                            (void *) &attr_tbl[start_old_idx],
-                            (end_old_idx - start_old_idx +1) * NUM_AT_WDS * 8);
-         }
-         at_idx	       += end_old_idx - start_old_idx;
-                         
-         /* The last one checked is either too high   */
-         /* or has !ML_AT_KEEP_ME set.  Skip past it. */
-
-         ++mod_idx;
-      }
-   }
-   while (mod_idx <= attr_tbl_idx);
-
-# endif
 
    for (mod_idx = start_idx; mod_idx <= attr_tbl_idx; mod_idx++) {
 
@@ -2997,12 +2932,10 @@ static void  compress_tbls(int		al_idx,
    for (mod_idx = 1; mod_idx <= sb_idx; mod_idx++) {
       SB_NAME_IDX(mod_idx)		= ML_NP_IDX(SB_NAME_IDX(mod_idx));
       SB_MODULE_IDX(mod_idx)		= ML_AT_IDX(SB_MODULE_IDX(mod_idx));
-#ifdef KEY /* Bug 14150 */
       int sb_ext_name_idx = SB_EXT_NAME_IDX(mod_idx);
       if (sb_ext_name_idx) {
 	SB_EXT_NAME_IDX(mod_idx)	= ML_NP_IDX(sb_ext_name_idx);
       }
-#endif /* KEY Bug 14150 */
 
       if (SB_FIRST_ATTR_IDX(mod_idx) != NULL_IDX) {
          SB_FIRST_ATTR_IDX(mod_idx) = ML_AT_IDX(SB_FIRST_ATTR_IDX(mod_idx));
@@ -3038,12 +2971,10 @@ static void  compress_tbls(int		al_idx,
 
    for (mod_idx = start_idx; mod_idx <= sb_idx; mod_idx++) {
       SB_NAME_IDX(mod_idx)		= ML_NP_IDX(SB_NAME_IDX(mod_idx));
-#ifdef KEY /* Bug 14150 */
       int sb_ext_name_idx = SB_EXT_NAME_IDX(mod_idx);
       if (sb_ext_name_idx) {
 	SB_EXT_NAME_IDX(mod_idx)	= ML_NP_IDX(sb_ext_name_idx);
       }
-#endif /* KEY Bug 14150 */
       SB_MODULE_IDX(mod_idx)		= ML_AT_IDX(SB_MODULE_IDX(mod_idx));
 
       if (SB_FIRST_ATTR_IDX(mod_idx) != NULL_IDX) {
@@ -3615,9 +3546,7 @@ extern	void  output_mod_info_file(void)
 #     endif
    }
 
-#ifdef KEY /* Bug 3474 */
    Uint save_file_idx = SCP_FILE_PATH_IDX(curr_scp_idx);
-#endif /* KEY Bug 3474 */
    SCP_FILE_PATH_IDX(curr_scp_idx) = NULL_IDX;
 
    if (ATP_PGM_UNIT(module_attr_idx) == Module) {
@@ -3626,18 +3555,11 @@ extern	void  output_mod_info_file(void)
    }
 
    if (mod_file_ptr == NULL) {
-#ifdef KEY /* Bug 3474 */
       PRINTMSG(AT_DEF_LINE(module_attr_idx), 1665, Error,
                AT_DEF_COLUMN(module_attr_idx),
                AT_OBJ_NAME_PTR(module_attr_idx),
                FP_NAME_PTR(save_file_idx),
 	       strerror(errno));
-#else
-      PRINTMSG(AT_DEF_LINE(module_attr_idx), 1665, Error,
-               AT_DEF_COLUMN(module_attr_idx),
-               AT_OBJ_NAME_PTR(module_attr_idx),
-               FP_NAME_PTR(SCP_FILE_PATH_IDX(curr_scp_idx)));
-#endif /* KEY Bug 3474 */
       goto EXIT;
    }
 
@@ -3885,7 +3807,6 @@ EXIT:
 
 }  /* output_mod_info_file */
 
-#ifdef KEY /* Bug 5089 */
 /*
  * module_attr_idx	AT_Tbl_Idx for a module
  * return		TRUE if that module is intrinsic ieee_features,
@@ -3898,7 +3819,6 @@ is_ieee(int module_attr_idx) {
     LANG_IEEE_Save &&
     0 == strncmp(AT_OBJ_NAME_PTR(module_attr_idx), "IEEE", 4);
 }
-#endif /* KEY Bug 5089 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -4042,7 +3962,6 @@ void	use_stmt_semantics(void)
          goto EXIT;
       }
 
-#ifdef KEY /* Bug 5089 */
       int intrinsic_module = AT_IS_INTRIN(module_attr_idx);
       /* F2003: Scope which accesses ieee_* intrinsic modules must save FPU
        * state on entry and restore it (ORing flags) on exit.
@@ -4050,7 +3969,6 @@ void	use_stmt_semantics(void)
       if (is_ieee(module_attr_idx)) {
 	SCP_USES_IEEE(curr_scp_idx) = TRUE;
       }
-#endif /* KEY Bug 5089 */
 
       start_ln_idx	= loc_name_tbl_idx - MD_NUM_ENTRIES(Loc_Name_Tbl) + 1;
       attr_idx		= attr_tbl_idx - MD_NUM_ENTRIES(Attr_Tbl) + 1;
@@ -4118,14 +4036,12 @@ void	use_stmt_semantics(void)
 
          attr_idx	= LN_ATTR_IDX(new_name_idx);
 
-#ifdef KEY /* Bug 5089 */
          /* Look up the original name of this entity in the
 	  * intrinsic_module_table. If we find it, change the attr_tbl_entry
 	  * so that a call to it will be replaced by intrinsic code. */
          if (intrinsic_module && NULL_IDX != AT_ORIG_NAME_IDX(attr_idx)) {
 	   intrinsic_module_lookup(attr_idx);
 	 }
-#endif /* KEY Bug 5089 */
 
          /* Find the new entries position in the old local name table. */
 
@@ -4340,11 +4256,9 @@ EXIT:
 
       if (ATP_INDIRECT_MODULE(AL_ATTR_IDX(al_idx))) {
          ADD_ATTR_TO_LOCAL_LIST(AL_ATTR_IDX(al_idx));
-#ifdef KEY /* Bug 5089 */
 	 if (is_ieee(AL_ATTR_IDX(al_idx))) {
 	   SCP_USES_IEEE(curr_scp_idx) = TRUE;
 	 }
-#endif /* KEY Bug 5089 */
       }
       al_idx	= AL_NEXT_IDX(al_idx);
    }
@@ -4388,11 +4302,7 @@ static	boolean	rename_only_semantics(int	module_attr_idx,
 {
    int		 attr_idx;
    int		 begin_idx;
-#ifdef KEY /* Bug 10177 */
    int		 cif_symbol_id = 0;
-#else /* KEY Bug 10177 */
-   int		 cif_symbol_id;
-#endif /* KEY Bug 10177 */
    int		 end_idx;
    int		 func_idx;
    boolean	 has_renames		= FALSE;
@@ -4401,11 +4311,7 @@ static	boolean	rename_only_semantics(int	module_attr_idx,
    int		 length;
    int		 ln_idx;
    int		 match;
-#ifdef KEY /* Bug 10177 */
    int		 name_idx = 0;
-#else /* KEY Bug 10177 */
-   int		 name_idx;
-#endif /* KEY Bug 10177 */
    int		 new_attr_idx;
    int		 new_name_idx;
    int		 np_idx;
@@ -4881,7 +4787,6 @@ static	boolean	rename_only_semantics(int	module_attr_idx,
  *			we return its final value to the caller via this arg
  * returns		true if module found
  */
-#ifdef KEY /* Bug 5089 */
 static boolean look_for_module(int module_attr_idx, int fp_file_idx,
    FILE **mod_file_ptr_ptr, int *output_fp_file_idx) {
    char		file_name[MAX_FILE_NAME_SIZE];
@@ -4889,7 +4794,6 @@ static boolean look_for_module(int module_attr_idx, int fp_file_idx,
    int		fn_length;
    boolean	archive;
    FILE *mod_file_ptr = *mod_file_ptr_ptr;
-#endif /* KEY Bug 5089 */
    if (on_off_flags.module_to_mod && !inline_search) {
       strcpy(file_name, AT_OBJ_NAME_PTR(module_attr_idx));
       fn_length			= AT_NAME_LEN(module_attr_idx);
@@ -4904,13 +4808,9 @@ static boolean look_for_module(int module_attr_idx, int fp_file_idx,
    file_name[fn_length]	= '\0';
 
    while (fp_file_idx != NULL_IDX) {
-#ifdef KEY /* Bug 5089 */
       int
-#endif /* KEY Bug 5089 */
       fp_module_idx		= NULL_IDX;
-#ifdef KEY /* Bug 5089 */
       int
-#endif /* KEY Bug 5089 */
       next_fp_module_idx	= FP_MODULE_IDX(fp_file_idx); /* 1st module */
 
       while (next_fp_module_idx != NULL_IDX) {
@@ -4928,20 +4828,14 @@ static boolean look_for_module(int module_attr_idx, int fp_file_idx,
                                             fp_file_idx);
             
 
-#ifdef KEY /* Bug 5089 */
             boolean
-#endif /* KEY Bug 5089 */
             found = (mod_file_ptr == NULL) ?
                      FALSE : read_module_tbl_header(module_attr_idx,
                                                     fp_module_idx,
                                                     mod_file_ptr);
-#ifdef KEY /* Bug 5089 */
 	    *mod_file_ptr_ptr = mod_file_ptr;
 	    *output_fp_file_idx = fp_file_idx;
             return found;
-#else /* KEY Bug 5089 */
-            goto FOUND;
-#endif /* KEY Bug 5089 */
          }
       }  /* End while - looking through module names in same file. */
 
@@ -4977,14 +4871,9 @@ static boolean look_for_module(int module_attr_idx, int fp_file_idx,
              FP_CLASS(fp_file_idx) == Unknown_Fp) {
 
             if (srch_elf_file_for_module_tbl(module_attr_idx, fp_file_idx)) {
-#ifdef KEY /* Bug 5089 */
 	       *mod_file_ptr_ptr = mod_file_ptr;
 	       *output_fp_file_idx = fp_file_idx;
 	       return TRUE;
-#else /* KEY Bug 5089 */
-               found	= TRUE;
-	       goto FOUND;
-#endif /* KEY Bug 5089 */
             }
 
             /* Either this is not an elf file, or we really didn't find it. */
@@ -5023,14 +4912,9 @@ static boolean look_for_module(int module_attr_idx, int fp_file_idx,
                                           fp_file_idx,
                                           0,
                                           mod_file_ptr)) {
-#ifdef KEY /* Bug 5089 */
 		     *mod_file_ptr_ptr = mod_file_ptr;
 		     *output_fp_file_idx = fp_file_idx;
 		     return TRUE;
-#else /* KEY Bug 5089 */
-                     found	= TRUE;
-		     goto FOUND;
-#endif /* KEY Bug 5089 */
                   }
                }
             }
@@ -5053,10 +4937,8 @@ static boolean look_for_module(int module_attr_idx, int fp_file_idx,
                archive = (FP_CLASS(fp_file_idx) == Archive_File_Fp);
             }
             else {  /* we don't know what kind of file this is yet. */
-#ifdef KEY /* Bug 5089 */
 	       char ar_string[SARMAG];
 	       int num_recs_read;
-#endif /* KEY Bug 5089 */
 
                for (num_recs_read = 0; num_recs_read < SARMAG; num_recs_read++){
                   ar_string[num_recs_read] = '\n';
@@ -5108,28 +4990,18 @@ static boolean look_for_module(int module_attr_idx, int fp_file_idx,
                                        fp_file_idx,
                                        0,
                                        mod_file_ptr)) {
-#ifdef KEY /* Bug 5089 */
 		  *mod_file_ptr_ptr = mod_file_ptr;
 		  *output_fp_file_idx = fp_file_idx;
 		  return TRUE;
-#else /* KEY Bug 5089 */
-                  found	= TRUE;
-		  goto FOUND;
-#endif /* KEY Bug 5089 */
                }
             }
             else if (srch_ar_file_for_module_tbl(module_attr_idx,
                                                  &fp_module_idx,
                                                  fp_file_idx,
                                                  mod_file_ptr)) {
-#ifdef KEY /* Bug 5089 */
 	       *mod_file_ptr_ptr = mod_file_ptr;
 	       *output_fp_file_idx = fp_file_idx;
 	       return TRUE;
-#else /* KEY Bug 5089 */
-               found	= TRUE;
-	       goto FOUND;
-#endif /* KEY Bug 5089 */
             }
 
             fclose(mod_file_ptr);
@@ -5142,12 +5014,10 @@ static boolean look_for_module(int module_attr_idx, int fp_file_idx,
       }
       fp_file_idx	= FP_NEXT_FILE_IDX(fp_file_idx);
    }
-#ifdef KEY /* Bug 5089 */
    *mod_file_ptr_ptr = mod_file_ptr;
    *output_fp_file_idx = fp_file_idx;
    return FALSE;
 }
-#endif /* KEY Bug 5089 */
 
 /******************************************************************************\
 |*									      *|
@@ -5167,25 +5037,12 @@ static boolean look_for_module(int module_attr_idx, int fp_file_idx,
 boolean	find_prog_unit_tbl(int	module_attr_idx)
 
 {
-#ifndef KEY /* Bug 5089 */
-   boolean	archive;
-   char		ar_string[SARMAG];
-#endif /* KEY Bug 5089 */
    boolean	found		= FALSE;
-#ifndef KEY /* Bug 5089 */
-   char		file_name[40];
-   char	       *file_name_ptr;
-   int		fn_length;
-#endif /* KEY Bug 5089 */
    int		fp_file_idx;
    int		fp_module_idx;
    int		ga_idx;
    FILE	       *mod_file_ptr;
    int		name_idx;
-#ifndef KEY /* Bug 5089 */
-   int		next_fp_module_idx;
-   int		num_recs_read;
-#endif /* KEY Bug 5089 */
    boolean	save_keep_module_procs;
 
 
@@ -5217,14 +5074,12 @@ boolean	find_prog_unit_tbl(int	module_attr_idx)
    /* file information about it.                                      */
 
    if (
-#ifdef KEY /* Bug 5089 */
       /*
        * If we're looking for an intrinsic module, don't search the global
        * name table unless -intrinsic_module_gen was set, because ordinarily
        * a module defined in the current compilation cannot be intrinsic.
        */
       (on_off_flags.intrinsic_module_gen || !AT_IS_INTRIN(module_attr_idx)) &&
-#endif /* KEY Bug 5089 */
       srch_global_name_tbl(AT_OBJ_NAME_PTR(module_attr_idx),
                             AT_NAME_LEN(module_attr_idx),
                             &name_idx)) {
@@ -5282,7 +5137,6 @@ boolean	find_prog_unit_tbl(int	module_attr_idx)
       }
    }
 
-#ifdef KEY /* Bug 5089 */
    if (inline_search) {
      (void) look_for_module(module_attr_idx, inline_path_idx, &mod_file_ptr,
        &fp_file_idx);
@@ -5367,9 +5221,6 @@ boolean	find_prog_unit_tbl(int	module_attr_idx)
    if (found) {
      goto FOUND;
    }
-#else /* KEY Bug 5089 */
-   fp_file_idx = (inline_search) ? inline_path_idx : module_path_idx;
-#endif /* KEY Bug 5089 */
 
 ERROR:
 
@@ -5525,15 +5376,9 @@ FOUND:
          AT_DCL_ERR(module_attr_idx) = TRUE;
       }
       else if (MD_DEFAULT_INTEGER_TYPE != INTEGER_DEFAULT_TYPE) {
-#ifdef KEY /* Bug 7359 */
          PRINTMSG(AT_DEF_LINE(module_attr_idx), 623, Warning,
                   AT_DEF_COLUMN(module_attr_idx),
                   AT_OBJ_NAME_PTR(module_attr_idx));
-#else /* KEY Bug 7359 */
-         PRINTMSG(AT_DEF_LINE(module_attr_idx), 623, Error,
-                  AT_DEF_COLUMN(module_attr_idx),
-                  AT_OBJ_NAME_PTR(module_attr_idx));
-#endif /* KEY Bug 7359 */
          AT_DCL_ERR(module_attr_idx) = TRUE;
       }
 
@@ -5705,11 +5550,7 @@ static	boolean	srch_ar_file_for_module_tbl(int		 module_attr_idx,
    		int		idx;
    		boolean		in_middle_of_file;
    		long_type	member_start_offset;
-#ifdef KEY /* Bug 10177 */
    		int		name_length = 0;
-#else /* KEY Bug 10177 */
-   		int		name_length;
-#endif /* KEY Bug 10177 */
    		long_type	name_tbl_offset;
    		int		num_recs_read;
    		long_type	offset;
@@ -6695,12 +6536,10 @@ static	boolean  read_in_module_tbl(int		 fp_file_idx,
 
    for (idx = stor_blk_tbl_idx+1; idx <= end_sb_idx; idx++) {
       SB_NAME_IDX(idx)		= old_name_pool_idx + SB_NAME_IDX(idx);
-#ifdef KEY /* Bug 14150 */
       int ext_name_idx = SB_EXT_NAME_IDX(idx);
       SB_EXT_NAME_IDX(idx)	= ext_name_idx ?
         (old_name_pool_idx + ext_name_idx) :
 	0;
-#endif /* KEY Bug 14150 */
       SB_HAS_RENAMES(idx)	= FALSE;
       SB_DEF_LINE(idx)		= AT_DEF_LINE(module_attr_idx);
       SB_DEF_COLUMN(idx)	= AT_DEF_COLUMN(module_attr_idx);
@@ -6896,19 +6735,10 @@ static	boolean	read_sytb_from_module_file(int			module_attr_idx,
    boolean		 ok		= TRUE;
    old_const_tbl_type	*old_cn_tbl 	= NULL;
    old_ir_tbl_type	*old_ir_tbl 	= NULL;
-#ifdef KEY /* Bug 10177 */
    int			 save_const_tbl_idx = 0;
    int			 save_ir_tbl_idx = 0;
-#else /* KEY Bug 10177 */
-   int			 save_const_tbl_idx;
-   int			 save_ir_tbl_idx;
-#endif /* KEY Bug 10177 */
    int			 size;
-#ifdef KEY /* Bug 10177 */
    void			*tbl = 0;
-#else /* KEY Bug 10177 */
-   void			*tbl;
-#endif /* KEY Bug 10177 */
    tbl_type_type	 tbl_type;
    long			*to_idx;
 
@@ -7295,20 +7125,6 @@ static	boolean	do_elf_object(Elf		*obj_elfd,
           continue;
       }
 
-# if 0
-      {
-         char       *s_name;
-
-         /* Tell the section's name.  It's stored in the section header */
-         /* string table.   See elf_strptr(3E).                         */
-
-         s_name = elf_strptr(obj_elfd, ehdr->e_shstrndx,
-                             ((size_t) shdr->sh_name));
-         printf("Elf section: '%s', type %u, flags %#x, size %u\n",
-                ((s_name == ((char *) NULL)) ? "(none)" : s_name),
-                shdr->sh_type, shdr->sh_flags, shdr->sh_size);
-      }
-# endif
 
       /* Skip sections that aren't .note ones. See /usr/include/sys/elf.h. */
 
@@ -7316,9 +7132,6 @@ static	boolean	do_elf_object(Elf		*obj_elfd,
           continue;
       }
 
-# if 0
-      printf("This is a NOTES section.  Contents:\n");
-# endif
 
       /* Go through each data object in the section.  Typically,   */
       /* this loop will execute exactly once.  The only time it    */
@@ -7432,13 +7245,6 @@ static	boolean	do_elf_notes_section(Elf_Data		*data,
 
    TRACE (Func_Entry, "do_elf_notes_section", NULL);
 
-# if 0
-
-   /* Tell about the size of the data block.  See /usr/include/libelf.h.  */
-
-   printf("  %d bytes at section offset %u:\n", data->d_size, data->d_off);
-
-# endif
 
    data_off_src	= 0;
    found	= FALSE;
@@ -7458,43 +7264,6 @@ static	boolean	do_elf_notes_section(Elf_Data		*data,
                      - ((*(n_name_ptr + n_hdr->n_namesz - 1) == '\0') ? 1 : 0);
       mod_info_tbl = n_name_ptr + RUP_BYTES(n_hdr->n_namesz);
 
-#     if 0
-
-      {
-         unsigned int    namesz;     /* Bytes of name to print           */
-         unsigned int    len;        /* Bytes of .note descriptor done   */
-
-         if (data_off_src != 0) {
-             printf("\n");
-         printf("    Name len: %u\n", n_hdr->n_namesz);
-         printf("    Data len: %u\n", n_hdr->n_descsz);
-         printf("    Type:     %u\n", n_hdr->n_type);
-
-         /*
-          * Adjust for a possible trailing NUL byte on the
-          * originator name.  We don't want to send it to
-          * printf(3C).
-          */
-         printf("    Name:     '%*.*s'\n", namesz, namesz, n_name_ptr);
-
-         /* Report the descriptor, 8 bytes per line. */
-
-
-         for (len = 0; len < n_hdr->n_descsz; len++, n_desc_ptr++) {
-
-             if (len == 0) {
-                 printf("    Desc:    ");
-             }
-             else if ((len & 0x7) == 0) {
-                 printf("\n             ");
-             }
-             printf(" %02x", (((int) *n_desc_ptr) & 0xFF));
-         }
-         if (len != 0)
-             printf("\n");
-         }
-      }
-# endif
 
       /* Is this CRI SPARC f90 module information? */
 
@@ -7959,9 +7728,6 @@ static void  assign_new_idxs_after_input(int	module_attr_idx)
 
       case Pgm_Unit:
 
-# if 0
-         ATP_SCP_IDX(attr_idx)		= curr_scp_idx;
-# endif
 
          ATP_EXT_NAME_IDX(attr_idx)	= np_idx + ATP_EXT_NAME_IDX(attr_idx);
 
@@ -8096,23 +7862,6 @@ static void  assign_new_idxs_after_input(int	module_attr_idx)
                   /* doesn't mean that the module procedure being read in  */
                   /* actually had IR/SH saved for it.                      */
 
-# if 0
-                  /* We are keeping IR/SH for module and internal procedures */
-                  /* for inlining purposes.  Check the global name table to  */
-                  /* see if we already have this procedure.                  */
-
-                  if (srch_global_name_tbl(ATP_EXT_NAME_PTR(attr_idx),
-                                           ATP_EXT_NAME_LEN(attr_idx),
-                                           &name_idx) &&
-                      GN_HAVE_INLINABLE_PROC(name_idx)) {
-                     ATP_FIRST_SH_IDX(attr_idx) = NULL_IDX;
-                     ATP_PARENT_IDX(attr_idx)	= NULL_IDX;
-                  }
-                  else {
-                     ATP_FIRST_SH_IDX(attr_idx) += sh_idx;
-                     ATP_PARENT_IDX(attr_idx)	+= at_idx;
-                  }
-# endif
 
                   ATP_FIRST_SH_IDX(attr_idx)	+= sh_idx;
 
@@ -8573,20 +8322,16 @@ static void  assign_new_idxs_after_input(int	module_attr_idx)
 
       if (AT_IS_INTRIN(attr_idx) && AT_OBJ_CLASS(attr_idx) == Interface) {
 
-#ifdef KEY /* Bug 5089 */
        /* If we're working on an "intrinsic module", then we don't expect
         * to find this interface in the table of intrinsic procedures. */
        if (!AT_IS_INTRIN(AT_MODULE_IDX(attr_idx))) {
-#endif /* KEY Bug 5089 */
 
          /* Find this intrinsic in the current table.  Bring it in */
          /* and merge this interface with the intrinsic interface  */
          /* so old types, enums and indexes get set correctly.     */
 
          update_intrinsic(attr_idx);
-#ifdef KEY /* Bug 5089 */
        }
-#endif /* KEY Bug 5089 */
       }
    }
 
@@ -9047,11 +8792,7 @@ static	void	merge_interfaces(int		new_interface_idx,
 				 int		old_interface_idx)
 
 {
-#ifdef KEY /* Bug 10177 */
    int		end_sn_idx = 0;
-#else /* KEY Bug 10177 */
-   int		end_sn_idx;
-#endif /* KEY Bug 10177 */
    boolean	found_intrin	= FALSE;
    int		last_old_sn_idx;
    boolean	move_intrin	= FALSE;
@@ -10022,16 +9763,6 @@ void	collapse_interface_blk(int	interface_idx)
       ATI_PROC_IDX(interface_idx) = ML_AT_IDX(ATI_PROC_IDX(interface_idx));
       ATD_TYPE_IDX(interface_idx) = ML_TYP_IDX(ATD_TYPE_IDX(interface_idx));
 
-# if 0
-      while (sn_idx != NULL_IDX) {
-
-         if (sn_idx <= BLK_SN_IDX(blk_stk_idx)) {
-            SN_SIBLING_LINK(sn_idx)	= ML_SN_IDX(SN_SIBLING_LINK(sn_idx));
-            SN_ATTR_IDX(sn_idx)		= ML_AT_IDX(SN_ATTR_IDX(sn_idx));
-         }
-         sn_idx = SN_SIBLING_LINK(sn_idx);
-      }
-# endif
 
       al_idx	= AL_NEXT_IDX(al_idx);
    }
@@ -10375,75 +10106,6 @@ boolean	is_directory (char *path)
 
 } /* is_directory */
 
-# if 0
-/******************************************************************************\
-|*									      *|
-|* Description:								      *|
-|*									      *|
-|* Input parameters:							      *|
-|*									      *|
-|* Output parameters:							      *|
-|*	NONE								      *|
-|*									      *|
-|* Returns:								      *|
-|*									      *|
-\******************************************************************************/
-static	void	create_module_list_from_str_pool(void)
-
-{
-   int		fp_idx;
-   int		idx;
-   int		mod_idx;
-   int		str_idx;
-
-
-   TRACE (Func_Entry, "create_module_list_from_str_pool", NULL);
-
-
-   allocate_mod_link_tbl(str_pool_idx);  /* Let routine determine size. */
-
-   /* Mark the string pool entries to keep */
-
-   for (fp_idx = 1; fp_idx <= file_path_tbl_idx; fp_idx++) {
-
-      if (FP_CLASS(fp_idx) == Current_Compile_Fp) {
-         ML_STR_IDX(FP_NAME_IDX(fp_idx))	= FP_NAME_IDX(fp_idx);
-         ML_STR_LEN(FP_NAME_IDX(fp_idx))	= FP_NAME_LEN(fp_idx);
-      }
-   }
-
-   str_idx	= 1;
-
-   for (mod_idx = 1; mod_idx <= str_pool_idx; mod_idx++) {
-
-      if (ML_STR_IDX(mod_idx) != NULL_IDX) {
-         ML_STR_IDX(mod_idx)	 = str_idx;
-         ML_STR_LEN(mod_idx)	 = WORD_LEN(ML_STR_LEN(mod_idx));
-         str_idx		+= ML_STR_LEN(mod_idx);
-      }
-   }
-
-   str_idx	= 0;
-
-   for (mod_idx = 1; mod_idx <= str_pool_idx; mod_idx++) {
-
-      if (ML_STR_IDX(mod_idx) != NULL_IDX) {
-
-         for (idx = 0; idx < ML_STR_LEN(mod_idx); idx++) {
-            str_pool[++str_idx].name_long = str_pool[mod_idx+idx].name_long;
-         }
-      }
-   }
-
-   str_pool_idx	= str_idx;
-
-
-   TRACE (Func_Exit, "create_module_list_from_str_pool", NULL);
-
-   return;
-
-} /* create_module_list_from_str_pool */
-# endif
 
 /******************************************************************************\
 |*									      *|
@@ -10506,9 +10168,6 @@ extern	void	clean_up_module_files(void)
 static	void	update_intrinsic(int		mod_interface_idx)
 
 {
-# if 0
-   boolean	clear_intrin	= FALSE;
-# endif
    int		idx;
    int		intrin_interface_idx;
    int		intrin_sn_idx;
@@ -10660,9 +10319,6 @@ static	void	update_intrinsic(int		mod_interface_idx)
    }
 
    if (intrin_sn_idx != NULL_IDX) {  /* mod_sn_idx is NULL */
-# if 0
-      clear_intrin	= TRUE;
-# endif
 
       /* Have more intrinsics than old ones.  Add to end of list */
 
@@ -10679,13 +10335,6 @@ static	void	update_intrinsic(int		mod_interface_idx)
       }
    }
 
-# if 0
-   if (clear_intrin) {
-
-      /* Clear the intrinsic, because we have added new intrinsics */
-      /* from the list and we don't want the expanded intrinsic    */
-      /* getting caught in the compression stuff.                  */
-# endif
 
    ATI_FIRST_SPECIFIC_IDX(intrin_interface_idx)	= save_first_specific;
    ATI_NUM_SPECIFICS(intrin_interface_idx)	= save_num_specifics;

@@ -76,15 +76,11 @@ static char USMID[] = "\n@(#)5.0_pl/sources/messages.c	5.9	10/14/99 14:08:59\n";
 # include "sytb.h"
 # include "pathscale_defs.h"
 # include "messages.h"
-#ifdef KEY /* Bug 3632 */
 # include "src_input.m"
-#endif /* KEY Bug 3632 */
-#ifdef KEY /* Bug 6673 */
 #include "../liberrno.h"
 /* Can remove this pragma and the two "if (verbose_message)" tests later on,
  * once we have a new toolroot libpathfortran.a containing verbose_message. */
 #pragma weak verbose_message
-#endif /* KEY Bug 3632 */
 
 #  define	 CIF_VERSION	       3    /* Must be defined before         */
                     			    /*   including cif.h	      */
@@ -119,17 +115,11 @@ static void     flush_msg_file(void);
 |*									      *|
 \******************************************************************************/
 
-#ifdef KEY /* Bug 5089 */
 char *init_msg_processing (char *argv[])
-#else /* KEY Bug 5089 */
-void init_msg_processing (char *argv[])
-#endif /* KEY Bug 5089 */
 
 {
    static char	      *allocstr;
-#ifdef KEY /* Bug 5089 */
    char *result = getenv("NLSPATH");
-#endif /* KEY Bug 5089 */
 
 
    TRACE (Func_Entry, "init_msg_processing", NULL);
@@ -137,11 +127,7 @@ void init_msg_processing (char *argv[])
    /* Unconditionally open the message system */
 
 #if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(TARGET_OS_DARWIN))
-#ifdef KEY /* Bug 5089 */
   if (result == NULL)
-#else /* KEY Bug 5089 */
-  if (getenv("NLSPATH") == NULL)
-#endif /* KEY Bug 5089 */
   {
     /* NLSPATH is not set. */
     const char * const toolroot = getenv("TOOLROOT");
@@ -156,11 +142,7 @@ void init_msg_processing (char *argv[])
     else
       sprintf(new_env, "%s%s%s", env_name, toolroot, env_val);
     putenv(new_env);
-#ifdef KEY /* Bug 5089 */
     result = new_env;
-#else /* KEY Bug 5089 */
-    free(new_env);
-#endif /* KEY Bug 5089 */
   }
 #endif
 
@@ -169,9 +151,7 @@ void init_msg_processing (char *argv[])
    if (msg_sys == (nl_catd) -1) {  /* (nl_catd) is msg_sys's type. */
 
 # if defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN)
-#ifdef PSC_TO_OPEN64
       fprintf (stderr, OPEN64_NAME_PREFIX "f95 INTERNAL: Unable to open message system.\n");
-#endif
 # else
       fprintf (stderr, "cf90 INTERNAL: Unable to open message system.\n");
 # endif
@@ -212,11 +192,7 @@ void init_msg_processing (char *argv[])
 
    TRACE (Func_Exit, "init_msg_processing", NULL);
 
-#ifdef KEY /* Bug 5089 */
    return result;
-#else /* KEY Bug 5089 */
-   return;
-#endif /* KEY Bug 5089 */
 
 }  /* init_msg_processing */
 
@@ -933,11 +909,7 @@ void output_msg (int				glb_line_num,
    	  char		 	 orig_text[ORIG_MSG_SIZE];
    	  char		  	 position_buff[MAX_HDR_SIZE];
 	  boolean		 print_directly_to_stderr;
-#ifdef KEY /* Bug 10177 */
           char                  *scoping_unit_name = 0;
-#else /* KEY Bug 10177 */
-          char                  *scoping_unit_name;
-#endif /* KEY Bug 10177 */
    	  char		 	*text_ptr;
 /*
    fprintf (stderr, "output_msg: line = %d, num = %d, severity = %d, col = %d\n",
@@ -1046,13 +1018,11 @@ void output_msg (int				glb_line_num,
             print_err_line(glb_line_num, column_num);
          }
 
-#ifdef KEY /* Bug 7247 */
 	 /* Error while printing error: print it now, while we're in the
 	  * process of printing the error that provoked it. */
 	 if (ERROR_ECHOING_SOURCE == msg_num) {
 	   print_directly_to_stderr = TRUE;
 	 }
-#endif /* KEY Bug 7247 */
 
          GLOBAL_LINE_TO_FILE_LINE(glb_line_num, glb_idx, act_file_line);
          act_file_name = GL_FILE_NAME_PTR(glb_idx);
@@ -1119,9 +1089,7 @@ void output_msg (int				glb_line_num,
          /* added the specific check later for the "out of memory" case.      */
 
 # if defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN)
-#ifdef PSC_TO_OPEN64
          fprintf(stderr, OPEN64_NAME_PREFIX "f95 INTERNAL: "
-#endif
 #else       
          fprintf(stderr, "cft90 INTERNAL: "
 #endif
@@ -1184,12 +1152,8 @@ void output_msg (int				glb_line_num,
 
       /* Expand optional arguments, if any, into the message text.  	      */
 
-#ifdef KEY /* Bug 4469 */
       snprintf (expanded_text, sizeof expanded_text, orig_text, arg1, arg2,
         arg3, arg4);
-#else
-      sprintf (expanded_text, orig_text, arg1, arg2, arg3, arg4);
-#endif /* KEY Bug 4469 */
    }
 
 
@@ -1210,11 +1174,9 @@ void output_msg (int				glb_line_num,
                     position_buff,
                     (char *) NULL);
          fputs (final_text, stderr);
-#ifdef KEY /* Bug 6673 */
 	 if (verbose_message) {
 	   verbose_message(group_code, msg_num);
 	 }
-#endif /* KEY Bug 6673 */
       }
    }
    else {
@@ -1226,10 +1188,8 @@ void output_msg (int				glb_line_num,
        msg_severity != Log_Error    &&
        msg_severity != Log_Summary  &&
        msg_severity != Internal     &&
-#ifdef KEY /* Bug 7247 */
        /* Error while printing error: don't recurse */
        msg_num != ERROR_ECHOING_SOURCE &&
-#endif /* KEY Bug 7247 */
        msg_severity != Limit) {
       cif_message_rec(msg_num,
                       glb_line_num,
@@ -1560,7 +1520,6 @@ static void flush_msg_file(void)
 
 }  /* flush_msg_file */
 
-#ifdef KEY /* Bug 7247 */
 
 /* The error message machinery tries very hard to echo the source line
  * before it prints the message itself. But it's possible that a "#" line
@@ -1591,7 +1550,6 @@ cannot_read_source_file(int line_num)
   PRINTMSG(line_num, ERROR_ECHOING_SOURCE, Warning, 0,
     "cannot read source file");
 }
-#endif /* KEY Bug 7247 */
 
 
 /******************************************************************************\
@@ -1615,10 +1573,6 @@ void print_buffered_messages(void)
 
 
 #  define	 FILE_STK_MAX	     500    /* Just make something up.	      */
-#ifdef KEY /* Bug 3632 */
-#else
-#  define	 MAX_SRC_LINE_SIZE   256    /* Stolen from src_input.m        */
-#endif /* KEY Bug 3632 */
 
    char		 carat[MAX_SRC_LINE_SIZE];
    char		 expanded_text[EXPANDED_MSG_SIZE];
@@ -1832,12 +1786,7 @@ INIT_FILE_STK:
 
    if ((file_stk[0].file_ptr = fopen(GL_FILE_NAME_PTR(1), "r")) == NULL) {
       line_num = 1;
-#ifdef KEY /* Bug 7247 */
       cannot_read_source_file(line_num);
-#else /* KEY Bug 7247 */
-      msg_insert = "can not open source file.";
-      goto EMERGENCY_EXIT;
-#endif /* KEY Bug 7247 */
    }
          
 
@@ -1912,17 +1861,11 @@ INIT_FILE_STK:
            
                if (my_file_id == file_stk[search_idx].file_id) {
 
-#ifdef KEY /* Bug 7247 */
                   for (; stk_idx != search_idx; stk_idx -= 1) {
                     if (NULL != file_stk[stk_idx].file_ptr) {
 		      fclose(file_stk[stk_idx].file_ptr);
 		    }
 		  }
-#else /* KEY Bug 7247 */
-                  while (stk_idx != search_idx) {
-                     fclose(file_stk[stk_idx--].file_ptr);
-                  }
-#endif /* KEY Bug 7247 */
 
                   goto HAVE_FILE;
                }
@@ -1946,24 +1889,14 @@ INIT_FILE_STK:
                }
                else {
                   line_num = message_rec->uline;
-#ifdef KEY /* Bug 7247 */
 		  cannot_open_include_file(line_num);
 		  goto JUST_PRINT_MESSAGE;
-#else /* KEY Bug 7247 */
-                  msg_insert = "can not open INCLUDE file.";
-                  goto EMERGENCY_EXIT;
-#endif /* KEY Bug 7247 */
                }
             }
             else {
                line_num = message_rec->uline;
-#ifdef KEY /* Bug 7247 */
 	       files_too_deeply_nested(line_num);
 	       goto JUST_PRINT_MESSAGE;
-#else /* KEY Bug 7247 */
-               msg_insert = "file_stk size exceeded.";
-               goto EMERGENCY_EXIT;
-#endif /* KEY Bug 7247 */
             }
          }
 
@@ -1977,11 +1910,9 @@ CHECK_GL_IDX:
 
                while (dbg_global_line < GL_GLOBAL_LINE(global_idx + 1)) {
 
-#ifdef KEY /* Bug 7247 */
                   if (NULL == file_stk[stk_idx].file_ptr) {
 		     goto JUST_PRINT_MESSAGE;
 		  }
-#endif /* KEY Bug 7247 */
                   if (fgets(source_line,
                              MAX_SRC_LINE_SIZE,
                              file_stk[stk_idx].file_ptr) != NULL) {
@@ -1991,13 +1922,8 @@ CHECK_GL_IDX:
                   }
                   else {
                      line_num = dbg_global_line;
-#ifdef KEY /* Bug 7247 */
                      cannot_read_source_file(line_num);
 		     goto JUST_PRINT_MESSAGE;
-#else /* KEY Bug 7247 */
-                     msg_insert = "can not read source file.";
-                     goto EMERGENCY_EXIT;
-#endif /* KEY Bug 7247 */
                   }
                }
 
@@ -2034,24 +1960,14 @@ CHECK_GL_IDX:
                   }
                   else {
                      line_num = message_rec->uline;
-#ifdef KEY /* Bug 7247 */
 		     cannot_open_include_file(line_num);
 		     goto JUST_PRINT_MESSAGE;
-#else /* KEY Bug 7247 */
-                     msg_insert = "can not open INCLUDE file.";
-                     goto EMERGENCY_EXIT;
-#endif /* KEY Bug 7247 */
                   }
                }
                else {
                   line_num = message_rec->uline;
-#ifdef KEY /* Bug 7247 */
 		  files_too_deeply_nested(line_num);
 		  goto JUST_PRINT_MESSAGE;
-#else /* KEY Bug 7247 */
-                  msg_insert = "file_stk size exceeded.";
-                  goto EMERGENCY_EXIT;
-#endif /* KEY Bug 7247 */
                }
 
                goto CHECK_GL_IDX;
@@ -2070,11 +1986,9 @@ CHECK_GL_IDX:
 
 HAVE_FILE:
 
-#ifdef KEY /* Bug 7247 */
          if (NULL == file_stk[stk_idx].file_ptr) {
 	   goto JUST_PRINT_MESSAGE;
 	 }
-#endif /* KEY Bug 7247 */
 
          if (file_stk[stk_idx].file_line != message_rec->fline) {
 
@@ -2101,17 +2015,8 @@ HAVE_FILE:
                }
                else {
                   line_num = message_rec->uline;
-#ifdef KEY /* Bug 7247 */
                   cannot_read_source_file(line_num);
 		  goto JUST_PRINT_MESSAGE;
-#else /* KEY Bug 7247 */
-                  sprintf(final_text, 
-                         "hit EOF while trying to issue message %d at line %d.",
-                         message_rec->msgno,
-                         line_num);
-                  msg_insert = final_text;
-                  goto EMERGENCY_EXIT;
-#endif /* KEY Bug 7247 */
                }
             }
    
@@ -2147,11 +2052,9 @@ HAVE_FILE:
             fprintf(stderr, "%s\n", carat);
          }
 
-#ifdef KEY /* Bug 7247 */
 /* Either we've finished echoing the source or we can't, so now it's time
  * to print the error message itself. */
 JUST_PRINT_MESSAGE:
-#endif /* KEY Bug 7247 */
 
          catgetmsg(message_catalog,
                    NL_MSGSET,
@@ -2189,11 +2092,9 @@ JUST_PRINT_MESSAGE:
                    (char *) NULL);
 
          fputs(final_text, stderr);
-#ifdef KEY /* Bug 6673 */
 	 if (verbose_message) {
 	   verbose_message(group_code, message_rec->msgno);
 	 }
-#endif /* KEY Bug 6673 */
 
 # ifdef _DEBUG
          if (dump_flags.stmt_dmp) {
@@ -2212,11 +2113,9 @@ JUST_PRINT_MESSAGE:
 
 NO_MSGS_STMT_DUMP:
 
-#ifdef KEY /* Bug 7247 */
    if (NULL == file_stk[stk_idx].file_ptr) {
      goto CLEANUP;
    }
-#endif /* KEY Bug 7247 */
    if (dump_flags.stmt_dmp) {
    
 CHECK_GL_IDX_AGAIN:
@@ -2233,13 +2132,8 @@ CHECK_GL_IDX_AGAIN:
             }
             else {
                line_num = dbg_global_line;
-#ifdef KEY /* Bug 7247 */
                cannot_read_source_file(line_num);
 	       goto CLEANUP;
-#else /* KEY Bug 7247 */
-               msg_insert = "can not read source file.";
-               goto EMERGENCY_EXIT;
-#endif /* KEY Bug 7247 */
             }
          }
 
@@ -2274,25 +2168,13 @@ CHECK_GL_IDX_AGAIN:
                file_stk[stk_idx].file_line = 0;
             }
             else {
-#ifdef KEY /* Bug 7247 */
 	       cannot_open_include_file(message_rec->uline);
 	       goto CLEANUP;
-#else /* KEY Bug 7247 */
-               line_num = message_rec->uline;
-               msg_insert = "can not open INCLUDE file.";
-               goto EMERGENCY_EXIT;
-#endif /* KEY Bug 7247 */
             }
          }
          else {
-#ifdef KEY /* Bug 7247 */
 	    files_too_deeply_nested(message_rec->uline);
 	    goto CLEANUP;
-#else /* KEY Bug 7247 */
-            line_num = message_rec->uline;
-            msg_insert = "file_stk size exceeded.";
-            goto EMERGENCY_EXIT;
-#endif /* KEY Bug 7247 */
          }
 
          goto CHECK_GL_IDX_AGAIN;
@@ -2311,11 +2193,9 @@ CHECK_GL_IDX_AGAIN:
 
 # endif
 
-#ifdef KEY /* Bug 7247 */
 /* Here is some work we must perform even if we just encountered an error
  * while dumping source statements.  */
 CLEANUP:
-#endif /* KEY Bug 7247 */
 
    fprintf(stderr, "\n");
 
@@ -2333,17 +2213,11 @@ CLEANUP:
 # endif
 
 
-#ifdef KEY /* Bug 7247 */
    for (; stk_idx >= 0; stk_idx -= 1) {
       if (NULL != file_stk[stk_idx].file_ptr) {
 	fclose(file_stk[stk_idx].file_ptr);
       }
    }
-#else /* KEY Bug 7247 */
-   while (stk_idx >= 0) {
-      fclose(file_stk[stk_idx--].file_ptr);
-   }
-#endif /* KEY Bug 7247 */
 
 EXIT:
    
@@ -2469,17 +2343,12 @@ void FOLD_ABORT(int *oper)
 
    TRACE (Func_Entry, "fold_f_abort_", NULL);
 
-#ifdef KEY /* Bug 4867 */
    /* Message 626 (which is used in a lot of other places) doesn't take an
     * integer argument; also, the caller fold_operator_ is schizoid and
     * sometimes passes a simple integer operator enum, while other times it
     * shifts and adds and packed several pieces of data into the integer. */
    PRINTMSG(stmt_start_line, 626, Internal, stmt_start_col,
             "supported operator or type", "FOLD_OPERATION");
-#else /* KEY Bug 4867 */
-   PRINTMSG(stmt_start_line, 626, Internal, *oper,
-            "supported operator or type", "FOLD_OPERATION");
-#endif /* KEY Bug 4867 */
 
    TRACE (Func_Exit, "fold_f_abort_", NULL);
 
@@ -2487,7 +2356,6 @@ void FOLD_ABORT(int *oper)
 
 }  /* fold_f_abort_ */
 # endif
-#ifdef KEY /* Bug 5040 */
 
 /******************************************************************************\
 |*									      *|
@@ -2508,4 +2376,3 @@ msg_severities_type
 ansi_or_warning(void) {
   return on_off_flags.issue_ansi_messages ? Ansi : Warning ;
   }
-#endif /* KEY Bug 5040 */

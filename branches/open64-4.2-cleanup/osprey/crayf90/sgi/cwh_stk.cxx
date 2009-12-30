@@ -167,11 +167,7 @@ cwh_stk_push_typed( void * item, enum item_class Class, TY_IDX ty)
 extern void
 cwh_stk_push_STR(void * len,void * addr, TY_IDX ty, enum item_class addr_class)
 {
-#ifdef KEY
   DevAssert((ty != 0),("STR missing TY"));
-#else
-  DevAssert((ty != NULL),("STR missing TY"));
-#endif
   cwh_stk_push_typed(addr,addr_class,ty) ;
   cwh_stk_push(len,WN_item);      
   cwh_stk_push(NULL,STR_item);
@@ -313,11 +309,7 @@ cwh_stk_pop_STR(void)
 {
   DevAssert((top-2 >= 0), ("Stack underflow"));
   DevAssert((stk[top].Class == STR_item), (" TOS is not STR"));
-#ifdef KEY
   DevAssert((stk[top-2].Class != 0), (" STR missing TY"));
-#else
-  DevAssert((stk[top-2].Class != NULL), (" STR missing TY"));
-#endif
 
   stk[top--].Class = UNDEF ;  
 }

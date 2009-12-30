@@ -243,10 +243,8 @@ cwh_auxst_free(void)
     l = cwh_auxst_find_list(o,l_COMLIST);
     cwh_auxst_free_list(&l);
 
-#ifdef KEY /* Bug 5271 */
     l = cwh_auxst_find_list(o,l_PU_COMLIST);
     cwh_auxst_free_list(&l);
-#endif /* KEY Bug 5271 */
 
     l = cwh_auxst_find_list(o,l_ALTENTRY);
     cwh_auxst_free_list(&l);
@@ -348,22 +346,16 @@ cwh_auxst_get_list(ST * st,enum list_name list)
 static LIST *
 cwh_auxst_find_list(AUXST * o, enum list_name list)
 {
-#ifdef KEY /* Bug 10177 */
   LIST *l = 0;
-#else /* KEY Bug 10177 */
-  LIST *l ;
-#endif /* KEY Bug 10177 */
 
   switch (list) {
   case l_COMLIST:
     l = AUXST_Commons(o);
     break;
 
-#ifdef KEY /* Bug 5271 */
   case l_PU_COMLIST:
     l = AUXST_PU_Commons(o);
     break;
-#endif /* KEY Bug 5271 */
 
   case l_ALTENTRY:
     l = AUXST_Altentries(o);
@@ -431,10 +423,8 @@ cwh_auxst_add_item(ST * parent, ST *st, enum list_name list)
 
   if (list == l_COMLIST) 
     b = TRUE;
-#ifdef KEY /* Bug 5271 */
   if (list == l_PU_COMLIST) 
     b = TRUE;
-#endif /* KEY Bug 5271 */
 
   o = cwh_auxst_find(parent,TRUE);
   c = cwh_auxst_find_list(o, list);
@@ -494,41 +484,6 @@ cwh_auxst_add_list(ST * parent, LIST *l, enum list_name list)
     *AUXST_Namelist(o) = *l;
     break;
 
-#if 0
-  case l_COMLIST:
-    *AUXST_Commons(o) = *l ;
-    break;
-
-#ifdef KEY /* Bug 5271 */
-  case l_PU_COMLIST:
-    *AUXST_PU_Commons(o) = *l ;
-    break;
-#endif /* KEY Bug 5271 */
-
-  case l_ALTENTRY:
-    *AUXST_Altentries(o) = *l ;
-    break;
-
-  case l_RETURN_TEMPS:
-    *AUXST_RtnTemps(o) = *l;
-    break;
-  
-  case l_SPLITLIST:
-    *AUXST_SplitCommons(o) = *l ;
-    break;
-
-  case l_EQVLIST:
-    *AUXST_Equivs(o) = *l;
-    break;
-
-  case l_DST_COMLIST:
-    *AUXST_Dstcomlist(o) = *l;
-    break;
-
-  case l_DST_PARMLIST:
-    *AUXST_Dstparmlist(o) = *l;
-    break;
-#endif 
 
   default:
     DevAssert((0),("list?"));
@@ -569,7 +524,6 @@ cwh_auxst_next_element(ST * parent, ITEM *i, enum list_name list)
   return (i);
 }
 
-#ifdef KEY /* Bug 5271 */
 /*===================================================
  *
  * cwh_clear_common_list
@@ -591,7 +545,6 @@ cwh_clear_PU_common_list(ST *st)
     d->first = d->last = NULL;
     d->nitems = 0;
 }
-#endif /* KEY Bug 5271 */
 
 /*===================================================
  *
@@ -1037,7 +990,6 @@ cwh_auxst_distr_preg(ST * st)
   return (AUXST_DstrPreg(o)) ;
 }
 
-#ifdef KEY /* Bug 4901 */
 /*===============================================
  *
  * cwh_auxst_clear_stem_name
@@ -1058,7 +1010,6 @@ cwh_auxst_clear_stem_name(ST * st)
     }
   }
 }
-#endif /* KEY Bug 4901 */
 
 /*===============================================
  *
@@ -1508,13 +1459,11 @@ cwh_auxst_dump (ST * st)
     cwh_auxst_dump_list(l,FALSE);
   }
 
-#ifdef KEY /* Bug 5271 */
   l = cwh_auxst_find_list(o,l_PU_COMLIST);
   if (L_first(l) != NULL){
     printf ("  common items in current program unit: \n") ;
     cwh_auxst_dump_list(l,FALSE);
   }
-#endif /* KEY Bug 5271 */
 
   l = cwh_auxst_find_list(o,l_EQVLIST);
   if (L_first(l) != NULL){

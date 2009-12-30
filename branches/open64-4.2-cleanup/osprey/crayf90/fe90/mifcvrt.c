@@ -760,15 +760,10 @@ static void	add_tasking_symbols(mtaskreg_t *t,
 		    AT_OBJ_CLASS(IL_IDX(sublist_idx)) == Data_Obj &&
 		    (ATD_IM_A_DOPE(IL_IDX(sublist_idx)) ||
 		    (TYP_TYPE(ATD_TYPE_IDX(IL_IDX(sublist_idx))) == Structure &&
-#ifdef KEY /* Bug 6845 */
 			 (ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(
 				     IL_IDX(sublist_idx)))) ||
 			 ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(
 				     IL_IDX(sublist_idx)))))
-#else /* KEY Bug 6845 */
-			 ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(
-				     IL_IDX(sublist_idx))))
-#endif /* KEY Bug 6845 */
 				     ))) {
 		    /* must be VALUE not PRIVATE for dope vectors */
 		   s->taskusage = mtaskusage_value;
@@ -5557,16 +5552,6 @@ static int cvrt_attr_ntry(int	attr_idx)
                            msp.immtype,
                          (unsigned long) CN_INT_TO_C(ATD_OFFSET_IDX(attr_idx)));
 
-# if 0
-         /* JBL .. I pulled this */
-
-         sym.offset.tag = mtag_con;
-         sym.offset.val = mcon_lookup(&msp, 
-                                      get_basic_type(CN_TYPE_IDX(
-                                                   ATD_OFFSET_IDX(attr_idx))), 
-                                   (char *)&CN_CONST(ATD_OFFSET_IDX(attr_idx)), 
-                                      NONE);
-# endif
       }
 
       /* Storage block (if necessary) */
@@ -6376,19 +6361,12 @@ static void	cvrt_data_impl_do(int		idx,
                    the_constant[0] = 0;
                 }
 # endif
-# ifdef KEY
                 SET_LCV_CONST(do_control_var[do_control_idx],
                               (the_constant[0]),
                               num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(
                                             do_control_var[do_control_idx]))],
                               num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(
                                             do_control_var[do_control_idx]))]);
-# else
-                SET_LCV_CONST(do_control_var[do_control_idx],
-                              (the_constant[0]),
-                              num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(
-                                            do_control_var[do_control_idx]))]);
-# endif
 
                 cvrt_data_impl_do(IR_IDX_L(idx), IR_FLD_L(idx));
 	    }
@@ -6945,18 +6923,6 @@ static void create_option_tbl(void)
 
 /* Don't know what this is. */
 
-# if 0
-   /* default IEEE rounding mode */
-
-	unsigned int /* enum mroundmode */ roundmode : 3;
-
-        mroundmode_none,        /* default value */
-        mroundmode_tonearest,   /* round to nearest representable value */
-        mroundmode_tozero,      /* round towards zero */
-        mroundmode_upward,      /* round up to nearest representable value */
-        mroundmode_downward,    /* round down to nearest representable value */
-        mroundmode_runtime      /* IEEE rounding mode set at load or run time */
-# endif
 
    /* arithmetic control flags */
 

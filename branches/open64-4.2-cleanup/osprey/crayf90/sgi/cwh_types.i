@@ -206,11 +206,9 @@ WN	*decl_distribute_pragmas;
  * bounds are defined similarly below.
  *
  */
-#ifdef KEY /* Bug 6845 */
 /* Should now use typedef enum dv_idx_type (see cwh_types.h) to index into the
  * following dope_xxx arrays because we've added an entry, and the original
  * scheme was a mess anyway. */
-#endif /* KEY Bug 6845 */
 
 static const char * dope_name [DOPE_NM] = { 
 	"base",	
@@ -219,9 +217,7 @@ static const char * dope_name [DOPE_NM] = {
         "ptr_alloc",
         "p_or_a",
         "a_contig",
-#ifdef KEY /* Bug 6845 */
         "alloccpnt",
-#endif /* KEY Bug 6845 */
         "unused_1",
         "num_dims",
         "type_code",
@@ -230,19 +226,11 @@ static const char * dope_name [DOPE_NM] = {
 };
 
 static const int dope_bofst[DOPE_NM] = { 
-#ifdef KEY /* Bug 6845 */
  0,0,0,1,2,4,5,6,29,0,0,0
-#else /* KEY Bug 6845 */
- 0,0,0,1,2,4,5,29,0,0,0
-#endif /* KEY Bug 6845 */
 };
 
 static const int dope_bsize[DOPE_NM] = { 
-#ifdef KEY /* Bug 6845 */
  0,0,1,1,2,1,1,55,3,64,0,0
-#else /* KEY Bug 6845 */
- 0,0,1,1,2,1,56,3,64,0,0
-#endif /* KEY Bug 6845 */
 };
 
 static TYPE_ID *dope_btype;
@@ -252,40 +240,28 @@ static INT *dope_offset;
 static TYPE_ID dope_btype_64[DOPE_NM] = {
 MTYPE_U8,MTYPE_I8,MTYPE_U4,
 MTYPE_U4,MTYPE_U4,MTYPE_U4,
-#ifdef KEY /* Bug 6845 */
 MTYPE_U4,
-#endif /* KEY Bug 6845 */
 MTYPE_U8,MTYPE_U4,
 MTYPE_U8,MTYPE_U8,
 MTYPE_I8
 };
 
 static int dope_offset_64 [DOPE_NM] = { 
-#ifdef KEY /* Bug 6845 */
 ADDR_OFFSET,8,16,16,16,16,16,16,20,24,32,40
-#else /* KEY Bug 6845 */
-ADDR_OFFSET,8,16,16,16,16,16,20,24,32,40
-#endif /* KEY Bug 6845 */
 };
 
 
 static TYPE_ID dope_btype_32[DOPE_NM] = {
 MTYPE_U4,MTYPE_I4,MTYPE_U4,
 MTYPE_U4,MTYPE_U4,MTYPE_U4,
-#ifdef KEY /* Bug 6845 */
 MTYPE_U4,
-#endif /* KEY Bug 6845 */
 MTYPE_U8,MTYPE_U4,
 MTYPE_U8,MTYPE_U4,
 MTYPE_I4
 };
 
 static int dope_offset_32 [DOPE_NM] = { 
-#ifdef KEY /* Bug 6845 */
 ADDR_OFFSET,4,8,8,8,8,8,8,12,16,24,28
-#else /* KEY Bug 6845 */
-ADDR_OFFSET,4,8,8,8,8,8,12,16,24,28
-#endif /* KEY Bug 6845 */
 };
 
 static const char * bound_name [BOUND_NM] = { 
@@ -439,9 +415,7 @@ static TY_IDX cwh_types_mk_array_TY(ARB_HANDLE bounds,INT16 n,TY_IDX base, INT64
 static TY_IDX cwh_types_mk_basic_TY (BASIC_TYPE, INTPTR size, mUINT16 alignment) ;
 static TY_IDX cwh_types_mk_struct(INT64 size, INT32 align, FLD_HANDLE list, const char *name) ;
 static TY_IDX cwh_types_shared_dope(FLD_HANDLE  list,int ndims, BOOL is_ptr,
-#ifdef KEY /* Bug 6845 */
   int n_allocatable_cpnt
-#endif /* KEY Bug 6845 */
   );
 static TY_IDX cwh_types_mk_dope_invariant_TY(void);
 static TY_IDX cwh_types_new_TY(BOOL global,INT32 align) ;

@@ -63,9 +63,7 @@ static char USMID[] = "\n@(#)5.0_pl/sources/p_driver.c	5.13	10/20/99 16:13:01\n"
 # include "p_globals.h"
 # include "p_driver.h"
 # include "fmath.h"
-#ifdef KEY /* Bug 4607 */
 # include "../sgi/path_intrinsic_list.h"
-#endif /* KEY Bug 4607 */
 
 
 /*****************************************************************\
@@ -84,14 +82,12 @@ static void	stmt_level_semantics(void);
 static void	parse_expr_for_evaluator(void);
 # endif
 
-#ifdef KEY /* Bug 4656 */
 /* Used in constructing a set of pointers to roots ("unindented entries")
  * within intrin_tbl */
 typedef struct {
   char *name;	/* Name of intrinsic */
   int idx;	/* Index into intrin_tbl */
   } intrin_root_t;
-#endif /* KEY Bug 4656 */
 
 
 /******************************************************************************\
@@ -143,15 +139,11 @@ void complete_intrinsic_definition(int		generic_attr)
 # endif
 
    intrin_tbl_idx = ATI_INTRIN_TBL_IDX(generic_attr);
-#ifdef KEY /* Bug 4656 */
    int non_ansi = (0 == (intrin_tbl[intrin_tbl_idx].families & ANSI_FAMILY));
-#endif /* KEY Bug 4656 */
    j = intrin_tbl_idx + 1;
 
    while ((! intrin_tbl[j].generic) && 
-#ifdef KEY /* Bug 7543 */
           (j < MAX_INTRIN_TBL_SIZE) &&
-#endif /* KEY Bug 7543 */
           (intrin_tbl[j].name_len > 0)) {  /* just so don't run off end */
 
       if (cmd_line_flags.s_pointer8) {
@@ -172,11 +164,7 @@ void complete_intrinsic_definition(int		generic_attr)
              (strcmp("_SCAN_4", (char *)&intrin_tbl[j].id_str) == 0) ||
              (strcmp("_SIZEOF_4", (char *)&intrin_tbl[j].id_str) == 0) ||
              (strcmp("_LBOUND0_4", (char *)&intrin_tbl[j].id_str) == 0) ||
-#ifdef KEY /* Bug 6009 */
 	     /* Want to allow system_clock with i*4 arguments in -i8 mode */
-#else /* KEY Bug 6009 */
-             (strcmp("_SYSTEM_CLOCK_4", (char *)&intrin_tbl[j].id_str) == 0) ||
-#endif /* KEY Bug 6009 */
              (strcmp("_ASSOCIATED_4", (char *)&intrin_tbl[j].id_str) == 0) ||
              (strcmp("_SELECTED_REAL_KIND_4", 
                      (char *)&intrin_tbl[j].id_str) == 0) ||
@@ -214,10 +202,8 @@ void complete_intrinsic_definition(int		generic_attr)
 # endif
 
       if (intrin_tbl[intrin_tbl_idx].n_specifics == 1 &&
-#ifdef KEY /* Bug 9060 */
 	  /* This appalling hackery must not affect "idim" */
           (0 != strcmp("IDIM", (char *)&intrin_tbl[intrin_tbl_idx].id_str)) &&
-#endif /* KEY Bug 9060 */
 # if defined(_QUAD_PRECISION)
           (intrin_tbl[intrin_tbl_idx].id_str.string[0] == 'D' ||
            (intrin_tbl[intrin_tbl_idx].id_str.string[0] == 'I' &&
@@ -315,17 +301,12 @@ void complete_intrinsic_definition(int		generic_attr)
 
       AT_OBJ_CLASS(attr_idx)		= Pgm_Unit;
       AT_ELEMENTAL_INTRIN(attr_idx)	= intrin_tbl[j].elemental;
-#ifdef KEY /* Bug 4656 & 902 */
       /* random_number is not elemental, but does act like an elemental
        * by taking an array as an argument */
       ATP_ELEMENTAL(attr_idx)		= intrin_tbl[j].elemental &&
       					  (!non_ansi) &&
 					  (intrin_tbl[j].intrin_enum !=
 					    Random_Number_Intrinsic);
-#else /* KEY Bug 4656 & 902 */
-      ATP_ELEMENTAL(attr_idx)		= intrin_tbl[j].elemental &&
-                                          !(intrin_tbl[j].non_ansi);
-#endif /* KEY Bug 4656 & 902 */
       ATP_PURE(attr_idx)		= ATP_ELEMENTAL(attr_idx);
       ATP_PROC(attr_idx)		= Intrin_Proc;
       AT_IS_INTRIN(attr_idx)		= TRUE;
@@ -335,11 +316,7 @@ void complete_intrinsic_definition(int		generic_attr)
                          AT_NAME_LEN(attr_idx));
       ATP_IN_INTERFACE_BLK(attr_idx)	= TRUE;
       ATP_EXTERNAL_INTRIN(attr_idx)	= intrin_tbl[j].external;
-#ifdef KEY /* Bug 4656 */
       ATP_NON_ANSI_INTRIN(attr_idx)	= non_ansi;
-#else /* KEY Bug 4656 */
-      ATP_NON_ANSI_INTRIN(attr_idx)	= intrin_tbl[j].non_ansi;
-#endif /* KEY Bug 4656 */
       ATP_INTRIN_ENUM(attr_idx)		= intrin_tbl[j].intrin_enum;
 
       if (intrin_tbl[j].function) {
@@ -444,11 +421,7 @@ void complete_intrinsic_definition(int		generic_attr)
              (strcmp("_SCAN_8", (char *)&intrin_tbl[j].id_str) == 0) ||
              (strcmp("_SIZEOF_8", (char *)&intrin_tbl[j].id_str) == 0) ||
              (strcmp("_LBOUND0_8", (char *)&intrin_tbl[j].id_str) == 0) ||
-#ifdef KEY /* Bug 6009 */
              /* Want to allow system_clock with i*8 args in -i4 mode */
-#else /* KEY Bug 6009 */
-             (strcmp("_SYSTEM_CLOCK_8", (char *)&intrin_tbl[j].id_str) == 0) ||
-#endif /* KEY Bug 6009 */
              (strcmp("_ASSOCIATED_8", (char *)&intrin_tbl[j].id_str) == 0) ||
              (strcmp("_SELECTED_REAL_KIND_8", 
                      (char *)&intrin_tbl[j].id_str) == 0) ||
@@ -495,7 +468,6 @@ void complete_intrinsic_definition(int		generic_attr)
 
 }  /* complete_intrinsic_definition */
 
-#ifdef KEY /* Bug 5089 */
 /*
  * Machinery for implementing intrinsic modules (such as TR15580, IEEE floating
  * point support.) When a module has the "intrinsic" attribute and we find it
@@ -924,8 +896,6 @@ int intrinsic_module_lookup(int attr_idx)
   return found;
 }
 
-#endif /* KEY Bug 5089 */
-#ifdef KEY /* Bug 4656 */
 /* Compare two args of type intrin_root_t **, for use in qsort or bsearch */
 static int root_cmp(const void *o1, const void *o2) {
   intrin_root_t *i1 = *(intrin_root_t **) o1;
@@ -940,7 +910,6 @@ static int family_cmp(const void *o1, const void *o2) {
   return strcmp(f1->name, f2->name);
 }
 
-#endif /* KEY Bug 4656 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -973,7 +942,6 @@ static void enter_intrinsic_info (void)
    TOKEN_LINE(tmp_token) = 1;
    TOKEN_VALUE(tmp_token) = Tok_Id;
 
-#ifdef KEY /* Bug 4656 */
    int intrin_roots_len = 0;
    intrin_root_t **intrin_roots =
      malloc(MAX_INTRIN_TBL_SIZE * (sizeof *intrin_roots));
@@ -1058,19 +1026,13 @@ static void enter_intrinsic_info (void)
        PRINTMSG(0, 701, Log_Error, 0, option->name_);
      }
    }
-#endif /* KEY Bug 4656 */
 
-#ifdef KEY /* Bug 4656 */
    for (int r = 0; r < intrin_roots_len; r += 1) {
       i = intrin_roots[r]->idx;
       /* Command-line options did not enable this intrinsic */
       if (!intrin_tbl[i].enabled) {
 	continue;
 	}
-#else /* KEY Bug 4656 */
-   while (i < MAX_INTRIN_TBL_SIZE) {
-      if (intrin_tbl[i].generic) {
-#endif /* KEY Bug 4656 */
 
          CREATE_ID(TOKEN_ID(tmp_token), 
                    intrin_tbl[i].id_str.string, 
@@ -1095,14 +1057,7 @@ static void enter_intrinsic_info (void)
         
          ATI_INTRIN_TBL_IDX(attr_idx) = i;
          name_idx = name_idx + 1;
-#ifndef KEY /* Bug 4656 */
-      }
-
-      i = i + 1;
    }  
-#else /* KEY Bug 4656 */
-   }  
-#endif /* KEY Bug 4656 */
 
    expanded_intrinsic_list	= NULL_IDX;
 
@@ -1528,14 +1483,10 @@ void parse_prog_unit (void)
          if (SH_IR_IDX(curr_stmt_sh_idx)) {
             /* maybe this should be gen_sh instead */
 
-#ifdef KEY /* Bug 7498 */
       /* ntr_sh_tbl() may change the value of sh_tbl, which is used inside
        * SH_NEXT_IDX(), so we need an ANSI C sequence point in between. */
 	    int new_stmt = ntr_sh_tbl();
             SH_NEXT_IDX(curr_stmt_sh_idx) = new_stmt;
-#else /* KEY Bug 7498 */
-            SH_NEXT_IDX(curr_stmt_sh_idx) = ntr_sh_tbl();
-#endif /* KEY Bug 7498 */
             SH_PREV_IDX(SH_NEXT_IDX(curr_stmt_sh_idx)) = curr_stmt_sh_idx;
             curr_stmt_sh_idx  = SH_NEXT_IDX(curr_stmt_sh_idx);
             SH_STMT_TYPE(curr_stmt_sh_idx) = Directive_Stmt;
@@ -1688,14 +1639,9 @@ void init_parse_prog_unit()
       for (i = 0; i < MAX_INTRIN_MAP_SIZE; i++) {
           if ((strcmp("SIGN", (char *)&intrin_map[i].id_str) == 0) ||
               (strcmp("DSIGN", (char *)&intrin_map[i].id_str) == 0)) {
-#ifdef KEY /* Bug 3405 */
              /* Strings are less than 8 bytes long */
              intrin_map[i].mapped_4.string[1] = 'I';
              intrin_map[i].mapped_8.string[1] = 'I';
-#else
-             intrin_map[i].mapped_4.string[8] = '_';
-             intrin_map[i].mapped_8.string[8] = '_';
-#endif /* KEY Bug 3405 */
           }
       }
    }
@@ -2218,19 +2164,7 @@ void determine_stmt_type(void)
    SH_GLB_LINE(curr_stmt_sh_idx) = stmt_start_line;
    SH_COL_NUM(curr_stmt_sh_idx)  = stmt_start_col;
 
-#ifdef KEY /* Bug 1317 */
    /* Something like "10 format(i2) = 3.14159" is not a format statement */
-#else
-   if (stmt_type == Format_Stmt &&
-       stmt_label_idx           &&
-       LA_CH_VALUE == LPAREN)   {
-
-      /* if it is label "format" "(" then it is a format stmt. */
-      /* whether you like it or not.                           */
-      /* intentionally blank.                                  */
-   }
-   else
-#endif /* KEY Bug 1317 */
    if (stmt_type != Assignment_Stmt &&
             stmt_type != Directive_Stmt &&
             stmt_type != End_Parallel_Stmt &&
@@ -2688,14 +2622,8 @@ extern	void init_type(void)
       COMPLEX_DEFAULT_TYPE	  = double_linear_type[Fortran_Complex];
       LOGICAL_DEFAULT_TYPE	  = double_linear_type[Fortran_Logical];
       REAL_DEFAULT_TYPE		  = double_linear_type[Fortran_Real];
-// Bug 2238
-# ifdef KEY
       type_init_tbl[DOUBLE_PRECISION_TYPE_IDX].fld.linear_type =
                                     init_default_linear_type[Fortran_Double];
-# else
-      type_init_tbl[DOUBLE_PRECISION_TYPE_IDX].fld.linear_type =
-                                    double_linear_type[Fortran_Double];
-# endif
 
       type_init_tbl[DOUBLE_COMPLEX_TYPE_IDX].fld.linear_type =
                                     double_linear_type[Fortran_Double_Complex];
@@ -3263,7 +3191,6 @@ static void stmt_level_semantics(void)
          case Where_Stmt:
          case Write_Stmt:
 
-#ifdef KEY /* Bug 8871 */
 	    /* If it's already a format-statement label, either it's a
 	     * duplicate or we're jumping to it illegally. Both of these
 	     * errors are reported elsewhere. Right now we just avoid
@@ -3273,7 +3200,6 @@ static void stmt_level_semantics(void)
             if (Lbl_Format == ATL_CLASS(stmt_label_idx)) {
 	      break;
 	    }
-#endif /* KEY Bug 8871 */
             ATL_EXECUTABLE(stmt_label_idx)	= TRUE;
             ATL_CLASS(stmt_label_idx)		= Lbl_User;
             ATL_DEBUG_CLASS(stmt_label_idx)	= Ldbg_User_Lbl;
@@ -3379,9 +3305,7 @@ static void stmt_level_semantics(void)
          case Null_Stmt:
          case Allocatable_Stmt:
          case Automatic_Stmt:
-#ifdef KEY /* Bug 14150 */
 	 case Bind_Stmt:
-#endif /* KEY Bug 14150 */
          case Common_Stmt:
          case Contains_Stmt:
          case Cpnt_Decl_Stmt:
@@ -3394,13 +3318,9 @@ static void stmt_level_semantics(void)
          case Format_Stmt:
          case Implicit_Stmt:
          case Implicit_None_Stmt:
-#ifdef KEY /* Bug 11741 */
 	 case Import_Stmt:
-#endif /* KEY Bug 11741 */
-#ifdef KEY /* Bug 10572 */
 	 case Enum_Stmt:
 	 case Enumerator_Stmt:
-#endif /* KEY Bug 10572 */
          case Intent_Stmt:
          case Interface_Stmt:
          case Intrinsic_Stmt:
@@ -3419,9 +3339,7 @@ static void stmt_level_semantics(void)
          case Type_Decl_Stmt:
          case Use_Stmt:
          case Volatile_Stmt:
-#ifdef KEY /* Bug 14150 */
          case Value_Stmt:
-#endif /* KEY Bug 14150 */
 
             /* The label is defined on a spec stmt.  Normally, the stmt  */
             /* doesn't need to be processed by the Semantics Pass (DATA  */
@@ -3460,9 +3378,7 @@ static void stmt_level_semantics(void)
          case End_Function_Stmt:
          case End_If_Stmt:
          case End_Interface_Stmt:
-#ifdef KEY /* Bug 10572 */
          case End_Enum_Stmt:
-#endif /* KEY Bug 10572 */
          case End_Module_Stmt:
          case End_Program_Stmt:
          case End_Select_Stmt:
@@ -3572,9 +3488,7 @@ static void stmt_level_semantics(void)
                check_for_dup_derived_type_lbl();
                break;
 
-#ifdef KEY /* Bug 10572 */
 	    case End_Enum_Stmt:
-#endif /* KEY Bug 10572 */
             case End_Interface_Stmt: /* Labeled declaration statements */
                SH_P2_SKIP_ME(curr_stmt_sh_idx) = TRUE;
                break;
@@ -3603,9 +3517,7 @@ static void stmt_level_semantics(void)
       switch (stmt_type) {
          case Allocatable_Stmt:
          case Automatic_Stmt:
-#ifdef KEY /* Bug 14150 */
 	 case Bind_Stmt:
-#endif /* KEY Bug 14150 */
          case Common_Stmt:
          case Contains_Stmt:
          case Cpnt_Decl_Stmt:
@@ -3616,13 +3528,9 @@ static void stmt_level_semantics(void)
          case Format_Stmt:
          case Implicit_Stmt:
          case Implicit_None_Stmt:
-#ifdef KEY /* Bug 11741 */
 	 case Import_Stmt:
-#endif /* KEY Bug 11741 */
-#ifdef KEY /* Bug 10572 */
 	 case Enum_Stmt:
 	 case Enumerator_Stmt:
-#endif /* KEY Bug 10572 */
          case Intent_Stmt:
          case Interface_Stmt:
          case Intrinsic_Stmt:
@@ -3640,14 +3548,10 @@ static void stmt_level_semantics(void)
          case Task_Common_Stmt:
          case Type_Decl_Stmt:
          case End_Interface_Stmt:
-#ifdef KEY /* Bug 10572 */
          case End_Enum_Stmt:
-#endif /* KEY Bug 10572 */
          case End_Type_Stmt:
          case Volatile_Stmt:
-#ifdef KEY /* Bug 14150 */
          case Value_Stmt:
-#endif /* KEY Bug 14150 */
             need_new_sh = FALSE;
             break;
 
@@ -3709,20 +3613,6 @@ static void parse_expr_for_evaluator(void)
 
    if (parse_expr(&opnd)) {
 
-# if 0  /* Do not want to generate a compiler temp here.  Need to insert */
-        /* a new statement type and operator.  Use it.                   */
-
-      GEN_COMPILER_TMP_ASG(ir_idx,
-                           attr_idx,
-                           TRUE,             /* Semantics done */
-                           OPND_LINE_NUM(opnd),
-                           OPND_COL_NUM(opnd),
-                           INTEGER_DEFAULT_TYPE,
-                           Priv);
-
-      SH_IR_IDX(curr_stmt_sh_idx)	= ir_idx;
-      COPY_OPND(IR_OPND_R(ir_idx),opnd); 
-# endif
       stmt_level_semantics();
    }
    else { /* Problems with expression - exit */

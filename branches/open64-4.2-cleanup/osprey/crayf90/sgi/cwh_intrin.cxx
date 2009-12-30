@@ -117,12 +117,10 @@ static ST *getpos_st = NULL;
 static ST *omp_set_lock_st=NULL;
 static ST *omp_unset_lock_st=NULL;
 static ST *omp_test_lock_st=NULL;
-#ifdef KEY /* Bug 1324 */
 static ST *erf_st = NULL;
 static ST *erfc_st = NULL;
 static ST *derf_st = NULL;
 static ST *derfc_st = NULL;
-#endif /* KEY Bug 1324 */
 
 /*================================================================
  *
@@ -318,11 +316,7 @@ simple_intrinsic(i_enum intrin, TYPE_ID bt, INT numargs, INT numpop)
    OPCODE  opc ;
    INTRINSIC intr;
    WN *k[3];
-#ifdef KEY /* Bug 10177 */
    WN *wn  = 0;
-#else /* KEY Bug 10177 */
-   WN *wn  ;
-#endif /* KEY Bug 10177 */
    INT i;
    TYPE_ID t;
    WN *ae=NULL;
@@ -472,9 +466,7 @@ do_simple(mod,2,0)
 do_simple(modulo,2,0) 
 do_simple(nextafter,2,0)
 do_simple(rrspace,1,1)
-#ifdef KEY /* Bug 9140 */
 do_simple(sign_xfer,2,0)
-#endif /* KEY Bug 9140 */
 do_simple(sin,1,0)
 do_simple(sinh,1,0)
 do_simple(space,1,1)
@@ -513,11 +505,7 @@ void
 fei_complex(TYPE type) 
 {
   TYPE_ID br ;
-#ifdef KEY /* Bug 10177 */
   TYPE_ID bt  = 0;
-#else /* KEY Bug 10177 */
-  TYPE_ID bt ;
-#endif /* KEY Bug 10177 */
   WN *k[2]   ;
   WN * wn    ;
   INT i      ;
@@ -568,11 +556,7 @@ fei_abs(TYPE type)
   WN     *wn ;
   WN *ae=NULL;
 
-#ifdef KEY /* Bug 10177 */
   INTRINSIC intr = INTRN_I4EXPEXPR;
-#else /* KEY Bug 10177 */
-  INTRINSIC intr;
-#endif /* KEY Bug 10177 */
 
   wn = cwh_expr_operand(&ae);
   ty = cwh_types_WN_TY(wn,FALSE);
@@ -622,11 +606,7 @@ fei_exponentiate(TYPE type)
    
    TYPE_ID bt, rt;
    TYPE_ID et;
-#ifdef KEY /* Bug 10177 */
    INTRINSIC intr = INTRN_I4EXPEXPR;
-#else /* KEY Bug 10177 */
-   INTRINSIC intr;
-#endif /* KEY Bug 10177 */
    WN *k[2];
    WN *wn  ;
    WN *base, *exp;
@@ -704,13 +684,8 @@ void
 fei_round(TYPE type) 
 {
    TYPE_ID bt,rt  ;
-#ifdef KEY /* Bug 10177 */
    OPCODE  opc = (OPCODE) 0;
    INTRINSIC intr = INTRN_I4EXPEXPR;
-#else /* KEY Bug 10177 */
-   OPCODE  opc ;
-   INTRINSIC intr;
-#endif /* KEY Bug 10177 */
    WN *k[2];
    WN *wn  ;
    WN *ae=NULL;
@@ -831,7 +806,6 @@ void fei_near(TYPE type)
    k[1] = cwh_expr_operand(&ae);
    k[0] = cwh_expr_operand(&ae);
    bt   = WN_rtype(k[0]);
-#ifdef KEY /* Bug 4056 */
    /* When operand types don't match, convert second to match first, since the
     * BE emits only _NEAREST or _NEAREST_4, and the computation is sensitive
     * to the precision of the first operand. Although library contains
@@ -840,7 +814,6 @@ void fei_near(TYPE type)
     * the range of the first, it gets converted into infinity with the correct
     * sign. */
    k[1] = cwh_convert_to_ty(k[1], bt);
-#endif /* KEY Bug 4056 */
    intr = GET_ITAB_IOP(i_near,bt);
 
    wn = cwh_intrin_build(k,intr,bt,2);
@@ -899,39 +872,6 @@ void fei_pos_diff(TYPE type)
 }
 
 
-#ifndef KEY /* Bug 9140 */
-/* 
- * Inline the SIGN intrinsic
- */
-void fei_sign_xfer(TYPE type)
-{
-   WN *a, *aneg, *b;
-   WN *ae=NULL;
-
-   b = cwh_expr_operand(&ae);
-
-   fei_abs(type);
-   a = cwh_expr_operand(&ae);
-   cwh_stk_push(WN_COPY_Tree(a),WN_item);
-   fei_uminus(type);
-   aneg = cwh_expr_operand(&ae);
-
-   /* If B > 0, return A else return -A */
-   cwh_stk_push(b,WN_item);
-   cwh_stk_push(WN_Zerocon(WN_rtype(b)),WN_item);
-   fei_ge(type);
-   b = cwh_expr_operand(&ae);
-   cwh_stk_push(a,WN_item);
-   cwh_stk_push(aneg,WN_item);
-   b = cwh_expr_restore_arrayexp(b,ae);
-   cwh_stk_push(b,WN_item);
-#ifdef KEY /* Bug 10410 */
-   fei_select(type, 0);
-#else /* KEY Bug 10410 */
-   fei_select(type);
-#endif /* KEY Bug 10410 */
-}
-#endif /* KEY Bug 9140 */
 
 /*
  * Inline the IEEE SIGN intrinsic
@@ -1048,19 +988,11 @@ cwh_do_tranformational(INTRINSIC intrn, INT numargs, TYPE rtype, BOOL is_numeric
 {
    WN * args[MAXARGS];
    WN *wn;
-#ifdef KEY /* Bug 10177 */
    WN *charlen = 0;
-#else /* KEY Bug 10177 */
-   WN *charlen;
-#endif /* KEY Bug 10177 */
    OPCODE op;
    INT i;
    BOOL is_char;
-#ifdef KEY /* Bug 10177 */
    TY_IDX  str_ty = 0;
-#else /* KEY Bug 10177 */
-   TY_IDX  str_ty;
-#endif /* KEY Bug 10177 */
    TY_IDX  p_ty;
    TY_IDX  rty;
    TYPE_ID type_from_first;
@@ -1479,9 +1411,7 @@ fei_ranget (TYPE type) {
    cwh_stk_push(ranget_st,ST_item);
    cwh_stk_push(addr,ADDR_item);
    call = cwh_stmt_call_helper(1,Be_Type_Tbl(MTYPE_V),0,flags);
-#ifdef KEY /* Bug 4434 */
    cwh_stk_push(NULL,WN_item);
-#endif /* KEY Bug 4434 */
    
 }
 
@@ -1627,7 +1557,6 @@ fei_ibits(TYPE type)
    
    mask = cwh_generate_bitmask(len,ty);
    x = cwh_expr_bincalc(OPR_BAND,x,mask);
-#ifdef KEY /* Bug 8547 */
    /* If cwh_expr_bincalc() generated an unsigned integer (e.g. U4EXTRACT_BITS)
     * we need to correct the result type to be signed, but cwh_wrap_cvtl()
     * doesn't do anything unless the input type is smaller than 4 bytes. */
@@ -1641,9 +1570,6 @@ fei_ibits(TYPE type)
        x = cwh_wrap_cvtl(x, rty);
      }
    }
-#else /* KEY Bug 8547 */
-   x = cwh_wrap_cvtl(x,rty);
-#endif /* KEY Bug 8547 */
 
    x = cwh_expr_restore_arrayexp(x,ae);
    cwh_stk_push(x,WN_item);
@@ -1807,11 +1733,7 @@ cwh_intrin_popcnt_leadz_helper(INTRINSIC i1, INTRINSIC i2, INTRINSIC i4, INTRINS
    WN *wn;
    WN *r;
    TYPE_ID t,ti,rt;
-#ifdef KEY /* Bug 10177 */
    INTRINSIC intr = INTRN_I4EXPEXPR;
-#else /* KEY Bug 10177 */
-   INTRINSIC intr;
-#endif /* KEY Bug 10177 */
    WN *ae=NULL;
    
    t = TY_mtype(t_TY(arg));
@@ -2338,7 +2260,6 @@ fei_lock_release(void)
    cwh_intrin_sync_intrin(INTRN_LOCK_RELEASE_I4,INTRN_LOCK_RELEASE_I8,MTYPE_V,1);
 }
 
-#ifdef KEY /* Bug 1324 */
 static void
 help_make_intrin_symbol(ST **symbol, const char *func_name, TYPE_ID result_type) {
   if (! *symbol) {
@@ -2394,7 +2315,6 @@ fei_erf (TYPE type, int complement) {
    WN *wn = cwh_intrin_get_return_value (result_type,"@f90erf{c}");
    cwh_stk_push(wn,WN_item);
 } /* fei_erf */
-#endif /* KEY Bug 1324 */
 
 /*===============================================
  *
@@ -2521,23 +2441,4 @@ cwh_intrin_build(WN **k, INTRINSIC intr,TYPE_ID bt, INT numargs)
 extern void
 cwh_whirl_simplfier_control(BOOL onoff)
 {
-#if 0 /* do nothing for now */
-   static INT32 onoff_count=0;
-   static BOOL  simplifier_enabled;
-
-   printf("onoff count = %d\n",onoff_count);
-   if (onoff) {
-      /* Turn it back on */
-      if (onoff_count == 1) {
-	 (void) WN_Simplifier_Enable(save_wn_simplifier_enable);
-      }
-      if (onoff_count > 0) {
-	 onoff_count -= 1;
-      }
-   } else {
-      /* Turn simplifier off */
-      (void) WN_Simplifier_Enable(save_wn_simplifier_enable);
-      onoff_count += 1;
-   }
-#endif
 }

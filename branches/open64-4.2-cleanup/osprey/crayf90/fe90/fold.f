@@ -249,7 +249,6 @@ C
      &             integer_default_result,
      &             result_opnd)
 
-! KEY Bug 10177
       logical_default_result = .false.
 
       result_opnd(1) = 0

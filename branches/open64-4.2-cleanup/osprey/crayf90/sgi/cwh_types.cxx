@@ -141,11 +141,7 @@ fei_descriptor (INT32        flag_matrix,
   TYPE t     ;
   mUINT16 al ;
   BOOL  hosted ;
-#ifdef KEY /* Bug 10177 */
   TY_IDX ty_idx = 0;
-#else /* KEY Bug 10177 */
-  TY_IDX ty_idx;
-#endif /* KEY Bug 10177 */
 
   hosted = test_flag(flag_matrix,FEI_DESCRIPTOR_HOSTED_TYPE) || in_hosted_dtype ;
 
@@ -483,9 +479,7 @@ fei_user_type(char         *name_string,
 {
   TY_IDX ty_idx    ;
   dtype_t  d ;
-#ifdef KEY /* Bug 10177 */
   memset(&d, 0, sizeof d);
-#endif /* KEY Bug 10177 */
   FORT_SEQUENCE sequence;
   INT32 i;
 
@@ -603,9 +597,7 @@ fei_member(char          *name_string,
  */
 extern TYPE 
 fei_dope_vector(INT32  num_dims,TYPE base_type, INT32 flag,
-#ifdef KEY /* Bug 6845 */
   INT32 n_allocatable_cpnt
-#endif /* KEY Bug 6845 */
 )
 {                                     
   TY_IDX ty_idx   ;
@@ -616,9 +608,7 @@ fei_dope_vector(INT32  num_dims,TYPE base_type, INT32 flag,
   ts_idx = cast_to_TY(t_TY(base_type));
   b  = test_flag(flag,FEI_DOPE_VECTOR_HOSTED_TYPE) || in_hosted_dtype;
   ty_idx = cwh_types_dope_TY(num_dims,ts_idx,b,test_flag(flag,FEI_DOPE_VECTOR_POINTER),
-#ifdef KEY /* Bug 6845 */
     n_allocatable_cpnt
-#endif /* KEY Bug 6845 */
   ) ;
 
   t.table_type = Basic ;
@@ -1163,11 +1153,7 @@ cwh_types_mk_character_TY(WN *sz_wn, ST *sz_st, BOOL sz_is_wn)
 extern TY_IDX
 cwh_types_scalar_TY(TY_IDX ty_idx)
 {
-#ifdef KEY /* Bug 10177 */
   TY_IDX rty_idx = 0;
-#else /* KEY Bug 10177 */
-  TY_IDX rty_idx ;
-#endif /* KEY Bug 10177 */
  
   TY& ty = Ty_Table[ty_idx];
 
@@ -1207,11 +1193,7 @@ cwh_types_scalar_TY(TY_IDX ty_idx)
 extern TY_IDX
 cwh_types_array_TY(TY_IDX ty_idx)
 {
-#ifdef KEY /* Bug 10177 */
   TY_IDX rty_idx = 0;
-#else /* KEY Bug 10177 */
-  TY_IDX rty_idx ;
-#endif /* KEY Bug 10177 */
 
   TY& ty = Ty_Table[ty_idx];
 
@@ -1669,9 +1651,7 @@ cwh_types_dim_TY(INT32 num_dims)
 */
 extern TY_IDX
 cwh_types_dope_TY(INT32 num_dims,TY_IDX base_idx, BOOL host, BOOL ptr,
-#ifdef KEY /* Bug 6845 */
   INT32 n_allocatable_cpnt
-#endif /* KEY Bug 6845 */
   )
 {
   TY_IDX ty_idx   ;
@@ -1744,9 +1724,7 @@ cwh_types_dope_TY(INT32 num_dims,TY_IDX base_idx, BOOL host, BOOL ptr,
   /* make dope vector TY */
   
   ty_idx = cwh_types_shared_dope(base_fld,num_dims,ptr,
-#ifdef KEY /* Bug 6845 */
     n_allocatable_cpnt
-#endif /* KEY Bug 6845 */
     );
   
   return(ty_idx);
@@ -1817,9 +1795,7 @@ cwh_types_mk_dope_invariant_TY(void)
 */
 static TY_IDX
 cwh_types_shared_dope(FLD_HANDLE fld, int ndims, BOOL is_ptr,
-#ifdef KEY /* Bug 6845 */
   int n_allocatable_cpnt
-#endif /* KEY Bug 6845 */
   )
 {
   static TY_IDX intrn_dope[MAX_ARY_DIMS+1][NUM_DOPE_TYPES] ;
@@ -1876,7 +1852,6 @@ cwh_types_shared_dope(FLD_HANDLE fld, int ndims, BOOL is_ptr,
   } else { /* either dtype component, or dtype */
 
     sz  = DOPE_sz + ndims * DIM_SZ ;
-#ifdef KEY /* Bug 6845 */
     /*
      * If the type is a derived type, then the code takes this branch and does
      * not use the quick-and-dirty cache of types. If this dope vector
@@ -1888,7 +1863,6 @@ cwh_types_shared_dope(FLD_HANDLE fld, int ndims, BOOL is_ptr,
       n_allocatable_cpnt += 1; /* Space for count of allocatable components */
       sz += n_allocatable_cpnt * DOPE_bound_sz;
     }
-#endif /* KEY Bug 6845 */
 
     al  = Pointer_Size;
     dv_idx  = cwh_types_mk_struct(sz,al,fld,(char *)dope_str); 
@@ -2291,11 +2265,7 @@ cwh_types_size_WN(TY_IDX ty, WN *e_sz)
 extern WN *
 cwh_types_bound_WN(TY_IDX ty, INT16 i, enum ty_bound_enum  b)
 {
-#ifdef KEY /* Bug 10177 */
   WN * wn = 0;
-#else /* KEY Bug 10177 */
-  WN * wn ;
-#endif /* KEY Bug 10177 */
 
   ARB_HANDLE  arb = TY_arb(ty);
   INT16     nd = ARB_dimension(arb);
@@ -2333,9 +2303,7 @@ cwh_types_bound_WN(TY_IDX ty, INT16 i, enum ty_bound_enum  b)
  *
  * Get information about where in a dope vector things are
  * crayfield - field from the Cray dopevector defintion
-#ifdef KEY
  *		Use typedef enum dv_idx_type instead of these integers:
-#endif
  *              1.base_addr 
  *              2.el_len 
  *              3.assoc 
@@ -2356,11 +2324,7 @@ cwh_types_bound_WN(TY_IDX ty, INT16 i, enum ty_bound_enum  b)
 */
 extern void  
 cwh_types_get_dope_info(
-#ifdef KEY /* Bug6845 */
   dv_idx_type crayfield,
-#else /* KEY Bug6845 */
-  INT32 crayfield,
-#endif /* KEY Bug6845 */
   INT32 *offset, INT32 *rshift, 
 				     INT64 *mask, TYPE_ID *ty)
 {
@@ -2369,19 +2333,7 @@ cwh_types_get_dope_info(
    INT size;
    INT ty_size;
    
-#ifdef KEY /* Bug 6845 */
    real_field = (INT) crayfield;
-#else /* KEY Bug6845 */
-   /* Skip unused fields */
-   if (crayfield >= 8) {
-//      real_field = crayfield + 1;
-      real_field = crayfield;
-   } else if (crayfield == 7) {
-      real_field = crayfield;
-   } else {
-      real_field = crayfield - 1;
-   }
-#endif /* KEY Bug 6845 */
 
    *offset = dope_offset[real_field];
    *ty = dope_btype[real_field];
@@ -2389,11 +2341,9 @@ cwh_types_get_dope_info(
    size = dope_bsize[real_field];
    ty_size = MTYPE_size_best(*ty);
    
-#ifdef KEY /* Bug 6371 */
    if (size == (sizeof(1LL) * CHAR_BIT)) {
       *mask = 0;
    } else
-#endif /* KEY Bug 6371 */
    if (size != 0) {
       *mask = (1LL << size) - 1;
    } else {
@@ -2701,7 +2651,6 @@ cwh_types_mk_result_temp_TY(void)
 
   return ty;
 }
-#ifdef KEY /* Bug 14110 */
 /*
  * t		i_cvrt.c representation of a TY_IDX
  * return	same TY_IDX with "volatile" bit set
@@ -2712,7 +2661,6 @@ fei_set_volatile(unsigned t) {
   Set_TY_is_volatile(tmp);
   return tmp;
 }
-#endif /* KEY Bug 14110 */
 /*===================================================
  *
  * cwh_types_fill_type
@@ -2770,14 +2718,6 @@ cwh_types_mk_anon_name (const char * nm)
     strcpy(anonymous_str,nm);
   }
 
-#if 0
-// In 7.3 numbering is suppressed, because TY_unique
-// uses the type name among the criteria for matching.
-// arguably it's not required, since TYs have an id in 
-// the dump..
-
-  sprintf(&anonymous_str[len], "%d", ++ anonymous_index);
-#endif
 
   return(anonymous_str);
 }
@@ -2869,11 +2809,7 @@ cwh_types_in_dtype(void)
 extern INT64
 cwh_cray_type_from_TY(TY_IDX ty_idx)
 {
-#ifdef KEY /* Bug 10177 */
    TY_IDX base_ty_idx = 0;
-#else /* KEY Bug 10177 */
-   TY_IDX base_ty_idx;
-#endif /* KEY Bug 10177 */
    INT64 rtype;
    f90_type_t  *f90_type_ptr;
 
@@ -3238,9 +3174,6 @@ cwh_types_copyin_pragma(ST *st)
 {
   WN *pragma;
 
-#if 0
-  if (enable_mp_processing || process_cri_mp_pragmas) {
-#endif
     if (ST_sym_class(st) == CLASS_VAR &&
         !ST_auxst_xpragma_copyin(st)) {
 
@@ -3249,8 +3182,5 @@ cwh_types_copyin_pragma(ST *st)
       cwh_block_append_given_id(pragma,Preamble_Block,FALSE);
       Set_ST_auxst_xpragma_copyin(st,TRUE);
     }
-#if 0
-  }
-#endif
 }
 

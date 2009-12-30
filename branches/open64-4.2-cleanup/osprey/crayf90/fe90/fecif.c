@@ -473,11 +473,7 @@ void cif_prog_unit_init(void)
 void	cif_send_sytb()
 {
    int		al_idx;
-#ifdef KEY /* Bug 10177 */
    int		attr_idx = 0;
-#else /* KEY Bug 10177 */
-   int		attr_idx;
-#endif /* KEY Bug 10177 */
    long_type	blk_len;
    int		module_symbol_id;
    int		name_idx;
@@ -684,52 +680,29 @@ void	cif_send_attr(int	attr_idx,
 		      int	dt_attr_idx)
 
 {
-#ifdef KEY /* Bug 10177 */
    long			attributes = 0;
-#else /* KEY Bug 10177 */
-   long			attributes;
-#endif /* KEY Bug 10177 */
    int			bd_idx;
    char			buffer[160];
    char			char_len[20];
    int			darg_idx;
    linear_type_type	data_type;
    int			derived_type;
-#ifdef KEY /* Bug 10177 */
    int			dt_idx = 0;
-#else /* KEY Bug 10177 */
-   int			dt_idx;
-#endif /* KEY Bug 10177 */
    int			i;
    int			interface_idx;
    int			interface_type;
    int			namelist_idx;
-#ifdef KEY /* Bug 10177 */
    int			num_dargs = 0;
-#else /* KEY Bug 10177 */
-   int			num_dargs;
-#endif /* KEY Bug 10177 */
    int			num_namelist;
    char		       *obj_name_ptr;
    long64		offset;
    char			offset_buf[20];
-#ifdef KEY /* Bug 10177 */
    int			pgm_unit_type = 0;
-#else /* KEY Bug 10177 */
-   int			pgm_unit_type;
-#endif /* KEY Bug 10177 */
    int			pointer_id;
    int			rslt_id;
    int			rslt_idx;
    boolean		save_cif_done;
-# if 0
-   int			save_symbol_id;
-# endif
-#ifdef KEY /* Bug 10177 */
    int			scope_id = 0;
-#else /* KEY Bug 10177 */
-   int			scope_id;
-#endif /* KEY Bug 10177 */
    int			sn_idx;
    int			storage_class;
    int			storage_id;
@@ -1609,15 +1582,8 @@ void	cif_send_attr(int	attr_idx,
 
             AT_CIF_DONE(rslt_idx)      = FALSE;
 
-# if 0
-            save_symbol_id             = AT_CIF_SYMBOL_ID(rslt_idx);
-            AT_CIF_SYMBOL_ID(rslt_idx) = 0;
-# endif
             cif_send_attr(rslt_idx, NULL_IDX);
             rslt_id                    = AT_CIF_SYMBOL_ID(rslt_idx);
-# if 0
-            AT_CIF_SYMBOL_ID(rslt_idx) = save_symbol_id;
-# endif
             AT_CIF_DONE(rslt_idx)      = FALSE;
          }
       }
@@ -1759,29 +1725,6 @@ void	cif_send_attr(int	attr_idx,
 
    case Derived_Type:
 
-# if 0
-      /* If the Attr entry is marked in error, produce a Derived Type Def     */
-      /* record anyway so that its symbol id will be defined.  See the        */
-      /* comments at the head of the Data_Obj case for details.		      */
-
-      if (AT_DCL_ERR(attr_idx)) {
-
-         if (AT_CIF_SYMBOL_ID(attr_idx) == 0) {
-            AT_CIF_SYMBOL_ID(attr_idx) = NEXT_SYMBOL_ID;
-         }
-
-         Cif_F90_Derived_Type_Rec(c_i_f,
-                                  AT_OBJ_NAME_PTR(attr_idx),
-                                  AT_CIF_SYMBOL_ID(attr_idx),
-                                  SCP_CIF_ID(curr_scp_idx), 
-                                  ATT_CIF_DT_ID(attr_idx), 
-                                  0,
-                                  0,
-                                  NULL,
-                                  0);
-         goto EXIT;
-      }
-# endif
 
       if (AT_CIF_SYMBOL_ID(attr_idx) == 0) {
          AT_CIF_SYMBOL_ID(attr_idx) = NEXT_SYMBOL_ID;
@@ -2266,11 +2209,6 @@ void	cif_send_attr(int	attr_idx,
 
    case Stmt_Func:
 
-# if 0
-      if (AT_DCL_ERR(attr_idx)) {
-         goto EXIT;
-      }
-# endif
  
       if (AT_CIF_SYMBOL_ID(attr_idx) == 0) {
          AT_CIF_SYMBOL_ID(attr_idx) = NEXT_SYMBOL_ID;
@@ -2515,11 +2453,7 @@ void cif_message_rec(int		 	 msg_num,
    char        *char_ptr;
    int		file_line_num;
    char	       *format[4] = { "%c", "%d", "%f", "%s" };
-#ifdef KEY /* Bug 10177 */
    int	 	format_idx = 0;
-#else /* KEY Bug 10177 */
-   int	 	format_idx; 
-#endif /* KEY Bug 10177 */
    char	        insert[4][128];
    char	       *insert_ptr[4];
    int		local_file_id;
@@ -4615,11 +4549,7 @@ void cif_misc_compiler_opts_rec(void)
    int		i;
    int		int_len			= 0;
    int		j;
-#ifdef KEY /* Bug 10177 */
    int		msg_level = 0;
-#else /* KEY Bug 10177 */
-   int		msg_level;
-#endif /* KEY Bug 10177 */
    char		work_buf[512];
    char		null_string[1] = "";
    int		num_items;
@@ -5063,26 +4993,14 @@ void cif_optimization_opts_rec(void)
 void cif_begin_scope_rec(void)
 {
    int		blk_idx;
-#ifdef KEY /* Bug 10177 */
    int		cif_col_num = 0;
    int		file_line_num;
    int		glb_line_num = 0;
    int		level = 0;
-#else /* KEY Bug 10177 */
-   int		cif_col_num;
-   int		file_line_num;
-   int		glb_line_num;
-   int		level;
-#endif /* KEY Bug 10177 */
    int		local_blk_stk_idx;
    int		local_file_id;
-#ifdef KEY /* Bug 10177 */
    int		parent_scope_id = 0;
    int		scope_type = 0;
-#else /* KEY Bug 10177 */
-   int		parent_scope_id;
-   int		scope_type;
-#endif /* KEY Bug 10177 */
    int		symbol_id;
 
 
@@ -6544,11 +6462,7 @@ void close_cif()
 
 static int cif_data_type(int	data_type)
 {
-#ifdef KEY /* Bug 10177 */
    int 			cif_value = 0;
-#else /* KEY Bug 10177 */
-   int 			cif_value;
-#endif /* KEY Bug 10177 */
 
   
    TRACE (Func_Entry, "cif_data_type", NULL);

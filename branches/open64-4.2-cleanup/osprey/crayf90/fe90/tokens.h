@@ -113,9 +113,7 @@ enum	token_values {
 		Tok_Kwd_Assignment,	/* ASSIGNMENT			      */
 		Tok_Kwd_Automatic,	/* AUTOMATIC  			      */
 		Tok_Kwd_Backspace,	/* BACKSPACE			      */
-#ifdef KEY /* Bug 10572 */
 		Tok_Kwd_Bind,		/* BIND				      */
-#endif /* KEY Bug 10572 */
 		Tok_Kwd_Block,		/* BLOCK     BLOCKDATA, ENDBLOCKDATA  */
 		Tok_Kwd_Buffer,		/* BUFFER    BUFFERIN, BUFFEROUT      */
 		Tok_Kwd_Byte,		/* BYTE                               */
@@ -148,10 +146,8 @@ enum	token_values {
 					/*	     ENDSELECT, ENDSUBROUTINE,*/
 					/*	     ENDTYPE, ENDWHERE	      */
 		Tok_Kwd_Entry,		/* ENTRY			      */
-#ifdef KEY /* Bug 10572 */
 		Tok_Kwd_Enum,		/* ENUM 			      */
 		Tok_Kwd_Enumerator,	/* ENUMERATOR 			      */
-#endif /* KEY Bug 10572 */
 		Tok_Kwd_Equivalence,	/* EQUIVALENCE			      */
 		Tok_Kwd_Exit,		/* EXIT				      */
 		Tok_Kwd_External,	/* EXTERNAL			      */
@@ -162,9 +158,7 @@ enum	token_values {
 		Tok_Kwd_Go,		/* GO	     GOTO		      */
 		Tok_Kwd_If,		/* IF	     ELSEIF, ENDIF	      */
 		Tok_Kwd_Implicit,	/* IMPLICIT			      */
-#ifdef KEY /* Bug 11741 */
 		Tok_Kwd_Import,		/* IMPORT			      */
-#endif /* KEY Bug 11741 */
 		Tok_Kwd_In,		/* IN	     BUFFERIN, INOUT	      */
 		Tok_Kwd_Inquire,	/* INQUIRE			      */
 		Tok_Kwd_Integer,	/* INTEGER			      */
@@ -176,14 +170,10 @@ enum	token_values {
 		Tok_Kwd_Logical,	/* LOGICAL			      */
 		Tok_Kwd_Module,		/* MODULE    ENDMODULE,		      */
 					/*	     MODULEPROCEDURE	      */
-#ifdef KEY /* Bug 10572 */
 		Tok_Kwd_Name,		/* NAME				      */
-#endif /* KEY Bug 10572 */
 		Tok_Kwd_Namelist,	/* NAMELIST			      */
 		Tok_Kwd_None,		/* NONE				      */
-#ifdef KEY /* Bug 5089 */
 		Tok_Kwd_Nonintrinsic,	/* NON_INTRINSIC                      */
-#endif /* KEY Bug 5089 */
 		Tok_Kwd_Nullify,	/* NULLIFY			      */
 		Tok_Kwd_Only,		/* ONLY				      */
 		Tok_Kwd_Open,		/* OPEN				      */
@@ -221,9 +211,7 @@ enum	token_values {
 		Tok_Kwd_Type,		/* TYPE	     ENDTYPE		      */
 		Tok_Kwd_Use,		/* USE				      */
 		Tok_Kwd_Undefined,	/* UNDEFINED			      */
-#ifdef KEY /* Bug 14150 */
 		Tok_Kwd_Value,	        /* VALUE   			      */
-#endif /* KEY Bug 14150 */
 		Tok_Kwd_Volatile,	/* VOLATILE			      */
 		Tok_Kwd_Where,		/* WHERE     ELSEWHERE, ENDWHERE      */
 		Tok_Kwd_While,		/* WHILE			      */
@@ -463,9 +451,7 @@ enum	token_values {
 		Tok_SGI_Dir_Onto,		/* ONTO			      */
 		Tok_SGI_Dir_Opaque,		/* OPAQUE       	      */
 		Tok_SGI_Dir_Optional,		/* OPTIONAL     	      */
-#ifdef KEY /* Bug 2660 */
 		Tok_SGI_Dir_Options,		/* OPTIONS     	              */
-#endif /* KEY Bug 2660 */
 		Tok_SGI_Dir_Ordered,		/* ORDERED		      */
 		Tok_SGI_Dir_Page,      		/* PAGE      		      */
 		Tok_SGI_Dir_Page_Place,		/* PAGE_PLACE		      */
@@ -520,7 +506,7 @@ enum	token_values {
                 Tok_Open_Mp_Dir_Atomic,         /* ATOMIC                     */
                 Tok_Open_Mp_Dir_Barrier,        /* BARRIER                    */
                 Tok_Open_Mp_Dir_Copyin,         /* COPYIN                     */
-                Tok_Open_Mp_Dir_Copyprivate, /* COPYPRIVATE          */ /* by jhs, 02/7/5 */
+                Tok_Open_Mp_Dir_Copyprivate, /* COPYPRIVATE          */ 
                 Tok_Open_Mp_Dir_Critical,       /* CRITICAL                   */
                 Tok_Open_Mp_Dir_Data,           /* DATA                       */
                 Tok_Open_Mp_Dir_Default,        /* DEFAULT                    */
@@ -533,12 +519,12 @@ enum	token_values {
                 Tok_Open_Mp_Dir_Endparallel,    /* END PARALLEL               */
                 Tok_Open_Mp_Dir_Endparalleldo,  /* END PARALLEL DO            */
                 Tok_Open_Mp_Dir_Endparallelsections, /* END PARALLEL SECTIONS */
-                Tok_Open_Mp_Dir_Endparallelworkshare, /* END PARALLEL WORKSHARE */ /* by jhs, 02/7/5 */
+                Tok_Open_Mp_Dir_Endparallelworkshare, /* END PARALLEL WORKSHARE */ 
                 Tok_Open_Mp_Dir_Endmaster,      /* END MASTER                 */
                 Tok_Open_Mp_Dir_Endordered,     /* END ORDERED                */
                 Tok_Open_Mp_Dir_Endsections,    /* END SECTIONS               */
                 Tok_Open_Mp_Dir_Endsingle,      /* END SINGLE                 */
-                Tok_Open_Mp_Dir_Endworkshare, /* END WORKSHARE */ /* by jhs, 02/7/5 */
+                Tok_Open_Mp_Dir_Endworkshare, /* END WORKSHARE */ 
                 Tok_Open_Mp_Dir_Firstprivate,   /* FIRSTPRIVATE               */
                 Tok_Open_Mp_Dir_Flush,          /* FLUSH                      */
                 Tok_Open_Mp_Dir_Guided,         /* GUIDED                     */
@@ -548,14 +534,14 @@ enum	token_values {
                 Tok_Open_Mp_Dir_Nest,           /* NEST                       */
                 Tok_Open_Mp_Dir_None,           /* NONE                       */
                 Tok_Open_Mp_Dir_Nowait,         /* NOWAIT                     */
-                Tok_Open_Mp_Dir_Num_Threads, /* NUM_THREADS */ /* by jhs, 02/7/5 */
+                Tok_Open_Mp_Dir_Num_Threads, /* NUM_THREADS */ 
                 Tok_Open_Mp_Dir_Onto,           /* ONTO                       */
                 Tok_Open_Mp_Dir_Ordered,        /* ORDERED                    */
                 Tok_Open_Mp_Dir_Page_Place,     /* PAGE PLACE                 */
                 Tok_Open_Mp_Dir_Parallel,       /* PARALLEL                   */
                 Tok_Open_Mp_Dir_Paralleldo,     /* PARALLEL DO                */
                 Tok_Open_Mp_Dir_Parallelsections,  /* PARALLEL SECTIONS */
-                Tok_Open_Mp_Dir_Parallelworkshare, /* PARALLEL WORKSHARE */ /* by jhs, 02/7/5 */
+                Tok_Open_Mp_Dir_Parallelworkshare, /* PARALLEL WORKSHARE */ 
                 Tok_Open_Mp_Dir_Private,        /* PRIVATE                    */
                 Tok_Open_Mp_Dir_Redistribute,   /* REDISTRIBUTE               */
                 Tok_Open_Mp_Dir_Reduction,      /* REDUCTION                  */
@@ -568,7 +554,7 @@ enum	token_values {
                 Tok_Open_Mp_Dir_Static,         /* STATIC                     */
                 Tok_Open_Mp_Dir_Thread,         /* THREAD                     */
                 Tok_Open_Mp_Dir_Threadprivate,  /* THREADPRIVATE              */
-                Tok_Open_Mp_Dir_Workshare, /* WORKSHARE */ /* by jhs, 02/7/5 */
+                Tok_Open_Mp_Dir_Workshare, /* WORKSHARE */ 
                 Tok_Open_Mp_Dir_End,            /* End of Open Mp directives  */
 
 		Tok_Dbg_Sytb,			/* Symbol table               */

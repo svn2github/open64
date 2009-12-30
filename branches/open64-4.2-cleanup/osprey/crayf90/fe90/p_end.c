@@ -424,7 +424,6 @@ void parse_end_stmt (void)
          keyword = Tok_Id;  /* Force to default clause for error */
       }
 
-#ifdef KEY /* Bug 5550 */
       /* If we are ending an interface block which began with "operator(.x.)"
        * or "assignment(=)", the "end interface" may have an optional
        * "operator(.x.)" or "assignment(=)" too. Notice that there's no
@@ -437,7 +436,6 @@ void parse_end_stmt (void)
 	found_name = (LA_CH_VALUE != EOS) && parse_generic_spec();
       }
       else
-#endif /* KEY Bug 5550 */
 
       found_name = MATCHED_TOKEN_CLASS(Tok_Class_Id);
 
@@ -602,7 +600,6 @@ void parse_end_stmt (void)
 
 	    break;
 
-#ifdef KEY /* Bug 10572 */
 	 case Tok_Kwd_Enum:
 
             stmt_type				= End_Enum_Stmt;
@@ -617,7 +614,6 @@ void parse_end_stmt (void)
             }
 
 	    break;
-#endif /* KEY Bug 10572 */
 
 
 	 case Tok_Kwd_Type:
@@ -1499,9 +1495,7 @@ static void end_internal_proc(boolean	err_call)
 
    TRACE (Func_Entry, "end_internal_proc", NULL);
 
-#ifdef KEY /* Bug 14110 */
    revisit_volatile();
-#endif /* KEY Bug 14110 */
 
    do_cmic_blk_checks();
 
@@ -1637,9 +1631,7 @@ static void end_module_proc(boolean	err_call)
 
    TRACE (Func_Entry, "end_module_proc", NULL);
 
-#ifdef KEY /* Bug 14110 */
    revisit_volatile();
-#endif /* KEY Bug 14110 */
 
    do_cmic_blk_checks();
 
@@ -2257,11 +2249,7 @@ void end_labeled_do()
 
 {
    int		blk_idx;
-#ifdef KEY /* Bug 10177 */
    boolean	error_flag = FALSE;
-#else /* KEY Bug 10177 */
-   boolean	error_flag;
-#endif /* KEY Bug 10177 */
    int		fake_blk_stk_idx;
    int		loop_num = 0;
    boolean	msg_issued;
@@ -2316,11 +2304,7 @@ FOUND_DO_BLK:
       case Continue_Stmt:
          if (BLK_LOOP_NUM(blk_idx) > 1) {
             PRINTMSG(stmt_start_line, 241,
-#ifdef KEY /* Bug 318, 321 */
 	      Ansi,
-#else /* KEY Bug 318, 321 */
-	      Comment,
-#endif /* KEY Bug 318, 321 */
 	      stmt_start_col);
          }
 
@@ -2338,11 +2322,7 @@ FOUND_DO_BLK:
          }
          else {
             PRINTMSG(stmt_start_line, 241,
-#ifdef KEY /* Bug 318, 321 */
 	      Ansi,
-#else /* KEY Bug 318, 321 */
-	      Comment,
-#endif /* KEY Bug 318, 321 */
 	      stmt_start_col);
          }                   
              
@@ -2498,11 +2478,7 @@ FOUND_DO_BLK:
       default:
          if (ATL_EXECUTABLE(stmt_label_idx)) {
             PRINTMSG(stmt_start_line, 241,
-#ifdef KEY /* Bug 318, 321 */
 	      Ansi,
-#else /* KEY Bug 318, 321 */
-	      Comment,
-#endif /* KEY Bug 318, 321 */
 	      stmt_start_col);
          }
          else {
@@ -3000,17 +2976,10 @@ static void end_if_blk(boolean	err_call)
    int		name_idx;
 
 # ifdef _HIGH_LEVEL_IF_FORM
-# ifdef KEY /* Bug 10177 */
    int		curr_sh = 0;
-# else /* KEY Bug 10177 */
-   int		curr_sh;
-# endif /* KEY Bug 10177 */
    int		ir_idx;
 # endif
 
-# if 0
-   int		sh_idx;
-# endif
 
 
    TRACE (Func_Entry, "end_if_blk", NULL);
@@ -3048,32 +3017,6 @@ static void end_if_blk(boolean	err_call)
    }
 
 
-#if 0
-   /* If the last clause of the IF construct is an ELSE IF, generate a        */
-   /* CONTINUE statement to define its branch-around label.                   */
-
-   if (CURR_BLK == If_Else_If_Blk &&  !error) {
-      gen_sh(Before, Continue_Stmt, stmt_start_line, stmt_start_col,
-             FALSE, TRUE, TRUE);
-
-      sh_idx              = SH_PREV_IDX(curr_stmt_sh_idx);
-      NTR_IR_TBL(ir_idx);
-      SH_IR_IDX(sh_idx)   = ir_idx;
-      IR_OPR(ir_idx)      = Label_Opr;
-      IR_TYPE_IDX(ir_idx) = TYPELESS_DEFAULT_TYPE;
-      IR_LINE_NUM(ir_idx) = stmt_start_line;
-      IR_COL_NUM(ir_idx)  = stmt_start_col;
-      IR_FLD_L(ir_idx)    = AT_Tbl_Idx;
-      IR_IDX_L(ir_idx)    = CURR_BLK_LABEL;
-      IR_LINE_NUM_L(ir_idx) = stmt_start_line;
-      IR_COL_NUM_L(ir_idx)  = stmt_start_col;
-
-      AT_DEFINED(CURR_BLK_LABEL)       = TRUE;
-      AT_DEF_LINE(CURR_BLK_LABEL)      = stmt_start_line;
-      ATL_DEF_STMT_IDX(CURR_BLK_LABEL) = sh_idx;
-      AT_REFERENCED(CURR_BLK_LABEL)    = Referenced;
-   }
-#endif
 
    
    if (CURR_BLK == If_Else_If_Blk  ||  CURR_BLK == If_Else_Blk) {
@@ -3104,31 +3047,6 @@ static void end_if_blk(boolean	err_call)
    SH_ERR_FLG(curr_stmt_sh_idx) = error;
 
 
-#if 0
-   /* Generate a CONTINUE statement to define the "end IF" label.             */
-
-   if (! error) {
-      gen_sh(Before, Continue_Stmt, stmt_start_line, stmt_start_col,
-             FALSE, TRUE, TRUE);
-
-      sh_idx				= SH_PREV_IDX(curr_stmt_sh_idx);
-      NTR_IR_TBL(ir_idx);
-      SH_IR_IDX(sh_idx)			= ir_idx;
-      IR_OPR(ir_idx)			= Label_Opr;
-      IR_TYPE_IDX(ir_idx)               = TYPELESS_DEFAULT_TYPE;
-      IR_LINE_NUM(ir_idx)		= stmt_start_line;
-      IR_COL_NUM(ir_idx)		= stmt_start_col;
-      IR_FLD_L(ir_idx)			= AT_Tbl_Idx;
-      IR_IDX_L(ir_idx)			= CURR_BLK_LABEL;
-      IR_LINE_NUM_L(ir_idx)		= stmt_start_line;
-      IR_COL_NUM_L(ir_idx)		= stmt_start_col;
-
-      AT_DEFINED(CURR_BLK_LABEL)	= TRUE;
-      AT_DEF_LINE(CURR_BLK_LABEL)	= stmt_start_line;
-      ATL_DEF_STMT_IDX(CURR_BLK_LABEL)	= sh_idx;
-      AT_REFERENCED(CURR_BLK_LABEL)	= Referenced;
-   }
-#endif
 
    /* Check before popping it because the program could be really messed up   */
    /* which would cause the Block Stack to be equally messed up.	      */
@@ -3262,7 +3180,6 @@ static void end_interface_blk(boolean	err_call)
 }  /* end_interface_blk */
 
 
-#ifdef KEY /* Bug 10572 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -3303,7 +3220,6 @@ static void end_enum_blk(boolean	err_call)
 
 }  /* end_enum_blk */
 
-#endif /* KEY Bug 10572 */
 /******************************************************************************\
 |*                                                                            *|
 |* Description:                                                               *|
@@ -3395,32 +3311,21 @@ static void end_type_blk(boolean	err_call)
 # ifdef _DEBUG
       if (!ATT_CHAR_CPNT(CURR_BLK_NAME) &
           !ATT_NUMERIC_CPNT(CURR_BLK_NAME) &
-#ifdef KEY /* Bug 6845 */
           !ATT_ALLOCATABLE_CPNT(CURR_BLK_NAME) &
-#endif /* KEY Bug 6845 */
           !ATT_POINTER_CPNT(CURR_BLK_NAME)) {
          PRINTMSG(stmt_start_line, 193, Internal, stmt_start_col,
                   FALSE,
-#ifdef KEY /* Bug 6845 */
                   "ATT_CHAR_CPNT, ATT_NUMERIC_CPNT, ATT_POINTER_CPNT",
-#else /* KEY Bug 6845 */
-                  "ATT_CHAR_CPNT, ATT_NUMERIC_CPNT, ATT_POINTER_CPNT,"
-		  " ATT_ALLOCATABLE_CPNT",
-#endif /* KEY Bug 6845 */
                   CURR_BLK_NAME);
       }
 # endif
 
       ATT_CHAR_SEQ(CURR_BLK_NAME) = !ATT_NUMERIC_CPNT(CURR_BLK_NAME) &&
-#ifdef KEY /* Bug 6845 */
                                     !ATT_ALLOCATABLE_CPNT(CURR_BLK_NAME) &&
-#endif /* KEY Bug 6845 */
                                     !ATT_POINTER_CPNT(CURR_BLK_NAME);
 
       ATT_DCL_NUMERIC_SEQ(CURR_BLK_NAME) = !ATT_POINTER_CPNT(CURR_BLK_NAME) &&
-#ifdef KEY /* Bug 6845 */
 				    !ATT_ALLOCATABLE_CPNT(CURR_BLK_NAME) &&
-#endif /* KEY Bug 6845 */
 				    !ATT_CHAR_CPNT(CURR_BLK_NAME) &&
 				    ATT_SEQUENCE_SET(CURR_BLK_NAME);
 
@@ -3450,9 +3355,7 @@ static void end_type_blk(boolean	err_call)
 # endif
 
       if (ATT_NUMERIC_CPNT(CURR_BLK_NAME) || ATT_POINTER_CPNT(CURR_BLK_NAME)
-#ifdef KEY /* Bug 6845 */
         || ATT_ALLOCATABLE_CPNT(CURR_BLK_NAME)
-#endif /* KEY Bug 6845 */
       ) {
          bit_len.fld	= ATT_STRUCT_BIT_LEN_FLD(CURR_BLK_NAME);
          bit_len.idx	= ATT_STRUCT_BIT_LEN_IDX(CURR_BLK_NAME);
@@ -3950,11 +3853,7 @@ static void end_internal_err(boolean	err_call)
 
 static char *blk_desc_str(int	 blk_idx)
 {
-#ifdef KEY /* Bug 10177 */
    char		*blk_stmt_str = 0;
-#else /* KEY Bug 10177 */
-   char		*blk_stmt_str;
-#endif /* KEY Bug 10177 */
    int		 idx;
 
    TRACE (Func_Entry, "blk_desc_str", NULL);
@@ -4135,11 +4034,9 @@ static char *blk_desc_str(int	 blk_idx)
          blk_stmt_str = "INTERFACE";
          break;
 
-#ifdef KEY /* Bug 10572 */
       case Enum_Blk:
          blk_stmt_str = "ENUM";
          break;
-#endif /* KEY Bug 10572 */
 
       case Derived_Type_Blk:
          blk_stmt_str = "TYPE";
@@ -4356,12 +4253,10 @@ int	blk_match_err(blk_cntxt_type	blk_type,
                      AT_OBJ_NAME_PTR(CURR_BLK_NAME));
             break;
 
-#ifdef KEY /* Bug 10572 */
          case End_Enum_Stmt:
 	    PRINTMSG(TOKEN_LINE(token), 197, Error, TOKEN_COLUMN(token),
 	      EOS_STR, TOKEN_STR(token));
 	    break;
-#endif /* KEY Bug 10572 */
 # ifdef _DEBUG
          default:
             PRINTMSG(stmt_start_line, 179, Internal,

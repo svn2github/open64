@@ -45,10 +45,8 @@
 static char USMID[] = "\n@(#)5.0_pl/sources/fold_drive.c	5.19	10/14/99 14:09:57\n";
 
 # include <stdarg.h>
-#ifdef KEY /* Bug 5554 */
 # include "stdlib.h"
 # include "errno.h"
-#endif /* KEY Bug 5554 */
 # include "defines.h"           /* Machine dependent ifdefs */
 # include "host.m"              /* Host machine dependent macros.*/
 # include "host.h"              /* Host machine dependent header.*/
@@ -253,7 +251,6 @@ static void f90_character_compare(char		*ch_ptr1,
 }  /* f90_character_compare */
 
 
-#ifdef KEY /* Bug 12014 */
 /*
  * After a call to ntr_const_tbl(), which may have reallocated the const_pool,
  * adjust the values of a pointer known to point into that pool. For
@@ -263,9 +260,7 @@ static void f90_character_compare(char		*ch_ptr1,
  */
 #define CORRECT_THE_POINTER(l_value_offset) \
   (((char *)const_pool) + l_value_offset)
-#endif /* KEY Bug 12014 */
 
-#ifdef KEY /* Bug 12482 */
 /*
  * Copy the value of a typeless or boz constant (e.g. b'1', o'7', or z'f')
  * from its source in the constant pool to a destination in a variable which
@@ -306,7 +301,6 @@ copy_and_pad_boz(long_type *dst, Uint dst_words, long_type *src, Uint src_words)
   }
 # endif
 }
-#endif /* KEY Bug 12482 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -374,26 +368,15 @@ boolean folder_driver(char		*l_value_ptr,
    linear_type_type		l_linear_type;
    linear_type_type		r_linear_type;
    linear_type_type		a3_linear_type;
-#ifdef KEY /* Bug 10177 */
    linear_type_type		a4_linear_type = Err_Res;
-#else /* KEY Bug 10177 */
-   linear_type_type		a4_linear_type;
-#endif /* KEY Bug 10177 */
    linear_type_type		res_linear_type;
    linear_type_type		str1_linear_type;
    linear_type_type		str2_linear_type;
    long_type			mask;
-#ifdef KEY /* Bug 10177 */
    char			       *a3_value_ptr = 0;
    int				a3_type_idx = 0;
    char			       *a4_value_ptr = 0;
    int				a4_type_idx = 0;
-#else /* KEY Bug 10177 */
-   char			       *a3_value_ptr;
-   int				a3_type_idx;
-   char			       *a4_value_ptr;
-   int				a4_type_idx;
-#endif /* KEY Bug 10177 */
    va_list                      arg_ptr;
    char                         char_buf[8000];
    int				type_idx;
@@ -609,7 +592,6 @@ boolean folder_driver(char		*l_value_ptr,
 
 CONTINUE:
 
-#ifdef KEY /* Bug 12014 */
    /*
     * The authors outsmarted themselves by using pointers instead of indices
     * as the formal arguments to function folder_driver(). If the calls to
@@ -623,7 +605,6 @@ CONTINUE:
    {
    size_t l_value_offset = l_value_ptr - (char *) const_pool;
    size_t r_value_offset = r_value_ptr - (char *) const_pool;
-#endif /* KEY Bug 12014 */
    switch (opr) {
       case Reshape_Opr :
          mask = AR_reshape((void *)result,
@@ -683,10 +664,8 @@ CONTINUE:
          *res_type_idx = ntr_type_tbl();
 
          result[0] = ntr_const_tbl((*res_type_idx), TRUE, NULL);
-#ifdef KEY /* Bug 12014 */
          l_value_ptr = CORRECT_THE_POINTER(l_value_offset);
          r_value_ptr = CORRECT_THE_POINTER(r_value_offset);
-#endif /* KEY Bug 12014 */
          char_ptr = (char *) &CN_CONST(result[0]);
 
          for (i = 0; i < char_len; i++) {
@@ -723,10 +702,8 @@ CONTINUE:
          *res_type_idx = ntr_type_tbl();
 
          result[0] = ntr_const_tbl((*res_type_idx), TRUE, NULL);
-#ifdef KEY /* Bug 12014 */
          l_value_ptr = CORRECT_THE_POINTER(l_value_offset);
          r_value_ptr = CORRECT_THE_POINTER(r_value_offset);
-#endif /* KEY Bug 12014 */
          char_ptr = (char *) &CN_CONST(result[0]);
 
          length = CP_CONSTANT(CN_POOL_IDX(TYP_IDX(l_type_idx)) +
@@ -970,10 +947,8 @@ CONTINUE:
 
       case SIK_Opr :
          cn_idx = ntr_const_tbl(l_type_idx, FALSE, &l_value.v[0]);
-#ifdef KEY /* Bug 12014 */
          l_value_ptr = CORRECT_THE_POINTER(l_value_offset);
          r_value_ptr = CORRECT_THE_POINTER(r_value_offset);
-#endif /* KEY Bug 12014 */
 
          if (compare_cn_and_value(cn_idx, RANGE_INT1_F90, Le_Opr)) {
             i = 1;
@@ -2498,7 +2473,6 @@ CONTINUE:
 # ifdef _TARGET32
          if (res_linear_type == Integer_8) {
 # if defined(_TARGET_LITTLE_ENDIAN)
-//Bug 1581
             result[1] = 0;
 # else
             result[1] = result[0];
@@ -2748,10 +2722,8 @@ CONTINUE:
          /* the character result constant.                 */
 
          result[0] = ntr_const_tbl(l_type_idx, TRUE, NULL);
-#ifdef KEY /* Bug 12014 */
          l_value_ptr = CORRECT_THE_POINTER(l_value_offset);
          r_value_ptr = CORRECT_THE_POINTER(r_value_offset);
-#endif /* KEY Bug 12014 */
 
          *res_type_idx = l_type_idx;
 
@@ -2782,10 +2754,8 @@ CONTINUE:
          result[0] = ntr_const_tbl(l_type_idx,
                                    TRUE,
                                    (long_type *) char_buf);
-#ifdef KEY /* Bug 12014 */
          l_value_ptr = CORRECT_THE_POINTER(l_value_offset);
          r_value_ptr = CORRECT_THE_POINTER(r_value_offset);
-#endif /* KEY Bug 12014 */
 
          *res_type_idx = l_type_idx;
 
@@ -2923,9 +2893,7 @@ CONTINUE:
          PRINTMSG(line, 828, Internal, col);
          break;
    }
-#ifdef KEY /* Bug 12014 */
    }
-#endif /* KEY Bug 12014 */
 
 # ifdef _TARGET_OS_MAX
    if (res_linear_type == Complex_4) {  /* KAYKAY */
@@ -3239,21 +3207,17 @@ boolean size_offset_logical_calc(size_offset_type	*op1,
    case NO_Tbl_Idx:
       constant1	= &((*op1).constant[0]);
       type1_idx	= (*op1).type_idx;
-# ifdef KEY
       if (type1_idx == Integer_4 && *constant1 < 0){
         type1_idx = Integer_8;
       }
-# endif
       break;
 
    case CN_Tbl_Idx:
       constant1	= &(CN_CONST((*op1).idx));
       type1_idx	= CN_TYPE_IDX((*op1).idx);
-# ifdef KEY
       if (TYP_LINEAR(CN_TYPE_IDX((*op1).idx)) == Integer_4 && *constant1 < 0){
         type1_idx = Integer_8;
       }
-# endif
 
       break;
 
@@ -3280,21 +3244,17 @@ boolean size_offset_logical_calc(size_offset_type	*op1,
    case NO_Tbl_Idx:
       constant2	= &((*op2).constant[0]);
       type2_idx	= (*op2).type_idx;
-# ifdef KEY
       if (type2_idx == Integer_4 && *constant2 < 0){
         type2_idx = Integer_8;
       }
-# endif
       break;
 
    case CN_Tbl_Idx:
       constant2	= &(CN_CONST((*op2).idx));
       type2_idx	= CN_TYPE_IDX((*op2).idx);
-# ifdef KEY
       if (TYP_LINEAR(CN_TYPE_IDX((*op2).idx)) == Integer_4 && *constant2 < 0){
         type2_idx = Integer_8;
       }
-# endif
       break;
 
    case AT_Tbl_Idx:
@@ -3405,11 +3365,7 @@ boolean size_offset_min_max_calc(size_offset_type	*op1,
    boolean		 ok;
    opnd_type		 opnd1;
    opnd_type		 opnd2;
-#ifdef KEY /* Bug 10177 */
    boolean		 symbolic_constant = FALSE;
-#else /* KEY Bug 10177 */
-   boolean		 symbolic_constant;
-#endif /* KEY Bug 10177 */
    int			 type_idx;
    int			 type1_idx;
    int			 type2_idx;
@@ -3917,7 +3873,6 @@ boolean	compare_target_consts(long_type	*const1,
 
 # ifdef _USE_FOLD_DOT_f
 
-#ifdef KEY /* Bug 5554 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -3984,7 +3939,6 @@ boolean kludge_input_conversion(char *str, int type_idx, boolean promote)
 
    case Integer_8:
       *(long long *)number = strtoll(str, (char **) 0, 10);
-#ifdef KEY /* Bug 8767 */
       /* If the source program uses "-2^63", we arrive here with "2^63", not
        * knowing whether a "-" preceded it. We surely want to give a warning
        * because "2^63" is out of range. By trying again with "strtoull", we
@@ -3999,7 +3953,6 @@ boolean kludge_input_conversion(char *str, int type_idx, boolean promote)
 	}
 	errno = ERANGE;
       }
-#endif /* KEY Bug 8767 */
       range_ok = range_ok && (ERANGE != errno);
       break;
 
@@ -4042,70 +3995,6 @@ boolean kludge_input_conversion(char *str, int type_idx, boolean promote)
    }
    return TRUE;
 }
-#else /* KEY Bug 5554 */
-/******************************************************************************\
-|*                                                                            *|
-|* Description:                                                               *|
-|*    ONLY FOR THE LINUX COMPILER. USE UNTIL ARITH IS READY.                  *|
-|*                                                                            *|
-|*      Use sscanf to convert strings to host format constants for integer    *|
-|*      and real types.  No error detection.                                  *|
-|*                                                                            *|
-|* Input parameters:                                                          *|
-|*    NONE                                                                    *|
-|*                                                                            *|
-|* Output parameters:                                                         *|
-|*    NONE                                                                    *|
-|*                                                                            *|
-|* Returns:                                                                   *|
-|*    NOTHING                                                                 *|
-|*                                                                            *|
-\******************************************************************************/
-
-void kludge_input_conversion (char	*str,
-			      int	type_idx)
-{
-   int		i;
-   long_type	number[MAX_WORDS_FOR_NUMERIC];
-
-   for (i = 0; i < MAX_WORDS_FOR_NUMERIC; i++) {
-      number[i] = 0;
-   }
-
-   switch (TYP_LINEAR(type_idx)) {
-   case Integer_1:
-   case Integer_2:
-   case Integer_4:
-      sscanf(str, "%lu", (long *)number);
-      break;
-
-   case Integer_8:
-      sscanf(str, "%lld", (long long *)number);
-      break;
-
-   case Real_4:
-      sscanf(str, "%f", (float *)number);
-      break;
-
-   case Real_8:
-      sscanf(str, "%lf", (double *)number);
-      break;
-
-   case Real_16:
-      sscanf(str, "%Lf", (long double *)number);
-      break;
-
-   default:
-      PRINTMSG(stmt_start_line, 626, Internal, stmt_start_col,
-               "Integer or Real type", "kludge_input_conversion");
-      break;
-   }
-
-   TOKEN_CONST_TBL_IDX(token) = ntr_const_tbl(type_idx,
-                                              FALSE, 
-                                              number);
-}
-#endif /* KEY Bug 5554 */
 
 /******************************************************************************\
 |*                                                                            *|

@@ -85,10 +85,8 @@ cwh_directive_add_do_loop_directive(WN *directive);
 extern void
 cwh_directive_barrier_insert(WN *ins, int  args) ;
 // Bug 3836
-#ifdef KEY
 extern void 
 cwh_directive_set_PU_flags(BOOL nested);
-#endif
 
 #endif /* CWH_DIRECTIVE_INCLUDED */
 

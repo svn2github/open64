@@ -123,9 +123,7 @@ static const char *source_file = __FILE__;
 #include "wn_util.h"
 #include "f90_utils.h"
 #include "targ_sim.h"
-#ifdef KEY /* Bug 4260 */
 #include "../../../clibinc/cray/io_byteswap.h"
-#endif /* KEY Bug 4260 */
 
 /* FE includes */
 
@@ -324,11 +322,7 @@ fei_constant ( TYPE            type,
   TY_IDX ty  ;  
   INTPTR cn   ;
   ST *st;
-#ifdef KEY /* Bug 10177 */
   STB_pkt *p = 0;
-#else /* KEY Bug 10177 */
-  STB_pkt *p ;
-#endif /* KEY Bug 10177 */
   
   switch ((CONSTANT_CLASS)Class) {
   case Arith_Const:
@@ -434,7 +428,6 @@ fei_push_pattern_con ( INTPTR cdx )
       cwh_stk_push(st,PCONST_item);
    }
 }
-#ifdef KEY /* Bug 4602 */
 /*===============================================
  *
  * fei_arg_by_value
@@ -456,7 +449,6 @@ fei_array_element_by_value() {
     }
   cwh_stk_push_typed(wn, save_class, save_type);
   }
-#endif /* KEY Bug 4602 */
 
 
 /*===============================================
@@ -723,7 +715,6 @@ fei_function_ref(INTPTR id)
   cwh_stk_push(cast_to_ST(p->item), ST_item);
 }
 
-#ifdef KEY /* Bug 10282 */
 /*
  * return struct type if t is array of struct type suitable for returning
  * by value from a function; else return -1
@@ -737,7 +728,6 @@ TY_IDX array_of_struct_by_value(TY_IDX t) {
   }
   return (TY_IDX) -1;
 }
-#endif /* KEY Bug 10282 */
 
 /*===============================================
  *
@@ -800,13 +790,11 @@ cwh_stmt_call_helper(INT32 num_args, TY_IDX ty, INT32 inline_state, INT64 flags)
   BOOL        forward_barrier = FALSE;
   BOOL        backward_barrier = FALSE;
   WN * barrier_wn;
-#ifdef KEY /* Bug 10282 */
   /* If an elemental function is returning an array of "small" structures,
    * we need to remember the temp which receives the function result, and
    * the base type of the result array. */
   WN *case4_array_temp = 0;
   TY_IDX case4_base_type = (TY_IDX) -1;
-#endif /* KEY Bug 10282 */
 
   /* figure # of args, including character lengths, clear return temp ST */
 
@@ -912,7 +900,6 @@ cwh_stmt_call_helper(INT32 num_args, TY_IDX ty, INT32 inline_state, INT64 flags)
 	args[i] = args[i+1];
 
     }
-#ifdef KEY /* Bug 10282 */
     else if ((ST_auxst_is_elemental(st)) && (TY_mtype(tr) != MTYPE_V)) {
       case4_base_type = array_of_struct_by_value(tr);
       if (case4_base_type != (TY_IDX) -1) {
@@ -932,7 +919,6 @@ cwh_stmt_call_helper(INT32 num_args, TY_IDX ty, INT32 inline_state, INT64 flags)
 	  args[i] = args[i+1];
       }
     }
-#endif /* KEY Bug 10282 */
   }
   
 
@@ -1034,7 +1020,6 @@ cwh_stmt_call_helper(INT32 num_args, TY_IDX ty, INT32 inline_state, INT64 flags)
      cwh_block_append(wn);
      block = cwh_block_exchange_current(block);
 
-#ifdef KEY /* Bug 9520, 10282 */
      // Arrange to capture anything cwh_stmt_return_scalar() appends to
      // current block
      WN *stmt_return_block = cwh_block_new_and_current();
@@ -1103,12 +1088,6 @@ cwh_stmt_call_helper(INT32 num_args, TY_IDX ty, INT32 inline_state, INT64 flags)
        wn  = WN_CreateComma(opc,block,wn);
        cwh_stk_push_typed(wn,WN_item,ty);
      }
-#else /* KEY Bug 9520, 10282 */
-     wn  = cwh_stmt_return_scalar(rt,NULL,ts,FALSE);
-     opc = cwh_make_typed_opcode(OPR_COMMA,rbtype1,MTYPE_V);
-     wn  = WN_CreateComma(opc,block,wn);
-     cwh_stk_push_typed(wn,WN_item,ty);
-#endif /* KEY Bug 9520, 10282 */
      
   } else {
     
@@ -1259,11 +1238,7 @@ fei_arg_addr(TYPE type)
 void
 fei_fcd(TYPE result_type)
 {
-#ifdef KEY /* Bug 10177 */
   WN *wn = 0;
-#else /* KEY Bug 10177 */
-  WN *wn ;
-#endif /* KEY Bug 10177 */
   WN *ad ;
   WN *ln ;
   TY_IDX ts ;
@@ -1942,9 +1917,7 @@ cwh_stmt_select_case_char(INT32 low_value_pres,
   W_node expr[2];
 
   WN *copy[2];
-#ifdef KEY /* Bug 10177 */
   copy[0] = copy[1] = 0;
-#endif /* KEY Bug 10177 */
   WN *wn1;
 
   WN *last_node;
@@ -2101,9 +2074,7 @@ cwh_stmt_str_falsebr_util(OPERATOR opr,
 
 void
 fei_new_select(INT32 num_cases,
-#ifdef KEY /* Bug 12319 */
                INTPTR last_label_idx,
-#endif /* KEY Bug 12319 */
                INTPTR default_label_idx )
 {
   WN *parent_block;
@@ -2153,10 +2124,8 @@ fei_new_select(INT32 num_cases,
        
        cwh_block_set_current(parent_block);
        cwh_block_append(wn);
-#ifdef KEY /* Bug 12319 */
        LABEL_IDX last_lb = cast_to_LB(last_label_idx);
        WN_last_label(wn) = last_lb;
-#endif /* KEY Bug 12319 */
 
      } else {  /* empty select */
 
@@ -2213,11 +2182,7 @@ fei_new_select_case(INT64 low_value_pres,
                     INT32 case_follows)
 {
   WN *o_val;
-#ifdef KEY /* Bug 10177 */
   WN *high_val = 0;
-#else /* KEY Bug 10177 */
-  WN *high_val;
-#endif /* KEY Bug 10177 */
   WN *casegoto_block;
   WN *wn;
   WN *wn1;
@@ -2484,9 +2449,7 @@ fei_where(INT32 defined_asg,
   WN *wn  ;
   WN *wl  ;
   TYPE dummy_type;
-#ifdef KEY /* Bug 10177 */
   memset(&dummy_type, 0, sizeof(dummy_type));
-#endif /* KEY Bug 10177 */
   INT64 flags = 0;
 
   msk = cwh_expr_operand(NULL);
@@ -2537,13 +2500,8 @@ fei_stop( void )
   WN	*wa;
   WN	*wc;
   WN	*wn;
-#ifdef KEY /* Bug 10177 */
   WN	*stop_code = 0;
   WN	*stop_code_len = 0;
-#else /* KEY Bug 10177 */
-  WN	*stop_code;
-  WN	*stop_code_len;
-#endif /* KEY Bug 10177 */
 
   if (cwh_stk_get_class() == STR_item) {
     cwh_stk_pop_STR();
@@ -2768,11 +2726,7 @@ cwh_stmt_return_scalar(ST *st, WN * rv, TY_IDX  rty, BOOL callee_return)
   PREG_NUM  rreg2;
 
 
-#ifdef KEY /* Bug 10177 */
   WN  * wn = 0;
-#else /* KEY Bug 10177 */
-  WN  * wn  ;
-#endif /* KEY Bug 10177 */
   WN  * wn2  ;
   ST  * pr1 ;
   ST  * pr2 ;
@@ -3107,12 +3061,8 @@ cwh_stmt_character_icall(INTRINSIC intrinsic)
   va[2] = TRUE;
   va[0] = FALSE;
 
-#ifdef KEY /* Bug 10670 */
   WN *wn = cwh_intrin_call(intrinsic,4,ar,sz,va,MTYPE_V);
   WN_Set_Linenum(wn, USRCPOS_srcpos(current_srcpos));
-#else /* KEY Bug 10670 */
-  cwh_intrin_call(intrinsic,4,ar,sz,va,MTYPE_V);
-#endif /* KEY Bug 10670 */
 }
 
 /*===============================================
@@ -3170,7 +3120,6 @@ cwh_stmt_add_pragma(WN_PRAGMA_ID  wn_pragma_id,
   cwh_block_append(wn);
 }
 
-#ifdef KEY /* Bug 2660 */
 /*===============================================
  *
  * cwh_stmt_add_options_pragma
@@ -3188,7 +3137,6 @@ cwh_stmt_add_options_pragma(ST *st)
   WN *wn = WN_CreatePragma(WN_PRAGMA_OPTIONS, st, 0, 0);
   cwh_stmt_add_to_preamble(wn,block_pu);
 }
-#endif /* KEY Bug 2660 */
 
 /*===============================================
  *
@@ -3333,22 +3281,14 @@ fei_doloop(INT32	line)
    WN *lb;
    WN *ub,*ubcomp;
    WN *stride,*stride_in_loop;
-#ifdef KEY /* Bug 10177 */
    ST *lcv = 0;
-#else /* KEY Bug 10177 */
-   ST *lcv;
-#endif /* KEY Bug 10177 */
    WN *index_id;
    WN *stmts;
    WN *start;
    WN *end;
    WN *step;
    WN *wlcv = NULL;
-#ifdef KEY /* Bug 10177 */
    TY_IDX ty = 0;
-#else /* KEY Bug 10177 */
-   TY_IDX ty;
-#endif /* KEY Bug 10177 */
 
    USRCPOS pos;
    INT32    local_line_num;
@@ -3488,11 +3428,7 @@ fei_doloop(INT32	line)
      }
 
      /* Compute iteration count */
-#ifdef KEY // Bug 4660, 8272
      temp  = cwh_addr_extent(WN_COPY_Tree(lb),ub,stride_in_loop);
-#else
-     temp  = cwh_addr_extent(wc,ub,stride);
-#endif
      count = cwh_convert_to_ty(temp,doloop_ty);
 
      if (WNOPR(count) != OPR_INTCONST) {
@@ -3778,11 +3714,7 @@ cwh_inline_allocate(WN **dopes, TY_IDX *types, INT num_dopes, WN *stat)
 	 /* This must be an assumed-length character dummy */
 	 /* Pick up the size from the element_size field   */
 	 cwh_stk_push(WN_COPY_Tree(dope_addr),WN_item);
-#ifdef KEY /* Bug6845 */
 	 fei_get_dv_hdr_fld(DV_EL_LEN_IDX);
-#else /* KEY Bug6845 */
-	 fei_get_dv_hdr_fld(2);
-#endif /* KEY Bug6845 */
 	 size = cwh_expr_operand(NULL);
       }
       
@@ -3805,11 +3737,7 @@ cwh_inline_allocate(WN **dopes, TY_IDX *types, INT num_dopes, WN *stat)
       if (is_f90_pointer) {
 	 cwh_stk_push(WN_COPY_Tree(dope_addr),WN_item);
 	 cwh_stk_push(WN_Intconst(MTYPE_I4,1),WN_item);
-#ifdef KEY /* Bug6845 */
 	 fei_set_dv_hdr_fld(DV_PTR_ALLOC_IDX);
-#else /* KEY Bug6845 */
-	 fei_set_dv_hdr_fld(4);
-#endif /* KEY Bug6845 */
 	 flag_val |= 1;
       } 
       flags = WN_Intconst(MTYPE_I4,flag_val);
@@ -3817,11 +3745,7 @@ cwh_inline_allocate(WN **dopes, TY_IDX *types, INT num_dopes, WN *stat)
 
       /* get the value of assoc from the dope vector */
       cwh_stk_push(WN_COPY_Tree(dope_addr),WN_item);
-#ifdef KEY /* Bug6845 */
       fei_get_dv_hdr_fld(DV_ASSOC_IDX);
-#else /* KEY Bug6845 */
-      fei_get_dv_hdr_fld(3);
-#endif /* KEY Bug6845 */
       assoc = cwh_intrin_wrap_value_parm(cwh_expr_operand(NULL));
       
       /* Build up the call to the _ALLOCATE_SGI intrinsic */
@@ -3837,11 +3761,7 @@ cwh_inline_allocate(WN **dopes, TY_IDX *types, INT num_dopes, WN *stat)
       
       /* fifth argument is the old value of the dope vector */
       cwh_stk_push(WN_COPY_Tree(dope_addr),WN_item);
-#ifdef KEY /* Bug6845 */
       fei_get_dv_hdr_fld(DV_BASE_IDX);
-#else /* KEY Bug6845 */
-      fei_get_dv_hdr_fld(1);
-#endif /* KEY Bug6845 */
       args[4] = cwh_intrin_wrap_value_parm(cwh_expr_operand(NULL));
 
       iop = WN_Create(opc_call,5);
@@ -3865,31 +3785,19 @@ cwh_inline_allocate(WN **dopes, TY_IDX *types, INT num_dopes, WN *stat)
       /* base_address */
       cwh_stk_push_typed(WN_COPY_Tree(dope_addr),WN_item, types[idope]);
       cwh_stk_push(WN_LdidPreg(Pointer_Mtype,addr_preg),WN_item);
-#ifdef KEY /* Bug6845 */
       fei_set_dv_hdr_fld(DV_BASE_IDX);
-#else /* KEY Bug6845 */
-      fei_set_dv_hdr_fld(1);
-#endif /* KEY Bug6845 */
       
       /* orig_base */
       cwh_stk_push_typed(WN_COPY_Tree(dope_addr),WN_item, types[idope]);
       cwh_stk_push(WN_LdidPreg(Pointer_Mtype,addr_preg),WN_item);
-#ifdef KEY /* Bug6845 */
       fei_set_dv_hdr_fld(DV_ORIG_BASE_IDX);
-#else /* KEY Bug6845 */
-      fei_set_dv_hdr_fld(9);
-#endif /* KEY Bug6845 */
 
       /* orig size */
       cwh_stk_push(WN_COPY_Tree(dope_addr),WN_item);
       size = cwh_expr_bincalc(OPR_SHL,WN_LdidPreg(cwh_bound_int_typeid,size_preg),
 			      WN_Intconst(MTYPE_I4,3));
       cwh_stk_push(size,WN_item);
-#ifdef KEY /* Bug6845 */
       fei_set_dv_hdr_fld(DV_ORIG_SIZE_IDX);
-#else /* KEY Bug6845 */
-      fei_set_dv_hdr_fld(10);
-#endif /* KEY Bug6845 */
       
       /* Finally, set the assoc bit if allocation was successful */
       cwh_stk_push(WN_COPY_Tree(dope_addr),WN_item);
@@ -3898,11 +3806,7 @@ cwh_inline_allocate(WN **dopes, TY_IDX *types, INT num_dopes, WN *stat)
 			    assoc,
 			    WN_Zerocon(Pointer_Mtype));
       cwh_stk_push(assoc,WN_item);
-#ifdef KEY /* Bug6845 */
       fei_set_dv_hdr_fld(DV_ASSOC_IDX);
-#else /* KEY Bug6845 */
-      fei_set_dv_hdr_fld(3);
-#endif /* KEY Bug6845 */
    }
 }
 
@@ -4097,7 +4001,6 @@ cwh_stmt_add_parallel_pragmas(void)
    }
 }
 
-#ifdef KEY /* Bug 4260 */
 /*
  * symname	Name of global data symbol to export as I*4 variable
  * value	Initial value for symbol
@@ -4115,7 +4018,6 @@ export_i4_sym(const char *symname, int value) {
   INITV_Init_Integer(inv, MTYPE_I4, value, 1);
   Set_INITO_val(inito, inv);
 }
-#endif /* KEY Bug 4260 */
 
 /*===============================================
  *
@@ -4153,7 +4055,6 @@ cwh_stmt_init_pu(ST * st, INT32 lineno)
   WN_Set_Linenum (cwh_block_current(), USRCPOS_srcpos(current_srcpos));
 
   cwh_stmt_add_parallel_pragmas();
-#ifdef KEY
   char *compiler_bin = getenv("COMPILER_BIN");
   if (strcmp(ST_name(st), "MAIN__") == 0 &&
       compiler_bin != NULL) {
@@ -4190,7 +4091,6 @@ cwh_stmt_init_pu(ST * st, INT32 lineno)
     INITV_IDX inv = New_INITV();
     INITV_Init_String(inv, psc_str, str_len);
     Set_INITO_val(inito, inv);
-#ifdef KEY /* Bug 4260 */
     /* If command line switch "-byteswap" or "-convert" appeared, export a
      * global data variable of type I*4 to the runtime system to reflect the
      * switch.
@@ -4198,8 +4098,6 @@ cwh_stmt_init_pu(ST * st, INT32 lineno)
     if (IO_DEFAULT != io_byteswap) {
       export_i4_sym("__io_byteswap_value", io_byteswap);
     }
-#endif /* KEY Bug 4260 */
-#ifdef KEY /* Bug 5089 */
 # ifdef TARG_X8664
   /* If -TARG:sse2=off, export a global data variable of type I*4
    * to the runtime system telling it not to attempt to use the MXCSR register
@@ -4210,9 +4108,7 @@ cwh_stmt_init_pu(ST * st, INT32 lineno)
     export_i4_sym("__SSE2_off", 1);
     }
 # endif /* TARG_X8664 */
-#endif /* KEY Bug 5089 */
   }
-#endif
 }
 
 /*===============================================
@@ -4343,12 +4239,8 @@ cwh_stmt_insert_conformance_check(WN **s1, WN **s2, INT ndims1, INT ndims2, INT 
   WN *call;
   WN *if_stmt,*ifthenblock;
   char * proc_name;
-#ifdef KEY /* Bug 10177 */
   PREG_NUM r1,r2;
   PREG_NUM rgt0 = 0;
-#else /* KEY Bug 10177 */
-  PREG_NUM r1,r2,rgt0;
-#endif /* KEY Bug 10177 */
   INT64 lineno;
 
   // quick exit if one or the other ndims is scalar

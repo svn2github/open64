@@ -69,14 +69,11 @@ static char USMID[] = "\n@(#)5.0_pl/sources/s_intrin.c	5.31	10/27/99 16:50:34\n"
 
 
 extern boolean has_present_opr;
-#ifdef KEY /* Bug 5089 */
 #ifdef TARG_X8664
 extern boolean Target_SSE2;
 extern boolean Target_SSE3;
 #endif
-#endif /* KEY Bug 5089 */
 
-#ifdef KEY /* Bug 10410 */
 /*
  * list_idx	IL_Tbl_Idx for an actual argument of the intrinsic call
  * return attr_idx if in this call, an optional dummy argument belonging to the
@@ -180,8 +177,6 @@ pass_dummy_or_default_const(int list_idx, int default_idx, boolean need_temp) {
   pass_dummy_or_default(list_idx, CN_Tbl_Idx, default_idx,
     CN_TYPE_IDX(default_idx), need_temp);
   }
-#endif /* KEY Bug 10410 */
-#ifdef KEY /* Bug 12482 */
 /*
  * When a call to the REAL intrinsic is given a typeless constant argument,
  * use this function to convert the typeless value to an integer or a real
@@ -214,7 +209,6 @@ typeless_to_type(int list_idx1, Uint result_type_idx) {
   copy_and_pad_boz(dst, dst_len, src, src_len);
   IL_IDX(list_idx1) = ntr_const_tbl(result_type_idx, TRUE, dst);
 }
-#endif /* KEY Bug 12482 */
 
 
 /******************************************************************************\
@@ -704,11 +698,7 @@ void   conform_check(int           check_args,
 {
    int            line;
    int            col;
-#ifdef KEY /* Bug 10177 */
    int            which_arg = 0;
-#else /* KEY Bug 10177 */
-   int            which_arg;
-#endif /* KEY Bug 10177 */
    int            max_rank;
    int            attr_idx;
    int		  temp_ir_idx;
@@ -931,9 +921,7 @@ void    sin_intrinsic(opnd_type     *result_opnd,
       case Csin_Intrinsic:
       case Cdsin_Intrinsic:
       case Cqsin_Intrinsic:
-# ifdef KEY
       case Zsin_Intrinsic:
-# endif
          IR_OPR(ir_idx) = Sin_Opr;
          break;
 
@@ -949,9 +937,7 @@ void    sin_intrinsic(opnd_type     *result_opnd,
       case Ccos_Intrinsic:
       case Cdcos_Intrinsic:
       case Cqcos_Intrinsic:
-# ifdef KEY
       case Zcos_Intrinsic:
-# endif
          IR_OPR(ir_idx) = Cos_Opr;
          break;
 
@@ -968,9 +954,7 @@ void    sin_intrinsic(opnd_type     *result_opnd,
       case Clog_Intrinsic:
       case Cdlog_Intrinsic:
       case Cqlog_Intrinsic:
-# ifdef KEY
       case Zlog_Intrinsic:
-# endif
          if ((IL_FLD(list_idx1) == CN_Tbl_Idx) &&
              (arg_info_list[info_idx1].ed.type == Real)) {
 
@@ -1071,9 +1055,7 @@ void    sin_intrinsic(opnd_type     *result_opnd,
       case Cexp_Intrinsic:
       case Cdexp_Intrinsic:
       case Cqexp_Intrinsic:
-# ifdef KEY
       case Zexp_Intrinsic:
-# endif
          IR_OPR(ir_idx) = Exp_Opr;
          break;
 
@@ -1083,9 +1065,7 @@ void    sin_intrinsic(opnd_type     *result_opnd,
       case Csqrt_Intrinsic:
       case Cdsqrt_Intrinsic:
       case Cqsqrt_Intrinsic:
-# ifdef KEY
       case Zsqrt_Intrinsic:
-# endif
          if ((IL_FLD(list_idx1) == CN_Tbl_Idx) &&
              (arg_info_list[info_idx1].ed.type == Real)) {
 
@@ -1128,7 +1108,6 @@ void    sin_intrinsic(opnd_type     *result_opnd,
    TRACE (Func_Exit, "sin_intrinsic", NULL);
 
 }  /* sin_intrinsic */
-#ifdef KEY /* Bug 1324 */
 
 /******************************************************************************\
 |*                                                                            *|
@@ -1174,7 +1153,6 @@ void    erf_intrinsic(opnd_type     *result_opnd,
                  FALSE);
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
-#ifdef KEY /* Bug 4232 */
    /* If we're defining a statement function X which calls some
     * other function Y, there's no need to generate code to copy
     * into temp(s) the actual argument(s) to Y, because we will
@@ -1182,13 +1160,10 @@ void    erf_intrinsic(opnd_type     *result_opnd,
     * It could be harmful to do that now, since the actual arg to
     * Y might be a dummy arg of X, which has no actual address. */
    if (!defining_stmt_func) {
-#endif /* KEY Bug 4232 */
      COPY_OPND(opnd, IR_OPND_R(ir_idx));
      final_arg_work(&opnd, IR_IDX_L(ir_idx), IR_LIST_CNT_R(ir_idx), NULL);
      COPY_OPND(IR_OPND_R(ir_idx), opnd);
-#ifdef KEY /* Bug 4232 */
    }
-#endif /* KEY Bug 4232 */
 # endif
 
    IR_TYPE_IDX(ir_idx) = arg_info_list[info_idx1].ed.type_idx;
@@ -1226,7 +1201,6 @@ void    erf_intrinsic(opnd_type     *result_opnd,
    TRACE (Func_Exit, "erf_intrinsic", NULL);
 
 }  /* erf_intrinsic */
-#endif /* KEY Bug 1324 */
 
 
 /******************************************************************************\
@@ -1441,11 +1415,7 @@ void    aimag_intrinsic(opnd_type     *result_opnd,
                         int           *spec_idx)
 {
    int            ir_idx;
-#ifdef KEY /* Bug 10177 */
    int            type_idx = 0;
-#else /* KEY Bug 10177 */
-   int            type_idx;
-#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            list_idx1;
 
@@ -1606,7 +1576,6 @@ void   int_intrinsic(opnd_type     *result_opnd,
    res_exp_desc->type_idx = type_idx;
    res_exp_desc->linear_type = TYP_LINEAR(type_idx);
 
-#ifdef KEY /* Bug 12482 */
    if (arg_info_list[info_idx1].ed.linear_type == Short_Typeless_Const) {
       typeless_to_type(list_idx1, type_idx);
       COPY_OPND(*result_opnd, IL_OPND(list_idx1));
@@ -1614,7 +1583,6 @@ void   int_intrinsic(opnd_type     *result_opnd,
       res_exp_desc->foldable = TRUE;
    }
    else
-#endif /* KEY Bug 12482 */
 
    if (IL_FLD(list_idx1) == CN_Tbl_Idx && 
        folder_driver((char *)&CN_CONST(IL_IDX(list_idx1)),
@@ -1705,11 +1673,7 @@ void    iand_intrinsic(opnd_type     *result_opnd,
    int            not_idx;
    int            ir_idx;
    boolean        ok = TRUE;
-#ifdef KEY /* Bug 10177 */
    operator_type  opr = Null_Opr;
-#else /* KEY Bug 10177 */
-   operator_type  opr;
-#endif /* KEY Bug 10177 */
    int            type_idx;
 
 
@@ -1913,20 +1877,6 @@ void    iand_intrinsic(opnd_type     *result_opnd,
                        IR_COL_NUM(ir_idx));
               ok = FALSE;
            }
-#ifdef KEY /* Bug 1683 */
-#else
-	   /* g77 compatibility requires an "xor" which operates bitwise
-	    * regardless of data type. Seems stupid for Xor_Intrinsic and
-	    * Neqv_Intrinsic to do the same thing, so make Xor_Intrinsic
-	    * operate bitwise, and then the table in intrin.h can map
-	    * each user-visible intrinsic name onto whichever operation
-	    * we desire.  */
-           else if (arg_info_list[info_idx1].ed.type == Logical &&
-                    arg_info_list[info_idx2].ed.type == Logical) {
-              ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = LOGICAL_DEFAULT_TYPE;
-              opr = Neqv_Opr;
-           }
-#endif /* KEY Bug 1683 */
            break;
 
       case Neqv_Intrinsic:
@@ -2889,19 +2839,11 @@ void    shift_intrinsic(opnd_type     *result_opnd,
    long_type      folded_const[MAX_WORDS_FOR_NUMERIC];
    int            list_idx1;
    int            list_idx2;
-#ifdef KEY /* Bug 10177 */
    long		  num = 0;
-#else /* KEY Bug 10177 */
-   long		  num;
-#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            info_idx2;
    int            ir_idx;
-#ifdef KEY /* Bug 10177 */
    operator_type  opr = Null_Opr;
-#else /* KEY Bug 10177 */
-   operator_type  opr;
-#endif /* KEY Bug 10177 */
    int 		  type_idx;
    int 		  cn_idx;
    int 		  line;
@@ -4077,9 +4019,7 @@ void    max_intrinsic(opnd_type     *result_opnd,
 
    t_idx = IR_IDX_R(ir_idx);
    n_idx = IL_NEXT_LIST_IDX(t_idx);
-#ifdef KEY /* Bug 14010 */
    int first_il_idx = t_idx;
-#endif /* KEY Bug 14010 */
 
    largest_linear_type = arg_info_list[IL_ARG_DESC_IDX(t_idx)].ed.linear_type;
 
@@ -4143,7 +4083,6 @@ void    max_intrinsic(opnd_type     *result_opnd,
       }
    }
 
-#ifdef KEY /* Bug 14010 */
    /*
     * First and second args must be present, so if a later actual argument is
     * an optional dummy belonging to the caller, and it is not present, then
@@ -4157,7 +4096,6 @@ void    max_intrinsic(opnd_type     *result_opnd,
 	 largest_linear_type, FALSE);
      }
    }
-#endif /* KEY Bug 14010 */
 
    if ((ATP_INTRIN_ENUM(*spec_idx) == Amax0_Intrinsic) ||
        (ATP_INTRIN_ENUM(*spec_idx) == Amin0_Intrinsic)) {
@@ -4543,11 +4481,9 @@ void    real_intrinsic(opnd_type     *result_opnd,
                  spec_idx,
                  FALSE);
 
-#ifdef KEY /* Bug 12482 */
    if (arg_info_list[info_idx1].ed.linear_type == Short_Typeless_Const) {
      typeless_to_type(list_idx1, ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)));
    }
-#endif /* KEY Bug 12482 */
 
    IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
    IR_RANK(ir_idx) = res_exp_desc->rank;
@@ -4848,16 +4784,12 @@ void    length_intrinsic(opnd_type     *result_opnd,
                  FALSE);
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
-#ifdef KEY /* Bug 4232 */
    /* See comment in erf_intrinsic() */
    if (!defining_stmt_func) {
-#endif /* KEY Bug 4232 */
      COPY_OPND(opnd, IR_OPND_R(ir_idx));
      final_arg_work(&opnd, IR_IDX_L(ir_idx), IR_LIST_CNT_R(ir_idx), NULL);
      COPY_OPND(IR_OPND_R(ir_idx), opnd);
-#ifdef KEY /* Bug 4232 */
    }
-#endif /* KEY Bug 4232 */
 
    IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
    IR_RANK(ir_idx) = res_exp_desc->rank;
@@ -4976,16 +4908,12 @@ void    unit_intrinsic(opnd_type     *result_opnd,
                  FALSE);
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
-#ifdef KEY /* Bug 4232 */
    /* See comment in erf_intrinsic() */
    if (!defining_stmt_func) {
-#endif /* KEY Bug 4232 */
      COPY_OPND(opnd, IR_OPND_R(ir_idx));
      final_arg_work(&opnd, IR_IDX_L(ir_idx), IR_LIST_CNT_R(ir_idx), NULL);
      COPY_OPND(IR_OPND_R(ir_idx), opnd);
-#ifdef KEY /* Bug 4232 */
    }
-#endif /* KEY Bug 4232 */
 
    IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
    IR_RANK(ir_idx) = res_exp_desc->rank;
@@ -5044,11 +4972,7 @@ void    cmplx_intrinsic(opnd_type     *result_opnd,
    int            ir_idx;
    int            list_idx;
    operator_type  opr;
-#ifdef KEY /* Bug 10177 */
    int            type_idx = 0;
-#else /* KEY Bug 10177 */
-   int            type_idx;
-#endif /* KEY Bug 10177 */
    opnd_type	  opnd;
 
 
@@ -5104,7 +5028,6 @@ void    cmplx_intrinsic(opnd_type     *result_opnd,
                  spec_idx,
                  FALSE);
 
-#ifdef KEY /* Bug 12482 */
    if (arg_info_list[info_idx1].ed.linear_type == Short_Typeless_Const) {
      typeless_to_type(list_idx1, type_idx);
    }
@@ -5112,7 +5035,6 @@ void    cmplx_intrinsic(opnd_type     *result_opnd,
      arg_info_list[info_idx2].ed.linear_type == Short_Typeless_Const) {
      typeless_to_type(list_idx2, type_idx);
    }
-#endif /* KEY Bug 12482 */
 
    IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
    IR_RANK(ir_idx) = res_exp_desc->rank;
@@ -5580,14 +5502,12 @@ void    index_intrinsic(opnd_type     *result_opnd,
       arg_info_list[arg_info_list_top].line = IR_LINE_NUM(ir_idx);
       arg_info_list[arg_info_list_top].col = IR_COL_NUM(ir_idx);
    }
-#ifdef KEY /* Bug 10410 */
    else if (NULL_IDX != is_optional_dummy(list_idx3)) {
      pass_dummy_or_default_const(list_idx3,
        set_up_logical_constant(cnst, CG_LOGICAL_DEFAULT_TYPE, FALSE_VALUE,
          TRUE),
        FALSE);
    }
-#endif /* KEY Bug 10410 */
 
    info_idx3 = IL_ARG_DESC_IDX(list_idx3);
 
@@ -5746,7 +5666,6 @@ void    lge_intrinsic(opnd_type     *result_opnd,
 }  /* lge_intrinsic */
 
 
-#ifdef KEY /* Bug 14150 */
 /*
  * Check argument of ISO_C_BINDING function c_loc or c_funloc
  *
@@ -5797,7 +5716,6 @@ c_loc_iso_arg_check(intrinsic_type which_intrinsic, int attr_idx,
   }
   return found_error;
 }
-#endif /* KEY Bug 14150 */
 
 /******************************************************************************\
 |*                                                                            *|
@@ -5838,13 +5756,11 @@ void    loc_intrinsic(opnd_type     *result_opnd,
    ir_idx = OPND_IDX((*result_opnd));
    list_idx1 = IR_IDX_R(ir_idx);
    info_idx1 = IL_ARG_DESC_IDX(list_idx1);
-#ifdef KEY /* Bug 14150 */
    intrinsic_type which = ATP_INTRIN_ENUM(*spec_idx);
    if (which == C_Loc_Iso_Intrinsic || which == C_Funloc_Intrinsic) {
      /* Type is already set correctly */
    }
    else
-#endif /* KEY Bug 14150 */
    ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = CRI_Ptr_8;
 
    if (ATP_INTRIN_ENUM(*spec_idx) == Cloc_Intrinsic) {
@@ -5917,7 +5833,6 @@ void    loc_intrinsic(opnd_type     *result_opnd,
          IR_OPR(IL_IDX(list_idx1)) == Section_Subscript_Opr))) {
       attr_idx = find_base_attr(&IL_OPND(list_idx1), &unused1, &unused2);
 
-#ifdef KEY /* Bug 14150 */
       intrinsic_type which_intrinsic = ATP_INTRIN_ENUM(*spec_idx);
       if (which_intrinsic == C_Loc_Iso_Intrinsic ||
 	which_intrinsic == C_Funloc_Intrinsic) {
@@ -5933,7 +5848,6 @@ void    loc_intrinsic(opnd_type     *result_opnd,
 	 * front end. Sigh. See also table entry in p_driver.c */
 	goto EXIT;
       }
-#endif /* KEY Bug 14150 */
 
       if (AT_OBJ_CLASS(attr_idx) == Pgm_Unit) {
          PRINTMSG(arg_info_list[info_idx1].line, 779, Error,
@@ -5978,7 +5892,6 @@ EXIT:
    TRACE (Func_Exit, "loc_intrinsic", NULL);
 
 }  /* loc_intrinsic */
-#ifdef KEY /* Bug 14150 */
 
 /*
  * For c_f_pointer(), return false if number of elements in "shape" argument
@@ -6098,7 +6011,6 @@ void    c_f_pointer_intrinsic(opnd_type     *result_opnd,
    TRACE (Func_Exit, "c_f_pointer_intrinsic", NULL);
 
 }  /* c_f_pointer_intrinsic */
-#endif /* KEY Bug 14150 */
 
 
 /******************************************************************************\
@@ -6724,11 +6636,7 @@ void    cvmgp_intrinsic(opnd_type     *result_opnd,
    int            list_idx2;
    int            list_idx3;
    int            new_idx;
-#ifdef KEY /* Bug 10177 */
    operator_type  opr1 = Null_Opr;
-#else /* KEY Bug 10177 */
-   operator_type  opr1;
-#endif /* KEY Bug 10177 */
    int            type_idx;
 
 
@@ -7461,11 +7369,7 @@ void    digits_intrinsic(opnd_type     *result_opnd,
                          int           *spec_idx)
 {
    int            cn_idx;
-#ifdef KEY /* Bug 10177 */
    long		  num = 0;
-#else /* KEY Bug 10177 */
-   long		  num;
-#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            ir_idx;
 
@@ -7560,11 +7464,7 @@ void    epsilon_intrinsic(opnd_type     *result_opnd,
                           expr_arg_type *res_exp_desc,
                           int           *spec_idx)
 {
-#ifdef KEY /* Bug 10177 */
    int            cn_idx = 0;
-#else /* KEY Bug 10177 */
-   int            cn_idx;
-#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            ir_idx;
 
@@ -7807,11 +7707,7 @@ void    huge_intrinsic(opnd_type     *result_opnd,
                        expr_arg_type *res_exp_desc,
                        int           *spec_idx)
 {
-#ifdef KEY /* Bug 10177 */
    int            cn_idx = 0;
-#else /* KEY Bug 10177 */
-   int            cn_idx;
-#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            ir_idx;
 
@@ -8311,13 +8207,8 @@ void    ibset_intrinsic(opnd_type     *result_opnd,
    int            info_idx2;
    int            list_idx1;
    int            list_idx2;
-#ifdef KEY /* Bug 10177 */
    long		  num1 = 0;
    long		  num2 = 0;
-#else /* KEY Bug 10177 */
-   long		  num1;
-   long		  num2;
-#endif /* KEY Bug 10177 */
    int            shiftl_idx;
    int            shifta_idx;
    int            csmg_idx;
@@ -8329,11 +8220,7 @@ void    ibset_intrinsic(opnd_type     *result_opnd,
    int            band_idx;
    int            bnot_idx;
    int            bnot_idx1;
-#ifdef KEY /* Bug 10177 */
    int            typeless_idx = 0;
-#else /* KEY Bug 10177 */
-   int            typeless_idx;
-#endif /* KEY Bug 10177 */
    opnd_type	  opnd;
    boolean        fold_it 		= FALSE;
    int            line;
@@ -8650,13 +8537,8 @@ void    ishft_intrinsic(opnd_type     *result_opnd,
    boolean        fold_it 		= FALSE;
    int            line;
    int            column;
-#ifdef KEY /* Bug 10177 */
    long           num1 = 0;
    long           num2 = 0;
-#else /* KEY Bug 10177 */
-   long           num1;
-   long           num2;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "ishft_intrinsic", NULL);
@@ -8983,7 +8865,6 @@ void    ishft_intrinsic(opnd_type     *result_opnd,
                    Shifta_Opr, typeless_idx, line, column,
                        NO_Tbl_Idx, NULL_IDX);
 
-#ifdef KEY /* Bug 8840 */
    /* The horribly complicated sequence above doesn't work right (on X86 and
     * X86_64, anyway) when the magnitude of shift amount is greater than or
     * equal to the bit size of the data. Putting "shfta" inside a conditional
@@ -9042,7 +8923,6 @@ void    ishft_intrinsic(opnd_type     *result_opnd,
 
    shifta_idx = gen_ir(IR_Tbl_Idx, cmove_idx, Band_Opr, typeless_idx, line,
      column, IR_Tbl_Idx, shifta_idx);
-#endif /* KEY Bug 8840 */
 
    IR_OPR(ir_idx) = Cvrt_Opr;
    IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
@@ -9119,13 +8999,8 @@ void    ishftc_intrinsic(opnd_type     *result_opnd,
    int            list_idx3;
    int            info_idx1;
    int            info_idx2;
-#ifdef KEY /* Bug 10177 */
    int            info_idx3 = 0;
    long		  num = 0;
-#else /* KEY Bug 10177 */
-   int            info_idx3;
-   long		  num;
-#endif /* KEY Bug 10177 */
    opnd_type      opnd;
    int            typeless_idx;
 
@@ -9222,11 +9097,9 @@ void    ishftc_intrinsic(opnd_type     *result_opnd,
       }
       else {
          info_idx3 = IL_ARG_DESC_IDX(list_idx3);
-#ifdef KEY /* Bug 10410 */
          if (NULL_IDX != is_optional_dummy(list_idx3)) {
 	   pass_dummy_or_default_const(list_idx3, cn_idx, FALSE);
 	 }
-#endif /* KEY Bug 10410 */
       }
    }
    else {
@@ -9954,7 +9827,6 @@ void   system_clock_intrinsic(opnd_type     *result_opnd,
    list_idx2 = IL_NEXT_LIST_IDX(list_idx1);
    list_idx3 = IL_NEXT_LIST_IDX(list_idx2);
 
-#ifdef KEY /* Bug 6009 */
    /* Before the fix, the specific (singly-indented) intrin_tbl entries
     * under "system_clock" had zero in the intrin_enum member, so this function
     * was never called and, because.the loop that processes specific entries
@@ -9979,31 +9851,6 @@ void   system_clock_intrinsic(opnd_type     *result_opnd,
     * them because they cause trouble when calling the integer*8 specific
     * in -i4 mode.
     */
-#else /* KEY Bug 6009 */
-   if ((list_idx3 != NULL_IDX) && (IL_IDX(list_idx3) != NULL_IDX)) {
-      info_idx3 = IL_ARG_DESC_IDX(list_idx3);
-      if (arg_info_list[info_idx3].ed.type_idx != INTEGER_DEFAULT_TYPE) {
-         PRINTMSG(arg_info_list[info_idx3].line, 1533, Error, 
-                  arg_info_list[info_idx3].col);
-      }
-   } 
-
-   if ((list_idx2 != NULL_IDX) && (IL_IDX(list_idx2) != NULL_IDX)) {
-      info_idx2 = IL_ARG_DESC_IDX(list_idx2);
-      if (arg_info_list[info_idx2].ed.type_idx != INTEGER_DEFAULT_TYPE) {
-         PRINTMSG(arg_info_list[info_idx2].line, 1533, Error, 
-                  arg_info_list[info_idx2].col);
-      }
-   }     
-
-   if ((list_idx1 != NULL_IDX) && (IL_IDX(list_idx1) != NULL_IDX)) {
-      info_idx1 = IL_ARG_DESC_IDX(list_idx1);
-      if (arg_info_list[info_idx1].ed.type_idx != INTEGER_DEFAULT_TYPE) {
-         PRINTMSG(arg_info_list[info_idx1].line, 1533, Error, 
-                  arg_info_list[info_idx1].col);
-      }
-   }     
-#endif /* KEY Bug 6009 */
 
    /* must reset foldable and will_fold_later because there is no */
    /* folder for this intrinsic in constructors.                  */
@@ -10133,7 +9980,6 @@ void    random_seed_intrinsic(opnd_type     *result_opnd,
    line = IR_LINE_NUM(ir_idx);
    column = IR_COL_NUM(ir_idx);
 
-#ifdef KEY /* Bug 10410 */
       int args[3];
       args[0] = list_idx1 = IR_IDX_R(ir_idx);
       args[1] = list_idx2 = IL_NEXT_LIST_IDX(list_idx1);
@@ -10149,18 +9995,6 @@ void    random_seed_intrinsic(opnd_type     *result_opnd,
 	  NULL_IDX == is_optional_dummy(args[i]);
       }
       if (nargs > 1)
-#else /* KEY Bug 10410 */
-      list_idx1 = IR_IDX_R(ir_idx);
-      list_idx2 = IL_NEXT_LIST_IDX(list_idx1);
-      list_idx3 = IL_NEXT_LIST_IDX(list_idx2);
-
-      if (((IL_IDX(list_idx1) != NULL_IDX) &&
-           (IL_IDX(list_idx2) != NULL_IDX)) ||
-          ((IL_IDX(list_idx1) != NULL_IDX) &&
-           (IL_IDX(list_idx3) != NULL_IDX)) ||
-          ((IL_IDX(list_idx2) != NULL_IDX) &&
-           (IL_IDX(list_idx3) != NULL_IDX)))
-#endif /* KEY Bug 10410 */
       { 
          PRINTMSG(IR_LINE_NUM(ir_idx), 830,  Error, 
                   IR_COL_NUM(ir_idx));
@@ -10256,13 +10090,7 @@ void    random_seed_intrinsic(opnd_type     *result_opnd,
          }
 
 
-# if (defined(KEY))
          cn_idx = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, 32);
-# elif (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
-         cn_idx = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, 64);
-# else
-         cn_idx = CN_INTEGER_ONE_IDX;
-# endif
 
          IR_OPR(ir_idx) = Asg_Opr;
          COPY_OPND(IR_OPND_L(ir_idx), IL_OPND(list_idx1));
@@ -10649,11 +10477,7 @@ void    ieee_real_intrinsic(opnd_type     *result_opnd,
    int            list_idx1;
    int            list_idx2;
    int            info_idx1;
-#ifdef KEY /* Bug 10177 */
    int            info_idx2 = 0;
-#else /* KEY Bug 10177 */
-   int            info_idx2;
-#endif /* KEY Bug 10177 */
    opnd_type      opnd;
 
 
@@ -11170,11 +10994,7 @@ void    tiny_intrinsic(opnd_type     *result_opnd,
                        expr_arg_type *res_exp_desc,
                        int           *spec_idx)
 {
-#ifdef KEY /* Bug 10177 */
    int            cn_idx = 0;
-#else /* KEY Bug 10177 */
-   int            cn_idx;
-#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            ir_idx;
 
@@ -11250,11 +11070,7 @@ void    spacing_intrinsic(opnd_type     *result_opnd,
    int            info_idx1;
    int            list_idx1;
    int            list_idx2;
-#ifdef KEY /* Bug 10177 */
    long		  num = 0;
-#else /* KEY Bug 10177 */
-   long		  num;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "spacing_intrinsic", NULL);
@@ -11398,13 +11214,11 @@ void    cshift_intrinsic(opnd_type     *result_opnd,
                      arg_info_list[info_idx3].col);
          }
       }
-#ifdef KEY /* Bug 10410 */
       else if (NULL_IDX != is_optional_dummy(list_idx3)) {
 	cn_idx = (CG_INTEGER_DEFAULT_TYPE == INTEGER_DEFAULT_TYPE) ? 
 	  CN_INTEGER_ONE_IDX : C_INT_TO_CN(INTEGER_DEFAULT_TYPE, 1);
 	pass_dummy_or_default_const(list_idx3, cn_idx, TRUE);
       }
-#endif /* KEY Bug 10410 */
    }
    else {  /* DIM is not present */
 
@@ -11584,7 +11398,6 @@ void    eoshift_intrinsic(opnd_type     *result_opnd,
                      arg_info_list[info_idx3].col);
          }
       }
-#ifdef KEY /* Bug 10410 */
       if (NULL_IDX != is_optional_dummy(list_idx3)) {
         int idx3_type_idx = arg_info_list[info_idx3].ed.type_idx;
 	basic_type_type idx3_type = arg_info_list[info_idx3].ed.type;
@@ -11617,7 +11430,6 @@ void    eoshift_intrinsic(opnd_type     *result_opnd,
 	    break;
 	  }
       }
-#endif /* KEY Bug 10410 */
    }
    else {  /* boundary not present */
       switch (arg_info_list[info_idx1].ed.type) {
@@ -11797,13 +11609,11 @@ void    eoshift_intrinsic(opnd_type     *result_opnd,
                      arg_info_list[info_idx4].col);
          }
       }
-#ifdef KEY /* Bug 10410 */
       else if (NULL_IDX != is_optional_dummy(list_idx4)) {
 	cn_idx = (CG_INTEGER_DEFAULT_TYPE == INTEGER_DEFAULT_TYPE) ? 
 	  CN_INTEGER_ONE_IDX : C_INT_TO_CN(INTEGER_DEFAULT_TYPE, 1);
 	pass_dummy_or_default_const(list_idx4, cn_idx, TRUE);
       }
-#endif /* KEY Bug 10410 */
    }
    else {  /* DIM is not present */
 
@@ -11896,11 +11706,7 @@ void    minexponent_intrinsic(opnd_type     *result_opnd,
                               int           *spec_idx)
 {
    int            ir_idx;
-#ifdef KEY /* Bug 10177 */
    long		  num = 0;
-#else /* KEY Bug 10177 */
-   long		  num;
-#endif /* KEY Bug 10177 */
    int            info_idx1;
    int            cn_idx;
 
@@ -11972,11 +11778,7 @@ void    maxexponent_intrinsic(opnd_type     *result_opnd,
    int            ir_idx;
    int            info_idx1;
    int            cn_idx;
-#ifdef KEY /* Bug 10177 */
    long		  num = 0;
-#else /* KEY Bug 10177 */
-   long		  num;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "maxexponent_intrinsic", NULL);
@@ -12099,11 +11901,7 @@ void    range_intrinsic(opnd_type     *result_opnd,
    int            ir_idx;
    int            cn_idx;
    int            info_idx1;
-#ifdef KEY /* Bug 10177 */
    long		  num = 0;
-#else /* KEY Bug 10177 */
-   long		  num;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "range_intrinsic", NULL);
@@ -12212,11 +12010,7 @@ void    precision_intrinsic(opnd_type     *result_opnd,
    int            ir_idx;
    int            cn_idx;
    int            info_idx1;
-#ifdef KEY /* Bug 10177 */
    long		  num = 0;
-#else /* KEY Bug 10177 */
-   long		  num;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "precision_intrinsic", NULL);
@@ -12299,11 +12093,7 @@ void    kind_intrinsic(opnd_type     *result_opnd,
    int            cn_idx;
    int            list_idx1;
    int            info_idx1;
-#ifdef KEY /* Bug 10177 */
    long		  num = 0;
-#else /* KEY Bug 10177 */
-   long		  num;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "kind_intrinsic", NULL);
@@ -12467,11 +12257,7 @@ void    bit_size_intrinsic(opnd_type     *result_opnd,
    int            ir_idx;
    int            cn_idx;
    int            info_idx1;
-#ifdef KEY /* Bug 10177 */
    long           num = 0;
-#else /* KEY Bug 10177 */
-   long           num;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "bit_size_intrinsic", NULL);
@@ -12541,11 +12327,7 @@ void    lbound_intrinsic(opnd_type     *result_opnd,
                          expr_arg_type *res_exp_desc,
                          int           *spec_idx)
 {
-#ifdef KEY /* Bug 10177 */
    int            select = 0;
-#else /* KEY Bug 10177 */
-   int            select;
-#endif /* KEY Bug 10177 */
    int		  asg_idx;
    int		  attr_idx	= NULL_IDX;
    int		  subscript_idx;
@@ -12577,11 +12359,7 @@ void    lbound_intrinsic(opnd_type     *result_opnd,
    int            col;
    boolean	  make_const_tmp = FALSE;
    int		  the_cn_idx;
-#ifdef KEY /* Bug 10177 */
    int		  tmp_idx = 0;
-#else /* KEY Bug 10177 */
-   int		  tmp_idx;
-#endif /* KEY Bug 10177 */
    expr_arg_type  loc_exp_desc;
    int            expr_IDX[MAX_NUM_DIMS];
    fld_type       expr_FLD[MAX_NUM_DIMS];
@@ -14375,12 +14153,7 @@ void    size_intrinsic(opnd_type     *result_opnd,
          attr_idx = find_base_attr(&IL_OPND(list_idx2), &line, &col);
 
          if (AT_OPTIONAL(attr_idx)) {
-#ifdef KEY /* Bug 10410 */
             /* Standard allows actual argument to be optional dummy */
-#else /* KEY Bug 10410 */
-            PRINTMSG(arg_info_list[info_idx2].line, 875, Error,
-                     arg_info_list[info_idx2].col);
-#endif /* KEY Bug 10410 */
          }
       }
 
@@ -14452,8 +14225,6 @@ void    size_intrinsic(opnd_type     *result_opnd,
          else if (arg_info_list[info_idx1].ed.section || 
                   ((IL_FLD(list_idx1) == IR_Tbl_Idx) &&
                    (IR_OPR(IL_IDX(list_idx1)) != Whole_Subscript_Opr))) {
-#ifdef KEY
-// Bug 570
             if (arg_info_list[info_idx1].ed.shape[dim-1].fld == CN_Tbl_Idx){
               OPND_FLD((*result_opnd)) = CN_Tbl_Idx;
               int const_idx = arg_info_list[info_idx1].ed.shape[dim-1].idx;
@@ -14463,7 +14234,6 @@ void    size_intrinsic(opnd_type     *result_opnd,
                 OPND_IDX((*result_opnd)) = CN_INTEGER_ZERO_IDX;
             }
             else{
-#endif
             NTR_IR_LIST_TBL(idx1);
             COPY_OPND(IL_OPND(idx1),
                       arg_info_list[info_idx1].ed.shape[dim-1]);
@@ -14482,9 +14252,7 @@ void    size_intrinsic(opnd_type     *result_opnd,
             IR_FLD_L(ir_idx) = IL_Tbl_Idx;
             IR_LIST_CNT_L(ir_idx) = 2;
             IR_OPND_R(ir_idx) = null_opnd;
-#ifdef KEY
             }
-#endif
             if (OPND_FLD((*result_opnd)) == CN_Tbl_Idx) {
                res_exp_desc->constant = TRUE;
                res_exp_desc->foldable = TRUE;
@@ -14506,7 +14274,6 @@ void    size_intrinsic(opnd_type     *result_opnd,
          COPY_OPND(opnd, IL_OPND(list_idx2));
          cast_to_cg_default(&opnd, &(arg_info_list[info_idx2].ed));
          COPY_OPND(IL_OPND(list_idx2), opnd);
-#ifdef KEY /* Bug 10410 */
 	 int opt_dummy_idx = is_optional_dummy(list_idx2);
          if (NULL_IDX != opt_dummy_idx &&
 	   IL_FLD(list_idx2) == IR_Tbl_Idx &&
@@ -14559,7 +14326,6 @@ void    size_intrinsic(opnd_type     *result_opnd,
 	   IL_FLD(list_idx2) = IR_Tbl_Idx;
 	   IL_IDX(list_idx2) = val_idx;
 	 }
-#endif /* KEY Bug 10410 */
       }
    }
    else { /* second arg not present */
@@ -15298,11 +15064,7 @@ void    nearest_intrinsic(opnd_type     *result_opnd,
    int            list_idx2;
    int            list_idx3;
    int            info_idx1;
-#ifdef KEY /* Bug 10177 */
    int            num = 0;
-#else /* KEY Bug 10177 */
-   int            num;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "nearest_intrinsic", NULL);
@@ -15394,11 +15156,7 @@ void    rrspacing_intrinsic(opnd_type     *result_opnd,
    int            info_idx1;
    int            list_idx1;
    int            list_idx2;
-#ifdef KEY /* Bug 10177 */
    int		  num = 0;
-#else /* KEY Bug 10177 */
-   int		  num;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "rrspacing_intrinsic", NULL);
@@ -15826,11 +15584,7 @@ void    minval_intrinsic(opnd_type     *result_opnd,
    int            ir_idx;
    int            attr_idx;
    int            info_idx1;
-#ifdef KEY /* Bug 10177 */
    int            info_idx2 = 0;
-#else /* KEY Bug 10177 */
-   int            info_idx2;
-#endif /* KEY Bug 10177 */
    int            info_idx3;
    int            list_idx1;
    int            list_idx2;
@@ -15875,28 +15629,18 @@ void    minval_intrinsic(opnd_type     *result_opnd,
    }
 
 # ifdef _INLINE_INTRINSICS
-#ifdef KEY /* Bug 10410 */
    /* If actual argument is an optional dummy argument belonging to the caller,
     * we require an external call to runtime library which can detect the
     * case in which that argument is absent at runtime. Otherwise, certain
     * combinations of arguments allow inline code to eval the intrinsic. */
    boolean optional = is_optional_dummy(list_idx3);
-#endif /* KEY Bug 10410 */
    if (list_idx2 != NULL_IDX) {
       if (arg_info_list[info_idx2].ed.type == Integer &&
           IL_FLD(list_idx2) == CN_Tbl_Idx) {
-#ifdef KEY /* Bug 10410 */
          ATP_EXTERNAL_INTRIN(*spec_idx) = optional;/* DIM constant */
-#else /* KEY Bug 10410 */
-         ATP_EXTERNAL_INTRIN(*spec_idx) = FALSE;   /* DIM constant */
-#endif /* KEY Bug 10410 */
       }
       else if (arg_info_list[info_idx2].ed.type == Logical) {
-#ifdef KEY /* Bug 10410 */
          ATP_EXTERNAL_INTRIN(*spec_idx) = optional;/* just ARRAY and MASK */
-#else /* KEY Bug 10410 */
-         ATP_EXTERNAL_INTRIN(*spec_idx) = FALSE;   /* just ARRAY and MASK */
-#endif /* KEY Bug 10410 */
       }
    }
    else {
@@ -16000,11 +15744,9 @@ void    minval_intrinsic(opnd_type     *result_opnd,
                                     &IL_OPND(list_idx2),
                                     &(arg_info_list[info_idx2].ed));
          }
-#ifdef KEY /* Bug10410 */
 	 if (is_optional_dummy(list_idx2)) {
 	   ATP_EXTERNAL_INTRIN(*spec_idx) = TRUE;
 	 }
-#endif /* KEY Bug10410 */
 
          if (ATP_INTRIN_ENUM(*spec_idx) == Minloc_Intrinsic ||
              ATP_INTRIN_ENUM(*spec_idx) == Maxloc_Intrinsic) {
@@ -16306,15 +16048,11 @@ void    omp_get_max_threads_intrinsic(opnd_type     *result_opnd,
        ATP_INTRIN_ENUM(*spec_idx) == Omp_Get_Thread_Num_Intrinsic) {
       ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = INTEGER_DEFAULT_TYPE;
    }
-#ifdef KEY
    else if (ATP_INTRIN_ENUM(*spec_idx) == Omp_Get_Wtime_Intrinsic ||
             ATP_INTRIN_ENUM(*spec_idx) == Omp_Get_Wtick_Intrinsic)
       ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = DOUBLE_DEFAULT_TYPE;
-#endif
-#ifdef KEY /* Bug 12681 */
    else if (ATP_INTRIN_ENUM(*spec_idx) == Omp_Test_Nest_Lock_Intrinsic)
       ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = Integer_8;
-#endif /* KEY Bug 12681 */
 
    type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
 
@@ -16466,11 +16204,7 @@ void    clock_intrinsic(opnd_type     *result_opnd,
    TYP_LINEAR(TYP_WORK_IDX) = CHARACTER_DEFAULT_TYPE;
    TYP_CHAR_CLASS(TYP_WORK_IDX) = Const_Len_Char;
    TYP_FLD(TYP_WORK_IDX) = CN_Tbl_Idx;
-# ifdef KEY
    TYP_IDX(TYP_WORK_IDX) = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, 24);
-# else
-   TYP_IDX(TYP_WORK_IDX) = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, 8);
-# endif
    type_idx = ntr_type_tbl();
 
    res_exp_desc->type_idx = type_idx;
@@ -16599,11 +16333,9 @@ void    pack_intrinsic(opnd_type     *result_opnd,
                                  &IL_OPND(list_idx3), 
                                  &(arg_info_list[info_idx3].ed));
       }
-#ifdef KEY /* Bug 10410 */
       if (NULL_IDX != is_optional_dummy(list_idx3)) {
 	 ATP_EXTERNAL_INTRIN(*spec_idx) = TRUE;
       }
-#endif /* KEY Bug 10410 */
    }
 
    conform_check(0, 
@@ -16629,13 +16361,11 @@ void    pack_intrinsic(opnd_type     *result_opnd,
    IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
    IR_RANK(ir_idx) = res_exp_desc->rank;
 
-#ifdef KEY /* Bug 8165 */
    /* Seems like this is a general problem which ought to be solved for
     * intrinsics in general, but for now we'll solve it for this one. */
    if (Character == res_exp_desc->type) {
      res_exp_desc->char_len = arg_info_list[info_idx1].ed.char_len;
    }
-#endif /* KEY Bug 8165 */
 
    /* must reset foldable and will_fold_later because there is no */
    /* folder for this intrinsic in constructors.                  */
@@ -17458,13 +17188,8 @@ void    selected_real_kind_intrinsic(opnd_type     *result_opnd,
 {
    int            ir_idx;
    int            type_idx;
-#ifdef KEY /* Bug 10177 */
    int            info_idx1 = 0;
    int            info_idx2 = 0;
-#else /* KEY Bug 10177 */
-   int            info_idx1;
-   int            info_idx2;
-#endif /* KEY Bug 10177 */
    int            list_idx1;
    int            list_idx2;
    long_type      folded_const[MAX_WORDS_FOR_NUMERIC];
@@ -17510,26 +17235,22 @@ void    selected_real_kind_intrinsic(opnd_type     *result_opnd,
    }
 
    if (IL_IDX(list_idx1) != NULL_IDX) { /* if P is present */
-#ifdef KEY /* Bug 10410 */
       if (NULL_IDX != is_optional_dummy(list_idx1)) {
 	int cn_idx = (CG_INTEGER_DEFAULT_TYPE == INTEGER_DEFAULT_TYPE) ? 
 	  CN_INTEGER_ONE_IDX : C_INT_TO_CN(INTEGER_DEFAULT_TYPE, 1);
 	pass_dummy_or_default_const(list_idx1, cn_idx, TRUE);
       }
-#endif /* KEY Bug 10410 */
       COPY_OPND(opnd, IL_OPND(list_idx1));
       cast_to_cg_default(&opnd, &(arg_info_list[info_idx1].ed));
       COPY_OPND(IL_OPND(list_idx1), opnd);
    }
 
    if (IL_IDX(list_idx2) != NULL_IDX) { /* if R is present */
-#ifdef KEY /* Bug 10410 */
       if (NULL_IDX != is_optional_dummy(list_idx2)) {
 	int cn_idx = (CG_INTEGER_DEFAULT_TYPE == INTEGER_DEFAULT_TYPE) ? 
 	  CN_INTEGER_ONE_IDX : C_INT_TO_CN(INTEGER_DEFAULT_TYPE, 1);
 	pass_dummy_or_default_const(list_idx2, cn_idx, TRUE);
       }
-#endif /* KEY Bug 10410 */
       COPY_OPND(opnd, IL_OPND(list_idx2));
       cast_to_cg_default(&opnd, &(arg_info_list[info_idx2].ed));
       COPY_OPND(IL_OPND(list_idx2), opnd);
@@ -17953,11 +17674,7 @@ void    transfer_intrinsic(opnd_type     *result_opnd,
    int		  ch_asg_idx;
    int            info_idx1;
    int            info_idx2;
-#ifdef KEY /* Bug 10177 */
    int            info_idx3 = 0;
-#else /* KEY Bug 10177 */
-   int            info_idx3;
-#endif /* KEY Bug 10177 */
    int            ir_idx;
    opnd_type      length_opnd;
    int            list_idx1;
@@ -18690,13 +18407,8 @@ void    reshape_intrinsic(opnd_type     *result_opnd,
 {
    int            info_idx1;
    int            info_idx2;
-#ifdef KEY /* Bug 10177 */
    int            info_idx3 = 0;
    int            info_idx4 = 0;
-#else /* KEY Bug 10177 */
-   int            info_idx3;
-   int            info_idx4;
-#endif /* KEY Bug 10177 */
    int            ir_idx;
    int            line;
    int            col;
@@ -18769,7 +18481,6 @@ void    reshape_intrinsic(opnd_type     *result_opnd,
                  spec_idx,
                  FALSE);
 
-#ifdef KEY /* Bug 4165 */
    /* The code in the "else" part does nothing unless the statement is a
     * simple assignment of a call to "reshape". In that case, it bashes
     * the data type of the first argument to "reshape" so that it has the
@@ -18787,77 +18498,6 @@ void    reshape_intrinsic(opnd_type     *result_opnd,
     * do at least as good a job as this invalid code, so it seems better
     * to eliminate it than to correct it.
     */
-#else /* KEY Bug 4165 */
-   /*
-   This block of code will optimize a call to RESHAPE by
-   completely eliminating the call.   This is attempted
-   if just the first and second argument to reshape are present.
-   Also, the result must have rank 2.
-   */
-
-   if (list_idx1 != NULL_IDX && IL_IDX(list_idx1) != NULL_IDX &&
-       list_idx2 != NULL_IDX && IL_IDX(list_idx2) != NULL_IDX &&
-       list_idx3 != NULL_IDX && IL_IDX(list_idx3) == NULL_IDX &&
-       list_idx4 != NULL_IDX && IL_IDX(list_idx4) == NULL_IDX) {
-      if (IR_FLD_R(ir_idx) == IL_Tbl_Idx &&
-          IL_FLD(list_idx1) == IR_Tbl_Idx &&
-          IL_FLD(list_idx2) == IR_Tbl_Idx &&
-          IR_FLD_L(IL_IDX(list_idx1)) == AT_Tbl_Idx &&
-          IR_FLD_L(IL_IDX(list_idx2)) == AT_Tbl_Idx &&
-          AT_OBJ_CLASS(IR_IDX_L(IL_IDX(list_idx1))) == Data_Obj &&
-          ATD_CLASS(IR_IDX_L(IL_IDX(list_idx1))) == Compiler_Tmp &&
-          ATD_TMP_INIT_NOT_DONE(IR_IDX_L(IL_IDX(list_idx1)))) {
-         rhs_type = TYP_LINEAR(ATD_TYPE_IDX(IR_IDX_L(IL_IDX(list_idx1))));
-
-         list_idx = IR_IDX_R(IL_IDX(list_idx2));
-         list_idx = IL_IDX(list_idx);
-         list_idx = IR_IDX_L(list_idx);
-         list_idx = IL_NEXT_LIST_IDX(list_idx);
-         if (IL_FLD(list_idx) == CN_Tbl_Idx) {
-            rank = (long) CN_INT_TO_C(IL_IDX(list_idx));
-            if (rank == 2 &&
-                IR_OPR(SH_IR_IDX(curr_stmt_sh_idx)) == Asg_Opr) {
-               left_idx = IR_IDX_L(SH_IR_IDX(curr_stmt_sh_idx));
-               left_fld = IR_FLD_L(SH_IR_IDX(curr_stmt_sh_idx));
-               lhs_type = TYP_LINEAR(IR_TYPE_IDX(left_idx));
-               if (left_fld == IR_Tbl_Idx && 
-                   IR_RANK(left_idx) == rank &&
-                   rhs_type == lhs_type) {
-                  copy_subtree(&IR_OPND_L(SH_IR_IDX(curr_stmt_sh_idx)), 
-                               &new_opnd);
-                  if (IR_FLD_L(OPND_IDX(new_opnd)) == AT_Tbl_Idx) {
-                     attr_idx = IR_IDX_L(OPND_IDX(new_opnd));
-                     IR_IDX_L(OPND_IDX(new_opnd)) = IR_IDX_L(IL_IDX(list_idx1));
-                     ATD_ARRAY_IDX(IR_IDX_L(IL_IDX(list_idx1))) =
-                     ATD_ARRAY_IDX(attr_idx);
-// Bug 2183
-# ifdef KEY
-                    int para_idx = IR_IDX_R(OPND_IDX(new_opnd));
-                    while (para_idx != NULL_IDX) {
-                      if (IL_FLD(para_idx) == CN_Tbl_Idx &&
-                          IL_IDX(para_idx) != CN_INTEGER_ONE_IDX) 
-                        IL_IDX(para_idx) = CN_INTEGER_ONE_IDX;
-                      else if (IL_FLD(para_idx) != IR_Tbl_Idx || IR_OPR(IL_IDX(para_idx)) != Triplet_Opr){
-                        IL_FLD(para_idx) = CN_Tbl_Idx;
-                        IL_IDX(para_idx) = CN_INTEGER_ONE_IDX;
-                      }
-                      para_idx = IL_NEXT_LIST_IDX(para_idx);
-                    }
-# endif
-                     res_exp_desc->rank = 2;
-                     ATP_EXTERNAL_INTRIN(*spec_idx) = FALSE;
-                     fold_it = FALSE;
-                     OPND_IDX((*result_opnd)) = OPND_IDX(new_opnd);
-                     OPND_FLD((*result_opnd)) = OPND_FLD(new_opnd);
-                     OPND_LINE_NUM((*result_opnd)) = IR_LINE_NUM(ir_idx);
-                     OPND_COL_NUM((*result_opnd)) = IR_COL_NUM(ir_idx);
-                  }
-               }
-            }
-         }
-      }
-   }
-#endif /* KEY Bug 4165 */
 
    if (OPND_FLD(arg_info_list[info_idx2].ed.shape[0]) == IR_Tbl_Idx) {
       PRINTMSG(arg_info_list[info_idx2].line, 1106, Error, 
@@ -19017,14 +18657,12 @@ void    reshape_intrinsic(opnd_type     *result_opnd,
       }
    }
 
-#ifdef KEY /* Bug 9046 */
    /* Blows up in fei_len() if we try to optimize this, so don't. Maybe someday
     * try to fix up the WHIRL conversion code to handle it. */
    if (TYP_CHAR_CLASS(arg_info_list[info_idx1].ed.type_idx) ==
      Assumed_Size_Char) {
      optimize = FALSE;
    }
-#endif /* KEY Bug 9046 */
 
    if (fold_it) { 
 
@@ -19607,7 +19245,6 @@ void	unknown_intrinsic(opnd_type     *result_opnd,
 
 }  /* unknown_intrinsic */
 
-#ifdef KEY 
 /******************************************************************************\
 |*                                                                            *|
 |* Description:                                                               *|
@@ -19747,12 +19384,8 @@ void    dtime_intrinsic(opnd_type     *result_opnd,
    TRACE (Func_Entry, "dtime_intrinsic", NULL);
 
    ir_idx = OPND_IDX((*result_opnd));
-#ifdef KEY /* Bug 3018 */
    /* Why don't any of the funcs in this file get this from the intrin_tbl? */
    ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = Real_4;
-#else
-   ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = Real_8;
-#endif /* KEY Bug 3018 */
 
    type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
 
@@ -20011,8 +19644,6 @@ void   fstat_intrinsic(opnd_type     *result_opnd,
    TRACE (Func_Exit, "fstat_intrinsic", NULL);
 
 }  /* fstat_intrinsic */
-#endif
-#ifdef KEY /* Bug 1683 */
 /******************************************************************************\
 |*                                                                            *|
 |* Description:                                                               *|
@@ -20086,8 +19717,6 @@ void    pathf90_intrinsic(opnd_type     *result_opnd,
    TRACE (Func_Exit, "pathf90_intrinsic", NULL);
 
 }  /* pathf90_intrinsic */
-#endif /* KEY Bug 1683 */
-#ifdef KEY /* Bug 5089 */
 static void    tf_intrinsic_helper(opnd_type     *result_opnd,
                       expr_arg_type *res_exp_desc,
                       int           *spec_idx,
@@ -20146,4 +19775,3 @@ void    support_uflow_intrinsic(opnd_type     *result_opnd,
 #endif
   tf_intrinsic_helper(result_opnd, res_exp_desc, spec_idx, generate_true);
 }  /* support_uflow_intrinsic */
-#endif /* KEY Bug 5089 */

@@ -185,10 +185,10 @@ char    *(open_mp_dir_str[Num_Omp_Values]) = {
                                 "DO",
                                 "SECTIONS",
                                 "SINGLE",
-                                "WORKSHARE", /* by jhs, 02/7/18 */
+                                "WORKSHARE",
                                 "PARALLEL DO",
                                 "PARALLEL SECTIONS",
-                                "PARALLEL WORKSHARE" /* by jhs, 02/7/18 */
+                                "PARALLEL WORKSHARE"
                                         };
 
 
@@ -301,7 +301,7 @@ boolean open_mp_clause_allowed[Num_Omp_Values][Last_Omp_Clause] = {
 /* Parallel_Omp			*/
 						{
 	/* If_Omp_Clause		*/	TRUE,
-       /* Num_Threads_Omp_Clause */ /* by jhs, 02/7/18 */ TRUE,
+       /* Num_Threads_Omp_Clause */TRUE,
 	/* Private_Omp_Clause		*/	TRUE,
 	/* Shared_Omp_Clause		*/	TRUE,
 	/* Firstprivate_Omp_Clause	*/	TRUE,
@@ -319,7 +319,7 @@ boolean open_mp_clause_allowed[Num_Omp_Values][Last_Omp_Clause] = {
 /* Do_Omp			*/
 						{
 	/* If_Omp_Clause		*/	FALSE,
-       /* Num_Threads_Omp_Clause */ /* by jhs, 02/7/18 */ FALSE,
+       /* Num_Threads_Omp_Clause */FALSE,
        /* Private_Omp_Clause		*/	TRUE,
 	/* Shared_Omp_Clause		*/	FALSE,
 	/* Firstprivate_Omp_Clause	*/	TRUE,
@@ -337,7 +337,7 @@ boolean open_mp_clause_allowed[Num_Omp_Values][Last_Omp_Clause] = {
 /* Sections_Omp			*/
 						{
 	/* If_Omp_Clause		*/	FALSE,
-       /* Num_Threads_Omp_Clause */ /* by jhs, 02/7/18 */ FALSE,
+       /* Num_Threads_Omp_Clause */FALSE,
        /* Private_Omp_Clause		*/	TRUE,
 	/* Shared_Omp_Clause		*/	FALSE,
 	/* Firstprivate_Omp_Clause	*/	TRUE,
@@ -355,7 +355,7 @@ boolean open_mp_clause_allowed[Num_Omp_Values][Last_Omp_Clause] = {
 /* Single_Omp			*/
 						{
 	/* If_Omp_Clause		*/	FALSE,
-	/* Num_Threads_Omp_Clause */ /* by jhs, 02/7/18 */ FALSE,
+	/* Num_Threads_Omp_Clause */FALSE,
 	/* Private_Omp_Clause		*/	TRUE,
 	/* Shared_Omp_Clause		*/	FALSE,
 	/* Firstprivate_Omp_Clause	*/	TRUE,
@@ -370,7 +370,7 @@ boolean open_mp_clause_allowed[Num_Omp_Values][Last_Omp_Clause] = {
 	/* Onto_Omp_Clause    		*/	FALSE,
         /* Copyprivate_Omp_Clause       */      FALSE,
                                                 },
-/* Workshare_Omp */  /* by jhs, 02/7/18 */
+/* Workshare_Omp */
 						{
 	/* If_Omp_Clause		*/	FALSE,
 	/* Num_Threads_Omp_Clause */ FALSE,
@@ -391,7 +391,7 @@ boolean open_mp_clause_allowed[Num_Omp_Values][Last_Omp_Clause] = {
 /* Parallel_Do_Omp		*/
 						{
 	/* If_Omp_Clause		*/	TRUE,
-       /* Num_Threads_Omp_Clause */ /* by jhs, 02/7/18 */TRUE,
+       /* Num_Threads_Omp_Clause */TRUE,
        /* Private_Omp_Clause		*/	TRUE,
 	/* Shared_Omp_Clause		*/	TRUE,
 	/* Firstprivate_Omp_Clause	*/	TRUE,
@@ -409,7 +409,7 @@ boolean open_mp_clause_allowed[Num_Omp_Values][Last_Omp_Clause] = {
 /* Parallel_Sections_Omp	*/
 						{
 	/* If_Omp_Clause		*/	TRUE,
-       /* Num_Threads_Omp_Clause */ /* by jhs, 02/7/18 */ TRUE,
+       /* Num_Threads_Omp_Clause */TRUE,
        /* Private_Omp_Clause		*/	TRUE,
 	/* Shared_Omp_Clause		*/	TRUE,
 	/* Firstprivate_Omp_Clause	*/	TRUE,
@@ -424,7 +424,7 @@ boolean open_mp_clause_allowed[Num_Omp_Values][Last_Omp_Clause] = {
 	/* Onto_Omp_Clause    		*/	FALSE,
         /* Copyprivate_Omp_Clause       */      FALSE,
                                                 },
-/* Parallel_Workshare_Omp */ /* by jhs, 02/7/18 */
+/* Parallel_Workshare_Omp */
 						{
 	/* If_Omp_Clause		*/	TRUE,
        /* Num_Threads_Omp_Clause */ TRUE,
@@ -470,8 +470,8 @@ char	*(directive_region_str[Last_Region]) = {
                  "C$OMP MASTER region",		/* Open_Mp_Master_Region */
                  "C$OMP CRITICAL region",	/* Open_Mp_Critical_Region */
                  "C$OMP ORDERED region",	/* Open_Mp_Ordered_Region */
-                 "C$OMP WORKSHARE region", /* Open_Mp_Workshare_Region */ /* by jhs, 02/7/18 */
-                 "C$OMP PARALLEL WORKSHARE region", /* Open_Mp_Parallel_Workshare_Region */ /* by jhs, 02/7/18 */
+                 "C$OMP WORKSHARE region", /* Open_Mp_Workshare_Region */
+                 "C$OMP PARALLEL WORKSHARE region", /* Open_Mp_Parallel_Workshare_Region */
 				};
 
 enum	directive_stmt_values  {Case_Dir,
@@ -513,23 +513,23 @@ enum	directive_stmt_values  {Case_Dir,
                                 Endparallel_Open_Mp_Dir,
                                 Endparalleldo_Open_Mp_Dir,
                                 Endparallelsections_Open_Mp_Dir,
-                                Endparallelworkshare_Open_Mp_Dir, /* by jhs, 02/7/18 */
+                                Endparallelworkshare_Open_Mp_Dir,
                                 Endmaster_Open_Mp_Dir,
                                 Endordered_Open_Mp_Dir,
                                 Endsections_Open_Mp_Dir,
                                 Endsingle_Open_Mp_Dir,
-                                Endworkshare_Open_Mp_Dir, /* by jhs, 02/7/18 */
+                                Endworkshare_Open_Mp_Dir,
                                 Flush_Open_Mp_Dir,
                                 Master_Open_Mp_Dir,
                                 Ordered_Open_Mp_Dir,
                                 Parallel_Open_Mp_Dir,
                                 Paralleldo_Open_Mp_Dir,
                                 Parallelsections_Open_Mp_Dir,
-                                Parallelworkshare_Open_Mp_Dir, /* by jhs, 02/7/18 */
+                                Parallelworkshare_Open_Mp_Dir,
                                 Section_Open_Mp_Dir,
                                 Sections_Open_Mp_Dir,
                                 Single_Open_Mp_Dir,
-                                Workshare_Open_Mp_Dir, /* by jhs, 02/7/18 */
+                                Workshare_Open_Mp_Dir,
 
 				Last_Dir};
 
@@ -576,23 +576,23 @@ char	*(directive_stmt_str[Last_Dir]) =   {
                 "C$OMP END PARALLEL DO",	/* Endparalleldo_Open_Mp_Dir */
                 "C$OMP END PARALLEL SECTIONS",	
 					/* Endparallelsections_Open_Mp_Dir */
-		  "C$OMP END PARALLEL WORKSHARE", /* Endparallelworkshare_Open_Mp_Dir */ /* by jhs, 02/7/18 */
+		  "C$OMP END PARALLEL WORKSHARE", /* Endparallelworkshare_Open_Mp_Dir */
                 "C$OMP END MASTER",		/* Endmaster_Open_Mp_Dir */
                 "C$OMP END ORDERED",		/* Endordered_Open_Mp_Dir */
                 "C$OMP END SECTIONS",		/* Endsections_Open_Mp_Dir */
                 "C$OMP END SINGLE",		/* Endsingle_Open_Mp_Dir */
-                "C$OMP END WORKSHARE", /* Endworkshare_Open_Mp_Dir */ /* by jhs, 02/7/18 */
+                "C$OMP END WORKSHARE", /* Endworkshare_Open_Mp_Dir */
                 "C$OMP FLUSH",			/* Flush_Open_Mp_Dir	*/
                 "C$OMP MASTER",			/* Master_Open_Mp_Dir	*/
                 "C$OMP ORDERED",		/* Ordered_Open_Mp_Dir	*/
                 "C$OMP PARALLEL",		/* Parallel_Open_Mp_Dir	*/
                 "C$OMP PARALLEL DO",		/* Paralleldo_Open_Mp_Dir */
                 "C$OMP PARALLEL SECTIONS", /* Parallelsections_Open_Mp_Dir */
-                "C$OMP PARALLEL WORKSHARE", /* Parallelworkshare_Open_Mp_Dir */ /* by jhs, 02/7/18 */
+                "C$OMP PARALLEL WORKSHARE", /* Parallelworkshare_Open_Mp_Dir */
                 "C$OMP SECTION",		/* Section_Open_Mp_Dir	*/
                 "C$OMP SECTIONS",		/* Sections_Open_Mp_Dir	*/
                 "C$OMP SINGLE",			/* Single_Open_Mp_Dir	*/
-                "C$OMP WORKSHARE" /* Workshare_Open_Mp_Dir */ /* by jhs, 02/7/18 */
+                "C$OMP WORKSHARE" /* Workshare_Open_Mp_Dir */
 				};
 
 long directive_cant_be_in[Last_Dir] = {

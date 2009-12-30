@@ -80,9 +80,7 @@ extern BOOL enable_dsm_recompile;
 extern BOOL enable_dsm_processing;
 
 extern char *FE_gdar_filename;
-#ifdef KEY
 extern char *F2C_ABI_filename;
-#endif
 
 extern BOOL  global_chunk_pragma_set;   /* From the -chunk= command line option */
 extern INT32 global_chunk_pragma_value;
@@ -103,18 +101,12 @@ extern "C" {
 
 extern void  sgi_cmd_line(int *argc, char **argv[]);
 
-#ifdef KEY /* Bug 4719 */
 /* Name of file specified with "-o filename", used when -E is in effect */
 extern  char *preprocessor_output_file;
-#endif /* KEY Bug 4719 */
-#ifdef KEY /* Bug 4260 */
 /* Value of -byteswapio or -convert option */
 extern int io_byteswap;
-#endif /* KEY Bug 4260 */
-#ifdef KEY /* Bug 3507 */
 extern BOOL option_underscoring;
 extern BOOL option_second_underscore;
-#endif /* KEY Bug 3507 */
 
 #ifdef __cplusplus
 }

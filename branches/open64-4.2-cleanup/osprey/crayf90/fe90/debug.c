@@ -95,11 +95,7 @@ static char *print_at_name	(int);
 static void print_attr_name     (FILE *, int, int);
 static void print_const_entry   (FILE *, int, int);
 static void print_list          (FILE *, int, int, int, boolean);
-#ifdef KEY /* Bug 6845 */
 static void print_Dv_Whole_Def_Opr          (FILE *, int, int, int, int);
-#else /* KEY Bug 6845 */
-static void print_Dv_Whole_Def_Opr          (FILE *, int, int, int);
-#endif /* KEY Bug 6845 */
 static void print_mp_dir_opr          (FILE *, int, int, int);
 static void print_open_mp_dir_opr(FILE *, int, int, int);
 static void print_expanded_stmt_for_scp(void);
@@ -325,7 +321,6 @@ void print_fp_tbl (void)
       fp_idx = FP_NEXT_FILE_IDX(fp_idx);
    }
 
-#ifdef KEY /* Bug 5089 */
    fprintf(debug_file, "%s\n\n", "Intrinsic module paths:");
 
    fp_idx = intrinsic_module_path_idx;
@@ -334,7 +329,6 @@ void print_fp_tbl (void)
       dump_fp_ntry(debug_file, fp_idx, TRUE);
       fp_idx = FP_NEXT_FILE_IDX(fp_idx);
    }
-#endif /* KEY Bug 5089 */
 
    fprintf(debug_file, "%s\n\n", "Implicit Use Module Paths:");
 
@@ -1294,7 +1288,6 @@ void	print_at(int		at_idx)
 
 }  /* print_at */
 
-#ifdef KEY
 /******************************************************************************\
 |* Like print_at_all, but for entire table                                    *|
 |* If "file" is null, use ".l" file                                           *|
@@ -1307,7 +1300,6 @@ void	print_at_table(FILE *file)
       dump_at_ntry(debug_file, i, TRUE);
    }
 }
-#endif /* KEY */
 
 /******************************************************************************\
 |*									      *|
@@ -1826,11 +1818,7 @@ void print_ln_by_name (void)
 
 
    printf("Enter LOCAL name->");
-#ifdef KEY
    fgets(name_string, MAX_ID_LEN, stdin);
-#else /* KEY */
-   gets(name_string);
-#endif /* KEY */
    build_fake_token(name_string);
 
    if (srch_sym_tbl(TOKEN_STR(fake_token), TOKEN_LEN(fake_token),
@@ -1877,11 +1865,7 @@ void print_at_by_name(void)
    char		reply;
 
    printf("Entity name->");
-#ifdef KEY
    fgets(name_string, MAX_ID_LEN, stdin);
-#else /* KEY */
-   gets(name_string);
-#endif /* KEY */
    
    /* This is where the code should go to break down a qualified name.       */
 
@@ -1949,11 +1933,7 @@ void print_sb_by_name (void)
    char 		name_string[MAX_ID_LEN + 1];
 
    printf("Enter common block or module name->");
-#ifdef KEY
    fgets(name_string, MAX_ID_LEN, stdin);
-#else /* KEY */
-   gets(name_string);
-#endif /* KEY */
 
    if (strlen(name_string) > 0) {
       build_fake_token(name_string);
@@ -3146,9 +3126,6 @@ static void dump_dv(FILE                *out_file,
    int  num_chars;
    char *char_ptr;
 
-# if 0
-   char str[80];
-# endif
 
 
    if (dv == NULL) {
@@ -3174,9 +3151,6 @@ static void dump_dv(FILE                *out_file,
 # endif
    fprintf(out_file, "num_dims  = %d\n", dv->num_dims);
 
-# if 0
-   dump_io_type_code_ntry(out_file, (long_type *)&(dv->type_code), 0);
-# endif
 
 #if defined(_HOST32) && defined(_TARGET64)
    fprintf(out_file, "orig_base = 0x%x\n", dv->orig_base);
@@ -3205,49 +3179,6 @@ static void dump_dv(FILE                *out_file,
 #endif
 
 
-# if 0
-   lptr = (long *)(dv->base_addr);
-
-   if (lptr != NULL &&
-       dv->num_dims == 1 &&
-       dump_it) {
-
-      /* this assumes that the array is contiguous */
-
-      if (dv_type == DV_ASCII_CHAR) {
-
-         char_ptr = (char *)(dv->base_addr);
-
-         idx = 0;
-
-         for (k = 0; k < dv->dim[0].extent; k++) {
-            fprintf(out_file,"\"");
-            for (i = 0; i < num_chars; i++) {
-               fprintf(out_file, "%c", char_ptr[idx]);
-               idx++;
-            }
-            fprintf(out_file,"\"  ");
-         }
-         fprintf(out_file, "\n");
-      }
-      else {
-
-         for (k = 0; k < dv->dim[0].extent; k++) {
-#if 1
-            fprintf(out_file, "  %x  ", 
-                              lptr[num_host_wds[TYP_LINEAR(type_idx)] * k]);
-# else
-
-            fprintf(out_file, "  %s  ",
-             convert_to_string(&(lptr[num_host_wds[TYP_LINEAR(type_idx)] * k]),
-                               type_idx,
-                               str));
-# endif
-         }
-         fprintf(out_file, "\n");
-      }
-   }
-# endif
 
    return;
 
@@ -3699,9 +3630,7 @@ static void  print_Dv_Whole_Def_Opr(FILE    *out_file,
                                     int      idx,
                                     int      indent,
                                     int      cnt,
-#ifdef KEY /* Bug 6845 */
                                     int      n_dim
-#endif /* KEY Bug 6845 */
 				    )
 
 {
@@ -3730,7 +3659,6 @@ static void  print_Dv_Whole_Def_Opr(FILE    *out_file,
          break;
       }
 
-#ifdef KEY /* Bug 6845 */
       /* Print dope vector "header", then array bounds info if any, then
        * count and offsets for allocatable components if any */
       int first_bound =
@@ -3746,17 +3674,6 @@ static void  print_Dv_Whole_Def_Opr(FILE    *out_file,
       else {
          sprintf(str, dv_whole_def_alloc_cpnt_str, i - first_alloc_cpnt);
       }
-#else /* KEY Bug 6845 */
-      if (i < 10) {
-         strcpy(str, dv_whole_def_str[i]);
-      }
-      else {
-         if ((i - 10)%3 == 0) {
-            dim++;
-         }
-         sprintf(str, dv_whole_def_str[i], dim);
-      }
-#endif /* KEY Bug 6845 */
 
       fprintf(out_file,"%s%-15s, idx = %d, %s",shift, str, idx,
                                          field_str[IL_FLD(idx)]);
@@ -4665,13 +4582,9 @@ static	void	print_expanded_ir(int	ir_idx)
       case Repeat_Opr:
       case Trim_Opr:
       case Transfer_Opr:
-#ifdef KEY /* Bug 1324 */
       case Erf_Opr:
       case Erfc_Opr:
-#endif /* KEY Bug 1324 */
-#ifdef KEY /* Bug 10410 */
       case Cselect_Opr:
-#endif /* KEY Bug 10410 */
 # ifdef _TARGET_OS_MAX
       case My_Pe_Opr:
 # endif
@@ -5108,12 +5021,10 @@ static void dump_at_ntry (FILE		*out_file,
                    print_at_name(ATD_AUTO_BASE_IDX(at_idx)));
          }
 
-#ifdef KEY /* Bug 14150 */
 	 if (ATD_CLASS(at_idx) != Dummy_Argument) {
             fprintf(out_file, "  %-16s= %-7s\n",
                     "AT_BIND_ATTR", boolean_str[AT_BIND_ATTR(at_idx)]);
 	 }
-#endif /* KEY Bug 14150 */
          if (ATD_CLASS(at_idx) == Variable) {
             fprintf(out_file, "  %-16s= %-7d %-16s= %-7s %-16s= %-8s\n",
                     "ATD_ASSIGN_TMP_I", ATD_ASSIGN_TMP_IDX(at_idx),
@@ -5214,17 +5125,11 @@ static void dump_at_ntry (FILE		*out_file,
                     "Function Name", print_at_name(ATD_FUNC_IDX(at_idx)));
          }
          else if (ATD_CLASS(at_idx) == Dummy_Argument) {
-#ifdef KEY /* Bug 14150 */
             fprintf(out_file,"  %-16s= %-7s %-16s= %-7s %-16s= %-7s\n",
                     "ATD_INTENT",intent_str[ATD_INTENT(at_idx)],
                     "ATD_INTRIN_DARG", boolean_str[ATD_INTRIN_DARG(at_idx)],
 		    "ATD_VALUE_ATTR", boolean_str[ATD_VALUE_ATTR(at_idx)]
 		    );
-#else /* KEY Bug 14150 */
-            fprintf(out_file,"  %-16s= %-7s %-16s= %-7s\n",
-                    "ATD_INTENT",intent_str[ATD_INTENT(at_idx)],
-                    "ATD_INTRIN_DARG", boolean_str[ATD_INTRIN_DARG(at_idx)]);
-#endif /* KEY Bug 14150 */
 
             if (ATD_INTRIN_DARG(at_idx)) {
                fprintf(out_file,"  %-20s= %-22o\n",
@@ -5457,14 +5362,12 @@ static void dump_at_ntry (FILE		*out_file,
                    "ATP_DCL_EXTERNAL", boolean_str[ATP_DCL_EXTERNAL(at_idx)],
                    "ATP_DUPLICATE_IN", ATP_DUPLICATE_INTERFACE_IDX(at_idx));
 
-#ifdef KEY /* Bug 14150 */
 	    if (ATP_PGM_UNIT(at_idx) == Function ||
 	      ATP_PGM_UNIT(at_idx) == Pgm_Unknown ||
 	      ATP_PGM_UNIT(at_idx) == Subroutine) {
 	      fprintf(out_file, "  %-16s= %-7s\n",
                    "AT_BIND_ATTR", boolean_str[AT_BIND_ATTR(at_idx)]);
 	    }
-#endif /* KEY Bug 14150 */
             if (ATP_PROC(at_idx) == Dummy_Proc) {
                fprintf(out_file, "  %-16s= %-7s %-16s= %-7d\n",
                      "ATP_CIF_DARG_PRO", boolean_str[ATP_CIF_DARG_PROC(at_idx)],
@@ -5649,18 +5552,12 @@ static void dump_at_ntry (FILE		*out_file,
                     "ATP_USE_LIST", ATP_USE_LIST(at_idx),
                     use_type_str[ATP_USE_TYPE(at_idx)]);
 
-#ifdef KEY /* Bug 5089 */
             fprintf(out_file, "  %-16s= %-7s %-16s= %-7s %-16s= %-7s\n",
                     "ATP_USES_EREGS",boolean_str[ATP_USES_EREGS(at_idx)],
                     "ATP_VFUNCTION",boolean_str[ATP_VFUNCTION(at_idx)],
                     "ATT_NON_INTRIN",boolean_str[ATT_NON_INTRIN(at_idx)]);
             fprintf(out_file, "  %-16s= %-7s\n", "ATT_NO_MODULE_NA",
 		    boolean_str[ATT_NO_MODULE_NATURE(at_idx)]);
-#else /* KEY Bug 5089 */
-            fprintf(out_file, "  %-16s= %-7s %-16s= %-7s\n",
-                    "ATP_USES_EREGS",boolean_str[ATP_USES_EREGS(at_idx)],
-                    "ATP_VFUNCTION",boolean_str[ATP_VFUNCTION(at_idx)]);
-#endif /* KEY Bug 5089 */
 
             if (ATP_USE_LIST(at_idx) != NULL_IDX) {
                ro_idx = ATP_USE_LIST(at_idx);
@@ -5863,10 +5760,8 @@ static void dump_at_ntry (FILE		*out_file,
 
       case Derived_Type:
 
-#ifdef KEY /* Bug 14150 */
          fprintf(out_file, "  %-16s= %-7s\n",
                  "AT_BIND_ATTR", boolean_str[AT_BIND_ATTR(at_idx)]);
-#endif /* KEY Bug 14150 */
 
          fprintf(out_file, "  %-16s= %-7s %-16s= %-7s %-16s= %-8s\n",
                  "ATT_CHAR_CPNT", boolean_str[ATT_CHAR_CPNT(at_idx)],
@@ -5893,10 +5788,8 @@ static void dump_at_ntry (FILE		*out_file,
                  "ATT_POINTER_CPNT", boolean_str[ATT_POINTER_CPNT(at_idx)],
                  "ATT_PRIVATE_CPNT", boolean_str[ATT_PRIVATE_CPNT(at_idx)]);
 
-#ifdef KEY /* Bug 6845 */
          fprintf(out_file, "  %-16s= %-7s\n",
                  "ATT_ALLOCAT_CPNT", boolean_str[ATT_ALLOCATABLE_CPNT(at_idx)]);
-#endif /* KEY Bug 6845 */
 
          fprintf(out_file, "  %-16s= %-7d %-16s= %-7s %-16s= %-8d\n",
                  "ATT_SCP_IDX", ATT_SCP_IDX(at_idx),
@@ -6472,11 +6365,6 @@ static void dump_eq_ntry (FILE  *out_file,
                      "EQ_GRP_IDX", EQ_GRP_IDX(eq_idx),
                      "EQ_LINE_NUM", EQ_LINE_NUM(eq_idx));
 
-# if 0
-   if (EQ_LIST_IDX(eq_idx) != NULL_IDX) {
-      print_list(out_file, IL_IDX(EQ_LIST_IDX(eq_idx)), 4, 1, FALSE);
-   }
-# endif
 
    fprintf(out_file, "  %-16s= %-7d %-16s= %-7s %-16s= %-8d\n",
                      "EQ_LIST_IDX", EQ_LIST_IDX(eq_idx),
@@ -6662,12 +6550,10 @@ static void dump_ga_ntry (FILE		*out_file,
                     "GAC_SECTION_GP", boolean_str[GAC_SECTION_GP(ga_idx)],
                     "GAC_SECTION_NON_", boolean_str[GAC_SECTION_NON_GP(ga_idx)],
                     "GAC_TASK_COMMON", boolean_str[GAC_TASK_COMMON(ga_idx)]);
-#ifdef KEY /* Bug 14150 */
       const char *bl = GA_BINDING_LABEL(ga_idx);
       fprintf(out_file, "  %-16s= %-7s %-16s= %-s\n",
 		    "GA_BIND_ATTR",boolean_str[GA_BIND_ATTR(ga_idx)],
 		    "GA_BIND_LABEL", (bl ? bl : ""));
-#endif /* KEY Bug 14150 */
 
       ga_idx2	= GAC_FIRST_MEMBER_IDX(ga_idx);
 
@@ -6738,10 +6624,8 @@ static void dump_ga_ntry (FILE		*out_file,
               "GAD_RANK", GAD_RANK(ga_idx),
               "GAD_TARGET", boolean_str[GAD_TARGET(ga_idx)]);
 
-#ifdef KEY /* Bug 14110 */
       fprintf(out_file, "  %-16s= %-7s\n",
 	      "GAD_VOLATILE", boolean_str[GAD_VOLATILE(ga_idx)]);
-#endif /* KEY /* Bug 14110 */
       fprintf(out_file, "  %-16s= %-7d %-s\n",
               "GAD_TYPE_IDX",  GAD_TYPE_IDX(ga_idx),
                print_global_type_f(GAD_TYPE_IDX(ga_idx)));
@@ -6775,7 +6659,6 @@ static void dump_ga_ntry (FILE		*out_file,
               "GAP_PGM_UNIT_DEF", boolean_str[GAP_PGM_UNIT_DEFINED(ga_idx)],
               "GAP_PURE", boolean_str[GAP_PURE(ga_idx)]);
 
-#ifdef KEY /* Bug 14150 */
       fprintf(out_file, "  %-16s= %-7s %-16s= %-7s %-16s= %-8s\n",
               "GAP_RECURSIVE", boolean_str[GAP_RECURSIVE(ga_idx)],
               "GAP_VFUNCTION",boolean_str[GAP_VFUNCTION(ga_idx)],
@@ -6783,11 +6666,6 @@ static void dump_ga_ntry (FILE		*out_file,
       const char *bl = GA_BINDING_LABEL(ga_idx);
       fprintf(out_file, "  %-16s= %-s\n",
       	      "GA_BIND_LABEL", (bl ? bl : ""));
-#else /* KEY */
-      fprintf(out_file, "  %-16s= %-7s %-16s= %-7s\n",
-              "GAP_RECURSIVE", boolean_str[GAP_RECURSIVE(ga_idx)],
-              "GAP_VFUNCTION",boolean_str[GAP_VFUNCTION(ga_idx)]);
-#endif /* KEY Bug 14150 */
 
       if (GAP_RSLT_IDX(ga_idx) != NULL_IDX) {
          dump_ga_ntry(out_file, GAP_RSLT_IDX(ga_idx));
@@ -7329,13 +7207,8 @@ static void dump_ir_ntry(FILE 	*out_file,
                  break;
       }
 
-#ifdef KEY /* Bug 6845 */
       print_Dv_Whole_Def_Opr(out_file, IR_IDX_L(idx),
                             indent + 1, IR_LIST_CNT_L(idx), IR_DV_DIM(idx));
-#else /* KEY Bug 6845 */
-      print_Dv_Whole_Def_Opr(out_file, IR_IDX_L(idx),
-                            indent + 1, IR_LIST_CNT_L(idx));
-#endif /* KEY Bug 6845 */
    }
    else if (IR_OPR(idx) == Doacross_Dollar_Opr ||
             IR_OPR(idx) == Psection_Par_Opr ||
@@ -7766,13 +7639,8 @@ static void dump_sb_ntry(FILE	*out_file,
            "SB_COMMON_NEEDS_", boolean_str[SB_COMMON_NEEDS_OFFSET(sb_idx)]);
 
    fprintf(out_file,
-#ifdef KEY /* Bug 14150 */
            "  %-16s= %-7s %-16s= %-7s %-16s= %-8s\n",
 	   "SB_BIND_ATTR", boolean_str[SB_BIND_ATTR(sb_idx)],
-#else /* KEY Bug 14150 */
-           "  %-16s  %-7s %-16s= %-7s %-16s= %-8s\n",
-           " ", " ",
-#endif /* KEY Bug 14150 */
            "SB_DCL_COMMON_DI", boolean_str[SB_DCL_COMMON_DIR(sb_idx)],
            "SB_DCL_ERR", boolean_str[SB_DCL_ERR(sb_idx)]);
 
@@ -7820,19 +7688,13 @@ static void dump_sb_ntry(FILE	*out_file,
    fprintf(out_file, "  %-16s= %-7d %-16s= %-7d %-16s= %-8d\n",
            "SB_NAME_LEN", SB_NAME_LEN(sb_idx),
            "SB_ORIG_SCP_IDX", SB_ORIG_SCP_IDX(sb_idx),
-#ifdef KEY /* Bug 14150 */
            "SB_EXT_NAME_IDX", SB_EXT_NAME_IDX(sb_idx)
-#else /* KEY Bug 14150 */
-           "SB_PAD_AMOUNT", SB_PAD_AMOUNT(sb_idx)
-#endif /* KEY Bug 14150 */
 	   );
-#ifdef KEY /* Bug 14150 */
    if (SB_EXT_NAME_IDX(sb_idx)) {
      fprintf(out_file, "  %-16s= %-7d %-16s= %-16s\n",
        "SB_EXT_NAME_LEN", SB_EXT_NAME_LEN(sb_idx),
        "SB_EXT_NAME", SB_EXT_NAME_PTR(sb_idx));
    }
-#endif /* KEY Bug 14150 */
 
    fprintf(out_file, "  %-16s= %-7s %-16s= %-7s %-16s= %-8s\n",
            "SB_PAD_AMOUNT_SE", boolean_str[SB_PAD_AMOUNT_SET(sb_idx)],
@@ -7946,11 +7808,6 @@ PROCESS_SIBLING:
            "SCP_COPY_ASSUMED_LIS", SCP_COPY_ASSUMED_LIST(scp_idx),
            "SCP_DARG_LIST", SCP_DARG_LIST(scp_idx));
 
-# if 0
-   fprintf(out_file,"%18s%-20s= %-7s  %-20s= %-9s\n", " ",
-           "SCP_DBG_PRINT_STMT", boolean_str[SCP_DBG_PRINT_STMT(scp_idx)],
-           "SCP_DBG_PRINT_SYTB", boolean_str[SCP_DBG_PRINT_SYTB(scp_idx)]);
-# endif
 
    fprintf(out_file,"%18s%-20s= %-27s\n", " ",
            "SCP_DEFAULT_STORAGE", 
@@ -8036,10 +7893,8 @@ PROCESS_SIBLING:
    fprintf(out_file,"%18s%-20s= %-7d  %-20s= %-9d\n", " ",
            "SCP_TMP_LIST", SCP_TMP_LIST(scp_idx),
            "SCP_USED_MODULE_LIST", SCP_USED_MODULE_LIST(scp_idx));
-#ifdef KEY /* Bug 5089 */
    fprintf(out_file,"%18s%-20s= %-7s\n", " ",
            "SCP_USES_IEEE", boolean_str[SCP_USES_IEEE(scp_idx)]);
-#endif /* KEY Bug 5089 */
 
 
    if (print_impl_tbl) {
@@ -8430,10 +8285,8 @@ static void dump_io_type_code_ntry(FILE         *out_file,
 
 }  /* dump_io_type_code_ntry */
 
-#ifdef KEY
 void debug_to_stderr() {
   debug_file = stderr;
 }
-#endif /* KEY */
 
 # endif

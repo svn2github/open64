@@ -47,10 +47,8 @@
 /* These are the compiler generated integer and logical types.  They  */
 /* must always be set to the default types for the machine.           */
 
-#ifdef KEY /* Bug 11922 */
 /* Experiment shows that -i8 changes INTEGER_DEFAULT_TYPE to Integer_8, but
  * leaves CG_INTEGER_DEFAULT_TYPE at Integer_4. */
-#endif /* KEY Bug 11922 */
 # define CG_INTEGER_DEFAULT_TYPE init_default_linear_type[Fortran_Integer]
 /* These macros are used for the default types.  They are set in init_type. */
 
@@ -75,13 +73,9 @@
 # define IO_TYPE_CODE_TYPE	     TYPELESS_DEFAULT_TYPE
 # endif
 
-#ifdef KEY /* Bug 3635 */
 /* Function srch_name_tbl would need to change if this exceeded 272 */
 # define MAX_ID_LEN		63			/* Num of chars in ID */
 # define ANSI90_ID_LEN		31			/* F90 std constraint */
-#else
-# define MAX_ID_LEN		31			/* Num of chars in ID */
-#endif /* KEY Bug 3635 */
 # define MAX_EXTERNAL_ID_LEN	255			/* Num chars in extern*/
 
 # define FALSE			0
@@ -150,10 +144,10 @@
 |* open mp directive argument index macros *|
 \*******************************************/
 
-# define OPEN_MP_LIST_CNT               19 /* by jhs, 02/7/20 */
+# define OPEN_MP_LIST_CNT               19
 
 # define OPEN_MP_IF_IDX                  0
-# define OPEN_MP_NUM_THREADS			 1 /* by jhs, 02/7/20 */
+# define OPEN_MP_NUM_THREADS			 1 
 # define OPEN_MP_PRIVATE_IDX             2
 # define OPEN_MP_SHARED_IDX              3
 # define OPEN_MP_FIRSTPRIVATE_IDX        4
@@ -464,18 +458,11 @@
 # define SET_NUMTHREADS_NAME_LEN	18
 /* OPND ACCESS */
 
-#ifdef KEY /* Bug 8117 */
 /* Runtime symbols for non-inline copyinout of arguments */
 # define COPYIN_ENTRY			"_Copyin"
-#ifdef PATHSCALE_MERGE
 # define COPYIN_NAME_LEN		((sizeof COPYIN_ENTRY) - 1)
-#endif
 # define COPYOUT_ENTRY			"_Copyout"
-#ifdef PATHSCALE_MERGE
 # define COPYOUT_NAME_LEN		((sizeof COPYOUT_ENTRY) - 1)
-#endif
-#endif /* KEY Bug 8117 */
-#ifdef KEY /* Bug 5089 */
 /* Runtime symbols for Fortran 2000 IEEE prolog/epilog save/restore. 
  * IEEE_SAVE_SIZE is sizeof(fenv_t); it needs to be matched to the target OS
  * and architecture. */
@@ -504,8 +491,6 @@
 # error "Need IEEE_SAVE_SIZE"
 #endif /* !defined(IEEE_SAVE_SIZE) */
 
-#endif /* KEY Bug 5089 */
-#ifdef KEY /* Bug 6845 */
 # define ASSIGN_ALLOCATABLE_ENTRY	"_ASSIGN_ALLOCATABLE"
 
 /* Welcome to elementary C programming */
@@ -514,14 +499,6 @@
 # define OPND_FLD(OPND)			((OPND).fld)
 # define OPND_IDX(OPND)			((OPND).idx)
 # define OPND_LIST_CNT(OPND)		((OPND).line_num)
-#else /* KEY Bug 6845 */
-
-# define OPND_LINE_NUM(OPND)		OPND.line_num
-# define OPND_COL_NUM(OPND)		OPND.col_num
-# define OPND_FLD(OPND)			OPND.fld
-# define OPND_IDX(OPND)			OPND.idx
-# define OPND_LIST_CNT(OPND)            OPND.line_num
-#endif /* KEY Bug 6845 */
 
 
 /*********************************\
@@ -783,14 +760,9 @@
 	IDX--;								       \
 	ACT_LINE = LINE - GL_GLOBAL_LINE(IDX) + GL_FILE_LINE(IDX);
 
-#ifdef KEY /* Bug 6845 */
 /* Welcome to elementary C programming */
 # define COPY_OPND(OPND_T, OPND_S)                                             \
          ((OPND_T) = (OPND_S))
-#else /* KEY Bug 6845 */
-# define COPY_OPND(OPND_T, OPND_S)                                             \
-         OPND_T = OPND_S;
-#endif /* KEY Bug 6845 */
 
 # define SET_MESSAGE_TBL(TBL, MSG_NUM)					       \
 	{int	_shift, _idx;                                                  \
@@ -982,7 +954,6 @@
         }
 
 
-#ifdef KEY /* Bug 5089, 14150 */
 # define FUNCTION_MUST_BE_SUBROUTINE(FCN_IDX,RSLT_IDX)                         \
    (TYP_TYPE(ATD_TYPE_IDX(RSLT_IDX)) == Character     ||                       \
     (TYP_TYPE(ATD_TYPE_IDX(RSLT_IDX)) == Structure                             \
@@ -990,13 +961,6 @@
     ATD_ARRAY_IDX(RSLT_IDX) != NULL_IDX ||                                     \
     ATD_IM_A_DOPE(RSLT_IDX) ||						       \
     special_case_fcn_to_sub(FCN_IDX))
-#else /* KEY Bug 5089 */
-# define FUNCTION_MUST_BE_SUBROUTINE(ATTR_IDX)                                 \
-   (TYP_TYPE(ATD_TYPE_IDX(ATTR_IDX)) == Character     ||                       \
-    TYP_TYPE(ATD_TYPE_IDX(ATTR_IDX)) == Structure     ||                       \
-    ATD_ARRAY_IDX(ATTR_IDX) != NULL_IDX ||                                     \
-    ATD_IM_A_DOPE(ATTR_IDX))
-#endif /* KEY Bug 5089 */
 
 
 /***********************************************\

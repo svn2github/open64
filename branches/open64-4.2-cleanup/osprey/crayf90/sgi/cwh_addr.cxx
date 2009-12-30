@@ -420,17 +420,9 @@ fei_nseq_subscr( TYPE result_type )
    WN *ad  ;
    WN *wt  ;
    ST *st  ;
-#ifdef KEY /* Bug 10177 */
    TY_IDX ty  = 0;
-#else /* KEY Bug 10177 */
-   TY_IDX ty  ;
-#endif /* KEY Bug 10177 */
    TY_IDX dope_ty  ;
-#ifdef KEY /* Bug 10177 */
    WN_ESIZE  esize = 0;
-#else /* KEY Bug 10177 */
-   WN_ESIZE  esize;
-#endif /* KEY Bug 10177 */
    
    TY_IDX  ta ;
    BOOL    array_val ;
@@ -673,11 +665,7 @@ fei_substr(INT32 bounds_check)
   WN * ar ;
   TY_IDX ts ;
   
-#ifdef KEY /* Bug 10177 */
   W_node  ad  = { 0, 0};
-#else /* KEY Bug 10177 */
-  W_node  ad  ;
-#endif /* KEY Bug 10177 */
   FLD_det det ;
   
   sz = cwh_expr_operand(NULL);
@@ -821,7 +809,6 @@ cwh_addr_array(OPCODE op, WN * addr, TY_IDX ty)
 }
 
 
-#ifdef KEY /* Bug 5398 */
 /*================================================================
  *
  * cwh_compare_index_and_bound
@@ -846,7 +833,6 @@ cwh_compare_index_and_bound(OPERATOR op, WN *lhs, WN *rhs) {
   WN *wn  = WN_CreateExp2(opc, lhs, rhs) ;
   return wn;
   }
-#endif /* KEY Bug 5398 */
 
 
 
@@ -900,50 +886,30 @@ cwh_addr_do_bounds_check(WN *subscript_in, WN *lbound, WN *extent)
      
      if (WNOPR(stride) != OPR_INTCONST) {
 	/* Check that the lower bound is OK */
-#ifdef KEY /* Bug 5398 */
 	temp = cwh_compare_index_and_bound(OPR_GE,
 	  WN_COPY_Tree(WN_kid0(subscript)),WN_COPY_Tree(lbound));
 	lbc = cwh_compare_index_and_bound(OPR_LT,
 	  WN_COPY_Tree(WN_kid0(subscript)),WN_COPY_Tree(ubdecl));
-#else /* KEY Bug 5398 */
-	temp = WN_CreateExp2(ge_op,WN_COPY_Tree(WN_kid0(subscript)),WN_COPY_Tree(lbound));
-	lbc = WN_CreateExp2(lt_op,WN_COPY_Tree(WN_kid0(subscript)),WN_COPY_Tree(ubdecl));
-#endif /* KEY Bug 5398 */
 	lbc = WN_LAND(temp,lbc);
 	
 	/* Check that the upper bound is OK */
-#ifdef KEY /* Bug 5398 */
 	temp = cwh_compare_index_and_bound(OPR_GE,WN_COPY_Tree(ub),
 	  WN_COPY_Tree(lbound));
 	ubc = cwh_compare_index_and_bound(OPR_LT,WN_COPY_Tree(ub),ubdecl);
-#else /* KEY Bug 5398 */
-	temp = WN_CreateExp2(ge_op,WN_COPY_Tree(ub),WN_COPY_Tree(lbound));
-	ubc = WN_CreateExp2(lt_op,WN_COPY_Tree(ub),ubdecl);
-#endif /* KEY Bug 5398 */
 	ubc = WN_LAND(temp,ubc);
      } else {
 	/* Constant stride */
 	if (WN_const_val(stride) > 0) {
 	   /* Only need to check lb > declared lb and ub < declared ub */
-#ifdef KEY /* Bug 5398 */
 	   lbc = cwh_compare_index_and_bound(OPR_GE,
 	     WN_COPY_Tree(WN_kid0(subscript)),WN_COPY_Tree(lbound));
 	   ubc = cwh_compare_index_and_bound(OPR_LT,WN_COPY_Tree(ub),ubdecl);
-#else /* KEY Bug 5398 */
-	   lbc = WN_CreateExp2(ge_op,WN_COPY_Tree(WN_kid0(subscript)),WN_COPY_Tree(lbound));
-	   ubc = WN_CreateExp2(lt_op,WN_COPY_Tree(ub),ubdecl);
-#endif /* KEY Bug 5398 */
 	} else {
 	   /* check that first element is < top, last > bottom */
-#ifdef KEY /* Bug 5398 */
 	   lbc = cwh_compare_index_and_bound(OPR_LT,
 	     WN_COPY_Tree(WN_kid0(subscript)), ubdecl);
 	   ubc = cwh_compare_index_and_bound(OPR_GE,
 	     WN_COPY_Tree(ub),WN_COPY_Tree(lbound));
-#else /* KEY Bug 5398 */
-	   lbc = WN_CreateExp2(lt_op,WN_COPY_Tree(WN_kid0(subscript)),ubdecl);
-	   ubc = WN_CreateExp2(ge_op,WN_COPY_Tree(ub),WN_COPY_Tree(lbound));
-#endif /* KEY Bug 5398 */
 	}
      }
      assertion = WN_LAND(lbc,ubc);
@@ -951,15 +917,10 @@ cwh_addr_do_bounds_check(WN *subscript_in, WN *lbound, WN *extent)
   } else if (WNOPR(subscript)==OPR_ARRAYEXP) {
      /* Array expression, need to build up an ANY node */
      arrexp = WN_COPY_Tree(subscript);
-#ifdef KEY /* Bug 5398 */
      lbc = cwh_compare_index_and_bound(OPR_GE,WN_COPY_Tree(WN_kid0(subscript)),
        WN_COPY_Tree(lbound));
      ubc = cwh_compare_index_and_bound(OPR_LT,WN_COPY_Tree(WN_kid0(arrexp)),
        ubdecl);
-#else /* KEY Bug 5398 */
-     lbc = WN_CreateExp2(ge_op,WN_COPY_Tree(WN_kid0(subscript)),WN_COPY_Tree(lbound));
-     ubc = WN_CreateExp2(lt_op,WN_COPY_Tree(WN_kid0(arrexp)),ubdecl);
-#endif /* KEY Bug 5398 */
      assertion = WN_LAND(lbc,ubc);
      WN_kid0(arrexp) = assertion;
      cwh_stk_push(arrexp,WN_item);
@@ -971,14 +932,9 @@ cwh_addr_do_bounds_check(WN *subscript_in, WN *lbound, WN *extent)
      assertion = WN_LdidPreg(MTYPE_I4,bc_preg);
   } else {
      /* Scalar expression */
-#ifdef KEY /* Bug 5398 */
      lbc = cwh_compare_index_and_bound(OPR_GE,WN_COPY_Tree(subscript),
        WN_COPY_Tree(lbound));
      ubc = cwh_compare_index_and_bound(OPR_LT,WN_COPY_Tree(subscript),ubdecl);
-#else /* KEY Bug 5398 */
-     lbc = WN_CreateExp2(ge_op,WN_COPY_Tree(subscript),WN_COPY_Tree(lbound));
-     ubc = WN_CreateExp2(lt_op,WN_COPY_Tree(subscript),ubdecl);
-#endif /* KEY Bug 5398 */
      assertion = WN_LAND(lbc,ubc);
   }
   if (WNOPR(assertion) == OPR_INTCONST) {
@@ -1506,12 +1462,10 @@ cwh_addr_stid(ST *st, OFFSET_64 off, TY_IDX ty , WN * rhs)
   TYPE_ID bt;
   OPCODE  op;
 
-#ifdef KEY // bug 7612
   if (WN_operator(rhs) == OPR_LDA) {
     ST *lda_st = WN_st(rhs);
     Set_ST_addr_saved(lda_st);
   }
-#endif
 
   rhs = cwh_convert_to_ty(rhs, TY_mtype(ty)); 
 
@@ -1783,11 +1737,7 @@ cwh_addr_store_ST(ST * st, OFFSET_64 off, TY_IDX dty,  WN * rhs)
 extern void
 cwh_addr_store_WN(WN * lhs, OFFSET_64 off, TY_IDX dty, WN * rhs) 
 {
-#ifdef KEY /* Bug 10177 */
   WN * wn = 0;
-#else /* KEY Bug 10177 */
-  WN * wn ;
-#endif /* KEY Bug 10177 */
   TY_IDX ts ;
   TY_IDX ty ;
 
@@ -2301,11 +2251,7 @@ cwh_addr_temp_section(WN * ad, TY_IDX ty)
   WN * ub;
   WN * sz;
   WN * szmult;
-#ifdef KEY /* Bug 10177 */
   TY_IDX aty = 0;
-#else /* KEY Bug 10177 */
-  TY_IDX aty;
-#endif /* KEY Bug 10177 */
   BOOL noncontig;
   INT32 ndims;
   
@@ -2645,12 +2591,6 @@ cwh_addr_f90_pointer_reference(WN * addr)
        return (FALSE);
        
     case OPR_LDA:
-#if 0
-       st = WN_st(addr);
-       if (ST_class(st) == CLASS_VAR) {
-	  return (ST_auxst_is_f90_pointer(st));
-       }
-#endif
        return (FALSE);
        
     case OPR_ILOAD:

@@ -393,12 +393,8 @@ union	attr_tbl_entry	{
 
 				 Uint			orig_module_idx	: 20;
 				 boolean		module_object	:  1;
-#ifdef KEY
                                  boolean                flag57          :  1;
 				 Uint			unused		: 10;
-#else
-				 Uint			unused		: 11;
-#endif
 				 Uint			unused1		:  8;
 				 Uint			field7		: 24;
 
@@ -871,9 +867,7 @@ union	global_attr_tbl_entry	{
 				 Uint		 	field6		: 16;
 				 Uint		 	field7		: 16;
 				 Uint		 	field8		: 32;
-#ifdef KEY /* Bug 14150 */
 				 const char		*binding_label;
-#endif /* KEY Bug 14150 */
 
 				} fld;
 
@@ -997,11 +991,7 @@ struct	ir_opr_entry		{operator_type	the_operator	: 16;
                                  Uint		rank		:  8;
                                  Uint		dim		:  8;
 				 Uint		UNUSED1		: 16;
-#ifdef KEY /* Bug 6845 */
 				 Uint		n_alloc_cpnt	: 32;
-#else /* KEY Bug 6845 */
-				 Uint		UNUSED2		: 32;
-#endif /* KEY Bug 6845 */
 				};
 
 
@@ -1225,11 +1215,7 @@ union	stor_blk_tbl_entry	{struct	{
 				 Uint		old_sb_type	:  5;
                                  boolean	pad_amount_set	:  1;
                                  boolean	equivalenced	:  1;
-#ifdef KEY /* Bug 14150 */
                                  boolean	bind_attr   	:  1;
-#else /* defined(BUILD_OS_DARWIN) */
-                                 boolean	UNUSED   	:  1;
-#endif /* KEY Bug 14150 */
                                  boolean	name_in_stone	:  1;
 				 Uint		last_attr_list	: 16;
 
@@ -1254,16 +1240,11 @@ union	stor_blk_tbl_entry	{struct	{
 				 boolean	flag35		:  1;
 				 Uint		cif_idx		: 24;
 
-#ifdef KEY /* Bug 14150 */
 /* The -apad option has never been supported at Pathscale, so we can use
  * this space to implement F2003 "BIND(C, NAME=x)" for common blocks
  * without making old .mod files incompatible. */
 				 Uint		ext_name_idx	: 24;
 				 Uint		ext_name_len	:  8;
-#else /* defined(BUILD_OS_DARWIN) */
-				 Uint		pad_amount	: 16;
-				 Uint		UNUSED3		: 16;
-#endif /* KEY Bug 14150 */
 				 fld_type	len_fld		:  8;
 				 Uint		len_idx		: 24;
 				} fld;
@@ -1378,17 +1359,11 @@ struct  intrin_tbl_entry       {
                                 boolean         optional                : 1;
                                 boolean         dope                    : 1;
                                 boolean         generic                 : 1;
-#ifdef KEY /* Bug 4656 */
                                 boolean         enabled                 : 1;
-#else /* KEY Bug 4656 */
-                                boolean         non_ansi                : 1;
-#endif /* KEY Bug 4656 */
                                 Uint            n_specifics             : 9;
                                 Uint            intrin_enum		: 9;   
                                 Uint            data_type		: 32;   
-#ifdef KEY /* Bug 4656 */
                                 Uint            families	        : 8;   
-#endif /* KEY Bug 4656 */
         };
 
 struct  intrin_map_entry       {
@@ -1407,9 +1382,7 @@ struct  intrin_map_entry       {
 extern	void		add_attr_to_local_list(int);
 extern	void		align_bit_length(size_offset_type *, int);
 extern	void		assign_offset(int);
-#ifdef KEY /* Bug 14150 */
 extern void assign_bind_c_offset(int, boolean);
-#endif /* KEY Bug 14150 */
 extern	void		assign_storage_blk(int);
 extern	attr_aux_tbl_type  *attr_aux_var_error(char *, int);
 extern	bounds_tbl_type *bd_var_error(char *, int);
@@ -1500,10 +1473,8 @@ extern	boolean		srch_global_name_tbl(char *, int, int *);
 extern	int 		srch_hidden_name_tbl(char *, int, int, int *, int *);
 extern	int 		srch_host_stor_blk_tbl(token_type *);
 extern	int 		srch_host_sym_tbl(char *, int, int *, boolean);
-#ifdef KEY /* Bug 11741 */
 extern int srch_host_sym_tbl_for_import(char *, int, int *);
 extern int import_from_host(char *, int, int *, int);
-#endif /* KEY Bug 11741 */
 extern	int		srch_kwd_name(char *, int, int, int *);
 extern	int		srch_linked_sn(char *, int, int *);
 extern	int		srch_name_tbl(char *, int, int *, name_tbl_type *,
@@ -1513,9 +1484,7 @@ extern	int 		srch_sym_tbl(char *, int, int *);
 extern	size_offset_type	stor_bit_size_of(int, boolean, boolean);
 extern	attr_tbl_type  *sytb_var_error(char *, int);
 extern	void		use_stmt_semantics(void);
-#ifdef KEY /* Bug 6204 */
 int decorate(char *, int, int);
-#endif /* KEY Bug 6204 */
 
 
 /*******************************\
@@ -1798,12 +1767,8 @@ extern	int			 type_tbl_num_wds;
 extern  int			 type_tbl_init_size;
 extern  int			 type_tbl_largest_idx;
 
-#ifdef KEY /* Bug 4656 */
 extern  intrin_tbl_type    	 intrin_tbl[];
 extern  unsigned		 MAX_INTRIN_TBL_SIZE;
-#else /* KEY Bug 4656 */
-extern  intrin_tbl_type    	 intrin_tbl[MAX_INTRIN_TBL_SIZE];
-#endif /* KEY Bug 4656 */
 extern  intrin_map_type    	 intrin_map[MAX_INTRIN_MAP_SIZE];
 extern	void			 (*intrinsic_semantics[])();
 
@@ -1812,6 +1777,4 @@ extern	char		        *pgm_unit_str[];
 # ifdef _DEBUG
 extern void print_so(size_offset_type);
 # endif
-#ifdef KEY /* Bug 14150 */
 extern char *file_and_line(int);
-#endif /* KEY Bug 14150 */

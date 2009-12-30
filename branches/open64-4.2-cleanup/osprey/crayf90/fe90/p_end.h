@@ -53,9 +53,7 @@ static void end_forall_blk (boolean);
 static void end_function (boolean);
 static void end_if_blk (boolean);
 static void end_interface_blk (boolean);
-#ifdef KEY /* Bug 10572 */
 static void end_enum_blk (boolean);
-#endif /* KEY Bug 10572 */
 static void end_interface_body (boolean);
 static void end_internal_err (boolean);
 static void end_internal_proc (boolean);
@@ -132,7 +130,5 @@ void		(*end_blocks[]) () = {
 		/* Contains_Blk		*/	end_contains,
 		/* Interface_Blk	*/	end_interface_blk,
 		/* Derived_Type_Blk	*/	end_type_blk,
-#ifdef KEY /* Bug 10572 */
 		/* Enum_Blk		*/	end_enum_blk
-#endif /* KEY Bug 10572 */
 		};

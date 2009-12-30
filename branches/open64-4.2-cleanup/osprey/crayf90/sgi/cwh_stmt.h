@@ -76,9 +76,7 @@ extern void cwh_stmt_add_pragma(WN_PRAGMA_ID  wn_pragma_id,
 				ST *st      = (ST_IDX) NULL,
 				INT32  arg1 = 0,
 				INT32 arg2  = 0) ;
-#ifdef KEY /* Bug 2660 */
 extern void cwh_stmt_add_options_pragma(ST *st);
-#endif /* KEY Bug 2660 */
 extern void cwh_stmt_add_xpragma(WN_PRAGMA_ID wn_pragma_id, 
 				 BOOL is_omp = FALSE,
 				 WN* expr = NULL);

@@ -67,12 +67,10 @@ static char USMID[] = "\n@(#)5.0_pl/sources/s_utils.c	5.12	10/19/99 17:14:30\n";
 # if defined(_HOST_OS_UNICOS) && defined(_TARGET_OS_UNICOS)
 # include <fortran.h>
 # endif
-#ifdef KEY /* Bug 6845 */
 /* Incredibly, there seems to be no single central definition for the limit
  * on subscripts in this front end. Often it's a hard-coded "7". This gives
  * us STATIC_SUBSCRIPT_SIZE, which is used in only one other place. Sigh. */
 #include "i_cvrt.h"
-#endif /* KEY Bug 6845 */
 
 
 /*****************************************************************\
@@ -938,14 +936,12 @@ EXIT:
 
             if (err_res) {
 
-#ifdef KEY /* Bug 5710, 8094 */
 	     /* If we're allowing intrinsic .eq. on logical operands as an
 	      * extension, the absence of an overloaded function is not an
 	      * error; we'll return to our caller who will use the intrinsic
 	      * operator. */
 	     if (!((Eq_Opr == IR_OPR(ir_idx) || Ne_Opr == IR_OPR(ir_idx)) &&
 	       eq_ne_on_logical(0, exp_desc_l, exp_desc_r))) {
-#endif /* KEY Bug 5710, 8094 */
 
                strcpy(type_str_l, get_basic_type_str(exp_desc_l->type_idx));
                strcpy(type_str_r, get_basic_type_str(exp_desc_r->type_idx));
@@ -956,9 +952,7 @@ EXIT:
                         type_str_r,
                         str_word);
                *semantically_correct = FALSE;
-#ifdef KEY /* Bug 5710 */
 	     }
-#endif /* KEY Bug 5710 */
             }
          }
       }
@@ -968,12 +962,8 @@ EXIT:
        found &&
        ATP_PROC(spec_idx) != Intrin_Proc) {
 
-#ifdef KEY /* Bug 7726 */
       /* Fortran 95 says every elemental procedure is pure */
       if (! (ATP_PURE(spec_idx) || ATP_ELEMENTAL(spec_idx)))
-#else /* KEY Bug 7726 */
-      if (! ATP_PURE(spec_idx))
-#endif /* KEY Bug 7726 */
       {
          if (within_forall_mask_expr) {
             PRINTMSG(IR_LINE_NUM(ir_idx), 1611, Error, IR_COL_NUM(ir_idx), 
@@ -1493,11 +1483,7 @@ void dope_vector_setup(opnd_type	*r_opnd,
    int          rank_idx = NULL_IDX;
    int		stride_idx;
    opnd_type	stride_opnd;
-#ifdef KEY /* Bug 10177 */
    int		subscript_idx = 0;
-#else /* KEY Bug 10177 */
-   int		subscript_idx;
-#endif /* KEY Bug 10177 */
    boolean      whole_array;
 
 
@@ -1895,7 +1881,6 @@ void dope_vector_setup(opnd_type	*r_opnd,
    }
    else {
       IR_FLD_R(dv_idx) = CN_Tbl_Idx;
-#ifdef KEY /* Bug 4933 */
       /* If RHS of pointer assignment is a dummy argument, we generally
        * lack dope info for the corresponding formal argument which
        * would tell us whether that formal argument was allocated by
@@ -1908,9 +1893,6 @@ void dope_vector_setup(opnd_type	*r_opnd,
 	  AT_IS_DARG(OPND_IDX((*r_opnd)))) ?
         CN_INTEGER_ONE_IDX :
 	CN_INTEGER_ZERO_IDX;
-#else
-      IR_IDX_R(dv_idx) = CN_INTEGER_ZERO_IDX;
-#endif /* KEY Bug 4933 */
       IR_LINE_NUM_R(dv_idx) = opnd_line;
       IR_COL_NUM_R(dv_idx)  = opnd_column;
    }
@@ -2017,11 +1999,7 @@ void make_io_type_code(int	     type_idx,   /* BRIANJ */
 {
    long_type	dec_len = 0;
    int          dp_flag = 0;
-#ifdef KEY /* Bug 10177 */
    int		dv_type = 0;
-#else /* KEY Bug 10177 */
-   int		dv_type;
-#endif /* KEY Bug 10177 */
    long_type	int_len = 0;
    int		kind_star = 0;
 
@@ -2740,7 +2718,6 @@ void gen_static_dv_whole_def(opnd_type         *dv_opnd,
       }
    }
 
-#ifdef KEY /* Bug 9608 */
    /*
     * When we set assoc=0 for an array, we also set contig=1 so that
     * copyinout doesn't blow up if user (illegally) passes the null
@@ -2753,7 +2730,6 @@ void gen_static_dv_whole_def(opnd_type         *dv_opnd,
    if (ATD_ARRAY_IDX(attr_idx) != NULL_IDX && !DV_ASSOC(*dv_ptr)) {
      DV_SET_A_CONTIG(*dv_ptr, 1);
    }
-#endif /* KEY Bug 9608 */
 
    TRACE (Func_Exit, "gen_static_dv_whole_def", NULL);
 
@@ -2948,9 +2924,7 @@ void gen_entry_dope_code(int	 attr_idx)
 # endif
    }
    else if (ATD_SAVED(attr_idx) ||
-#ifdef KEY /* Bug 10467 */
             ATD_DATA_INIT(attr_idx) ||
-#endif /* KEY Bug 10467 */
             ATP_SAVE_ALL(SCP_ATTR_IDX(curr_scp_idx))) {
       func = gen_static_dv_whole_def;
       opr = Init_Opr;
@@ -2983,9 +2957,7 @@ void gen_entry_dope_code(int	 attr_idx)
    }
    else if (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) == Structure           &&
             (ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
-#ifdef KEY /* Bug 6845 */
             ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
-#endif /* KEY Bug 6845 */
              ATT_DEFAULT_INITIALIZED(TYP_IDX(ATD_TYPE_IDX(attr_idx))))  &&
             ! AT_DCL_ERR(TYP_IDX(ATD_TYPE_IDX(attr_idx)))) {
 
@@ -3049,11 +3021,7 @@ void process_cpnt_inits(opnd_type  	*left_opnd,
    int		 attr_idx;
    opnd_type	 cn_opnd;
    int		 col;
-#ifdef KEY /* Bug 10177 */
    int		 const_idx = 0;
-#else /* KEY Bug 10177 */
-   int		 const_idx;
-#endif /* KEY Bug 10177 */
    expr_arg_type exp_desc;
    int		 i;
    int		 init_idx;
@@ -3126,11 +3094,7 @@ void process_cpnt_inits(opnd_type  	*left_opnd,
    while (sn_idx != NULL_IDX) {
       attr_idx = SN_ATTR_IDX(sn_idx);
 
-#ifdef KEY /* Bug 6845 */
       if (ATD_POINTER(attr_idx) || ATD_ALLOCATABLE(attr_idx))
-#else /* KEY Bug 6845 */
-      if (ATD_POINTER(attr_idx))
-#endif /* KEY Bug 6845 */
       {
          NTR_IR_TBL(ir_idx);
          IR_OPR(ir_idx) = Struct_Opr;
@@ -3300,9 +3264,7 @@ void process_cpnt_inits(opnd_type  	*left_opnd,
       }
       else if (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) == Structure           &&
                (ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
-#ifdef KEY /* Bug 6845 */
                ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
-#endif /* KEY Bug 6845 */
                 ATT_DEFAULT_INITIALIZED(TYP_IDX(ATD_TYPE_IDX(attr_idx))))) {
 
          NTR_IR_TBL(ir_idx);
@@ -3603,7 +3565,6 @@ static void gen_init_stmt(opnd_type		*left_opnd,
    return;
 
 }  /* gen_init_stmt */
-#ifdef KEY /* Bug 6845 */
 
 /*
  * attr_idx	Attribute table index of entity which dope vector represents
@@ -3729,7 +3690,6 @@ do_alloc_cpnt_offset(int line, int col, int list_idx, int attr_idx,
   }
   return list_idx;
 }
-#endif /* KEY Bug 6845 */
 
 /******************************************************************************\
 |*									      *|
@@ -3754,11 +3714,7 @@ void gen_dv_whole_def(opnd_type		*dv_opnd,
 {
    act_arg_type a_type;
    int		asg_idx;
-#ifdef KEY /* Bug 10177 */
    int		attr_idx = 0;
-#else /* KEY Bug 10177 */
-   int		attr_idx;
-#endif /* KEY Bug 10177 */
    opnd_type	base_opnd;
    int		col;
    int		dim = 1;
@@ -3780,11 +3736,7 @@ void gen_dv_whole_def(opnd_type		*dv_opnd,
    opnd_type    r_dv_opnd;
    int          stride_idx;
    opnd_type	stride_opnd;
-#ifdef KEY /* Bug 10177 */
    int          subscript_idx = 0;
-#else /* KEY Bug 10177 */
-   int          subscript_idx;
-#endif /* KEY Bug 10177 */
    int          type_idx;
    boolean      whole_array;
 
@@ -3815,13 +3767,9 @@ void gen_dv_whole_def(opnd_type		*dv_opnd,
 
    rank = (ATD_ARRAY_IDX(dv_attr_idx) ? 
                          (long) BD_RANK(ATD_ARRAY_IDX(dv_attr_idx)) : 0);
-#ifdef KEY /* Bug 6845 */
    int n_allocatable_cpnt = IR_DV_N_ALLOC_CPNT(ir_idx) =
      do_count_allocatable_cpnt(dv_attr_idx, rank);
    IR_LIST_CNT_L(ir_idx) = 11 + (3 * rank) + n_allocatable_cpnt;
-#else /* KEY Bug 6845 */
-   IR_LIST_CNT_L(ir_idx) = 10 + (3 * rank);
-#endif /* KEY Bug 6845 */
    IR_DV_DIM(ir_idx) = rank;
 
    /*************\
@@ -4121,9 +4069,7 @@ void gen_dv_whole_def(opnd_type		*dv_opnd,
       IL_COL_NUM(list_idx)  = col;
    }
 
-#ifdef KEY /* Bug 6845 */
    list_idx = do_alloc_cpnt(line, col, list_idx, n_allocatable_cpnt);
-#endif /* KEY Bug 6845 */
 
    for (i = 1; i <= rank; i++) {
 
@@ -4255,10 +4201,8 @@ void gen_dv_whole_def(opnd_type		*dv_opnd,
       }
    }
 
-#ifdef KEY /* Bug 6845 */
    list_idx = do_alloc_cpnt_offset(line, col, list_idx, dv_attr_idx,
      n_allocatable_cpnt);
-#endif /* KEY Bug 6845 */
 
    gen_sh(Before, Assignment_Stmt, line, col, FALSE, FALSE, TRUE);
 
@@ -4317,13 +4261,6 @@ static void gen_dv_stride_mult(opnd_type	*stride_opnd,
    }
    else {
       res_sm_unit_in_bits = sm_unit_in_bits(exp_desc->type_idx);
-#if 0 /* OSP_467, #5, do not adjust the size because 
-	 we patch the stride_multi_unit_in_bits during the compiler initialization */
-# ifdef _WHIRL_HOST64_TARGET64
-      if (res_sm_unit_in_bits > 32)
-        res_sm_unit_in_bits = 32;
-# endif /* _WHIRL_HOST64_TARGET64 */
-#endif
    }
 
    /* src_sm_unit_in_bits describes the sm unit for the arrays bd entry */
@@ -4379,9 +4316,7 @@ static void gen_dv_stride_mult(opnd_type	*stride_opnd,
 
 # if defined(_EXTENDED_CRI_CHAR_POINTER) 
       if (ATD_CLASS(attr_idx) == CRI__Pointee &&
-# if defined(KEY)
           AT_IS_DARG(attr_idx) &&
-# endif
           TYP_TYPE(ATD_TYPE_IDX(attr_idx)) == Character) {
 
          NTR_IR_TBL(ir_idx);
@@ -4442,7 +4377,6 @@ static void gen_dv_stride_mult(opnd_type	*stride_opnd,
 
 }  /* gen_dv_stride_mult */
 
-#ifdef KEY /* Bug 6845 */
 /*
  * Insert Dv_Deref_Opr between Subscript_Opr and array
  *
@@ -4655,7 +4589,6 @@ gen_dv_def_loops(opnd_type	*dv_opnd)
 {
    gen_loops(dv_opnd, 0, FALSE);
 }
-#endif /* KEY Bug 6845 */
 /******************************************************************************\
 |*                                                                            *|
 |* Description:                                                               *|
@@ -4716,20 +4649,15 @@ void gen_dv_whole_def_init(opnd_type		*dv_opnd,
 
    rank = ATD_ARRAY_IDX(dv_attr_idx) ?
                         (long) BD_RANK(ATD_ARRAY_IDX(dv_attr_idx)) : 0;
-#ifdef KEY /* Bug 6845 */
    int n_allocatable_cpnt = IR_DV_N_ALLOC_CPNT(ir_idx) =
      do_count_allocatable_cpnt(dv_attr_idx, rank);
    IR_LIST_CNT_L(ir_idx) = 11 + (3 * rank) + n_allocatable_cpnt;
-#else /* KEY Bug 6845 */
-   IR_LIST_CNT_L(ir_idx) = 10 + (3 * rank);
-#endif /* KEY Bug 6845 */
    IR_DV_DIM(ir_idx) = rank;
 
    /*************\
    |* BASE ADDR *|
    \*************/
 
-#ifdef KEY /* Bug 6106 */
    /* We want to set the base address to null explicitly so the code behaves
     * reproducibly if the user fails to allocate or initialize the variable.
     */
@@ -4751,9 +4679,6 @@ void gen_dv_whole_def_init(opnd_type		*dv_opnd,
      C_INT_TO_CN(SA_INTEGER_DEFAULT_TYPE, 0);
    IR_LINE_NUM_L(fcd_idx) = line;
    IR_COL_NUM_L(fcd_idx)  = col;
-#else /* KEY Bug 6106 */
-   /* leave as null ops */
-#endif /* KEY Bug 6106 */
 
    /*************\
    |* EL_LEN    *|
@@ -4904,7 +4829,6 @@ void gen_dv_whole_def_init(opnd_type		*dv_opnd,
       IL_IDX(list_idx) = CN_INTEGER_ONE_IDX;
    }
    else {
-#ifdef KEY /* Bug 9608 */
       /*
        * When we set assoc=0 for an array, we also set contig=1 so that
        * copyinout doesn't blow up if user (illegally) passes the null pointer
@@ -4914,9 +4838,6 @@ void gen_dv_whole_def_init(opnd_type		*dv_opnd,
        * a test for null before and after every call.
        */
       IL_IDX(list_idx) = rank ? CN_INTEGER_ONE_IDX : CN_INTEGER_ZERO_IDX;
-#else /* KEY Bug 9608 */
-      IL_IDX(list_idx) = CN_INTEGER_ZERO_IDX;
-#endif /* KEY Bug 9608 */
    }
    IL_LINE_NUM(list_idx) = line;
    IL_COL_NUM(list_idx)  = col;
@@ -4975,9 +4896,7 @@ void gen_dv_whole_def_init(opnd_type		*dv_opnd,
    IL_LINE_NUM(list_idx) = line;
    IL_COL_NUM(list_idx)  = col;
 
-#ifdef KEY /* Bug 6845 */
    list_idx = do_alloc_cpnt(line, col, list_idx, n_allocatable_cpnt);
-#endif /* KEY Bug 6845 */
 
    for (i = 1; i <= rank; i++) {
 
@@ -5027,10 +4946,8 @@ void gen_dv_whole_def_init(opnd_type		*dv_opnd,
       }
    }
 
-#ifdef KEY /* Bug 6845 */
    list_idx = do_alloc_cpnt_offset(line, col, list_idx, dv_attr_idx,
      n_allocatable_cpnt);
-#endif /* KEY Bug 6845 */
 
    gen_sh(position, Assignment_Stmt, line, col, FALSE, FALSE, TRUE);
 
@@ -6887,13 +6804,8 @@ boolean	gen_internal_dope_vector(int_dope_type		*dope_vec,
 				 expr_arg_type		*exp_desc)
 
 {
-#ifdef KEY /* Bug 10177 */
    int			bd_idx = 0;
    int			cn_idx = 0;
-#else /* KEY Bug 10177 */
-   int			bd_idx;
-   int			cn_idx;
-#endif /* KEY Bug 10177 */
    int			column;
    long_type         	constant[2];
    int          	i;
@@ -7176,10 +7088,8 @@ boolean	gen_internal_dope_vector(int_dope_type		*dope_vec,
    |* ORIG_SIZE *|
    \*************/
 
-#ifdef KEY /* Bug 6845 */
    /* If this dope vector could have allocatable components, we need to do
     * something here */
-#endif /* KEY Bug 6845 */
 
    dope_vec->orig_size = 0;
 
@@ -7262,11 +7172,6 @@ void	transform_char_sequence_ref(opnd_type		*top_opnd,
    size_offset_type	num_chars;
    opnd_type   		opnd;
 
-# if 0
-   int			attr_idx;
-   int			bd_idx;
-   int			i;
-# endif
 
    TRACE (Func_Entry, "transform_char_sequence_ref", NULL);
 
@@ -7388,71 +7293,6 @@ REFERENCE:
 
    size_offset_binary_calc(&length, &num_chars, Div_Opr, &num_chars);
 
-# if 0
-   while (TYP_TYPE(type_idx) == Structure) {
-
-      attr_idx = SN_ATTR_IDX(ATT_FIRST_CPNT_IDX(TYP_IDX(type_idx)));
-
-      NTR_IR_TBL(ir_idx);
-      IR_OPR(ir_idx) = Struct_Opr;
-      IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(attr_idx);
-      IR_LINE_NUM(ir_idx) = line;
-      IR_COL_NUM(ir_idx) = col;  
-      COPY_OPND(IR_OPND_L(ir_idx), (*top_opnd));
-      OPND_FLD((*top_opnd)) = IR_Tbl_Idx;
-      OPND_IDX((*top_opnd)) = ir_idx;
-
-      IR_FLD_R(ir_idx) = AT_Tbl_Idx;
-      IR_IDX_R(ir_idx) = attr_idx;
-      IR_LINE_NUM_R(ir_idx) = line;
-      IR_COL_NUM_R(ir_idx)  = col;
-
-      if (ATD_ARRAY_IDX(attr_idx) != NULL_IDX) {
-         bd_idx = ATD_ARRAY_IDX(attr_idx);
-
-         NTR_IR_TBL(ir_idx);
-         IR_OPR(ir_idx) = Subscript_Opr;
-         IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(attr_idx);
-         IR_LINE_NUM(ir_idx) = line;
-         IR_COL_NUM(ir_idx) = col;
-         COPY_OPND(IR_OPND_L(ir_idx), (*top_opnd));
-         OPND_FLD((*top_opnd)) = IR_Tbl_Idx;
-         OPND_IDX((*top_opnd)) = ir_idx;
-
-         NTR_IR_LIST_TBL(list_idx);
-         IR_FLD_R(ir_idx) = IL_Tbl_Idx;
-         IR_IDX_R(ir_idx) = list_idx;
-         IR_LIST_CNT_R(ir_idx) = BD_RANK(bd_idx);
-
-         IL_FLD(list_idx) = BD_LB_FLD(bd_idx, 1);
-         IL_IDX(list_idx) = BD_LB_IDX(bd_idx, 1);
-         IL_LINE_NUM(list_idx) = line;
-         IL_COL_NUM(list_idx)  = col;
-
-         if (IL_FLD(list_idx) == AT_Tbl_Idx) {
-            ADD_TMP_TO_SHARED_LIST(IL_IDX(list_idx));
-         }
-
-         for (i = 2; i <= BD_RANK(bd_idx); i++) {
-
-            NTR_IR_LIST_TBL(IL_NEXT_LIST_IDX(list_idx));
-            IL_PREV_LIST_IDX(IL_NEXT_LIST_IDX(list_idx)) = list_idx;
-            list_idx = IL_NEXT_LIST_IDX(list_idx);
-
-            IL_FLD(list_idx) = BD_LB_FLD(bd_idx, i);
-            IL_IDX(list_idx) = BD_LB_IDX(bd_idx, i);
-            IL_LINE_NUM(list_idx) = line;
-            IL_COL_NUM(list_idx)  = col;
-
-            if (IL_FLD(list_idx) == AT_Tbl_Idx) {
-               ADD_TMP_TO_SHARED_LIST(IL_IDX(list_idx));
-            }
-         }
-      }
-
-      type_idx = ATD_TYPE_IDX(attr_idx);
-   }
-# endif
 
    NTR_IR_TBL(ir_idx);
    IR_OPR(ir_idx) = Substring_Opr;
@@ -8011,11 +7851,9 @@ int gen_sf_dv_whole_def(opnd_type         *r_opnd,
    IL_LINE_NUM(list_idx) = line;
    IL_COL_NUM(list_idx)  = col;
 
-#ifdef KEY /* Bug 6845 */
    /* If this dope vector could have allocatable components, the following
     * code needs to change */
    list_idx = do_alloc_cpnt(line, col, list_idx, 0);
-#endif /* KEY Bug 6845 */
 
    for (i = 1; i <= rank; i++) {
 
@@ -8567,7 +8405,6 @@ int cast_typeless_constant(int		cn_idx,
          /* fill in pad */
          if (zero_pad) {
 #if defined(TARG_X8664) || defined(TARG_MIPS)
-// Bug 1819 (also 10769 for MIPS)
             the_constant[new_word_size-1-i] = 0;
 #else
             the_constant[i] = 0;
@@ -9629,11 +9466,6 @@ void gen_runtime_bounds(int	sub_idx)
             IR_BOUNDS_DONE(sub_idx) = TRUE;
          }
       }
-# if 0
-      else if (IL_VECTOR_SUBSCRIPT(list_idx)) {
-         /* not supported yet. These are pulled off of IO */
-      }
-# endif
       else if (IL_FLD(list_idx) != CN_Tbl_Idx ||
                OPND_FLD(lb_opnd) != CN_Tbl_Idx ||
                OPND_FLD(ub_opnd) != CN_Tbl_Idx) {
@@ -10956,7 +10788,6 @@ static void reshape_reference_subscripts(opnd_type *result_opnd)
 \******************************************************************************/
 
 boolean check_for_legal_define(opnd_type	*top_opnd)
-#ifdef KEY /* Bug 14150 */
 {
   return check_for_legal_assignment_define(top_opnd, FALSE);
 }
@@ -10968,7 +10799,6 @@ boolean check_for_legal_define(opnd_type	*top_opnd)
  */
 boolean check_for_legal_assignment_define(opnd_type *top_opnd,
   boolean pointer_assign)
-#endif /* KEY Bug 14150 */
 {
    int		attr_idx;
    int		col;
@@ -11002,10 +10832,8 @@ boolean check_for_legal_assignment_define(opnd_type *top_opnd,
          ok = FALSE;
       }
       else if (ATD_CLASS(attr_idx) == Dummy_Argument   &&
-#ifdef KEY /* Bug 14150 */
 	       /* "l = expr" is ok, "l => expr" is not */
                ((!ATD_POINTER(attr_idx)) || pointer_assign) &&
-#endif /* KEY Bug 14150 */
                ATD_INTENT(attr_idx) == Intent_In) {
          PRINTMSG(line, 890, Error, col,
                   AT_OBJ_NAME_PTR(attr_idx));
@@ -11287,11 +11115,7 @@ void gen_if_stmt(opnd_type	*cond_opnd,
    int		endif_idx;
    int		if_idx;
    int		save_curr_stmt_sh_idx;
-#ifdef KEY /* Bug 10177 */
    int		type_idx = 0;
-#else /* KEY Bug 10177 */
-   int		type_idx;
-#endif /* KEY Bug 10177 */
 
 # if defined(_HIGH_LEVEL_IF_FORM)
    int		if_sh_idx;

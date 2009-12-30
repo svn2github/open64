@@ -43,7 +43,5 @@ enum    target_values  {Target_Unicos,		Target_Max,
 			Target_Acset,		
 			Target_Dpe,		Target_Irix,
 			Target_Linux,		Target_Sv2,
-#ifdef KEY /* Mac port */
 			Target_Darwin
-#endif /* KEY Mac port */
 			};

@@ -189,9 +189,7 @@ char		*blk_struct_str[]	= {
 	"Contains_Blk",	 		/* Contains_Blk	   		*/
 	"Interface_Blk",		/* Interface_Blk		*/
 	"Derived_Type_Blk",		/* Derived_Type_Blk		*/
-#ifdef KEY /* Bug 10572 */
 	"Enum_Blk"			/* Enum_Blk			*/
-#endif /* KEY Bug 10572 */
 	};
 
 char		*boolean_str[]		= {
@@ -204,9 +202,7 @@ char		*context_str[]		= {
 		"Sub_Func_Stmt_Cat",
 		"Dir_Integer_Stmt_Cat",
 		"Use_Stmt_Cat",
-#ifdef KEY /* Bug 11741 */
 		"Import_Stmt_Cat",
-#endif /* KEY Bug 11741 */
 		"Implicit_None_Stmt_Cat",
 		"Implicit_Stmt_Cat",
 		"Declaration_Stmt_Cat",
@@ -372,12 +368,10 @@ char		*intrin_str[]		= {
 				"Cvmgp_Intrinsic",
 				"Cvmgt_Intrinsic",
 				"Cvmgz_Intrinsic",
-#ifdef KEY /* Bug 14150 */
 				"C_F_Pointer_Intrinsic",
 				"C_F_Procpointer_Intrinsic",
 				"C_Funloc_Intrinsic",
 				"C_Loc_Iso_Intrinsic",
-#endif /* KEY Bug 14150 */
 				"C_Loc_Intrinsic",
 				"Dabs_Intrinsic",
 				"Dacos_Intrinsic",
@@ -399,10 +393,8 @@ char		*intrin_str[]		= {
 				"Dcosh_Intrinsic",
 				"Dcot_Intrinsic",
 				"Ddim_Intrinsic",
-#ifdef KEY /* Bug 1329 */
 				"Derf_Intrinsic",
 				"Derfc_Intrinsic",
-#endif /* KEY Bug 1329 */
 				"Dexp_Intrinsic",
 				"Dfloat_Intrinsic",
 				"Dfloati_Intrinsic",
@@ -444,27 +436,19 @@ char		*intrin_str[]		= {
 				"Dtan_Intrinsic",
 				"Dtand_Intrinsic",
 				"Dtanh_Intrinsic",
-# ifdef KEY
 				"Dtime_Intrinsic",
-# endif
 				"Enable_Ieee_Interrupt_Intrinsic",
 				"Eoshift_Intrinsic",
 				"Epsilon_Intrinsic",
 				"Eqv_Intrinsic",
-#ifdef KEY /* Bug 1324 */
 				"Erf_Intrinsic",
 				"Erfc_Intrinsic",
-#endif /* KEY Bug 1324 */
-#ifdef KEY /* Bug 3018 */
 				"Etime_Intrinsic",
-#endif /* KEY Bug 3018 */
 				"Exit_Intrinsic",
 				"Exp_Intrinsic",
 				"Exponent_Intrinsic",
 				"Fcd_Intrinsic",
-# ifdef KEY
 				"Fdate_Intrinsic",
-# endif
 				"Fetch_And_Add_Intrinsic",
 				"Fetch_And_And_Intrinsic",
 				"Fetch_And_Nand_Intrinsic",
@@ -476,15 +460,11 @@ char		*intrin_str[]		= {
 				"Floatj_Intrinsic",
 				"Floatk_Intrinsic",
 				"Floor_Intrinsic",
-# ifdef KEY
 				"Fnum_Intrinsic",
-# endif
 				"Fp_Class_Intrinsic",
 				"Fraction_Intrinsic",
 				"Free_Intrinsic",
-#ifdef KEY
                                 "Fstat_Intrinsic",
-#endif
 				"Getpos_Intrinsic",
 				"Get_Ieee_Exceptions_Intrinsic",
 				"Get_Ieee_Interrupts_Intrinsic",
@@ -518,9 +498,7 @@ char		*intrin_str[]		= {
 				"Ifix_Intrinsic",
 				"Iiabs_Intrinsic",
 				"Iiand_Intrinsic",
-#ifdef KEY /* Enum value itself predates KEY, but this string was missing */
 				"Iibchng_Intrinsic",
-#endif
 				"Iibclr_Intrinsic",
 				"Iibits_Intrinsic",
 				"Iibset_Intrinsic",
@@ -564,9 +542,7 @@ char		*intrin_str[]		= {
 				"Jdate_Intrinsic",
 				"Jiabs_Intrinsic",
 				"Jiand_Intrinsic",
-#ifdef KEY /* Enum value itself predates KEY, but this string was missing */
 				"Jibchng_Intrinsic",
-#endif
 				"Jibclr_Intrinsic",
 				"Jibits_Intrinsic",
 				"Jibset_Intrinsic",
@@ -589,9 +565,7 @@ char		*intrin_str[]		= {
 				"Jnot_Intrinsic",
 				"Kiabs_Intrinsic",
 				"Kiand_Intrinsic",
-#ifdef KEY /* Enum value itself predates KEY, but this string was missing */
 				"Kibchng_Intrinsic",
-#endif
 				"Kibclr_Intrinsic",
 				"Kibits_Intrinsic",
 				"Kibset_Intrinsic",
@@ -599,9 +573,7 @@ char		*intrin_str[]		= {
 				"Kidint_Intrinsic",
 				"Kieor_Intrinsic",
 				"Kifix_Intrinsic",
-#ifdef KEY
 				"Kill_Intrinsic",
-#endif
 				"Kind_Intrinsic",
 				"Kint_Intrinsic",
 				"Kior_Intrinsic",
@@ -621,9 +593,6 @@ char		*intrin_str[]		= {
 				"Len_Intrinsic",
 				"Length_Intrinsic",
 				"Len_Trim_Intrinsic",
-#ifndef KEY	/* Remove duplicate string entry */
-				"Length_Intrinsic",
-#endif
 				"Lge_Intrinsic",
 				"Lgt_Intrinsic",
 				"Lle_Intrinsic",
@@ -671,35 +640,25 @@ char		*intrin_str[]		= {
 				"Null_Intrinsic",
 				"Numarg_Intrinsic",
 				"Num_Images_Intrinsic",
-#ifdef KEY
                                 "Omp_Destroy_Lock_Intrinsic",
                                 "Omp_Destroy_Nest_Lock_Intrinsic",
-#endif
 				"Omp_Get_Dynamic_Intrinsic",
 				"Omp_Get_Max_Threads_Intrinsic",
 				"Omp_Get_Nested_Intrinsic",
 				"Omp_Get_Num_Procs_Intrinsic",
 				"Omp_Get_Num_Threads_Intrinsic",
 				"Omp_Get_Thread_Num_Intrinsic",
-#ifdef KEY
                                 "Omp_Get_Wtick_Intrinsic",
                                 "Omp_Get_Wtime_Intrinsic",
                                 "Omp_Init_Lock_Intrinsic",
                                 "Omp_Init_Nest_Lock_Intrinsic",
-#endif
 				"Omp_In_Parallel_Intrinsic",
 				"Omp_Set_Lock_Intrinsic",
-#ifdef KEY
 				"Omp_Set_Nest_Lock_Intrinsic",
-#endif
 				"Omp_Test_Lock_Intrinsic",
-#ifdef KEY
 				"Omp_Test_Nest_Lock_Intrinsic",
-#endif
 				"Omp_Unset_Lock_Intrinsic",
-#ifdef KEY
 				"Omp_Unset_Nest_Lock_Intrinsic",
-#endif
 				"Or_Intrinsic",
 				"Or_And_Fetch_Intrinsic",
 				"Pack_Intrinsic",
@@ -780,9 +739,7 @@ char		*intrin_str[]		= {
 				"Shiftr_Intrinsic",
 				"Short_Intrinsic",
 				"Sign_Intrinsic",
-#ifdef KEY
 				"Signal_Intrinsic",
-#endif
 				"Sin_Intrinsic",
 				"Sind_Intrinsic",
 				"Sinh_Intrinsic",
@@ -793,9 +750,7 @@ char		*intrin_str[]		= {
 				"Spacing_Intrinsic",
 				"Spread_Intrinsic",
 				"Sqrt_Intrinsic",
-#ifdef KEY
                                 "Stat_Intrinsic",
-#endif
 				"Sub_And_Fetch_Intrinsic",
 				"Sum_Intrinsic",
 				"Synchronize_Intrinsic",
@@ -808,10 +763,8 @@ char		*intrin_str[]		= {
                                 "Test_Ieee_Interrupt_Intrinsic",
 				"This_Image_Intrinsic",
 				"Time_Intrinsic",
-#ifdef KEY
 				"Time4_Intrinsic",
 				"Time8_Intrinsic",
-#endif
 				"Tiny_Intrinsic",
 				"Transfer_Intrinsic",
 				"Transpose_Intrinsic",
@@ -823,24 +776,17 @@ char		*intrin_str[]		= {
                                 "Write_Memory_Barrier_Intrinsic",
 				"Xor_Intrinsic",
 				"Xor_And_Fetch_Intrinsic", 
-# ifdef KEY
+
 				"Zabs_Intrinsic",
 				"Zcos_Intrinsic",
 				"Zexp_Intrinsic",
 				"Zlog_Intrinsic",
 				"Zsin_Intrinsic",
 				"Zsqrt_Intrinsic",
-# endif
-#ifdef KEY /* Bug 1683 */
 				"Pathf90_Intrinsic",
-#endif /* KEY Bug 1683 */
-#ifdef KEY /* Bug 5089 */
 				"True_Intrinsic",
 				"Support_Uflow_Intrinsic",
-#endif /* KEY Bug 5089 */
-#ifdef KEY /* F2003 */
 				"Newline_Intrinsic"
-#endif /* KEY F2003 */
 		};
 
 char		*msg_lvl_str[]		= {
@@ -1395,16 +1341,10 @@ char		*operator_str[]		= {
 			"Copyin_Bound_Opr",
 			"Preferstream_Nocinv_Opr",
 
-#ifdef KEY /* Bug 1324 */
 			"Erf_Opr",
 			"Erfc_Opr",
-#endif /* KEY Bug 1324 */
-#ifdef KEY /* Bug 2660 */
 		 	"Options_Dir_Opr",
-#endif /* KEY Bug 2660 */
-#ifdef KEY /* Bug 10410 */
 		 	"Cselect_Opr",
-#endif /* KEY Bug 10410 */
                         "The_Last_Opr"
 		};
 
@@ -1472,9 +1412,7 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Kwd_Assignment",	/* Tok_Kwd_Assignment	*/
 			"Tok_Kwd_Automatic",	/* Tok_Kwd_Automatic	*/
 			"Tok_Kwd_Backspace",	/* Tok_Kwd_Backspace	*/
-#ifdef KEY /* Bug 10572 */
 			"Tok_Kwd_Bind",		/* Tok_Kwd_Bind    	*/
-#endif /* KEY Bug 10572 */
 			"Tok_Kwd_Block",	/* Tok_Kwd_Block	*/
 			"Tok_Kwd_Buffer",	/* Tok_Kwd_Buffer	*/
 			"Tok_Kwd_Byte",		/* Tok_Kwd_Byte		*/
@@ -1500,10 +1438,8 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Kwd_Encode",	/* Tok_Kwd_Encode	*/
 			"Tok_Kwd_End",		/* Tok_Kwd_End		*/
 			"Tok_Kwd_Entry",	/* Tok_Kwd_Entry	*/
-#ifdef KEY /* Bug 10572 */
 			"Tok_Kwd_Enum",		/* Tok_Kwd_Enum    	*/
 			"Tok_Kwd_Enumerator",	/* Tok_Kwd_Enumerator  	*/
-#endif /* KEY Bug 10572 */
 			"Tok_Kwd_Equivalence",	/* Tok_Kwd_Equivalence	*/
 			"Tok_Kwd_Exit",		/* Tok_Kwd_Exit		*/
 			"Tok_Kwd_External",	/* Tok_Kwd_External	*/
@@ -1514,9 +1450,7 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Kwd_Go",		/* Tok_Kwd_Go		*/
 			"Tok_Kwd_If",		/* Tok_Kwd_If		*/
 			"Tok_Kwd_Implicit",	/* Tok_Kwd_Implicit	*/
-#ifdef KEY /* Bug 11741 */
 			"Tok_Kwd_Import",	/* Tok_Kwd_Import	*/
-#endif /* KEY Bug 11741 */
 			"Tok_Kwd_In",		/* Tok_Kwd_In		*/
 			"Tok_Kwd_Inquire",	/* Tok_Kwd_Inquire	*/
 			"Tok_Kwd_Integer",	/* Tok_Kwd_Integer	*/
@@ -1527,14 +1461,10 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Kwd_Len",		/* Tok_Kwd_Len		*/
 			"Tok_Kwd_Logical",	/* Tok_Kwd_Logical	*/
 			"Tok_Kwd_Module",	/* Tok_Kwd_Module	*/
-#ifdef KEY /* Bug 10572 */
 			"Tok_Kwd_Name",		/* Tok_Kwd_Name    	*/
-#endif /* KEY Bug 10572 */
 			"Tok_Kwd_Namelist",	/* Tok_Kwd_Namelist	*/
 			"Tok_Kwd_None",		/* Tok_Kwd_None		*/
-#ifdef KEY /* Bug 5089 */
 			"Tok_Kwd_Nonintrinsic",	/* Tok_Kwd_Nonintrinsic */
-#endif /* KEY Bug 5089 */
 			"Tok_Kwd_Nullify",	/* Tok_Kwd_Nullify	*/
 			"Tok_Kwd_Only",		/* Tok_Kwd_Only		*/
 			"Tok_Kwd_Open",		/* Tok_Kwd_Open		*/
@@ -1572,9 +1502,7 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Kwd_Type",		/* Tok_Kwd_Type		*/
 			"Tok_Kwd_Use",		/* Tok_Kwd_Use		*/
 			"Tok_Kwd_Undefined",	/* Tok_Kwd_Undefined	*/
-#ifdef KEY /* Bug 14150 */
 			"Tok_Kwd_Value",	/* Tok_Kwd_Value	*/
-#endif /* KEY Bug 14150 */
 			"Tok_Kwd_Volatile",	/* Tok_Kwd_Volatile	*/
 			"Tok_Kwd_Where",	/* Tok_Kwd_Where	*/
 			"Tok_Kwd_While",	/* Tok_Kwd_While	*/
@@ -1711,7 +1639,6 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Mic_Wait",		/* Tok_Mic_Wait		*/
 			"Tok_Mic_End",		/* Tok_Mic_End-marker 	*/
 
-			/* the following is added by jhs, 2004/03/08 */
 			"Tok_SGI_Dir_Start",		/* Start of SGI directives    */
 			"Tok_SGI_Dir_Affinity",		/* AFFINITY		      */
 			"Tok_SGI_Dir_Aggressiveinner",	/* AGGRESSIVEINNERLOOPFUSION  */
@@ -1808,9 +1735,7 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_SGI_Dir_Onto",		/* ONTO			      */
 			"Tok_SGI_Dir_Opaque",		/* OPAQUE       	      */
 			"Tok_SGI_Dir_Optional",		/* OPTIONAL     	      */
-#ifdef KEY /* Bug 2660 */
 			"Tok_SGI_Dir_Options",		/* OPTIONS     	      */
-#endif /* KEY Bug 2660 */
 			"Tok_SGI_Dir_Ordered",		/* ORDERED		      */
 			"Tok_SGI_Dir_Page",      	/* PAGE      		      */
 			"Tok_SGI_Dir_Page_Place",	/* PAGE_PLACE		      */
@@ -1864,7 +1789,7 @@ char		*token_value_str[Tok_LAST+1]	= {
                 	"Tok_Open_Mp_Dir_Atomic",	/* ATOMIC                     */
                 	"Tok_Open_Mp_Dir_Barrier",	/* BARRIER                    */
                 	"Tok_Open_Mp_Dir_Copyin",	/* COPYIN                     */
-                	"Tok_Open_Mp_Dir_Copyprivate",	/* COPYPRIVATE          */ /* by jhs, 02/7/5 */
+                	"Tok_Open_Mp_Dir_Copyprivate",	/* COPYPRIVATE                */ 
                 	"Tok_Open_Mp_Dir_Critical",	/* CRITICAL                   */
                 	"Tok_Open_Mp_Dir_Data",		/* DATA                       */
                 	"Tok_Open_Mp_Dir_Default",	/* DEFAULT                    */
@@ -1914,7 +1839,6 @@ char		*token_value_str[Tok_LAST+1]	= {
                 	"Tok_Open_Mp_Dir_Threadprivate",  /* THREADPRIVATE              */
                 	"Tok_Open_Mp_Dir_Workshare", /* WORKSHARE */ 
                 	"Tok_Open_Mp_Dir_End",            /* End of Open Mp directives  */
-                	/* the above is added by jhs, 04/03/08 */
 			
 			"Tok_Dbg_Sytb",		/* Tok_Dbg_Sytb		*/
 			"Tok_Dbg_Stmt",		/* Tok_Dbg_Stmt		*/
@@ -2330,41 +2254,15 @@ static char	*dv_whole_def_str[] = {
 			"TYPE_CODE",
 			"ORIG_BASE",
 			"ORIG_SIZE",
-#ifdef KEY /* Bug 6845 */
 			"ALLOC_CPN",
-#else /* KEY Bug 6845 */
-			"DIM %d LB",
-			"DIM %d EX",
-			"DIM %d SM",
-                        "DIM %d LB",
-                        "DIM %d EX",
-                        "DIM %d SM",
-                        "DIM %d LB",
-                        "DIM %d EX",
-                        "DIM %d SM",
-                        "DIM %d LB",
-                        "DIM %d EX",
-                        "DIM %d SM",
-                        "DIM %d LB",
-                        "DIM %d EX",
-                        "DIM %d SM",
-                        "DIM %d LB",
-                        "DIM %d EX",
-                        "DIM %d SM",
-                        "DIM %d LB",
-                        "DIM %d EX",
-                        "DIM %d SM"
-#endif /* KEY Bug 6845 */
 		};
 
-#ifdef KEY /* Bug 6845 */
 static char *dv_whole_def_bound_str[] = {
 			"DIM %d LB",
 			"DIM %d EX",
 			"DIM %d SM"
 		};
 static char *dv_whole_def_alloc_cpnt_str = "ALLOC CPNT %d OFFSET";
-#endif /* KEY Bug 6845 */
 
 static char *open_mp_dir_opr_str[] = {
                          "IF clause",

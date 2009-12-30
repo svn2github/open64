@@ -100,7 +100,6 @@ static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_dst.cxx $ $Revision: 1.40
 #include "cwh_auxst.h"
 #include "cwh_types.h"
 #include "sgi_cmd_line.h"
-#ifdef KEY 
 // for tolower
 #include <ctype.h>
 #include "stamp.h"      /* For INCLUDE_STAMP */
@@ -109,8 +108,6 @@ static char *rcs_id = "$Source: crayf90/sgi/SCCS/s.cwh_dst.cxx $ $Revision: 1.40
 #include <sys/param.h>  /* For MAXHOSTNAMELEN */
 #define MAX_CWD_CHARS (256 - (MAXHOSTNAMELEN+1))
 static char  cwd_buffer[MAX_CWD_CHARS+MAXHOSTNAMELEN+1];
-#endif // KEY
-#ifdef KEY /* Bug 3507 */
 #include <string>
 #include <set>
 using namespace std;
@@ -120,7 +117,6 @@ using namespace std;
  * common blocks. */
 typedef set<string> module_set_t;
 static module_set_t module_set;
-#endif /* KEY Bug 3507 */
 
 char *FE_command_line = NULL;
 
@@ -140,23 +136,9 @@ extern void
 cwh_dst_init_file(char *src_path)
 {
   char         *comp_info = NULL;
-#ifndef KEY /* bug 12559 */
-  char         *file ;
-#endif /* bug 12559 */
 
   DST_Init(NULL,0) ;
 
-#ifndef KEY
-  file = strrchr(src_path,'/');
-
-  comp_info = cwh_dst_get_command_line_options(); 
-
-  comp_unit_idx = DST_mk_compile_unit(++(file),
-				      current_host_dir,
-				      comp_info,
-				      DW_LANG_Fortran90,
-				      DW_ID_case_insensitive);
-#else
   // Bug 178 - AT_producer should be the name of the compiler and version info
   comp_info = (char *)malloc(sizeof(char)*100);
   strcpy(comp_info, "pathf90 ");
@@ -204,7 +186,6 @@ cwh_dst_init_file(char *src_path)
 				      comp_info,
 				      DW_LANG_Fortran90,
 				      DW_ID_case_insensitive);
-#endif
 
   (void) cwh_dst_enter_path(src_path);
   free (comp_info);
@@ -238,7 +219,6 @@ cwh_dst_write(void)
 
 }
 
-#ifdef KEY /* Bug 3507 */
 /* Downshift "name" in place and return "name" */
 static char *
 downshift(char *name) {
@@ -272,7 +252,6 @@ delete_trailing_underscores(char *name) {
   return name;
 }
 
-#endif /* KEY Bug 3507 */
 
 static void 
 cwh_dst_process_var (UINT32, ST* st)
@@ -301,9 +280,7 @@ static void
 cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
 {
    DST_CONST_VALUE	cval;
-#ifdef KEY /* Bug 10177 */
    memset(&cval, 0, sizeof(cval));
-#endif /* KEY Bug 10177 */
    USRCPOS		s;
    int			exit	= 0;
    DST_INFO_IDX		i,t ;
@@ -371,11 +348,6 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
       exit = 1;
       break;
 
-# if 0
-      DST_CONST_VALUE_form(cval) = DST_FORM_STRING;
-      DST_CONST_VALUE_form_string(cval) =
-           DST_mk_string (Index_to_char_array (TCON_str_idx (ST_tcon_val(st))));
-# endif
 
    case MTYPE_UNKNOWN: 
 
@@ -385,7 +357,6 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
            DST_mk_string (Index_to_char_array (TCON_str_idx (ST_tcon_val(st))));
       }
       break; 
-#ifdef KEY
       // The Dwarf producer document does not provide any guidelines as to how 
       // to represent complex number value. Given the type declaration of 
       // cval.value it is impossible to represent the real and imaginary parts
@@ -401,7 +372,6 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
       DST_CONST_VALUE_form_crdata8(cval) = TCON_i0(Tcon_Table[ST_tcon(st)]);
       DST_CONST_VALUE_form_cidata8(cval) = TCON_ci0(Tcon_Table[ST_tcon(st)]);
       break;
-#endif // KEY
    }
 
    if (exit == 1) return;  /* Type is not implemented. */
@@ -412,13 +382,6 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
    ptr = strtok(name, " ");
 
    while (ptr != NULL) {
-#ifndef KEY
-      i = DST_mk_constant_def(s,
-                              ptr,
-                              t,
-                              cval,
-                              FALSE);
-#else
       INT j;
       for (j = 0; ptr && j < strlen(ptr); j ++)
 	ptr[ j ] = tolower(ptr[ j ]);
@@ -428,21 +391,17 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
 				TRUE,
 				FALSE,
 				cval);
-#endif
       DST_append_child(current_scope_idx,i);
       ptr = strtok(NULL, " ");
    }
-#ifdef KEY /* Bug 4901 */
    /* There is a single ST for all named constants having a particular value,
     * across all program units. Now that we have generated Dwarf for all
     * the names in the current program unit, get rid of those names so we
     * can start afresh in the next program unit. */
    cwh_auxst_clear_stem_name(st);
-#endif /* KEY Bug 4901 */
    return;
 }
 
-#ifdef KEY /* Bug 3507 */
 /*===================================================
  *
  * cwh_dst_enter_module
@@ -520,7 +479,6 @@ unnamed_main(PU &pu, ST *st) {
 # define ANON_NAME "main___"
   return unmangled_name && 0 == strcmp(unmangled_name, ANON_NAME);
 }
-#endif /* KEY Bug 3507 */
 
 /*===================================================
  *
@@ -550,7 +508,6 @@ cwh_dst_enter_pu(ST *en)
 
   current_scope_idx = cwh_dst_mk_func(en);
 
-#ifdef KEY /* Bug 3507 */
   DST_INFO_IDX parent_idx = ( !DST_ARE_EQUAL(DST_INVALID_IDX,current_module_idx)) ?
     current_module_idx :
     comp_unit_idx;
@@ -559,9 +516,6 @@ cwh_dst_enter_pu(ST *en)
   /* Intel, g77, PGI don't emit this extra entry, and it messes up the handling
    * of named programs */
   if (0) /* if (PU_is_mainpu(pu) && !unnamed_main(pu, en)) */
-#else /* KEY Bug 3507 */
-  if (PU_is_mainpu(pu)) 
-#endif /* KEY Bug 3507 */
     cwh_dst_mk_MAIN(GET_MAIN_ST(),current_scope_idx);
 
   /* nested? so is dwarf. Save idx until parent appears */
@@ -573,21 +527,13 @@ cwh_dst_enter_pu(ST *en)
 
     cwh_dst_inner_read_DSTs(current_scope_idx);
     cwh_dst_inner_clear_DSTs();
-#ifdef KEY /* Bug 3507 */
     DST_append_child(parent_idx,current_scope_idx);
-#else /* KEY Bug 3507 */
-    DST_append_child(comp_unit_idx,current_scope_idx);
-#endif /* KEY Bug 3507 */
   }
 
   al = NULL ;
   while ((al = GET_NEXT_ALTENTRY(en,al)) != NULL) {
     i = cwh_dst_mk_func(I_element(al));
-#ifdef KEY /* Bug 3507 */
     DST_append_child(parent_idx,i);
-#else /* KEY Bug 3507 */
-    DST_append_child(comp_unit_idx,i);
-#endif /* KEY Bug 3507 */
   }
 
 
@@ -613,13 +559,9 @@ cwh_dst_enter_pu(ST *en)
 
     if (PU_lexical_level(pu) == 2)
       while ((parm = GET_NEXT_PARAMETER(en,parm)) != NULL) 
-#ifdef KEY /* Bug 3507 */
       {
-#endif /* KEY Bug 3507 */
 	cwh_dst_process_var(1, I_element(parm));
-#ifdef KEY /* Bug 3507 */
       }
-#endif /* KEY Bug 3507 */
 
   }
 
@@ -660,7 +602,6 @@ cwh_dst_mk_func(ST * st)
   s = GET_ST_LINENUM(st);
 
   l = NULL;  
-#ifdef KEY /* Bug 2672, 3507 */
   // Bug 2672: For anonymous main program, we use the mangled name in Dwarf
   // so as to match the assembly name
   // Bug 3507: For explicitly named main program, use the explicit name
@@ -669,31 +610,18 @@ cwh_dst_mk_func(ST * st)
     p = ST_name(st);			/* e.g. ABC.in.MYMODULE or MAIN__ */
   else
     p = GET_MODIFIED_NAME(st);		/* e.g. ABC or main___ */
-#else
-  p = GET_MODIFIED_NAME(st);
-#endif /* KEY Bug 3672, 3507 */
   if (p != NULL) {
-#ifdef KEY /* Bug 3507 */
     /* We want lower case. If we ever add a case-sensitive option, we will
      * need to eliminate this and change the compiler symtab to downshift
      * not upshift symbols when in standard case-insensitive mode. */
     r = downshift(l = strdup(p));
-#else /* KEY Bug 3507 */
-    r = p ;
-#endif /* KEY Bug 3507 */
 
   } else {
     r = ST_name(st);
     n = strlen(r);
 
     if (r[n-1] == '_') {
-#ifdef KEY /* Bug 3507 */
       r = delete_trailing_underscores(l = strdup(r));
-#else /* KEY Bug 3507 */
-      l = strdup(r);
-      l[n-1] = '\0';
-      r = l ;
-#endif /* KEY Bug 3507 */
     }
   }
 
@@ -714,16 +642,10 @@ cwh_dst_mk_func(ST * st)
 			  0,	       
 			  FALSE, 
 			  FALSE, 
-#ifdef KEY
                           FALSE,
-#endif
 			  TRUE); 
 
-#ifdef KEY /* Bug 3507 */
     if (p != NULL && !is_unnamed_main) 
-#else /* KEY Bug 3507 */
-    if (p != NULL && !PU_is_mainpu(pu)) 
-#endif /* KEY Bug 3507 */
       DST_add_linkage_name_to_subprogram(i,ST_name(st));
   }
     
@@ -770,16 +692,13 @@ cwh_dst_mk_MAIN(ST *mn, DST_INFO_IDX en_idx)
 			   0,	       
 			   TRUE,
 			   FALSE, 
-#ifdef KEY
                            FALSE,
-#endif
 			   TRUE); 
 
     DST_append_child(comp_unit_idx,i);
   }
 }
 
-#ifdef KEY
 // Bug 3704 - generate DW_TAG for namlist and namelist items
 
 static void
@@ -821,9 +740,7 @@ cwh_dst_mk_namelist_item(ST *st, DST_INFO_IDX  parent)
   DST_append_child(parent,i);
   return;
 }
-#endif
 
-#ifdef KEY /* Bug 3507 */
 /*
  * Global uninitialized data from a module appears in a common block
  * named something like:
@@ -942,7 +859,6 @@ emit_import(ST *st, char *module_name, DST_INFO_IDX parent)
     DST_append_child(parent, j);
     }
 }
-#endif /* KEY Bug 3507 */
 
 /*===================================================
  *
@@ -967,7 +883,6 @@ cwh_dst_mk_var(ST * st,DST_INFO_IDX  parent)
   DST_INFO_IDX i ; 
   DST_INFO_IDX j ;
 
-#ifdef KEY
   if (ST_is_namelist(st)) {
     LIST* l;
     ITEM* item;
@@ -987,7 +902,6 @@ cwh_dst_mk_var(ST * st,DST_INFO_IDX  parent)
     }
     return;
   }
-#endif
   Top_ST = st ;
   Making_FLD_DST = FALSE;
 
@@ -1004,7 +918,6 @@ cwh_dst_mk_var(ST * st,DST_INFO_IDX  parent)
 
   case SCLASS_COMMON:
   case SCLASS_DGLOBAL:
-#ifdef KEY /* Bug 3507 */
     /*
      * If an external or module procedure has a nested procedure, it
      * puts its static local variables in a faked-up common block. Emit
@@ -1053,15 +966,6 @@ cwh_dst_mk_var(ST * st,DST_INFO_IDX  parent)
 	DST_append_child(parent,i);
       }
     }
-#else /* KEY Bug 3507 */
-    i = cwh_dst_mk_common(st);
-    if (!DST_IS_NULL(i)) {
-      j = cwh_dst_mk_common_inclusion(st,i);
-
-      DST_append_child(parent,j);
-      DST_append_child(parent,i);
-    }
-#endif /* KEY Bug 3507 */
     break;
 
   default:
@@ -1073,14 +977,10 @@ cwh_dst_mk_var(ST * st,DST_INFO_IDX  parent)
         DST_append_child(parent,i);
       }
     } else if  (!ST_is_temp_var(st)) {
-#ifndef KEY
-      if (* ST_name(st) != '@')
-#else
       // Bug 4834 - do not create DST entry for t$ variables which are 
       // probably compiler generated temporaries (used in I/O statements).
       if (* ST_name(st) != '@' &&
 	  strncmp(ST_name(st), "t$", sizeof(char)*2) != 0)
-#endif
       {
 	Top_ST_has_dope = cwh_dst_has_dope(ST_type(st));
 	i = cwh_dst_mk_variable(st);
@@ -1134,7 +1034,6 @@ cwh_dst_mk_variable(ST * st)
   } else 
     t = cwh_dst_mk_type(d);
 
-#ifdef KEY
   INT len = ST_name(st)?strlen(ST_name(st))+1:0;
   INT j;
   char name[len];
@@ -1153,18 +1052,6 @@ cwh_dst_mk_variable(ST * st)
 		      ST_sclass(st) == SCLASS_AUTO,
 		      FALSE, 
 		      ST_auxst_is_tmp(st));
-#else
-  i = DST_mk_variable(s,
-		      ST_name(st),
-		      t,
-		      0,
-		      ST_st_idx(st),
-		      DST_INVALID_IDX,
-		      FALSE,
-		      ST_sclass(st) == SCLASS_AUTO,
-		      FALSE, 
-		      ST_auxst_is_tmp(st));
-#endif /* KEY */
   if (ST_auxst_is_assumed_size(st)) {
      DST_SET_assumed_size(DST_INFO_flag(DST_INFO_IDX_TO_PTR(i)));
   }
@@ -1261,7 +1148,6 @@ cwh_dst_mk_formal(ST * st)
   } else 
     t = cwh_dst_mk_type(ta);
 
-#ifdef KEY
   INT j;
   INT len = ST_name(st) ? strlen(ST_name(st))+1:0;
   char name[len];
@@ -1280,18 +1166,6 @@ cwh_dst_mk_formal(ST * st)
 			      FALSE,
 			      generated,
 			      FALSE);          /* is_declaration_only */
-#else
-  i = DST_mk_formal_parameter(s,
-			      ST_name(st),
-			      t,
-			      (void *)(INTPTR) ba,
-			      DST_INVALID_IDX,
-			      DST_INVALID_IDX,
-			      FALSE, /* FIX optional */
-			      FALSE,
-			      generated,
-			      FALSE);          /* is_declaration_only */
-#endif /* KEY */
 
 #ifndef TARG_X8664
   if (IS_DOPE_TY(ta)) {
@@ -1359,15 +1233,11 @@ cwh_dst_mk_common_inclusion(ST * com, DST_INFO_IDX c)
  *===================================================
 */
 static DST_INFO_IDX
-#ifdef KEY /* Bug 3507 */
 /* If parent is not DST_INVALID_IDX, then refrain from emitting the common
  * block itself, and attach all of the common variables directly to "parent"
  * instead. This is used to eliminate faked-up common blocks which represent
  * global variables in modules.  */
 cwh_dst_mk_common(ST * st, DST_INFO_IDX parent)
-#else /* KEY Bug 3507 */
-cwh_dst_mk_common(ST * st)
-#endif /* KEY Bug 3507 */
 {
   BOOL           dr;
   DST_VARIABLE	*def_attr;
@@ -1388,32 +1258,19 @@ cwh_dst_mk_common(ST * st)
 
   DevAssert((TY_kind(ty) == KIND_STRUCT),("DST complains about common"));
 
-#ifdef KEY
   INT j;
   INT len = ST_name(st) ? strlen(ST_name(st))+1:0;
   char name[len];
   if (len) {
     strcpy(name, ST_name(st));
-#ifdef KEY /* Bug 3507 */
     downshift(delete_trailing_underscores(name));
-#else /* KEY Bug 3507 */
-    for (j = 0; j < len; j ++)
-      name[ j ] = tolower(name[ j ]);
-#endif /* KEY Bug 3507 */
   }
-# ifdef KEY /* Bug 3507 */
   if ( DST_ARE_EQUAL(DST_INVALID_IDX,parent) ) {
     i = DST_mk_common_block(name,ST_st_idx(st)); 
   }
   else {
     i = parent;
   }
-# else /* KEY Bug 3507 */
-  i = DST_mk_common_block(name,(void*) ST_st_idx(st)); 
-# endif /* KEY Bug 3507 */
-#else
-  i = DST_mk_common_block(ST_name(st),(void*) (INTPTR)ST_st_idx(st)); 
-#endif /* KEY */
    
   e = NULL ;
 
@@ -1438,7 +1295,6 @@ cwh_dst_mk_common(ST * st)
     } else
       t = cwh_dst_mk_type(te);
 
-#ifdef KEY
     INT j;
     INT len = ST_name(el) ? strlen(ST_name(el))+1:0;
     char name[len];
@@ -1452,13 +1308,6 @@ cwh_dst_mk_common(ST * st)
 			     t,
 			     ST_st_idx(st),
 			     ST_ofst(el)) ;
-#else
-    m = DST_mk_variable_comm(s,
-			     ST_name(el),
-			     t,
-			     (void *)(INTPTR) ST_st_idx(st),
-			     ST_ofst(el)) ;
-#endif /* KEY */
 
     if (dr) {
        def_info     = DST_INFO_IDX_TO_PTR(m);
@@ -1613,21 +1462,6 @@ cwh_dst_mk_subroutine_type(TY_IDX  ty)
   t = cwh_dst_basetype(Be_Type_Tbl(MTYPE_V));
 /*   t = cwh_dst_mk_type(TY_ret_type(ty)); TODO fix with scope */
 
-#if 0
-  if (!DST_IS_NULL(t)) {
-
-    USRCPOS_clear(s);
-    
-    i = DST_mk_subroutine_type(s,
-			       NULL,
-			       t,
-			       DST_INVALID_IDX,
-			       FALSE);
-
-  }
-  DST_append_child(current_scope_idx,i);
-  return i;
-#endif
   return t ;
 }
 
@@ -1703,7 +1537,6 @@ cwh_dst_struct_type(TY_IDX ty)
   
   if (DST_IS_NULL(i) || Top_ST_has_dope) {
 
-#ifdef KEY
     INT len = TY_name(ty)?strlen(TY_name(ty))+1:0;
     INT j;
     char name[len];
@@ -1717,13 +1550,6 @@ cwh_dst_struct_type(TY_IDX ty)
 			      TY_size(ty),
 			      DST_INVALID_IDX, 
 			      FALSE);
-#else
-    i = DST_mk_structure_type(s,
-			      TY_name(ty),
-			      TY_size(ty),
-			      DST_INVALID_IDX, 
-			      FALSE);
-#endif
 
     Top_ST_has_dope = FALSE;
     cwh_dst_struct_set_DST(ty,i) ;
@@ -2071,7 +1897,6 @@ cwh_dst_member(FLD_HANDLE fld, DST_INFO_IDX parent)
    else
     t = cwh_dst_mk_type(ty);
 
-#ifdef KEY
   INT len = FLD_name(fld)?strlen(FLD_name(fld))+1:0;
   INT j;
   char name[len];
@@ -2091,19 +1916,6 @@ cwh_dst_member(FLD_HANDLE fld, DST_INFO_IDX parent)
 		    FALSE, 
 		    FALSE,
 		    FALSE);
-#else
-  i = DST_mk_member(s,
-		    FLD_name(fld),
-		    t,
-		    FLD_ofst(fld),
-		    0, 
-		    FLD_bofst(fld),
-		    FLD_bsize(fld),
-		    FLD_is_bit_field(fld),
-		    FALSE, 
-		    FALSE,
-		    FALSE);
-#endif
 
   if (dope) {
      def_info     = DST_INFO_IDX_TO_PTR(i);
@@ -2494,11 +2306,7 @@ DST_set_assoc_idx(INT32 dummy,
 		  DST_INFO_IDX inode)
 {
    DST_INFO       *node;
-#ifdef KEY /* Bug 10177 */
    DST_ASSOC_INFO *assoc = 0;
-#else /* KEY Bug 10177 */
-   DST_ASSOC_INFO *assoc;
-#endif /* KEY Bug 10177 */
    mINT32	  level, index;
    ST_IDX         st;
    

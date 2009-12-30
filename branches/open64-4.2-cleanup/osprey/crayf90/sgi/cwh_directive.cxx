@@ -161,11 +161,7 @@ fei_task_var( INTPTR	sym_idx,
 {
   STB_pkt *p;
   WN *wn;
-#ifdef KEY /* Bug 10177 */
   int op_code = 0;
-#else /* KEY Bug 10177 */
-  int op_code;
-#endif /* KEY Bug 10177 */
   ST *st;
   p = cast_to_STB(sym_idx);
   DevAssert((p->form == is_ST),("Odd object ref"));
@@ -245,7 +241,6 @@ fei_task_var( INTPTR	sym_idx,
         cwh_stk_push(wn, WN_item);
         task_var_count++;
         break;
-    /* added by jhs, 02/7/22 */
     case Context_Omp_Copyprivate:
         wn = WN_CreatePragma(WN_PRAGMA_COPYPRIVATE, (ST *)p->item, 0, /*offset=*/0);
      	WN_set_pragma_omp(wn);
@@ -496,16 +491,6 @@ cwh_mp_region(       WN_PRAGMA_ID wn_pragma_id,
     cwh_directive_add_pragma_to_loop(wn,is_omp);
     datacount--;
   }
-#if 0
-  while (ontocount) {
-    /* pop the expressions */
-    wn = WN_CreateXpragma( WN_PRAGMA_ONTO, (ST_IDX) NULL, 1);
-    if (is_omp) WN_set_pragma_omp(wn);
-    WN_kid0(wn) = cwh_expr_operand(NULL);
-    cwh_block_append(wn);
-    ontocount--;
-  }
-#endif
   /* pop off the affinity pragmas */
   while(task_affinity_count) {
     wn = cwh_stk_pop_WN();
@@ -1390,7 +1375,6 @@ void  fei_fission               ( void )
   cwh_stmt_add_pragma(WN_PRAGMA_FISSION,FALSE,(ST_IDX) NULL,WN_const_val(wn),0);
 
 } /* fei_fission */
-#ifdef KEY
 /*===============================================
  *
  * fei_forall
@@ -1403,7 +1387,6 @@ void  fei_forall               ( void )
   cwh_stmt_add_pragma(WN_PRAGMA_FORALL,FALSE,(ST_IDX) NULL,0,0);
 
 } /* fei_forall */
-#endif
 /*===============================================
  *
  * fei_flush
@@ -1706,7 +1689,6 @@ fei_prefetch(int   n1,
   cwh_stmt_add_pragma(WN_PRAGMA_PREFETCH,FALSE,(ST_IDX) NULL,n1,n2);
 }
 
-#ifdef KEY /* Bug 2660 */
 static ST *cwh_create_str_st(char *string);
 
 void
@@ -1715,7 +1697,6 @@ fei_options(char *n1)
   ST *st = cwh_create_str_st(n1);
   cwh_stmt_add_options_pragma(st);
 }
-#endif /* KEY Bug 2660 */
 
 void
 fei_prefetch_manual( int   n )
@@ -1883,10 +1864,8 @@ fei_endguard (INT32 task_x, INT32 guard_num, INT32 lineno )
 
 /*===============================================
  *
- *
  * fei_parallelsections_open_mp
  *
- * updated: by jhs, 02/7/20
  *===============================================
 */
 void
@@ -2365,12 +2344,7 @@ fei_endsingle_open_mp       ( int nowait )
   while (task_var_count) {
     wn = cwh_stk_pop_WN();
 
-#if 0
-    if ((WN_operator(wn) == OPR_PRAGMA) && 
-	(WN_pragma(wn) == WN_PRAGMA_COPYPRIVATE)) 
-#else
     if (WN_operator(wn) == OPR_PRAGMA)
-#endif
       cwh_block_append(wn);
     task_var_count--;
   }
@@ -2627,13 +2601,8 @@ cwh_directive_pragma_to_region(WN * prag, WN * region)
  *================================================================
 */
 // Bug 3836
-#ifdef KEY
 extern void 
 cwh_directive_set_PU_flags(BOOL nested)
-#else
-static void 
-cwh_directive_set_PU_flags(BOOL nested)
-#endif
 {
   Set_PU_has_mp (Get_Current_PU ());
   Set_FILE_INFO_has_mp (File_info);

@@ -43,9 +43,7 @@
 
 
 static char USMID[] = "\n@(#)5.0_pl/sources/cmd_line.c	5.16	10/20/99 17:17:46\n";
-#ifdef KEY /* Bug 5089 */
 #include <libgen.h>
-#endif /* KEY Bug 5089 */
 # include "defines.h"		/* Machine dependent ifdefs */
 
 # include "host.m"		/* Host machine dependent macros.*/
@@ -64,10 +62,8 @@ static char USMID[] = "\n@(#)5.0_pl/sources/cmd_line.c	5.16	10/20/99 17:17:46\n"
 # include "tokens.h"
 # include "sytb.h"
 # include "cmd_line.h"
-#ifdef KEY /* F2003 */
 # include "defs.h"
 # include "config_targ.h"
-#endif /* KEY F2003 */
 
 /*****************************************************************\
 |* function prototypes of static functions declared in this file *|
@@ -138,11 +134,7 @@ static  void dump_options(void);
 |*									      *|
 \******************************************************************************/
   
-#ifdef KEY /* Bug 5089 */
 void	process_cmd_line(int   argc, char *argv[], char *nlspath)
-#else /* KEY Bug 5089 */
-void	process_cmd_line(int   argc, char *argv[])
-#endif /* KEY Bug 5089 */
 {
    char		err_char;
    int		err_ind;
@@ -379,20 +371,15 @@ void	process_cmd_line(int   argc, char *argv[])
       err_ind = optind;
    }  /* while */
 
-#  ifdef KEY /* Bug 4210 */
    /* We want to prepend the module-creation directory to the module-search-path
     * list. Note that the SGI command-line processing turns each -Idir option
     * into a -include=dir option plus a -pdir option. Here we want to imitate
     * the -pdir processing, except we prepend instead of appending.
     */
    add_to_fp_table(mod_out_path, &module_path_idx, 'J');
-#  endif /* KEY Bug 4210 */
-#  ifdef KEY /* Bug 5545 */
    /* Append /usr/include to include-search-path list, so that ftpp behaves
     * like cpp */
    add_to_fp_table("/usr/include", &include_path_idx, 'I');
-#  endif /* KEY Bug 5545 */
-#ifdef KEY /* Bug 5089 */
    /* If -intrinsic_module_path was not set but the NLSPATH environment
     * variable is set, use the last directory in NLSPATH (the driver
     * appends to any user-set NLSPATH the directory containing the file
@@ -410,7 +397,6 @@ void	process_cmd_line(int   argc, char *argv[])
        &intrinsic_module_path_idx, 'p');
      free(copy);
    }
-#endif /* KEY Bug 5089 */
 
 # ifdef _DEBUG
    if (dump_flags.help_dbg) {
@@ -1118,9 +1104,7 @@ static void init_cmd_line (void)
    dump_flags.dsm			= FALSE;
    dump_flags.cray_compatible		= FALSE;
    dump_flags.pack_half_word		= FALSE;
-#ifdef KEY /* Bug 8117 */
    dump_flags.arg_passing		= FALSE;
-#endif /* KEY Bug 8117 */
 
    /* Set defaults for -Y CCG option flags.                                   */
 
@@ -1354,17 +1338,6 @@ static void process_d_option (char *optargs)
          break;
 # endif
 
-# if 0
-
-      /* Take this out for now because we want IEEE intrinsics to always      */
-      /* be recognized.  Leave the option here in case customers scream too   */
-      /* much about name space encroachment.				      */
-
-      case 'e':
-         on_off_flags.ieee = FALSE;
-         break;
-
-# endif
 
       case 'f':
 
@@ -1634,16 +1607,6 @@ static void process_e_option (char *optargs)
 # endif
 
 
-# if 0
-      /* Take this out for now because we want IEEE intrinsics to always      */
-      /* be recognized.  Leave the option here in case customers scream too   */
-      /* much about name space encroachment.				      */
-
-      case 'e':
-         on_off_flags.ieee = TRUE;
-         break;
-
-# endif
 
       case 'f':
 
@@ -1760,11 +1723,7 @@ static void process_e_option (char *optargs)
 
       case 'z':
 
-#        if defined(_ACCEPT_CMD_ed_z) || defined(KEY) /* Bug 3405 */
 	    on_off_flags.recognize_minus_zero = TRUE;
-#        else
-            ntr_msg_queue(0, 744, Log_Warning, 0, "z", 'e', ARG_STR_ARG);
-#        endif
          break;
 
       case '0':
@@ -3882,8 +3841,6 @@ static void process_u_option (char *optargs)
    TRACE (Func_Entry, "process_u_option", NULL);
 
    while (*optargs != EOS) {
-#ifdef KEY
-      // Bug 933
       // If user file name has ",", then "," is a legitimate part of the file
       // name in the -u option, e.g., "-ufile=b,b.l".  Spaces in file names are
       // encoded as '\ '.
@@ -3899,7 +3856,6 @@ static void process_u_option (char *optargs)
         *t = '\0';
 	cp = temp;
       } else
-#endif
       for (cp = optargs;
 	   *optargs != BLANK  &&  *optargs != COMMA  &&  *optargs != EOS;
 	   ++optargs);
@@ -4021,15 +3977,11 @@ static void process_u_option (char *optargs)
 
 	 dump_flags.src_dmp		= FALSE;
 	 dump_flags.stmt_dmp		= TRUE;
-#ifdef KEY /* Bug 8117 */
 	 dump_flags.arg_passing		= TRUE;
-#endif /* KEY Bug 8117 */
       }
-#ifdef KEY /* Bug 8117 */
       else if (EQUAL_STRS(cp, "arg_passing")) {
 	 dump_flags.arg_passing		= TRUE;
       }
-#endif /* KEY Bug 8117 */
       else if (EQUAL_STRS(cp, "bd")) {			/* bounds table       */
 	 dump_flags.bd_tbl	= TRUE;
       }
@@ -4647,9 +4599,7 @@ static void process_x_option (char *optargs)
          case Tok_SGI_Dir_Noipa :
          case Tok_SGI_Dir_Opaque :
          case Tok_SGI_Dir_Optional :
-#ifdef KEY /* Bug 2660 */
          case Tok_SGI_Dir_Options :
-#endif /* KEY Bug 2660 */
          case Tok_SGI_Dir_Pdo :
          case Tok_SGI_Dir_Prefetch_Manual :
          case Tok_SGI_Dir_Prefetch_Ref :
@@ -4889,11 +4839,9 @@ static void set_prog_file_names (char *argv[])
       strcpy(debug_file_name, "stderr");
    }
    else {					/* named file[.f] is input    */
-#ifdef KEY /* Bug 4469 */
       if (strlen(optarg) >= MAX_FILE_NAME_SIZE) {
 	PRINTMSG(0, 57, Limit, 0, (MAX_FILE_NAME_SIZE - 1));
         }
-#endif /* KEY bug 4469 */
       strncpy (src_file, optarg, MAX_FILE_NAME_SIZE);
       src_file[MAX_FILE_NAME_SIZE-1] = EOS;
 
@@ -4934,10 +4882,8 @@ static void set_prog_file_names (char *argv[])
                source_form		= Fixed_Form;
             }
             else if (EQUAL_STRS(stp, ".f90") ||
-#ifdef KEY /* Bug 5064 */
                      EQUAL_STRS(stp, ".f95") ||
                      EQUAL_STRS(stp, ".F95") ||
-#endif /* KEY Bug 5064 */
                      EQUAL_STRS(stp, ".F90")) {
                cmd_line_flags.src_form	= Free_Form;
                source_form		= Free_Form;
@@ -4953,9 +4899,7 @@ static void set_prog_file_names (char *argv[])
          if (stp != NULL) {
 
             if (EQUAL_STRS(stp, ".F") ||
-#ifdef KEY /* Bug 5064 */
 		EQUAL_STRS(stp, ".F95") ||
-#endif /* KEY Bug 5064 */
                 EQUAL_STRS(stp, ".F90")) {
 
                on_off_flags.preprocess = TRUE;
@@ -5123,10 +5067,8 @@ static	void	dump_help_screen(void)
 |*									      *|
 |* Description:								      *|
 |*	Add path names to the file path table.  Used by both -p and -I.       *|
-|*ifdef KEY Bug 4210
 |*       Also used by -J to prepend the module-creation directory to the      *|
 |*	list                                                                  *|
-|*endif  KEY Bug 4210
 |*									      *|
 |* Input parameters:							      *|
 |*	NONE								      *|
@@ -5157,7 +5099,6 @@ static	void	add_to_fp_table(char	*optargs,
    if (*start_idx == NULL_IDX) {
       *start_idx	= file_path_tbl_idx;
    }
-#ifdef KEY /* Bug 4210 */
    /* Prepend the -J directory to the module-search list */
    else if ('J' == option) {
       FP_NEXT_FILE_IDX(file_path_tbl_idx) = *start_idx;
@@ -5166,7 +5107,6 @@ static	void	add_to_fp_table(char	*optargs,
          henceforth */
       option = 'p';
    }
-#endif /* KEY Bug 4210 */
    else {
       fp_idx = *start_idx;
 
@@ -5319,24 +5259,6 @@ static	void	process_a_option(char	*optargs)
           *optargs++;
       }
 
-# if 0
-      if (EQUAL_STRS(cp, "lign8")) {
-
-#        if defined(_ACCEPT_CMD_align)
-            cmd_line_flags.align8	= TRUE;
-#        else
-            ntr_msg_queue(0, 744, Log_Warning, 0, "align8", 'a', ARG_STR_ARG);
-#        endif
-      }
-      else if (EQUAL_STRS(cp, "lign16")) {
-
-#        if defined(_ACCEPT_CMD_align)
-            cmd_line_flags.align16	= TRUE;
-#        else
-            ntr_msg_queue(0, 744, Log_Warning, 0, "align16", 'a', ARG_STR_ARG);
-#        endif
-      }
-# endif
       if (EQUAL_STRS(cp, "lign32")) {
 
 #        if defined(_ACCEPT_CMD_align)
@@ -5578,11 +5500,9 @@ static	void	process_f_option(char	*optargs)
       source_form		= Free_Form;
       set_source_form_option	= TRUE;
    }
-#ifdef KEY /* Bug 12482 */
    else if (EQUAL_STRS(optargs, "fortran2003")) {
       on_off_flags.fortran2003 = TRUE;
    }
-#endif /* KEY Bug 12482 */
    else {
       ntr_msg_queue(0, 78, Log_Error, 0, optargs, 'f', ARG_STR_ARG);
    }
@@ -5618,7 +5538,6 @@ static	void	process_i_option(char	*optargs)
 
    set_i_option = TRUE;
 
-#ifdef KEY /* Bug 5089 */
    /* Search-path for .mod files for F2003 intrinsic modules */
 #define IMPATH "ntrinsic_module_path="
    if (EQUAL_STRS(optargs, "ntrinsic_module_gen")) {
@@ -5631,7 +5550,6 @@ static	void	process_i_option(char	*optargs)
         &intrinsic_module_path_idx, 'p');
    }
    else
-#endif /* KEY Bug 5089 */
    if (!EQUAL_STRS(optargs, "32")) {
       ntr_msg_queue(0, 78, Log_Error, 0, optargs, 'i', ARG_STR_ARG);
    }
@@ -6936,13 +6854,9 @@ static	void	process_J_option(char	*optargs)
 
    TRACE (Func_Entry, "process_J_option", NULL);
 
-# if defined(_ACCEPT_CMD_J) || defined(KEY) /* Bug 4210 */
    strncpy (mod_out_path, optargs, MAX_FILE_NAME_SIZE);
    mod_out_path[MAX_FILE_NAME_SIZE-1]	= EOS;
    cmd_line_flags.mod_out_path		= TRUE;
-# else
-   ntr_msg_queue(0, 77, Log_Error, 0, (char *) NULL, 'J', ARG_ARG);
-# endif
 
    TRACE (Func_Exit, "process_J_option", NULL);
 
@@ -7079,7 +6993,6 @@ static void dump_options(void)
   return;
  }
 
-#ifdef KEY /* Bug 14150 */
 /*
  * dt_attr_idx	AT_Tbl_Idx for a derived type
  * return	True if this is an ISO_C_BINDING type which must be treated
@@ -7121,5 +7034,4 @@ is_x8664_n32() {
   return FALSE;
 #endif /* defined(TARG_X8664) */
 }
-#endif /* KEY Bug 14150 */
 

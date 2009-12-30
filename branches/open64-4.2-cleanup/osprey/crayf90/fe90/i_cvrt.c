@@ -64,14 +64,10 @@
 # include "p_globals.h"
 # include "s_globals.h"
 # include "i_cvrt.h"
-#ifdef KEY /* Bug 6845 */
 #define FOR_I_CVRT
 #include "../sgi/cwh_types.h"
-#endif /* KEY Bug 6845 */
-#ifdef KEY /* Bug 14150 */
 #include "../sgi/decorate_utils.h"
 #include "../sgi/cwh_stab.i"
-#endif /* KEY Bug 14150 */
 
 /*****************************************************************\
 |* Function prototypes of static functions declared in this file *|
@@ -329,7 +325,7 @@ static	char		*p_tasking_context[] = {
         		"Context_Omp_Firstprivate",
         		"Context_Omp_Lastprivate",
         		"Context_Omp_Copyin",
-        		"Context_Omp_Copyprivate", /* by jhs, 02/7/22 */
+        		"Context_Omp_Copyprivate",
         		"Context_Omp_Affinity",
 			"Context_Omp_Nest"
 						 };
@@ -679,7 +675,6 @@ void cvrt_to_pdg (char	*compiler_gen_date)
 
 }  /*  cvrt_to_pdg  */
 
-#ifdef KEY /* Bug 14150 */
 /* Remember info about the source construct which led us to create the previous
  * definition of an external label */
 typedef struct {
@@ -731,7 +726,6 @@ check_duplicate_external_name(fld_type fld, int idx, const char *ext_name) {
       free(fal);
    }
 }
-#endif /* KEY Bug 14150 */
 
 
 /******************************************************************************\
@@ -767,7 +761,6 @@ extern void runtime_ptr_chk_driver(void);
 
    TRACE (Func_Entry, "cvrt_proc_to_pdg", NULL);
 
-#ifdef KEY /* Bug 3507 */
    int attr_idx = SCP_ATTR_IDX(curr_scp_idx);
    boolean is_module = (Module == ATP_PGM_UNIT(attr_idx));
      
@@ -777,7 +770,6 @@ extern void runtime_ptr_chk_driver(void);
      INT32 local_lineno = global_to_local_line_number(lineno);
      cwh_dst_enter_module(AT_OBJ_NAME_PTR(attr_idx), file_name, local_lineno);
    }
-#endif /* KEY Bug 3507 */
 
 PROCESS_SIBLING:
 
@@ -810,14 +802,12 @@ PROCESS_SIBLING:
    cvrt_sytb_to_pdg();
 
    name_ptr = &name_pool[ATP_EXT_NAME_IDX(pgm_attr_idx)].name_char;
-#ifdef KEY /* Bug 14150 */
    /* Imitate kludgy transformation performed by sgi/cwh_stab.cxx */
    const char *ext_name = ATP_EXT_NAME_PTR(pgm_attr_idx);
    if (Program == ATP_PGM_UNIT(pgm_attr_idx)) {
      ext_name = def_main_u;
    }
    check_duplicate_external_name(AT_Tbl_Idx, pgm_attr_idx, ext_name);
-#endif /* KEY Bug 14150 */
 
    PDG_DBG_PRINT_START
    PDG_DBG_PRINT_C("PDGCS_comp_unit");
@@ -929,12 +919,8 @@ PROCESS_SIBLING:
    PDG_DBG_PRINT_END
 
 # ifdef _ENABLE_FEI
-#ifdef KEY /* Bug 3507 */
    /* If this is a module, we have already generated the Dwarf for it */
    PDGCS_do_proc(is_module);            /* Start up the backend */
-#else /* KEY Bug 3507 */
-   PDGCS_do_proc();            /* Start up the backend */
-#endif /* KEY Bug 3507 */
 # endif
 
    PDG_DBG_PRINT_START
@@ -971,11 +957,9 @@ PROCESS_SIBLING:
       goto PROCESS_SIBLING;
    }
 
-#ifdef KEY /* Bug 3507 */
    if (is_module) {
      cwh_dst_exit_module();
    }
-#endif /* KEY Bug 3507 */
 
    TRACE (Func_Exit, "cvrt_proc_to_pdg", NULL);
 
@@ -1008,31 +992,17 @@ void push_data_value (int      t_idx)
    char         *old_str_ptr;
    boolean       ignore_types;
    long_type     target_length;
-#ifdef KEY /* Bug 10177 */
    int           idx = 0;
    int           l_idx = 0;
    fld_type      fld = NO_Tbl_Idx;
    int           cn_idx = 0;
-#else /* KEY Bug 10177 */
-   int           idx;
-   int           l_idx;
-   fld_type      fld;
-   int           cn_idx;
-#endif /* KEY Bug 10177 */
    int           type_idx;
    int           new_str_idx;
    long64	 len;
-#ifdef KEY /* Bug 10177 */
    long64   	 rep_count = 0;
    long64   	 stride = 0;
    long64   	 padd = 0;
    long64        num_chars = 0;
-#else /* KEY Bug 10177 */
-   long64   	 rep_count;
-   long64   	 stride;
-   long64   	 padd = 0;
-   long64        num_chars;
-#endif /* KEY Bug 10177 */
    int           i;
 
 
@@ -1325,7 +1295,6 @@ static void	cvrt_sytb_to_pdg(void)
 }  /* cvrt_sytb_to_pdg */
 
 
-#ifdef KEY /* Bug 6845 */
 /*
  * ir_idx	IR_Tbl_Idx index for a dope vector operator
  * return	corresponding dv_idx_type for use with fei_{g,s}et_hdr_fld
@@ -1382,7 +1351,6 @@ opr_to_dv_hdr_fld(int ir_idx)
          break;
   }
 }
-#endif /* KEY Bug 6845 */
 
 /******************************************************************************\
 |*									      *|
@@ -1430,7 +1398,7 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
    		boolean			ignore_types;
    		long64			inc;
    		opnd_type		l_opnd;
-   		long			first_task_idx		= NULL_IDX; /* by jhs, 02.9.25 */
+   		long			first_task_idx		= NULL_IDX;
    		long			last_task_idx		= NULL_IDX;
 		int			line;
    		int			list_array[OPEN_MP_LIST_CNT];
@@ -1459,14 +1427,14 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
    		long			task_wdist_idx;
    		long			which;
    		long			assertion;
-   		long			task_if_idx		= 0; /* by jhs, 02.9.5 */
-   		long			task_num_threads_idx = 0; /* by jhs, 02.7.20 */
+   		long			task_if_idx		= 0; 
+   		long			task_num_threads_idx = 0;
    		char			*criticalname  		= 0;
    		long			level    		= 0;
    		long			span    		= 1;
    		long			point    		= 0;
    		long			scheduletype		= 0;
-   		long			schedulechunk		= 0; /* by jhs, 02.9.25 */
+   		long			schedulechunk		= 0; 
    		long			schedtype		= 0;
    		long			chunkcount		= 0;
    		long			threadcount		= 0;
@@ -2123,9 +2091,7 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
 
 # ifdef _ENABLE_FEI
          fei_new_select(big_int,
-#ifdef KEY /* Bug 12319 */
                         PDG_AT_IDX(IL_IDX(list_idx2)),
-#endif /* KEY Bug 12319 */
                         PDG_AT_IDX(IL_IDX(list_idx3)));
 # endif
          break;
@@ -3083,9 +3049,7 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
 
 
 
-#ifdef KEY /* Bug 10410 */
    case Cselect_Opr :
-#endif /* KEY Bug 10410 */
    case Cvmgt_Opr :
         cvrt_exp_to_pdg(IR_IDX_L(ir_idx), 
                         IR_FLD_L(ir_idx));
@@ -3097,11 +3061,7 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
         PDG_DBG_PRINT_END    
 
 # ifdef _ENABLE_FEI
-#ifdef KEY /* Bug 10410 */
         fei_select(basic, Cselect_Opr == IR_OPR(ir_idx));
-#else /* KEY Bug 10410 */
-        fei_select(basic);
-#endif /* KEY Bug 10410 */
 # endif
         
         break;
@@ -3910,7 +3870,6 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
 
 
 
-#ifdef KEY /* Bug 1324 */
    case Erf_Opr :
 	cvrt_exp_to_pdg(IR_IDX_L(ir_idx), 
 			IR_FLD_L(ir_idx));
@@ -3934,7 +3893,6 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
 	fei_erf(basic, 1);
 # endif
 	break;
-#endif /* KEY Bug 1324 */
 
 
 
@@ -5997,19 +5955,12 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
                      cn_idx = get_next_array_expr_element(&l_opnd, &vv);  
                      COPY_OPND(IL_OPND(search_idx), l_opnd);
                   }
-#ifdef KEY
                   SET_LCV_CONST(IL_IDX(IR_IDX_R(ir_idx)),
                                 CN_CONST(cn_idx), 
                                 num_host_wds[TYP_LINEAR(
                                      ATD_TYPE_IDX(IL_IDX(IR_IDX_R(ir_idx))))], 
 				num_host_wds[TYP_LINEAR(
 				     CN_TYPE_IDX(cn_idx))]);
-#else
-                  SET_LCV_CONST(IL_IDX(IR_IDX_R(ir_idx)),
-                                CN_CONST(cn_idx), 
-                                num_host_wds[TYP_LINEAR(
-                                     ATD_TYPE_IDX(IL_IDX(IR_IDX_R(ir_idx))))]);
-#endif
 
                   t_idx = IR_IDX_L(ir_idx);
                   while (t_idx != NULL_IDX) {
@@ -6040,19 +5991,12 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
                      cn_idx = get_next_array_expr_element(&l_opnd, &vv);
                      COPY_OPND(IL_OPND(search_idx), l_opnd);
                   }
-#ifdef KEY
                   SET_LCV_CONST(IL_IDX(IR_IDX_R(ir_idx)),
                                 CN_CONST(cn_idx),
                                 num_host_wds[TYP_LINEAR(
                                    ATD_TYPE_IDX(IL_IDX(IR_IDX_R(ir_idx))))],
 				num_host_wds[TYP_LINEAR(
 				     CN_TYPE_IDX(cn_idx))]);
-#else
-                  SET_LCV_CONST(IL_IDX(IR_IDX_R(ir_idx)),
-                                CN_CONST(cn_idx),
-                                num_host_wds[TYP_LINEAR(
-                                   ATD_TYPE_IDX(IL_IDX(IR_IDX_R(ir_idx))))]);
-#endif
 
                   t_idx = IR_IDX_L(ir_idx);
                   while (t_idx != NULL_IDX) {
@@ -6073,19 +6017,12 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
            }
 
            /* Restore the guts of the LCV temp attr. */
-#ifdef KEY
            SET_LCV_CONST(IL_IDX(IR_IDX_R(ir_idx)),
                          CN_CONST(ATD_TMP_IDX(IL_IDX(IR_IDX_R(ir_idx)))),
                          num_host_wds[TYP_LINEAR(
                               ATD_TYPE_IDX(IL_IDX(IR_IDX_R(ir_idx))))],
 			 num_host_wds[TYP_LINEAR(
 			      CN_TYPE_IDX(ATD_TMP_IDX(IL_IDX(IR_IDX_R(ir_idx)))))]);
-#else
-           SET_LCV_CONST(IL_IDX(IR_IDX_R(ir_idx)),
-                         CN_CONST(ATD_TMP_IDX(IL_IDX(IR_IDX_R(ir_idx)))),
-                         num_host_wds[TYP_LINEAR(
-                              ATD_TYPE_IDX(IL_IDX(IR_IDX_R(ir_idx))))]);
-#endif
 
         }
         else {
@@ -6620,11 +6557,7 @@ CONTINUE:
         PDG_DBG_PRINT_END
 
 # ifdef _ENABLE_FEI
-#ifdef KEY /* Bug 6845 */
         fei_dv_def(IR_DV_DIM(ir_idx), IR_DV_N_ALLOC_CPNT(ir_idx));
-#else /* KEY Bug 6845 */
-        fei_dv_def(IR_DV_DIM(ir_idx));
-#endif /* KEY Bug 6845 */
 # endif
         processing_call = processing_call - 1;
         break;
@@ -6751,51 +6684,13 @@ CONTINUE:
                            IR_FLD_R(ir_idx));
         }
 
-#ifndef KEY /* Bug 6845 */
-        switch (IR_OPR(ir_idx)) {
-        case Dv_Set_Base_Addr :
-             fld = 1;
-             break;
-        case Dv_Set_El_Len :
-             fld = 2;
-             break;
-        case Dv_Set_Assoc :
-             fld = 3;
-             break;
-        case Dv_Set_Ptr_Alloc :
-             fld = 4;
-             break;
-        case Dv_Set_P_Or_A :
-             fld = 5;
-             break;
-        case Dv_Set_A_Contig :
-             fld = 6;
-             break;
-        case Dv_Set_N_Dim :
-             fld = 7;
-             break;
-        case Dv_Set_Typ_Code :
-             fld = 8;
-             break;
-        case Dv_Set_Orig_Base :
-             fld = 9;
-             break;
-        case Dv_Set_Orig_Size :
-             fld = 10;
-             break;
-        }
-#endif /* KEY Bug 6845 */
 
         PDG_DBG_PRINT_START
         PDG_DBG_PRINT_C("fei_set_dv_hdr_fld");
         PDG_DBG_PRINT_D("(1) field num", fld);
         PDG_DBG_PRINT_END
 # ifdef _ENABLE_FEI
-#   ifdef KEY /* Bug 6845 */
         fei_set_dv_hdr_fld(opr_to_dv_hdr_fld(ir_idx));
-#   else /* KEY Bug 6845 */
-        fei_set_dv_hdr_fld(fld);
-#   endif /* KEY Bug 6845 */
 # endif
         break;
 
@@ -6821,51 +6716,13 @@ CONTINUE:
                            IR_FLD_R(ir_idx));
         }
 
-#ifndef KEY /* Bug 6845 */
-        switch (IR_OPR(ir_idx)) {
-        case Dv_Access_Base_Addr :
-             fld = 1;
-             break;
-        case Dv_Access_El_Len :
-             fld = 2;
-             break;
-        case Dv_Access_Assoc :
-             fld = 3;
-             break;
-        case Dv_Access_Ptr_Alloc :
-             fld = 4;
-             break;
-        case Dv_Access_P_Or_A :
-             fld = 5;
-             break;
-        case Dv_Access_A_Contig :
-             fld = 6;
-             break;
-        case Dv_Access_N_Dim :
-             fld = 7;
-             break;
-        case Dv_Access_Typ_Code :
-             fld = 8;
-             break;
-        case Dv_Access_Orig_Base :
-             fld = 9;
-             break;
-        case Dv_Access_Orig_Size :
-             fld = 10;
-             break;
-        }
-#endif /* KEY Bug 6845 */
 
         PDG_DBG_PRINT_START
         PDG_DBG_PRINT_C("fei_get_dv_hdr_fld");
         PDG_DBG_PRINT_D("(1) field num", fld);
         PDG_DBG_PRINT_END
 # ifdef _ENABLE_FEI
-#   ifdef KEY /* Bug 6845 */
         fei_get_dv_hdr_fld(opr_to_dv_hdr_fld(ir_idx));
-#   else /* KEY Bug 6845 */
-        fei_get_dv_hdr_fld(fld);
-#   endif /* KEY Bug 6845 */
 # endif
         break;
 
@@ -6903,7 +6760,6 @@ CONTINUE:
 
         if (IR_IDX_R(ir_idx) != NULL_IDX &&
             IR_LIST_CNT_R(ir_idx) > 0) {
-#ifdef KEY /* Bug 4602 */
 	   /* The %val() operator doesn't appear in the tree, except as the
 	    * absence of an Aloc_Opr at the top of the subtree representing
 	    * the formal argument. For a scalar, this works fine because
@@ -6930,7 +6786,6 @@ CONTINUE:
 	       }
 	     }
 	   else
-#endif /* KEY Bug 4602 */
            cvrt_exp_to_pdg(IR_IDX_R(ir_idx), 
                            IR_FLD_R(ir_idx));
         }
@@ -6943,9 +6798,7 @@ CONTINUE:
         }
 
         if (ATP_PGM_UNIT(IR_IDX_L(ir_idx)) == Subroutine ||
-#ifdef KEY /* Bug 5089 */
             special_case_fcn_to_sub(IR_IDX_L(ir_idx)) ||
-#endif /* KEY Bug 5089 */
             ATP_EXTRA_DARG(IR_IDX_L(ir_idx))) {
            type_desc = pdg_type_void;
 
@@ -8122,7 +7975,6 @@ CONTINUE:
         break;
 
 
-#ifdef KEY
    case Forall_Opr:
         PDG_DBG_PRINT_START
         PDG_DBG_PRINT_C("fei_forall");
@@ -8134,7 +7986,6 @@ CONTINUE:
 # endif
 # endif
         break;
-#endif
 
 
    case Flush_Star_Opr:
@@ -8222,10 +8073,7 @@ CONTINUE:
 
 
    case Unroll_Star_Opr:
-// Bug 1520
-#ifdef KEY
    case Unroll_Cdir_Opr:
-#endif
         cvrt_exp_to_pdg(IR_IDX_L(ir_idx),
                         IR_FLD_L(ir_idx));
 
@@ -8537,7 +8385,6 @@ CONTINUE:
 # endif
         break;
 
-#ifdef KEY /* Bug 2660 */
    case Options_Dir_Opr:
 	{
         char *c1 = (char *) &CN_CONST(IR_IDX_L(ir_idx));
@@ -8554,7 +8401,6 @@ CONTINUE:
 # endif
 	}
         break;
-#endif /* KEY Bug 2660 */
 
 
 
@@ -9628,7 +9474,7 @@ CONTINUE:
            task_if_idx = PDG_AT_IDX(IL_IDX(list_array[OPEN_MP_IF_IDX]));
         }
 
-	/* process NUM_THREADS clause */ /* by jhs, 02/7/20 */
+	/* process NUM_THREADS clause */ 
         if(IL_FLD(list_array[OPEN_MP_NUM_THREADS]) == AT_Tbl_Idx){
         	send_attr_ntry(IL_IDX(list_array[OPEN_MP_NUM_THREADS]));
         	task_num_threads_idx = PDG_AT_IDX(IL_IDX(list_array[OPEN_MP_NUM_THREADS]));
@@ -9991,13 +9837,13 @@ CONTINUE:
            PDG_DBG_PRINT_START
            PDG_DBG_PRINT_C("fei_parallel_open_mp");
            PDG_DBG_PRINT_D("(1) if idx", task_if_idx);
-           PDG_DBG_PRINT_D("(2) num_threads idx", task_num_threads_idx); /* by jhs, 02/7/20 */
+           PDG_DBG_PRINT_D("(2) num_threads idx", task_num_threads_idx); 
            PDG_DBG_PRINT_LD("(3) defaultt", defaultt);
            PDG_DBG_PRINT_END
 
 # ifdef _ENABLE_FEI
            fei_parallel_open_mp(task_if_idx,
-           			    task_num_threads_idx, /* by jhs, 02/7/20 */
+           			    task_num_threads_idx, 
                                 defaultt);
 
 # endif
@@ -10083,7 +9929,7 @@ CONTINUE:
            PDG_DBG_PRINT_START
            PDG_DBG_PRINT_C("fei_paralleldo_open_mp");
            PDG_DBG_PRINT_D("(1) if idx", task_if_idx);
-           PDG_DBG_PRINT_D("(2) num_threads idx", task_num_threads_idx); /* by jhs, 02/7/20 */
+           PDG_DBG_PRINT_D("(2) num_threads idx", task_num_threads_idx); 
            PDG_DBG_PRINT_LD("(3) defaultt", defaultt);
            PDG_DBG_PRINT_LD("(4) ordered", ordered);
            PDG_DBG_PRINT_LD("(5) scheduletype", scheduletype);
@@ -10096,7 +9942,7 @@ CONTINUE:
 
 # ifdef _ENABLE_FEI
            fei_paralleldo_open_mp(task_if_idx,
-       			      task_num_threads_idx, /* by jhs, 02/7/20 */
+       			      task_num_threads_idx, 
                                   defaultt,
                                   ordered,
                                   scheduletype,
@@ -10111,14 +9957,14 @@ CONTINUE:
            PDG_DBG_PRINT_START
            PDG_DBG_PRINT_C("fei_parallelsections_open_mp");
            PDG_DBG_PRINT_D("(1) if idx", task_if_idx);
-           PDG_DBG_PRINT_D("(2) num_threads idx", task_num_threads_idx); /* by jhs, 02/7/20 */
+           PDG_DBG_PRINT_D("(2) num_threads idx", task_num_threads_idx); 
            PDG_DBG_PRINT_LD("(3) defaultt", defaultt);
            PDG_DBG_PRINT_END
 
 
 # ifdef _ENABLE_FEI
            fei_parallelsections_open_mp(task_if_idx,
-           				     task_num_threads_idx, /* by jhs, 02/7/20 */
+           				     task_num_threads_idx, 
                                         defaultt);
 # endif
            break;
@@ -10305,7 +10151,6 @@ CONTINUE:
 
 
      case Endsingle_Open_Mp_Opr:
-     	/* the following is added and modified by jhs, 02/7/22 */
         list_idx1 = IR_IDX_L(ir_idx);
 
 	 if(IL_FLD(list_idx1) == CN_Tbl_Idx){ /* NOWAIT clause */
@@ -10336,7 +10181,6 @@ CONTINUE:
               list_idx2 = IL_NEXT_LIST_IDX(list_idx2);
            }
 	 }
-     	/* the above is added and modified by jhs, 02/7/22 */
         PDG_DBG_PRINT_START
         PDG_DBG_PRINT_C("fei_endsingle_open_mp");
         PDG_DBG_PRINT_LD("(1) nowait", nowait);
@@ -10955,11 +10799,7 @@ static TYPE get_type_desc(int	input_idx)
    int			dist_idx;
    int			distribution	= 0;
    int			kind_type	= 0;
-#ifdef KEY /* Bug 10177 */
    int			attr_idx = 0;
-#else /* KEY Bug 10177 */
-   int			attr_idx;
-#endif /* KEY Bug 10177 */
    int			temp_attr_idx;
    int          	basic_type;
    long64		extent;
@@ -11064,10 +10904,8 @@ static TYPE get_type_desc(int	input_idx)
 
 # ifdef _ENABLE_FEI
       type_idx = fei_dope_vector(rank, type_idx, type_flag,
-#ifdef KEY /* Bug 6845 */
       /* Sigh. We have to count them yet again. The joys of retrofitting. */
         do_count_allocatable_cpnt(attr_idx, rank)
-#endif /* KEY Bug 6845 */
         );
 # endif
    }
@@ -11455,7 +11293,6 @@ static TYPE get_type_desc(int	input_idx)
 # endif
 
 EXIT:
-#ifdef KEY /* Bug 14110 */
    /* The "volatile" member inside the TYPE variable "type_idx" seems not
     * to affect the WHIRL symbol table, but the "volatile" bit of the
     * "table_index" member does. The original SGI code in this file and
@@ -11467,7 +11304,6 @@ EXIT:
    if (AT_OBJ_CLASS(input_idx) == Data_Obj && ATD_VOLATILE(input_idx)) {
       type_idx.table_index = fei_set_volatile(type_idx.table_index);
    }
-#endif /* KEY Bug 14110 */
 
    TRACE (Func_Exit, "get_type_desc", NULL);
 
@@ -11536,10 +11372,8 @@ static void send_stor_blk(int	 sb_idx,
    switch (SB_LEN_FLD(sb_idx)) {
    case CN_Tbl_Idx :   
       blk_len = CN_INT_TO_C(SB_LEN_IDX(sb_idx));
-# ifdef KEY
       if (TYP_LINEAR(CN_TYPE_IDX(SB_LEN_IDX(sb_idx))) == Integer_4 && blk_len != 0)
         blk_len = (unsigned) blk_len;
-# endif
       break;
 
    case AT_Tbl_Idx : 
@@ -11621,12 +11455,10 @@ static void send_stor_blk(int	 sb_idx,
    if (sb_type == Common || sb_type == Task_Common) {
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
-#ifdef KEY /* Bug 14150 */
       if (SB_EXT_NAME_IDX(sb_idx)) {
 	name_ptr = SB_EXT_NAME_PTR(sb_idx);
       }
       else
-#endif /* KEY Bug 14150 */
       if (! SB_BLANK_COMMON(sb_idx) &&
           ! SB_NAME_IN_STONE(sb_idx)) {
 
@@ -11642,16 +11474,7 @@ static void send_stor_blk(int	 sb_idx,
 	    }
          }
 
-#ifdef KEY /* Bug 6204 */
          i = decorate(new_name, i, underscores);
-#else /* KEY Bug 6204 */
-         if (on_off_flags.underscoring) {
-            new_name[i++] = '_';
-	    if (on_off_flags.second_underscore && (underscores > 0)) {
-	       new_name[i++] = '_';
-	    }
-	 }
-#endif /* KEY Bug 6204 */
 
          for ( ; i < 256; i++) {
             new_name[i]	= '\0';
@@ -11665,9 +11488,7 @@ static void send_stor_blk(int	 sb_idx,
    else {
       parent_idx = PDG_AT_IDX(SCP_ATTR_IDX(SB_SCP_IDX(sb_idx)));
    }
-#ifdef KEY /* Bug 14150 */
    check_duplicate_external_name(SB_Tbl_Idx, sb_idx, name_ptr);
-#endif /* KEY Bug 14150 */
 
    PDG_DBG_PRINT_START    
    PDG_DBG_PRINT_C("fei_seg"); 
@@ -11867,11 +11688,7 @@ static void  send_procedure(int			attr_idx,
    int			pgm_unit;
    long			prev_idx;
    int			proc;
-#ifdef KEY /* Bug 10177 */
    TYPE			type_desc = pdg_type_void;
-#else /* KEY Bug 10177 */
-   TYPE			type_desc;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "send_procedure", NULL);
@@ -12061,15 +11878,10 @@ static void  send_procedure(int			attr_idx,
 
       if (ATP_EXTRA_DARG(attr_idx)) {
          pgm_unit = Subroutine;
-// Bug 2204
-# ifdef KEY
          if  (TYP_LINEAR(ATD_TYPE_IDX(ATP_RSLT_IDX(attr_idx))) == Structure_Type)
            type_desc = get_type_desc(attr_idx);
          else 
            type_desc = pdg_type_void;
-# else
-         type_desc = pdg_type_void;
-# endif
       }
       else {
 
@@ -12191,10 +12003,8 @@ static void  send_procedure(int			attr_idx,
 
       while (alt_entry_idx != NULL_IDX) {
          attr_idx = AL_ATTR_IDX(alt_entry_idx);
-#ifdef KEY /* Bug 14150 */
 	 check_duplicate_external_name(AT_Tbl_Idx, attr_idx,
 	   ATP_EXT_NAME_PTR(attr_idx));
-#endif /* KEY Bug 14150 */
 
          /* Send entry name, result name, and dummy args.  Need to */
          /* set ATP_SCP_ALIVE, so if there are any bounds tmps,    */
@@ -12297,13 +12107,11 @@ static TYPE	send_derived_type(int	type_idx)
       pdg_type_tbl[type_idx] = pdg_type_idx;
       goto EXIT;
    }
-#ifdef KEY /* Bug 14150 */
   if (c_ptr_abi_trouble(dt_attr_idx)) {
     pdg_type_idx = fei_descriptor(0, Basic, bit_size_tbl[Integer_4], Integral,
       0 /* unused */, pdg_align[Word_Align]);
     return pdg_type_idx;
   }
-#endif /* KEY Bug 14150 */
 
    flag = ((long) (ATT_SCP_IDX(dt_attr_idx) != curr_scp_idx) 
                                            << FEI_NEXT_TYPE_IDX_HOSTED_TYPE);
@@ -12403,12 +12211,10 @@ static TYPE	send_derived_type(int	type_idx)
    sn_idx = ATT_FIRST_CPNT_IDX(dt_attr_idx);
 
    do {
-#ifdef KEY /* Bug 14150 */
       /* F2003 allows types with no components */
       if (sn_idx == NULL_IDX) {
         break;
       }
-#endif /* KEY Bug 14150 */
       attr_idx = SN_ATTR_IDX(sn_idx);
       send_attr_ntry(attr_idx);
 
@@ -13260,18 +13066,12 @@ static void send_attr_ntry(int		attr_idx)
             offset = CN_INT_TO_C(ATD_OFFSET_IDX(attr_idx));  
 
 # if defined(_TARGET_OS_MAX) || defined(_HOST32)  /* JEFFL ?? */
-# ifdef KEY
             if (TYP_LINEAR(CN_TYPE_IDX(ATD_OFFSET_IDX(attr_idx))) == Integer_4 && offset != 0){
               offset = (unsigned)offset;
             }
             else if (TYP_LINEAR(CN_TYPE_IDX(ATD_OFFSET_IDX(attr_idx))) != Integer_8){
               SIGN_EXTEND(offset);
             }
-# else
-            if (TYP_LINEAR(CN_TYPE_IDX(ATD_OFFSET_IDX(attr_idx))) != Integer_8){
-              SIGN_EXTEND(offset);
-            }
-# endif
 # endif
          }
          else if (ATD_OFFSET_FLD(attr_idx) == AT_Tbl_Idx) {
@@ -13471,10 +13271,8 @@ static void send_attr_ntry(int		attr_idx)
       ((long64) ATD_READ_ONLY_VAR(attr_idx) 	<< FEI_OBJECT_READ_ONLY) |
       ((long64) ATD_NOT_PT_UNIQUE_MEM(attr_idx) 	
                                       << FEI_OBJECT_NOT_PT_TO_UNIQUE_MEM) |
-#ifdef KEY /* Bug 14150 */
       ((long64) (ATD_CLASS(attr_idx) == Dummy_Argument &&
         ATD_VALUE_ATTR(attr_idx)) 		<< FEI_OBJECT_PASS_BY_VALUE) |
-#endif /* KEY Bug 14150 */
       ((long64) AT_NAMELIST_OBJ(attr_idx) 	<< FEI_OBJECT_NAMELIST_ITEM));
 
 
@@ -13806,11 +13604,7 @@ static void send_mod_file_name (void)
 
    PDG_DBG_PRINT_END
 
-#ifdef KEY /* Bug 3507 */
    PDGCS_do_proc(1);
-#else /* KEY Bug 3507 */
-   PDGCS_do_proc();
-#endif /* KEY Bug 3507 */
   
    PDG_DBG_PRINT_START
    PDG_DBG_PRINT_C("PDGCS_end_procs");
@@ -14002,15 +13796,9 @@ static void  send_darg_list(int		pgm_attr_idx,
 static	TYPE	send_non_standard_aligned_type(int		align,
 					       int		type_idx)
 {
-#ifdef KEY /* Bug 10177 */
    int		aux_info = 0;
    int		basic_type = 0;
    int      	bit_size = 0;
-#else /* KEY Bug 10177 */
-   int		aux_info;
-   int		basic_type;
-   int      	bit_size;
-#endif /* KEY Bug 10177 */
    int      	flags 		= 0;
    TYPE		pdg_type_idx;
 

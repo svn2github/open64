@@ -133,18 +133,10 @@ extern int double_stride;
 void allocate_stmt_semantics (void)
 
 {
-#ifdef KEY /* Bug 10177 */
    int			alloc_obj_idx = 0;
-#else /* KEY Bug 10177 */
-   int			alloc_obj_idx;
-#endif /* KEY Bug 10177 */
    int			attr_idx;
    int		  	bd_idx;
-#ifdef KEY /* Bug 10177 */
    int		  	bd_list_idx = 0;
-#else /* KEY Bug 10177 */
-   int		  	bd_list_idx;
-#endif /* KEY Bug 10177 */
    int			cn_idx;
    int		  	col;
    opnd_type      	dope_opnd;
@@ -594,9 +586,7 @@ void allocate_stmt_semantics (void)
 
       if (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) == Structure           &&
           (ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
-#ifdef KEY /* Bug 6845 */
           ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
-#endif /* KEY Bug 6845 */
            ATT_DEFAULT_INITIALIZED(TYP_IDX(ATD_TYPE_IDX(attr_idx))))) {
 
          COPY_OPND(opnd, IR_OPND_L(alloc_obj_idx));
@@ -1796,7 +1786,6 @@ EXIT:
 }  /* deallocate_stmt_semantics */
 
 
-#ifdef KEY /* Bug 4889 */
 /*
  * Given a clause of an OMP directive such as "private", look for a
  * variable within the clause which matches the do_var_idx. Return the
@@ -1834,7 +1823,6 @@ static void set_list_array(int list_array[], int omp_dir_idx) {
   }
 
 
-#endif /* KEY Bug 4889 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -1861,11 +1849,7 @@ void do_stmt_semantics (void)
    int			do_var_line;
    boolean		do_var_must_be_int = FALSE;
    opnd_type		do_var_opnd;
-#ifdef KEY /* Bug 10177 */
    int			end_idx = 0;
-#else /* KEY Bug 10177 */
-   int			end_idx;
-#endif /* KEY Bug 10177 */
    int			end_il_idx;
    expr_arg_type	exp_desc;
    int			il_idx;
@@ -1881,11 +1865,7 @@ void do_stmt_semantics (void)
    int			loop_labels_il_idx;
    boolean		semantics_ok;
    int			start_expr_sh_idx;
-#ifdef KEY /* Bug 10177 */
    int			start_idx = 0;
-#else /* KEY Bug 10177 */
-   int			start_idx;
-#endif /* KEY Bug 10177 */
    int			start_il_idx;
    opnd_type		temp_opnd;
    int			tmp_idx;
@@ -1948,24 +1928,17 @@ void do_stmt_semantics (void)
          if (cdir_switches.doall_sh_idx ||
              cdir_switches.doacross_sh_idx ||
              cdir_switches.pdo_sh_idx ||
-#ifndef KEY /* Bug 12687 */
-	     /* OpenMP standard doesn't prohibit calls to internal procedures */
-             cdir_switches.do_omp_sh_idx ||
-             cdir_switches.paralleldo_omp_sh_idx ||
-#endif /* KEY Bug 12687 */
              cdir_switches.paralleldo_sh_idx) {
 
             cdir_switches.parallel_region = TRUE;
             cdir_switches.no_internal_calls = TRUE;
             SH_DOALL_LOOP_END(IR_IDX_L(SH_IR_IDX(do_sh_idx))) = TRUE;
          }
-#ifdef KEY /* Bug 12687 */
 	 else if (cdir_switches.do_omp_sh_idx ||
              cdir_switches.paralleldo_omp_sh_idx) {
             cdir_switches.parallel_region = TRUE;
             SH_DOALL_LOOP_END(IR_IDX_L(SH_IR_IDX(do_sh_idx))) = TRUE;
 	 }
-#endif /* KEY Bug 12687 */
 
          if (cdir_switches.do_omp_sh_idx ||
              cdir_switches.paralleldo_omp_sh_idx) {
@@ -1981,7 +1954,6 @@ void do_stmt_semantics (void)
          do_var_idx = (IL_FLD(lc_il_idx) == AT_Tbl_Idx) ?
                          IL_IDX(lc_il_idx) : NULL_IDX;
 
-#ifdef KEY /* Bug 4889 */
 	 /*
 	  * Inside an OMP "parallel do" or "do" directive, add a
 	  * "private" clause for the do loop index if there isn't one already.
@@ -2039,7 +2011,6 @@ void do_stmt_semantics (void)
 	     IL_LIST_CNT(private_list) = IL_LIST_CNT(private_list) + 1;
 	   }
 	 }
-#endif /* KEY Bug 4889 */
 
 # if defined(_HIGH_LEVEL_DO_LOOP_FORM)
          if (cdir_switches.doall_sh_idx) {
@@ -2068,14 +2039,6 @@ void do_stmt_semantics (void)
                                                                stmt_start_col;
             insert_sh_chain_before(cdir_switches.doacross_sh_idx);
 
-# if 0
-            if (do_var_idx != NULL_IDX &&
-                ATD_TASK_SHARED(do_var_idx)) {
-
-               PRINTMSG(IL_LINE_NUM(lc_il_idx), 961, Error, 
-                        IL_COL_NUM(lc_il_idx));
-            }
-# endif
 
             cdir_switches.doacross_sh_idx = NULL_IDX;
          }
@@ -2086,14 +2049,6 @@ void do_stmt_semantics (void)
                                                                stmt_start_col;
             insert_sh_chain_before(cdir_switches.paralleldo_sh_idx);
 
-# if 0
-            if (do_var_idx != NULL_IDX &&
-                ATD_TASK_SHARED(do_var_idx)) {
-
-               PRINTMSG(IL_LINE_NUM(lc_il_idx), 961, Error,
-                        IL_COL_NUM(lc_il_idx));
-            }
-# endif
 
             cdir_switches.paralleldo_sh_idx = NULL_IDX;
          }
@@ -2104,14 +2059,6 @@ void do_stmt_semantics (void)
                                                                stmt_start_col;
             insert_sh_chain_before(cdir_switches.pdo_sh_idx);
 
-# if 0
-            if (do_var_idx != NULL_IDX &&
-                ATD_TASK_SHARED(do_var_idx)) {
-
-               PRINTMSG(IL_LINE_NUM(lc_il_idx), 961, Error,
-                        IL_COL_NUM(lc_il_idx));
-            }
-# endif
 
             cdir_switches.pdo_sh_idx = NULL_IDX;
          }
@@ -4321,11 +4268,7 @@ void goto_stmt_semantics (void)
    int	 		attr_idx;
    int			column;
    expr_arg_type	expr_desc;
-#ifdef KEY /* Bug 10177 */
    boolean		in_assign_stmt = TRUE;
-#else /* KEY Bug 10177 */
-   boolean		in_assign_stmt;
-#endif /* KEY Bug 10177 */
    int 	        	ir_idx;
    int			lbl_idx;
    int			tmp_idx;
@@ -4770,7 +4713,6 @@ void nullify_stmt_semantics (void)
             PRINTMSG(line, 426, Error, column);
             semantically_correct = FALSE;
          }
-#ifdef KEY /* Bug 572 */
 	 /* An expression like "parameter_x%ptr_component_y" may be both a
 	  * pointer and a constant, but a constant is not allowed here. */
 	 else if (exp_desc.constant) {
@@ -4778,7 +4720,6 @@ void nullify_stmt_semantics (void)
 	    PRINTMSG(line, 1650, Error, column);
 	    semantically_correct = FALSE;
 	 }
-#endif /* KEY Bug 572 */
          else {
 
             if (ATP_PURE(SCP_ATTR_IDX(curr_scp_idx)) ||
@@ -4824,7 +4765,6 @@ void nullify_stmt_semantics (void)
 
                SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx))		= dv_idx;
                SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx))	= TRUE;
-#ifdef KEY /* Bug 9608 */
 	      /*
 	       * When we set assoc=0 for an array, we also set contig=1 so that
 	       * copyinout doesn't blow up if user (illegally) passes the null
@@ -4844,7 +4784,6 @@ void nullify_stmt_semantics (void)
 		  CN_Tbl_Idx, CN_INTEGER_ONE_IDX);
 		SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx)) = TRUE;
 	      }
-#endif /* KEY Bug 9608 */
             }
             else {
                PRINTMSG(line, 626, Internal, column,
@@ -6285,7 +6224,6 @@ static void case_value_range_semantics(int	ir_idx,
       if (! SH_ERR_FLG(curr_stmt_sh_idx)  &&
           IR_FLD_L(ir_idx) != NO_Tbl_Idx    &&
           fold_relationals(IR_IDX_L(ir_idx), IR_IDX_R(ir_idx), Gt_Opr)) {
-#ifdef KEY /* Bug 2153 and Bug 4947 */
 	 /* A "select" with n cases looks like this:
 	  * block s: Select_Stmt: Select_Opr
 	  *
@@ -6319,7 +6257,6 @@ static void case_value_range_semantics(int	ir_idx,
 	   }
 	 }
 
-#endif /* KEY Bug 2153 and Bug 4947 */
          PRINTMSG(IR_LINE_NUM(ir_idx), 758, Warning, IR_COL_NUM(ir_idx));
          goto EXIT;
       }
@@ -9548,11 +9485,7 @@ static boolean gen_forall_max_expr(int		start_list_idx,
    boolean		ok = TRUE;
    int			plus_idx;
    int			stride_list_idx;
-#ifdef KEY /* Bug 10177 */
    int			type_idx = 0;
-#else /* KEY Bug 10177 */
-   int			type_idx;
-#endif /* KEY Bug 10177 */
 
    TRACE (Func_Entry, "gen_forall_max_expr", NULL);
 
@@ -9831,15 +9764,11 @@ void gen_forall_tmp(expr_arg_type	*exp_desc,
 
       ATD_AUTO_BASE_IDX(tmp_idx)        = base_tmp_idx;
 
-#ifdef KEY
       /* bug#488
 	 <exp_desc->type_idx> gives the type that a pointer points to;
 	 we need to find the type that holds these pointers.
        */
       determine_tmp_size(&size_opnd, ATD_TYPE_IDX(tmp_idx) );
-#else
-      determine_tmp_size(&size_opnd, exp_desc->type_idx);
-#endif
 
       NTR_IR_TBL(max_idx);
       IR_OPR(max_idx) = Max_Opr;

@@ -36,7 +36,6 @@
 
 */
 
-#ifdef KEY /* Bug 6121 */
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -59,4 +58,3 @@ extern void PRINTMSG(int, int, msg_severities_type, int, ...);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
-#endif /* KEY Bug 6121 */

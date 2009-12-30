@@ -282,9 +282,7 @@ enum    language        {Pdgcs_Ansi_C = 1,      Pdgcs_Fortran_77,
 
 	int			expanded_intrinsic_list = NULL_IDX;
         expr_mode_type		expr_mode		= Regular_Expr;
-#ifdef KEY /* Bug 4232 */
         boolean			defining_stmt_func      = FALSE;
-#endif /* KEY Bug 4232 */
 
 	void			(*get_char) ();
         void                    (*get_char_literal) ();
@@ -315,9 +313,7 @@ enum    language        {Pdgcs_Ansi_C = 1,      Pdgcs_Fortran_77,
 	char			mod_out_path[MAX_FILE_NAME_SIZE];
 
 	int			module_path_idx		= NULL_IDX;
-#ifdef KEY /* Bug 5089 */
 	int			intrinsic_module_path_idx = NULL_IDX;
-#endif /* KEY Bug 5089 */
 
 	boolean			need_new_sh;
 	boolean			need_to_issue_719	= FALSE;
@@ -517,18 +513,12 @@ enum    language        {Pdgcs_Ansi_C = 1,      Pdgcs_Fortran_77,
                                                    "VOLATILE",
                                                    "OPEN MP END PARALLEL WORKSHARE",
                                                    "OPEN MP END WORKSHARE",
-#ifdef KEY /* Bug 11741 */
 						   "IMPORT",
-#endif /* KEY Bug 11741 */
-#ifdef KEY /* Bug 10572 */
 						   "ENUM",
 						   "END ENUMERATOR",
 						   "ENUMERATOR",
-#endif /* KEY Bug 10572 */
-#ifdef KEY /* Bug 14150 */
 						   "BIND",
 						   "VALUE"
-#endif /* KEY Bug 10572 */
 						  };
 
 	target_machine_type	target_machine;
@@ -1179,10 +1169,8 @@ char arith_type_string[Num_Linear_Types][25] = {
 \***************************************/
 
 extern exp_tbl_type    eq_ne_tbl[Num_Linear_Types][Num_Linear_Types];
-#ifdef KEY /* Bug 5710 */
 extern exp_tbl_type    and_or_tbl[Num_Linear_Types][Num_Linear_Types];
 extern exp_tbl_type eq_ne_on_logical_tbl[Num_Linear_Types][Num_Linear_Types];
-#endif /* KEY Bug 5710 */
 extern exp_tbl_type    lg_tbl[Num_Linear_Types][Num_Linear_Types];
 extern exp_tbl_type    gt_lt_tbl[Num_Linear_Types][Num_Linear_Types];
 

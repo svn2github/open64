@@ -461,13 +461,9 @@ fei_control_list(int mode)
 	  break;
 
         case CILIST_IOSTAT:
-#ifdef KEY /* Bug 7874 */
 	  ts = (FLD_item == cwh_stk_get_class()) ?
 	    cwh_stk_get_FLD_TY() :
             cwh_stk_get_TY();
-#else /* KEY Bug 7874 */
-          ts = cwh_stk_get_TY();
-#endif /* KEY Bug 7874 */
 	  wn1 = cwh_expr_address(f_NONE);
 	  if (wn1) {
             if (ts != NIL) {
@@ -1232,11 +1228,7 @@ fei_open(void)
 {
   INT item;
   WN **open_list;
-#ifdef KEY /* Bug 10177 */
   WN *wn = 0;
-#else /* KEY Bug 10177 */
-  WN *wn;
-#endif /* KEY Bug 10177 */
   WN *length;
   WN *addr;
   WN *unit= NULL;
@@ -1383,11 +1375,7 @@ fei_inquire(void)
 {
   INT item;
   WN **inq_list;
-#ifdef KEY /* Bug 10177 */
   WN *wn = 0;
-#else /* KEY Bug 10177 */
-  WN *wn;
-#endif /* KEY Bug 10177 */
   WN *length;
   WN *addr;
   WN *unit= NULL;
@@ -1572,11 +1560,7 @@ fei_close(void)
 {
   INT item;
   WN **close_list;
-#ifdef KEY /* Bug 10177 */
   WN *wn = 0;
-#else /* KEY Bug 10177 */
-  WN *wn;
-#endif /* KEY Bug 10177 */
   WN *length;
   WN *addr;
   WN *unit= NULL;
@@ -1698,11 +1682,7 @@ cwh_io_no_desc(IOSTATEMENT statement)
 {
   INT item;
   WN **nodesc_list;
-#ifdef KEY /* Bug 10177 */
   WN *wn = 0;
-#else /* KEY Bug 10177 */
-  WN *wn;
-#endif /* KEY Bug 10177 */
   WN *addr;
   WN *unit= NULL;
   INT32 num_items = 0;
@@ -2025,7 +2005,6 @@ cwh_io_analyse_io_item(WN *tree, IMPDO_INFO *impdo_set, int mode)
        Impdo_index(new_impdo_set) = WN_st(WN_index(tree));
        Impdo_next(new_impdo_set) = impdo_set;
 
-#ifdef KEY /* Bug 3279 */
        // Runtime library can interpret the implied-do loop internally only if
        // the indices are type integer*4 (see "struct dovarlist" in
        // dopexfer.c or "struct ioarray_entry" member "dovar" in f90io.h.)
@@ -2037,7 +2016,6 @@ cwh_io_analyse_io_item(WN *tree, IMPDO_INFO *impdo_set, int mode)
 	   return TRUE;
 	   }
        }
-#endif /* KEY Bug 3279 */
        
        visited = ST_auxst_visited(index);
        if (visited) {
@@ -2972,11 +2950,7 @@ static WN *
 Substitute_1_For_Impdo_Index_Val(WN *tree, IMPDO_INFO *impdo)
 {
   INT32 i;
-#ifdef KEY /* Bug 10177 */
   OPCODE opc_intconst = OPC_I4INTCONST;
-#else /* KEY Bug 10177 */
-  OPCODE opc_intconst;
-#endif /* KEY Bug 10177 */
   INT32 rtype;
 
   if (WN_operator_is(tree,OPR_LDID) && 

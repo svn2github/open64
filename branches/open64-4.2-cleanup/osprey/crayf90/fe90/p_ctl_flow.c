@@ -115,9 +115,7 @@ void parse_allocate_stmt (void)
    opnd_type    opnd;
    boolean      parsed_ok = TRUE;
    token_type   stat_token;
-#ifdef KEY /* Bug 4897 */
    boolean	first_trip = TRUE;
-#endif /* KEY Bug 4897 */
 
 
    TRACE (Func_Entry, "parse_allocate_stmt", NULL);
@@ -147,13 +145,11 @@ void parse_allocate_stmt (void)
 
       if (MATCHED_TOKEN_CLASS(Tok_Class_Id)) {
 
-#ifdef KEY /* Bug 4897 */
 	/* On first trip through this loop, "stat=" is not allowed */
         if (first_trip == TRUE) {
 	  first_trip = FALSE;
 	  }
 	else {
-#endif /* KEY Bug 4897 */
          if (strcmp(TOKEN_STR(token),"STAT") == 0) {
             stat_token = token;
 
@@ -179,9 +175,7 @@ void parse_allocate_stmt (void)
                }
             } /* if (matched_specific_token(Tok_Punct_Eq, Tok_Class_Punct)) */
          } /* if (strcmp(TOKEN_STR(token),"STAT")) */
-#ifdef KEY /* Bug 4897 */
         }
-#endif /* KEY Bug 4897 */
 
          NTR_IR_LIST_TBL(list1_idx);
 
@@ -406,7 +400,6 @@ EXIT:
    return;
 
 }  /* parse_assign_stmt */
-#ifdef KEY /* Bug 3018 */
 
 /******************************************************************************\
 |*									      *|
@@ -454,7 +447,6 @@ int switch_to_subroutine(int *host_name_idx, int *name_idx)
   }
   return host_attr_idx;
 }
-#endif /* KEY Bug 3018 */
 
 /******************************************************************************\
 |*									      *|
@@ -512,7 +504,6 @@ void parse_call_stmt (void)
       attr_idx = srch_sym_tbl(TOKEN_STR(token), 
                               TOKEN_LEN(token),
                               &name_idx);
-#ifdef KEY
       if (AT_OBJ_CLASS(attr_idx) == Pgm_Unit &&
           strncasecmp(TOKEN_STR(token), "omp_",4) == 0){
          host_attr_idx = srch_host_sym_tbl(TOKEN_STR(token),
@@ -522,9 +513,7 @@ void parse_call_stmt (void)
          if (host_attr_idx)
            attr_idx = NULL_IDX;
       }
-#endif
 
-#ifdef KEY /* Bug 3018 */
       /* If we picked up an intrinsic function due to an "intrinsic"
        * declaration, ignore that in case it's a G77 intrinsic which comes in
        * both function and subroutine forms. Setting "attr_idx" to null forces
@@ -539,7 +528,6 @@ void parse_call_stmt (void)
 	 explicit_intrinsic_decl = TRUE;
          attr_idx = NULL_IDX;
       }
-#endif /* KEY Bug 3018 */
       if (attr_idx != NULL_IDX) {
          host_attr_idx = attr_idx;
 
@@ -565,7 +553,6 @@ void parse_call_stmt (void)
 
          if (host_attr_idx != NULL_IDX) { 
 
-#ifdef KEY /* Bug 9872 */
             /* The parentheses are optional in a call statement when the
 	     * actual argument list is empty, so I don't understand why
 	     * this code ignores the intrinsic interface when the parens
@@ -576,15 +563,6 @@ void parse_call_stmt (void)
 	     * "date_and_time", and maybe to others. If the purpose of the code
 	     * ever becomes evident and we have to restore it, we will need
 	     * to add "date_and_time" to the set of "strcmp"ed exceptions. */
-#else /* KEY Bug 9872 */
-            if (LA_CH_VALUE != LPAREN &&
-                AT_IS_INTRIN(host_attr_idx) &&
-                AT_OBJ_CLASS(host_attr_idx) == Interface &&
-                (strcmp(AT_OBJ_NAME_PTR(host_attr_idx), "SYNCHRONIZE") != 0) &&
-                (strcmp(AT_OBJ_NAME_PTR(host_attr_idx), "RANDOM_SEED") != 0)) {
-               host_attr_idx = NULL_IDX;
-            }
-#endif /* KEY Bug 9872 */
 
             /* We don't want to copy down the host attr if the host */
             /* attr is a FUNCTION attr.  We are dealing with a CALL */
@@ -594,13 +572,12 @@ void parse_call_stmt (void)
                 AT_OBJ_CLASS(host_attr_idx) == Interface &&
                 ATI_INTERFACE_CLASS(host_attr_idx) == 
                                                    Generic_Function_Interface) {
-#ifdef KEY /* Bug 3018 */
 	      int switch_attr_idx = switch_to_subroutine(&host_name_idx,
 	        &name_idx);
 	      if (NULL_IDX == switch_attr_idx) {
 		/* If we saw an explicit "intrinsic" declaration, then
 		 * the act of calling a function as a subroutine is an
-		 * error. Otherwise (see bug 4367) it's a warning, and
+		 * error. Otherwise it's a warning, and
 		 * we treat it if we had seen an "external" declaration.
 		 */
 		if (explicit_intrinsic_decl) {
@@ -623,9 +600,6 @@ void parse_call_stmt (void)
 	      else {
 		host_attr_idx = switch_attr_idx;
 	      }
-#else
-	      host_attr_idx = NULL_IDX;
-#endif /* KEY Bug 3018 */
             }
          }
 
@@ -778,15 +752,9 @@ void parse_case_stmt (void)
    int		case_ir_idx;
    int		case_lbl_idx;
    int		cont_stmt_sh_idx;
-#ifdef KEY /* Bug 10177 */
    int		expr_start_col = 0;
    int		expr_start_line = 0;
    boolean	fnd_colon = 0;
-#else /* KEY Bug 10177 */
-   int		expr_start_col;
-   int		expr_start_line;
-   boolean	fnd_colon;
-#endif /* KEY Bug 10177 */
    boolean	fnd_default		= FALSE;
    boolean	fnd_name		= FALSE;
    int		ir_idx;
@@ -1453,13 +1421,8 @@ void parse_do_stmt (void)
    int		expr_start_col;
    int		expr_start_line;
    int		idx;
-#ifdef KEY /* Bug 10177 */
    int 		il_idx = 0;
    int 		il_idx_2 = 0;
-#else /* KEY Bug 10177 */
-   int 		il_idx;
-   int 		il_idx_2;
-#endif /* KEY Bug 10177 */
    boolean	label_found	= FALSE;
    int		last_il_idx;
    int		loop_info_idx;
@@ -1467,11 +1430,7 @@ void parse_do_stmt (void)
    opnd_type	loop_expr;
    int		loop_labels_il_idx;
    int		mp_nest_list_idx = NULL_IDX;
-#ifdef KEY /* Bug 10177 */
    int		mp_prev_idx = 0;
-#else /* KEY Bug 10177 */
-   int		mp_prev_idx;
-#endif /* KEY Bug 10177 */
    int		name_idx;
    opnd_type	while_expr;
 
@@ -1965,10 +1924,8 @@ void parse_do_stmt (void)
                LA_CH_CLASS == Ch_Class_Digit   ||
                LA_CH_VALUE == USCORE           || 
                LA_CH_VALUE == DOLLAR           ||
-#ifdef KEY /* Bug 4690 */
 	       /* We have reached the "=" in something like "do while = 1, 2" */
                LA_CH_VALUE == EQUAL  ||
-#endif /* KEY Bug 4690 */
                LA_CH_VALUE == AT_SIGN) {
          reset_lex(TOKEN_BUF_IDX(token), TOKEN_STMT_NUM(token));
          goto CHECK_FOR_VARIABLE;
@@ -2385,33 +2342,18 @@ void parse_else_stmt (void)
    blk_cntxt_type	blk_type		= If_Else_Blk;
    opnd_type            cond_expr;
 
-# if 0
-   int			cont_lbl_idx;
-   int			end_lbl_idx;
-# endif
 
    blk_cntxt_type	err_blk;
-#ifdef KEY /* Bug 10177 */
    int			expr_start_line = 0;
    int			expr_start_col = 0;
-#else /* KEY Bug 10177 */
-   int			expr_start_line;
-   int			expr_start_col;
-#endif /* KEY Bug 10177 */
    boolean		found_name		= FALSE;
    int			il_idx_1;
    int			il_idx_2;
    int			ir_idx;
    boolean		matched_blk		= FALSE;
-#ifdef KEY /* Bug 10177 */
    int			name_idx = 0;
    boolean		prev_clause_in_err;
    int			sh_idx = 0;
-#else /* KEY Bug 10177 */
-   int			name_idx;
-   boolean		prev_clause_in_err;
-   int			sh_idx;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "parse_else_stmt", NULL);
@@ -2737,17 +2679,6 @@ void parse_else_stmt (void)
          }
 # endif
 
-#if 0
-         if (CURR_BLK == If_Then_Blk) {
-            cont_lbl_idx                 = BLK_LABEL(blk_stk_idx - 1);
-            end_lbl_idx                  = gen_internal_lbl(stmt_start_line);
-            BLK_LABEL(blk_stk_idx - 1)   = end_lbl_idx;
-         }
-         else {
-            cont_lbl_idx = CURR_BLK_LABEL;
-            end_lbl_idx  = BLK_LABEL(blk_stk_idx - 1);
-         }
-#endif
 
       }
 
@@ -2830,60 +2761,8 @@ void parse_else_stmt (void)
                IR_FLD_L(ir_idx)      = SH_Tbl_Idx;
                IR_IDX_L(ir_idx)      = sh_idx;
             }
-#if 0
-               CURR_BLK_LABEL        = gen_internal_lbl(stmt_start_line);
-               IR_LINE_NUM_R(ir_idx) = stmt_start_line;
-               IR_COL_NUM_R(ir_idx)  = stmt_start_col;
-               IR_FLD_R(ir_idx)      = AT_Tbl_Idx;
-               IR_IDX_R(ir_idx)      = CURR_BLK_LABEL;
-#endif
            
 
-#if 0
-            /* Now AHEAD of the ELSE IF or ELSE SH, generate a GO TO stmt to  */
-            /* branch to the end of the IF construct and a CONTINUE stmt to   */
-            /* define the start of the ELSE IF or ELSE. 		      */
-
-            gen_sh(Before, Goto_Stmt,
-                   SH_GLB_LINE(SH_PREV_IDX(curr_stmt_sh_idx)), 
-                   SH_COL_NUM(SH_PREV_IDX(curr_stmt_sh_idx)),
-                   FALSE, FALSE, TRUE);
-
-            sh_idx                 = SH_PREV_IDX(curr_stmt_sh_idx);
-            NTR_IR_TBL(ir_idx);
-            SH_IR_IDX(sh_idx)      = ir_idx;
-            IR_OPR(ir_idx)         = Br_Uncond_Opr;
-            /* LRR - bhj put in short typeless as type idx */
-            IR_TYPE_IDX(ir_idx)         = TYPELESS_DEFAULT_TYPE;
-            IR_LINE_NUM(ir_idx)    = SH_GLB_LINE(SH_PREV_IDX(sh_idx));
-            IR_COL_NUM(ir_idx)     = SH_COL_NUM(SH_PREV_IDX(sh_idx));
-            
-            IR_LINE_NUM_R(ir_idx)  = SH_GLB_LINE(SH_PREV_IDX(sh_idx));
-            IR_COL_NUM_R(ir_idx)   = SH_COL_NUM(SH_PREV_IDX(sh_idx));
-            IR_FLD_R(ir_idx)       = AT_Tbl_Idx;
-            IR_IDX_R(ir_idx)       = end_lbl_idx;
-
-            gen_sh(Before, Continue_Stmt, stmt_start_line, stmt_start_col,
-                   FALSE, TRUE, TRUE);
-         
-            sh_idx                         = SH_PREV_IDX(curr_stmt_sh_idx);
-            NTR_IR_TBL(ir_idx);
-            SH_IR_IDX(sh_idx)              = ir_idx;
-            IR_OPR(ir_idx)                 = Label_Opr;
-            /* LRR - bhj put in short typeless as type idx */
-            IR_TYPE_IDX(ir_idx)            = TYPELESS_DEFAULT_TYPE;
-            IR_LINE_NUM(ir_idx)            = stmt_start_line;
-            IR_COL_NUM(ir_idx)             = stmt_start_col;
-            IR_LINE_NUM_L(ir_idx)          = stmt_start_line;
-            IR_COL_NUM_L(ir_idx)           = stmt_start_col;
-            IR_FLD_L(ir_idx)               = AT_Tbl_Idx;
-            IR_IDX_L(ir_idx)               = cont_lbl_idx;
-            AT_DEFINED(cont_lbl_idx)       = TRUE;
-            AT_DEF_LINE(cont_lbl_idx)      = stmt_start_line;
-            AT_DEF_COLUMN(cont_lbl_idx)    = stmt_start_col;
-            AT_REFERENCED(cont_lbl_idx)    = Referenced;
-            ATL_DEF_STMT_IDX(cont_lbl_idx) = sh_idx;
-#endif
          }
       }
    }
@@ -2915,13 +2794,6 @@ void parse_else_stmt (void)
             SH_ERR_FLG(curr_stmt_sh_idx) = TRUE;
          }
 
-# if 0
-         if (cif_flags & XREF_RECS) {
-            cif_usage_rec(CURR_BLK_NAME, AT_Tbl_Idx,
-   		          TOKEN_LINE(token), TOKEN_COLUMN(token),
-		          CIF_Construct_Name_Reference);
-         }
-# endif
       }
    }
 
@@ -3045,11 +2917,7 @@ void parse_forall (void)
 
 {
    opnd_type    an_opnd;
-#ifdef KEY /* Bug 10177 */
    int          blk_stk_start = 0;
-#else /* KEY Bug 10177 */
-   int          blk_stk_start;
-#endif /* KEY Bug 10177 */
    int          expr_start_line;
    int          expr_start_col;
    int          forall_ir_idx;
@@ -3304,11 +3172,9 @@ NEXT_TRIPLET_SPEC:
       else if (MATCHED_TOKEN_CLASS(Tok_Class_Op)) {
          reset_lex(TOKEN_BUF_IDX(token), TOKEN_STMT_NUM(token));
       }
-#ifdef KEY /* Bug 8564 */
       else if (LA_CH_VALUE == LPAREN) {
          reset_lex(TOKEN_BUF_IDX(token), TOKEN_STMT_NUM(token));
       }
-#endif /* KEY Bug 8564 */
       else {
          parse_err_flush(Find_EOS, "index-name or mask expression");
          goto EXIT;
@@ -3645,9 +3511,7 @@ void	parse_goto_stmt(void)
       /* issued messages so give up.					      */
 
       if (parse_label_list(ir_idx)) {
-#ifdef KEY /* Bug 318, 321 */
 	 PRINTMSG(stmt_start_line, 1568, Ansi, stmt_start_col, "computed GOTO");
-#endif /* KEY Bug 318, 321 */
 
          /* Recognize and toss the comma following the label-list, if the     */
          /* comma exists.				     		      */
@@ -3947,13 +3811,6 @@ void parse_if_stmt (void)
                IR_LINE_NUM(ir_idx)         = expr_start_line;
                IR_COL_NUM(ir_idx)          = expr_start_col;
                COPY_OPND(IR_OPND_L(ir_idx), cond_expr);
-#if 0
-               CURR_BLK_LABEL              = gen_internal_lbl(stmt_start_line);
-               IR_LINE_NUM_R(ir_idx)       = expr_start_line;
-               IR_COL_NUM_R(ir_idx)        = expr_start_col;
-               IR_FLD_R(ir_idx)            = AT_Tbl_Idx;
-               IR_IDX_R(ir_idx)            = CURR_BLK_LABEL;
-#endif
             }
 
             /* Generate a Then_Stmt SH and block stack entry.  This is needed */
@@ -4085,9 +3942,7 @@ PARSE_LOGICAL_IF:
       switch (stmt_type) {
          case Allocatable_Stmt:
          case Automatic_Stmt:
-#ifdef KEY /* Bug 14150 */
          case Bind_Stmt:
-#endif /* KEY Bug 14150 */
          case Common_Stmt:
          case Contains_Stmt:
          case Cpnt_Decl_Stmt:
@@ -4100,13 +3955,9 @@ PARSE_LOGICAL_IF:
          case Format_Stmt:
          case Implicit_Stmt:
          case Implicit_None_Stmt:
-#ifdef KEY /* Bug 11741 */
          case Import_Stmt:
-#endif /* KEY Bug 11741 */
-#ifdef KEY /* Bug 10572 */
          case Enum_Stmt:
          case Enumerator_Stmt:
-#endif /* KEY Bug 10572 */
          case Intent_Stmt:
          case Interface_Stmt:
          case Intrinsic_Stmt:
@@ -4133,9 +3984,7 @@ PARSE_LOGICAL_IF:
          case Pure_Stmt:
          case Recursive_Stmt:
          case Subroutine_Stmt:
-#ifdef KEY /* Bug 14150 */
 	 case Value_Stmt:
-#endif /* KEY Bug 14150 */
 
             PRINTMSG(stmt_start_line, 365, Error, stmt_start_col);
             parse_err_flush(Find_EOS, NULL);
@@ -4253,9 +4102,7 @@ PARSE_LOGICAL_IF:
          case End_Function_Stmt:
          case End_If_Stmt:
          case End_Interface_Stmt:
-#ifdef KEY /* Bug 10572 */
          case End_Enum_Stmt:
-#endif /* KEY Bug 10572 */
          case End_Module_Stmt:
          case End_Program_Stmt:
          case End_Select_Stmt:
@@ -4434,11 +4281,7 @@ PARSE_LOGICAL_IF:
                      /* Arithmetic IF.					      */
                      /* ----------------------------------------------------- */
 
-#ifdef KEY /* Bug 318, 321 */
                      PRINTMSG(stmt_start_line, 112, Ansi, stmt_start_col);
-#else /* KEY Bug 318, 321 */
-                     PRINTMSG(stmt_start_line, 112, Comment, stmt_start_col);
-#endif /* KEY Bug 318, 321 */
 
                      if (cif_flags & MISC_RECS) {
                         cif_stmt_type_rec(TRUE, 
@@ -4668,11 +4511,7 @@ void parse_return_stmt (void)
       /* Alternate return specifiers are obsolescent. */
 
       PRINTMSG(IR_LINE_NUM(ir_idx), 371,
-#ifdef KEY /* Bug 318, 321 */
         Ansi,
-#else /* KEY Bug 318, 321 */
-        Comment,
-#endif /* KEY Bug 318, 321 */
 	IR_COL_NUM(ir_idx));
 
       /* Check for alternate return specifier in a FUNCTION subprogram. */

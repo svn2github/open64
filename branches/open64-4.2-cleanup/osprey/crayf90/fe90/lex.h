@@ -147,9 +147,7 @@ static	kwd_type		kwd[] = {
 				"BACKSPACE",	     Tok_Kwd_Backspace,
 				"BUFFER",	     Tok_Kwd_Buffer,
 				"BLOCK",	     Tok_Kwd_Block,
-#ifdef KEY /* Bug 10572 */
 				"BIND",		     Tok_Kwd_Bind,
-#endif /* KEY Bug 10572 */
 				"BYTE",		     Tok_Kwd_Byte,
 
 				"CHARACTER",	     Tok_Kwd_Character,
@@ -171,17 +169,13 @@ static	kwd_type		kwd[] = {
 				"DO",		     Tok_Kwd_Do,
 
 				"EQUIVALENCE",	     Tok_Kwd_Equivalence,
-#ifdef KEY /* Bug 10572 */
 				"ENUMERATOR",	     Tok_Kwd_Enumerator,
-#endif /* KEY Bug 10572 */
 				"ELEMENTAL",	     Tok_Kwd_Elemental,
 				"EXTERNAL",	     Tok_Kwd_External,
 				"ENCODE",	     Tok_Kwd_Encode,
 				"ENTRY",	     Tok_Kwd_Entry,
 				"ELSE",		     Tok_Kwd_Else,
-#ifdef KEY /* Bug 10572 */
 				"ENUM",		     Tok_Kwd_Enum,
-#endif /* KEY Bug 10572 */
 				"EXIT",		     Tok_Kwd_Exit,
 				"END",		     Tok_Kwd_End,
 
@@ -197,9 +191,7 @@ static	kwd_type		kwd[] = {
 				"IMPLICIT",	     Tok_Kwd_Implicit,
 				"INQUIRE",	     Tok_Kwd_Inquire,
 				"INTEGER",	     Tok_Kwd_Integer,
-#ifdef KEY /* Bug 11741 */
 				"IMPORT",	     Tok_Kwd_Import,
-#endif /* KEY Bug 11741 */
 				"INTENT",	     Tok_Kwd_Intent,
 				"IF",		     Tok_Kwd_If,
 				"IN",		     Tok_Kwd_In,
@@ -211,14 +203,10 @@ static	kwd_type		kwd[] = {
 
 				"MODULE",	     Tok_Kwd_Module,
 
-#ifdef KEY /* Bug 5089 */
 				"NON_INTRINSIC",     Tok_Kwd_Nonintrinsic,
-#endif /* KEY Bug 5089 */
 				"NAMELIST",	     Tok_Kwd_Namelist,
 				"NULLIFY",	     Tok_Kwd_Nullify,
-#ifdef KEY /* Bug 10572 */
 				"NAME",		     Tok_Kwd_Name,
-#endif /* KEY Bug 10572 */
 				"NONE",		     Tok_Kwd_None,
 
 				"OPERATOR",	     Tok_Kwd_Operator,
@@ -264,9 +252,7 @@ static	kwd_type		kwd[] = {
 				"USE",		     Tok_Kwd_Use,
 
 				"VOLATILE",	     Tok_Kwd_Volatile,
-#ifdef KEY /* Bug 14150 */
 				"VALUE",	     Tok_Kwd_Value,
-#endif /* KEY Bug 14150 */
  
 				"WHERE",	     Tok_Kwd_Where,
 				"WHILE",	     Tok_Kwd_While,
@@ -651,9 +637,7 @@ static  kwd_type	kwd_sgi_dir[] = {
 	"NEST",			 	  Tok_SGI_Dir_Nest,
 
 	"OPTIONAL",	 		  Tok_SGI_Dir_Optional,
-#ifdef KEY /* Bug 2660 */
 	"OPTIONS",	 		  Tok_SGI_Dir_Options,
-#endif /* KEY Bug 2660 */
 	"ORDERED",	 		  Tok_SGI_Dir_Ordered,
 	"OPAQUE",	 		  Tok_SGI_Dir_Opaque,
 	"ONTO",		 		  Tok_SGI_Dir_Onto,
@@ -735,7 +719,7 @@ static  kwd_type        kwd_open_mp_dir[] = {
 
 	"BARRIER",			Tok_Open_Mp_Dir_Barrier,
 
-	"COPYPRIVATE",		Tok_Open_Mp_Dir_Copyprivate, /* by jhs, 02/7/5 */
+	"COPYPRIVATE",		Tok_Open_Mp_Dir_Copyprivate,
 	"CRITICAL",			Tok_Open_Mp_Dir_Critical,
 	"COPYIN",			Tok_Open_Mp_Dir_Copyin,
 
@@ -746,10 +730,10 @@ static  kwd_type        kwd_open_mp_dir[] = {
 	"DATA",				Tok_Open_Mp_Dir_Data,
 	"DO",				Tok_Open_Mp_Dir_Do,
 
-	"ENDPARALLELWORKSHARE",	Tok_Open_Mp_Dir_Endparallelworkshare, /* by jhs, 02/7/5 */
+	"ENDPARALLELWORKSHARE",	Tok_Open_Mp_Dir_Endparallelworkshare,
 	"ENDPARALLELSECTIONS",		Tok_Open_Mp_Dir_Endparallelsections,
 	"ENDPARALLELDO",		Tok_Open_Mp_Dir_Endparalleldo,
-	"ENDWORKSHARE",		Tok_Open_Mp_Dir_Endworkshare, /* by jhs, 02/7/5 */
+	"ENDWORKSHARE",		Tok_Open_Mp_Dir_Endworkshare,
 	"ENDCRITICAL",			Tok_Open_Mp_Dir_Endcritical,
 	"ENDPARALLEL",			Tok_Open_Mp_Dir_Endparallel,
 	"ENDSECTIONS",			Tok_Open_Mp_Dir_Endsections,
@@ -769,7 +753,7 @@ static  kwd_type        kwd_open_mp_dir[] = {
 
 	"MASTER",			Tok_Open_Mp_Dir_Master,
 
-	"NUM_THREADS",		Tok_Open_Mp_Dir_Num_Threads, /* by jhs, 02/7/5 */
+	"NUM_THREADS",		Tok_Open_Mp_Dir_Num_Threads,
 	"NOWAIT",			Tok_Open_Mp_Dir_Nowait,
 	"NEST",				Tok_Open_Mp_Dir_Nest,
 	"NONE",				Tok_Open_Mp_Dir_None,
@@ -777,7 +761,7 @@ static  kwd_type        kwd_open_mp_dir[] = {
 	"ORDERED",			Tok_Open_Mp_Dir_Ordered,
 	"ONTO",				Tok_Open_Mp_Dir_Onto,
 
-	"PARALLELWORKSHARE",	Tok_Open_Mp_Dir_Parallelworkshare, /* by jhs, 02/7/5 */
+	"PARALLELWORKSHARE",	Tok_Open_Mp_Dir_Parallelworkshare,
 	"PARALLELSECTIONS",		Tok_Open_Mp_Dir_Parallelsections,
 	"PAGE_PLACE",   		Tok_Open_Mp_Dir_Page_Place,
 	"PARALLELDO",			Tok_Open_Mp_Dir_Paralleldo,
@@ -798,7 +782,7 @@ static  kwd_type        kwd_open_mp_dir[] = {
 	"THREADPRIVATE",		Tok_Open_Mp_Dir_Threadprivate,
 	"THREAD",			Tok_Open_Mp_Dir_Thread,
 
-	"WORKSHARE",		Tok_Open_Mp_Dir_Workshare, /* by jhs, 02/7/5 */
+	"WORKSHARE",		Tok_Open_Mp_Dir_Workshare,
 	"",				Tok_LAST };
 
 static  int                     kwd_open_mp_dir_idx[27];

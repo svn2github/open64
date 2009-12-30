@@ -310,12 +310,8 @@ BOOL cwh_stab_pu_has_globals; /* Were any global symbols seen in the PU */
 
 static  const char * const crayf90_def_main = "main___" ;
 static  const char * const def_main_u = "MAIN__" ;
-#ifndef KEY
-static  char * const def_main   = "MAIN_" ;
-#else
 /* Bug 2672- use the mangled name in Dwarf output to match the assembly name */
 static  const char * const def_main   = "MAIN__" ;
-#endif
 
 #if !defined(FOR_I_CVRT)
 

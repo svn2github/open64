@@ -521,11 +521,7 @@ cwh_block_append_given(enum block_id id)
 static WN **
 cwh_block_find_address(enum block_id id)
 {
-#ifdef KEY /* Bug 10177 */
   WN ** block = 0;
-#else /* KEY Bug 10177 */
-  WN ** block ;
-#endif /* KEY Bug 10177 */
 
   switch (id) {
   case Defer_Block:

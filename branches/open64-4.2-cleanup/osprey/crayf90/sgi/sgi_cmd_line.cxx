@@ -45,7 +45,6 @@
 static const char *source_file = __FILE__;
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/sgi_cmd_line.cxx,v $ $Revision: 1.1.1.1 $";
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 /* SGI includes */
 #include "stamp.h"
@@ -63,15 +62,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/sg
 #include "erlib.h"
 #include "tracing.h"
 #include "err_host.tab"
-#ifdef KEY /* Bug 4607 */
 #  include "path_intrinsic_list.h"
-#endif /* KEY Bug 4607 */
-#ifdef KEY /* Bug 4260 */
 #include "../../../clibinc/cray/io_byteswap.h"
-#endif /* KEY Bug 4260 */
-#ifdef KEY /* Bug 6204 */
 #include "decorate_utils.h"
-#endif /* KEY Bug 6204 */
 
 /* conversion includes */
 #include "sgi_cmd_line.h"
@@ -106,13 +99,9 @@ BOOL Full_arrayexp_set = FALSE;
 mUINT16  FE_align=8;
 
 char *FE_gdar_filename = NULL;
-#ifdef KEY
 char *F2C_ABI_filename = NULL;
-#endif
-#ifdef KEY /* Bug 3507 */
 BOOL option_underscoring = TRUE;
 BOOL option_second_underscore = TRUE;
-#endif /* KEY Bug 3507 */
 
 INT32 global_chunk_pragma_value;
 BOOL  global_chunk_pragma_set = FALSE;
@@ -122,11 +111,7 @@ BOOL global_schedtype_pragma_set = FALSE;
 
 BOOL process_cri_mp_pragmas=FALSE;
 
-#ifdef KEY
 BOOL disable_old_mp = TRUE;		// bug 4406
-#else
-BOOL disable_old_mp = FALSE;
-#endif
 BOOL disable_open_mp = FALSE;
 
 BOOL FE_Call_Never_Return = TRUE;
@@ -140,12 +125,8 @@ BOOL FE_Call_Never_Return = TRUE;
 static MEM_POOL FE_Mempool_s;
 MEM_POOL *FE_Mempool=&FE_Mempool_s;
 
-#ifdef KEY /* Bug 4719 */
 char *preprocessor_output_file;
-#endif /* KEY Bug 4719 */
-#ifdef KEY /* Bug 4260 */
 int io_byteswap = IO_DEFAULT;
-#endif /* KEY Bug 4260 */
 
 /* ====================================================================
  *
@@ -322,11 +303,7 @@ void Process_Command_Line (INT argc, char ** argv)
    char *temp;
    char ch,c;
    BOOL pass_option;
-#ifdef KEY /* Bug 10177 */
    BOOL opt_set = FALSE;
-#else /* KEY Bug 10177 */
-   BOOL opt_set;
-#endif /* KEY Bug 10177 */
    INT j;
    FILE *f;
    INT  command_line_length;
@@ -350,20 +327,9 @@ void Process_Command_Line (INT argc, char ** argv)
 	 cp = argv[i]+1;	/* Pointer to next flag	character */
 	 if (Process_Command_Line_Group(cp, Common_Option_Groups)) {
 	    pass_option = FALSE;
-#ifdef KEY /* Bug 3405 */
             if (LANG_IEEE_Minus_Zero_On) {
 	      add_cray_args("-ez");
 	    }
-#else
-            switch ( *cp++ ) {
-              case 'L':
-               if ((strncmp(cp, "ANG:IEEE_minus_zero", 19) == 0) &&
-                   (strncmp(cp, "ANG:IEEE_minus_zero=off", 23) != 0) &&
-                   (strncmp(cp, "ANG:IEEE_minus_zero=OFF", 23) != 0)) {
-                  add_cray_args("-ez");
-               }
-            }
-#endif /* KEY Bug 3405 */
          } else if (Process_Command_Line_Group(cp, FE_Option_Groups)) {
 	    pass_option = FALSE;
 	 } else {
@@ -390,14 +356,12 @@ void Process_Command_Line (INT argc, char ** argv)
 	       }
 	       break;
 
-#ifdef KEY /* Bug 4260 */
 	     case 'b':
 	       if (strcmp(cp, "yteswapio")==0) {
 		  io_byteswap = IO_SWAP;
 	          pass_option = FALSE;
 	       }
 	       break;
-#endif /* KEY Bug 4260 */
 
 	     case 'c':
 	       if (strcmp(cp,"ol72")==0) {
@@ -422,7 +386,6 @@ void Process_Command_Line (INT argc, char ** argv)
 		 process_cri_mp_pragmas = TRUE;
 		 add_cray_args("-Otask1");
                }
-#ifdef KEY /* Bug 4260 */
 	       else if (strcmp(cp,"onvert")==0) {
 		 pass_option = FALSE;
 		 cp = argv[++i]; /* Get next argument */
@@ -444,7 +407,6 @@ void Process_Command_Line (INT argc, char ** argv)
 		   pass_option = TRUE;
 		 }
                }
-#endif /* KEY Bug 4260 */
 	       break;
 
 	     case 'd':
@@ -503,33 +465,25 @@ void Process_Command_Line (INT argc, char ** argv)
                } else if ( strcmp(cp,"no-second-underscore") == 0 ) {
                   add_cray_args("-dN");
                   pass_option = FALSE;
-#ifdef KEY /* Bug 3507 */
 		  option_second_underscore = FALSE;
-#endif /* KEY Bug 3507 */
                } else if ( strcmp(cp,"second-underscore") == 0 ) {
                   add_cray_args("-eN");
                   pass_option = FALSE;
                } else if ( strcmp(cp,"no-underscoring") == 0 ) {
                   add_cray_args("-dO");
                   pass_option = FALSE;
-#ifdef KEY /* Bug 3507 */
 		  option_underscoring = FALSE;
-#endif /* KEY Bug 3507 */
                } else if ( strcmp(cp,"underscoring") == 0 ) {
                   add_cray_args("-eO");
                   pass_option = FALSE;
-#ifdef KEY
 	       } else if ( strcmp(cp,"f2c-abi") == 0 ) {
 		  F2C_ABI_filename = strdup ( argv[i+1] );
 		  i++;
 	          pass_option = FALSE;
-#endif
-#ifdef KEY /* Bug 6204 */
 	       } else if ( strcmp(cp,"decorate") == 0 ) {
 		  parse_decorate_script(argv[i+1]);
 		  i++;
 	          pass_option = FALSE;
-#endif /* KEY Bug 6204 */
 	       } else { /* Filename options -- ignore these except -fb: */
 		  c = *cp++;
 		  if ( (ch=*cp++) != ',' && ch != ':' ) {
@@ -559,7 +513,6 @@ void Process_Command_Line (INT argc, char ** argv)
 		      break;
 		     
 		   case 'D': /* Cray debug file */
-#ifdef KEY	      // Bug 933.
 		      // Handle spaces in file names.
 		      {
 			char *p, *t;
@@ -574,11 +527,6 @@ void Process_Command_Line (INT argc, char ** argv)
 			}
 			*t = '\0';
 		      }
-#else
-		      temp = (char *) malloc (strlen(cp) + 8);
-		      strcpy(temp,"-ufile=");
-		      strcat(temp,cp);
-#endif
 		      add_cray_args(temp);
 		      free(temp);
 		      pass_option = FALSE;
@@ -655,14 +603,12 @@ void Process_Command_Line (INT argc, char ** argv)
 		  add_cray_args("-slogical8");
 		  pass_option = FALSE;
 	       }
-#ifdef KEY /* Bug 4607 */
 #  define NTRINSIC "ntrinsic="
 #  define NTRINSIC_LEN ((sizeof NTRINSIC) - 1)
                else if (0 == strncmp(cp, NTRINSIC, NTRINSIC_LEN)) {
 	          path_intrinsic_list.add(cp + NTRINSIC_LEN, 1);
 		  pass_option = FALSE;
 	       }
-#endif /* KEY Bug 4607 */
 		  
 	       break;
 
@@ -747,17 +693,14 @@ void Process_Command_Line (INT argc, char ** argv)
                   add_cray_args("-dN");
                   pass_option = FALSE;
                }
-#ifdef KEY /* Bug 4607 */
 #  define OINTRINSIC "o-intrinsic="
 #  define OINTRINSIC_LEN ((sizeof OINTRINSIC) - 1)
                else if (0 == strncmp(cp, OINTRINSIC, OINTRINSIC_LEN)) {
 	          path_intrinsic_list.add(cp + OINTRINSIC_LEN, 0);
 		  pass_option = FALSE;
 	       }
-#endif /* KEY Bug 4607 */
 	       break;
 
-#ifdef KEY /* Bug 4719 */
 	     case 'o':
 	       // We don't have access to the error machinery in the fe90
 	       // directory, so reporting trouble is hard; hopefully the
@@ -767,7 +710,6 @@ void Process_Command_Line (INT argc, char ** argv)
 		 }
 	       pass_option = FALSE;
 	       break;
-#endif /* KEY Bug 4719 */
 
 	     case 'O':		/* Optimization level: */
 	       Opt_Level = Get_Numeric_Flag
@@ -881,11 +823,9 @@ void Process_Command_Line (INT argc, char ** argv)
       }
    }
 
-#ifdef KEY /* Bug 5061 */
    /* Fortran front end relies on wn_simp to fold certain expressions, so
     * don't allow Process_Command_Line_Group() above to turn it off */
    Enable_WN_Simp = TRUE;
-#endif /* KEY Bug 5061 */
 
    /* Add the align switch */
    if (FE_align==8) {

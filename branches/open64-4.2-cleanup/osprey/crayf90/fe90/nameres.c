@@ -218,14 +218,12 @@ boolean	fnd_semantic_err(obj_type	new_obj,
             msg_str = dir_str[Dir_Auxiliary];
             goto ISSUE_ERR;
          }
-#ifdef KEY /* Bug 14150 */
          if (AT_BIND_ATTR(attr_idx) && 
                   (attr_obj_ntry & (1 << Attr_Bind))) {
             msg_num = attr_msg_num[new_obj][Attr_Bind];
             msg_str = attr_str[Attr_Bind];
             goto ISSUE_ERR;
          }
-#endif /* KEY Bug 14150 */
          break;
 
       case Variable:
@@ -233,15 +231,6 @@ boolean	fnd_semantic_err(obj_type	new_obj,
          /* Only a variable can be data initialized, equivalenced, */
          /*      in a common block,  in auxiliary or saved.        */
 
-# if 0
-
-         if (name_obj_ntry & (1 << Name_Variable))) {
-            msg_num = name_msg_num[new_obj][Name_Variable];
-            msg_str = name_str[Name_Variable];
-            goto ISSUE_ERR;
-         }
-# endif
-#ifdef KEY /* Bug 14150 */
          if (AT_BIND_ATTR(attr_idx) && 
                   (attr_obj_ntry & (1 << Attr_Bind))) {
             msg_num = attr_msg_num[new_obj][Attr_Bind];
@@ -260,7 +249,6 @@ boolean	fnd_semantic_err(obj_type	new_obj,
 	   msg_str = attr_str[Attr_Bind];
             goto ISSUE_ERR;
          }
-# endif
          if (ATD_DATA_INIT(attr_idx) && 
                   (attr_obj_ntry & (1 << Attr_Data_Init))) {
             msg_num = attr_msg_num[new_obj][Attr_Data_Init];
@@ -364,7 +352,6 @@ boolean	fnd_semantic_err(obj_type	new_obj,
             msg_num = other_msg_num[new_obj][Other_Use_Dummy_Arg];
             goto ISSUE_ERR;
          }
-#ifdef KEY /* Bug 14150 */
 	 /* No evident way to issue Ansi instead of Error via tables */
 	 else if (on_off_flags.issue_ansi_messages &&
 	   ((ATD_INTENT(attr_idx) != Intent_Unseen && new_obj == Obj_Pointer) ||
@@ -379,7 +366,6 @@ boolean	fnd_semantic_err(obj_type	new_obj,
 	    msg_str = attr_str[Attr_Value];
 	    goto ISSUE_ERR;
 	 }
-#endif /* KEY Bug 14150 */
          break;	/* End Dummy_Arg case */
 
       case Function_Result:
@@ -672,14 +658,12 @@ boolean	fnd_semantic_err(obj_type	new_obj,
 
    case Pgm_Unit:
 
-#ifdef KEY /* Bug 14150 */
      if (AT_BIND_ATTR(attr_idx) && 
 	      (attr_obj_ntry & (1 << Attr_Bind))) {
 	msg_num = attr_msg_num[new_obj][Attr_Bind];
 	msg_str = attr_str[Attr_Bind];
 	goto ISSUE_ERR;
       }
-#endif /* KEY Bug 14150 */
 
       switch (ATP_PGM_UNIT(attr_idx)) {
       case Program:
@@ -1136,10 +1120,6 @@ boolean	fnd_semantic_err(obj_type	new_obj,
             break;
 # ifdef _DEBUG
          default:
-# if 0
-            PRINTMSG(line, 257, Internal, column,
-                     ATP_PROC(attr_idx), "ATP_PROC");
-# endif
             break;
 # endif
          }        /* End switch */
@@ -1198,14 +1178,12 @@ boolean	fnd_semantic_err(obj_type	new_obj,
          msg_str = name_str[Name_Derived_Type];
          goto ISSUE_ERR;
       }
-#ifdef KEY /* Bug 14150 */
       if (AT_BIND_ATTR(attr_idx) && 
 	       (attr_obj_ntry & (1 << Attr_Bind))) {
 	 msg_num = attr_msg_num[new_obj][Attr_Bind];
 	 msg_str = attr_str[Attr_Bind];
 	 goto ISSUE_ERR;
       }
-#endif /* KEY Bug 14150 */
       break;
 
    case Interface:
@@ -1333,7 +1311,6 @@ ISSUE_ERR:
                      msg_str);
          }
          else {
-#ifdef KEY /* Bug 5040 */
 	    /* Added the initial-declaration line number to all of the
 	     * messages in attr_msg_num which previously took 3 arg strings;
 	     * because AT_DEF_LINE(attr_idx) is at the end of the varargs list,
@@ -1344,12 +1321,6 @@ ISSUE_ERR:
                      msg_str,
                      obj_str[new_obj],
 		     AT_DEF_LINE(attr_idx));
-#else /* KEY Bug 5040 */
-            PRINTMSG(line, msg_num, Error, column,
-                     AT_OBJ_NAME_PTR(attr_idx),
-                     msg_str,
-                     obj_str[new_obj]);
-#endif /* KEY Bug 5040 */
          }
       }
 

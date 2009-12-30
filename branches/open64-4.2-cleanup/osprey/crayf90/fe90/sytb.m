@@ -258,9 +258,7 @@
 
 # else   /* _DOPE_VECTOR_32 and DOPE_VECTOR_64 */
 
-#ifdef KEY /* Bug 6845 */
 # define DV_ALLOC_CPNT_OFFSET_WORD_SIZE		1
-#endif /* KEY Bug 6845 */
 
 # define DV_DIM_WORD_SIZE		3       /* Size of dope vector dimen  */
 # define DV_HD_WORD_SIZE		6       /* Size of dope vector header */
@@ -328,16 +326,8 @@
 # define NP_LAST_USED_IDX	2	/* last reserved index                */
 # define TYP_LAST_USED_IDX	Num_Linear_Types + 1 /* 2 extra entries */
 
-#ifdef KEY /* Bug 4656 */
  /* Let the C compiler figure it out */
-#else
-# define MAX_INTRIN_TBL_SIZE   13400    /* max entries in intrinsic table     */
-#endif /* KEY Bug 4656 */
-# ifdef KEY
 # define MAX_INTRIN_MAP_SIZE   75       /* max entries in intrinsic map       */
-# else
-# define MAX_INTRIN_MAP_SIZE   59       /* max entries in intrinsic map       */
-# endif
 
 # define MAX_INLINE_ARGS       256      /* max actual args allowed on a       */
                                         /* call to be inlined                 */
@@ -384,12 +374,10 @@
 # define AT_HOST_ASSOCIATED(IDX)	attr_tbl[IDX].fld.host_associated
 # define AT_IGNORE_ATTR_LINK(IDX)	attr_tbl[IDX].fld.ignore_attr_link
 # define AT_IS_DARG(IDX)		attr_tbl[IDX].fld.is_darg
-#ifdef KEY /* Bug 5089 */
 /* F2003: For a module, this has special meanings: prior to semantics, it
  * means that at least one "use" for this module in the current scope has the
  * "intrinsic" module-nature keyword; after semantics, it means that we did
  * use-associate an intrinsic module. */
-#endif /* KEY Bug 5089 */
 # define AT_IS_INTRIN(IDX)		attr_tbl[IDX].fld.is_intrin
 # define AT_LOCKED_IN(IDX)		attr_aux_tbl[IDX].fld.locked_in
 # define AT_MODULE_IDX(IDX)		attr_tbl[IDX].fld.module_idx
@@ -688,7 +676,6 @@
 # define ATD_WAS_SCOPED(IDX)		attr_tbl[IDX].fld.flag45
 # endif
 
-#ifdef KEY /* Bug 14150 */
 # ifdef _DEBUG
 # define AT_BIND_ATTR(IDX)						       \
 		((!(AT_OBJ_CLASS(IDX) == Data_Obj &&                           \
@@ -709,7 +696,6 @@
 # define ATD_VALUE_ATTR(IDX)		attr_tbl[IDX].fld.flag46
 # endif
 
-#endif /* KEY Bug 14150 */
 
 # ifdef _DEBUG
 # define ATD_DV_ALIAS(IDX)  						       \
@@ -824,17 +810,10 @@
 # endif
 
 # ifdef _DEBUG
-#ifdef KEY /* Bug 14150 */
 # define ATD_IGNORE_TKR(IDX)						       \
         ((AT_OBJ_CLASS(IDX) == Data_Obj || AT_OBJ_CLASS(IDX) == Pgm_Unit) ?    \
                 attr_tbl : sytb_var_error("ATD_IGNORE_TKR", IDX))	       \
                 [IDX].fld.flag48
-#else /* KEY */
-# define ATD_IGNORE_TKR(IDX)						       \
-        ((AT_OBJ_CLASS(IDX) == Data_Obj) ?                                     \
-                attr_tbl : sytb_var_error("ATD_IGNORE_TKR", IDX))	       \
-                [IDX].fld.flag48
-#endif /* KEY Bug 14150 */
 # else
 # define ATD_IGNORE_TKR(IDX)		attr_tbl[IDX].fld.flag48
 # endif
@@ -1085,7 +1064,6 @@
 # define ATD_READ_ONLY_VAR(IDX)           attr_tbl[IDX].fld.flag52
 # endif
 
-# ifdef KEY
 # ifdef _DEBUG
 # define ATD_F2C_ABI_VAR(IDX)                                                \
 	((AT_OBJ_CLASS(IDX) == Data_Obj || AT_OBJ_CLASS(IDX) == Pgm_Unit) ?				       \
@@ -1093,7 +1071,6 @@
                 [IDX].fld.flag57
 # else
 # define ATD_F2C_ABI_VAR(IDX)           attr_tbl[IDX].fld.flag57
-# endif
 # endif
 
 # ifdef _DEBUG
@@ -1302,7 +1279,6 @@
 # define ATD_TASK_LASTPRIVATE(IDX)        attr_aux_tbl[IDX].fld.flag19
 # endif
 
-/* the following is added by jhs, 02/7/22*/
 # ifdef _DEBUG
 # define ATD_TASK_COPYPRIVATE(IDX)                                             \
         ((AT_OBJ_CLASS(IDX) == Data_Obj) ?                                     \
@@ -1311,7 +1287,6 @@
 # else
 # define ATD_TASK_COPYPRIVATE(IDX)        attr_aux_tbl[IDX].fld.flag20
 # endif
-/* the above is added by jhs, 02/7/22*/
 # ifdef _DEBUG
 # define ATD_TASK_LASTTHREAD(IDX)                                              \
         ((AT_OBJ_CLASS(IDX) == Data_Obj) ?                                     \
@@ -2935,7 +2910,6 @@
 # define ATT_POINTER_CPNT(IDX)		attr_tbl[IDX].fld.flag19
 # endif
 
-#ifdef KEY /* Bug 6845 */
 # ifdef _DEBUG
 # define ATT_ALLOCATABLE_CPNT(IDX)					       \
 	((AT_OBJ_CLASS(IDX) == Derived_Type) ?				       \
@@ -2944,7 +2918,6 @@
 # else
 # define ATT_ALLOCATABLE_CPNT(IDX)		attr_tbl[IDX].fld.flag30
 # endif
-#endif /* KEY Bug 6845 */
 
 # ifdef _DEBUG
 # define ATT_PRIVATE_CPNT(IDX)						       \
@@ -2991,7 +2964,6 @@
 # define ATT_STRUCT_BIT_LEN_IDX(IDX)		attr_tbl[IDX].fld.field13
 # endif
 
-#ifdef KEY /* Bug 5089 */
 /* F2003: at least one "use" for this module in the current scope has the
  * "non_intrinsic" module-nature keyword */
 # ifdef _DEBUG
@@ -3013,7 +2985,6 @@
 # else
 # define ATT_NO_MODULE_NATURE(IDX)	attr_tbl[IDX].fld.flag18
 # endif
-#endif /* KEY Bug 5089 */
 
 # ifdef _DEBUG
 # define ATT_UNIQUE_ID(IDX)						       \
@@ -3267,14 +3238,11 @@
 # define GA_ORIG_NAME_LONG(IDX)     &(str_pool[GA_ORIG_NAME_IDX(IDX)].name_long)
 # define GA_REFERENCED(IDX)		global_attr_tbl[IDX].fld.referenced
 # define GA_USE_ASSOCIATED(IDX)		global_attr_tbl[IDX].fld.use_associated
-#ifdef KEY /* Bug 14150 */
 # define GA_BIND_ATTR(IDX)		global_attr_tbl[IDX].fld.flag10
 # define GA_BINDING_LABEL(IDX)		global_attr_tbl[IDX].fld.binding_label
-#endif /* KEY Bug 14150 */
 
 /* Definitions for data object class */
 
-#ifdef KEY /* Bug 14110 */
 # ifdef _DEBUG
 # define GAD_VOLATILE(IDX)                                            \
        ((GA_OBJ_CLASS(IDX) == Data_Obj) ?                                     \
@@ -3283,7 +3251,6 @@
 # else
 # define GAD_VOLATILE(IDX)     global_attr_tbl[IDX].fld.flag7
 # endif
-#endif /* KEY Bug 14110 */
 
 # ifdef _DEBUG
 # define GAD_ARRAY_ELEMENT_REF(IDX)					       \
@@ -3793,15 +3760,11 @@
 # define SCP_IGNORE_TKR(IDX)		scp_tbl[IDX].wd[2].fld1.flag1
 # define SCP_HAS_CALLS(IDX)		scp_tbl[IDX].wd[2].fld1.flag2
 # define SCP_DOES_IO(IDX)		scp_tbl[IDX].wd[2].fld1.flag3
-#ifdef KEY /* Bug 5089 */
 /* Uses intrinsic module ieee_features, ieee_arithmetic, or ieee_exceptions
  * and therefore needs to save/restore FPU state on entry/exit */
 # define SCP_USES_IEEE(IDX)		scp_tbl[IDX].wd[3].fld1.flag1
-#endif /* KEY Bug 5089 */
-#ifdef KEY /* Bug 11741 */
 /* Scope is interface body having "import" sans explicit list of identifiers */
 # define SCP_IMPORT(IDX)		scp_tbl[IDX].wd[4].fld1.flag1
-#endif /* KEY Bug 11741 */
 # define SCP_INLINE_SGI(IDX)		scp_tbl[IDX].wd[3].fld1.flag2
 # define SCP_NOINLINE_SGI(IDX)		scp_tbl[IDX].wd[3].fld1.flag3
 # define SCP_DBG_PRINT_SYTB(IDX)	scp_tbl[IDX].wd[25].fld1.flag1
@@ -3854,12 +3817,10 @@
 
 # define IR_RANK(IDX)                   ir_tbl[IDX].opr.rank
 # define IR_DV_DIM(IDX)			ir_tbl[IDX].opr.dim
-#ifdef KEY /* Bug6845 */
 /* When dope vector represents allocatable array whose element type is a
  * derived type having component(s) which are themselves allocatable, this
  * counts the allocatable compnents */
 # define IR_DV_N_ALLOC_CPNT(IDX)	ir_tbl[IDX].opr.n_alloc_cpnt
-#endif /* KEY Bug6845 */
 # define IR_CONTIG_ARRAY(IDX)		ir_tbl[IDX].opr.dim
 # define IR_WHOLE_ARRAY(IDX)		ir_tbl[IDX].opr.dim
 # define IR_INLINE_STATE(IDX)		ir_tbl[IDX].opr.dim
@@ -4154,13 +4115,11 @@
 # define SB_DEF_LINE(IDX)		stor_blk_tbl[IDX].fld.def_line
 # define SB_DUPLICATE_COMMON(IDX)	stor_blk_tbl[IDX].fld.duplicate_common
 # define SB_EQUIVALENCED(IDX)		stor_blk_tbl[IDX].fld.equivalenced
-#ifdef KEY /* Bug 14150 */
 # define SB_BIND_ATTR(IDX)		stor_blk_tbl[IDX].fld.bind_attr
 # define SB_EXT_NAME_IDX(IDX)		stor_blk_tbl[IDX].fld.ext_name_idx
 # define SB_EXT_NAME_LEN(IDX)		stor_blk_tbl[IDX].fld.ext_name_len
 # define SB_EXT_NAME(IDX)	      name_pool[SB_EXT_NAME_IDX(IDX)].name_char
 # define SB_EXT_NAME_PTR(IDX)	     &name_pool[SB_EXT_NAME_IDX(IDX)].name_char
-#endif /* KEY Bug 14150 */
 # define SB_FILL_SYMBOL(IDX)		stor_blk_tbl[IDX].fld.fill_symbol
 # define SB_FIRST_ATTR_IDX(IDX)		stor_blk_tbl[IDX].fld.first_attr_idx
 # define SB_HAS_RENAMES(IDX)		stor_blk_tbl[IDX].fld.has_renames
@@ -4182,14 +4141,10 @@
 # define SB_NAME_IN_STONE(IDX)		stor_blk_tbl[IDX].fld.name_in_stone
 # define SB_NAME_LEN(IDX)		stor_blk_tbl[IDX].fld.name_len
 # define SB_ORIG_SCP_IDX(IDX)		stor_blk_tbl[IDX].fld.orig_scp_idx
-#ifdef KEY /* Bug 14150 */
 /* Assignment "SB_PAD_AMOUNT(IDX) = cmd_line_flags.pad_amount" will be a nop,
  * and value of SB_PAD_AMOUNT(IDX) will always be zero because we don't support
  * any way to set cmd_line_flags.pad_amount. */
 # define SB_PAD_AMOUNT(IDX)		cmd_line_flags.pad_amount
-#else /* KEY Bug 14150 */
-# define SB_PAD_AMOUNT(IDX)		stor_blk_tbl[IDX].fld.pad_amount
-#endif /* KEY Bug 14150 */
 # define SB_PAD_AMOUNT_SET(IDX)		stor_blk_tbl[IDX].fld.pad_amount_set
 # define SB_PAD_BLK(IDX)		stor_blk_tbl[IDX].fld.pad_blk
 # define SB_RUNTIME_INIT(IDX)		stor_blk_tbl[IDX].fld.runtime_init

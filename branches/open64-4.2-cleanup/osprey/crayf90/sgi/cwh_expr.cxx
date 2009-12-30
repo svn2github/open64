@@ -605,11 +605,7 @@ cwh_expr_compare_char(OPERATOR op, TY_IDX  ty)
   WN * sz[4];
   BOOL va[4];
   WN * wn   ;
-#ifdef KEY /* Bug 10177 */
   INTRINSIC intr = INTRN_CLTEXPR;
-#else /* KEY Bug 10177 */
-  INTRINSIC intr;
-#endif /* KEY Bug 10177 */
 
   cwh_stk_pop_STR();
   ar[3] = cwh_expr_operand(NULL);
@@ -1278,11 +1274,7 @@ fei_min(INT count, TYPE type)
  *===============================================
  */ 
 extern void 
-#ifdef KEY /* Bug 10410 */
 fei_select(TYPE type, int cselect)
-#else /* KEY Bug 10410 */
-fei_select(TYPE type)
-#endif /* KEY Bug 10410 */
 {
    WN *t_case,*f_case,*condition;
    WN * wn;
@@ -1346,13 +1338,9 @@ fei_select(TYPE type)
 	 }
       }
       
-#ifdef KEY /* Bug 10410 */
       wn = WN_CreateExp3(
         cwh_make_typed_opcode((cselect ? OPR_CSELECT : OPR_SELECT),rt,MTYPE_V),
 	  condition,t_case,f_case);
-#else /* KEY Bug 10410 */
-      wn = WN_CreateExp3(cwh_make_typed_opcode(OPR_SELECT,rt,MTYPE_V),condition,t_case,f_case);
-#endif /* KEY Bug 10410 */
       wn = cwh_wrap_cvtl(wn,rt);
       wn = cwh_expr_restore_arrayexp(wn,ae);
       cwh_stk_push_typed(wn,WN_item,Be_Type_Tbl(rt));
@@ -1551,12 +1539,8 @@ WN * cwh_generate_bitmask(WN *len, TYPE_ID ty)
 extern void
 fei_mask (TYPE type)
 {
-#ifdef KEY /* Bug 10177 */
    WN *wn = 0;
    WN *arg,*t1,*t2;
-#else /* KEY Bug 10177 */
-   WN *wn,*arg,*t1,*t2;
-#endif /* KEY Bug 10177 */
    TYPE_ID t;
    WN *ae=NULL;
 

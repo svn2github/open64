@@ -189,11 +189,7 @@ PDGCS_initialize(LANG   language_code,
 					  IRB_FILE_EXTENSION);
 	 }
 	 Irb_File1 = Open_Output_Info ( Irb_File_Name ); 
-#ifdef KEY /* Bug 12559 */
 	 cwh_dst_init_file(src_fname) ;
-#else /* KEY Bug 12559 */
-	 cwh_dst_init_file(src_path_name) ;
-#endif /* KEY Bug 12559 */
          cwh_stmt_init_file(test_flag(flags,PDGCS_INITIALIZE_MP));
 	 fe_preg_init() ;
 
@@ -225,21 +221,6 @@ PDGCS_initialize(LANG   language_code,
    if (Get_Trace(TP_IRB, 0x2000)) /* -tt11:0x2000 */
      DSTdump_File_Name = New_Extension(code_file_name, DSTDUMP_FILE_EXTENSION);
    
-#ifndef KEY /* bug 11521: Disable common block splitting */
-   /* We want to split COMMON with large into component blocks if
-    * (a) -OPT:pad_common is set (unconditional), or
-    * (b) -OPT:reorg_common is set and -FE:full_split is not OFF.
-    * -FE:full_split=OFF is implicitly set by the driver if -IPA or
-    * -INLINE is set.
-    *
-    * Common block splitting requires cooperation from the linker.
-    * Currently we do this only for MIPS targets.
-    */
-#ifdef TARG_MIPS
-   if ( ! FE_Full_Split_Set ) 
-     FE_Full_Split = OPT_Reorg_Common || OPT_Pad_Common;
-#endif
-#endif /* bug 11421 */
    
    /* update/delete the .rii file */
 
@@ -428,18 +409,11 @@ fei_proc_body( INT32 lineno )
  *===============================================
  */ 
 extern void 
-#ifdef KEY /* Bug 3507 */
 PDGCS_do_proc(int is_module)
-#else /* KEY Bug 3507 */
-PDGCS_do_proc(void)
-#endif /* KEY Bug 3507 */
 {
 
   WN      *wn; 
   PU_Info *pu;
-#ifndef KEY /* Bug 10177 */
-  TYPE     tt;
-#endif /* KEY Bug 10177 */
   ST *st;
 
   DST_IDX d  ;
@@ -449,10 +423,8 @@ PDGCS_do_proc(void)
   st = &St_Table[PU_Info_proc_sym(pu)];
   PU& p = Pu_Table[ST_pu(st)];
   if (PU_is_mainpu (p)) {
-#ifdef KEY /* Bug 10177 */
      TYPE     tt;
      memset(&tt, 0, sizeof(tt));
-#endif /* KEY Bug 10177 */
      fei_return(2,tt);  /* It's OK for this to be uninitialized */
   }
 
@@ -462,7 +434,6 @@ PDGCS_do_proc(void)
 
   cwh_stmt_postprocess_pu();
   wn = cwh_stmt_end_pu();
-#ifdef KEY /* Bug 3507 */
   /* If this is a module, we already created a DW_TAG_module, not a
    * DW_TAG_subprogram, for it */
   if (is_module) {
@@ -477,11 +448,6 @@ PDGCS_do_proc(void)
     Set_PU_Info_pu_dst(pu,d);
     Set_PU_Info_cu_dst(pu,d);
   }
-#else /* KEY Bug 3507 */
-  d  = cwh_dst_enter_pu(st);
-  Set_PU_Info_pu_dst(pu,d);
-  Set_PU_Info_cu_dst(pu,d);
-#endif /* KEY Bug 3507 */
 
   Set_PU_Info_state(pu, WT_SYMTAB, Subsect_InMem);
   Set_PU_Info_state(pu, WT_TREE, Subsect_InMem);
@@ -506,10 +472,6 @@ PDGCS_do_proc(void)
   Verify_SYMTAB (CURRENT_SYMTAB);
   Write_PU_Info (pu);
 
-#if 0
-  if (Get_Trace (TP_IRB,TINFO_STATS)) /* -ttIRB:16 */
-    cwh_stats_print(PU_Info_proc_sym(pu));
-#endif
 
   WN_MAP_Delete(array_name_map);
   WN_Mem_Pop();
@@ -606,47 +568,6 @@ cwh_pdgcs_pu_mem(void)
  *
  *===============================================
  */ 
-#if 0
-static char *
-basename ( char * const s )
-{
-  char * p;
-  char * last;
-  char * name;
-  int    size;
-
-  if ( s == NULL || *s == '\0' )
-    return ".";
-
-  else {
-
-    p = s + strlen ( s );
-
-    /* skip trailing '/' */
-
-    while ( p != s && *p == '/' )
-      --p;
-
-    last = p;
-
-    while ( p != s ) {
-
-      if ( *--p == '/' ) {
-
-        ++p;
-        break;
-      }
-    }
-
-    size = last - p;
-    name = (char *) malloc ( size + 1);
-    strncpy ( name, p, size );
-    name [size] = '\0';
-
-    return name;
-  }
-} /* basename */
-#endif
 
 static const char *
 dirname ( char * const s )

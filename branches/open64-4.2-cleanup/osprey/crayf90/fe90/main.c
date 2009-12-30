@@ -84,9 +84,6 @@ extern	void	print_buffered_messages (void);
 |* function prototypes of static functions declared in this file *|
 \*****************************************************************/
  
-# if 0
-static void check_license (void);
-# endif
 
 # ifdef _DEBUG
 static void check_defines_compatibility (void);
@@ -300,29 +297,17 @@ int main (int	 argc,
              ATP_PGM_UNIT(SCP_ATTR_IDX(MAIN_SCP_IDX)) == Function ||
              ATP_PGM_UNIT(SCP_ATTR_IDX(MAIN_SCP_IDX)) == Subroutine) {
             curr_scp_idx = MAIN_SCP_IDX;
-#ifdef KEY /* Bug 3477 */
             if (create_mod_info_file()) {  /* Creates a name for the file. */
 	      create_mod_info_tbl();        /* Creates the table. */
 	      output_mod_info_file();       /* Writes the table.  */
 	      }
-#else
-            create_mod_info_file();  /* Creates a name for the file. */
-            create_mod_info_tbl();        /* Creates the table. */
-            output_mod_info_file();       /* Writes the table.  */
-#endif /* KEY Bug 3477 */
             free_tables();                /* Frees the tables. */
          }
       }
       else {
-#ifdef KEY /* Bug 3477 */
 	 int do_output_file = FALSE;
-#endif /* KEY Bug 3477 */
          if (ATP_PGM_UNIT(SCP_ATTR_IDX(MAIN_SCP_IDX)) == Module) {
-#ifdef KEY /* Bug 3477 */
             do_output_file = create_mod_info_file();  /* Creates a name for the file. */
-#else
-            create_mod_info_file();  /* Creates a name for the file. */
-#endif /* KEY Bug 3477 */
          }
 
          if (num_prog_unit_errors == 0 && (binary_output || assembly_output)) {
@@ -332,15 +317,10 @@ int main (int	 argc,
 
             if (!SCP_IN_ERR(MAIN_SCP_IDX)) {
                curr_scp_idx = MAIN_SCP_IDX;
-#ifdef KEY /* Bug 3477 */
 	       if (do_output_file) {
 		 create_mod_info_tbl();   /* Creates the table. */
 		 output_mod_info_file();  /* Writes the table.  */
 		 }
-#else
-               create_mod_info_tbl();   /* Creates the table. */
-               output_mod_info_file();  /* Writes the table.  */
-#endif /* KEY Bug 3477 */
             }
 
             free_tables();           /* Frees the tables. */
@@ -377,11 +357,11 @@ int main (int	 argc,
 
    PRINT_GL_TBL;              /* Prints to debug_file ifdef _DEBUG and -u gl */
    PRINT_GN_TBL;              /* Prints to debug_file ifdef _DEBUG and -u gn */
-#if defined(_DEBUG) && defined(KEY) /* Bug 8117 */
+#if defined(_DEBUG)
    if (dump_flags.arg_passing) {                                  \
       print_arg_passing(stderr);                                  \
    }
-#endif /* defined(_DEBUG) && defined(KEY) Bug 8117 */
+#endif /* defined(_DEBUG) */
 
 PREPROCESS_ONLY_SKIP:
 
@@ -489,9 +469,7 @@ PREPROCESS_ONLY_SKIP:
       msg_name	= "cf90";
 
 # elif defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN)
-#ifdef PSC_TO_OPEN64
       msg_name	= OPEN64_NAME_PREFIX "f95";
-#endif
 
 # elif (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
 
@@ -637,14 +615,8 @@ static void init_compiler (int	 argc,
 			   char *argv[])
 {
    extern void	init_lex (void);
-#ifndef KEY /* Bug 5089 */
-   extern void	init_msg_processing (char *[]);
-#endif /* KEY Bug 5089 */
    extern void	init_src_input (void);
    extern void	init_type (void);
-#ifndef KEY /* Bug 5089 */
-   extern void	process_cmd_line (int, char *[]);
-#endif /* KEY Bug 5089 */
    extern void	init_cond_comp(void);
    extern void	enter_predefined_macros(void);
    extern void	init_parse_prog_unit(void);
@@ -660,22 +632,14 @@ static void init_compiler (int	 argc,
    TRACE (Func_Entry, "init_compiler", NULL);
 
    init_date_time_info ();		/* set compilation data and time      */
-#ifdef KEY /* Bug 5089 */
    /* Initialize for message-printing; must precede process_cmd_line */
    char *nlspath = init_msg_processing (argv);
-#else /* KEY Bug 5089 */
-   init_msg_processing (argv);		/* initialize for messages.  Must     */
-					/* preceed process_cmd_line.	      */
-#endif /* KEY Bug 5089 */
 
 # ifdef _DEBUG
    check_defines_compatibility();	/* Is the compiler built correctly?   */
    check_enums_for_change();	        /* Some enums must not be changed.    */
 # endif
 
-# if 0
-   check_license();
-# endif
 
    /* allocate memory for data structures required across compilation units.  */
    /* These must preceed process_cmd_line.                                    */
@@ -684,9 +648,7 @@ static void init_compiler (int	 argc,
    TBL_ALLOC (global_name_tbl);
    TBL_ALLOC (global_attr_tbl);
    TBL_ALLOC (global_type_tbl);
-#ifdef KEY /* Bug 10177 */
    CLEAR_TBL_NTRY(global_type_tbl, 0);
-#endif /* KEY Bug 10177 */
    TBL_ALLOC (global_bounds_tbl);
    TBL_ALLOC (global_ir_tbl);
    TBL_ALLOC (global_ir_list_tbl);
@@ -751,11 +713,7 @@ static void init_compiler (int	 argc,
 # endif
 
 
-#ifdef KEY /* Bug 5089 */
    process_cmd_line (argc, argv, nlspath);
-#else /* KEY Bug 5089 */
-   process_cmd_line (argc, argv);	/* pass input args		      */
-#endif /* KEY Bug 5089 */
 
 
 # if defined(_WHIRL_HOST64_TARGET64) && defined(TARG_X8664)
@@ -1001,44 +959,6 @@ static void init_date_time_info (void)
 |*      NOTHING								      *|
 |*									      *|
 \******************************************************************************/
-# if 0
-
-static void check_license (void)
- 
-{
-# define	CRAY_LM_NQE	1
-# define	CRAY_LM_DPE	2
-# define	CRAY_LM_F90E	3
-
-# define	LM_NOWAIT	0
-# define	LM_WAIT		1
-
-   extern	int	cray_lm_checkout(int, char *, int, int, char *, double);
-		int	ignore		= 0;
-		double	version		= 1.0;
-
-
-   TRACE (Func_Entry, "check_license", NULL);
-
-# if defined(_TARGET_OS_UNICOS) || defined(_TARGET_OS_MAX)
-   if (cray_lm_checkout(CRAY_LM_DPE, "", LM_NOWAIT, ignore, "", version)) {
-# else
-   if (cray_lm_checkout(CRAY_LM_F90E, "", LM_NOWAIT, ignore, "", version)) {
-# endif
-
-      /* This compiler is not licensed on this hardware. */
-
-      PRINTMSG(0, 631, Log_Error, 0);
-      exit_compiler(RC_USER_ERROR);
-   }
-
-   TRACE (Func_Exit, "check_license", NULL);
-
-   return;
-
-}  /* check_license */
-
-# endif
 
 
 /******************************************************************************\
@@ -1095,18 +1015,6 @@ static void check_defines_compatibility(void)
             "_TARGET_BYTE_ADDRESS");
 # endif
 
-# if 0
-  /* Make sure at least one defines of a pair is set. */
-
-# if !defined(_MODULE_TO_DOT_o) && !defined(_MODULE_TO_DOT_M)
-
-   if (!on_off_flags.module_to_mod) {  /* Need -em or one of these defined */
-      PRINTMSG(1, 1116, Internal, 0,
-               "_MODULE_TO_DOT_o",
-               "_MODULE_TO_DOT_M");
-   }
-# endif
-# endif
 
 # if !defined(_HEAP_REQUEST_IN_BYTES) && !defined(_HEAP_REQUEST_IN_WORDS)
    PRINTMSG(1, 1116, Internal, 0,
@@ -1237,7 +1145,6 @@ static void	make_table_changes(void)
       }
    }
 
-#ifdef KEY /* Bug 5710 */
    /* eq_ne_on_logicals_tbl is same as eq_ne_tbl, but as an extension also
     * allows the operations .eq. and .ne. on logical operands, as standard does 
     * via and_or_tbl (which is used for .eqv. and .neqv.) It's not clear why
@@ -1254,7 +1161,6 @@ static void	make_table_changes(void)
 	 }
       }
    }
-#endif /* KEY Bug 5710 */
 
    TRACE (Func_Exit, "make_table_changes", NULL);
 
@@ -1769,17 +1675,7 @@ static void check_enums_for_change(void)
        Endparallel_Open_Mp_Opr != 425 ||
        Omp_In_Parallel_Opr != 454 ||
        Io_Item_Type_Code_Opr != 479 ||
-       Copyin_Bound_Opr != 484) { /* modified by jhs, 02.8.31 */
-# if 0
-      printf("Char_Opr %d\n ", Char_Opr);
-      printf("Stop_Opr %d\n ", Stop_Opr);
-      printf("Aloc_Opr %d\n ", Aloc_Opr);
-      printf("Prefertask_Cdir_Opr %d\n ", Prefertask_Cdir_Opr);
-      printf("Local_Pe_Dim_Opr %d\n ", Local_Pe_Dim_Opr);
-      printf("Fetch_And_Nand_Opr %d\n ", Fetch_And_Nand_Opr);
-      printf("Omp_In_Parallel_Opr %d\n ", Omp_In_Parallel_Opr);
-      printf("Copyin_Bound_Opr %d\n ", Copyin_Bound_Opr);
-# endif
+       Copyin_Bound_Opr != 484) {
 
       PRINTMSG(1, 1643, Internal, 0, "Operator");
    }

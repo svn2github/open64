@@ -84,11 +84,9 @@ static type_trans ate_types[] = {
 
 
 static DST_INFO_IDX current_scope_idx = DST_INVALID_INIT; /* Current scope */
-#ifdef KEY /* Bug 3507 */
 /* Current module, if any */
 static DST_INFO_IDX current_module_idx = DST_INVALID_INIT;
 static char *current_module_name = 0;
-#endif /* KEY Bug 3507 */
 static DST_INFO_IDX comp_unit_idx     = DST_INVALID_INIT; /* Compilation unit */
 
 static DST_FILE_IDX file_name_idx     = DST_INVALID_INIT; /* File names */
@@ -174,11 +172,7 @@ static mUINT16      DST_get_ordinal_num(char    *the_name,
 
 /* macros to indicate functions which are external */
 
-#ifdef KEY /* Bug 5271 */
 #define GET_NEXT_ELEMENT_ST(c,s) cwh_auxst_next_element(c,s,l_PU_COMLIST)
-#else /* KEY Bug 5271 */
-#define GET_NEXT_ELEMENT_ST(c,s) cwh_auxst_next_element(c,s,l_COMLIST)
-#endif /* KEY Bug 5271 */
 #define GET_NEXT_ALTENTRY(c,s)  cwh_auxst_next_element(c,s,l_ALTENTRY)
 #define GET_MODIFIED_NAME(s) cwh_auxst_stem_name(s)
 #define GET_NEXT_COMMON(p,c) cwh_auxst_next_element(p,c,l_DST_COMLIST)
@@ -210,21 +204,15 @@ static DST_INFO_IDX cwh_dst_subrange(ARB_HANDLE ar)  ;
 static DST_INFO_IDX cwh_dst_member(FLD_HANDLE f,DST_INFO_IDX p) ;
 static DST_INFO_IDX cwh_dst_struct_type(TY_IDX ty) ;
 static DST_INFO_IDX cwh_dst_pointer_type(TY_IDX ty) ;
-#ifdef KEY /* Bug 3507 */
 /* If parent is not DST_INVALID_IDX, then refrain from emitting the common
  * block itself, and attach all of the common variables directly to "parent"
  * instead. This is used to eliminate faked-up common blocks which represent
  * global variables in modules.  */
 static DST_INFO_IDX cwh_dst_mk_common(ST * st, DST_INFO_IDX parent);
-#else /* KEY Bug 3507 */
-static DST_INFO_IDX cwh_dst_mk_common(ST * st) ;
-#endif /* KEY Bug 3507 */
 static DST_INFO_IDX cwh_dst_mk_formal(ST * st) ;
 static DST_INFO_IDX cwh_dst_mk_variable(ST * st) ;
 static DST_INFO_IDX cwh_dst_mk_common_inclusion(ST * com, DST_IDX c) ;
-#ifdef KEY /* Bug 3507 */
 static DST_INFO_IDX cwh_dst_mk_imported_decl(char *mangled_name) ;
-#endif /* KEY Bug 3507 */
 static BOOL         cwh_dst_is_character_TY(TY_IDX ty) ;
 static DST_INFO_IDX cwh_dst_substring_type(TY_IDX ty) ;
 static DST_INFO_IDX cwh_dst_dope_type(TY_IDX  ty, ST *st, mINT64 ofst, DST_INFO_IDX p, BOOL ptr, DST_INFO_IDX *dope_ty) ;

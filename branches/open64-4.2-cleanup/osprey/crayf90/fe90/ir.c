@@ -98,7 +98,6 @@ void gen_sh(sh_position_type 	position,
 	    boolean		err_flag,
 	    boolean		labeled,
 	    boolean		compiler_gen)
-#ifdef KEY /* Bug 4811 */
 {
   int sh_idx = gen_sh_at(position, stmt_type, line_num, col_num, err_flag,
     labeled, compiler_gen, curr_stmt_sh_idx);
@@ -189,75 +188,6 @@ int gen_sh_at(sh_position_type 	position,
    return sh_idx;
 
 }  /* gen_sh */
-#else /* KEY Bug 4811 */
-{
-   int		next_idx;
-   int		prev_idx;
-   int		sh_idx;
-
-
-   TRACE (Func_Entry, "gen_sh", NULL);
-
-# ifdef _DEBUG
-   if (defer_stmt_expansion) {
-      PRINTMSG(line_num, 626, Internal, col_num,
-               "no defer_stmt_expansion", "gen_sh");
-   }
-
-   if (curr_stmt_sh_idx == NULL_IDX) {
-      PRINTMSG(line_num, 626, Internal, col_num,
-               "valid curr_stmt_sh_idx", "gen_sh");
-   }
-# endif
-
-   sh_idx		   = ntr_sh_tbl();
-   SH_STMT_TYPE(sh_idx)	   = stmt_type;
-   SH_GLB_LINE(sh_idx)	   = line_num;
-   SH_ERR_FLG(sh_idx)	   = err_flag;
-   SH_COL_NUM(sh_idx)	   = col_num;
-   SH_LABELED(sh_idx)	   = labeled;
-   SH_COMPILER_GEN(sh_idx) = compiler_gen;
-   
-   if (stmt_type == Construct_Def) {
-      SH_P2_SKIP_ME(sh_idx) = TRUE;
-   }
-
-   if (position == Before) {
-      SH_NEXT_IDX(sh_idx) = curr_stmt_sh_idx;
-
-      if (curr_stmt_sh_idx == SCP_FIRST_SH_IDX(curr_scp_idx)) {           
-         SCP_FIRST_SH_IDX(curr_scp_idx) = sh_idx; 
-      }
-      else {
-         prev_idx = SH_PREV_IDX(curr_stmt_sh_idx);
-
-         if (prev_idx != NULL_IDX) { 
-            SH_PREV_IDX(sh_idx)		= prev_idx;
-            SH_NEXT_IDX(prev_idx)	= sh_idx;
-         }
-      }
-
-      SH_PREV_IDX(curr_stmt_sh_idx) = sh_idx;
-   }
-   else {
-      SH_PREV_IDX(sh_idx)	= curr_stmt_sh_idx;
-      next_idx			= SH_NEXT_IDX(curr_stmt_sh_idx);
- 
-      if (next_idx != NULL_IDX) {
-         SH_NEXT_IDX(sh_idx)	= next_idx;
-         SH_PREV_IDX(next_idx)	= sh_idx;
-      }
-
-      SH_NEXT_IDX(curr_stmt_sh_idx)    = sh_idx;
-      curr_stmt_sh_idx                 = sh_idx;
-   }
-
-   TRACE (Func_Exit, "gen_sh", NULL);
-
-   return;
-
-}  /* gen_sh */
-#endif /* KEY Bug 4811 */
 
 /******************************************************************************\
 |*                                                                            *|

@@ -67,9 +67,6 @@ static char USMID[] = "\n@(#)5.0_pl/sources/p_dcl_util.c	5.7	10/28/99 10:03:56\n
 \*****************************************************************/
 
 static	int	ntr_bnds_tmp_list(opnd_type *);
-#ifndef KEY /* Bug 10572 */
-static	boolean	parse_int_spec_expr(long *, fld_type *, boolean, boolean);
-#endif /* KEY Bug 10572 */
 static	void	parse_kind_selector(void);
 static	boolean	is_attr_referenced_in_bound(int, int);
 
@@ -801,11 +798,9 @@ void	parse_length_selector(int	attr_idx,
       }
    }
    else {
-#ifdef KEY /* Bug 318, 321 */
       line		= TOKEN_LINE(token);
       column		= TOKEN_COLUMN(token);
       PRINTMSG(line, 1563, Ansi, Comment, column); /* Obsolescent */
-#endif /* KEY Bug 318, 321 */
       NEXT_LA_CH;                    /* Skip Star */
 
       if (LA_CH_VALUE == LPAREN) {   /*    *(*)  or *(length)   */
@@ -842,11 +837,6 @@ void	parse_length_selector(int	attr_idx,
          line		= TOKEN_LINE(token);
          column		= TOKEN_COLUMN(token);
 
-#ifndef KEY /* Bug 318, 321 */
-         if (parsing_length_selector) {
-            PRINTMSG(line, 1563, Comment, column); /* Obsolescent */
-         }
-#endif /* KEY Bug 318, 321 */
       }
       else {
          line		= LA_CH_LINE;
@@ -902,7 +892,6 @@ void	parse_length_selector(int	attr_idx,
    return;
 
 }  /* parse_length_selector */
-#ifdef KEY /* Bug 8422 */
 
 /*
  * This is the part of parse_type_spec() which processed the "ddd" in
@@ -1110,10 +1099,9 @@ parse_non_char_kind_selector(boolean double_precision) {
       parse_err_flush(Find_None, "scalar-int-literal-constant");
    }
    /* 0th entry of type_tbl is guaranteed to be initialized (see p_driver.c)
-    * so error doesn't cause crash later on (SiCortex bug 4840) */ 
+    * so error doesn't cause crash later on */ 
    return NULL_IDX;
 }
-#endif /* KEY Bug 8422 */
 
 /******************************************************************************\
 |*                                                                            *|
@@ -1167,12 +1155,6 @@ boolean parse_type_spec(boolean		chk_kind)
    boolean		 parse_err		= FALSE;
    boolean		 save_err		= FALSE;
    boolean		 type_done		= FALSE;
-#ifndef KEY /* Bug 8422 */
-   long			 num;
-   linear_type_type	 linear_type;
-   int			 type_idx;
-   char			*type_str;
-#endif /* KEY Bug 8422 */
 
 
    TRACE (Func_Entry, "parse_type_spec", NULL);
@@ -1575,34 +1557,12 @@ boolean parse_type_spec(boolean		chk_kind)
       else if (LA_CH_VALUE == STAR) {
          NEXT_LA_CH;			/* Skip Star */
 
-#ifdef KEY /* Bug 8422 */
       ATD_TYPE_IDX(AT_WORK_IDX) =
         parse_non_char_kind_selector(double_precision);
-#endif /* KEY Bug 8422 */
       }
    }
 
 
-#if 0
-
-   /* LRR    2 Feb 1996							      */
-   /* I turned off the following code in response to an email direction to do */
-   /* so from Peggy Boike.  I did not remove the code due to the belief that  */
-   /* we just might need to turn it back on.  If some months go by, and the   */
-   /* libraries really can handle this, then the code should be safe to       */
-   /* actually be removed.						      */
-
-   if ((target_triton  &&  target_ieee)   &&
-       (TYP_LINEAR(ATD_TYPE_IDX(AT_WORK_IDX)) == Real_16  ||
-       TYP_LINEAR(ATD_TYPE_IDX(AT_WORK_IDX)) == Complex_16)) {
-
-      /* Temporary warning because PRECISION may not be as high as requested */
-
-      PRINTMSG(TOKEN_LINE(token), 1145, Warning, 0);
-      SET_MSG_SUPPRESS_TBL(1145);  /* Issue once per compilation unit */
-   }
-
-#endif
 
 
    parse_err			= SH_ERR_FLG(curr_stmt_sh_idx);
@@ -1712,15 +1672,9 @@ boolean merge_access(int		attr_idx,
    else {
 
       if (AT_ACCESS_SET(attr_idx)) {  /* Duplicate declaration */
-#ifdef KEY /* Bug 5040 */
          PRINTMSG(line, 1259, ansi_or_warning(), column,
                   AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx),
                   (access == Public) ? "PUBLIC":"PRIVATE");
-#else /* KEY Bug 5040 */
-         PRINTMSG(line, 1259, Ansi, column,
-                  AT_OBJ_NAME_PTR(attr_idx),
-                  (access == Public) ? "PUBLIC":"PRIVATE");
-#endif /* KEY Bug 5040 */
       }
 
       AT_PRIVATE(attr_idx)	= access;
@@ -1785,18 +1739,15 @@ boolean merge_allocatable(boolean chk_semantics,
 
    TRACE (Func_Entry, "merge_allocatable", NULL);
 
-#ifdef KEY /* Bug 6845 */
-   /* Changes for bug 6845 imitate function merge_pointer(); we need to
+   /* Changes for imitate function merge_pointer(); we need to
     * deal with the situation where the "allocatable" statement is the first
     * clue that the current procedure is a function, etc. */
    if (AT_OBJ_CLASS(attr_idx) == Interface && 
        ATI_PROC_IDX(attr_idx) != NULL_IDX) {
        attr_idx = ATI_PROC_IDX(attr_idx);
    }
-#endif /* KEY Bug 6845 */
 
    if (chk_semantics) {
-#ifdef KEY /* Bug 6845 */
       if (AT_OBJ_CLASS(attr_idx) == Pgm_Unit && ATP_RSLT_NAME(attr_idx)) {
          PRINTMSG(line, 36, Error, column, AT_OBJ_NAME_PTR(attr_idx),
                   AT_OBJ_NAME_PTR(ATP_RSLT_IDX(attr_idx)));
@@ -1828,26 +1779,13 @@ boolean merge_allocatable(boolean chk_semantics,
                                         TRUE);
          }
       }
-#else /* KEY Bug 6845 */
-	fnd_err = fnd_semantic_err(Obj_Allocatable,
-				   line,
-				   column,
-				   attr_idx,
-				   TRUE);
-#endif /* KEY Bug 6845 */
 
       if (!fnd_err) {
 
          if (ATD_ALLOCATABLE(attr_idx)) {
-#ifdef KEY /* Bug 5040 */
             PRINTMSG(line, 1259, ansi_or_warning(), column,
                      AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx),
                      "ALLOCATABLE");
-#else /* KEY Bug 5040 */
-            PRINTMSG(line, 1259, Ansi, column,
-                     AT_OBJ_NAME_PTR(attr_idx),
-                     "ALLOCATABLE");
-#endif /* KEY Bug 5040 */
          }
          ATD_ALLOCATABLE(attr_idx) = TRUE;
          ATD_IM_A_DOPE(attr_idx)   = TRUE;
@@ -1938,15 +1876,9 @@ boolean merge_automatic(boolean		chk_semantics,
       if (!fnd_err) {
 
          if (ATD_STACK(attr_idx)) {
-#ifdef KEY /* Bug 5040 */
             PRINTMSG(line, 1259, ansi_or_warning(), column,
                      AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx),
                      "AUTOMATIC");
-#else /* KEY Bug 5040 */
-            PRINTMSG(line, 1259, Ansi, column,
-                     AT_OBJ_NAME_PTR(attr_idx),
-                     "AUTOMATIC");
-#endif /* KEY Bug 5040 */
          }
          ATD_STACK(attr_idx) = TRUE;
       }
@@ -1962,7 +1894,6 @@ boolean merge_automatic(boolean		chk_semantics,
 
 }  /* merge_automatic */
 
-#ifdef KEY /* Bug 14150 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -2075,7 +2006,6 @@ boolean merge_value(boolean		chk_semantics,
   TRACE (Func_Exit, "merge_value", NULL);
   return !fnd_err;
 }  /* merge_value */
-#endif /* KEY Bug 14150 */
 
 
 /******************************************************************************\
@@ -2103,13 +2033,8 @@ boolean merge_dimension(int	attr_idx,
                         int	array_idx)
 
 {
-#ifdef KEY /* Bug 10177 */
    obj_type		dcl_type = Obj_Done;
    boolean		err_fnd = FALSE;
-#else /* KEY Bug 10177 */
-   obj_type		dcl_type;
-   boolean		err_fnd;
-#endif /* KEY Bug 10177 */
    int			i;
    int			old_bd_idx;
    int			rslt_idx;
@@ -2215,7 +2140,6 @@ boolean merge_dimension(int	attr_idx,
                   }
 
                   if (same) {
-#ifdef KEY /* Bug 5040 */
                      PRINTMSG(line, 1259, ansi_or_warning(), column, 
                               AT_OBJ_NAME_PTR(rslt_idx), AT_DEF_LINE(attr_idx),
 			      "DIMENSION");
@@ -2224,15 +2148,6 @@ boolean merge_dimension(int	attr_idx,
                      PRINTMSG(line, 554, Error, column, 
                               AT_OBJ_NAME_PTR(rslt_idx), "DIMENSION",
                               "DIMENSION", AT_DEF_LINE(rslt_idx));
-#else /* KEY Bug 5040 */
-                     PRINTMSG(line, 1259, Ansi, column, 
-                              AT_OBJ_NAME_PTR(rslt_idx), "DIMENSION");
-                  }
-                  else {
-                     PRINTMSG(line, 554, Error, column, 
-                              AT_OBJ_NAME_PTR(rslt_idx), "DIMENSION",
-                              "DIMENSION");
-#endif /* KEY Bug 5040 */
                   }
                }
                else {
@@ -2324,7 +2239,6 @@ boolean merge_dimension(int	attr_idx,
             }
 
             if (same) {
-#ifdef KEY /* Bug 5040 */
                PRINTMSG(line, 1259, ansi_or_warning(), column, 
                         AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx),
 			"DIMENSION");
@@ -2333,14 +2247,6 @@ boolean merge_dimension(int	attr_idx,
                PRINTMSG(line, 554, Error, column, 
                         AT_OBJ_NAME_PTR(attr_idx), "DIMENSION", "DIMENSION",
 			AT_DEF_LINE(attr_idx));
-#else /* KEY Bug 5040 */
-               PRINTMSG(line, 1259, Ansi, column, 
-                        AT_OBJ_NAME_PTR(attr_idx), "DIMENSION");
-            }
-            else {
-               PRINTMSG(line, 554, Error, column, 
-                        AT_OBJ_NAME_PTR(attr_idx), "DIMENSION", "DIMENSION");
-#endif /* KEY Bug 5040 */
             }
          }
          else {
@@ -2463,7 +2369,6 @@ boolean merge_external(boolean	chk_semantics,
    }
    else {
 
-#ifdef KEY /* Bug 14150 */
       /* fnd_semantic_err() detects addition of bind to external, not vice
        * versa */
       if ((!(AT_OBJ_CLASS(attr_idx) == Data_Obj && 
@@ -2473,7 +2378,6 @@ boolean merge_external(boolean	chk_semantics,
 	  "EXTERNAL", AT_DEF_LINE(attr_idx));
 	chk_err = TRUE;
       }
-  #endif /* KEY Bug 14150 */
       if (AT_OBJ_CLASS(attr_idx) == Data_Obj) {
 
          /* By passing Pgm_Unknown, chg_data_obj_to_pgm_unit will decide */
@@ -2486,15 +2390,9 @@ boolean merge_external(boolean	chk_semantics,
       else {
 
          if (ATP_DCL_EXTERNAL(attr_idx)) {
-#ifdef KEY /* Bug 5040 */
             PRINTMSG(line, 1259, ansi_or_warning(), column, 
                      AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx),
                      "EXTERNAL");
-#else /* KEY Bug 5040 */
-            PRINTMSG(line, 1259, Ansi, column, 
-                     AT_OBJ_NAME_PTR(attr_idx),
-                     "EXTERNAL");
-#endif /* KEY Bug 5040 */
          }
 
          if (ATP_PROC(attr_idx) == Unknown_Proc) {
@@ -2567,7 +2465,6 @@ boolean merge_intent(boolean		chk_semantics,
 
       if (!fnd_err) {
 
-#ifdef KEY /* Bug 14110, 14150 */
          if (new_intent == Intent_In) {
 	   if (ATD_VOLATILE(attr_idx)) {
 	     PRINTMSG(line, 550, Error, column, AT_OBJ_NAME_PTR(attr_idx),
@@ -2580,25 +2477,15 @@ boolean merge_intent(boolean		chk_semantics,
 	       "VALUE", "INTENT(OUT)", AT_DEF_LINE(attr_idx));
 	   }
 	 }
-#endif /* KEY Bug 14110, 14150 */
          if (ATD_INTENT(attr_idx) != Intent_Unseen) {
 
             if (ATD_INTENT(attr_idx) == new_intent) {
-#ifdef KEY /* Bug 5040 */
                PRINTMSG(line, 1259, ansi_or_warning(), column,
 	         AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "INTENT");
             }
             else {  /* The intent is different */
                PRINTMSG(line, 554, Error, column, AT_OBJ_NAME_PTR(attr_idx),
                         "INTENT", "INTENT", AT_DEF_LINE(attr_idx));
-#else /* KEY Bug 5040 */
-               PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx),
-                        "INTENT");
-            }
-            else {  /* The intent is different */
-               PRINTMSG(line, 554, Error, column, AT_OBJ_NAME_PTR(attr_idx),
-                        "INTENT", "INTENT");
-#endif /* KEY Bug 5040 */
             }
          }
       }
@@ -2665,13 +2552,8 @@ boolean merge_intrinsic(boolean	chk_semantics,
    else if (AT_IS_INTRIN(attr_idx) && AT_OBJ_CLASS(attr_idx) == Interface) {
 
       if (ATI_DCL_INTRINSIC(attr_idx)) {
-#ifdef KEY /* Bug 5040 */
          PRINTMSG(line, 1259, ansi_or_warning(), column,
 	   AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "INTRINSIC");
-#else /* KEY Bug 5040 */
-         PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx),
-                  "INTRINSIC");
-#endif /* KEY Bug 5040 */
       }
       ATI_DCL_INTRINSIC(attr_idx) = TRUE;
    }
@@ -2852,13 +2734,8 @@ boolean merge_optional (boolean	chk_semantics,
                                  TRUE);
 
       if (!chk_err && AT_OPTIONAL(attr_idx)) {
-#ifdef KEY /* Bug 5040 */
          PRINTMSG(line, 1259, ansi_or_warning(), column,
 	   AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "OPTIONAL");
-#else /* KEY Bug 5040 */
-         PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx),
-                  "OPTIONAL");
-#endif /* KEY Bug 5040 */
       }
    }
    else {
@@ -2956,13 +2833,8 @@ boolean merge_pointer(boolean	chk_semantics,
       if (!fnd_err) {
 
          if (ATD_POINTER(attr_idx)) {
-#ifdef KEY /* Bug 5040 */
             PRINTMSG(line, 1259, ansi_or_warning(), column,
 	      AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "POINTER");
-#else /* KEY Bug 5040 */
-            PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx),
-                     "POINTER");
-#endif /* KEY Bug 5040 */
          }
          ATD_POINTER(attr_idx)   = TRUE;
          ATD_IM_A_DOPE(attr_idx) = TRUE;
@@ -3016,12 +2888,8 @@ boolean merge_save(boolean	chk_semantics,
       fnd_err = fnd_semantic_err(Obj_Saved, line, column, attr_idx, TRUE);
 
       if (!fnd_err && ATD_SAVED(attr_idx)) {
-#ifdef KEY /* Bug 5040 */
          PRINTMSG(line, 1259, ansi_or_warning(), column,
 	   AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "SAVE");
-#else /* KEY Bug 5040 */
-         PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx), "SAVE");
-#endif /* KEY Bug 5040 */
       }
    }
    else {
@@ -3111,12 +2979,8 @@ boolean merge_target(boolean	chk_semantics,
    if (!fnd_err) {
 
       if (!fnd_err && ATD_TARGET(attr_idx)) {
-#ifdef KEY /* Bug 5040 */
          PRINTMSG(line, 1259, ansi_or_warning(), column,
 	   AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "TARGET");
-#else /* KEY Bug 5040 */
-         PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx),"TARGET");
-#endif /* KEY Bug 5040 */
       }
       ATD_TARGET(attr_idx) = TRUE;
    }
@@ -3156,9 +3020,6 @@ boolean merge_target(boolean	chk_semantics,
 |*	Returns TRUE if it parsed okay.					      *|
 |*									      *|
 \******************************************************************************/
-#ifndef KEY /* Bug 10572 */
-static
-#endif /* KEY Bug 10572 */
 boolean	parse_int_spec_expr(long		*len_idx,
 				    fld_type		*field_type,
 				    boolean		 fold_it,
@@ -4277,21 +4138,14 @@ boolean merge_volatile(boolean	chk_semantics,
    if (chk_semantics) {
       fnd_err = fnd_semantic_err(Obj_Volatile, line, column, attr_idx, TRUE);
 
-#ifdef KEY /* Bug 14110 */
       if (AT_OBJ_CLASS(attr_idx) == Data_Obj &&
 	 ATD_INTENT(attr_idx) == Intent_In) {
 	 PRINTMSG(line, 550, Error, column, AT_OBJ_NAME_PTR(attr_idx),
 	    "INTENT(IN)", "VOLATILE", AT_DEF_LINE(attr_idx));
       }
-#endif /* KEY Bug 14110 */
       if (!fnd_err && ATD_VOLATILE(attr_idx)) {
-#ifdef KEY /* Bug 5040 */
          PRINTMSG(line, 1259, ansi_or_warning(), column,
 	   AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "VOLATILE");
-#else /* KEY Bug 5040 */
-         PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx), 
-                  "VOLATILE");
-#endif /* KEY Bug 5040 */
       }
    }
    else {
@@ -4307,7 +4161,6 @@ boolean merge_volatile(boolean	chk_semantics,
    return(!fnd_err);
 
 }  /* merge_volatile */
-#ifdef KEY /* Bug 14150 */
 /*
  *	BNF is
  *		( C )
@@ -4402,4 +4255,3 @@ parse_language_binding_spec(token_type *result) {
   NEXT_LA_CH; /* Consume right paren */
   return ok;
 }
-#endif /* KEY Bug 14150 */

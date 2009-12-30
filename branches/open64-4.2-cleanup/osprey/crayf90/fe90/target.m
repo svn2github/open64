@@ -96,9 +96,6 @@
 # define BLANK_COMMON_NAME_LEN		2
 # endif
 
-# if 0
-/* This is the string that gives unique names to module and internal procs.   */
-# endif
 
 # if defined(_TARGET_OS_UNICOS) || defined(_TARGET_OS_MAX)
 #     define UNIQUE_PROC_CONNECTOR		"_in_"
@@ -108,21 +105,6 @@
 #     define UNIQUE_PROC_LEN			4
 # endif
 
-# if 0
-/*  On Cray systems, the environment variable CRAYLIBS is used as the path to */
-/*  libmodules.a.  The file libmodules.a contains optional system modules.    */
-/*  On IRIX systems, the system modules are not built into a library and the  */
-/*  CRAYLIBS environment variable is not used; environment variable           */
-/*  FTN_SYSTEM_MODULES is used instead as the path and the modules are        */
-/*  individually available in the specified directory.  Some time in the      */
-/*  future, Cray systems should probably also phase over to using             */
-/*  FTN_SYSTEM_MODULES so the location of the system modules can be decoupled */
-/*  from the location of the Cray libs.					      */
-/*  Module processing checks these system modules after searching user        */
-/*  specified paths and the current directory.  If the shell variable is      */
-/*  unset, the compiler will just not look there.  No message is issued.      */
-/*  The MODULE_USE_SYSTEM_PATH stuff should be phased out.                    */
-# endif
 
 # if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
 # define MODULE_USE_SYSTEM_PATH_VAR		"FTN_SYSTEM_MODULES"
@@ -134,7 +116,7 @@
 # define SYSTEM_MODULE_USE_VAR			"FORTRAN_SYSTEM_MODULES"
 
 
-# if defined(KEY) /* Bug 4469 */ && (defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
+# if defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN)
 /* Standard C stdio guarantees FILENAME_MAX will be defined (we don't need to
  * know the value for a particular filesystem, just the max which this stdio
  * supports); Posix guarantees HOST_NAME_MAX */
@@ -171,9 +153,6 @@
 # define LEX_STRTOL		strtol
 # endif
 
-# if 0
-/* Hard code for now, as gcc can't seem to get it correct. */
-# endif
 
 # if defined(_TARGET_SV2)
 # define	OUR_LONG_MAX		2147483647
@@ -182,9 +161,6 @@
 # endif
 
 
-# if 0
-/* Used to fill in the large word for table searches */
-# endif
 
 # if defined(_HOST_LITTLE_ENDIAN)
 
@@ -213,10 +189,6 @@
 # define	LARGE_WORD_FOR_TBL_SRCH		OUR_LONG_MAX
 # endif
 
-# if 0
-/* TYPE - defaults.  Please see type.h.                            */
-/* CG_LOGICAL_DEFAULT_TYPE is the compiler generated logical type. */
-# endif
 
 # define	LARGEST_INTEGER_TYPE	Integer_8
 
@@ -550,11 +522,7 @@
 #	define		_ACCEPT_CMD_ed_z		TRUE
 #	undef		_ACCEPT_CMD_ed_A
 #	undef		_ACCEPT_CMD_ed_C
-# ifdef KEY
 #	define		_ACCEPT_CMD_ed_D                TRUE
-# else
-#	undef		_ACCEPT_CMD_ed_D
-# endif
 #	define		_ACCEPT_CMD_ed_U		TRUE
 #	define		_ACCEPT_CMD_ed_X		TRUE
 #	undef		_ACCEPT_CMD_ed_0

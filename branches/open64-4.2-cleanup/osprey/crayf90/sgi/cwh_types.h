@@ -58,7 +58,6 @@
 #ifndef CWH_TYPES_INCLUDED
 #define CWH_TYPES_INCLUDED
 
-#ifdef KEY /* Bug 6845 */
 /* Replacements for literal integers which the original code used to index
  * into arrays dope_name, dope_bofst, dope_bsize, dope_btype in
  * sgi/cwh_types.h. It seems perverse to define these constants in this
@@ -88,7 +87,6 @@ void fei_get_dv_hdr_fld(dv_idx_type);
 # ifdef __cplusplus
 }
 # endif
-#endif /* KEY Bug 6845 */
 
 
 /* Bug 6845: fe90/i_cvrt.c wants only a few declarations from this file */
@@ -110,9 +108,7 @@ extern TY_IDX  cwh_types_scalar_TY(TY_IDX ty) ;
 extern TY_IDX  cwh_types_array_TY(TY_IDX ty) ;
 extern TY_IDX  cwh_types_WN_TY(WN * wn, BOOL addr) ;
 extern TY_IDX  cwh_types_dope_TY(INT32 num_dims,TY_IDX base, BOOL host, BOOL ptr,
-#ifdef KEY /* Bug 6845 */
   INT32 num_allocatable_cpnt
-#endif /* KEY Bug 6845 */
 );
 
 extern TY_IDX  cwh_types_ch_parm_TY(WN *ln) ;
@@ -127,11 +123,7 @@ extern TY_IDX  cwh_types_mk_namelist_TY(INT32 nitems) ;
 
 extern FLD_HANDLE cwh_types_fld_dummy(INT64  off,TY_IDX ty) ;
 extern void  cwh_types_get_dope_info(
-#ifdef KEY /* Bug6845 */
   dv_idx_type crayfield,
-#else /* KEY Bug6845 */
-  INT32 crayfield,
-#endif /* KEY Bug6845 */
   INT32 *offset, INT32 *rshift, INT64 *mask, TYPE_ID *ty);
 extern INT32 cwh_types_dope_rank(TY_IDX ty);
 extern TY_IDX  cwh_types_dope_basic_TY(TY_IDX ty);
@@ -175,11 +167,7 @@ extern INT32 DOPE_bound_sz;
 extern INT32 DOPE_dim_offset;
 extern INT32 DOPE_sz;
 
-#ifdef KEY /* Bug 6845 */
 #define DOPE_NM  12
-#else /* KEY Bug 6845 */
-#define DOPE_NM  11
-#endif /* KEY Bug 6845 */
 #define DOPE_USED  DOPE_NM-1
 #define BOUND_NM 3
 #define DIM_SZ BOUND_NM*DOPE_bound_sz
@@ -206,14 +194,10 @@ typedef struct dope_header1 {
     unsigned int        p_or_a    :2;   /* pointer or allocatable array. Use */
                                         /* enum ptrarray values.  */
     unsigned int        a_contig  :1;   /* array storage contiguous flag */
-#ifdef KEY /* Bug6845 */
     unsigned int        alloc_cpnt:1;	/* each element of allocatable array
                                          * is a derived type having one or more
 					 * allocatable components */
     unsigned int        unused    :26;  /* pad for first 32 bits        */
-#else /* KEY Bug6845 */
-    unsigned int        unused    :27;  /* pad for first 32 bits        */
-#endif /* KEY Bug6845 */
 } dope_header1_type;
 
 typedef struct dope_header2 {

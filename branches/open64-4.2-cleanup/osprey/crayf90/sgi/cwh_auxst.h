@@ -88,10 +88,8 @@ enum list_name {
   l_EQVLIST,		   /* STs in Equivalence                         */
   l_DST_COMLIST,	   /* COMMON STs (Global) for DST info in PU     */
   l_DST_PARMLIST	   /* Parameter STs (Global) for DST info in PU  */
-#ifdef KEY /* Bug 5271 */
   , l_PU_COMLIST           /* STs for vars within a COMMON for current   */
                            /* PU, ordered by offset                      */
-#endif /* KEY Bug 5271 */
 };
 
 
@@ -184,9 +182,7 @@ extern ITEM * cwh_auxst_next_element(ST * parent, ITEM *i, enum list_name list) 
 extern BOOL   cwh_auxst_read_flag(ST * st, enum flags_a f) ;
 extern void   cwh_auxst_set_flag(ST * st, enum flags_a f, BOOL val);
 extern ST *   cwh_auxst_find_item(LIST *l, const char * name);
-#ifdef KEY /* Bug 5271 */
 extern void cwh_clear_PU_common_list(ST *st);
-#endif /* KEY Bug 5271 */
 
 /* procedure details */
 
@@ -206,9 +202,7 @@ extern PREG_det  cwh_auxst_distr_preg(ST * st);
 extern USRCPOS   cwh_auxst_srcpos_val(ST * st);
 extern USRCPOS * cwh_auxst_srcpos_addr(ST * st) ;
 extern WN *      cwh_auxst_pragma(ST * ptr, WN * wn = NULL);
-#ifdef KEY /* Bug 4901 */
 extern void	 cwh_auxst_clear_stem_name(ST *st);
-#endif /* KEY Bug 4901 */
 extern char *    cwh_auxst_stem_name(ST * st, char * name = NULL) ;
 INT32 *          cwh_auxst_assign_id(SYMTAB_IDX level, LABEL_IDX idx) ;
 

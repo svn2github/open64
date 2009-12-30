@@ -293,11 +293,9 @@ boolean parse_expr (opnd_type	*result)
 
             attr_idx = host_attr_idx;
          }
-#ifdef KEY /* Bug 12636 */
          while (AT_ATTR_LINK(host_attr_idx)) {
             host_attr_idx = AT_ATTR_LINK(attr_idx);
          }
-#endif /* KEY Bug 12636 */
       }
       else if (AT_ATTR_LINK(attr_idx)) {
          host_attr_idx = AT_ATTR_LINK(attr_idx);
@@ -1037,7 +1035,6 @@ boolean parse_level_5(opnd_type *result)
 } /* parse_level_5 */
 
 
-#ifdef KEY /* Bug 8004 */
 /*
  * Do the parsing of an array constructor.
  * parsed_ok	Indicates whether we have encountered an error so far; we
@@ -1063,7 +1060,6 @@ static void do_array_constructor(boolean *parsed_ok, opnd_type *the_opnd) {
   COPY_OPND(IR_OPND_R(ir_idx), opnd);
 }
 
-#endif /* KEY Bug 8004 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -1422,7 +1418,6 @@ boolean parse_operand (opnd_type *the_opnd)
          parse_err_flush(Find_Expr_End, NULL);
       }
    }
-#ifdef KEY /* Bug 8004 */
    else if (LA_CH_VALUE == LBRKT) {
       NEXT_LA_CH;
 
@@ -1436,7 +1431,6 @@ boolean parse_operand (opnd_type *the_opnd)
          parsed_ok = FALSE;
       }
    }
-#endif /* KEY Bug 8004 */
    else if (LA_CH_VALUE == LPAREN && matched_specific_token(Tok_Punct_Lbrkt,
                                                             Tok_Class_Punct)) {
 

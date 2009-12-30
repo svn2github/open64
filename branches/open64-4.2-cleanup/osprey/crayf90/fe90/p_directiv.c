@@ -198,9 +198,7 @@ void	init_directive(int	pass)
    cdir_switches.guard_in_par_reg	= FALSE;
    cdir_switches.do_parallel		= FALSE;
    cdir_switches.autoscope		= FALSE;
-#ifdef KEY /* Bug 10441 */
    cdir_switches.single                 = FALSE;
-#endif /* KEY Bug 10441 */
    cdir_switches.safevl_idx		= const_safevl_idx;
    cdir_switches.concurrent_idx		= NULL_IDX;
    cdir_switches.blockable_sh_idx	= NULL_IDX;
@@ -227,7 +225,7 @@ void	init_directive(int	pass)
 
    cdir_switches.firstprivate_list_idx  = NULL_IDX;
    cdir_switches.copyin_list_idx	= NULL_IDX;
-   cdir_switches.copyprivate_list_idx = NULL_IDX; /* by jhs, 02/7/22 */
+   cdir_switches.copyprivate_list_idx = NULL_IDX;
    cdir_switches.lastprivate_list_idx	= NULL_IDX;
    cdir_switches.default_scope_list_idx = NULL_IDX;
    cdir_switches.do_omp_sh_idx		= NULL_IDX;
@@ -351,13 +349,11 @@ void parse_directive_stmt (void)
    /*****  NOTE:  MICRO TASKING DIRECTIVES.  THE TOKEN STRING WILL    *****/
    /*****  NOTE:  NOT CONTAIN THE LEADING "C" OR "!" CHARACTERS.      *****/
 
-#ifdef KEY /* Bug 4067 */
    if (cmd_line_flags.disregard_all_directives) {
        parse_err_flush(Find_EOS, NULL);
        NEXT_LA_CH;
        goto EXIT;
    }
-#endif /* KEY Bug 4067 */
 
    /* If the first statement of the first program unit is being parsed, don't */
    /* buffer up any message pertaining to directives that precede this first  */
@@ -560,9 +556,7 @@ int	gen_directive_ir(operator_type	operator)
 {
    int		ir_idx;
 //Bug# 1204
-#ifdef KEY
    int          tmp_ir_idx;
-#endif
 
 
    TRACE (Func_Entry, "gen_directive_ir", NULL);
@@ -570,24 +564,16 @@ int	gen_directive_ir(operator_type	operator)
    need_new_sh = TRUE;
 
    if (SH_IR_IDX(curr_stmt_sh_idx)) {
-#ifdef KEY
       tmp_ir_idx = SH_NEXT_IDX(curr_stmt_sh_idx);
-#endif
-#ifdef KEY /* Bug 7498 */
       /* ntr_sh_tbl() may change the value of sh_tbl, which is used inside
        * SH_NEXT_IDX(), so we need an ANSI C sequence point in between. */
       int new_stmt                              = ntr_sh_tbl();
       SH_NEXT_IDX(curr_stmt_sh_idx)		= new_stmt;
-#else /* KEY Bug 7498 */
-      SH_NEXT_IDX(curr_stmt_sh_idx)		= ntr_sh_tbl();
-#endif /* KEY Bug 7498 */
       SH_PREV_IDX(SH_NEXT_IDX(curr_stmt_sh_idx))= curr_stmt_sh_idx;
       curr_stmt_sh_idx				= SH_NEXT_IDX(curr_stmt_sh_idx);
       SH_STMT_TYPE(curr_stmt_sh_idx)		= Directive_Stmt;
-#ifdef KEY
       SH_NEXT_IDX(curr_stmt_sh_idx) = tmp_ir_idx;
       SH_PREV_IDX(tmp_ir_idx) = curr_stmt_sh_idx;
-#endif
    }
 
    SH_GLB_LINE(curr_stmt_sh_idx)= TOKEN_LINE(token);
@@ -773,13 +759,11 @@ static void parse_ignore_tkr(void)
                LN_DEF_LOC(name_idx)     = TRUE;
             }
 
-#ifdef KEY /* Bug 14150 */
 	 /* Now that we allow ignore_tkr on a dummy argument, don't set class
 	  * if we already know it */
          if (AT_OBJ_CLASS(attr_idx) == Pgm_Unit) {
 	 }
 	 else
-#endif /* KEY Bug 14150 */
             ATD_CLASS(attr_idx)		= Dummy_Argument;
             ATD_IGNORE_TKR(attr_idx)	= TRUE;
          }
@@ -1347,17 +1331,6 @@ static void parse_slash_common_dirs(void)
 
                SB_COMMON_NEEDS_OFFSET(sb_idx)	= TRUE;
 	       SB_IS_COMMON(sb_idx)	= TRUE;
-# if 0
-               /* This is allowed now, but I'll leave the message in, */
-               /* just in case. BHJ                                   */
-
-               SB_DCL_ERR(sb_idx)		= TRUE;
-
-               /* Must be specified in a common block before THREAD PRIVATE */
-
-               PRINTMSG(TOKEN_LINE(token), 1479, Error, TOKEN_COLUMN(token),
-                        TOKEN_STR(token));
-# endif
             }
             else if (SB_USE_ASSOCIATED(sb_idx)) {
 
@@ -1404,7 +1377,6 @@ static void parse_slash_common_dirs(void)
             break;
          }
       }
-      /* the following is added by jhs, 02.9.9 */
       else if(MATCHED_TOKEN_CLASS(Tok_Class_Id)){
 	 token_value = TOKEN_VALUE(token);
 	 attr_idx = srch_sym_tbl(TOKEN_STR(token),
@@ -1416,13 +1388,10 @@ static void parse_slash_common_dirs(void)
 	    AT_OBJ_CLASS(attr_idx) = Data_Obj;
 	    SET_IMPL_TYPE(attr_idx);
 	 }
-#ifdef KEY
          if (ATD_STOR_BLK_IDX(attr_idx) == NULL_IDX) {
             assign_storage_blk(attr_idx);
          }
          SB_BLK_TYPE(ATD_STOR_BLK_IDX(attr_idx)) = Threadprivate;
-#endif
-#ifdef KEY /* Bug 9029 */
 	 /* The current function (parse_slash_common_dirs) is called only if
 	  * the token is Tok_Open_Mp_Dir_Threadprivate, so none of the
 	  * following code is relevant, and calling fnd_semantic_err with
@@ -1437,51 +1406,7 @@ static void parse_slash_common_dirs(void)
 	  * But for now, we just disable the fnd_semantic_err check without
 	  * adding a new, more correct check.
 	  */
-#else /* KEY Bug 9029 */
-	 if(!fnd_semantic_err((token_value == Tok_SGI_Dir_Section_Gp) ?
-				 Obj_Section_Gp : Obj_Section_Non_Gp,
-				 TOKEN_LINE(token),
-				 TOKEN_COLUMN(token),
-				 attr_idx,
-				 TRUE)){
-	    if(AT_OBJ_CLASS(attr_idx) == Pgm_Unit &&
-	      ATP_PGM_UNIT(attr_idx) == Module){
-	      if(token_value == Tok_SGI_Dir_Section_Gp){
-	        if(attr_idx != SCP_ATTR_IDX(curr_scp_idx)){
-		    PRINTMSG(TOKEN_LINE(token), 1491, Error,
-		    	TOKEN_COLUMN(token),
-		    	 "SECTION_GP" );
-		}
-		else if(SB_SECTION_NON_GP(SCP_SB_STATIC_IDX(curr_scp_idx))){
-		    PRINTMSG(TOKEN_LINE(token), 1490, Error,
-			TOKEN_COLUMN(token),
-			AT_OBJ_NAME_PTR(attr_idx),
-			"SECTION_GP", "SECTION_NON_GP");
-		}
-	      }
-	      else if(token_value == Tok_SGI_Dir_Section_Non_Gp){
-		if(attr_idx != SCP_ATTR_IDX(curr_scp_idx)){
-		    PRINTMSG(TOKEN_LINE(token), 1491, Error,
-			TOKEN_COLUMN(token),
-			"SECTION_NON_GP");
-		}
-		else if(SB_SECTION_GP(SCP_SB_STATIC_IDX(curr_scp_idx))){
-		    PRINTMSG(TOKEN_LINE(token), 1490, Error,
-			TOKEN_COLUMN(token),
-			AT_OBJ_NAME_PTR(attr_idx),
-			"SECTION_NON_GP", "SECTION_GP");
-		}
-	      }
-	    }
-	 
-            if(token_value == Tok_SGI_Dir_Section_Gp)
-	      ATD_SECTION_GP(attr_idx) = TRUE;
-	    else if(token_value == Tok_SGI_Dir_Section_Non_Gp)
-	      ATD_SECTION_NON_GP(attr_idx) = TRUE;
-	  }
-#endif /* KEY Bug 9029 */
       }
-      /* the above is added by jhs, 02.9.9 */
       else if (!parse_err_flush(Find_Comma_Rparen, "/common-block-name/ or identifier")) {
          break;
       }
@@ -2158,74 +2083,6 @@ static boolean parse_var_name_list(opnd_type   *list_opnd)
    return(result);
 
 }  /* parse_var_name_list */
-# if 0
-
-/* No one uses this routine */
-
-
-/******************************************************************************\
-|*									      *|
-|* Description:								      *|
-|*	This routine parses a list of expressions seperated by commas.        *|
-|*									      *|
-|* Input parameters:							      *|
-|*	NONE								      *|
-|*									      *|
-|* Output parameters:							      *|
-|*	opnd - points to list of expressions.                                 *|
-|*									      *|
-|* Returns:								      *|
-|*	NOTHING								      *|
-|*									      *|
-\******************************************************************************/
-
-static void parse_expr_list(opnd_type *list_opnd)
-
-{
-   int		list_idx = NULL_IDX;
-   boolean      ok = TRUE;
-   opnd_type	opnd;
-
-
-   TRACE (Func_Entry, "parse_expr_list", NULL);
-
-   while(TRUE) {
-
-      ok &= parse_expr(&opnd);
-
-      if (ok) {
-
-         if (list_idx == NULL_IDX) {
-            NTR_IR_LIST_TBL(list_idx);
-            OPND_FLD((*list_opnd)) = IL_Tbl_Idx;
-            OPND_IDX((*list_opnd)) = list_idx;
-            OPND_LIST_CNT((*list_opnd)) = 1;
-         }
-         else {
-            NTR_IR_LIST_TBL(IL_NEXT_LIST_IDX(list_idx));
-            IL_PREV_LIST_IDX(IL_NEXT_LIST_IDX(list_idx)) = list_idx;
-            (OPND_LIST_CNT((*list_opnd)))++;
-            list_idx = IL_NEXT_LIST_IDX(list_idx);
-         }
-         COPY_OPND(IL_OPND(list_idx), opnd);
-      }
-      else {
-         parse_err_flush(Find_Comma_Rparen, NULL);
-         break;
-      }
-
-      if (LA_CH_VALUE != COMMA) {
-         break;
-      }
-      NEXT_LA_CH;
-   }
-
-   TRACE (Func_Exit, "parse_expr_list", NULL);
-
-   return;
-
-}  /* parse_expr_list */
-# endif
 
 /******************************************************************************\
 |*									      *|
@@ -6016,11 +5873,7 @@ static void parse_dollar_directives(void)
    int		ir_idx;
    int		list_idx;
    opnd_type	opnd;
-#ifdef KEY /* Bug 10177 */
    long		the_constant = 0;
-#else /* KEY Bug 10177 */
-   long		the_constant;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "parse_dollar_directives", NULL);
@@ -6305,11 +6158,7 @@ static void parse_star_directives(void)
    boolean		loop_dir	= FALSE;
    int			name_idx;
    opnd_type		opnd;
-#ifdef KEY /* Bug 10177 */
    operator_type	opr = Null_Opr;
-#else /* KEY Bug 10177 */
-   operator_type	opr;
-#endif /* KEY Bug 10177 */
    int			save_column_num;
    int			save_line_num;
 
@@ -6631,7 +6480,6 @@ static void parse_star_directives(void)
       }
       break;
 
-#ifdef KEY /* Bug 2660 */
    /* Syntax is c*$*options "somestring" */
    case Tok_SGI_Dir_Options:
       ir_idx = gen_directive_ir(Options_Dir_Opr);
@@ -6644,7 +6492,6 @@ static void parse_star_directives(void)
 	goto EXIT;
       }
       break;
-#endif /* KEY Bug 2660 */
 
    case Tok_SGI_Dir_Purpleconditional:
       ir_idx = gen_directive_ir(Purpleconditional_Star_Opr);
@@ -7257,11 +7104,7 @@ static void parse_mp_directive(mp_directive_type directive)
    int		list2_idx;
    opnd_type    opnd;
    boolean	seen_nest = FALSE;
-#ifdef KEY /* Bug 10177 */
    long		the_constant = 0;
-#else /* KEY Bug 10177 */
-   long		the_constant;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "parse_mp_directive", NULL);
@@ -8772,23 +8615,13 @@ static void parse_sgi_dir_inline(boolean	turn_on)
    typedef	enum	scope_entry	scope_type;
 
    boolean   		amb_ref		= FALSE;
-#ifdef KEY /* Bug 10177 */
    int       		attr_idx = 0;
    int       		column = 0;
-#else /* KEY Bug 10177 */
-   int       		attr_idx;
-   int       		column;
-#endif /* KEY Bug 10177 */
    int       		host_attr_idx;
    int       		host_name_idx;
    boolean		inline_dir	= FALSE;
-#ifdef KEY /* Bug 10177 */
    int			ir_idx = 0;
    int       		line = 0;
-#else /* KEY Bug 10177 */
-   int			ir_idx;
-   int       		line;
-#endif /* KEY Bug 10177 */
    int			list_idx;
    int       		name_idx;
    scope_type		scope		= Here;
@@ -9114,11 +8947,7 @@ static void parse_distribution_dir(boolean	reshape)
 
 {
    int		attr_idx;
-#ifdef KEY /* Bug 10177 */
    int		bd_idx = 0;
-#else /* KEY Bug 10177 */
-   int		bd_idx;
-#endif /* KEY Bug 10177 */
    int		name_idx;
    int		onto_col;
    int		onto_line;
@@ -9364,13 +9193,8 @@ static void parse_redistribute_dir(void)
    int		attr_idx;
    int		ir_idx;
    int		list_idx;
-#ifdef KEY /* Bug 10177 */
    int		list_idx2 = 0;
    int		list_idx3 = 0;
-#else /* KEY Bug 10177 */
-   int		list_idx2;
-   int		list_idx3;
-#endif /* KEY Bug 10177 */
    int		name_idx;
    int		onto_col;
    int		onto_line;
@@ -10626,7 +10450,6 @@ static void parse_open_mp_directives(void)
          ATP_HAS_TASK_DIRS(SCP_ATTR_IDX(curr_scp_idx)) = TRUE;
          ir_idx = gen_directive_ir(Endsingle_Open_Mp_Opr);
 
-	/* the following are added by jhs, 02/7/21 */
 	  NTR_IR_LIST_TBL(list_idx);
 	  IR_FLD_L(ir_idx) = IL_Tbl_Idx;
 	  IR_IDX_L(ir_idx) = list_idx;
@@ -10724,7 +10547,6 @@ static void parse_open_mp_directives(void)
 	         NEXT_LA_CH;
 	      }
 	   }
-         /* the above are added by jhs, 02/7/21 */
          if (directive_region_error(Endsingle_Open_Mp_Dir,
                                     IR_LINE_NUM(ir_idx),
                                     IR_COL_NUM(ir_idx))) {
@@ -11032,11 +10854,7 @@ static void parse_open_mp_directives(void)
          if (LA_CH_VALUE == LPAREN) {
             NEXT_LA_CH;
 
-#ifdef KEY /* Bug 6075 */
 	    parse_var_common_list(&opnd, FALSE);
-#else /* KEY Bug 6075 */
-            parse_var_name_list(&opnd);
-#endif /* KEY Bug 6075 */
             COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
             if (LA_CH_VALUE == RPAREN) {
@@ -11364,7 +11182,7 @@ static void parse_open_mp_clauses(open_mp_directive_type directive)
                }
                break;
                
-            case Tok_Open_Mp_Dir_Num_Threads: /* by jhs, 02/7/20 */
+            case Tok_Open_Mp_Dir_Num_Threads:
                if (! open_mp_clause_allowed[directive][Num_Threads_Omp_Clause]) {
                   PRINTMSG(TOKEN_LINE(token), 1370, Error, TOKEN_COLUMN(token),
                            "NUM_THREADS", open_mp_dir_str[directive]);
@@ -11458,11 +11276,7 @@ static void parse_open_mp_clauses(open_mp_directive_type directive)
 
                if (LA_CH_VALUE == LPAREN) {
                   NEXT_LA_CH;
-#ifdef KEY /* Bug 6075 */
                   parse_var_common_list(&opnd, FALSE);
-#else /* KEY Bug 6075 */
-                  parse_var_name_list(&opnd);
-#endif /* KEY Bug 6075 */
 
                   if (IL_IDX(list_array[OPEN_MP_SHARED_IDX]) == NULL_IDX) {
                      COPY_OPND(IL_OPND(list_array[OPEN_MP_SHARED_IDX]), opnd);

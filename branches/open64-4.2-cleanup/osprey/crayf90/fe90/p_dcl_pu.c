@@ -61,9 +61,7 @@ static char USMID[] = "\n@(#)5.0_pl/sources/p_dcl_pu.c	5.5	09/01/99 09:11:00\n";
 # include "tokens.h"
 # include "sytb.h"
 # include "p_globals.h"
-# ifdef KEY
 # include "i_cvrt.h"
-# endif
 
 
 /*****************************************************************\
@@ -907,17 +905,11 @@ void parse_module_stmt (void)
                   /* Make local version and connect to the interface. */
 
                   NTR_ATTR_TBL(tmp_attr_idx);
-#ifdef KEY /* Bug 4197 */
 		  /* We want the newly added specific procedure to be
 		   * non-intrinsic just like the interface itself. */
                   AT_IS_INTRIN(attr_idx)	= FALSE;
                   AT_ELEMENTAL_INTRIN(attr_idx)	= FALSE;
                   COPY_COMMON_ATTR_INFO(attr_idx, tmp_attr_idx, Pgm_Unit);
-#else /* KEY Bug 4197 */
-                  COPY_COMMON_ATTR_INFO(attr_idx, tmp_attr_idx, Pgm_Unit);
-                  AT_IS_INTRIN(attr_idx)	= FALSE;
-                  AT_ELEMENTAL_INTRIN(attr_idx)	= FALSE;
-#endif  /* KEY Bug 4197 */
                   ATI_PROC_IDX(attr_idx)	= tmp_attr_idx;
                   attr_idx			= tmp_attr_idx;
                   AT_USE_ASSOCIATED(attr_idx)	= FALSE;
@@ -969,15 +961,6 @@ void parse_module_stmt (void)
                         AT_OBJ_NAME_PTR(attr_idx));
             }
 
-# if 0
-            if ((cif_flags & XREF_RECS) != 0) {
-               cif_usage_rec(attr_idx,
-                             AT_Tbl_Idx,
-                             TOKEN_LINE(token),
-                             TOKEN_COLUMN(token),
-                             CIF_Symbol_Declaration);
-            }
-# endif
 
             /* If the context is okay, interface_idx will be non NULL.  If */
             /* so enter into interface list and set ATI_INTERFACE_CLASS.   */
@@ -1607,7 +1590,6 @@ void parse_subroutine_stmt (void)
       parse_dummy_args(attr_idx);
    }
 
-#ifdef KEY /* Bug 14150 */
    if (matched_specific_token(Tok_Kwd_Bind, Tok_Class_Keyword)) {
       if (AT_IS_DARG(attr_idx)) {
 	parse_language_binding_spec(0);
@@ -1619,7 +1601,6 @@ void parse_subroutine_stmt (void)
       }
    }
    else
-#endif /* KEY Bug 14150 */
    if (LA_CH_VALUE != EOS) {
       parse_err_flush(Find_EOS, EOS_STR);
    }
@@ -1631,7 +1612,6 @@ void parse_subroutine_stmt (void)
    return;
 
 }  /* parse_subroutine_stmt */
-#ifdef KEY /* Bug 14150 */
 /*
  * Parse RESULT clause for FUNCTION suffix.
  * attr_idx		AT_Tbl_Idx for function
@@ -1717,7 +1697,6 @@ help_set_function_rslt(int attr_idx, int *out_result_idx) {
    *out_result_idx = rslt_idx;
    return err_found;
 }
-#endif /* KEY Bug 14150 */
 
 /******************************************************************************\
 |*									      *|
@@ -1746,7 +1725,6 @@ static void set_function_rslt(int	attr_idx,
 
    TRACE (Func_Entry, "set_function_rslt", NULL);
 
-#ifdef KEY /* Bug 14150 */
    int bind_ok = 1;
    int result_ok = 1;
    while (LA_CH_VALUE != EOS) {
@@ -1772,7 +1750,6 @@ static void set_function_rslt(int	attr_idx,
        break;
      }
    }
-#endif /* KEY Bug 14150 */
 
    func_rslt_idx	= ATP_RSLT_IDX(attr_idx);
 
@@ -2546,7 +2523,6 @@ static int start_new_subpgm(pgm_unit_type	pgm_type,
             /* Found, but it is from a different scope. */
          }
 
-#ifdef KEY /* Bug 4197 */
 	 /*
 	  * Remove intrinsics if necessary to implement this provision of
 	  * the F95 standard (14.1.2.3): "If a generic name is the same as
@@ -2567,7 +2543,6 @@ static int start_new_subpgm(pgm_unit_type	pgm_type,
 	       Generic_Function_Interface;
 	   }
 	 }
-#endif /* KEY Bug 4197 */
 
          NTR_INTERFACE_IN_SN_TBL(sn_idx,
                                  attr_idx,
@@ -2773,17 +2748,14 @@ static	void	gen_end_prologue_debug_label(int	attr_idx)
 |*	attr_idx   Index to the new attribute entry.			      *|
 |*									      *|
 \******************************************************************************/
-#ifdef KEY /* Bug 8261 */
 int start_new_prog_unit_by_token(pgm_unit_type, blk_cntxt_type, boolean,
   boolean, int *, token_type *);
-#endif /* KEY Bug 8261 */
 
 int	start_new_prog_unit(pgm_unit_type	pgm_type,
 			    blk_cntxt_type	blk_type,
 			    boolean		no_name_entry,
 			    boolean		parse_error,
                             int                *defer_msg)
-#ifdef KEY /* Bug 8261 */
 {
   return start_new_prog_unit_by_token(pgm_type, blk_type, no_name_entry,
     parse_error, defer_msg, &token);
@@ -2794,7 +2766,6 @@ int	start_new_prog_unit(pgm_unit_type	pgm_type,
 int start_new_prog_unit_by_token(pgm_unit_type pgm_type,
   blk_cntxt_type blk_type, boolean  no_name_entry, boolean  parse_error,
   int *defer_msg, token_type *token)
-#endif /* KEY Bug 8261 */
 {
    		int	attr_idx;
    static	int	num_main_program	= 0;
@@ -2823,18 +2794,10 @@ int start_new_prog_unit_by_token(pgm_unit_type pgm_type,
       curr_stmt_category	= Dir_Integer_Stmt_Cat;		
    }
 
-#ifdef KEY /* Bug 8261 */
    attr_idx = srch_sym_tbl(TOKEN_STR(*token), TOKEN_LEN(*token), &name_idx);
-#else /* KEY Bug 8261 */
-   attr_idx = srch_sym_tbl(TOKEN_STR(token), TOKEN_LEN(token), &name_idx);
-#endif /* KEY Bug 8261 */
 
    if (attr_idx == NULL_IDX) {
-#ifdef KEY /* Bug 8261 */
       attr_idx				= ntr_sym_tbl(token, name_idx);
-#else /* KEY Bug 8261 */
-      attr_idx				= ntr_sym_tbl(&token, name_idx);
-#endif /* KEY Bug 8261 */
       AT_DCL_ERR(attr_idx)		= parse_error;
       SCP_ATTR_IDX(curr_scp_idx)	= attr_idx;
       message				= 0;
@@ -2849,15 +2812,9 @@ int start_new_prog_unit_by_token(pgm_unit_type pgm_type,
 
          has_task_dirs = ATP_HAS_TASK_DIRS(glb_tbl_idx[Main_Attr_Idx]);
          attr_idx			= glb_tbl_idx[Main_Attr_Idx];
-#ifdef KEY /* Bug 8261 */
          AT_DEF_LINE(attr_idx)		= TOKEN_LINE(*token);
          AT_DEF_COLUMN(attr_idx)	= TOKEN_COLUMN(*token);
          AT_NAME_LEN(attr_idx)		= TOKEN_LEN(*token);
-#else /* KEY Bug 8261 */
-         AT_DEF_LINE(attr_idx)		= TOKEN_LINE(token);
-         AT_DEF_COLUMN(attr_idx)	= TOKEN_COLUMN(token);
-         AT_NAME_LEN(attr_idx)		= TOKEN_LEN(token);
-#endif /* KEY Bug 8261 */
          AT_NAME_IDX(attr_idx)		= LN_NAME_IDX(name_idx);
          AT_DEFINED(attr_idx)		= TRUE;
          LN_ATTR_IDX(name_idx)		= attr_idx;
@@ -2883,7 +2840,6 @@ int start_new_prog_unit_by_token(pgm_unit_type pgm_type,
          }
          else if (!parse_error) {
 
-#ifdef KEY /* Bug 8261 */
             PRINTMSG(TOKEN_LINE(*token), message, 
 # if defined(_ERROR_DUPLICATE_GLOBALS)
                      Error, 
@@ -2891,15 +2847,6 @@ int start_new_prog_unit_by_token(pgm_unit_type pgm_type,
                      Warning,
 # endif
                      TOKEN_COLUMN(*token));
-#else /* KEY Bug 8261 */
-            PRINTMSG(TOKEN_LINE(token), message, 
-# if defined(_ERROR_DUPLICATE_GLOBALS)
-                     Error, 
-# else
-                     Warning,
-# endif
-                     TOKEN_COLUMN(token));
-#endif /* KEY Bug 8261 */
          }
       }
    }
@@ -2908,17 +2855,10 @@ int start_new_prog_unit_by_token(pgm_unit_type pgm_type,
 
       /* CHARACTER*(BAD) FUNCTION BAD()   - illegal - Cannot have been found  */
 
-#ifdef KEY /* Bug 8261 */
       PRINTMSG(TOKEN_LINE(*token), 666, Error, TOKEN_COLUMN(*token),
                AT_OBJ_NAME_PTR(attr_idx));
       CREATE_ERR_ATTR(attr_idx, TOKEN_LINE(*token),
                       TOKEN_COLUMN(*token), Pgm_Unit);
-#else /* KEY Bug 8261 */
-      PRINTMSG(TOKEN_LINE(token), 666, Error, TOKEN_COLUMN(token),
-               AT_OBJ_NAME_PTR(attr_idx));
-      CREATE_ERR_ATTR(attr_idx, TOKEN_LINE(token),
-                      TOKEN_COLUMN(token), Pgm_Unit);
-#endif /* KEY Bug 8261 */
       SCP_IN_ERR(curr_scp_idx)		= TRUE;
       SCP_ATTR_IDX(curr_scp_idx)	= attr_idx;
    }
@@ -2930,13 +2870,8 @@ int start_new_prog_unit_by_token(pgm_unit_type pgm_type,
           ATD_SYMBOLIC_CONSTANT(attr_idx)) {
       }
       else {
-#ifdef KEY /* Bug 8261 */
          PRINTMSG(TOKEN_LINE(*token), 180, Internal, TOKEN_COLUMN(*token),
                   TOKEN_STR(*token), "attr_tbl");
-#else /* KEY Bug 8261 */
-         PRINTMSG(TOKEN_LINE(token), 180, Internal, TOKEN_COLUMN(token),
-                  TOKEN_STR(token), "attr_tbl");
-#endif /* KEY Bug 8261 */
       }
    }
 
@@ -2945,14 +2880,12 @@ int start_new_prog_unit_by_token(pgm_unit_type pgm_type,
    ATP_PGM_UNIT(attr_idx)	= pgm_type;			      
    ATP_HAS_TASK_DIRS(attr_idx)  = has_task_dirs;
 
-#ifdef KEY /* Bug 5089 */
    /* F2003 intrinsic module needs to avoid collision with like-named
     * nonintrinsic (user-created) module when generating linker symbols */
    if (on_off_flags.intrinsic_module_gen &&
      Pgm_Unit == AT_OBJ_CLASS(attr_idx) && Module == ATP_PGM_UNIT(attr_idx)) {
      AT_IS_INTRIN(attr_idx) = TRUE;
    }
-#endif /* KEY Bug 5089 */
 
    MAKE_EXTERNAL_NAME(attr_idx, AT_NAME_IDX(attr_idx), AT_NAME_LEN(attr_idx));
 
@@ -2970,22 +2903,12 @@ int start_new_prog_unit_by_token(pgm_unit_type pgm_type,
       NTR_IR_TBL(ir_idx);
       IR_OPR(ir_idx)		= Entry_Opr; 
       IR_TYPE_IDX(ir_idx)       = TYPELESS_DEFAULT_TYPE;
-#ifdef KEY /* Bug 8261 */
       IR_LINE_NUM(ir_idx)	= TOKEN_LINE(*token);
       IR_COL_NUM(ir_idx)	= TOKEN_COLUMN(*token);
-#else /* KEY Bug 8261 */
-      IR_LINE_NUM(ir_idx)	= TOKEN_LINE(token);
-      IR_COL_NUM(ir_idx)	= TOKEN_COLUMN(token);
-#endif /* KEY Bug 8261 */
       IR_FLD_L(ir_idx)		= AT_Tbl_Idx;
       IR_IDX_L(ir_idx)		= attr_idx;
-#ifdef KEY /* Bug 8261 */
       IR_COL_NUM_L(ir_idx)	= TOKEN_COLUMN(*token);
       IR_LINE_NUM_L(ir_idx)	= TOKEN_LINE(*token);
-#else /* KEY Bug 8261 */
-      IR_COL_NUM_L(ir_idx)	= TOKEN_COLUMN(token);
-      IR_LINE_NUM_L(ir_idx)	= TOKEN_LINE(token);
-#endif /* KEY Bug 8261 */
 
       if (no_name_entry ) {
 
@@ -3061,13 +2984,8 @@ int start_new_prog_unit_by_token(pgm_unit_type pgm_type,
    if (cif_flags & XREF_RECS) {
       cif_usage_rec(attr_idx,
                     AT_Tbl_Idx,
-#ifdef KEY /* Bug 8261 */
                     TOKEN_LINE(*token),
                     TOKEN_COLUMN(*token),
-#else /* KEY Bug 8261 */
-                    TOKEN_LINE(token),
-                    TOKEN_COLUMN(token),
-#endif /* KEY Bug 8261 */
                     CIF_Symbol_Declaration);
    }
 
@@ -3131,10 +3049,8 @@ void parse_typed_function_stmt()
    int		rslt_idx;
    int		stmt_number;
    boolean	type_err;
-#ifdef KEY /* Bug 8261 */
    token_type   saved_id;
    boolean      use_saved_id = FALSE;
-#endif /* KEY Bug 8261 */
 
    TRACE (Func_Entry, "parse_typed_function_stmt", NULL);
 
@@ -3291,7 +3207,6 @@ void parse_typed_function_stmt()
             TOKEN_COLUMN(token)		= stmt_start_col;
             err_fnd			= TRUE;
          }
-#ifdef KEY /* Bug 8261 */
 	 /* Extension allows *ddd after the function name, e.g.
 	  * "integer function i*ddd()" */
          else if (STAR == LA_CH_VALUE) {
@@ -3310,7 +3225,6 @@ void parse_typed_function_stmt()
 	     ATD_TYPE_IDX(AT_WORK_IDX) = ntr_type_tbl();
 	   }
 	 }
-#endif /* KEY Bug 8261 */
          break;
 
       default:
@@ -3363,16 +3277,8 @@ void parse_typed_function_stmt()
 
    if (curr_stmt_category != Sub_Func_Stmt_Cat) {
       defer_msg			= 0;
-#ifdef KEY /* Bug 8261 */
       attr_idx= start_new_prog_unit_by_token(Function, Function_Blk, FALSE,
 	err_fnd, &defer_msg, (use_saved_id ? (&saved_id) : (&token)));
-#else /* KEY Bug 8261 */
-      attr_idx			= start_new_prog_unit(Function,
-                                                      Function_Blk,
-                                                      FALSE,
-                                                      err_fnd,
-                                                      &defer_msg);
-#endif /* KEY Bug 8422 */
       ATP_PROC(attr_idx)	= Extern_Proc;
    }
    else {
@@ -3381,11 +3287,7 @@ void parse_typed_function_stmt()
 
    if (assumed_size_ch) {  /* Obsolescent */
       PRINTMSG(AT_DEF_LINE(attr_idx), 1565,
-#ifdef KEY /* Bug 318, 321 */
 	       Ansi,
-#else /* KEY Bug 318, 321 */
-	       Comment,
-#endif /* KEY Bug 318, 321 */
                AT_DEF_COLUMN(attr_idx));
 
       if (ATP_PROC(attr_idx) == Intern_Proc ||
@@ -3450,15 +3352,12 @@ void parse_typed_function_stmt()
    AT_TYPED(rslt_idx)		= TRUE;
    ATD_TYPE_IDX(rslt_idx)	= ATD_TYPE_IDX(AT_WORK_IDX);
 
-#ifdef KEY
-// Bug 2164
    if (AT_OBJ_CLASS(rslt_idx) == Data_Obj && !AT_IS_INTRIN(rslt_idx) &&
        TYP_LINEAR(ATD_TYPE_IDX(rslt_idx)) == Real_4 &&
        Check_FF2C_Script(AT_OBJ_NAME_PTR(rslt_idx), 0) )
    {
      ATD_TYPE_IDX(rslt_idx) = Real_8;
    }
-#endif
    if (LA_CH_VALUE != EOS) {
       parse_err_flush(Find_EOS, EOS_STR);
    }

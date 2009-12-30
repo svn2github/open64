@@ -183,11 +183,7 @@ boolean parse_err_flush (search_type	 rule,
 			 char		*str)
 
 {
-#ifdef KEY /* Bug 10177 */
    boolean	 found_end = FALSE;
-#else /* KEY Bug 10177 */
-   boolean	 found_end;
-#endif /* KEY Bug 10177 */
    char		*new_str;
    int		 paren_level;
    boolean	 found;
@@ -782,7 +778,6 @@ boolean parse_deref (opnd_type *result_opnd,
       if (attr_idx != NULL_IDX) {  /* the name was found locally */
 
          /* copy intrinsic attr to the local scope from the 0th scope */
-#ifdef KEY
          if (LA_CH_VALUE == LPAREN &&
              AT_REFERENCED(attr_idx) == Not_Referenced &&
              !AT_NAMELIST_OBJ(attr_idx) &&
@@ -796,19 +791,6 @@ boolean parse_deref (opnd_type *result_opnd,
               ATD_ARRAY_IDX(attr_idx) == NULL_IDX &&
               (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) != Character ||
                ! is_substring_ref())))) {
-#else
-         if (LA_CH_VALUE == LPAREN &&
-             AT_REFERENCED(attr_idx) == Not_Referenced &&
-             !AT_NAMELIST_OBJ(attr_idx) &&
-              AT_OBJ_CLASS(attr_idx) == Data_Obj &&
-              ATD_CLASS(attr_idx) == Atd_Unknown &&
-             !ATD_ALLOCATABLE(attr_idx) &&
-             !ATD_TARGET(attr_idx) &&
-             !ATD_POINTER(attr_idx) &&
-              ATD_ARRAY_IDX(attr_idx) == NULL_IDX &&
-              (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) != Character ||
-               ! is_substring_ref())) {
-#endif
 
             /* search INTRINSIC host for the INTRINSIC in question */
             save_curr_scp_idx = curr_scp_idx;
@@ -858,7 +840,6 @@ boolean parse_deref (opnd_type *result_opnd,
          ambiguous_ref = TRUE;
 
          /* search host sym tab */
-#ifdef KEY
          if (strncasecmp(TOKEN_STR(attr_name), "omp_",4) == 0){
            save_curr_scp_idx = curr_scp_idx;
            curr_scp_idx = INTRINSIC_SCP_IDX;
@@ -873,7 +854,6 @@ boolean parse_deref (opnd_type *result_opnd,
                                                TRUE);
          }
          else
-#endif
            host_attr_idx = srch_host_sym_tbl(TOKEN_STR(attr_name),
                                              TOKEN_LEN(attr_name), 
                                              &host_name_idx,
@@ -1217,7 +1197,6 @@ boolean parse_deref (opnd_type *result_opnd,
                if ((strcmp(AT_OBJ_NAME_PTR(attr_idx), 
                    (char *)&intrin_map[i].id_str) == 0)) {
 
-#ifdef KEY /* Bug 3869 */
 	       /* NINT is a special case: though it begins with "N" and its
 	        * result type is integer, its argument type is real */
                if (0 == strcmp(AT_OBJ_NAME_PTR(attr_idx), "NINT")) {
@@ -1235,7 +1214,6 @@ boolean parse_deref (opnd_type *result_opnd,
 		   );
 		 break;
 	       }
-#endif /* KEY Bug 3869 */
 
                   if (INTEGER_DEFAULT_TYPE == Integer_1 ||
                       INTEGER_DEFAULT_TYPE == Integer_2 ||

@@ -160,11 +160,7 @@ static	void print_attr_f (int		 attr_idx,
    int		 len;
    int		 newlen;
    int		 num_dargs;
-#ifdef KEY /* Bug 10177 */
    int		 save_start_column = 0;
-#else /* KEY Bug 10177 */
-   int		 save_start_column;
-#endif /* KEY Bug 10177 */
    int		 sn_idx;
 
 

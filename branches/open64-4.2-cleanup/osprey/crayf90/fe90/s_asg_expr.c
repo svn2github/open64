@@ -127,12 +127,10 @@ static int	set_up_pe_offset_attr(void);
 static void	gen_bias_ref(opnd_type *);
 static void	linearize_pe_dims(int, int, int, int, opnd_type *);
 # endif
-#ifdef KEY /* Bug 934 */
 static boolean expr_sem_d(opnd_type *result_opnd, expr_arg_type *exp_desc,
   boolean derived_assign);
 static boolean expr_semantics_d (opnd_type *result_opnd,
   expr_arg_type *exp_desc, boolean derived_assign);
-#endif /* KEY Bug 934 */
 
 
 # if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
@@ -190,7 +188,6 @@ static boolean expr_semantics_d (opnd_type *result_opnd,
 # endif
 
 
-#ifdef KEY /* Bug 4810 */
 /*
  * Return true if op0 is the same node as op1
  */
@@ -295,8 +292,6 @@ static void unbury_lhs_for_omp() {
   }
 }
 
-#endif /* KEY Bug 4810 */
-#ifdef KEY /* Bug 6845 */
 static void help_assign_cpnts(int, int, Uint, int, fld_type, int, fld_type);
 
 static void
@@ -400,7 +395,6 @@ help_assign_cpnts(int line, int col, Uint type_idx,
   }
 }
 
-#endif /* KEY Bug 6845 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -450,9 +444,7 @@ void assignment_stmt_semantics (void)
 
    TRACE (Func_Entry, "assignment_stmt_semantics", NULL);
 
-#ifdef KEY /* Bug 4810 */
    unbury_lhs_for_omp();
-#endif /* KEY Bug 4810 */
 
    ir_idx = SH_IR_IDX(curr_stmt_sh_idx);
 
@@ -522,12 +514,8 @@ void assignment_stmt_semantics (void)
       xref_state = CIF_Symbol_Reference;
       COPY_OPND(r_opnd, IR_OPND_R(ir_idx));
       exp_desc_r.rank = 0;
-#ifdef KEY /* Bug 934 */
       ok &= expr_semantics_d(&r_opnd, &exp_desc_r,
         (exp_desc_l.type == Structure));
-#else /* KEY Bug 934 */
-      ok &= expr_semantics(&r_opnd, &exp_desc_r);
-#endif /* KEY Bug 934 */
       COPY_OPND(IR_OPND_R(ir_idx), r_opnd);
 
       if (! ok) {
@@ -802,7 +790,6 @@ CK_WHERE:
          }
       }
 
-#ifdef KEY /* Bug 6845 */
       /* TR15581 requires automatic deallocation and allocation during
        * assignment of scalar structure having allocatable components, but
        * does not require this during assignment of an allocatable array;
@@ -838,7 +825,6 @@ CK_WHERE:
 	    IR_FLD_R(asg_ir_idx));
 	}
       }
-#endif /* KEY Bug 6845 */
 
       /*
       Generate this label immediately prior to the assignment
@@ -906,21 +892,15 @@ CK_WHERE:
          PRINTMSG(line, 417, Error, col);
          ok = FALSE;
       }
-#ifdef KEY /* Bug 572 */
       /* An expression like "parameter_x%ptr_component_y" might be both a
        * pointer and a constant, and a constant is not allowed here. */
       if (exp_desc_l.constant) {
          PRINTMSG(line, 326, Error, col);
          ok = FALSE;
       }
-#endif /* KEY Bug 572 */
 
-#ifdef KEY /* Bug 14150 */
       ok &= check_for_legal_assignment_define(&l_opnd,
         IR_OPR(ir_idx) == Ptr_Asg_Opr);
-#else /* KEY Bug 14150 */
-      ok &= check_for_legal_define(&l_opnd);
-#endif /* KEY Bug 14150 */
 
       attr_idx = find_base_attr(&l_opnd, &line, &col);
 
@@ -957,16 +937,12 @@ CK_WHERE:
       xref_state = CIF_Symbol_Reference;
       COPY_OPND(r_opnd, IR_OPND_R(ir_idx));
       exp_desc_r.rank = 0;
-#ifdef KEY /* Bug 572 */
       /* Pointer assignment definitely allows pointer on RHS */
       int save_constant_ptr_ok = constant_ptr_ok;
       constant_ptr_ok = TRUE;
-#endif /* KEY Bug 572 */
       ok = expr_semantics(&r_opnd, &exp_desc_r)
                        && ok;
-#ifdef KEY /* Bug 572 */
       constant_ptr_ok = save_constant_ptr_ok;
-#endif /* KEY Bug 572 */
       COPY_OPND(IR_OPND_R(ir_idx), r_opnd);
 
       if (! ok) {
@@ -1322,7 +1298,6 @@ static void lower_ptr_asg(expr_arg_type *exp_desc_r)
 
 boolean expr_semantics (opnd_type       *result_opnd,
                         expr_arg_type   *exp_desc)
-#ifdef KEY /* Bug 934 */
 {
   return expr_semantics_d(result_opnd, exp_desc, FALSE);
 }
@@ -1334,7 +1309,6 @@ boolean expr_semantics (opnd_type       *result_opnd,
 static boolean expr_semantics_d (opnd_type     *result_opnd,
                         expr_arg_type   *exp_desc,
 			boolean		derived_assign)
-#endif /* KEY Bug 934 */
 
 {
    boolean      	ok = TRUE;
@@ -1361,11 +1335,7 @@ static boolean expr_semantics_d (opnd_type     *result_opnd,
    target_char_len_idx          = NULL_IDX;
    target_type_idx              = NULL_IDX;
 
-#ifdef KEY /* Bug 934 */
    ok = expr_sem_d(result_opnd, exp_desc, derived_assign);
-#else /* KEY Bug 934 */
-   ok = expr_sem(result_opnd, exp_desc);
-#endif /* KEY Bug 934 */
 
    check_type_conversion        = save_check_type_conversion;
    target_array_idx             = save_target_array_idx;
@@ -1511,7 +1481,6 @@ static boolean expr_semantics_d (opnd_type     *result_opnd,
 
 boolean expr_sem (opnd_type       *result_opnd,
                   expr_arg_type   *exp_desc)
-#ifdef KEY /* Bug 934 */
 {
   return expr_sem_d(result_opnd, exp_desc, FALSE);
 }
@@ -1523,7 +1492,6 @@ boolean expr_sem (opnd_type       *result_opnd,
 static boolean expr_sem_d(opnd_type      *result_opnd,
                   expr_arg_type   *exp_desc,
 		  boolean	  derived_assign)
-#endif /* KEY Bug 934 */
 
 {
    int                 al_list_idx;
@@ -1536,11 +1504,7 @@ static boolean expr_sem_d(opnd_type      *result_opnd,
    int                 ir_idx		= NULL_IDX;
    int		       line;
    int		       list_idx;
-#ifdef KEY /* Bug 10177 */
    int                 msg_num = 0;
-#else /* KEY Bug 10177 */
-   int                 msg_num;
-#endif /* KEY Bug 10177 */
    opnd_type	       opnd;
    int		       rank_in;
    boolean             junk;
@@ -1558,9 +1522,7 @@ static boolean expr_sem_d(opnd_type      *result_opnd,
 
    rank_in			= exp_desc->rank;
    (*exp_desc)			= init_exp_desc;
-#ifdef KEY /* Bug 934 */
    exp_desc->derived_assign = derived_assign;
-#endif /* KEY Bug 934 */
    exp_desc->linear_type	= TYPELESS_DEFAULT_TYPE;
    exp_desc->type_idx		= TYPELESS_DEFAULT_TYPE;
 
@@ -1757,16 +1719,6 @@ static boolean expr_sem_d(opnd_type      *result_opnd,
                OPND_IDX((*result_opnd)) = attr_idx;
             }
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
-# if 0
-            else if (ATD_CLASS(attr_idx) == Dummy_Argument &&
-                     ATD_ARRAY_IDX(attr_idx) &&
-                     BD_ARRAY_CLASS(ATD_ARRAY_IDX(attr_idx))==Assumed_Shape &&
-                     ATD_SF_ARG_IDX(attr_idx) != NULL_IDX) {
-
-               attr_idx = ATD_SF_ARG_IDX(attr_idx);
-               OPND_IDX((*result_opnd)) = attr_idx;
-            }
-# endif
 # endif
 
 
@@ -1775,12 +1727,10 @@ static boolean expr_sem_d(opnd_type      *result_opnd,
             exp_desc->linear_type = TYP_LINEAR(exp_desc->type_idx);
 
             if (ATD_PURE(attr_idx) && 
-#ifdef KEY /* Bug 934 */
 		/* This constraint only applies when assigning an entire
 		 * derived type. Note that it's one of the areas where
 		 * "allocatable" and "pointer" behave differently. */
                 exp_desc->derived_assign &&
-#endif /* KEY Bug 934 */
                 stmt_type == Assignment_Stmt &&
                 exp_desc->type == Structure &&
                 ATT_POINTER_CPNT(TYP_IDX(exp_desc->type_idx))) {
@@ -1858,9 +1808,7 @@ static boolean expr_sem_d(opnd_type      *result_opnd,
                 (ATD_CLASS(attr_idx) != Dummy_Argument ||
                  ! ATD_SF_DARG(attr_idx))           &&
                 ! cdir_switches.autoscope           &&
-#ifdef KEY /* Bug 8287 */
                 SB_BLK_TYPE(ATD_STOR_BLK_IDX(attr_idx)) != Threadprivate &&
-#endif /* KEY Bug 8287 */
                 ! ATD_TASK_PRIVATE(attr_idx)        &&
                 ! ATD_TASK_GETFIRST(attr_idx)       &&
                 ! ATD_TASK_LASTLOCAL(attr_idx)      &&
@@ -1891,16 +1839,6 @@ static boolean expr_sem_d(opnd_type      *result_opnd,
                }
                else if (dump_flags.mp) {
 
-# if 0
-                  if (processing_do_var) {
-                     /* do vars are scope private, by default */
-
-                     ADD_VAR_TO_PRIVATE_LIST(attr_idx);
-                  }
-                  else {
-                     ADD_VAR_TO_SHARED_LIST(attr_idx);
-                  }
-# endif
                }
                else {
 
@@ -2545,13 +2483,9 @@ static boolean expr_sem_d(opnd_type      *result_opnd,
                
                if (need_pure_function && 
                    AT_OBJ_CLASS(IR_IDX_L(ir_idx)) == Pgm_Unit &&
-#ifdef KEY /* Bug 7726 */
 	       /* Fortran 95 says every elemental function is a pure function */
                    !(ATP_PURE(IR_IDX_L(ir_idx)) ||
 		     ATP_ELEMENTAL(IR_IDX_L(ir_idx))))
-#else /* KEY Bug 7726 */
-                   !ATP_PURE(IR_IDX_L(ir_idx)))
-#endif /* KEY Bug 7726 */
 		   {
                   /* KAY - insert call to message here */
                   ok = FALSE;
@@ -3061,22 +2995,10 @@ boolean  gen_whole_subscript (opnd_type *opnd, expr_arg_type *exp_desc)
                                  TYP_LINEAR(loc_exp_desc.type_idx);
          }
 
-#ifdef KEY /* Bug 4709 */
          /* Converting array bounds from Integer_8 to Integer_4 breaks
 	  * customer code which uses large array bounds, and isn't
 	  * correct for our 64-bit-oriented runtime.
 	  */
-#else
-         if (in_io_list) {
-
-            /* on mpp, must cast shorts to longs in io lists */
-            /* on solaris, must cast Integer_8 to Integer_4 */
-
-            COPY_OPND(opnd2, IL_OPND(tlst1_idx));
-            cast_to_cg_default(&opnd2, &loc_exp_desc);
-            COPY_OPND(IL_OPND(tlst1_idx), opnd2);
-         }
-#endif /* KEY Bug 4709 */
 
          IL_FLD(tlst2_idx)      = BD_UB_FLD(bd_idx, i);
          IL_IDX(tlst2_idx)      = BD_UB_IDX(bd_idx, i);
@@ -3102,22 +3024,10 @@ boolean  gen_whole_subscript (opnd_type *opnd, expr_arg_type *exp_desc)
                                  TYP_LINEAR(loc_exp_desc.type_idx);
          }
 
-#ifdef KEY /* Bug 4709 */
          /* Converting array bounds from Integer_8 to Integer_4 breaks
 	  * customer code which uses large array bounds, and isn't
 	  * correct for our 64-bit-oriented runtime.
 	  */
-#else
-         if (in_io_list) {
-
-            /* on mpp, must cast shorts to longs in io lists */
-            /* on solaris, must cast Integer_8 to Integer_4 */
-
-            COPY_OPND(opnd2, IL_OPND(tlst2_idx));
-            cast_to_cg_default(&opnd2, &loc_exp_desc);
-            COPY_OPND(IL_OPND(tlst2_idx), opnd2);
-         }
-#endif /* KEY Bug 4709 */
       }
 
       IL_FLD(tlst3_idx)      = CN_Tbl_Idx;
@@ -3472,19 +3382,13 @@ boolean  operation_is_intrinsic(operator_type   opr,
          break;
 
       case Eq_Opr :
-# ifndef KEY
-      case Ge_Opr :
-# endif
 
          if (EQ_NE_TYPE(exp_idx_l, exp_idx_r) == Err_Res ||
              EQ_NE_EXTN(exp_idx_l, exp_idx_r)) {
             intrinsic = FALSE;
          }
          break;
-// Bug 2236
-# ifdef KEY
       case Ge_Opr :
-# endif
       case Gt_Opr :
       case Le_Opr :
       case Lt_Opr :
@@ -3605,7 +3509,6 @@ boolean fold_relationals(int		idx_1,
 
 }  /* fold_relationals */
 
-# ifdef KEY
 static boolean is_loop_index_of_forall_loop (int ir_idx)
 {
   int stmt_sh_idx, forall_list_idx, index_idx;
@@ -3757,7 +3660,6 @@ static void change_extent(opnd_type          *result_opnd)
     OPND_IDX((*result_opnd)) = maxval_idx;
   }
 }
-#endif
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -3864,10 +3766,7 @@ void	make_triplet_extent_tree(opnd_type	*opnd,
    /* end */
    COPY_OPND(topnd, IL_OPND(list_idx));
    copy_subtree(&topnd, &topnd);
-// Bug 2364
-# ifdef KEY
    change_extent(&topnd);
-# endif
    COPY_OPND(IR_OPND_L(sub_idx), topnd);
 
    foldable = foldable && (IL_FLD(list_idx) == CN_Tbl_Idx ||
@@ -4169,7 +4068,6 @@ void	add_substring_length(int	sub_idx)
    IR_COL_NUM(max_idx)		= col;
 
    IL_FLD(list_idx) = IR_Tbl_Idx;
-#ifdef KEY /* Bug 11922 */
    /*
     * When the -i8 option is on, what should be the type of the integer
     * lengths of character data? Throughout the front end, the assumption is
@@ -4190,7 +4088,6 @@ void	add_substring_length(int	sub_idx)
      IL_IDX(list_idx) = convert_idx;
    }
    else
-#endif /* KEY Bug 11922 */
      IL_IDX(list_idx) = max_idx;
 
    NTR_IR_LIST_TBL(list2_idx);
@@ -4281,25 +4178,15 @@ static boolean array_construct_semantics(opnd_type      *top_opnd,
 {
    int			column;
    boolean		constant_trip = TRUE;
-#ifdef KEY /* Bug 10177 */
    int			do_var_idx = 0;
-#else /* KEY Bug 10177 */
-   int			do_var_idx;
-#endif /* KEY Bug 10177 */
    boolean              do_var_ok;
    boolean              first_item = TRUE;
    int			line;
    expr_arg_type        loc_exp_desc;
    opnd_type		initial_opnd;
-#ifdef KEY /* Bug 10177 */
    int                  list_idx = 0;
    int                  list2_idx;
    int			new_do_var_idx = 0;
-#else /* KEY Bug 10177 */
-   int                  list_idx;
-   int                  list2_idx;
-   int			new_do_var_idx;
-#endif /* KEY Bug 10177 */
    opnd_type            opnd;
    boolean              ok		= TRUE;
    expr_mode_type	save_expr_mode;
@@ -4322,9 +4209,7 @@ static boolean array_construct_semantics(opnd_type      *top_opnd,
       PRINTMSG(line, 978, Internal, column);
    }
 
-#ifdef KEY /* Bug 8004 */
    boolean needs_char_padding = FALSE;
-#endif /* KEY Bug 8004 */
    while (list_idx != NULL_IDX) {
 
       IL_HAS_FUNCTIONS(list_idx) = FALSE;
@@ -4841,7 +4726,6 @@ static boolean array_construct_semantics(opnd_type      *top_opnd,
                if (exp_desc->char_len.fld == CN_Tbl_Idx) {
 
                if (
-#ifdef KEY /* Bug 8004 */
 		/*
 		 * F95 requires that all char lengths inside an array ctor
 		 * be the same, but doesn't state that as a numbered
@@ -4855,20 +4739,13 @@ static boolean array_construct_semantics(opnd_type      *top_opnd,
 		 * explicit type-spec, that will impact the following code.
 		 */
                 on_off_flags.issue_ansi_messages &&
-#endif /* KEY Bug 8004 */
                   fold_relationals(loc_exp_desc.char_len.idx,
                                        exp_desc->char_len.idx,
                                        Ne_Opr)) {
                      find_opnd_line_and_column((opnd_type *) &IL_OPND(list_idx),
                                                &line, &column);
-#ifdef KEY /* Bug 8004 */
                      PRINTMSG(line, 838, Ansi, column);
-#else /* KEY Bug 8004 */
-                     PRINTMSG(line, 838, Error, column);
-                     ok = FALSE;
-#endif /* KEY Bug 8004 */
                   }
-/* KEY Bug 8004 # if 0 */
                   /* if we ever extend the above constraint, */
                   /* then include this code.                 */
 
@@ -4877,13 +4754,10 @@ static boolean array_construct_semantics(opnd_type      *top_opnd,
                                        Gt_Opr)) {
 
                      COPY_OPND((exp_desc->char_len), (loc_exp_desc.char_len));
-#ifdef KEY /* Bug 8004 */
                      exp_desc->type_idx = loc_exp_desc.type_idx;
 		     needs_char_padding =
 		       (loc_exp_desc.char_len.fld == CN_Tbl_Idx);
-#endif /* KEY Bug 8004 */
                   }
-/* KEY Bug 8004 # endif */
                }
                else {
                   /* replace the char_len with the simpler length */
@@ -4909,7 +4783,6 @@ static boolean array_construct_semantics(opnd_type      *top_opnd,
       list_idx = IL_NEXT_LIST_IDX(list_idx);
    }
 
-#ifdef KEY /* Bug 8004 */
    /* We now allow a character constructor to have elements of differing
     * lengths. For variables and for constructors used to initialize
     * fixed-length character types, enabling the change above (which existed
@@ -4936,7 +4809,6 @@ static boolean array_construct_semantics(opnd_type      *top_opnd,
 	 }
       }
    }
-#endif /* KEY Bug 8004 */
 
 
 EXIT:
@@ -4980,9 +4852,7 @@ boolean stmt_func_semantics(int                 stmt_func_idx)
 
    TRACE (Func_Entry, "stmt_func_semantics", NULL);
 
-#ifdef KEY /* Bug 4232 */
    defining_stmt_func = TRUE;
-#endif /* KEY Bug 4232 */
 
    ATS_SF_SEMANTICS_DONE(stmt_func_idx) = TRUE;
 
@@ -5060,9 +4930,7 @@ boolean stmt_func_semantics(int                 stmt_func_idx)
       }
    }
 
-#ifdef KEY /* Bug 4232 */
    defining_stmt_func = FALSE;
-#endif /* KEY Bug 4232 */
 
    TRACE (Func_Exit, "stmt_func_semantics", NULL);
 
@@ -6819,7 +6687,6 @@ static boolean concat_opr_handler(opnd_type		*result_opnd,
    save_in_call_list = in_call_list;
    in_call_list = FALSE;
 
-#ifdef KEY /* Bug 3273 */
    /* If we already visited this node once and converted it from a node
     * having two children into a node having one child which is itself a
     * list of children, then on the second visit (e.g. due to a call to
@@ -6829,7 +6696,6 @@ static boolean concat_opr_handler(opnd_type		*result_opnd,
    if (OPND_FLD(IR_OPND_L(ir_idx)) == IL_Tbl_Idx) {
      return ok;
      }
-#endif /* KEY Bug 3273 */
    
    COPY_OPND(opnd, IR_OPND_L(ir_idx));
    exp_desc_l.rank = 0;
@@ -7058,7 +6924,6 @@ EXIT:
    return(ok);
 
 }  /* concat_opr_handler */
-#ifdef KEY /* Bug 5710 */
 /*
  * If we're allowing .eq., .ne., ==, and /= on logical operands as an
  * extension, and this is a case of that, return true else false. When
@@ -7190,7 +7055,6 @@ handle_intrinsic_opr(
       }
    }
 }
-#endif /* KEY Bug 5710 */
 
 /******************************************************************************\
 |*									      *|
@@ -7338,12 +7202,8 @@ static boolean eq_opr_handler(opnd_type		*result_opnd,
          }
       }
 
-#ifdef KEY /* Bug 5710 */
       handle_intrinsic_opr(exp_desc, &exp_desc_l, &exp_desc_r, line, col,
         &ok, &type_idx, result_opnd, ir_idx, folded_const);
-#else /* KEY Bug 5710 */
-      /* Contents of handle_intrinsic_opr was previously inline here */
-#endif /* KEY Bug 5710 */
    }
    else if (resolve_ext_opr(result_opnd, TRUE, save_in_call_list,
                             (exp_desc->linear_type == Err_Res),
@@ -7354,7 +7214,6 @@ static boolean eq_opr_handler(opnd_type		*result_opnd,
 
       goto EXIT;
    }
-#ifdef KEY /* Bug 5710 */
    /* Okay, this isn't a standard intrinsic use of .eq. or .ne.; nor is
     * it an extension of such an operator via the "interface operator"
     * mechanism; so check whether it's the common extension to the ANSI
@@ -7365,7 +7224,6 @@ static boolean eq_opr_handler(opnd_type		*result_opnd,
       handle_intrinsic_opr(exp_desc, &exp_desc_l, &exp_desc_r, line, col,
         &ok, &type_idx, result_opnd, ir_idx, folded_const);
    }
-#endif /* KEY Bug 5710 */
    else {
       ok = FALSE;
    }
@@ -8116,20 +7974,11 @@ static boolean and_opr_handler(opnd_type		*result_opnd,
    int			opnd_col;
    int			opnd_line;
 # if defined(_HIGH_LEVEL_IF_FORM)
-# ifdef KEY /* Bug 10177 */
    boolean		save_has_present_opr = FALSE;
-# else /* KEY Bug 10177 */
-   boolean		save_has_present_opr;
-# endif /* KEY Bug 10177 */
 # endif
    boolean		save_in_call_list;
-#ifdef KEY /* Bug 10177 */
    int                  save_number_of_functions = 0;
    int                  save_number_of_functions_l = 0;
-#else /* KEY Bug 10177 */
-   int                  save_number_of_functions;
-   int                  save_number_of_functions_l;
-#endif /* KEY Bug 10177 */
    int			type_idx;
 
 
@@ -8627,11 +8476,7 @@ static boolean max_opr_handler(opnd_type		*result_opnd,
 			       expr_arg_type		*exp_desc)
 
 {
-#ifdef KEY /* Bug 10177 */
    int			comp_idx = 0;
-#else /* KEY Bug 10177 */
-   int			comp_idx;
-#endif /* KEY Bug 10177 */
    expr_arg_type	exp_desc_l;
    int			ir_idx;
    int			list_idx;
@@ -8783,7 +8628,6 @@ static boolean struct_opr_handler(opnd_type		*result_opnd,
    COPY_OPND(opnd, IR_OPND_L(ir_idx));
    ok = expr_sem(&opnd, &exp_desc_l);
    COPY_OPND(IR_OPND_L(ir_idx), opnd);
-#ifdef KEY /* Bug 572 */
    /* An expression like "parameter_x%ptr_component_y%other_component" is
     * an error because a constant pointer is always null, so we can't
     * dereference it. The constant-folding code assumes no intermediate
@@ -8794,7 +8638,6 @@ static boolean struct_opr_handler(opnd_type		*result_opnd,
       PRINTMSG(line_tmp, 1677, Error, col_tmp);
       ok = FALSE;
    }
-#endif /* KEY Bug 572 */
 
    if (OPND_FLD(opnd) == IR_Tbl_Idx &&
        (IR_OPR(OPND_IDX(opnd)) == Substring_Opr ||
@@ -8813,8 +8656,6 @@ static boolean struct_opr_handler(opnd_type		*result_opnd,
    exp_desc_r.rank = exp_desc_l.rank;
 
    insert_subs_ok  = FALSE;
-//Bug 370
-#ifdef KEY
   if ( IR_OPR(ir_idx) == Struct_Opr &&
        IR_FLD_L(ir_idx) == AT_Tbl_Idx &&
        AT_OBJ_CLASS(IR_OPND_L(ir_idx).idx) == Data_Obj ){
@@ -8832,7 +8673,6 @@ static boolean struct_opr_handler(opnd_type		*result_opnd,
       }
     }
   }
-#endif
 
    COPY_OPND(opnd, IR_OPND_R(ir_idx));
    ok &= expr_sem(&opnd, &exp_desc_r);
@@ -8914,9 +8754,7 @@ static boolean struct_opr_handler(opnd_type		*result_opnd,
    exp_desc->array_elt        = exp_desc_l.array_elt;
    exp_desc->assumed_shape    = exp_desc_l.assumed_shape;
    exp_desc->assumed_size     = exp_desc_l.assumed_size;
-#ifdef KEY /* Bug 6845 */
    exp_desc->allocatable      = exp_desc_r.allocatable;
-#endif /* KEY Bug 6845 */
    exp_desc->contig_array     = exp_desc_r.contig_array;
    exp_desc->dist_reshape_ref = exp_desc_l.dist_reshape_ref |
                                 exp_desc_r.dist_reshape_ref;
@@ -8990,7 +8828,6 @@ static boolean struct_opr_handler(opnd_type		*result_opnd,
    return(ok);
 
 }  /* struct_opr_handler */
-#ifdef KEY /* Bug 6845 */
 /*
  * Generate code to prepare for setting an allocatable component of a structure
  * constructor. On entry rvalue_opnd is the array expression to be assigned to
@@ -9127,7 +8964,6 @@ help_ctor_array_to_allocatable(int line, int col, expr_arg_type *exp_desc_l,
 
   defer_stmt_expansion = save_dfe;
 }
-#endif /* KEY Bug 6845 */
 
 /******************************************************************************\
 |*									      *|
@@ -9269,11 +9105,8 @@ static boolean struct_construct_opr_handler(opnd_type		*result_opnd,
       for (i = 0; i < IR_LIST_CNT_R(ir_idx); i++) {
          exp_desc_r.rank = 0;
 
-#ifdef KEY /* Bug 6845 */
 	 opnd_type save_list_opnd = IL_OPND(list_idx);
-#endif /* KEY Bug 6845 */
          COPY_OPND(opnd, IL_OPND(list_idx));
-#ifdef KEY /* Bug 6845 */
          comp_idx               = SN_ATTR_IDX(sn_idx);
 	 /* For allocatable LHS, we need folding */
 	 if (ATD_ALLOCATABLE(comp_idx)) {
@@ -9282,9 +9115,6 @@ static boolean struct_construct_opr_handler(opnd_type		*result_opnd,
 	 else {
 	   ok &= expr_sem(&opnd, &exp_desc_r);
 	 }
-#else /* KEY Bug 6845 */
-         ok &= expr_sem(&opnd, &exp_desc_r);
-#endif /* KEY Bug 6845 */
          COPY_OPND(IL_OPND(list_idx), opnd);
 
          IL_ARG_DESC_VARIANT(list_idx) = TRUE;
@@ -9559,7 +9389,6 @@ static boolean struct_construct_opr_handler(opnd_type		*result_opnd,
                PRINTMSG(opnd_line, 853, Error, opnd_col);
             }
          }
-#ifdef KEY /* Bug 6845 */
          else if (ATD_ALLOCATABLE(comp_idx) && ok) {
             if (OPND_FLD(opnd) == AT_Tbl_Idx) {
                if (AT_OBJ_CLASS(OPND_IDX(opnd)) != Data_Obj) {
@@ -9678,7 +9507,6 @@ static boolean struct_construct_opr_handler(opnd_type		*result_opnd,
                ok = FALSE;
             }
 	 }
-#endif /* KEY Bug 6845 */
 
          exp_desc->foldable = exp_desc->foldable && exp_desc_r.foldable;
 
@@ -9851,21 +9679,6 @@ static boolean array_construct_opr_handler(opnd_type		*result_opnd,
          ok &= expr_semantics(&size_opnd, &loc_exp_desc);
       }
 
-# if 0
-# ifdef _DEBUG
-      switch (OPND_FLD(size_opnd)) {
-      case CN_Tbl_Idx:
-         print_cn(OPND_IDX(size_opnd));
-         break;
-      case IR_Tbl_Idx:
-         print_ir(OPND_IDX(size_opnd));
-         break;
-      case AT_Tbl_Idx:
-         print_at_all(OPND_IDX(size_opnd));
-         break;
-      }
-# endif
-# endif
 
       COPY_OPND((exp_desc->shape[0]), size_opnd);
       exp_desc->constructor_size_level = constructor_size_level;
@@ -10454,22 +10267,10 @@ static boolean subscript_opr_handler(opnd_type		*result_opnd,
                                                 TYP_LINEAR(exp_desc_r.type_idx);
                         }
 
-#ifdef KEY /* Bug 4709 */
 		       /* Converting array bounds from to Integer_4 breaks
 			* customer code which uses large array bounds, and isn't
 			* correct for our 64-bit-oriented runtime.
 			*/
-#else
-                        if (in_io_list) {
-
-                           /* on mpp, must cast shorts to longs in io lists */
-                           /* on solaris, must cast Integer_8 to Integer_4 */
-
-                           COPY_OPND(opnd2, IL_OPND(list2_idx));
-                           cast_to_cg_default(&opnd2, &exp_desc_r);
-                           COPY_OPND(IL_OPND(list2_idx), opnd2);
-                        }
-#endif /* KEY Bug 4709 */
 
 
                         /* assume that lower bound is constant */
@@ -10561,22 +10362,10 @@ static boolean subscript_opr_handler(opnd_type		*result_opnd,
                                                 TYP_LINEAR(exp_desc_r.type_idx);
                         }
 
-#ifdef KEY /* Bug 4709 */
 		      /* Converting array bounds to Integer_4 breaks
 		       * customer code which uses large array bounds, and isn't
 		       * correct for our 64-bit-oriented runtime.
 		       */
-#else
-                        if (in_io_list) {
-
-                           /* on mpp, must cast shorts to longs in io lists */
-                           /* on solaris, must cast Integer_8 to Integer_4 */
-
-                           COPY_OPND(opnd2, IL_OPND(list2_idx));
-                           cast_to_cg_default(&opnd2, &exp_desc_r);
-                           COPY_OPND(IL_OPND(list2_idx), opnd2);
-                        }
-#endif /* KEY Bug 4709 */
 
                         /* assume that upper bound is constant */
                         /* should be in temp.                  */
@@ -10692,10 +10481,6 @@ static boolean subscript_opr_handler(opnd_type		*result_opnd,
                }
                else {
                   COPY_OPND(opnd, IL_OPND(list_idx));
-// Bug 2606
-# ifndef KEY
-                  cast_to_cg_default(&opnd, &exp_desc_r);
-# endif
                   COPY_OPND(IL_OPND(list_idx), opnd);
                }
             }
@@ -10830,32 +10615,6 @@ static boolean subscript_opr_handler(opnd_type		*result_opnd,
          if (bd_idx &&
              pe_dim_list_idx != NULL_IDX) {
 
-# if 0
-/* don't add pe dimensions for local reference. */
-
-            if (pe_dim_list_idx == NULL_IDX) {
-               /* no pe dimensions specified. */
-
-               list_idx = IR_IDX_R(ir_idx);
-               while (IL_NEXT_LIST_IDX(list_idx) != NULL_IDX) {
-                  list_idx = IL_NEXT_LIST_IDX(list_idx);
-               }
-
-               NTR_IR_LIST_TBL(IL_NEXT_LIST_IDX(list_idx));
-               IL_PREV_LIST_IDX(IL_NEXT_LIST_IDX(list_idx)) = list_idx;
-               list_idx = IL_NEXT_LIST_IDX(list_idx);
-               IR_LIST_CNT_R(ir_idx) += 1;
-
-               IL_FLD(list_idx) = IR_Tbl_Idx;
-               
-               NTR_IR_TBL(plus_idx);
-               IR_OPR(plus_idx) = Local_Pe_Dim_Opr;
-               IR_TYPE_IDX(plus_idx)     = CG_INTEGER_DEFAULT_TYPE;
-               IR_LINE_NUM(plus_idx)     = line;
-               IR_COL_NUM(plus_idx)      = col;
-               IL_IDX(list_idx)          = plus_idx;
-            }
-# endif
 
             num_dims = 0;
             list_idx = pe_dim_list_idx;
@@ -10935,7 +10694,6 @@ static boolean subscript_opr_handler(opnd_type		*result_opnd,
 
                      (exp_desc->rank)++;
 
-# if 1
                      find_opnd_line_and_column((opnd_type *)
                                                 &IL_OPND(list_idx),
                                                &opnd_line,
@@ -10944,156 +10702,6 @@ static boolean subscript_opr_handler(opnd_type		*result_opnd,
                               "array syntax", "co-array variables");
                      ok = FALSE;
 
-# else
-
-                     if (IL_FLD(list_idx) == IR_Tbl_Idx  &&
-                         IR_OPR(IL_IDX(list_idx)) == Triplet_Opr) {
-
-                        exp_desc->section = TRUE;
-
-                        list2_idx = IR_IDX_L(IL_IDX(list_idx));
-
-                        if (IL_FLD(list2_idx) == NO_Tbl_Idx) {
-                           /* fill in lower bound */
-
-                           IL_FLD(list2_idx) = BD_LB_FLD(bd_idx, i);
-                           IL_IDX(list2_idx) = BD_LB_IDX(bd_idx, i);
-                           IL_LINE_NUM(list2_idx) = 
-                                           IR_LINE_NUM(IL_IDX(list_idx));
-                           IL_COL_NUM(list2_idx) = 
-                                           IR_COL_NUM(IL_IDX(list_idx));
-
-                           if (IL_FLD(list2_idx) == AT_Tbl_Idx) {
-                              ADD_TMP_TO_SHARED_LIST(IL_IDX(list2_idx));
-                           }
-
-                           if (IL_FLD(list2_idx) != CN_Tbl_Idx) {
-                              exp_desc->foldable = FALSE;
-                              exp_desc->will_fold_later = FALSE;
-   
-                              /* assumes that this is an AT_Tbl_Idx */
-                              exp_desc_r.type_idx =
-                                        ATD_TYPE_IDX(IL_IDX(list2_idx));
-                              exp_desc_r.type=TYP_TYPE(exp_desc_r.type_idx);
-                              exp_desc_r.linear_type =
-                                          TYP_LINEAR(exp_desc_r.type_idx);
-                              SHAPE_FOLDABLE(IL_OPND(list2_idx))
-                                                      = FALSE;
-                              SHAPE_WILL_FOLD_LATER(
-                               IL_OPND(list2_idx)) = FALSE;
-                           }
-                           else {
-                              SHAPE_FOLDABLE(IL_OPND(list2_idx))
-                                                      = TRUE;
-                              SHAPE_WILL_FOLD_LATER(
-                                         IL_OPND(list2_idx)) = TRUE;
-                              exp_desc_r.type_idx = 
-                                            CN_TYPE_IDX(IL_IDX(list2_idx));
-                              exp_desc_r.type=TYP_TYPE(exp_desc_r.type_idx);
-                              exp_desc_r.linear_type =
-                                             TYP_LINEAR(exp_desc_r.type_idx);
-                           }
-
-                           /* assume that lower bound is constant */
-                           /* should be in temp.                  */
-                           IL_CONSTANT_SUBSCRIPT(list2_idx) = TRUE;
-                        }
-
-                        list2_idx = IL_NEXT_LIST_IDX(list2_idx);
-      
-                        if (IL_FLD(list2_idx) == NO_Tbl_Idx) {
-      
-                           if (i == BD_RANK(bd_idx)               &&
-                               BD_ARRAY_CLASS(bd_idx) == Assumed_Size) {
-
-                              PRINTMSG(IR_LINE_NUM(IL_IDX(list_idx)),
-                                       321,Error,
-                                       IR_COL_NUM(IL_IDX(list_idx)));
-                              ok = FALSE;
-                           }
-      
-                           /* fill in upper bound */
-                           IL_FLD(list2_idx) = BD_UB_FLD(bd_idx, i);
-                           IL_IDX(list2_idx) = BD_UB_IDX(bd_idx, i);
-                           IL_LINE_NUM(list2_idx) = 
-                                     IR_LINE_NUM(IL_IDX(list_idx));
-                           IL_COL_NUM(list2_idx) = 
-                                     IR_COL_NUM(IL_IDX(list_idx));
-
-                           if (IL_FLD(list2_idx) == AT_Tbl_Idx) {
-                              ADD_TMP_TO_SHARED_LIST(IL_IDX(list2_idx));
-                           }
-
-                           if (IL_FLD(list2_idx) != CN_Tbl_Idx) {
-                              exp_desc->foldable = FALSE;
-                              exp_desc->will_fold_later = FALSE;
-                              /* assumes that this is an AT_Tbl_Idx */
-                              exp_desc_r.type_idx =
-                                           ATD_TYPE_IDX(IL_IDX(list2_idx));
-                              exp_desc_r.type=TYP_TYPE(exp_desc_r.type_idx);
-                              exp_desc_r.linear_type =
-                                             TYP_LINEAR(exp_desc_r.type_idx);
-                              SHAPE_FOLDABLE(IL_OPND(list2_idx)) = FALSE;
-                              SHAPE_WILL_FOLD_LATER(IL_OPND(list2_idx)) 
-                                     = FALSE;
-                           }
-                           else {
-                              SHAPE_FOLDABLE(IL_OPND(list2_idx)) = TRUE;
-                              SHAPE_WILL_FOLD_LATER(IL_OPND(list2_idx)) 
-                                     = TRUE;
-                              exp_desc_r.type_idx = 
-                                     CN_TYPE_IDX(IL_IDX(list2_idx));
-                              exp_desc_r.type=TYP_TYPE(exp_desc_r.type_idx);
-                              exp_desc_r.linear_type =
-                                             TYP_LINEAR(exp_desc_r.type_idx);
-                           }
-
-                           /* assume that upper bound is constant */
-                           /* should be in temp.                  */
-                           IL_CONSTANT_SUBSCRIPT(list2_idx) = TRUE;
-                        }
-
-                        list2_idx = IL_NEXT_LIST_IDX(list2_idx);
-
-                        if (IL_FLD(list2_idx) == NO_Tbl_Idx) {
-
-                           /* fill in stride = 1 */
-                           IL_FLD(list2_idx) = CN_Tbl_Idx;
-                           IL_IDX(list2_idx) = CN_INTEGER_ONE_IDX;
-                           IL_LINE_NUM(list2_idx) = 
-                                    IR_LINE_NUM(IL_IDX(list_idx));
-                           IL_COL_NUM(list2_idx) = 
-                                    IR_COL_NUM(IL_IDX(list_idx));
-
-                           IL_CONSTANT_SUBSCRIPT(list2_idx) = TRUE;
-                           SHAPE_FOLDABLE(IL_OPND(list2_idx)) = TRUE;
-                           SHAPE_WILL_FOLD_LATER(IL_OPND(list2_idx)) = TRUE;
-                        }
-                        else if (IL_FLD(list2_idx) == CN_Tbl_Idx &&
-                                 compare_cn_and_value(IL_IDX(list2_idx), 
-                                                      0, Eq_Opr)) {
-      
-                           /* zero stride is illegal */
-                           PRINTMSG(IL_LINE_NUM(list2_idx), 1001, Error,
-                                    IL_COL_NUM(list2_idx));
-                           ok = FALSE;
-                        }
-
-                        if (ok) {
-                           make_triplet_extent_tree(&opnd,
-                                               IR_IDX_L(IL_IDX(list_idx)));
-                           COPY_OPND(exp_desc->shape[exp_desc->rank - 1], 
-                                     opnd);
-                        }
-                     }
-                     else {
-                        /* have vector subscript */
-                        IL_VECTOR_SUBSCRIPT(list_idx) = TRUE;
-                        exp_desc->vector_subscript    = TRUE;
-                        COPY_OPND(exp_desc->shape[exp_desc->rank - 1],
-                                  exp_desc_r.shape[0]);
-                     }
-# endif
                   }
                   else if (exp_desc_r.rank > 1 ||
                            (exp_desc_r.type != Integer &&
@@ -11305,11 +10913,7 @@ static boolean substring_opr_handler(opnd_type		*result_opnd,
 				     int		 rank_in)
 
 {
-#ifdef KEY /* Bug 10177 */
    int			attr_idx = 0;
-#else /* KEY Bug 10177 */
-   int			attr_idx;
-#endif /* KEY Bug 10177 */
    char		       *char_ptr1;
    char		       *char_ptr2;
    int			clen_idx;
@@ -11795,22 +11399,10 @@ static boolean triplet_opr_handler(opnd_type		*result_opnd,
       SHAPE_WILL_FOLD_LATER(IL_OPND(list_idx)) =
                                      exp_desc_l.will_fold_later;
 
-#ifdef KEY /* Bug 4709 */
          /* Converting array bounds from Integer_8 to Integer_4 breaks
 	  * customer code which uses large array bounds, and isn't
 	  * correct for our 64-bit-oriented runtime.
 	  */
-#else
-      if (in_io_list) {
-
-         /* on mpp, must cast shorts to longs in io lists */
-         /* on solaris, must cast Integer_8 to Integer_4 */
-
-         COPY_OPND(opnd, IL_OPND(list_idx));
-         cast_to_cg_default(&opnd, &exp_desc_l);
-         COPY_OPND(IL_OPND(list_idx), opnd);
-      }
-#endif /* KEY Bug 4709 */
    }
 
 
@@ -11868,23 +11460,10 @@ static boolean triplet_opr_handler(opnd_type		*result_opnd,
       SHAPE_FOLDABLE(IL_OPND(list_idx)) = exp_desc_l.foldable;
       SHAPE_WILL_FOLD_LATER(IL_OPND(list_idx)) = exp_desc_l.will_fold_later;
 
-#ifdef KEY /* Bug 4709 */
          /* Converting array bounds from Integer_8 to Integer_4 breaks
 	  * customer code which uses large array bounds, and isn't
 	  * correct for our 64-bit-oriented runtime.
 	  */
-#else
-      if (in_io_list) {
-
-         /* on mpp, must cast shorts to longs in io lists */
-         /* on solaris, must cast Integer_8 to Integer_4 */
-
-         COPY_OPND(opnd, IL_OPND(list_idx));
-         cast_to_cg_default(&opnd, &exp_desc_l);
-         COPY_OPND(IL_OPND(list_idx), opnd);
-
-      }
-#endif /* KEY Bug 4709 */
    }
 
 
@@ -11942,23 +11521,10 @@ static boolean triplet_opr_handler(opnd_type		*result_opnd,
       SHAPE_FOLDABLE(IL_OPND(list_idx)) = exp_desc_l.foldable;
       SHAPE_WILL_FOLD_LATER(IL_OPND(list_idx)) = exp_desc_l.will_fold_later;
 
-#ifdef KEY /* Bug 4709 */
          /* Converting array bounds from Integer_8 to Integer_4 breaks
 	  * customer code which uses large array bounds, and isn't
 	  * correct for our 64-bit-oriented runtime.
 	  */
-#else
-      if (in_io_list) {
-
-         /* on mpp, must cast shorts to longs in io lists */
-         /* on solaris, must cast Integer_8 to Integer_4 */
-
-         COPY_OPND(opnd, IL_OPND(list_idx));
-         cast_to_cg_default(&opnd, &exp_desc_l);
-         COPY_OPND(IL_OPND(list_idx), opnd);
-
-      }
-#endif /* KEY Bug 4709 */
    }
 
    exp_desc->rank           = 1;
@@ -13207,12 +12773,8 @@ boolean	check_substring_bounds(int	ir_idx)
                                    &IL_OPND(IR_IDX_R(ir_idx)),
                                    &line,
                                    &col);
-# if 0
-         PRINTMSG(line, 1634, Warning, col);
-# else
          PRINTMSG(line, 781, Error, col);
          ok = FALSE;
-# endif
       }
       else if (fold_relationals(IL_IDX(IL_NEXT_LIST_IDX(IR_IDX_R(ir_idx))),
                                 TYP_IDX(type_idx),
@@ -13224,12 +12786,8 @@ boolean	check_substring_bounds(int	ir_idx)
                                                         IR_IDX_R(ir_idx))),
                                    &line,
                                    &col);
-# if 0
-         PRINTMSG(line, 1634, Warning, col);
-# else
          PRINTMSG(line, 781, Error, col);
          ok = FALSE;
-# endif
       }
    }
 
@@ -13318,12 +12876,8 @@ boolean check_array_bounds(int		ir_idx)
             find_opnd_line_and_column((opnd_type *)&IL_OPND(list_idx),
                                       &line,
                                       &col);
-# if 0
-            PRINTMSG(line, 1633, Warning, col, i);
-# else
             PRINTMSG(line, 1197, Error, col, i);
             ok = FALSE;
-# endif
          }
          else if (BD_UB_FLD(bd_idx, i) == CN_Tbl_Idx &&
                   check_ub &&
@@ -13332,12 +12886,8 @@ boolean check_array_bounds(int		ir_idx)
             find_opnd_line_and_column((opnd_type *)&IL_OPND(list_idx),
                                       &line,
                                       &col);
-# if 0
-            PRINTMSG(line, 1633, Warning, col, i);
-# else
             PRINTMSG(line, 1197, Error, col, i);
             ok = FALSE;
-# endif
          }
       }
       else if (IL_FLD(list_idx) == IR_Tbl_Idx &&
@@ -13394,12 +12944,8 @@ boolean check_array_bounds(int		ir_idx)
                           CN_TYPE_IDX(OPND_IDX(cond_opnd)))) {
 
             find_opnd_line_and_column(&start_opnd, &line, &col);
-# if 0
-            PRINTMSG(line, 1633, Warning, col, i);
-# else
             PRINTMSG(line, 1197, Error, col, i);
             ok = FALSE;
-# endif
          }
       }
 
@@ -15150,9 +14696,7 @@ static int set_up_pe_offset_attr(void)
       ATT_NUMERIC_CPNT(dt_idx)     = TRUE;
       ATT_DCL_NUMERIC_SEQ(dt_idx)  = TRUE;
       ATT_SEQUENCE_SET(dt_idx)     = TRUE;
-#ifdef KEY /* Bug 10140 */
       ATT_ALIGNMENT(dt_idx) = Align_64;
-#endif /* KEY Bug 10140 */
    }
    else {
       /* error */
@@ -15410,13 +14954,8 @@ static int set_up_pe_offset_attr(void)
 
 
    ATT_STRUCT_BIT_LEN_FLD(dt_idx) = CN_Tbl_Idx;
-#ifdef KEY /* Bug 10140 */
    ATT_STRUCT_BIT_LEN_IDX(dt_idx) = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE,
                                                   offset);
-#else /* KEY Bug 10140 */
-   ATT_STRUCT_BIT_LEN_IDX(attr_idx) = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE,
-                                                  offset);
-#endif /* KEY Bug 10140 */
 
    /*****************************************\
    |* Gen the data obj of this derived type *|
@@ -15701,11 +15240,7 @@ void transform_cri_ch_ptr(opnd_type     *result_opnd)
 
       overlay_attr_idx = gen_compiler_tmp(line, col, Shared, TRUE);
       ATD_CLASS(overlay_attr_idx) = Variable;
-#ifdef KEY
       ATD_TYPE_IDX(overlay_attr_idx)         = SA_INTEGER_DEFAULT_TYPE;
-#else
-      ATD_TYPE_IDX(overlay_attr_idx)         = INTEGER_DEFAULT_TYPE;
-#endif
       ATD_STOR_BLK_IDX(overlay_attr_idx)     = ATD_STOR_BLK_IDX(attr_idx);
       ATD_EQUIV(overlay_attr_idx)            = TRUE;
       AT_REFERENCED(overlay_attr_idx)        = Referenced;

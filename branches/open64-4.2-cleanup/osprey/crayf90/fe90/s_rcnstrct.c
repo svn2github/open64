@@ -643,7 +643,6 @@ boolean	create_runtime_array_constructor(opnd_type	*top_opnd,
 
       tmp_idx			= gen_compiler_tmp(line, col, Priv, TRUE);
       AT_SEMANTICS_DONE(tmp_idx)= TRUE;
-#ifdef KEY /* Bug 5515 */
       /* We allocate the temp at a "guessed" size. Then as we store into the
        * temp at runtime, we check for overflow and realloc if needed. Thus,
        * no user error can cause an out-of-bounds reference. A bounds check
@@ -653,7 +652,6 @@ boolean	create_runtime_array_constructor(opnd_type	*top_opnd,
        */
       ATD_BOUNDS_CHECK(tmp_idx) = FALSE;
       ATD_NOBOUNDS_CHECK(tmp_idx) = TRUE;
-#endif /* KEY Bug 5515 */
 
       ATD_TYPE_IDX(tmp_idx)	= type_idx;
 
@@ -1218,51 +1216,6 @@ boolean	create_runtime_array_constructor(opnd_type	*top_opnd,
          ok = gen_whole_substring(top_opnd, exp_desc->rank) && ok;
       }
 
-# if 0
-     /* call the dope vector dump routine dump_dv */
-
-     dump_dv_idx = create_lib_entry_attr("DUMP_DV",
-                                         7,
-                                         line,
-                                         col);
-
-      ADD_ATTR_TO_LOCAL_LIST(dump_dv_idx);
-
-      NTR_IR_TBL(call_idx);
-      IR_OPR(call_idx) = Call_Opr;
-      IR_TYPE_IDX(call_idx) = SA_INTEGER_DEFAULT_TYPE;
-      IR_LINE_NUM(call_idx) = line;
-      IR_COL_NUM(call_idx) = col;
-      IR_FLD_L(call_idx) = AT_Tbl_Idx;
-      IR_IDX_L(call_idx) = dump_dv_idx;
-      IR_LINE_NUM_L(call_idx) = line;
-      IR_COL_NUM_L(call_idx) = col;
-
-      NTR_IR_LIST_TBL(list_idx);
-      IR_FLD_R(call_idx) = IL_Tbl_Idx;
-      IR_IDX_R(call_idx) = list_idx;
-      IR_LIST_CNT_R(call_idx) = 1;
-
-      NTR_IR_TBL(loc_idx);
-      IR_OPR(loc_idx) = Aloc_Opr;
-      IR_TYPE_IDX(loc_idx) = CRI_Ptr_8;
-      IR_LINE_NUM(loc_idx)   = line;
-      IR_COL_NUM(loc_idx)    = col;
-      IL_FLD(list_idx) = IR_Tbl_Idx;
-      IL_IDX(list_idx) = loc_idx;
-
-      IR_FLD_L(loc_idx) = AT_Tbl_Idx;
-      IR_IDX_L(loc_idx) = tmp_idx;
-      IR_LINE_NUM_L(loc_idx)   = line;
-      IR_COL_NUM_L(loc_idx)    = col;
-
-      gen_sh(Before, Call_Stmt, stmt_start_line,
-             stmt_start_col, FALSE, FALSE, TRUE);
-
-      SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx))     = call_idx;
-      SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx)) = TRUE;
-
-# endif
 
       if (glb_tbl_idx[Dealloc_Attr_Idx] == NULL_IDX) {
          glb_tbl_idx[Dealloc_Attr_Idx] = create_lib_entry_attr(
@@ -3064,11 +3017,7 @@ static void create_struct_constructor_asg(opnd_type	*top_opnd,
       OPND_FLD(l_opnd) = IR_Tbl_Idx;
       OPND_IDX(l_opnd) = struct_idx;
 
-#ifdef KEY /* Bug 6845 */
       if (! (ATD_POINTER(attr_idx) || ATD_ALLOCATABLE(attr_idx)))
-#else /* KEY Bug 6845 */
-      if (! ATD_POINTER(attr_idx))
-#endif /* KEY Bug 6845 */
       {
 
          if (ATD_ARRAY_IDX(attr_idx)) {
@@ -3118,7 +3067,6 @@ static void create_struct_constructor_asg(opnd_type	*top_opnd,
                                    TRUE);
          }
       }
-#ifdef KEY /* Bug 6845 */
       else if (ATD_ALLOCATABLE(attr_idx)) {
 	/* LHS and RHS both are dope vectors: just copy dope, since temp on
 	 * LHS will never be deallocated */
@@ -3132,11 +3080,6 @@ static void create_struct_constructor_asg(opnd_type	*top_opnd,
 	  Call_Stmt :
 	  Assignment_Stmt,
 	line, col, FALSE, FALSE, TRUE);
-#else /* KEY Bug 6845 */
-
-      gen_sh(Before, Assignment_Stmt, line, col,
-             FALSE, FALSE, TRUE);
-#endif /* KEY Bug 6845 */
 
       SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx)) = asg_idx;
       SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx)) = TRUE;

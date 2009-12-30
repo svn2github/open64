@@ -100,9 +100,6 @@ static	int	gen_auto_length(int, opnd_type *);
 static  void    gen_branch_around_ir(int, int, int);
 static  int     gen_darg_branch_test(int);
 static	boolean	gen_ir_at_this_entry(int, int);
-#ifndef KEY /* Bug 4955 */
-static	void	gen_present_ir(int, int, int);
-#endif /* KEY Bug 4955 */
 static	void	gen_single_automatic_allocate(int);
 static	void	gen_tmp_eq_zero_ir(int);
 static  void	insert_argchck_calls(int, int);
@@ -220,30 +217,7 @@ static void     equivalence_semantics(void)
                AT_DCL_ERR(EQ_ATTR_IDX(item))	= TRUE;
             }
 
-# if 0
-            if (SB_ALIGN_SYMBOL(common_sb_idx) ||
-                SB_FILL_SYMBOL(common_sb_idx)) {
-               AT_DCL_ERR(EQ_ATTR_IDX(item))	= TRUE;
-               PRINTMSG(EQ_LINE_NUM(item), 1488, Error, EQ_COLUMN_NUM(item),
-                        AT_OBJ_NAME_PTR(EQ_ATTR_IDX(item)),
-                        SB_NAME_PTR(common_sb_idx),
-                        SB_ALIGN_SYMBOL(common_sb_idx) ? "ALIGN_SYMBOL" :
-                                                         "FILL_SYMBOL");
-            }
-# endif
          }
-# if 0
-         else if (SB_MODULE(ATD_STOR_BLK_IDX(EQ_ATTR_IDX(item))) &&
-                  (SB_ALIGN_SYMBOL(ATD_STOR_BLK_IDX(EQ_ATTR_IDX(item))) ||
-                   SB_FILL_SYMBOL(ATD_STOR_BLK_IDX(EQ_ATTR_IDX(item))))) {
-            AT_DCL_ERR(EQ_ATTR_IDX(item))	= TRUE;
-            PRINTMSG(EQ_LINE_NUM(item), 1489, Error, EQ_COLUMN_NUM(item),
-                     AT_OBJ_NAME_PTR(EQ_ATTR_IDX(item)),
-                     AT_OBJ_NAME_PTR(SCP_ATTR_IDX(curr_scp_idx)),
-                     SB_ALIGN_SYMBOL(ATD_STOR_BLK_IDX(EQ_ATTR_IDX(item))) ?
-                                     "ALIGN_SYMBOL" : "FILL_SYMBOL");
-         }
-# endif
 
          if (EQ_OPND_FLD(item) == NO_Tbl_Idx) {
 
@@ -662,9 +636,7 @@ static void     equivalence_semantics(void)
             }
 
             if (ATT_POINTER_CPNT(TYP_IDX(type_idx))
-#ifdef KEY /* Bug 6845 */
 	      || ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx))
-#endif /* KEY Bug 6845 */
 	    ) {
                PRINTMSG(EQ_LINE_NUM(item), 354, Error,
                         EQ_COLUMN_NUM(item),
@@ -750,17 +722,6 @@ static void     equivalence_semantics(void)
                            AT_OBJ_NAME_PTR(EQ_ATTR_IDX(
                                            nondefault_intrinsic_type)));
                }
-#if 0
-/* 28Feb01[sos] : deleted for PV 816483 */
-               else if (nondefault_sequence_type != NULL_IDX &&
-                        !compare_derived_types(type_idx,
-                         ATD_TYPE_IDX(EQ_ATTR_IDX(nondefault_sequence_type)))) {
-                  PRINTMSG(EQ_LINE_NUM(nondefault_sequence_type), 1242, Error,
-                           EQ_COLUMN_NUM(nondefault_sequence_type),
-                           AT_OBJ_NAME_PTR(
-                                  EQ_ATTR_IDX(nondefault_sequence_type)));
-               }
-#endif
                else {
                   nondefault_sequence_type	= item;
                }
@@ -784,11 +745,6 @@ static void     equivalence_semantics(void)
                         AT_OBJ_NAME_PTR(EQ_ATTR_IDX(nondefault_sequence_type)));
             }
             else if (nondefault_intrinsic_type != NULL_IDX) {
-# if 0
-               PRINTMSG(EQ_LINE_NUM(nondefault_intrinsic_type), 1241, Error,
-                        EQ_COLUMN_NUM(nondefault_intrinsic_type),
-                       AT_OBJ_NAME_PTR(EQ_ATTR_IDX(nondefault_intrinsic_type)));
-# endif
                PRINTMSG(EQ_LINE_NUM(nondefault_intrinsic_type), 522, Ansi,
                         EQ_COLUMN_NUM(nondefault_intrinsic_type));
                default_character_type	= TRUE;
@@ -820,11 +776,6 @@ static void     equivalence_semantics(void)
                         AT_OBJ_NAME_PTR(EQ_ATTR_IDX(nondefault_sequence_type)));
             }
             else if (nondefault_intrinsic_type != NULL_IDX) {
-# if 0
-               PRINTMSG(EQ_LINE_NUM(nondefault_intrinsic_type), 1241, Error,
-                        EQ_COLUMN_NUM(nondefault_intrinsic_type),
-                       AT_OBJ_NAME_PTR(EQ_ATTR_IDX(nondefault_intrinsic_type)));
-# endif
                PRINTMSG(EQ_LINE_NUM(nondefault_intrinsic_type), 1097, Ansi,
                         EQ_COLUMN_NUM(nondefault_intrinsic_type));
                default_numeric_type		= TRUE;
@@ -845,11 +796,6 @@ static void     equivalence_semantics(void)
                nondefault_intrinsic_type                = item;
             }
             else if (default_numeric_type) {
-# if 0
-               PRINTMSG(EQ_LINE_NUM(item), 1239, Error,
-                        EQ_COLUMN_NUM(item),
-                        AT_OBJ_NAME_PTR(EQ_ATTR_IDX(item)));
-# endif
                PRINTMSG(EQ_LINE_NUM(item), 1097, Ansi, EQ_COLUMN_NUM(item));
                nondefault_intrinsic_type		= item;
             }
@@ -858,23 +804,10 @@ static void     equivalence_semantics(void)
                         EQ_COLUMN_NUM(item),
                         AT_OBJ_NAME_PTR(EQ_ATTR_IDX(item)));
             }
-#if 0
-/* 28Feb01[sos] : deleted for PV 816483 */
-            else if (nondefault_sequence_type != NULL_IDX) {
-               PRINTMSG(EQ_LINE_NUM(nondefault_sequence_type), 1242, Error,
-                        EQ_COLUMN_NUM(nondefault_sequence_type),
-                        AT_OBJ_NAME_PTR(EQ_ATTR_IDX(nondefault_sequence_type)));
-            }
-#endif
             else if (nondefault_intrinsic_type != NULL_IDX &&
                      TYP_LINEAR(ATD_TYPE_IDX(
                                 EQ_ATTR_IDX(nondefault_intrinsic_type))) !=
                      TYP_LINEAR(type_idx)) {
-# if 0
-               PRINTMSG(EQ_LINE_NUM(nondefault_intrinsic_type), 1241, Error,
-                        EQ_COLUMN_NUM(nondefault_intrinsic_type),
-                       AT_OBJ_NAME_PTR(EQ_ATTR_IDX(nondefault_intrinsic_type)));
-# endif
                PRINTMSG(EQ_LINE_NUM(item), 1097, Ansi, EQ_COLUMN_NUM(item));
                nondefault_intrinsic_type		= item;
             }
@@ -922,11 +855,7 @@ static void     linearize_list_for_equiv(int	item)
    size_offset_type	result;
    size_offset_type	right;
    int         		start_expr_idx;
-#ifdef KEY /* Bug 10177 */
    int         		trail_l_idx = 0;
-#else /* KEY Bug 10177 */
-   int         		trail_l_idx;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "linearize_list_for_equiv", NULL);
@@ -1140,11 +1069,7 @@ static void     merge_equivalence_groups1(void)
    int           item;
    int           list_idx;
    int           list_item;
-#ifdef KEY /* Bug 10177 */
    int           prev_group = 0;
-#else /* KEY Bug 10177 */
-   int           prev_group;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "merge_equivalence_groups1", NULL);
@@ -1268,11 +1193,7 @@ static void     merge_equivalence_groups2(void)
    size_offset_type	left;
    int          	list_idx;
    int          	list_item;
-#ifdef KEY /* Bug 10177 */
    int          	prev_group = 0;
-#else /* KEY Bug 10177 */
-   int          	prev_group;
-#endif /* KEY Bug 10177 */
    size_offset_type	result;
    size_offset_type	right;
 
@@ -1552,11 +1473,7 @@ void	array_dim_resolution(int 	attr_idx,
    int			stride_entry_idx	= NULL_IDX;
    int			stride_entry_count;
    size_offset_type	stride;
-#ifdef KEY /* Bug 10177 */
    int			type = 0;
-#else /* KEY Bug 10177 */
-   int			type;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "array_dim_resolution", NULL);
@@ -1588,12 +1505,8 @@ void	array_dim_resolution(int 	attr_idx,
 
       ATD_IM_A_DOPE(attr_idx) = TRUE;
 
-#ifdef KEY /* Bug 6845 */
       if (ATD_CLASS(attr_idx) == Dummy_Argument &&
         !(ATD_POINTER(attr_idx) || ATD_ALLOCATABLE(attr_idx)))
-#else /* KEY Bug 6845 */
-      if (ATD_CLASS(attr_idx) == Dummy_Argument && !ATD_POINTER(attr_idx))
-#endif /* KEY Bug 6845 */
       {
 
          /* Don't convert intrinsic dargs to assumed shape */
@@ -1622,20 +1535,12 @@ void	array_dim_resolution(int 	attr_idx,
 
          if (ATD_IGNORE_TKR(attr_idx)) {
             AT_DCL_ERR(attr_idx)	= TRUE;
-#ifdef KEY /* Bug 5040 */
             PRINTMSG(AT_DEF_LINE(attr_idx), 1459, Error, 
                      AT_DEF_COLUMN(attr_idx),
                      AT_OBJ_NAME_PTR(attr_idx),
                      "IGNORE_TKR",
                      "assumed-shape DIMENSION",
 		     AT_DEF_LINE(attr_idx));
-#else /* KEY Bug 5040 */
-            PRINTMSG(AT_DEF_LINE(attr_idx), 1459, Error, 
-                     AT_DEF_COLUMN(attr_idx),
-                     AT_OBJ_NAME_PTR(attr_idx),
-                     "IGNORE_TKR",
-                     "assumed-shape DIMENSION");
-#endif /* KEY Bug 5040 */
          }
 
 # if defined(_TARGET_OS_MAX)
@@ -3085,13 +2990,6 @@ NEXT:
    /* bounds for the array are already resolved, it still must get these     */
    /* checks.                                                                */
 
-# if 0
-   if (BD_ARRAY_CLASS(bd_idx) != Assumed_Size) {
-      PRINTMSG(AT_DEF_LINE(attr_idx), 1576, Error,
-               AT_DEF_COLUMN(attr_idx));
-      AT_DCL_ERR(attr_idx)        = TRUE;
-   }
-# endif
 
 EXIT:
 
@@ -3626,11 +3524,7 @@ void	char_len_resolution(int		attr_idx,
    int		max_idx;
    int		new_len_idx;
    opnd_type	opnd;
-#ifdef KEY /* Bug 10177 */
    int		sh_idx = 0;
-#else /* KEY Bug 10177 */
-   int		sh_idx;
-#endif /* KEY Bug 10177 */
    int		tmp_attr_idx;
    int		t_idx;
    int		type_idx;
@@ -4110,11 +4004,7 @@ static void compare_entry_to_func_rslt(int	attr_idx,
    int		idx;
    int		line;
    int		loop;
-#ifdef KEY /* Bug 10177 */
    boolean	not_a_match = FALSE;
-#else /* KEY Bug 10177 */
-   boolean	not_a_match;
-#endif /* KEY Bug 10177 */
    int		pgm_type_idx;
    int		rslt_idx;
    int		rslt_type_idx;
@@ -4958,7 +4848,6 @@ void	decl_semantics(void)
 
 }  /* decl_semantics */
 
-#ifdef KEY /* Bug 6845 */
 /* Create symbol for "dealloc" the first time we need it */
 static long
 lazy_create_dealloc(int line, int col) {
@@ -5086,7 +4975,7 @@ help_dealloc_array_of_struct(int line, int col, fld_type fld, int idx,
  */
 int
 allocatable_structure_component(int cpnt_attr_idx) {
-  if (ATD_POINTER(cpnt_attr_idx)) { /* Bug 14293 */
+  if (ATD_POINTER(cpnt_attr_idx)) {
     return 0;
   }
   int type_idx = ATD_TYPE_IDX(cpnt_attr_idx);
@@ -5171,8 +5060,6 @@ dealloc_allocatables(int line, int col, int attr_idx, fld_type fld, int idx,
   }
 }
 
-#endif /* KEY Bug 6845 */
-#ifdef KEY /* Bug 9029 */
 /*
  * Generate a warning message if a variable in a "threadprivate" directive
  * violates the rules
@@ -5226,8 +5113,6 @@ threadprivate_check(int attr_idx) {
     }
   }
 }
-#endif /* KEY Bug 9029 */
-#ifdef KEY /* Bug 14255 */
 /*
  * Given an attribute which has been marked as a dummy variable or procedure,
  * report an error if it isn't really a dummy argument
@@ -5259,7 +5144,6 @@ error_not_darg(int attr_idx) {
 	   AT_DEF_COLUMN(attr_idx),
 	   AT_OBJ_NAME_PTR(attr_idx), problem);
 }
-#endif /* KEY Bug 14255 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -5307,22 +5191,14 @@ static	void	attr_semantics(int	attr_idx,
    int			pointer_idx;
    int			proc_idx;
    char		       *pure_str;
-#ifdef KEY /* Bug 10177 */
    int			rslt_idx = 0;
-#else /* KEY Bug 10177 */
-   int			rslt_idx;
-#endif /* KEY Bug 10177 */
    int			scp_idx;
    int			sf_attr_idx;
    int			sn_attr_idx;
    int			sn_idx;
    id_str_type		storage_name;
    int			tmp_ir_idx;
-#ifdef KEY /* Bug 10177 */
    int			type_idx = 0;
-#else /* KEY Bug 10177 */
-   int			type_idx;
-#endif /* KEY Bug 10177 */
    boolean		type_resolved;
    size_offset_type     storage_size;
 
@@ -5533,7 +5409,6 @@ static	void	attr_semantics(int	attr_idx,
             }
          }
    
-#ifdef KEY /* Bug 10675 */
 	 /*
 	  * A fundamental flaw in this front end is that when it generates a
 	  * statement during the semantics phase and inserts it in the series
@@ -5567,9 +5442,6 @@ static	void	attr_semantics(int	attr_idx,
 	     SH_P2_SKIP_ME(curr_stmt_sh_idx);
 	     curr_stmt_sh_idx = SH_NEXT_IDX(curr_stmt_sh_idx))
 	   ;
-#else /* KEY Bug 10675 */
-         bound_resolution(attr_idx);
-#endif /* KEY Bug 10675 */
       }
 
 
@@ -5600,16 +5472,6 @@ static	void	attr_semantics(int	attr_idx,
 
       if (bd_idx != NULL_IDX && BD_ARRAY_CLASS(bd_idx) != Deferred_Shape) {
 
-# if 0
-         /* this error is disabled for now. It was a little too strong */
-         /* Perhaps it must be common or dummy arg.                    */
-         if (! ATD_IN_COMMON(attr_idx)) {
-            PRINTMSG(BD_LINE_NUM(bd_idx), 1365, Error,
-                     BD_COLUMN_NUM(bd_idx),
-                     AT_OBJ_NAME_PTR(attr_idx));
-            AT_DCL_ERR(attr_idx) = TRUE;
-         }
-# endif
 
          for (dim = 1; dim <= BD_RANK(bd_idx); dim++) {
 
@@ -5789,14 +5651,6 @@ static	void	attr_semantics(int	attr_idx,
          ATD_IM_A_DOPE(attr_idx)	= TRUE;
       }
 
-# if 0
-      /* BHJ DOPE VECTOR TARGET */
-      /* save this in case the interp changes. */
-
-      if (ATD_TARGET(attr_idx) && ATD_CLASS(attr_idx) == Dummy_Argument) {
-         ATD_IM_A_DOPE(attr_idx)        = TRUE;
-      }
-# endif
 
       if (ATD_AUTOMATIC(attr_idx)) {
 
@@ -5869,7 +5723,6 @@ static	void	attr_semantics(int	attr_idx,
          }
       }
 
-#ifdef KEY /* Bug 6845 */
       /* Dummy intent(out) must be deallocated on entry if it's an allocatable
        * array or a struct with allocatable components */
       if (Dummy_Argument == ATD_CLASS(attr_idx)) {
@@ -5883,31 +5736,8 @@ static	void	attr_semantics(int	attr_idx,
 	  PRINTMSG(AT_DEF_LINE(attr_idx), 1679, Ansi, AT_DEF_COLUMN(attr_idx));
 	}
       }
-#endif /* KEY Bug 6845 */
 
 
-# if 0
-            /* BHJ DOPE VECTOR TARGET */
-            /* save the old version of this condition in case */
-            /* the target dummy arg interp changes.           */
-
-      if (!is_interface &&
-          (ATD_IM_A_DOPE(attr_idx) &&
-           (ATD_CLASS(attr_idx) != Dummy_Argument ||
-            (ATD_ARRAY_IDX(attr_idx) &&
-             BD_ARRAY_CLASS(ATD_ARRAY_IDX(attr_idx)) == Assumed_Shape) ||
-            (ATD_TARGET(attr_idx))))                                       ||
-
-          (TYP_TYPE(type_idx) == Structure &&
-           ATD_CLASS(attr_idx) != Constant &&
-           (ATD_CLASS(attr_idx) != Dummy_Argument ||
-              ATD_INTENT(attr_idx) == Intent_Out) &&
-            ATD_CLASS(attr_idx) != CRI__Pointee &&
-           ((ATT_POINTER_CPNT(TYP_IDX(type_idx)) ||
-             ATT_DEFAULT_INITIALIZED(TYP_IDX(type_idx))) &&
-            !ATD_DATA_INIT(attr_idx))))
-# else /* 0 */
-#   ifdef KEY /* Bug 431, (1046, 1289, 8717) */
 	   /* It appears that before the code arrived at Pathscale, in the
 	    * process of removing the "ATD_TARGET" test, somebody messed up
 	    * the grouping near the end of this impressive boolean expression,
@@ -5940,31 +5770,9 @@ static	void	attr_semantics(int	attr_idx,
               ATD_INTENT(attr_idx) == Intent_Out) &&
             ATD_CLASS(attr_idx) != CRI__Pointee &&
            ((ATT_POINTER_CPNT(TYP_IDX(type_idx)) ||
-#ifdef KEY /* Bug 6845 */
            ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx)) ||
-#endif /* KEY Bug 6845 */
              ATT_DEFAULT_INITIALIZED(TYP_IDX(type_idx))) &&
             !ATD_DATA_INIT(attr_idx))))
-#   else /* KEY Bug 431, (1046, 1289, 8717) */
-      if (!is_interface &&
-
-          (ATD_IM_A_DOPE(attr_idx) &&
-           (ATD_CLASS(attr_idx) != Dummy_Argument ||
-            (ATD_ARRAY_IDX(attr_idx) &&
-             BD_ARRAY_CLASS(ATD_ARRAY_IDX(attr_idx)) == Assumed_Shape))) ||
-
-           /* Follows is the default init check */
-
-          (TYP_TYPE(type_idx) == Structure &&
-           ATD_CLASS(attr_idx) != Constant &&
-           (ATD_CLASS(attr_idx) != Dummy_Argument ||
-              ATD_INTENT(attr_idx) == Intent_Out) &&
-            ATD_CLASS(attr_idx) != CRI__Pointee &&
-           (ATT_POINTER_CPNT(TYP_IDX(type_idx)) ||
-            (ATT_DEFAULT_INITIALIZED(TYP_IDX(type_idx)) &&
-            !ATD_DATA_INIT(attr_idx)))))
-#   endif /* KEY Bug 431, (1046, 1289, 8717) */
-# endif /* 0 */
       {
 
          entry_sh_idx		= curr_stmt_sh_idx;
@@ -6005,45 +5813,6 @@ static	void	attr_semantics(int	attr_idx,
             }
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
-# if 0
-            if (! ATD_COPY_ASSUMED_SHAPE(attr_idx)) {
-               /* copy the assumed shape dummy arg to a stack dope vector */
-
-               tmp_idx = gen_compiler_tmp(SH_GLB_LINE(curr_stmt_sh_idx), 
-                                          SH_COL_NUM(curr_stmt_sh_idx), 
-                                          Shared, TRUE);
-
-               COPY_ATTR_NTRY(tmp_idx, attr_idx);
-
-               ATD_CLASS(tmp_idx) = Compiler_Tmp;
-               ATD_STOR_BLK_IDX(tmp_idx)  = SCP_SB_STACK_IDX(curr_scp_idx);
-               AT_SEMANTICS_DONE(tmp_idx) = TRUE;
-
-               NTR_IR_TBL(ir_idx);
-               IR_OPR(ir_idx) = Dv_Whole_Copy_Opr;
-               IR_TYPE_IDX(ir_idx) = TYPELESS_DEFAULT_TYPE;
-               IR_LINE_NUM(ir_idx) = SH_GLB_LINE(curr_stmt_sh_idx);
-               IR_COL_NUM(ir_idx)  = SH_COL_NUM(curr_stmt_sh_idx);
-
-               IR_FLD_L(ir_idx) = AT_Tbl_Idx;
-               IR_IDX_L(ir_idx) = tmp_idx;
-               IR_LINE_NUM_L(ir_idx) = SH_GLB_LINE(curr_stmt_sh_idx);
-               IR_COL_NUM_L(ir_idx)  = SH_COL_NUM(curr_stmt_sh_idx);
-
-               IR_FLD_R(ir_idx) = AT_Tbl_Idx;
-               IR_IDX_R(ir_idx) = attr_idx;
-               IR_LINE_NUM_R(ir_idx) = SH_GLB_LINE(curr_stmt_sh_idx);
-               IR_COL_NUM_R(ir_idx)  = SH_COL_NUM(curr_stmt_sh_idx);
-
-               gen_sh(After, Assignment_Stmt, SH_GLB_LINE(curr_stmt_sh_idx),
-                      SH_COL_NUM(curr_stmt_sh_idx), FALSE, FALSE, TRUE);
-         
-               SH_IR_IDX(curr_stmt_sh_idx) = ir_idx;
-               SH_P2_SKIP_ME(curr_stmt_sh_idx) = TRUE;
-
-               ATD_SF_ARG_IDX(attr_idx) = tmp_idx;
-            }
-# endif /* 0 */
 
 # endif /* (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN)) */
          }
@@ -6080,7 +5849,6 @@ static	void	attr_semantics(int	attr_idx,
          }
 
          if (
-#ifdef KEY /* Bug 6845, 10835 */
 	     /* Allocatable array */
 	     (ATD_ALLOCATABLE(attr_idx) ||
 	       /* Non-pointer structure with allocatable component(s) or
@@ -6090,9 +5858,6 @@ static	void	attr_semantics(int	attr_idx,
 		 !ATD_POINTER(attr_idx))) &&
              /* Allocatable dummy must not be deallocated on exit */
 	     ATD_CLASS(attr_idx) != Dummy_Argument &&
-#else /* KEY Bug 6845, 10835 */
-	 ATD_ALLOCATABLE(attr_idx)            &&
-#endif /* KEY Bug 6845, 10835 */
              ATP_PGM_UNIT(pgm_attr_idx) != Module &&
              ! ATP_SAVE_ALL(pgm_attr_idx)         &&
              ! ATD_DATA_INIT(attr_idx)            &&
@@ -6133,9 +5898,7 @@ static	void	attr_semantics(int	attr_idx,
          }
          else if (TYP_TYPE(type_idx) == Structure &&
                   (ATT_POINTER_CPNT(TYP_IDX(type_idx)) ||
-#ifdef KEY /* Bug 6845 */
                   ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx)) ||
-#endif /* KEY Bug 6845 */
                    ATT_CHAR_CPNT(TYP_IDX(type_idx))) ) {
             PRINTMSG(AT_DEF_LINE(attr_idx), 536, Error,
                      AT_DEF_COLUMN(attr_idx),
@@ -6159,9 +5922,7 @@ static	void	attr_semantics(int	attr_idx,
       switch (ATD_CLASS(attr_idx)) {
       case Variable:
 
-#ifdef KEY /* Bug 9029 */
          threadprivate_check(attr_idx);
-#endif /* KEY Bug 9029 */
          if (ATD_EQUIV(attr_idx) &&
              AL_NEXT_IDX(ATD_EQUIV_LIST(attr_idx)) == NULL_IDX) {
 
@@ -6177,12 +5938,8 @@ static	void	attr_semantics(int	attr_idx,
          if (ATD_IN_COMMON(attr_idx)) {
 
             if (TYP_TYPE(type_idx) == Structure &&
-#ifdef KEY /* Bug 14150 */
                 !(ATT_SEQUENCE_SET(TYP_IDX(type_idx)) ||
 		 AT_BIND_ATTR(TYP_IDX(type_idx)))
-#else /* KEY Bug 14150 */
-                !ATT_SEQUENCE_SET(TYP_IDX(type_idx))
-#endif /* KEY Bug 14150 */
 		) {
                 AT_DCL_ERR(attr_idx) = TRUE;
                 PRINTMSG(AT_DEF_LINE(attr_idx), 373, Error,
@@ -6190,7 +5947,6 @@ static	void	attr_semantics(int	attr_idx,
                          AT_OBJ_NAME_PTR(attr_idx),
                          AT_OBJ_NAME_PTR(TYP_IDX(type_idx)));
             }
-#ifdef KEY /* Bug 6845 */
             if (TYP_TYPE(type_idx) == Structure &&
                 ATT_ALLOCATABLE_CPNT(TYP_IDX(type_idx))) {
                 AT_DCL_ERR(attr_idx) = TRUE;
@@ -6198,7 +5954,6 @@ static	void	attr_semantics(int	attr_idx,
                          AT_DEF_COLUMN(attr_idx),
                          AT_OBJ_NAME_PTR(attr_idx));
 	    }
-#endif /* KEY Bug 6845 */
 
             if (SB_BLK_HAS_NPES(ATD_STOR_BLK_IDX(attr_idx)) &&
                 ATD_DATA_INIT(attr_idx)) {
@@ -6306,9 +6061,7 @@ static	void	attr_semantics(int	attr_idx,
          }
 
          if (!AT_IS_DARG(attr_idx)) {
-#ifdef KEY /* Bug 14255 */
            error_not_darg(attr_idx);
-#endif /* KEY Bug 14255 */
          }
          else if (TYP_TYPE(type_idx) == Structure &&
                   ATT_DEFAULT_INITIALIZED(TYP_IDX(type_idx)) &&
@@ -6321,14 +6074,12 @@ static	void	attr_semantics(int	attr_idx,
                      AT_OBJ_NAME_PTR(attr_idx),
                      AT_OBJ_NAME_PTR(TYP_IDX(type_idx)));
          }
-#ifdef KEY /* Bug 14150 */
          else if (ATD_VALUE_ATTR(attr_idx) &&
 	   !length_type_param_is_one(attr_idx)) {
            PRINTMSG(AT_DEF_LINE(attr_idx), 1695, Error, 
 	     AT_DEF_COLUMN(attr_idx), AT_OBJ_NAME_PTR(attr_idx));
 	 }
          break;
-#endif /* KEY Bug 14150 */
 
          break;
 
@@ -6446,36 +6197,7 @@ static	void	attr_semantics(int	attr_idx,
 
 # elif defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
-#ifdef KEY /* Bug 7299 */
 	 /* We want to use default pointer type for Cray pointers */
-#else /* KEY Bug 7299 */
-         if (TARGET_32BIT_DOUBLE_WORD_STORAGE_TYPE(ATD_TYPE_IDX(attr_idx))) {
-
-            if (ATD_PTR_TYPE_SET(pointer_idx)) {
-
-               if (TYP_PTR_INCREMENT(ATD_TYPE_IDX(pointer_idx)) != 64) {
-                  PRINTMSG(AT_DEF_LINE(pointer_idx), 1092, Error,
-                           AT_DEF_COLUMN(pointer_idx),
-                           AT_OBJ_NAME_PTR(pointer_idx));
-               }
-            }
-            else {
-               CLEAR_TBL_NTRY(type_tbl, TYP_WORK_IDX);
-               TYP_TYPE(TYP_WORK_IDX)		= CRI_Ptr;
-               TYP_LINEAR(TYP_WORK_IDX)		= CRI_Ptr_8;
-               TYP_PTR_INCREMENT(TYP_WORK_IDX)	= 64;
-               ATD_TYPE_IDX(pointer_idx)	= ntr_type_tbl();
-            }
-         }
-         else if (ATD_PTR_TYPE_SET(pointer_idx)) {
-
-            if (TYP_PTR_INCREMENT(ATD_TYPE_IDX(pointer_idx)) != 32) {
-               PRINTMSG(AT_DEF_LINE(pointer_idx), 1092, Error,
-                        AT_DEF_COLUMN(pointer_idx),
-                        AT_OBJ_NAME_PTR(pointer_idx));
-            }
-         }  /* Else type uses default pointer type */
-#endif /* KEY Bug 7299 */
 
 # endif
          ATD_PTR_TYPE_SET(pointer_idx) = TRUE;
@@ -6543,12 +6265,8 @@ static	void	attr_semantics(int	attr_idx,
            ATD_CLASS(attr_idx) == Variable) &&
           !ATD_POINTER(attr_idx) &&
           !ATD_ALLOCATABLE(attr_idx) &&
-#ifdef KEY /* Bug 7967 */
 	  /* "save<newline>" doesn't mark each individual variable in scope */
           !(ATD_SAVED(attr_idx) || ATP_SAVE_ALL(pgm_attr_idx))
-#else /* KEY Bug 7967 */
-          !ATD_SAVED(attr_idx)
-#endif /* KEY Bug 7967 */
 	  ) {
          PRINTMSG(AT_DEF_LINE(attr_idx), 1641, Ansi,
                   AT_DEF_COLUMN(attr_idx),
@@ -6618,7 +6336,6 @@ static	void	attr_semantics(int	attr_idx,
 
          if (TYP_TYPE(type_idx) == Structure) {
 
-#ifdef KEY /* Bug 11741 */
 	    /* Someday it would be well to rewrite the processing of:
 	     *
 	     *  type(t) function f()
@@ -6645,7 +6362,6 @@ static	void	attr_semantics(int	attr_idx,
 	      memcpy(TOKEN_STR(t), name, name_len);
 	      import_from_host(TOKEN_STR(t), name_len, 0, type_attr);
 	    }
-#endif /* KEY Bug 11741 */
 
             if (AT_ATTR_LINK(TYP_IDX(type_idx)) != NULL_IDX) {
 
@@ -6701,7 +6417,6 @@ static	void	attr_semantics(int	attr_idx,
                }
             }
          }
-#ifdef KEY /* Bug 4865 */
 	 /* Setting AT_SEMANTICS_DONE on the result variable here bypasses the
           * code inside a later call to function attr_semantics(rslt_idx)
 	  * which would perform default initialization if the result variable
@@ -6712,7 +6427,6 @@ static	void	attr_semantics(int	attr_idx,
 	 
 	 if (TYP_TYPE(type_idx) == Structure &&
 	    ATT_DEFAULT_INITIALIZED(TYP_IDX(type_idx))) {
-#ifdef KEY /* Bug 7856 */ 
 	    /* Here's something else from attr_semantics() that we're missing.
 	     * And there's a lot more...some day consider removing all the
 	     * code inside "if (ATP_PGM_UNIT(attr_idx) == Function)" and just
@@ -6722,10 +6436,8 @@ static	void	attr_semantics(int	attr_idx,
 	    if (bd_idx != NULL_IDX) {
 	      array_dim_resolution(rslt_idx, FALSE);
 	    }
-#endif /* KEY Bug 7856 */ 
             gen_entry_dope_code(rslt_idx);
 	 }
-#endif /* KEY Bug 4865 */
          AT_SEMANTICS_DONE(rslt_idx) = TRUE;
       }
 
@@ -6736,9 +6448,7 @@ static	void	attr_semantics(int	attr_idx,
       if (ATP_PROC(attr_idx) != Intrin_Proc ||
           AT_OBJ_NAME(attr_idx) != '_' ||
           (!(strcmp(AT_OBJ_NAME_PTR(attr_idx), "_DATE") == 0)) &&
-# ifdef KEY
           (!(strcmp(AT_OBJ_NAME_PTR(attr_idx), "_FDATE") == 0)) &&
-# endif
           (!(strcmp(AT_OBJ_NAME_PTR(attr_idx), "_JDATE") == 0)) &&
           (!(strcmp(AT_OBJ_NAME_PTR(attr_idx), "_CLOCK") == 0))) {
 # endif
@@ -6853,11 +6563,7 @@ static	void	attr_semantics(int	attr_idx,
          /* alternate entries are stored in the equivalence block.     */
 
         
-#ifdef KEY /* Bug 5089 */
          if (FUNCTION_MUST_BE_SUBROUTINE(attr_idx, rslt_idx))
-#else /* KEY Bug 5089 */
-         if (FUNCTION_MUST_BE_SUBROUTINE(rslt_idx))
-#endif /* KEY Bug 5089 */
 	 {
 
             ATP_EXTRA_DARG(attr_idx)      = TRUE;
@@ -7090,11 +6796,9 @@ static	void	attr_semantics(int	attr_idx,
 
       if (ATP_PROC(attr_idx) == Dummy_Proc) {
 
-#ifdef KEY /* Bug 14255 */
          if (!AT_IS_DARG(attr_idx)) {
 	   error_not_darg(attr_idx);
 	 }
-#endif /* KEY Bug 14255 */
 
          /* If this is an interface specific, pgm_attr_idx is set to the */
          /* specific.  The correct attr to check is the program unit     */
@@ -7201,7 +6905,6 @@ static	void	attr_semantics(int	attr_idx,
 
          if (!AT_USE_ASSOCIATED(attr_idx) &&
              ATD_CPNT_INIT_IDX(SN_ATTR_IDX(sn_idx)) != NULL_IDX) {
-#ifdef KEY /* Bug 6845 */
 	    int cpnt_idx = SN_ATTR_IDX(sn_idx);
             if (ATD_ALLOCATABLE(cpnt_idx)) {
 	      PRINTMSG(AT_DEF_LINE(cpnt_idx), 1680, Error,
@@ -7210,9 +6913,6 @@ static	void	attr_semantics(int	attr_idx,
 	    else {
 	      default_init_semantics(SN_ATTR_IDX(sn_idx));
 	    }
-#else /* KEY Bug 6845 */
-            default_init_semantics(SN_ATTR_IDX(sn_idx));
-#endif /* KEY Bug 6845 */
          }
          sn_idx = SN_SIBLING_LINK(sn_idx);
       }
@@ -7601,9 +7301,7 @@ static	void	attr_semantics(int	attr_idx,
       gen_allocatable_ptr_ptee(attr_idx);
    }
 # endif
-#ifdef KEY /* Bug 14150 */
    check_interoperable_constraints(attr_idx);
-#endif /* KEY Bug 14150 */
 
 EXIT:
 
@@ -7737,12 +7435,8 @@ FOUND:
                }
    
                if (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) == Structure           &&
-#ifdef KEY /* Bug 6845 */
                    (ATT_ALLOCATABLE_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))) ||
                    ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx))))
-#else /* KEY Bug 6845 */
-                   ATT_POINTER_CPNT(TYP_IDX(ATD_TYPE_IDX(attr_idx)))
-#endif /* KEY Bug 6845 */
 		   ) {
                   PRINTMSG(SN_LINE_NUM(sn_idx), 484, Error, 
                            SN_COLUMN_NUM(sn_idx),
@@ -7841,11 +7535,7 @@ static int ntr_bnds_sh_tmp_list(opnd_type	*opnd,
 
 {
    int		al_idx;
-#ifdef KEY /* Bug 10177 */
    int		attr_idx = 0;
-#else /* KEY Bug 10177 */
-   int		attr_idx;
-#endif /* KEY Bug 10177 */
    int		column;
    int		ir_idx;
    int		line;
@@ -7983,11 +7673,7 @@ static int merge_entry_lists(int	merged_list,
 {
    int		list_idx		= NULL_IDX;
    int		merged_list_start;
-#ifdef KEY /* Bug 10177 */
    int		prev_idx = 0;
-#else /* KEY Bug 10177 */
-   int		prev_idx;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "merge_entry_lists", NULL);
@@ -8495,16 +8181,10 @@ static	void	gen_tmp_eq_zero_ir(int		attr_idx)
 |*	 NONE								      *|
 |*									      *|
 \******************************************************************************/
-#ifdef KEY /* Bug 4955, 6845 */
 /* Return SH_IDX for last statement generated */
 int	gen_present_ir(int	attr_idx,
 			       int	start_sh_idx,
                                int	end_sh_idx)
-#else /* KEY Bug 4955, 6845 */
-static	void	gen_present_ir(int	attr_idx,
-			       int	start_sh_idx,
-                               int	end_sh_idx)
-#endif /* KEY Bug 4955, 6845 */
 {
    int		br_around_opt;
    int		br_idx;
@@ -8587,18 +8267,12 @@ static	void	gen_present_ir(int	attr_idx,
 
    SH_P2_SKIP_ME(curr_stmt_sh_idx)	= TRUE;
    SH_IR_IDX(curr_stmt_sh_idx)		= cont_idx;
-#ifdef KEY /* Bug 6845 */
    int last_idx = curr_stmt_sh_idx;
-#endif /* KEY Bug 6845 */
    curr_stmt_sh_idx			= save_sh_idx;
 
    TRACE (Func_Exit, "gen_present_ir", NULL);
 
-#ifdef KEY /* Bug 6845 */
    return last_idx;
-#else /* KEY Bug 6845 */
-   return;
-#endif /* KEY Bug 6845 */
 
 }  /* gen_present_ir */
 
@@ -8720,7 +8394,6 @@ static	void	tmp_il_resolution(int	list_idx)
 |*	NOTHING								      *|
 |*									      *|
 \******************************************************************************/
-#ifdef KEY /* Bug 6845 */
 static void deallocate_local_allocatables(void)
 
 {
@@ -8779,204 +8452,6 @@ static void deallocate_local_allocatables(void)
 
 }  /* deallocate_local_allocatables */
 
-#else /* KEY Bug 6845 */
-static void deallocate_local_allocatables(void)
-
-{
-   int          asg_idx;
-   int		cn_idx;
-   int		col;
-   boolean      has_normal_ref	= FALSE;
-   boolean      has_pe_ref	= FALSE;
-   int		line;
-   int          list_idx;
-   int		loc_idx;
-   int		save_curr_stmt_sh_idx;
-   int		sn_idx;
-   int		start_sh_idx;
-
-
-   TRACE (Func_Entry, "deallocate_local_allocatables", NULL);
-
-   line = stmt_start_line;
-   col  = stmt_start_col;
-   save_curr_stmt_sh_idx = curr_stmt_sh_idx;
-
-   ADD_ATTR_TO_LOCAL_LIST(glb_tbl_idx[Dealloc_Attr_Idx]);
-
-# ifdef _SEPARATE_DEALLOCATES
-   sn_idx = allocatable_list_idx;
-
-   start_sh_idx                 = ntr_sh_tbl();
-   curr_stmt_sh_idx             = start_sh_idx;
-
-   SH_STMT_TYPE(curr_stmt_sh_idx)    = Assignment_Stmt;
-   SH_GLB_LINE(curr_stmt_sh_idx)     = line;
-   SH_COL_NUM(curr_stmt_sh_idx)      = col;
-   SH_COMPILER_GEN(curr_stmt_sh_idx) = TRUE;
-   SH_P2_SKIP_ME(curr_stmt_sh_idx)   = TRUE;
-
-   while (sn_idx) {
-
-      if (ATD_ALLOCATABLE(SN_ATTR_IDX(sn_idx)) &&
-          ATD_PE_ARRAY_IDX(SN_ATTR_IDX(sn_idx)) != NULL_IDX) {
-         has_pe_ref = TRUE;
-      }
-      else {
-         has_pe_ref = FALSE;
-      }
-
-      NTR_IR_LIST_TBL(list_idx);
-      asg_idx = gen_ir(IL_Tbl_Idx, list_idx,
-                   Deallocate_Opr, TYPELESS_DEFAULT_TYPE, line, col,
-                       NO_Tbl_Idx, NULL_IDX);
-
-      loc_idx = gen_ir(AT_Tbl_Idx, SN_ATTR_IDX(sn_idx),
-                   Aloc_Opr, CRI_Ptr_8, line, col,
-                       NO_Tbl_Idx, NULL_IDX);
-
-      IL_FLD(list_idx) = IR_Tbl_Idx;
-      IL_IDX(list_idx) = loc_idx;
-
-      SH_IR_IDX(curr_stmt_sh_idx) = asg_idx;
-
-# ifdef _ALLOCATE_IS_CALL
-      set_up_allocate_as_call(asg_idx,
-                              glb_tbl_idx[Dealloc_Attr_Idx],
-                              NULL_IDX,
-                              has_pe_ref);
-# else
-
-      list_idx = gen_il(3, FALSE, line, col,
-                        AT_Tbl_Idx, glb_tbl_idx[Dealloc_Attr_Idx],
-                        CN_Tbl_Idx, gen_alloc_header_const(Integer_8,
-                                                           1,
-                                                           has_pe_ref,
-                                                           &cn_idx),
-                        CN_Tbl_Idx, CN_INTEGER_ZERO_IDX);
-      IR_FLD_R(asg_idx) = IL_Tbl_Idx;
-      IR_IDX_R(asg_idx) = list_idx;
-      IR_LIST_CNT_R(asg_idx) = 3;
-# endif
-
-
-      sn_idx = SN_SIBLING_LINK(sn_idx);
-
-      if (sn_idx) {
-         gen_sh(After, Assignment_Stmt, line, col, FALSE, FALSE, TRUE);
-      }
-   }
-
-# else
-
-   NTR_IR_TBL(asg_idx);
-   IR_OPR(asg_idx) = Deallocate_Opr;
-   IR_TYPE_IDX(asg_idx) = TYPELESS_DEFAULT_TYPE;
-   IR_LINE_NUM(asg_idx) = line;
-   IR_COL_NUM(asg_idx)  = col;
-
-   NTR_IR_LIST_TBL(list_idx);
-   IR_FLD_L(asg_idx) = IL_Tbl_Idx;
-   IR_IDX_L(asg_idx) = list_idx;
-   IR_LIST_CNT_L(asg_idx) = number_of_allocatables;
-
-   sn_idx = allocatable_list_idx;
-
-   while (sn_idx) {
-
-      if (ATD_ALLOCATABLE(SN_ATTR_IDX(sn_idx)) &&
-          ATD_PE_ARRAY_IDX(SN_ATTR_IDX(sn_idx)) != NULL_IDX) {
-         has_pe_ref = TRUE;
-      }
-      else {
-         has_normal_ref = TRUE;
-      }
-
-      NTR_IR_TBL(loc_idx);
-      IR_OPR(loc_idx)             = Aloc_Opr;
-      IR_TYPE_IDX(loc_idx)        = CRI_Ptr_8;
-      IR_FLD_L(loc_idx)           = AT_Tbl_Idx;
-      IR_IDX_L(loc_idx)           = SN_ATTR_IDX(sn_idx);
-      IR_LINE_NUM(loc_idx)        = line;
-      IR_COL_NUM(loc_idx)         = col;
-      IR_LINE_NUM_L(loc_idx)      = line;
-      IR_COL_NUM_L(loc_idx)       = col;
-      IL_FLD(list_idx)            = IR_Tbl_Idx;
-      IL_IDX(list_idx)            = loc_idx;
-
-      sn_idx = SN_SIBLING_LINK(sn_idx);
-
-      if (sn_idx) {
-         NTR_IR_LIST_TBL(IL_NEXT_LIST_IDX(list_idx));
-         IL_PREV_LIST_IDX(IL_NEXT_LIST_IDX(list_idx)) = list_idx;
-         list_idx = IL_NEXT_LIST_IDX(list_idx);
-      }
-   }
-
-   start_sh_idx                 = ntr_sh_tbl();
-   curr_stmt_sh_idx             = start_sh_idx;
-
-   SH_STMT_TYPE(curr_stmt_sh_idx)       = Assignment_Stmt;
-   SH_GLB_LINE(curr_stmt_sh_idx)        = line;
-   SH_COL_NUM(curr_stmt_sh_idx)         = col;
-   SH_COMPILER_GEN(curr_stmt_sh_idx)    = TRUE;
-   SH_P2_SKIP_ME(curr_stmt_sh_idx)      = TRUE;
-
-   SH_IR_IDX(curr_stmt_sh_idx)          = asg_idx;
-
-   if (has_pe_ref && has_normal_ref) {
-      /* must pull the normal refs off on their own call */
-      gen_split_alloc(asg_idx,
-                      glb_tbl_idx[Dealloc_Attr_Idx],
-                      NULL_IDX);
-   }
-
-
-# ifdef _ALLOCATE_IS_CALL
-   set_up_allocate_as_call(asg_idx,
-                           glb_tbl_idx[Dealloc_Attr_Idx],
-                           NULL_IDX,
-                           has_pe_ref);
-# else
-   list_idx = gen_il(3, FALSE, line, col,
-                     AT_Tbl_Idx, glb_tbl_idx[Dealloc_Attr_Idx],
-                     CN_Tbl_Idx, 
-                         gen_alloc_header_const(Integer_8,
-                                                number_of_allocatables, 
-                                                has_pe_ref,
-                                                &cn_idx),
-                     CN_Tbl_Idx, CN_INTEGER_ZERO_IDX);
-   IR_FLD_R(asg_idx) = IL_Tbl_Idx;
-   IR_IDX_R(asg_idx) = list_idx;
-   IR_LIST_CNT_R(asg_idx) = 3;
-
-# endif
-# endif
-
-   while (SH_PREV_IDX(start_sh_idx)) {
-      start_sh_idx = SH_PREV_IDX(start_sh_idx);
-   }
-
-   if (SH_NEXT_IDX(curr_stmt_sh_idx)) {
-      curr_stmt_sh_idx = SH_NEXT_IDX(curr_stmt_sh_idx);
-   }
-
-   if (SCP_EXIT_IR_SH_IDX(curr_scp_idx) != NULL_IDX) {
-      SH_NEXT_IDX(curr_stmt_sh_idx)	= SCP_EXIT_IR_SH_IDX(curr_scp_idx);
-      SCP_EXIT_IR_SH_IDX(curr_scp_idx)	= start_sh_idx;
-   }
-   else {
-      SCP_EXIT_IR_SH_IDX(curr_scp_idx)	= start_sh_idx;
-   }
-
-   curr_stmt_sh_idx = save_curr_stmt_sh_idx;
-
-   TRACE (Func_Exit, "deallocate_local_allocatables", NULL);
-
-   return;
-
-}  /* deallocate_local_allocatables */
-#endif /* KEY Bug 6845 */
 
 /******************************************************************************\
 |*                                                                            *|
@@ -9228,10 +8703,6 @@ static void insert_argchck_calls(int		sh_idx,
    opnd_type	opnd;
    int		save_curr_stmt_sh_idx;
 
-# if 0
-   int		cn_idx;
-   long_type	the_constant;
-# endif
 
 
    TRACE (Func_Entry, "insert_argchck_calls", NULL);
@@ -9246,7 +8717,6 @@ static void insert_argchck_calls(int		sh_idx,
 
    label_idx = gen_internal_lbl(line);
    
-# if 1
    NTR_IR_TBL(ir_idx);
    IR_TYPE_IDX(ir_idx) = LOGICAL_DEFAULT_TYPE;
    IR_OPR(ir_idx) = Argchck_Present_Opr;
@@ -9261,22 +8731,6 @@ static void insert_argchck_calls(int		sh_idx,
 
    IR_FLD_L(not_idx) = IR_Tbl_Idx;
    IR_IDX_L(not_idx) = ir_idx;
-# else
-   cn_idx = set_up_logical_constant(&the_constant,
-                                    CG_LOGICAL_DEFAULT_TYPE,
-                                    TRUE_VALUE,
-                                    TRUE);
-   NTR_IR_TBL(not_idx);
-   IR_TYPE_IDX(not_idx) = LOGICAL_DEFAULT_TYPE;
-   IR_OPR(not_idx) = Not_Opr;
-   IR_LINE_NUM(not_idx) = line;
-   IR_COL_NUM(not_idx)  = col;
-
-   IR_FLD_L(not_idx) = CN_Tbl_Idx;
-   IR_IDX_L(not_idx) = cn_idx;
-   IR_LINE_NUM_L(not_idx) = line;
-   IR_COL_NUM_L(not_idx)  = col;
-# endif
 
    NTR_IR_TBL(br_true_idx);
    IR_OPR(br_true_idx)        = Br_True_Opr;
@@ -11311,7 +10765,6 @@ static	void	distribution_resolution(int 	attr_idx)
 
 }  /* distribution_resolution */
 
-#ifdef KEY /* Bug 4197 */
 /*
  * This implements the passage of the F95 standard (14.1.2.3): "If a generic
  * name is the same as the name of a generic intrinsic procedure, the generic
@@ -11364,7 +10817,6 @@ ignore_intrinsics(int first, int interface_idx, int specific_attr_idx,
   }
   return 1;
 }
-#endif /* KEY Bug 4197 */
 /******************************************************************************\
 |*                                                                            *|
 |* Description:                                                               *|
@@ -11405,26 +10857,16 @@ static void verify_interface(int        interface_idx)
    int		loop_cnt;
    int		num_dargs;
    int		optional_sn_idx;
-#ifdef KEY /* Bug 10177 */
    int		rank_l = 0;
    int		rank_r = 0;
-#else /* KEY Bug 10177 */
-   int		rank_l;
-   int		rank_r;
-#endif /* KEY Bug 10177 */
    boolean	same_dargs;
    int		save_curr_darg_sn_idx;
    int		save_curr_num_dargs;
    int		save_darg_sn_idx;
    int		save_num_dargs;
    int		sn_idx;
-#ifdef KEY /* Bug 10177 */
    int		type_idx_l = 0;
    int		type_idx_r = 0;
-#else /* KEY Bug 10177 */
-   int		type_idx_l;
-   int		type_idx_r;
-#endif /* KEY Bug 10177 */
 
 
 
@@ -11436,9 +10878,7 @@ static void verify_interface(int        interface_idx)
 
    curr_sn_idx = ATI_FIRST_SPECIFIC_IDX(interface_idx);
 
-#ifdef KEY /* Bug 4197 */
    boolean first = TRUE;
-#endif /* KEY Bug 4197 */
    while (curr_sn_idx != NULL_IDX) {
       curr_attr_idx = SN_ATTR_IDX(curr_sn_idx);
 
@@ -11510,20 +10950,6 @@ static void verify_interface(int        interface_idx)
             SN_NAME_IDX(curr_sn_idx) = AT_NAME_IDX(curr_attr_idx);
          }
 
-# if 0
-         /*  Save this until we allow generic interfaces to be specified */
-         /*  with INLINE ALWAYS/NEVER.                                   */
-
-         if (!ATP_INLINE_ALWAYS(curr_attr_idx) &&
-             !ATP_INLINE_NEVER(curr_attr_idx)) {
-
-            /* Specific does not have INLINE ALWAYS or INLINE NEVER set, */
-            /* so copy the generic interface's INLINE attribute.         */
-
-            ATP_INLINE_ALWAYS(curr_attr_idx) = ATP_INLINE_ALWAYS(interface_idx);
-            ATP_INLINE_NEVER(curr_attr_idx)  = ATP_INLINE_NEVER(interface_idx);
-         }
-# endif
 
          attr_semantics(curr_attr_idx, FALSE);
 
@@ -11594,13 +11020,11 @@ static void verify_interface(int        interface_idx)
 
          if (ATP_PGM_UNIT(curr_attr_idx) == Subroutine &&
              !AT_DCL_ERR(interface_idx))               {
-#ifdef KEY /* Bug 4197 */
             if (ignore_intrinsics(first, interface_idx, curr_attr_idx,
 	      Generic_Subroutine_Interface)) {
 	      found_intrin = FALSE;
 	      break;
 	    }
-#endif /* KEY Bug 4197 */
             PRINTMSG(AT_DEF_LINE(interface_idx), 1059, Error,
                      AT_DEF_COLUMN(interface_idx),
                      AT_OBJ_NAME_PTR(interface_idx));
@@ -11612,13 +11036,11 @@ static void verify_interface(int        interface_idx)
             
          if (ATP_PGM_UNIT(curr_attr_idx) == Function &&
              !AT_DCL_ERR(interface_idx))             {
-#ifdef KEY /* Bug 4197 */
             if (ignore_intrinsics(first, interface_idx, curr_attr_idx,
 	      Generic_Function_Interface)) {
 	      found_intrin = FALSE;
 	      break;
 	    }
-#endif /* KEY Bug 4197 */
             PRINTMSG(AT_DEF_LINE(interface_idx), 1059, Error,
                      AT_DEF_COLUMN(interface_idx),
                      AT_OBJ_NAME_PTR(interface_idx));
@@ -12533,9 +11955,7 @@ static void verify_interface(int        interface_idx)
       }
 
       curr_sn_idx = SN_SIBLING_LINK(curr_sn_idx);
-#ifdef KEY /* Bug 4197 */
       first = FALSE;
-#endif /* KEY Bug 4197 */
    }
 
 EXIT:
@@ -12978,11 +12398,7 @@ int	gen_tmp_equal_max_zero(opnd_type	*opnd,
    int		line;
    int		list_idx;
    int		max_idx;
-#ifdef KEY /* Bug 10177 */
    int		sh_idx = 0;
-#else /* KEY Bug 10177 */
-   int		sh_idx;
-#endif /* KEY Bug 10177 */
    int		tmp_idx;
    int		zero_idx;
 

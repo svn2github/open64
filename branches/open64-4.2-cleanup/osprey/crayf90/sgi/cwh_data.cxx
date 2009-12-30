@@ -155,10 +155,8 @@ fei_static_base(INTPTR sym_idx)
      init_common_or_module = TRUE; 
    }
 
-#ifdef KEY // bug 13276
    if (ST_sclass(base) == SCLASS_FORMAL_REF)
      return;
-#endif
  
    Set_ST_is_initialized(current_st);
 
@@ -291,11 +289,7 @@ static INT32 get_TCON_size(TCON_IDX tc)
 /* Get a TCON from a WHIRL node */
 static TCON_IDX TCON_from_stack(void)
 {
-#ifdef KEY /* Bug 10177 */
    TCON_IDX tcp = 0;
-#else /* KEY Bug 10177 */
-   TCON_IDX tcp;
-#endif /* KEY Bug 10177 */
    ST *cst;
    WN *slen;
    WN *w;

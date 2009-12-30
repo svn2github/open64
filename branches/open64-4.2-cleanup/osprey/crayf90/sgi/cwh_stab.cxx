@@ -115,9 +115,7 @@ static char *rcs_id = "$Source: ../../../crayf90/sgi/SCCS/s.cwh_stab.cxx $ $Revi
 #include "cwh_stab.h"
 #include "cwh_stab.i"
 #include "cwh_dst.h"
-#ifdef KEY
 #include "cwh_directive.h"
-#endif
 #include "cwh_mkdepend.h"
 #include "sgi_cmd_line.h"
 /*===================================================
@@ -206,11 +204,7 @@ fei_proc(char         *name_string,
 	 INT32         proc_idx,
          INT64         flags )
 {
-#ifdef KEY /* Bug 10177 */
   INTPTR p = 0;
-#else /* KEY Bug 10177 */
-  INTPTR p;
-#endif /* KEY Bug 10177 */
 
   if (test_flag(flags, FEI_PROC_DEFINITION)) {
      p = fei_proc_def(name_string,
@@ -393,10 +387,6 @@ fei_proc_def(char         *name_string,
     }
   }
 
-#if 0
-  if (sym_class == Fort_Blockdata)
-    DevWarn(("TODO_NEW_SYMTAB: blockdata"));
-#endif
 
   if (sym_class == F90_Module) {
      cwh_add_to_module_files_table(name_string);
@@ -555,11 +545,7 @@ fei_arith_con(TYPE type, SLONG *start)
   QUAD_TYPE q,q1 ;
   float   *f;
   double  *d;
-#ifdef KEY /* Bug 10177 */
   STB_pkt * r = 0;
-#else /* KEY Bug 10177 */
-  STB_pkt * r ;
-#endif /* KEY Bug 10177 */
   INT64 iconst;
 
   ty = cast_to_TY(t_TY(type));
@@ -897,7 +883,6 @@ fei_object(char * name_string,
       st = cwh_auxst_cri_pointee(ST_base(ptr),0);
     } else {
       st = cwh_stab_seen_common_element(cast_to_ST(p->item),off,name_string);
-#ifdef KEY /* Bug 5271 */
       /* We're about to skip the creation of a new ST for this common variable
        * because it has already appeared in the same common block in a
        * previous program unit. Make sure we emit a Dwarf symbol for it in
@@ -906,7 +891,6 @@ fei_object(char * name_string,
       if (st) {
 	cwh_auxst_add_item(ST_base(st),st,l_PU_COMLIST) ;
 	}
-#endif /* KEY Bug 5271 */
     }
     
     if (st) {
@@ -960,9 +944,7 @@ fei_object(char * name_string,
   /* into ptr TY of FUNCTION returning  ty  */
      
   if ((sym_class == Dummy_Procedure) || 
-#ifdef KEY /* Bug 14150 */
       test_flag(flag_bits, FEI_OBJECT_PASS_BY_VALUE) ||
-#endif /* KEY Bug 14150 */
       (sym_class == Hosted_Dummy_Procedure))  {
 
     Set_ST_is_value_parm(st);
@@ -1001,9 +983,7 @@ fei_object(char * name_string,
   /* are addresses. Struct temp addresses should be values if 16B */
   /* or less and are converted here rather than FE                */
 
-#ifdef KEY /* Bug 11574 */
   ST *original_st = 0;
-#endif /* KEY Bug 11574 */
   if (ST_sclass(st) == SCLASS_FORMAL) {
     BOOL formal = TRUE;
 
@@ -1046,9 +1026,7 @@ fei_object(char * name_string,
 
 	if (ST_level(st) == HOST_LEVEL) {
 	  if (Alttemp_ST != NULL) {
-#ifdef KEY /* Bug 11574 */
 	    original_st = st;
-#endif /* KEY Bug 11574 */
 	    st = Alttemp_ST ;
 	  }
 
@@ -1217,13 +1195,11 @@ fei_object(char * name_string,
     if (IS_COMMON(ST_base(st))) {
       if (sym_class != CRI_Pointee)
 	cwh_auxst_add_item(ST_base(st),st,l_COMLIST) ;
-#ifdef KEY /* Bug 5271 */
 	/* For a particular item which appears in the same common block in more
 	 * than one program unit, this code executes only the first time. The
 	 * remaining occurrences are handled elsewhere.
 	 */
 	cwh_auxst_add_item(ST_base(st),st,l_PU_COMLIST) ;
-#endif /* KEY Bug 5271 */
 
     } else if (eq) {
       cwh_auxst_add_item(ST_base(st),st,l_EQVLIST);
@@ -1266,7 +1242,6 @@ fei_object(char * name_string,
      DevAssert((ST_ofst(st) == 0),("Offset?"));
 
   o = cwh_stab_packet(st,is_ST);
-#ifdef KEY /* Bug 11574 */
     /* It isn't clear why the original authors thought it was safe to abandon
      * the ST for an "entry" and work on the "Alttemp" instead. But for
      * debugging, we certainly need to correct the "entry" in this case. */
@@ -1277,7 +1252,6 @@ fei_object(char * name_string,
       original_st->u1.name_idx = save_name_idx;
       original_st->st_idx = save_st_idx;
     }
-#endif /* KEY Bug 11574 */
   return(cast_to_long(o));
 }
 
@@ -1333,9 +1307,7 @@ fei_seg (char        * name_string,
 	Set_ST_is_thread_private(st);
         Set_ST_not_gprel(st);
 // Bug 3836
-#ifdef KEY
         cwh_directive_set_PU_flags(FALSE);
-#endif
       }
 
       if (test_flag(flag_bits,FEI_SEG_MODULE)) 
@@ -1354,16 +1326,12 @@ fei_seg (char        * name_string,
 	Set_ST_is_thread_private(st);
         Set_ST_not_gprel(st);
 // Bug 3836
-#ifdef KEY
         cwh_directive_set_PU_flags(FALSE);
-#endif
       }
-#ifdef KEY /* Bug 5271 */
       /* Start accumulating a new list of variables appearing in this common
        * block in this program unit.
        */
       cwh_clear_PU_common_list(st);
-#endif /* KEY Bug 5271 */
     }
 
     /* add to list of COMMONs requiring DST info */
@@ -1522,9 +1490,7 @@ fei_namelist(char  * name_string,
   cwh_auxst_clear(st);
   ST_Init(st, Save_Str(name_string), CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL, ty);
   Set_ST_is_temp_var(st);
-#ifdef KEY
   Set_ST_is_namelist(st);
-#endif
   Set_ST_ofst(st, 0);
 
   p = cwh_stab_packet(cast_to_void(st),is_ST) ;
@@ -1616,11 +1582,7 @@ extern ST *
 cwh_stab_const_ST(WN *wn)
 {
   TCON    tcon;
-#ifdef KEY /* Bug 10177 */
   ST     *st = 0 ; 
-#else /* KEY Bug 10177 */
-  ST     *st  ; 
-#endif /* KEY Bug 10177 */
 
   if (WNOPR(wn) == OPR_CONST) 
     st = WN_st(wn);
@@ -2294,9 +2256,7 @@ cwh_stab_split_common(ST * c, FIELDS fp_table, INT32 nf)
 	    if (ST_is_thread_private(c)){
               Set_ST_is_thread_private(nc);
 // Bug 3836
-#ifdef KEY
               cwh_directive_set_PU_flags(FALSE);
-#endif
             }
 	    first = i;
 	    first_offset = FIELDS_first_offset(i);
@@ -2454,9 +2414,7 @@ cwh_stab_split_ST(ST * c, INT64 low_off, INT64 high_off)
   if (ST_is_thread_private(c)) {
     Set_ST_is_thread_private(st);
 // Bug 3836
-#ifdef KEY
     cwh_directive_set_PU_flags(FALSE);
-#endif
   }
 
   Set_TY_split(Ty_Table[ST_type(st)]);
@@ -2979,11 +2937,9 @@ cwh_stab_emit_list(LIST ** lp, enum list_name list, void (*fp) (ST *, enum list_
       i = I_next(i);
     }
 
-#ifdef KEY /* Sicortex bug 5277 */
 //    if (list == l_COMLIST) {
 //      get_consistent_common_alignment();
 //    }
-#endif /* KEY Sicortex bug 5277 */
     cwh_auxst_free_list(lp);
   }
 }
@@ -3023,7 +2979,6 @@ cwh_stab_mk_flds(ST * blk, enum list_name list)
     cwh_types_mk_element(blk,I_element(el));
     i ++ ;
   }
-#ifdef KEY /* Sicortex bug 5277 */
 // When there are multiple instances of common, the FE emits multiple common
 // symbols with the same name, but possibly different alignments, and the
 // back end normally picks the biggest alignment. But when a nested
@@ -3044,7 +2999,6 @@ cwh_stab_mk_flds(ST * blk, enum list_name list)
      Set_TY_align(ty, 16);
      Set_ST_type(blk, ty);
    }
-#endif /* KEY Sicortex bug 5277 */
 
   DevAssert((i == nf), (" can't count"));
 }
@@ -3202,11 +3156,7 @@ fei_smt_parameter(char * name_string,
    char * name;
    char * name1;
    STB_pkt *p;
-#ifdef KEY /* Bug 10177 */
    ST *  st = 0;
-#else /* KEY Bug 10177 */
-   ST *  st;
-#endif /* KEY Bug 10177 */
    TY_IDX ty;
    WN *  wn;
 

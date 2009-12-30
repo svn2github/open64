@@ -45,9 +45,7 @@
 static char USMID[] = "\n@(#)5.0_pl/sources/src_input.c	5.5	10/20/99 17:17:46\n";
 
 
-#ifdef KEY /* Bug 4719 */
 #include <errno.h>
-#endif /* KEY Bug 4719 */
 
 # include "defines.h"		/* Machine dependent ifdefs */
 
@@ -69,10 +67,8 @@ static char USMID[] = "\n@(#)5.0_pl/sources/src_input.c	5.5	10/20/99 17:17:46\n"
 # include "p_globals.h"
 # include "src_input.h"
 
-#ifdef KEY /* Bug 4719 */
 /* Sigh. Including ../sgi/sgi_cmd_line.h is hopeless. */
 extern char *preprocessor_output_file;
-#endif /* KEY /* Bug 4719 */
 
 
 /*****************************************************************\
@@ -88,11 +84,7 @@ static void	free_get_stmt (void);
 void		ntr_next_msg_queue(int,int,msg_severities_type,
                                    int,char *, long,int);
 static void     move_up_next_msg_queue(void);
-#ifdef KEY /* Bug 10151 */
 static boolean	open_include_file (boolean, boolean);
-#else /* KEY Bug 10151 */
-static boolean	open_include_file (boolean);
-#endif /* KEY Bug 10151 */
 static void	update_global_line (void);
 static int      whats_after_paren_group(int *, int *, int);
 static int      whats_after_brkt_group(int *, int *, int);
@@ -239,13 +231,10 @@ void init_src_input (void)
 
    dot_i_fptr = stdout; /* default is stdout */
 
-#ifdef KEY /* Bug 4719 */
    char *filename = 0;
-#endif /* KEY Bug 4719 */
    if (on_off_flags.save_dot_i) {
       filename = dot_i_file;
    }
-#ifdef KEY /* Bug 4719 */
    else if (preprocessor_output_file) {
       filename = preprocessor_output_file;
    }
@@ -256,7 +245,6 @@ void init_src_input (void)
        exit_compiler (RC_USER_ERROR);
      }
    }
-#endif /* KEY Bug 4719 */
 
    previous_global_line = 0;
 
@@ -1271,11 +1259,9 @@ static void fixed_get_stmt (void)
       
       for (idx = nxt_line_EOL; idx > 0; idx --) {
          stmt_buf[stmt_buf_idx] = nxt_line[NXT_COL(idx)];
-#ifdef KEY /* Bug 3449 */
          if (stmt_buf_idx >= MAX_STMT_CHAR_SIZE) {
            PRINTMSG(curr_glb_line, 1593, Limit, 0);
 	   }
-#endif
          stmt_buf_col[stmt_buf_idx] = nxt_line_col[NXT_COL(idx)];
          stmt_buf_idx--;
 
@@ -1388,11 +1374,7 @@ static void fixed_get_stmt (void)
                         nxt_line_type = Include_Line;
                         include_stmt_file_line = SRC_STK_FILE_LINE(src_stk_idx);
 
-#ifdef KEY /* Bug 10151 */
                         if (open_include_file (TRUE, FALSE))
-#else /* KEY Bug 10151 */
-                        if (open_include_file (TRUE))
-#endif /* KEY Bug 10151 */
 			{
                            include_found  = TRUE;      /* flag begin of file */
                            include_switch = TRUE;      /* flag file switch   */
@@ -1510,12 +1492,8 @@ static void fixed_get_stmt (void)
 
                      include_stmt_file_line = SRC_STK_FILE_LINE(src_stk_idx);
 
-#ifdef KEY /* Bug 10151 */
 		     if (open_include_file (FALSE,
 		       Pound_Include_Enter_Line == nxt_line_type))
-#else /* KEY Bug 10151 */
-		     if (open_include_file (FALSE))
-#endif /* KEY Bug 10151 */
 		     {
 			include_found  = TRUE;		/* flag begin of file */
 			include_switch = TRUE;		/* flag file switch   */
@@ -1668,11 +1646,9 @@ boolean read_line (boolean	cc_continuation_line)
    }
 
    /* copy max number characters in the next line to the source input buffer  */
-#ifdef KEY
    if (src_stk_idx == NULL_IDX) { /* src_stk_idx underflow */     
      PRINTMSG (curr_glb_line, 1, Internal, 0, "src_stk_idx");
    }                                                              
-#endif
    ch = getc(SRC_STK_FILE_PTR(src_stk_idx));
 
    if (on_off_flags.preprocess &&
@@ -1700,20 +1676,16 @@ boolean read_line (boolean	cc_continuation_line)
             cc_stmt_buf[++cc_stmt_buf_idx] = ch;
             limit--;
          }
-#ifdef KEY /* Bug 3632 */
 	 else {
            PRINTMSG(curr_glb_line, 1674, Limit, 0, FREE_SRC_LINE_SIZE);
 	 }
-#endif /* KEY Bug 3632 */
       }
-#ifdef KEY
-      // Bug 3605: Don't treat DOS 'carriage return plus linefeed' as two
+      // Don't treat DOS 'carriage return plus linefeed' as two
       // distinct line separators; just suppress the carriage return
       if (ch == newline && cc_stmt_buf_idx >= 0 &&
          cc_stmt_buf[cc_stmt_buf_idx] == dosnewline) {
          cc_stmt_buf_idx  -= 1;
       }
-#endif /* KEY */
 
       cc_stmt_buf[++cc_stmt_buf_idx] = newline;
       cc_stmt_buf[++cc_stmt_buf_idx] = eos;
@@ -1747,27 +1719,22 @@ boolean read_line (boolean	cc_continuation_line)
          if (nxt_line_idx < limit) { 
             nxt_line[++nxt_line_idx] = ch;
          }
-#ifdef KEY /* Bug 3632 */
 	 else {
            PRINTMSG(curr_glb_line, 1674, Limit, 0, FREE_SRC_LINE_SIZE);
 	 }
-#endif /* KEY Bug 3632 */
       }
-#ifdef KEY
-      // Bug 3605: Don't treat DOS 'carriage return plus linefeed' as two
+      // Don't treat DOS 'carriage return plus linefeed' as two
       // distinct line separators; just suppress the carriage return
       if (ch == newline && nxt_line_idx >= 0 &&
          nxt_line[nxt_line_idx] == dosnewline) {
          nxt_line_idx  -= 1;
       }
-#endif /* KEY */
    }
 
 
    if (nxt_line_idx > 
                    (nxt_line_start_idx[nxt_line_num_lines] - 1) + line_size) {
 
-#ifdef KEY /* Bug 6839 */
      /* This statement truncates the line at column 72 (or 132, or whatever is
       * appropriate) in fixed format. But a '# lineno "filename"' line provided
       * by cpp should never be truncated, because a lengthy filename will
@@ -1777,9 +1744,6 @@ boolean read_line (boolean	cc_continuation_line)
        '#' != nxt_line[nxt_line_start_idx[1]]) {
        nxt_line_idx = (nxt_line_start_idx[nxt_line_num_lines] - 1) + line_size;
        }
-#else /* KEY Bug 6839 */
-      nxt_line_idx = (nxt_line_start_idx[nxt_line_num_lines] - 1) + line_size;
-#endif /* KEY Bug 6839 */
    }
 
    if (nxt_line_idx == nxt_line_start_idx[nxt_line_num_lines] - 1 &&
@@ -1827,22 +1791,6 @@ boolean read_line (boolean	cc_continuation_line)
       }
 
 
-# if 0
-
-      /* LRR:  The following code to issue message 55 is being #ifdef'd out   */
-      /* because we can think of no reason for it being here, but I don't     */
-      /* want to lose it entirely in case in the future we do find a need for */
-      /* it.  It does nothing to fix the file anyway.  The newline has already*/
-      /* been inserted by code above this.  And if message 55 ever does get   */
-      /* issued, the message handler can't process it correctly because it    */
-      /* hits the EOF before it increments its line counter which makes it    */
-      /* look like it could not find the source line.  See SPR 84130.	      */
-
-      if (ch == EOF) { /* File line does not end with newline. */
-	 PRINTMSG (curr_glb_line, 55, Warning, 0);
-      }
-
-# endif
 
 
    }
@@ -3110,11 +3058,7 @@ START:
        issue_classify_msg) {
       issue_obsolete_src_form_msg = TRUE;
       ntr_next_msg_queue(PP_LINE_NUM, 1582,
-#ifdef KEY /* Bug 318, 321 */
       			 Ansi,
-#else /* KEY Bug 318, 321 */
-      			 Comment,
-#endif /* KEY Bug 318, 321 */
 			 0,
                          (char *)NULL,
                          0,
@@ -3348,11 +3292,7 @@ static void free_get_stmt (void)
                         nxt_line_type = Include_Line;
                         include_stmt_file_line = SRC_STK_FILE_LINE(src_stk_idx);
 
-#ifdef KEY /* Bug 10151 */
                         if (open_include_file (TRUE, FALSE))
-#else /* KEY Bug 10151 */
-                        if (open_include_file (TRUE))
-#endif /* KEY Bug 10151 */
 			{
                            include_found  = TRUE;      /* flag begin of file */
                            include_switch = TRUE;      /* flag file switch   */
@@ -3460,12 +3400,8 @@ static void free_get_stmt (void)
 
                      include_stmt_file_line = SRC_STK_FILE_LINE(src_stk_idx);
 
-#ifdef KEY /* Bug 10151 */
 		     if (open_include_file (FALSE,
 		       Pound_Include_Enter_Line == nxt_line_type))
-#else /* KEY Bug 10151 */
-		     if (open_include_file (FALSE))
-#endif /* KEY Bug 10151 */
 		     {
 		        include_found  = TRUE;		/* flag begin of file */
 		        include_switch = TRUE;		/* flag file switch   */
@@ -3791,11 +3727,7 @@ START:
 
                   if (!issue_obsolete_src_form_msg && issue_classify_msg) {
                      ntr_next_msg_queue(PP_LINE_NUM, 1582,
-#ifdef KEY /* Bug 318, 321 */
 		                        Ansi,
-#else /* KEY Bug 318, 321 */
-		                        Comment,
-#endif /* KEY Bug 318, 321 */
 					0,
                                         (char *)NULL,
                                         0,
@@ -4857,12 +4789,8 @@ START:
 |*									      *|
 \******************************************************************************/
 
-#ifdef KEY /* Bug 10151 */
 static boolean open_include_file (boolean pound_include_line,
   boolean allow_recursion)
-#else /* KEY Bug 10151 */
-static boolean open_include_file (boolean pound_include_line)
-#endif /* KEY Bug 10151 */
 
 {
    char	       *char_ptr;
@@ -4881,10 +4809,6 @@ static boolean open_include_file (boolean pound_include_line)
    int		src_stk_i;
    char		str[MAX_PATH_NAME_SIZE+10];
 
-# if 0
-   int		full_include_name_len;
-   int		prev_include_idx;
-# endif
 
 
    TRACE (Func_Entry, "open_include_file", NULL);
@@ -5049,76 +4973,6 @@ static boolean open_include_file (boolean pound_include_line)
    stmt_start_col  = save_stmt_start_col;
 
 
-# if 0
-
-   /*
-    * Although the following code that ensures that a single File Name record
-    * is produced no matter how many times the name appears in INCLUDE lines
-    * is the "correct" thing to do (this is the way it's documented), it is
-    * commented out for now because we use the file id as the Source Position
-    * record source id and this makes the source id *not* unique.  That is,
-    * we end up with multiple Source Position records with the same source
-    * id.  When all the visual tools get upgraded to CIF Version 3, then 
-    * they'll start using the Source Position records (which means the source
-    * position ids will come from a counter separate from the file ids) and
-    * we can go back to using this code.  That will mean that several Source
-    * Position records (with unique source position ids) will point to the 
-    * same file id (back to a unique File Name record).
-    * So for now, go back to the old lazy way of just slamming out a File Name
-    * record each time a file name is seen.
-   */
-   
-
-   /* If this fully expanded INCLUDE file name has not been encountered       */
-   /* before then call cif_file_name_rec in order to get the next CIF file    */
-   /* id.  Otherwise, use the file id already assigned to this file.          */
-   /* It's saved away (farther below) in the source stack so that buffered    */
-   /* message processing can use it at the end of the compilation.	      */
-
-   full_include_name_len = include_path_len + include_file_len;
-   include_idx           = full_include_name_idx;
-   prev_include_idx      = NULL_IDX;
-
-   while (include_idx != NULL_IDX) {
-
-      if (FP_NAME_LEN(include_idx) == full_include_name_len  &&
-          EQUAL_STRS(include_path, FP_NAME_PTR(include_idx))) {
-         break;
-      }
-      else {
-         prev_include_idx = include_idx;
-         include_idx      = FP_NEXT_FILE_IDX(include_idx);
-      }
-   }
-
-   if (include_idx == NULL_IDX) {
-      TBL_REALLOC_CK(file_path_tbl, 1);
-      CLEAR_TBL_NTRY(file_path_tbl, file_path_tbl_idx);
-
-      if (full_include_name_idx == NULL_IDX) {
-         full_include_name_idx = file_path_tbl_idx;
-      }
-      else {
-         FP_NEXT_FILE_IDX(prev_include_idx) = file_path_tbl_idx;
-      }
-
-      FP_NAME_IDX(file_path_tbl_idx) = str_pool_idx + 1;
-      FP_NAME_LEN(file_path_tbl_idx) = full_include_name_len;
-
-      TBL_REALLOC_CK(str_pool, WORD_LEN(full_include_name_len));
-
-      str_pool[str_pool_idx].name_long = 0;            /* Zero out last word. */
-
-      strcpy(FP_NAME_PTR(file_path_tbl_idx), include_path);
-
-      cif_file_id = cif_file_name_rec(include_path, include_file);
-      FP_CIF_ID(file_path_tbl_idx) = cif_file_id;
-   }
-   else {
-      cif_file_id = FP_CIF_ID(include_idx);
-   }
-
-# endif
 
    /* Delete the following line when the above code is reinstated.            */
 
@@ -5166,7 +5020,6 @@ static boolean open_include_file (boolean pound_include_line)
    }
    else {               /* Check for recursive use of INCLUDE file name.      */
 
-#ifdef KEY /* Bug 10151 */
     /*
      * Fortran standard 'include' forbids recursive use, and originally this
      * front end didn't allow it for any kind of inclusion (evidently -ftpp
@@ -5178,7 +5031,6 @@ static boolean open_include_file (boolean pound_include_line)
      * recursion solely on the basis of a "# filename lineno" directive.
      */
     if (!allow_recursion) {
-#endif /* KEY Bug 10151 */
       for (src_stk_i = src_stk_idx; src_stk_i > NULL_IDX; src_stk_i--) {
 
 	 if (EQUAL_STRS(include_path, SRC_STK_PATH_NAME(src_stk_i))) {
@@ -5186,9 +5038,7 @@ static boolean open_include_file (boolean pound_include_line)
 	    break;
 	 }
       }
-#ifdef KEY /* Bug 10151 */
     }
-#endif /* KEY Bug 10151 */
 
       if (recursive_use) { /* Recursive use of include file */
 	 ntr_msg_queue(curr_glb_line, 64, Error,
@@ -7577,11 +7427,7 @@ void     ntr_next_msg_queue(int                        line,
 static void move_up_next_msg_queue(void)
 
 {
-#ifdef KEY /* Bug 10177 */
    char 	*chptr = 0;
-#else /* KEY Bug 10177 */
-   char 	*chptr;
-#endif /* KEY Bug 10177 */
    int		i;
    int		k;
    boolean	duplicate;
@@ -7766,11 +7612,7 @@ void preprocess_only_driver(void)
 
                include_stmt_file_line = SRC_STK_FILE_LINE(src_stk_idx);
 
-#ifdef KEY /* Bug 10151 */
                if (open_include_file (TRUE, FALSE))
-#else /* KEY Bug 10151 */
-               if (open_include_file (TRUE))
-#endif /* KEY Bug 10151 */
 	       {
                   include_found  = TRUE;      /* flag begin of file */
                   include_switch = TRUE;      /* flag file switch   */
@@ -8444,15 +8286,10 @@ static void pp_get_stmt (void)
 
                   if (ignore_source_line) {
                      /* print blank line */
-#ifdef KEY /* Bug 4724 */
 		     /* See comment for bug 4724 below */
-#else
-                     fprintf(dot_i_fptr, "\n");
-#endif /* KEY Bug 4724 */
                      previous_global_line++;
                   }
                   else {
-#ifdef KEY /* Bug 4724 */
 		     /* When a series of more than one regular line (and
 		      * their continuation lines, if any) ends with a comment
 		      * line, this causes the comment line to appear ahead of
@@ -8468,9 +8305,6 @@ static void pp_get_stmt (void)
 		      * number. Preprocessor output (e.g. from cpp) normally
 		      * suppresses the content of comments anyway.
 		      */
-#else
-                     print_nxt_line();
-#endif /* KEY Bug 4724 */
                   }
                }
 
@@ -8521,11 +8355,7 @@ static void pp_get_stmt (void)
 
                include_stmt_file_line = SRC_STK_FILE_LINE(src_stk_idx);
 
-#ifdef KEY /* Bug 10151 */
                if (open_include_file (FALSE, FALSE))
-#else /* KEY Bug 10151 */
-               if (open_include_file (FALSE))
-#endif /* KEY Bug 10151 */
 	       {
                   include_found  = TRUE;          /* flag begin of file */
                   include_switch = TRUE;          /* flag file switch   */
@@ -8541,11 +8371,7 @@ static void pp_get_stmt (void)
             cc_include_line = TRUE;
             include_stmt_file_line = SRC_STK_FILE_LINE(src_stk_idx);
 
-#ifdef KEY /* Bug 10151 */
             if (open_include_file (TRUE, FALSE))
-#else /* KEY Bug 10151 */
-            if (open_include_file (TRUE))
-#endif /* KEY Bug 10151 */
 	    {
                include_found  = TRUE;      /* flag begin of file */
                include_switch = TRUE;      /* flag file switch   */

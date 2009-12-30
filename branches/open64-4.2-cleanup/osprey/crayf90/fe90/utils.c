@@ -479,7 +479,6 @@ boolean get_temp_file(char       *open_status,
 
    result = FALSE;
 
-#ifdef KEY	// bug 1383
    int fd;
    char buf[32];
    strcpy(buf, "/tmp/pathf90XXXXXX");
@@ -491,21 +490,6 @@ boolean get_temp_file(char       *open_status,
        result = TRUE;
      }
    }
-#else
-   tmp_file_name = (char *) tempnam(NULL, NULL);
-
-
-   if (tmp_file_name != NULL) {
-
-      if (file_name != NULL) {
-         strcpy(file_name, tmp_file_name);
-      }
-
-      if ((*file_ptr = fopen(tmp_file_name, open_status)) != NULL) {
-         result = TRUE;
-      }
-   }
-#endif
 
    TRACE (Func_Exit, "get_temp_file", NULL);
 

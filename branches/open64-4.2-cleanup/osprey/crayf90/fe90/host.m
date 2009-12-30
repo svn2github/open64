@@ -53,12 +53,8 @@
 #    define HOST_BYTES_TO_WORDS(BYTE_SIZE)	(((BYTE_SIZE)+7) >> 3)
 
 #    define MAX_MSG_SIZE			200
-#ifdef KEY /* Bug 3635 */
 /* This must increase to track our increase in MAX_ID_LEN */
 #    define NUM_ID_WDS				8	/* words in identifier*/
-#else
-#    define NUM_ID_WDS				4	/* words in identifier*/
-#endif /* KEY Bug 3635 */
 
 # elif _HOST32
 
@@ -68,11 +64,7 @@
 #    define HOST_BYTES_TO_WORDS(BYTE_SIZE)	(((BYTE_SIZE)+3) >> 2)
 
 #    define MAX_MSG_SIZE			400
-#ifdef KEY /* Bug 3635 */
 #    define NUM_ID_WDS				16      /* words in identifier*/
-#else
-#    define NUM_ID_WDS				8       /* words in identifier*/
-#endif /* KEY Bug 3635 */
 # endif
 
 /* From Cray man page.                                                       */

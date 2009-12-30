@@ -124,63 +124,6 @@ static boolean interpret_index_opr(int, expr_arg_type *, boolean, long64 *);
 extern int double_stride;
 #endif /* _WHIRL_HOST64_TARGET64 */
 
-#if 0 /* OSP_467, #1, We do not need these stuffs any more */
-/******************************************************************************\
- * |*                                                                            *|
- * |* Description:                                                               *|
- * |*      pack two 32-bit int into a 64-bit long. See OSP_454                   *|
- * |*      only used in 64-bit compiler (sizeof(long_type) == 64)                *|
- * |*      the order is controlled by _WHIRL_HOST64_TARGET64                     *|
- * |*      if _WHIRL_HOST64_TARGET64 is defined,                                 *|
- * |*          the high 32bit of result is opnds[1]                              *|
- * |*          the low 32bit of result is opnds[0]                               *|
- * |* TODO:                                                                      *|
- * |*      big-endian and small-endian                                           *|
- * |* Input parameters:                                                          *|
- * |*      opnds     - opnds[0] and opnd[1] will be packed into the result       *|
- * |* Returns:                                                                   *|
- * |*      long_type - the result made up by opnds[0] and opnds[1].              *|
- * \******************************************************************************/
-static long_type pack_int32_to_int64(long_type* opnds)
-{
-   long_type result = 0LL;
-# ifdef _WHIRL_HOST64_TARGET64
-   result |= opnds[1] << 32;
-   result |= result_value[0];
-# else
-   result |= result_value[0] << 32;
-   result |= result_value[1];
-# endif /* _WHIRL_HOST64_TARGET64 */
-   return result;
-}
-
-/******************************************************************************\
- * |*                                                                            *|
- * |* Description:                                                               *|
- * |*      unpack a 64-bit long into two 32bit int. See OSP_454                  *|
- * |*      only used in 64-bit compiler (sizeof(long_type) == 64)                *|
- * |*      the order is controlled by _WHIRL_HOST64_TARGET64                     *|
- * |*      if _WHIRL_HOST64_TARGET64 is defined,                                 *|
- * |*          the high 32bit of result is written to opnds[1]                   *|
- * |*          the low 32bit of result is written to opnds[0]                    *|
- * |* TODO:                                                                      *|
- * |*      big-endian and small-endian                                           *|
- * |* Input parameters:                                                          *|
- * |*      opnd     - the 64bit long to be unpacked                              *|
- * |*      results  - the high and low half of opnd will be written to results   *|
- * |*                 at least, results contains two elements                    *|
- * \******************************************************************************/
-void unpack_int64_to_int32(long_type opnd, long_type* results)
-{
-# ifdef _WHIRL_HOST64_TARGET64
-   results[1] = opnd >> 32;
-   results[0] = opnd & 0xffffffff;
-# else
-   results[0] = opnd >> 32;
-   results[1] = opnd & 0xffffffff;
-# endif /* _WHIRL_HOST64_TARGET64 */
-}
-#endif
 
 
 /******************************************************************************\
@@ -445,9 +388,6 @@ boolean create_constructor_constant(opnd_type	   *top_opnd,
       }
 
 # ifdef _DEBUG
-# if 0
-      print_cn(the_cn_idx);
-# endif
 # endif
 
    } /* ! single_value_array */
@@ -473,21 +413,6 @@ boolean create_constructor_constant(opnd_type	   *top_opnd,
 
    exp_desc->constructor = TRUE;
 
-# if 0
-   /* we are not doing this for now. All aggregates are returned */
-   /* as data init'd temps.                                      */
-
-   if (stmt_type == Data_Stmt) {
-      /* no tmps, just pass back the constant */
-      OPND_FLD((*top_opnd)) = CN_Tbl_Idx;
-      OPND_IDX((*top_opnd)) = the_cn_idx;
-      OPND_LINE_NUM((*top_opnd)) = line;
-      OPND_COL_NUM((*top_opnd))  = col;
-      exp_desc->foldable         = TRUE;
-      exp_desc->constant         = TRUE;
-      goto EXIT;
-   }
-# endif
 
    /* create tmp init here */
 
@@ -762,7 +687,6 @@ boolean fold_aggragate_expression(opnd_type	*top_opnd,
 
    if (exp_desc->rank   == 0          &&
        target_array_idx == NULL_IDX   &&
-#ifdef KEY /* Bug 572 */
        /* We've modified the "false" branch of this "if" to handle constant
         * pointers correctly, so we force them to take that branch. If that
 	* ever turns out not to work in some circumstance (e.g. because it
@@ -771,7 +695,6 @@ boolean fold_aggragate_expression(opnd_type	*top_opnd,
 	* to hold the pointer if the constant is not associated with a temp
 	* having the correct type? */
        (!(exp_desc->constant && exp_desc->pointer)) &&
-#endif /* KEY Bug 572 */
        exp_desc->type   != Structure) {
 
       /* create normal CN entry */
@@ -846,11 +769,9 @@ boolean fold_aggragate_expression(opnd_type	*top_opnd,
       }
       else {
          ok = interpret_constructor(top_opnd, &loc_exp_desc, FALSE, &zero);
-#ifdef KEY /* Bug 572 */
          if (!ok) {
 	   return ok;
 	 }
-#endif /* KEY Bug 572 */
         
          if (loc_exp_desc.constant) {
 
@@ -931,7 +852,6 @@ boolean fold_aggragate_expression(opnd_type	*top_opnd,
       ok = interpret_constructor(top_opnd, exp_desc, TRUE, &loc_element);
 
       if (exp_desc->constant) {
-#ifdef KEY /* Bug 572 */
 	 /* If this is a constant pointer, e.g. "parameter_x%ptr_component_y",
 	  * we need to use the size of the dope vector, not the size of the
 	  * target of the pointer. */
@@ -944,7 +864,6 @@ boolean fold_aggragate_expression(opnd_type	*top_opnd,
 	      TRUE, FALSE).constant[0];
 	 }
 	 else
-#endif /* KEY Bug 572 */
          increment_count(exp_desc);
       }
 
@@ -1227,7 +1146,6 @@ boolean fold_aggragate_expression(opnd_type	*top_opnd,
          }
       }
 
-#ifdef KEY /* Bug 572 */
       /* It's a pointer, e.g. "parameter_x%ptr_component_y", so we must
        * mark the temporary accordingly. We must also put a "Dv_Deref_Opr"
        * atop it, because later semantics processing demands that every
@@ -1248,7 +1166,6 @@ boolean fold_aggragate_expression(opnd_type	*top_opnd,
 	 OPND_FLD((*top_opnd)) = IR_Tbl_Idx;
       }
       else
-#endif /* KEY Bug 572 */
       OPND_FLD((*top_opnd)) = AT_Tbl_Idx;
       OPND_IDX((*top_opnd)) = tmp_idx;
       OPND_LINE_NUM((*top_opnd)) = line;
@@ -1575,7 +1492,6 @@ static boolean interpret_constructor(opnd_type		*top_opnd,
                   }
 
                }
-#ifdef KEY /* Bug 7387 */
 	       /* Special case where the constant is "null()" */
 	       else if (ATD_POINTER(attr_idx) &&
 		 ATD_CLASS(attr_idx) == Compiler_Tmp &&
@@ -1590,7 +1506,6 @@ static boolean interpret_constructor(opnd_type		*top_opnd,
 		 }
 		 the_cn_bit_offset += i * TARGET_BITS_PER_WORD;
 	       }
-#endif /* KEY Bug 7387 */
                else {
 
                   k = TARGET_BITS_TO_WORDS(the_cn_bit_offset);
@@ -1960,9 +1875,7 @@ static boolean interpret_constructor(opnd_type		*top_opnd,
                ok = interpret_csmg_opr(ir_idx, exp_desc, count, element);
                break;
 
-#ifdef KEY /* Bug 10410 */
             case Cselect_Opr :
-#endif /* KEY Bug 10410 */
             case Cvmgt_Opr :
                ok = interpret_cvmgt_opr(ir_idx, exp_desc, count, element);
                break;
@@ -2118,11 +2031,7 @@ static void increment_count(expr_arg_type	*exp_desc)
 static void write_constant(int			type_idx)
 
 {
-#ifdef KEY /* Bug 10177 */
    long64		 bits = 0;
-#else /* KEY Bug 10177 */
-   long64		 bits;
-#endif /* KEY Bug 10177 */
    char			*char_ptr;
    long64		 cn_word_offset;
    long64		 i;
@@ -2226,24 +2135,6 @@ static void write_constant(int			type_idx)
       }
    }
    
-# if 0  /* OSP_467, #1, We do not need these stuffs any more 
-	   since the COMPLEX_4 is packed into a 64-bit long on TARGET64 */  
-# if defined(_TARGET64)
-   if (TYP_LINEAR(type_idx) == Complex_4 &&   /* BRIANJ - ?? */
-       bits == TARGET_BITS_PER_WORD) {
-
-      /* the result value is in two words, must get packed */
-      /* BHJ assumes that the result constant is word aligned */
-      /* also, hard coded 32 here. Hope that's not a problem */
-
-      cn_word_offset = the_cn_bit_offset/TARGET_BITS_PER_WORD;
-      /* OSP_454, abandoned */
-      CP_CONSTANT(CN_POOL_IDX(the_cn_idx)+cn_word_offset) = 
-                  pack_int32_to_int64(result_value);
-   }
-   else 
-# endif
-# endif
 
    if (bits % TARGET_BITS_PER_WORD != 0) {
       if (bits < TARGET_BITS_PER_WORD) {
@@ -2354,11 +2245,7 @@ static boolean interpret_implied_do(int		   ir_idx,
    boolean 		ok = TRUE;
    opnd_type		opnd;
    int			position_idx;
-#ifdef KEY /* Bug 10177 */
    opnd_type		save_atd_tmp_opnd = INIT_OPND_TYPE;
-#else /* KEY Bug 10177 */
-   opnd_type		save_atd_tmp_opnd;
-#endif /* KEY Bug 10177 */
    long_type		start_value[MAX_WORDS_FOR_NUMERIC];
    long_type		stride_value[MAX_WORDS_FOR_NUMERIC];
    long64		sub_elements;
@@ -2553,13 +2440,8 @@ static boolean interpret_implied_do(int		   ir_idx,
          else {
             break;
          }
-# ifdef KEY
          SET_LCV_CONST(lcv_idx, lcv_value[0], 
                        num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))], num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
-# else
-         SET_LCV_CONST(lcv_idx, lcv_value[0], 
-                       num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
-# endif
 
          list_idx = IR_IDX_L(ir_idx);
 
@@ -2705,14 +2587,9 @@ static boolean interpret_implied_do(int		   ir_idx,
       }
 
       /* restore the guts of the lcv temp attr */
-# ifdef KEY
       SET_LCV_CONST(lcv_idx, CN_CONST(ATD_TMP_IDX(lcv_idx)),
                     num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))],
                     num_host_wds[TYP_LINEAR(CN_TYPE_IDX(ATD_TMP_IDX(lcv_idx)))]);
-# else
-      SET_LCV_CONST(lcv_idx, CN_CONST(ATD_TMP_IDX(lcv_idx)),
-                    num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
-# endif
       
 
       if (count) {
@@ -2897,13 +2774,8 @@ static boolean interpret_implied_do(int		   ir_idx,
                break;
             }
 
-# ifdef KEY
             SET_LCV_CONST(lcv_idx, lcv_value[0], 
                           num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))], num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
-# else
-            SET_LCV_CONST(lcv_idx, lcv_value[0], 
-                          num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
-# endif
 
             list_idx = IR_IDX_L(ir_idx);
 
@@ -2974,14 +2846,9 @@ static boolean interpret_implied_do(int		   ir_idx,
          char_result_len	= longest_char_len;
 
          /* restore the guts of the lcv temp attr */
-#ifdef KEY   
          SET_LCV_CONST(lcv_idx, CN_CONST(ATD_TMP_IDX(lcv_idx)),
                        num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))],
                        num_host_wds[TYP_LINEAR(CN_TYPE_IDX(ATD_TMP_IDX(lcv_idx)))]);
-#else
-         SET_LCV_CONST(lcv_idx, CN_CONST(ATD_TMP_IDX(lcv_idx)),
-                       num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
-#endif
 
          ATD_FLD(lcv_idx) = OPND_FLD(save_atd_tmp_opnd);
          ATD_TMP_IDX(lcv_idx) = OPND_IDX(save_atd_tmp_opnd);
@@ -3235,13 +3102,8 @@ static boolean interpret_implied_do(int		   ir_idx,
             }
 
             list_idx = IL_NEXT_LIST_IDX(IR_IDX_R(ir_idx));
-#ifdef KEY
             SET_LCV_CONST(lcv_idx, start_value[0],
                           num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))], num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
-#else
-            SET_LCV_CONST(lcv_idx, start_value[0],
-                          num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
-#endif
       
             list_idx = IL_NEXT_LIST_IDX(list_idx);
 
@@ -3388,13 +3250,8 @@ static boolean interpret_implied_do(int		   ir_idx,
                                   compare_opr) && ok;
 
                if (THIS_IS_TRUE(loc_value, unused)) {
-#ifdef KEY
                   SET_LCV_CONST(lcv_idx, lcv_value[0],
                                num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))], num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
-#else
-                  SET_LCV_CONST(lcv_idx, lcv_value[0],
-                               num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
-#endif
                   IL_NEXT_LIST_IDX(position_idx) = IR_IDX_L(ir_idx);
                   IL_ELEMENT(position_idx)       = 1;
                   (*element)++;
@@ -3429,13 +3286,8 @@ static boolean interpret_implied_do(int		   ir_idx,
                   IL_NEXT_LIST_IDX(list_idx) = NULL_IDX;
 
                   /* restore the guts of the lcv temp attr */
-#ifdef KEY
                   SET_LCV_CONST(lcv_idx, CN_CONST(ATD_TMP_IDX(lcv_idx)),
                              num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))],num_host_wds[TYP_LINEAR(CN_TYPE_IDX(ATD_TMP_IDX(lcv_idx)))]);
-#else
-                  SET_LCV_CONST(lcv_idx, CN_CONST(ATD_TMP_IDX(lcv_idx)),
-                             num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
-#endif
                }
             }
          }
@@ -3454,9 +3306,7 @@ DONE:
 
 }  /* interpret_implied_do */
 
-#ifdef KEY /* Bug 572 */
 boolean constant_ptr_ok = FALSE;
-#endif /* KEY Bug 572 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -3484,20 +3334,12 @@ static boolean interpret_ref(opnd_type		*top_opnd,
 {
 
    int			base_attr_idx;
-#ifdef KEY /* Bug 10177 */
    int			base_cn_idx = 0;
-#else /* KEY Bug 10177 */
-   int			base_cn_idx;
-#endif /* KEY Bug 10177 */
    int			bd_idx;
    long64		bit_offset = 0;
    char			*char_ptr;
    char			*char_ptr2;
-#ifdef KEY /* Bug 10177 */
    long64		char_len = 0;
-#else /* KEY Bug 10177 */
-   long64		char_len;
-#endif /* KEY Bug 10177 */
    long64		cn_bit_offset;
    int			col;
    long64		end_array[8];
@@ -3518,22 +3360,14 @@ static boolean interpret_ref(opnd_type		*top_opnd,
    expr_arg_type        loc_exp_desc;
    long_type		loc_value[MAX_WORDS_FOR_NUMERIC];
    boolean		neg_stride[8];
-#ifdef KEY /* Bug 10177 */
    long64		num_bits = 0;
-#else /* KEY Bug 10177 */
-   long64		num_bits;
-#endif /* KEY Bug 10177 */
    long64		num_words;
    boolean		ok = TRUE;
    opnd_type		opnd;
    opnd_type		opnd2;
    int			rank;
    boolean		rank_array[8];
-#ifdef KEY /* Bug 10177 */
    int			rank_idx = 0;
-#else /* KEY Bug 10177 */
-   int			rank_idx;
-#endif /* KEY Bug 10177 */
    boolean		single_value_const = FALSE;
    long64		sm_in_bits;
    long64		start_array[8];
@@ -3626,7 +3460,6 @@ static boolean interpret_ref(opnd_type		*top_opnd,
          break;
    }
 
-#ifdef KEY /* Bug 572 */
    /* According to the F95 standard, an entity can't have both the parameter
     * and target attributes; and an entity can't have both the parameter and
     * pointer attributes. But an entity which has the parameter attribute
@@ -3692,7 +3525,6 @@ static boolean interpret_ref(opnd_type		*top_opnd,
        ok = FALSE;
      }
    }
-#endif /* KEY Bug 572 */
 
    if (count) {
 
@@ -4313,30 +4145,6 @@ ZERO_ARRAY:
          }
       }
       else {
-# if 0 /* OSP_467, #1, We do not need these stuffs any more
-          since the COMPLEX_4 is packed into a 64-bit long on TARGET64 */
-# if defined(_TARGET64)
-         if (exp_desc->linear_type == Complex_4 &&
-             num_bits == TARGET_BITS_PER_WORD) {
-
-            /* must split the complex into two result_value elements */
-            /* BHJ assumes these are word aligned.                   */
-            /* BRIANJ */
-
-            if (single_value_const) {
-               result_value[0] = CP_CONSTANT(CN_POOL_IDX(base_cn_idx));
-               result_value[1] = CP_CONSTANT(CN_POOL_IDX(base_cn_idx) + 1);
-            }
-            else {
-               word_offset = bit_offset/TARGET_BITS_PER_WORD;
-               /* OSP_454, abandoned */
-               unpack_int64_to_int32 (
-                     CP_CONSTANT(CN_POOL_IDX(base_cn_idx) + word_offset), result_value );
-	    }
-         }
-         else 
-# endif
-# endif
          if (single_value_const &&
              num_bits < TARGET_BITS_PER_WORD &&
              (exp_desc->type == Integer ||
@@ -4504,29 +4312,6 @@ ZERO_ARRAY:
          }
       }
       else {
-#if 0 /* OSP_467, #1, We do not need these stuffs any more
-         since the COMPLEX_4 is packed into a 64-bit long on TARGET64 */
-# if defined(_TARGET64)
-         if (exp_desc->linear_type == Complex_4 &&
-             num_bits == TARGET_BITS_PER_WORD) {
-
-            if (single_value_const) {  /* BRIANJ */
-               result_value[0] = CP_CONSTANT(CN_POOL_IDX(base_cn_idx));
-               result_value[1] = CP_CONSTANT(CN_POOL_IDX(base_cn_idx) + 1);
-            }
-            else {
-               /* must split the complex into two result_value elements */
-               /* BHJ assumes these are word aligned.                   */
-
-               word_offset = bit_offset/TARGET_BITS_PER_WORD;
-               /* OSP_454, abandoned */
-               unpack_int64_to_int32 (
-                     CP_CONSTANT(CN_POOL_IDX(base_cn_idx) + word_offset), result_value );
-            }
-         }
-         else 
-# endif
-# endif		 
          if (single_value_const &&
              num_bits < TARGET_BITS_PER_WORD &&
              (exp_desc->type == Integer ||
@@ -4823,29 +4608,6 @@ ZERO_ARRAY:
                }
             }
             else {
-# if 0 /* OSP_467, #1, We do not need these stuffs any more
-          since the COMPLEX_4 is packed into a 64-bit long on TARGET64 */
-# if defined(_TARGET64)
-               if (exp_desc->linear_type == Complex_4 &&
-                   num_bits == TARGET_BITS_PER_WORD) {
-
-                  if (single_value_const) {
-                     result_value[0] = CP_CONSTANT(CN_POOL_IDX(base_cn_idx));
-                     result_value[1] = CP_CONSTANT(CN_POOL_IDX(base_cn_idx)+1);
-                  }
-                  else {
-                     /* must split the complex into two result_value elements */
-                     /* BHJ assumes these are word aligned.                   */
-
-                     word_offset = bit_offset/TARGET_BITS_PER_WORD;
-                     /* OSP_454, abandoned */
-                     unpack_int64_to_int32 (
-                           CP_CONSTANT(CN_POOL_IDX(base_cn_idx) + word_offset), result_value );
-		  }
-               }
-               else
-# endif
-# endif		       
                if (single_value_const &&
                    num_bits < TARGET_BITS_PER_WORD &&
                    (exp_desc->type == Integer ||
@@ -5386,11 +5148,7 @@ static boolean interpret_array_construct_opr(int		ir_idx,
    long64               char_result_offset_l;
    int			col;
    expr_arg_type        exp_desc_l;
-#ifdef KEY /* Bug 10177 */
    long64            	extent = 0;
-#else /* KEY Bug 10177 */
-   long64            	extent;
-#endif /* KEY Bug 10177 */
    int			i;
    int			line;
    int			list_idx;
@@ -6537,11 +6295,7 @@ static boolean interpret_transfer_intrinsic(int                  ir_idx,
    int			type_idx;
    int			type_idx1;
    int			type_idx2;
-#ifdef KEY /* Bug 10177 */
    int			type_idx3 = 0;
-#else /* KEY Bug 10177 */
-   int			type_idx3;
-#endif /* KEY Bug 10177 */
 
 
    TRACE (Func_Entry, "interpret_transfer_intrinsic", NULL);
@@ -6839,13 +6593,8 @@ static boolean interpret_reshape_intrinsic(int                  ir_idx,
    int			type_idx;
    int			type_idx1;
    int			type_idx2;
-#ifdef KEY /* Bug 10177 */
    int			type_idx3 = 0;
    int			type_idx4 = 0;
-#else /* KEY Bug 10177 */
-   int			type_idx3;
-   int			type_idx4;
-#endif /* KEY Bug 10177 */
 
 
 
@@ -8925,12 +8674,10 @@ static boolean interpret_index_opr(int                  ir_idx,
          loc_value_r[i] = result_value[i];
       }
 
-#ifdef KEY /* Bug 4867 */
       /* Pass the result back via "element" (imitating the code in
        * functions interpret_binary_opr, interpret_concat_opr, etc.)
        */
       *element = loc_element_l;
-#endif /* KEY Bug 4867 */
 
       CLEAR_TBL_NTRY(type_tbl, TYP_WORK_IDX);
       TYP_TYPE(TYP_WORK_IDX)		= Character;

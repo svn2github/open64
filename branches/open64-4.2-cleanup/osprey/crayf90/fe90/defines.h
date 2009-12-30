@@ -37,8 +37,6 @@
 */
 
 
-# if 0  
-
 /* USMID:  "\n@(#)5.0_pl/headers/defines.h	5.17	10/20/99 17:17:46\n" */
 
 /******************************************************************************/
@@ -305,7 +303,6 @@
 /*									      */
 /******************************************************************************/
 /******************************************************************************/
-# endif
 
 # ifdef _PVP_PVP
 #	define _ENABLE_FEI     			1
@@ -508,16 +505,12 @@
 
 # if defined(_LINUX_LINUX) || defined(_DARWIN_DARWIN)
 
-# if 0
 /*******************************************************/
 /*  These are necessary to compile on linux.   We're   */
 /*  not sure what they are.                            */
 /*******************************************************/
-# endif
 
-# if 0
 /*      This is needed for a library include file */
-# endif
 
 #	define _LITTLE_ENDIAN			1
 #       define _GNU_SOURCE                      1
@@ -565,12 +558,7 @@
 #	define _INTEGER_1_AND_2			1
 #	define _NAME_SUBSTITUTION_INLINING	1
 #	define _NO_AT_SIGN_IN_NAMES		1
-/* Bug 2001 */
-#       ifdef KEY
 #       define _EXTENDED_CRI_CHAR_POINTER       1
-#       else
-#	define _NO_CRAY_CHARACTER_PTR		1
-#       endif
 #	define _NO_IO_ALTERNATE_RETURN		1
 #	define _POINTEES_CAN_BE_STRUCT		1
 #       define _QUAD_PRECISION                  1

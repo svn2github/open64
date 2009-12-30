@@ -114,7 +114,6 @@
 
 # ifdef _USE_FOLD_DOT_f
 
-#ifdef KEY /* Bug 5554 */
 # define CONVERT_INT_CONST(TYPE, LEN, RESULT)                                  \
        {const_buf[(LEN)] = '\0';                                               \
 	RESULT = kludge_input_conversion(const_buf, TYPE, 0); }
@@ -134,21 +133,6 @@
 # define CONVERT_DBL_CONST(TYPE, LEN, RESULT)                                  \
        {const_buf[(LEN)] = '\0';                                               \
 	RESULT = kludge_input_conversion(const_buf, TYPE, FALSE); }
-#else /* KEY Bug 5554 */
-
-# define CONVERT_INT_CONST(TYPE, LEN, RESULT)                                  \
-       {const_buf[(LEN)] = '\0';                                               \
-	kludge_input_conversion(const_buf, TYPE); }
-
-# define CONVERT_REAL_CONST(TYPE, LEN, RESULT)                                 \
-       {const_buf[(LEN)] = '\0';                                               \
-	kludge_input_conversion(const_buf, TYPE); }
-
-# define CONVERT_DBL_CONST(TYPE, LEN, RESULT)                                  \
-       {const_buf[(LEN)] = '\0';                                               \
-	kludge_input_conversion(const_buf, TYPE); }
-
-#endif /* KEY Bug 5554 */
 
 # else
 

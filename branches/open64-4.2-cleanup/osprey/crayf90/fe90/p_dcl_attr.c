@@ -62,11 +62,7 @@ static char USMID[] = "\n@(#)5.0_pl/sources/p_dcl_attr.c	5.2	06/17/99 09:28:10\n
 /*****************************************************************\
 |* function prototypes of static functions declared in this file *|
 \*****************************************************************/
-#ifdef KEY /* Bug 14150 */
 static int parse_attrs(boolean (*func) (boolean, int, int, int));
-#else /* defined(BUILD_OS_DARWIN) */
-static void parse_attrs(boolean (*func) (boolean, int, int, int));
-#endif /* KEY Bug 14150 */
 
 
 /******************************************************************************\
@@ -87,11 +83,7 @@ static void parse_attrs(boolean (*func) (boolean, int, int, int));
 |*									      *|
 \******************************************************************************/
 
-#ifdef KEY /* Bug 14150 */
 static int
-#else /* KEY Bug 14150 */
-static void
-#endif /* KEY Bug 14150 */
 parse_attrs(boolean (*merge_function) ())
 
 {
@@ -105,9 +97,7 @@ parse_attrs(boolean (*merge_function) ())
    int		name_idx;
    int		new_sb_idx;
    int		sb_idx;
-#ifdef KEY /* Bug 14150 */
    int		count = 0;
-#endif /* KEY Bug 14150 */
 
 
    TRACE (Func_Entry, "parse_attrs", NULL);
@@ -139,7 +129,6 @@ parse_attrs(boolean (*merge_function) ())
 
          if (attr_idx == NULL_IDX) {
             found_attr			= FALSE;
-#ifdef KEY /* Bug 14110 */
 	    /* Handle the case of "volatile x" when we haven't seen any other
 	     * declaration for "x" in the current scope, but there's an "x" in
 	     * the host scope. If we see no further declaration in the current
@@ -162,7 +151,6 @@ parse_attrs(boolean (*merge_function) ())
 	        break;
 	      }
 	    }
-#endif /* KEY Bug 14110 */
             attr_idx			= ntr_sym_tbl(&token, name_idx);
             LN_DEF_LOC(name_idx)	= TRUE;      /* Can't be host assoc */
 
@@ -235,9 +223,7 @@ parse_attrs(boolean (*merge_function) ())
 
          if (stmt_type != Dimension_Stmt) {
             (*merge_function) (found_attr, line, column, attr_idx);
-#ifdef KEY /* Bug 14150 */
             count += 1;
-#endif /* KEY Bug 14150 */
          }
 
          AT_DCL_ERR(attr_idx) = AT_DCL_ERR(attr_idx) | blk_err;
@@ -252,9 +238,7 @@ parse_attrs(boolean (*merge_function) ())
       }
       else if (LA_CH_VALUE == SLASH &&
                (stmt_type == Save_Stmt ||
-#ifdef KEY /* Bug 14150 */
                 stmt_type == Bind_Stmt ||
-#endif /* KEY Bug 14150 */
                 stmt_type == Volatile_Stmt)) {
 
          NEXT_LA_CH;		/* Pick up slash */
@@ -304,7 +288,6 @@ parse_attrs(boolean (*merge_function) ())
 
                SB_SAVED(sb_idx)		= TRUE;
             }
-#ifdef KEY /* Bug 14150 */
             else if (stmt_type == Bind_Stmt) {
 	       set_binding_label(SB_Tbl_Idx, sb_idx, &new_binding_label);
 	       count += 1;
@@ -323,7 +306,6 @@ parse_attrs(boolean (*merge_function) ())
 		 }
 	       }
 	    }
-#endif /* KEY Bug 14150 */
             else {  /* Volatile_Stmt */
                SB_VOLATILE(sb_idx)	= TRUE;
             }
@@ -368,11 +350,7 @@ parse_attrs(boolean (*merge_function) ())
 
    TRACE (Func_Exit, "parse_attrs", NULL);
 
-#ifdef KEY /* Bug 14150 */
    return count;
-#else /* KEY Bug 14150 */
-   return;
-#endif /* KEY Bug 14150 */
 
 
 }  /* parse_attrs */
@@ -776,11 +754,7 @@ void parse_optional_stmt(void)
 void parse_pointer_stmt (void)
 
 {
-#ifdef KEY /* Bug 10177 */
    int		array_idx = 0;
-#else /* KEY Bug 10177 */
-   int		array_idx;
-#endif /* KEY Bug 10177 */
    int		attr_idx;
    int		name_idx;
    boolean	parse_err;
@@ -1167,11 +1141,7 @@ void parse_volatile_stmt (void)
 {
    TRACE (Func_Entry, "parse_volatile_stmt", NULL);
 
-#ifdef KEY /* Bug 14110 */
    PRINTMSG(stmt_start_line, 1685, Ansi, stmt_start_col, "VOLATILE");
-#else /* KEY Bug 14110 */
-   PRINTMSG(stmt_start_line, 1253, Ansi, stmt_start_col, "VOLATILE");
-#endif /* KEY Bug 14110 */
    
    parse_attrs(merge_volatile);
 
@@ -1180,7 +1150,6 @@ void parse_volatile_stmt (void)
    return;
 
 }  /* parse_volatile_stmt */
-#ifdef KEY /* Bug 14150 */
 /*
  *	BNF is
  *		language-binding-spec [ :: ] bind-entity-list
@@ -1217,4 +1186,3 @@ void parse_value_stmt (void)
    return;
 
 }  /* parse_value_stmt */
-#endif /* KEY Bug 14150 */

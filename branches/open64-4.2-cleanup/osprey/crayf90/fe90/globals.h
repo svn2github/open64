@@ -161,17 +161,11 @@ enum	glb_tbl_idx_values	{Allocate_Attr_Idx,
 				 Ptr_Chk_Attr_Idx,
 				 Pe_Offset_Attr_Idx,
 				 Set_Numthreads_Attr_Idx,
-#ifdef KEY /* Bug 8117 */
 				 Copyin_Attr_Idx,
 				 Copyout_Attr_Idx,
-#endif /* KEY Bug 8117 */
-#ifdef KEY /* Bug 5089 */
 				 Ieee_Save_Attr_Idx,
 				 Ieee_Restore_Attr_Idx,
-#endif  /* KEY Bug 5089 */
-#ifdef KEY /* Bug 6845 */
                                  Assign_Allocatable_Idx,
-#endif /* KEY Bug 6845 */
 				 Num_Glb_Tbl_Idxs
 				};
 
@@ -196,7 +190,6 @@ enum	sgi_inline_state_values	{Not_Specified_Sgi,
 
 typedef enum sgi_inline_state_values sgi_inline_state_type;
 				 
-#ifdef KEY /* Bug 4656 */
 /* Bitmask values used for "family" member of intrin_tbl_entry; make sure
  * "families" member of intrin_tbl_entry is wide enough. */
 enum    intrinsic_family       {
@@ -215,7 +208,6 @@ typedef struct {
   } intrin_family_t;
 extern intrin_family_t intrin_families[];
 extern int SIZEOF_INTRIN_FAMILIES;
-#endif /* KEY Bug 4656 */
 
 enum    intrinsic_values       {Unknown_Intrinsic,
 			        Abs_Intrinsic,
@@ -292,12 +284,10 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Cvmgp_Intrinsic,
 				Cvmgt_Intrinsic,
 				Cvmgz_Intrinsic,
-#ifdef KEY /* Bug 14150 */
 				C_F_Pointer_Intrinsic,
 				C_F_Procpointer_Intrinsic,
 				C_Funloc_Intrinsic,
 				C_Loc_Iso_Intrinsic,
-#endif /* KEY Bug 14150 */
 				C_Loc_Intrinsic,
 				Dabs_Intrinsic,
 				Dacos_Intrinsic,
@@ -319,10 +309,8 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Dcosh_Intrinsic,
 				Dcot_Intrinsic,
 				Ddim_Intrinsic,
-#ifdef KEY /* Bug 1324 */
 				Derf_Intrinsic,
 				Derfc_Intrinsic,
-#endif /* KEY Bug 1324 */
 				Dexp_Intrinsic,
 				Dfloat_Intrinsic,
 				Dfloati_Intrinsic,
@@ -364,27 +352,19 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Dtan_Intrinsic,
 				Dtand_Intrinsic,
 				Dtanh_Intrinsic,
-# ifdef KEY
                                 Dtime_Intrinsic,
-# endif
 				Enable_Ieee_Interrupt_Intrinsic,
 				Eoshift_Intrinsic,
 				Epsilon_Intrinsic,
 				Eqv_Intrinsic,
-#ifdef KEY /* Bug 1324 */
 				Erf_Intrinsic,
 				Erfc_Intrinsic,
-#endif /* KEY Bug 1324 */
-#ifdef KEY /* Bug 3018 */
 				Etime_Intrinsic,
-#endif /* KEY Bug 3018 */
 				Exit_Intrinsic,
 				Exp_Intrinsic,
 				Exponent_Intrinsic,
 				Fcd_Intrinsic,
-# ifdef KEY
 				Fdate_Intrinsic,
-# endif
 				Fetch_And_Add_Intrinsic,
 				Fetch_And_And_Intrinsic,
 				Fetch_And_Nand_Intrinsic,
@@ -396,15 +376,11 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Floatj_Intrinsic,
 				Floatk_Intrinsic,
 				Floor_Intrinsic,
-# ifdef KEY
 				Fnum_Intrinsic,
-# endif
 				Fp_Class_Intrinsic,
 				Fraction_Intrinsic,
 				Free_Intrinsic,
-#ifdef KEY
                                 Fstat_Intrinsic,
-#endif
 				Getpos_Intrinsic,
 				Get_Ieee_Exceptions_Intrinsic,
 				Get_Ieee_Interrupts_Intrinsic,
@@ -513,9 +489,7 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Kidint_Intrinsic,
 				Kieor_Intrinsic,
 				Kifix_Intrinsic,
-#ifdef KEY
 				Kill_Intrinsic,
-#endif
 				Kind_Intrinsic,
 				Kint_Intrinsic,
 				Kior_Intrinsic,
@@ -582,35 +556,25 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Null_Intrinsic,
 				Numarg_Intrinsic,
 				Num_Images_Intrinsic,
-#ifdef KEY
                                 Omp_Destroy_Lock_Intrinsic,
                                 Omp_Destroy_Nest_Lock_Intrinsic,
-#endif
 				Omp_Get_Dynamic_Intrinsic,
 				Omp_Get_Max_Threads_Intrinsic,
 				Omp_Get_Nested_Intrinsic,
 				Omp_Get_Num_Procs_Intrinsic,
 				Omp_Get_Num_Threads_Intrinsic,
 				Omp_Get_Thread_Num_Intrinsic,
-#ifdef KEY
                                 Omp_Get_Wtick_Intrinsic,
                                 Omp_Get_Wtime_Intrinsic,
                                 Omp_Init_Lock_Intrinsic,
                                 Omp_Init_Nest_Lock_Intrinsic,
-#endif
 				Omp_In_Parallel_Intrinsic,
 				Omp_Set_Lock_Intrinsic,
-#ifdef KEY
 				Omp_Set_Nest_Lock_Intrinsic,
-#endif
 				Omp_Test_Lock_Intrinsic,
-#ifdef KEY
 				Omp_Test_Nest_Lock_Intrinsic,
-#endif
 				Omp_Unset_Lock_Intrinsic,
-#ifdef KEY
 				Omp_Unset_Nest_Lock_Intrinsic,
-#endif
 				Or_Intrinsic,
 				Or_And_Fetch_Intrinsic,
 				Pack_Intrinsic,
@@ -691,9 +655,7 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Shiftr_Intrinsic,
 				Short_Intrinsic,
 				Sign_Intrinsic,
-#ifdef KEY
 				Signal_Intrinsic,
-#endif
 				Sin_Intrinsic,
 				Sind_Intrinsic,
 				Sinh_Intrinsic,
@@ -704,9 +666,7 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Spacing_Intrinsic,
 				Spread_Intrinsic,
 				Sqrt_Intrinsic,
-#ifdef KEY
                                 Stat_Intrinsic,
-#endif
 				Sub_And_Fetch_Intrinsic,
 				Sum_Intrinsic,
 				Synchronize_Intrinsic,
@@ -719,10 +679,8 @@ enum    intrinsic_values       {Unknown_Intrinsic,
                                 Test_Ieee_Interrupt_Intrinsic,
 				This_Image_Intrinsic,
 				Time_Intrinsic,
-#ifdef KEY
 				Time4_Intrinsic,
 				Time8_Intrinsic,
-#endif
 				Tiny_Intrinsic,
 				Transfer_Intrinsic,
 				Transpose_Intrinsic,
@@ -734,24 +692,16 @@ enum    intrinsic_values       {Unknown_Intrinsic,
                                 Write_Memory_Barrier_Intrinsic,
 				Xor_Intrinsic,
 				Xor_And_Fetch_Intrinsic,
-# ifdef KEY
 				Zabs_Intrinsic,
 				Zcos_Intrinsic,
 				Zexp_Intrinsic,
 				Zlog_Intrinsic,
 				Zsin_Intrinsic,
 				Zsqrt_Intrinsic,
-# endif
-#ifdef KEY /* Bug 1683 */
 			 	Pathf90_Intrinsic,
-#endif /* KEY Bug 1683 */
-#ifdef KEY /* Bug 5089 */
 				True_Intrinsic,
 				Support_Uflow_Intrinsic,
-#endif /* KEY Bug 5089 */
-#ifdef KEY /* F2003 */
 				Newline_Intrinsic
-#endif /* KEY F2003 */
 				};
 
 
@@ -809,18 +759,8 @@ enum	msg_lvl_values	       {Comment_Lvl,
 /* Note: all message levels are output to CIF, only Comment .. Internal,      */
 /*	 Log_Error, Log_Warning and Ansi are output to stderr		      */
 
-#ifdef KEY /* Bug 6121 */
 /* Move PRINTMSG et al to printmsg.h so C++ can call it */
 #include "printmsg.h"
-#else /* KEY Bug 6121 */
-enum	msg_severities	       {Comment,	Note,		Caution,
-				Warning,	Error,		Internal,
-				Vector,		Scalar,		Table,
-				Ansi,		Log_Warning,	Inline,
-				Info,		Tasking,	Limit,
-				Log_Error,	Log_Summary,	F77_Ansi,
-				Optimization,	Stream,		Unknown_Error };
-#endif /* KEY Bug 6121 */
 
 /* NOTE:  Tables in nameres.h are dependent on this enumeration.              */
 /* The following enumeration is used to call fnd_semantic_err.  These are     */
@@ -837,9 +777,7 @@ enum	obj_values	       {Obj_Assum_Type_Ch,	Obj_Expl_Shp_Arr,
 				Obj_Assum_Size_Arr,	Obj_Defrd_Shp_Arr,
                                 Obj_Assum_Shp_Arr,	Obj_Co_Array,
 				Obj_Allocatable,
-#ifdef KEY /* Bug 14150 */
 				Obj_Bind,		Obj_Value,
-#endif /* KEY Bug 14150 */
 				Obj_Constant,
 				Obj_Intent,		Obj_Optional,
 				Obj_Private,		Obj_Public,
@@ -1452,23 +1390,23 @@ enum    operator_values      {  Null_Opr,
 
 				Endparalleldo_Open_Mp_Opr,
 				Endparallelsections_Open_Mp_Opr,
-				Endparallelworkshare_Open_Mp_Opr, /* by jhs, 02/7/18 */
+				Endparallelworkshare_Open_Mp_Opr,
 				Endmaster_Open_Mp_Opr,
 				Endordered_Open_Mp_Opr,
 				Endsections_Open_Mp_Opr,
 				Endsingle_Open_Mp_Opr,
-				Endworkshare_Open_Mp_Opr, /* by jhs, 02/7/18 */
+				Endworkshare_Open_Mp_Opr,
 				Flush_Open_Mp_Opr,
 				Master_Open_Mp_Opr,
 				Ordered_Open_Mp_Opr,
 				Parallel_Open_Mp_Opr,
 				Paralleldo_Open_Mp_Opr,
 				Parallelsections_Open_Mp_Opr,
-				Parallelworkshare_Open_Mp_Opr, /* by jhs, 02/7/18 */
+				Parallelworkshare_Open_Mp_Opr,
 				Section_Open_Mp_Opr,
 				Sections_Open_Mp_Opr,
 				Single_Open_Mp_Opr,
-				Workshare_Open_Mp_Opr, /* by jhs, 02/7/18 */
+				Workshare_Open_Mp_Opr,
 
                                 Concurrentize_Star_Opr,
                                 Noconcurrentize_Star_Opr,
@@ -1532,16 +1470,10 @@ enum    operator_values      {  Null_Opr,
 				Copyin_Bound_Opr,
 
 				Preferstream_Nocinv_Dir_Opr,
-#ifdef KEY /* Bug 1324 */
 				Erf_Opr,
 				Erfc_Opr,
-#endif /* KEY Bug 1324 */
-#ifdef KEY /* Bug 2660 */
 				Options_Dir_Opr,
-#endif /* KEY Bug 2660 */
-#ifdef KEY /* Bug 10410 */
 				Cselect_Opr,
-#endif /* KEY Bug 10410 */
 
                                 /* PLACE NEW OPERATORS ABOVE THIS LINE. */
                                 /* DO NOT PUT ANY OPRS AFTER THIS ONE */
@@ -1559,7 +1491,7 @@ enum    sh_position_values     {Before,			After};
 
 enum	src_form_values	       {Fixed_Form,		Free_Form };
 
-
+
 /******************************************************************************/
 /* DATA STRUCTURES DEPENDENT ON THE FOLLOWING ENUMERATION:                    */
 /*      token_to_stmt_type              DEFINED IN      p_driver.h            */
@@ -1720,18 +1652,12 @@ enum stmt_type_values           {Null_Stmt,
 
 				 Open_MP_End_Parallel_Workshare_Stmt,
 				 Open_MP_End_Workshare_Stmt,
-#ifdef KEY /* Bug 11741 */
 				 Import_Stmt,
-#endif /* KEY Bug 11741 */
-#ifdef KEY /* Bug 10572 */
 				 Enum_Stmt,
 				 End_Enum_Stmt,
 				 Enumerator_Stmt,
-#endif /* KEY Bug 10572 */
-#ifdef KEY /* Bug 14150 */
 				 Bind_Stmt,
 				 Value_Stmt
-#endif /* KEY Bug 10572 */
 
                                  /* When you add a stmt, make sure you change */
                                  /* stmt_type_str in main.h.                  */
@@ -1823,10 +1749,10 @@ enum    open_mp_directive_values     {
                                 Do_Omp,
                                 Sections_Omp,
                                 Single_Omp,
-                                Workshare_Omp, /* by jhs, 02/7/18 */
+                                Workshare_Omp,
                                 Parallel_Do_Omp,
                                 Parallel_Sections_Omp,
-                                Parallel_Workshare_Omp, /* by jhs, 02/7/18 */
+                                Parallel_Workshare_Omp,
                                 Num_Omp_Values   /* must be last */
                                 };
 
@@ -1834,7 +1760,7 @@ typedef enum open_mp_directive_values        open_mp_directive_type;
 
 enum    open_mp_clause_values        {
                                 If_Omp_Clause,
-                                Num_Threads_Omp_Clause, /* by jhs, 02/7/18 */
+                                Num_Threads_Omp_Clause,
                                 Private_Omp_Clause,
                                 Shared_Omp_Clause,
                                 Firstprivate_Omp_Clause,
@@ -1856,7 +1782,7 @@ extern char    *(open_mp_dir_str[Num_Omp_Values]);
 
 extern boolean open_mp_clause_allowed[Num_Omp_Values][Last_Omp_Clause];
 
-
+
 typedef enum	addr_mode_values		addr_mode_type;
 typedef	enum	basic_type_values		basic_type_type;
 typedef	enum	convert_to_string_values 	convert_to_string_type;
@@ -1869,11 +1795,7 @@ typedef	enum	glb_tbl_idx_values		glb_tbl_idx_type;
 typedef	enum	intrinsic_values		intrinsic_type;
 typedef	enum	linear_type_values		linear_type_type;
 typedef enum	msg_lvl_values			msg_lvl_type;
-#ifdef KEY /* Bug 6121 */
 /* Move PRINTMSG et al to printmsg.h so C++ can call it */
-#else /* KEY Bug 6121 */
-typedef enum	msg_severities			msg_severities_type;
-#endif /* KEY Bug 6121 */
 typedef enum	obj_values			obj_type;
 typedef	enum	operator_values			operator_type;
 typedef	enum	scalar_lvl_values		scalar_lvl_type;
@@ -1899,7 +1821,7 @@ union   id_str_entry		{char		string[MAX_ID_LEN+1];
                                  long           words[NUM_ID_WDS];
 				};
 
-
+
 
 struct	cmd_line_flags_entry {
 	boolean		align8			: 1;		/* -align8    */
@@ -2053,9 +1975,7 @@ struct	dump_flags_entry {
 	boolean		sytb			: 1;
 	boolean		typ_tbl			: 1;
 	boolean		constant_bits		: 1;
-#ifdef KEY /* Bug 8117 */
 	boolean		arg_passing		: 1;
-#endif /* KEY Bug 8117 */
 	};
 
 
@@ -2119,15 +2039,11 @@ struct	on_off_flags_entry {
 	boolean		save_dot_i		: 1;		/* -ek	      */
 	boolean		zero_init		: 1;		/* -e0	      */
 	boolean		d_lines			: 1;
-#ifdef KEY /* Bug 5089 */
 	/* For use only when building the library: mark a generated module as
 	 * "intrinsic" in the F2003 sense, so that its linker name doesn't
 	 * collide with that of any user-created module. */
 	boolean		intrinsic_module_gen	: 1;		/* -intrinsic_module_gen */
-#endif/* KEY Bug 5089 */
-#ifdef KEY /* Bug 12482 */
 	boolean		fortran2003		: 1;		/* -ffortran2003 */
-#endif /* KEY Bug 12482 */
 	};
 
 /*************\
@@ -2195,7 +2111,6 @@ struct  expr_semantics_args    {basic_type_type		type		: 8;
 				boolean			optional_darg	: 1;
 				boolean			pe_dim_ref	: 1;
 				boolean			dist_reshape_ref: 1;
-#ifdef KEY /* Bug 934 */
 				/* Set to indicate that we are evaluating
 				 * the RHS of an assignment of an entire
 				 * derived type, so that we can enforce
@@ -2203,9 +2118,6 @@ struct  expr_semantics_args    {basic_type_type		type		: 8;
 				 * within pure procedures */
 				boolean                 derived_assign  : 1;
 				Uint			UNUSED2		: 5;
-#else /* KEY Bug 934 */
-				Uint			UNUSED2		: 6;
-#endif /* KEY Bug 934 */
 
                                 Uint			rank   		: 32;
 
@@ -2259,9 +2171,7 @@ struct	cdir_switch_entry	{
 				 boolean	recurrence		  : 1;
 				 boolean	shortloop		  : 1;
 				 boolean	shortloop128		  : 1;
-#ifdef KEY /* Bug 10441 */
 				 boolean        single     	          : 1;
-#endif /* KEY Bug 10441 */
 				 boolean	split			  : 1;
 				 boolean	stream			  : 1;
 				 boolean	task			  : 1;
@@ -2292,7 +2202,7 @@ struct	cdir_switch_entry	{
 				 int		cache_bypass_ir_idx;
 				 int		concurrent_idx;
 				 int		copyin_list_idx;
-				 int		copyprivate_list_idx; /* by jhs, 02/7/22 */
+				 int		copyprivate_list_idx;
 				 int		default_scope_list_idx;
 				 int		dir_nest_check_sh_idx;
                                  int		do_omp_sh_idx;
@@ -2447,7 +2357,7 @@ union	target_machine_entry   {
 # endif
 	};
 
-
+
 /******************************************************************************\
 |*   cif_usage_code_values and cif_usage_code_type must be defined here rather*|
 |*   than in the more appropriate fecif.h because procedures outside of       *|
@@ -2638,22 +2548,16 @@ typedef enum	cif_directive_code_values	cif_directive_code_type;
 typedef enum    cif_stmt_values			cif_stmt_type;
 typedef	enum	cif_usage_code_values		cif_usage_code_type;
 
-
+
 /*******************************************\
 |* globally accessible function prototypes *|
 \*******************************************/
 
 extern  void  unknown_intrinsic (opnd_type *, expr_arg_type *, int *);
-#ifdef KEY /* Bug 1683 */
 extern  void  pathf90_intrinsic (opnd_type *, expr_arg_type *, int *);
-#endif /* KEY Bug 1683 */
-#ifdef KEY /* Bug 5089 */
 extern  void  true_intrinsic (opnd_type *, expr_arg_type *, int *);
 extern  void  support_uflow_intrinsic (opnd_type *, expr_arg_type *, int *);
-#endif /* KEY Bug 5089 */
-#ifdef KEY /* F2003 */
 extern  void  newline_intrinsic (opnd_type *, expr_arg_type *, int *);
-#endif /* KEY F2003 */
 extern  void  abs_intrinsic     (opnd_type *, expr_arg_type *, int *);
 extern  void  sin_intrinsic     (opnd_type *, expr_arg_type *, int *);
 extern  void  erf_intrinsic     (opnd_type *, expr_arg_type *, int *);
@@ -2696,13 +2600,9 @@ extern  void  numarg_intrinsic  (opnd_type *, expr_arg_type *, int *);
 extern  void  fcd_intrinsic     (opnd_type *, expr_arg_type *, int *);
 extern  void  loc_intrinsic     (opnd_type *, expr_arg_type *, int *);
 extern  void  clock_intrinsic   (opnd_type *, expr_arg_type *, int *);
-#ifdef KEY
 extern  void  c_f_pointer_intrinsic(opnd_type *, expr_arg_type *, int *);
-#endif /* KEY Bug 14150 */
-#ifdef KEY
 extern  void  time_intrinsic    (opnd_type *, expr_arg_type *, int *);
 extern  void  dtime_intrinsic    (opnd_type *, expr_arg_type *, int *);
-#endif
 extern  void  rtc_intrinsic     (opnd_type *, expr_arg_type *, int *);
 extern  void  my_pe_intrinsic   (opnd_type *, expr_arg_type *, int *);
 extern  void  cvmgp_intrinsic   (opnd_type *, expr_arg_type *, int *);
@@ -2780,13 +2680,11 @@ extern  void  null_intrinsic 	     (opnd_type *, expr_arg_type *, int *);
 extern  void  malloc_intrinsic 	     (opnd_type *, expr_arg_type *, int *);
 extern  void  num_images_intrinsic   (opnd_type *, expr_arg_type *, int *);
 extern  void  system_clock_intrinsic (opnd_type *, expr_arg_type *, int *);
-#ifdef KEY
 extern  void  fnum_intrinsic         (opnd_type *, expr_arg_type *, int *);
 extern  void  stat_intrinsic         (opnd_type *, expr_arg_type *, int *);
 extern  void  fstat_intrinsic         (opnd_type *, expr_arg_type *, int *);
 extern  void  signal_intrinsic       (opnd_type *, expr_arg_type *, int *);
 extern  void  kill_intrinsic         (opnd_type *, expr_arg_type *, int *);
-#endif
 extern  void  dsm_numthreads_intrinsic      
 			(opnd_type *, expr_arg_type *, int *);
 extern  void  omp_get_max_threads_intrinsic 
@@ -2876,41 +2774,31 @@ extern  int		copy_from_gl_subtree(int, fld_type);
 extern  void            copy_entry_exit_sh_list(int, int, int *,  int *);
 extern  int		create_bd_ntry_for_const(expr_arg_type *,int,int);
 extern	void		create_mod_info_tbl(void);
-#ifdef KEY /* Bug 3477 */
 extern	boolean		create_mod_info_file(void);
-#else
-extern	void		create_mod_info_file(void);
-#endif /* KEY Bug 3477 */
 extern	int		cvrt_str_to_cn(char *, int);
 extern	void		cvrt_to_pdg(char *);
 extern	void		decl_semantics(void);
 extern  void		exit_compiler(int);
 extern  boolean		expr_is_symbolic_constant(opnd_type *);
 extern  boolean		expr_semantics(opnd_type *, expr_arg_type *);
-#ifdef KEY /* Bug 5710 */
 extern  int		eq_ne_on_logical(expr_arg_type *exp_desc,
 		         expr_arg_type *exp_desc_l, expr_arg_type *exp_desc_r);
-#endif /* KEY Bug 5710 */
 extern  boolean		expr_sem(opnd_type *, expr_arg_type *);
 extern	boolean		find_attr_in_il(int, int, opnd_type *);
 extern	boolean		find_attr_in_ir(int, int, opnd_type *);
 extern	boolean		find_prog_unit_tbl(int);
 extern	void		fixed_get_char(void);
 extern	void		fixed_get_char_literal(void);
-#ifdef KEY /* Bug 572 */
 /* Set TRUE before calling expr_semantics() if a constant null pointer is
  * legal in this context. */
 extern boolean          constant_ptr_ok;
-#endif /* KEY Bug 572 */
 extern  boolean		fold_aggragate_expression(opnd_type *, expr_arg_type *,
                                                   boolean);
 extern  boolean		fold_relationals(int, int, operator_type);
 extern  boolean         folder_driver(char *, int, char *, int, long_type *,
                                       int *, int, int, int, int, ...);
-#ifdef KEY /* Bug 12482 */
 extern void		copy_and_pad_boz(long_type *dst, Uint dst_words,
 			  long_type *src, Uint src_words);
-#endif /* KEY Bug 12482 */
 extern	void		free_tables(void);
 extern	void		free_get_char(void);
 extern	void		free_get_char_literal(void);
@@ -2931,14 +2819,9 @@ extern	void		gen_runtime_checks(opnd_type *);
 extern	void		gen_runtime_ptr_chk(opnd_type *);
 extern	void		gen_sh(sh_position_type, stmt_type_type, int,
                                int, boolean, boolean, boolean);
-#ifdef KEY /* Bug 4955 */
 extern	int	        gen_present_ir(int, int, int);
-#endif /* KEY Bug 4955 */
-#ifdef KEY /* Bug 4811 */
 extern  int		gen_sh_at(sh_position_type, stmt_type_type, int,
                                int, boolean, boolean, boolean, int);
-#endif /* KEY Bug 4811 */
-#ifdef KEY /* Bug 6845 */
 int do_count_allocatable_cpnt(int, int);
 int do_make_struct_opr(int, int, int, fld_type, int);
 int build_call(glb_tbl_idx_type, char *, int, int, int);
@@ -2946,7 +2829,6 @@ int pass_by_ref(fld_type, int, int, int);
 int pre_gen_loops(int, int, int *);
 void post_gen_loops(int, int);
 void gen_loops(opnd_type *, opnd_type *, boolean);
-#endif /* KEY Bug 6845 */
 extern	void		gen_gl_sh(sh_position_type, stmt_type_type, int,
                                int, boolean, boolean, boolean);
 extern	void		gen_internal_call_stmt(char *, opnd_type *, 
@@ -2984,14 +2866,8 @@ extern	void		ntr_msg_queue(int, int, msg_severities_type, int,
 extern	void		output_mod_info_file(void);
 extern	void		parse_prog_unit(void);
 extern	void		pdgcs_conversion(void);
-#ifdef KEY /* Bug 6121 */
 /* Move PRINTMSG et al to printmsg.h so C++ can call it */
-#else
-extern	void		PRINTMSG(int, int, msg_severities_type, int, ...);
-#endif /* KEY Bug 6121 */
-#ifdef KEY /* Bug 5040 */
 extern  msg_severities_type ansi_or_warning(void);
-#endif /* KEY Bug 5040 */
 extern	void	        print_const_f(FILE *, int);
 extern	void		print_err_line(int, int);
 extern	void		print_scp_to_fortran(int, int, int, FILE *);
@@ -3070,9 +2946,7 @@ extern  void		print_sh_tbl(boolean);
 extern  void		print_sn_tbl(void);
 extern  void		print_typ_tbl(void);
 extern  void		print_sytb(int, boolean, boolean);
-#ifdef KEY /* Bug 8117 */
 extern  void		print_arg_passing(FILE *);
-#endif /* KEY Bug 8117 */
 extern  void		print_attr_by_name(void);
 extern  void		print_ln_by_name(void);
 extern  void		print_sb_by_name(void);
@@ -3131,11 +3005,9 @@ extern	dump_flags_type		dump_flags;
 extern	long		       *dt_cmp_tbl;  /* Assumes long is word length */
 extern	int			expanded_intrinsic_list;
 extern	expr_mode_type		expr_mode;
-#ifdef KEY /* Bug 4232 */
 /* We're processing a statement function definition (rather than a call) so
  * don't create temps to hold the arguments if they're by-reference. */
 extern  boolean			defining_stmt_func;
-#endif /* KEY Bug 4232 */
 extern	void			(*get_char) ();
 extern  void                    (*get_char_literal) ();
 extern	long			glb_tbl_idx[Num_Glb_Tbl_Idxs];
@@ -3158,10 +3030,8 @@ extern  long			max_call_list_size;
 extern  long_type		max_character_length;
 extern	char			mod_out_path[];
 extern	int			module_path_idx;
-#ifdef KEY /* Bug 5089 */
 /* Search path for .mod files for F2003 intrinsic modules */
 extern	int			intrinsic_module_path_idx;
-#endif /* KEY Bug 5089 */
 extern	boolean			need_new_sh;
 extern	boolean			need_to_issue_719;
 extern	boolean			no_func_expansion;
@@ -3214,7 +3084,7 @@ extern	int			where_ir_idx;
 extern  int			where_dealloc_stmt_idx;
 extern  int                     type_alignment_tbl[Num_Linear_Types];
 
-
+
 /*********************************\
 |* global enums and types for io *|
 \*********************************/
@@ -3543,19 +3413,11 @@ struct  int_dope_entry  {
 
 typedef struct int_dope_entry           int_dope_type;
 
-/*  linear_type_type is enum type, in ia64 system, this type is 32 bit length.
-# ifdef _HOST64  
-struct exp_tbl_entry            {
-                                boolean			ext  :  1;
-                                linear_type_type	type : 63;
-                                };
-# elif _HOST32
-*/
+/*  linear_type_type is enum type, in ia64 system, this type is 32 bit length. */
 struct exp_tbl_entry            {
                                 boolean			ext  :  1;
                                 linear_type_type	type : 31;
                                 };
-//# endif
 
 typedef struct exp_tbl_entry    exp_tbl_type;
 
@@ -3629,28 +3491,18 @@ extern long    argchck_suppress_msg[40];
 extern int     num_argchck_suppress_msg;
 
 # ifdef _USE_FOLD_DOT_f
-#ifdef KEY /* Bug 5554 */
 extern boolean kludge_input_conversion (char *, int, boolean);
-#else /* KEY Bug 5554 */
-extern void kludge_input_conversion (char *, int);
-#endif /* KEY Bug 5554 */
 extern void kludge_output_conversion (long_type *, int, char *);
 # endif
-#ifdef KEY /* Bug 5089 */
 extern  boolean		special_case_fcn_to_sub(int spec_idx);
 extern char *init_msg_processing (char *[]);
 extern void process_cmd_line (int, char *[], char *);
-#endif /* KEY Bug 5089 */
-#ifdef KEY /* Bug 14150 */
 extern boolean c_ptr_abi_trouble(int);
 extern boolean is_x8664_n32();
-#endif /* KEY Bug 14150 */
 
-#ifdef KEY /* Bug 3018 */
 /* Suffix used in intrin_tbl to indicate G77 subroutine versions of intrinsics
  * which are normally functions. If you change this,
  * p_driver.c:enter_intrinsic may also need to change.
  */
 #               define INTRIN_SUBR_SUFFIX ":Subroutine"
-#endif /* KEY Bug 3018 */
 

@@ -119,9 +119,7 @@ extern	void		cast_to_cg_default(opnd_type *, expr_arg_type *);
 extern	void		cast_opnd_to_type_idx(opnd_type *, int);
 extern	void		change_asg_to_where(int);
 extern	boolean		check_for_legal_define(opnd_type *);
-#ifdef KEY /* Bug 14150 */
 extern  boolean		check_for_legal_assignment_define(opnd_type *, boolean);
-#endif /* KEY Bug 14150 */
 extern	void		change_section_to_this_element(opnd_type *, 
                                                        opnd_type *, int);
 extern	boolean		check_where_conformance(expr_arg_type *);
@@ -147,9 +145,7 @@ extern	void		doall_end_semantics(void);
 extern  void            enlarge_call_list_tables(void);
 extern  void            enlarge_info_list_table(void);
 extern  boolean         final_arg_work(opnd_type *, int, int, expr_arg_type *);
-#ifdef KEY /* Bug 5089 */
 extern int gen_ieee_save_and_restore(int curr_scp_idx, int line, int column);
-#endif /* KEY Bug 5089 */
 extern  int		find_base_attr(opnd_type *, int *, int *);
 extern  int             find_left_attr(opnd_type *);
 extern  void            flatten_function_call(opnd_type *);
@@ -217,17 +213,13 @@ extern	void		translate_dv_component(opnd_type *, expr_arg_type *);
 extern  void		transform_char_sequence_ref(opnd_type *, int);
 extern  boolean         tree_produces_dealloc(opnd_type *root);
 extern  boolean         validate_char_len(opnd_type *, expr_arg_type *);
-#ifdef KEY /* Bug 14293, 11986, 6845 */
 extern int help_dealloc(int, int, fld_type, int, boolean, boolean, boolean);
 extern int allocatable_structure_component(int);
-#endif /* KEY Bug 14293, 11986, 6845 */
-#ifdef KEY /* Bug 14150 */
 extern boolean check_interoperable_type(int, boolean, boolean);
 extern void check_interoperable_constraints(int);
 extern boolean interoperable_variable(int);
 extern boolean no_length_type_param(int);
 extern boolean length_type_param_is_one(int);
-#endif /* KEY Bug 14150 */
 
 
 /*********************************************\
@@ -266,7 +258,6 @@ extern boolean			 defer_stmt_expansion;
 extern int			 number_of_functions;
 extern boolean                   io_item_must_flatten;
 extern boolean                   tree_has_constructor;
-#ifdef KEY /* Bug 4889 */
 /* Set to the sh_idx when we see an OpenMP "do" or "paralleldo" directive,
  * cleared when we reach the "do" statement itself.
  */
@@ -275,7 +266,6 @@ extern int			 inside_paralleldo;
  * we reach the OpenMP "endparallel"
  */
 extern int			 inside_parallel;
-#endif /* KEY Bug 4889 */
 
 
 /*********************************************************\

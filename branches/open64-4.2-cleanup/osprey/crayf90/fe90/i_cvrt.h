@@ -218,9 +218,7 @@ typedef unsigned long          INTPTR;
 #define FEI_OBJECT_IN_COMMON     			33
 #define FEI_OBJECT_NOT_PT_TO_UNIQUE_MEM			34
 #define FEI_OBJECT_READ_ONLY				35
-#ifdef KEY /* Bug 14150 */
 #define FEI_OBJECT_PASS_BY_VALUE			36
-#endif /* KEY Bug 14150 */
 
 #define FEI_ARRAY_DIMEN_VARY_LB      	 	 	 0
 #define FEI_ARRAY_DIMEN_VARY_EXT     	 	 	 1
@@ -551,7 +549,7 @@ typedef enum {
 	Context_Omp_Firstprivate,
 	Context_Omp_Lastprivate,
 	Context_Omp_Copyin,
-	Context_Omp_Copyprivate, /* by jhs, 02/7/22 */
+	Context_Omp_Copyprivate,
 	Context_Omp_Affinity,
         Context_Omp_Nest } CONTEXT_TYPE;
 
@@ -764,11 +762,7 @@ extern void  PDGCS_new_proc         	  ( INT32 ir_count,
                                     	    INT32 user_sades,
                                      	    INT32 pipeline_opt_level,   
                                      	    INT32 stream_opt_level );
-#ifdef KEY /* Bug 3507 */
 extern void  PDGCS_do_proc          	  ( int is_module);
-#else /* KEY Bug 3507 */
-extern void  PDGCS_do_proc          	  ( void );
-#endif /* KEY Bug 3507 */
 extern void  PDGCS_end_procs        	  ( INT32 *code_size,
                                     	    INT32 *data_size );
 extern void  PDGCS_end_comp_unit    	  ( void );
@@ -825,9 +819,7 @@ extern void  fei_nseq_subscr              ( TYPE  type );
 extern void  fei_subscr_size              ( TYPE  type, INT32 bounds_check );
 extern void  fei_subscr_triplet           ( TYPE  type );
 extern void  fei_dv_deref                 ( TYPE  type );
-#ifdef KEY /* Bug 4602 */
 extern void  fei_array_element_by_value	  ( void );
-#endif /* KEY Bug 4602 */
 extern void  fei_store                    ( TYPE  type );
 extern void  fei_non_conform_store        ( TYPE  type );
 extern void  fei_as_ref                   ( TYPE  type );
@@ -935,9 +927,7 @@ extern TYPE  fei_descriptor               ( INT32 flag_matrix,
                                             INT32 basic_type,
                                             INT32 aux_info,
                                             INT32 alignment);
-#ifdef KEY /* Bug 14110 */
 extern unsigned fei_set_volatile(unsigned);
-#endif /* KEY Bug 14110 */
 extern INTPTR fei_name                    ( char  *name_string,
                                             INT32 st_grp,
                                             INTPTR st_idx,
@@ -990,9 +980,7 @@ extern void  fei_fuse                     ( INT32 level );
 extern void  fei_flush                    ( INT32 list_count );
 extern void  fei_assert                   ( INT32 assertion, INT32 list_count );
 extern void  fei_fission                  ( void );
-#ifdef KEY
 extern void  fei_forall                   ( void );
-#endif
 extern void  fei_unroll                   ( void );
 extern void  fei_section_gp               ( INT32 list_count );
 extern void  fei_section_nongp            ( INT32 list_count );
@@ -1017,17 +1005,13 @@ extern void  fei_redistribute	      	  ( INTPTR array,
                                		    INT32 distribution,
                                		    INT32 cyclic_exists,
                                		    INT32 onto_exists );
-#ifdef KEY /* Bug 2660 */
 extern void  fei_options       	  	  ( char * n1);
-#endif /* KEY Bug 2660 */
 extern void  fei_prefetch       	  ( INT32 n1, INT32 n2 );
 extern void  fei_prefetch_manual	  ( INT32 n );
-#ifdef KEY /* Bug 3507 */
 extern void cwh_dst_enter_module          ( char *module_name,
 					    char *filename,
                                             INT32 local_lineno );
 extern void cwh_dst_exit_module           ( void );
-#endif /* KEY Bug 3507 */
 extern INTPTR fei_proc            	  ( char  *name_string,
                                  	    INT32 lineno,
                                  	    INT32 sym_class,
@@ -1443,11 +1427,7 @@ extern void  fei_hw_rshift       	  ( TYPE type );
 extern void  fei_hw_lshift       	  ( TYPE type );
 extern void  fei_exponentiate    	  ( TYPE type );
 extern void  fei_complex         	  ( TYPE type );
-#ifdef KEY /* Bug 10410 */
 extern void  fei_select          	  ( TYPE type, int cselect );
-#else /* KEY Bug 10410 */
-extern void  fei_select          	  ( TYPE type );
-#endif /* KEY Bug 10410 */
 extern void  fei_mbits           	  ( TYPE type );
 extern void  fei_dshiftl         	  ( TYPE type );
 extern void  fei_dshiftr         	  ( TYPE type );
@@ -1493,33 +1473,21 @@ extern void  fei_new_select_case 	  ( INT64 low_value_pres,
                                  	    INT64 high_value_pres,
                                  	    INT32 case_follows );
 extern void  fei_new_select      	  ( INT32 num_cases,
-#ifdef KEY /* Bug 12319 */
                                  	    INTPTR last_label_idx,
-#endif /* KEY Bug 12319 */
                                  	    INTPTR default_label_idx );
 extern TYPE  fei_dope_vector              ( INT32 num_dims, 
                                     	    TYPE  base_type,
                                      	    INT32 flags,
-#ifdef KEY /* Bug 6845 */
                                      	    INT32 n_allocatable_cpnt
-#endif /* KEY Bug 6845 */
 					    );
 extern void  fei_dv_ptr_asg               ( void );
-#ifndef KEY /* Bug 6845 */
-extern void  fei_set_dv_hdr_fld           ( INT32 field );
-extern void  fei_get_dv_hdr_fld           ( INT32 field );
-#endif /* KEY Bug 6845 */
 extern void  fei_set_dv_low_bnd           ( INT32 dim );
 extern void  fei_set_dv_extent            ( INT32 dim );
 extern void  fei_set_dv_str_mult          ( INT32 dim );
 extern void  fei_get_dv_low_bnd           ( INT32 dim, INT32 expand );
 extern void  fei_get_dv_extent            ( INT32 dim, INT32 expand );
 extern void  fei_get_dv_str_mult          ( INT32 dim, INT32 expand );
-#ifdef KEY /* Bug 6845 */
 extern void  fei_dv_def(INT32 num_dims, INT32 n_alloc_cpnt );
-#else /* KEY Bug 6845 */
-extern void  fei_dv_def                   ( INT32 num_dims );
-#endif /* KEY Bug 6845 */
 extern void  fei_all                      ( TYPE type );
 extern void  fei_any                      ( TYPE type );
 extern void  fei_count                    ( TYPE type );
@@ -1660,10 +1628,8 @@ extern void PDGCS_mpp_init                ( char        *src_fname,
 
 
 typedef struct		type_descriptor	pdg_type_tbl_type;
-#ifdef KEY
 extern int Check_FF2C_Script           (const char *callee_key,
                                          int  mangled ); 
-#endif
 # ifdef __cplusplus
 }
 # endif 

@@ -550,16 +550,6 @@ void buffer_stmt_semantics (void)
                                             NULL);
       COPY_OPND(IR_OPND_R(ir_idx), opnd);
       create_io_call_descriptor(ir_idx, Buffer_Desc);
-# if 0
-# if defined(_FILE_IO_OPRS)
-      if (buffer_in) {
-         IR_OPR(ir_idx) = Buffer_In_Opr;
-      }
-      else {
-         IR_OPR(ir_idx) = Buffer_Out_Opr;
-      }
-# endif
-# endif
    }
 
    /* restore arg_info_list to previous "stack frame" */
@@ -1853,54 +1843,6 @@ void print_stmt_semantics (void)
 
       if (namelist_descriptor_attr) {
 
-# if 0
-        /* call the namelist table dump routine */
-
-        {int	_call_idx, _list_idx, _loc_idx;
-         int	_dump_nml_idx;
-        _dump_nml_idx = create_lib_entry_attr("DUMP_NML",
-                                            8,
-                                            stmt_start_line,
-                                            stmt_start_col);
-
-        ADD_ATTR_TO_LOCAL_LIST(_dump_nml_idx);
-   
-        NTR_IR_TBL(_call_idx);
-        IR_OPR(_call_idx) = Call_Opr;
-        IR_TYPE_IDX(_call_idx) = CG_INTEGER_DEFAULT_TYPE;
-        IR_LINE_NUM(_call_idx) = stmt_start_line;
-        IR_COL_NUM(_call_idx) = stmt_start_col;
-        IR_FLD_L(_call_idx) = AT_Tbl_Idx;
-        IR_IDX_L(_call_idx) = _dump_nml_idx;
-        IR_LINE_NUM_L(_call_idx) = stmt_start_line;
-        IR_COL_NUM_L(_call_idx) = stmt_start_col;
-   
-        NTR_IR_LIST_TBL(_list_idx);
-        IR_FLD_R(_call_idx) = IL_Tbl_Idx;
-        IR_IDX_R(_call_idx) = _list_idx;
-        IR_LIST_CNT_R(_call_idx) = 1;
-   
-        NTR_IR_TBL(_loc_idx);
-        IR_OPR(_loc_idx) = Aloc_Opr;
-        IR_TYPE_IDX(_loc_idx) = CRI_Ptr_8;
-        IR_LINE_NUM(_loc_idx) = stmt_start_line;
-        IR_COL_NUM(_loc_idx)  = stmt_start_col;
-        IL_FLD(_list_idx) = IR_Tbl_Idx;
-        IL_IDX(_list_idx) = _loc_idx;
-   
-        IR_FLD_L(_loc_idx) = AT_Tbl_Idx;
-        IR_IDX_L(_loc_idx) = namelist_descriptor_attr;
-        IR_LINE_NUM_L(_loc_idx) = stmt_start_line;
-        IR_COL_NUM_L(_loc_idx)  = stmt_start_col;
-   
-        gen_sh(Before, Call_Stmt, stmt_start_line,
-                stmt_start_col, FALSE, FALSE, TRUE);
-   
-        SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx))     = _call_idx;
-        SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx)) = TRUE;
-        }
-   
-# endif
          NTR_IR_LIST_TBL(list_idx);
          IR_FLD_R(ir_idx)		= IL_Tbl_Idx;
          IR_LIST_CNT_R(ir_idx)		= 1;
@@ -2145,54 +2087,6 @@ void read_stmt_semantics (void)
       }
 
       if (namelist_descriptor_attr) {
-# if 0
-        /* call the namelist table dump routine */
-
-        {int    _call_idx, _list_idx, _loc_idx;
-         int    _dump_nml_idx;
-        _dump_nml_idx = create_lib_entry_attr("DUMP_NML",
-                                            8,
-                                            stmt_start_line,
-                                            stmt_start_col);
-
-        ADD_ATTR_TO_LOCAL_LIST(_dump_nml_idx);
-   
-        NTR_IR_TBL(_call_idx);
-        IR_OPR(_call_idx) = Call_Opr;
-        IR_TYPE_IDX(_call_idx) = CG_INTEGER_DEFAULT_TYPE;
-        IR_LINE_NUM(_call_idx) = stmt_start_line;
-        IR_COL_NUM(_call_idx) = stmt_start_col;
-        IR_FLD_L(_call_idx) = AT_Tbl_Idx;
-        IR_IDX_L(_call_idx) = _dump_nml_idx;
-        IR_LINE_NUM_L(_call_idx) = stmt_start_line;
-        IR_COL_NUM_L(_call_idx) = stmt_start_col;
-   
-        NTR_IR_LIST_TBL(_list_idx);
-        IR_FLD_R(_call_idx) = IL_Tbl_Idx;
-        IR_IDX_R(_call_idx) = _list_idx;
-        IR_LIST_CNT_R(_call_idx) = 1;
-   
-        NTR_IR_TBL(_loc_idx);
-        IR_OPR(_loc_idx) = Aloc_Opr;
-        IR_TYPE_IDX(_loc_idx) = CRI_Ptr_8;
-        IR_LINE_NUM(_loc_idx) = stmt_start_line;
-        IR_COL_NUM(_loc_idx) = stmt_start_col;
-        IL_FLD(_list_idx) = IR_Tbl_Idx;
-        IL_IDX(_list_idx) = _loc_idx;
-   
-        IR_FLD_L(_loc_idx) = AT_Tbl_Idx;
-        IR_IDX_L(_loc_idx) = namelist_descriptor_attr;
-        IR_LINE_NUM_L(_loc_idx) = stmt_start_line;
-        IR_COL_NUM_L(_loc_idx) = stmt_start_col;
-  
-        gen_sh(Before, Call_Stmt, stmt_start_line,
-                stmt_start_col, FALSE, FALSE, TRUE);
-  
-        SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx))     = _call_idx;
-        SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx)) = TRUE;
-        }
-
-# endif
 
          NTR_IR_LIST_TBL(list_idx);
          IR_FLD_R(ir_idx)		= IL_Tbl_Idx;
@@ -2671,54 +2565,6 @@ void write_stmt_semantics (void)
       }
 
       if (namelist_descriptor_attr) {
-# if 0
-        /* call the namelist table dump routine */
-
-        {int    _call_idx, _list_idx, _loc_idx;
-         int    _dump_nml_idx;
-        _dump_nml_idx = create_lib_entry_attr("DUMP_NML",
-                                            8,
-                                            stmt_start_line,
-                                            stmt_start_col);
-
-        ADD_ATTR_TO_LOCAL_LIST(_dump_nml_idx);
-   
-        NTR_IR_TBL(_call_idx);
-        IR_OPR(_call_idx) = Call_Opr;
-        IR_TYPE_IDX(_call_idx) = CG_INTEGER_DEFAULT_TYPE;
-        IR_LINE_NUM(_call_idx) = stmt_start_line;
-        IR_COL_NUM(_call_idx) = stmt_start_col;
-        IR_FLD_L(_call_idx) = AT_Tbl_Idx;
-        IR_IDX_L(_call_idx) = _dump_nml_idx;
-        IR_LINE_NUM_L(_call_idx) = stmt_start_line;
-        IR_COL_NUM_L(_call_idx) = stmt_start_col;
-   
-        NTR_IR_LIST_TBL(_list_idx);
-        IR_FLD_R(_call_idx) = IL_Tbl_Idx;
-        IR_IDX_R(_call_idx) = _list_idx;
-        IR_LIST_CNT_R(_call_idx) = 1;
-   
-        NTR_IR_TBL(_loc_idx);
-        IR_OPR(_loc_idx) = Aloc_Opr;
-        IR_TYPE_IDX(_loc_idx) = CRI_Ptr_8;
-        IR_LINE_NUM(_loc_idx) = stmt_start_line;
-        IR_COL_NUM(_loc_idx) = stmt_start_col;
-        IL_FLD(_list_idx) = IR_Tbl_Idx;
-        IL_IDX(_list_idx) = _loc_idx;
-   
-        IR_FLD_L(_loc_idx) = AT_Tbl_Idx;
-        IR_IDX_L(_loc_idx) = namelist_descriptor_attr;
-        IR_LINE_NUM_L(_loc_idx) = stmt_start_line;
-        IR_COL_NUM_L(_loc_idx) = stmt_start_col;
-  
-        gen_sh(Before, Call_Stmt, stmt_start_line,
-                stmt_start_col, FALSE, FALSE, TRUE);
-  
-        SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx))     = _call_idx;
-        SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx)) = TRUE;
-        }
-
-# endif
 
          NTR_IR_LIST_TBL(list_idx);
          IR_FLD_R(ir_idx)		= IL_Tbl_Idx;
@@ -3538,10 +3384,8 @@ static boolean io_ctl_list_semantics(opnd_type     *list_opnd,
            (ATP_PURE(SCP_ATTR_IDX(curr_scp_idx)) ||
             ATP_ELEMENTAL(SCP_ATTR_IDX(curr_scp_idx))) &&
           (io_type == Read || io_type == Write)) {
-#ifdef KEY
          find_opnd_line_and_column((opnd_type *) &IL_OPND(list_array[FMT_IDX]),
                                    &line, &col);
-#endif /* KEY */
          PRINTMSG(line, 1263, Error, col, 
                   io_type == Read ? "READ" : "WRITE",
                   ATP_ELEMENTAL(SCP_ATTR_IDX(curr_scp_idx))?"elemental":"pure",
@@ -3803,7 +3647,6 @@ static boolean io_ctl_list_semantics(opnd_type     *list_opnd,
    return(semantically_correct);
 
 }  /* io_ctl_list_semantics */
-#ifdef KEY /* Bug 2611 */
 
 /*
  * Whe constructing an Io_Item_Type_Code_Opr, the Cray FE ordinarily uses the
@@ -3846,7 +3689,6 @@ intrinsic_special_case(opnd_type *opnd, expr_arg_type *exp_desc) {
     }
   return exp_desc->type_idx;
   }
-#endif /* KEY Bug 2611 */
 
 /******************************************************************************\
 |*									      *|
@@ -3882,11 +3724,7 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
    boolean		have_seen_constructor = FALSE;
    int			imp_idx;
    int			line;
-#ifdef KEY /* Bug 10177 */
    int                  list_idx = 0;
-#else /* KEY Bug 10177 */
-   int                  list_idx;
-#endif /* KEY Bug 10177 */
    int                  list2_idx;
    boolean              needs_expansion = FALSE;
    int			new_do_var_idx;
@@ -3987,24 +3825,14 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
          }
          else if (start_exp_desc.type == Real) {
             PRINTMSG(line, 943,
-#ifdef KEY /* Bug 318, 321 */
 	      Ansi,
-#else /* KEY Bug 318, 321 */
-	      Comment,
-#endif /* KEY Bug 318, 321 */
 	      col);
          }
 
-#ifdef KEY /* Bug 4709 */
          /* Converting array bounds from Integer_8 to Integer_4 breaks
 	  * customer code which uses large array bounds, and isn't
 	  * correct for our 64-bit-oriented runtime.
 	  */
-#else
-         COPY_OPND(opnd, IL_OPND(list2_idx));
-         cast_to_cg_default(&opnd, &start_exp_desc);
-         COPY_OPND(IL_OPND(list2_idx), opnd);
-#endif /* KEY Bug 4709 */
 
          /************************\
          |* do do terminal value *|
@@ -4060,24 +3888,14 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
          }
          else if (end_exp_desc.type == Real) {
             PRINTMSG(line, 943,
-#ifdef KEY /* Bug 318, 321 */
 	      Ansi,
-#else /* KEY Bug 318, 321 */
-	      Comment,
-#endif /* KEY Bug 318, 321 */
 	      col);
          }
 
-#ifdef KEY /* Bug 4709 */
          /* Converting array bounds from Integer_8 to Integer_4 breaks
 	  * customer code which uses large array bounds, and isn't
 	  * correct for our 64-bit-oriented runtime.
 	  */
-#else
-         COPY_OPND(opnd, IL_OPND(list2_idx));
-         cast_to_cg_default(&opnd, &end_exp_desc);
-         COPY_OPND(IL_OPND(list2_idx), opnd);
-#endif /* KEY */
 
 
          /********************************\
@@ -4134,11 +3952,7 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
             }
             else if (inc_exp_desc.type == Real) {
                PRINTMSG(line, 943,
-#ifdef KEY /* Bug 318, 321 */
 	         Ansi,
-#else /* KEY Bug 318, 321 */
-	         Comment,
-#endif /* KEY Bug 318, 321 */
 		 col);
             }
 
@@ -4165,16 +3979,10 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
                }
             }
 
-#ifdef KEY /* Bug 4709 */
          /* Converting array bounds from Integer_8 to Integer_4 breaks
 	  * customer code which uses large array bounds, and isn't
 	  * correct for our 64-bit-oriented runtime.
 	  */
-#else
-            COPY_OPND(opnd, IL_OPND(list2_idx));
-            cast_to_cg_default(&opnd, &inc_exp_desc);
-            COPY_OPND(IL_OPND(list2_idx), opnd);
-#endif /* KEY */
 
          }
          else {
@@ -4346,17 +4154,10 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
          imp_do_var_list = IL_NEXT_LIST_IDX(imp_idx);
          FREE_IR_LIST_NODE(imp_idx);
 //Bug# 2521: the compiler should not generate a temp whose size is smaller than that of the loop index. 
-# ifdef KEY
          if (do_var_ok &&
              storage_bit_size_tbl[TYP_LINEAR(ATD_TYPE_IDX(attr_idx))] < 
                 storage_bit_size_tbl[TYP_LINEAR(CG_INTEGER_DEFAULT_TYPE)] &&
              ! IL_MUST_BE_LOOP(list_idx)) {
-# else
-         if (do_var_ok &&
-             storage_bit_size_tbl[TYP_LINEAR(ATD_TYPE_IDX(attr_idx))] !=
-                storage_bit_size_tbl[TYP_LINEAR(CG_INTEGER_DEFAULT_TYPE)] &&
-             ! IL_MUST_BE_LOOP(list_idx)) {
-# endif
 
             new_do_var_idx = gen_compiler_tmp(stmt_start_line, stmt_start_col,
                                               Priv, TRUE);
@@ -4580,12 +4381,8 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
 
          if (exp_desc.type == Structure) {
 
-#ifdef KEY /* Bug 6845 */
             if (ATT_POINTER_CPNT(TYP_IDX(exp_desc.type_idx)) ||
 	      ATT_ALLOCATABLE_CPNT(TYP_IDX(exp_desc.type_idx)))
-#else /* KEY Bug 6845 */
-            if (ATT_POINTER_CPNT(TYP_IDX(exp_desc.type_idx)))
-#endif /* KEY Bug 6845 */
 	    {
                find_opnd_line_and_column(&opnd, &line, &col);
                PRINTMSG(line, 235, Error, col);
@@ -4636,11 +4433,7 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
 
             NTR_IR_TBL(asg_idx);
             IR_OPR(asg_idx) = Io_Item_Type_Code_Opr;
-#ifdef KEY /* Bug 2611 */
             IR_TYPE_IDX(asg_idx) = intrinsic_special_case(&opnd, &exp_desc);
-#else /* KEY Bug 2611 */
-            IR_TYPE_IDX(asg_idx) = exp_desc.type_idx;
-#endif /* KEY Bug 2611 */
             IR_LINE_NUM(asg_idx) = line;
             IR_COL_NUM(asg_idx) = col;
 
@@ -4869,11 +4662,7 @@ void create_namelist_descriptor(int	namelist_attr)
    int			size;
    int			sn_idx;
    int			sub_idx;
-#ifdef KEY /* Bug 10177 */
    int			stack_grp_tbl_idx = 0;
-#else /* KEY Bug 10177 */
-   int			stack_grp_tbl_idx;
-#endif /* KEY Bug 10177 */
    int			static_grp_tbl_idx;
    int			tail_idx;
    long_type		the_constant[2];
@@ -6040,11 +5829,7 @@ static int create_strct_tbl(opnd_type	*base_opnd,
    int			sub_idx;
    int			struct_idx;
    long_type		the_constant[2];
-#ifdef KEY /* Bug 10177 */
    int			tmp_idx = 0;
-#else /* KEY Bug 10177 */
-   int			tmp_idx;
-#endif /* KEY Bug 10177 */
    int			type_idx;
    int			type_idx2;
    int			val_type;
@@ -7051,11 +6836,7 @@ static int change_section_to_do(int	*list_idx)
    opnd_type	opnd;
    int          rank = 1;
    int		return_imp_idx;
-#ifdef KEY /* Bug 10177 */
    int          return_list_idx = 0;
-#else /* KEY Bug 10177 */
-   int          return_list_idx;
-#endif /* KEY Bug 10177 */
    int          sub_list_idx;
    int		tmp_idx;
    int          tmp_list_idx;
@@ -7189,14 +6970,10 @@ static int change_section_to_do(int	*list_idx)
 
                COPY_OPND(tmp_opnd, IL_OPND(tmp_list_idx));
                set_up_exp_desc(&tmp_opnd, &exp_desc);
-#ifdef KEY /* Bug 4709 */
          /* Converting array bounds from Integer_8 to Integer_4 breaks
 	  * customer code which uses large array bounds, and isn't
 	  * correct for our 64-bit-oriented runtime.
 	  */
-#else
-               cast_to_cg_default(&tmp_opnd, &exp_desc);
-#endif /* KEY */
                COPY_OPND(IL_OPND(tmp_list_idx), tmp_opnd);
 
                /* third is end opnd */
@@ -7211,14 +6988,10 @@ static int change_section_to_do(int	*list_idx)
 
                COPY_OPND(tmp_opnd, IL_OPND(tmp_list_idx));
                set_up_exp_desc(&tmp_opnd, &exp_desc);
-#ifdef KEY /* Bug 4709 */
          /* Converting array bounds from Integer_8 to Integer_4 breaks
 	  * customer code which uses large array bounds, and isn't
 	  * correct for our 64-bit-oriented runtime.
 	  */
-#else
-               cast_to_cg_default(&tmp_opnd, &exp_desc);
-#endif /* KEY */
                COPY_OPND(IL_OPND(tmp_list_idx), tmp_opnd);
 
                /* fourth is stride opnd */
@@ -7233,14 +7006,10 @@ static int change_section_to_do(int	*list_idx)
                   
                COPY_OPND(tmp_opnd, IL_OPND(tmp_list_idx));
                set_up_exp_desc(&tmp_opnd, &exp_desc);
-#ifdef KEY /* Bug 4709 */
          /* Converting array bounds from Integer_8 to Integer_4 breaks
 	  * customer code which uses large array bounds, and isn't
 	  * correct for our 64-bit-oriented runtime.
 	  */
-#else
-               cast_to_cg_default(&tmp_opnd, &exp_desc);
-#endif /* KEY */
                COPY_OPND(IL_OPND(tmp_list_idx), tmp_opnd);
 
                /* replace triplet with tmp control variable */
@@ -7406,9 +7175,6 @@ static void expand_io_list(void)
 {
    int			cnt = 0;
    expr_arg_type	exp_desc;
-#ifndef KEY /* Bug 10008 */
-   int			i;
-#endif /* KEY Bug 10008 */
    int			imp_idx;
    int			io_idx;
    int			ir_idx;
@@ -7746,28 +7512,16 @@ static void expand_io_list(void)
                struct_list_idx = list_idx;
                imp_idx = change_section_to_do(&struct_list_idx);
                COPY_OPND(opnd, IL_OPND(struct_list_idx));
-#ifdef KEY /* Bug 10008 */
                int i = discombobulate_structure_ref(&opnd,
 		  TYP_IDX(exp_desc.type_idx), &struct_list_idx);
                cnt += i;
-#else /* KEY Bug 10008 */
-               i = discombobulate_structure_ref(&opnd,
-                                                TYP_IDX(exp_desc.type_idx),
-                                                &struct_list_idx);
-#endif /* KEY Bug 10008 */
                IR_LIST_CNT_L(imp_idx) += i;
             }
             else {
                COPY_OPND(opnd, IL_OPND(list_idx));
-#ifdef KEY /* Bug 10008 */
                int i = discombobulate_structure_ref(&opnd,
 		  TYP_IDX(exp_desc.type_idx), &list_idx);
                cnt += i;
-#else /* KEY Bug 10008 */
-               i = discombobulate_structure_ref(&opnd,
-                                                TYP_IDX(exp_desc.type_idx),
-                                                &list_idx);
-#endif /* KEY Bug 10008 */
                IR_LIST_CNT_R(ir_idx) += i;
             }
          }
@@ -7924,28 +7678,16 @@ static void expand_io_list(void)
             struct_list_idx = list_idx;
             imp_idx = change_section_to_do(&struct_list_idx);
             COPY_OPND(opnd, IL_OPND(struct_list_idx));
-#ifdef KEY /* Bug 10008 */
 	    int i = discombobulate_structure_ref(&opnd,
 	       TYP_IDX(exp_desc.type_idx), &struct_list_idx);
             cnt += i;
-#else /* KEY Bug 10008 */
-            i = discombobulate_structure_ref(&opnd,
-                                             TYP_IDX(exp_desc.type_idx),
-                                             &struct_list_idx);
-#endif /* KEY Bug 10008 */
             IR_LIST_CNT_L(imp_idx) += i;
          }
          else {
             COPY_OPND(opnd, IL_OPND(list_idx));
-#ifdef KEY /* Bug 10008 */
             int i = discombobulate_structure_ref(&opnd,
 	       TYP_IDX(exp_desc.type_idx), &list_idx);
             cnt += i;
-#else /* KEY Bug 10008 */
-            i = discombobulate_structure_ref(&opnd,
-                                             TYP_IDX(exp_desc.type_idx),
-                                             &list_idx);
-#endif /* KEY Bug 10008 */
             IR_LIST_CNT_R(ir_idx) += i;
          }
       }
@@ -8546,24 +8288,11 @@ static void create_io_call_descriptor(int			call_idx,
 
       /* replace the call list with the descriptor */
 
-# if 0
-      if (IR_IDX_L(call_idx) == glb_tbl_idx[Buffer_In_Attr_Idx] ||
-          IR_IDX_L(call_Idx) == glb_tbl_idx[Buffer_Out_Attr_Idx]) {
-   
-         list_idx = IR_IDX_R(call_idx);
-      }
-      else {
-         IR_LIST_CNT_R(call_idx) = 1;
-         NTR_IR_LIST_TBL(list_idx);
-         IR_IDX_R(call_idx) = list_idx;
-      }
-# else
 
       IR_LIST_CNT_R(call_idx) = 1;
       NTR_IR_LIST_TBL(list_idx);
       IR_IDX_R(call_idx) = list_idx;
 
-# endif
 
       NTR_IR_TBL(loc_idx);
       IR_OPR(loc_idx) = Aloc_Opr;
@@ -8790,11 +8519,7 @@ static void gen_array_element_init(int		attr_idx,
                                    int		offset)
 
 {
-#ifdef KEY /* Bug 10177 */
    int		asg_idx = 0;
-#else /* KEY Bug 10177 */
-   int		asg_idx;
-#endif /* KEY Bug 10177 */
    opnd_type	opnd[2];
    int		col;
    int		i;
