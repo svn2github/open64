@@ -575,7 +575,6 @@ dwarf_add_fde_inst(Dwarf_P_Fde fde,
     return fde;
 }
 
-#ifdef KEY
 /* Similar to dwarf_add_fde_inst, except that the offset denoted by VAL2
    is signed.
 */
@@ -633,7 +632,6 @@ dwarf_add_fde_inst_with_signed_offset(Dwarf_P_Fde fde,
     _dwarf_pro_add_to_fde(fde, curinst);
     return fde;
 }
-#endif
 
 /*------------------------------------------------------------------------
 	instructions are added to fde in the form of a linked

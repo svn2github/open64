@@ -100,7 +100,6 @@ char *_dwarf_rel_section_names[] = {
    Must match also _dwarf_rel_section_names above
 */
 char *_dwarf_sectnames[] = {
-#ifdef KEY /* Mac port */
     DEBUG_INFO_SECTNAME,
     DEBUG_LINE_SECTNAME,
     DEBUG_ABBREV_SECTNAME,
@@ -115,22 +114,6 @@ char *_dwarf_sectnames[] = {
     DEBUG_MACINFO_SECTNAME,
     DEBUG_LOC_SECTNAME,
     EH_FRAME_SECTNAME
-#else /* KEY Mac port */
-    ".debug_info",
-    ".debug_line",
-    ".debug_abbrev",
-    ".debug_frame",
-    ".debug_aranges",
-    ".debug_pubnames",
-    ".debug_str",
-    ".debug_funcnames",		/* sgi extension */
-    ".debug_typenames",		/* sgi extension */
-    ".debug_varnames",		/* sgi extension */
-    ".debug_weaknames",		/* sgi extension */
-    ".debug_macinfo",
-    ".debug_loc",
-    ".eh_frame"
-#endif /* KEY Mac port */
 };
 
 
@@ -302,11 +285,7 @@ dwarf_transform_to_disk_form(Dwarf_P_Debug dbg, Dwarf_Error * error)
 	case EH_FRAME:
 	    if (dbg->de_eh_frame_cies == NULL)
 		continue;
-#ifdef KEY
 	    flags = SHF_MIPS_NOSTRIP | SHF_ALLOC;
-#else
-	    flags = SHF_MIPS_NOSTRIP;
-#endif
 	    break;
 	default:
 	    /* logic error: missing a case */
@@ -1211,7 +1190,7 @@ _dwarf_pro_generate_debugframe(Dwarf_P_Debug dbg, Dwarf_Error * error)
 	if (res != DW_DLV_OK) {
 	    DWARF_P_DBG_ERROR(dbg,DW_DLE_CHUNK_ALLOC,-1);
 	}
-	/* cgdwarf will print the CIE to which this FDE belongs (bug 2463) */
+	/* cgdwarf will print the CIE to which this FDE belongs */
 	res = dbg->de_reloc_pair(dbg, DEBUG_FRAME,
 				 cur_off+extension_size+uwordb_size, /* r_offset */
                                  dbg->de_sect_name_idx[DEBUG_FRAME], 
@@ -1435,7 +1414,6 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
     int elfsectno_of_debug_info;
     int abbrevsectno;
     unsigned char *data;
-#ifdef KEY /* Bug 3507 */
     int upointer_size = dbg->de_pointer_size;
     char *module_name;
     /*
@@ -1452,7 +1430,6 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
      */
     unsigned count_imported_decls = 0;
 #   define ADJUSTED_DIE_OFF (die_off - count_imported_decls * upointer_size)
-#endif /* KEY Bug 3507 */
     int cu_header_size;
     Dwarf_P_Abbrev curabbrev, abbrev_head, abbrev_tail;
     Dwarf_P_Die curdie;
@@ -1588,7 +1565,6 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
 		abbrev_tail = curabbrev;
 	    }
 	}
-#ifdef KEY /* Bug 3507 */
 	    if (curabbrev->abb_tag == DW_TAG_module) {
 	      res = dbg->de_reloc_pair(dbg,
 				       DEBUG_INFO,
@@ -1601,7 +1577,6 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
 		DWARF_P_DBG_ERROR(dbg,DW_DLE_REL_ALLOC, -1);
 	      }
 	    }
-#endif /* KEY Bug 3507 */
 	res = _dwarf_pro_encode_leb128_nm(curabbrev->abb_idx,
 					  &nbytes,
 					  buff1, sizeof(buff1));
@@ -1617,11 +1592,9 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
 	curdie->di_abbrev_nbytes = nbytes;
 	die_off += nbytes;
 	curattr = curdie->di_attrs;
-#ifdef KEY /* Bug 3507 */
 	    // get the module name
 	    if (curabbrev->abb_tag == DW_TAG_imported_declaration)
 	      module_name = curattr->ar_data;
-#endif /* KEY Bug 3507 */
 #if defined(BUILD_OS_DARWIN)
         int skip_stmt_list = 0;
 #endif /* defined(BUILD_OS_DARWIN) */
@@ -1651,11 +1624,7 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
                 if (!skip_stmt_list) {
 #endif /* defined(BUILD_OS_DARWIN) */
 		res = dbg->de_reloc_name(dbg, DEBUG_INFO,
-#ifdef KEY /* Bug 3507 */
 		  ADJUSTED_DIE_OFF + curattr->ar_rel_offset,	/* r_offset */
-#else /* KEY Bug 3507 */
-		  die_off + curattr->ar_rel_offset,	/* r_offset */
-#endif /* KEY Bug 3507 */
 					 curattr->ar_rel_symidx,
 					 dwarf_drt_data_reloc,
 					 curattr->ar_reloc_len);
@@ -1671,7 +1640,6 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
 	    die_off += curattr->ar_nbytes;
 	    curattr = curattr->ar_next;
 	}
-#ifdef KEY /* Bug 3507 */
 	    if (curabbrev->abb_tag == DW_TAG_imported_declaration) {
 	      // Note that we have overloaded the meaning of the size 
 	      // of the relocation to be able to look back for the module
@@ -1695,7 +1663,6 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
 	      die_off += upointer_size;
 	      count_imported_decls += 1;
 	    }
-#endif /* KEY Bug 3507 */
 	/* depth first search */
 	if (curdie->di_child)
 	    curdie = curdie->di_child;
@@ -1889,14 +1856,6 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
 	    GET_CHUNK(dbg, abbrevsectno, data, nbytes, error);
 	    memcpy((void *) data, (const void *) val, nbytes);
 	}
-#ifndef KEY
-	    GET_CHUNK(dbg,abbrevsectno,data,2,error);	/* two zeros, 
-					for last entry */
-	    *data = 0;
-	    data++;
-	    *data = 0;
-#else
-	    // Bug 3507
 	    if (curabbrev->abb_tag == DW_TAG_imported_declaration) {
 	      res = _dwarf_pro_encode_leb128_nm(DW_AT_import,
 						&nbytes,
@@ -1917,7 +1876,6 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
 	      GET_CHUNK(dbg,abbrevsectno,data,nbytes,error);
 	      memcpy((void *)data,(const void *)val, nbytes);
 	    }
-            // Bug 294
             // Emit an extra 0x00 at the end of all abbrev section entries.
             // This is necessary for compiling multiple (C) files. If not for 
 	    // this, the Number TAG at the beginning of a new compile unit would
@@ -1940,7 +1898,6 @@ _dwarf_pro_generate_debuginfo(Dwarf_P_Debug dbg, Dwarf_Error * error)
 	      data++;
 	      *data = 0;
             }
-#endif
 
 	curabbrev = curabbrev->abb_next;
     }

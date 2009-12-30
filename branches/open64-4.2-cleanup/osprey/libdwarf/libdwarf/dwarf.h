@@ -276,11 +276,11 @@ extern "C" {
 #define DW_AT_MIPS_assumed_size			0x2011 /* MIPS/SGI */
 
 /* HP extensions. */
-#if 0
-#define DW_AT_HP_unmodifiable                   0x2001 /* conflict: MIPS */
-#define DW_AT_HP_actuals_stmt_list              0x2010 /* conflict: MIPS */
-#define DW_AT_HP_proc_per_section               0x2011 /* conflict: MIPS */
-#endif
+/*
+#define DW_AT_HP_unmodifiable                   0x2001  conflict: MIPS 
+#define DW_AT_HP_actuals_stmt_list              0x2010  conflict: MIPS 
+#define DW_AT_HP_proc_per_section               0x2011  conflict: MIPS 
+*/
 #define DW_AT_HP_raw_data_ptr                   0x2012 /* HP */
 #define DW_AT_HP_pass_by_reference              0x2013 /* HP */
 #define DW_AT_HP_opt_level                      0x2014 /* HP */
@@ -472,9 +472,9 @@ extern "C" {
 #define DW_OP_lo_user			0xe0
 
     /* HP extensions. */
-#if 0
-#define DW_OP_HP_unknown                0xe0 /* HP conflict: GNU */
-#endif
+/*
+#define DW_OP_HP_unknown                0xe0 // HP conflict: GNU 
+*/
 #define DW_OP_HP_is_value               0xe1 /* HP */
 #define DW_OP_HP_fltconst4              0xe2 /* HP */
 #define DW_OP_HP_fltconst8              0xe3 /* HP */
@@ -625,11 +625,7 @@ extern "C" {
 #define DW_CFA_def_cfa_offset   0x0e
 #define DW_CFA_def_cfa_expression 0x0f     /* DWARF3 */
 #define DW_CFA_expression       0x10       /* DWARF3 */
-#ifdef KEY
 #define DW_CFA_offset_extended_sf 0x11 /* DWARF3 */
-#else
-#define DW_CFA_cfa_offset_extended_sf 0x11 /* DWARF3 */
-#endif
 #define DW_CFA_def_cfa_sf       0x12       /* DWARF3 */
 #define DW_CFA_def_cfa_offset_sf 0x13      /* DWARF3 */
 

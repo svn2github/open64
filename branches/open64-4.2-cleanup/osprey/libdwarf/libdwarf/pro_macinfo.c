@@ -153,7 +153,6 @@ libdwarf_compose_add_string(Dwarf_P_Debug dbg, char *string, size_t len)
 
 }
 
-#ifdef KEY
 /* Similar to libdwarf_compose_add_string, but put the responsibilty
  * for adding the null terminator on the callee.  This allows this
  * function to be used for string concatenation.
@@ -173,7 +172,6 @@ libdwarf_compose_add_bytes(Dwarf_P_Debug dbg, char *string, size_t len)
     return;
 
 }
-#endif
 
 static int
 libdwarf_compose_add_line(Dwarf_P_Debug dbg,

@@ -32,9 +32,9 @@
 /* Define to 1 if you have the <elf.h> header file. */
 #if defined(BUILD_OS_DARWIN)
 #undef HAVE_ELF_H
-#else /* KEY Mac port */
+#else /* Mac port */
 #define HAVE_ELF_H 1
-#endif /* KEY Mac port */
+#endif /* Mac port */
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
