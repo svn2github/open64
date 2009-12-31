@@ -1323,7 +1323,7 @@ CG_Instrument_Arcs()
     ld_result_tn = Build_TN_Of_Mtype(rtype);
     Exp_Load (rtype, rtype, ld_result_tn, st, 0, &new_ops, 0);
     ld_2nd_result_tn = Build_TN_Of_Mtype(rtype);
-#if defined(TARG_MIPS) || defined(TARG_X8664)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_PPC32)
     Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
 #else
     Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);
@@ -1331,7 +1331,7 @@ CG_Instrument_Arcs()
     const_tn = Gen_Literal_TN(1,4);
     result_tn = Build_TN_Of_Mtype(rtype);
     Exp_OP2 (OPC_U4ADD, result_tn, ld_2nd_result_tn, const_tn, &new_ops);
-#if defined(TARG_MIPS) || defined(TARG_X8664)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_PPC32)
     Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
 #else
     Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);
@@ -1373,7 +1373,7 @@ CG_Instrument_Arcs()
 	ld_result_tn = Build_TN_Of_Mtype(rtype);
 	Exp_Load (rtype, rtype, ld_result_tn, st, 0, &new_ops, 0);
 	ld_2nd_result_tn = Build_TN_Of_Mtype(rtype);
-#if defined(TARG_MIPS) || defined(TARG_X8664)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_PPC32)
 	Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
 #else
 	Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);
@@ -1381,7 +1381,7 @@ CG_Instrument_Arcs()
 	const_tn = Gen_Literal_TN(1,4);
 	result_tn = Build_TN_Of_Mtype(rtype);
 	Exp_OP2 (OPC_U4ADD, result_tn, ld_2nd_result_tn, const_tn, &new_ops);
-#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_SL)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_PPC32)
 	Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
 #else
 	Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);
@@ -1416,6 +1416,8 @@ CG_Instrument_Arcs()
 	  tgt_label = Gen_Label_For_BB( bb_succ );
 #ifdef TARG_X8664
 	  Build_OP( TOP_jmp, Gen_Label_TN(tgt_label, 0), &new_ops);
+#elif defined(TARG_PPC32)
+	  Build_OP( TOP_ba, Gen_Label_TN(tgt_label, 0), &new_ops);
 #elif TARG_MIPS
 	  // mips
 	  Build_OP( TOP_j, Gen_Label_TN(tgt_label, 0), &new_ops);

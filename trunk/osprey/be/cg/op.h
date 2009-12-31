@@ -561,6 +561,27 @@ enum OP_COND_DEF_KIND {
 #endif //TARG_SL
 #endif 
 
+#if defined(TARG_PPC32) 
+#define OP_MASK_BC2_OP        0x00200000  /* Is OP renamed during global sched */
+#define OP_MASK_C2_BR_OP 0x00400000
+#define OP_MASK_16bit_OP 0x00400000  /* Is OP rechanged as 16-bit OP*/
+#define OP_MASK_PAIRED_OP 0x00800000  /* Is OP paired: 2 continus 16-bit OP */ 
+
+#define OP_MASK_LR_SPILL_OP 0x04000000
+#define OP_LR_spill(o)          (OP_flags(o) &  OP_MASK_LR_SPILL_OP)
+#define Set_OP_LR_spill(o)      (OP_flags(o) |= OP_MASK_LR_SPILL_OP)
+#define Reset_OP_LR_spill(o)	  (OP_flags(o) &= ~OP_MASK_LR_SPILL_OP)
+
+#define OP_bc2_op(op)		(OP_flags(op) & OP_MASK_BC2_OP)
+#define Set_OP_bc2_op(o)	(OP_flags(o) |= OP_MASK_BC2_OP)
+#define Reset_OP_bc2_op(o)	(OP_flags(o) &= ~OP_MASK_BC2_OP)
+#define OP_16bit_op(op)        (OP_flags(op) & OP_MASK_16bit_OP)
+#define Set_OP_16bit_op(o)     (OP_flags(o) |= OP_MASK_16bit_OP)
+#define Reset_OP_16bit_op(o)   (OP_flags(o) &= ~OP_MASK_16bit_OP)
+#define OP_Paired_op(op)       (OP_flags(op) & OP_MASK_PAIRED_OP)
+#define Set_OP_Paired_op(o)    (OP_flags(o) |= OP_MASK_PAIRED_OP)
+#define Reset_OP_Paired_op(o)  (OP_flags(o) &= ~OP_MASK_PAIRED_OP)
+#endif //TARG_PPC32
 
 # define OP_glue(o)		(OP_flags(o) & OP_MASK_GLUE)
 # define Set_OP_glue(o)		(OP_flags(o) |= OP_MASK_GLUE)
@@ -697,7 +718,7 @@ extern BOOL OP_use_return_value(OP*);
 #endif
 #define OP_mem_fill_type(o)     (TOP_is_mem_fill_type(OP_code(o)))
 #define OP_call(o)		(TOP_is_call(OP_code(o)))
-#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_NVISA) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_NVISA) || defined(TARG_MIPS) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
 #define OP_xfer(o)		(TOP_is_xfer(OP_code(o)))
 #endif
 #define OP_cond(o)		(TOP_is_cond(OP_code(o)))

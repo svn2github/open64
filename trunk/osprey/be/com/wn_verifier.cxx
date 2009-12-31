@@ -557,7 +557,7 @@ BOOL WN_Verifier::CALL_parent_LDID(WN *wn, WN *parent_wn)
   WN       *temp_wn;  
   BOOL     slink_used;
 
-#if !defined(TARG_IA64) && !defined(TARG_X8664)
+#if !defined(TARG_IA64) && !defined(TARG_X8664) && !defined(TARG_PPC32)
 
   // At the LDID node with special registers that are dedicated only
   // to return values:
@@ -889,9 +889,11 @@ BOOL WN_Verifier::STID_check_st_class(WN *wn)
 		 && (WN_operator(temp_wn) != OPR_PICCALL)
 		 && (WN_operator(temp_wn) != OPR_CALL)) )
 	 {
+#ifndef TARG_PPC32
 	   DevWarn("WN_verifier Error (STID_check_st_class): STID %d was "
 		   "followed by %s and not by OPC_RETURN or OPR_CALL or OPR_PICCALL",
 		   WN_offset(wn),OPCODE_name(WN_opcode(temp_wn)));
+#endif
 	 }
     }
 #endif
@@ -1050,9 +1052,11 @@ WN_Verifier::Field_id_valid (WN* wn)
 	    Is_True (WN_field_id(wn) == 0,
 		     ("non-zero field id for memory op on scalar"));
 	} else if (WN_field_id(wn) == 0) {
+#if !defined(TARG_PPC32)	
 	    Is_True (WN_desc(wn) == MTYPE_M ||
 		     MTYPE_byte_size(WN_desc(wn)) == TY_size(*ty),
-		     ("field_id and descriptor type are inconsistent"));
+		     ("field_id and descriptor type are inconsistent")); 
+#endif
 	}
 	break;
     default:

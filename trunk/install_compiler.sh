@@ -39,6 +39,7 @@ VER_MAJOR="4"
 VER_MINOR="2"
 #PATCH_LEVEL=""
 VERSION="${OPEN64_FULL_VERSION:-${VER_MAJOR}.${VER_MINOR}}"
+HOST_MACHINE_TYPE=`uname -m`
 
 PREBUILT_LIB="./lib"
 PREBUILT_BIN="./bin"
@@ -75,6 +76,14 @@ x86_64 )
     PREBUILD_INTERPOS="x8664-linux"
     AREA="osprey/targx8664_x8664"
     INSTALL_TYPE="x8664-native"
+    ;;
+ppc )
+    BUILD_HOST="ppc32"
+    TARG_HOST="ppc32"
+    AREA="osprey/targppc32_ppc32"
+    PHASE_DIR_PREFIX="ppc32"
+    PREBUILD_INTERPOS="ppc32-linux"
+    INSTALL_TYPE="ppc32-native"
     ;;
 cross )
     BUILD_HOST="ia32"
@@ -155,7 +164,10 @@ INSTALL_DATA_SUB () {
 # install the driver
 INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${PHASEPATH}/driver
-    if [ "$TARG_HOST" = "ia64" ]; then
+    if [ "$TARG_HOST" = "ia64" ] || [ "$TARG_HOST" = "x8664" ]; then
+      INSTALL_EXEC_SUB ${AREA}/driver/kdriver  ${PHASEPATH}/kdriver
+    fi
+    if [ "$TARG_HOST" = "ppc32" ]; then
       INSTALL_EXEC_SUB ${AREA}/driver/kdriver  ${PHASEPATH}/kdriver
     fi
 
@@ -169,7 +181,10 @@ INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf90-${VERSION}
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95-${VERSION}
 
-    if [ "$TARG_HOST" = "ia64" ]; then
+    if [ "$TARG_HOST" = "ia64" ] || [ "$TARG_HOST" = "x8664" ]; then
+      INSTALL_EXEC_SUB ${AREA}/driver/kdriver ${BIN_DIR}/kopencc
+    fi
+    if [ "$TARG_HOST" = "ppc32" ]; then
       INSTALL_EXEC_SUB ${AREA}/driver/kdriver ${BIN_DIR}/kopencc
     fi
 
@@ -210,7 +225,7 @@ INSTALL_FE () {
     INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
     # GNU 4.2.0 based FE
     INSTALL_EXEC_SUB ${AREA}/wgen_4_2_0/wgen42 ${PHASEPATH}/wgen42
-    LIBEXEC=libexec/gcc/x86_64-redhat-linux/4.2.0
+    LIBEXEC=libexec/gcc/${HOST_MACHINE_TYPE}-redhat-linux/4.2.0
     (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1 cc142)
     (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1plus cc1plus42)
 
@@ -290,6 +305,20 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
 
         #  SGI implementation for turning on FLUSH to ZERO
         INSTALL_DATA_SUB ${LIBAREA}/init/ftz.o     ${PHASEPATH}/ftz.o
+    elif [ "$TARG_HOST" = "ppc32" ] ;  then
+        LIBAREA=osprey/targppc32_ppc32
+        LIB32AREA=osprey/targppc32_ppc32
+        # 64bit libraries
+        INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a
+        INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
+        INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
+        INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
+	    INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
+        # 32bit libraries
+        INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.a ${PHASEPATH}/32/libfortran.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libm/libmsgi.a       ${PHASEPATH}/32/libmsgi.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.a           ${PHASEPATH}/32/libmv.a
     else
         # IA32 and x86_64
         LIBAREA=osprey/targx8664_builtonia32
@@ -348,6 +377,9 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
         INSTALL_DATA_SUB ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/libm.a ${PHASEPATH}/libm.a
 	INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
+    elif [ "$TARG_HOST" = "ppc32" ] ; then
+        LIBAREA=osprey/targppc32_builtonppc32
+        LIB32AREA=osprey/targppc32_buildonppc32
     else
         LIBAREA=osprey/targx8664_builtonia32
         LIB32AREA=osprey/targia32_builtonia32
@@ -515,7 +547,9 @@ INSTALL_MISC () {
         INSTALL_EXEC_SUB ${AREA}/targ_info/itanium.so ${PHASEPATH}/itanium.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/itanium2.so ${PHASEPATH}/itanium2.so
     fi
-
+    if [ "$TARG_HOST" = "ppc32" ]; then
+        INSTALL_EXEC_SUB ${AREA}/targ_info/ppc.so ${PHASEPATH}/ppc.so        
+    fi
     if [ "$TARG_HOST" = "x8664" ]; then
         INSTALL_EXEC_SUB ${AREA}/targ_info/opteron.so ${PHASEPATH}/opteron.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/em64t.so ${PHASEPATH}/em64t.so
@@ -549,7 +583,9 @@ if [ "$TARG_HOST" = "x8664" -a ! -d "${NATIVE_LIB_DIR}/32" ]; then
 fi
 
 INSTALL_DRIVER 
+if [ "$TARG_HOST" != "ppc32"  ]; then
 INSTALL_GCC
+fi
 INSTALL_FE 
 INSTALL_BE 
 INSTALL_IPA 

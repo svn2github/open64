@@ -130,6 +130,9 @@ endif
 ifeq ($(BUILD_TARGET), NVISA)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), PPC32)
+HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
 ifeq ($(BUILD_TARGET), LOONGSON)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
@@ -712,6 +715,9 @@ TARGET_SO = pentium.so
 endif
 ifeq ($(BUILD_TARGET), X8664)
 TARGET_SO = opteron.so
+endif
+ifeq ($(BUILD_TARGET), PPC32)
+TARGET_SO = ppc.so
 endif
 ifeq ($(BUILD_TARGET), LOONGSON)
 TARGET_SO = loongson.so

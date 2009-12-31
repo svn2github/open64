@@ -74,9 +74,9 @@
 
 #include "wn_simp.h"
 
-# if defined(KEY) && defined(Is_True_On)
-# include "config_opt.h"
-# endif
+#if defined(KEY) && defined(Is_True_On)
+#include "config_opt.h"
+#endif
 
 #ifdef BACK_END
 BOOL WN_Simp_Fold_ILOAD = TRUE;

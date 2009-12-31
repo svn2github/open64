@@ -279,7 +279,9 @@ endif
 ifeq ($(BUILD_ARCH), X8664)
 VPATH = $(BUILD_BASE) $(BUILD_BASE)/mips $(BUILD_BASE)/mips/extra
 endif
-
+ifeq ($(BUILD_ARCH), PPC32)
+VPATH = $(BUILD_BASE) $(BUILD_BASE)/mips $(BUILD_BASE)/mips/extra
+endif
 
 default:
 	$(MAKE)  first

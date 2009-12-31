@@ -116,8 +116,7 @@ BOOL    VHO_Single_Loop_Test            = FALSE;
 BOOL    VHO_Use_Do_While                = FALSE;
 BOOL    VHO_Disable_Copy_Field_Element  = FALSE;
 #ifdef KEY
-
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_PPC32)
 BOOL  VHO_Enable_Simple_If_Conv = FALSE;
 #else
 BOOL  VHO_Enable_Simple_If_Conv = TRUE;

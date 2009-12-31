@@ -198,7 +198,11 @@ static const char rcs_id[] = "";
 
 BOOL  CIO_enable_copy_removal  = TRUE;
 BOOL  CIO_enable_read_removal  = TRUE;
+#if defined(TARG_PPC32) // seems we sometimes run into the function Predicate_Write and generate an FmtAssertion
+BOOL  CIO_enable_write_removal = FALSE;
+#else
 BOOL  CIO_enable_write_removal = TRUE;
+#endif
 BOOL  CIO_enable_cse_removal   = TRUE;
 INT32 CIO_rw_max_omega         = 8;
 

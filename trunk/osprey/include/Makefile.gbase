@@ -166,6 +166,10 @@ ifeq ($(BUILD_TARGET), X8664)
 SYS_DIRS = \
 	ia64
 endif
+ifeq ($(BUILD_TARGET), PPC32)
+SYS_DIRS = \
+	ia64
+endif
 ifeq ($(BUILD_TARGET), LOONGSON)
 SYS_DIRS = \
         ia64
@@ -190,6 +194,11 @@ default: pathscale_defs.h
 	@for h in $(LINUX_HFILES); do \
 	    if ! test -e $$h; then \
 	      $(LN) -sf $(BUILD_TOT)/linux/include/$$h $$h; \
+	    fi; \
+	done
+	@for h in $(LIBELF_HFILES); do \
+	    if ! test -a $$h; then \
+	      ln -sf $(BUILD_TOT)/libelf/lib/$$h libelf/$$h; \
 	    fi; \
 	done
 	@for h in $(LINUX_SYS_HFILES); do \

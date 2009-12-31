@@ -254,7 +254,13 @@ inline INT64
 TCON_ci0 (const TCON& tcon)		{ return tcon.cmplxval.i0; }
 #endif // KEY
 inline UINT32
-TCON_uval (const TCON& tcon)		{ return (UINT32) tcon.vals.word0; }    
+TCON_uval (const TCON& tcon)		{ 
+#if HOST_IS_LITTLE_ENDIAN
+  return (UINT32) tcon.vals.word0; 
+#else
+  return (UINT32) tcon.vals.i0; 
+#endif
+}    
 inline INT64
 TCON_i0 (const TCON& tcon)		{ return tcon.vals.i0; }    
 inline UINT64

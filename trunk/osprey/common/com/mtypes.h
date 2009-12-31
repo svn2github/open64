@@ -260,7 +260,7 @@ extern TYPE_DESC Machine_Types[];
 
 #define MTYPE_is_size_double(n)	(MTYPE_bit_size(n) == MTYPE_bit_size(MTYPE_I8))
 
-#ifdef TARG_SL
+#if defined(TARG_SL) || defined(TARG_PPC32)
 #define MTYPE_is_longlong(n) (MTYPE_is_integral(n) && (MTYPE_bit_size(n) == 64))
 #define MTYPE_is_double(n) (MTYPE_is_float(n) && (MTYPE_bit_size(n) == 64))
 #endif
