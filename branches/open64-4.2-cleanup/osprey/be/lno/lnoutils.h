@@ -845,9 +845,7 @@ extern WN* Create_ILoad_From_IStore(WN* wn_store, DU_MANAGER* du,
   ARRAY_DIRECTED_GRAPH16* dg);
 extern BOOL Is_Local_Array_Reference(WN* array);
 extern BOOL Is_Mp_Region(WN *wn);
-#ifdef KEY
 extern BOOL Is_Eh_Or_Try_Region(WN *wn);
-#endif
 extern BOOL Do_Loop_Is_Mp(WN *wn);
 extern RID* Get_Enclosing_Region_ID(WN *wn); 
 extern BOOL Is_Nested_Doacross(WN* wn_loop); 
@@ -898,7 +896,7 @@ extern void LNO_Check_Graph(ARRAY_DIRECTED_GRAPH16* dg);
 extern void  MP_Sanity_Check_Func(WN *func_nd);
 #endif
 
-#if defined(TARG_X8664) || defined(TARG_IA64) //introduced by bug 10953
+#if defined(TARG_X8664) || defined(TARG_IA64)
 extern WN *Inductive_Base_Addr_Const_Stride(WN *array, WN *loop, WN **base, 
                BOOL *inductive_use, BOOL *indirect_base, mINT32 *stride_val);
 

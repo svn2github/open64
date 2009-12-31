@@ -268,7 +268,6 @@ static const char *operator_table[OPERATOR_LAST + 1] =
   "ALLOCA",
   "DEALLOCA",
   "LDMA",
-#ifdef KEY
   "ASM_STMT",
   "ASM_EXPR",
   "ASM_INPUT",
@@ -277,7 +276,6 @@ static const char *operator_table[OPERATOR_LAST + 1] =
   "GOTO_OUTER_BLOCK",
   "EXTRACT_BITS",
   "COMPOSE_BITS",
-#endif
 #ifdef TARG_X8664
   "REPLICATE",
   "REDUCE_ADD",

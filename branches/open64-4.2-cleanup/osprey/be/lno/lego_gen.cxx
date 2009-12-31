@@ -289,9 +289,7 @@ extern void Lower_Distr_Pragmas (WN* func_nd) {
   // also collect altentries, if any
   while (wn) {
     if (WN_operator(wn) == OPR_RETURN
-#ifdef KEY
   	|| WN_operator(wn) == OPR_GOTO_OUTER_BLOCK
-#endif
        ) {
       exit_stack->Push(wn);
       wn = LWN_Get_Next_Stmt_Node (wn);
@@ -1050,9 +1048,7 @@ static void Insert_Exit_Code (STACK_OF_WN* exit_stack) {
     for (INT i=0; i < exit_stack->Elements(); i++) {
       pwn = exit_stack->Bottom_nth(i);
       FmtAssert (WN_operator(pwn) == OPR_RETURN
-#ifdef KEY
   		 || WN_operator(pwn) == OPR_GOTO_OUTER_BLOCK
-#endif
       		 ,
                  ("Insert_Exit_Code found non-return node (got opcode=%d)\n",
                   WN_opcode(pwn)));
@@ -1395,19 +1391,6 @@ extern WN* Get_Array_Dimension_Size (TY_IDX array_ty, INT i) {
     ret_wn = LWN_Make_Icon (MTYPE_I8, (TY_AR_ubnd_val(array_ty,i) -
                                     TY_AR_lbnd_val(array_ty,i) + 1));
     
-#if 0
-    if (TY_AR_stride_val(array_ty, i) == elem_size) {
-      ret_wn = LWN_Make_Icon (MTYPE_I8,(TY_AR_ubnd_val(array_ty,i) -
-                                    TY_AR_lbnd_val(array_ty,i) + 1));
-    }
-    else {
-      ret_wn = LWN_Make_Icon(MTYPE_I8, ((TY_AR_ubnd_val(array_ty,i) -
-                                     TY_AR_lbnd_val(array_ty,i) + 1)/
-                                     (TY_AR_stride_val(array_ty,i)/
-                                         elem_size)));
-      DevWarn ("Stride on distributed array is not 1");
-    }
-#endif
   }
   else {
     // something is non-const, so generate an expression
@@ -2906,11 +2889,7 @@ extern void Init_Special_Lego_Mp_Call() {
     ST* st;
     st             = New_ST(GLOBAL_SYMTAB);
     ST_Init (st,
-#ifndef KEY
-             Save_Str("__mp_sug_numthreads"),
-#else
              Save_Str("__ompc_sug_numthreads"),
-#endif
              CLASS_VAR,
              SCLASS_EXTERN,
              EXPORT_PREEMPTIBLE,
@@ -2920,11 +2899,7 @@ extern void Init_Special_Lego_Mp_Call() {
 
     st             = New_ST(GLOBAL_SYMTAB);
     ST_Init (st,
-#ifndef KEY
-             Save_Str("__mp_cur_numthreads"),
-#else
              Save_Str("__ompc_cur_numthreads"),
-#endif
              CLASS_VAR,
              SCLASS_EXTERN,
              EXPORT_PREEMPTIBLE,
@@ -2934,31 +2909,13 @@ extern void Init_Special_Lego_Mp_Call() {
   }
   {
     distr_st_entries[mp_numthreads_fn] =
-#ifndef KEY
-      Declare_Func_Zero_Arg (".__mp_numthreads", "__mp_numthreads",
-                             Be_Type_Tbl(MTYPE_I4));
-#else
       Declare_Func_Zero_Arg (".omp_get_num_threads", "omp_get_num_threads",
                              Be_Type_Tbl(MTYPE_I4));
-#endif
   }
-#ifndef KEY // Pathscale does not have this
-  { 
-    distr_st_entries[mp_cur_numthreads_func] =
-      Declare_Func_Zero_Arg (".__mp_cur_numthreads_func", 
-                             "__mp_cur_numthreads_func",
-                             Be_Type_Tbl(MTYPE_I4));
-  }
-#endif
   { 
     distr_st_entries[mp_my_threadnum] =
-#ifndef KEY
-      Declare_Func_Zero_Arg (".mp_my_threadnum", "mp_my_threadnum",
-			    Be_Type_Tbl(MTYPE_I4));
-#else
       Declare_Func_Zero_Arg (".omp_get_thread_num", "omp_get_thread_num",
 			    Be_Type_Tbl(MTYPE_I4));
-#endif
   } 
 }
 
@@ -3353,19 +3310,4 @@ void Generate_Runtime_Stuff () {
                           Be_Type_Tbl(MTYPE_V),
                           voidpty);
 
-#if 0
-  // These are now defined in be/be/dra_ec.cxx
-  //
-  distr_st_entries[ECHT_Check] = 
-    Declare_Func_One_Arg (".__dsm_echt_check", "__dsm_echt_check",
-                          voidpty,
-                          voidpty);
-
-  arg_ty[0] = arg_ty[1] = voidpty;
-  distr_st_entries[ECHT_Compare] = 
-    Declare_Func_N_Arg (".__dsm_echt_compare", "__dsm_echt_compare",
-                        Be_Type_Tbl(MTYPE_V),
-                        4,
-                        arg_ty);
-#endif
 }

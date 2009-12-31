@@ -506,7 +506,6 @@ extern BOOL Is_Bad_Array(WN* wn_ref, INT nloops);
 extern BOOL Is_Vectorizable_Loop(WN* loop);
 extern BOOL Is_Vectorization_Beneficial(WN* loop);
 
-// bug 5880
 extern BOOL Is_Aggressive_Vintr_Loop(WN *loop);
 #endif
 

@@ -563,9 +563,7 @@ static void MIR_Maybe_Add_To_List(WN*                      wn,
     OPERATOR parent_oper = WN_operator(parent);
     if (((parent_oper == OPR_ISTORE) && (wn == WN_kid1(parent))) ||
         (parent_oper == OPR_ILOAD)){
-#ifdef KEY //12404: don't "minvar" for istore/iload of volatiles
       if (!WN_Is_Volatile_Mem(parent))
-#endif
       MIR_Build_Loop_List_Array(wn, lists, pool, duplicates_okay);
     }
   }
@@ -781,15 +779,13 @@ static void MIR_Replace(WN*                      loop,
   TY_IDX        ty = Be_Type_Tbl(type);
   TY_IDX        pty = Make_Pointer_Type(ty);
 
-#ifdef TARG_X8664 //bug 11472: memory chunk should be assigned to a temporary instead of a preg
+#ifdef TARG_X8664 // memory chunk should be assigned to a temporary instead of a preg
   if (Minvariant_Removal_For_Simd || type == MTYPE_M) pty = ty;
 #endif
-#ifdef KEY  
   // Bug 3072 - If parent type is MTYPE_BS then, we can not create OPC_BSBSLDID 
   // - triggered by fix to this bug in model.cxx (adjust esz to 1-byte in 
   // Build_Aarray).
   if (type == MTYPE_BS) return;
-#endif
 
   if (Minv_Debug) {
     fprintf(TFile, "In loop %s, hoisting", SYMBOL(WN_index(loop)).Name());
@@ -802,7 +798,6 @@ static void MIR_Replace(WN*                      loop,
   if (Minvariant_Removal_For_Simd || type == MTYPE_M) {
     ST * st = Gen_Temp_Symbol (MTYPE_TO_TY_array[type], "_misym");
     newsym = SYMBOL(st, 0, type);
-    // bug 7446
     for (WN* wn = loop; wn != NULL; wn = LWN_Get_Parent(wn)) {
       if (Is_Mp_Region(wn)) {
 	WN *prag = WN_CreatePragma(WN_PRAGMA_LOCAL, newsym.St(), 
@@ -1052,8 +1047,7 @@ static void MIR_Replace(WN*                      loop,
 
       WN_kid(p_oldiload, ikid) = newldid;
       LWN_Set_Parent(newldid, p_oldiload);
-#ifdef KEY
-      // Bug 1277 - generate a CVT here.
+      // generate a CVT here.
       if ( MTYPE_bit_size( WN_rtype(newldid ) ) == 32 &&
 	   MTYPE_bit_size( WN_rtype(p_oldiload ) ) == 64 &&
 	   !MTYPE_is_float( WN_rtype( newldid ) ) &&
@@ -1065,7 +1059,6 @@ static void MIR_Replace(WN*                      loop,
         LWN_Set_Parent(cvt,p_oldiload);
 	WN_kid(p_oldiload, ikid) = cvt;
       }
-#endif
       LWN_Delete_Tree(oldiload);
       Unique_AddElement(&new_uses, newldid, FALSE);
     }
@@ -1201,7 +1194,7 @@ static BOOL MIR_Hoistable_Ref(WN* loop,
 
   // Step one.  Is this thing invariant in this loop?
   // Use access vectors only for grouping, not for invariance test
-  //   because of PV 574185. (RJC)
+  //   because of PV 574185. 
 
   INT depth = Do_Loop_Depth(loop);
 
@@ -1481,10 +1474,8 @@ static BOOL MIR_Try_Hoist(WN* loop,
                           MEM_POOL* pool,
 			  BOOL messy_only)
 {
-#ifdef KEY // bug 8076: do not hoist if index variable is marked addr_saved
   if (ST_addr_saved(WN_st(WN_kid0(loop))))
     return FALSE;
-#endif
   BOOL did_hoisting = FALSE;
   INT  i = 0;
 
@@ -1527,10 +1518,6 @@ MIR_Partition_Lists(WN* loop,
   if (Minv_Debug) {
     fprintf(TFile, "MIR_Partition_Lists for loop %s, depth %d:\n",
             SYMBOL(WN_index(loop)).Name(), Do_Depth(loop));
-#if 0
-    fprintf(TFile, "old lists:\n");
-    Print_Lists(TFile, old_lists);
-#endif
   }
 
   DYN_ARRAY<MIR_REFLIST*>* rval = MIR_Build_Loop_List(loop, pool);

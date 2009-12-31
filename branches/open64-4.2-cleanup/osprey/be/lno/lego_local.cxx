@@ -278,7 +278,7 @@ static void Lego_Fix_Local_Rec(WN *wn, BOOL in_a_parallel_region)
 		if (WN_operator(parent) == OPR_PARM) {
 		  OPCODE opcode=WN_opcode(LWN_Get_Parent(parent));
 		  Is_True(OPCODE_is_call(opcode) ||
-			  OPCODE_operator(opcode)==OPR_PURE_CALL_OP || // KEY
+			  OPCODE_operator(opcode)==OPR_PURE_CALL_OP ||
 			  OPCODE_operator(opcode)==OPR_INTRINSIC_OP,
 			  ("PARAM under neither call or intrinisc op?"));
 		  ErrMsgSrcpos(EC_DRA_unsupported_type,
@@ -600,14 +600,6 @@ Copy_Array(DISTR_INFO* di, ST *local_st, WN *mp_region, WN *tmp_array_def,
       stride=LWN_Make_Icon(index_type,1);
     }
 
-#if 0
-    //the following code handles variable stride but did not consider
-    // element size
-    if (ARB_const_stride(arb))
-      stride=LWN_Make_Icon(index_type,ARB_stride_val(arb));
-    else
-      stride=LWN_Copy_Tree((WN*)ARB_stride_tree(arb));
-#endif
 
     WN *add = LWN_CreateExp2(OPCODE_make_op(OPR_ADD,index_type,MTYPE_V),
                              step_use, stride);

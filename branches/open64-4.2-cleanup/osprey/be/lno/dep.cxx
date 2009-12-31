@@ -97,9 +97,7 @@ const static char *rcs_id = "$Source: be/lno/SCCS/s.dep.cxx $ $Revision: 1.6 $";
 #include "opt_du.h"
 #include "call_info.h"
 #include "ipa_lno_util.h"
-#ifdef KEY
 #include "wn_simp.h"    // for WN_Simp_Compare_Trees
-#endif
 
 void DEPV_ARRAY::Print(FILE *fp) const
 {
@@ -2201,8 +2199,7 @@ DEP_RESULT DEPV_COMPUTE::Base_Test(const WN *ref1,  ARA_REF *ara_ref1,
       return DEP_DEPENDENT;
     }
     INT diff = abs(WN_offset(ref1) - WN_offset(ref2));
-#ifdef KEY
-    // Bug 3834 - When one reference accesses a field in a structure 
+    // When one reference accesses a field in a structure 
     // and the other writes the structure (for example, read array[i].field 
     // and write array[i]), then have to continue the base test.
     if (((WN_desc(ref1) == MTYPE_M && WN_offset(ref1) == 0 &&
@@ -2211,7 +2208,6 @@ DEP_RESULT DEPV_COMPUTE::Base_Test(const WN *ref1,  ARA_REF *ara_ref1,
 	  OPCODE_is_store(WN_opcode(ref2)))) &&
 	WN_Simp_Compare_Trees(array1, array2) == 0)
       diff = 0;
-#endif
     if (diff != 0) {
       if ((diff >= type_size) && (diff < WN_element_size(array1))) {
         return DEP_INDEPENDENT;
@@ -2411,7 +2407,7 @@ BOOL DEPV_COMPUTE::Equiv_Dims(const WN* wn_array, ARA_REF* ara_ref)
     return FALSE;
   // At this point, maybe we should go into the symbol table and actually
   // check the bounds that are stored there, using them for the IPA call
-  // reference. (RJC)
+  // reference. 
   return TRUE;
 }
 

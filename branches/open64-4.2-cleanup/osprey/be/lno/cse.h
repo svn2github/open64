@@ -115,10 +115,8 @@ public:
 };
 
 extern void Inter_Iteration_Cses(WN *func_nd);
-#ifdef KEY
 extern void Invariant_Factorization(WN *func_nd);
 extern BOOL Is_Invariant_Factorization_Beneficial(WN *loop);
-#endif
 #ifdef _KEEP_RCS_ID
 static char *cse_rcs_id = cse_INCLUDED "$Revision$";
 #endif /* _KEEP_RCS_ID */

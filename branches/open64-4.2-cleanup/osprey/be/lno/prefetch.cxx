@@ -263,11 +263,9 @@ BOOL Debug_Prefetch = FALSE;
 BOOL Verbose_Prefetch = FALSE;
 BOOL PU_has_manual_prefetch = FALSE;
 
-#ifdef KEY
 #include "glob.h"        // Src_File_Name
 
 INT Num_Prefetches;
-#endif
 
 static void Prefetch_Manual (WN* func_nd);
 static void Disable_Prefetch_Manual (WN* func_nd);
@@ -326,11 +324,7 @@ extern void Init_Prefetch_Options (WN* func_nd)
                 Isa_Name(Target_ISA));
       warned_isa_noprefetch = TRUE;
     }
-#ifdef KEY
     LNO_Run_Prefetch = NO_PREFETCH;
-#else
-    LNO_Run_Prefetch = 0;
-#endif
     LNO_Run_Prefetch_Manual = FALSE;
     return;
   }
@@ -348,21 +342,15 @@ extern void Init_Prefetch_Options (WN* func_nd)
   // Process command line options
 
   // allow override through -tt31 options
-#ifndef KEY
-  if (LNO_Run_Prefetch == 0) 
-#else
   if (LNO_Run_Prefetch == NO_PREFETCH) 
-#endif
     if (Get_Trace(TP_LNOPT,TT_LNO_PREFETCH))
       LNO_Run_Prefetch = Target_Proc_Run_Prefetch();
   Debug_Prefetch = Get_Trace(TP_LNOPT,TT_LNO_PREFETCH_DEBUG);
   Verbose_Prefetch = Get_Trace(TP_LNOPT,TT_LNO_PREFETCH_VERBOSE);
 
-#ifdef KEY
   // prefetch stores starting from CONSERVATIVE_PREFETCH
   if (!LNO_Prefetch_Stores_Set)
     LNO_Prefetch_Stores = LNO_Run_Prefetch > SOME_PREFETCH;
-#endif
 
   /* These must be processed here since they determine
    * Run_Prefetch etc, used in Mhd.Initialize
@@ -373,17 +361,10 @@ extern void Init_Prefetch_Options (WN* func_nd)
   }
 
   if (Verbose_Prefetch) {
-#ifdef KEY
     printf ("LNO:Run_Prefetch          = %s\n",
 	    ((LNO_Run_Prefetch == NO_PREFETCH) ? "false" :
 	((LNO_Run_Prefetch == SOME_PREFETCH) ? "very conservative" 			     : ((LNO_Run_Prefetch == CONSERVATIVE_PREFETCH) ?
 					  "conservative" : "aggressive"))));
-#else
-    printf ("LNO:Run_Prefetch          = %s\n",
-	    ((LNO_Run_Prefetch == 0) ? "false"
-				     : ((LNO_Run_Prefetch == 1) ?
-					  "conservative" : "aggressive")));
-#endif
     printf ("LNO:Run_Prefetch_Manual   = %s\n", (LNO_Run_Prefetch_Manual
                                            ? "true" : "false"));
     printf ("Debug_Prefetch            = %s\n", (Debug_Prefetch
@@ -413,19 +394,11 @@ static void Process_PU_Pragmas (WN* func_nd) {
       if (!WN_pragma_arg1(pwn) && !WN_pragma_arg2(pwn)) {
         // no prefetching enabled for any level.
         VB_PRINT (printf ("Disable automatic prefetching\n"));
-#ifdef KEY
         LNO_Run_Prefetch = NO_PREFETCH;
-#else
-        LNO_Run_Prefetch = 0;
-#endif
       }
       else {
         // prefetching enabled for some level.
-#ifdef KEY
         LNO_Run_Prefetch = CONSERVATIVE_PREFETCH;
-#else
-        LNO_Run_Prefetch = 1;
-#endif
         if (WN_pragma_arg1(pwn)) {
           VB_PRINT (printf ("Enable auto-prefetch, level-1 cache\n"));
           LNO_FLAGS_mhd(Current_LNO)->L[0].Prefetch_Level = TRUE;
@@ -537,17 +510,6 @@ static void Prefetch_Manual (WN* func_nd) {
   return;
   
 
-#if 0
-  WN* doloop_wn = PF_Get_First_Do_Loop (func_nd);
-  while (doloop_wn) {
-    SINGLE_LOOP loop(PF_mpool);
-    loop.Process_Loop_Manual (WN_do_body(doloop_wn));
-    doloop_wn = PF_Get_Next_Do_Loop (doloop_wn);
-  }
-  VB_PRINT (printf ("After manual prefetching ");
-            mpf_syms->Print (stdout));
-  return;
-#endif
 }
 
 /***********************************************************************
@@ -651,11 +613,8 @@ static void Prefetch_Auto (WN* func_nd,
               printf ("\n---------------- prefetches ----------------\n");
               printf ("       (cannot coordinate with splits) \n"));
 
-#ifdef KEY
     Num_Prefetches = 0;
-#endif
     childnode->Gen_Prefetch (NULL);
-#ifdef KEY
     if (Num_Prefetches > 0 && LNO_Prefetch_Verbose) {
       printf("(%s:%d) ", 
 	     Src_File_Name, 
@@ -663,7 +622,6 @@ static void Prefetch_Auto (WN* func_nd,
       printf ("Generated %d prefetch instructions for this loop\n", 
 	      Num_Prefetches);
     }      
-#endif
 
     PF_PRINT (fprintf (TFile, "---- Done with Loop nest number: %d ----\n",
                        loopno));
@@ -673,66 +631,6 @@ static void Prefetch_Auto (WN* func_nd,
              ("Check_Parentize failed\n"));
   }
 
-#if 0
-  /* walk the outer do loops and process them */
-  doloop = PF_Get_First_Do_Loop (func_nd);
-  while (doloop) { 
-    PF_LOOPNODE *childnode =
-      CXX_NEW (PF_LOOPNODE(rootnode, doloop, 0), PF_mpool);
-    rootnode->Add_Child (childnode);
-    loopno++;
-    childnode->Process_Loop ();
-
-    // ============== now process each loop nest at a time ====================
-    // child node is a top-level loop nest, process it.
-
-
-    PF_PRINT(fprintf (TFile, "------ Loop nest number: %d --------\n", loopno);
-              childnode->Print (TFile);
-              fprintf(TFile, "------------- Now build base LGs ----------\n"));
-    VB_PRINT (printf ("\n================ Loop nest number: %d =========\n",
-                      loopno);
-              printf ("---------------- structure ----------------\n");
-              childnode->Print_Structure ());
-
-    childnode->Build_Base_LGs ();
-
-    PF_PRINT (childnode->Print (TFile);
-              fprintf (TFile, "----------- Now do volume computation -----\n");
-              fprintf (TFile, "     --- cache parameters: %d (%d), %d (%d) \n",
-                       Cache.EffSize(1), Cache.LineSize(1),
-                       Cache.EffSize(2), Cache.LineSize(2)));
-
-    childnode->Volume ();
-
-    PF_PRINT (fprintf (TFile, "------- done with volume computation -----\n");
-              childnode->Print (TFile);
-              fprintf(TFile,"\n----- find loc loops+what to prefetch ---\n"));
-    VB_PRINT (printf ("\n---------------- volume ----------------\n");
-              childnode->Print_Volume ());
-
-    {
-      PF_LOCLOOP tmp;
-      childnode->Find_Loc_Loops (tmp);
-    }
-
-    PF_PRINT (fprintf (TFile, "\n----- now split and gen prefetch -----\n"));
-    VB_PRINT (printf ("\n---------------- splits ----------------\n");
-              childnode->Print_Splits ();
-              printf ("\n---------------- prefetches ----------------\n");
-              printf ("       (cannot coordinate with splits) \n"));
-
-    childnode->Gen_Prefetch (NULL);
-
-    PF_PRINT (fprintf (TFile, "---- Done with Loop nest number: %d ----\n",
-                       loopno));
-    // ============== done processing this loop nest ==========================
-    
-    Is_True (LWN_Check_Parentize (doloop), ("Check_Parentize failed\n"));
-
-    doloop = PF_Get_Next_Do_Loop (doloop);
-  }
-#endif  // 0
 
   Is_True (LWN_Check_Parentize (func_nd), ("Check_Parentize failed\n"));
   Cleanup_Lvs ();

@@ -519,25 +519,9 @@ LOOP_MODEL::Model(WN* wn,
   WN *tmp = wn;
   _blocking_disabled = LNO_Blocking == 0;
 
-#if 0
-  //bug 11567 comments out this. This is because blocking is not the direct
-  //reason that prevents vectorizing an innermost loop except that the block
-  //size may be small in some cases. Instead, the culprit is the interchange.
-#ifdef TARG_X8664
-  // Bug 2456 - if the innerloop is vectorizable then disable blocking for
-  // thae loop.
-  // TODO: If the innerloop overflows the cache then it may still be good to
-  // cache-block. We need a model for estimating the trade-off between 
-  // vectorization and cache-blocking. For now, we may shut this off 
-  // by preventing cache-blocking only under -LNO:simd=2. Need to come across
-  // a case yet. (That case is bug 4672.)
-  //  if (Is_Vectorizable_Loop(wn) && Is_Vectorization_Beneficial(WN_do_body(wn)))
-  //    _blocking_disabled = TRUE;
-#endif
-#endif
 
 #ifdef TARG_X8664
-   // Bug 5880: if this loop contains a vectorizable intrinsic, and the user
+   // if this loop contains a vectorizable intrinsic, and the user
    // want to vectorize it anyway (vintr==2), we disable blocking
    if(Is_Aggressive_Vintr_Loop(wn))
     _blocking_disabled = TRUE;
@@ -548,7 +532,6 @@ LOOP_MODEL::Model(WN* wn,
       _required_permutation[j] = j;
   }
 #ifdef TARG_X8664
-  //bug 2456, bug 5724 and bug 9143
   //if an inner loop is vectorizable and it is beneficial to do so, then
   //we should keep this loop innermost (i.e. the innermost loop can not
   //be changed
@@ -779,18 +762,6 @@ LOOP_MODEL::Model(WN* wn,
   }
   if (LNO_Verbose) {
     printf("Evaluated %d combinations\n",_num_evaluations);
-#if 0   // the snl code prints this out later in an easier to read format
-    printf("And the results are:\n");
-    printf("Transform<loop,reg> = (");
-    for (INT b=0; b<num_good+num_bad; b++) 
-      printf("<%d,%d>", _new_order[b], _block_number[b]);
-    if (_nstrips > 0) {
-      printf("cblk(sd=%d)=",_stripdepth);
-      for (INT s=0; s<_nstrips; s++)
-        printf("(%d,%d)",_iloop[s],_stripsz[s]);
-    }
-    printf(")\n");
-#endif
     if (_OP_resource_count==NULL)
       printf("Couldn't accurately evaluate ops\n");
     else if (_num_fp_regs > Target_FPRs)
@@ -1303,12 +1274,8 @@ LOOP_MODEL::Evaluate(INT inner, INT num_loops, INT* unroll_factors,
   // MINVAR_MAGIC_COEFF
   //   limit the potential benefit to 20% of the ideal cycle count
   
-#ifndef KEY 
-#define MINVAR_MAGIC_COEFF (0.20 * _loop_rcycles_unroll_by[Max_Unroll_Prod-1])
-#else
   // Match octane cc MINVAR_MAGIC_COEFF
 #define MINVAR_MAGIC_COEFF 0.20
-#endif
   double minvar_benefit = MINVAR_MAGIC_COEFF
                         * Inner_Invariant_Refs 
                         * unroll_product
@@ -1403,12 +1370,10 @@ LOOP_MODEL::Evaluate(INT inner, INT num_loops, INT* unroll_factors,
   double resource_cycles_minus_spills =
     MAX(_loop_rcycles_unroll_by[unroll_product-1],
         MAX(MEM_rcycles_minus_spills, issue_limit_minus_spills));
-#ifdef KEY
   // Match Octane CC and it seems logical to subtract minvar_benefit
   // from resource_cycles_minus_spills because it is going to be compared with 
   // resource_cycles below.
   resource_cycles_minus_spills -= minvar_benefit;
-#endif
 
   // is memory or int still a problem, if not, we shouldn't unroll anymore
   if (!(*can_reg_allocate) ||
@@ -1638,7 +1603,7 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
     return (1);
   }
 
-//bug 12184: Don't know yet how to model the resource for vector type.
+// Don't know yet how to model the resource for vector type.
 //           Skip for now. Note those must be GNU vectors at this point. 
 #ifdef TARG_X8664
   if(MTYPE_is_vector(rtype) || MTYPE_is_vector(desc))
@@ -3101,12 +3066,10 @@ ARRAY_REF::Build_Array(WN* wn_array,
 {
   TYPE_ID type = WN_desc(LWN_Get_Parent(wn_array));
   INT esz = MTYPE_size_min(type) >> 3;
-#ifdef KEY
-  // Bug 3072 - For BSISTORE (1-bit MTYPE_bit_size), adjust esz to 1-byte:
+  // For BSISTORE (1-bit MTYPE_bit_size), adjust esz to 1-byte:
   // 1-byte is the minimum unit recognized by LNO model.
   if (esz == 0 && type == MTYPE_BS)
     esz = 1;
-#endif
 
   ACCESS_ARRAY *array = (ACCESS_ARRAY *) WN_MAP_Get(LNO_Info_Map,wn_array);
   if (!array || array->Too_Messy 

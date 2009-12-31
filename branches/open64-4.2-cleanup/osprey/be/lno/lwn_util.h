@@ -505,20 +505,12 @@ extern WN *LWN_CreateCompgoto(INT32 num_entries,
 			     WN *block,
 			     WN *deflt);
 
-#ifndef KEY
-extern WN *LWN_CreateIstore(OPCODE opc,
-			  WN_OFFSET offset, 
-			  TY_IDX ty,
-			  WN *value, 
-			  WN *addr);
-#else
 extern WN *LWN_CreateIstore(OPCODE opc,
 			  WN_OFFSET offset, 
 			  TY_IDX ty,
 			  WN *value, 
 			  WN *addr, 
 			  UINT field_id = 0);
-#endif /* KEY */
 
 extern WN *LWN_CreateMstore(WN_OFFSET offset,
 			   TY_IDX ty,
@@ -541,20 +533,12 @@ extern WN *LWN_CreateExp2(OPCODE opc,
 			 WN *kid0,
 			 WN *kid1);
 
-#ifndef KEY
-extern WN *LWN_CreateIload(OPCODE opc,
-			 WN_OFFSET offset, 
-			 TY_IDX ty1,
-			 TY_IDX ty2,
-			 WN *addr);
-#else
 extern WN *LWN_CreateIload(OPCODE opc,
 			 WN_OFFSET offset, 
 			 TY_IDX ty1,
 			 TY_IDX ty2,
 			 WN *addr, 
 			 UINT field_id = 0);
-#endif /* KEY */
 
 extern WN *LWN_CreateMload(WN_OFFSET offset, 
 			  TY_IDX ty,
@@ -565,10 +549,8 @@ extern WN *LWN_CreateCvtl(OPCODE opc,
 			 INT16 cvtl_bits,
 			 WN *kid0);
 
-#ifdef KEY
 // Count number of prefetches generated for a particular loop.
 extern INT Num_Prefetches;
-#endif
 extern WN *LWN_CreatePrefetch (WN_OFFSET offset,
                                UINT32 flag,
                                WN* addr);

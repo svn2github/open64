@@ -416,8 +416,6 @@ extern BOOL Innermore_Parallel_Or_Lego_Loop(WN* wn_loop);
 extern void IPA_LNO_Evaluate_Call_Infos(WN* func_nd);
 extern void IPA_LNO_Unevaluate_Call_Infos(WN* func_nd);
 
-#ifdef KEY
 extern INT Last_Apo_Loop_Id;
-#endif
 
 #endif /* parallel_INCLUDED */ 

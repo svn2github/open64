@@ -177,9 +177,7 @@ static BOOL Possibly_Used_Outside_Program_Unit(WN* wn_stid)
   for (node1 = iter.First(); !iter.Is_Empty(); node1 = iter.Next()) {
     WN* wn_use = node1->Wn();
     if (WN_opcode(wn_use) == OPC_RETURN
-#ifdef KEY
   	|| WN_opcode(wn_use) == OPC_GOTO_OUTER_BLOCK
-#endif
        )
       return TRUE; 
   }
@@ -385,9 +383,7 @@ extern WN* Hoist_Place(WN* wn_stat,
       return Scalar_Store_Hoist_Place(WN_kid0(wn_stat));  
     FmtAssert(FALSE, ("Parameter must be by value or by reference."));
   case OPR_CALL: 
-#ifdef KEY
   case OPR_PURE_CALL_OP:
-#endif
     {
       if (!Special_Lego_Or_Mp_Call(WN_st(wn_stat)) 
         && (WN_Call_Never_Return(wn_stat) || WN_Call_Non_Data_Mod(wn_stat) 
@@ -736,14 +732,12 @@ static BOOL Maybe_Assigned_Exp_Traverse(WN* wn_exp,
 	  LWN_ITER* itr = LWN_WALK_TreeIter(wnn);
 	  for (; itr != NULL; itr = LWN_WALK_TreeNext(itr)) {
 	    WN* wn = itr->wn; 
-#ifdef KEY
-	    // Bug 4426 - address is passed as a parameter to call 
+	    // address is passed as a parameter to call 
 	    // and call does not have a valid alias mapping. Also, the call
 	    // uses dope vector to pass the address of the array so it is not
 	    // immediately obvious how we can match 'wn' and 'wn_exp'. 
 	    if (WN_operator(wn) == OPR_CALL && !Valid_alias(Alias_Mgr, wn))
 	      return TRUE;
-#endif
 	    if (Valid_alias(Alias_Mgr, wn) 
 	        && !OPCODE_is_load(WN_opcode(wn))
 	        && Aliased(Alias_Mgr, wn, wn_exp) != NOT_ALIASED)
@@ -797,9 +791,7 @@ static BOOL Maybe_Assigned_Exp_Traverse(WN* wn_exp,
   case OPR_INTRINSIC_CALL:
   case OPR_INTRINSIC_OP:
   case OPR_ARRAY: 
-#ifdef KEY
   case OPR_PURE_CALL_OP:
-#endif
     {
       for (INT i = 0; i < WN_kid_count(wn_exp); i++)
         if (Maybe_Assigned_Exp_Traverse(WN_kid(wn_exp, i), wn_first, wn_last))
@@ -946,9 +938,7 @@ static BOOL Sinkable_Into_Loop(WN* wn_stat,
     }
     FmtAssert(FALSE, ("Parameter must be by value or by reference."));
   case OPR_CALL: 
-#ifdef KEY
   case OPR_PURE_CALL_OP:
-#endif
     {
       if (!Special_Lego_Or_Mp_Call(WN_st(wn_test)) 
         && (WN_Call_Never_Return(wn_test) || WN_Call_Non_Data_Mod(wn_test) 
@@ -1072,16 +1062,10 @@ static BOOL Sinkable_Out_Of_Loop(WN* wn_stat,
     if (WN_Parm_By_Value(wn_test)) 
       return Sinkable_Out_Of_Loop(wn_stat, WN_kid0(wn_test), wn_sink_loop, du);
     if (WN_Parm_By_Reference(wn_test))
-#ifdef KEY //bug 14207
       return !Maybe_Assigned(WN_kid0(wn_test), wn_sink_loop, wn_sink_loop);
-#else
-      return !Maybe_Assigned(WN_kid0(wn_test), WN_next(wn_stat), wn_sink_loop);
-#endif 
     FmtAssert(FALSE, ("Parameter must be by value or by reference."));
   case OPR_CALL: 
-#ifdef KEY
   case OPR_PURE_CALL_OP:
-#endif
     {
       if (!Special_Lego_Or_Mp_Call(WN_st(wn_test)) 
         && (WN_Call_Never_Return(wn_test) || WN_Call_Non_Data_Mod(wn_test) 
@@ -1410,21 +1394,15 @@ static void Recompute_Deps(WN* wn,
   FmtAssert(dg != NULL, ("Could not find dependence graph"));
   DOLOOP_STACK wn_stack(&LNO_local_pool);
   Build_Doloop_Stack(wn, &wn_stack);
-#ifdef KEY //bug 11113
   typedef STACK<WN *> WN_STACK;
   WN_STACK *tmp_stack =
         CXX_NEW(WN_STACK(&LNO_local_pool),&LNO_local_pool);
-#endif
   EINDEX16 e = 0;
   DOLOOP_STACK source_stack(&LNO_local_pool);
   VINDEX16 v = dg->Get_Vertex(wn);
   for (e = dg->Get_In_Edge(v); e != 0; e = dg->Get_Next_In_Edge(e)) {
     WN* wn_source = dg->Get_Wn(dg->Get_Source(e));
-#ifdef KEY
-    tmp_stack->Push(wn_source); //bug 11113: collect sources
-#else
-    Build_Doloop_Stack(wn_source, &source_stack);
-#endif
+    tmp_stack->Push(wn_source); // collect sources
     dg->Delete_Array_Edge(e);
     EINDEX16 ec = 0;
     for (ec = dg->Get_Out_Edge(v); ec != 0; ec = dg->Get_Next_Out_Edge(ec)) {
@@ -1434,15 +1412,8 @@ static void Recompute_Deps(WN* wn,
     }
     if (ec != 0)
       dg->Delete_Array_Edge(ec);
-#ifndef KEY //bug 11113
-    if (!dg->Add_Edge(wn_source, &source_stack, wn,
-         &wn_stack, ls_loop->In(wn_source) < ls_loop->In(wn)))
-      LNO_Erase_Dg_From_Here_In(wn, dg);
-    source_stack.Clear();
-#endif
   }
 
-#ifdef KEY //bug 11113: build incoming edges only after all incoming edges removed 
  while(tmp_stack->Elements() != 0){
    WN *wn_source = tmp_stack->Pop();
    Build_Doloop_Stack(wn_source, &source_stack);
@@ -1451,15 +1422,10 @@ static void Recompute_Deps(WN* wn,
         LNO_Erase_Dg_From_Here_In(wn, dg);
     source_stack.Clear();
  }
-#endif   
   DOLOOP_STACK sink_stack(&LNO_local_pool);
   for (e = dg->Get_Out_Edge(v); e != 0; e = dg->Get_Next_Out_Edge(e)) {
     WN* wn_sink = dg->Get_Wn(dg->Get_Sink(e));
-#ifdef KEY
-    tmp_stack->Push(wn_sink); //bug 11113: collect sinks
-#else
-    Build_Doloop_Stack(wn_sink, &sink_stack);
-#endif
+    tmp_stack->Push(wn_sink); // collect sinks
     dg->Delete_Array_Edge(e);
     EINDEX16 ec = 0;
     for (ec = dg->Get_In_Edge(v); ec != 0; ec = dg->Get_Next_In_Edge(ec)) {
@@ -1469,14 +1435,7 @@ static void Recompute_Deps(WN* wn,
     }
     if (ec != 0)
       dg->Delete_Array_Edge(ec);
-#ifndef KEY //bug 11113
-    if (!dg->Add_Edge(wn, &wn_stack, wn_sink,
-      &sink_stack, ls_loop->In(wn) < ls_loop->In(wn_sink)))
-      LNO_Erase_Dg_From_Here_In(wn, dg);
-      sink_stack.Clear();
-#endif
   }
-#ifdef KEY //bug 11113: build outgoing edges only after all outgoing edges deleted
  while(tmp_stack->Elements() != 0){
    WN *wn_sink = tmp_stack->Pop();
    Build_Doloop_Stack(wn_sink, &sink_stack);
@@ -1485,7 +1444,6 @@ static void Recompute_Deps(WN* wn,
       LNO_Erase_Dg_From_Here_In(wn, dg);
       sink_stack.Clear();
  }
-#endif
 }
 
 //-----------------------------------------------------------------------

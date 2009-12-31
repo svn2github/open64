@@ -156,9 +156,7 @@ void REDUCTION_MANAGER::Check_Store(WN *store)
       type = RED_ADD;
       break;
     case OPR_MPY: 
-#ifdef KEY
     case OPR_DIV:
-#endif
       type = RED_MPY;
       break;
     case OPR_MAX:
@@ -190,12 +188,8 @@ void REDUCTION_MANAGER::Check_Store(WN *store)
 WN *REDUCTION_MANAGER::Find_Match(WN *store,OPCODE rhs_opcode, WN *rhs) {
   WN *kid0 = WN_kid0(rhs);
 
-#ifndef KEY
-  if (OPCODE_operator(rhs_opcode) == OPR_SUB) {
-#else
   if (OPCODE_operator(rhs_opcode) == OPR_SUB || 
       OPCODE_operator(rhs_opcode) == OPR_DIV) {
-#endif
     if (Opcode_Match(WN_opcode(kid0), rhs_opcode)) { // recurse
       return Find_Match(store,rhs_opcode,kid0);
     } else if (Match(store,kid0)) {

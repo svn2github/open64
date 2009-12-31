@@ -131,11 +131,6 @@ static void outer_fusion_tlog_info(
           tmp_string, "", message);
 }
 
-#ifndef KEY // moved to common/com/config_lno.* and controllable by a flag
-#define OLF_size_upperbound 100		// max size allowed for fusion
-#define OLF_size_lowerbound 15		// remove several restriction
-					// if size is smaller than this
-#endif
 
 static BINARY_TREE<NAME2BIT> *mapping_dictionary;
 static UINT Bit_Position_Count=0;
@@ -623,8 +618,6 @@ static FISSION_FUSION_STATUS Fuse_Outer_Loops(WN* loop1, WN* loop2,
   }
 }
 
-#ifdef KEY
-// Bug 1025
 static BOOL Same_Loop_Body ( WN* wn, WN* copy, 
 			     SYMBOL loop_index, SYMBOL copy_loop_index )
 {
@@ -668,7 +661,6 @@ static BOOL Same_Loop_Body ( WN* wn, WN* copy,
   
   return TRUE;
 }
-#endif
 static OUTER_FUSION_STATUS Outer_Loop_Fusion_Walk(WN* wn,
        FIZ_FUSE_INFO* ffi, WN2UINT *wn2ffi) {
   OPCODE opc=WN_opcode(wn);
@@ -717,13 +709,10 @@ static OUTER_FUSION_STATUS Outer_Loop_Fusion_Walk(WN* wn,
         INT d1=ffi->Get_Depth(wn_index);
         INT d2=ffi->Get_Depth(next_wn_index);
         UINT fused_level;
-#ifdef KEY
-	// Bug 1025
 	WN* next_next_copy;
 	if (LNO_Fusion == 2)
 	  next_next_copy = 
 	    LWN_Copy_Tree(WN_next(next_wn), TRUE, LNO_Info_Map);	
-#endif
         FISSION_FUSION_STATUS fusion_status=
            Fuse_Outer_Loops(wn,next_wn,ffi,wn2ffi,&fused_level);
         if (fusion_status==Succeeded || fusion_status==Partially_fused) {
@@ -780,8 +769,6 @@ static OUTER_FUSION_STATUS Outer_Loop_Fusion_Walk(WN* wn,
         }
         next_wn=WN_next(wn);
         state=NORMAL;
-#ifdef KEY
-	// Bug 1025
 	if (LNO_Fusion == 2 && next_wn &&
 	    WN_operator(next_wn) == OPR_DO_LOOP &&
 	    (!next_next_copy || WN_operator(next_next_copy) != OPR_DO_LOOP ||
@@ -792,7 +779,6 @@ static OUTER_FUSION_STATUS Outer_Loop_Fusion_Walk(WN* wn,
 	     (!Same_Loop_Body(next_wn, next_next_copy, 
 			      WN_index(next_wn), WN_index(next_next_copy)))))
 	  return SKIP;
-#endif
 
         // hacked to remove pragmas produced by inlining
         while (next_wn && 

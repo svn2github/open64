@@ -1310,7 +1310,6 @@ void ACCESS_ARRAY::Set_Array(WN *wn, DOLOOP_STACK *stack)
   WN *base = WN_array_base(wn);
   if (WN_operator(base) == OPR_LDID) {
     Update_Non_Const_Loops(base,stack);
-#ifdef KEY // Bug 5057 - tolerate base addresses of the form (+ const LDID).
   } else if (WN_operator(base) == OPR_ADD &&
 	     (WN_operator(WN_kid0(base)) == OPR_INTCONST &&
 	      WN_operator(WN_kid1(base)) == OPR_LDID)) {
@@ -1319,7 +1318,6 @@ void ACCESS_ARRAY::Set_Array(WN *wn, DOLOOP_STACK *stack)
 	     (WN_operator(WN_kid1(base)) == OPR_INTCONST &&
 	      WN_operator(WN_kid0(base)) == OPR_LDID)) {
     Update_Non_Const_Loops(WN_kid0(base),stack);
-#endif
   }
 #ifdef LNO
   else if (Is_Loop_Invariant_Indir(base)) 
@@ -1994,7 +1992,6 @@ void ACCESS_VECTOR::Add(WN *wn, DOLOOP_STACK *stack,INT8 sign)
 #endif
 }
 
-#ifdef KEY
 //whether or not it is used for array addresses calculation.
 static BOOL WN_Under_Array(WN *wn)
 {
@@ -2006,7 +2003,6 @@ static BOOL WN_Under_Array(WN *wn)
     }
   return FALSE;
 }
-#endif
 
 // Add coeff*(expression represented by wn) to this vector
 void ACCESS_VECTOR::Add_Sum(WN *wn, INT64 coeff, DOLOOP_STACK *stack,
@@ -2107,11 +2103,10 @@ void ACCESS_VECTOR::Add_Sum(WN *wn, INT64 coeff, DOLOOP_STACK *stack,
     Add_Sum(WN_kid(wn,0),coeff,stack,allow_nonlin);
   } else if (WN_opcode(wn) == OPC_I8I4CVT
 	     || WN_opcode(wn) == OPC_U8I4CVT ) {
-    // Bug 14132 -- OPC_U8I4CVT should also be ok
+    //OPC_U8I4CVT should also be ok
     Add_Sum(WN_kid(wn,0),coeff,stack,allow_nonlin);
   }
-#ifdef KEY 
-  // Bug 4525 - tolerate CVTs in the access vector for -m64 compilation
+  // tolerate CVTs in the access vector for -m64 compilation
   // when the type of loop variable is I8 but the rest of the ARRAY kids 
   // are of type U4/I4. The CVT and the associated CVTL introduced by the 
   // front-end or inliner can be ignored. The return type can be assumed 
@@ -2121,8 +2116,8 @@ void ACCESS_VECTOR::Add_Sum(WN *wn, INT64 coeff, DOLOOP_STACK *stack,
 	     WN_cvtl_bits(WN_kid0(wn)) == 32) {
     Add_Sum(WN_kid0(WN_kid0(wn)),coeff,stack,allow_nonlin);  
   } 
-//BUG 14400: don't abruptly consider access vector Too_Messy for shifts
-//BUG 14495: limit this only for building access vectors for arrays
+//don't abruptly consider access vector Too_Messy for shifts
+//limit this only for building access vectors for arrays
   else if (WN_operator(wn) == OPR_SHL && WN_Under_Array(wn)){
     if (WN_operator(WN_kid(wn,1)) == OPR_INTCONST) {
       Add_Sum(WN_kid(wn,0),coeff<<WN_const_val(WN_kid(wn,1)),stack,
@@ -2135,7 +2130,6 @@ void ACCESS_VECTOR::Add_Sum(WN *wn, INT64 coeff, DOLOOP_STACK *stack,
                                                         allow_nonlin);
     }else Too_Messy = TRUE;
   }
-#endif
   else {
     Too_Messy = TRUE;
   }
@@ -2325,7 +2319,6 @@ void ACCESS_VECTOR::Update_Non_Const_Loops(WN *wn, DOLOOP_STACK *stack)
 
   DEF_LIST *defs = Du_Mgr->Ud_Get_Def(wn);
 
-  // nenad, 02/15/2000: 
   // We should also set _non_const_loops conservatively if
   // defs->Incomplete(), but that causes performance problems.
   if (!defs) {
@@ -2380,7 +2373,6 @@ void ACCESS_ARRAY::Update_Non_Const_Loops(WN *wn, DOLOOP_STACK *stack)
   // it's an ldid
   DEF_LIST *defs = Du_Mgr->Ud_Get_Def(wn);
 
-  // nenad, 02/15/2000: 
   // We should also set _non_const_loops conservatively if
   // defs->Incomplete(), but that causes performance problems.
   if (!defs) {

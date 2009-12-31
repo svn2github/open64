@@ -109,9 +109,7 @@ static INT Parallelizable(WN* wn_outer, INT permutation[], INT nloops,
   INT parallel_depth, SNL_DEP_MATRIX** sdm_inv, BOOL sdm_scl[], 
   SX_INFO* sx_info, SD_INFO* sd_info, INT sd_split_depth);
 
-#ifdef KEY
   INT Last_Apo_Loop_Id = 0;
-#endif
 
 //-----------------------------------------------------------------------
 // NAME: Cannot_Concurrentize 
@@ -955,9 +953,6 @@ extern SNL_DEP_MATRIX** Inv_Dep_Info(WN* wn_outer,
     BOOL Is_Wn_Array = opr == OPR_ILOAD || opr == OPR_ISTORE; 
     VINDEX16 v = dg->Get_Vertex(wn);
     if (v == 0 
-#ifndef KEY // bug 7451
-        && (opr == OPR_LDID || opr == OPR_STID)
-#endif
 	)
       continue; 
     for (e = dg->Get_Out_Edge(v); e != 0; e = dg->Get_Next_Out_Edge(e)) {
@@ -1628,10 +1623,8 @@ static BOOL* Scl_Dep_Info(WN* wn_outer,
     for (WN* wn = wn_scalar; wn != NULL; wn = LWN_Get_Parent(wn)) {
       if (WN_opcode(wn) == OPC_DO_LOOP) {
 	DO_LOOP_INFO* dli = Get_Do_Loop_Info(wn);
-#ifdef KEY //bug 12049: we are only interested in the chunk of 'nloops' 
            //loops with wn_outer as the outermost
         if(dli->Depth  < outer_depth + nloops)
-#endif	  
 	if (dli->ARA_Info->Is_Problem_Scalar(wn_scalar))
 	  scl_list[dli->Depth - outer_depth] = TRUE; 
       }
@@ -2191,8 +2184,7 @@ static void Mark_Threadprivate_Loops_Traverse(WN* wn_tree)
 	&& (ST_base(WN_st(wn_tree)) != WN_st(wn_tree) 
 	&& ST_sclass(ST_base(WN_st(wn_tree))) == SCLASS_COMMON
 	&& ST_is_thread_private(ST_base(WN_st(wn_tree)))
-#ifdef KEY
-	// Bug 6652 - after OMP_Prelower (Rename_Threadprivate_COMMON), 
+	// after OMP_Prelower (Rename_Threadprivate_COMMON), 
 	// thread private common variables are renamed and the
 	// new variables do not carry the thread_private property.
 	// Use the special symbol name here to catch that case.
@@ -2200,7 +2192,6 @@ static void Mark_Threadprivate_Loops_Traverse(WN* wn_tree)
 	// FYI, call to Rename_Threadprivate_COMMON in OMP_Prelower
 	// was added at Pathscale.
         || strncmp(ST_name(WN_st(wn_tree)), "__ppthd_common_", 15) == 0
-#endif
 	|| ST_is_thread_private(WN_st(wn_tree)))) {
       for (WN* wn = wn_tree; wn != NULL; wn = LWN_Get_Parent(wn)) {
 	if (WN_operator(wn) == OPR_DO_LOOP) {
@@ -2297,7 +2288,6 @@ extern void IPA_LNO_Unevaluate_Call_Infos(WN* func_nd)
 extern void Auto_Parallelization(PU_Info* current_pu, 
 				 WN* func_nd)
 {
-#ifdef KEY
   static INT pu_num = -1;
   pu_num ++;
   if (pu_num > LNO_Apo_Skip_After ||
@@ -2306,7 +2296,6 @@ extern void Auto_Parallelization(PU_Info* current_pu,
     return;
 
   Last_Apo_Loop_Id = 0; // initialize per PU
-#endif
 
   extern BOOL running_cross_loop_analysis;
 
@@ -2326,10 +2315,8 @@ extern void Auto_Parallelization(PU_Info* current_pu,
   } 
 
 
-#ifdef KEY //Bug 9731: update array access information before apo
-           //Bug 9770: move this rebuild to here to skip non-autopar
+           // move this rebuild to here to skip non-autopar
   LNO_Build_Access(func_nd, &LNO_default_pool);
-#endif
 
   MEM_POOL_Push(&LNO_local_pool); 
   INT parallel_debug_level = Get_Trace(TP_LNOPT2, TT_LNO_PARALLEL_DEBUG)

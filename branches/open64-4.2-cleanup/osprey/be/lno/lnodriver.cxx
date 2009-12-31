@@ -101,9 +101,7 @@
 #include "file_util.h"
 #include "tracing.h"
 #include "ir_reader.h"             // for fdump_tree
-#ifdef KEY
 #include "wn_simp.h"               // for WN_Simp_Rsqrt_Newton_Raphson
-#endif
 
 
 /* ====================================================================
@@ -259,12 +257,10 @@ Perform_Loop_Nest_Optimization (PU_Info* current_pu, WN *pu_wn,
     Start_Timer ( T_Preopt_CU );
     Set_Error_Phase ( "Global Optimizer" );
 
-#ifdef KEY
     // Prevent the WN simplifier from adding new WHIRL nodes.  The new nodes
     // will make the WN map out of sync, breaking DU analysis which relies on
-    // the WN map.  Bug 9521.
+    // the WN map. 
     WN_Simp_Rsqrt_Newton_Raphson = FALSE;
-#endif
 
     du_mgr = Create_Du_Manager(MEM_pu_nz_pool_ptr);
     alias_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr);
@@ -338,10 +334,8 @@ Perform_Loop_Nest_Optimization (PU_Info* current_pu, WN *pu_wn,
 
     Cur_PU_Name = NULL; /* the pool containing it is about to disappear */
 
-#ifdef KEY
     // Safe for the simplifier to add new WHIRL nodes again.
     WN_Simp_Rsqrt_Newton_Raphson = TRUE;
-#endif
 
     return opt_pu;
 } /* Perform_Loop_Nest_Optimization */

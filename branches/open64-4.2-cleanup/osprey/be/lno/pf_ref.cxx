@@ -169,9 +169,7 @@
 #define minof(x, y) (((x)<(y)) ? (x) : (y))
 #define minmaxof(mn, mx, item) (((item) < (min)) ? ((min) = (item)) : (((item) > (max)) ? ((max) = (item)) : 0))
 
-#ifdef KEY
 #define ABS(a) ((a<0)?-(a):(a))
-#endif
 
 extern WN_MAP LNO_Info_Map;
 extern void LWN_Parentize_One_Level(const WN* wn);
@@ -263,24 +261,6 @@ void Initialize_Lvs () {
     for (j=0; j<LNO_MAX_DO_LOOP_DEPTH+1; j++)
       global_lvs[i][j] = NULL;
 
-#if 0
-  FRAC tmp[LNO_MAX_DO_LOOP_DEPTH];
-  for (i=1; i<=LNO_MAX_DO_LOOP_DEPTH; i++) {
-    // max-size of space is i
-    // possible localized spaces are i, so create them
-    for (j=1; j<=i; j++) {
-      global_lvs[i][j] = CXX_NEW (VECTOR_SPACE<FRAC>(i,PF_mpool,FALSE),
-                                  PF_mpool);
-      // This one has "i-j+1" vectors, insert them
-      for (INT k=j; k<=i; k++) {
-        // create the vector of size "i" with a 1 in the "k-1th" place
-        for (INT m=0; m<i; m++)
-          if (m == (k-1)) tmp[m] = 1; else tmp[m] = 0;
-        global_lvs[i][j]->Insert (tmp);
-      }
-    }
-  }
-#endif
 }
 
 /***********************************************************************
@@ -1337,79 +1317,6 @@ void PF_LG::Split_LG () {
            ("Split_LG returned 0 (or less) lines in lev-2 cache\n"));
   CXX_DELETE_ARRAY (dist, PF_mpool);
 }
-#if 0
-/***********************************************************************
- *
- * Return TRUE if the loopnode for this locality group is an outer tile
- * for this reference, FALSE otherwise.
- *
- * Conditions for outer tile:
- *  - this index variable must appear in both the lower-bound and
- *    the upper bound expressions for an inner loop containing this
- *    reference, and
- *  - the reference must use the index variable of that inner loop.
- *
- ***********************************************************************/
-BOOL PF_LG::Is_Outer_Tile () {
-  INT i, j;
-  PF_LOOPNODE* ln;
-  WN* outer_wn;
-  INT ref_depth;
-  
-  // Let's find the code for the loopnode for the
-  // current loop we're computing volume for
-  ln = Get_Loop ();     // loopnode immediately containing these references
-  ref_depth = ln->Get_Depth();
-  DO_LOOP_INFO* dli;
-  for (i=ref_depth; i!=_depth; i--) {
-    dli = ln->Get_LoopInfo ();
-//    printf ("(is_outer_tile: depth %d e_n_i %lld)\n",
-//            i, dli->Est_Num_Iterations);
-    ln = ln->Get_Parent ();
-  }
-//  printf ("(is_outer_tile: depth %d e_n_i %lld)\n",
-//          i, dli->Est_Num_Iterations);
-  outer_wn = ln->Get_Code();
-  
-  {
-    // some debugging stuff
-    WN* index_wn = WN_index(outer_wn);
-    char* name = ((ST_class(WN_st(index_wn)) != CLASS_PREG) ?
-                  ST_name(WN_st(index_wn)) :
-                  (WN_offset(index_wn) > Last_Dedicated_Preg_Offset ?
-                   Preg_Name(WN_offset(index_wn)) : "DEDICATED PREG"));
-//    printf ("Is_Outer_Tile: query for %s: ", name);
-  }
-  // Now find the reference
-  ACCESS_ARRAY* aa = _myugs->Get_AA();
-  ACCESS_VECTOR* av;
-  for (i=0; i<aa->Num_Vec(); i++) {
-    av = aa->Dim(i);
-    ln = Get_Loop ();
-    for (j=ref_depth; j>_depth; j--) {
-      if (av->Loop_Coeff(j)) {
-        // access depends on loop j. Is "j" an inner tile of outer_loop?
-        WN* cur_wn = ln->Get_Code();
-        Is_True (cur_wn != outer_wn,
-                 ("Temporal reuse, but loop var used in index expr"));
-        // This while loop is needed to handle multiple levels of tiling
-        while (1) {
-          cur_wn = Outer_Tile (cur_wn, Du_Mgr);
-          if (cur_wn == NULL) break;
-          // is current loop is an outer tile?
-          if (cur_wn == outer_wn) {
-//            printf ("is an outer tile\n");
-            return TRUE;
-          }
-        }
-      }
-      ln=ln->Get_Parent();
-    }
-  }      
-//  printf ("is NOT an outer tile, so presumable really temporal\n");
-  return FALSE;
-}
-#endif
 
 /***********************************************************************
  *
@@ -1731,11 +1638,7 @@ static PF_SORTED_REFS* Sort_Refvecs (PF_REFVEC_DA* refvecs, mINT16 leadingref){
     PF_REFVEC* refvec = refvecs->Bottom_nth(i);
     INT j;
     for (j=0; j<(i+1); j++)
-#ifdef KEY //preventing leader being swept away
       if (srefs[j].dist > refvec->Distance()) break;
-#else
-      if (srefs[j].dist >= refvec->Distance()) break;
-#endif
     if (j == (i+1)) {
       // all are smaller or equal
       srefs[i+1].dist  = refvec->Distance();
@@ -1968,8 +1871,6 @@ void Update_Array_Index (WN* wn, WN* wn_incr, WN* wn_induc)
       WN_kid(wn, kid) = LWN_CreateExp2(OPCODE_make_op(OPR_ADD, desc, MTYPE_V), wn_kid, wn_ahead);
       LWN_Set_Parent(WN_kid(wn, kid), wn);
     }
-    // bug fix for OSP_348
-    //
     else if ((WN_operator(wn_kid) == OPR_CVT || WN_operator(wn_kid) == OPR_CVTL || WN_operator(wn_kid) == OPR_TRUNC)
 	     && (WN_st_idx(WN_kid(wn_kid, 0)) == WN_st_idx(wn_induc) && SYMBOL(WN_kid(wn_kid, 0)) == SYMBOL(wn_induc)))
     {
@@ -1987,7 +1888,6 @@ void Update_Array_Index (WN* wn, WN* wn_incr, WN* wn_induc)
 }
 #endif
 
-#ifdef KEY //bug 10953 -- to generate prefetch address
 static WN *Gen_Pf_Addr_Node(WN *invariant_stride, WN *array, WN *loop)
 {
    OPCODE mpy_opc = OPCODE_make_op(OPR_MPY,WN_rtype(array), MTYPE_V);
@@ -2019,7 +1919,7 @@ static BOOL Is_Other_Array_Bad(WN *wn, INT dim)
     }
     return FALSE;
  }else if(WN_operator(wn) == OPR_ARRAY){
-   if(WN_element_size(wn) < 0){ //bug 14169: may not be contiguous
+   if(WN_element_size(wn) < 0){ // may not be contiguous
     WN *array_parent = LWN_Get_Parent(wn);
     if(WN_operator(array_parent)!=OPR_ILOAD &&
        WN_operator(array_parent)!=OPR_ISTORE)
@@ -2124,7 +2024,6 @@ static BOOL Larger_Dimension_Arrays_In(WN *wn, INT dim)
   }
   return FALSE;
 }
-#endif
 
 /***********************************************************************
  *
@@ -2200,11 +2099,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
             // confident of that one too
             PF_VOLUME vol = oloop->Get_Total ();
             if (vol.Localized_1L()) {
-#ifdef KEY
               confidence = (LNO_Run_Prefetch > SOME_PREFETCH) ? (LNO_Run_Prefetch - 1) : LNO_Run_Prefetch;
-#else
-              confidence = LNO_Run_Prefetch;
-#endif
             }
             break;
           }
@@ -2233,11 +2128,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
         }
         // should we prefetch more aggressively?
         if (confidence == 1) {
-#ifdef KEY
               confidence = (LNO_Run_Prefetch > SOME_PREFETCH) ? (LNO_Run_Prefetch - 1) : LNO_Run_Prefetch;
-#else
-          confidence = LNO_Run_Prefetch;
-#endif
         }
       }
       break;
@@ -2258,11 +2149,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
             // confident of that one too
             PF_VOLUME vol = oloop->Get_Total ();
             if (vol.Localized_2L()) {
-#ifdef KEY
               confidence = (LNO_Run_Prefetch > SOME_PREFETCH) ? (LNO_Run_Prefetch - 1) : LNO_Run_Prefetch;
-#else
-              confidence = LNO_Run_Prefetch;
-#endif
             }
             break;
           }
@@ -2291,11 +2178,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
         }
         // should we prefetch more aggressively?
         if (confidence == 1) {
-#ifdef KEY
               confidence = (LNO_Run_Prefetch > SOME_PREFETCH) ? (LNO_Run_Prefetch - 1) : LNO_Run_Prefetch;
-#else
-          confidence = LNO_Run_Prefetch;
-#endif
         }
       }
       break;
@@ -2434,7 +2317,6 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
             increment = Get_Stride_In_Enclosing_Loop() * LNO_Prefetch_Iters_Ahead;
           }
           else {
-            //OSP_233 & OSP_240
             //  DO I = 1, N
             //    DO J = 1, N
             //      SUM = SUM + A(J, I)*B(I, J)
@@ -2543,10 +2425,10 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
 #if defined(TARG_X8664) || defined(TARG_IA64)
 
 //------------------------------------------------------------------------
-//bug 5945: CG ebo will drop some prefetches according to address patterns
+//CG ebo will drop some prefetches according to address patterns
 //However, for dope vector, it is difficult for CG to figure out. We know
 //that the array access is contiguous though simd in LNO, so don't drop it
-//bug 11546 : CG ebo should not drop prefetches for vectorized loads or stores
+//CG ebo should not drop prefetches for vectorized loads or stores
 if(LNO_Run_Prefetch > SOME_PREFETCH && 
       (WN_element_size(arraynode) < 0 ||
       (Get_Dim()==1 &&( confidence ==3 || WN_element_size(arraynode) > 8))||
@@ -2555,7 +2437,7 @@ if(LNO_Run_Prefetch > SOME_PREFETCH &&
   PF_SET_KEEP_ANYWAY(flag);
 }
  
-//bug 14144: It is difficult for CG to figure out the address patterns for
+//It is difficult for CG to figure out the address patterns for
 //indirect array access even though the base is a constant array reference 
 if(LNO_Run_Prefetch > SOME_PREFETCH && offset != 0 &&
    Get_Dim() == 1 && confidence >=2 &&
@@ -2594,7 +2476,7 @@ if(LNO_Run_Prefetch > SOME_PREFETCH && offset != 0 &&
 
 
 //--------------------------------------------------------------------------
-//Bug 13609: to make a decision for streaming prefetch
+//to make a decision for streaming prefetch
 //(1) only one array reference in this locality group
 //(2) the spatial locality only in the innermost loop
 //(3) we only consider loads here. Stores may use non-temporal stores in CG
@@ -2648,9 +2530,9 @@ if(LNO_Run_Prefetch > SOME_PREFETCH && offset != 0 &&
 #endif
 
 
-#if !(defined(TARG_X8664) || defined(TARG_IA64)) //bug 10953
+#if !(defined(TARG_X8664) || defined(TARG_IA64))
    WN* pfnode = LWN_CreatePrefetch (offset, flag, arraynode);
-#else //bug 10953
+#else
    WN* pfnode=NULL;
    WN *do_loop = ref;
    while(do_loop && WN_operator(do_loop) != OPR_DO_LOOP)
@@ -2675,7 +2557,7 @@ if(LNO_Run_Prefetch > SOME_PREFETCH && offset != 0 &&
       }
       pfnode = LWN_CreatePrefetch (offset, flag, pf_addr_node);
    }
-#endif //bug 10953
+#endif
 
     WN_linenum(pfnode) = LWN_Get_Linenum(ref);
     VB_PRINT (vb_print_indent;
@@ -3437,76 +3319,6 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
   CXX_DELETE (H, PF_mpool); 
   CXX_DELETE (Hlu, PF_mpool);
 
-#if 0
-  // The following is based on the previous calculation of strides
-  // for each basis vector. This was erroneous...
-  fprintf (stderr, "TODO: Get rid of the following junk...\n");
-  // D() is number of basis vectors, 
-  // N() is max possible number of basis vectors
-  if (_KerHs->D() == 0) {
-    // basis is empty
-    _stride = NULL;
-  }
-  else {
-    const MAT<FRAC>& Hsbasis = _KerHs->Basis ();
-
-#   ifdef Is_True_On
-    for (i=0; i<_KerHs->D(); i++) {
-      for (j=0; j<_KerHs->N(); j++)
-        Is_True ((Hsbasis(i,j).D() == 1),
-                 ("Kernel has a real frac element\n"));
-    }
-
-    // now check to see that each loop index occurs in just one basis vector
-    for (j=0; j<_KerHs->N(); j++) {
-      BOOL isPresent = FALSE;
-      for (i=0; i<_KerHs->D(); i++) 
-        if (Hsbasis(i,j).N() != 0) {
-          Is_True (!isPresent,
-                   ("loop index (%d) in more than one basis vector", j));
-          isPresent = TRUE;
-        }
-    }
-#   endif
-
-    _stride = CXX_NEW_ARRAY (mINT16, _KerHs->D(), PF_mpool);
-
-    // determine locality for each basis vector
-    ACCESS_VECTOR* av = _aa->Dim(_aa->Num_Vec()-1);
-    for (i=0; i<_KerHs->D(); i++) {
-      // take the dot product with the 
-      // index expression for the stride-one dimension
-      INT dotproduct = 0;
-      for (j=0; j<_KerHs->N(); j++) {
-        dotproduct += Hsbasis(i,j).N() * av->Loop_Coeff(j);
-      }
-      if (dotproduct == 0) {
-        // temporal locality
-        _stride[i] = 0;
-      }
-      else {
-        // spatial locality - determine stride
-        // get absolute value of dotproduct - the number of elements for 
-        //  1 stride of basis vector
-        dotproduct = ((dotproduct<0) ? (-dotproduct) : dotproduct);
-        INT sz = (INT) WN_element_size(wn_array); // size in bytes
-        sz = sz * dotproduct;
-        // sz is the step (in bytes) for each trip of bv
-        if ((sz < Cache.LineSize(2)) || (sz < Cache.LineSize(1)))
-          // store sz, not number of bv trips
-          // so that later determination for 1st level and 2nd level line sizes
-          // can be made
-          _stride[i] = sz;
-        else _stride[i] = -1;
-      }
-    }
-    // so now, for each basis vector:
-    //  stride==0 means temporal
-    //  positive non-zero means spatial, within second-level cache line size
-    //      with value == step size in bytes for each trip of the basis vector
-    //  -1 means spatial but exceeds cache line, therefore no locality
-  }
-#endif // 0
 
   // now calculate stride-one loop
   PF_LOOPNODE* loopnode = myba->Get_Loop();
@@ -3584,7 +3396,6 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
         }
         else {
 #if defined(TARG_IA64)
-          //OSP_233 & OSP_240 
           //
           //  DO I = 1, N
           //    DO J = 1, N
@@ -3839,7 +3650,6 @@ BOOL PF_UGS::Add_Ref (WN* ref) {
   return TRUE;
 }
 
-#ifdef KEY //bug 10953
 static BOOL Pseudo_Temporal_Locality(WN *array)
 {
   WN *loop = LWN_Get_Parent(array);
@@ -3851,7 +3661,7 @@ static BOOL Pseudo_Temporal_Locality(WN *array)
   //and stride(non-constant) may varies between executions
   //of the loop(NOT different iters!!!)
   //TODO: ...
-#if (defined(TARG_X8664) || defined(TARG_IA64)) //bug 10953
+#if (defined(TARG_X8664) || defined(TARG_IA64))
   BOOL inductive_use = FALSE;
   BOOL indirect_use = FALSE;
   if(Simple_Invariant_Stride_Access(array, loop, TRUE,
@@ -3861,7 +3671,6 @@ static BOOL Pseudo_Temporal_Locality(WN *array)
 
   return FALSE;
 }
-#endif
 
 /***********************************************************************
  *
@@ -3918,7 +3727,6 @@ void PF_UGS::ComputePFVec (PF_LEVEL level, PF_LOCLOOP locloop) {
     aa->Print (TFile);
   });
 
-#ifdef KEY //bug 10953: temporal locality estimation may not be
            // due to various reasons(pointer access, lower-bound and
            // step changes, etc
   BOOL pseudo_temporal = TRUE;
@@ -3931,19 +3739,14 @@ void PF_UGS::ComputePFVec (PF_LEVEL level, PF_LOCLOOP locloop) {
          break;
       }
     }
-#endif
 
   if ((level == level_1) ?
       locloop.While_Temporal_1L() : locloop.While_Temporal_2L()) {
     // there is while-temporal locality in localized loop, so don't prefetch
-#ifdef KEY //bug 10953
    if(!pseudo_temporal){
-#endif
      _pfdesc.Turn_Off (level);
      PF_PRINT(fprintf (TFile, "    while temporal locality (no prefetch)\n"));
-#ifdef KEY
     }
-#endif
     return;
   }
 
@@ -4047,15 +3850,11 @@ void PF_UGS::ComputePFVec (PF_LEVEL level, PF_LOCLOOP locloop) {
       _pfdesc.Turn_On (level, prefetch_vec, depth+1);
       return;
     }
-#ifdef KEY //bug 10953
     if(!pseudo_temporal){
-#endif
       _pfdesc.Turn_Off (level);
       PF_PRINT(fprintf (TFile, "    temporal locality with basis (no prefetch)\n");
              sKerH.Print (TFile));
-#ifdef KEY
     }
-#endif
     return;
   }
   // Else no temporal locality. Any spatial?

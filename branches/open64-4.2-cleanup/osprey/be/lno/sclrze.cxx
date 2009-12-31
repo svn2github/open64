@@ -153,9 +153,7 @@ static void Process_Store(WN *store_wn, VINDEX16 v,
   // Do not sclrze vector stores.
   if (MTYPE_is_vector(WN_desc(store_wn))) return;
 #endif
-#ifdef KEY // Bug 6162 - can not scalarize to MTYPE_M pregs.
   if (WN_desc(store_wn) == MTYPE_M) return;
-#endif
   if (Inside_Loop_With_Goto(store_wn)) return;
   INT debug = Get_Trace(TP_LNOPT,TT_LNO_SCLRZE);
 
@@ -204,11 +202,9 @@ static void Process_Store(WN *store_wn, VINDEX16 v,
 	    Equivalent_Access_Arrays(store,load,store_wn,load_wn) &&
             (DEPV_COMPUTE::Base_Test(store_wn,NULL,load_wn,NULL) ==
                        DEP_CONTINUE) 
-#ifdef KEY
               &&
-            //Bug 9134: scalarizing only if store to and load from the same field
+            //scalarizing only if store to and load from the same field
              WN_field_id(store_wn)==WN_field_id(load_wn)
-#endif
                       ) {
 	  if (Dominates(store_wn,load_wn)) {
            if (!red_manager || 

@@ -221,9 +221,7 @@ static BOOL Contains_Calls(WN *wn)
   } else if (OPCODE_is_call(opcode)) {
     return TRUE;
   } else if (OPCODE_operator(opcode) == OPR_INTRINSIC_OP
-#ifdef KEY
 	     || OPCODE_operator(opcode) == OPR_PURE_CALL_OP
-#endif
             ) {
     if (Contains_Reshaped_Array(wn)) {
       return TRUE;
@@ -487,10 +485,8 @@ static BOOL Loop_Bound_Constant(WN *wn, BOOL nrs_var_read)
     }
     return FALSE;
   }
-#ifdef KEY
   else if (oper == OPR_PURE_CALL_OP)
     return FALSE;
-#endif
   for (INT kidno=0; kidno<WN_kid_count(wn); kidno++) {
     if (!Loop_Bound_Constant(WN_kid(wn,kidno),nrs_var_read)) {
       return FALSE;

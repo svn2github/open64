@@ -71,9 +71,7 @@
 #include "prompf.h"
 #include "anl_driver.h"
 #include "debug.h" 
-#ifdef KEY
 #include "wn_simp.h"            // for WN_Simp_Compare_Trees
-#endif
 
 #pragma weak New_Construct_Id
 
@@ -590,7 +588,6 @@ _xfunc_has_stmts2prevent_shackle(QUEUE<WN *> *stmts)
   return FALSE;
 }
 
-#ifdef KEY
 // We just want to return a ST that is meaningful
 static ST* Array_Base_St (WN* node)
 {
@@ -604,7 +601,6 @@ static ST* Array_Base_St (WN* node)
 
   return NULL;
 }
-#endif
 
 ST*
 Identical_Array_Refbase (WN *array1, WN *array2)
@@ -633,12 +629,10 @@ Identical_Array_Refbase (WN *array1, WN *array2)
 						 p2, NULL))
 	&& (WN_operator(t1) != OPR_ILOAD)) {
       // assert (WN_array_base (array1) == WN_array_base (array2));
-#ifdef KEY // Bug 2484
       if (WN_Simp_Compare_Trees(t1, t2) != 0)
 	return NULL;
       else if (WN_kid_count(t1) != 0)
 	return Array_Base_St(t1);
-#endif
       if (WN_st (t1) == WN_st (t2))
 	return WN_st (t1);
       else
@@ -2878,7 +2872,6 @@ SNL_Contains_Ge2_Do_Loops(WN *main_snl)
   return (do_children_count >= 2);
 }
 
-#ifdef KEY
 // 
 static BOOL _xfunc_has_vectorizable_loop (WN* func_nd)
 {
@@ -2901,7 +2894,6 @@ static BOOL _xfunc_has_vectorizable_loop (WN* func_nd)
   }
   return FALSE;
 }
-#endif
 static BOOL
 Per_SNL_Shackle_Phase(WN *main_snl, 
 		      WN *func_nd)
@@ -2931,9 +2923,7 @@ Per_SNL_Shackle_Phase(WN *main_snl,
   shackle_chain_id_map_cnt = 0;
   if (shackle_debug_level > 0) 
     printf("The number of statements is %d\n", s->Queue_Length());
-#ifdef KEY
-  /* Bug 4063
-   * Under -LNO:simd_avoid_fusion, loops which would normally be fused
+  /* Under -LNO:simd_avoid_fusion, loops which would normally be fused
    * before Shackle phase get shackled here. There is assumption here
    * that fusion will avoid such loops for shackle. We should not 
    * shackle loops that have vectorizable statements, in line with
@@ -2950,7 +2940,6 @@ Per_SNL_Shackle_Phase(WN *main_snl,
       return FALSE;
     }
   }       
-#endif
   /* If the function has complicated statements, it can't be
      shackled. Complicated == calls, I/O etc */
   if (TRUE == _xfunc_has_stmts2prevent_shackle (s)) {

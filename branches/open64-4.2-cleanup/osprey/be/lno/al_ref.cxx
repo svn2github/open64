@@ -1147,9 +1147,7 @@ WN *Get_Call_Parent(WN *curr_nd)
   while (parent) {
     if (OPCODE_is_call(WN_opcode(parent)) ||
         WN_operator(parent) == OPR_INTRINSIC_OP
-#ifdef KEY
 	|| WN_operator(parent) == OPR_PURE_CALL_OP
-#endif
 	) {
       return parent;
     } else {
@@ -1168,9 +1166,7 @@ TY_IDX Get_Callee_TY(WN *call_nd,
                   ST *array_st)
 {
   if (WN_operator(call_nd) == OPR_CALL
-#ifdef KEY
       || WN_operator(call_nd) == OPR_PURE_CALL_OP
-#endif
      ) {
     ST* callee_st = ST_ptr(WN_entry_name(call_nd));
     return (ST_type(callee_st));
@@ -1316,14 +1312,7 @@ static WN* Hoist_Expression (WN* expr_wn,
   if (WN_operator(expr_wn) == OPR_ILOAD) {
     TYPE_ID expr_type = WN_rtype(expr_wn);
 
-#if 0
-    static INT counter = 0;
-    char name[64];
-    sprintf (name, "$hoist_%d", counter++);
-    SYMBOL sym = Create_Local_Symbol (name, expr_type);
-#endif    
 
-#if 1
     WN* array_wn = WN_kid0(expr_wn);
     Is_True (WN_operator(array_wn) == OPR_ARRAY,
              ("Hoist_Expr ILOAD: expected an OPR_ARRAY"));
@@ -1341,7 +1330,6 @@ static WN* Hoist_Expression (WN* expr_wn,
                 dinfo->Hoist_Proc_Next_Offset(),
                 expr_type);
     // resume regular stuff
-#endif
 
     Set_ST_pt_to_unique_mem(sym.St());
     Set_ST_pt_to_compiler_generated_mem(sym.St());

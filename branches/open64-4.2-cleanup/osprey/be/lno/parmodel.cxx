@@ -909,10 +909,8 @@ BOOL PAR_STAT::Invariant_Reduction(WN* wn_istore)
     ACCESS_VECTOR* av = aa->Dim(i);
     if (av->Too_Messy)
       return FALSE; 
-#ifdef KEY //bug 8434
     if (av->Non_Const_Loops() >= _depth)
       return FALSE; 
-#endif
     PAR_STAT* ps = NULL; 
     for (ps = this; ps != NULL; ps = ps->_parent) {
       if (WN_opcode(ps->_wn) == OPC_DO_LOOP 
@@ -1499,13 +1497,8 @@ double PAR_STAT::Parallel_Overhead_Cost()
   double parallel_cycles = 0;
   if (WN_opcode(_wn) == OPC_DO_LOOP && _is_parallel) { 
       // need to encapsulate this in a class--DRK
-#ifdef KEY
     double multiplier = (double) (LNO_Parallel_Overhead +
 				NOMINAL_PROCS * LNO_Parallel_per_proc_overhead);
-#else
-    double multiplier = (double) (LNO_Parallel_Overhead +
-                                  NOMINAL_PROCS * 123);
-#endif
       // same test as in PAR_STAT::Reduction_Cost(), has same bug--DRK
     if (Is_Inner_Loop() && Is_Parallel_Enclosed_Loop()) {
         // add estimate of cost of combining partial results

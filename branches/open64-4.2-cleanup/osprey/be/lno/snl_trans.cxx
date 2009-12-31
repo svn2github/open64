@@ -657,7 +657,6 @@ LNO_FB_Inv_Interchange(WN* wn_outer, INT permutation[], INT nloops)
   DOLOOP_STACK stack(&LNO_local_pool);
   Build_Doloop_Stack(wn_inner, &stack);
 
-#ifdef KEY
   // Return if any of the <wn_loop> has no loop feedback info.
   for( int i = 0; i < nloops; i++ ){
     const WN* wn_loop = stack.Bottom_nth(outer_depth + i);
@@ -665,7 +664,6 @@ LNO_FB_Inv_Interchange(WN* wn_outer, INT permutation[], INT nloops)
     if( fb_info.freq_positive.Uninitialized() )
       return;
   }
-#endif
 
   INT i;
       // FB for each loop in the nest, from outermost to innermost
@@ -698,14 +696,12 @@ LNO_FB_Inv_Interchange(WN* wn_outer, INT permutation[], INT nloops)
       new_invokes = old_fils[0].freq_zero + old_fils[0].freq_positive;
     }
 
-#ifdef KEY
     /* Handle situation when the inner loop is not called.
        IMO: lno does not update the feedback info consistently.
     */
     if( old_invokes.Zero() )
       Scale_FB_Info_Loop(&new_fils[idx], old_invokes.Value());
     else
-#endif
       Scale_FB_Info_Loop(&new_fils[idx], (new_invokes / old_invokes).Value());
   }
 

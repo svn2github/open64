@@ -954,7 +954,6 @@ extern FIZ_FUSE_INFO* Fiz_Fuse(WN* loop, FIZ_FUSE_INFO* snls, MEM_POOL* mpool) {
       }
       try_fusion = FALSE;
     }
-#ifdef KEY
     if ( try_fusion && LNO_Run_Simd > 0 && LNO_Simd_Avoid_Fusion &&
 	 (dli1->Vectorizable ^ dli2->Vectorizable) ) {
 
@@ -968,7 +967,6 @@ extern FIZ_FUSE_INFO* Fiz_Fuse(WN* loop, FIZ_FUSE_INFO* snls, MEM_POOL* mpool) {
       }
       try_fusion = FALSE;
     }    
-#endif
 
     BOOL try_fission = (LNO_Fission!=0) && !dli0->No_Fission &&
        !Do_Loop_Is_Mp(Enclosing_Do_Loop(LWN_Get_Parent(wn1))) &&

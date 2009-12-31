@@ -126,8 +126,8 @@ static BOOL Too_Few_Iterations(INT64 iters, WN *body)
     return TRUE;
    if(iters >= 16) //should always be fine, not too few
     return FALSE;
-   //bug 12056: no matter what Iteration_Count_Threshold is, we should
-   //           make sure at least one iter of the vectorized version
+   //no matter what Iteration_Count_Threshold is, we should
+   //make sure at least one iter of the vectorized version
    for(WN *stmt = WN_first(body); stmt; stmt = WN_next(stmt)){
     switch(WN_desc(stmt)){
       case MTYPE_I1: case MTYPE_U1:
@@ -149,7 +149,7 @@ static BOOL Too_Few_Iterations(INT64 iters, WN *body)
   return FALSE;
 }
      
-// Bug 10136: use a stack to count the number of different
+// use a stack to count the number of different
 // invariant operands
 static void Count_Invariant(STACK_OF_WN *invars, WN *ops)
 {
@@ -251,7 +251,7 @@ static BOOL is_vectorizable_op (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc) {
       return TRUE;
     else
       return FALSE;
-  // BUG 5701: vectorize NEG for integers
+  // vectorize NEG for integers
   case OPR_NEG:
     if (rtype == MTYPE_C4)//why C4 is not good?
       return FALSE;
@@ -287,15 +287,6 @@ static BOOL is_vectorizable_op (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc) {
       return TRUE;
     else
       return FALSE;
-#if 0 // bug 8885
-  case OPR_BAND:
-  //case OPR_BIOR:
-  case OPR_BXOR:
-    if (rtype != MTYPE_F4 && rtype != MTYPE_F8)
-      return TRUE;
-    else
-      return FALSE;    
-#endif
   case OPR_SQRT:
     if (rtype == MTYPE_F4 || rtype == MTYPE_F8)
       return TRUE;
@@ -310,8 +301,8 @@ static BOOL is_vectorizable_op (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc) {
       return TRUE;
     else
       return FALSE;
-//BUG 10136: allows F8RECIP to be vectorized here, and V16F8RECIP
-//           will be lowered down to DIV after LNO
+//allows F8RECIP to be vectorized here, and V16F8RECIP
+//will be lowered down to DIV after LNO
   case OPR_RECIP:
     if (rtype == MTYPE_F4 || rtype == MTYPE_F8)
       return TRUE;
@@ -433,7 +424,7 @@ static SIMD_OPERAND_KIND simd_operand_kind(WN* wn, WN* loop) {
 }
 
 
-// bug 8931 : prototype first
+// prototype first
 BOOL Is_Vectorizable_Intrinsic(WN *wn);
 
 //whether or not it is used for array addresses calculation.
@@ -469,7 +460,7 @@ static BOOL Simd_Benefit (WN* wn) {
 
   OPERATOR opr = WN_operator(wn);
 
-  // Bug 5582: If the CVT is for array address calculation and can not be vectorized
+  // If the CVT is for array address calculation and can not be vectorized
   // we can not say CVT is beneficial. Let others(e.g. alignment) to make decision.
   if (opr == OPR_CVT && 
      (!Is_Under_Array(wn) || is_vectorizable_op(opr, WN_rtype(wn), WN_desc(wn)))) 
@@ -479,20 +470,20 @@ static BOOL Simd_Benefit (WN* wn) {
         opr == OPR_SQRT || opr == OPR_TRUNC)
     return TRUE;
 
- //Bug 8931 : according to (1), this routine is not just for alignment. It also
- //           contains beneficial info. So, I think if a loop contains a intrinsic
- //           that can be vectorized, it is also ok if OPT:fast_math=on or simd=2.
+ //according to (1), this routine is not just for alignment. It also
+ //contains beneficial info. So, I think if a loop contains a intrinsic
+ //that can be vectorized, it is also ok if OPT:fast_math=on or simd=2.
    if(Is_Vectorizable_Intrinsic(wn))
     return TRUE;
 
   if (OPCODE_is_store(WN_opcode(wn)) &&
-      (MTYPE_byte_size(WN_desc(wn)) < 8 || //bug 5582 stid is fine
+      (MTYPE_byte_size(WN_desc(wn)) < 8 || //stid is fine
        MTYPE_is_complex(WN_desc(wn)) || opr == OPR_STID))
     return TRUE;
 
   if (WN_operator(wn) == OPR_ARRAY &&
       WN_has_sym(WN_array_base(wn)) &&
-      // can not align if array base is a pointer: bug 8595
+      // can not align if array base is a pointer
       WN_operator(WN_array_base(wn)) != OPR_LDID &&
       ST_sclass(WN_st(WN_array_base(wn))) != SCLASS_FORMAL)
     return TRUE;
@@ -514,7 +505,7 @@ static BOOL Simd_Benefit (WN* wn) {
 }
 
 //***********************************************************************
-//Bug 9143 : merge two similar functions into one. This is essentially
+// merge two similar functions into one. This is essentially
 // to say if the array is aligned, operations on double-precision value
 // can also be benefited from simd
 //
@@ -561,7 +552,7 @@ static BOOL Array_Subscript_Uses_IV (WN *wn, SYMBOL loop_var)
   return FALSE;
 }
 
-// Bug 4932 - Accesses like e[c[j]][j] in a j-loop should not be 
+// Accesses like e[c[j]][j] in a j-loop should not be 
 // vectorized but accesses like e[c[i][j] in a j-loop can be vectorized.
 // Unfortunately, the loop coefficients are not computed for such cases.
 // The access vector is marked too messy but we have to distinguish
@@ -588,11 +579,11 @@ static const char *non_unit_stride;
 static char *non_vect_op;
 
 // If not possible to determine, we will do runtime checking
-// Bug 6606 - Additional checks for assumed shape arrays (ARRAY with -ve
+// Additional checks for assumed shape arrays (ARRAY with -ve
 // element size) when identifying vectorizable loads and stores :
 // (1) if the WN offset > 0, then it can not be vectorized (this is a
 //     practical observation that speeds up the check) and,
-// (2) Bug 10379: loading an array of structure is sure to be non-contiguous
+// (2) loading an array of structure is sure to be non-contiguous
 //                if the structure has more than one field
 static BOOL Possible_Contiguous_Dope(WN *wn)
 {   
@@ -652,10 +643,10 @@ static BOOL Unit_Stride_Reference(
        if (i == aa->Num_Vec()-1 && av->Loop_Coeff(loopno) == -1 &&
            ABS(WN_element_size(wn)) == 1)
            ok = FALSE;
-       // Bug 4984 - non-linear symbols in the last dimension (access[i+i*l]).
+       // non-linear symbols in the last dimension (access[i+i*l]).
        if (i == aa->Num_Vec()-1 && av->Contains_Non_Lin_Symb())
            ok = FALSE;
-       // bug 9858 : a(i+(i*(i+1))/2) -- array is too messy and contains the index variable
+       // a(i+(i*(i+1))/2) -- array is too messy and contains the index variable
        //            we can not vectorize it due to non-unit stride
        if (av->Too_Messy &&
           Identify_Messy_Array_Subscript(wn, loop, aa, i))
@@ -664,7 +655,7 @@ static BOOL Unit_Stride_Reference(
         } // end for each dimension
   
        if (ok && PU_src_lang(Get_Current_PU()) == PU_F90_LANG)
-           ok = Possible_Contiguous_Dope(wn); // Bug 6606, 10379
+           ok = Possible_Contiguous_Dope(wn);
          if(!ok){ 
            if(in_simd && (debug || LNO_Simd_Verbose)){
             if(WN_has_sym(WN_array_base(wn))){
@@ -708,7 +699,6 @@ static BOOL Is_Unroll_Statement(WN *stmt, WN *body)
 }
 
 
-// Bug 5208
 // We support only one induction type per loop. To support more than one type,
 // we need to split the loop or generate multiple vec_index_preg and incr 
 // stores. We will screen out such loops.
@@ -746,8 +736,8 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
   if (OPCODE_is_compare(WN_opcode(wn)) && WN_operator(parent) != OPR_SELECT)
     return FALSE;
 
-  //Bug 10148: don't vectoorize F8RECIP if it is MPY's child
-  //Bug 13853: V16F8RECIP will be transformed to vector division in code generation
+  //don't vectoorize F8RECIP if it is MPY's child
+  //V16F8RECIP will be transformed to vector division in code generation
   //           And this has been observed good or no harm to intel platforms and
   //           Barcelona
   if(!Is_Target_EM64T() && 
@@ -785,7 +775,7 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
       WN_operator(kid1) == OPR_ILOAD && WN_operator(WN_kid0(kid1)) == OPR_ARRAY)
       ||(WN_operator(kid1) == OPR_INTCONST && WN_const_val(kid1) == 2  &&
       WN_operator(kid0) == OPR_ILOAD && WN_operator(WN_kid0(kid0)) == OPR_ARRAY)
-      ); //bug 5844: 2*b[i] should be fine
+      ); //2*b[i] should be fine
      else return FALSE;
   }
   
@@ -794,10 +784,10 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
   // (Bug 4636 - lapack failure with -msse3 is attributable to difference
   // in association introduced due to REDUCE style operations. SSE3 instructions
   // show more variability due to roundoff than their SSE2 counterparts).
-  // Bug 4426 - associativity problem shows up with F8 type also.
+  // associativity problem shows up with F8 type also.
   if (MTYPE_is_float(WN_desc(parent)) && WN_operator(parent) == OPR_STID && 
       LNO_Run_Simd != 2 && Roundoff_Level == ROUNDOFF_NONE &&
-      // bug 2456 - scalar expansion test may pass down non-reduction 
+      // scalar expansion test may pass down non-reduction 
       // statements and we don't care if OPR_MPY/ADD is in the middle of the 
       // expression.
       ((WN_operator(wn) == OPR_MPY &&
@@ -806,7 +796,7 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
         curr_simd_red_manager->Which_Reduction(parent) == RED_ADD)))
     return FALSE;
 
-  // bug 8766: does not yet know how to do simd for a reduction loop inside a
+  // does not yet know how to do simd for a reduction loop inside a
   //	       parallel region
   if (Do_Loop_Is_Mp(loop) && 
       WN_operator(parent) == OPR_STID && curr_simd_red_manager != NULL &&
@@ -823,8 +813,8 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
     if (WN_operator(array0) == OPR_ARRAY &&
 	WN_operator(WN_kid0(array0)) != OPR_LDID &&
 	WN_operator(WN_kid0(array0)) != OPR_LDA) {
-      // Bug 5057 - tolerate base addresses of the form (+ const LDID).
-      // Bug 6649 - vectorize things like struct[index].array[loop_index]
+      // tolerate base addresses of the form (+ const LDID).
+      // vectorize things like struct[index].array[loop_index]
       //            where is base is const + ARRAY
       if (WN_operator(WN_kid0(array0)) == OPR_ADD) {
 	WN* opnd0 = WN_kid0(WN_kid0(array0));
@@ -846,8 +836,8 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
     if (WN_operator(array1) == OPR_ARRAY &&
 	WN_operator(WN_kid0(array1)) != OPR_LDID &&
 	WN_operator(WN_kid0(array1)) != OPR_LDA) {
-      // Bug 5057 - tolerate base addresses of the form (+ const LDID).
-      // Bug 6649 - vectorize things like struct[index].array[loop_index]
+      // tolerate base addresses of the form (+ const LDID).
+      // vectorize things like struct[index].array[loop_index]
       //            where is base is const + ARRAY
       if (WN_operator(WN_kid0(array1)) == OPR_ADD) {
 	WN* opnd0 = WN_kid0(WN_kid0(array1));
@@ -864,7 +854,7 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
     }
   }
 
-  //bug 14155: we don't know how to unroll the statement, so give up for now
+  //we don't know how to unroll the statement, so give up for now
   if(WN_operator(kid0) == OPR_ILOAD && WN_operator(WN_kid0(kid0)) == OPR_ARRAY){
     WN * stmt = Find_Stmt_Under(wn, WN_do_body(loop));
     if(stmt && WN_operator(stmt)==OPR_STID && Is_Unroll_Statement(stmt, WN_do_body(loop))){
@@ -893,7 +883,7 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
     SYMBOL symbol1(kid0);
     SYMBOL symbol2(WN_index(loop));
     if (symbol1 == symbol2) {
-      // Bug 7255 - induction loop in MP region needs special treatment.
+      // induction loop in MP region needs special treatment.
       if (Do_Loop_Is_Mp(loop)) 
 	return FALSE;
       INT Type_Size = MTYPE_byte_size(WN_rtype(wn));
@@ -913,7 +903,7 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
     SYMBOL symbol1(kid1);
     SYMBOL symbol2(WN_index(loop));
     if (symbol1 == symbol2) { 
-      // Bug 7255 - induction loop in MP region needs special treatment.
+      // induction loop in MP region needs special treatment.
       if (Do_Loop_Is_Mp(loop)) 
 	return FALSE;
       INT Type_Size = MTYPE_byte_size(WN_rtype(wn));
@@ -936,7 +926,7 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
      
   // Can not vector copy different sized arrays. 
   // The elements are not contiguous
-  WN* stmt = parent; // bug 2336 - trace up the correct type
+  WN* stmt = parent; // trace up the correct type
   while(stmt && !OPCODE_is_store(WN_opcode(stmt)) && 
 	WN_operator(stmt) != OPR_DO_LOOP){
     stmt = LWN_Get_Parent(stmt);
@@ -949,15 +939,13 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
        WN_desc(kid1) != WN_desc(stmt)))
     return FALSE;
 
-  // Bug 568
   // For Fortran loops that copy array sections, the lowerer may return
   // fields in structure without a field Id. Also, we can not
   // rely on the offset field in the ISTORE which may be 0 (first field in
   // a structure). To work around the problem, we compare the size of the 
   // array nodes.
-  // Revised for bug 4554 after 2.0 change for bug 3359.
   if (WN_operator(wn) != OPR_INTRINSIC_OP &&
-      //bug 13853 : should not apply this to things related to select 
+      // should not apply this to things related to select 
       !OPCODE_is_compare(WN_opcode(wn))   && 
       WN_operator(wn) != OPR_SELECT) {
     INT oper_size = -1, opnd_size = -1;
@@ -1011,7 +999,6 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
     }
   }
 
-  // Bug 2962
   // Can not vectorize "a[i].b = " ; this is not caught by the other checks 
   // because sometimes field id is not set and even if set it may be zero.
   if (WN_operator(parent) == OPR_ISTORE && 
@@ -1323,7 +1310,7 @@ Find_Simd_Kind ( STACK_OF_WN *vec_simd_ops )
     WN* simd_op=vec_simd_ops->Top_nth(i);
 
     WN* istore=LWN_Get_Parent(simd_op);
-    // bug 2336 - trace up the correct type
+    // trace up the correct type
     while(istore && !OPCODE_is_store(WN_opcode(istore)) && 
 	  WN_operator(istore) != OPR_DO_LOOP)
       istore = LWN_Get_Parent(istore);
@@ -1400,10 +1387,6 @@ BOOL Is_Vectorizable_Intrinsic (WN *wn)
   case INTRN_F8COS:
   case INTRN_F4EXPEXPR:
   case INTRN_F8EXPEXPR:
-#if 0 // for Bug 8931, single vector sinh and cosh not ready
-  case INTRN_F4SINH:
-  case INTRN_F4COSH:
-#endif
   case INTRN_F8SINH:
   case INTRN_F8COSH:
   case INTRN_F4LOG10:
@@ -1456,7 +1439,6 @@ BOOL Gather_Vectorizable_Ops(
             return FALSE; // op is not vectorizable
           }
 
-  // Bug 2986
   if (opr == OPR_CVT && !is_vectorizable_op(opr, rtype, desc)){
     // If the CVT is inside a OPR_ARRAY, then it is
     // not vectorizable but we do not abort vectorization.
@@ -1471,12 +1453,12 @@ BOOL Gather_Vectorizable_Ops(
       return FALSE;
    }
 
-  // Bug 3011 - If 'wn' is a reduction statement then it should not be used
+  // If 'wn' is a reduction statement then it should not be used
   // more than once (except in reductions on the same variable) inside this 
   // loop body.
   if (WN_operator(wn) == OPR_STID && curr_simd_red_manager &&
       curr_simd_red_manager->Which_Reduction(wn) != RED_NONE) {
-    // Bug 4061 - vectorization of reduction loops involving complex types
+    // vectorization of reduction loops involving complex types
     // is not yet supported.
     if(MTYPE_is_complex(WN_desc(wn))){
        Report_Non_Vectorizable_Op(wn);
@@ -1506,7 +1488,7 @@ BOOL Gather_Vectorizable_Ops(
 	  return FALSE;	 
          }   
       }
-      // Bug 6248 - can not vectorize if there are multiple uses in the 
+      // can not vectorize if there are multiple uses in the 
       // reduction statement.
       if (Wn_Is_Inside(use, wn)) {
 	if (num_reuse > 0){
@@ -1518,14 +1500,14 @@ BOOL Gather_Vectorizable_Ops(
     }
   }
 
-  // Bug 2952 - use before def of a loop variant scalar that is not 
+  // use before def of a loop variant scalar that is not 
   // involved in a reduction.
   if (WN_operator(wn) == OPR_STID && curr_simd_red_manager &&
       curr_simd_red_manager->Which_Reduction(wn) == RED_NONE) {
     if (!Du_Mgr)
       return FALSE;
     USE_LIST* use_list=Du_Mgr->Du_Get_Use(wn);
-    if (!use_list || use_list->Incomplete()) //bug 12536 - conservative if
+    if (!use_list || use_list->Incomplete()) // conservative if
       return FALSE;                          //            incomplete
     USE_LIST_ITER uiter(use_list);
     for (DU_NODE* u = uiter.First(); !uiter.Is_Empty(); u=uiter.Next()) {
@@ -1533,7 +1515,7 @@ BOOL Gather_Vectorizable_Ops(
       WN* body = WN_do_body(loop);
       WN* stmt = Find_Stmt_Under(use, body);
 
-   //BUG 9957: if the use (LDID) is under a XPRAGMA of copyin_bound
+   //if the use (LDID) is under a XPRAGMA of copyin_bound
    //          we don't vectorize.
    //NOTE: This copyin_bound xpragma and maybe other pragma are generated
    //      by inlining. Don't know whether they are useful for non-omp code
@@ -1557,7 +1539,7 @@ BOOL Gather_Vectorizable_Ops(
     }
   }
 
-  // Bug 3875 - Also, the STID should not be used to compute address from a
+  // Also, the STID should not be used to compute address from a
   // ARRAY node.
   if (WN_operator(wn) == OPR_STID) {
     if (!Du_Mgr)
@@ -1583,7 +1565,7 @@ BOOL Gather_Vectorizable_Ops(
     }
   }
 
-  // Bug 4971 - result of a STID is never used inside the loop. So you wonder
+  // result of a STID is never used inside the loop. So you wonder
   // why a loop. 
   if (WN_operator(wn) == OPR_STID && curr_simd_red_manager &&
       curr_simd_red_manager->Which_Reduction(wn) == RED_NONE) {
@@ -1601,7 +1583,7 @@ BOOL Gather_Vectorizable_Ops(
 	used_in_loop = TRUE;
 
       // A non-reduction statement that has a re-use in itself should 
-      // not be vectorized. An example is bug 5296 (x = (x + a[i])*y;).
+      // not be vectorized. An example is (x = (x + a[i])*y;).
       if (Wn_Is_Inside(use, wn)){
         Report_Non_Vectorizable_Op(wn);
 	return FALSE;
@@ -1613,7 +1595,6 @@ BOOL Gather_Vectorizable_Ops(
       }
   }
   
-  // Bug 2612
   if (WN_operator(wn) == OPR_ISTORE) {
     WN* stmt_next = WN_next(wn);
     while(stmt_next) {
@@ -2088,8 +2069,8 @@ static BOOL Loop_Has_Asm (WN* loop)
 
 
 //------------------------------------------------------------
-// Bug 5880: whether is wn sub-tree contsains a vectorizable 
-//           intrinsic or not
+//  whether is wn sub-tree contsains a vectorizable 
+//  intrinsic or not
 //------------------------------------------------------------
 static BOOL Contain_Vectorizable_Intrinsic(WN *wn)
 {
@@ -2119,7 +2100,6 @@ static BOOL Contain_Vectorizable_Intrinsic(WN *wn)
 }
 
 //--------------------------------------------------------
-// Bug 5880 : 
 // this is used to disable blocking if the loop contain
 // vectorizable intrinsic ops and vintr is aggressive
 //-------------------------------------------------------- 
@@ -2246,7 +2226,7 @@ extern BOOL Is_Vectorizable_Loop (WN* innerloop)
   if (LNO_Simd_Reduction && simd_red_manager)
     CXX_DELETE(simd_red_manager,&SIMD_tmp_pool);
 
-   //Bug 6963: Loop invariant array reference(loads) is permitted at this time
+   // Loop invariant array reference(loads) is permitted at this time
    // Simd will move these kind of array references out of the loop.
    BOOL move_invar = (!Get_Trace(TP_LNOPT, TT_LNO_GUARD) && LNO_Minvar);
    if(!_stop && !Unit_Stride_Reference(body, innerloop, !move_invar))
@@ -2581,7 +2561,7 @@ static void Create_Stride1_Condition_If_Required (WN *array_base,
   WN *stride;
   TY_IDX ty_dope = ST_type(WN_st(array_base));
 
-  // bug 10379: we use the stride_multiplier directly to construct
+  // we use the stride_multiplier directly to construct
   // the checking condition if the base is not in a dope structure
   if (TY_kind(ty_dope) != KIND_STRUCT || 
      strncmp(TY_name(ty_dope), ".dope.", 6) != 0){
@@ -2745,7 +2725,6 @@ static BOOL Simd_Pre_Analysis(WN *innerloop, char *verbose_msg)
      return FALSE;
    }
 
-  // Bug 3784
   // Check for useless loops (STID's use_list is empty) of the form
   // do i
   //   x = a[i]
@@ -2764,7 +2743,7 @@ static BOOL Simd_Pre_Analysis(WN *innerloop, char *verbose_msg)
   // if the loop index var is live at exit and cannot be finalized,
   // we will not vectorize
   if (Index_Variable_Live_At_Exit(innerloop)) {
-    // Bug 5139 - The Loop index variable is probably a LAST PRIVATE
+    // The Loop index variable is probably a LAST PRIVATE
     // variable and vectorizing this loop here will cause MP lowerer
     // to not write out the loop index variable from the last iteration.
     if (Do_Loop_Is_Mp(innerloop) && !Early_MP_Processing){
@@ -2792,7 +2771,7 @@ static BOOL Simd_Pre_Analysis(WN *innerloop, char *verbose_msg)
     return FALSE;
   }
 
- // Bug 5730 - OMP DO LOOP that are REDUCTIONs should not be vectorized
+  // OMP DO LOOP that are REDUCTIONs should not be vectorized
   // because of lack of functionality in the OMP lowerer.
   if (Do_Loop_Is_Mp(innerloop) && !Early_MP_Processing) {
     WN *enclosing_parallel_region, *region_pragma;
@@ -2802,12 +2781,10 @@ static BOOL Simd_Pre_Analysis(WN *innerloop, char *verbose_msg)
           WN_operator(enclosing_parallel_region) != OPR_REGION)
       enclosing_parallel_region =
         LWN_Get_Parent(enclosing_parallel_region);
-#ifdef KEY
     if (PU_cxx_lang(Get_Current_PU()) &&
         Is_Eh_Or_Try_Region(enclosing_parallel_region))
       enclosing_parallel_region =
         LWN_Get_Parent(LWN_Get_Parent(enclosing_parallel_region));
-#endif
     FmtAssert(enclosing_parallel_region, ("NYI"));
     region_pragma = WN_first(WN_region_pragmas(enclosing_parallel_region));
     while(region_pragma && (!reduction || !pdo)) {
@@ -2823,7 +2800,7 @@ static BOOL Simd_Pre_Analysis(WN *innerloop, char *verbose_msg)
     }
   }//end if
 
-  //bug 9141 improve simd diagnostics, also split unit stride checking out of gathering simd ops
+  //improve simd diagnostics, also split unit stride checking out of gathering simd ops
   non_unit_stride = "unknown";
   if (!Unit_Stride_Reference(WN_do_body(innerloop), innerloop, TRUE)) {
     sprintf(verbose_msg, "Non-contiguous array \"%s\" reference exists.", 
@@ -2873,11 +2850,8 @@ static BOOL SA_Set_SimdOps_Info1(WN* body,
       continue;
     TYPE_ID rtype = WN_rtype(simd_op);
     TYPE_ID desc = WN_desc(simd_op);
-#if 1
-    // CHANGED
     FmtAssert(is_vectorizable_op(WN_operator(simd_op), rtype, desc),
               ("Handle this piece"));
-#endif
     if (!is_vectorizable_op(WN_operator(simd_op), rtype, desc))
       continue; //will never happen due to the above assert
     
@@ -2885,7 +2859,7 @@ static BOOL SA_Set_SimdOps_Info1(WN* body,
       WN* tmp=WN_kid(simd_op,kid_no);
       SIMD_OPERAND_KIND kind=simd_operand_kind(tmp,LWN_Get_Parent(body));
 
-      //bug 10136: we don't count constants
+      // we don't count constants
       if(kind==Invariant && WN_operator(tmp) == OPR_LDID)
          Count_Invariant(invariant_ops, tmp);
 
@@ -3084,19 +3058,17 @@ static void SA_Version_F90_Loops_For_Contiguous(WN *innerloop)
     }
     if (if_noncontig) {
       if (Do_Loop_Is_Mp(innerloop)){
-        // Bug 7258 - when loop is inside MP region, clone the outer region
+        // when loop is inside MP region, clone the outer region
         WN* enclosing_parallel_region;
         enclosing_parallel_region = LWN_Get_Parent(innerloop);
         while(enclosing_parallel_region &&
               WN_operator(enclosing_parallel_region) != OPR_REGION)
           enclosing_parallel_region =
             LWN_Get_Parent(enclosing_parallel_region);
-#ifdef KEY
         if (PU_cxx_lang(Get_Current_PU()) &&
             Is_Eh_Or_Try_Region(enclosing_parallel_region))
           enclosing_parallel_region =
             LWN_Get_Parent(LWN_Get_Parent(enclosing_parallel_region));
-#endif
         WN *stmt_before_region = WN_prev(enclosing_parallel_region);
         FmtAssert(stmt_before_region, ("NYI"));
         WN *parent_block = LWN_Get_Parent(enclosing_parallel_region);
@@ -3200,7 +3172,7 @@ static BOOL Simd_Analysis(WN *innerloop, char *verbose_msg)
   if(SA_Loop_Has_Dependence_Cycles(innerloop, verbose_msg))
     return FALSE;
   
-  //Bug 6644 - version loop if non-contiguous arrays may exist.
+  // version loop if non-contiguous arrays may exist.
   if (PU_src_lang(Get_Current_PU()) == PU_F90_LANG)
      SA_Version_F90_Loops_For_Contiguous(innerloop);
 
@@ -3526,7 +3498,7 @@ static INT Simd_Align_Analysis(INT init_align, WN *load_store,
       }
       copy = WN_Simplify_Tree(copy);
       if(WN_operator(WN_array_base(array0))==OPR_LDID) // maybe different
-       // array base is a pointer, can not align : bug 8595
+       // array base is a pointer, can not align 
         alignment = -2;
       else if (WN_operator(copy) != OPR_INTCONST)
         alignment = -2;
@@ -3539,7 +3511,6 @@ static INT Simd_Align_Analysis(INT init_align, WN *load_store,
                (WN_operator(simd_op) == OPR_TRUNC &&
                 MTYPE_byte_size(WN_rtype(simd_op)) !=
                 MTYPE_byte_size(WN_desc(simd_op)))))
-        // related to Bug 2665 but faults at run-time
         alignment = -2;
       else if (!is_store && Vec_Unit_Size[simd_kind] != MTYPE_byte_size(WN_desc(load_store)))
         alignment = -2;
@@ -3565,7 +3536,7 @@ static INT Simd_Align_Analysis(INT init_align, WN *load_store,
         BOOL var_base = WN_operator(array_base) != OPR_LDA;
         if (!var_base)
           offset += WN_lda_offset(array_base);
-        offset += WN_offset(load_store); // bug 2612 --- may be different for store
+        offset += WN_offset(load_store); // may be different for store
 
         if(!is_store || !var_base){ // load should always do this
           ty_iload0 = ST_type(base_st);
@@ -3580,7 +3551,7 @@ static INT Simd_Align_Analysis(INT init_align, WN *load_store,
            // Fortran Equivalenced arrays should not be aligned
            if (ST_is_equivalenced(st))
              alignment = -2;
-        }else{//store does this when var_base. See bug 8112 
+        }else{//store does this when var_base.
            ty_iload0 = WN_ty(istore); // istore ?
            if (TY_kind(ty_iload0) == KIND_POINTER)
              ty_iload0 = TY_pointed(ty_iload0);
@@ -3656,7 +3627,7 @@ static INT Simd_Align_Analysis(INT init_align, WN *load_store,
                  ST_sclass(st) == SCLASS_FORMAL_REF)
           alignment = -2;
         else if (base_st->sym_class == CLASS_BLOCK &&
-                 alignment < 0) // Bug 2322
+                 alignment < 0) 
           alignment = 0; // we have just aligned this block
       }
   return alignment;
@@ -3717,7 +3688,6 @@ static void Simd_Update_Index_Def_Use(WN *loop,WN *depend_loop, WN *what, SYMBOL
     Find_Nodes(OPR_LDID, sym, what, &sym_stack);
     for (int k = 0; k < sym_stack.Elements(); k++) {
       WN* wn_use = sym_stack.Bottom_nth(k);
-      //Delete_Def_Use(wn_use); //bug 5945: original dependence no longer holds
       Du_Mgr->Add_Def_Use(WN_start(depend_loop), wn_use);
       Du_Mgr->Add_Def_Use(WN_step(depend_loop), wn_use);
     }
@@ -3829,7 +3799,7 @@ static INT Simd_Count_Good_Vector(STACK_OF_WN *vec_simd_ops, SIMD_KIND *simd_op_
 
 //create a copy of the loop for remainder
 static WN *Simd_Create_Remainder_Loop(WN *innerloop)
-{ //bug 11057 -- yet to find a way to simply this routine
+{ // yet to find a way to simply this routine
   WN *remainderloop =  LWN_Copy_Tree(innerloop, TRUE, LNO_Info_Map);
   if (!adg->Add_Deps_To_Copy_Block(innerloop, remainderloop, TRUE))
       FmtAssert(FALSE, ("Probably too many edges in dependence graph."));
@@ -3920,11 +3890,11 @@ static TYPE_ID Simd_Get_Vector_Type(WN *istore)
 {
    TYPE_ID vmtype, type;
    if (!OPCODE_is_store(WN_opcode(istore))){
-      // bug 2336 - trace up the correct type
+      // trace up the correct type
       WN* stmt = istore;
       while(stmt && !OPCODE_is_store(WN_opcode(stmt)) &&
             WN_operator(stmt) != OPR_DO_LOOP &&
-            // Bug 5225 - trace up should stop at a CVT or a TRUNC.
+            // trace up should stop at a CVT or a TRUNC.
             WN_operator(stmt) != OPR_CVT &&
             WN_operator(stmt) != OPR_TRUNC) {
         stmt = LWN_Get_Parent(stmt);
@@ -4112,41 +4082,11 @@ static void Simd_Vectorize_Intrinsics(WN *simd_op)
           WN_set_rtype(WN_kid1(simd_op), MTYPE_V16F4);
           break;
 
-#if 0 // currently not supplied by libacml_mv.a
-        case INTRN_F8EXPEXPR:
-          WN_intrinsic(simd_op) = INTRN_V16F8EXPEXPR;
-          WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
-          break;
-#endif
         case INTRN_F4EXPEXPR:
           WN_intrinsic(simd_op) = INTRN_V16F4EXPEXPR;
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
           break;
 
-#if 0 // currently not supplied by libacml_mv.a
-        case INTRN_F8SINH:
-          WN_intrinsic(simd_op) = INTRN_V16F8SINH;
-          WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
-          break;
-#endif
-#if 0 //for bug 8931 release this when single precision vec ready
-        case INTRN_F4SINH:
-          WN_intrinsic(simd_op) = INTRN_V16F4SINH;
-          WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
-          break;
-#endif
-#if 0 // currently not supplied by libacml_mv.a
-        case INTRN_F8COSH:
-          WN_intrinsic(simd_op) = INTRN_V16F8COSH;
-          WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
-          break;
-#endif
-#if 0 //for bug 8931 release this when single precision vec ready
-        case INTRN_F4COSH:
-          WN_intrinsic(simd_op) = INTRN_V16F4COSH;
-          WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
-          break;
-#endif
         case INTRN_F4EXP:
           WN_intrinsic(simd_op) = INTRN_V16F4EXP;
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
@@ -4267,7 +4207,7 @@ static void Simd_Unroll_Statement( INT unroll_times, INT add_to_base,
            origA = WN_kid0(WN_kid0(origA));
            Simd_Update_Copy_Array_Index(iload_copy, origA, -add_to_base, index_type);
         } 
-        else if(iload_copy) //Bug 2233
+        else if(iload_copy) 
             Create_Unroll_Copy(WN_kid(WN_kid0(copy), k), add_to_base,
                            WN_kid(WN_kid0(istore), k), index_type,
                            vec_index_preg_store, innerloop);
@@ -4397,7 +4337,7 @@ static WN* Simd_Vectorize_Scalar_Reduction(WN *red_load, WN *red_store,
   if(!Do_Loop_Is_Mp(innerloop))
      LWN_Insert_Block_Before(LWN_Get_Parent(innerloop), innerloop, tmp);
   else {
-         // Bug 4850 - For DO loops inside a PARALLEL region,
+         // For DO loops inside a PARALLEL region,
          // move this initialization to before the region containing
          // this vectorized loop.
          WN* enclosing_parallel_region = LWN_Get_Parent(innerloop);
@@ -4431,7 +4371,7 @@ static WN* Simd_Vectorize_Scalar_Reduction(WN *red_load, WN *red_store,
         LWN_Insert_Block_After(LWN_Get_Parent(innerloop),
                                      innerloop, red_store);
   else{
-        // Bug 4850 - For DO loops inside a PARALLEL region,
+        // For DO loops inside a PARALLEL region,
         // move this reduction to after the region containing
         // this vectorized loop.
         WN* enclosing_parallel_region = LWN_Get_Parent(innerloop);
@@ -4459,7 +4399,7 @@ static WN* Simd_Vectorize_Scalar_Reduction(WN *red_load, WN *red_store,
   OPERATOR opr;
   OPERATOR s_opr = WN_operator(simd_op);
   desc = WN_desc(red_store);
-  if (MTYPE_is_unsigned(desc)) desc = MTYPE_complement(desc);//bug 2625
+  if (MTYPE_is_unsigned(desc)) desc = MTYPE_complement(desc);
   switch(WN_operator(simd_op)) {
     case OPR_ADD: opr = OPR_REDUCE_ADD; break;
     case OPR_SUB: opr = OPR_REDUCE_ADD; s_opr = OPR_ADD; break;
@@ -4684,7 +4624,7 @@ static void Simd_Vectorize_Load_And_Equilvalent(WN *load, WN *innerloop, TYPE_ID
    for (INT i=0; i<equivalence_class->Elements(); i++) {
       WN* scalar_ref=equivalence_class->Top_nth(i);
 
-      // Bug 3077 - Do not rename references outside the loop.
+      // Do not rename references outside the loop.
       // Temporaries that are live-out of this loop will be caught by
       // the scalar expansion test in the begining of this module.
       // These temporaries require scalar expansion (if this loop is
@@ -4739,7 +4679,7 @@ static void Simd_Vectorize_SimdOp_And_Kids(WN *simd_op, TYPE_ID vmtype, BOOL *in
     switch(WN_rtype(simd_op)) {
       case MTYPE_F8:
         vec_rtype = MTYPE_V16F8;
-        if (vec_desc == MTYPE_V16I4) // bug 7334
+        if (vec_desc == MTYPE_V16I4)
            vec_desc = MTYPE_V8I4;
         else vec_desc = MTYPE_V8F4;
         break;
@@ -4794,7 +4734,7 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
                opr == OPR_GE || opr == OPR_GT), ("NYI"));
     if (opr == OPR_GE || opr == OPR_GT) {
       opr = (opr == OPR_GE) ? OPR_LE: OPR_LT;
-      // Bug 4566 - Do not let the simplifier change the LE back to GE because
+      // Do not let the simplifier change the LE back to GE because
       // we rely on the order (loop_variable <= upper_bound).
       BOOL save_simp_state = WN_Simplifier_Enable(FALSE);
       WN_end(innerloop) =
@@ -4843,7 +4783,7 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
           LWN_CreateExp2(add_opc,
             WN_kid1(loop_end),
             WN_CreateIntconst(intconst_opc, -1));
-        //Bug 10707: should not create a new expression for WN_end(innerloop)
+        //should not create a new expression for WN_end(innerloop)
         //here, otherwise (1) loop_end and WN_end(innerloop) point to different
         //things and thus causes WN_end(innerloop) not updated; (2) we need
         //to turn off simplifier around here; (3) the original comparison node
@@ -4931,7 +4871,7 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
           LWN_CreateExp2(add_opc,
             WN_kid0(loop_end),
             WN_CreateIntconst(intconst_opc, -1));
-        //Bug 10707: should not create a new expression for WN_end(innerloop)
+        //should not create a new expression for WN_end(innerloop)
         //here, otherwise (1) loop_end and WN_end(innerloop) point to different
         //things and thus causes WN_end(innerloop) not updated; (2) we need
         //to turn off simplifier around here; (3) the original comparison node
@@ -5011,7 +4951,7 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
           WN_kid0(loop_start_rloop_tmp));
     }
 
-    // Bug 2516 - eliminate redundant remainder loop if it is possible to
+    // eliminate redundant remainder loop if it is possible to
     // simplify the symbolic (non-constant) expression (loop_end - loop_start).
     // This loop should be eliminated later on but there is no point in
     // creating a redundant loop if we can prove that the remainder loop is
@@ -5075,13 +5015,13 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
               LWN_Get_Parent(enclosing_parallel_region);
           FmtAssert(enclosing_parallel_region, ("Simd: MP loop has no enclosing region!"));
 
-          // Bug 4930 - Do not create a SINGLE region for a PARALLEL DO loop.
+          // Do not create a SINGLE region for a PARALLEL DO loop.
           if(WN_pragma(WN_first(WN_region_pragmas(enclosing_parallel_region))) ==
                     WN_PRAGMA_PARALLEL_DO)
             LWN_Insert_Block_After(LWN_Get_Parent(enclosing_parallel_region),
                                  enclosing_parallel_region,remainderloop);
           else{
-            // Bug 4884 - Place the remainderloop inside a new REGION marked
+            // Place the remainderloop inside a new REGION marked
           // with a SINGLE pragma.
           WN *body,*pragmas,*exits,*region;
 
@@ -5100,7 +5040,7 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
                             (ST_IDX)NULL, 0, 0);
           WN_set_pragma_omp(pragma);
           LWN_Insert_Block_After(pragmas,NULL,pragma);
-          // Bug 5150: Check if the enclosing_parallel_region has NOWAIT
+          // Check if the enclosing_parallel_region has NOWAIT
           // directive and (only) if it does, transfer the pragma to the
           // remainder loop. There is an optimization opportunity here to
           // insert a NOWAIT clause if we correctly identify all possible
@@ -5181,7 +5121,7 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
 
    }else {//remainder loop is not needed, dependences should be removed first
       Delete_Def_Use(WN_start(remainderloop));
-      Delete_Def_Use(WN_end(remainderloop)); //bug 12291, 12295
+      Delete_Def_Use(WN_end(remainderloop));
       WN *r_body = WN_do_body(remainderloop);
       WN *r_stmt;
       for (r_stmt=WN_first(r_body); r_stmt != NULL; r_stmt=WN_next(r_stmt))
@@ -5297,7 +5237,7 @@ static INT Simd(WN* innerloop)
                        simd_op_best_align,best_peel,innerloop);
     if (best_peel <= 0 || ubound_variable)
        continue;
-     //best_peel > 0 && !ubound_variable -- bug 2840: don't peel and align ub var
+     //best_peel > 0 && !ubound_variable --  don't peel and align ub var
      Simd_Align_Generate_Peel_Loop(innerloop, best_peel, dli);     
      Simd_Align_Array_References(vec_simd_ops,simd_op_kind, //align iloads and istores
                      simd_op_best_align,best_peel,innerloop);
@@ -5358,7 +5298,7 @@ static INT Simd(WN* innerloop)
      
       if (WN_operator(inv_node) == OPR_CONST ||
 	  WN_operator(inv_node) == OPR_INTCONST){//constant
-          //bug 5844, 12348: handle I4MPY here -- kid const must be 2
+          //handle I4MPY here -- kid const must be 2
           if(WN_operator(inv_node) == OPR_INTCONST && WN_const_val(inv_node)==2 &&
              (WN_opcode(simd_op)==OPC_I4MPY || WN_opcode(simd_op)==OPC_V16I4MPY)){
             inv_node = LWN_Copy_Tree(WN_kid(simd_op,1-kid), TRUE, LNO_Info_Map);
@@ -5493,7 +5433,7 @@ void Simd_Phase(WN* func_nd) {
   // When doing memory invariant removal for SIMD, use a temporary instead of 
   // a preg. The reason for doing this is that a following scalar expansion 
   // may incorrectly replace the instances of the memory invariants outside
-  // the loop (an example is attached to bug 6606).
+  // the loop 
   Minvariant_Removal_For_Simd = TRUE;
   if (!Get_Trace(TP_LNOPT, TT_LNO_GUARD) && LNO_Minvar) {
     // If invariants are hoisted, have to guard the loops. This is similar
@@ -5529,6 +5469,6 @@ void Simd_Phase(WN* func_nd) {
 // transformation but it enables vectorization without a different routine.
 
 // Notes on bug fixes:
-// Bug 3617 : Num_Vec() from ACCESS_ARRAY may not be in synch with
+// Num_Vec() from ACCESS_ARRAY may not be in synch with
 // WN_num_dim(array) dues to delinearization. If we were to access different
 // kids in array, WN_num_dim(array) is the reliable source to find #kids.

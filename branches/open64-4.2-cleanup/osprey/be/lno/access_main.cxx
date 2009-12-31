@@ -472,7 +472,7 @@ extern void LNO_Build_Do_Access(WN *wn,
   
     INT num_bounds = Num_Lower_Bounds(wn, step); 
   
-    // Why doesn't this work here? (RJC) 
+    // Why doesn't this work here? 
     // Upper_Bound_Standardize(WN_end(wn), TRUE);
   
     dli->LB =
@@ -552,22 +552,6 @@ return_point:
   if (dli->Est_Num_Iterations == -1) {
     dli->Set_Est_Num_Iterations(stack);
     if (Cur_PU_Feedback && dli->Num_Iterations_Symbolic) {
-#ifndef KEY
-      INT32 freq_loop_header = WN_MAP32_Get(WN_MAP_FEEDBACK,WN_start(wn));
-      INT32 freq_loop_body = WN_MAP32_Get(WN_MAP_FEEDBACK,WN_step(wn));
-      if (LNO_Verbose) {
-	fprintf(stdout, "Header executed  %d\n", freq_loop_header);
-	fprintf(stdout, "Body executed  %d\n", freq_loop_body);
-      }
-      
-      if (freq_loop_header > 0) {
-	dli->Est_Num_Iterations = (INT64) (freq_loop_body/freq_loop_header);
-	dli->Num_Iterations_Symbolic = FALSE;
-	dli->Num_Iterations_Profile=TRUE;
-	if (LNO_Verbose)
-	  fprintf(stdout, "Iteration counts from profile %lld\n", dli->Est_Num_Iterations);
-      }
-#else
       const FB_Info_Loop fb_info = Cur_PU_Feedback->Query_loop(wn);
 
       if (!LNO_Ignore_Feedback && fb_info.freq_iterate._value > 0) {
@@ -582,7 +566,6 @@ return_point:
 	  fprintf(stdout, "Iteration counts from profile %lld\n", 
 		  dli->Est_Num_Iterations);
       }
-#endif
     }
   }
 }

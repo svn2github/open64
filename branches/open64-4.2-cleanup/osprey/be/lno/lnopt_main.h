@@ -724,11 +724,7 @@
 
 #include "cxx_hash.h"
 
-#ifdef KEY // bug 7422
 #define LNO_MAX_DO_LOOP_DEPTH 64
-#else
-#define LNO_MAX_DO_LOOP_DEPTH 32
-#endif
 extern WN_MAP Parent_Map;  /* contains the mapping for the */
 			   /* parent pointers for all nodes */
 extern WN_MAP LNO_Info_Map;
@@ -848,9 +844,7 @@ public:
   void Set_Est_Num_Iterations(DOLOOP_STACK *do_stack);
 
   mBOOL Has_Calls;
-#ifdef KEY //bug 14284
   mBOOL Has_Nested_Calls;
-#endif
   mBOOL Has_Unsummarized_Calls;
   mBOOL Has_Unsummarized_Call_Cost; 
   mBOOL Has_Threadprivate; 
@@ -882,10 +876,8 @@ public:
   mBOOL Is_Doacross;
   mBOOL Suggested_Parallel; 
   mBOOL Parallelizable; 
-#ifdef KEY
   mBOOL Vectorizable;
   mBOOL Delay_Full_Unroll;
-#endif
   mBOOL Last_Value_Peeled; 
   mBOOL Not_Enough_Parallel_Work; 
   mBOOL Inside_Critical_Section;
@@ -1126,11 +1118,9 @@ inline REGION_INFO* Get_Region_Info(const WN* wn)
 #define TT_GRAPH_CAPACITY		0x08000000
 
 #define TT_LNO_DEBUG_CSE		0x10000000
-#ifdef KEY
 #define TT_LNO_DEBUG_SIMD               0x20000000
 #define TT_LNO_DEBUG_HOISTIF            0x40000000
 #define TT_LNO_LOOP_UNSWITCH             0x80000000
-#endif /* KEY */
 
 // TP_LNOPT = 32 options
 

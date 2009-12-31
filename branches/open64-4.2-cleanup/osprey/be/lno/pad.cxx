@@ -847,7 +847,7 @@ extern void Pad_Degenerates()
       }
       size += pad_size;
 #ifdef TARG_X8664
-      /* Bug 4902 - Avoid the Store and Load Forward [31:12] penalty. */
+      /* Avoid the Store and Load Forward [31:12] penalty. */
       if (!Is_Target_Anyx86() &&
 	  !Is_Target_EM64T() && 
 //	  !Is_Target_Core() &&  //good for core

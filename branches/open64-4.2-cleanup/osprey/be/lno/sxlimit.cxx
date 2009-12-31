@@ -263,7 +263,7 @@ extern void SE_CT_New_Tile_Infos(WN* wn_outer,
 {
   // 797054: When creating scalar expansion tiles, we must take care not
   // to make loop nests deeper than 15, which is the maximum allowed for
-  // dependence vectors (nenad, 2000/08/23).
+  // dependence vectors 
   extern INT Num_Cache_Strips; // snl_test.cxx:Do_Automatic_Transformation
   INT max_strips_se = 15 - nloops - Num_Cache_Strips;
 

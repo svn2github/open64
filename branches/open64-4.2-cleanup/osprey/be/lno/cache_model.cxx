@@ -349,7 +349,7 @@
 *** of "a".  Most of the time D_0 will be substantially larger than 1. 
 *** This leaves us with a choice of i or j.  Since advancing i moves us 
 *** two elements, while advancing j moves us 1 element, we will select 
-*** j as the stride 1 loop.  RJC] 
+*** j as the stride 1 loop.]
 ***
 *** Now define X by: 
 ***
@@ -399,7 +399,7 @@
 *** The probability that the first reference and second reference are in 
 *** the same cache line is (cls-S)/cls.  So the expected amount of data
 *** pulled in is [1*(cls-S)/cls+2*S/cls]*cls*N_j = (1-S/cls)*cls*N_k, 
-*** yielding a value of X = (1-S/cls)*cls = cls + S. RJC] 
+*** yielding a value of X = (1-S/cls)*cls = cls + S. ] 
 *** 
 *** TODO: This formula is completely wrong when the spread is a multiple
 *** of the cache line size.  To see this, consider the case of two refer-
@@ -415,7 +415,7 @@
 *** in register unrolling.)
 ***
 *** [In any case, this is not fixed in the current version of the cache 
-*** model. (RJC 30-JUN-1997).  I'll also add that that the formula isn't
+*** model. I'll also add that that the formula isn't
 *** right for the case where the spread is close to the cache line size.
 *** Instead of: 
 ***
@@ -434,7 +434,7 @@
 *** But, for the most part it is rare that the absolute value of any 
 *** coefficient is greater than 1, and since the cache line size is 
 *** generally about 4 or 8 or so elements, it is normally the case that 
-*** X = (min|k_j|), and this whole discussion rarely matters.  RJC]
+*** X = (min|k_j|), and this whole discussion rarely matters.]
 ***
 *** (2.4) Modification for Large Cache Lines 
 ***
@@ -598,7 +598,7 @@
 *** c2_s, and c1_s, because the each row corresponds to a component in the
 *** array reference, the first row corresponds to the first component and 
 *** since the arrays are in column major order, this is the stride-one 
-*** component. RJC]
+*** component.]
 *** 
 *** 
 *** (2.7) Implementation of Reference Groups in this Code
@@ -749,7 +749,7 @@
 ***     startup.
 ***
 *** [This is not actually the way that we model loop overhead today.  I'll
-*** go through the code at some point and write a description. RJC] 
+*** go through the code at some point and write a description. ] 
 *** 
 *** 
 *** (3.3) Solving for Block Sizes by Recursive Descent 
@@ -928,7 +928,7 @@
 ***
 *** [As a side note, applications people at SGI who hand block our codes 
 *** generally block for the L2 cache and don't even bother with blocking 
-*** for the L1 cache.  RJC] 
+*** for the L1 cache.  ] 
 ***
 ***
 *** (4.0) ADDITIONAL ASPECTS OF THE MODEL 
@@ -1099,7 +1099,7 @@
 *** when N<=cache_line, but doesn't fix anything otherwise.  It's helpful,
 *** but not ideal. [I'm not clear on the meaning of this paragraph.  What 
 *** is actually done in the code, and was is suggested as a future improve-
-*** ment?  I'll add more comments once I've figured it out for myself. RJC].
+*** ment?  I'll add more comments once I've figured it out for myself. ].
 ***
 ***
 *** (5.0) SOME SUGGESTED IMPROVEMENTS  
@@ -1117,7 +1117,7 @@
 *** cheap.  But I did manage to reuse the footprint code in the parallel
 *** model, and it would be easier to work with if it had fewer parameters
 *** and produced the value of the middle loop as a variable rather than 
-*** the arbitrary constant value that is generally used now. RJC]
+*** the arbitrary constant value that is generally used now. ]
 ***
 ***
 *** (5.2) Dealing with Unusual References 
@@ -1358,8 +1358,6 @@
 //          do Icapt (unrolled 7) = /* loop-1 */ 
 //            do Iecht (block-size 680) = /* loop-3 */  
 //
-//  (Comments and trace code by RJC) 
-// 
 
 /**
 *** OTHER NOTES:
@@ -2376,7 +2374,7 @@ RG::RG(MEM_POOL* p, ACCESS_ARRAY* aa, INT nloops,
         INT coeff = aa->Dim(i-Big_Indxs)->Loop_Coeff(loop[j]);
         if (ABS(coeff) > MAX_COEFF) {
 
-          // TODO (nenad, 03/23/99):
+          // TODO
           // We shoud pass unrolls array from Compute_Footprint
           // and use unrolls[loop[j]] here instead of 1.
           // This "delinearization" of references should also
@@ -2815,35 +2813,6 @@ void RG::Print(FILE* f) const
   Rglist.Print(f);
   fprintf(f, "}\n");
 
-#if 0
-  if (C) {
-    fprintf(f, "C:");
-    INT i;
-    for (i = 0; i < Elements; i++)
-      fprintf(f, " %d", C[i]);
-    fprintf(f, "\n");
-  }
-  if (H) {
-    fprintf(f, "H:\n");
-    H->Print(f);
-  }
-  if (H_lu) {
-    fprintf(f, "H_lu:\n");
-    H_lu->Print(f);
-  }
-  if (H_lu_s) {
-    fprintf(f, "H_lu_s:\n");
-    H_lu_s->Print(f);
-  }
-  if (KerH) {
-    fprintf(f, "KerH:");
-    KerH->Print(f);
-  }
-  if (OKerH) {
-    fprintf(f, "OKerH:");
-    OKerH->Print(f);
-  }
-#endif
 }
 
 //---------------------------------------------------------------------------
@@ -3499,14 +3468,12 @@ extern COMPUTE_FOOTPRINT_RVAL Compute_Footprint(
       // different lists.  Generally the right thing (e.g. for common
       // block elements).
       INT esz = n->Element_Size();
-#ifdef KEY
-      // Bug 6273 - when calculating footprint of an MMILOAD or MISTORE,
+      // when calculating footprint of an MMILOAD or MISTORE,
       // use the appropriate element size. 
       if (esz == 0)
 	esz = WN_element_size(n->Wn);
-      // Bug 10708: element size should be positive
+      // element size should be positive
       if (esz < 0) esz = -esz;
-#endif
       if (Debug_Cache_Model >= 4)
         fprintf(TFile, "-> arl entry from base %d, insertion info\n", ix);
 
@@ -3684,12 +3651,6 @@ extern COMPUTE_FOOTPRINT_RVAL Compute_Footprint(
               f2 = f2 ? FORMULA::Add(f2, fk) : fk;
             }
             if (f2) {
-#if 0         // TODO: If I were more careful, I'd know when exactly to do
-              // this.  For now, it causes f2 to potentially go negative or
-              // zero, which are disasters.
-              if (p > 1)
-                f2 = FORMULA::Sub(f2, FORMULA::Const(p-1));
-#endif
               f = f ? FORMULA::Mul(f, f2) : f2;
             }
           }
@@ -4307,7 +4268,7 @@ static BOOL Fits_In_The_Cache(const ARRAY_REF* arl,
 #ifndef _FIX_CACHE_MODEL_
   return (cache_bytes <= Cur_Mhd->Effective_Size) ? TRUE : FALSE; 
 #else  
-  // TODO (nenad, 03/22/99):
+  // TODO
   // This is so obviusly wrong when modeling TLB. We will use ~5K as 
   // its size, instead of ~2M. The sad part is that the fix below 
   // actually may result in worse performance. One likely reason for
@@ -4784,7 +4745,7 @@ Compute_Actual_Miss_Bytes(const ARRAY_REF*        arl,
 #endif
      ) {
 
-    // TODO (nenad, 03/22/99):
+    // TODO 
     // Adding loops to the nest just because it fits in the cache
     // seems to be bogus. If loop bounds are completely unknown
     // we can choose estimates that will spill out of cache. But,
@@ -6144,7 +6105,7 @@ static void One_Cache_Model(const ARRAY_REF*   arl,
                           Cur_Mhd->TLB_Entries * Cur_Mhd->Page_Size;
       cs /= iters_inside;
   
-      // TODO (nenad, 03/22/99):
+      // TODO 
       // Nominal_Blocksizes DO matter a lot, because they are currently
       // used to estimate (4*) the number of middle loop iterations.
       // For a snigle-loop nest, middle loop estimate is always 4000.

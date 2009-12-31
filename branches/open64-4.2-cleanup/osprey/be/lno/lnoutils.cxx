@@ -85,9 +85,7 @@
 #include "ipa_lno_util.h"
 #include "debug.h" 
 #include "wutil.h"
-#ifdef KEY
 #include "be_symtab.h" // for Be_preg_tab
-#endif
 #include "intrn_info.h"
 
 #pragma weak New_Construct_Id
@@ -925,13 +923,6 @@ void Replace_Symbol(WN* wn, SYMBOL symold, SYMBOL symnew,
 void Replace_Symbols(WN* wn, SYMBOL* sold, SYMBOL* snew, INT count,
                      WN** alias_wn, WN** ancestors)
 {
-#if 0        // same thing, but much less efficient.  Good for testing though.
-  for (INT i = 0; i < count; i++) {
-    WN* al = alias_wn ? alias_wn[i] : NULL;
-    WN* an = ancestors ? ancestors[i] : NULL;
-    Replace_Symbol(wn, sold[i], snew[i], al, an);
-  }
-#else
   OPCODE op = WN_opcode(wn);
 
   if (op == OPC_BLOCK) {
@@ -1008,7 +999,6 @@ void Replace_Symbols(WN* wn, SYMBOL* sold, SYMBOL* snew, INT count,
     for (INT k = 0; k < WN_kid_count(wn); k++)
       Replace_Symbols(WN_kid(wn,k), sold, snew, count, alias_wn, ancestors);
   }
-#endif
 }
 
 // Add_To_Symbol(): recursively replace st with st+i
@@ -1092,8 +1082,7 @@ BOOL Add_To_Symbol(WN* wn, INT64 i, ST* st,
 WN* Replace_Wnexp_With_Exp_Copy(WN* wn, WN* expr, DU_MANAGER* du, 
   BOOL* added_cvt, ARRAY_DIRECTED_GRAPH16 *dep_graph)
 {
-#ifdef KEY
-  // Bug 6132 - when replacing UnUmLDID with InImILOAD, need to complement
+  // when replacing UnUmLDID with InImILOAD, need to complement
   // the signedness of the ILOAD to avoid sign-extension.
   BOOL make_unsigned = FALSE;
   if (WN_operator(wn) == OPR_LDID && WN_operator(expr) == OPR_ILOAD &&
@@ -1102,7 +1091,6 @@ WN* Replace_Wnexp_With_Exp_Copy(WN* wn, WN* expr, DU_MANAGER* du,
       !MTYPE_is_signed(WN_rtype(wn)) && !MTYPE_is_signed(WN_desc(wn)) &&
       MTYPE_is_signed(WN_rtype(expr)) && MTYPE_is_signed(WN_desc(expr)))
     make_unsigned = TRUE;
-#endif
   Is_True(OPCODE_is_expression(WN_opcode(wn)), ("wn must be expression"));
   INT added_convert = FALSE;  
   WN* parent = LWN_Get_Parent(wn);
@@ -1147,13 +1135,10 @@ WN* Replace_Wnexp_With_Exp_Copy(WN* wn, WN* expr, DU_MANAGER* du,
   if (added_cvt != NULL)
     *added_cvt = added_convert; 
 
-#ifdef KEY
-  // Bug 6132 - see above.
   if (make_unsigned) {
     WN_set_rtype(copy, MTYPE_complement(WN_rtype(copy)));
     WN_set_desc(copy, MTYPE_complement(WN_desc(copy)));
   }
-#endif    
   return copy; 
 }
 
@@ -1594,9 +1579,7 @@ void Print_Def_Use(WN *wn, FILE *fp)
       case OPR_ISTORE:
       case OPR_IO:
       case OPR_RETURN:
-#ifdef KEY
       case OPR_GOTO_OUTER_BLOCK:
-#endif
       case OPR_CALL:
       case OPR_ICALL:
       case OPR_INTRINSIC_CALL:
@@ -1719,9 +1702,7 @@ static void Unrolled_DU_Update_V(WN **bodies, UINT u,
         if (opr == OPR_STID)
 	  if (!use_list->Incomplete()) 
 	    DevWarn("STID without uses in Unrolled_DU_Update_V");
-#ifdef KEY // bug 8155
 	  else store_stack->Push(bodies[0]);
-#endif
       }
     } else {
       if(opr == OPR_STID) {
@@ -1780,10 +1761,8 @@ static void Unrolled_DU_Update_E(UINT u, INT loopno,
 {
   // visit the stores, we only care about external edges, internal edges
   // are handled when we visit the loads
-#ifdef KEY // bug 8155
   // stores with incomplete uses also need to be taken into account; in such
   // cases they could be internal or external
-#endif
   for (INT s=0; s<store_stack->Elements(); s++) {
     WN *stid = store_stack->Bottom_nth(s);
     USE_LIST *use_list = Du_Mgr->Du_Get_Use(stid);
@@ -1897,8 +1876,6 @@ static void Unrolled_DU_Update_E(UINT u, INT loopno,
         DEF_LIST *def_list_copy = Du_Mgr->Ud_Get_Def(ldid_array[i]);
 	if (update_pointers) {
 	  WN** stmt_array = hash_table->Find(loop_stmt);
-#ifdef KEY
-// bug 3388:
 // When called from Fission_DU_Update, Unrolled_DU_Update is never called
 // with the loop-stmt. So the above hash_table won't contain any entry for it.
 // TODO: The correct thing may be to store a mapping from the original loop 
@@ -1914,7 +1891,7 @@ static void Unrolled_DU_Update_E(UINT u, INT loopno,
 	    if (!loop_stmt || WN_opcode(loop_stmt) != OPC_DO_LOOP) 
 	      stmt = loop_stmt;
 	    else {
-	      // Bug 3619 - for a SNL of depth > 1, loop_stmt may be
+	      // for a SNL of depth > 1, loop_stmt may be
 	      // several levels above ldid_array[i] and may not have an entry
 	      // in hash_table. This separates the cases for bugs 3388 and 3619.
 	      DO_LOOP_INFO* loop_info = Get_Do_Loop_Info(loop_stmt, FALSE);
@@ -1927,9 +1904,6 @@ static void Unrolled_DU_Update_E(UINT u, INT loopno,
 	        stmt = loop_stmt;
 	    }
 	  }
-#else
-	  WN* stmt = stmt_array ? stmt_array[i] : loop_stmt;
-#endif
 	  def_list_copy->Set_loop_stmt(stmt);
 	}
 	else
@@ -2022,10 +1996,8 @@ ST *Get_ST_Base(WN *load)
     if (iter.Next()) {  // multiple defs
       return NULL;
     }
-#ifdef KEY // bug 7624
     if (iter.Is_Empty())
       return NULL;
-#endif
     WN *def = (WN *) node->Wn();
     if (WN_operator(def) == OPR_STID) {
       return Get_ST_Base(WN_kid0(def));
@@ -2185,7 +2157,7 @@ BOOL Solve_For(WN* wn_top, const SYMBOL& sym)
         Flip_Le_And_Ge(wn_top);
         TYPE_ID  type = WN_rtype(r);
 #ifdef TARG_X8664
-	// Bug 2014 - complement the type if original type is unsigned because
+	// complement the type if original type is unsigned because
 	// we are going to negate and we have to obey the sign-extension rules
 	// for Opteron Code generation.
 	if (MTYPE_is_unsigned(type)) type = MTYPE_complement(type);
@@ -2254,13 +2226,6 @@ BOOL Solve_For(WN* wn_top, const SYMBOL& sym)
 
  out:
 
-#if 0
-  //TODO: bug in simplifier, and need guarantee it won't screw up DU info.
-  //apparently there's a run-time switch for that.
-  BOOL simp_state_save = WN_Simplifier_Enable(TRUE);
-  r = WN_Simplify_Tree(r);
-  (void) WN_Simplifier_Enable(simp_state_save);
-#endif
 
   WN_kid0(wn_top) = l;
   WN_kid1(wn_top) = r;
@@ -2585,14 +2550,10 @@ void Finalize_Index_Variable(WN* loop, BOOL insert_after_loop, BOOL try_sink)
 
   if (insert_after_loop && try_sink) { 
     WN* wn_sink_loop = NULL; 
-#ifndef KEY
-    for (WN* wn = LWN_Get_Parent(loop); wn != NULL; wn = LWN_Get_Parent(wn))  
-#else
-    // Bug 2901 - can not sink out if final_store is inside an enclosing 'if'
+    // can not sink out if final_store is inside an enclosing 'if'
     for (WN* wn = LWN_Get_Parent(loop); 
 	 wn != NULL && WN_operator(wn) != OPR_IF; 
 	 wn = LWN_Get_Parent(wn))  
-#endif
       if (WN_opcode(wn) == OPC_DO_LOOP 
 	  && Statement_Sinkable_Out_Of_Loop(final_store, wn))
 	wn_sink_loop = wn; 
@@ -2700,13 +2661,6 @@ static BOOL LNO_Check_Du_HT(WN* orig,
                             WN* copy,
                             HASH_TABLE<WN*,WN*>* ht)
 {
-#if 0
-  FmtAssert(orig && copy,
-            ("lnoutils detects PREOPT II failure: missing orig or copy"));
-  FmtAssert(WN_opcode(orig) == WN_opcode(copy),
-	    ("lnoutils detects PREOPT II failure: orig op=%d copy op=%d",
-             WN_opcode(orig), WN_opcode(copy)));
-#else
   if (orig == NULL || copy == NULL) {
     fprintf(stderr,
             "lnoutils detects PREOPT II failure: missing orig or copy\n");
@@ -2718,7 +2672,6 @@ static BOOL LNO_Check_Du_HT(WN* orig,
             WN_opcode(orig), WN_opcode(copy));
     return FALSE;
   }
-#endif
 
   OPCODE	opc = WN_opcode(orig);
   OPERATOR	opr = OPCODE_operator(opc);
@@ -2767,10 +2720,6 @@ static BOOL LNO_Check_Du_Check(HASH_TABLE<WN*,WN*>* ht)
 
       DEF_LIST* dl = Du_Mgr->Ud_Get_Def(copy);
       INT dl_len = dl == NULL ? 0 : dl->Len();
-#if 0
-      // TODO: buggy preopt forces us to not do the FmtAssert
-      FmtAssert(dl_len, ("Missing def list in copy"));
-#else
       if (dl_len == 0) {
         WN *cp;
         for (cp = LWN_Get_Parent(copy); cp; cp = LWN_Get_Parent(cp))
@@ -2778,7 +2727,6 @@ static BOOL LNO_Check_Du_Check(HASH_TABLE<WN*,WN*>* ht)
             break;
         FmtAssert(cp, ("Missing def list in copy"));
       }
-#endif
 
       DEF_LIST* dl2 = Du_Mgr->Ud_Get_Def(orig);
       INT dl2_len = dl2 == NULL ? 0 : dl2->Len();
@@ -2911,9 +2859,7 @@ static void LNO_Erase_Vertices_In_Loop_Rec(WN *wn, ARRAY_DIRECTED_GRAPH16 *dg)
   }
   if (OPCODE_is_load(opcode) || OPCODE_is_store(opcode) || 
       OPCODE_is_call(opcode) || (OPCODE_operator(opcode) == OPR_INTRINSIC_OP)
-#ifdef KEY
       || (OPCODE_operator(opcode) == OPR_PURE_CALL_OP)
-#endif
       ) {
     VINDEX16  v = dg->Get_Vertex(wn);
     if (v) {
@@ -3049,10 +2995,8 @@ static void Du_Sanity_Check_r(
         opr==OPR_FUNC_ENTRY || opr==OPR_RETURN || OPCODE_has_barrier(opc) ||
         opr==OPR_PARM || (opr==OPR_LABEL && WN_Label_Is_Handler_Begin(wn)) ||
         opr==OPR_IO || OPCODE_is_call(opc) || opr==OPR_INTRINSIC_OP
-#ifdef KEY
         || opr==OPR_PURE_CALL_OP
         || opr==OPR_GOTO_OUTER_BLOCK
-#endif
 	)
       h_table->Enter(wn,1);
   } else {
@@ -3067,12 +3011,8 @@ static void Du_Sanity_Check_r(
       DEF_LIST* def_list=Du_Mgr->Ud_Get_Def(wn);
       WN* loop=def_list->Loop_stmt();
 
-#ifdef KEY //bug 12856: don't check Loop_stmt for iloads since
            //it will never be used
       if (loop && WN_operator(wn)!=OPR_ILOAD) {
-#else
-      if (loop) {
-#endif
         if (WN_opcode(loop)!=OPC_DO_LOOP) {
           DevWarn("%s %d [%p] has a non-loop node as loop_stmt: %d (%p %p)\n", 
 		  OPERATOR_name(opr), WN_map_id(wn), wn, WN_map_id(loop), wn, loop);
@@ -3338,9 +3278,7 @@ BOOL Is_Loop_Invariant_Use(WN* wn,
   case OPR_ISTORE:
   case OPR_IO:
   case OPR_RETURN:
-#ifdef KEY
   case OPR_GOTO_OUTER_BLOCK:
-#endif
   case OPR_CALL:
   case OPR_ICALL:
   case OPR_INTRINSIC_CALL:
@@ -3390,9 +3328,7 @@ BOOL Is_Loop_Invariant_Exp(WN* wn,
 	return FALSE; 
     return TRUE; 
   } else if (opr == OPR_INTRINSIC_OP
-#ifdef KEY
 	     || opr == OPR_PURE_CALL_OP
-#endif
             ) { 
     for (INT i = 0; i < WN_kid_count(wn); i++) {
       WN* wn_parm_node = WN_kid(wn, i);
@@ -3966,7 +3902,6 @@ extern BOOL Is_Mp_Region(WN *wn)
   return FALSE;
 }
 
-#ifdef KEY
 extern BOOL Is_Eh_Or_Try_Region(WN *wn)
 {
   if (WN_opcode(wn) == OPC_REGION) {
@@ -3976,17 +3911,14 @@ extern BOOL Is_Eh_Or_Try_Region(WN *wn)
   }
   return FALSE;
 }
-#endif
 
 extern BOOL Do_Loop_Is_Mp(WN *wn)
 {
   if (LWN_Get_Parent(wn) == NULL)
     return FALSE;
   WN* wn_region = LWN_Get_Parent(LWN_Get_Parent(wn));
-#ifdef KEY
   if (PU_cxx_lang(Get_Current_PU()) && Is_Eh_Or_Try_Region(wn_region))
     wn_region = LWN_Get_Parent(LWN_Get_Parent(wn_region));
-#endif
   if (!Is_Mp_Region(wn_region))
     return FALSE; 
   WN* wn_pragma = WN_first(WN_region_pragmas(wn_region));  

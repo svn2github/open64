@@ -409,13 +409,11 @@ public:
   void Print(FILE *fp) const;
   static void Print_Work(FILE *fp) ;
 
-#ifdef KEY
   // External hooks to SVPC and related stuff for implementing loop unswitching
   BOOL SVPC_Applicable() { return SVPC() != SVPC_INAPPLICABLE; }
   INT32_INFIN Lower_Bound(INT col) { return _lower_bound[col]; }
   INT32_INFIN Upper_Bound(INT col) { return _upper_bound[col]; }
   mINT32 Work_Cols() { return _work_cols; }
-#endif
 
  private:
 

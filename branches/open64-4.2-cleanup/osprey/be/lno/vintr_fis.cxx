@@ -95,10 +95,8 @@ static char *rcs_id = "$Source: be/lno/SCCS/s.vintr_fis.cxx $ $Revision: 1.18 $"
 #include "prompf.h"
 #include "anl_driver.h"
 #include "intrn_info.h"
-#ifdef KEY
 #include "wn_simp.h"            // for WN_Simp_Compare_Trees
 #include "config_opt.h"         // for CIS_Allowed
-#endif
 
 #pragma weak New_Construct_Id
 
@@ -290,10 +288,6 @@ static INTRINSIC get_vec_intrinsic(INTRINSIC intr_id) {
     case INTRN_F8COS: return INTRN_F8VCOS ;
     case INTRN_F4EXP: return INTRN_F4VEXP ;
     case INTRN_F8EXP: return INTRN_F8VEXP ;
-#ifndef KEY 
-    case INTRN_F4LOG: return INTRN_F4VLOG ;
-    case INTRN_F8LOG: return INTRN_F8VLOG ;
-#else
     case INTRN_F4LOG: 
       if (LNO_Run_Vintr == 2) return INTRN_F4VLOG ;
       else return INTRINSIC_INVALID;
@@ -301,7 +295,6 @@ static INTRINSIC get_vec_intrinsic(INTRINSIC intr_id) {
     case INTRN_F8LOG: 
       if (LNO_Run_Vintr == 2) return INTRN_F8VLOG ;
       else return INTRINSIC_INVALID;
-#endif
     case INTRN_F4LOG10: return INTRN_F4VLOG10;
     case INTRN_F8LOG10: return INTRN_F8VLOG10;
     case INTRN_F4SIN: return INTRN_F4VSIN ;
@@ -315,11 +308,7 @@ static INTRINSIC get_vec_intrinsic(INTRINSIC intr_id) {
   
 }
 
-#ifdef KEY
        WN* find_loop_var_in_simple_ub(WN* loop) {
-#else  
-static WN* find_loop_var_in_simple_ub(WN* loop) { 
-#endif
   WN* start=WN_start(loop);
   WN* end=WN_end(loop);
   WN* step;
@@ -359,10 +348,8 @@ static WN* find_loop_var_in_simple_ub(WN* loop) {
         loop_index=use;
   }
 
-#ifdef KEY
    FmtAssert(loop_index,
    ("The index variable does not appear in the loop end (try compiling without -WOPT:copy=off)!"));
-#endif
   WN* tmp=LWN_Get_Parent(loop_index);
   OPERATOR opr=WN_operator(tmp);
   if (opr==OPR_MPY) {
@@ -802,7 +789,6 @@ void Gather_Intrinsic_Ops(
   }
 }
 
-#ifdef KEY
 WN * Loop_being_replaced=NULL;
 
 typedef enum {
@@ -824,7 +810,7 @@ INTRN_TYPE Intrinsic_Type (INTRINSIC intr_id) {
   }
 }
 
-//Bug 10421: to determine whether ub is defined in the loop 
+//to determine whether ub is defined in the loop 
 static BOOL UB_Defined_In_Loop(WN * wn, WN* loop,
                                SYMBOL loop_var, 
                                DU_MANAGER* du)
@@ -845,7 +831,6 @@ static BOOL UB_Defined_In_Loop(WN * wn, WN* loop,
    
    return FALSE;
 }
-#endif
 
 static char fail_msg[128];
 
@@ -909,15 +894,13 @@ static INT Vintrinsic_Fission(WN* innerloop)
     return 0;
   }
 
-#ifdef KEY
-  // Bug 10421: if ub has a definition in the loop, we will not vectorize
+  // if ub has a definition in the loop, we will not vectorize
   if(UB_Defined_In_Loop(WN_end(innerloop), innerloop,
                         SYMBOL(WN_index(innerloop)),
                         Du_Mgr)){
    sprintf(fail_msg, "Loop upper bound has a definition in the loop body");
    return 0;
   }
-#endif 
 
   MEM_POOL_Push(&VINTR_FIS_default_pool);
   {
@@ -977,9 +960,8 @@ static INT Vintrinsic_Fission(WN* innerloop)
     return 0;
   }
 
-#ifdef KEY
   if (CIS_Allowed) {
-    // Bug 3887 - If the loop contains calls to SIN and COS with identical
+    // If the loop contains calls to SIN and COS with identical
     // arguments, then it is preferrable to convert them to SINCOS inside
     // be/opt/opt_combine.cxx. Vectorizing the loop will inhibit that
     // optimization. Screen these loops here.
@@ -1006,7 +988,6 @@ static INT Vintrinsic_Fission(WN* innerloop)
       }
     }  
   }
-#endif
   STACK_OF_WN *vec_intrinsic_ops=
     CXX_NEW(STACK_OF_WN(&VINTR_FIS_default_pool),&VINTR_FIS_default_pool);
 
@@ -1624,8 +1605,7 @@ static INT Vintrinsic_Fission(WN* innerloop)
 
     WN* count=NULL;
     if (opr==OPR_LT || opr==OPR_GT) {
-#ifdef KEY
-// bug 3388: For creating the vintrinsic call, we use the loop termination
+// For creating the vintrinsic call, we use the loop termination
 // condition from the loop that is being replaced. When we are copying the 
 // def-use, the loop_stmt for the uses in the orig loop should not be copied
 // over to the uses in the terminating condition because 
@@ -1636,7 +1616,6 @@ static INT Vintrinsic_Fission(WN* innerloop)
 // in vintrinsic call && that follows the defn of loop_stmt. So loop_stmt
 // should be null.
       Loop_being_replaced = new_loop;
-#endif
       WN* tmp0=LWN_Copy_Tree(WN_kid(loop_end,1-kid_id));
       WN* tmp1=LWN_Copy_Tree(WN_kid(loop_end,kid_id));
       LWN_Copy_Def_Use(WN_kid(loop_end,1-kid_id),tmp0,Du_Mgr);
@@ -1808,23 +1787,19 @@ static INT Vintrinsic_Fission(WN* innerloop)
       if (parent==NULL)
         adg->Delete_Vertex(v);
 
-#ifdef KEY
       if (LNO_Vintr_Verbose) {
 	printf("(%s:%d) ",
 	       Src_File_Name,
 	       Srcpos_To_Line(WN_Get_Linenum(new_loop)));
 	printf("LOOP WAS VECTORIZED FOR VECTOR INTRINSIC ROUTINE(S).\n");
       }
-#endif
       LWN_Update_Def_Use_Delete_Tree(new_loop,Du_Mgr);
       LWN_Update_Dg_Delete_Tree(new_loop,adg);
       LWN_Delete_Tree(new_loop);
 
       does_vectorization=TRUE;
 
-#ifdef KEY
       Loop_being_replaced = NULL;
-#endif
 
       if (LNO_Verbose)
         vintr_fission_verbose_info(srcpos,intr_op_name);
@@ -1877,7 +1852,6 @@ static INT Vintrinsic_Fission(WN* innerloop)
   
 }
 
-#ifdef KEY //14182
 static BOOL Tree_Contains_Intrinsic(WN *wn)
 {
  if(WN_operator(wn)==OPR_INTRINSIC_OP)
@@ -1894,7 +1868,6 @@ static BOOL Tree_Contains_Intrinsic(WN *wn)
  }
  return FALSE;
 } 
-#endif
 
 static void Vintrinsic_Fission_Walk(WN* wn) {
   OPCODE opc=WN_opcode(wn);
@@ -1902,11 +1875,6 @@ static void Vintrinsic_Fission_Walk(WN* wn) {
   if (!OPCODE_is_scf(opc)) 
     return;
   else if (opc==OPC_DO_LOOP) {
-#ifndef KEY
-    if (Do_Loop_Is_Good(wn) && Do_Loop_Is_Inner(wn) && !Do_Loop_Has_Calls(wn)
-	&& !Do_Loop_Is_Mp(wn) && !Do_Loop_Has_Gotos(wn))
-      Vintrinsic_Fission(wn);
-#else //bug 14182: report non-vectorizable reasons only for an inner loop that
       //           contains intrinsics. Also gives up earlier if the loop does
       //           not has any intrinsics.
     if(Do_Loop_Is_Inner(wn) && Tree_Contains_Intrinsic(wn)){
@@ -1921,7 +1889,6 @@ static void Vintrinsic_Fission_Walk(WN* wn) {
         }
       }
     }
-#endif
     else
       Vintrinsic_Fission_Walk(WN_do_body(wn));
   } else if (opc==OPC_BLOCK)

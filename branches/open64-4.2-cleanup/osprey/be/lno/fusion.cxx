@@ -909,7 +909,6 @@ mINT32 offset[])
     return Failed;
   }
 
-#ifdef KEY
  {
    DO_LOOP_INFO* dli1 = Get_Do_Loop_Info(in_loop1);
    DO_LOOP_INFO* dli2 = Get_Do_Loop_Info(in_loop2);
@@ -927,7 +926,6 @@ mINT32 offset[])
      return Failed;
    }
  }
-#endif
   for (i=1; i<fusion_level; i++) {
     WN* lwn= Get_Only_Loop_Inside(loop_nest1[i-1],FALSE);
     if (!lwn) {
@@ -2498,14 +2496,10 @@ BOOL unrolled, BOOL preserve_loop_index)
 
       LWN_Copy_Def_Use(WN_kid0(WN_kid0(WN_step(in_loop))), wn1, Du_Mgr);
       LWN_Copy_Def_Use(WN_kid1(WN_kid0(WN_step(in_loop))), wn2, Du_Mgr);
-#ifndef KEY // bug 6239
-      Du_Mgr->Ud_Get_Def(wn1)->Set_loop_stmt(NULL);
-#else
       if (WN_operator(wn1) != OPR_CVT)
 	Du_Mgr->Ud_Get_Def(wn1)->Set_loop_stmt(NULL);
       else
 	Du_Mgr->Ud_Get_Def(WN_kid0(wn1))->Set_loop_stmt(NULL);
-#endif
       // wn1 is a copy of the loop var index but is not enclosed in the loop
 
       wn = LWN_CreateExp2(
@@ -2726,12 +2720,10 @@ extern BOOL Move_Adjacent(WN* stmt1, WN* stmt2) {
 	 }
 	 dep_e = sdg->Get_Next_In_Edge(dep_e);
        }
-#ifdef KEY
-       // Bug 5206 - do not move a barrier pragma to move loops together.
+       // do not move a barrier pragma to move loops together.
        if (WN_operator(stmt) == OPR_PRAGMA &&
 	   WN_pragma(stmt) == WN_PRAGMA_BARRIER)
 	 can_be_moved_up = FALSE;
-#endif
        if (can_be_moved_up) {
 	 LWN_Insert_Block_Before(parent,stmt1,LWN_Extract_From_Block(stmt));
        }
@@ -2775,12 +2767,10 @@ extern BOOL Move_Adjacent(WN* stmt1, WN* stmt2) {
 	 }
 	 dep_e = sdg->Get_Next_Out_Edge(dep_e);
        }
-#ifdef KEY
-       // Bug 5206 - do not move a barrier pragma to move loops together.
+       // do not move a barrier pragma to move loops together.
        if (WN_operator(stmt) == OPR_PRAGMA &&
 	   WN_pragma(stmt) == WN_PRAGMA_BARRIER)
 	 can_be_moved_down = FALSE;
-#endif
        if (can_be_moved_down) {
 	 LWN_Insert_Block_After(parent,stmt2,LWN_Extract_From_Block(stmt));
        }
@@ -3590,15 +3580,12 @@ WN** epilog_loop_out, mINT32 offset_out[])
 
     // temporary used in pre_loop_peeling
     char pre_loop_var_name[80];
-#ifdef KEY
     // 'name' may change after call to Create_Preg_Symbol (reallocation of 
     // memory) and point to illegal memory. So, need to reinitialize 'name'.
-    // - exposed by bug 2658.
     if (ST_class(st) == CLASS_PREG)
       name=Preg_Name(WN_offset(WN_start(loop_nest1[i])));
     else
       name=ST_name(st);
-#endif
     if (strlen(name)>=70) {
       DevWarn("Loop var %s name too long",name);
       strcpy(pre_loop_var_name,"name_too_long");

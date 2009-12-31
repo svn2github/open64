@@ -231,8 +231,7 @@ static void Inter_Iteration_Cses_Loop(WN *loop)
   equivalence_class_number = 0;
   Set_Up_Equivalence_Classes(WN_do_body(loop),loop);
 
-#ifdef KEY
-  // Bug 4211 - Too many loop invariants may overflow the dependence graph. 
+  // Too many loop invariants may overflow the dependence graph. 
   // CICSE on a large loop can also adversely affect quality of compilation for 
   // 32-bit ABI (probably register allocation related). Here 1000 is a large 
   // number small enough to peak 173.applu (under -m32).
@@ -243,7 +242,6 @@ static void Inter_Iteration_Cses_Loop(WN *loop)
     MEM_POOL_Pop(&LNO_local_pool);
     return;
   }
-#endif
   // step 1.5 add dependences between invariant ldids
   Add_Invariant_Deps();
 
@@ -851,14 +849,12 @@ static void Process_Pair(WN *a1, WN *b1, WN *a2, WN *b2, WN *loop)
 //
 static void Transform_Code(STACK<WN_PAIR_EC> *cse_stack, WN *loop, BOOL all_invariant)
 {
-#ifdef KEY
   static UINT cse_num = 0;
   cse_num ++;
   if (cse_num < LNO_Cse_Loop_Skip_Before ||
       cse_num > LNO_Cse_Loop_Skip_After ||
       cse_num == LNO_Cse_Loop_Skip_Equal)
     return;
-#endif /* KEY */
   DO_LOOP_INFO *dli = Get_Do_Loop_Info(loop);
   WN *guard = dli->Guard;
   if (guard) {
@@ -1037,11 +1033,6 @@ static void Transform_Code(STACK<WN_PAIR_EC> *cse_stack, WN *loop, BOOL all_inva
       while (WN_kid(parent,j) != plus1) j++;
       WN_kid(parent,j) = ldid;
       LWN_Set_Parent(ldid,parent);
-#ifndef KEY
-      // Bug 3170: Do not delete this node. Node is used for copying line number
-      // and frequency information at the end of this module.
-      WN_Delete(plus1);
-#endif
     } else {
       if (wn1 == WN_kid0(plus1)) {
         // don't delete for last preg because we will use it below
@@ -1091,11 +1082,6 @@ static void Transform_Code(STACK<WN_PAIR_EC> *cse_stack, WN *loop, BOOL all_inva
       while (WN_kid(parent,j) != plus2) j++;
       WN_kid(parent,j) = other_kid;
       LWN_Set_Parent(other_kid,parent);
-#ifndef KEY
-      // Bug 3170: Do not delete this node. Node is used for copying line number
-      // and frequency information at the end of this module.
-      WN_Delete(plus2);
-#endif
 
     }
   }
@@ -1116,14 +1102,10 @@ static void Transform_Code(STACK<WN_PAIR_EC> *cse_stack, WN *loop, BOOL all_inva
   WN* new_insertion_point;
   if (all_invariant) {
     LWN_Insert_Block_Before(LWN_Get_Parent(loop),loop,stid);
-#ifdef KEY // bug 8624
    // inserton_point = NULL means inserting at the very begining
    // of the loop and thus bug 8624 causes wrong ordering of 
    // instructions in loop and dependencies are broken.
     new_insertion_point = insertion_point;
-#else
-    new_insertion_point = NULL;
-#endif
   } else {
     LWN_Insert_Block_After(WN_do_body(loop),insertion_point,stid);
     new_insertion_point = stid;
@@ -1241,7 +1223,6 @@ static void  Add_Invariant_Deps()
   MEM_POOL_Pop(&LNO_local_pool);
 }
 
-#ifdef KEY
 #include "const.h"
 #include "wn_simp.h"
 #include "glob.h"
@@ -2134,5 +2115,4 @@ extern void Invariant_Factorization(WN *func_nd)
   //MEM_POOL_Pop(&FACT_default_pool);
   //MEM_POOL_Delete(&FACT_default_pool);  //memory to be cleaned
 }
-#endif
 

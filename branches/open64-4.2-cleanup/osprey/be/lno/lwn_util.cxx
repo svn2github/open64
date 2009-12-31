@@ -98,9 +98,7 @@ void REGION_clone(WN *old_wn, WN *new_wn, WN *parent_region);
 
 typedef STACK<WN *> STACK_OF_WN;
 
-#ifdef KEY
 extern INT Num_Prefetches;
-#endif
 
 /* Return next tree node in in-order traversal. 
  * Go all the way to the leaves.
@@ -817,9 +815,7 @@ static  WN* LWN_Copy_Tree_R(WN *wn, BOOL copy_access, WN_MAP access_map,
 
 
 #ifdef LNO
-#ifdef KEY
 extern WN * Loop_being_replaced;
-#endif
 
 void LWN_Copy_Def_Use_Node(WN* from_node, WN* to_node, DU_MANAGER* du)
 { 
@@ -835,15 +831,11 @@ void LWN_Copy_Def_Use_Node(WN* from_node, WN* to_node, DU_MANAGER* du)
       du->Create_Def_List(to_node);
       deflist2 = du->Ud_Get_Def(to_node);
     } 
-#ifdef KEY
     WN * loop = deflist->Loop_stmt();
     if (Loop_being_replaced == loop)
       deflist2->Set_loop_stmt (NULL);
     else
       deflist2->Set_loop_stmt (loop);
-#else
-    deflist2->Set_loop_stmt(deflist->Loop_stmt());
-#endif // KEY
     if (deflist->Incomplete()) 
       deflist2->Set_Incomplete();
   }
@@ -1251,17 +1243,10 @@ WN *LWN_CreateCompgoto(INT32 num_entries, WN *value,
   return wn;
 }
 
-#ifndef KEY
-WN *LWN_CreateIstore(OPCODE opc, WN_OFFSET offset,
-		     TY_IDX ty, WN *value, WN *addr)
-{
-  WN* wn = WN_CreateIstore(opc, offset, ty, value, addr);
-#else
 WN *LWN_CreateIstore(OPCODE opc, WN_OFFSET offset,
 		     TY_IDX ty, WN *value, WN *addr, UINT field_id)
 {
   WN* wn = WN_CreateIstore(opc, offset, ty, value, addr, field_id);
-#endif /* KEY */
   if (value) LWN_Set_Parent(value, wn);
   if (addr) LWN_Set_Parent(addr, wn);
   return wn;
@@ -1290,14 +1275,9 @@ WN *LWN_CreateStid(OPCODE opc, WN *orig_op, WN *value)
   Is_True((WN_operator(orig_op) == OPR_LDID) ||
           (WN_operator(orig_op) == OPR_STID),
 	  ("Illegal orig_op in LWN_Create_Stid"));
-//bug 13013: we need field_id if it is not 0 (default) 
-#ifdef KEY
+// we need field_id if it is not 0 (default) 
   WN* wn = WN_CreateStid(opc, WN_offset(orig_op),
 		WN_st(orig_op), WN_ty(orig_op),value, WN_field_id(orig_op));
-#else
-  WN* wn = WN_CreateStid(opc, WN_offset(orig_op),
-                WN_st(orig_op), WN_ty(orig_op),value);
-#endif
 
 #ifdef LNO
   Copy_alias_info(Alias_Mgr,orig_op,wn);
@@ -1313,11 +1293,7 @@ WN *LWN_CreateLdid(OPCODE opc, WN *orig_op)
           (WN_operator(orig_op) == OPR_STID),
 	  ("Illegal orig_op in LWN_Create_Ldid"));
   WN* wn = WN_CreateLdid(opc, WN_offset(orig_op),
-#ifndef KEY //bug 13586
-		WN_st(orig_op), WN_ty(orig_op));
-#else
 		WN_st(orig_op), WN_ty(orig_op),WN_field_id(orig_op));
-#endif
 #ifdef LNO
   Copy_alias_info(Alias_Mgr,orig_op,wn);
 #endif
@@ -1430,17 +1406,10 @@ WN *LWN_CreateExp2(OPCODE opc, WN *kid0, WN *kid1)
   return wn;
 }
 
-#ifndef KEY
-WN *LWN_CreateIload(OPCODE opc, WN_OFFSET offset, 
-		   TY_IDX ty1, TY_IDX ty2,WN *addr)
-{
-  WN* wn = WN_CreateIload(opc, offset, ty1, ty2, addr);
-#else
 WN *LWN_CreateIload(OPCODE opc, WN_OFFSET offset, 
 		    TY_IDX ty1, TY_IDX ty2,WN *addr, UINT field_id)
 {
   WN* wn = WN_CreateIload(opc, offset, ty1, ty2, addr, field_id);
-#endif /* KEY */
   LWN_Parentize_One_Level(wn);
   return wn;
 }
@@ -1470,9 +1439,7 @@ WN *LWN_CreateParm(TYPE_ID rtype, WN *parm_node, TY_IDX ty, UINT32 flag)
 
 #ifdef LNO
 WN *LWN_CreatePrefetch(WN_OFFSET offset, UINT32 flag, WN* addr) {
-#ifdef KEY
   Num_Prefetches ++;
-#endif
   WN* wn = WN_CreatePrefetch (offset, flag, addr);
   LWN_Parentize_One_Level (wn);
   return wn;
@@ -1484,17 +1451,10 @@ WN* LWN_Int_Type_Conversion(WN *wn, TYPE_ID to_type)
   WN* wn_new = WN_Int_Type_Conversion(wn, to_type);
   if (wn_new != wn &&
       (WN_operator(wn_new) == OPR_CVT || WN_operator(wn_new) == OPR_CVTL)) {
-#ifndef KEY
-    FmtAssert(WN_kid0(wn_new) == wn,
-              ("strange parent %s: %p != %p",
-               OPCODE_name(WN_opcode(wn_new)), WN_kid0(wn_new), wn));
-    LWN_Set_Parent(wn, wn_new);
-#else
     // WN simplifier could over-write wn and create a new wn_new.
     // Reset parent for wn only if wn is wn_new's kid.
     if (WN_kid0(wn_new) == wn)
       LWN_Set_Parent(wn, wn_new);
-#endif
   }
   return wn_new;
 }

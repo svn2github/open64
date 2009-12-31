@@ -485,9 +485,7 @@ INT AEQUIV::Build_CFG_Rec(WN *wn, VINDEX16 *current_v,
     if (!*current_v) return -1;
     if (!Add_CFG_Edge(old_current,*current_v)) return -1;
   } else if (opcode == OPC_RETURN
-#ifdef KEY
   	     || opcode == OPC_GOTO_OUTER_BLOCK
-#endif
              ) {
     if (!Add_CFG_Edge(*current_v,_tail_vertex)) return -1;
   } else if (opcode == OPC_LABEL) {
@@ -668,12 +666,7 @@ void AEQUIV::Handle_Call(WN *wn, VINDEX16 v)
     LOCAL_ARRAY_DESC *lad = _la_hash_table->Find(WN_st(wn));
     if (lad) {
       if (WN_operator(LWN_Get_Parent(wn)) == OPR_ARRAY) {
-#ifndef KEY
-        lad->_is_read = TRUE;
-        lad->_is_written = TRUE;
-        _cyclic_bit_vector->Bottom_nth(v)->Set(lad->_id);
-#else
-	// Bug 5651 - handle Fortran Pass By Reference
+	// handle Fortran Pass By Reference
 	// If the parameter is passed by reference then the address could be 
 	// taken inside the callee unless the PARM node has the flag 
 	// WN_PARM_PASSED_NOT_SAVED set (IPA or the compiler front-end could
@@ -690,7 +683,6 @@ void AEQUIV::Handle_Call(WN *wn, VINDEX16 v)
 	  lad->_is_written = TRUE;
 	  _cyclic_bit_vector->Bottom_nth(v)->Set(lad->_id);
 	}	  
-#endif
       } else {
 	lad->_address_taken = TRUE;
       }
@@ -780,9 +772,7 @@ INT AEQUIV::Build_CFG_Loop(WN *wn,VINDEX16 loopv,
   } else if (opcode == OPC_ALTENTRY) {
     if (!Add_CFG_Edge(_head_vertex,loopv)) return -1;
   } else if (opcode == OPC_RETURN
-#ifdef KEY
   	     || opcode == OPC_GOTO_OUTER_BLOCK
-#endif
              ) {
    if (!Add_CFG_Edge(loopv,_tail_vertex)) return -1;
   } else if (opcode == OPC_LABEL) {

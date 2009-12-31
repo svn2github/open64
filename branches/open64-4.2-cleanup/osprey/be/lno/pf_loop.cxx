@@ -199,7 +199,6 @@ static BOOL Loop_Before_MP_Region (WN* wn) {
   return FALSE;
 }
 
-#ifdef KEY
 static BOOL Has_Indirect_Ref (WN* wn)
 {
   if (WN_operator(wn) == OPR_ILOAD) return TRUE;
@@ -208,7 +207,6 @@ static BOOL Has_Indirect_Ref (WN* wn)
       return TRUE;
   return FALSE;
 }
-#endif 
 #if defined(TARG_X8664) || defined(TARG_IA64)
 // i = i + inv -- stride is just inv (inv - non const)
 static WN *Obtain_Stride_From_Loop_Step(WN *loop)
@@ -639,8 +637,7 @@ void PF_LOOPNODE::Add_Ref (WN* wn_array) {
 
   if (array) {
 
-#ifdef KEY 
-    // Bug 1656, 2945 - filter out indirect references from the messy vectors
+    // filter out indirect references from the messy vectors
     // to enable aggressive prefetching under AGGRESSIVE_PREFETCH.
     // TODO: If this is always safe, then we could make it default.
     for (INT i=0; i<array->Num_Vec(); i++) {
@@ -663,19 +660,11 @@ void PF_LOOPNODE::Add_Ref (WN* wn_array) {
       }
 #endif
     }
-#else
-    for (INT i=0; i<array->Num_Vec(); i++) {
-      ACCESS_VECTOR *av = array->Dim(i);
-      if (av->Too_Messy || av->Contains_Non_Lin_Symb()) {
-        messy = TRUE;
-      }
-    }
-#endif
   }
 
   if (WN_element_size(wn_array) < 0) {
 #ifdef TARG_X8664
-      //bug 5945: if the loop was vectorized
+      //if the loop was vectorized
       //the array is guaranteed to be contiguous, and we can prefetch
       WN *parent = LWN_Get_Parent(wn_array);
      if((WN_desc(parent) != MTYPE_V && MTYPE_is_vector(WN_desc(parent)))||
@@ -686,16 +675,14 @@ void PF_LOOPNODE::Add_Ref (WN* wn_array) {
         messy = TRUE;
   }
 
-//bug 14291: It is aggressive to prefetch for a field of a Large structure, where the structure
+// It is aggressive to prefetch for a field of a Large structure, where the structure
 //is the array element. The case is similar to prefetch for non-continuous array, we can not
 //make sure whether the prefetched cache line will ever be used.
-#ifdef KEY
  if(LNO_Run_Prefetch < AGGRESSIVE_PREFETCH &&
     WN_element_size(wn_array) > 16 && 
     WN_element_size(wn_array)%64 != 0){ //64 should be the cache line size in byte.
      messy = TRUE;
   }
-#endif
 
   if (LNO_Prefetch_Indirect && messy) {
     BOOL is_indirect = FALSE;
@@ -758,14 +745,14 @@ void PF_LOOPNODE::Add_Ref (WN* wn_array) {
     }
     return;
   } else if (messy) {
-#if defined(TARG_X8664) || defined(TARG_IA64) //bug 10953: for cases may not be "messy"
+#if defined(TARG_X8664) || defined(TARG_IA64) // for cases may not be "messy"
      if(!Simple_Invariant_Stride_Access(wn_array, _code, TRUE,
                                         &inductive_base, &indirect_base)){
        PF_PRINT( fprintf(TFile, "failing Simple_Invariant_Stride_Access(), _num_bad= %d\n", _num_bad); );
 #endif
     _num_bad++;
     return;
-#if defined(TARG_X8664) || defined(TARG_IA64) //bug 10953
+#if defined(TARG_X8664) || defined(TARG_IA64) 
    }
 #endif
   }
@@ -778,7 +765,7 @@ void PF_LOOPNODE::Add_Ref (WN* wn_array) {
 
      WN *stride = NULL;
 
-#if defined(TARG_X8664) || defined(TARG_IA64) //bug 10953
+#if defined(TARG_X8664) || defined(TARG_IA64) 
      mINT32 stride_val = 0;
      stride = Inductive_Base_Addr_Const_Stride(wn_array, _code, &base, 
                                 &inductive_base, &indirect_base, &stride_val);
@@ -848,7 +835,6 @@ static BOOL Store_Is_Useless (const WN* istore_wn) {
   return FALSE;
 }
 
-#ifdef KEY
 // Return 1 if there is an 'if' stmt immediately inside the loop
 static BOOL Is_Multi_BB (const WN* loop)
 {
@@ -872,7 +858,6 @@ static BOOL Is_Multi_BB (const WN* loop)
   }
   return FALSE;
 }
-#endif
 
 /***********************************************************************
  *
@@ -889,13 +874,11 @@ void PF_LOOPNODE::Process_Refs (WN* wn) {
 
   OPCODE opcode = WN_opcode(wn);
 
-#ifdef KEY
   if (LNO_Run_Prefetch == SOME_PREFETCH && OPCODE_operator(opcode) == OPR_IF) {
   // Don't prefetch references within an 'if' stmt
     Process_Refs (WN_if_test (wn));
     return;
   }
-#endif
 
   if (OPCODE_operator(opcode) == OPR_PREFETCH) {
     // don't do auto-prefetch analysis on references within a manual
@@ -937,10 +920,8 @@ void PF_LOOPNODE::Process_Refs (WN* wn) {
       _num_bad++;
     }
   } else if (OPCODE_operator(opcode) == OPR_ISTORE) {
-#ifdef KEY
     if (LNO_Prefetch_Stores)
     {
-#endif
     if (WN_operator(WN_kid1(wn)) == OPR_ARRAY &&
         !Store_Is_Useless(wn)) {
       PF_PRINT( fprintf(TFile, "\nProcess_Refs() triggers a new pref candidate.\n");
@@ -949,9 +930,7 @@ void PF_LOOPNODE::Process_Refs (WN* wn) {
     } else {
       _num_bad++;
     }
-#ifdef KEY
     } else _num_bad++;	// Don't prefetch store array accesses
-#endif
   }
 
   for (INT kidno=0; kidno<WN_kid_count(wn); kidno++) {
@@ -983,14 +962,12 @@ void PF_LOOPNODE::Process_Loop () {
   // within this loop, and will (as a by-product) put all the
   // immediately nested loops in _child
   WN * w = WN_do_body(_code);
-#ifdef KEY
   DO_LOOP_INFO *dli = (DO_LOOP_INFO *) WN_MAP_Get(LNO_Info_Map, _code);
   BOOL single_small_trip_loop = FALSE; 
- // BOOL simple_copy_loop = FALSE; //bug 8560 disable this
 
   if (LNO_Run_Prefetch != AGGRESSIVE_PREFETCH && dli->Is_Inner) {
     // Check if loop is not inside a nested loop (outermost loop) and if the
-    // trip count is small then avoid inserting prefetches - bug 2958
+    // trip count is small then avoid inserting prefetches
     WN* parent = LWN_Get_Parent(_code);
     while (parent && WN_opcode(parent) != OPC_DO_LOOP)
       parent = LWN_Get_Parent(parent);
@@ -1000,42 +977,10 @@ void PF_LOOPNODE::Process_Loop () {
 	 (dli->Num_Iterations_Symbolic &&
 	  LNO_Num_Iters < 100)))
       single_small_trip_loop = TRUE;
-#if 0 // bug 8560 : performance loss due to avoiding prefetch single - copy -loop
-#ifdef TARG_X8664
-    // For simple copy loop, the data may not be prefetched early enough for 
-    // next iteration - bug 4522.
-    {
-      WN* stmt = WN_first(w /* do loop body */);
-      if ( stmt && !WN_next(stmt) /* only statement in the loop */ && 
-           OPCODE_is_store(WN_opcode(stmt)) &&
-	   ( OPCODE_is_load(WN_opcode(WN_kid0(stmt))) ||
-	     ( WN_operator(WN_kid0(stmt)) == OPR_PAREN &&
-	       OPCODE_is_load(WN_opcode(WN_kid0(WN_kid0(stmt)))) ) ) )
-	simple_copy_loop = TRUE;
-      if ( simple_copy_loop ) {
-	// For streaming copy loops (that use non-temporal stores), eliminating
-	// prefetches slow down code by ~1.3%
-	if ( !dli->Num_Iterations_Symbolic ) {
-	  /* Refer to CGTARG_LOOP_Optimize for working set size calculation.
-	     The calculation here is simplified to handle a ISTORE(ILOAD).
-	  */
-	  INT trip_count = dli->Est_Num_Iterations;
-	  INT bytes = 2 * MTYPE_byte_size(WN_desc(stmt)) /* load + store */;
-	  INT size = trip_count * bytes;
-	  if ( size > 1000*1024 /* default for -CG:movnti */ )
-	    /* candidate for non-temporal store conversion */
-	    simple_copy_loop = FALSE;  
-	}
-      }
-    }
-#endif
-#endif
   }
   if ((LNO_Run_Prefetch > SOME_PREFETCH || 
        (LNO_Run_Prefetch == SOME_PREFETCH && !Is_Multi_BB (w))) &&
-//      !simple_copy_loop && // bug 8560 disable this
       !single_small_trip_loop)
-#endif
     Process_Refs (w);
 
   // now process nested inner loops
@@ -1360,12 +1305,6 @@ BOOL Check_Version_Map (WN* body_orig, WN* body_new) {
       (WN_operator(WN_kid1(body_orig)) == OPR_ARRAY)) 
     Is_True (WN_MAP_Get(version_map, WN_kid1(body_orig)) == WN_kid1(body_new),
              ("Check version map: error in array store\n"));
-#if 0
-  // no longer doing all loads/stores
-  if (OPCODE_is_load(opcode) || OPCODE_is_store(opcode)) 
-    Is_True (WN_MAP_Get(version_map, body_orig) == body_new,
-             ("Check version map: error in load/store\n"));
-#endif
   extern ARRAY_DIRECTED_GRAPH16 *pf_array_dep_graph;
   if (pf_array_dep_graph->Get_Vertex(body_orig))
     Is_True (WN_MAP_Get(version_map, body_orig) == body_new,

@@ -453,7 +453,6 @@ COND_IF_INFO COND_If_Info(WN* wn_if, MEM_POOL* pool)
   return rval;
 }
 
-#ifdef KEY //bug 13026
 static void Replace_With_Init(WN *copy, SYMBOL sym, 
                               WN *cons, TYPE_ID index_type)
 { 
@@ -497,7 +496,6 @@ static BOOL Loop_Not_Entered(WN *wn_do)
   } 
  return FALSE;
 }
-#endif
 
 COND_DO_INFO COND_Do_Info(WN* wn_do, MEM_POOL* pool)
 {
@@ -561,28 +559,24 @@ COND_DO_INFO COND_Do_Info(WN* wn_do, MEM_POOL* pool)
             rval = COND_DO_MAYBE;
             goto return_point;
           }
-#ifdef KEY
-          // Bug 3084 - without copy propagation, loop coefficients may be 
+          // without copy propagation, loop coefficients may be 
 	  // missing; make the safest assumption.
 	  if (!avlb->Has_Loop_Coeff()) {
 	    rval = COND_DO_MAYBE;
 	    goto return_point;
 	  }	    
-#endif
           for(INT dimub = 0; dimub < dli->UB->Num_Vec(); dimub++) {
             ACCESS_VECTOR* avub = dli->UB->Dim(dimub);
             if (avub->Too_Messy) {
               rval = COND_DO_MAYBE;
               goto return_point;
             }
-#ifdef KEY
-            // Bug 3084 - without copy propagation, loop coefficients may be 
+            // without copy propagation, loop coefficients may be 
 	    // missing; make the safest assumption.
 	    if (!avub->Has_Loop_Coeff()) {
 	      rval = COND_DO_MAYBE;
 	      goto return_point;
 	    }	    
-#endif
     
             ACCESS_VECTOR* nox = Difference_Inequality(avlb, avub,
                                                        avlb->Nest_Depth()-1,
@@ -608,7 +602,7 @@ COND_DO_INFO COND_Do_Info(WN* wn_do, MEM_POOL* pool)
   }
   MEM_POOL_Pop(pool);
 /*
- bug 13026: the above eval. is based on comparison of lb and ub, and it may not
+ the above eval. is based on comparison of lb and ub, and it may not
  be correct when concluding that the loop will be executed at least once. So we 
  have to re-eval this case.
  for example, 
@@ -616,12 +610,10 @@ COND_DO_INFO COND_Do_Info(WN* wn_do, MEM_POOL* pool)
     ...
  The loop will not be entered
 */
-#ifdef KEY
   if(rval==COND_DO_AT_LEAST_ONCE){ 
     if(Loop_Not_Entered(wn_do))
     rval = COND_DO_NEVER;
   }
-#endif
 
   return rval;
 }
@@ -854,10 +846,8 @@ static void Delete_MP_Region (WN* do_wn,
            ("Delete_MP_Region: must be called with an MP do-loop"));
 
   WN *region=LWN_Get_Parent(LWN_Get_Parent(do_wn));
-#ifdef KEY
   if (PU_cxx_lang(Get_Current_PU()) && Is_Eh_Or_Try_Region(region))
     region=LWN_Get_Parent(LWN_Get_Parent(region));
-#endif
   WN *region_parent = LWN_Get_Parent(region);
   WN *body = WN_region_body(region);
   WN *tmp = WN_first(body);
@@ -1151,7 +1141,6 @@ static void Mark_Dos(WN *wn, HASH_TABLE<WN *,BOOL> *htable)
 	  // loop_info points to a valid loop info with valid kids
 	  // not set the internal fields
           
-          // nenad, 02/16/2000:
           // Use Get_Good_Num_Iters instead of Est_Num_Iterations
           // since the latter is arbitrary if it's symbolic.
           extern INT64 Get_Good_Num_Iters (DO_LOOP_INFO *dli);
@@ -1397,7 +1386,6 @@ static WN *Highest_Guard_Point(WN *do_wn, DO_LOOP_INFO *dli)
     }
   }
 
-  // nenad, 02/15/2000:
   // Sometimes, when DU chains are incomplete, non_const_loops
   // may be incorrect. To avoid the problem reported in 780055,
   // we examine all dependence edge incident on the loop guard.
@@ -1649,11 +1637,7 @@ static void STD_Canonicalize_Upper_Bound(WN* wn_loop)
     if (COND_Do_Info(wn_loop, &LNO_local_pool) != COND_DO_AT_LEAST_ONCE)
       Guard_A_Do(wn_loop);
     TYPE_ID desc = WN_desc(WN_end(wn_loop));
-#ifndef KEY
-    WN_set_opcode(WN_end(wn_loop), 
-      OPCODE_make_op(OPR_LE, OPCODE_rtype(opc), desc));
-#else
-    // Bug 2679 - the following transformation is not legal
+    // the following transformation is not legal
     // Preserve the signedness of comparison.
     //
     //  I8I8LDID x        I8I8LDID x
@@ -1673,7 +1657,6 @@ static void STD_Canonicalize_Upper_Bound(WN* wn_loop)
     // (1) at least one of the operands is signed. OR
     // (2) for 64 bit compilation which has sufficient room for
     //     for the operand values for signed comparison     
-    // Refer to bug 5670, bug 12467 and bug 12514:
     TYPE_ID rtype0 = WN_rtype(WN_kid0(WN_end(wn_loop)));
     TYPE_ID rtype1 = WN_rtype(WN_kid1(WN_end(wn_loop)));
 
@@ -1686,7 +1669,6 @@ static void STD_Canonicalize_Upper_Bound(WN* wn_loop)
 
     WN_set_opcode(WN_end(wn_loop), 
       OPCODE_make_op(OPR_LE, OPCODE_rtype(opc), desc));
-#endif
     OPCODE subop = OPCODE_make_op(OPR_SUB, desc, MTYPE_V);
     WN* ub1 = LWN_CreateExp2(subop, WN_kid1(WN_end(wn_loop)), 
       LWN_Make_Icon(desc, 1));
@@ -1707,20 +1689,15 @@ static void STD_Traverse(WN* wn_tree)
   if (WN_opcode(wn_tree) == OPC_DO_LOOP && Do_Loop_Is_Unsigned(wn_tree))
     STD_Canonicalize_Upper_Bound(wn_tree);  
   if (WN_opcode(wn_tree) == OPC_BLOCK) {
-//bug 14148: Since STD_Canonicalize_Upper_Bound may condition a do_loop, we
+//Since STD_Canonicalize_Upper_Bound may condition a do_loop, we
 //should remember who is the next to traverse. Otherwise, all left wns in the
 //block will be skipped.
-#ifdef KEY
    WN *wn = WN_first(wn_tree);
    while(wn){
      WN *next_wn = WN_next(wn);
      STD_Traverse(wn);
      wn = next_wn;
    }
-#else
-    for (WN* wn = WN_first(wn_tree); wn != NULL; wn = WN_next(wn))
-      STD_Traverse(wn);
-#endif
   } else {
     for (INT i = 0; i < WN_kid_count(wn_tree); i++)
       STD_Traverse(WN_kid(wn_tree, i));
@@ -1811,7 +1788,6 @@ extern void Update_Guarded_Do_FB(WN *if_wn, WN *do_wn, FEEDBACK *feedback)
   feedback->Annot_loop (do_wn, loop_freq);
 }
 
-#ifdef KEY
 //
 //
 /* The purpose of the following is to effect the transformation of the kind
@@ -1923,7 +1899,7 @@ static BOOL Loop_Unswitch_InnerDo (WN *wn)
     return FALSE;
   }
 
-  // Bug 10445 : lb and ub must be known constants
+  // lb and ub must be known constants
    WN *lbd = WN_kid0(WN_start(wn));
    WN *ubd = WN_kid1(WN_end(wn));
    if(WN_operator(lbd) != OPR_INTCONST ||
@@ -2338,7 +2314,7 @@ static BOOL Loop_Simple_Unswitch_InnerDo (WN * wn)
   Is_True (WN_operator (wn) == OPR_DO_LOOP,
            ("Loop_Simple_Unswitch_InnerDo: Expected DO LOOP"));
 
-  //Bug 11495: renaming indexes will cause trouble if the index
+  //renaming indexes will cause trouble if the index
   //           variable is alive after the loop
   if(Index_Variable_Live_At_Exit(wn))
    return FALSE;
@@ -2372,7 +2348,7 @@ static BOOL Loop_Simple_Unswitch_InnerDo (WN * wn)
     return FALSE; // No if-statement to switch
 
   if (!Is_Loop_Invariant_Exp(WN_if_test(stmt), wn)){
-     Gen_Early_Exit(stmt,wn); //bug 12007
+     Gen_Early_Exit(stmt,wn); 
     return FALSE; //not unswithced
   }
 
@@ -2541,4 +2517,3 @@ extern BOOL Loop_Unswitch_SCF (WN * func_nd)
   MEM_POOL_Pop(&LNO_local_pool);
   return result;
 }
-#endif

@@ -155,9 +155,7 @@ extern void Process_Store(WN *store_wn, VINDEX16 v,
 
   ACCESS_ARRAY *store = 
 	(ACCESS_ARRAY *) WN_MAP_Get(LNO_Info_Map,WN_kid1(store_wn));
-#ifdef KEY //bug 5970: see explanation below
   if(!store) return;
-#endif
   if (debug) {
     fprintf(TFile,"Processing the store ");
     store->Print(TFile);
@@ -177,12 +175,10 @@ extern void Process_Store(WN *store_wn, VINDEX16 v,
       if (OPCODE_operator(opcode) != OPR_STID) {
         ACCESS_ARRAY *store2 = (ACCESS_ARRAY *) 
 	  WN_MAP_Get(LNO_Info_Map,WN_kid1(store2_wn));
-#ifdef KEY
-	// Bug 5970 - some address expressions are not canonicalized.
+	// some address expressions are not canonicalized.
 	// In such cases, there may be a must dependency but the sink for
 	// the dependence out edge will not have an entry in the access array.
 	if (!store2) continue;
-#endif	
         if (Equivalent_Access_Arrays(store,store2,store_wn,store2_wn) &&
 	    (WN_offset(store_wn) == WN_offset(store2_wn)) &&
             (DEPV_COMPUTE::Base_Test(store_wn,NULL,store2_wn,NULL) ==

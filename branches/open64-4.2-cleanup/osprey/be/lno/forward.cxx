@@ -230,7 +230,7 @@ static void FS_Substitute(WN* wn_orig,
     if (FS_Is_Inside_If(use, LWN_Get_Parent(wn_orig)))
       continue; 
 
-    // Bug 539: Don't perform FS for nodes directly under ASM_INPUT
+    // Don't perform FS for nodes directly under ASM_INPUT
     if (WN_operator(LWN_Get_Parent(use)) == OPR_ASM_INPUT)
       continue;
 
@@ -256,8 +256,7 @@ static void FS_Substitute(WN* wn_orig,
     BOOL added_convert = FALSE; 
     WN* wn_copy = Replace_Wnexp_With_Exp_Copy(use, WN_kid0(wn_orig), du,
       &added_convert);
-#ifdef KEY
-    //bug 12622: for the following case, an implicit CVTL is applied
+    //for the following case, an implicit CVTL is applied
     //in STID. We need an explicit CVTL instead of CVT when replacing
     //LDIDs with the the ILOAD.
     //
@@ -270,7 +269,6 @@ static void FS_Substitute(WN* wn_orig,
            WN_set_desc(wn_copy, MTYPE_V);
            WN_cvtl_bits(wn_copy) = MTYPE_bit_size(WN_desc(wn_orig));
       }
-#endif
     LWN_Set_Frequency_Tree(wn_copy,count);
     WN* wn_true_copy = added_convert ? WN_kid0(wn_copy) : wn_copy; 
     Fix_Access_Arrays_In_Copy_Block(wn_true_copy); 
@@ -309,10 +307,8 @@ static void BS_Collect_Array(WN* wn_copy,
     || opr == OPR_STID,  
     ("BS_Collect_Array() not called on OPR_ILOAD(LDID) or OPR_ISTORE(STID)")); 
   INT kid_number = opr == OPR_ILOAD ? 0 : 1;
-#ifdef KEY //bug 11113: LNO_Build_Access_Array applies only to arrays
   if((opr == OPR_ILOAD || opr == OPR_ISTORE)
            && WN_operator(WN_kid(wn_copy, kid_number))==OPR_ARRAY)
-#endif
     LNO_Build_Access_Array(WN_kid(wn_copy, kid_number), copy_stack,
            &LNO_default_pool);
   array_stack->Push(wn_copy);
@@ -577,9 +573,7 @@ static BOOL FS_Worthwhile(WN* wn_orig,
   DU_NODE* unode = NULL; 
   BOOL found_inner_use = FALSE; 
   INT use_count = 0; 
-#ifdef KEY //bug 11786 count total number of uses
   INT total_use_count = 0;
-#endif 
   for (unode = iter.First(); !iter.Is_Empty(); unode = iter.Next()) { 
     WN *use = unode->Wn(); 
     if (WN_operator(use) != OPR_LDID)
@@ -619,8 +613,7 @@ static BOOL FS_Worthwhile(WN* wn_orig,
     if (!substitution_candidate) 
       return FALSE;
 
-#ifdef KEY
-//bug 14352: Forward substitution requires the "use" is under the subtree
+//Forward substitution requires the "use" is under the subtree
 //of LWN_Get_Parent(wn_orig)). Otherwise, it is not legal to substitute
 //"use" with the right-hand side of wn_orig.
     WN *tmp=NULL;
@@ -628,7 +621,6 @@ static BOOL FS_Worthwhile(WN* wn_orig,
      if(tmp == LWN_Get_Parent(wn_orig))
         break;
     if(!tmp) return FALSE;
-#endif
 
     if (FS_Is_Inside_If(use, LWN_Get_Parent(wn_orig)))
        return FALSE;
@@ -636,9 +628,7 @@ static BOOL FS_Worthwhile(WN* wn_orig,
     for (wn = use; wn != NULL; wn = LWN_Get_Parent(wn))
       if (WN_operator(wn) == OPR_ARRAY)
 	break;
-#ifdef KEY //bug 11786: count total number of uses
     total_use_count++;
-#endif
     if (wn != NULL) 
       continue;
     use_count++;  
@@ -647,11 +637,7 @@ static BOOL FS_Worthwhile(WN* wn_orig,
     return FALSE; 
   if (count > FS_LOAD_AND_LEAF_LIMIT && found_inner_use) 
     return FALSE; 
-#ifdef KEY //bug 11786: let total uses to control code expansion
   if (count > FS_LOAD_AND_LEAF_LIMIT && total_use_count > 1)
-#else
-  if (count > FS_LOAD_AND_LEAF_LIMIT && use_count > 1) 
-#endif
     return FALSE;  
   if (all_uses_in_same_def_loop) {
     if (FS_Exp_Assigned_on_Loop_Iteration(wn_orig, wn_loop,

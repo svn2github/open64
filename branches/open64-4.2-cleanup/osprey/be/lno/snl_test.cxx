@@ -84,11 +84,9 @@ const static char *rcs_id =   snl_test_CXX "$Revision: 1.9 $";
 #include "config.h"
 #include "split_tiles.h"
 
-// Bug 6010: an upper bound for the number of nests in a procedure
-//           to unroll outmost loop, to reduce memory requirement 
-#ifdef KEY
+// an upper bound for the number of nests in a procedure
+// to unroll outmost loop, to reduce memory requirement 
 #define MAX_NESTS_IN_FU 450
-#endif
 static void SNL_Optimize_Bounds_With_Access_Vectors(WN* wn_loop, 
 					    	    DU_MANAGER* du);
 
@@ -388,7 +386,7 @@ static void Find_Kernel_Stack(SNL_REGION* rg_kernel,
 // 797054: Make the number of cache strips visible to SE_CT_New_Tile_Infos
 // in sxlimit.cxx. SNL_TILE_INFO* t in SNL_INV_Transforms is sometimes NULL,
 // and we may end up creating loop nests deeper than 15, which is the
-// maximum allowed for dependence vectors (nenad, 2000/08/23).
+// maximum allowed for dependence vectors 
 
 INT Num_Cache_Strips;
 
@@ -1073,7 +1071,7 @@ static SNL_REGION Do_Automatic_Transformation(WN* wn,
   //    not necessarily all SNLs.  To fix problems with this, I added the
   //    the Find_Kernel_Stack() routine.  This routine searches for a set
   //    of innermost SNLs over which we will apply the second pass of    
-  //    SNL_INV_Transform() (which is done in cases #2 and #3).  (RJC)
+  //    SNL_INV_Transform() (which is done in cases #2 and #3).
 
   if (trying_invariant) {
 #ifdef Is_True_On
@@ -1700,8 +1698,7 @@ static void SNL_Transform(WN* wn,
   SNL_REGION    region;
   BOOL          changed;
 
-#ifdef KEY 
-  // Bug 6420 - After forward substitution from HMB, loop bounds may become
+  // After forward substitution from HMB, loop bounds may become
   // compile-time constants. In that event, we should update the estimated
   // number of iterations. Otherwise, the models will assume an estimated
   // iteration count of 100 (without feedback), and produce unroll factors 
@@ -1719,7 +1716,6 @@ static void SNL_Transform(WN* wn,
     Build_Doloop_Stack(loop, &stack);
     dli->Set_Est_Num_Iterations(&stack);
   }
-#endif
   region = Do_Automatic_Transformation(wn, nloops, &ni, &changed);
 
   if (snl_debug) {
@@ -1765,14 +1761,12 @@ extern void SNL_Phase(WN* func_nd)
     CXX_NEW(FIZ_FUSE_INFO(&LNO_local_pool), &LNO_local_pool);
   ffi->Build(func_nd);
 
-// Bug 6010: if the number of nests in a procedure exceeds
+// if the number of nests in a procedure exceeds
 // the limits, unrolling may require a large compilation time
 // memory. Setting to 1 will not directly affect any major LNO
 // optimizations 
-#ifdef KEY
   if(ffi->Num_Snl() > MAX_NESTS_IN_FU)
     LNO_Outer_Unroll = 1;
-#endif
 
   if (LNO_Test_Dump)
     for (INT i = 0; i < ffi->Num_Snl(); i++)
@@ -1812,14 +1806,12 @@ extern void SNL_Lite_Phase(WN* func_nd)
     CXX_NEW(FIZ_FUSE_INFO(&LNO_local_pool), &LNO_local_pool);
   ffi->Build(func_nd);
 
-// Bug 6010: if the number of nests in a procedure exceeds
+// if the number of nests in a procedure exceeds
 // the limits, unrolling may require a large compilation time
 // memory. Setting to 1 will not directly affect any major LNO
 // optimizations 
-#ifdef KEY
   if(ffi->Num_Snl() > MAX_NESTS_IN_FU)
     LNO_Outer_Unroll = 1;
-#endif
 
   if (LNO_Test_Dump)
     for (INT i = 0; i < ffi->Num_Snl(); i++)

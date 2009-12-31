@@ -103,7 +103,6 @@ static BOOL Is_Reduction_In_Prallel_Region(WN* scalar_ref)
   return FALSE;
 }
 
-#ifdef KEY
 static BOOL Is_Shared_Or_Reduction_In_Prallel_Region(WN* scalar_ref)
 {
   WN* wn=scalar_ref;
@@ -126,7 +125,6 @@ static BOOL Is_Shared_Or_Reduction_In_Prallel_Region(WN* scalar_ref)
   }
   return FALSE;
 }
-#endif
 extern BOOL Edge_Is_Reduction_Dependence(
 EINDEX16 edge,
 ARRAY_DIRECTED_GRAPH16 *dg,
@@ -360,9 +358,7 @@ extern INT Map_Stmt_To_Level_Graph(WN* wn, ARRAY_DIRECTED_GRAPH16 *sdg) {
   if (OPCODE_is_expression(opcode))
     return 1;
   if (opcode==OPC_LABEL || opcode==OPC_RETURN || opcode==OPC_GOTO
-#ifdef KEY
       || opcode==OPC_GOTO_OUTER_BLOCK
-#endif
      )
     return 1;
 
@@ -577,10 +573,8 @@ static void Rename_Update_MP(WN *scalar_ref,ST* new_st,
     } else if ((WN_opcode(region) == OPC_DO_LOOP) && Do_Loop_Is_Mp(region)) {
       WN *loop = region;
       region = LWN_Get_Parent(LWN_Get_Parent(region));
-#ifdef KEY
       if (PU_cxx_lang(Get_Current_PU()) && Is_Eh_Or_Try_Region(region))
         region = LWN_Get_Parent(LWN_Get_Parent(region));
-#endif
       Rename_Update_MP_Region(region,scalar_ref,new_st,new_offset,loop,
 	Outer_Mp_Region(region));
     }
@@ -628,11 +622,7 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
 	can_rename = FALSE;
       else if (WN_desc(scalar_ref)!=desc_type)
 	can_rename = FALSE;
-#ifndef KEY
-      else if (Is_Reduction_In_Prallel_Region(scalar_ref))
-	can_rename = FALSE;
-#else
-      // Bug 6904 - cannot rename scalars that are shared variables in an
+      // cannot rename scalars that are shared variables in an
       // enclosing MP region. This combines the test for reduction variables.
       else if (Contains_MP && 
 	       Is_Shared_Or_Reduction_In_Prallel_Region(scalar_ref))
@@ -640,11 +630,10 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
       // Can not create CVT/CVTL for bit-field later on. 
       else if ((opr == OPR_STID) && WN_desc(scalar_ref) == MTYPE_BS)
 	can_rename = FALSE;
-      // Bug 1258 - can not promote temporary storing floating point complex 
+      // can not promote temporary storing floating point complex 
       // type to pseudo-register.
       else if ((opr == OPR_STID) && MTYPE_is_complex(WN_desc(scalar_ref)))
         can_rename = FALSE;
-#endif      
     } else
       can_rename= FALSE;
   }
@@ -707,8 +696,6 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
       WN_st_idx(scalar_ref)=ST_st_idx(new_symbol.St());
       WN_offset(scalar_ref)=new_symbol.WN_Offset();
 
-#ifdef KEY
-      // Fix for bug 1129
       if (WN_operator(scalar_ref) == OPR_LDID &&
 	  MTYPE_bit_size(desc) == 32 &&
 	  MTYPE_bit_size(WN_rtype(scalar_ref)) == 64) {
@@ -726,7 +713,6 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
 	WN_set_rtype(scalar_ref, desc);
       } 
       else       
-#endif
       WN_set_opcode(scalar_ref,OPCODE_make_op(
                 OPCODE_operator(scalar_op),
 		OPCODE_rtype(scalar_op),
@@ -1253,30 +1239,6 @@ static BOOL Generate_Pragma_Dependence_For_Statement_Dependence_Graph(
     VINDEX16 v=sdg->Get_Vertex(wn);
     VINDEX16 v1;
     UINT level = Do_Loop_Depth(parent_loop)+1;
-#if 0
-// do not put in edges between pragmas and stmt before them
-    WN* before=wn;
-    v1=0;
-    do {
-      before=WN_prev(before);
-      if (before)
-        v1=sdg->Get_Vertex(before);
-    } while (before && !v1);
-    if (v1) {
-      EINDEX16 e;
-      if (!(e=sdg->Get_Edge(v1,v))) {
-        e=sdg->Add_Edge(v1,v,level);
-        if (!e)
-          return 0;
-      }
-      sdg->Set_Level_Property(e,HAS_ALL_ZERO);
-      if (!(e=sdg->Get_Edge(v,v1))) {
-        e=sdg->Add_Edge(v,v1,level);
-        if (!e)
-          return 0;
-      }
-    }
-#endif
     WN* after=wn;
     v1=0;
     do {
@@ -1637,7 +1599,6 @@ extern BOOL Generate_Array_Dependence_For_Statement_Dependence_Graph(
   return TRUE;
 }
 
-#ifdef KEY
 static BOOL Loop_Has_Asm (WN* loop)
 {
   LWN_ITER* itr = LWN_WALK_TreeIter(WN_do_body(loop));
@@ -1648,7 +1609,6 @@ static BOOL Loop_Has_Asm (WN* loop)
   }
   return FALSE;
 }
-#endif
 
 extern ARRAY_DIRECTED_GRAPH16* Build_Statement_Dependence_Graph(
   WN* in_loop,
@@ -1657,11 +1617,9 @@ extern ARRAY_DIRECTED_GRAPH16* Build_Statement_Dependence_Graph(
   WN_MAP sdm,
   MEM_POOL* pool)
 {
-#ifdef KEY //bug 14121: statement dependence graph will be incorrect
            //if the loop contains Asm statement.
   if(Loop_Has_Asm(in_loop))
    return NULL;
-#endif
 
   MEM_POOL_Push(&LNO_local_pool);
   ARRAY_DIRECTED_GRAPH16 *sdg;

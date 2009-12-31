@@ -92,9 +92,7 @@
 #include "ipa_lno_util.h"
 #endif 
 
-#ifdef KEY
 #include "config.h"                                  // for Allow_wrap_around_opt
-#endif
 
 //-----------------------------------------------------------------------
 // greatest common divisor
@@ -752,17 +750,6 @@ void SYSTEM_OF_EQUATIONS::Elim_Simple_Redundant(const INT32 min_var)
 	    _is_redundant[j] = TRUE;
 	  }
 
-#if 0
-	  // if i or j is redundant make sure we will compact following original order
-	  if (_is_redundant[i]) {
-	    _work_const[i] = _work_const[j];
-	    for (INT32 col=min_var; col<_work_cols; col++) {
-	      _work[i][col] = _work[j][col];
-	    }
-	    _is_redundant[j] = TRUE;
-	    _is_redundant[i] = FALSE;
-	  }
-#endif
 
 	}
       }
@@ -1092,12 +1079,10 @@ SVPC_RESULT SYSTEM_OF_EQUATIONS::SVPC()
 // This routine changes _lower_bound and _upper_bound
 BOOL SYSTEM_OF_EQUATIONS::One_Var_Consistent(INT32 var, INT32 from, INT32 to)
 {
-#ifdef KEY 
-  // Bug 2927 - SVPC does not handle overflow correctly. When wrap-around
+  // SVPC does not handle overflow correctly. When wrap-around
   // optimization is off, turn off SVPC by always returning consistent 
   // loop bounds.
   if (! Allow_wrap_around_opt ) return (TRUE);
-#endif
   for (INT32 i=from; i<=to; i++) {
     if ((_work_const[i] >= (INT32_MAX-1)) || (_work_const[i]<=(INT32_MIN+1))) {
       return(TRUE);  // Overflow

@@ -295,14 +295,9 @@ extern INT Split_Array(WN *store, WN *split_point,
   TY_IDX el_type = TY_pointed(addr_type);
   TYPE_ID mtype = WN_desc(store);
   OPCODE l_opcode = OPCODE_make_op(OPR_ILOAD,Promote_Type(mtype),mtype);
-#ifndef KEY
-  WN *load = 
-    LWN_CreateIload(l_opcode,WN_offset(store),el_type,addr_type,array1);
-#else
   WN *load = 
     LWN_CreateIload(l_opcode,WN_offset(store),el_type,addr_type,array1, 
 		    WN_field_id(store));
-#endif /* KEY */
   Copy_alias_info(Alias_Mgr,store,load);
   LWN_Set_Parent(load,split_point_parent);
   INT i=0;
@@ -316,13 +311,8 @@ extern INT Split_Array(WN *store, WN *split_point,
   }
 
   // store the code below split_point into the array
-#ifndef KEY
-  WN *new_store = LWN_CreateIstore(WN_opcode(store),WN_offset(store),
-	WN_ty(store),split_point,array2);
-#else
   WN *new_store = LWN_CreateIstore(WN_opcode(store),WN_offset(store),
 	WN_ty(store),split_point,array2, WN_field_id(store));
-#endif /* KEY */
   Copy_alias_info(Alias_Mgr,store,new_store);
   LWN_Copy_Linenumber(store,new_store);
   LWN_Insert_Block_Before(LWN_Get_Parent(store),store,new_store);
@@ -497,12 +487,6 @@ extern INT Split_Array(WN *store, WN *split_point,
     Split_Statement(new_store,dep_graph);
   }
 
-#if 0
-  // this is basically gratuitous recursion
-  if (Need_To_Split(store)) {
-    Split_Statement(store,dep_graph);
-  }
-#endif
 
   return 1;
 

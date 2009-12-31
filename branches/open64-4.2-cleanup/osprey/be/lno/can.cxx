@@ -143,10 +143,8 @@ static INT64 Find_Average(ACCESS_VECTOR *av, BOOL *know_val,
 					DOLOOP_STACK *do_stack);
 static void Copy_Loads_In_Bound(WN *do_loop, WN *tmp, BOOL is_start);
 static void Promote_Pointer(WN *wn, INT kid_num, INT load_size);
-#ifdef KEY
 // Code published to Open64 by Tensilica
 static void Fold_Array(WN *wn, INT kid_num);
-#endif /* KEY */
 static void Fold_Base(WN *array);
 static void Fold_Offset(WN *wn, WN *array);
 static void Fold_Intconst(WN *ld_st, WN *intconst, BOOL negate);
@@ -523,9 +521,8 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
     for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
       dlistack->Bottom_nth(i)->Has_Calls = TRUE;
     }
-#ifdef KEY //bug 14284 : determine whether loop has calls to nested functions
     ST *st = WN_has_sym(wn) ? WN_st(wn) : NULL;
-    if(st != NULL) { //bug 14288 -- assume nested function always has ST
+    if(st != NULL) { // assume nested function always has ST
       PU &pu = Pu_Table[ST_pu(st)];
       if(PU_is_nested_func(pu)){
 	for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
@@ -533,7 +530,6 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
 	}
       }
     }
-#endif    
   } else if (OPCODE_operator(opcode) == OPR_ALLOCA ||
              OPCODE_operator(opcode) == OPR_DEALLOCA) {
 
@@ -584,7 +580,6 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
           Promote_Pointer(wn,1,0);
         }
       }
-#ifdef KEY
       // Code published to Open64 by Tensilica
       if (dlistack->Elements()) {
         if ((oper == OPR_ILOAD) && 
@@ -595,7 +590,6 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
           Fold_Array(wn,1);
         }
       }      
-#endif /* KEY */
     } 
   } else if (opcode == OPC_LABEL) {
     label_stack->Push(wn);
@@ -617,11 +611,6 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
       for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
         dlistack->Bottom_nth(i)->Has_Gotos = TRUE;
       }
-#ifndef KEY
-      for (INT i=0; i<dlistack->Elements()-inside_bound-1; i++) {
-	dlistack->Bottom_nth(i)->Has_Conditional = TRUE;
-      }
-#endif
       // For which loops does the goto exit the loops
       WN *label = label_hash->Find(WN_label_number(wn));
       FmtAssert (label, ("goto to non-existant label"));
@@ -634,12 +623,6 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
         }
 	INT i=0;
 	INT min = MIN(stack->Elements(),label_loops.Elements());
-#ifndef KEY
-	if (stack->Elements() > 0 && stack->Elements() <= label_loops.Elements()) {
-	  dlistack->Top_nth(0)->Has_Gotos = TRUE;
-	  dlistack->Top_nth(0)->Has_Conditional = TRUE;
-	}
-#endif
 	while (i<min &&
 	       (stack->Bottom_nth(i) == label_loops.Bottom_nth(i))) i++;
 	for (i=i; i<dlistack->Elements()-inside_bound; i++) {
@@ -650,24 +633,11 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
     } else if (opcode == OPC_DO_WHILE || opcode == OPC_WHILE_DO) {
       for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
         dlistack->Bottom_nth(i)->Has_Gotos = TRUE;
-#ifndef KEY
-	dlistack->Bottom_nth(i)->Has_Conditional = TRUE;
-#endif
       }
     } 
-#ifndef KEY
-    else if (opcode == OPC_RETURN){
-      for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
-				dlistack->Bottom_nth(i)->Has_Exits = TRUE;
-      }
-    }
-#endif
 			else {
       for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
         dlistack->Bottom_nth(i)->Has_Gotos = TRUE;
-#ifndef KEY
-	dlistack->Bottom_nth(i)->Has_Conditional = TRUE;
-#endif
         dlistack->Bottom_nth(i)->Has_Gotos_This_Level = TRUE;
         dlistack->Bottom_nth(i)->Has_Exits = TRUE;
       }
@@ -986,14 +956,10 @@ void DO_LOOP_INFO::Set_Est_Num_Iterations(DOLOOP_STACK *do_stack)
     step = -step;
   }
 
-#ifndef KEY  
-  if (la->Too_Messy || ua->Too_Messy) {
-#else
-  // Bug 3084 - without copy propagation, loop coefficients may be missing
+  // without copy propagation, loop coefficients may be missing
   if (la->Too_Messy || ua->Too_Messy ||
       !la->Dim(0)->Has_Loop_Coeff() ||
       !ua->Dim(0)->Has_Loop_Coeff()) {
-#endif
     Est_Num_Iterations = LNO_Num_Iters;
     if (Est_Max_Iterations_Index >= 0 &&
         Est_Max_Iterations_Index < Est_Num_Iterations) {
@@ -1408,7 +1374,6 @@ static void Copy_Loads_In_Bound(WN *do_loop, WN *wn, BOOL is_start)
 
 
 
-#ifdef KEY
 // Code published to Open64 by Tensilica
 // find the integer constant coefficient for expressions of the form (coeff * (...)),
 // and return its WN. return NULL if no coefficient can be found.
@@ -1429,7 +1394,6 @@ Find_Term_Coeff(WN *wn) {
   
   return NULL;
 }
-#endif
 // Try to promote a pointer load/store into an array
 //
 // At the top level, wn is a load/store and kid_num is the number of
@@ -1558,7 +1522,6 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
   } 
 
 
-#ifdef KEY // Bug 2565
   if (
 #if defined(TARG_X8664) || defined(TARG_LOONGSON)
       Is_Target_64bit() &&
@@ -1665,7 +1628,6 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
       }
     }
   }
-#endif
   if (addr_oper == OPR_ADD) {
     if (WN_operator(WN_kid0(addr)) == OPR_MPY) {
       mult = WN_kid0(addr);
@@ -1706,35 +1668,12 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
   }
 
 
-#ifndef KEY
-  WN *intconst, *index_expr;
-  INT64 val;
-  if (WN_operator(WN_kid0(mult)) == OPR_INTCONST) {
-    intconst = WN_kid0(mult);
-    index_expr = WN_kid1(mult);
-  } else if (WN_operator(WN_kid1(mult)) == OPR_INTCONST) {
-    intconst = WN_kid1(mult);
-    index_expr = WN_kid0(mult);
-  } else {
-    if (char_canon) WN_Simplify_Tree(wn);
-    return;
-  }
- 
-  val = WN_const_val(intconst);
-  if (abs(val) >= INT32_MAX) return;
-
-  // check that we're multiplying by the a multiple of the size of the element
-  if ((abs(val) % load_size) != 0) {
-    if (char_canon) WN_Simplify_Tree(wn);
-    return;
-  } 
-#else
   // Code published to Open64 by Tensilica.
   // try to find the constant coefficient in the expression.
   // we would like to have an expression of the form coeff * index_expr
   int reassoc_idx = 0;
   WN *index_expr = WN_kid1(mult);
-  // Bug 3017 - for nodes like *(a + const1 x const2) where const1 is 
+  // for nodes like *(a + const1 x const2) where const1 is 
   // integer constant '1' introduced by the canonicizer.
   if (WN_operator(WN_kid0(mult)) == OPR_INTCONST &&
       WN_operator(WN_kid1(mult)) == OPR_INTCONST &&
@@ -1792,7 +1731,6 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
     // the non-intconst kid
     index_expr = WN_kid(mult, reassoc_idx);
   } 
-#endif // KEY
 
   if (base_oper == OPR_ARRAY) {
     // base is an array
@@ -1800,13 +1738,11 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
       if (char_canon) WN_Simplify_Tree(wn);
       return;  // not 1-d
     }
-#ifdef KEY
-    // Bug 2427 - pattern does not match then return
+    //  pattern does not match then return
     if (val == 0) {
       if (char_canon) WN_Simplify_Tree(wn);
       return;
     }
-#endif
     if ((WN_element_size(base) % val) != 0) {
       if (val % WN_element_size(base) == 0) { // separate out element size
         OPCODE index_op = WN_opcode(index_expr);
@@ -1824,26 +1760,20 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
         return;
       }
     }
-#ifndef KEY
-  } else if ((base_oper != OPR_LDID) && (base_oper != OPR_LDA)) {
-#else
-  // Bug 5057 - tolerate ILOAD in base address. Typically, these array
+  // tolerate ILOAD in base address. Typically, these array
   // accesses will not be folded, but the transformed pattern can enable
   // dependence analysis and vectorization.
   } else if ((base_oper != OPR_LDID) && (base_oper != OPR_LDA) &&
 	     (base_oper != OPR_ILOAD)) {
-#endif
     if (char_canon) WN_Simplify_Tree(wn);
     return;
   }
-#ifdef KEY
   // Promote SoA access but not a AoS access.
   if (base_oper == OPR_ILOAD && 
       WN_operator(WN_kid0(base)) != OPR_LDID) {
     if (char_canon) WN_Simplify_Tree(wn);
     return;
   }      
-#endif
 
   // the pattern matches, do the substitution.
 
@@ -1878,11 +1808,7 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
 
     if (val < 0) {
       OPCODE index_op = WN_opcode(index_expr);
-#ifndef KEY
-      index_expr = LWN_CreateExp1(OPCODE_make_op(OPR_NEG,OPCODE_rtype(index_op),
-			MTYPE_V),index_expr);
-#else
-      // Bug 3017 - have to complement type for creating a NEG of a unsigned
+      // have to complement type for creating a NEG of a unsigned
       // node.
       if (MTYPE_is_signed(OPCODE_rtype(index_op)))
 	index_expr = LWN_CreateExp1(OPCODE_make_op(OPR_NEG,
@@ -1892,7 +1818,6 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
 	index_expr = LWN_CreateExp1(OPCODE_make_op(OPR_NEG,
 				 MTYPE_complement(OPCODE_rtype(index_op)),
 						   MTYPE_V),index_expr);	
-#endif
     }
     WN_kid(addr,kid_that_is_mult) = index_expr;
     LWN_Set_Parent(index_expr,addr); 
@@ -1905,8 +1830,7 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
     } else {
       negate = (val < 0);
     }
-#ifdef KEY
-    /* Bug 3897
+    /* 
      LOC 1 237 	       rW = W[-2*k]; iW = W[-2*k+1];
               U4U4LDID 0 <2,20,W> T<143,anon_ptr.,4>
                U4U4LDID 0 <2,9,k> T<8,.predef_U4,4>
@@ -1927,16 +1851,11 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
     if (MTYPE_byte_size(WN_rtype(index_expr)) == 4  && val > INT32_MAX ||
 	MTYPE_byte_size(WN_rtype(index_expr)) == 8  && val > INT64_MAX)
       negate = TRUE;
-#endif
 
     WN *new_index = index_expr;
     if (negate) {
       OPCODE index_op = WN_opcode(index_expr);
-#ifndef KEY
-      new_index = LWN_CreateExp1(OPCODE_make_op(OPR_NEG,OPCODE_rtype(index_op),
-			MTYPE_V),index_expr);
-#else
-      // Bug 3017 - have to complement type for creating a NEG of a unsigned
+      // have to complement type for creating a NEG of a unsigned
       // node.
       if (MTYPE_is_signed(OPCODE_rtype(index_op)))
 	new_index = LWN_CreateExp1(OPCODE_make_op(OPR_NEG,
@@ -1946,19 +1865,13 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
 	new_index = LWN_CreateExp1(OPCODE_make_op(OPR_NEG,
 				MTYPE_complement(OPCODE_rtype(index_op)),
 						  MTYPE_V), index_expr);
-#endif
     }
 
-#ifndef KEY
-    WN_const_val(intconst) = 0;  // we're going to use it for the dimension size
-				// zero is what's used for real*8 a(*)
-#else
-    // Bug 3017 - create a new constant WN because last LWN_CreateExp1
+    // create a new constant WN because last LWN_CreateExp1
     // may erase intconst node if !MTYPE_is_signed(OPCODE_rtype(index_op))
     // when creating a NEG WN.
     intconst = WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST, 
 						Pointer_type, MTYPE_V), 0);
-#endif
     OPCODE op_array = OPCODE_make_op(OPR_ARRAY,Pointer_type, MTYPE_V);
     array = WN_Create(op_array,3);
     WN_element_size(array) = abs(val);
@@ -1983,7 +1896,6 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
   return;
 }
 
-#ifdef KEY
 // Code published to Open64 by Tensilica
 // wn is a load/store
 // kid_num is the address, which is an array node
@@ -2080,15 +1992,12 @@ static void Fold_Array (WN *wn, INT kid_num) {
   }
   return;
 }
-#endif /* KEY */
 
 // fold the offset into the array
 static void Fold_Offset(WN *wn, WN *array) 
 {
-#ifdef KEY
   if (WN_element_size(array) == 0)
     return;
-#endif
   if (WN_offset(wn) && ((abs(WN_offset(wn)) % WN_element_size(array)) == 0)) {
     TYPE_ID rtype;
 // >> WHIRL 0.30: Added MTYPE_A4
@@ -2144,10 +2053,8 @@ static BOOL Compatible_Type(MTYPE add, MTYPE index)
 static void Fold_Base(WN *array)
 {
   if (WN_kid_count(array) != 3) return;
-#ifdef KEY
-  // Bug 2285 - do not mess around with non-contiguous arrays
+  // do not mess around with non-contiguous arrays
   if (WN_element_size(array) < 0) return;
-#endif
   WN *base = WN_array_base(array);
   OPERATOR oper = WN_operator(base);
   if (oper != OPR_ADD && (oper != OPR_SUB)) {
@@ -2321,12 +2228,8 @@ static void Delete_Unused_Labels (HASH_TABLE<INT32, WN*> *label_hash,
   WN *wn;
 
   while (iter.Step (&label, &wn)) {
-#ifdef KEY
     if (!LABEL_addr_saved(label) && 
         LABEL_kind(Label_Table[label]) != LKIND_BEGIN_HANDLER) {
-#else
-    if (!LABEL_addr_saved(label)) {
-#endif
       WN* goto_wn = goto_hash->Find(label);
       if (goto_wn == NULL) {
         // no jumps to this label, so delete it

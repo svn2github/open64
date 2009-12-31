@@ -179,9 +179,7 @@ BOOL Is_Consistent_Condition(ACCESS_VECTOR *av, WN *expr);
 extern WN* Guard_A_Do(WN *do_wn); 
 extern void Canonicalize_Unsigned_Loops(WN* func_nd);
 extern void Update_Guarded_Do_FB(WN *if_wn, WN *do_wn, FEEDBACK *feedback);
-#ifdef KEY
 extern BOOL Loop_Unswitch_SCF(WN *wn);
-#endif
 
 /**
 *** The data structure used here (no longer private to cond.cxx) is 

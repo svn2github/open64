@@ -485,14 +485,10 @@ extern void SNL_Peel_Iteration(WN* wn,
   }
 
   WN* wn_next = NULL; 
-#ifdef KEY
   // Bug 5489 - If the only statement inside the DO_LOOP 
   // is another DO_LOOP then, first = last = NULL because 
   // DO_LOOPs are already deleted out of new_block.
   for (WN* wn_temp = first; wn_temp; wn_temp = wn_next) {
-#else
-  for (WN* wn_temp = first; ; wn_temp = wn_next) {
-#endif
     wn_next = WN_next(wn_temp);  
     Remove_Redundant_Stids(wn_temp, du); 
     if (wn_temp == last) 
@@ -778,14 +774,10 @@ extern void SNL_Peel_Iteration_Inner(WN* wn,
   WN* wn_next = NULL; 
   WN* first = WN_first(newblock);
   WN* last = WN_last(newblock);
-#ifdef KEY
   // Bug 5489 - If the only statement inside the DO_LOOP 
   // is another DO_LOOP then, first = last = NULL because 
   // DO_LOOPs are already deleted out of new_block.
   for (WN* wn_temp = first; wn_temp; wn_temp = wn_next) {
-#else
-  for (WN* wn_temp = first; ; wn_temp = wn_next) {
-#endif
     wn_next = WN_next(wn_temp);  
     Remove_Redundant_Stids(wn_temp, du); 
     if (wn_temp == last) 
@@ -1619,13 +1611,11 @@ static void UT_Body_Innermost(WN* body,
       UT_Body_Exp(WN_while_test(wn), td);
       UT_Body_Innermost(WN_while_body(wn), td);
       break;
-#ifdef KEY //bug 11817: handle regions under loop body
      case OPC_REGION:
        UT_Body_Innermost(WN_region_pragmas(wn),td);
        UT_Body_Innermost(WN_region_exits(wn),td);
        UT_Body_Innermost(WN_region_body(wn),td);
        break;
-#endif
      default:
       UT_Body_Exp(wn, td);
       break;
@@ -2401,22 +2391,6 @@ extern SNL_REGION SNL_GEN_U_Ctiling(WN* wn_outer,
       DO_LOOP_INFO* olddli;
       if (t->Rectangular()) {
         INT num = t->Stripsz(i);
-#if 0
-	if (Cur_PU_Feedback) {
-	  INT32 orig_count = WN_MAP32_Get(WN_MAP_FEEDBACK, WN_start(innerloop));
-	  if (orig_count>0) {
-	    INT32 orig_test = WN_MAP32_Get(WN_MAP_FEEDBACK, WN_end(innerloop));
-	    INT32 outer_count = orig_count;
-	    INT32 outer_test = MAX(orig_test/num,1);
-	    LWN_Set_Frequency(d[i], outer_count);
-	    LWN_Set_Frequency(WN_start(d[i]), outer_count);
-	    LWN_Set_Frequency(WN_step(d[i]), outer_test-1);
-
-	    LWN_Set_Frequency(innerloop, outer_test-1);
-	    LWN_Set_Frequency(WN_start(innerloop), outer_test-1);
-	  }
-	}
-#endif
         olddli= Get_Do_Loop_Info(stack.Bottom_nth(first_in_stack+t->Iloop(i)));
 
         dli->Est_Num_Iterations = (olddli->Est_Num_Iterations + num - 1) / num;
@@ -2433,23 +2407,6 @@ extern SNL_REGION SNL_GEN_U_Ctiling(WN* wn_outer,
       }
       else {
         //TODO OK, but at some point get a better estimate, somewhat easy
-#if 0
-	if (Cur_PU_Feedback) {
-	  INT32 orig_count = WN_MAP32_Get(WN_MAP_FEEDBACK, WN_start(innerloop));
-	  if (orig_count>0) {
-	    INT32 orig_test = WN_MAP32_Get(WN_MAP_FEEDBACK, WN_end(innerloop));
-	    INT32 outer_count = orig_count;
-	    INT32 outer_test = MAX(orig_test/20,1);
-	    LWN_Set_Frequency(d[i], outer_count);
-	    LWN_Set_Frequency(WN_start(d[i]), outer_count);
-	    LWN_Set_Frequency(WN_step(d[i]), outer_test-1);
-
-	    LWN_Set_Frequency(innerloop, outer_test-1);
-	    LWN_Set_Frequency(WN_start(innerloop), outer_test-1);
-	    LWN_Set_Frequency(WN_index(innerloop), outer_test-1);
-	  }
-	}
-#endif
         olddli = Get_Do_Loop_Info(innerloop);
         dli->Est_Num_Iterations = (olddli->Est_Num_Iterations + 19) / 20;
         olddli->Est_Num_Iterations = 20;
@@ -3344,10 +3301,9 @@ extern SNL_REGION SNL_GEN_2D_Regtile(SNL_NEST_INFO* ni,
         Build_Doloop_Stack(bwn, &bstack);
         count++;
 
-#ifdef KEY
-	// Bug 2946 - when creating scalar expansion tiles, we must take care 
+	// when creating scalar expansion tiles, we must take care 
 	// not to make loop nests deeper than 15, which is the maximum allowed 
-	// for dependence vectors (this is also noted in sxlist.cxx by nenad).
+	// for dependence vectors (this is also noted in sxlist.cxx ).
 	// Reduction manager is initialzed in lnopt_main.cxx only if
 	// ROUNDOFF_LEVEL >= ROUNDOFF_ASSOC (for Cse, zmult). Without reduction
 	// manager, SX_INFO makes worst case assumption that scalars are not
@@ -3362,7 +3318,6 @@ extern SNL_REGION SNL_GEN_2D_Regtile(SNL_NEST_INFO* ni,
           failed = TRUE;
           goto out;
 	}
-#endif
         // TODO: don't use bounds info when recomputing dependences. This 
         // makes the run time tolerable.  Remove the optional last parameter
         // and watch it crawl.

@@ -777,9 +777,7 @@ DYN_ARRAY<FF_STMT_LIST>& loop, MEM_POOL* pool)
     if (v ==0) {
       OPCODE opc=WN_opcode(stmt);
       if (opc!=OPC_LABEL && opc!=OPC_RETURN && opc!=OPC_GOTO
-#ifdef KEY
   	  && opc!=OPC_GOTO_OUTER_BLOCK
-#endif
 	 ) {
         // depends on everything else
         DevWarn("Statement dependence graph problem");
@@ -992,9 +990,7 @@ MEM_POOL* pool)
     if (v ==0) {
       OPCODE opc=WN_opcode(stmt);
       if (opc!=OPC_LABEL && opc!=OPC_RETURN && opc!=OPC_GOTO
-#ifdef KEY
           && opc!=OPC_GOTO_OUTER_BLOCK
-#endif
          ) {
         // depends on everything else
         DevWarn("Statement dependence graph problem");

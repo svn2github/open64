@@ -483,11 +483,7 @@ static void SE_Iload(WN* wn,
   DU_MANAGER* du = Du_Mgr;
   SYMBOL symbol(wn); 
   TYPE_ID wtype = symbol.Type;
-#ifdef KEY // bug 7846
   OPCODE loadop = OPCODE_make_op(OPR_ILOAD, WN_rtype(wn), wtype);
-#else
-  OPCODE loadop = OPCODE_make_op(OPR_ILOAD, Promote_Type(wtype), wtype);
-#endif
   TY_IDX wty = Be_Type_Tbl(wtype);
   TY_IDX pty = Make_Pointer_Type(Be_Type_Tbl(wtype));
   WN* load = LWN_CreateIload(loadop, 0, wty, pty, wn_array);
@@ -1151,8 +1147,7 @@ static WN* BND_Max_Expr(WN* wn,
         FmtAssert(0, ("Bounds too complicated for scalar expansion."));
       } 
   }
-#ifdef KEY
-  // Bug 5240 - Compiling for a 64-bit target introduces a CVT in the 
+  // Compiling for a 64-bit target introduces a CVT in the 
   // loop ub that should be handled here.
   case OPR_CVT:
     {
@@ -1164,7 +1159,6 @@ static WN* BND_Max_Expr(WN* wn,
       LWN_Parentize(wn_new);
     }
     return wn_new;  
-#endif
   default: 
     FmtAssert(0, ("Bounds too complicated for scalar expansion."));  
     return NULL; 

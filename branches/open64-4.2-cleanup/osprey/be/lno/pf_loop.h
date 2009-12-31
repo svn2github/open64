@@ -418,7 +418,7 @@ public:
 };
 
 extern mINT16 Loop_Confidence (DO_LOOP_INFO* dli);
-#if defined(TARG_X8664) || defined(TARG_IA64) //introduced by bug 10953
+#if defined(TARG_X8664) || defined(TARG_IA64)
 extern WN *Simple_Invariant_Stride_Access(WN *array, WN *loop, BOOL ck_induc_base,
            BOOL *inductive_use, BOOL *indirect_use);
 #endif

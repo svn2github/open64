@@ -395,16 +395,9 @@ Num_Inner_Loops(WN* loop)
       }
       if (num_inner_loops > max_inner_loops) {
         max_inner_loops = num_inner_loops;
-#ifdef KEY
         if (max_inner_loops > MAX_INNER_LOOPS) {
           return max_inner_loops; //stop
         }
-#else
-        if (max_inner_loops >= MAX_INNER_LOOPS) {
-          return MAX_INNER_LOOPS;
-        }
-
-#endif
       }
     }
   }
@@ -412,7 +405,6 @@ Num_Inner_Loops(WN* loop)
 }
 
 
-#ifdef KEY
 // Count the number of basic operations
 static
 INT64 Loop_Size(WN* wn)
@@ -556,7 +548,6 @@ static BOOL Has_Negative_Offset_Preg(WN *tree)
  }
  return FALSE;
 } 
-#endif
 
 //-----------------------------------------------------------------------
 // peel the 2D triangle into 2 piece and fully unroll the 
@@ -908,19 +899,12 @@ Fully_Unroll_Short_Loops(WN* wn)
   }
   else if (oper == OPR_DO_LOOP    &&
            !Do_Loop_Has_Calls(wn) &&
-#ifndef KEY
-           (!Do_Loop_Has_Exits(wn) || Do_Loop_Is_Regular(wn)) &&
-	   !Do_Loop_Has_Conditional(wn) &&
-#else 
            !Do_Loop_Has_Exits(wn) &&
            !Do_Loop_Has_Gotos(wn) &&
-#endif
            !Do_Loop_Has_Gotos(wn) &&
            !Do_Loop_Is_Mp(wn)     &&
            !Is_Nested_Doacross(wn) &&
-#ifdef KEY
            Num_Inner_Loops(wn) <= MAX_INNER_LOOPS) {
-          //bug 10644
           if(Num_Inner_Loops(wn) == MAX_INNER_LOOPS &&
              Is_Invariant_Factorization_Beneficial(wn)) {
              DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
@@ -929,29 +913,21 @@ Fully_Unroll_Short_Loops(WN* wn)
               return unrolled;              
            }
           }
-#else
-           Num_Inner_Loops(wn) < MAX_INNER_LOOPS) {
-#endif
     INT64 trip_count = Num_Iters(wn);
     if (trip_count == 0
-#ifdef KEY
-	// bug 3444
 	// Why do we have 2 functions to find # of iterations?
         && Iterations(wn, &LNO_local_pool) == 0
-#endif
       ) {
       Remove_Zero_Trip_Loop(wn);
       return unrolled;
     }
     if (trip_count >= 1 && trip_count <= LNO_Full_Unrolling_Limit) {
       if (trip_count > 1) {
-#ifdef KEY
         //trip_count already used in calculating Loop_Size(do_loop), so don't mul
-        //bug 11954, 11958: Regression caused by not multiplying trip_count, because
+        //Regression caused by not multiplying trip_count, because
         //we need new LNO_Full_Unrolling_Loop_Size_Limit default.
-        //TODO: re-investigate here after work bug 10644
 	if (Loop_Size(wn)*trip_count > LNO_Full_Unrolling_Loop_Size_Limit ||
-            //bug 5159:  Loops having PREG with -ve offsets can not be unrolled since they are
+            //Loops having PREG with -ve offsets can not be unrolled since they are
             //ASM output values and duplicating them will break CG assumption.
             Has_Negative_Offset_Preg(WN_do_body(wn))){
 //       if (Loop_Size(wn) > LNO_Full_Unrolling_Loop_Size_Limit) {
@@ -977,7 +953,6 @@ Fully_Unroll_Short_Loops(WN* wn)
 	    return unrolled;	    
 	  }
 	}
-#endif
         Unroll_Loop_By_Trip_Count(wn, trip_count);
         unrolled = TRUE;
         // Du_Sanity_Check(Current_Func_Node);
@@ -1050,12 +1025,10 @@ extern void Parallel_And_Padding_Phase(PU_Info* current_pu,
 BOOL Run_autopar_save; 
 INT last_loop_num;
 
-#ifdef KEY
 static BOOL Skip_Simd;
 static BOOL Skip_HoistIf;
 static BOOL Skip_SVR;
 static BOOL Skip_Unswitch;
-#endif /* KEY */
 extern WN * Lnoptimizer(PU_Info* current_pu, 
 			WN *func_nd , DU_MANAGER *du_mgr,
 			ALIAS_MANAGER *alias_mgr)
@@ -1067,7 +1040,6 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
   MEM_POOL_Initialize(&ARA_memory_pool, "ARA_memory_pool", FALSE);
   MEM_POOL_Push(&ARA_memory_pool);
 
-#ifdef KEY
   static INT pu_num = 0;
   
   if (pu_num < LNO_Simd_Skip_Before 
@@ -1106,7 +1078,6 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
     LNO_enabled = TRUE;
 
   pu_num ++;
-#endif /* KEY */
   
   // early exit test
   if ( !Du_Built(du_mgr) ) {
@@ -1121,7 +1092,6 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
     } 
     Prompf_Finish(); 
 
-#ifdef KEY //just cheat the list_option, don't worry
            // about the compilation time if the uer
            // want to list options
     if(List_Enabled){
@@ -1129,7 +1099,6 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       Mhd.Initialize();
       Mhd.Merge_Options(Mhd_Options);
     }
-#endif
 
     MEM_POOL_Pop(&ARA_memory_pool);
     MEM_POOL_Delete(&ARA_memory_pool);
@@ -1317,11 +1286,7 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       Fully_Unroll_Short_Loops(func_nd);
     }
 
-#ifdef KEY 
     if (LNO_Build_Scalar_Reductions || Roundoff_Level >= ROUNDOFF_ASSOC) {
-#else
-    if (Roundoff_Level >= ROUNDOFF_ASSOC) {
-#endif
       red_manager = CXX_NEW 
           (REDUCTION_MANAGER(&LNO_default_pool), &LNO_default_pool);
       red_manager->Build(func_nd,TRUE,FALSE); // build scalar and array reductions
@@ -1422,12 +1387,10 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
         Transpose_For_MP(func_nd);  // gwe? want this here?
         IPA_LNO_Unevaluate_Call_Infos(func_nd);
     }
-#ifdef KEY
     if (LNO_Run_Unswitch && !Skip_Unswitch && Loop_Unswitch_SCF(func_nd)) {
       // remark because unswitch may have changed things
       Mark_Code(func_nd, FALSE, TRUE);  
     }
-#endif
 #ifdef TARG_X8664
     if (LNO_Run_Simd > 0)
       Mark_Auto_Vectorizable_Loops(func_nd);
@@ -1479,32 +1442,26 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       WB_Set_Sanity_Check_Level(WBC_FULL_SNL); 
   
       if (!Get_Trace(TP_LNOPT, TT_LNO_NORENAME))
-#ifdef KEY
 #ifdef TARG_X8664
-	// Bug 4203 - this is probably exposing some register allocation bug 
+	// this is probably exposing some register allocation bug 
 	// for m32. Hide it for now.
 	if (!Skip_SVR && LNO_SVR && (LNO_SVR_Phase1 || Is_Target_32bit()))
 #else
 	if (!Skip_SVR && LNO_SVR && LNO_SVR_Phase1)
 #endif
-#endif  
        {
-#ifdef KEY
-       // Bug 8628 -- turn off the red_manager to let the reduction variable
+       // turn off the red_manager to let the reduction variable
        // be renamed for SVR_PHASE1
 	if(red_manager)
 	  red_manager->Erase(func_nd);
-#endif
         if (Scalar_Variable_Renaming(func_nd))
           LNO_Build_Access(func_nd,&LNO_default_pool);
-#ifdef KEY
-        // Bug 8628 -- rebuild the red_manager if necessary
+        // rebuild the red_manager if necessary
 	if(red_manager){
 	  red_manager->Build(func_nd, TRUE, FALSE);//scalar
           if (Roundoff_Level >= ROUNDOFF_ASSOC)//array only if roundoff>=2
             red_manager->Build(func_nd,FALSE,TRUE,Array_Dependence_Graph);
         }
-#endif
        }          
       early_exit = Phase_123(current_pu, func_nd, do_fiz_fuse, do_p25, 
         do_inner_fission);
@@ -1559,7 +1516,6 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
     }
 
      
-#ifdef KEY // bug 10644
     //perform factorization only when the any loop is guarenteed to be executed
     //at least once
 
@@ -1619,7 +1575,6 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
 	}
       }
     }
-#endif
     if (Get_Trace(TP_LNOPT,TT_LNO_DEP2) || 
         Get_Trace(TP_LNOPT,TT_LNO_DEP)) {
       fprintf(TFile, "%sLNO dep graph for CG, after LNO\n%s", DBar, DBar);
@@ -1739,13 +1694,9 @@ extern void Build_CG_Dependence_Graph (WN* func_nd) {
   }
   // Build cg's dependence graph from scratch
   BOOL graph_ok=Current_Dep_Graph->Build(func_nd);
-#ifndef KEY
-  Is_True(graph_ok,("Overflow converting to cg dependence graph"));
-#else
 #ifdef Is_True_On 
   if (!graph_ok)
     DevWarn("Overflow converting to cg dependence graph");
-#endif
 #endif
   if (!graph_ok) Current_Dep_Graph->Erase_Graph();
 
@@ -1818,9 +1769,7 @@ void DO_LOOP_INFO::Print(FILE *fp, INT indentation)
   buf[i] = '\0';
 
   if (Has_Calls) fprintf(fp,"%sIt has calls \n", buf);
-#ifdef KEY //bug 14284
   if (Has_Nested_Calls) fprintf(fp,"%sIt has calls to nested functions \n", buf);
-#endif
   if (Has_Unsummarized_Calls) fprintf(fp,"%sIt has unsummarized calls \n", buf);
   if (Has_Unsummarized_Call_Cost) 
 	fprintf(fp,"%sIt has unsummarized call cost \n", buf);
@@ -1896,10 +1845,8 @@ void DO_LOOP_INFO::Print(FILE *fp, INT indentation)
     fprintf(fp,"%sSuggested_Parallel is %d \n", buf, Suggested_Parallel);
   if (Parallelizable)
     fprintf(fp,"%sParallelizable is %d \n", buf, Parallelizable);
-#ifdef KEY
   if (Vectorizable)
     fprintf(fp,"%sVectorizable is %d \n", buf, Vectorizable);
-#endif
   if (Last_Value_Peeled)
     fprintf(fp,"%sLast Value Peeled is %d \n", buf, Last_Value_Peeled); 
   if (Not_Enough_Parallel_Work)
@@ -2118,9 +2065,7 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
     
     if (!Get_Trace(TP_LNOPT, TT_LNO_NORENAME))
       // rename after phase 2
-#ifdef KEY
       if (!Skip_SVR && LNO_SVR)
-#endif
       if (Scalar_Variable_Renaming(func_nd))
         LNO_Build_Access(func_nd,&LNO_default_pool);
 
@@ -2142,16 +2087,10 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
 #endif
   }
 
-#ifndef KEY
-  if ((do_inner_fission || LNO_Run_Vintr==TRUE) && LNO_Fission!=0)
-#else
   if ((do_inner_fission || LNO_Run_Vintr > 0) && LNO_Fission!=0)
-#endif
     if (!Get_Trace(TP_LNOPT, TT_LNO_NORENAME))
       // rename after phase 2
-#ifdef KEY
       if (!Skip_SVR && LNO_SVR)
-#endif
       if (Scalar_Variable_Renaming(func_nd))
         LNO_Build_Access(func_nd,&LNO_default_pool);
 
@@ -2174,10 +2113,9 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
   void HoistIf_Phase(WN* func_nd);
   if (LNO_Run_hoistif==TRUE && !Skip_HoistIf)
     HoistIf_Phase(func_nd);
-#endif /* KEY */
-//Sicortex bug 5073: Do an additional pass of array substutution. We need
+#endif
+//Do an additional pass of array substutution. We need
 //to rebuild reduction manager because reduction arrays may be replaced.
-#ifdef KEY
 #ifdef TARG_MIPS
 Array_Substitution(func_nd);
 if(red_manager){
@@ -2187,14 +2125,9 @@ if(red_manager){
    red_manager->Build(func_nd,FALSE,TRUE,Array_Dependence_Graph);
  }
 #endif
-#endif
 
   void Vintrinsic_Fission_Phase(WN* func_nd);
-#ifndef KEY
-  if (LNO_Run_Vintr==TRUE)
-#else
   if (LNO_Run_Vintr)
-#endif
     Vintrinsic_Fission_Phase(func_nd);
   Finalize_Loops(func_nd); 
 
@@ -2230,9 +2163,6 @@ DO_LOOP_INFO::DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
     Has_Unsummarized_Call_Cost = has_unsummarized_call_cost;
     Has_Threadprivate = FALSE; 
     Has_Gotos = has_gotos;
-#ifndef KEY
-    Has_Conditional = FALSE;
-#endif
     Has_Gotos_This_Level = has_gotos_this_level;
     Has_Exits = has_exits;
     Has_EH_Regions = FALSE;
@@ -2277,10 +2207,8 @@ DO_LOOP_INFO::DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
     Sync_Distances[0] = NULL_DIST; 
     Sync_Distances[0] = NULL_DIST; 
     Parallelizable = FALSE; 
-#ifdef KEY
     Vectorizable = FALSE; 
     Delay_Full_Unroll = FALSE;
-#endif
     Last_Value_Peeled = FALSE; 
     Not_Enough_Parallel_Work = FALSE; 
     Inside_Critical_Section = FALSE;
@@ -2324,9 +2252,7 @@ DO_LOOP_INFO::DO_LOOP_INFO(DO_LOOP_INFO *dli, MEM_POOL *pool) {
     if (dli->UB) UB = CXX_NEW(ACCESS_ARRAY(dli->UB,pool),pool);
     if (dli->Step) Step = CXX_NEW(ACCESS_VECTOR(dli->Step,pool),pool);
     Has_Calls = dli->Has_Calls;
-#ifdef KEY //bug 14284
     Has_Nested_Calls = dli->Has_Nested_Calls;
-#endif    
     Has_Unsummarized_Calls = dli->Has_Unsummarized_Calls;
     Has_Unsummarized_Call_Cost = dli->Has_Unsummarized_Call_Cost;
     Has_Threadprivate = dli->Has_Threadprivate; 
@@ -2383,10 +2309,8 @@ DO_LOOP_INFO::DO_LOOP_INFO(DO_LOOP_INFO *dli, MEM_POOL *pool) {
     Sync_Distances[0] = dli->Sync_Distances[0]; 
     Sync_Distances[1] = dli->Sync_Distances[1]; 
     Parallelizable = dli->Parallelizable; 
-#ifdef KEY
     Vectorizable = dli->Vectorizable; 
     Delay_Full_Unroll = dli->Delay_Full_Unroll; 
-#endif
     Last_Value_Peeled = dli->Last_Value_Peeled; 
     Not_Enough_Parallel_Work = dli->Not_Enough_Parallel_Work; 
     Inside_Critical_Section = dli->Inside_Critical_Section;

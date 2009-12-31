@@ -76,9 +76,7 @@ static char *rcs_id = "$Source: be/lno/SCCS/s.doacross.cxx $";
 #include <stdlib.h>
 #include <limits.h>
 #include <math.h>
-#ifdef KEY // to get DBL_MAX
 #include <float.h>
-#endif
 #include "pu_info.h"
 #include "defs.h"
 #include "glob.h"
@@ -673,11 +671,6 @@ extern WN* Parallelize_Doacross_Loop(
       WN_MAP_Set(LNO_Info_Map,wn_if,(void *)if_info);
       LNO_Build_If_Access(wn_if, loop_stack);
 
-#if 0
-LWN_Delete_DU(wn_if);
-LWN_Delete_LNO_dep_graph(wn_if);
-LWN_Delete_Tree(wn_if);
-#endif
     }
 
     WN* wn_lower_do_while=NULL;
@@ -724,11 +717,6 @@ LWN_Delete_Tree(wn_if);
       WN_MAP_Set(LNO_Info_Map,wn_if,(void *)if_info);
       LNO_Build_If_Access(wn_if, loop_stack);
 
-#if 0
-LWN_Delete_DU(wn_if);
-LWN_Delete_LNO_dep_graph(wn_if);
-LWN_Delete_Tree(wn_if);
-#endif
     }
 
   }
@@ -881,11 +869,7 @@ static void Create_Sync_Structure () {
 
   st        = New_ST(is_global ? GLOBAL_SYMTAB : CURRENT_SYMTAB);
   ST_Init (st,
-#ifndef KEY
-           Save_Str("__mp_max_numthreads"),
-#else
            Save_Str("__ompc_max_numthreads"),
-#endif
            CLASS_VAR,
            SCLASS_EXTERN,
            EXPORT_PREEMPTIBLE,
@@ -1157,9 +1141,7 @@ extern void Doacross_Init(
       sync_offset_stid_stack->Push(wn);
       sync_length_stid_stack->Push(wn);
     } else if (opc==OPC_RETURN
-#ifdef KEY
   	       || opc==OPC_GOTO_OUTER_BLOCK
-#endif
 	       ) {
       sync_offset_ldid_stack->Push(wn);
       sync_length_ldid_stack->Push(wn);
