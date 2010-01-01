@@ -4715,12 +4715,6 @@ ETABLE::Perform_PRE_optimization(void)
   CXX_DELETE(_lftr,_etable_pool);
   if (WOPT_Enable_Hoisting)
     Delete_EXP_HOISTING(_exp_hoisting);
-
-#ifdef Is_True_On
-#if 0 // uncomment following line for lexically identical expr statistics
-    Count_lex_ident_exprs(cur_worklst_idx);
-#endif
-#endif
 }
 
 
@@ -5128,10 +5122,8 @@ XTABLE::Lexically_identical(CODEREP *cr1, CODEREP *cr2) const
     // check additional fields for specific opcodes
     if (cr1->Opr() == OPR_INTRINSIC_OP)
       if (cr1->Intrinsic() != cr2->Intrinsic()) return FALSE;
-#ifdef KEY
     if (cr1->Opr() == OPR_PURE_CALL_OP)
       if (cr1->Call_op_aux_id() != cr2->Call_op_aux_id()) return FALSE;
-#endif
     if (cr1->Opr() == OPR_CVTL)
       if (cr1->Offset() != cr2->Offset()) return FALSE;
   }
@@ -5159,9 +5151,7 @@ XTABLE::Hash(CODEREP *cr) const
   // CK_OP
   IDX_32 hvalue = 0;
   if (cr->Opr() != OPR_INTRINSIC_OP
-#ifdef KEY
       && cr->Opr() != OPR_PURE_CALL_OP
-#endif
      ) {
     for (INT32 i = 0; i < cr->Kid_count(); i++)
       hvalue += Hashvalue(cr->Opnd(i));

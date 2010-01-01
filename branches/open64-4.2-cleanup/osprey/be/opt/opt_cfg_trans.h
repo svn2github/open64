@@ -260,10 +260,9 @@ public:
   cluster_vector()   { cluster.push_back( cluster_type()); }
 };
 
-#ifdef KEY // fix g++ 3.2 problems
+// fix g++ 3.2 problems
 template <class C>
   bool operator!=(C x, C y) { return !(x == y); }
-#endif
 
 
 struct one_dimensional_container_tag {};
@@ -477,11 +476,8 @@ inline void topological_sort(Graph& in, Vertex_id root, Container& out)
 template <class Graph>
 void print_nodes(Graph& g, FILE *fp=stdout)
 {
-#ifdef KEY /* Mac port */
+  /* Mac port */
   fprintf(fp, "number of nodes %ld: ", (long) g.size());
-#else /* KEY Mac port */
-  fprintf(fp, "number of nodes %d: ", (INT)g.size());
-#endif /* KEY Mac port */
   for (typename Graph::cluster_iterator n = g.cluster_begin(); 
        n != g.cluster_end();
        ++n) {
@@ -688,14 +684,6 @@ struct path_type {
   path_type(vertex_id v, double w):wt(w) { add_bb(v); }
   path_type(path_type& path):bbs(path.bbs),wt(path.wt) {}
 };
-
-#ifndef KEY // workaround g++ 3.2 problem
-struct less<path_type*> {
-  bool operator()(path_type *p1, path_type *p2) {
-    return (*p1).wt < (*p2).wt;
-  }
-};
-#endif
 
 extern void print_path_type(path_type *, FILE *);
 extern void print_vertex_set(std::set<vertex_id> *, FILE *);

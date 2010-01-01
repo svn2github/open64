@@ -5922,11 +5922,7 @@ CFG::Find_entry_bb(void)
     BB_LIST_ITER bb_succ_iter;
     FOR_ALL_ELEM( succ, bb_succ_iter, Init(entry_bb->Succ()) ) {
       if ( succ->Kind() == BB_ENTRY && succ->Entrywn() &&
-#ifndef KEY
-	  !WN_Label_Is_Handler_Begin(succ->Entrywn()) 
-#else
 	  WN_operator(succ->Entrywn()) != OPR_LABEL
-#endif
 	   ) {
         // look for the real entry, and not an alternate one
         if ( WN_opcode(succ->Entrywn()) == OPC_FUNC_ENTRY)

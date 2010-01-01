@@ -477,10 +477,8 @@ public:
   // Only use AFTER SSA is done
   void         Delete_bb(BB_NODE *bb,
                          MOD_PHI_BB_CONTAINER *);
-#ifdef KEY
   void         Delete_bbs(BB_LIST *bbs,
                          MOD_PHI_BB_CONTAINER *);
-#endif
   BB_NODE     *Entry_bb(void)       const{ return _entry_bb; }
   BB_NODE     *Exit_bb(void)        const{ return _exit_bb; }
   BB_NODE     *Fake_entry_bb(void)  const{ return _fake_entry_bb; }
@@ -612,11 +610,9 @@ public:
   // Find a region with the given pragma, that encloses the given BB
   // Note that the region encloses "bb" and does not start with it
   BB_NODE *Find_enclosing_region_bb( BB_NODE *, WN_PRAGMA_ID );
-#ifdef KEY
   // Find a parallel region that dominates the given BB.
   // Note that the region encloses "bb" and does not start with it
   BB_NODE *Find_enclosing_parallel_region_bb( BB_NODE *);
-#endif
 
   // Determine if this loop is the outermost one in a parallel region
   // (any sort of parallel loop or region for which we probably do not

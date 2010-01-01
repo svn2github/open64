@@ -383,11 +383,9 @@ ESSA::Ilod_modified_real_occ_phi_opnd(const BB_NODE *def_bb, const CODEREP *cr,
     STMTREP *sr = vsym->Defstmt();
     if (sr == NULL || !OPCODE_is_store(sr->Op())) return TRUE;
 
-#ifdef KEY // bug 7814
     // NVISA:  this instance of the check so far seems to not cause a problem
     if (vsym->Aux_id() == Opt_stab()->Default_vsym())
       return TRUE;
-#endif
 
     if (Rule()->Aliased_Memop(sr->Lhs()->Points_to(Opt_stab()),
 			      cr->Points_to(Opt_stab()),
@@ -435,10 +433,8 @@ ESSA::Ilod_modified_real_occ_real_occ(const BB_NODE *def_bb,
     STMTREP *sr = vsym->Defstmt();
     if (sr == NULL || !OPCODE_is_store(sr->Op())) return TRUE;
 
-#ifdef KEY // bug 7814
     if (vsym->Aux_id() == Opt_stab()->Default_vsym())
       return TRUE;
-#endif
 
     if (Rule()->Aliased_Memop(sr->Lhs()->Points_to(Opt_stab()),
 			      use_cr->Points_to(Opt_stab()), 
@@ -542,9 +538,7 @@ ESSA::Same_e_version_real_occ_real_occ(const EXP_OCCURS *def,
       } 
   } else if (use->Occurrence()->Kind() == CK_OP && 
 	     (OPCODE_operator(use->Occurrence()->Op()) == OPR_INTRINSIC_OP
-#ifdef KEY
 	      || OPCODE_operator(use->Occurrence()->Op()) == OPR_PURE_CALL_OP
-#endif
 	     )) {
       
     for (INT32 i = 0; i < use->Occurrence()->Kid_count(); i++) {

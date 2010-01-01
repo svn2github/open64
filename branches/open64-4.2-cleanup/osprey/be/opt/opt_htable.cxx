@@ -3566,7 +3566,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
     cr->Init_op(WN_opcode(wn), kcnt);
     for (INT i = 0; i < kcnt; ++i) {
 // Bug 1573
-#if defined(KEY) && !defined(TARG_NVISA)
+#if !defined(TARG_NVISA)
       BOOL save_flag = WOPT_Enable_Input_Prop;
       if (OPERATOR_is_scalar_load (WN_operator(WN_kid(wn, i))) || OPERATOR_is_scalar_iload (WN_operator(WN_kid(wn, i))))
         WOPT_Enable_Input_Prop = FALSE;

@@ -489,12 +489,6 @@ ALIAS_CLASSIFICATION::New_base_id(const ST *st, TY_IDX ty)
 	   // global because its address can be stored into a global,
 	   // and it may contain the address of a global. Non-uplevel
 	   // references with SCLASS_AUTO are handled as locals above.
-	   // Including uplevel references here is the fix for 555533.
-	   // 634200 was a milder case of the same problem, and only
-	   // part of the fix was required to get that one right; that
-	   // bug made me mistakenly treat uplevel references as
-	   // parameters; 555533 makes clear that we have to go
-	   // all the way and treat them as globals.
 	   storage_class == SCLASS_AUTO    ||
 	   // storage class can be UNKNOWN for constant data because CG may
 	   // already have run for an earlier PU and in the process lowered

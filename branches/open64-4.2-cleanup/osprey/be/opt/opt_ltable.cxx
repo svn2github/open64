@@ -348,11 +348,7 @@ ETABLE::Perform_LPRE_optimization(void)
 #endif
 
   EXP_WORKLST *cur_worklst;
-# ifdef KEY
   INT32 cur_worklst_idx = 0;
-# else
-  INT32 cur_worklst_idx = -1;
-# endif
   INT total_phi_count = 0;
   INT total_opt_ssa_count = 0;
   INT total_dense_ssa_count = 0;

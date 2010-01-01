@@ -891,9 +891,7 @@ Found_aliasing_store_in_loop(POINTS_TO *pt, TY_IDX ty, BB_LOOP *loop,
     case OPR_EVAL:
     case OPR_PRAGMA:
     case OPR_XPRAGMA:
-#ifdef KEY
     case OPR_GOTO_OUTER_BLOCK:
-#endif
       break;
 
     default:
