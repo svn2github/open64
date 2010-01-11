@@ -152,13 +152,11 @@ extern void Set_Instrumentation_File_Name( char *fname );
 #define SWITCH_INSTRUMENT_NAME    "__profile_switch"
 #define COMPGOTO_INIT_NAME        "__profile_compgoto_init"
 #define COMPGOTO_INSTRUMENT_NAME  "__profile_compgoto"
-#ifdef KEY
 #define VALUE_FP_BIN_INIT_NAME          "__profile_value_fp_bin_init"
 #define VALUE_FP_BIN_INSTRUMENT_NAME    "__profile_value_fp_bin"
 
 #define VALUE_INIT_NAME          "__profile_value_init"
 #define VALUE_INSTRUMENT_NAME    "__profile_value"
-#endif
 
 
 // ====================================================================

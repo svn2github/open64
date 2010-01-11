@@ -54,9 +54,7 @@ Boston, MA 02110-1301, USA.  */
 #include "c-pragma.h"
 #include "tree-dump.h"
 #include "intl.h"
-#ifdef KEY
 #include "gspin-gcc-interface.h"
-#endif
 
 extern cpp_reader *parse_in;
 
@@ -1463,7 +1461,6 @@ decl_needed_p (tree decl)
   return false;
 }
 
-#ifdef KEY
 // Just like decl_needed_p but with TREE_SYMBOL_REFERENCED commented out.
 //
 // emit_tinfo_decl uses decl_maybe_needed_p instead of decl_needed_p.  We make
@@ -1503,7 +1500,6 @@ decl_maybe_needed_p (tree decl)
      reference to DECL might cause it to be emitted later.  */
   return false;
 }
-#endif
 
 /* If necessary, write out the vtables for the dynamic class CTYPE.
    Returns true if any vtables were emitted.  */
@@ -3070,9 +3066,7 @@ build_java_method_aliases (void)
     }
 }
 
-#ifdef KEY
 extern int processing_global_namespace;
-#endif
 
 /* This routine is called from the last rule in yyparse ().
    Its job is to create all the code needed to initialize and
@@ -3294,10 +3288,8 @@ cp_finish_file (void)
 	      && decl_needed_p (decl))
 	    DECL_EXTERNAL (decl) = 0;
 
-#ifdef KEY
           if (flag_spin_file && gspin_invoked(decl))
             gs_set_flag_value (decl, GS_DECL_EXTERNAL, DECL_EXTERNAL(decl));
-#endif
 
 	  /* If we're going to need to write this function out, and
 	     there's already a body for it, create RTL for it now.
@@ -3320,12 +3312,10 @@ cp_finish_file (void)
 	      if (flag_syntax_only)
 		TREE_ASM_WRITTEN (decl) = 1;
 	      reconsider = true;
-#ifdef KEY
               // This function is emitted by g++.  Catches functions that are
               // deferred by g++, such as those marked "inline".
               if (flag_spin_file)
                 gspin_gxx_emits_decl (decl);
-#endif
 	    }
 	}
 
@@ -3425,7 +3415,6 @@ cp_finish_file (void)
 
   finish_repo ();
 
-#ifdef KEY
   // Now that we are done with the file, process the global namespace.
   if (flag_spin_file)
   {
@@ -3439,7 +3428,6 @@ cp_finish_file (void)
       spun_global_namespace = 1;
     }
   }
-#endif
 
   /* The entire file is now complete.  If requested, dump everything
      to a file.  */

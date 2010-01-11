@@ -63,7 +63,7 @@
 #include <sys/types.h>
 #include <alloca.h>
 
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 #include <WINDOWS.h>
 #endif /* __MINGW32__ */
 #include "defs.h"

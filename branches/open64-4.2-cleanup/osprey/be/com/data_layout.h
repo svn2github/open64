@@ -137,9 +137,7 @@ extern ST* Get_Vararg_Symbol (PLOC);
  * Allocate the memory location for all global/static symbols.
  */
 extern void Allocate_File_Statics (void);
-#ifdef KEY
 extern void Assign_ST_To_Named_Section (ST *, STR_IDX);
-#endif
 
 /*
  * Pad global, C arrays
@@ -185,7 +183,7 @@ extern ST * Find_Special_Return_Address_Symbol (void);
 extern INT Stack_Offset_Adjustment_For_PU (void);
 
 extern void Set_Frame_Has_Calls(BOOL b);
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 /* return TRUE if function has calls */
 extern BOOL Stack_Frame_Has_Calls (void);
 #endif

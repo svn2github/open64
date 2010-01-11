@@ -52,7 +52,7 @@
  * ====================================================================
  */
 
-#if ! defined(BUILD_OS_DARWIN)
+#if !defined(BUILD_OS_DARWIN)
 #include <elf.h>		    /* for wn.h */
 #endif /* defined(BUILD_OS_DARWIN) */
 #ifndef _SYS_TYPES_H

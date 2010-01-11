@@ -2302,17 +2302,6 @@ arc_internal_label (FILE *stream, const char *prefix, unsigned long labelno)
 static void
 arc_external_libcall (rtx fun ATTRIBUTE_UNUSED)
 {
-#if 0
-/* On the ARC we want to have libgcc's for multiple cpus in one binary.
-   We can't use `assemble_name' here as that will call ASM_OUTPUT_LABELREF
-   and we'll get another suffix added on if -mmangle-cpu.  */
-  if (TARGET_MANGLE_CPU_LIBGCC)
-    {
-      fprintf (FILE, "\t.rename\t_%s, _%s%s\n",
-	       XSTR (SYMREF, 0), XSTR (SYMREF, 0),
-	       arc_mangle_suffix);
-    }
-#endif
 }
 
 /* Worker function for TARGET_RETURN_IN_MEMORY.  */

@@ -3560,18 +3560,6 @@ arm_legitimate_address_p (enum machine_mode mode, rtx x, RTX_CODE outer,
 		  && arm_legitimate_index_p (mode, xop0, outer, strict_p)));
     }
 
-#if 0
-  /* Reload currently can't handle MINUS, so disable this for now */
-  else if (GET_CODE (x) == MINUS)
-    {
-      rtx xop0 = XEXP (x, 0);
-      rtx xop1 = XEXP (x, 1);
-
-      return (arm_address_register_rtx_p (xop0, strict_p)
-	      && arm_legitimate_index_p (mode, xop1, outer, strict_p));
-    }
-#endif
-
   else if (GET_MODE_CLASS (mode) != MODE_FLOAT
 	   && code == SYMBOL_REF
 	   && CONSTANT_POOL_ADDRESS_P (x)

@@ -117,11 +117,9 @@ typedef enum {
   MPP_PARALLEL_REGION,
   MPP_MASTER,
   MPP_ORPHANED_MASTER,
-#ifdef KEY /* Bug 4828 */
   MPP_WORKSHARE,
   MPP_ORPHANED_WORKSHARE,
   MPP_ORPHAN
-#endif
 } MP_process_type;
 
 extern WN * Gen_OMP_Begin_SPR (MP_process_type mpt);

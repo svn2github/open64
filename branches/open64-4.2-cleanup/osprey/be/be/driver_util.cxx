@@ -88,17 +88,13 @@ static STRING *phase_argv[PHASE_COUNT];
 static UINT phase_max_argc[PHASE_COUNT];
 
 /* Options based on user flags:	*/
-# define MAX_MSG_LEVEL 2
+#define MAX_MSG_LEVEL 2
 
 /* Default file	extensions: */
 #define	ERR_FILE_EXTENSION ".e"	    /* Error file */
 #define	TRC_FILE_EXTENSION ".t"	    /* Trace file */
 #define IRB_FILE_EXTENSION ".B"	    /* WHIRL file */
-#ifdef KEY	// bug 4711
 #define LST_FILE_EXTENSION ".lst"    /* Listing file */
-#else
-#define LST_FILE_EXTENSION ".l"	    /* Listing file */
-#endif
 #define TLOG_FILE_EXTENSION ".tlog" /* Transformation log file */
 
 static BOOL Tlog_Enabled = FALSE;
@@ -207,7 +203,7 @@ Process_Command_Line (INT argc, char **argv)
 
 	    switch ( *cp++ ) {
               
-#ifdef TARG_IA64         
+#if defined(TARG_IA64)
 	    case 'I':       /* CG-specific */
 	                    /* -IPFEC: IPFEC related options */
 	        add_phase_args (PHASE_CG, argv[i]);
@@ -313,7 +309,7 @@ Process_Command_Line (INT argc, char **argv)
 	    case 'g':		    /* Debug level: */
 		Debug_Level = Get_Numeric_Flag (&cp, 0, MAX_DEBUG_LEVEL, 2,
 						argv[i]);
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
 		if (Debug_Level > 0 && !opt_set)
 #else
 		if (Debug_Level > 1 && !opt_set)

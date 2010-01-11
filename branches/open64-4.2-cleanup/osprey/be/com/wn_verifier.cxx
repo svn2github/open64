@@ -357,9 +357,7 @@ WN_Verifier::WN_traverse_tree(WN *wn, WN *parent_wn)
       case OPR_INTRINSIC_CALL:
       case OPR_IO:
       case OPR_INTRINSIC_OP:
-#ifdef KEY
       case OPR_PURE_CALL_OP:
-#endif
  	   // Check if children of the CALL node are
 	   // are PARMS
            _is_tree_OK &= Call_children_are_PARM(wn);
@@ -508,7 +506,7 @@ WN_Verifier::Is_return_register_of_call(WN *call_wn, PREG_NUM preg)
 
     RETURN_INFO return_info = Get_Return_Info (TY_ret_type (Ty_Table[PU_prototype (pu)]),
 					       Complex_Not_Simulated
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 					       , PU_ff2c_abi(pu)
 #endif
 					      );
@@ -693,9 +691,7 @@ BOOL WN_Verifier::Param_parent_is_Call(WN *wn,WN *parent_wn)
     if (opr == OPR_CALL || opr == OPR_ICALL ||
         opr == OPR_INTRINSIC_CALL ||
         opr == OPR_PICCALL || opr == OPR_IO ||
-#ifdef KEY
 	opr == OPR_PURE_CALL_OP ||
-#endif
         opr == OPR_INTRINSIC_OP)
     {
       // It is ok, the parents of the PARM is a Call node.
@@ -728,9 +724,7 @@ BOOL WN_Verifier::Call_children_are_PARM(WN *wn)
   if (opr == OPR_CALL || 
       opr == OPR_INTRINSIC_CALL || 
       opr == OPR_INTRINSIC_OP   ||
-#ifdef KEY
       opr == OPR_PURE_CALL_OP   ||
-#endif
       opr == OPR_IO) 
   {
     for(INT32 i=0; i < WN_kid_count(wn); i++)
@@ -818,13 +812,9 @@ BOOL WN_Verifier::LDA_ty_not_NULL(WN *wn)
 		    "either NULL or is not a pointer or scalar",
 		    OPCODE_name(opc));
 	    if (DevWarn_Enabled()) {
-#ifdef KEY // print type name only for shorter output
 	      if (TY_name_idx(ty) == 0)
 		fprintf(stderr, "(anon)\n");
 	      else fprintf(stderr, "%s\n", TY_name(ty));
-#else
-	    ty.Print (stderr);
-#endif
 	    }
 	    return FALSE;
 	}
@@ -852,7 +842,7 @@ BOOL WN_Verifier::STID_check_st_class(WN *wn)
 	      "not CLASS: VAR, PREG or Block but %d", ST_class(st));
       return FALSE;
     } 
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
     if ( (ST_class(st) == CLASS_PREG) && 
          (Is_dedicated_return_register(WN_offset(wn))) )
     {
@@ -1284,11 +1274,8 @@ Rename_INITV_Labels(INITO_IDX inito_idx, LABEL_RENAMING_MAP *lab_map,
                           INITV_lab1(val_idx);
           if (lab_map->Find(lab))
             renamed_labels_found = TRUE;
-#ifdef KEY
-          // bug 5193
           else
             val_idx = INITV_next(val_idx);
-#endif // KEY
         }
         break;
 

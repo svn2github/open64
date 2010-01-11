@@ -3183,10 +3183,6 @@ cxx_init_decl_processing (void)
 
   empty_except_spec = build_tree_list (NULL_TREE, NULL_TREE);
 
-#if 0
-  record_builtin_type (RID_MAX, NULL, string_type_node);
-#endif
-
   delta_type_node = ptrdiff_type_node;
   vtable_index_type = ptrdiff_type_node;
 
@@ -4278,17 +4274,6 @@ layout_var_decl (tree decl)
       error ("storage size of %qD isn't known", decl);
       TREE_TYPE (decl) = error_mark_node;
     }
-#if 0
-  /* Keep this code around in case we later want to control debug info
-     based on whether a type is "used".  (jason 1999-11-11) */
-
-  else if (!DECL_EXTERNAL (decl) && IS_AGGR_TYPE (ttype))
-    /* Let debugger know it should output info for this type.  */
-    note_debug_info_needed (ttype);
-
-  if (TREE_STATIC (decl) && DECL_CLASS_SCOPE_P (decl))
-    note_debug_info_needed (DECL_CONTEXT (decl));
-#endif
 
   if ((DECL_EXTERNAL (decl) || TREE_STATIC (decl))
       && DECL_SIZE (decl) != NULL_TREE
@@ -6942,10 +6927,6 @@ grokdeclarator (const cp_declarator *declarator,
   bool funcdef_flag = false;
   cp_declarator_kind innermost_code = cdk_error;
   int bitfield = 0;
-#if 0
-  /* See the code below that used this.  */
-  tree decl_attr = NULL_TREE;
-#endif
 
   /* Keep track of what sort of function is being processed
      so that we can warn about default return values, or explicit
@@ -7226,11 +7207,6 @@ grokdeclarator (const cp_declarator *declarator,
   explicit_int = declspecs->explicit_int_p;
   explicit_char = declspecs->explicit_char_p;
 
-#if 0
-  /* See the code below that used this.  */
-  if (typedef_decl)
-    decl_attr = DECL_ATTRIBUTES (typedef_decl);
-#endif
   typedef_type = type;
 
 
@@ -8429,11 +8405,6 @@ grokdeclarator (const cp_declarator *declarator,
 			       funcdef_flag, template_count, in_namespace, attrlist);
 	    if (decl == NULL_TREE)
 	      return error_mark_node;
-#if 0
-	    /* This clobbers the attrs stored in `decl' from `attrlist'.  */
-	    /* The decl and setting of decl_attr is also turned off.  */
-	    decl = build_decl_attribute_variant (decl, decl_attr);
-#endif
 
 	    /* [class.conv.ctor]
 
@@ -9010,10 +8981,8 @@ grokparms (cp_parameter_declarator *first_parm, tree *parms)
 
 
 
-#ifdef KEY
 // For gs_x ():
 int (*p_copy_fn_p) (tree) = copy_fn_p;
-#endif
 
 /* D is a constructor or overloaded `operator='.
 
@@ -11296,7 +11265,7 @@ finish_function (int flags)
 	     return; see g++.dg/opt/nrv6.C.  We could be more flexible if
 	     we were to do this optimization in tree-ssa.  */
 	  && (outer = outer_curly_brace_block (fndecl))
-#if defined(KEY) && defined(TARG_X8664)
+#if defined(TARG_X8664)
 	  && (!flag_spin_file || TREE_CODE(TREE_TYPE(TREE_TYPE(fndecl))) != VECTOR_TYPE)
 #endif
 	  && chain_member (r, BLOCK_VARS (outer)))
@@ -11345,11 +11314,9 @@ finish_function (int flags)
     {
       struct language_function *f = DECL_SAVED_FUNCTION_DATA (fndecl);
 
-#ifdef KEY
       /* We genericize later, in tree_rest_of_compilation, so that
          we can work on the TREE before gimplification. */
       if (!flag_spin_file)
-#endif
       cp_genericize (fndecl);
       /* Clear out the bits we don't need.  */
       f->x_current_class_ptr = NULL;

@@ -42,15 +42,11 @@ Boston, MA 02110-1301, USA.  */
 #define PTRDIFF_TYPE (TARGET_64BIT ? "long int" : "int")
 
 #undef WCHAR_TYPE
-#ifdef KEY
 /* bug 10532: For i386 hosts, cc1/cc1plus should have been configured
    for i386. We work around it by trying to mimick this configure when
    key_i386_host is set. This assumes the only configure to build
    cc1/cc1plus is done on x8664 host. */
 #define WCHAR_TYPE (key_i386_host ? "long int" : "int")
-#else
-#define WCHAR_TYPE "int"
-#endif
 
 #undef WCHAR_TYPE_SIZE
 #define WCHAR_TYPE_SIZE 32

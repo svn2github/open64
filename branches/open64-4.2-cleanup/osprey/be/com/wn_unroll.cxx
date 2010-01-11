@@ -214,7 +214,7 @@ WN_UNROLL::Analyze_body_expr(WN *tree)
   case OPR_PARM:
   case OPR_TAS:
   case OPR_RND: case OPR_TRUNC: case OPR_CEIL: case OPR_FLOOR:
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   case OPR_REPLICATE:
   case OPR_REDUCE_ADD: case OPR_REDUCE_MPY: 
   case OPR_REDUCE_MAX: case OPR_REDUCE_MIN:
@@ -343,12 +343,7 @@ WN_UNROLL::Replicate_expr(WN *expr, INT rep_cnt)
   INT i;
 
   WN *new_expr = WN_CopyNode(expr);
-#if 0
-  WN_COPY_All_Maps(new_expr, expr);
-#else
   WN_set_map_id(new_expr, (WN_MAP_ID) (-1));
-#endif
-
 
   switch (opr) {
   // leaves
@@ -380,7 +375,7 @@ WN_UNROLL::Replicate_expr(WN *expr, INT rep_cnt)
   case OPR_PARM:
   case OPR_TAS:
   case OPR_RND: case OPR_TRUNC: case OPR_CEIL: case OPR_FLOOR:
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   case OPR_REPLICATE:
   case OPR_REDUCE_ADD: case OPR_REDUCE_MPY: 
   case OPR_REDUCE_MAX: case OPR_REDUCE_MIN:
@@ -456,11 +451,7 @@ WN_UNROLL::Replicate_stmt(WN *stmt, INT rep_cnt)
     }
 
   WN *new_stmt = WN_CopyNode(stmt);
-#if 0
-  WN_COPY_All_Maps(new_stmt, stmt);
-#else
   WN_set_map_id(new_stmt, (WN_MAP_ID) (-1));
-#endif
 
   switch (opr) {
   case OPR_COMMENT:
@@ -660,7 +651,7 @@ WN_UNROLL_loop(WN *doloop)
   USRCPOS srcpos;
   USRCPOS_srcpos(srcpos)  = WN_Get_Linenum(doloop);
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   ++loop_count;
   if ( Query_Skiplist ( WOPT_Unroll_Skip_List, loop_count ) )
     return;
@@ -704,12 +695,6 @@ DevWarn("unrolled size would be %d * %d", wn_unroll.Node_count(), unroll_times);
     // use the size limit if there was no pragma specified unroll amount
     if (pragma_unroll_times == 0 && (unroll_times * wn_unroll.Node_count()) > max_unroll_size)
       return;	// too big
-#if 0
-    if (unroll_times > OPT_unroll_times)
-      return;	// too big
-    if (wn_unroll.Node_count() > OPT_unroll_size)
-      return;	// too big
-#endif
   }
   else
     return;	// no loop info
@@ -859,7 +844,7 @@ WN_UNROLL_suitable(WN *tree)
 void
 WN_unroll(WN *tree)
 {
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   UINT32 saved_unrolled_size_max;
   UINT32 saved_unroll_times_max;
 #endif
@@ -867,7 +852,7 @@ WN_unroll(WN *tree)
   if (WOPT_Enable_WN_Unroll == 0)
     return;
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   if (WN_Loop_Multiversion_Alias(tree)) {
     saved_unrolled_size_max = OPT_unroll_size;
     saved_unroll_times_max = OPT_unroll_times;
@@ -893,7 +878,7 @@ WN_unroll(WN *tree)
 
   WN_verifier(tree);
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   if (WN_Loop_Multiversion_Alias(tree)) {
     OPT_unroll_size = saved_unrolled_size_max;
     OPT_unroll_times = saved_unroll_times_max;

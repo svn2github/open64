@@ -238,7 +238,11 @@ INT Need_load_type_conversion(BOOL source_sign_extd, BOOL target_sign_extd,
     if (source_sign_extd) {            // !targ_sign_extd
       *opc = (OPCODE) OPC_U8U4CVT;
     } else {                           // targ_sign_extd && !source_sign_extd
+<<<<<<< .mine
+#ifdef TARG_MIPS
+=======
 #if defined(TARG_MIPS)
+>>>>>>> .r2759
       *opc = (OPCODE) OPC_I4U8CVT;  // Bug 13308: MIPS treats I8I4CVT as NOP.
 #else
       *opc = (OPCODE) OPC_I8I4CVT;
@@ -358,7 +362,7 @@ INT Actual_data_size(WN *wn)
 
   case OPR_LDID:
   case OPR_ILOAD:
-    if (MTYPE_is_signed(rtype))  // pv 361929
+    if (MTYPE_is_signed(rtype))  
       return MTYPE_size_min(rtype);
     else
       return MTYPE_size_min(WN_desc(wn));
@@ -395,7 +399,7 @@ INT Actual_data_size(WN *wn)
         if (opr == OPR_SHL) {
 	  if (MTYPE_is_unsigned(rtype)) {
             actual_size += bit_cnt;
-            if (actual_size > MTYPE_size_min(rtype)) // pv 364274
+            if (actual_size > MTYPE_size_min(rtype)) 
               actual_size = MTYPE_size_min(rtype);
 	  }
 	  else actual_size = MTYPE_size_min(rtype);

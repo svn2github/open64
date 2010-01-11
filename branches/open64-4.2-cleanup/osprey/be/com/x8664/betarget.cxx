@@ -111,7 +111,7 @@ OPCODE_To_TOP (OPCODE opcode)
   case OPR_PAREN:
     if (rtype == MTYPE_F4) return TOP_noop;
     else if (rtype == MTYPE_F8) return TOP_noop;
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
     else if (rtype == MTYPE_FQ) return TOP_noop;
     else if (rtype == MTYPE_I1) return TOP_noop;
     else if (rtype == MTYPE_I2) return TOP_noop;

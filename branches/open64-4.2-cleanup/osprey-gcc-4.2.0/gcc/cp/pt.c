@@ -5159,10 +5159,8 @@ for_each_template_parm (tree t, tree_fn_t fn, void* data,
   return result;
 }
 
-#ifdef KEY
 // For gs_x ().
 int (*p_uses_template_parms) (tree) = uses_template_parms;
-#endif
 
 /* Returns true if T depends on any template parameter.  */
 
@@ -11438,10 +11436,8 @@ most_specialized_instantiation (tree templates)
   return champ;
 }
 
-#ifdef KEY
 // For gs_x ():
 tree (*p_most_general_template) (tree) = most_general_template;
-#endif
 
 /* If DECL is a specialization of some template, return the most
    general such template.  Otherwise, returns NULL_TREE.

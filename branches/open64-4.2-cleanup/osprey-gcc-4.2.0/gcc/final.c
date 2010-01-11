@@ -4070,23 +4070,17 @@ rest_of_clean_state (void)
   return 0;
 }
 
-#ifdef KEY
 static bool
 gate_rest_of_clean_state (void)
 {
   /* Do nothing for libspin */
   return flag_spin_file == 0;
 }
-#endif
 
 struct tree_opt_pass pass_clean_state =
 {
   NULL,                                 /* name */
-#ifdef KEY
   gate_rest_of_clean_state,             /* gate */
-#else
-  NULL,                                 /* gate */
-#endif
   rest_of_clean_state,                  /* execute */
   NULL,                                 /* sub */
   NULL,                                 /* next */

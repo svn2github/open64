@@ -139,9 +139,7 @@
 //
 // ====================================================================
 
-#ifdef KEY
 static WN* pu_wn = NULL;
-#endif
 
 
 #define TNV_N 10
@@ -187,10 +185,8 @@ private:
   UINT32             _count_switch;
   UINT32             _count_compgoto;
   UINT32             _fb_count_icall;
-#ifdef KEY
   UINT32             _count_value;
   UINT32             _count_value_fp_bin;
-#endif
 
   // _instrument_count is total number of WHIRL nodes that have been
   //   instrumented/annotated; used as a checksum
@@ -415,7 +411,6 @@ private:
   void Instrument_Compgoto( WN *wn, INT32 id, WN *block );
   void Initialize_Instrumenter_Compgoto( INT32 count );
   void Annotate_Compgoto( WN *wn, INT32 id );
-#ifdef KEY
   void Initialize_Instrumenter_Value( INT32 count );
   void Instrument_Value( WN *wn, INT32 id, WN *block );
   void Annotate_Value( WN *wn, INT32 id );
@@ -423,16 +418,11 @@ private:
   void Instrument_Value_FP_Bin( WN *wn, INT32 id, WN *block, WN *parent, 
 				WN *stmt );
   void Annotate_Value_FP_Bin( WN *wn, INT32 id );
-#endif
 
   // ------------------------------------------------------------------
 
   // Walk the tree and perform instrumentation or annotate feedback
-#ifndef KEY
-  void Tree_Walk_Node( WN *wn, WN *stmt, WN *block );
-#else
   void Tree_Walk_Node( WN *wn, WN *stmt, WN *block, WN* parent = NULL );
-#endif
    
 protected:
   void Merge_Icall_Feedback();
@@ -622,10 +612,8 @@ WN_INSTRUMENT_WALKER::WN_INSTRUMENT_WALKER( BOOL instrumenting,
     _count_icall( 0 ),
     _count_switch( 0 ),
     _count_compgoto( 0 ),
-#ifdef KEY
     _count_value( 0 ),
     _count_value_fp_bin( 0 ),
-#endif
     _instrument_count( 0 ),
     _pu_handle( NULL ),
     _fb_handle( fb_handles ),
@@ -991,26 +979,6 @@ WN_INSTRUMENT_WALKER::Annotate_Loop( WN *wn, INT32 id )
 
 // ====================================================================
 
-
-// WN * 
-// SHORT_CIRCUIT_INSTRUMENTER::Instrument_Clause(WN *clause, WN *call)
-// {
-//   OPERATOR opr = OPCODE_operator(WN_opcode(clause));
-//   WN *comma;
-//
-//   if (opr == OPR_COMMA) {
-//     comma = clause;
-//   } else {
-//     comma = WN_Create(OPR_COMMA, WN_rtype(clause), MTYPE_V, 2);
-//     WN_kid(comma, 0) = WN_CreateBlock();
-//     WN_kid(comma, 1) = clause;
-//   }
-//
-//   WN_INSERT_BlockFirst(WN_kid(comma, 0), call);
-//   return comma;
-// }
-
-
 void
 WN_INSTRUMENT_WALKER::Instrument_Circuit( WN *wn, INT32 id )
 {
@@ -1148,7 +1116,6 @@ WN_INSTRUMENT_WALKER::Initialize_Instrumenter_Icall( INT32 count )
 			      PU_Handle(), total_icalls ) );
 }
 
-#ifdef KEY
 void WN_INSTRUMENT_WALKER::Initialize_Instrumenter_Value_FP_Bin( INT32 count )
 {
   if ( count == 0 ) return;
@@ -1345,7 +1312,6 @@ void WN_INSTRUMENT_WALKER::Annotate_Value( WN *wn, INT32 id )
 
   v2f_map.clear();
 }
-#endif
 
 void
 WN_INSTRUMENT_WALKER::Annotate_Call( WN *wn, INT32 id )
@@ -1593,15 +1559,9 @@ WN_INSTRUMENT_WALKER::Annotate_Compgoto( WN *wn, INT32 id )
 //
 // ====================================================================
 
-
-#ifndef KEY
-void
-WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block )
-#else
 void
 WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
 				      WN* parent )
-#endif
 {
   OPERATOR opr = WN_operator( wn );
 
@@ -1626,9 +1586,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
   }
 
   else if ( opr == OPR_REGION 
-#ifdef KEY // bug 8284
     	    && _instrumenting
-#endif
     	  ) {
 
     // temp for _pu_handle must be scoped SHARED within PARALLEL regions
@@ -1687,7 +1645,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
       TYPE_ID val_type = WN_rtype( WN_kid( wn, 1 ) );
       WN *ldidpreg = WN_kid(wn, 1);
       WN *stid;
-#ifdef KEY // bug 12245: preg cannot be used for complex types
+    // preg cannot be used for complex types
       if (MTYPE_is_complex(val_type)) {
 	ST *val_st = Gen_Temp_Symbol(MTYPE_TO_TY_array[val_type],"_call_comma");
 	stid = WN_Stid(val_type, 0, val_st, WN_ty(ldidpreg), ldidpreg );
@@ -1697,7 +1655,6 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
 	WN_kid( wn, 1 ) = WN_Ldid(val_type, 0, val_st, WN_ty(ldidpreg));
       }
       else {
-#endif
       PREG_NUM val = Create_Preg( val_type, "__call_comma" );
       stid = WN_StidIntoPreg( val_type, val, MTYPE_To_PREG( val_type ),
 				  ldidpreg );
@@ -1705,34 +1662,23 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
       
       // Comma now returns value of preg
       WN_kid( wn, 1 ) = WN_LdidPreg( val_type, val );
-#ifdef KEY // bug 12245
       }
-#endif
     }
 
     // Traverse the kids of the current expression
     for ( INT32 i = 0; i < WN_kid_count( wn ); i++ )
-#ifndef KEY
-      Tree_Walk_Node( WN_kid( wn, i ), stmt, block );
-#else
       Tree_Walk_Node( WN_kid( wn, i ), stmt, block, wn );
-#endif
 
   } else {
 
     // Traverse the kids of the current statement
     for ( INT32 i = 0; i < WN_kid_count( wn ); i++ )
-#ifndef KEY
-      Tree_Walk_Node( WN_kid( wn, i ), wn, block );
-#else
       Tree_Walk_Node( WN_kid( wn, i ), wn, block, wn );
-#endif
   }
 
   // Perform the instrumentation or annotation of the current node
   switch ( opr ) {
 
-#ifdef KEY
   case OPR_MPY:
     if (! OPT_FP_Value_Instr)
       break;
@@ -1760,7 +1706,6 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
 	Annotate_Value( wn, id );
     }
     break;
-#endif
 
   case OPR_PRAGMA:
     if ( WN_pragma( wn ) != WN_PRAGMA_PREAMBLE_END )
@@ -1843,24 +1788,18 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
       _instrument_count++;
       INT32 idcall = _count_call++;
       INT32 idicall;
-#ifdef KEY
       if (OPT_Icall_Instr) 
-#endif
 	idicall = _count_icall++;
       if (_instrumenting)
 	{
 	  Instrument_Call( wn, idcall, block);
-#ifdef KEY
 	  if (OPT_Icall_Instr) 
-#endif
 	    Instrument_Icall( wn, idicall, block);
 	}
       else
 	{
 	  Annotate_Call( wn, idcall);
-#ifdef KEY
 	  if (OPT_Icall_Instr) 
-#endif
 	    Annotate_Icall( wn, idicall);
 	}
     }
@@ -1894,9 +1833,6 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
   if ( opr == OPR_REGION ) {
     if ( _vho_lower ) {
       WN_region_body( wn ) = VHO_Lower( WN_region_body( wn ) );
-#ifndef KEY
-      _vho_lower = FALSE;
-#endif
     }
   }
 }
@@ -2063,9 +1999,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
     }
   }
 
-#ifdef KEY
   pu_wn = root;
-#endif
    
   // Instrument all statements after (and including) the preamble end;
   // Do not instrument statements in the preamble
@@ -2107,7 +2041,6 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
       WN *checksum = WN_Intconst( MTYPE_I4, _instrument_count );
       // r2 = __profile_pu_init( src_file_name, pu_name, pc, pusize, checksum )
 
-#ifdef KEY
       /* The body of an "extern __inline__" function will not be emitted.
 	 So don't bother to mention its name in the instrumented assemble
 	 file (bug#2255).
@@ -2115,7 +2048,6 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
       if( PU_is_extern_inline(Get_Current_PU()) ){
 	pc = WN_Zerocon( Pointer_type );
       }
-#endif
       Instrument_Entry( Gen_Call( PU_INIT_NAME, src_file_name,
 				  pu_name, pc, pusize, checksum, Pointer_type ) );
 	  
@@ -2126,7 +2058,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
 
 	RETURN_INFO return_info
 	  = Get_Return_Info( Be_Type_Tbl( Pointer_type ), Use_Simulated
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 	  		     , PU_ff2c_abi(Get_Current_PU())
 #endif
 	  		   );
@@ -2155,11 +2087,9 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
       Initialize_Instrumenter_Icall(    _count_icall     );
       Initialize_Instrumenter_Switch(   _count_switch   );
       Initialize_Instrumenter_Compgoto( _count_compgoto );
-#ifdef KEY
       Initialize_Instrumenter_Value( _count_value );
 #if !defined(TARG_SL)
       Initialize_Instrumenter_Value_FP_Bin( _count_value_fp_bin );
-#endif
 #endif
       Pop_Entry_Pragma();
     }
@@ -2178,17 +2108,8 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
 	  
       UINT32 checksum = Get_PU_Checksum( *i );
 	
-#ifdef KEY
       if (_instrument_count != checksum)
 	ErrMsg(EC_FB_File_Old, (*i)->fb_name);
-#else
-      FmtAssert( _instrument_count == checksum,
-		 ( "Instrumenter Error: (Phase %d) Suspected obsolete feedback file %s has "
-		   "invalid checksum for program unit %s in file %s. "
-		   "Computed = %d, In file = %d.",
-		   _phase, (*i)->fb_name, Cur_PU_Name, Src_File_Name,
-		   _instrument_count, checksum ) );
-#endif
     }
   }
 
@@ -2275,11 +2196,7 @@ WN_Annotate( WN *wn, PROFILE_PHASE phase, MEM_POOL *MEM_pu_pool )
     = Get_PU_Profile( Cur_PU_Name, Src_File_Name,
 		      Feedback_File_Info[phase] );
   if ( fb_handles.empty() ) {
-#ifdef KEY
     DevWarn( "Function %s() is not called in the training run", Cur_PU_Name );
-#else
-    DevWarn( "Cannot find expected feedback data - function not called?" );
-#endif
     return;
   } else {
     // Use CXX_DELETE( Cur_PU_Feedback, MEM_pu_pool ); first if not NULL??
@@ -2300,7 +2217,6 @@ WN_Annotate( WN *wn, PROFILE_PHASE phase, MEM_POOL *MEM_pu_pool )
   MEM_POOL_Pop( &local_mempool );
   MEM_POOL_Delete( &local_mempool );
 
-#ifdef KEY
   Cur_PU_Feedback->Set_Runtime_Func_Addr( 0 );  
 
   for( PU_PROFILE_ITERATOR i( fb_handles.begin() );
@@ -2316,7 +2232,6 @@ WN_Annotate( WN *wn, PROFILE_PHASE phase, MEM_POOL *MEM_pu_pool )
       break;
     }
   }
-#endif
 
   Cur_PU_Feedback->Verify("after annotation");
 }

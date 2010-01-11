@@ -1719,16 +1719,6 @@ extern const enum reg_class mips_regno_to_class[];
    memory and loading that memory location into a register of CLASS2.
 
    Do not define this macro if its value would always be zero.  */
-#if 0
-#define SECONDARY_MEMORY_NEEDED(CLASS1, CLASS2, MODE)			\
-  ((!TARGET_DEBUG_H_MODE						\
-    && GET_MODE_CLASS (MODE) == MODE_INT				\
-    && ((CLASS1 == FP_REGS && GR_REG_CLASS_P (CLASS2))			\
-	|| (GR_REG_CLASS_P (CLASS1) && CLASS2 == FP_REGS)))		\
-   || (TARGET_FLOAT64 && !TARGET_64BIT && (MODE) == DFmode		\
-       && ((GR_REG_CLASS_P (CLASS1) && CLASS2 == FP_REGS)		\
-	   || (GR_REG_CLASS_P (CLASS2) && CLASS1 == FP_REGS))))
-#endif
 /* The HI and LO registers can only be reloaded via the general
    registers.  Condition code registers can only be loaded to the
    general registers, and from the floating point registers.  */
@@ -2236,14 +2226,10 @@ typedef struct mips_args {
 
    On RISC machines, it tends to generate better code to define
    this as 1, since it avoids making a QI or HI mode register.  */
-#ifdef KEY
 /* Bug 14214: On mips5kf, nothing is gained by using I8 instead
  * of I1, I2, or I4, and using larger sizes can trigger backend
  * bugs. */
 #define SLOW_BYTE_ACCESS 0
-#else
-#define SLOW_BYTE_ACCESS 1
-#endif
 
 /* Define this to be nonzero if shift instructions ignore all but the low-order
    few bits.  */

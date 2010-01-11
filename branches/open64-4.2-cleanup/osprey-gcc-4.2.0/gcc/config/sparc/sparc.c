@@ -1881,10 +1881,6 @@ sparc_emit_set_const64 (rtx op0, rtx op1)
     }
 
   /* The easiest way when all else fails, is full decomposition.  */
-#if 0
-  printf ("sparc_emit_set_const64: Hard constant [%08lx%08lx] neg[%08lx%08lx]\n",
-	  high_bits, low_bits, ~high_bits, ~low_bits);
-#endif
   sparc_emit_set_const64_longway (op0, temp, high_bits, low_bits);
 }
 #endif /* HOST_BITS_PER_WIDE_INT == 32 */
@@ -1976,7 +1972,6 @@ gen_compare_reg (enum rtx_code code)
      deal, but if we win, great!  */
 
   if (TARGET_V9 && GET_MODE_CLASS (GET_MODE (x)) == MODE_FLOAT)
-#if 1 /* experiment */
     {
       int reg;
       /* We cycle through the registers to ensure they're all exercised.  */
@@ -1997,9 +1992,6 @@ gen_compare_reg (enum rtx_code code)
 	}
       cc_reg = gen_rtx_REG (mode, reg + SPARC_FIRST_V9_FCC_REG);
     }
-#else
-    cc_reg = gen_reg_rtx (mode);
-#endif /* ! experiment */
   else if (GET_MODE_CLASS (GET_MODE (x)) == MODE_FLOAT)
     cc_reg = gen_rtx_REG (mode, SPARC_FCC_REG);
   else
@@ -5132,20 +5124,6 @@ function_arg (const struct sparc_args *cum, enum machine_mode mode,
 	{
 	  /* "* 2" because fp reg numbers are recorded in 4 byte
 	     quantities.  */
-#if 0
-	  /* ??? This will cause the value to be passed in the fp reg and
-	     in the stack.  When a prototype exists we want to pass the
-	     value in the reg but reserve space on the stack.  That's an
-	     optimization, and is deferred [for a bit].  */
-	  if ((regno - SPARC_FP_ARG_FIRST) >= SPARC_INT_ARG_MAX * 2)
-	    return gen_rtx_PARALLEL (mode,
-			    gen_rtvec (2,
-				       gen_rtx_EXPR_LIST (VOIDmode,
-						NULL_RTX, const0_rtx),
-				       gen_rtx_EXPR_LIST (VOIDmode,
-						reg, const0_rtx)));
-	  else
-#else
 	  /* ??? It seems that passing back a register even when past
 	     the area declared by REG_PARM_STACK_SPACE will allocate
 	     space appropriately, and will not copy the data onto the
@@ -5155,7 +5133,6 @@ function_arg (const struct sparc_args *cum, enum machine_mode mode,
 	     expand_call whenever reg_parm_stack_space > 0, which
 	     while beneficial to our example here, would seem to be
 	     in error from what had been intended.  Ho hum...  -- r~ */
-#endif
 	    return reg;
 	}
       else

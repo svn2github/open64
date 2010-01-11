@@ -226,7 +226,7 @@ main()
   tmp1 = Create_Reg_Property("tmp1");
   tmp2 = Create_Reg_Property("tmp2");
   ret_addr = Create_Reg_Property("ret_addr");
-  #ifdef TARG_SL
+  #if defined(TARG_SL)
   jump_addr = Create_Reg_Property("jump_addr"); 
   loop_count = Create_Reg_Property("loop_count");
   accum = Create_Reg_Property("accum");
@@ -245,7 +245,7 @@ main()
 #endif
   hi_reg = Create_Reg_Property("hi_reg");
   lo_reg= Create_Reg_Property("lo_reg");
-#ifdef TARG_SL
+#if defined(TARG_SL)
   acc0 = Create_Reg_Property("acc0");
   acc1 = Create_Reg_Property("acc1");
   acc2 = Create_Reg_Property("acc2");

@@ -58,9 +58,6 @@
    degenerate form of parsing.  */
 
 static tree maybe_convert_cond (tree);
-#ifndef KEY
-static
-#endif
 tree simplify_aggr_init_exprs_r (tree *, int *, void *);
 static void emit_associated_thunks (tree);
 static tree finalize_nrv_r (tree *, int *, void *);
@@ -2936,9 +2933,6 @@ finish_offsetof (tree expr)
 /* Called from expand_body via walk_tree.  Replace all AGGR_INIT_EXPRs
    with equivalent CALL_EXPRs.  */
 
-#ifndef KEY
-static
-#endif
 tree simplify_aggr_init_exprs_r (tree* tp,
 			    int* walk_subtrees,
 			    void* data ATTRIBUTE_UNUSED)
@@ -3142,13 +3136,11 @@ expand_or_defer_fn (tree fn)
       return;
     }
 
-#ifdef KEY
   /* This should occur after gimplification. Otherwise the modified TREE
      from here causes a different gimplified output that later phases
      of GNU do not like. So we need to delay this till we gimplify in
      tree_rest_of_compilation. */
   if (!flag_spin_file)
-#endif
   /* Replace AGGR_INIT_EXPRs with appropriate CALL_EXPRs.  */
   walk_tree_without_duplicates (&DECL_SAVED_TREE (fn),
 				simplify_aggr_init_exprs_r,
@@ -3302,10 +3294,8 @@ finalize_nrv (tree *tp, tree var, tree result)
 {
   struct nrv_data data;
 
-#ifdef KEY
   if (flag_spin_file)
     DECL_NAMED_RETURN_OBJECT(current_function_decl) = var;
-#endif
 
   /* Copy debugging information from VAR to RESULT.  */
   DECL_NAME (result) = DECL_NAME (var);

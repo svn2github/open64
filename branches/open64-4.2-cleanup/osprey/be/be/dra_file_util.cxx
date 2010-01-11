@@ -50,7 +50,7 @@
 #include <fcntl.h>              // open()
 #include <unistd.h>             // close()
 #include <sys/stat.h>           // fstat() 
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 #include <windows.h>
 #else
 #include <sys/mman.h>           // mmap()
@@ -79,7 +79,7 @@ char *DRA_file_mmap = NULL;
 
 char DRA_file_name[MAXPATHLEN];
 
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 HANDLE DRA_file_mmap_handle = NULL;
 #endif /* __MINGW32__ */
 
@@ -144,7 +144,7 @@ DRA_Open_And_Map_File()
 	return;
   }
 
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
   DRA_file_mmap = NULL;
   DRA_file_mmap_handle =
 	CreateFileMapping((HANDLE) _get_osfhandle(DRA_file_desc), NULL,
@@ -260,7 +260,7 @@ DRA_Set_Write_Location(void)
 void 
 DRA_Mem_Unmap_File()
 {
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
   (void) UnmapViewOfFile(DRA_file_mmap);
   (void) CloseHandle(DRA_file_mmap_handle);
 #else

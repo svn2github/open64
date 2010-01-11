@@ -71,9 +71,7 @@
 #include "wn_lower.h"
 #include "be_util.h"            // For Current_PU_Count
 #include "glob.h"               // For Show_Progress
-#ifdef KEY
 #include "w2op.h"		// For OPCODE_Can_Be_Spculative
-#endif
 #include "config_clist.h"
 
 typedef enum {
@@ -101,10 +99,8 @@ typedef enum {
 #define Reset_ST_addr_taken_saved(st)  Reset_ST_addr_saved(st)
 
 #pragma set woff 1172
-#ifdef KEY
 static INT current_pu_id = -1;
 static void Misc_Loop_Fusion ( WN * , WN * );
-#endif
 
 static BOOL
 VHO_WN_is_zero ( WN * wn )
@@ -260,9 +256,7 @@ static WN      * VHO_Switch_Default_Goto;  /* goto switch default label      */
 static WN      * VHO_Switch_Stmt;          /* switch statement               */
 static FB_FREQ   VHO_Switch_Default_Freq;  /* goto switch default freq       */
 
-#ifdef KEY
 static BOOL VHO_In_MP_Region_Pragma = FALSE;
-#endif // KEY
 
 /* Variables related to struct lowering */
 
@@ -399,7 +393,6 @@ VHO_Switch_Compare_Frequency ( const void *v_item1, const void *v_item2 )
   return ( compare_code );
 } /* VHO_Switch_Compare_Frequency */
 
-#ifdef KEY
 /* ============================================================================
  *
  * static WN *
@@ -525,7 +518,6 @@ VHO_Switch_Generate_If_Else_Reduce_Branch (SRCPOS srcpos)
                        WN_COPY_Tree(VHO_Switch_Default_Goto));
   return block;
 }
-#endif
 
 /* ============================================================================
  *
@@ -613,11 +605,7 @@ VHO_Switch_Opt_Case_Hoist( SRCPOS srcpos )
 
   if (!Cur_PU_Feedback ) return NULL;  // no switch optimization if no feedback
 
-#ifdef KEY
   freq_tops = freq_total = 0.0;
-#else
-  freq_tops = freq_total = 0;
-#endif
 
   block = WN_CreateBlock();
   WN_Set_Linenum ( block, srcpos );
@@ -669,11 +657,7 @@ VHO_Switch_Opt_Case_Hoist( SRCPOS srcpos )
       Cur_PU_Feedback->Annot_branch( wn, FB_Info_Branch( VHO_SWITCH_freq(i),
                         freq_rest, WN_operator( wn ) ) );
       Cur_PU_Feedback->FB_hoist_case(VHO_Switch_Stmt, i);
-#ifdef KEY
       VHO_SWITCH_freq(i) = 0.0;
-#else
-      VHO_SWITCH_freq(i) = 0;
-#endif
      }
 
     WN_INSERT_BlockAfter ( block, WN_last(block), wn );
@@ -1174,12 +1158,10 @@ VHO_Lower_Switch ( WN * wn )
       fprintf ( TFile, "SWITCH_If_Else %d\n", (INT32) srcpos );
 #endif /* VHO_DEBUG */
 
-#ifdef KEY
     if ( !Cur_PU_Feedback &&
          VHO_Switch_Reduce_Branch) {
       wn = VHO_Switch_Generate_If_Else_Reduce_Branch(srcpos);
     } else
-#endif
     wn = VHO_Switch_Generate_If_Else ( srcpos );
   }
 
@@ -1369,17 +1351,14 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id, BOOL avoid
 	TY_IDX  ety_idx;
 		  
         ety_idx = Ty_Table [fty_idx].Etype();
-#ifdef KEY // bug 5273: array element size can be zero
+       // array element size can be zero
        if (TY_size(Ty_Table[ety_idx]) == 0)
          array_elem_num = 0;
        else {
-#endif
          Is_True (TY_size(Ty_Table [fty_idx])%TY_size(Ty_Table [ety_idx]) == 0,
                        ("unexpected array type"));
          array_elem_num = TY_size(Ty_Table [fty_idx])/TY_size(Ty_Table [ety_idx]);
-#ifdef KEY // bug 5273
        }
-#endif
         // Is_True (VHO_Struct_Nfields + array_elem_num < 255,
         //            ("number of flattened fields exceeds limit");
         if (VHO_Struct_Nfields + array_elem_num >= 255) {
@@ -1485,7 +1464,6 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx, UINT field_id, BOOL avoid
    
 } /* VHO_Get_Field_List */
 
-#ifdef KEY
 // If there is a single field that spans across the entire
 // struct (i.e. any other field has size zero), return the field-id,
 // else return 0.
@@ -1514,7 +1492,6 @@ single_field_in_struct (TY_IDX struct_type)
 
   return 0;
 }
-#endif
 
 static TY_IDX
 get_field_type (TY_IDX struct_type, UINT field_id)
@@ -1634,42 +1611,6 @@ VHO_Lower_Mstore ( WN * wn )
           src_st      = WN_st(src_address);
           src_offset += WN_offset(src_address);
         } else  src_st = NULL; 
-/*
-        if (    WN_operator(src_address) == OPR_ARRAY 
-             && WN_operator(WN_kid0(src_address)) == OPR_LDA )
-          src_st = NULL;
-
-        else {
-
-          preg = Create_Preg (Pointer_Mtype, vho_lower_mstore_name);
-
-          preg_st     = MTYPE_To_PREG ( Pointer_Mtype );
-          preg_ty_idx = ptr_src_ty_idx;
-
-          if ( src_offset == 0 ) {
-
-            opc  = OPCODE_make_op ( OPR_STID, MTYPE_V, Pointer_Mtype );
-            temp = WN_CreateStid ( opc, preg, preg_st, preg_ty_idx,
-				   src_address );
-          } else {
-            opc  = OPCODE_make_op ( OPR_INTCONST, Pointer_Mtype, MTYPE_V );
-            temp = WN_CreateIntconst ( opc, src_offset );
-            opc  = OPCODE_make_op ( OPR_ADD, Pointer_Mtype, MTYPE_V );
-            temp = WN_CreateExp2 ( opc, src_address, temp );
-            opc  = OPCODE_make_op ( OPR_STID, MTYPE_V, Pointer_Mtype );
-            temp = WN_CreateStid ( opc, preg, preg_st, preg_ty_idx, temp );
-          }
-
-          WN_Set_Linenum(temp, srcpos);
-
-          WN_INSERT_BlockAfter ( block, WN_last(block), temp );
-
-          opc = OPCODE_make_op ( OPR_LDID, Pointer_Mtype, Pointer_Mtype );
-          src_address = WN_CreateLdid ( opc, preg, preg_st, preg_ty_idx );
-          src_st      = NULL;
-          src_offset  = 0;
-        }
-*/
 
         dst_offset = WN_store_offset(wn);
 
@@ -1679,46 +1620,6 @@ VHO_Lower_Mstore ( WN * wn )
           dst_offset += WN_offset(dst_address);
         }
         else  dst_st = NULL; 
-/*
-        if (    WN_operator(dst_address) == OPR_ARRAY
-             && WN_operator(WN_kid0(dst_address)) == OPR_LDA )
-          dst_st = NULL;
-
-        else {
-
-          preg = Create_Preg (Pointer_Mtype, vho_lower_mstore_name);
-
-          preg_st     = MTYPE_To_PREG ( Pointer_Mtype );
-          preg_ty_idx = ptr_src_ty_idx;
-
-          if ( dst_offset == 0 ) {
-
-            opc  = OPCODE_make_op ( OPR_STID, MTYPE_V, Pointer_Mtype );
-            temp = WN_CreateStid ( opc, preg, preg_st, preg_ty_idx,
-				   dst_address );
-          }
-
-          else {
-
-            opc  = OPCODE_make_op ( OPR_INTCONST, Pointer_Mtype, MTYPE_V );
-            temp = WN_CreateIntconst ( opc, dst_offset );
-            opc  = OPCODE_make_op ( OPR_ADD, Pointer_Mtype, MTYPE_V );
-            temp = WN_CreateExp2 ( opc, dst_address, temp );
-            opc  = OPCODE_make_op ( OPR_STID, MTYPE_V, Pointer_Mtype );
-            temp = WN_CreateStid ( opc, preg, preg_st, preg_ty_idx, temp );
-          }
-
-          WN_Set_Linenum(temp, srcpos);
-
-          WN_INSERT_BlockAfter ( block, WN_last(block), temp );
-
-          opc  = OPCODE_make_op ( OPR_LDID, Pointer_Mtype, Pointer_Mtype );
-          dst_address = WN_CreateLdid ( opc, preg, preg_st, preg_ty_idx );
-          dst_st      = NULL;
-          dst_offset  = 0;
-        }
-*/
-        // field_offset = 0;
 
         for ( i = 0; i < VHO_Struct_Nfields; i++ ) {
 
@@ -1941,10 +1842,8 @@ VHO_Lower_Mstid (WN * wn)
     /* screen out PREG for now, need to change them into extract sometime */
 #endif
 
-#ifdef KEY
     VHO_Struct_Nfields = 0;
     VHO_Struct_Can_Be_Lowered = TRUE;
-#endif
     
           // Used to check for matching struct alignment,
           // but we don't need alignment to match to copy fields
@@ -1955,10 +1854,6 @@ VHO_Lower_Mstid (WN * wn)
        && TY_is_packed(Ty_Table[dst_ty_idx]) == FALSE
        && bytes / TY_align(src_ty_idx) <= VHO_Struct_Limit) {
 
-#ifndef KEY
-      VHO_Struct_Nfields = 0;
-      VHO_Struct_Can_Be_Lowered = TRUE;
-#endif
       //  VHO_Struct_Alignment = TY_align(dst_ty_idx);
 
       // Flatten out the structure into non overlapping fields 
@@ -2062,10 +1957,9 @@ VHO_Lower_Mstid (WN * wn)
         wn = block;
       } // end if ( VHO_Struct_Can_Be_Lowered && VHO_Struct_Nfields) {
     } // end TY_kind(src_ty_idx) == KIND_STRUCT
-#ifdef KEY
     if (VHO_Struct_Can_Be_Lowered && VHO_Struct_Nfields)
       ; // we already lowered the struct
-#ifdef TARG_SL
+#if defined(TARG_SL)
     else if ((bytes == 4) &&  TY_size(src_ty_idx) == bytes) {
 #else
     else if ((bytes == 4 || bytes == 8) && TY_size(src_ty_idx) == bytes) {
@@ -2091,7 +1985,6 @@ VHO_Lower_Mstid (WN * wn)
         WN_set_field_id (wn, field_id);
     }
     else {
-#endif
 
 #ifdef VHO_DEBUG
     if ( VHO_Struct_Debug) 
@@ -2345,16 +2238,7 @@ vho_lower_set_st_addr_info ( WN * wn, ADDRESS_INFO_TYPE code )
       break;
 
     case OPR_LDID:
-/*
-      st = WN_st(wn);
-      if ( ST_sclass(st) == SCLASS_FORMAL && (ST_class(st) == CLASS_VAR ||
-					      ST_class(st) == CLASS_FUNC ))
-        if ( code == ADDRESS_PASSED )
-          Set_ST_addr_taken_passed(st);
-        else
-          Set_ST_addr_taken_saved(st);
-      break;
-*/
+
     case OPR_CONST:
     case OPR_ILOAD:
     case OPR_MLOAD:
@@ -2419,9 +2303,7 @@ vho_lower_set_st_addr_info ( WN * wn, ADDRESS_INFO_TYPE code )
     case OPR_LSHR:
     case OPR_COMPLEX:
     case OPR_HIGHMPY:
-#ifdef KEY
     case OPR_COMPOSE_BITS:
-#endif
 
       vho_lower_set_st_addr_info ( WN_kid0(wn), code );
       vho_lower_set_st_addr_info ( WN_kid1(wn), code );
@@ -2517,20 +2399,12 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info, BOOL is_return=FALS
        && WN_first(result_block) == NULL
        && WN_operator(first) == OPR_PRAGMA
        && WN_pragma(first) == WN_PRAGMA_INLINE_BODY_START ) {
-/*
-    fprintf ( stderr, "INLINE_BODY_START\n" );
-    fdump_tree ( stderr, comma_block );
-*/
     value = NULL;
     preg  = 0;
 
     stmt = WN_next(first);
 
     for (;;) {
-/*
-      fprintf ( stderr, "INLINE stmt\n" );
-      fdump_tree ( stderr, stmt );
-*/
       if (    WN_operator(stmt) == OPR_STID
            && ST_class(WN_st(stmt)) == CLASS_PREG ) {
 
@@ -2547,9 +2421,6 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info, BOOL is_return=FALS
           break;
 
         preg = WN_store_offset(stmt);
-/*
-        fprintf ( stderr, "preg = %d\n", preg );
-*/
       }
 
       else
@@ -2557,13 +2428,6 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info, BOOL is_return=FALS
            && WN_pragma(stmt) == WN_PRAGMA_INLINE_BODY_END ) {
 
         stmt = WN_next(stmt);
-/*
-        fprintf ( stderr, "INLINE_BODY_END\n" );
-        fprintf ( stderr, "result\n" );
-        fdump_tree ( stderr, result );
-        fprintf ( stderr, "stmt\n" );
-        fdump_tree ( stderr, stmt );
-*/
         if (    stmt
              && WN_next(stmt) == NULL
              && WN_operator(stmt) == OPR_STID
@@ -2586,12 +2450,6 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info, BOOL is_return=FALS
           break;
 
         preg = WN_store_offset(stmt);
-/*
-        fprintf ( stderr, "preg = %d\n", preg );
-        fprintf ( stderr, "value\n" );
-        fdump_tree ( stderr, value );
-        fprintf ( stderr, "preg = %d\n", preg );
-*/
         if (    value
              && WN_operator(result) == OPR_LDID
              && ST_class(WN_st(result)) == CLASS_PREG
@@ -2599,12 +2457,6 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info, BOOL is_return=FALS
 
           comma_block = NULL;
           result = WN_Simplify_Tree ( value );
-/*
-          fprintf ( stderr, "vho_lower_comma: inline old\n" );
-          fdump_tree ( stderr, wn );
-          fprintf ( stderr, "vho_lower_comma: inline new\n" );
-          fdump_tree ( stderr, result );
-*/
         }
 
         break;
@@ -2633,7 +2485,7 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info, BOOL is_return=FALS
         WN_INSERT_BlockLast (comma_block, wn);
         result = WN_CreateLdid (OPC_MMLDID, 0, st, ty_idx);
       }
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
       else if (MTYPE_is_complex(desc) ||
                MTYPE_is_mmx_vector(desc)) {
 	      ST* st = Gen_Temp_Symbol (ty_idx, ".call");
@@ -2646,7 +2498,6 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info, BOOL is_return=FALS
 
       else {
 
-#ifdef KEY
 	if (VHO_In_MP_Region_Pragma)
 	{ // Use a temporary symbol instead of a preg
 	  ST * comma_st = Gen_Temp_Symbol (MTYPE_TO_TY_array[rtype], "_comma");
@@ -2656,7 +2507,6 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info, BOOL is_return=FALS
 	  result = WN_Ldid (rtype, 0, comma_st, ty_idx);
 	}
 	else
-#endif // KEY
 	{
           PREG_NUM preg    = Create_Preg (rtype, vho_lower_comma_name);
           ST*      preg_st = MTYPE_To_PREG (rtype);
@@ -2670,7 +2520,6 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info, BOOL is_return=FALS
       }
     }
 
-#ifdef KEY
     if (VHO_In_MP_Region_Pragma && WN_operator (result) == OPR_LDID &&
         ST_class (WN_st (result)) == CLASS_PREG)
     {
@@ -2694,7 +2543,6 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info, BOOL is_return=FALS
       WN_INSERT_BlockBefore ( block, WN_last (block), comma_block );
     }
     else
-#endif // KEY
       WN_INSERT_BlockLast ( block, comma_block );
   }
 
@@ -2924,11 +2772,9 @@ vho_simplify_cand ( WN * wn, WN * l_wn, WN * r_wn )
          lr_wn = llr_wn;
          WN_const_val(lr_wn) = WN_const_val(r_wn);
          l_wn = WN_CreateExp2 ( WN_opcode(rl_wn), ll_wn, lr_wn );
-#ifdef KEY
 	 if( MTYPE_is_size_double(WN_rtype(l_wn)) )
 	   wn = WN_CreateExp2 ( OPC_I4I8EQ, l_wn, r_wn );
 	 else
-#endif
 	   wn = WN_CreateExp2 ( OPC_I4I4EQ, l_wn, r_wn );
          simplified = TRUE;
        }
@@ -3217,11 +3063,6 @@ vho_lower_cand_cior ( WN *wn, WN *block, BOOL_INFO *bool_info )
 
   cflow_bool_info2 = cflow_bool_info1;
 
-/*
-  if (    bool_info->opcode != OPCODE_UNKNOWN
-       && bool_info->opcode != opcode ) {
-*/
-
   {
 
     if ( opcode == (OPC_I4CAND) ) {
@@ -3264,16 +3105,7 @@ vho_lower_cand_cior ( WN *wn, WN *block, BOOL_INFO *bool_info )
         WN_Set_Linenum ( wn_left_branch, VHO_Srcpos );
         WN_INSERT_BlockLast ( block, wn_left_branch );
       }
-/*
-      else
-      if ( cflow_bool_info1.used_true_label ) {
 
-        WN *wn_goto = WN_CreateGoto ( (ST_IDX) NULL,
-                                      cflow_bool_info1.false_label );
-        WN_Set_Linenum ( wn_goto, VHO_Srcpos );
-        WN_INSERT_BlockLast ( block, wn_goto );
-      }
-*/
       if ( cflow_bool_info1.used_true_label ) {
 
         wn_label = WN_CreateLabel ( (ST_IDX) 0, cflow_bool_info1.true_label,
@@ -3361,18 +3193,7 @@ vho_lower_cand_cior ( WN *wn, WN *block, BOOL_INFO *bool_info )
 	  WN_INSERT_BlockLast ( block, wn_goto );
         }
       }
-/*
-      else
-      if (    bool_info->opcode != opcode
-           && bool_info->opcode != OPCODE_UNKNOWN ) {
 
-	WN *wn_goto
-	  = WN_CreateGoto ( (ST_IDX) NULL, cflow_bool_info2.false_label );
-        WN_Set_Linenum ( wn_goto, VHO_Srcpos );
-        WN_INSERT_BlockLast ( block, wn_goto );
-        cflow_bool_info2.used_false_label = TRUE;
-      }
-*/
       bool_info->used_true_label   = TRUE;
       bool_info->used_false_label |= cflow_bool_info2.used_false_label;
 
@@ -3503,10 +3324,8 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
     //                                     END_IF
 
     ty_idx = WN_ty(lwn);
-#ifdef KEY // bug 5179
     if (WN_field_id(lwn) != 0)
       ty_idx = get_field_type(ty_idx, WN_field_id(lwn));
-#endif
     ST* temp = Gen_Temp_Symbol (ty_idx, ".mcselect");
 
     wn = WN_CreateStid (OPR_STID, MTYPE_V, MTYPE_M,
@@ -3560,16 +3379,13 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
       if ( has_side_effects == FALSE ) {
 
         /* kt != 0 ? kt : 0 => kt */
-#ifdef KEY // bug 5363 and bug 5817
         if ( ( ! MTYPE_is_float(WN_desc(test)) || ! Force_IEEE_Comparisons) &&
 	     WN_operator(test) == OPR_NE && 
 	     VHO_WN_is_zero(WN_kid1(test)) && 
 	     WN_Simp_Compare_Trees ( WN_kid0(test), lwn ) == 0 &&
 	     VHO_WN_is_zero(rwn) ) 
           return lwn;
-#endif
 
-#ifdef KEY
 	/* (a-b) >= 0 ? (a-b) : (b-a) => abs(a-b) */
         if( ( WN_operator(test) == OPR_GT ||
 	      WN_operator(test) == OPR_GE ) &&
@@ -3631,7 +3447,6 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
 	  
 	}
 #endif // TARG_X7664 
-#endif
 
         /* x > 0 ? x : -x => abs(x) */
 
@@ -3653,9 +3468,7 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
                                       WN_rtype(wn),
                                       MTYPE_V );
             wn = WN_CreateExp1 ( opcode, lwn );
-/*
-            fdump_tree ( stderr, wn );
-*/
+
             return wn;
           }
         }
@@ -3711,7 +3524,7 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
 */
           return wn;
         }
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
         // gcc converts x += (y == 0) into a cond of x+1 or x.
         // Would be more efficient for us if generated straight line code
         // of t = (y == 0); x += t;
@@ -4219,7 +4032,6 @@ vho_lower_combine_loads ( WN * wn )
   return wn;
 } /* vho_lower_combine_loads */
 
-#ifdef KEY
 // Utility function to traverse through an aggregate type and determine
 // if any field/element is floating-point: bug 7770
 // Called by vho_lower_mparm(), if there is any FP field, the mparm cannot
@@ -4269,7 +4081,7 @@ vho_lower_mparm (WN * wn)
       (bytes == 4 || bytes == 8) &&
       TY_size (WN_ty (wn)) == bytes &&
       ST_class (WN_st (kid)) != CLASS_PREG
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
       && (Is_Target_32bit() ||
           traverse_struct (WN_ty (wn)))
 #elif defined(TARG_MIPS) || defined(TARG_IA64)  // bug 12809
@@ -4295,7 +4107,6 @@ vho_lower_mparm (WN * wn)
 
   return wn;
 }
-#endif
 
 #if defined(TARG_X8664)
 /* ============================================================================
@@ -4501,12 +4312,7 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info, BOOL is_return )
                                 WN_st_idx(WN_kid0(wn)),
                                 WN_ty(wn), 
                                 WN_field_id(wn) );
-/*
-          fprintf ( stderr, "ILOAD->LDID old\n" );
-          fdump_tree ( stderr, wn );
-          fprintf ( stderr, "ILOAD->LDID new\n" );
-          fdump_tree ( stderr, wn1 );
-*/
+
           wn = wn1;
         }
       }
@@ -4534,7 +4340,7 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info, BOOL is_return )
 
     case OPR_INTRINSIC_OP:
 
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
       for ( i = 0; i < nkids; i++ )
         WN_kid(wn,i) = vho_lower_expr (WN_kid(wn,i), block, NULL);
       break;
@@ -4623,9 +4429,7 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info, BOOL is_return )
     case OPR_MOD:
     case OPR_REM:
     case OPR_DIVREM:
-#ifdef KEY
     case OPR_COMPOSE_BITS:
-#endif
 
       WN_kid0(wn) = vho_lower_expr (WN_kid0(wn), block, NULL);
       WN_kid1(wn) = vho_lower_expr (WN_kid1(wn), block, NULL);
@@ -4723,7 +4527,7 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info, BOOL is_return )
       break;
 
     case OPR_LDID:
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
       // check for a load past the end of the struct
       if (ST_class(WN_st(wn)) == CLASS_VAR) {
         TY_IDX ty = ST_type(WN_st(wn));
@@ -4750,9 +4554,7 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info, BOOL is_return )
 
     case OPR_PARM:
 
-#ifdef KEY // bug 7741
       wn = vho_lower_mparm (wn);
-#endif
       WN_kid0(wn) = vho_lower_expr (WN_kid0(wn), block, NULL);
       break;
 
@@ -4768,11 +4570,6 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info, BOOL is_return )
     case OPR_COMMA:
 
       wn = vho_lower_comma ( wn, block, bool_info, is_return );
-/*
-      comma_block = vho_lower_block (WN_kid0(wn));
-      WN_INSERT_BlockLast ( block, comma_block );
-      wn = vho_lower_expr (WN_kid1(wn), block, bool_info);
-*/
       break;
 
     case OPR_RCOMMA:
@@ -4787,7 +4584,7 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info, BOOL is_return )
 
     case OPR_RROTATE:
     {
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
       // By default, generate rotate instruction only if it is C++ (bug 7932)
       // Can be crontrolled by internal flag -VHO:rotate
       if (!VHO_Generate_Rrotate_Set && PU_cxx_lang (Get_Current_PU()) &&
@@ -4808,7 +4605,7 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info, BOOL is_return )
                                    WN_Binary (OPR_SUB, shift_rtype,
                                               WN_Intconst (shift_rtype, size),
                                               wn1));
-#ifdef TARG_X8664 // bug 4552
+#if defined(TARG_X8664)
         // This is now unused code, but keep the fix for the record.
         if (size < MTYPE_size_min(rtype))
 	  lshift = WN_CreateCvtl(OPR_CVTL, Mtype_TransferSign(MTYPE_U4, rtype), 
@@ -4816,7 +4613,7 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info, BOOL is_return )
 #endif
         wn  = WN_Bior (rtype, lshift, rshift);
       }
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
       else
       {
         WN_kid0 (wn) = vho_lower_expr (WN_kid0(wn), block, NULL);
@@ -4967,7 +4764,7 @@ static WN *
 vho_lower_call ( WN * wn, WN * block )
 {
   INT32 i;
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   if ((!ST_is_export_local(WN_st(wn)) || ST_sclass(WN_st(wn)) == SCLASS_EXTERN)
         && !CLIST_enabled) // okay if producing C
   {
@@ -5323,20 +5120,12 @@ vho_lower_icall ( WN * wn, WN * block )
   WN * wn_if, * test, * if_then, * if_else, *if_then_block, *if_else_block, *wn_ret_value;
   WN * tmpkid0, * tmpkid1;
   WN * stmt;
-#ifdef KEY
   const BOOL ptr_is_64bit = MTYPE_bit_size(Pointer_Mtype) == 64;
   tmpkid0 = WN_CreateLda( ptr_is_64bit ? OPC_U8LDA : OPC_U4LDA,
 			  0, Make_Pointer_Type (ty_foo1),st_foo1 );
-#else
-  tmpkid0 = WN_CreateLda(OPC_U8LDA,0, Make_Pointer_Type (ty_foo1),st_foo1);
-#endif // KEY
   tmpkid1 = WN_COPY_Tree(WN_kid(wn,WN_kid_count(wn)-1));
 
-#ifdef KEY
   test = WN_Create( ptr_is_64bit ? OPC_U8U8EQ : OPC_U4U4EQ, 2 );
-#else  
-  test = WN_Create(OPC_U8U8EQ,2);  
-#endif // KEY
 
   WN_kid0(test) = tmpkid0;
   WN_kid1(test) = tmpkid1;
@@ -5434,7 +5223,6 @@ vho_lower_xpragma ( WN * wn, WN * block )
   for ( i = 0; i < WN_kid_count(wn); i++ )
     WN_kid(wn, i) = vho_lower_expr ( WN_kid(wn, i), block, NULL );
 
-#ifdef KEY // bug 14036
   if (VHO_In_MP_Region_Pragma && WN_kid_count(wn) == 1)
   {
     WN * kid = WN_kid0(wn);
@@ -5444,7 +5232,6 @@ vho_lower_xpragma ( WN * wn, WN * block )
     WN_kid0(wn) = WN_Ldid(WN_rtype(kid), 0, st, ty_idx);
     WN_INSERT_BlockLast (block, stid);
   }
-#endif
 
   return wn;
 } /* vho_lower_xpragma */
@@ -5453,10 +5240,8 @@ vho_lower_xpragma ( WN * wn, WN * block )
 static WN *
 vho_lower_prefetch ( WN * wn, WN * block )
 {
-#ifdef KEY // bug 9499
   // Kid0 may need to be lowered, for example, if it is a call.
   WN_kid0(wn) = vho_lower_expr ( WN_kid0(wn), block, NULL );
-#endif
   return wn;
 } /* vho_lower_prefetch */
 
@@ -5604,9 +5389,7 @@ vho_lower_stmt ( WN * wn, WN * block )
       break;
 
     case OPR_RETURN:
-#ifdef KEY
     case OPR_GOTO_OUTER_BLOCK:
-#endif
       
       wn = vho_lower_return ( wn, block );
 #if defined(TARG_SL)
@@ -5663,12 +5446,6 @@ vho_lower_stmt ( WN * wn, WN * block )
                                 WN_kid0(wn), 
                                 WN_field_id(wn));
           WN_Set_Linenum(wn1, WN_Get_Linenum(wn));
-/*
-          fprintf ( stderr, "ISTORE->STID old\n" );
-          fdump_tree ( stderr, wn );
-          fprintf ( stderr, "ISTORE->STID new\n" );
-          fdump_tree ( stderr, wn1 );
-*/
           wn = wn1;
         }
       }
@@ -5782,7 +5559,6 @@ vho_lower_stmt ( WN * wn, WN * block )
 } /* vho_lower_stmt */
 
 
-#ifdef KEY
 // Returns the last statement in the region (after recursively
 // traversing any contained region). If EXTRACT is true, then
 // extract this last statement if it is XPRAGMA.
@@ -5917,15 +5693,6 @@ vho_lower_region ( WN * wn, WN * block )
   }
   return wn;
 } /* vho_lower_region */
-#else
-static WN *
-vho_lower_region ( WN * wn )
-{
-  WN_region_body(wn) = vho_lower_block ( WN_region_body(wn) );
-  return wn;
-} /* vho_lower_region */
-#endif
-
 
 static WN *
 vho_lower_do_loop ( WN * wn, WN *block )
@@ -5950,22 +5717,11 @@ vho_lower_do_loop ( WN * wn, WN *block )
   LABEL_Init (New_LABEL (CURRENT_SYMTAB, bool_info.false_label),
 	0, LKIND_DEFAULT);
 
-#ifdef KEY // bug 6299
   start = WN_start(wn);
   WN_kid0(start) = vho_lower_expr ( WN_kid0(start), lower_block, &bool_info );
-#else
-  start = vho_lower_expr ( WN_start(wn), lower_block, &bool_info );
-
-  FmtAssert ( WN_first(lower_block) == NULL,
-              ( "lowering of do loop start generated statements" ) );
-#endif
 
   end = vho_lower_expr ( WN_end(wn), lower_block, &bool_info );
 
-#ifndef KEY
-  FmtAssert ( WN_first(lower_block) == NULL,
-              ( "lowering of do loop test generated statements" ) );
-#else
 #ifdef Is_True_On
   // relax assertion, and convert it to debug mode
   Is_True (WN_first (lower_block) == NULL ||
@@ -5978,7 +5734,6 @@ vho_lower_do_loop ( WN * wn, WN *block )
   // test has function call
   if (WN_first (lower_block))
     WN_INSERT_BlockLast (block, lower_block);
-#endif // KEY
 
   step = vho_lower_expr ( WN_step(wn), lower_block, &bool_info );
 
@@ -6006,9 +5761,7 @@ vho_lower_do_while ( WN * wn, WN *block )
   BOOL_INFO   bool_info;
   LABEL_IDX   loop_label;
 
-#ifdef KEY
   Misc_Loop_Fusion(wn, block);
-#endif
   while_body = vho_lower_block (WN_while_body(wn));
 
   test_block = WN_CreateBlock ();
@@ -6182,9 +5935,7 @@ vho_lower_check_labels ( WN * wn )
       break;
 
     case OPR_RETURN:
-#ifdef KEY
     case OPR_GOTO_OUTER_BLOCK:
-#endif
 
       break;
 
@@ -6347,9 +6098,7 @@ vho_lower_check_labels ( WN * wn )
     case OPR_MOD:
     case OPR_REM:
     case OPR_DIVREM:
-#ifdef KEY
     case OPR_COMPOSE_BITS:
-#endif
 
       vho_lower_check_labels ( WN_kid0(wn) );
       break;
@@ -6584,9 +6333,7 @@ vho_lower_rename_labels_defined ( WN * wn )
       break;
 
     case OPR_RETURN:
-#ifdef KEY
     case OPR_GOTO_OUTER_BLOCK:
-#endif
       break;
 
     case OPR_LABEL:
@@ -6730,9 +6477,7 @@ vho_lower_rename_labels_defined ( WN * wn )
     case OPR_MOD:
     case OPR_REM:
     case OPR_DIVREM:
-#ifdef KEY
     case OPR_COMPOSE_BITS:
-#endif
 
       vho_lower_rename_labels_defined ( WN_kid0(wn) );
       break;
@@ -6816,7 +6561,6 @@ vho_lower_rename_labels_defined ( WN * wn )
     case OPR_FALSEBR:
 
       vho_lower_rename_labels_defined ( WN_kid0(wn) );
-/*    vho_lower_labels_referenced = TRUE; */
       break;
 
     case OPR_LOOP_INFO:
@@ -6965,7 +6709,6 @@ Eliminate_Temp_In_While(WN *test_wn)
 } //Eliminate_Temp_In_While
 // LLC (A) 
 
-#ifdef KEY
 static BOOL Is_Loop_Suitable_For_Misc_Loop_Fusion (WN * wn, WN * block,
                                                    WN **pre_l,
                                                    WN **main_l,
@@ -7071,27 +6814,6 @@ static void Misc_Loop_Fusion ( WN * wn, WN * block )
   
   // Collect the do loops to be fused.
   WN *body = WN_while_body(wn);
-#if 0
-  WN *stmt = WN_first(body);
-  WN *preloop = NULL;
-  WN *mainloop = NULL;
-  WN *postloop = NULL;
-  while(stmt) {
-    if (WN_operator(stmt) == OPR_DO_LOOP &&
-	WN_next(stmt) && WN_operator(WN_next(stmt)) == OPR_STID &&
-	WN_desc(WN_next(stmt)) == MTYPE_I4 &&
-	WN_next(WN_next(stmt)) && 
-	WN_operator(WN_next(WN_next(stmt))) == OPR_DO_LOOP &&
-	WN_next(WN_next(WN_next(stmt))) &&
-	WN_operator(WN_next(WN_next(WN_next(stmt)))) == OPR_DO_LOOP) {
-      preloop = stmt;
-      mainloop = WN_next(WN_next(stmt));
-      postloop = WN_next(WN_next(WN_next(stmt)));
-      break;
-    }
-    stmt = WN_next(stmt);
-  }
-#endif
   FmtAssert(preloop && mainloop && postloop, 
 	    ("Handle this case in Misc_Loop_Fusion"));
   
@@ -7461,7 +7183,6 @@ static WN* Misc_Loop_Distribute_And_Interchange (WN* wn, WN* block)
   WN_DELETE_Tree(wn);
   return post_loop;
 }
-#endif
 
 static WN *
 vho_lower_while_do ( WN * wn, WN *block )
@@ -7476,11 +7197,9 @@ vho_lower_while_do ( WN * wn, WN *block )
   WN        * rcomma_block;
   PREG_NUM    last_preg;
 
-#ifdef KEY
   WN* return_block = Misc_Loop_Distribute_And_Interchange(wn, block);
   if (return_block) return return_block;
   Misc_Loop_Fusion(wn, block);
-#endif
   while_body = vho_lower_block (WN_while_body(wn));
 
   test_block = WN_CreateBlock ();
@@ -7809,7 +7528,6 @@ vho_lower_while_do ( WN * wn, WN *block )
 
 static INT32 vho_if_nest_level = 0;
 
-#ifdef KEY
 static BOOL 
 Address_Expressions_Match ( WN *wn1, WN* wn2 )
 {
@@ -7898,7 +7616,6 @@ Ifconv_Overhead (WN* wn) {
 
   return count; 
 }
-#endif
 
 static WN *
 vho_lower_if ( WN * wn, WN *block )
@@ -7911,7 +7628,6 @@ vho_lower_if ( WN * wn, WN *block )
   BOOL        emit_join_label;
   WN        * rcomma_block;
 
-#ifdef KEY
   /* Handle saturation arithmetic SUB operator by converting it 
    * to an intrinsic 
    * if (y >= 0x8000)
@@ -8081,7 +7797,6 @@ vho_lower_if ( WN * wn, WN *block )
 		    test, t1, t2);
     return wn;		       
   }
-#endif
   ++vho_if_nest_level;
 
   then_block = vho_lower_block ( WN_then(wn) );
@@ -8209,7 +7924,6 @@ vho_lower_if ( WN * wn, WN *block )
   return wn;
 } /* vho_lower_if */
 
-#ifdef KEY // bug 8581
 // determine if two WHIRL statements are identical; only handle store statements
 // for now
 static BOOL
@@ -8406,7 +8120,6 @@ Merge_identical_else_parts(WN *wn)
   WN_DELETE_Tree(then_wn);
   return wn;
 }
-#endif
 
 static WN *
 vho_lower_block ( WN * old_block )
@@ -8467,14 +8180,12 @@ vho_lower_scf ( WN * wn, WN * block )
     case OPC_IF:
 
       wn = vho_lower_if ( wn, block );
-#ifdef KEY // bug 8581
       if (wn != NULL && WN_opcode(wn) == OPC_IF) {
 	if (VHO_Merge_Thens)
 	  wn = Merge_identical_then_parts(wn);
 	if (VHO_Merge_Elses)
 	  wn = Merge_identical_else_parts(wn);
       }
-#endif
       break;
 
     case OPC_BLOCK:
@@ -8484,11 +8195,7 @@ vho_lower_scf ( WN * wn, WN * block )
 
     case OPC_REGION:
 
-#ifdef KEY
       wn = vho_lower_region ( wn, block );
-#else
-      wn = vho_lower_region ( wn );
-#endif
       break;
   }
 
@@ -8507,9 +8214,7 @@ vho_lower_entry ( WN * wn )
   last_preg = PREG_Table_Size (CURRENT_SYMTAB);
 
   VHO_Srcpos = WN_Get_Linenum(wn);
-#ifdef KEY
   current_pu_id ++;
-#endif
 
   /* See if we need to lower the pu */
   if (    PU_has_very_high_whirl (Get_Current_PU ()) == FALSE
@@ -8699,7 +8404,7 @@ WN * VHO_Lower_Driver (PU_Info* pu_info,
       wn = WN_Lower(wn, LOWER_TREEHEIGHT | LOWER_INLINE_INTRINSIC, NULL,
 		    "Intrinsic lowering");
    }
-#ifndef TARG_NVISA // don't need this extra lowering
+#if !defined(TARG_NVISA) // don't need this extra lowering
    else wn = WN_Lower(wn, LOWER_FAST_EXP, NULL,
 		      "Fast exponents lowering");
 #endif

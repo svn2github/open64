@@ -43,7 +43,7 @@
 #endif 
 #endif /* ! defined(BUILD_OS_DARWIN) */
 
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 #include <WINDOWS.h>
 #endif /* __MINGW32__ */
 

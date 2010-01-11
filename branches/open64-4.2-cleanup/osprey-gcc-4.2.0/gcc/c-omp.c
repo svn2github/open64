@@ -403,7 +403,6 @@ c_split_parallel_clauses (tree clauses, tree *par_clauses, tree *ws_clauses)
       switch (OMP_CLAUSE_CODE (clauses))
 	{
 	case OMP_CLAUSE_LASTPRIVATE:
-#ifdef KEY
 	  /* Lastprivate should belong to work-sharing constructs. For C,
 	     we leave it with the parallel construct, as wgen will combine
 	     the parallel and work-sharing constructs into one. For C++,
@@ -424,7 +423,6 @@ c_split_parallel_clauses (tree clauses, tree *par_clauses, tree *ws_clauses)
 	    *par_clauses = add_clause;
 	    break;
 	  }
-#endif
 	case OMP_CLAUSE_PRIVATE:
 	case OMP_CLAUSE_SHARED:
 	case OMP_CLAUSE_FIRSTPRIVATE:

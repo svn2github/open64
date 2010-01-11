@@ -212,12 +212,8 @@ public:
 
   void    AddElement (const T& val)
   {
-#ifdef KEY /* bug 11670: Newidx() may need to allocate _array. */
     mUINT32 idx = Newidx();
     _array[idx] = val;
-#else
-    _array[Newidx()] = val;
-#endif
   }
   mUINT32 Elements () const  { return (_lastidx+1); }
 

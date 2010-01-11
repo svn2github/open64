@@ -223,7 +223,7 @@ static void Add_Memory_Barriers (WN *wn);
 static void Convert_Simple_To_Interleaved (WN *wn);
 static void Convert_Just_Chunksize_To_Dynamic (WN *wn);
 
-#ifdef TARG_SL2 //fork_joint
+#if defined(TARG_SL2) //fork_joint
 static WN *Is_SL2_Section_Begin(WN *wn);
 static void Convert_SL2_Section_To_Pdo(WN *sections, WN *pragma);
 #endif 
@@ -297,7 +297,6 @@ WN *OMP_Prelower(PU_Info *current_pu, WN *pu)
   Is_True(rename_common_stack.Elements() == 1,
           ("OMP_Prelower(): rename_common_stack.Elements() != 1"));
 
-# ifdef KEY
   RENAMING_SCOPE rename_common(NULL, &omp_pool);
   RENAMING_SCOPE rename_common_blk(NULL, &omp_pool);
   RENAMING_STACK rename_scope_stack(&omp_pool);
@@ -307,7 +306,6 @@ WN *OMP_Prelower(PU_Info *current_pu, WN *pu)
                              &rename_scope_stack, 
                              &rename_common,
                              &rename_common_blk);
-# endif
 
     // create parent map
   Omp_Parent_Map = WN_MAP_Create(&omp_pool);
@@ -832,16 +830,8 @@ Infer_Reduction_Operators(WN *wn, WN_LIST_STACK *reduction_stack)
           // or there are multiple update expressions (which is itself
           // illegal) with different operators (non-OMP).  Probably we
           // should distinguish all these cases.
-#ifndef KEY
-        // There is no way to be sure that we have a bad operator, this
-        // message can aid in debugging, but we cannot give wrong warnings
-        // for that.
-        ErrMsgLine(EC_MPLOWER_red_conflict, WN_Find_Linenum(wn),
-	           Store_ST(wn));
-#else
         DevWarn ("Probably inconsistent reduction operator for variable %s",
                  ST_name (Store_ST(wn)));
-#endif
       }
     }
 
@@ -930,11 +920,6 @@ static OPERATOR Reduction_Operator(WN *redn_pragma, WN *assign_stmt)
   }
 
   if (!oper_ok) {
-#ifndef KEY
-    // There is no way to be sure that we have a bad operator
-    ErrMsgLine(EC_MPLOWER_red_badop, WN_Find_Linenum(assign_stmt),
-               Store_ST(assign_stmt));
-#endif // !KEY
     return OPERATOR_UNKNOWN;
   }
 
@@ -1036,7 +1021,7 @@ static WN *Translate_OMP_to_MP(WN *wn)
   OPCODE opcode = WN_opcode(wn);
   WN *section = Is_Section_Begin(wn);
 
-#ifdef TARG_SL2 //fork_joint
+#if defined(TARG_SL2) //fork_joint
    WN* sl2_section = Is_SL2_Section_Begin(wn);
    if(sl2_section) {
        Convert_SL2_Section_To_Pdo(wn, sl2_section);
@@ -1056,9 +1041,7 @@ static WN *Translate_OMP_to_MP(WN *wn)
 
   if (WN_opcode(wn) == OPC_REGION && RID_TYPE_mp(REGION_get_rid(wn))) {
     // It is an MP region. Add memory barriers around it if necessary
-#ifndef KEY
-    Add_Memory_Barriers (wn);
-#endif
+
     // If it is a loop with SIMPLE schedtype plus CHUNK,
     // then convert to INTERLEAVE
     Convert_Simple_To_Interleaved (wn);
@@ -1229,11 +1212,9 @@ static void Add_Memory_Barriers (WN *wn) {
       WN_INSERT_BlockAfter (Get_Parent(wn), wn, WN_CreateBarrier(FALSE,0));
     } else {
       // forward then backward just before
-#ifdef KEY
       if (WN_prev(wn) && 
           (WN_operator(WN_prev(wn)) != OPR_BACKWARD_BARRIER ||
            WN_operator(WN_prev(wn)) != OPR_FORWARD_BARRIER)){
-#endif
         WN_INSERT_BlockBefore (Get_Parent(wn), wn, WN_CreateBarrier(TRUE,0));
         WN_INSERT_BlockBefore (Get_Parent(wn), wn, WN_CreateBarrier(FALSE,0));
       }
@@ -1399,8 +1380,6 @@ static void Convert_Section_To_Pdo(WN *sections, WN *pragma)
   WN *index = WN_CreateIdname(index_offset,index_st);
   WN *lb = WN_StidIntoPreg(MTYPE_I4,index_offset, index_st,
 			WN_CreateIntconst(OPC_I4INTCONST, 0 ));
-//  WN *ub = WN_LT (MTYPE_I4, WN_LdidPreg (MTYPE_I4,index_offset ),
-//                   WN_CreateIntconst(OPC_I4INTCONST,sec_stack->Elements()));
   //  modified by csc. The standard do model of Intel's RTL
   //  need a ub operator of LE/GE type.
   WN *ub = WN_LE (MTYPE_I4, WN_LdidPreg (MTYPE_I4,index_offset ),
@@ -1476,7 +1455,6 @@ static void Convert_Section_To_Pdo(WN *sections, WN *pragma)
     WN_INSERT_BlockAfter(WN_region_pragmas(sections),pragma,sched_pragma);
     Set_Parent(sched_pragma,WN_region_pragmas(sections));
   }
-#ifdef KEY
   else
   {
     // bug 5201: Give the DO loop a static schedule with chunksize 1
@@ -1491,7 +1469,6 @@ static void Convert_Section_To_Pdo(WN *sections, WN *pragma)
     Set_Parent(sched_pragma,WN_region_pragmas(sections));
     Set_Parent(chunksize,WN_region_pragmas(sections));
   }
-#endif // KEY
 
   // Mark the do loop index variable as local
   WN *local_pragma = WN_CreatePragma(WN_PRAGMA_LOCAL, index_st,index_offset,0);
@@ -1534,7 +1511,7 @@ static WN *Is_Section_Begin(WN *wn)
 
 
 
-#ifdef TARG_SL2 //fork_joint
+#if defined(TARG_SL2) //fork_joint
 static void Convert_SL2_Section_To_Pdo(WN *sections, WN *pragma)
 {
   MEM_POOL_Popper popper(&Omp_Local_Pool);
@@ -1804,7 +1781,7 @@ static void Atomic_Using_Critical(WN *atomic, WN *store)
     case MTYPE_F8: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_F8");
       break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
     case MTYPE_F10: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_F10");
       break;
@@ -1818,7 +1795,7 @@ static void Atomic_Using_Critical(WN *atomic, WN *store)
     case MTYPE_C8: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_C8");
       break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
     case MTYPE_C10:
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_C10");
       break;
@@ -1933,7 +1910,6 @@ static WN *Find_Same_Location(WN *loc,WN *wn)
   }
 }
 
-#ifdef KEY
 // Find under wn the location refered to in loc, also return its parent
 // return NULL if you do not find it
 static WN *Find_Same_Location_And_Parent(WN *loc, WN *wn,
@@ -1998,7 +1974,6 @@ static BOOL format_rhs_atomic_stmt (WN * store)
   WN_kid0 (store) = add;
   return TRUE;
 }
-#endif // KEY
 
 /***********************************************************************
  *
@@ -2155,11 +2130,7 @@ Atomic_Using_Swap(WN *atomic, WN *store, WN *operation, WN *parent,
 
   // copy 'x' into 'x2'
   WN *var_copy = WN_COPY_Tree(var_kid);
-#ifdef KEY // bug 5264
   if (MTYPE_is_float(type) != MTYPE_is_float(swap_type)) {
-#else
-  if (type != swap_type) {
-#endif
     var_copy = WN_Tas(swap_type,Be_Type_Tbl(swap_type),var_copy);
   }
   ST *var_st;
@@ -2199,27 +2170,17 @@ Atomic_Using_Swap(WN *atomic, WN *store, WN *operation, WN *parent,
   }
   if (!unpatterned) {
     new_op = WN_CopyNode(operation);
-#ifdef KEY
     WN *new_var_kid = WN_Ldid(swap_type, 0, var_st, Be_Type_Tbl(type));
     if (MTYPE_is_float(type) != MTYPE_is_float(swap_type))
       new_var_kid = WN_Tas(type, Be_Type_Tbl(type), new_var_kid);  // bug 5552
-#endif
 
     if (expr_kid == WN_kid1(operation)) {
-#ifdef KEY	// bug 5512
       WN_kid0(new_op) = new_var_kid;
-#else
-      WN_kid0(new_op) = WN_COPY_Tree(var_kid);
-#endif
       WN_kid1(new_op) = WN_Ldid(type,0,expr_st,
 		  Be_Type_Tbl(type));
     } else {
       Is_True(expr_kid == WN_kid0(operation),("Bad kid in Atomic_Using_Swap"));
-#ifdef KEY	// bug 5512
       WN_kid1(new_op) = new_var_kid;
-#else
-      WN_kid1(new_op) = WN_COPY_Tree(var_kid);
-#endif
       WN_kid0(new_op) = WN_Ldid(type,0,expr_st,
 		  Be_Type_Tbl(type));
     }
@@ -2229,11 +2190,7 @@ Atomic_Using_Swap(WN *atomic, WN *store, WN *operation, WN *parent,
   } else {
     new_op = WN_COPY_Tree(operation);
   }
-#ifdef KEY // bug 5264
   if (MTYPE_is_float(type) != MTYPE_is_float(swap_type)) {
-#else
-  if (type != swap_type) {
-#endif
     new_op = WN_Tas(swap_type,Be_Type_Tbl(swap_type),new_op);
   }
   stid = WN_Stid(swap_type,0,result_st,
@@ -2316,7 +2273,6 @@ WN *Atomic_Direct(WN *atomic, WN *store, WN *operation)
   // Find which kid is which
   WN *expr_kid;
   WN *var_kid;
-#ifdef KEY
   for (INT i=0; i<2; i++)
   {
     if (Same_Location(store,WN_kid0(operation))) {
@@ -2340,19 +2296,6 @@ WN *Atomic_Direct(WN *atomic, WN *store, WN *operation)
       oper = WN_operator (operation);
     }
   }
-#else
-  if (Same_Location(store,WN_kid0(operation))) {
-    var_kid = WN_kid0(operation);
-    expr_kid = WN_kid1(operation);
-  } else if (Same_Location(store,WN_kid1(operation))) {
-    var_kid = WN_kid1(operation);
-    expr_kid = WN_kid0(operation);
-  } else {
-    ErrMsgSrcpos(EC_MPLOWER_Generic_Error, WN_Get_Linenum(atomic),
-		 "OMP ATOMIC: Right hand side not of appropriate form. \n");
-    return NULL;
-  }
-#endif // KEY
 
   TYPE_ID type = OPCODE_desc(store_opc);
   Is_True(type == MTYPE_I4 || type == MTYPE_I8,("Bad type in Atomic_Direct"));
@@ -2534,7 +2477,7 @@ static void Lower_Atomic(WN *atomic)
     return;
   }
 
-#ifdef TARG_X8664 /*Bug 4874, 4893, 4936 */
+#if defined(TARG_X8664)
   if (Is_Target_32bit()){
     TYPE_ID store_type = OPCODE_desc(WN_opcode(store));
     if (store_type == MTYPE_I8 ||
@@ -2613,9 +2556,7 @@ ATOMIC_Lowering_Class WN_ATOMIC_STORE_Lowering_Class(WN *store)
     case OPR_ASHR: case OPR_LSHR: case OPR_SHL:
     case OPR_CVT: case OPR_TAS: case OPR_CVTL: case OPR_TRUNC:
     case OPR_REALPART: case OPR_IMAGPART:
-#ifdef KEY // bug 8862
     case OPR_CAND: case OPR_CIOR:
-#endif // KEY
       break;
     case OPR_BNOT:
       if (WN_operator(WN_kid0(operation)) != OPR_BXOR) {
@@ -2636,14 +2577,14 @@ ATOMIC_Lowering_Class WN_ATOMIC_STORE_Lowering_Class(WN *store)
 
   switch (store_type) {
     case MTYPE_U4: case MTYPE_U8: case MTYPE_F4: case MTYPE_F8:
-#ifdef TARG_IA32
+#if defined(TARG_IA32)
       alclass = ALCLASS_CRITICAL;
 #else 
       alclass = ALCLASS_SWAP;
 #endif
       break;
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
     case MTYPE_F10:
 	alclass = ALCLASS_CRITICAL;	/* XXX - ALCLASS_SWAP? */
 	break;
@@ -2973,32 +2914,6 @@ static WN *Add_Ordered_XPragmas (WN* wn) {
                            WN_offset(WN_kid1(do_wn)), WN_st(WN_kid1(do_wn)),
                            ST_type(WN_st(WN_kid1(do_wn))));
 
-  // insert the first call, to begin_iter
-  // No need to insert the two shell-call for GUIDE RTL.
-  // csc.
-  /*
-  WN* call_wn = WN_Create (OPC_VCALL, 1);
-  WN_st_idx(call_wn) = ST_st_idx(begin_iter_st);
-  WN_Set_Call_Non_Data_Mod(call_wn);
-  WN_Set_Call_Non_Data_Ref(call_wn);
-  WN_Set_Linenum(call_wn,WN_Get_Linenum(WN_first(body)));
-  index_wn = WN_CreateParm (MTYPE_I8, index_wn, Be_Type_Tbl(MTYPE_I8),
-                            WN_PARM_BY_VALUE);
-  WN_kid0(call_wn) = index_wn;
-  Parentize(call_wn);
-  WN_INSERT_BlockAfter(body, NULL, call_wn);
-
-  // insert the second call, to end_iter
-  index_wn = WN_COPY_Tree (index_wn);
-  call_wn = WN_Create (OPC_VCALL, 1);
-  WN_st_idx(call_wn) = ST_st_idx(end_iter_st);
-  WN_Set_Call_Non_Data_Mod(call_wn);
-  WN_Set_Call_Non_Data_Ref(call_wn);
-  WN_Set_Linenum(call_wn,WN_Get_Linenum(WN_last(body)));
-  WN_kid0(call_wn) = index_wn;
-  Parentize(call_wn);
-  WN_INSERT_BlockBefore(body, NULL, call_wn);
-  */
   // Now generate an Xpragma for the lower bound and the stride,
   // in the pragma block of the region.
   WN *lb = WN_COPY_Tree (WN_kid0(WN_start(do_wn)));
@@ -3309,29 +3224,6 @@ Privatize_Index_Vars_And_Check_Final_Scopes(
       ST *st = WN_st(prag);
       WN *scope_prag;
 
-#ifndef KEY
-        // PV 596988: check that no THREADPRIVATE variables appear in a
-	// scope clause
-      switch (prag_id) {
-      case WN_PRAGMA_LOCAL:
-      case WN_PRAGMA_LASTLOCAL:
-      case WN_PRAGMA_FIRSTPRIVATE:
-      case WN_PRAGMA_SHARED:
-      case WN_PRAGMA_REDUCTION:
-        {
-	  ST *split_blk;
-          ST *common_blk = ST_Source_COMMON_Block(st, &split_blk);
-          if (ST_is_thread_private(st) ||
-	      (split_blk && ST_is_thread_private(split_blk)) ||
-              (common_blk && ST_is_thread_private(common_blk)))
-            ErrMsgLine(EC_MPLOWER_thrpriv_scope, WN_Find_Linenum(wn), st);
-	}
-	break;
-      default:
-        break;
-      }
-#endif
-
       if (prag_id == WN_PRAGMA_REDUCTION &&
           pragma_block_list->Elements() == 0 && !is_par_region &&
           ST_sclass(st) == SCLASS_AUTO) {
@@ -3368,10 +3260,6 @@ Privatize_Index_Vars_And_Check_Final_Scopes(
 	if (WN_pragma(scope_prag) == WN_PRAGMA_LOCAL &&
 	    prag_id == WN_PRAGMA_LOCAL &&
 	    WN_pragma_compiler_generated(scope_prag)
-#ifndef KEY
-	    // bug 6428
-	    && WN_pragma_compiler_generated(prag)
-#endif // !KEY
 	    )
         {
           reprivatizing_pragmas.AddElement(prag);

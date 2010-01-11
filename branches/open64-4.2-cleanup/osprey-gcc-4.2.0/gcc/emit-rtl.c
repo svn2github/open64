@@ -528,26 +528,6 @@ gen_rtx_REG (enum machine_mode mode, unsigned int regno)
 	return stack_pointer_rtx;
     }
 
-#if 0
-  /* If the per-function register table has been set up, try to re-use
-     an existing entry in that table to avoid useless generation of RTL.
-
-     This code is disabled for now until we can fix the various backends
-     which depend on having non-shared hard registers in some cases.   Long
-     term we want to re-enable this code as it can significantly cut down
-     on the amount of useless RTL that gets generated.
-
-     We'll also need to fix some code that runs after reload that wants to
-     set ORIGINAL_REGNO.  */
-
-  if (cfun
-      && cfun->emit
-      && regno_reg_rtx
-      && regno < FIRST_PSEUDO_REGISTER
-      && reg_raw_mode[regno] == mode)
-    return regno_reg_rtx[regno];
-#endif
-
   return gen_raw_REG (mode, regno);
 }
 

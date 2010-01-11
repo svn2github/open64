@@ -4855,14 +4855,6 @@ sh_reorg (void)
 	  emit_insn_before (gen_use_sfunc_addr (reg), insn);
 	}
     }
-#if 0
-  /* fpscr is not actually a user variable, but we pretend it is for the
-     sake of the previous optimization passes, since we want it handled like
-     one.  However, we don't have any debugging information for it, so turn
-     it into a non-user variable now.  */
-  if (TARGET_SH4)
-    REG_USERVAR_P (get_fpscr_rtx ()) = 0;
-#endif
   mdep_reorg_phase = SH_AFTER_MDEP_REORG;
 }
 
@@ -5227,9 +5219,6 @@ output_stack_adjust (int size, rtx reg, int epilogue_p,
 
 /* This test is bogus, as output_stack_adjust is used to re-align the
    stack.  */
-#if 0
-      gcc_assert (!(size % align));
-#endif
 
       if (CONST_OK_FOR_ADD (size))
 	emit_fn (GEN_ADD3 (reg, reg, GEN_INT (size)));
@@ -7940,16 +7929,6 @@ reg_unused_after (rtx reg, rtx insn)
 
       code = GET_CODE (insn);
 
-#if 0
-      /* If this is a label that existed before reload, then the register
-	 if dead here.  However, if this is a label added by reorg, then
-	 the register may still be live here.  We can't tell the difference,
-	 so we just ignore labels completely.  */
-      if (code == CODE_LABEL)
-	return 1;
-      /* else */
-#endif
-
       if (code == JUMP_INSN)
 	return 0;
 
@@ -9910,11 +9889,6 @@ sh_output_mi_thunk (FILE *file, tree thunk_fndecl ATTRIBUTE_UNUSED,
   funexp = XEXP (DECL_RTL (function), 0);
   /* If the function is overridden, so is the thunk, hence we don't
      need GOT addressing even if this is a public symbol.  */
-#if 0
-  if (TARGET_SH1 && ! flag_weak)
-    sibcall = gen_sibcalli_thunk (funexp, const0_rtx);
-  else
-#endif
   if (TARGET_SH2 && flag_pic)
     {
       sibcall = gen_sibcall_pcrel (funexp, const0_rtx);
@@ -10387,72 +10361,8 @@ sh_adjust_unroll_max (struct loop * loop, int insn_count,
       /* ??? In the new loop unroller, there is no longer any strength
          reduction information available.  Thus, when it comes to unrolling,
          we know the cost of everything, but we know the value of nothing.  */
-#if 0
-      if (strength_reduce_p
-	  && (unroll_type == LPT_UNROLL_RUNTIME
-	      || unroll_type == LPT_UNROLL_CONSTANT
-	      || unroll_type == LPT_PEEL_COMPLETELY))
-	{
-	  struct loop_ivs *ivs = LOOP_IVS (loop);
-	  struct iv_class *bl;
-
-	  /* We'll save one compare-and-branch in each loop body copy
-	     but the last one.  */
-	  unroll_benefit = 1;
-	  /* Assess the benefit of removing biv & giv updates.  */
-	  for (bl = ivs->list; bl; bl = bl->next)
-	    {
-	      rtx increment = biv_total_increment (bl);
-	      struct induction *v;
-
-	      if (increment && GET_CODE (increment) == CONST_INT)
-		{
-		  unroll_benefit++;
-		  for (v = bl->giv; v; v = v->next_iv)
-		    {
-		      if (! v->ignore && v->same == 0
-			  && GET_CODE (v->mult_val) == CONST_INT)
-			unroll_benefit++;
-		      /* If this giv uses an array, try to determine
-			 a maximum iteration count from the size of the
-			 array.  This need not be correct all the time,
-			 but should not be too far off the mark too often.  */
-		      while (v->giv_type == DEST_ADDR)
-			{
-			  rtx mem = PATTERN (v->insn);
-			  tree mem_expr, type, size_tree;
-
-			  if (GET_CODE (SET_SRC (mem)) == MEM)
-			    mem = SET_SRC (mem);
-			  else if (GET_CODE (SET_DEST (mem)) == MEM)
-			    mem = SET_DEST (mem);
-			  else
-			    break;
-			  mem_expr = MEM_EXPR (mem);
-			  if (! mem_expr)
-			    break;
-			  type = TREE_TYPE (mem_expr);
-			  if (TREE_CODE (type) != ARRAY_TYPE
-			      || ! TYPE_SIZE (type) || ! TYPE_SIZE_UNIT (type))
-			    break;
-			  size_tree = fold_build2 (TRUNC_DIV_EXPR,
-						   bitsizetype,
-						   TYPE_SIZE (type),
-						   TYPE_SIZE_UNIT (type));
-			  if (TREE_CODE (size_tree) == INTEGER_CST
-			      && ! TREE_INT_CST_HIGH (size_tree)
-			      && TREE_INT_CST_LOW  (size_tree) < max_iterations)
-			    max_iterations = TREE_INT_CST_LOW  (size_tree);
-			  break;
-			}
-		    }
-		}
-	    }
-	}
-#else /* 0 */
       /* Assume there is at least some benefit.  */
       unroll_benefit = 1;
-#endif /* 0 */
 
       desc = get_simple_loop_desc (loop);
       n_iterations = desc->const_iter ? desc->niter : 0;
@@ -10468,71 +10378,7 @@ sh_adjust_unroll_max (struct loop * loop, int insn_count,
 	  if (! n_iterations)
 	    return 0;
 	}
-#if 0 /* ??? See above - missing induction variable information.  */
-      while (unroll_benefit > 1) /* no loop */
-	{
-	  /* We include the benefit of biv/ giv updates.  Check if some or
-	     all of these updates are likely to fit into a scheduling
-	     bubble of a load.
-	     We check for the following case:
-	     - All the insns leading to the first JUMP_INSN are in a strict
-	       dependency chain.
-	     - there is at least one memory reference in them.
 
-	     When we find such a pattern, we assume that we can hide as many
-	     updates as the total of the load latency is, if we have an
-	     unroll factor of at least two.  We might or might not also do
-	     this without unrolling, so rather than considering this as an
-	     extra unroll benefit, discount it in the unroll benefits of unroll
-	     factors higher than two.  */
-		
-	  rtx set, last_set;
-
-	  insn = next_active_insn (loop->start);
-	  last_set = single_set (insn);
-	  if (! last_set)
-	    break;
-	  if (GET_CODE (SET_SRC (last_set)) == MEM)
-	    mem_latency += 2;
-	  for (insn = NEXT_INSN (insn); insn != end; insn = NEXT_INSN (insn))
-	    {
-	      if (! INSN_P (insn))
-		continue;
-	      if (GET_CODE (insn) == JUMP_INSN)
-		break;
-	      if (! reg_referenced_p (SET_DEST (last_set), PATTERN (insn)))
-		{
-		  /* Check if this is a to-be-reduced giv insn.  */
-		  struct loop_ivs *ivs = LOOP_IVS (loop);
-		  struct iv_class *bl;
-		  struct induction *v;
-		  for (bl = ivs->list; bl; bl = bl->next)
-		    {
-		      if (bl->biv->insn == insn)
-			goto is_biv;
-		      for (v = bl->giv; v; v = v->next_iv)
-			if (v->insn == insn)
-			  goto is_giv;
-		    }
-		  mem_latency--;
-		is_biv:
-		is_giv:
-		  continue;
-		}
-	      set = single_set (insn);
-	      if (! set)
-		continue;
-	      if (GET_CODE (SET_SRC (set)) == MEM)
-		mem_latency += 2;
-	      last_set = set;
-	    }
-	  if (mem_latency < 0)
-	    mem_latency = 0;
-	  else if (mem_latency > unroll_benefit - 1)
-	    mem_latency = unroll_benefit - 1;
-	  break;
-	}
-#endif /* 0 */
       if (n_labels + (unroll_benefit + n_labels * 8) / n_iterations
 	  <= unroll_benefit)
 	return max_unrolled_insns;

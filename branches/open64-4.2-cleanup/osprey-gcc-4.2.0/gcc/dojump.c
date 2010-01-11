@@ -178,15 +178,6 @@ do_jump (tree exp, rtx if_false_label, rtx if_true_label)
         emit_jump (temp);
       break;
 
-#if 0
-      /* This is not true with #pragma weak  */
-    case ADDR_EXPR:
-      /* The address of something can never be zero.  */
-      if (if_true_label)
-        emit_jump (if_true_label);
-      break;
-#endif
-
     case NOP_EXPR:
       if (TREE_CODE (TREE_OPERAND (exp, 0)) == COMPONENT_REF
           || TREE_CODE (TREE_OPERAND (exp, 0)) == BIT_FIELD_REF

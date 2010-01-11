@@ -56,7 +56,7 @@ enum _sec_kind {
   _SEC_TEXT,
   _SEC_DATA,
   _SEC_SDATA,
-#if defined(KEY) && !defined(TARG_SL)
+#if !defined(TARG_SL)
   _SEC_LDATA_MIPS_LOCAL,	// bug 12619
 #endif
   _SEC_LDATA,
@@ -76,7 +76,7 @@ enum _sec_kind {
 #if defined(TARG_X8664) || defined(TARG_LOONGSON)
   _SEC_DATA_REL_RO,
 #endif
-#ifdef TARG_SL
+#if defined(TARG_SL)
   _SEC_SSDATA,
 /* currently assembler only support _SEC_VSDATA, after assembler support all 
  * section for _SEC_VS[1,2,4]DATA, we need replace _SEC_VSDATA with following 

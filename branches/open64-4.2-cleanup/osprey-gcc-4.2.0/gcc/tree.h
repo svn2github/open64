@@ -1407,7 +1407,6 @@ struct tree_vec GTY(())
 	       true); \
        (IX)++)
 
-#ifdef KEY
 /* Reverse of FOR_EACH_CONSTRUCTOR_ELT. Signedness of VEC_length
    necessitates the following early check. IX must be a scratch variable
    of signed integer type. */
@@ -1419,7 +1418,6 @@ struct tree_vec GTY(())
                   (INDEX = VEC_index (constructor_elt, V, IX)->index), \
                true); \
        (IX)--)
-#endif
 
 /* Append a new constructor element to V, with the specified INDEX and VAL.  */
 #define CONSTRUCTOR_APPEND_ELT(V, INDEX, VALUE) \
@@ -2070,7 +2068,6 @@ struct tree_block GTY(())
    0 by copy_node and make_node.  */
 #define TREE_VISITED(NODE) ((NODE)->common.visited)
 
-#ifdef KEY
 #define TREE_EMITTED(NODE) ((NODE)->common.emitted)
 #define TREE_NOT_EMITTED_BY_GXX(NODE) ((NODE)->common.not_emitted_by_gxx)
 #define GS_NODE(NODE) ((gs_void_t *)TREE_TO_TRANSLATED_GS(NODE))
@@ -2082,7 +2079,6 @@ struct tree_block GTY(())
 #define FULLY_TRANSLATED_TO_GS(NODE) ((NODE)->common.fully_translated_to_gs)
 #define TRANSLATED_TO_GS_AS_INLINE(NODE) ((NODE)->common.translated_as_inline)
 #define GS_SEQUENCE_NUM(NODE) ((NODE)->common.gs_sequence_num)
-#endif
 
 /* If set in an ARRAY_TYPE, indicates a string type (for languages
    that distinguish string from array of char).
@@ -2581,14 +2577,12 @@ struct tree_struct_field_tag GTY(())
 #define DECL_CALL_CLOBBERED(DECL) \
   DECL_COMMON_CHECK (DECL)->decl_common.call_clobbered_flag
 
-#ifdef KEY
 #define DECL_EMITTED_BY_GXX(DECL) \
   DECL_COMMON_CHECK (DECL)->decl_common.decl_emitted_by_gxx
 #define DECL_ADDED_TO_WEAK_DECLS(DECL) \
   DECL_COMMON_CHECK (DECL)->decl_common.added_to_weak_decls
 
 #define DECL_ASMREG(NODE) (DECL_COMMON_CHECK (NODE)->decl_common.asmreg)
-#endif
 
 
 struct tree_decl_common GTY(())
@@ -4702,7 +4696,6 @@ extern unsigned HOST_WIDE_INT compute_builtin_object_size (tree, int);
 /* In expr.c.  */
 extern unsigned HOST_WIDE_INT highest_pow2_factor (tree);
 
-#ifdef KEY
 /* Bug 1392 */
 #include "gspin-gcc-interface.h"
 /* gspin global variables */
@@ -4719,6 +4712,5 @@ extern int gspin_invoked (tree t);
 extern void gs_set_flag_value (tree t, unsigned int flag, bool value);
 extern void gs_set_program_flag_value (unsigned int flag, bool value);
 extern bool lang_cplus (void);
-#endif
 
 #endif  /* GCC_TREE_H  */

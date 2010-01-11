@@ -206,7 +206,7 @@ INT TI_ASM_Print_Inst(
 		     arg[0], arg[1], arg[2], arg[3], 
 		     arg[4], arg[5], arg[6], arg[7],
 		     arg[8]
-#ifdef TARG_SL
+#if defined(TARG_SL)
 		     , arg[9]
 #endif
 		);
@@ -237,7 +237,7 @@ static INT Format_Operand(
     const char *rname;
     const char *fmt = (use == OU_predicate) ? ISA_PRINT_PREDICATE : "%s";
     ISA_REGISTER_CLASS rc = ISA_OPERAND_VALTYP_Register_Class(vtype);
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
     if (   !(flags & TI_ASM_DISASM_TRUE_PRED)
 	&& (use == OU_predicate)
 	&& ABI_PROPERTY_Is_true_predicate(rc, val))
@@ -263,7 +263,7 @@ static INT Format_Operand(
 
   if (ISA_OPERAND_VALTYP_Is_PCRel(vtype)) {
     val += pc;
-#ifndef TARG_LOONGSON
+#if !defined(TARG_LOONGSON)
     if (PROC_has_branch_delay_slot()) val += sizeof(ISA_BUNDLE);
 #endif
     return sprintf(buf, "0x%llx", val) + 1;

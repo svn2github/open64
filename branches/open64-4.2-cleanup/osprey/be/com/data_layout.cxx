@@ -64,7 +64,7 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 #include <cmplrs/rcodes.h>
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
 #include <sys/resource.h>
 #endif /* __MINGW32__ */
 #if (__GNUC__==2)
@@ -93,7 +93,7 @@
 #include "sections.h"
 #include "betarget.h"
 #include "intrn_info.h"
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 #include "config_opt.h"    // for CIS_Allowed
 
 extern void (*CG_Set_Is_Stack_Used_p)();
@@ -197,7 +197,7 @@ static STACK_DIR stack_direction;
 #define DEFAULT_STACK_ALIGNMENT _QUAD_ALIGN
 #endif // DEFAULT_STACK_ALIGNMENT
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 #define stack_align   ( Stack_Alignment() )
 #else
 static INT16 stack_align = DEFAULT_STACK_ALIGNMENT;
@@ -510,11 +510,8 @@ static ST *Formal_Sym(ST *sym, BOOL onstack)
   */
   /* Don't put things on the stack because of debug level 3 (PV 642999) */
   onstack |=    (Debug_Level > 0 && Debug_Level != 3)	||
-#ifdef KEY
-  	        // Bug 5072
 		// Make -O0 and -O1 behave like -g.
 		Opt_Level < 2 ||
-#endif
 		ST_has_nested_ref(sym)		||
 		ST_declared_static(sym)		||
 		PU_has_mp(Get_Current_PU());
@@ -547,7 +544,7 @@ static ST *Formal_Sym(ST *sym, BOOL onstack)
 INT32
 Stack_Alignment ( void )
 {
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   if( Is_Target_64bit() )
     return _QUAD_ALIGN;
 
@@ -618,12 +615,10 @@ Assign_Offset (ST *blk, ST *base, INT32 lpad, INT32 rpad)
   Set_ST_ofst(blk, ROUNDUP(STB_size(base) + lpad, align));
   if (STB_decrement(base)) {
     INT32 size = ST_size(blk);
-#ifdef KEY
     // C++ requires distinct addresses for empty classes
     if (ST_class(blk) == CLASS_VAR && (!Current_pu || 
        (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG)) && size == 0)
       size = 1;
-#endif
     /* point to start of object */
     Set_ST_ofst(blk, 
 	-(INT64) ROUNDUP(ST_ofst(blk) + size + rpad, align));
@@ -647,12 +642,10 @@ Allocate_Space(ST *base, ST *blk, INT32 lpad, INT32 rpad, INT64 maxsize)
   INT64 old_offset;
   INT64 size = ST_size(blk);
 
-#ifdef KEY
   // C++ requires distinct addresses for empty classes
   if (ST_class(blk) == CLASS_VAR && (!Current_pu ||
      (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG)) && size == 0)
     size = 1;
-#endif
 
   Set_STB_align(base, MAX(STB_align(base), align));
   if (!STB_decrement(base)) {
@@ -686,11 +679,7 @@ Allocate_Space(ST *base, ST *blk, INT32 lpad, INT32 rpad, INT64 maxsize)
 	ST_name(base), ST_ofst(blk), size);
     else fprintf (TFile, " to %s: offset = %lld, size = %lld, align = %d\n",
 		  ST_name(base), ST_ofst(blk), size,
-#ifdef KEY
 		  align
-#else
-		  TY_align(ST_type(blk) 
-#endif // KEY
 		  );
   }
   if (STB_size(base) > maxsize
@@ -803,7 +792,6 @@ Add_Object_To_Frame_Segment ( ST *sym, SF_SEGMENT seg, BOOL allocate )
     case SFSEG_UPFORMAL:
     case SFSEG_FORMAL:
       size = ST_size(sym);
-#ifdef KEY
       /* The size of an object of an empty class is regarded as 1-byte-long.
 	 (bug#2967)
        */
@@ -812,7 +800,6 @@ Add_Object_To_Frame_Segment ( ST *sym, SF_SEGMENT seg, BOOL allocate )
 	    PU_cxx_lang( Get_Current_PU() ) ) ){
 	size = 1;
       }    
-#endif
       // struct params are left-justified.
       if (TY_kind(ST_type(sym)) == KIND_STRUCT)
       {
@@ -839,7 +826,7 @@ Add_Object_To_Frame_Segment ( ST *sym, SF_SEGMENT seg, BOOL allocate )
     }
     ST_Block_Merge (SF_Block(seg), sym, lpad, rpad, SF_Maxsize(seg));
 
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
     if (seg == SFSEG_FORMAL)
     {
       ST *formal = SF_Block(seg);
@@ -1042,9 +1029,6 @@ Get_Section_ST_With_Given_Name (SECTION_IDX sec, ST_SCLASS sclass, STR_IDX name)
 	return newblk;
 }
 
-#ifndef KEY
-static
-#endif
 void
 Assign_ST_To_Named_Section (ST *st, STR_IDX name)
 {
@@ -1087,12 +1071,10 @@ Assign_ST_To_Named_Section (ST *st, STR_IDX name)
 			        sec = _SEC_BSS;	// if data is not initialized, it's still in BSS
 			break;
 		case SCLASS_UGLOBAL:
-#ifdef KEY
     			if (ST_is_constant(st) &&	// bug 4743
 			    !ST_is_weak_symbol(st)) {	// bug 4823
 			  sec = Get_Const_Var_Section();
 			} else
-#endif
 #if defined(TARG_SL)
 			if (name != _SEC_BSS) {
 			  DevWarn("change user specified section symbol to be initialized");
@@ -1108,11 +1090,9 @@ Assign_ST_To_Named_Section (ST *st, STR_IDX name)
 #endif
 			  sec = _SEC_BSS;
 			break;
-#ifdef KEY
 		case SCLASS_COMMON:
 		case SCLASS_EXTERN:			// bug 4845
 			return;
-#endif
 		default:
 			FmtAssert(FALSE,
 			    ("unexpected sclass %d for section attribute on %s", 
@@ -1187,19 +1167,17 @@ Calc_Actual_Area ( TY_IDX pu_type, WN *pu_tree )
 	case OPR_PICCALL:
 	case OPR_ICALL:
 	case OPR_CALL:
-#ifdef KEY
 	case OPR_PURE_CALL_OP:
-#endif
 		num_parms = WN_num_actuals(pu_tree);
        		ploc = Setup_Output_Parameter_Locations(pu_type);
        		for (i = 0; i < num_parms; i++) {
 		  ploc = Get_Output_Parameter_Location (TY_Of_Parameter(WN_actual(pu_tree,i)));
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 		  if (ploc.reg == 0)  // not passed in register
 		    size = PLOC_total_size(ploc);
 #endif
 		}
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
 		size = PLOC_total_size(ploc);
 #endif
 		break;
@@ -1211,7 +1189,7 @@ Calc_Actual_Area ( TY_IDX pu_type, WN *pu_tree )
 		case INTRN_CONCATEXPR:
 			size = 5 * regsize;
 			break;
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 		case INTRN_F4COS:
 		case INTRN_F8COS:
 		case INTRN_FQCOS:
@@ -1288,7 +1266,7 @@ Check_Actual_Stack_Size (WN *call_tree)
   default:
     FmtAssert(FALSE, ("unexpected opcode in Check_Actual_Stack_Size"));
   }
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
   FmtAssert(actual_size <= Current_PU_Actual_Size,
         ("size of actual area increased from %d to %d",
         Current_PU_Actual_Size, actual_size));
@@ -1324,9 +1302,7 @@ Max_Arg_Area_Bytes(WN *node)
   switch (OPCODE_operator(opcode)) {
   case OPR_CALL:
   case OPR_PICCALL:
-#ifdef KEY
   case OPR_PURE_CALL_OP:
-#endif
     maxsize = Calc_Actual_Area ( ST_pu_type (WN_st (node)), node);
     Frame_Has_Calls = TRUE;
     break;
@@ -1434,7 +1410,7 @@ Allocate_Entry_Formal(ST *formal, BOOL on_stack, BOOL in_formal_reg)
 	sec = Shorten_Section(formal, _SEC_BSS);
     	Allocate_Object_To_Section(formal, sec, Adjusted_Alignment(formal));
     }
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
     // if use shared memory, then treat like static (don't put on stack)
     // will end up putting it in param memory.
     else if (ST_in_shared_mem(formal)) {
@@ -1442,7 +1418,7 @@ Allocate_Entry_Formal(ST *formal, BOOL on_stack, BOOL in_formal_reg)
     	Allocate_Object_To_Section(formal, _SEC_BSS, Adjusted_Alignment(formal));
     }
 #endif
-#ifndef TARG_MIPS // bug 12772
+#if !defined(TARG_MIPS)
     else if (in_formal_reg)
     {
       /* parameter is in register, so put in FORMAL area */
@@ -1459,7 +1435,7 @@ Allocate_Entry_Formal(ST *formal, BOOL on_stack, BOOL in_formal_reg)
       	Add_Object_To_Frame_Segment ( formal, SFSEG_UPFORMAL, TRUE );
       }
     }
-#ifdef TARG_MIPS // bug 12772
+#if defined(TARG_MIPS)
     else if (in_formal_reg)
     {
       /* parameter is in register, so put in FORMAL area */
@@ -1499,12 +1475,12 @@ static TY_IDX Formal_ST_type(ST *sym)
 }
 
 /* indexed list of vararg symbols */
-# if MAX_NUMBER_OF_REGISTER_PARAMETERS > 0
+#if MAX_NUMBER_OF_REGISTER_PARAMETERS > 0
     ST *vararg_symbols[MAX_NUMBER_OF_REGISTER_PARAMETERS];	
-# else
+#else
     // zero length arrays not allowed.
-#   define vararg_symbols ((ST * *)0)  // Not accessed
-# endif
+#define vararg_symbols ((ST * *)0)  // Not accessed
+#endif
 
 /* this is just so we don't have symbols dangling around in next PU */
 static void
@@ -1520,7 +1496,7 @@ Clear_Vararg_Symbols (void)
 extern ST*
 Get_Vararg_Symbol (PLOC ploc)
 {
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
 	Is_True(PLOC_reg(ploc) < 
 		First_Int_Preg_Param_Offset+MAX_NUMBER_OF_REGISTER_PARAMETERS,
 		("Get_Vararg_Symbol:  ploc %d out of range", PLOC_reg(ploc)));
@@ -1533,7 +1509,7 @@ Get_Vararg_Symbol (PLOC ploc)
 #endif
 }
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 /* used by the lower to determine the number of fixed integer and float
  * parameters passed in registers and return the symbol corresponding to the 
  * first variable register parameter save location; it assumes that the first 
@@ -1632,22 +1608,22 @@ Allocate_All_Formals (WN *pu)
 	TY_IDX vararg_type = Copy_TY(ST_type(Int_Preg));
 	/* set flag for alias analyzer */
 	Set_TY_no_ansi_alias (vararg_type);
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 	TY_IDX vararg_type2 = Copy_TY(MTYPE_To_TY(MTYPE_F16));
 	/* set flag for alias analyzer */
 	Set_TY_no_ansi_alias (vararg_type);
 #endif
 
-#ifndef TARG_X8664  // x86-64 always needs to call Get_Vararg_Parameter_Location
+#if !defined(TARG_X8664)
 	if (PLOC_is_nonempty(ploc) && !PLOC_on_stack(ploc)) {
 		/* don't do if already reached stack params */
 #endif
 		ploc = Get_Vararg_Input_Parameter_Location (ploc);
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
 	}
 #endif
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 	if (!PLOC_on_stack(ploc) && PLOC_size(ploc) == 8 && 
 	    (PLOC_reg(ploc) & 1) == 0) {
 	  /* need to align to a non-16-byte boundary, otherwise, there'll be a
@@ -1662,7 +1638,7 @@ Allocate_All_Formals (WN *pu)
 		/*
 		 *  create a temporary for the vararg formal
 		 */
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 	    	if (! float_seen && PLOC_size(ploc) == 16) {
 		  /* first time processing a float register */
 		  float_seen = TRUE;
@@ -1683,17 +1659,17 @@ Allocate_All_Formals (WN *pu)
 		Set_ST_sclass (sym, SCLASS_FORMAL);
 		Set_ST_is_value_parm( sym);
 		Set_ST_addr_saved(sym);
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 		if (Preg_Offset_Is_Int(PLOC_reg(ploc)))
 #endif
 		vararg_symbols[PLOC_reg(ploc)-First_Int_Preg_Param_Offset] = sym;
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 		else if( Preg_Offset_Is_Float(PLOC_reg(ploc)) )
 		  vararg_symbols[PLOC_reg(ploc)-First_Float_Preg_Param_Offset+MAX_NUMBER_OF_INT_REGISTER_PARAMETERS] = sym;
 		else
 		  FmtAssert( false, ("Unknown vararg symbol type.") );
 #endif
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
 		Allocate_Entry_Formal(sym, PLOC_on_stack(ploc), Is_Formal_Preg(PLOC_reg(ploc)));
 		/*
 		 * The optimizer sees these varargs references as *ap+n,
@@ -1766,18 +1742,18 @@ Calc_Formal_Area (WN *pu_tree, INT32 *formal_size, INT32 *upformal_size)
   else {
 	PLOC ploc;
 	INT i;
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 	Set_PU_arg_area_size(pu_ty, 0); // initialize to 0
 #endif
 	ploc = Setup_Input_Parameter_Locations(pu_ty);
 	for (i = 0; i < WN_num_formals(pu_tree); i++) {
 	  ploc = Get_Input_Parameter_Location (TY_Of_Parameter(WN_formal(pu_tree,i)));
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 	  if (ploc.reg == 0)  // not passed in register
 	    Set_PU_arg_area_size(pu_ty, PLOC_total_size(ploc));
 #endif
 	}
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
 	Set_PU_arg_area_size(pu_ty, PLOC_total_size(ploc));
 #endif
   }
@@ -1826,17 +1802,13 @@ Calc_Local_Area (void)
 		break;
 	    if (Trace_Frame)
 		fprintf (TFile, "local %s has size %lld\n", ST_name(&st),
-#ifdef KEY
 			 // C++ requires distinct addresses for empty classes
 			 (ST_size(&st) == 0 ? 1 : 0) +
-#endif
 			 ST_size(&st)); 
 	    local_size += ST_size(&st);
-#ifdef KEY
 	    if (ST_class(&st) == CLASS_VAR && (!Current_pu ||
                (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG)) && ST_size(&st) == 0)
 	      local_size++;
-#endif
 	    break;
 	    
 	case SCLASS_DGLOBAL:
@@ -1995,14 +1967,9 @@ Merge_Fixed_Stack_Frame(ST *SP_baseST, ST *FP_baseST)
     /* only altentries may use the temp area, so merge it now */
     MERGE_SEGMENT(SP_baseST, SFSEG_FTEMP, Max_Small_Frame_Offset);
 
-#ifndef KEY
-    // don't know offset of formals and upformals,
-    // so leave alone until finalized.
-#else
     /* attach formals and upformal to SP, but don't assign offsets till finalize */
     Set_ST_base(SF_Block(SFSEG_FORMAL), SP_baseST);
     Set_ST_base(SF_Block(SFSEG_UPFORMAL), SP_baseST);
-#endif
     break;
 
   case SMODEL_LARGE:
@@ -2038,7 +2005,7 @@ Choose_Stack_Model (INT64 frame_size)
   if (PU_has_alloca(Get_Current_PU())) {
     return SMODEL_DYNAMIC;
   } 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   if (Opt_Level == 0 || Force_Frame_Pointer || Call_Mcount ||
       Debug_Level > 0) {
     return SMODEL_DYNAMIC; // needed to make debugging, gprofiling work
@@ -2100,7 +2067,7 @@ Initialize_Stack_Frame (WN *PU_tree)
 	fprintf(TFile, "<lay> Determine_Stack_Model for %s\n", 
 		ST_name(WN_st(PU_tree)));
 
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
   if (PU_has_return_address(Get_Current_PU()) 
 	&& MTYPE_byte_size(Pointer_Mtype) < MTYPE_byte_size(Spill_Int_Mtype) )
   {
@@ -2157,9 +2124,8 @@ Initialize_Stack_Frame (WN *PU_tree)
   if (PUSH_RETURN_ADDRESS_ON_STACK) {
     // Reserve the space on stack for the return address (ia32)
     ST* ra_st;
-#ifdef KEY // bug 12261: check before creating another return address symbol
+    // check before creating another return address symbol
     if ((ra_st = Find_Special_Return_Address_Symbol()) == NULL) {
-#endif
       ra_st = New_ST ();
       ST_Init (ra_st, 
 	       Save_Str("return_address"),
@@ -2167,9 +2133,7 @@ Initialize_Stack_Frame (WN *PU_tree)
 	       SCLASS_FORMAL,
 	       EXPORT_LOCAL,
 	       MTYPE_To_TY(Pointer_Mtype));
-#ifdef KEY 
     }
-#endif
     Add_Object_To_Frame_Segment (ra_st, SFSEG_UPFORMAL, TRUE);
     upformal_size += MTYPE_byte_size(Pointer_Mtype);
   }
@@ -2204,7 +2168,7 @@ Initialize_Stack_Frame (WN *PU_tree)
   Allocate_All_Formals (PU_tree);
   Init_Formal_Segments (formal_size, upformal_size);
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   // initially, we are limited to 256 bytes of formal space
   if ((formal_size + upformal_size) > 256) 
 	ErrMsg (EC_Too_Many_Args, ST_name(WN_st(PU_tree)));
@@ -2398,7 +2362,7 @@ INT64 Finalize_Stack_Frame (void)
     Set_ST_base(SF_Block(SFSEG_UPFORMAL), SP_Sym);
     Assign_Offset(SF_Block(SFSEG_UPFORMAL), SP_Sym, 
 	(Frame_Has_Calls ? Stack_Offset_Adjustment : 0), 0);
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
     {
       int push_pop_int_saved_regs = (*Push_Pop_Int_Saved_Regs_p)();
       if (push_pop_int_saved_regs & 1)
@@ -2423,7 +2387,7 @@ INT64 Finalize_Stack_Frame (void)
   }
 
   Frame_Size = ROUNDUP(Frame_Size, stack_align);
-#ifdef TARG_X8664 // this is needed to maintain 16 bytes gap that contains
+#if defined(TARG_X8664) // this is needed to maintain 16 bytes gap that contains
     		  // the save area for return-addr and frame-ptr
   if (Current_PU_Stack_Model == SMODEL_SMALL && PUSH_FRAME_POINTER_ON_STACK) {
     Frame_Size += MTYPE_byte_size(Pointer_Mtype);
@@ -2481,7 +2445,7 @@ if(! Is_Target_64bit() ) {
 
   {	/* check that stacksize does not exceed system max */
 
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
 #if defined(linux) || defined(__CYGWIN__) || defined(__APPLE__) || defined(BUILD_OS_DARWIN)
         struct rlimit rlp;
         getrlimit(RLIMIT_STACK, &rlp);
@@ -2491,10 +2455,6 @@ if(! Is_Target_64bit() ) {
 #endif
 #endif /* __MINGW32__ */
 
-#ifndef KEY // Redhat 8.0 will have unlimited stack size
-	if (Frame_Size > rlp.rlim_cur)
-		ErrMsg (EC_LAY_stack_limit, Frame_Size, (INT64) rlp.rlim_cur);
-#endif
   }
   return Frame_Size;
 }
@@ -2514,7 +2474,7 @@ Allocate_Temp_To_Memory ( ST *st )
   Is_True(ST_sclass(st) == SCLASS_AUTO, ("Allocate_Temp_To_Memory expect stack var"));
   Set_ST_is_temp_var(st);
   Process_Stack_Variable ( st );
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   (*CG_Set_Is_Stack_Used_p)();
 #endif
 }
@@ -2533,7 +2493,7 @@ Is_String_Literal (ST *st)
 	if (ST_class(st) == CLASS_CONST && TCON_ty(STC_val(st)) == MTYPE_STR) {
 		return TRUE;
 	}
-#ifndef TARG_SL
+#if !defined(TARG_SL)
 	/* sometimes strings are in const array vars */
 	else if (ST_class(st) == CLASS_VAR && ST_is_const_var(st)
 		&& ST_is_initialized(st)
@@ -2618,20 +2578,12 @@ Shorten_Section ( ST *st, SECTION_IDX sec )
 	size = MAX(size, Adjusted_Alignment(st));
 	if (size <= Gspace_Available) {
 		Gspace_Available -= size;
-#if 0
-		if (Trace_Frame) fprintf(TFile, "<lay> use Gspace for %s (size %d, align %d)\n", ST_NAME(st), TY_size(ST_type(st)), Adjusted_Alignment(st));
-#endif
 	}
 	else {
 		if (Trace_Frame) fprintf(TFile, "<lay> not enough Gspace, so didn't assign %s to gprel section\n", ST_NAME(st));
 		return sec;
 	}
    }
-#if 0
-else {
-if (Trace_Frame) fprintf(TFile, "<lay> didn't check Gspace for %s\n", ST_NAME(st));
-}
-#endif
 
    if (sec == _SEC_RDATA && ST_class(st) == CLASS_CONST) {
      /* by default put all short .rodata items into .srdata, unless 
@@ -2733,7 +2685,7 @@ Allocate_Label (ST *lab)
 }
 
 
-#ifdef TARG_SL
+#if defined(TARG_SL)
 inline SECTION_IDX
 Get_Vbuf_Section(const ST *st)
 {
@@ -3166,12 +3118,12 @@ Allocate_Object ( ST *st )
   case SCLASS_FSTATIC :
     if (ST_is_thread_private(st)) {
       if (ST_is_initialized(st) && !ST_init_value_zero (st))
-#if defined(KEY) && !defined(TARG_SL)
+#if !defined(TARG_SL)
         sec = _SEC_LDATA_MIPS_LOCAL;	// bug 12619
 #else
         sec = _SEC_LDATA;
 #endif
-#ifdef TARG_SL 
+#if defined(TARG_SL)
       else if(ST_in_v1buf(st)) 
         sec = _SEC_VS1DATA;
       else if(ST_in_v2buf(st)) 
@@ -3181,20 +3133,14 @@ Allocate_Object ( ST *st )
 #endif      	  
 
       else
-#ifdef KEY
         sec = _SEC_BSS;
-#else
-        sec = _SEC_LBSS;
-#endif // KEY
     }
-#ifdef KEY
     else if (ST_is_thread_local(st)) {
       if (ST_is_initialized(st) && !ST_init_value_zero(st))
         sec = _SEC_LDATA;
       else
         sec = _SEC_LBSS;
     }
-#endif
     else if (ST_is_initialized(st) && !ST_init_value_zero (st))
 #if defined(TARG_X8664) || defined(TARG_LOONGSON)
     {
@@ -3216,7 +3162,7 @@ Allocate_Object ( ST *st )
 #endif
 
     else
-#ifdef TARG_SL
+#if defined(TARG_SL)
     if (ST_in_vbuf(st)) {
 /*  currently assembler don't support vbuf section for each v1buf v2buf v4buf,
  *  all these three type variables has only one section _SEC_VSDATA
@@ -3280,31 +3226,23 @@ Allocate_Object ( ST *st )
     break;
   case SCLASS_UGLOBAL :
     if (ST_is_thread_private(st)) {
-#ifdef KEY
       sec = _SEC_BSS;
-#else
-      sec = _SEC_LBSS;
-#endif // KEY
     } 
-#ifdef KEY
     else if (ST_is_thread_local(st)) {
       sec = _SEC_LBSS;
     }
-#endif
     else sec = _SEC_BSS;
     sec = Shorten_Section ( st, sec );
     Allocate_Object_To_Section ( base_st, sec, Adjusted_Alignment(base_st));
     break;
   case SCLASS_DGLOBAL :
     if (ST_is_thread_private(st))
-#if defined(KEY) && !defined(TARG_SL)
-      sec = _SEC_LDATA_MIPS_LOCAL;	// bug 12619
+#if !defined(TARG_SL)
+      sec = _SEC_LDATA_MIPS_LOCAL;
 #else
       sec = _SEC_LDATA;
 #endif
-#ifdef KEY
     else if (ST_is_thread_local(st)) sec = _SEC_LDATA;
-#endif
     else if (ST_is_constant(st)) {
 #if defined(TARG_X8664) || defined(TARG_LOONGSON)
       if (Gen_PIC_Shared)
@@ -3314,7 +3252,7 @@ Allocate_Object ( ST *st )
 	sec = Get_Const_Var_Section();
     }
 
-#ifdef TARG_SL
+#if defined(TARG_SL)
     else if (ST_in_vbuf(st)) {
       sec = Get_Vbuf_Section(st);
     }
@@ -3539,7 +3477,7 @@ Set_Frame_Has_Calls(BOOL b)
     Frame_Has_Calls = b;
 }
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 BOOL
 Stack_Frame_Has_Calls (void)
 {

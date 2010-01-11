@@ -128,9 +128,7 @@ enum FB_VERIFY_STATUS {
 // ====================================================================
 
 class FEEDBACK {
-#ifdef KEY
   friend class ARA_LOOP_INFO;
-#endif
 private:
 
   MEM_POOL   *_m;
@@ -139,9 +137,7 @@ private:
   bool        _trace;      // Get_Trace(TP_FEEDBACK, TP_FEEDBACK_WN)
   bool        _trace_draw; // Get_Trace(TP_FEEDBACK, TP_FEEDBACK_WN_DRAW)
 
-#ifdef KEY
   UINT64     _runtime_func_addr;  // run time function address
-#endif
 
   // For Whirl nodes, the map WN_MAP_FEEDBACK holds an index into
   // one of the following vectors:
@@ -153,10 +149,8 @@ private:
   vector< FB_Info_Call,    mempool_allocator<FB_Info_Call>    >  _calls;
   vector< FB_Info_Icall,   mempool_allocator<FB_Info_Icall>   >  _icalls;
   vector< FB_Info_Switch,  mempool_allocator<FB_Info_Switch>  >  _switches;
-#ifdef KEY
   vector< FB_Info_Value,   mempool_allocator<FB_Info_Value>    >  _values;
   vector< FB_Info_Value_FP_Bin,mempool_allocator<FB_Info_Value_FP_Bin> > _values_fp_bin;
-#endif
 
   INT32 Get_index_invoke  ( const WN *wn ) const;
   INT32 Get_index_branch  ( const WN *wn ) const;
@@ -165,10 +159,8 @@ private:
   INT32 Get_index_call    ( const WN *wn ) const;
   INT32 Get_index_icall   ( const WN *wn ) const;
   INT32 Get_index_switch  ( const WN *wn ) const;
-#ifdef KEY
   INT32 Get_index_value   ( const WN *wn ) const;
   INT32 Get_index_value_fp_bin( const WN *wn ) const;
-#endif
 
   INT32 Add_index_invoke  ( WN *wn );
   INT32 Add_index_branch  ( WN *wn );
@@ -177,10 +169,8 @@ private:
   INT32 Add_index_call    ( WN *wn );
   INT32 Add_index_icall   ( WN *wn );
   INT32 Add_index_switch  ( WN *wn );
-#ifdef KEY
   INT32 Add_index_value   ( WN *wn );
   INT32 Add_index_value_fp_bin( WN *wn );
-#endif
 
 public:
 
@@ -192,19 +182,15 @@ public:
 	    INT32 call_size = 1,
 	    INT32 icall_size = 1,
 	    INT32 switch_size = 1,
-#ifdef KEY
 	    INT32 value_size = 1,
 	    INT32 value_fp_bin_size = 1,
 	    UINT64 runtime_fun_address = 0x0,
-#endif
 	    WN_MAP_TAB *maptab = Current_Map_Tab );
 
   void  Reset_Root_WN( WN *root_wn ) { _root_wn = root_wn; }
 
-#ifdef KEY
   void Set_Runtime_Func_Addr( UINT64 addr ) { _runtime_func_addr = addr; }
   UINT64 Get_Runtime_Func_Addr() { return _runtime_func_addr; }
-#endif
 
   bool  Same_in_out( const WN *wn );
   void  FB_set_in_out_same_node( WN *wn );
@@ -224,10 +210,8 @@ public:
   const FB_Info_Call&    Query_call    ( const WN *wn ) const;
   const FB_Info_Icall&   Query_icall   ( const WN *wn ) const;
   const FB_Info_Switch&  Query_switch  ( const WN *wn ) const;
-#ifdef KEY
   const FB_Info_Value&    Query_value   ( const WN *wn ) const;
   const FB_Info_Value_FP_Bin& Query_value_fp_bin( const WN *wn ) const;
-#endif
 
   FB_FREQ Query      ( const WN *wn, const FB_EDGE_TYPE type ) const;
   FB_FREQ Query_prob ( const WN *wn, const FB_EDGE_TYPE type ) const;
@@ -240,10 +224,8 @@ public:
   void Annot_call    ( WN *wn, const FB_Info_Call   & fb_info );
   void Annot_icall   ( WN *wn, const FB_Info_Icall  & fb_info );
   void Annot_switch  ( WN *wn, const FB_Info_Switch & fb_info );
-#ifdef KEY
   void Annot_value   ( WN *wn, const FB_Info_Value  & fb_info );
   void Annot_value_fp_bin( WN *wn, const FB_Info_Value_FP_Bin  & fb_info );
-#endif
 
   void Annot         ( WN *wn, const FB_EDGE_TYPE type, FB_FREQ freq );
 

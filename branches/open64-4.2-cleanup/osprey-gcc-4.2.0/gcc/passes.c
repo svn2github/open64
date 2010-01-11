@@ -103,9 +103,7 @@ Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
 				   declarations for e.g. AIX 4.x.  */
 #endif
 
-#ifdef KEY
 extern void gspin_gxx_emits_decl (tree);
-#endif
 
 /* Global variables used to communicate with passes.  */
 int dump_flags;
@@ -139,14 +137,12 @@ rest_of_decl_compilation (tree decl,
 	alias = TREE_VALUE (TREE_VALUE (alias));
 	alias = get_identifier (TREE_STRING_POINTER (alias));
 	assemble_alias (decl, alias);
-#ifdef KEY
 	// Put aliases into the list of decls emitted by g++ so that we can
 	// iterate through the list when expanding aliases to WHIRL.  An alias
 	// can be expanded only if its target, which can be another alias, is
 	// expanded.  Bug 4393.
 	if (flag_spin_file)
 	  gspin_gxx_emits_decl(decl);
-#endif
       }
   }
 
@@ -264,10 +260,8 @@ finish_optimization_passes (void)
 static bool
 gate_rest_of_compilation (void)
 {
-#ifdef KEY
   if (flag_spin_file)
     gspin_gxx_emits_decl(current_function_decl);
-#endif
   /* Early return if there were errors.  We can run afoul of our
      consistency checks, and there's not really much point in fixing them.  */
   return !(rtl_dump_and_exit || flag_syntax_only || errorcount || sorrycount);

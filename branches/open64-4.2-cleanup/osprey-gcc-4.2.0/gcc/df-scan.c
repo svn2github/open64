@@ -523,10 +523,7 @@ df_rescan_blocks (struct df *df, bitmap blocks)
     }
 
   df_refs_record (dflow, local_blocks_to_scan);
-#if 0
-  bitmap_print (stderr, local_blocks_to_scan, "scanning: ", "\n");
-#endif
-      
+
   if (!df->blocks_to_scan)
     df->blocks_to_scan = BITMAP_ALLOC (NULL);
 
@@ -1217,15 +1214,6 @@ df_def_record_1 (struct dataflow *dflow, rtx x,
 	 || GET_CODE (dst) == ZERO_EXTRACT
 	 || df_read_modify_subreg_p (dst))
     {
-#if 0
-      /* Strict low part always contains SUBREG, but we do not want to make
-	 it appear outside, as whole register is always considered.  */
-      if (GET_CODE (dst) == STRICT_LOW_PART)
-	{
-	  loc = &XEXP (dst, 0);
-	  dst = *loc;
-	}
-#endif
       loc = &XEXP (dst, 0);
       if (GET_CODE (dst) == STRICT_LOW_PART)
 	dst_in_strict_lowpart = true;

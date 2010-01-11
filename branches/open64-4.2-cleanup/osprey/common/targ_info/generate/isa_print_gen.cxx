@@ -71,7 +71,7 @@
  * (It would be better to get the max operands and results from the
  * generated targ_isa_operands.h file -- Ken)
  */
-#ifdef TARG_SL
+#if defined(TARG_SL)
 #define MAX_OPNDS 9
 #define MAX_RESULTS 4
 #else
@@ -360,7 +360,7 @@ void ISA_Print_End(void)
   int top;
   bool err;
 
-#ifndef TARG_LOONGSON
+#if !defined(TARG_LOONGSON)
   for (err = false, top = 0; top < TOP_count; ++top) {
     bool is_dummy = TOP_is_dummy((TOP)top);
     bool is_simulated = TOP_is_simulated((TOP)top);

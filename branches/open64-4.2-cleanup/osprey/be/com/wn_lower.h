@@ -210,9 +210,7 @@ extern void WN_Lower_Checkdump(const char *msg, WN *tree, LOWER_ACTIONS actions)
  */
 extern void U64_lower_wn(WN *, BOOL);
 
-#ifdef KEY
 extern void WN_retype_expr(WN *);
 extern WN* Transform_To_Memcpy(WN *dst, WN *src, INT32 offset, TY_IDX dstTY, TY_IDX srcTY, WN *size);
-#endif
 
 #endif /* wn_lower_INCLUDED */

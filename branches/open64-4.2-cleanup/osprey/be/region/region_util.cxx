@@ -221,7 +221,7 @@ BOOL REGION_has_black_regions(RID *rid)
 	  ("REGION_has_black_regions, called on a transparent region"));
 
   /* 7.3 specific assertion */
-#ifdef TARG_SL //region_type_for_major
+#if defined(TARG_SL) //region_type_for_major
   Is_True(RID_TYPE_func_entry(rid) || RID_TYPE_olimit(rid) || RID_TYPE_major(rid) || 
 #else 
   Is_True(RID_TYPE_func_entry(rid) || RID_TYPE_olimit(rid) ||
@@ -1092,7 +1092,7 @@ char *RID_type_str(RID_TYPE type)
     strcat(buff," COLD");
   if (type & RID_TYPE_swp)
     strcat(buff," SWP");
-#ifdef TARG_SL //fork_joint
+#if defined(TARG_SL) //fork_joint
   if (type & RID_TYPE_major)
     strcat(buff," SL2_MAJOR");
   if(type & RID_TYPE_minor)
@@ -1455,7 +1455,7 @@ REGION_CS_Next(REGION_CS_ITER *iter)
   RID_TYPE type = REGION_CS_ITER_type(iter);
   RID *parent = (me != NULL) ? RID_parent(me) : NULL;
   Is_True(type & RID_TYPE_loop || type & RID_TYPE_pragma ||
-#ifdef TARG_SL //region_type_for_major
+#if defined(TARG_SL) //region_type_for_major
 	  type & RID_TYPE_olimit || type & RID_TYPE_func_entry || type & RID_TYPE_major || 
 #else 
 	  type & RID_TYPE_olimit || type & RID_TYPE_func_entry ||
@@ -1835,7 +1835,7 @@ REGION_KIND REGION_type_to_kind(RID *rid)
     return REGION_KIND_COLD;
   if (RID_type(rid) & RID_TYPE_swp)
     return REGION_KIND_SWP;
-#ifdef TARG_SL //fork_joint
+#if defined(TARG_SL) //fork_joint
   if (RID_type(rid) & RID_TYPE_major)
     return REGION_KIND_MAJOR;
   if(RID_type(rid)  & RID_TYPE_minor)
@@ -1911,7 +1911,7 @@ void REGION_kind_to_type(WN *wn, RID *rid)
       case REGION_KIND_SWP:
 	RID_TYPE_swp_Set(rid);
 	break;
-#ifdef TARG_SL //fork_joint
+#if defined(TARG_SL) //fork_joint
       case REGION_KIND_MINOR:
 	RID_TYPE_minor_Set(rid);
 	break;

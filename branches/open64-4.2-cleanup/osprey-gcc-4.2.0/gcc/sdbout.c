@@ -1409,18 +1409,6 @@ sdbout_reg_parms (tree parms)
 		 && PARM_PASSED_IN_MEMORY (parms)
 		 && ! rtx_equal_p (DECL_RTL (parms), DECL_INCOMING_RTL (parms)))
 	  {
-#if 0 /* ??? It is not clear yet what should replace this.  */
-	    int offset = DECL_OFFSET (parms) / BITS_PER_UNIT;
-	    /* A parm declared char is really passed as an int,
-	       so it occupies the least significant bytes.
-	       On a big-endian machine those are not the low-numbered ones.  */
-	    if (BYTES_BIG_ENDIAN
-		&& offset != -1
-		&& TREE_TYPE (parms) != DECL_ARG_TYPE (parms))
-	      offset += (GET_MODE_SIZE (TYPE_MODE (DECL_ARG_TYPE (parms)))
-			 - GET_MODE_SIZE (GET_MODE (DECL_RTL (parms))));
-	    if (INTVAL (XEXP (XEXP (DECL_RTL (parms), 0), 1)) != offset) {...}
-#endif
 	      {
 		if (name == 0 || *name == 0)
 		  name = gen_fake_label ();

@@ -151,7 +151,7 @@ typedef enum
   EM_Q_LT,		/* quad less than */
   EM_SNGL_Q,		/* convert quad to single */
   EM_DBLE_Q,		/* convert quad to double */
-#ifdef TARG_LOONGSON
+#if defined(TARG_LOONGSON)
   EM_Q_NEG,             /* quad negate */
   EM_KU_QINT,		/* convert quad to unsigned 64 bits int */
   EM_JU_QINT,		/* convert quad to unsigned 32 bits int */
@@ -289,7 +289,7 @@ const EM_ROUTINES em_routines[]=
   EM_D_TRUNC_LL_D,  "__d_trunc_ll_d",PURE_NSE,  COERCE_none,
   EM_LL_BIT_EXTRACT,"__ll_bit_extract",PURE_NSE,COERCE_none,
   EM_LL_BIT_INSERT, "__ll_bit_insert",PURE_NSE, COERCE_none,
-#ifdef TARG_LOONGSON
+#if defined(TARG_LOONGSON)
   EM_Q_ABS,         "fabsl",         PURE_NSE,  COERCE_none,
   EM_Q_SQRT,        "__qsqrt",       PURE_NSE,  COERCE_none,
   EM_Q_ADD,         "__addtf3",      PURE_NSE,  COERCE_none,
@@ -728,7 +728,7 @@ static EMULATION WN_emulation(WN *tree)
       case OPR_SELECT:
       case OPR_LDID:
       case OPR_CONST:
-#ifndef TARG_LOONGSON
+#if !defined(TARG_LOONGSON)
       case OPR_NEG:
 #endif    
 	break;
@@ -736,7 +736,7 @@ static EMULATION WN_emulation(WN *tree)
       case OPR_ABS:	return EM_Q_ABS;
       case OPR_ADD:	return EM_Q_ADD;
       case OPR_SUB:	return EM_Q_SUB;
-#ifdef TARG_LOONGSON
+#if defined(TARG_LOONGSON)
       case OPR_NEG:	return EM_Q_NEG;
 #endif
       case OPR_MPY:	return EM_Q_MPY;
@@ -782,7 +782,7 @@ static EMULATION WN_emulation(WN *tree)
 	{
 	case MTYPE_I4:	return EM_JI_QINT;
 	case MTYPE_I8:	return EM_KI_QINT;
-#ifdef TARG_LOONGSON
+#if defined(TARG_LOONGSON)
 	case MTYPE_U4:	return EM_JU_QINT;
 	case MTYPE_U8:	return EM_KU_QINT;
 #endif
@@ -1142,15 +1142,11 @@ static WN *em_sign(WN *block, WN *x, WN *y)
   TYPE_ID	type = WN_rtype(x);
   WN		*abs, *select;
 
-#ifdef KEY // bug 9660
   if (MTYPE_is_integral(type) && ! MTYPE_signed(type))
     type = Mtype_TransferSign(MTYPE_I4, type);
-#endif
-#ifdef KEY // bug 12052
   if (MTYPE_is_integral(type) && 
       MTYPE_byte_size(type) < MTYPE_byte_size(WN_rtype(y)))
     type = Mtype_TransferSize(WN_rtype(y), type);
-#endif
   abs = WN_Abs(type, x);
   absN = AssignExpr(block, abs, type);
 
@@ -1302,10 +1298,8 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
   {
     TCON	con = Const_Val(pow);
     BOOL	sqrt, rsqrt;
-#ifdef KEY
     BOOL        sqrt_25, rsqrt_25, sqrt_75, rsqrt_75;
     BOOL	cbrt_33, cbrt_66;
-#endif
     WN		*tree, *x_copy;
     double	n;
 
@@ -1330,10 +1324,8 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
     }
     n = Targ_To_Host_Float(con);
     sqrt = rsqrt = FALSE;
-#ifdef KEY
     cbrt_33 = cbrt_66 = FALSE;
     sqrt_25 = rsqrt_25 = sqrt_75 = rsqrt_75 = FALSE;
-#endif
 
     if (trunc(n) == n)
     {
@@ -1351,7 +1343,6 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
 	sqrt = TRUE;
       x_copy = WN_COPY_Tree(x);
     }
-#ifdef KEY
     else if ((trunc(ABS(n))+.25) == ABS(n))
     {
       /*
@@ -1391,7 +1382,6 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
       x_copy = WN_COPY_Tree(x);
     }
 #endif
-#endif
     else
     {
       return NULL;
@@ -1405,9 +1395,8 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
 
     if (sqrt || rsqrt)
     {
-#ifdef KEY
-      // bug 4824: non-constant float x could be negative
-      // bug 4990: Do the check only for C/C++ and if
+      // non-constant float x could be negative
+      // Do the check only for C/C++ and if
       // -fmath-errno (-LANG:math_errno=on)
       if (!PU_f77_lang (Get_Current_PU()) &&
           !PU_f90_lang (Get_Current_PU()) && // ! Fortran
@@ -1416,8 +1405,7 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
           (!Is_Constant (x_copy) ||
 	   Targ_To_Host_Float (Const_Val (x_copy)) < 0))
         return NULL;
-#endif // KEY
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
       // Bug 5935 - rsqrtsd or rsqrtpd is absent.
       if (rsqrt && (type == MTYPE_F8 || type == MTYPE_V16F8))
 	return NULL;
@@ -1442,7 +1430,6 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
 		       fractional);
       }
     }
-#ifdef KEY // bug 6932 
     // evaluate (x**0.25) as sqrt(sqrt(x))
     if (sqrt_25 || rsqrt_25) 
     {
@@ -1453,7 +1440,7 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
           (!Is_Constant (x_copy) ||
 	   Targ_To_Host_Float (Const_Val (x_copy)) < 0))
         return NULL;
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
       // rsqrtsd or rsqrtpd is absent.
       if (rsqrt_25 && (type == MTYPE_F8 || type == MTYPE_V16F8))
 	return NULL;
@@ -1490,7 +1477,7 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
           (!Is_Constant (x_copy) ||
 	   Targ_To_Host_Float (Const_Val (x_copy)) < 0))
         return NULL;
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
       // rsqrtsd or rsqrtpd is absent.
       if (rsqrt_75 && (type == MTYPE_F8 || type == MTYPE_V16F8))
 	return NULL;
@@ -1552,7 +1539,6 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
       }
     }
 #endif // !TARG_SL
-#endif // KEY bug 6932
     return tree;
   }
  
@@ -1745,7 +1731,7 @@ static WN *em_quad_neg(WN *block, WN *tree)
     WN	*wn, *st;
     ST	*npreg = MTYPE_To_PREG(newType);
 
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS)
     wn = WN_LdidPreg(newType, qN);  // Bug 12895
 #else
     wn = WN_Neg(newType, WN_LdidPreg(newType, qN));
@@ -1782,7 +1768,7 @@ static WN *em_quad_abs(WN *block, WN *tree)
     WN	*wn, *st;
     ST	*npreg = MTYPE_To_PREG(newType);
 
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS)
     wn = WN_LdidPreg(newType, qN);  // Bug 12895
 #else
     wn = WN_Abs(newType, WN_LdidPreg(newType, qN));
@@ -1909,7 +1895,7 @@ static WN *em_divfloor(WN *block, TYPE_ID type, WN *x, WN *y)
     */
     TYPE_ID	ytype = WN_rtype(y);
     WN		*sra, *add, *one, *bxor, *mask, *sub, *band;
-#ifdef TARG_X8664 
+#if defined(TARG_X8664)
     // Bug 3264 - This algorithm requires that byte size be identical for 
     // ytype and type, for zero-extended 64-bit target ISA.
     if (MTYPE_is_unsigned(ytype) &&
@@ -2070,7 +2056,6 @@ static WN *em_readstackpointer(TYPE_ID rtype)
   return WN_LdidPreg(rtype, Stack_Pointer_Preg_Offset);
 }
 
-#ifdef KEY
 /* ====================================================================
  *
  *  WN *em_readframepointer(WN *block, TYPE_ID rtype)
@@ -2082,7 +2067,6 @@ static WN *em_readframepointer(TYPE_ID rtype)
 {
   return WN_LdidPreg(rtype, Frame_Pointer_Preg_Offset);
 }
-#endif
 
 /* ====================================================================
  *
@@ -2806,7 +2790,7 @@ static WN *em_alog10(WN *block, WN *x)
 		   WN_Floatconst(type, M_LOG10),
 		   log);
   } else {
-#ifdef TARG_LOONGSON
+#if defined(TARG_LOONGSON)
      TCON t_log10;
      t_log10.vals.qval.qval[0]=  0x555f5a68;
      t_log10.vals.qval.qval[1] =  0xe32a6ab7;
@@ -3588,7 +3572,7 @@ static BOOL check_size(WN *size, WN *src, WN *dst)
      */
     if (n <= CG_memmove_inst_count)
       return TRUE;
-#ifdef TARG_NVISA 
+#if defined(TARG_NVISA)
     else
     {
         /* NVISA expects memset to gen inline code. If too large
@@ -3632,45 +3616,6 @@ static BOOL check_size(WN *size, WN *src, WN *dst)
 
 static void aux_memory_msg(const char *msg, WN *tree, WN *mstore)
 {
-#if 0
-  char	buff[120];
-  INT32 n;
-
-  // This is a pretty pointless thing to do, as it's awfully noisy
-
-  // If the size is 0, we inline expansion is empty. So we don't
-  // get a MSTORE. Check for that case.
-  if (WN_operator(mstore) != OPR_MSTORE) {
-    sprintf (buff, "inlined %s on line %d, size = 0", 
-			msg, Srcpos_To_Line(WN_Get_Linenum(tree)));
-    DevWarn (buff);
-    return;
-  }
-
-  WN *load = 	WN_kid0(mstore);
-  WN *size = 	WN_kid2(mstore);
-
-  n= sprintf(buff, "inlined %s on line %d, dst align=%d",
-	     msg,
-	     Srcpos_To_Line(WN_Get_Linenum(tree)),
-	     TY_align(TY_pointed(WN_ty(mstore))));
-
-  if (WN_opcode(load) == OPC_MLOAD)
-  {
-    n += sprintf(&buff[n], ", src align=%d", TY_align(TY_pointed(WN_ty(load))));
-  }
-
-  if (Is_Integer_Constant(size))
-  {
-    n += sprintf(&buff[n], ", size = %lld", WN_const_val(size));
-  }
-  else
-  {
-    n += sprintf(&buff[n], "size = unknown");
-  }
-  
-  DevWarn(buff);
-#endif
 }
 
 static WN *aux_memset(WN *var, WN *con, WN *size)
@@ -3792,15 +3737,9 @@ static WN *em_memcpy(WN *block, WN *tree, WN *dst, WN *src, WN *size)
 {
   if (check_size(size, src, dst))
   {
-#ifdef KEY
-    // bugs 3510, 3924
     if ( CG_memcpy_cannot_overlap ||  // TRUE
 	 ( Is_Integer_Constant(size) &&
 	   ! lower_is_aliased(src, dst, WN_const_val(size)) ) )
-#else
-    if (CG_memcpy_cannot_overlap ||
-	!lower_is_aliased(src, dst, WN_const_val(size)))
-#endif
     {
       if (WN *em = aux_memcpy(src, dst, size)) {
         aux_memory_msg("memcpy()", tree, em);
@@ -3835,7 +3774,7 @@ static WN *em_memmove(WN *block, WN *tree, WN *dst, WN *src, WN *size)
   return NULL;
 }
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 extern  /* defined in data_layout.cxx */
 ST *Get_Vararg_Save_Area_Info(int &fixed_int_parms, int &fixed_float_parms,
 			      ST *&upformal);
@@ -3853,10 +3792,6 @@ static WN *em_x8664_va_start(WN *block, WN *ap)
     Is_True(TY_kind(ty_idx) == KIND_POINTER,
 	    ("em_x8664_va_start: argument not of pointer type"));
     ty_idx = TY_pointed(ty_idx);
-#if 0 // bug 10098
-    Is_True(TY_kind(ty_idx) == KIND_ARRAY && TY_size(ty_idx) == 24,
-	("em_x8664_va_start: argument pointer does not point to type va_list"));
-#endif
     direct = TRUE;
     // va_list_struct_ty = TY_etype(ty_idx);
   }
@@ -4412,7 +4347,7 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 
     switch(rtype)
     {
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
     case MTYPE_C4:
     case MTYPE_C8:
       if (Is_Target_64bit())
@@ -4500,7 +4435,7 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
     TYPE_ID	rtype =  WN_rtype(tree);
     TY_IDX ty = Make_Function_Type( MTYPE_To_TY(rtype));
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
     // The return type is set up correctly in Make_Function_Type (above).
     // (-m32 expects that the return type be setup correctly).
     // Currently, there is no need for setting up the parameter list 
@@ -4643,50 +4578,15 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
       }
     }
 #endif
-#if defined(TARG_X8664) && !defined(OSP_OPT)
-    // Rename memset to the PathScale optimized memset.
-    else if (WN_intrinsic(tree) == INTRN_MEMSET &&
-	       OPT_Fast_Stdlib &&
-	       Is_Target_64bit()) {
-      if (Is_Target_EM64T() || Is_Target_Core() || Is_Target_Wolfdale())
-	st = Gen_Intrinsic_Function(ty, "memset.pathscale.em64t");
-      else
-	st = Gen_Intrinsic_Function(ty, "memset.pathscale.opteron");
-
-    // Rename memcpy to the PathScale optimized memcpy.
-    } else if (WN_intrinsic(tree) == INTRN_MEMCPY &&
-	       OPT_Fast_Stdlib &&
-	       Is_Target_64bit()) {
-      if (Is_Target_EM64T() || Is_Target_Core() || Is_Target_Wolfdale())
-	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_em64t");
-      else
-	st = Gen_Intrinsic_Function(ty, "__memcpy_pathscale_opteron");
-    }
-#endif
     else if (WN_intrinsic(tree) == INTRN_I4POPCNT &&
     	       MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4 &&
                Is_Target_32bit()) {
       st = Gen_Intrinsic_Function(ty, "__popcountsi2");
-#if defined(TARG_X8664) && !defined(OSP_OPT)
-
-    } else if (WN_intrinsic(tree) == INTRN_PARITY &&
-    	       MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4 &&
-               Is_Target_32bit()) {
-      st = Gen_Intrinsic_Function(ty, "__paritysi2");
-#endif
     } else {
       st = Gen_Intrinsic_Function(ty, function);
     }
 #elif defined(TARG_MIPS) && !defined(TARG_SL)
 
-#if 0  // Using __popcountsi2 fails at link-time on cross-compiler.
-    ST *st = NULL;
-    if (WN_intrinsic(tree) == INTRN_I4POPCNT &&
-	MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4) {
-      st = Gen_Intrinsic_Function(ty, "__popcountsi2");
-    } else
-      st = Gen_Intrinsic_Function(ty, function);
-#else
     if (WN_intrinsic(tree) == INTRN_I4POPCNT &&
 	MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4) {
       // Zero extend U4 to U8
@@ -4697,8 +4597,6 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 			       MTYPE_To_TY( MTYPE_U8 ), WN_PARM_BY_VALUE );
     }
     ST *st = Gen_Intrinsic_Function(ty, function);
-#endif
-
 #else
     ST	*st = Gen_Intrinsic_Function(ty, function);
 #endif // KEY
@@ -4860,11 +4758,9 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
   case INTRN_U8READSTACKPOINTER:
     return em_readstackpointer(Pointer_type);
 
-#ifdef KEY
   case INTRN_U4READFRAMEPOINTER:
   case INTRN_U8READFRAMEPOINTER:
     return em_readframepointer(Pointer_type);
-#endif
 
   case INTRN_U4I4SETSTACKPOINTER:
   case INTRN_U8I8SETSTACKPOINTER:
@@ -5206,7 +5102,7 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
     break;
 
   case INTRN_MEMSET:
-#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_NVISA)	// Emulate memset; don't call PathScale memset.
+#if !defined(TARG_SL) && !defined(TARG_NVISA)	// Emulate memset; don't call PathScale memset.
     if (CG_mem_intrinsics && Emulate_memset)
     {
       WN * con = WN_arg(tree, 1);
@@ -5246,7 +5142,7 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
     }
     break;
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   case INTRN_VA_START:
     if (strcmp(Get_Error_Phase(), "VHO Processing") == 0)
       break; // bug 8525: cannot lower va_start at VHO time
@@ -5254,7 +5150,7 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
     break;
 #endif
 
-#if defined(KEY) && !defined(TARG_SL)
+#if !defined(TARG_SL)
   case INTRN_F4CBRT:
   case INTRN_F8CBRT:
     break;
@@ -5283,7 +5179,7 @@ extern WN *emulate(WN *block, WN *tree)
   {
     switch(WN_operator(tree))
     {
-#ifndef TARG_LOONGSON
+#if !defined(TARG_LOONGSON)
     case OPR_NEG:
       if (MTYPE_is_quad(WN_rtype(tree)))
       {
@@ -5321,7 +5217,6 @@ extern WN *emulate(WN *block, WN *tree)
   return wn;
 }
 
-#ifdef KEY // bug 6938
 extern WN *emulate_fast_exp(WN *block, WN *tree)
 {
   if (! Inline_Intrinsics_Allowed)
@@ -5371,4 +5266,3 @@ extern WN *emulate_fast_exp(WN *block, WN *tree)
  
   return NULL;
 }
-#endif

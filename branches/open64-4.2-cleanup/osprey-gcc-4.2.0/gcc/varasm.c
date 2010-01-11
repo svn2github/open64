@@ -66,14 +66,12 @@ Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
 				   declarations for e.g. AIX 4.x.  */
 #endif
 
-#ifdef KEY
 #include "gspin-gcc-interface.h"
 #include "diagnostic.h"         // errorcount, sorrycount
 extern void gspin_gxx_emits_decl (tree);
 extern void gspin_gxx_emits_asm (char *);
 
 extern int flag_spin_file;
-#endif
 
 /* The (assembler) name of the first globally-visible object output.  */
 extern GTY(()) const char *first_global_object_name;
@@ -511,7 +509,6 @@ asm_output_bss (FILE *file, tree decl ATTRIBUTE_UNUSED,
 #ifdef ASM_DECLARE_OBJECT_NAME
   last_assemble_variable_decl = decl;
   ASM_DECLARE_OBJECT_NAME (file, name, decl);
-#ifdef KEY
   if (flag_spin_file) {
     We do not reach here, this comment intentionally does not have the
     comment sign.
@@ -519,7 +516,6 @@ asm_output_bss (FILE *file, tree decl ATTRIBUTE_UNUSED,
     gs_bv(cp_decl_flags, GS_DECL_EMITTED_BY_GXX, 1);
     gspin_gxx_emits_decl (decl);
   }
-#endif
 #else
   /* Standard thing is just output label for the object.  */
   ASM_OUTPUT_LABEL (file, name);
@@ -546,12 +542,10 @@ asm_output_aligned_bss (FILE *file, tree decl ATTRIBUTE_UNUSED,
 #ifdef ASM_DECLARE_OBJECT_NAME
   last_assemble_variable_decl = decl;
   ASM_DECLARE_OBJECT_NAME (file, name, decl);
-#ifdef KEY
   if (flag_spin_file) {
     DECL_EMITTED_BY_GXX(decl) = 1;
     gspin_gxx_emits_decl (decl);
   }
-#endif
 #else
   /* Standard thing is just output label for the object.  */
   ASM_OUTPUT_LABEL (file, name);
@@ -1132,10 +1126,8 @@ make_decl_rtl (tree decl)
 	  ORIGINAL_REGNO (DECL_RTL (decl)) = reg_number;
 	  REG_USERVAR_P (DECL_RTL (decl)) = 1;
 
-#ifdef KEY
 	  if (flag_spin_file)
 	    DECL_ASMREG(decl) = reg_number;
-#endif
 
 	  if (TREE_STATIC (decl))
 	    {
@@ -1214,10 +1206,8 @@ assemble_asm (tree string)
   if (TREE_CODE (string) == ADDR_EXPR)
     string = TREE_OPERAND (string, 0);
 
-#ifdef KEY
   if (flag_spin_file)
     gspin_gxx_emits_asm ((char *)TREE_STRING_POINTER (string));
-#endif
 
   fprintf (asm_out_file, "\t%s\n", TREE_STRING_POINTER (string));
 }
@@ -1844,9 +1834,7 @@ assemble_variable (tree decl, int top_level ATTRIBUTE_UNUSED,
 
   /* Compute the alignment of this data.  */
 
-#ifdef KEY
   if (!flag_spin_file)
-#endif
   {
   align_variable (decl, dont_output_data);
   set_mem_align (decl_rtl, DECL_ALIGN (decl));
@@ -1873,7 +1861,6 @@ assemble_variable (tree decl, int top_level ATTRIBUTE_UNUSED,
   if (sect && (sect->common.flags & SECTION_CODE) != 0)
     DECL_IN_TEXT_SECTION (decl) = 1;
 
-#ifdef KEY
   if (flag_spin_file) {
     DECL_EMITTED_BY_GXX(decl) = 1;
     /* It is quite likely we have already processed this DECL, and so the
@@ -1899,7 +1886,6 @@ assemble_variable (tree decl, int top_level ATTRIBUTE_UNUSED,
                          GS_TREE_SYMBOL_REFERENCED, 1); // bug 11006
     gspin_gxx_emits_decl (decl);
   }
-#endif
 
   /* If the decl is part of an object_block, make sure that the decl
      has been positioned within its block, but do not write out its
@@ -2336,10 +2322,8 @@ assemble_integer (rtx x, unsigned int size, unsigned int align, int force)
   if (targetm.asm_out.integer (x, size, aligned_p))
     return true;
 
-#ifdef KEY
   if (flag_spin_file)
     return true;
-#endif
 
   /* If the object is a multi-byte one, try splitting it up.  Split
      it into words it if is multi-word, otherwise split it into bytes.  */
@@ -4164,16 +4148,12 @@ output_constant (tree exp, unsigned HOST_WIDE_INT size, unsigned int align)
       if (TREE_CODE (exp) != REAL_CST)
 	error ("initializer for floating value is not a floating constant");
 
-#ifdef KEY
       if (!flag_spin_file)
-#endif
       assemble_real (TREE_REAL_CST (exp), TYPE_MODE (TREE_TYPE (exp)), align);
       break;
 
     case COMPLEX_TYPE:
-#ifdef KEY
       if (!flag_spin_file)
-#endif
       {
       output_constant (TREE_REALPART (exp), thissize / 2, align);
       output_constant (TREE_IMAGPART (exp), thissize / 2,
@@ -4189,9 +4169,7 @@ output_constant (tree exp, unsigned HOST_WIDE_INT size, unsigned int align)
 	  output_constructor (exp, size, align);
 	  return;
 	case STRING_CST:
-#ifdef KEY
           if (!flag_spin_file)
-#endif
           {
 	  thissize = MIN ((unsigned HOST_WIDE_INT)TREE_STRING_LENGTH (exp),
 			  size);
@@ -5035,12 +5013,10 @@ finish_aliases_1 (void)
 	       && ! lookup_attribute ("weakref", DECL_ATTRIBUTES (p->decl)))
 	error ("%q+D aliased to external symbol %qs",
 	       p->decl, IDENTIFIER_POINTER (p->target));
-#ifdef KEY
       if (flag_spin_file && target_decl) {
         gs_t gs_decl = gs_x(p->decl);   // Allocate a gs node if necessary.
         gs_set_operand(gs_decl, GS_DECL_ALIAS_TARGET, gs_x(target_decl));
       }
-#endif
     }
 }
 
@@ -5086,9 +5062,7 @@ assemble_alias (tree decl, tree target)
 	  TREE_CHAIN (alias) = target;
 #endif
 	}
-#ifdef KEY /* bug 12561 */
       if (!flag_spin_file)
-#endif
       if (TREE_PUBLIC (decl))
 	error ("weakref %q+D must have static linkage", decl);
     }
@@ -5131,12 +5105,10 @@ assemble_alias (tree decl, tree target)
   if (target_decl && TREE_ASM_WRITTEN (target_decl)) {
     do_assemble_alias (decl, target);
 
-#ifdef KEY
     if (flag_spin_file) {
       gs_t gs_decl = gs_x(decl);        // Allocate a gs node if necessary.
       gs_set_operand(gs_decl, GS_DECL_ALIAS_TARGET, gs_x(target_decl));
     }
-#endif
   }
   else
     {
@@ -5210,10 +5182,8 @@ make_decl_one_only (tree decl)
     {
 #ifdef MAKE_DECL_ONE_ONLY
       MAKE_DECL_ONE_ONLY (decl);
-#ifdef KEY /* bug 10920 */
       if (flag_spin_file && gspin_invoked(decl))
         gs_set_flag_value (decl, GS_DECL_WEAK, DECL_WEAK(decl));
-#endif
 #endif
       DECL_ONE_ONLY (decl) = 1;
     }
@@ -5559,7 +5529,6 @@ categorize_decl_for_section (tree decl, int reloc)
       if (bss_initializer_p (decl))
       {
 	ret = SECCAT_BSS;
-#ifdef KEY
         // g++ knows it can initialize a DECL to zero by allocating it to
         // .bss.  A non-GNU front-end may not be this smart.  Delete
         // DECL_INITIAL to force the non-GNU front-end to allocate DECL to
@@ -5574,7 +5543,6 @@ categorize_decl_for_section (tree decl, int reloc)
             }
           }
         }
-#endif
       }
       else if (! TREE_READONLY (decl)
 	       || TREE_SIDE_EFFECTS (decl)

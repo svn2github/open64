@@ -1026,7 +1026,6 @@ common_handle_option (size_t scode, const char *arg, int value,
       /* These are no-ops, preserved for backward compatibility.  */
       break;
 
-#ifdef KEY
     case OPT_spinfile:
       flag_spin_file = 1;
       spin_file_name = arg;
@@ -1034,7 +1033,6 @@ common_handle_option (size_t scode, const char *arg, int value,
       /* Disable GNU inlining when generating SPIN.  */
       flag_no_inline = 1;
       break;
-#endif
 
     default:
       /* If the flag was handled in a standard way, assume the lack of

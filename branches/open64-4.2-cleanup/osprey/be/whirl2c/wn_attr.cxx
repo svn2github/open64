@@ -272,14 +272,13 @@ WN_intrinsic_return_ty(OPCODE wn_opc, INTRINSIC intr_opc, const WN *call)
    case IRETURN_DA1:
       ret_ty = WN_Tree_Type(WN_kid0(call));
       break;
-#ifdef KEY
    case IRETURN_PC:
       ret_ty = Stab_Pointer_To(Stab_Mtype_To_Ty(MTYPE_V));
       break;
    case IRETURN_SZT:
       ret_ty = Stab_Mtype_To_Ty(MTYPE_I4);
       break;
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
    case IRETURN_V16C8:
      ret_ty = Stab_Mtype_To_Ty(MTYPE_V16C8);
      break;
@@ -334,7 +333,6 @@ WN_intrinsic_return_ty(OPCODE wn_opc, INTRINSIC intr_opc, const WN *call)
    case IRETURN_V32F8:
      ret_ty = Stab_Mtype_To_Ty(MTYPE_V32F8);
      break;
-#endif
 #endif
    case IRETURN_PPU2:
      ret_ty = Stab_Pointer_To(Stab_Pointer_To(Stab_Mtype_To_Ty(MTYPE_U2)));
@@ -701,7 +699,7 @@ WN_Tree_Type(const WN *wn)
          ty = WN_ty(wn);
          break;
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
       case OPR_REPLICATE:
       case OPR_REDUCE_ADD:
       case OPR_REDUCE_MPY:

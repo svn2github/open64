@@ -408,7 +408,6 @@ static const OPR2HANDLER WN2C_Opr_Handler_Map[] =
    {OPR_RCOMMA, &WN2C_rcomma},
    {OPR_ALLOCA, &WN2C_alloca},
    {OPR_DEALLOCA, &WN2C_dealloca},
-#ifdef KEY
    {OPR_LDMA, &WN2C_lda},
    {OPR_ASM_STMT, &WN2C_asm_stmt},
    {OPR_RROTATE, &WN2C_binaryop},
@@ -416,7 +415,6 @@ static const OPR2HANDLER WN2C_Opr_Handler_Map[] =
    {OPR_GOTO_OUTER_BLOCK, &WN2C_goto},
    {OPR_EXTRACT_BITS, &WN2C_unaryop},
    {OPR_COMPOSE_BITS, &WN2C_binaryop},
-#endif
    {OPR_AGOTO, &WN2C_agoto},
 }; /* WN2C_Opr_Handler_Map */
 
@@ -433,7 +431,7 @@ static const OPR2HANDLER WN2C_Opr_Handler_Map[] =
 #define WN2C_IS_INFIX_OP(opc) \
    ((WN2C_Opc2cname[opc]!=NULL)? (WN2C_Opc2cname[opc][0]!='_') : FALSE)
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
 // allow system calls that don't begin with _
 #define WN2C_IS_FUNCALL_OP(opc) \
    (WN2C_Opc2cname[opc]!=NULL)
@@ -464,7 +462,7 @@ typedef struct Opc2Cname_Map
 static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
 {
   {OPC_U8NEG, "-"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_F10NEG, "-"},
 #endif
   {OPC_FQNEG, "-"},
@@ -478,7 +476,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_C4NEG, "_C4NEG"},
   {OPC_I4ABS, "_I4ABS"},
   {OPC_F4ABS, "_F4ABS"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_F10ABS, "_F10ABS"},
 #endif
   {OPC_FQABS, "_FQABS"},
@@ -486,7 +484,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_F8ABS, "_F8ABS"},
   {OPC_F4SQRT, "_F4SQRT"},
   {OPC_C4SQRT, "_C4SQRT"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_F10SQRT, "_F10SQRT"},
 #endif
   {OPC_FQSQRT, "_FQSQRT"},
@@ -494,13 +492,13 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_F8SQRT, "_F8SQRT"},
   {OPC_C8SQRT, "_C8SQRT"},
   {OPC_I4F4RND, "_I4F4RND"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_I4F10RND, "_I4F10RND"},
 #endif
   {OPC_I4FQRND, "_I4FQRND"},
   {OPC_I4F8RND, "_I4F8RND"},
   {OPC_U4F4RND, "_U4F4RND"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_U4F10RND, "_U4F10RND"},
 #endif
   {OPC_U4FQRND, "_U4FQRND"},
@@ -510,19 +508,19 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I8FQRND, "_I8FQRND"},
   {OPC_I8F8RND, "_I8F8RND"},
   {OPC_U8F4RND, "_U8F4RND"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_U8F10RND, "_U8F10RND"},
 #endif
   {OPC_U8FQRND, "_U8FQRND"},
   {OPC_U8F8RND, "_U8F8RND"},
   {OPC_I4F4TRUNC, "_I4F4TRUNC"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_I4F10TRUNC, "_I4F10TRUNC"},
 #endif
   {OPC_I4FQTRUNC, "_I4FQTRUNC"},
   {OPC_I4F8TRUNC, "_I4F8TRUNC"},
   {OPC_U4F4TRUNC, "_U4F8TRUNC"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_U4F10TRUNC, "_U4F10TRUNC"},
   {OPC_U4FQTRUNC, "_U4FQTRUNC"},
 #else
@@ -530,17 +528,17 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
 #endif
   {OPC_U4F8TRUNC, "_U4F8TRUNC"},
   {OPC_I8F4TRUNC, "_I8F4TRUNC"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_I8F10TRUNC, "_I8F10TRUNC"},
 #endif
   {OPC_I8FQTRUNC, "_I8FQTRUNC"},
   {OPC_I8F8TRUNC, "_I8F8TRUNC"},
   {OPC_U8F4TRUNC, "_U8F8TRUNC"},
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   {OPC_F4F4TRUNC, "truncf"},
   {OPC_F8F8TRUNC, "trunc"},
 #endif
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_U8F10TRUNC, "_U8F10TRUNC"},
   {OPC_U8FQTRUNC, "_U8FQTRUNC"},
 #else
@@ -548,13 +546,13 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
 #endif
   {OPC_U8F8TRUNC, "_U8F8TRUNC"},
   {OPC_I4F4CEIL, "_I4F4CEIL"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_I4F10CEIL, "_I4F10CEIL"},
 #endif
   {OPC_I4FQCEIL, "_I4FQCEIL"},
   {OPC_I4F8CEIL, "_I4F8CEIL"},
   {OPC_U4F4CEIL, "_U4F8CEIL"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_U4F10CEIL, "_U4F10CEIL"}, 
   {OPC_U4FQCEIL, "_U4FQCEIL"},
 #else
@@ -562,52 +560,50 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
 #endif
   {OPC_U4F8CEIL, "_U4F8CEIL"},
   {OPC_I8F4CEIL, "_I8F4CEIL"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_I8F10CEIL, "_I8F10CEIL"},
 #endif
   {OPC_I8FQCEIL, "_I8FQCEIL"},
   {OPC_I8F8CEIL, "_I8F8CEIL"},
   {OPC_U8F4CEIL, "_U8F4CEIL"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_U8F10CEIL, "_U8F10CEIL"},
 #endif
   {OPC_U8FQCEIL, "_U8FQCEIL"},
   {OPC_U8F8CEIL, "_U8F8CEIL"},
   {OPC_I4F4FLOOR, "_I4F4FLOOR"},
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   {OPC_F4F4CEIL, "ceilf"},
   {OPC_F8F8CEIL, "ceil"},
 #endif
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_I4F10FLOOR, "_I4F10FLOOR"},
 #endif
   {OPC_I4FQFLOOR, "_I4FQFLOOR"},
   {OPC_I4F8FLOOR, "_I4F8FLOOR"},
   {OPC_U4F4FLOOR, "_U4F4FLOOR"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_U4F10FLOOR, "_U4F10FLOOR"},
 #endif
   {OPC_U4FQFLOOR, "_U4FQFLOOR"},
   {OPC_U4F8FLOOR, "_U4F8FLOOR"},
   {OPC_I8F4FLOOR, "_I8F4FLOOR"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_I8F10FLOOR, "_I8F10FLOOR"},
 #endif
   {OPC_I8FQFLOOR, "_I8FQFLOOR"},
   {OPC_I8F8FLOOR, "_I8F8FLOOR"},
   {OPC_U8F4FLOOR, "_U8F4FLOOR"},
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   {OPC_F4F4FLOOR, "floorf"},
   {OPC_F8F8FLOOR, "floor"},
 #endif
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_U8F10FLOOR, "_U8F10FLOOR"},
 #endif
   {OPC_U8FQFLOOR, "_U8FQFLOOR"},
   {OPC_U8F8FLOOR, "_U8F8FLOOR"},
-#ifdef KEY
   {OPC_F4F4FLOOR, "_F4F4FLOOR"},
-#endif
   {OPC_I4BNOT, "~"},
   {OPC_U8BNOT, "~"},
   {OPC_I8BNOT, "~"},
@@ -618,7 +614,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I4LNOT, "!"},
 // << WHIRL 0.30: replaced OPC_LNOT by OPC_B and OP_I4 variants
   {OPC_U8ADD, "+"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_F10ADD, "+"},
 #endif
   {OPC_FQADD, "+"},
@@ -631,7 +627,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_F4ADD, "+"},
   {OPC_C4ADD, "_C4ADD"},
   {OPC_U8SUB, "-"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_F10SUB, "-"},
 #endif
   {OPC_FQSUB, "-"},
@@ -644,7 +640,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_F4SUB, "-"},
   {OPC_C4SUB, "_C4SUB"},
   {OPC_U8MPY, "*"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_F10MPY, "*"},
 #endif
   {OPC_FQMPY, "*"},
@@ -657,7 +653,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_F4MPY, "*"},
   {OPC_C4MPY, "_C4MPY"},
   {OPC_U8DIV, "/"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_F10DIV, "/"},
 #endif
   {OPC_FQDIV, "/"},
@@ -680,7 +676,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I4MAX, "_I4MAX"},
   {OPC_U8MAX, "_U8MAX"},
   {OPC_F4MAX, "_F4MAX"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_F10MAX, "_F10MAX"},
 #endif
   {OPC_FQMAX, "_FQMAX"},
@@ -690,7 +686,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I4MIN, "_I4MIN"},
   {OPC_U8MIN, "_U8MIN"},
   {OPC_F4MIN, "_F4MIN"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_F10MIN, "_F10MIN"},
 #endif
   {OPC_FQMIN, "_FQMIN"},
@@ -734,7 +730,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_U4LSHR, "_U4LSHR"},
   {OPC_F4RECIP, "_F4RECIP"},
   {OPC_C4RECIP, "_C4RECIP"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_F10RECIP, "_F10RECIP"},
 #endif
   {OPC_FQRECIP, "_FQRECIP"},
@@ -743,7 +739,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_C8RECIP, "_C8RECIP"},
   {OPC_F4RSQRT, "_F4RSQRT"},
   {OPC_C4RSQRT, "_C4RSQRT"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_F10RSQRT, "_F10RSQRT"},
 #endif
   {OPC_FQRSQRT, "_FQRSQRT"},
@@ -753,7 +749,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
 // >> WHIRL 0.30: Replaced OPC_T1{EQ,NE,GT,GE,LT,LE} by OP_BT1 and OPC_I4T1 variants
 // TODO WHIRL 0.30: get rid of OPC_I4T1 variants
   {OPC_BU8EQ, "=="},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_BF10EQ, "=="},
 #endif
   {OPC_BFQEQ, "=="},
@@ -765,12 +761,12 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_BI4EQ, "=="},
   {OPC_BF4EQ, "=="},
   {OPC_BC4EQ, "=="},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_I8I4EQ, "=="},
   {OPC_I8I4NE, "!="},
 #endif
   {OPC_BU8NE, "!="},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_BF10NE, "!="},
 #endif
   {OPC_BFQNE, "!="},
@@ -785,7 +781,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_BI4GT, ">"},
   {OPC_BU8GT, ">"},
   {OPC_BF4GT, ">"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_BF10GT, ">"},
 #endif
   {OPC_BFQGT, ">"},
@@ -795,7 +791,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_BI4GE, ">="},
   {OPC_BU8GE, ">="},
   {OPC_BF4GE, ">="},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_BF10GE, ">="},
 #endif
   {OPC_BFQGE, ">="},
@@ -805,7 +801,7 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_BI4LT, "<"},
   {OPC_BU8LT, "<"},
   {OPC_BF4LT, "<"},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_BF10LT, "<"},
 #endif
   {OPC_BFQLT, "<"},
@@ -815,14 +811,14 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_BI4LE, "<="},
   {OPC_BU8LE, "<="},
   {OPC_BF4LE, "<="},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_BF10LE, "<="},
 #endif
   {OPC_BFQLE, "<="},
   {OPC_BI8LE, "<="},
   {OPC_BU4LE, "<="},
   {OPC_BF8LE, "<="},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_I4U8EQ, "=="},
   {OPC_I4F10EQ, "=="},
   {OPC_I4FQEQ, "=="},
@@ -833,18 +829,18 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I4C8EQ, "=="},
 #endif
   {OPC_I4I4EQ, "=="},
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   {OPC_I4U4EQ, "=="},
   {OPC_I4I8EQ, "=="},
   {OPC_I4U8EQ, "=="},
 #endif
   {OPC_I4F4EQ, "=="},
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   {OPC_I4F8EQ, "=="},
   {OPC_I4FQEQ, "=="},
 #endif
   {OPC_I4C4EQ, "=="},
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
   {OPC_I4U8NE, "!="},
   {OPC_I4F10NE, "!="},
   {OPC_I4FQNE, "!="},
@@ -888,18 +884,18 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_U8CQEQ, "=="},
 #endif
   {OPC_I4I4NE, "!="},
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   {OPC_I4U4NE, "!="},
   {OPC_I4I8NE, "!="},
   {OPC_I4U8NE, "!="},
 #endif
   {OPC_I4F4NE, "!="},
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   {OPC_I4F8NE, "!="},
   {OPC_I4FQNE, "!="},
 #endif
   {OPC_I4C4NE, "!="},
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
   {OPC_I4I4GT, ">"},
   {OPC_I4U8GT, ">"},
   {OPC_I4F4GT, ">"},
@@ -943,20 +939,20 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_U8CQNE, "!="},
 #endif
   {OPC_I4I4GE, ">="},
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   {OPC_I4U4GE, ">="},
   {OPC_I4I8GE, ">="},
 #endif
   {OPC_I4U8GE, ">="},
   {OPC_I4F4GE, ">="},
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   {OPC_I4F10GE, ">="},
   {OPC_I4FQGE, ">="},
   {OPC_I4I8GE, ">="},
   {OPC_I4U4GE, ">="},
 #endif
   {OPC_I4F8GE, ">="},
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
   {OPC_I4I4LT, "<"},
   {OPC_I4U8LT, "<"},
   {OPC_I4F4LT, "<"},
@@ -990,24 +986,22 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_U8FQGE, ">="},
 #endif
   {OPC_I4I4LE, "<="},
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   {OPC_I4U4LE, "<="},
   {OPC_I4I8LE, "<="},
 #endif
   {OPC_I4U8LE, "<="},
   {OPC_I4F4LE, "<="},
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
   {OPC_I4F10LE, "<="},
 #else
   {OPC_I4F8LE, "<="},
 #endif
   {OPC_I4FQLE, "<="},
-#ifndef TARG_X8664
+#if !defined(TARG_X8664)
   {OPC_I4I8LE, "<="},
   {OPC_I4U4LE, "<="},
-#ifdef KEY
   {OPC_U8U8EQ, "=="},
-#endif
 #else
   {OPC_I8I4LE, "<="},
   {OPC_I8U4LE, "<="},
@@ -1086,7 +1080,6 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_U8F4LT, "<"},
   {OPC_U8F8LT, "<"},
   {OPC_U8FQLT, "<"},
-#ifdef KEY
   {OPC_I4EXTRACT_BITS, "_I4EXTRACT_BITS"},
   {OPC_I8EXTRACT_BITS, "_I8EXTRACT_BITS"},
   {OPC_U4EXTRACT_BITS, "_U4EXTRACT_BITS"},
@@ -1095,10 +1088,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I8COMPOSE_BITS, "_I8COMPOSE_BITS"},
   {OPC_U4COMPOSE_BITS, "_U4COMPOSE_BITS"},
   {OPC_U8COMPOSE_BITS, "_U8COMPOSE_BITS"},
-#endif
 
 #endif
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   {OPC_V16F4RECIP, "_V16F4RECIP"},
   {OPC_F8F8FLOOR, "_F8F8FLOOR"},
   {OPC_U8U8LT, "<"},
@@ -2841,7 +2833,7 @@ WN2C_Append_Symtab_Vars(TOKEN_BUFFER tokens,
 	   ST_sym_class(st) == CLASS_FUNC)            &&
 	  !Stab_Reserved_St(st)                       &&
 	  !Stab_Is_Based_At_Common_Or_Equivalence(st) &&
-#ifndef TARG_NVISA // emit common blocks like threadIdx
+#if !defined(TARG_NVISA) // emit common blocks like threadIdx
 	  !Stab_Is_Common_Block(st)                   &&
 #endif
 	  !Stab_Is_Equivalence_Block(st)              &&
@@ -5183,7 +5175,6 @@ WN2C_call(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
    return EMPTY_STATUS;
 } /* WN2C_call */
 
-#ifdef KEY
 static STATUS 
 WN2C_asm_stmt(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 {
@@ -5235,7 +5226,6 @@ WN2C_asm_stmt(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 
    return EMPTY_STATUS;
 } /* WN2C_asm_stmt */
-#endif
 
 
 static STATUS 
@@ -6232,7 +6222,7 @@ WN2C_ldid(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 
    /* Get the load expression */
    addr_offset = WN_load_offset(wn);
-#ifdef KEY  // special case for asm outputs
+   // special case for asm outputs
    if (addr_offset < -1) {
       char buff[64];
       sprintf(buff, "reg%%%lld", -addr_offset-2);
@@ -6241,7 +6231,6 @@ WN2C_ldid(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
       Append_And_Reclaim_Token_List(tokens, &expr_tokens);
       return EMPTY_STATUS;
    }
-#endif
    expr_tokens = New_Token_Buffer();   
    TY_IDX prefered_ty = WN_Tree_Type(wn);
    if (ST_sym_class(WN_st(wn)) == CLASS_PREG)
@@ -6859,16 +6848,6 @@ WN2C_translate_file_scope_defs(CONTEXT context)
      */
    CURRENT_SYMTAB = GLOBAL_SYMTAB;
    WN2C_new_symtab();
-
-   //WEI: don't see why this needs to be called
-#if 0
-   Write_String(W2C_File[W2C_DOTH_FILE], NULL/* No srcpos map */,
-		"/* File-level symbolic constants */\n");
-   WN2C_Append_Symtab_Consts(NULL, /* token_buffer */ 
-			     TRUE, /* use const_tab */
-			     2,    /* lines between decls */
-			     context);
-#endif
 
    Write_String(W2C_File[W2C_DOTH_FILE], NULL/* No srcpos map */,
 		"/* File-level vars and routines */\n");

@@ -70,7 +70,7 @@
 #include <elf.h>
 #endif /* defined(BUILD_OS_DARWIN) */
 #include <cmplrs/rcodes.h>
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
 #include <sys/resource.h>
 #endif /* __MINGW32__ */
 #include "defs.h"
@@ -215,14 +215,10 @@ Adjusted_Alignment(ST *sym)
     *  let string fall into their natural alignment class
     *	 ex	size (1 -> 1), (2 ->2), (3,4 -> 4) , etc
     */
-#ifdef KEY
     /* Under -LANG:global_asm, the ASMs may have .section attributes,
      * so the compiler cannot be sure about offset/alignment of
      * compiler allocated objects, so use minimum alignment (bug 14506) */
     if ( /* Optimize_Space==FALSE */ LANG_Enable_Global_Asm == FALSE )
-#else
-    if ( /* Optimize_Space==FALSE */ TRUE )
-#endif
     {
       INT64 size = ST_size(sym);
 
@@ -279,7 +275,7 @@ INT32 ST_alignment(ST *sym)
 
       Is_True((basealign>=align), ("sym has align > than base"));
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
       // When we emit ptx we ignore the allocation offset
       // and emit each variable separately, then let OCG 
       // assign addresses.  So it is not safe to change alignment
@@ -362,19 +358,6 @@ Create_And_Set_ST_Base(ST *blk1, ST *blk2, STACK_DIR dir)
 {
   ST *base;
   ST *blk1_base = Base_Symbol(blk1);
-#if 0
-  Is_True(ST_sclass(blk1) != SCLASS_UNKNOWN &&
-	  ST_sclass(blk2) != SCLASS_UNKNOWN,
-	  ("Block_Merge: Invalid SCLASS %d, %d",
-	   ST_sclass(blk1), ST_sclass(blk2)));
-
-  Is_True(ST_sclass(blk1) == ST_sclass(blk2),
-	  ("Block_Merge: Different SCLASS %d, %d",
-	   ST_sclass(blk1), ST_sclass(blk2)));
-
-  FmtAssert(Has_No_Base_Block(blk2),
-	    ("Block_Merge: ST_base of blk2 is already initialized"));
-#endif
   if (ST_class(blk1_base) != CLASS_BLOCK) {
       base = New_ST_Block (Save_Str2(ST_name(blk1_base),".BLOCK"), 
 	Is_Global_Symbol(blk1_base), 
@@ -610,9 +593,6 @@ BOOL ST_is_uplevelTemp(const ST *st)
 
   return FALSE;
 }
-#ifdef KEY // for supporting label being jumped to from a nested function
-	   // function containing a label being jumped to from a nested 
-	   // function needs to have save locations for its FP and SP
 
 ST *
 Create_FPSave_Symbol (void)
@@ -671,7 +651,6 @@ Find_SPSave_Symbol (SYMTAB_IDX stab)
     else
 	return &St_Table[st_idx];
 } // Find_SPSave_Symbol
-#endif
 
 
 /* ====================================================================
@@ -702,14 +681,6 @@ Base_Symbol_And_Offset_For_Addressing (
    * 2. For preemptible symbols, we cannot use the base where the symbol
    *    is allocated since it could be preempted. 
    */
-#ifdef KEY
-  /* 3. For weak symbol, we cannot use the base where the symbol
-        is allocated since weak symbol could be defined in another file.
-	(bug#3052)
-     4. For thread-local symbols, don't use the base where the symbol is
-	allocated.
-   */
-#endif // KEY
 
   INT64 tofst = 0;
   ST *base = sym;
@@ -717,10 +688,8 @@ Base_Symbol_And_Offset_For_Addressing (
   while( (ST_base(base) != base  ) 
 	 && (ST_sclass(base) != SCLASS_TEXT) 
 	 && !((Gen_PIC_Shared || Gen_PIC_Call_Shared) && !ST_is_export_local(base))
-#ifdef KEY
 	 && !ST_is_weak_symbol(base)
 	 && !ST_is_thread_local(base)
-#endif // KEY
 	 )
   {
       tofst += ST_ofst(base);

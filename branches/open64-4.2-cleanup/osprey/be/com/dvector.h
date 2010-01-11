@@ -324,6 +324,3 @@ extern void DEPV_PrintBound(const DEPV *depv,FILE *fp, UINT8 num_dim);
 #endif
 
 #endif /* dvector_INCLUDED */
-
-
-

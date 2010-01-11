@@ -6979,9 +6979,6 @@ output_chip_definitions (void)
       fprintf (output_file, ";\n");
     }
   fprintf (output_file, "};\n\n");
-#if 0
-  fprintf (output_file, "static struct %s %s;\n\n", CHIP_NAME, CHIP_NAME);
-#endif
 }
 
 

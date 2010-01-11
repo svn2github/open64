@@ -375,10 +375,6 @@ extern enum alpha_fp_trap_mode alpha_fptm;
    we can pick up pieces of them faster.  */
 /* ??? Only if block-move stuff knows about different source/destination
    alignment.  */
-#if 0
-#define CONSTANT_ALIGNMENT(EXP, ALIGN) MAX ((ALIGN), BITS_PER_WORD)
-#define DATA_ALIGNMENT(EXP, ALIGN) MAX ((ALIGN), BITS_PER_WORD)
-#endif
 
 /* Set this nonzero if move instructions will actually fail to work
    when given unaligned data.

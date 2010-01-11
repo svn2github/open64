@@ -195,7 +195,7 @@ static const FNAME_PARTIALMAP Fname_Map[] =
   {OPC_I4ADD, "+"},
   {OPC_F4ADD, "+"},
   {OPC_C4ADD, "+"},
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   {OPC_V16I1ADD, "+"},
   {OPC_V16I2ADD, "+"},
   {OPC_V16I4ADD, "+"},
@@ -283,7 +283,7 @@ static const FNAME_PARTIALMAP Fname_Map[] =
   {OPC_I8MIN, "MIN"},
   {OPC_U4MIN, "MIN"},
   {OPC_F8MIN, "MIN"},
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   {OPC_V16F4MIN, "MIN"},
   {OPC_V16F8MIN, "MIN"},
   {OPC_V16F4MAX, "MAX"},
@@ -355,7 +355,7 @@ static const FNAME_PARTIALMAP Fname_Map[] =
   {OPC_BI8GT, ".GT."},
   {OPC_BU4GT, ".GT."},
   {OPC_BF8GT, ".GT."},
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   {OPC_V16I8V16F8GT, ".GT."},
   {OPC_V16I8V16F8LT, ".LT."},
   {OPC_V16I8V16F8GE, ".GE."},
@@ -1143,9 +1143,6 @@ WN2F_select(TOKEN_BUFFER tokens, WN *wn, WN2F_CONTEXT context)
    WN2F_translate(tokens, WN_kid0(wn), context);
    
    Append_Token_Special(tokens, ')');
-#if 0
-   ASSERT_DBG_WARN(FALSE, (DIAG_UNIMPLEMENTED, "WN2F_select"));
-#endif
 
    return EMPTY_WN2F_STATUS;
 } /* WN2F_select */

@@ -1739,10 +1739,8 @@ struct lang_decl GTY(())
 	  CLONE && DECL_CLONED_FUNCTION_P (CLONE);	\
 	  CLONE = TREE_CHAIN (CLONE))
 
-#ifdef KEY
 #define DECL_NAMED_RETURN_OBJECT(NODE) \
   (DECL_LANG_SPECIFIC (NODE)->u.f.named_return_object)
-#endif
 
 /* Nonzero if NODE has DECL_DISCRIMINATOR and not DECL_ACCESS.  */
 #define DECL_DISCRIMINATOR_P(NODE)	\
@@ -2699,7 +2697,6 @@ extern void decl_shadowed_for_var_insert (tree, tree);
 
 #define TYPE_WAS_ANONYMOUS(NODE) (LANG_TYPE_CLASS_CHECK (NODE)->was_anonymous)
 
-#ifdef KEY
 /* Nonzero means this type's copy constructor is implicitly defined instead of
    user defined. */
 #define TYPE_HAS_IMPLICIT_COPY_CONSTRUCTOR(NODE) \
@@ -2708,7 +2705,6 @@ extern void decl_shadowed_for_var_insert (tree, tree);
 /* The copy constructor to use if the front-end needs to copy objects. */
 #define CLASSTYPE_COPY_CONSTRUCTOR(NODE) \
   (LANG_TYPE_CLASS_CHECK (NODE)->copy_constructor)
-#endif
 
 /* C++: all of these are overloaded!  These apply only to TYPE_DECLs.  */
 
@@ -4031,9 +4027,7 @@ extern tree set_guard				(tree);
 extern tree cxx_callgraph_analyze_expr		(tree *, int *, tree);
 extern void mark_needed				(tree);
 extern bool decl_needed_p			(tree);
-#ifdef KEY
 extern bool decl_maybe_needed_p (tree);
-#endif
 extern void note_vague_linkage_fn		(tree);
 extern tree build_artificial_parm		(tree, tree);
 

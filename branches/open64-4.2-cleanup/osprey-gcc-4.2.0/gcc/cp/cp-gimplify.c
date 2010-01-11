@@ -36,9 +36,7 @@ Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
 #include "pointer-set.h"
 #include "flags.h"
 
-#ifdef KEY
 #include "gspin-gcc-interface.h"
-#endif
 
 /* Local declarations.  */
 
@@ -748,13 +746,11 @@ cp_genericize (tree fndecl)
       relayout_decl (t);
     }
 
-#ifdef KEY
   /* The comment below does not hold after our changing the point
      where GNU does gimplification for C++. Now we clone the function
      (constructors/destructors) BEFORE gimplification, hence the clones need to
      be gimplified too. */
   if (!flag_spin_file)
-#endif
   /* If we're a clone, the body is already GIMPLE.  */
   if (DECL_CLONED_FUNCTION_P (fndecl))
     return;

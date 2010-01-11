@@ -3076,21 +3076,6 @@ print_operand_address (FILE *file, rtx addr)
 	    reg2 = addr;
 	  addr = 0;
 	}
-#if 0	/* for OLD_INDEXING */
-      else if (GET_CODE (addr) == PLUS)
-	{
-	  if (GET_CODE (XEXP (addr, 0)) == REG)
-	    {
-	      reg2 = XEXP (addr, 0);
-	      addr = XEXP (addr, 1);
-	    }
-	  else if (GET_CODE (XEXP (addr, 1)) == REG)
-	    {
-	      reg2 = XEXP (addr, 1);
-	      addr = XEXP (addr, 0);
-	    }
-	}
-#endif
       if (offset != 0)
 	{
 	  gcc_assert (!addr);

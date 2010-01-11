@@ -293,20 +293,6 @@ RESTRICTED_MAP::Verify_info(const WN        *const wn,
     Is_True(pt->Based_sym_depth() == pinfo->_depth,
 	    ("RESTRICTED_MAP: Incorrect Based_sym_depth()"));
   }
-  else {
-    if (_saved) {
-      // We can't assert anything here because when it behaves
-      // correctly, LNO removes entries from the restricted map (via
-      // Note_Invalid_Based_Symbol) under some conditions (like when
-      // it distributes/rehapes an array).
-#if 0
-      Is_True(!pt->Unique_pt(),
-	      ("RESTRICTED_MAP: Spurious Unique_pt()"));
-      Is_True(!pt->Restricted(),
-	      ("RESTRICTED_MAP: Spurious Restricted()"));
-#endif
-    }
-  }
 #endif
 }
 
@@ -379,11 +365,6 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
   MEM_POOL_Initialize(&_mem_pool, "ALIAS_pool", FALSE);
   MEM_POOL_Push(&_mem_pool);
 
-#if 0
-  _invalid_ip_alias_classes =
-    CXX_NEW(vector<IDTYPE, mempool_allocator<IDTYPE> > (&_mem_pool),
-	    &mem_pool);
-#else
   // Note: C++ is broken in that it uses the same preprocessor as C,
   // and the C preprocessor sees '<' as "less than" instead of "begin
   // template argument". Therefore it seems we can't use CXX_NEW
@@ -393,7 +374,6 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
   typedef vector<IDTYPE, mempool_allocator<IDTYPE> > STUPID_COMPILER;
   _invalid_ip_alias_classes =
     CXX_NEW(STUPID_COMPILER(&_mem_pool), &_mem_pool);
-#endif
 
   // initialized default context
   ALIAS_CONTEXT ac = (DEFAULT_COMMON_RULES | DEFAULT_ANALYSIS_RULES | DEFAULT_COMPATIABILITY_RULES);
@@ -1566,12 +1546,10 @@ BOOL ALIAS_MANAGER::Safe_to_speculate(const WN *wn) const
 BOOL ALIAS_MANAGER::May_refer_to_alloca_mem(const WN *wn) const
 {
   IDTYPE alias_id = Id(wn);
-#ifdef KEY
   // no alias info, conservatively return TRUE;
   if (alias_id == 0) {
    return FALSE; 
   }
-#endif
   POINTS_TO *pt = Pt(alias_id);
   if (_trace) {
     fprintf(TFile, "--- Checking for pointing to alloca memory:\n");

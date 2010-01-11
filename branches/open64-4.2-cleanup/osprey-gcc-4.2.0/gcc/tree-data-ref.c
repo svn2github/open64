@@ -4375,69 +4375,6 @@ compute_data_dependences_for_loop (struct loop *loop,
    recompute the same information.  The implementation of this KB is
    transparent to the optimizer, and thus the KB can be changed with a
    more efficient implementation, or the KB could be disabled.  */
-#if 0
-static void 
-analyze_all_data_dependences (struct loops *loops)
-{
-  unsigned int i;
-  int nb_data_refs = 10;
-  VEC (data_reference_p, heap) *datarefs = 
-    VEC_alloc (data_reference_p, heap, nb_data_refs);
-  VEC (ddr_p, heap) *dependence_relations = 
-    VEC_alloc (ddr_p, heap, nb_data_refs * nb_data_refs);
-
-  /* Compute DDs on the whole function.  */
-  compute_data_dependences_for_loop (loops->parray[0], false,
-				     &datarefs, &dependence_relations);
-
-  if (dump_file)
-    {
-      dump_data_dependence_relations (dump_file, dependence_relations);
-      fprintf (dump_file, "\n\n");
-
-      if (dump_flags & TDF_DETAILS)
-	dump_dist_dir_vectors (dump_file, dependence_relations);
-
-      if (dump_flags & TDF_STATS)
-	{
-	  unsigned nb_top_relations = 0;
-	  unsigned nb_bot_relations = 0;
-	  unsigned nb_basename_differ = 0;
-	  unsigned nb_chrec_relations = 0;
-	  struct data_dependence_relation *ddr;
-
-	  for (i = 0; VEC_iterate (ddr_p, dependence_relations, i, ddr); i++)
-	    {
-	      if (chrec_contains_undetermined (DDR_ARE_DEPENDENT (ddr)))
-		nb_top_relations++;
-	  
-	      else if (DDR_ARE_DEPENDENT (ddr) == chrec_known)
-		{
-		  struct data_reference *a = DDR_A (ddr);
-		  struct data_reference *b = DDR_B (ddr);
-		  bool differ_p;	
-	      
-		  if ((DR_BASE_OBJECT (a) && DR_BASE_OBJECT (b)
-		       && DR_NUM_DIMENSIONS (a) != DR_NUM_DIMENSIONS (b))
-		      || (base_object_differ_p (a, b, &differ_p) 
-			  && differ_p))
-		    nb_basename_differ++;
-		  else
-		    nb_bot_relations++;
-		}
-	  
-	      else 
-		nb_chrec_relations++;
-	    }
-      
-	  gather_stats_on_scev_database ();
-	}
-    }
-
-  free_dependence_relations (dependence_relations);
-  free_data_refs (datarefs);
-}
-#endif
 
 /* Free the memory used by a data dependence relation DDR.  */
 

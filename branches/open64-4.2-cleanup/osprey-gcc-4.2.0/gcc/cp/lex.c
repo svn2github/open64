@@ -44,9 +44,7 @@ Boston, MA 02110-1301, USA.  */
 #include "output.h"
 #include "tm_p.h"
 #include "timevar.h"
-#ifdef KEY
 #include "gspin-gcc-interface.h"
-#endif
 
 static int interface_strcmp (const char *);
 static void init_cp_pragma (void);
@@ -529,10 +527,8 @@ handle_pragma_interface (cpp_reader* dfile ATTRIBUTE_UNUSED )
   if (!MULTIPLE_SYMBOL_SPACES || !finfo->interface_only)
     finfo->interface_unknown = 0;
 
-#ifdef KEY
   if (flag_spin_file)
     gs_set_program_flag_value (GS_PRAGMA_INTERFACE, 1);
-#endif
 }
 
 /* Note that we have seen a #pragma implementation for the key MAIN_FILENAME.
@@ -565,17 +561,6 @@ handle_pragma_implementation (cpp_reader* dfile ATTRIBUTE_UNUSED )
   else
     {
       filename = ggc_strdup (TREE_STRING_POINTER (fname));
-#if 0
-      /* We currently cannot give this diagnostic, as we reach this point
-	 only after cpplib has scanned the entire translation unit, so
-	 cpp_included always returns true.  A plausible fix is to compare
-	 the current source-location cookie with the first source-location
-	 cookie (if any) of the filename, but this requires completing the
-	 --enable-mapped-location project first.  See PR 17577.  */
-      if (cpp_included (parse_in, filename))
-	warning (0, "#pragma implementation for %qs appears after "
-		 "file is included", filename);
-#endif
     }
 
   for (; ifiles; ifiles = ifiles->next)
@@ -591,10 +576,8 @@ handle_pragma_implementation (cpp_reader* dfile ATTRIBUTE_UNUSED )
       impl_file_chain = ifiles;
     }
 
-#ifdef KEY
   if (flag_spin_file)
     gs_set_program_flag_value (GS_PRAGMA_IMPLEMENTATION, 1);
-#endif
 }
 
 /* Indicate that this file uses Java-personality exception handling.  */

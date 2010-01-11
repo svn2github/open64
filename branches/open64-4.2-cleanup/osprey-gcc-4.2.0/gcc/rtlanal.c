@@ -3527,26 +3527,12 @@ nonzero_bits1 (rtx x, enum machine_mode mode, rtx known_x,
       break;
 
     case NEG:
-#if 0
-      /* Disabled to avoid exponential mutual recursion between nonzero_bits
-	 and num_sign_bit_copies.  */
-      if (num_sign_bit_copies (XEXP (x, 0), GET_MODE (x))
-	  == GET_MODE_BITSIZE (GET_MODE (x)))
-	nonzero = 1;
-#endif
 
       if (GET_MODE_SIZE (GET_MODE (x)) < mode_width)
 	nonzero |= (GET_MODE_MASK (mode) & ~GET_MODE_MASK (GET_MODE (x)));
       break;
 
     case ABS:
-#if 0
-      /* Disabled to avoid exponential mutual recursion between nonzero_bits
-	 and num_sign_bit_copies.  */
-      if (num_sign_bit_copies (XEXP (x, 0), GET_MODE (x))
-	  == GET_MODE_BITSIZE (GET_MODE (x)))
-	nonzero = 1;
-#endif
       break;
 
     case TRUNCATE:

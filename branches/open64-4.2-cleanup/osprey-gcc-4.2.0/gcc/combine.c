@@ -1275,14 +1275,6 @@ can_combine_p (rtx insn, rtx i3, rtx pred ATTRIBUTE_UNUSED, rtx succ,
       || (succ && FIND_REG_INC_NOTE (succ, dest))
       /* Don't substitute into a non-local goto, this confuses CFG.  */
       || (JUMP_P (i3) && find_reg_note (i3, REG_NON_LOCAL_GOTO, NULL_RTX))
-#if 0
-      /* Don't combine the end of a libcall into anything.  */
-      /* ??? This gives worse code, and appears to be unnecessary, since no
-	 pass after flow uses REG_LIBCALL/REG_RETVAL notes.  Local-alloc does
-	 use REG_RETVAL notes for noconflict blocks, but other code here
-	 makes sure that those insns don't disappear.  */
-      || find_reg_note (insn, REG_RETVAL, NULL_RTX)
-#endif
       /* Make sure that DEST is not used after SUCC but before I3.  */
       || (succ && ! all_adjacent
 	  && reg_used_between_p (dest, succ, i3))
@@ -1853,11 +1845,6 @@ try_combine (rtx i3, rtx i2, rtx i1, int *new_direct_jump_p)
       /* We also can't do anything if I3 has a
 	 REG_LIBCALL note since we don't want to disrupt the contiguity of a
 	 libcall.  */
-#if 0
-      /* ??? This gives worse code, and appears to be unnecessary, since no
-	 pass after flow uses REG_LIBCALL/REG_RETVAL notes.  */
-      || find_reg_note (i3, REG_LIBCALL, NULL_RTX)
-#endif
       )
     return 0;
 
@@ -2180,14 +2167,6 @@ try_combine (rtx i3, rtx i2, rtx i1, int *new_direct_jump_p)
      which is a famous insn on the PDP-11 where the value of r3 used as the
      source was model-dependent.  Avoid this sort of thing.  */
 
-#if 0
-  if (!(GET_CODE (PATTERN (i3)) == SET
-	&& REG_P (SET_SRC (PATTERN (i3)))
-	&& MEM_P (SET_DEST (PATTERN (i3)))
-	&& (GET_CODE (XEXP (SET_DEST (PATTERN (i3)), 0)) == POST_INC
-	    || GET_CODE (XEXP (SET_DEST (PATTERN (i3)), 0)) == POST_DEC)))
-    /* It's not the exception.  */
-#endif
 #ifdef AUTO_INC_DEC
     for (link = REG_NOTES (i3); link; link = XEXP (link, 1))
       if (REG_NOTE_KIND (link) == REG_INC

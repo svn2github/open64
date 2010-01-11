@@ -599,11 +599,6 @@ main (int argc, char **argv)
 	}
     }
 
-#if 0
-  if (share)
-    fprintf (optfile, "symbol_vector=(main=procedure)\n");
-#endif
-
   if (vmsdwarf2ehspec)
     {
       fprintf (optfile, "case_sensitive=yes\n");

@@ -1536,11 +1536,7 @@ finish_builtin_struct (tree type, const char *name, tree fields,
     }
 
   layout_type (type);
-#if 0 /* not yet, should get fixed properly later */
-  TYPE_NAME (type) = make_type_decl (get_identifier (name), type);
-#else
   TYPE_NAME (type) = build_decl (TYPE_DECL, get_identifier (name), type);
-#endif
   TYPE_STUB_DECL (type) = TYPE_NAME (type);
   layout_decl (TYPE_NAME (type), 0);
 }
@@ -1849,10 +1845,8 @@ layout_type (tree type)
 	/* Finish laying out the record.  */
 	finish_record_layout (rli, /*free_p=*/true);
 
-#ifdef KEY
 	if (flag_spin_file && gspin_invoked(type))
 	  gs_x (type);
-#endif
       }
       break;
 

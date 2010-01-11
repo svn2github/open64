@@ -390,10 +390,8 @@ convert_to_integer (tree type, tree expr)
       switch (fcode)
         {
 	CASE_FLT_FN (BUILT_IN_CEIL):
-#ifdef KEY /* bug 12569 */
 	  if (flag_spin_file)
 	    break;
-#endif
 	  /* Only convert in ISO C99 mode.  */
 	  if (!TARGET_C99_FUNCTIONS)
 	    break;
@@ -407,10 +405,8 @@ convert_to_integer (tree type, tree expr)
 	  break;
 
 	CASE_FLT_FN (BUILT_IN_FLOOR):
-#ifdef KEY /* bug 12569 */
 	  if (flag_spin_file)
 	    break;
-#endif
 	  /* Only convert in ISO C99 mode.  */
 	  if (!TARGET_C99_FUNCTIONS)
 	    break;
@@ -450,10 +446,8 @@ convert_to_integer (tree type, tree expr)
 
 	CASE_FLT_FN (BUILT_IN_TRUNC):
 	  {
-#ifdef KEY /* bug 12569 */
 	    if (flag_spin_file)
 	      break;
-#endif
 	    tree arglist = TREE_OPERAND (s_expr, 1);
 	    return convert_to_integer (type, TREE_VALUE (arglist));
 	  }

@@ -34,7 +34,6 @@ Boston, MA 02110-1301, USA.  */
 #define NETBSD_ENTRY_POINT "__start"
 
 #undef LINK_SPEC
-#if 1
 /* FIXME: We must link all executables statically until PIC support
    is added to the compiler.  */
 #define LINK_SPEC \
@@ -47,9 +46,6 @@ Boston, MA 02110-1301, USA.  */
 	 %{!e*:-e %(netbsd_entry_point)}}} \
      %{!static:-static} \
      %{static:-static}}"
-#else
-#define LINK_SPEC NETBSD_LINK_SPEC_ELF
-#endif
 
 #define EXTRA_SPECS				\
   { "netbsd_entry_point", NETBSD_ENTRY_POINT },

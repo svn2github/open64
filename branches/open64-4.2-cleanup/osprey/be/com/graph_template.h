@@ -324,9 +324,6 @@ public:
 template <class EDGE_TYPE, class VERTEX_TYPE>
 DIRECTED_GRAPH16<EDGE_TYPE,VERTEX_TYPE>::
 DIRECTED_GRAPH16( const VINDEX16 vsize, const EINDEX16 esize) {
-
-  //Is_True( vsize >=0, ("Illegal graph size\n"));
-
   _vmpool = CXX_NEW(MEM_POOL,Malloc_Mem_Pool);
   MEM_POOL_Initialize(_vmpool,"vmpool",FALSE);
   MEM_POOL_Push(_vmpool);
@@ -335,11 +332,6 @@ DIRECTED_GRAPH16( const VINDEX16 vsize, const EINDEX16 esize) {
   _v.Setidx( 0 );
   _vcnt = 0;
   _vfree = 0;
-
-  //for (mINT16 i=1; i<=_vcnt; i++) {	// initialization
-  //  _v[i].Set_Out_Edge(0);
-  //  _v[i].Set_In_Edge(0);
-  //}
 
   _empool = CXX_NEW(MEM_POOL,Malloc_Mem_Pool);
   MEM_POOL_Initialize(_empool,"empool",FALSE);
@@ -357,10 +349,7 @@ VINDEX16
 DIRECTED_GRAPH16<EDGE_TYPE,VERTEX_TYPE>::Add_Vertex() {
   VINDEX16 new_vertex;
 
-  // Is_True(_vcnt < GRAPH16_CAPACITY, ("Too many vertices\n"));
-#ifdef KEY // bug 4024
   Is_True(_vcnt < GRAPH16_CAPACITY, ("Too many vertices\n"));
-#endif
   if (_vcnt == GRAPH16_CAPACITY) return 0;
 
   if (_vfree == 0) { // grow the _v[] to accept more vertices
@@ -385,12 +374,9 @@ EINDEX16
 DIRECTED_GRAPH16<EDGE_TYPE,VERTEX_TYPE>::Add_Edge(VINDEX16 from, VINDEX16 to) {
   EINDEX16 new_edge;
 
-  // Is_True(_ecnt < GRAPH16_CAPACITY, ("Too many edges\n"));
-#ifdef KEY // bug 4024
 #ifdef Is_True_On
   if (_ecnt == GRAPH16_CAPACITY)
     DevWarn("Too many edges\n");
-#endif
 #endif
   if (_ecnt == GRAPH16_CAPACITY) return 0;
   if (_efree == 0) { // grow the _e[] to accept more edges

@@ -216,7 +216,7 @@ U64_LOWER_stmt_wn(WN *tree, BOOL leave_CVTL_at_leaf)
     return;
 
   case OPR_REGION:
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
     U64_LOWER_stmt_wn(WN_region_body(tree), leave_CVTL_at_leaf);
 #endif
     return;
@@ -238,10 +238,6 @@ U64_LOWER_stmt_wn(WN *tree, BOOL leave_CVTL_at_leaf)
     if (maxsize != 0 && maxsize != 64) { // generate comparison with 0
       if (hob_state == HOB_none)  // enlarge Kid 0
 	U64_LOWER_insert_cvtl_for_kid(tree, HOB_zero_xtd, 0, maxsize, hob_state);
-#if 0
-      WN *wn = U64_LOWER_create_ne_0(Boolean_type, MTYPE_U8, WN_kid0(tree));
-      WN_kid0(tree) = wn;
-#endif
     }
     return;
 

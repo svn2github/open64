@@ -543,13 +543,6 @@ chrec_is_positive (tree chrec, bool *value)
       type = chrec_type (nb_iter);
       nb_iter = chrec_fold_minus (type, nb_iter, build_int_cst (type, 1));
 
-#if 0
-      /* TODO -- If the test is after the exit, we may decrease the number of
-	 iterations by one.  */
-      if (after_exit)
-	nb_iter = chrec_fold_minus (type, nb_iter, build_int_cst (type, 1));
-#endif
-
       end_value = chrec_apply (CHREC_VARIABLE (chrec), chrec, nb_iter);
 	      
       if (!chrec_is_positive (end_value, &value2))

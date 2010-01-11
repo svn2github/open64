@@ -105,7 +105,6 @@ FB_old_Annotate_whirl(WN *wn)
 ADDRESS_NAME_MAP PU_Addr_Name_Map;
 ADDRESS_PUSIZE_MAP PU_Addr_Pusize_Map;
 
-#ifdef KEY
 #define IS_VALID_DIV_VALUE(wn)                           \
   ( !WN_operator_is( WN_kid1(wn), OPR_INTCONST ) &&	 \
     MTYPE_is_integral( OPCODE_rtype(WN_opcode(wn) ) ) )
@@ -113,8 +112,6 @@ ADDRESS_PUSIZE_MAP PU_Addr_Pusize_Map;
 #define IS_VALID_MPY_VALUE(wn)                           \
   ( !WN_operator_is( WN_kid1(wn), OPR_CONST ) &&	 \
     !MTYPE_is_integral( OPCODE_rtype(WN_opcode(wn) ) ) )
-#endif
-
 
 // ====================================================================
 void
@@ -137,11 +134,9 @@ FEEDBACK::FEEDBACK( WN *wn, MEM_POOL *m,
 		    INT32 call_size,
 		    INT32 icall_size,
 		    INT32 switch_size, 
-#ifdef KEY
 		    INT32 value_size,
 		    INT32 value_fp_bin_size,
 		    UINT64 runtime_fun_address,
-#endif
 		    WN_MAP_TAB *maptab ) :
   _m( m ),
   _maptab( maptab ),
@@ -155,11 +150,9 @@ FEEDBACK::FEEDBACK( WN *wn, MEM_POOL *m,
   _circuits( 1, FB_Info_Circuit(), m ),
   _calls   ( 1, FB_Info_Call(),    m ),
   _icalls  ( 1, FB_Info_Icall(),   m ),
-#ifdef KEY
   _values  ( 1, FB_Info_Value(),   m ),
   _values_fp_bin  ( 1, FB_Info_Value_FP_Bin(),   m ),
   _runtime_func_addr( runtime_fun_address ),
-#endif
   _switches( 1, FB_Info_Switch(),  m )
 {
   if ( _trace )
@@ -173,10 +166,8 @@ FEEDBACK::FEEDBACK( WN *wn, MEM_POOL *m,
   _calls.reserve (call_size);
   _icalls.reserve (icall_size);
   _switches.reserve (switch_size);
-#ifdef KEY
   _values.reserve (value_size);
   _values_fp_bin.reserve (value_fp_bin_size);
-#endif
   
   OPERATOR opr = WN_operator( wn );
 
@@ -302,10 +293,8 @@ FEEDBACK::Get_index_icall( const WN *wn ) const
 
   INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn ); 
 
-#ifdef KEY
   Is_True( fb_index >= 0 && fb_index < _icalls.size(),
 	   ( "FEEDBACK::Get_index_icall found out of range fb_index" ) );
-#endif
 
   if (fb_index >= _icalls.size())
   {
@@ -420,9 +409,7 @@ FEEDBACK::Add_index_call( WN *wn )
   if (fb_index == 0) {
     fb_index = _calls.size();
     _calls.push_back(FB_Info_Call());
-#ifdef KEY
     _icalls.push_back(FB_Info_Icall());
-#endif
     IPA_WN_MAP32_Set( _maptab, WN_MAP_FEEDBACK, wn, fb_index );
   }
 
@@ -475,9 +462,7 @@ FEEDBACK::Same_in_out( const WN *wn ) {
   switch ( opr ) {
   case OPR_FUNC_ENTRY: case OPR_ALTENTRY:
   case OPR_RETURN: case OPR_RETURN_VAL:
-#ifdef KEY
   case OPR_GOTO_OUTER_BLOCK:
-#endif
     return false;
 
   fb_opr_cases_call:
@@ -576,12 +561,10 @@ FEEDBACK::Print( FILE *fp, const WN *wn ) const
   fb_opr_cases_call:
     fb_index = Get_index_call( wn );
     _calls[fb_index].Print( fp );
-#ifdef KEY
     if( WN_operator(wn) == OPR_ICALL ){
       fb_index = Get_index_icall( wn );
       _icalls[fb_index].Print( fp );
     }
-#endif
     break;
 
   fb_opr_cases_switch:
@@ -589,7 +572,6 @@ FEEDBACK::Print( FILE *fp, const WN *wn ) const
     _switches[fb_index].Print( fp );
     break;
 
-#ifdef KEY
   fb_opr_cases_value:
     if( IS_VALID_DIV_VALUE( wn ) ){
       fb_index = Get_index_value( wn );
@@ -603,7 +585,6 @@ FEEDBACK::Print( FILE *fp, const WN *wn ) const
       _values_fp_bin[fb_index].Print( fp );
     }
     break;
-#endif
 
   default:
     break;
@@ -671,7 +652,6 @@ FEEDBACK::Query_switch( const WN *wn ) const
   return _switches[fb_index];
 }
 
-#ifdef KEY
 const FB_Info_Value&
 FEEDBACK::Query_value( const WN *wn ) const
 {
@@ -689,7 +669,6 @@ FEEDBACK::Query_value_fp_bin( const WN *wn ) const
   INT32 fb_index = Get_index_value_fp_bin( wn );
   return _values_fp_bin[fb_index];
 }
-#endif
 
 
 FB_FREQ
@@ -982,9 +961,7 @@ FEEDBACK::Query_total_out( const WN *wn ) const
 
   fb_opr_cases_invoke:
     if ( opr == OPR_RETURN || opr == OPR_RETURN_VAL
-#ifdef KEY
   	 || opr == OPR_GOTO_OUTER_BLOCK
-#endif
        )
       freq     = FB_FREQ_ZERO;
     else {
@@ -1020,7 +997,6 @@ FEEDBACK::Query_total_out( const WN *wn ) const
     freq     = _switches[fb_index].Total();
     break;
 
-#ifdef KEY
   fb_opr_cases_value:
     if( IS_VALID_DIV_VALUE( wn ) ){
       fb_index = Get_index_value( wn );
@@ -1034,7 +1010,6 @@ FEEDBACK::Query_total_out( const WN *wn ) const
       freq     = _values_fp_bin[fb_index].Total();
     }
     break;
-#endif
 
   default:
     break;
@@ -1078,7 +1053,6 @@ FEEDBACK::Annot_branch( WN *wn, const FB_Info_Branch& fb_info )
   }
 }
 
-#ifdef KEY
 INT32 FEEDBACK::Get_index_value_fp_bin( const WN *wn ) const
 {
   Is_True( wn != NULL,
@@ -1155,7 +1129,6 @@ void FEEDBACK::Annot_value( WN *wn, const FB_Info_Value& fb_info )
     Print_with_wn( TFile, wn );
   }
 }
-#endif
 
 
 void
@@ -1199,24 +1172,6 @@ FEEDBACK::Annot_icall( WN *wn, const FB_Info_Icall& fb_info )
 {
   INT32 fb_index = Add_index_icall( wn );
   _icalls[fb_index] = fb_info;
-
-#if 0
-  UINT64 counter = 0;
-  int i;
-  for( i = 0; i < FB_TNV_SIZE; i++ ){
-    if( fb_info.tnv._values[i] == 0 )
-      break;
-    counter += fb_info.tnv._counters[i];
-  }
-
-  if( i < FB_TNV_SIZE ){
-    FmtAssert( fb_info.tnv._exec_counter == counter,
-	       ("icall counters don't match") );
-  } else {
-    FmtAssert( fb_info.tnv._exec_counter >= counter,
-	       ("icall counters don't match") );
-  }
-#endif // Is_True_On
 
   if ( _trace ) {
     fprintf( TFile, "FEEDBACK::Annot_icall(0x%p):\n", wn );
@@ -1810,7 +1765,6 @@ FEEDBACK::FB_lower_icall( WN *wn_icall, WN *wn_new_icall, WN * wn_new_call, WN *
     Annot_call( wn_new_icall, FB_Info_Call(freq_nottaken) );
   }
 
-#ifdef KEY
   FB_Info_Icall info_new_icall = info_icall;
   const UINT64 taken = (UINT64)freq_taken.Value();
 
@@ -1820,7 +1774,6 @@ FEEDBACK::FB_lower_icall( WN *wn_icall, WN *wn_new_icall, WN * wn_new_call, WN *
   info_new_icall.tnv._flag = FB_TNV_FLAG_UNINIT;
 
   Annot_icall( wn_new_icall, info_new_icall );
-#endif
 
   if ( wn_icall != wn_new_icall )
     Delete( wn_icall );
@@ -2110,12 +2063,10 @@ FEEDBACK::FB_set_zero_node( WN *wn )
     {
       FB_Info_Call fb_info( FB_FREQ_ZERO );
       Annot_call( wn, fb_info );
-#ifdef KEY
       if( WN_operator(wn) == OPR_ICALL ){
 	FB_Info_Icall fb_icall_info;   // ???
 	Annot_icall( wn, fb_icall_info );
       }
-#endif
     }
     break;
 
@@ -2134,7 +2085,6 @@ FEEDBACK::FB_set_zero_node( WN *wn )
     }
     break;
 
-#ifdef KEY
   fb_opr_cases_value:
     if( IS_VALID_DIV_VALUE( wn ) ){
       FB_Info_Value fb_info( 0, 0, NULL, NULL );
@@ -2149,7 +2099,6 @@ FEEDBACK::FB_set_zero_node( WN *wn )
       break;
     }
     break;
-#endif
 
   default:
     break;
@@ -2215,12 +2164,10 @@ FEEDBACK::FB_set_unknown_node( WN *wn )
     {
       FB_Info_Call fb_info( FB_FREQ_UNKNOWN, FB_FREQ_UNKNOWN );
       Annot_call( wn, fb_info );
-#ifdef KEY
       if( WN_operator(wn) == OPR_ICALL ){
 	FB_Info_Icall fb_icall_info;   // ???
 	Annot_icall( wn, fb_icall_info );
       }
-#endif
     }
     break;
 
@@ -2239,7 +2186,6 @@ FEEDBACK::FB_set_unknown_node( WN *wn )
     }
     break;
 
-#ifdef KEY
   fb_opr_cases_value:
     if( IS_VALID_DIV_VALUE( wn ) ){
       FB_Info_Value fb_info( 0, 0, NULL, NULL );
@@ -2253,7 +2199,6 @@ FEEDBACK::FB_set_unknown_node( WN *wn )
       Annot_value_fp_bin( wn, fb_info );
     }
     break;
-#endif
 
   default:
     break;
@@ -2278,12 +2223,6 @@ FEEDBACK::FB_set_unknown( WN *wn )
 void
 FEEDBACK::FB_scale_node( WN *wn, FB_FREQ freq_scale )
 {
-/*
-  Is_True( freq_scale.Known() &&
-	   freq_scale.Value() >= 0.0 && freq_scale.Value() <= 1.0,
-	   ( "FEEDBACK::FB_scale: freq_scale == %f", freq_scale.Value() ) );
-*/
-
   switch( WN_operator( wn ) ) {
 
   case OPR_PRAGMA:
@@ -2337,7 +2276,6 @@ FEEDBACK::FB_scale_node( WN *wn, FB_FREQ freq_scale )
       fb_info.freq_entry *= freq_scale;
       fb_info.freq_exit  *= freq_scale;
       Annot_call( wn, fb_info );
-#ifdef KEY
       if( WN_operator(wn) == OPR_ICALL ){
 	FB_Info_Icall fb_icall_info = Query_icall( wn );
 	const float scale = freq_scale.Value();
@@ -2353,7 +2291,6 @@ FEEDBACK::FB_scale_node( WN *wn, FB_FREQ freq_scale )
 	
 	Annot_icall( wn, fb_icall_info );
       }
-#endif
     }
     break;
 
@@ -2366,7 +2303,6 @@ FEEDBACK::FB_scale_node( WN *wn, FB_FREQ freq_scale )
     }
     break;
 
-#ifdef KEY
   fb_opr_cases_value:
     if( IS_VALID_DIV_VALUE( wn ) ){
       FB_Info_Value fb_info = Query_value( wn );
@@ -2389,7 +2325,6 @@ FEEDBACK::FB_scale_node( WN *wn, FB_FREQ freq_scale )
       Annot_value_fp_bin( wn, fb_info );
     }
     break;
-#endif
 
   default:
     break;
@@ -2457,12 +2392,10 @@ FEEDBACK::FB_duplicate_node( WN *wn_origl, WN *wn_dupli )
     {
       const FB_Info_Call& fb_info = Query_call( wn_origl );
       Annot_call( wn_dupli, fb_info );
-#ifdef KEY
       if( WN_operator(wn_origl) == OPR_ICALL ){
 	FB_Info_Icall fb_icall_info = Query_icall( wn_origl );
 	Annot_icall( wn_dupli, fb_icall_info );
       }
-#endif
     }
     break;
 
@@ -2473,7 +2406,6 @@ FEEDBACK::FB_duplicate_node( WN *wn_origl, WN *wn_dupli )
     }
     break;
 
-#ifdef KEY
   fb_opr_cases_value:
     if( IS_VALID_DIV_VALUE( wn_origl ) ){
       const FB_Info_Value& fb_info = Query_value( wn_origl );
@@ -2487,7 +2419,6 @@ FEEDBACK::FB_duplicate_node( WN *wn_origl, WN *wn_dupli )
       Annot_value_fp_bin( wn_dupli, fb_info );
     }
     break;
-#endif
 
   default:
     break;
@@ -2577,7 +2508,6 @@ FEEDBACK::FB_recombine_node( WN *wn_origl, WN *wn_extra )
       fb_info_origl.freq_entry += fb_info_extra.freq_entry;
       fb_info_origl.freq_exit  += fb_info_extra.freq_exit;
       Annot_call( wn_origl, fb_info_origl );
-#ifdef KEY
       if( WN_operator(wn_origl) == OPR_ICALL ){
 	FB_Info_Icall fb_icall_info_origl = Query_icall( wn_origl );
 	const FB_Info_Icall& fb_icall_info_extra = Query_icall( wn_extra );
@@ -2591,7 +2521,6 @@ FEEDBACK::FB_recombine_node( WN *wn_origl, WN *wn_extra )
 	
 	Annot_icall( wn_origl, fb_icall_info_origl );
       }
-#endif
       Delete( wn_extra );
     }
     break;
@@ -2607,7 +2536,6 @@ FEEDBACK::FB_recombine_node( WN *wn_origl, WN *wn_extra )
     }
     break;
 
-#ifdef KEY
   fb_opr_cases_value:
     if( IS_VALID_DIV_VALUE( wn_origl ) ){
       FB_Info_Value fb_info_origl = Query_value( wn_origl );
@@ -2639,7 +2567,6 @@ FEEDBACK::FB_recombine_node( WN *wn_origl, WN *wn_extra )
       Delete( wn_extra );
     }
     break;
-#endif
 
   default:
     break;
@@ -2746,7 +2673,6 @@ FEEDBACK::FB_clone_node( WN *wn_origl, WN *wn_clone, FB_FREQ freq_scale )
       fb_info_origl.freq_exit  -= fb_info_clone.freq_exit;
       Annot_call( wn_origl, fb_info_origl );
       Annot_call( wn_clone, fb_info_clone );
-#ifdef KEY
       if( WN_operator(wn_origl) == OPR_ICALL ){
 	FB_Info_Icall fb_info_origl = Query_icall( wn_origl );
 	const float scale = freq_scale.Value();
@@ -2770,7 +2696,6 @@ FEEDBACK::FB_clone_node( WN *wn_origl, WN *wn_clone, FB_FREQ freq_scale )
 	Annot_icall( wn_origl, fb_info_origl );
 	Annot_icall( wn_clone, fb_info_clone );
       }
-#endif
     }
     break;
 
@@ -2787,7 +2712,6 @@ FEEDBACK::FB_clone_node( WN *wn_origl, WN *wn_clone, FB_FREQ freq_scale )
     }
     break;
 
-#ifdef KEY
   fb_opr_cases_value:
     if( IS_VALID_DIV_VALUE( wn_origl ) ){
       FB_Info_Value fb_info_origl = Query_value( wn_origl );
@@ -2827,7 +2751,6 @@ FEEDBACK::FB_clone_node( WN *wn_origl, WN *wn_clone, FB_FREQ freq_scale )
 
     }
     break;
-#endif
 
   default:
     break;
@@ -3140,7 +3063,6 @@ FB_IPA_Clone_node( FEEDBACK *feedback_origl, FEEDBACK *feedback_clone,
       feedback_origl->Annot_call( wn_origl, fb_info_origl );
       feedback_clone->Annot_call( wn_clone, fb_info_clone );
 
-#ifdef KEY
       if( WN_operator(wn_origl) == OPR_ICALL ){
 	FB_Info_Icall fb_info_origl = feedback_origl->Query_icall( wn_origl );
 	const float scale = freq_scale.Value();
@@ -3164,7 +3086,6 @@ FB_IPA_Clone_node( FEEDBACK *feedback_origl, FEEDBACK *feedback_clone,
 	feedback_origl->Annot_icall( wn_origl, fb_info_origl );
 	feedback_clone->Annot_icall( wn_clone, fb_info_clone );
       }
-#endif // KEY
     }
     break;
 
@@ -3181,7 +3102,6 @@ FB_IPA_Clone_node( FEEDBACK *feedback_origl, FEEDBACK *feedback_clone,
     }
     break;
 
-#ifdef KEY
   fb_opr_cases_value:
     if( IS_VALID_DIV_VALUE( wn_origl ) ){
       FB_Info_Value fb_info_origl = feedback_origl->Query_value( wn_origl );
@@ -3223,7 +3143,6 @@ FB_IPA_Clone_node( FEEDBACK *feedback_origl, FEEDBACK *feedback_clone,
 
     }
     break;
-#endif // KEY
 
   default:
     break;
@@ -3236,18 +3155,9 @@ FB_IPA_Clone( FEEDBACK *feedback_origl, FEEDBACK *feedback_clone,
 	      WN             *wn_origl, WN             *wn_clone,
 	      FB_FREQ freq_scale )
 {
-/*
-  Is_True( freq_scale.Known() &&
-	   freq_scale.Value() >= 0.0 && freq_scale.Value() <= 1.0,
-	   ( "FEEDBACK::FB_IPA_Clone: freq_scale == %f",
-	     freq_scale.Value() ) );
-*/
-
   if ( feedback_origl == NULL ) {
     if ( freq_scale.Exact() && freq_scale.Zero() ){
-#ifdef KEY
       if( feedback_clone != NULL )
-#endif
 	feedback_clone->FB_set_zero( wn_clone );
     }
     return;
@@ -3330,11 +3240,9 @@ FB_Transfer_node(FEEDBACK *feedback_origl, FEEDBACK *feedback_new, WN *wn)
 
   fb_opr_cases_call:
     feedback_new->Annot_call(wn, feedback_origl->Query_call(wn));
-#ifdef KEY
     if( WN_operator(wn) == OPR_ICALL ){
       feedback_new->Annot_icall(wn, feedback_origl->Query_icall(wn));    
     }
-#endif
     feedback_origl->Delete(wn);
     break;
 
@@ -3343,7 +3251,6 @@ FB_Transfer_node(FEEDBACK *feedback_origl, FEEDBACK *feedback_new, WN *wn)
     feedback_origl->Delete(wn);
     break;
 
-#ifdef KEY
   fb_opr_cases_value:
     if( IS_VALID_DIV_VALUE( wn ) ){
       feedback_new->Annot_value( wn, feedback_origl->Query_value(wn) );
@@ -3358,7 +3265,6 @@ FB_Transfer_node(FEEDBACK *feedback_origl, FEEDBACK *feedback_new, WN *wn)
       feedback_origl->Delete(wn);
     }
     break;
-#endif
 
   default:
     break;
@@ -3504,7 +3410,6 @@ Convert_Feedback_Info (const FEEDBACK* fb, const WN* tree,
 
     fb_opr_cases_call:
       pu_handle.Get_Call_Table ().push_back (fb->Query_call (wn));
-#ifdef KEY
       if( WN_operator(wn) == OPR_ICALL ){
 	pu_handle.Get_Icall_Table ().push_back (fb->Query_icall (wn));
 
@@ -3518,7 +3423,6 @@ Convert_Feedback_Info (const FEEDBACK* fb, const WN* tree,
 		     ("icall exec counters don't match") );
 	}
       }
-#endif // KEY
       ++count;
       break;
 
@@ -3527,7 +3431,6 @@ Convert_Feedback_Info (const FEEDBACK* fb, const WN* tree,
       ++count;
       break;
 
-#ifdef KEY
     fb_opr_cases_value:
       if( IS_VALID_DIV_VALUE( wn ) ){
 	pu_handle.Get_Value_Table ().push_back (fb->Query_value (wn));
@@ -3541,7 +3444,6 @@ Convert_Feedback_Info (const FEEDBACK* fb, const WN* tree,
 	++count;
 	break;
       }
-#endif
 
     default:
       break;
@@ -3583,7 +3485,6 @@ Read_Feedback_Info (FEEDBACK* fb, WN* tree, const Pu_Hdr& pu_hdr)
   const FB_Info_Circuit* fb_circuit_last =
     fb_circuit + pu_hdr.pu_num_scircuit_entries;
 
-#ifdef KEY
   const FB_Info_Icall* fb_icall =
     (const FB_Info_Icall*) (baseaddr + pu_hdr.pu_icall_offset);
   const FB_Info_Icall* fb_icall_last = fb_icall + pu_hdr.pu_num_icall_entries;
@@ -3596,7 +3497,6 @@ Read_Feedback_Info (FEEDBACK* fb, WN* tree, const Pu_Hdr& pu_hdr)
     (const FB_Info_Value_FP_Bin*) (baseaddr + pu_hdr.pu_value_fp_bin_offset);
   const FB_Info_Value_FP_Bin* fb_value_fp_bin_last = fb_value_fp_bin + 
     pu_hdr.pu_num_value_fp_bin_entries;
-#endif
 
   const FB_Info_Call* fb_call =
     (const FB_Info_Call*) (baseaddr + pu_hdr.pu_call_offset);
@@ -3641,12 +3541,10 @@ Read_Feedback_Info (FEEDBACK* fb, WN* tree, const Pu_Hdr& pu_hdr)
     fb_opr_cases_call:
       fb->Annot_call( wn, *fb_call );
       ++fb_call;
-#ifdef KEY
       if( WN_operator(wn) == OPR_ICALL ){
 	fb->Annot_icall( wn, *fb_icall );
 	++fb_icall;
       }
-#endif // KEY
       ++count;
       break;
 
@@ -3662,7 +3560,6 @@ Read_Feedback_Info (FEEDBACK* fb, WN* tree, const Pu_Hdr& pu_hdr)
       }
       break;
 
-#ifdef KEY
     fb_opr_cases_value:
       if( IS_VALID_DIV_VALUE( wn ) ){
 	fb->Annot_value( wn, *fb_value );
@@ -3678,14 +3575,12 @@ Read_Feedback_Info (FEEDBACK* fb, WN* tree, const Pu_Hdr& pu_hdr)
 	++count;
 	break;
       }
-#endif
 
     default:
       break;
     }
   }
 
-#ifdef KEY
   FmtAssert( count == pu_hdr.pu_checksum &&
 	     fb_invoke == fb_invoke_last &&
 	     fb_branch == fb_branch_last &&
@@ -3697,26 +3592,11 @@ Read_Feedback_Info (FEEDBACK* fb, WN* tree, const Pu_Hdr& pu_hdr)
 	     fb_icall == fb_icall_last &&
 	     fb_call == fb_call_last,
 	     ("Feedback data is stale. Please rebuild the feedback data.") );
-#else
-  Is_True( count == pu_hdr.pu_checksum &&
-	   fb_invoke == fb_invoke_last &&
-	   fb_branch == fb_branch_last &&
-	   fb_switch_target == fb_switch_target_last &&
-	   fb_loop == fb_loop_last &&
-	   fb_circuit == fb_circuit_last &&
-	   fb_icall == fb_icall_last &&
-	   fb_call == fb_call_last, ( "Error in reading Feedback info" ) );
-#endif // KEY
-
 } // Read_Feedback_Info
 
-#if 1 && ! defined(BUILD_OS_DARWIN) /* Temporarily remove whirl browser */
+#if !defined(BUILD_OS_DARWIN) /* Temporarily remove whirl browser */
 #include <sys/types.h>
-#if defined(BUILD_OS_DARWIN)
-#include <darwin_elf.h>
-#else /* defined(BUILD_OS_DARWIN) */
 #include <elf.h>
-#endif /* defined(BUILD_OS_DARWIN) */
 #include <sys/types.h>
 #include <elf.h>
 #include <ctype.h>

@@ -1427,27 +1427,6 @@ push_reload (rtx in, rtx out, rtx *inloc, rtx *outloc,
   if (in != 0 && in != *inloc)
     rld[i].nocombine = 1;
 
-#if 0
-  /* This was replaced by changes in find_reloads_address_1 and the new
-     function inc_for_reload, which go with a new meaning of reload_inc.  */
-
-  /* If this is an IN/OUT reload in an insn that sets the CC,
-     it must be for an autoincrement.  It doesn't work to store
-     the incremented value after the insn because that would clobber the CC.
-     So we must do the increment of the value reloaded from,
-     increment it, store it back, then decrement again.  */
-  if (out != 0 && sets_cc0_p (PATTERN (this_insn)))
-    {
-      out = 0;
-      rld[i].out = 0;
-      rld[i].inc = find_inc_amount (PATTERN (this_insn), in);
-      /* If we did not find a nonzero amount-to-increment-by,
-	 that contradicts the belief that IN is being incremented
-	 in an address in this insn.  */
-      gcc_assert (rld[i].inc != 0);
-    }
-#endif
-
   /* If we will replace IN and OUT with the reload-reg,
      record where they are located so that substitution need
      not do a tree walk.  */
@@ -4141,32 +4120,6 @@ find_reloads (rtx insn, int replace, int ind_levels, int live_known,
 	dup_replacements (recog_data.dup_loc[i], recog_data.operand_loc[opno]);
       }
 
-#if 0
-  /* This loses because reloading of prior insns can invalidate the equivalence
-     (or at least find_equiv_reg isn't smart enough to find it any more),
-     causing this insn to need more reload regs than it needed before.
-     It may be too late to make the reload regs available.
-     Now this optimization is done safely in choose_reload_regs.  */
-
-  /* For each reload of a reg into some other class of reg,
-     search for an existing equivalent reg (same value now) in the right class.
-     We can use it as long as we don't need to change its contents.  */
-  for (i = 0; i < n_reloads; i++)
-    if (rld[i].reg_rtx == 0
-	&& rld[i].in != 0
-	&& REG_P (rld[i].in)
-	&& rld[i].out == 0)
-      {
-	rld[i].reg_rtx
-	  = find_equiv_reg (rld[i].in, insn, rld[i].class, -1,
-			    static_reload_reg_p, 0, rld[i].inmode);
-	/* Prevent generation of insn to load the value
-	   because the one we found already has the value.  */
-	if (rld[i].reg_rtx)
-	  rld[i].in = rld[i].reg_rtx;
-      }
-#endif
-
   /* If we detected error and replaced asm instruction by USE, forget about the
      reloads.  */
   if (GET_CODE (PATTERN (insn)) == USE
@@ -4550,12 +4503,6 @@ find_reloads_toplev (rtx x, int opnum, enum reload_type type,
       int regno = REGNO (x);
       if (reg_equiv_constant[regno] != 0 && !is_set_dest)
 	x = reg_equiv_constant[regno];
-#if 0
-      /*  This creates (subreg (mem...)) which would cause an unnecessary
-	  reload of the mem.  */
-      else if (reg_equiv_mem[regno] != 0)
-	x = reg_equiv_mem[regno];
-#endif
       else if (reg_equiv_memory_loc[regno]
 	       && (reg_equiv_address[regno] != 0 || num_not_at_initial_offset))
 	{
@@ -5826,17 +5773,6 @@ find_reloads_address_1 (enum machine_mode mode, rtx x, int context,
 				       GET_MODE (x), opnum, type, ind_levels);
 	    return 1;
 	  }
-
-#if 0 /* This might screw code in reload1.c to delete prior output-reload
-	 that feeds this insn.  */
-	if (reg_equiv_mem[regno] != 0)
-	  {
-	    push_reload (reg_equiv_mem[regno], NULL_RTX, loc, (rtx*) 0,
-			 context_reg_class,
-			 GET_MODE (x), VOIDmode, 0, 0, opnum, type);
-	    return 1;
-	  }
-#endif
 
 	if (reg_equiv_memory_loc[regno]
 	    && (reg_equiv_address[regno] != 0 || num_not_at_initial_offset))

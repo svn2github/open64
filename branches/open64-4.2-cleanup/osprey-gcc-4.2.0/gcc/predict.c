@@ -1906,12 +1906,8 @@ choose_function_section (void)
 static bool
 gate_estimate_probability (void)
 {
-#ifdef KEY
   /* Don't run this pass when we are translating into gspin */
   return !flag_spin_file && flag_guess_branch_prob;
-#else
-  return flag_guess_branch_prob;
-#endif
 }
 
 struct tree_opt_pass pass_profile = 

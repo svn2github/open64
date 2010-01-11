@@ -2045,11 +2045,7 @@ add_may_alias (tree var, tree alias)
   gcc_assert (var != alias);
 
   /* ALIAS must be addressable if it's being added to an alias set.  */
-#if 1
   TREE_ADDRESSABLE (alias) = 1;
-#else
-  gcc_assert (may_be_aliased (alias));
-#endif
 
   if (v_ann->may_aliases == NULL)
     v_ann->may_aliases = VEC_alloc (tree, gc, 2);

@@ -94,7 +94,7 @@ RENAMING_SCOPE::~RENAMING_SCOPE()
  * Must be F77/F90, either SCLASS_COMMON or SCLASS_DGLOBAL (for initialized)
  ***********************************************************************/
 
-#ifdef TARG_LOONGSON
+#if defined(TARG_LOONGSON)
 BOOL
 #else
 static BOOL
@@ -106,10 +106,7 @@ ST_Is_Common_Block (ST *st)
   PU& pu = Get_Current_PU();
   if (PU_ftn_lang(pu) &&
       (ST_sclass(st) == SCLASS_COMMON || ST_sclass(st) == SCLASS_DGLOBAL
-#ifdef KEY
-      // bug 4576
       || ST_sclass(st) == SCLASS_EXTERN
-#endif
       ) &&
       TY_kind(ST_type(st)) == KIND_STRUCT)
     return TRUE;
@@ -126,14 +123,10 @@ ST_Is_Common_Block (ST *st)
  * block in which st appears (or NULL if st is not in a split COMMON).
  ***********************************************************************/
 
-#ifdef KEY
 // 'want_st' defaults to false, it needs to be true for C. If we end up
 // making it true at all callsites, we should remove this parameter and
 // fix this function accordingly.
 ST *ST_Source_COMMON_Block(ST *st, ST **split, BOOL want_st)
-#else
-ST *ST_Source_COMMON_Block(ST *st, ST **split)
-#endif // KEY
 {
   Is_True(st, ("ST_Source_COMMON_Block(): NULL st argument"));
 
@@ -141,10 +134,8 @@ ST *ST_Source_COMMON_Block(ST *st, ST **split)
     *split = NULL;
 
   ST *base = ST_base(st);
-#ifdef KEY
   if (want_st && base == st)
     return st;
-#endif // KEY
   if (base == st || !ST_Is_Common_Block(base))
     return NULL;  // st is not in COMMON block
 
@@ -165,7 +156,6 @@ ST *ST_Source_COMMON_Block(ST *st, ST **split)
   return base_full;
 }
 
-#ifdef KEY
 // Differs from ST_Source_COMMON_Block() in that the return value does not
 // have to be COMMON, and it does not need to be the base of st.
 //
@@ -204,7 +194,6 @@ ST *ST_Source_Block(ST *st, ST **split)
 
   return base_full;
 }
-#endif
 
 /***********************************************************************
  * Return TRUE if sclass is not that of a variable local to a PU (i.e. if
@@ -315,12 +304,7 @@ Rename_Privatized_COMMON(WN *wn, RENAMING_STACK *stack)
 
     BOOL add_to_ignore;
 
-#ifdef KEY /* Bug 4435 */
     if (ST_class(st) == CLASS_NAME) {
-#else
-    if (ST_is_equivalenced(st) ||
-	ST_class(st) == CLASS_NAME) {
-#endif
         // always ignore st if it's EQUIVALENCEd to something or just a name
       add_to_ignore = TRUE;
     } else if (ST_is_thread_private(st) ||
@@ -418,7 +402,6 @@ Rename_Privatized_COMMON(WN *wn, RENAMING_STACK *stack)
     CXX_DELETE(stack->Pop(), stack->Top()->pool);
   }
 }
-#ifdef KEY
 /***********************************************************************
  * Create a new symbol table entry for a symbol that has local scope and 
  * pointer type for the old symbol
@@ -628,13 +611,11 @@ Rename_Threadprivate_COMMON(WN* pu, WN* parent, WN *wn, RENAMING_STACK *stack, R
       }
       else if (WN_operator(wn) == OPR_STBITS)
         Fail_FmtAssertion("SCLASS_Is_Not_PU_Local() : got SCLASS_UNKNOWN");
-#ifdef KEY
       // Bug 9084: Handle the case where a threadprivate var is marked with
       // another pragma, e.g., copyprivate.
       else if (WN_operator(wn) == OPR_PRAGMA &&
                WN_pragma(wn) == WN_PRAGMA_COPYPRIVATE)
         WN_st_idx (wn) = ST_st_idx (new_st);
-#endif
          
     }
   }
@@ -671,4 +652,3 @@ Rename_Threadprivate_COMMON(WN* pu, WN* parent, WN *wn, RENAMING_STACK *stack, R
   if (priv_pragma_block) 
     CXX_DELETE(stack->Pop(), stack->Top()->pool);
 }
-#endif

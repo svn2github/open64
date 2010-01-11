@@ -890,14 +890,6 @@ frv_conditional_register_usage (void)
     fixed_regs[GPR_FIRST + 16] = fixed_regs[GPR_FIRST + 17] =
       call_used_regs[GPR_FIRST + 16] = call_used_regs[GPR_FIRST + 17] = 0;
 
-#if 0
-  /* If -fpic, SDA_BASE_REG is the PIC register.  */
-  if (g_switch_value == 0 && !flag_pic)
-    fixed_regs[SDA_BASE_REG] = call_used_regs[SDA_BASE_REG] = 0;
-
-  if (!flag_pic)
-    fixed_regs[PIC_REGNO] = call_used_regs[PIC_REGNO] = 0;
-#endif
 }
 
 
@@ -2684,27 +2676,6 @@ frv_print_operand_jump_hint (rtx insn)
 		 : FRV_JUMP_NOT_LIKELY);
 	}
     }
-
-#if 0
-  if (TARGET_DEBUG)
-    {
-      char *direction;
-
-      switch (jump_type)
-	{
-	default:
-	case UNKNOWN:	direction = "unknown jump direction";	break;
-	case BACKWARD:	direction = "jump backward";		break;
-	case FORWARD:	direction = "jump forward";		break;
-	}
-
-      fprintf (stderr,
-	       "%s: uid %ld, %s, probability = %ld, max prob. = %ld, hint = %d\n",
-	       IDENTIFIER_POINTER (DECL_NAME (current_function_decl)),
-	       (long)INSN_UID (insn), direction, (long)prob,
-	       (long)REG_BR_PROB_BASE, ret);
-    }
-#endif
 
   return ret;
 }

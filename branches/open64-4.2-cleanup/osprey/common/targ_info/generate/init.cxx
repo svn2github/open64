@@ -22,7 +22,7 @@
 // Temple Place - Suite 330, Boston MA 02111-1307, USA.
 ///////////////////////////////////////////////////////////////////////////
 
-#ifdef __linux__
+#if defined(__linux__)
 
 // Work around linux "weak" bug explained in be/com/weak.cxx, so that
 // processor specific instruction latencies and other information is

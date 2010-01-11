@@ -878,9 +878,6 @@ pp_cxx_expression (cxx_pretty_printer *pp, tree t)
       pp_cxx_unqualified_id (pp, t);
       break;
 
-#if 0
-    case OFFSET_REF:
-#endif
     case SCOPE_REF:
     case PTRMEM_CST:
       pp_cxx_qualified_id (pp, t);
@@ -907,9 +904,6 @@ pp_cxx_expression (cxx_pretty_printer *pp, tree t)
     case STATIC_CAST_EXPR:
     case REINTERPRET_CAST_EXPR:
     case CONST_CAST_EXPR:
-#if 0
-    case MEMBER_REF:
-#endif
     case EMPTY_CLASS_EXPR:
     case TYPEID_EXPR:
     case PSEUDO_DTOR_EXPR:

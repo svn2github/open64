@@ -155,40 +155,6 @@ dw2_asm_output_offset (int size, const char *label,
   va_end (ap);
 }
 
-#if 0
-
-/* Output a self-relative reference to a label, possibly in a
-   different section or object file.  */
-
-void
-dw2_asm_output_pcrel (int size ATTRIBUTE_UNUSED,
-		      const char *label ATTRIBUTE_UNUSED,
-		      const char *comment, ...)
-{
-  va_list ap;
-
-  va_start (ap, comment);
-
-#ifdef ASM_OUTPUT_DWARF_PCREL
-  ASM_OUTPUT_DWARF_PCREL (asm_out_file, size, label);
-#else
-  dw2_assemble_integer (size,
-			gen_rtx_MINUS (Pmode,
-				       gen_rtx_SYMBOL_REF (Pmode, label),
-				       pc_rtx));
-#endif
-
-  if (flag_debug_asm && comment)
-    {
-      fprintf (asm_out_file, "\t%s ", ASM_COMMENT_START);
-      vfprintf (asm_out_file, comment, ap);
-    }
-  fputc ('\n', asm_out_file);
-
-  va_end (ap);
-}
-#endif /* 0 */
-
 /* Output an absolute reference to a label.  */
 
 void
@@ -658,36 +624,6 @@ dw2_asm_output_delta_uleb128 (const char *lab1 ATTRIBUTE_UNUSED,
   va_end (ap);
 }
 
-#if 0
-
-void
-dw2_asm_output_delta_sleb128 (const char *lab1 ATTRIBUTE_UNUSED,
-			      const char *lab2 ATTRIBUTE_UNUSED,
-			      const char *comment, ...)
-{
-  va_list ap;
-
-  va_start (ap, comment);
-
-#ifdef HAVE_AS_LEB128
-  fputs ("\t.sleb128 ", asm_out_file);
-  assemble_name (asm_out_file, lab1);
-  fputc ('-', asm_out_file);
-  assemble_name (asm_out_file, lab2);
-#else
-  gcc_unreachable ();
-#endif
-
-  if (flag_debug_asm && comment)
-    {
-      fprintf (asm_out_file, "\t%s ", ASM_COMMENT_START);
-      vfprintf (asm_out_file, comment, ap);
-    }
-  fputc ('\n', asm_out_file);
-
-  va_end (ap);
-}
-#endif /* 0 */
 
 static rtx dw2_force_const_mem (rtx, bool);
 static int dw2_output_indirect_constant_1 (splay_tree_node, void *);

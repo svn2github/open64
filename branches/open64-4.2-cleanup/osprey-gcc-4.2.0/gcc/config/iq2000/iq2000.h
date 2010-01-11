@@ -1021,16 +1021,9 @@ enum processor_type
   iq2000_reg_mode_ok_for_base_p (X, MODE, 1)
 #endif
 
-#if 1
 #define GO_PRINTF(x)	fprintf (stderr, (x))
 #define GO_PRINTF2(x,y)	fprintf (stderr, (x), (y))
 #define GO_DEBUG_RTX(x) debug_rtx (x)
-
-#else
-#define GO_PRINTF(x)
-#define GO_PRINTF2(x,y)
-#define GO_DEBUG_RTX(x)
-#endif
 
 /* If defined, modifies the length assigned to instruction INSN as a
    function of the context in which it is used.  LENGTH is an lvalue

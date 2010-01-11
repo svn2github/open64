@@ -3950,12 +3950,6 @@ expand_divmod (int rem_flag, enum tree_code code, enum machine_mode mode,
     tquotient = gen_reg_rtx (compute_mode);
 
   size = GET_MODE_BITSIZE (compute_mode);
-#if 0
-  /* It should be possible to restrict the precision to GET_MODE_BITSIZE
-     (mode), and thereby get better code when OP1 is a constant.  Do that
-     later.  It will require going over all usages of SIZE below.  */
-  size = GET_MODE_BITSIZE (mode);
-#endif
 
   /* Only deduct something for a REM if the last divide done was
      for a different constant.   Then set the constant of the last

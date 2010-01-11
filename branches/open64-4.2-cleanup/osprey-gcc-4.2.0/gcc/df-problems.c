@@ -45,10 +45,6 @@ Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
 #include "vecprim.h"
 #include "except.h"
 
-#if 0
-#define REG_DEAD_DEBUGGING
-#endif
-
 #define DF_SPARSE_THRESHOLD 32
 
 static bitmap seen_in_block = NULL;
@@ -1990,7 +1986,6 @@ df_ur_local_finalize (struct dataflow *dflow, bitmap all_blocks)
       bitmap_and_into (bb_info->in, bb_lr_info->in);
       bitmap_and_into (bb_info->out, bb_lr_info->out);
       
-#if 1
       /* Hard registers may still stick in the ur_out set, but not
 	 be in the ur_in set, if their only mention was in a call
 	 in this block.  This is because a call kills in the lr
@@ -2000,7 +1995,6 @@ df_ur_local_finalize (struct dataflow *dflow, bitmap all_blocks)
       bitmap_ior_and_compl (tmp, bb_info->gen, bb_lr_info->in, 
 			    bb_info->kill);
       bitmap_and_into (bb_info->out, tmp);
-#endif
     }
 
   BITMAP_FREE (tmp);
@@ -2590,7 +2584,6 @@ df_urec_local_finalize (struct dataflow *dflow, bitmap all_blocks)
       bitmap_and_into (bb_info->in, bb_lr_info->in);
       bitmap_and_into (bb_info->out, bb_lr_info->out);
       
-#if 1
       /* Hard registers may still stick in the ur_out set, but not
 	 be in the ur_in set, if their only mention was in a call
 	 in this block.  This is because a call kills in the lr
@@ -2600,7 +2593,6 @@ df_urec_local_finalize (struct dataflow *dflow, bitmap all_blocks)
       bitmap_ior_and_compl (tmp, bb_info->gen, bb_lr_info->in, 
 			    bb_info->kill);
       bitmap_and_into (bb_info->out, tmp);
-#endif
     }
   
 #ifdef STACK_REGS

@@ -5007,15 +5007,6 @@ rs6000_darwin64_record_arg_recurse (CUMULATIVE_ARGS *cum, tree type,
 	  rs6000_darwin64_record_arg_recurse (cum, ftype, bitpos, rvec, k);
 	else if (cum->named && USE_FP_FOR_ARG_P (cum, mode, ftype))
 	  {
-#if 0
-	    switch (mode)
-	      {
-	      case SCmode: mode = SFmode; break;
-	      case DCmode: mode = DFmode; break;
-	      case TCmode: mode = TFmode; break;
-	      default: break;
-	      }
-#endif
 	    rs6000_darwin64_record_arg_flush (cum, bitpos, rvec, k);
 	    rvec[(*k)++]
 	      = gen_rtx_EXPR_LIST (VOIDmode,
@@ -16734,31 +16725,6 @@ rs6000_adjust_priority (rtx insn ATTRIBUTE_UNUSED, int priority)
      where one integer unit can do multiply and divides and the other
      can't, reduce the priority of multiply/divide so it is scheduled
      before other integer operations.  */
-
-#if 0
-  if (! INSN_P (insn))
-    return priority;
-
-  if (GET_CODE (PATTERN (insn)) == USE)
-    return priority;
-
-  switch (rs6000_cpu_attr) {
-  case CPU_PPC750:
-    switch (get_attr_type (insn))
-      {
-      default:
-	break;
-
-      case TYPE_IMUL:
-      case TYPE_IDIV:
-	fprintf (stderr, "priority was %#x (%d) before adjustment\n",
-		 priority, priority);
-	if (priority >= 0 && priority < 0x01000000)
-	  priority >>= 3;
-	break;
-      }
-  }
-#endif
 
   if (is_dispatch_slot_restricted (insn)
       && reload_completed

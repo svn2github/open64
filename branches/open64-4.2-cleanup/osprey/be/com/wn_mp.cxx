@@ -73,7 +73,7 @@
 #include "irbdata.h"                /* for inito */
 #include "dwarf_DST_mem.h"          /* for DST */
 #include "pu_info.h"
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 #include <WINDOWS.h>
 #endif /* __MINGW32__ */
 #include "ir_bwrite.h"
@@ -137,10 +137,8 @@
 #include "fb_info.h"
 #include "fb_whirl.h"
 #include "be_symtab.h"
-#ifdef KEY
 #include "wn_lower.h"
 #include "config_opt.h"
-#endif
 
 /*
 MP lowerer cleanup TODO by DRK:
@@ -166,11 +164,9 @@ machine cycle time and runtime costs.
 #define WN_Compare_Trees(x,y)	(WN_Simp_Compare_Trees(x,y))
 
 static DST_INFO_IDX  nested_dst;
-#ifdef KEY
 static void
 Transfer_Maps ( WN_MAP_TAB * parent, WN_MAP_TAB * child, WN * tree,
                 RID * root_rid );
-#endif
 /*
 * Add csc debug support
 */
@@ -332,15 +328,11 @@ typedef enum {
   MPR_OMP_END_ORDERED		= 67,
 
   MPR_OMP_FLUSH			= 68,	/* Not really needed? to be deleted*/
-#ifdef KEY
   MPR_OMP_GET_THDPRV            = 69,
   MPR_OMP_COPYIN_THDPRV         = 70,
   MPR_OMP_COPYPRIVATE           = 71,
 
   MPRUNTIME_LAST = MPR_OMP_COPYPRIVATE
-#else
-  MPRUNTIME_LAST = MPR_OMP_FLUSH
-#endif
 
 } MPRUNTIME;
 
@@ -731,11 +723,9 @@ static const char *mpr_names [MPRUNTIME_LAST + 1] = {
   "__ompc_ordered",             /* MPR_OMP_ORDERED */
   "__ompc_end_ordered",         /* MPR_OMP_ORDERED */
   "__ompc_flush",               /* MPR_OMP_FLUSH  */
-#ifdef KEY
   "__ompc_get_thdprv",          /* MPR_OMP_GET_THDPRV */
   "__ompc_copyin_thdprv",       /* MPR_OMP_COPYIN_THDPRV */
   "__ompc_copyprivate",         /* MPR_OMP_COPYPRIVATE */
-#endif
 };
 
 
@@ -813,11 +803,9 @@ static ST_IDX mpr_sts [MPRUNTIME_LAST + 1] = {
   ST_IDX_ZERO,   /* MPR_OMP_ORDERED */
   ST_IDX_ZERO,   /* MPR_OMP_END_ORDERED */
   ST_IDX_ZERO,   /* MPR_OMP_FLUSH */
-#ifdef KEY
   ST_IDX_ZERO,   /* MPR_OMP_GET_THDPRV */
   ST_IDX_ZERO,   /* MPR_OMP_COPYIN_THDPRV */
   ST_IDX_ZERO,   /* MPR_OMP_COPYPRIVATE */
-#endif
 };
 
 #define MPSP_STATUS_PREG_NAME "mpsp_status"
@@ -1019,35 +1007,12 @@ Create_Lock_Type()
 {
     if( lock_ty_idx != TY_IDX_ZERO )
       return;
-#ifdef KEY
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
     if (Is_Target_32bit())
       lock_ty_idx = MTYPE_To_TY(MTYPE_I4);
     else
 #endif
       lock_ty_idx = MTYPE_To_TY(MTYPE_I8);
-#else
-       // define lock_ty_idx as an I4 array of size 8
-    TY& ty = New_TY(lock_ty_idx);
-    TY_Init(ty, 8*TY_size(MTYPE_To_TY(MTYPE_I4)), KIND_ARRAY,
-                   MTYPE_UNKNOWN, Save_Str("NAME_LOCK_TY"));
-    Set_TY_etype(ty, Be_Type_Tbl(MTYPE_I4));
-
-    ARB_HANDLE arb = New_ARB();
-    ARB_Init(arb, 0, 7, 1);
-    Set_ARB_dimension(arb,1);
-    Set_ARB_first_dimen(arb);
-    Set_ARB_last_dimen(arb);
-    Set_ARB_const_lbnd(arb);
-    Set_ARB_lbnd_val(arb, 0);
-    Set_ARB_const_ubnd(arb);
-    Set_ARB_ubnd_val(arb, 7);
-    Set_ARB_const_stride(arb);
-    Set_ARB_stride_val(arb, 1);
-
-    Set_TY_arb(ty, arb);
-    Set_TY_align(lock_ty_idx, 8*TY_size(MTYPE_To_TY(MTYPE_I4)));
-#endif 
 }
 
 
@@ -1355,18 +1320,12 @@ execution (bug 5467).
 static BOOL serialized_parallel_in_cond = FALSE;
 #endif // KEY && Is_True_On
 
-#ifdef KEY
 static WN * serial_test;
-#endif // KEY
 
 static WN *
 Gen_Serialized_Parallel (ST *gtid)
 {
-#ifdef KEY
   WN *wn = WN_Create(OPC_VCALL, 0);
-#else
-  WN *wn = WN_Create(OPC_VCALL, 1);
-#endif
   WN_st_idx(wn) = GET_MPRUNTIME_ST(MPR_OMP_SERIALIZED_PARALLEL);
   
   WN_Set_Call_Non_Data_Mod(wn);
@@ -1375,7 +1334,6 @@ Gen_Serialized_Parallel (ST *gtid)
   WN_Set_Call_Parm_Ref(wn);
   WN_linenum(wn) = line_number;
 
-#ifdef KEY
   serial_test = NULL;
 
   if (if_node) // if_node is an XPRAGMA
@@ -1419,12 +1377,6 @@ Gen_Serialized_Parallel (ST *gtid)
     WN_INSERT_BlockLast (blk, if_wn);
     return blk;
   }
-#endif // KEY
-
-#ifndef KEY
-  WN_kid(wn, 0) = WN_CreateParm(MTYPE_I4, Get_Gtid( gtid ),
-                     Be_Type_Tbl(MTYPE_I4), WN_PARM_BY_VALUE);
-#endif // !KEY
 
   return wn;
 }
@@ -1437,11 +1389,7 @@ See comments before Gen_Serialized_Parallel.
 static WN *
 Gen_End_Serialized_Parallel( ST *gtid )
 {
-#ifdef KEY
   WN *wn = WN_Create(OPC_VCALL, 0);
-#else
-  WN *wn = WN_Create(OPC_VCALL, 1);
-#endif
   WN_st_idx(wn) = GET_MPRUNTIME_ST(MPR_OMP_END_SERIALIZED_PARALLEL);
   
   WN_Set_Call_Non_Data_Mod(wn);
@@ -1450,7 +1398,6 @@ Gen_End_Serialized_Parallel( ST *gtid )
   WN_Set_Call_Parm_Ref(wn);
   WN_linenum(wn) = line_number;
 
-#ifdef KEY
   if (if_node) // if_node is an XPRAGMA
   {
 #ifdef Is_True_On
@@ -1475,12 +1422,6 @@ Gen_End_Serialized_Parallel( ST *gtid )
     WN_linenum (if_wn) = line_number;
     return if_wn;
   }
-#endif // KEY
-
-#ifndef KEY
-  WN_kid(wn, 0) = WN_CreateParm(MTYPE_I4, Get_Gtid( gtid ),
-                     Be_Type_Tbl(MTYPE_I4), WN_PARM_BY_VALUE); 
-#endif // !KEY
 
   return wn;
 }
@@ -1515,54 +1456,6 @@ Gen_Critical (ST *gtid, ST *lck)
 
   WN *return_wn = NULL;
 
-#ifndef KEY
-  if( critical_lock_not_init == TRUE )
-  {
-    return_wn = WN_CreateBlock( );
-    
-    //initial lock = 0;
-
-    WN *wn_master = Gen_Master( gtid);
-    WN_linenum( wn_master ) = line_number;
-    WN_INSERT_BlockLast( return_wn, wn_master );
-    ST *return_st;
-    WN_OFFSET return_ofst;
-    PREG_NUM rreg1, rreg2;
-    Create_Preg_or_Temp ( MTYPE_I4, "is_master", &return_st, &return_ofst );
-    GET_RETURN_PREGS(rreg1, rreg2, MTYPE_I4);
-    WN *wn_temp = WN_Stid (MTYPE_I4, return_ofst, return_st, ST_type(return_st),
-                           WN_LdidPreg ( MTYPE_I4, rreg1 ));
-    WN_linenum(wn_temp) = line_number;
-    WN_INSERT_BlockLast( return_wn, wn_temp );
-    
-    //Create_IF    
-    WN *test = WN_EQ(MTYPE_I4,
-                     Gen_MP_Load( return_st, return_ofst ),
-                     WN_CreateIntconst ( OPC_I4INTCONST, 1 ));
-    WN *if_wn = WN_CreateIf(test,WN_CreateBlock(),WN_CreateBlock());
-    WN_linenum( if_wn ) = line_number;
-
-    //Init lock to 0
-    //The following statement maybe wrong.
-    //It does cause problem in compiling.
-    Create_Lock_Type( );
-    TY_IDX ptr_lck = Make_Pointer_Type( lock_ty_idx, FALSE );
-    WN *lck_addr = WN_Lda( Pointer_type, 0, lck );
-
-    WN *init_wn = WN_CreateMstore( 0, ptr_lck, 
-                        WN_Intconst( MTYPE_I4, 0 ),
-                        lck_addr,
-                        WN_Intconst( MTYPE_I4, 32 ));
-
-    WN_linenum( init_wn ) = line_number;
-    WN_INSERT_BlockLast( WN_then( if_wn ), init_wn );
-
-    WN_INSERT_BlockLast( return_wn, if_wn );
-		WN_INSERT_BlockLast( return_wn, Gen_Barrier( gtid )); 
-    WN_INSERT_BlockLast( return_wn, wn );
-  }
-  else
-#endif
     return_wn = wn;
 
   return return_wn;
@@ -1688,24 +1581,12 @@ Gen_Single (WN * constructnum,
 {
   WN *wn;
 
-#ifndef KEY
-  if (is_omp) 
-#else
-  if (TRUE) 
-#endif
-  {
     wn = WN_Create ( OPC_I4CALL, 1 );
     WN_st_idx(wn) = GET_MPRUNTIME_ST ( MPR_OMP_SINGLE );
 
     WN_kid(wn, 0) = WN_CreateParm(MTYPE_I4, Get_Gtid( gtid ),
                      Be_Type_Tbl(MTYPE_I4), WN_PARM_BY_VALUE); 
-  } else {
-    wn = WN_Create ( OPC_I4CALL, 1 );
-    WN_st_idx(wn) = GET_MPRUNTIME_ST ( MPR_BEGIN_SINGLE_PROCESS );
 
-    WN_kid(wn, 0) = WN_CreateParm (MTYPE_I4, constructnum, 
-		    Be_Type_Tbl(MTYPE_I4), WN_PARM_BY_VALUE);
-  }
   WN_Set_Call_Non_Data_Mod ( wn );
   WN_Set_Call_Non_Data_Ref ( wn );
   WN_Set_Call_Non_Parm_Mod ( wn );
@@ -1732,23 +1613,12 @@ Gen_End_Single (WN * constructnum,
   WN *return_wn = WN_CreateBlock( );
   WN *wn;
 
-#ifndef KEY
-  if (is_omp) 
-#else
-  if (TRUE)
-#endif
-  {
     wn = WN_Create ( OPC_VCALL, 1 );
     WN_st_idx(wn) = GET_MPRUNTIME_ST ( MPR_OMP_END_SINGLE );
 
     WN_kid(wn, 0) = WN_CreateParm(MTYPE_I4, Get_Gtid( gtid ),
                      Be_Type_Tbl(MTYPE_I4), WN_PARM_BY_VALUE); 
-  } else {
-    wn = WN_Create ( OPC_VCALL, 1 );
-    WN_st_idx(wn) = GET_MPRUNTIME_ST ( MPR_END_SINGLE_PROCESS );
-    WN_kid0(wn) = WN_CreateParm (MTYPE_I4, constructnum, Be_Type_Tbl(MTYPE_I4),
-                                 WN_PARM_BY_VALUE);
-  }
+
   WN_Set_Call_Non_Data_Mod ( wn );
   WN_Set_Call_Non_Data_Ref ( wn );
   WN_Set_Call_Non_Parm_Mod ( wn );
@@ -1802,7 +1672,6 @@ Gen_Flush( ST *flush_var, WN_OFFSET flush_offset)
 	// TODO: finish the flush call.
   return wn;
 }
-#ifdef KEY
 static WN* 
 Get_First_Stmt_in_Block(WN *block)
 {
@@ -1906,9 +1775,6 @@ Gen_Threadpriv_Func(WN* prags, WN* block, BOOL prepend)
                      WN_Lda( Pointer_type, 0, ST_ptr(WN_st_idx(prags)) ),
                      Be_Type_Tbl( Pointer_type ), WN_PARM_BY_REFERENCE );
 
-//    if (prepend != TRUE)
-//      gtid_st = Extract_Gtid_ST(block);
-
     if (!gtid_st){
       gtid_st = New_ST(CURRENT_SYMTAB);
       ST_Init(gtid_st, Save_Str("__ompv_gtid_s1"), CLASS_VAR, SCLASS_AUTO, 
@@ -2007,7 +1873,6 @@ Gen_Threadpriv_Func(WN* prags, WN* block, BOOL prepend)
   }
     
 }
-#endif
 
 /*
 * When switching scope, use this call to save some global vars.
@@ -2094,13 +1959,9 @@ Add_DST_variable ( ST *st, DST_INFO_IDX parent_dst,
       int_idx_p = &int32_idx;
       break;
     case 8:
-#ifndef KEY
-      int_name1 = "long long"; 
-#else
       // Bug 7287 - C and C++ programs have "long long int" and 
       // "long long unsigned int" as basetype, but no "long long".
       int_name1 = "long long int";
-#endif
       int_name2 = "INTEGER*8"; int_name3 = "INTEGER_8";
       int_idx_p = &int64_idx;
       break;
@@ -2119,11 +1980,9 @@ Add_DST_variable ( ST *st, DST_INFO_IDX parent_dst,
         if (DST_INFO_tag( info ) == DW_TAG_base_type) {
           attr = DST_ATTR_IDX_TO_PTR(DST_INFO_attributes(info), DST_BASETYPE);
           name = DST_STR_IDX_TO_PTR( DST_FORMAL_PARAMETER_name(attr));
-#ifdef KEY //bug 11848: name can not be null
          if(name == NULL)
             Is_True(0, ("Base type should have a name in a DST entry"));
           else
-#endif
           if (!strcmp(name, int_name1) || !strcmp(name, int_name2) ||
               !strcmp(name, int_name3)) {
             *int_idx_p = child_idx;
@@ -2168,14 +2027,6 @@ Add_DST_variable ( ST *st, DST_INFO_IDX parent_dst,
 			FALSE);		/* is_artificial */
 
   (void)DST_append_child( parent_dst, dst );
-#if 0
-  info = DST_INFO_IDX_TO_PTR( dst );
-  assoc = &DST_VARIABLE_def_st(
-		DST_ATTR_IDX_TO_PTR(DST_INFO_attributes(info), DST_VARIABLE));
-  pDST_ASSOC_INFO_st_idx(assoc) = ST_st_idx(st);
-  DST_SET_assoc_idx(DST_INFO_flag(info));
-  DST_RESET_assoc_fe(DST_INFO_flag(info));
-#endif
 }
 
 
@@ -2306,14 +2157,6 @@ Create_New_DST ( DST_INFO_IDX dst, ST *st , BOOL append_to_nested )
   if (append_to_nested)
     (void)DST_append_child( nested_dst, new_dst );
   info = DST_INFO_IDX_TO_PTR( new_dst );
-#if 0
-  iattr = DST_INFO_attributes(info);
-  assoc = &DST_VARIABLE_def_st(
-		DST_ATTR_IDX_TO_PTR(iattr, DST_VARIABLE));
-  pDST_ASSOC_INFO_st_idx(assoc) = ST_st_idx(st);
-  DST_SET_assoc_idx(DST_INFO_flag(info));
-  DST_RESET_assoc_fe(DST_INFO_flag(info));
-#endif
 }
 
 
@@ -2336,20 +2179,10 @@ Create_Func_DST ( char * st_name )
 			0,
 			FALSE,			/* declaration */
 			FALSE,			/* prototype */
-#ifdef KEY
                         FALSE,                  // is_artificial
-#endif
 			FALSE			/* external */
 			);
   (void)DST_append_child( dst, nested_dst );
-#if 0
-  info = DST_INFO_IDX_TO_PTR( nested_dst );
-  assoc = &DST_SUBPROGRAM_def_st(
-		DST_ATTR_IDX_TO_PTR(DST_INFO_attributes(info), DST_SUBPROGRAM));
-  pDST_ASSOC_INFO_st_idx(assoc) = ST_st_idx(parallel_proc);
-  DST_SET_assoc_idx(DST_INFO_flag(info));
-  DST_RESET_assoc_fe(DST_INFO_flag(info));
-#endif
 }
 
 
@@ -2397,7 +2230,6 @@ Create_Temp( TYPE_ID mtype, const char *name, ST **st )
   *st = new_st;
 }
 
-#ifdef KEY
 // If old_st_idx has already been localized, return the new
 // st_idx. Else, create a new local symbol and return its st_idx.
 static ST_IDX Localize_Symbol (ST_IDX old_st_idx, VAR_TABLE * v)
@@ -2600,7 +2432,6 @@ Process_PU_Exc_Info ( INITO_IDX old_inito, VAR_TABLE * vtab )
 
   return new_inito;
 }
-#endif
 
 static WN * Gen_MP_Store ( ST * st, WN_OFFSET offset, WN * value, 
 			   BOOL scalar_only = FALSE );
@@ -2714,9 +2545,7 @@ is inheriting pu_recursive OK?
   Set_PU_no_inline(pu);
   Set_PU_is_nested_func(pu);
   Set_PU_mp(pu);
-#ifdef KEY
   Set_PU_mp_lower_generated(pu);
-#endif // KEY
     // child PU inherits language flags from parent
   if (PU_c_lang(Current_PU_Info_pu()))
     Set_PU_c_lang(pu);
@@ -2794,7 +2623,6 @@ is inheriting pu_recursive OK?
 
   parallel_func = WN_CreateBlock ( );
   reference_block = WN_CreateBlock ( );
-#ifdef KEY
   WN *thread_priv_prag = WN_first(WN_func_pragmas(PU_Info_tree_ptr(Current_PU_Info)));
   if (thread_priv_prag) {
     while (thread_priv_prag) { 
@@ -2809,7 +2637,6 @@ is inheriting pu_recursive OK?
       thread_priv_prag = WN_next(thread_priv_prag);
     }
   }
-#endif
   // Currently, don't pass data via arguments.
   WN *func_entry = WN_CreateEntry ( 2, parallel_proc,
                                     parallel_func, WN_CreateBlock ( ),
@@ -2870,19 +2697,11 @@ is inheriting pu_recursive OK?
   Is_True(PU_Info_state(parallel_pu, WT_FEEDBACK) == Subsect_Missing,
           ("there should be no feedback for parallel_pu"));
   if (Cur_PU_Feedback) {
-#ifdef KEY
     parallel_pu_fb = CXX_NEW(FEEDBACK(func_entry,
                                       MEM_pu_nz_pool_ptr,
                                       1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
                                       cmaptab),
                              MEM_pu_nz_pool_ptr);
-#else
-    parallel_pu_fb = CXX_NEW(FEEDBACK(func_entry,
-                                      MEM_pu_nz_pool_ptr,
-				      1, 1, 1, 1, 1, 1,
-				      cmaptab),
-		             MEM_pu_nz_pool_ptr);
-#endif
     Set_PU_Info_state(parallel_pu, WT_FEEDBACK, Subsect_InMem);
     Set_PU_Info_feedback_ptr(parallel_pu, parallel_pu_fb);
         // Note that unlike every other kind of map, the FEEDBACK map for
@@ -2987,9 +2806,7 @@ Is_Master_Test(WN *tree)
     return FALSE;
 
   if (WN_const_val(wn_intconst) != 1 ||
-#ifdef KEY // bug 6282
       WN_class(wn_ldid) != CLASS_PREG ||
-#endif
       Preg_Is_Dedicated(WN_offset(wn_ldid)) ||
       strcmp(IS_MASTER_PREG_NAME, Preg_Name(WN_offset(wn_ldid))) != 0)
     return FALSE;
@@ -3012,9 +2829,7 @@ static BOOL
 Is_Single_Test(WN *tree)
 {
   if (WN_operator(tree) != OPR_LDID ||
-#ifdef KEY // bug 5118
       WN_class(tree) != CLASS_PREG ||
-#endif
       Preg_Is_Dedicated(WN_offset(tree)) ||
       strcmp(MPSP_STATUS_PREG_NAME, Preg_Name(WN_offset(tree))) != 0)
 
@@ -3273,15 +3088,11 @@ Gather_Uplevel_References ( WN * block, INT32 level, WN * parent,
           if (!Is_NameLock_ST(st) &&
               !is_threadprivate_common &&
               !guarded_set->Find(tree) &&
-#ifdef KEY
               strncmp(ST_name(st), "__thdprv", 8) &&
-#endif
 	            !comp_gen_construct) {
-#ifdef KEY
             USRCPOS srcpos;
             USRCPOS_srcpos(srcpos) = WN_Get_Linenum(tree);
             Set_Error_Line(USRCPOS_linenum(srcpos));
-#endif
             ErrMsg ( EC_MPLOWER_shared_store, st );
           }
 	  shared_table[shared_count++] = st;
@@ -3332,9 +3143,7 @@ Walk_and_Info_Pregs ( WN * tree )
 	Walk_and_Info_Pregs ( WN_kid(tree, i) );
 
     if (OPCODE_has_sym(op) && OPCODE_has_offset(op) && WN_st(tree) &&
-#ifdef KEY // bug 11914: if OPC_PRAGMA, WN_offsetx will not return correct pnum
         op != OPC_PRAGMA &&
-#endif
         (ST_class(WN_st(tree)) == CLASS_PREG) &&
         !Preg_Is_Dedicated(WN_offsetx(tree))) {
       PREG_IDX pnum = Get_Preg_Idx(WN_offsetx(tree));
@@ -3600,7 +3409,6 @@ Vla_Needs_Alloca(ST *st)
   return TRUE;
 } 
 
-#ifdef KEY
 // Keep track of localized copies of threadprivate variables.
 class Localized_thdprv_var
 {
@@ -3615,7 +3423,6 @@ class Localized_thdprv_var
 
 // This vector is cleared at the end of MP processing for a PU.
 std::vector<Localized_thdprv_var> localized_var_vect;
-#endif // KEY
 
 /*
 Make a local symbol having the same type as the original symbol.  The
@@ -3660,10 +3467,6 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
 //        DevWarn("allowing privatization of EQUIVALENCEd %s", ST_name(old_st));
         break;
       }
-// Bug 3795
-#ifndef KEY
-      ErrMsg(EC_MPLOWER_priv_equiv, old_st);
-#endif
       return;
     }
     break;
@@ -3794,7 +3597,6 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
 
     } else {
       sym = NULL;
-#ifdef KEY
     INT16 i;
     ST *symbol;
     WN *thread_priv_prag = NULL;
@@ -3812,7 +3614,6 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
           }
           thread_priv_prag = WN_next(thread_priv_prag);
         }
-// Bug 4178
         thread_priv_prag = WN_first(reference_block);
         while (!matched_pragma && thread_priv_prag) {
           if (WN_opcode(thread_priv_prag) == OPC_PRAGMA &&
@@ -3844,7 +3645,6 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
           break;
         }
       }
-#endif
         // Create privatized version of symbol.
      if (!sym) {
        sym = New_ST (CURRENT_SYMTAB);
@@ -3860,7 +3660,6 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
        if (ST_addr_passed(old_st))
           Set_ST_addr_passed(sym);
      }
-#ifdef KEY
      { // Assumption: The local pragma for a local thdprv ST must be present
        // in the function pragmas
        WN *prag = WN_first(WN_func_pragmas(PU_Info_tree_ptr(Current_PU_Info)));
@@ -3881,7 +3680,6 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
      }
      if (matched_pragma) 
 	WN_pragma_arg1(matched_pragma) = ST_st_idx(sym);
-#endif
 
       // Don't do the following; it depends on a back-end-specific table
       // that doesn't exist until we're compiling the nested MP
@@ -3897,12 +3695,8 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
       if (Debug_Level > 0) {
           // search in the DST tree of the parent subprogram for the
           // DST entry corresponding to this symbol
-#ifndef KEY
-        dst = Find_DST_From_ST( old_st, ppuinfo );
-#else // bug 5473
 	if (ppuinfo) dst = Find_DST_From_ST( old_st, ppuinfo );
 	else dst = DST_INVALID_IDX;
-#endif
           // Only create a new DST entry for a valid symbol, not any
           // of the predef stuff.  If we're localizing for an orphaned
 	  // construct, there's no nested function and associated symbol
@@ -4060,7 +3854,6 @@ Verify_No_Pregs_In_Tree(WN *tree)
     it = WN_WALK_TreeNext(it);
   }
 }
-#ifdef KEY
 /* Generate a procedure body to copy the data */
 
 static ST*
@@ -4218,7 +4011,6 @@ Create_Copyfunc(ST *struct_st)
       WN_INSERT_BlockLast(func_body, istore);
     }
     else{
-// Bug 3822
       WN *call = Transform_To_Memcpy(WN_CreateIload(addr_load_opc, FLD_ofst(fld),
                                                     Be_Type_Tbl(Pointer_type),
                                                     Make_Pointer_Type(Be_Type_Tbl(Pointer_type),FALSE),
@@ -4327,7 +4119,7 @@ Gen_MP_Copyprivate(WN *copyprivates, WN **copyprivate_blockp,
   FLD *next;
   ST *st, *fld_st;
 
-#ifndef TARG_NVISA
+#if !defined(TARG_NVISA)
   BOOL target_32bit = Is_Target_32bit();
 #else
   BOOL target_32bit = FALSE;
@@ -4376,9 +4168,7 @@ Gen_MP_Copyprivate(WN *copyprivates, WN **copyprivate_blockp,
     TY_IDX ty = FLD_type(fld);
     wn = WN_Stid ( TY_mtype(ty), FLD_ofst(fld), st, 
                    ty, WN_Lda (Pointer_type,0,WN_st(wnx)) );
-#ifdef KEY // bug 8764
     Set_ST_addr_saved(WN_st(wnx));
-#endif
     WN_linenum(wn) = line_number;
     WN_INSERT_BlockLast(*copyprivate_blockp, wn);
   }
@@ -4415,7 +4205,6 @@ Gen_MP_Copyprivate(WN *copyprivates, WN **copyprivate_blockp,
 
   WN_INSERT_BlockLast(*copyprivate_blockp, wn);
 }
-#endif
 /*  Walk the reduction, last_local, local, and firstprivate lists and add the
     contents to the VAR_TABLE table.  If firstprivate_blockp is non-NULL,
     then (*firstprivate_blockp) must be NULL, and the code to initialize
@@ -4442,17 +4231,13 @@ Create_Local_Variables ( VAR_TABLE * vtab, WN * reductions,
   case MPP_ORPHANED_SINGLE:
   case MPP_PDO:
   case MPP_ORPHANED_PDO:
-#ifdef KEY /* Bug 4828 */
   case MPP_WORKSHARE:
   case MPP_ORPHANED_WORKSHARE:
-#endif
     is_non_combined_worksharing = TRUE;
     break;
   case MPP_PARALLEL_DO:
   case MPP_PARALLEL_REGION:
-#ifdef KEY
   case MPP_ORPHAN:
-#endif
     break;
   default:
     Fail_FmtAssertion("illegal construct, mpt == %d", (INT) mpt);
@@ -4504,7 +4289,6 @@ Create_Local_Variables ( VAR_TABLE * vtab, WN * reductions,
 			         WN_offsetx(WN_kid0(WN_kid0(l))),
 			         firstprivate_blockp, alloca_blockp, NULL );
 	     v++;
-#ifdef KEY // bug 9112 : handle the extra offset specified by an ADD
       } else if (opr == OPR_ADD && 
       		 WN_operator(WN_kid0(WN_kid0(l))) == OPR_ARRAY) {
 	     INT ofst = WN_const_val(WN_kid1(WN_kid0(l)));
@@ -4515,7 +4299,6 @@ Create_Local_Variables ( VAR_TABLE * vtab, WN * reductions,
 			         WN_offsetx(WN_kid0(WN_kid0(WN_kid0(l))))+ofst,
 			         firstprivate_blockp, alloca_blockp, NULL );
 	     v++;
-#endif
       } else {
         Fail_FmtAssertion ( "invalid reduction directive" );
       }
@@ -4733,10 +4516,8 @@ Process_Exception_Region ( WN * node, VAR_TABLE * vtab )
   }
 #endif
 
-#ifdef KEY
   // Don't do it if we reached here in Post_MP_Processing phase
   if (parallel_proc)
-#endif
   Set_PU_has_exc_scopes(Pu_Table[ST_pu(*parallel_proc)]);
 
   old_inito  = WN_ereg_supp(node);
@@ -5101,13 +4882,11 @@ Walk_and_Localize (WN * tree, VAR_TABLE * vtab, Localize_Parent_Stack * lps,
         Is_True(! w->is_non_pod, ("non-POD pointer expression?!?"));
 	temp = WN_RLdid ( Promote_Type(w->mtype), w->mtype, w->new_offset,
 			  w->new_st, w->ty );
-#ifdef KEY // bug 10707: honor the type in the original tree node
 	if (WN_rtype(tree) == MTYPE_F8 && WN_rtype(temp) == MTYPE_C8 ||
 	    WN_rtype(tree) == MTYPE_F4 && WN_rtype(temp) == MTYPE_C4) {
 	  WN_set_rtype(temp, WN_rtype(tree));
 	  WN_set_desc(temp, WN_desc(tree));
 	}
-#endif
 	WN_DELETE_Tree ( tree );
 	tree = temp;
 	op = WN_opcode(tree);
@@ -5115,11 +4894,9 @@ Walk_and_Localize (WN * tree, VAR_TABLE * vtab, Localize_Parent_Stack * lps,
 	break;
       }
     }
-#ifdef KEY
     if (opr == OPR_ILOAD)  // There was no match above
       WN_kid0(tree) = Walk_and_Localize ( WN_kid0(tree), vtab, lps,
                                           is_par_region, non_pod_finalization );
-#endif // KEY
   } else if (opr == OPR_ISTORE) {
     for (w=vtab; w->orig_st; w++) {
       if ((w->vtree && (WN_Compare_Trees(w->vtree, WN_kid1(tree)) == 0)) ||
@@ -5127,12 +4904,10 @@ Walk_and_Localize (WN * tree, VAR_TABLE * vtab, Localize_Parent_Stack * lps,
         Is_True(! w->is_non_pod, ("non-POD pointer expression?!?"));
 	temp = WN_Stid ( w->mtype, w->new_offset, w->new_st, w->ty,
 			 WN_kid0(tree) );
-#ifdef KEY // bug 10707: honor the type in the original tree node
 	if (WN_desc(tree) == MTYPE_F8 && WN_desc(temp) == MTYPE_C8 ||
 	    WN_desc(tree) == MTYPE_F4 && WN_desc(temp) == MTYPE_C4) {
 	  WN_set_desc(temp, WN_desc(tree));
 	}
-#endif
 	WN_linenum(temp) = WN_linenum(tree);
 	WN_prev(temp) = WN_prev(tree);
 	if (WN_prev(temp))
@@ -5821,17 +5596,13 @@ Gen_MP_LS_get_fld_id_and_ty(ST *st, WN_OFFSET offset, BOOL scalar_only, UINT &fi
 {
   ty = ST_type(st);
   result_ty = ty;
-#ifdef KEY // bug 7259
   if (scalar_only && TY_kind(ty) == KIND_STRUCT )
   {
     FLD_HANDLE fld = Get_FLD_From_Offset(ty, offset, &field_id);
     result_ty = FLD_type(fld);
   }
-#endif
-#ifdef KEY // bug 10681
   if (scalar_only && TY_kind(ty) == KIND_ARRAY)
     ty = TY_etype(ty);
-#endif
   return; 
 }
 /*  Generate an appropriate load WN based on an ST.  */
@@ -5892,13 +5663,9 @@ Gen_MP_Load_Store ( ST * from_st, WN_OFFSET from_offset,
 
   ty = (is_from_ptr) ? TY_pointed(ST_type(from_st)) : ST_type(from_st);
 
-#ifndef KEY
-  if ((TY_kind(ty) != KIND_ARRAY) && (TY_kind(ty) != KIND_STRUCT))
-#else
     if (((TY_kind(ty) != KIND_ARRAY) && (TY_kind(ty) != KIND_STRUCT)) ||
 	// Bug 6633 - MP lowering of C++ classes with size 0 could trigger
 	TY_kind(ty) == KIND_STRUCT && TY_size(ty) == 0)
-#endif
     wn = Gen_MP_Store ( to_st, to_offset,
 			Gen_MP_Load ( from_st, from_offset ));
   else {
@@ -5976,7 +5743,6 @@ is_omp_non_pod_copyin(WN *copyin_wn)
   return (ST_sym_class(st) == CLASS_FUNC);
 }
 
-#ifdef KEY
 extern ST *ST_Source_COMMON_Block(ST *st, ST **split, BOOL want_st);
 extern ST *ST_Source_Block(ST *, ST **);
 
@@ -6094,7 +5860,6 @@ Post_MP_Processing (WN * pu)
     local_nodes = next_node;
   }
 }
-#endif
 
 /*  Generate a copyin call.  */
 // TODO: should be replaced when implementing TLS
@@ -6105,9 +5870,7 @@ Gen_MP_Copyin ( BOOL is_omp )
   WN *wn;
   WN *wnx;
   WN *wny;
-#ifdef KEY
   WN *wnz;
-#endif
   TY_IDX ty;
   INT32 kid;
   INT32 size;
@@ -6135,14 +5898,8 @@ Gen_MP_Copyin ( BOOL is_omp )
   }
 
   if (have_pods) {
-#ifdef KEY
     wn = WN_Create ( OPC_VCALL, 3 * count + 1 );
     WN_st_idx(wn) = GET_MPRUNTIME_ST(MPR_OMP_COPYIN_THDPRV);
-#else
-    wn = WN_Create ( OPC_VCALL, 2 * count + 1 );
-    WN_st_idx(wn) = (is_omp ? GET_MPRUNTIME_ST (MPR_OMP_COPYIN) :
-                     GET_MPRUNTIME_ST ( MPR_COPYIN ));
-#endif
     WN_Set_Call_Non_Data_Mod ( wn );
     WN_Set_Call_Non_Data_Ref ( wn );
     WN_Set_Call_Non_Parm_Mod ( wn );
@@ -6151,24 +5908,16 @@ Gen_MP_Copyin ( BOOL is_omp )
     WN_Set_Call_Parm_Ref ( wn );
     WN_linenum(wn) = line_number;
 
-#ifdef KEY
     // The library expects the first argument (n) to be (# of triplets) * 3
     WN_kid0(wn) = WN_CreateParm ( MTYPE_I4,
                                   WN_Intconst ( MTYPE_I4, 3 * count ),
                                   Be_Type_Tbl(MTYPE_I4), WN_PARM_BY_VALUE );
     for (wnx = copyin_nodes, kid = 1; wnx; wnx = WN_next(wnx), kid += 3)
-#else
-    WN_kid0(wn) = WN_CreateParm ( MTYPE_I4,
-                                  WN_Intconst ( MTYPE_I4, count ),
-                                  Be_Type_Tbl(MTYPE_I4), WN_PARM_BY_VALUE );
-    for (wnx = copyin_nodes, kid = 1; wnx; wnx = WN_next(wnx), kid += 2)
-#endif
     {
 
       if (is_omp && is_omp_non_pod_copyin(wnx)) {
         continue; // skip C++ non-PODs
       }
-#ifdef KEY
       if (WN_opcode(wnx) == OPC_PRAGMA) {
         ST *ppthd, *global;
         global = Get_Threadprv_St(reference_block, WN_st(wnx), &ppthd);
@@ -6196,40 +5945,11 @@ Gen_MP_Copyin ( BOOL is_omp )
                                          WN_Intconst ( MTYPE_I4, size ),
                                          Be_Type_Tbl(MTYPE_I4),
                                          WN_PARM_BY_VALUE );
-#else
-      if (WN_opcode(wnx) == OPC_PRAGMA) {
-        wny = WN_Lda ( Pointer_type, WN_offsetx(wnx), WN_st(wnx) );
-        ty = ST_type(WN_st(wnx));
-        size = TY_size(ty);
-      } else if (WN_operator(WN_kid0(wnx)) == OPR_LDA) {
-        wny = WN_COPY_Tree ( WN_kid0(wnx) );
-        ty = ST_type(WN_st(WN_kid0(wnx)));
-        size = TY_size(ty);
-      } else if ((WN_operator(WN_kid0(wnx)) == OPR_ARRAY) &&
-                 (WN_operator(WN_kid0(WN_kid0(wnx))) == OPR_LDA)) {
-        wny = WN_COPY_Tree ( WN_kid0(wnx) );
-        ty = TY_AR_etype(ST_type(WN_st(WN_kid0(WN_kid0(wnx))))); 
-        size = TY_size(ty);
-      } else
-        Fail_FmtAssertion ( "bad copyin node (%s) in MP processing",
-                            OPCODE_name(WN_opcode(WN_kid0(wnx))) );
-
-      WN_kid(wn,kid)   = WN_CreateParm ( Pointer_type, wny,
-                                         Make_Pointer_Type ( ty,
-                                                             FALSE ),
-                                         WN_PARM_BY_REFERENCE );
-      WN_kid(wn,kid+1) = WN_CreateParm ( MTYPE_I4,
-                                         WN_Intconst ( MTYPE_I4, size ),
-                                         Be_Type_Tbl(MTYPE_I4),
-                                         WN_PARM_BY_VALUE );
-#endif
     }
     WN_INSERT_BlockFirst (block, wn);
-#ifdef KEY
     // bug 5203: Ensure all threads get the value before giving the master
     // thread a chance to proceed/modify the variable.
     WN_INSERT_BlockAfter (block, wn, Gen_Barrier (local_gtid));
-#endif // KEY
   }
 
   if (have_nonpods) {
@@ -6516,7 +6236,7 @@ MP_Reduction_Combine_Cycles(REDUCTION_LIST *rlist, BOOL *using_critical)
 
   *using_critical = TRUE;
 
-#ifdef TARG_IA32
+#if defined(TARG_IA32)
   return tot_cycles;
 #endif
 
@@ -6766,8 +6486,6 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 	// Flush the variable to all threads
 	// It seems this doesn't needed since there is a barrier
 	// afterward. csc.
-//	WN_INSERT_BlockLast(*store_block,
-//	    Gen_Flush(v->orig_st, v->orig_offset));
       } else { 
         WN_INSERT_BlockLast(*store_block,
                             WN_Istore(v->mtype, 0,
@@ -7181,9 +6899,7 @@ Gen_Restore_Stack_Pointer(WN *sp_save_stid, Alloca_Var_List *avlist)
 
 static WN *
 Gen_MP_SingleProcess_Block(WN *single_block, BOOL nowait, 
-#ifdef KEY
                            WN *copyprivates,
-#endif
                            BOOL is_omp, BOOL is_orphaned)
 {
   WN *mp_single_block = WN_CreateBlock(), *return_stid, *single_test;
@@ -7220,15 +6936,12 @@ Gen_MP_SingleProcess_Block(WN *single_block, BOOL nowait,
                         Gen_End_Single( 
                           WN_CreateIntconst(OPC_I4INTCONST, num_constructs),
                           local_gtid, is_omp, nowait));
-#ifdef KEY
   if (copyprivates)
     Gen_MP_Copyprivate(copyprivates, &mp_single_block, Gen_MP_Load( return_st, return_ofst ));
-#endif
 
   return mp_single_block;
 }
 
-#ifdef KEY /* Bug 4828 */
 static WN *
 Gen_MP_Workshare_Block(WN *workshare_block, BOOL nowait, 
                            BOOL is_omp, BOOL is_orphaned)
@@ -7381,7 +7094,6 @@ static WN *Gen_MP_Workshare_Region(WN *workshare_region)
   }
   return mp_workshare_block;
 }
-#endif
 /* Given a region for an OMP SINGLE work-sharing construct, return a block
    of corresponding MP-lowered code.  The input single_region is not
    deleted (though some of its pragmas are, and its body is spliced out), so
@@ -7396,9 +7108,7 @@ static WN *Gen_MP_SingleProcess_Region(WN *single_region)
   INT vt_size = 0, i;
   WN **nested_list, *wn, *nested_prag;
   WN *nested_local_nodes = NULL, *nested_firstprivate_nodes = NULL;
-#ifdef KEY
   WN  *nested_copyprivate_nodes = NULL;
-#endif
   BOOL nowait = FALSE;
   BOOL do_dealloca = FALSE;
   WN *mp_single_block = WN_CreateBlock();
@@ -7426,16 +7136,12 @@ static WN *Gen_MP_SingleProcess_Region(WN *single_region)
     switch (prag_id = (WN_PRAGMA_ID) WN_pragma(prag)) {
     case WN_PRAGMA_LOCAL:
     case WN_PRAGMA_FIRSTPRIVATE:
-#ifdef KEY
     case WN_PRAGMA_COPYPRIVATE:
-#endif
       nested_prag = prag;
       prag = WN_next(prag);
-#ifdef KEY
       if (prag_id == WN_PRAGMA_COPYPRIVATE)
         nested_list = &nested_copyprivate_nodes;
       else
-#endif
       nested_list = ( prag_id == WN_PRAGMA_LOCAL &&
                       !ST_Has_Dope_Vector(WN_st(nested_prag)) ) ?
                         &nested_local_nodes :
@@ -7529,16 +7235,10 @@ static WN *Gen_MP_SingleProcess_Region(WN *single_region)
     }
   } // if (vt_size)
 
-#ifdef KEY
   WN_INSERT_BlockLast(mp_single_block,
     Gen_MP_SingleProcess_Block(single_block, nowait, 
       nested_copyprivate_nodes,
       WN_pragma_omp(single_prag), is_orphaned ));
-#else
-  WN_INSERT_BlockLast(mp_single_block,
-    Gen_MP_SingleProcess_Block(single_block, nowait,
-      WN_pragma_omp(single_prag), is_orphaned ));
-#endif
 
   if (do_dealloca) {
     WN_INSERT_BlockLast(mp_single_block,
@@ -7557,13 +7257,11 @@ static WN *Gen_MP_SingleProcess_Region(WN *single_region)
     WN_Delete(nested_firstprivate_nodes);
     nested_firstprivate_nodes = wn;
   }
-#ifdef KEY
   while (nested_copyprivate_nodes) {
     wn = WN_next(nested_copyprivate_nodes);
     WN_Delete(nested_copyprivate_nodes);
     nested_copyprivate_nodes = wn;
   }
-#endif
   return mp_single_block;
 } // Gen_MP_SingleProcess_Region()
 
@@ -7629,11 +7327,6 @@ static WN *Lower_Master( WN *master_region )
   WN_INSERT_BlockLast( WN_then( if_wn ), master_block );
   WN_INSERT_BlockLast( mp_master_block, if_wn );
 
-  // end_master call.
-#ifndef KEY
-  WN_INSERT_BlockLast( mp_master_block, Gen_End_Master(local_gtid));
-#endif
-
   return mp_master_block;
 } // Lower_Master()
 
@@ -7656,27 +7349,6 @@ Gen_OMP_Begin_SPR (MP_process_type mpt)
   WN_INSERT_BlockLast(return_block, Gen_Serialized_Parallel(local_gtid));
   
   return return_block;
-  /*
-  WN *wn;
-  UINT64 flag;
-
-  wn = WN_Create (OPC_VCALL, 1);
-  WN_st_idx(wn) = GET_MPRUNTIME_ST (MPR_OMP_BEGIN_SPR);
-  WN_Set_Call_Non_Data_Mod ( wn );
-  WN_Set_Call_Non_Data_Ref ( wn );
-  WN_Set_Call_Non_Parm_Mod ( wn );
-  WN_Set_Call_Non_Parm_Ref ( wn );
-  WN_linenum(wn) = line_number;
-
-  if (mpt == MPP_PARALLEL_REGION) flag = 0;
-  else flag = 0x1;
-
-  WN_kid0(wn) = WN_CreateParm (MTYPE_U8,
-                               WN_CreateIntconst (OPC_U8INTCONST, flag),
-                               Be_Type_Tbl(MTYPE_U8),
-                               WN_PARM_BY_VALUE);
-  return wn;
-  */
 }
 
 // CAN BE DELETED
@@ -7695,27 +7367,6 @@ Gen_OMP_End_SPR (MP_process_type mpt)
 		  Gen_End_Serialized_Parallel(local_gtid));
   
   return return_block;
-  /*
-  WN *wn;
-  UINT64 flag;
-
-  wn = WN_Create (OPC_VCALL, 1);
-  WN_st_idx(wn) = GET_MPRUNTIME_ST (MPR_OMP_END_SPR);
-  WN_Set_Call_Non_Data_Mod ( wn );
-  WN_Set_Call_Non_Data_Ref ( wn );
-  WN_Set_Call_Non_Parm_Mod ( wn );
-  WN_Set_Call_Non_Parm_Ref ( wn );
-  WN_linenum(wn) = line_number;
-
-  if (mpt == MPP_PARALLEL_REGION) flag = 0;
-  else flag = 0x1;
-
-  WN_kid0(wn) = WN_CreateParm (MTYPE_U8,
-                               WN_CreateIntconst (OPC_U8INTCONST, flag),
-                               Be_Type_Tbl(MTYPE_U8),
-                               WN_PARM_BY_VALUE);
-  return wn;
-  */
 }
 
 static struct namelock_kind {
@@ -8026,17 +7677,13 @@ Strip_Nested_MP ( WN * tree, BOOL pcf_ok )
 
 	if ((region_type == WN_PRAGMA_SINGLE_PROCESS_BEGIN ||
 	     region_type == WN_PRAGMA_PDO_BEGIN ||
-#ifdef KEY /* Bug 4828 */
              region_type == WN_PRAGMA_PWORKSHARE_BEGIN ||
-#endif
              region_type == WN_PRAGMA_MASTER_BEGIN) &&
 	    (pcf_nest == 0) && pcf_ok) {
 	    // Allow mp region to remain but strip contents. This leaves
 	    // non-POD finalization code in place (if any).
       // Indeed, inside master region, no subclause is allowed.
-#ifdef KEY /* Bug 4828 */
           if (region_type != WN_PRAGMA_PWORKSHARE_BEGIN)
-#endif
   	  Strip_Nested_MP ( WN_region_body(kid), FALSE );
      } else {
 	  if (region_type == WN_PRAGMA_PDO_BEGIN)
@@ -8048,33 +7695,18 @@ Strip_Nested_MP ( WN * tree, BOOL pcf_ok )
             if (WN_pragma_omp(WN_first(WN_region_pragmas(kid))) &&
                 (region_type == WN_PRAGMA_DOACROSS ||
                  region_type == WN_PRAGMA_PARALLEL_DO ||
-#ifdef KEY
                  region_type == WN_PRAGMA_PARALLEL_WORKSHARE ||
-#endif
                  region_type == WN_PRAGMA_PARALLEL_BEGIN)) {
-#ifdef KEY
               MP_process_type nested_mpt =
 	        (region_type == (WN_PRAGMA_PARALLEL_BEGIN ||
                                  WN_PRAGMA_PARALLEL_WORKSHARE) ?
 	                        MPP_PARALLEL_REGION : MPP_PARALLEL_DO);
-#else
-              MP_process_type nested_mpt =
-	        (region_type == WN_PRAGMA_PARALLEL_BEGIN ?
-	                        MPP_PARALLEL_REGION : MPP_PARALLEL_DO);
-#endif
-
               /* insert the spr calls if necessary, before the splicing */
 	      // TODO: gtid should be passed as an argument to both GSP/GESP
         // This constructure is already in other greater constructures,
         // sure the gtid is set yet.
         //      WN_INSERT_BlockFirst( WN_region_body( kid ),
         //                     Gen_Store_Gtid( NULL ));
-#ifndef KEY
-              WN_INSERT_BlockFirst(WN_region_body(kid),
-	                           Gen_Serialized_Parallel( local_gtid ));
-              WN_INSERT_BlockLast(WN_region_body(kid),
-	                          Gen_End_Serialized_Parallel( local_gtid ));
-#endif
             }
 
 	    if (WN_prev(kid))
@@ -8120,8 +7752,6 @@ to a node with an invalid opcode (i.e. 0).  Need to look into this
 later--DRK.
 */
 
-//          DevWarn("replacing test in MP_IF by FALSE value");
-//          WN *else_node = WN_else(kid);
           Strip_Nested_MP ( WN_then(kid) , ((pcf_nest == 0) && pcf_ok) );
           Strip_Nested_MP ( WN_else(kid) , ((pcf_nest == 0) && pcf_ok) );
           WN_DELETE_Tree(WN_if_test(kid));
@@ -8248,17 +7878,8 @@ Cleanup_Ordered (WN* block_wn, WN* wn) {
   opc = WN_opcode(wn);
   if (opc == OPC_VCALL) {
     char* name = ST_name(WN_st(wn));
-#ifdef KEY
     if (strcmp (name, "__ompc_ordered") == 0 ||
         strcmp (name, "__ompc_end_ordered") == 0 ) {
-#else
-    if (strcmp (name, "__omp_ordered") == 0 ||
-        strcmp (name, "__omp_end_ordered") ==0 ||
-        strcmp (name, "__omp_pdo_ordered_begin_iter") == 0 ||
-        strcmp (name, "__omp_pdo_ordered_end_iter") == 0 ||
-        strcmp (name, "__omp_begin_ordered") == 0 ||
-        strcmp (name, "__omp_end_ordered") == 0 ) {
-#endif
       WN_DELETE_Tree(WN_EXTRACT_FromBlock (block_wn, wn));
       return;
     }
@@ -8273,9 +7894,7 @@ Cleanup_Ordered (WN* block_wn, WN* wn) {
     WN* pragma = WN_first(WN_region_pragmas(wn));
     while (pragma) {
       if (WN_pragma(pragma) == WN_PRAGMA_PARALLEL_BEGIN ||
-#ifdef KEY
           WN_pragma(pragma) == WN_PRAGMA_PARALLEL_WORKSHARE ||
-#endif
           WN_pragma(pragma) == WN_PRAGMA_PARALLEL_DO) {
         return;
       }
@@ -8680,19 +8299,9 @@ Copy_Non_MP_Tree_Rec ( WN * tree , V_STACK *mp_vertices,
         if (WN_pragma(kid) == WN_PRAGMA_CRITICAL_SECTION_BEGIN) {
           if ((WN_opcode(kid) == OPC_XPRAGMA) &&
               (WN_operator(WN_kid0(kid)) == OPR_LDA))
-//Bug 4515
-#ifdef KEY
             lock_st = Get_NameLock_ST( WN_st(WN_kid0(kid)) );
-#else
-            lock_st = WN_st(WN_kid0(kid));
-#endif
           else if ((WN_opcode(kid) == OPC_PRAGMA) && WN_st(kid))
-//Bug 4515
-#ifdef KEY
             lock_st = Get_NameLock_ST( WN_st(kid) );
-#else
-            lock_st = WN_st(kid);
-#endif
           else{
             lock_st = NULL;
 	          Create_Unnamed_Critical_Lock( );
@@ -8752,16 +8361,10 @@ Copy_Non_MP_Tree_Rec ( WN * tree , V_STACK *mp_vertices,
              pragma == WN_PRAGMA_PARALLEL_DO ||
              pragma == WN_PRAGMA_PARALLEL_WORKSHARE ||
              pragma == WN_PRAGMA_PARALLEL_BEGIN)) {
-#ifdef KEY
           MP_process_type mpt = ((pragma == WN_PRAGMA_PARALLEL_BEGIN ||
                                   pragma == WN_PRAGMA_PARALLEL_WORKSHARE) ?
                                  MPP_PARALLEL_REGION :
                                  MPP_PARALLEL_DO);
-#else
-          MP_process_type mpt = (pragma == WN_PRAGMA_PARALLEL_BEGIN ?
-                                 MPP_PARALLEL_REGION :
-                                 MPP_PARALLEL_DO);
-#endif
           new_kid = Gen_OMP_Begin_SPR(mpt);
           WN_prev(new_kid) = prev_kid;
           if (prev_kid)
@@ -8819,11 +8422,9 @@ Copy_Non_MP_Tree_Rec ( WN * tree , V_STACK *mp_vertices,
         }
 
         next_kid = kid_stack[--kptr];
-#ifdef KEY
 	// bug 4989: Pop the stack until a non-NULL node is found
 	while (!next_kid && kptr)
 	  next_kid = kid_stack[--kptr];
-#endif // KEY
       }
 
     } // for (kid = WN_first(tree); kid; kid = next_kid)
@@ -8906,7 +8507,6 @@ Extract_Do_Info ( WN * do_tree )
   do_init = WN_kid0(WN_start(do_tree));
   WN_kid0(WN_start(do_tree)) = NULL;
 
-#ifdef KEY
   {
     // bug 5767: handle cvt
     WN * kid0 = WN_kid0 (WN_end (do_tree));
@@ -8963,49 +8563,17 @@ Extract_Do_Info ( WN * do_tree )
         Fail_FmtAssertion ( "malformed limit test in MP processing" );
     }
   }
-#else
-  if ((WN_operator(WN_kid0(WN_end(do_tree))) == OPR_LDID) &&
-      (WN_st(WN_kid0(WN_end(do_tree))) == do_id_st) &&
-      (WN_offsetx(WN_kid0(WN_end(do_tree))) == do_id_ofst)) {
-    was_kid0 = TRUE;
-    do_limit = WN_kid1(WN_end(do_tree));
-    WN_kid1(WN_end(do_tree)) = NULL;
-  } else if ((WN_operator(WN_kid1(WN_end(do_tree))) == OPR_LDID) &&
-	     (WN_st(WN_kid1(WN_end(do_tree))) == do_id_st) &&
-	     (WN_offsetx(WN_kid1(WN_end(do_tree))) == do_id_ofst)) {
-    do_limit = WN_kid0(WN_end(do_tree));
-    WN_kid0(WN_end(do_tree)) = NULL;
-  } else {
-    WN_Upper_Bound_Standardize ( do_tree, WN_end(do_tree), TRUE );
-    if ((WN_operator(WN_kid0(WN_end(do_tree))) == OPR_LDID) &&
-	(WN_st(WN_kid0(WN_end(do_tree))) == do_id_st) &&
-	(WN_offsetx(WN_kid0(WN_end(do_tree))) == do_id_ofst)) {
-      was_kid0 = TRUE;
-      do_limit = WN_kid1(WN_end(do_tree));
-      WN_kid1(WN_end(do_tree)) = NULL;
-    } else if ((WN_operator(WN_kid1(WN_end(do_tree))) == OPR_LDID) &&
-	       (WN_st(WN_kid1(WN_end(do_tree))) == do_id_st) &&
-	       (WN_offsetx(WN_kid1(WN_end(do_tree))) == do_id_ofst)) {
-      do_limit = WN_kid0(WN_end(do_tree));
-      WN_kid0(WN_end(do_tree)) = NULL;
-    } else {
-      Fail_FmtAssertion ( "malformed limit test in MP processing" );
-    }
-  }
-#endif
 
   if ((WN_operator(WN_kid0(WN_kid0(WN_step(do_tree)))) == OPR_LDID) &&
       (WN_st(WN_kid0(WN_kid0(WN_step(do_tree)))) == do_id_st) &&
       (WN_offsetx(WN_kid0(WN_kid0(WN_step(do_tree)))) == do_id_ofst))
   {
     do_stride = WN_COPY_Tree ( WN_kid1(WN_kid0(WN_step(do_tree))) );
-#ifdef KEY
     if (WN_operator (WN_kid0 (WN_step (do_tree))) == OPR_SUB)
     { // the loop goes down, don't miss '-' in (- non-const-stride)
       OPCODE negop = OPCODE_make_op (OPR_NEG, WN_rtype (do_stride), MTYPE_V);
       do_stride = WN_CreateExp1 (negop, do_stride);
     }
-#endif // KEY
   }
   else
     do_stride = WN_COPY_Tree ( WN_kid0(WN_kid0(WN_step(do_tree))) );
@@ -9095,18 +8663,6 @@ Rewrite_Do_New ( WN * do_tree,
   //now let it be. touch it later. csc, 2002/6/4 
   //The common case is LE/GE, not sured.
   WN* wn_ldid = Gen_MP_Load( upper, 0 );
-/*
-  if( WN_operator( WN_end( do_tree )) == OPR_LT )
-  {
-    WN_operator( WN_end( do_tree )) = OPR_LE;
-    wn_ldid = WN_Add( do_index_type, wn_ldid, 
-        WN_CreateIntconst( do_index_type, 1));
-  }
-  else if( WN_operator( WN_end( do_tree )) == OPR_GT )
-  {
-
-  }
-*/
   WN* wn_cvt_ldid = wn_ldid; 
   if (WN_rtype(wn_cvt_ldid) != WN_desc(WN_end(do_tree)))
      wn_cvt_ldid = WN_Integer_Cast(wn_cvt_ldid, WN_desc(WN_end(do_tree)),
@@ -9148,9 +8704,6 @@ Rewrite_Do_New ( WN * do_tree,
   // TODO: need to be fixed. csc
 
   loop_info = WN_do_loop_info(do_tree);
-#ifndef KEY
-  if (loop_info)
-#else
   // Bug 4809 - we will preserve the loop trip count information if the 
   // original trip count is an integer constant. For MP DO loops, the loop
   // bounds are determined at run-time. However, if the loop bounds for the 
@@ -9161,7 +8714,6 @@ Rewrite_Do_New ( WN * do_tree,
   // loop trip count is now made available.
   if (loop_info && (!WN_loop_trip(loop_info) || 
 		    !WN_operator_is(WN_loop_trip(loop_info), OPR_INTCONST)))
-#endif
   {
 		WN_set_do_loop_info( do_tree, NULL );
 		WN_set_kid_count( do_tree, 5 );
@@ -9241,13 +8793,11 @@ Transform_Do( WN * do_tree,
       (WN_offsetx(WN_kid0(WN_kid0(WN_step(do_tree)))) == do_id_ofst))
   {
     do_stride = WN_kid1(WN_kid0(WN_step(do_tree)));
-#ifdef KEY
     if (WN_operator (WN_kid0 (WN_step (do_tree))) == OPR_SUB)
     { // the loop goes down, don't miss '-' in (- non-const-stride)
       OPCODE negop = OPCODE_make_op (OPR_NEG, WN_rtype (do_stride), MTYPE_V);
       do_stride = WN_CreateExp1 (negop, do_stride);
     }
-#endif // KEY
   }
   else
     do_stride = WN_kid0(WN_kid0(WN_step(do_tree)));
@@ -9360,9 +8910,6 @@ Transform_Do( WN * do_tree,
                ? MPR_OMP_STATIC_INIT_4 : MPR_OMP_STATIC_INIT_8 );
     WN_Set_Call_Non_Data_Mod( do_init_call );
     WN_Set_Call_Non_Data_Ref( do_init_call );
-#ifndef KEY // bug 4671
-    WN_Set_Call_Non_Parm_Mod( do_init_call );
-#endif
     WN_Set_Call_Non_Parm_Ref( do_init_call );
     WN_Set_Call_Parm_Mod( do_init_call );
     WN_Set_Call_Parm_Ref( do_init_call );
@@ -9373,11 +8920,6 @@ Transform_Do( WN * do_tree,
         Be_Type_Tbl( MTYPE_I4 ), WN_PARM_BY_VALUE );
     WN_kid( do_init_call, 1 ) = WN_CreateParm( MTYPE_I4, do_schedule, 
         Be_Type_Tbl( MTYPE_I4 ), WN_PARM_BY_VALUE );
-#ifndef KEY
-    wn_tmp = WN_Lda( Pointer_type, 0, last_iter );
-    WN_kid( do_init_call, 2 ) = WN_CreateParm( Pointer_type, wn_tmp,  
-        WN_ty( wn_tmp ), WN_PARM_BY_REFERENCE );
-#endif
     wn_tmp = WN_Lda( Pointer_type, 0, local_lower );
     WN_kid( do_init_call, 2 ) = WN_CreateParm( Pointer_type, wn_tmp,  
         WN_ty( wn_tmp ), WN_PARM_BY_REFERENCE );
@@ -9408,9 +8950,6 @@ Transform_Do( WN * do_tree,
                ? MPR_OMP_SCHEDULER_INIT_4 : MPR_OMP_SCHEDULER_INIT_8 );
     WN_Set_Call_Non_Data_Mod( do_init_call );
     WN_Set_Call_Non_Data_Ref( do_init_call );
-#ifndef KEY // bug 4671
-    WN_Set_Call_Non_Parm_Mod( do_init_call );
-#endif
     WN_Set_Call_Non_Parm_Ref( do_init_call );
     WN_Set_Call_Parm_Ref( do_init_call );
     WN_linenum( do_init_call ) = line_number;
@@ -9428,9 +8967,6 @@ Transform_Do( WN * do_tree,
     WN_kid( do_init_call, 3 ) = WN_CreateParm( is_do32 ? MTYPE_I4 : MTYPE_I8,
        wn_tmp, Be_Type_Tbl( is_do32 ? MTYPE_I4 : MTYPE_I8 ), 
        WN_PARM_BY_VALUE );
-//    wn_tmp = WN_Lda( Pointer_type, 0, local_stride );
-//    WN_kid( do_init_call, 5 ) = WN_CreateParm( Pointer_type, wn_tmp,  
-//        WN_ty( wn_tmp ), WN_PARM_BY_REFERENCE );
        // What if the do_stride is not the same type as M_I4/ M_I8?
     wn_tmp = WN_COPY_Tree( do_stride );
     wn_tmp = WN_Integer_Cast( wn_tmp, is_do32 ? MTYPE_I4 : MTYPE_I8, 
@@ -9449,7 +8985,6 @@ Transform_Do( WN * do_tree,
   WN_INSERT_BlockLast( do_prefix, do_init_call );
 
   if ( schedule == OMP_SCHED_STATIC_EVEN ) 
-//      ( schedule == OMP_SCHED_ORDERED_STATIC_EVEN )) 
   {
     // Rewrite DO body for STATIC EVEN SCHEDULE
     // If clause to fix upper returned by RTL
@@ -9488,36 +9023,15 @@ Transform_Do( WN * do_tree,
     {
       if( is_LE )
       {
-// Bug 4660
-#ifdef KEY
         test_wn = WN_GT (do_index_type,
                          Gen_MP_Load( WN_st(WN_kid0(do_tree)), WN_offsetx(WN_kid0(do_tree)) ),
                          Gen_MP_Load( limit_st, limit_ofst ));
-
-#else
-        test_wn = WN_CAND( WN_LE( do_index_type,
-                                  Gen_MP_Load( local_lower, 0 ),
-                                  Gen_MP_Load( limit_st, limit_ofst )),
-                           WN_GE( do_index_type,
-                                  Gen_MP_Load( local_upper, 0 ),
-                                  Gen_MP_Load( limit_st, limit_ofst )));
-#endif
       }
       else
       {
-// Bug 4660
-#ifdef KEY
         test_wn = WN_LT (do_index_type,
                          Gen_MP_Load( WN_st(WN_kid0(do_tree)), WN_offsetx(WN_kid0(do_tree)) ),
                          Gen_MP_Load( limit_st, limit_ofst ));
-#else
-        test_wn = WN_CAND( WN_GE( do_index_type,
-                                  Gen_MP_Load( local_lower, 0 ),
-                                  Gen_MP_Load( limit_st, limit_ofst )),
-                           WN_LE( do_index_type,
-                                  Gen_MP_Load( local_upper, 0 ),
-                                  Gen_MP_Load( limit_st, limit_ofst )));
-#endif
       }
       then_wn =  WN_CreateBlock( );
       wn_tmp = WN_Stid ( MTYPE_I4 , 0, 
@@ -9531,27 +9045,9 @@ Transform_Do( WN * do_tree,
       // Flush/ barrier needed?
     }
 
-// ompc_static_fini is obsolete in pathscale omp library
-#ifndef KEY
-    wn = WN_Create( OPC_VCALL, 1 );
-    WN_st_idx( wn ) = GET_MPRUNTIME_ST( MPR_OMP_STATIC_FINI );
-    WN_Set_Call_Non_Data_Mod( wn );
-    WN_Set_Call_Non_Data_Ref( wn );
-    WN_Set_Call_Non_Parm_Mod( wn );
-    WN_Set_Call_Non_Parm_Ref( wn );
-    WN_Set_Call_Parm_Ref( wn );
-    WN_linenum( wn ) = line_number;
-
-    WN_kid0( wn ) = WN_CreateParm( MTYPE_I4, 
-      Gen_MP_Load( local_gtid, 0 ),
-      Be_Type_Tbl( MTYPE_I4 ),
-      WN_PARM_BY_VALUE );
-    WN_INSERT_BlockLast( do_suffix, wn );
-#endif
     // now, insert do_prefix and do_suffix
 
   }else if ( schedule == OMP_SCHED_STATIC ) 
-//            ( schedule == OMP_SCHED_ORDERED_STATIC ))
   {
     // Rewrite DO body for STATIC SCHEDULE 
     // while test
@@ -9611,12 +9107,6 @@ Transform_Do( WN * do_tree,
       // Does this cause new problems? if late operation must
       // check the type of do_tree, we must take a new method
       // to work around this.
-    //WN_INSERT_BlockAfter( stmt_tree, wn_prev_do, while_wn );
-    //WN_next( while_wn ) = wn_next_do;
-    //if( wn_next_do != NULL )
-    //{
-    //  WN_prev( wn_next_do ) = while_wn;
-    //}
     do_tree = while_wn;
 
     // last thread node.
@@ -9663,23 +9153,6 @@ Transform_Do( WN * do_tree,
       WN_INSERT_BlockLast( do_suffix, if_wn );
       // Flush/ barrier needed?
     }
-
-#ifndef KEY
-    wn = WN_Create( OPC_VCALL, 1 );
-    WN_st_idx( wn ) = GET_MPRUNTIME_ST( MPR_OMP_STATIC_FINI );
-    WN_Set_Call_Non_Data_Mod( wn );
-    WN_Set_Call_Non_Data_Ref( wn );
-    WN_Set_Call_Non_Parm_Mod( wn );
-    WN_Set_Call_Non_Parm_Ref( wn );
-    WN_Set_Call_Parm_Ref( wn );
-    WN_linenum( wn ) = line_number;
-
-    WN_kid0( wn ) = WN_CreateParm( MTYPE_I4, 
-      Gen_MP_Load( local_gtid, 0 ),
-      Be_Type_Tbl( MTYPE_I4 ),
-      WN_PARM_BY_VALUE );
-    WN_INSERT_BlockLast( do_suffix, wn );
-#endif
   }
   else
   {
@@ -9691,9 +9164,6 @@ Transform_Do( WN * do_tree,
                ? MPR_OMP_SCHEDULER_NEXT_4 : MPR_OMP_SCHEDULER_NEXT_8 );
     WN_Set_Call_Non_Data_Mod( call_wn );
     WN_Set_Call_Non_Data_Ref( call_wn );
-#ifndef KEY // bug 4671
-    WN_Set_Call_Non_Parm_Mod( call_wn );
-#endif
     WN_Set_Call_Non_Parm_Ref( call_wn );
     WN_Set_Call_Parm_Mod( call_wn );
     WN_Set_Call_Parm_Ref( call_wn );
@@ -9702,11 +9172,6 @@ Transform_Do( WN * do_tree,
     WN_kid( call_wn, 0 ) = WN_CreateParm( MTYPE_I4, 
         Gen_MP_Load( local_gtid, 0),
         Be_Type_Tbl( MTYPE_I4 ), WN_PARM_BY_VALUE );
-#ifndef KEY
-    wn_tmp = WN_Lda( Pointer_type, 0, last_iter );
-    WN_kid( call_wn, 1 ) = WN_CreateParm( Pointer_type, wn_tmp,  
-        WN_ty( wn_tmp ), WN_PARM_BY_REFERENCE );
-#endif
     wn_tmp = WN_Lda( Pointer_type, 0, local_lower );
     WN_kid( call_wn, 1 ) = WN_CreateParm( Pointer_type, wn_tmp,  
         WN_ty( wn_tmp ), WN_PARM_BY_REFERENCE );
@@ -9763,7 +9228,6 @@ Transform_Do( WN * do_tree,
       // Does this cause new problems? if late operation must
       // check the type of do_tree, we must take a new method
       // to work around this.
-#ifdef KEY
     WN * old_do_tree = do_tree;
     {
       // Initialize the do-loop index variable outside the while loop, so
@@ -9787,14 +9251,12 @@ Transform_Do( WN * do_tree,
       // Insert the initialization before the schedule_next function call
       WN_INSERT_BlockBefore (do_prefix, call_wn, init_do_index);
     }
-#endif
 
     do_tree = while_wn; 
 
     // last thread node.
     if( lastlocal_nodes || nested_lastlocal_nodes)
     {
-#ifdef KEY
       // generate an if-stmt to check if this is the last iteration, and then
       // set last_iter, which will be checked to set lastprivate variables
       if( is_LE )
@@ -9819,7 +9281,6 @@ Transform_Do( WN * do_tree,
       if_wn = WN_CreateIf( test_wn, then_wn, else_wn );
       WN_linenum( if_wn ) = line_number;
       WN_INSERT_BlockLast( do_suffix, if_wn );
-#endif
       // Indeed, the RTL set the last_iter, so nothing to do.
         // adjust lower/upper first.
       // Flush/ barrier needed?
@@ -9829,25 +9290,6 @@ Transform_Do( WN * do_tree,
   WN_INSERT_BlockLast( return_wn, do_prefix );
   WN_INSERT_BlockLast( return_wn, do_tree );
   WN_INSERT_BlockLast( return_wn, do_suffix );
-
-#ifndef KEY
-// Move the call to ompc_barrier down. We are not yet done handling the
-// do-loop, like handling of lastprivate variables.
-// So move the call down, and handle it in both the callsites of Transform_Do
-  if( nested_nowait_node == NULL )
-  {
-//    WN_Delete( nested_nowait_node );
-//    nested_nowait_node = NULL;
-    WN_INSERT_BlockLast( return_wn, Gen_Barrier(local_gtid));
-    // Flush should be inserted here.
-    // csc.
-  }
-  else
-  {
-    WN_Delete( nested_nowait_node );
-    nested_nowait_node = NULL;
-  }
-#endif // !KEY
 
   return return_wn;
 } // Transform_Do()
@@ -9930,9 +9372,6 @@ Rewrite_Do ( WN * do_tree )
   /* Fix up the optional LOOP_INFO node */
 
   loop_info = WN_do_loop_info(do_tree);
-#ifndef KEY
-  if (loop_info)
-#else
   // Bug 4809 - we will preserve the loop trip count information if the 
   // original trip count is an integer constant. For MP DO loops, the loop
   // bounds are determined at run-time. However, if the loop bounds for the 
@@ -9943,7 +9382,6 @@ Rewrite_Do ( WN * do_tree )
   // loop trip count is now made available.
   if (loop_info && (!WN_loop_trip(loop_info) || 
 		    !WN_operator_is(WN_loop_trip(loop_info), OPR_INTCONST)))
-#endif
   if (loop_info) {
     WN_loop_trip_est(loop_info) = 0;
     WN_loop_depth(loop_info) = 1;
@@ -10059,7 +9497,6 @@ Transform_Parallel_Block ( WN * tree )
 	  // modified by csc. will this work?
 	  // or we can safely remove it.
 	  wn = WN_CreateBlock();
-//	  wn = Gen_MP_Enter_Gate (gate_construct_num);
 
 	  if (prev_node)
 	    WN_next(prev_node) = wn;
@@ -10080,7 +9517,6 @@ Transform_Parallel_Block ( WN * tree )
 	  // modified by csc. will this work?
 	  // or we can safely remove it.
 	  wn = WN_CreateBlock( );
-//	  wn = Gen_MP_Exit_Gate (gate_construct_num);
 
 	  if (prev_node)
 	    WN_next(prev_node) = wn;
@@ -10200,9 +9636,7 @@ Transform_Parallel_Block ( WN * tree )
 
     {
       WN *mp_sp_block = Gen_MP_SingleProcess_Block(sp_block, FALSE, 
-#ifdef KEY
                                                          NULL,
-#endif 
 	                                                 is_omp, FALSE);
               // fix PV 589326: keep lowering MP constructs within and
               // after the INDEPENDENT/SINGLE construct
@@ -10303,7 +9737,6 @@ Transform_Parallel_Block ( WN * tree )
       comp_gen_construct = save_comp_gen_construct; // restore old value
       mpt = save_mpt;
 
-#ifdef KEY /* Bug 4828 */
     } else if (is_region &&
                WN_first(WN_region_pragmas(cur_node)) &&
 	       WN_pragma(WN_first(WN_region_pragmas(cur_node))) ==
@@ -10327,7 +9760,6 @@ Transform_Parallel_Block ( WN * tree )
 
       comp_gen_construct = save_comp_gen_construct; // restore old value
       mpt = save_mpt;
-#endif
 
     } else if (is_region &&
                WN_first(WN_region_pragmas(cur_node)) &&
@@ -10426,7 +9858,6 @@ Translate_Schedule_Type( int mp_SchedType,
    return kmpc_schedule_type;
 }
 
-#ifdef KEY
 // Returns TRUE if the immediate parent of "tree" is a parallel region, and
 // "tree" is the last statement in this region.
 static BOOL
@@ -10465,7 +9896,6 @@ Lastpdo_in_Parallel_Region (WN * tree)
   }
   return FALSE;
 }
-#endif // KEY
 
 /*
 * Process pdo.
@@ -10557,11 +9987,7 @@ Process_PDO ( WN * tree )
   is_omp = WN_pragma_omp(cur_node);
 
   next_node = WN_next(cur_node);
-#ifdef KEY
   WN_DELETE_FromBlock (WN_region_pragmas(tree), cur_node);
-#else
-  WN_Delete ( cur_node );
-#endif
 
   while (cur_node = next_node) {
 
@@ -10721,7 +10147,6 @@ Process_PDO ( WN * tree )
 			  OPCODE_name(WN_opcode(cur_node)) );
   }
 
-#ifdef KEY
   // Detect if a parallel region directly contains a DO loop, and if it
   // is the last stmt in the parallel region. In that case, a call to
   // ompc_barrier need not be inserted at the end of the DO loop even if
@@ -10731,11 +10156,9 @@ Process_PDO ( WN * tree )
       Lastpdo_in_Parallel_Region (tree))
     nested_nowait_node = WN_CreatePragma (WN_PRAGMA_NOWAIT,
                                           (ST_IDX) NULL, 0, 0);
-#endif
 
   body_block = WN_region_body(tree);
   first_node = pdo_node = WN_first(body_block);
-#ifdef KEY
   // bug 13534: Sometimes the DO_LOOP may be inside a C++ exception
   // region. Extract it out of the region, after some validation checks.
   if (pdo_node && WN_operator(pdo_node) == OPR_REGION &&
@@ -10765,7 +10188,6 @@ Process_PDO ( WN * tree )
       first_node = pdo_node = WN_first(body_block);
     }
   }
-#endif
   while (pdo_node && (WN_opcode(pdo_node) != OPC_DO_LOOP)) {
     if ((WN_opcode(pdo_node) == OPC_DO_WHILE) ||
 	(WN_opcode(pdo_node) == OPC_WHILE_DO))
@@ -10814,46 +10236,6 @@ Process_PDO ( WN * tree )
 
     }
 
-#if 0 //def KEY
-// The following is in order to make "i" private in the serialized version
-// of the region:
-//    #pragma omp parallel
-//    #pragma omp for private (i)
-//
-    if (nested_local_count && !orphaned)
-    {
-      // We have to recreate new ST entries because we need these symbols
-      // for a different scope than above, typically 2. So change the current
-      // scope ONLY locally.
-      SYMTAB_IDX psymtab_l = CURRENT_SYMTAB;
-      PU_Info * ppuinfo_l = Current_PU_Info;
-      WN_MAP_TAB * pmaptab_l = Current_Map_Tab;
-
-      CURRENT_SYMTAB = psymtab;
-      Current_PU_Info = ppuinfo;
-      Current_Map_Tab = pmaptab;
-
-      // Use local versions of the global tables.
-      INT32 vsize_l = (nested_local_count + 1) * sizeof (VAR_TABLE);
-      VAR_TABLE * nested_var_table_l = (VAR_TABLE *) alloca (vsize_l);
-       ( nested_var_table_l, vsize_l );
-      Create_Local_Variables ( nested_var_table_l, nested_reduction_nodes,
-			       nested_lastlocal_nodes, nested_local_nodes,
-			       nested_firstprivate_nodes,
-			       &nested_firstprivate_block,
-			       nested_lastthread_node,
-			       &alloca_block );
-      Localize_Parent_Stack lps_l(orphaned, body_block);
-      (void) Walk_and_Localize ( serial_stmt_block,
-                                 nested_var_table_l, &lps_l, FALSE,
-                                 &nested_non_pod_finalization_nodes );
-
-      CURRENT_SYMTAB = psymtab_l;
-      Current_PU_Info = ppuinfo_l;
-      Current_Map_Tab = pmaptab_l;
-    }
-#endif // KEY
-
     prev_node = WN_prev(pdo_node);
     if (prev_node) {
         // add synchronization to sandwich code before PDO
@@ -10892,28 +10274,12 @@ Process_PDO ( WN * tree )
     if (do_index_type == MTYPE_I4)
 #endif
     {
-/*        if (lastthread_node)
-           fast_doacross = TRUE;
-        else if (ordered_node)
-           fast_doacross = FALSE;
-        else if (mpsched_node)
-           fast_doacross =
-             (WN_pragma_arg1(mpsched_node) == WN_PRAGMA_SCHEDTYPE_SIMPLE);
-        else if (pu_mpsched_node)
-           fast_doacross =
-             (WN_pragma_arg1(pu_mpsched_node) == WN_PRAGMA_SCHEDTYPE_SIMPLE);
-        else if (chunk_node || pu_chunk_node)
-           fast_doacross = FALSE;
-        else
-*/           fast_doacross = TRUE;
+      fast_doacross = TRUE;
     }
     else
       fast_doacross = FALSE;
         
-//    if( orphaned )
-//    {
     Make_Local_Temps( );
-//    }
     /* Translate do statement itself. */
 
     Extract_Do_Info ( pdo_node );
@@ -10923,13 +10289,7 @@ Process_PDO ( WN * tree )
      // else. csc.
      // Why lastthread STATIC_EVEN and chunk_size must be 1? Is this the 
      // limitation caused by RTL? If, should be eliminated. 
-  
-    /*
-    if( do_prefix != NULL )
-      WN_DELETE_Tree( do_prefix );
-    if( do_suffix != NULL )
-      WN_DELETE_Tree( do_suffix );
-    */
+
     do_prefix = NULL;
     do_suffix = NULL;
     // What's the relationship between order/nested_order
@@ -11076,65 +10436,8 @@ Process_PDO ( WN * tree )
     WN_INSERT_BlockAfter( body_block, prev_node, return_wn );
     prev_node = last;
     // Why always 64?
-/*
-    if (nested_ordered_node && WN_pragma_omp(nested_ordered_node)) {
-      WN *order_begin;
-      order_begin = Gen_OMP_Pdo_Ordered_Begin(WN_kid0(nested_do_order_lb),
-                                              WN_kid0(nested_do_order_stride));
-      WN_INSERT_BlockAfter (body_block, prev_node, order_begin);
-      prev_node = order_begin;
-    }
-
-    if (numthreads_node)
-      wn = Gen_MP_BeginPDO_64 ( base_node, ntrip_node, stride_node,
-				WN_CreateIntconst ( OPC_I4INTCONST,
-						    num_constructs ),
-				WN_COPY_Tree ( WN_kid0(numthreads_node) ),
-				mpsched_wn, chunk_wn, is_omp );
-    else
-      wn = Gen_MP_BeginPDO_64 ( base_node, ntrip_node, stride_node,
-				WN_CreateIntconst ( OPC_I4INTCONST,
-						    num_constructs ),
-				WN_CreateIntconst ( OPC_I4INTCONST, 0 ),
-				mpsched_wn, chunk_wn, is_omp );
-
-
-    WN_INSERT_BlockAfter(body_block, prev_node, wn);
-    prev_node = wn;
-*/
-/*    wn1 = Gen_MP_NextIters_64 ( WN_CreateIntconst ( OPC_I4INTCONST,
-						    num_constructs ),
-				WN_Lda ( Pointer_type, 0, mpbase_st ),
-				WN_Lda ( Pointer_type, 0, mptrips_st ),
-				WN_Lda ( Pointer_type, 0, mpflags_st ),
-                                is_omp );
-    WN_INSERT_BlockAfter(body_block, prev_node, wn1);
-    prev_node = wn1;
-
-    Create_Preg_or_Temp ( MTYPE_I4, "mpni_status", &return_st, &return_ofst );
-    GET_RETURN_PREGS(rreg1, rreg2, MTYPE_I4);
-    wn2 = WN_Stid ( MTYPE_I4, return_ofst, return_st, ST_type(return_st),
-		    WN_LdidPreg ( MTYPE_I4, rreg1 ));
-    WN_linenum(wn2) = line_number;
-    WN_INSERT_BlockAfter(body_block, prev_node, wn2);
-    prev_node = wn2;
-
-    while_block = WN_CreateBlock ( );
-    WN_INSERT_BlockLast ( while_block, do_prefix );
-    WN_INSERT_BlockLast ( while_block, pdo_node );
-    WN_INSERT_BlockLast ( while_block, WN_COPY_Tree ( wn1 ) );
-    WN_INSERT_BlockLast ( while_block, WN_COPY_Tree ( wn2 ) );
-    wn = WN_CreateWhileDo ( WN_Ldid ( MTYPE_I4, return_ofst, return_st,
-				      ST_type(return_st) ),
-			    while_block );
-    WN_linenum(wn) = line_number;
-    WN_INSERT_BlockAfter(body_block, prev_node, wn);
-    prev_node = wn;
- */ 
-#ifdef KEY
     if (code_after_pdo) {
         // insert post-PDO sandwich code after all lowered PDO code
-//Bug 4792
       if (nested_var_table && nested_lastlocal_nodes){
         Localize_Parent_Stack lps(FALSE, NULL);
         code_after_pdo = Walk_and_Localize ( code_after_pdo, nested_var_table, &lps, TRUE,
@@ -11142,12 +10445,10 @@ Process_PDO ( WN * tree )
       }
       WN_INSERT_BlockBefore(body_block, prev_node, code_after_pdo);
     }
-#endif
     if (nested_lastlocal_nodes || nested_non_pod_finalization_nodes) {
       BOOL found_non_pod = FALSE;
       WN *first_and_last_mp_barrier = non_pod_first_and_lastprivate ?
                                         Gen_Barrier(local_gtid) : NULL;
-//                                      Gen_MP_Barrier(FALSE) : NULL;
 
       wn = WN_CreateBlock ( );
       for (i = 0; i < nested_local_count; i++) {
@@ -11178,18 +10479,7 @@ Process_PDO ( WN * tree )
             // orphaned PDO case: lastprivate nodes are on PDO
           if (!found_non_pod)
             Fail_FmtAssertion("missing non-POD lastprivate clauses");
-        } else {
-#ifndef KEY
-            // KEY: GNU42 front-end does not want to ensure this, unless
-            // this is necessary. Unless required, the lastlocal nodes
-            // attached to the proper region seem more accurate.
-            //
-            // non-orphaned PDO case: lastprivate nodes are on PARALLEL
-          if (found_non_pod)
-              // fecc should move lastprivate clauses to enclosing PARALLEL
-            Fail_FmtAssertion("extraneous non-POD lastprivate clauses");
-#endif
-        }
+        } 
       } else {
         if (found_non_pod)
             // should never have clauses without finalization code
@@ -11233,7 +10523,6 @@ Process_PDO ( WN * tree )
       	WN_INSERT_BlockLast(blk, wn);
       	WN_INSERT_BlockLast(blk, WN_CreateBarrier(FALSE, 0));
 
-#ifdef KEY
 	// bug 5035: insert the barrier after lastprivate handling
         if( nested_nowait_node == NULL )
         {
@@ -11244,7 +10533,6 @@ Process_PDO ( WN * tree )
           WN_Delete(nested_nowait_node);
           nested_nowait_node = NULL;
         }
-#endif // KEY
 
       	WN *last = WN_last(blk);
       	WN_INSERT_BlockAfter(body_block, prev_node, blk);
@@ -11255,7 +10543,6 @@ Process_PDO ( WN * tree )
       WN_INSERT_BlockBefore (WN_then(wn), NULL, WN_CreateBarrier(TRUE,0));
       WN_INSERT_BlockAfter (WN_then(wn), NULL, WN_CreateBarrier(FALSE,0));
     } // if (nested_lastlocal_nodes || nested_non_pod_finalization_nodes)
-#ifdef KEY
     else
     {  // Fix up the barrier in the else case
       if( nested_nowait_node == NULL )
@@ -11269,7 +10556,6 @@ Process_PDO ( WN * tree )
         nested_nowait_node = NULL;
       }
     }
-#endif // KEY
 
     if (nested_reduction_count) {
       WN *last = WN_last(reduction_store_block);
@@ -11278,37 +10564,6 @@ Process_PDO ( WN * tree )
       prev_node = last;
     }
 
-// TODO: barrier/flush code must be presented here.
-//       Handle nowait syntax.
-#ifndef KEY
-    if (nested_nowait_node == NULL || is_omp) {
-      if (nested_nowait_node == NULL) {
-          // insert a forward barrier
-        WN *bwn = WN_CreateBarrier(TRUE, 0);
-        WN_INSERT_BlockAfter(body_block, prev_node, bwn);
-        prev_node = bwn;
-      }
-/*      wn = Gen_MP_EndPDO ( WN_CreateIntconst ( OPC_I4INTCONST,
-					       num_constructs ),
-                           is_omp,
-                           (nested_nowait_node ? FALSE : TRUE));
-      WN_INSERT_BlockAfter(body_block, prev_node, wn);
-      prev_node = wn;
-*/    if (nested_nowait_node == NULL) {
-        // insert a backward barrier
-        wn = WN_CreateBarrier(FALSE, 0);
-        WN_INSERT_BlockAfter(body_block, prev_node, wn);
-        prev_node = wn;
-      }
-    }
-#endif
-/*
-    if (nested_ordered_node && WN_pragma_omp(nested_ordered_node)) {
-      WN *order_end = Gen_OMP_Pdo_Ordered_End ();
-      WN_INSERT_BlockAfter(body_block, prev_node, order_end);
-      prev_node = order_end;
-    }
-*/
     if (do_dealloca) {
       WN *restore_block = Gen_Restore_Stack_Pointer(sp_save_stid, avlist);
       CXX_DELETE(avlist, &mp_lower_pool);
@@ -11317,14 +10572,6 @@ Process_PDO ( WN * tree )
       WN_INSERT_BlockAfter(body_block, prev_node, restore_block);
       prev_node = last;
     }
-#ifndef KEY
-    if (code_after_pdo) {
-        // insert post-PDO sandwich code after all lowered PDO code
-      WN *last = WN_last(code_after_pdo);
-      WN_INSERT_BlockAfter(body_block, prev_node, code_after_pdo);
-      prev_node = last;
-    }
-#endif
     WN_next(prev_node) = NULL;
     WN_last(body_block) = prev_node;
 
@@ -11453,12 +10700,6 @@ Process_Parallel_Do ( void )
      // else. csc.
      // Why lastthread STATIC_EVEN and chunk_size must be 1? Is this the 
      // limitation caused by RTL? If, should be eliminated. 
- /* 
-  if( do_prefix != NULL )
-    WN_DELETE_Tree( do_prefix );
-  if( do_suffix != NULL )
-    WN_DELETE_Tree( do_suffix );
- */
         
   do_prefix = NULL;
   do_suffix = NULL;
@@ -11522,8 +10763,6 @@ Process_Parallel_Do ( void )
              (kmpc_schedule <= OMP_SCHED_ORDERED_LAST)),
 	   ( "A schedule type not supported by current RTL" )); 
 
-  //schedule_wn = WN_CreateIntconst( OPC_I4INTCONST, kmpc_schedule );
-
   /* Initialization. */
 
   psymtab = CURRENT_SYMTAB;
@@ -11568,7 +10807,6 @@ Process_Parallel_Do ( void )
   stmt_block = Walk_and_Localize ( stmt_block, var_table, &lps, TRUE,
                                    &non_pod_finalization_nodes );
 
-#ifdef KEY
   if (LANG_Enable_CXX_Openmp && PU_misc_info(PU_Info_pu(ppuinfo)) &&
       PU_src_lang(PU_Info_pu(ppuinfo)) == PU_CXX_LANG)
   { // C++: This code has not yet been tested.
@@ -11587,7 +10825,6 @@ Process_Parallel_Do ( void )
                                           FALSE, &non_pod_finalization_nodes );
   do_preamble_block = Walk_and_Localize ( do_preamble_block, var_table, &lps,
                                           FALSE, &non_pod_finalization_nodes );
-#endif // KEY
 
   /* Create copyin nodes for all local vars with preamble stores. */
 
@@ -11608,42 +10845,24 @@ Process_Parallel_Do ( void )
   WN *wn_prev_do = WN_prev( do_node );
   WN *wn_next_do = WN_next( do_node );
   WN_EXTRACT_FromBlock( stmt_block, do_node );
-// Bug 4498
-#ifdef KEY
   if (!nested_nowait_node)
     nested_nowait_node = WN_CreatePragma (WN_PRAGMA_NOWAIT,
                                           (ST_IDX) NULL, 0, 0);
-#endif
   WN *return_wn = Transform_Do( do_node, kmpc_schedule, chunk_wn );
   WN_INSERT_BlockAfter( stmt_block, wn_prev_do, return_wn );
-#ifdef KEY
   FmtAssert ( nested_nowait_node, ("NULL nested_nowait_node") );
   WN_Delete( nested_nowait_node );
   nested_nowait_node = NULL;
-#endif // KEY
 
   if( do_preamble_block )
   {
     WN_INSERT_BlockFirst( stmt_block, do_preamble_block );
   }
 
-
-//  if (ordered_node && WN_pragma_omp(ordered_node)) {
-//    /* Insert pdo_ordered_begin/end calls */
-//    WN *order_begin = Gen_OMP_Pdo_Ordered_Begin (WN_kid0(do_order_lb),
-//                                                 WN_kid0(do_order_stride));
-//    WN *order_end = Gen_OMP_Pdo_Ordered_End ();
-//    WN_INSERT_BlockFirst (stmt_block, order_begin);
-//    WN_INSERT_BlockLast (stmt_block, order_end);
-//    WN_kid0(do_order_lb) = WN_kid0(do_order_stride) = NULL;
-//  }
-
   if (copyin_nodes) {
     WN_INSERT_BlockFirst (stmt_block, Gen_MP_Copyin(TRUE));
   }
-#ifdef KEY
   Gen_Threadpriv_Func(reference_block, parallel_func, FALSE);
-#endif
   /* Generate initialization code for lastthread variable */
 
   if (lastthread_node)
@@ -11715,11 +10934,7 @@ Process_Parallel_Do ( void )
     WN_INSERT_BlockLast ( parallel_func, reduction_init_block );
     // Maybe do_prefix, do_suffix should be set to NULL at the begining of
     // This function. csc.
-//  if (do_prefix)
-//    WN_INSERT_BlockLast ( parallel_func, do_prefix );
   WN_INSERT_BlockLast ( parallel_func, stmt_block );
-//  if( do_suffix )
-//    WN_INSERT_BlockLast( parallel_func, do_suffix );
   if (last_local_if) {
     WN_INSERT_BlockLast(parallel_func, WN_CreateBarrier(FALSE, 0));
     WN_INSERT_BlockLast(parallel_func, last_local_if);
@@ -11826,7 +11041,6 @@ Process_Parallel_Region ( void )
   Localize_Parent_Stack lps(FALSE, NULL);
   stmt_block = Walk_and_Localize ( stmt_block, var_table, &lps, TRUE , 
                                    &non_pod_finalization_nodes );
-#ifdef KEY
   if (LANG_Enable_CXX_Openmp && PU_Info_pu(ppuinfo).misc &&
     PU_src_lang(PU_Info_pu(ppuinfo)) == PU_CXX_LANG)
   { // C++
@@ -11836,7 +11050,6 @@ Process_Parallel_Region ( void )
     // Update typeinfo data present in PU.
     pu.misc = Process_PU_Exc_Info(PU_Info_pu(ppuinfo).misc, var_table);
   }
-#endif
   /* Transform contents of parallel region */
 
   if (copyin_nodes) {
@@ -11844,9 +11057,7 @@ Process_Parallel_Region ( void )
   }
 
   Transform_Parallel_Block ( stmt_block );
-#ifdef KEY
   Gen_Threadpriv_Func(reference_block, parallel_func, FALSE);
-#endif
 
   if (reduction_count)  /* Generate init/finish reduction code */
     Gen_MP_Reduction(var_table, local_count, &reduction_init_block,
@@ -12050,11 +11261,7 @@ lower_mp ( WN * block, WN * node, INT32 actions )
   csymtab            = SYMTAB_IDX_ZERO;
   psymtab            = SYMTAB_IDX_ZERO;
   ppuinfo            = NULL;
-#ifdef KEY
   reference_block    = NULL;
-#endif
-
-  //Create_Loc_ST();
 
   inner_scope_vla.clear();
 
@@ -12234,9 +11441,7 @@ lower_mp ( WN * block, WN * node, INT32 actions )
       break;
 
     case WN_PRAGMA_PARALLEL_BEGIN:
-#ifdef KEY
     case WN_PRAGMA_PARALLEL_WORKSHARE:
-#endif
       mpt = MPP_PARALLEL_REGION;
       break;
 
@@ -12525,7 +11730,7 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 
       /* just accumulate nodes */
 
-#ifdef KEY // Bug 6273 - apsi basecompile with -apo triggers this case.
+    // apsi basecompile with -apo triggers this case.
     } else if (mpt == MPP_PARALLEL_DO) {
 
       /* just accumulate nodes */
@@ -12533,7 +11738,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
     } else if (mpt == MPP_PARALLEL_REGION) { // bug 6638
 
       /* just accumulate nodes */
-#endif
     } else
 
       Fail_FmtAssertion (
@@ -12620,7 +11824,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
         do_preamble_block = WN_CreateBlock ( );
       WN_INSERT_BlockLast ( do_preamble_block, do_node );
     }
-#ifdef KEY //Bug 4660
     WN *cur_node;
     if (do_preamble_block && lastlocal_nodes){
       cur_node = WN_first(do_preamble_block);
@@ -12633,7 +11836,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
         cur_node = next_node;
       }
     }
-#endif
 
     /* Do loop not found in spite of doacross node. Serialize any code in
        parallel region. */
@@ -12678,20 +11880,7 @@ lower_mp ( WN * block, WN * node, INT32 actions )
     if (do_index_type == MTYPE_I4)
 #endif
     {
-/*      if (lastthread_node)
-        fast_doacross = TRUE;
-      else if (ordered_node)
-        fast_doacross = FALSE;
-      else if (mpsched_node)
-        fast_doacross =
-           (WN_pragma_arg1(mpsched_node) == WN_PRAGMA_SCHEDTYPE_SIMPLE);
-      else if (pu_mpsched_node)
-        fast_doacross =
-            (WN_pragma_arg1(pu_mpsched_node) == WN_PRAGMA_SCHEDTYPE_SIMPLE);
-      else if (chunk_node || pu_chunk_node)
-        fast_doacross = FALSE;
-      else
-*/        fast_doacross = TRUE;
+      fast_doacross = TRUE;
     }
     else
       fast_doacross = FALSE;
@@ -12716,27 +11905,18 @@ lower_mp ( WN * block, WN * node, INT32 actions )
                             WN_COPY_Tree( do_preamble_block ));
     }
 
-#if 0 //def KEY
-    // localize variables in serialized version of PDO
-    Localize_in_serialized_parallel ();
-#endif
-
-//    do_preamble_block = NULL;
-
     if (is_omp) {
       WN *nest_wn;
       WN *store_gtid;
       
       // TODO: gtid should be passed as an argument to both GSP/GESP
       store_gtid = Gen_Store_Gtid();
-#ifdef KEY
       ntrip_calc = WN_CreateBlock ( );
       WN *wtree = WN_first(serial_stmt_block);
       while (WN_operator(wtree) != OPR_DO_LOOP){
         WN_INSERT_BlockLast(ntrip_calc, WN_COPY_Tree(wtree));
         wtree = WN_next(wtree);
       }
-#endif
 
       nest_wn = Gen_Serialized_Parallel( local_gtid);
       WN_INSERT_BlockAfter (serial_stmt_block, NULL, nest_wn);
@@ -12755,9 +11935,7 @@ lower_mp ( WN * block, WN * node, INT32 actions )
     temp_node = WN_Stid ( do_index_type, ntrip_ofst, ntrip_st, 
 		    ST_type(ntrip_st), ntrip_node );
     WN_linenum(temp_node) = line_number;
-#ifdef KEY
     if (!ntrip_calc)
-#endif
     ntrip_calc = WN_CreateBlock ( );
     WN_INSERT_BlockLast ( ntrip_calc, temp_node );
     ntrip_node = WN_Ldid ( do_index_type, ntrip_ofst, ntrip_st,
@@ -12848,16 +12026,8 @@ lower_mp ( WN * block, WN * node, INT32 actions )
     } else
       serial_stmt_block = Copy_Non_MP_Tree ( stmt_block );
 
-#if 0 //def KEY
-    // localize variables in serialized version of parallel region
-    Localize_in_serialized_parallel ();
-#endif
-
     Process_Parallel_Region ( );
 
-#ifndef KEY // bug 7281
-    if (is_omp) {
-#endif
       WN *nest_wn;
 
       if( numthreads_node )
@@ -12883,16 +12053,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
       // TODO: gtid should be passed as an argument
       nest_wn = Gen_End_Serialized_Parallel (local_gtid);
       WN_INSERT_BlockBefore (serial_stmt_block, NULL, nest_wn);
-#ifndef KEY // bug 7281
-    }
-    else 
-    {
-	// for LNO generated MP directives.
-	// currently not support. 
-	// TODO: no-omp directives handling. to enable auto-par
-	// csc.
-    }
-#endif
 
     RID_Delete ( Current_Map_Tab, node );
     WN_Delete ( node );
@@ -12915,23 +12075,10 @@ lower_mp ( WN * block, WN * node, INT32 actions )
     }
     if (livein_block)
       WN_INSERT_BlockLast ( stmt1_block, livein_block );
-    // Push_Thread number code should be inserted here.
-    // Note that, if nested parallelism should be supported,
-    // A valid gtid node should be generated other than NULL.
-/*    if( numthreads_node )
-    {
-      WN_INSERT_BlockLast( stmt1_block, 
-          Set_Thread_Num( WN_COPY_Tree( WN_kid0( numthreads_node )))); 
-    }
-*/
 
     WN_INSERT_BlockLast( stmt1_block, mp_call_wn );
 	
     if (liveout_block) {
-//      wn = WN_CreateIf ( WN_Ldid ( MTYPE_I4, return_ofst, return_st,
-//				   ST_type(return_st) ),
-//			 WN_CreateBlock ( ), liveout_block );
-//      WN_linenum(wn) = line_number;
       WN_INSERT_BlockLast ( stmt1_block, liveout_block );
     }
     if (mp_if && if_postamble_block)
@@ -12955,52 +12102,10 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 		if_cond_wn = temp_node;
       }
 
-#ifndef KEY
-      ST *in_parallel_st;
-      WN_OFFSET in_parallel_ofst;
-      Create_Preg_or_Temp( MTYPE_I4, "__ompv_in_parallel",
-                          &in_parallel_st, &in_parallel_ofst);
-      WN_INSERT_BlockLast( replace_block, Gen_In_Parallel( ));
-      GET_RETURN_PREGS(rreg1, rreg2, MTYPE_I4);
-      temp_node = Gen_MP_Store( in_parallel_st, in_parallel_ofst,
-		         WN_LdidPreg( MTYPE_I4, rreg1 ));
-      WN_linenum(temp_node) = line_number;
-      WN_INSERT_BlockLast( replace_block, temp_node );
-#endif
-
       ST *ok_to_fork_st;
       WN_OFFSET ok_to_fork_ofst;
       Create_Preg_or_Temp( MTYPE_I4, "__ompv_ok_to_fork",
                           &ok_to_fork_st, &ok_to_fork_ofst);
-#ifndef KEY // bug 7772
-      WN_INSERT_BlockLast( replace_block, Gen_Can_Fork( ));
-      GET_RETURN_PREGS(rreg1, rreg2, MTYPE_I4);
-      temp_node = Gen_MP_Store( ok_to_fork_st, ok_to_fork_ofst,
-		         WN_LdidPreg( MTYPE_I4, rreg1 ));
-      WN_linenum(temp_node) = line_number;
-      WN_INSERT_BlockLast( replace_block, temp_node );
-
-#ifdef KEY
-      temp_node = WN_EQ(   MTYPE_I4, 
-			   Gen_MP_Load( ok_to_fork_st, ok_to_fork_ofst ),
-			   WN_CreateIntconst(OPC_I4INTCONST, 1));
-#else
-      temp_node = WN_CAND( WN_EQ( MTYPE_I4, 
-			   Gen_MP_Load( in_parallel_st, in_parallel_ofst ),
-                           WN_CreateIntconst(OPC_I4INTCONST, 0)),
-		    WN_EQ( MTYPE_I4, 
-			   Gen_MP_Load( ok_to_fork_st, ok_to_fork_ofst ),
-			   WN_CreateIntconst(OPC_I4INTCONST, 1)));
-#endif
-
-      // Is this needed ? csc
-
-      if (if_cond_wn)
-        if_cond_wn = WN_CAND ( if_cond_wn, temp_node );
-      else
-        if_cond_wn = temp_node;
-
-#else // bug 7772
       if (if_cond_wn == NULL)
 	if_cond_wn = WN_CreateIntconst(OPC_I4INTCONST, 1);
       temp_node = Gen_MP_Store(ok_to_fork_st, ok_to_fork_ofst, if_cond_wn);
@@ -13019,36 +12124,15 @@ lower_mp ( WN * block, WN * node, INT32 actions )
       WN_INSERT_BlockLast( replace_block, temp_node );
 
       if_cond_wn = Gen_MP_Load(ok_to_fork_st, ok_to_fork_ofst);
-#endif
     }
 
     // stmt2_block should be the serial one.
       stmt2_block = serial_stmt_block;
-//    stmt2_block = WN_CreateBlock ( );
-    
-//    wn = WN_Stid ( MTYPE_I4, return_ofst, return_st, ST_type(return_st),
-//		   WN_CreateIntconst ( OPC_I4INTCONST, 1 ));
-//    WN_linenum(wn) = line_number;
-//    WN_INSERT_BlockLast ( stmt2_block, wn );
+
     temp_node = WN_CreateIf ( if_cond_wn, stmt1_block, stmt2_block );
     WN_linenum(temp_node) = line_number;
 
-    
-     //Why Set_Loc() is here? Maybe improper, csc
-    if (!mp_if) {
-//        WN_INSERT_BlockLast( replace_block, Set_Loc( NULL ));
-    }
-
     WN_INSERT_BlockLast ( replace_block, temp_node );
-
-
-    // no other clean up job should be done then. csc
-//    wn = WN_CreateIf ( WN_Ldid ( MTYPE_I4, return_ofst, return_st,
-//				 ST_type(return_st) ),
-//		       serial_stmt_block, WN_CreateBlock ( ) );
-//    WN_linenum(wn) = line_number;
-//    WN_INSERT_BlockLast ( replace_block, wn );
-
   } else if (mpt == MPP_ORPHANED_PDO) {
 
     Is_True(livein_block == NULL,

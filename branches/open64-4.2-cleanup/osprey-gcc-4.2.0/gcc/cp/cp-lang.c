@@ -54,7 +54,6 @@ static void cp_init_ts (void);
 #undef LANG_HOOKS_INIT_TS
 #define LANG_HOOKS_INIT_TS cp_init_ts
 
-#ifdef KEY
 extern tree simplify_aggr_init_exprs_r (tree *, int *, void *);
 
 #undef LANG_HOOKS_CPLUS_EXPAND_CONSTANT
@@ -65,7 +64,6 @@ extern tree simplify_aggr_init_exprs_r (tree *, int *, void *);
 #define LANG_HOOKS_CP_GENERICIZE cp_genericize
 #undef LANG_HOOKS_SIMPLIFY_AGGR_INIT_EXPRS_R
 #define LANG_HOOKS_SIMPLIFY_AGGR_INIT_EXPRS_R simplify_aggr_init_exprs_r
-#endif
 
 /* Each front end provides its own lang hook initializer.  */
 const struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;

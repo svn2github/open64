@@ -134,7 +134,7 @@ void ISA_Lits_Begin (void)
   sprintf (buf, "%s", FNAME);
   Emit_Header (hfile, buf, interface);
 
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
   fprintf(hfile, "\n#undef LC_MAX\n");
 #endif /* __MINGW32__ */
 

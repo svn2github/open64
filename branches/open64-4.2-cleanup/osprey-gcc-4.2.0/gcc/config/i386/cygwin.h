@@ -200,34 +200,12 @@ char *cvt_to_mingw[] =
 #endif /*GEN_CVT_ARRAY*/
 
 void mingw_scan (int, const char * const *, char **);
-#if 1
 #define GCC_DRIVER_HOST_INITIALIZATION \
 do \
 { \
   mingw_scan(argc, (const char * const *) argv, (char **) &spec_machine); \
   } \
 while (0)
-#else
-#define GCC_DRIVER_HOST_INITIALIZATION \
-do \
-{ \
-  char *cprefix = concat (tooldir_base_prefix, spec_machine, \
-			  dir_separator_str, NULL); \
-  if (!IS_ABSOLUTE_PATH (cprefix)) \
-    cprefix = concat (standard_exec_prefix, spec_machine, dir_separator_str, \
-		      spec_version, dir_separator_str, tooldir_prefix, NULL); \
-  add_prefix (&exec_prefixes,\
-	      concat (cprefix, "../../../../", spec_machine, "/bin/", NULL), \
-	      "BINUTILS", PREFIX_PRIORITY_LAST, 0, NULL); \
-  add_prefix (&exec_prefixes, cprefix, \
-	      "BINUTILS", PREFIX_PRIORITY_LAST, 0, NULL); \
-  add_prefix (&startfile_prefixes,\
-	      concat (standard_startfile_prefix, "w32api", NULL),\
-	      "GCC", PREFIX_PRIORITY_LAST, 0, NULL);\
-  mingw_scan(argc, (const char * const *) argv, &spec_machine); \
-  } \
-while (0)
-#endif
 
 /* Binutils does not handle weak symbols from dlls correctly.  For now,
    do not use them unnecessarily in gthr-posix.h.  */

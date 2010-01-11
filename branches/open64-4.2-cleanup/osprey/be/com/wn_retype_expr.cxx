@@ -108,7 +108,7 @@ static WN *Change_types_to_32bit(WN *tree)
   case OPR_RND: case OPR_TRUNC: case OPR_CEIL: case OPR_FLOOR:
   case OPR_BNOT:
   case OPR_TAS: 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   case OPR_ATOMIC_RSQRT:
 #endif
     break;
@@ -229,7 +229,7 @@ BOOL Only_32bit_opnds(WN *tree)
   case OPR_RND: case OPR_TRUNC: case OPR_CEIL: case OPR_FLOOR:
   case OPR_BNOT:
   case OPR_TAS: 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   case OPR_ATOMIC_RSQRT:
 #endif
     return MTYPE_byte_size(rtype) <= 4;
@@ -386,7 +386,7 @@ RETYPE_EXPR_expr(WN *tree, BOOL can_be_32bit, BOOL addr_expr)
   case OPR_PARM:
   case OPR_TAS:
   case OPR_RND: case OPR_TRUNC: case OPR_CEIL: case OPR_FLOOR:
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
   case OPR_REPLICATE:
   case OPR_REDUCE_ADD: case OPR_REDUCE_MPY: 
   case OPR_REDUCE_MAX: case OPR_REDUCE_MIN:

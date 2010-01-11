@@ -48,12 +48,6 @@
 // This file contains only Linux-specific code and should be entirely
 // #ifdef'd out for Irix.
 
-#ifdef KEY /* Mac port */
-// Some references to the symbols defined in this file are not protected
-// by #ifdef __linux__, so it's no longer possible to avoid using this file
-// without finding and fixing those references.
-#endif /* KEY Mac port */
-
 #if !defined(IRIX)
 
 // Work around the "undefined weak symbol" bug in Linux.
@@ -97,7 +91,7 @@
 #include "defs.h"
 #include "wn.h"
 #include "pu_info.h"
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 #include <WINDOWS.h>
 #endif /* __MINGW32__ */
 #include "ir_bwrite.h"
@@ -148,10 +142,8 @@ BOOL (*Verify_alias_p) (ALIAS_MANAGER *, WN *);
 // from be/opt/opt_alias_analysis.cxx
 void (*Print_points_to_p) (FILE *fp, POINTS_TO *ptmp);
 
-#if 1
 // from be/opt/opt_wn.h
 AUX_ID (*WN_aux_p) (const WN*);
-#endif
 
 // from be/opt/opt_du.h
 BOOL (DU_MANAGER::*CD_is_br_taken_p) (IDTYPE);
@@ -194,7 +186,7 @@ void (*EH_Generate_Range_List_p) (WN *);
 #if defined(TARG_IA64) || defined(TARG_X8664) 
 void (*EH_Dump_INITOs_p) (WN *, FILE *);
 #endif
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 void (*CG_Set_Is_Stack_Used_p) ();
 INT (*Push_Pop_Int_Saved_Regs_p) (void);
 #endif
@@ -214,9 +206,7 @@ void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*, ALIAS_MANAGER*,
 void (*WB_BROWSER_Summary_p) (FILE*, WB_BROWSER*);
 void (*Print_DO_LOOP_INFO_BASE_p) (FILE*, DO_LOOP_INFO_BASE*);
 
-#ifdef KEY
 void (*Preprocess_struct_access_p) (void);
-#endif
 
 // symbols from whirl2c.so 
 

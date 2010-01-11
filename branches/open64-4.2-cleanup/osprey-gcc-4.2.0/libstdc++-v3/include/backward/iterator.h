@@ -74,10 +74,6 @@ using std::forward_iterator_tag;
 using std::bidirectional_iterator_tag;
 using std::random_access_iterator_tag;
 
-#if 0
-using std::iterator;
-#endif
-
 // The base classes input_iterator, output_iterator, forward_iterator,
 // bidirectional_iterator, and random_access_iterator are not part of
 // the C++ standard.  (They have been replaced by struct iterator.)

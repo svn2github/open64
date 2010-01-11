@@ -60,7 +60,7 @@ static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 
 #include "ti_init.h"
 
-#ifdef __linux__
+#if defined(__linux__)
 const char * sanity_check_targ_so_name_p;
 #define sanity_check_targ_so_name sanity_check_targ_so_name_p
 #endif
@@ -92,7 +92,7 @@ TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *t
 #endif
     char              *targ_so_name  = alloca(targ_name_len + strlen(".so") + 1);
 
-#ifndef TARG_NVISA /* no scheduling info for NVISA */
+#if !defined(TARG_NVISA) /* no scheduling info for NVISA */
     for (i = 0; i < targ_name_len; i++) {
       targ_so_name[i] = tolower(targ_name[i]);
     }
@@ -112,19 +112,11 @@ TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *t
     ISA_HAZARD_Initialize();
     ISA_REGISTER_Initialize();
 
-#if 0
-    // For bug 13044, sanity check that we have loaded the proper information.
-    // This cannot be used for target "core" because we use core.so which
-    // actually loads in em64t.so. TODO: fix this sanity check scenario.
-    FmtAssert (!strcmp(targ_so_name, sanity_check_targ_so_name),
-     ("TI_Initialize did not load proper information from %s", targ_so_name));
-#endif
-
     initialized = TRUE;
   }
 }
 
-#ifdef __linux__
+#if defined(__linux__)
 
 #include "ti_si_types.h"
 

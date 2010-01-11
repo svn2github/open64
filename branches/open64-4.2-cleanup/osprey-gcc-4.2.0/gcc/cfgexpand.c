@@ -1623,11 +1623,9 @@ tree_expand_cfg (void)
 		 (int) PARAM_VALUE (PARAM_SSP_BUFFER_SIZE));
     }
 
-#ifdef KEY
   // Run expand_used_vars above to set DECL_SECTION_NAME.  Bug 10876.
   if (flag_spin_file)
     return 0;
-#endif
 
   /* Set up parameters and prepare for return, for the function.  */
   expand_function_start (current_function_decl);

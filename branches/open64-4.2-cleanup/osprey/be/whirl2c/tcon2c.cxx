@@ -339,7 +339,7 @@ TCON2C_translate(TOKEN_BUFFER tokens, TCON tvalue)
       Append_Token_Special(tokens, '}');
       break;
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
    case MTYPE_V16I1: {
      char *newstr;
      str = Targ_Print("%1d", tvalue);

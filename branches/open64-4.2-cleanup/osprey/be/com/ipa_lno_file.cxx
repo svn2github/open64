@@ -40,7 +40,7 @@
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <sys/types.h>
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 #include <WINDOWS.h>
 #else
 #include <sys/mman.h>
@@ -122,7 +122,7 @@ static void Ir_Lno_Signal_Handler(int sig,
 
   // Otherwise, handle this as a normal SIGSEGV or SIGBUS
   switch (sig) {
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
   case SIGBUS:
     old_handler = old_sigbus;
     break;
@@ -133,7 +133,7 @@ static void Ir_Lno_Signal_Handler(int sig,
   }
   if (old_handler == SIG_DFL) {
     // Resignal - will get default handler
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
     raise(sig);
 #else
     kill(getpid(), sig);
@@ -228,7 +228,7 @@ INT IPA_LNO_WRITE_FILE::Create_Temp_File()
   path = (char *) malloc(strlen(tmpdir) + strlen(DEFAULT_TEMPLATE) + 1);
   if (path == 0)
     return -1;
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
   {
     int mode = O_RDWR | O_CREAT | O_EXCL ;
     do {
@@ -262,7 +262,7 @@ INT IPA_LNO_WRITE_FILE::Create_Temp_File()
 
 void IPA_LNO_WRITE_FILE::Open_Write_File(char *file_name)
 {
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
   // Replace the existing signal handlers for SIGSEV and SIGBUS with 
   // Ir_Lno_Signal_Handler()
 
@@ -501,7 +501,7 @@ void IPA_LNO_WRITE_FILE::Write_Cleanup()
     free(ofl->section_list);
   ofl->num_of_section = 0;
   ofl->section_list = NULL;
-#ifndef __MINGW32__ 
+#if !defined(__MINGW32__)
   munmap((void *) ofl->map_addr, (size_t) ofl->mapped_size);
 #endif /* __MINGW32__ */
   ofl->map_addr = NULL;
@@ -712,7 +712,7 @@ INT IPA_LNO_READ_FILE::Open_Read_File(const char input_file[])
   if (fstat(fd, &stat_buf) != 0)
     return IPALNO_READER_ERROR;
 
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
   map_addr = NULL;
   HANDLE map_addr_handle = NULL;
   map_addr_handle =
@@ -744,7 +744,7 @@ INT IPA_LNO_READ_FILE::Open_Read_File(const char input_file[])
 
   close(fd);
   if ((st = Check_Input()) < 0) {
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
     munmap(map_addr, stat_buf.st_size);
 #endif /* __MINGW__ */
     return st;
@@ -820,7 +820,7 @@ INT IPA_LNO_READ_FILE::Section_Size(Elf64_Word info)
 
 void IPA_LNO_READ_FILE::Close_Read_File()
 { 
-#ifndef __MINGW32__
+#if !defined(__MINGW32__)
   if (ifl != NULL)  
     munmap(ifl->mapped_address, ifl->mapped_size); 
 #endif /* __MINGW32__ */

@@ -1158,7 +1158,7 @@ RINIT::Process_region(WN *wtmp, WN *block, INT32 level, RID *root,
   }
 
   // these next two lines can be removed after 7.2 (see PV 457243)
-#ifdef TARG_SL //add_type_for_minor  //PARA_EXTENSION
+#if defined(TARG_SL) //add_type_for_minor  //PARA_EXTENSION
   if (!RID_TYPE_eh(rid) && !RID_TYPE_mp(rid) && !RID_TYPE_sl2_para(rid)) 
 #else 
   if (!RID_TYPE_eh(rid) && !RID_TYPE_mp(rid)) 
@@ -1167,7 +1167,7 @@ RINIT::Process_region(WN *wtmp, WN *block, INT32 level, RID *root,
 
   // if region requires bounds, better tell root rid (propagates up to PU)
   if (!RID_TYPE_transparent(rid) || RID_contains_bounds(rid))
-#ifdef TARG_SL //fork_joint
+#if defined(TARG_SL) //fork_joint
   {
        /* if region requires bounds we need propagate the flag up to PU, when rid is not 
          * region 0 (PU) 
@@ -1215,7 +1215,6 @@ RINIT::Process_region(WN *wtmp, WN *block, INT32 level, RID *root,
     rinit.Print_sets();
   }
 
-#ifdef KEY
 // bug 3144: A region is not aware of any label in its nested regions.
 // Since we allow goto into a region, we need a parent region to know of 
 // labels in its nested regions, so that gotos can be cancelled out properly.
@@ -1224,7 +1223,6 @@ RINIT::Process_region(WN *wtmp, WN *block, INT32 level, RID *root,
        labels;
        labels = labels->Next())
     Add_label (labels->Label(), labels->Block());
-#endif // KEY
 
   // cancel goto-label pairs inside the region, add leftovers to parent
   // sets number of exits (these are the leftovers propagated up)
@@ -1252,7 +1250,6 @@ RINIT::Process_region(WN *wtmp, WN *block, INT32 level, RID *root,
 void
 RINIT::Region_init(WN *block, INT32 level, RID *root, char *options)
 {
-#ifdef KEY
 // bug 3740: traverse kids
   if (WN_operator(block) != OPR_BLOCK)
   {
@@ -1260,7 +1257,6 @@ RINIT::Region_init(WN *block, INT32 level, RID *root, char *options)
       Region_init (WN_kid(block, i), level, root, options);
     return;
   }
-#endif
 
   for (WN *wtmp=WN_first(block); wtmp; wtmp=WN_next(wtmp)) {
 
@@ -1333,11 +1329,9 @@ RINIT::Region_init(WN *block, INT32 level, RID *root, char *options)
         break;
 
       default:
-#ifdef KEY
-// bug 3740: traverse kids
+// traverse kids
         for (INT32 i=0; i<WN_kid_count(wtmp); i++)
           Region_init (WN_kid (wtmp, i), level, root, options);
-#endif // KEY
 	break;
     } // switch (WN_operator(wtmp))
 
@@ -1370,14 +1364,6 @@ REGION_init(WN *itree, RID *root)
     LABEL_IDX label;
     for (label=0; label < Scope_tab[CURRENT_SYMTAB].label_tab->Size();label++){
       if (gtmp->Compare_labels(label)) {
-#ifndef KEY
-	Is_Trace_cmd(rtmp.Trace(), fdump_tree(TFile, itree));
-	Is_Trace_cmd(rtmp.Trace(), RID_Tree_Print(TFile, root));
-        char buffer [20];
-        sprintf(buffer, "%d", label);
-	ErrMsg(EC_Rgn_Ill_Entry, buffer, Srcpos_To_Line(gtmp->Linenum()));
-	found = TRUE;
-#else
 // We are not checking for jumps from outside a region into a region. The
 // compiler itself generates jumps inside exception handlers which can
 // potentially jump into a region from outside. Doing a bit more work, one
@@ -1388,7 +1374,6 @@ REGION_init(WN *itree, RID *root)
 // the goto, so break out.
         found = TRUE;
         break;
-#endif
       }
     }
     if (!found) {

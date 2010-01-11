@@ -189,7 +189,6 @@ OUTPUT_FUNC_START_PROFILER::Generate_Func_Start_Profiler_PU(void)
     if (newblk == NULL) {
       ST *blk = Get_Section_ST(_SEC_DATA, 0, SCLASS_UNKNOWN);
       newblk = Copy_ST_Block(blk);
-//Bug# 1238
       Set_STB_size(newblk, 0);
       Set_ST_name_idx(newblk, Save_Str(".ctors"));
     }

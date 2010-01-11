@@ -306,13 +306,11 @@ ERROR_DESC EDESC_BE[] = {
     "Call to %s %s",
     2, ET_STRING, ET_STRING, 0,0,0,0 },
 
-#if defined(KEY)
   { EC_MPLOWER_copyin_st, EM_User | ES_ERRABORT, RAG_EN_NONE,
     "illegal copy in symbol which is not threadprivate",
     0, 0, 0, 0,0,0,0 },
-#endif
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   { EC_No_Calls, EM_User | ES_ERRABORT, RAG_EN_NONE,
     "External calls are not supported (found non-inlined call to %s)",
     1, ET_STRING, 0,0,0,0 },

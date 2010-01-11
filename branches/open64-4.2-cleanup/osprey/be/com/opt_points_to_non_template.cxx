@@ -463,7 +463,7 @@ Expand_ST_into_base_and_ofst(ST *st, INT64 st_ofst, ST **base, INT64 *ofst)
 	ST_class(ST_base(tmpbase)) == CLASS_BLOCK)
       break;
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
     // Allow extern syms which are about to flattened into a section
     // to retain symbolic/type information.
     if ((OPT_keep_extsyms) &&
@@ -609,9 +609,7 @@ POINTS_TO::Analyze_ST(ST *st, INT64 byte_ofst, INT64 byte_size,
       if (ST_is_optional_argument(st) ||
 	  (ST_sclass(sclass_st) == SCLASS_FORMAL_REF &&
 	   (PU_has_altentry(Get_Current_PU())
-#ifdef KEY
 	    || LANG_Formal_Deref_Unsafe
-#endif
 	   )))
 	Reset_safe_to_speculate();
       break;
@@ -639,7 +637,7 @@ POINTS_TO::Analyze_ST(ST *st, INT64 byte_ofst, INT64 byte_size,
 
       // bug 11485: vararg part of incoming parameters needs more care
       // bug 11669: fix triggers assertion in DEBUG MIPS; make target-dependent
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
       if (byte_ofst >= TY_size(ST_type(st))) {
         Set_base_kind(BASE_IS_DYNAMIC);
         Set_ofst_kind(OFST_IS_UNKNOWN);
@@ -857,14 +855,10 @@ void POINTS_TO::Lower_to_base(WN *wn)
       Set_base(base);
       Shift_ofst(ofst);
       Is_True(Is_pointer(), ("Pt is not a pointer."));
-#ifdef KEY
       // If it is a field in a struct, the ofst and size should already
       // have been set. The ofst may however change due to lowering of the ST.
       if (!Is_field() || Byte_Size() == 0)
         Set_byte_size(Byte_Size() + object_size);
-#else
-      Set_byte_size( Byte_Size() + object_size);
-#endif // KEY
     } else {
       // if no more info, the access range is from 0 to ST_size()
       Set_bit_ofst_size(0, 0);
@@ -947,7 +941,6 @@ void POINTS_TO::Analyze_Lda_Base(WN *wn_lda, const OPT_STAB &opt_stab)
   Copy_non_sticky_info(opt_stab.Aux_stab_entry(aux)->Points_to());
   Set_base(st);
   Set_byte_ofst(st_ofst);
-#ifdef KEY
   // For ansi aliasing only, we can determine if this is a field-access.
   // If this is an array with constant bounds, Analyze_Range will refine
   // the ofst and size later.
@@ -955,9 +948,6 @@ void POINTS_TO::Analyze_Lda_Base(WN *wn_lda, const OPT_STAB &opt_stab)
     Set_byte_size( 0 );
   else
     Set_is_field();
-#else
-  Set_byte_size( 0 );
-#endif // KEY
   Set_is_pointer();
   Invalidate_ptr_info ();  // it is not indirect access
 }
@@ -1153,12 +1143,10 @@ void POINTS_TO::Print(FILE *fp) const
     fprintf(fp, "%sdef_vsym", pr_separator);
     pr_separator = "|";
   }
-#ifdef KEY
   if (Is_field()) {
     fprintf(fp, "%sis_field", pr_separator);
     pr_separator = "|";
   }
-#endif
   if (Is_array()) {
     fprintf(fp, "%sis_array", pr_separator);
     pr_separator = "|";

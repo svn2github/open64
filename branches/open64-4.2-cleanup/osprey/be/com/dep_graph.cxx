@@ -94,7 +94,7 @@ static char *rcs_id = "$Source: be/com/SCCS/s.dep_graph.cxx $ $Revision: 1.7 $";
 #include "irbdata.h"		    /* for inito */
 #include "dwarf_DST_mem.h"	    /* for DST */
 #include "pu_info.h"
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 #include <WINDOWS.h>
 #endif /* __MINGW32__ */
 #include "ir_bwrite.h"
@@ -139,9 +139,7 @@ static BOOL LNO_Erase_Dg_From_Here_In_X(WN* wn, ARRAY_DIRECTED_GRAPH16* dg)
   VINDEX16      v = dg->Get_Vertex(wn);
   if (OPCODE_is_load(op) || OPCODE_is_store(op) ||
       OPCODE_is_call(op) || (OPCODE_operator(op) == OPR_INTRINSIC_OP)
-#ifdef KEY
       || (OPCODE_operator(op) == OPR_PURE_CALL_OP)
-#endif
       ) {
     if (v) {
       EINDEX16 enext = 0;
@@ -655,9 +653,7 @@ INT ARRAY_DIRECTED_GRAPH16::Find_Region(WN *wn, DOLOOP_STACK *stack)
 	((_type == DEPV_ARRAY_ARRAY_GRAPH) || 
 	  (Do_Loop_Is_Inner(wn) && !dli->Has_Gotos && !dli->Has_Barriers))) {
       if (!Build_Region(WN_do_body(wn),WN_do_body(wn),stack)) {
-#ifdef KEY
 	if (_type == DEPV_ARRAY_ARRAY_GRAPH)
-#endif
         LNO_Erase_Dg_From_Here_In(wn, this);
         return(0);
       } 
@@ -3459,6 +3455,4 @@ void SCALAR_STACK::Clear_Formal(INT i)
 } 
 
 #endif  /* ifdef LNO */
-
-
 

@@ -37,9 +37,7 @@ Boston, MA 02110-1301, USA.  */
 #include "debug.h"
 #include "c-pragma.h"
 
-#ifdef KEY
 extern void gspin_gxx_emits_decl (tree);
-#endif
 
 /* The bindings for a particular name in a particular scope.  */
 
@@ -102,18 +100,6 @@ binding_entry_make (tree name, tree type)
   return entry;
 }
 
-/* Put ENTRY back on the free list.  */
-#if 0
-static inline void
-binding_entry_free (binding_entry entry)
-{
-  entry->name = NULL;
-  entry->type = NULL;
-  entry->chain = free_binding_entry;
-  free_binding_entry = entry;
-}
-#endif
-
 /* The datatype used to implement the mapping from names to types at
    a given scope.  */
 struct binding_table_s GTY(())
@@ -140,30 +126,6 @@ binding_table_construct (binding_table table, size_t chain_count)
 }
 
 /* Make TABLE's entries ready for reuse.  */
-#if 0
-static void
-binding_table_free (binding_table table)
-{
-  size_t i;
-  size_t count;
-
-  if (table == NULL)
-    return;
-
-  for (i = 0, count = table->chain_count; i < count; ++i)
-    {
-      binding_entry temp = table->chain[i];
-      while (temp != NULL)
-	{
-	  binding_entry entry = temp;
-	  temp = entry->chain;
-	  binding_entry_free (entry);
-	}
-      table->chain[i] = NULL;
-    }
-  table->entry_count = 0;
-}
-#endif
 
 /* Allocate a table with CHAIN_COUNT, assumed to be a power of two.  */
 
@@ -2869,10 +2831,8 @@ do_class_using_decl (tree scope, tree name)
 
 
 
-#ifdef KEY
 // For gs_x ():
 tree (*p_namespace_binding) (tree, tree) = namespace_binding;
-#endif
 
 /* Return the binding value for name in scope.  */
 
@@ -3072,10 +3032,8 @@ push_namespace_with_attribs (tree name, tree attributes)
 	}
       begin_scope (sk_namespace, d);
 
-#ifdef KEY
       if (flag_spin_file)
         gspin_gxx_emits_decl (d);
-#endif
     }
   else
     resume_scope (NAMESPACE_LEVEL (d));

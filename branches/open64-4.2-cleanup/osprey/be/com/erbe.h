@@ -179,10 +179,8 @@ static char *erbe_rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/com/SCCS/s.e
 #define EC_DRA_indirect_call     EC_BASE_BE+144  /* */
 #define EC_DRA_clone_altentry    EC_BASE_BE+145  /* */
 #define EC_DRA_bad_clone_request EC_BASE_BE+146  /* str, str */
-#ifdef KEY
 #define EC_MPLOWER_copyin_st     EC_BASE_BE+147
-#endif
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
 #define EC_No_Calls		 EC_BASE_BE+148
 #define EC_Too_Many_Args	 EC_BASE_BE+149
 #define EC_Const_Space_Overflow	 EC_BASE_BE+150

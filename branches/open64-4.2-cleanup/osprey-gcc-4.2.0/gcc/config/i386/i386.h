@@ -1758,7 +1758,6 @@ do {							\
 } while (0)
 
 
-#ifdef KEY
 /* Codes for all the SSE/MMX builtins.  */
 enum ix86_builtins
 {
@@ -2596,7 +2595,6 @@ enum ix86_builtins
 
   IX86_BUILTIN_MAX
 };
-#endif
 
 /* Max number of args passed in registers.  If this is more than 3, we will
    have problems with ebx (register #4), since it is a caller save register and

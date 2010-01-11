@@ -327,19 +327,12 @@ Report_Delta_Time (
     etime = Get_Time ( r, RR_Delta_Elapsed );
     mem = Get_Memory ( r, RR_Delta_Memory );
 
-#if (1)
     fprintf ( file, "%-32s  %4d.%06du  %4d.%06ds  %4d.%06de",
 	      name,
 	      utime->secs, utime->usecs,
 	      stime->secs, stime->usecs,
 	      etime->secs, etime->usecs );
-#else
-    fprintf ( file, "%-32s  %4d.%03du  %4d.%03ds  %4d.%02de",
-	      name,
-	      utime->secs, utime->usecs/1000,
-	      stime->secs, stime->usecs/1000,
-	      etime->secs, etime->usecs/10000 );
-#endif
+
     if ( mem ) fprintf ( file, "  %7dm", mem );
     fprintf ( file, "\n" );
   }

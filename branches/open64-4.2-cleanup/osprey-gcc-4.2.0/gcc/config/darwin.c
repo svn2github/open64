@@ -769,11 +769,6 @@ machopic_legitimize_pic_address (rtx orig, enum machine_mode mode, rtx reg)
 		  emit_move_insn (reg, pic);
 		  pic = reg;
 		}
-#if 0
-	      emit_insn (gen_rtx_USE (VOIDmode,
-				      gen_rtx_REG (Pmode,
-						   PIC_OFFSET_TABLE_REGNUM)));
-#endif
 
 	      if (reload_in_progress)
 		regs_ever_live[REGNO (pic)] = 1;
@@ -842,10 +837,6 @@ machopic_legitimize_pic_address (rtx orig, enum machine_mode mode, rtx reg)
 		      emit_move_insn (reg, pic);
 		      pic = reg;
 		    }
-#if 0
-		  emit_insn (gen_rtx_USE (VOIDmode,
-					  pic_offset_table_rtx));
-#endif
 		  if (reload_in_progress)
 		    regs_ever_live[REGNO (pic)] = 1;
 		  pic_ref = gen_rtx_PLUS (Pmode,
@@ -1583,22 +1574,6 @@ darwin_binds_local_p (tree decl)
   return default_binds_local_p_1 (decl,
 				  TARGET_KEXTABI && DARWIN_VTABLE_P (decl));
 }
-
-#if 0
-/* See TARGET_ASM_OUTPUT_ANCHOR for why we can't do this yet.  */
-/* The Darwin's implementation of TARGET_ASM_OUTPUT_ANCHOR.  Define the
-   anchor relative to ".", the current section position.  We cannot use
-   the default one because ASM_OUTPUT_DEF is wrong for Darwin.  */
-
-void
-darwin_asm_output_anchor (rtx symbol)
-{
-  fprintf (asm_out_file, "\t.set\t");
-  assemble_name (asm_out_file, XSTR (symbol, 0));
-  fprintf (asm_out_file, ", . + " HOST_WIDE_INT_PRINT_DEC "\n",
-	   SYMBOL_REF_BLOCK_OFFSET (symbol));
-}
-#endif
 
 /* Set the darwin specific attributes on TYPE.  */
 void

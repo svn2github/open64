@@ -80,9 +80,7 @@ static char *rcs_id = 	opt_alias_rule_CXX"$Revision: 1.8 $";
 #include "opt_points_to.h"
 #include "opt_alias_class.h"
 #include "opt_alias_rule.h"
-#ifdef KEY
 #include "config_opt.h"
-#endif
 
 // ***********************************************************
 //
@@ -215,14 +213,6 @@ ALIAS_RULE::Aliased_F90_Target_Rule(const POINTS_TO *const mem1,
 				    TY_IDX object_ty2) const
 {
   if (mem1->Known_f90_pointer()) {
-#if 0
-    fprintf(TFile, "---------------\n");
-    mem1->Print(TFile);
-    fprintf(TFile, "      and\n");
-    mem2->Print(TFile);
-    fprintf(TFile, "      do %salias\n",
-	    (!mem2->Known_not_f90_pointer() || !mem2->Not_f90_target() ? "" : "not "));
-#endif
     if (mem2->Base() != NULL) {
       Is_True(!mem2->Not_f90_target() ||
 	      (ST_class(mem2->Base()) != CLASS_VAR) ||
@@ -232,14 +222,6 @@ ALIAS_RULE::Aliased_F90_Target_Rule(const POINTS_TO *const mem1,
     return (!mem2->Known_not_f90_pointer() || !mem2->Not_f90_target());
   }
   if (mem2->Known_f90_pointer()) {
-#if 0
-    fprintf(TFile, "---------------\n");
-    mem2->Print(TFile);
-    fprintf(TFile, "      and\n");
-    mem1->Print(TFile);
-    fprintf(TFile, "      do %salias\n",
-	    (!mem1->Known_not_f90_pointer() || !mem1->Not_f90_target() ? "" : "not "));
-#endif
     if (mem1->Base() != NULL) {
       Is_True(!mem1->Not_f90_target() ||
 	      (ST_class(mem1->Base()) != CLASS_VAR) ||
@@ -346,7 +328,6 @@ LMV_may_alias (LMV_ALIAS_GROUP a1, LMV_ALIAS_GROUP a2) {
 BOOL ALIAS_RULE::Aliased_Qualifier_Rule(const POINTS_TO *mem1, const POINTS_TO *mem2, TY_IDX ty1, TY_IDX ty2) const
 {
   // If mem1 or mem2 is declared const, ...
-#if 1
   // If at least one of mem1 and mem2 is declared global const, and
   // they do not overlap, the two operations don't alias.
   if (((mem1->Const() &&
@@ -359,16 +340,6 @@ BOOL ALIAS_RULE::Aliased_Qualifier_Rule(const POINTS_TO *mem1, const POINTS_TO *
        !mem1->Overlap(mem2))) {
     return FALSE;
   }
-#else
-  if (Rule_enabled(C_RESTRICT_CONST_RULE) && ty1 != NULL && ty2 != NULL) {
-    // disabled analysis of const qualifier because of inlining of
-    // C constructors.
-    if ((TY_is_const(ty1) && mem2->Not_init_const()) ||
-	(TY_is_const(ty2) && mem1->Not_init_const()))
-      return FALSE;
-  }
-#endif
-
   // mem1 is a unique pointer
   if (mem1->Based_sym() != NULL &&
       mem1->Unique_pt() && 
@@ -444,7 +415,6 @@ BOOL ALIAS_RULE::Aliased_F_Param_Rule(const POINTS_TO *mem1,
   return TRUE;
 }
 
-#ifdef KEY
 struct TY_IDX_EQ
 {
   bool operator() (const TY_IDX ty1, const TY_IDX ty2) const
@@ -454,9 +424,8 @@ struct TY_IDX_EQ
 };
 
 static hash_map<const TY_IDX, INT, __gnu_cxx::hash<TY_IDX>, TY_IDX_EQ> Stripped_mtype;
-#endif
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
 #define I1_VECTOR_TYPES    case MTYPE_V32I1: \
                            case MTYPE_V16I1: \
                            case MTYPE_V8I1:  \
@@ -510,7 +479,6 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
     //    Note that enum is represented as KIND_SCALAR.
     {
       TYPE_ID mtype = TY_mtype(ty);
-#ifdef KEY
       switch (mtype) {
       I1_VECTOR_TYPES
       case MTYPE_I1:
@@ -540,21 +508,6 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
         Is_True(mtype < MTYPE_PTR, ("more than 31 mtypes."));
 	ret_type = (1 << mtype); break;
       }
-#else
-      Is_True(mtype < MTYPE_PTR, ("more than 31 mtypes."));
-      switch (mtype) {
-      case MTYPE_I1:
-	ret_type = (1 << MTYPE_U1); break;
-      case MTYPE_I2:
-	ret_type = (1 << MTYPE_U2); break;
-      case MTYPE_I4:
-	ret_type = (1 << MTYPE_U4); break;
-      case MTYPE_I8:
-	ret_type = (1 << MTYPE_U8); break;
-      default:
-	ret_type = (1 << mtype); break;
-      }
-#endif
     }
     break;
   case KIND_ARRAY:  //  Get the element type of the array
@@ -567,18 +520,14 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
     break;
   case KIND_STRUCT:  // Collect the basic types of a structure recursively.
     if (!TY_fld (ty).Is_Null ()) {
-#ifdef KEY // bug 3974: return cached type
       if (INT32 stripped_type = /* assign */ Stripped_mtype[ty_idx])
 	return stripped_type;
-#endif
       FLD_ITER fld_iter = Make_fld_iter (TY_fld (ty));
       do {
 	ret_type |= Get_stripped_mtype (FLD_type (fld_iter));
       } while (!FLD_last_field (fld_iter++));
     }
-#ifdef KEY // bug 9580: empty structs should alias between themselves.
     else ret_type = (1 << MTYPE_M);
-#endif
     break;
   case KIND_FUNCTION:  
     // KIND_FUNCTION are allowed because LDA func_st might be
@@ -609,10 +558,8 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
       TY_no_ansi_alias(ty))		// varargs TY:  See PV 329475.
     ret_type = ALL_TYPE;
 
-#ifdef KEY // bug 3974: insert type in cache
   if (TY_kind(ty) == KIND_STRUCT && ret_type)
     Stripped_mtype[ty_idx] = ret_type;
-#endif
   return ret_type;
 }
   
@@ -714,33 +661,21 @@ BOOL ALIAS_RULE::Aliased_Strongly_Typed_Rule(TY_IDX ty1, TY_IDX ty2) const
 //
 BOOL ALIAS_RULE::Aliased_C_Qualifier_Rule(const POINTS_TO *mem1, const POINTS_TO *mem2) const
 {
-#if 0
-  // OLD Restricted rule
-  if (mem1->Based_sym() != NULL && mem1->Restricted() &&
-      mem2->Based_sym() != NULL && mem2->Restricted() &&
-      mem1->Based_sym() != mem2->Based_sym())
-    return FALSE;
-#else
   // Implement restrict pointer like a unique_pt.
   //
   if (mem1->Based_sym() != NULL &&
       mem1->Restricted() && 
-#ifdef KEY // bug 9001: do not use this rule when Based_kind() == BASE_IS_FIXED
       mem2->Based_sym() != NULL &&
-#endif
       mem1->Based_sym() != mem2->Based_sym() &&
       !mem2->Default_vsym())
     return FALSE;
 
   if (mem2->Based_sym() != NULL &&
       mem2->Restricted() && 
-#ifdef KEY // bug 9001: do not use this rule when Based_kind() == BASE_IS_FIXED
       mem1->Based_sym() != NULL &&
-#endif
       mem2->Based_sym() != mem1->Based_sym() &&
       !mem1->Default_vsym())
     return FALSE;
-#endif
 
   return TRUE;
 }

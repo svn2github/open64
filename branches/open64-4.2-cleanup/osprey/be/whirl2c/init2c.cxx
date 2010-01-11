@@ -429,7 +429,7 @@ INITV2C_struct_fill(TOKEN_BUFFER tokens,
 	 Is_True(FALSE, ("SYMOFF initv kind in INITV2C_struct_fill()"));
 	 break;
 
-#ifdef TARG_IA64	 
+#if defined(TARG_IA64)
       case INITVKIND_SYMIPLT:
 	 Is_True(FALSE, ("SYMIPLT initv kind in INITV2C_struct_fill()"));
 	 break;
@@ -463,16 +463,6 @@ INITV2C_struct_fill(TOKEN_BUFFER tokens,
 	    tcon_bytes.val.u8 = tcon.cmplxval.ival.v3;
 	 }
 	 
-	 /* The tcon bytes of relevance are now in tcon_bytes */
-	 for (pad_byte = 0; pad_byte < tcon_size; pad_byte++)
-	 {
-#if 0 //this might be needed
-	    if (pad_byte > 0)
-	       Append_Token_Special(tokens, ',');
-	    Append_Token_String(tokens, 
-	       Number_as_String(tcon_bytes.byte[pad_byte], "%llu"));
-#endif
-	 }
 	 *current_offset += tcon_size;
 	 break;
 
@@ -697,7 +687,7 @@ INITV2C_translate(TOKEN_BUFFER tokens,
       break;
 
    case INITVKIND_SYMOFF:
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
    case INITVKIND_SYMIPLT:
 #endif
       INITV2C_symbol(tokens, ty, initv);

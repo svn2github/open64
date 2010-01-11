@@ -437,14 +437,12 @@ copy_statement_list (tree *tp)
 
   new = alloc_stmt_list ();
 
-#ifdef KEY
   /* Bug 12821: For C++, preserve the tree type. (*tp) may have a
      non-void type. In that case we may need that type so that
      voidify_wrapper_expr() in gimplify.c functions properly. */
   if (!strcmp ("GNU C++", lang_hooks.name) &&
       flag_spin_file)
     TREE_TYPE(new) = TREE_TYPE(*tp);
-#endif
 
   ni = tsi_start (new);
   oi = tsi_start (*tp);
@@ -658,11 +656,9 @@ copy_body_r (tree *tp, int *walk_subtrees, void *data)
 	     id->eh_region_offset + TREE_INT_CST_LOW (TREE_OPERAND (*tp, 0)));
 
       if (TREE_CODE (*tp) != OMP_CLAUSE
-#ifdef KEY
           /* Note that we have not yet run cp_genericize, hence *tp may be
              a node whose TREE_TYPE is invalid. (bugs 12596, 12669) */
           && (!flag_spin_file || (TREE_TYPE(*tp) && TYPE_P(TREE_TYPE(*tp))))
-#endif
          )
 	TREE_TYPE (*tp) = remap_type (TREE_TYPE (*tp), id);
 
@@ -1854,7 +1850,6 @@ estimate_num_insns_1 (tree *tp, int *walk_subtrees, void *data)
       break;
 
     default:
-#ifdef KEY
       /* We are delaying gimplification, so non-lowered tree codes will
          show up here. GNU's inlining analysis does not affect us.
          So return a dummy instruction cost of 1. */
@@ -1862,7 +1857,6 @@ estimate_num_insns_1 (tree *tp, int *walk_subtrees, void *data)
         *count += 1;
         break;
       }
-#endif
       gcc_unreachable ();
     }
   return NULL;

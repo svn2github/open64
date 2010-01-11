@@ -1471,11 +1471,7 @@ init_ggc (void)
     internal_error ("open /dev/zero: %m");
 #endif
 
-#if 0
-  G.debug_file = fopen ("ggc-mmap.debug", "w");
-#else
   G.debug_file = stdout;
-#endif
 
 #ifdef USING_MMAP
   /* StunOS has an amazing off-by-one error for the first mmap allocation

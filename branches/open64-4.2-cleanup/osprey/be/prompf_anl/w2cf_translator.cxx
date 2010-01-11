@@ -884,14 +884,6 @@ W2CF_TRANSLATOR::ClauseList_To_String(ANL_CBUF *cbuf, WN **clause_list)
 				   &next_clause);
 	 break;
 
-//       case WN_PRAGMA_DEFAULT:
-//         the .anl file doesn't need the string just now.
-//
-//	 cbuf->Write_String("default");
-//	 _Default_Kind_To_String(cbuf,
-//				 (WN_PRAGMA_DEFAULT_KIND)WN_pragma_arg1(next_clause));
-//	 break;
-
       default:
 	 // This should never occur!
 	 //

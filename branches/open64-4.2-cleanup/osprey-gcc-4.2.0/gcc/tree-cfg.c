@@ -1807,18 +1807,14 @@ update_call_expr_flags (tree call)
   if (call_expr_flags (call) & (ECF_CONST | ECF_PURE))
   {
     TREE_SIDE_EFFECTS (call) = 0;
-#ifdef KEY
     if (gspin_invoked (call))
       gs_set_flag_value (call, GS_TREE_SIDE_EFFECTS, 0);
-#endif
   }
   if (TREE_NOTHROW (decl))
   {
     TREE_NOTHROW (call) = 1;
-#ifdef KEY /* bug 11960 */
     if (gspin_invoked (call))
       gs_set_flag_value (call, GS_TREE_NOTHROW, 1);
-#endif
   }
 }
 

@@ -443,11 +443,6 @@ extern enum reg_class arc_regno_reg_class[FIRST_PSEUDO_REGISTER];
    C.  If C is not defined as an extra constraint, the value returned should
    be 0 regardless of VALUE.  */
 /* ??? This currently isn't used.  Waiting for PIC.  */
-#if 0
-#define EXTRA_CONSTRAINT(VALUE, C) \
-((C) == 'R' ? (SYMBOL_REF_FUNCTION_P (VALUE) || GET_CODE (VALUE) == LABEL_REF) \
- : 0)
-#endif
 
 /* Stack layout and stack pointer usage.  */
 
@@ -494,15 +489,6 @@ extern enum reg_class arc_regno_reg_class[FIRST_PSEUDO_REGISTER];
    is defined.  */
 /* The current return address is in r31.  The return address of anything
    farther back is at [%fp,4].  */
-#if 0 /* The default value should work.  */
-#define RETURN_ADDR_RTX(COUNT, FRAME) \
-(((COUNT) == -1)							\
- ? gen_rtx_REG (Pmode, 31)						\
- : copy_to_reg (gen_rtx_MEM (Pmode,					\
-			     memory_address (Pmode,			\
-					     plus_constant ((FRAME),	\
-							    UNITS_PER_WORD)))))
-#endif
 
 /* Register to use for pushing function arguments.  */
 #define STACK_POINTER_REGNUM 28

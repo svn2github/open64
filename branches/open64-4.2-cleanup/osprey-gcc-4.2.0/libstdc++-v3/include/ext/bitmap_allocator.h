@@ -112,17 +112,6 @@ _GLIBCXX_BEGIN_NAMESPACE(__gnu_cxx)
 			  _M_end_of_storage(0)
 	{ }
 
-#if 0
-	~__mini_vector()
-	{
-	  if (this->_M_start)
-	    {
-	      this->deallocate(this->_M_start, this->_M_end_of_storage 
-			       - this->_M_start);
-	    }
-	}
-#endif
-
 	size_type
 	size() const throw()
 	{ return _M_finish - _M_start; }

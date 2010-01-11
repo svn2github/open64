@@ -79,7 +79,7 @@ extern BOOL Can_Be_Immediate(OPERATOR opr,
 			     INT whichkid,
 			     ST *stid_st);
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
 /* Return whether the float immediate of type <mtype> would be a valid
  * operand of machine instruction. This can be decided independently of
  * the operator or location of constant in an instruction or value of 

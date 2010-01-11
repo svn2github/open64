@@ -2623,10 +2623,6 @@ bfin_expand_movmem (rtx dst, rtx src, rtx count_exp, rtx align_exp)
   if (GET_CODE (count_exp) == CONST_INT)
     {
       count = INTVAL (count_exp);
-#if 0
-      if (!TARGET_INLINE_ALL_STRINGOPS && count > 64)
-	return false;
-#endif
     }
 
   /* If optimizing for size, only do single copies inline.  */

@@ -6830,13 +6830,11 @@ finish_function (void)
   if (DECL_INITIAL (fndecl) && DECL_INITIAL (fndecl) != error_mark_node
       && !undef_nested_function)
     {
-#ifdef KEY
 	  // Translate to spin before calling c_genericize, which lowers the
 	  // tree and destroys high-level program info useful for program
 	  // optimization.
 	  if (flag_spin_file)
 	    gspin (fndecl);
-#endif
       if (!decl_function_context (fndecl))
 	{
 	  c_genericize (fndecl);
@@ -7991,12 +7989,10 @@ c_write_global_declarations_1 (tree globals)
   for (decl = globals; decl; decl = TREE_CHAIN (decl))
   {
     check_global_declaration_1 (decl);
-#ifdef KEY
     if (!DECL_IS_BUILTIN (decl)) {
       if (flag_spin_file)
         gspin (decl);
     }
-#endif
   }
 }
 
@@ -8019,9 +8015,7 @@ void
 c_write_global_declarations (void)
 {
   tree t;
-#ifdef KEY
   extern void remove_asm_file (void);
-#endif
 
   /* We don't want to do this if generating a PCH.  */
   if (pch_file)
@@ -8061,7 +8055,6 @@ c_write_global_declarations (void)
   build_cdtor ('I', static_ctors); static_ctors = 0;
   build_cdtor ('D', static_dtors); static_dtors = 0;
 
-#ifdef KEY
   if (flag_spin_file) {
     /* Bug 13913: above -O0, flag_unit_at_a_time causes a different
        phase structure causing us to skip processing of global asm
@@ -8073,7 +8066,6 @@ c_write_global_declarations (void)
     else
       exit (2); // Corresponding to RC_USER_ERROR as the ekopath driver expects.
   }
-#endif
 
   /* We're done parsing; proceed to optimize and emit assembly.
      FIXME: shouldn't be the front end's responsibility to call this.  */

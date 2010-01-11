@@ -96,13 +96,7 @@ Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
 #define ATTR_CURR_SIMPLIFIED_P(RTX) (RTX_FLAG((RTX), in_struct))
 #define ATTR_PERMANENT_P(RTX) (RTX_FLAG((RTX), return_val))
 
-#if 0
-#define strcmp_check(S1, S2) ((S1) == (S2)		\
-			      ? 0			\
-			      : (gcc_assert (strcmp ((S1), (S2))), 1))
-#else
 #define strcmp_check(S1, S2) ((S1) != (S2))
-#endif
 
 #include "bconfig.h"
 #include "system.h"

@@ -2595,10 +2595,8 @@ add_implicitly_declared_members (tree t,
       TYPE_HAS_CONST_INIT_REF (t) = !cant_have_const_cctor;
       CLASSTYPE_LAZY_COPY_CTOR (t) = 1;
       TYPE_HAS_CONSTRUCTOR (t) = 1;
-#ifdef KEY
       if (flag_spin_file)
         TYPE_HAS_IMPLICIT_COPY_CONSTRUCTOR(t) = 1;
-#endif
     }
 
   /* If there is no assignment operator, one will be created if and
@@ -3884,7 +3882,6 @@ clone_function_decl (tree fn, int update_method_vec_p)
       clone = build_clone (fn, complete_ctor_identifier);
       if (update_method_vec_p)
 	add_method (DECL_CONTEXT (clone), clone, NULL_TREE);
-#ifdef KEY
       /* Identify the copy constructor for use by the front-end to copy
          objects. */
       if (flag_spin_file)
@@ -3897,7 +3894,6 @@ clone_function_decl (tree fn, int update_method_vec_p)
             CLASSTYPE_COPY_CONSTRUCTOR (type) = clone;
           }
         }
-#endif
       clone = build_clone (fn, base_ctor_identifier);
       if (update_method_vec_p)
 	add_method (DECL_CONTEXT (clone), clone, NULL_TREE);
@@ -6239,10 +6235,8 @@ build_self_reference (void)
   current_access_specifier = saved_cas;
 }
 
-#ifdef KEY
 // For gs_x ():
 int (*p_is_empty_class) (tree) = is_empty_class;
-#endif
 
 /* Returns 1 if TYPE contains only padding bytes.  */
 

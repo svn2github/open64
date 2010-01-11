@@ -111,10 +111,8 @@ extern const char *dump_base_name;
 extern const char *aux_base_name;
 extern const char *aux_info_file_name;
 extern const char *asm_file_name;
-#ifdef KEY
 extern const char *spin_file_name;
 extern int flag_spin_file;
-#endif
 extern bool exit_after_options;
 
 extern int target_flags_explicit;

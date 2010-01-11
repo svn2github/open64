@@ -369,7 +369,6 @@ tree_lowering_passes (tree fn)
   current_function_decl = fn;
   push_cfun (DECL_STRUCT_FUNCTION (fn));
 
-#ifdef KEY
   // This is the *only* point where we fully translate a FUNCTION_DECL for C++.
   // Exception: C++ thunk functions are fully translated from use_thunk().
   if (!strcmp("GNU C++", lang_hooks.name) &&
@@ -383,7 +382,6 @@ tree_lowering_passes (tree fn)
                                   lang_hooks.simplify_aggr_init_exprs_r,
                                   NULL);
   }
-#endif
 
   tree_register_cfg_hooks ();
   bitmap_obstack_initialize (NULL);

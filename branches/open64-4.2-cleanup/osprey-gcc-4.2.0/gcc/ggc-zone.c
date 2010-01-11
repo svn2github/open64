@@ -155,13 +155,6 @@ struct alloc_chunk {
 #define GGC_PAGE_MASK	(GGC_PAGE_SIZE - 1)
 #define GGC_PAGE_SHIFT	12
 
-#if 0
-/* Alternative definitions which use the runtime page size.  */
-#define GGC_PAGE_SIZE	G.pagesize
-#define GGC_PAGE_MASK	G.page_mask
-#define GGC_PAGE_SHIFT	G.lg_pagesize
-#endif
-
 /* The size of a small page managed by the garbage collector.  This
    must currently be GGC_PAGE_SIZE, but with a few changes could
    be any multiple of it to reduce certain kinds of overhead.  */
@@ -1514,12 +1507,7 @@ init_ggc (void)
   gcc_assert (G.dev_zero_fd != -1);
 #endif
 
-#if 0
-  G.debug_file = fopen ("ggc-mmap.debug", "w");
-  setlinebuf (G.debug_file);
-#else
   G.debug_file = stdout;
-#endif
 
 #ifdef USING_MMAP
   /* StunOS has an amazing off-by-one error for the first mmap allocation
@@ -1771,31 +1759,6 @@ sweep_pages (struct alloc_zone *zone)
 static bool
 ggc_collect_1 (struct alloc_zone *zone, bool need_marking)
 {
-#if 0
-  /* */
-  {
-    int i;
-    for (i = 0; i < NUM_FREE_BINS + 1; i++)
-      {
-	struct alloc_chunk *chunk;
-	int n, tot;
-
-	n = 0;
-	tot = 0;
-	chunk = zone->free_chunks[i];
-	while (chunk)
-	  {
-	    n++;
-	    tot += chunk->size;
-	    chunk = chunk->next_free;
-	  }
-	fprintf (stderr, "Bin %d: %d free chunks (%d bytes)\n",
-		 i, n, tot);
-      }
-  }
-  /* */
-#endif
-
   if (!quiet_flag)
     fprintf (stderr, " {%s GC %luk -> ",
 	     zone->name, (unsigned long) zone->allocated / 1024);

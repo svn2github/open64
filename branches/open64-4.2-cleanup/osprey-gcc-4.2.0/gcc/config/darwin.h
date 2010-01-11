@@ -909,11 +909,7 @@ void add_framework_path (char *);
    taught to keep them together or we find some other suitable
    code-gen technique.  */
 
-#if 0
-#define TARGET_ASM_OUTPUT_ANCHOR darwin_asm_output_anchor
-#else
 #define TARGET_ASM_OUTPUT_ANCHOR NULL
-#endif
 
 /* Attempt to turn on execute permission for the stack.  This may be
     used by INITIALIZE_TRAMPOLINE of the target needs it (that is,

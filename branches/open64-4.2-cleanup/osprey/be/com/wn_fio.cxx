@@ -2230,13 +2230,9 @@ static WN *create_pointer_to_node(WN *block, WN *tree, TY_IDX ty, BOOL deref)
 
   case OPR_ADD:
 
-#ifdef KEY
     // Under -IPA, different PUs may have different src_lang, but the driver
     // always passes -LANG:=ansi_c
     if (!PU_f90_lang(Get_Current_PU())) {
-#else
-    if (Language != LANG_F90) {
-#endif // KEY
        /* If address expression, return the tree */
   
        if (WN_opcode(tree) == OPC_U4ADD || WN_opcode(tree) == OPC_U8ADD)
@@ -2272,13 +2268,9 @@ Type_is_logical(TY_IDX  ty)
 {
   TY_IDX  ts ;
 
-#ifdef KEY
   // Under -IPA, different PUs may have different src_lang, but the driver
   // always passes -LANG:=ansi_c
   if (!PU_f90_lang(Get_Current_PU())) {
-#else
-  if (Language != LANG_F90) {
-#endif // KEY
     ts = Find_array_TY(ty);
     ts = Find_scalar_TY(ts);
     return (TY_is_logical(Ty_Table[ts]));
@@ -2545,9 +2537,7 @@ Init_fioruntime_ty ()
     TY& ty = New_TY (fioruntime_ty);
     TY_Init (ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, Save_Str (".ioruntime"));
     Set_TY_align (fioruntime_ty, 1);
-#ifdef KEY
     ty.Set_pu_flag(TY_HAS_PROTOTYPE);
-#endif
 
     TYLIST_IDX tylist_idx;
     TYLIST& tylist = New_TYLIST (tylist_idx);
@@ -3350,7 +3340,6 @@ static void Gen_Iolist_PutAddrWN ( WN * block, ST * st, INT32 foffset,
 
   /*  Save the ST info for building dummy parm lists.  */
 
-#ifdef KEY
   // Bug 10413: IPA may have constant propagated a non-existing optional
   // argument to an IO_ITEM, skip it.
   if (WN_operator(wn) == OPR_INTCONST)
@@ -3360,7 +3349,6 @@ static void Gen_Iolist_PutAddrWN ( WN * block, ST * st, INT32 foffset,
                ("Get_Iolist_PutAddrWN: INTCONST can only be zero"));
     return;
   }
-#endif
 
   wnx = wn;
   Add_To_Dummy_List(wnx);
@@ -4092,7 +4080,6 @@ static void Gen_Io_PutAddrWN ( WN * block, ST * st, FIOSTRUCT field, WN * wn )
   INT32 ftype;
   WN * wnx;
 
-#ifdef KEY
   // Bug 10413: IPA may have constant propagated a non-existing optional
   // argument to an IO_ITEM, skip it.
   if (WN_operator(wn) == OPR_INTCONST)
@@ -4101,7 +4088,6 @@ static void Gen_Io_PutAddrWN ( WN * block, ST * st, FIOSTRUCT field, WN * wn )
                ("Gen_Io_PutAddrWN: INTCONST can only be zero"));
     return;
   }
-#endif
 
   /*  Save the ST info for building dummy parm lists.  */
 
@@ -4592,13 +4578,9 @@ static void process_iostat ( WN **block1, WN **block2, BOOL flag, WN *iostat,
 
   /*  If no error handling is specified, then return NULL blocks. */
 
-#ifdef KEY
   // Under -IPA, different PUs may have different src_lang, but the driver
   // always passes -LANG:=ansi_c
   if (PU_f90_lang(Get_Current_PU())) {
-#else
-  if (Language == LANG_F90) {
-#endif // KEY
     if (iostat == NULL &&
 	end == (LABEL_IDX) 0 &&
 	err == (LABEL_IDX) 0 &&
@@ -4628,13 +4610,9 @@ static void process_iostat ( WN **block1, WN **block2, BOOL flag, WN *iostat,
   *block2 = WN_CreateBlock();
 
 
-#ifdef KEY
   // Under -IPA, different PUs may have different src_lang, but the driver
   // always passes -LANG:=ansi_c
   if ((PU_f90_lang(Get_Current_PU())) && only_copyout_needed) {
-#else
-  if ((Language == LANG_F90) && only_copyout_needed) {
-#endif // KEY
     if (flag)
        WN_INSERT_BlockLast ( *block1, WN_COPY_Tree(copyout_block) );
     WN_INSERT_BlockLast ( *block2, copyout_block );
@@ -4675,13 +4653,9 @@ static void process_iostat ( WN **block1, WN **block2, BOOL flag, WN *iostat,
     WN_INSERT_BlockLast ( *block1, WN_COPY_Tree(wn) );
   WN_INSERT_BlockLast ( *block2, wn );
 
-#ifdef KEY
   // Under -IPA, different PUs may have different src_lang, but the driver
   // always passes -LANG:=ansi_c
   if ((PU_f90_lang(Get_Current_PU())) && copyout_block) {
-#else
-  if ((Language == LANG_F90) && copyout_block) {
-#endif // KEY
     if (flag)
        WN_INSERT_BlockLast ( *block1, WN_COPY_Tree(copyout_block) );
     WN_INSERT_BlockLast ( *block2, copyout_block );
@@ -8645,17 +8619,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	break;
     case IOU_DEFAULT:
 	if (current_io_library == IOLIB_CRAY) {
-#ifndef KEY // bug 8586
-	  WN* unit = WN_kid0(kid0);
-	  if (WN_operator_is(unit,OPR_INTCONST) ||
-	               WN_operator_is(unit,OPR_LDID)) {
-	     INT32 ret_type = WN_rtype(unit);
-	     if (ret_type != MTYPE_I4 && ret_type != MTYPE_U4) {
-	          Fail_FmtAssertion("unexpected unit type (%d) in I/O processing", ret_type);
-             }
-          }
-#endif
-
           if (WN_operator_is(WN_kid0(kid0), OPR_INTCONST) && 
 		WN_const_val(WN_kid0(kid0)) == 0) {
 	    /* case WRITE(**, to write to stderr.  In this case, just
@@ -8686,16 +8649,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
          */
 
 	  pure_unit_wn = WN_kid0(kid0);
-#ifndef KEY // bug 8586
-	  if (WN_operator_is(pure_unit_wn,OPR_INTCONST) ||
-	               WN_operator_is(pure_unit_wn,OPR_LDID)) {
-	     INT32 ret_type = WN_rtype(pure_unit_wn);
-	     if (ret_type != MTYPE_I4 && ret_type != MTYPE_U4) {
-	          Fail_FmtAssertion("unexpected unit type (%d) in I/O processing", ret_type);
-             }
-          }
-#endif
-
 	  unit_wn = create_pointer_to_node(block, WN_kid0(kid0),
 					   (TY_IDX) 0, TRUE);
 	  unit_flag = 0;
@@ -8823,11 +8776,7 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	 break;
 
     case IOF_NAMELIST_DIRECTED:
-#ifndef KEY
-        if (Language == LANG_F90) {
-#else
         if (PU_f90_lang(Get_Current_PU())) {
-#endif
 	  INT32 i;
 	  fmt_flag = 5;
 	  for(i=0; i<WN_kid_count(kid1); i++)
@@ -8932,13 +8881,9 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	  if (current_io_library == IOLIB_MIPS) 
 	     iostat = extract_calls ( block, WN_kid0(wn_tmp) );
           else {
-#ifdef KEY
 	     // Under -IPA, different PUs may have different src_lang, but the 
 	     // driver always passes -LANG:=ansi_c
 	     if (PU_f90_lang(Get_Current_PU()))
-#else
-	     if (Language == LANG_F90)
-#endif // KEY
                iostat = get_32bit_cilist_item(WN_kid0(wn_tmp), WN_ty(wn_tmp));
              else
 	       iostat = WN_kid0(wn_tmp);
@@ -8953,13 +8898,9 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 					      (TY_IDX) 0, TRUE);
           break;
       case IOC_SIZE:
-#ifdef KEY
 	  // Under -IPA, different PUs may have different src_lang, but the 
 	  // driver always passes -LANG:=ansi_c
 	  if (PU_f90_lang(Get_Current_PU())) {
-#else
-	  if (Language == LANG_F90) {
-#endif // KEY
             size_wn = get_32bit_cilist_item(WN_kid0(wn_tmp), WN_ty(wn_tmp));
           } else {
 	    size_wn = create_pointer_to_node(block, WN_kid0(wn_tmp),
@@ -9094,13 +9035,9 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	     if (WN_kid_count(wn_tmp) == 2)
 	        itemsx[ioitem_tmp] = extract_calls ( block, WN_kid1(wn_tmp) );
           } else {
-#ifdef KEY
 	     // Under -IPA, different PUs may have different src_lang, but the 
 	     // driver always passes -LANG:=ansi_c
 	     if (PU_f90_lang(Get_Current_PU())) {
-#else
-	     if (Language == LANG_F90) {
-#endif // KEY
 	       items[ioitem_tmp] = get_32bit_cilist_item(WN_kid0(wn_tmp), WN_ty(wn_tmp));
              } else {
 	       items[ioitem_tmp] = create_pointer_to_node(block, WN_kid0(wn_tmp), (TY_IDX) 0, TRUE);
@@ -9219,13 +9156,9 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	process_iostat ( &iostat1, &iostat2, FALSE, iostat, err, end, eor,
 			 zero_escape_freq );
 
-#ifdef KEY
 	// Under -IPA, different PUs may have different src_lang, but the driver
 	// always passes -LANG:=ansi_c
 	if (PU_f90_lang(Get_Current_PU()))
-#else
-	if (Language == LANG_F90)
-#endif // KEY
 	   unit_wn = pure_unit_wn;
         if (unit_wn != NULL) {
           arg1 = unit_wn;
@@ -9272,13 +9205,9 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 			 zero_escape_freq );
         st = Get_IoStruct_ST ( block, FID_CRAY_CLOSELIST, TRUE);
 
-#ifdef KEY
 	// Under -IPA, different PUs may have different src_lang, but the driver
 	// always passes -LANG:=ansi_c
 	if (PU_f90_lang(Get_Current_PU()))
-#else
-	if (Language == LANG_F90)
-#endif // KEY
            unit_wn = pure_unit_wn;
 
 	if (unit_wn != NULL)
@@ -9330,13 +9259,9 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	process_iostat ( &iostat1, &iostat2, FALSE, iostat, err, end, eor,
 			 zero_escape_freq );
 
-#ifdef KEY
 	// Under -IPA, different PUs may have different src_lang, but the driver
 	// always passes -LANG:=ansi_c
 	if (PU_f90_lang(Get_Current_PU()))
-#else
-	if (Language == LANG_F90)
-#endif // KEY
            unit_wn = pure_unit_wn;
 
         if (unit_wn != NULL) {
@@ -9487,13 +9412,9 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 			 zero_escape_freq );
         st = Get_IoStruct_ST ( block, FID_CRAY_INQLIST, TRUE);
 
-#ifdef KEY
 	// Under -IPA, different PUs may have different src_lang, but the driver
 	// always passes -LANG:=ansi_c
 	if (PU_f90_lang(Get_Current_PU()))
-#else
-	if (Language == LANG_F90)
-#endif // KEY
            unit_wn = pure_unit_wn;
 
 	if (unit_wn != NULL)
@@ -9630,13 +9551,9 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 			 zero_escape_freq );
         st = Get_IoStruct_ST ( block, FID_CRAY_OPENLIST, TRUE);
 
-#ifdef KEY
 	// Under -IPA, different PUs may have different src_lang, but the driver
 	// always passes -LANG:=ansi_c
 	if (PU_f90_lang(Get_Current_PU()))
-#else
-	if (Language == LANG_F90)
-#endif // KEY
            unit_wn = pure_unit_wn;
 
 	if (unit_wn != NULL)
@@ -9692,13 +9609,9 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	process_iostat ( &iostat1, &iostat2, FALSE, iostat, err, end, eor,
 			 zero_escape_freq );
 
-#ifdef KEY
 	// Under -IPA, different PUs may have different src_lang, but the driver
 	// always passes -LANG:=ansi_c
 	if (PU_f90_lang(Get_Current_PU()))
-#else
-	if (Language == LANG_F90)
-#endif // KEY
            unit_wn = pure_unit_wn;
 
 	if (unit_wn != NULL) {
@@ -9734,7 +9647,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 			Make_IoAddr_WN ( st ) );
       }
       else {
-    /* Calvin TODO */
       fprintf( stderr, "UNLOCK\n" );
       abort();
       }
@@ -10322,9 +10234,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//	      eeeflag = (errstat != FALSE)
-//			| ((end != (LABEL_IDX) 0) << 1)
-//			| ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -10434,9 +10343,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//            eeeflag = (errstat != FALSE)
-//                      | ((end != (LABEL_IDX) 0) << 1)
-//                      | ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -10502,9 +10408,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//            eeeflag = (errstat != FALSE)
-//                      | ((end != (LABEL_IDX) 0) << 1)
-//                      | ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -10665,9 +10568,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//	      eeeflag = (errstat != FALSE)
-//			| ((end != (LABEL_IDX) 0) << 1)
-//			| ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -10750,9 +10650,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//            eeeflag = (errstat != FALSE)
-//                      | ((end != (LABEL_IDX) 0) << 1)
-//                      | ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -10823,9 +10720,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//            eeeflag = (errstat != FALSE)
-//                      | ((end != (LABEL_IDX) 0) << 1)
-//                      | ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -10891,9 +10785,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//            eeeflag = (errstat != FALSE)
-//                      | ((end != (LABEL_IDX) 0) << 1)
-//                      | ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -10978,9 +10869,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//            eeeflag = (errstat != FALSE)
-//                      | ((end != (LABEL_IDX) 0) << 1)
-//                      | ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -11045,9 +10933,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//            eeeflag = (errstat != FALSE)
-//                      | ((end != (LABEL_IDX) 0) << 1)
-//                      | ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -11112,9 +10997,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//            eeeflag = (errstat != FALSE)
-//                      | ((end != (LABEL_IDX) 0) << 1)
-//                      | ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -11275,9 +11157,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//            eeeflag = (errstat != FALSE)
-//                      | ((end != (LABEL_IDX) 0) << 1)
-//                      | ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -11358,9 +11237,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//            eeeflag = (errstat != FALSE)
-//                      | ((end != (LABEL_IDX) 0) << 1)
-//                      | ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -11431,9 +11307,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//            eeeflag = (errstat != FALSE)
-//                      | ((end != (LABEL_IDX) 0) << 1)
-//                      | ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -11499,9 +11372,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	      process_iostat ( &iostat1, &iostat2, TRUE, iostat,
 			       err, end, (LABEL_IDX) 0, zero_escape_freq );
 	      st = Get_IoStruct_ST( block, FID_CRAY_CLIST, TRUE );
-//            eeeflag = (errstat != FALSE)
-//                      | ((end != (LABEL_IDX) 0) << 1)
-//                      | ((iostat != NULL) << 3);
               word1 = 0;
 	      if (Target_Byte_Sex == LITTLE_ENDIAN) {
                 cilist_header_ptr = (cilist_header_type *)&word1;
@@ -11641,7 +11511,6 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 
 	}
       } else {
-    /* Calvin TODO */
       fprintf( stderr, "REWRITE not yet implemented\n" );
       abort();
       }

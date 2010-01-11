@@ -45,9 +45,7 @@ Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
 #include "langhooks-def.h"
 #include "opts.h"
 
-#ifdef KEY
 #define RC_GCC_INTERNAL_ERROR   34
-#endif
 
 /* Prototypes.  */
 static char *build_message_string (const char *, ...) ATTRIBUTE_PRINTF_1;
@@ -194,10 +192,8 @@ diagnostic_count_diagnostic (diagnostic_context *context,
 	  expanded_location s = expand_location (diagnostic->location);
 	  fnotice (stderr, "%s:%d: confused by earlier errors, bailing out\n",
 		   s.file, s.line);
-#ifdef KEY
 	  fnotice (stderr, "GNU front-end error.\n");
 	  exit (RC_GCC_INTERNAL_ERROR);
-#endif
 	  exit (ICE_EXIT_CODE);
 	}
 #endif
@@ -262,10 +258,8 @@ diagnostic_action_after_output (diagnostic_context *context,
       if (flag_fatal_errors)
 	{
 	  fnotice (stderr, "compilation terminated due to -Wfatal-errors.\n");
-#ifdef KEY
 	  fnotice (stderr, "GNU front-end error.\n");
 	  exit (RC_GCC_INTERNAL_ERROR);
-#endif
 	  exit (FATAL_EXIT_CODE);
 	}
       break;
@@ -277,10 +271,8 @@ diagnostic_action_after_output (diagnostic_context *context,
       fnotice (stderr, "Please submit a full bug report,\n"
 	       "with preprocessed source if appropriate.\n"
 	       "See %s for instructions.\n", bug_report_url);
-#ifdef KEY
       fnotice (stderr, "GNU front-end error.\n");
       exit (RC_GCC_INTERNAL_ERROR);
-#endif
       exit (ICE_EXIT_CODE);
 
     case DK_FATAL:
@@ -288,10 +280,8 @@ diagnostic_action_after_output (diagnostic_context *context,
 	real_abort ();
 
       fnotice (stderr, "compilation terminated.\n");
-#ifdef KEY
       fnotice (stderr, "GNU front-end error.\n");
       exit (RC_GCC_INTERNAL_ERROR);
-#endif
       exit (FATAL_EXIT_CODE);
 
     default:
@@ -671,9 +661,7 @@ fancy_abort (const char *file, int line, const char *function)
 static void
 real_abort (void)
 {
-#ifdef KEY
   fnotice (stderr, "GNU front-end error.\n");
   exit (RC_GCC_INTERNAL_ERROR);
-#endif
   abort ();
 }

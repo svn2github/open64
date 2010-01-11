@@ -116,12 +116,10 @@ extern ST *Find_Slink_For_Scope(ST *function, ST *sym);
 /* Determine if the ST is an uplevel reference */
 extern BOOL ST_is_uplevelTemp(const ST *);
 
-#ifdef KEY
 extern ST *Create_FPSave_Symbol(void);
 extern ST *Find_FPSave_Symbol(SYMTAB_IDX);
 extern ST *Create_SPSave_Symbol(void);
 extern ST *Find_SPSave_Symbol(SYMTAB_IDX);
-#endif
 
 #ifdef __cplusplus
 }

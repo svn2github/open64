@@ -64,9 +64,7 @@
 #include "flags.h"
 #include "target.h"
 
-#ifdef KEY
 extern int cannot_mangle_name;
-#endif
 
 /* Debugging support.  */
 
@@ -328,7 +326,6 @@ decl_is_template_id (const tree decl, tree* const template_info)
     }
   else
     {
-#ifdef KEY
       // If called from the spin translator, the DECL_ARGUMENTS can be NULL,
       // which will cause seg fault when checking INNERMOST_TEMPLATE_PARMS.  If
       // so, quit and indicate that the name cannot be reliably mangled.
@@ -340,7 +337,6 @@ decl_is_template_id (const tree decl, tree* const template_info)
           return 0;
         }
       }
-#endif
 
       /* Check if this is a primary template.  */
       if (DECL_LANG_SPECIFIC (decl) != NULL
@@ -1235,7 +1231,6 @@ write_number (unsigned HOST_WIDE_INT number, const int unsigned_p,
 static inline void
 write_integer_cst (const tree cst)
 {
-#ifdef KEY
   int sign;
   // CST is expected to be an INTEGER_CST, but it may be something else if
   // mangling is called from the spin translator.  In this case, mangling
@@ -1246,9 +1241,6 @@ write_integer_cst (const tree cst)
     return;
   }
   sign = tree_int_cst_sgn (cst);
-#else
-  int sign = tree_int_cst_sgn (cst);
-#endif
 
   if (TREE_INT_CST_HIGH (cst) + (sign < 0))
     {

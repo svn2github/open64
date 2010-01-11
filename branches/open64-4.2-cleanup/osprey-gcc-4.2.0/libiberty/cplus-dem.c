@@ -336,11 +336,6 @@ static void squangle_mop_up (struct work_stuff *);
 
 static void work_stuff_copy_to_from (struct work_stuff *, struct work_stuff *);
 
-#if 0
-static int
-demangle_method_args (struct work_stuff *, const char **, string *);
-#endif
-
 static char *
 internal_cplus_demangle (struct work_stuff *, const char *);
 
@@ -383,10 +378,6 @@ static void
 string_init (string *);
 
 static void string_clear (string *);
-
-#if 0
-static int string_empty (string *);
-#endif
 
 static void string_append (string *, const char *);
 
@@ -1539,29 +1530,6 @@ demangle_signature (struct work_stuff *work,
 
   return (success);
 }
-
-#if 0
-
-static int
-demangle_method_args (struct work_stuff *work, const char **mangled,
-                      string *declp)
-{
-  int success = 0;
-
-  if (work -> static_type)
-    {
-      string_append (declp, *mangled + 1);
-      *mangled += strlen (*mangled);
-      success = 1;
-    }
-  else
-    {
-      success = demangle_args (work, mangled, declp);
-    }
-  return (success);
-}
-
-#endif
 
 static int
 demangle_template_template_parm (struct work_stuff *work,
@@ -4625,16 +4593,6 @@ string_clear (string *s)
 {
   s->p = s->b;
 }
-
-#if 0
-
-static int
-string_empty (string *s)
-{
-  return (s->b == s->p);
-}
-
-#endif
 
 static void
 string_append (string *p, const char *s)

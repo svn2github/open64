@@ -49,7 +49,7 @@
 // ====================================================================
 
 #include <alloca.h>             // alloca
-#if ! defined(BUILD_OS_DARWIN)
+#if !defined(BUILD_OS_DARWIN)
 #include <elf.h>
 #endif /* ! defined(BUILD_OS_DARWIN) */
 

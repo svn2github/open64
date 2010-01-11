@@ -587,16 +587,6 @@ W2F_Enter_Global_Symbols(void)
 
    For_all(St_Table,GLOBAL_SYMTAB,enter_st());
 
-#if 0
-   // FIX constants ??
-   FOR_ALL_CONSTANTS(st, const_idx)
-   {
-      if (ST_symclass(st) != CLASS_SYM_CONST)
-	(void)W2CF_Symtab_Nameof_St(st);
-   }
-#endif
-
-
 } /* W2F_Enter_Global_Symbols */
 
 /* =================================================================

@@ -1472,11 +1472,9 @@ branch_target_load_optimize (bool after_prologue_epilogue_gen)
 	issue_rate = 1;
 
       /* Build the CFG for migrate_btr_defs.  */
-#if 1
       /* This may or may not be needed, depending on where we
 	 run this phase.  */
       cleanup_cfg (optimize ? CLEANUP_EXPENSIVE : 0);
-#endif
 
       life_analysis (0);
 

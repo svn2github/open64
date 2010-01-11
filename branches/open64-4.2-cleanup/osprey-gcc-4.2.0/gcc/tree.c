@@ -62,12 +62,10 @@ Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
 #include "params.h"
 #include "pointer-set.h"
 
-#ifdef KEY
 #include "dwarf2.h"
 
 extern tree cplus_expand_constant (tree);
 extern void mangle_decl (const tree decl);
-#endif
 
 /* Each tree code class has an associated string representation.
    These must correspond to the tree_code_class entries.  */
@@ -639,10 +637,8 @@ copy_node_stat (tree node MEM_STAT_DECL)
   TREE_ASM_WRITTEN (t) = 0;
   TREE_VISITED (t) = 0;
   t->common.ann = 0;
-#ifdef KEY
   if (flag_spin_file)
     TREE_TO_TRANSLATED_GS (t) = 0;
-#endif
 
   if (TREE_CODE_CLASS (code) == tcc_declaration)
     {
@@ -3237,10 +3233,9 @@ build_block (tree vars, tree subblocks, tree supercontext, tree chain)
   return block;
 }
 
-#if 1 /* ! defined(USE_MAPPED_LOCATION) */
+/* ! defined(USE_MAPPED_LOCATION) */
 /* ??? gengtype doesn't handle conditionals */
 static GTY(()) source_locus last_annotated_node;
-#endif
 
 #ifdef USE_MAPPED_LOCATION
 
@@ -7797,7 +7792,6 @@ empty_body_p (tree stmt)
 }
 
 #include "gt-tree.h"
-#ifdef KEY
 /**
   The following are no longer present in GNU 4.2.0, and so should be
   obsoleted out of libspin and wgen.
@@ -11818,16 +11812,8 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	  // OVERLOAD not yet used by wgen. OVL_FUNCTION and OVL_CURRENT
 	  // returns tree_overload*, so we should check if the following
 	  // disabled code are correct.
-#if 0
-            gs_set_operand((gs_t) GS_NODE(t), GS_OVL_FUNCTION,
-		       gs_x_1(OVL_FUNCTION(t), seq_num));
-#endif
             gs_set_operand((gs_t) GS_NODE(t), GS_OVL_CHAIN,
 		       gs_x_1(OVL_CHAIN(t), seq_num));
-#if 0
-            gs_set_operand((gs_t) GS_NODE(t), GS_OVL_CURRENT,
-		       gs_x_1(OVL_CURRENT(t), seq_num));
-#endif
             gs_set_operand((gs_t) GS_NODE(t), GS_OVL_NEXT,
 		       gs_x_1(OVL_NEXT(t), seq_num));
 	    break;
@@ -12071,4 +12057,3 @@ lang_cplus (void)
 {
   return CPR();
 }
-#endif

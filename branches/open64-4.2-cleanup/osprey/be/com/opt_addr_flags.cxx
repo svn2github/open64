@@ -47,18 +47,12 @@
 // Adjust address flags
 
 static BOOL suppress_all_warnings;
-#ifndef KEY
-static
-#endif
 void Set_addr_saved_stmt(WN *wn, BOOL use_passed_not_saved);
 
 // wn is an actual parameter.  Search for LDAs under the expr that 
 // are not consumed by an ILOAD, and set their addr_saved flag.
 // warn is TRUE iff we should issue a DevWarn for each ST whose addr_saved
 // flag we set.
-#ifndef KEY
-static 
-#endif
 void
 Set_addr_saved_expr(WN *wn, BOOL warn)
 {
@@ -66,7 +60,7 @@ Set_addr_saved_expr(WN *wn, BOOL warn)
   Is_True(OPCODE_is_expression(opc),
 	  ("Update_addr_saved: opcode must be expression"));
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   // only ignore if LDA directly under ILOAD,
   // cause if other expression (like ILOAD(add(lda,mul))
   // then will not be simple ldid in cg.
@@ -87,7 +81,7 @@ Set_addr_saved_expr(WN *wn, BOOL warn)
 		ST_name(st));
     }
   }
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   // If accessing larger area than symbol,
   // must be a cast, and requires accessing memory location.
   // Also requires memory location if casting to a different struct
@@ -144,20 +138,14 @@ Set_addr_saved_expr(WN *wn, BOOL warn)
     	Set_addr_saved_stmt(WN_kid(wn,1), warn);
 	return;
   }
-#ifdef KEY // only LDAs from kid 0 of ARRAY and ARRSECTION are relevant
   if (OPCODE_operator(opc) == OPR_ARRAY || 
       OPCODE_operator(opc) == OPR_ARRSECTION)
     Set_addr_saved_expr(WN_kid0(wn), warn);
   else
-#endif
   for (INT i = 0; i < WN_kid_count(wn); i++) 
     Set_addr_saved_expr(WN_kid(wn,i), warn);
 }
 
-
-#ifndef KEY
-static
-#endif
 void 
 Set_addr_saved_stmt(WN *wn, BOOL use_passed_not_saved)
 {
@@ -165,9 +153,7 @@ Set_addr_saved_stmt(WN *wn, BOOL use_passed_not_saved)
   OPCODE opc = WN_opcode(wn);
 
   if (OPCODE_is_call(opc)
-#ifdef KEY
       || OPCODE_operator(opc) == OPR_PURE_CALL_OP
-#endif
       ) {
     for (INT32 i = 0; i < WN_kid_count(wn); i++) {
       WN *actual = WN_actual(wn,i);
@@ -206,7 +192,7 @@ Set_addr_saved_stmt(WN *wn, BOOL use_passed_not_saved)
   if (OPCODE_is_black_box(opc)) 
     return;
   
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
   // See earlier comment about LDID
   if (OPCODE_operator(opc) == OPR_STID) {
     ST *st = WN_st(wn);
@@ -256,9 +242,6 @@ Set_addr_saved_stmt(WN *wn, BOOL use_passed_not_saved)
 
 
 // For debugging only!
-#ifndef KEY
-static
-#endif
 void 
 Recompute_addr_saved_stmt(WN *wn)
 {
@@ -372,9 +355,7 @@ void
 PU_adjust_addr_flags(ST* pu_st, WN *wn)
 {
   suppress_all_warnings = FALSE;
-#if 1 // Fix 10-26-2002: Enhancement to reset addr_saved flag before Mainopt
   Set_Error_Phase("PU_adjust_addr_flags");
-#endif
           // PV 682222: the MP lowerer may introduce LDA's on privatized
 	  // ST's which require setting their addr_saved flag before WOPT.
 	  // So the MP lowerer sets the PU_needs_addr_flag_adjust bit.
@@ -384,9 +365,7 @@ PU_adjust_addr_flags(ST* pu_st, WN *wn)
     if (!OPT_recompute_addr_flags)
       suppress_all_warnings = TRUE; // LDAs from privatization are OK
 
-#if 1 // Fix 10-26-2002: Enhancement to reset addr_saved flag before Mainopt 
     Clear_local_symtab_addr_flags(Scope_tab[CURRENT_SYMTAB]);
-#endif
     Recompute_addr_saved_stmt(wn);
   }
 

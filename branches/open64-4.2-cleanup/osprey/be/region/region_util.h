@@ -144,7 +144,7 @@ typedef enum {
   RID_TYPE_rpi	      = 0x20,  /* it's a RPI region			     */
   RID_TYPE_cold       = 0x40,  /* it's a cold region (transparent)	     */
   RID_TYPE_swp	      = 0x80,  /* it's a SWP loop (transparent)		     */
-#ifdef TARG_SL2 //fork_joint
+#if defined(TARG_SL2) //fork_joint
   RID_TYPE_major  = 0x100, /* region type for major region */
   RID_TYPE_minor = 0x200,  /* region type for minor region*/
 #endif 
@@ -360,7 +360,7 @@ typedef struct region_id {
 #define RID_TYPE_swp_Reset(r)        (RID_type(r) = \
 				     (RID_TYPE)(RID_type(r) & ~RID_TYPE_swp))
 
-#ifdef TARG_SL2 //fork_joint
+#if defined(TARG_SL2) //fork_joint
 #define RID_TYPE_major(r)     (RID_type(r) & RID_TYPE_major)
 #define RID_TYPE_major_Set(r)         (RID_type(r) = \
 				     (RID_TYPE)(RID_type(r) | RID_TYPE_major))

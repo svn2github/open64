@@ -107,7 +107,6 @@ typedef STACK<RENAMING_SCOPE *> RENAMING_STACK;
 
 extern void
 Rename_Privatized_COMMON(WN *wn, RENAMING_STACK *stack);
-#ifdef KEY
 extern void
 Rename_Threadprivate_COMMON(WN* pu, WN *parent, WN *wn,
                             RENAMING_STACK *scope_stack,
@@ -116,13 +115,8 @@ Rename_Threadprivate_COMMON(WN* pu, WN *parent, WN *wn,
 
 extern ST *
 ST_Source_COMMON_Block(ST *st, ST **split, BOOL want_st = FALSE);
-#else
 
-extern ST *
-ST_Source_COMMON_Block(ST *st, ST **split);
-#endif
-
-#ifdef TARG_LOONGSON
+#if defined(TARG_LOONGSON)
 extern BOOL
 ST_Is_Common_Block (ST *st);
 #endif

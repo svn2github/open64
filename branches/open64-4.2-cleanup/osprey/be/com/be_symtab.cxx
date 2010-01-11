@@ -113,7 +113,7 @@ ST_is_const_initialized (const ST* st)
     if (ST_sclass(st) == SCLASS_EXTERN)
 	return FALSE;
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
     if (ST_in_shared_mem(st))
     	// may be readonly but don't know initial value
 	return FALSE;
@@ -180,7 +180,7 @@ ST_is_const_initialized_scalar(const ST *st, INT64 offset, TCON &tcon_copy)
     TY_IDX  ty = ST_type(st);
     TYPE_ID mtype = TY_mtype(ty);
 
-#ifdef TARG_X8664 // bug 10673
+#if defined(TARG_X8664)
     switch (mtype) { // use mtype of vector elements
       case MTYPE_M8I1:
         mtype = MTYPE_I1;
@@ -327,7 +327,7 @@ ST_is_const_and_has_initv(const ST *st)
 }
 
 
-#ifdef TARG_NVISA
+#if defined(TARG_NVISA)
 // Search tree for a LDA, returning NULL if not found.
 // Will search through preg homes to find LDA.
 // Can also return LDID if is LDID of parameter pointer.

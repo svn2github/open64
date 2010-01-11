@@ -563,11 +563,6 @@ m32c_modes_tieable_p (enum machine_mode m1, enum machine_mode m2)
   if (GET_MODE_SIZE (m1) == GET_MODE_SIZE (m2))
     return 1;
 
-#if 0
-  if (m1 == QImode || m2 == QImode)
-    return 0;
-#endif
-
   return 1;
 }
 
@@ -1577,47 +1572,6 @@ rtx
 m32c_libcall_value (enum machine_mode mode)
 {
   /* return reg or parallel */
-#if 0
-  /* FIXME: GCC has difficulty returning large values in registers,
-     because that ties up most of the general registers and gives the
-     register allocator little to work with.  Until we can resolve
-     this, large values are returned in memory.  */
-  if (mode == DFmode)
-    {
-      rtx rv;
-
-      rv = gen_rtx_PARALLEL (mode, rtvec_alloc (4));
-      XVECEXP (rv, 0, 0) = gen_rtx_EXPR_LIST (VOIDmode,
-					      gen_rtx_REG (HImode,
-							   R0_REGNO),
-					      GEN_INT (0));
-      XVECEXP (rv, 0, 1) = gen_rtx_EXPR_LIST (VOIDmode,
-					      gen_rtx_REG (HImode,
-							   R1_REGNO),
-					      GEN_INT (2));
-      XVECEXP (rv, 0, 2) = gen_rtx_EXPR_LIST (VOIDmode,
-					      gen_rtx_REG (HImode,
-							   R2_REGNO),
-					      GEN_INT (4));
-      XVECEXP (rv, 0, 3) = gen_rtx_EXPR_LIST (VOIDmode,
-					      gen_rtx_REG (HImode,
-							   R3_REGNO),
-					      GEN_INT (6));
-      return rv;
-    }
-
-  if (TARGET_A24 && GET_MODE_SIZE (mode) > 2)
-    {
-      rtx rv;
-
-      rv = gen_rtx_PARALLEL (mode, rtvec_alloc (1));
-      XVECEXP (rv, 0, 0) = gen_rtx_EXPR_LIST (VOIDmode,
-					      gen_rtx_REG (mode,
-							   R0_REGNO),
-					      GEN_INT (0));
-      return rv;
-    }
-#endif
 
   if (GET_MODE_SIZE (mode) > 2)
     return gen_rtx_REG (mode, MEM0_REGNO);
@@ -1779,19 +1733,6 @@ m32c_legitimate_address_p (enum machine_mode mode, rtx x, int strict)
       return (GET_CODE (XEXP (x, 0)) == REG
 	      && REGNO (XEXP (x, 0)) == SP_REGNO);
     }
-
-#if 0
-  /* This is the double indirection detection, but it currently
-     doesn't work as cleanly as this code implies, so until we've had
-     a chance to debug it, leave it disabled.  */
-  if (TARGET_A24 && GET_CODE (x) == MEM && GET_CODE (XEXP (x, 0)) != PLUS)
-    {
-#if DEBUG_DOUBLE
-      fprintf (stderr, "double indirect\n");
-#endif
-      x = XEXP (x, 0);
-    }
-#endif
 
   encode_pattern (x);
   if (RTX_IS ("r"))

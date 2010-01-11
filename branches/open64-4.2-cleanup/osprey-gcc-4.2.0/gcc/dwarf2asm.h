@@ -68,11 +68,3 @@ extern void dw2_output_indirect_constants (void);
 
 /* These are currently unused.  */
 
-#if 0
-extern void dw2_asm_output_pcrel (int, const char *, const char *, ...)
-     ATTRIBUTE_NULL_PRINTF_3;
-
-extern void dw2_asm_output_delta_sleb128 (const char *, const char *,
-					  const char *, ...)
-     ATTRIBUTE_NULL_PRINTF_3;
-#endif

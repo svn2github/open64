@@ -4524,40 +4524,6 @@ _GLIBCXX_END_LDBL_NAMESPACE
       string_type
       _M_convert_from_char(char*) const
       {
-#if 0
-	// Length of message string without terminating null.
-	size_t __len = char_traits<char>::length(__msg) - 1;
-
-	// "everybody can easily convert the string using
-	// mbsrtowcs/wcsrtombs or with iconv()"
-
-	// Convert char* to _CharT in locale used to open catalog.
-	// XXX need additional template parameter on messages class for this..
-	// typedef typename codecvt<char, _CharT, _StateT> __codecvt_type;
-	typedef typename codecvt<char, _CharT, mbstate_t> __codecvt_type;
-
-	__codecvt_type::state_type __state;
-	// XXX may need to initialize state.
-	//initialize_state(__state._M_init());
-
-	char* __from_next;
-	// XXX what size for this string?
-	_CharT* __to = static_cast<_CharT*>(__builtin_alloca(__len + 1));
-	const __codecvt_type& __cvt = use_facet<__codecvt_type>(_M_locale_conv);
-	__cvt.out(__state, __msg, __msg + __len, __from_next,
-		  __to, __to + __len + 1, __to_next);
-	return string_type(__to);
-#endif
-#if 0
-	typedef ctype<_CharT> __ctype_type;
-	// const __ctype_type& __cvt = use_facet<__ctype_type>(_M_locale_msg);
-	const __ctype_type& __cvt = use_facet<__ctype_type>(locale());
-	// XXX Again, proper length of converted string an issue here.
-	// For now, assume the converted length is not larger.
-	_CharT* __dest = static_cast<_CharT*>(__builtin_alloca(__len + 1));
-	__cvt.widen(__msg, __msg + __len, __dest);
-	return basic_string<_CharT>(__dest);
-#endif
 	return string_type();
       }
      };

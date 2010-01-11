@@ -154,11 +154,7 @@
 #endif
 
 #ifndef RELAX_SPEC
-#if 0 /* Not supported yet.  */
-#define RELAX_SPEC "%{mrelax:-relax}"
-#else
 #define RELAX_SPEC ""
-#endif
 #endif
 
 #define EXTRA_SPECS							\
@@ -547,23 +543,12 @@ extern enum m32r_sdata m32r_sdata;
 #define SUBTARGET_REG_ALLOC_ORDER
 #endif
 
-#if 1 /* Better for int code.  */
 #define REG_ALLOC_ORDER				\
 {						\
   4,  5,  6,  7,  2,  3,  8,  9, 10,		\
   11, 12, 13, 14,  0,  1, 15, 16, 17, 18	\
   SUBTARGET_REG_ALLOC_ORDER			\
 }
-
-#else /* Better for fp code at expense of int code.  */
-#define REG_ALLOC_ORDER				\
-{						\
-   0,  1,  2,  3,  4,  5,  6,  7,  8,		\
-   9, 10, 11, 12, 13, 14, 15, 16, 17, 18	\
-  SUBTARGET_REG_ALLOC_ORDER			\
-}
-#endif
-
 /* Return number of consecutive hard regs needed starting at reg REGNO
    to hold something of mode MODE.
    This is ordinarily the length in words of a value of mode MODE
@@ -845,15 +830,6 @@ extern enum reg_class m32r_regno_reg_class[FIRST_PSEUDO_REGISTER];
    If its value is nonzero the function will have a frame pointer.  */
 #define FRAME_POINTER_REQUIRED current_function_calls_alloca
 
-#if 0
-/* C statement to store the difference between the frame pointer
-   and the stack pointer values immediately after the function prologue.
-   If `ELIMINABLE_REGS' is defined, this macro will be not be used and
-   need not be defined.  */
-#define INITIAL_FRAME_POINTER_OFFSET(VAR) \
-((VAR) = m32r_compute_frame_size (get_frame_size ()))
-#endif
-
 /* If defined, this macro specifies a table of register pairs used to
    eliminate unneeded registers that point into the stack frame.  If
    it is not defined, the only elimination attempted by the compiler
@@ -989,12 +965,6 @@ extern enum reg_class m32r_regno_reg_class[FIRST_PSEUDO_REGISTER];
 /* If defined, a C expression that gives the alignment boundary, in bits,
    of an argument with the specified mode and type.  If it is not defined, 
    PARM_BOUNDARY is used for all arguments.  */
-#if 0
-/* We assume PARM_BOUNDARY == UNITS_PER_WORD here.  */
-#define FUNCTION_ARG_BOUNDARY(MODE, TYPE) \
-  (((TYPE) ? TYPE_ALIGN (TYPE) : GET_MODE_BITSIZE (MODE)) <= PARM_BOUNDARY \
-   ? PARM_BOUNDARY : 2 * PARM_BOUNDARY)
-#endif
 
 /* Function results.  */
 

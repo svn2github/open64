@@ -280,7 +280,7 @@ Mtype_to_Ukind(MTYPE mtype)
    case MTYPE_CQ: 
       ukind = PREG_AS_CQ;
       break;
-#ifdef TARG_X8664
+#if defined(TARG_X8664)
    case MTYPE_V16C4:
    case MTYPE_V16C8:
    case MTYPE_V16I1:

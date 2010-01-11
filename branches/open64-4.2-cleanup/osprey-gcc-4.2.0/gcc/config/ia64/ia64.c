@@ -409,24 +409,6 @@ static const struct attribute_spec ia64_attribute_table[] =
 #define TARGET_ASM_OUTPUT_DWARF_DTPREL ia64_output_dwarf_dtprel
 #endif
 
-/* ??? ABI doesn't allow us to define this.  */
-#if 0
-#undef TARGET_PROMOTE_FUNCTION_ARGS
-#define TARGET_PROMOTE_FUNCTION_ARGS hook_bool_tree_true
-#endif
-
-/* ??? ABI doesn't allow us to define this.  */
-#if 0
-#undef TARGET_PROMOTE_FUNCTION_RETURN
-#define TARGET_PROMOTE_FUNCTION_RETURN hook_bool_tree_true
-#endif
-
-/* ??? Investigate.  */
-#if 0
-#undef TARGET_PROMOTE_PROTOTYPES
-#define TARGET_PROMOTE_PROTOTYPES hook_bool_tree_true
-#endif
-
 #undef TARGET_STRUCT_VALUE_RTX
 #define TARGET_STRUCT_VALUE_RTX ia64_struct_value_rtx
 #undef TARGET_RETURN_IN_MEMORY

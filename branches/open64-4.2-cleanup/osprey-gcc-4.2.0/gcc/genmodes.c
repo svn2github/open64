@@ -860,9 +860,6 @@ enum machine_mode\n{");
   /* I can't think of a better idea, can you?  */
   printf ("#define CONST_MODE_SIZE%s\n", adj_bytesize ? "" : " const");
   printf ("#define CONST_MODE_BASE_ALIGN%s\n", adj_alignment ? "" : " const");
-#if 0 /* disabled for backward compatibility, temporary */
-  printf ("#define CONST_REAL_FORMAT_FOR_MODE%s\n", adj_format ? "" :" const");
-#endif
   puts ("\
 \n\
 #endif /* insn-modes.h */");
@@ -1112,16 +1109,9 @@ emit_real_format_for_mode (void)
      For backward compatibility this table is always writable
      (several targets modify it in OVERRIDE_OPTIONS).   FIXME:
      convert all said targets to use ADJUST_FORMAT instead.  */
-#if 0
-  print_maybe_const_decl ("const struct real_format *%s",
-			  "real_format_for_mode",
-			  "MAX_MODE_FLOAT - MIN_MODE_FLOAT + 1",
-			  format);
-#else
   print_decl ("struct real_format *\n", "real_format_for_mode",
 	      "MAX_MODE_FLOAT - MIN_MODE_FLOAT + 1 "
 	      "+ MAX_MODE_DECIMAL_FLOAT - MIN_MODE_DECIMAL_FLOAT + 1");
-#endif
 
   /* The beginning of the table is entries for float modes.  */
   for (m = modes[MODE_FLOAT]; m; m = m->next)

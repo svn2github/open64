@@ -800,9 +800,7 @@ FB_CFG::Walk_WN_statement( WN *wn )
 
   case OPR_RETURN:
   case OPR_RETURN_VAL:
-#ifdef KEY
   case OPR_GOTO_OUTER_BLOCK:
-#endif
     {
       FB_FREQ freq_default =
 	Cur_PU_Feedback->Query( wn, FB_EDGE_INCOMING );
@@ -955,7 +953,6 @@ FB_CFG::Walk_WN_statement( WN *wn )
   case OPR_COMMENT:
     break;
 
-#ifdef KEY
   case OPR_PREFETCH:
   case OPR_PREFETCHX:
     break;
@@ -994,7 +991,6 @@ FB_CFG::Walk_WN_statement( WN *wn )
 #endif	  
     }
     break;
-#endif
 
     // case OPR_PREFETCH:
     // case OPR_PREFETCHX:
@@ -1255,9 +1251,6 @@ FB_CFG::Freq_propagate_node_in( FB_NODEX nx )
       }
     }
   }
-
-  // fprintf( stderr, "After Freq_propagate_node_in:\n" );
-  // _nodes[nx].Print( stderr, nx );
 }
 
 
@@ -1333,7 +1326,7 @@ FB_CFG::Freq_propagate_node_out( FB_NODEX nx )
 	}
       }
 
-    } else if ( node.unexact_out == 1 ) { // && ! node.freq_total_out.Exact()
+    } else if ( node.unexact_out == 1 ) { 
 
       // Total frequencies and decrement unexact_in of successors
       FB_FREQ  freq_total = FB_FREQ_ZERO;
@@ -1466,9 +1459,6 @@ FB_CFG::Freq_propagate_node_out( FB_NODEX nx )
       }
     }
   }
-
-  // fprintf( stderr, "After Freq_propagate_node_out:\n" );
-  // _nodes[nx].Print( stderr, nx );
 }
 
 
@@ -1478,10 +1468,6 @@ FB_CFG::Freq_propagate()
   FB_NODEX nx;
   if ( _trace )
     fprintf( TFile, "FB_CFG::Freq_propagate:\n" );
-
-  // for ( nx = 0; nx < _nodes.size(); ++nx ) {
-  //   _nodes[nx].Print( stderr, nx );
-  // }
 
   for ( nx = 0; nx < _nodes.size(); ++nx ) {
     Freq_propagate_node_in(nx);
@@ -2057,10 +2043,6 @@ void dV_view_fb_cfg( const FB_CFG& cfg, WN *root_wn, const char *caller )
   }
   sprintf( title, "fb_whirl FB-CFG display: %s ", func_name );
 
-//   if ( trace_fname && (trace_fp = fopen(trace_fname, "w")) == NULL ) {
-//     fprintf(stderr, "DV_TRACE_FILE not writeable\n");
-//     perror( trace_fname );
-//   }
   FmtAssert( DV == NULL, ( "dV_view_fb_cfg: DV is null" ) );
   MEM_POOL_Initialize( &DV_fb_mempool, "DV_fb_mempool", FALSE );
   MEM_POOL_Push( &DV_fb_mempool );
@@ -2082,76 +2064,3 @@ void dV_view_fb_cfg( const FB_CFG& cfg, WN *root_wn, const char *caller )
 
   if ( trace_fp ) (void)fclose( trace_fp );
 }
-
-// ====================================================================
-
-// bool
-// FEEDBACK::Verify(const char *caller, bool abort_if_error) const
-// {
-//   if ( this == NULL ) return TRUE;
-  
-//   if ( _trace ) {
-//     fprintf(TFile, "\n===== FEEDBACK::Verify (%s)\n", caller);
-//   }
-
-//   FB_CFG   fb_cfg;
-//   bool     is_ok = fb_cfg.Construct_from_whirl(_root_wn);
-//   FB_NODEX nx;
-//   FB_EDGEX ex;
-  
-//   for (nx = cfg.Get_Vertex(); nx; nx = cfg.Get_Next_Vertex(nx)) {
-//     INT32   n_in    = 0;
-//     INT32   n_out   = 0;
-//     FB_FREQ cnt_in  = 0;
-//     FB_FREQ cnt_out = 0;
-//     FB_FREQ freq;
-
-//     for (ex = cfg.Get_In_Edge(nx); ex; ex = cfg.Get_Next_In_Edge(ex)) {
-//       freq = cfg.Edge(ex).freq;
-
-//       if ( _trace ) {
-// 	fprintf(TFile, " ex=%-9d - In_Edge freq: %lld ",
-// 		ex, (INT64) freq);
-// 	WN *wn = _nodes[nx].source;
-// 	fdump_wn(TFile, wn);
-//       }
-      
-//       if ( ! freq.Known() ) {
-// 	is_ok = FALSE;
-//       }
-//       cnt_in += freq;
-//       n_in   += 1;
-//     }
-//     for (ex = cfg.Get_Out_Edge(nx); ex; ex = cfg.Get_Next_Out_Edge(ex)) {
-//       freq = cfg.Edge(ex).freq;
-
-//       if ( _trace ) {
-// 	fprintf(TFile, " ex=%-8d - Out_Edge freq: %lld  ",
-// 		ex, (INT64) freq);
-// 	fb_cfg.Print_node(nx, true);
-//       }
-      
-//       if ( freq == FB_FREQ_UNINIT ) {
-// 	is_ok = FALSE;
-//       }
-//       cnt_out += freq;
-//       n_out   += 1;
-//     }
-//     if ( n_in > 0 && n_out > 0 && cnt_in != cnt_out ) {
-// #ifdef WANT_FEEDBACK_WARNINGS
-//       fprintf(stderr, "FEEDBACK::verify(root_wn=%0#x) ERROR\n", _root_wn);
-//       fprintf(stderr, "   in/out=%d/%d; cnt=%lld/%lld\n",
-// 	      n_in, n_out, cnt_in, cnt_out);
-//       fb_cfg.Print_node(nx, true);
-//       is_ok = FALSE;
-// #endif
-//     }
-//   }
-// #ifdef WANT_FEEDBACK_WARNINGS
-//   if ( ! is_ok )
-//     fb_cfg.dV_view_fb_cfg( _root_wn, caller );
-// #endif
-//   if ( _trace_draw )
-//     fb_cfg.dV_view_fb_cfg( _root_wn, caller );
-//   return is_ok;
-// }

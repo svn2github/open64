@@ -75,7 +75,7 @@
 #include "wn.h"
 #include "wn_map.h"
 
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 #include <WINDOWS.h>
 #endif /* __MINGW32__ */
 #include "ir_bwrite.h"

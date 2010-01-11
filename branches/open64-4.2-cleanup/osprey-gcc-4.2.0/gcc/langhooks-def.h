@@ -281,12 +281,10 @@ extern tree lhd_make_node (enum tree_code);
   LANG_HOOKS_OMP_CLAUSE_DTOR \
 }
 
-#ifdef KEY
 #define LANG_HOOKS_CPLUS_EXPAND_CONSTANT        NULL
 #define LANG_HOOKS_MANGLE_DECL                  NULL
 #define LANG_HOOKS_CP_GENERICIZE                NULL
 #define LANG_HOOKS_SIMPLIFY_AGGR_INIT_EXPRS_R   NULL
-#endif
 
 /* The whole thing.  The structure is defined in langhooks.h.  */
 #define LANG_HOOKS_INITIALIZER { \

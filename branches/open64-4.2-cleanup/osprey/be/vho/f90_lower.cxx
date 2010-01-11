@@ -99,9 +99,7 @@
 #define TRACE_COPIES 0x80
 #define TRACE_DEPINFO 0x100
 
-#ifdef KEY
 extern void Set_addr_saved_expr(WN *, BOOL);
-#endif
 
 static BOOL trace_dependence;
 static BOOL trace_depinfo;
@@ -394,7 +392,6 @@ static BOOL do_prewalk(WN * tree, WN * block, BOOL prewalk(WN * node, WN *block1
    return (keep_going);
 }
 
-#ifdef KEY
 #include "cxx_base.h"
 class FF_STMT_NODE: public SLIST_NODE {
   DECLARE_SLIST_NODE_CLASS( FF_STMT_NODE);
@@ -625,23 +622,7 @@ static void F90_Expand_Array(ST *st, F90_LOOP_INFO *loop_info, WN *parent_loop, 
     ARB_HANDLE old_arb_base = TY_arb(old_array_ty_idx);
     ARB_HANDLE  arb, old_arb;
     UINT i;
-#ifndef KEY
-    for (i = 0; i < num_dims-1 ; ++i)
-    {
-      arb = arb_base[i];
-      old_arb = old_arb_base[i];
-      ARB_Init(arb, ARB_lbnd_val(old_arb),
-               ARB_ubnd_val(old_arb),
-               ARB_stride_val(old_arb)*(loop_info->end-loop_info->start+1)/loop_info->step);
-      Set_ARB_dimension(arb, num_dims-i);
-      if (i==0)
-        Set_ARB_first_dimen(arb_base[0]);
-    }
-    arb = arb_base[i];
-    ARB_Init(arb, 1, 1+abs((loop_info->end-loop_info->start)/loop_info->step), abs((loop_info->end-loop_info->start)/loop_info->step));
-    Set_ARB_dimension(arb, num_dims-i);
-    Set_ARB_last_dimen(arb_base[i]);
-#else
+
    // When expanding an array (increasing the number of dimensions), attach 
     // the newly added dimension before all other arb dimensions not after. 
     // Based on bug 1973, this seems to be the right thing to do. Without
@@ -662,7 +643,6 @@ static void F90_Expand_Array(ST *st, F90_LOOP_INFO *loop_info, WN *parent_loop, 
       if (i==num_dims-1)
         Set_ARB_last_dimen(arb_base[i]);
     }
-#endif
 
     TY& new_array_ty = Ty_Table[new_array_ty_idx];
     TY& old_array_ty = Ty_Table[old_array_ty_idx];
@@ -728,16 +708,13 @@ static void F90_Modify_Array_Section(ST *st, WN *old_wn, WN *parent, INT pos, WN
    WN_element_size(arrsection) = element_size;
 
    ARB_HANDLE arb_base = TY_arb(array_ty_idx);
-#ifndef KEY
-   WN_kid(arrsection, 1) = WN_Intconst(MTYPE_I8, ARB_ubnd_val(arb_base[ndim-1]));
-#else
+
    // When expanding an array (increasing the number of dimensions), attach 
    // the newly added dimension before all other arb dimensions not after. 
    // Based on bug 1973, this seems to be the right thing to do. Without
    // this, LNO pad will see a mismatch between WN and symtable ARB entry and
    // will adjust the ARRAY WNs incorrectly.
    WN_kid(arrsection, 1) = WN_Intconst(MTYPE_I8, ARB_ubnd_val(arb_base[0]));
-#endif
    WN_kid(arrsection, ndim+1) = WN_COPY_Tree(new_wn);
    
    for (INT i=1; i < ndim; i++) {
@@ -849,8 +826,6 @@ static void F90_Walk_Stmts_return_where (WN *tree, BOOL *where_flag)
   return;
 }
 
-#endif   
-
 static BOOL F90_Walk_Statements_Helper(WN * tree, WN * block,
 				       BOOL prewalk(WN * node, WN *block),
 				       BOOL walk_scf)
@@ -894,7 +869,6 @@ static BOOL F90_Walk_Statements_Helper(WN * tree, WN * block,
 	 keep_going = do_prewalk(tree,block,prewalk);
 	 if (!keep_going) goto done;
       }
-#ifdef KEY
       if (WN_operator(tree) == OPR_DO_LOOP) {
         BOOL forall_flag =  Find_Preceeding_Pragma(tree,WN_PRAGMA_FORALL);
         BOOL where_flag = FALSE;
@@ -902,7 +876,6 @@ static BOOL F90_Walk_Statements_Helper(WN * tree, WN * block,
         if (forall_flag == TRUE && where_flag == TRUE)
           F90_Fission_Loop(tree, block);
       }
-#endif
       numkids = WN_kid_count(tree);
       for (i=0; i < numkids; i++) {
 	 keep_going = F90_Walk_Statements_Helper(WN_kid(tree,i), block, prewalk, walk_scf);
@@ -1208,12 +1181,10 @@ static ST * new_temp_st(const char * name)
 
    Add_Pragma_To_MP_Regions (&F90_MP_Region,WN_PRAGMA_LOCAL,
 			     st,0,WN_MAP_UNDEFINED,FALSE);
-#ifdef KEY
    // Bug 4479 - set is_temp flag for this ST. This is later used 
    // inside the SIMD module to identify (unaligned) loads and 
    // stores if need be.
    Set_ST_is_temp_var(st);
-#endif
    return (st);
 }
 
@@ -1315,10 +1286,8 @@ static ST * F90_Lower_Create_Temp(WN **alloc_block, WN **free_block, WN **size,
    }
    for (i=0; i < ndim; i++) {
       cur_size = WN_COPY_Tree(size[i]);
-#ifdef KEY
       if (MTYPE_size_min(WN_rtype(cur_size)) != MTYPE_size_min(WN_rtype(total_size)))
         cur_size = WN_Cvt(WN_rtype(cur_size), WN_rtype(total_size), cur_size);
-#endif
       total_size = WN_CreateExp2(OPCmpy,total_size,cur_size);
    }
    
@@ -1632,9 +1601,7 @@ static WN * F90_Lower_Copy_To_ATemp(WN **alloc_block, WN **free_block, WN **copy
    WN *sizemult;
    TYPE_ID expr_type;
 
-#ifdef KEY // bug 8083
    Set_addr_saved_expr(expr, FALSE);
-#endif
 
    /* First, determine the type of the expression */
    is_mexpr = FALSE;
@@ -3870,10 +3837,9 @@ static BOOL F90_Do_Copies(WN *stmt, WN *block)
 	 SET_F90_MAP(copy_store,copy_adata);
 	 WN_INSERT_BlockBefore(block,stmt,copy_store);
          // bug 8687: the prelist of adata should be inserted before copy_store now
-#ifdef KEY // because rhs may use them         
+         // because rhs may use them         
          WN_INSERT_BlockFirst(PRELIST(copy_adata),PRELIST(adata));
          SET_PRELIST(adata,WN_CreateBlock());
-#endif
 	 WN_INSERT_BlockFirst(ALLOC_PRELIST(copy_adata),ALLOC_PRELIST(adata));
 	 SET_ALLOC_PRELIST(adata,WN_CreateBlock());
       }
@@ -4097,10 +4063,8 @@ static WN * create_doloop(PREG_NUM *index, char *index_name, WN *count, DIR_FLAG
 
    index_type = doloop_ty;
    intconst_op = OPCODE_make_op(OPR_INTCONST,index_type,MTYPE_V);
-#ifdef KEY
    if (MTYPE_size_min(index_type) != MTYPE_size_min(WN_rtype(count)))
      count = WN_Cvt(WN_rtype(count), index_type, count);
-#endif
    
    /* Create an index */
    *index = Create_Preg(index_type,Index_To_Str(Save_Str(index_name)));
@@ -4224,10 +4188,8 @@ static WN * lower_reduction(TYPE_ID rty, OPERATOR reduction_opr,
    TYPE_ID ty;
    WN* region;
 
-#ifdef KEY // bug14194
    for (i=0; i<MAX_NDIM; i++)
      sizes[i] = NULL;
-#endif
 
    if (kids[1]) {
       dim = F90_Get_Dim(kids[1]);
@@ -4361,11 +4323,7 @@ static WN * lower_reduction(TYPE_ID rty, OPERATOR reduction_opr,
       
       /* Create a single loopnest */
       num_temps += 1;
-#ifdef KEY // bug14194
       dim = rank + 1 - dim; /* account for ordering */
-#else
-      dim = ndim + 2 - dim; /* account for ordering */
-#endif /* KEY */
       sprintf(tempname,"@f90red_%d",num_temps);
       loopnest = create_doloop(&index,tempname,sizes[dim-1],DIR_POSITIVE,loopnest);
       for (i=0,j=0; i < ndim+1; i++) {
@@ -4446,10 +4404,8 @@ static WN * lower_maxminloc(OPERATOR reduction_opr,
    TY_IDX  retty, ret_elem_ptr;
    TYPE_ID expr_ty;
 
-#ifdef KEY // bug14194
    for (i=0; i<MAX_NDIM; i++)
      sizes[i] = NULL;
-#endif
 
    if (kids[1]) {
       dim = F90_Get_Dim(kids[1]);
@@ -4470,17 +4426,9 @@ static WN * lower_maxminloc(OPERATOR reduction_opr,
    accum = Create_Preg(expr_ty,create_tempname("@f90acc"));
    cur_val = Create_Preg(expr_ty,create_tempname("@f90accval"));
    if (reduction_opr == OPR_MAX) {
-#ifdef KEY /* Bug 3395 */
       reduction_op = OPCODE_make_op(OPR_GE,MTYPE_I4,expr_ty);
-#else
-      reduction_op = OPCODE_make_op(OPR_GT,MTYPE_I4,expr_ty);
-#endif /* KEY */
    } else {
-#ifdef KEY /* Bug 3395 */
       reduction_op = OPCODE_make_op(OPR_LE,MTYPE_I4,expr_ty);
-#else
-      reduction_op = OPCODE_make_op(OPR_LT,MTYPE_I4,expr_ty);
-#endif /* KEY */
    }
    idty_store = WN_StidPreg(expr_ty,accum,Make_Reduction_Identity(reduction_opr,expr_ty));
 
@@ -4498,11 +4446,7 @@ static WN * lower_maxminloc(OPERATOR reduction_opr,
       num_temps += 1;
       for (i=rank-1; i >=0 ; i--) {
 	 sprintf(tempname,"@f90li_%d_%d",i,num_temps);
-#ifdef KEY /* Bug 3395 */
 	 loopnest = create_doloop(&index,tempname,sizes[i],DIR_NEGATIVE,loopnest);
-#else
-	 loopnest = create_doloop(&index,tempname,sizes[i],DIR_POSITIVE,loopnest);
-#endif /* KEY */
 	 new_indices[i] = index;
       }
       WN_INSERT_BlockBefore(F90_Current_Block,F90_Current_Loopnest,loopnest);
@@ -4521,12 +4465,7 @@ static WN * lower_maxminloc(OPERATOR reduction_opr,
       /* Lower the mask and array argument */
       accum_expr = F90_Lower_Walk(kids[0],new_indices,rank,stlist,NULL);
       accum_store = WN_StidPreg(expr_ty,cur_val,accum_expr);
-// Bug #411
-#ifdef KEY
       WN_INSERT_BlockLast(stlist,accum_store);
-#else
-      WN_INSERT_BlockFirst(stlist,accum_store);
-#endif
       
       comp_expr = WN_CreateExp2(reduction_op,WN_LdidPreg(expr_ty,cur_val),
 				WN_LdidPreg(expr_ty,accum));
@@ -4574,12 +4513,7 @@ static WN * lower_maxminloc(OPERATOR reduction_opr,
 
       /* All cases, create a temp and insert an identity store */
       red_index = Create_Preg(doloop_ty,create_tempname("@f90redindex"));
-// Bug 2155
-# ifdef KEY
       red_store = WN_StidPreg(doloop_ty,red_index,WN_Intconst(doloop_ty,0));
-# else
-      red_store = WN_StidPreg(doloop_ty,red_index,WN_Intconst(doloop_ty,-1));
-# endif
       
       /* Determine the sizes of reduction argument */
       (void) F90_Size_Walk(kids[0],&rank,sizes);
@@ -4591,17 +4525,9 @@ static WN * lower_maxminloc(OPERATOR reduction_opr,
       
       /* Create a single loopnest */
       num_temps += 1;
-#ifdef KEY // bug14194
       dim = rank + 1 - dim; /* account for ordering */
-#else
-      dim = ndim + 2 - dim; /* account for ordering */
-#endif /* KEY */
       sprintf(tempname,"@f90red_%d",num_temps);
-#ifdef KEY /* Bug 3395 */
       loopnest = create_doloop(&index,tempname,sizes[dim-1],DIR_NEGATIVE,loopnest);
-#else
-      loopnest = create_doloop(&index,tempname,sizes[dim-1],DIR_POSITIVE,loopnest);
-#endif /* KEY */
       for (i=0,j=0; i < ndim+1; i++) {
 	 if (i != dim-1) {
 	    WN_DELETE_Tree(sizes[i]);
@@ -4903,11 +4829,8 @@ static WN *lower_eoshift(WN *kids[],PREG_NUM indices[],INT ndim,WN *block, WN *i
     * General case; we create a brand-new set of loops, and delete the current loopnest
     */
 
-#ifdef KEY
-// Bug# 267
    if (MTYPE_bit_size(Pointer_type) == 64 && WN_rtype(shift) != MTYPE_I8)
      kids[1] = WN_Type_Conversion(kids[1], MTYPE_I8);
-#endif
 
    temp_store = F90_Current_Stmt;
    WN_EXTRACT_FromBlock(block,temp_store);
@@ -5134,11 +5057,8 @@ static WN *lower_cshift(WN *kids[],PREG_NUM indices[],INT ndim,WN *block, WN *in
 	 extent = sizes[i];
       }
    }
-#ifdef KEY
-// Bug# 274
    if (MTYPE_bit_size(Pointer_type) == 64 && WN_rtype(shift) != MTYPE_I8)
      shift = WN_Type_Conversion(shift, MTYPE_I8);
-#endif
    shift = WN_CreateExp2(OPCmod,shift,WN_COPY_Tree(extent));
 
    /* Check for 0 shift */
@@ -5560,22 +5480,16 @@ static WN * F90_Lower_Walk(WN *expr, PREG_NUM *indices, INT ndim, WN * block, WN
       kid = F90_Lower_Walk(WN_kid0(expr),NULL,0,block,insert_point);
       kid1 = F90_Lower_Walk(WN_kid1(expr),NULL,0,block,insert_point);
       ty = doloop_ty;
-#ifdef KEY // bug 3130
       if (MTYPE_byte_size(ty) != MTYPE_byte_size(WN_rtype(kid)))
         kid = WN_Cvt(WN_rtype(kid), ty, kid);
-#endif
-#ifdef KEY // bug 3518
       if (MTYPE_byte_size(ty) != MTYPE_byte_size(WN_rtype(kid1)))
         kid1 = WN_Cvt(WN_rtype(kid1), ty, kid1);
-#endif
       index_ldid = WN_LdidPreg(ty,indices[0]);
       kid1 = WN_CreateExp2(OPCODE_make_op(OPR_MPY,ty,MTYPE_V),
 					   index_ldid,
 					   kid1);
-#ifdef KEY // bug 3130
       if (MTYPE_byte_size(ty) != MTYPE_byte_size(WN_rtype(kid1)))
         kid1 = WN_Cvt(WN_rtype(kid1), ty, kid1);
-#endif
       result = WN_CreateExp2(OPCODE_make_op(OPR_ADD,ty,MTYPE_V), kid, kid1);
       break;
 
@@ -5653,13 +5567,6 @@ static BOOL F90_Generate_Loops(WN *stmt, WN *block)
    WN *loopnest,*stlist;
    char tempname[32]; /* This isn't going to overflow */
    BOOL add_prompf;
-
-#ifndef KEY // bug 8567
-   /* Don't walk I/O statements */
-   if (WN_operator(stmt) == OPR_IO) {
-      return(TRUE);
-   }
-#endif
 
    adata = GET_F90_MAP(stmt);
    if (adata) {

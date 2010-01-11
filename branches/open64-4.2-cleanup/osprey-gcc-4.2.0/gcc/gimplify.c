@@ -52,9 +52,7 @@ Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
 #include "optabs.h"
 #include "pointer-set.h"
 
-#ifdef KEY
 #include "gspin-gcc-interface.h"
-#endif
 
 enum gimplify_omp_var_data
 {
@@ -2075,14 +2073,12 @@ gimplify_call_expr (tree *expr_p, tree *pre_p, bool want_value)
 	      return GS_OK;
 	    }
 	  
-#ifdef KEY
 	  /* bug 10904: This call produces __builtin_va_start(ap,0,0),
 	     and "wgen -m32" cannot handle the 2nd constant arg. This would
 	     be a problem for wgen only for some cases (constructors and
 	     destructors) in C++, for other cases, wgen gets the TREE before
 	     this lowering process. */
 	  if (!flag_spin_file)
-#endif
 	  if (fold_builtin_next_arg (TREE_CHAIN (arglist)))
 	    {
 	      *expr_p = build_empty_stmt ();
@@ -4277,13 +4273,11 @@ gimplify_target_expr (tree *expr_p, tree *pre_p, tree *post_p)
 	  gimplify_stmt (&TARGET_EXPR_CLEANUP (targ));
 	  gimple_push_cleanup (temp, TARGET_EXPR_CLEANUP (targ),
 			       CLEANUP_EH_ONLY (targ), pre_p);
-#ifdef KEY /* bug 10962 */
 	  if (flag_spin_file) {
 	    EMIT_TARGET_EXPR_CLEANUP(targ) = 1;
 	    if (gspin_invoked (targ))
 	      gs_set_flag_value (targ, GS_EMIT_TARGET_EXPR_CLEANUP, 1);
 	  }
-#endif
 	}
 
       /* Only expand this once.  */

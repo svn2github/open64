@@ -64,7 +64,7 @@
  * compiler. So define ourselves.
  ******************************************************************/
 
-# define FmtAssert(Cond,ParmList) \
+#define FmtAssert(Cond,ParmList) \
     ( Cond ? (void) 1 : \
     ( fprintf(stderr, "Assertion Failed at %s:%d ", __FILE__, __LINE__), \
       fprintf(stderr, ParmList), \

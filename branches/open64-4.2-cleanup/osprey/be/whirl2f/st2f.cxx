@@ -412,25 +412,17 @@ ST2F_use_var(TOKEN_BUFFER tokens, ST *st)
     * unless the return_ty is non-void.  This is due to purple,
     * which may change a function into a subroutine.
     */
-#ifdef KEY
    // To compile 191.fma3d/relink_scratch_.f90
    if (PUinfo_current_func)
-#endif /* KEY */
    return_ty = PUINFO_RETURN_TY;
-#ifdef KEY
    // To compile 191.fma3d/relink_scratch_.f90
    else
      return_ty = (TY_IDX) 0;
-#endif /* KEY */
    if ((return_ty != (TY_IDX) 0 && 
 	TY_kind(return_ty) == KIND_SCALAR && 
 	ST_is_return_var(st)) ||
-#ifdef KEY       
        // To compile 191.fma3d/relink_scratch_.f90
        (PUinfo_return_preg && PUINFO_RETURN_TO_PARAM && st == PUINFO_RETURN_PARAM))
-#else
-       (PUINFO_RETURN_TO_PARAM && st == PUINFO_RETURN_PARAM))
-#endif /* KEY */
    {
       /* If we have a reference to the implicit return-variable, then
        * refer to the function return value.
@@ -800,11 +792,4 @@ ST2F_Declare_Return_Type(TOKEN_BUFFER tokens,TY_IDX return_ty, const char *name)
     }
   }
 }
-
-
-
-
-
-
-
 
