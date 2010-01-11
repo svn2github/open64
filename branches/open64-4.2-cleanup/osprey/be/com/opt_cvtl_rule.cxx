@@ -238,11 +238,7 @@ INT Need_load_type_conversion(BOOL source_sign_extd, BOOL target_sign_extd,
     if (source_sign_extd) {            // !targ_sign_extd
       *opc = (OPCODE) OPC_U8U4CVT;
     } else {                           // targ_sign_extd && !source_sign_extd
-<<<<<<< .mine
-#ifdef TARG_MIPS
-=======
 #if defined(TARG_MIPS)
->>>>>>> .r2759
       *opc = (OPCODE) OPC_I4U8CVT;  // Bug 13308: MIPS treats I8I4CVT as NOP.
 #else
       *opc = (OPCODE) OPC_I8I4CVT;
