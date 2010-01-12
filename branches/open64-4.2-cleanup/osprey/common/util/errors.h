@@ -570,11 +570,7 @@ extern BOOL Count_Limit_DevWarn( const char *const src_fname,
 #include "err_host.h"
 
 /* The following contains Unix error code after system call errors: */
-#ifndef KEY
-extern INT errno;
-#else
 #include <errno.h>
-#endif
 
 /* Control reporting by severity level: */
 extern INT Min_Error_Severity;

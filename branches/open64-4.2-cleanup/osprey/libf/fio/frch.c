@@ -196,12 +196,10 @@ fill:
 			count	= chars - nchr;
 			tp	= tbuf;
 			count	= MIN(TBUFSZB, (count + 1));
-#ifdef KEY /* Bug 3797, 8405 */
 			off_t oldpos = ftello(fptr);
 			if (-1 == oldpos & ESPIPE != errno) {
 			   return IOERR;
 			}
-#endif /* KEY Bug 3797, 8405 */
 			tpinterim	= fgets((char *)tp, count, fptr);
 			if (tpinterim == NULL) {
 			/*
@@ -236,7 +234,6 @@ fill:
 			} else {
 				unsigned char	*tmpptr;
 				ncnt	= count - 1;
-#ifdef KEY /* Bug 3797, 8405 */
 				/* On Linux, if fgets() reads any characters
 				 * before it encounters EOF, then it doesn't
 				 * return NULL but does set feof(), so this
@@ -276,7 +273,6 @@ fill:
 				 * will have "ncnt" characters. Using "memchr"
 				 * instead of "strchr" ensures that a '\0'
 				 * within the line won't stop us prematurely. */
-#endif /* KEY Bug 3797, 8405 */
 				tmpptr	= memchr(tp, '\n', ncnt);
 				if (tmpptr != NULL) {	/* eor */
 					*status	= EOR;

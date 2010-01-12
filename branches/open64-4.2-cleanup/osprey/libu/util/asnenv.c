@@ -850,7 +850,6 @@ int  *ostat)	/* return status: 0 if OK, error code otherwise 	  */
 		return(NULL);
 	}
 
-#ifdef KEY /* Bug 6034 */
 /* Eliminate locking of the FILENV file.
  *
  * The use of file locking on NFS on Fedora Core 3 triggers an apparent kernel
@@ -861,49 +860,6 @@ int  *ostat)	/* return status: 0 if OK, error code otherwise 	  */
  * changes to that file, e.g. with a text editor), the locking doesn't seem
  * useful anyway.
  */ 
-#else /* KEY Bug 6034 */
-
-#if	!defined(_ABSOFT) || (!defined(TARGET_MAC_OS) && !defined(TARGET_NT))
-	ll.l_whence	= 0; 
-	ll.l_start	= 0; 
-	ll.l_len	= 0; 
-	ll.l_type	= (mode == 'r') ? F_RDLCK: F_WRLCK;
-
-	/*
-	 * fcntl fails with EINVAL if the assign environment
-	 * file resides on an NFS file system.  In that case
-	 * we allow assign processing to continue with
-	 * no locking.
-	 */
-	do {		/* repeat system call if interrupted by a signal */
-		ss	= fcntl(fd, F_SETLKW, &ll);
-	} while (ss == -1 && errno == EINTR);
-
-	if (ss == -1) {
-#ifdef	_UNICOS_MAX
-		/* if _MPP_MPPSIM == 1, then we are running on the */
-		/* simulator in user virtual mode. The fcntl fails */
-		/* in this mode */
-		if ((_MPP_MPPSIM != 1) && (errno != EINVAL)) {
-#else
-#ifdef KEY /* Bug 4231 */
-		/* SUSE9 Linux sets ENOLCK when NFS doesn't provide locks
-		 * (or when the number of locks exceeds the limit) so we
-		 * ignore that as well as INVAL, as suggested in the
-		 * comment associated with the do/while/fcntl code above.
-		 */
-		if (errno != EINVAL && errno != ENOLCK) {
-#else
-		if (errno != EINVAL) {
-#endif /* KEY Bug 4231 */
-#endif
-			(void) fclose(stream);
-			*ostat	= errno;
-			return(NULL);
-		}
-	}
-#endif
-#endif /* KEY Bug 6034 */
 	return(stream);
 }
 

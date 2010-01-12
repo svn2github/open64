@@ -35,15 +35,12 @@ extern char *sys_errlist[];
 #    define strerror(i) (sys_errlist[i])
 #endif
 
-#ifdef KEY /* Bug 1683, 5019 */
 #include <alloca.h>
-#endif /* KEY Bug 1683, 5019 */
 
 extern void s_copy (register char *a, register char *b, ftnlen la, ftnlen lb);
 /* Subroutine */ int
 G77_gerror_0 (char *str, ftnlen Lstr)
 {
-#ifdef KEY /* Bug 1683, 5019 */
   char *buf = alloca(Lstr + 1);
 #if defined(BUILD_OS_DARWIN)
   /* Standard version uses "buf" */
@@ -53,11 +50,6 @@ G77_gerror_0 (char *str, ftnlen Lstr)
   /* GNU version returns "char *", may ignore "buf" */
   char *s = strerror_r(errno, buf, Lstr + 1);
 #endif /* KEY Mac port */
-#else
-  char *s;
-
-  s = strerror (errno);
-#endif /* KEY Bug 1683, 5019 */
   s_copy (str, s, Lstr, strlen (s));
   return 0;
 }

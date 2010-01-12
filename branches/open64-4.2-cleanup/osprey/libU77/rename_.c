@@ -63,7 +63,6 @@ char	id_rename[] = "@(#)rename_.c	1.2";
 #include "cmplrs/f_errno.h"
 #include "externals.h"
 
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -90,27 +89,3 @@ pathf90_rename(char *from, char *to, pathf90_i4 *status, int frlen, int tolen)
 	return (*status = 0);
 }
 
-#else
-
-extern int
-rename_ (char *from, char *to, int frlen, int tolen)
-{
-	char	*frbuf, *tobuf;
-
-	if (frlen <= 0 || tolen <= 0 || *from == ' ' || *to == ' ')
-		return ((errno = F_ERARG));
-	if (!bufarg && !(bufarg=malloc(bufarglen=frlen+tolen+2)))
-		return((errno=F_ERSPACE));
-	else if (bufarglen <= frlen+tolen+1 && !(bufarg=realloc(bufarg, 
-			bufarglen=frlen+tolen+2)))
-		return((errno=F_ERSPACE));
-	frbuf = bufarg;
-	tobuf = &bufarg[frlen+1];
-	g_char (from, frlen, frbuf);
-	g_char (to, tolen, tobuf);
-	if (rename (frbuf, tobuf) != 0)
-		return (errno);
-	return (0);
-}
-
-#endif /* KEY Bug 1683 */

@@ -45,9 +45,7 @@
 #include <string.h>
 #include "gvio.h"
 
-#ifdef KEY
 static put_block( struct fdinfo *, struct ffsw *, long );
-#endif
 
 static const uint32 carets	= 0x5e5e5e5e; /* '^^^^' */
 static const uint64 ctrlz	= 0x1A;

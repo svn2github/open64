@@ -203,14 +203,12 @@ struct TCON {
 	    mUINT32 u1, u0, u3, u2, u5, u4, u7, u6;	/* Individual unsigned words */
 #endif
 	} uval;
-#ifdef KEY 
 	struct {
 	    mINT64 ll0;
 	    mINT64 ll1;
             mINT64 ll2;
             mINT64 ll3;
 	} llval;
-#endif
 	mINT32 word0;			/* for getting the first integer word */
 	mINT64 i0;			/* Signed integer */
 	mUINT64 k0;			/* Unsigned integer */
@@ -230,10 +228,8 @@ struct TCON {
 	    mINT32 v1, v0, v3, v2, v5, v4, v7, v6;	/* Individual signed words */
 #endif
 	} ival;
-#ifdef KEY
 	mINT32 word0;
 	mINT64 i0;
-#endif // key
 	float fival;
 	double dival;
 	QUAD_TYPE qival;
@@ -247,12 +243,10 @@ inline void
 Set_TCON_ty (TCON& tcon, TYPE_ID mtype)	{ tcon.ty = mtype; }    
 inline INT32
 TCON_ival (const TCON& tcon)		{ return tcon.vals.word0; }    
-#ifdef KEY
 inline INT32
 TCON_cival (const TCON& tcon)		{ return tcon.cmplxval.word0; }
 inline INT64
 TCON_ci0 (const TCON& tcon)		{ return tcon.cmplxval.i0; }
-#endif // KEY
 inline UINT32
 TCON_uval (const TCON& tcon)		{ return (UINT32) tcon.vals.word0; }    
 inline INT64
@@ -347,9 +341,7 @@ extern TCON Host_To_Targ_Float ( TYPE_ID ctype, double fvalue );
 extern TCON Host_To_Targ_Float_10 ( TYPE_ID ctype, long double fvalue );
 extern TCON Host_To_Targ_Float_4 ( TYPE_ID ctype, float fvalue );
 extern TCON Host_To_Targ_Quad  ( QUAD_TYPE fvalue );
-#ifdef KEY
 extern TCON Create_Simd_Const ( TYPE_ID ctype, TCON t );
-#endif
 #ifdef TARG_X8664
 extern TCON Create_Simd_Prog_Const ( TYPE_ID ctype, INT64 val );
 #endif 
@@ -378,7 +370,6 @@ extern TCON Extract_Complex_Imag( TCON complex);
 extern TCON Extract_Quad_Hi( TCON q);
 extern TCON Extract_Quad_Lo( TCON q);
 
-#ifdef KEY
 /* Extract hi/lo of Double TCON to a TCON: */
 extern TCON Extract_Double_Hi( TCON q);
 extern TCON Extract_Double_Lo( TCON q);
@@ -386,7 +377,6 @@ extern TCON Extract_Double_Lo( TCON q);
 /* Extract hi/lo of LongLong TCON to a TCON: */
 extern TCON Extract_LongLong_Hi(TCON q);
 extern TCON Extract_LongLong_Lo( TCON q);
-#endif
 
 /*
  * For C and C++ String TCONs should include the trailing NULL.
@@ -431,9 +421,7 @@ extern void Targ_Emit_String ( FILE *fl, char *str, INT32 len, INTSC loc );
  * The add_null field only applies to string constants.
  */
 extern void Targ_Emit_Const ( FILE *fl, TCON tvalue, BOOL add_null, INTSC rc, INTSC loc );
-#ifdef KEY
 extern void Targ_Emit_EH_Const ( FILE *fl, TCON tvalue, BOOL add_null, INTSC rc, INTSC loc, INT format=0 );
-#endif // KEY
 
 #if defined(BACK_END) || defined(QIKKI_BE)
 /* Emit a target constant to the object file into the given section */

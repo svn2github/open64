@@ -21,7 +21,6 @@ with this program; if not, write the Free Software Foundation, Inc., 59
 Temple Place - Suite 330, Boston MA 02111-1307, USA.
 */
 
-#ifdef KEY /* Bug 3018 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -31,4 +30,3 @@ Temple Place - Suite 330, Boston MA 02111-1307, USA.
  */
 int time_() { return pathf90_time4(); }
 
-#endif /* KEY Bug 3018 */

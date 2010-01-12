@@ -89,9 +89,6 @@
 #define BM 43
 #endif
 
-/* fix bug 6534 
-extern struct f77syl f77syl[];
- */
 /* PROTOTYPES from fmt.c */
 extern int   pars_f(unit *, char *);
 extern int   ne_d(unit *, char *, char **);

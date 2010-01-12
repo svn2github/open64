@@ -234,7 +234,6 @@ DST_put_UINT32_attribute(const char *at_name, UINT32 num)
    DST_put_string(&tmp_buffer[0]);
 }
 
-#ifdef KEY
 static void
 DST_put_C4_attribute(const char *at_name, UINT32 real, UINT32 imag)
 {
@@ -250,7 +249,6 @@ DST_put_C8_attribute(const char *at_name, UINT64 real, UINT64 imag)
   sprintf(&tmp_buffer[0], "(%llu, %llu)", real, imag);
   DST_put_string(&tmp_buffer[0]);
 }
-#endif // KEY
 
 static void
 DST_put_INT64_attribute(const char *at_name, INT64 num)
@@ -312,7 +310,6 @@ DST_put_virtuality_attribute(const char *at_name, DST_virtuality virtuality)
    DST_nput_char(1, ')');
 }
 
-#ifdef KEY
 static void
 DST_put_accessibility_attribute(const char *at_name, 
                                 DST_accessibility accessibility)
@@ -332,7 +329,6 @@ DST_put_accessibility_attribute(const char *at_name,
    }
    DST_nput_char(1, ')');
 }
-#endif
 
 static void
 DST_put_language_attribute(const char *at_name, DST_language lang_code)
@@ -410,11 +406,6 @@ DST_put_assoc(const char *at_name, DST_flag flag, DST_ASSOC_INFO assoc)
 {
    DST_put_string(at_name);
    DST_nput_char(1, '(');
-#if 0
-   if (DST_IS_assoc_fe(flag))
-      DST_put_hex64_attribute("FE", assoc.st_u.fe_uint);
-   else {
-#endif
    {
       DST_put_string("ST");
       DST_put_st_id (DST_ASSOC_INFO_st_level(assoc), DST_ASSOC_INFO_st_index(assoc));
@@ -451,7 +442,6 @@ DST_put_const_attribute(const char *at_name, DST_CONST_VALUE cval)
       DST_put_UINT64_attribute(at_name, 
 			      (UINT64)DST_CONST_VALUE_form_data8(cval));
       break;
-#ifdef KEY
    case DST_FORM_DATAC4:
       DST_put_C4_attribute(at_name, 
 			      (UINT32)DST_CONST_VALUE_form_crdata4(cval),
@@ -463,7 +453,6 @@ DST_put_const_attribute(const char *at_name, DST_CONST_VALUE cval)
 			      (UINT64)DST_CONST_VALUE_form_crdata8(cval),
 			      (UINT64)DST_CONST_VALUE_form_cidata8(cval));
       break;
-#endif // KEY
    }
 }
 
@@ -485,7 +474,6 @@ DST_put_compile_unit(DST_flag flag, DST_COMPILE_UNIT *attr)
    DST_put_id_case_attribute(" case", DST_COMPILE_UNIT_identifier_case(attr));
 }
 
-#ifdef KEY /* Bug 3507 */
 static void
 DST_put_module(DST_flag flag, DST_MODULE *attr)
 {
@@ -501,7 +489,6 @@ DST_put_imported_decl(DST_flag flag, DST_IMPORTED_DECL *attr)
    DST_put_string_attribute(" name", DST_IMPORTED_DECL_name(attr));
    DST_put_assoc(" import", flag, DST_IMPORTED_DECL_import(attr));
 }
-#endif /* KEY Bug 3507 */
 
 static void
 DST_put_subprogram(DST_flag flag, DST_SUBPROGRAM *attr)
@@ -625,10 +612,8 @@ DST_put_variable(DST_flag flag, DST_VARIABLE *attr)
       DST_put_string(" artificial");
    if (DST_IS_const(flag))  /* Not yet supported */
    {
-#ifdef KEY /* Bug 3507 */
       DST_put_decl(DST_VARIABLE_decl_decl(attr));
       DST_put_string_attribute(" name", DST_VARIABLE_decl_name(attr));
-#endif /* KEY Bug 3507 */
       DST_put_string(" a constant variable!");
    }
    else if (DST_IS_comm(flag)) 
@@ -665,10 +650,8 @@ DST_put_variable(DST_flag flag, DST_VARIABLE *attr)
       if (DST_IS_automatic(flag))
 	 DST_put_string(" <auto>");
       DST_put_idx_attribute(" type", DST_VARIABLE_decl_type(attr), TRUE);
-#ifdef KEY
       DST_put_string_attribute(" linkage_name", 
 			       DST_VARIABLE_decl_linkage_name(attr));
-#endif
    }
    else /* definition */
    {
@@ -697,10 +680,8 @@ DST_put_variable(DST_flag flag, DST_VARIABLE *attr)
       DST_put_idx_attribute(" abstract_origin",
 	DST_VARIABLE_def_abstract_origin(attr), FALSE); 
       DST_put_idx_attribute(" dopetype", DST_VARIABLE_def_dopetype(attr), TRUE);
-#ifdef KEY
       DST_put_string_attribute(" linkage_name", 
 			       DST_VARIABLE_def_linkage_name(attr));
-#endif
    }
 }
 
@@ -961,10 +942,8 @@ DST_put_inheritance(DST_flag flag, DST_INHERITANCE *attr)
    DST_put_idx_attribute(" type", DST_INHERITANCE_type(attr), TRUE);
    DST_put_INT32_attribute(" data_member_location", 
 			   DST_INHERITANCE_memb_loc(attr));
-#ifdef KEY
    DST_put_accessibility_attribute(" accessibility", 
                                    DST_INHERITANCE_accessibility(attr));
-#endif
 }
 
 
@@ -1058,7 +1037,6 @@ DST_dump_info(INT32        indentation,
       DST_put_compile_unit(flag, 
 			   DST_ATTR_IDX_TO_PTR(iattr, DST_COMPILE_UNIT));
       break;
-#ifdef KEY /* Bug 3507 */
    case DW_TAG_module:
       DST_put_module(flag, 
 			 DST_ATTR_IDX_TO_PTR(iattr, DST_MODULE));
@@ -1067,7 +1045,6 @@ DST_dump_info(INT32        indentation,
       DST_put_imported_decl(flag, 
 			 DST_ATTR_IDX_TO_PTR(iattr, DST_IMPORTED_DECL));
       break;
-#endif /* KEY Bug 3507 */
    case DW_TAG_subprogram:
       DST_put_subprogram(flag, 
 			 DST_ATTR_IDX_TO_PTR(iattr, DST_SUBPROGRAM));

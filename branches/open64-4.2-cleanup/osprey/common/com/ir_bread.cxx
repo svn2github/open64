@@ -1182,7 +1182,7 @@ WN_get_prefetch (void *handle, PU_Info *pu)
 
 #endif /* BACK_END || BUILD_WHIRL2C || BUILD_WHIRL2F */
 
-#if defined(KEY) && defined(BACK_END)
+#if defined(BACK_END)
 #include "cxx_memory.h" // for CXX_NEW_ARRAY
 #include "be_ipa_util.h"
 static void
@@ -1478,7 +1478,7 @@ Read_Global_Info (INT32 *p_num_PUs)
 	ErrMsg ( EC_IR_Scn_Read, "global symtab", global_ir_file);
     }
 
-#if defined(KEY) && defined(BACK_END)
+#if defined(BACK_END)
     WN_get_mod_ref_table (global_fhandle);
 #endif
 

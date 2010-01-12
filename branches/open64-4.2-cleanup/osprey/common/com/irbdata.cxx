@@ -169,19 +169,11 @@ INITV_Init_Pad (INITV_IDX inv, UINT32 pad_bytes)
     INITV_Set_PAD (Initv_Table[inv], pad_bytes);
 }
 
-#ifdef KEY
 void
 INITV_Init_Block (INITV_IDX inv, INITV_IDX bval, UINT16 repeat, mINT32 flags) 
 {
     INITV_Set_BLOCK (Initv_Table[inv], repeat, bval, flags);
 }
-#else
-void
-INITV_Init_Block (INITV_IDX inv, INITV_IDX bval, UINT16 repeat) 
-{
-    INITV_Set_BLOCK (Initv_Table[inv], repeat, bval);
-}
-#endif // KEY
 
 
 INITV_IDX

@@ -236,7 +236,6 @@ __profile_compgoto(void *pu_handle, INT32 compgoto_id, INT32 target,
   ENABLEDEV
 }
 
-#ifdef KEY
 // For a PU, initialize the data structures that maintain 
 // value profile information.
 
@@ -277,7 +276,6 @@ __profile_value_fp_bin( void *pu_handle, INT32 inst_id,
   Profile_Value_FP_Bin( (PU_PROFILE_HANDLE) pu_handle, inst_id, 
 			value_fp_0, value_fp_1 );
 }
-#endif
 #endif
 
 
@@ -411,18 +409,6 @@ void __profile_finish(void)
 
   Dump_all(fp, output_filename);
   
-#if 0  // so the fini routine won't core dump if it access instrumented code
-  // This fix is a patch so that the mongoose compiler can instrument itself
-  // The problem is that C++ code appears to result in other __profile
-  // procedures being called after __profile_finish.  For 7.4, we should
-  // find out why this is happening, and then restore this code.
-  for(i = PU_Profile_Handle_Table.begin();
-      i != PU_Profile_Handle_Table.end(); i++) {
-    PU_PROFILE_HANDLE pu_handle = (*i).second;
-    delete pu_handle;
-  }
-#endif
-
   fclose(fp);
 
   free (output_filename);

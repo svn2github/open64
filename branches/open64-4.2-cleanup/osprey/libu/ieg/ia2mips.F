@@ -158,7 +158,7 @@ C
       PARAMETER        (WORDSZB = 6)   !  Log (base 2) of WORDSZ
 
       INTEGER           IINC, MINC
-/* KEY bug 13352: __mips does not imply little-endian */
+/*  __mips does not imply little-endian */
 #if ! defined(_MIPSEL)
       PARAMETER        (IINC = 1)
 #else
@@ -358,14 +358,8 @@ C     Set lengths, stride and bit offsets
 
       SWAP   = 1
 
-#undef KEY
-#define KEY
-#ifdef KEY /* Bug 7702 */
 /* Treat logical just like integer in case bit pattern is important */
       GOTO (100,200,300,400,200,600), TYPE
-#else /* KEY Bug 7702 */
-      GOTO (100,200,300,400,500,600), TYPE
-#endif /* KEY Bug 7702 */
 
 C     TYPE = 1  (Typeless)                                  ************
 C

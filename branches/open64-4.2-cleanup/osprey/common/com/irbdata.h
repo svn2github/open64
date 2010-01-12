@@ -336,7 +336,6 @@ INITV_mtype (const INITV_IDX initv) {
     return Initv_Table[initv].Mtype ();
 }
 
-#ifdef KEY
 inline mINT32
 INITV_flags (const INITV& initv) {
     INITV_read_check (initv.kind == INITVKIND_BLOCK);
@@ -353,7 +352,6 @@ inline void
 Set_INITV_flags (INITV_IDX initv, mINT32 flags) {
     Set_INITV_flags (Initv_Table[initv], flags);
 }
-#endif // KEY
 
 inline INITV_IDX
 INITV_blk (const INITV& initv) {
@@ -367,11 +365,7 @@ INITV_blk (const INITV_IDX initv) {
 inline void
 Set_INITV_blk (INITV& inv, INITV_IDX blk) { 
 	inv.u.blk.blk = blk;
-#ifdef KEY
 	inv.u.blk.flags = 0;
-#else
-	inv.u.blk.unused = 0;
-#endif // KEY
 }
 inline void
 Set_INITV_blk (INITV_IDX inv, INITV_IDX blk) { 
@@ -433,11 +427,7 @@ INITV_Init_Symdiff (INITV_IDX inv,
 	LABEL_IDX lab1, ST *st2, BOOL halfword, UINT16 repeat = 1);
 
 extern void
-#ifdef KEY
 INITV_Init_Block (INITV_IDX inv, INITV_IDX bval, UINT16 repeat = 1, mINT32 flags = 0);
-#else
-INITV_Init_Block (INITV_IDX inv, INITV_IDX bval, UINT16 repeat = 1);
-#endif // KEY
 
 extern void
 INITV_Init_Pad (INITV_IDX inv, UINT32 pad_bytes);
@@ -541,20 +531,12 @@ INITV_Set_VAL (INITV& initv, TCON_IDX t, mUINT32 rp2) {
 }
 
 inline void
-#ifndef KEY
-INITV_Set_BLOCK (INITV& initv, mUINT16 rp1, INITV_IDX b) {
-#else
 INITV_Set_BLOCK (INITV& initv, mUINT16 rp1, INITV_IDX b, mINT32 flags=0) {
-#endif
     initv.next = 0;
     initv.kind = INITVKIND_BLOCK;
     initv.repeat1 = rp1;
     initv.u.blk.blk = b;
-#ifndef KEY
-    initv.u.blk.unused = 0;
-#else
     initv.u.blk.flags = flags;
-#endif // !KEY
 }
 
 inline void

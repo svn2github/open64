@@ -169,14 +169,12 @@ static BOOL Simp_Unsafe_Relops_Set = FALSE;
 BOOL Simp_Canonicalize = TRUE;          /* Simplifier canonicalization */
 BOOL Enable_WN_Simp = TRUE;             /* Use the WHIRL simplifier */
 static BOOL Enable_WN_Simp_Set=FALSE;   /* ... option seen? */
-# ifdef KEY
 INT32 Enable_WN_Simp_Expr_Limit = -1;
 #if defined(TARG_SL) 
 INT32 OPT_Madd_Height = 0;
 #else
 INT32 OPT_Madd_Height = 4;
 #endif
-# endif
 BOOL GCM_Eager_Null_Ptr_Deref = FALSE; /* allow speculation past NULL ptr
 					  test. assumes page zero as
 					  readable */
@@ -206,14 +204,12 @@ static OPTION_LIST *Opt_Skip = NULL;		/* Raw list */
 SKIPLIST *Optimization_Skip_List = NULL;	/* Processed list */
 static OPTION_LIST *Region_Skip = NULL;		/* Raw list */
 SKIPLIST *Region_Skip_List = NULL;		/* Processed list */
-#ifdef KEY
 static OPTION_LIST *Goto_Skip = NULL;		/* Raw list */
 SKIPLIST *Goto_Skip_List = NULL;		/* Processed list */
 #if defined(TARG_SL)
 static OPTION_LIST *DDB_Skip = NULL;            /* for delete dead branch */
 SKIPLIST *DDB_Skip_List = NULL;                 /* for delete dead branch */
 #endif // TARG_SL
-#endif
 
 /***** Miscellaneous -OPT: group options *****/
 char *Ofast = NULL;		/* -OPT:Ofast platform name */
@@ -273,7 +269,6 @@ OPTION_LIST *Feedback_Option = NULL;
 BOOL Outlining_Enabled = FALSE;
 BOOL Instrumentation_Enabled_Before = FALSE;
 
-#ifdef KEY
 INT32  OPT_Cyg_Instrument = 0;
 BOOL   Asm_Memory = FALSE;
 BOOL   Align_Unsafe = FALSE; 
@@ -319,7 +314,6 @@ INT32 OPT_Hugepage_Attr = 1;  /* set huge page mallopt */
 BOOL OPT_Scale=FALSE; // Enable scalability optimization */
 BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO(C/C++)
 BOOL Early_Goto_Conversion_Set = FALSE;
-#endif	// KEY
 
 /***** Obsolete options *****/
 static BOOL Fprop_Limit_Set = FALSE;
@@ -337,14 +331,12 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,  &Show_OPT_Warnings,     NULL,
     "Control interpretation of possible variable aliasing" },
 
-#ifdef KEY
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "asm_memory", "",
     0, 0, 0,	&Asm_Memory,    NULL,
     "Assumes each asm has memory flag specified even if it is not there"},
   { OVK_BOOL,   OV_INTERNAL,    FALSE, "align_unsafe", "",
     0, 0, 0,    &Align_Unsafe,    NULL,
     "Generate aligned load/store even though it may be unsafe"},
-#endif
 
   { OVK_LIST,	OV_VISIBLE,	TRUE, 	"alias",		"alia",
     0, 0, 0,	&Alias_Option,	NULL,
@@ -386,7 +378,6 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,	&Div_Split_Allowed, &Div_Split_Set ,
     "Allow splitting of a/b into a*recip(b)" },
 
-#ifdef KEY
   { OVK_UINT32,	OV_INTERNAL,	TRUE, "div_exe_counter",	"",
     0, 0, UINT32_MAX,	&Div_Exe_Counter, NULL ,
     "Restrict div/rem/mod optimization via value profiling" },
@@ -468,7 +459,6 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "early_goto_conv", "",
     0, 0, 0,    &Early_Goto_Conversion, &Early_Goto_Conversion_Set,
     "Do GOTO conversion before VHO" },
-#endif
 
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "early_mp",		"early_mp",
     0, 0, 0,	&Early_MP_Processing, NULL,
@@ -592,11 +582,9 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,	&OPT_Pad_Common, NULL,
     "Force padding of COMMON blocks to improve cache behavior" },
 
-#ifdef KEY
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "profile_arcs", "",
     0, 0, 0,	&profile_arcs, NULL,
     "arc profiling used by GCC"},
-#endif
 
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "ptr_opt",		"ptr_o",
     0, 0, 0,	&Ptr_Opt_Allowed, NULL,
@@ -726,7 +714,6 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "wn_simplify",		"wn_simp",
     0, 0, 0,	&Enable_WN_Simp, &Enable_WN_Simp_Set,
     "Enable simplifier" },
-#ifdef KEY
   { OVK_INT32,  OV_INTERNAL,    TRUE, "simp_limit",             "",
     INT32_MAX, 0, INT32_MAX,    &Enable_WN_Simp_Expr_Limit, NULL },
 
@@ -759,7 +746,6 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_INT32,  OV_VISIBLE,    TRUE, "madd_height",    "",
     4, 1, INT32_MAX,    &OPT_Madd_Height, NULL,
     "Maximum length of MADD chain allowed before transforming it to sum of shorter MADD chains"},
-#endif
 #endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "wrap_around_unsafe_opt", "wrap_around_unsafe",
     0, 0, 0,	&Allow_wrap_around_opt,	&Allow_wrap_around_opt_Set,

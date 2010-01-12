@@ -44,23 +44,13 @@
  */
 #include <sys/types.h>
 #include <unistd.h>
-#ifndef KEY
-#include <sgidefs.h>
-#endif
 
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
 pathf90_i4
 pathf90_getuid(void)
 
-#else
-
-extern __int32_t
-getuid_(void)
-
-#endif /* KEY Bug 1683 */
 {
 	return((__int32_t)getuid());
 }

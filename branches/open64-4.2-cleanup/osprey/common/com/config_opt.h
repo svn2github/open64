@@ -124,13 +124,11 @@ extern BOOL Enable_Cfold_Intrinsics;	/* Intrinsic constant folding? */
 extern BOOL Cfold_Intrinsics_Set;	/* ... option seen? */
 extern BOOL CIS_Allowed;	/* sin(x) and cos(x) => cis(x) ? */
 extern BOOL Div_Split_Allowed;	/* Change a/b --> a*1/b ? */
-#ifdef KEY
 extern UINT32 Div_Exe_Counter;	  /* Change a/b --> a/N if b==N ?             */
 extern UINT32 Div_Exe_Ratio;	  /* Change a/b --> a/N if b has high ratio   */
 extern UINT32 Div_Exe_Candidates; /* The top entries that will be taken care. */
 extern UINT32 Mpy_Exe_Counter;	/* Change a*b to a if b==N or 0.0 if b == 0.0 */
 extern UINT32 Mpy_Exe_Ratio;	/* Change a*b to a if b==N or 0.0 if b == 0.0 */
-#endif
 extern BOOL Fast_Exp_Allowed;	/* Avoid exp() calls? */
 extern BOOL Fast_IO_Allowed;	/* Fast printf/scanf/printw */
 extern BOOL Fast_Sqrt_Allowed;	/* Change sqrt(x) --> x * rsqrt(x) ? */
@@ -170,7 +168,6 @@ extern UINT32 Instrumentation_Actions;
 extern BOOL Instrumentation_Unique_Output;
 extern INT32 Feedback_Phase_Num;
 extern OPTION_LIST* Feedback_Option;
-#ifdef KEY
 extern INT32 OPT_Cyg_Instrument;
 extern BOOL profile_arcs;
 extern BOOL Asm_Memory;
@@ -200,7 +197,6 @@ extern BOOL OPT_Malloc_Alg_Set;
 extern BOOL Early_Goto_Conversion;
 extern BOOL Early_Goto_Conversion_Set;
 extern INT32 OPT_Madd_Height;
-#endif
 #ifdef __cplusplus
 }
 #endif

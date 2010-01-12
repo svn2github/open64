@@ -677,14 +677,10 @@ int l_write (unit *ftnunit, XINT *number, flex *ptr, ftnlen len, ftnint type)
       default:
 	 ftnunit->lcount = i;
 	 err( ftnunit->f77errlist.cierr ,249,"unknown type in lio");
-/* fix bug 4585
-		case TYLOGICAL1:
-   end 6/15/89 */
       case TYBYTE:
       case TYSHORT:
       case TYINT:
       case TYLONGLONG:
-/* fix bug 5675 */
       case TYADDR:
 	 switch ((int) type) {
 	 case TYLOGICAL1:
@@ -697,7 +693,6 @@ int l_write (unit *ftnunit, XINT *number, flex *ptr, ftnlen len, ftnint type)
 	 case TYINT:
 	    w = 12;
 	    break;
-/* fix bug 5675 */
 	 case TYADDR:
 #if (_MIPS_SZPTR == 64)
 	    w = 21;
@@ -737,9 +732,7 @@ int l_write (unit *ftnunit, XINT *number, flex *ptr, ftnlen len, ftnint type)
 	 if (n = lwrt_C (ftnunit, (ufloat *) ptr, (ufloat *) ((long double *)ptr + 1), 40, 31, 0, len, type, 0))
 	   return( n );
 	 break;
-/* fix bug 4585 */
       case TYLOGICAL1:
-/* end 6/15/89 */
       case TYLOGICAL2:
       case TYLOGICAL4:
       case TYLOGICAL8:
@@ -826,7 +819,7 @@ c_li (icilist64 *a)
 static int
 do_Lio_com(ftnint *type, XINT *number, flex *ptr, unit **fu, ftnlen len)
 {
-/* LHL 5/25/89
+/* 
  * to indicate it's not a namelist read
 	return((*ftnunit->f77lioproc)(number,ptr,len,*type));
  */

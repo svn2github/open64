@@ -528,7 +528,6 @@ Set_ST_has_named_section (ST* s)	{ s->flags |= ST_HAS_NAMED_SECTION; }
 inline void
 Clear_ST_has_named_section (ST* s)	{ s->flags &= ~ST_HAS_NAMED_SECTION; }
 
-#ifdef KEY
 inline BOOL
 ST_one_per_pu (const ST* s)	{ return s->flags_ext & ST_ONE_PER_PU; }
 inline void
@@ -700,7 +699,6 @@ inline void
 Set_ST_is_array_remapping_candidate_malloc(ST *s) { s->flags_ext |= ST_IS_ARRAY_REMAPPING_CANDIDATE_MALLOC; }
 inline void
 Clear_ST_is_array_remapping_candidate_malloc(ST *s) { s->flags_ext &= ~ST_IS_ARRAY_REMAPPING_CANDIDATE_MALLOC; }
-#endif /* KEY */
 
 //----------------------------------------------------------------------
 // access functions for PU
@@ -1003,7 +1001,6 @@ Set_PU_is_thunk (PU& pu)		{ pu.flags |= PU_IS_THUNK; }
 inline void
 Clear_PU_is_thunk (PU& pu)		{ pu.flags &= ~PU_IS_THUNK; }
 
-#ifdef KEY
 inline BOOL
 PU_needs_manual_unwinding (const PU& pu) { return (pu.flags & PU_NEEDS_MANUAL_UNWINDING) != 0;}
 inline void
@@ -1088,7 +1085,6 @@ inline BOOL
 PU_has_goto_outer_block (const PU& pu) { return (pu.flags & PU_HAS_GOTO_OUTER_BLOCK) != 0; }
 inline void
 Set_PU_has_goto_outer_block (PU& pu)	{ pu.flags |= PU_HAS_GOTO_OUTER_BLOCK; }
-#endif
 
 #ifdef TARG_X8664
 inline BOOL
@@ -1257,7 +1253,6 @@ TY_pointed (const TY_IDX tyi)		{ return Ty_Table[tyi].Pointed (); }
 inline void
 Set_TY_pointed (TY_IDX tyi, TY_IDX idx) { Set_TY_pointed(Ty_Table[tyi],idx); }
 
-#ifdef KEY
 inline ST_IDX
 TY_copy_constructor (const TY& ty)	{ return ty.Copy_constructor (); }
 inline void
@@ -1266,7 +1261,6 @@ inline ST_IDX
 TY_copy_constructor (const TY_IDX tyi)	{ return Ty_Table[tyi].Copy_constructor (); }
 inline void
 Set_TY_copy_constructor (TY_IDX tyi, ST_IDX idx) { Set_TY_copy_constructor(Ty_Table[tyi],idx); }
-#endif
 
 //----------------------------------------------------------------------
 // TY flags
@@ -1422,7 +1416,6 @@ Set_TY_is_non_pod (TY_IDX tyi)    { Set_TY_is_non_pod(Ty_Table[tyi]); }
 inline void
 Clear_TY_is_non_pod (TY_IDX tyi)  { Clear_TY_is_non_pod(Ty_Table[tyi]); }
 
-#ifdef KEY
 inline BOOL
 TY_return_in_mem (const TY& ty)		{ return ty.flags & TY_RETURN_IN_MEM; }
 inline void
@@ -1492,7 +1485,6 @@ Set_TY_complete_struct_relayout_candidate(TY_IDX tyi)
 inline void
 Clear_TY_complete_struct_relayout_candidate(TY_IDX tyi)
   { Clear_TY_complete_struct_relayout_candidate(Ty_Table[tyi]); }
-#endif
 
 // TY pu_flags
 
@@ -1974,44 +1966,6 @@ Clear_FILE_INFO_has_mp (FILE_INFO& f){ f.flags &= ~FI_HAS_MP; }
 // access functions for the TABLES
 //----------------------------------------------------------------------
 
-#if 0
-inline ST&
-SYMBOL_TABLE::operator[] (ST_IDX idx)
-{
-    SYMTAB_IDX level = ST_IDX_level (idx);
-    UINT32 index = ST_IDX_index (idx);
-    return Scope_tab[level].st_tab->Entry (index);
-}
-
-inline ST&
-SYMBOL_TABLE::operator() (SYMTAB_IDX level, UINT32 index) {
-    Is_True (Scope_tab[level].st_tab != NULL, ("Uninitialized ST_TAB"));
-    return Scope_tab[level].st_tab->Entry (index);
-}
-
-
-inline INITO&
-INITO_TABLE::operator[] (INITO_IDX idx) {
-    SYMTAB_IDX level = INITO_IDX_level (idx);
-    UINT32 index = INITO_IDX_index (idx);
-    return Scope_tab[level].inito_tab->Entry (index);
-}
-
-inline INITO&
-INITO_TABLE::operator() (SYMTAB_IDX level, UINT32 index) {
-    Is_True (Scope_tab[level].inito_tab != NULL, ("Uninitialized INITO_TAB"));
-    return Scope_tab[level].inito_tab->Entry (index);
-}
-inline LABEL&
-LABEL_TABLE::operator[] (LABEL_IDX idx) {
-    return Scope_tab[CURRENT_SYMTAB].label_tab->Entry (idx);
-}
-
-inline LABEL&
-LABEL_TABLE::operator() (SYMTAB_IDX level, LABEL_IDX idx) {
-    return Scope_tab[level].label_tab->Entry (idx);
-}
-#endif
 
 inline PREG&
 PREG_TABLE::operator[] (PREG_IDX idx) {

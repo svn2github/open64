@@ -21,7 +21,6 @@ with this program; if not, write the Free Software Foundation, Inc., 59
 Temple Place - Suite 330, Boston MA 02111-1307, USA.
 */
 
-#ifdef KEY /* Bug 8290 */
 
 #ifdef _UNICOS
 
@@ -35,4 +34,3 @@ extern _fcd _JDATE_(void *julianday, int iffcd);
 
 #endif /* _UNICOS */
 
-#endif /* KEY Bug 8290 */

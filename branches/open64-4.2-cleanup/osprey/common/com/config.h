@@ -391,10 +391,8 @@ extern BOOL LANG_Ansi_Setjmp_Set;
 extern BOOL LANG_Ignore_Carriage_Return_On;
 extern BOOL LANG_Ignore_Carriage_Return_Set;
 
-#ifdef KEY /* Bug 3405 */
 extern BOOL LANG_IEEE_Minus_Zero_On;
 extern BOOL LANG_IEEE_Minus_Zero_Set;
-#endif /* KEY Bug 3405 */
 
 extern BOOL C_Restrict_On;
 extern BOOL C_Restrict_Set;
@@ -419,12 +417,10 @@ extern BOOL WHIRL_Merge_Types_Set;
 
 extern BOOL LANG_Symtab_Verify_On;
 extern BOOL LANG_Symtab_Verify_Set;
-#ifdef KEY
 extern BOOL LANG_Formal_Deref_Unsafe;
 extern BOOL LANG_Math_Errno;
 extern BOOL LANG_Enable_CXX_Openmp;
 extern BOOL LANG_Enable_Global_Asm;
-#endif
 
 extern BOOL WHIRL_Mtype_A_On;
 extern BOOL WHIRL_Mtype_B_On;
@@ -794,7 +790,6 @@ extern OPTION_LIST *Registers_Not_Allocatable;
 /* Unique ident from IPA */
 extern INT32 Ipa_Ident_Number;
 
-#ifdef KEY
 /* Tell ipa_link about the LD_LIBRARY_PATH that was in effect before the
    compiler was run. */
 extern char *IPA_old_ld_library_path;
@@ -804,7 +799,6 @@ extern char *IPA_cc_name;
 
 /* Tell ipa_link about the source language. */
 extern char *IPA_lang;
-#endif
 
 extern char *IPA_Object_Name;           /* for -shared -ipa compile */
 extern BOOL Scalar_Formal_Ref;		/* for fortran formal scalar refs */
@@ -849,10 +843,8 @@ BOOL Query_Skiplist ( SKIPLIST *slist, INT32 elmt );
 /* SKIPLIST for All Optimizations */
 extern SKIPLIST *Optimization_Skip_List;     /* Processed list */
 extern SKIPLIST *Region_Skip_List;	     /* regions to skip, processed */
-#ifdef KEY
 extern SKIPLIST *Goto_Skip_List;     	     /* Processed list */
 extern SKIPLIST *DDB_Skip_List;     	     /* Processed list */
-#endif
 
 /* ====================================================================
  *

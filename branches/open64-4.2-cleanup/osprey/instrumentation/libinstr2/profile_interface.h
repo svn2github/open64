@@ -129,16 +129,14 @@ extern void __profile_call_exit(void *pu_handle, int call_id);
 extern void __profile_icall_init(void *pu_handle, int num_icalls);
 extern void __profile_icall(void * pu_handle, int icall_id, void * called_fun_address);
   
-#ifdef KEY
-  // Profile routines for value
-  extern void __profile_value_init(void *pu_handle, int num_values);
-  extern void __profile_value(void * pu_handle, int inst_id, FB_NUM_TYPE value );
+// Profile routines for value
+extern void __profile_value_init(void *pu_handle, int num_values);
+extern void __profile_value(void * pu_handle, int inst_id, FB_NUM_TYPE value );
 
-  // Profile routines for value_fp_bin
-  extern void __profile_value_fp_bin_init(void *pu_handle, int num_values);
-  extern void __profile_value_fp_bin(void * pu_handle, int inst_id, 
+// Profile routines for value_fp_bin
+extern void __profile_value_fp_bin_init(void *pu_handle, int num_values);
+extern void __profile_value_fp_bin(void * pu_handle, int inst_id, 
 				     double value_fp_0, double value_fp_1 );
-#endif
 
 // PU level cleanup 
 

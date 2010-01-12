@@ -263,10 +263,6 @@ _index90(char *str1,
 	_f_int4 len2,
 	_f_int4 back)
 {
-#ifndef KEY
-  _f_int4 back1 = back;
-  return (_F90_INDEX(str1, str2, &back1, len1, len2));
-#else
   const int len = len1 - len2;
   int j = 0;
 
@@ -300,7 +296,6 @@ _index90(char *str1,
   }
 
   return 0;
-#endif
 }
 
 #endif	/* __mips or _LITTLE_ENDIAN */

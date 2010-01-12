@@ -47,7 +47,6 @@
 
 #include <time.h>
 
-#ifdef KEY /* Bug 1683, 5019 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -69,17 +68,3 @@ pathf90_ltime(pathf90_i4 *clock, pathf90_i4 *t)
 	t[8] = temp.tm_isdst;
 }
 
-#else
-
-extern void
-ltime_ (int *clock, int *t)
-{
-	int i;
-	int *l;
-
-	l = (int *) localtime((time_t *)clock);
-	for (i=0; i<9; i++)
-		*t++ = *l++;
-}
-
-#endif /* KEY Bug 1683, 5019 */

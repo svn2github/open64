@@ -201,8 +201,6 @@ same:if (a->oblnk != 0)
       x.cunit = a->ounit;
       x.csta = 0;
       x.cerr = a->oerr;
-/* fix bug 6084 */
-   /* BN-8077 */
    /* Leave the stdin, stdout, stderr alone without closing them,
     * since if that is done a normal file will be opened which will
     * have the ufd value of stdin, stdout, or stderr and mess up all

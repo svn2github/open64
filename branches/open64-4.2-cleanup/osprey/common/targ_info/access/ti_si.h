@@ -350,7 +350,7 @@ static const char SI_rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/comm
 #endif
 #endif
 
-// KEY: Worked around linux "weak" bug for bug 13044.
+// Worked around linux "weak" bug
 #include "ti_si_types.h"
 
 /****************************************************************************

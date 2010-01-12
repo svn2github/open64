@@ -42,17 +42,12 @@
 #pragma ident "@(#) libf/fio/usdumplock.c	92.1	06/18/99 18:38:26"
 
 #include <sys/types.h>
-#ifndef KEY
-#include <ulocks.h> 
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include "fio.h"
 #include <string.h>
 
-#ifdef KEY
 typedef void *ulock_t;	/* added in place of including ulocks.h */
-#endif
 
 extern int32 __usdumplock_f90(ulock_t *l, int32 *u, char *str, int32 len);
 extern _f_int usdumplockf90_(ulock_t *l, _f_int *u, char *str, int len);

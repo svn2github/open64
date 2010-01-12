@@ -660,9 +660,7 @@ extern BOOL IPO_Types_Are_Compatible(TYPE_ID ltype, TYPE_ID rtype);
 extern BOOL Is_Const_Parm (WN *, INT );     /* for a call call_wn, 
 					     is arg j a const parm */
 
-#ifdef KEY
 extern "C" INT32 New_Region_Id (void);
-#endif // KEY
 
 extern void Dont_Use_WN_Free_List (void);
 extern MEM_POOL *WN_mem_pool_ptr;
@@ -705,9 +703,7 @@ extern void WN_Register_Delete_Cleanup_Function(void (*cleanup_fn)(WN *wn));
 
 extern void WN_Remove_Delete_Cleanup_Function(void (*cleanup_fn)(WN *wn));
 
-#ifdef KEY // bug 9651
 extern void WN_Reset_Num_Delete_Cleanup_Fns(void);
-#endif
 
 extern  BOOL WN_Equiv(WN *wn1, WN *wn2);
 
@@ -1032,11 +1028,6 @@ extern WN *WN_CreateAsm_Input (char *constraint, UINT32 opnd_num, WN *opnd_expr)
 extern WN *WN_CopyNode(const WN* src_wn);
 
 
-#if 0
-#define WN_Move_Maps(dst,src) \
-  IPA_WN_Move_Maps(Current_Map_Tab, (dst), (src))
-extern void IPA_WN_Move_Maps(WN_MAP_TAB *maptab, WN *dst, WN *src);
-#endif
 
 extern void IPA_WN_Move_Maps_PU(WN_MAP_TAB *src, WN_MAP_TAB *dst, WN *wn);
 
@@ -1070,12 +1061,8 @@ extern WN *WN_RIload(TYPE_ID rtype,
 		     TYPE_ID desc,
 		     WN_OFFSET offset,
 		     TY_IDX align,
-#ifndef KEY
-		     WN *addr);
-#else
                      WN *addri,
                      UINT field_id = 0);
-#endif
 
 extern WN *WN_IloadLdid(TYPE_ID desc,
 			WN_OFFSET offset,

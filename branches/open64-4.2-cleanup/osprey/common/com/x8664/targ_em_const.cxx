@@ -399,7 +399,7 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 
       case MTYPE_STRING: {
 	INTSC count;
-#if defined(KEY) && ! defined(BUILD_OS_DARWIN)	// Use .rept/.endr to reduce .s file size.  Bug 4620.
+#if ! defined(BUILD_OS_DARWIN)	// Use .rept/.endr to reduce .s file size.
 	if (rc > 1)
 	  fprintf(fl, ".rept %ld\n", rc);
 	char *p = Index_to_char_array (TCON_cp(tc));
@@ -1036,7 +1036,6 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
   }
 } /* Targ_Emit_Const */
 
-#ifdef KEY
 const char * ULEBDIR = ".uleb128";
 const char * SLEBDIR = ".sleb128";
 
@@ -1230,7 +1229,6 @@ Targ_Emit_EH_Const (FILE *fl,	    /* File to which to write */
     }
   }
 } /* Targ_Emit_EH_Const */
-#endif // KEY
 
 
 #if defined(BACK_END) || defined(QIKKI_BE)

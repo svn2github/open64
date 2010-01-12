@@ -483,19 +483,11 @@ Prepare_Target ( void )
     else if ( strcasecmp ( Processor_Name, "barcelona" ) == 0 ) {
       if (!Target_SSE2_Set && !Target_SSE3_Set)
         Target_SSE3 = TRUE;
-#if 0 //temporily disable setting default sse4a true for barcelona
-      if (!Target_SSE2_Set && !Target_SSE4a_Set)
-        Target_SSE4a = TRUE;
-#endif
       targ = TARGET_barcelona;
     }
     else if ( strcasecmp ( Processor_Name, "orochi" ) == 0 ) {
       if (!Target_SSE2_Set && !Target_SSE3_Set)
         Target_SSE3 = TRUE;
-#if 0 //temporily disable setting default sse4a true for orochi
-      if (!Target_SSE2_Set && !Target_SSE4a_Set)
-        Target_SSE4a = TRUE;
-#endif
       if (!Target_SSE2_Set && !Target_SSSE3_Set)
         Target_SSSE3 = TRUE;
       if (!Target_SSE2_Set && !Target_SSE41_Set)
@@ -760,12 +752,10 @@ IPA_Configure_Target (void)
     Boolean_type  = MTYPE_I4;
     Boolean_type2 = MTYPE_I4;
 
-#ifdef KEY // Tell IPA the target byte-order
 #if defined(linux) || defined(BUILD_OS_DARWIN)
   Target_Byte_Sex = LITTLE_ENDIAN;
 #else  
   Target_Byte_Sex = BIG_ENDIAN;
-#endif
 #endif
 
 } /* IPA_Configure_Target */

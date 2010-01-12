@@ -40,7 +40,6 @@
 #include <fortran.h>
 #include <fp.h>
 #include "inline.h"
-#ifdef KEY /* Bug 10771, 10259, 11941 */
 # include <math.h>
 # include <fenv.h>
 
@@ -61,7 +60,6 @@
 # else /* defined(TARG_IA32) || defined(TARG_X8664) */
 #  define NEXTAFTER_SET_FLAGS(result) /* No bug */
 # endif /* defined(TARG_IA32) || defined(TARG_X8664) */
-#endif /* KEY Bug 10771, 10259, 11941 */
 
 extern _f_real4 _IEEE_NEXT_AFTER_H(_f_real4 x, _f_real4 s);
 extern _f_real4 _IEEE_NEXT_AFTER_H_R(_f_real4 x, _f_real8 s);
@@ -96,62 +94,9 @@ static _f_real8 _raisunfl8(_f_real8 x, _f_real8 y)
 _f_real4
 _IEEE_NEXT_AFTER_H(_f_real4 x, _f_real4 s)
 {
-#ifdef KEY /* Bug 10771 */
         _f_real4 result = nextafterf(x, s);
 	NEXTAFTER_SET_FLAGS(result);
 	return result;
-#else /* KEY Bug 10771 */
-	REGISTER_4 s1, s2;
-	if (isnan32(x)) {
-		return x;
-	} else if (isnan32(s)) {
-		return s;
-	}
-	s1.f = x;
-	if (((s1.ui &= ~IEEE_32_SIGN_BIT) == IEEE_32_INFINITY) ||
-	   (x == s)) {
-		return x;
-	} else if (s1.f == 0.0) {
-		s1.f = TINY_REAL4_F90;
-		if (x > s)
-			s1.ui |= IEEE_32_SIGN_BIT;
-		return s1.f;
-	} else {
-		_f_real8	result =	0;
-		_f_real8	arg1 =	1.0;
-		_f_real8	arg2 =	10.0;
-		_f_real8	unfl8 =	TINY_REAL8_F90;
-		_f_real8	ovfl8 =	HUGE_REAL8_F90;
-
-		s1.f = x;
-
-		if (x > 0 ) {
-			s1.ui += (x > s) ? -(0x1) : 0x1;
-		} else {
-			s1.ui += (x > s) ? 0x1 : -(0x1);
-		}
-
-		if (isnormal32(s1.ui))
-			return s1.f;
-
-		/*
-		 * Raise overflow exception for infinite result and
-		 * underflow exception for too small result.  Raise
-		 * inexact exception for both cases. Allow subnormal
-		 * values to return without exception.
-		 */
-		s2.f = s1.f;
-		if ((s2.ui &= ~IEEE_32_SIGN_BIT) == IEEE_32_INFINITY) {
-			result =	_raisovfl8(ovfl8);
-		} else if (s1.f == 0) {
-			result =	_raisunfl8(unfl8, ovfl8);
-		} else {
-			return (s1.f);
-		}
-		result =	_raisinexct8(arg1, arg2);
-		return (s1.f);
-	}
-#endif /* KEY Bug 10771 */
 }
 
 _f_real4
@@ -164,7 +109,6 @@ _IEEE_NEXT_AFTER_H_R(_f_real4 x, _f_real8 s)
 		/* create NaN using previous NaN information. */
 		return _HALF_NaN;
 	}
-#ifdef KEY /* Bug 10771 */
 	if (((_f_real8) x) == s)
 	  return x;
 	_f_int4 infinity =
@@ -176,185 +120,22 @@ _IEEE_NEXT_AFTER_H_R(_f_real4 x, _f_real8 s)
 	  );
 	NEXTAFTER_SET_FLAGS(result);
 	return result;
-#else /* KEY Bug 10771 */
-	s1.f = x;
-	if (((s1.ui &= ~IEEE_32_SIGN_BIT) == IEEE_32_INFINITY) ||
-	   ((_f_real8) x == s)) {
-		return x;
-	} else if (s1.f == 0.0) {
-		s1.f = TINY_REAL4_F90;
-		if ((_f_real8) x > s)
-			s1.ui |= IEEE_32_SIGN_BIT;
-		return s1.f;
-	} else {
-		_f_real8	result =	0;
-		_f_real8	arg1 =	1.0;
-		_f_real8	arg2 =	10.0;
-		_f_real8	unfl8 =	TINY_REAL8_F90;
-		_f_real8	ovfl8 =	HUGE_REAL8_F90;
-		_f_real8	hold8;
-
-		s1.f = x;
-
-		hold8	= (_f_real8) x;
-
-		if (x > 0 ) {
-			s1.ui += (hold8 > s) ? -(0x1) : 0x1;
-		} else {
-			s1.ui += (hold8 > s) ? 0x1 : -(0x1);
-		}
-
-		if (isnormal32(s1.ui))
-			return s1.f;
-
-		/*
-		 * Raise overflow exception for infinite result and
-		 * underflow exception for too small result.  Raise
-		 * inexact exception for both cases. Allow subnormal
-		 * values to return without exception.
-		 */
-		s2.f = s1.f;
-		if ((s2.ui &= ~IEEE_32_SIGN_BIT) == IEEE_32_INFINITY) {
-			result =	_raisovfl8(ovfl8);
-		} else if (s1.f == 0) {
-			result =	_raisunfl8(unfl8, ovfl8);
-		} else {
-			return (s1.f);
-		}
-		result =	_raisinexct8(arg1, arg2);
-		return (s1.f);
-	}
-#endif /* KEY Bug 10771 */
 }
 
 _f_real8
 _IEEE_NEXT_AFTER(_f_real8 x, _f_real8 s)
 {
-#ifdef KEY /* Bug 10771 */
         _f_real8 result = nextafter(x, s);
 	NEXTAFTER_SET_FLAGS(result);
 	return result;
-#else /* KEY Bug 10771 */
-	REGISTER_8 s1, s2;
-	if (isnan64(x)) {
-		return x;
-	} else if (isnan64(s)) {
-		return s;
-	}
-	s1.f = x;
-	if (((s1.ui &= ~IEEE_64_SIGN_BIT) == IEEE_64_INFINITY) ||
-	   (x == s)) {
-		return x;
-	} else if (s1.f == 0.0) {
-		s1.f = TINY_REAL8_F90;
-		if (x > s)
-			s1.ui |= IEEE_64_SIGN_BIT;
-		return s1.f;
-	} else {
-		_f_real8	result =	0;
-		_f_real8	arg1 =	1.0;
-		_f_real8	arg2 =	10.0;
-		_f_real8	unfl8 =	TINY_REAL8_F90;
-		_f_real8	ovfl8 =	HUGE_REAL8_F90;
-
-		s1.f = x;
-
-		if (x > 0 ) {
-			s1.ui +=
-			   (x > s) ? -(LL_CONST(0x1)) : LL_CONST(0x1);
-		} else {
-			s1.ui +=
-			   (x > s) ? LL_CONST(0x1) : -(LL_CONST(0x1));
-		}
-
-		if (isnormal64(s1.ui))
-			return s1.f;
-
-		/*
-		 * Raise overflow exception for infinite result and
-		 * underflow exception for too small result.  Raise
-		 * inexact exception for both cases. Allow subnormal
-		 * values to return without exception.
-		 */
-		s2.f = s1.f;
-		if ((s2.ui &= ~IEEE_64_SIGN_BIT) == IEEE_64_INFINITY) {
-			result =	_raisovfl8(ovfl8);
-		} else if (s1.f == 0.0) {
-			result =	_raisunfl8(unfl8, ovfl8);
-		} else {
-			return (s1.f);
-		}
-		result =	_raisinexct8(arg1, arg2);
-		return (s1.f);
-	}
-#endif /* KEY Bug 10771 */
 }
 
 _f_real8
 _IEEE_NEXT_AFTER_R_H(_f_real8 x, _f_real4 s)
 {
-#ifdef KEY /* Bug 10771 */
         _f_real8 result = nextafter(x, (double) s);
 	NEXTAFTER_SET_FLAGS(result);
 	return result;
-#else /* KEY Bug 10771 */
-	REGISTER_8 s1, s2;
-	if (isnan64(x)) {
-		return x;
-	} else if (isnan32(s)) {
-		/* create NaN using previous NaN information. */
-		return _SGL_NaN;
-	}
-	s1.f = x;
-	if (((s1.ui &= ~IEEE_64_SIGN_BIT) == IEEE_64_INFINITY) ||
-	   (x == s)) {
-		return x;
-	} else if (s1.f == 0.0) {
-		s1.f = TINY_REAL8_F90;
-		if ((_f_real4) x > s)
-			s1.ui |= IEEE_64_SIGN_BIT;
-		return s1.f;
-	} else {
-		_f_real8	result =	0;
-		_f_real8	arg1 =	1.0;
-		_f_real8	arg2 =	10.0;
-		_f_real8	unfl8 =	TINY_REAL8_F90;
-		_f_real8	ovfl8 =	HUGE_REAL8_F90;
-		_f_real8	hold8;
-
-		s1.f = x;
-
-		hold8	= (_f_real8) s;
-
-		if (x > 0 ) {
-			s1.ui += (x > hold8) ?
-				-(LL_CONST(0x1)) : LL_CONST(0x1);
-		} else {
-			s1.ui += (x > hold8) ?
-				LL_CONST(0x1) : -(LL_CONST(0x1));
-		}
-
-		if (isnormal64(s1.ui))
-			return s1.f;
-
-		/*
-		 * Raise overflow exception for infinite result and
-		 * underflow exception for too small result.  Raise
-		 * inexact exception for both cases. Allow subnormal
-		 * values to return without exception.
-		 */
-		s2.f = s1.f;
-		if ((s2.ui &= ~IEEE_64_SIGN_BIT) == IEEE_64_INFINITY) {
-			result =	_raisovfl8(ovfl8);
-		} else if (s1.f == 0) {
-			result =	_raisunfl8(unfl8, ovfl8);
-		} else {
-			return (s1.f);
-		}
-		result =	_raisinexct8(arg1, arg2);
-		return (s1.f);
-	}
-#endif /* KEY Bug 10771 */
 }
 #if _F_REAL16 == 1
 

@@ -20,7 +20,6 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write the Free Software Foundation, Inc., 59
 Temple Place - Suite 330, Boston MA 02111-1307, USA.
 */
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -33,4 +32,3 @@ void getenv_ (char *fname, char *value, int flen, int vlen) {
   pathf90_getenv(fname, value, flen, vlen);
   }
 
-#endif /* KEY Bug 1683 */

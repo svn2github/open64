@@ -98,7 +98,7 @@ New_ST (SYMTAB_IDX level)
     ST& s = Scope_tab[level].st_tab->New_entry (idx);
     // Clear the random padding bits in ST.
     // Otherwise, these random paddings may make bcmp/memcmp mis-compare.
-    memset(&s, 0, sizeof(ST));  // bug 14141
+    memset(&s, 0, sizeof(ST));
     Set_ST_st_idx (s, make_ST_IDX (idx, level));
     return &s;
 }
@@ -120,10 +120,7 @@ ST_Init (ST* st, STR_IDX n, ST_CLASS sc, ST_SCLASS stc, ST_EXPORT exp,
     st->offset = 0;
     st->flags = 0;
     st->flags_ext = 0;
-#ifdef KEY
-    // bug 14141
     st->pad = 0;
-#endif
 }
 
 inline void

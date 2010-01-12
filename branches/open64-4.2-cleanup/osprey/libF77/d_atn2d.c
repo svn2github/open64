@@ -45,20 +45,12 @@
 #include "moremath.h"
 #include <cmplrs/host.h>
 
-#ifdef KEY
 double __datn2d(double x, double y)
-#else
-double __datn2d(double x, double_t y)
-#endif // KEY
 {
   return (atan2(x, y) * 57.29577951308232);
 }
 
-#ifdef KEY
 double d_atn2d(double *x, double *y)
-#else
-double d_atn2d(double *x, double_t *y)
-#endif
 {
   return (__datn2d(*x, *y));
 }

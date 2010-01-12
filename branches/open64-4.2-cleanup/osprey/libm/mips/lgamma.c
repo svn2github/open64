@@ -612,10 +612,8 @@ __gammal(long double arg)
 double	result;
 
 	result = __gamma((double)arg);
-#ifdef KEY /* Mac port */
 	/* Bug in all versions--signgaml doesn't get set */
         signgaml = __signgaml = __signgam;
-#endif /* KEY Mac port */
 
 	return (long double)result;
 }
@@ -625,10 +623,8 @@ long double
 __lgammal( long double arg )
 {
 	long double result = (long double)__lgamma((double)arg);
-#ifdef KEY /* Mac port */
 	/* Bug in all versions--signgaml doesn't get set */
         signgaml = __signgaml = __signgam;
-#endif /* KEY Mac port */
 	return result;
 }
 

@@ -43,9 +43,7 @@
 #include <fortran.h>
 #include <liberrno.h>
 #include <fmath.h>
-#if defined(__mips) || defined(KEY) /* Bug 10771 */
 #include <math.h>
-#endif
 #include "inline.h"
 
 /* NEAREST - return the nearest different machine representable number in a 
@@ -56,7 +54,6 @@
 _f_real4
 _NEAREST_4(_f_real4 x, _f_real4 s)
 {
-#ifdef KEY /* Bug 10771 */
   /* Previous approach (in "elif") didn't treat infinity correctly and didn't
    * signal exceptions correctly. Let's try using the C library functions in
    * hopes that they know what they're doing.
@@ -68,101 +65,11 @@ _NEAREST_4(_f_real4 x, _f_real4 s)
     signbit(s) ? (0x80000000 | IEEE_32_INFINITY) : IEEE_32_INFINITY;
   _f_real4 result = nextafterf(x, * (_f_real4 *) &infinity);
   return result;
-#elif 0 /* KEY Bug 3399 */
-	/*
-	 * We want "nearest(nearest(x, s), -s) == x" to be true so long as
-	 * IEEE infinity and NaN aren't involved. We do allow largest/smallest
-	 * number to turn into infinity, but we don't allowe infinity to turn
-	 * back into largest/smallest number.
-	 *
-	 * Here's a summary of the unsigned bit patterns for IEEE floating
-	 * point:
-	 *
-	 * 1 11-11 11------11	"Largest magnitude negative" NaN
-	 * 1 11-11 00------01	"Smallest magnitude negative" NaN
-	 * 1 11-11 00------00	Negative infinity
-	 * 1 11-10 11------11	Largest-magnitude negative normalized
-	 * 1 00-01 00------00	Smallest-magnitude negative normalized
-	 * 1 00-00 11------11	Largest-magnitude negative denorm
-	 * 1 00-00 00------01	Smallest-magnitude negative denorm
-	 * 1 00-00 00------00	Negative zero
-	 * 0 11-11 11------11	"Largest positive" NaN
-	 * 0 11-11 00------01	"Smallest positive" NaN
-	 * 0 11-11 00------00   Positive infinity
-	 * 0 11-10 11------11	Largest-magnitude positive normalized
-	 * 0 00-01 00------00	Smallest-magnitude positive normalized
-	 * 0 00-00 11------11	Largest-magnitude positive denorm
-	 * 0 00-00 00------01   Smallest-magnitude positive denorm
-	 * 0 00-00 00------00	Zero
-	 *
-	 * Our strategy is:
-	 * 1. s == 0 is a fatal error
-	 * 2. if x == infinity or NaN, return it unchanged
-	 * 3. if x == +0 or -0, return smallest-magnitude denorm whose sign
-	 *    matches that of s
-	 * 4. if the signs of x and s match, add 1 to bit pattern of x
-	 *    (increasing its floating-point magnitude); else subtract 1 from
-	 *    bit pattern of x (decreasing its magnitude)
-	 */
-	REGISTER_4 x_reg;
-	int positive_s = (s > (_f_real4) 0.0);
-
-	if (s == (_f_real4) 0.0) {
-		_lerror (_LELVL_ABORT, FENEARZS);
-	}
-
-	x_reg.f = x;
-
-	if (IEEE_32_EXPO_ALL_ONES(x_reg.ui)) {
-		return x;
-	}
-
-	if (x == (_f_real4) 0.0) { /* either +0.0 or -0.0 */
-		x_reg.ui = positive_s ? 1 : (IEEE_32_SIGN_BIT | 1);
-	} else {
-		int increment = (positive_s == (x > (_f_real4) 0.0)) ? 1 : -1;
-		x_reg.ui += increment;
-	}
-
-	return x_reg.f;
-#else
-	REGISTER_4 s1, s2, s3;
-	s1.f = x;
-	if (s == (_f_real4) 0.0) {
-		_lerror (_LELVL_ABORT, FENEARZS);
-	}
-#if defined (_CRAY1) && defined(_CRAYIEEE)
-	s3.ui = s1.ui & ~(IEEE_64_SIGN_BIT);
-	s2.ui = (s1.f > 0) ? LL_CONST(0x20000000) : -(LL_CONST(0x20000000));
-	if ((_f_real4) TINY_REAL4_F90 > s3.f)
-		s1.f = 0.0;
-#else
-	s2.ui = (s1.f > 0) ? 0x1 : -(0x1);
-#endif
-	if (s1.f == (_f_real4) 0.0) {
-		s1.f = (s > (_f_real4) 0.0) ?
-		   (_f_real4) TINY_REAL4_F90 : (_f_real4) -TINY_REAL4_F90;
-	} else if (s > (_f_real4) 0.0) {
-		s1.ui += s2.ui;
-	} else {
-		s1.ui -= s2.ui;
-	}
-#if defined (_CRAY1) && defined(_CRAYIEEE)
-	if (isnormal64(s1.ui))
-#else
-	if (isnormal32(s1.ui))
-#endif
-		return s1.f;
-	if (x > 1.0 || x < -1.0)
-		return (s1.f);
-	return (0.0);
-#endif /* KEY */
 }
 
 _f_real4
 _NEAREST_4_8(_f_real4 x, _f_real8 s)
 {
-#ifdef KEY /* Bug 10771 */
    if (s == (_f_real8) 0.0) {
 	   _lerror (_LELVL_ABORT, FENEARZS);
    }
@@ -170,67 +77,11 @@ _NEAREST_4_8(_f_real4 x, _f_real8 s)
     signbit(s) ? (0x80000000 | IEEE_32_INFINITY) : IEEE_32_INFINITY;
   _f_real4 result = nextafterf(x, * (_f_real4 *) &infinity);
   return result;
-#elif 0 /* KEY Bug 3399 */
-	/* See comment in _NEAREST_4 */
-	REGISTER_4 x_reg;
-	int positive_s = (s > (_f_real8) 0.0);
-
-	if (s == (_f_real8) 0.0) {
-		_lerror (_LELVL_ABORT, FENEARZS);
-	}
-
-	x_reg.f = x;
-
-	if (IEEE_32_EXPO_ALL_ONES(x_reg.ui)) {
-		return x;
-	}
-
-	if (x == (_f_real4) 0.0) { /* either +0.0 or -0.0 */
-		x_reg.ui = positive_s ? 1 : (IEEE_32_SIGN_BIT | 1);
-	} else {
-		int increment = (positive_s == (x > (_f_real4) 0.0)) ? 1 : -1;
-		x_reg.ui += increment;
-	}
-
-	return x_reg.f;
-#else
-	REGISTER_4 s1, s2, s3;
-	s1.f = x;
-	if (s == 0.0) {
-		_lerror (_LELVL_ABORT, FENEARZS);
-	}
-#if defined (_CRAY1) && defined(_CRAYIEEE)
-	s3.ui = s1.ui & ~(IEEE_64_SIGN_BIT);
-	s2.ui = (s1.f > 0) ? LL_CONST(0x20000000) : -(LL_CONST(0x20000000));
-	if ((_f_real4) TINY_REAL4_F90 > s3.f)
-		s1.f = 0.0;
-#else
-	s2.ui = (s1.f > 0) ? 0x1 : -(0x1);
-#endif
-	if (s1.f == 0.0) {
-		s1.f = (s > 0.0) ?
-			(_f_real4) TINY_REAL4_F90 : (_f_real4) -TINY_REAL4_F90;
-	} else if (s > 0.0) {
-		s1.ui += s2.ui;
-	} else {
-		s1.ui -= s2.ui;
-	}
-#if defined (_CRAY1) && defined(_CRAYIEEE)
-	if (isnormal64(s1.ui))
-#else
-	if (isnormal32(s1.ui))
-#endif
-		return s1.f;
-	if (x > 1.0 || x < -1.0)
-		return s1.f;
-	return (0.0);
-#endif /* KEY */
 }
 
 _f_real8
 _NEAREST_8_4(_f_real8 x, _f_real4 s)
 {
-#ifdef KEY /* Bug 10771 */
    if (s == (_f_real4) 0.0) {
 	   _lerror (_LELVL_ABORT, FENEARZS);
    }
@@ -238,55 +89,11 @@ _NEAREST_8_4(_f_real8 x, _f_real4 s)
     signbit(s) ? (0x8000000000000000ull | IEEE_64_INFINITY) : IEEE_64_INFINITY;
   _f_real8 result = nextafter(x, * (_f_real8 *) &infinity);
   return result;
-#elif 0 /* KEY Bug 3399 */
-	/* See comment in _NEAREST_4 */
-	REGISTER_8 x_reg;
-	int positive_s = (s > (_f_real4) 0.0);
-
-	if (s == (_f_real4) 0.0) {
-		_lerror (_LELVL_ABORT, FENEARZS);
-	}
-
-	x_reg.f = x;
-
-	if (IEEE_64_EXPO_ALL_ONES(x_reg.ui)) {
-		return x;
-	}
-
-	if (x == (_f_real8) 0.0) { /* either +0.0 or -0.0 */
-		x_reg.ui = positive_s ? 1 : (IEEE_64_SIGN_BIT | 1);
-	} else {
-		int increment = (positive_s == (x > (_f_real8) 0.0)) ? 1 : -1;
-		x_reg.ui += increment;
-	}
-
-	return x_reg.f;
-#else
-	REGISTER_8 s1, s2;
-	s1.f = x;
-	if (s == 0.0) {
-		_lerror (_LELVL_ABORT, FENEARZS);
-	}
-	s2.ui = (s1.f > 0) ? LL_CONST(0x1) : -(LL_CONST(0x1));
-	if (s1.f == 0.0) {
-		s1.f = (s > 0.0) ? TINY_REAL8_F90 : -TINY_REAL8_F90;
-	} else if (s > 0.0) {
-		s1.ui += s2.ui;
-	} else {
-		s1.ui -= s2.ui;
-	}
-	if (isnormal64(s1.ui))
-		return s1.f;
-	if (x > 1.0 || x < -1.0)
-		return s1.f;
-	return (0.0);
-#endif /* KEY */
 }
 
 _f_real8
 _NEAREST(_f_real8 x, _f_real8 s)
 {
-#ifdef KEY /* Bug 10771 */
    if (s == (_f_real8) 0.0) {
 	   _lerror (_LELVL_ABORT, FENEARZS);
    }
@@ -294,49 +101,6 @@ _NEAREST(_f_real8 x, _f_real8 s)
     signbit(s) ? (0x8000000000000000ull | IEEE_64_INFINITY) : IEEE_64_INFINITY;
   _f_real8 result = nextafter(x, * (_f_real8 *) &infinity);
   return result;
-#elif 0 /* KEY Bug 3399 */
-	/* See comment in _NEAREST_4 */
-	REGISTER_8 x_reg;
-	int positive_s = (s > (_f_real8) 0.0);
-
-	if (s == (_f_real8) 0.0) {
-		_lerror (_LELVL_ABORT, FENEARZS);
-	}
-
-	x_reg.f = x;
-
-	if (IEEE_64_EXPO_ALL_ONES(x_reg.ui)) {
-		return x;
-	}
-
-	if (x == (_f_real8) 0.0) { /* either +0.0 or -0.0 */
-		x_reg.ui = positive_s ? 1 : (IEEE_64_SIGN_BIT | 1);
-	} else {
-		int increment = (positive_s == (x > (_f_real8) 0.0)) ? 1 : -1;
-		x_reg.ui += increment;
-	}
-
-	return x_reg.f;
-#else
-	REGISTER_8 s1, s2;
-	s1.f = x;
-	if (s == 0.0) {
-		_lerror (_LELVL_ABORT, FENEARZS);
-	}
-	s2.ui = (s1.f > 0) ? LL_CONST(0x1) : -(LL_CONST(0x1));
-	if (s1.f == 0.0) {
-		s1.f = (s > 0.0) ? TINY_REAL8_F90 : -TINY_REAL8_F90;
-	} else if (s > 0.0) {
-		s1.ui += s2.ui;
-	} else {
-		s1.ui -= s2.ui;
-	}
-	if (isnormal64(s1.ui))
-		return s1.f;
-	if (x > 1.0 || x < -1.0)
-		return s1.f;
-	return (0.0);
-#endif /* KEY */
 }
 
 #ifndef	__mips

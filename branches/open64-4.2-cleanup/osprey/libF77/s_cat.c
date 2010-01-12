@@ -36,7 +36,6 @@
 
 /* $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/s_cat.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
 
-/* 11/9/89 fix bug 5242 */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

@@ -219,23 +219,10 @@ IPO_Types_Are_Compatible ( TYPE_ID ltype, TYPE_ID rtype )
 {
     BOOL   compatible;
 
-#if 0
-    /* Apparently the following is an overkill.  Possibly there was a
-       frontend bug that has been fixed.  Until we can come up with a test
-       case, we allow unsigned/signed to be compatible.
-     */
-
-    /* if the formal is of UINT and actual is INT, stid could introduce */
-    /* problems hence return not compatible */
-    if ((WTYPE_base_type(ltype) == UINT_TYPE) && 
-	(WTYPE_base_type(rtype) == INT_TYPE))
-	return FALSE;
-#endif
 
     /* if the base types are the same or the base type of the stid  */
     /* is of comparable type and size of lhs is  */
     /* greater than size of rhs then return true */
-#ifdef KEY
     BOOL type_compatible = ((WTYPE_base_type(ltype) == WTYPE_base_type(rtype))
 		   || (WTYPE_base_type(ltype) == WTYPE_comp_type(rtype)));
     BOOL size_compatible = WTYPE_size(ltype) >= WTYPE_size(rtype);
@@ -249,11 +236,6 @@ IPO_Types_Are_Compatible ( TYPE_ID ltype, TYPE_ID rtype )
       if (rtype == MTYPE_U4 || rtype == MTYPE_I4)
         compatible = TRUE;
     }
-#else
-    compatible = (((WTYPE_base_type(ltype) == WTYPE_base_type(rtype))
-		   || (WTYPE_base_type(ltype) == WTYPE_comp_type(rtype)))
-		  && (WTYPE_size(ltype) >= WTYPE_size(rtype)));
-#endif // KEY
 
     return (compatible);
 } /* IPO_Types_Are_Compatible */
@@ -516,12 +498,10 @@ void WN_Remove_Delete_Cleanup_Function(void (*cleanup_fn)(WN *wn))
     delete_cleanup_fns[i] = delete_cleanup_fns[i+1];
 }
 
-#ifdef KEY // bug 9651
 void WN_Reset_Num_Delete_Cleanup_Fns(void)
 {
   num_delete_cleanup_fns = 0;
 }
-#endif
 
 /* ---------------------------------------------------------------------
  * WN_MAP_ID New_Map_Id( void )
@@ -639,11 +619,6 @@ WN_Create_Generic (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
     WN_cvtl_bits(wn) = cvtl_bits;
   }
   /* Num_dim is now just a read-only quantity */
-#if 0
-  if (OPCODE_has_ndim(opcode)) {
-    WN_num_dim(wn) = num_dim;
-  }
-#endif
   if (OPCODE_has_esize(opcode)) {
     WN_element_size(wn) = element_size;
   }
@@ -1304,11 +1279,6 @@ WN_CreateStid (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 
     Is_True(OPCODE_is_expression(WN_opcode(value)),
 	    ("Bad value in WN_CreateStid"));
-#ifndef KEY	// g++ can create cases where the actual parameter to a
-		// function is a ptr, but the formal parameter is a struct.
-    Is_True(Types_Are_Compatible(OPCODE_desc(opc),value),
-	    ("Bad return type in WN_CreateStid"));
-#endif
     Is_True(opr == OPR_STID || opr == OPR_STBITS,
 	    ("Bad opcode in WN_CreateStid"));
 #ifdef FRONT_END
@@ -1596,20 +1566,11 @@ WN *WN_CreateExp2(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, WN *kid0, WN *kid1)
   Is_True(OPCODE_is_expression(WN_opcode(kid1)),
 	  ("Bad kid1 in WN_CreateExp2"));
 
-#if 0 // with 32-bit MPY, need U8U4CVT to zero-out high-order 32 bits (bug 4637)
-  Is_True(opr != OPR_MPY || 
-  	  WN_operator(kid0) == OPR_INTCONST ||
-  	  WN_operator(kid1) == OPR_INTCONST ||
-          MTYPE_byte_size(WN_rtype(kid0)) == MTYPE_byte_size(WN_rtype(kid1)),
-  	  ("inconsistent sizes in operands of MPY"));
-#endif
 
   /* bug#2731 */
-#ifdef KEY
   if( !WN_has_side_effects(kid0) &&
       !WN_has_side_effects(kid1) &&
       !Disable_Simplification_For_FE) /* Disable Simplification if it is called in WGEN. */
-#endif
     wn = WN_SimplifyExp2(opc, kid0, kid1);
 
   if (!wn) {
@@ -1641,9 +1602,7 @@ WN *WN_CreateExp3(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 	  ("Bad kid2 in WN_CreateExp3"));
 
   /* bug#2731 */
-#ifdef KEY
   if( !WN_has_side_effects(kid0) )
-#endif
     wn = WN_SimplifyExp3(opc, kid0, kid1, kid2);
 
   if (!wn) {
@@ -1918,7 +1877,7 @@ WN *WN_CreateIntconst(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, INT64 const_val
 	INT32 sval = uval;
   	WN_const_val(wn) = (INT64) sval;
 #else
-	/* bug 12869 make sure that high order 32 bits is zero */
+	/* make sure that high order 32 bits is zero */
   	WN_const_val(wn) = const_val & 0x0ffffffffLL;
 #endif
   } else {
@@ -2061,53 +2020,11 @@ WN *WN_CopyNode (const WN* src_wn)
     if (OPCODE_has_next_prev(opcode)) {
 	WN_linenum(wn) = WN_linenum(src_wn);
     }
-#ifdef KEY // bug 10105
     if (WN_kid_count(src_wn) == 3)
       WN_kid(wn, 2) = WN_kid(src_wn, 2);
-#endif
     return(wn);
 }
 
-#if 0
-/* no one uses this currently */
-void IPA_WN_Move_Maps (WN_MAP_TAB *maptab, WN *dst, WN *src)
-{
-  INT32 i;
-
-  /* if the opcodes are in the same category, just move the map_id */
-  if (OPCODE_mapcat(WN_opcode(dst)) == OPCODE_mapcat(WN_opcode(src))) {
-    if (WN_map_id(dst) != WN_MAP_UNDEFINED) WN_MAP_Add_Free_List(maptab, dst);
-    WN_map_id(dst) = WN_map_id(src);
-    WN_map_id(src) = WN_MAP_UNDEFINED;
-    return;
-  }
-
-  /* otherwise iterate through the mappings */
-  for (i = 0; i < WN_MAP_MAX; i++) { 
-    if (maptab->_is_used[i]) {
-      switch (maptab->_kind[i]) {
-      case WN_MAP_KIND_VOIDP: {
-	IPA_WN_MAP_Set(maptab, i, dst, IPA_WN_MAP_Get(maptab, i, src));
-	break;
-      }
-      case WN_MAP_KIND_INT32: {
-	IPA_WN_MAP32_Set(maptab, i, dst, IPA_WN_MAP32_Get(maptab, i, src));
-	break;
-      }
-      case WN_MAP_KIND_INT64: {
-	IPA_WN_MAP64_Set(maptab, i, dst, IPA_WN_MAP64_Get(maptab, i, src));
-	break;
-      }
-      default:
-	Is_True(FALSE, ("WN_Move_Maps: unknown map kind"));
-      }
-    }
-  }
-
-  WN_MAP_Add_Free_List(maptab, src);
-  WN_map_id(src) = WN_MAP_UNDEFINED;
-}
-#endif
 
 void IPA_WN_Move_Maps_PU (WN_MAP_TAB *src, WN_MAP_TAB *dst, WN *wn)
 {
@@ -2533,18 +2450,10 @@ WN *WN_UVConst( TYPE_ID type)
     return WN_Intconst( Mtype_TransferSign(type, MTYPE_I4), 0x5a5a);
   case MTYPE_I4:
   case MTYPE_U4:
-#ifdef KEY
     return WN_Intconst(type, 0xffa5a5a5);		// Signalling NaN
-#else
-    return WN_Intconst(type, 0xfffa5a5a);
-#endif
   case MTYPE_I8:
   case MTYPE_U8:
-#ifdef KEY
     return WN_Intconst(type, 0xfff5a5a5fff5a5a5ll);	// Signalling NaN
-#else
-    return WN_Intconst(type, 0xfffa5a5afffa5a5all);
-#endif
   case MTYPE_F4:
   case MTYPE_F8:
   case MTYPE_F10:
@@ -3094,9 +3003,7 @@ WN_set_st_addr_saved (WN* wn)
     case OPR_LT:
     case OPR_LE:
     case OPR_ALLOCA:
-#ifdef KEY
     case OPR_PURE_CALL_OP:
-#endif
 
       break;
 
@@ -3179,7 +3086,6 @@ WN_set_st_addr_saved (WN* wn)
       WN_set_st_addr_saved (WN_kid0(wn));
       break;
 
-#ifdef KEY
     case OPR_COMPOSE_BITS:
 
       WN_set_st_addr_saved (WN_kid0(wn));
@@ -3190,7 +3096,6 @@ WN_set_st_addr_saved (WN* wn)
 
       WN_set_st_addr_saved (WN_kid0(wn));
       break;
-#endif /* KEY */
 
 #ifdef TARG_X8664
     case OPR_REPLICATE:
@@ -3248,9 +3153,7 @@ WN_has_side_effects (const WN* wn)
     case OPR_REPLICATE:
     case OPR_ATOMIC_RSQRT:
 #endif // TARG_X8664
-#ifdef KEY
     case OPR_ILDA:
-#endif // KEY
 
       return WN_has_side_effects (WN_kid0(wn));
 
@@ -3283,9 +3186,7 @@ WN_has_side_effects (const WN* wn)
     case OPR_SUB:
     case OPR_XMPY:
     case OPR_COMPOSE_BITS:
-#ifdef KEY
     case OPR_RROTATE:
-#endif
 
       if (WN_has_side_effects (WN_kid0(wn)))
         return TRUE;
@@ -3297,9 +3198,7 @@ WN_has_side_effects (const WN* wn)
     case OPR_MSUB:
     case OPR_NMADD:
     case OPR_NMSUB:
-#ifdef KEY
     case OPR_TRIPLET:
-#endif
 
       if (WN_has_side_effects (WN_kid0(wn)))
         return TRUE;
@@ -3327,9 +3226,7 @@ WN_has_side_effects (const WN* wn)
         return FALSE;
       }
 
-#ifdef KEY
     case OPR_PURE_CALL_OP:
-#endif
     case OPR_INTRINSIC_OP: {
 
       INT32 n = WN_kid_count (wn);
@@ -3375,9 +3272,7 @@ WN_has_side_effects (const WN* wn)
     case OPR_INTCONST:
     case OPR_LDA:
     case OPR_LDMA:
-#ifdef KEY
     case OPR_LDA_LABEL:
-#endif
 
       return FALSE;
 
@@ -3399,7 +3294,6 @@ WN_has_side_effects (const WN* wn)
 
       return TRUE;
 
-#ifdef KEY
   case OPR_ASM_INPUT:
     return TRUE;
 
@@ -3421,7 +3315,6 @@ WN_has_side_effects (const WN* wn)
   case OPR_STBITS:
   case OPR_MSTORE:
     return TRUE;
-#endif // KEY
 
     default:
       Fail_FmtAssertion ("WN_has_side_effects not implemented for %s",

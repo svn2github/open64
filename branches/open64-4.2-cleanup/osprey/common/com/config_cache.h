@@ -397,9 +397,7 @@ typedef struct MHD_LEVEL {
  private:
 
   void      Compute_Effective_Size();
-#ifdef KEY
   void      Reset_CS_String();
-#endif
 #endif
 } MHD_LEVEL;
 

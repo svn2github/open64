@@ -105,7 +105,6 @@ extern void Profile_Compgoto_Init(PU_PROFILE_HANDLE pu_handle,
 extern void Profile_Compgoto(PU_PROFILE_HANDLE pu_handle, INT32 compgoto_id,
 			     INT32 target, INT32 num_targets);
 
-#ifdef KEY
 extern void Profile_Value_Init( PU_PROFILE_HANDLE pu_handle, INT32 num_values );
 
 extern void Profile_Value( PU_PROFILE_HANDLE pu_handle,
@@ -117,7 +116,6 @@ extern void Profile_Value_FP_Bin_Init( PU_PROFILE_HANDLE pu_handle,
 extern void Profile_Value_FP_Bin( PU_PROFILE_HANDLE pu_handle,
 			          INT32 inst_id, 
 				  double value0, double value1 );
-#endif
 
 extern void Profile_Loop_Init(PU_PROFILE_HANDLE pu_handle, INT32 num_loops);
 

@@ -131,8 +131,7 @@ loop:
  * '\n' is encountered.
  * ---ravi---12/30/91
  */
-/* Must also test for EOF so we don't loop forever (bug 258538) */
-/*   R. Shapiro, 4/19/95 */	   
+/* Must also test for EOF so we don't loop forever */
 
    if (*buf == '$' || *buf == '&') {
       while (GETC (ch) != '\n' && ch != EOF);
@@ -375,8 +374,7 @@ static int NAMEgetvar(unit *ftnunit, TYPENlentry *pnlent, int use_match_type)
 	 err(ftnunit->f77errlist.cierr, 121, nlrs);
      }
    }
-/* LHL 5/29
- * fix bug 4573
+/*
  * tells l_read that it's for namelist read
  * by setting the 16th bit of the type parameter.
  * This will make l_read to take the same number of arguments as l_write
@@ -384,7 +382,7 @@ static int NAMEgetvar(unit *ftnunit, TYPENlentry *pnlent, int use_match_type)
  */
 
    /* Set this to 0 since there will not be any valid
-      values hanging around. This fixes bug 276086 */
+      values hanging around.*/
    ftnunit->lcount = 0;
    if (n = l_read (ftnunit, &n, (flex *)(p + char_off), (ftnlen) (strsize ? strsize : size),
 		   1<<16 | (vtype < 0 ? TYCHAR : vtype))) {

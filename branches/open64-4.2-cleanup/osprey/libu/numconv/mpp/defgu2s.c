@@ -213,13 +213,11 @@ _defgu2sd(	const long	*fca,
 		const long	*d,
 		const long	*p)
 {
-#ifdef KEY /* Bug 9020 */
         /* Added initializations to local variable declarations; where
 	 * possible moved the local declarations from the scope of the
 	 * entire function to the most deeply nested scope possible.
 	 * Unable to establish that this bug was due to an uninitialized
 	 * variable rather than an optimizer bug, but the code is safer now. */
-#endif /* KEY Bug 9020 */
 	union{
 		FLOAT128 q;
 		FLOAT64 d;
@@ -251,9 +249,7 @@ _defgu2sd(	const long	*fca,
 	long exponent_sign = POSITIVE;
 	ieee64_t pre_result = 0;
 	extern ieee64_t _POWER_OF_FIVE_TABLE[];
-#ifdef KEY /* Bug 8105 */
 	int found_comma = 0;
-#endif /* KEY Bug 8105 */
 
 /*
 	set-up initial state
@@ -335,13 +331,11 @@ _defgu2sd(	const long	*fca,
 #endif
 		}
 		else { /* not a numerical digit, look for [.+-DdEe ] */
-#ifdef KEY /* Bug 8105 */
 			if (',' == *position_pointer) {
 				found_comma = 1;
 				break;
 			}
 			else
-#endif /* KEY Bug 8105 */
 			if ( *position_pointer == BLANK) { /* blank */
 				if ((flags & (MODEBZ | MODEBN)) == 0) break;
 				if ((flags & MODEBZ) != 0) { /* blanks = 0 */
@@ -391,13 +385,11 @@ REALOVFL:
 					decimal_point_indicator + 1;
 		}
 		else { /* not a numerical digit, look for [.+-DdEe ] */
-#ifdef KEY /* Bug 8105 */
 			if (',' == *position_pointer) {
 				found_comma = 1;
 				break;
 			}
 			else
-#endif /* KEY Bug 8105 */
 			if ( *position_pointer == BLANK) { /* blank */
 				if ((flags & (MODEBZ | MODEBN)) == 0) break;
 				if ((flags & MODEBZ) != 0) { /* blanks = 0 */
@@ -467,13 +459,11 @@ EXPSIGN:
 			DEBUGQ("_def:building exponent:%x %x %x %x \n",exp_number)
 		}
 		else {
-#ifdef KEY /* Bug 8105 */
 			if (',' == *position_pointer) {
 				found_comma = 1;
 				goto REALEND2;
 			}
 			else
-#endif /* KEY Bug 8105 */
 			if ( *position_pointer != BLANK) goto BADCHAR;
 			if ((flags & (MODEBZ | MODEBN)) == 0) {
 				if (digit_found != POSITIVE) goto NODATA;
@@ -755,11 +745,9 @@ REALZERO:
 	*status = exitstatusreal;
 
 DONE:
-#ifdef KEY /* Bug 8105 */
         if (found_comma) {
 		*status = EX_ILLCHAR;
 	}
-#endif /* KEY Bug 8105 */
 	*lcap1 = position_pointer;
 	if ((flags & MODEHP) != 0) {
 

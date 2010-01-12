@@ -76,15 +76,9 @@
  * ====================================================================
  */
 
-#ifdef KEY
 BOOL    VHO_Force_Lowering              = TRUE;
-#else
-BOOL    VHO_Force_Lowering              = FALSE;
-#endif
 BOOL    VHO_Struct_Opt                  = FALSE;
-#ifdef KEY
 BOOL    VHO_Struct_Opt_Set              = FALSE;
-#endif
 BOOL    VHO_Combine_Loads               = FALSE;
 BOOL    VHO_Recycle_Pregs               = FALSE;
 INT32   VHO_Switch_Density              = 12;
@@ -92,30 +86,21 @@ INT32   VHO_Switch_If_Else_Limit        = 6;
 INT32   VHO_Switch_Compgoto_Limit       = 3;
 BOOL    VHO_Switch_Opt                  = TRUE;
 INT32   VHO_Switch_Opt_Threshold        = 25;
-#ifdef KEY
 BOOL    VHO_Switch_Reduce_Branch        = FALSE;
-#endif
 BOOL    VHO_Cselect_Opt                 = FALSE;
-#ifdef KEY
 BOOL    VHO_Cselect_Opt_Set             = FALSE;
-#endif
 BOOL    VHO_Iload_Opt                   = TRUE;
 BOOL    VHO_Istore_Opt                  = TRUE;
 BOOL    VHO_Call_Opt                    = FALSE;
-#ifdef KEY
 /* Turn icall to call conversion inside vho_lower to FALSE by default,
    because (1) the original implementation is buggy; and (2) we can now
    do icall to call conversion inside ipa.
 */
 BOOL    VHO_Icall_Devir			= FALSE;
-#else
-BOOL    VHO_Icall_Devir			= TRUE;
-#endif  // KEY
 BOOL    VHO_Check_Tree                  = FALSE;
 BOOL    VHO_Single_Loop_Test            = FALSE;
 BOOL    VHO_Use_Do_While                = FALSE;
 BOOL    VHO_Disable_Copy_Field_Element  = FALSE;
-#ifdef KEY
 
 #ifdef TARG_IA64
 BOOL  VHO_Enable_Simple_If_Conv = FALSE;
@@ -140,7 +125,6 @@ INT32 	VHO_Disable_MP_PU_Equal = 10000;
 INT32 	VHO_Disable_MP_Local_Before = 0;
 INT32 	VHO_Disable_MP_Local_After = 10000;
 INT32 	VHO_Disable_MP_Local_Equal = 10000;
-#endif
 
 #ifdef TARG_X8664
 BOOL	VHO_Generate_Rrotate = FALSE;
@@ -180,10 +164,8 @@ static OPTION_DESC Options_VHO[] = {
     10, 1, INT32_MAX,    &VHO_Switch_Opt_Threshold,   NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "switch_opt",         "switch",
     TRUE, 0, 0,  &VHO_Switch_Opt,      NULL },
-#ifdef KEY
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "switch_reduce_branch", "switch_reduce_branch",
     TRUE, 0, 0,  &VHO_Switch_Reduce_Branch,      NULL },
-#endif
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "cselect_opt",        "cselect",
     TRUE, 0, 0,  &VHO_Cselect_Opt,      &VHO_Cselect_Opt_Set },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "iload_opt",          "iload",
@@ -202,7 +184,6 @@ static OPTION_DESC Options_VHO[] = {
     TRUE, 0, 0,  &VHO_Use_Do_While,      NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "disable_copy_field_element",       "disable_copy_field_element",
     TRUE, 0, 0,  &VHO_Disable_Copy_Field_Element,      NULL },
-#ifdef KEY
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "if_conv",                "",
     0, 0, 0,    &VHO_Enable_Simple_If_Conv, NULL },
   { OVK_INT32,  OV_INTERNAL,    TRUE, "ifconv_limit",           "",
@@ -228,7 +209,6 @@ static OPTION_DESC Options_VHO[] = {
     INT32_MAX, 0, INT32_MAX,    &VHO_Disable_MP_Local_After, NULL },
   { OVK_INT32,  OV_INTERNAL,    TRUE, "disable_mp_local_equal", "",
     INT32_MAX, 0, INT32_MAX,    &VHO_Disable_MP_Local_Equal, NULL },
-#endif
 #ifdef TARG_X8664
   { OVK_BOOL,   OV_INTERNAL,    TRUE, "rotate", "",
     0, 0, 0,    &VHO_Generate_Rrotate, &VHO_Generate_Rrotate_Set },

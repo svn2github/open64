@@ -571,7 +571,7 @@ dwarf_init(int fd,
     }
 #else
     elf_version(EV_CURRENT);
-    /* changed to mmap request per bug 281217. 6/95 */
+    /* changed to mmap request per */
 #ifdef HAVE_ELF_C_READ_MMAP
     /* ELF_C_READ_MMAP is an SGI IRIX specific enum value from IRIX
        libelf.h meaning read but use mmap */

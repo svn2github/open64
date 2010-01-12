@@ -45,7 +45,6 @@ double d_prod(float *x, float *y)
   return((double)(*x)*(double)(*y));
 }
 
-#ifdef KEY /* Bug 2623 */
 /*
  * The standard Fortran "dprod" intrinsic takes real*4 args and returns
  * a real*8 result. The __q_prod function in file mips/quad/q_prod.c
@@ -65,4 +64,3 @@ double __q_prod(double *x, double *y)
 {
   return (*x)*(*y);
 }
-#endif /* KEY Bug 2623 */

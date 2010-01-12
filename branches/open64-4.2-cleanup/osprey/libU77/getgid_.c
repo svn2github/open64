@@ -35,11 +35,7 @@
 
 #include <sys/types.h>
 #include <unistd.h>
-#ifndef KEY
-#include <sgidefs.h>
-#endif
 
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -48,22 +44,3 @@ pathf90_getgid(void) {
   return getgid();
   }
 
-#else
-
-/*
- *
- * get group id
- *
- * calling sequence:
- *	integer getgid, gid
- *	gid = getgid()
- * where:
- *	gid will be the real group id
- */
-
-extern __int32_t
-getgid_(void)
-{
-	return((__int32_t)getgid());
-}
-#endif /* KEY Bug 1683 */

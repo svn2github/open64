@@ -142,8 +142,8 @@ idxopen (unit *ftnunit, char *name, int create, flag idxerr)
       for (i = 0; i < info.di_nkeys; i++) {
 	 if (isindexinfo (ftnunit->isfd, &onekey, i + 1) < SUCCESS)
 	    ierr (idxerr, iserrno, "indexed open");
-/* LHL 5/4/89
- * To fix bug 4428, problem about trying to open an existing indexed file.
+/*
+ * To fix problem about trying to open an existing indexed file.
  * This is put here because when the indexed file is created, the keys
  * are being stored like this.  Refer to the above code.
  */
@@ -216,7 +216,6 @@ idxread (unit *ftnunit)
       ftnunit->ukeyid = ftnunit->f77idxlist.cikeyid;
       newkeyid = 1;
    }
-/* 8/23/89 fix bug 4847 */
    else if (ftnunit->ukeyid < 0) {
       ftnunit->ukeyid = ftnunit->f77idxlist.cikeyid >= 0 ? ftnunit->f77idxlist.cikeyid : 0;
       newkeyid = 1;
@@ -227,7 +226,6 @@ idxread (unit *ftnunit)
 	 err (ftnunit->f77errlist.cierr, 154, "indexed read");
       if (KEYTYPE (ftnunit->ukeyid) == CHARTYPE) {
 	 keyval = ftnunit->f77idxlist.cikeyval.cicharval;
-/* fix bug 4779 */
 	 if ((i = ftnunit->f77idxlist.cikeyvallen) > KEYLEN (ftnunit->ukeyid))
 	    err (ftnunit->f77errlist.cierr, 155, "indexed read");
 	 /* For Fortran, there's no such thing as null terminators for
@@ -522,7 +520,6 @@ e_xsue (void)
 int
 e_xsue_mp (unit **fu)
 {
-/* fix bug 4944 */
    int             n = idxrewrite(*fu);
 
    (*fu)->lock_unit = 0;

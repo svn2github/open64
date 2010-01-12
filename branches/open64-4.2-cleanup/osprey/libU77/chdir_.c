@@ -61,7 +61,6 @@
 #endif
 #include "externals.h"
 
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -81,36 +80,3 @@ pathf90_chdir(char *dname, pathf90_i4 *status, int dnamlen)
 	return(*status = 0);
 }
 
-#else
-
-extern int 
-chdir_ (char *dname, int dnamlen)
-{
-	if (!bufarg && !(bufarg=malloc(bufarglen=dnamlen+1)))
-#ifdef __sgi
-	{
-		errno=F_ERSPACE;
-		return(-1);
-	}
-#else
-		return((errno=F_ERSPACE));
-#endif
-	else if (bufarglen <= dnamlen && !(bufarg=realloc(bufarg, bufarglen=dnamlen+1)))
-#ifdef __sgi
-	{
-		errno=F_ERSPACE;
-		return(-1);
-	}
-#else
-		return((errno=F_ERSPACE));
-#endif
-	g_char(dname, dnamlen, bufarg);
-#ifdef __sgi
-	return(chdir(bufarg));
-#else
-	if (chdir(bufarg) != 0)
-		return(errno);
-	return(0);
-#endif
-}
-#endif /* KEY Bug 1683 */

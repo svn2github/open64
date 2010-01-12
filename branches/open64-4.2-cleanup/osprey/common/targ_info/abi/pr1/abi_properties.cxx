@@ -68,19 +68,7 @@ static ABI_PROPERTY
   global_ptr,
   entry_ptr,
   ret_addr,
-#if 0 // non pr1
-  zcl_loop_end,
-  zcl_loop_count,
-  acc_lo,
-  acc_hi;
-  zero,
-  prev_funcstate,
-  loop_count,
-  epilog_count,
-  true_predicate,
-  stacked,
-#endif
-    loop_count;
+  loop_count;
 
 static void pr1_abi(void)
 {
@@ -110,11 +98,6 @@ static void pr1_abi(void)
   Reg_Property(global_ptr, ISA_REGISTER_CLASS_special, 
 		 3,
 	       -1);
-#if 0 // ???
-  Reg_Property(entry_ptr, ISA_REGISTER_CLASS_special, 
-		                    25,
-	       -1);
-#endif
   Reg_Property(stack_ptr, ISA_REGISTER_CLASS_special, 
 		 2,
 	       -1);
@@ -124,57 +107,6 @@ static void pr1_abi(void)
   Reg_Property(ret_addr, ISA_REGISTER_CLASS_special, 
 		 4,
 	       -1);
-
-#if 0 // no floating point reg at this point
-  Reg_Property(allocatable, ISA_REGISTER_CLASS_float,
-		 0,   1,   2,   3,   4,   5,   6,   7,  
-		 8,   9,  10,  11,  12,  13,  14,  15,
-                16,  17,  18,  19,  20,  21,  22,  23,
-		24,  25,  26,  27,  28,  29,  30,  31,
-	       -1);
-  Reg_Property(callee, ISA_REGISTER_CLASS_float,
-                                    20,       22, 
-		24,       26,       28,       30,
-	       -1);
-  Reg_Property(caller, ISA_REGISTER_CLASS_float,
-		 0,   1,   2,   3,   4,   5,   6,   7,  
-		 8,   9,  10,  11,  12,  13,  14,  15,
-                16,  17,  18,  19,       21,       23,
-		     25,       27,       29,       31,
-	       -1);
-  Reg_Property(func_arg, ISA_REGISTER_CLASS_float,
-		                    12,  13,  14,  15,
-                16,  17,  18,  19, 
-	       -1);
-  Reg_Property(func_val, ISA_REGISTER_CLASS_float,
-		 0,        2, 
-	       -1);
-
-  Reg_Property(allocatable, ISA_REGISTER_CLASS_fcc,
-		 0,   1,   2,   3,   4,   5,   6,   7,  
-	       -1);
-  Reg_Property(callee, ISA_REGISTER_CLASS_fcc,
-	       -1);
-  Reg_Property(caller, ISA_REGISTER_CLASS_fcc,
-		 0,   1,   2,   3,   4,   5,   6,   7,  
-	       -1);
-
-  Reg_Property(allocatable, ISA_REGISTER_CLASS_hilo,
-	       -1);
-  Reg_Property(callee, ISA_REGISTER_CLASS_hilo,
-	       -1);
-  Reg_Property(caller, ISA_REGISTER_CLASS_hilo,
-	       -1);
-
-  /* mr registers */
-  Reg_Property(allocatable, ISA_REGISTER_CLASS_macc,
-	       0, 1, 2, 3,
-	       -1);
-  Reg_Property(caller, ISA_REGISTER_CLASS_macc,
-	       0, 1, 2, 3,
-	       -1);
-
-#endif // 0
 
 }
 

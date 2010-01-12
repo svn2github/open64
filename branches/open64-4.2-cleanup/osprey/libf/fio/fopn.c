@@ -86,7 +86,6 @@ static int	_defbufsiz_warning;	/* set to 1 after first DEFBUFSIZ warning */
 static int
 make_fdspec(union spec_u *fdspec, char *layer, int intnum[FPARMAX]);
 
-#ifdef KEY /* Bug 2559 */
 /*
  *	Return value:
  *		1 if we want to suppress repeat factors during list-directed
@@ -102,11 +101,8 @@ static int suppress_repeats() {
     save_suppress_repeats :
     (save_suppress_repeats = (0 != getenv("FTN_SUPPRESS_REPEATS")));
   }
-#endif /* KEY Bug 2559 */
 
-#ifdef KEY /* Bug 1678 */
 extern void	_ffconvert_stat(struct stat *src, struct stat *dest);
-#endif /* KEY Bug 1678 */
 
 /*
  *	_f_opn - fortran open
@@ -148,22 +144,13 @@ int		o_sysflgs)	/* O_TRUNC/O_CREAT/O_EXCL */
 	struct fdinfo	*fio;
 	struct ffsw	ffiostat;
 	struct ffc_info_s info;
-#ifdef KEY /* Bug 1678 */
 	struct stat ffio_statbuf;
-#else /* KEY Bug 1678 */
-	struct ffc_stat_s ffio_statbuf;
-#endif /* KEY Bug 1678 */
 
 	extern int	_def_cch_bufsiz;
 #ifdef	_UNICOS_MAX
 	extern int	_def_cch_simbufsiz;
 #endif
-#ifdef KEY /* Bug 1678 */
 	/* See above */
-#else /* KEY Bug 1678 */
-	extern void	_ffconvert_stat(struct ffc_stat_s *src,
-					struct stat *dest);
-#endif /* KEY Bug 1678 */
 
 	disk_file	= 1;	/* assume a disk file */
 	not_open	= 1;	/* file is not yet open */
@@ -507,34 +494,12 @@ int		o_sysflgs)	/* O_TRUNC/O_CREAT/O_EXCL */
 		if (_do_open(cup, css, tufs, actnam, flags, aifound, aip,
 			fdspec, catcherr) == 0)
 			not_open	= 0;
-#ifdef KEY /* Bug 3782 */
 /* When the file already exists but STATUS='new', this bug-workaround code
  * suppresses the error that ought to be reported. As a consequence, the
  * customer's program would later crash when it tried to write the file,
  * because although 'open' reported no error, it did not actually obtain
  * write access.
  */
-#else
-#if	defined(__mips) || defined(_LITTLE_ENDIAN)
-		else {
-		/*
-		 * There is a bug in NFS for IRIX 6.2 through 6.5 systems
-		 * whereby an open with O_RDONLY|O_CREAT aborted if the
-		 * process only had read-only access to an existing file.
-		 * The O_CREAT is supposed to be ignored if the file
-		 * already exists, but that wasn't happening.  To work
-		 * around this bug, we remove the O_CREAT flag and retry
-		 * the open.  Someday, when these systems are no longer
-		 * supported, this code can be removed.
-		 */
-			flags	= flags & ~O_CREAT;	/* Remove O_CREAT bit */
-
-			if (_do_open(cup, css, tufs, actnam, flags, aifound,
-					aip, fdspec, catcherr) == 0)
-				not_open	= 0;
-		}
-#endif
-#endif /* KEY Bug 3782 */
 	}
 
 	if (not_open &&
@@ -637,19 +602,11 @@ int		o_sysflgs)	/* O_TRUNC/O_CREAT/O_EXCL */
  *	Also set the default for writing -0.0 for formatted io.
  */
 	cup->ufunilist	= 0;
-#ifdef KEY /* Bug 5921 */
 	/* Default is 1, which doesn't use commas */
 	cup->ufcomsep	= 1;
-#else /* KEY Bug 5921 */
-	cup->ufcomsep	= 0;
-#endif /* KEY Bug 5921 */
 	cup->ufcomplen	= 0;
-#ifdef KEY /* Bug 5921 */
 	/* Default is 1, which doesn't use repeat count */
 	cup->ufrptcnt	= 1;
-#else /* KEY Bug 5921 */
-	cup->ufrptcnt	= 0;
-#endif /* KEY Bug 5921 */
 #if	!defined(__mips) && !defined(_LITTLE_ENDIAN)
 	cup->ufnl_skip	= 0;
 	cup->ufnegzero	= 0;
@@ -684,15 +641,11 @@ int		o_sysflgs)	/* O_TRUNC/O_CREAT/O_EXCL */
  *	individual flags are set.
  */
 	if ( aifound && aip->S_comsep_flg ) {
-#ifdef KEY /* Bug 5921 */
 		/* We reversed the meaning of S_comsep in the assign command
 		 * parser, so that the default 0 now means "don't use commas"
 		 * (but for backward compatibility remains associated with "on")
 		 */
 		cup->ufcomsep	= ! aip->S_comsep;
-#else /* KEY Bug 5921 */
-		cup->ufcomsep	= aip->S_comsep;
-#endif /* KEY Bug 5921 */
 	}
 
 	if ( aifound && aip->W_compwidth_flg ) {
@@ -700,21 +653,15 @@ int		o_sysflgs)	/* O_TRUNC/O_CREAT/O_EXCL */
 	}
 
 	if ( aifound && aip->y_reptcnt_flg ) {
-#ifdef KEY /* Bug 5921 */
 		/* We reversed the meaning of y_reptcnt in the assign command
 		 * parser, so that the default 0 now means "don't use repeat*"
 		 * (but for backward compatibility remains associated with "on")
 		 */
 		cup->ufrptcnt	= ! aip->y_reptcnt;
-#else /* KEY Bug 5921 */
-		cup->ufrptcnt	= aip->y_reptcnt;
-#endif /* KEY Bug 5921 */
 	}
-#ifdef KEY /* Bug 2559 */
 	if (suppress_repeats()) {
 		cup->ufrptcnt = 1;
 	}
-#endif /* KEY Bug 2559 */
 
 /*
  *	Override global setting for writing -0.0 in formatted io.
@@ -1216,11 +1163,7 @@ int		catcherr)
  *	would be translated into the stat structure.
  */ 
 void
-#ifdef KEY /* Bug 1678 */
 _ffconvert_stat(struct stat *src, struct stat *dest)
-#else /* KEY Bug 1678 */
-_ffconvert_stat(struct ffc_stat_s *src, struct stat *dest)
-#endif /* KEY Bug 1678 */
 {
 	assert ( sizeof(*src) == sizeof(*dest) );
 

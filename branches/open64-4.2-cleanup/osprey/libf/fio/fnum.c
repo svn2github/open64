@@ -33,18 +33,10 @@ Mountain View CA 94043.
 #include <sys/stat.h>
 #include "fio.h"
 
-#ifdef KEY /* Bug 1683 */
 /* Don't pollute the Fortran namespace */
 
 int pathf90_fnum(int *u)
 
-#else
-
-extern int fnum_(int *u);
-
-int fnum_(int *u)
-
-#endif /* KEY Bug 1683 */
 {
         int             n, retval;
         unum_t          unum; 

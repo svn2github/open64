@@ -42,17 +42,12 @@
 #pragma ident "@(#) libf/fio/usdumpsema.c	92.1	06/18/99 18:38:26"
 
 #include <sys/types.h>
-#ifndef KEY
-#include <ulocks.h> 
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include "fio.h"
 #include <string.h>
 
-#ifdef KEY
 typedef void *usema_t;	/* added in place of including ulocks.h */
-#endif
 
 extern int32 __usdumpsema_f90(usema_t **s, int32 *u, char *str, int32 len);
 extern _f_int usdumpsemaf90_(usema_t **s, _f_int *u, char *str, int len);

@@ -70,16 +70,11 @@
 #include "fio.h"
 
 extern int __fstat_f90(int *u, int *stbuf);
-#ifdef KEY /* Bug 1683 */
 static _f_int fstatf90_(_f_int *u, _f_int *stbuf);
-#else
-extern _f_int fstatf90_(_f_int *u, _f_int *stbuf);
-#endif /* KEY Bug 1683 */
 extern int __fstat64_f90(int *u, _f_int8 *stbuf);
 extern _f_int fstatf90_4_4_8_(_f_int *u, _f_int8 *stbuf);
 extern _f_int8 fstatf90_8_(_f_int8 *u, _f_int8 *stbuf);
 
-#ifdef KEY /* Bug 1683 */
 
 int
 pathf90_fstat(int *u, int *stbuf, int *status)
@@ -89,7 +84,6 @@ pathf90_fstat(int *u, int *stbuf, int *status)
   return *status = fstatf90_(u, stbuf);
 }
 
-#endif /* KEY Bug 1683 */
 
 int 
 __fstat_f90(int *u, int *stbuf)
@@ -97,10 +91,8 @@ __fstat_f90(int *u, int *stbuf)
 	return fstatf90_(u,stbuf);
 }
 
-#ifdef KEY /* Bug 1683 */
 /* Don't pollute the Fortran namespace */
 static
-#endif /* KEY Bug 1683 */
 _f_int 
 fstatf90_(_f_int *u, _f_int *stbuf)
 {
@@ -136,9 +128,7 @@ fstatf90_(_f_int *u, _f_int *stbuf)
 		*stbuf++ = buf.st_mtime;	/* ??? */
 		*stbuf++ = buf.st_ctime;	/* ??? */
 		*stbuf++ = buf.st_blksize;	/* ??? */
-#ifdef KEY /* Bug 1683 */
 		*stbuf++ = buf.st_blocks;
-#endif /* KEY Bug 1683 */
 		retval	= 0;
 	}
 
@@ -191,9 +181,7 @@ fstatf90_4_4_8_(_f_int *u, _f_int8 *stbuf)
 		*stbuf++ = buf.st_mtime;	/* ??? */
 		*stbuf++ = buf.st_ctime;	/* ??? */
 		*stbuf++ = buf.st_blksize;	/* ??? */
-#ifdef KEY /* Bug 1683 */
 		*stbuf++ = buf.st_blocks;
-#endif /* KEY Bug 1683 */
 		retval	= 0;
 	}
 
@@ -240,9 +228,7 @@ fstatf90_8_(_f_int8 *u, _f_int8 *stbuf)
 		*stbuf++ = buf.st_mtime;	/* ??? */
 		*stbuf++ = buf.st_ctime;	/* ??? */
 		*stbuf++ = buf.st_blksize;	/* ??? */
-#ifdef KEY /* Bug 1683 */
 		*stbuf++ = buf.st_blocks;
-#endif /* KEY Bug 1683 */
 		retval	= 0;
 	}
 

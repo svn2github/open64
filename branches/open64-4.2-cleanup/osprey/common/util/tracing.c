@@ -586,11 +586,9 @@ Get_Trace ( INT func, INT arg )
   }
 
   if ( result && PU_Cnt > 0 ) { /* trace for certain PUs, by name */
-#ifdef KEY
     if( Current_PU_Name == NULL ){
       result = FALSE;
     } else
-#endif
     for ( i = 1; i <= PU_Cnt; i++ ) {
       if ( strcmp(PU_Enable[i], Current_PU_Name) == 0 )
 	break;

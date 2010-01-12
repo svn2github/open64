@@ -41,7 +41,6 @@
 
 /*    signal.c     */
 
-#ifdef KEY /* Bug 1683 */
 
 #include <signal.h>
 #include <string.h>
@@ -128,22 +127,6 @@ pathf90_signal4(int *sig, int *func) {
 	return pathf90_signal8(sig, &ourfunc);
 }
 
-#else
-
-/* SIGNAL has been called from both FORTRAN and PASCAL but the two
- * compilers generate code that calls SIGNAL that is not compatible.
- * Because of this SIGNAL may vary from site to site and we discourage
- * its use. Codes should be changed to call either FSIGNAL or PSIGNAL.
- * This will allow codes to be ported to other CRAY sites. The use
- * of SIGNAL may give different results at different sites. */
-
-SIGNAL (sig,func)
-int  *sig, *func;
-{
-	return ((long)signal(*sig,*func));
-}
-
-#endif /* KEY Bug 1683 */
 
 /* Remains for backward compatibility with previously-compiled binaries */
 /* FSIGNAL is the FORTRAN callable link to 'signal' */
@@ -153,13 +136,3 @@ int  *sig, *func;
 	return ((long)signal(*sig,(void (*)(int))func));
 }
 
-#ifdef KEY /* Bug 1683 */
-#else
-/* PSIGNAL is the PASCAL callable link to 'signal' */
-PSIGNAL (sig,func)
-int  *sig, *func;
-{
-	return ((long)signal(*sig,*func));
-}
-
-#endif /* KEY Bug 1683 */

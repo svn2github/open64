@@ -224,10 +224,8 @@ typedef UINT16 DST_language;      /* AT_language codes */
 typedef UINT16 DST_identifier_case; /* AT_identifier codes */
 typedef UINT8  DST_inline;        /* AT_inline (INL_not_inlined if absent) */
 typedef UINT8  DST_virtuality;    /* AT_virtuality (member functions and bases */
-#ifdef KEY
 typedef UINT8  DST_accessibility; /* AT_accessibility 
                                      (member functions and bases */
-#endif
 typedef UINT16 DST_vtable_elem_location;
 				  /* Used for index of function in vtable */
 typedef UINT8  DST_bitsize;       /* Used for bit_offset and bit_size */
@@ -297,13 +295,9 @@ typedef enum DST_const_form
    DST_FORM_DATA1, 
    DST_FORM_DATA2, 
    DST_FORM_DATA4, 
-#ifndef KEY
-   DST_FORM_DATA8
-#else
    DST_FORM_DATA8, 
    DST_FORM_DATAC4,
    DST_FORM_DATAC8
-#endif // KEY
 } DST_CONST_FORM;
 
 typedef struct DST_const_value
@@ -316,7 +310,6 @@ typedef struct DST_const_value
       UINT16  form_data2;
       UINT32  form_data4;
       UINT64  form_data8;
-#ifdef KEY
       struct {
 	UINT32 form_crdata4;
 	UINT32 form_cidata4;
@@ -325,7 +318,6 @@ typedef struct DST_const_value
 	UINT64 form_crdata8;
 	UINT64 form_cidata8;
       } cdata8;
-#endif // KEY
    } value;
 } DST_CONST_VALUE;
 
@@ -335,12 +327,10 @@ typedef struct DST_const_value
 #define DST_CONST_VALUE_form_data2(c) ((c).value.form_data2)
 #define DST_CONST_VALUE_form_data4(c) ((c).value.form_data4)
 #define DST_CONST_VALUE_form_data8(c) ((c).value.form_data8)
-#ifdef KEY
 #define DST_CONST_VALUE_form_crdata4(c) ((c).value.cdata4.form_crdata4)
 #define DST_CONST_VALUE_form_cidata4(c) ((c).value.cdata4.form_cidata4)
 #define DST_CONST_VALUE_form_crdata8(c) ((c).value.cdata8.form_crdata8)
 #define DST_CONST_VALUE_form_cidata8(c) ((c).value.cdata8.form_cidata8)
-#endif // KEY
 
 
 
@@ -376,7 +366,6 @@ typedef struct DST_file_name
 #define DST_FILE_NAME_next(f) ((f)->next)
 
 
-#ifdef KEY
 /* Holds info necessary for the macros.
  */
 typedef struct DST_macinfo
@@ -393,7 +382,6 @@ typedef struct DST_macinfo
 #define DST_MACR_macro(attr)  ((attr)->macro)
 #define DST_MACR_tag(attr)    ((attr)->tag)
 #define DST_MACR_next(attr)   ((attr)->next)
-#endif
 
 /* This structure definition encapsulates the information kept for each
  * type of .debug_info entry.  The "attributes" can be any of the records
@@ -614,7 +602,6 @@ typedef struct DST_common_incl
 #define DST_COMMON_INCL_decl(attr) ((attr)->decl)
 #define DST_COMMON_INCL_com_blk(attr) ((attr)->com_blk)
 
-#ifdef KEY /* Bug 3507 */
 typedef struct DST_imported_decl
 {
    DST_ASSOC_INFO import;  /* Get offset into .debuginfo via back-end LABEL */
@@ -633,7 +620,6 @@ typedef struct DST_module
 #define DST_MODULE_name(attr) ((attr)->name)
 #define DST_MODULE_first_child(attr) ((attr)->child.first)
 #define DST_MODULE_last_child(attr) ((attr)->child.last)
-#endif /* KEY Bug 3507 */
 
 /* [tag==DW_TAG_lexical_block]: Back-end must supply low/high pc and 
  * pc reloc info.
@@ -681,9 +667,7 @@ typedef struct DST_var_decl
    USRCPOS      decl;  /* Source location */
    DST_STR_IDX  name;  /* Name of variable */
    DST_INFO_IDX type;  /* Type of variable */
-#ifdef KEY
    DST_STR_IDX    linkage_name;  /* Mangled name of variable */
-#endif
 } DST_VAR_DECL;
 
 typedef struct DST_var_def
@@ -697,9 +681,7 @@ typedef struct DST_var_def
 				  * field decl */
    DST_INFO_IDX abstract_origin;
    DST_INFO_IDX dopetype;   /* Type of dope vector */
-#ifdef KEY
    DST_STR_IDX    linkage_name;  /* Mangled name of variable */
-#endif
 }  DST_VAR_DEF;
 
 typedef struct DST_var_const
@@ -743,9 +725,7 @@ typedef union DST_variable
 #define DST_VARIABLE_decl_decl(attr) ((attr)->decl.decl)
 #define DST_VARIABLE_decl_name(attr) ((attr)->decl.name)
 #define DST_VARIABLE_decl_type(attr) ((attr)->decl.type)
-#ifdef KEY
 #define DST_VARIABLE_decl_linkage_name(attr) ((attr)->decl.linkage_name)
-#endif
 
 #define DST_VARIABLE_def_decl(attr) ((attr)->def.decl)
 #define DST_VARIABLE_def_name(attr) ((attr)->def.name)
@@ -753,9 +733,7 @@ typedef union DST_variable
 #define DST_VARIABLE_def_st(attr) ((attr)->def.st)
 #define DST_VARIABLE_def_offs(attr) ((attr)->def.offs)
 #define DST_VARIABLE_def_specification(attr) ((attr)->def.specification)
-#ifdef KEY
 #define DST_VARIABLE_def_linkage_name(attr) ((attr)->def.linkage_name)
-#endif
 #define DST_VARIABLE_def_abstract_origin(attr) ((attr)->def.abstract_origin)
 #define DST_VARIABLE_def_dopetype(attr) ((attr)->def.dopetype)
 
@@ -1068,9 +1046,7 @@ typedef struct DST_member
    DST_bitsize  bit_offset;   /* Offset of bitfield within block */
    DST_bitsize  bit_size;     /* Size of bitfield */
    DST_INFO_IDX dopetype;     /* Type of dope vector */
-#ifdef KEY
    DST_accessibility accessibility; /* AT_accessibility */
-#endif
 } DST_MEMBER;
 
 #define DST_MEMBER_decl(attr) ((attr)->decl)
@@ -1081,9 +1057,7 @@ typedef struct DST_member
 #define DST_MEMBER_bit_offset(attr) ((attr)->bit_offset)
 #define DST_MEMBER_bit_size(attr) ((attr)->bit_size)
 #define DST_MEMBER_dopetype(attr) ((attr)->dopetype)
-#ifdef KEY
 #define DST_MEMBER_accessibility(attr) ((attr)->accessibility)
-#endif
 
 
 
@@ -1097,18 +1071,14 @@ typedef struct DST_inheritance
    DST_virtuality virtuality;   /* AT_virtuality codes (Page 17, V2, Draft 5) */
    DST_size_t     memb_loc;     /* Offset of member (data-block) within
 			         struct/class  (0 for union) */
-#ifdef KEY
    DST_accessibility 	accessibility;/* Accessibility for C++ */ 
-#endif
 } DST_INHERITANCE;
 
 #define DST_INHERITANCE_decl(attr)      ((attr)->decl)
 #define DST_INHERITANCE_type(attr)      ((attr)->type)
 #define DST_INHERITANCE_virtuality(attr) ((attr)->virtuality)
 #define DST_INHERITANCE_memb_loc(attr)  ((attr)->memb_loc)
-#ifdef KEY
 #define DST_INHERITANCE_accessibility(attr) ((attr)->accessibility)
-#endif
 
 
 
@@ -1234,11 +1204,8 @@ typedef struct DST_ptr_to_member_type
 #define DST_FILE_IDX_TO_PTR(i) ((DST_FILE_NAME *)DST_idx_to_string(i))
 #define DST_DIR_IDX_TO_PTR(i) ((DST_INCLUDE_DIR *)DST_idx_to_string(i))
 #define DST_STR_IDX_TO_PTR(i) ((char *)DST_idx_to_string(i))
-#ifdef KEY
 #define DST_MACR_IDX_TO_PTR(i) ((DST_MACR *)DST_idx_to_string(i))
-#endif
 
-#ifdef KEY
 /* [tag==DW_TAG_namelist]
 */
 typedef struct DST_namelist
@@ -1263,7 +1230,6 @@ typedef struct DST_namelist_item
 
 #define DST_NAMELIST_ITEM_decl(attr) ((attr)->decl)
 #define DST_NAMELIST_ITEM_name(attr) ((attr)->name)
-#endif
 
 
 

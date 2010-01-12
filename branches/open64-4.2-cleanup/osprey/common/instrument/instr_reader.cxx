@@ -222,7 +222,6 @@ Get_PU_Profile(char *pu_name, char *src_fname, FILE *fp, char *fb_fname,
 
   pu_handle = CXX_NEW(PU_Profile_Handle(entry_name, pu_hdr_entry.pu_checksum),
 		      MEM_pu_nz_pool_ptr);
-#ifdef KEY
   pu_handle->pu_size = pu_hdr_entry.pu_size;
   pu_handle->runtime_fun_address = pu_hdr_entry.runtime_fun_address;
   if (fb_fname) 
@@ -230,7 +229,6 @@ Get_PU_Profile(char *pu_name, char *src_fname, FILE *fp, char *fb_fname,
     pu_handle->fb_name = (char *) malloc (strlen (fb_fname) + 1);
     strcpy (pu_handle->fb_name, fb_fname);
   }
-#endif
 
   read_invoke_profile(   pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
   read_branch_profile(   pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
@@ -239,10 +237,8 @@ Get_PU_Profile(char *pu_name, char *src_fname, FILE *fp, char *fb_fname,
   read_loop_profile(     pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
   read_scircuit_profile( pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
   read_call_profile(     pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
-#ifdef KEY
   read_value_profile(    pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
   read_value_fp_bin_profile(pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
-#endif
   read_icall_profile(    pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
 
   return pu_handle;
@@ -323,9 +319,6 @@ Get_CG_PU_Value_Profile(char* srcfile_pu_name,  FILE* fp, char *fb_fname, Fb_Hdr
 
   pu_handle = CXX_NEW(PU_Profile_Handle(NULL, pu_hdr_entry.pu_checksum),
 		      MEM_pu_nz_pool_ptr);
-#ifndef KEY
-  read_value_profile(pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
-#endif
   read_stride_profile(pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
 
   return pu_handle;
@@ -394,7 +387,6 @@ Get_Branch_Table_Size(PU_PROFILE_HANDLE pu_handle)
    return Br_Table.size();
 }
 
-#ifdef KEY
 FB_Info_Value_FP_Bin& Get_Value_FP_Bin_Profile(PU_PROFILE_HANDLE pu_handle, 
 					       INT32 id)
 {
@@ -425,7 +417,6 @@ size_t Get_Value_Table_Size(PU_PROFILE_HANDLE pu_handle)
   FB_Value_Vector& Value_Table = pu_handle->Get_Value_Table();
   return Value_Table.size();
 }
-#endif // KEY
 
 // Given a PU handle and a branch id, returns the profile data for that id.
 
@@ -556,14 +547,6 @@ Get_Icall_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id)
     return Edge_Table[id];
   }
 
-#ifndef KEY
- FB_Info_Value&
- Get_Value_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id)
- {
-    FB_Value_Vector& Value_Table = pu_handle->Get_Value_Table();
-    return Value_Table[id];
-  }
-#endif // !KEY
 
  FB_Info_Value&
  Get_Stride_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id)
@@ -741,7 +724,6 @@ cast_call_freq(FB_Info_Call* fb_call, ULONG num_call_items)
 
 }
 
-#ifdef KEY
 void
 cast_value_freq(FB_Info_Value* fb_val, ULONG num_val_Items)
 {
@@ -762,7 +744,6 @@ cast_value_freq(FB_Info_Value* fb_val, ULONG num_val_Items)
 
 }
 
-#endif
 
 #endif
 
@@ -985,7 +966,6 @@ read_icall_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
 	 pu_hdr_entry.pu_num_icall_entries, fp, ERR_READ, fname);
 }
 
-#ifdef KEY
 void read_value_fp_bin_profile( PU_PROFILE_HANDLE pu_handle, 
 				Pu_Hdr& pu_hdr_entry,
 				long pu_ofst, FILE *fp, char *fname )
@@ -1023,7 +1003,6 @@ void read_value_profile( PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
 #endif
 
 }
-#endif // KEY
 
 // Given a PU handle, allocate storage for the edge Table in 
 // PU handle and update it with data from feedback file.
@@ -1044,24 +1023,6 @@ read_edge_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
 	 pu_hdr_entry.pu_num_edge_entries, fp, ERR_READ, fname);
 }
 
-#ifndef KEY
-void
-read_value_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
-                    long pu_ofst, FILE *fp, char *fname)
-{
-  FB_Value_Vector& tnv_table = pu_handle->Get_Value_Table();
-
-  Is_True (tnv_table.empty (), ("TNV table in pu_handle not empty"));
-
-  tnv_table.resize(pu_hdr_entry.pu_instr_count);
-
-  
-  FSEEK(fp, pu_ofst + pu_hdr_entry.pu_value_offset, SEEK_SET, ERR_POS, fname);
-
-  FREAD (&(tnv_table.front ()), sizeof(FB_Info_Value),
-	 pu_hdr_entry.pu_instr_count, fp, ERR_READ, fname);
-}
-#endif  // !KEY
 
 void
 read_stride_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,

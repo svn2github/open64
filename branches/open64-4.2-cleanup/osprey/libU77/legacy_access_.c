@@ -20,7 +20,6 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write the Free Software Foundation, Inc., 59
 Temple Place - Suite 330, Boston MA 02111-1307, USA.
 */
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -32,4 +31,3 @@ int access_ (char *name, char *mode, int namlen, int modlen) {
   return pathf90_access(name, mode, namlen, modlen);
   }
 
-#endif /* KEY Bug 1683 */

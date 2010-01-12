@@ -31,7 +31,6 @@ G77_umask_0 (integer * mask)
   return umask ((mode_t) * mask);
 }
 
-#ifdef KEY /* Bug 1683 */
 /* Provide subroutine interface too */
 void
 pathf90_umask(integer *mask, integer *old)
@@ -40,4 +39,3 @@ pathf90_umask(integer *mask, integer *old)
   old = (0 == old) ? (&junk) : old;
   *old = umask((mode_t) *mask);
 }
-#endif /* KEY Bug 1683 */

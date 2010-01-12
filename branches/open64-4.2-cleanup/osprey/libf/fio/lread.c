@@ -85,9 +85,6 @@ _set_stride(void *dest, void *src, long count, int elsize, long inc);
  *	data.
  */
 extern 
-#ifndef KEY /* this can cause wrong func being called when compiled by gcc */
-const 
-#endif
 ic_func	*_ilditab[DVTYPE_NTYPES];
 
 /*
@@ -781,9 +778,6 @@ _get_value(
 	long		width;
 	long		*begin;
 	long		*end;
-#ifndef KEY /* this can cause wrong func being called when compiled by gcc */
-	const 
-#endif
 	    ic_func 	*ngcf;
 
 	begin	= lptr;			/* Mark start of field */

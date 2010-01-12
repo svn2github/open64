@@ -20,7 +20,6 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write the Free Software Foundation, Inc., 59
 Temple Place - Suite 330, Boston MA 02111-1307, USA.
 */
-#ifdef KEY /* Bug 1683 */
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -45,4 +44,3 @@ chmod_ (char *name, char *mode, __int32_t namlen, __int32_t modlen) {
   return pathf90_chmod(name, mode, 0, namlen, modlen);
   }
 
-#endif /* KEY Bug 1683 */

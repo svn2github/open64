@@ -47,11 +47,7 @@
  */
 
 #include <sys/types.h>
-#if defined(_SYSV) || defined(_SYSTYPE_SVR4) || defined(KEY)
 #include <time.h>
-#else
-#include <sys/time.h>
-#endif
 
 typedef struct {
  int ihr;
@@ -59,7 +55,6 @@ typedef struct {
  int isec;
 } itime_struct;
 
-#ifdef KEY /* Bug 1683, 5019 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -76,19 +71,3 @@ pathf90_itime(pathf90_i4 *iar)
 	iar[2] = lclt.tm_sec;
 }
 
-#else
-
-extern void
-itime_ (itime_struct *iar)
-{
-	struct tm *lclt;
-	time_t t;
-
-	t = time(0);
-	lclt = localtime(&t);
-	iar->ihr = lclt->tm_hour;
-	iar->imin = lclt->tm_min;
-	iar->isec = lclt->tm_sec;
-}
-
-#endif /* KEY Bug 1683, 5019 */

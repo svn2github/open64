@@ -45,10 +45,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <cray/portdefs.h>	/* limits.h is included in portdefs.h */
-#ifdef KEY /* Bug 1683 */
 /* We want to use "getrusage", which gives better info than "times" */
 #define __mips
-#endif /* KEY Bug 1683 */
 #ifdef	__mips
 #include <sys/resource.h>
 #endif

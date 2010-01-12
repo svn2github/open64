@@ -48,7 +48,6 @@ extern int64 __powll(int64 ap, int64 n);
 int64 __powli(int64 ap, int32 n)
 {
 int64 pow;
-/* 10/9/89 fix bug 5116 */
 
 if(n != 0) {
 	if (n<0) {
@@ -77,7 +76,6 @@ else return(1);
 int32 __powil(int32 ap, int64 n)
 {
 int32 pow;
-/* 10/9/89 fix bug 5116 */
 
 if(n != 0) {
 	if (n<0) {

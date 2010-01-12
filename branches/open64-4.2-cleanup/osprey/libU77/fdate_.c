@@ -45,7 +45,6 @@ Boston, MA 02111-1307, USA.  */
    also a subroutine version.  Of course, the calling convention is
    essentially the same for both. */
 
-#ifdef KEY /* Bug 1683, 5019 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -63,16 +62,3 @@ pathf90_fdate(char *ret_val, int ret_val_len)
   s_copy (ret_val, ctime_r ((time_t *) & tloc, buf), ret_val_len, 24);
 }
 
-#else
-
-/* Character *24 */ void
-fdate_ (char *ret_val, ftnlen ret_val_len)
-{
-  int s_copy ();
-  time_t tloc;
-  tloc = time (NULL);
-  /* Allow a length other than 24 for compatibility with what other
-     systems do, despite it being documented as 24. */
-  s_copy (ret_val, ctime ((time_t *) & tloc), ret_val_len, 24);
-}
-#endif /* KEY Bug 1683, 5019 */

@@ -101,7 +101,6 @@ BOOL Target_SSE2_Set = FALSE;
 BOOL Target_SSE3 = FALSE;       /* -TARG:sse3=on/off */
 BOOL Target_SSE3_Set = FALSE;
 
-// bug 4405
 BOOL Target_3DNow = FALSE;       // -TARG:3dnow=on/off
 BOOL Target_3DNow_Set = FALSE;
 
@@ -133,7 +132,6 @@ BOOL Target_FMA4 = FALSE;        // -TARG:fma4=on/off
 BOOL Target_FMA4_Set = FALSE;
 
 
-// bug 4327
 int Target_x87_Precision = 80;	// -TARG:x87_precision=32/64/80
 
 /* Fault handling: */
@@ -211,26 +209,6 @@ static OPTION_DESC Options_TARG[] = {
   { OVK_INT32,	OV_VISIBLE,	FALSE, "x87-precision", "x87-precision",
     80, 32, 80, &Target_x87_Precision,	NULL,
     "Specify the precision of x87 floating-point calculations (32, 64, or 80)"},
-#if 0
-  { OVK_SELF,	OV_SHY,		FALSE, "mips1",	NULL,
-    0, 0, 0, &ISA_Name,		NULL,
-    "Use the MIPS-I instruction set architecture" },
-  { OVK_SELF,	OV_SHY,		FALSE, "mips2",	NULL,
-    0, 0, 0, &ISA_Name,		NULL,
-    "Use the MIPS-II instruction set architecture" },
-  { OVK_SELF,	OV_SHY,		FALSE, "mips3",	NULL,
-    0, 0, 0, &ISA_Name,		NULL,
-    "Use the MIPS-III instruction set architecture" },
-  { OVK_SELF,	OV_SHY,		FALSE, "mips4",	NULL,
-    0, 0, 0, &ISA_Name,		NULL,
-    "Use the MIPS-IV instruction set architecture" },
-  { OVK_SELF,	OV_SHY,		FALSE, "mips5",	NULL,
-    0, 0, 0, &ISA_Name,		NULL,
-    "Use the MIPS-V instruction set architecture" },
-  { OVK_SELF,	OV_SHY,		FALSE, "mips6",	NULL,
-    0, 0, 0, &ISA_Name,		NULL,
-    "Use the MIPS-VI instruction set architecture" },
-#endif
   { OVK_NAME,	OV_VISIBLE,	FALSE, "platform",	"pl",
     0, 0, 0, &Platform_Name,	NULL,
     "Specify the target platform" },

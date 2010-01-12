@@ -50,11 +50,6 @@ static struct {
 } values[] = {
         { 4,    PRECISION_REAL4_F90,            RANGE_REAL4_F90         },
         { 8,    PRECISION_REAL8_F90,            RANGE_REAL8_F90         },
-#ifndef KEY
-#if _F_REAL16 == 1
-        { 16,   PRECISION_REAL16_F90,           RANGE_REAL16_F90        },
-#endif	/* _F_REAL16 */
-#endif
 };
 
 

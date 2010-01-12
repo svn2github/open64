@@ -309,17 +309,11 @@ void
 STR_TAB<STR>::copy_str (const char *str, UINT32 size)
 {
     UINT32 buffer_size = STR::get_buffer_length (size);
-#ifdef KEY // str may be pointing to buffer, which could be freed in reserve (bug 625)
     char *new_str = (char *) alloca(size+1);
     memcpy (new_str, str, size);
     new_str[size] = 0;
-#endif
     reserve (buffer_size);
-#ifdef KEY
     STR::copy (new_str, size, buffer + last_idx);
-#else
-    STR::copy (str, size, buffer + last_idx);
-#endif
     last_idx += buffer_size;
 } // STR_TAB::copy_str
 

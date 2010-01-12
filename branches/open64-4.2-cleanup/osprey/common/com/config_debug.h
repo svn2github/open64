@@ -201,11 +201,9 @@ typedef struct debug_flags {
 				   version */ 
   BOOL conform_check;		/* F90 Conformance check */
   BOOL conform_check_set;	/* ... option explicitly set ... */
-#ifdef KEY
   BOOL emit_ehframe;            /* Emit .eh_frame section for backtrace. */
   BOOL zero_uv;			/* Enable setting local vars to 0 */
   BOOL zero_uv_set;		/* ... option explicitly set ... */
-#endif
 #ifdef TARG_SL
   BOOL stack_check;             /* Stack Check for SL */
 #endif
@@ -304,11 +302,9 @@ extern DEBUG_FLAGS Initial_DEBUG;
 #define DEBUG_Alignment_Compose		(Current_DEBUG->alignment==ALIGN_COMPOSE)
 #define DEBUG_Conform_Check		(Current_DEBUG->conform_check)
 #define DEBUG_Conform_Check_Set	        (Current_DEBUG->conform_check_set)
-#ifdef KEY
 #define DEBUG_Emit_Ehframe              (Current_DEBUG->emit_ehframe)
 #define DEBUG_Zero_Uv			(Current_DEBUG->zero_uv)
 #define DEBUG_Zero_Uv_Set		(Current_DEBUG->zero_uv_set)
-#endif
 #ifdef TARG_SL
 /* Values for stack check option -- independent bits (3 => both): */
 #define STACK_ENTRY_CHECK 1

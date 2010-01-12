@@ -44,9 +44,7 @@
 #include <string.h>
 #include "gfio.h"
 
-#ifdef KEY
 static put_block( struct fdinfo *, struct ffsw * );
-#endif
 
 /*
  * Write a generic F or FB format file.

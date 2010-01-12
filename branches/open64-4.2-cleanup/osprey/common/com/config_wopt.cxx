@@ -153,11 +153,7 @@ BOOL  WOPT_Enable_Exp_PRE = TRUE;
 INT32 WOPT_Enable_Exp_PRE_Limit = -1;
 BOOL  WOPT_Enable_Fast_Simp = TRUE;
 BOOL  WOPT_Enable_Fold2const = TRUE;
-#ifdef KEY
 BOOL  WOPT_Enable_Fold_Lda_Iload_Istore = TRUE;
-#else
-BOOL  WOPT_Enable_Fold_Lda_Iload_Istore = FALSE;
-#endif
 BOOL  WOPT_Enable_LNO_Copy_Propagate = TRUE;
 BOOL  WOPT_Enable_FSA = TRUE;
 INT32 WOPT_Enable_Generate_Trip_Count = 1;
@@ -178,10 +174,8 @@ BOOL  WOPT_Enable_IVE_Old = FALSE;
 BOOL  WOPT_Enable_IVR = TRUE;
 INT32 WOPT_Enable_IVR_Expand_Limit = 1000;  /* expand 1000 statements */
 BOOL  WOPT_Enable_IVR_Outermost_Loop_Parallel_Region = FALSE;
-#ifdef KEY
 INT32 WOPT_Enable_Ivr_Limit = -1;
 INT32 WOPT_Enable_Ivr_Cand_Limit = -1;
-#endif
 BOOL  WOPT_Enable_Ldx = FALSE;
 BOOL  WOPT_Enable_Lego_Opt = FALSE;
 BOOL  WOPT_Enable_LFTR_Ivar = FALSE;
@@ -214,16 +208,10 @@ char *WOPT_Enable_Process = NULL;
 BOOL  WOPT_Enable_Phi_Simp = TRUE;
 BOOL  WOPT_Enable_Prop_Ivar = TRUE;
 BOOL  WOPT_Enable_Prop_CSE = FALSE;     /* propagate CSE expressions */
-#ifdef KEY
-INT32 WOPT_Enable_Prop_Limit = 12;	/* based on bug 3095 */
-INT32 WOPT_Enable_Doend_Prop_Limit = 26; /* based on bug 13003 */
-#else
-INT32 WOPT_Enable_Prop_Limit = 14;	/* this is a guess, PV 468862 */
-#endif
+INT32 WOPT_Enable_Prop_Limit = 12;
+INT32 WOPT_Enable_Doend_Prop_Limit = 26;
 INT32 WOPT_Enable_Prop_Weight_Limit = 50000;
-#ifdef KEY
 BOOL  WOPT_Enable_Prop_Dope = FALSE;	/* propagate dope vector fields? */
-#endif
 BOOL  WOPT_Enable_Prune = TRUE;		/* temporary, PV 370066 */
 BOOL  WOPT_Enable_Replace_Second_IV = TRUE;
 BOOL  WOPT_Enable_Replace_While_Loop_Second_IV = TRUE;
@@ -279,7 +267,7 @@ BOOL  WOPT_Enable_Iload_Prop = TRUE;
 BOOL  WOPT_Enable_VN_Full = TRUE;	/* full value number (for ivars) */
 BOOL  WOPT_Enable_Simp_Iload = TRUE;   /* simplifier folding iload */
 BOOL  WOPT_Enable_Canon_Uplevel=FALSE; /* canonicalize the up level ref */
-#if defined(TARG_X8664) || (TARG_SL) // bug 12909
+#if defined(TARG_X8664) || (TARG_SL)
 BOOL  WOPT_Enable_Tail_Recur = TRUE;	/* tail recursion */
 #else
 BOOL  WOPT_Enable_Tail_Recur = FALSE;	/* tail recursion */
@@ -338,7 +326,6 @@ BOOL  WOPT_Enable_Reassociation_CSE = TRUE;  // Enables Reassociation based CSE
 
 BOOL  WOPT_Enable_Mem_Clear_Remove = TRUE;  // Enables removal of redundant mem clear after a calloc
 
-#ifdef KEY
 BOOL  WOPT_Enable_Preserve_Mem_Opnds = FALSE; // if TRUE, suppress EPRE on 
 				// iloads that are operands of FP operations
 BOOL  WOPT_Enable_Retype_Expr = FALSE;   // whether to call WN_retype_expr to 
@@ -357,7 +344,6 @@ BOOL WOPT_Enable_Invariant_Loop_Bounds = FALSE; // enable assumption that all
 BOOL WOPT_Enable_Subword_Opt = TRUE; // whether to replace 1- or 2-byte-sized
 			              // load/store with EXTRACT/COMPOSE
 BOOL WOPT_Enable_New_Vsym_Allocation = FALSE;
-#endif
 BOOL  WOPT_Enable_WOVP = TRUE; // For running write-once variable promotion
 BOOL WOPT_Enable_Loop_Multiver = FALSE; // For loop multiversioning
 BOOL WOPT_Enable_Loop_Multiver_Set = FALSE;
@@ -541,12 +527,10 @@ static OPTION_DESC Options_WOPT[] = {
     1000, 0, INT32_MAX,	&WOPT_Enable_IVR_Expand_Limit, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "iv_outer_parallel",	"",
     0, 0, 0,	&WOPT_Enable_IVR_Outermost_Loop_Parallel_Region, NULL },
-#ifdef KEY
   { OVK_INT32,  OV_VISIBLE,    TRUE, "ivr_limit",              "",
     INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Ivr_Limit, NULL },
   { OVK_INT32,  OV_VISIBLE,    TRUE, "ivr_cand_limit",         "",
     INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Ivr_Cand_Limit, NULL },
-#endif
   { OVK_INT32,	OV_VISIBLE,	TRUE, "ldx_ratio_regins",	"ldx_ratio",
     0, 0, 4096,	&WOPT_Ldx_Ratio_RegIns, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "ldx",			"ldx",
@@ -601,12 +585,10 @@ static OPTION_DESC Options_WOPT[] = {
     14, 0, INT32_MAX,	&WOPT_Enable_Prop_Limit, NULL }, /* PV 468862 */
   { OVK_INT32, OV_VISIBLE, TRUE, "prop_weight_limit", "",
     14, 0, INT32_MAX, &WOPT_Enable_Prop_Weight_Limit, NULL }, 
-#ifdef KEY
   { OVK_INT32,	OV_VISIBLE,	TRUE, "doend_prop_limit",		"",
     14, 0, INT32_MAX,	&WOPT_Enable_Doend_Prop_Limit, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "prop_dope",		"",
     0, 0, 0,	&WOPT_Enable_Prop_Dope, NULL },
-#endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "prune",		"",
     0, 0, 0,	&WOPT_Enable_Prune, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "replace_second_iv",	"",
@@ -788,7 +770,6 @@ static OPTION_DESC Options_WOPT[] = {
   { OVK_INT32,  OV_VISIBLE,    FALSE, "pro_loop_interchange_func_limit",              "",
     INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Pro_Loop_Interchange_Func_Limit, NULL },
 
-#ifdef KEY
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "mem_opnds", "mem_opnds",
     TRUE, 0, 0,	&WOPT_Enable_Preserve_Mem_Opnds, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "retype_expr", "retype_expr",
@@ -820,7 +801,6 @@ static OPTION_DESC Options_WOPT[] = {
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "new_vsym", "new_vsym",
     FALSE, 0, 0, &WOPT_Enable_New_Vsym_Allocation, NULL },
 
-#endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "wovp",	"wovp",
     0, 0, 0,	&WOPT_Enable_WOVP, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "trk_ptr",   NULL, 

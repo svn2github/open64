@@ -71,9 +71,7 @@
 #ifdef BACK_END
 #include "region_util.h"
 #endif
-#ifdef KEY
 #include "config_opt.h"
-#endif
 /*-------------------------------------------------------------*/
 /* initialize the stack, it contains tree nodes                */
 /*-------------------------------------------------------------*/
@@ -1014,7 +1012,6 @@ extern WN *WN_LOOP_LowerBound( const WN *loop )
   /* todo: handle other kinds of stores? */
   return NULL;
 }
-#ifdef KEY
 static WN *WN_CreateDivceil(TYPE_ID type, WN *kid0, WN *kid1)
 {
   OPCODE op = OPCODE_make_op(OPR_INTRINSIC_OP, type, MTYPE_V);
@@ -1177,7 +1174,7 @@ static BOOL WN_Solve_For(WN* wn_top, const ST_IDX sym, const WN_OFFSET ofst)
         Flip_Le_And_Ge(wn_top);
         TYPE_ID  type = WN_rtype(r);
 #ifdef TARG_X8664
-        // Bug 2014 - complement the type if original type is unsigned because
+        // complement the type if original type is unsigned because
         // we are going to negate and we have to obey the sign-extension rules
         // for Opteron Code generation.
         if (MTYPE_is_unsigned(type)) type = MTYPE_complement(type);
@@ -1241,7 +1238,6 @@ static BOOL WN_Solve_For(WN* wn_top, const ST_IDX sym, const WN_OFFSET ofst)
   WN_kid1(wn_top) = r;
   return ok;
 }                                     
-#endif                                                                                                     
 /*-------------------------------------------------------------*/
 /* Determine the upper bound of the loop, which is basically   */
 /* the value which can not be exceeded (going in either        */
@@ -1253,12 +1249,8 @@ static BOOL WN_Solve_For(WN* wn_top, const ST_IDX sym, const WN_OFFSET ofst)
 /* is always on the rhs:  iv <,<=,==,!=,>=,> upper bound       */
 /* If unable to determine it, returns NULL.                    */
 /*-------------------------------------------------------------*/
-#ifdef KEY
 extern WN *WN_LOOP_UpperBound( const WN *loop, OPCODE *compare,
                                BOOL     enhanced)
-#else
-extern WN *WN_LOOP_UpperBound( const WN *loop, OPCODE *compare )
-#endif
 {
   WN *iv;		/* induction variable */
   ST_IDX iv_st;		/*   it's symbol table entry */
@@ -1295,7 +1287,6 @@ extern WN *WN_LOOP_UpperBound( const WN *loop, OPCODE *compare )
     *compare = wn_loop_reverse_compare( end_opc );
     return WN_kid0(end);
   }
-#ifdef KEY
   if (enhanced){
     new_end = WN_COPY_Tree_With_Map(end);
     if (WN_Solve_For(new_end, iv_st, iv_ofst) &&
@@ -1304,7 +1295,6 @@ extern WN *WN_LOOP_UpperBound( const WN *loop, OPCODE *compare )
       return WN_kid1(new_end);
     }
   }
-#endif
   /* if we get here, we must not have figured out the upper bound */
   *compare = OPCODE_UNKNOWN;
   return NULL;
@@ -1384,11 +1374,7 @@ extern WN *WN_LOOP_Increment( const WN *loop, BOOL *is_incr )
 /* Determine the trip count, which may be a LDID, or INTCONST  */
 /* If unable to determine it, returns NULL.                    */
 /*-------------------------------------------------------------*/
-#ifdef KEY
 extern WN *WN_LOOP_TripCount(const WN *loop, BOOL enhanced)
-#else
-extern WN *WN_LOOP_TripCount(const WN *loop)
-#endif
 {
   WN *lb;			/* lower bound of loop */
   WN *ub;			/* upper bound of loop */
@@ -1473,8 +1459,6 @@ extern WN *WN_LOOP_TripCount(const WN *loop)
   return trip_cnt;
 }
 
-#ifdef KEY
-// Bug 10011
 static BOOL
 type_ok (const TY_IDX ty)
 {
@@ -1510,7 +1494,6 @@ type_ok (const TY_IDX ty)
 
   return FALSE;
 }
-#endif
 
 #ifdef TARG_IA64
 static TY_IDX
@@ -1527,7 +1510,6 @@ static TY_IDX
 field_type (const WN* wn)
 {
   UINT cur_field_id = 0;
-#ifdef KEY
   TY_IDX ty;
 
   // Handle field_id for istore.
@@ -1544,10 +1526,6 @@ field_type (const WN* wn)
   Is_True (TY_kind(ty) == KIND_STRUCT,
            ("field_type: cannot get to field of a non-struct type"));
   FLD_HANDLE fld = FLD_get_to_field (ty, WN_field_id(wn), cur_field_id);
-#else
-  FLD_HANDLE fld = FLD_get_to_field (WN_ty(wn), WN_field_id(wn),
-				     cur_field_id);
-#endif
   Is_True (! fld.Is_Null(), ("Invalid field id %d for type 0x%x",
 			     WN_field_id(wn), WN_ty(wn)));
   return FLD_type (fld);
@@ -1563,7 +1541,7 @@ field_type (const WN* wn)
  *   See the WHIRL document.
  */
 #ifdef TARG_IA64
-/* KEY: MODIFICATION to above comment: For ILOAD, it is the type pointed
+/* MODIFICATION to above comment: For ILOAD, it is the type pointed
  * to by the addr ty.
  */
 TY_IDX
@@ -1579,9 +1557,6 @@ WN_object_ty (const WN *wn)
 
     if ((WN_operator(wn) == OPR_LDID ||
          WN_operator(wn) == OPR_ILOAD 
-#ifndef KEY
-         || WN_operator(wn) == OPR_LDBITS
-#endif
         ) && WN_field_id(wn) != 0 &&
              TY_kind(WN_ty(wn)) == KIND_STRUCT)
       return field_type (WN_ty(wn), WN_field_id(wn));
@@ -1619,30 +1594,22 @@ WN_object_ty (const WN *wn)
     }
 
     if ((WN_operator(wn) == OPR_LDID 
-#ifdef KEY
 	 || WN_operator(wn) == OPR_ILOAD
-#else
-	 || WN_operator(wn) == OPR_LDBITS
-#endif
 	 ) && 
 	WN_field_id(wn) != 0 &&
 	TY_kind(WN_ty(wn)) == KIND_STRUCT)
       return field_type (wn);
-#ifdef KEY
     if (WN_operator(wn) == OPR_ILOAD) {
       const TY& ty = Ty_Table[WN_load_addr_ty (wn)];
       Is_True (TY_kind(ty) == KIND_POINTER,
                ("Addr TY of ILOAD is not KIND_POINTER."));
       return TY_pointed(ty);
     }
-#endif
     return WN_ty(wn);
   } else if (OPCODE_is_store(WN_opcode(wn))) {
     if (WN_operator(wn) == OPR_STID || WN_operator(wn) == OPR_STBITS) {
       if (WN_field_id(wn) != 0 && TY_kind(WN_ty(wn)) == KIND_STRUCT
-#ifdef KEY
 	  && WN_operator(wn) == OPR_STID
-#endif
 	  )
 	return field_type (wn);
       return WN_ty(wn);
@@ -1651,14 +1618,12 @@ WN_object_ty (const WN *wn)
       Is_True(TY_kind(ty) == KIND_POINTER,
 	      ("TY of ISTORE is not KIND_POINTER."));
       TY_IDX pointed = TY_pointed (ty);
-#ifdef KEY
       if (WN_operator(wn) == OPR_ISTORE &&
           WN_field_id(wn) != 0 &&
           TY_kind(pointed) == KIND_STRUCT &&
           !TY_is_union(pointed) &&
           type_ok (pointed))
         return field_type (wn);
-#endif
       return pointed;
     }
   } else {
@@ -1847,7 +1812,6 @@ extern void Add_Pragma_To_MP_Regions (WN_VECTOR *wnv,
       WN_PRAGMA_ID pragma = (WN_PRAGMA_ID) WN_pragma(pragma_wn);
 
       if (Pragma_is_Parallel_Region(pragma)) {
-#ifdef KEY
         // Don't insert the pragma if it is already there.
         // This is, however, not required for correctness/performance
         // The problem of duplicate pragmas seems to be more severe for
@@ -1868,7 +1832,6 @@ extern void Add_Pragma_To_MP_Regions (WN_VECTOR *wnv,
           if (match)
             continue; // process next region
         }
-#endif // KEY
         WN *shared_pwn = WN_CreatePragma (pragma_id, st, ofst, 0);
         if (make_compiler_generated) {
           WN_set_pragma_compiler_generated(shared_pwn);
@@ -1901,11 +1864,7 @@ extern void Add_Pragma_To_MP_Regions (WN_VECTOR *wnv,
 
         WN_INSERT_BlockBefore (WN_region_pragmas(region_wn), NULL, shared_pwn);
 
-#ifdef KEY
         if (parent_map != WN_MAP_UNDEFINED)
-#else
-        if (parent_map)
-#endif
         {
           WN_MAP_Set(parent_map,
                      shared_pwn, (void*)WN_region_pragmas(region_wn));
@@ -1947,21 +1906,15 @@ extern void Add_Pragma_To_MP_Regions (WN_VECTOR *wnv,
         if (make_compiler_generated) {
           WN_set_pragma_compiler_generated(local_pwn);
         }
-#ifdef KEY /* Bug 4828 */
         WN *last = WN_last(WN_region_pragmas(region_wn));
         if (last && 
             WN_opcode(last) == OPC_PRAGMA &&
             WN_pragma(last) == WN_PRAGMA_END_MARKER)
           WN_INSERT_BlockBefore (WN_region_pragmas(region_wn), last, local_pwn);
         else
-#endif
           WN_INSERT_BlockBefore (WN_region_pragmas(region_wn), NULL, local_pwn);
 
-#ifdef KEY
         if (parent_map != WN_MAP_UNDEFINED)
-#else
-        if (parent_map)
-#endif
         {
           WN_MAP_Set(parent_map,local_pwn,(void*)WN_region_pragmas(region_wn));
         }

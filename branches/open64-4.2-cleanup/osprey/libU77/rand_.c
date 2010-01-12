@@ -36,15 +36,12 @@ Boston, MA 02111-1307, USA.  */
 
 /* Note this is per SunOS -- other s may have no arg. */
 
-#ifdef KEY /* Bug 1683, 5019 */
 #include "cray/mtlock.h"
 plock_t pathf90_rand_mutex = MEM_LOCK_INIT;
-#endif /* KEY Bug 1683 */
 
 double
 G77_rand_0 (integer * flag)
 {
-#ifdef KEY /* Bug 1683 */
   /* g77 provides a zero from outside library if user omits optional arg */
   integer zero = 0;
   flag = (0 == flag) ? (&zero) : flag;
@@ -62,17 +59,4 @@ G77_rand_0 (integer * flag)
   double result = (double) rand () / RAND_MAX;
   MEM_UNLOCK(&pathf90_rand_mutex);
   return result;
-#else
-  switch (*flag)
-    {
-    case 0:
-      break;
-    case 1:
-      srand (0);		/* Arbitrary choice of initialiser. */
-      break;
-    default:
-      srand (*flag);
-    }
-  return (float) rand () / RAND_MAX;
-#endif /* KEY Bug 1683 */
 }

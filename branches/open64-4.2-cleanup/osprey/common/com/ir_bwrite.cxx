@@ -603,7 +603,7 @@ WN_write_tree (PU_Info *pu, WN_MAP off_map, Output_File *fl)
 				padding);
     tree_base = fl->file_size;
 
-#if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
+#if !defined(FRONT_END) && !defined(IR_TOOLS)
     this_tree = ir_b_write_tree (tree, tree_base, fl, off_map, pu);
 #else
     this_tree = ir_b_write_tree (tree, tree_base, fl, off_map);
@@ -928,10 +928,8 @@ WN_write_feedback (PU_Info* pu, Output_File* fl)
     pu_hdr.pu_checksum = Convert_Feedback_Info (Cur_PU_Feedback,
 						PU_Info_tree_ptr (pu),
 						pu_handle);
-#ifdef KEY
     pu_hdr.pu_size = 0;
     pu_hdr.runtime_fun_address = Cur_PU_Feedback->Get_Runtime_Func_Addr();
-#endif
     
     pu_hdr.pu_name_index = 0;
     pu_hdr.pu_file_offset = 0;
@@ -962,7 +960,6 @@ WN_write_feedback (PU_Info* pu, Output_File* fl)
 		   pu_hdr.pu_num_call_entries,
 		   pu_hdr.pu_call_offset);
 
-#ifdef KEY
     write_profile (feedback_base, pu_handle.Get_Icall_Table (), fl,
 		   pu_hdr.pu_num_icall_entries,
 		   pu_hdr.pu_icall_offset);
@@ -974,7 +971,6 @@ WN_write_feedback (PU_Info* pu, Output_File* fl)
     write_profile (feedback_base, pu_handle.Get_Value_FP_Bin_Table (), fl,
 		   pu_hdr.pu_num_value_fp_bin_entries,
 		   pu_hdr.pu_value_fp_bin_offset);   
-#endif
 
     BCOPY (&pu_hdr, fl->map_addr + feedback_base, sizeof(pu_hdr));
     
@@ -1485,7 +1481,7 @@ Open_Output_Info (char *output_file)
     return ir_output;
 }
 
-#if defined(KEY) && defined(BACK_END)
+#if defined(BACK_END)
 #include "be_ipa_util.h"
 #endif
 
@@ -1502,7 +1498,7 @@ Write_Global_Info (PU_Info *pu_tree)
 
     WN_write_strtab(Index_To_Str (0), STR_Table_Size (), ir_output);
 
-#if defined(KEY) && defined(BACK_END)
+#if defined(BACK_END)
     if (Mod_Ref_Info_Table_Size() != 0) 
       IPA_write_summary (IPA_irb_write_mod_ref_info, ir_output);
 #endif

@@ -45,9 +45,7 @@
 #include <time.h>
 #include <sys/types.h>
 
-#ifdef KEY /* Bug 8290 */
 #  include "element.h"
-#endif /* KEY Bug 8290 */
 
 /*
  *	JDATE	Returns the current date in "YYDDD   " format.

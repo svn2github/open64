@@ -316,8 +316,7 @@ int e_wsfi_mp (unit **fu)
    /* (*fu)->f77fmtbuf = NULL; */
 
 
-   /* Don't do this; it's already been done by en_fio 
-       Richard Shapiro 8/9/95*/
+   /* Don't do this; it's already been done by en_fio */
    /* z_wnew (*fu); */
    (*fu)->lock_unit = 0;
    return (n);

@@ -176,7 +176,6 @@ DopeVectorType	*vector)
     }
   }
 
-#ifdef KEY /* Bug 10771 */
   if (zero_szd_source) {
     /* Create an empty array as the result */
     result->n_dim = 1;
@@ -184,10 +183,6 @@ DopeVectorType	*vector)
     SET_EXTENT_IN_DESC(result,0,0);
     return ;
   }
-#else /* KEY Bug 10771 */
-  if (zero_szd_source)
-    return ;
-#endif /* KEY Bug 10771 */
 
   a_size   = src_extent[0] ;
   a_stride = src_stride[0] ;
@@ -309,12 +304,8 @@ DopeVectorType	*vector)
       for ( i = 0 ; i < a_size ; i ++ ) {
 	if (*mask_p) {
 	  num_trues ++ ;
-#ifdef KEY /* bug 8062 */
 	  /* Using IEEE FP on non-FP data might change bits during assign */
 	  *(ui4 *)result_p = *(ui4 *)array_p ;
-#else /* KEY bug 8062 */
-	  *(r4 *)result_p = *(r4 *)array_p ;
-#endif /* KEY bug 8062 */
 	  result_p += r_stride ;
 	}
 	mask_p += m_stride ;
@@ -345,12 +336,8 @@ DopeVectorType	*vector)
 	ll2 = GET_EXTENT_FROM_DESC(vector,0) ;
 	if (ALIGNED_r4(vector_p)) {
 	  for ( i = 0 ; i < ll2-ll1 ; i ++ ) {
-#ifdef KEY /* bug 8062 */
 	    /* Using IEEE FP on non-FP data might change bits during assign */
 	    *(ui4 *)result_p = *(ui4 *)vector_p ;
-#else /* KEY bug 8062 */
-	    *(r4 *)result_p = *(r4 *)vector_p ;
-#endif /* KEY bug 8062 */
 	    result_p += r_stride ;
 	    vector_p += v_stride ;
 	  }
@@ -372,12 +359,8 @@ DopeVectorType	*vector)
       for ( i = 0 ; i < a_size ; i ++ ) {
 	if (*mask_p) {
 	  num_trues ++ ;
-#ifdef KEY /* bug 8062 */
 	  /* Using IEEE FP on non-FP data might change bits during assign */
 	  *(ui8 *)result_p = *(ui8 *)array_p ;
-#else /* KEY bug 8062 */
-	  *(r8 *)result_p = *(r8 *)array_p ;
-#endif /* KEY bug 8062 */
 	  result_p += r_stride ;
 	}
 	mask_p += m_stride ;
@@ -408,12 +391,8 @@ DopeVectorType	*vector)
 	ll2 = GET_EXTENT_FROM_DESC(vector,0) ;
 	if (ALIGNED_r8(vector_p)) {
 	  for ( i = 0 ; i < ll2-ll1 ; i ++ ) {
-#ifdef KEY /* bug 8062 */
 	  /* Using IEEE FP on non-FP data might change bits during assign */
 	    *(ui8 *)result_p = *(ui8 *)vector_p ;
-#else /* KEY bug 8062 */
-	    *(r8 *)result_p = *(r8 *)vector_p ;
-#endif /* KEY bug 8062 */
 	    result_p += r_stride ;
 	    vector_p += v_stride ;
 	  }
@@ -435,11 +414,7 @@ DopeVectorType	*vector)
       for ( i = 0 ; i < a_size ; i ++ ) {
 	if (*mask_p) {
 	  num_trues ++ ;
-#ifdef KEY /* Bug 4039 */
 	  *(ui16 *)result_p = *(ui16 *)array_p ;
-#else /* KEY Bug 4039 */
-	  *(r16 *)result_p = *(r16 *)array_p ;
-#endif /* KEY Bug 4039 */
 	  result_p += r_stride ;
 	}
 	mask_p += m_stride ;
@@ -470,11 +445,7 @@ DopeVectorType	*vector)
 	ll2 = GET_EXTENT_FROM_DESC(vector,0) ;
 	if (ALIGNED_r16(vector_p)) {
 	  for ( i = 0 ; i < ll2-ll1 ; i ++ ) {
-#ifdef KEY /* Bug 4039 */
 	    *(ui16 *)result_p = *(ui16 *)vector_p ;
-#else /* KEY Bug 4039 */
-	    *(r16 *)result_p = *(r16 *)vector_p ;
-#endif /* KEY Bug 4039 */
 	    result_p += r_stride ;
 	    vector_p += v_stride ;
 	  }

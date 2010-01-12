@@ -49,9 +49,7 @@ int64 l_nint(float *x)
   return ((*x) >= 0.0F ? (int64)(*x + .5F) : -(int64)(.5F - *x));
 }
 
-#ifdef KEY /* Bug 3869 */
 int64 l_nint_d(double *x)
 {
   return ((*x) >= 0.0 ? (int64)(*x + .5) : -(int64)(.5 - *x));
 }
-#endif /* KEY Bug 3869 */

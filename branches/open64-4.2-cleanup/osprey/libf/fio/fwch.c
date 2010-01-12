@@ -94,7 +94,6 @@
 #undef putc
 #endif
 
-#ifdef KEY /* Bug 5926 */
 /*
  * Return a terminator to pass to function _pack().
  *
@@ -115,7 +114,6 @@ static int terminator(int *mode, long nchr, long count, long chars)
 	}
 	return -1;
 }
-#endif /* KEY Bug 5926 */
 
 /*
  *	_fwch
@@ -186,12 +184,8 @@ _fwch(
 			count	= chars - nchr;
 			if (count > TBUFSZB)
 				count	= TBUFSZB;
-#ifdef KEY /* Bug 5926 */
 			count = _pack(&uda[nchr], (char *)tbuf, count,
 			  terminator(&mode, nchr, count, chars));
-#else /* KEY Bug 5926 */
-			_pack(&uda[nchr], (char *)tbuf, count, -1);
-#endif /* KEY Bug 5926 */
 			ret	= fwrite(tbuf, 1, count, fptr);
 			if ( ret != count || ferror(fptr) ) {
 				if ( ret != count || errno == 0)
@@ -216,13 +210,8 @@ _fwch(
 				if (count > TBUFSZB)
 					count	= TBUFSZB;
 
-#ifdef KEY /* Bug 5926 */
 			count= _pack(&uda[nchr], (char *)tbuf, count,
 			  terminator(&mode, nchr, count, chars));
-#else /* KEY Bug 5926 */
-				_pack(&uda[nchr], (char *)tbuf, count, -1);
-
-#endif /* KEY Bug 5926 */
 				ret	= fwrite(tbuf, 1, count, fptr);
 
 				if ( ret != count || ferror(fptr) ) {

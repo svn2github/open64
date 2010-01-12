@@ -39,7 +39,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -61,20 +60,3 @@ pathf90_system(char *str, pathf90_i4 *status, int len)
 }
   
 
-#else
-
-extern void
-system_ (register char *str, int len)
-{
-char *buff;
-
-      buff = (char *) malloc( len + 1 );
-      strncpy( buff, str, len );
-      buff[len] = '\0';
-
-      system(buff);
-
-      free( buff );
-}
-
-#endif /* KEY Bug 1683 */

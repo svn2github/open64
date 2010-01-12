@@ -46,11 +46,7 @@
 #include <math.h>
 #include "moremath.h"
 
-#ifdef KEY
 float __rmod(float x, float y)
-#else
-float __rmod(float x, float_t y)
-#endif // KEY
 {
   float q1, q2;
 
@@ -61,11 +57,7 @@ float __rmod(float x, float_t y)
   return (x - y * q2);
 }
 
-#ifdef KEY
 float r_mod(float *x, float *y)
-#else
-float r_mod(float *x, float_t *y)
-#endif // KEY
 {
   return (__rmod(*x, *y));
 }

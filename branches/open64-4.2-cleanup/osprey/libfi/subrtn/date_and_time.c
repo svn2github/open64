@@ -64,7 +64,6 @@ _DATE_AND_TIME (dat, tim, zon, values)
 	struct tm	*timer;
 	struct timeval	tv;
 	size_t		res;
-#ifdef KEY /* Mac port */
 	/* The POSIX global "timzone" is available on Linux, but doesn't work,
 	 * and is not available on Darwin.  The "gettimeofday" function works
 	 * on both Linux and Darwin. */
@@ -72,9 +71,6 @@ _DATE_AND_TIME (dat, tim, zon, values)
 	struct timezone tzp;
 	gettimeofday(&tp, &tzp);
 	time_t timezone = 60 * tzp.tz_minuteswest;
-#else /* KEY Mac port */
-	extern time_t	timezone;
-#endif /* KEY Mac port */
 	int		hr, min;
 	char		sign;
 	_f_int		*vptr;
@@ -111,11 +107,7 @@ _DATE_AND_TIME (dat, tim, zon, values)
 	    tlen = _fcdlen (tim);
 	    res = strftime (tmp, 10, "%H %M %S", timer);
 	    tmp[8] = '\0';
-#ifdef KEY /* Mac port */
 	    sprintf (tmp, "%s.%3.3ld", tmp, (long) tv.tv_usec/1000);
-#else /* KEY Mac port */
-	    sprintf (tmp, "%s.%3.3ld", tmp, tv.tv_usec/1000);
-#endif /* KEY Mac port */
 /*
  *	This seemingly useless loop is necessary because SCM expands the
  *	format string into something which is not desired.  The only way
@@ -150,9 +142,6 @@ _DATE_AND_TIME (dat, tim, zon, values)
                 if (timer->tm_isdst) {
  	            hr--;
                 } else {
-#ifndef KEY
- 	            hr++;
-#endif
                 }
 	    } else {
 		sign = '+';
@@ -235,7 +224,6 @@ _DATE_AND_TIME (dat, tim, zon, values)
 	}
 }
 
-#ifdef KEY /* Bug 11640 */
 #include <math.h>
 
 /* Easy way to init these to zero without knowing internals */
@@ -288,4 +276,3 @@ double dsecnds_(double *);
 #pragma weak dsecnds_ = dsecnds_vms
 #endif /* defined(BUILD_OS_DARWIN) */
 
-#endif /* KEY Bug 11640 */

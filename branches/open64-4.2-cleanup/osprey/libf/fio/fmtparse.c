@@ -130,11 +130,7 @@ static void inline byte_swap (unsigned int *) __attribute__ ((always_inline));
 static void inline byte_swap (unsigned int * iptr)
 {
   unsigned char tmp;
-#ifdef KEY /* Mac port */
   unsigned char * cptr = (unsigned char *) iptr;
-#else /* KEY Mac port */
-  unsigned char * cptr = (char *) iptr;
-#endif /* KEY Mac port */
 
   tmp = cptr[0];
   cptr[0] = cptr[3];

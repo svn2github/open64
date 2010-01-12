@@ -432,7 +432,6 @@ rd_OZ (unit *ftnunit, unsigned char *n, long w, ftnlen len, int base)
 	 else
 	    continue;
       }
-/* fix bug 5221 */
       else if ((ps == s) && (c == '+' || c == '-'))
 	 continue;
       else
@@ -468,7 +467,6 @@ rd_OZ (unit *ftnunit, unsigned char *n, long w, ftnlen len, int base)
    }
    while (vbuf >= n)
       (*vbuf--) = '\0';
-/* fix bug 5221 */
    if (c == '-') {
       for (vbuf = n; vbuf < (n + len); vbuf++)
 	 *vbuf = (unsigned char) (~(*vbuf));
@@ -482,7 +480,6 @@ rd_OZ (unit *ftnunit, unsigned char *n, long w, ftnlen len, int base)
    }
    while (vbuf < (n + len))
       (*vbuf++) = '\0';
-/* fix bug 5221 */
    if (c == '-') {
       for (vbuf = (n + len - 1); vbuf >= (n); vbuf--)
 	 *vbuf = ~(*vbuf);
@@ -568,7 +565,6 @@ int rd_B (unit *ftnunit, unsigned char *n, long w, ftnlen len)
    }
    while (vbuf >= n)
       (*vbuf--) = '\0';
-/* fix bug 5221 */
    if (c == '-') {
       for (vbuf = n; vbuf < (n + len); vbuf++)
 	 *vbuf = (unsigned char) (~(*vbuf));
@@ -582,7 +578,6 @@ int rd_B (unit *ftnunit, unsigned char *n, long w, ftnlen len)
    }
    while (vbuf < (n + len))
       (*vbuf++) = '\0';
-/* fix bug 5221 */
    if (c == '-') {
       for (vbuf = (n + len - 1); vbuf >= (n); vbuf--)
 	 *vbuf = ~(*vbuf);

@@ -892,31 +892,6 @@ Process_Command_Line_Group (char *flag, OPTION_GROUP *opt_groups)
 		Update_Scalar_Value ( found, (UINT64)ival );
 		break;
 
-#if 0
-	    case OVK_INT64:
-	    case OVK_UINT64:
-		if ( ODESC_min_val(found) < INT32_MIN	||
-		    ODESC_max_val(found) > INT32_MAX )
-		    {
-			ErrMsg ( EC_Unimplemented,
-				"Process_Command_Line_Group: "
-				"> 32-bit flag values" );
-		    }
-		if ( ! hasval ) {
-		    ival = ODESC_def_val(found);
-		} else {
-		    char *tval = val;
-		    if ((*val < '0' || *val > '9') && *val != '-')
-		      ErrMsg(EC_Flag_Int_Expected, this_flag);
-		    ival = Get_Numeric_Flag ( &tval,
-					     ODESC_min_val(found),
-					     ODESC_max_val(found),
-					     ODESC_def_val(found),
-					     this_flag );
-		}
-		Update_Scalar_Value ( found, (UINT64)ival );
-		break;
-#endif
 
 	    case OVK_NAME:
 		if ( ! hasval ) {
@@ -1149,14 +1124,11 @@ Print_Option_Group ( FILE *tf, OPTION_GROUP *og, const char *prefix,
 	if ( ODESC_primary(desc) == desc
 	  || ODESC_primary(desc) == NULL  )
 	{
-#ifdef KEY /* bug 12020: The compiler may change the fprintf to fputs,
+        /* bug 12020: The compiler may change the fprintf to fputs,
 	      which cannot handle null. */
 	  char ** var = (char **) ODESC_variable(desc);
 	  if ( *var != NULL )
 	    fprintf ( tf, "%s", *var);
-#else
-	  fprintf ( tf, "%s", *((char **) ODESC_variable(desc)));
-#endif
 	} else {
 	  fprintf ( tf, " (See '%s' above)",
 		    ODESC_name(ODESC_primary(desc)) );

@@ -20,7 +20,6 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write the Free Software Foundation, Inc., 59
 Temple Place - Suite 330, Boston MA 02111-1307, USA.
 */
-#ifdef KEY /* Bug 3018 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -31,4 +30,3 @@ Temple Place - Suite 330, Boston MA 02111-1307, USA.
  */
 float dtime_(float tarray[2]) { return pathf90_dtime(tarray); }
 
-#endif /* KEY Bug 3018 */

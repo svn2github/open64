@@ -60,9 +60,6 @@
 #include "lio.h"
 
 extern	
-#ifndef KEY /* this can cause wrong func being called when compiled by gcc */
-const 
-#endif
 ic_func	*_iconvtab[LAST_DATA_ED + 1];
 extern	const short	_idedtab[DVTYPE_NTYPES];
 
@@ -132,9 +129,6 @@ _rdfmt(
 	int	_nicverr(	/* Map NICV-type errors to Fortran errors */
 			const int _Nicverror);
 
-#ifndef KEY /* this can cause wrong func being called when compiled by gcc */
-	const 
-#endif
 	    ic_func	*ngcf;		/* Generic NICV-type conversion func */
 
 	/* If these assertions are not all true, then we're in deep doo-doo. */
@@ -465,7 +459,6 @@ _rdfmt(
 					&css->u.fmt.u.fe.scale);
 
 				if (nstat < 0) {
-#ifdef KEY /* Bug 8105 */
 					/* VMS extension allows numeric field
 					 * to end prematurely with "," */
 					if (EX_ILLCHAR == nstat &&
@@ -477,11 +470,6 @@ _rdfmt(
 					  if (stat > 0)
 						  goto done;
 					}
-#else /* KEY Bug 8105 */
-					stat	= _nicverr(nstat);
-					if (stat > 0)
-						goto done;
-#endif /* KEY Bug 8105 */
 				}
 
 				/* Advance data addresses */
@@ -660,12 +648,7 @@ _rdfmt(
 			 * Literals and H edit-descriptors are invalid in
 			 * input formats.
 			 */
-// Bug 1883
-# ifdef KEY
                         cup->ulineptr          += width;
-# else
-			stat			= FEFMTLII;
-# endif
 			repcnt			= repcnt - 1;
 			break;
 

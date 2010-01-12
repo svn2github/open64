@@ -54,7 +54,6 @@ struct tb { float usrtime; float systime; };
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#ifdef KEY /* Bug 3018 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -77,21 +76,6 @@ pathf90_subr_etime (float tarray[2], float *result)
   *result = pathf90_etime(tarray);
 }
 
-#else
-
-float
-etime_ (struct tb *et)
-{	struct rusage ru;
-
-	getrusage (RUSAGE_SELF, &ru);
-	et->usrtime = (float)ru.ru_utime.tv_sec
-		    + (float)ru.ru_utime.tv_usec * 1e-6;
-	et->systime = (float)ru.ru_stime.tv_sec
-		    + (float)ru.ru_stime.tv_usec * 1e-6;
-	return(et->usrtime + et->systime);
-}
-
-#endif /* KEY Bug 3018 */
 
 #else  /* sgi || __linux */
 

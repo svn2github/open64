@@ -119,7 +119,7 @@ const char *Whirl_Revision = WHIRL_REVISION;
  */
 void *IPAA_Local_Map = NULL;
 
-#if defined(KEY) && defined(BACK_END)
+#if defined(BACK_END)
 #include "be_ipa_util.h"
 MOD_REF_INFO_TAB Mod_Ref_Info_Table;
 #endif
@@ -317,7 +317,7 @@ ir_b_create_map (Output_File *fl)
 
 
 /* Walk the tree and copy it to contiguous memory block in the temp. file */
-#if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
+#if !defined(FRONT_END) && !defined(IR_TOOLS)
 
 // ******************** IPA weak symbols^
 #define IPA_get_symbol_file_array (*IPA_get_symbol_file_array_p)
@@ -443,7 +443,7 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 
     }
 #endif /* BACK_END */
-#if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
+#if !defined(FRONT_END) && !defined(IR_TOOLS)
 // ONLY for IPA.
     if (Get_ipa_tlog_phase() == PHASE_IPA && WN_operator(node) == OPR_REGION
         && WN_region_is_EH (node) && WN_block_empty (WN_region_pragmas (node)))
@@ -489,7 +489,7 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 	    WN_last(WN_ADDR(node_offset)) = (WN *) -1;
 	} else {
 	    register WN *wn = WN_first (node);
-#if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
+#if !defined(FRONT_END) && !defined(IR_TOOLS)
 	    prev = ir_b_write_tree(wn, base_offset, fl, off_map, pu);
 #else
 	    prev = ir_b_write_tree(wn, base_offset, fl, off_map);
@@ -497,7 +497,7 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 	    WN_first(WN_ADDR(node_offset)) = (WN *) (INTPTR) prev;
 
 	    while (wn = WN_next(wn)) {
-#if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
+#if !defined(FRONT_END) && !defined(IR_TOOLS)
 		this_node = ir_b_write_tree(wn, base_offset, fl, off_map, pu);
 #else
 		this_node = ir_b_write_tree(wn, base_offset, fl, off_map);
@@ -519,7 +519,7 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 	    if (WN_kid(node, i) == 0) {
 		WN_kid(WN_ADDR(node_offset), i) = (WN *) -1;
 	    } else {
-#if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
+#if !defined(FRONT_END) && !defined(IR_TOOLS)
 		kid = ir_b_write_tree (WN_kid(node, i), base_offset,
 				       fl, off_map, pu);
 #else
@@ -734,7 +734,7 @@ ir_b_write_dst (DST_TYPE dst, off_t base_offset, Output_File *fl)
     return cur_offset - base_offset;
 }
 
-#if defined(KEY) && defined(BACK_END)
+#if defined(BACK_END)
 
 #define HEADER_ADDR(offset) \
  ((Elf64_Word*)(fl->map_addr + offset))

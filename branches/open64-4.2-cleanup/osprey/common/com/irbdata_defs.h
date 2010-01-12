@@ -79,7 +79,6 @@ enum INITVKIND {
 #endif
 };
 
-#ifdef KEY
 enum INITVFLAGS {	// currently only for EH
     INITVFLAGS_UNDEFINED	= 0,
     INITVFLAGS_ACTION_REC,
@@ -88,7 +87,6 @@ enum INITVFLAGS {	// currently only for EH
     INITVFLAGS_SUMMARIZED, // initv has been summarized in ipl, don't redo
     INITVFLAGS_UPDATED     // summary info in initv has been updated in ipa
 };
-#endif // KEY
 
 enum INITVLABELFLAGS {           // for Label, only used by label values so far
     INITVLABELFLAGS_FIRST  = 0,        // first valid value
@@ -138,11 +136,7 @@ struct INITV
 
 	struct {
 	    INITV_IDX blk;		// useful for aggregate values
-#ifdef KEY
 	    mINT32 flags;		// flags
-#else
-	    mINT32 unused;		// filler, must be zero
-#endif // KEY
 	} blk;
 	
 	struct {

@@ -97,11 +97,7 @@ DopeVectorType	*mask)
 
   i1 temp,new ;
 
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {   /* is third arg mask or dim? */
     if (dim != NULL) {
       if (GET_DV_LOGICAL_FROM_DESC(dim)) {
@@ -125,11 +121,7 @@ DopeVectorType	*mask)
   for (i = 0 ; i <= src_rank ; i ++)
     counter[i] = 0 ;
 
-#ifdef KEY /* Bug 10410 */
   if (HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask != NULL)
-#endif /* KEY Bug 10410 */
   {
 
     msk_typ_sz = GET_ELEMENT_SZ_FROM_DESC(mask);
@@ -158,11 +150,7 @@ DopeVectorType	*mask)
     return accum;
   }
   array_p = array_b ;
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {
 
     {
@@ -271,11 +259,7 @@ DopeVectorType	*mask)
 
   i2 temp,new ;
 
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {   /* is third arg mask or dim? */
     if (dim != NULL) {
       if (GET_DV_LOGICAL_FROM_DESC(dim)) {
@@ -299,11 +283,7 @@ DopeVectorType	*mask)
   for (i = 0 ; i <= src_rank ; i ++)
     counter[i] = 0 ;
 
-#ifdef KEY /* Bug 10410 */
   if (HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask != NULL)
-#endif /* KEY Bug 10410 */
   {
 
     msk_typ_sz = GET_ELEMENT_SZ_FROM_DESC(mask);
@@ -332,11 +312,7 @@ DopeVectorType	*mask)
     return accum;
   }
   array_p = array_b ;
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {
 
     {
@@ -445,11 +421,7 @@ DopeVectorType	*mask)
 
   i4 temp,new ;
 
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {   /* is third arg mask or dim? */
     if (dim != NULL) {
       if (GET_DV_LOGICAL_FROM_DESC(dim)) {
@@ -473,11 +445,7 @@ DopeVectorType	*mask)
   for (i = 0 ; i <= src_rank ; i ++)
     counter[i] = 0 ;
 
-#ifdef KEY /* Bug 10410 */
   if (HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask != NULL)
-#endif /* KEY Bug 10410 */
   {
 
     msk_typ_sz = GET_ELEMENT_SZ_FROM_DESC(mask);
@@ -506,11 +474,7 @@ DopeVectorType	*mask)
     return accum;
   }
   array_p = array_b ;
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {
 
     {
@@ -619,11 +583,7 @@ DopeVectorType	*mask)
 
   i8 temp,new ;
 
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {   /* is third arg mask or dim? */
     if (dim != NULL) {
       if (GET_DV_LOGICAL_FROM_DESC(dim)) {
@@ -647,11 +607,7 @@ DopeVectorType	*mask)
   for (i = 0 ; i <= src_rank ; i ++)
     counter[i] = 0 ;
 
-#ifdef KEY /* Bug 10410 */
   if (HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask != NULL)
-#endif /* KEY Bug 10410 */
   {
 
     msk_typ_sz = GET_ELEMENT_SZ_FROM_DESC(mask);
@@ -680,11 +636,7 @@ DopeVectorType	*mask)
     return accum;
   }
   array_p = array_b ;
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {
 
     {
@@ -793,11 +745,7 @@ DopeVectorType	*mask)
 
   r4 temp,new ;
 
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {   /* is third arg mask or dim? */
     if (dim != NULL) {
       if (GET_DV_LOGICAL_FROM_DESC(dim)) {
@@ -821,11 +769,7 @@ DopeVectorType	*mask)
   for (i = 0 ; i <= src_rank ; i ++)
     counter[i] = 0 ;
 
-#ifdef KEY /* Bug 10410 */
   if (HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask != NULL)
-#endif /* KEY Bug 10410 */
   {
 
     msk_typ_sz = GET_ELEMENT_SZ_FROM_DESC(mask);
@@ -854,11 +798,7 @@ DopeVectorType	*mask)
     return accum;
   }
   array_p = array_b ;
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {
 
     {
@@ -967,11 +907,7 @@ DopeVectorType	*mask)
 
   r8 temp,new ;
 
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {   /* is third arg mask or dim? */
     if (dim != NULL) {
       if (GET_DV_LOGICAL_FROM_DESC(dim)) {
@@ -995,11 +931,7 @@ DopeVectorType	*mask)
   for (i = 0 ; i <= src_rank ; i ++)
     counter[i] = 0 ;
 
-#ifdef KEY /* Bug 10410 */
   if (HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask != NULL)
-#endif /* KEY Bug 10410 */
   {
 
     msk_typ_sz = GET_ELEMENT_SZ_FROM_DESC(mask);
@@ -1028,11 +960,7 @@ DopeVectorType	*mask)
     return accum;
   }
   array_p = array_b ;
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {
 
     {
@@ -1141,11 +1069,7 @@ DopeVectorType	*mask)
 
   r16 temp,new ;
 
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {   /* is third arg mask or dim? */
     if (dim != NULL) {
       if (GET_DV_LOGICAL_FROM_DESC(dim)) {
@@ -1169,11 +1093,7 @@ DopeVectorType	*mask)
   for (i = 0 ; i <= src_rank ; i ++)
     counter[i] = 0 ;
 
-#ifdef KEY /* Bug 10410 */
   if (HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask != NULL)
-#endif /* KEY Bug 10410 */
   {
 
     msk_typ_sz = GET_ELEMENT_SZ_FROM_DESC(mask);
@@ -1202,11 +1122,7 @@ DopeVectorType	*mask)
     return accum;
   }
   array_p = array_b ;
-#ifdef KEY /* Bug 10410 */
   if (!HAVE_MASK(mask))
-#else /* KEY Bug 10410 */
-  if (mask == NULL)
-#endif /* KEY Bug 10410 */
   {
 
     {

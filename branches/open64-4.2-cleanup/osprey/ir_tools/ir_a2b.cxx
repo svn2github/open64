@@ -236,10 +236,8 @@ ir_sel (char *input_file, char *output_file, char *func_name)
     BOOL found = FALSE;
     
     (void)Open_Input_Info (input_file);
-#ifdef KEY
     Initialize_Symbol_Tables (FALSE);
     New_Scope (GLOBAL_SYMTAB, Malloc_Mem_Pool, FALSE);
-#endif
     pu_tree = Read_Global_Info (NULL);
 
     Open_Output_Info (output_file);
@@ -294,10 +292,8 @@ ir_all (char *input_file, char *output_file)
     PU_Info *pu_tree, *pu = NULL;
     
     (void)Open_Input_Info (input_file);
-#ifdef KEY
     Initialize_Symbol_Tables (FALSE);
     New_Scope (GLOBAL_SYMTAB, Malloc_Mem_Pool, FALSE);
-#endif
     pu_tree = Read_Global_Info (NULL);
 
     Open_Output_Info (output_file);

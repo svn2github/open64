@@ -55,8 +55,6 @@ void __f90_MAIN(void)
         abort();
 }
 
-#ifdef PATHSCALE_MERGE
 typeof(__f90_MAIN) MAIN__ __attribute__((weak, alias("__f90_MAIN")));
-#endif
 
 #endif

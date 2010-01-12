@@ -186,10 +186,8 @@ extern BOOL WOPT_Enable_Ivar_PRE;       /* enable *p as PRE candidate */
 extern BOOL WOPT_Enable_Ivincr_Cand;
 extern BOOL WOPT_Enable_IVR;		/* induction-var recognition */
 extern INT32 WOPT_Enable_IVR_Expand_Limit;  /* limit of expr expansion to search for incr */
-#ifdef KEY
 extern INT32 WOPT_Enable_Ivr_Limit;
 extern INT32 WOPT_Enable_Ivr_Cand_Limit;
-#endif
 					
 /* do ivr for outermost in ||-region */
 extern BOOL WOPT_Enable_IVR_Outermost_Loop_Parallel_Region; 
@@ -224,10 +222,8 @@ extern BOOL WOPT_Enable_Prop_Ivar;	/* copy propagation thru iload's */
 extern BOOL WOPT_Enable_Prop_CSE;       /* copy propagation of CSE expressions */
 extern INT32 WOPT_Enable_Prop_Limit;	/* tree height limit in copy prop */
 extern INT32 WOPT_Enable_Prop_Weight_Limit; /* tree weight limit in copy prop */
-#ifdef KEY
 extern INT32 WOPT_Enable_Doend_Prop_Limit; /* tree height limit in copy prop for DOEND BBs */
 extern BOOL  WOPT_Enable_Prop_Dope;	/* propagate dope vector fields? */
-#endif
 extern BOOL WOPT_Enable_Prune;		/* temporary, pv 370066 */
 extern BOOL WOPT_Enable_Replace_Second_IV; /* Force replacement of secondary IV */
 extern BOOL WOPT_Enable_Replace_While_Loop_Second_IV; /* Force replacement of secondary IV */
@@ -320,7 +316,6 @@ extern INT32 WOPT_Enable_If_Cond_Limit; // Limit number of if-condition transfor
 extern INT32 WOPT_Tail_Dup_Max_Clone; // Limit code size bloats (in statement count)
                                                     // due to tail-duplication.
 
-#ifdef KEY
 extern BOOL  WOPT_Enable_Preserve_Mem_Opnds; // if TRUE, suppress EPRE on 
 				// iloads that are operands of FP operations
 extern BOOL  WOPT_Enable_Retype_Expr;   // whether to call WN_retype_expr to 
@@ -339,7 +334,6 @@ extern BOOL WOPT_Enable_Invariant_Loop_Bounds; // enable assumption that all
 extern BOOL WOPT_Enable_Subword_Opt; // whether to replace 1- or 2-byte-sized
 			              // load/store with EXTRACT/COMPOSE
 extern BOOL WOPT_Enable_New_Vsym_Allocation;
-#endif
 extern BOOL  WOPT_Enable_WOVP; // For running write-once variable promotion
 extern struct option_list *WOPT_Unroll_Skip;    // Skip unroll list 
 extern struct skiplist *WOPT_Unroll_Skip_List;  // Preprocessed unroll skip l 

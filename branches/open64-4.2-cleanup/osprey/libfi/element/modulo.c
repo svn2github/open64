@@ -60,11 +60,9 @@ extern long double __floorl();
 #endif /* END NOT __mips and NOT _LITTLE_ENDIAN */
 
 //Bug# 574
-#ifdef KEY
 #define __floor floor
 #define __floorl floorl
 #define __floorf floorf
-#endif
 
 /*
  *    _MODULO_X(A,P)  - called by compiled Fortran programs to calculate

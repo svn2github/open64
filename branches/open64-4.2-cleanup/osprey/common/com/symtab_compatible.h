@@ -99,9 +99,7 @@ ST_type (const ST* s) {
     switch (s->sym_class) {
     default:
 	Fail_FmtAssertion ("Invalid argument for ST_type ()");
-#ifdef KEY
     case CLASS_BLOCK: // this is for UpFormal_Arg_StkSeg used in va_start
-#endif
     case CLASS_VAR:
     case CLASS_CONST:
     case CLASS_PREG:

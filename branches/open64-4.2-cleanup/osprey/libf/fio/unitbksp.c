@@ -51,18 +51,11 @@ typedef long long _ftelltype;
 #define LIBFTELL ftell64
 #define FTELLZERO 0LL
 #else
-#ifdef KEY /* Bug 1678 */
 /* Need 64 bit position to support large files. */
 typedef off_t _ftelltype;
 #define LIBFSEEK fseeko
 #define LIBFTELL ftello
 #define FTELLZERO ((_ftelltype)0)
-#else
-typedef long _ftelltype;
-#define LIBFSEEK fseek
-#define LIBFTELL ftell
-#define FTELLZERO 0L
-#endif /* KEY Bug 1678 */
 #endif
 
 
@@ -146,11 +139,9 @@ _unit_bksp(unit *cup)
 			_ftelltype x, y;
 
 			y	= LIBFTELL(cup->ufp.std);	
-#ifdef KEY /* Bug 1678 */
 			if (((_ftelltype) -1) == y) {
 			  return FEINTUNK;
 			}
-#endif /* KEY Bug 1678 */
 			x	= y;
 
 			if (x < TBUFSZB)
@@ -158,13 +149,9 @@ _unit_bksp(unit *cup)
 			else
 				x -= TBUFSZB;
 
-#ifdef KEY /* Bug 1678 */
 			if (LIBFSEEK(cup->ufp.std, x, 0)) {
 			  return FEINTUNK;
 			}
-#else /* KEY Bug 1678 */
-			(void) LIBFSEEK(cup->ufp.std, x, 0);
-#endif /* KEY Bug 1678 */
 
 			/*
 			 * starting at the current character position
@@ -188,38 +175,26 @@ _unit_bksp(unit *cup)
 
         		for ( ; i >= 0; i--) {
   				if ( *(tp+i) != '\n') continue;
-#ifdef KEY /* Bug 1678 */
 				if (LIBFSEEK(cup->ufp.std, (_ftelltype)i+1-ret,
 				  1)) {
 				  return FEINTUNK;
 				}
-#else /* KEY Bug 1678 */
-				(void) LIBFSEEK(cup->ufp.std, (_ftelltype)i+1-ret, 1);
-#endif /* KEY Bug 1678 */
 				goto ok;
 			}
 
 			if (x == 0) {
-#ifdef KEY /* Bug 1678 */
 				if (LIBFSEEK(cup->ufp.std, FTELLZERO, 0)) {
 				  return FEINTUNK;
 				}
-#else /* KEY Bug 1678 */
-				(void) LIBFSEEK(cup->ufp.std, FTELLZERO, 0);
-#endif /* KEY Bug 1678 */
 				goto ok;
         		} 
 			else
 				if (ret <= 0)	/* Should never occur */
 					return(FEINTUNK);
 
-#ifdef KEY /* Bug 1678 */
 			if (LIBFSEEK(cup->ufp.std, x, 0)) {
 			  return FEINTUNK;
 			}
-#else /* KEY Bug 1678 */
-			(void) LIBFSEEK(cup->ufp.std, x, 0);
-#endif /* KEY Bug 1678 */
 		}
  
 	case FS_BIN:

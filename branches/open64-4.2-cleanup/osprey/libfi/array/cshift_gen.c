@@ -358,12 +358,8 @@ i4 *dim)
       ap1 = array_p + a_offs ;
 
       for ( k = 0 ; k < ll1 ; k ++ )  {
-#ifdef KEY /* bug 8062 */
 	/* Using IEEE FP on non-FP data might change bits during assign */
 	*(ui4 *)result_p = *(ui4 *)ap1 ;
-#else /* KEY bug 8062 */
-	*(r4 *)result_p = *(r4 *)ap1 ;
-#endif /* KEY bug 8062 */
 	result_p += r_stride ;
 	ap1 += a_stride ;
       }
@@ -371,12 +367,8 @@ i4 *dim)
       ap2 = array_p ;
 
       for ( k = 0 ; k < ll2 ; k ++ ) {
-#ifdef KEY /* bug 8062 */
 	/* Using IEEE FP on non-FP data might change bits during assign */
 	*(ui4 *)result_p = *(ui4 *)ap2 ;
-#else /* KEY bug 8062 */
-	*(r4 *)result_p = *(r4 *)ap2 ;
-#endif /* KEY bug 8062 */
 	result_p += r_stride ;
 
 	ap2 += a_stride ;
@@ -433,12 +425,8 @@ i4 *dim)
       ap1 = array_p + a_offs ;
 
       for ( k = 0 ; k < ll1 ; k ++ )  {
-#ifdef KEY /* bug 8062 */
 	/* Using IEEE FP on non-FP data might change bits during assign */
 	*(ui8 *)result_p = *(ui8 *)ap1 ;
-#else /* KEY bug 8062 */
-	*(r8 *)result_p = *(r8 *)ap1 ;
-#endif /* KEY bug 8062 */
 	result_p += r_stride ;
 	ap1 += a_stride ;
       }
@@ -446,12 +434,8 @@ i4 *dim)
       ap2 = array_p ;
 
       for ( k = 0 ; k < ll2 ; k ++ ) {
-#ifdef KEY /* bug 8062 */
 	/* Using IEEE FP on non-FP data might change bits during assign */
 	*(ui8 *)result_p = *(ui8 *)ap2 ;
-#else /* KEY bug 8062 */
-	*(r8 *)result_p = *(r8 *)ap2 ;
-#endif /* KEY bug 8062 */
 	result_p += r_stride ;
 
 	ap2 += a_stride ;
@@ -508,11 +492,7 @@ i4 *dim)
       ap1 = array_p + a_offs ;
 
       for ( k = 0 ; k < ll1 ; k ++ )  {
-#ifdef KEY /* Bug 4039 */
 	*(ui16 *)result_p = *(ui16 *)ap1 ;
-#else /* KEY Bug 4039 */
-	*(r16 *)result_p = *(r16 *)ap1 ;
-#endif /* KEY Bug 4039 */
 	result_p += r_stride ;
 	ap1 += a_stride ;
       }
@@ -520,11 +500,7 @@ i4 *dim)
       ap2 = array_p ;
 
       for ( k = 0 ; k < ll2 ; k ++ ) {
-#ifdef KEY /* Bug 4039 */
 	*(ui16 *)result_p = *(ui16 *)ap2 ;
-#else /* KEY Bug 4039 */
-	*(r16 *)result_p = *(r16 *)ap2 ;
-#endif /* KEY Bug 4039 */
 	result_p += r_stride ;
 
 	ap2 += a_stride ;

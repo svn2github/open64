@@ -44,20 +44,12 @@
 #include <math.h>
 #include "moremath.h"
 
-#ifdef KEY
 float __ratn2d(float x, float y)
-#else
-float __ratn2d(float x, float_t y)
-#endif // KEY
 {
   return (atan2f(x, y) * 57.29577951308232F);
 }
 
-#ifdef KEY
 float r_atn2d(float *x, float *y)
-#else
-float r_atn2d(float *x, float_t *y)
-#endif // KEY
 {
   return (__ratn2d(*x, *y));
 }

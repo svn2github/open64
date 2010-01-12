@@ -82,9 +82,7 @@ SKIPLIST *Build_Skiplist ( OPTION_LIST *olist );
  * ====================================================================
  */
 
-#ifdef KEY
 const float DEFAULT_MIN_PROBABILITY = 0.20;
-#endif
 
 #define DEFAULT_BLOAT_FACTOR	100
 #define DEFAULT_PU_LIMIT	2500
@@ -108,9 +106,7 @@ const float DEFAULT_MIN_PROBABILITY = 0.20;
 
 #define DEFAULT_MAX_DENSITY		11 // INLINING_TUNINING
 
-#ifdef KEY
 #define DEFAULT_ICALL_MIN_FREQ		200
-#endif
 
 
 /* #define DEFAULT_GSPACE	65535	-- from config.c */
@@ -169,9 +165,7 @@ BOOL	IPA_Echo_Commands = FALSE;
 UINT32	IPA_Bloat_Factor = DEFAULT_BLOAT_FACTOR;
 BOOL	IPA_Bloat_Factor_Set = FALSE;
 
-#ifdef KEY
 float	IPA_Min_Branch_Prob = DEFAULT_MIN_PROBABILITY;
-#endif
 UINT32	IPA_PU_Limit = DEFAULT_PU_LIMIT;/* Max nodes per PU after inlining */
 BOOL	IPA_PU_Limit_Set = FALSE;	/* if IPA_PU_Limit is set by user */
 
@@ -191,11 +185,7 @@ UINT32	IPA_Force_Depth = 0;		/* force inlining to depth n
 BOOL	IPA_Force_Depth_Set = FALSE;
 BOOL	IPA_Enable_Merge_ty = TRUE;	/* merge types across files */
 
-#ifdef KEY
 UINT32	IPA_Max_Jobs = 1;	/* disable concurrent backend compilations */
-#else
-UINT32	IPA_Max_Jobs = 0;	/* concurrent backend compilations */
-#endif
 BOOL	IPA_Max_Jobs_Set = FALSE;
 
 /* 100th% of call freq lower than which will not inlined */
@@ -255,7 +245,6 @@ BOOL IPA_Enable_Keeplight = TRUE;  /* allow the user to ONLY keep the .I
 				     * and .o in the .ipakeep directory
 				     */
 
-#ifdef KEY
 BOOL IPA_Enable_Icall_Opt = TRUE;   /* allow ipa change icall to call */
 BOOL IPA_Enable_EH_Region_Removal = FALSE; // remove useless exception regions
 BOOL IPA_Enable_Branch_Heuristic = FALSE; // use branch prob. for inlining
@@ -280,9 +269,6 @@ UINT32 IPA_Enable_Struct_Opt = 1;
 UINT32 IPA_Enable_Struct_Opt = 0;
 #endif
 UINT32 IPA_Update_Struct = 0;		/* temporary, should be removed */
-#else
-BOOL IPA_Enable_Cord = TRUE;		/* Enable procedure reordering. */
-#endif
 BOOL IPA_Enable_Linearization = FALSE;  /* Enable linearization of array */
 BOOL IPA_Use_Intrinsic = FALSE;		/* load intrinsic libraries */
 
@@ -571,7 +557,6 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL,	OV_INTERNAL,	FALSE, "field_reorder",	"",
 	  0, 0, 0,		&IPA_Enable_Reorder,	NULL,
 	  "Enable field reordering"},
-#ifdef KEY
     { OVK_BOOL, OV_INTERNAL,	FALSE, "icall_opt",	"",
 	  0, 0, 0,		&IPA_Enable_Icall_Opt,	NULL,
 	  "Enable conversion of icall to call"},
@@ -635,7 +620,6 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_UINT32, OV_INTERNAL,	FALSE, "update_struct",	"",
 	  0, 0, UINT32_MAX, &IPA_Update_Struct, NULL,
 	  "Struct update"},
-#endif // KEY
     { OVK_COUNT }	    /* List terminator -- must be last */
 };
 
@@ -665,7 +649,6 @@ BOOL    INLINE_Enable_Split_Common = TRUE;  /* Enable split common: inliner */
 BOOL    INLINE_Enable_Auto_Inlining = TRUE; /* Enable automatic inlining analysis */
 BOOL	INLINE_Enable_Restrict_Pointers = FALSE; // Allow restrict pointers
 					// as formal parameter
-#ifdef KEY
 BOOL	INLINE_Recursive = TRUE;	// Do recursive inlining
 BOOL	INLINE_Param_Mismatch = TRUE;	// Inline even if # of actuals < # of formals
 BOOL	INLINE_Type_Mismatch = FALSE;   // Inline even if actuals' type != formals' type
@@ -674,7 +657,6 @@ CHECK_PARAM_COMPATIBILITY INLINE_Check_Compatibility = RELAXED_CHECK;
 BOOL    INLINE_Ignore_Bloat = TRUE;    // Ignore code bloat (-IPA:space)
 UINT32   INLINE_Callee_Limit = 0;      // Callee size limit for functions
                                        // marked inline by user
-#endif
 
 OPTION_LIST *INLINE_List_Names = NULL;	/* Must/never/file options */
 OPTION_LIST *INLINE_Spec_Files = NULL;	/* Specification files */
@@ -763,7 +745,6 @@ static OPTION_DESC Options_INLINE[] = {
     { OVK_BOOL, OV_INTERNAL,	FALSE,	"restrict",	"",
 	  0, 0, 0,		&INLINE_Enable_Restrict_Pointers, NULL,
 	  "Allow inlining of PUs with restrict pointer as formal parameters" },
-#ifdef KEY
     { OVK_BOOL, OV_INTERNAL,	FALSE,	"recurse",	"",
 	  0, 0, 0,		&INLINE_Recursive, NULL,
 	  "Allow recursive inlining of PUs" },
@@ -782,7 +763,6 @@ static OPTION_DESC Options_INLINE[] = {
     { OVK_UINT32, OV_INTERNAL,	FALSE, "callee_size",	"",
 	  0, 0, UINT32_MAX, &INLINE_Callee_Limit, NULL,
 	  "Callee size limit for functions marked inline by user"},
-#endif
     { OVK_LIST,	OV_VISIBLE,	FALSE, "skip",	"s",
 	  0, 0, 0,	&INLINE_List_Names,	NULL,
 	  "Skip requested CG edges to avoid doing inlining" },

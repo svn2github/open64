@@ -114,10 +114,8 @@ static DEBUG_FLAGS Default_DEBUG = {
   ALIGN_NORMAL,			/* control ldl/ldr generation */
   TRUE,				/* ipalno version check */
   FALSE,        FALSE,          /* conformance_check */
-#ifdef KEY
   TRUE,                         /* emit .eh_frame for backtrace */
   FALSE,	FALSE,		/* zero_uv */
-#endif
 #ifdef TARG_SL
   FALSE,                        /* stack_check for SL*/
 #endif
@@ -158,10 +156,8 @@ DEBUG_FLAGS Initial_DEBUG = {
   ALIGN_NORMAL,			/* control ldl/ldr generation */
   TRUE,				/* ipalno version check */
   FALSE,        FALSE,          /* conformance_check */
-#ifdef KEY
   TRUE,                         /* emit .eh_frame for backtrace */
   FALSE,	FALSE,		/* zero_uv */
-#endif
 #ifdef TARG_SL
   FALSE,                        /* stack_check for SL */
 #endif
@@ -323,11 +319,9 @@ static OPTION_DESC Options_DEBUG[] = {
       0, 0, 0,	const_cast<char*>("-DEBUG:zero_uninitialized"),	NULL,
       "Set uninitialized variables to zero" },
 
-#ifdef KEY
     { OVK_BOOL, OV_VISIBLE,	FALSE, "eh_frame",	"",
       0, 0, 0, &ID.emit_ehframe,	NULL,
 	"Emit .eh_frame section even for non-C++ programs if this flag is set" },
-#endif
 
 #ifdef TARG_SL
     { OVK_INT32, OV_VISIBLE, TRUE, "stack_check", "",

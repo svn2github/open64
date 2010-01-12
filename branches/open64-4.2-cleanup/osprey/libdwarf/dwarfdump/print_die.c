@@ -871,7 +871,7 @@ get_attr_value(Dwarf_Debug dbg, Dwarf_Half tag, Dwarf_Attribute attrib,
 		wres = dwarf_formudata(attrib, &tempud, &err);
 		if (wres == DW_DLV_OK) {
 		    if (tag == DW_TAG_enumerator) {
-			/* See bug 583450. ** we are recording
+			/* ** we are recording
 			   enumerators ** as unsigned. Wrong. Thru
 			   cmplrs 7.2.1
 			   ------------------------------------- **
@@ -891,7 +891,7 @@ get_attr_value(Dwarf_Debug dbg, Dwarf_Half tag, Dwarf_Attribute attrib,
 		    if (tag == DW_TAG_enumerator) {
 			wres = dwarf_formsdata(attrib, &tempsd, &err);
 			if (wres == DW_DLV_OK) {
-			    /* See bug 583450. ** we are recording
+			    /* ** we are recording
 			       enumerators ** as unsigned. Wrong. Thru
 			       cmplrs 7.2.1 */
 			    sprintf(attrib_buf, "%lld", tempsd);

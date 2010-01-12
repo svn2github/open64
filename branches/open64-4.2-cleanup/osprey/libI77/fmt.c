@@ -634,7 +634,6 @@ do_fio64_mp (ftnint *type, XINT *number, char *ptr, unit **fu, ftnlen len)
 {
    struct f77syl  *p;
 
-   /* fix bug 7625 */
    XINT   i, num = *number;
    int n;
    unit *ftnunit = *fu;
@@ -660,7 +659,6 @@ loop:switch (_type_f ((p = &ftnunit->f77syl[ftnunit->pc])->op)) {
 	 ftnunit->pc++;
 	 goto loop;
       case ED:
-	 /* fix bug 7625 */
 	 if (ftnunit->cnt[ftnunit->cp] <= 0) {
 	    ftnunit->cp--;
 	    ftnunit->pc++;
@@ -702,7 +700,6 @@ loop:switch (_type_f ((p = &ftnunit->f77syl[ftnunit->pc])->op)) {
       case REVERT:
 	 ftnunit->rp = ftnunit->cp = 0;
 	 ftnunit->pc = p->p1;
-	 /* fix bug 7625 */
 	 if (ptr == NULL) {
 	    if (n = (*ftnunit->f77doend) (ftnunit))
 	        ftnunit->lock_unit = 0;
@@ -836,7 +833,6 @@ ap_end(unit *ftnunit, char *s)
    return(NULL); 
 }
 
-/* fix bug 5919 */
 int
 do_fioi4 (unsigned int val)
 {

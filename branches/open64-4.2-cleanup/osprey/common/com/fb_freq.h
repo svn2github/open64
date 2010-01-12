@@ -217,7 +217,6 @@ public:
       _value( (FREQ_VALUE_TYPE) value )
     { Is_True( value >= 0, ( "FB_FREQ: negative value %lld", value ) ); }
 
-#ifdef KEY
   FB_FREQ( double value )
     : _type( FB_FREQ_TYPE_EXACT ),
       _value( (FREQ_VALUE_TYPE) value )
@@ -227,7 +226,6 @@ public:
     : _type( FB_FREQ_TYPE_EXACT ),
       _value( value )
     { Is_True( value >= 0.0, ( "FB_FREQ: negative value %lld", value ) ); }
-#endif
 
   FB_FREQ( INT64 value )
     : _type( FB_FREQ_TYPE_EXACT ),
@@ -481,7 +479,6 @@ public:
     return ( freq1._value < freq2._value );
   }
 
-#ifdef KEY // fix problem with g++ 3.2
   friend bool operator>=( const FB_FREQ freq1, const FB_FREQ freq2 ) {
     return ( freq1._value >= freq2._value );
   }
@@ -489,7 +486,6 @@ public:
   friend bool operator<=( const FB_FREQ freq1, const FB_FREQ freq2 ) {
     return ( freq1._value <= freq2._value );
   }
-#endif
 
   // Printing methods
 

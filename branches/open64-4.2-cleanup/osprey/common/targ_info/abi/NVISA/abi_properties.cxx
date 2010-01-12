@@ -94,15 +94,6 @@ main()
   gridid = Create_Reg_Property("gridid");
   clock = Create_Reg_Property("clock");
 
-#if 0 // initially, nvisa has no calling convention
-  callee = Create_Reg_Property("callee");
-  caller = Create_Reg_Property("caller");
-#endif 
-#if 0 // initially, nvisa has no stack
-  frame_ptr = Create_Reg_Property("frame_ptr");
-  stack_ptr = Create_Reg_Property("stack_ptr");
-#endif
-
   ///////////////////////////////////////
   Begin_ABI("nvisa");
 

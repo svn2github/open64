@@ -48,7 +48,6 @@
 #include <time.h>
 #include "externals.h"
 
-#ifdef KEY /* Bug 1683, 5019 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -86,13 +85,3 @@ pathf90_subr_ctime8(pathf90_i8 *clock, char *str, int len)
   pathf90_ctime8(str, len, clock);
 }
 
-#else
-
-extern void
-ctime_ (char *str, int len, int *clock)
-{
-	char *s = ctime((time_t *)clock);
-	s[24] = '\0';
-	b_char(s, str, len);
-}
-#endif /* KEY Bug 1683, 5019 */

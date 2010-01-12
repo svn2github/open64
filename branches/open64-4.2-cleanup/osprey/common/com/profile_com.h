@@ -143,12 +143,10 @@ struct Pu_Hdr {
   ULONG pu_num_scircuit_entries;
   ULONG pu_call_offset;
   ULONG pu_num_call_entries;
-#ifdef KEY
   ULONG pu_value_offset;
   ULONG pu_num_value_entries;
   ULONG pu_value_fp_bin_offset;
   ULONG pu_num_value_fp_bin_entries;
-#endif
 
   ULONG pu_icall_offset;
   ULONG pu_num_icall_entries;
@@ -157,7 +155,6 @@ struct Pu_Hdr {
   ULONG pu_num_edge_entries;
   ULONG pu_instr_count;
   ULONG pu_instr_exec_count;
-#ifdef KEY
 #ifndef TARG_LOONGSON
   ULONG pu_values_offset;
   ULONG pu_values_fp_bin_offset;
@@ -165,16 +162,11 @@ struct Pu_Hdr {
   ULONG pu_mem_count;
   ULONG pu_cache_offset;
 #endif
-#else  // KEY
-  ULONG pu_value_offset;
-#endif
   ULONG pu_ld_count;   //prefetch count
   ULONG pu_stride_offset;
-#ifdef KEY
   // This header file will be compiled into the 64-bit instrumentation library
   // as well as the 32-bit compiler. So, we should pad it to a 8-byte boundary.
   ULONG pad;
-#endif
   
   Pu_Hdr() {
     pu_size=54321;
@@ -185,19 +177,13 @@ struct Pu_Hdr {
     pu_instr_exec_count=0;
     pu_icall_offset=333;
     pu_num_icall_entries=0;
-#ifdef KEY
 #ifndef TARG_LOONGSON
     pu_values_offset=444;
     pu_values_fp_bin_offset=666;
 #endif
-#else
-    pu_value_offset=444;
-#endif
     pu_ld_count=0;
     pu_stride_offset=555;
-#ifdef KEY
     pad = 0;
-#endif
   }
 
   void Print( FILE * fp, int id=-1) const {
@@ -223,13 +209,11 @@ struct Pu_Hdr {
   	fprintf(fp, "pu_num_scircuit_entries = %u\n", pu_num_scircuit_entries);
   	fprintf(fp, "pu_call_offset = %u\n", pu_call_offset);
   	fprintf(fp, "pu_num_call_entries = %u\n", pu_num_call_entries);
-#ifdef KEY
   	fprintf(fp, "pu_value_offset = %u\n",      pu_value_offset);
   	fprintf(fp, "pu_num_value_entries = %u\n", pu_num_value_entries);
   	fprintf(fp, "pu_value_fp_bin_offset = %u\n",  pu_value_fp_bin_offset);
   	fprintf(fp, "pu_num_value_fp_bin_entries = %u\n", 
 		pu_num_value_fp_bin_entries);
-#endif
   	fprintf(fp, "pu_icall_offset = %u\n", pu_icall_offset);
   	fprintf(fp, "pu_num_icall_entries = %u\n", pu_num_icall_entries);
   	fprintf(fp, "pu_handle = %u\n", pu_handle);
@@ -237,16 +221,12 @@ struct Pu_Hdr {
   	fprintf(fp, "pu_num_edge_entries = %u\n", pu_num_edge_entries);
   	fprintf(fp, "pu_instr_count = %u\n", pu_instr_count);
   	fprintf(fp, "pu_instr_exec_count = %u\n", pu_instr_exec_count);
-#ifdef KEY
 #ifndef TARG_LOONGSON
   	fprintf(fp, "pu_values_offset = %u\n", pu_values_offset);
   	fprintf(fp, "pu_values_fp_bin_offset = %u\n", pu_values_fp_bin_offset);
 #else
 	fprintf(fp, "pu_mem_count = %u\n", pu_mem_count);
   	fprintf(fp, "pu_cache_offset = %u\n", pu_cache_offset);
-#endif
-#else
-  	fprintf(fp, "pu_value_offset = %u\n", pu_value_offset);
 #endif
   	fprintf(fp, "pu_ld_count = %u\n", pu_ld_count);
   	fprintf(fp, "pu_stride_offset = %u\n", pu_stride_offset);

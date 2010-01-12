@@ -145,7 +145,6 @@ ERROR_DESC EDESC_Globals[] = {
     "Lazy warning report in %s: %s",
     2, ET_STRING, ET_STRING, 0,0,0,0 },
 
-#ifdef KEY
 #if defined(TARG_SL)
   { EC_Unimplemented_Feature,   EM_Compiler | ES_ERRABORT,	RAG_EN_NONE,
     "%s not implemented in file %s in line %d", 3, ET_STRING, ET_STRING, ET_INT, 0,0,0 },
@@ -155,7 +154,6 @@ ERROR_DESC EDESC_Globals[] = {
 #endif
   { EC_Misc_User_Abort,		EM_User | ES_ERRABORT,		RAG_EN_NONE,
     "%s", 1, ET_STRING, 0,0,0,0,0 },
-#endif // KEY
 
   { EC_Trace_Func,	EM_Compiler | ES_WARNING,	RAG_EN_NONE,
     "Trace flag function value (%d) too small",
@@ -259,14 +257,12 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_Inv_Opt_Val,	EM_User | ES_WARNING,	RAG_EN_NONE,
     "Invalid option value in \"-%s\" -- ignored",
     1, ET_STRING, 0,0,0,0,0 },
-#ifdef KEY
   { EC_No_Opt_Val,	EM_User | ES_WARNING,	RAG_EN_NONE,
     "Option  \"%s\" in group '%s' should be provided a value -- ignored",
     2, ET_STRING, ET_STRING,0,0,0,0 },
   { EC_No_Apo_Early_Mp,	EM_User | ES_WARNING,	RAG_EN_NONE,
     "-OPT:early_mp=on ignored since it is not allowed under -apo",
     0, 0,0,0,0,0,0 },
-#endif
 
   /* Control processing: */
   { EC_Unimp_Ctrl,	EM_User | ES_WARNING,	RAG_EN_NONE,
@@ -372,7 +368,6 @@ ERROR_DESC EDESC_Globals[] = {
      "Function %s (#%d) is optimized at -O%d because of non-ANSI setjmp",
      3, ET_STRING, ET_INT, ET_INT,0,0,0 },
 
-#ifdef KEY
    /* Olimit support warnings: */
   { EC_Olimit_Slow,	EM_User | ES_WARNING,   RAG_EN_NONE,
     "Optimizing huge function %s because Olimit has been overridden;\n"
@@ -395,7 +390,6 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_Inc_Types,	EM_User | ES_ERRABORT,   RAG_EN_NONE,
     "Symbol %s declared both as function and variable\n",
     1, ET_STRING, 0, 0, 0, 0, 0 },
-#endif
 
   /* Tree (ND) support: */
   { EC_B_Access,	EM_Compiler | ES_ERRPHASE,	RAG_EN_NONE,
@@ -414,7 +408,6 @@ ERROR_DESC EDESC_Globals[] = {
     "Invalid treenum %d for (0x%x: %s) at line %d",
     4, ET_INT, ET_POINTER, ET_NODE, ET_INT, 0, 0 },
 
-#ifdef KEY
   { EC_Bad_Omp,		EM_User | ES_ERRABORT,		RAG_EN_NONE,
     "%s", 1, ET_STRING, 0, 0, 0, 0, 0 },
   { EC_Ill_Alias,	EM_User | ES_ERRABORT,		RAG_EN_NONE,
@@ -422,7 +415,6 @@ ERROR_DESC EDESC_Globals[] = {
     2, ET_STRING, ET_STRING, 0, 0, 0, 0 },
   { EC_Misc_Asm,	EM_User | ES_ERRABORT,		RAG_EN_NONE,
     "%s", 1, ET_STRING, 0, 0, 0, 0, 0 },
-#endif /* KEY */
 
   { EC_Ill_Align,	EM_User | ES_WARNING ,	RAG_EN_NONE,
     "Illegal alignment (%d) in %s",
@@ -836,14 +828,12 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_Ipa_Rename,      EM_User | ES_ERRPHASE,  RAG_EN_NONE,
     "Cannot rename %s to %s",
     2, ET_STRING, ET_STRING, 0,0,0,0 },
-#ifdef KEY
   { EC_Ipa_Infile,	EM_User | ES_ERRABORT,	RAG_EN_NONE,
     "Can't read IPA input file: %s",
     1, ET_STRING, 0,0,0,0,0 },
   { EC_Ipa_Outfile,	EM_User | ES_ERRABORT,	RAG_EN_NONE,
     "Can't create IPA output file: %s",
     1, ET_STRING, 0,0,0,0,0 },
-#endif
 
   { EC_Asm_Exists,	EM_User | ES_ERRABORT,	RAG_EN_NONE,
     "Assembly file (%s) already exists",
@@ -863,11 +853,9 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_No_Asm,		EM_User | ES_ERRABORT,	RAG_EN_NONE,
     "Assembly file (%s) does not exist",
     1, ET_STRING, 0,0,0,0,0 },
-#ifdef KEY
   { EC_Asm_Write,	EM_User | ES_ERRABORT,	RAG_EN_NONE,
     "Cannot write assembly file (%s)",
     1, ET_STRING, 0,0,0,0,0 },
-#endif
 
   { EC_X_Exists,	EM_User | ES_ERRABORT,	RAG_EN_NONE,
     ".X file (%s) already exists",
@@ -948,11 +936,9 @@ ERROR_DESC EDESC_Globals[] = {
     "Feedback file checksum error; %s probably outdated",
 #endif
     1, ET_STRING, 0,0,0,0,0 },
-#ifdef KEY
   { EC_FB_No_File,     EM_User | ES_ERRABORT,   RAG_EN_NONE,
     "No feedback file with prefix: %s",
     1, ET_STRING, 0,0,0,0,0 },
-#endif
 
   { EC_Cif_Open,	EM_User | ES_ERRABORT,	RAG_EN_NONE,
     "Can't open CIF file (%s): %s",

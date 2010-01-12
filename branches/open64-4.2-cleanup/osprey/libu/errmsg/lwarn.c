@@ -40,7 +40,6 @@
 #include <stdarg.h>
 #include <cray/portdefs.h>
 
-#ifdef KEY /* Bug 7479 */
 /*
  * Issue informational "comment" message (imitating the front end) using
  * standard the error-message machinery
@@ -56,7 +55,6 @@ _lcomment(int errn, ...)
 	_lmessage(errn, "COMMENT", args);
 	va_end(args);
 }
-#endif /* KEY Bug 7479 */
 
 /*
  *	_lwarn - library run-time warning processor

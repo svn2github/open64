@@ -61,15 +61,11 @@
 #include "lio.h"
 
 extern	
-#ifndef KEY /* this can cause wrong func being called when compiled by gcc */
-const 
-#endif
 oc_func	*_oconvtab[LAST_DATA_ED + 1];
 extern	const short	_odedtab[DVTYPE_NTYPES];
 extern	short		_o_sup_flg_tab[DVTYPE_NTYPES];
 extern	long		_o_sup_val_tab[DVTYPE_NTYPES];
 
-#ifdef KEY /* Bug 8309 */
 /* Integer base raised to the power exp */
 static int ipow(int base, int exp) {
   int result = 1;
@@ -78,7 +74,6 @@ static int ipow(int base, int exp) {
   }
   return result;
 }
-#endif /* KEY Bug 8309 */
 
 #undef	BLANK
 #define	BLANK	((long) ' ')
@@ -131,9 +126,6 @@ _wrfmt(
 	long		shrd[MAXSH];	/* Buffer for shared data */
 #endif
 
-#ifndef KEY /* this causes wrong function being called when compiled by gcc */
-	const 
-#endif
 	    oc_func	*ngcf;		/* Generic NOCV-type conversion func */
 
 	/* If these assertions are not all true, then we're in deep doo-doo */
@@ -154,9 +146,7 @@ _wrfmt(
 	stride	= tip->stride * length;
 	cinc[1]	= stride;
 	supflg	= _o_sup_flg_tab[type] && (length == sizeof(long));
-#ifdef KEY /* Bug 573 */
         register short width_zero_flag = FALSE;
-#endif /* KEY Bug 573 */
 
 	/* If COMPLEX data type, adjust data length and increments */
 
@@ -307,9 +297,7 @@ _wrfmt(
 					case I_ED:
 					case O_ED:
 					case Z_ED:
-#ifdef KEY /* Bug 573 */
                                                 width_zero_flag = TRUE;
-#endif /* KEY Bug 573 */
 						width	= _rw_mxdgt[fmtop-1][length-1];
 						/* Fix limitation in table */
 
@@ -366,15 +354,10 @@ _wrfmt(
 #endif
 
 							} /* switch */
-#ifdef KEY /* Bug 573 */
 							if (datum == 0) {
 								width	= 1;
 								width_zero_flag = FALSE;
 							}
-#else /* KEY Bug 573 */
-							if (datum == 0)
-								width	= 1;
-#endif /* KEY Bug 573 */
 						}
 						break;
 
@@ -393,13 +376,8 @@ _wrfmt(
 					case E_ED:
 					case EN_ED:
 					case ES_ED:
-#ifndef KEY /* Bug 8309 */
-					case F_ED:
-#endif /* KEY Bug 8309 */
 					case G_ED:
-#ifdef KEY /* Bug 573 */
                                                 width_zero_flag = TRUE;
-#endif /* KEY Bug 573 */
 						if (pfmt.default_digits)
 							digits	= _rw_mxdgt[fmtop-1][length-1];
 
@@ -417,7 +395,6 @@ _wrfmt(
 						width	= digits + exp + 6;
 						break;
 
-#ifdef KEY /* Bug 8309 */
 					/* For F_ED, which does
 					 * not have an exponent, we need
 					 * the number of digits indicated
@@ -436,7 +413,6 @@ _wrfmt(
 						}
 						width += digits + 1 /* sign */;
 						break;
-#endif /* KEY Bug 8309 */
 
 					/*
 					 * For logical (L) data edit-
@@ -519,12 +495,8 @@ _wrfmt(
 			 * see if there's room for one more.
 			 */
 
-#ifdef KEY /* Bug 10965 */
 			if ((!width_zero_flag) &&
 			  (cup->ulinecnt + field) > cup->urecsize)
-#else /* KEY Bug 10965 */
-			if ((cup->ulinecnt + field) > cup->urecsize)
-#endif /* KEY Bug 10965 */
 			{
 
 				if ((cup->ulinecnt + width) > cup->urecsize) {
@@ -560,11 +532,9 @@ _wrfmt(
 #pragma _CRI align
 #endif
 
-#ifdef KEY /* Bug 3992 */
 			if (width_zero_flag) {
 				field = 0;
 			}
-#endif /* KEY Bug 3992 */
 
 			for (i = 0; i < kount; i++) { /* For consecutive items */
 
@@ -580,7 +550,6 @@ _wrfmt(
 						cup->ulineptr[j]	= BLANK;
 				}
 				else {
-#ifdef KEY /* Bug 573, 3992, 7990, 10965 */
 				    if (width_zero_flag) {
 					long linebuf[width];
 					(void) ngcf(cptr, linebuf, &mode,
@@ -602,21 +571,15 @@ _wrfmt(
 				    }
 				    else
 				    {
-#endif /* KEY Bug 573, 3992, 7990, 10965 */
 					(void) ngcf(cptr, cup->ulineptr, &mode,
 						&width, &digits, &exp,
 						&css->u.fmt.u.fe.scale);
-#ifdef KEY /* Bug 573, 3992, 7990, 10965 */
 					cup->ulineptr = cup->ulineptr + width;
 				    }
-#endif /* KEY Bug 573, 3992, 7990, 10965 */
                                  }
 
 				/* Advance data addresses */
 
-#ifndef KEY /* Bug 573, 3992, 7990, 10965 */
-				cup->ulineptr	= cup->ulineptr + width;
-#endif /* KEY Bug 573, 3992, 7990, 10965 */
 				count		= count - part;
 				cptr		= cptr + cinc[part];
 				part		= part ^ cswitch;
@@ -812,15 +775,8 @@ check_left:
 			break;
 
 		case Q_ED:
-#ifdef KEY /* Bug 8258 */
 			/* The VMS manual says this edit descriptor is
 			 * legal but ignored on output */
-#else /* KEY Bug 8258 */
-			/*
-			 * The Q edit-descriptor is invalid on output.
-			 */
-			stat			= FEFMTQIO;
-#endif /* KEY Bug 8258 */
 			repcnt			= repcnt - 1;
 			break;
 

@@ -56,11 +56,9 @@
 #include <stdlib.h>
 #endif
 #include "defalias.h"
-#ifdef KEY /* Bug 6845 */
 # ifdef _DEBUG
 #  include <stdio.h>
 # endif /* _DEBUG */
-#endif /* KEY Bug 6845 */
 
 extern long     _zero_entity;   /* nonzero addr for PRESENT func */
 
@@ -287,14 +285,12 @@ _ALLOCATE(AllocHeadType *aloclist,
 				}
 			}
 		}
-#ifdef KEY /* Bug 6845 */
 # ifdef _DEBUG
                 if (ps_debug_alloc > 0) {
 		  fprintf(stderr, "allocation.c malloc: %p\n",
 		    (void *) base);
 		}
 # endif /* _DEBUG */
-#endif /* KEY Bug 6845 */
 
 		/* Set base address for allocated area.  If character, set */
 		/* pointer as fcd.  Clear address if zero allocation. */
@@ -322,7 +318,6 @@ _ALLOCATE(AllocHeadType *aloclist,
 		*statvar	= errflag;
 }
 
-#ifdef KEY /* Bug 6845 */
 extern void _DEALLOC(AllocHeadType *);
 
 /*
@@ -462,14 +457,12 @@ _ASSIGN_ALLOCATABLE(DopeVectorType *dest, DopeVectorType *src, int version,
     if (dest->base_addr.a.ptr == NULL) {
       _lerror (_LELVL_ABORT, FENOMEMY);
     }
-#ifdef KEY /* Bug 6845 */
 # ifdef _DEBUG
     if (ps_debug_alloc > 0) {
       fprintf(stderr, "allocation.c malloc: %p\n",
         (void *) dest->base_addr.a.ptr);
     }
 # endif /* _DEBUG */
-#endif /* KEY Bug 6845 */
 
     /* Copy all elements */
     if (src->a_contig) {
@@ -511,7 +504,6 @@ _ASSIGN_ALLOCATABLE(DopeVectorType *dest, DopeVectorType *src, int version,
   }
 
 }
-#endif /* KEY Bug 6845 */
 
 /*  _DEALLOCATE - called by compiled Fortran programs to deallocate space
  *                for objects in the allocation list.  The status is
@@ -608,7 +600,6 @@ _DEALLOCATE(AllocHeadType *aloclist,
 			nsize *= dva->dimension[i].extent;
 
 		/* error if current size not same as original size */
-#ifdef KEY /* Bug 4933 */
 		/* If we don't know the original size (for example, because
 		 * this is a pointer to a dummy argument and we have no dope
 		 * information for the actual argument) then optimistically
@@ -616,21 +607,13 @@ _DEALLOCATE(AllocHeadType *aloclist,
 		 * case where the original size could be zero and the actual
 		 * size nonzero. */
 		if (dva->orig_size && dva->orig_size != nsize ) {
-#else
-		if (dva->orig_size != nsize ) {
-#endif /* KEY Bug 4933 */
 			if(lstat) {
 				*statvar	= FEDEASIZ;
 				return;
 			}
 			_lerror (_LELVL_ABORT, FEDEASIZ, dva->orig_size, nsize);
-#ifdef KEY /* Bug 4933 */
 		}
-#else
-		}
-#endif /* KEY Bug 4933 */
 
-#ifdef KEY /* Bug 6845 */
                 if (dva->alloc_cpnt) {
 		  recursive_dealloc(dva, aloclist->version, aloclist->imalloc);
 		}
@@ -639,7 +622,6 @@ _DEALLOCATE(AllocHeadType *aloclist,
 		  fprintf(stderr, "allocation.c free: %p\n", (void *) base);
 		}
 # endif /* _DEBUG */
-#endif /* KEY Bug 6845 */
 
 		/* free space when size not zero */
 		if (nsize != 0)
@@ -726,7 +708,6 @@ _DEALLOC(AllocHeadType *aloclist)
 		} else
 			base	= (void*) dva->base_addr.a.ptr;
 
-#ifdef KEY /* Bug 6845 */
                 if (dva->alloc_cpnt) {
 		  recursive_dealloc(dva, aloclist->version, aloclist->imalloc);
 		}
@@ -735,7 +716,6 @@ _DEALLOC(AllocHeadType *aloclist)
 		  fprintf(stderr, "allocation.c free: %p\n", (void *) base);
 		}
 # endif /* _DEBUG */
-#endif /* KEY Bug 6845 */
 
 		/* free space when size not zero */
 		if (dva->orig_size != 0) {
@@ -946,13 +926,9 @@ _F90_ALLOCATE_B(long size,
 		}
 	}
 
-#ifdef KEY // bug 8994: if size wraps around and become -ve under -m32, we want
 	   // 	malloc to return 0 so we know to set statvar; if 0 is passed
 	   //   to malloc, it will not return 0
 	nbytes = size;
-#else
-	nbytes = size > 0 ? size : 0;
-#endif
 
 	/* replace the use of address 1 with globals.c entity
 	 *   base	= (void *) 1;
@@ -1010,13 +986,11 @@ _F90_ALLOCATE_B(long size,
 		}
 	}
 
-#ifdef KEY /* Bug 6845 */
 # ifdef _DEBUG
 	if (ps_debug_alloc > 0) {
 	  fprintf(stderr, "allocation.c malloc: %p\n", (void *) base);
 	}
 # endif /* _DEBUG */
-#endif /* KEY Bug 6845 */
 
 	if (FLAG_TRAPUV(flags)) {
 
@@ -1068,13 +1042,8 @@ print_dope_vector(DopeVectorType *dv, FILE *f)
   fprintf(f, "+%u: el_len=%lu\n",
     (unsigned int) (((char *) &dv->base_addr.a.el_len) - (char *) dv),
     dv->base_addr.a.el_len);
-#ifdef KEY /* Bug 6845 */
   fprintf(f, "assoc, ptr_alloc, p_or_a, a_contig, alloc_cpnt=%d %d %s %d %d\n",
     dv->assoc, dv->ptr_alloc, P_OR_A[dv->p_or_a], dv->a_contig, dv->alloc_cpnt);
-#else /* KEY Bug 6845 */
-  fprintf(f, "assoc, ptr_alloc, p_or_a, a_contig=%d %d %s %d\n",
-    dv->assoc, dv->ptr_alloc, P_OR_A[dv->p_or_a], dv->a_contig);
-#endif /* KEY Bug 6845 */
   fprintf(f, "n_dim=%u\n", dv->n_dim);
   fprintf(f, "+%u: type_lens.type/dpflag/kind/int_len/dec_len=%d/%d/%d/%d/%d\n",
     (unsigned int) (((char *)&dv->type_lens) - (char *) dv),
@@ -1097,7 +1066,6 @@ print_dope_vector(DopeVectorType *dv, FILE *f)
       (unsigned int) (((char*)dimen) - (char *)dv),
       dimen->low_bound, dimen->extent, dimen->stride_mult);
   }
-#ifdef KEY /* Bug 6845 */
   if (dv->alloc_cpnt) {
     DopeAllocType *alloc_info = DOPE_ALLOC_INFO(dv);
     unsigned long n_alloc_cpnt = alloc_info->n_alloc_cpnt;
@@ -1111,6 +1079,5 @@ print_dope_vector(DopeVectorType *dv, FILE *f)
 	alloc_info->alloc_cpnt_offset[i]);
     }
   }
-#endif /* KEY Bug 6845 */
 }
 #endif /* _DEBUG */

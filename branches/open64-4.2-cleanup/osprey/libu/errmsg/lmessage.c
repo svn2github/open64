@@ -40,7 +40,6 @@
   http://oss.sgi.com/projects/GenInfo/NoticeExplan
 
 */
-#ifdef KEY
 /* DON'T ADD ANY #include HERE */
 /* On Fedora Core 5, with gcc 4.1.1 installed, and "-D_XOPEN_SOURCE{,_EXTENDED}"
  * on the command line, "pathcc -gnu40" gives an "implicit declaration" error
@@ -53,7 +52,6 @@
  */
 #undef _XOPEN_SOURCE
 #undef _XOPEN_SOURCE_EXTENDED
-#endif /* KEY */
 
 #pragma ident "@(#) libu/errmsg/lmessage.c	92.4	10/14/99 17:05:30"
 #include <liberrno.h>
@@ -138,11 +136,7 @@ _lmessage(int errn, char *severity, va_list args)
 
 	if (flmn < BASE) {
 		mcnm	= "sys";
-#ifdef KEY /* Bug 4452 */
 		smsg	= "UNRECOVERABLE error on system request\nlib-%d: %s";
-#else /* KEY Bug 4452 */
-		smsg	= "UNRECOVERABLE error on system request";
-#endif /* KEY Bug 4452 */
 #ifdef	_UNICOS
 		/*
 		 * Provide a back-up error message for those errors
@@ -163,13 +157,11 @@ _lmessage(int errn, char *severity, va_list args)
 		 */
 
 		bmsg	= strerror(flmn);
-#ifdef KEY /* Bug 4452 */
 		/* Write these messages and return, because we won't be able
 		 * to find flmn in the message catalog.
 		 */
 		fprintf(stderr, smsg, flmn, bmsg);
 		return;
-#endif /* KEY Bug 4452 */
 #endif
 	}
 	else

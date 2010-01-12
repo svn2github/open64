@@ -130,12 +130,10 @@ static char *erglob_rcs_id = "$Source: common/com/SCCS/s.erglob.h $ $Revision: 1
 /* Warning of unimplemented optimization: */
 #define EC_Development_Warning EC_Undef_Code+20
 
-#ifdef KEY
 /* Error for unimplemented features: */
 #define EC_Unimplemented_Feature EC_Undef_Code+24 /* str */
 /* Abort due to misc user-caused reason: */
 #define EC_Misc_User_Abort       EC_Undef_Code+25 /* str */
-#endif // KEY
 
 /* Trace package errors: */
 #define EC_Trace_Func	EC_Undef_Code+30	/* int */
@@ -173,10 +171,8 @@ static char *erglob_rcs_id = "$Source: common/com/SCCS/s.erglob.h $ $Revision: 1
 #define EC_Replaced_Opt	EC_Undef_Code+63	/* str, str */
 #define EC_Unimp_Opt	EC_Undef_Code+64	/* str */
 #define EC_Inv_Opt_Val	EC_Undef_Code+65	/* str */
-#ifdef KEY
 #define EC_No_Opt_Val   EC_Undef_Code+66	/* str, str */
 #define EC_No_Apo_Early_Mp   EC_Undef_Code+67	/* none */
-#endif // KEY
 
 /* Control processing: */
 #define EC_Unimp_Ctrl	EC_Undef_Code+70	/* str */
@@ -216,14 +212,12 @@ static char *erglob_rcs_id = "$Source: common/com/SCCS/s.erglob.h $ $Revision: 1
 /* Lower optimization for non-ANSI setjmp support */
 #define EC_Not_Ansi_Setjmp      EC_Undef_Code+106       /* str, int, int */
 
-#ifdef KEY
 /* Olimit support warnings: */
 #define EC_Olimit_Slow		EC_Undef_Code+107	/* str, int */
 /* IPA inconsistent options warning: */
 #define EC_Ipa_Options		EC_Undef_Code+108	/* */
 /* Same symbol declared as function and variable error from IPA */
 #define EC_Inc_Types		EC_Undef_Code+109	/* str */
-#endif
 
 /* Tree (ND) support: */
 #define EC_B_Access	EC_Undef_Code+110	/* int, int */
@@ -233,10 +227,8 @@ static char *erglob_rcs_id = "$Source: common/com/SCCS/s.erglob.h $ $Revision: 1
 #define EC_Null_Tree	EC_Undef_Code+114	/* str */
 #define EC_Inv_Treenum	EC_Undef_Code+115	/* int, tree, tree, int */
 
-#ifdef KEY
 #define EC_Bad_Omp	EC_Undef_Code+116	/* str */
 #define EC_Ill_Alias	EC_Undef_Code+117	/* str, str, str */
-#endif /* KEY */
 
 /* Region errors: */
 #define EC_Rgn_Ill_Entry	EC_Undef_Code+120	/* str */
@@ -322,9 +314,7 @@ static char *erglob_rcs_id = "$Source: common/com/SCCS/s.erglob.h $ $Revision: 1
 #define EC_FPR_16	EC_Undef_Code+244	/* none */
 #define EC_FPR_32	EC_Undef_Code+245	/* none */
 #define EC_Inv_OPT	EC_Undef_Code+246	/* str, str */
-#ifdef KEY
 #define EC_Inv_x87_Prec	EC_Undef_Code+247	/* int */
-#endif
 
 /* Pragma errors: */
 #define EC_Pragma_Scope	EC_Undef_Code+270	/* str, str */
@@ -345,11 +335,9 @@ static char *erglob_rcs_id = "$Source: common/com/SCCS/s.erglob.h $ $Revision: 1
 #define EC_P_Heur_No_MU	EC_Undef_Code+327	/* str */
 #define EC_P_Heur_No_RA	EC_Undef_Code+328	/* str */
 
-#ifdef KEY
 /* ASM operands: */
 #define EC_Inv_Asm_Opnd EC_Undef_Code+340       /* none */
 #define EC_Misc_Asm EC_Undef_Code+341		/* str */
-#endif
 
 
 /* ====================================================================
@@ -412,10 +400,8 @@ static char *erglob_rcs_id = "$Source: common/com/SCCS/s.erglob.h $ $Revision: 1
 #define EC_Inv_Ipa	EC_BASE_FILE+41		/* str */
 #define EC_Obs_Ipa	EC_BASE_FILE+42		/* str */
 #define EC_Ipa_Rename   EC_BASE_FILE+43         /* str, str */
-#ifdef KEY
 #define EC_Ipa_Infile   EC_BASE_FILE+44         /* str */
 #define EC_Ipa_Outfile  EC_BASE_FILE+45         /* str */
-#endif
 
 #define EC_Asm_Exists	EC_BASE_FILE+50		/* str */
 #define EC_Asm_Open	    EC_BASE_FILE+51		/* str, err */
@@ -423,9 +409,7 @@ static char *erglob_rcs_id = "$Source: common/com/SCCS/s.erglob.h $ $Revision: 1
 #define EC_Asm_Delete	EC_BASE_FILE+53		/* str, err */
 #define EC_Asm_Close	EC_BASE_FILE+54		/* str, err */
 #define EC_No_Asm	    EC_BASE_FILE+55		/* str */
-#ifdef KEY
 #define EC_Asm_Write	    EC_BASE_FILE+56	/* str */
-#endif
 
 #define EC_X_Exists	EC_BASE_FILE+60		/* str */
 #define EC_X_Open	EC_BASE_FILE+61		/* str, err */
@@ -457,9 +441,7 @@ static char *erglob_rcs_id = "$Source: common/com/SCCS/s.erglob.h $ $Revision: 1
 #define EC_FB_Unk_Scn	EC_BASE_FILE+93		/* str */
 #define EC_FB_Ent_Size	EC_BASE_FILE+94		/* str, str, int, int */
 #define EC_FB_File_Old  EC_BASE_FILE+95	 	/* str */
-#ifdef KEY
 #define EC_FB_No_File   EC_BASE_FILE+96  	/* str */
-#endif
 
 /* CIF file error codes: */
 #define EC_Cif_Open     EC_BASE_FILE+100	/* str, err */

@@ -92,7 +92,7 @@ extern "C" {
 #include <sys/syssgi.h>
 #endif
 
-#if defined(KEY) && defined(linux)
+#if defined(linux)
 #include <execinfo.h>
 #endif
 
@@ -142,11 +142,7 @@ static const char *Error_File_Name = NULL;	/* Error file name */
 static FILE *Trace_File = NULL;		/* File descriptor */
 
 /* Source file location: */
-#ifdef KEY /* Bug 4469 */
 static char  source_file_name[FILENAME_MAX + 1];
-#else
-static char  source_file_name[256];
-#endif /* KEY Bug 4469 */
 static char *Source_File_Name = &source_file_name[0];
 static INT   Source_Line = ERROR_LINE_UNKNOWN;	/* Line number */
 
@@ -227,7 +223,7 @@ extern void Rag_Handle_Woff_Args(char	*wstring);
 
 static void dump_backtrace(FILE *fp = stderr, size_t start_frame = 1)
 {
-#if defined(KEY) && defined(linux) /* "backtrace" is unique to GNU/Linux libc */
+#if defined(linux) /* "backtrace" is unique to GNU/Linux libc */
     const int nframes = 32;
     void *buf[nframes];
     char **strings;
@@ -450,11 +446,7 @@ Set_Error_Source ( const char *filename )
     Source_File_Name = NULL;
   } else {
     Source_File_Name = &source_file_name[0];
-#ifdef KEY /* Bug 4469 */
     strncpy ( Source_File_Name, filename, sizeof source_file_name );
-#else
-    strcpy ( Source_File_Name, filename );
-#endif /* KEY Bug 4469 */
   }
 }
 

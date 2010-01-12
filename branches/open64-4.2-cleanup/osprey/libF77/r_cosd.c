@@ -44,11 +44,7 @@
 #include <math.h>
 #include "moremath.h"
 
-#ifdef KEY
 extern float __rmod(float, float);
-#else
-extern float __rmod(float, float_t);
-#endif // KEY
 
 float __rcosd(float x)
 {

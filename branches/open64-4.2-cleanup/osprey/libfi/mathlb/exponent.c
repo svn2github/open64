@@ -82,12 +82,7 @@ _EXPONENT(_f_real8 x)
 		/* get leading zeros in mantissa part. */
 		i = _leadz8(s2.ui) - IEEE_64_EXPO_BITS - 1;
 		/* calculate exponent. */
-# ifdef KEY
-// Bug 2365
 		s1.i -= (IEEE_64_EXPO_BIAS - 1 + i);
-# else
-		s1.i -= (IEEE_64_EXPO_BIAS + i);
-# endif
 	} else {
 		/* subtract exponent bias and implicit bit. */
 		s1.i -= (IEEE_64_EXPO_BIAS - 1);
@@ -127,11 +122,7 @@ _EXPONENT_4(_f_real4 x)
 		/* get leading zeros in mantissa part. */
 		i = _leadz4(s2.ui) - IEEE_32_EXPO_BITS - 1;
 		/* calculate exponent. */
-#ifdef KEY /* Bug 2365 */
 		s1.i -= (IEEE_32_EXPO_BIAS - 1 + i);
-#else
-		s1.i -= (IEEE_32_EXPO_BIAS + i);
-#endif /* KEY */
 	} else {
 		/* subtract exponent bias and implicit bit. */
 		s1.i -= (IEEE_32_EXPO_BIAS - 1);
@@ -198,11 +189,7 @@ _EXPONENT_16(_f_real16 x)
 		i = i - IEEE_128_EXPO_BITS - 1;
 
 		/* calculate exponent. */
-#ifdef KEY /* Bug 3395 */
 		result.si[0] -= (IEEE_128_EXPO_BIAS - 1 + i);
-#else
-		result.si[0] -= (IEEE_128_EXPO_BIAS + i);
-#endif /* KEY */
 	} else {
 		/* subtract exponent bias and implicit bit. */
 		result.si[0] -= (IEEE_128_EXPO_BIAS - 1);
@@ -234,11 +221,7 @@ _EXPONENT_16(_f_real16 x)
 		/* get leading zeros in mantissa part. */
 		i = _leadz8(s2.ui[0]) - IEEE_64_EXPO_BITS - 1;
 		/* calculate exponent. */
-#ifdef KEY /* Bug 3395 */
 		s1.i[0] -= (IEEE_64_EXPO_BIAS - 1 + i);
-#else
-		s1.i[0] -= (IEEE_64_EXPO_BIAS + i);
-#endif /* KEY */
 	} else {
 		/* subtract exponent bias and implicit bit. */
 		s1.i[0] -= (IEEE_64_EXPO_BIAS - 1);

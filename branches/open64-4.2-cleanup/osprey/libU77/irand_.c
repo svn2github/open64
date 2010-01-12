@@ -21,13 +21,9 @@ not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 #include "config.h"
-#if HAVE_STDLIB_H || defined(KEY) /* Bug 1683, 5019 */
 #  include <stdlib.h>
-#endif
-#ifdef KEY /* Bug 5019 */
 #include "cray/mtlock.h"
 #include "pathf90_libU_intrin.h"
-#endif /* KEY Bug 5019 */
 
 #include "f2c.h"
 
@@ -41,7 +37,6 @@ Boston, MA 02111-1307, USA.  */
 integer
 G77_irand_0 (integer * flag)
 {
-#ifdef KEY /* Bug 1683, 5019 */
   /* Experiment shows that g77 generates a zero (outside the library,
    * apparently) when the optional "flag" argument is missing */
   integer zero = 0;
@@ -60,17 +55,4 @@ G77_irand_0 (integer * flag)
   integer result = rand ();
   MEM_UNLOCK(&pathf90_rand_mutex);
   return result;
-#else
-  switch (*flag)
-    {
-    case 0:
-      break;
-    case 1:
-      srand (0);		/* Arbitrary choice of initialiser. */
-      break;
-    default:
-      srand (*flag);
-    }
-  return rand ();
-#endif /* KEY Bug 1683, 5019 */
 }

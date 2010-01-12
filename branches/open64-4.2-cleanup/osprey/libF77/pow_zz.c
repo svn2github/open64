@@ -54,11 +54,7 @@ sincos(double d, double *s, double *c) {
 extern	void	sincos(double, double *, double *);
 #endif /* defined(BUILD_OS_DARWIN) */
 
-#ifdef KEY
 dcomplex __powzz(double adreal, double adimag, double bdreal, double bdimag)
-#else
-dcomplex __powzz(double adreal, double adimag, double_t bdreal, double_t bdimag)
-#endif // KEY
 {
   double logr, logi, x, y;
   double sinx, cosx;

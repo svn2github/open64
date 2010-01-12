@@ -51,7 +51,6 @@
 #include <stdlib.h>
 #include "externals.h"
 
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -72,18 +71,3 @@ pathf90_unlink(char *fname, pathf90_i4 *status, int namlen)
 	return *status = 0;
 }
 
-#else
-
-int32
-unlink_(char *fname, int32 namlen)
-{
-
-	if (!bufarg && !(bufarg=malloc(bufarglen=namlen+1)))
-		return((errno=F_ERSPACE));
-	else if (bufarglen <= namlen && !(bufarg=realloc(bufarg, bufarglen=namlen+1)))
-		return((int32)(errno=F_ERSPACE));
-	g_char(fname, namlen, bufarg);
-	return( (int32) unlink(bufarg) );
-}
-
-#endif /* KEY Bug 1683 */

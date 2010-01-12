@@ -105,7 +105,7 @@ INT32 Total_Spill_Var_Cnt;
 #endif /* FRONT_END */
 
 
-// KEY: Similar functions available in ipl_summarize_template.h and
+// Similar functions available in ipl_summarize_template.h and
 // ipc_bread.cxx. This function is called by several phases while reading
 // in a PU, for example, by lw_inline and ipl, to estimate parameters like
 // olimit and weight.
@@ -117,9 +117,7 @@ Count_WN_Operator (OPERATOR opr, TYPE_ID rtype, INT32& bbs, INT32& stmts,
 {
     /* count nscf stmts as bbs, not stmts */
     if (OPERATOR_is_non_scf(opr)) {
-#ifdef KEY
         if (opr != OPR_RETURN && opr != OPR_RETURN_VAL)
-#endif
 	++bbs;
     } else if (OPERATOR_is_stmt(opr)) {
 	if (OPERATOR_is_call(opr)) {
@@ -138,9 +136,7 @@ Count_WN_Operator (OPERATOR opr, TYPE_ID rtype, INT32& bbs, INT32& stmts,
 	}
     } else if (OPERATOR_is_scf(opr)) {
 	if (opr != OPR_BLOCK
-#ifdef KEY
 	    && opr != OPR_FUNC_ENTRY
-#endif
 	   ) {
 	    /* blocks are counted by parent node */
 	    ++bbs;

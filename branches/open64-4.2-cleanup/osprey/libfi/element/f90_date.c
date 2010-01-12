@@ -42,11 +42,7 @@
 
 #include <fortran.h>
 
-#ifdef KEY /* Bug 8290 */
 #  include "element.h"
-#else /* KEY Bug 8290 */
-extern void _DATE_( void *dayofyear, int  iffcd );
-#endif /* KEY Bug 8290 */
 
 /*	
  *      Duplicate names

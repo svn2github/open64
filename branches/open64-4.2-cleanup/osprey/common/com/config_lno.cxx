@@ -104,17 +104,11 @@ static char *config_lno_rcs_id = "$Source: common/com/SCCS/s.config_lno.cxx $ $R
 
 #define DEFAULT_UNROLL_PROD_MAX 16
 
-#ifdef KEY //bug 5375 changes unroll_max default to 5
 #define DEFAULT_UNROLL_MAX 5
-#else
-#define DEFAULT_UNROLL_MAX 10
-#endif
 
 BOOL Run_autopar = FALSE;
-#ifdef KEY
 BOOL Simd_Align = FALSE;
 BOOL Simd_Reallocate_Objects = FALSE;
-#endif
 static LNO_FLAGS Default_LNO = {
   NULL,		/* next */
   NULL,		/* _mhd */
@@ -128,12 +122,9 @@ static LNO_FLAGS Default_LNO = {
   TRUE,		/* Blocking */
   0,		/* Blocking_Size */
   TRUE,		/* Cache_model_edge_effects */
-#ifdef KEY
   0,            /* EffectiveCacheSizePct */
-#endif
   TRUE,		/* Coupled_opts */
   TRUE,		/* Cse */
-#ifdef KEY
   0,            /* Cse_Loop_Skip_Before */
   10000,        /* Cse_Loop_Skip_After */
   10000,        /* Cse_Loop_Skip_Equal */
@@ -173,7 +164,6 @@ static LNO_FLAGS Default_LNO = {
   0,            /* Dummy_Skip_Before */
   10000,        /* Dummy_Skip_After */
   10000,        /* Dummy_Skip_Equal */
-#endif /* KEY */
   FALSE,	/* Fancy_tile */
   FALSE,	/* Run_fiz_fuse */
 #ifdef TARG_X8664
@@ -201,10 +191,8 @@ static LNO_FLAGS Default_LNO = {
   1,		/* Opt */
   2,		/* Cache_model */
   TRUE,		/* Run_outer */
-#ifdef KEY
   30,		/* OLF_Upper_Bound */
   15,		/* OLF_Lower_Bound */
-#endif
   0,		/* Outer_unroll */
   TRUE,		/* Outer_unroll_deep */
   6,		/* Outer_unroll_min_for_further_unroll */
@@ -215,12 +203,8 @@ static LNO_FLAGS Default_LNO = {
   2,		/* ou_aggre */
   0,		/* Run_p3 */
   TRUE,		/* Pseudo_lower */
-#ifndef KEY
-  0, FALSE,	/* Run_prefetch */
-#else
   NO_PREFETCH, FALSE,	/* Run_prefetch */
   FALSE, FALSE, /* Prefetch for store accesses - Prefetch_stores */
-#endif
 #if defined(TARG_IA64) || defined(TARG_X8664)
   TRUE,         /*Prefetch Invariant (non-constant) Stride */
   8,            /*Prefetch_Strides_Ahead*/
@@ -253,9 +237,6 @@ static LNO_FLAGS Default_LNO = {
   TRUE,		/* Use_parm */
   FALSE,	/* Verbose */
   TRUE,		/* Version_mp_loops */
-#ifndef KEY
-  TRUE,		/* Run_vintr */
-#else
   1,		/* Run_vintr */
   TRUE,         /* Run_vintr_set */
   FALSE,	/* Vintr_Verbose */
@@ -275,7 +256,6 @@ static LNO_FLAGS Default_LNO = {
   TRUE,         /* Invariant Factorization */
   TRUE,         /* New_Invariant Factorization */
   FALSE,        /* Invar_Factor_Verbose*/
-#endif /* KEY */
   TRUE,		/* Run_oinvar */
 #ifdef TARG_IA64
   1,		/* Run_doacross */
@@ -310,7 +290,6 @@ static LNO_FLAGS Default_LNO = {
 #else
   8,            /* Full_unrolling */
 #endif
-#ifdef KEY
   TRUE,         /* Peel_2D_triangle_loop */
   2500,         /* Full_unrolling_loop_size_limit */
 #ifdef TARG_IA64
@@ -321,7 +300,6 @@ static LNO_FLAGS Default_LNO = {
   0,		/* Processors */
   128,		/* Parallel_per_proc_overhead */ 
   FALSE,	/* Apo_use_feedback */
-#endif
   TRUE,        /* IfMinMax_Fix_Cond */
   UINT32_MAX,  /* IfMinMax_Limit */
   UINT32_MAX,  /* IfMinMax_Fix_Cond_Limit */
@@ -343,12 +321,9 @@ LNO_FLAGS Initial_LNO = {
   TRUE,		/* Blocking */
   0,		/* Blocking_Size */
   TRUE,		/* Cache_model_edge_effects */
-#ifdef KEY
   0,            /* EffectiveCacheSizePct */
-#endif
   TRUE,		/* Coupled_opts */
   TRUE,		/* Cse */
-#ifdef KEY
   0,            /* Cse_Loop_Skip_Before */
   10000,        /* Cse_Loop_Skip_After */
   10000,        /* Cse_Loop_Skip_Equal */
@@ -388,7 +363,6 @@ LNO_FLAGS Initial_LNO = {
   0,            /* Dummy_Skip_Before */
   10000,        /* Dummy_Skip_After */
   10000,        /* Dummy_Skip_Equal */
-#endif /* KEY */
   FALSE,	/* Fancy_tile */
   FALSE,	/* Run_fiz_fuse */
 #ifdef TARG_X8664
@@ -416,10 +390,8 @@ LNO_FLAGS Initial_LNO = {
   1,		/* Opt */
   2,		/* Cache_model */
   TRUE,		/* Run_outer */
-#ifdef KEY
   30,		/* OLF_Upper_Bound */
   15,		/* OLF_Lower_Bound */
-#endif
   0,		/* Outer_unroll */
   TRUE,		/* Outer_unroll_deep */
   6,		/* Outer_unroll_min_for_further_unroll */
@@ -430,12 +402,8 @@ LNO_FLAGS Initial_LNO = {
   2,		/* ou_aggre */
   0,		/* Run_p3 */
   TRUE,		/* Pseudo_lower */
-#ifndef KEY
-  0, FALSE,	/* Run_prefetch */
-#else
   NO_PREFETCH, FALSE,   /* Run_prefetch */
   FALSE, FALSE, /* Prefetch for store accesses - Prefetch_stores */
-#endif
 #if defined(TARG_IA64) || defined(TARG_X8664)
   TRUE,        /* Prefetch Invariant Stride */
   8,            /* Prefetch_Strides_Ahead */
@@ -468,9 +436,6 @@ LNO_FLAGS Initial_LNO = {
   TRUE,		/* Use_parm */
   FALSE,	/* Verbose */
   TRUE,		/* Version_mp_loops */
-#ifndef KEY
-  TRUE,		/* Run_vintr */
-#else
   1,		/* Run_vintr */
   TRUE,         /* Run_vintr_set */
   FALSE,	/* Vintr_Verbose */
@@ -490,7 +455,6 @@ LNO_FLAGS Initial_LNO = {
   TRUE,        /* Invariant Factorization */
   TRUE,        /* New_Invariant Factorization */
   FALSE,        /* Invar_Factor_Verbose */
-#endif /* KEY */
   TRUE,		/* Run_oinvar */
 #ifdef TARG_IA64
   1,		/* Run_doacross */
@@ -525,7 +489,6 @@ LNO_FLAGS Initial_LNO = {
 #else
   8,            /* Full_unrolling */
 #endif
-#ifdef KEY
   TRUE,         /* Peel_2D_triangle_loop */
   2500,         /* Full_unrolling_loop_size_limit */
 #ifdef TARG_IA64
@@ -536,7 +499,6 @@ LNO_FLAGS Initial_LNO = {
   0,		/* Processors */
   128,		/* Parallel_per_proc_overhead */ 
   FALSE,	/* Apo_use_feedback */
-#endif
   TRUE,        /* IfMinMax_Fix_Cond */
   1000000,     /* IfMinMax_Limit */
   1000000,     /* IfMinMax_Fix_Cond_Limit */
@@ -616,9 +578,7 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "blocking",		NULL,	Blocking ),
   LNOPT_U32  ( "blocking_size",		NULL,	0,0,99999, Blocking_Size ),
   LNOPT_BOOL ( "cache_edge_effects",	NULL,	Cache_model_edge_effects ),
-#ifdef KEY
   LNOPT_U32  ( "ecspct",                NULL,   0,0,100, EffectiveCacheSizePct),
-#endif
   MHOPT_NAME_DUP ( "cache_size",	CS_string ),
   MHOPT_NAME_DUP (   "cs",		CS_string ),
   MHOPT_I32_SET_DUP ( "clean_miss_penalty",	0,0,1000000000,
@@ -626,7 +586,6 @@ static OPTION_DESC Options_LNO[] = {
   MHOPT_I32_SET_DUP (   "cmp",		0,0,1000000000,
 					Clean_Miss_Penalty, CMP_Set ),
   LNOPT_BOOL ( "cse",			NULL,	Cse ),
-#ifdef KEY
   LNOPT_U32  ( "cse_loop_skip_before",	"cse_loop_skip_before",	32,0,10000, 
 	       Cse_Loop_Skip_Before ),
   LNOPT_U32  ( "cse_loop_skip_after",	"cse_loop_skip_after",	32,0,10000, 
@@ -703,7 +662,6 @@ static OPTION_DESC Options_LNO[] = {
 	       Dummy_Skip_After ),
   LNOPT_U32  ( "dummy_skip_equal",	"dummy_skip_equal",	32,0,10000, 
 	       Dummy_Skip_Equal ),
-#endif /* KEY */
   MHOPT_I32_SET_DUP ( "dirty_miss_penalty",	0,0,1000000000,
 					Dirty_Miss_Penalty, DMP_Set ),
   MHOPT_I32_SET_DUP (   "dmp",		0,0,1000000000,
@@ -756,10 +714,8 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_U32  ( "optimize_cache",	NULL,	2,0,2,	Cache_model ),
   LNOPT_U32  (   "optc",		NULL,	2,0,2,	Cache_model ),
   LNOPT_BOOL ( "outer",			NULL,	Run_outer ),
-#ifdef KEY
   LNOPT_U32  ( "olf_ub",		NULL,	30,0,200,  OLF_Upper_Bound ),
   LNOPT_U32  ( "olf_lb",		NULL,	15,0,200,  OLF_Lower_Bound ),
-#endif
   LNOPT_U32  ( "outer_unroll",		NULL,	0,1,32, Outer_unroll ),
   LNOPT_U32  (   "ou",			NULL,	0,1,32, Outer_unroll ),
   LNOPT_BOOL ( "outer_unroll_deep",	NULL,	Outer_unroll_deep ),
@@ -845,9 +801,6 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "use_malloc",		NULL,	Use_malloc ),
   LNOPT_BOOL ( "use_parm",		NULL,	Use_parm ),
   LNOPT_BOOL ( "version_mp_loops",	NULL,	Version_mp_loops ),
-#ifndef KEY
-  LNOPT_BOOL ( "vintr",			NULL,	Run_vintr ),
-#else
   LNOPT_U32_SET ("vintr",                "vintr", 1, 0, 2, Run_vintr,
 		 Run_vintr_set ),
   LNOPT_BOOL ( "vintr_verbose",		NULL,	Vintr_Verbose ),
@@ -867,7 +820,6 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "invar_factorization","invar_factor",  Invariant_Factorization),
   LNOPT_BOOL ( "new_invar_factorization","new_invar_factor",  New_Invariant_Factorization),
   LNOPT_BOOL ( "invar_fact_verbose",   NULL,    Invar_Factor_Verbose),
-#endif /* KEY */  
   LNOPT_BOOL ( "oinvar",		NULL,	Run_oinvar ),
   LNOPT_U32  ( "doacross",		NULL,	1,0,4,Run_doacross),
   LNOPT_U32  ( "preferred_doacross_tile_size",
@@ -900,7 +852,6 @@ static OPTION_DESC Options_LNO[] = {
 #endif
   LNOPT_U32  ( "local_pad_size", 	NULL,   0,0,1000,Local_pad_size),
   LNOPT_U32  ( "full_unroll", 	        "fu",   0,0,100,Full_unrolling),
-#ifdef KEY
   LNOPT_BOOL ( "peel_triangle_loop",   NULL,	Peel_2D_triangle_loop ),
   LNOPT_U32  ( "full_unroll_size", 	NULL,   
 	       2500,0,10000,Full_unrolling_loop_size_limit),
@@ -910,7 +861,6 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_U32  ( "parallel_pp_overhead", 	NULL,   
 	       128,0,0x7fffffff, Parallel_per_proc_overhead),
   LNOPT_BOOL ( "apo_use_feedback",	NULL,	Apo_use_feedback ),
-#endif
   LNOPT_BOOL ( "ifmm_fix_cond",	NULL,	IfMinMax_Fix_Cond),
   LNOPT_U32  ( "ifmm_limit", 	NULL,   
 	       UINT32_MAX,0,UINT32_MAX, IfMinMax_Limit),

@@ -42,7 +42,6 @@ integer
 G77_link_0 (const char *path1, const char *path2, const ftnlen Lpath1,
 	    const ftnlen Lpath2)
 {
-#if defined (HAVE_LINK) || defined(KEY) /* Bug 1683 */
   char *buff1, *buff2;
   int i;
 
@@ -58,13 +57,8 @@ G77_link_0 (const char *path1, const char *path2, const ftnlen Lpath1,
   free (buff1);
   free (buff2);
   return i ? errno : 0;
-#else /* ! HAVE_LINK */
-  errno = ENOSYS;
-  return -1;
-#endif
 }
 
-#ifdef KEY /* Bug 1683 */
 /* Provide subroutine interface too */
 void
 pathf90_link(const char *path1, const char *path2, int *status,
@@ -74,5 +68,4 @@ pathf90_link(const char *path1, const char *path2, int *status,
 	status = (0 == status) ? (&junk) : status;
 	*status = G77_link_0(path1, path2, Lpath1, Lpath2);
 }
-#endif /* KEY Bug 1683 */
 

@@ -43,11 +43,7 @@
 #include <math.h>
 #include "moremath.h"
 
-#ifdef KEY
 double pow_dd(double *ap, double *bp)
-#else
-double pow_dd(double *ap, double_t *bp)
-#endif
 {
 
 return(pow(*ap, *bp) );

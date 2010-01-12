@@ -90,11 +90,7 @@ struct gl_o_inf *oinf
  */
 	xf_info->maxrecsize = _ff_nparm_getv(spec, 1, &isvalid) ;
 	if (!isvalid)
-#ifdef KEY /* Bug 4663 */
 		xf_info->maxrecsize = 0xffffffff;
-#else /* KEY Bug 4663 */
-		xf_info->maxrecsize = 0x7fffffff;
-#endif /* KEY Bug 4663 */
 
 /*
  *	Record the buffer size in bytes

@@ -635,7 +635,6 @@ Instrumentation_Phase_Num()
 // ====================================================================
 
 
-#ifdef KEY
 void Profile_Value_Init( PU_PROFILE_HANDLE pu_handle, INT32 num_values )
 {
   Value_Profile_Vector& Value_Table = pu_handle->Get_Value_Table();
@@ -716,6 +715,5 @@ void Profile_Value_FP_Bin( PU_PROFILE_HANDLE pu_handle, INT32 inst_id,
   if (value_fp_1 == 1.0) entry->uopnd1 ++;
 }
 #endif // !TARG_sl
-#endif
 
 }

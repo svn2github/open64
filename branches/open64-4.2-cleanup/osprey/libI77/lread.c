@@ -235,7 +235,7 @@ has skipped through a "value separator" which may have a comma in it
 	    ftnunit->lcount = 1;
 	    GETC (ftnunit->nextch);
 	    goto bump;
-/* LHL 5/24/89
+/*
  * change it so that comment is allowed anywhere within the namelist
  * file
  */

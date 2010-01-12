@@ -195,12 +195,10 @@ struct CVCHRT_DATA _cvrt_parse_tables[] = {
     { NCV_T3D,   "t3d"     },
     { NCV_T3D,   "t3e"     },
 #endif
-#ifdef  KEY
     { NCV_IA,    "ia32"    },
     { NCV_IA,    "ia64"    },
     { NCV_MIPS,  "bigendian" },
     { NCV_MIPS,  "be"      },
-#endif /* KEY */
 #else	/* !__mips */
     { NCV_IEL,   "ieee_64" },
     { NCV_IEU,   "ieee_le" },

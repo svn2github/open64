@@ -196,7 +196,7 @@ x_putc (register unit *ftnunit, register XINT count, char con, char *buf)
    iobuf = ftnunit->f77fio_buf + ftnunit->f77recpos;
    ftnunit->f77recpos = new_size;
 
-   /* LHL 4/27/89 change it back to use memcpy for performance
+   /* change it back to use memcpy for performance
     * reason. if ( buf ) for ( ; count--; iobuf++, buf++ ) *iobuf =
     * *buf; */
    if (buf)

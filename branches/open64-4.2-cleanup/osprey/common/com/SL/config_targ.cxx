@@ -341,14 +341,10 @@ Prepare_Target ( void )
     if ( strcmp ( ABI_Name, "n32" ) == 0 ) {
       Target_ABI = ABI_N32;
       isa_default = TARGET_ISA_Mips64;
-#if 0 // for non-KEY, default target is r10000
-      targ_default = TARGET_sb1;
-#else
 #ifdef TARG_SL
       targ_default = TARGET_sl1_pcore;
 #else
       targ_default = TARGET_R10K;
-#endif
 #endif
       Use_32_Bit_Pointers = TRUE;
     } else if ( strcmp ( ABI_Name, "n64" ) == 0 ) {
@@ -493,12 +489,6 @@ Prepare_Target ( void )
   Target_int64 = FALSE;
   Use_32_Bit_Pointers = (Target_ABI == ABI_N32);
 #if defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)
-#ifndef KEY
-  // At KEY we initialize integer model in Initialize_C_Int_Model
-  // Look in gccfe/c_int_model.c
-  Target_Int_Model = ( Target_ABI == ABI_N64 ) ? TARGET_INT_LP64
-				       : TARGET_INT_ILP32;
-#endif
   Make_Int_Model_Consistent ();
 #endif
 }

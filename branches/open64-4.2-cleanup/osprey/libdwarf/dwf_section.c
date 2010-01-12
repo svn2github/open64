@@ -190,7 +190,7 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	augmentation = curcie->cie_aug;
 	if (strcmp(augmentation, DW_CIE_AUGMENTER_STRING_V0) == 0
 	    || !strcmp(augmentation, PIC_DW_CIE_AUGMENTER_STRING_V0)
-	    // Bug 7278 - implement "zR" CFA augmentation for non-C++ code.
+	    // implement "zR" CFA augmentation for non-C++ code.
 	    || !strcmp(augmentation,
 		       PIC_NONCPLUS_DW_CIE_AUGMENTER_STRING_V0)
 	    ) {
@@ -272,7 +272,7 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	data += uwordb_size;
 
 	/*cie-id is a special value. */
-	// Bug 5357 - g++ uses 0 as the CIE_ID for eh_frame section and
+	// g++ uses 0 as the CIE_ID for eh_frame section and
 	// 0xffffffff as the CIE_ID in the debug_frame section.
 	du = 0x0LL;
 	WRITE_UNALIGNED(dbg,(void *)data, (const void *)&du,
@@ -296,7 +296,7 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 
 	if (strcmp(augmentation, DW_CIE_AUGMENTER_STRING_V0) == 0
 	    || !strcmp(augmentation, PIC_DW_CIE_AUGMENTER_STRING_V0)
-	    // Bug 7278 - implement "zR" CFA augmentation for non-C++ code.
+	    // implement "zR" CFA augmentation for non-C++ code.
 	    || !strcmp(augmentation, 
 		       PIC_NONCPLUS_DW_CIE_AUGMENTER_STRING_V0)
 	    ) {
@@ -305,7 +305,7 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	}
 
 	if (personality) {
-        // bug 9177: Emit personality format only if there is
+        // Emit personality format only if there is
         // personality information.
         //
         // personality format
@@ -328,7 +328,7 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
         data += sizeof(Dwarf_Ubyte);
 	}
 	if (generate_fpic_dwarf) {
-	    // FDE encoding should be added for all languages (bug 12323).
+	    // FDE encoding should be added for all languages.
 	    Dwarf_Unsigned p = 0x1b;
 	    WRITE_UNALIGNED(dbg, (void *)data, (const void *)&p,
 			    sizeof(p), sizeof(Dwarf_Ubyte));
@@ -405,7 +405,7 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	                 PIC_NONCPLUS_DW_CIE_AUGMENTER_STRING_V0) &&
 	         generate_fpic_dwarf) {
 	    // "zR" augmentation for non-C++ PIC, insert augmentation
- 	    // size (bug 12323).
+ 	    // size.
     	    pic_augmentation = 1;
     	    oet_length = 0;
     	    /* encode the length of augmented fields. */

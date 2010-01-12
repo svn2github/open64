@@ -45,29 +45,20 @@
 #include <math.h>
 #include "cmplrs/host.h"
 
-#ifdef KEY
 float r_sign(float *a,float *b)
-#else
-float r_sign(float *a,float_t *b)
-#endif // KEY
 {
 float x;
 x = (*a >= 0.0F ? *a : - *a);
 return( *b >= 0.0F ? x : -x);
 }
 
-#ifdef KEY
 float __rsign(float a,float b)
-#else
-float __rsign(float a,float_t b)
-#endif // KEY
 {
 float x;
 x = (a >= 0.0F ? a : - a);
 return( b >= 0.0F ? x : -x);
 }
 
-#ifdef KEY /* Bug 3405 */
 /* Copy IEEE sign bit from b to a */
 float rIsign(float *a, float *b)
 {
@@ -77,5 +68,4 @@ float rIsign(float *a, float *b)
   aval = (aval & ~SIGN) | (bval & SIGN);
   return *(float *)&aval;
 }
-#endif /* KEY Bug 3405 */
 

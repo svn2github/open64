@@ -240,12 +240,8 @@ i4 *ncopies)
 	char * rp1;
 	rp1 = result_p  ;
 	for (k = 0 ; k < nc ; k ++ ) {
-#ifdef KEY /* bug 8062 */
 	  /* Using IEEE FP on non-FP data might change bits during assign */
 	  *(ui4 *)rp1 = *(ui4 *)array_p ;
-#else /* KEY bug 8062 */
-	  *(r4 *)rp1 = *(r4 *)array_p ;
-#endif /* KEY bug 8062 */
 	  rp1 += res_stride[res_rank-1] ;
 	}
 	result_p += r_stride ;
@@ -270,12 +266,8 @@ i4 *ncopies)
 	char * rp1;
 	rp1 = result_p  ;
 	for (k = 0 ; k < nc ; k ++ ) {
-#ifdef KEY /* bug 8062 */
 	  /* Using IEEE FP on non-FP data might change bits during assign */
 	  *(ui8 *)rp1 = *(ui8 *)array_p ;
-#else /* KEY bug 8062 */
-	  *(r8 *)rp1 = *(r8 *)array_p ;
-#endif /* KEY bug 8062 */
 	  rp1 += res_stride[res_rank-1] ;
 	}
 	result_p += r_stride ;
@@ -300,11 +292,7 @@ i4 *ncopies)
 	char * rp1;
 	rp1 = result_p  ;
 	for (k = 0 ; k < nc ; k ++ ) {
-#ifdef KEY /* Bug 4039 */
 	  *(ui16 *)rp1 = *(ui16 *)array_p ;
-#else /* KEY Bug 4039 */
-	  *(r16 *)rp1 = *(r16 *)array_p ;
-#endif /* KEY Bug 4039 */
 	  rp1 += res_stride[res_rank-1] ;
 	}
 	result_p += r_stride ;

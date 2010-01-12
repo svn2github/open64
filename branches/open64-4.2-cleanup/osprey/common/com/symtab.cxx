@@ -1122,9 +1122,7 @@ TY_are_equivalent (TY_IDX ty_id1, TY_IDX ty_id2, UINT32 flags)
 
 	// FLD equivalence check 
 	are_equiv = Struct_are_equivalent(TY_fld(ty1), TY_fld(ty2), flags);
-#ifdef KEY
 	are_equiv &= (TY_copy_constructor(ty1) == TY_copy_constructor(ty2));
-#endif
 	break;
 
       case KIND_POINTER:
@@ -1749,13 +1747,11 @@ ST::Print (FILE *f, BOOL verbose) const
 	    if (flags & PU_HAS_USER_ALLOCA)	fprintf (f, " user_alloca");
 	    if (flags & PU_HAS_UNKNOWN_CONTROL_FLOW)	fprintf (f, " unknown_control_flow");
 	    if (flags & PU_IS_THUNK)		fprintf (f, " thunk");
-#ifdef KEY
 	    if (flags & PU_NEEDS_MANUAL_UNWINDING) fprintf (f, " needs_manual_unwinding");
 	    if (flags & PU_IS_EXTERN_INLINE) fprintf (f, " extern_inline");
 	    if (flags & PU_IS_MARKED_INLINE) fprintf (f, " inline_keyword");
 	    if (flags & PU_NO_INSTRUMENT) fprintf (f, " no_instrument");
 	    if (flags & PU_NEED_TRAMPOLINE) fprintf (f, " need_trampoline");
-#endif
 #ifdef TARG_X8664
 	    if (flags & PU_FF2C_ABI) fprintf (f, " ff2c_abi");
 #endif
@@ -1827,7 +1823,6 @@ ST::Print (FILE *f, BOOL verbose) const
 		fprintf (f, " assigned_to_dedicated_preg");
 	}
 
-#ifdef KEY
 	if (flags_ext) {
 	    fprintf (f, "\t\tFlags_ext:\t0x%08x", flags_ext);
 	    if (flags_ext & ST_ONE_PER_PU)
@@ -1839,7 +1834,6 @@ ST::Print (FILE *f, BOOL verbose) const
             if (flags_ext & ST_IS_THREAD_LOCAL)
                 fprintf (f, " thread_local");
 	}
-#endif
 #ifdef TARG_NVISA
 	    if (memory_space == MEMORY_GLOBAL)
 		fprintf (f, " __global__");
@@ -1982,12 +1976,10 @@ TY::Print (FILE *f) const
 	if (flags & TY_NOT_IN_UNION)	fprintf (f, " not_in_union");
 	if (flags & TY_NO_ANSI_ALIAS)	fprintf (f, " no_ansi_alias");
 	if (flags & TY_IS_NON_POD)	fprintf (f, " non_pod");
-#ifdef KEY
 	if (flags & TY_RETURN_IN_MEM)	fprintf (f, " return_in_mem");
 	if (flags & TY_CONTENT_SEEN)	fprintf (f, " content_seen");
         if (flags & TY_IS_INCOMPLETE)   fprintf (f, " incomplete");
 	if (flags & TY_NO_SPLIT)        fprintf (f, " no_split");
-#endif
 #ifdef TARG_NVISA
 	if (flags & TY_CAN_BE_VECTOR) 	fprintf (f, "  vector");
 #endif
@@ -2078,16 +2070,10 @@ void
 PU::Print (FILE *f) const
 {
     Print_TY_IDX_verbose (f, prototype);
-#ifdef KEY
     fprintf (f, ", flags 0x%016llx,\n"
 	     "\tlexical level %d, LANG 0x%02x, TARGET_INFO %d,\n"
 	     "\tMisc. Info (misc) %d\n",
 	     flags, lexical_level, src_lang, target_idx, (INT32)misc); 
-#else
-    fprintf (f, ", flags 0x%016llx,\n"
-	     "\tlexical level %d, LANG 0x%02x, TARGET_INFO %d\n",
-	     flags, lexical_level, src_lang, target_idx); 
-#endif
 } // PU::Print
 
 void
@@ -2158,7 +2144,6 @@ FILE_INFO::Print (FILE *f) const
     
 
 
-#if 1 // Fix 10-26-2002: Enhancement to reset addr_saved flag before Mainopt
 struct clear_addr_flag_op
 {
     clear_addr_flag_op() {};
@@ -2174,7 +2159,6 @@ Clear_local_symtab_addr_flags(const SCOPE& scope)
 {
   For_all_entries (*scope.st_tab, clear_addr_flag_op(), 1);
 }
-#endif
 
 // function object used in "For_all"
 template <class T>
@@ -2339,9 +2323,6 @@ dump_st_attr (ST_ATTR_IDX idx)
     St_Attr_Table[idx].Print(stdout);
 }
 
-#ifndef KEY
-static
-#endif // !KEY
 ST *
 Gen_Temp_Named_Symbol (TY_IDX ty, const char *rootname,
 		       ST_CLASS sym_class, ST_SCLASS storage_class)
@@ -2425,10 +2406,8 @@ TY_IDX MTYPE_TO_TY_array[MTYPE_LAST+1];
 
 TY_IDX Quad_Type, Void_Type, FE_int_Type, FE_double_Type;
 TY_IDX Spill_Int_Type, Spill_Float_Type;
-#ifdef KEY
 TY_IDX Spill_Int32_Type;
 TY_IDX Spill_Float32_Type;
-#endif
 
 #if defined(FRONT_END) && !defined(FRONT_END_MFEF77)
 extern "C" TYPE_ID FE_int_To_Mtype (void);
@@ -2751,14 +2730,10 @@ Initialize_Special_Global_Symbols ()
 	    
     Spill_Int_Type = MTYPE_To_TY (Spill_Int_Mtype);
     Spill_Float_Type = MTYPE_To_TY (Spill_Float_Mtype);
-#ifdef KEY
     /* Bug#246
        MTYPE_FQ is reserved for 'long double' type.
      */
     Quad_Type = MTYPE_To_TY (MTYPE_F16);
-#else
-    Quad_Type = MTYPE_To_TY (MTYPE_FQ);
-#endif // KEY
     Void_Type = MTYPE_To_TY (MTYPE_V);
 
 #if defined(TARG_X8664) || defined(TARG_MIPS)

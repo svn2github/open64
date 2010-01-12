@@ -52,9 +52,7 @@ int32 i_nint(float *x)
   return ((*x) >= 0.0F ? (int32)(*x + .5F) : -(int32)(.5F - *x));
 }
 
-#ifdef KEY /* Bug 3869 */
 int32 i_nint_d(double *x)
 {
   return ((*x) >= 0.0 ? (int32)(*x + .5) : -(int32)(.5 - *x));
 }
-#endif /* KEY Bug 3869 */

@@ -244,11 +244,7 @@ BOOL C_Restrict_On = FALSE;
 BOOL C_Restrict_Set = FALSE;
 char *C_Auto_Restrict = NULL;
 BOOL C_Auto_Restrict_Set = FALSE;
-#ifdef KEY
 BOOL FTN_Short_Circuit_On = TRUE;
-#else
-BOOL FTN_Short_Circuit_On = FALSE;
-#endif
 BOOL FTN_Short_Circuit_Set = FALSE;
 BOOL Macro_Expand_Pragmas_On = FALSE;
 BOOL Macro_Expand_Pragmas_Set = FALSE;
@@ -268,7 +264,6 @@ BOOL LANG_Ansi_Setjmp_On = TRUE;
 BOOL LANG_Ansi_Setjmp_Set = FALSE;
 BOOL LANG_Ignore_Carriage_Return_On = TRUE; 
 BOOL LANG_Ignore_Carriage_Return_Set = FALSE;
-# ifdef KEY
 BOOL LANG_Read_Write_Const = FALSE;
 BOOL LANG_Formal_Deref_Unsafe = FALSE;
 /* Use copyinout to improve locality in Fortran in situations where it is
@@ -285,7 +280,6 @@ BOOL LANG_Ignore_Target_Attribute_Set = FALSE;
 // -LANG:math_errno=off => do not set errno
 BOOL LANG_Math_Errno = TRUE; // set errno after calling math functions
 BOOL LANG_Math_Errno_Set = FALSE;
-/* KEY Bug 3405 */
 BOOL LANG_IEEE_Minus_Zero_On = FALSE;
 BOOL LANG_IEEE_Minus_Zero_Set = FALSE;
 
@@ -294,7 +288,6 @@ BOOL LANG_Enable_CXX_Openmp_Set = FALSE;
 
 BOOL LANG_Enable_Global_Asm = FALSE;
 BOOL LANG_Enable_Global_Asm_Set = FALSE;
-# endif /* KEY Bug 3405 */
 
 BOOL LANG_Pch;
 BOOL LANG_Pch_Set;
@@ -411,7 +404,6 @@ OPTION_LIST *Registers_Not_Allocatable = NULL;
 /* Unique ident from IPA */
 INT32 Ipa_Ident_Number = 0;
 
-#ifdef KEY
 // Tell ipa_link to set LD_LIBRARY_PATH to this before running the shell cmds.
 char *IPA_old_ld_library_path = NULL;
 
@@ -420,7 +412,6 @@ char *IPA_cc_name = NULL;
 
 // Tell ipa_link about the source language.
 char *IPA_lang = NULL;
-#endif
 
 BOOL Indexed_Loads_Allowed = FALSE;
 
@@ -664,16 +655,6 @@ static OPTION_DESC Options_LANG[] = {
     { OVK_BOOL, OV_VISIBLE,	FALSE, "bool",			"",
       0, 0, 0,	&CXX_Bool_On,		&CXX_Bool_Set,
       "C++: enable builtin type 'bool'" },
-#ifndef KEY
-// We don't support -LANG:exceptions, keep CXX_Exceptions_On ON by default
-    { OVK_BOOL, OV_VISIBLE,	FALSE, "exceptions",		"",
-      0, 0, 0,	&CXX_Exceptions_On,	&CXX_Exceptions_Set,
-      "C++: enable exceptions" },
-#endif // !KEY
-#if 0 // remove it till we have a robust design 
-    { OVK_BOOL, OV_SHY,		FALSE, "alias_const",		"",
-      0, 0, 0,  &CXX_Alias_Const,       &CXX_Alias_Const_Set },
-#endif
     { OVK_BOOL, OV_VISIBLE,	FALSE, "recursive",		"",
       0, 0, 0,	&LANG_Recursive,	&LANG_Recursive_Set,
       "FORTRAN: program contains recursion" },
@@ -744,7 +725,6 @@ static OPTION_DESC Options_LANG[] = {
     { OVK_BOOL, OV_VISIBLE,	FALSE, "ignore_carriage_return",	"",
       0, 0, 0,  &LANG_Ignore_Carriage_Return_On, &LANG_Ignore_Carriage_Return_Set,
       "C/C++: ignore carriage returns in source" },
-# ifdef KEY
     { OVK_BOOL, OV_VISIBLE,	FALSE, "rw_const",		"",
       0, 0, 0,	&LANG_Read_Write_Const,	&LANG_Read_Write_Const,
       "FORTRAN: store the constant in a temporary location and pass the address of the temporary location" },
@@ -763,7 +743,6 @@ static OPTION_DESC Options_LANG[] = {
     { OVK_BOOL, OV_VISIBLE,	TRUE, "IEEE_save",		"",
       0, 0, 0,	&LANG_IEEE_Save,	&LANG_IEEE_Save_Set,
       "FORTRAN: Save/restore FPU state in procedure prolog/epilog as F2003 requires" },
-    /* Bug 3405 */
     { OVK_BOOL, OV_VISIBLE,	TRUE, "IEEE_minus_zero",		"",
       0, 0, 0,	&LANG_IEEE_Minus_Zero_On,	&LANG_IEEE_Minus_Zero_Set,
       "FORTRAN: SIGN intrinsic considers -0.0 input to be negative" },
@@ -777,7 +756,6 @@ static OPTION_DESC Options_LANG[] = {
     { OVK_BOOL, OV_INTERNAL,	TRUE, "global_asm",		"",
       0, 0, 0,	&LANG_Enable_Global_Asm,	&LANG_Enable_Global_Asm_Set,
       "Handle global scope ASMs fully." },
-#endif /* KEY */
 
     { OVK_COUNT }		    /* List terminator -- must be last */
 };
@@ -824,14 +802,12 @@ static OPTION_DESC Options_INTERNAL[] = {
       0, 0, 0,	&ARCH_mask_shift_counts, NULL },
     { OVK_BOOL,	OV_INTERNAL,	FALSE, "generate_nor",	NULL,
       0, 0, 0,	&ARCH_generate_nor, NULL },
-#ifdef KEY
     { OVK_NAME, OV_INTERNAL,	FALSE, "old_ld_lib_path",	"",
       0, 0, 0,	&IPA_old_ld_library_path,	NULL },
     { OVK_NAME, OV_INTERNAL,	FALSE, "cc_name",		"",
       0, 0, 0,	&IPA_cc_name,	NULL },
     { OVK_NAME, OV_INTERNAL,	FALSE, "lang",			"",
       0, 0, 0,	&IPA_lang,	NULL },
-#endif
 
     { OVK_COUNT }		    /* List terminator -- must be last */
 };
@@ -909,12 +885,8 @@ INT32 CG_memmove_inst_count = 16;	/* for intrinsic expansion of bzero etc */
 #endif
 BOOL CG_memmove_inst_count_overridden = FALSE;
 BOOL CG_bcopy_cannot_overlap = FALSE;	/* for intrinsic expansion of bcopy */
-#ifdef KEY
 // For memcpy, src and dest cannot overlap
 BOOL CG_memcpy_cannot_overlap = TRUE;	/* for intrinsic expansion of memcpy */
-#else
-BOOL CG_memcpy_cannot_overlap = FALSE;	/* for intrinsic expansion of memcpy */
-#endif
 BOOL CG_memmove_cannot_overlap = FALSE;	/* for intrinsic expansion of memmove */
 BOOL CG_memmove_nonconst = FALSE;	/* expand mem intrinsics unknown size */
 
@@ -1141,21 +1113,12 @@ Configure_Ofast ( void )
   /* We assume that the driver has defaulted Opt_Level properly. */
   /* First set the options that are common to all targets: */
   if ( ! Olimit_Set ) {
-#ifdef KEY
-// bug 2679
 // With -OPT:Olimit=0, we assign MAX_OLIMIT to it, do the same here.
     Olimit = MAX_OLIMIT;
-#else
-    Olimit = 0;
-#endif
     Olimit_Set = TRUE;
   }
   if ( ! Roundoff_Set ) {
-#ifndef KEY
-    Roundoff_Level = ROUNDOFF_ANY;
-#else
     Roundoff_Level = ROUNDOFF_ASSOC;
-#endif
     Roundoff_Set = TRUE;
   }
 
@@ -1300,9 +1263,9 @@ Configure (void)
 
   if (Force_GP_Prolog) Force_Jalr = TRUE;
 #ifdef TARG_X8664
-  // Bug 1039 - align aggregates to 16-byte for all optimization levels
+  // align aggregates to 16-byte for all optimization levels
   // OSP: Some cases may failed on i386(-march=anyx86) due to the alignment
-  // bug 13998 - do this even under -mno-sse2
+  // do this even under -mno-sse2
   if ( ! Aggregate_Alignment_Set &&
        ! LANG_Enable_Global_Asm )
     Aggregate_Alignment = 16;
@@ -1426,10 +1389,8 @@ Configure_Source ( char	*filename )
   Optimization_Skip_List = Build_Skiplist ( Opt_Skip );
   /* Are we skipping any regions for optimization? */
   Region_Skip_List = Build_Skiplist ( Region_Skip );
-#ifdef KEY
   /* Are we skipping any PUs for goto conversion? */
   Goto_Skip_List = Build_Skiplist ( Goto_Skip );
-#endif
 
 #if defined(TARG_SL)
   /* Are we skipping any branches for DDB? */
@@ -1440,7 +1401,6 @@ Configure_Source ( char	*filename )
   if (!LANG_Recursive_Set && Language == LANG_F90)
      LANG_Recursive = TRUE;
 
-#ifdef KEY
   /* Turn on -LANG:copyinout by default at -O2: */
   if ( ! LANG_Copy_Inout_Set && Opt_Level >= 2 ) {
     LANG_Copy_Inout = TRUE;
@@ -1459,7 +1419,6 @@ Configure_Source ( char	*filename )
   if ( ! VHO_Cselect_Opt_Set && Opt_Level >= 1 ) {
     VHO_Cselect_Opt = TRUE;
   }
-#endif
 
   /* Since there seems to be little compile time reason not to be aggressive, 
    * make the folder aggressive by default
@@ -1491,10 +1450,6 @@ Configure_Source ( char	*filename )
       OPT_unroll_size = 20;
     /* reduce caller+callee "size" limit for inlining */
     INLINE_Max_Pu_Size=1000;
-#if 0 /* not ready for this yet. */
-    /* don't inline divide expansions */
-    if (!OPT_Inline_Divide_Set) OPT_Inline_Divide = FALSE;
-#endif
 
 #ifdef BACK_END
     /* LNO options to be turned off for SPACE */
@@ -1543,7 +1498,6 @@ Configure_Source ( char	*filename )
      IEEE_Arithmetic = IEEE_INEXACT;
   }
 
-#ifdef KEY
   if (!IEEE_Arith_Set && OPT_Ffast_Math_Set) {
     // -OPT:ffast_math=ON  => IEEE_a == 2
     //                =OFF => IEEE_a == 1
@@ -1560,11 +1514,7 @@ Configure_Source ( char	*filename )
     if (accuracy > IEEE_Arithmetic)
       IEEE_Arithmetic = accuracy;
   }
-#endif
 
-#ifndef KEY // this is nullifying the effect of -OPT:recip=
-  Recip_Allowed = ARCH_recip_is_exact;
-#endif
   /* IEEE arithmetic options: */
   if ( IEEE_Arithmetic > IEEE_ACCURATE ) {
     /* Minor roundoff differences for inexact results: */
@@ -1585,14 +1535,10 @@ Configure_Source ( char	*filename )
 
   /* Constant folding options: */
   if ( ! Roundoff_Set && Opt_Level > 2 ) {
-#ifndef KEY
-    Roundoff_Level = ROUNDOFF_ASSOC;
-#else
 #if defined(TARG_IA64) || defined(TARG_LOONGSON)
     Roundoff_Level = ROUNDOFF_ASSOC;
 #else
     Roundoff_Level = ROUNDOFF_SIMPLE;
-#endif
 #endif
   }
   if ( Roundoff_Level > ROUNDOFF_NONE ) {
@@ -1615,12 +1561,12 @@ Configure_Source ( char	*filename )
 
 #ifdef TARG_X8664
     if( !Fast_ANINT_Set ){
-      Fast_ANINT_Allowed = Roundoff_Level >= ROUNDOFF_ANY;	// bug 7835
+      Fast_ANINT_Allowed = Roundoff_Level >= ROUNDOFF_ANY;
     }
     if ( !OPT_Fast_Math_Set) 
       OPT_Fast_Math = Roundoff_Level >= ROUNDOFF_ASSOC;
     if (!Rsqrt_Set) {
-      Rsqrt_Allowed = (Roundoff_Level >= ROUNDOFF_ASSOC) ? 1 : 0; // Bug 6123.
+      Rsqrt_Allowed = (Roundoff_Level >= ROUNDOFF_ASSOC) ? 1 : 0;
     }
 #endif
     if (!Fast_Complex_Set)
@@ -1636,16 +1582,6 @@ Configure_Source ( char	*filename )
 #endif
   }
 
-#if 0
-  /* Set the relational operator folding in simplifier based on the optimizer
-     setting of Allow_wrap_around_opt */
-  if (!Simp_Unsafe_Relops_Set && Allow_wrap_around_opt_Set) {
-     Simp_Unsafe_Relops = Allow_wrap_around_opt;
-  }
-  if (!Allow_wrap_around_opt_Set && Simp_Unsafe_Relops_Set ) {
-     Allow_wrap_around_opt = Simp_Unsafe_Relops;
-  }
-#endif
 #if !defined(TARG_NVISA) // NVISA needs to avoid overflow arithmetic
   if (!Simp_Unsafe_Relops_Set && Opt_Level > 2) {
      Simp_Unsafe_Relops = TRUE;
@@ -1679,17 +1615,6 @@ Configure_Source ( char	*filename )
    * call to Configure_Source_Target, since that routine sets the
    * FP exception enable masks.
    */
-#ifndef KEY
-  // keycc does not allow speculation of trap instructions unless
-  // specified by the user.
-  // see be/com/w2op.cxx: TOP_Can_Be_Speculative
-  // An example compiled file that fails execution is in
-  // spec2000/benchspec/CINT2000/254.gap/src/eval.c (when compiled at -O3
-  // the teq instructions get moved away from the divides).
-  if ( ! Eager_Level_Set && Opt_Level > 2 ) {
-    Eager_Level = EAGER_ARITH;
-  }
-#endif
   if ( Eager_Level >= EAGER_ARITH ) {
     FP_Exception_Enable_Max &= ~(FPX_I|FPX_U|FPX_O|FPX_V);
   }
@@ -1719,10 +1644,8 @@ Configure_Source ( char	*filename )
     CLIST_dotc_filename = Whirl2C_File_Name;
   }
 
-#ifdef KEY // bug 12939
   if (Language == LANG_CPLUS && ! WOPT_Enable_Tail_Recur_Set)
     WOPT_Enable_Tail_Recur = FALSE;
-#endif
 }
 
 /* ====================================================================
@@ -1942,23 +1865,6 @@ Build_Skiplist ( OPTION_LIST *olist )
 	ol != NULL;
 	++count, ol = OLIST_next(ol) )
   {
-#if 0
-    if ( !strncmp ( "skip_a", OLIST_opt(ol), 6 ) ||
-	 !strncmp ( "region_skip_a", OLIST_opt(ol), 13 ) ||
-	 !strncmp ( "goto_skip_a", OLIST_opt(ol), 11 ) 
-#if defined(TARG_SL)
-	 || !strncmp ( "ddb_skip_a", OLIST_opt(ol), 10 )
-#endif
-	 ) {
-      Set_SKIPLIST_kind ( sl, count, SK_AFTER );
-    } else if ( !strncmp ( "skip_b", OLIST_opt(ol), 6 ) ||
-	        !strncmp ( "region_skip_b", OLIST_opt(ol), 13 ) ||
-	        !strncmp ( "goto_skip_b", OLIST_opt(ol), 11 ) 
-#if defined(TARG_SL)
-	     || !strncmp ( "ddb_skip_b", OLIST_opt(ol), 10 )
-#endif
-		) {
-#endif
     // ignore goto/region/ddb prefix of skip name
     char *opt_name = strstr(OLIST_opt(ol), "skip");
     if ( !strncmp ( "skip_a", opt_name, 6 )) {

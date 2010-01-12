@@ -189,7 +189,6 @@ second_(void)
 #include <limits.h>
 #include <sys/times.h>
 
-#ifdef KEY /* Bug 1683 */
 
 #include "../../libU77/pathf90_libU_intrin.h"
 
@@ -204,25 +203,5 @@ pathf90_second(_f_real *seconds)
   return *seconds = tarray[0];
 }
 
-#else
 
-_f_real
-second_(void)
-
-{
-	struct tms      buf;
-	double		timeval;
-	clock_t		ret;
-
-	ret = times(&buf);
-
-	if (_sec_per_clock == 0.0)
-		_sec_per_clock = 1.0 / (double) sysconf(_SC_CLK_TCK);
-
-	timeval = (double) buf.tms_utime * _sec_per_clock;
-
-	return ((_f_real)timeval);
-}
-#endif	/* non-UNICOS systems */
-
-#endif /* KEY Bug 1683 */
+#endif

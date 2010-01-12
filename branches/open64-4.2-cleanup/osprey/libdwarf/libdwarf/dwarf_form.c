@@ -459,7 +459,7 @@ dwarf_formudata(Dwarf_Attribute attr,
 	return DW_DLV_OK;
 
 
-	/* see bug 583450. We do not allow reading sdata from a udata
+	/* We do not allow reading sdata from a udata
 	   value. Caller can retry, calling sdata */
 
 
@@ -534,7 +534,7 @@ dwarf_formsdata(Dwarf_Attribute attr,
 	return DW_DLV_OK;
 
 
-	/* see bug 583450. We do not allow reading sdata from a udata
+	/* We do not allow reading sdata from a udata
 	   value. Caller can retry, calling sdata */
 
 

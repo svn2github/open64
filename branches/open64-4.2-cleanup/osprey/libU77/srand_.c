@@ -21,30 +21,21 @@ not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 #include "config.h"
-#if STDC_HEADERS || defined(KEY) /* Bug 1683 */
 #  include <stdlib.h>
-#endif
 
-#ifdef KEY /* Bug 5019 */
 #include "pathf90_libU_intrin.h"
-#endif /* KEY Bug 5019 */
 #include "f2c.h"
 
 /* Subroutine */
 int
 G77_srand_0 (const integer * seed)
 {
-#ifdef KEY /* Bug 1683, 5019 */
   MEM_LOCK(&pathf90_rand_mutex);
   srand ((unsigned int) *seed);
   MEM_UNLOCK(&pathf90_rand_mutex);
-#else
-  srand ((unsigned int) *seed);
-#endif /* KEY Bug 1683, 5019 */
   return 0;
 }
 
-#ifdef KEY /* Bug 1683, 5019 */
 int
 G77_srand_1 (const long long * seed)
 {
@@ -53,4 +44,3 @@ G77_srand_1 (const long long * seed)
   MEM_UNLOCK(&pathf90_rand_mutex);
   return 0;
 }
-#endif /* KEY Bug 1683, 5019 */

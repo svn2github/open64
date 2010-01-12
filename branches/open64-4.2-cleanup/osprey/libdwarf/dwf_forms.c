@@ -30,7 +30,7 @@
 extern void _dwarf_pro_add_at_to_die(Dwarf_P_Die die,
 				     Dwarf_P_Attribute attr);
 
-/* Bug 1188
+/* 
    There is probably a bug in somewhere dealing with the data width
    optimization (data format depends on the best fit for the incoming value).
    We will use the format based on the incoming data type (intype) rather
@@ -111,7 +111,7 @@ dwf_add_AT_unsigned_const_ext(Dwarf_P_Debug dbg,
     return new_attr;
 }
 
-/* Bug 1785
+/* 
    Complex constant (Fortran parameters) should be encoded as 8 byte or 16 byte
    blocks. This subroutine is just to keep things around simple.
 */

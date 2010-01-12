@@ -139,15 +139,6 @@ void __amd_remainder_piby2(double x, double *r, double *rr, int *region)
 
       /* Do a long multiplication of the bits of 2/pi by the
          integer mantissa */
-#if 0
-      for (i = last; i >= first; i--)
-        {
-          u = pibits[i] * ux + carry;
-          res[i - first] = u & mask;
-          carry = u >> bitsper;
-        }
-      res[last - first + 1] = 0;
-#else
       /* Unroll the loop. This is only correct because we know
          that bitsper is fixed as 10. */
       res[19] = 0;
@@ -207,7 +198,6 @@ void __amd_remainder_piby2(double x, double *r, double *rr, int *region)
       carry = u >> bitsper;
       u = pibits[last-18] * ux + carry;
       res[0] = u & mask;
-#endif
 
 #ifdef DEBUGGING_PRINT
       printf("resexp = %d\n", resexp);

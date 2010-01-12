@@ -64,18 +64,11 @@
 char *bufarg;
 long bufarglen;
 
-#ifdef KEY /* Bug 1683 */
 #include "pathf90_libU_intrin.h"
 
 pathf90_i4
 pathf90_access(char *name, char *mode, int namlen, int modlen)
 
-#else
-
-extern int 
-access_ (char *name, char *mode, int namlen, int modlen)
-
-#endif /* KEY Bug 1683 */
 {
 	int m = 0;
 
@@ -124,13 +117,11 @@ access_ (char *name, char *mode, int namlen, int modlen)
 		case 'r':
 			m |= 4;
 			break;
-#ifdef KEY /* Bug 1683 */
 		case ' ':
 			m |= F_OK;
 		        break;
                 default:
 		        return errno = EINVAL;
-#endif /* KEY Bug 1683 */
 	}
 #ifdef __sgi
 	if (m > 0)

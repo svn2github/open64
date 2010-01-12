@@ -188,9 +188,7 @@ extern BOOL WN_Simp_Fold_ILOAD;
 
 extern BOOL WN_Simp_Fold_LDA;
 
-#ifdef KEY
 extern BOOL WN_Simp_Rsqrt_Newton_Raphson;
-#endif
 
 #ifdef __cplusplus
 }

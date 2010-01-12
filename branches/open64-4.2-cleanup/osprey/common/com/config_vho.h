@@ -72,9 +72,7 @@
 
 extern BOOL  VHO_Force_Lowering;
 extern BOOL  VHO_Struct_Opt;
-#ifdef KEY
 extern BOOL  VHO_Struct_Opt_Set;
-#endif
 extern BOOL  VHO_Recycle_Pregs;
 extern BOOL  VHO_Combine_Loads;
 extern INT32 VHO_Switch_Density;
@@ -82,9 +80,7 @@ extern INT32 VHO_Switch_If_Else_Limit;
 extern INT32 VHO_Switch_Compgoto_Limit;
 extern BOOL  VHO_Switch_Opt;
 extern INT32 VHO_Switch_Opt_Threshold;
-#ifdef KEY
 extern BOOL  VHO_Switch_Reduce_Branch;
-#endif
 extern BOOL  VHO_Cselect_Opt;
 extern BOOL  VHO_Iload_Opt;
 extern BOOL  VHO_Istore_Opt;
@@ -94,7 +90,6 @@ extern BOOL  VHO_Check_Tree;
 extern BOOL  VHO_Single_Loop_Test;
 extern BOOL  VHO_Use_Do_While;
 extern BOOL  VHO_Disable_Copy_Field_Element;
-#ifdef KEY
 extern BOOL  VHO_Enable_Simple_If_Conv; // Enable simple if-conv at VHO lowering
 extern INT32 VHO_Enable_If_Conv_Limit;  // Maximum overhead allowed after ifconv
 extern BOOL  VHO_Enable_Misc_Loop_Transformation; // Enable loop transformation
@@ -110,7 +105,6 @@ extern INT32 VHO_Disable_MP_PU_Equal;
 extern INT32 VHO_Disable_MP_Local_Before;
 extern INT32 VHO_Disable_MP_Local_After;
 extern INT32 VHO_Disable_MP_Local_Equal;
-#endif
 #ifdef TARG_X8664
 extern BOOL  VHO_Generate_Rrotate;
 extern BOOL  VHO_Generate_Rrotate_Set;

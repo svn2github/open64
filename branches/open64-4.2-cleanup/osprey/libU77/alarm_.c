@@ -54,7 +54,6 @@
 #include <unistd.h>
 #include <signal.h>
 
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -75,19 +74,3 @@ pathf90_alarm(pathf90_i4 *sec,void (*proc)(), pathf90_i4 *status)
 	return(lt);
 }
 
-#else
-
-extern int 
-alarm_(int *sec, void (* proc)())
-{
-	register unsigned	lt;
-
-	lt = alarm(1000);	/* time to maneuver */
-
-	if (*sec)
-		signal(SIGALRM, proc);
-
-	alarm(*sec);
-	return(lt);
-}
-#endif /* KEY Bug 1683 */

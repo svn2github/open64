@@ -943,9 +943,7 @@ static void ir_put_wn(WN * wn, INT indent)
 
     case OPR_INTRINSIC_OP:
     case OPR_ARRAYEXP:
-#ifdef KEY
     case OPR_PURE_CALL_OP:
-#endif
       fprintf(ir_ofile, " %d", WN_kid_count(wn));
       break;
 

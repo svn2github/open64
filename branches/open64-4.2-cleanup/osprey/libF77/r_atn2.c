@@ -43,11 +43,7 @@
 #include <math.h>
 #include "moremath.h"
 
-#ifdef KEY
 float r_atn2(float *x,float *y)
-#else
-float r_atn2(float *x,float_t *y)
-#endif // KEY
 {
   return (atan2f(*x, *y));
 }

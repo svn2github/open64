@@ -42,10 +42,6 @@
 #define __Z_DIV_H__
 
 extern dcomplex z_div(dcomplex *, dcomplex *);
-#ifdef KEY
 extern dcomplex __zdiv(double, double, double, double);
-#else
-extern dcomplex __zdiv(double, double, double_t, double_t);
-#endif // KEY
 
 #endif /* __Z_DIV_H__ */

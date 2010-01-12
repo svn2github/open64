@@ -63,7 +63,6 @@ char id_symlnk[] = "@(#)symlnk_.c	1.1";
 #endif
 #include "externals.h"
 
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -90,46 +89,3 @@ pathf90_symlnk(char *name1, char *name2, pathf90_i4 *status, int n1len,
 	return(*status = 0);
 }
 
-#else
-
-extern int 
-symlnk_ (char *name1, char *name2, int n1len, int n2len)
-{
-	char *buf1, *buf2;
-
-	if (!bufarg && !(bufarg=malloc(bufarglen=n1len+n2len+2)))
-#ifdef __sgi
-	{
-		errno=F_ERSPACE;
-		return(-1);
-	}
-#else
-		return((errno=F_ERSPACE));
-#endif
-	else if (bufarglen <= n1len+n2len+1 && !(bufarg=realloc(bufarg, bufarglen=n1len+n2len+2)))
-#ifdef __sgi
-	{
-		errno=F_ERSPACE;
-		return(-1);
-	}
-#else
-		return((errno=F_ERSPACE));
-#endif
-	buf1 = bufarg;
-	buf2 = &bufarg[n1len+1];
-	g_char(name1, n1len, buf1);
-	g_char(name2, n2len, buf2);
-	if (buf1[0] == '\0' || buf2[0] == '\0')
-#ifdef __sgi
-	{
-		errno=F_ERARG;
-		return(-1);
-	}
-#else
-		return((errno=F_ERARG));
-#endif
-	if (symlink(buf1, buf2) != 0)
-		return(-1);
-	return(0);
-}
-#endif /* KEY Bug 1683 */

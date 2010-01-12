@@ -149,7 +149,6 @@ static char    *f77F_err[] =
  "invalid code in format specification",	/* 167 */
  "invalid record number in direct access file",	/* 168 */
  "cannot have endfile record on non-sequential file",	/* 169 */
- /* LHL 5/17/89 * fix "ftell" bug -- 4539 */
  "cannot position within current file",				/* 170 */
  "cannot have sequential records on direct access file",	/* 171 */
  "cannot find namelist in input file ",				/* 172 */
@@ -250,7 +249,7 @@ f77fatal (unit *ftnunit, int n, char *s)
    }
    iscleanup();
 
-   /* fix bug 7580 the following is copied from s_abort.c in libF77 */
+   /* the following is copied from s_abort.c in libF77 */
 
    if (dumpflag = getenv ("f77_dump_flag")) {
       coredump = up_low (*dumpflag) == 'y' ? 1 : 0;
@@ -385,27 +384,6 @@ f77canseek (FILE *f)
    return (0);
 }
 
-#if 0
-	/* this is already defined in libF77 */
-void
-s_abort (int errnum)
-{
-   char           *dumpflag;
-   int             coredump = 0;
-
-   if (dumpflag = getenv ("f77_dump_flag")) {
-      coredump = up_low (*dumpflag) == 'y' ? 1 : 0;
-   }
-   if (coredump) {
-      _cleanup ();
-      abort ();			/* cause a core dump */
-   } else {
-      _cleanup ();
-      fprintf (stderr, "*** Execution Terminated (%d) ***\n", errnum);
-      exit (errnum);
-   }
-}
-#endif
 
 void
 perror_ (char *s, int len)

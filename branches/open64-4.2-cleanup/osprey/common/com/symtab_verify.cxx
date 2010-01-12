@@ -450,9 +450,6 @@ ST_Verify_Fields(const ST &s)
 
   switch (ST_sym_class (s)) {
   case CLASS_FUNC:
-#ifndef KEY
-    Is_True (ST_level (&s) == GLOBAL_SYMTAB, (msg, "sym_class"));
-#endif
     Is_True( 0 < ST_pu(s) && ST_pu(s) < PU_Table_Size (), (msg, "pu")); 
 
     // Verify the PU associated with this st
@@ -605,10 +602,6 @@ void INITO::Verify(UINT level) const
   Is_True(ST_IDX_index (st_idx) > 0 &&
 	  ST_IDX_index (st_idx) < ST_Table_Size (ST_IDX_level (st_idx)),
 	  ("Invalid st_idx for INITO"));
-#ifndef KEY // no longer true because INITO is used to link up nested functions
-  Is_True(ST_is_initialized (St_Table[st_idx]),
-	   ("ST_IS_INITIALIZED not set"));
-#endif
 
   if (!zero_dim_array(st_idx))
   { 
@@ -658,13 +651,8 @@ void INITV::Verify(UINT) const
               (msg, "repeat1: should be 0"));
     break;
   case INITVKIND_BLOCK:
-#ifndef KEY // need blk == 0 for init of size 0 structs, as in bug 961
-    Is_True ( Blk () != 0, (msg, "blk:  should not be 0"));
-#endif // KEY
-#ifdef KEY
     Is_True ( repeat1 != 0, (msg, "repeat1: should not be 0"));
     break;	// we are using 'unused' as flags
-#endif // KEY
   case INITVKIND_LABEL:
     Is_True ( u.lab.flags >= INITVLABELFLAGS_FIRST && u.lab.flags <= INITVLABELFLAGS_LAST,
 	     (msg, "bad label flag"));
@@ -961,9 +949,6 @@ void TY::Verify(UINT) const
 	if (Fld_index > 0)
 	    FLD_Verify_all (FLD_HANDLE (Fld_index), size);
 
-#ifndef KEY	// u2.copy_constructor
-	Is_True (u2.etype == 0, (msg, "non-zero TY::etyp for KIND_STRUCT"));
-#endif
 
 	break;
 
@@ -1073,12 +1058,10 @@ void PU::Verify(UINT) const
 	   TY_IDX_index (prototype) < TY_Table_Size (),
 	   ("Invalid TY_IDX in PU::prototype"));
 
-#ifdef KEY
 // We are using 'misc' to store ST_IDXs of 2 special variables for
 // C++ exception handling, or for C nested functions.
   if (!(src_lang & PU_CXX_LANG) && !(src_lang & PU_C_LANG))
     Is_True (misc == 0, ("misc fields must be zero"));
-#endif // KEY
 
   Is_True (unused == 0, ("unused fields must be zero"));
 

@@ -20,7 +20,6 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write the Free Software Foundation, Inc., 59
 Temple Place - Suite 330, Boston MA 02111-1307, USA.
 */
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -32,4 +31,3 @@ int rename_ (char *from, char *to, int frlen, int tolen) {
   return pathf90_rename(from, to, 0, frlen, tolen);
   }
 
-#endif /* KEY Bug 1683 */

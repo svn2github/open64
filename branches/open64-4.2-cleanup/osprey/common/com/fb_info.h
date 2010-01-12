@@ -123,7 +123,6 @@ struct FB_Info_Invoke {
   	}
 };
 
-#ifdef KEY
 // use vector later, like FB_Info_Switch.
 #define TNV 10
 struct FB_Info_Value {
@@ -191,7 +190,6 @@ struct FB_Info_Value_FP_Bin {
     fprintf( fp, "operand 1 one counter: %d\n", (int)uopnd1.Value() );
   }
 };
-#endif
 
 struct FB_Info_Branch {
 
@@ -481,7 +479,6 @@ struct FB_Info_Switch {
 
   FB_FREQ& operator[] ( const vector<FB_FREQ>::size_type n ) {
     if ( n >= freq_targets.size() ) {
-      // KEY
       vector<FB_FREQ>::size_type size = freq_targets.size();
       for (int i = 0; i < n - size + 1; i++)
         freq_targets.push_back (FB_FREQ_UNINIT);
@@ -547,15 +544,6 @@ struct FB_Info_Edge {
   }
 };
 
-#ifndef KEY
-struct FB_Info_Value {
-      FB_TNV tnv;
-      void Print( FILE *fp) const {
-      	fprintf(fp, "FB--->Value = ");
-      	tnv.Print( fp );
-      }
-};
-#endif
 
 struct FB_Info_Stride{
       FB_TNV tnv;
@@ -613,10 +601,8 @@ typedef vector<FB_Info_Edge, mempool_allocator<FB_Info_Edge> >
 					FB_Edge_Vector;
 typedef vector<FB_Info_Value, mempool_allocator<FB_Info_Value> >
                                        FB_Value_Vector;
-#ifdef KEY
 typedef vector<FB_Info_Value_FP_Bin, mempool_allocator<FB_Info_Value_FP_Bin> >
                                        FB_Value_FP_Bin_Vector;
-#endif
 #ifdef TARG_LOONGSON
 typedef vector<FB_Info_Cache, mempool_allocator<FB_Info_Cache> >
                                        FB_Cache_Vector;
@@ -746,7 +732,6 @@ inline bool FB_valid_opr_loop(const WN *wn) {
   }
 }
 
-#ifdef KEY
 // ====================================================================
 
 #define fb_opr_cases_value \
@@ -767,7 +752,6 @@ inline bool FB_valid_opr_value(const WN *wn) {
     return false;
   }
 }
-#endif
 
 // ====================================================================
 

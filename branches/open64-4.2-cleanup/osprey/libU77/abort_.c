@@ -38,7 +38,6 @@
 #include "externals.h"
 #endif
 
-#ifdef KEY /* Bug 1683 */
 #include "pathf90_libU_intrin.h"
 
 /* We provide no legacy version of this "abort", because the library has
@@ -48,10 +47,6 @@
 void
 pathf90_abort(void)
 
-#else
-extern void
-abort_ (void)
-#endif /* KEY Bug 1683 */
 {
 fprintf(stderr, "Fortran abort routine called\n");
 #ifndef FTN90_IO

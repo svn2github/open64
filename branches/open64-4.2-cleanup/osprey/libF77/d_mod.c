@@ -48,11 +48,7 @@
 
 #include <cmplrs/host.h>
 
-#ifdef KEY
 double __dmod(double x, double y)
-#else
-double __dmod(double x, double_t y)
-#endif // KEY
 {
   double q1, q2;
 
@@ -63,11 +59,7 @@ double __dmod(double x, double_t y)
   return (x - y * q2);
 }
 
-#ifdef KEY
 double d_mod(double *x, double *y)
-#else
-double d_mod(double *x, double_t *y)
-#endif // KEY
 {
   return (__dmod(*x, *y));
 }

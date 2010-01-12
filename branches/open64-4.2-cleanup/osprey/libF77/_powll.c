@@ -45,7 +45,6 @@
 int64 __powll(int64 ap, int64 n)
 {
 int64 pow;
-/* 10/9/89 fix bug 5116 */
 
 if(n != 0) {
 	if (n<0) {

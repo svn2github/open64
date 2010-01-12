@@ -824,11 +824,7 @@ struct ffsw     *stat)
 	int ret;
 	int remote_index;
 	int errv = 0;
-#ifdef KEY /* Bug 1678 */
 	/* Not used */
-#else /* KEY Bug 1678 */
-	struct ffc_stat_s statbuf;
-#endif /* KEY Bug 1678 */
 
 	_glio_barrier(arp);
 
@@ -1467,9 +1463,6 @@ _glob_io_init()
 
 	_glob_io_init_called = 1;
 
-#if	0
-	_par_vars.maxfiles = PAR_MAX_FILES; 	/* at least 1 per PE */
-#endif
 	_par_vars.pepages = GLOB_DEF_NBUF;
 	_par_vars.pgsize = GLOB_DEF_BUFSIZ;
 	_par_vars.pgsize_bytes = _par_vars.pgsize * YMPBLOCK;

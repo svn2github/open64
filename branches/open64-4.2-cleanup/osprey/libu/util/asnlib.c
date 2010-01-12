@@ -48,9 +48,7 @@
 #include <errno.h>
 #ifndef	_ABSOFT
 #include <malloc.h>
-#ifdef KEY /* Bug 4260 */
 #include <stdlib.h>	/* For getenv */
-#endif /* KEY Bug 4260 */
 #else
 #include <stdlib.h>
 #endif
@@ -98,7 +96,6 @@ enum assign_modes {
  *			a positive error code is returned.
  */
 
-#ifdef KEY /* Bug 8391 */
 /* SGI historically provided this  function, but we don't want it to collide
  * with a user-coded Fortran procedure "assign" which will also emit "assign_"
  */
@@ -112,7 +109,6 @@ void assign_(char *cmdargs_ptr, _f_int *ier, int cmdargs_len) {
 #pragma weak assign_ = __assign
 extern void assign_(char *, _f_int *ier, int);
 #endif /* defined(BUILD_OS_DARWIN) */
-#endif  /* KEY Bug 8391 */
 
 void
 #ifdef	_UNICOS
@@ -124,11 +120,7 @@ ASSIGN(
 
 #else
 
-#ifdef KEY /* Bug 4260 */
 __assign(
-#else /* KEY Bug 4260 */
-assign_(
-#endif /* KEY Bug 4260 */
 	char	*cmdargs_ptr,	/* Fortran string containing assign request */
 	_f_int	*ier,		/* required error status variable. */
 	int	cmdargs_len)	/* length of cmdargs string */
@@ -220,11 +212,7 @@ ffassign(char *cmd)
 #ifdef	_UNICOS
 	ASSIGN (_cptofcd(cmd,strlen(cmd)), &ier);
 #else
-#ifdef KEY /* Bug 4260 */
 	__assign(cmd, &ier, strlen(cmd));
-#else /* KEY Bug 4260 */
-	assign_(cmd, &ier, strlen(cmd));
-#endif /* KEY Bug 4260 */
 #endif
 	if (ier != 0) {
 		errno	= ier;
@@ -1166,7 +1154,6 @@ printf("_lae_process_opts exit <%s>\n",*attr_string);
 	return(0);
 }
 
-#ifdef KEY /* Bug 4260 */
 /* If byteswap options appeared on command line, front end will emit a strong
  * definition for this along with the Fortran main program. */
 #pragma weak __io_byteswap_value
@@ -1245,4 +1232,3 @@ __io_byteswap() {
   /* Ensure that subsequent calls to __io_byteswap will do nothing. */
   __io_byteswap_value = IO_DEFAULT;
 }
-#endif /* KEY Bug 4260 */

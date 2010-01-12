@@ -45,7 +45,6 @@
 int32 __powii(int32 ap, int32 n)
 {
 int32 pow;
-/* 10/9/89 fix bug 5116 */
 
 if(n != 0) {
 	if (n<0) {

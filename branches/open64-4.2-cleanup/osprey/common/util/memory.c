@@ -53,7 +53,6 @@
 #include "tracing.h"
 #include "erglob.h"
 
-#ifdef KEY
 #ifndef NO_VALGRIND
 #include <memcheck.h>
 
@@ -82,7 +81,6 @@
 #endif
 
 #endif /* NO_VALGRIND */
-#endif /* KEY */
 
 #ifdef NO_VALGRIND
 #define REDZONE_SIZE 0
@@ -1028,12 +1026,10 @@ Allocate_Block (MEM_POOL *pool)
   }
 #endif
 
-#ifdef KEY
 #ifndef NO_VALGRIND
   /* Tell Valgrind that this memory is not (yet) valid. */
   VALGRIND_MAKE_NOACCESS(MEM_BLOCK_first_ptr(block), BLOCK_SIZE);
 #endif /* NO_VALGRIND */
-#endif /* KEY */
 
   return block;
 }
@@ -1114,12 +1110,10 @@ Raw_Allocate(
     MEM_BLOCK_ptr(b) = (MEM_PTR) (((char*) MEM_BLOCK_ptr(b)) + size + (REDZONE_SIZE*2));
     MEM_BLOCK_avail(b) -= size + (REDZONE_SIZE*2);
 
-#ifdef KEY
 #ifndef NO_VALGRIND
     /* Tell Valgrind that we've allocated this piece of memory.  */
     VALGRIND_MEMPOOL_ALLOC(MEM_POOL_blocks(pool), result, size);
 #endif /* NO_VALGRIND */
-#endif /* KEY */
 
     return result;
   } else
@@ -1236,11 +1230,9 @@ MEM_POOL_Realloc_P
 
 #ifdef JUST_USE_MALLOC
   result = realloc(old_block,new_size);
-#ifdef KEY
   if (purify_pools_trace)
     if (result != old_block)
       printf ("pool %s, freed block 0x%p\n", MEM_POOL_name(pool), old_block);
-#endif
   if ( old_size < new_size )
     BZERO((char*)result + old_size,new_size - old_size);
   return result;
@@ -1293,11 +1285,9 @@ MEM_POOL_Realloc_P
 	ret_val = (MEM_PTR)
 	    realloc((MEM_PTR) (old_block ? (size_t) old_block-8 : 0),
 			       new_size+8);
-#ifdef KEY
 	if (purify_pools_trace)
 	  if (ret_val != old_block && old_block != 0)
 	    printf ("pool %s, freed block 0x%p\n", MEM_POOL_name(pool), old_block);
-#endif
     }
     if (new_size > 0) {
       FmtAssert (ret_val, ("oops - realloc returned NULL, pool %s\n",
@@ -1332,16 +1322,6 @@ MEM_POOL_Realloc_P
   if ( new_size == old_size )
     return old_block;
 
-#if 0
-#ifdef Is_True_On
-  if (new_size < old_size)
-    DevWarn ("MEMORY: shrinking an object in (%s) from %d to %d bytes",
-	     MEM_POOL_name(pool), old_size, new_size);
-  else if (new_size < old_size * 1.5 && old_size > 256)
-    DevWarn ("MEMORY: small grow from %d to %d bytes (mempool: %s)",
-	     old_size, new_size, MEM_POOL_name(pool));
-#endif
-#endif
 
   if (old_size <= MIN_LARGE_BLOCK_SIZE) {
     if (new_size < old_size)
@@ -1368,11 +1348,9 @@ MEM_POOL_Realloc_P
 
 	large_block = 
 	   MEM_LARGE_BLOCK_realloc(p, new_size + MEM_LARGE_BLOCK_OVERHEAD);
-#ifdef KEY
 	if (purify_pools_trace)
 	  if (p != large_block && p != 0)
 	    printf ("pool %s, freed block 0x%p\n", MEM_POOL_name(pool), p);
-#endif
 
 	if (large_block == NULL)
 	  ErrMsg (EC_No_Mem, "MEM_POOL_Realloc");
@@ -1470,12 +1448,10 @@ MEM_POOL_Push_P
      */
     pb = free_mem_pool_blocks_list;
     free_mem_pool_blocks_list = MEM_POOL_BLOCKS_rest(pb);
-#ifdef KEY
 #ifndef NO_VALGRIND
     VALGRIND_MAKE_READABLE(pb, sizeof(MEM_POOL_BLOCKS));
     VALGRIND_MAKE_WRITABLE(pb, sizeof(MEM_POOL_BLOCKS));
 #endif /* NO_VALGRIND */
-#endif /* KEY */
   } else {
      /* Need to allocate a new one.
       */
@@ -1504,11 +1480,9 @@ MEM_POOL_Push_P
   }
   MEM_POOL_blocks(pool) = pb;
 
-#ifdef KEY
 #ifndef NO_VALGRIND
   VALGRIND_CREATE_MEMPOOL(pb, REDZONE_SIZE, MEM_POOL_bz(pool));
 #endif /* NO_VALGRIND */
-#endif /* KEY */
 }
 
 /* ====================================================================
@@ -1629,17 +1603,13 @@ MEM_POOL_Pop_P
       MEM_BLOCK_ptr(bp) = MEM_POOL_BLOCKS_base_ptr(bsp);
       MEM_BLOCK_avail(bp) = MEM_POOL_BLOCKS_base_avail(bsp);
       if (MEM_POOL_bz(pool)) {
-#ifdef KEY
 #ifndef NO_VALGRIND
 	VALGRIND_MAKE_WRITABLE(MEM_BLOCK_ptr(bp), MEM_BLOCK_avail(bp));
 #endif /* NO_VALGRIND */
-#endif /* KEY */
 	BZERO (MEM_BLOCK_ptr(bp), MEM_BLOCK_avail(bp));
-#ifdef KEY
 #ifndef NO_VALGRIND
 	VALGRIND_MAKE_NOACCESS(MEM_BLOCK_ptr(bp), MEM_BLOCK_avail(bp));
 #endif /* NO_VALGRIND */
-#endif /* KEY */
       }
       break;
     }
@@ -1662,20 +1632,15 @@ MEM_POOL_Pop_P
     MEM_POOL_blocks(pool) = MEM_POOL_BLOCKS_rest(bsp);
     MEM_POOL_BLOCKS_rest(bsp) = free_mem_pool_blocks_list;
     free_mem_pool_blocks_list = bsp;
-#ifdef KEY
 #ifndef NO_VALGRIND
     /* Tell Valgrind everything in here has been freed.  */
     VALGRIND_DESTROY_MEMPOOL(bsp);
 #endif /* NO_VALGRIND */
-#endif /* KEY */
   } else {
-#ifdef KEY
 #ifndef NO_VALGRIND
     VALGRIND_MAKE_WRITABLE(bsp, sizeof(MEM_POOL_BLOCKS));
 #endif /* NO_VALGRIND */
-#endif /* KEY */
     BZERO (bsp, sizeof(MEM_POOL_BLOCKS));
-#ifdef KEY
 #ifndef NO_VALGRIND
     VALGRIND_MAKE_NOACCESS(bsp, sizeof(MEM_POOL_BLOCKS));
     /* Tell Valgrind everything in here has been freed, but then put it
@@ -1683,7 +1648,6 @@ MEM_POOL_Pop_P
     VALGRIND_DESTROY_MEMPOOL(bsp);
     VALGRIND_CREATE_MEMPOOL(bsp, REDZONE_SIZE, MEM_POOL_bz(pool));
 #endif /* NO_VALGRIND */
-#endif /* KEY */
   }
 }
 
@@ -1926,7 +1890,6 @@ MEM_POOL_Initialize_P
   /* Make sure the purify_pools is initialized */
   PURIFY_OPT_Initialize();
 
-#ifdef KEY
 #ifndef NO_VALGRIND
   static BOOL mem_overhead_pool_initialized = FALSE;
   if(RUNNING_ON_VALGRIND && (mem_overhead_pool_initialized == FALSE)) {
@@ -1936,7 +1899,6 @@ MEM_POOL_Initialize_P
                             REDZONE_SIZE, MEM_POOL_bz(&mem_overhead_pool));
   }
 #endif /* NO_VALGRIND */
-#endif /* KEY */
 
   if (pool == Default_Mem_Pool) pool = The_Default_Mem_Pool;
   if (pool == Malloc_Mem_Pool) return;
@@ -2158,11 +2120,9 @@ MEM_PTR
 Realloc_Clear ( MEM_PTR ptr, INT32 new_size, INT32 old_size )
 {
   MEM_PTR result = (MEM_PTR) realloc ( ptr, new_size );
-#ifdef KEY
   if (purify_pools_trace)
     if (result != ptr && ptr != 0)
       printf ("pool UNKNOWN, freed 0x%p (size %d)\n", ptr, old_size);
-#endif
 
   if ( result == NULL )
     ErrMsg ( EC_No_Mem, "Realloc_Clear" );

@@ -79,11 +79,7 @@ struct gl_o_inf *oinf)
 	struct glob_f	*glob_info;
 	struct stat	fstat;
 	struct ffsw	clstat;
-#ifdef KEY /* Bug 1678 */
         struct stat statbuf;
-#else /* KEY Bug 1678 */
-        struct ffc_stat_s statbuf;
-#endif /* KEY Bug 1678 */
 	_ffopen_t	nextfio;
 	register int	bsblks;
 	register int	errn;

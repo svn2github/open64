@@ -54,18 +54,11 @@ typedef long long _ftelltype;
 #define LIBFTELL ftell64 
 #define LIBFTRUNC ftruncate64
 #else
-#ifdef KEY /* Bug 1678 */
 /* Need 64 bit position to support long files */
 typedef off_t _ftelltype;
 #define LIBFSEEK fseeko
 #define LIBFTELL ftello
 #define LIBFTRUNC ftruncate /* Vanilla Linux ftruncate already uses off_t */
-#else /* KEY Bug 1678 */
-typedef long _ftelltype;
-#define LIBFSEEK fseek
-#define LIBFTELL ftell
-#define LIBFTRUNC ftruncate
-#endif /* KEY Bug 1678 */
 #endif
 /*
  *	_unit_trunc()
@@ -120,7 +113,6 @@ _unit_trunc(unit *cup)
 			if (LIBFTRUNC(fileno(iop), flength) == -1) 
 #endif
 				return(errno);
-#ifdef KEY /* Bug 5386 */
 			/* Until Fedora Core 3, this code never encountered
 			 * a Unix system that required an "fflush" here. But
 			 * without it, the FC3 stdio code doesn't notice that
@@ -129,7 +121,6 @@ _unit_trunc(unit *cup)
 			 * other systems haven't encountered a problem here.
 			 */
 			fflush(iop);
-#endif /* KEY Bug 5386 */
 		}
 		break;
 

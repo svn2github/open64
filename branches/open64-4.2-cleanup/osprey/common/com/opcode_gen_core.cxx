@@ -1039,14 +1039,12 @@ struct OPERATOR_info_struct OPERATOR_info[OPERATOR_LAST+1] = {
    OPERATOR_PROPERTY_expression},
 #endif
 
-#ifdef KEY
   {"OPR_PURE_CALL_OP",
    -1 /* nkids */,
    OPERATOR_MAPCAT_OEXP /* mapcat */,
    OPERATOR_PROPERTY_expression           |
    OPERATOR_PROPERTY_flags                |
    OPERATOR_PROPERTY_sym},
-#endif
 
 #if defined(TARG_SL) //fork_joint
   {"OPR_SL2_FORK_MAJOR",
@@ -3003,18 +3001,13 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
         valid = Is_MTYPE_b [rtype] && desc == MTYPE_V;
         break;
 
-#ifdef KEY
 	/* In Fortran, the rtype of floor() is int, but is double in C/C++. */
       case OPR_FLOOR:
         // [RTYPE] : f,i [DESC] : f
         valid = Is_MTYPE_f_i [rtype] && Is_MTYPE_f [desc];
 	break;
-#endif
 
       case OPR_CEIL:
-#ifndef KEY
-      case OPR_FLOOR:
-#endif
       case OPR_RND:
       case OPR_TRUNC:
 #ifdef FLOAT_ROUNDING_OPCODES
@@ -3071,15 +3064,10 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 
       case OPR_EQ:
       case OPR_NE:
-#ifndef KEY
-        // [RTYPE] : b [DESC] : f,i,p,z
-        valid = Is_MTYPE_b [rtype] && Is_MTYPE_b_f_i_p_z [desc];
-#else
         // [RTYPE] : b, i [DESC] : f,i,p,z
         valid = (Is_MTYPE_b [rtype] || 
 		 Is_MTYPE_i [ rtype ]) && 
 	  Is_MTYPE_b_f_i_p_z [desc];	
-#endif
         break;
 
       case OPR_LNOT:
@@ -3091,15 +3079,10 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
       case OPR_GT:
       case OPR_LE:
       case OPR_LT:
-#ifndef KEY
-        // [RTYPE] : b [DESC] : f,i,p
-        valid = Is_MTYPE_b [rtype] && Is_MTYPE_f_i_p [desc];
-#else
         // [RTYPE] : b, i [DESC] : f,i,p,z
         valid = (Is_MTYPE_b [rtype] || 
 		 Is_MTYPE_i [ rtype ]) && 
 	  Is_MTYPE_f_i_p [desc];	
-#endif
         break;
 
       case OPR_LDBITS:
@@ -3699,25 +3682,6 @@ OPCODE_name (OPCODE opc)
 }
 
 
-#if 0
-// This stuff sets up a fast OPCODE_is_valid_opcode_table lookup table
-// If an opcode is valid, it contains the opcode. Otherwise, is contains OPCODE_UNKNOWN.
-OPCODE OPCODE_is_valid_opcode_table[OPCODE_LAST+1];
-
-static struct setup_the_opcode_valid_table {
-public:
-   setup_the_opcode_valid_table() {
-      INT i;
-      for (i=0; i <= OPCODE_LAST; i++) {
-	 if (Is_Valid_Opcode_FUNC((OPCODE) i)) {
-	    OPCODE_is_valid_opcode_table[i] = (OPCODE) i;
-	 } else {
-	    OPCODE_is_valid_opcode_table[i] = OPCODE_UNKNOWN;
-	 }	    
-      }
-   }
-} dummy_setup_the_opcode;
-#endif
 
 
 

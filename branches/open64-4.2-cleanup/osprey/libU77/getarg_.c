@@ -39,19 +39,12 @@
 */
 #include "externals.h"
 
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
 void
 pathf90_getarg(pathf90_i4 *n, char *s, int ls)
 
-#else
-
-extern void
-getarg_ (int *n, register char *s, int ls)
-
-#endif /* KEY Bug 1683 */
 {
 register char *t;
 register int i;

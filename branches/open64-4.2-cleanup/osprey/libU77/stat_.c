@@ -31,7 +31,6 @@ Boston, MA 02111-1307, USA.  */
 
 void g_char (const char *a, ftnlen alen, char *b);
 
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -93,46 +92,3 @@ pathf90_lstat(char *name, pathf90_i4 *statb, pathf90_i4 *status, int Lname)
   return help_stat(name, statb, status, Lname, 1);
 }
 
-#else
-
-integer
-stat_ (const char *name, integer statb[13], const ftnlen Lname)
-{
-  char *buff;
-  int err;
-  struct stat buf;
-
-  buff = malloc (Lname + 1);
-  if (buff == NULL)
-    return -1;
-  g_char (name, Lname, buff);
-  err = stat (buff, &buf);
-  free (buff);
-  statb[0] = buf.st_dev;
-  statb[1] = buf.st_ino;
-  statb[2] = buf.st_mode;
-  statb[3] = buf.st_nlink;
-  statb[4] = buf.st_uid;
-  statb[5] = buf.st_gid;
-#if HAVE_ST_RDEV
-  statb[6] = buf.st_rdev;	/* not posix */
-#else
-  statb[6] = 0;
-#endif
-  statb[7] = buf.st_size;
-  statb[8] = buf.st_atime;
-  statb[9] = buf.st_mtime;
-  statb[10] = buf.st_ctime;
-#if HAVE_ST_BLKSIZE
-  statb[11] = buf.st_blksize;	/* not posix */
-#else
-  statb[11] = -1;
-#endif
-#if HAVE_ST_BLOCKS
-  statb[12] = buf.st_blocks;	/* not posix */
-#else
-  statb[12] = -1;
-#endif
-  return err;
-}
-#endif /* KEY Bug 1683 */

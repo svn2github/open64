@@ -46,11 +46,7 @@
 #include "defalias.h"
 #include "moremath.h"
 
-#ifdef KEY
 double __zabs(double zdreal, double zdimag)
-#else
-double __zabs(double zdreal, double_t zdimag)
-#endif
 {
   return(hypot(zdreal, zdimag));
 }

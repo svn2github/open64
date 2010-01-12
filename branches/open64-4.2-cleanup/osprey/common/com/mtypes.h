@@ -240,14 +240,10 @@ extern TYPE_DESC Machine_Types[];
 #define MTYPE_is_short_vector(n) ((MTYPE_type_class(n) & MTYPE_CLASS_SVECTOR) == MTYPE_CLASS_SVECTOR)
 #define MTYPE_is_mmx_vector(n) ((MTYPE_type_class(n) & MTYPE_CLASS_MVECTOR) == MTYPE_CLASS_MVECTOR)
 #endif // TARG_X8664
-#ifdef KEY
 #ifndef MTYPE_is_short_vector
 #define MTYPE_is_short_vector(n) (MTYPE_type_class(n)==MTYPE_CLASS_SVECTOR)
 #endif
 #define MTYPE_is_str(n)		(MTYPE_type_class(n)==MTYPE_CLASS_STR)
-#else
-#define MTYPE_is_str(n)		(MTYPE_type_class(n)==MTYPE_STR)
-#endif // KEY
 #define MTYPE_is_m(n)		((n)==MTYPE_M)
 #define MTYPE_is_void(n)	((n)==MTYPE_V)
 

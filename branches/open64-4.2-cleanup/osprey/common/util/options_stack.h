@@ -74,7 +74,6 @@ class OPTIONS_STACK {
   }
   ~OPTIONS_STACK(void) { }
 
-  // take this out once bug 530832 is fixed!!
   void Init(void) {
     printf("This is a bug because it is repeated for every DSO"
 	   "even when compiled with -INLINE:=0\n");

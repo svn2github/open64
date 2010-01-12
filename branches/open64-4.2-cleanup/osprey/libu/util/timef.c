@@ -44,7 +44,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 /* In Linux <sys/time.h> this is ifdef'ed out */
-#if defined(KEY) && ! defined(BUILD_OS_DARWIN)
+#if ! defined(BUILD_OS_DARWIN)
 struct timezone
   {
     int tz_minuteswest;		/* Minutes west of GMT.  */
@@ -148,7 +148,6 @@ timef_(void)
 	return( (_f_real) retval);
 }
 
-#ifdef KEY /* Bug 12813 */
 _f_real8
 _Timef(void)
 {
@@ -191,7 +190,6 @@ _Timef(void)
 
 	return (_f_real8) rtdif * MSECPERCLK;
 }
-#endif	/* KEY Bug 12813 */
 #endif	/* ! __mips */
 
 /*

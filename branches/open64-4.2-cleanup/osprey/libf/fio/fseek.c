@@ -262,11 +262,7 @@ __setpos64(
 		if ( cup->ufmt == NO )
 			ioff <<= 3;
 
-#ifdef KEY /* Bug 1678 */
 		ret	= fseeko(cup->ufp.std, ioff, whence);
-#else /* KEY Bug 1678 */
-		ret	= fseek(cup->ufp.std, ioff, whence);
-#endif /* KEY Bug 1678 */
 		if (ret != 0)
 			return(errno);
 

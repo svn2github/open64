@@ -195,14 +195,12 @@ _bu2s(	const long *fca,
 				     (*position_pointer - '0');
 		}
 		else {
-#ifdef KEY /* Bug 8105 */
 			/* VMS extension allows numeric field
 			 * to end prematurely with "," */
 			if (',' == (*position_pointer)) {
 				*status = EX_ILLCHAR;
 				goto DONE;
 			}
-#endif /* KEY Bug 8105 */
 			if ((*position_pointer) != BLANK) {
 				pre_result = 0;
 				*status = EX_ILLCHAR;
@@ -434,14 +432,12 @@ _ou2s(	const long *fca,
 				     (*position_pointer - '0');
 		}
 		else {
-#ifdef KEY /* Bug 8105 */
 			/* VMS extension allows numeric field
 			 * to end prematurely with "," */
 			if (',' == (*position_pointer)) {
 				*status = EX_ILLCHAR;
 				goto DONE;
 			}
-#endif /* KEY Bug 8105 */
 			if ((*position_pointer) != BLANK) {
 				pre_result = 0;
 				*status = EX_ILLCHAR;
@@ -527,7 +523,6 @@ DONE:
 }
 
 
-#ifdef KEY /* Bug 8767 */
 /* Return nonzero if pre_result indicates an n-bit overflow, but allow the
  * largest-magnitude n-bit 2's complement negative number as a special case
  * (e.g. 16-bit -32768 should not cause overflow.) */
@@ -535,7 +530,6 @@ DONE:
   ((neg_sign) && ((uint64)(pre_result)) == (((uint64) 1) << ((n) - 1))) ? \
   0 : \
   (((uint64)(pre_result)) >> ((n) - 1))
-#endif /* KEY Bug 8767 */
 
 
 /******************************************************************************/
@@ -670,9 +664,7 @@ _iu2s(	const long *fca,
 			goto DONE;
 		}
 	}
-#ifdef KEY /* Bug 8767 */
         int neg_sign = (sign == NEGATIVE);
-#endif /* KEY Bug 8767 */
 
 /*
 	loop through characters and build the mantissa
@@ -683,21 +675,15 @@ _iu2s(	const long *fca,
 			ovfl = pre_result >> 60;
 			pre_result = (pre_result * 10) +
 				     (*position_pointer - '0');
-#ifdef KEY /* Bug 8767 */
 			ovfl += TEST_OVFL(neg_sign, pre_result, 64);
-#else /* KEY Bug 8767 */
-			ovfl += (pre_result >> 63);
-#endif /* KEY Bug 8767 */
 		}
 		else {
-#ifdef KEY /* Bug 8105 */
 			/* VMS extension allows numeric field
 			 * to end prematurely with "," */
 			if (',' == *position_pointer) {
 				*status = EX_ILLCHAR;
 				goto DONE;
 			}
-#endif /* KEY Bug 8105 */
 			if ((*position_pointer) != BLANK) {
 				pre_result = 0;
 				*status = EX_ILLCHAR;
@@ -706,11 +692,7 @@ _iu2s(	const long *fca,
 			if ((flags & MODEBZ) != 0) {
 				ovfl = pre_result >> 60;
 				pre_result = pre_result * 10; 
-#ifdef KEY /* Bug 8767 */
 				ovfl = TEST_OVFL(neg_sign, pre_result, 64);
-#else /* KEY Bug 8767 */
-				ovfl += (pre_result >> 63);
-#endif /* KEY Bug 8767 */
 			}
 			else {
 				if ((flags & MODEBN) == 0) goto SETTYPE;
@@ -742,11 +724,7 @@ SETTYPE:
 	the sign.
 */
 	if ((flags & MODEHP) != 0) {
-#ifdef KEY /* Bug 8767 */
                 if (TEST_OVFL(neg_sign, pre_result, 32))
-#else /* KEY Bug 8767 */
-		if ((uint64)pre_result >> 31 != 0)
-#endif /* KEY Bug 8767 */
 		{
 			pre_result = 0;
 			*status = EX_FIXOFLO;
@@ -755,11 +733,7 @@ SETTYPE:
 	}
 #if	defined(__mips) || defined(_LITTLE_ENDIAN)
 	else if ((flags & MODEWP) != 0) {
-#ifdef KEY /* Bug 8767 */
                 if (TEST_OVFL(neg_sign, pre_result, 16))
-#else /* KEY Bug 8767 */
-		if (((uint64)pre_result & WP_NOT_MASK) != 0)
-#endif /* KEY Bug 8767 */
 		{
 			pre_result = 0;
 			*status = EX_FIXOFLO;
@@ -767,11 +741,7 @@ SETTYPE:
 		}
 	}
 	else if ((flags & MODEBP) != 0) {
-#ifdef KEY /* Bug 8767 */
                 if (TEST_OVFL(neg_sign, pre_result, 8))
-#else /* KEY Bug 8767 */
-		if (((uint64)pre_result & BP_NOT_MASK) != 0)
-#endif /* KEY Bug 8767 */
 		{
 			pre_result = 0;
 			*status = EX_FIXOFLO;
@@ -962,14 +932,12 @@ _zu2s(	const long *fca,
 				     (*position_pointer - '0' - displacement);
 		}
 		else {
-#ifdef KEY /* Bug 8105 */
 			/* VMS extension allows numeric field
 			 * to end prematurely with "," */
 			if (',' == (*position_pointer)) {
 				*status = EX_ILLCHAR;
 				goto DONE;
 			}
-#endif /* KEY Bug 8105 */
 			if ((*position_pointer) != BLANK) {
 				pre_result = 0;
 				*status = EX_ILLCHAR;

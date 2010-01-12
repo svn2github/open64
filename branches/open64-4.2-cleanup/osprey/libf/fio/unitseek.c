@@ -50,12 +50,8 @@
 #if defined(__mips) || (defined(_LITTLE_ENDIAN) && defined(__sv2))
 #define LIBFSEEK fseek64
 #else
-#ifdef KEY /* Bug 1678 */
 /* Need 64 bit position to support large files */
 #define LIBFSEEK fseeko
-#else /* KEY Bug 1678 */
-#define LIBFSEEK fseek
-#endif /* KEY Bug 1678 */
 #endif
 /*
  *	_unit_seek 

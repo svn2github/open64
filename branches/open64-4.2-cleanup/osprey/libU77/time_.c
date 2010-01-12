@@ -54,14 +54,9 @@
  */
 
 #include <sys/types.h>
-#if defined(_SYSV) || defined(_SYSTYPE_SVR4) || defined (KEY)
 #include <time.h>
-#else
-#include <sys/time.h>
-#endif
 #include <string.h>
 
-#ifdef KEY /* Bug 4135, 5019 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -90,17 +85,6 @@ pathf90_subr_time(char *buf, int len)
   memcpy(buf, ctime_r(&t, result) + 11, (len < 8) ? len : 8);
 }
 
-#else
-extern time_t 
-#if defined(__ia64) || defined(__ia32)
-__attribute__ ((weak)) time_(void)
-#else
-time_(void)
-#endif
-{
-	return(time(NULL));
-}
-#endif /* Bug 4135, 5019 */
 
 extern void
 #if defined(__ia64) || defined(__ia32)

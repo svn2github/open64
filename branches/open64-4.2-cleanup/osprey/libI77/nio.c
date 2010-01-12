@@ -294,8 +294,7 @@ static char    *getword(unit *ftnunit, char *s, unsigned int n, int skip_newline
       UNGETC (i);
    }
 
-/* LHL 5/22/89
- * fix bug 4573
+/*
  * change it so that any char in the 1st column are considered as comments
  * till the rest of the line.
  */
@@ -312,8 +311,7 @@ static char    *getword(unit *ftnunit, char *s, unsigned int n, int skip_newline
    for (GETC (i);
    isspace (i) || (ispunct (i) && i != '?' && i != '$' && i != '&');
 	GETC (i)) {
-/* LHL 5/22/89
- * fix bug 4573
+/*
  * change it so that comments are allowed anywhere within the namelist
  * file.
  */
@@ -350,8 +348,7 @@ static char    *getword(unit *ftnunit, char *s, unsigned int n, int skip_newline
      } /* while loop */
    }    /* if */
 
-/* LHL 5/22/89
- * fix bug 4573
+/*
  * make sure that '\n' gets back to the input stream.
  */
    if (i == '\n')

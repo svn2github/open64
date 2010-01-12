@@ -44,7 +44,6 @@
 #include <sys/times.h>
 #include "cmplrs/host.h"
 
-#ifdef KEY /* Bug 1683 */
 
 static clock_t mclock_ (void);
 
@@ -64,12 +63,6 @@ return (long long) mclock_();
 static clock_t
 mclock_ (void)
 
-#else
-
-clock_t
-mclock_ (void)
-
-#endif /* KEY Bug 1683 */
 {
     struct tms buf;
     times(&buf);

@@ -185,7 +185,7 @@
     #define OPEN64_CMPLR_NAME_PREFIX "or"
     #define OPEN64_TARGET_NAME "ia64"  // for lang_defs.c
 #elif defined(TARG_X8664)
-    #ifdef BUILD_ARCH_IA32  // fix bug 469
+    #ifdef BUILD_ARCH_IA32
         #define OPEN64_TARGET "x86_32-linux" 
     #else 
         #define OPEN64_TARGET "x86_64-linux" 

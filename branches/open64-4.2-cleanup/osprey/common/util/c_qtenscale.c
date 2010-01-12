@@ -58,10 +58,6 @@
 static char *source_file = __FILE__;
 static char *rcs_id = "$Source: /home/bos/bk/kpro64-pending/common/util/SCCS/s.c_qtenscale.c $ $Revision: 1.5 $";
 
-#ifndef KEY /* Mac port */
-/* Nonstandard file defines macros which aren't needed anyway */
-#include <values.h>
-#endif /* Mac port */
 #include "defs.h"
 
 #define min(x,y) ((x)<(y)? (x): (y))

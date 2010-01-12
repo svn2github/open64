@@ -46,11 +46,7 @@
 #include "defalias.h"
 #include "moremath.h"
 
-#ifdef KEY
 dcomplex __zdiv(double adreal, double adimag, double bdreal, double bdimag)
-#else
-dcomplex __zdiv(double adreal, double adimag, double_t bdreal, double_t bdimag)
-#endif // KEY
 {
   double ratio, den;
   double abr, abi;

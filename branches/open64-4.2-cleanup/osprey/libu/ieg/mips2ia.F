@@ -158,7 +158,7 @@ C
       PARAMETER        (WORDSZB = 6)   !  Log (base 2) of WORDSZ
 
       INTEGER           IINC, MINC
-/* KEY bug 13352: __mips does not imply little-endian */
+/* __mips does not imply little-endian */
 #if ! defined(_MIPSEL)
       PARAMETER        (IINC = 1)
 #else

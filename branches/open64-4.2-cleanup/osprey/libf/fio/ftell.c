@@ -52,7 +52,6 @@ extern _f_int8 ftellf90_8_4_( _f_int *unump);
 extern _f_int8 ftellf90_8_( _f_int8 *unump);
 extern _f_int ftell90_ (_f_int *u);
 
-#ifdef KEY /* Bug 1683 */
 
 void
 pathf90_ftell4(_f_int *unit, _f_int *offset) {
@@ -70,7 +69,6 @@ pathf90_ftell48(_f_int *unit, _f_int8 *offset) {
   *offset = ftellf90_8_4_(unit);
   }
 
-#endif /* KEY Bug 1683 */
 
 /*
  * __ftell64_f90, _ftell
@@ -146,11 +144,7 @@ ftellf90_8_4_( _f_int 	*unump)
 
 	case  FS_TEXT:
 	case  STD:
-#ifdef KEY /* Bug 1678 */
 		pos	= ftello(cup->ufp.std);
-#else /* KEY Bug 1678 */
-		pos	= ftell(cup->ufp.std);
-#endif /* KEY Bug 1678 */
 		break;
 
 	case FS_FDC:
@@ -205,11 +199,7 @@ ftellf90_8_( _f_int8 *unump)
 
 	case  FS_TEXT:
 	case  STD:
-#ifdef KEY /* Bug 1678 */
 		pos	= ftello(cup->ufp.std);
-#else /* KEY Bug 1678 */
-		pos	= ftell(cup->ufp.std);
-#endif /* KEY Bug 1678 */
 		break;
 
 	case FS_FDC:
@@ -229,20 +219,10 @@ getpos_done:
 	return(pos);
 }
 
-#ifdef KEY /* Bug 1683 */
 /* Don't pollute the Fortran namespace */
 _f_int
 ftell90_(_f_int *u)
 {
 	return( (_f_int) ftellf90_8_4_(u));
 }
-#endif /* KEY Bug 1683 */
 
-#if 0
-extern int ftell_(_f_int *u);
-int 
-ftell_(_f_int *u)
-{
-	return( (int) ftellf90_8_4_(u));
-}
-#endif

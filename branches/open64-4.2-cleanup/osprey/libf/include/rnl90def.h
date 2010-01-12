@@ -50,11 +50,7 @@
 #define OCTSHFT4 30		/* allow 10 octal digits */
 #define HEXSHFT4 28		/* allow 7 hex digits */
 
-#ifdef KEY /* Bug 14479 */
 #define MAXNAML 63		/* 63-character name length */
-#else /* KEY Bug 14479 */
-#define MAXNAML 31		/* 31-character name length */
-#endif /* KEY Bug 14479 */
 #define MAXDIMS 8		/* Maximum number of dimensions for an array */
 #define RNL_ERROR -3
 

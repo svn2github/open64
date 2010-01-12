@@ -120,7 +120,6 @@ flush_(
 	unit		*cup;
 	struct fiostate	cfs;
 
-#ifdef KEY /* Bug 1683 */
 	/* G77 says that if unit is missing, flush all units */
         if (0 == unump) {
 	  /*	Find all open Fortran units not connected by
@@ -136,7 +135,6 @@ flush_(
 	  }
 	  return;
 	}
-#endif /* KEY Bug 1683 */
 
 	unum	= *unump;
 	statp	=
@@ -156,22 +154,12 @@ flush_(
 		if (!GOOD_UNUM(unum)) 
 			errn	= FEIVUNIT;
 		else {
-#ifdef KEY /* Bug 6433 */
 /* G77 ignores flush on an unopened unit, so we do likewise. The test for
  * RSVD_UNUM is useless because we no longer have any (we automatically open
  * units 5 and 6 on stdin and stdout, but we do not "reserve" them: the
  * user can explicitly open them on named files.)
  */
 			goto flush_done;
-#else /* KEY Bug 6433 */
-			/*
-			 * Ignore FLUSH on unopened reserved unit.
-			 */
-			if (RSVD_UNUM(unum))
-				goto flush_done;
-
-			errn	= FENOTOPN;
-#endif /* KEY Bug 6433 */
 		}
 
 		FLUSH_ERROR1(errn, unum);
@@ -194,7 +182,6 @@ flush_(
 			break;
 
 		case FS_TEXT:
-#ifdef KEY
 			{
 # if defined(BUILD_OS_DARWIN)
 			int writeable = cup->ufp.std->_flags & (__SWR | __SRW);
@@ -206,7 +193,6 @@ flush_(
 					FLUSH_ERROR(errno);
 			}
 			break;
-#endif
 		case STD:
 #if	!defined(_LITTLE_ENDIAN)
 			if (FILE_FLAG(cup->ufp.std) & _IOWRT)
@@ -226,7 +212,6 @@ flush_done:
 }
 
 #if	defined(_LITTLE_ENDIAN)
-#ifdef KEY /* Bug 6433 */
 #pragma weak flush_
 /* Keeping this for backward compatibility, sigh */
 void
@@ -234,15 +219,6 @@ flush_(_f_int4 *unump) {
   unum_t unum = (0 == unump) ? 0 : *unump;
   __flush_f90((0 == unump) ? 0 : (&unum), 0);
 }
-#else /* KEY Bug 6433 */
-void
-flush_( const unum_t	*unump)
-{
-	_f_int	istt;		/* Optional error status is present */
-	__flush_f90(unump, &istt);
-	return;
-}
-#endif /* KEY Bug 6433 */
 #endif
 
 #if	defined(__mips) || defined(_LITTLE_ENDIAN)
@@ -325,7 +301,6 @@ flush_f90_8_( _f_int8	*unump)		/* Fortran unit number */
 	return;
 }
 
-#ifdef KEY /* Bug 1683 */
 /* None of the existing fcns takes integer*4 for both args, sigh */
 void
 pathf90_flush(_f_int *unump, _f_int *istat)
@@ -334,6 +309,5 @@ pathf90_flush(_f_int *unump, _f_int *istat)
   __flush_f90((0 == unump) ? 0 : (&unum), istat);
 }
 
-#endif /* KEY Bug 1683 */
 
 #endif	/* __mips  or _LITTLE_ENDIAN */

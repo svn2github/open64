@@ -23,13 +23,11 @@ Boston, MA 02111-1307, USA.  */
 #include "f2c.h"
 #include <math.h>
 
-#ifdef KEY /* Bug 1683 */
 /* Experiment shows that g77 calls the dp version, not the sp version,
  * converting precision outside the code generator. It seems to make a
  * difference in the low-order bits of the result. This file was
  * incorrect anyway when we got it from the G77 distribution: it passed
  * sp args to dp functions j0 etc. */
-#endif /* KEY Bug 1683 */
 
 float
 G77_besj0_0 (const real * x)

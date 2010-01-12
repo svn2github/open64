@@ -55,10 +55,8 @@ static const char rcs_id[] = "$Source: common/com/SCCS/s.em_dwarf.cxx $ $Revisio
 #include "em_dwarf.h"
 #include "config_elf_targ.h"
 #include "targ_em_dwarf.h"
-#ifdef KEY
 #include "config_targ.h"  // For Is_Target_64bit() 
 #include "config_debug.h" // For DEBUG_Emit_Ehframe
-#endif
 
 
 INT data_alignment_factor;
@@ -71,9 +69,7 @@ static pSCNINFO dwarf_scn[MAX_DWARF_SECTIONS];
 static size_t num_dwarf_scns = 0;
 /* Allocate only one cie for the whole file. */
 static Dwarf_Unsigned cie_index;
-#ifdef KEY
 static Dwarf_Unsigned eh_cie_index;
-#endif
 
 typedef struct {
   UINT16 dwarf_idx;
@@ -255,11 +251,9 @@ Em_Dwarf_Add_File (
   file_table[file_idx].incl_idx = incl_idx;
 }
 
-#ifdef KEY
 #include "strtab.h"
 #include "symtab.h"
 #include "irbdata.h"
-#endif // KEY
 extern "C" void Assign_ST_To_Named_Section (ST *, STR_IDX);
 
 Dwarf_P_Debug 
@@ -318,7 +312,7 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 	    INITV_IDX iv = New_INITV();
 	    INITV_Init_Symoff (iv, personality_st, 0, 1);
 	    New_INITO (ST_st_idx (pic_personality_st), iv);
-	    // bug 8315: With -ipa, if this file is not symtab.s (actually
+	    // With -ipa, if this file is not symtab.s (actually
 	    // control won't ever reach here for symtab.s, but better to
 	    // have the following explicit check.), this new ST won't be
 	    // assigned to its section, so do it here.
@@ -330,7 +324,7 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 	}
   }
   else
-    // Bug 7278 - implement "zR" CFA augmentation for non-C++ code.
+    // implement "zR" CFA augmentation for non-C++ code.
     if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
       augmenter = PIC_NONCPLUS_DW_CIE_AUGMENTER_STRING_V0;
     else
@@ -371,7 +365,7 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 				 cie_init_byte_len,
 				 &dw_error);
 
-#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_MIPS)
+#if !defined(TARG_SL) && !defined(TARG_MIPS)
   // Generate a CIE for .eh_frame only if it is C++ or if -DEBUG:eh_frame=on
   if (is_cplus || DEBUG_Emit_Ehframe)
     eh_cie_index = dwf_add_ehframe_cie (dw_dbg, augmenter,
@@ -390,7 +384,7 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 		    init_bytes, sizeof(init_bytes),
 #endif
 		    &dw_error);
-#endif // KEY
+#endif
 
   return dw_dbg;
 }
@@ -523,11 +517,7 @@ Em_Dwarf_Write_Scns (Cg_Dwarf_Sym_To_Elfsym_Ofst translate_dwarf_sym)
 
     BOOL is_debug_line =
       (strcmp(
-#ifdef KEY /* Mac port */
       DEBUG_LINE_SECTNAME,
-#else /* KEY Mac port */
-      ".debug_line",
-#endif /* KEY Mac port */
 	      Em_Get_Section_Name(index_to_buffer_map[j].cursection)) == 0);
 
     buffer =

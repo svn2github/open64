@@ -133,7 +133,6 @@ extern BOOL IPA_Enable_Reshape;         /* reshape analysis for arrays  */
 extern BOOL IPA_Enable_Preopt;		/* call preopt during IPA */
 extern BOOL IPA_Enable_Preopt_Set;
 
-#ifdef KEY
 extern BOOL IPA_Enable_Icall_Opt;	// allow ipa change icall to call
 extern BOOL IPA_Enable_EH_Region_Removal; // remove useless exception regions
 extern BOOL IPA_Enable_Branch_Heuristic; // use branch prob. for inlining
@@ -147,7 +146,6 @@ extern UINT32 IPA_Icall_Min_Freq;	// Min icall freq for icall opt
 extern BOOL IPA_Enable_Source_PU_Order;
 extern UINT32 IPA_Enable_Struct_Opt;
 extern UINT32 IPA_Update_Struct;
-#endif
 
 /* ===== Inlining heuristics: ===== */
 
@@ -259,7 +257,6 @@ extern BOOL     IPA_Enable_Inline_Optional_Arg;   /* Enable inlining of PU with 
 extern BOOL     IPA_Enable_Inline_Struct_Array_Actual;   /* Enable inlining of PU with F90 structures with actuals being array type */
 extern BOOL     IPA_Enable_Inline_Var_Dim_Array;   /* Enable inlining of PU with param that is variable-dimensioned array */
 extern BOOL  IPA_Enable_Reorder;   /*Enable structure field reordering */
-#ifdef KEY
 typedef enum
 {
   REORDER_DISABLE = 0,
@@ -281,7 +278,6 @@ typedef enum
 
 // Check if parameters are compatible during inlining
 extern CHECK_PARAM_COMPATIBILITY INLINE_Check_Compatibility;
-#endif // KEY
 
 /* Maximum number of clones for a call graph node */
 extern UINT32 IPA_Max_Node_Clones;
@@ -322,13 +318,11 @@ extern BOOL	INLINE_Aggressive;	/* inline even non-leaf, out-of-loop
 extern BOOL     INLINE_Enable_DFE;     /* dead function elimination */
 extern BOOL     INLINE_Enable_Auto_Inlining;    /* automatic inline analysis */
 extern BOOL	INLINE_Enable_Restrict_Pointers; /* allow restrict pointers */
-#ifdef KEY
 extern BOOL	INLINE_Recursive;	//  do recursive inlining
 extern BOOL	INLINE_Param_Mismatch;	// inline even if # of params doesn't match between call and callee
 extern BOOL	INLINE_Type_Mismatch; // inline even if actuals' types!=formals'
 extern BOOL	INLINE_Ignore_Bloat; // ignore code bloat
 extern UINT32	INLINE_Callee_Limit; // for functions marked inline by user
-#endif
 
 extern struct option_list *INLINE_List_Names;	/* Must/never/file/library 
 						   options */

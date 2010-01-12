@@ -49,7 +49,6 @@
 #include <unistd.h>
 #include "externals.h"
 
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
@@ -70,21 +69,3 @@ pathf90_hostnm(char *name, pathf90_i4 *status, int len)
 		return(*status = errno);
 }
 
-#else
-
-extern int
-hostnm_ (char *name, int len)
-{
-	char	buf[64];
-	int	blen	= sizeof buf;
-
-	if (gethostname (buf, blen) == 0)
-	{
-		b_char (buf, name, len);
-		return (0);
-	}
-	else
-		return(errno);
-}
-
-#endif /* KEY Bug 1683 */

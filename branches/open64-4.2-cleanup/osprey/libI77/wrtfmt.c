@@ -449,9 +449,6 @@ wrt_E (unit *ftnunit, ufloat *p, int w, int d, int e, ftnlen len, char symbol, f
       } else {
 	 PUT (ftnunit->f77scale, 0, s);
 	 PUT (1, '.', NULL);
-/* 6/26/89
- * fix bug 4547
- */
 	 if (d >= ftnunit->f77scale)
 	    PUT (d - ftnunit->f77scale + 1, 0, s + ftnunit->f77scale);
       }
@@ -551,9 +548,6 @@ wrt_EQ (unit *ftnunit, ufloat *p, int w, int d, int e, ftnlen notused_len, char 
       } else {
 	 PUT (ftnunit->f77scale, 0, s);
 	 PUT (1, '.', NULL);
-/* 6/26/89
- * fix bug 4547
- */
 	 if (d >= ftnunit->f77scale)
 	    PUT (d - ftnunit->f77scale + 1, 0, s + ftnunit->f77scale);
       }
@@ -1011,7 +1005,6 @@ wrt_F (unit *ftnunit, ufloat *p, int w, int d, ftnlen len, flag doblank)
 	 leading0 = 1;
 	 n--;
       }
-/* 9/28/89 fix bug 5046 */
       else if (!strlen (s) && !d && dp == 1)	/* taking care of the
 						 * case */
 	 leading0 = 1;		/* where x = 0 and d = 0 */
@@ -1105,7 +1098,6 @@ wrt_FQ (unit *ftnunit, ufloat *p, int w, int d, flag doblank)
 	 leading0 = 1;
 	 n--;
       }
-/* 9/28/89 fix bug 5046 */
       else if (!strlen (s) && !d && dp == 1)	/* taking care of the
 						 * case */
 	 leading0 = 1;		/* where x = 0 and d = 0 */

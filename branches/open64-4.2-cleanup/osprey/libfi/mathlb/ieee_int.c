@@ -132,95 +132,10 @@ _f_int4
 _IEEE_INT_D_I4(_f_real16 argx)
 #ifndef	__mips
 {
-#ifdef KEY /* Bug 6236 */
 	/* The non-MIPS code seems very broken on the X86, where the back
 	 * end gives us a "long double" argx which is currently in 80 bit
 	 * little endian format */
 	return (_f_int4) rintl(argx);
-#else /* KEY Bug 6236 */
-	/* Union defined to work with IEEE 128-bit floating point. */
-	union _ieee_ldouble {
-		struct {
-                        unsigned int sign	: 1;
-			unsigned int exponent	: IEEE_128_EXPO_BITS;
-			unsigned int mantissa_up1 : IEEE_128_MANT_BTS_UP1;
-			unsigned int mantissa_up2 : IEEE_128_MANT_BTS_UP2;
-			unsigned int mantissa_lo1 : IEEE_128_MANT_BTS_LO1;
-			unsigned int mantissa_lo2 : IEEE_128_MANT_BTS_LO2;
-		} parts1;
-		_f_real16		ldword;
-		unsigned long long	llword[2];
-		unsigned int		lword[4];
-		long long		lsword[2];
-	};
-	static union _ieee_ldouble two_112 =
-	   {0, 0x406F, 0x0000, 0x00000000, 0x00000000, 0x00000000};
-	static union _ieee_ldouble div_112 =
-	   {0, 0x3F8F, 0x0000, 0x00000000, 0x00000000, 0x00000000};
-	unsigned int	sign_x = 0X80000000;
-	unsigned int	even_x = 0X00000001;
-	unsigned int	two_32 = 0X401F0000;
-	_f_int4		result = 0;
-	int	rounding;
-	union _ieee_ldouble	x_val, evenchk, nearint, tmp;
-	x_val.ldword	= argx;
-	/* check x for NaN, infinity, denormal, or zero. */
-	if (!(isnormal128(argx))) {
-
-		/* check for kinds of denormal or zero. */
-		if (isnan128(argx) ||
-		   ((((x_val.llword[0] & ~IEEE_128_64_SIGN_BIT) ==
-		    IEEE_128_64_EXPO) && x_val.llword[1] == 0))) {
-			_f_real8	result8;
-			_f_real8	arg8 = 0.0;
-
-			/* Invoke invalid operation for Nan or Infinity.
-			 * No error if invalid operation exception is not
-			 * trapped. Return signed HUGE (largest integer)
-			 * for signed infinity and zero for NaN.
-			 * _lerror (_LELVL_ABORT, FEIEINTE);
-			 */
-			if (!isnan128(argx)) {
-				result = (x_val.parts1.sign == 0) ?
-					HUGE_INT4_F90 :	-HUGE_INT4_F90;
-			}
-			result8	= _raisinvld(arg8, arg8);
-			return(result);
-		} else if (argx == 0.0) {
-			/* x is zero. */
-			return(result);
-		}
-	} else if ((int) two_32 <= (int) (x_val.lword[0] & (~sign_x))) {
-		_f_real8	result8;
-		_f_real8	arg8 = 0.0;
-
-		/* Invoke invalid operation for too large a float value.
-		 * No error if invalid operation exception is not
-		 * trapped. Return signed HUGE.(largest integer)
-		 * _lerror (_LELVL_ABORT, FEIEINTL);
-		 */
-		result = (x_val.parts1.sign == 0) ?
-			HUGE_INT4_F90 :	-HUGE_INT4_F90;
-		result8	= _raisinvld(arg8, arg8);
-		return(result);
-	}
-
-	rounding	= fegetround();
-	if (rounding == FE_TONEAREST) {
-		/* round toward nearest */
-		CALC_DNINT();
-		result = (_f_int4) nearint.lsword[1];
-	} else {
-		/*
-		 * RP_RMZ = round toward zero=truncate.
-		 * FE_UPWARD = round toward plus infinity=round up.
-		 * FE_DOWNWARD = round toward minus infinity=round down.
-		 */
-		CALC_DINT();
-		result = (_f_int4) tmp.ldword;
-	}
-	return(result);
-#endif /* KEY Bug 6236 */
 }
 #else
 {

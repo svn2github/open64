@@ -169,13 +169,8 @@ number is returned in the \*FIOSTAT\fR variable, if specified.
 .Ma UNRECOVERABLE
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
-#ifdef KEY /* F2003 */
 $msg FE__RDEMPT A READ operation tried to read an empty file.
 $nexp FE__RDEMPT
-#else /* KEY F2003 */
-$msg FERDEMPT A READ operation tried to read an empty file.
-$nexp FERDEMPT
-#endif /* KEY F2003 */
 A READ operation tried to read an empty file.
 .PP
 A Fortran \*FREAD\fR operation read an empty file, and neither
@@ -201,13 +196,8 @@ number is returned in the \*FIOSTAT\fR variable, if specified.
 .Ma UNRECOVERABLE
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
-#ifdef KEY /* F2003 */
 $msg FE__RDENDR A READ is invalid when a file is positioned after the end-of-file.
 $nexp FE__RDENDR
-#else /* KEY F2003 */
-$msg FERDENDR A READ is invalid when a file is positioned after the end-of-file.
-$nexp FERDENDR
-#endif /* KEY F2003 */
 A READ is invalid when a file is positioned after the end-of-file.
 .PP
 A Fortran \*FREAD\fR operation was initiated on a
@@ -229,13 +219,8 @@ number is returned in the \*FIOSTAT\fR variable, if specified.
 .Ma UNRECOVERABLE
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
-#ifdef KEY /* F2003 */
 $msg FE__RDNLEF A namelist READ operation tried to read past the end-of-file.
 $nexp FE__RDNLEF
-#else /* KEY F2003 */
-$msg FERDNLEF A namelist READ operation tried to read past the end-of-file.
-$nexp FERDNLEF
-#endif /* KEY F2003 */
 A namelist READ operation tried to read past the end-of-file.
 .PP
 A Fortran namelist \*FREAD\fR operation encountered the endfile record,
@@ -256,13 +241,8 @@ statement in your Fortran reference manual.
 .Ma UNRECOVERABLE
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
-#ifdef KEY /* F2003 */
 $msg FE__RDIEOF A READ operation on an internal file tried to read past the end-of-file.
 $nexp FE__RDIEOF
-#else /* KEY F2003 */
-$msg FERDIEOF A READ operation on an internal file tried to read past the end-of-file.
-$nexp FERDIEOF
-#endif /* KEY F2003 */
 A READ operation on an internal file tried to read past the end-of-file.
 .PP
 A Fortran \*FREAD\fR operation tried to read beyond the end of the internal
@@ -6931,7 +6911,6 @@ reference manual.
 .Ma WARNING
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
-#ifdef KEY /* Bug 4260 */
 $msg FWFILENV The FILENV environment variable overrides compile-time switches\n\
 such as "-byteswap" or "-convert"
 $nexp FWFILENV
@@ -6949,8 +6928,6 @@ environment variable.
 .Ma WARNING
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
-#endif /* KEY Bug 4260 */
-#ifdef KEY /* Bug 7479 */
 $msg FWSTKNOMOD PSC_STACK_LIMIT is empty, so will not modify stack size limit
 $nexp FWSTKNOMOD
 PSC_STACK_LIMIT is empty, so will not modify stack size limit
@@ -7095,7 +7072,6 @@ effect
 .Ma WARNING
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
-#endif /* KEY Bug 7479 */
 $
 $	C Compiler-initiated run-time messages
 $

@@ -89,7 +89,6 @@ struct Branch_Profile {
    Branch_Profile() : taken(0), not_taken(0) {}
 };
 
-#ifdef KEY
 #define TNV 10
 // All the information about a rem/div node is stored in the
 // Value_Profile structure. Currently for each value of a
@@ -118,7 +117,6 @@ struct Value_FP_Bin_Profile {
   Value_FP_Bin_Profile() : exe_counter(0),
   			   zopnd0(0), zopnd1(0), uopnd0(0), uopnd1(0) {}
 };
-#endif
 
 
 // All the information about an Compgoto node is maintained
@@ -230,10 +228,8 @@ typedef vector<Loop_Profile>		Loop_Profile_Vector;
 typedef vector<Short_Circuit_Profile>	Short_Circuit_Profile_Vector;
 typedef vector<Call_Profile>		Call_Profile_Vector;
 typedef vector<Icall_Profile>		Icall_Profile_Vector;
-#ifdef KEY
 typedef vector<Value_Profile>		Value_Profile_Vector;
 typedef vector<Value_FP_Bin_Profile>	Value_FP_Bin_Profile_Vector;
-#endif
 
 struct PU_Profile_Handle {
     Invoke_Profile_Vector	Invoke_Profile_Table;
@@ -244,10 +240,8 @@ struct PU_Profile_Handle {
     Short_Circuit_Profile_Vector Short_Circuit_Profile_Table;
     Call_Profile_Vector		Call_Profile_Table;
     Icall_Profile_Vector	Icall_Profile_Table;
-#ifdef KEY
     Value_Profile_Vector	Value_Profile_Table;
     Value_FP_Bin_Profile_Vector	Value_FP_Bin_Profile_Table;
-#endif
 
     INT32 checksum;
     char *file_name;
@@ -306,7 +300,6 @@ struct PU_Profile_Handle {
 	return Icall_Profile_Table;
     }
 
-#ifdef KEY
     Value_Profile_Vector& Get_Value_Table () {
       return Value_Profile_Table;
     }
@@ -314,12 +307,10 @@ struct PU_Profile_Handle {
     Value_FP_Bin_Profile_Vector& Get_Value_FP_Bin_Table () {
       return Value_FP_Bin_Profile_Table;
     }
-#endif
 
     void Set_file_name(char *s);
     void Set_pu_name(char *s);
 
-#ifdef KEY
     void * operator new (size_t size) {
       void * p = malloc (size);
       return p;
@@ -328,7 +319,6 @@ struct PU_Profile_Handle {
     void operator delete (void *p) {
       free (p);
     }
-#endif
 
 };
 

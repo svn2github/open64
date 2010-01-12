@@ -47,19 +47,12 @@
 
 #include <time.h>
 
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
 void
 pathf90_gmtime(pathf90_i4 *clock, pathf90_i4 *t)
 
-#else
-
-extern void
-gmtime_ (int *clock, int *t)
-
-#endif /* KEY Bug 1683 */
 {
 	int i;
 	int *g;

@@ -258,7 +258,6 @@ _f_open(
 	atstr	= NULL;
 	aifound	= _assign_asgcmd_info(fname, unum, gamask, &ai, &atstr,
 			     olptr->oerr);
-#ifdef KEY /* Bug 4924 */
         /* Ignore "-F f77.mips" if the file is not sequential and thus has no
 	 * headers. Otherwise, we would select an ffio layer which gives a
 	 * runtime error on non-sequential files. Today f77.mips is the only
@@ -268,7 +267,6 @@ _f_open(
         if (!is_seq) {
 	  ai.F_filter_flg = 0;
 	}
-#endif /* KEY Bug 4924 */
 
 	if (aifound == -1) {
 		freeit(fname);
@@ -665,7 +663,6 @@ _f_open(
 			 */
 			cup->uostatus	= OS_OLD;  /* REPLACE becomes OLD */
 
-#ifdef KEY /* Bug 7749 */
 			/* Later there's code to call _unit_trunc if the
 			 * olptr->ostatus == OS_REPLACE, but _unit_trunc
 			 * does nothing for direct access files (because
@@ -673,9 +670,6 @@ _f_open(
 			 * is wrong for direct access.) So we must arrange
 			 * to truncate when we open the file. */
 			oflags	= O_CREAT | O_TRUNC;
-#else /* KEY Bug 7749 */
-			oflags	= O_CREAT;
-#endif /* KEY Bug 7749 */
 			break;
 
 	} /* switch */
@@ -766,7 +760,7 @@ _f_open(
 			{
 				int	neg1;
 
-				/* Bug 4478. Ignore POSITION='APPEND' for things that can't seek. */
+				/* Ignore POSITION='APPEND' for things that can't seek. */
 
 				if (cup->useek) {
 

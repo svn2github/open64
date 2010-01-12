@@ -741,7 +741,7 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
    if (DEBUG_Trap_Uv && MTYPE_float(optype) && MTYPE_float(desc) &&
        (NaN_Tcon(optype, c0) || NaN_Tcon(optype, c1))) {
      // return NaN because some places in simp_add_sub are hard-coded to
-     // expect constant-folding being successful, for bug 9699
+     // expect constant-folding being successful
      if (NaN_Tcon(optype, c0))
        return c0;
      else return c1;
@@ -888,12 +888,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
    else 
    switch (op) {
 
-#ifdef KEY
     case OPC_I1PAREN:
     case OPC_I2PAREN:
     case OPC_I4PAREN:
     case OPC_I8PAREN:
-#endif
     case OPC_F4PAREN:
     case OPC_F8PAREN:
     case OPC_FQPAREN:
@@ -1061,12 +1059,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       c0 = Targ_Conv(MTYPE_U8, c0);
       break;
 #endif     
-#if 1 // bug 11745
     case OPC_I8U8CVT:
     case OPC_U8I8CVT:
     case OPC_I4U4CVT:
     case OPC_U4I4CVT:
-#endif
     case OPC_I8I4CVT:
     case OPC_I8U4CVT:
     case OPC_U8I4CVT:
@@ -1460,7 +1456,7 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 
     case OPC_U4TAS:
     case OPC_I4TAS:
-#if HOST_IS_BIG_ENDIAN  // See bug 4305 and bug 10763
+#if HOST_IS_BIG_ENDIAN
       /* Need to move the bits if the source is an F4 */
       if (TCON_ty(c0) == MTYPE_F4) {
 	 TCON_v0(c0) = TCON_v1(c0);
@@ -1471,7 +1467,7 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       break;
 
     case OPC_F4TAS:
-#if HOST_IS_BIG_ENDIAN  // See bug 4305 and bug 10763
+#if HOST_IS_BIG_ENDIAN
       /* Need to move the bits if the source is not an F4 */
       if (TCON_ty(c0) != MTYPE_F4) {
 	 TCON_v1(c0) = TCON_v0(c0);
@@ -2271,7 +2267,6 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
    return c0;
 } /* Targ_WhirlOp */
 
-#ifdef KEY
 /* ====================================================================
  *
  * TCON_F4_To_TCON_F8
@@ -2302,7 +2297,6 @@ TCON_F4_To_TCON_F8(TCON *r, TCON *c)
   }
 #endif
 }
-#endif	// KEY
 
 /* ====================================================================
  *
@@ -2395,12 +2389,7 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       break;
 #endif /* TARG_NEEDS_QUAD_OPS */
     case FROM_TO(MTYPE_C4, MTYPE_C8):
-#ifdef KEY
       TCON_F4_To_TCON_F8(&r, &c);
-#else
-      TCON_R8(r) = TCON_R4(c);
-      TCON_IR8(r) = TCON_IR4(c);
-#endif
       break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case FROM_TO(MTYPE_FQ, MTYPE_C8):
@@ -2413,11 +2402,7 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_IR8(r) = 0.0;
       break;
     case FROM_TO(MTYPE_F4, MTYPE_C8):
-#ifdef KEY
       TCON_F4_To_TCON_F8(&r, &c);
-#else
-      TCON_R8(r) = TCON_R4(c);
-#endif
       TCON_IR8(r) = 0.0;
       break;
     case FROM_TO(MTYPE_I8, MTYPE_C8):
@@ -2529,11 +2514,7 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_R8(r) = TCON_R8(c);
       break;
     case FROM_TO(MTYPE_C4, MTYPE_F8):
-#ifdef KEY
       TCON_F4_To_TCON_F8(&r, &c);
-#else
-      TCON_R8(r) = TCON_R4(c);
-#endif
       break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case FROM_TO(MTYPE_FQ, MTYPE_F8):
@@ -2541,11 +2522,7 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       break;
 #endif /* TARG_NEEDS_QUAD_OPS */
     case FROM_TO(MTYPE_F4, MTYPE_F8):
-#ifdef KEY
       TCON_F4_To_TCON_F8(&r, &c);
-#else
-      TCON_R8(r) = TCON_R4(c);
-#endif
       break;
     case FROM_TO(MTYPE_I8, MTYPE_F8):
       TCON_R8(r) = TCON_I8(c);
@@ -5486,11 +5463,7 @@ TCON Targ_IntrinsicOp ( UINT32 intrinsic, TCON c[], BOOL *folded)
 
     case INTRN_F4AINT:
       t = Targ_WhirlOp(OPC_F4ABS,c[0],c[0],folded);
-#ifdef KEY // bug 6429: Mimic the code generated in emulate.cxx
       if (TCON_R4(t) < (1<<23))
-#else
-      if ((INT32) TCON_R4(t) < (1<<30))
-#endif
       {
 	 TCON_R4(c0) = (INT32) TCON_R4(c0);
       }
@@ -5498,11 +5471,7 @@ TCON Targ_IntrinsicOp ( UINT32 intrinsic, TCON c[], BOOL *folded)
 
     case INTRN_F8AINT:
       t = Targ_WhirlOp(OPC_F8ABS,c[0],c[0],folded);
-#ifdef KEY // bug 6429: Mimic the code generated in emulate.cxx
       if (TCON_R8(t) < (1LL << 52))
-#else
-      if ((INT64) TCON_R8(t) < (1LL << 62))
-#endif
       {
 	 TCON_R8(c0) = (INT64) TCON_R8(c0);
       }

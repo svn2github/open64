@@ -59,13 +59,11 @@ char *icvt(int value, int *ndigit, int *sign, char *buf)
 {
    char           *abuf;
 
-   /* LHL 5/17/89 fix bug 4533 */
    short           minint = 0;
 
    if (value > 0)
       *sign = 0;
    else if (value < 0) {
-      /* LHL 5/17/89 fix bug 4533 */
       if (value == INT_MIN) {
 	 minint++;
 	 value++;
@@ -86,7 +84,6 @@ char *icvt(int value, int *ndigit, int *sign, char *buf)
       value /= 10;
    }
    *ndigit = buf + MAXOCTLENGTH - 2 - abuf;
-   /* LHL 5/17/89 fix bug 4533 */
    if (minint) {
       char           *ch;
 
@@ -100,13 +97,11 @@ char *llcvt(ftnll value, int *ndigit, int *sign, char *buf)
 {
    char           *abuf;
 
-   /* LHL 5/17/89 fix bug 4533 */
    short           minint = 0;
 
    if (value > 0)
       *sign = 0;
    else if (value < 0) {
-      /* LHL 5/17/89 fix bug 4533 */
       if (value == (long long) -__LONGLONG_MAX - 1) {
 	 minint++;
 	 value++;
@@ -135,7 +130,6 @@ char *llcvt(ftnll value, int *ndigit, int *sign, char *buf)
       value = value / 10;
    }
    *ndigit = buf + MAXOCTLENGTH - 2 - abuf;
-   /* LHL 5/17/89 fix bug 4533 */
    if (minint) {
       char           *ch;
 

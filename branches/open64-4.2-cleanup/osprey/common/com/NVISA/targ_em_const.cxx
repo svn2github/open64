@@ -399,19 +399,12 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 
       case MTYPE_STRING: {
 	INTSC count;
-#ifdef KEY	// Use .rept/.endr to reduce .s file size.  Bug 4620.
 	if (rc > 1)
 	  fprintf(fl, ".rept %ld\n", rc);
 	char *p = Index_to_char_array (TCON_cp(tc));
 	Targ_Emit_String ( fl, p, TCON_len(tc) + (add_null ? 1 : 0), 0 );
 	if (rc > 1)
 	  fprintf(fl, ".endr\n");
-#else
-	for (count=0; count<rc; ++count) {
-	  char *p = Index_to_char_array (TCON_cp(tc));
-	  Targ_Emit_String ( fl, p, TCON_len(tc) + (add_null ? 1 : 0), 0 );
-	}
-#endif
 	rc = 0;
 	break;
 	}
@@ -603,7 +596,6 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
   }
 } /* Targ_Emit_Const */
 
-#ifdef KEY
 const char * ULEBDIR = ".uleb128";
 const char * SLEBDIR = ".sleb128";
 
@@ -799,7 +791,6 @@ Targ_Emit_EH_Const (FILE *fl,	    /* File to which to write */
     }
   }
 } /* Targ_Emit_EH_Const */
-#endif // KEY
 
 
 #if defined(BACK_END) || defined(QIKKI_BE)

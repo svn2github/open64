@@ -45,28 +45,6 @@
 #include "fflock.h"
 
 
-#ifdef KEY /* Bug 6003 */
 #define LYR_LOCK(_x)	MEM_LOCK((_x)->lyr_info);
 #define LYR_UNLOCK(_x)	MEM_UNLOCK((_x)->lyr_info);
 #define COND_LYR_UNLOCK(_x)	{if ((_x)->lyr_info != NULL) LYR_UNLOCK(_x) }
-#else
-#if	defined(__mips) || defined(_LITTLE_ENDIAN)
-	/* mips only handles reg_lock now */
-#define LYR_LOCK(_x)	MEM_LOCK((unsigned long *)_x->lyr_info);
-#define LYR_UNLOCK(_x)	MEM_UNLOCK((unsigned long *)_x->lyr_info);
-#define COND_LYR_UNLOCK(_x)	{if (_x->lyr_info != NULL) LYR_UNLOCK(_x) }
-#else
-#define LYR_LOCK(_x)	{if (_x->reg_lock) \
-				{LMEM_LOCK(_x->lyr_info)}\
-			 else\
-				_nlockon(_x->lyr_info);\
-			}
-
-#define LYR_UNLOCK(_x)	{if (_x->reg_lock) \
-				{LMEM_UNLOCK(_x->lyr_info)}\
-			else\
-				_nlockoff(_x->lyr_info);\
-			}
-#define COND_LYR_UNLOCK(_x)	{if (_x->lyr_info != NULL) LYR_UNLOCK(_x) }
-#endif
-#endif /* Key Bug 6003 */

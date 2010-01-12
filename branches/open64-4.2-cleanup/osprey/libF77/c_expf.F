@@ -37,7 +37,7 @@ C $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/c_expf.F,v 1.1.1.1 2005/10/2
 
 	complex function c_exp(z)
 	real z(2)
-C fix bug 7656 -- the idea here is to convert the whole operation
+C the idea here is to convert the whole operation
 C into double precision before converting the result back to single
 C presicion
 	double precision expx, r, i, ztmp(2)

@@ -203,7 +203,7 @@ INT Classify_Aggregate(const TY_IDX ty,
   }
 
   if (TY_size(ty) > 16 || TY_size(ty) == 0 ||
-      TY_is_non_pod(ty) /* || TY_is_packed(ty) bug 11892 */)
+      TY_is_non_pod(ty) )
     return 0;
   byte_offset %= 8;
   INT size_in_dwords = (TY_size(ty) + byte_offset + 7) / 8;
@@ -335,7 +335,7 @@ INT Classify_Aggregate32(const TY_IDX ty,
   enum X86_64_PARM_CLASS subclasses[MAX_CLASSES];
 
   if (TY_size(ty) > 8 || TY_size(ty) == 0 ||
-      TY_is_non_pod(ty) /* || TY_is_packed(ty) bug 11892 */)
+      TY_is_non_pod(ty) )
     return 0;
 
   INT size_in_words = (TY_size(ty) + 3) / 4;
@@ -543,7 +543,7 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
 	  info.return_via_first_arg = TRUE;
 	}
       }
-      else if (ff2c_abi || F2c_Abi) { // bug 1664
+      else if (ff2c_abi || F2c_Abi) {
         info.count = 0;
         info.return_via_first_arg = TRUE;
       } else if( level == Use_Simulated ){
@@ -552,7 +552,6 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
 	info.preg  [0] = PR_first_reg(SIM_INFO.flt_results);
 
       } else {
-	// For bug:143
 	
         info.count     = 2;
         info.mtype [0] = Mtype_complex_to_real(mtype);
@@ -569,7 +568,7 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
         info.count = 0;
         info.return_via_first_arg = TRUE;
       }
-      else if (ff2c_abi || F2c_Abi) { // bug 1664
+      else if (ff2c_abi || F2c_Abi) {
         info.count = 0;
         info.return_via_first_arg = TRUE;
       } else if (level == Use_Simulated) {
@@ -770,7 +769,7 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
     ploc.size = MTYPE_RegisterSize(pmtype);
 
     if (Is_Target_32bit() && MTYPE_is_vector(pmtype) &&
-        (Last_Param_Offset & 7) != 0) { // bug 12075
+        (Last_Param_Offset & 7) != 0) {
       Last_Param_Offset += 8 - Last_Param_Offset % 8;
       ploc.start_offset = Last_Param_Offset;
     }
@@ -979,7 +978,7 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	      }
 	    }
 	  }
-	  // bug 3926: for -m32, we pass in memory even if n > 0, so check
+	  // for -m32, we pass in memory even if n > 0, so check
 	  // for reg.
 	  if (n == 0 || ploc.reg == 0) { // passed in memory
 	    INT psize = TY_size (ty) / MTYPE_RegisterSize(SIM_INFO.int_type);
@@ -996,9 +995,9 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	    if( TY_size(ty) == 0  &&
 		PU_cxx_lang(Get_Current_PU()) ){
 	      if (Is_Target_32bit())
-	        rpad = 4; // bug 1740
+	        rpad = 4;
 	      else
-	        rpad = 8; // bug 12830
+	        rpad = 8;
 	    }
 	  }
 	}

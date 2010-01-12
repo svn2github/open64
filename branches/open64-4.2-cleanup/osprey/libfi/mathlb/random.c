@@ -45,114 +45,12 @@
 #include <stddef.h>
 #include <string.h>
 
-#if  !(defined( __mips) || defined(__ia64) || defined(__ia32) || defined(KEY))
-
-#if defined(_SOLARIS)
-int _rand_r(unsigned int *seed);
-#else
-/* FIX: Absoft implementation not multi-thread safe */
-#include <stdlib.h>
-#endif
-
-#define DEFAULTSEED 01274321477
-
-/*
- * rand_r returns spseudo-random numbers in the range from 0 to (2^15)-1.
- * Use (rand_r(_ranfi) + 1) in the numerator and 32769 in the denominator
- * to get 0 < y < 1 result
- * 32769 = ((2^15)-1) + 2
- */
-
-/*
- * _RANF  - expects a null argument that is ignored.  It always returns
- *          the result as a function result.
- */
-_f_real8
-_RANF(_f_real8 x)
-{
-	extern unsigned  int _RANFI;
-#if defined(_SOLARIS)
-	return( ((_f_real8) _rand_r(&_RANFI) + 1) / (_f_real8) 32769);
-#else
-/* [JAK032796] per AMH use RAND_MAX */
-	return( ((_f_real8) rand() + 1) / (_f_real8) (RAND_MAX) );
-#endif
-}
-
-/*
- * _RANSET  - pass by value for compiler calls for RANDOM_NUMBER and
- *            RANDOM_SEED and for ia=ranset(iarg)
- */
-_RANSET(long x)
-{
-	extern unsigned int 	_RANFI;
-	if (x != 0)
-		_RANFI = x;
-	else
-		_RANFI =  DEFAULTSEED;  /* default seed */
-#if !defined(_SOLARIS)
-	srand(_RANFI);
-#endif
-	return((long) _RANFI);
-}
-
-/*
- * _RANSET_ADR  - pass by address for compiler calls for  ia=ranset(iarg)
- *            where iarg may not be present.
- */
-_RANSET_ADR(long *x)
-{
-	extern unsigned int 	_RANFI;
-	if (x != NULL)
-		_RANFI = *x;
-	else
-		_RANFI =  DEFAULTSEED;  /* default seed */
-#if !defined(_SOLARIS)
-	srand(_RANFI);
-#endif
-	return((long) _RANFI);
-}
-
-#include <stdio.h>
-
-/*
- * ranget_  - pass by address - CALL RANGET() is legal.  The argument is
- *            optional and must be a NULL argument if not present.
- */
-
-__attribute__ ((weak)) ranget_(long *x)
-{
-	extern unsigned int _RANFI;
-	if (x != NULL)
-		*x = _RANFI;
-	return((long) _RANFI);
-}
-
-/*
- * _RANGET  - pass by address - ia=ranget([iarg]) and for f90 compiler calls
- *            for RANDOM_NUMBER and RANDOM_SEED.
- *            a placeholder.
- */
-
-_RANGET(long *x)
-{
-	extern unsigned int _RANFI;
-	if (x != NULL)
-		*x = _RANFI;
-	return((long) _RANFI);
-}
-
-#else		/* NOT __mips */
 
 #define TWOMINUS53 1.11022302462515654E-16
 #define TWOMINUS52 2.22044604925031308E-16
 #define TWOMINUS24 5.960464478E-8
 
-#if !defined(KEY)
-#undef  USE_RANDOM
-#else
 #define USE_RANDOM
-#endif
 
 #ifndef USE_RANDOM  /* Use a linear congruential generator of period 2^62 */
 
@@ -275,24 +173,18 @@ static plock_t mut = MEM_LOCK_INIT;
 
 void _RANSET(void *seed)
 {
-#ifdef KEY /* Bug 5019 */
 	MEM_LOCK(&mut);
-#endif /* KEY Bug 5019 */
 	memcpy(&randstate,seed,sizeof(randstate));
 	front	= randstate.index % SEED_WORDS;
 	rear	= (front + SEP) % SEED_WORDS;
-#ifdef KEY /* Bug 5019 */
 	MEM_UNLOCK(&mut);
-#endif /* KEY Bug 5019 */
 }
 
 double _RANF_8(void) 
 {
 	double		d;
 	long long	i;
-#ifdef KEY /* Bug 5019 */
 	MEM_LOCK(&mut);
-#endif /* KEY Bug 5019 */
    
 	randstate.randtbl[front] += randstate.randtbl[rear];
 
@@ -308,44 +200,16 @@ double _RANF_8(void)
 	i |= (unsigned long long) ((unsigned)randstate.randtbl[front] >> 12);
 	front	= (front + 1) % SEED_WORDS;
 	rear	= (rear + 1) % SEED_WORDS;
-#ifdef KEY
-// Bug 1818
 	d	= TWOMINUS53 * (double) i;
-#else
-	d	= TWOMINUS52 * (double) i;
-#endif
-#ifdef KEY /* Bug 5019 */
 	MEM_UNLOCK(&mut);
-#endif /* KEY Bug 5019 */
 	return (d);
 }
 
 float _RANF_4(void) 
 {
-#ifdef KEY /* Bug 11627 */
   /* Depending on how you read it, the standard may require all precisions to
    * use same sequence */
   return (float) _RANF_8();
-#else /* KEY Bug 11627 */
-	int	i;
-	float	f;
-
-#ifdef KEY /* Bug 5019 */
-	MEM_LOCK(&mut);
-#endif /* KEY Bug 5019 */
-	randstate.randtbl[front] += randstate.randtbl[rear];
-
-	/* 24 bits */
-	i = ((unsigned int) randstate.randtbl[front]) >> 8;
-	front	= (front + 1) % SEED_WORDS;
-	rear	= (rear + 1) % SEED_WORDS;
-	f	= (float) TWOMINUS24 * (float) i;
-#ifdef KEY /* Bug 5019 */
-	MEM_UNLOCK(&mut);
-#endif /* KEY Bug 5019 */
-	return (f);
-#endif /* KEY Bug 11627 */
 }
 
 #endif	/* NOT USE_RANDOM */
-#endif	/* NOT __mips */

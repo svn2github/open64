@@ -49,7 +49,6 @@
 #include <unistd.h>
 #include "externals.h"
 
-#ifdef KEY /* Bug 1683, 5019 */
 
 #include <alloca.h>
 
@@ -64,14 +63,3 @@ pathf90_getlog(char *name, int len)
 	b_char((err == 0) ?l:" ", name, len);
 }
 
-#else
-
-extern void
-getlog_(char *name, int len)
-{
-	char *l = getlogin();
-
-	b_char(l?l:" ", name, len);
-}
-
-#endif /* KEY Bug 1683, 5019 */

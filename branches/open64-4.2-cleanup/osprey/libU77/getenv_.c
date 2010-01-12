@@ -45,21 +45,13 @@
  *		if ENV_NAME is not defined
  */
 
-#ifdef KEY /* Bug 1683 */
 
 #include "pathf90_libU_intrin.h"
 
 void
 pathf90_getenv(char *fname, char *value, int flen, int vlen)
 
-#else
-
-extern void
-getenv_ (char *fname, char *value, int flen, int vlen)
-
-#endif /* KEY Bug 1683 */
 {
-/* fixed bug 9931 */
 #if defined(BUILD_OS_DARWIN)
 extern char **environ;
 register char **env = environ;

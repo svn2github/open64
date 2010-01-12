@@ -164,7 +164,6 @@ extern "C" {
  */
 
 extern BOOL Run_autopar;
-#ifdef KEY
 extern BOOL Simd_Align;
 extern BOOL Simd_Reallocate_Objects;
 typedef enum {
@@ -173,7 +172,6 @@ typedef enum {
   CONSERVATIVE_PREFETCH = 2,     /* More prefetching than earlier option */
   AGGRESSIVE_PREFETCH = 3          /* Aggressive */
 } PREFETCH_LEVEL;
-#endif
 
 /* We reference a memory hierarchy descriptor from config_cache.* */
 struct MHD;
@@ -194,12 +192,9 @@ typedef struct lno_flags {
   BOOL	Blocking;
   UINT32 Blocking_Size;
   BOOL	Cache_model_edge_effects;
-#ifdef KEY
   UINT32 EffectiveCacheSizePct; 
-#endif
   BOOL	Coupled_opts;
   BOOL	Cse;
-#ifdef KEY
   UINT32 Cse_Loop_Skip_Before;
   UINT32 Cse_Loop_Skip_After;
   UINT32 Cse_Loop_Skip_Equal;
@@ -239,7 +234,6 @@ typedef struct lno_flags {
   UINT32 Dummy_Skip_Before;
   UINT32 Dummy_Skip_After;
   UINT32 Dummy_Skip_Equal;
-#endif /* KEY */
   BOOL	Fancy_tile;
   BOOL	Run_fiz_fuse;
   UINT32 Fission;
@@ -263,10 +257,8 @@ typedef struct lno_flags {
   UINT32 Opt;
   UINT32 Cache_model;
   BOOL	Run_outer;
-#ifdef KEY
   UINT32 OLF_Upper_Bound;
   UINT32 OLF_Lower_Bound;
-#endif
   UINT32 Outer_unroll;
   BOOL	Outer_unroll_deep;
   UINT32 Outer_unroll_min_for_further_unroll;
@@ -279,10 +271,8 @@ typedef struct lno_flags {
   BOOL	Pseudo_lower;
   UINT32 Run_prefetch;
   BOOL	Run_prefetch_set;
-#ifdef KEY
   BOOL   Prefetch_stores;
   BOOL   Prefetch_stores_set;
-#endif
   BOOL   Prefetch_invariant_stride;
   UINT32 Prefetch_stride_ahead;
   BOOL   Run_stream_prefetch;   
@@ -306,9 +296,6 @@ typedef struct lno_flags {
   BOOL	Use_parm;
   BOOL	Verbose;
   BOOL	Version_mp_loops;
-#ifndef KEY
-  BOOL	Run_vintr;
-#else
   UINT32  Run_vintr;
   BOOL	  Run_vintr_set;
   BOOL 	  Vintr_Verbose;
@@ -328,7 +315,6 @@ typedef struct lno_flags {
   BOOL    Invariant_Factorization;
   BOOL    New_Invariant_Factorization;
   BOOL    Invar_Factor_Verbose;
-#endif /* KEY */
   BOOL	Run_oinvar;
   UINT32 Run_doacross;
   UINT32 Preferred_doacross_tile_size;
@@ -347,7 +333,6 @@ typedef struct lno_flags {
 #endif
   UINT32 Local_pad_size;
   UINT32 Full_unrolling;  
-#ifdef KEY
   BOOL   Peel_2D_triangle_loop;
   UINT32 Full_unrolling_loop_size_limit;
   BOOL   Full_Unroll_Outer;
@@ -355,7 +340,6 @@ typedef struct lno_flags {
   UINT32 Parallel_per_proc_overhead;
   BOOL Apo_use_feedback;	// APO use loop freq from feedback data to
   				// decide whether to parallelize a loop
-#endif
   BOOL   IfMinMax_Fix_Cond;
   UINT32 IfMinMax_Limit;
   UINT32 IfMinMax_Fix_Cond_Limit;
@@ -436,12 +420,9 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Blocking			Current_LNO->Blocking
 #define LNO_Blocking_Size		Current_LNO->Blocking_Size
 #define LNO_Cache_Model_Edge_Effects	Current_LNO->Cache_model_edge_effects
-#ifdef KEY
 #define LNO_EffectiveCacheSizePct	Current_LNO->EffectiveCacheSizePct
-#endif
 #define LNO_Coupled_Opts		Current_LNO->Coupled_opts
 #define LNO_Cse				Current_LNO->Cse
-#ifdef KEY
 #define LNO_Cse_Loop_Skip_Before	Current_LNO->Cse_Loop_Skip_Before
 #define LNO_Cse_Loop_Skip_After	        Current_LNO->Cse_Loop_Skip_After
 #define LNO_Cse_Loop_Skip_Equal	        Current_LNO->Cse_Loop_Skip_Equal
@@ -481,7 +462,6 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Dummy_Skip_Before	        Current_LNO->Dummy_Skip_Before
 #define LNO_Dummy_Skip_After	        Current_LNO->Dummy_Skip_After
 #define LNO_Dummy_Skip_Equal	        Current_LNO->Dummy_Skip_Equal
-#endif /* KEY */
 #define LNO_Fancy_Tile			Current_LNO->Fancy_tile
 #define LNO_Run_Fiz_Fuse		Current_LNO->Run_fiz_fuse
 #define LNO_Fission			Current_LNO->Fission
@@ -506,10 +486,8 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Opt				Current_LNO->Opt
 #define LNO_Cache_Model			Current_LNO->Cache_model
 #define LNO_Run_Outer			Current_LNO->Run_outer
-#ifdef KEY
 #define OLF_size_upperbound		Current_LNO->OLF_Upper_Bound
 #define OLF_size_lowerbound		Current_LNO->OLF_Lower_Bound
-#endif
 #define LNO_Outer_Unroll		Current_LNO->Outer_unroll
 #define LNO_Outer_Unroll_Deep		Current_LNO->Outer_unroll_deep
 #define LNO_Outer_Unroll_Min_For_Further_Unroll	\
@@ -524,13 +502,11 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Run_Prefetch		Current_LNO->Run_prefetch
 #define LNO_Run_Prefetch_Set		Current_LNO->Run_prefetch_set
 
-#ifdef KEY
 #define LNO_Prefetch_Stores		Current_LNO->Prefetch_stores
 #define LNO_Prefetch_Stores_Set		Current_LNO->Prefetch_stores_set
 #define LNO_Prefetch_Invariant_Stride   Current_LNO->Prefetch_invariant_stride
 #define LNO_Prefetch_Stride_Ahead       Current_LNO->Prefetch_stride_ahead
 #define LNO_Run_Stream_Prefetch         Current_LNO->Run_stream_prefetch
-#endif
 
 #define LNO_Prefetch_Ahead		Current_LNO->Prefetch_ahead
 #define LNO_Prefetch_Iters_Ahead	Current_LNO->Prefetch_iters_ahead
@@ -552,9 +528,6 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Use_Parm			Current_LNO->Use_parm
 #define LNO_Verbose			Current_LNO->Verbose
 #define LNO_Version_Mp_Loops		Current_LNO->Version_mp_loops
-#ifndef KEY
-#define LNO_Run_Vintr			Current_LNO->Run_vintr
-#else
 #define LNO_Run_Vintr			Current_LNO->Run_vintr
 #define LNO_Run_Vintr_Set		Current_LNO->Run_vintr_set
 #define LNO_Vintr_Verbose		Current_LNO->Vintr_Verbose
@@ -574,7 +547,6 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Invariant_Factorization     Current_LNO->Invariant_Factorization
 #define LNO_New_Invariant_Factorization Current_LNO->New_Invariant_Factorization
 #define LNO_Invar_Factor_Verbose        Current_LNO->Invar_Factor_Verbose
-#endif /* KEY */
 #define LNO_Run_Oinvar			Current_LNO->Run_oinvar
 #define LNO_Run_Doacross		Current_LNO->Run_doacross
 #define LNO_Preferred_doacross_tile_size	\
@@ -607,17 +579,14 @@ extern LNO_FLAGS Initial_LNO;
 // Largest inner loop trip count for which we'll try full unrolling
 #define LNO_Small_Trip_Count		Current_LNO->Small_trip_count
 
-#ifdef KEY
 // The trip count assumed by LNO to avoid prefetches in the absence of feedback
 #define LNO_Assume_Unknown_Trip_Count   Current_LNO->Assume_Unknown_Trip_Count
-#endif
 
 // The amount by which to pad local array dimensions
 #define LNO_Local_Pad_Size		Current_LNO->Local_pad_size
 
 // Unroll loops with trip count <= LNO_Full_Unrolling_Limit
 #define LNO_Full_Unrolling_Limit	Current_LNO->Full_unrolling
-#ifdef KEY
 #define LNO_Peel_2D_Triangle_LOOP Current_LNO->Peel_2D_triangle_loop
 #define LNO_Full_Unrolling_Loop_Size_Limit \
 Current_LNO->Full_unrolling_loop_size_limit
@@ -625,7 +594,6 @@ Current_LNO->Full_unrolling_loop_size_limit
 #define LNO_Num_Processors              Current_LNO->Num_Processors
 #define LNO_Parallel_per_proc_overhead  Current_LNO->Parallel_per_proc_overhead
 #define LNO_Apo_use_feedback  		Current_LNO->Apo_use_feedback
-#endif
 #define LNO_Struct_Array_Copy           Current_LNO->Struct_Array_Copy
 
 /* Initialize the current top of stack to defaults: */

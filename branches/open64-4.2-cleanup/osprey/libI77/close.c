@@ -239,112 +239,9 @@ cont:
    ftnunit->uconn = 0;
    ftnunit->luno = 0;
    if (lock) ftnunit->lock_unit = 0;
-   /* added in MIPS version 2.20 fix bug 6084 BN-8077. Undo 6084 fix */
+   /* added in MIPS version 2.20 */
    return (0);
 }
-
-#ifdef BUG_6084
-/* fix bug 6084 
-**ftnint
-**f_clos2 (cllist *a) {
-**   unit           *ftnunit;
-**   char           *cbuf, c, buf[256], tbuf[12];
-**   int		   n, istat;
-**
-**   if ((ftnunit = map_luno (a->cunit)) == NULL) {
-**      return 0;
-**   }
-**   while (lock && test_and_set( &ftnunit->lock_unit, 1L ))
-**       ;
-**   if (ftnunit->uconn <= 0) {
-**      return 0;
-**   }
-**   ftnunit->uend = 0;
-**   if (cbuf = a->csta)
-**      switch (up_low (*cbuf++)) {
-**      case 'd':
-**	 ftnunit->udisp = DELETE;
-**	 break;
-**
-**      case 'p':
-**	 ftnunit->udisp = PRINT;
-**	 goto checkdelete;
-**
-**      case 's':
-**	 ftnunit->udisp = SUBMIT;
-**   checkdelete:
-**	 while (c = (*cbuf++))
-**	    if ((c == '/') && (c = (*cbuf)) && (up_low (c) == 'd'))
-**	       ftnunit->udisp |= DELETE;
-**	 break;
-**      default:
-**	 ftnunit->udisp = KEEP;
-**      }
-**   if (ftnunit->uscrtch == 1)
-**      ftnunit->udisp |= DELETE;
-**   if (ftnunit->uacc == KEYED) {
-**      n = idxclose(ftnunit, a->cerr);
-**      return (n);
-**   }
-**   if (ftnunit->ucc == CC_FORTRAN && ftnunit->ucchar)
-**      putc (ftnunit->ucchar, ftnunit->ufd);
-**   if (ftnunit->uwrt)
-**      (void) t_runc (ftnunit, a->cerr);
-**
-**
-**   if ((ftnunit->ufd != stdin) && (ftnunit->ufd != stdout) && (ftnunit->ufd != stderr)) {
-**      if (ftnunit->uacc == DIRECT) {
-**	 if (ftnunit->uistty) {
-**	    _fio_du_close ((int) ftnunit->ufd);
-**	 } else if (ftnunit->ufd != (FILE *) _fio_du_close ((int) ftnunit->ufd)) {
-**	    err (a->cerr, errno, "close");
-**	 }
-**      } else {
-**	 if (ftnunit->uistty) {	
-**	    fclose (ftnunit->ufd);
-**	 } else if (fclose (ftnunit->ufd) != 0) {
-**	    err (a->cerr, errno, "close");
-**	 }
-**      }
-**   }
-**   if (ftnunit->ufnm) {
-**      if (ftnunit->udisp & SUBMIT) {
-**	 (void) strcpy (tbuf, "tmp.FXXXXXX");
-**	 (void) mktemp (tbuf);
-**	 sprintf (buf, "cp %s %s", ftnunit->ufnm, tbuf);
-**	 system (buf);
-**	 sprintf (buf, "( chmod +x %s; %s; rm %s ) &",
-**		  tbuf, tbuf, tbuf);
-**	 system (buf);
-**      } else if (ftnunit->udisp & PRINT) {
-**	 sprintf (buf, "lpr %s", ftnunit->ufnm);
-**	 system (buf);
-**      }
-**      if (ftnunit->udisp & DELETE)
-**	 (void) unlink (ftnunit->ufnm);	
-**      free (ftnunit->ufnm);
-**   }
-**   if (ftnunit->f77syl) {
-**    free(ftnunit->f77syl);
-**    ftnunit->f77syl = NULL;
-**   }
-**   if (ftnunit->f77fio_buf) {
-**    free(ftnunit->f77fio_buf);
-**    ftnunit->f77fio_buf = NULL;
-**    ftnunit->f77fio_size = 0;
-**   }
-**   if (ftnunit->ukeys) {
-**    free(ftnunit->ukeys);
-**    ftnunit->ukeys = NULL;
-**   }
-**   ftnunit->ufnm = NULL;
-**   ftnunit->ufd = NULL;
-**   ftnunit->uconn = NULL;
-**   ftnunit->luno = 0;
-**   return (0);
-**}
-*/
-#endif
 
 void
 f_exit ()
@@ -374,12 +271,6 @@ f_exit ()
 ftnint
 t_runc (unit *ftnunit, flag xerr) {
    extern void     exit();	/* DAG -- added */
-#if 0 /* not used. */
-   char            buf[128], nm[16];
-   FILE           *tmp;
-   int             n, m;
-   int             fd;
-#endif
 
 #ifdef _BSD
    off_t           ftell();

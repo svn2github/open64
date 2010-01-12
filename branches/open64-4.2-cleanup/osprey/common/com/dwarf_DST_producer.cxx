@@ -39,9 +39,7 @@
 
 #include "dwarf_DST_producer.h"
 #include "errors.h"        /* in ../common/util */
-#ifdef KEY
 #include <ctype.h>         /* for 'isdigit' */
-#endif
 
 
          /*---------------------------------*
@@ -74,15 +72,11 @@ static DST_FILE_IDX       last_file_name = DST_INVALID_INIT;
 static DST_INFO_IDX       last_info_idx = DST_INVALID_INIT;
 static DST_INFO_IDX       file_scope_info = DST_INVALID_INIT;
 static DST_INFO_IDX       forced_exit_info = DST_INVALID_INIT;
-#ifdef KEY
 static DST_MACR_IDX       last_macro = DST_INVALID_INIT;
-#endif
 
 static mUINT16            num_file_names = 0;
 static mUINT16            num_incl_dirs = 0;
-#ifdef KEY
 static mUINT16            num_macros = 0;
-#endif
   
 static BOOL               begin_PU = FALSE;
 static mINT32             file_scope_locks = 0;
@@ -106,9 +100,7 @@ static mINT32             file_scope_locks = 0;
 #define DST_mk_dir() (DST_mk(DST_INCLUDE_DIR));
 #define DST_mk_info() (DST_mk(DST_INFO));
 #define DST_mk_attr(type) (DST_mk(type));
-#ifdef KEY
 #define DST_mk_macro() (DST_mk(DST_MACR));
-#endif
 
 #if defined(MONGOOSE_BE)
 /*	Don't call DST_enter_mk in the backend */
@@ -141,15 +133,11 @@ DST_mk_name(const char *s)
    /* A general string may be an empty string, while a name attribute
     * must contain at least one non-null character or else it is invalid.
     */
-#ifndef KEY
-   if ((s != NULL) && (*s != '\0'))
-#else
-     // related to bug 1717 - struct and union types get 
+     // struct and union types get 
      // anonymous type names like ._0, ._1, etc.
      // Avoid generating these names.
    if ((s != NULL) && (*s != '\0') && 
        !(*s == '.' && s[1] == '_' && isdigit(s[2])))
-#endif
    {
       str_idx = DST_allocate(strlen(s) + 1, DST_char_align);
       (void)strcpy(DST_STR_IDX_TO_PTR(str_idx), s);
@@ -339,13 +327,11 @@ DST_number_of_files(void)
    return num_file_names;
 }
 
-#ifdef KEY
 mUINT16
 DST_number_of_macros(void)
 {
    return num_macros;
 }
-#endif
 
    /*------------------------------------------------
     * Creation of .debug_macinfo section information
@@ -794,9 +780,7 @@ DST_mk_subprogram(USRCPOS      decl,
 		  DST_vtable_elem_location vtable_elem_location,
 		  BOOL         is_declaration,
 		  BOOL         is_prototyped,
-#ifdef KEY
                   BOOL         is_artificial,
-#endif
 		  BOOL         is_external)
 {
    DST_INFO_IDX    info_idx;
@@ -1051,7 +1035,6 @@ DST_add_specification_to_variable (DST_INFO_IDX variable_def,
    DST_VARIABLE_def_specification(def_attr) = field_decl;
 }
 
-#ifdef KEY
 /* Adds a linkage name attribute to a variaable
  */
 void
@@ -1077,7 +1060,6 @@ DST_add_linkage_name_to_variable (DST_INFO_IDX variable_def,
    }
 }
 
-#endif
 
 /* Creates a DW_TAG_entry_point entry and returns its idx
 */
@@ -1159,7 +1141,6 @@ DST_mk_common_incl( USRCPOS      decl,
    return DST_init_info(info_idx, DW_TAG_common_inclusion, flag, attr_idx);
 }
 
-#ifdef KEY /* Bug 3507 */
 /* create a DW_TAG_imported_declaration and return its idx 
  *
 */
@@ -1215,7 +1196,6 @@ DST_mk_module(USRCPOS decl, /* source location */
      DST_init_info(info_idx, DW_TAG_module, flag, attr_idx);
    return t;
 }
-#endif /* KEY Bug 3507 */
 
 /* Creates a DW_TAG_lexical_block entry and returns its idx.
 */
@@ -1411,9 +1391,7 @@ DST_mk_variable(USRCPOS      decl,     /* Source location */
       DST_VARIABLE_decl_decl(attr) = decl;
       DST_VARIABLE_decl_name(attr) = DST_mk_name(name);
       DST_VARIABLE_decl_type(attr) = type;
-#ifdef KEY
       DST_VARIABLE_decl_linkage_name(attr) = DST_INVALID_IDX;
-#endif
       DST_SET_declaration(flag);
    }   
    else
@@ -1424,9 +1402,7 @@ DST_mk_variable(USRCPOS      decl,     /* Source location */
       DST_VARIABLE_def_offs(attr) = offs;
       DST_VARIABLE_def_abstract_origin(attr) = abstract_origin;
       DST_VARIABLE_def_specification(attr) = DST_INVALID_IDX;
-#ifdef KEY
       DST_VARIABLE_def_linkage_name(attr) = DST_INVALID_IDX;
-#endif
 
       /* location is obtained through the back-end version of st */
       DST_ASSOC_INFO_st_idx(DST_VARIABLE_def_st(attr)) = var;
@@ -1974,20 +1950,6 @@ DST_mk_class_type(USRCPOS      decl,      /* Source location */
  * offset, and bit_size only apply to bitfields, while memb_loc is the
  * location of the block containing (properly aligned) the bitfield.
 */
-#ifndef KEY
-DST_INFO_IDX
-DST_mk_member(USRCPOS      decl,       /* Source location */
-	      char        *name,       /* Name of member */
-              DST_INFO_IDX type,       /* Type of member */
-	      DST_size_t   memb_loc,   /* Byte-offset of member container */
-	      DST_size_t   byte_size,  /* Byte-size of container */
-	      DST_bitsize  bit_offset, /* Offset within container */
-	      DST_bitsize  bit_size,   /* Size of bitfield member */
-	      BOOL         is_bitfield,
-	      BOOL         is_static,
-	      BOOL         is_declaration,
-	      BOOL	   is_artificial)
-#else
 DST_INFO_IDX
 DST_mk_member(USRCPOS      decl,       /* Source location */
 	      char        *name,       /* Name of member */
@@ -2001,7 +1963,6 @@ DST_mk_member(USRCPOS      decl,       /* Source location */
 	      BOOL         is_declaration,
 	      BOOL	   is_artificial,
 	      DST_accessibility accessibility)
-#endif
 {
    DST_INFO_IDX info_idx;
    DST_ATTR_IDX attr_idx;
@@ -2032,29 +1993,19 @@ DST_mk_member(USRCPOS      decl,       /* Source location */
       DST_SET_static(flag);
    if (is_artificial)
       DST_SET_artificial(flag);
-#ifdef KEY
    DST_MEMBER_accessibility(attr) = accessibility;
-#endif
    return DST_init_info(info_idx, DW_TAG_member, flag, attr_idx);
 }
 
 
 /* Creates a DW_TAG_inheritance entry.
 */
-#ifndef KEY
-DST_INFO_IDX
-DST_mk_inheritance(USRCPOS      decl,     /* Source location */
-		   DST_INFO_IDX type,     /* Type of member */
-		   DST_virtuality virtuality, /* AT_virtuality code */
-		   DST_size_t   memb_loc) /* Byte-offset of member container */
-#else
 DST_INFO_IDX
 DST_mk_inheritance(USRCPOS      decl,     /* Source location */
 		   DST_INFO_IDX type,     /* Type of member */
 		   DST_virtuality virtuality, /* AT_virtuality code */
 		   DST_size_t   memb_loc, /* Byte-offset of member container */
 		   DST_accessibility accessibility) /* AT_accessibility */
-#endif
 {
    DST_INFO_IDX info_idx;
    DST_ATTR_IDX attr_idx;
@@ -2072,9 +2023,7 @@ DST_mk_inheritance(USRCPOS      decl,     /* Source location */
    DST_INHERITANCE_type(attr) = type;
    DST_INHERITANCE_virtuality(attr) = virtuality;
    DST_INHERITANCE_memb_loc(attr) = memb_loc;
-#ifdef KEY
    DST_INHERITANCE_accessibility(attr) = accessibility;
-#endif
    return DST_init_info(info_idx, DW_TAG_inheritance, flag, attr_idx);
 }
 
@@ -2227,7 +2176,6 @@ DST_mk_subroutine_type(USRCPOS      decl,            /* Source location */
    return DST_init_info(info_idx, DW_TAG_subroutine_type, flag, attr_idx);
 }
 
-#ifdef KEY
 /* Create a DW_TAG_namelist entry
  */
 DST_INFO_IDX
@@ -2384,4 +2332,3 @@ DST_mk_macr_end_file (void)
   num_macros += 1;
   return m_idx;
 }
-#endif

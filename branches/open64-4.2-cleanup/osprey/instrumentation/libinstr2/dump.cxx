@@ -179,7 +179,6 @@ namespace {
 	}
     }
 
-#ifdef KEY
     static void Convert_Value_Profile( vector<FB_Info_Value>& dest,
 				       const Value_Profile_Vector& src )
     {
@@ -211,7 +210,6 @@ namespace {
 	dest.push_back( info );
       }
     }
-#endif
 
     template <class T>
     static void
@@ -244,15 +242,7 @@ namespace {
 
 	  const FB_NUM_TYPE positive = first->invocation_count - zero_trips;
 	  const FB_NUM_TYPE back = first->total_trip_count - first->invocation_count + zero_trips;
-#if 0
-	  FB_Info_Loop loop (FB_FREQ (zero_trips),
-			     FB_FREQ ( tmp),
-			     FB_FREQ (FB_FREQ_TYPE_UNKNOWN),
-			     FB_FREQ (tmp1));
-
-	   dest.push_back(loop);
-#endif
-	dest.push_back(FB_Info_Loop(FB_FREQ (zero_trips),
+	  dest.push_back(FB_Info_Loop(FB_FREQ (zero_trips),
 				    FB_FREQ (positive),
 				    FB_FREQ (FB_FREQ_TYPE_UNKNOWN),
 				    FB_FREQ (back)));
@@ -433,7 +423,6 @@ Dump_PU_Profile(FILE *fp, PU_PROFILE_HANDLE pu_handle, char * fname,
       pu_hdr.pu_num_call_entries = pos.num_entries;
   }
 
-#ifdef KEY
   {
     vector<FB_Info_Value> fb_info;
     Convert_Value_Profile( fb_info, pu_handle->Get_Value_Table() );
@@ -450,7 +439,6 @@ Dump_PU_Profile(FILE *fp, PU_PROFILE_HANDLE pu_handle, char * fname,
     pu_hdr.pu_value_fp_bin_offset = pos.offset;
     pu_hdr.pu_num_value_fp_bin_entries = pos.num_entries;
   }
-#endif
 
   {
       pos = Dump_PU_Profile (fp, offset, pu_handle->Get_Icall_Table (), fname);

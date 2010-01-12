@@ -749,12 +749,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
    else 
    switch (op) {
 
-#ifdef KEY
     case OPC_I1PAREN:
     case OPC_I2PAREN:
     case OPC_I4PAREN:
     case OPC_I8PAREN:
-#endif
     case OPC_F4PAREN:
     case OPC_F8PAREN:
     case OPC_FQPAREN:
@@ -1313,24 +1311,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 
     case OPC_U4TAS:
     case OPC_I4TAS:
-#if 0 // not needed when HOST_IS_LITTLE_ENDIAN is true
-      /* Need to move the bits if the source is an F4 */
-      if (TCON_ty(c0) == MTYPE_F4) {
-	 TCON_v0(c0) = TCON_v1(c0);
-	 TCON_v1(c0) = 0;
-      }
-#endif
       TCON_ty(c0) = OPCODE_rtype(op);
       break;
 
     case OPC_F4TAS:
-#if 0 // not needed when HOST_IS_LITTLE_ENDIAN is true
-      /* Need to move the bits if the source is not an F4 */
-      if (TCON_ty(c0) != MTYPE_F4) {
-	 TCON_v1(c0) = TCON_v0(c0);
-	 TCON_v0(c0) = 0;
-      }
-#endif
       TCON_ty(c0) = MTYPE_F4;
       break;
 
@@ -2131,7 +2115,6 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
    return c0;
 } /* Targ_WhirlOp */
 
-#ifdef KEY
 /* ====================================================================
  *
  * TCON_F4_To_TCON_F8
@@ -2162,7 +2145,6 @@ TCON_F4_To_TCON_F8(TCON *r, TCON *c)
   }
 #endif
 }
-#endif	// KEY
 
 /* ====================================================================
  *
@@ -2266,12 +2248,7 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       break;
 #endif /* TARG_NEEDS_QUAD_OPS */
     case FROM_TO(MTYPE_C4, MTYPE_C8):
-#ifdef KEY
       TCON_F4_To_TCON_F8(&r, &c);
-#else
-      TCON_R8(r) = TCON_R4(c);
-      TCON_IR8(r) = TCON_IR4(c);
-#endif
       break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case FROM_TO(MTYPE_FQ, MTYPE_C8):
@@ -2284,11 +2261,7 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_IR8(r) = 0.0;
       break;
     case FROM_TO(MTYPE_F4, MTYPE_C8):
-#ifdef KEY
       TCON_F4_To_TCON_F8(&r, &c);
-#else
-      TCON_R8(r) = TCON_R4(c);
-#endif
       TCON_IR8(r) = 0.0;
       break;
     case FROM_TO(MTYPE_I8, MTYPE_C8):
@@ -2408,11 +2381,7 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_R8(r) = TCON_R8(c);
       break;
     case FROM_TO(MTYPE_C4, MTYPE_F8):
-#ifdef KEY
       TCON_F4_To_TCON_F8(&r, &c);
-#else
-      TCON_R8(r) = TCON_R4(c);
-#endif
       break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case FROM_TO(MTYPE_FQ, MTYPE_F8):
@@ -2420,11 +2389,7 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       break;
 #endif /* TARG_NEEDS_QUAD_OPS */
     case FROM_TO(MTYPE_F4, MTYPE_F8):
-#ifdef KEY
       TCON_F4_To_TCON_F8(&r, &c);
-#else
-      TCON_R8(r) = TCON_R4(c);
-#endif
       break;
     case FROM_TO(MTYPE_I8, MTYPE_F8):
       TCON_R8(r) = TCON_I8(c);
@@ -4678,110 +4643,6 @@ Str_To_Tcon(TYPE_ID ty, char *buf)
   return c;
 } /* Str_To_Tcon */
 
-#if 0 /*foo*/
-/* 
- * Bit_Str_To_Tcon
- * 
- * This routine is passed a sequence of bytes in buf[0], buf[1], ... 
- * which have the following semantics:  the byte in buf[0] is the least 
- * significant byte; the byte in buf[1] is the next least significant 
- * byte; etc until we run out of bytes for an object of be_type "ty".  
- * We must make a TCON which preserves the byte ordering regardless of 
- * target endianness.  Hence if the user does:
- *       i = '00001001'x
- * i had better get the value 4097.
- * It is the callers responsibility to provide us with "n" bytes of 
- * valid "buf" if the betype corresponding to "ty" requires "n" bytes 
- * of target representation.  In other words, MTYPE_I1 only requires 
- * that buf[0] be valid, but MTYPE_F8 requires that buf[0] through 
- * buf[7] be valid.  The caller must do any zero padding in buf as 
- * required so that buf[0] is the LSByte of the constant.
- * TODO:  is MTYPE_I1, buf[0] == 0xff supposed to be 255 or -1?
- *        Targ_To_Host doesn't care what we do, does anybody else?
- */
-
-TCON
-Bit_Str_To_Tcon ( TYPE_ID ty, char *arg_buf )
-{
-  static TCON c;
-  unsigned char *buf;
-  UINT temp;
-  
-  buf = (unsigned char *)arg_buf; /* zero-extend our arg bytes */
-  TCON_ty(c) = ty;
-
-  switch (ty) {
-    case MTYPE_I1:
-    case MTYPE_U1: /* We want to sign-extend here; we'll truncate later */
-      TCON_v0(c) = buf[0];
-      TCON_v1(c) = 0;
-      break;
-
-    case MTYPE_I2:
-    case MTYPE_U2: /* We want to sign-extend here; we'll truncate later */
-      TCON_v0(c) = (buf[1] << 8) | buf[0];
-      TCON_v1(c) = 0;
-      break;
-
-    case MTYPE_I4:
-    case MTYPE_U4:
-      TCON_v0(c) = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
-      TCON_v1(c) = 0;
-      break;
-
-    case MTYPE_F4:
-      /* user is trying to give floating constant in binary, octal, hex,
-       * etc.  He had better know the floating point format.
-       */
-      temp = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
-      Set_TCON_R4(c, *((float *)&temp));
-      TCON_v1(c) = 0;
-      break;
-
-    case MTYPE_F8:
-      /* We must be careful about which word gets which set of 4 bytes
-       * here.  buf[0] must go into the most significant byte of
-       * TCON_R8.  Since the current code is written to use the host's
-       * representation as the internal representation, we must make
-       * sure we put it in the proper place depending on the host's
-       * endianness.
-       */
-#if HOST_IS_BIG_ENDIAN
-      TCON_v1(c) = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
-      TCON_v0(c) = (buf[7] << 24) | (buf[6] << 16) | (buf[5] << 8) | buf[4];
-#else
-      TCON_v0(c) = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
-      TCON_v1(c) = (buf[7] << 24) | (buf[6] << 16) | (buf[5] << 8) | buf[4];
-#endif
-      break;
-
-    case MTYPE_FQ:
-      /* We must be careful about which word gets which set of 4 bytes
-       * here.  buf[0] must go into the most significant byte of
-       * TCON_R8.  Since the current code is written to use the host's
-       * representation as the internal representation, we must make
-       * sure we put it in the proper place depending on the host's
-       * endianness.
-       */
-#if HOST_IS_BIG_ENDIAN
-      TCON_v3(c) = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
-      TCON_v2(c) = (buf[7] << 24) | (buf[6] << 16) | (buf[5] << 8) | buf[4];
-      TCON_v1(c) = (buf[11] << 24) | (buf[10] << 16) | (buf[9] << 8) | buf[8];
-      TCON_v0(c) = (buf[15] << 24) | (buf[14] << 16) | (buf[13] << 8) | buf[12];
-#else
-      TCON_v0(c) = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
-      TCON_v1(c) = (buf[7] << 24) | (buf[6] << 16) | (buf[5] << 8) | buf[4];
-      TCON_v2(c) = (buf[11] << 24) | (buf[10] << 16) | (buf[9] << 8) | buf[8];
-      TCON_v3(c) = (buf[15] << 24) | (buf[14] << 16) | (buf[13] << 8) | buf[12];
-#endif
-      break;
-
-    default:
-      ErrMsg ( EC_Inv_Mtype, Mtype_Name(ty), "Bit_Str_To_Tcon" );
-  }
-  return c;
-} /* Bit_Str_To_Tcon */
-#endif /*foo*/
 
 #endif /* HAS_TCON_TO_STR */
 

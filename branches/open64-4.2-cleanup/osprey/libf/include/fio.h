@@ -103,21 +103,11 @@
  
 #define HASH_SIZE	256	/* must be a power of 2 */
 
-#ifdef KEY
 #define STDIN_U		5	/* Special stdin unit */
 #define STDOUT_U	6	/* Special stdout unit */
 #define STDERR_U	0	/* Special stderr unit */
-#else
-#define STDIN_U		100	/* Special stdin unit */
-#define STDOUT_U	101	/* Special stdout unit */
-#define STDERR_U	102	/* Special stderr unit */
-#endif
 
-#ifdef KEY
 #define	RECMAX		10240   /* Default (initial) size of line buffer */
-#else
-#define	RECMAX		1024	/* Default (initial) size of line buffer */
-#endif
 #define RECMAXLDO	133	/* List-directed output line length */
  
 #define	ERROR	1
@@ -921,14 +911,8 @@ typedef long xfer_func_c(unit *cup, void *uda, type_packet *tip, int mode,
 
 #ifdef	_UNICOS
 #define	INITIALIZE_LOCK(x)	{ (x) = 0; }
-#elif   defined(KEY) /* Bug 6003 */
+#else
 #define	INITIALIZE_LOCK(x)	{ if (pthread_mutex_init) pthread_mutex_init(&(x), NULL); }
-#elif	defined(__mips) || (defined(_LITTLE_ENDIAN) && defined(__sv2))
-#define INITIALIZE_LOCK(x)	{ (x) = 0; }
-#elif	defined(_SOLARIS)
-#define INITIALIZE_LOCK(x)	mutex_init(&(x), USYNC_THREAD, NULL)
-#elif	defined(_LITTLE_ENDIAN) && !defined(__sv2)
-#define INITIALIZE_LOCK(x)	{ (x) = 0; }
 #endif
 
 #define OPENLOCK()	MEM_LOCK(&_openlock)
@@ -1156,7 +1140,6 @@ typedef long xfer_func_c(unit *cup, void *uda, type_packet *tip, int mode,
  *		  be opened by the user.
  */
 
-#ifdef KEY /* Bug 6433 */
 /*
  * Originally, "print"  and "write(*,...)" referred to STDOUT_U which was 101;
  * and similarly for "read (*,...)" (STDIN_U, 100) and "punch" (STDERR_U, 102).
@@ -1177,9 +1160,6 @@ typedef long xfer_func_c(unit *cup, void *uda, type_packet *tip, int mode,
  * "reserved" units.
  */
 #define RSVD_UNUM(_U)	(0)
-#else /* KEY Bug 6433 */
-#define RSVD_UNUM(_U)	((_U) >= STDIN_U && (_U) <= STDERR_U)
-#endif /* KEY Bug 6433 */
 
 /*
  * OPEN_UPTR	- returns 1 iff u points to a connected unit.  Returns 0
@@ -1583,11 +1563,7 @@ _release_cup(unit *cup)
 extern void _ferr(FIOSPTR, int, ...);
 extern int _get_dc_param(FIOSPTR, unit *, struct f90_type, type_packet *);
 extern int _is_file_name(long n);
-#ifdef KEY /* Bug 6433 */
 extern void flush_(_f_int4 *n);
-#else /* KEY Bug 6433 */
-extern void flush_(const unum_t *n);
-#endif /* KEY Bug 6433 */
 extern int _f_open(FIOSPTR css, unit **cup_p, olist *olptr, int isf90);
 extern int _f_inqu(FIOSPTR css, unit *cup, inlist *a);
 extern int _fortname(char *buf, unum_t n);
