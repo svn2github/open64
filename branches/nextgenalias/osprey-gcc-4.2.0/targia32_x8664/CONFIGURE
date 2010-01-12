@@ -1,0 +1,46 @@
+#!/bin/bash
+#
+# Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
+# Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of version 2 of the GNU General Public License as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it would be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# Further, this software is distributed without any warranty that it is
+# free of the rightful claim of any third person regarding infringement
+# or the like.  Any license provided herein, whether implied or
+# otherwise, applies only to this software file.  Patent licenses, if
+# any, provided herein do not apply to combinations of this program with
+# other software, or any other product whatsoever.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write the Free Software Foundation, Inc., 59
+# Temple Place - Suite 330, Boston MA 02111-1307, USA.
+
+find .. -name config.cache | xargs /bin/rm -f
+
+# if the libspin.a does not exist, build it first
+if [ ! -f ../../osprey/targia32_x8664/libspin_4_2_0/libgspin42.a ] ; then
+    make -C ../../osprey/targia32_x8664/libspin_4_2_0
+fi
+# create symbol link to libgspin42.a
+ln -s -f ../../osprey/targia32_x8664/libspin_4_2_0/libgspin42.a libgspin42.a
+
+# remove gspin headers from the gcc directory (use -I to get them
+# directly from the libspin directory).
+rm -f ../gcc/gspin-[abilmt]*.h
+
+# configure the osprey-gcc
+host_machine_type=`uname -m`
+if [ "$host_machine_type" = x86_64 ]
+then
+       CC='gcc -m32 -DTARG_X8664' ../configure --prefix=/open64-gcc-4.2.0 --with-gnu-as --with-gnu-ld --enable-languages=c,c++ --disable-bootstrap --disable-libmudflap --disable-libssp --enable-threads=posix --disable-checking --enable-tls --with-system-zlib --enable-__cxa_atexit --host=x86_64-redhat-linux
+else
+       ../configure --prefix=/open64-gcc-4.2.0 --with-gnu-as --with-gnu-ld --enable-languages=c,c++ --disable-bootstrap --disable-libmudflap --disable-libssp --enable-threads=posix --disable-checking --enable-tls --with-system-zlib --enable-__cxa_atexit --host=${host_machine_type}-redhat-linux
+fi
