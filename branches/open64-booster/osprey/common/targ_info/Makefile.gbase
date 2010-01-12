@@ -177,6 +177,11 @@ LDIRT += itanium_si_gen
 SO_TARGETS = \
 	itanium.so
 endif
+ifeq ($(BUILD_TARGET), PPC32)
+LDIRT += ppc_si_gen
+SO_TARGETS = \
+	ppc.so
+endif
 ifeq ($(BUILD_TARGET), X8664)
 LDIRT += opteron_si_gen barcelona_si_gen orochi_si_gen em64t_si_gen core_si_gen wolfdale_si_gen
 SO_TARGETS = \
@@ -1173,6 +1178,26 @@ itanium_si.o: itanium_si.cxx targ_isa_subset.h topcode.h si_gen.h
 
 endif
 
+ifeq ($(BUILD_TARGET), PPC32)
+ppc.so: ppc.o $(TARGINFO_DSO_ACCESS_OBJS)
+	$(cc) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARGINFO_DSO_ACCESS_OBJS) ppc.o -shared -o ppc.so
+
+#ppc.so: ppc.o
+#	$(CC) $(CFLAGS) $(STD_DSO_LOADOPTS) ppc.o -shared -o ppc.so
+
+ppc.o: ppc.c ti_si.h
+	$(CC) $(CFLAGS) -c ppc.c
+
+ppc.c: ppc_si_gen
+	$(SETPATH) $(RUN) ./ppc_si_gen
+
+ppc_si_gen: si_gen.a ppc_si.o topcode.o
+	$(CXX) $(CXXLDFLAGS) ppc_si.o topcode.o si_gen.a -o ppc_si_gen
+
+ppc_si.o: ppc_si.cxx targ_isa_subset.h topcode.h si_gen.h
+	$(CXX) $(CXXFLAGS) -c $(TARGINFO_PROC_DIR)/ppc_si.cxx
+
+endif
 ifeq ($(BUILD_TARGET), X8664)
 
 ## opteron ##
@@ -1339,6 +1364,9 @@ ifeq ($(BUILD_OS), LINUX)
 install: $(SO_TARGETS) $(TARG_INFO_LIB)
 	$(STD_INSTALL) $(STD_INSTALL_EXEC_MASK) $(SO_TARGETS) $(STD_MONGOOSE_LINUX_LOC)
  ifeq ($(BUILD_TARGET), IA64)
+	$(STD_INSTALL) $(STD_INSTALL_READ_MASK) -D $(TARG_INFO_LIB) $(LIB_LOC)/$(TARG_INFO_LIB)
+ endif
+ ifeq ($(BUILD_TARGET), PPC32)
 	$(STD_INSTALL) $(STD_INSTALL_READ_MASK) -D $(TARG_INFO_LIB) $(LIB_LOC)/$(TARG_INFO_LIB)
  endif
 else

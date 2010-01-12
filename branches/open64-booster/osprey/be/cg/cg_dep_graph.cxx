@@ -1766,7 +1766,7 @@ static OP *addr_base_offset(OP *op, ST **initial_sym, ST **sym, TN **base_tn, IN
           defop_base_tn = NULL;
         }
       } else if (OP_memory(defop)) {
-#if !defined(TARG_MIPS) && !defined(TARG_X8664)
+#if !defined(TARG_MIPS) && !defined(TARG_X8664) && !defined(TARG_PPC32)
         INT postinc_num = OP_find_opnd_use(defop, OU_postincr);
         base_num   = OP_find_opnd_use (defop, OU_base);
         if ((postinc_num >= 0) &&

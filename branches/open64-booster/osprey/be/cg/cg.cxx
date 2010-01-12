@@ -208,6 +208,10 @@ BB_MAP BBs_Map = NULL;
 extern BOOL cg_load_execute_overridden;
 #endif
 
+#ifdef TARG_PPC32
+extern void Expand_Start();
+extern void Expand_Finish();
+#endif
 /* WOPT alias manager */
 struct ALIAS_MANAGER *Alias_Manager;
 
@@ -365,7 +369,7 @@ CG_PU_Initialize (WN *wn_pu)
 #endif 
   Init_Label_Info();
 
-#ifdef EMULATE_LONGLONG
+#if defined(EMULATE_LONGLONG) && !defined(TARG_PPC32)
   extern void Init_TN_Pair();
   Init_TN_Pair ();
 #endif
@@ -420,6 +424,10 @@ CG_PU_Finalize(void)
   BB_MAP_Delete( BBs_Map );
   BBs_Map = NULL;
 
+  Expand_Finish();
+#endif
+
+#if defined(TARG_PPC32)
   Expand_Finish();
 #endif
 
@@ -478,7 +486,7 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
 
   Current_Rid = REGION_get_rid( rwn );
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_PPC32)
   Expand_Start();
 #endif
 
@@ -645,7 +653,6 @@ Collect_Simd_Register_Usage()
 }
 #endif 
 
-
 #if defined(TARG_IA64) || defined(TARG_LOONGSON)
 static void Config_Ipfec_Flags() {
  
@@ -798,6 +805,10 @@ CG_Generate_Code(
 #endif
 
   Convert_WHIRL_To_OPs ( rwn );
+#if defined(TARG_PPC32)
+  extern void Set_Current_PU_WN(WN*);
+  Set_Current_PU_WN(rwn);
+#endif
 
 #ifndef TARG_NVISA
 
@@ -831,6 +842,7 @@ CG_Generate_Code(
     // corresponding allocated TNs from previously compiled REGIONs.
     Localize_or_Replace_Dedicated_TNs();
   }
+
 
   // If using feedback, incorporate into the CFG as early as possible.
   // This phase also fills in any missing feedback using heuristics.
@@ -874,7 +886,11 @@ CG_Generate_Code(
   //while Generate_Entry_Exit_Code will do this instead, but it need to know
   //IPFEC_Enable_Edge_Profile in time.
   Config_Ipfec_Flags();
-#endif  
+#endif
+#if defined(TARG_PPC32)
+extern void Generate_Return_Address(void);
+  Generate_Return_Address();
+#endif
 #ifdef TARG_LOONGSON
   if ( (IPFEC_Enable_Edge_Profile || IPFEC_Enable_Stride_Profile || IPFEC_Enable_Cache_Profile)
        && (CG_opt_level>1)) 
@@ -1323,7 +1339,7 @@ CG_Generate_Code(
   fat_self_recursive = FALSE;
   //Check_Self_Recursive();
   if (CG_opt_level > 1 && IPFEC_Enable_PRDB) PRDB_Init(region_tree);
-  
+
   if (IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1) {
     Start_Timer( T_GLRA_CU );
     GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
@@ -1338,7 +1354,6 @@ CG_Generate_Code(
   } else {
     IGLS_Schedule_Region (TRUE /* before register allocation */);
   }
-
   
   if (CG_opt_level > 1 && IPFEC_Enable_PRDB) PRDB_Init(region_tree);
   // bug fix for OSP_104, OSP_105, OSP_192
@@ -1484,7 +1499,10 @@ CG_Generate_Code(
 #else
   GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
   GRA_LIVE_Rename_TNs();
+#if !defined(TARG_PPC32)    //  PPC IGLS_Schedule_Region bugs
   IGLS_Schedule_Region (TRUE /* before register allocation */);
+#endif 
+
 #endif // TARG_SL
 #endif
 
@@ -1515,7 +1533,6 @@ CG_Generate_Code(
 #endif
       GRA_LIVE_Rename_TNs ();
     }
-
 #ifdef TARG_IA64
     if (GRA_redo_liveness || IPFEC_Enable_Prepass_GLOS && (CG_opt_level > 1 || value_profile_need_gra)) {
 #else
@@ -1677,6 +1694,7 @@ CG_Generate_Code(
   }
 
 #else 
+#if !defined(TARG_PPC32)
 #ifdef TARG_LOONGSON
   // Mainly concerns about ld from GRA
   if (!CG_localize_tns){
@@ -1699,6 +1717,7 @@ CG_Generate_Code(
   if (Is_Target_Orochi()) {
     CFLOW_Optimize(CFLOW_BR_FUSE, "CFLOW (fifth pass)");
   }
+#endif
 #endif
 
 #if defined(TARG_MIPS) && !defined(TARG_SL)
@@ -2074,6 +2093,10 @@ Trace_ST (
   }
 }
 
+static void Check_for_Dump_ALL(INT32 pass, BB *bb, const char * phase)
+{
+
+}
 /* ====================================================================
  *
  * Check_for_Dump

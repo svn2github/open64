@@ -413,7 +413,7 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_static_link, rclass);
     }
 #endif
-#if defined(TARG_MIPS) || defined(TARG_IA64) || defined(TARG_LOONGSON)
+#if defined(TARG_MIPS) || defined(TARG_IA64) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
     else if ( ABI_PROPERTY_Is_global_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_gp, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_gp, rclass);
@@ -1139,6 +1139,9 @@ REGISTER_Set_Allocatable(
   BOOL               is_allocatable
 )
 {
+  //added by li xin
+  if (rclass > ISA_REGISTER_CLASS_MAX)
+	  return;
   INT prev_status = reg_alloc_status[rclass][reg];
   INT new_status  = is_allocatable ? AS_allocatable : AS_not_allocatable;
 

@@ -746,10 +746,23 @@ DYN_ARRAY<FF_STMT_LIST>& loop, MEM_POOL* pool)
   for (stmt = WN_first(WN_do_body(in_loop));
     stmt; stmt = WN_next(stmt)) {
     // map the stmts to vertices in dep_g
+#if HOST_IS_BIG_ENDIAN
+    union {
+      struct {
+#if HOST_IS_64BIT
+          mUINT32 padding1;
+#endif
+          mUINT16 padding0;
+          VINDEX16 v;
+      };
+      void *p;
+    } v;
+#else
     union {
       VINDEX16 v;
       void *p;
     } v;
+#endif
     v.p = NULL;
     v.v = dep_g_p->Add_Vertex();
     if (v.v==0) {

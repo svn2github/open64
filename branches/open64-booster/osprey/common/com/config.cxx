@@ -1466,11 +1466,15 @@ Configure_Source ( char	*filename )
    */
   if ( ! Cfold_Aggr_Set )
     Enable_Cfold_Aggressive = TRUE;
-
+  
+#if defined(TARG_PPC32)
+  Enable_CVT_Opt = FALSE;
+#else
 #ifndef TARG_NVISA // nvisa wants to preserve 32<->64 conversions
   if (!Enable_CVT_Opt_Set)
     Enable_CVT_Opt = ( Opt_Level > 0);
 #endif
+#endif  
 
   CSE_Elim_Enabled = Opt_Level > 0;
 

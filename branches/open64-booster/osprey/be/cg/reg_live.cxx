@@ -227,6 +227,12 @@ Compute_Parameter_Regs (TY_IDX call_ty, WN *call_wn, REGSET parms)
           Add_PREG_To_REGSET (PLOC_reg(ploc)+1, parms);
         }
 #endif   
+#if defined(TARG_PPC32)
+      if (MTYPE_I8 ==TY_mtype(parm_ty) || 
+        MTYPE_U8 == TY_mtype(parm_ty)) {
+        Add_PREG_To_REGSET (PLOC_reg(ploc)+1, parms);
+      }
+#endif
         ploc = func_entry ? Next_Input_PLOC_Reg (ploc)
                           : Next_Output_PLOC_Reg (ploc);
     }

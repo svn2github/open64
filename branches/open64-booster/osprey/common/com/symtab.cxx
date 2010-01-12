@@ -1341,7 +1341,8 @@ Create_Preg_explicit(TYPE_ID mtype, const char *name,
 PREG_NUM
 Create_Preg (TYPE_ID mtype, const char *name)
 {
-  return Create_Preg_explicit(mtype, name, Scope_tab, CURRENT_SYMTAB);
+  PREG_NUM preg_num = Create_Preg_explicit(mtype, name, Scope_tab, CURRENT_SYMTAB);
+  return preg_num;
 }
 
 // uses the real preg size because simulated pregs might take more than one

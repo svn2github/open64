@@ -2691,8 +2691,13 @@ static void unroll_guard_unrolled_body(LOOP_DESCR *loop,
 	     NULL,
 	     Gen_Label_TN(continuation_lbl,0),
 	     new_trip_count_tn,
+#if defined(TARG_PPC32)
+	     Gen_Literal_TN(0, 4),
+	     (trip_size == 4) ? V_BR_I4EQ : V_BR_I8EQ,
+#else
 	     Zero_TN,
 	     V_BR_I8EQ,
+#endif
 	     &ops);
 #endif
     BB_Append_Ops(CG_LOOP_prolog, &ops);
@@ -2823,7 +2828,10 @@ static BB *Unroll_Replicate_Body(LOOP_DESCR *loop, INT32 ntimes, BOOL unroll_ful
    */
   for (unrolling = 0; unrolling < ntimes; unrolling++) {
     FOR_ALL_BB_OPs(body, op) {
-
+#if defined(TARG_PPC32)
+      if (OP_icmp(op) && op == BB_last_op(body) && unrolling != (ntimes - 1) )
+        continue;
+#endif
       // Perform Prefetch pruning at unroll time
       if (OP_prefetch(op)) {
 
@@ -3274,7 +3282,7 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
 	      &prolog_ops);
     
     continuation_label = Gen_Label_For_BB(remainder_tail);
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_PPC32)
     Exp_OP3v(OPC_FALSEBR,
 	     NULL,
 	     Gen_Label_TN(continuation_label,0),
@@ -3343,7 +3351,7 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
 		new_trip_count,
 		Gen_Literal_TN(-1, trip_size),
 		&body_ops);
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_PPC32)
 	Exp_OP3v(OPC_TRUEBR,
 		 NULL,
 		 Gen_Label_TN(continuation_label,0),
@@ -3369,6 +3377,10 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
 	OP *op;
 	FOR_ALL_BB_OPs(body, op) {
 	  // keep the prefetches ops of the first unrolling
+#if defined(TARG_PPC32)
+    if (OP_icmp(op) && op == BB_last_op(body))
+      continue;
+#endif
 	  if (OP_prefetch(op) && unrolling != unroll_times)
 	    continue;
 	  OP *new_op = Dup_OP(op);
@@ -3803,8 +3815,13 @@ static BOOL unroll_multi_make_remainder_loop(LOOP_DESCR *loop, UINT8 ntimes,
 	     NULL,
 	     Gen_Label_TN(continuation_label,0),
 	     new_trip_count,
+#if defined(TARG_PPC32)
+	     Gen_Literal_TN(0, 4),
+	     (trip_size == 4) ? V_BR_I4EQ : V_BR_I8EQ,
+#else
 	     Zero_TN,
 	     V_BR_I8EQ,
+#endif
 	     &ops);
 #endif
     BB_Append_Ops(CG_LOOP_prolog, &ops);
@@ -4562,7 +4579,7 @@ void Unroll_Do_Loop_guard(LOOP_DESCR *loop,
   continuation_bb = CG_LOOP_epilog;
   continuation_lbl = Gen_Label_For_BB(continuation_bb);
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_PPC32)
   Exp_OP3v(OPC_FALSEBR,
 	   NULL,
 	   Gen_Label_TN(continuation_lbl,0),

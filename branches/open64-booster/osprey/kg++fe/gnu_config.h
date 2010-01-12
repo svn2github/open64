@@ -45,6 +45,9 @@
 #include "gnu/MIPS/config.h"
 #endif /* TARG_MIPS */
 #endif
+#ifdef TARG_PPC32
+#include "gnu/ppc32/config.h"
+#endif /* TARG_PPC32 */
 #ifdef TARG_IA64
 #include "gnu/ia64/config.h"
 #endif /* TARG_IA64 */

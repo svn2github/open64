@@ -2903,7 +2903,11 @@ static simpnode  simp_div( OPCODE opc,
 	   (SIMPNODE_operator(k1) == OPR_SQRT ||
 	    SIMPNODE_operator(k1) == OPR_MPY))
 #else
+#ifdef TARG_PPC32
+         Recip_Allowed && ty != MTYPE_F8
+#else
 	  Recip_Allowed
+#endif
 #endif
 	  ) {
 	 SHOW_RULE("+-1.0 / a");
@@ -4261,6 +4265,12 @@ static simpnode  simp_shift( OPCODE opc,
          } else if (Enable_compose_bits && IS_POWER_OF_2(c2+1)) {
 	   SHOW_RULE("(j & mask) << c1 -> COMPOSE");
 	   c2 = log2_u64((UINT64)c2+1);
+#if defined(TARG_PPC32)
+     if (c1 < 0) {
+      c2 += c1;
+      c1 = 0;
+     }
+#endif
 	   r = SIMPNODE_SimpCreateDeposit(OPC_FROM_OPR(OPR_COMPOSE_BITS,ty),c1,c2,
 					  SIMP_INTCONST(ty,0),SIMPNODE_kid0(k0));
 	   SIMP_DELETE(SIMPNODE_kid1(k0));
@@ -4560,6 +4570,7 @@ static simpnode cancel_in_relop(OPCODE opc, TYPE_ID ty, simpnode k0, simpnode k1
 	  * cancellation, we need to do a SIGNED comparison on the two
 	  * remaining arguments cases.
 	  */
+#if !defined(TARG_PPC32)	  
 	 SHOW_RULE("(pointers) x+y relop x");
 	 /* Convert to signed comparison */
 	 if (ty == MTYPE_U8) {
@@ -4567,6 +4578,7 @@ static simpnode cancel_in_relop(OPCODE opc, TYPE_ID ty, simpnode k0, simpnode k1
 	 } else if (ty == MTYPE_U4) {
 	    opc = OPCODE_make_op(mainopr,OPCODE_rtype(opc),MTYPE_I4);
 	 }
+#endif   
 	 if (s_lhs && s_rhs) {
 	    r = SIMPNODE_SimpCreateExp2(opc,rhs,lhs);
 	 } else {

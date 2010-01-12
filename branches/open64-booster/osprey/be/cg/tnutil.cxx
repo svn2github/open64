@@ -446,6 +446,10 @@ TN* C2_VLCS_TN = NULL;
 TN* C2_MOVPAT_TN = NULL;
 #endif
 
+#ifdef TARG_PPC32
+static TN* special_ded_tns[Last_Dedicated_Preg_Offset - Float_Preg_Max_Offset];
+#endif
+
 /* ====================================================================
  *
  * Create_Dedicated_TN
@@ -635,6 +639,12 @@ Init_Dedicated_TNs (void)
     }
 #endif // KEY
 #endif // ! NVISA
+#ifdef TARG_PPC32
+    for (reg= 0; reg < Last_Dedicated_Preg_Offset - Float_Preg_Max_Offset; reg++) {
+		special_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg + Float_Preg_Max_Offset + 1);
+		tnum++;
+    }
+#endif
 
 #if defined(TARG_SL)	 
     for (reg = REGISTER_MIN; 
@@ -661,6 +671,12 @@ Init_Dedicated_TNs (void)
 TN *
 Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
 {
+#ifdef TARG_PPC32
+  if (reg >Float_Preg_Max_Offset && reg <= Last_Dedicated_Preg_Offset) {
+  	return special_ded_tns[reg - Float_Preg_Max_Offset - 1];
+  }
+#endif
+
 #if defined(TARG_IA64)
   if (rclass == ISA_REGISTER_CLASS_float) {
     if (size == 4)
@@ -668,7 +684,7 @@ Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
     if (size == 16)
       return f10_ded_tns[reg];
   }
-#elif defined(TARG_X8664) || defined(TARG_MIPS)
+#elif defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_PPC32)
   // check for F4 tns and 16-byte vector tns
   if (rclass == ISA_REGISTER_CLASS_float
       && size != DEFAULT_RCLASS_SIZE(rclass) )
@@ -683,7 +699,7 @@ Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
   }
 #endif
 
-#if defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_LOONGSON)
+#if defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
   // check for I4 tns
   if (rclass == ISA_REGISTER_CLASS_integer
       && size != DEFAULT_RCLASS_SIZE(rclass) )
@@ -938,6 +954,13 @@ Gen_Tag_TN ( LABEL_IDX tag)
   return tn;
 }
 
+#if defined(TARG_PPC32)
+TN *
+Gen_CR_TN (UINT cr)
+{
+  return Build_Dedicated_TN(ISA_REGISTER_CLASS_condition, (REGISTER)(cr+1), 1);
+}
+#endif
 /* ====================================================================
  *
  * Gen_Adjusted_TN

@@ -109,6 +109,12 @@ IP_set_target(void)
     Target_ISA = TRUE;
 #endif
 
+#ifdef TARG_PPC32
+    Target_ABI = ABI_P32;
+    Target_ISA = TARGET_ISA_P5;
+    Use_32_Bit_Pointers = TRUE;
+#endif
+
 #ifdef TARG_X8664
     Target_ABI = IPA_Target_Type == IP_64_bit_ABI ? ABI_n64 : ABI_n32;
     Target_ISA = TARGET_ISA_x86_64;

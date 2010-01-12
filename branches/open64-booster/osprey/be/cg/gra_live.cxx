@@ -610,7 +610,7 @@ Compute_Force_TNs(void)
   }
 #endif
 
-#if !defined(TARG_X8664) && !defined(TARG_LOONGSON)
+#if !defined(TARG_X8664) && !defined(TARG_LOONGSON) && !defined(TARG_PPC32)
   // OSP_426, always mark Caller_GP_TN global
   if (Caller_GP_TN != NULL) {
     Force_Live_Add(Caller_GP_TN);

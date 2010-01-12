@@ -77,6 +77,10 @@
 #include "cg_internal.h"
 #include "targ_sim.h"
 #include "whirl2ops.h"
+#if defined(TARG_PPC32)
+#include <queue>
+#include <set>
+#endif
 
 #if defined(TARG_SL)
 #include <queue>
@@ -986,6 +990,7 @@ BB_Reaches_Call_or_Exit( BB *start )
   }
 
   BB_MAP_Delete( visited );
+
   return ans;
 }
 #else
@@ -1105,7 +1110,7 @@ Call_or_Entry_Reaches_BB(BB *start)
     }
   }
 
-#if defined(TARG_SL)
+#if defined(TARG_SL) || defined(TARG_PPC32)
   /*
    * Fix a bug, in OspreyTest/SingleSource/gcc.c-torture/double/unsorted/poor.c
    * If  preds(bb1) = {bb2, bb3}, the original code only search bb2, but bb3 is omitted.

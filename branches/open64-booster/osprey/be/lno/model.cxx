@@ -354,6 +354,9 @@ typedef HASH_TABLE<WN*,INT> WN2INT;
 #if defined(TARG_MIPS) || defined(TARG_LOONGSON)
 #define Reserved_Int_Regs	9	// $0, $26-$29, loop ub, fudge (3)
 #endif
+#ifdef TARG_PPC32
+#define Reserved_Int_Regs	9	// TODO:verify this number later
+#endif
 #ifdef TARG_IA64
 #define Reserved_Int_Regs	10	// r0, r1, r12, r13, loop ub, fudge (5)
 #endif
@@ -678,6 +681,14 @@ LOOP_MODEL::Model(WN* wn,
   } else if (Is_Target_x86_64()) {
     _issue_rate = 3.0;
     _base_fp_regs = 16;
+    _num_mem_units = 2.0;
+#endif
+#ifdef TARG_PPC32
+#define Is_Target_PPC() (1)
+  } else if (Is_Target_PPC()) {
+    //TODO: verify the parameters for PPC32
+    _issue_rate = 4.0;
+    _base_fp_regs = 18;
     _num_mem_units = 2.0;
 #endif
 #ifdef TARG_LOONGSON
@@ -2001,7 +2012,7 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
           break;
 #else
         case OPR_DIV: 
-#ifndef TARG_MIPS
+#if !(defined(TARG_MIPS) || defined(TARG_PPC32))
           *num_instr += LNOTARGET_Int_Div_Res(resource_count, double_word);
 #else
           *num_instr += LNOTARGET_Int_Div_Res(resource_count, double_word, 
@@ -4367,6 +4378,14 @@ REGISTER_MODEL::Evaluate(WN* inner,
     Lmt_DevWarn(1, ("TODO: Tune LNO machine model parameters for IA-64"));
     issue_rate = 6;  // 2 bundles with 3 instructions each
     base_fp_regs = 32; // (8+1)*2+6
+    num_mem_units = 2;
+#endif
+#ifdef TARG_PPC32
+#define Is_Target_PPC() (1)
+  } else if (Is_Target_PPC()) {
+    //TODO: verify the parameters for PPC32
+    issue_rate = 4;
+    base_fp_regs = 18;
     num_mem_units = 2;
 #endif
   } else {
