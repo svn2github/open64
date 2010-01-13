@@ -376,7 +376,7 @@ reg     : I4F4RND(f4reg), I4F8RND(f8reg)
         = { //#ins fctiw add addi addis stfd lwz
             $action[2](ops);
 	    $0->init_result();
-            Handle_Float_Int_Cvt(RND, WN_rtype($2->wn), $0->result, $2->result, ops);
+            Handle_Float_Int_Cvt(ROUND_NEAREST, WN_rtype($2->wn), $0->result, $2->result, ops);
         };
 
 reg     : I4F4CEIL(f4reg), I4F8CEIL(f8reg)
@@ -386,7 +386,7 @@ reg     : I4F4CEIL(f4reg), I4F8CEIL(f8reg)
         = { //#ins mtfsb0 mtfsb1 fctiw addi addis stfd lwz
             $action[2](ops);
 	    $0->init_result();
-            Handle_Float_Int_Cvt(CEIL, WN_rtype($2->wn), $0->result, $2->result, ops);
+            Handle_Float_Int_Cvt(ROUND_PLUS_INF, WN_rtype($2->wn), $0->result, $2->result, ops);
         };
 
 reg     : I4F4FLOOR(f4reg), I4F8FLOOR(f8reg)
@@ -396,18 +396,29 @@ reg     : I4F4FLOOR(f4reg), I4F8FLOOR(f8reg)
         = { //#ins mtfsb0 mtfsb1 fctiw addi addis stfd lwz
             $action[2](ops);
 	    $0->init_result();
-            Handle_Float_Int_Cvt(FLOOR, WN_rtype($2->wn), $0->result, $2->result, ops);
+            Handle_Float_Int_Cvt(ROUND_NEG_INF, WN_rtype($2->wn), $0->result, $2->result, ops);
         };
 
-reg     : I4F4CVT(f4reg), I4F8CVT(f8reg), I4F4TRUNC(f4reg), I4F8TRUNC(f8reg)
+reg     : I4F4CVT(f4reg), I4F8CVT(f8reg)
         {
             $cost[0].cost = 11 + $cost[2].cost;
         }
         = { //#ins fctiw add addi addis stfd lwz
             $action[2](ops);
 	    $0->init_result();
-            Handle_Float_Int_Cvt(TRUNC, WN_rtype($2->wn), $0->result, $2->result, ops);
+            Handle_Float_Int_Cvt(ROUND_USER, WN_rtype($2->wn), $0->result, $2->result, ops);
         };
+
+reg     : I4F4TRUNC(f4reg), I4F8TRUNC(f8reg)
+        {
+            $cost[0].cost = 11 + $cost[2].cost;
+        }
+        = { //#ins fctiw add addi addis stfd lwz
+            $action[2](ops);
+            $0->init_result();
+            Handle_Float_Int_Cvt(ROUND_CHOP, WN_rtype($2->wn), $0->result, $2->result, ops);
+        };
+
 
 reg     : U4F4RND(f4reg), U4F8RND(f8reg)
         {
@@ -416,7 +427,7 @@ reg     : U4F4RND(f4reg), U4F8RND(f8reg)
         = { //#ins fsub fsel fcmpu mfcr rlwinm xoris fctiw xor add addi addis stfd lwz
             $action[2](ops);
 	    $0->init_result();
-            Handle_Float_Uint_Cvt(RND, WN_rtype($2->wn), $0->result, $2->result, ops);
+            Handle_Float_Uint_Cvt(ROUND_NEAREST, WN_rtype($2->wn), $0->result, $2->result, ops);
         };
 
 reg     : U4F4CEIL(f4reg), U4F8CEIL(f8reg)
@@ -426,7 +437,7 @@ reg     : U4F4CEIL(f4reg), U4F8CEIL(f8reg)
         = { //#ins fsub fsel fcmpu mfcr rlwinm xoris fctiw mtfsb0 mtfsb1 xor add addi addis stfd lwz
             $action[2](ops);
 	    $0->init_result();
-            Handle_Float_Uint_Cvt(CEIL, WN_rtype($2->wn), $0->result, $2->result, ops);
+            Handle_Float_Uint_Cvt(ROUND_PLUS_INF, WN_rtype($2->wn), $0->result, $2->result, ops);
         };
 
 reg     : U4F4FLOOR(f4reg), U4F8FLOOR(f8reg)
@@ -436,18 +447,27 @@ reg     : U4F4FLOOR(f4reg), U4F8FLOOR(f8reg)
         = { //#ins fsub fsel fcmpu mfcr rlwinm xoris fctiw mtfsb0 mtfsb1 xor add addi addis stfd lwz
             $action[2](ops);
 	    $0->init_result();
-            Handle_Float_Uint_Cvt(FLOOR, WN_rtype($2->wn), $0->result, $2->result, ops);
+            Handle_Float_Uint_Cvt(ROUND_NEG_INF, WN_rtype($2->wn), $0->result, $2->result, ops);
         };
 
+reg     : U4F4CVT(f4reg), U4F8CVT(f8reg)
+        {
+            $cost[0].cost = 11 + $cost[2].cost;
+        }
+        = { //#ins fsub fsel fcmpu mfcr rlwinm xoris fctiw add addi addis xor stfd lwz
+            $action[2](ops);
+            $0->init_result();
+            Handle_Float_Uint_Cvt(ROUND_USER, WN_rtype($2->wn), $0->result, $2->result, ops);
+        };
 
-reg     : U4F4CVT(f4reg), U4F8CVT(f8reg), U4F4TRUNC(f4reg), U4F8TRUNC(f8reg)
+reg     : U4F4TRUNC(f4reg), U4F8TRUNC(f8reg)
         {
             $cost[0].cost = 11 + $cost[2].cost;
         }
         = { //#ins fsub fsel fcmpu mfcr rlwinm xoris fctiw add addi addis xor stfd lwz
             $action[2](ops);
 	    $0->init_result();
-            Handle_Float_Uint_Cvt(TRUNC, WN_rtype($2->wn), $0->result, $2->result, ops);
+            Handle_Float_Uint_Cvt(ROUND_CHOP, WN_rtype($2->wn), $0->result, $2->result, ops);
         };
 
 f4reg   : F4I4CVT(reg)

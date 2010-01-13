@@ -104,7 +104,6 @@ Get_Power_Of_2 (INT64 val, TYPE_ID mtype)
 {
   INT i;
   INT64 pow2mask;
-
   if (MTYPE_is_signed(mtype) && val < 0) val = -val;
 
   if (mtype == MTYPE_U4) val &= 0xffffffffull;
@@ -282,215 +281,6 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
     return TRUE;
   }
   return FALSE;
-  if (!CGEXP_cvrt_int_div_to_mult) return FALSE;
-
-  if (!is_double) {
-    if (is_signed) {
-      UINT32 d = labs((UINT)denom_val);
-      UINT32 l = log2(d);
-      INT64 e = denom_val;
-      UINT32 s, a;
-      UINT64 m;
-      UINT64 m_low, m_high, j, k;
-      UINT32 shift_amt = 31;
-
-      j = (((UINT64)(0x80000000)) % ((UINT64)(d)));
-      k = (((UINT64)(1)) << (32 + l)) / ((UINT64)(0X80000000 - j));
-      m_low = (((UINT64)(1)) << (32 + l)) / d;
-      m_high = ((((UINT64)(1)) << (32 + l)) + k) / d;
-      
-      while (((m_low >> 1) < (m_high >> 1)) && (l > 0)) {
-        m_low = m_low >> 1;
-        m_high = m_high >> 1;
-        l = l - 1;
-      }
-      m = ((UINT32)(m_high));
-      s = l;
-      a = (m_high >> 31) ? 1: 0;
-
-      if (is_double) {
-	m |= (m -1)<<32;
-	shift_amt = 63;
-      }
-	
-      if (a) {
-	TN* tmp1_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	if (!is_double) {
-	  printf("hoho~ \n");
-//	  Expand_Convert_Length(tmp1_tn, numer_tn, Gen_Literal_TN(32, 4), MTYPE_I8, TRUE, ops);
-	}
-	else
-	  Expand_Copy( tmp1_tn, numer_tn, mtype, ops);
-	mult_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	d_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Immediate (d_tn, 
-			  Gen_Literal_TN (!is_double ? (INT)m : m, 8), 
-			  is_signed, ops);
-	printf("hoho2\n");
-	if (!is_double) {
-	  Expand_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
-	  shift_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	  Expand_Shift(shift_tn, mult_tn, Gen_Literal_TN(32, 4), 
-		       MTYPE_I8, shift_lright, ops);
-	} else {
-	  Expand_High_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
-	  shift_tn = mult_tn;
-        }
-	TN* tmp2_tn = Build_TN_Of_Mtype(mtype);
-	printf("hoho3\n");
-	Expand_Add(tmp2_tn, shift_tn, numer_tn, mtype, ops);
-	TN* tmp3_tn = Build_TN_Of_Mtype(mtype);
-	Expand_Shift(tmp3_tn, numer_tn, Gen_Literal_TN(shift_amt, 4), 
-		mtype, shift_aright, ops);
-	TN* tmp4_tn = Build_TN_Like(result);
-	Expand_Shift(tmp4_tn, tmp2_tn, Gen_Literal_TN(s, 4),
-		mtype, shift_aright, ops);
-	Expand_Sub(result, tmp4_tn, tmp3_tn, mtype, ops);
-	// Bug 1447 
-	if (e > 0)
-	  Expand_Sub(result, tmp4_tn, tmp3_tn, mtype, ops);
-	else
-	  Expand_Sub(result, tmp3_tn, tmp4_tn, mtype, ops);
-	return true;
-      } else if( Is_Target_32bit() ){
-	TN* eax_tn = Build_TN_Of_Mtype(mtype);
-	Expand_Immediate( eax_tn, Gen_Literal_TN(m,4), is_signed, ops );
-
-	TN* edx_tn = Build_TN_Like( result );
-	TN* tmp_tn =  Build_TN_Like( result );
-	//Expand_Multiply(eax_tn, eax_tn, numer_tn, MTYPE_I8, ops);
-        Build_OP(TOP_mulhw,edx_tn, eax_tn, numer_tn,ops);
-	//Expand_Multiply(eax_tn, eax_tn, numer_tn, MTYPE_I8, ops);
-	//Build_OP( TOP_imulx32, eax_tn, edx_tn, eax_tn, numer_tn, ops );
-
-	  Expand_Copy( eax_tn,numer_tn, mtype, ops );
-	//Expand_Copy( edx_tn,tmp_tn, mtype, ops );
-
-	if( s ){
-	  Expand_Shift( edx_tn, edx_tn, Gen_Literal_TN(s, 4), 
-			mtype, shift_aright, ops);
-	}
-
-	Expand_Shift( eax_tn, eax_tn, Gen_Literal_TN(shift_amt, 4), 
-		      mtype, shift_lright, ops);
-
-	Expand_Add( edx_tn, edx_tn, eax_tn, mtype, ops );
-
-	if( e < 0 ){
-	  Expand_Neg( edx_tn, edx_tn, mtype, ops );
-	}
-
-	Expand_Copy( result, edx_tn, mtype, ops );
-	return TRUE;
-
-      } else {	
-	TN* tmp1_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	if (!is_double) {
-	  printf("heihei~");
-	  Expand_Convert_Length(tmp1_tn, numer_tn, Gen_Literal_TN(32, 4), MTYPE_I8, TRUE, ops);
-	} else
-	  Expand_Copy( tmp1_tn, numer_tn, mtype, ops);
-	printf("heihei2~");
-	TN* tmp2_tn = Build_TN_Of_Mtype(mtype);
-	Expand_Shift(tmp2_tn, numer_tn, Gen_Literal_TN(shift_amt, 4), 
-		     mtype, shift_aright, ops);
-	mult_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	d_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Immediate (d_tn, Gen_Literal_TN (m, 8), is_signed, ops);
-	if (!is_double) {
-	  Expand_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
-	  shift_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	  Expand_Shift(shift_tn, mult_tn, Gen_Literal_TN(32, 4), 
-		       MTYPE_I8, shift_lright, ops);
-	} else {
-	  Expand_High_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
-	  shift_tn = mult_tn;
-	}
-	TN* tmp3_tn = Build_TN_Like(result);
-	if (s) 
-	  Expand_Shift(tmp3_tn, shift_tn, Gen_Literal_TN(s, 4), 
-		       mtype, shift_aright, ops);
-	else
-	  Expand_Copy(tmp3_tn, shift_tn, mtype, ops);
-
-	if( e < 0 ) 
-	  // Bug 1214
-	  Expand_Sub(result, tmp2_tn, tmp3_tn, mtype, ops);
-	else
-	  Expand_Sub(result, tmp3_tn, tmp2_tn, mtype, ops);
-       }
-	return TRUE; 
-    } else if ((UINT)denom_val < 0x80000000UL) { // !is_signed and special case
-      UINT l, n, t, d, m, s, a, r;
-      UINT64 m_low, m_high, j, k;
-
-      n = 0;
-      t = d = (UINT)denom_val;
-
-      while (!(t & 1)) {
-	t >>= 1;
-	n++;
-      }
-      
-      l = log2(t) + 1;
-      j = (((UINT64)(0xffffffff)) % ((UINT64)(t)));
-      k = (((UINT64)(1)) << (32 + l)) / ((UINT64)(0xffffffff - j));
-      m_low = (((UINT64)(1)) << (32 + l)) / t;
-      m_high = ((((UINT64)(1)) << (32 + l)) + k) / t;
-      while (((m_low >> 1) < (m_high >> 1)) && (l > 0)) {
-	m_low = m_low >> 1;
-	m_high = m_high >> 1;
-	l = l - 1;
-      }
-      if ((m_high >> 32) == 0) {
-	m = ((UINT)(m_high));
-	s = l;
-	a = 0;
-      }
-      else {
-	s = log2(t);
-	m_low = (((UINT64)(1)) << (32 + s)) / ((UINT64)(t));
-	r = ((UINT)((((UINT64)(1)) << (32 + s)) % ((UINT64)(t))));
-	m = (r < ((t >> 1) + 1)) ? ((UINT)(m_low)) : ((UINT)(m_low)) + 1;
-	a = 1;
-      }
-
-      s += n;
-
-      if (a) {
-	TN* tmp1_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	TN* tmp2_tn = Build_TN_Like(result);
-	TN* tmp3_tn = Build_TN_Like(result);
-	TN* tmp4_tn = Build_TN_Like(result);
-	m <<= 1;
-	m ++;
-	d_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Immediate(d_tn, Gen_Literal_TN (m, 8), is_signed, ops);
-	mult_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Multiply(mult_tn, numer_tn, d_tn, MTYPE_I8, ops);	
-	Expand_Shift(tmp1_tn, mult_tn, Gen_Literal_TN(32, 4), 
-		     MTYPE_I8, shift_lright, ops);	
-	Expand_Sub(tmp2_tn, numer_tn, tmp1_tn, mtype, ops);
-	Expand_Shift(tmp3_tn, tmp2_tn, Gen_Literal_TN(1, 4), 
-		     mtype, shift_lright, ops);		
-	Expand_Add(tmp4_tn, tmp3_tn, tmp1_tn, mtype, ops);
-	Expand_Shift(result, tmp4_tn, Gen_Literal_TN(s, 4), 
-		     mtype, shift_lright, ops);		
-      } else {
-	TN* tmp1_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	d_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Immediate (d_tn, Gen_Literal_TN (m, 8), is_signed, ops);
-	mult_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Multiply(mult_tn, numer_tn, d_tn, MTYPE_I8, ops);	
-	Expand_Shift(tmp1_tn, mult_tn, Gen_Literal_TN(32, 4), 
-		     MTYPE_I8, shift_lright, ops);
-	Expand_Shift(result, tmp1_tn, Gen_Literal_TN(s, 4), 
-		     mtype, shift_lright, ops);
-      }
-      return TRUE;
-    } 
-  }
-  return TRUE;
 }
 
 
@@ -596,7 +386,7 @@ Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   }
 
 
-  if(Is_Power_Of_2(src2_val,mtype))
+  if(const_src2 && Is_Power_Of_2(src2_val,mtype))
   {
         Expand_Power_Of_2_Mod(result,src1,src2_val,mtype,ops);
         return;
@@ -673,8 +463,7 @@ Expand_Rem (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     const_src2 = FALSE;
       //FmtAssert (FALSE, ("Division by zero detected.\n"));
   }
-
-  if(Is_Power_Of_2(src2_val, mtype))
+  if(const_src2 && Is_Power_Of_2(src2_val, mtype))
   {
     Expand_Power_Of_2_Rem(result,src1,src2_val,mtype,ops);
     return;
@@ -734,7 +523,7 @@ Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
     if (MTYPE_is_unsigned(mtype)) div = TOP_divwu;
     Build_OP(div, result_new, src1, src2, ops);
   }
-  if(Is_Power_Of_2(src2_val, mtype))
+  if(const_src2 && Is_Power_Of_2(src2_val, mtype))
   {
     Expand_Power_Of_2_Rem(result2_new, src1,src2_val,mtype,ops);
   } else {
