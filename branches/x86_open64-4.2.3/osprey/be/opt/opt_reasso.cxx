@@ -2324,7 +2324,8 @@ toplvl_bb (CFG* acfg, BB_NODE *bb, OPT_STAB * optstab) {
                     continue;
                 if (WN_desc(wn) != MTYPE_V16F8 
                         && WN_desc(wn) != MTYPE_V16F4
-                        && WN_desc(wn) != MTYPE_F8) 
+                        && WN_desc(wn) != MTYPE_F8 
+                        && WN_desc(wn) != MTYPE_F4) 
                     continue;
                 if(whirlmap.find(WN_ver(wn)) 
                             == whirlmap.end()) {
