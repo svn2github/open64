@@ -39,7 +39,6 @@ VER_MAJOR="4"
 VER_MINOR="2"
 #PATCH_LEVEL=""
 VERSION="${OPEN64_FULL_VERSION:-${VER_MAJOR}.${VER_MINOR}}"
-HOST_MACHINE_TYPE=`uname -m`
 
 PREBUILT_LIB="./lib"
 PREBUILT_BIN="./bin"
@@ -225,7 +224,7 @@ INSTALL_FE () {
     INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
     # GNU 4.2.0 based FE
     INSTALL_EXEC_SUB ${AREA}/wgen_4_2_0/wgen42 ${PHASEPATH}/wgen42
-    LIBEXEC=libexec/gcc/${HOST_MACHINE_TYPE}-redhat-linux/4.2.0
+    LIBEXEC=libexec/gcc/${PHASE_DIR_PREFIX}-redhat-linux/4.2.0
     (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1 cc142)
     (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1plus cc1plus42)
 
