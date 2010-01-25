@@ -1,0 +1,271 @@
+#ifndef sparse_bitset__INCLUDED
+#define sparse_bitset__INCLUDED
+
+#include <limits.h>
+#include <assert.h>
+#include "cxx_memory.h"
+
+/* Fundamental storage type for bitmap.  */
+typedef unsigned long BITMAP_WORD;
+
+#define BITMAP_WORD_BITS (sizeof(BITMAP_WORD) * CHAR_BIT)
+
+/* Number of words to use for each element in the linked list.  */
+
+#define BITMAP_ELEMENT_WORDS ((128 + BITMAP_WORD_BITS - 1) / BITMAP_WORD_BITS)
+
+/* Number of bits in each actual element of a bitmap.  */
+
+#define BITMAP_ELEMENT_ALL_BITS (BITMAP_ELEMENT_WORDS * BITMAP_WORD_BITS)
+
+template <class T>
+class SparseBitSet
+{
+private:
+
+  typedef struct SparseBitSetElementDef
+  {
+    SparseBitSetElementDef *_next;           // Next element
+    SparseBitSetElementDef *_prev;           // Prev element
+    UINT32 _idx;                             // index of this element
+    BITMAP_WORD _bits[BITMAP_ELEMENT_WORDS]; // Bits that are set
+  } SparseBitSetElement;
+
+  class SparseBitSetIterator 
+  {
+  public:
+    SparseBitSetIterator(const SparseBitSet<T> *bitSet, T minIdx) 
+    {
+      UINT32 startBit = (UINT32)minIdx;
+      _currElem = bitSet->_firstElem;
+      // Advance _currElem until it is not before the block containing 
+      // startBit.
+      while (1) {
+        if (!_currElem) {
+          _currElem = &zeroBitElem;
+          break;
+        }
+        if (_currElem->_idx >= startBit / BITMAP_ELEMENT_ALL_BITS)
+          break;
+        _currElem = _currElem->_next;
+      }
+
+      // We might have gone past the start bit, so reinitialize it.
+      if (_currElem->_idx != startBit / BITMAP_ELEMENT_ALL_BITS)
+        startBit = _currElem->_idx * BITMAP_ELEMENT_ALL_BITS;
+
+      // Initialize for what is now startBit.
+      _wordNum = startBit / BITMAP_WORD_BITS % BITMAP_ELEMENT_WORDS;
+      _bits = _currElem->_bits[_wordNum];
+      _bits >>= startBit % BITMAP_WORD_BITS;
+
+      // If this word is zero, we must make sure we're not pointing at the
+      // first bit, otherwise our incrementing to the next word boundary
+      // will fail.  It won't matter if this increment moves us into the
+      // next word. 
+      startBit += !_bits;
+      _bitNum = startBit;
+    }
+
+    bool hasNext() 
+    {
+      // If our current word is nonzero, it contains the bit we want. 
+      if (_bits) {
+      next_bit:
+        while (!(_bits & 1)) {
+          _bits >>= 1;
+          _bitNum += 1;
+        }
+        return true;
+      }
+
+      // Round up to the word boundary.  We might have just iterated past
+      // the end of the last word, hence the -1.  It is not possible for
+      // bit_no to point at the beginning of the now last word.  */
+      _bitNum = ((_bitNum + BITMAP_WORD_BITS - 1)
+                / BITMAP_WORD_BITS * BITMAP_WORD_BITS);
+      _wordNum++;
+
+      while (1) {
+        // Find the next nonzero word in this elt.
+        while (_wordNum != BITMAP_ELEMENT_WORDS) {
+          _bits = _currElem->_bits[_wordNum];
+          if (_bits)
+            goto next_bit;
+          _bitNum += BITMAP_WORD_BITS;
+          _wordNum++;
+        }
+
+        // Advance to the next element.  */
+        _currElem = _currElem->_next;
+        if (!_currElem)
+          return false;
+        _bitNum = _currElem->_idx * BITMAP_ELEMENT_ALL_BITS;
+        _wordNum = 0;
+      }
+    }
+
+    // Preincrement
+    inline SparseBitSetIterator& operator++()
+    {
+      _bits >>= 1;
+      _bitNum += 1;
+      return *this;
+    }
+
+    // Postincrement.
+    inline SparseBitSetIterator operator++(int) 
+    {
+      SparseBitSetIterator tmp = *this;
+      ++*this;
+      return tmp;
+    }
+
+    T operator*() const 
+    {
+      return (T)_bitNum;
+    }
+      
+  private:
+    SparseBitSetElement *_currElem; // Pointer to the current bitmap element
+    UINT32 _wordNum;                // Word within the current element.
+    BITMAP_WORD _bits;              // Contents of the actually processed word.
+                                    // When finding next bit it is shifted 
+                                    // right, so that the actual bit is always 
+                                    // the least significant bit of ACTUAL.
+    UINT32 _bitNum;                 // Current bit number
+  };
+
+  SparseBitSetElement *allocElem() 
+  {
+    SparseBitSetElement *ptr =
+                         TYPE_MEM_POOL_ALLOC(SparseBitSetElement, _memPool);
+    ptr->_next = ptr->_prev = NULL;
+    memset(ptr->_bits, 0, sizeof(ptr->_bits));
+    return ptr;
+  }
+
+  SparseBitSetElement *findElem(UINT32 bit)
+  {
+    SparseBitSetElement *element;
+    UINT32 elemIdx = bit / BITMAP_ELEMENT_ALL_BITS;
+
+    if (_currElem == 0 || _currIdx == elemIdx)
+      return _currElem;
+
+    if (_currIdx < elemIdx)
+      // elemIdx is beyond _currIdx. Search from _currElem forward. 
+      for (element = _currElem;
+           element->_next != 0 && element->_idx < elemIdx;
+           element = element->_next)
+        ;
+
+    else if (_currIdx / 2 < elemIdx)
+      // elemIdx is less than _currIdx and closer to _currIdx than to 0
+      // Search from _currElem backward. 
+      for (element = _currElem;
+           element->_prev != 0 && element->_idx > elemIdx;
+           element = element->_prev)
+        ;
+
+    else
+      // elemIdx is less than _currIdx and closer to 0 than to
+      // _currIdx.  Search from _firstElem forward. 
+      for (element = _firstElem;
+           element->_next != 0 && element->_idx < elemIdx;
+           element = element->_next)
+        ;
+
+    // `element' is the nearest to the one we want.  If it's not the one we
+    //  want, the one we want doesn't exist.
+    _currElem = element;
+    _currIdx = element->_idx;
+    if (element != 0 && element->_idx != elemIdx)
+      element = 0;
+
+    return element;
+  }
+
+  void elementLink(SparseBitSetElement *element)
+  {
+    SparseBitSetElement *ptr;
+
+    // If this is the first and only element, set it in.
+    if (_firstElem == 0) {
+      element->_next = element->_prev = NULL;
+      _firstElem = element;
+    }
+
+    // If this index is less than that of the current element, it goes someplace
+    // before the current element. 
+    else if (element->_idx < _currIdx) {
+      for (ptr = _currElem; ptr->_prev != 0 && ptr->_prev->_idx > element->_idx;
+           ptr = ptr->_prev)
+        ;
+      if (ptr->_prev)
+        ptr->_prev->_next = element;
+      else
+        _firstElem = element;
+
+      element->_prev = ptr->_prev;
+      element->_next = ptr;
+      ptr->_prev = element;
+    }
+
+    // Otherwise, it must go someplace after the current element.
+    else {
+      for (ptr = _currElem; ptr->_next != 0 && ptr->_next->_idx < element->_idx;
+           ptr = ptr->_next)
+        ;
+      if (ptr->_next)
+        ptr->_next->_prev = element;
+
+      element->_next = ptr->_next;
+      element->_prev = ptr;
+      ptr->_next = element;
+    }
+
+    // Set up so this is the first element searched.
+    _currElem = element;
+    _currIdx = element->_idx;
+  }
+
+  SparseBitSetElement *_firstElem; // First element in linked list.
+  SparseBitSetElement *_currElem;  // Last element looked at
+  UINT32 _currIdx;                 // Index of last element looked at.
+  MEM_POOL *_memPool;              // Pool to allocate elements from.
+
+  static SparseBitSetElement zeroBitElem;
+
+public:
+  typedef SparseBitSetIterator iterator;
+
+  SparseBitSet(MEM_POOL *memPool = Malloc_Mem_Pool) :
+    _memPool(memPool), _firstElem(NULL), _currElem(NULL)
+  {
+    T obj;
+    assert(sizeof((UINT32)obj) <= sizeof(UINT32));
+  }
+
+  void setBit(T idx)
+  {
+    UINT32 bit = (UINT32)idx;
+    SparseBitSetElement *ptr = findElem(bit);
+    UINT32 wordNum = bit / BITMAP_WORD_BITS % BITMAP_ELEMENT_WORDS;
+    unsigned bitNum  = bit % BITMAP_WORD_BITS;
+    BITMAP_WORD bitVal = ((BITMAP_WORD) 1) << bitNum;
+
+    if (ptr == NULL) {
+      ptr = allocElem();
+      ptr->_idx = bit / BITMAP_ELEMENT_ALL_BITS;
+      ptr->_bits[wordNum] = bitVal;
+      elementLink(ptr);
+    } else
+      ptr->_bits[wordNum] |= bitVal;
+  }
+
+};
+
+
+
+#endif // sparse_bitset__INCLUDED
