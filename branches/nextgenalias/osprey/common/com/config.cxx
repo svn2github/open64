@@ -1744,6 +1744,7 @@ Configure_Alias_Options( OPTION_LIST *olist )
   OPTION_LIST *ol;
   for (ol = olist; ol != NULL; ol = OLIST_next(ol)) {
     char *val = OLIST_val(ol);
+    fprintf(stderr,"Found alias=%s\n",val);
     INT len = strlen (val);
     if (strncasecmp( val, "any", len) == 0) {
       Alias_Pointer_Parms = TRUE;	/* observed by Fortran programs */
@@ -1804,6 +1805,8 @@ Configure_Alias_Options( OPTION_LIST *olist )
       Alias_F90_Pointer_Unaliased = TRUE;
     } else if (strncasecmp( val, "f90_pointer_alias", len) == 0) {
       Alias_F90_Pointer_Unaliased = FALSE;
+    } else if (strncasecmp( val, "nystrom", len) == 0) {
+      Alias_Nystrom_Analyzer = TRUE;
     } else {
       ErrMsg ( EC_Inv_OPT, "alias", val );
     }

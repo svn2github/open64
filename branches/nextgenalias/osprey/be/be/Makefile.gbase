@@ -504,6 +504,7 @@ BE_COM_CXX_SRCS += \
 endif
 
 BE_COM_PCH_CXX_SRCS = \
+  alias_analyzer.cxx    \
   be_symtab.cxx		\
   data_layout.cxx	\
   dep_graph.cxx		\
@@ -511,6 +512,7 @@ BE_COM_PCH_CXX_SRCS = \
   emulate.cxx		\
   fb_cfg.cxx		\
   fb_whirl.cxx		\
+  nystrom_alias_analyzer.cxx \
   opt_alias_mgr.cxx	\
   opt_alias_rule.cxx	\
   opt_goto.cxx		\

@@ -116,6 +116,8 @@ static BOOL Alias_Pointer_Types_Set = FALSE;	/* alias=typed set? */
 static BOOL Alias_Not_In_Union_Set  = FALSE;	/* alias=nounion set? */
 BOOL  Alias_F90_Pointer_Unaliased = FALSE;  /* Are F90 pointers unaliased? */
 
+BOOL  Alias_Nystrom_Analyzer = FALSE;  /* Using Nystrom-based alias analysis? */
+
 /***** Alignment control *****/
 BOOL Align_Object = TRUE;	/* Try to improve alignment of objects */
 BOOL Align_Padding = FALSE;	/* Pad objects to natural alignment */

@@ -86,7 +86,9 @@ static char *opt_alias_mgrrcs_id = 	opt_alias_mgr_INCLUDED"$Revision: 1.2 $";
 #include "mempool.h"
 #include "tracing.h"			// for TFile
 
+
 class ALIAS_CLASSIFICATION;
+class AliasAnalyzer;
 
 class ALIAS_MANAGER {
 
@@ -101,6 +103,7 @@ private:
   IDTYPE                _no_alias_info_id;
   ALIAS_CONTEXT         _pu_context;      // bitset of accepted alias rule
   ALIAS_RULE            *_rule;
+  AliasAnalyzer         *_alias_analysis;
 
   ALIAS_MANAGER(const ALIAS_MANAGER&);
   ALIAS_MANAGER& operator = (const ALIAS_MANAGER&);

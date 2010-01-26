@@ -116,6 +116,7 @@ extern BOOL Alias_Pointer_Cray;         /* Cray pointer semantics? */
 extern BOOL Alias_Common_Scalar;        /* Distinguish scalar from other array
                                            in a common block */
 extern BOOL  Alias_F90_Pointer_Unaliased;  /* Are F90 pointers unaliased? */
+extern BOOL Alias_Nystrom_Analyzer;     /* Are we using Nystrom alias analysis? */
 
 /***** Expression folding options *****/
 extern BOOL Enable_Cfold_Float;		/* FP constant folding? */

@@ -94,6 +94,7 @@ static char *rcs_id = 	opt_alias_mgr_CXX"$Revision: 1.7 $";
 #include "targ_sim.h"
 #include "glob.h"
 #include "pu_info.h"
+#include "alias_analyzer.h"
 
 static BOOL in_ipa_pu_list(char *function_name);
 static BOOL in_pure_call_list(char *function_name);
@@ -470,6 +471,10 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
   npt->Set_id(_no_alias_info_id);
   npt->Init(); 
   npt->Set_expr_kind(EXPR_IS_ADDR);
+
+  // Here we create the AliasAnalyzer object, which serves as the
+  // interface to the selected alias analysis algorithm.
+  _alias_analysis = AliasAnalyzer::Create_Alias_Analyzer();
 }
 
 // ALIAS MANAGER destructor.
