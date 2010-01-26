@@ -42,7 +42,6 @@
 
 //-*-c++-*-
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 
 #ifndef FRONT_END

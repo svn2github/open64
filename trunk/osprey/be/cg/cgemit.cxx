@@ -62,7 +62,6 @@
  */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <ctype.h>
 #include <fcntl.h>

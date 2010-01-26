@@ -82,7 +82,6 @@
 
 
 #define USE_STANDARD_TYPES 1
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <limits.h>
 #include <fp_class.h>

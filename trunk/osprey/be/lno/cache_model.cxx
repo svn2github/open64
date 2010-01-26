@@ -1384,7 +1384,6 @@
 ***        But if we don't block, we model 100!
 **/
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"

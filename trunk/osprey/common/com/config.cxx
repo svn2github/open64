@@ -76,7 +76,6 @@
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config.cxx,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef FRONT_END	/* For setting fullwarn, woff in front end */
 #ifndef FRONT_F90

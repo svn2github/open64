@@ -301,7 +301,6 @@
 
 #define opt_main_CXX	"opt_main.cxx"
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #define USE_STANDARD_TYPES
 #include <alloca.h>

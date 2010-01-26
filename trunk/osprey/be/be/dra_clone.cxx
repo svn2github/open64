@@ -54,7 +54,6 @@
 
 #define ONST(x, y) (y)
 
-#define __STDC_LIMIT_MACROS
 #include <alloca.h>             // alloca
 #include <unistd.h>             // write
 #include <stdint.h>

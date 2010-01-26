@@ -85,7 +85,6 @@
 
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #define USE_STANDARD_TYPES 1
 #include <limits.h>

@@ -69,7 +69,6 @@
 static char *rcs_id = 	opt_util_CXX"$Revision: 1.8 $";
 #endif /* _KEEP_RCS_ID */
 
-#define __STDC_LIMIT_MACROS
 #include <stdarg.h>
 #include <stdio.h>
 #include <strings.h>

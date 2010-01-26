@@ -45,7 +45,6 @@
 //  extern void IPL_Finalize_Projected_Regions(..)
 //
 //--------------------------------------------------------------------------
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>

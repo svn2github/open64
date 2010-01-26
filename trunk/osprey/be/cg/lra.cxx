@@ -64,7 +64,6 @@
 #endif // USE_PCH
 #pragma hdrstop
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 

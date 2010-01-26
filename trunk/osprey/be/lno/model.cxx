@@ -319,7 +319,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"

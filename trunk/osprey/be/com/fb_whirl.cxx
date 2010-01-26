@@ -71,7 +71,6 @@
 #pragma hdrstop
 #define USE_STANDARD_TYPES
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <cmplrs/fb.h>
 #include <stdlib.h>

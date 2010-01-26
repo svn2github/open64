@@ -38,7 +38,6 @@
 */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <limits.h>                     // for PATH_MAX
 #include <unistd.h>                     // for read(2)/write(2)

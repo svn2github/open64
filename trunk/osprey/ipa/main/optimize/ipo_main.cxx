@@ -69,7 +69,6 @@
 // the full (old symtab) version of the file.
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>

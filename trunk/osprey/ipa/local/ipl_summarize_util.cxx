@@ -49,7 +49,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>

@@ -39,7 +39,6 @@
 
 /* CGEXP routines for expanding divide and rem */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <signal.h>
 #include "defs.h"

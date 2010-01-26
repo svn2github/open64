@@ -54,7 +54,6 @@
 const static char *rcs_id =   mat_textra_CXX "$Revision: 1.6 $";
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "lnopt_main.h"
 #include "mat.h"

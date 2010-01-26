@@ -87,7 +87,6 @@
 
 // For the interface to clients, see opt_alias_class.h
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <set>
 #include <math.h>

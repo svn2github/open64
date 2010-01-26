@@ -116,7 +116,6 @@
 #pragma hdrstop
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "erglob.h"
