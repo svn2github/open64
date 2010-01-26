@@ -299,12 +299,6 @@ RESTRICTED_MAP::Verify_info(const WN        *const wn,
       // correctly, LNO removes entries from the restricted map (via
       // Note_Invalid_Based_Symbol) under some conditions (like when
       // it distributes/rehapes an array).
-#if 0
-      Is_True(!pt->Unique_pt(),
-	      ("RESTRICTED_MAP: Spurious Unique_pt()"));
-      Is_True(!pt->Restricted(),
-	      ("RESTRICTED_MAP: Spurious Restricted()"));
-#endif
     }
   }
 #endif
@@ -379,11 +373,6 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
   MEM_POOL_Initialize(&_mem_pool, "ALIAS_pool", FALSE);
   MEM_POOL_Push(&_mem_pool);
 
-#if 0
-  _invalid_ip_alias_classes =
-    CXX_NEW(vector<IDTYPE, mempool_allocator<IDTYPE> > (&_mem_pool),
-	    &mem_pool);
-#else
   // Note: C++ is broken in that it uses the same preprocessor as C,
   // and the C preprocessor sees '<' as "less than" instead of "begin
   // template argument". Therefore it seems we can't use CXX_NEW
@@ -393,7 +382,6 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
   typedef vector<IDTYPE, mempool_allocator<IDTYPE> > STUPID_COMPILER;
   _invalid_ip_alias_classes =
     CXX_NEW(STUPID_COMPILER(&_mem_pool), &_mem_pool);
-#endif
 
   // initialized default context
   ALIAS_CONTEXT ac = (DEFAULT_COMMON_RULES | DEFAULT_ANALYSIS_RULES | DEFAULT_COMPATIABILITY_RULES);

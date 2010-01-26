@@ -279,11 +279,7 @@ ipa_driver (INT argc, char **argv)
 #else
     IPA_Enable_AutoGnum = TRUE;
 #endif
-#if 1
     IPA_Enable_DST = FALSE;
-#else
-    IPA_Enable_DST = TRUE;
-#endif
 
     Process_IPA_Options (argc, argv);
 

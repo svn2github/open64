@@ -925,13 +925,6 @@ void Replace_Symbol(WN* wn, SYMBOL symold, SYMBOL symnew,
 void Replace_Symbols(WN* wn, SYMBOL* sold, SYMBOL* snew, INT count,
                      WN** alias_wn, WN** ancestors)
 {
-#if 0        // same thing, but much less efficient.  Good for testing though.
-  for (INT i = 0; i < count; i++) {
-    WN* al = alias_wn ? alias_wn[i] : NULL;
-    WN* an = ancestors ? ancestors[i] : NULL;
-    Replace_Symbol(wn, sold[i], snew[i], al, an);
-  }
-#else
   OPCODE op = WN_opcode(wn);
 
   if (op == OPC_BLOCK) {
@@ -1008,7 +1001,6 @@ void Replace_Symbols(WN* wn, SYMBOL* sold, SYMBOL* snew, INT count,
     for (INT k = 0; k < WN_kid_count(wn); k++)
       Replace_Symbols(WN_kid(wn,k), sold, snew, count, alias_wn, ancestors);
   }
-#endif
 }
 
 // Add_To_Symbol(): recursively replace st with st+i
@@ -2254,13 +2246,6 @@ BOOL Solve_For(WN* wn_top, const SYMBOL& sym)
 
  out:
 
-#if 0
-  //TODO: bug in simplifier, and need guarantee it won't screw up DU info.
-  //apparently there's a run-time switch for that.
-  BOOL simp_state_save = WN_Simplifier_Enable(TRUE);
-  r = WN_Simplify_Tree(r);
-  (void) WN_Simplifier_Enable(simp_state_save);
-#endif
 
   WN_kid0(wn_top) = l;
   WN_kid1(wn_top) = r;
@@ -2700,13 +2685,6 @@ static BOOL LNO_Check_Du_HT(WN* orig,
                             WN* copy,
                             HASH_TABLE<WN*,WN*>* ht)
 {
-#if 0
-  FmtAssert(orig && copy,
-            ("lnoutils detects PREOPT II failure: missing orig or copy"));
-  FmtAssert(WN_opcode(orig) == WN_opcode(copy),
-	    ("lnoutils detects PREOPT II failure: orig op=%d copy op=%d",
-             WN_opcode(orig), WN_opcode(copy)));
-#else
   if (orig == NULL || copy == NULL) {
     fprintf(stderr,
             "lnoutils detects PREOPT II failure: missing orig or copy\n");
@@ -2718,7 +2696,6 @@ static BOOL LNO_Check_Du_HT(WN* orig,
             WN_opcode(orig), WN_opcode(copy));
     return FALSE;
   }
-#endif
 
   OPCODE	opc = WN_opcode(orig);
   OPERATOR	opr = OPCODE_operator(opc);
@@ -2767,10 +2744,6 @@ static BOOL LNO_Check_Du_Check(HASH_TABLE<WN*,WN*>* ht)
 
       DEF_LIST* dl = Du_Mgr->Ud_Get_Def(copy);
       INT dl_len = dl == NULL ? 0 : dl->Len();
-#if 0
-      // TODO: buggy preopt forces us to not do the FmtAssert
-      FmtAssert(dl_len, ("Missing def list in copy"));
-#else
       if (dl_len == 0) {
         WN *cp;
         for (cp = LWN_Get_Parent(copy); cp; cp = LWN_Get_Parent(cp))
@@ -2778,7 +2751,6 @@ static BOOL LNO_Check_Du_Check(HASH_TABLE<WN*,WN*>* ht)
             break;
         FmtAssert(cp, ("Missing def list in copy"));
       }
-#endif
 
       DEF_LIST* dl2 = Du_Mgr->Ud_Get_Def(orig);
       INT dl2_len = dl2 == NULL ? 0 : dl2->Len();

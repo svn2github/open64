@@ -907,12 +907,6 @@ IPL_Print_One_Access(FILE *fp, WN* wn)
 	WN_MAP_Get(IPL_info_map,wn);
       fprintf(fp,"The do loop info is \n"); dli->Print(fp);
     } 
-#if 0
-  else if (WN_opcode(wn) == OPC_IF) 
-    {
-      IF_INFO *info = (IF_INFO *) WN_MAP_Get(IPL_info_map,wn);
-    }
-#endif 
   else if (WN_operator(wn) == OPR_ARRAY) 
     {
       ACCESS_ARRAY *array = (ACCESS_ARRAY *) WN_MAP_Get(IPL_info_map,wn);

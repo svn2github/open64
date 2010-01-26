@@ -150,10 +150,6 @@ extern void ARA_Initialize_Loops(WN* wn,
 		                 ARA_LOOP_INFO *parent_info)
 {
 
-#if 0
-  fprintf(stdout, "Visiting %s ", OPERATOR_name(WN_operator(wn)));
-  Dump_WN(wn, stdout, 3, 0, 3, NULL, NULL, LWN_Get_Parent(wn));
-#endif
 
   if (WN_operator(wn) == OPR_ILOAD) {
     if (WN_operator(WN_kid0(wn)) == OPR_ARRAY) {
@@ -296,14 +292,6 @@ void Perform_ARA_and_Parallelization(PU_Info* current_pu,
 void ARA_Walk_Loops(ARA_LOOP_INFO *root_info)
 {
 
-#if 0
-  ARA_LOOP_INFO_ST & inner_loops = root_info->Children();
-
-  // Process the loops if any
-  for (INT i = 0; i < inner_loops.Elements(); ++i) {
-    inner_loops.Bottom_nth(i)->Walk_Loop();
-  }
-#endif
 
   root_info->Default_For_Bad_Loop();
 

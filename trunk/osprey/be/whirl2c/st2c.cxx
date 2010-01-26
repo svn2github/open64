@@ -413,19 +413,6 @@ ST2C_Define_A_Common_Block(TOKEN_BUFFER  tokens,
       }
    }
 
-#if 0 // commented out from PUC   
-   /* Prepend the union declaration before the members */
-   Prepend_Indented_Newline(union_tokens, 1/*Lines between decls*/);
-   Prepend_Token_Special(union_tokens, '{');
-   Prepend_Token_String(union_tokens, base_name);
-   Prepend_Token_String(union_tokens, "union");
-   Decrement_Indentation();
-
-   /* Append the union definition after the members */
-   Append_Indented_Newline(union_tokens, 1/*Lines between decls*/);
-   Append_Token_Special(union_tokens, '}');
-   Append_Token_String(union_tokens, base_name);
-#endif
 
    /* Do initialization */
    if (COMMON_BLOCK_initialized(common) != NULL)
@@ -456,21 +443,9 @@ ST2C_Get_Common_Block_Name(const ST *st)
 					 st, ST_type(st));
    base_name = WHIRL2C_make_valid_c_name(COMMON_BLOCK_name(common));
 
-#if 1
    //WEI: Since we're not putting global type decls in unions anymore,
    //name should be identical to the symbol's name(no need to append ".u0")
    return base_name;
-#else
-   ordinal = 0;
-   for (ty2c_list_iter = COMMON_BLOCK_variations(common);
-	ty2c_list_iter != ty2c_list;
-	ty2c_list_iter = ty2c_list_iter->next)
-   {
-      ordinal++;
-   }
-   return Concat3_Strings(base_name, ".", 
-			  COMMON_BLOCK_MEMBER_NAME(ordinal));
-#endif // 1
 
 } /* ST2C_Get_Common_Block_Name */
 

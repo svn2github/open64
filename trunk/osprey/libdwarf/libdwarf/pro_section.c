@@ -1378,26 +1378,6 @@ _dwarf_pro_generate_debugframe(Dwarf_P_Debug dbg, Dwarf_Error * error)
 		    return 0;
 		}
 	    }
-#if 0
-	    if (curinst->dfp_sym_index) {
-		int res;
-
-		res = dbg->de_reloc_name(dbg,
-					 DEBUG_FRAME,
-					 (data - fde_start_point)
-					 + cur_off + uwordb_size,	/* r_offset 
-									 */
-					 curinst->dfp_sym_index,
-					 dwarf_drt_data_reloc,
-					 upointer_size);
-		if (res != DW_DLV_OK) {
-		    {
-			_dwarf_p_error(dbg, error, DW_DLE_ALLOC_FAIL);
-			return (0);
-		    }
-		}
-	    }
-#endif
 	    if (DW_CFA_advance_loc4 == db) {
 		data[0] = 0;
 		data[1] = 0;

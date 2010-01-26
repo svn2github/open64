@@ -2815,35 +2815,6 @@ void RG::Print(FILE* f) const
   Rglist.Print(f);
   fprintf(f, "}\n");
 
-#if 0
-  if (C) {
-    fprintf(f, "C:");
-    INT i;
-    for (i = 0; i < Elements; i++)
-      fprintf(f, " %d", C[i]);
-    fprintf(f, "\n");
-  }
-  if (H) {
-    fprintf(f, "H:\n");
-    H->Print(f);
-  }
-  if (H_lu) {
-    fprintf(f, "H_lu:\n");
-    H_lu->Print(f);
-  }
-  if (H_lu_s) {
-    fprintf(f, "H_lu_s:\n");
-    H_lu_s->Print(f);
-  }
-  if (KerH) {
-    fprintf(f, "KerH:");
-    KerH->Print(f);
-  }
-  if (OKerH) {
-    fprintf(f, "OKerH:");
-    OKerH->Print(f);
-  }
-#endif
 }
 
 //---------------------------------------------------------------------------
@@ -3684,12 +3655,6 @@ extern COMPUTE_FOOTPRINT_RVAL Compute_Footprint(
               f2 = f2 ? FORMULA::Add(f2, fk) : fk;
             }
             if (f2) {
-#if 0         // TODO: If I were more careful, I'd know when exactly to do
-              // this.  For now, it causes f2 to potentially go negative or
-              // zero, which are disasters.
-              if (p > 1)
-                f2 = FORMULA::Sub(f2, FORMULA::Const(p-1));
-#endif
               f = f ? FORMULA::Mul(f, f2) : f2;
             }
           }

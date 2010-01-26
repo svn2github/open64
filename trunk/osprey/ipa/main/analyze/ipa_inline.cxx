@@ -74,9 +74,6 @@
 #include "ipa_summary.h"
 #include "ipc_symtab_merge.h"		// IPC_GLOBAL_IDX_MAP
 #include "ir_reader.h"                  // fdump_tree
-#if 0
-#include "ipo_defs.h"			// IPA_NODE_CONTEXT
-#endif
 
 #include "symtab_access.h"
 
@@ -1164,14 +1161,7 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 	}
 #endif // KEY
 
-#if 0
-        else
-    	    return FALSE;
-#endif
     }
-#if 0
-    else { 	
-#endif
 	
         TYPE_ID desc = BASETYPE(ty_formal);
 	if ((desc == 0) && (TY_kind (ty_formal) == KIND_FUNCTION)) {
@@ -1203,9 +1193,6 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
         if (IPO_Types_Are_Compatible(ltype, rtype))
 #endif
 	    return TRUE;
-#if 0
-    }
-#endif
 
     return FALSE;
 }
@@ -1245,9 +1232,6 @@ param_types_are_compatible (IPA_NODE* caller_node, IPA_NODE* callee_node, IPA_ED
     BOOL lang = ((callee_node->Summary_Proc()->Get_lang() == LANG_F77) || 
     		(callee_node->Summary_Proc()->Get_lang() == LANG_F90));
 
-#if 0
-    IPA_NODE_CONTEXT context(callee_node);
-#endif
 
     for (INT i=0; i<num_formals; ++i) {
 	TY_IDX ty_formal = formals[i].Get_ty();
@@ -1553,17 +1537,6 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	    callee->Set_Recursive_In_Edge();
     }
 #endif
-#if 0
-    // caller and callee are not from the same partition AND the
-    // callee is not from the COMMON partition (partiton with value 0)
-    // or the caller is from the COMMON partition but not the callee
-    if ((IPA_Enable_GP_Partition ||
-	 (IPA_Enable_SP_Partition && (IPA_Space_Access_Mode == SAVE_SPACE_MODE))) &&
-	    ((caller->Get_partition_group() == COMMON_PARTITION) || 
-	    (callee->Get_partition_group() != COMMON_PARTITION)) && 
-	    (caller->Get_partition_group() != callee->Get_partition_group())) 
-	return FALSE;
-#endif
 
     if (callee->Should_Be_Skipped()) {
 	reason = "callee is skipped";
@@ -1837,11 +1810,7 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	return FALSE;
     } 
 
-#if 0 // def _STANDALONE_INLINER
-    return result;
-#else
     return check_size_and_freq (ed, caller, callee, cg);
-#endif // _STANDALONE_INLINER
 } // do_inline
 
 
@@ -2009,10 +1978,6 @@ Analyze_call (IPA_NODE* caller, IPA_EDGE* edge, const IPA_CALL_GRAPH* cg)
         if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
             fprintf(Verbose_inlining,"NNN\t(%p)%-20s -------<%p>--------> (%p)%-20s\n",caller,caller->Name(),edge,callee,callee->Name());
 	}
-#if 0
-	if (callee->Has_Must_Inline_Attrib())
-	    callee->Clear_Must_Inline_Attrib ();
-#endif
 	if (callee->Has_Inline_Attrib())
 	    callee->Clear_Inline_Attrib ();
 	Total_Not_Inlined++;

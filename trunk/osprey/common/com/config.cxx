@@ -670,10 +670,6 @@ static OPTION_DESC Options_LANG[] = {
       0, 0, 0,	&CXX_Exceptions_On,	&CXX_Exceptions_Set,
       "C++: enable exceptions" },
 #endif // !KEY
-#if 0 // remove it till we have a robust design 
-    { OVK_BOOL, OV_SHY,		FALSE, "alias_const",		"",
-      0, 0, 0,  &CXX_Alias_Const,       &CXX_Alias_Const_Set },
-#endif
     { OVK_BOOL, OV_VISIBLE,	FALSE, "recursive",		"",
       0, 0, 0,	&LANG_Recursive,	&LANG_Recursive_Set,
       "FORTRAN: program contains recursion" },
@@ -1495,10 +1491,6 @@ Configure_Source ( char	*filename )
       OPT_unroll_size = 20;
     /* reduce caller+callee "size" limit for inlining */
     INLINE_Max_Pu_Size=1000;
-#if 0 /* not ready for this yet. */
-    /* don't inline divide expansions */
-    if (!OPT_Inline_Divide_Set) OPT_Inline_Divide = FALSE;
-#endif
 
 #ifdef BACK_END
     /* LNO options to be turned off for SPACE */
@@ -1640,16 +1632,6 @@ Configure_Source ( char	*filename )
 #endif
   }
 
-#if 0
-  /* Set the relational operator folding in simplifier based on the optimizer
-     setting of Allow_wrap_around_opt */
-  if (!Simp_Unsafe_Relops_Set && Allow_wrap_around_opt_Set) {
-     Simp_Unsafe_Relops = Allow_wrap_around_opt;
-  }
-  if (!Allow_wrap_around_opt_Set && Simp_Unsafe_Relops_Set ) {
-     Allow_wrap_around_opt = Simp_Unsafe_Relops;
-  }
-#endif
 #if !defined(TARG_NVISA) // NVISA needs to avoid overflow arithmetic
   if (!Simp_Unsafe_Relops_Set && Opt_Level > 2) {
      Simp_Unsafe_Relops = TRUE;
@@ -1946,23 +1928,6 @@ Build_Skiplist ( OPTION_LIST *olist )
 	ol != NULL;
 	++count, ol = OLIST_next(ol) )
   {
-#if 0
-    if ( !strncmp ( "skip_a", OLIST_opt(ol), 6 ) ||
-	 !strncmp ( "region_skip_a", OLIST_opt(ol), 13 ) ||
-	 !strncmp ( "goto_skip_a", OLIST_opt(ol), 11 ) 
-#if defined(TARG_SL)
-	 || !strncmp ( "ddb_skip_a", OLIST_opt(ol), 10 )
-#endif
-	 ) {
-      Set_SKIPLIST_kind ( sl, count, SK_AFTER );
-    } else if ( !strncmp ( "skip_b", OLIST_opt(ol), 6 ) ||
-	        !strncmp ( "region_skip_b", OLIST_opt(ol), 13 ) ||
-	        !strncmp ( "goto_skip_b", OLIST_opt(ol), 11 ) 
-#if defined(TARG_SL)
-	     || !strncmp ( "ddb_skip_b", OLIST_opt(ol), 10 )
-#endif
-		) {
-#endif
     // ignore goto/region/ddb prefix of skip name
     char *opt_name = strstr(OLIST_opt(ol), "skip");
     if ( !strncmp ( "skip_a", opt_name, 6 )) {

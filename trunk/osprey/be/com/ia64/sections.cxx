@@ -80,19 +80,6 @@ SECTION Sections[_SEC_INDEX_MAX] = {
 	SHT_PROGBITS, 0, 
      INT64_MAX, ".MIPS.ldata", 0},
 #endif
-#if 0
-#ifndef linux
-  {_SEC_LDATA,	NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_LOCAL,
-	SHT_PROGBITS, 0, 
-     INT64_MAX, ".MIPS.ldata", 0},
-#else
-  {_SEC_LDATA,  NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_TLS,
-        SHT_PROGBITS, 0,
-     INT64_MAX, ".tdata", 0},
-#endif
-#endif
   {_SEC_RDATA,	NULL,
      0|SHF_ALLOC,
 	SHT_PROGBITS, 0, 

@@ -205,9 +205,6 @@ static	void	check_ir_for_attrs (int);
 static	void	check_il_for_attrs (int);
 static	void	compress_tbls (int, boolean);
 static	void	compress_type_tbl (int);
-# if 0
-static	void	create_module_list_from_str_pool (void);
-# endif
 
 # if defined(_TARGET_OS_SOLARIS) && defined(_MODULE_TO_DOT_o)
 static	boolean	do_elf_notes_section(Elf_Data *, int, int);
@@ -758,9 +755,6 @@ extern	void	create_mod_info_file(void)
 
          /* KAY - Use for running the frontend alone. */
 
-# if 0
-         strcpy(src_name_ptr, ".m");      /* Backend will delete this. */
-# endif
 
          strcpy(src_name_ptr, ".mn");     /* Backend will not delete this. */
 
@@ -2509,10 +2503,6 @@ static void  compress_tbls(int		al_idx,
    int		start_idx;
    int		typ_idx;
 
-# if 0
-   int		end_old_idx;
-   int		start_old_idx;
-# endif
 
 
    TRACE (Func_Entry, "compress_tbls", NULL);
@@ -2549,41 +2539,6 @@ static void  compress_tbls(int		al_idx,
 
    start_idx	= at_idx+1;
 
-# if 0
-   mod_idx	= start_idx;
-
-   do {
-
-      while (mod_idx <= attr_tbl_idx && !ML_AT_KEEP_ME(mod_idx)) {
-         mod_idx++;
-      }
-
-      if (mod_idx <= attr_tbl_idx) {
-         start_old_idx	= mod_idx;
-
-         while (mod_idx <= attr_tbl_idx && ML_AT_KEEP_ME(mod_idx)) {
-            mod_idx++;
-         }
-
-         end_old_idx	= mod_idx - 1;
-         ++at_idx;
-
-         if (start_old_idx != at_idx) {
-            (void) memmove ((void *) &attr_tbl[at_idx],
-                            (void *) &attr_tbl[start_old_idx],
-                            (end_old_idx - start_old_idx +1) * NUM_AT_WDS * 8);
-         }
-         at_idx	       += end_old_idx - start_old_idx;
-                         
-         /* The last one checked is either too high   */
-         /* or has !ML_AT_KEEP_ME set.  Skip past it. */
-
-         ++mod_idx;
-      }
-   }
-   while (mod_idx <= attr_tbl_idx);
-
-# endif
 
    for (mod_idx = start_idx; mod_idx <= attr_tbl_idx; mod_idx++) {
 
@@ -7295,20 +7250,6 @@ static	boolean	do_elf_object(Elf		*obj_elfd,
           continue;
       }
 
-# if 0
-      {
-         char       *s_name;
-
-         /* Tell the section's name.  It's stored in the section header */
-         /* string table.   See elf_strptr(3E).                         */
-
-         s_name = elf_strptr(obj_elfd, ehdr->e_shstrndx,
-                             ((size_t) shdr->sh_name));
-         printf("Elf section: '%s', type %u, flags %#x, size %u\n",
-                ((s_name == ((char *) NULL)) ? "(none)" : s_name),
-                shdr->sh_type, shdr->sh_flags, shdr->sh_size);
-      }
-# endif
 
       /* Skip sections that aren't .note ones. See /usr/include/sys/elf.h. */
 
@@ -7316,9 +7257,6 @@ static	boolean	do_elf_object(Elf		*obj_elfd,
           continue;
       }
 
-# if 0
-      printf("This is a NOTES section.  Contents:\n");
-# endif
 
       /* Go through each data object in the section.  Typically,   */
       /* this loop will execute exactly once.  The only time it    */
@@ -7432,13 +7370,6 @@ static	boolean	do_elf_notes_section(Elf_Data		*data,
 
    TRACE (Func_Entry, "do_elf_notes_section", NULL);
 
-# if 0
-
-   /* Tell about the size of the data block.  See /usr/include/libelf.h.  */
-
-   printf("  %d bytes at section offset %u:\n", data->d_size, data->d_off);
-
-# endif
 
    data_off_src	= 0;
    found	= FALSE;
@@ -7458,43 +7389,6 @@ static	boolean	do_elf_notes_section(Elf_Data		*data,
                      - ((*(n_name_ptr + n_hdr->n_namesz - 1) == '\0') ? 1 : 0);
       mod_info_tbl = n_name_ptr + RUP_BYTES(n_hdr->n_namesz);
 
-#     if 0
-
-      {
-         unsigned int    namesz;     /* Bytes of name to print           */
-         unsigned int    len;        /* Bytes of .note descriptor done   */
-
-         if (data_off_src != 0) {
-             printf("\n");
-         printf("    Name len: %u\n", n_hdr->n_namesz);
-         printf("    Data len: %u\n", n_hdr->n_descsz);
-         printf("    Type:     %u\n", n_hdr->n_type);
-
-         /*
-          * Adjust for a possible trailing NUL byte on the
-          * originator name.  We don't want to send it to
-          * printf(3C).
-          */
-         printf("    Name:     '%*.*s'\n", namesz, namesz, n_name_ptr);
-
-         /* Report the descriptor, 8 bytes per line. */
-
-
-         for (len = 0; len < n_hdr->n_descsz; len++, n_desc_ptr++) {
-
-             if (len == 0) {
-                 printf("    Desc:    ");
-             }
-             else if ((len & 0x7) == 0) {
-                 printf("\n             ");
-             }
-             printf(" %02x", (((int) *n_desc_ptr) & 0xFF));
-         }
-         if (len != 0)
-             printf("\n");
-         }
-      }
-# endif
 
       /* Is this CRI SPARC f90 module information? */
 
@@ -7959,9 +7853,6 @@ static void  assign_new_idxs_after_input(int	module_attr_idx)
 
       case Pgm_Unit:
 
-# if 0
-         ATP_SCP_IDX(attr_idx)		= curr_scp_idx;
-# endif
 
          ATP_EXT_NAME_IDX(attr_idx)	= np_idx + ATP_EXT_NAME_IDX(attr_idx);
 
@@ -8096,23 +7987,6 @@ static void  assign_new_idxs_after_input(int	module_attr_idx)
                   /* doesn't mean that the module procedure being read in  */
                   /* actually had IR/SH saved for it.                      */
 
-# if 0
-                  /* We are keeping IR/SH for module and internal procedures */
-                  /* for inlining purposes.  Check the global name table to  */
-                  /* see if we already have this procedure.                  */
-
-                  if (srch_global_name_tbl(ATP_EXT_NAME_PTR(attr_idx),
-                                           ATP_EXT_NAME_LEN(attr_idx),
-                                           &name_idx) &&
-                      GN_HAVE_INLINABLE_PROC(name_idx)) {
-                     ATP_FIRST_SH_IDX(attr_idx) = NULL_IDX;
-                     ATP_PARENT_IDX(attr_idx)	= NULL_IDX;
-                  }
-                  else {
-                     ATP_FIRST_SH_IDX(attr_idx) += sh_idx;
-                     ATP_PARENT_IDX(attr_idx)	+= at_idx;
-                  }
-# endif
 
                   ATP_FIRST_SH_IDX(attr_idx)	+= sh_idx;
 
@@ -10022,16 +9896,6 @@ void	collapse_interface_blk(int	interface_idx)
       ATI_PROC_IDX(interface_idx) = ML_AT_IDX(ATI_PROC_IDX(interface_idx));
       ATD_TYPE_IDX(interface_idx) = ML_TYP_IDX(ATD_TYPE_IDX(interface_idx));
 
-# if 0
-      while (sn_idx != NULL_IDX) {
-
-         if (sn_idx <= BLK_SN_IDX(blk_stk_idx)) {
-            SN_SIBLING_LINK(sn_idx)	= ML_SN_IDX(SN_SIBLING_LINK(sn_idx));
-            SN_ATTR_IDX(sn_idx)		= ML_AT_IDX(SN_ATTR_IDX(sn_idx));
-         }
-         sn_idx = SN_SIBLING_LINK(sn_idx);
-      }
-# endif
 
       al_idx	= AL_NEXT_IDX(al_idx);
    }
@@ -10375,75 +10239,6 @@ boolean	is_directory (char *path)
 
 } /* is_directory */
 
-# if 0
-/******************************************************************************\
-|*									      *|
-|* Description:								      *|
-|*									      *|
-|* Input parameters:							      *|
-|*									      *|
-|* Output parameters:							      *|
-|*	NONE								      *|
-|*									      *|
-|* Returns:								      *|
-|*									      *|
-\******************************************************************************/
-static	void	create_module_list_from_str_pool(void)
-
-{
-   int		fp_idx;
-   int		idx;
-   int		mod_idx;
-   int		str_idx;
-
-
-   TRACE (Func_Entry, "create_module_list_from_str_pool", NULL);
-
-
-   allocate_mod_link_tbl(str_pool_idx);  /* Let routine determine size. */
-
-   /* Mark the string pool entries to keep */
-
-   for (fp_idx = 1; fp_idx <= file_path_tbl_idx; fp_idx++) {
-
-      if (FP_CLASS(fp_idx) == Current_Compile_Fp) {
-         ML_STR_IDX(FP_NAME_IDX(fp_idx))	= FP_NAME_IDX(fp_idx);
-         ML_STR_LEN(FP_NAME_IDX(fp_idx))	= FP_NAME_LEN(fp_idx);
-      }
-   }
-
-   str_idx	= 1;
-
-   for (mod_idx = 1; mod_idx <= str_pool_idx; mod_idx++) {
-
-      if (ML_STR_IDX(mod_idx) != NULL_IDX) {
-         ML_STR_IDX(mod_idx)	 = str_idx;
-         ML_STR_LEN(mod_idx)	 = WORD_LEN(ML_STR_LEN(mod_idx));
-         str_idx		+= ML_STR_LEN(mod_idx);
-      }
-   }
-
-   str_idx	= 0;
-
-   for (mod_idx = 1; mod_idx <= str_pool_idx; mod_idx++) {
-
-      if (ML_STR_IDX(mod_idx) != NULL_IDX) {
-
-         for (idx = 0; idx < ML_STR_LEN(mod_idx); idx++) {
-            str_pool[++str_idx].name_long = str_pool[mod_idx+idx].name_long;
-         }
-      }
-   }
-
-   str_pool_idx	= str_idx;
-
-
-   TRACE (Func_Exit, "create_module_list_from_str_pool", NULL);
-
-   return;
-
-} /* create_module_list_from_str_pool */
-# endif
 
 /******************************************************************************\
 |*									      *|
@@ -10506,9 +10301,6 @@ extern	void	clean_up_module_files(void)
 static	void	update_intrinsic(int		mod_interface_idx)
 
 {
-# if 0
-   boolean	clear_intrin	= FALSE;
-# endif
    int		idx;
    int		intrin_interface_idx;
    int		intrin_sn_idx;
@@ -10660,9 +10452,6 @@ static	void	update_intrinsic(int		mod_interface_idx)
    }
 
    if (intrin_sn_idx != NULL_IDX) {  /* mod_sn_idx is NULL */
-# if 0
-      clear_intrin	= TRUE;
-# endif
 
       /* Have more intrinsics than old ones.  Add to end of list */
 
@@ -10679,13 +10468,6 @@ static	void	update_intrinsic(int		mod_interface_idx)
       }
    }
 
-# if 0
-   if (clear_intrin) {
-
-      /* Clear the intrinsic, because we have added new intrinsics */
-      /* from the list and we don't want the expanded intrinsic    */
-      /* getting caught in the compression stuff.                  */
-# endif
 
    ATI_FIRST_SPECIFIC_IDX(intrin_interface_idx)	= save_first_specific;
    ATI_NUM_SPECIFICS(intrin_interface_idx)	= save_num_specifics;

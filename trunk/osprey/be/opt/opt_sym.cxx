@@ -841,10 +841,6 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
   
   // Lookup the opt_stab first
   while (idx && aux_stab[idx].St() != NULL) {
-#if 0 // necessitated by the fix to bug 6293
-    Is_True(aux_stab[idx].St() == st,
-	    ("Enter_aux_stab::lookup wrong ST chain."));
-#endif
     BOOL kind_match = FALSE;
     switch (aux_stab[idx].Stype()) {
     case VT_NO_LDA_SCALAR:
@@ -2766,11 +2762,6 @@ OPT_STAB::Create(COMP_UNIT *cu, REGION_LEVEL rgn_level)
   
   // Setup ST alias groups
   Make_st_group();
-#if 0 // OPT_REVISE_SSA will use Enter_symbol later
-  // st_chain_map is no longer needed now that we have ST alias groups 
-  CXX_DELETE(st_chain_map, &_st_chain_pool);
-  st_chain_map = NULL;
-#endif
   // Identify synonyms within aux_stab, and convert STs into their
   // lowest numbered synonyms
   Canonicalize();
@@ -3788,7 +3779,6 @@ AUX_STAB_ENTRY::Has_multiple_signs(void) const
 void OPT_STAB::Print_occ_tab(FILE *fp, WN *wn)
 #endif
 {
-#if 1
   /* WN_MAP_ITER has been removed because it does not work reliably for
      this sort of thing.  (The mapping may contain dangling pointers for
      WNs that have been deleted.)  If anyone needs this to work, it
@@ -3808,20 +3798,6 @@ void OPT_STAB::Print_occ_tab(FILE *fp, WN *wn)
       occ->Print(fp);
       for ( INT32 i = 0; i < WN_kid_count( wn ); i++ )
         Print_occ_tab( fp, WN_kid( wn, i ));
-  }
-#endif
-#else
-
-  WN_MAP_ITER map_iter;
-  INT32 category;
-  OCC_TAB_ENTRY **addr;
-  for (category = 0; category <  WN_MAP_CATEGORIES; category++) {
-    WN_MAP_ITER_Init(&map_iter, Current_Map_Tab, WN_sym_map(),
-		     (OPCODE_MAPCAT) category);
-    while (addr = (OCC_TAB_ENTRY **) WN_MAP_ITER_Step(&map_iter, NULL)) {
-      if (*addr != NULL)
-	(*addr)->Print(fp);
-    }
   }
 #endif
 }

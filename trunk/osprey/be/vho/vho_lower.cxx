@@ -7072,27 +7072,6 @@ static void Misc_Loop_Fusion ( WN * wn, WN * block )
   
   // Collect the do loops to be fused.
   WN *body = WN_while_body(wn);
-#if 0
-  WN *stmt = WN_first(body);
-  WN *preloop = NULL;
-  WN *mainloop = NULL;
-  WN *postloop = NULL;
-  while(stmt) {
-    if (WN_operator(stmt) == OPR_DO_LOOP &&
-	WN_next(stmt) && WN_operator(WN_next(stmt)) == OPR_STID &&
-	WN_desc(WN_next(stmt)) == MTYPE_I4 &&
-	WN_next(WN_next(stmt)) && 
-	WN_operator(WN_next(WN_next(stmt))) == OPR_DO_LOOP &&
-	WN_next(WN_next(WN_next(stmt))) &&
-	WN_operator(WN_next(WN_next(WN_next(stmt)))) == OPR_DO_LOOP) {
-      preloop = stmt;
-      mainloop = WN_next(WN_next(stmt));
-      postloop = WN_next(WN_next(WN_next(stmt)));
-      break;
-    }
-    stmt = WN_next(stmt);
-  }
-#endif
   FmtAssert(preloop && mainloop && postloop, 
 	    ("Handle this case in Misc_Loop_Fusion"));
   

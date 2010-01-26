@@ -692,14 +692,6 @@ WGEN_Generate_Thunk (gs_t decl)
 
 static void process_local_classes()
 {
-#if 0 // wgen TODO
-  for (int i = 0; i < local_classes->elements_used; ++i) {
-    gs_t t = VARRAY_TREE(local_classes, i);
-      if (gs_tree_code(t) == GS_RECORD_TYPE ||
-	  gs_tree_code(t) == GS_UNION_TYPE)
-	Get_TY(t);
-  }
-#endif
 }
 
 void WGEN_Expand_Decl(gs_t decl, BOOL can_skip)
@@ -805,10 +797,6 @@ void WGEN_Expand_Decl(gs_t decl, BOOL can_skip)
 	   subdecl != NULL;
 	   subdecl = gs_tree_chain(subdecl))
 	WGEN_Expand_Decl(subdecl, TRUE);
-#if 0 // wgen TODO
-      if (decl == global_namespace)
-	process_local_classes(); 
-#endif
 #ifndef KEY
       while (deferred_function_i != -1) {
 //      fprintf(stderr, "NAMESPACE_DECL: Pop_Deferred_Function\n");
@@ -1219,9 +1207,7 @@ WGEN_Start_Function(gs_t fndecl)
 
     try_block_seen = false;
 
-#if 1 // wgen
     decl_arguments = NULL;
-#endif
    
     /* deallocate the old map table */
     if (Current_Map_Tab) {
@@ -1394,7 +1380,6 @@ WGEN_Start_Function(gs_t fndecl)
     }
     Set_ST_export (func_st, eclass);
 
-#if 1 // GCC_COMPAT
     gs_symbol_visibility_kind_t vk = 
       (gs_symbol_visibility_kind_t) gs_decl_visibility(fndecl);
     if (gs_tree_public(fndecl) && 
@@ -1420,7 +1405,6 @@ WGEN_Start_Function(gs_t fndecl)
       }
       Set_ST_export (func_st, export_class);
     }
-#endif
 
     // For extern inline in C++, we ensure the function is inlined at > -O0,
     // when inlining is not disabled. IF the inliner thinks it appropriate,
@@ -1492,31 +1476,6 @@ WGEN_Start_Function(gs_t fndecl)
 	  }
 	  else if (is_attribute("used", attr))
 	    Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);  // bug 3697
-#endif
-#if 0
-          else if (is_attribute("visibility", attr)) {
-            // process __attribute__ ((visibility ("default   |
-            //                                      hidden    |
-            //                                      internal  |
-            //                                      protected  ")))
-            gs_t value = gs_tree_value (nd);
-            Is_True (gs_tree_code(value) == GS_TREE_LIST,
-                     ("Expected TREE_LIST"));
-            value = gs_tree_value (value);
-            if (gs_tree_code(value) == GS_STRING_CST) {
-              const char *str = 
-                const_cast<char*>(gs_tree_string_pointer(value));
-              if (strcasecmp(str, "default") == 0) {
-                Set_ST_export (func_st, EXPORT_PREEMPTIBLE);
-              } else if (strcasecmp(str, "internal") == 0) {
-                Set_ST_export (func_st, EXPORT_INTERNAL);
-              } else if (strcasecmp(str, "hidden") == 0) {
-                Set_ST_export (func_st, EXPORT_HIDDEN);
-              } else if (strcasecmp(str, "protected") == 0) {
-                Set_ST_export (func_st, EXPORT_PROTECTED);
-              }
-            }
-	  }
 #endif
 	}
       } 
@@ -2022,23 +1981,6 @@ public:
   void Add_Inito_For_Tree (gs_t init, ST *st);
 };
 
-#if 0 // wgen
-void
-WGEN_Start_Aggregate_Init (gs_t decl)
-{
-  if (gs_tree_static(decl)) {
-	ST *st = Get_ST(decl);
-	Set_ST_is_initialized(st);
-	if (ST_sclass(st) == SCLASS_UGLOBAL ||
-	    ST_sclass(st) == SCLASS_EXTERN  ||
-	    ST_sclass(st) == SCLASS_COMMON)
-		Set_ST_sclass(st, SCLASS_DGLOBAL);
-	aggregate_inito = New_INITO (st);
-	not_at_root = FALSE;
-	last_aggregate_initv = 0;
-  }
-}
-#endif
 
 void
 AGGINIT::WGEN_Add_Aggregate_Init_Padding (INT size)
@@ -2484,33 +2426,6 @@ AGGINIT::WGEN_Add_Aggregate_Init_Vector (gs_t init_list)
 } /* WGEN_Add_Aggregate_Init_Vector */
 #endif
 
-#if 0 // wgen
-void
-AGGINIT::WGEN_Finish_Aggregate_Init (void)
-{
-  if (aggregate_inito == 0) return;
-  ST *st = INITO_st(aggregate_inito);
-  TY_IDX ty = ST_type(st);
-  if (TY_size(ty) == 0 ||
-      (TY_kind(ty) == KIND_ARRAY &&
-       !ARB_const_ubnd (TY_arb(ty)) &&
-       TY_size(ty) <= Get_INITO_Size(aggregate_inito))) {
-	// e.g. array whose size is determined by init;
-	// fill in with initv size
-	Set_TY_size(ty, Get_INITO_Size(aggregate_inito));
-	if (TY_kind(ty) == KIND_ARRAY) {
-		Set_ARB_const_ubnd (TY_arb(ty));
-		Set_ARB_ubnd_val (TY_arb(ty), 
-			(TY_size(ty) / TY_size(TY_etype(ty))) - 1 );
-	}
-  }
-  if (last_aggregate_initv == 0) {
-    WGEN_Add_Aggregate_Init_Padding (0);
-  }
-  aggregate_inito = 0;
-  not_at_root = FALSE;
-}
-#endif
 
 static BOOL
 Has_Non_Constant_Init_Value (gs_t init)
@@ -4554,83 +4469,6 @@ WGEN_Initialize_Decl (gs_t decl)
   }
 }
 
-#if 0 // wgen
-#ifdef KEY
-  // For initialization of any variables  except globals.
-extern void
-WGEN_Initialize_Nested_Decl (gs_t decl)
-{
-  gs_t init = gs_decl_initial(decl);
-
-  if (init == NULL)
-    return;
-
-  if (gs_decl_ignored_p(decl)) {
-  	// ignore initialization unless really used
-	// e.g. FUNCTION and PRETTY_FUNCTION
-	return;
-  }
-
-  if (gs_tree_code(decl) == GS_LABEL_DECL)
-	return;
-
-  if (gs_tree_code(decl) == GS_CONST_DECL) // bug 10201
-	return;
-
-  ST *st = Get_ST(decl);
-
-  if (gs_tree_static(decl) || gs_decl_context(decl) == NULL) 
-  {
-	// static or global context, so needs INITO
-	if ((ST_sclass(st) == SCLASS_UGLOBAL &&
-             !ST_init_value_zero(st)) ||
-	    ST_sclass(st) == SCLASS_EXTERN  ||
-	    ST_sclass(st) == SCLASS_COMMON)
-		Set_ST_sclass(st, SCLASS_DGLOBAL);
-	if (!ST_is_initialized(st)) {
-		Set_ST_is_initialized(st);
-		Add_Inito_For_Tree (init, st);
-		WGEN_Finish_Aggregate_Init ();
-	}
-	if (gs_tree_readonly(decl))
-		Set_ST_is_const_var (st);
-  }
-  else {
-	// mimic an assign
-	if (gs_tree_code(init) == GS_CONSTRUCTOR) {
-		// is aggregate
-		if (Use_Static_Init_For_Aggregate (st, init)) {
-			// create inito for initial copy
-			// and store that into decl
-			ST *copy = WGEN_Generate_Temp_For_Initialized_Aggregate(
-					init, ST_name(st));
-			WN *init_wn = WN_CreateLdid (OPR_LDID, MTYPE_M, MTYPE_M,
-				0, copy, ST_type(copy));
-			WGEN_Stmt_Append(
-				WN_CreateStid (OPR_STID, MTYPE_V, MTYPE_M,
-					0, st, ST_type(st), init_wn),
-				Get_Srcpos());
-		}
-		else {
-			// do sequence of stores for each element
-			Traverse_Aggregate_Constructor (st, init, 
-							gs_tree_type(init),
-							FALSE /*gen_initv*/, 
-							0, 0, 0);
-		}
-		return;
-	}
-	else {
-		INT emitted_bytes;
-		Gen_Assign_Of_Init_Val (st, init, 
-			0 /*offset*/, 0 /*array_elem_offset*/,
-			ST_type(st), FALSE, 0 /*field_id*/,
-			FLD_HANDLE(), emitted_bytes);
-	}
-  }
-}
-#endif /* KEY */
-#endif /* wgen */
 
 void
 WGEN_Decl (gs_t decl)
@@ -4852,10 +4690,6 @@ void
 WGEN_Process_Class_Decl (gs_t decl)
 {
 //fprintf(stderr, "CLASS_DECL: %s\n", IDENTIFIER_POINTER(gs_decl_name(decl)));
-#if 0 // wgen TODO
-  if (cp_type_quals(decl) != TYPE_UNQUALIFIED)
-    return;
-#endif
 
   if (TYPE_TY_IDX(decl))
     return;
@@ -4907,13 +4741,6 @@ WGEN_Process_Class_Decl (gs_t decl)
 void
 WGEN_Process_Type_Decl (gs_t decl)
 {
-#if 0 // wgen TODO
-//fprintf(stderr, "TYPE_DECL: %s\n", IDENTIFIER_POINTER(gs_decl_name(decl)));
-  if (gs_tree_code(gs_tree_type(decl)) == GS_RECORD_TYPE &&
-      cp_type_quals(decl) == TYPE_UNQUALIFIED) {
-    WGEN_Process_Class_Decl (gs_tree_type(decl));
-  }
-#endif
 } /* WGEN_Process_Type_Decl */
 
 void
@@ -5033,9 +4860,6 @@ WGEN_Process_Var_Decl (gs_t decl)
   if (gs_tree_public(decl)    &&
 //    !gs_decl_weak(decl)     &&
       !gs_decl_external(decl)
-#if 0 // bug 11266
-      && !DECL_ST(decl)
-#endif
       ) {
     if (!gs_decl_weak(decl)
 	|| decl_is_needed_vtable (decl)
@@ -5113,17 +4937,6 @@ WGEN_Process_Decl (gs_t decl)
 void
 WGEN_Process_Namespace_Decl (gs_t namespace_decl)
 {
-#if 0 // wgen TODO
-//fprintf(stderr, "NAMESPACE_DECL: %s\n", IDENTIFIER_POINTER(gs_decl_name(namespace_decl)));
-  gs_t decl;
-  if (!gs_decl_name(namespace_decl) && (namespace_decl != std_node)) {
-    for (decl = cp_namespace_decls(namespace_decl);
-         decl != NULL;
-         decl = gs_tree_chain(decl)) {
-      WGEN_Process_Decl(decl);
-    }
-  }
-#endif
 } /* WGEN_Process_Namespace_Decl */
 
 extern "C"
@@ -5136,13 +4949,6 @@ WGEN_Expand_Top_Level_Decl (gs_t top_level_decl)
   curr_namespace_decl = top_level_decl;
 #endif
 
-#if 0 // wgen TODO
-  if (top_level_decl == global_namespace) {
-   check_gnu_errors (&error_count, &sorry_count);
-   if (error_count || sorry_count)
-     return;
-  }
-#endif
 
   if (!Enable_WFE_DFE) {
     // Emit asm statements at global scope, before expanding the functions,

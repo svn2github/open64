@@ -365,9 +365,6 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	int oet_length, afl_length, res;
 	int v0_augmentation = 0;
 	int pic_augmentation = 0;
-#if 0
-	unsigned char *fde_start_point;
-#endif
 	unsigned char *fde_start_point;
 
 	char afl_buff[ENCODE_SPACE_NEEDED];
@@ -515,9 +512,6 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 	/* write out fde */
 	GET_CHUNK(dbg,elfsectno,data,fde_length+uwordb_size +
 		  extension_size, error);
-#if 0
-	fde_start_point = data;
-#endif
 	fde_start_point = data;
 	du = fde_length;
 	{
@@ -619,23 +613,6 @@ _dwf_pro_generate_ehframe(Dwarf_P_Debug dbg, Dwarf_Error *error)
 		    {_dwarf_p_error(dbg, error, DW_DLE_ALLOC_FAIL); return(0);}
 		}
 	    }
-#if 0
-	    if (curinst->dfp_sym_index) {
-		int res;
-		res = dbg->de_reloc_name(dbg,
-					 EH_FRAME,
-					 (data-fde_start_point)
-					 + cur_off+
-					 uwordb_size,  /* r_offset */
-					 curinst->dfp_sym_index,
-					 dwarf_drt_data_reloc,
-					 upointer_size);
-		if (res != DW_DLV_OK) {
-		    {_dwarf_p_error(dbg, error, DW_DLE_ALLOC_FAIL);
-			return(0);}
-		}
-	    }
-#endif
 	    if (DW_CFA_advance_loc4 == db) {
 		data[0] = 0;
 		data[1] = 0;

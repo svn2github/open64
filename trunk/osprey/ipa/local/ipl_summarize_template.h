@@ -2369,10 +2369,6 @@ SUMMARIZE<program>::Process_callsite (WN *w, INT id, INT loopnest, float probabi
 	    break;
 	}
 
-#if 0
-	if (!INLINE_Enable_Copy_Prop)
-	    return;
-#endif
     } else {
 
 	/* ipl case */

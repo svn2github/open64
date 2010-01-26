@@ -267,12 +267,6 @@ ARA_LOOP_INFO::Create_Live_Use()
     _children.Bottom_nth(i)->Create_Live_Use();
   }
 
-#if 0
-  // For the whole function, estimate the conservative exposed uses
-  if (WN_opcode(_loop) != OPC_DO_LOOP) {
-    Default_For_Bad_Loop();
-  }
-#endif    
 
   _live_use = CXX_NEW(S_HTABLE(_use.Elements()+1,&ARA_memory_pool),&ARA_memory_pool);
   for (i = 0; i < _use.Elements(); ++ i) {

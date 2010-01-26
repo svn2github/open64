@@ -2788,14 +2788,6 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
 
     } else {
 
-#if 0
-      /* Warning disabled for now since we get these for SWP
-       * windup/winddown memory refs (there's no corresponding
-       * WHIRL node since these refs are specialized for particular
-       * iterations.
-       */
-      DevWarn("get_mem_dep: can't find WHIRL node for memory OP");
-#endif
       /* Fallback: Treat as possibly aliased unless addr analysis says
        * they're definitely aliased.
        */

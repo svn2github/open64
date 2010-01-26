@@ -286,16 +286,11 @@ MFMC_EC		MFMC_Solve_problem(MFMC_HANDLE);
 /* Query interface functions */
 
 extern BOOL		MFMC_Min_cut_lhs(MFMC_HANDLE, INT32);
-#if 0
-/* --- NOT IMPLEMENTED YET --- */
-extern INT64		MFMC_Max_flow_arc_flow(MFMC_HANDLE, MFMC_ARC_HANDLE);
-#else
 inline INT64	MFMC_Max_flow_arc_flow(MFMC_HANDLE h, MFMC_ARC_HANDLE ah)
 {
   FmtAssert(FALSE, ("MFMC_Max_flow_arc_flow: arc handles not implemented"));
   /*NOTREACHED*/
 }
-#endif
 
 INT64
 MFMC_Objective_value(MFMC_HANDLE);

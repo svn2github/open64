@@ -1823,12 +1823,6 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
     INITO_IDX ereg = range_list[i].ereg_supp;
     INITV_IDX first_initv = INITV_blk (INITO_val (ereg));
     Set_ST_is_not_used (*(INITO_st (ereg)));
-#if 0
-    if ((INITV_kind(first_initv) != INITVKIND_LABEL) &&
-                PU_is_mainpu (Get_Current_PU ())) {
-      continue;
-    }
-#endif
 
     LABEL_IDX pad_label=0;
     if (INITV_kind(first_initv) != INITVKIND_ZERO)

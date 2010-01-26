@@ -2521,23 +2521,4 @@ cwh_intrin_build(WN **k, INTRINSIC intr,TYPE_ID bt, INT numargs)
 extern void
 cwh_whirl_simplfier_control(BOOL onoff)
 {
-#if 0 /* do nothing for now */
-   static INT32 onoff_count=0;
-   static BOOL  simplifier_enabled;
-
-   printf("onoff count = %d\n",onoff_count);
-   if (onoff) {
-      /* Turn it back on */
-      if (onoff_count == 1) {
-	 (void) WN_Simplifier_Enable(save_wn_simplifier_enable);
-      }
-      if (onoff_count > 0) {
-	 onoff_count -= 1;
-      }
-   } else {
-      /* Turn simplifier off */
-      (void) WN_Simplifier_Enable(save_wn_simplifier_enable);
-      onoff_count += 1;
-   }
-#endif
 }

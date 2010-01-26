@@ -164,11 +164,6 @@ CODEREP::Is_non_volatile_terminal(OPT_STAB *opt_stab) const
     if (Is_ivar_volatile()) return FALSE;
     if (Opr() == OPR_PARM && Ivar_mu_node() == NULL && WOPT_Enable_Move_Intrinsicop)
       return Ilod_base()->Is_non_volatile_terminal(opt_stab);
-#if 0
-    if ((Opr() == OPR_CVT && Cvt_is_nop()) || 
-	(Opr() == OPR_CVTL && Cvtl_is_nop()))
-      return Opnd(0)->Is_non_volatile_terminal(opt_stab);
-#endif
   default:
     return FALSE;
   }

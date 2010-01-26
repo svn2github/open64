@@ -345,15 +345,10 @@ Init_Callee_Saved_Regs_for_REGION ( ST *pu, BOOL is_region )
     if ( stn = PREG_To_TN_Array[ Return_Preg ] )
       SAVE_tn(Return_Address_Reg) = stn;
     else {
-#if 1 // this is left here for reference in case RA is a special register - SC
       // we assume even if RA_TN is not integer, 
       // there must be a way to save RA to regular int regs
       SAVE_tn(Return_Address_Reg) = Build_RCLASS_TN(ISA_REGISTER_CLASS_integer);
       Set_TN_save_creg (SAVE_tn(Return_Address_Reg), TN_class_reg(RA_TN));
-#else
-      SAVE_tn(Return_Address_Reg) = Build_TN_Like(RA_TN);
-      Set_TN_save_creg (SAVE_tn(Return_Address_Reg), TN_class_reg(RA_TN));
-#endif
       TN_MAP_Set( TN_To_PREG_Map, SAVE_tn(Return_Address_Reg),
 		  (void *)(INTPTR)Return_Preg );
       PREG_To_TN_Array[ Return_Preg ] = SAVE_tn(Return_Address_Reg);
@@ -1091,7 +1086,6 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
       if (addr_op == NULL) return NULL;
       tn = OP_opnd(addr_op, addr_opnd);
       if (TN_is_reloc_call16(tn)) {
-#if 1
 	/* RE: pv812245, originally we changed the preemptible symbol
 	 * to non-preemptible and made it weak. The later causes
 	 * symbol preemption to behave differently than it should
@@ -1099,9 +1093,6 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
 	 * in case we decide to do it under some special switch.
 	 */
 	return NULL;
-#else
-	if (!Enable_GOT_Call_Conversion) return NULL;
-#endif
       } else if (TN_is_reloc_got_disp(tn)) {
 	/* ok as is */
 	addr_op = NULL;

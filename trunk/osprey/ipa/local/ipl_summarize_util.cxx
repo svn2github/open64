@@ -1042,11 +1042,6 @@ count_stats(WN *w, INT32& bbs, INT32& stmts, FB_FREQ& cycles, FB_FREQ freq)
 void
 Count_tree_size (FEEDBACK& fb, WN *wn, INT32 &bbs, INT32 &stmts, FB_FREQ& cycles, FB_FREQ &freq_count)
 {
-#if 0
-    if (op != OPC_BLOCK && (OPCODE_is_scf (op) || OPCODE_is_stmt (op)))
-	if (WN_MAP32_Get (WN_MAP_FEEDBACK, w) == 0)
-	    return;
-#endif
 
   static BOOL init_invoke_seen = FALSE;
   static FB_FREQ init_invoke;
@@ -1275,11 +1270,6 @@ count_stats_tuning(WN *w, INT32& bbs, INT32& stmts, FB_FREQ& cycles, FB_FREQ fre
 void
 Count_tree_size_tuning (FEEDBACK& fb, WN *wn, INT32 &bbs, INT32 &stmts, FB_FREQ& cycles, FB_FREQ &freq_count, UINT16 &WNs, FB_FREQ &cycle_tuning )
 {
-#if 0
-    if (op != OPC_BLOCK && (OPCODE_is_scf (op) || OPCODE_is_stmt (op)))
-	if (WN_MAP32_Get (WN_MAP_FEEDBACK, w) == 0)
-	    return;
-#endif
 
   static BOOL init_invoke_seen = FALSE;
   static FB_FREQ init_invoke;

@@ -219,18 +219,6 @@ IPO_Types_Are_Compatible ( TYPE_ID ltype, TYPE_ID rtype )
 {
     BOOL   compatible;
 
-#if 0
-    /* Apparently the following is an overkill.  Possibly there was a
-       frontend bug that has been fixed.  Until we can come up with a test
-       case, we allow unsigned/signed to be compatible.
-     */
-
-    /* if the formal is of UINT and actual is INT, stid could introduce */
-    /* problems hence return not compatible */
-    if ((WTYPE_base_type(ltype) == UINT_TYPE) && 
-	(WTYPE_base_type(rtype) == INT_TYPE))
-	return FALSE;
-#endif
 
     /* if the base types are the same or the base type of the stid  */
     /* is of comparable type and size of lhs is  */
@@ -639,11 +627,6 @@ WN_Create_Generic (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
     WN_cvtl_bits(wn) = cvtl_bits;
   }
   /* Num_dim is now just a read-only quantity */
-#if 0
-  if (OPCODE_has_ndim(opcode)) {
-    WN_num_dim(wn) = num_dim;
-  }
-#endif
   if (OPCODE_has_esize(opcode)) {
     WN_element_size(wn) = element_size;
   }
@@ -1596,13 +1579,6 @@ WN *WN_CreateExp2(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, WN *kid0, WN *kid1)
   Is_True(OPCODE_is_expression(WN_opcode(kid1)),
 	  ("Bad kid1 in WN_CreateExp2"));
 
-#if 0 // with 32-bit MPY, need U8U4CVT to zero-out high-order 32 bits (bug 4637)
-  Is_True(opr != OPR_MPY || 
-  	  WN_operator(kid0) == OPR_INTCONST ||
-  	  WN_operator(kid1) == OPR_INTCONST ||
-          MTYPE_byte_size(WN_rtype(kid0)) == MTYPE_byte_size(WN_rtype(kid1)),
-  	  ("inconsistent sizes in operands of MPY"));
-#endif
 
   /* bug#2731 */
 #ifdef KEY
@@ -2068,46 +2044,6 @@ WN *WN_CopyNode (const WN* src_wn)
     return(wn);
 }
 
-#if 0
-/* no one uses this currently */
-void IPA_WN_Move_Maps (WN_MAP_TAB *maptab, WN *dst, WN *src)
-{
-  INT32 i;
-
-  /* if the opcodes are in the same category, just move the map_id */
-  if (OPCODE_mapcat(WN_opcode(dst)) == OPCODE_mapcat(WN_opcode(src))) {
-    if (WN_map_id(dst) != WN_MAP_UNDEFINED) WN_MAP_Add_Free_List(maptab, dst);
-    WN_map_id(dst) = WN_map_id(src);
-    WN_map_id(src) = WN_MAP_UNDEFINED;
-    return;
-  }
-
-  /* otherwise iterate through the mappings */
-  for (i = 0; i < WN_MAP_MAX; i++) { 
-    if (maptab->_is_used[i]) {
-      switch (maptab->_kind[i]) {
-      case WN_MAP_KIND_VOIDP: {
-	IPA_WN_MAP_Set(maptab, i, dst, IPA_WN_MAP_Get(maptab, i, src));
-	break;
-      }
-      case WN_MAP_KIND_INT32: {
-	IPA_WN_MAP32_Set(maptab, i, dst, IPA_WN_MAP32_Get(maptab, i, src));
-	break;
-      }
-      case WN_MAP_KIND_INT64: {
-	IPA_WN_MAP64_Set(maptab, i, dst, IPA_WN_MAP64_Get(maptab, i, src));
-	break;
-      }
-      default:
-	Is_True(FALSE, ("WN_Move_Maps: unknown map kind"));
-      }
-    }
-  }
-
-  WN_MAP_Add_Free_List(maptab, src);
-  WN_map_id(src) = WN_MAP_UNDEFINED;
-}
-#endif
 
 void IPA_WN_Move_Maps_PU (WN_MAP_TAB *src, WN_MAP_TAB *dst, WN *wn)
 {

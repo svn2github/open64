@@ -1933,10 +1933,6 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 						  Get_Trace(TP_GLOBOPT,
 							    EPRE_DUMP_FLAG)),
 				    &Opt_local_pool));
-#if 0
-	// Screen out the variables with multiple signess from RVI
-	comp_unit->Opt_stab()->Screen_rvi_candidates();
-#endif
       }
 
       // create RVI instance before emitting anything

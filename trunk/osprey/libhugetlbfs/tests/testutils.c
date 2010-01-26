@@ -86,12 +86,6 @@ void  __attribute__((weak)) cleanup(void)
 {
 }
 
-#if 0
-static void segv_handler(int signum, siginfo_t *si, void *uc)
-{
-	FAIL("Segmentation fault");
-}
-#endif
 
 static void sigint_handler(int signum, siginfo_t *si, void *uc)
 {

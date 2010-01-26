@@ -953,18 +953,6 @@ Evaluate_chi (const SUMMARY_CHI *chi, SUMMARY_VALUE &return_value)
 	    return;
 	}
 
-#if 0
-        // nenad, 03/01/00, 783636:
-        // This seems completely bogus --
-        // it doesn't matter at all if sym is DMOD-ified in this procedure,
-        // but whether the call described in the CHI node may modify it.
-
-	if (!sym.Is_dmod ()) {
-	    // is not modified at all
-	    Get_chi_operand (chi, return_value);
-	    return;
-	}
-#endif
 
 	// last hope:  if this symbol is passed by reference in this
 	// particular callsite, and is not indirectly modified, we can

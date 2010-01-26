@@ -75,20 +75,6 @@ template <> MEM_POOL* MAT<double>::_default_pool = NULL;
 // The #if below chooses between the two.  #if 0 selects double rather than
 // fractional inverse.
 
-#if 0
-
-IMAT MAT<mINT32>::Inv() const
-{
-  FmtAssert(_r == _c, ("Matrix not square"));
-
-  MEM_POOL* hold = FMAT::Set_Default_Pool(IMAT::Default_Pool());
-  FMAT fmat = IMAT_to_FMAT(*this);
-  fmat.D_Inv();
-  FMAT::Set_Default_Pool(hold);
-  return FMAT_to_IMAT(fmat, IMAT::Default_Pool());
-}
-
-#else
 
 template<>
 IMAT MAT<mINT32>::Inv() const
@@ -102,7 +88,6 @@ IMAT MAT<mINT32>::Inv() const
   return DMAT_to_IMAT(dmat, IMAT::Default_Pool());
 }
 
-#endif
 
 // Factor and use the factoring inversion routines
 

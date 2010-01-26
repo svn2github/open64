@@ -333,28 +333,6 @@ Update_wn_types (WN* pu, const TY_TO_TY_MAP* old_to_new_ty_map)
   }
 }
 
-#if 0
-// -----------------------------------------------------------------
-// Replace an LDID node with the constant and update parent pointers
-// -----------------------------------------------------------------
-static void
-Replace_ldid_with_constant (WN* ldid_wn, WN* const_wn)
-{
-  WN* parent = LWN_Get_Parent(ldid_wn);
-  Is_True (parent, ("Replace_ldid_with_constant: no parent for LDID node"));
-
-  INT k = 0; 
-  while (k < WN_kid_count(parent) && WN_kid(parent,k) != ldid_wn) {
-    ++k;
-  }
-  Is_True(k < WN_kid_count(parent), 
-          ("Replace_ldid_with_constant: broken parent pointer"));
-
-  WN_Delete(ldid_wn);
-  WN_kid(parent,k) = WN_COPY_Tree(const_wn);
-  LWN_Set_Parent(WN_kid(parent, k), parent);
-}
-#endif  
 
 // -----------------------------------------------------------------------
 // After constant formals have been substituted in array bound expressions
@@ -501,19 +479,6 @@ IPA_constant_in_array_bounds (const SUMMARY_VALUE& value,
   return found_formal_ldid;
 }
 
-#if 0
-//-------------------------------------------------------------------
-// generate the assignment statement
-//-------------------------------------------------------------------
-static WN*
-Create_Stmt (ST* formal, WN* const_wn, TYPE_ID desc)
-{
-    WN* result = WN_Stid (desc, 0, formal, ST_type (formal), const_wn);
-    LWN_Set_Parent (const_wn, result);
-    return result;
-    
-} // Create_Stmt
-#endif
 
 #ifdef Is_True_On
 // create assert statement to verify if "formal" has value equals to
@@ -1441,9 +1406,6 @@ Create_Const_ST (const SUMMARY_VALUE& value)
   return 0;
 } 
 
-#if 0
-typedef HASH_TABLE<ST_IDX,ST_IDX> ST_IDX_HASH_TABLE;
-#endif
 
 //-------------------------------------------------------------------
 // propagate globals into this PU
@@ -1451,16 +1413,6 @@ typedef HASH_TABLE<ST_IDX,ST_IDX> ST_IDX_HASH_TABLE;
 extern void
 IPO_propagate_globals(IPA_NODE *n)
 {
-#if 0
-  static MEM_POOL Temp_pool;
-  static BOOL Temp_pool_initialized = FALSE;
-  
-  if (!Temp_pool_initialized) {
-    Temp_pool_initialized = TRUE;
-    MEM_POOL_Initialize(&Temp_pool, "temp pool", 0);
-  }
-  MEM_POOL_Push(&Temp_pool);
-#endif
 
   IPAA_NODE_INFO* modref_info = n->Mod_Ref_Info();
   GLOBAL_ANNOT* gannot = n->Global_Annot();
@@ -1524,34 +1476,7 @@ IPO_propagate_globals(IPA_NODE *n)
     WN_verifier(pu);
   }
 
-#if 0
-  MEM_POOL_Pop(&Temp_pool);
-#endif
 }
 
 
-#if 0
-//-------------------------------------------------------------------------
-// update whirl, change the st's to be sts to the newly created constants
-//-------------------------------------------------------------------------
-static void 
-update_whirl(WN* w, ST_IDX_HASH_TABLE *table)
-{
-  // replace all instances of the current ST with the ST in the temp
-  OPCODE opc =  WN_opcode(w);
-  if (OPCODE_has_sym(opc) && WN_st(w) && table->Find(WN_st_idx(w))) {
-    WN_st_idx(w) = table->Find(WN_st_idx(w));
-  }
-  if (opc == OPC_BLOCK) {
-    for (WN* wn = WN_first(w); wn; wn = WN_next(wn)) {
-      update_whirl(wn, table);
-    }
-  }
-  else {
-    for (INT kid=0; kid<WN_kid_count(w); kid++) {
-      update_whirl(WN_kid(w,kid),table);
-    }
-  }
-}
-#endif
 

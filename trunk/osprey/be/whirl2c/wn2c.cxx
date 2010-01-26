@@ -6861,14 +6861,6 @@ WN2C_translate_file_scope_defs(CONTEXT context)
    WN2C_new_symtab();
 
    //WEI: don't see why this needs to be called
-#if 0
-   Write_String(W2C_File[W2C_DOTH_FILE], NULL/* No srcpos map */,
-		"/* File-level symbolic constants */\n");
-   WN2C_Append_Symtab_Consts(NULL, /* token_buffer */ 
-			     TRUE, /* use const_tab */
-			     2,    /* lines between decls */
-			     context);
-#endif
 
    Write_String(W2C_File[W2C_DOTH_FILE], NULL/* No srcpos map */,
 		"/* File-level vars and routines */\n");

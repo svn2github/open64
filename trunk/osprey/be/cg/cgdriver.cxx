@@ -2396,11 +2396,6 @@ Prepare_Source (void)
 #endif
     }
 
-#if 0
-    /* already called by main */
-    /* Configure internal options for this source file */
-    Configure_Source ( NULL );
-#endif
 }
 
 static void

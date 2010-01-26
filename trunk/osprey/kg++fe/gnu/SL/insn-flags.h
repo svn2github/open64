@@ -557,7 +557,6 @@ extern rtx        gen_branch_equality_inverted      PARAMS ((rtx, rtx, rtx, rtx)
 extern rtx        gen_branch_equality_di_inverted   PARAMS ((rtx, rtx, rtx, rtx));
 extern rtx        gen_seq_si_zero                   PARAMS ((rtx, rtx));
 extern rtx        gen_seq_di_zero                   PARAMS ((rtx, rtx));
-#if 1
 extern rtx gen_seq_si                        PARAMS ((rtx, rtx, rtx));
 extern rtx gen_seq_di                        PARAMS ((rtx, rtx, rtx));
 extern rtx gen_sne_si                        PARAMS ((rtx, rtx, rtx));
@@ -585,128 +584,6 @@ extern rtx        gen_sleu_si_const                 PARAMS ((rtx, rtx, rtx));
 extern rtx        gen_sleu_di_const                 PARAMS ((rtx, rtx, rtx));
 
 
-#else
-static inline rtx gen_seq_si                        PARAMS ((rtx, rtx, rtx));
- inline rtx
-gen_seq_si(
-	   rtx a ATTRIBUTE_UNUSED,
-	   rtx b ATTRIBUTE_UNUSED,
-	   rtx c ATTRIBUTE_UNUSED)
-{
-  return 0;
-}
-static inline rtx gen_seq_di                        PARAMS ((rtx, rtx, rtx));
-static inline rtx
-gen_seq_di(a, b, c)
-     rtx a ATTRIBUTE_UNUSED;
-     rtx b ATTRIBUTE_UNUSED;
-     rtx c ATTRIBUTE_UNUSED;
-{
-  return 0;
-}
-static inline rtx gen_sne_si                        PARAMS ((rtx, rtx, rtx));
-static inline rtx
-gen_sne_si(a, b, c)
-     rtx a ATTRIBUTE_UNUSED;
-     rtx b ATTRIBUTE_UNUSED;
-     rtx c ATTRIBUTE_UNUSED;
-{
-  return 0;
-}
-static inline rtx gen_sne_di                        PARAMS ((rtx, rtx, rtx));
-static inline rtx
-gen_sne_di(a, b, c)
-     rtx a ATTRIBUTE_UNUSED;
-     rtx b ATTRIBUTE_UNUSED;
-     rtx c ATTRIBUTE_UNUSED;
-{
-  return 0;
-}
-extern rtx        gen_sgt_si                        PARAMS ((rtx, rtx, rtx));
-extern rtx        gen_sgt_di                        PARAMS ((rtx, rtx, rtx));
-static inline rtx gen_sge_si                        PARAMS ((rtx, rtx, rtx));
-static inline rtx
-gen_sge_si(a, b, c)
-     rtx a ATTRIBUTE_UNUSED;
-     rtx b ATTRIBUTE_UNUSED;
-     rtx c ATTRIBUTE_UNUSED;
-{
-  return 0;
-}
-static inline rtx gen_sge_di                        PARAMS ((rtx, rtx, rtx));
-static inline rtx
-gen_sge_di(a, b, c)
-     rtx a ATTRIBUTE_UNUSED;
-     rtx b ATTRIBUTE_UNUSED;
-     rtx c ATTRIBUTE_UNUSED;
-{
-  return 0;
-}
-extern rtx        gen_slt_si                        PARAMS ((rtx, rtx, rtx));
-extern rtx        gen_slt_di                        PARAMS ((rtx, rtx, rtx));
-extern rtx        gen_sle_si_const                  PARAMS ((rtx, rtx, rtx));
-extern rtx        gen_sle_di_const                  PARAMS ((rtx, rtx, rtx));
-static inline rtx gen_sle_si_reg                    PARAMS ((rtx, rtx, rtx));
-static inline rtx
-gen_sle_si_reg(a, b, c)
-     rtx a ATTRIBUTE_UNUSED;
-     rtx b ATTRIBUTE_UNUSED;
-     rtx c ATTRIBUTE_UNUSED;
-{
-  return 0;
-}
-static inline rtx gen_sle_di_reg                    PARAMS ((rtx, rtx, rtx));
-static inline rtx
-gen_sle_di_reg(a, b, c)
-     rtx a ATTRIBUTE_UNUSED;
-     rtx b ATTRIBUTE_UNUSED;
-     rtx c ATTRIBUTE_UNUSED;
-{
-  return 0;
-}
-extern rtx        gen_sgtu_si                       PARAMS ((rtx, rtx, rtx));
-extern rtx        gen_sgtu_di                       PARAMS ((rtx, rtx, rtx));
-static inline rtx gen_sgeu_si                       PARAMS ((rtx, rtx, rtx));
-static inline rtx
-gen_sgeu_si(a, b, c)
-     rtx a ATTRIBUTE_UNUSED;
-     rtx b ATTRIBUTE_UNUSED;
-     rtx c ATTRIBUTE_UNUSED;
-{
-  return 0;
-}
-static inline rtx gen_sgeu_di                       PARAMS ((rtx, rtx, rtx));
-static inline rtx
-gen_sgeu_di(a, b, c)
-     rtx a ATTRIBUTE_UNUSED;
-     rtx b ATTRIBUTE_UNUSED;
-     rtx c ATTRIBUTE_UNUSED;
-{
-  return 0;
-}
-extern rtx        gen_sltu_si                       PARAMS ((rtx, rtx, rtx));
-extern rtx        gen_sltu_di                       PARAMS ((rtx, rtx, rtx));
-extern rtx        gen_sleu_si_const                 PARAMS ((rtx, rtx, rtx));
-extern rtx        gen_sleu_di_const                 PARAMS ((rtx, rtx, rtx));
-static inline rtx gen_sleu_si_reg                   PARAMS ((rtx, rtx, rtx));
-static inline rtx
-gen_sleu_si_reg(a, b, c)
-     rtx a ATTRIBUTE_UNUSED;
-     rtx b ATTRIBUTE_UNUSED;
-     rtx c ATTRIBUTE_UNUSED;
-{
-  return 0;
-}
-static inline rtx gen_sleu_di_reg                   PARAMS ((rtx, rtx, rtx));
-static inline rtx
-gen_sleu_di_reg(a, b, c)
-     rtx a ATTRIBUTE_UNUSED;
-     rtx b ATTRIBUTE_UNUSED;
-     rtx c ATTRIBUTE_UNUSED;
-{
-  return 0;
-}
-#endif
 extern rtx        gen_sunordered_df                 PARAMS ((rtx, rtx, rtx));
 extern rtx        gen_sunlt_df                      PARAMS ((rtx, rtx, rtx));
 extern rtx        gen_suneq_df                      PARAMS ((rtx, rtx, rtx));

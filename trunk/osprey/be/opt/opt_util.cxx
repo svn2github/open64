@@ -217,7 +217,6 @@ Set_tlog_phase(const INT32 phase)
 
 
 // ====================================================================
-#if 1
 const INT32    PHASE_STRLEN = 72;
 const INT32    MAX_SUBPHASES = 200;
 static char    phase_name[PHASE_STRLEN];
@@ -312,7 +311,6 @@ INT Report_statistics()
   return 1;
 }
 
-#endif
 
 
 static inline INT32 Sign(INT64 v)

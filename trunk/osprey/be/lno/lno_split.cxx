@@ -497,12 +497,6 @@ extern INT Split_Array(WN *store, WN *split_point,
     Split_Statement(new_store,dep_graph);
   }
 
-#if 0
-  // this is basically gratuitous recursion
-  if (Need_To_Split(store)) {
-    Split_Statement(store,dep_graph);
-  }
-#endif
 
   return 1;
 
