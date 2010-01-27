@@ -121,6 +121,7 @@ public:
   POINTS_TO  *Pt(IDTYPE id) const            { return (*_vec)[id]; }
   ALIAS_CONTEXT Pu_context(void) const       { return _pu_context; }
   ALIAS_RULE *Rule(void)   const             { return _rule; }
+  AliasAnalyzer *Alias_Analyzer(void) const  { return _alias_analyzer; }
   WN_MAP     Map(void) const		     { return _map; }
   WN_MAP     Homing_map(void) const	     { return _homing_map; }
   inline void       Set_id(WN *wn, IDTYPE id) const;

@@ -125,6 +125,7 @@
 #endif
 #include "opt_points_to.h"
 #include "opt_cvtl_rule.h"
+#include "opt_alias_mgr.h"
 
 #include <algorithm>
 
@@ -2562,6 +2563,11 @@ OPT_STAB::Collect_ST_attr(void)
       if (hl_ty != (TY_IDX)0 && pt->Highlevel_Ty() == (TY_IDX)0) {
 	pt->Set_hl_ty(hl_ty);
       }
+
+      // Determine the AliasTag associated with this symbol to be
+      // used by the currently selected alias analysis mechanism
+      AliasAnalyzer *aa = Alias_Mgr()->Alias_Analyzer();
+      pt->Set_alias_tag(aa->genAliasTag(st,psym->St_ofst(),psym->Byte_size()));
     }
 
     // Precompute the alias attributes and put them in bitsets.

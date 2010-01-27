@@ -299,7 +299,7 @@ friend class POINTS_TO;
   IDTYPE        _ip_alias_class;   // which equivalence class this
 				   // memop is in, according to
 				   // whole-program analysis
-  AliasTag _alias_tag;  // tag used to query AliasAnalyzer results
+  AliasTag     _alias_tag;  // tag used to query AliasAnalyzer results
 };
 
 // for alias classification
