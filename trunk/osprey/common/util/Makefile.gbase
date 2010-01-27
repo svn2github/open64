@@ -150,11 +150,13 @@ HFILES	= \
 	mstack.h \
 	tracing.h \
 	util.h \
+	vcg.h\
 	vstring.h
 
 CXXFILES = \
    cxx_memory.cxx	\
    errors.cxx		\
+   vcg.cxx
 
 .PHONY: default first last install
 
