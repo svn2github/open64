@@ -10,7 +10,11 @@ struct WN;
 struct ST;
 
 typedef UINT64 AliasTag;
-const AliasTag InvalidAliasTag = UINT64_MAX;
+
+// We use zero as the indicator of an unknown or invalid tag since
+// that is the default value returned by WN_MAP for WNs for which
+// no mapping has been established.
+const AliasTag InvalidAliasTag = 0;
 
 class AliasAnalyzer {
 
