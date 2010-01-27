@@ -103,7 +103,7 @@ private:
   IDTYPE                _no_alias_info_id;
   ALIAS_CONTEXT         _pu_context;      // bitset of accepted alias rule
   ALIAS_RULE            *_rule;
-  AliasAnalyzer         *_alias_analysis;
+  AliasAnalyzer         *_alias_analyzer;
 
   ALIAS_MANAGER(const ALIAS_MANAGER&);
   ALIAS_MANAGER& operator = (const ALIAS_MANAGER&);

@@ -4,6 +4,10 @@
 
 #include "sparse_bitset.h"
 #include "opt_alias_interface.h"
+#include "opt_alias_rule.h"
+
+struct WN;
+struct ST;
 
 typedef UINT64 AliasTag;
 const AliasTag InvalidAliasTag = UINT64_MAX;
@@ -18,7 +22,7 @@ public:
 
    virtual ~AliasAnalyzer();
 
-   static AliasAnalyzer *Create_Alias_Analyzer();
+   static AliasAnalyzer *Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree);
 
    // Provide the alias result for the references, objects
    // represented by the provided tags.
@@ -28,17 +32,14 @@ public:
    // For use in creating POINTS_TO from symbol and by mod-ref
    virtual AliasTag genAliasTag(ST *st, INT64 ofst, INT64 size);
 
-   // Req'd for mod-ref
-   // For an AliasTag provide an opaque set representing the
-   // objects or regions of memory referenced by the operation
-   // associated with the tag. Returns 'true' if we have valid
-   // points-to information assocated with the requested symbol.
-   // In that case the points-to set is provided.  Otherwise
-   // 'false' is returned and the points-to set is undefined.
-   // Note: the actual implementation of the bitset has not 
-   // been decided.  This routine is poorly named as we alias 
-   // analysis may not be formulated as a  points-to problem.
-   virtual bool pointsToSet(AliasTag, SparseBitSet<int> &) = 0;
+   // Mod-ref
+   // Given a call (ST *) and the AliasTag of a possibly
+   // referenced symbol, this method determines whether the
+   // symbol may be modified or read by that call.  Will not
+   // pessimize initial values, i.e. will not transform a
+   // 'false' value to 'true'.
+   virtual void aliasedWithCall(ST *call, AliasTag symTag,
+                                BOOL &mod, BOOL &ref);
 
    // Require interfaces to support ALIAS_MANAGER routines
    // Copy_alias_info()

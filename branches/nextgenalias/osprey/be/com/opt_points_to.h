@@ -54,6 +54,7 @@
 #include "config_wopt.h"	// for WOPT_Alias_Class_Limit,
 				//     WOPT_Ip_Alias_Class_Limit
 #include "be_memop_annot.h"
+#include "alias_analyzer.h"
 #if defined(TARG_SL)
 #include "intrn_info.h"
 #endif
@@ -298,7 +299,7 @@ friend class POINTS_TO;
   IDTYPE        _ip_alias_class;   // which equivalence class this
 				   // memop is in, according to
 				   // whole-program analysis
-
+  AliasTag _alias_tag;  // tag used to query AliasAnalyzer results
 };
 
 // for alias classification
@@ -407,6 +408,7 @@ public:
           { return Pointer_is_coderep_id() ?  ai.u._coderep_id : 0; }
   VER_ID Pointer_ver (void)  const { 
           return Pointer_is_named_symbol () || Pointer_is_aux_id() ? ai._ptr_ver : 0; }
+
 
   // Regarding annotation 
   BOOL Has_annotation (void) const { return _mem_annot.Has_annotation (); }
@@ -519,6 +521,8 @@ public:
 	ai._ip_alias_class = PESSIMISTIC_AC_ID;
       }
     }
+  void Set_alias_tag(const AliasTag tag) { ai._alias_tag = tag; }
+
   void Set_ty(TY_IDX ty)                  { _ty = ty; }
   void Set_hl_ty(TY_IDX hlty)             { _hl_ty = hlty; }
   void Set_field_id (UINT32 fldid)        { _field_id = fldid; }
@@ -616,6 +620,7 @@ public:
     Set_id(0);
     Set_alias_class(OPTIMISTIC_AC_ID);
     Set_ip_alias_class(OPTIMISTIC_AC_ID);
+    Set_alias_tag(InvalidAliasTag);
     _mem_annot.Init();
     // The default attributes: 
     Set_attr(PT_ATTR_NONE);
@@ -662,6 +667,8 @@ public:
   IDTYPE Alias_class(void) const { return ai._alias_class; }
 
   IDTYPE Ip_alias_class(void) const { return ai._ip_alias_class; }
+
+  AliasTag Alias_tag(void) const { return ai._alias_tag; }
 
   void Shift_ofst(mINT64 shift)   // shift offset by that amount
     { Set_byte_ofst( Byte_Ofst() + shift ); }

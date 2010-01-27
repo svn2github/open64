@@ -447,8 +447,12 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
     Is_True(FALSE, ("Language is unknown; mixed-language inlining illegal."));
   }
 
+  // Here we create the AliasAnalyzer object, which serves as the
+  // interface to the selected alias analysis algorithm.
+  _alias_analyzer = AliasAnalyzer::Create_Alias_Analyzer(ac,NULL);
+
   Set_pu_context(ac);
-  _rule = CXX_NEW(ALIAS_RULE(ac), &_mem_pool);
+  _rule = CXX_NEW(ALIAS_RULE(ac,_alias_analyzer), &_mem_pool);
 
   // Setup the trace flags.
   _trace = Get_Trace(TP_GLOBOPT, ALIAS_DUMP_FLAG);
@@ -472,9 +476,8 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
   npt->Init(); 
   npt->Set_expr_kind(EXPR_IS_ADDR);
 
-  // Here we create the AliasAnalyzer object, which serves as the
-  // interface to the selected alias analysis algorithm.
-  _alias_analysis = AliasAnalyzer::Create_Alias_Analyzer();
+
+
 }
 
 // ALIAS MANAGER destructor.

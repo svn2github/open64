@@ -80,6 +80,7 @@ static char *rcs_id = 	opt_alias_rule_CXX"$Revision: 1.8 $";
 #include "opt_points_to.h"
 #include "opt_alias_class.h"
 #include "opt_alias_rule.h"
+#include "alias_analyzer.h"
 #ifdef KEY
 #include "config_opt.h"
 #endif
@@ -149,6 +150,15 @@ ALIAS_RULE::Aliased_Ip_Classification_Rule(const POINTS_TO *const mem1,
                   mem1->Ip_alias_class() == OPTIMISTIC_AC_ID       ||
                   mem2->Ip_alias_class() == OPTIMISTIC_AC_ID);
 
+  return aliased;
+}
+
+BOOL
+ALIAS_RULE::Aliased_Alias_Analyzer_Rule(const POINTS_TO *const mem1,
+                                        const POINTS_TO *const mem2) const
+{
+  // TODO: Assert that _alias_analyzer != NULL
+  BOOL aliased = _alias_analyzer->aliased(mem1->Alias_tag(),mem2->Alias_tag());
   return aliased;
 }
 
@@ -886,6 +896,9 @@ ALIAS_KIND ALIAS_RULE::Aliased_Memop_By_Analysis
       && (!p2->Default_vsym() || p1->No_alias()))
     return ALIAS_KIND (AR_NOT_ALIAS);
 
+  if (Rule_enabled(ALIAS_ANALYZER_RULE) && !Aliased_Alias_Analyzer_Rule(p1,p2))
+    return ALIAS_KIND (AR_NOT_ALIAS);
+
   return ALIAS_KIND (AR_POSSIBLE_ALIAS);
 }
   
@@ -1050,6 +1063,9 @@ READ_WRITE ALIAS_RULE::Aliased_with_Call(ST *st, INT32 flags, const POINTS_TO *m
     if ((flags & WN_CALL_NON_PARM_REF) == 0)
       ref = FALSE;
   }
+
+  if (Rule_enabled(ALIAS_ANALYZER_RULE))
+    _alias_analyzer->aliasedWithCall(st,mem->Alias_tag(),mod,ref);
 
   if (mod && ref)
     return READ_AND_WRITE;

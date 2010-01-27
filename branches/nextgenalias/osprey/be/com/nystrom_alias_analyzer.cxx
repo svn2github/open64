@@ -8,9 +8,14 @@
 #include <stdio.h>
 #include "nystrom_alias_analyzer.h"
 
-NystromAliasAnalyzer::NystromAliasAnalyzer()
+NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac, WN *)
   : AliasAnalyzer()
 {
+  // Activate the use of the Nystrom points-to analysis by the
+  // ALIAS_RULE harness and disable alias classification rules.
+  ac |= ALIAS_ANALYZER_RULE;
+  ac &= ~(CLAS_RULE|IP_CLAS_RULE);
+
   fprintf(stderr,"Nystrom analysis...complete\n");
 }
 
@@ -28,8 +33,14 @@ NystromAliasAnalyzer::genAliasTag(ST *, INT64, INT64)
   return InvalidAliasTag;
 }
 
-bool
-NystromAliasAnalyzer::pointsToSet(AliasTag, SparseBitSet<int> &)
+void
+NystromAliasAnalyzer::aliasedWithCall(ST *call, AliasTag symTag,
+                                      BOOL &mod, BOOL &ref)
 {
-  return false;
+}
+
+BOOL
+NystromAliasAnalyzer::pointsToSet(AliasTag, SparseBitSet<CGNodeId> &)
+{
+  return FALSE;
 }

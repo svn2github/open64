@@ -23,34 +23,34 @@ class ConstraintGraphEdge
 public:
   ConstraintGraphEdge(CGNodeId srcId, CGNodeId destId,
                       EdgeType etype, UINT32 sizeOrSkew)
-  {
-    _srcId = srcId;
-    _destId = destId;
-    _edgeInfo._etype = etype;
-    _edgeInfo._sizeOrSkew = sizeOrSkew;
-  }
+    : _srcId(srcId),
+      _destId(destId),
+      _edgeInfo(etype,0,sizeOrSkew)
+  {}
+
 
   EdgeType edgeType() const
   {
-    return _edgeInfo._etype;
+    return edgeInfo().etype();
   }
 
   UINT32 size() const
   {
-    return _edgeInfo._sizeOrSkew;
+    // TODO: assert type is != SKEW
+    return edgeInfo().sizeOrSkew();
   }
 
   UINT32 skew() const
   {
-    return _edgeInfo._sizeOrSkew;
+    // TODO: assert type == SKEW
+    return edgeInfo().sizeOrSkew();
   }
 
   typedef struct
   {
     size_t operator()(const ConstraintGraphEdge *k) const
     {
-      return (size_t(k->_edgeInfo._etype << 28 ^ 
-                     k->_edgeInfo._sizeOrSkew << 16 ^
+      return (size_t(k->edgeInfo().hash() ^
                      k->_srcId << 8 ^ k->_destId));
     }
   } hashCGEdge;
@@ -60,20 +60,41 @@ public:
     bool operator()(const ConstraintGraphEdge *k1,
                     const ConstraintGraphEdge *k2) const
     {
-      return (k1->_edgeInfo._etype == k2->_edgeInfo._etype && 
-              k1->_edgeInfo._sizeOrSkew == k2->_edgeInfo._sizeOrSkew &&
-              k1->_srcId == k2->_srcId && k1->_destId == k2->_destId);
+      return (k1->edgeInfo() == k2->edgeInfo() &&
+              k1->_srcId == k2->_srcId &&
+              k1->_destId == k2->_destId);
     }
   } equalCGEdge;
 
 private:
   // The information in EdgeInfo is what gets passed from 
   // IPL to IPA and then back to BE for each ConstraintGraphEdge
-  typedef struct {
+  class EdgeInfo {
+  public:
+    EdgeInfo(EdgeType t, UINT16 f, UINT32 s)
+      : _etype(t), _flags(f), _sizeOrSkew(s) {}
+
+    EdgeType etype(void) const { return _etype; }
+    UINT16 flags(void) const { return _flags; }
+    UINT32 sizeOrSkew(void) const { return _sizeOrSkew; }
+
+    bool operator ==(const EdgeInfo &that) const
+    {
+       return (etype() == that.etype() &&
+           sizeOrSkew() == that.sizeOrSkew());
+    }
+
+    size_t hash(void) const {
+      return (etype() << 28 ^ sizeOrSkew() << 16);
+    }
+
+  private:
     EdgeType _etype;
     UINT16   _flags;
     UINT32   _sizeOrSkew;  // size for a copy/load/store edge, skew otherwise
-  } EdgeInfo;
+  };
+
+  const EdgeInfo &edgeInfo(void) const { return _edgeInfo; }
 
   CGNodeId _srcId;
   CGNodeId _destId;

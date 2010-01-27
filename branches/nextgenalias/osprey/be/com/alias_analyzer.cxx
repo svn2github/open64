@@ -17,7 +17,7 @@
 AliasAnalyzer *AliasAnalyzer::_alias_analyzer = NULL;
 
 AliasAnalyzer *
-AliasAnalyzer::Create_Alias_Analyzer()
+AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree)
 {
   fprintf(stderr,"Create Alias Analyzer...\n");
   if (_alias_analyzer != NULL)
@@ -25,7 +25,7 @@ AliasAnalyzer::Create_Alias_Analyzer()
 
   // What alias analyzer are we going to use?
   if ( Alias_Nystrom_Analyzer )
-    _alias_analyzer = new NystromAliasAnalyzer();
+    _alias_analyzer = new NystromAliasAnalyzer(ac,tree);
   else
     return NULL;
 }
@@ -46,9 +46,8 @@ AliasAnalyzer::genAliasTag(ST *, INT64, INT64)
   return InvalidAliasTag;
 }
 
-bool
-AliasAnalyzer::pointsToSet(AliasTag, SparseBitSet<int> &)
+void
+AliasAnalyzer::aliasedWithCall(ST *, AliasTag, BOOL &mod, BOOL &ref)
 {
-  return false;
 }
 
