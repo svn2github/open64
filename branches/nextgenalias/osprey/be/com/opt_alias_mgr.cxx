@@ -672,6 +672,11 @@ ALIAS_MANAGER::Dup_tree_alias_id( const WN *old_wn, WN *new_wn )
     WN_MAP32_Set(WN_MAP_ALIAS_CLASS, new_wn, ip_alias_class);
   }
 
+  AliasTag tag = WN_MAP32_Get(WN_MAP_ALIAS_TAG, old_wn);
+  if (tag != 0) {
+    WN_MAP32_Set(WN_MAP_ALIAS_TAG, new_wn, tag);
+  }
+
   // now travel down the tree
   if ( opc == OPC_BLOCK ) {
     WN *old_bwn, *new_bwn;
@@ -1334,6 +1339,11 @@ void Copy_alias_info(const ALIAS_MANAGER *am, WN *wn1, WN *wn2)
   WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn2,
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
 
+  AliasTag tag = WN_MAP32_Get(WN_MAP_ALIAS_TAG,wn1);
+  if (tag != 0) {
+      WN_MAP32_Set(WN_MAP_ALIAS_TAG,wn2,tag);
+  }
+
   IDTYPE id = am->Id(wn1);
   if (id == 0) {
     OPERATOR opr = OPCODE_operator(opc1);
@@ -1376,6 +1386,11 @@ void Duplicate_alias_info(ALIAS_MANAGER *am, WN *wn1, WN *wn2)
 
   WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn2,
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
+
+  AliasTag tag = WN_MAP32_Get(WN_MAP_ALIAS_TAG,wn1);
+  if (tag != 0) {
+    WN_MAP32_Set(WN_MAP_ALIAS_TAG,wn2,tag);
+  }
 
   // copy homing information
   if ( OPCODE_is_load(opc1) && OPCODE_is_load(opc2) ) {
