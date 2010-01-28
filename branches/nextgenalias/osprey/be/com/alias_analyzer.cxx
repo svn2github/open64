@@ -24,8 +24,10 @@ AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree)
     return _alias_analyzer;
 
   // What alias analyzer are we going to use?
-  if ( Alias_Nystrom_Analyzer )
+  if ( Alias_Nystrom_Analyzer ) {
     _alias_analyzer = new NystromAliasAnalyzer(ac,tree);
+    return _alias_analyzer;
+  }
   else
     return NULL;
 }
