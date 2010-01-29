@@ -1,31 +1,34 @@
 
-x86 Open64 4.2.3 Release Notes 
+x86 Open64 4.2.3.1 Release Notes 
 
 
-               December 14, 2009
+               January 29, 2010
 
 
 1. Overview
 
-2. Features
+2. Resolved Issues
 
-3. The Packages of the Compiler Suite
+3. Features
 
-4. Supported Operating Systems
+4. The Packages of the Compiler Suite
 
-5. Installing the Compiler Suite
-  5.1 Install from bz2 Package
-  5.2 Install from RPM packages
+5. Supported Operating Systems
 
-6. Bug Reporting and Support
+6. Installing the Compiler Suite
+  6.1 Install from bz2 Package
+  6.2 Install from RPM packages
 
-7. Known Issues and Limitations
+7. Bug Reporting and Support
+
+8. Known Issues and Limitations
 
 
 1. Overview
 ===========
 
- This is version 4.2.3 of the x86 Open64 compiler suite.
+ This is version 4.2.3.1 of the x86 Open64 compiler suite. It is a bug fix and
+ maintenance release for version 4.2.3.
 
  x86 Open64 is an open source, optimizing compiler for 32-bit (x86) and
  64-bit (x86-64) achitectures. x86 Open64 supports Fortran 77/90/95, C (C89
@@ -39,7 +42,15 @@ x86 Open64 4.2.3 Release Notes
 
 
 
-2. New Features in x86 Open64 4.2.3
+2. Issues Resolved in x86 Open64 4.2.3.1
+========================================
+
+ o Include 32-bit floating-point types in reassociation for more consistent
+   results when compiling floating-point intensive programs with '-Ofast'.
+
+
+
+3. New Features in x86 Open64 4.2.3
 ===================================
 
  o Improved interprocedural analysis to include structure array copy
@@ -77,22 +88,22 @@ x86 Open64 4.2.3 Release Notes
 
 
 
-3. The Packages of the Compiler Suite
+4. The Packages of the Compiler Suite
 =====================================
 
  This compiler is available in both binary and source-code forms.
 
- o x86_open64-4.2.3-1.src.tar.bz2
+ o x86_open64-4.2.3.1-1.src.tar.bz2
 
    This package contains the compiler's source code. To unpack the source, use
    the command:
 
-     tar xjvf x86_open64-4.2.3-1.src.tar.bz2
+     tar xjvf x86_open64-4.2.3.1-1.src.tar.bz2
 
    For instructions on how to build the compiler from source, see the included
    INSTALL file.
 
- o x86_open64-4.2.3-1.x86_64.tar.bz2
+ o x86_open64-4.2.3.1-1.x86_64.tar.bz2
 
    This package contains the binary code for x86-64 machines.
 
@@ -103,19 +114,19 @@ x86 Open64 4.2.3 Release Notes
    libraries. The x86 Open64 4.2.2.3 release can be downloaded from
    http://developer.amd.com/cpu/open64.
 
- o x86_open64-4.2.3-1.x86_64.rpm
+ o x86_open64-4.2.3.1-1.x86_64.rpm
 
    This package contains the same binaries as the tar.bz2 package in RPM form.
 
 
 
-4. Supported Operating Systems
+5. Supported Operating Systems
 ==============================
 
  The two binary packages,
 
- o x86_open64-4.2.3-1.x86_64.tar.bz2
- o x86_open64-4.2.3-1.x86_64.rpm
+ o x86_open64-4.2.3.1-1.x86_64.tar.bz2
+ o x86_open64-4.2.3.1-1.x86_64.rpm
 
  are tested and validated on 64-bit Linux systems running:
 
@@ -133,47 +144,47 @@ x86 Open64 4.2.3 Release Notes
  o binutils-2.17.50.0.6-12.el5 (RHEL 5.4)
 
 
-5. Installing the Compiler Suite
+6. Installing the Compiler Suite
 ================================
 
-5.1 Install from bz2 Package
+6.1 Install from bz2 Package
 ----------------------------
 
  To install the compiler from the bz2 package:
 
- o Expand x86_open64-4.2.3-1.x86_64.tar.bz2 with the command:
+ o Expand x86_open64-4.2.3.1-1.x86_64.tar.bz2 with the command:
 
-   tar xjvf x86_open64-4.2.3-1.x86_64.tar.bz2
+   tar xjvf x86_open64-4.2.3.1-1.x86_64.tar.bz2
 
- o If desired, move the x86_open64-4.2.3 directory to the final
+ o If desired, move the x86_open64-4.2.3.1 directory to the final
    installation location using the 'mv' command.
 
    The C, C++, FORTRAN compilers are now available in the 'bin'
    subdirectory.
 
 
-5.2 Install from RPM Package
+6.2 Install from RPM Package
 ----------------------------
 
  Normally you must have superuser privileges to install RPM packages.
 
  To install the compiler from RPM:
 
- $ rpm -ivh x86_open64-4.2.3-1.x86_64.rpm
+ $ rpm -ivh x86_open64-4.2.3.1-1.x86_64.rpm
 
  This command will install the x86 Open64 compiler to
- /opt/x86_open64-4.2.3. The C, C++, FORTRAN compilers are in folder
- /opt/x86_open64-4.2.3/bin.
+ /opt/x86_open64-4.2.3.1. The C, C++, FORTRAN compilers are in folder
+ /opt/x86_open64-4.2.3.1/bin.
 
  To install the compiler to another location:
 
- $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.3-1.x86_64.rpm
+ $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.3.1-1.x86_64.rpm
 
  Then the compiler will be installed to /path/to/folder.
 
 
 
-6. Bug Reporting and Support
+7. Bug Reporting and Support
 ============================
 
  To report a bug or get help with the binary releases, please see the Support
