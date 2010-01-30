@@ -375,7 +375,7 @@ void Note_Invalid_Based_Symbol(const ST *st)
 // ALIAS MANAGER constructor.
 // It set up its own memory pool.
 //
-ALIAS_MANAGER::ALIAS_MANAGER(void)
+ALIAS_MANAGER::ALIAS_MANAGER(WN *entryWN)
 {
   MEM_POOL_Initialize(&_mem_pool, "ALIAS_pool", FALSE);
   MEM_POOL_Push(&_mem_pool);
@@ -449,7 +449,7 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
 
   // Here we create the AliasAnalyzer object, which serves as the
   // interface to the selected alias analysis algorithm.
-  _alias_analyzer = AliasAnalyzer::Create_Alias_Analyzer(ac,NULL);
+  _alias_analyzer = AliasAnalyzer::Create_Alias_Analyzer(ac,entryWN,&_mem_pool);
 
   Set_pu_context(ac);
   _rule = CXX_NEW(ALIAS_RULE(ac,_alias_analyzer), &_mem_pool);
@@ -750,9 +750,9 @@ ALIAS_MANAGER::Cross_dso_set_id(WN *wn, IDTYPE id) const
 // ************************************************************************
 
 //  Create an alias manager
-ALIAS_MANAGER *Create_Alias_Manager(MEM_POOL *pu_pool)
+ALIAS_MANAGER *Create_Alias_Manager(MEM_POOL *pu_pool, WN *entryWN)
 {
-  return CXX_NEW(ALIAS_MANAGER(), pu_pool);
+  return CXX_NEW(ALIAS_MANAGER(entryWN), pu_pool);
 }
 
 //  Delete the alias manager

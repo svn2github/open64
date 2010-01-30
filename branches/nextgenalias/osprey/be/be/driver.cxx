@@ -890,7 +890,7 @@ Ipl_Processing (PU_Info *current_pu, WN *pu)
 
     if (Run_preopt) {
 	du_mgr = Create_Du_Manager(MEM_pu_nz_pool_ptr);
-	al_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr);
+	al_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr, pu);
 	Check_for_IR_Dump_Before_Phase(TP_IPL, pu, "Pre_Optimizer");
 	pu = Pre_Optimizer(PREOPT_IPA0_PHASE, pu, du_mgr, al_mgr);
 	Check_for_IR_Dump(TP_IPL, pu, "Pre_Optimizer");
@@ -1103,7 +1103,7 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
     // MainOpt and CG. Preopt uses it's own local alias manager,
     // one for each region. Deleted by Post_Process_PU.
     if ((Run_wopt || Run_region_bounds) && alias_mgr == 0)
-      alias_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr);
+      alias_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr, pu);
 
     // Create the region boundary sets, be/region/region_bounds.cxx
     if (Run_region_bounds) {

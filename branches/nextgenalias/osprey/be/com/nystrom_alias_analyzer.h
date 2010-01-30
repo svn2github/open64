@@ -11,7 +11,7 @@ class NystromAliasAnalyzer : public AliasAnalyzer {
    
 public:
 
-   NystromAliasAnalyzer(ALIAS_CONTEXT &,WN *);
+   NystromAliasAnalyzer(ALIAS_CONTEXT &,WN *,MEM_POOL *memPool);
 
    ~NystromAliasAnalyzer();
 

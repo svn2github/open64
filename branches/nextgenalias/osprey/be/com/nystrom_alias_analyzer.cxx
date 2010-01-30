@@ -6,9 +6,12 @@
  */
 
 #include <stdio.h>
+#include "cxx_memory.h"
 #include "nystrom_alias_analyzer.h"
 
-NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac, WN *)
+NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
+                                           WN *entryWN,
+                                           MEM_POOL *memPool)
   : AliasAnalyzer()
 {
   // Activate the use of the Nystrom points-to analysis by the
@@ -16,7 +19,10 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac, WN *)
   ac |= ALIAS_ANALYZER_RULE;
   ac &= ~(CLAS_RULE|IP_CLAS_RULE);
 
+  ConstraintGraph *cg = CXX_NEW(ConstraintGraph(entryWN, memPool), memPool);
+
   fprintf(stderr,"Nystrom analysis...complete\n");
+  cg->print(stderr);
 }
 
 NystromAliasAnalyzer::~NystromAliasAnalyzer() {}

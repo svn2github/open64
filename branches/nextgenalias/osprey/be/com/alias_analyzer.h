@@ -2,6 +2,7 @@
 #ifndef alias_analysis_INCLUDED
 #define alias_analysis_INCLUDED
 
+#include "mempool.h"
 #include "sparse_bitset.h"
 #include "opt_alias_interface.h"
 #include "opt_alias_rule.h"
@@ -26,7 +27,9 @@ public:
 
    virtual ~AliasAnalyzer();
 
-   static AliasAnalyzer *Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree);
+   static AliasAnalyzer *Create_Alias_Analyzer(ALIAS_CONTEXT &ac, 
+                                               WN *tree,
+                                               MEM_POOL *memPool);
 
    // Provide the alias result for the references, objects
    // represented by the provided tags.

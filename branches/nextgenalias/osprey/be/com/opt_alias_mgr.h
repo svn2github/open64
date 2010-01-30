@@ -112,7 +112,7 @@ private:
   vector<IDTYPE, mempool_allocator<IDTYPE> > *_invalid_ip_alias_classes;
 
 public:
-  ALIAS_MANAGER(void);
+  ALIAS_MANAGER(WN *entryWN);
   ~ALIAS_MANAGER(void);
 
   IDTYPE     Id(const WN *wn) const;

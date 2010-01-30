@@ -267,7 +267,7 @@ Perform_Loop_Nest_Optimization (PU_Info* current_pu, WN *pu_wn,
 #endif
 
     du_mgr = Create_Du_Manager(MEM_pu_nz_pool_ptr);
-    alias_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr);
+    alias_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr,pu_wn);
 
     STACK<WN*> st_before_wn(&MEM_local_pool); 
     STACK<INT> st_before_id(&MEM_local_pool); 

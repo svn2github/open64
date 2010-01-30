@@ -17,7 +17,8 @@
 AliasAnalyzer *AliasAnalyzer::_alias_analyzer = NULL;
 
 AliasAnalyzer *
-AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree)
+AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree, 
+                                     MEM_POOL *memPool)
 {
   fprintf(stderr,"Create Alias Analyzer...\n");
   if (_alias_analyzer != NULL)
@@ -25,7 +26,7 @@ AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree)
 
   // What alias analyzer are we going to use?
   if ( Alias_Nystrom_Analyzer ) {
-    _alias_analyzer = new NystromAliasAnalyzer(ac,tree);
+    _alias_analyzer = new NystromAliasAnalyzer(ac,tree,memPool);
     return _alias_analyzer;
   }
   else

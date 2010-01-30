@@ -331,7 +331,7 @@ typedef enum {
 
 typedef UINT32 ALIAS_CONTEXT;
 
-struct ALIAS_MANAGER *Create_Alias_Manager(MEM_POOL *);
+struct ALIAS_MANAGER *Create_Alias_Manager(MEM_POOL *, WN *);
 
 void Delete_Alias_Manager(struct ALIAS_MANAGER *, MEM_POOL *);
 
