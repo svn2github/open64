@@ -18,18 +18,20 @@ typedef unsigned long BITMAP_WORD;
 
 #define BITMAP_ELEMENT_ALL_BITS (BITMAP_ELEMENT_WORDS * BITMAP_WORD_BITS)
 
+typedef struct SparseBitSetElementDef
+{
+  SparseBitSetElementDef *_next;           // Next element
+  SparseBitSetElementDef *_prev;           // Prev element
+  UINT32 _idx;                             // index of this element
+  BITMAP_WORD _bits[BITMAP_ELEMENT_WORDS]; // Bits that are set
+} SparseBitSetElement;
+
+static SparseBitSetElement zeroBitElem;
+
 template <class T>
 class SparseBitSet
 {
 private:
-
-  typedef struct SparseBitSetElementDef
-  {
-    SparseBitSetElementDef *_next;           // Next element
-    SparseBitSetElementDef *_prev;           // Prev element
-    UINT32 _idx;                             // index of this element
-    BITMAP_WORD _bits[BITMAP_ELEMENT_WORDS]; // Bits that are set
-  } SparseBitSetElement;
 
   class SparseBitSetIterator 
   {
@@ -67,8 +69,9 @@ private:
       _bitNum = startBit;
     }
 
-    bool hasNext() 
+    bool operator!=(const UINT32 i) 
     {
+      assert(i == 0);
       // If our current word is nonzero, it contains the bit we want. 
       if (_bits) {
       next_bit:
@@ -235,13 +238,14 @@ private:
   UINT32 _currIdx;                 // Index of last element looked at.
   MEM_POOL *_memPool;              // Pool to allocate elements from.
 
-  static SparseBitSetElement zeroBitElem;
-
 public:
   typedef SparseBitSetIterator iterator;
 
   SparseBitSet(MEM_POOL *memPool = Malloc_Mem_Pool) :
-    _memPool(memPool), _firstElem(NULL), _currElem(NULL)
+    _firstElem(NULL), 
+    _currElem(NULL),
+    _currIdx(0),
+    _memPool(memPool)
   {
     T obj;
     assert(sizeof((UINT32)obj) <= sizeof(UINT32));
@@ -264,6 +268,51 @@ public:
       ptr->_bits[wordNum] |= bitVal;
   }
 
+  void print(FILE *file)
+  {
+    const char *comma = "";
+    SparseBitSetIterator si(this, 0);
+    while (si != 0) {
+      fprintf(file, "%s%d\n", comma, *si);
+      si++;
+      comma = ", ";
+    }
+  }
+
+  void debug(FILE *file)
+  {
+    SparseBitSetElement *ptr;
+
+    fprintf (file, "\nfirst = %p current = %p indx = %u\n",
+             (void *)_firstElem, (void *)_currElem, _currIdx);
+
+    for (ptr = _firstElem; ptr; ptr = ptr->_next) {
+      unsigned int i, j, col = 26;
+
+      fprintf (file, "\t%p next = %p prev = %p indx = %u\n\t\tbits = {",
+               (void *)ptr, (void *)ptr->_next, (void *)ptr->_prev, ptr->_idx);
+
+      for (i = 0; i < BITMAP_ELEMENT_WORDS; i++) 
+      {
+        for (j = 0; j < BITMAP_WORD_BITS; j++) 
+        {
+          if ((ptr->_bits[i] >> j) & 1) 
+          {
+            if (col > 70) 
+            {
+              fprintf (file, "\n\t\t\t");
+              col = 24;
+            }
+            fprintf (file, " %u", (ptr->_idx * BITMAP_ELEMENT_ALL_BITS
+                                     + i * BITMAP_WORD_BITS + j));
+            col += 4;
+          }
+        }
+      }
+      fprintf (file, " }\n");
+    
+      }
+  }
 };
 
 
