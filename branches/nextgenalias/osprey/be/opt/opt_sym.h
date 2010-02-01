@@ -1262,6 +1262,7 @@ public:
 
   //  Alias analysis and update
   BOOL     Transfer_alias_class_to_occ_and_aux(RID *, WN *);
+  void     Transfer_alias_tag_to_occ_and_aux(RID *, WN *);
   void     Compute_FFA(RID *);		// Flow free alias analysis
   void     Compute_FFA_for_copy(WN *, BB_NODE *, BOOL);// FFA for i=i copy
   void     Compute_FSA(void);		// Flow sensitive alias analysis

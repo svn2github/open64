@@ -108,11 +108,6 @@ OPT_STAB::Enter_occ_tab(WN *wn, AUX_ID aux_id)
       occ->Points_to()->Set_ofst_kind(OFST_IS_INVALID);
     }
 
-    // Lookup the AliasTag associated with this reference that will
-    // be used to query the currently selected alias analysis mechanism.
-    AliasTag tag = WN_MAP32_Get(WN_MAP_ALIAS_TAG,wn);
-    occ->Points_to()->Set_alias_tag(tag);
-
     // preserve LNO dependence info
     if (occ->Is_load()) {
       occ->Set_mem_mu_node(NULL);

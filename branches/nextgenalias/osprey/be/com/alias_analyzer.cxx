@@ -54,3 +54,8 @@ AliasAnalyzer::aliasedWithCall(ST *, AliasTag, BOOL &mod, BOOL &ref)
 {
 }
 
+AliasTag
+AliasAnalyzer::meet(AliasTag, AliasTag)
+{
+  return InvalidAliasTag;
+}

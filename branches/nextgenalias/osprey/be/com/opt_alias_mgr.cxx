@@ -672,9 +672,9 @@ ALIAS_MANAGER::Dup_tree_alias_id( const WN *old_wn, WN *new_wn )
     WN_MAP32_Set(WN_MAP_ALIAS_CLASS, new_wn, ip_alias_class);
   }
 
-  AliasTag tag = WN_MAP32_Get(WN_MAP_ALIAS_TAG, old_wn);
+  AliasTag tag = WN_MAP_AliasTag_Get(old_wn);
   if (tag != 0) {
-    WN_MAP32_Set(WN_MAP_ALIAS_TAG, new_wn, tag);
+    WN_MAP_AliasTag_Set(new_wn, tag);
   }
 
   // now travel down the tree
@@ -1339,9 +1339,9 @@ void Copy_alias_info(const ALIAS_MANAGER *am, WN *wn1, WN *wn2)
   WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn2,
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
 
-  AliasTag tag = WN_MAP32_Get(WN_MAP_ALIAS_TAG,wn1);
+  AliasTag tag = WN_MAP_AliasTag_Get(wn1);
   if (tag != 0) {
-      WN_MAP32_Set(WN_MAP_ALIAS_TAG,wn2,tag);
+      WN_MAP_AliasTag_Set(wn2,tag);
   }
 
   IDTYPE id = am->Id(wn1);
@@ -1387,9 +1387,9 @@ void Duplicate_alias_info(ALIAS_MANAGER *am, WN *wn1, WN *wn2)
   WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn2,
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
 
-  AliasTag tag = WN_MAP32_Get(WN_MAP_ALIAS_TAG,wn1);
+  AliasTag tag = WN_MAP_AliasTag_Get(wn1);
   if (tag != 0) {
-    WN_MAP32_Set(WN_MAP_ALIAS_TAG,wn2,tag);
+    WN_MAP_AliasTag_Set(wn2,tag);
   }
 
   // copy homing information

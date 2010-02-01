@@ -10,12 +10,26 @@
 struct WN;
 struct ST;
 
-typedef UINT64 AliasTag;
+enum AliasTag {
+  // We use zero as the indicator of an unknown or invalid tag since
+  // that is the default value returned by WN_MAP for WNs for which
+  // no mapping has been established.
+  InvalidAliasTag = 0,
+  // Indicates an empty alias set, e.g. this is the initial value of
+  // the _alias_tag within a POINTS_TO object
+  EmptyAliasTag,
+  // First non-predefined alias tag to be associated with memory
+  // references
+  InitialAliasTag,
+};
 
-// We use zero as the indicator of an unknown or invalid tag since
-// that is the default value returned by WN_MAP for WNs for which
-// no mapping has been established.
-const AliasTag InvalidAliasTag = 0;
+// The WN_MAP only supports INT32, and will not allow us to place
+// an enumeration into the map.  Here we hide the casting from
+// the client.
+#define WN_MAP_AliasTag_Set(wn,thing) \
+  IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_TAG, (wn), (INT32)(thing))
+#define WN_MAP_AliasTag_Get(wn) \
+  (AliasTag)IPA_WN_MAP32_Get(Current_Map_Tab, WN_MAP_ALIAS_TAG, (wn))
 
 class AliasAnalyzer {
 
@@ -60,6 +74,8 @@ public:
    // Create_formal_alias()
    // Create_unique_pointer_alias()
    // Create_lda_array_alias()
+
+   virtual AliasTag meet(AliasTag destTag, AliasTag srcTag);
 };
 
 #endif // alias_analysis_INCLUDED

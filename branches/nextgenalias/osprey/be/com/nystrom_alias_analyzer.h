@@ -43,6 +43,22 @@ public:
    // points-to set is provided.  Otherwise, the routine 
    // returns 'false' and the points-to set is undefined.
    BOOL pointsToSet(AliasTag, SparseBitSet<CGNodeId> &);
+
+
+   AliasTag meet(AliasTag dstTag, AliasTag srcTag);
+
+private:
+
+   // Creates a new AliasTag for use during client update of
+   // alias information.  The underlying points-to set does not
+   // have an associated symbol or perhaps even a constraint node
+   // TODO: Implement newAliasTag
+   AliasTag newAliasTag(void) { return InvalidAliasTag; }
+
+   // Unions the points-to set of srcTag into the points-to set
+   // of dstTag.
+   // TODO: Implement mergePointsTo
+   void mergePointsTo(AliasTag dstTag, AliasTag srcTag) { }
 };
 
 #endif

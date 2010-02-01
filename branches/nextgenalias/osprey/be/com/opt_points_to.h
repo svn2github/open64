@@ -620,7 +620,7 @@ public:
     Set_id(0);
     Set_alias_class(OPTIMISTIC_AC_ID);
     Set_ip_alias_class(OPTIMISTIC_AC_ID);
-    Set_alias_tag(InvalidAliasTag);
+    Set_alias_tag(EmptyAliasTag);
     _mem_annot.Init();
     // The default attributes: 
     Set_attr(PT_ATTR_NONE);
@@ -688,6 +688,9 @@ public:
 
   // Merge the information from alias classification for two POINTS_TO's
   void Meet_info_from_alias_class(const POINTS_TO *);
+
+  // Merge the information from the alias tags for two POINTS_TO's
+  void Meet_alias_tag(const POINTS_TO *, AliasAnalyzer *);
 
   // Merge two points to information
   void Meet(const POINTS_TO *, ST *);

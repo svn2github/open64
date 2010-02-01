@@ -283,6 +283,17 @@ void POINTS_TO::Meet_info_from_alias_class(const POINTS_TO *pt)
   if (!pt->Not_alloca_mem())   Reset_not_alloca_mem();
 }
 
+// We are performing a meet operation on two AliasTags
+// The key assumption here is that we are performing the
+// meet such that AliasTag of 'pt' will be unioned with
+// that of 'this'.
+void POINTS_TO::Meet_alias_tag(const POINTS_TO *pt, AliasAnalyzer *aa)
+{
+  AliasTag tag = aa->meet(Alias_tag(),pt->Alias_tag());
+  if (tag != Alias_tag())
+    Set_alias_tag(tag);
+}
+
 //  Combine *this and *pt in a conservative manner.
 //  Put results in *this.
 // 
@@ -1068,6 +1079,7 @@ void POINTS_TO::Print(FILE *fp) const
   }
   fprintf(fp, "per-PU class %d, ", Alias_class());
   fprintf(fp, "global class %d, ", Ip_alias_class());
+  fprintf(fp, "alias tag %d, ", Alias_tag());
   fprintf(fp, "ty=%d, hlty=%d, ", Ty(), Highlevel_Ty ());
 
   // print attributes

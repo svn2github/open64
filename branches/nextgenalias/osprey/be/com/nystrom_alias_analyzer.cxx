@@ -50,3 +50,16 @@ NystromAliasAnalyzer::pointsToSet(AliasTag, SparseBitSet<CGNodeId> &)
 {
   return FALSE;
 }
+
+AliasTag
+NystromAliasAnalyzer::meet(AliasTag dstTag, AliasTag srcTag)
+{
+  if (dstTag == InvalidAliasTag || srcTag == InvalidAliasTag)
+    return InvalidAliasTag;
+
+  AliasTag retTag = dstTag;
+  if (dstTag == EmptyAliasTag)
+    retTag = newAliasTag();
+  mergePointsTo(retTag,srcTag);
+  return retTag;
+}

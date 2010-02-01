@@ -3709,6 +3709,66 @@ OPT_STAB::Transfer_alias_class_to_occ_and_aux(RID *const rid,
   return found_ip_alias_class_info;
 }
 
+void
+OPT_STAB::Transfer_alias_tag_to_occ_and_aux(RID *const rid,
+          WN  *const wn)
+{
+  BOOL   found_ip_alias_class_info = FALSE;
+  OPCODE opc = WN_opcode(wn);
+
+  // BLOCK is allowed; it shows up as a kid of COMPGOTO, for example.
+  // Is_True(opc != OPC_BLOCK,
+  //         ("Transfer_alias_class_to_occ_and_aux: BLOCK not allowed"));
+  if (!OPCODE_is_black_box(opc)) {
+    OPERATOR opr = OPCODE_operator(opc);
+    if (OPCODE_is_load(opc) ||
+        OPCODE_is_store(opc) ||
+        opr == OPR_LDA ||
+#if defined(TARG_SL)
+        (opr == OPR_PARM && (WN_Parm_By_Reference(wn) || WN_Parm_Dereference(wn)))) {
+#else
+        (opr == OPR_PARM && WN_Parm_By_Reference(wn))) {
+#endif
+      if (OPERATOR_is_scalar_load (opr) || OPERATOR_is_scalar_store (opr) ||
+          opr == OPR_LDA) {
+        AUX_ID idx = WN_aux(wn);
+        AUX_STAB_ENTRY *psym = Aux_stab_entry(idx);
+        POINTS_TO *pt = psym->Points_to();
+
+        // Determine the AliasTag associated with this symbol to be
+        // used by the currently selected alias analysis mechanism
+        AliasAnalyzer *aa = Alias_Mgr()->Alias_Analyzer();
+        pt->Set_alias_tag(aa->genAliasTag(psym->St(),psym->St_ofst(),
+                                          psym->Byte_size()));
+      }
+      else {
+        Is_True(Get_occ(wn) != NULL,
+            ("Transfer_alias_tag_to_occ_and_aux: Indirect memop should have "
+                "OCC_TAB_ENTRY"));
+      }
+      // Direct memops can have OCC_TAB_ENTRY's corresponding to their
+      // vsyms. Set the alias class information in those POINTS_TO's,
+      // too, as well as for indirect memops.
+      OCC_TAB_ENTRY *occ = Get_occ(wn);
+      if (occ != NULL) {
+          POINTS_TO *occ_pt = occ->Points_to();
+          AliasTag tag = WN_MAP_AliasTag_Get(wn);
+          occ_pt->Set_alias_tag(tag);
+
+          POINTS_TO *vsym_pt = Aux_stab_entry(occ->Aux_id())->Points_to();
+          // Perform the part of POINTS_TO::Meet that is related to
+          // alias tag information, since Meet operations will already
+          // have been done before we finalize the full set of
+          // POINTS_TO's for the program.
+          vsym_pt->Meet_alias_tag(occ_pt, Alias_Mgr());
+        }
+      }
+      for (UINT i = 0; i < WN_kid_count(wn); ++i)
+        Transfer_alias_tag_to_occ_and_aux(rid, WN_kid(wn, i));
+    }
+    return;
+}
+
 #if defined(TARG_SL)
 void OPT_STAB::Refine_intrn_alias_info(	WN* intrn_wn )
 {  
@@ -3922,6 +3982,7 @@ void OPT_STAB::Compute_FFA(RID *const rid)
     FOR_ALL_ELEM (wn, stmt_iter, Init(bb->Firststmt(), bb->Laststmt())) {
       Allocate_mu_chi_and_virtual_var(wn, bb);
       found_ip_alias_class_info |= Transfer_alias_class_to_occ_and_aux(rid, wn);
+      Transfer_alias_tag_to_occ_and_aux(rid,wn);
     }
   }
 
