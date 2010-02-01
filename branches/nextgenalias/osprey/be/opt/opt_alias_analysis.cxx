@@ -3760,7 +3760,7 @@ OPT_STAB::Transfer_alias_tag_to_occ_and_aux(RID *const rid,
           // alias tag information, since Meet operations will already
           // have been done before we finalize the full set of
           // POINTS_TO's for the program.
-          vsym_pt->Meet_alias_tag(occ_pt, Alias_Mgr());
+          vsym_pt->Meet_alias_tag(occ_pt,Alias_Mgr()->Alias_Analyzer());
         }
       }
       for (UINT i = 0; i < WN_kid_count(wn); ++i)
