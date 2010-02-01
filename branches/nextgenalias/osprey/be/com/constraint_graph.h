@@ -1,6 +1,7 @@
 #ifndef constraint_graph_INCLUDED
 #define constraint_graph_INCLUDED
 
+#include <list>
 #include <ext/hash_map>
 #include <ext/hash_set>
 #include "wn.h"
@@ -10,6 +11,7 @@
 
 // Constraint graph edge flags
 #define CG_EDGE_FLAGS_ARRAY  0x0001
+#define CG_EDGE_IN_WORKLIST  0x0002
 
 #define CG_NODE_ALL_OFFSETS (-1)
 
@@ -35,6 +37,7 @@
 #define CG_NODE_FLAGS_UNKNOWN 0x01
 
 using namespace __gnu_cxx;
+using namespace std;
 
 typedef UINT32 CGNodeId;
 
@@ -97,6 +100,7 @@ public:
   UINT16 flags() const { return _edgeInfo.flags(); }
   bool checkFlags(UINT16 flag) const { return _edgeInfo.checkFlags(flag); }
   void addFlags(UINT16 flag) { _edgeInfo.addFlags(flag); }
+  void clearFlags(UINT16 flag) { _edgeInfo.clearFlags(flag); }
 
   void print(FILE *file)
   {
@@ -136,7 +140,8 @@ private:
     CGEdgeQual qual(void) const { return _qual; }
     UINT16 flags(void) const { return _flags; }
     bool checkFlags(UINT16 flag) const { return _flags & flag; }
-    void addFlags(UINT16 flag) { _flags | flag; }
+    void addFlags(UINT16 flag) { _flags |= flag; }
+    void clearFlags(UINT16 flag) { _flags &= ~flag; }
     UINT32 sizeOrSkew(void) const { return _sizeOrSkew; }
     void sizeOrSkew(UINT32 s) { _sizeOrSkew = s; }
 
@@ -510,6 +515,9 @@ public:
   }
 
 private:
+
+  // Constraint graph build methods
+
   typedef enum {
     ADDR,
     ASSIGN,
@@ -533,6 +541,36 @@ private:
 
   ConstraintGraphNode *getCGNode(WN *wn);
 
+  // Constraint graph solver
+  class WorkList {
+  public:
+    WorkList() {}
+    ~WorkList() {}
+
+    void push(ConstraintGraphEdge *e);
+    ConstraintGraphEdge *pop(void);
+    bool empty(void) const { return _edgeList.empty(); }
+
+  private:
+    list<ConstraintGraphEdge *> _edgeList;
+  };
+
+  class EdgeDelta {
+  public:
+    EdgeDelta() {}
+    ~EdgeDelta() {}
+
+    void add(ConstraintGraphEdge *e);
+    WorkList &copySkewList() { return _copySkew; }
+    WorkList &loadStoreList() { return _loadStore; }
+
+  private:
+    WorkList _copySkew;
+    WorkList _loadStore;
+  };
+
+  void solveConstraints(EdgeDelta &delta);
+
   typedef hash_map<CGNodeId, ConstraintGraphNode *> CGIdToNodeMap;
 
   typedef hash_map<ConstraintGraphNode *, CGNodeId, 
@@ -548,6 +586,8 @@ private:
   typedef CGNodeToIdMap::const_iterator CGNodeToIdMapIterator;
 
   typedef CGStInfoMap::const_iterator CGStInfoMapIterator;
+
+  // Data Members
 
   // Set of ConstraintGraphNodes
   CGIdToNodeMap _cgIdToNodeMap;
