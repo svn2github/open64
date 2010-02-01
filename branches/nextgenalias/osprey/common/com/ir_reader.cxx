@@ -108,7 +108,6 @@ extern char * Targ_Print (const char *fmt, TCON c );
 #include "dwarf_DST_mem.h"
 #include "ir_reader.h"
 #include "tracing.h"
-#include "alias_analyzer.h"  /* Enable dumping of alias tag */
 
 #ifdef BACK_END
 #include "opt_alias_mgr.h"
@@ -1230,8 +1229,8 @@ static void ir_put_wn(WN * wn, INT indent)
     }
 
     if (Current_Map_Tab != NULL &&
-        WN_MAP_AliasTag_Get(wn) != 0)
-      fprintf(ir_ofile," {alias_tag %d}",WN_MAP_AliasTag_Get(wn));
+        WN_MAP32_Get(WN_MAP_ALIAS_TAG,wn) != 0)
+      fprintf(ir_ofile," {alias_tag %d}",WN_MAP32_Get(WN_MAP_ALIAS_TAG,wn));
 
     fprintf(ir_ofile, "\n");
 }
