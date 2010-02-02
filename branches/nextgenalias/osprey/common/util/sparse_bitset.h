@@ -233,6 +233,36 @@ private:
     _currIdx = element->_idx;
   }
 
+  // Insert a new uninitialized element after element elt.  
+  // If elt is NULL, insert the element at the start.  Return the
+  // new element.
+  SparseBitSetElement *
+  insertAfter (SparseBitSetElement *elt, UINT32 idx)
+  {
+    SparseBitSetElement *node = 
+                         TYPE_MEM_POOL_ALLOC(SparseBitSetElement, _memPool);
+    node->_idx = idx;
+    if (!elt) {
+      if (!_currElem) {
+        _currElem = node;
+        _currIdx = idx;
+      }
+      node->_next = _firstElem;
+      if (node->_next)
+        node->_next->_prev = node;
+      _firstElem = node;
+      node->_prev = NULL;
+    } else {
+      assert(_currElem);
+      node->_next = elt->_next;
+      if (node->_next)
+        node->_next->_prev = node;
+      elt->_next = node;
+      node->_prev = elt;
+    }
+    return node;
+  }
+
   SparseBitSetElement *_firstElem; // First element in linked list.
   SparseBitSetElement *_currElem;  // Last element looked at
   UINT32 _currIdx;                 // Index of last element looked at.
@@ -268,12 +298,59 @@ public:
       ptr->_bits[wordNum] |= bitVal;
   }
 
+  // Union rhs into 'this'. Return true if 'this' changes. 
+  bool setUnion(SparseBitSet &rhs)
+  {
+    SparseBitSetElement *thisElem = _firstElem;
+    SparseBitSetElement *rhsElem = rhs._firstElem;
+    SparseBitSetElement *thisPrevElem = NULL;
+    bool changed = false;
+
+    while (rhsElem) {
+      if (!thisElem || rhsElem->_idx < thisElem->_idx) {
+        /* Copy rhsElem.  */
+        SparseBitSetElement *dst = insertAfter(thisPrevElem, rhsElem->_idx) ;
+        memcpy(dst->_bits, rhsElem->_bits, sizeof (dst->_bits));
+        thisPrevElem = dst;
+        rhsElem = rhsElem->_next;
+        changed = true;
+      } else if (thisElem->_idx < rhsElem->_idx) {
+        thisPrevElem = thisElem;
+        thisElem = thisElem->_next;
+      } else {
+        // Matching elts, generate this |= rhs.
+        UINT32 ix;
+        if (changed) {
+          for (ix = BITMAP_ELEMENT_WORDS; ix--;) {
+            BITMAP_WORD r = thisElem->_bits[ix] | rhsElem->_bits[ix];
+            thisElem->_bits[ix] = r;
+          }
+        } else {
+          for (ix = BITMAP_ELEMENT_WORDS; ix--;) {
+            BITMAP_WORD r = thisElem->_bits[ix] | rhsElem->_bits[ix];
+            if (thisElem->_bits[ix] != r) {
+              changed = true;
+              thisElem->_bits[ix] = r;
+            }
+          }
+        }
+        rhsElem = rhsElem->_next;
+        thisPrevElem = thisElem;
+        thisElem = thisElem->_next;
+      }
+    }
+    assert (!_currElem == !_firstElem);
+    if (_currElem)
+      _currIdx = _currElem->_idx;
+    return changed;
+  }
+
   void print(FILE *file)
   {
     const char *comma = "";
     SparseBitSetIterator si(this, 0);
     while (si != 0) {
-      fprintf(file, "%s%d\n", comma, *si);
+      fprintf(file, "%s%d", comma, *si);
       si++;
       comma = ", ";
     }
