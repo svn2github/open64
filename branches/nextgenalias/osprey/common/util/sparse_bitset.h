@@ -31,7 +31,7 @@ static SparseBitSetElement zeroBitElem;
 template <class T>
 class SparseBitSet
 {
-private:
+public:
 
   class SparseBitSetIterator 
   {
