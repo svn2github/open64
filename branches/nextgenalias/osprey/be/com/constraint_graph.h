@@ -40,6 +40,7 @@ using namespace std;
 using namespace __gnu_cxx;
 
 typedef UINT32 CGNodeId;
+typedef SparseBitSet<CGNodeId> PointsTo;
 
 typedef enum {
   ETYPE_COPY,
@@ -207,7 +208,13 @@ private:
 };
 
 class ConstraintGraph;
-  
+
+typedef hash_set<ConstraintGraphEdge *,
+                   ConstraintGraphEdge::hashCGEdge,
+                   ConstraintGraphEdge::equalCGEdge> CGEdgeSet;
+
+typedef CGEdgeSet::const_iterator CGEdgeSetIterator;
+
 class ConstraintGraphNode 
 {
 public:
@@ -249,6 +256,10 @@ public:
   void addPointsToHZ(CGNodeId id)  { _nodeInfo.addPointsTo(id, CQ_HZ); }
   void addPointsToDN(CGNodeId id)  { _nodeInfo.addPointsTo(id, CQ_DN); }
 
+  PointsTo &pointsToGBL(void) { return _nodeInfo.pointsToGBL(); }
+  PointsTo &pointsToHZ(void)  { return _nodeInfo.pointsToHZ(); }
+  PointsTo &pointsToDN(void)  { return _nodeInfo.pointsToDN(); }
+
   // Try adding edge to the in edge set. If the edge already exists
   // return the existing edge, else insert the new edge and return it
   ConstraintGraphEdge *addInEdge(ConstraintGraphEdge *edge) 
@@ -272,6 +283,11 @@ public:
     p = outEdgeSet.insert(edge);
     return *(p.first);
   }
+
+  CGEdgeSet &inCopySkewEdges(void)     { return _inCopySkewCGEdges; }
+  CGEdgeSet &inLoadStoreEdges(void)  { return _inLoadStoreCGEdges; }
+  CGEdgeSet &outCopySkewEdges(void)    { return _outCopySkewCGEdges; }
+  CGEdgeSet &outLoadStoreEdges(void) { return _outLoadStoreCGEdges; }
 
   void print(FILE *file) 
   {
@@ -373,6 +389,10 @@ private:
       }
     }
 
+    PointsTo &pointsToGBL(void) { return _pointsToGBL; }
+    PointsTo &pointsToHZ(void)  { return _pointsToHZ;  }
+    PointsTo &pointsToDN(void)  { return _pointsToDN;  }
+
     size_t hash() const 
     { 
       return size_t(_st_idx << 16 ^ _offset); 
@@ -408,12 +428,6 @@ private:
   CGNodeId _id;
   UINT32   _inKCycle;
   UINT8    _version;
-
-  typedef hash_set<ConstraintGraphEdge *,
-                   ConstraintGraphEdge::hashCGEdge, 
-                   ConstraintGraphEdge::equalCGEdge> CGEdgeSet;
-
-  typedef CGEdgeSet::const_iterator CGEdgeSetIterator;
 
   // In/out copy/skew edges
   CGEdgeSet _inCopySkewCGEdges;
@@ -511,6 +525,14 @@ public:
     return NULL;
   }
 
+  ConstraintGraphNode *cgNode(CGNodeId cgNodeId)
+  {
+    CGIdToNodeMapIterator iter = _cgIdToNodeMap.find(cgNodeId);
+    if (iter != _cgIdToNodeMap.end())
+      return iter->second;
+    return NULL;
+  }
+
   ConstraintGraphNode *getCGNode(ST_IDX st_idx, INT64 offset);
       
   void print(FILE *file)
@@ -549,8 +571,11 @@ private:
 
   ConstraintGraphNode *getCGNode(WN *wn);
 
-  void addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
-               CGEdgeType etype, CGEdgeQual qual, UINT32 size);
+  ConstraintGraphEdge *addEdge(ConstraintGraphNode *src,
+                               ConstraintGraphNode *dest,
+                               CGEdgeType etype, CGEdgeQual qual,
+                               UINT32 size,
+                               bool &added);
 
   // Constraint graph solver
   class WorkList {
@@ -580,7 +605,19 @@ private:
     WorkList _loadStore;
   };
 
-  void solveConstraints(EdgeDelta &delta);
+  EdgeDelta &edgeDelta() { return _edgeDelta; }
+  void processAssign(const ConstraintGraphEdge *);
+  void processSkew(const ConstraintGraphEdge *);
+  void processAssignDeref(const ConstraintGraphEdge *);
+  void processDerefAssign(const ConstraintGraphEdge *);
+  void addEdgesToWorkList(ConstraintGraphNode *);
+  void addCopiesForLoadStore(ConstraintGraphNode *src,
+                             ConstraintGraphNode *dst,
+                             CGEdgeType etype,
+                             CGEdgeQual qual,
+                             UINT32 size,
+                             SparseBitSet<CGNodeId> &ptSet);
+  void solveConstraints();
 
   typedef hash_map<CGNodeId, ConstraintGraphNode *> CGIdToNodeMap;
 
@@ -590,6 +627,7 @@ private:
 
   typedef hash_map<ST_IDX, StInfo *> CGStInfoMap;
 
+  typedef CGIdToNodeMap::const_iterator CGIdToNodeMapIterator;
   typedef CGNodeToIdMap::const_iterator CGNodeToIdMapIterator;
 
   typedef CGStInfoMap::const_iterator CGStInfoMapIterator;
@@ -605,6 +643,10 @@ private:
 
   // Provide additional per st info
   CGStInfoMap _cgStInfoMap;
+
+  // Used by the solver.  Contains the lists of edges that need to be
+  // processed in order to achieve a solution to the current graph
+  EdgeDelta _edgeDelta;
 
   MEM_POOL *_memPool;
 };

@@ -111,7 +111,8 @@ ConstraintGraph::handleAssignment(WN *stmt)
         cgNodeLHS->addPointsToHZ(cgNodeRHS->id());
       break;
     case COPY:
-      addEdge(cgNodeRHS, cgNodeLHS, ETYPE_COPY, CQ_HZ, WN_object_size(stmt));
+      bool added = false;
+      addEdge(cgNodeRHS,cgNodeLHS,ETYPE_COPY,CQ_HZ,WN_object_size(stmt),added);
       break;
   }
 
@@ -150,8 +151,9 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
         if (WN_offset(expr) != 0)
           addrCGNode = getCGNode(addrCGNode->st_idx(), 
                                  addrCGNode->offset() + WN_offset(expr));
-        addEdge(addrCGNode, tmpCGNode, ETYPE_LOAD, CQ_HZ, 
-                WN_object_size(expr));
+        bool added = false;
+        addEdge(addrCGNode, tmpCGNode, ETYPE_LOAD, CQ_HZ,
+                WN_object_size(expr),added);
         return tmpCGNode;
       }
       default:
@@ -207,9 +209,10 @@ ConstraintGraph::getCGNode(WN *wn)
   return getCGNode(base_st_idx, base_offset);
 }
 
-void 
+ConstraintGraphEdge *
 ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
-                         CGEdgeType etype, CGEdgeQual qual, UINT32 size)
+                         CGEdgeType etype, CGEdgeQual qual, UINT32 size,
+                         bool &added)
 {
   ConstraintGraphEdge *edge =
     CXX_NEW(ConstraintGraphEdge(src->id(), dest->id(), etype,
@@ -218,6 +221,8 @@ ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
   if (newEdge == edge) {
     ConstraintGraphEdge *ne = dest->addInEdge(edge);
     FmtAssert(ne == edge, ("Edge exists in dest but not in src"));
+    added = true;
+    return edge;
   } else {
     ConstraintGraphEdge *ne = dest->addInEdge(edge);
     FmtAssert(ne != edge && ne == newEdge,
@@ -225,6 +230,8 @@ ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
     newEdge->addFlags(edge->flags());
     newEdge->size(MAX(size, edge->size()));
     CXX_DELETE(edge, _memPool);
+    added = false;
+    return newEdge;
   }
 }
 

@@ -507,6 +507,7 @@ BE_COM_PCH_CXX_SRCS = \
   alias_analyzer.cxx    \
   be_symtab.cxx		\
   constraint_graph.cxx	\
+  constraint_graph_solve.cxx \
   data_layout.cxx	\
   dep_graph.cxx		\
   dvector.cxx		\
