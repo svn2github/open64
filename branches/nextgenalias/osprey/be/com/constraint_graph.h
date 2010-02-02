@@ -36,15 +36,18 @@
 // Constraint graph node flags
 #define CG_NODE_FLAGS_UNKNOWN 0x01
 
-using namespace __gnu_cxx;
 using namespace std;
+using namespace __gnu_cxx;
 
 typedef UINT32 CGNodeId;
 
 typedef enum {
-  ETYPE_ASSIGN,
-  ETYPE_DEREF_ASSIGN,
-  ETYPE_ASSIGN_DEREF,
+  ETYPE_COPY,
+  ETYPE_ASSIGN = ETYPE_COPY,
+  ETYPE_STORE,
+  ETYPE_DEREF_ASSIGN = ETYPE_STORE,
+  ETYPE_LOAD,
+  ETYPE_ASSIGN_DEREF = ETYPE_LOAD,
   ETYPE_SKEW
 } CGEdgeType;
 
@@ -159,17 +162,17 @@ private:
     {
       char *es, *qs;
       switch (_etype) {
-        case ETYPE_ASSIGN:
-          es = "ASSIGN";
+        case ETYPE_COPY:
+          es = "COPY";
           break;
         case ETYPE_SKEW:
           es = "SKEW";
           break;
-        case ETYPE_DEREF_ASSIGN:
-          es = "DEREF_ASSIGN";
+        case ETYPE_STORE:
+          es = "STORE";
           break;
-        case ETYPE_ASSIGN_DEREF:
-          es = "ASSIGN_DEREF";
+        case ETYPE_LOAD:
+          es = "LOAD";
           break;
       }
       switch (_qual) {
@@ -213,8 +216,10 @@ public:
     _id(0),
     _inKCycle(0),
     _version(0),
-    _inCGEdges(32),
-    _outCGEdges(32),
+    _inCopySkewCGEdges(32),
+    _outCopySkewCGEdges(32),
+    _inLoadStoreCGEdges(32),
+    _outLoadStoreCGEdges(32),
     _nextOffset(NULL),
     _repParent(NULL),
     _repChild(NULL),
@@ -248,8 +253,11 @@ public:
   // return the existing edge, else insert the new edge and return it
   ConstraintGraphEdge *addInEdge(ConstraintGraphEdge *edge) 
   {
+    CGEdgeSet &inEdgeSet = (edge->edgeType() == ETYPE_COPY ||
+                            edge->edgeType() == ETYPE_SKEW) ?
+                            _inCopySkewCGEdges : _inLoadStoreCGEdges;
     pair<CGEdgeSet::iterator, bool> p;
-    p = _inCGEdges.insert(edge);
+    p = inEdgeSet.insert(edge);
     return *(p.first);
   }
 
@@ -257,8 +265,11 @@ public:
   // return the existing edge, else insert the new edge and return it
   ConstraintGraphEdge *addOutEdge(ConstraintGraphEdge *edge) 
   {
+    CGEdgeSet &outEdgeSet = (edge->edgeType() == ETYPE_COPY ||
+                             edge->edgeType() == ETYPE_SKEW) ?
+                             _outCopySkewCGEdges : _outLoadStoreCGEdges;
     pair<CGEdgeSet::iterator, bool> p;
-    p = _outCGEdges.insert(edge);
+    p = outEdgeSet.insert(edge);
     return *(p.first);
   }
 
@@ -268,21 +279,39 @@ public:
     _nodeInfo.print(file);
     if (_nextOffset)
       fprintf(file, " next: %d", _nextOffset->_id);
-    fprintf(file, "\n inEdges: ");
-    for (CGEdgeSetIterator iter = _inCGEdges.begin(); iter != _inCGEdges.end();
+    fprintf(file, "\n inCopySkewCGEdges: ");
+    for (CGEdgeSetIterator iter = _inCopySkewCGEdges.begin(); 
+         iter != _inCopySkewCGEdges.end();
          iter++) {
       (*iter)->print(file);
       fprintf(file, " ");
     } 
     fprintf(file, "\n");
-    fprintf(file, " outEdges: ");
-    for (CGEdgeSetIterator iter = _outCGEdges.begin(); 
-         iter != _outCGEdges.end();
+    fprintf(file, " outCopySkewCGEdges: ");
+    for (CGEdgeSetIterator iter = _outCopySkewCGEdges.begin(); 
+         iter != _outCopySkewCGEdges.end();
+         iter++) {
+      (*iter)->print(file);
+      fprintf(file, " ");
+    } 
+    fprintf(file, "\n inLoadStoreCGEdges: ");
+    for (CGEdgeSetIterator iter = _inLoadStoreCGEdges.begin(); 
+         iter != _inLoadStoreCGEdges.end();
          iter++) {
       (*iter)->print(file);
       fprintf(file, " ");
     } 
     fprintf(file, "\n");
+    fprintf(file, " outLoadStoreCGEdges: ");
+    for (CGEdgeSetIterator iter = _outLoadStoreCGEdges.begin(); 
+         iter != _outLoadStoreCGEdges.end();
+         iter++) {
+      (*iter)->print(file);
+      fprintf(file, " ");
+    } 
+    fprintf(file, "\n");
+    if (checkFlags(CG_NODE_FLAGS_UNKNOWN))
+      fprintf(file, " UNKNOWN");
   }
 
   typedef struct
@@ -312,6 +341,7 @@ private:
     NodeInfo(ST_IDX st_idx, INT32 offset, MEM_POOL *memPool) :
       _st_idx(st_idx),
       _offset(offset),
+      _flags(0),
       _pointsToGBL(memPool),
       _pointsToHZ(memPool),
       _pointsToDN(memPool)
@@ -385,10 +415,13 @@ private:
 
   typedef CGEdgeSet::const_iterator CGEdgeSetIterator;
 
-  // In/out copy/skew edges are maintained on the node itself
-  // The load/store edges are in the ConstraintGraph
-  CGEdgeSet _inCGEdges;
-  CGEdgeSet _outCGEdges;
+  // In/out copy/skew edges
+  CGEdgeSet _inCopySkewCGEdges;
+  CGEdgeSet _outCopySkewCGEdges;
+
+  // In/out load/store edges
+  CGEdgeSet _inLoadStoreCGEdges;
+  CGEdgeSet _outLoadStoreCGEdges;
   
   // Nodes with different offset off of same base maintained in sorted order
   ConstraintGraphNode *_nextOffset;
@@ -433,16 +466,19 @@ public:
   bool checkFlags(UINT32 flag) const { return _flags & flag; }
   void addFlags(UINT32 flag) { _flags |= flag; }
 
+  INT32 varSize() const { return _varSize; }
+  UINT32 modulus() const { return _modulus; }
+
   ConstraintGraphNode *firstOffset() const { return _firstOffset; }
   void firstOffset(ConstraintGraphNode *n) { _firstOffset = n; }
 
   void print(FILE *file)
   {
-    fprintf(file, "varSize: %d modulus: %d", _varSize, _modulus);
+    fprintf(file, "varSize: %lld modulus: %d", _varSize, _modulus);
     fprintf(file, " [");
-    if (_flags & CG_ST_FLAGS_GLOBAL)
+    if (checkFlags(CG_ST_FLAGS_GLOBAL))
       fprintf(file, "GLOBAL");
-    if (_flags & CG_ST_FLAGS_PARAM)
+    if (checkFlags(CG_ST_FLAGS_PARAM))
       fprintf(file, ",PARAM");
     fprintf(file, "]");
     fprintf(file, " first: %d\n", _firstOffset->id());
@@ -450,7 +486,7 @@ public:
 
 private:
   UINT32 _flags;
-  UINT32 _varSize;
+  INT64  _varSize;
   UINT32 _modulus;
   ConstraintGraphNode *_firstOffset; // Pointer to CGNode with smallest offset
 };
@@ -475,40 +511,14 @@ public:
     return NULL;
   }
 
-  ConstraintGraphNode *getCGNode(ST_IDX st_idx, INT64 offset)
-  {
-    ConstraintGraphNode *cgNode = 
-      CXX_NEW(ConstraintGraphNode(st_idx, offset, _memPool), _memPool);
-    
-    // Check if node exists, if so return it
-    CGNodeToIdMapIterator cgIter = _cgNodeToIdMap.find(cgNode);
-    if (cgIter != _cgNodeToIdMap.end()) {
-      CXX_DELETE(cgNode, _memPool);
-      return cgIter->first;
-    }
-
-    // Add it to the _cgNodeToIdMap and the reverse _cgIdToNodeMap
-    _cgNodeToIdMap[cgNode] = nextCGNodeId;
-    FmtAssert(_cgIdToNodeMap.find(nextCGNodeId) == _cgIdToNodeMap.end(),
-              ("nextCGNodeId: %d already in _cgIdToNodeMap\n", nextCGNodeId));
-    _cgIdToNodeMap[nextCGNodeId] = cgNode;
-    cgNode->setId(nextCGNodeId++);
-
-    // Check if we have seen this symbol before
-    StInfo *si = stInfo(st_idx);
-    if (si == NULL) {
-      si = CXX_NEW(StInfo(st_idx), _memPool);
-      _cgStInfoMap[st_idx] = si;
-    }
-    addCGNodeInSortedOrder(si, cgNode);
-    return cgNode;
-  }
+  ConstraintGraphNode *getCGNode(ST_IDX st_idx, INT64 offset);
       
   void print(FILE *file)
   {
     for (CGNodeToIdMapIterator iter = _cgNodeToIdMap.begin();
          iter != _cgNodeToIdMap.end(); iter++) {
       iter->first->print(file);
+      fprintf(stderr, " stInfo: ");
       stInfo(iter->first->st_idx())->print(file);
       fprintf(stderr, "\n ");
     }
@@ -520,16 +530,14 @@ private:
 
   typedef enum {
     ADDR,
-    ASSIGN,
-    DEREF,
-    UNKNOWN
+    COPY,
   } ProcessExprResult;
 
   static UINT32 nextCGNodeId;
 
   void buildCG(WN *entryWN);
 
-  WN *processWNandKids(WN *wn);
+  WN *processWN(WN *wn);
 
   WN *handleAssignment(WN *wn);
   
@@ -540,6 +548,9 @@ private:
   ConstraintGraphNode *processExpr(WN *expr, ProcessExprResult& res);
 
   ConstraintGraphNode *getCGNode(WN *wn);
+
+  void addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
+               CGEdgeType etype, CGEdgeQual qual, UINT32 size);
 
   // Constraint graph solver
   class WorkList {
@@ -577,10 +588,6 @@ private:
                    ConstraintGraphNode::hashCGNode,
                    ConstraintGraphNode::equalCGNode> CGNodeToIdMap;
 
-  typedef hash_set<ConstraintGraphEdge *,
-                   ConstraintGraphEdge::hashCGEdge, 
-                   ConstraintGraphEdge::equalCGEdge> CGEdgeSet;
-
   typedef hash_map<ST_IDX, StInfo *> CGStInfoMap;
 
   typedef CGNodeToIdMap::const_iterator CGNodeToIdMapIterator;
@@ -596,52 +603,10 @@ private:
   // to the node id
   CGNodeToIdMap _cgNodeToIdMap;
 
-  // Set of load/store constraint edges. These will be walked in some order
-  // during the solution.  The map provides quick lookup for existence check.
-  CGEdgeSet _cgEdges;
-
   // Provide additional per st info
   CGStInfoMap _cgStInfoMap;
 
   MEM_POOL *_memPool;
-
-  void addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
-               CGEdgeType etype, CGEdgeQual qual, UINT32 size)
-  {
-    ConstraintGraphEdge *edge =
-      CXX_NEW(ConstraintGraphEdge(src->id(), dest->id(), ETYPE_ASSIGN, 
-                                  CQ_HZ, size), _memPool);
-    ConstraintGraphEdge *newEdge = src->addOutEdge(edge);
-    if (newEdge == edge) {
-      ConstraintGraphEdge *ne = dest->addInEdge(edge);
-      FmtAssert(ne == edge, ("Edge exists in dest but not in src"));
-    } else {
-      ConstraintGraphEdge *ne = dest->addInEdge(edge);
-      FmtAssert(ne != edge && ne == newEdge, 
-                ("Edge exists in src but not in dest"));
-      newEdge->addFlags(edge->flags());
-      newEdge->size(MAX(size, edge->size()));
-      CXX_DELETE(edge, _memPool);
-    }
-  }
-      
-  static void 
-  addCGNodeInSortedOrder(StInfo *stInfo, ConstraintGraphNode *cgNode) 
-  {
-     if (!stInfo->firstOffset()) {
-       stInfo->firstOffset(cgNode);
-     } else {
-       ConstraintGraphNode *n = stInfo->firstOffset();
-       ConstraintGraphNode *prevn = NULL;
-       while (n && n->offset() <= cgNode->offset()) {
-         prevn = n;
-         n = n->nextOffset();
-       }
-       FmtAssert(prevn->offset() != cgNode->offset(), 
-                 ("Found node with same offset"));
-       prevn->nextOffset(cgNode);
-     }
-  }
 };
 
 #endif // constraint_graph_INCLUDED
