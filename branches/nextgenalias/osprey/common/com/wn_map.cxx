@@ -155,6 +155,7 @@ WN_MAP_TAB_Create(MEM_POOL *pool)
   maptab->_kind[WN_MAP_AC_INTERNAL] = WN_MAP_KIND_VOIDP;
   maptab->_kind[WN_MAP_ALIAS_CLASS] = WN_MAP_KIND_INT32;
   maptab->_kind[WN_MAP_ALIAS_TAG] = WN_MAP_KIND_INT32;
+  maptab->_kind[WN_MAP_ALIAS_CGNODE_ID] = WN_MAP_KIND_INT32;
 
   /*  clear the slots that are not reserved */
   for (i = WN_MAP_RESERVED; i < WN_MAP_MAX; i++) { 
