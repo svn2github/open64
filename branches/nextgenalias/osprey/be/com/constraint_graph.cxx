@@ -1,6 +1,7 @@
 #include "constraint_graph.h"
 #include "opt_wn.h"
 #include "wn_util.h"
+#include "ttype.h"
 #include "ir_reader.h"
 
 UINT32 ConstraintGraph::nextCGNodeId = 1;
@@ -91,31 +92,11 @@ ConstraintGraph::processWN(WN *wn)
 WN *
 ConstraintGraph::handleAssignment(WN *stmt)
 {
-  ConstraintGraphNode *cgNodeLHS = processLHSofStore(stmt);
-
   // process RHS
   WN *rhs = WN_kid0(stmt);
-
-  ProcessExprResult res;
-  ConstraintGraphNode *cgNodeRHS = processExpr(rhs, res);
-  if (cgNodeRHS == NULL || cgNodeRHS->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
-    cgNodeLHS->addFlags(CG_NODE_FLAGS_UNKNOWN);
-    return WN_next(stmt);
-  }
-
-  switch (res) {
-    case ADDR:
-      if (stInfo(cgNodeRHS->st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
-        cgNodeLHS->addPointsToGBL(cgNodeRHS->id());
-      else
-        cgNodeLHS->addPointsToHZ(cgNodeRHS->id());
-      break;
-    case COPY:
-      bool added = false;
-      addEdge(cgNodeRHS,cgNodeLHS,ETYPE_COPY,CQ_HZ,WN_object_size(stmt),added);
-      break;
-  }
-
+  ProcessExprResult resRHS;
+  ConstraintGraphNode *cgNodeRHS = processExpr(rhs, resRHS);
+  ConstraintGraphNode *cgNodeLHS = processLHSofStore(stmt, cgNodeRHS, resRHS);
   return WN_next(stmt);
 }
 
@@ -126,16 +107,22 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
   OPCODE opc = WN_opcode(expr);
   OPERATOR opr = OPCODE_operator(opc);
   if (OPCODE_is_leaf(opc)) {
+    ConstraintGraphNode *cgNode;
     switch (opr) {
       case OPR_LDA:
         res = ADDR;
-        return getCGNode(expr);  
+        cgNode = getCGNode(expr);
+        break;
       case OPR_LDID:
-       res = COPY;
-       return getCGNode(expr);
+      case OPR_LDBITS:
+        res = COPY;
+        cgNode = getCGNode(expr);
+        break;
       default:
         return NULL;
     }
+    WN_MAP_CGNodeId_Set(expr, cgNode->id());
+    return cgNode;
   } else if (OPCODE_is_load(opc)) {
     switch (opr) {
       case OPR_ILOAD: {
@@ -144,16 +131,17 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
         ConstraintGraphNode *addrCGNode = processExpr(WN_kid0(expr), kidRes);
         if (!addrCGNode)
           return NULL;
+        // Create a new temp symbol
         ST *tempST = 
           Gen_Temp_Named_Symbol(WN_ty(expr), "cgTmp", CLASS_VAR, SCLASS_AUTO);
-        // Create a new temp symbol
         ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tempST), 0);
+        WN_MAP_CGNodeId_Set(expr, tmpCGNode->id());
         if (WN_offset(expr) != 0)
           addrCGNode = getCGNode(addrCGNode->st_idx(), 
                                  addrCGNode->offset() + WN_offset(expr));
         bool added = false;
         addEdge(addrCGNode, tmpCGNode, ETYPE_LOAD, CQ_HZ,
-                WN_object_size(expr),added);
+                WN_object_size(expr), added);
         return tmpCGNode;
       }
       default:
@@ -165,31 +153,105 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
       WN *kid = WN_kid(expr, i);
       processExpr(kid, res);
     }
-#if 0
+    
     if (opr == OPR_ADD || opr == OPR_SUB) {
-      ConstraintGraphNode *kidCGNode;
-      if ( (WN_operator(WN_kid0(expr)) == INTCONST &&
-              (kidCGNode = processExpr(WN_kid1(expr), res))) ||
-             (WN_operator(WN_kid1(expr)) == INTCONST &&
-              (kidCGNode = processExpr(WN_kid0(expr), res))) )
+      CGNodeId kid0CGNodeId = WN_MAP_CGNodeId_Get(WN_kid0(expr));
+      ConstraintGraphNode *kid0CGNode = 
+                           kid0CGNodeId ? cgNode(kid0CGNodeId) : NULL;
+      CGNodeId kid1CGNodeId = WN_MAP_CGNodeId_Get(WN_kid1(expr));
+      ConstraintGraphNode *kid1CGNode = 
+                           kid1CGNodeId ? cgNode(kid1CGNodeId) : NULL;
+
+      ConstraintGraphNode *kidCGNode = NULL;
+      if (kid0CGNode != NULL)
+        kidCGNode = kid0CGNode;
+      else if (kid1CGNode != NULL)
+        kidCGNode = kid1CGNode;
+     
+      WN *intConst = NULL;
+      if (WN_operator(WN_kid0(expr)) == OPR_INTCONST)
+        intConst = WN_kid0(expr);
+      else if (WN_operator(WN_kid1(expr)) == OPR_INTCONST)
+        intConst = WN_kid1(expr);
+        
+      if (kidCGNode && intConst) {
+        // Create a new temp symbol
+        ST *tempST = Gen_Temp_Named_Symbol(TY_Of_Expr(expr), "cgTmp", 
+                                           CLASS_VAR, SCLASS_AUTO);
+        ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tempST), 0);
+        WN_MAP_CGNodeId_Set(expr, tmpCGNode->id());
+        bool added = false;
+        addEdge(kidCGNode, tmpCGNode, ETYPE_SKEW, CQ_HZ, 
+                WN_const_val(intConst), added);
+        res = COPY;
+        return tmpCGNode;
+      }
     }
-#endif
   }
+  return NULL;
 }
 
 ConstraintGraphNode *
-ConstraintGraph::processLHSofStore(WN *stmt)
+ConstraintGraph::processLHSofStore(WN *stmt, ConstraintGraphNode *cgNodeRHS,
+                                   ProcessExprResult resRHS)
 {
   OPERATOR opr = WN_operator(stmt);
-  ConstraintGraphNode *cgNode = NULL;
+  ConstraintGraphNode *cgNodeLHS = NULL;
 
   if (OPERATOR_is_scalar_store(opr)) {
-    cgNode = getCGNode(stmt);
-  } else if (OPERATOR_is_scalar_istore(opr) || opr == OPR_MSTORE) {
-    cgNode = NULL;
+    cgNodeLHS = getCGNode(stmt);
+  } else if (OPERATOR_is_scalar_istore(opr)) {
+    ProcessExprResult res;
+    cgNodeLHS = processExpr(WN_kid1(stmt), res);
+  } 
+
+  if (cgNodeLHS == NULL)
+    return NULL;
+
+  WN_MAP_CGNodeId_Set(stmt, cgNodeLHS->id());
+
+  if (cgNodeRHS == NULL) {
+    cgNodeLHS->addFlags(CG_NODE_FLAGS_UNKNOWN);
+    return cgNodeLHS;
   }
 
-  return cgNode;
+  if (OPERATOR_is_scalar_store(opr)) {
+    switch (resRHS) {
+      case ADDR:
+        if (stInfo(cgNodeRHS->st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
+          cgNodeLHS->addPointsToGBL(cgNodeRHS->id());
+        else
+          cgNodeLHS->addPointsToHZ(cgNodeRHS->id());
+        break;
+      case COPY:
+        bool added = false;
+        addEdge(cgNodeRHS, cgNodeLHS, ETYPE_COPY, CQ_HZ,
+                WN_object_size(stmt), added);
+        break;
+    }
+  } else if (OPERATOR_is_scalar_istore(opr)) {
+    switch (resRHS) {
+      case ADDR: {
+        // Create a new temp symbol
+        ST *tempST = Gen_Temp_Named_Symbol(WN_ty(WN_kid0(stmt)), "cgTmp", 
+                                           CLASS_VAR, SCLASS_AUTO);
+        ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tempST), 0);
+        if (stInfo(cgNodeRHS->st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
+          tmpCGNode->addPointsToGBL(cgNodeRHS->id());
+        else
+          tmpCGNode->addPointsToHZ(cgNodeRHS->id());
+        cgNodeRHS = tmpCGNode;
+        break;
+      }
+      case COPY:
+        // Nothing to do here
+        break;
+    }
+    bool added = false;
+    addEdge(cgNodeRHS, cgNodeLHS, ETYPE_STORE, CQ_HZ,
+            WN_object_size(stmt), added);
+  }
+  return cgNodeLHS;
 }
 
 WN *

@@ -5,6 +5,7 @@
 #include <ext/hash_map>
 #include <ext/hash_set>
 #include "wn.h"
+#include "wn_map.h"
 #include "symtab.h"
 #include "mempool.h"
 #include "sparse_bitset.h"
@@ -36,6 +37,11 @@
 // Constraint graph node flags
 #define CG_NODE_FLAGS_UNKNOWN 0x01
 
+#define WN_MAP_CGNodeId_Set(wn,thing) \
+ IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_CGNODE_ID, (wn), (INT32)(thing))
+#define WN_MAP_CGNodeId_Get(wn) \
+ (CGNodeId)IPA_WN_MAP32_Get(Current_Map_Tab, WN_MAP_ALIAS_CGNODE_ID, (wn))
+
 using namespace std;
 using namespace __gnu_cxx;
 
@@ -63,7 +69,7 @@ class ConstraintGraphEdge
 {
 public:
   ConstraintGraphEdge(CGNodeId srcId, CGNodeId destId, CGEdgeType etype,
-                      CGEdgeQual qual, UINT32 sizeOrSkew)
+                      CGEdgeQual qual, INT32 sizeOrSkew)
     : _srcId(srcId),
       _destId(destId),
       _edgeInfo(etype,qual,0,sizeOrSkew)
@@ -146,8 +152,8 @@ private:
     bool checkFlags(UINT16 flag) const { return _flags & flag; }
     void addFlags(UINT16 flag) { _flags |= flag; }
     void clearFlags(UINT16 flag) { _flags &= ~flag; }
-    UINT32 sizeOrSkew(void) const { return _sizeOrSkew; }
-    void sizeOrSkew(UINT32 s) { _sizeOrSkew = s; }
+    INT32 sizeOrSkew(void) const { return _sizeOrSkew; }
+    void sizeOrSkew(INT32 s) { _sizeOrSkew = s; }
 
     bool operator==(const EdgeInfo &that) const
     {
@@ -197,7 +203,7 @@ private:
     CGEdgeType _etype;
     CGEdgeQual _qual;
     UINT16     _flags;
-    UINT32     _sizeOrSkew;  // size for a copy/load/store edge, skew otherwise
+    INT32      _sizeOrSkew;  // size for a copy/load/store edge, skew otherwise
   };
 
   const EdgeInfo &edgeInfo(void) const { return _edgeInfo; }
@@ -565,7 +571,8 @@ private:
   
   WN *handleCall(WN *wn);
 
-  ConstraintGraphNode *processLHSofStore(WN *stmt);
+  ConstraintGraphNode *processLHSofStore(WN *stmt, ConstraintGraphNode *rhs,
+                                         ProcessExprResult resRHS);
 
   ConstraintGraphNode *processExpr(WN *expr, ProcessExprResult& res);
 
