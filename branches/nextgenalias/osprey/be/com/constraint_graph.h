@@ -62,7 +62,8 @@ typedef enum {
   CQ_HZ,
   CQ_DN,
   CQ_UP,
-  CQ_GBL
+  CQ_GBL,
+  CQ_NONE, /* Used in qualifier mapping (future) */
 } CGEdgeQual;
 
 class ConstraintGraphEdge 
@@ -262,6 +263,15 @@ public:
   void addPointsToHZ(CGNodeId id)  { _nodeInfo.addPointsTo(id, CQ_HZ); }
   void addPointsToDN(CGNodeId id)  { _nodeInfo.addPointsTo(id, CQ_DN); }
 
+  PointsTo &pointsTo(CGEdgeQual qual) {
+    switch (qual) {
+    case CQ_GBL: return _nodeInfo.pointsToGBL();
+    case CQ_DN:  return _nodeInfo.pointsToDN();
+    case CQ_HZ:  return _nodeInfo.pointsToHZ();
+    default:
+      FmtAssert(false,("Unexpected edge qualifier"));
+    }
+  }
   PointsTo &pointsToGBL(void) { return _nodeInfo.pointsToGBL(); }
   PointsTo &pointsToHZ(void)  { return _nodeInfo.pointsToHZ(); }
   PointsTo &pointsToDN(void)  { return _nodeInfo.pointsToDN(); }
@@ -454,6 +464,32 @@ private:
   ConstraintGraph *_parentCG;
 };
 
+/* Iterator to abstract access to points-to sets */
+class PointsToIterator {
+public:
+  PointsToIterator(ConstraintGraphNode *n) : _index(0), _node(n) {}
+  ~PointsToIterator() {}
+  bool operator != (int val) { return _index != 3; }
+  void operator ++(void) { _index += 1; }
+  PointsTo &operator *(void) {
+    switch (_index) {
+    case 0: return _node->pointsToGBL();
+    case 1: return _node->pointsToHZ();
+    case 2: return _node->pointsToDN();
+    }
+  }
+  CGEdgeQual qual(void) {
+    switch (_index) {
+    case 0: return CQ_GBL;
+    case 1: return CQ_HZ;
+    case 2: return CQ_DN;
+    }
+  }
+private:
+  UINT32 _index;
+  ConstraintGraphNode *_node;
+};
+
 // Class to represent symbol specific info that is common to all
 // CGNodes with the same symbol but different offsets
 class StInfo
@@ -552,6 +588,8 @@ public:
     }
   }
 
+  void solveConstraints();
+
 private:
 
   // Constraint graph build methods
@@ -624,7 +662,15 @@ private:
                              CGEdgeQual qual,
                              UINT32 size,
                              SparseBitSet<CGNodeId> &ptSet);
-  void solveConstraints();
+
+  /* Currently implements a context insensitive mapping */
+  CGEdgeQual qualMap(CGEdgeType et,CGEdgeQual aq,CGEdgeQual eq)
+  {
+    if (et == ETYPE_ASSIGN)
+      return (eq == CQ_DN ? CQ_DN : CQ_GBL);
+    else
+      return CQ_GBL;
+  }
 
   typedef hash_map<CGNodeId, ConstraintGraphNode *> CGIdToNodeMap;
 

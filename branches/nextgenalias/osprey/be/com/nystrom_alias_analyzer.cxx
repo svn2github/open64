@@ -20,7 +20,8 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
   ac &= ~(CLAS_RULE|IP_CLAS_RULE);
 
   ConstraintGraph *cg = CXX_NEW(ConstraintGraph(entryWN, memPool), memPool);
-
+  cg->print(stderr);
+  cg->solveConstraints();
   fprintf(stderr,"Nystrom analysis...complete\n");
   cg->print(stderr);
 }
