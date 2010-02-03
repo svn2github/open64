@@ -69,7 +69,6 @@
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/ipa/main/analyze/ipa_solver.cxx,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>

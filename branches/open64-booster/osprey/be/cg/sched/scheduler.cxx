@@ -4025,7 +4025,6 @@ static MEM_POOL bb_cand_pool;
 static MEM_POOL op_sch_pool;
 void
 Perform_Global_Schedule (BOOL prepass) {
-#if 1
 BB* cand_bb; 
 BB* bb; 
 VECTOR cand_bbs; 
@@ -4071,24 +4070,6 @@ for( bb = REGION_First_BB; bb!=NULL; bb = BB_next(bb))
 /* if bb has been scheduled or bb is from software pipeline, ignore it as a candidate */ 
 //     Select_Best_Candidate(bb, cand_bb); 
 
-#if 0	 	 
-    for(INT i =0; i < BB_length(cand_bb);  i++)
-    {
-       OP* op =  Select_Best_Op(cand_bb);
-
-/* if op can be moved from from_bb to to_bb, remove op from from_bb and append 
-  * op to the to_bb and need reschedule from_bb and to_bb 
-  */ 
-       if(Can_OP_Move(from_bb, to_bb)) {
-	   BB_Remove_Op(from_bb, op);
-	   BB_Append_Op(to_bb, op);
-          SCHEDULER local_scheduler(from_bb, prepass);
-          local_scheduler.Schedule_BB();
-          SCHEDULER local_scheduler(to_bb, prepass);
-          local_scheduler.Schedule_BB();
-       }		  
-    }
-#endif 	
 }
 Free_Dominator_Info_Memory () ;
 MEM_POOL_Pop (&loop_descr_pool);
@@ -4100,92 +4081,4 @@ MEM_POOL_Delete (&op_sch_pool);
 L_Free();
 // Find_Candidate_BBs(); 
 // Find_Candidate_Ops();
-#else 
-    Is_True (prepass, 
-        ("Perform_Global_Schedule can't perform global sched after "
-         "register allocation since the DAG constructio can't be "
-         "properly be built with after register allocation"));
-
-    Get_Sched_Opts (prepass);
-
-    if (SCHED_TF_DUMP_IR) {
-        SCHED_Dump_IR (prepass, TRUE, /* bef code motion*/
-                       TRUE, /* global code motion */
-                       TFile) ;
-    }
-
-    Set_Error_Phase (_Cur_Phase_Name = _Global_Insn_Sched_Phase_Name);
-    Start_Timer (T_Ipfec_GLOS_CU);
-
-    /* acquire region information */
-    INT32 sched_rgn_num = 0 ;
-    REGION_TREE* rgn_tree = REGION_Get_Region_Tree ();
-    Is_True (rgn_tree, 
-        ("NULL REGION tree, REGION_Form_Region_Tree() should be"
-         " called before global instruction scheduling"));
-
-    Global_Insn_Sched_Preproc (rgn_tree, sched_rgn_num);
-
-    if (sched_rgn_num != 0) {
-
-#ifdef TARG_IA64
-        PRDB_GEN * prdb = NULL ;
-        if (IPFEC_Enable_PRDB) {
-            prdb = PRDB_Init(rgn_tree);
-        }
-#endif
-        Calculate_Dominator_Info (rgn_tree);
-
-        for (INNERMOST_REGION_FIRST_ITER iter(rgn_tree) ; 
-             iter != 0; ++iter) {
-                
-            RGN_INFO* rgn_info = Get_Region_Info (*iter);
-    
-            if (rgn_info->Skip_Sched_Reason () == SKIP_RGN_NONE) {
-
-                if (rgn_info->In_Abnormal_Loop ()) {
-                   Workaround_Dom_Info_For_In_Abnormal_Loop_Rgn 
-                    (rgn_info->Region ()) ;
-                }
-
-#ifdef TARG_IA64
-                SCHEDULER scheduler (rgn_info, TRUE, prdb);
-#else
-                SCHEDULER scheduler (rgn_info, TRUE);
-#endif
-                scheduler.Schedule_Region ();
-                
-            } else if (rgn_info->Skip_Sched_Reason () == 
-                       SKIP_RGN_NO_FURTHER_OPT &&
-                       IPFEC_Glos_Code_Motion_Across_Nested_Rgn) {
-
-                /* Build_Region_Summary does not work with multi
-                 * -entry regions */
-                if (rgn_info->Region ()->Entries ().size () == 1) {
-                        RGN_CFLOW_MGR rgn_cflow_mgr ;
-                        rgn_cflow_mgr.Init (rgn_info->Region ());
-
-                        ::Build_Region_Summary (rgn_info->Region (), 
-                                                &rgn_cflow_mgr) ;
-                }
-            }
-        }
-
-#ifdef TARG_IA64
-        if (prdb) { Delete_PRDB () ; prdb = NULL ; } ;
-#endif
-  	    Free_Dominator_Info_Memory () ;
-    }
-
-    Global_Insn_Sched_Postproc ();
-
-    if (SCHED_TF_DUMP_IR) SCHED_Dump_IR (prepass, 
-                                         FALSE, /* after code motion  */
-                                         TRUE,  /* global code motion */
-                                         TFile) ;
-
-    Stop_Timer(T_Ipfec_GLOS_CU);
-
-    GRA_LIVE_Recalc_Liveness (NULL);
-#endif // if 0	
 }

@@ -147,53 +147,6 @@ void CG_Reorder_Pop16(BB *bb, OP *begin_op, OP *end_op, vector<OP*> *pop16_vecto
     Insert_pop16_node_to_BB(bb, &op, temp_1, pop16_vector_1);
     Insert_pop16_node_to_BB(bb, &op, temp_2, pop16_vector_2);
     Insert_pop16_node_to_BB(bb, &op, temp_3, pop16_vector_3);
-    #if 0
-    if (temp_0 != pop16_vector_0->end()) {
-      OP * op_0 = *temp_0;
-      temp_0 = pop16_vector_0->erase(temp_0); 
-      if (op != NULL) {
-        op->next = op_0;
-      } else {
-        bb->ops.first = op_0;
-      } 
-      op_0->prev = op;
-      op = op_0;
-    }
-    
-    if (temp_1 != pop16_vector_1->end()) {
-      OP * op_1 = *temp_1;
-      temp_1 = pop16_vector_1->erase(temp_1); 
-      if (op != NULL) {
-        op->next = op_1;
-      } else {
-        bb->ops.first = op_1;
-      }
-      op_1->prev = op;
-      op = op_1;
-    }
-    if (temp_2 != pop16_vector_2->end()) {
-      OP * op_2 = *temp_2;
-      temp_2 = pop16_vector_2->erase(temp_2); 
-      if (op !=NULL) {
-        op->next = op_2;
-      } else {
-        bb->ops.first = op_2;
-      }
-      op_2->prev = op;
-      op = op_2;
-    }
-    if (temp_3 != pop16_vector_3->end()) {
-      OP * op_3 = *temp_3;
-      temp_3 = pop16_vector_3->erase(temp_3); 
-      if (op != NULL) {
-        op->next = op_3;
-      } else {
-        bb->ops.first = op_3;
-      }
-      op_3->prev = op;
-      op = op_3;
-    }
-    #endif
   }
   op->next = end_op;
   if (end_op) 
@@ -279,67 +232,6 @@ static BOOL Is_Bank_Conflict_Instr_Sequence(OP *op1, OP *op2)
     return FALSE;
 }
 
-#if 0
-/* Disable following codes for compiling speed */
-typedef enum {
-  LAST_OP,
-  LAST_LAST_OP,
-  UNKNOWN_OP
-} NUMBER_TOP;
-
-static inline BOOL top_is_ld_st_jplnk_jrlnk(OP *op)
-{
-  FmtAssert(op, ("top_is_ld_st_jplnk_jrlnk: FYI"));
-  TOP top = OP_code(op);
-  if (OP_SL1_CBUS_Workaround_LD(op) || OP_SL1_CBUS_Workaround_ST(op)
-    || top == TOP_jr16_lnk || top == TOP_jal || top == TOP_jalr)
-    return TRUE;
-  else
-    return FALSE;
-}
-
-static BOOL LAST_OP_IS_LD_ST_IN_PREV_BB(BB* bb)
-{
-  BBLIST *pred;
-  BB* bb_prev;
-  OP *last_op;
-
-  FOR_ALL_BB_PREDS(bb, pred) {
-	  bb_prev = BBLIST_item(pred);
-    last_op = BB_last_op(bb_prev);  
-    if (last_op == NULL)           // NULL BB
-      return LAST_OP_IS_LD_ST_IN_PREV_BB(bb_prev);
-    else if (top_is_ld_st_jplnk_jrlnk(last_op))
-      return TRUE;
-  }
-  return FALSE;
-}
-
-static NUMBER_TOP OP_IS_LD_ST_IN_PREV_BB(BB* bb)
-{
-  BBLIST *pred;
-  BB* bb_prev;
-  OP *last_op, *last_last_op;
-  NUMBER_TOP num_top = UNKNOWN_OP;
-
-  FOR_ALL_BB_PREDS(bb, pred) {
-    bb_prev = BBLIST_item(pred);
-    last_op = BB_last_op(bb_prev);  
-    if (last_op == NULL)           // NULL BB
-      num_top = OP_IS_LD_ST_IN_PREV_BB(bb_prev);
-    else if (top_is_ld_st_jplnk_jrlnk(last_op))
-      return LAST_OP;
-    else {
-      last_last_op = OP_prev(bb_prev->ops.last);
-      if (last_last_op == NULL)   // only one op in BB
-        num_top = LAST_OP_IS_LD_ST_IN_PREV_BB(bb_prev) ? LAST_LAST_OP : UNKNOWN_OP;
-      else if (top_is_ld_st_jplnk_jrlnk(last_last_op))
-        num_top = LAST_LAST_OP;
-    }
-  }
-  return num_top;
-}
-#endif
 
 static BOOL TOP_is_c3_address(TOP top)
 {
@@ -360,39 +252,6 @@ void CG_Add_Nop16_Workaround(BB* bb)
 {
   OP *op;
   INT32 num_nop16;
-#if 0
-/* Disable following codes for compiling speed */
-  NUMBER_TOP num_top;
-  // Search prev BB for adding fewer nop16 
-  // Insert nop16 for jp.lnk
-  if (BB_entry(bb)) { // Pu entry
-    // Insert nop16 if bb entry has ld
-    num_nop16 = 1;
-    for (op = BB_first_op(bb); (op != NULL) && (num_nop16 >= 0); op = OP_next(op)) {
-      if (OP_SL1_CBUS_Workaround_LD(op)) {        
-        Insert_Nop16_before_ld_st(bb, op, 3+num_nop16);
-        break;
-      }
-      else if (OP_code(op) != TOP_noop)
-        num_nop16--;
-    }
-  } 
-
-  // Insert nop16 if bb.preds has ld/st
-  if (first_op) {
-    if (OP_SL1_CBUS_Workaround_LD(first_op)) {
-      num_top = OP_IS_LD_ST_IN_PREV_BB(bb);
-      if (num_top == LAST_OP) 
-        Insert_Nop16_before_ld_st(bb, first_op, 4); 
-      else if (num_top == LAST_LAST_OP)
-        Insert_Nop16_before_ld_st(bb, first_op, 3);        
-    }
-    OP *second_op = OP_next(first_op);
-    if ((second_op) && OP_SL1_CBUS_Workaround_LD(second_op) 
-      && LAST_OP_IS_LD_ST_IN_PREV_BB(bb)) 
-          Insert_Nop16_before_ld_st(bb, first_op, 3); 
-  }
-#endif
   
   // Insert nop16 if bb entry has common load instruction
   num_nop16 = 1;

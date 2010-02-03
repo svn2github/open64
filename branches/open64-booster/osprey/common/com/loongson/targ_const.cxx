@@ -85,7 +85,6 @@
 
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #define USE_STANDARD_TYPES 1
 #include <limits.h>
@@ -1061,12 +1060,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       c0 = Targ_Conv(MTYPE_U8, c0);
       break;
 #endif     
-#if 1 // bug 11745
     case OPC_I8U8CVT:
     case OPC_U8I8CVT:
     case OPC_I4U4CVT:
     case OPC_U4I4CVT:
-#endif
     case OPC_I8I4CVT:
     case OPC_I8U4CVT:
     case OPC_U8I4CVT:

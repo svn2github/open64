@@ -51,7 +51,6 @@
 *** always distributable.
 ***/
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -2401,22 +2400,6 @@ extern SNL_REGION SNL_GEN_U_Ctiling(WN* wn_outer,
       DO_LOOP_INFO* olddli;
       if (t->Rectangular()) {
         INT num = t->Stripsz(i);
-#if 0
-	if (Cur_PU_Feedback) {
-	  INT32 orig_count = WN_MAP32_Get(WN_MAP_FEEDBACK, WN_start(innerloop));
-	  if (orig_count>0) {
-	    INT32 orig_test = WN_MAP32_Get(WN_MAP_FEEDBACK, WN_end(innerloop));
-	    INT32 outer_count = orig_count;
-	    INT32 outer_test = MAX(orig_test/num,1);
-	    LWN_Set_Frequency(d[i], outer_count);
-	    LWN_Set_Frequency(WN_start(d[i]), outer_count);
-	    LWN_Set_Frequency(WN_step(d[i]), outer_test-1);
-
-	    LWN_Set_Frequency(innerloop, outer_test-1);
-	    LWN_Set_Frequency(WN_start(innerloop), outer_test-1);
-	  }
-	}
-#endif
         olddli= Get_Do_Loop_Info(stack.Bottom_nth(first_in_stack+t->Iloop(i)));
 
         dli->Est_Num_Iterations = (olddli->Est_Num_Iterations + num - 1) / num;
@@ -2433,23 +2416,6 @@ extern SNL_REGION SNL_GEN_U_Ctiling(WN* wn_outer,
       }
       else {
         //TODO OK, but at some point get a better estimate, somewhat easy
-#if 0
-	if (Cur_PU_Feedback) {
-	  INT32 orig_count = WN_MAP32_Get(WN_MAP_FEEDBACK, WN_start(innerloop));
-	  if (orig_count>0) {
-	    INT32 orig_test = WN_MAP32_Get(WN_MAP_FEEDBACK, WN_end(innerloop));
-	    INT32 outer_count = orig_count;
-	    INT32 outer_test = MAX(orig_test/20,1);
-	    LWN_Set_Frequency(d[i], outer_count);
-	    LWN_Set_Frequency(WN_start(d[i]), outer_count);
-	    LWN_Set_Frequency(WN_step(d[i]), outer_test-1);
-
-	    LWN_Set_Frequency(innerloop, outer_test-1);
-	    LWN_Set_Frequency(WN_start(innerloop), outer_test-1);
-	    LWN_Set_Frequency(WN_index(innerloop), outer_test-1);
-	  }
-	}
-#endif
         olddli = Get_Do_Loop_Info(innerloop);
         dli->Est_Num_Iterations = (olddli->Est_Num_Iterations + 19) / 20;
         olddli->Est_Num_Iterations = 20;

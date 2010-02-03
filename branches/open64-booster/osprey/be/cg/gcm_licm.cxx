@@ -1489,6 +1489,7 @@ LOOP_INVAR_CODE_MOTION :: Def_Dominate_All_Use (OP* linvar) {
             }
         }
     }
+    return TRUE;
 }
 
     /* ============================================================

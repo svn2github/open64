@@ -72,13 +72,6 @@ extern double	cabs(struct __cabs_s);
 #endif
 
 #if defined(BUILD_OS_DARWIN) /* Mach-O doesn't support aliases */
-#if 0 /* Builtin cabs had conflicting declaration */
-extern double __cabs(struct __cabs_s z);
-#pragma weak cabs
-double cabs(struct __cabs_s z) {
-  return __cabs(z);
-}
-#endif
 #elif defined(__GNUC__)
 extern  double  __cabs(struct __cabs_s);
 double    cabs() __attribute__ ((weak, alias ("__cabs")));

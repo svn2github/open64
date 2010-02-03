@@ -224,150 +224,6 @@ static void Expand_64Bit_Select(TN* result, OPERATOR compare, TOP cmp_opcode,
          OPS* ops)
 {
   FmtAssert(FALSE, ("Expand_64Bit_Select NYI"));
-#if 0  
-  FmtAssert(!TN_is_dedicated(result), ("NYI"));
-
-  if (result == false_tn){
-    TN* tmp = Build_TN_Like(false_tn);
-    Expand_Copy(tmp, false_tn, select_type, ops);
-    false_tn = tmp;
-  }
-
-  Expand_Copy(result, true_tn, select_type, ops);
-
-  switch (cmp_opcode){
-  case TOP_cmp64:   cmp_opcode = TOP_cmp32;   break;
-  case TOP_cmpi64:  cmp_opcode = TOP_cmpi32;  break;
-  case TOP_test64:  cmp_opcode = TOP_test32;  break;
-  case TOP_testi64: cmp_opcode = TOP_testi32; break;
-  default:
-    FmtAssert(false, ("NYI"));
-  }
-
-  TN* cmp_kid1_hi = Get_TN_Pair(cmp_kid1);
-  TN* cmp_kid2_hi = Get_TN_Pair(cmp_kid2);
-  TN* rflags = Rflags_TN();
-
-  if (cmp_kid2_hi == NULL){
-    if (TN_has_value(cmp_kid2)){
-      const INT64 val = TN_value(cmp_kid2);
-      cmp_kid2_hi = Gen_Literal_TN(val >> 32, 4);
-
-    } else {
-      DevWarn("The higher 32-bit of TN%d is treated as 0\n",
-         TN_number(cmp_kid2));
-      cmp_kid2_hi = Build_TN_Like(cmp_kid2);
-      Build_OP(TOP_ldc32, cmp_kid2_hi, Gen_Literal_TN(0,4), ops);    
-    }
-  }
-
-  BB* bb_entry  = Cur_BB;
-  BB* bb_cmp_hi = Gen_And_Append_BB(bb_entry);
-  BB* bb_cmp_lo = Gen_And_Append_BB(bb_cmp_hi);
-  BB* bb_non_set = Gen_And_Append_BB(bb_cmp_lo);
-  const LABEL_IDX bb_non_set_label = Gen_Label_For_BB(bb_non_set);
-  BB* bb_exit    = Gen_And_Append_BB(bb_non_set);
-  const LABEL_IDX bb_exit_label = Gen_Label_For_BB(bb_exit);
-
-  BB_branch_wn(bb_entry) = WN_Create(OPC_TRUEBR,1);
-  WN_kid0(BB_branch_wn(bb_entry)) = NULL;
-  WN_label_number(BB_branch_wn(bb_entry)) = bb_exit_label;
-
-  BB_branch_wn(bb_cmp_hi) = WN_Create(OPC_TRUEBR,1);
-  WN_kid0(BB_branch_wn(bb_cmp_hi)) = NULL;
-  WN_label_number(BB_branch_wn(bb_cmp_hi)) = bb_non_set_label;
-
-  BB_branch_wn(bb_cmp_lo) = WN_Create(OPC_TRUEBR,1);
-  WN_kid0(BB_branch_wn(bb_cmp_lo)) = NULL;
-  WN_label_number(BB_branch_wn(bb_cmp_lo)) = bb_exit_label;
-
-  // Compare the higher 32-bit here.
-  {
-    if (compare != OPR_EQ){
-      TOP jmp = TOP_UNDEFINED;
-      switch (compare){
-      case OPR_GT:
-      case OPR_GE:  jmp = MTYPE_is_signed(cmp_type) ? TOP_jg : TOP_ja;   break;
-      case OPR_LT:
-      case OPR_LE:  jmp = MTYPE_is_signed(cmp_type) ? TOP_jl : TOP_jb;   break;
-      case OPR_NE:  jmp = TOP_jne; break;
-      }
-
-      Build_OP(cmp_opcode, rflags, cmp_kid1_hi, cmp_kid2_hi, ops);
-      Build_OP(jmp, rflags, Gen_Label_TN(bb_exit_label, 0), ops);
-    }
-
-    if (ops != &New_OPs)
-      OPS_Append_Ops(&New_OPs, ops);
-
-    Process_New_OPs();
-    BB_Append_Ops(bb_entry, &New_OPs);
-    OPS_Init(&New_OPs);
-    OPS_Init(ops);
-  }
-
-  // Compare the higher 32-bit here.
-  if (compare != OPR_NE){
-    OPS* bb_cmp_hi_ops = &New_OPs;
-    TOP jmp = TOP_UNDEFINED;
-
-    switch (compare){
-    case OPR_GT:
-    case OPR_GE: jmp = MTYPE_is_signed(cmp_type) ? TOP_jl : TOP_jb;  break;
-    case OPR_LE:
-    case OPR_LT: jmp = MTYPE_is_signed(cmp_type) ? TOP_jg : TOP_ja;  break;
-    case OPR_EQ: jmp = TOP_jne; break;
-    }
-
-    Build_OP(cmp_opcode, rflags, cmp_kid1_hi, cmp_kid2_hi, bb_cmp_hi_ops);
-    Build_OP(jmp, rflags, Gen_Label_TN(bb_non_set_label, 0), bb_cmp_hi_ops);
-
-    total_bb_insts = 0;
-    Last_Processed_OP = NULL;
-    Process_New_OPs();
-    BB_Append_Ops(bb_cmp_hi, bb_cmp_hi_ops);
-    OPS_Init(bb_cmp_hi_ops);
-  }
-
-  // Compare the lower 32-bit, given the same higher 32-bit.
-  {
-    OPS* bb_cmp_lo_ops = &New_OPs;
-    TOP jmp = TOP_UNDEFINED;
-
-    switch (compare){
-    case OPR_GT:  jmp = TOP_ja;  break;
-    case OPR_GE:  jmp = TOP_jae; break;
-    case OPR_LT:  jmp = TOP_jb;  break;
-    case OPR_LE:  jmp = TOP_jbe; break;
-    case OPR_NE:  jmp = TOP_jne; break;
-    case OPR_EQ:  jmp = TOP_je;  break;
-    }
-
-    Build_OP(cmp_opcode, rflags, cmp_kid1, cmp_kid2, bb_cmp_lo_ops);
-    Build_OP(jmp, rflags, Gen_Label_TN(bb_exit_label, 0), bb_cmp_lo_ops);
-
-    total_bb_insts = 0;
-    Last_Processed_OP = NULL;
-    Process_New_OPs();
-    BB_Append_Ops(bb_cmp_lo, bb_cmp_lo_ops);
-    OPS_Init(bb_cmp_lo_ops);
-  }
-
-  // Now we reach a false condition
-  {
-    OPS* bb_non_set_ops = &New_OPs;
-
-    Expand_Copy(result, false_tn, select_type, bb_non_set_ops);
-
-    total_bb_insts = 0;
-    Last_Processed_OP = NULL;
-    Process_New_OPs();
-    BB_Append_Ops(bb_non_set, bb_non_set_ops);
-    OPS_Init(bb_non_set_ops);
-  }
-
-  Cur_BB = bb_exit;
-#endif  
 }
 
 
@@ -830,9 +686,6 @@ Exp_Immediate (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
     TCON tcon = Host_To_Targ (MTYPE_I8, val);
     ST *sym   = New_Const_Sym (Enter_tcon (tcon), Be_Type_Tbl(MTYPE_I8));
     Allocate_Object(sym);
-#if 0 // SC temp ifdef out for now to make kvm compile throug
-    FmtAssert((ST_gprel(sym)), ("sym not gp_rel: handle this"));
-#endif
     if(ST_gprel(sym)) {
       Build_OP(TOP_lwz, dest, GP_TN, Gen_Symbol_TN(sym, 0, TN_RELOC_GPREL16), ops);
       DevWarn("Long Long value is not supported, constant value has been truncated");
@@ -3477,14 +3330,6 @@ Exp_Select_Part1(
     else
   Expand_Int_Equal (p, cmp_kid1, cmp_kid2, desc, &new_ops);
     break;
-#if 0 // this case avoided by above transformation
-  case OPR_NE:
-    if (desc == MTYPE_B)
-  Expand_Bool_Not_Equal (p, cmp_kid1, cmp_kid2, &new_ops);
-    else
-  Expand_Int_Not_Equal (p, cmp_kid1, cmp_kid2, desc, &new_ops);
-    break;
-#endif
   case OPR_GE:
     Expand_Int_Greater_Equal (p, cmp_kid1, cmp_kid2, desc, &new_ops);
     break;

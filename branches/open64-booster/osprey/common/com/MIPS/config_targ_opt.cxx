@@ -124,14 +124,6 @@ static OPTION_DESC Options_TARG[] = {
   { OVK_SELF,	OV_SHY,		FALSE, "mips4",	NULL,
     0, 0, 0, &ISA_Name,		NULL,
     "Use the MIPS-IV instruction set architecture" },
-#if 0
-  { OVK_SELF,	OV_SHY,		FALSE, "mips5",	NULL,
-    0, 0, 0, &ISA_Name,		NULL,
-    "Use the MIPS-V instruction set architecture" },
-  { OVK_SELF,	OV_SHY,		FALSE, "mips6",	NULL,
-    0, 0, 0, &ISA_Name,		NULL,
-    "Use the MIPS-VI instruction set architecture" },
-#endif
   { OVK_NAME,	OV_VISIBLE,	FALSE, "platform",	"pl",
     0, 0, 0, &Platform_Name,	NULL,
     "Specify the target platform" },

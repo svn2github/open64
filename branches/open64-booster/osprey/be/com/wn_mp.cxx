@@ -44,7 +44,6 @@
 
 */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "be_com_pch.h"
@@ -2168,14 +2167,6 @@ Add_DST_variable ( ST *st, DST_INFO_IDX parent_dst,
 			FALSE);		/* is_artificial */
 
   (void)DST_append_child( parent_dst, dst );
-#if 0
-  info = DST_INFO_IDX_TO_PTR( dst );
-  assoc = &DST_VARIABLE_def_st(
-		DST_ATTR_IDX_TO_PTR(DST_INFO_attributes(info), DST_VARIABLE));
-  pDST_ASSOC_INFO_st_idx(assoc) = ST_st_idx(st);
-  DST_SET_assoc_idx(DST_INFO_flag(info));
-  DST_RESET_assoc_fe(DST_INFO_flag(info));
-#endif
 }
 
 
@@ -2306,14 +2297,6 @@ Create_New_DST ( DST_INFO_IDX dst, ST *st , BOOL append_to_nested )
   if (append_to_nested)
     (void)DST_append_child( nested_dst, new_dst );
   info = DST_INFO_IDX_TO_PTR( new_dst );
-#if 0
-  iattr = DST_INFO_attributes(info);
-  assoc = &DST_VARIABLE_def_st(
-		DST_ATTR_IDX_TO_PTR(iattr, DST_VARIABLE));
-  pDST_ASSOC_INFO_st_idx(assoc) = ST_st_idx(st);
-  DST_SET_assoc_idx(DST_INFO_flag(info));
-  DST_RESET_assoc_fe(DST_INFO_flag(info));
-#endif
 }
 
 
@@ -2342,14 +2325,6 @@ Create_Func_DST ( char * st_name )
 			FALSE			/* external */
 			);
   (void)DST_append_child( dst, nested_dst );
-#if 0
-  info = DST_INFO_IDX_TO_PTR( nested_dst );
-  assoc = &DST_SUBPROGRAM_def_st(
-		DST_ATTR_IDX_TO_PTR(DST_INFO_attributes(info), DST_SUBPROGRAM));
-  pDST_ASSOC_INFO_st_idx(assoc) = ST_st_idx(parallel_proc);
-  DST_SET_assoc_idx(DST_INFO_flag(info));
-  DST_RESET_assoc_fe(DST_INFO_flag(info));
-#endif
 }
 
 
@@ -10814,45 +10789,6 @@ Process_PDO ( WN * tree )
 
     }
 
-#if 0 //def KEY
-// The following is in order to make "i" private in the serialized version
-// of the region:
-//    #pragma omp parallel
-//    #pragma omp for private (i)
-//
-    if (nested_local_count && !orphaned)
-    {
-      // We have to recreate new ST entries because we need these symbols
-      // for a different scope than above, typically 2. So change the current
-      // scope ONLY locally.
-      SYMTAB_IDX psymtab_l = CURRENT_SYMTAB;
-      PU_Info * ppuinfo_l = Current_PU_Info;
-      WN_MAP_TAB * pmaptab_l = Current_Map_Tab;
-
-      CURRENT_SYMTAB = psymtab;
-      Current_PU_Info = ppuinfo;
-      Current_Map_Tab = pmaptab;
-
-      // Use local versions of the global tables.
-      INT32 vsize_l = (nested_local_count + 1) * sizeof (VAR_TABLE);
-      VAR_TABLE * nested_var_table_l = (VAR_TABLE *) alloca (vsize_l);
-       ( nested_var_table_l, vsize_l );
-      Create_Local_Variables ( nested_var_table_l, nested_reduction_nodes,
-			       nested_lastlocal_nodes, nested_local_nodes,
-			       nested_firstprivate_nodes,
-			       &nested_firstprivate_block,
-			       nested_lastthread_node,
-			       &alloca_block );
-      Localize_Parent_Stack lps_l(orphaned, body_block);
-      (void) Walk_and_Localize ( serial_stmt_block,
-                                 nested_var_table_l, &lps_l, FALSE,
-                                 &nested_non_pod_finalization_nodes );
-
-      CURRENT_SYMTAB = psymtab_l;
-      Current_PU_Info = ppuinfo_l;
-      Current_Map_Tab = pmaptab_l;
-    }
-#endif // KEY
 
     prev_node = WN_prev(pdo_node);
     if (prev_node) {
@@ -12716,10 +12652,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
                             WN_COPY_Tree( do_preamble_block ));
     }
 
-#if 0 //def KEY
-    // localize variables in serialized version of PDO
-    Localize_in_serialized_parallel ();
-#endif
 
 //    do_preamble_block = NULL;
 
@@ -12848,10 +12780,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
     } else
       serial_stmt_block = Copy_Non_MP_Tree ( stmt_block );
 
-#if 0 //def KEY
-    // localize variables in serialized version of parallel region
-    Localize_in_serialized_parallel ();
-#endif
 
     Process_Parallel_Region ( );
 

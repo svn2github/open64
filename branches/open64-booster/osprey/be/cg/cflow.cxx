@@ -1437,35 +1437,6 @@ Finalize_BB(BB *bp)
 
   case BBKIND_VARGOTO:
   case BBKIND_INDGOTO:
-#if 0
-    {
-      INT i;
-      INT nsuccs = BBINFO_nsuccs(bp);
-      struct succedge *edges = (struct succedge *)alloca(nsuccs * sizeof(struct succedge));
-      INT n = 0;
-      for (i = 0; i < nsuccs; ++i) {
-	INT j;
-	for (j = 0; j < n; ++j) {
-	  if (edges[j].bb == BBINFO_succ_bb(bp, i)) break;
-	}
-	if (j == n) {
-	  edges[j].bb = BBINFO_succ_bb(bp, i);
-	  edges[j].prob = BBINFO_succ_prob(bp, i);
-	  ++n;
-	} else {
-	  edges[j].prob += BBINFO_succ_prob(bp, i);
-	}
-      }
-      for (i = 0; i < n; ++i) {
-	BB *succ = edges[i].bb;
-	float prob = edges[i].prob;
-	BBLIST *edge = BB_Find_Succ(bp, succ);
-	Is_True(edge, ("BB:%d preds/succs don't match BBINFO", BB_id(bp)));
-	Is_True(!freqs_computed || (BBLIST_prob(edge) == prob),
-		("BB:%d preds/succs don't match BBINFO", BB_id(bp)));
-      }
-    }
-#endif
 #if Is_True_On
     if (BBINFO_kind(bp) == BBKIND_VARGOTO) {
       ANNOTATION *ant = ANNOT_Get(BB_annotations(bp), ANNOT_SWITCH);
@@ -3006,14 +2977,6 @@ Convert_Goto_To_If ( BB *bp, mBOOL *used_branch_around )
      * consideration given to which branch is best replaced.
      */
     used_branch_around[BB_id(targ)] = TRUE;
-#if 0
-  } else if ( ) {
-
-    /* It might be useful to detect other targets which we believe
-     * could be reordered later. This wouldn't be all that different
-     * than the branches-around case above.
-     */
-#endif
   } else {
 
     /* We weren't convinced this was profitiable.
@@ -4321,67 +4284,6 @@ Can_Append_Succ(
 }
 
 
-#if 0
-/* I was going to use this for cloning VARGOTO blocks, but it is not
- * good enough just to copy the jump table and set the annotation and
- * WN_st, the code needs to be modified as well! I'm not sure to how
- * guarantee that I can find the code. Perhaps it could just be
- * regenerated and the old code dead-code eliminated. But it seems
- * that we can just share the jump tables, so we'll just keep this
- * fine piece of code in case we ever need it. Ken, 4-feb-98
- */
-
-/* ====================================================================
- *
- * Copy_Jump_Table
- *
- * Copy the [switch] jump table specified by the symbol <old_listvar>
- * and return the new symbol by function value.
- *
- * ====================================================================
- */
-static ST *
-Copy_Jump_Table(ST *old_listvar)
-{
-  TY_IDX table;
-  ST *listvar;
-  INITO_IDX old_ino;
-  INITV_IDX old_inv;
-  INITO_IDX ino;
-  INITV_IDX inv;
-  INITV_IDX prev_inv;
-  INT num_entries;
-
-  /* Get INITO for old table
-   */
-  old_ino = Find_INITO_For_Symbol(old_listvar);
-
-  /* Find how many entries in the table (can't use number of succs
-   * of VARGOTO BB since it doesn't count duplicates).
-   */
-  num_entries = 0;
-  FOREACH_INITV(INITO_val(old_ino), old_inv) ++num_entries;
-
-  /* Create the symbol for the new table.
-   */
-  table = Make_Array_Type(Pointer_type, 1, num_entries);
-  listvar = Gen_Read_Only_Symbol(table, "jump_table");
-  Set_ST_is_initialized(listvar);    /* so goes in rdata section */
-
-  /* Finally create and copy the jump target labels (INITVs).
-   */
-  ino = New_INITO(listvar);
-  prev_inv = INITV_IDX_ZERO;
-  FOREACH_INITV(INITO_val(old_ino), old_inv) {
-    LABEL_IDX lab = INITV_lab(old_inv);
-    inv = New_INITV();
-    INITV_Init_Label (inv, lab);
-    prev_inv = Append_INITV (inv, ino, prev_inv);
-  }
-
-  return listvar;
-}
-#endif
 
 
 /* ====================================================================
@@ -5606,13 +5508,6 @@ Create_Cold_Region(BBCHAIN *cold)
   RID_parent(r) = parent;
   RID_cginfo(r) = NULL; /* ?? this should have a value */
 
-#if 0
-  INT i;
-  for ( i = SWP_replication_factor - 1; i >= 0; --i ) {
-    INT32 rep_num = Rep_Index_To_Number(i);
-    if ( Is_Exit_Replication(rep_num) ) ++RID_num_exits(r);
-  }
-#endif
 
   if ( parent ) RID_Add_kid(r, parent);
 
@@ -6580,12 +6475,6 @@ Freq_Order_Blocks(void)
   BBCHAIN *chains;
   BB_MAP chain_map;
 
-#if 0
-// 11-sep-97 re-enable for 7.3 -- it seems to work now
-  /* Temporary workaround -- see pv468701
-   */
-  if (have_eh_regions) return FALSE;
-#endif
 
   /* Find the BBs that hint pragmas indicate are never executed.
    */
@@ -7447,15 +7336,6 @@ CFLOW_Optimize(INT32 flags, const char *phase_name)
   // Reset the mapping between BBs and hyperblocks.
   Setup_HB_bb_map();
 
-#if 0
-// this is not ready for prime-time. It is general solution to fix
-// the problem uncovered by pv661478.
-  if (   PROC_has_branch_delay_slot()
-      && current_flags & CFLOW_FILL_DELAY_SLOTS)
-  {
-    flow_change |= Normalize_Delay_Slots();
-  }
-#endif
 
   if (CFLOW_Trace_Detail) {
     #pragma mips_frequency_hint NEVER

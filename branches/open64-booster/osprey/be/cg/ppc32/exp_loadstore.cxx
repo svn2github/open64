@@ -112,14 +112,6 @@ Handle_Misc_MType(TYPE_ID rtype, TYPE_ID mtype, TN * result, OPS * ops)
     Build_OP(TOP_extsh, result, result, ops);
   }
   
-#if 0  
-  if ((rtype == MTYPE_U4) && (mtype == MTYPE_U1)) 
-    Build_OP(TOP_andi_, result, result, Gen_Literal_TN(0xff, 4), ops);
-  if ((rtype == MTYPE_I4) && (mtype == MTYPE_I2))
-    Build_OP(TOP_extsh, result, result, ops);
-  if ((rtype == MTYPE_U4) && (mtype == MTYPE_U2))
-    Build_OP(TOP_andi_, result, result, Gen_Literal_TN(0xffff, 4), ops);
-#endif  
 }
 
 static BOOL
@@ -521,131 +513,6 @@ Expand_Composed_Store (TYPE_ID mtype, TN *obj, TN *base, TN *disp, VARIANT varia
 {
   Expand_Store(mtype, obj, base, disp, ops);
   return;
-#if 0
-  if (MTYPE_is_float(mtype))
-  {
-    Expand_Store(mtype, obj, base, disp, ops);
-  }
-  else {
-    TN *store1 = Build_TN_Of_Mtype(MTYPE_I4);
-    TN *store2 = Build_TN_Of_Mtype(MTYPE_I4);
-    TN *store3 = Build_TN_Of_Mtype(MTYPE_I4);
-    TN *newbase = Build_TN_Of_Mtype(MTYPE_I4); 
-    switch (mtype) {
-    case MTYPE_I1:
-    case MTYPE_U1:
-      if (TN_is_register(disp)) 
-        Build_OP(TOP_stbx, obj, base, disp, ops);  
-      else 
-        Build_OP(TOP_stb, obj, base, disp, ops);       
-      break;
-      
-    case MTYPE_I8:
-    case MTYPE_U8:
-      if (V_align_offset_known(variant) && V_align_offset(variant) >= 8) {
-        DevWarn("WHY here! Expand_Composed_Store(I2/U2) V_align_offset > 1");
-        Expand_Store(mtype, obj, base, disp, ops);
-        return;
-      }
-
-      if (TN_is_register(disp)) {            
-        Expand_Add(newbase, base, disp, MTYPE_I4, ops);
-        base = newbase;
-        disp = Gen_Literal_TN(0, 4);
-      }
-
-      Build_OP(TOP_rlwinm, store1, obj,  Gen_Literal_TN(8, 4), 
-        Gen_Literal_TN(24, 4),  Gen_Literal_TN(31, 4), ops);
-      Build_OP(TOP_stb, store1, base, disp, ops);       
-      
-      Build_OP(TOP_rlwinm, store2, obj,  Gen_Literal_TN(16, 4), 
-        Gen_Literal_TN(24, 4),  Gen_Literal_TN(31, 4), ops);
-      Build_OP(TOP_stb, store2, base, Gen_Adjusted_TN(disp, 1), ops);       
-      
-      Build_OP(TOP_rlwinm, store3, obj,  Gen_Literal_TN(24, 4), 
-        Gen_Literal_TN(24, 4), Gen_Literal_TN(31, 4), ops);
-      Build_OP(TOP_stb, store3, base, Gen_Adjusted_TN(disp, 2), ops);       
-
-      Build_OP(TOP_stb, obj, base, Gen_Adjusted_TN(disp, 3), ops);          
-      
-      Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
-
-      obj = Get_TN_Pair(obj);       
-      FmtAssert(obj, ("Expand_Composed_Store : tn pair not setup"));
-      
-
-      Build_OP(TOP_rlwinm, store1, obj,  Gen_Literal_TN(8, 4), 
-        Gen_Literal_TN(24, 4),  Gen_Literal_TN(31, 4), ops);
-      Build_OP(TOP_stb, store1, base, Gen_Adjusted_TN(disp, 4), ops);       
-      
-      Build_OP(TOP_rlwinm, store2, obj,  Gen_Literal_TN(16, 5), 
-        Gen_Literal_TN(24, 4),  Gen_Literal_TN(31, 4), ops);
-      Build_OP(TOP_stb, store2, base, Gen_Adjusted_TN(disp, 5), ops);   
-      
-      Build_OP(TOP_rlwinm, store3, obj,  Gen_Literal_TN(24, 4), 
-        Gen_Literal_TN(24, 4), Gen_Literal_TN(31, 4), ops);
-      Build_OP(TOP_stb, store3, base, Gen_Adjusted_TN(disp, 6), ops);       
-
-      Build_OP(TOP_stb, obj, base, Gen_Adjusted_TN(disp, 7), ops); 
-      
-      Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
-      
-      return;
-    case MTYPE_I4:
-    case MTYPE_U4:
-      if (V_align_offset_known(variant) && V_align_offset(variant) >= 4) {
-        DevWarn("WHY here! Expand_Composed_Store(I2/U2) V_align_offset > 1");
-        Expand_Store(mtype, obj, base, disp, ops);
-        return;
-      }
-
-      if (TN_is_register(disp)) {            
-        Expand_Add(newbase, base, disp, MTYPE_I4, ops);
-        base = newbase;
-        disp = Gen_Literal_TN(0, 4);
-      }
-
-      Build_OP(TOP_rlwinm, store1, obj,  Gen_Literal_TN(8, 4), 
-        Gen_Literal_TN(24, 4),  Gen_Literal_TN(31, 4), ops);
-      Build_OP(TOP_stb, store1, base, disp, ops);       
-                    
-      Build_OP(TOP_rlwinm, store2, obj,  Gen_Literal_TN(16, 4), 
-        Gen_Literal_TN(24, 4),  Gen_Literal_TN(31, 4), ops);
-      Build_OP(TOP_stb, store2, base, Gen_Adjusted_TN(disp, 1), ops);       
-      
-      Build_OP(TOP_rlwinm, store3, obj,  Gen_Literal_TN(24, 4), 
-        Gen_Literal_TN(24, 4), Gen_Literal_TN(31, 4), ops);
-      Build_OP(TOP_stb, store3, base, Gen_Adjusted_TN(disp, 2), ops);       
-
-      Build_OP(TOP_stb, obj, base, Gen_Adjusted_TN(disp, 3), ops);    
-      
-      Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
-      return;
-    case MTYPE_I2:
-    case MTYPE_U2:
-      if (V_align_offset_known(variant) && V_align_offset(variant) >= 2) {
-        DevWarn("WHY here! Expand_Composed_Store(I2/U2) V_align_offset > 1");
-        Expand_Store(mtype, obj, base, disp, ops);
-        return;
-      }
-
-      if (TN_is_register(disp)) {            
-        Expand_Add(newbase, base, disp, MTYPE_I4, ops);
-        base = newbase;
-        disp = Gen_Literal_TN(0, 4);
-      }
-      Build_OP(TOP_rlwinm, store1, obj,  Gen_Literal_TN(24, 4), 
-        Gen_Literal_TN(24, 4), Gen_Literal_TN(31, 4), ops);
-      Build_OP(TOP_stb, store1, base, disp, ops);            
-
-      Build_OP(TOP_stb, obj, base, Gen_Adjusted_TN(disp, 1), ops);            
-
-      return;
-    default:
-      FmtAssert (FALSE, ("Expand_Composed_Load: unexpected operand size\n"));
-    } 
-  }
-#endif
 }
 
 void
@@ -670,18 +537,6 @@ BOOL Is_Stack_Used(void)
 TN_RELOCS
 Get_Internal_Buf_Reloc_Type(ST* st, INTRINSIC id) {
 FmtAssert(FALSE, ("Not IMP"));  
-#if 0
-  TN_RELOCS reloc = TN_RELOC_NONE;
-  Is_True((ST_in_vbuf(st) || ST_in_sbuf(st)), (" Passing a non-vbuf variable to Get_Vbuf_Reloc_Type"));
-  if(id == INTRN_LWC2 || id == INTRN_SWC2 ||
-     id == INTRN_VBUF_OFFSET || id==INTRN_SBUF_OFFSET
-   ) {
-    if(ST_in_v1buf(st)) return TN_RELOC_GPREL_V1_15;
-    else if(ST_in_v2buf(st)) return TN_RELOC_GPREL_V2_15;
-    else if(ST_in_v4buf(st)) return TN_RELOC_GPREL_V4_15;
-    else return TN_RELOC_GPREL_S;
-  }
-#endif  
 }
 #endif 
 

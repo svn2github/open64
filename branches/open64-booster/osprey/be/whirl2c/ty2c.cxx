@@ -381,10 +381,6 @@ skip_till_next_field(FLD_HANDLE  this_fld,
 	      //bug1452 -- on PPC we have situations where a type's natural alignemnt 
 	      //is different from when it's the inside a struct, so we'd have a "misaligned"
 	      //field here that still needs to be output
-#if 0
-	      (!TY_Is_Pointer(FLD_type(next_fld)) &&
-	       FLD_ofst(next_fld) % TY_align(FLD_type(next_fld)) != 0) ||
-#endif
 	      (!is_union &&
 	       FLD_Is_Bitfield(next_fld, 
 			       FLD_next(next_fld),

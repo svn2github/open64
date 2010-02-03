@@ -39,7 +39,6 @@
 
 // This may look like C code, but it is really -*- C++ -*-
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -1212,13 +1211,6 @@ ARA_LOOP_INFO::Annotate_Invariant_Def()
 ARA_REF * Contains(ARA_REF_ST & ara_st, WN *array_wn)
 {
 
-#if 0
-  Is_True((WN_operator(wn) == OPR_ILOAD) ||
-	  (WN_operator(wn) == OPR_ISTORE),
-	  ("Contains: Bad WN passed in"));
-  WN* array_wn = (WN_operator(source)== OPR_ILOAD) ? 
-    kid0(wn) : kid1(wn);
-#endif
   for (INT i = 0; i < ara_st.Elements(); ++i) {
     ARA_REF *cur = ara_st.Bottom_nth(i);
     if (OPCODE_has_sym(WN_opcode(WN_array_base(array_wn))))
@@ -2882,17 +2874,6 @@ INT64 Loop_FP_Size(WN* wn)
 	     (oper == OPR_PARM) || (oper == OPR_PAREN)) {
     // no-ops
   } else if (OPCODE_is_expression(opcode) && (oper != OPR_CONST)) {
-#if 0
-    // an fp expression
-    if ((OPCODE_desc(opcode)==MTYPE_FQ) || (OPCODE_rtype(opcode)==MTYPE_FQ) ||
-	(OPCODE_desc(opcode)==MTYPE_CQ) || (OPCODE_rtype(opcode)==MTYPE_CQ) ||
-	(OPCODE_desc(opcode)==MTYPE_F4) || (OPCODE_desc(opcode)==MTYPE_F8) ||
-	(OPCODE_rtype(opcode)==MTYPE_F4)|| 
-	(OPCODE_rtype(opcode)==MTYPE_F8)|| (OPCODE_desc(opcode)==MTYPE_C4) || 
-	(OPCODE_desc(opcode)==MTYPE_C8) || (OPCODE_rtype(opcode)==MTYPE_C4)||
-	(OPCODE_rtype(opcode)==MTYPE_C8))  {
-    }
-#endif      
     if ((oper == OPR_MAX) || (oper == OPR_MIN) || 
 	(oper == OPR_ADD) || (oper == OPR_SUB) || (oper == OPR_MPY) ||
 	(oper == OPR_NEG))

@@ -54,7 +54,6 @@
 //     that occur in WHIRL
 //
 //--------------------------------------------------------------------------
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>                        // Elf64_Word
@@ -907,12 +906,6 @@ IPL_Print_One_Access(FILE *fp, WN* wn)
 	WN_MAP_Get(IPL_info_map,wn);
       fprintf(fp,"The do loop info is \n"); dli->Print(fp);
     } 
-#if 0
-  else if (WN_opcode(wn) == OPC_IF) 
-    {
-      IF_INFO *info = (IF_INFO *) WN_MAP_Get(IPL_info_map,wn);
-    }
-#endif 
   else if (WN_operator(wn) == OPR_ARRAY) 
     {
       ACCESS_ARRAY *array = (ACCESS_ARRAY *) WN_MAP_Get(IPL_info_map,wn);

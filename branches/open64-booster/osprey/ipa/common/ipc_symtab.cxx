@@ -37,7 +37,6 @@
 */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>
@@ -394,12 +393,8 @@ process_whirl (an_object_file_ptr p_obj, int nsec, const Shdr* section_table,
     pair<Sym *, UINT> ext_symtab = walk_st_list (gtabs, elf_symtab);
 
     if (ext_symtab.second  > 0) {
-#if 1
     	an_elf_sym_record *p_sym = (an_elf_sym_record *)ext_symtab.first;
 	merge_ext (p_sym,
-#else
-	merge_ext (reinterpret_cast<an_elf_sym_record *> (ext_symtab.first),
-#endif
 		   ld_get_section_base (p_obj, strtab_idx),
 		   ext_symtab.second, p_obj);
     }

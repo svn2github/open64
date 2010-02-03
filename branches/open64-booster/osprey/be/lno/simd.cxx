@@ -287,15 +287,6 @@ static BOOL is_vectorizable_op (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc) {
       return TRUE;
     else
       return FALSE;
-#if 0 // bug 8885
-  case OPR_BAND:
-  //case OPR_BIOR:
-  case OPR_BXOR:
-    if (rtype != MTYPE_F4 && rtype != MTYPE_F8)
-      return TRUE;
-    else
-      return FALSE;    
-#endif
   case OPR_SQRT:
     if (rtype == MTYPE_F4 || rtype == MTYPE_F8)
       return TRUE;
@@ -1400,10 +1391,6 @@ BOOL Is_Vectorizable_Intrinsic (WN *wn)
   case INTRN_F8COS:
   case INTRN_F4EXPEXPR:
   case INTRN_F8EXPEXPR:
-#if 0 // for Bug 8931, single vector sinh and cosh not ready
-  case INTRN_F4SINH:
-  case INTRN_F4COSH:
-#endif
   case INTRN_F8SINH:
   case INTRN_F8COSH:
   case INTRN_F4LOG10:
@@ -2873,11 +2860,9 @@ static BOOL SA_Set_SimdOps_Info1(WN* body,
       continue;
     TYPE_ID rtype = WN_rtype(simd_op);
     TYPE_ID desc = WN_desc(simd_op);
-#if 1
     // CHANGED
     FmtAssert(is_vectorizable_op(WN_operator(simd_op), rtype, desc),
               ("Handle this piece"));
-#endif
     if (!is_vectorizable_op(WN_operator(simd_op), rtype, desc))
       continue; //will never happen due to the above assert
     
@@ -4112,41 +4097,11 @@ static void Simd_Vectorize_Intrinsics(WN *simd_op)
           WN_set_rtype(WN_kid1(simd_op), MTYPE_V16F4);
           break;
 
-#if 0 // currently not supplied by libacml_mv.a
-        case INTRN_F8EXPEXPR:
-          WN_intrinsic(simd_op) = INTRN_V16F8EXPEXPR;
-          WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
-          break;
-#endif
         case INTRN_F4EXPEXPR:
           WN_intrinsic(simd_op) = INTRN_V16F4EXPEXPR;
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
           break;
 
-#if 0 // currently not supplied by libacml_mv.a
-        case INTRN_F8SINH:
-          WN_intrinsic(simd_op) = INTRN_V16F8SINH;
-          WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
-          break;
-#endif
-#if 0 //for bug 8931 release this when single precision vec ready
-        case INTRN_F4SINH:
-          WN_intrinsic(simd_op) = INTRN_V16F4SINH;
-          WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
-          break;
-#endif
-#if 0 // currently not supplied by libacml_mv.a
-        case INTRN_F8COSH:
-          WN_intrinsic(simd_op) = INTRN_V16F8COSH;
-          WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
-          break;
-#endif
-#if 0 //for bug 8931 release this when single precision vec ready
-        case INTRN_F4COSH:
-          WN_intrinsic(simd_op) = INTRN_V16F4COSH;
-          WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
-          break;
-#endif
         case INTRN_F4EXP:
           WN_intrinsic(simd_op) = INTRN_V16F4EXP;
           WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);

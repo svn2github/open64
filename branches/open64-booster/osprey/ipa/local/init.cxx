@@ -49,7 +49,6 @@
 
 #ifdef __linux__
 
-#define __STDC_LIMIT_MACROS
 #include "defs.h"
 #include "wn.h"
 #include "pu_info.h"

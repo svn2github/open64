@@ -32,7 +32,6 @@
 #define sched_cand_INCLUDED
 
 #ifndef INT32_MAX
-#define __STDC_LIMIT_MACROS
 #include <stdint.h> 
 #endif
 

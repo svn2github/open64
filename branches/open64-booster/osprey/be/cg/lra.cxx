@@ -64,7 +64,6 @@
 #endif // USE_PCH
 #pragma hdrstop
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 
@@ -810,16 +809,6 @@ Mark_Use (TN *tn, OP *op, INT opnum, BB *bb, BOOL in_lra,
 	DevWarn ("TN%d(PREG%d) used before definition in BB:%d",
 		 TN_number(tn), TN_To_PREG(tn), BB_id(bb));	
 #ifdef TARG_X8664
-#if 0
-	// When the inliner is on, it leads to this assert sometimes, when
-	// the inlined code does not have a return statement but the
-	// return type is non-void. There is no way to distinguish this 
-	// case from a legitimate error. 
-	if( !CGTARG_Is_Preference_Copy(op) ){
-	  FmtAssert ( FALSE, ("TN%d(PREG%d) used before definition in BB:%d",
-			      TN_number(tn), TN_To_PREG(tn), BB_id(bb)));
-	}
-#endif
 #endif
       }
       LR_exposed_use(clr) = opnum;
@@ -1242,11 +1231,6 @@ Op_has_side_effect(OP *op)
   if ( TN_size(tn1) != TN_size(tn2) ) 
      return true;
 
-#if 0
-  if (Is_Target_64bit() && TN_is_int_retrun_register(tn2)) {
-     return true;
-  }
-#endif
   return false;
 }
 
