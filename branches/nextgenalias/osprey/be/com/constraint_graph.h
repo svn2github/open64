@@ -37,6 +37,7 @@
 // Constraint graph node flags
 #define CG_NODE_FLAGS_UNKNOWN 0x01
 
+// Map the WNs to CGNodeIds
 #define WN_MAP_CGNodeId_Set(wn,thing) \
  IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_CGNODE_ID, (wn), (INT32)(thing))
 #define WN_MAP_CGNodeId_Get(wn) \
@@ -84,25 +85,25 @@ public:
 
   CGNodeId destId() const { return _destId; }
 
-  UINT32 size() const
+  INT32 size() const
   {
     FmtAssert(edgeInfo().etype() != ETYPE_SKEW, ("Not valid for SKEW edge"));
     return edgeInfo().sizeOrSkew();
   }
 
-  UINT32 skew() const
+  INT32 skew() const
   {
     FmtAssert(edgeInfo().etype() == ETYPE_SKEW, ("Expecting a SKEW edge"));
     return edgeInfo().sizeOrSkew();
   }
 
-  void size(UINT32 s)
+  void size(INT32 s)
   {
     FmtAssert(edgeInfo().etype() != ETYPE_SKEW, ("Not valid for SKEW edge"));
     _edgeInfo.sizeOrSkew(s);
   }
 
-  void skew(UINT32 s)
+  void skew(INT32 s)
   {
     FmtAssert(edgeInfo().etype() == ETYPE_SKEW, ("Expecting a SKEW edge"));
     _edgeInfo.sizeOrSkew(s);
@@ -217,8 +218,8 @@ private:
 class ConstraintGraph;
 
 typedef hash_set<ConstraintGraphEdge *,
-                   ConstraintGraphEdge::hashCGEdge,
-                   ConstraintGraphEdge::equalCGEdge> CGEdgeSet;
+                 ConstraintGraphEdge::hashCGEdge,
+                 ConstraintGraphEdge::equalCGEdge> CGEdgeSet;
 
 typedef CGEdgeSet::const_iterator CGEdgeSetIterator;
 
@@ -259,9 +260,15 @@ public:
   bool checkFlags(UINT8 flag) const { return  _nodeInfo.flags(); }
   void addFlags(UINT8 flag) { _nodeInfo.addFlags(flag); }
 
-  void addPointsToGBL(CGNodeId id) { _nodeInfo.addPointsTo(id, CQ_GBL); }
-  void addPointsToHZ(CGNodeId id)  { _nodeInfo.addPointsTo(id, CQ_HZ); }
-  void addPointsToDN(CGNodeId id)  { _nodeInfo.addPointsTo(id, CQ_DN); }
+  void addPointsTo(CGNodeId id, CGEdgeQual qual) 
+  { 
+    _nodeInfo.addPointsTo(id, qual); 
+  }
+
+  bool unionPointsTo(PointsTo &ptsToSet, CGEdgeQual qual) 
+  { 
+    return pointsTo(qual).setUnion(ptsToSet);
+  }
 
   PointsTo &pointsTo(CGEdgeQual qual) {
     switch (qual) {
@@ -272,9 +279,6 @@ public:
       FmtAssert(false,("Unexpected edge qualifier"));
     }
   }
-  PointsTo &pointsToGBL(void) { return _nodeInfo.pointsToGBL(); }
-  PointsTo &pointsToHZ(void)  { return _nodeInfo.pointsToHZ(); }
-  PointsTo &pointsToDN(void)  { return _nodeInfo.pointsToDN(); }
 
   // Try adding edge to the in edge set. If the edge already exists
   // return the existing edge, else insert the new edge and return it
@@ -473,9 +477,9 @@ public:
   void operator ++(void) { _index += 1; }
   PointsTo &operator *(void) {
     switch (_index) {
-    case 0: return _node->pointsToGBL();
-    case 1: return _node->pointsToHZ();
-    case 2: return _node->pointsToDN();
+    case 0: return _node->pointsTo(CQ_GBL);
+    case 1: return _node->pointsTo(CQ_HZ);
+    case 2: return _node->pointsTo(CQ_DN);
     }
   }
   CGEdgeQual qual(void) {
@@ -536,6 +540,8 @@ public:
       fprintf(file, "GLOBAL");
     if (checkFlags(CG_ST_FLAGS_PARAM))
       fprintf(file, ",PARAM");
+    if (checkFlags(CG_ST_FLAGS_NOCNTXT))
+      fprintf(file, ",CI");
     fprintf(file, "]");
     fprintf(file, " first: %d\n", _firstOffset->id());
   }
@@ -575,7 +581,11 @@ public:
     return NULL;
   }
 
+  // Return CGNode mapped to (st_idx, offset), if not create a new CGNode 
   ConstraintGraphNode *getCGNode(ST_IDX st_idx, INT64 offset);
+
+  // Return CGNode mapped to (st_idx, offset), if not return NULL
+  ConstraintGraphNode *checkCGNode(ST_IDX st_idx, INT64 offset);
       
   void print(FILE *file)
   {

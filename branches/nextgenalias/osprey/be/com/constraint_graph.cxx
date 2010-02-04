@@ -74,7 +74,8 @@ ConstraintGraph::processWN(WN *wn)
   else if (OPCODE_is_expression(opc)) {
     // wn is an expression kid of SCF and needs to be handled like the
     // RHS of an assignment statement.
-    // (void) Classify_deref_of_expr(wn, FALSE);
+    ProcessExprResult res;
+    processExpr(wn, res);
     return NULL;
   }
   else if (!OPCODE_is_black_box(opc)) {
@@ -92,10 +93,11 @@ ConstraintGraph::processWN(WN *wn)
 WN *
 ConstraintGraph::handleAssignment(WN *stmt)
 {
-  // process RHS
   WN *rhs = WN_kid0(stmt);
   ProcessExprResult resRHS;
+  // process RHS
   ConstraintGraphNode *cgNodeRHS = processExpr(rhs, resRHS);
+  // process LHS
   ConstraintGraphNode *cgNodeLHS = processLHSofStore(stmt, cgNodeRHS, resRHS);
   return WN_next(stmt);
 }
@@ -103,7 +105,6 @@ ConstraintGraph::handleAssignment(WN *stmt)
 ConstraintGraphNode *
 ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
 {
-  //bool exprIsPtr = TY_kind(WN_object_ty(expr));
   OPCODE opc = WN_opcode(expr);
   OPERATOR opr = OPCODE_operator(opc);
   if (OPCODE_is_leaf(opc)) {
@@ -125,6 +126,7 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
     return cgNode;
   } else if (OPCODE_is_load(opc)) {
     switch (opr) {
+      // For *y, we create a t <--=* y
       case OPR_ILOAD: {
         res = COPY;
         ProcessExprResult kidRes;
@@ -136,6 +138,7 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
           Gen_Temp_Named_Symbol(WN_ty(expr), "cgTmp", CLASS_VAR, SCLASS_AUTO);
         ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tempST), 0);
         WN_MAP_CGNodeId_Set(expr, tmpCGNode->id());
+        // For a non-zero offset, get CGNode corresponding to (y + offset)
         if (WN_offset(expr) != 0)
           addrCGNode = getCGNode(addrCGNode->st_idx(), 
                                  addrCGNode->offset() + WN_offset(expr));
@@ -154,6 +157,8 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
       processExpr(kid, res);
     }
     
+    // y = x +- const;
+    // y <-- (const) x
     if (opr == OPR_ADD || opr == OPR_SUB) {
       CGNodeId kid0CGNodeId = WN_MAP_CGNodeId_Get(WN_kid0(expr));
       ConstraintGraphNode *kid0CGNode = 
@@ -191,6 +196,8 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
   return NULL;
 }
 
+// Process x = y and *x = y
+// y is cgNodeRHS, resRHS indicates whether y is a direct address or a copy
 ConstraintGraphNode *
 ConstraintGraph::processLHSofStore(WN *stmt, ConstraintGraphNode *cgNodeRHS,
                                    ProcessExprResult resRHS)
@@ -198,11 +205,16 @@ ConstraintGraph::processLHSofStore(WN *stmt, ConstraintGraphNode *cgNodeRHS,
   OPERATOR opr = WN_operator(stmt);
   ConstraintGraphNode *cgNodeLHS = NULL;
 
+  // Get CGNode corresponding to x
   if (OPERATOR_is_scalar_store(opr)) {
     cgNodeLHS = getCGNode(stmt);
   } else if (OPERATOR_is_scalar_istore(opr)) {
     ProcessExprResult res;
     cgNodeLHS = processExpr(WN_kid1(stmt), res);
+    // For a non-zero offset, get CGNode corresponding to (x + offset)
+    if (WN_offset(stmt) != 0)
+      cgNodeLHS = getCGNode(cgNodeLHS->st_idx(), 
+                            cgNodeLHS->offset() + WN_offset(stmt));
   } 
 
   if (cgNodeLHS == NULL)
@@ -218,13 +230,15 @@ ConstraintGraph::processLHSofStore(WN *stmt, ConstraintGraphNode *cgNodeRHS,
   if (OPERATOR_is_scalar_store(opr)) {
     switch (resRHS) {
       case ADDR:
+        // y is a direct address: x = &a, add a to the points-to set of x
         if (stInfo(cgNodeRHS->st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
-          cgNodeLHS->addPointsToGBL(cgNodeRHS->id());
+          cgNodeLHS->addPointsTo(cgNodeRHS->id(), CQ_GBL);
         else
-          cgNodeLHS->addPointsToHZ(cgNodeRHS->id());
+          cgNodeLHS->addPointsTo(cgNodeRHS->id(), CQ_HZ);
         break;
       case COPY:
         bool added = false;
+        // add a copy edge x <-- y
         addEdge(cgNodeRHS, cgNodeLHS, ETYPE_COPY, CQ_HZ,
                 WN_object_size(stmt), added);
         break;
@@ -232,14 +246,16 @@ ConstraintGraph::processLHSofStore(WN *stmt, ConstraintGraphNode *cgNodeRHS,
   } else if (OPERATOR_is_scalar_istore(opr)) {
     switch (resRHS) {
       case ADDR: {
-        // Create a new temp symbol
+        // y is a direct address: *x = &a
+        // Create a temp symbol t and add a to the points-to set of t.
+        // Make t the new y
         ST *tempST = Gen_Temp_Named_Symbol(WN_ty(WN_kid0(stmt)), "cgTmp", 
                                            CLASS_VAR, SCLASS_AUTO);
         ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tempST), 0);
         if (stInfo(cgNodeRHS->st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
-          tmpCGNode->addPointsToGBL(cgNodeRHS->id());
+          tmpCGNode->addPointsTo(cgNodeRHS->id(), CQ_GBL);
         else
-          tmpCGNode->addPointsToHZ(cgNodeRHS->id());
+          tmpCGNode->addPointsTo(cgNodeRHS->id(), CQ_HZ);
         cgNodeRHS = tmpCGNode;
         break;
       }
@@ -248,6 +264,7 @@ ConstraintGraph::processLHSofStore(WN *stmt, ConstraintGraphNode *cgNodeRHS,
         break;
     }
     bool added = false;
+    // Add store edge x *=<-- y
     addEdge(cgNodeRHS, cgNodeLHS, ETYPE_STORE, CQ_HZ,
             WN_object_size(stmt), added);
   }
@@ -271,6 +288,9 @@ ConstraintGraph::getCGNode(WN *wn)
   return getCGNode(base_st_idx, base_offset);
 }
 
+// Add edge between src and dest, return the newly added edge if it does
+// not exist and set added = true, else return the existing edge and
+// set adeded = false
 ConstraintGraphEdge *
 ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
                          CGEdgeType etype, CGEdgeQual qual, UINT32 size,
@@ -305,26 +325,26 @@ ConstraintGraph::getCGNode(ST_IDX st_idx, INT64 offset)
   if (si == NULL) {
     si = CXX_NEW(StInfo(st_idx), _memPool);
     _cgStInfoMap[st_idx] = si;
+    // Treat every symbol as context-insensitive
+    si->addFlags(CG_ST_FLAGS_NOCNTXT);
   }
 
   ST *st = &St_Table[st_idx];
   if (ST_class(st) != CLASS_PREG) {
     if (si->varSize() != 0)
-      FmtAssert(offset < si->varSize(), ("getCGNode: offset: %lld >= varSize"
-                ": %lld\n", offset, si->varSize()));
+      Is_True(offset < si->varSize(), ("getCGNode: offset: %lld >= varSize"
+              ": %lld\n", offset, si->varSize()));
     if (si->modulus() != 0)
       offset = offset % si->modulus();
   }
 
-  ConstraintGraphNode *cgNode =
-    CXX_NEW(ConstraintGraphNode(st_idx, offset, _memPool), _memPool);
+  ConstraintGraphNode *cgNode = NULL;
 
   // Check if node exists, if so return it
-  CGNodeToIdMapIterator cgIter = _cgNodeToIdMap.find(cgNode);
-  if (cgIter != _cgNodeToIdMap.end()) {
-    CXX_DELETE(cgNode, _memPool);
-    return cgIter->first;
-  }
+  if (cgNode = checkCGNode(st_idx, offset))
+    return cgNode;
+
+  cgNode =  CXX_NEW(ConstraintGraphNode(st_idx, offset, _memPool), _memPool);
 
   // Add it to the _cgNodeToIdMap and the reverse _cgIdToNodeMap
   _cgNodeToIdMap[cgNode] = nextCGNodeId;
@@ -335,4 +355,16 @@ ConstraintGraph::getCGNode(ST_IDX st_idx, INT64 offset)
 
   addCGNodeInSortedOrder(si, cgNode);
   return cgNode;
+}
+
+// Checks for a CGNode, return NULL if not present
+ConstraintGraphNode *
+ConstraintGraph::checkCGNode(ST_IDX st_idx, INT64 offset)
+{
+  ConstraintGraphNode cgNode(st_idx, offset, NULL);
+
+  CGNodeToIdMapIterator cgIter = _cgNodeToIdMap.find(&cgNode);
+  if (cgIter != _cgNodeToIdMap.end())
+    return cgIter->first;
+  return NULL;
 }

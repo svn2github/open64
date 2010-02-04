@@ -7,10 +7,33 @@ struct WN;
 #include "alias_analyzer.h"
 #include "constraint_graph.h"
 
+using namespace __gnu_cxx;
+
+// Class to map AliasTags to points-to set
+class AliasTagInfo 
+{
+public:
+
+  AliasTagInfo(MEM_POOL *memPool) : 
+    _pointsToSet(memPool)
+  {}
+
+  PointsTo &pointsTo() { return _pointsToSet; }
+
+  void print(FILE *file) 
+  {
+    fprintf(file, "[");
+    _pointsToSet.print(file);
+    fprintf(file, "]");
+  }
+
+private:
+  PointsTo _pointsToSet;  // Set of CGNodeIds associated with this alias tag 
+};
+
 class NystromAliasAnalyzer : public AliasAnalyzer {
    
 public:
-
    NystromAliasAnalyzer(ALIAS_CONTEXT &,WN *,MEM_POOL *memPool);
 
    ~NystromAliasAnalyzer();
@@ -42,7 +65,7 @@ public:
    // associated with the requested symbol is complete and the 
    // points-to set is provided.  Otherwise, the routine 
    // returns 'false' and the points-to set is undefined.
-   BOOL pointsToSet(AliasTag, SparseBitSet<CGNodeId> &);
+   BOOL pointsToSet(AliasTag, PointsTo &);
 
 
    AliasTag meet(AliasTag dstTag, AliasTag srcTag);
@@ -55,10 +78,22 @@ private:
    // TODO: Implement newAliasTag
    AliasTag newAliasTag(void) { return InvalidAliasTag; }
 
+   // Traverse the whirl tree starting from the func entry
+   // and for each WN for which there is a valid CGNodeId, create
+   // an AliasTag and its associated AliasTagInfo and update the aliasTagMap
+   void createAliasTags(WN *entryWN);
+
    // Unions the points-to set of srcTag into the points-to set
    // of dstTag.
    // TODO: Implement mergePointsTo
    void mergePointsTo(AliasTag dstTag, AliasTag srcTag) { }
+
+   ConstraintGraph *_constraintGraph;
+
+   // Maps the AliasTags to points-to sets
+   hash_map<UINT32, AliasTagInfo *> _aliasTagInfo;
+
+   MEM_POOL *_memPool;
 };
 
 #endif
