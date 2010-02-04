@@ -213,7 +213,7 @@ ConstraintGraph::processAssign(const ConstraintGraphEdge *edge)
             sum.setUnion(cur->pointsTo(srcQual));
           }
           bool change = false;
-          change |= dstNode->pointsTo(dstQual).setUnion(cur->pointsTo(srcQual));
+          change |= dstNode->unionPointsTo(cur->pointsTo(srcQual), dstQual);
           if (change)
             addEdgesToWorkList(dstNode);
           cur = cur->nextOffset();
@@ -222,7 +222,7 @@ ConstraintGraph::processAssign(const ConstraintGraphEdge *edge)
           ConstraintGraphNode *cur1 = dst->nextOffset();
           while (cur1 != NULL) {
             bool change = false;
-            change |= cur1->pointsTo(dstQual).setUnion(sum);
+            change |= cur1->unionPointsTo(sum, dstQual);
             if (change)
               addEdgesToWorkList(cur1); // Mark outgoing edges as to be updated....
             cur1 = cur1->nextOffset();
@@ -250,12 +250,12 @@ ConstraintGraph::processAssign(const ConstraintGraphEdge *edge)
       CGEdgeQual srcQual = pti.qual();
       CGEdgeQual dstQual = qualMap(ETYPE_ASSIGN,srcQual,edgeQual);
       if (dstQual != CQ_NONE) {
-        change |= dst->pointsTo(dstQual).setUnion(*pti);
+        change |= dst->unionPointsTo(*pti, dstQual);
         if (dstStOffset == -1) {
           ConstraintGraphNode *cur = dst->nextOffset();
           while (cur != NULL) {
             bool change = false;
-            change |= cur->pointsTo(dstQual).setUnion(*pti);
+            change |= cur->unionPointsTo(*pti, dstQual);
             if (change)
               addEdgesToWorkList(cur); // Mark outgoing edges as to be updated....
             cur = cur->nextOffset();
@@ -298,7 +298,6 @@ ConstraintGraph::processSkew(const ConstraintGraphEdge *edge)
     CGEdgeQual curQual = pti.qual();
     CGEdgeQual dstQual = qualMap(ETYPE_ASSIGN/*ASSIGN==SKEW*/,curQual,edgeQual);
     if (dstQual != CQ_NONE) {
-      PointsTo &dstPTS = dst->pointsTo(dstQual);
       PointsTo &srcPTS = *pti;
       for (PointsTo::SparseBitSetIterator iter(&srcPTS,0); iter != 0; iter++)
       {
@@ -308,7 +307,7 @@ ConstraintGraph::processSkew(const ConstraintGraphEdge *edge)
         INT32 newOffset = node->offset() + skew;
         if (newOffset < st->varSize()) {
           ConstraintGraphNode *skewNode = getCGNode(node->st_idx(),newOffset);
-          dstPTS.setBit(skewNode->id());
+          dst->addPointsTo(skewNode->id(), dstQual);
         }
       }
     }
@@ -325,8 +324,7 @@ ConstraintGraph::addCopiesForLoadStore(ConstraintGraphNode *src,
 {
   FmtAssert(etype == ETYPE_ASSIGN_DEREF || etype == ETYPE_DEREF_ASSIGN,
             ("Expected only adding copy edges for load/store constraints"));
-  for (SparseBitSet<CGNodeId>::SparseBitSetIterator iter(&ptSet,0);
-         iter != 0; iter++)
+  for (PointsTo::iterator iter(&ptSet,0); iter != 0; iter++)
   {
     CGNodeId nodeId = *iter;
     ConstraintGraphNode *node = cgNode(nodeId);
