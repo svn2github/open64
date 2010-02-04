@@ -1229,8 +1229,15 @@ static void ir_put_wn(WN * wn, INT indent)
     }
 
     if (Current_Map_Tab != NULL &&
-        WN_MAP32_Get(WN_MAP_ALIAS_TAG,wn) != 0)
-      fprintf(ir_ofile," {alias_tag %d}",WN_MAP32_Get(WN_MAP_ALIAS_TAG,wn));
+        WN_MAP32_Get(WN_MAP_ALIAS_CGNODE_ID, wn) != 0)
+      fprintf(ir_ofile, " {cgnode %d}",
+              WN_MAP32_Get(WN_MAP_ALIAS_CGNODE_ID, wn));
+
+#ifdef BACK_END
+    AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
+    if (Current_Map_Tab != NULL && aa != NULL && aa->getAliasTag(wn) != 0)
+      fprintf(ir_ofile," {alias_tag %d}", aa->getAliasTag(wn));
+#endif
 
     fprintf(ir_ofile, "\n");
 }

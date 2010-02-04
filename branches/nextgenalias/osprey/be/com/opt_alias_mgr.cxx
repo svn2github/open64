@@ -451,6 +451,8 @@ ALIAS_MANAGER::ALIAS_MANAGER(WN *entryWN)
   // interface to the selected alias analysis algorithm.
   _alias_analyzer = AliasAnalyzer::Create_Alias_Analyzer(ac,entryWN,&_mem_pool);
 
+  fdump_tree(stderr, entryWN);
+
   Set_pu_context(ac);
   _rule = CXX_NEW(ALIAS_RULE(ac,_alias_analyzer), &_mem_pool);
 
@@ -672,9 +674,9 @@ ALIAS_MANAGER::Dup_tree_alias_id( const WN *old_wn, WN *new_wn )
     WN_MAP32_Set(WN_MAP_ALIAS_CLASS, new_wn, ip_alias_class);
   }
 
-  AliasTag tag = WN_MAP_AliasTag_Get(old_wn);
+  AliasTag tag = Alias_Analyzer()->getAliasTag(old_wn);
   if (tag != 0) {
-    WN_MAP_AliasTag_Set(new_wn, tag);
+    Alias_Analyzer()->setAliasTag(new_wn, tag);
   }
 
   // now travel down the tree
@@ -1339,9 +1341,9 @@ void Copy_alias_info(const ALIAS_MANAGER *am, WN *wn1, WN *wn2)
   WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn2,
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
 
-  AliasTag tag = WN_MAP_AliasTag_Get(wn1);
+  AliasTag tag = am->Alias_Analyzer()->getAliasTag(wn1);
   if (tag != 0) {
-      WN_MAP_AliasTag_Set(wn2,tag);
+      am->Alias_Analyzer()->setAliasTag(wn2,tag);
   }
 
   IDTYPE id = am->Id(wn1);
@@ -1387,9 +1389,9 @@ void Duplicate_alias_info(ALIAS_MANAGER *am, WN *wn1, WN *wn2)
   WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn2,
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
 
-  AliasTag tag = WN_MAP_AliasTag_Get(wn1);
+  AliasTag tag = am->Alias_Analyzer()->getAliasTag(wn1);
   if (tag != 0) {
-    WN_MAP_AliasTag_Set(wn2,tag);
+    am->Alias_Analyzer()->setAliasTag(wn2,tag);
   }
 
   // copy homing information

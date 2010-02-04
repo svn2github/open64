@@ -3752,7 +3752,7 @@ OPT_STAB::Transfer_alias_tag_to_occ_and_aux(RID *const rid,
       OCC_TAB_ENTRY *occ = Get_occ(wn);
       if (occ != NULL) {
           POINTS_TO *occ_pt = occ->Points_to();
-          AliasTag tag = WN_MAP_AliasTag_Get(wn);
+          AliasTag tag = Alias_Mgr()->Alias_Analyzer()->getAliasTag(wn);
           occ_pt->Set_alias_tag(tag);
 
           POINTS_TO *vsym_pt = Aux_stab_entry(occ->Aux_id())->Points_to();

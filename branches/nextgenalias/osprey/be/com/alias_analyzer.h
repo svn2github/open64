@@ -6,6 +6,7 @@
 #include "sparse_bitset.h"
 #include "opt_alias_interface.h"
 #include "opt_alias_rule.h"
+#include "wn_map.h"
 
 struct WN;
 struct ST;
@@ -23,27 +24,22 @@ enum AliasTag {
   InitialAliasTag,
 };
 
-// The WN_MAP only supports INT32, and will not allow us to place
-// an enumeration into the map.  Here we hide the casting from
-// the client.
-#define WN_MAP_AliasTag_Set(wn,thing) \
-  IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_TAG, (wn), (INT32)(thing))
-#define WN_MAP_AliasTag_Get(wn) \
-  (AliasTag)IPA_WN_MAP32_Get(Current_Map_Tab, WN_MAP_ALIAS_TAG, (wn))
-
 class AliasAnalyzer {
 
 private:
-  static AliasAnalyzer *_alias_analyzer;
+   static AliasAnalyzer *_alias_analyzer;
+   WN_MAP _aliasTagMap; // Maps WNs to AliasTags
 
 public:
-   AliasAnalyzer();
+   AliasAnalyzer(MEM_POOL *memPool);
 
    virtual ~AliasAnalyzer();
 
    static AliasAnalyzer *Create_Alias_Analyzer(ALIAS_CONTEXT &ac, 
                                                WN *tree,
                                                MEM_POOL *memPool);
+
+   static AliasAnalyzer *aliasAnalyzer() { return _alias_analyzer; }
 
    // Provide the alias result for the references, objects
    // represented by the provided tags.
@@ -76,6 +72,16 @@ public:
    // Create_lda_array_alias()
 
    virtual AliasTag meet(AliasTag destTag, AliasTag srcTag);
+
+   void setAliasTag(WN *wn, AliasTag tag)
+   {
+     IPA_WN_MAP32_Set(Current_Map_Tab, _aliasTagMap, wn, (INT32)tag);
+   }
+
+   AliasTag getAliasTag(const WN *wn) const
+   {
+     return (AliasTag)IPA_WN_MAP32_Get(Current_Map_Tab, _aliasTagMap, wn);
+   }
 };
 
 #endif // alias_analysis_INCLUDED

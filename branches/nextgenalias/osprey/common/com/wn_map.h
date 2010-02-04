@@ -295,11 +295,10 @@ typedef INT32 		WN_MAP;
 #define WN_MAP_FEEDBACK 2
 #define WN_MAP_AC_INTERNAL 3
 #define WN_MAP_ALIAS_CLASS 4
-#define WN_MAP_ALIAS_TAG 5
-#define WN_MAP_ALIAS_CGNODE_ID 6
+#define WN_MAP_ALIAS_CGNODE_ID 5
 
 /* number of reserved mappings and total number */
-#define WN_MAP_RESERVED 7
+#define WN_MAP_RESERVED 6
 #define WN_MAP_MAX 128
 
 typedef enum {

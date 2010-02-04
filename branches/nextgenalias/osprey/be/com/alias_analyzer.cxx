@@ -33,9 +33,15 @@ AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree,
     return NULL;
 }
 
-AliasAnalyzer::AliasAnalyzer() {}
+AliasAnalyzer::AliasAnalyzer(MEM_POOL *memPool) 
+{
+  _aliasTagMap = IPA_WN_MAP32_Create(Current_Map_Tab, memPool);
+}
 
-AliasAnalyzer::~AliasAnalyzer() {}
+AliasAnalyzer::~AliasAnalyzer() 
+{
+  IPA_WN_MAP_Delete(Current_Map_Tab, _aliasTagMap);
+}
 
 ALIAS_RESULT
 AliasAnalyzer::aliased(AliasTag, AliasTag)
