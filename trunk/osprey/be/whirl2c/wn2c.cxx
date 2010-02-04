@@ -5001,14 +5001,22 @@ WN2C_stid(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
      }
       /* Get the lhs expression */
       lhs_tokens = New_Token_Buffer();
+
+      /* Do not specify WN_field_id() to force TY2C_get_field_info() 
+       * being called to evaluate "canonical" WN_ty() and WN_field_id().
+       * HINT: The ST_ty(WN_st(wn)) is not necessarily equal to WN_ty(), 
+       *    which cause the discrepancy between WN_offset() and the byte 
+       *    offset derived from WN_ty()+WN_field_id().
+       */
       WN2C_stid_lhs(lhs_tokens,
 		    &stored_ty,          /* Corrected stored type */
 		    WN_st(wn),           /* base symbol */
 		    offt,
 		    stored_ty,           /* stored type */
 		    WN_opc_dtype(wn),    /* stored mtype */
-		    context,
-		    WN_field_id(wn));
+		    context
+		    /*, WN_field_id(wn) */ /* see comment above*/
+            );
 
       /* Do the assignment */
       WN2C_Append_Assignment(tokens, 
@@ -6498,8 +6506,7 @@ WN2C_lda(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
                                    ST_pu_type(WN_st(wn)) : ST_type(WN_st(wn))),
 			object_ty,  /* type addressed */
 			lda_offset, 
-			context,
-			WN_field_id(wn));
+			context);
 
       /* Convert an lvalue into an address value, if necessary.*/
       if (!TY_Is_Pointer(WN_ty(wn)) ||
