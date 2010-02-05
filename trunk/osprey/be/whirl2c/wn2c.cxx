@@ -5015,7 +5015,7 @@ WN2C_stid(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 		    stored_ty,           /* stored type */
 		    WN_opc_dtype(wn),    /* stored mtype */
 		    context
-		    /*, leave field-id unspecified, see comment above*/
+		    /* leave field-id unspecified, see comment above*/
             );
 
       /* Do the assignment */
