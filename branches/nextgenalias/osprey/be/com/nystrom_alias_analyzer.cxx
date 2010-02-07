@@ -94,10 +94,14 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
     const OPCODE   opc = WN_opcode(wn);
     const OPERATOR opr = OPCODE_operator(opc);
 
-    // TODO: Do I need to check for cgNode's parent here?
     ConstraintGraphNode *cgNode = _constraintGraph->cgNode(id);
+    if (cgNode->parent())
+      cgNode = cgNode->parent();
     FmtAssert(cgNode != NULL, ("CGNodeId : %d not mapped to a "
               "ConstraintGraphNode\n", id));
+
+    if (cgNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+      continue;
 
     AliasTagInfo *aliasTagInfo = CXX_NEW(AliasTagInfo(_memPool), _memPool);
     if (OPERATOR_is_scalar_iload(opr))
@@ -112,12 +116,14 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       ConstraintGraphNode *addrCGNode = _constraintGraph->cgNode(addrCGNodeId);
       FmtAssert(addrCGNode != NULL, ("CGNodeId : %d not mapped to a "
                 "ConstraintGraphNode\n", addrCGNodeId));
+      if (addrCGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+        continue;
       if (WN_offset(wn) != 0) {
         // Check if the node exists
-        if (!addrCGNode)
         addrCGNode = 
           _constraintGraph->checkCGNode(addrCGNode->st_idx(), 
                                         addrCGNode->offset() + WN_offset(wn));
+        if (!addrCGNode || addrCGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
           continue;
       }
       cgNode = addrCGNode;

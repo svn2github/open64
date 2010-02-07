@@ -67,13 +67,15 @@ typedef enum {
   CQ_NONE, /* Used in qualifier mapping (future) */
 } CGEdgeQual;
 
+class ConstraintGraphNode;
+
 class ConstraintGraphEdge 
 {
 public:
-  ConstraintGraphEdge(CGNodeId srcId, CGNodeId destId, CGEdgeType etype,
-                      CGEdgeQual qual, INT32 sizeOrSkew)
-    : _srcId(srcId),
-      _destId(destId),
+  ConstraintGraphEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest, 
+                      CGEdgeType etype, CGEdgeQual qual, INT32 sizeOrSkew)
+    : _srcCGNode(src),
+      _destCGNode(dest),
       _edgeInfo(etype,qual,0,sizeOrSkew)
   {}
 
@@ -81,9 +83,8 @@ public:
 
   CGEdgeQual edgeQual() const { return edgeInfo().qual(); }
 
-  CGNodeId srcId() const { return _srcId; }
-
-  CGNodeId destId() const { return _destId; }
+  ConstraintGraphNode *srcNode() const { return _srcCGNode; }
+  ConstraintGraphNode *destNode() const { return _destCGNode; }
 
   INT32 size() const
   {
@@ -114,18 +115,14 @@ public:
   void addFlags(UINT16 flag) { _edgeInfo.addFlags(flag); }
   void clearFlags(UINT16 flag) { _edgeInfo.clearFlags(flag); }
 
-  void print(FILE *file)
-  {
-    fprintf(file, "(src: %d dest: %d ", _srcId, _destId);
-    _edgeInfo.print(file);
-    fprintf(file, ")");
-  }
+  void print(FILE *file);
 
   typedef struct
   {
     size_t operator()(const ConstraintGraphEdge *k) const
     {
-      return (size_t(k->edgeInfo().hash() ^ k->_srcId << 8 ^ k->_destId));
+      return (k->edgeInfo().hash() ^ (size_t)k->_srcCGNode ^ 
+              (size_t)k->_destCGNode);
     }
   } hashCGEdge;
 
@@ -135,8 +132,8 @@ public:
                     const ConstraintGraphEdge *k2) const
     {
       return (k1->edgeInfo() == k2->edgeInfo() &&
-              k1->_srcId == k2->_srcId &&
-              k1->_destId == k2->_destId);
+              k1->_srcCGNode == k2->_srcCGNode &&
+              k1->_destCGNode == k2->_destCGNode);
     }
   } equalCGEdge;
 
@@ -210,8 +207,8 @@ private:
 
   const EdgeInfo &edgeInfo(void) const { return _edgeInfo; }
 
-  CGNodeId _srcId;
-  CGNodeId _destId;
+  ConstraintGraphNode *_srcCGNode;
+  ConstraintGraphNode *_destCGNode;
   EdgeInfo _edgeInfo;
 };
 
@@ -304,11 +301,42 @@ public:
     return *(p.first);
   }
 
+  // Checks if 'edge' is in the 'in' copy-skew/load-store edge set
+  // Returns the existing edge if yes, else NULL
+  ConstraintGraphEdge *inEdge(ConstraintGraphEdge *edge)
+  {
+    CGEdgeSet &inEdgeSet = (edge->edgeType() == ETYPE_COPY ||
+                            edge->edgeType() == ETYPE_SKEW) ?
+                            _inCopySkewCGEdges : _inLoadStoreCGEdges;
+    CGEdgeSetIterator iter = inEdgeSet.find(edge);
+    if (iter != inEdgeSet.end())
+      return *iter;
+    return NULL;
+  }
+
+  // Checks if 'edge' is in the 'out' copy-skew/load-store edge set
+  // Returns the existing edge if yes, else NULL
+  ConstraintGraphEdge *outEdge(ConstraintGraphEdge *edge)
+  {
+    CGEdgeSet &outEdgeSet = (edge->edgeType() == ETYPE_COPY ||
+                             edge->edgeType() == ETYPE_SKEW) ?
+                            _outCopySkewCGEdges : _outLoadStoreCGEdges;
+    CGEdgeSetIterator iter = outEdgeSet.find(edge);
+    if (iter != outEdgeSet.end())
+      return *iter;
+    return NULL;
+  }
+
   CGEdgeSet &inCopySkewEdges(void)     { return _inCopySkewCGEdges; }
   CGEdgeSet &inLoadStoreEdges(void)  { return _inLoadStoreCGEdges; }
   CGEdgeSet &outCopySkewEdges(void)    { return _outCopySkewCGEdges; }
   CGEdgeSet &outLoadStoreEdges(void) { return _outLoadStoreCGEdges; }
 
+  ConstraintGraphNode *parent() const { return _repParent; }
+
+  ConstraintGraph *constraintGraph() const { return _parentCG; }
+  void constraintGraph(ConstraintGraph *cg) { _parentCG = cg; }
+  
   void print(FILE *file) 
   {
     fprintf(file, "*CGNodeId: %d*\n ", _id);
@@ -503,7 +531,13 @@ public:
   StInfo(ST_IDX st_idx)
   {
     ST *st = &St_Table[st_idx];
-    _varSize = ST_size(st);
+    TY& ty = Ty_Table[ST_type(st)];
+    // For arrays set size to element size
+    if (TY_kind(ty) == KIND_ARRAY) {
+      TY &etype = Ty_Table[TY_etype(ty)];
+      _varSize = TY_size(etype);
+    } else
+      _varSize = ST_size(st);
     _modulus = _varSize;
     // Set the flags
     _flags = 0;
@@ -526,7 +560,7 @@ public:
   bool checkFlags(UINT32 flag) const { return _flags & flag; }
   void addFlags(UINT32 flag) { _flags |= flag; }
 
-  INT32 varSize() const { return _varSize; }
+  INT64 varSize() const { return _varSize; }
   UINT32 modulus() const { return _modulus; }
 
   ConstraintGraphNode *firstOffset() const { return _firstOffset; }
@@ -619,9 +653,9 @@ private:
   
   WN *handleCall(WN *wn);
 
-  ConstraintGraphNode *processLHSofStore(WN *stmt, ConstraintGraphNode *rhs,
-                                         ProcessExprResult resRHS);
+  ConstraintGraphNode *processLHSofStore(WN *stmt);
 
+  ConstraintGraphNode *processExpr(WN *expr);
   ConstraintGraphNode *processExpr(WN *expr, ProcessExprResult& res);
 
   ConstraintGraphNode *getCGNode(WN *wn);

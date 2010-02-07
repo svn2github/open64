@@ -185,8 +185,8 @@ void
 ConstraintGraph::processAssign(const ConstraintGraphEdge *edge)
 {
   UINT32 assignSize = edge->size();
-  ConstraintGraphNode *src = cgNode(edge->srcId());
-  ConstraintGraphNode *dst = cgNode(edge->destId());
+  ConstraintGraphNode *src = edge->srcNode();
+  ConstraintGraphNode *dst = edge->destNode();
   StInfo *dstStInfo = stInfo(dst->st_idx());
 
   INT32 dstStOffset = dst->offset();
@@ -289,8 +289,8 @@ ConstraintGraph::processAssign(const ConstraintGraphEdge *edge)
 void
 ConstraintGraph::processSkew(const ConstraintGraphEdge *edge)
 {
-  ConstraintGraphNode *src = cgNode(edge->srcId());
-  ConstraintGraphNode *dst = cgNode(edge->destId());
+  ConstraintGraphNode *src = edge->srcNode();
+  ConstraintGraphNode *dst = edge->destNode();
   UINT32 skew = edge->skew();
   CGEdgeQual edgeQual = edge->edgeQual();
 
@@ -344,8 +344,8 @@ ConstraintGraph::addCopiesForLoadStore(ConstraintGraphNode *src,
 void
 ConstraintGraph::processAssignDeref(const ConstraintGraphEdge *edge)
 {
-  ConstraintGraphNode *src = cgNode(edge->srcId());
-  ConstraintGraphNode *dst = cgNode(edge->destId());
+  ConstraintGraphNode *src = edge->srcNode();
+  ConstraintGraphNode *dst = edge->destNode();
   UINT32 sz = edge->size();
   CGEdgeQual edgeQual = edge->edgeQual();
 
@@ -360,8 +360,8 @@ ConstraintGraph::processAssignDeref(const ConstraintGraphEdge *edge)
 void
 ConstraintGraph::processDerefAssign(const ConstraintGraphEdge *edge)
 {
-  ConstraintGraphNode *src = cgNode(edge->srcId());
-  ConstraintGraphNode *dst = cgNode(edge->destId());
+  ConstraintGraphNode *src = edge->srcNode();
+  ConstraintGraphNode *dst = edge->destNode();
   UINT32 sz = edge->size();
   CGEdgeQual edgeQual = edge->edgeQual();
 
