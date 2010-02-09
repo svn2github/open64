@@ -358,7 +358,7 @@ public:
     _currIdx = 0;
   }
 
-  void operator=(SparseBitSet &rhs)
+  SparseBitSet& operator=(const SparseBitSet &rhs)
   {
     SparseBitSetElement *fromPtr = NULL;
     SparseBitSetElement *toPtr = NULL;
@@ -381,6 +381,7 @@ public:
       }
       toPtr = toElt;
     }
+    return *this;
   }
 
   void print(FILE *file)
