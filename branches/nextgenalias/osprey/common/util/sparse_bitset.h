@@ -345,6 +345,44 @@ public:
     return changed;
   }
 
+  void clear()
+  {
+    SparseBitSetElement *nelem = NULL;
+    SparseBitSetElement *elem = _firstElem;
+    while (elem) {
+      nelem = elem->_next;
+      MEM_POOL_FREE(_memPool, elem);
+      elem = nelem;
+    }
+    _firstElem = _currElem = NULL;
+    _currIdx = 0;
+  }
+
+  void operator=(SparseBitSet &rhs)
+  {
+    SparseBitSetElement *fromPtr = NULL;
+    SparseBitSetElement *toPtr = NULL;
+
+    clear();
+    /* Copy elements in forward direction one at a time.  */
+    for (fromPtr = rhs._firstElem; fromPtr; fromPtr = fromPtr->_next) {
+      SparseBitSetElement *toElt = allocElem();
+      toElt->_idx = fromPtr->_idx;
+      memcpy(toElt->_bits, fromPtr->_bits, sizeof (toElt->_bits));
+
+      if (toPtr == NULL) {
+        _firstElem = _currElem = toElt;
+        _currIdx = toElt->_idx;
+        toElt->_next = toElt->_prev = NULL;
+      } else {
+        toElt->_prev = toPtr;
+        toElt->_next = NULL;
+        toPtr->_next = toElt;
+      }
+      toPtr = toElt;
+    }
+  }
+
   void print(FILE *file)
   {
     const char *comma = "";
