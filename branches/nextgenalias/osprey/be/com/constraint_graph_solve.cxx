@@ -1,5 +1,250 @@
 
+#include <stack>
 #include "constraint_graph.h"
+
+//
+// Performs cycle detection within the constraint graph.  The
+// algorithm employed is Nuutila's algorithm:
+//
+// Esko Nuutila and Eljas Soisalon-Soininen, "On finding the
+//   strongly connected components in a directed graph".
+//   Inf. Process. Letters, 49(1):9-14, 1994.
+//
+// The algorithm provides two benefits.  First it is an improvement
+// over Tarjan's algorithm, runs in O(E) time.  Second it produces
+// a topological ordering of the target graph for free, which
+// will improve the efficiency of the constraint graph solver.
+//
+// The implementation is derived from the pseudo code in the
+// following paper:
+//
+// Pereira and Berlin, "Wave Propagation and Deep Propagation for
+//   Pointer Analysis", CGO 2009, 126-135, 2009.
+//
+class SCCDetection {
+
+  typedef mempool_allocator<ConstraintGraphNode *> CGNodeAllocator;
+  typedef deque<ConstraintGraphNode *,CGNodeAllocator> CGNodeDeque;
+
+public:
+  typedef stack<ConstraintGraphNode *,CGNodeDeque> CGNodeStack;
+
+  SCCDetection(ConstraintGraph *graph, MEM_POOL *mpool)
+  : _graph(graph),
+    _memPool(mpool),
+    _I(0),
+    _D(NULL),
+    _S(CGNodeDeque(mpool)),
+    _T(CGNodeDeque(mpool))
+  {}
+
+  ~SCCDetection() {}
+
+  // Detect and unify all SCCS within the constraint graph.
+  void findAndUnify();
+
+  // Return a handle to the stack of nodes in topological
+  // order.  This will be used to seed the initial solution
+  // and improve efficiency.
+  CGNodeStack &topoNodeStack() { return _T; }
+
+  typedef struct {
+    size_t operator()(const ConstraintGraphNode *k) const
+    {
+      return k->id();
+    }
+  } hashCGNodeId;
+  typedef hash_map<ConstraintGraphNode*,UINT32,hashCGNodeId> NodeToKValMap;
+  typedef NodeToKValMap::const_iterator NodeToKValMapIterator;
+
+  private:
+
+  void visit(ConstraintGraphNode *node);
+
+  void find(void);
+  void unify(NodeToKValMap&);
+  void pointsToAdjust(NodeToKValMap&);
+
+  ConstraintGraph       *_graph;
+  MEM_POOL              *_memPool;
+  UINT32                 _I;
+  UINT32                *_D;
+  CGNodeStack            _S;
+  CGNodeStack            _T;
+};
+
+void
+SCCDetection::visit(ConstraintGraphNode *v)
+{
+  fprintf(stderr,"visit: Node %d\n",v->id());
+  _I += 1;
+  _D[v->id()] = _I;
+  v->repParent(v);
+  v->addFlags(CG_NODE_FLAGS_VISITED);
+  for (CGEdgeSetIterator iter = v->outCopySkewEdges().begin();
+      iter != v->outCopySkewEdges().end(); ++iter ) {
+    ConstraintGraphEdge *edge = *iter;
+    if (!edge->checkFlags(CG_EDGE_PARENT_COPY)) {
+      ConstraintGraphNode *w = edge->destNode();
+      if (!w->checkFlags(CG_NODE_FLAGS_VISITED))
+        visit(w);
+      if (!w->checkFlags(CG_NODE_FLAGS_SCCMEMBER))
+      {
+        ConstraintGraphNode *rep;
+        rep = _D[v->repParent()->id()] < _D[w->repParent()->id()] ?
+            v->repParent() : w->repParent();
+        v->repParent(rep);
+      }
+    }
+  }
+  if (v->repParent() == v) {
+    v->addFlags(CG_NODE_FLAGS_SCCMEMBER);
+    while (!_S.empty()) {
+      ConstraintGraphNode *w = _S.top();
+      if (_D[w->id()] <= _D[v->id()])
+        break;
+      else {
+        _S.pop();
+        w->addFlags(CG_NODE_FLAGS_SCCMEMBER);
+        w->repParent(v);
+      }
+    }
+    _T.push(v);
+  }
+  else
+    _S.push(v);
+}
+
+void
+SCCDetection::find(void)
+{
+  // Visit each unvisited root node.   A root node is defined
+  // to be a node that has no incoming copy/skew edges
+  for (CGNodeToIdMapIterator iter = _graph->begin();
+      iter != _graph->end(); iter++) {
+    ConstraintGraphNode *node = iter->first;
+    if (!node->checkFlags(CG_NODE_FLAGS_VISITED)) {
+      // We skip any nodes that have a representative other than
+      // themselves.  Such nodes occur as a result of merging
+      // nodes either through unifying an ACC or other node
+      // merging optimizations.  Any such node should have no
+      // outgoing edges and therefore should no longer be a member
+      // of an SCC.
+      if (node->repParent() == NULL || node->repParent() == node)
+        visit(node);
+      else {
+        node->addFlags(CG_NODE_FLAGS_VISITED);
+        CGEdgeSet &outCopyEdges = node->outCopySkewEdges();
+        CGEdgeSetIterator outCopyIter = outCopyEdges.begin();
+        FmtAssert(outCopyIter == outCopyEdges.end(),
+            ("Found copy edge: expect node with representative "
+                "to be a leaf node.\n"));
+        CGEdgeSet &outLdEdges = node->outLoadStoreEdges();
+        CGEdgeSetIterator outLdIter = outLdEdges.begin();
+        FmtAssert(outLdIter == outLdEdges.end(),
+            ("Found copy edge: expect node with representative "
+                "to be a leaf node.\n"));
+      }
+    }
+  }
+}
+
+void
+SCCDetection::unify(NodeToKValMap &nodeToKValMap)
+{
+  // Unify the nodes in an SCC into a single node
+  for (CGNodeToIdMapIterator iter = _graph->begin();
+      iter != _graph->end(); iter++) {
+    ConstraintGraphNode *node = iter->first;
+    FmtAssert(node->checkFlags(CG_NODE_FLAGS_VISITED),
+        ("Node %d unvisited during SCC detection\n",node->id()));
+    node->clearFlags(CG_NODE_FLAGS_VISITED|CG_NODE_FLAGS_SCCMEMBER);
+    if (node->repParent() && node->repParent() != node) {
+      ConstraintGraphEdge dummy(node->repParent(),node,ETYPE_COPY,CQ_HZ,0);
+      if (!node->inEdge(&dummy)) {
+        fprintf(stderr,"Unify: Node %d -> Node %d\n",
+            node->id(),node->repParent()->id());
+        // We need to track this node so as to update the modulus
+        // of the representative points-to set based on the 'new'
+        // value of inKCycle() after the SCC has been collapsed.
+        ConstraintGraphNode *rep = node->findRep();
+        if (!rep->checkFlags(CG_NODE_FLAGS_INKVALMAP)) {
+          nodeToKValMap[rep] = rep->inKCycle();
+          rep->addFlags(CG_NODE_FLAGS_INKVALMAP);
+        }
+        rep->merge(node);
+      }
+    }
+  }
+}
+
+void
+SCCDetection::pointsToAdjust(NodeToKValMap &nodeToKValMap)
+{
+  // Now that all SCCs have been merged, we update the merged
+  // points-to sets based on the final K value.
+  for (NodeToKValMapIterator iter = nodeToKValMap.begin();
+       iter != nodeToKValMap.end(); ++iter ) {
+    ConstraintGraphNode *rep = iter->first;
+    UINT32 origKVal = iter->second;
+    UINT32 newKVal = rep->inKCycle();
+    if (newKVal >= Pointer_Size /*config_targ.h*/) {
+      // If the resulting K value is still larger than the size
+      // of a pointer, then we simply adjust the modulus of the
+      // underlying symbol to the min(rep->inKCycle(),modulus)
+      for ( PointsToIterator pti(rep); pti != 0; ++pti ) {
+        PointsTo &ptsTo = *pti;
+        for (PointsTo::SparseBitSetIterator iter(&ptsTo,0); iter != 0; iter++)
+        {
+          CGNodeId nodeId = *iter;
+          ConstraintGraphNode *node = _graph->cgNode(nodeId);
+          StInfo *st = _graph->stInfo(node->st_idx());
+          if (newKVal < st->modulus())
+            st->modulus(newKVal);
+        }
+      }
+    }
+    else {
+      // If the resulting K value is now less than the size of
+      // a pointer, then we adjust the offset of each symbol in
+      // the merge points-to set to offset == -1.
+      for ( PointsToIterator pti(rep); pti != 0; ++pti ) {
+        PointsTo &ptsTo = *pti;
+        SparseBitSet<CGNodeId> tmp(_memPool);
+        for (PointsTo::SparseBitSetIterator iter(&ptsTo,0); iter != 0; iter++)
+        {
+          CGNodeId nodeId = *iter;
+          ConstraintGraphNode *node = _graph->cgNode(nodeId);
+          if (node->offset() != -1)
+            node = _graph->getCGNode(node->st_idx(),-1);
+          tmp.setBit(node->id());
+        }
+        ptsTo.clear();
+        ptsTo.setUnion(tmp);
+      }
+    }
+  }
+}
+
+void
+SCCDetection::findAndUnify()
+{
+  // Reset state
+  _I = 0;
+  _D = CXX_NEW_ARRAY(UINT32,_graph->totalCGNodes(),_memPool);
+  while (!_S.empty()) _S.pop();
+  while (!_T.empty()) _T.pop();
+
+  // Mapping of representative node points to the original K value
+  // used to determine the updated needed to the merged points-to sets.
+  NodeToKValMap nodeToKValMap;
+
+  find();
+  unify(nodeToKValMap);
+  pointsToAdjust(nodeToKValMap);
+
+  CXX_DELETE_ARRAY(_D,_memPool);
+}
 
 void
 ConstraintGraph::WorkList::push(ConstraintGraphEdge *e)
@@ -40,39 +285,56 @@ void
 ConstraintGraph::solveConstraints()
 {
   // TODO: Perform cycle detection, here
+  SCCDetection sccs(this,_memPool);
 
   WorkList &copySkewList = edgeDelta().copySkewList();
   WorkList &loadStoreList = edgeDelta().loadStoreList();
 
-  fprintf(stderr,"\nSeeding solver:\n");
-  for (CGNodeToIdMapIterator iter = _cgNodeToIdMap.begin();
-          iter != _cgNodeToIdMap.end(); iter++) {
-    ConstraintGraphNode *node = iter->first;
-    fprintf(stderr,"Node %d\n",node->id());
-    fprintf(stderr," Copy Edges:\n");
-    for (CGEdgeSetIterator iter = node->outCopySkewEdges().begin();
-        iter != node->outCopySkewEdges().end();
-        iter++) {
-      ConstraintGraphEdge *edge = *iter;
-      fprintf(stderr,"  Adding edge:");
-      edge->print(stderr);
-      fprintf(stderr,"\n");
-      copySkewList.push(edge);
-    }
-    fprintf(stderr," Ld/St Edges:\n");
-    for (CGEdgeSetIterator iter = node->outLoadStoreEdges().begin();
-        iter != node->outLoadStoreEdges().end();
-        iter++) {
-      ConstraintGraphEdge *edge = *iter;
-      fprintf(stderr,"  Adding edge:");
-      edge->print(stderr);
-      fprintf(stderr,"\n");
-      loadStoreList.push(edge);
-    }
-  }
-
   INT32 iterCount = 0;
   do {
+
+    // Here we walk the constraint graph to locate any SCCs and
+    // collapse them to ensure that the solver will converge.
+    // TODO:  What is the scope of analyis during IPA, bottom-up walk?
+    sccs.findAndUnify();
+
+    // TODO: We need to seed the the solver with the approprate
+    // edges, either based on the SCCDetection traversal or the
+    // provided edge delta.
+    if (copySkewList.empty()) {
+      fprintf(stderr,"\nSeeding solver:\n");
+      SCCDetection::CGNodeStack &stack = sccs.topoNodeStack();
+      while (!stack.empty()) {
+        ConstraintGraphNode *node = stack.top();
+        stack.pop();
+        fprintf(stderr,"Node %d\n",node->id());
+        CGEdgeSetIterator iter = node->outCopySkewEdges().begin();
+        if (iter != node->outCopySkewEdges().end()) {
+          fprintf(stderr," Copy Edges:\n");
+          for ( ; iter != node->outCopySkewEdges().end();
+              iter++) {
+            ConstraintGraphEdge *edge = *iter;
+            fprintf(stderr,"  Adding edge:");
+            edge->print(stderr);
+            fprintf(stderr,"\n");
+            copySkewList.push(edge);
+          }
+        }
+        CGEdgeSetIterator ldIter = node->outLoadStoreEdges().begin();
+        if (ldIter != node->outLoadStoreEdges().end()){
+          fprintf(stderr," Ld/St Edges:\n");
+          for ( ; ldIter != node->outLoadStoreEdges().end();
+              ldIter++) {
+            ConstraintGraphEdge *edge = *ldIter;
+            fprintf(stderr,"  Adding edge:");
+            edge->print(stderr);
+            fprintf(stderr,"\n");
+            loadStoreList.push(edge);
+          }
+        }
+      }
+    }
+
     fprintf(stderr,"Solver Iteration %d\n",++iterCount);
     while (!copySkewList.empty()) {
       ConstraintGraphEdge *edge = copySkewList.pop();
@@ -184,6 +446,12 @@ ConstraintGraph::addEdgesToWorkList(ConstraintGraphNode *node)
 void
 ConstraintGraph::processAssign(const ConstraintGraphEdge *edge)
 {
+  // If the copy edge is a copy from parent to child, we
+  // simply mark the child, i.e. the dest, as needing
+  // processing.
+  if (edge->checkFlags(CG_EDGE_PARENT_COPY))
+    addEdgesToWorkList(edge->destNode());
+
   UINT32 assignSize = edge->size();
   ConstraintGraphNode *src = edge->srcNode();
   ConstraintGraphNode *dst = edge->destNode();

@@ -13,14 +13,36 @@ addCGNodeInSortedOrder(StInfo *stInfo, ConstraintGraphNode *cgNode)
     stInfo->firstOffset(cgNode);
   } else {
     ConstraintGraphNode *n = stInfo->firstOffset();
-    ConstraintGraphNode *prevn = n;
+    ConstraintGraphNode *prevn = NULL;
     while (n && n->offset() <= cgNode->offset()) {
       prevn = n;
       n = n->nextOffset();
     }
-    FmtAssert(prevn->offset() != cgNode->offset(),
-              ("Found node with same offset"));
-    prevn->nextOffset(cgNode);
+    if (prevn) {
+      FmtAssert(prevn->offset() != cgNode->offset(),
+          ("Found node with same offset"));
+      prevn->nextOffset(cgNode);
+    }
+    else {
+      cgNode->nextOffset(n);
+      stInfo->firstOffset(cgNode);
+    }
+  }
+}
+
+static void
+seedOffsetMinusOnePointsTo(StInfo *stInfo, ConstraintGraphNode *cgNode)
+{
+  FmtAssert(cgNode->offset() == -1,
+      ("seedOffsetMinusOnePointsTo: offset != -1"));
+
+  ConstraintGraphNode *cur = stInfo->firstOffset();
+  if (cur->offset() == -1)
+    cur = cur->nextOffset();
+  while (cur) {
+    for ( PointsToIterator pti(cur); pti != 0; ++pti )
+      cgNode->unionPointsTo(*pti,pti.qual());
+    cur = cur->nextOffset();
   }
 }
 
@@ -339,7 +361,7 @@ ConstraintGraph::getCGNode(WN *wn)
 
 // Add edge between src and dest, return the newly added edge if it does
 // not exist and set added = true, else return the existing edge and
-// set adeded = false
+// set added = false
 ConstraintGraphEdge *
 ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
                          CGEdgeType etype, CGEdgeQual qual, UINT32 size,
@@ -367,6 +389,14 @@ ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
   } else 
     FmtAssert(FALSE, 
               ("Either edge exists in one of src/dest but not in other!\n"));
+}
+
+void
+ConstraintGraph::removeEdge(ConstraintGraphEdge *edge)
+{
+  edge->srcNode()->removeOutEdge(edge);
+  edge->destNode()->removeInEdge(edge);
+  CXX_DELETE(edge,_memPool);
 }
 
 ConstraintGraphNode *
@@ -406,6 +436,8 @@ ConstraintGraph::getCGNode(ST_IDX st_idx, INT64 offset)
   cgNode->setId(nextCGNodeId++);
 
   addCGNodeInSortedOrder(si, cgNode);
+  if (cgNode->offset() == -1)
+    seedOffsetMinusOnePointsTo(si,cgNode);
   return cgNode;
 }
 
@@ -421,7 +453,249 @@ ConstraintGraph::checkCGNode(ST_IDX st_idx, INT64 offset)
   return NULL;
 }
 
+void
+ConstraintGraph::print(FILE *file)
+{
+  for (CGNodeToIdMapIterator iter = _cgNodeToIdMap.begin();
+      iter != _cgNodeToIdMap.end(); iter++) {
+    iter->first->print(file);
+    fprintf(stderr, " stInfo: ");
+    stInfo(iter->first->st_idx())->print(file);
+    fprintf(stderr, "\n ");
+  }
+}
+
+template <typename T>
+inline
+T gcd(T source, T target)
+{
+   T t1 = (source >= 0) ? source : -source;
+   T t2 = (target >= 0) ? target : -target;
+   T rem;
+
+   if (t1 == 0) return t2;
+   else if (t2 == 0) return t1;
+
+   for(;;)
+   {
+      rem = t1 % t2;
+      if (rem == 0)
+         break;
+      t1 = t2;
+      t2 = rem;
+   }
+   return t2;
+}
+
+//
+// This routine merges the provided node into the current
+// node.  The merge process is as follows:
+// 1) Migrate edges incoming to 'src' to 'this'
+//    a) Track incoming edges from other nodes in the SCC
+//       and update the GCD, inKCycle(), on representative.
+//    b) Incoming edges from 'this' are deleted.
+// 2) Migrate all outgoing edges from 'src' to 'this'
+//    a) Track outgoing edges to other nodes in the SCC
+//       and update the GCD, inKCycle(), on representative.
+//    b) Outgoing edges to 'this' are deleted.
+// 3) Remove any existing edge between the two nodes.
+// 4) Add a (HZ) copy edge from 'this' to 'src'.  The
+//    purpose of this edge is to propagate changes of
+//    the points to set of 'this', which is the representative
+//    of 'src' to other "covering" fields of the ST to
+//    'src' may belong.  This need only be done in the case
+//    of unifying an SCC and will likely be made conditional
+//    in a generalized version of this routine.
+// 5) Union the points-to sets of the two nodes
+void
+ConstraintGraphNode::merge(ConstraintGraphNode *src)
+{
+  // 1) Migrate all edges incoming to 'src' to 'this'
+  CGEdgeSet &inCopySet = src->inCopySkewEdges();
+  for (CGEdgeSetIterator inCopyIter = inCopySet.begin();
+      inCopyIter != inCopySet.end(); ) {
+    ConstraintGraphEdge *edge = *(inCopyIter);
+
+    // Regardless of what happens to the edge we need to
+    // remove it from the current set
+    CGEdgeSetIterator save = inCopyIter;
+    ++inCopyIter;
+    inCopySet.erase(save);
+
+    // If the source of the edge is a node within the
+    // SCC, then we must update the inKCycle() value on
+    // the representative.
+    if (edge->edgeType() == ETYPE_SKEW &&
+        edge->srcNode()->parent() == this &&
+        edge->skew() != inKCycle())
+      inKCycle(gcd((UINT32)edge->skew(),inKCycle()));
+
+    // If the source of this edge is in the current cycle
+    // then we will delete the edge rather than migrate.
+    if (edge->srcNode()->parent() != parent())
+      edge->moveDest(const_cast<ConstraintGraphNode *>(this));
+    else
+      constraintGraph()->removeEdge(edge);
+  }
+  CGEdgeSet &inLdSet = src->inLoadStoreEdges();
+  for (CGEdgeSetIterator inLdIter = inLdSet.begin();
+      inLdIter != inLdSet.end(); ) {
+    ConstraintGraphEdge *edge = *(inLdIter);
+    // Remove the edge from the set...
+    CGEdgeSetIterator save = inLdIter;
+    ++inLdIter;
+    inLdSet.erase(save);
+    // Note that we don't check for the source being the
+    // current node, as a self ld/st edge is not problematic
+    edge->moveDest(const_cast<ConstraintGraphNode *>(this));
+  }
+
+  // 2) Migrate all edges outgoing
+  CGEdgeSet &outCopySet = src->outCopySkewEdges();
+  for (CGEdgeSetIterator outCopyIter = outCopySet.begin();
+      outCopyIter != outCopySet.end(); ) {
+    ConstraintGraphEdge *edge = *(outCopyIter);
+    // Regardless of what happens to the edge we need to
+    // remove it from the current set
+    CGEdgeSetIterator save = outCopyIter;
+    ++outCopyIter;
+    outCopySet.erase(save);
+
+    // If the target of the edge is a node within the
+    // SCC, then we must update the inKCycle() value on
+    // the representative.
+    if (edge->edgeType() == ETYPE_SKEW &&
+        edge->destNode()->parent() == this &&
+        edge->skew() != inKCycle())
+      inKCycle(gcd(edge->skew(),inKCycle()));
+
+    // If the target of this edge is in the current cycle
+    // then we delete the edge rather than migrate it.
+    if (edge->destNode()->parent() != parent())
+      edge->moveSrc(const_cast<ConstraintGraphNode *>(this));
+    else
+      constraintGraph()->removeEdge(edge);
+  }
+  CGEdgeSet &outLdSet = src->outLoadStoreEdges();
+  for (CGEdgeSetIterator outLdIter = outLdSet.begin();
+       outLdIter != outLdSet.end(); )  {
+    ConstraintGraphEdge *edge = *(outLdIter);
+    // Remove the edge from the set...
+    CGEdgeSetIterator save = outLdIter;
+    ++outLdIter;
+    outLdSet.erase(save);
+    // Note that we don't check for the dest being the
+    // current node, as a self ld/st edg is not problematic
+    edge->moveSrc(const_cast<ConstraintGraphNode *>(this));
+  }
+
+  // 4) Add special copy edge from representative
+  bool added = false;
+  ConstraintGraphEdge *newEdge;
+  newEdge = constraintGraph()->addEdge(this,src,ETYPE_COPY,CQ_HZ,0,added);
+  FmtAssert(added,("ConstraintGraph::merge: failed to add special copy edge"));
+  newEdge->addFlags(CG_EDGE_PARENT_COPY);
+
+  // 5) Merge the points-to sets of the two nodes
+  for ( PointsToIterator pti(src); pti != 0; ++pti )
+    unionPointsTo(*pti,pti.qual());
+}
+
+void
+ConstraintGraphNode::print(FILE *file)
+{
+  fprintf(file, "*CGNodeId: %d*\n ", _id);
+  _nodeInfo.print(file);
+  if (_nextOffset)
+    fprintf(file, " next: %d", _nextOffset->_id);
+  if (parent())
+    fprintf(file, "\n parent: %d\n",parent()->_id);
+  fprintf(file, "\n inCopySkewCGEdges: ");
+  for (CGEdgeSetIterator iter = _inCopySkewCGEdges.begin();
+       iter != _inCopySkewCGEdges.end();
+       iter++) {
+    (*iter)->print(file);
+    fprintf(file, " ");
+  }
+  fprintf(file, "\n");
+  fprintf(file, " outCopySkewCGEdges: ");
+  for (CGEdgeSetIterator iter = _outCopySkewCGEdges.begin();
+       iter != _outCopySkewCGEdges.end();
+       iter++) {
+    (*iter)->print(file);
+    fprintf(file, " ");
+  }
+  fprintf(file, "\n inLoadStoreCGEdges: ");
+  for (CGEdgeSetIterator iter = _inLoadStoreCGEdges.begin();
+       iter != _inLoadStoreCGEdges.end();
+       iter++) {
+    (*iter)->print(file);
+    fprintf(file, " ");
+  }
+  fprintf(file, "\n");
+  fprintf(file, " outLoadStoreCGEdges: ");
+  for (CGEdgeSetIterator iter = _outLoadStoreCGEdges.begin();
+       iter != _outLoadStoreCGEdges.end();
+       iter++) {
+    (*iter)->print(file);
+    fprintf(file, " ");
+  }
+  fprintf(file, "\n");
+  if (checkFlags(CG_NODE_FLAGS_UNKNOWN))
+    fprintf(file, " UNKNOWN");
+}
+
+void
+ConstraintGraphNode::NodeInfo::print(FILE *file)
+{
+  fprintf(file, "sym:");
+  (&St_Table[_st_idx])->Print(stderr);
+  fprintf(file, " offset: %d\n", _offset);
+  fprintf(file, " GBL: "); _pointsToGBL.print(file);
+  fprintf(file, " HZ: "); _pointsToHZ.print(file);
+  fprintf(file, " DN: "); _pointsToDN.print(file);
+}
+
+void
+StInfo::print(FILE *file)
+{
+  fprintf(file, "varSize: %lld modulus: %d", _varSize, _modulus);
+  fprintf(file, " [");
+  if (checkFlags(CG_ST_FLAGS_GLOBAL))
+    fprintf(file, "GLOBAL");
+  if (checkFlags(CG_ST_FLAGS_PARAM))
+    fprintf(file, ",PARAM");
+  if (checkFlags(CG_ST_FLAGS_NOCNTXT))
+    fprintf(file, ",CI");
+  fprintf(file, "]");
+  fprintf(file, " first: %d\n", _firstOffset->id());
+}
+
 void 
+ConstraintGraphEdge::moveDest(ConstraintGraphNode *newDest)
+{
+  if (destNode() != newDest) {
+    destNode()->removeInEdge(this);
+    destNode(newDest);
+    ConstraintGraphEdge *insertedEdge = destNode()->addInEdge(this);
+    FmtAssert(insertedEdge == this,
+        ("ConstraintGraphEdge::moveDest: Unexpected duplicate edges..."));
+  }
+}
+
+void
+ConstraintGraphEdge::moveSrc(ConstraintGraphNode *newSrc)
+{
+  if (srcNode() != newSrc) {
+    srcNode()->removeOutEdge(this);
+    srcNode(newSrc);
+    ConstraintGraphEdge *insertedEdge = srcNode()->addOutEdge(this);
+    FmtAssert(insertedEdge == this,
+        ("ConstraintGraphEdge::moveSrc: Unexpected duplicate edges..."));
+  }
+}
+
+void
 ConstraintGraphEdge::print(FILE *file)
 {
   fprintf(file, "(src: %d dest: %d ", _srcCGNode->id(), _destCGNode->id());
@@ -429,3 +703,37 @@ ConstraintGraphEdge::print(FILE *file)
   fprintf(file, ")");
 }
 
+void
+ConstraintGraphEdge::EdgeInfo::print(FILE *file)
+{
+  char *es, *qs;
+  switch (_etype) {
+  case ETYPE_COPY:
+    es = "COPY";
+    break;
+  case ETYPE_SKEW:
+    es = "SKEW";
+    break;
+  case ETYPE_STORE:
+    es = "STORE";
+    break;
+  case ETYPE_LOAD:
+    es = "LOAD";
+    break;
+  }
+  switch (_qual) {
+  case CQ_HZ:
+    qs = "HZ";
+    break;
+  case CQ_DN:
+    qs = "DN";
+    break;
+  case CQ_UP:
+    qs = "UP";
+    break;
+  case CQ_GBL:
+    qs = "GBL";
+    break;
+  }
+  fprintf(file, "%s %s %d f:0x%x",es,qs,_sizeOrSkew,_flags);
+}
