@@ -1341,9 +1341,12 @@ void Copy_alias_info(const ALIAS_MANAGER *am, WN *wn1, WN *wn2)
   WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn2,
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
 
-  AliasTag tag = am->Alias_Analyzer()->getAliasTag(wn1);
-  if (tag != 0) {
+  AliasAnalyzer *aa = am->Alias_Analyzer();
+  if (aa) {
+    AliasTag tag = am->Alias_Analyzer()->getAliasTag(wn1);
+    if (tag != 0)
       am->Alias_Analyzer()->setAliasTag(wn2,tag);
+
   }
 
   IDTYPE id = am->Id(wn1);
@@ -1389,9 +1392,11 @@ void Duplicate_alias_info(ALIAS_MANAGER *am, WN *wn1, WN *wn2)
   WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn2,
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
 
-  AliasTag tag = am->Alias_Analyzer()->getAliasTag(wn1);
-  if (tag != 0) {
-    am->Alias_Analyzer()->setAliasTag(wn2,tag);
+  AliasAnalyzer *aa = am->Alias_Analyzer();
+  if (aa) {
+    AliasTag tag = am->Alias_Analyzer()->getAliasTag(wn1);
+    if (tag != 0)
+      am->Alias_Analyzer()->setAliasTag(wn2,tag);
   }
 
   // copy homing information

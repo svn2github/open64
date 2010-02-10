@@ -3715,6 +3715,8 @@ OPT_STAB::Transfer_alias_tag_to_occ_and_aux(RID *const rid,
 {
   BOOL   found_ip_alias_class_info = FALSE;
   OPCODE opc = WN_opcode(wn);
+  AliasAnalyzer *aa = Alias_Mgr()->Alias_Analyzer();
+  if (!aa) return;
 
   // BLOCK is allowed; it shows up as a kid of COMPGOTO, for example.
   // Is_True(opc != OPC_BLOCK,
@@ -3737,7 +3739,6 @@ OPT_STAB::Transfer_alias_tag_to_occ_and_aux(RID *const rid,
 
         // Determine the AliasTag associated with this symbol to be
         // used by the currently selected alias analysis mechanism
-        AliasAnalyzer *aa = Alias_Mgr()->Alias_Analyzer();
         pt->Set_alias_tag(aa->genAliasTag(psym->St(),psym->St_ofst(),
                                           psym->Byte_size()));
       }
@@ -3752,7 +3753,7 @@ OPT_STAB::Transfer_alias_tag_to_occ_and_aux(RID *const rid,
       OCC_TAB_ENTRY *occ = Get_occ(wn);
       if (occ != NULL) {
           POINTS_TO *occ_pt = occ->Points_to();
-          AliasTag tag = Alias_Mgr()->Alias_Analyzer()->getAliasTag(wn);
+          AliasTag tag = aa->getAliasTag(wn);
           occ_pt->Set_alias_tag(tag);
 
           POINTS_TO *vsym_pt = Aux_stab_entry(occ->Aux_id())->Points_to();
@@ -3760,7 +3761,7 @@ OPT_STAB::Transfer_alias_tag_to_occ_and_aux(RID *const rid,
           // alias tag information, since Meet operations will already
           // have been done before we finalize the full set of
           // POINTS_TO's for the program.
-          vsym_pt->Meet_alias_tag(occ_pt,Alias_Mgr()->Alias_Analyzer());
+          vsym_pt->Meet_alias_tag(occ_pt,aa);
         }
       }
       for (UINT i = 0; i < WN_kid_count(wn); ++i)
