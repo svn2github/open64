@@ -39,7 +39,6 @@
 #
 
 MACHINE_TYPE = $(shell uname -m | sed -e s/i.86/i386/ )
-HOST_MACHINE_TYPE := $(shell uname -m)
 
 ifneq ($(MACHINE_TYPE), ia64)
 ifneq ($(MACHINE_TYPE), x86_64)
@@ -86,7 +85,7 @@ ifeq ($(MACHINE_TYPE), i386)
   NATIVE_BUILD_DIR    = osprey/targia32_x8664
   NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia32_x8664
   GNUFE_BUILD_DIR     = osprey-gcc-4.2.0/targia32_x8664
-  GNUFE_BUILD_HOST    = $(HOST_MACHINE_TYPE)-redhat-linux
+  GNUFE_BUILD_HOST    = x86_64-redhat-linux
   TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/opteron.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/targ_info/em64t.so
   LIB_BUILD_DIR       = osprey/targia32_builtonia32

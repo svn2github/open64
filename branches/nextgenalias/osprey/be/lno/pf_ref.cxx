@@ -128,7 +128,6 @@
  *
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -263,24 +262,6 @@ void Initialize_Lvs () {
     for (j=0; j<LNO_MAX_DO_LOOP_DEPTH+1; j++)
       global_lvs[i][j] = NULL;
 
-#if 0
-  FRAC tmp[LNO_MAX_DO_LOOP_DEPTH];
-  for (i=1; i<=LNO_MAX_DO_LOOP_DEPTH; i++) {
-    // max-size of space is i
-    // possible localized spaces are i, so create them
-    for (j=1; j<=i; j++) {
-      global_lvs[i][j] = CXX_NEW (VECTOR_SPACE<FRAC>(i,PF_mpool,FALSE),
-                                  PF_mpool);
-      // This one has "i-j+1" vectors, insert them
-      for (INT k=j; k<=i; k++) {
-        // create the vector of size "i" with a 1 in the "k-1th" place
-        for (INT m=0; m<i; m++)
-          if (m == (k-1)) tmp[m] = 1; else tmp[m] = 0;
-        global_lvs[i][j]->Insert (tmp);
-      }
-    }
-  }
-#endif
 }
 
 /***********************************************************************
@@ -1337,79 +1318,6 @@ void PF_LG::Split_LG () {
            ("Split_LG returned 0 (or less) lines in lev-2 cache\n"));
   CXX_DELETE_ARRAY (dist, PF_mpool);
 }
-#if 0
-/***********************************************************************
- *
- * Return TRUE if the loopnode for this locality group is an outer tile
- * for this reference, FALSE otherwise.
- *
- * Conditions for outer tile:
- *  - this index variable must appear in both the lower-bound and
- *    the upper bound expressions for an inner loop containing this
- *    reference, and
- *  - the reference must use the index variable of that inner loop.
- *
- ***********************************************************************/
-BOOL PF_LG::Is_Outer_Tile () {
-  INT i, j;
-  PF_LOOPNODE* ln;
-  WN* outer_wn;
-  INT ref_depth;
-  
-  // Let's find the code for the loopnode for the
-  // current loop we're computing volume for
-  ln = Get_Loop ();     // loopnode immediately containing these references
-  ref_depth = ln->Get_Depth();
-  DO_LOOP_INFO* dli;
-  for (i=ref_depth; i!=_depth; i--) {
-    dli = ln->Get_LoopInfo ();
-//    printf ("(is_outer_tile: depth %d e_n_i %lld)\n",
-//            i, dli->Est_Num_Iterations);
-    ln = ln->Get_Parent ();
-  }
-//  printf ("(is_outer_tile: depth %d e_n_i %lld)\n",
-//          i, dli->Est_Num_Iterations);
-  outer_wn = ln->Get_Code();
-  
-  {
-    // some debugging stuff
-    WN* index_wn = WN_index(outer_wn);
-    char* name = ((ST_class(WN_st(index_wn)) != CLASS_PREG) ?
-                  ST_name(WN_st(index_wn)) :
-                  (WN_offset(index_wn) > Last_Dedicated_Preg_Offset ?
-                   Preg_Name(WN_offset(index_wn)) : "DEDICATED PREG"));
-//    printf ("Is_Outer_Tile: query for %s: ", name);
-  }
-  // Now find the reference
-  ACCESS_ARRAY* aa = _myugs->Get_AA();
-  ACCESS_VECTOR* av;
-  for (i=0; i<aa->Num_Vec(); i++) {
-    av = aa->Dim(i);
-    ln = Get_Loop ();
-    for (j=ref_depth; j>_depth; j--) {
-      if (av->Loop_Coeff(j)) {
-        // access depends on loop j. Is "j" an inner tile of outer_loop?
-        WN* cur_wn = ln->Get_Code();
-        Is_True (cur_wn != outer_wn,
-                 ("Temporal reuse, but loop var used in index expr"));
-        // This while loop is needed to handle multiple levels of tiling
-        while (1) {
-          cur_wn = Outer_Tile (cur_wn, Du_Mgr);
-          if (cur_wn == NULL) break;
-          // is current loop is an outer tile?
-          if (cur_wn == outer_wn) {
-//            printf ("is an outer tile\n");
-            return TRUE;
-          }
-        }
-      }
-      ln=ln->Get_Parent();
-    }
-  }      
-//  printf ("is NOT an outer tile, so presumable really temporal\n");
-  return FALSE;
-}
-#endif
 
 /***********************************************************************
  *
@@ -3437,76 +3345,6 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
   CXX_DELETE (H, PF_mpool); 
   CXX_DELETE (Hlu, PF_mpool);
 
-#if 0
-  // The following is based on the previous calculation of strides
-  // for each basis vector. This was erroneous...
-  fprintf (stderr, "TODO: Get rid of the following junk...\n");
-  // D() is number of basis vectors, 
-  // N() is max possible number of basis vectors
-  if (_KerHs->D() == 0) {
-    // basis is empty
-    _stride = NULL;
-  }
-  else {
-    const MAT<FRAC>& Hsbasis = _KerHs->Basis ();
-
-#   ifdef Is_True_On
-    for (i=0; i<_KerHs->D(); i++) {
-      for (j=0; j<_KerHs->N(); j++)
-        Is_True ((Hsbasis(i,j).D() == 1),
-                 ("Kernel has a real frac element\n"));
-    }
-
-    // now check to see that each loop index occurs in just one basis vector
-    for (j=0; j<_KerHs->N(); j++) {
-      BOOL isPresent = FALSE;
-      for (i=0; i<_KerHs->D(); i++) 
-        if (Hsbasis(i,j).N() != 0) {
-          Is_True (!isPresent,
-                   ("loop index (%d) in more than one basis vector", j));
-          isPresent = TRUE;
-        }
-    }
-#   endif
-
-    _stride = CXX_NEW_ARRAY (mINT16, _KerHs->D(), PF_mpool);
-
-    // determine locality for each basis vector
-    ACCESS_VECTOR* av = _aa->Dim(_aa->Num_Vec()-1);
-    for (i=0; i<_KerHs->D(); i++) {
-      // take the dot product with the 
-      // index expression for the stride-one dimension
-      INT dotproduct = 0;
-      for (j=0; j<_KerHs->N(); j++) {
-        dotproduct += Hsbasis(i,j).N() * av->Loop_Coeff(j);
-      }
-      if (dotproduct == 0) {
-        // temporal locality
-        _stride[i] = 0;
-      }
-      else {
-        // spatial locality - determine stride
-        // get absolute value of dotproduct - the number of elements for 
-        //  1 stride of basis vector
-        dotproduct = ((dotproduct<0) ? (-dotproduct) : dotproduct);
-        INT sz = (INT) WN_element_size(wn_array); // size in bytes
-        sz = sz * dotproduct;
-        // sz is the step (in bytes) for each trip of bv
-        if ((sz < Cache.LineSize(2)) || (sz < Cache.LineSize(1)))
-          // store sz, not number of bv trips
-          // so that later determination for 1st level and 2nd level line sizes
-          // can be made
-          _stride[i] = sz;
-        else _stride[i] = -1;
-      }
-    }
-    // so now, for each basis vector:
-    //  stride==0 means temporal
-    //  positive non-zero means spatial, within second-level cache line size
-    //      with value == step size in bytes for each trip of the basis vector
-    //  -1 means spatial but exceeds cache line, therefore no locality
-  }
-#endif // 0
 
   // now calculate stride-one loop
   PF_LOOPNODE* loopnode = myba->Get_Loop();

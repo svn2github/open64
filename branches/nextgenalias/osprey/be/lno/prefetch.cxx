@@ -537,17 +537,6 @@ static void Prefetch_Manual (WN* func_nd) {
   return;
   
 
-#if 0
-  WN* doloop_wn = PF_Get_First_Do_Loop (func_nd);
-  while (doloop_wn) {
-    SINGLE_LOOP loop(PF_mpool);
-    loop.Process_Loop_Manual (WN_do_body(doloop_wn));
-    doloop_wn = PF_Get_Next_Do_Loop (doloop_wn);
-  }
-  VB_PRINT (printf ("After manual prefetching ");
-            mpf_syms->Print (stdout));
-  return;
-#endif
 }
 
 /***********************************************************************
@@ -673,66 +662,6 @@ static void Prefetch_Auto (WN* func_nd,
              ("Check_Parentize failed\n"));
   }
 
-#if 0
-  /* walk the outer do loops and process them */
-  doloop = PF_Get_First_Do_Loop (func_nd);
-  while (doloop) { 
-    PF_LOOPNODE *childnode =
-      CXX_NEW (PF_LOOPNODE(rootnode, doloop, 0), PF_mpool);
-    rootnode->Add_Child (childnode);
-    loopno++;
-    childnode->Process_Loop ();
-
-    // ============== now process each loop nest at a time ====================
-    // child node is a top-level loop nest, process it.
-
-
-    PF_PRINT(fprintf (TFile, "------ Loop nest number: %d --------\n", loopno);
-              childnode->Print (TFile);
-              fprintf(TFile, "------------- Now build base LGs ----------\n"));
-    VB_PRINT (printf ("\n================ Loop nest number: %d =========\n",
-                      loopno);
-              printf ("---------------- structure ----------------\n");
-              childnode->Print_Structure ());
-
-    childnode->Build_Base_LGs ();
-
-    PF_PRINT (childnode->Print (TFile);
-              fprintf (TFile, "----------- Now do volume computation -----\n");
-              fprintf (TFile, "     --- cache parameters: %d (%d), %d (%d) \n",
-                       Cache.EffSize(1), Cache.LineSize(1),
-                       Cache.EffSize(2), Cache.LineSize(2)));
-
-    childnode->Volume ();
-
-    PF_PRINT (fprintf (TFile, "------- done with volume computation -----\n");
-              childnode->Print (TFile);
-              fprintf(TFile,"\n----- find loc loops+what to prefetch ---\n"));
-    VB_PRINT (printf ("\n---------------- volume ----------------\n");
-              childnode->Print_Volume ());
-
-    {
-      PF_LOCLOOP tmp;
-      childnode->Find_Loc_Loops (tmp);
-    }
-
-    PF_PRINT (fprintf (TFile, "\n----- now split and gen prefetch -----\n"));
-    VB_PRINT (printf ("\n---------------- splits ----------------\n");
-              childnode->Print_Splits ();
-              printf ("\n---------------- prefetches ----------------\n");
-              printf ("       (cannot coordinate with splits) \n"));
-
-    childnode->Gen_Prefetch (NULL);
-
-    PF_PRINT (fprintf (TFile, "---- Done with Loop nest number: %d ----\n",
-                       loopno));
-    // ============== done processing this loop nest ==========================
-    
-    Is_True (LWN_Check_Parentize (doloop), ("Check_Parentize failed\n"));
-
-    doloop = PF_Get_Next_Do_Loop (doloop);
-  }
-#endif  // 0
 
   Is_True (LWN_Check_Parentize (func_nd), ("Check_Parentize failed\n"));
   Cleanup_Lvs ();

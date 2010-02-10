@@ -2921,9 +2921,6 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
 
   if( size < cache_size )
     return;
-#if 0 //temporarily disable changeset of bug 11853 for bug 12036
-  BOOL dep_graph_computed = FALSE;
-#endif
   FOR_ALL_BB_OPs_FWD( body, op ){
     if( OP_prefetch( op ) ){
       /* Get rid of any prefetchw operation, because it "loads the prefetched
@@ -2975,41 +2972,6 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
   (2) this change provents performance tuning using -CG:movnti in some case 
       (bug 12036)
  */
-#if 0 
-    BOOL skip = FALSE;
-    if (TOP_is_vector_op(OP_code(op)) &&
-	((OP_store(op) &&
-	  !TOP_is_nt_store(OP_code(op))))) {
-      ARC_LIST *arcs;
-      if (dep_graph_computed == FALSE) {
-	CG_DEP_Compute_Graph(body, NO_ASSIGNED_REG_DEPS, NON_CYCLIC,
-			     INCLUDE_MEMREAD_ARCS, INCLUDE_MEMIN_ARCS,
-			     NO_CONTROL_ARCS, NULL );
-	dep_graph_computed = TRUE;
-      }
-      for (arcs = OP_preds(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
-	ARC *arc = ARC_LIST_first(arcs);
-	if (ARC_kind(arc) == CG_DEP_MEMIN ||
-	    ARC_kind(arc) == CG_DEP_MEMANTI) {
-	  skip = TRUE;
-	  break;
-	}
-      }
-      if (skip == TRUE)
-        continue;
-
-      for (arcs = OP_succs(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
-	ARC *arc = ARC_LIST_first(arcs);
-	if (ARC_kind(arc) == CG_DEP_MEMIN ||
-	    ARC_kind(arc) == CG_DEP_MEMANTI) {
-	  skip = TRUE;
-	  break;
-	}
-      }
-      if (skip == TRUE)
-        continue;
-    }
-#endif
     TOP new_top = TOP_UNDEFINED;
     switch( OP_code(op) ){
     //SSE support
@@ -3070,10 +3032,6 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
    if( new_top != TOP_UNDEFINED )
       OP_Change_Opcode( op, new_top );
   }
-#if 0 //temporarily disable the changeset of bug 11853 for bug 12036
-  if (dep_graph_computed == TRUE)
-    CG_DEP_Delete_Graph(body);
-#endif
 }
 
 

@@ -366,10 +366,6 @@ typedef unsigned short	ELF_SECTION;
 #define FCLOSE(stream) \
     fclose ((FILE *)(stream))
 
-#if 0
-#define FSEEK(stream, offset, whence) \
-    fseek ((FILE *)(stream), (long)(offset), (int)(whence))
-#endif
 
 #define FTRUNCATE(fildes, length) \
     ftruncate ((int)(fildes), (off_t)(length)

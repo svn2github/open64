@@ -347,23 +347,10 @@ double FN_PROTOTYPE(cosh)(double x)
 
       /* At this point sinh(dy) is approximated by dy + sdy, and cosh(dy) is approximated by 1 + cdy.
 	 Shift some significant bits from dy to cdy. */
-#if 0 
-    double  sdy1,sdy2;
-      GET_BITS_DP64(dy, ux);
-      ux &= 0xfffffffff8000000;
-      PUT_BITS_DP64(ux, sdy1);    // sdy1 is  upper 53-27=26 significant bits of dy.
-      sdy2 = sdy + (dy - sdy1);   // sdy2 is  sdy + lower bits of dy
-
-      z = ((((((cosh_tail[ind]*cdy + sinh_tail[ind]*sdy2) 
-	       + sinh_tail[ind]*sdy1) + cosh_tail[ind])  
-	     + cosh_lead[ind]*cdy) + sinh_lead[ind]*sdy2) 
-	   + sinh_lead[ind]*sdy1) + cosh_lead[ind];
-#else
       z = ((((((cosh_tail[ind]*cdy + sinh_tail[ind]*sdy) 
 	       + sinh_tail[ind]*dy) + cosh_tail[ind])  
 	     + cosh_lead[ind]*cdy) + sinh_lead[ind]*sdy) 
 	   + sinh_lead[ind]*dy) + cosh_lead[ind];
-#endif
     }
 
   return z;

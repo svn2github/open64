@@ -321,14 +321,6 @@ read_gcc_output(const char *cmdline)
     }
     strcpy (gcc_cmd, "gcc ");
     strcat (gcc_cmd, cmdline);
-#if 0
-    char *gcc_path = get_full_phase_name(P_ld);
-
-    if (asprintf(&gcc_cmd, "%s %s", gcc_path, cmdline) == -1) {
-        internal_error("cannot allocate memory");
-        goto bail;
-    }
-#endif
     if ((fp = popen(gcc_cmd, "r")) == NULL) {
         fp = NULL;
     }

@@ -563,6 +563,7 @@ BE_LNO_CXX_SRCS = \
 COMMON_UTIL_CXX_SRCS = \
   cxx_memory.cxx	\
   errors.cxx		\
+  vcg.cxx               \
   options_stack.cxx
 
 INSTR_COM_CXX_SRCS = \

@@ -225,14 +225,6 @@ ALIAS_RULE::Aliased_F90_Target_Rule(const POINTS_TO *const mem1,
 				    TY_IDX object_ty2) const
 {
   if (mem1->Known_f90_pointer()) {
-#if 0
-    fprintf(TFile, "---------------\n");
-    mem1->Print(TFile);
-    fprintf(TFile, "      and\n");
-    mem2->Print(TFile);
-    fprintf(TFile, "      do %salias\n",
-	    (!mem2->Known_not_f90_pointer() || !mem2->Not_f90_target() ? "" : "not "));
-#endif
     if (mem2->Base() != NULL) {
       Is_True(!mem2->Not_f90_target() ||
 	      (ST_class(mem2->Base()) != CLASS_VAR) ||
@@ -242,14 +234,6 @@ ALIAS_RULE::Aliased_F90_Target_Rule(const POINTS_TO *const mem1,
     return (!mem2->Known_not_f90_pointer() || !mem2->Not_f90_target());
   }
   if (mem2->Known_f90_pointer()) {
-#if 0
-    fprintf(TFile, "---------------\n");
-    mem2->Print(TFile);
-    fprintf(TFile, "      and\n");
-    mem1->Print(TFile);
-    fprintf(TFile, "      do %salias\n",
-	    (!mem1->Known_not_f90_pointer() || !mem1->Not_f90_target() ? "" : "not "));
-#endif
     if (mem1->Base() != NULL) {
       Is_True(!mem1->Not_f90_target() ||
 	      (ST_class(mem1->Base()) != CLASS_VAR) ||
@@ -356,7 +340,6 @@ LMV_may_alias (LMV_ALIAS_GROUP a1, LMV_ALIAS_GROUP a2) {
 BOOL ALIAS_RULE::Aliased_Qualifier_Rule(const POINTS_TO *mem1, const POINTS_TO *mem2, TY_IDX ty1, TY_IDX ty2) const
 {
   // If mem1 or mem2 is declared const, ...
-#if 1
   // If at least one of mem1 and mem2 is declared global const, and
   // they do not overlap, the two operations don't alias.
   if (((mem1->Const() &&
@@ -369,15 +352,6 @@ BOOL ALIAS_RULE::Aliased_Qualifier_Rule(const POINTS_TO *mem1, const POINTS_TO *
        !mem1->Overlap(mem2))) {
     return FALSE;
   }
-#else
-  if (Rule_enabled(C_RESTRICT_CONST_RULE) && ty1 != NULL && ty2 != NULL) {
-    // disabled analysis of const qualifier because of inlining of
-    // C constructors.
-    if ((TY_is_const(ty1) && mem2->Not_init_const()) ||
-	(TY_is_const(ty2) && mem1->Not_init_const()))
-      return FALSE;
-  }
-#endif
 
   // mem1 is a unique pointer
   if (mem1->Based_sym() != NULL &&
@@ -724,13 +698,6 @@ BOOL ALIAS_RULE::Aliased_Strongly_Typed_Rule(TY_IDX ty1, TY_IDX ty2) const
 //
 BOOL ALIAS_RULE::Aliased_C_Qualifier_Rule(const POINTS_TO *mem1, const POINTS_TO *mem2) const
 {
-#if 0
-  // OLD Restricted rule
-  if (mem1->Based_sym() != NULL && mem1->Restricted() &&
-      mem2->Based_sym() != NULL && mem2->Restricted() &&
-      mem1->Based_sym() != mem2->Based_sym())
-    return FALSE;
-#else
   // Implement restrict pointer like a unique_pt.
   //
   if (mem1->Based_sym() != NULL &&
@@ -750,7 +717,6 @@ BOOL ALIAS_RULE::Aliased_C_Qualifier_Rule(const POINTS_TO *mem1, const POINTS_TO
       mem2->Based_sym() != mem1->Based_sym() &&
       !mem1->Default_vsym())
     return FALSE;
-#endif
 
   return TRUE;
 }

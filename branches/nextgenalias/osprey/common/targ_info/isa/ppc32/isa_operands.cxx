@@ -318,15 +318,6 @@ Instruction_Group("int load x",
   Operand(1, int32, base);
   Operand(2, int32, offset);
 
-#if 0
-  Instruction_Group("prefetch",
-//		    TOP_pref,
-//		    TOP_prefx,
-	    TOP_UNDEFINED);
-  Operand(0, pfhint);
-  Operand(1, int32, base);
-  Operand(2, simm16, offset);
-#endif
   Instruction_Group("int mult/div",
 		    TOP_divw,
 		    TOP_mullw,

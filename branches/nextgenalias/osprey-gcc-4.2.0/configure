@@ -3377,7 +3377,10 @@ fi
 # for target_alias and gcc doesn't manage it consistently.
 target_configargs="--cache-file=./config.cache --build=${build_alias} --host=${target_alias} --target=${target_alias} ${target_configargs}"
 
+if [ "`uname -m | sed -e s/i.86/i386/`" != "i386" ]
+then
 FLAGS_FOR_TARGET=
+fi
 case " $target_configdirs " in
  *" newlib "*)
   case " $target_configargs " in

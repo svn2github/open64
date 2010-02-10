@@ -49,7 +49,6 @@
 *** $Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.snl_dist.cxx $
 **/
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"

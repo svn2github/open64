@@ -1367,13 +1367,6 @@ staticp (arg)
     case BIT_FIELD_REF:
       return 0;
 
-#if 0
-       /* This case is technically correct, but results in setting
-	  TREE_CONSTANT on ADDR_EXPRs that cannot be evaluated at
-	  compile time.  */
-    case INDIRECT_REF:
-      return TREE_CONSTANT (TREE_OPERAND (arg, 0));
-#endif
 
     case ARRAY_REF:
     case ARRAY_RANGE_REF:

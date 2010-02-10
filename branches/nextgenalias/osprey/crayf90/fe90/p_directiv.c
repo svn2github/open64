@@ -1347,17 +1347,6 @@ static void parse_slash_common_dirs(void)
 
                SB_COMMON_NEEDS_OFFSET(sb_idx)	= TRUE;
 	       SB_IS_COMMON(sb_idx)	= TRUE;
-# if 0
-               /* This is allowed now, but I'll leave the message in, */
-               /* just in case. BHJ                                   */
-
-               SB_DCL_ERR(sb_idx)		= TRUE;
-
-               /* Must be specified in a common block before THREAD PRIVATE */
-
-               PRINTMSG(TOKEN_LINE(token), 1479, Error, TOKEN_COLUMN(token),
-                        TOKEN_STR(token));
-# endif
             }
             else if (SB_USE_ASSOCIATED(sb_idx)) {
 
@@ -2158,74 +2147,6 @@ static boolean parse_var_name_list(opnd_type   *list_opnd)
    return(result);
 
 }  /* parse_var_name_list */
-# if 0
-
-/* No one uses this routine */
-
-
-/******************************************************************************\
-|*									      *|
-|* Description:								      *|
-|*	This routine parses a list of expressions seperated by commas.        *|
-|*									      *|
-|* Input parameters:							      *|
-|*	NONE								      *|
-|*									      *|
-|* Output parameters:							      *|
-|*	opnd - points to list of expressions.                                 *|
-|*									      *|
-|* Returns:								      *|
-|*	NOTHING								      *|
-|*									      *|
-\******************************************************************************/
-
-static void parse_expr_list(opnd_type *list_opnd)
-
-{
-   int		list_idx = NULL_IDX;
-   boolean      ok = TRUE;
-   opnd_type	opnd;
-
-
-   TRACE (Func_Entry, "parse_expr_list", NULL);
-
-   while(TRUE) {
-
-      ok &= parse_expr(&opnd);
-
-      if (ok) {
-
-         if (list_idx == NULL_IDX) {
-            NTR_IR_LIST_TBL(list_idx);
-            OPND_FLD((*list_opnd)) = IL_Tbl_Idx;
-            OPND_IDX((*list_opnd)) = list_idx;
-            OPND_LIST_CNT((*list_opnd)) = 1;
-         }
-         else {
-            NTR_IR_LIST_TBL(IL_NEXT_LIST_IDX(list_idx));
-            IL_PREV_LIST_IDX(IL_NEXT_LIST_IDX(list_idx)) = list_idx;
-            (OPND_LIST_CNT((*list_opnd)))++;
-            list_idx = IL_NEXT_LIST_IDX(list_idx);
-         }
-         COPY_OPND(IL_OPND(list_idx), opnd);
-      }
-      else {
-         parse_err_flush(Find_Comma_Rparen, NULL);
-         break;
-      }
-
-      if (LA_CH_VALUE != COMMA) {
-         break;
-      }
-      NEXT_LA_CH;
-   }
-
-   TRACE (Func_Exit, "parse_expr_list", NULL);
-
-   return;
-
-}  /* parse_expr_list */
-# endif
 
 /******************************************************************************\
 |*									      *|

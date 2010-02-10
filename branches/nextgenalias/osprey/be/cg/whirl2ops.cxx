@@ -918,21 +918,6 @@ Process_OPs_For_Stmt (void)
 {
   Process_New_OPs ();
 
-#if 0	// now done later in Split_BBs()
-  if (Enable_BB_Splitting && (total_bb_insts > Split_BB_Length)) {
-    /* We assume in LRA that the number of instructions in a BB fits
-     * in 16 bits.
-     */
-    FmtAssert (total_bb_insts < 32768,
-  	  ("Convert_WHIRL_To_OPs: Too many instructions for 1 statment (%d)\n", 
-	   total_bb_insts));
-    if (Trace_WhirlToOp) {
-          fprintf (TFile, "Convert_WHIRL_To_OPs: splitting a large BB (%d)\n", 
-		    total_bb_insts);
-    }
-    Start_New_Basic_Block ();
-  }
-#endif
 }
 
 
@@ -6517,18 +6502,6 @@ Handle_ASM (const WN* asm_wn)
   ASM_OP_wn(asm_info) = asm_wn;
 
 #ifdef TARG_IA32
-#if 0  
-  // Adding eflags register to the clobber set causes a problem
-  // in LRA, because a live range that includes such an ASM OP
-  // cannot use eflags register for allocation. Given that we
-  // currently don't do any dependence-based transformations for
-  // IA-32, it should be safe to ignore Asm_Clobbers_Cc flag.
-  //
-  if (WN_Asm_Clobbers_Cc(asm_wn)) {
-    ASM_OP_clobber_set(asm_info)[ISA_REGISTER_CLASS_eflags] = 
-      REGISTER_SET_Union1(REGISTER_SET_EMPTY_SET, REGISTER_MIN);
-  }
-#endif
 #endif
 
   // process ASM clobber list

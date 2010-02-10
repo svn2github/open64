@@ -1524,21 +1524,6 @@ void CGTARG_Initialize(void)
 
   /* Init table for CGTARG_Inter_RegClass_Copy_Table:
    */
-#if 0   
-   CGTARG_Inter_RegClass_Copy_Table[ISA_REGISTER_CLASS_integer]
-				  [ISA_REGISTER_CLASS_special]
-				  [FALSE] = TOP_mfspr;
-  /*CGTARG_Inter_RegClass_Copy_Table[ISA_REGISTER_CLASS_float]
-				  [ISA_REGISTER_CLASS_integer]
-				  [TRUE]  = TOP_dmfc1;*/
-
-  CGTARG_Inter_RegClass_Copy_Table[ISA_REGISTER_CLASS_special]
-				  [ISA_REGISTER_CLASS_integer]
-				  [FALSE] = TOP_mtspr;
-  /*CGTARG_Inter_RegClass_Copy_Table[ISA_REGISTER_CLASS_integer]
-				  [ISA_REGISTER_CLASS_float]
-				  [TRUE]  = TOP_dmtc1; */
-#endif				  
 }
 
 extern TN * ra_intsave_tn; 

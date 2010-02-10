@@ -654,20 +654,6 @@ IP_ALIAS_CLASSIFICATION::Class_of_base_id(const IDTYPE base_id) const
   return _base_id_map[base_id]->Base_member().Alias_class();
 }
 
-#if 0
-BOOL
-IP_ALIAS_CLASS_REP::In_pending(IP_ALIAS_CLASS_REP *acr)
-{
-  for (PENDING_SET::iterator p_item = Pending().begin();
-       p_item != Pending().end();
-       ++p_item) {
-    if ((*p_item)->Alias_class() == acr) {
-      return TRUE;
-    }
-  }
-  return FALSE;
-}
-#endif
 
 void
 IP_ALIAS_CLASS_REP::Add_pending(IP_ALIAS_CLASS_REP *item,
@@ -680,9 +666,6 @@ IP_ALIAS_CLASS_REP::Add_pending(IP_ALIAS_CLASS_REP *item,
     fprintf(TFile, "Pending(%d) += %d\n", Id(), item->Id());
   }
 
-#if 0
-  if (!In_pending(acr))
-#endif
     _pending.push_front(item->Representative());
 }
 
@@ -2209,19 +2192,9 @@ IP_ALIAS_CLASSIFICATION::Alias_class(const WN *wn) const
 void
 IP_ALIAS_CLASSIFICATION::Release_resources(void)
 {
-#if 0
-  if (Tracing()) {
-    (void) fprintf(TFile,
-		   "Freeing IP alias class resources; "
-		   "recycled %lu ACR's of %lu\n",
-		   IP_ALIAS_CLASS_REP::_recycled_acr_nodes,
-		   IP_ALIAS_CLASS_REP::_last_id_used);
-  }
-#else
   DevWarn("Recycled %u of %d ACR's",
 	  IP_ALIAS_CLASS_REP::_recycled_acr_nodes,
 	  IP_ALIAS_CLASS_REP::_last_id_used);
-#endif
 
   _base_id_map.Free_array();
   if (_maps_initialized) {

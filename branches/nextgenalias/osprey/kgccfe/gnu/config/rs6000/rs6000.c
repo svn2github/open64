@@ -12374,30 +12374,6 @@ rs6000_adjust_priority (insn, priority)
      can't, reduce the priority of multiply/divide so it is scheduled
      before other integer operations.  */
 
-#if 0
-  if (! INSN_P (insn))
-    return priority;
-
-  if (GET_CODE (PATTERN (insn)) == USE)
-    return priority;
-
-  switch (rs6000_cpu_attr) {
-  case CPU_PPC750:
-    switch (get_attr_type (insn))
-      {
-      default:
-	break;
-
-      case TYPE_IMUL:
-      case TYPE_IDIV:
-	fprintf (stderr, "priority was %#x (%d) before adjustment\n",
-		 priority, priority);
-	if (priority >= 0 && priority < 0x01000000)
-	  priority >>= 3;
-	break;
-      }
-  }
-#endif
 
   return priority;
 }
@@ -12815,30 +12791,6 @@ rs6000_add_gc_roots ()
 
 #if TARGET_MACHO
 
-#if 0
-/* Returns 1 if OP is either a symbol reference or a sum of a symbol
-   reference and a constant.  */
-
-int
-symbolic_operand (op)
-     rtx op;
-{
-  switch (GET_CODE (op))
-    {
-    case SYMBOL_REF:
-    case LABEL_REF:
-      return 1;
-    case CONST:
-      op = XEXP (op, 0);
-      return (GET_CODE (op) == SYMBOL_REF ||
-	      (GET_CODE (XEXP (op, 0)) == SYMBOL_REF
-	       || GET_CODE (XEXP (op, 0)) == LABEL_REF)
-	      && GET_CODE (XEXP (op, 1)) == CONST_INT);
-    default:
-      return 0;
-    }
-}
-#endif
 
 #ifdef RS6000_LONG_BRANCH
 

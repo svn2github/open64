@@ -63,7 +63,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 #include <stdio.h>
@@ -366,9 +365,6 @@ Append_Region_BBs(BB *prev, RID *rid)
      */
     REGION_First_BB = first_bb;
   }
-#if 0
-  return CGRIN_last_bb( cgrin );
-#endif
   BB *bb;
   for (bb = first_bb; BB_next(bb) != NULL; bb = BB_next(bb))
 	;

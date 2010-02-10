@@ -1156,7 +1156,6 @@ static void
 put_lexical_block(DST_flag flag, DST_LEXICAL_BLOCK *attr, Dwarf_P_Die die)
 {
   put_name (DST_LEXICAL_BLOCK_name(attr), die, pb_none);
-#if 1
   put_pc_value_symbolic (DW_AT_low_pc,
 			 Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
 					       (LABEL_IDX) DST_ASSOC_INFO_st_index(DST_LEXICAL_BLOCK_low_pc(attr)),
@@ -1169,33 +1168,11 @@ put_lexical_block(DST_flag flag, DST_LEXICAL_BLOCK *attr, Dwarf_P_Die die)
 					       cur_text_index),
 			 (Dwarf_Addr) 0,
 			 die);
-#else
-  put_pc_value (DW_AT_low_pc, 
-	get_ofst_from_label_ASSOC_INFO(DST_LEXICAL_BLOCK_low_pc(attr)),
-	die);
-  put_pc_value (DW_AT_high_pc,
-	get_ofst_from_label_ASSOC_INFO(DST_LEXICAL_BLOCK_high_pc(attr)),
-	die);
-#endif
 }
 
 static void
 put_inlined_subroutine(DST_INLINED_SUBROUTINE *attr, Dwarf_P_Die die)
 {
-#if 0
-  put_pc_value_symbolic (DW_AT_low_pc,
-			 Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
-					       (LABEL_IDX) DST_ASSOC_INFO_st_index(DST_LEXICAL_BLOCK_low_pc(attr)),
-					       cur_text_index),
-			 (Dwarf_Addr) 0,
-			 die);
-  put_pc_value_symbolic (DW_AT_high_pc,
-			 Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
-					       (LABEL_IDX) DST_ASSOC_INFO_st_index(DST_LEXICAL_BLOCK_high_pc(attr)),
-					       cur_text_index),
-			 (Dwarf_Addr) 0,
-			 die);
-#endif
    put_pc_value (DW_AT_low_pc,
 	get_ofst_from_inline_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_low_pc(attr)),
 	die);
@@ -1226,10 +1203,6 @@ put_concrete_subprogram (DST_INFO_IDX abstract_idx,
 			 INT32        high_pc,
 			 Dwarf_P_Die  die)
 {
-#if 0
-   put_pc_value (DW_AT_low_pc, low_pc, die);
-   put_pc_value (DW_AT_high_pc, high_pc, die);
-#endif
    put_reference( abstract_idx, DW_AT_abstract_origin, die);
 }
 
@@ -2443,20 +2416,6 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
     dwarf_add_expr_gen (expr, 
                         Is_Target_64bit() ? DW_OP_breg7 : DW_OP_breg4, 
 			Frame_Len, 0, &dw_error) ;           
-#if 0
-  /* isa_registers.cxx order of registers is different from that of gdb 
-   * Try "info registers".  
-   * If we change the order in isa_registers now, it is total chaos.
-   */
-  if (Current_PU_Stack_Model != SMODEL_SMALL)
-    dwarf_add_expr_gen (expr, DW_OP_bregx,
-	6 /* REGISTER_machine_id (TN_register_class(FP_TN), TN_register(FP_TN)) */,
-	0, &dw_error);
-  else
-    dwarf_add_expr_gen (expr, DW_OP_bregx,
-	7 /* REGISTER_machine_id (TN_register_class(SP_TN), TN_register(SP_TN)) */,
-	Frame_Len, &dw_error);
-#endif 
 #endif /* TARG_X8664 */
 
   dwarf_add_AT_location_expr(dw_dbg, PU_die, DW_AT_frame_base, expr, &dw_error);

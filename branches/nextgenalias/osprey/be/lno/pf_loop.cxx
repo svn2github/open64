@@ -134,7 +134,6 @@
  * Prefetches are generated for each level of the cache.
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -1000,36 +999,6 @@ void PF_LOOPNODE::Process_Loop () {
 	 (dli->Num_Iterations_Symbolic &&
 	  LNO_Num_Iters < 100)))
       single_small_trip_loop = TRUE;
-#if 0 // bug 8560 : performance loss due to avoiding prefetch single - copy -loop
-#ifdef TARG_X8664
-    // For simple copy loop, the data may not be prefetched early enough for 
-    // next iteration - bug 4522.
-    {
-      WN* stmt = WN_first(w /* do loop body */);
-      if ( stmt && !WN_next(stmt) /* only statement in the loop */ && 
-           OPCODE_is_store(WN_opcode(stmt)) &&
-	   ( OPCODE_is_load(WN_opcode(WN_kid0(stmt))) ||
-	     ( WN_operator(WN_kid0(stmt)) == OPR_PAREN &&
-	       OPCODE_is_load(WN_opcode(WN_kid0(WN_kid0(stmt)))) ) ) )
-	simple_copy_loop = TRUE;
-      if ( simple_copy_loop ) {
-	// For streaming copy loops (that use non-temporal stores), eliminating
-	// prefetches slow down code by ~1.3%
-	if ( !dli->Num_Iterations_Symbolic ) {
-	  /* Refer to CGTARG_LOOP_Optimize for working set size calculation.
-	     The calculation here is simplified to handle a ISTORE(ILOAD).
-	  */
-	  INT trip_count = dli->Est_Num_Iterations;
-	  INT bytes = 2 * MTYPE_byte_size(WN_desc(stmt)) /* load + store */;
-	  INT size = trip_count * bytes;
-	  if ( size > 1000*1024 /* default for -CG:movnti */ )
-	    /* candidate for non-temporal store conversion */
-	    simple_copy_loop = FALSE;  
-	}
-      }
-    }
-#endif
-#endif
   }
   if ((LNO_Run_Prefetch > SOME_PREFETCH || 
        (LNO_Run_Prefetch == SOME_PREFETCH && !Is_Multi_BB (w))) &&
@@ -1360,12 +1329,6 @@ BOOL Check_Version_Map (WN* body_orig, WN* body_new) {
       (WN_operator(WN_kid1(body_orig)) == OPR_ARRAY)) 
     Is_True (WN_MAP_Get(version_map, WN_kid1(body_orig)) == WN_kid1(body_new),
              ("Check version map: error in array store\n"));
-#if 0
-  // no longer doing all loads/stores
-  if (OPCODE_is_load(opcode) || OPCODE_is_store(opcode)) 
-    Is_True (WN_MAP_Get(version_map, body_orig) == body_new,
-             ("Check version map: error in load/store\n"));
-#endif
   extern ARRAY_DIRECTED_GRAPH16 *pf_array_dep_graph;
   if (pf_array_dep_graph->Get_Vertex(body_orig))
     Is_True (WN_MAP_Get(version_map, body_orig) == body_new,
