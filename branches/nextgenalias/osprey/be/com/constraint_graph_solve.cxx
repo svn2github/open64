@@ -267,12 +267,12 @@ ConstraintGraph::WorkList::pop(void)
 void
 ConstraintGraph::EdgeDelta::add(ConstraintGraphEdge *e)
 {
-  if (e->edgeType() == ETYPE_ASSIGN ||
+  if (e->edgeType() == ETYPE_COPY ||
       e->edgeType() == ETYPE_SKEW)
     copySkewList().push(e);
   else {
-    FmtAssert(e->edgeType() == ETYPE_ASSIGN_DEREF ||
-              e->edgeType() == ETYPE_DEREF_ASSIGN,
+    FmtAssert(e->edgeType() == ETYPE_LOAD ||
+              e->edgeType() == ETYPE_STORE,
               ("Unknown edgetype in ConstraintGraphDelta::add()"));
     loadStoreList().push(e);
   }
@@ -341,7 +341,7 @@ ConstraintGraph::solveConstraints()
       fprintf(stderr," Copy Edge:");
       edge->print(stderr);
       fprintf(stderr,"\n");
-      if (edge->edgeType() == ETYPE_ASSIGN)
+      if (edge->edgeType() == ETYPE_COPY)
         processAssign(edge);
       else {
         FmtAssert(edge->edgeType() == ETYPE_SKEW,
@@ -356,13 +356,13 @@ ConstraintGraph::solveConstraints()
       fprintf(stderr," Ld/St Edge:");
       edge->print(stderr);
       fprintf(stderr,"\n");
-      if (edge->edgeType() == ETYPE_ASSIGN_DEREF)
-        processAssignDeref(edge);
+      if (edge->edgeType() == ETYPE_LOAD)
+        processLoad(edge);
       else {
-        FmtAssert(edge->edgeType() == ETYPE_DEREF_ASSIGN,
+        FmtAssert(edge->edgeType() == ETYPE_STORE,
             ("ConstraintGraph::solveConstraints: type %d edge in"
                 "load/store worklist",edge->edgeType()));
-        processDerefAssign(edge);
+        processStore(edge);
       }
     }
   } while (!copySkewList.empty());
@@ -389,7 +389,7 @@ ConstraintGraph::addEdgesToWorkList(ConstraintGraphNode *node)
        iter != outLoadStore.end();
        iter++) {
     ConstraintGraphEdge *e = (*iter);
-    if (e->edgeType() == ETYPE_ASSIGN_DEREF)
+    if (e->edgeType() == ETYPE_LOAD)
       edgeDelta().add(e);
   }
 
@@ -399,7 +399,7 @@ ConstraintGraph::addEdgesToWorkList(ConstraintGraphNode *node)
        iter != inLoadStore.end();
        iter++) {
     ConstraintGraphEdge *e = (*iter);
-    if (e->edgeType() == ETYPE_DEREF_ASSIGN)
+    if (e->edgeType() == ETYPE_STORE)
       edgeDelta().add(e);
   }
 }
@@ -446,11 +446,22 @@ ConstraintGraph::addEdgesToWorkList(ConstraintGraphNode *node)
 void
 ConstraintGraph::processAssign(const ConstraintGraphEdge *edge)
 {
+  // If the source of the copy edge has an unknown
+  // points-to set, then we simply need to propagate
+  // the unknown flag to the destination and we are
+  // done. NOTE: Unfortunately we still need to propagate
+  // the points-to sets across the edge to ensure we
+  // handle unknown load/store edges correctly.
+  if (edge->srcNode()->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+    edge->destNode()->addFlags(CG_NODE_FLAGS_UNKNOWN);
+
   // If the copy edge is a copy from parent to child, we
   // simply mark the child, i.e. the dest, as needing
   // processing.
-  if (edge->checkFlags(CG_EDGE_PARENT_COPY))
+  if (edge->checkFlags(CG_EDGE_PARENT_COPY)) {
     addEdgesToWorkList(edge->destNode());
+    return;
+  }
 
   UINT32 assignSize = edge->size();
   ConstraintGraphNode *src = edge->srcNode();
@@ -465,7 +476,7 @@ ConstraintGraph::processAssign(const ConstraintGraphEdge *edge)
     CGEdgeQual edgeQual = edge->edgeQual();
     for ( PointsToIterator pti(src); pti != 0; ++pti ) {
       CGEdgeQual srcQual = pti.qual();
-      CGEdgeQual dstQual = qualMap(ETYPE_ASSIGN,srcQual,edgeQual);
+      CGEdgeQual dstQual = qualMap(ETYPE_COPY,srcQual,edgeQual);
       if (dstQual != CQ_NONE) {
         ConstraintGraphNode *cur = src;
         SparseBitSet<CGNodeId> sum(_memPool);
@@ -516,7 +527,7 @@ ConstraintGraph::processAssign(const ConstraintGraphEdge *edge)
     CGEdgeQual edgeQual = edge->edgeQual();
     for ( PointsToIterator pti(src); pti != 0; ++pti ) {
       CGEdgeQual srcQual = pti.qual();
-      CGEdgeQual dstQual = qualMap(ETYPE_ASSIGN,srcQual,edgeQual);
+      CGEdgeQual dstQual = qualMap(ETYPE_COPY,srcQual,edgeQual);
       if (dstQual != CQ_NONE) {
         change |= dst->unionPointsTo(*pti, dstQual);
         if (dstStOffset == -1) {
@@ -559,12 +570,21 @@ ConstraintGraph::processSkew(const ConstraintGraphEdge *edge)
 {
   ConstraintGraphNode *src = edge->srcNode();
   ConstraintGraphNode *dst = edge->destNode();
+
+  // If the source of the skew edge has an unknown
+  // points-to set, then we simply need to propagate
+  // the unknown flag to the destination and we are
+  // done. NOTE: Unfortunately we still need to propagate
+  // the points-to sets across the edge to ensure we
+  // handle unknown load/store edges correctly.
+  if (edge->srcNode()->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+    edge->destNode()->addFlags(CG_NODE_FLAGS_UNKNOWN);
+
   UINT32 skew = edge->skew();
   CGEdgeQual edgeQual = edge->edgeQual();
-
   for ( PointsToIterator pti(src); pti != 0; ++pti ) {
     CGEdgeQual curQual = pti.qual();
-    CGEdgeQual dstQual = qualMap(ETYPE_ASSIGN/*ASSIGN==SKEW*/,curQual,edgeQual);
+    CGEdgeQual dstQual = qualMap(ETYPE_COPY/*ASSIGN==SKEW*/,curQual,edgeQual);
     if (dstQual != CQ_NONE) {
       PointsTo &srcPTS = *pti;
       for (PointsTo::SparseBitSetIterator iter(&srcPTS,0); iter != 0; iter++)
@@ -590,53 +610,79 @@ ConstraintGraph::addCopiesForLoadStore(ConstraintGraphNode *src,
                                        UINT32 size,
                                        SparseBitSet<CGNodeId> &ptSet)
 {
-  FmtAssert(etype == ETYPE_ASSIGN_DEREF || etype == ETYPE_DEREF_ASSIGN,
+  FmtAssert(etype == ETYPE_LOAD || etype == ETYPE_STORE,
             ("Expected only adding copy edges for load/store constraints"));
   for (PointsTo::iterator iter(&ptSet,0); iter != 0; iter++)
   {
     CGNodeId nodeId = *iter;
     ConstraintGraphNode *node = cgNode(nodeId);
+
     // Create the new assignment edge.  If it turns out the edge
     // does already exist nothing further is required.  Otherwise,
     // we add the new edge to the worklist.
     ConstraintGraphEdge *newEdge;
     bool added = false;
-    newEdge = addEdge(etype == ETYPE_ASSIGN_DEREF ? node : src,
-        etype == ETYPE_ASSIGN_DEREF ? dst : node,
-            ETYPE_ASSIGN,qual,size,added);
+    newEdge = addEdge(etype == ETYPE_LOAD ? node : src,
+        etype == ETYPE_LOAD ? dst : node,
+            ETYPE_COPY,qual,size,added);
     if (added)
       edgeDelta().add(newEdge);
   }
 }
 
 void
-ConstraintGraph::processAssignDeref(const ConstraintGraphEdge *edge)
+ConstraintGraph::processLoad(const ConstraintGraphEdge *edge)
 {
   ConstraintGraphNode *src = edge->srcNode();
   ConstraintGraphNode *dst = edge->destNode();
   UINT32 sz = edge->size();
   CGEdgeQual edgeQual = edge->edgeQual();
 
+  // If the source of the edge is unknown, that means it
+  // may point to symbols that are not present in its
+  // points to set, which means that we are not able to
+  // add all necessary copy edges to the target of the load
+  // This means we must mark the destination as unknown.
+  // NOTE: if the target of the edge is unknown, no action
+  // is necessary.
+  if (src->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+    dst->addFlags(CG_NODE_FLAGS_UNKNOWN);
+
   for ( PointsToIterator pti(src); pti != 0; ++pti ) {
      CGEdgeQual curQual = pti.qual();
-     CGEdgeQual cpQual = qualMap(ETYPE_ASSIGN_DEREF,curQual,edgeQual);
+     CGEdgeQual cpQual = qualMap(ETYPE_LOAD,curQual,edgeQual);
      if (cpQual != CQ_NONE)
-       addCopiesForLoadStore(src,dst,ETYPE_ASSIGN_DEREF,cpQual,sz,*pti);
+       addCopiesForLoadStore(src,dst,ETYPE_LOAD,cpQual,sz,*pti);
   }
 }
 
 void
-ConstraintGraph::processDerefAssign(const ConstraintGraphEdge *edge)
+ConstraintGraph::processStore(const ConstraintGraphEdge *edge)
 {
   ConstraintGraphNode *src = edge->srcNode();
   ConstraintGraphNode *dst = edge->destNode();
   UINT32 sz = edge->size();
   CGEdgeQual edgeQual = edge->edgeQual();
 
+  // If the target of the edge is unknown, that means that
+  // the node may point to symbols that are not present in
+  // the points-to set.  Since we process a store edge by
+  // adding copy edges from the source to each element in
+  // the points-to set of the destination, the symbols in
+  // the source points-to set are now pointed to by unknown
+  // symbols.  For this reason we must mark them as unknown.
+  // NOTE: If the source is unknown this will be handled when
+  // the new copy edges are processed.
+  if (dst->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
+    for (PointsToIterator pti(src); pti != 0; ++pti)
+      for (PointsTo::iterator iter(&(*pti),0); iter != 0; iter++)
+        cgNode(*iter)->addFlags(CG_NODE_FLAGS_UNKNOWN);
+  }
+
   for ( PointsToIterator pti(dst); pti != 0; ++pti ) {
      CGEdgeQual curQual = pti.qual();
-     CGEdgeQual cpQual = qualMap(ETYPE_DEREF_ASSIGN,curQual,edgeQual);
+     CGEdgeQual cpQual = qualMap(ETYPE_STORE,curQual,edgeQual);
      if (cpQual != CQ_NONE)
-       addCopiesForLoadStore(src,dst,ETYPE_DEREF_ASSIGN,cpQual,sz,*pti);
+       addCopiesForLoadStore(src,dst,ETYPE_STORE,cpQual,sz,*pti);
   }
 }

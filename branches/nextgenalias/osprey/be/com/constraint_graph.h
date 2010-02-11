@@ -44,6 +44,7 @@
 #define CG_NODE_FLAGS_VISITED       0x0100  // Used by cycle detection
 #define CG_NODE_FLAGS_SCCMEMBER     0x0200  // Used by cycle detection
 #define CG_NODE_FLAGS_INKVALMAP     0x0400  // Used by cycle detection
+#define CG_NODE_FLAGS_COMPLETE      0x0800  // Points-to solution is complete
 
 // Map the WNs to CGNodeIds
 #define WN_MAP_CGNodeId_Set(wn,thing) \
@@ -59,11 +60,8 @@ typedef SparseBitSet<CGNodeId> PointsTo;
 
 typedef enum {
   ETYPE_COPY,
-  ETYPE_ASSIGN = ETYPE_COPY,
   ETYPE_STORE,
-  ETYPE_DEREF_ASSIGN = ETYPE_STORE,
   ETYPE_LOAD,
-  ETYPE_ASSIGN_DEREF = ETYPE_LOAD,
   ETYPE_SKEW
 } CGEdgeType;
 
@@ -697,8 +695,8 @@ private:
   EdgeDelta &edgeDelta() { return _edgeDelta; }
   void processAssign(const ConstraintGraphEdge *);
   void processSkew(const ConstraintGraphEdge *);
-  void processAssignDeref(const ConstraintGraphEdge *);
-  void processDerefAssign(const ConstraintGraphEdge *);
+  void processLoad(const ConstraintGraphEdge *);
+  void processStore(const ConstraintGraphEdge *);
   void addEdgesToWorkList(ConstraintGraphNode *);
   void addCopiesForLoadStore(ConstraintGraphNode *src,
                              ConstraintGraphNode *dst,
@@ -710,7 +708,7 @@ private:
   /* Currently implements a context insensitive mapping */
   CGEdgeQual qualMap(CGEdgeType et,CGEdgeQual aq,CGEdgeQual eq)
   {
-    if (et == ETYPE_ASSIGN)
+    if (et == ETYPE_COPY)
       return (eq == CQ_DN ? CQ_DN : CQ_GBL);
     else
       return CQ_GBL;
