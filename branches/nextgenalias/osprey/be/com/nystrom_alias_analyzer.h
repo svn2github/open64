@@ -34,7 +34,7 @@ private:
 class NystromAliasAnalyzer : public AliasAnalyzer {
    
 public:
-   NystromAliasAnalyzer(ALIAS_CONTEXT &,WN *,MEM_POOL *memPool);
+   NystromAliasAnalyzer(ALIAS_CONTEXT &,WN *);
 
    ~NystromAliasAnalyzer();
 
@@ -92,8 +92,6 @@ private:
 
    // Maps the AliasTags to points-to sets
    hash_map<UINT32, AliasTagInfo *> _aliasTagInfo;
-
-   MEM_POOL *_memPool;
 };
 
 #endif

@@ -17,8 +17,7 @@
 AliasAnalyzer *AliasAnalyzer::_alias_analyzer = NULL;
 
 AliasAnalyzer *
-AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree, 
-                                     MEM_POOL *memPool)
+AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree)
 {
   fprintf(stderr,"Create Alias Analyzer...\n");
   if (_alias_analyzer != NULL)
@@ -26,20 +25,33 @@ AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree,
 
   // What alias analyzer are we going to use?
   if ( Alias_Nystrom_Analyzer ) {
-    _alias_analyzer = new NystromAliasAnalyzer(ac,tree,memPool);
+    _alias_analyzer = new NystromAliasAnalyzer(ac,tree);
     return _alias_analyzer;
   }
   else
     return NULL;
 }
 
-AliasAnalyzer::AliasAnalyzer(MEM_POOL *memPool) 
+void
+AliasAnalyzer::Delete_Alias_Analyzer()
 {
-  _aliasTagMap = IPA_WN_MAP32_Create(Current_Map_Tab, memPool);
+  if (_alias_analyzer) {
+    delete _alias_analyzer;
+    _alias_analyzer = NULL;
+  }
+}
+  
+AliasAnalyzer::AliasAnalyzer() 
+{
+  MEM_POOL_Initialize(&_memPool, "AliasAnalyzer_pool", FALSE);
+  MEM_POOL_Push(&_memPool);
+  _aliasTagMap = IPA_WN_MAP32_Create(Current_Map_Tab, &_memPool);
 }
 
 AliasAnalyzer::~AliasAnalyzer() 
 {
+  MEM_POOL_Pop(&_memPool);
+  MEM_POOL_Delete(&_memPool);
   IPA_WN_MAP_Delete(Current_Map_Tab, _aliasTagMap);
 }
 

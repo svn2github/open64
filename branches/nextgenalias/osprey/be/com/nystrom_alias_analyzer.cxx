@@ -12,18 +12,15 @@
 #include "nystrom_alias_analyzer.h"
 
 NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
-                                           WN *entryWN,
-                                           MEM_POOL *memPool)
-  : AliasAnalyzer(memPool)
+                                           WN *entryWN)
+  : AliasAnalyzer()
 {
   // Activate the use of the Nystrom points-to analysis by the
   // ALIAS_RULE harness and disable alias classification rules.
   ac |= ALIAS_ANALYZER_RULE;
   ac &= ~(CLAS_RULE|IP_CLAS_RULE);
 
-  _memPool = memPool;
-
-  _constraintGraph = CXX_NEW(ConstraintGraph(entryWN, memPool), memPool);
+  _constraintGraph = CXX_NEW(ConstraintGraph(entryWN, &_memPool), &_memPool);
   _constraintGraph->print(stderr);
 
   _constraintGraph->solveConstraints();
@@ -83,7 +80,7 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
   UINT32 aliasTag = (UINT32)InitialAliasTag;
 
   for (WN_ITER *wni = WN_WALK_TreeIter(entryWN);
-         wni; wni = WN_WALK_TreeNext(wni))
+       wni; wni = WN_WALK_TreeNext(wni))
   {
     WN *wn = WN_ITER_wn(wni);
     CGNodeId id = WN_MAP_CGNodeId_Get(wn);
@@ -103,7 +100,7 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
     if (cgNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
       continue;
 
-    AliasTagInfo *aliasTagInfo = CXX_NEW(AliasTagInfo(_memPool), _memPool);
+    AliasTagInfo *aliasTagInfo = CXX_NEW(AliasTagInfo(&_memPool), &_memPool);
     if (OPERATOR_is_scalar_iload(opr))
     {
       // For ILOADS, the points-to set is associated with the address

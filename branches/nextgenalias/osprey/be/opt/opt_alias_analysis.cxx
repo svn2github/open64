@@ -3654,7 +3654,7 @@ OPT_STAB::Transfer_alias_tag_to_occ_and_aux(RID *const rid,
 {
   BOOL   found_ip_alias_class_info = FALSE;
   OPCODE opc = WN_opcode(wn);
-  AliasAnalyzer *aa = Alias_Mgr()->Alias_Analyzer();
+  AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
   if (!aa) return;
 
   // BLOCK is allowed; it shows up as a kid of COMPGOTO, for example.

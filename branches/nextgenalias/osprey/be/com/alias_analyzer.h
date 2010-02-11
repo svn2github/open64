@@ -30,14 +30,19 @@ private:
    static AliasAnalyzer *_alias_analyzer;
    WN_MAP _aliasTagMap; // Maps WNs to AliasTags
 
+protected:
+   MEM_POOL _memPool;
+
 public:
-   AliasAnalyzer(MEM_POOL *memPool);
+   AliasAnalyzer();
 
    virtual ~AliasAnalyzer();
 
    static AliasAnalyzer *Create_Alias_Analyzer(ALIAS_CONTEXT &ac, 
-                                               WN *tree,
-                                               MEM_POOL *memPool);
+                                               WN *tree);
+                                               
+
+   static void Delete_Alias_Analyzer();
 
    static AliasAnalyzer *aliasAnalyzer() { return _alias_analyzer; }
 

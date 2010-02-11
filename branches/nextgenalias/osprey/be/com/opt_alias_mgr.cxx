@@ -437,12 +437,12 @@ ALIAS_MANAGER::ALIAS_MANAGER(WN *entryWN)
 
   // Here we create the AliasAnalyzer object, which serves as the
   // interface to the selected alias analysis algorithm.
-  _alias_analyzer = AliasAnalyzer::Create_Alias_Analyzer(ac,entryWN,&_mem_pool);
+  AliasAnalyzer::Create_Alias_Analyzer(ac,entryWN);
 
   fdump_tree(stderr, entryWN);
 
   Set_pu_context(ac);
-  _rule = CXX_NEW(ALIAS_RULE(ac,_alias_analyzer), &_mem_pool);
+  _rule = CXX_NEW(ALIAS_RULE(ac,AliasAnalyzer::aliasAnalyzer()), &_mem_pool);
 
   // Setup the trace flags.
   _trace = Get_Trace(TP_GLOBOPT, ALIAS_DUMP_FLAG);
@@ -662,9 +662,9 @@ ALIAS_MANAGER::Dup_tree_alias_id( const WN *old_wn, WN *new_wn )
     WN_MAP32_Set(WN_MAP_ALIAS_CLASS, new_wn, ip_alias_class);
   }
 
-  AliasTag tag = Alias_Analyzer()->getAliasTag(old_wn);
+  AliasTag tag = AliasAnalyzer::aliasAnalyzer()->getAliasTag(old_wn);
   if (tag != 0) {
-    Alias_Analyzer()->setAliasTag(new_wn, tag);
+    AliasAnalyzer::aliasAnalyzer()->setAliasTag(new_wn, tag);
   }
 
   // now travel down the tree
@@ -1329,11 +1329,11 @@ void Copy_alias_info(const ALIAS_MANAGER *am, WN *wn1, WN *wn2)
   WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn2,
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
 
-  AliasAnalyzer *aa = am->Alias_Analyzer();
+  AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
   if (aa) {
-    AliasTag tag = am->Alias_Analyzer()->getAliasTag(wn1);
+    AliasTag tag = aa->getAliasTag(wn1);
     if (tag != 0)
-      am->Alias_Analyzer()->setAliasTag(wn2,tag);
+      aa->setAliasTag(wn2,tag);
 
   }
 
@@ -1380,11 +1380,11 @@ void Duplicate_alias_info(ALIAS_MANAGER *am, WN *wn1, WN *wn2)
   WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn2,
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
 
-  AliasAnalyzer *aa = am->Alias_Analyzer();
+  AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
   if (aa) {
-    AliasTag tag = am->Alias_Analyzer()->getAliasTag(wn1);
+    AliasTag tag = aa->getAliasTag(wn1);
     if (tag != 0)
-      am->Alias_Analyzer()->setAliasTag(wn2,tag);
+      aa->setAliasTag(wn2,tag);
   }
 
   // copy homing information

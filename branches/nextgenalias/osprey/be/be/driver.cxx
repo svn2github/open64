@@ -131,6 +131,7 @@
 #include "dra_export.h"             /* for DRA routines */
 #include "ti_init.h"		    /* for targ_info */
 #include "opt_alias_interface.h"    /* for Create_Alias_Manager */
+#include "alias_analyzer.h"         /* for AliasAnalyzer */
 #include "omp_lower.h"              /* for OMP pre-lowering interface */
 #include "cxx_memory.h"		    /* CXX_NEW */
 #include "options_stack.h"	    /* for Options_Stack */
@@ -908,6 +909,8 @@ Ipl_Processing (PU_Info *current_pu, WN *pu)
 	Perform_Procedure_Summary_Phase (pu, du_mgr, al_mgr, 0);
     }
 
+    AliasAnalyzer::Delete_Alias_Analyzer();
+
     /* Write out the current proc */
     Set_PU_Info_tree_ptr(current_pu, pu);
 
@@ -1336,6 +1339,8 @@ Post_Process_Backend (PU_Info *current_pu, WN *pu)
     Delete_Alias_Manager(alias_mgr, MEM_pu_nz_pool_ptr);
     alias_mgr = NULL;
   }
+
+  AliasAnalyzer::Delete_Alias_Analyzer();
 } /* Post_Process_Backend */
 
 
