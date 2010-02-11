@@ -21,16 +21,12 @@
 #define CG_NODE_ALL_OFFSETS (-1)
 
 // Symbol specific flags
-#define CG_ST_FLAGS_CALLEE    0x00000001 // determines indirect-callees
 #define CG_ST_FLAGS_HEAP      0x00000002 // heap var
 #define CG_ST_FLAGS_GLOBAL    0x00000004 // global var
-#define CG_ST_FLAGS_PARAM     0x00000008 // formal param
-#define CG_ST_FLAGS_RETURN    0x00000010 // "formal" return
 #define CG_ST_FLAGS_FUNC      0x00000020 // func var (potential callee)
 #define CG_ST_FLAGS_TEMP      0x00000040 // unnamed temp var for graph
 #define CG_ST_FLAGS_ESCLOCAL  0x00000080 // local with escaping addr
 #define CG_ST_FLAGS_SUMMARY   0x00000100 // node came from summary
-#define CG_ST_FLAGS_REALPARAM 0x00000200 // The real formal param
 #define CG_ST_FLAGS_ELLIPSE   0x00000400 // VARARGS ellipse marker
 #define CG_ST_FLAGS_STACK     0x00000800 // alloca dynamic stack
 
@@ -39,10 +35,15 @@
 #define CG_ST_FLAGS_NOLOCAL   0x00004000 // Can escape through a return
 
 // Constraint graph node flags
-#define CG_NODE_FLAGS_UNKNOWN   0x01
-#define CG_NODE_FLAGS_VISITED   0x20  // Used by cycle detection
-#define CG_NODE_FLAGS_SCCMEMBER 0x40  // Used by cycle detection
-#define CG_NODE_FLAGS_INKVALMAP 0x80  // Used by cycle detection
+#define CG_NODE_FLAGS_UNKNOWN       0x0001 // Points-to set is unknown
+#define CG_NODE_FLAGS_FORMAL_RETURN 0x0002 // Returns value to caller
+#define CG_NODE_FLAGS_ACTUAL_RETURN 0x0004 // Returns value to caller
+#define CG_NODE_FLAGS_FORMAL_PARAM  0x0008 // formal param
+#define CG_NODE_FLAGS_ACTUAL_PARAM  0x0010 // formal param
+#define CG_NODE_FLAGS_ICALL         0x0020 // determines indirect-calls
+#define CG_NODE_FLAGS_VISITED       0x0100  // Used by cycle detection
+#define CG_NODE_FLAGS_SCCMEMBER     0x0200  // Used by cycle detection
+#define CG_NODE_FLAGS_INKVALMAP     0x0400  // Used by cycle detection
 
 // Map the WNs to CGNodeIds
 #define WN_MAP_CGNodeId_Set(wn,thing) \
@@ -237,12 +238,13 @@ public:
     _nextOffset = nextOffset;
   }
 
+  UINT16 flags() const { return _nodeInfo.flags(); }
+  bool checkFlags(UINT16 flag) const { return  _nodeInfo.checkFlags(flag); }
+  void addFlags(UINT16 flag) { _nodeInfo.addFlags(flag); }
+
   ConstraintGraphNode *repParent(void) const { return _repParent; }
   void repParent(ConstraintGraphNode *p) { _repParent = p; }
 
-  UINT8 flags() const { return _nodeInfo.flags(); }
-  bool checkFlags(UINT8 flag) const { return  _nodeInfo.checkFlags(flag); }
-  void addFlags(UINT8 flag) { _nodeInfo.addFlags(flag); }
   void clearFlags(UINT8 flag) { _nodeInfo.clearFlags(flag); }
 
   ConstraintGraphNode *findRep(void)
@@ -352,7 +354,7 @@ public:
   CGEdgeSet &outCopySkewEdges(void)    { return _outCopySkewCGEdges; }
   CGEdgeSet &outLoadStoreEdges(void) { return _outLoadStoreCGEdges; }
 
-  ConstraintGraphNode *parent() const { return _repParent; }
+  ConstraintGraphNode *parent() { return findRep(); }
 
   ConstraintGraph *constraintGraph() const { return _parentCG; }
   void constraintGraph(ConstraintGraph *cg) { _parentCG = cg; }
@@ -396,9 +398,9 @@ private:
 
     INT32 offset() const { return _offset; }
 
-    UINT8 flags() const { return _flags; }
-    bool checkFlags(UINT8 flag) const { return _flags & flag; }
-    void addFlags(UINT8 flag) { _flags |= flag; }
+    UINT16 flags() const { return _flags; }
+    bool checkFlags(UINT16 flag) const { return _flags & flag; }
+    void addFlags(UINT16 flag) { _flags |= flag; }
     void clearFlags(UINT8 flag) { _flags &= ~flag; }
 
     void addPointsTo(CGNodeId id, CGEdgeQual qual) 
@@ -444,7 +446,7 @@ private:
   private:
     ST_IDX _st_idx;
     INT32  _offset;
-    UINT8  _flags;
+    UINT16 _flags;
     SparseBitSet<CGNodeId> _pointsToGBL;
     SparseBitSet<CGNodeId> _pointsToHZ;
     SparseBitSet<CGNodeId> _pointsToDN;
@@ -522,18 +524,26 @@ public:
     // Set the flags
     _flags = 0;
     ST_SCLASS storage_class = ST_sclass(st);
-    if (storage_class == SCLASS_FORMAL || storage_class == SCLASS_FORMAL_REF)
-      _flags |= CG_ST_FLAGS_PARAM;
-    else if (storage_class == SCLASS_PSTATIC ||
-             storage_class == SCLASS_FSTATIC ||
-             storage_class == SCLASS_COMMON ||
-             storage_class == SCLASS_UGLOBAL ||
-             storage_class == SCLASS_DGLOBAL ||
-             storage_class == SCLASS_UNKNOWN ||
-             storage_class == SCLASS_EXTERN)
-      _flags |= CG_ST_FLAGS_GLOBAL;
+    if (storage_class == SCLASS_PSTATIC ||
+        storage_class == SCLASS_FSTATIC ||
+        storage_class == SCLASS_COMMON ||
+        storage_class == SCLASS_UGLOBAL ||
+        storage_class == SCLASS_DGLOBAL ||
+        storage_class == SCLASS_UNKNOWN ||
+        storage_class == SCLASS_EXTERN)
+      addFlags(CG_ST_FLAGS_GLOBAL);
+
+    if (ST_class(st) == CLASS_FUNC)
+      addFlags(CG_ST_FLAGS_FUNC);
 
     _firstOffset = NULL;
+
+    // Globals are treated context-insensitive
+    if (checkFlags(CG_ST_FLAGS_GLOBAL))
+      addFlags(CG_ST_FLAGS_NOCNTXT);
+
+    // Treat every symbol as context-insensitive
+    addFlags(CG_ST_FLAGS_NOCNTXT);
   }
 
   UINT32 flags() const { return _flags; }
@@ -541,6 +551,7 @@ public:
   void addFlags(UINT32 flag) { _flags |= flag; }
 
   INT64 varSize() const { return _varSize; }
+  void varSize(INT64 size) { _varSize = size; }
   UINT32 modulus() const { return _modulus; }
   void modulus(UINT32 mod) { _modulus = mod; }
 
@@ -578,6 +589,9 @@ public:
     _cgNodeToIdMap(minSize),
     _memPool(mpool)
   {
+    nextCGNodeId = 1;
+    if (maxTypeSize == 0)
+      maxTypeSize = findMaxTypeSize();
     buildCG(entryWN);
   }
 
@@ -631,6 +645,8 @@ private:
 
   static UINT32 nextCGNodeId;
 
+  static UINT32 maxTypeSize;
+
   void buildCG(WN *entryWN);
 
   WN *processWN(WN *wn);
@@ -639,12 +655,16 @@ private:
   
   WN *handleCall(WN *wn);
 
+  ConstraintGraphNode *processParam(WN *wn);
+
   ConstraintGraphNode *processLHSofStore(WN *stmt);
 
   ConstraintGraphNode *processExpr(WN *expr);
   ConstraintGraphNode *processExpr(WN *expr, ProcessExprResult& res);
 
   ConstraintGraphNode *getCGNode(WN *wn);
+
+  UINT32 findMaxTypeSize();
 
   // Constraint graph solver
   class WorkList {

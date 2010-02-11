@@ -2,9 +2,11 @@
 #include "opt_wn.h"
 #include "wn_util.h"
 #include "ttype.h"
+#include "targ_sim.h"
 #include "ir_reader.h"
 
 UINT32 ConstraintGraph::nextCGNodeId = 1;
+UINT32 ConstraintGraph::maxTypeSize = 0;
 
 static void
 addCGNodeInSortedOrder(StInfo *stInfo, ConstraintGraphNode *cgNode)
@@ -68,6 +70,55 @@ findDeclaredBaseAndOffset(ST_IDX  st_idx,
   }
 }
 
+static BOOL
+calleeReturnsNewMemory(const WN *const call_wn)
+{
+  if (WN_Call_Does_Mem_Alloc(call_wn))
+    return TRUE;
+  if (WN_operator(call_wn) == OPR_CALL) {
+    const ST *const st = WN_st(call_wn);
+
+    if ((strcmp("malloc", ST_name(st)) == 0) ||
+        (strcmp("alloca", ST_name(st)) == 0) ||
+        (strcmp("calloc", ST_name(st)) == 0) ||
+        (strcmp("_F90_ALLOCATE", ST_name(st)) == 0)) {
+      return TRUE;
+    }
+  }
+  else if (WN_operator(call_wn) == OPR_INTRINSIC_CALL) {
+    if ((WN_intrinsic(call_wn) == INTRN_U4I4ALLOCA) ||
+        (WN_intrinsic(call_wn) == INTRN_U8I8ALLOCA) ||
+        (WN_intrinsic(call_wn) == INTRN_U4I4MALLOC) ||
+        (WN_intrinsic(call_wn) == INTRN_U8I8MALLOC)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+static BOOL
+stmtStoresReturnValueFromCallee(const WN *const stmt)
+{
+  WN *rhs = WN_kid0(stmt);
+
+  return ((WN_operator(stmt) == OPR_STID) &&
+          (WN_operator(rhs) == OPR_LDID) &&
+          (ST_sclass(WN_st(rhs)) == SCLASS_REG) &&
+          Preg_Is_Dedicated(WN_offset(rhs)) && 
+          Is_Return_Preg(WN_offset(rhs)));
+}
+
+static BOOL
+stmtStoresReturnValueToCaller(const WN *const stmt)
+{
+  // Assume that any store to a dedicated PREG is a store of a return
+  // value computed by this function.
+  return ((WN_operator(stmt) == OPR_STID) &&
+          (ST_sclass(WN_st(stmt)) == SCLASS_REG) &&
+          Preg_Is_Dedicated(WN_offset(stmt)) && 
+          Is_Return_Preg(WN_offset(stmt)));
+}
+
 void 
 ConstraintGraph::buildCG(WN *entryWN)
 {
@@ -89,6 +140,12 @@ ConstraintGraph::processWN(WN *wn)
   }
   else if (OPCODE_is_store(opc)) {
     return handleAssignment(wn);
+  }
+  else if (WN_operator(wn) == OPR_RETURN_VAL) {
+    ConstraintGraphNode *cgNode = processExpr(WN_kid0(wn));
+    if (cgNode)
+      cgNode->addFlags(CG_NODE_FLAGS_FORMAL_RETURN);
+    return WN_next(wn);
   }
   else if (OPCODE_is_call(opc)) {
     return handleCall(wn);
@@ -121,9 +178,6 @@ ConstraintGraph::handleAssignment(WN *stmt)
   // process LHS
   ConstraintGraphNode *cgNodeLHS = processLHSofStore(stmt);
   
-  if (WN_operator(stmt) == OPR_MSTORE)
-    processExpr(WN_kid2(stmt), resRHS);
-
   if (cgNodeRHS == NULL || cgNodeRHS->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
     cgNodeLHS->addFlags(CG_NODE_FLAGS_UNKNOWN);
     return WN_next(stmt);
@@ -135,7 +189,7 @@ ConstraintGraph::handleAssignment(WN *stmt)
     switch (resRHS) {
       case ADDR:
         // y is a direct address: x = &a, add a to the points-to set of x
-        if (stInfo(cgNodeRHS->st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
+        if (stInfo(cgNodeRHS->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
           cgNodeLHS->addPointsTo(cgNodeRHS->id(), CQ_GBL);
         else
           cgNodeLHS->addPointsTo(cgNodeRHS->id(), CQ_HZ);
@@ -147,7 +201,9 @@ ConstraintGraph::handleAssignment(WN *stmt)
                 WN_object_size(stmt), added);
         break;
     }
-  } else if (opr == OPR_ISTORE || opr == OPR_ISTBITS) {
+    if (stmtStoresReturnValueToCaller(stmt))
+      cgNodeLHS->addFlags(CG_NODE_FLAGS_FORMAL_RETURN);
+  } else if (opr == OPR_ISTORE || opr == OPR_ISTBITS || opr == OPR_MSTORE) {
     switch (resRHS) {
       case ADDR: {
         // y is a direct address: *x = &a
@@ -157,7 +213,7 @@ ConstraintGraph::handleAssignment(WN *stmt)
                                           CLASS_VAR, SCLASS_AUTO);
         ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tmpST), 0);
         stInfo(tmpCGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
-        if (stInfo(cgNodeRHS->st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
+        if (stInfo(cgNodeRHS->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
           tmpCGNode->addPointsTo(cgNodeRHS->id(), CQ_GBL);
         else
           tmpCGNode->addPointsTo(cgNodeRHS->id(), CQ_HZ);
@@ -202,6 +258,9 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
         res = COPY;
         cgNode = getCGNode(expr);
         break;
+      case OPR_IDNAME:
+        cgNode = getCGNode(expr);
+        cgNode->addFlags(CG_NODE_FLAGS_FORMAL_PARAM);
       default:
         return NULL;
     }
@@ -211,9 +270,15 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
     switch (opr) {
       // For *y, we create a t <--=* y
       case OPR_ILDBITS:
+      case OPR_MLOAD:
       case OPR_ILOAD: {
         res = COPY;
         ConstraintGraphNode *addrCGNode = processExpr(WN_kid0(expr));
+        // If the number of bytes is a const, treat it just like an iload
+        if (opr == OPR_MLOAD && (WN_operator(WN_kid1(expr)) != OPR_INTCONST)) {
+          processExpr(WN_kid1(expr));
+          return NULL;
+        }
         if (!addrCGNode || addrCGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
           return NULL;
         // Create a new temp symbol
@@ -239,16 +304,13 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
                 WN_object_size(expr), added);
         return tmpCGNode;
       }
-      case OPR_MLOAD:
-        processExpr(WN_kid0(expr));
-        return NULL;
       default:
         return NULL;
     }
   } else if (opr == OPR_ARRAY) {
     for (INT i = 1; i < WN_kid_count(expr); i++)
       processExpr(WN_kid(expr, i));
-    processExpr(WN_kid0(expr));
+    return processExpr(WN_kid0(expr));
   } else {
     for (INT i = 0; i < WN_kid_count(expr); i++) {
       WN *kid = WN_kid(expr, i);
@@ -308,8 +370,13 @@ ConstraintGraph::processLHSofStore(WN *stmt)
   // Get CGNode corresponding to x
   if (OPERATOR_is_scalar_store(opr)) {
     cgNodeLHS = getCGNode(stmt);
-  } else if (opr == OPR_ISTORE || opr == OPR_ISTBITS) {
+  } else if (opr == OPR_ISTORE || opr == OPR_ISTBITS || opr == OPR_MSTORE) {
     cgNodeLHS = processExpr(WN_kid1(stmt));
+    // If the number of bytes is a const, treat it just like an istore
+    if (opr == OPR_MSTORE && (WN_operator(WN_kid2(stmt)) != OPR_INTCONST)) {
+      processExpr(WN_kid2(stmt));
+      cgNodeLHS = NULL;
+    }
     if (cgNodeLHS != NULL) {
       // For a non-zero offset, we need to construct a new tmp, t1
       // such that t1 = x + offset (a skew)
@@ -325,8 +392,6 @@ ConstraintGraph::processLHSofStore(WN *stmt)
         cgNodeLHS = tmp1CGNode;
       }
     }
-  } else if (opr == OPR_MSTORE) {
-    processExpr(WN_kid1(stmt));
   }
 
   if (cgNodeLHS == NULL) {
@@ -334,7 +399,9 @@ ConstraintGraph::processLHSofStore(WN *stmt)
     ST *tmpST = Gen_Temp_Named_Symbol(WN_ty(stmt), "cgTmp", 
                                       CLASS_VAR, SCLASS_AUTO);
     ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tmpST), 0);
+    tmpCGNode->addFlags(CG_NODE_FLAGS_UNKNOWN);
     stInfo(tmpCGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
+    cgNodeLHS = tmpCGNode;
   }
     
   WN_MAP_CGNodeId_Set(stmt, cgNodeLHS->id());
@@ -342,10 +409,88 @@ ConstraintGraph::processLHSofStore(WN *stmt)
   return cgNodeLHS;
 }
 
-WN *
-ConstraintGraph::handleCall(WN *wn)
+ConstraintGraphNode *
+ConstraintGraph::processParam(WN *wn)
 {
-  return WN_next(wn);
+  ProcessExprResult res;
+  ConstraintGraphNode *cgNodeKid = processExpr(WN_kid0(wn), res);
+  if (cgNodeKid) {
+    if (cgNodeKid->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+      return cgNodeKid;
+    switch (res) {
+      case ADDR: {
+        // kid is a direct address 'a'; 
+        // Create a temp symbol t and add a to the points-to set of t.
+        ST *tmpST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgTmp", 
+                                          CLASS_VAR, SCLASS_AUTO);
+        ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tmpST), 0);
+        stInfo(tmpCGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
+        if (stInfo(cgNodeKid->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
+          tmpCGNode->addPointsTo(cgNodeKid->id(), CQ_GBL);
+        else
+          tmpCGNode->addPointsTo(cgNodeKid->id(), CQ_HZ);
+        return tmpCGNode;
+      }
+      case COPY:
+        return cgNodeKid;
+    }
+  } else {
+    ST *tmpST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgTmp", 
+                                      CLASS_VAR, SCLASS_AUTO);
+    ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tmpST), 0);
+    tmpCGNode->addFlags(CG_NODE_FLAGS_UNKNOWN);
+    stInfo(tmpCGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
+    return tmpCGNode;
+  } 
+}
+
+WN *
+ConstraintGraph::handleCall(WN *callWN)
+{
+  OPCODE opc = WN_opcode(callWN);
+  OPERATOR opr = OPCODE_operator(opc);
+
+  INT numParms;
+  ConstraintGraphNode *heapCGNode = NULL;
+
+  if (opr == OPR_ICALL) {
+    numParms = WN_kid_count(callWN) - 1;
+    ConstraintGraphNode *cgNode = 
+                   processExpr(WN_kid(callWN, WN_kid_count(callWN) - 1));
+    cgNode->addFlags(CG_NODE_FLAGS_ICALL);
+  } else {
+    numParms = WN_kid_count(callWN);
+    if (calleeReturnsNewMemory(callWN)) {
+      ST *heapST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgHeap", 
+                                         CLASS_VAR, SCLASS_AUTO);
+      heapCGNode = getCGNode(ST_st_idx(heapST), 0);
+      stInfo(heapCGNode->st_idx())->addFlags(CG_ST_FLAGS_HEAP);
+      stInfo(heapCGNode->st_idx())->modulus(maxTypeSize);
+      stInfo(heapCGNode->st_idx())->varSize(0);
+    }
+  }
+
+  for (UINT i = 0; i < numParms; ++i) {
+    WN *parmWN = WN_kid(callWN, i);
+    if (WN_parm_flag(parmWN) & WN_PARM_DUMMY)
+      continue;
+    ConstraintGraphNode *cgNode = processParam(parmWN);
+    cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_PARAM);
+    WN_MAP_CGNodeId_Set(parmWN, cgNode->id());
+  }
+
+  WN *stmt = WN_next(callWN);
+  while (stmt != NULL && stmtStoresReturnValueFromCallee(stmt)) {
+    ConstraintGraphNode *cgNode = processLHSofStore(stmt);
+    cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_RETURN);
+
+    if (heapCGNode && !cgNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+      cgNode->addPointsTo(heapCGNode->id(), CQ_HZ);
+
+    stmt = WN_next(stmt);
+  }
+
+  return stmt;
 }
 
 ConstraintGraphNode *
@@ -407,8 +552,6 @@ ConstraintGraph::getCGNode(ST_IDX st_idx, INT64 offset)
   if (si == NULL) {
     si = CXX_NEW(StInfo(st_idx), _memPool);
     _cgStInfoMap[st_idx] = si;
-    // Treat every symbol as context-insensitive
-    si->addFlags(CG_ST_FLAGS_NOCNTXT);
   }
 
   ST *st = &St_Table[st_idx];
@@ -641,8 +784,20 @@ ConstraintGraphNode::print(FILE *file)
     fprintf(file, " ");
   }
   fprintf(file, "\n");
+  fprintf(file, "[");
   if (checkFlags(CG_NODE_FLAGS_UNKNOWN))
     fprintf(file, " UNKNOWN");
+  if (checkFlags(CG_NODE_FLAGS_FORMAL_PARAM))
+    fprintf(file, " FPARAM");
+  if (checkFlags(CG_NODE_FLAGS_ACTUAL_PARAM))
+    fprintf(file, " APARAM");
+  if (checkFlags(CG_NODE_FLAGS_FORMAL_RETURN))
+    fprintf(file, " FRETURN");
+  if (checkFlags(CG_NODE_FLAGS_ACTUAL_RETURN))
+    fprintf(file, " ARETURN");
+  if (checkFlags(CG_NODE_FLAGS_ICALL))
+    fprintf(file, " ICALL");
+  fprintf(file, " ]\n");
 }
 
 void
@@ -663,10 +818,12 @@ StInfo::print(FILE *file)
   fprintf(file, " [");
   if (checkFlags(CG_ST_FLAGS_GLOBAL))
     fprintf(file, "GLOBAL");
-  if (checkFlags(CG_ST_FLAGS_PARAM))
-    fprintf(file, ",PARAM");
+  if (checkFlags(CG_ST_FLAGS_TEMP))
+    fprintf(file, " TEMP");
+  if (checkFlags(CG_ST_FLAGS_HEAP))
+    fprintf(file, " HEAP");
   if (checkFlags(CG_ST_FLAGS_NOCNTXT))
-    fprintf(file, ",CI");
+    fprintf(file, " CI");
   fprintf(file, "]");
   fprintf(file, " first: %d\n", _firstOffset->id());
 }
@@ -736,4 +893,15 @@ ConstraintGraphEdge::EdgeInfo::print(FILE *file)
     break;
   }
   fprintf(file, "%s %s %d f:0x%x",es,qs,_sizeOrSkew,_flags);
+}
+
+UINT32
+ConstraintGraph::findMaxTypeSize()
+{
+  UINT32 size = 0;
+  TY_ITER ty;
+  ty = Ty_tab.begin();
+  for (++ty; ty != Ty_tab.end(); ty++)
+    size += TY_size(*ty);
+  return size;
 }
