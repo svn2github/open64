@@ -4718,6 +4718,74 @@ WN2C_exc_scope_begin(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
    return EMPTY_STATUS;
 } /* WN2C_exc_scope_begin */
 
+#ifdef TARG_X8664
+
+/* WN2C_cast_to_vect() is helper function of WN2C_iload() and  WN2C_istore().
+ * I view this function more as a remedy to the flaw of vector load/store WN
+ * tree than a fix to WHIRL2C.
+ *
+ *  e.g if "int a[]" is vectorized, the load/store is like following: 
+ *
+ *     U8LDA 0 # array a 
+ *     U4INTCONST 1000 
+ *     84I8LDID 49 # index i
+ *    U8ARRAY
+ *   V16I4V16I4ILOAD 0 T<4,.predef_I4,4> T<56,anon_ptr.,1>
+ *
+ *  Nothing except WN_desc() and WN_rtype() suggest it is vector load. 
+ * The W2C has hard time in catching the implict type-casting of pointer 
+ * from type "int*" to "V16I4*", and blindly output C expr "a[i]".
+ *
+ *   The remedy, in this case, is to prepend "*(V16I4*)&" before "a[i]".
+ *
+ *  NOTE: This change only catches the cases where address is represented 
+ *    by ARRAY operator reguardless the array-base (i.e. WN_base()) is LDA
+ *    or a pointer arithmetic (in this case the output C expr has deref, 
+ *    e.g. "(*p)[1][2]").
+ */
+static void
+WN2C_cast_to_vect (const WN* ilod_istr, TOKEN_BUFFER tokens) {
+
+    OPERATOR opr = WN_operator (ilod_istr);
+    Is_True (opr == OPR_ILOAD || opr == OPR_ISTORE, ("precondition is not met"));
+
+    TYPE_ID desc_ty = WN_desc (ilod_istr);
+    if (!MTYPE_is_vector (desc_ty))
+        return;
+
+    WN* addr = (opr == OPR_ILOAD) ? WN_kid0(ilod_istr) : WN_kid1(ilod_istr);
+    if (WN_operator(addr) != OPR_ARRAY) {
+        /* only applicable to the cases where address is represendted by ARRAY
+         */
+        return;
+    }
+
+    /* We are going to prepend something like "*(V16I8*)&" before the <tokens> 
+     * which is in the form like "a[i][j]".
+     */ 
+     
+    /* step 1: prepend '&'
+     *   
+     *  ARRAY operator will be output like a[i][j] or (*p)[i][j], to get the address
+     * we need to prepend '&'.
+     * 
+     */
+    Prepend_Token_String (tokens, "&");
+    
+    /* step 2: prepend cast "(<vect_ty>*)"
+     */
+    TOKEN_BUFFER cast_token = 
+        WN2C_generate_cast (MTYPE_TO_TY_array[desc_ty], TRUE/*is pointer*/);
+    Prepend_And_Reclaim_Token_List (tokens, &cast_token); 
+
+    /* step 3: deference by prepending '*'
+     */
+    Prepend_Token_String (tokens, "*");
+}
+
+#else
+    #define WN2C_cast_to_vect(x, y)  ((void)0)
+#endif
 
 static STATUS
 WN2C_istore(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
@@ -4779,6 +4847,7 @@ WN2C_istore(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 		      TY_pointed(WN_ty(wn)), /* type for stored object */
 		      WN_opc_dtype(wn),    /* base-type for stored object */
 		      context);
+      WN2C_cast_to_vect (wn, lhs_tokens);
    }
    
    /* Do the assignment */
@@ -5354,6 +5423,7 @@ WN2C_comment(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 } /* WN2C_comment */
 
 
+
 static STATUS 
 WN2C_iload(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 {
@@ -5420,7 +5490,7 @@ WN2C_iload(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 		      WN_ty(wn),           /* type for loaded object */
 		      WN_opc_dtype(wn),    /* base-type for stored object */
 		      context);
-
+      WN2C_cast_to_vect (wn, expr_tokens);
    }
 
    TY_IDX type_loaded = WN_Tree_Type(wn);
