@@ -850,28 +850,26 @@ StInfo::print(FILE *file)
   fprintf(file, " first: %d\n", _firstOffset->id());
 }
 
-void 
-ConstraintGraphEdge::moveDest(ConstraintGraphNode *newDest)
-{
-  if (destNode() != newDest) {
-    destNode()->removeInEdge(this);
-    destNode(newDest);
-    ConstraintGraphEdge *insertedEdge = destNode()->addInEdge(this);
-    FmtAssert(insertedEdge == this,
-        ("ConstraintGraphEdge::moveDest: Unexpected duplicate edges..."));
-  }
-}
 
-void
-ConstraintGraphEdge::moveSrc(ConstraintGraphNode *newSrc)
+void 
+ConstraintGraphEdge::move(ConstraintGraphNode * newSrc,
+                          ConstraintGraphNode *newDest)
 {
-  if (srcNode() != newSrc) {
-    srcNode()->removeOutEdge(this);
-    srcNode(newSrc);
-    ConstraintGraphEdge *insertedEdge = srcNode()->addOutEdge(this);
-    FmtAssert(insertedEdge == this,
-        ("ConstraintGraphEdge::moveSrc: Unexpected duplicate edges..."));
-  }
+  // Unfortunately we must yank the edge out of both nodes
+  // even if we are only changing one end of the edge
+  srcNode()->removeOutEdge(this);
+  destNode()->removeInEdge(this);
+
+  if (srcNode() != newSrc)   srcNode(newSrc);
+  if (destNode() != newDest) destNode(newDest);
+
+  // Reinsert both ends of the edge
+  ConstraintGraphEdge *insOutEdge = srcNode()->addOutEdge(this);
+  FmtAssert(insOutEdge == this,
+      ("ConstraintGraphEdge::moveDest: Unexpected duplicate out edges..."));
+  ConstraintGraphEdge *insInEdge = destNode()->addInEdge(this);
+  FmtAssert(insInEdge == this,
+      ("ConstraintGraphEdge::moveDest: Unexpected duplicate in edges..."));
 }
 
 void

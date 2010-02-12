@@ -44,7 +44,9 @@
 #define CG_NODE_FLAGS_VISITED       0x0100  // Used by cycle detection
 #define CG_NODE_FLAGS_SCCMEMBER     0x0200  // Used by cycle detection
 #define CG_NODE_FLAGS_INKVALMAP     0x0400  // Used by cycle detection
-#define CG_NODE_FLAGS_COMPLETE      0x0800  // Points-to solution is complete
+#define CG_NODE_FLAGS_ADDRTAKEN     0x0800
+#define CG_NODE_FLAGS_COMPLETE      0x1000  // Points-to solution is complete
+#define CG_NODE_FLAGS_ADDR_TAKEN    0x2000  // Has the node been placed in a pts?
 
 // Map the WNs to CGNodeIds
 #define WN_MAP_CGNodeId_Set(wn,thing) \
@@ -121,8 +123,9 @@ public:
   void addFlags(UINT16 flag) { _edgeInfo.addFlags(flag); }
   void clearFlags(UINT16 flag) { _edgeInfo.clearFlags(flag); }
 
-  void moveDest(ConstraintGraphNode *newDest);
-  void moveSrc(ConstraintGraphNode *newSrc);
+  void move(ConstraintGraphNode *newSrc, ConstraintGraphNode *newDest);
+  void moveDest(ConstraintGraphNode *newDest) { move(srcNode(),newDest); }
+  void moveSrc(ConstraintGraphNode *newSrc)   { move(newSrc,destNode()); }
 
   void print(FILE *file);
 
@@ -624,6 +627,10 @@ public:
   void print(FILE *file);
 
   void solveConstraints();
+
+  void postProcessPointsTo();
+
+  void computeCompleteness();
 
   ConstraintGraphEdge *addEdge(ConstraintGraphNode *src,
                                 ConstraintGraphNode *dest,
