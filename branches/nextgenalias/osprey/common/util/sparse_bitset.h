@@ -148,6 +148,33 @@ public:
     return ptr;
   }
 
+  void
+  freeElem(SparseBitSetElement *elt)
+  {
+    SparseBitSetElement *next = elt->_next;
+    SparseBitSetElement *prev = elt->_prev;
+
+    if (prev)
+      prev->_next = next;
+
+    if (next)
+      next->_prev = prev;
+
+    if (_firstElem == elt)
+      _firstElem = next;
+
+    // Since the first thing we try is to insert before current,
+    // make current the next entry in preference to the previous.
+    if (_currElem == elt) {
+      _currElem = next != 0 ? next : prev;
+      if (_currElem)
+        _currIdx = _currElem->_idx;
+      else
+        _currIdx = 0;
+    }
+    MEM_POOL_FREE(_memPool, elt);
+  }
+
   SparseBitSetElement *findElem(UINT32 bit)
   {
     SparseBitSetElement *element;
@@ -454,7 +481,7 @@ public:
         }
         next = thisElt->_next;
         if (!ior)
-          MEM_POOL_FREE(_memPool, thisElt);
+          freeElem(thisElt);
         thisElt = next;
         rhsElt = rhsElt->_next;
       }
