@@ -8,6 +8,19 @@
 UINT32 ConstraintGraph::nextCGNodeId = 1;
 UINT32 ConstraintGraph::maxTypeSize = 0;
 
+static bool
+exprMayPoint(WN *const wn)
+{
+  TYPE_ID desc = WN_desc(wn);
+  if ((MTYPE_byte_size(desc) != 0 && MTYPE_byte_size(desc) < Pointer_Size) ||
+      MTYPE_is_float(desc) ||
+      MTYPE_is_complex(desc) || 
+      MTYPE_is_vector(desc)) {
+     return false;
+  }
+  return true;
+}
+
 static void
 addCGNodeInSortedOrder(StInfo *stInfo, ConstraintGraphNode *cgNode)
 {
@@ -111,8 +124,6 @@ stmtStoresReturnValueFromCallee(const WN *const stmt)
 static BOOL
 stmtStoresReturnValueToCaller(const WN *const stmt)
 {
-  // Assume that any store to a dedicated PREG is a store of a return
-  // value computed by this function.
   return ((WN_operator(stmt) == OPR_STID) &&
           (ST_sclass(WN_st(stmt)) == SCLASS_REG) &&
           Preg_Is_Dedicated(WN_offset(stmt)) && 
@@ -177,6 +188,9 @@ ConstraintGraph::handleAssignment(WN *stmt)
   ConstraintGraphNode *cgNodeRHS = processExpr(rhs, resRHS);
   // process LHS
   ConstraintGraphNode *cgNodeLHS = processLHSofStore(stmt);
+
+  if (!exprMayPoint(stmt))
+    return WN_next(stmt);
   
   if (cgNodeRHS == NULL || cgNodeRHS->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
     cgNodeLHS->addFlags(CG_NODE_FLAGS_UNKNOWN);
@@ -281,6 +295,8 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
         }
         if (!addrCGNode || addrCGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
           return NULL;
+        if (!exprMayPoint(expr))
+          return NULL;
         // Create a new temp symbol
         ST *tmpST = 
           Gen_Temp_Named_Symbol(WN_ty(expr), "cgTmp", CLASS_VAR, SCLASS_AUTO);
@@ -298,6 +314,9 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
           addEdge(addrCGNode, tmp1CGNode, ETYPE_SKEW, CQ_HZ, 
                   WN_offset(expr), added);
           addrCGNode = tmp1CGNode;
+          // Adjust the CGNode associated with the address (kid0)
+          // with the newly created temp CGNode
+          WN_MAP_CGNodeId_Set(WN_kid0(expr), tmp1CGNode->id());
         }
         bool added = false;
         addEdge(addrCGNode, tmpCGNode, ETYPE_LOAD, CQ_HZ,
@@ -316,6 +335,9 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
       WN *kid = WN_kid(expr, i);
       processExpr(kid);
     }
+
+    if (!exprMayPoint(expr))
+      return NULL;
     
     // y = x +- const;
     // y <-- (const) x
