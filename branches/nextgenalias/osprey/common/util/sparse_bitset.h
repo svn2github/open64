@@ -237,7 +237,7 @@ public:
   // If elt is NULL, insert the element at the start.  Return the
   // new element.
   SparseBitSetElement *
-  insertAfter (SparseBitSetElement *elt, UINT32 idx)
+  insertAfter(SparseBitSetElement *elt, UINT32 idx)
   {
     SparseBitSetElement *node = 
                          TYPE_MEM_POOL_ALLOC(SparseBitSetElement, _memPool);
@@ -281,12 +281,14 @@ public:
     assert(sizeof((UINT32)obj) <= sizeof(UINT32));
   }
 
+  ~SparseBitSet() { clear(); }
+
   void setBit(T idx)
   {
     UINT32 bit = (UINT32)idx;
     SparseBitSetElement *ptr = findElem(bit);
     UINT32 wordNum = bit / BITMAP_WORD_BITS % BITMAP_ELEMENT_WORDS;
-    unsigned bitNum  = bit % BITMAP_WORD_BITS;
+    UINT32 bitNum  = bit % BITMAP_WORD_BITS;
     BITMAP_WORD bitVal = ((BITMAP_WORD) 1) << bitNum;
 
     if (ptr == NULL) {
@@ -364,7 +366,7 @@ public:
     SparseBitSetElement *toPtr = NULL;
 
     clear();
-    /* Copy elements in forward direction one at a time.  */
+    // Copy elements in forward direction one at a time.
     for (fromPtr = rhs._firstElem; fromPtr; fromPtr = fromPtr->_next) {
       SparseBitSetElement *toElt = allocElem();
       toElt->_idx = fromPtr->_idx;
@@ -384,6 +386,84 @@ public:
     return *this;
   }
 
+  // Return true if this AND rhs is not empty.
+  bool
+  intersect(SparseBitSet& rhs)
+  {
+    SparseBitSetElement *thisElt;
+    SparseBitSetElement *rhsElt;
+    UINT32 ix;
+
+    for (thisElt = _firstElem, rhsElt = rhs._firstElem; thisElt && rhsElt;) {
+      if (thisElt->_idx < rhsElt->_idx)
+        thisElt = thisElt->_next;
+      else if (rhsElt->_idx < thisElt->_idx)
+        rhsElt = rhsElt->_next;
+      else {
+        for (ix = BITMAP_ELEMENT_WORDS; ix--;)
+          if (thisElt->_bits[ix] & rhsElt->_bits[ix])
+            return true;
+        thisElt = thisElt->_next;
+        rhsElt = rhsElt->_next;
+      }
+    }
+    return false;
+  }
+
+  bool isSet(T idx)
+  {
+    UINT32 bit = (UINT32)idx;
+    SparseBitSetElement *ptr;
+    UINT32 bitNum;
+    UINT32 wordNum;
+
+    ptr = findElem(bit);
+    if (ptr == NULL)
+      return false;
+
+    bitNum = bit % BITMAP_WORD_BITS;
+    wordNum = bit / BITMAP_WORD_BITS % BITMAP_ELEMENT_WORDS;
+    return (ptr->_bits[wordNum] >> bitNum) & 1;
+  }
+
+  // 'this' &= ~rhs. Returns true if 'this' changes
+  bool
+  setDiff(SparseBitSet& rhs)
+  {
+    SparseBitSetElement *thisElt = _firstElem;
+    SparseBitSetElement *rhsElt = rhs._firstElem;
+    SparseBitSetElement *next;
+    BITMAP_WORD changed = 0;
+
+    while (thisElt && rhsElt) {
+      if (thisElt->_idx < rhsElt->_idx)
+        thisElt = thisElt->_next;
+      else if (rhsElt->_idx < thisElt->_idx)
+        rhsElt = rhsElt->_next;
+      else {
+        // Matching elts, generate this &= ~rhs. 
+        UINT32 ix;
+        BITMAP_WORD ior = 0;
+
+        for (ix = BITMAP_ELEMENT_WORDS; ix--;) {
+          BITMAP_WORD cleared = thisElt->_bits[ix] & rhsElt->_bits[ix];
+          BITMAP_WORD r = thisElt->_bits[ix] ^ cleared;
+          thisElt->_bits[ix] = r;
+          changed |= cleared;
+          ior |= r;
+        }
+        next = thisElt->_next;
+        if (!ior)
+          MEM_POOL_FREE(_memPool, thisElt);
+        thisElt = next;
+        rhsElt = rhsElt->_next;
+      }
+    }
+    assert (!_currElem == !_firstElem);
+    assert (!_currElem || _currIdx == _currElem->_idx);
+    return changed != 0;
+  }
+
   void print(FILE *file)
   {
     const char *comma = "";
@@ -399,13 +479,13 @@ public:
   {
     SparseBitSetElement *ptr;
 
-    fprintf (file, "\nfirst = %p current = %p indx = %u\n",
+    fprintf (file, "\nfirst = %p current = %p _idx = %u\n",
              (void *)_firstElem, (void *)_currElem, _currIdx);
 
     for (ptr = _firstElem; ptr; ptr = ptr->_next) {
-      unsigned int i, j, col = 26;
+      UINT32 i, j, col = 26;
 
-      fprintf (file, "\t%p next = %p prev = %p indx = %u\n\t\tbits = {",
+      fprintf (file, "\t%p next = %p prev = %p _idx = %u\n\t\tbits = {",
                (void *)ptr, (void *)ptr->_next, (void *)ptr->_prev, ptr->_idx);
 
       for (i = 0; i < BITMAP_ELEMENT_WORDS; i++) 
