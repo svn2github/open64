@@ -366,6 +366,174 @@ ConstraintGraph::solveConstraints()
       }
     }
   } while (!copySkewList.empty());
+
+  computeCompleteness();
+  postProcessPointsTo();
+}
+
+void
+ConstraintGraph::postProcessPointsTo()
+{
+  PointsTo adjustSet;
+  for (CGNodeToIdMapIterator iter = _cgNodeToIdMap.begin();
+       iter != _cgNodeToIdMap.end(); iter++) {
+    ConstraintGraphNode *node = iter->first;
+    for ( PointsToIterator pti(node); pti != 0; ++pti ) {
+      PointsTo &curSet = *pti;
+      for (PointsTo::SparseBitSetIterator iter(&curSet,0); iter != 0; ++iter)
+      {
+        ConstraintGraphNode *node = cgNode(*iter);
+        if (node->offset() == -1)
+        {
+          ConstraintGraphNode *cur = node->nextOffset();
+          while (cur) {
+            adjustSet.setBit(cur->id());
+            cur = cur->nextOffset();
+          }
+        }
+        else {
+          // Collect size of all outgoing edges
+          UINT32 maxSize = 0;
+          CGEdgeSetIterator iter = node->outCopySkewEdges().begin();
+          for ( ; iter != node->outCopySkewEdges().end(); ++iter) {
+            ConstraintGraphEdge *edge = *iter;
+            if (edge->edgeType() == ETYPE_COPY )
+              if (edge->size() > maxSize) maxSize = edge->size();
+          }
+          CGEdgeSetIterator ldIter = node->outLoadStoreEdges().begin();
+          for ( ; ldIter != node->outLoadStoreEdges().end(); ++ldIter) {
+            ConstraintGraphEdge *edge = *ldIter;
+            if (edge->size() > maxSize) maxSize = edge->size();
+          }
+          UINT32 endOffset = node->offset() + maxSize;
+          ConstraintGraphNode *cur = node->nextOffset();
+          while (cur && cur->offset() < endOffset) {
+            adjustSet.setBit(cur->id());
+            cur = cur->nextOffset();
+          }
+          adjustSet.setBit(node->id());
+        }
+      }
+      curSet.clear();
+      curSet.setUnion(adjustSet);
+      adjustSet.clear();
+    }
+  }
+}
+
+void
+ConstraintGraph::computeCompleteness()
+{
+  fprintf(stderr,"Complete Analysis...\n");
+
+  // First we collect some information for the current PU
+  // constraint graph
+  // 1) The local variables
+  // 2) The union of points-to sets of all "global" nodes,
+  //    where global is an:
+  //    (a) CG_ST_FLAGS_GLOBAL
+  //    (b) CG_NODE_FLAGS_ACTUAL_PARM (and call not resolved)
+  //    (c) CG_NODE_FLAGS_FORMAL_RETURN (and return not resolved)
+  //
+  // Under non-ipa, any local variable not contained in the
+  // above points-to set is marked as complete.
+  PointsTo possiblyEscLocal;
+  PointsTo escapedNodes;
+  for (CGNodeToIdMapIterator iter = _cgNodeToIdMap.begin();
+      iter != _cgNodeToIdMap.end(); ++iter) {
+    ConstraintGraphNode *node = iter->first;
+    node->clearFlags(CG_NODE_FLAGS_COMPLETE);
+    // Here we are collecting all address taken locals and
+    // marking those that are not as 'complete'
+    if (ST_sclass(&St_Table[node->st_idx()]) == SCLASS_AUTO) {
+      if (node->checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))  {
+        possiblyEscLocal.setBit(node->id());
+        fprintf(stderr,"  Found possible escape local: %d\n",node->id());
+      }
+    }
+
+    // Here we are collecting the points to sets of all nodes
+    // that have possibly escaped.
+    // NOTE:  This code will need to be reworked for -ipa
+    // to account for the fact that if we have resolved all
+    // calls then the actual parm/formal return should be
+    // resolved.  Similar changes related to globals.
+    if (node->checkFlags(CG_NODE_FLAGS_ACTUAL_PARAM|
+                         CG_NODE_FLAGS_FORMAL_RETURN) ||
+        stInfo(node->st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
+      for ( PointsToIterator pti(node); pti != 0; ++pti ) {
+        escapedNodes.setUnion(*pti);
+      }
+
+  }
+  list<const ConstraintGraphEdge *> workList;
+  typedef pair<UINT32,bool> VisitedEdge;
+  VisitedEdge *visitedEdge = CXX_NEW_ARRAY(VisitedEdge,
+      totalCGNodes(),
+      _memPool);
+
+  for (CGNodeToIdMapIterator iter = _cgNodeToIdMap.begin();
+      iter != _cgNodeToIdMap.end(); ++iter) {
+    ConstraintGraphNode *node = iter->first;
+    CGEdgeSetIterator iter = node->inCopySkewEdges().begin();
+    // Do we have a root?
+    if (iter == node->inCopySkewEdges().end()) {
+      if (ST_sclass(&St_Table[node->st_idx()]) == SCLASS_AUTO &&
+          (!possiblyEscLocal.isSet(node->id()) ||
+              escapedNodes.isSet(node->id()))) {
+        node->addFlags(CG_NODE_FLAGS_COMPLETE);
+        fprintf(stderr, "  Non-escape root %d: COMPLETE\n",node->id());
+      }
+      for (CGEdgeSetIterator outIter = node->outCopySkewEdges().begin();
+          outIter != node->outCopySkewEdges().end(); ++outIter)
+        workList.push_back(*outIter);
+    }
+  }
+
+  while (!workList.empty()) {
+    const ConstraintGraphEdge *edge = workList.front();
+    workList.pop_front();
+
+    ConstraintGraphNode *src = edge->srcNode();
+    ConstraintGraphNode *dst = edge->destNode();
+
+    fprintf(stderr," Edge:");
+    edge->print(stderr);
+    fprintf(stderr," <%d,%d>",visitedEdge[dst->id()].first,
+        visitedEdge[dst->id()].second);
+    fprintf(stderr,"\n");
+
+    // Initialize state for a non-root node visited for the first time
+    if (visitedEdge[dst->id()].first == 0) {
+      UINT32 cnt = 0;
+      for (CGEdgeSetIterator iter = dst->inCopySkewEdges().begin();
+          iter != dst->inCopySkewEdges().end(); ++iter)
+        cnt += 1;
+      visitedEdge[dst->id()].first = cnt;
+      if (src->checkFlags(CG_NODE_FLAGS_COMPLETE))
+        visitedEdge[dst->id()].second = true;
+    }
+    // Now we actually decrement the counter to mark the current
+    // edge as visited.  If all edges are visited (counter == 0),
+    // and if all predecessors are complete we mark current node
+    // as complete.
+    if ((--visitedEdge[dst->id()].first) == 0) {
+      if (visitedEdge[dst->id()].second &&
+          !dst->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
+        dst->addFlags(CG_NODE_FLAGS_COMPLETE);
+        fprintf(stderr,"  Visited %d: COMPLETE\n",dst->id());
+      }
+      else
+        fprintf(stderr,"  Visited %d: INCOMPLETE\n",dst->id());
+
+      // Now that all predecessors are visited push all out
+      // copy/skew edges onto the worklist
+      for (CGEdgeSetIterator iter = dst->outCopySkewEdges().begin();
+          iter != dst->outCopySkewEdges().end(); ++iter)
+        workList.push_back(*iter);
+    }
+  }
+  CXX_DELETE_ARRAY(visitedEdge,_memPool);
 }
 
 void
@@ -595,7 +763,7 @@ ConstraintGraph::processSkew(const ConstraintGraphEdge *edge)
         INT32 newOffset = node->offset() + skew;
         if (newOffset < st->varSize()) {
           ConstraintGraphNode *skewNode = getCGNode(node->st_idx(),newOffset);
-          dst->addPointsTo(skewNode->id(), dstQual);
+          dst->addPointsTo(skewNode, dstQual);
         }
       }
     }

@@ -204,9 +204,9 @@ ConstraintGraph::handleAssignment(WN *stmt)
       case ADDR:
         // y is a direct address: x = &a, add a to the points-to set of x
         if (stInfo(cgNodeRHS->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
-          cgNodeLHS->addPointsTo(cgNodeRHS->id(), CQ_GBL);
+          cgNodeLHS->addPointsTo(cgNodeRHS, CQ_GBL);
         else
-          cgNodeLHS->addPointsTo(cgNodeRHS->id(), CQ_HZ);
+          cgNodeLHS->addPointsTo(cgNodeRHS, CQ_HZ);
         break;
       case COPY:
         bool added = false;
@@ -228,9 +228,9 @@ ConstraintGraph::handleAssignment(WN *stmt)
         ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tmpST), 0);
         stInfo(tmpCGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
         if (stInfo(cgNodeRHS->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
-          tmpCGNode->addPointsTo(cgNodeRHS->id(), CQ_GBL);
+          tmpCGNode->addPointsTo(cgNodeRHS, CQ_GBL);
         else
-          tmpCGNode->addPointsTo(cgNodeRHS->id(), CQ_HZ);
+          tmpCGNode->addPointsTo(cgNodeRHS, CQ_HZ);
         cgNodeRHS = tmpCGNode;
         break;
       }
@@ -448,9 +448,9 @@ ConstraintGraph::processParam(WN *wn)
         ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tmpST), 0);
         stInfo(tmpCGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
         if (stInfo(cgNodeKid->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
-          tmpCGNode->addPointsTo(cgNodeKid->id(), CQ_GBL);
+          tmpCGNode->addPointsTo(cgNodeKid, CQ_GBL);
         else
-          tmpCGNode->addPointsTo(cgNodeKid->id(), CQ_HZ);
+          tmpCGNode->addPointsTo(cgNodeKid, CQ_HZ);
         return tmpCGNode;
       }
       case COPY:
@@ -507,7 +507,7 @@ ConstraintGraph::handleCall(WN *callWN)
     cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_RETURN);
 
     if (heapCGNode && !cgNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
-      cgNode->addPointsTo(heapCGNode->id(), CQ_HZ);
+      cgNode->addPointsTo(heapCGNode, CQ_HZ);
 
     stmt = WN_next(stmt);
   }
@@ -873,7 +873,7 @@ ConstraintGraphEdge::move(ConstraintGraphNode * newSrc,
 }
 
 void
-ConstraintGraphEdge::print(FILE *file)
+ConstraintGraphEdge::print(FILE *file) const
 {
   fprintf(file, "(src: %d dest: %d ", _srcCGNode->id(), _destCGNode->id());
   _edgeInfo.print(file);
@@ -881,7 +881,7 @@ ConstraintGraphEdge::print(FILE *file)
 }
 
 void
-ConstraintGraphEdge::EdgeInfo::print(FILE *file)
+ConstraintGraphEdge::EdgeInfo::print(FILE *file) const
 {
   char *es, *qs;
   switch (_etype) {

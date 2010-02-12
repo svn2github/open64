@@ -127,7 +127,7 @@ public:
   void moveDest(ConstraintGraphNode *newDest) { move(srcNode(),newDest); }
   void moveSrc(ConstraintGraphNode *newSrc)   { move(newSrc,destNode()); }
 
-  void print(FILE *file);
+  void print(FILE *file) const;
 
   typedef struct
   {
@@ -180,7 +180,7 @@ private:
       return (etype() << 28 ^ sizeOrSkew() << 16);
     }
 
-    void print(FILE *file);
+    void print(FILE *file) const;
 
   private:
     CGEdgeType _etype;
@@ -265,9 +265,10 @@ public:
   // into the current node.
   void merge(ConstraintGraphNode *src);
 
-  void addPointsTo(CGNodeId id, CGEdgeQual qual) 
+  void addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
   { 
-    findRep()->_nodeInfo.addPointsTo(id,qual);
+    node->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
+    findRep()->_nodeInfo.addPointsTo(node->id(),qual);
   }
 
   bool unionPointsTo(PointsTo &ptsToSet, CGEdgeQual qual) 
