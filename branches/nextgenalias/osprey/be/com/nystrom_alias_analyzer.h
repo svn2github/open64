@@ -75,8 +75,7 @@ private:
    // Creates a new AliasTag for use during client update of
    // alias information.  The underlying points-to set does not
    // have an associated symbol or perhaps even a constraint node
-   // TODO: Implement newAliasTag
-   AliasTag newAliasTag(void) { return InvalidAliasTag; }
+   AliasTag newAliasTag(void);
 
    // Traverse the whirl tree starting from the func entry
    // and for each WN for which there is a valid CGNodeId, create
@@ -85,13 +84,25 @@ private:
 
    // Unions the points-to set of srcTag into the points-to set
    // of dstTag.
-   // TODO: Implement mergePointsTo
-   void mergePointsTo(AliasTag dstTag, AliasTag srcTag) { }
+   void mergePointsTo(AliasTag dstTag, AliasTag srcTag);
+
+   PointsTo &pointsTo(AliasTag tag) 
+   {
+      hash_map<UINT32, AliasTagInfo *>::iterator iter = 
+                                        _aliasTagInfo.find((UINT32)tag);
+      if (iter != _aliasTagInfo.end())
+        return iter->second->pointsTo();
+      return emptyPointsToSet;
+   }
+
+   AliasTag _nextAliasTag;  // to generate unique AliasTags
 
    ConstraintGraph *_constraintGraph;
 
    // Maps the AliasTags to points-to sets
    hash_map<UINT32, AliasTagInfo *> _aliasTagInfo;
+
+   static PointsTo emptyPointsToSet;
 };
 
 #endif
