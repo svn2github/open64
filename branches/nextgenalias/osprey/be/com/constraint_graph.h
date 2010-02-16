@@ -10,6 +10,7 @@
 #include "symtab.h"
 #include "mempool.h"
 #include "sparse_bitset.h"
+#include "vcg.h"
 
 // Constraint graph edge flags
 #define CG_EDGE_FLAGS_ARRAY  0x0001
@@ -766,6 +767,7 @@ private:
   char *getEdgeLabel(ConstraintGraphEdge *cgEdge);
   char *getNodeTitle(ConstraintGraphNode *cgNode);
   char *getNodeInfo(ConstraintGraphNode *cgNode);
+  VCGNode *buildVCGNode(ConstraintGraphNode *cgNode);
 
   void buildVCG(ConstraintGraph *cg);
 

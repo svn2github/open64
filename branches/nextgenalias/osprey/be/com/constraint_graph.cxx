@@ -5,7 +5,6 @@
 #include "ttype.h"
 #include "targ_sim.h"
 #include "ir_reader.h"
-#include "vcg.h"
 
 UINT32 ConstraintGraph::nextCGNodeId = 1;
 UINT32 ConstraintGraph::maxTypeSize = 0;
@@ -1029,7 +1028,8 @@ ConstraintGraphVCG::getEdgeLabel(ConstraintGraphEdge *cgEdge)
   return label;
 }
 
-char *ConstraintGraphVCG::getNodeInfo(ConstraintGraphNode *cgNode)
+char *
+ConstraintGraphVCG::getNodeInfo(ConstraintGraphNode *cgNode)
 {
   stringstream ss;
   cgNode->print(ss);
@@ -1039,93 +1039,100 @@ char *ConstraintGraphVCG::getNodeInfo(ConstraintGraphNode *cgNode)
   return str;
 }
 
+VCGNode *
+ConstraintGraphVCG::buildVCGNode(ConstraintGraphNode *cgNode)
+{
+  char *title = getNodeTitle(cgNode);
+  char *label = getNodeLabel(cgNode);
+  char *nodeInfo = getNodeInfo(cgNode);
+  VCGNode *node = CXX_NEW(VCGNode(title, label, Ellipse), &_memPool);
+  node->info(1, nodeInfo);
+  return node;
+}
+
 void 
 ConstraintGraphVCG::buildVCG(ConstraintGraph *cg)
 {
-  hash_map<ConstraintGraphNode *, char *,
+  // Map ConstraintGraphNode * to the VCGNode title
+  hash_map<ConstraintGraphNode *, const char *,
            ConstraintGraphNode::hashCGNode,
            ConstraintGraphNode::equalCGNode> nodeToTitleMap;
-  hash_map<ConstraintGraphNode *, char *,
+  hash_map<ConstraintGraphNode *, const char *,
            ConstraintGraphNode::hashCGNode,
            ConstraintGraphNode::equalCGNode>::const_iterator nodeToTitleMapIter;
 
   VCGGraph vcg("ConstraintGraph VCG");
   vcg.infoName(1, "ConstraintGraph");
 
+  // Iterate over all nodes in the graph
   for (CGIdToNodeMapIterator iter = cg->begin(); iter != cg->end(); iter++) {
     ConstraintGraphNode *cgNode = iter->second;
-    char *srcTitle = NULL;
+    const char *srcTitle = NULL;
     nodeToTitleMapIter = nodeToTitleMap.find(cgNode);
+    // Create a new VCGNode if none exists
     if (nodeToTitleMapIter == nodeToTitleMap.end()) {
-      srcTitle = getNodeTitle(cgNode);
-      char *label = getNodeLabel(cgNode);
-      char *nodeInfo = getNodeInfo(cgNode);
-      VCGNode *node = CXX_NEW(VCGNode(srcTitle, label, Ellipse), &_memPool);
+      VCGNode *node = buildVCGNode(cgNode);      
+      srcTitle = node->title();
+      nodeToTitleMap[cgNode] = srcTitle;
       vcg.addNode(*node);
-      node->info(1, nodeInfo);
-      nodeToTitleMap[cgNode]= srcTitle;
     } else 
       srcTitle = nodeToTitleMapIter->second;
     
-    // Traverse all outgoing edges
+    // Traverse all outgoing COPY/SKEW edges
     for (CGEdgeSetIterator iter = cgNode->outCopySkewEdges().begin();
          iter != cgNode->outCopySkewEdges().end(); iter++) {
       ConstraintGraphEdge *edge = *iter;
       ConstraintGraphNode *destNode = edge->destNode();
-      char *destTitle = NULL;
+      const char *destTitle = NULL;
       nodeToTitleMapIter = nodeToTitleMap.find(destNode);
+      // Create a new dest VCGNode if none exists
       if (nodeToTitleMapIter == nodeToTitleMap.end()) {
-        destTitle = getNodeTitle(destNode);
-        char *label = getNodeLabel(destNode);
-        char *nodeInfo = getNodeInfo(destNode);
-        VCGNode *node = CXX_NEW(VCGNode(destTitle, label, Ellipse), &_memPool);
-        vcg.addNode(*node);
-        node->info(1, nodeInfo);
+        VCGNode *node = buildVCGNode(destNode);
+        destTitle = node->title();
         nodeToTitleMap[destNode]= destTitle;
+        vcg.addNode(*node);
       } else
         destTitle = nodeToTitleMapIter->second;
-      // Add edge
+      // Add edge from cgNode -> destNode
       VCGEdge *vcgEdge = CXX_NEW(VCGEdge(srcTitle, destTitle), &_memPool);
       vcgEdge->color(Black);
       vcgEdge->label(getEdgeLabel(edge));
       vcg.addEdge(*vcgEdge);
     }
 
+    // Traverse all outgoing LOAD/STORE edges
     for (CGEdgeSetIterator iter = cgNode->outLoadStoreEdges().begin();
          iter != cgNode->outLoadStoreEdges().end(); iter++) {
       ConstraintGraphEdge *edge = *iter;
       ConstraintGraphNode *destNode = edge->destNode();
-      char *destTitle = NULL;
+      const char *destTitle = NULL;
       nodeToTitleMapIter = nodeToTitleMap.find(destNode);
+      // Create a new dest VCGNode if none exists
       if (nodeToTitleMapIter == nodeToTitleMap.end()) {
-        destTitle = getNodeTitle(destNode);
-        char *label = getNodeLabel(destNode);
-        char *nodeInfo = getNodeInfo(destNode);
-        VCGNode *node = CXX_NEW(VCGNode(destTitle, label, Ellipse), &_memPool);
-        vcg.addNode(*node);
-        node->info(1, nodeInfo);
+        VCGNode *node = buildVCGNode(destNode);      
+        destTitle = node->title();
         nodeToTitleMap[destNode]= destTitle;
+        vcg.addNode(*node);
       } else
         destTitle = nodeToTitleMapIter->second;
-      // Add edge
+      // Add edge from cgNode -> destNode
       VCGEdge *vcgEdge = CXX_NEW(VCGEdge(srcTitle, destTitle), &_memPool);
       vcgEdge->color(edge->edgeType() == ETYPE_LOAD ? Red : Blue);
       vcgEdge->label(getEdgeLabel(edge));
       vcg.addEdge(*vcgEdge);
     }
 
-    if (cgNode->parent() != cgNode) {
+    // Add edge from node to its parent (if parent is not the current node)
+    if (cgNode->parent() && cgNode->parent() != cgNode) {
       ConstraintGraphNode *parent = cgNode->parent();
-      char *pTitle = NULL;
+      const char *pTitle = NULL;
       nodeToTitleMapIter = nodeToTitleMap.find(parent);
+      // Create a new parent VCGNode if none exists
       if (nodeToTitleMapIter == nodeToTitleMap.end()) {
-        pTitle = getNodeTitle(parent);
-        char *label = getNodeLabel(parent);
-        char *nodeInfo = getNodeInfo(parent);
-        VCGNode *node = CXX_NEW(VCGNode(pTitle, label, Ellipse), &_memPool);
-        vcg.addNode(*node);
-        node->info(1, nodeInfo);
+        VCGNode *node = buildVCGNode(parent);      
+        pTitle = node->title();
         nodeToTitleMap[parent]= pTitle;
+        vcg.addNode(*node);
       } else
         pTitle = nodeToTitleMapIter->second;
       VCGEdge *vcgEdge = CXX_NEW(VCGEdge(srcTitle, pTitle), &_memPool);
