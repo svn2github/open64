@@ -6,8 +6,6 @@
 #include <assert.h>
 #include "cxx_memory.h"
 
-using namespace std;
-
 /* Fundamental storage type for bitmap.  */
 typedef unsigned long BITMAP_WORD;
 
@@ -540,7 +538,7 @@ public:
 };
 
 template<class T>
-ostream& operator<<(ostream& str, const SparseBitSet<T>& bs)
+std::ostream& operator<<(std::ostream& str, const SparseBitSet<T>& bs)
 {
   const char *comma = "";
   typename SparseBitSet<T>::iterator si(&bs, 0);
