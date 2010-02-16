@@ -1,9 +1,12 @@
 #ifndef sparse_bitset__INCLUDED
 #define sparse_bitset__INCLUDED
 
+#include <iostream>
 #include <limits.h>
 #include <assert.h>
 #include "cxx_memory.h"
+
+using namespace std;
 
 /* Fundamental storage type for bitmap.  */
 typedef unsigned long BITMAP_WORD;
@@ -32,7 +35,6 @@ template <class T>
 class SparseBitSet
 {
 public:
-
   class SparseBitSetIterator 
   {
   public:
@@ -533,11 +535,21 @@ public:
         }
       }
       fprintf (file, " }\n");
-    
-      }
+    }
   }
 };
 
-
+template<class T>
+ostream& operator<<(ostream& str, const SparseBitSet<T>& bs)
+{
+  const char *comma = "";
+  typename SparseBitSet<T>::iterator si(&bs, 0);
+  while (si != 0) {
+    str << comma << *si;
+    si++;
+    comma = ", ";
+  }
+  return str;
+}
 
 #endif // sparse_bitset__INCLUDED

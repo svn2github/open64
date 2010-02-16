@@ -120,9 +120,9 @@ SCCDetection::find(void)
 {
   // Visit each unvisited root node.   A root node is defined
   // to be a node that has no incoming copy/skew edges
-  for (CGNodeToIdMapIterator iter = _graph->begin();
+  for (CGIdToNodeMapIterator iter = _graph->begin();
       iter != _graph->end(); iter++) {
-    ConstraintGraphNode *node = iter->first;
+    ConstraintGraphNode *node = iter->second;
     if (!node->checkFlags(CG_NODE_FLAGS_VISITED)) {
       // We skip any nodes that have a representative other than
       // themselves.  Such nodes occur as a result of merging
@@ -153,9 +153,9 @@ void
 SCCDetection::unify(NodeToKValMap &nodeToKValMap)
 {
   // Unify the nodes in an SCC into a single node
-  for (CGNodeToIdMapIterator iter = _graph->begin();
+  for (CGIdToNodeMapIterator iter = _graph->begin();
       iter != _graph->end(); iter++) {
-    ConstraintGraphNode *node = iter->first;
+    ConstraintGraphNode *node = iter->second;
     FmtAssert(node->checkFlags(CG_NODE_FLAGS_VISITED),
         ("Node %d unvisited during SCC detection\n",node->id()));
     node->clearFlags(CG_NODE_FLAGS_VISITED|CG_NODE_FLAGS_SCCMEMBER);

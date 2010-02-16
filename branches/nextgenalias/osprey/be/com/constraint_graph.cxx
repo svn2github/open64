@@ -1,9 +1,11 @@
+#include <sstream>
 #include "constraint_graph.h"
 #include "opt_wn.h"
 #include "wn_util.h"
 #include "ttype.h"
 #include "targ_sim.h"
 #include "ir_reader.h"
+#include "vcg.h"
 
 UINT32 ConstraintGraph::nextCGNodeId = 1;
 UINT32 ConstraintGraph::maxTypeSize = 0;
@@ -822,6 +824,30 @@ ConstraintGraphNode::print(FILE *file)
   fprintf(file, " ]\n");
 }
 
+void ConstraintGraphNode::print(ostream& ostr)
+{
+  ostr << "CGNodeId: " << id();
+  _nodeInfo.print(ostr);
+  if (_nextOffset)
+    ostr << " next: ", _nextOffset->_id;
+  if (parent())
+    ostr << endl << "parent: " << parent()->_id << endl;
+  ostr << "[";
+  if (checkFlags(CG_NODE_FLAGS_UNKNOWN))
+    ostr << " UNKNOWN";
+  if (checkFlags(CG_NODE_FLAGS_FORMAL_PARAM))
+    ostr << " FPARAM";
+  if (checkFlags(CG_NODE_FLAGS_ACTUAL_PARAM))
+    ostr << " APARAM";
+  if (checkFlags(CG_NODE_FLAGS_FORMAL_RETURN))
+    ostr << " FRETURN";
+  if (checkFlags(CG_NODE_FLAGS_ACTUAL_RETURN))
+    ostr << " ARETURN";
+  if (checkFlags(CG_NODE_FLAGS_ICALL))
+    ostr << " ICALL";
+  ostr << " ]" << endl;
+}
+
 void
 ConstraintGraphNode::NodeInfo::print(FILE *file)
 {
@@ -831,6 +857,16 @@ ConstraintGraphNode::NodeInfo::print(FILE *file)
   fprintf(file, " GBL: "); _pointsToGBL.print(file);
   fprintf(file, " HZ: "); _pointsToHZ.print(file);
   fprintf(file, " DN: "); _pointsToDN.print(file);
+}
+
+void
+ConstraintGraphNode::NodeInfo::print(ostream &ostr)
+{
+  ostr << " sym: ";
+  ostr << " offset: " << offset() << endl
+       <<  "GBL: " << pointsTo(CQ_GBL)
+       <<  " HZ: " << pointsTo(CQ_HZ)
+       << " DN: " << pointsTo(CQ_DN);
 }
 
 void
@@ -850,6 +886,21 @@ StInfo::print(FILE *file)
   fprintf(file, " first: %d\n", _firstOffset->id());
 }
 
+void StInfo::print(ostream& str)
+{
+  str << "varSize: " << _varSize << " modulus: " << _modulus;
+  str << " [";
+  if (checkFlags(CG_ST_FLAGS_GLOBAL))
+    str << "GLOBAL";
+  if (checkFlags(CG_ST_FLAGS_TEMP))
+    str << " TEMP";
+  if (checkFlags(CG_ST_FLAGS_HEAP))
+    str << " HEAP";
+  if (checkFlags(CG_ST_FLAGS_NOCNTXT))
+    str << " CI";
+  str << "]";
+  str << " first: " << _firstOffset->id() << endl;
+}
 
 void 
 ConstraintGraphEdge::move(ConstraintGraphNode * newSrc,
@@ -912,7 +963,10 @@ ConstraintGraphEdge::EdgeInfo::print(FILE *file) const
     qs = "GBL";
     break;
   }
-  fprintf(file, "%s %s %d f:0x%x",es,qs,_sizeOrSkew,_flags);
+  fprintf(file, "%s %s %d [",es,qs,_sizeOrSkew);
+  if (checkFlags(CG_EDGE_PARENT_COPY))
+    fprintf(file, " PCOPY");
+  fprintf(file, " ]");
 }
 
 UINT32
@@ -924,4 +978,168 @@ ConstraintGraph::findMaxTypeSize()
   for (++ty; ty != Ty_tab.end(); ty++)
     size += TY_size(*ty);
   return size;
+}
+
+char *
+ConstraintGraphVCG::getNodeTitle(ConstraintGraphNode *cgNode)
+{ 
+  char buf[64];
+  sprintf(buf, "%d", cgNode->id());
+  char *name = (char *)MEM_POOL_Alloc(&_memPool, strlen(buf) + 1);
+  strcpy(name, buf);
+  return name;
+}
+
+char *
+ConstraintGraphVCG::getNodeLabel(ConstraintGraphNode *cgNode)
+{
+  char buf[64];
+  sprintf(buf, "%d:%s %d", cgNode->id(), ST_name(cgNode->st_idx()),
+          cgNode->offset()); 
+  char *label = (char *)MEM_POOL_Alloc(&_memPool, strlen(buf) + 1);
+  strcpy(label, buf);
+  return label;
+}
+
+char *
+ConstraintGraphVCG::getEdgeLabel(ConstraintGraphEdge *cgEdge)
+{
+  char buf[64];
+  char *qs;
+  switch (cgEdge->edgeQual()) {
+    case CQ_HZ:
+      qs = "HZ";
+      break;
+    case CQ_DN:
+      qs = "DN";
+      break;
+    case CQ_UP:
+      qs = "UP";
+      break;
+    case CQ_GBL:
+      qs = "GBL";
+      break;
+  }
+  
+  sprintf(buf, "%s %s%d", qs,
+          (cgEdge->edgeType() == ETYPE_SKEW ? "+" : ""),
+          (cgEdge->edgeType() == ETYPE_SKEW ? cgEdge->skew() : cgEdge->size()));
+  char *label = (char *)MEM_POOL_Alloc(&_memPool, strlen(buf) + 1);
+  strcpy(label, buf);
+  return label;
+}
+
+char *ConstraintGraphVCG::getNodeInfo(ConstraintGraphNode *cgNode)
+{
+  stringstream ss;
+  cgNode->print(ss);
+  cgNode->constraintGraph()->stInfo(cgNode->st_idx())->print(ss);
+  char *str = (char *)MEM_POOL_Alloc(&_memPool, strlen(ss.str().data()) + 1);
+  strcpy(str, ss.str().data());
+  return str;
+}
+
+void 
+ConstraintGraphVCG::buildVCG(ConstraintGraph *cg)
+{
+  hash_map<ConstraintGraphNode *, char *,
+           ConstraintGraphNode::hashCGNode,
+           ConstraintGraphNode::equalCGNode> nodeToTitleMap;
+  hash_map<ConstraintGraphNode *, char *,
+           ConstraintGraphNode::hashCGNode,
+           ConstraintGraphNode::equalCGNode>::const_iterator nodeToTitleMapIter;
+
+  VCGGraph vcg("ConstraintGraph VCG");
+  vcg.infoName(1, "ConstraintGraph");
+
+  for (CGIdToNodeMapIterator iter = cg->begin(); iter != cg->end(); iter++) {
+    ConstraintGraphNode *cgNode = iter->second;
+    char *srcTitle = NULL;
+    nodeToTitleMapIter = nodeToTitleMap.find(cgNode);
+    if (nodeToTitleMapIter == nodeToTitleMap.end()) {
+      srcTitle = getNodeTitle(cgNode);
+      char *label = getNodeLabel(cgNode);
+      char *nodeInfo = getNodeInfo(cgNode);
+      VCGNode *node = CXX_NEW(VCGNode(srcTitle, label, Ellipse), &_memPool);
+      vcg.addNode(*node);
+      node->info(1, nodeInfo);
+      nodeToTitleMap[cgNode]= srcTitle;
+    } else 
+      srcTitle = nodeToTitleMapIter->second;
+    
+    // Traverse all outgoing edges
+    for (CGEdgeSetIterator iter = cgNode->outCopySkewEdges().begin();
+         iter != cgNode->outCopySkewEdges().end(); iter++) {
+      ConstraintGraphEdge *edge = *iter;
+      ConstraintGraphNode *destNode = edge->destNode();
+      char *destTitle = NULL;
+      nodeToTitleMapIter = nodeToTitleMap.find(destNode);
+      if (nodeToTitleMapIter == nodeToTitleMap.end()) {
+        destTitle = getNodeTitle(destNode);
+        char *label = getNodeLabel(destNode);
+        char *nodeInfo = getNodeInfo(destNode);
+        VCGNode *node = CXX_NEW(VCGNode(destTitle, label, Ellipse), &_memPool);
+        vcg.addNode(*node);
+        node->info(1, nodeInfo);
+        nodeToTitleMap[destNode]= destTitle;
+      } else
+        destTitle = nodeToTitleMapIter->second;
+      // Add edge
+      VCGEdge *vcgEdge = CXX_NEW(VCGEdge(srcTitle, destTitle), &_memPool);
+      vcgEdge->color(Black);
+      vcgEdge->label(getEdgeLabel(edge));
+      vcg.addEdge(*vcgEdge);
+    }
+
+    for (CGEdgeSetIterator iter = cgNode->outLoadStoreEdges().begin();
+         iter != cgNode->outLoadStoreEdges().end(); iter++) {
+      ConstraintGraphEdge *edge = *iter;
+      ConstraintGraphNode *destNode = edge->destNode();
+      char *destTitle = NULL;
+      nodeToTitleMapIter = nodeToTitleMap.find(destNode);
+      if (nodeToTitleMapIter == nodeToTitleMap.end()) {
+        destTitle = getNodeTitle(destNode);
+        char *label = getNodeLabel(destNode);
+        char *nodeInfo = getNodeInfo(destNode);
+        VCGNode *node = CXX_NEW(VCGNode(destTitle, label, Ellipse), &_memPool);
+        vcg.addNode(*node);
+        node->info(1, nodeInfo);
+        nodeToTitleMap[destNode]= destTitle;
+      } else
+        destTitle = nodeToTitleMapIter->second;
+      // Add edge
+      VCGEdge *vcgEdge = CXX_NEW(VCGEdge(srcTitle, destTitle), &_memPool);
+      vcgEdge->color(edge->edgeType() == ETYPE_LOAD ? Red : Blue);
+      vcgEdge->label(getEdgeLabel(edge));
+      vcg.addEdge(*vcgEdge);
+    }
+
+    if (cgNode->parent() != cgNode) {
+      ConstraintGraphNode *parent = cgNode->parent();
+      char *pTitle = NULL;
+      nodeToTitleMapIter = nodeToTitleMap.find(parent);
+      if (nodeToTitleMapIter == nodeToTitleMap.end()) {
+        pTitle = getNodeTitle(parent);
+        char *label = getNodeLabel(parent);
+        char *nodeInfo = getNodeInfo(parent);
+        VCGNode *node = CXX_NEW(VCGNode(pTitle, label, Ellipse), &_memPool);
+        vcg.addNode(*node);
+        node->info(1, nodeInfo);
+        nodeToTitleMap[parent]= pTitle;
+      } else
+        pTitle = nodeToTitleMapIter->second;
+      VCGEdge *vcgEdge = CXX_NEW(VCGEdge(srcTitle, pTitle), &_memPool);
+      vcgEdge->color(Green);
+      vcgEdge->lineStyle(Dotted);
+      vcg.addEdge(*vcgEdge);
+    }
+  }
+
+  char filename[64];
+  sprintf(filename, "%s_cg.vcg", _fileNamePrefix);
+  FILE *vcgfile = fopen(filename, "w");
+  Is_True(vcgfile != NULL, ("Couldn't open vcgfile for writing"));
+
+  vcg.emit(vcgfile);
+  fclose(vcgfile);
 }

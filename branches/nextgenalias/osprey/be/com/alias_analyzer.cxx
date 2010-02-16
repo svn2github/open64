@@ -44,13 +44,11 @@ AliasAnalyzer::Delete_Alias_Analyzer()
 AliasAnalyzer::AliasAnalyzer() 
 {
   MEM_POOL_Initialize(&_memPool, "AliasAnalyzer_pool", FALSE);
-  MEM_POOL_Push(&_memPool);
   _aliasTagMap = IPA_WN_MAP32_Create(Current_Map_Tab, &_memPool);
 }
 
 AliasAnalyzer::~AliasAnalyzer() 
 {
-  MEM_POOL_Pop(&_memPool);
   MEM_POOL_Delete(&_memPool);
   IPA_WN_MAP_Delete(Current_Map_Tab, _aliasTagMap);
 }

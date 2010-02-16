@@ -2,6 +2,7 @@
 #define constraint_graph_INCLUDED
 
 #include <list>
+#include <iostream>
 #include <ext/hash_map>
 #include <ext/hash_set>
 #include "wn.h"
@@ -362,6 +363,7 @@ public:
   void constraintGraph(ConstraintGraph *cg) { _parentCG = cg; }
   
   void print(FILE *file);
+  void print(ostream &str);
 
   typedef struct
   {
@@ -444,6 +446,7 @@ private:
     }
 
     void print(FILE *file);
+    void print(ostream& ostr);
 
   private:
     ST_IDX _st_idx;
@@ -561,6 +564,7 @@ public:
   void firstOffset(ConstraintGraphNode *n) { _firstOffset = n; }
 
   void print(FILE *file);
+  void print(ostream& ostr);
 
 private:
   UINT32 _flags;
@@ -608,8 +612,8 @@ public:
   }
 
   // To facilitate traversal of the constraint graph
-  CGNodeToIdMapIterator begin() { return _cgNodeToIdMap.begin(); }
-  CGNodeToIdMapIterator end()   { return _cgNodeToIdMap.end(); }
+  CGIdToNodeMapIterator begin() { return _cgIdToNodeMap.begin(); }
+  CGIdToNodeMapIterator end()   { return _cgIdToNodeMap.end(); }
 
   ConstraintGraphNode *cgNode(CGNodeId cgNodeId)
   {
@@ -741,4 +745,32 @@ private:
   MEM_POOL *_memPool;
 };
 
+class ConstraintGraphVCG 
+{
+public:
+  static void dumpVCG(ConstraintGraph *cg, const char *fileNamePrefix)
+  {
+    ConstraintGraphVCG vcg(cg, fileNamePrefix);
+    vcg.buildVCG(cg);
+  }
+    
+private:
+
+  ConstraintGraphVCG(ConstraintGraph *cg, const char *fileNamePrefix)
+  {
+     MEM_POOL_Initialize(&_memPool, "AliasAnalyzer_pool", FALSE);
+     _fileNamePrefix = fileNamePrefix;
+  }
+
+  char *getNodeLabel(ConstraintGraphNode *cgNode);
+  char *getEdgeLabel(ConstraintGraphEdge *cgEdge);
+  char *getNodeTitle(ConstraintGraphNode *cgNode);
+  char *getNodeInfo(ConstraintGraphNode *cgNode);
+
+  void buildVCG(ConstraintGraph *cg);
+
+  const char *_fileNamePrefix;
+  MEM_POOL _memPool;
+};
+    
 #endif // constraint_graph_INCLUDED

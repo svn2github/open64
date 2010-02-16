@@ -25,7 +25,11 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
   _constraintGraph = CXX_NEW(ConstraintGraph(entryWN, &_memPool), &_memPool);
   _constraintGraph->print(stderr);
 
+  ConstraintGraphVCG::dumpVCG(_constraintGraph, "initial");
+
   _constraintGraph->solveConstraints();
+
+  ConstraintGraphVCG::dumpVCG(_constraintGraph, "final");
 
   fprintf(stderr,"Nystrom analysis...complete\n");
   _constraintGraph->print(stderr);
@@ -108,9 +112,9 @@ NystromAliasAnalyzer::meet(AliasTag dstTag, AliasTag srcTag)
     retTag = newAliasTag();
   mergePointsTo(retTag,srcTag);
 
-  fprintf(stderr, "meet: retTag: %d");
+  fprintf(stderr, "meet: retTag: %d", retTag);
   _aliasTagInfo[retTag]->print(stderr);
-  fprintf(stderr, " with srcTag: %d");
+  fprintf(stderr, " with srcTag: %d", srcTag);
   _aliasTagInfo[srcTag]->print(stderr);
   fprintf(stderr, "\n");
 
@@ -148,7 +152,7 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
     FmtAssert(cgNode != NULL, ("CGNodeId : %d not mapped to a "
               "ConstraintGraphNode\n", id));
 
-    if (cgNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+    if (!cgNode->checkFlags(CG_NODE_FLAGS_COMPLETE))
       continue;
 
     if (! (OPERATOR_is_scalar_istore(opr) || 
