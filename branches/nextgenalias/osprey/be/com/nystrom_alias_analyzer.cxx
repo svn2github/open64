@@ -46,7 +46,8 @@ NystromAliasAnalyzer::~NystromAliasAnalyzer() {}
 ALIAS_RESULT
 NystromAliasAnalyzer::aliased(AliasTag tag1, AliasTag tag2)
 {
-  if (tag1 == InvalidAliasTag || tag2 == InvalidAliasTag)
+  if (tag1 == InvalidAliasTag || tag1 == EmptyAliasTag ||
+      tag2 == InvalidAliasTag || tag2 == EmptyAliasTag)
     return POSSIBLY_ALIASED;
 
   PointsTo& ptsSet1 = pointsTo(tag1);
@@ -67,6 +68,7 @@ void
 NystromAliasAnalyzer::aliasedWithCall(ST *call, AliasTag symTag,
                                       BOOL &mod, BOOL &ref)
 {
+  mod = ref = TRUE;
 }
 
 BOOL

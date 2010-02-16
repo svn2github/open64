@@ -68,6 +68,7 @@ AliasAnalyzer::genAliasTag(ST *, INT64, INT64)
 void
 AliasAnalyzer::aliasedWithCall(ST *, AliasTag, BOOL &mod, BOOL &ref)
 {
+  mod = ref = TRUE;
 }
 
 AliasTag
