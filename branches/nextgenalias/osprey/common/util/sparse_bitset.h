@@ -491,6 +491,8 @@ public:
     return changed != 0;
   }
 
+  bool isEmpty() const { return _firstElem == NULL; }
+
   void print(FILE *file)
   {
     const char *comma = "";
