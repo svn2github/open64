@@ -50,16 +50,29 @@
 #define CG_NODE_FLAGS_COMPLETE      0x1000  // Points-to solution is complete
 #define CG_NODE_FLAGS_ADDR_TAKEN    0x2000  // Has the node been placed in a pts?
 
+// Call site flags
+#define CS_FLAGS_UNKNOWN     0x01
+#define CS_FLAGS_INDIRECT    0x02
+#define CS_FLAGS_HAS_MOD_REF 0x03
+
 // Map the WNs to CGNodeIds
 #define WN_MAP_CGNodeId_Set(wn,thing) \
  IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_CGNODE_ID, (wn), (INT32)(thing))
 #define WN_MAP_CGNodeId_Get(wn) \
  (CGNodeId)IPA_WN_MAP32_Get(Current_Map_Tab, WN_MAP_ALIAS_CGNODE_ID, (wn))
 
+// Map CALLs to CallSiteIds. We use the WN_MAP_ALIAS_CGNODE_ID
+// to do the same
+#define WN_MAP_CallSiteId_Set(wn,thing) \
+ IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_CGNODE_ID, (wn), (INT32)(thing))
+#define WN_MAP_CallSiteId_Get(wn) \
+ (CallSiteId)IPA_WN_MAP32_Get(Current_Map_Tab, WN_MAP_ALIAS_CGNODE_ID, (wn))
+
 using namespace std;
 using namespace __gnu_cxx;
 
 typedef UINT32 CGNodeId;
+typedef UINT32 CallSiteId;
 typedef SparseBitSet<CGNodeId> PointsTo;
 
 typedef enum {
@@ -587,6 +600,10 @@ typedef CGNodeToIdMap::const_iterator CGNodeToIdMapIterator;
 
 typedef CGStInfoMap::const_iterator CGStInfoMapIterator;
 
+class CallSite;
+typedef hash_map<CallSiteId, CallSite *> CallSiteMap;
+typedef CallSiteMap::const_iterator CallSiteIterator;
+
 class ConstraintGraph 
 {
 public:
@@ -597,12 +614,18 @@ public:
     _memPool(mpool)
   {
     nextCGNodeId = 1;
+    nextCallSiteId = 1;
     if (maxTypeSize == 0)
       maxTypeSize = findMaxTypeSize();
+    Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY, 
+            ("Expecting FUNC_ENTRY when building ConstraintGraph"));
+    _func_st_idx = WN_st_idx(entryWN);
     buildCG(entryWN);
   }
 
   static UINT32 totalCGNodes() { return nextCGNodeId; }
+
+  static CallSiteId getNextCallSiteId() { return nextCallSiteId++; }
 
   StInfo *stInfo(ST_IDX st_idx) const 
   { 
@@ -620,6 +643,14 @@ public:
   {
     CGIdToNodeMapIterator iter = _cgIdToNodeMap.find(cgNodeId);
     if (iter != _cgIdToNodeMap.end())
+      return iter->second;
+    return NULL;
+  }
+
+  CallSite *callSite(CallSiteId callSiteId)
+  {
+    CallSiteIterator iter = _callSiteMap.find(callSiteId);
+    if (iter != _callSiteMap.end())
       return iter->second;
     return NULL;
   }
@@ -649,13 +680,13 @@ private:
 
   // Constraint graph build methods
 
-  typedef enum {
-    ADDR,
-    COPY,
-  } ProcessExprResult;
+  // Generate unique CGNodeId per procedure
+  static CGNodeId nextCGNodeId;
 
-  static UINT32 nextCGNodeId;
+  // Generate unique CallSiteId per procedure
+  static CallSiteId nextCallSiteId;
 
+  // Max size of all types
   static UINT32 maxTypeSize;
 
   void buildCG(WN *entryWN);
@@ -671,7 +702,6 @@ private:
   ConstraintGraphNode *processLHSofStore(WN *stmt);
 
   ConstraintGraphNode *processExpr(WN *expr);
-  ConstraintGraphNode *processExpr(WN *expr, ProcessExprResult& res);
 
   ConstraintGraphNode *getCGNode(WN *wn);
 
@@ -743,6 +773,12 @@ private:
   // processed in order to achieve a solution to the current graph
   EdgeDelta _edgeDelta;
 
+  // ST_IDX of the function corresponding to this ConstraintGraph
+  ST_IDX _func_st_idx;
+
+  // Map callsites in this function
+  CallSiteMap _callSiteMap;
+
   MEM_POOL *_memPool;
 };
 
@@ -774,5 +810,73 @@ private:
   const char *_fileNamePrefix;
   MEM_POOL _memPool;
 };
-    
+
+// Class to map calls in the function
+class CallSite
+{
+public:
+  CallSite(bool isIndirect, MEM_POOL *memPool) :
+    _id(ConstraintGraph::getNextCallSiteId()),
+    _flags(isIndirect ? CS_FLAGS_INDIRECT : 0),
+    _return(0),
+    _mod(memPool),
+    _ref(memPool)
+  {}
+
+  CallSiteId id() const { return _id; }
+
+  void addParm(CGNodeId cgNodeId) { _parms.push_back(cgNodeId); }
+
+  void setReturn(CGNodeId cgNodeId) { _return = cgNodeId; }
+
+  ST_IDX st_idx() const
+  { 
+    FmtAssert(!checkFlags(CS_FLAGS_INDIRECT), 
+              ("Only direct calls have st_idx"));
+    return _callInfo.st_idx; 
+  }
+
+  CGNodeId cgNodeId() const 
+  {
+    FmtAssert(checkFlags(CS_FLAGS_INDIRECT), 
+              ("Only indirect calls have cgNodeId"));
+    return _callInfo.cgNodeId;
+  }
+
+  void st_idx(ST_IDX st_idx)
+  {
+    FmtAssert(!checkFlags(CS_FLAGS_INDIRECT), 
+              ("Only direct calls have st_idx"));
+    _callInfo.st_idx = st_idx;
+  }
+
+  void cgNodeId(CGNodeId cgNodeId)
+  {
+    FmtAssert(checkFlags(CS_FLAGS_INDIRECT), 
+              ("Only indirect calls have cgNodeId"));
+    _callInfo.cgNodeId = cgNodeId;
+  }
+
+  UINT8 flags() const { return _flags; }
+  bool checkFlags(UINT8 flag) const { return _flags & flag; }
+  void addFlags(UINT8 flag) { _flags |= flag; }
+
+  PointsTo &mod() { return _mod; }
+  PointsTo &ref() { return _ref; }
+
+  void print(FILE *f);
+
+private:
+  CallSiteId _id;
+  UINT8 _flags;
+  union {
+    ST_IDX st_idx;       // Symbol of the direct call
+    CGNodeId cgNodeId;   // For indirect calls, id of the node of the address
+  } _callInfo;          
+  list<CGNodeId> _parms;
+  CGNodeId _return;
+  PointsTo _mod;
+  PointsTo _ref;
+};
+
 #endif // constraint_graph_INCLUDED

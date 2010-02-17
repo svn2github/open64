@@ -88,6 +88,18 @@ NystromAliasAnalyzer::newAliasTag(void)
   return tag;
 }
 
+AliasTag 
+NystromAliasAnalyzer::newCallAliasTag(void) 
+{ 
+  AliasTag tag = _nextAliasTag;
+  CallAliasTagInfo *aliasTagInfo = 
+                    CXX_NEW(CallAliasTagInfo(&_memPool), &_memPool);
+  // Associate the AliasTagInfo with the aliasTag
+  _aliasTagInfo[_nextAliasTag] = aliasTagInfo;
+  _nextAliasTag = (AliasTag)((UINT32)_nextAliasTag + 1);
+  return tag;
+}
+
 // Unions the points-to set of srcTag into the points-to set of dstTag.
 void
 NystromAliasAnalyzer::mergePointsTo(AliasTag dstTag, AliasTag srcTag)
@@ -136,60 +148,87 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
     const OPCODE   opc = WN_opcode(wn);
     const OPERATOR opr = OPCODE_operator(opc);
 
-    CGNodeId id;
-    // For ILOADS, the points-to set is associated with the address
-    // of the iload. So get the CGNode corresponding to the address WN.
-    if (opr == OPR_ILDBITS || opr == OPR_MLOAD || opr == OPR_ILOAD)
-      id = WN_MAP_CGNodeId_Get(WN_kid0(wn));
-    else
-      id = WN_MAP_CGNodeId_Get(wn);
+    AliasTag aliasTag = InvalidAliasTag;
 
-    // WN not mapped to any CGNodes
-    if (id == 0)
-      continue;
-
-    ConstraintGraphNode *cgNode = _constraintGraph->cgNode(id);
-    if (cgNode->parent())
-      cgNode = cgNode->parent();
-    FmtAssert(cgNode != NULL, ("CGNodeId : %d not mapped to a "
-              "ConstraintGraphNode\n", id));
-
-    if (!cgNode->checkFlags(CG_NODE_FLAGS_COMPLETE))
-      continue;
-
-    if (! (OPERATOR_is_scalar_istore(opr) || 
-           OPERATOR_is_scalar_iload(opr) ||
-           OPERATOR_is_scalar_load(opr) ||
-           OPERATOR_is_scalar_store(opr) ||
-           opr == OPR_MSTORE || 
-           opr == OPR_MLOAD) )
-      continue;
-
-    AliasTag aliasTag = newAliasTag();
-    AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
-   
-    // Union all the points-to set
     if (OPERATOR_is_scalar_istore(opr) || 
         OPERATOR_is_scalar_iload(opr) ||
+        OPERATOR_is_scalar_load(opr) ||
+        OPERATOR_is_scalar_store(opr) ||
         opr == OPR_MSTORE || 
-        opr == OPR_MLOAD)
+        opr == OPR_MLOAD) 
     {
-      aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_GBL));
-      aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_DN));
-      aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_HZ));
-    } 
-    // For scalars, the points-to set contains the scalar itself
-    else if (OPERATOR_is_scalar_load(opr) || OPERATOR_is_scalar_store(opr))
-    {
-      aliasTagInfo->pointsTo().setBit(cgNode->id());
-    }
+      CGNodeId id;
+      // For ILOADS, the points-to set is associated with the address
+      // of the iload. So get the CGNode corresponding to the address WN.
+      if (opr == OPR_ILDBITS || opr == OPR_MLOAD || opr == OPR_ILOAD)
+        id = WN_MAP_CGNodeId_Get(WN_kid0(wn));
+      else
+        id = WN_MAP_CGNodeId_Get(wn);
 
+      // WN not mapped to any CGNodes
+      if (id == 0)
+        continue;
+
+      ConstraintGraphNode *cgNode = _constraintGraph->cgNode(id);
+      if (cgNode->parent())
+        cgNode = cgNode->parent();
+      FmtAssert(cgNode != NULL, ("CGNodeId : %d not mapped to a "
+                "ConstraintGraphNode\n", id));
+
+      if (!cgNode->checkFlags(CG_NODE_FLAGS_COMPLETE))
+        continue;
+
+      aliasTag = newAliasTag();
+      AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
+   
+      // Union all the points-to set
+      if (OPERATOR_is_scalar_istore(opr) || 
+          OPERATOR_is_scalar_iload(opr) ||
+          opr == OPR_MSTORE || 
+          opr == OPR_MLOAD)
+      {
+        aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_GBL));
+        aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_DN));
+        aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_HZ));
+      } 
+      // For scalars, the points-to set contains the scalar itself
+      else if (OPERATOR_is_scalar_load(opr) || OPERATOR_is_scalar_store(opr))
+      {
+        aliasTagInfo->pointsTo().setBit(cgNode->id());
+      }
+    } 
+    // For calls, get the mod/ref info from the callsite
+    else if (opr == OPR_ICALL || opr == OPR_VFCALL || opr == OPR_CALL)
+    {
+      CallSiteId id = WN_MAP_CallSiteId_Get(wn);
+
+      if (id == 0)
+        continue;
+
+      CallSite *cs = _constraintGraph->callSite(id);
+      FmtAssert(cs != NULL, ("CallSiteId : %d not mapped to a CallSite\n", id));
+
+      // Ignore if marked UNKNOWN or has no mod/ref information
+      if (cs->checkFlags(CS_FLAGS_UNKNOWN) || 
+          !cs->checkFlags(CS_FLAGS_HAS_MOD_REF))
+        continue;
+
+      aliasTag = newCallAliasTag();
+      CallAliasTagInfo *callAliasTagInfo = 
+                       (CallAliasTagInfo *)_aliasTagInfo[aliasTag];
+
+      callAliasTagInfo->mod().setUnion(cs->mod());
+      callAliasTagInfo->ref().setUnion(cs->mod());
+    } 
+    else
+      continue;
+       
     // Map the WN to the new aliasTag
     setAliasTag(wn, aliasTag);
 
     fprintf(stderr, "mapping aliasTag %d to aliasTagInfo: ", 
             (UINT32)aliasTag);
-    aliasTagInfo->print(stderr);
+    _aliasTagInfo[aliasTag]->print(stderr);
     fprintf(stderr, "\n");
   }
 }

@@ -20,7 +20,7 @@ public:
 
   PointsTo &pointsTo() { return _pointsToSet; }
 
-  void print(FILE *file) 
+  virtual void print(FILE *file) 
   {
     fprintf(file, "[");
     _pointsToSet.print(file);
@@ -29,6 +29,32 @@ public:
 
 private:
   PointsTo _pointsToSet;  // Set of CGNodeIds associated with this alias tag 
+};
+
+// Class to map AliasTag of a call to its mod/ref set
+class CallAliasTagInfo : public AliasTagInfo
+{
+public:
+  CallAliasTagInfo(MEM_POOL *memPool) :
+    AliasTagInfo(memPool),
+    _refPointsToSet(memPool)
+  {}
+
+  void print(FILE *file) 
+  {
+    fprintf(file, "mod: [");
+    mod().print(file);
+    fprintf(file, "]");
+    fprintf(file, " ref: [");
+    ref().print(file);
+    fprintf(file, "]");
+  }
+
+  PointsTo &mod() { return pointsTo(); }
+  PointsTo &ref() { return _refPointsToSet; }
+
+private:
+  PointsTo _refPointsToSet;
 };
 
 class NystromAliasAnalyzer : public AliasAnalyzer {
@@ -76,6 +102,9 @@ private:
    // alias information.  The underlying points-to set does not
    // have an associated symbol or perhaps even a constraint node
    AliasTag newAliasTag(void);
+
+   // Create a new AliasTag for a call
+   AliasTag newCallAliasTag(void);
 
    // Traverse the whirl tree starting from the func entry
    // and for each WN for which there is a valid CGNodeId, create

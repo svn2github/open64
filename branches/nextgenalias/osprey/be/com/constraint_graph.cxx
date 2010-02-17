@@ -6,7 +6,8 @@
 #include "targ_sim.h"
 #include "ir_reader.h"
 
-UINT32 ConstraintGraph::nextCGNodeId = 1;
+CGNodeId ConstraintGraph::nextCGNodeId = 1;
+CallSiteId ConstraintGraph::nextCallSiteId = 1;
 UINT32 ConstraintGraph::maxTypeSize = 0;
 
 static bool
@@ -184,9 +185,8 @@ WN *
 ConstraintGraph::handleAssignment(WN *stmt)
 {
   WN *rhs = WN_kid0(stmt);
-  ProcessExprResult resRHS;
   // process RHS
-  ConstraintGraphNode *cgNodeRHS = processExpr(rhs, resRHS);
+  ConstraintGraphNode *cgNodeRHS = processExpr(rhs);
   // process LHS
   ConstraintGraphNode *cgNodeLHS = processLHSofStore(stmt);
 
@@ -201,44 +201,13 @@ ConstraintGraph::handleAssignment(WN *stmt)
   OPERATOR opr = WN_operator(stmt);
 
   if (OPERATOR_is_scalar_store(opr)) {
-    switch (resRHS) {
-      case ADDR:
-        // y is a direct address: x = &a, add a to the points-to set of x
-        if (stInfo(cgNodeRHS->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
-          cgNodeLHS->addPointsTo(cgNodeRHS, CQ_GBL);
-        else
-          cgNodeLHS->addPointsTo(cgNodeRHS, CQ_HZ);
-        break;
-      case COPY:
-        bool added = false;
-        // add a copy edge x <-- y
-        addEdge(cgNodeRHS, cgNodeLHS, ETYPE_COPY, CQ_HZ,
-                WN_object_size(stmt), added);
-        break;
-    }
+    bool added = false;
+    // add a copy edge x <-- y
+    addEdge(cgNodeRHS, cgNodeLHS, ETYPE_COPY, CQ_HZ,
+            WN_object_size(stmt), added);
     if (stmtStoresReturnValueToCaller(stmt))
       cgNodeLHS->addFlags(CG_NODE_FLAGS_FORMAL_RETURN);
   } else if (opr == OPR_ISTORE || opr == OPR_ISTBITS || opr == OPR_MSTORE) {
-    switch (resRHS) {
-      case ADDR: {
-        // y is a direct address: *x = &a
-        // Create a temp symbol t and add a to the points-to set of t.
-        // Make t the new y
-        ST *tmpST = Gen_Temp_Named_Symbol(WN_ty(WN_kid0(stmt)), "cgTmp", 
-                                          CLASS_VAR, SCLASS_AUTO);
-        ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tmpST), 0);
-        stInfo(tmpCGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
-        if (stInfo(cgNodeRHS->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
-          tmpCGNode->addPointsTo(cgNodeRHS, CQ_GBL);
-        else
-          tmpCGNode->addPointsTo(cgNodeRHS, CQ_HZ);
-        cgNodeRHS = tmpCGNode;
-        break;
-      }
-      case COPY:
-        // Nothing to do here
-        break;
-    }
     bool added = false;
     // Add store edge x *=<-- y
     addEdge(cgNodeRHS, cgNodeLHS, ETYPE_STORE, CQ_HZ,
@@ -248,29 +217,30 @@ ConstraintGraph::handleAssignment(WN *stmt)
   return WN_next(stmt);
 }
 
-// A version of processExpr where I don't care about the ProcessExprResult
 ConstraintGraphNode *
 ConstraintGraph::processExpr(WN *expr)
-{
-  ProcessExprResult res;
-  return processExpr(expr, res);
-}
-
-ConstraintGraphNode *
-ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
 {
   OPCODE opc = WN_opcode(expr);
   OPERATOR opr = OPCODE_operator(opc);
   if (OPCODE_is_leaf(opc)) {
     ConstraintGraphNode *cgNode;
     switch (opr) {
-      case OPR_LDA:
-        res = ADDR;
+      case OPR_LDA: {
         cgNode = getCGNode(expr);
+        // Create a temp symbol t and add a to the points-to set of t.
+        ST *tmpST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgTmp", 
+                                          CLASS_VAR, SCLASS_AUTO);
+        ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tmpST), 0);
+        stInfo(tmpCGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
+        if (stInfo(cgNode->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
+          tmpCGNode->addPointsTo(cgNode, CQ_GBL);
+        else
+          tmpCGNode->addPointsTo(cgNode, CQ_HZ);
+        cgNode = tmpCGNode;
         break;
+      }
       case OPR_LDID:
       case OPR_LDBITS:
-        res = COPY;
         cgNode = getCGNode(expr);
         break;
       case OPR_IDNAME:
@@ -287,7 +257,6 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
       case OPR_ILDBITS:
       case OPR_MLOAD:
       case OPR_ILOAD: {
-        res = COPY;
         ConstraintGraphNode *addrCGNode = processExpr(WN_kid0(expr));
         // If the number of bytes is a const, treat it just like an iload
         if (opr == OPR_MLOAD && (WN_operator(WN_kid1(expr)) != OPR_INTCONST)) {
@@ -374,7 +343,6 @@ ConstraintGraph::processExpr(WN *expr, ProcessExprResult& res)
         bool added = false;
         addEdge(kidCGNode, tmpCGNode, ETYPE_SKEW, CQ_HZ, 
                 WN_const_val(intConst), added);
-        res = COPY;
         return tmpCGNode;
       }
     }
@@ -435,28 +403,9 @@ ConstraintGraph::processLHSofStore(WN *stmt)
 ConstraintGraphNode *
 ConstraintGraph::processParam(WN *wn)
 {
-  ProcessExprResult res;
-  ConstraintGraphNode *cgNodeKid = processExpr(WN_kid0(wn), res);
+  ConstraintGraphNode *cgNodeKid = processExpr(WN_kid0(wn));
   if (cgNodeKid) {
-    if (cgNodeKid->checkFlags(CG_NODE_FLAGS_UNKNOWN))
-      return cgNodeKid;
-    switch (res) {
-      case ADDR: {
-        // kid is a direct address 'a'; 
-        // Create a temp symbol t and add a to the points-to set of t.
-        ST *tmpST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgTmp", 
-                                          CLASS_VAR, SCLASS_AUTO);
-        ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tmpST), 0);
-        stInfo(tmpCGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
-        if (stInfo(cgNodeKid->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
-          tmpCGNode->addPointsTo(cgNodeKid, CQ_GBL);
-        else
-          tmpCGNode->addPointsTo(cgNodeKid, CQ_HZ);
-        return tmpCGNode;
-      }
-      case COPY:
-        return cgNodeKid;
-    }
+    return cgNodeKid;
   } else {
     ST *tmpST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgTmp", 
                                       CLASS_VAR, SCLASS_AUTO);
@@ -476,11 +425,16 @@ ConstraintGraph::handleCall(WN *callWN)
   INT numParms;
   ConstraintGraphNode *heapCGNode = NULL;
 
-  if (opr == OPR_ICALL) {
+  ConstraintGraphNode *cgNode = NULL;
+  // For indirect calls, process the address of the call
+  if (opr == OPR_ICALL || opr == OPR_VFCALL) {
     numParms = WN_kid_count(callWN) - 1;
-    ConstraintGraphNode *cgNode = 
-                   processExpr(WN_kid(callWN, WN_kid_count(callWN) - 1));
-    cgNode->addFlags(CG_NODE_FLAGS_ICALL);
+    cgNode = processExpr(WN_kid(callWN, WN_kid_count(callWN) - 1));
+    if (cgNode) {
+      cgNode->addFlags(CG_NODE_FLAGS_ICALL);
+      WN_MAP_CGNodeId_Set(WN_kid(callWN, WN_kid_count(callWN) - 1), 
+                          cgNode->id());
+    }
   } else {
     numParms = WN_kid_count(callWN);
     if (calleeReturnsNewMemory(callWN)) {
@@ -493,12 +447,30 @@ ConstraintGraph::handleCall(WN *callWN)
     }
   }
 
+  // Create a new call site
+  CallSite *callSite = CXX_NEW(CallSite(opr == OPR_ICALL || opr == OPR_VFCALL,
+                                        _memPool), _memPool);
+  _callSiteMap[callSite->id()] = callSite;
+  WN_MAP_CallSiteId_Set(callWN, callSite->id());
+
+  // For indirect calls, set the CGNodeId to the ConstraintGraphNode
+  // corresponding to the address of the call. For direct calls,
+  // set the st_idx of call. Else, mark UNKNOWN
+  if ((opr == OPR_ICALL || opr == OPR_VFCALL) && cgNode)
+    callSite->cgNodeId(cgNode->id());
+  else if (opr == OPR_CALL)
+    callSite->st_idx(WN_st_idx(callWN));
+  else
+    callSite->addFlags(CS_FLAGS_UNKNOWN);
+  
+  // Process params
   for (UINT i = 0; i < numParms; ++i) {
     WN *parmWN = WN_kid(callWN, i);
     if (WN_parm_flag(parmWN) & WN_PARM_DUMMY)
       continue;
     ConstraintGraphNode *cgNode = processParam(parmWN);
     cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_PARAM);
+    callSite->addParm(cgNode->id());
     WN_MAP_CGNodeId_Set(parmWN, cgNode->id());
   }
 
@@ -509,6 +481,8 @@ ConstraintGraph::handleCall(WN *callWN)
 
     if (heapCGNode && !cgNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
       cgNode->addPointsTo(heapCGNode, CQ_HZ);
+
+    callSite->setReturn(cgNode->id());
 
     stmt = WN_next(stmt);
   }
@@ -629,6 +603,10 @@ ConstraintGraph::print(FILE *file)
     stInfo(iter->first->st_idx())->print(file);
     fprintf(stderr, "\n ");
   }
+
+  for (CallSiteIterator iter = _callSiteMap.begin(); 
+       iter != _callSiteMap.end(); iter++)
+    iter->second->print(file);
 }
 
 template <typename T>
@@ -979,6 +957,31 @@ ConstraintGraph::findMaxTypeSize()
   return size;
 }
 
+void
+CallSite::print(FILE *file)
+{
+  fprintf(file, "callsite: %d", _id);
+  fprintf(file, " [");
+  if (checkFlags(CS_FLAGS_UNKNOWN))
+    fprintf(file, " %s", " UNKNOWN");
+  if (checkFlags(CS_FLAGS_INDIRECT))
+    fprintf(file, " %s", " INDIRECT");
+  fprintf(file, " ]");
+  if (checkFlags(CS_FLAGS_INDIRECT))
+    fprintf(file, " cgNodeid: %d", cgNodeId());
+  else if (!checkFlags(CS_FLAGS_UNKNOWN))
+    fprintf(file, " st: %s", ST_name(st_idx()));
+  list<CGNodeId>::iterator iter;
+  fprintf(file, " parms: [");
+  for (iter = _parms.begin(); iter != _parms.end(); iter++)
+    fprintf(file, " %d", *iter);
+  fprintf(file, " ]");
+  fprintf(file, " ret: %d", _return);
+  fprintf(file, " mod: ["); _mod.print(file); fprintf(file, "]");
+  fprintf(file, " ref: ["); _ref.print(file); fprintf(file, "]");
+  fprintf(file, "\n");
+}
+   
 char *
 ConstraintGraphVCG::getNodeTitle(ConstraintGraphNode *cgNode)
 { 
