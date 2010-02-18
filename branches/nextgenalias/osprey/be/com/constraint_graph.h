@@ -21,6 +21,7 @@
                                     // propagation is performed.
 
 #define CG_NODE_ALL_OFFSETS (-1)
+#define CG_PREG_SCALE       (Pointer_Size)
 
 // Symbol specific flags
 #define CG_ST_FLAGS_HEAP      0x00000002 // heap var
