@@ -14,10 +14,7 @@ static bool
 exprMayPoint(WN *const wn)
 {
   TYPE_ID desc = WN_desc(wn);
-  if ((MTYPE_byte_size(desc) != 0 && MTYPE_byte_size(desc) < Pointer_Size) ||
-      MTYPE_is_float(desc) ||
-      MTYPE_is_complex(desc) || 
-      MTYPE_is_vector(desc)) {
+  if (MTYPE_is_float(desc) || MTYPE_is_complex(desc) || MTYPE_is_vector(desc)) {
      return false;
   }
   return true;
@@ -207,9 +204,9 @@ ConstraintGraph::handleAssignment(WN *stmt)
   if (!exprMayPoint(stmt))
     return WN_next(stmt);
   
-  if (cgNodeRHS == NULL || cgNodeRHS->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
-    cgNodeLHS->addFlags(CG_NODE_FLAGS_UNKNOWN);
-    return WN_next(stmt);
+  if (cgNodeRHS == NULL) {
+    cgNodeRHS = genTempCGNode();
+    cgNodeRHS->addFlags(CG_NODE_FLAGS_UNKNOWN);
   }
 
   OPERATOR opr = WN_operator(stmt);
@@ -278,8 +275,20 @@ ConstraintGraph::processExpr(WN *expr)
           return NULL;
         if (!exprMayPoint(expr))
           return NULL;
-        // Create a new temp preg symbol
-        ConstraintGraphNode *tmpCGNode = genTempCGNode();
+        // Create a new temp CGNode
+        ConstraintGraphNode *tmpCGNode;
+        if (opr == OPR_MLOAD) {
+          // For MLOADS, create a symbol, since it can be greater
+          // than pointer size
+          ST *tmpST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgSym",
+                                            CLASS_VAR, SCLASS_AUTO);
+          ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(tmpST), 0);
+          stInfo(tmpCGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
+          stInfo(tmpCGNode->st_idx())->varSize(WN_const_val(WN_kid1(expr)));
+          stInfo(tmpCGNode->st_idx())->modulus(WN_const_val(WN_kid1(expr)));
+        } else {
+          tmpCGNode = genTempCGNode();
+        }
         WN_MAP_CGNodeId_Set(expr, tmpCGNode->id());
         // For a non-zero offset, we need to construct a new tmp preg, t1
         // such that t1 = y + offset (a skew)
@@ -813,9 +822,14 @@ void ConstraintGraphNode::print(ostream& ostr)
   ostr << "CGNodeId: " << id();
   _nodeInfo.print(ostr);
   if (_nextOffset)
-    ostr << " nextCGNodeId: " << _nextOffset->_id;
+    ostr << "nextCGNodeId: " << _nextOffset->_id;
+  else
+    ostr << "nextCGNodeId: null";
   if (parent())
-    ostr << endl << "parent: " << parent()->_id << endl;
+    ostr << " parent: " << parent()->_id;
+  else
+    ostr << " parent: null";
+  ostr << endl;
   ostr << "CGNode flags: [";
   if (checkFlags(CG_NODE_FLAGS_UNKNOWN))
     ostr << " UNKNOWN";
@@ -840,13 +854,14 @@ ConstraintGraphNode::NodeInfo::print(FILE *file)
   fprintf(file, " offset: %d", _offset);
   if (ST_class(&St_Table[_st_idx]) == CLASS_PREG) {
     PREG_NUM p = PREG_NUM(_offset / CG_PREG_SCALE);
-    fprintf(file, " preg:%d:%s", p, !Preg_Is_Dedicated(p) ? Preg_Name(p) 
+    fprintf(file, " preg:%d,%s", p, !Preg_Is_Dedicated(p) ? Preg_Name(p) 
                                                           : "dedicated");
   }
   fprintf(file, "\n");
   fprintf(file, " GBL: "); _pointsToGBL.print(file);
   fprintf(file, " HZ: "); _pointsToHZ.print(file);
   fprintf(file, " DN: "); _pointsToDN.print(file);
+  fprintf(file, "\n");
 }
 
 void
@@ -857,13 +872,14 @@ ConstraintGraphNode::NodeInfo::print(ostream &ostr)
   ostr << "offset: " << _offset;
   if (ST_class(&St_Table[_st_idx]) == CLASS_PREG) {
     PREG_NUM p = PREG_NUM(_offset / CG_PREG_SCALE);
-    ostr << " preg:" << p << ":"
+    ostr << " preg:" << p << ","
          << (!Preg_Is_Dedicated(p) ? Preg_Name(p) : "dedicated");
   }
   ostr << endl;
   ostr << "GBL: " << pointsTo(CQ_GBL)
        << " HZ: " << pointsTo(CQ_HZ)
-       << " DN: " << pointsTo(CQ_DN);
+       << " DN: " << pointsTo(CQ_DN)
+       << endl;
 }
 
 void
