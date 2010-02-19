@@ -706,6 +706,8 @@ private:
 
   ConstraintGraphNode *getCGNode(WN *wn);
 
+  ConstraintGraphNode *genTempCGNode();
+
   UINT32 findMaxTypeSize();
 
   // Constraint graph solver
