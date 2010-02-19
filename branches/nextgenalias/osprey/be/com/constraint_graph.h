@@ -44,12 +44,16 @@
 #define CG_NODE_FLAGS_FORMAL_PARAM  0x0008 // formal param
 #define CG_NODE_FLAGS_ACTUAL_PARAM  0x0010 // formal param
 #define CG_NODE_FLAGS_ICALL         0x0020 // determines indirect-calls
+
 #define CG_NODE_FLAGS_VISITED       0x0100  // Used by cycle detection
 #define CG_NODE_FLAGS_SCCMEMBER     0x0200  // Used by cycle detection
 #define CG_NODE_FLAGS_INKVALMAP     0x0400  // Used by cycle detection
 #define CG_NODE_FLAGS_ADDRTAKEN     0x0800
 #define CG_NODE_FLAGS_COMPLETE      0x1000  // Points-to solution is complete
 #define CG_NODE_FLAGS_ADDR_TAKEN    0x2000  // Has the node been placed in a pts?
+#define CG_NODE_FLAGS_SET_INKCYCLE  0x4000  // Used by the CG builder to set
+                                            // the in-cycle on nodes based
+                                            // on access size
 
 // Call site flags
 #define CS_FLAGS_UNKNOWN     0x01

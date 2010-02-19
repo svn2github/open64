@@ -283,6 +283,26 @@ ConstraintGraph::processExpr(WN *expr)
           return NULL;
         if (!exprMayPoint(expr))
           return NULL;
+        // Set the inKCycle if the addrCGNode has INKCYCLE flag set
+        // This would happen if we have unknown skews or pointers converted to
+        // ARRAYS accesses. The value is based on the desc type of the ILOAD,
+        // which is the number of bytes the iload is actually loading
+        // from memory
+        TYPE_ID desc = WN_desc(expr);
+        if (addrCGNode->checkFlags(CG_NODE_FLAGS_SET_INKCYCLE)) {
+          if (opr == OPR_MLOAD)
+            addrCGNode->inKCycle(WN_const_val(WN_kid1(expr)));
+          else
+            addrCGNode->inKCycle(MTYPE_byte_size(desc));
+          // Adjust the points to set of addrCGNode based on the inKCycle value
+          for (PointsToIterator pti(addrCGNode); pti != 0; ++pti) {
+            PointsTo &ptsTo = *pti;
+            PointsTo tmp(_memPool);
+            adjustPointsToForKCycle(addrCGNode->inKCycle(), ptsTo, tmp);
+            ptsTo.clear();
+            ptsTo.setUnion(tmp);
+          }
+        }
         // Create a new temp CGNode
         ConstraintGraphNode *tmpCGNode;
         if (opr == OPR_MLOAD) {
@@ -321,7 +341,13 @@ ConstraintGraph::processExpr(WN *expr)
   } else if (opr == OPR_ARRAY) {
     for (INT i = 1; i < WN_kid_count(expr); i++)
       processExpr(WN_kid(expr, i));
-    return processExpr(WN_kid0(expr));
+    ConstraintGraphNode *cgNode = processExpr(WN_kid0(expr));
+    // Since we do not know how many bytes will be read/written to
+    // the reference unless we look at the parent, we conservatively
+    // set it to 1 to let the parent know that we need to set its
+    // k cycle based on the access size.
+    cgNode->addFlags(CG_NODE_FLAGS_SET_INKCYCLE);
+    return cgNode;
   } else {
     for (INT i = 0; i < WN_kid_count(expr); i++) {
       WN *kid = WN_kid(expr, i);
@@ -346,7 +372,7 @@ ConstraintGraph::processExpr(WN *expr)
           !kid0CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
         kidCGNode = kid0CGNode;
       else if (kid1CGNode != NULL && 
-               kid1CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+               !kid1CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
         kidCGNode = kid1CGNode;
      
       WN *intConst = NULL;
@@ -363,6 +389,18 @@ ConstraintGraph::processExpr(WN *expr)
         addEdge(kidCGNode, tmpCGNode, ETYPE_SKEW, CQ_HZ, 
                 WN_const_val(intConst), added);
         return tmpCGNode;
+      }
+
+      // If we do not have an INTCONST, and if the other kid is null/unknown
+      // we have some unknown skew. 
+      if (kidCGNode) {
+        if (kid0CGNode == NULL || 
+            kid0CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN) ||
+            kid1CGNode == NULL || 
+            kid1CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
+          kidCGNode->addFlags(CG_NODE_FLAGS_SET_INKCYCLE);
+          return kidCGNode;
+        }
       }
     }
   }
@@ -381,13 +419,34 @@ ConstraintGraph::processLHSofStore(WN *stmt)
   if (OPERATOR_is_scalar_store(opr)) {
     cgNodeLHS = getCGNode(stmt);
   } else if (opr == OPR_ISTORE || opr == OPR_ISTBITS || opr == OPR_MSTORE) {
-    cgNodeLHS = processExpr(WN_kid1(stmt));
+    ConstraintGraphNode *addrCGNode = NULL;
+    addrCGNode = processExpr(WN_kid1(stmt));
     // If the number of bytes is a const, treat it just like an istore
     if (opr == OPR_MSTORE && (WN_operator(WN_kid2(stmt)) != OPR_INTCONST)) {
       processExpr(WN_kid2(stmt));
-      cgNodeLHS = NULL;
+      addrCGNode = NULL;
     }
-    if (cgNodeLHS != NULL) {
+    if (addrCGNode != NULL) {
+      // Set the inKCycle if the addrCGNode has INKCYCLE flag set
+      // This would happen if we have unknown skews or pointers converted to
+      // ARRAYS accesses. The value is based on the desc type of the ISTORE,
+      // which is the number of bytes the istore is actually storing
+      // into memory
+      TYPE_ID desc = WN_desc(stmt);
+      if (addrCGNode->checkFlags(CG_NODE_FLAGS_SET_INKCYCLE)) {
+        if (opr == OPR_MLOAD)
+          addrCGNode->inKCycle(WN_const_val(WN_kid1(stmt)));
+        else
+          addrCGNode->inKCycle(MTYPE_byte_size(desc));
+        // Adjust the points to set of addrCGNode based on the inKCycle value
+        for (PointsToIterator pti(addrCGNode); pti != 0; ++pti) {
+          PointsTo &ptsTo = *pti;
+          PointsTo tmp(_memPool);
+          adjustPointsToForKCycle(addrCGNode->inKCycle(), ptsTo, tmp);
+          ptsTo.clear();
+          ptsTo.setUnion(tmp);
+        }
+      }
       // For a non-zero offset, we need to construct a new tmp preg, t1
       // such that t1 = x + offset (a skew)
       if (WN_offset(stmt) != 0) {
@@ -395,9 +454,10 @@ ConstraintGraph::processLHSofStore(WN *stmt)
         bool added = false;
         addEdge(cgNodeLHS, tmp1CGNode, ETYPE_SKEW, CQ_HZ, 
                 WN_offset(stmt), added);
-        cgNodeLHS = tmp1CGNode;
+        addrCGNode = tmp1CGNode;
       }
     }
+    cgNodeLHS = addrCGNode;
   }
 
   if (cgNodeLHS == NULL) {
