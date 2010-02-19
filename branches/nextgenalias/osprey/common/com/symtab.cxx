@@ -2017,7 +2017,7 @@ std::ostream& operator<<(std::ostream &os, const ST &st )
 
     if (!verbose) {
 	/* quick address */
-        os << " @ 0x" << std::hex << st.offset;
+        os << " @ 0x" << std::hex << st.offset << std::dec;
 	if (st.base_idx != 0)
             os << "(" << ST_name (st.base_idx) << ")";
     }
@@ -2130,7 +2130,7 @@ std::ostream& operator<<(std::ostream &os, const ST &st )
         os << std::endl;
 
 	mUINT64 flags = st.flags;
-        os << "\t\tFlags:\t0x" << std::hex << flags;
+        os << "\t\tFlags:\t0x" << std::hex << flags << std::dec;
 	if (flags) {
 	    if (flags & ST_IS_WEAK_SYMBOL)	os << " weak";
 	    if (flags & ST_IS_SPLIT_COMMON)	os << " split_common";
@@ -2166,7 +2166,7 @@ std::ostream& operator<<(std::ostream &os, const ST &st )
 #ifdef KEY
 	mUINT64 flags_ext = st.flags_ext;
 	if (flags_ext) {
-            os << "\t\tFlags_ext:\t0x" << std::hex << flags_ext;
+            os << "\t\tFlags_ext:\t0x" << std::hex << flags_ext << std::dec;
 	    if (flags_ext & ST_ONE_PER_PU)
 		os << " one_per_pu";
 	    if (flags_ext & ST_COPY_CONSTRUCTOR_ST)

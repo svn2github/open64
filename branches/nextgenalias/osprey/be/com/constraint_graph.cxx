@@ -229,6 +229,7 @@ ConstraintGraph::processExpr(WN *expr)
         cgNode = getCGNode(expr);
         // Create a temp preg t and add a to the points-to set of t.
         PREG_NUM preg = Create_Preg(Pointer_type, "_cgPreg");
+        preg *= CG_PREG_SCALE;
         ST *preg_st = MTYPE_To_PREG(Pointer_type);
         ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(preg_st), preg);
         stInfo(tmpCGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
@@ -269,6 +270,7 @@ ConstraintGraph::processExpr(WN *expr)
           return NULL;
         // Create a new temp preg symbol
         PREG_NUM preg = Create_Preg(Pointer_type, "_cgPreg");
+        preg *= CG_PREG_SCALE;
         ST *preg_st = MTYPE_To_PREG(Pointer_type);
         ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(preg_st), preg);
         stInfo(tmpCGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
@@ -277,6 +279,7 @@ ConstraintGraph::processExpr(WN *expr)
         // such that t1 = y + offset (a skew)
         if (WN_offset(expr) != 0) {
           PREG_NUM preg = Create_Preg(Pointer_type, "_cgPreg");
+          preg *= CG_PREG_SCALE;
           ST *preg_st1 = MTYPE_To_PREG(Pointer_type);
           ConstraintGraphNode *tmp1CGNode = 
                                getCGNode(ST_st_idx(preg_st1), preg);
@@ -337,6 +340,7 @@ ConstraintGraph::processExpr(WN *expr)
       if (kidCGNode && intConst) {
         // Create a new tmp preg
         PREG_NUM preg = Create_Preg(Pointer_type, "_cgPreg");
+        preg *= CG_PREG_SCALE;
         ST *preg_st = MTYPE_To_PREG(Pointer_type);
         ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(preg_st), preg);
         stInfo(tmpCGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
@@ -374,6 +378,7 @@ ConstraintGraph::processLHSofStore(WN *stmt)
       // such that t1 = x + offset (a skew)
       if (WN_offset(stmt) != 0) {
         PREG_NUM preg = Create_Preg(Pointer_type, "_cgPreg");
+        preg *= CG_PREG_SCALE;
         ST *preg_st = MTYPE_To_PREG(Pointer_type);
         ConstraintGraphNode *tmp1CGNode = getCGNode(ST_st_idx(preg_st), preg);
         stInfo(tmp1CGNode->st_idx())->addFlags(CG_ST_FLAGS_TEMP);
@@ -388,6 +393,7 @@ ConstraintGraph::processLHSofStore(WN *stmt)
   if (cgNodeLHS == NULL) {
     // Create a temp preg node and mark it UNKNOWN
     PREG_NUM preg = Create_Preg(Pointer_type, "_cgPreg");
+    preg *= CG_PREG_SCALE;
     ST *preg_st = MTYPE_To_PREG(Pointer_type);
     ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(preg_st), preg);
     tmpCGNode->addFlags(CG_NODE_FLAGS_UNKNOWN);
@@ -409,6 +415,7 @@ ConstraintGraph::processParam(WN *wn)
   } else {
     // Create a temp preg and set it UNKNOWN
     PREG_NUM preg = Create_Preg(Pointer_type, "_cgPreg");
+    preg *= CG_PREG_SCALE;
     ST *preg_st = MTYPE_To_PREG(Pointer_type);
     ConstraintGraphNode *tmpCGNode = getCGNode(ST_st_idx(preg_st), preg);
     tmpCGNode->addFlags(CG_NODE_FLAGS_UNKNOWN);
@@ -499,6 +506,11 @@ ConstraintGraph::getCGNode(WN *wn)
   ST_IDX base_st_idx;
   INT64 base_offset = WN_offset(wn);
   findDeclaredBaseAndOffset(WN_st_idx(wn), base_st_idx, base_offset);
+
+  // Scale preg offsets by Pointer_Size to avoid overlaps with other registers
+  if (ST_class(&St_Table[base_st_idx]) == CLASS_PREG)
+    base_offset *= CG_PREG_SCALE;
+
   return getCGNode(base_st_idx, base_offset);
 }
 
@@ -558,10 +570,7 @@ ConstraintGraph::getCGNode(ST_IDX st_idx, INT64 offset)
     if (si->varSize() != 0)
       Is_True(offset < si->varSize(), ("getCGNode: offset: %lld >= varSize"
               ": %lld\n", offset, si->varSize()));
-  } else {
-    // Scale PREGs offset to avoid overlap with other pregs
-    offset *= CG_PREG_SCALE;
-  }
+  } 
 
   ConstraintGraphNode *cgNode = NULL;
 
@@ -856,10 +865,10 @@ ConstraintGraphNode::NodeInfo::print(ostream &ostr)
 {
   ostr << " sym: ";
   ostr << St_Table[_st_idx];
-  ostr << " offset: " << offset();
+  ostr << " offset: " << _offset;
   if (ST_class(&St_Table[_st_idx]) == CLASS_PREG) {
     PREG_NUM p = PREG_NUM(_offset / CG_PREG_SCALE);
-    ostr << " preg:" << p
+    ostr << " preg:" << (INT32)p << ":"
          << (!Preg_Is_Dedicated(p) ? Preg_Name(p) : "dedicated");
     ostr << endl;
   }
