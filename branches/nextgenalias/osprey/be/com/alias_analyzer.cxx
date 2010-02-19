@@ -19,7 +19,6 @@ AliasAnalyzer *AliasAnalyzer::_alias_analyzer = NULL;
 AliasAnalyzer *
 AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree)
 {
-  fprintf(stderr,"Create Alias Analyzer...\n");
   if (_alias_analyzer != NULL)
     return _alias_analyzer;
 

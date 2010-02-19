@@ -157,6 +157,13 @@ Is_fortran(void)
  * Tracing flags:  -ttPHASE-NUMBER:FLAG
  */
 
+/* TP_ALIAS (phase-number) */
+#define NYSTROM_SOLVER_FLAG       0x00000001 /* trace constraint graph solver */
+#define NYSTROM_CG_PRE_FLAG       0x00000002 /* text dump of constraint graph after build */
+#define NYSTROM_CG_POST_FLAG      0x00000004 /* text dump of constraint graph after solve */
+#define NYSTROM_CG_VCG_FLAG       0x00000008 /* dump vcg before/after solve */
+#define NYSTROM_QUERY_TRACE_FLAG  0x00000010 /* emit trace of all "aliased()" queries */
+
 /* TP_GLOBOPT (phase-number) */
 #define DOM_DUMP_FLAG	     0x0001 /* print dominator tree */
 #define SSA_DUMP_FLAG	     0x0002 /* trace construction of phi functions */

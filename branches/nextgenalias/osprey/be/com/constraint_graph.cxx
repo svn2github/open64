@@ -147,9 +147,11 @@ ConstraintGraph::genTempCGNode()
 void 
 ConstraintGraph::buildCG(WN *entryWN)
 {
-  fprintf(stderr, "Building ConstraintGraph for func %s\n", 
-          ST_name(WN_st(entryWN)));
-  fdump_tree(stderr, entryWN);
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG)){
+    fprintf(stderr, "Building ConstraintGraph for func %s\n",
+        ST_name(WN_st(entryWN)));
+    fdump_tree(stderr, entryWN);
+  }
   processWN(entryWN);
 }
 
@@ -677,9 +679,10 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
 
     // If the source of this edge is in the current cycle
     // then we will delete the edge rather than migrate.
+    bool delEdge = true;
     if (edge->srcNode()->parent() != parent())
-      edge->moveDest(const_cast<ConstraintGraphNode *>(this));
-    else
+      delEdge = !edge->moveDest(const_cast<ConstraintGraphNode *>(this));
+    if (delEdge)
       constraintGraph()->removeEdge(edge);
   }
   CGEdgeSet &inLdSet = src->inLoadStoreEdges();
@@ -692,7 +695,8 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
     inLdSet.erase(save);
     // Note that we don't check for the source being the
     // current node, as a self ld/st edge is not problematic
-    edge->moveDest(const_cast<ConstraintGraphNode *>(this));
+    if (!edge->moveDest(const_cast<ConstraintGraphNode *>(this)))
+      constraintGraph()->removeEdge(edge);
   }
 
   // 2) Migrate all edges outgoing
@@ -716,9 +720,10 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
 
     // If the target of this edge is in the current cycle
     // then we delete the edge rather than migrate it.
+    bool delEdge = true;
     if (edge->destNode()->parent() != parent())
-      edge->moveSrc(const_cast<ConstraintGraphNode *>(this));
-    else
+      delEdge = !edge->moveSrc(const_cast<ConstraintGraphNode *>(this));
+    if (delEdge)
       constraintGraph()->removeEdge(edge);
   }
   CGEdgeSet &outLdSet = src->outLoadStoreEdges();
@@ -731,7 +736,8 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
     outLdSet.erase(save);
     // Note that we don't check for the dest being the
     // current node, as a self ld/st edg is not problematic
-    edge->moveSrc(const_cast<ConstraintGraphNode *>(this));
+    if (!edge->moveSrc(const_cast<ConstraintGraphNode *>(this)))
+      constraintGraph()->removeEdge(edge);
   }
 
   // 4) Add special copy edge from representative
@@ -899,7 +905,7 @@ void StInfo::print(ostream& str)
     str << " firstCGNodeId: null";
 }
 
-void 
+bool
 ConstraintGraphEdge::move(ConstraintGraphNode * newSrc,
                           ConstraintGraphNode *newDest)
 {
@@ -913,11 +919,15 @@ ConstraintGraphEdge::move(ConstraintGraphNode * newSrc,
 
   // Reinsert both ends of the edge
   ConstraintGraphEdge *insOutEdge = srcNode()->addOutEdge(this);
-  FmtAssert(insOutEdge == this,
-      ("ConstraintGraphEdge::moveDest: Unexpected duplicate out edges..."));
   ConstraintGraphEdge *insInEdge = destNode()->addInEdge(this);
+  if (insOutEdge != this) {
+    FmtAssert(insInEdge != this,
+        ("ConstraintGraphEdge::move: inconsistent edge sets"));
+    return false;
+  }
   FmtAssert(insInEdge == this,
-      ("ConstraintGraphEdge::moveDest: Unexpected duplicate in edges..."));
+      ("ConstraintGraphEdge::move: inconsistent edge sets"));
+  return true;
 }
 
 void
@@ -1165,7 +1175,9 @@ ConstraintGraphVCG::buildVCG(ConstraintGraph *cg)
     }
   }
 
-  char filename[64];
+  char filename[1024];
+  FmtAssert(strlen(_fileNamePrefix)+8<1024,
+      ("buildVCG overflow filename buffer"));
   sprintf(filename, "%s_cg.vcg", _fileNamePrefix);
   FILE *vcgfile = fopen(filename, "w");
   Is_True(vcgfile != NULL, ("Couldn't open vcgfile for writing"));

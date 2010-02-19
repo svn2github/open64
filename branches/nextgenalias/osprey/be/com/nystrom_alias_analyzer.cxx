@@ -23,22 +23,36 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
   ac &= ~(CLAS_RULE|IP_CLAS_RULE);
 
   _constraintGraph = CXX_NEW(ConstraintGraph(entryWN, &_memPool), &_memPool);
-  _constraintGraph->print(stderr);
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG))
+    _constraintGraph->print(stderr);
 
-  ConstraintGraphVCG::dumpVCG(_constraintGraph, "initial");
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_VCG_FLAG)) {
+    char buf[1024];
+    sprintf(buf,"%s_initial",ST_name(WN_st(entryWN)));
+    ConstraintGraphVCG::dumpVCG(_constraintGraph, buf);
+  }
 
   _constraintGraph->solveConstraints();
 
-  ConstraintGraphVCG::dumpVCG(_constraintGraph, "final");
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_VCG_FLAG)) {
+    char buf[1024];
+    sprintf(buf,"%s_final",ST_name(WN_st(entryWN)));
+    ConstraintGraphVCG::dumpVCG(_constraintGraph, buf);
+  }
 
-  fprintf(stderr,"Nystrom analysis...complete\n");
-  _constraintGraph->print(stderr);
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG)) {
+    fprintf(stderr,"Nystrom analysis...complete\n");
+    _constraintGraph->print(stderr);
+  }
 
   // Initialize the alias tags
   _nextAliasTag = InitialAliasTag;
 
   // Map WNs to AliasTags
   createAliasTags(entryWN);
+
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG))
+    fdump_tree(stderr, entryWN);
 }
 
 NystromAliasAnalyzer::~NystromAliasAnalyzer() {}
@@ -47,11 +61,14 @@ ALIAS_RESULT
 NystromAliasAnalyzer::aliased(AliasTag tag1, AliasTag tag2)
 {
   if (tag1 == InvalidAliasTag || tag1 == EmptyAliasTag ||
-      tag2 == InvalidAliasTag || tag2 == EmptyAliasTag)
+      tag2 == InvalidAliasTag || tag2 == EmptyAliasTag ||
+      tag1 == tag2)
     return POSSIBLY_ALIASED;
 
   PointsTo& ptsSet1 = pointsTo(tag1);
   PointsTo& ptsSet2 = pointsTo(tag2);
+  FmtAssert(!ptsSet1.isEmpty() && !ptsSet2.isEmpty(),
+      ("Expect all valid points-to sets to be non-empty"));
   if (ptsSet1.intersect(ptsSet2))
     return POSSIBLY_ALIASED;
 
@@ -226,9 +243,11 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
     // Map the WN to the new aliasTag
     setAliasTag(wn, aliasTag);
 
-    fprintf(stderr, "mapping aliasTag %d to aliasTagInfo: ", 
-            (UINT32)aliasTag);
-    _aliasTagInfo[aliasTag]->print(stderr);
-    fprintf(stderr, "\n");
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+      fprintf(stderr, "mapping aliasTag %d to aliasTagInfo: ",
+          (UINT32)aliasTag);
+      _aliasTagInfo[aliasTag]->print(stderr);
+      fprintf(stderr, "\n");
+    }
   }
 }

@@ -139,9 +139,12 @@ public:
   void addFlags(UINT16 flag) { _edgeInfo.addFlags(flag); }
   void clearFlags(UINT16 flag) { _edgeInfo.clearFlags(flag); }
 
-  void move(ConstraintGraphNode *newSrc, ConstraintGraphNode *newDest);
-  void moveDest(ConstraintGraphNode *newDest) { move(srcNode(),newDest); }
-  void moveSrc(ConstraintGraphNode *newSrc)   { move(newSrc,destNode()); }
+  // Move the edge to the new source/destination nodes.  Either new
+  // source/destination nodes may be identical to the current source/
+  // destination nodes respectively.
+  bool move(ConstraintGraphNode *newSrc, ConstraintGraphNode *newDest);
+  bool moveDest(ConstraintGraphNode *newDest) { return move(srcNode(),newDest); }
+  bool moveSrc(ConstraintGraphNode *newSrc)   { return move(newSrc,destNode()); }
 
   void print(FILE *file) const;
 
@@ -228,6 +231,7 @@ public:
     _id(0),
     _inKCycle(0),
     _version(0),
+    _maxAccessSize(0),
     _inCopySkewCGEdges(32),
     _outCopySkewCGEdges(32),
     _inLoadStoreCGEdges(32),
@@ -243,6 +247,8 @@ public:
 
   UINT32 inKCycle(void) const { return _inKCycle; }
   void inKCycle(UINT32 val) { _inKCycle = val; }
+
+  UINT8 maxAccessSize(void) const { return _maxAccessSize; }
 
   ST_IDX st_idx() const { return nodeInfo().st_idx(); }
 
@@ -328,7 +334,12 @@ public:
                              _outCopySkewCGEdges : _outLoadStoreCGEdges;
     pair<CGEdgeSet::iterator, bool> p;
     p = outEdgeSet.insert(edge);
-    return *(p.first);
+    ConstraintGraphEdge *newEdge = *(p.first);
+    if (newEdge == edge &&
+        edge->edgeType() != ETYPE_SKEW &&
+        edge->size() > _maxAccessSize)
+      _maxAccessSize = edge->size();
+    return newEdge;
   }
 
   void removeOutEdge(ConstraintGraphEdge *edge)
@@ -339,6 +350,25 @@ public:
     CGEdgeSetIterator iter = outEdgeSet.find(edge);
     if (iter != outEdgeSet.end())
       outEdgeSet.erase(iter);
+
+    if (edge->edgeType() != ETYPE_SKEW && edge->size() != _maxAccessSize) {
+      FmtAssert(edge->size() < _maxAccessSize,
+          ("ConstraintGraphNode::_maxAccessSize inconsistent"));
+      UINT8 newMax = 0;
+      for (CGEdgeSetIterator outIter1 = _outCopySkewCGEdges.begin();
+          outIter1 != _outCopySkewCGEdges.end(); ++outIter1) {
+        ConstraintGraphEdge *e = *outIter1;
+        if (e->edgeType() != ETYPE_SKEW && e->size() > newMax)
+          newMax = e->size();
+      }
+      for (CGEdgeSetIterator outIter2 = _outLoadStoreCGEdges.begin();
+          outIter2 != _outLoadStoreCGEdges.end(); ++outIter2) {
+        ConstraintGraphEdge *e = *outIter2;
+        if (e->size() > newMax)
+          newMax = e->size();
+      }
+      _maxAccessSize = newMax;
+    }
   }
 
   // Checks if 'edge' is in the 'in' copy-skew/load-store edge set
@@ -478,6 +508,9 @@ private:
   CGNodeId _id;
   UINT32   _inKCycle;
   UINT8    _version;
+  // Max outgoing copy/load/store access size, used during
+  // solving to determine accesses to overlapping fields.
+  UINT8    _maxAccessSize;
 
   // In/out copy/skew edges
   CGEdgeSet _inCopySkewCGEdges;
@@ -540,6 +573,12 @@ public:
       _varSize = TY_size(etype);
     } else
       _varSize = ST_size(st);
+    // As a fallback we resort to setting the size to the
+    // current pointer size to ensure a valid modulus for
+    // this type.
+    if (_varSize == 0)
+      _varSize = Pointer_Size;
+
     _modulus = _varSize;
     // Set the flags
     _flags = 0;
@@ -718,6 +757,7 @@ private:
 
     void push(ConstraintGraphEdge *e);
     ConstraintGraphEdge *pop(void);
+    ConstraintGraphEdge *front(void) { return _edgeList.front(); }
     bool empty(void) const { return _edgeList.empty(); }
 
   private:
@@ -739,6 +779,7 @@ private:
   };
 
   EdgeDelta &edgeDelta() { return _edgeDelta; }
+  void updateOffsets(const ConstraintGraphNode *, PointsTo &, CGEdgeQual);
   void processAssign(const ConstraintGraphEdge *);
   void processSkew(const ConstraintGraphEdge *);
   void processLoad(const ConstraintGraphEdge *);

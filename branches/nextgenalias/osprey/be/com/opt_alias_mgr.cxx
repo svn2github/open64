@@ -439,8 +439,6 @@ ALIAS_MANAGER::ALIAS_MANAGER(WN *entryWN)
   // interface to the selected alias analysis algorithm.
   AliasAnalyzer::Create_Alias_Analyzer(ac,entryWN);
 
-  fdump_tree(stderr, entryWN);
-
   Set_pu_context(ac);
   _rule = CXX_NEW(ALIAS_RULE(ac,AliasAnalyzer::aliasAnalyzer()), &_mem_pool);
 
