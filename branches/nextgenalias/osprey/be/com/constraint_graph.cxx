@@ -66,6 +66,14 @@ findDeclaredBaseAndOffset(ST_IDX  st_idx,
                           INT64  &declared_offset)
 {
   ST *st             = &St_Table[st_idx];
+  // Don't map a function up to the base, which is
+  // an opaque symbol representing all of text.  We
+  // need to track the actual function .
+  if (ST_class(st) == CLASS_FUNC) {
+    declared_base_idx = st_idx;
+    declared_offset = ST_ofst(st);
+    return;
+  }
   ST_IDX base_st_idx = ST_base_idx(st);
   ST *base_st;
 
@@ -666,6 +674,11 @@ T gcd(T source, T target)
 void
 ConstraintGraphNode::merge(ConstraintGraphNode *src)
 {
+  // 0) The source node may be the rep of another cycle or
+  //    have inKCycle() set for some other reason.  Make
+  //    sure we merge it into the destination node
+  inKCycle(gcd(src->inKCycle(),inKCycle()));
+
   // 1) Migrate all edges incoming to 'src' to 'this'
   CGEdgeSet &inCopySet = src->inCopySkewEdges();
   for (CGEdgeSetIterator inCopyIter = inCopySet.begin();
@@ -814,6 +827,8 @@ ConstraintGraphNode::print(FILE *file)
     fprintf(file, " ARETURN");
   if (checkFlags(CG_NODE_FLAGS_ICALL))
     fprintf(file, " ICALL");
+  if (checkFlags(CG_NODE_FLAGS_COMPLETE))
+    fprintf(file, " COMPLETE");
   fprintf(file, " ]\n");
 }
 
@@ -843,6 +858,8 @@ void ConstraintGraphNode::print(ostream& ostr)
     ostr << " ARETURN";
   if (checkFlags(CG_NODE_FLAGS_ICALL))
     ostr << " ICALL";
+  if (checkFlags(CG_NODE_FLAGS_COMPLETE))
+    ostr << " COMPLETE";
   ostr << " ]" << endl;
 }
 

@@ -23,8 +23,10 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
   ac &= ~(CLAS_RULE|IP_CLAS_RULE);
 
   _constraintGraph = CXX_NEW(ConstraintGraph(entryWN, &_memPool), &_memPool);
-  if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG))
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG)) {
     _constraintGraph->print(stderr);
+    fdump_tree(stderr, entryWN);
+  }
 
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_VCG_FLAG)) {
     char buf[1024];

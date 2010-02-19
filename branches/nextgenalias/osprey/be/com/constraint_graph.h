@@ -708,6 +708,7 @@ public:
   void postProcessPointsTo();
 
   void computeCompleteness();
+  void adjustPointsToForKCycle(UINT32 kCycle,PointsTo &src,PointsTo &dst);
 
   ConstraintGraphEdge *addEdge(ConstraintGraphNode *src,
                                 ConstraintGraphNode *dest,
@@ -755,7 +756,7 @@ private:
     WorkList() {}
     ~WorkList() {}
 
-    void push(ConstraintGraphEdge *e);
+    bool push(ConstraintGraphEdge *e);
     ConstraintGraphEdge *pop(void);
     ConstraintGraphEdge *front(void) { return _edgeList.front(); }
     bool empty(void) const { return _edgeList.empty(); }
