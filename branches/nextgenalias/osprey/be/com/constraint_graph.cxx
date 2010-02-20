@@ -434,8 +434,8 @@ ConstraintGraph::processLHSofStore(WN *stmt)
       // into memory
       TYPE_ID desc = WN_desc(stmt);
       if (addrCGNode->checkFlags(CG_NODE_FLAGS_SET_INKCYCLE)) {
-        if (opr == OPR_MLOAD)
-          addrCGNode->inKCycle(WN_const_val(WN_kid1(stmt)));
+        if (opr == OPR_MSTORE)
+          addrCGNode->inKCycle(WN_const_val(WN_kid2(stmt)));
         else
           addrCGNode->inKCycle(MTYPE_byte_size(desc));
         // Adjust the points to set of addrCGNode based on the inKCycle value
@@ -841,9 +841,13 @@ ConstraintGraphNode::print(FILE *file)
   _nodeInfo.print(file);
   if (_nextOffset)
     fprintf(file, " nextCGNodeId: %d", _nextOffset->_id);
+  else
+    fprintf(file, " nextCGNodeId: null");
   if (parent())
-    fprintf(file, "\n parent: %d\n",parent()->_id);
-  fprintf(file, "\n inCopySkewCGEdges: ");
+    fprintf(file, " parent: %d\n",parent()->_id);
+  else
+    fprintf(file, " parent: null\n");
+  fprintf(file, " inCopySkewCGEdges: ");
   for (CGEdgeSetIterator iter = _inCopySkewCGEdges.begin();
        iter != _inCopySkewCGEdges.end();
        iter++) {
@@ -874,7 +878,7 @@ ConstraintGraphNode::print(FILE *file)
     fprintf(file, " ");
   }
   fprintf(file, "\n");
-  fprintf(file, "CGNode flags: [");
+  fprintf(file, " CGNode flags: [");
   if (checkFlags(CG_NODE_FLAGS_UNKNOWN))
     fprintf(file, " UNKNOWN");
   if (checkFlags(CG_NODE_FLAGS_FORMAL_PARAM))
