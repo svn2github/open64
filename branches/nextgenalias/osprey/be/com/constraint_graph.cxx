@@ -452,7 +452,7 @@ ConstraintGraph::processLHSofStore(WN *stmt)
       if (WN_offset(stmt) != 0) {
         ConstraintGraphNode *tmp1CGNode = genTempCGNode();
         bool added = false;
-        addEdge(cgNodeLHS, tmp1CGNode, ETYPE_SKEW, CQ_HZ, 
+        addEdge(addrCGNode, tmp1CGNode, ETYPE_SKEW, CQ_HZ, 
                 WN_offset(stmt), added);
         addrCGNode = tmp1CGNode;
       }
