@@ -788,7 +788,7 @@ private:
   void processAssign(const ConstraintGraphEdge *);
   void processSkew(const ConstraintGraphEdge *);
   void processLoad(const ConstraintGraphEdge *);
-  void processStore(const ConstraintGraphEdge *);
+  bool processStore(const ConstraintGraphEdge *);
   void addEdgesToWorkList(ConstraintGraphNode *);
   void addCopiesForLoadStore(ConstraintGraphNode *src,
                              ConstraintGraphNode *dst,

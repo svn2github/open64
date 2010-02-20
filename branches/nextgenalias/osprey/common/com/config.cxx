@@ -1725,7 +1725,6 @@ Configure_Alias_Options( OPTION_LIST *olist )
   OPTION_LIST *ol;
   for (ol = olist; ol != NULL; ol = OLIST_next(ol)) {
     char *val = OLIST_val(ol);
-    fprintf(stderr,"Found alias=%s\n",val);
     INT len = strlen (val);
     if (strncasecmp( val, "any", len) == 0) {
       Alias_Pointer_Parms = TRUE;	/* observed by Fortran programs */

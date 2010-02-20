@@ -1,5 +1,6 @@
 
 #include <stack>
+#include "be_util.h"
 #include "constraint_graph.h"
 #include "opt_defs.h"
 #include "tracing.h"
@@ -359,7 +360,11 @@ ConstraintGraph::solveConstraints()
         FmtAssert(edge->edgeType() == ETYPE_STORE,
             ("ConstraintGraph::solveConstraints: type %d edge in"
                 "load/store worklist",edge->edgeType()));
-        processStore(edge);
+        if (!processStore(edge))
+          // Bad news.  At the very least, this means that both
+          // the src and dest of this edge were flagged as unknown,
+          // which means we may as well give up.
+          return;
       }
     }
   } while (!copySkewList.empty());
@@ -922,7 +927,7 @@ ConstraintGraph::processLoad(const ConstraintGraphEdge *edge)
   }
 }
 
-void
+bool
 ConstraintGraph::processStore(const ConstraintGraphEdge *edge)
 {
   ConstraintGraphNode *src = edge->srcNode();
@@ -930,20 +935,42 @@ ConstraintGraph::processStore(const ConstraintGraphEdge *edge)
   UINT32 sz = edge->size();
   CGEdgeQual edgeQual = edge->edgeQual();
 
-  //
-  // If the target of the edge is unknown, that means that
-  // the node may point to symbols that are not present in
-  // the points-to set.  Since we process a store edge by
-  // adding copy edges from the source to each element in
-  // the points-to set of the destination, the symbols in
-  // the source points-to set are now pointed to by unknown
-  // symbols.  For this reason we must mark them as unknown.
-  // NOTE: If the source is unknown this will be handled when
-  // the new copy edges are processed.
+  // If the target of the edge is unknown, that means the
+  // node may point to symbols that are *not* present in
+  // its points-to set.  Since we process a store edge
+  // by adding copy edges from the source to each element
+  // in the points-to set of the destination, we effectively
+  // have missing copy edges.  The destination could point
+  // to any symbol.  If the source of the edge is known,
+  // we place the contents of its points-to set into
+  // every "known" node in the graph (ouch).  If the source
+  // of the edge is also unknown, we have a unknown pointer
+  // writing an unknown value and we have no choice but to
+  // punt.  We simply terminate the solver.
   if (dst->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
-    for (PointsToIterator pti(src); pti != 0; ++pti)
-      for (PointsTo::iterator iter(&(*pti),0); iter != 0; iter++)
-        cgNode(*iter)->addFlags(CG_NODE_FLAGS_UNKNOWN);
+    // Here we dump a giant warning to help track down these issues
+    fprintf(stderr,"=========================================\n");
+    fprintf(stderr,"PU: %d processStore",Current_PU_Count());
+    edge->print(stderr);
+    fprintf(stderr,"\n");
+    src->print(stderr);
+    dst->print(stderr);
+    fprintf(stderr,"=========================================\n");
+    if (!src->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
+      for (CGIdToNodeMapIterator iter = begin();
+          iter != end(); iter++) {
+        ConstraintGraphNode *node = iter->second;
+        if (!node->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
+          bool change = false;
+          for (PointsToIterator pti(src); pti != 0; ++pti)
+            change |= node->unionPointsTo(*pti,CQ_GBL);
+          if (change)
+            addEdgesToWorkList(node);
+        }
+      }
+    }
+    else
+      return false;
   }
 
   for ( PointsToIterator pti(dst); pti != 0; ++pti ) {
@@ -952,4 +979,5 @@ ConstraintGraph::processStore(const ConstraintGraphEdge *edge)
      if (cpQual != CQ_NONE)
        addCopiesForLoadStore(src,dst,ETYPE_STORE,cpQual,sz,*pti);
   }
+  return true;
 }
