@@ -279,7 +279,8 @@ ConstraintGraph::handleAssignment(WN *stmt)
 
   // For non-pointer lhs, check whether rhs may point
   if ((TY_kind(WN_object_ty(stmt)) != KIND_POINTER) && !exprMayPoint(rhs)) {
-    cgNodeLHS->addFlags(CG_NODE_FLAGS_NOT_POINTER);
+    if (OPERATOR_is_scalar_store(WN_operator(stmt)))
+      cgNodeLHS->addFlags(CG_NODE_FLAGS_NOT_POINTER);
     return WN_next(stmt);
   }
 
@@ -367,6 +368,14 @@ ConstraintGraph::processExpr(WN *expr)
         }
         if (!addrCGNode || addrCGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
           return NULL;
+        // Adjust inKCycle based on the size of pointed-to type
+        UINT32 inKCycle;
+        if (opr == OPR_ILOAD || opr == OPR_ILDBITS)
+          inKCycle = TY_size(Ty_Table[TY_pointed(WN_load_addr_ty(expr))]); 
+        else if (opr == OPR_MLOAD)
+          inKCycle = TY_size(Ty_Table[TY_pointed(WN_ty(expr))]);
+        addrCGNode->inKCycle(inKCycle);
+        adjustPointsToForKCycle(addrCGNode);
         // Create a new temp CGNode
         ConstraintGraphNode *tmpCGNode = NULL;
         if (opr == OPR_MLOAD) {
@@ -599,6 +608,10 @@ ConstraintGraph::processLHSofStore(WN *stmt)
       addrCGNode = NULL;
     }
     if (addrCGNode != NULL) {
+      // Adjust inKCycle based on the size of pointed-to type
+      UINT32 inKCycle = TY_size(Ty_Table[TY_pointed(WN_ty(stmt))]);
+      addrCGNode->inKCycle(inKCycle);
+      adjustPointsToForKCycle(addrCGNode);
       // For a non-zero offset, we need to construct a new tmp preg, t1
       // such that t1 = x + offset (a skew)
       if (WN_offset(stmt) != 0) {
@@ -725,6 +738,9 @@ ConstraintGraph::getCGNode(WN *wn)
   if (ST_class(&St_Table[base_st_idx]) == CLASS_PREG)
     base_offset *= CG_PREG_SCALE;
 
+  if (base_offset < 0)
+    base_offset = -base_offset;
+
   return getCGNode(base_st_idx, base_offset);
 }
 
@@ -783,8 +799,6 @@ ConstraintGraph::getCGNode(ST_IDX st_idx, INT64 offset)
   ST *st = &St_Table[st_idx];
   if (ST_class(st) != CLASS_PREG) {
     offset = offset % si->modulus();
-    if (offset < -1)
-      offset = 0; 
     if (si->varSize() != 0)
       Is_True(offset < si->varSize(), ("getCGNode: offset: %lld >= varSize"
               ": %lld\n", offset, si->varSize()));
