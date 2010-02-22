@@ -853,11 +853,9 @@ ConstraintGraph::processSkew(const ConstraintGraphEdge *edge)
             st->modulus(dst->inKCycle());
           newOffset = node->offset() + skew;
         }
-        if (newOffset < st->varSize()) {
-          ConstraintGraphNode *skewNode = getCGNode(node->st_idx(),newOffset);
-          skewNode->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
-          tmp.setBit(skewNode->id());
-        }
+        ConstraintGraphNode *skewNode = getCGNode(node->st_idx(),newOffset);
+        skewNode->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
+        tmp.setBit(skewNode->id());
       }
       bool change = dst->unionPointsTo(tmp,dstQual);
       if (change) {

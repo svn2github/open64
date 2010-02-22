@@ -44,6 +44,8 @@
 #define CG_NODE_FLAGS_FORMAL_PARAM  0x0008 // formal param
 #define CG_NODE_FLAGS_ACTUAL_PARAM  0x0010 // formal param
 #define CG_NODE_FLAGS_ICALL         0x0020 // determines indirect-calls
+#define CG_NODE_FLAGS_NOT_POINTER   0x0040 // Used by CG builder to represent
+                                           // CGNodes that will not be a ptr
 
 #define CG_NODE_FLAGS_VISITED       0x0100  // Used by cycle detection
 #define CG_NODE_FLAGS_SCCMEMBER     0x0200  // Used by cycle detection
@@ -51,9 +53,6 @@
 #define CG_NODE_FLAGS_ADDRTAKEN     0x0800
 #define CG_NODE_FLAGS_COMPLETE      0x1000  // Points-to solution is complete
 #define CG_NODE_FLAGS_ADDR_TAKEN    0x2000  // Has the node been placed in a pts?
-#define CG_NODE_FLAGS_SET_INKCYCLE  0x4000  // Used by the CG builder to set
-                                            // the in-cycle on nodes based
-                                            // on access size
 
 // Call site flags
 #define CS_FLAGS_UNKNOWN     0x01
@@ -304,7 +303,7 @@ public:
 
   PointsTo &pointsTo(CGEdgeQual qual)
   {
-    findRep()->_nodeInfo.pointsTo(qual);
+    return findRep()->_nodeInfo.pointsTo(qual);
   }
 
   // Try adding edge to the in edge set. If the edge already exists
@@ -410,7 +409,7 @@ public:
 
   ConstraintGraph *constraintGraph() const { return _parentCG; }
   void constraintGraph(ConstraintGraph *cg) { _parentCG = cg; }
-  
+
   void print(FILE *file);
   void print(ostream &str);
 
@@ -481,6 +480,7 @@ private:
       case CQ_HZ:  return _pointsToHZ;
       default:
         FmtAssert(false,("Unexpected edge qualifier"));
+        return *(PointsTo *)NULL;
       }
     }
 
@@ -547,6 +547,9 @@ public:
     case 0: return _node->pointsTo(CQ_GBL);
     case 1: return _node->pointsTo(CQ_HZ);
     case 2: return _node->pointsTo(CQ_DN);
+    default: 
+      FmtAssert(FALSE, ("Invalid index"));
+      return *((PointsTo *)NULL);
     }
   }
   CGEdgeQual qual(void) {
@@ -554,6 +557,9 @@ public:
     case 0: return CQ_GBL;
     case 1: return CQ_HZ;
     case 2: return CQ_DN;
+    default:
+      FmtAssert(FALSE, ("Invalid index"));
+      return CQ_NONE;
     }
   }
 private:
@@ -653,23 +659,23 @@ class ConstraintGraph
 public:
   ConstraintGraph(WN *entryWN, MEM_POOL *mpool = Malloc_Mem_Pool,
                   UINT32 minSize = 1024):
+    _nextCGNodeId(1),
+    _nextCallSiteId(1),
     _cgIdToNodeMap(minSize), 
     _cgNodeToIdMap(minSize),
     _memPool(mpool)
   {
-    nextCGNodeId = 1;
-    nextCallSiteId = 1;
     if (maxTypeSize == 0)
       maxTypeSize = findMaxTypeSize();
     Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY, 
             ("Expecting FUNC_ENTRY when building ConstraintGraph"));
     _func_st_idx = WN_st_idx(entryWN);
+    _notAPointer = genTempCGNode();
+    _notAPointer->addFlags(CG_NODE_FLAGS_NOT_POINTER);
     buildCG(entryWN);
   }
 
-  static UINT32 totalCGNodes() { return nextCGNodeId; }
-
-  static CallSiteId getNextCallSiteId() { return nextCallSiteId++; }
+  UINT32 totalCGNodes() { return _nextCGNodeId; }
 
   StInfo *stInfo(ST_IDX st_idx) const 
   { 
@@ -712,6 +718,8 @@ public:
   void postProcessPointsTo();
 
   void computeCompleteness();
+
+  void adjustPointsToForKCycle(ConstraintGraphNode *cgNode);
   void adjustPointsToForKCycle(UINT32 kCycle,PointsTo &src,PointsTo &dst);
 
   ConstraintGraphEdge *addEdge(ConstraintGraphNode *src,
@@ -721,18 +729,14 @@ public:
                                 bool &added);
   void removeEdge(ConstraintGraphEdge *edge);
 
+  bool exprMayPoint(WN *const wn);
+
 private:
-
-  // Constraint graph build methods
-
-  // Generate unique CGNodeId per procedure
-  static CGNodeId nextCGNodeId;
-
-  // Generate unique CallSiteId per procedure
-  static CallSiteId nextCallSiteId;
 
   // Max size of all types
   static UINT32 maxTypeSize;
+
+  // Constraint graph build methods
 
   void buildCG(WN *entryWN);
 
@@ -808,6 +812,15 @@ private:
 
   // Data Members
 
+  // Generate unique CGNodeId per procedure
+  CGNodeId _nextCGNodeId;
+
+  // Generate unique CallSiteId per procedure
+  CallSiteId _nextCallSiteId;
+
+  // Node to denote a non-pointer
+  ConstraintGraphNode *_notAPointer;
+
   // Set of ConstraintGraphNodes
   CGIdToNodeMap _cgIdToNodeMap;
 
@@ -864,8 +877,8 @@ private:
 class CallSite
 {
 public:
-  CallSite(bool isIndirect, MEM_POOL *memPool) :
-    _id(ConstraintGraph::getNextCallSiteId()),
+  CallSite(bool isIndirect, CallSiteId id, MEM_POOL *memPool) :
+    _id(id),
     _flags(isIndirect ? CS_FLAGS_INDIRECT : 0),
     _return(0),
     _mod(memPool),

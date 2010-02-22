@@ -145,12 +145,6 @@ NystromAliasAnalyzer::meet(AliasTag dstTag, AliasTag srcTag)
     retTag = newAliasTag();
   mergePointsTo(retTag,srcTag);
 
-  fprintf(stderr, "meet: retTag: %d", retTag);
-  _aliasTagInfo[retTag]->print(stderr);
-  fprintf(stderr, " with srcTag: %d", srcTag);
-  _aliasTagInfo[srcTag]->print(stderr);
-  fprintf(stderr, "\n");
-
   return retTag;
 }
 
