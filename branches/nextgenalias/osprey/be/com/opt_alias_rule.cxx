@@ -854,17 +854,28 @@ ALIAS_KIND ALIAS_RULE::Aliased_Memop_By_Analysis
 
   if (Rule_enabled(CLAS_RULE) && !Aliased_Classification_Rule(p1, p2)
       && (!p1->Default_vsym() || p2->No_alias())
-      && (!p2->Default_vsym() || p1->No_alias()))
+      && (!p2->Default_vsym() || p1->No_alias())) {
+    if(Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
+          fprintf(stderr,"Aliased Memop: No Alias\n");
     return ALIAS_KIND (AR_NOT_ALIAS);
+  }
 
   if (Rule_enabled(IP_CLAS_RULE) && !Aliased_Ip_Classification_Rule(p1, p2)
       && (!p1->Default_vsym() || p2->No_alias())
-      && (!p2->Default_vsym() || p1->No_alias()))
+      && (!p2->Default_vsym() || p1->No_alias())) {
+    if(Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
+      fprintf(stderr,"Aliased Memop: No Alias\n");
     return ALIAS_KIND (AR_NOT_ALIAS);
+  }
 
-  if (Rule_enabled(ALIAS_ANALYZER_RULE) && !Aliased_Alias_Analyzer_Rule(p1,p2))
+  if (Rule_enabled(ALIAS_ANALYZER_RULE) && !Aliased_Alias_Analyzer_Rule(p1,p2)) {
+    if(Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
+      fprintf(stderr,"Aliased Memop: No Alias\n");
     return ALIAS_KIND (AR_NOT_ALIAS);
+  }
 
+  if (Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
+    fprintf(stderr,"Aliased Memop: May Alias\n");
   return ALIAS_KIND (AR_POSSIBLE_ALIAS);
 }
   
