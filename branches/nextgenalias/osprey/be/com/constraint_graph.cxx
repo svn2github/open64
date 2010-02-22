@@ -1340,6 +1340,11 @@ ConstraintGraphVCG::buildVCG(ConstraintGraph *cg)
   VCGGraph vcg("ConstraintGraph VCG");
   vcg.infoName(1, "ConstraintGraph");
 
+  UINT32 copyClassId = vcg.edgeClass("Copy/Skew");
+  UINT32 loadClassId = vcg.edgeClass("Load");
+  UINT32 storeClassId = vcg.edgeClass("Store");
+  UINT32 parentClassId = vcg.edgeClass("Parent");
+
   // Iterate over all nodes in the graph
   for (CGIdToNodeMapIterator iter = cg->begin(); iter != cg->end(); iter++) {
     ConstraintGraphNode *cgNode = iter->second;
@@ -1372,6 +1377,7 @@ ConstraintGraphVCG::buildVCG(ConstraintGraph *cg)
       // Add edge from cgNode -> destNode
       VCGEdge *vcgEdge = CXX_NEW(VCGEdge(srcTitle, destTitle), &_memPool);
       vcgEdge->color(Black);
+      vcgEdge->edgeClass(copyClassId);
       vcgEdge->label(getEdgeLabel(edge));
       vcg.addEdge(*vcgEdge);
     }
@@ -1394,6 +1400,7 @@ ConstraintGraphVCG::buildVCG(ConstraintGraph *cg)
       // Add edge from cgNode -> destNode
       VCGEdge *vcgEdge = CXX_NEW(VCGEdge(srcTitle, destTitle), &_memPool);
       vcgEdge->color(edge->edgeType() == ETYPE_LOAD ? Red : Blue);
+      vcgEdge->edgeClass(edge->edgeType() == ETYPE_LOAD ? loadClassId : storeClassId);
       vcgEdge->label(getEdgeLabel(edge));
       vcg.addEdge(*vcgEdge);
     }
@@ -1413,6 +1420,7 @@ ConstraintGraphVCG::buildVCG(ConstraintGraph *cg)
         pTitle = nodeToTitleMapIter->second;
       VCGEdge *vcgEdge = CXX_NEW(VCGEdge(srcTitle, pTitle), &_memPool);
       vcgEdge->color(Green);
+      vcgEdge->edgeClass(parentClassId);
       vcgEdge->lineStyle(Dotted);
       vcg.addEdge(*vcgEdge);
     }
