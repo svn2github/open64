@@ -1232,9 +1232,15 @@ static void ir_put_wn(WN * wn, INT indent)
     }
 
     if (Current_Map_Tab != NULL &&
-        WN_MAP32_Get(WN_MAP_ALIAS_CGNODE_ID, wn) != 0)
-      fprintf(ir_ofile, " {cgnode %d}",
-              WN_MAP32_Get(WN_MAP_ALIAS_CGNODE_ID, wn));
+        WN_MAP32_Get(WN_MAP_ALIAS_CGNODE_ID, wn) != 0) 
+    {
+      if (OPERATOR_is_call(WN_operator(wn)))
+        fprintf(ir_ofile, " {callsite %d}",
+                WN_MAP32_Get(WN_MAP_ALIAS_CGNODE_ID, wn));
+      else
+        fprintf(ir_ofile, " {cgnode %d}",
+                WN_MAP32_Get(WN_MAP_ALIAS_CGNODE_ID, wn));
+    }
 
 #ifdef BACK_END
     AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
