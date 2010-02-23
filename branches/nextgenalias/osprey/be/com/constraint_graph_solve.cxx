@@ -700,8 +700,13 @@ ConstraintGraph::processAssign(const ConstraintGraphEdge *edge)
   // done. NOTE: Unfortunately we still need to propagate
   // the points-to sets across the edge to ensure we
   // handle unknown load/store edges correctly.
-  if (edge->srcNode()->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+  if (edge->srcNode()->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG) &&
+         !edge->destNode()->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+       fprintf(stderr,"processAssign: propagate unknown %d -> %d\n",
+           edge->srcNode()->id(),edge->destNode()->id());
     edge->destNode()->addFlags(CG_NODE_FLAGS_UNKNOWN);
+  }
 
   // If the copy edge is a copy from parent to child, we
   // simply mark the child, i.e. the dest, as needing
@@ -817,8 +822,14 @@ ConstraintGraph::processSkew(const ConstraintGraphEdge *edge)
   // done. NOTE: Unfortunately we still need to propagate
   // the points-to sets across the edge to ensure we
   // handle unknown load/store edges correctly.
-  if (edge->srcNode()->checkFlags(CG_NODE_FLAGS_UNKNOWN))
-    edge->destNode()->addFlags(CG_NODE_FLAGS_UNKNOWN);
+  if (src->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+  {
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG) &&
+        !dst->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+      fprintf(stderr,"processSkew: propagate unknown %d -> %d\n",
+          src->id(),dst->id());
+    dst->addFlags(CG_NODE_FLAGS_UNKNOWN);
+  }
 
   UINT32 skew = edge->skew();
   CGEdgeQual edgeQual = edge->edgeQual();
@@ -914,8 +925,13 @@ ConstraintGraph::processLoad(const ConstraintGraphEdge *edge)
   // This means we must mark the destination as unknown.
   // NOTE: if the target of the edge is unknown, no action
   // is necessary.
-  if (src->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+  if (src->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG) &&
+         !dst->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+       fprintf(stderr,"processLoad: propagate unknown %d -> %d\n",
+           src->id(),dst->id());
     dst->addFlags(CG_NODE_FLAGS_UNKNOWN);
+  }
 
   for ( PointsToIterator pti(src); pti != 0; ++pti ) {
      CGEdgeQual curQual = pti.qual();

@@ -136,7 +136,9 @@ findDeclaredBaseAndOffset(ST_IDX  st_idx,
     declared_offset = ST_ofst(st);
     return;
   }
-  if (ST_sclass(st) == SCLASS_FORMAL) {
+  if (ST_sclass(st) == SCLASS_FORMAL ||
+      ST_sclass(st) == SCLASS_FSTATIC||
+      ST_sclass(st) == SCLASS_PSTATIC) {
     declared_base_idx = st_idx;
     return;
   }
@@ -424,6 +426,14 @@ ConstraintGraph::processExpr(WN *expr)
     adjustPointsToForKCycle(cgNode);
     WN_MAP_CGNodeId_Set(expr, cgNode->id());
     return cgNode;
+  } else if (opr == OPR_ALLOCA) {
+    ST *stackST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgStack",
+                                       CLASS_VAR, SCLASS_AUTO);
+    ConstraintGraphNode *stackCGNode = getCGNode(ST_st_idx(stackST), 0);
+    stInfo(stackCGNode->st_idx())->addFlags(CG_ST_FLAGS_STACK);
+    stInfo(stackCGNode->st_idx())->modulus(maxTypeSize);
+    stInfo(stackCGNode->st_idx())->varSize(0);
+    return stackCGNode;
   } else {
     for (INT i = 0; i < WN_kid_count(expr); i++) {
       WN *kid = WN_kid(expr, i);
@@ -1324,8 +1334,22 @@ ConstraintGraphVCG::getNodeInfo(ConstraintGraphNode *cgNode)
   stringstream ss;
   cgNode->print(ss);
   cgNode->constraintGraph()->stInfo(cgNode->st_idx())->print(ss);
-  char *str = (char *)MEM_POOL_Alloc(&_memPool, strlen(ss.str().data()) + 1);
-  strcpy(str, ss.str().data());
+  char *str = (char *)MEM_POOL_Alloc(&_memPool, strlen(ss.str().data())*2 + 1);
+  const char *p = ss.str().data();
+  char *q = str;
+  while (*p) {
+    // If we have the sequence "\\0" skip the '\\' because
+    // the vcg parser will interpret that as an end of string.
+    if (*p == '\\' && *(p+1) == '0')
+      p++;
+    // If we encounter a '"' the vcg parser will interpret as
+    // end of string unless we escape properly.
+    else if (*p == '"')
+      *q++ = '\\';
+    *q++ = *p++;
+  }
+  *q = '\0';
+  //strcpy(str, ss.str().data());
   return str;
 }
 
