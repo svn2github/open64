@@ -9,7 +9,10 @@
 
 #include "alias_analyzer.h"
 #include "config_opt.h"
+#include "ir_reader.h"  /* fdump_tree */
 #include "nystrom_alias_analyzer.h"
+#include "opt_defs.h"  /* Trace flags */
+#include "tracing.h"
 
 // There will be one instance of an AliasAnalyzer object, the
 // results of the alias analysis are either provided via summary
@@ -25,6 +28,8 @@ AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree)
   // What alias analyzer are we going to use?
   if ( Alias_Nystrom_Analyzer ) {
     _alias_analyzer = new NystromAliasAnalyzer(ac,tree);
+    if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG))
+      fdump_tree(stderr, tree);
     return _alias_analyzer;
   }
   else

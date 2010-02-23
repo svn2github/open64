@@ -3676,10 +3676,9 @@ OPT_STAB::Transfer_alias_tag_to_occ_and_aux(RID *const rid,
         AUX_STAB_ENTRY *psym = Aux_stab_entry(idx);
         POINTS_TO *pt = psym->Points_to();
 
-        // Determine the AliasTag associated with this symbol to be
-        // used by the currently selected alias analysis mechanism
-        pt->Set_alias_tag(aa->genAliasTag(psym->St(),psym->St_ofst(),
-                                          psym->Byte_size()));
+        // Extract the alias tag from the current WN and associate
+        // with the points-to of that symbol.
+        pt->Set_alias_tag(aa->getAliasTag(wn));
       }
       else {
         Is_True(Get_occ(wn) != NULL,

@@ -852,30 +852,30 @@ ALIAS_KIND ALIAS_RULE::Aliased_Memop_By_Analysis
   if (Rule_enabled(NEST_RULE) && !Aliased_Static_Nest_Rule(p1, p2))
     return ALIAS_KIND (AR_NOT_ALIAS);
 
-  if (Rule_enabled(CLAS_RULE) && !Aliased_Classification_Rule(p1, p2)
+  bool localACResult = !Aliased_Classification_Rule(p1, p2)
       && (!p1->Default_vsym() || p2->No_alias())
-      && (!p2->Default_vsym() || p1->No_alias())) {
-    if(Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
-          fprintf(stderr,"Aliased Memop: No Alias\n");
+      && (!p2->Default_vsym() || p1->No_alias());
+  if (Rule_enabled(CLAS_RULE) && localACResult)
     return ALIAS_KIND (AR_NOT_ALIAS);
-  }
 
-  if (Rule_enabled(IP_CLAS_RULE) && !Aliased_Ip_Classification_Rule(p1, p2)
+  bool ipACResult = !Aliased_Ip_Classification_Rule(p1, p2)
       && (!p1->Default_vsym() || p2->No_alias())
-      && (!p2->Default_vsym() || p1->No_alias())) {
-    if(Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
-      fprintf(stderr,"Aliased Memop: No Alias\n");
+      && (!p2->Default_vsym() || p1->No_alias());
+  if (Rule_enabled(IP_CLAS_RULE) && ipACResult)
     return ALIAS_KIND (AR_NOT_ALIAS);
-  }
 
   if (Rule_enabled(ALIAS_ANALYZER_RULE) && !Aliased_Alias_Analyzer_Rule(p1,p2)) {
     if(Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
-      fprintf(stderr,"Aliased Memop: No Alias\n");
+      fprintf(stderr,"Aliased Memop %d %d: No Alias (ac %s)\n",
+          p1->Alias_tag(),p2->Alias_tag(),
+          (localACResult||ipACResult)?"No":"May");
     return ALIAS_KIND (AR_NOT_ALIAS);
   }
 
   if (Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
-    fprintf(stderr,"Aliased Memop: May Alias\n");
+    fprintf(stderr,"Aliased Memop %d %d: May Alias (ac %s)\n",
+        p1->Alias_tag(),p2->Alias_tag(),
+        (localACResult||ipACResult)?"No":"May");
   return ALIAS_KIND (AR_POSSIBLE_ALIAS);
 }
   

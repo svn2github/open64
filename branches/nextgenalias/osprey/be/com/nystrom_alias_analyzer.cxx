@@ -52,9 +52,6 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
 
   // Map WNs to AliasTags
   createAliasTags(entryWN);
-
-  if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG))
-    fdump_tree(stderr, entryWN);
 }
 
 NystromAliasAnalyzer::~NystromAliasAnalyzer() {}
@@ -188,7 +185,12 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       FmtAssert(cgNode != NULL, ("CGNodeId : %d not mapped to a "
                 "ConstraintGraphNode\n", id));
 
-      if (!cgNode->checkFlags(CG_NODE_FLAGS_COMPLETE))
+      // If we are not performing a scalar load/store operation, then
+      // we need can only provide an aliasTag if the analysis indicates
+      // that the points-to set can be considered complete.
+      if (!OPERATOR_is_scalar_store(opr) &&
+          !OPERATOR_is_scalar_load(opr) &&
+          !cgNode->checkFlags(CG_NODE_FLAGS_COMPLETE))
         continue;
 
       aliasTag = newAliasTag();
