@@ -444,36 +444,57 @@ ConstraintGraph::processExpr(WN *expr)
       WN_MAP_CGNodeId_Set(expr, _notAPointer->id());
       return _notAPointer;
     }
-    
-    // y = x +- const;
-    // y <-- (const) x
-    switch (opr) {
-      case OPR_ADD:
-      case OPR_SUB: {
-        CGNodeId kid0CGNodeId = WN_MAP_CGNodeId_Get(WN_kid0(expr));
-        ConstraintGraphNode *kid0CGNode = 
-                             kid0CGNodeId ? cgNode(kid0CGNodeId) : NULL;
-        CGNodeId kid1CGNodeId = WN_MAP_CGNodeId_Get(WN_kid1(expr));
-        ConstraintGraphNode *kid1CGNode = 
-                             kid1CGNodeId ? cgNode(kid1CGNodeId) : NULL;
 
-        // If both are null or UNKNOWN, return NULL
-        if ( (kid0CGNode == NULL ||
-              kid0CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN)) &&
-             (kid1CGNode == NULL ||
-              kid1CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN)) )
+    // TODO: This might be more strict than necessary
+    if (opr == OPR_CVT || opr == OPR_CVTL) 
+    {
+      ConstraintGraphNode *cgn = NULL;
+      if (MTYPE_byte_size(WN_rtype(expr)) < Pointer_Size ||
+          !MTYPE_is_unsigned(WN_rtype(expr)) || 
+          !MTYPE_is_unsigned(WN_rtype(WN_kid0(expr))))
+        cgn = _notAPointer;
+      else {
+        CGNodeId cgNodeId = WN_MAP_CGNodeId_Get(WN_kid0(expr));
+        cgn = cgNodeId ? cgNode(cgNodeId) : NULL;
+        if (cgn == NULL || cgn->checkFlags(CG_NODE_FLAGS_UNKNOWN))
           return NULL;
+      }
+      WN_MAP_CGNodeId_Set(expr, cgn->id());
+      return cgn;
+    }
+    // Handle binary operators which are not handled by exprMayPoint
+    else if (WN_kid_count(expr) == 2) 
+    {
+      CGNodeId kid0CGNodeId = WN_MAP_CGNodeId_Get(WN_kid0(expr));
+      ConstraintGraphNode *kid0CGNode = 
+                           kid0CGNodeId ? cgNode(kid0CGNodeId) : NULL;
+      CGNodeId kid1CGNodeId = WN_MAP_CGNodeId_Get(WN_kid1(expr));
+      ConstraintGraphNode *kid1CGNode = 
+                           kid1CGNodeId ? cgNode(kid1CGNodeId) : NULL;
 
+      // If either is null/unknown return null
+      if (kid0CGNode == NULL ||
+          kid0CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN) ||
+          kid1CGNode == NULL ||
+          kid1CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+         return NULL;
+
+      // Both are not a pointer, therefore the result will not be a pointer
+      if (kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) &&
+          kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+        WN_MAP_CGNodeId_Set(expr, _notAPointer->id());
+        return _notAPointer;
+      }
+
+      // Skews
+      if (opr == OPR_ADD || opr == OPR_SUB) 
+      {
         // Check for skew if one of the kids is a pointer and other
         // is a constant
         ConstraintGraphNode *kidCGNode = NULL;
-        if (kid0CGNode != NULL && 
-            !kid0CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN) &&
-            !kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+        if (!kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
           kidCGNode = kid0CGNode;
-        else if (kid1CGNode != NULL && 
-                 !kid1CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN) &&
-                 !kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+        else if (!kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
           kidCGNode = kid1CGNode;
      
         WN *intConst = NULL;
@@ -492,13 +513,6 @@ ConstraintGraph::processExpr(WN *expr)
           return tmpCGNode;
         }
 
-        // If either is null/unknown return null
-        if (kid0CGNode == NULL ||
-            kid0CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN) ||
-            kid1CGNode == NULL ||
-            kid1CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
-           return NULL;
-          
         // If one of the kids is possible pointer and other is not
         // we have some unknown skew. Treat it as a cycle and set
         // the inKCycle to either 1 (conservative) or if the ST associated
@@ -531,13 +545,6 @@ ConstraintGraph::processExpr(WN *expr)
           adjustPointsToForKCycle(kid1CGNode);
           WN_MAP_CGNodeId_Set(expr, kid1CGNode->id());
           return kid1CGNode;
-        }
-
-        // Both are not a pointer, therefore the result will not be a pointer
-        if (kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) &&
-            kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
-          WN_MAP_CGNodeId_Set(expr, _notAPointer->id());
-          return _notAPointer;
         }
 
         // both are pointers
@@ -575,25 +582,26 @@ ConstraintGraph::processExpr(WN *expr)
         WN_MAP_CGNodeId_Set(expr, rep->id());
         return rep;
       }
-      case OPR_CVT:
-      case OPR_CVTL: {
-        ConstraintGraphNode *cgn = NULL;
-        if (MTYPE_byte_size(WN_rtype(expr)) < Pointer_Size ||
-            !MTYPE_is_unsigned(WN_rtype(expr)) || 
-            !MTYPE_is_unsigned(WN_rtype(WN_kid0(expr))))
-          cgn = _notAPointer;
-        else {
-          CGNodeId cgNodeId = WN_MAP_CGNodeId_Get(WN_kid0(expr));
-          cgn = cgNodeId ? cgNode(cgNodeId) : NULL;
-          if (cgn == NULL || cgn->checkFlags(CG_NODE_FLAGS_UNKNOWN))
-            return NULL;
+      else
+      {
+        // Any other binary operator
+
+        // If one of the kids is possible pointer and other is not
+        // return the possible pointer
+        if (!kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) && 
+            kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+          WN_MAP_CGNodeId_Set(expr, kid0CGNode->id());
+          return kid0CGNode;
         }
-        WN_MAP_CGNodeId_Set(expr, cgn->id());
-        return cgn;
-      }
-      default:
+        // Check the other kid
+        if (!kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) && 
+            kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+          WN_MAP_CGNodeId_Set(expr, kid1CGNode->id());
+          return kid1CGNode;
+        }
         return NULL;
-    }
+      }
+    } 
   }
   return NULL;
 }
