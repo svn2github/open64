@@ -377,7 +377,7 @@ public:
   void setIntersect(SparseBitSet &rhs)
   {
     SparseBitSetElement *thisElt = _firstElem;
-    SparseBitSetElement *rhsElt = rhs->_firstElem;
+    SparseBitSetElement *rhsElt = rhs._firstElem;
     SparseBitSetElement *next;
 
     while (thisElt && rhsElt) {
