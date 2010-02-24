@@ -374,6 +374,42 @@ public:
     return changed;
   }
 
+  void setIntersect(SparseBitSet &rhs)
+  {
+    SparseBitSetElement *thisElt = _firstElem;
+    SparseBitSetElement *rhsElt = rhs->_firstElem;
+    SparseBitSetElement *next;
+
+    while (thisElt && rhsElt) {
+      if (thisElt->_idx < rhsElt->_idx) {
+        next = thisElt->_next;
+        freeElem(thisElt);
+        thisElt = next;
+      } else if (rhsElt->_idx < thisElt->_idx)
+        rhsElt = rhsElt->_next;
+      else {
+        // Matching elts, generate this &= rhs. 
+        UINT32 ix;
+        BITMAP_WORD ior = 0;
+
+        for (ix = BITMAP_ELEMENT_WORDS; ix--;) {
+          BITMAP_WORD r = thisElt->_bits[ix] & rhsElt->_bits[ix];
+          thisElt->_bits[ix] = r;
+          ior |= r;
+        }
+        next = thisElt->_next;
+        if (!ior)
+          freeElem(thisElt);
+        thisElt = next;
+        rhsElt = rhsElt->_next;
+      }
+    }
+    for (; thisElt; thisElt->_next)
+      freeElem(thisElt);
+    assert (!_currElem == !_firstElem);
+    assert (!_currElem || _currIdx == _currElem->_idx);
+  }
+
   void clear()
   {
     SparseBitSetElement *nelem = NULL;
@@ -492,6 +528,22 @@ public:
   }
 
   bool isEmpty() const { return _firstElem == NULL; }
+
+  UINT32 numBits()
+  {
+    UINT32 count = 0;
+    SparseBitSetElement *elt;
+    UINT32 ix;
+
+    for (elt = _firstElem; elt; elt = elt->_next) {
+      for (ix = 0; ix != BITMAP_ELEMENT_WORDS; ix++) {
+        // Note that popcountl matches BITMAP_WORD in type, so the actual size
+        // of BITMAP_WORD is not material. 
+        count += __builtin_popcountl(elt->_bits[ix]);
+      }
+    }
+    return count;
+  }
 
   void print(FILE *file)
   {
