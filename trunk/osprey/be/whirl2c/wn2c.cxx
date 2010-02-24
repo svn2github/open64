@@ -385,6 +385,9 @@ static const OPR2HANDLER WN2C_Opr_Handler_Map[] =
    {OPR_COMPLEX, &WN2C_complex},
    {OPR_RECIP, &WN2C_unaryop},
    {OPR_RSQRT, &WN2C_unaryop},
+#ifdef TARG_X8664
+   {OPR_ATOMIC_RSQRT, &WN2C_unaryop},
+#endif
    {OPR_MADD, &WN2C_madd},
    {OPR_MSUB, &WN2C_msub},
    {OPR_NMADD, &WN2C_nmadd},
@@ -480,6 +483,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_F4ABS, "_F4ABS"},
 #ifdef TARG_IA64
   {OPC_F10ABS, "_F10ABS"},
+#elif defined (TARG_X8664)
+  {OPC_V16F4ABS, "_V16F4ABS"},
+  {OPC_V16F8ABS, "_V16F8ABS"},
 #endif
   {OPC_FQABS, "_FQABS"},
   {OPC_I8ABS, "_I8ABS"},
@@ -1127,7 +1133,10 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
 
 #endif
 #ifdef TARG_X8664
+  {OPC_F4ATOMIC_RSQRT, "_F4ATOMIC_RSQRT"},
+  {OPC_V16F4ATOMIC_RSQRT, "_V16F4ATOMIC_RSQRT"},
   {OPC_V16F4RECIP, "_V16F4RECIP"},
+  {OPC_V16F8RECIP, "_V16F8RECIP"},
   {OPC_F8F8FLOOR, "_F8F8FLOOR"},
   {OPC_U8U8LT, "<"},
   {OPC_I8I8EQ, "=="},
@@ -2041,8 +2050,7 @@ static FLD_HANDLE get_to_field_with_name(TY_IDX struct_ty_idx, UINT field_id, UI
       return fld;
     }
     TY_IDX fld_ty = FLD_type(fld);
-    if (TY_kind(fld_ty) == KIND_ARRAY)
-      fld_ty = Get_Inner_Array_Type(fld_ty);
+
     //WEI: if the field is a {p}shared_ptr_t, make sure we don't try to traverse its fields
     if (TY_kind(fld_ty) == KIND_STRUCT && 
 	TY_fld(fld_ty) != FLD_HANDLE()) {
