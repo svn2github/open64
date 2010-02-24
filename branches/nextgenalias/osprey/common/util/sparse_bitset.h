@@ -374,6 +374,7 @@ public:
     return changed;
   }
 
+  // this &= rhs
   void setIntersect(SparseBitSet &rhs)
   {
     SparseBitSetElement *thisElt = _firstElem;
@@ -404,8 +405,12 @@ public:
         rhsElt = rhsElt->_next;
       }
     }
-    for (; thisElt; thisElt->_next)
+    // Delete till end of list
+    while (thisElt) {
+      next = thisElt->_next;
       freeElem(thisElt);
+      thisElt = next;
+    }
     assert (!_currElem == !_firstElem);
     assert (!_currElem || _currIdx == _currElem->_idx);
   }
