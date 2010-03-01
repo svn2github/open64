@@ -37,6 +37,21 @@
 #define CG_ST_FLAGS_NOCNTXT   0x00002000 // Do not specialize contexts
 #define CG_ST_FLAGS_NOLOCAL   0x00004000 // Can escape through a return
 
+// Symbol flags used during escape analysis
+#define CG_ST_FLAGS_CACHE        0x04000000
+#define CG_ST_FLAGS_LCONT_ESC    0x08000000 // Local contains escape object
+#define CG_ST_FLAGS_LCONT_ESCLCL 0x10000000 // Local contains escape local object
+#define CG_ST_FLAGS_LFULL_ESC    0x20000000 // Local fully escaped
+#define CG_ST_FLAGS_LPROP_ESC    0x40000000 // Local propagates escape
+#define CG_ST_FLAGS_RETPROP_ESC  0x80000000 // Return propagates escape
+#define CG_ST_FLAGS_ESCALL       0xf8000000
+
+#define CG_ST_FLAGS_HOLDING        CG_ST_FLAGS_LCONT_ESC
+#define CG_ST_FLAGS_HOLDING_ESC    CG_ST_FLAGS_LCONT_ESCLCL
+#define CG_ST_FLAGS_OPAQUE         CG_ST_FLAGS_LFULL_ESC
+#define CG_ST_FLAGS_PROPAGATES     CG_ST_FLAGS_LPROP_ESC
+#define CG_ST_FLAGS_PROPAGATES_RET CG_ST_FLAGS_RETPROP_ESC
+
 // Constraint graph node flags
 #define CG_NODE_FLAGS_UNKNOWN       0x0001 // Points-to set is unknown
 #define CG_NODE_FLAGS_FORMAL_RETURN 0x0002 // Returns value to caller
@@ -46,13 +61,14 @@
 #define CG_NODE_FLAGS_ICALL         0x0020 // determines indirect-calls
 #define CG_NODE_FLAGS_NOT_POINTER   0x0040 // Used by CG builder to represent
                                            // CGNodes that will not be a ptr
-
+#define CG_NODE_FLAGS_IN_WORKLIST   0x0080
 #define CG_NODE_FLAGS_VISITED       0x0100  // Used by cycle detection
 #define CG_NODE_FLAGS_SCCMEMBER     0x0200  // Used by cycle detection
 #define CG_NODE_FLAGS_INKVALMAP     0x0400  // Used by cycle detection
 #define CG_NODE_FLAGS_ADDRTAKEN     0x0800
 #define CG_NODE_FLAGS_COMPLETE      0x1000  // Points-to solution is complete
 #define CG_NODE_FLAGS_ADDR_TAKEN    0x2000  // Has the node been placed in a pts?
+
 
 // Call site flags
 #define CS_FLAGS_UNKNOWN     0x01
@@ -95,6 +111,39 @@ typedef enum {
 } CGEdgeQual;
 
 class ConstraintGraphNode;
+class ConstraintGraphEdge;
+
+template <class T, UINT32 flag>
+class WorkList {
+public:
+  WorkList() {}
+  ~WorkList() {}
+
+  bool push(T *t) {
+    if (!t->checkFlags(flag)) {
+      t->addFlags(flag);
+      _list.push_back(t);
+      return true;
+    }
+    else
+      return false;
+  }
+  T *pop(void) {
+    T *t = _list.front();
+    _list.pop_front();
+    t->clearFlags(flag);
+    return t;
+  }
+  T *front(void) const   { return _list.front(); }
+  bool empty(void) const { return _list.empty(); }
+
+private:
+  list<T *> _list;
+};
+
+typedef WorkList<ConstraintGraphEdge,CG_EDGE_IN_WORKLIST> EdgeWorkList;
+typedef WorkList<ConstraintGraphNode,CG_NODE_FLAGS_IN_WORKLIST> NodeWorkList;
+
 
 class ConstraintGraphEdge 
 {
@@ -714,10 +763,9 @@ public:
   void print(FILE *file);
 
   void solveConstraints();
+  void nonIPASolver();
 
   void postProcessPointsTo();
-
-  void computeCompleteness();
 
   void adjustPointsToForKCycle(ConstraintGraphNode *cgNode);
   void adjustPointsToForKCycle(UINT32 kCycle,PointsTo &src,PointsTo &dst);
@@ -730,6 +778,8 @@ public:
   void removeEdge(ConstraintGraphEdge *edge);
 
   bool exprMayPoint(WN *const wn);
+
+  UINT32 blackHole(void) const { return _blackHole; }
 
 private:
 
@@ -759,6 +809,7 @@ private:
   UINT32 findMaxTypeSize();
 
   // Constraint graph solver
+#if 0
   class WorkList {
   public:
     WorkList() {}
@@ -772,6 +823,7 @@ private:
   private:
     list<ConstraintGraphEdge *> _edgeList;
   };
+#endif
 
   class EdgeDelta {
   public:
@@ -779,12 +831,12 @@ private:
     ~EdgeDelta() {}
 
     void add(ConstraintGraphEdge *e);
-    WorkList &copySkewList() { return _copySkew; }
-    WorkList &loadStoreList() { return _loadStore; }
+    EdgeWorkList &copySkewList() { return _copySkew; }
+    EdgeWorkList &loadStoreList() { return _loadStore; }
 
   private:
-    WorkList _copySkew;
-    WorkList _loadStore;
+    EdgeWorkList _copySkew;
+    EdgeWorkList _loadStore;
   };
 
   EdgeDelta &edgeDelta() { return _edgeDelta; }
@@ -800,14 +852,35 @@ private:
                              CGEdgeQual qual,
                              UINT32 size,
                              SparseBitSet<CGNodeId> &ptSet);
+  void createBlackHole(void);
+
+
 
   /* Currently implements a context insensitive mapping */
-  CGEdgeQual qualMap(CGEdgeType et,CGEdgeQual aq,CGEdgeQual eq)
+  CGEdgeQual qualMap(CGEdgeType et,CGEdgeQual aq,CGEdgeQual eq, bool cs)
   {
-    if (et == ETYPE_COPY)
-      return (eq == CQ_DN ? CQ_DN : CQ_GBL);
-    else
-      return CQ_GBL;
+    /* context sensitive */
+    if (cs) {
+      if (et == ETYPE_STORE)
+        return (aq == CQ_DN) ? CQ_UP : aq;
+      else if (et == ETYPE_LOAD)
+        return aq;
+      else if (et == ETYPE_COPY) {
+        if (eq == CQ_HZ)
+          return aq;
+        else if (eq == CQ_DN || eq == CQ_GBL)
+          return eq;
+        else /* eq == CQ_UP */
+          return (aq == CQ_GBL) ? aq : CQ_NONE;
+      }
+    }
+    /* context insensitive */
+    else {
+      if (et == ETYPE_COPY)
+        return (eq == CQ_DN ? CQ_DN : CQ_GBL);
+      else
+        return CQ_GBL;
+    }
   }
 
   // Data Members
@@ -834,6 +907,10 @@ private:
   // Used by the solver.  Contains the lists of edges that need to be
   // processed in order to achieve a solution to the current graph
   EdgeDelta _edgeDelta;
+
+  // Created by the solver.  The ST_IDX of the symbol used
+  // to provide boundary conditions for incomplete programs
+  ST_IDX _blackHole;
 
   // ST_IDX of the function corresponding to this ConstraintGraph
   ST_IDX _func_st_idx;

@@ -97,6 +97,7 @@ addCGNodeInSortedOrder(StInfo *stInfo, ConstraintGraphNode *cgNode)
     if (prevn) {
       FmtAssert(prevn->offset() != cgNode->offset(),
           ("Found node with same offset"));
+      cgNode->nextOffset(prevn->nextOffset());
       prevn->nextOffset(cgNode);
     }
     else {
@@ -430,6 +431,7 @@ ConstraintGraph::processExpr(WN *expr)
     ST *stackST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgStack",
                                        CLASS_VAR, SCLASS_AUTO);
     ConstraintGraphNode *stackCGNode = getCGNode(ST_st_idx(stackST), 0);
+    stackCGNode->addPointsTo(stackCGNode,CQ_HZ);
     stInfo(stackCGNode->st_idx())->addFlags(CG_ST_FLAGS_STACK);
     stInfo(stackCGNode->st_idx())->modulus(maxTypeSize);
     stInfo(stackCGNode->st_idx())->varSize(0);
@@ -694,6 +696,7 @@ ConstraintGraph::handleCall(WN *callWN)
       ST *heapST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgHeap", 
                                          CLASS_VAR, SCLASS_AUTO);
       heapCGNode = getCGNode(ST_st_idx(heapST), 0);
+      heapCGNode->addPointsTo(heapCGNode,CQ_HZ);
       stInfo(heapCGNode->st_idx())->addFlags(CG_ST_FLAGS_HEAP);
       stInfo(heapCGNode->st_idx())->modulus(maxTypeSize);
       stInfo(heapCGNode->st_idx())->varSize(0);
@@ -1058,8 +1061,6 @@ ConstraintGraphNode::print(FILE *file)
     fprintf(file, " ARETURN");
   if (checkFlags(CG_NODE_FLAGS_ICALL))
     fprintf(file, " ICALL");
-  if (checkFlags(CG_NODE_FLAGS_COMPLETE))
-    fprintf(file, " COMPLETE");
   if (checkFlags(CG_NODE_FLAGS_NOT_POINTER))
     fprintf(file, " !PTR");
   fprintf(file, " ]\n");
@@ -1092,8 +1093,6 @@ void ConstraintGraphNode::print(ostream& ostr)
     ostr << " ARETURN";
   if (checkFlags(CG_NODE_FLAGS_ICALL))
     ostr << " ICALL";
-  if (checkFlags(CG_NODE_FLAGS_COMPLETE))
-    ostr << " COMPLETE";
   if (checkFlags(CG_NODE_FLAGS_NOT_POINTER))
     ostr << " !PTR";
   ostr << " ]" << endl;
@@ -1146,6 +1145,8 @@ StInfo::print(FILE *file)
     fprintf(file, " TEMP");
   if (checkFlags(CG_ST_FLAGS_HEAP))
     fprintf(file, " HEAP");
+  if (checkFlags(CG_ST_FLAGS_STACK))
+    fprintf(file, " STACK");
   if (checkFlags(CG_ST_FLAGS_NOCNTXT))
     fprintf(file, " CI");
   fprintf(file, "]");
@@ -1165,6 +1166,8 @@ void StInfo::print(ostream& str)
     str << " TEMP";
   if (checkFlags(CG_ST_FLAGS_HEAP))
     str << " HEAP";
+  if (checkFlags(CG_ST_FLAGS_STACK))
+    str << " STACK";
   if (checkFlags(CG_ST_FLAGS_NOCNTXT))
     str << " CI";
   str << "]";
@@ -1389,7 +1392,8 @@ ConstraintGraphVCG::buildVCG(ConstraintGraph *cg)
   UINT32 copyClassId = vcg.edgeClass("Copy/Skew");
   UINT32 loadClassId = vcg.edgeClass("Load");
   UINT32 storeClassId = vcg.edgeClass("Store");
-  UINT32 parentClassId = vcg.edgeClass("Parent");
+  UINT32 parentClassId = vcg.edgeClass("Parent",true/*hidden*/);
+  UINT32 offsetClassId = vcg.edgeClass("Offset",true/*hidden*/);
 
   // Iterate over all nodes in the graph
   for (CGIdToNodeMapIterator iter = cg->begin(); iter != cg->end(); iter++) {
@@ -1468,6 +1472,26 @@ ConstraintGraphVCG::buildVCG(ConstraintGraph *cg)
       vcgEdge->color(Green);
       vcgEdge->edgeClass(parentClassId);
       vcgEdge->lineStyle(Dotted);
+      vcg.addEdge(*vcgEdge);
+    }
+
+    // Add edge from node to the next node in its symbol offset chain
+    if (cgNode->nextOffset()) {
+      ConstraintGraphNode *next = cgNode->nextOffset();
+      const char *nTitle = NULL;
+      nodeToTitleMapIter = nodeToTitleMap.find(next);
+      // Create a new parent VCGNode if none exists
+      if (nodeToTitleMapIter == nodeToTitleMap.end()) {
+        VCGNode *node = buildVCGNode(next);
+        nTitle = node->title();
+        nodeToTitleMap[next]= nTitle;
+        vcg.addNode(*node);
+      } else
+        nTitle = nodeToTitleMapIter->second;
+      VCGEdge *vcgEdge = CXX_NEW(VCGEdge(srcTitle, nTitle), &_memPool);
+      vcgEdge->color(Purple);
+      vcgEdge->edgeClass(offsetClassId);
+      vcgEdge->lineStyle(Dashed);
       vcg.addEdge(*vcgEdge);
     }
   }

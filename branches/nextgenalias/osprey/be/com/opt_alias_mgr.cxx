@@ -569,6 +569,11 @@ ALIAS_MANAGER::Gen_alias_id(WN *wn, POINTS_TO *pt)
 {
   if (pt != NULL) {
     WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn, pt->Ip_alias_class());
+
+    if (pt->Alias_tag() > InitialAliasTag) {
+      AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
+      aa->setAliasTag(wn,pt->Alias_tag());
+    }
   }
 
   if (!WOPT_Enable_CG_Alias) {

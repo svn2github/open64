@@ -34,7 +34,7 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
     ConstraintGraphVCG::dumpVCG(_constraintGraph, buf);
   }
 
-  _constraintGraph->solveConstraints();
+  _constraintGraph->nonIPASolver();
 
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_VCG_FLAG)) {
     char buf[1024];
@@ -66,8 +66,10 @@ NystromAliasAnalyzer::aliased(AliasTag tag1, AliasTag tag2)
 
   PointsTo& ptsSet1 = pointsTo(tag1);
   PointsTo& ptsSet2 = pointsTo(tag2);
-  FmtAssert(!ptsSet1.isEmpty() && !ptsSet2.isEmpty(),
-      ("Expect all valid points-to sets to be non-empty"));
+  FmtAssert(!ptsSet1.isEmpty(),
+            ("Points-to set of alias tag %d is unexpectedly empty",tag1));
+  FmtAssert(!ptsSet2.isEmpty(),
+            ("Points-to set of alias tag %d is unexpectedly empty",tag2));
   if (ptsSet1.intersect(ptsSet2))
     return POSSIBLY_ALIASED;
 
@@ -185,14 +187,6 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       FmtAssert(cgNode != NULL, ("CGNodeId : %d not mapped to a "
                 "ConstraintGraphNode\n", id));
 
-      // If we are not performing a scalar load/store operation, then
-      // we need can only provide an aliasTag if the analysis indicates
-      // that the points-to set can be considered complete.
-      if (!OPERATOR_is_scalar_store(opr) &&
-          !OPERATOR_is_scalar_load(opr) &&
-          !cgNode->checkFlags(CG_NODE_FLAGS_COMPLETE))
-        continue;
-
       aliasTag = newAliasTag();
       AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
    
@@ -210,8 +204,24 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       else if (OPERATOR_is_scalar_load(opr) || OPERATOR_is_scalar_store(opr))
       {
         aliasTagInfo->pointsTo().setBit(cgNode->id());
+        // Here we add in the GBL points-to relation for the scalar
+        // to catch the fact that the scalar may have escaped and
+        // may have the "black hole" in its points-to set
+        aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_GBL));
       }
-    } 
+
+      // If the points-to set of the alias tag is empty at this point then
+      // either we have an escape analysis bug or an uninitialized variable.
+      ConstraintGraph *cg = cgNode->constraintGraph();
+      if (aliasTagInfo->pointsTo().isEmpty() &&
+          !cg->stInfo(cgNode->st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
+        aliasTagInfo->pointsTo().setBit(cgNode->id());
+
+      // We expect all alias sets to be non-empty...
+      FmtAssert(!aliasTagInfo->pointsTo().isEmpty(),
+                ("Alias tag %d (from cgnode %d) has empty alias set",
+                    aliasTag,cgNode->id()));
+    }
     // For calls, get the mod/ref info from the callsite
     else if (opr == OPR_ICALL || opr == OPR_VFCALL || opr == OPR_CALL)
     {

@@ -2,6 +2,7 @@
 #include <stack>
 #include "be_util.h"
 #include "constraint_graph.h"
+#include "constraint_graph_escanal.h"
 #include "opt_defs.h"
 #include "tracing.h"
 
@@ -223,27 +224,6 @@ SCCDetection::findAndUnify()
   CXX_DELETE_ARRAY(_D,_memPool);
 }
 
-bool
-ConstraintGraph::WorkList::push(ConstraintGraphEdge *e)
-{
-  if (!e->checkFlags(CG_EDGE_IN_WORKLIST)) {
-    e->addFlags(CG_EDGE_IN_WORKLIST);
-    _edgeList.push_back(e);
-    return true;
-  }
-  else
-    return false;
-}
-
-ConstraintGraphEdge *
-ConstraintGraph::WorkList::pop(void)
-{
-   ConstraintGraphEdge *e = _edgeList.front();
-   _edgeList.pop_front();
-   e->clearFlags(CG_EDGE_IN_WORKLIST);
-   return e;
-}
-
 void
 ConstraintGraph::EdgeDelta::add(ConstraintGraphEdge *e)
 {
@@ -273,14 +253,13 @@ ConstraintGraph::solveConstraints()
   // TODO: Perform cycle detection, here
   SCCDetection sccs(this,_memPool);
 
-  WorkList &copySkewList = edgeDelta().copySkewList();
-  WorkList &loadStoreList = edgeDelta().loadStoreList();
+  EdgeWorkList &copySkewList = edgeDelta().copySkewList();
+  EdgeWorkList &loadStoreList = edgeDelta().loadStoreList();
 
+  UINT32 iterCount = 0;
   bool trace = Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG);
 
-  INT32 iterCount = 0;
   do {
-
     // Here we walk the constraint graph to locate any SCCs and
     // collapse them to ensure that the solver will converge.
     // TODO:  What is the scope of analyis during IPA, bottom-up walk?
@@ -369,8 +348,41 @@ ConstraintGraph::solveConstraints()
     }
   } while (!copySkewList.empty());
 
-  computeCompleteness();
   postProcessPointsTo();
+}
+
+void
+ConstraintGraph::nonIPASolver()
+{
+  // The "black hole" is meant to represent all memory that is possibly
+  // accessed by symbols that have references outside the scope of the
+  // current procedure.
+  createBlackHole();
+
+  // Here we solve the constraint graph for the current procedure
+  solveConstraints();
+
+  // Now we perform escape analysis to in order to augment the
+  // the points-to sets of "incomplete" symbols to facilitate
+  // comparison of their points-to sets with symbols for which
+  // we have "complete" information.
+  EscapeAnalysis escAnal(this,false/*non-IPA mode*/,_memPool);
+  escAnal.perform();
+
+  ConstraintGraphNode *bhNode = NULL;
+  for (CGNodeToIdMapIterator iter = _cgNodeToIdMap.begin();
+      iter != _cgNodeToIdMap.end(); iter++) {
+    ConstraintGraphNode *node = iter->first;
+    /*
+    UINT32 escAnalFlags = escAnal.escaptStFlags() & ~CG_ST_FLAGS_ESCALL;
+    if (flags & )
+    */
+    if (escAnal.escapeStFlags(node) & CG_ST_FLAGS_ESCALL) {
+      if (!bhNode)
+        bhNode = getCGNode(_blackHole,0);
+      node->addPointsTo(bhNode,CQ_GBL);
+    }
+  }
 }
 
 void
@@ -411,134 +423,11 @@ ConstraintGraph::postProcessPointsTo()
 }
 
 void
-ConstraintGraph::computeCompleteness()
+ConstraintGraph::createBlackHole(void)
 {
-  bool trace = Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG);
-  if (trace)
-    fprintf(stderr,"Complete Analysis...\n");
-
-  // First we collect some information for the current PU
-  // constraint graph
-  // 1) The local variables
-  // 2) The union of points-to sets of all "global" nodes,
-  //    where global is an:
-  //    (a) CG_ST_FLAGS_GLOBAL
-  //    (b) CG_NODE_FLAGS_ACTUAL_PARM (and call not resolved)
-  //    (c) CG_NODE_FLAGS_FORMAL_RETURN (and return not resolved)
-  //
-  // Under non-ipa, any local variable not contained in the
-  // above points-to set is marked as complete.
-  PointsTo possiblyEscLocal;
-  PointsTo escapedNodes;
-  for (CGNodeToIdMapIterator iter = _cgNodeToIdMap.begin();
-      iter != _cgNodeToIdMap.end(); ++iter) {
-    ConstraintGraphNode *node = iter->first;
-    node->clearFlags(CG_NODE_FLAGS_COMPLETE);
-    // Here we are collecting all address taken locals and
-    // marking those that are not as 'complete'
-    if (ST_sclass(&St_Table[node->st_idx()]) == SCLASS_AUTO ||
-        ST_sclass(&St_Table[node->st_idx()]) == SCLASS_REG) {
-      if (node->checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))  {
-        possiblyEscLocal.setBit(node->id());
-        if (trace)
-          fprintf(stderr,"  Found possible escape local: %d\n",node->id());
-      }
-    }
-
-    // Here we are collecting the points to sets of all nodes
-    // that have possibly escaped.
-    // NOTE:  This code will need to be reworked for -ipa
-    // to account for the fact that if we have resolved all
-    // calls then the actual parm/formal return should be
-    // resolved.  Similar changes related to globals.
-    if (node->checkFlags(CG_NODE_FLAGS_ACTUAL_PARAM|
-                         CG_NODE_FLAGS_FORMAL_RETURN) ||
-        stInfo(node->st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
-      for ( PointsToIterator pti(node); pti != 0; ++pti ) {
-        escapedNodes.setUnion(*pti);
-      }
-
-  }
-  list<const ConstraintGraphEdge *> workList;
-  typedef pair<UINT32,bool> VisitedEdge;
-  VisitedEdge *visitedEdge = CXX_NEW_ARRAY(VisitedEdge,
-      totalCGNodes(),
-      _memPool);
-
-  for (CGNodeToIdMapIterator iter = _cgNodeToIdMap.begin();
-      iter != _cgNodeToIdMap.end(); ++iter) {
-    ConstraintGraphNode *node = iter->first;
-    // Do we a have a root node?
-    CGEdgeSetIterator inCopyIter = node->inCopySkewEdges().begin();
-    if (inCopyIter == node->inCopySkewEdges().end()) {
-      if ((ST_sclass(&St_Table[node->st_idx()]) == SCLASS_AUTO ||
-           ST_sclass(&St_Table[node->st_idx()]) == SCLASS_REG) &&
-          (!possiblyEscLocal.isSet(node->id()) ||
-              !escapedNodes.isSet(node->id()))) {
-        // Make sure that the points-to set(s) are not empty
-        bool emptyPointsTo = true;
-        for ( PointsToIterator pti(node); pti != 0; ++pti ) {
-          if (!(*pti).isEmpty()) {
-            emptyPointsTo = false;
-            break;
-          }
-        }
-        if (!emptyPointsTo) {
-          node->addFlags(CG_NODE_FLAGS_COMPLETE);
-          if (trace)
-            fprintf(stderr, "  Non-escape root %d: COMPLETE\n",node->id());
-        }
-      }
-      for (CGEdgeSetIterator outIter = node->outCopySkewEdges().begin();
-          outIter != node->outCopySkewEdges().end(); ++outIter)
-        workList.push_back(*outIter);
-    }
-  }
-
-  while (!workList.empty()) {
-    const ConstraintGraphEdge *edge = workList.front();
-    workList.pop_front();
-
-    ConstraintGraphNode *src = edge->srcNode();
-    ConstraintGraphNode *dst = edge->destNode();
-    if (trace) {
-      fprintf(stderr," Edge:");
-      edge->print(stderr);
-      fprintf(stderr," <%d,%d>",visitedEdge[dst->id()].first,
-          visitedEdge[dst->id()].second);
-      fprintf(stderr,"\n");
-    }
-    // Initialize state for a non-root node visited for the first time
-    if (visitedEdge[dst->id()].first == 0) {
-      UINT32 cnt = 0;
-      for (CGEdgeSetIterator iter = dst->inCopySkewEdges().begin();
-          iter != dst->inCopySkewEdges().end(); ++iter)
-        cnt += 1;
-      visitedEdge[dst->id()].first = cnt;
-      if (src->checkFlags(CG_NODE_FLAGS_COMPLETE))
-        visitedEdge[dst->id()].second = true;
-    }
-    // Now we actually decrement the counter to mark the current
-    // edge as visited.  If all edges are visited (counter == 0),
-    // and if all predecessors are complete we mark current node
-    // as complete.
-    if ((--visitedEdge[dst->id()].first) == 0) {
-      if (visitedEdge[dst->id()].second &&
-          !dst->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
-        dst->addFlags(CG_NODE_FLAGS_COMPLETE);
-        if (trace) fprintf(stderr,"  Visited %d: COMPLETE\n",dst->id());
-      }
-      else
-        if (trace) fprintf(stderr,"  Visited %d: INCOMPLETE\n",dst->id());
-
-      // Now that all predecessors are visited push all out
-      // copy/skew edges onto the worklist
-      for (CGEdgeSetIterator iter = dst->outCopySkewEdges().begin();
-          iter != dst->outCopySkewEdges().end(); ++iter)
-        workList.push_back(*iter);
-    }
-  }
-  CXX_DELETE_ARRAY(visitedEdge,_memPool);
+  ST *bhST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgBlackHole",
+                                   CLASS_VAR, SCLASS_AUTO);
+  _blackHole = ST_st_idx(bhST);
 }
 
 void
@@ -721,6 +610,9 @@ ConstraintGraph::processAssign(const ConstraintGraphEdge *edge)
   ConstraintGraphNode *dst = edge->destNode();
   StInfo *dstStInfo = stInfo(dst->st_idx());
 
+  // Is this constraint context sensitive?
+  bool cntxt = !stInfo(src->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
+
   INT32 dstStOffset = dst->offset();
   INT32 srcStOffset = src->offset();
   INT32 curEndOffset = src->offset() + assignSize;
@@ -729,7 +621,7 @@ ConstraintGraph::processAssign(const ConstraintGraphEdge *edge)
     CGEdgeQual edgeQual = edge->edgeQual();
     for ( PointsToIterator pti(src); pti != 0; ++pti ) {
       CGEdgeQual srcQual = pti.qual();
-      CGEdgeQual dstQual = qualMap(ETYPE_COPY,srcQual,edgeQual);
+      CGEdgeQual dstQual = qualMap(ETYPE_COPY,srcQual,edgeQual,cntxt);
       if (dstQual != CQ_NONE) {
         ConstraintGraphNode *cur = src;
         SparseBitSet<CGNodeId> sum(_memPool);
@@ -775,7 +667,7 @@ ConstraintGraph::processAssign(const ConstraintGraphEdge *edge)
     CGEdgeQual edgeQual = edge->edgeQual();
     for ( PointsToIterator pti(src); pti != 0; ++pti ) {
       CGEdgeQual srcQual = pti.qual();
-      CGEdgeQual dstQual = qualMap(ETYPE_COPY,srcQual,edgeQual);
+      CGEdgeQual dstQual = qualMap(ETYPE_COPY,srcQual,edgeQual,cntxt);
       if (dstQual != CQ_NONE) {
         if (dst->inKCycle() == 0)
           change |= dst->unionPointsTo(*pti, dstQual);
@@ -834,9 +726,10 @@ ConstraintGraph::processSkew(const ConstraintGraphEdge *edge)
   UINT32 skew = edge->skew();
   CGEdgeQual edgeQual = edge->edgeQual();
   bool change = false;
+  bool cntxt = !stInfo(src->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
   for ( PointsToIterator pti(src); pti != 0; ++pti ) {
     CGEdgeQual curQual = pti.qual();
-    CGEdgeQual dstQual = qualMap(ETYPE_COPY/*COPY==SKEW*/,curQual,edgeQual);
+    CGEdgeQual dstQual = qualMap(ETYPE_COPY/*COPY==SKEW*/,curQual,edgeQual,cntxt);
     if (dstQual != CQ_NONE) {
       PointsTo &srcPTS = *pti;
       PointsTo tmp;
@@ -933,9 +826,10 @@ ConstraintGraph::processLoad(const ConstraintGraphEdge *edge)
     dst->addFlags(CG_NODE_FLAGS_UNKNOWN);
   }
 
+  bool cntxt = !stInfo(src->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
   for ( PointsToIterator pti(src); pti != 0; ++pti ) {
      CGEdgeQual curQual = pti.qual();
-     CGEdgeQual cpQual = qualMap(ETYPE_LOAD,curQual,edgeQual);
+     CGEdgeQual cpQual = qualMap(ETYPE_LOAD,curQual,edgeQual,cntxt);
      if (cpQual != CQ_NONE)
        addCopiesForLoadStore(src,dst,ETYPE_LOAD,cpQual,sz,*pti);
   }
@@ -987,9 +881,10 @@ ConstraintGraph::processStore(const ConstraintGraphEdge *edge)
       return false;
   }
 
+  bool cntxt = !stInfo(dst->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
   for ( PointsToIterator pti(dst); pti != 0; ++pti ) {
      CGEdgeQual curQual = pti.qual();
-     CGEdgeQual cpQual = qualMap(ETYPE_STORE,curQual,edgeQual);
+     CGEdgeQual cpQual = qualMap(ETYPE_STORE,curQual,edgeQual,cntxt);
      if (cpQual != CQ_NONE)
        addCopiesForLoadStore(src,dst,ETYPE_STORE,cpQual,sz,*pti);
   }
