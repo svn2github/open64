@@ -87,6 +87,10 @@
 #include "ipl_lno_util.h" 
 #include "wb_ipl.h"
 
+// Generate summary information for Nystrom alias analyzer
+#include "nystrom_alias_analyzer.h"
+#include "constraint_graph.h"
+
 extern BOOL DoPreopt;
 extern BOOL Do_Par;
 extern BOOL Do_Common_Const;
@@ -502,6 +506,9 @@ SUMMARIZE<program>::Summarize (WN *w)
     _alt_entry.Free_array();
     _alt_entry.Resetidx();
   }
+
+  // Generate summary information for Nystrom alias analyzer
+  generateConstraintGraphSummary();
 
 #ifdef KEY
   if (Get_Trace (TP_IPL, TT_IPL_SUMMARY))
@@ -3184,6 +3191,84 @@ SUMMARIZE<program>::Record_ty_info_for_type (TY_IDX ty, TY_FLAGS flags)
     ty_info->Set_ty_no_split();
 }
 #endif
+
+
+// Generate constraint graph summary for Nystrom Alias Analyzer
+template <PROGRAM program>
+void
+SUMMARIZE<program>::generateConstraintGraphSummary()
+{
+  NystromAliasAnalyzer *naa = 
+          static_cast<NystromAliasAnalyzer *>(AliasAnalyzer::aliasAnalyzer());
+  if (naa == NULL)
+    return;
+  ConstraintGraph *cg = naa->constraintGraph();
+  // Iterate over all nodes in the graph
+  for (CGIdToNodeMapIterator iter = cg->begin(); iter != cg->end(); iter++) {
+    ConstraintGraphNode *cgNode = iter->second;
+    SUMMARY_CONSTRAINT_GRAPH_NODE *summCGNode = New_constraint_graph_node();
+    ConstraintGraphNode *parent = cgNode->parent();
+    // Set points to set only if it has no representative parent
+    if (!parent || parent == cgNode)
+      processPointsToSet(summCGNode, cgNode->pointsTo(CQ_GBL),
+                         cgNode->pointsTo(CQ_HZ), cgNode->pointsTo(CQ_DN));
+    else
+      summCGNode->repParent(parent->id());
+    summCGNode->cgNodeId(cgNode->id());
+    summCGNode->st_idx(cgNode->st_idx());
+    summCGNode->offset(cgNode->offset());
+    summCGNode->flags(cgNode->flags());
+    summCGNode->inKCycle(cgNode->inKCycle());
+    if (cgNode->nextOffset())
+      summCGNode->nextOffset(cgNode->nextOffset()->id());
+    else
+      summCGNode->nextOffset(0);
+  }
+}
+
+// Since the pts-to-set is a sparse set, we store the CGNodeIds in the set
+// in a separate array. And for each SUMMARY_CONSTRAINT_GRAPH_NODE
+// store the number of elements start index into the array of the 
+// corresponding pts-to-set
+template <PROGRAM program>
+void
+SUMMARIZE<program>::processPointsToSet(SUMMARY_CONSTRAINT_GRAPH_NODE *sumCGNode,
+                                       PointsTo &gbl,
+                                       PointsTo &hz,
+                                       PointsTo &dn)
+{
+  // Process GBLs
+  int numGBLids = 0;
+  for (PointsTo::SparseBitSetIterator iter(&gbl, 0); iter != 0; ++iter) {
+    CGNodeId id = *iter;
+    INT new_idx = _constraint_graph_pts_ids.Newidx();
+    _constraint_graph_pts_ids[new_idx] = id;
+    numGBLids++;
+  }  
+  sumCGNode->numBitsPtsGBL(numGBLids);
+  sumCGNode->ptsGBLidx(_constraint_graph_pts_ids.Lastidx() - numGBLids + 1);
+  // Process HZs
+  int numHZids = 0;
+  for (PointsTo::SparseBitSetIterator iter(&hz, 0); iter != 0; ++iter) {
+    CGNodeId id = *iter;
+    INT new_idx = _constraint_graph_pts_ids.Newidx();
+    _constraint_graph_pts_ids[new_idx] = id;
+    numHZids++;
+  }  
+  sumCGNode->numBitsPtsHZ(numHZids);
+  sumCGNode->ptsHZidx(_constraint_graph_pts_ids.Lastidx() - numHZids + 1);
+  // Process DNs
+  int numDNids = 0;
+  for (PointsTo::SparseBitSetIterator iter(&dn, 0); iter != 0; ++iter) {
+    CGNodeId id = *iter;
+    INT new_idx = _constraint_graph_pts_ids.Newidx();
+    _constraint_graph_pts_ids[new_idx] = id;
+    numDNids++;
+  }  
+  sumCGNode->numBitsPtsDN(numDNids);
+  sumCGNode->ptsDNidx(_constraint_graph_pts_ids.Lastidx() - numDNids + 1);
+
+}
 
 #endif // ipl_summarize_template_INCLUDED
 

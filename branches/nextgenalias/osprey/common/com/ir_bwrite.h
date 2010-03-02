@@ -56,6 +56,7 @@ extern "C" {
 extern BOOL Write_BE_Maps;
 extern BOOL Write_AC_INTERNAL_Map;
 extern BOOL Write_ALIAS_CLASS_Map;
+extern BOOL Write_ALIAS_CGNODE_Map;
 #endif /* BACK_END */
 
 

@@ -278,6 +278,17 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
   }
 #endif
 
+  // Process all constraint graph nodes. Remap the global st indices
+  INT32 num_cg_nodes;
+  SUMMARY_CONSTRAINT_GRAPH_NODE *cg_nodes = 
+                    IPA_get_constraint_graph_nodes_array(hdr, num_cg_nodes);
+  for (i = 0; i < num_cg_nodes; ++i) {
+    ST_IDX old_st_idx = cg_nodes[i].st_idx();
+    if (ST_IDX_level(old_st_idx) == GLOBAL_SYMTAB) {
+      cg_nodes[i].st_idx(idx_maps->st[old_st_idx]);
+    }
+  }
+
   // process all ty_idxs found in SUMMARY_STRUCT_ACCESS, and sum them up!
   if(IPA_Enable_Reorder){
       INT32 num_tys,new_ty;

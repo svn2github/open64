@@ -823,8 +823,7 @@ ConstraintGraph::getCGNode(ST_IDX st_idx, INT64 offset)
     _cgStInfoMap[st_idx] = si;
   }
 
-  ST *st = &St_Table[st_idx];
-  if (ST_class(st) != CLASS_PREG) {
+  if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
     offset = offset % si->modulus();
     if (si->varSize() != 0)
       Is_True(offset < si->varSize(), ("getCGNode: offset: %lld >= varSize"
@@ -850,7 +849,7 @@ ConstraintGraph::getCGNode(ST_IDX st_idx, INT64 offset)
   // Since each PREG is independent, we do not link it to the sorted
   // list of its associated symbol. So, the firstOffset of the StInfo
   // will be NULL and so will the next offset of the ConstraintGraphNode
-  if (ST_class(st) != CLASS_PREG)
+  if (!si->checkFlags(CG_ST_FLAGS_PREG))
     addCGNodeInSortedOrder(si, cgNode);
 
   if (cgNode->offset() == -1)
@@ -1013,16 +1012,16 @@ void
 ConstraintGraphNode::print(FILE *file)
 {
   fprintf(file, "*CGNodeId: %d*\n ", _id);
-  _nodeInfo.print(file);
-  if (_nextOffset)
-    fprintf(file, " nextCGNodeId: %d", _nextOffset->_id);
+  _nodeInfo.print(_parentCG, file);
+  if (nodeInfo().nextOffset())
+    fprintf(file, " nextCGNodeId: %d", nodeInfo().nextOffset()->_id);
   else
     fprintf(file, " nextCGNodeId: null");
   if (parent())
-    fprintf(file, " parent: %d\n",parent()->_id);
+    fprintf(file, " parent: %d", parent()->_id);
   else
     fprintf(file, " parent: null"); 
-  fprintf(file, " inKCycle: %d\n", _inKCycle);
+  fprintf(file, " inKCycle: %d\n",  nodeInfo().inKCycle());
   fprintf(file, " inCopySkewCGEdges: ");
   for (CGEdgeSetIterator iter = _inCopySkewCGEdges.begin();
        iter != _inCopySkewCGEdges.end();
@@ -1075,16 +1074,16 @@ ConstraintGraphNode::print(FILE *file)
 void ConstraintGraphNode::print(ostream& ostr)
 {
   ostr << "CGNodeId: " << id();
-  _nodeInfo.print(ostr);
-  if (_nextOffset)
-    ostr << "nextCGNodeId: " << _nextOffset->_id;
+  _nodeInfo.print(_parentCG, ostr);
+  if (nodeInfo().nextOffset())
+    ostr << "nextCGNodeId: " << nodeInfo().nextOffset()->_id;
   else
     ostr << "nextCGNodeId: null";
   if (parent())
     ostr << " parent: " << parent()->_id;
   else
     ostr << " parent: null";
-  ostr << " inKCycle: " << _inKCycle;
+  ostr << " inKCycle: " << nodeInfo().inKCycle();
   ostr << endl;
   ostr << "CGNode flags: [";
   if (checkFlags(CG_NODE_FLAGS_UNKNOWN))
@@ -1105,12 +1104,21 @@ void ConstraintGraphNode::print(ostream& ostr)
 }
 
 void
-ConstraintGraphNode::NodeInfo::print(FILE *file)
+ConstraintGraphNode::NodeInfo::print(ConstraintGraph *cg, FILE *file)
 {
-  fprintf(file, "sym:");
+  fprintf(file, "sym: ");
+#ifdef BACK_END
   (&St_Table[_st_idx])->Print(stderr);
+#else
+  if (ST_IDX_level(_st_idx) == GLOBAL_SYMTAB)
+    (&St_Table[_st_idx])->Print(stderr);
+  else
+    fprintf(file, " <level:%d, idx:%d> (local)\n",
+            ST_IDX_level(_st_idx), ST_IDX_index(_st_idx));
+#endif
   fprintf(file, " offset: %d", _offset);
-  if (ST_class(&St_Table[_st_idx]) == CLASS_PREG) {
+  StInfo *stInfo = cg->stInfo(_st_idx);
+  if (stInfo->checkFlags(CG_ST_FLAGS_PREG)) {
     PREG_NUM p = PREG_NUM(_offset / CG_PREG_SCALE);
     fprintf(file, " preg:%d,%s", p, !Preg_Is_Dedicated(p) ? Preg_Name(p) 
                                                           : "dedicated");
@@ -1123,12 +1131,22 @@ ConstraintGraphNode::NodeInfo::print(FILE *file)
 }
 
 void
-ConstraintGraphNode::NodeInfo::print(ostream &ostr)
+ConstraintGraphNode::NodeInfo::print(ConstraintGraph *cg, ostream &ostr)
 {
   ostr << " sym: ";
   ostr << St_Table[_st_idx];
+#ifdef BACK_END
+  ostr << St_Table[_st_idx];
+#else
+  if (ST_IDX_level(_st_idx) == GLOBAL_SYMTAB)
+    ostr << St_Table[_st_idx];
+  else
+    ostr << " <level: " << ST_IDX_level(_st_idx) << ", idx: " 
+         << ST_IDX_index(_st_idx) << "> (local)" << endl;
+#endif
   ostr << "offset: " << _offset;
-  if (ST_class(&St_Table[_st_idx]) == CLASS_PREG) {
+  StInfo *stInfo = cg->stInfo(_st_idx);
+  if (stInfo->checkFlags(CG_ST_FLAGS_PREG)) {
     PREG_NUM p = PREG_NUM(_offset / CG_PREG_SCALE);
     ostr << " preg:" << p << ","
          << (!Preg_Is_Dedicated(p) ? Preg_Name(p) : "dedicated");
@@ -1149,6 +1167,8 @@ StInfo::print(FILE *file)
     fprintf(file, "GLOBAL");
   if (checkFlags(CG_ST_FLAGS_TEMP))
     fprintf(file, " TEMP");
+  if (checkFlags(CG_ST_FLAGS_PREG))
+    fprintf(file, " PREG");
   if (checkFlags(CG_ST_FLAGS_HEAP))
     fprintf(file, " HEAP");
   if (checkFlags(CG_ST_FLAGS_STACK))

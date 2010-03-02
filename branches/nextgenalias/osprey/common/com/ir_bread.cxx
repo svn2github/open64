@@ -116,6 +116,7 @@ static off_t local_mapped_size;
 
 static char file_revision[80];	/* save revision string */
 
+BOOL Read_ALIAS_CGNODE_Map = FALSE;
 
 #define DOUBLE_ALIGNED(sz)	(((sz) % 8) == 0 ? (sz) : (sz)+(8-((sz)%8)))
 #define ERROR_VALUE -1
@@ -1554,6 +1555,14 @@ Read_Local_Info (MEM_POOL *pool, PU_Info *pu)
 			 WT_ALIAS_CLASS, WN_MAP_ALIAS_CLASS) == -1) {
       ErrMsg ( EC_IR_Scn_Read, "alias class map", local_ir_file);
     }
+
+    if (WN_get_INT32_map(local_fhandle, pu,
+			 WT_ALIAS_CGNODE, WN_MAP_ALIAS_CGNODE) == -1) {
+      ErrMsg ( EC_IR_Scn_Read, "alias cgnode map", local_ir_file);
+    }
+    // Check if we have read in the WN to CGNodeId map
+    if (PU_Info_state(pu, WT_ALIAS_CGNODE) == Subsect_InMem)
+      Read_ALIAS_CGNODE_Map = TRUE;
 
     if (WN_get_voidptr_map(local_fhandle, pu,
 			   WT_AC_INTERNAL, WN_MAP_AC_INTERNAL) == -1) {

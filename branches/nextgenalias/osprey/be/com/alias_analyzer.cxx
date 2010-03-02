@@ -14,6 +14,8 @@
 #include "opt_defs.h"  /* Trace flags */
 #include "tracing.h"
 
+extern BOOL Read_ALIAS_CGNODE_Map;
+
 // There will be one instance of an AliasAnalyzer object, the
 // results of the alias analysis are either provided via summary
 // from ipa_link or computed locally during a non-ipa compile
@@ -27,7 +29,10 @@ AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree)
 
   // What alias analyzer are we going to use?
   if ( Alias_Nystrom_Analyzer ) {
-    _alias_analyzer = new NystromAliasAnalyzer(ac,tree);
+    if (Read_ALIAS_CGNODE_Map)
+      _alias_analyzer = new NystromAliasAnalyzer(ac);
+    else
+      _alias_analyzer = new NystromAliasAnalyzer(ac,tree);
     if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG))
       fdump_tree(stderr, tree);
     return _alias_analyzer;

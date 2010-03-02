@@ -11,7 +11,21 @@
 #include "wn_util.h"
 #include "nystrom_alias_analyzer.h"
 
+extern BOOL Write_ALIAS_CGNODE_Map;
+
 PointsTo NystromAliasAnalyzer::emptyPointsToSet;
+
+NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac)
+  : AliasAnalyzer()
+{
+  // Activate the use of the Nystrom points-to analysis by the
+  // ALIAS_RULE harness and disable alias classification rules.
+  ac |= ALIAS_ANALYZER_RULE;
+  ac &= ~(CLAS_RULE|IP_CLAS_RULE);
+
+  // Set flag to dump the WN to CGNodeId map during Write_PU_Info
+  Write_ALIAS_CGNODE_Map = TRUE;
+}
 
 NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
                                            WN *entryWN)
@@ -52,6 +66,9 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
 
   // Map WNs to AliasTags
   createAliasTags(entryWN);
+
+  // Set flag to dump the WN to CGNodeId map during Write_PU_Info
+  Write_ALIAS_CGNODE_Map = TRUE;
 }
 
 NystromAliasAnalyzer::~NystromAliasAnalyzer() {}
@@ -221,6 +238,9 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       FmtAssert(!aliasTagInfo->pointsTo().isEmpty(),
                 ("Alias tag %d (from cgnode %d) has empty alias set",
                     aliasTag,cgNode->id()));
+
+      // Map aliasTags to the cgnode ids
+      _aliasTagToCGNodeIdMap[aliasTag] = id;
     }
     // For calls, get the mod/ref info from the callsite
     else if (opr == OPR_ICALL || opr == OPR_VFCALL || opr == OPR_CALL)
@@ -244,6 +264,9 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
 
       callAliasTagInfo->mod().setUnion(cs->mod());
       callAliasTagInfo->ref().setUnion(cs->mod());
+
+      // Map aliasTags to the callsite ids
+      _aliasTagToCallSiteIdMap[aliasTag] = id;
     } 
     else
       continue;

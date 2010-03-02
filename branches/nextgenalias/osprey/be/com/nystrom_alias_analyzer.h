@@ -60,7 +60,11 @@ private:
 class NystromAliasAnalyzer : public AliasAnalyzer {
    
 public:
+   // Invoked in non-ipa mode when WN to CGNodeId map is not available
    NystromAliasAnalyzer(ALIAS_CONTEXT &,WN *);
+
+   // Invoked during post-ipa be when WN to CGNodeId map exists
+   NystromAliasAnalyzer(ALIAS_CONTEXT &);
 
    ~NystromAliasAnalyzer();
 
@@ -93,9 +97,28 @@ public:
    // returns 'false' and the points-to set is undefined.
    BOOL pointsToSet(AliasTag, PointsTo &);
 
-
    AliasTag meet(AliasTag dstTag, AliasTag srcTag);
 
+   ConstraintGraph *constraintGraph() const { return _constraintGraph; }
+
+   CallSiteId callSiteId(AliasTag tag) 
+   {
+     hash_map<UINT32, CallSiteId>::iterator iter = 
+                                   _aliasTagToCallSiteIdMap.find((UINT32)tag);
+     if (iter != _aliasTagToCallSiteIdMap.end())
+       return iter->second;
+     return 0;
+   }
+
+   CGNodeId cgNodeId(AliasTag tag) 
+   {
+     hash_map<UINT32, CGNodeId>::iterator iter = 
+                                 _aliasTagToCGNodeIdMap.find((UINT32)tag);
+     if (iter != _aliasTagToCGNodeIdMap.end())
+       return iter->second;
+     return 0;
+   }
+  
 private:
 
    // Creates a new AliasTag for use during client update of
@@ -132,6 +155,12 @@ private:
    hash_map<UINT32, AliasTagInfo *> _aliasTagInfo;
 
    static PointsTo emptyPointsToSet;
+
+   // Map AliasTags to their corresponding CGNode/CallSite ids
+   // so that during CODEREP -> WHIRL phase we can attach the original
+   // CGNodeIds to the new WHIRL nodes from their AliasTags
+   hash_map<UINT32, CGNodeId>   _aliasTagToCGNodeIdMap;
+   hash_map<UINT32, CallSiteId> _aliasTagToCallSiteIdMap;
 };
 
 #endif

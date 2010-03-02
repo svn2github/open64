@@ -94,7 +94,7 @@ static char *rcs_id = 	opt_alias_mgr_CXX"$Revision: 1.7 $";
 #include "targ_sim.h"
 #include "glob.h"
 #include "pu_info.h"
-#include "alias_analyzer.h"
+#include "nystrom_alias_analyzer.h"
 
 static BOOL in_ipa_pu_list(char *function_name);
 static BOOL in_pure_call_list(char *function_name);
@@ -569,10 +569,42 @@ ALIAS_MANAGER::Gen_alias_id(WN *wn, POINTS_TO *pt)
 {
   if (pt != NULL) {
     WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn, pt->Ip_alias_class());
-
-    if (pt->Alias_tag() > InitialAliasTag) {
-      AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
-      aa->setAliasTag(wn,pt->Alias_tag());
+ 
+    // Restore the WN to CGNodeId/CallSiteId map
+    NystromAliasAnalyzer *naa = static_cast<NystromAliasAnalyzer *>
+                                (AliasAnalyzer::aliasAnalyzer());
+    if (naa) 
+    {
+      AliasTag tag = pt->Alias_tag();
+      // If the WN is not mapped to a CGNodeId, use the AliasTag from
+      // the POINTS_TO to get the CGNodeId using the NystromAliasAnalyzers's
+      // AliasTag to CGNodeId map that was constructed during createAliasTags
+      if (WN_MAP32_Get(WN_MAP_ALIAS_CGNODE, wn) == 0) {
+        OPERATOR opr = WN_operator(wn);
+        if (OPERATOR_is_call(opr))
+        {
+          CallSiteId id = naa->callSiteId(tag);
+          if (id != 0)
+            WN_MAP32_Set(WN_MAP_ALIAS_CGNODE, wn, id);
+        } 
+        else if (OPERATOR_is_scalar_istore(opr) ||
+                 OPERATOR_is_scalar_iload(opr) ||
+                 OPERATOR_is_scalar_load(opr) ||
+                 OPERATOR_is_scalar_store(opr) ||
+                 opr == OPR_MSTORE ||
+                 opr == OPR_MLOAD) {
+          CGNodeId id = naa->cgNodeId(tag);
+          if (id != 0) {
+            if (opr == OPR_ILDBITS || opr == OPR_MLOAD || opr == OPR_ILOAD)
+              WN_MAP32_Set(WN_MAP_ALIAS_CGNODE, WN_kid0(wn), id);
+            else
+              WN_MAP32_Set(WN_MAP_ALIAS_CGNODE, wn, id);
+          }
+        }
+      }
+      // Set the WNs alias tag from the POINTS_TO
+      if (tag >= InitialAliasTag)
+        naa->setAliasTag(wn,pt->Alias_tag());
     }
   }
 

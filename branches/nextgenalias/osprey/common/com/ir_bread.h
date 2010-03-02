@@ -45,6 +45,8 @@
 #define REVISION_MISMATCH 0
 #define READER_ERROR -1
 #define ABI_MISMATCH -2
+
+extern BOOL Read_ALIAS_CGNODE_Map;
 				       
 
 struct OFFSET_AND_SIZE

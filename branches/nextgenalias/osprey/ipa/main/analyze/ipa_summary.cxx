@@ -119,6 +119,29 @@ IPA_get_ty_info_file_array (const IP_FILE_HDR& hdr, INT32& size)
 }
 #endif
 
+SUMMARY_CONSTRAINT_GRAPH_NODE*
+IPA_get_constraint_graph_nodes_array(const IP_FILE_HDR &hdr, INT32 &size)
+{
+  const SUMMARY_FILE_HEADER *summary_header = IP_FILE_HDR_file_header(hdr);
+  if (size = summary_header->Get_constraint_graph_nodes_size()) {
+    return (SUMMARY_CONSTRAINT_GRAPH_NODE *)
+      (IP_FILE_HDR_summary (hdr) + 
+                   summary_header->Get_constraint_graph_nodes_offset());
+  } 
+  return NULL;
+}
+
+UINT32 *
+IPA_get_constraint_graph_pts_ids_array(const IP_FILE_HDR &hdr, INT32 &size)
+{
+  const SUMMARY_FILE_HEADER *summary_header = IP_FILE_HDR_file_header(hdr);
+  if (size = summary_header->Get_constraint_graph_pts_ids_size()) {
+    return (UINT32 *)(IP_FILE_HDR_summary (hdr) + 
+                      summary_header->Get_constraint_graph_pts_ids_offset());
+  } 
+  return NULL;
+}
+
 static SUMMARY_GLOBAL*
 get_global_array (const IPA_NODE* node)
 {

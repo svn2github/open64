@@ -44,7 +44,8 @@ EscapeAnalysis::stOffset(const ConstraintGraphNode *node) const
   // pregs are special in that they all map to the same ST_IDX,
   // but we must treat each offset as a distinct symbol
   UINT32 offset = 0;
-  if (ST_sclass(&St_Table[node->st_idx()]) == SCLASS_REG)
+  StInfo *stInfo = node->constraintGraph()->stInfo(node->st_idx());
+  if (stInfo->checkFlags(CG_ST_FLAGS_PREG))
     offset = node->offset();
   return offset;
 }

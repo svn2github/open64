@@ -1287,4 +1287,37 @@ SUMMARY_TY_INFO::Trace ( void ) const
 }
 #endif
 
+// Constraint graph summary for Nystrom Alias Analyzer
+void
+SUMMARY_CONSTRAINT_GRAPH_NODE::Print( FILE *fp) const
+{
+  fprintf(fp, "CGNODE %d st: %d offset: %d\n", _cgNodeId, _st_idx, _offset);
+  fprintf(fp, "_numBitsPtsGBL: %d idx: %d\n", _numBitsPtsGBL, _pointsToGBLIdx);
+  fprintf(fp, "_numBitsPtsHZ: %d idx: %d\n", _numBitsPtsHZ, _pointsToHZIdx);
+  fprintf(fp, "_numBitsPtsDN: %d idx: %d\n", _numBitsPtsDN, _pointsToDNIdx);
+} 
+
+void
+SUMMARY_CONSTRAINT_GRAPH_NODE::Print_array(FILE* fp, INT32 size) const
+{
+  fprintf(fp, "%sStart cgnode array\n%s", SBar, SBar);
+  for (INT i = 0; i < size; ++i) {
+    this[i].Print(fp);
+    fprintf(fp, "\n");
+  }
+  fprintf( fp, "%sEnd cgnode array \n%s", SBar, SBar);
+}
+
+void
+SUMMARY_CONSTRAINT_GRAPH_NODE::Trace_array(INT32 size) const
+{
+  Print_array(TFile, size);
+}
+
+void
+SUMMARY_CONSTRAINT_GRAPH_NODE::Trace(void) const
+{
+  Print (TFile);
+}
+
 

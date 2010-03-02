@@ -136,6 +136,9 @@ private:
 #ifdef KEY
   Elf64_Word _ty_info_offset;
 #endif
+  // Constraint graph summary for Nystrom Alias Analyzer
+  Elf64_Word _constraint_graph_nodes_offset;
+  Elf64_Word _constraint_graph_pts_ids_offset;
 
   // array section flow sensitive analysis information
   Elf64_Word _scalar_node_offset, _cfg_node_offset, _regions_array_offset;
@@ -154,6 +157,9 @@ private:
 #ifdef KEY
   mINT32 _ty_info_size;
 #endif
+  // Constraint graph summary for Nystrom Alias Analyzer
+  mINT32 _constraint_graph_nodes_size;
+  mINT32 _constraint_graph_pts_ids_size;
 
   // array section flow sensitive analysis information
   mINT32 _scalar_node_size, _cfg_node_size, _regions_array_size; 
@@ -172,6 +178,10 @@ private:
 #ifdef KEY
   mUINT32 _ty_info_entry_size;
 #endif
+  // Constraint graph summary for Nystrom Alias Analyzer
+  mUINT32 _constraint_graph_nodes_entry_size;
+  mUINT32 _constraint_graph_pts_ids_entry_size;
+
    // array section flow sensitive analysis information
   mINT32 _scalar_node_entry_size, _cfg_node_entry_size;
   mINT32 _regions_array_entry_size; 
@@ -210,6 +220,15 @@ public:
 #ifdef KEY
   void Set_ty_info_offset(Elf64_Word s) { _ty_info_offset = s;};
 #endif
+  // Constraint graph summary for Nystrom Alias Analyzer
+  void Set_constraint_graph_nodes_offset(Elf64_Word s) 
+  {
+    _constraint_graph_nodes_offset = s;
+  }
+  void Set_constraint_graph_pts_ids_offset(Elf64_Word s) 
+  {
+    _constraint_graph_pts_ids_offset = s;
+  }
 
 
   void Set_opt_level(mUINT8 opt_level) { _opt_level = opt_level;};
@@ -253,6 +272,15 @@ s;};
 #ifdef KEY
   void Set_ty_info_size(mINT32 s) { _ty_info_size = s;};
 #endif
+  // Constraint graph summary for Nystrom Alias Analyzer
+  void Set_constraint_graph_nodes_size(mINT32 s) 
+  { 
+    _constraint_graph_nodes_size = s; 
+  }
+  void Set_constraint_graph_pts_ids_size(mINT32 s) 
+  { 
+    _constraint_graph_pts_ids_size = s; 
+  }
 
   // array section flow sensitive analysis information
   void Set_scalar_node_size(mINT32 s) { _scalar_node_size = s;};
@@ -290,6 +318,9 @@ s;};
 #ifdef KEY
   void Set_ty_info_entry_size(mINT32 s) { _ty_info_entry_size = s;};
 #endif   
+  // Constraint graph summary for Nystrom Alias Analyzer
+  void Set_constraint_graph_nodes_entry_size(mINT32 s) { _constraint_graph_nodes_entry_size = s;};
+  void Set_constraint_graph_pts_ids_entry_size(mINT32 s) { _constraint_graph_pts_ids_entry_size = s;};
 
   void Set_scalar_node_entry_size(mINT32 s) { _scalar_node_entry_size = s;};
   void Set_cfg_node_entry_size(mINT32 s) {_cfg_node_entry_size = s;};
@@ -328,6 +359,15 @@ s;};
 #ifdef KEY
   Elf64_Word Get_ty_info_offset() const    { return _ty_info_offset;};
 #endif
+  // Constraint graph summary for Nystrom Alias Analyzer
+  Elf64_Word Get_constraint_graph_nodes_offset() const  
+  { 
+    return _constraint_graph_nodes_offset;
+  };
+  Elf64_Word Get_constraint_graph_pts_ids_offset() const  
+  { 
+    return _constraint_graph_pts_ids_offset;
+  };
 
   mUINT8  Get_opt_level() const { return _opt_level;};
 
@@ -372,6 +412,15 @@ s;};
 #ifdef KEY
   mINT32 Get_ty_info_size() const          { return _ty_info_size;};
 #endif
+  // Constraint graph summary for Nystrom Alias Analyzer
+  mINT32 Get_constraint_graph_nodes_size() const
+  {
+    return _constraint_graph_nodes_size;
+  }
+  mINT32 Get_constraint_graph_pts_ids_size() const
+  {
+    return _constraint_graph_pts_ids_size;
+  }
   
   // array section flow sensitive analysis information
   mINT32 Get_scalar_node_size()  const { return _scalar_node_size; };
@@ -404,6 +453,15 @@ s;};
 #ifdef KEY
   mINT32 Get_ty_info_entry_size() { return _ty_info_entry_size;};
 #endif
+  // Constraint graph summary for Nystrom Alias Analyzer
+  mINT32 Get_constraint_graph_nodes_entry_size() 
+  { 
+    return _constraint_graph_nodes_entry_size;
+  };
+  mINT32 Get_constraint_graph_pts_ids_entry_size() 
+  { 
+    return _constraint_graph_pts_ids_entry_size;
+  };
     
   mINT32 Get_scalar_node_entry_size() const  { 
     return _scalar_node_entry_size ;};
@@ -2643,6 +2701,54 @@ class SUMMARY_TY_INFO
 extern SUMMARY_SYMBOL *Ipl_Summary_Symbol;
 extern BOOL IPA_Trace_Mod_Ref;          /* Trace log for Mod_Ref */
 extern char Modref_Buf[];                                                      
+
+// Constraint graph node summary for Nystrom Alias Analyzer
+class SUMMARY_CONSTRAINT_GRAPH_NODE
+{
+public:
+  SUMMARY_CONSTRAINT_GRAPH_NODE() {}
+
+  void Init()
+  {
+    BZERO(this, sizeof(SUMMARY_CONSTRAINT_GRAPH_NODE));
+  }
+
+  void cgNodeId(UINT32 cgNodeId)  { _cgNodeId = cgNodeId; }
+  void st_idx(ST_IDX st_idx)      { _st_idx = st_idx; }
+  void offset(INT32 offset)       { _offset = offset; }
+  void flags(UINT16 flags)        { _flags = flags; }
+  void inKCycle(UINT32 kcycle)    { _inKCycle = kcycle; }
+  void nextOffset(UINT32 noffset) { _nextOffset = noffset; }
+  void repParent(UINT32 rparent)  { _repParent = rparent; }
+  void numBitsPtsGBL(int n)       { _numBitsPtsGBL = n; }
+  void numBitsPtsHZ(int n)        { _numBitsPtsHZ = n; }
+  void numBitsPtsDN(int n)        { _numBitsPtsDN = n; }
+  void ptsGBLidx(UINT32 idx)      { _pointsToGBLIdx = idx; }
+  void ptsHZidx(UINT32 idx)       { _pointsToHZIdx = idx; }
+  void ptsDNidx(UINT32 idx)       { _pointsToDNIdx = idx; }
+
+  ST_IDX st_idx() const { return _st_idx; }
+
+  void Print_array(FILE *fp, INT32 size) const;
+  void Trace_array(INT32 size) const ;
+  void Print(FILE *f) const;
+  void Trace(void) const;
+  
+private:
+  UINT32   _cgNodeId;
+  ST_IDX   _st_idx;
+  INT32    _offset;  
+  UINT16   _flags;
+  UINT32   _numBitsPtsGBL;   // number of bits in GBL pts-to-set
+  UINT32   _numBitsPtsHZ;    // number of bits in HZ pts-to-set
+  UINT32   _numBitsPtsDN;    // number of bits in in DN pts-to-set
+  UINT32   _pointsToGBLIdx;  // index of the first GBL CGNodeId in pts ids array
+  UINT32   _pointsToHZIdx;   // index of the first HZ CGNodeId in pts ids arra
+  UINT32   _pointsToDNIdx;   // index of the first DN CGNodeId in pts ids arra
+  UINT32   _inKCycle;
+  UINT32   _nextOffset;
+  UINT32   _repParent;
+};
 
 #endif /* ipl_summary_INCLUDED */
 

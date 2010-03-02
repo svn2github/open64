@@ -1232,14 +1232,14 @@ static void ir_put_wn(WN * wn, INT indent)
     }
 
     if (Current_Map_Tab != NULL &&
-        WN_MAP32_Get(WN_MAP_ALIAS_CGNODE_ID, wn) != 0) 
+        WN_MAP32_Get(WN_MAP_ALIAS_CGNODE, wn) != 0) 
     {
       if (OPERATOR_is_call(WN_operator(wn)))
         fprintf(ir_ofile, " {callsite %d}",
-                WN_MAP32_Get(WN_MAP_ALIAS_CGNODE_ID, wn));
+                WN_MAP32_Get(WN_MAP_ALIAS_CGNODE, wn));
       else
         fprintf(ir_ofile, " {cgnode %d}",
-                WN_MAP32_Get(WN_MAP_ALIAS_CGNODE_ID, wn));
+                WN_MAP32_Get(WN_MAP_ALIAS_CGNODE, wn));
     }
 
 #ifdef BACK_END
@@ -2870,6 +2870,19 @@ help_image_wn(stringstream &ss, WN *wn, INT indent)
       ss << "}";
     }
     ss <<  "\n";
+    if (Current_Map_Tab != NULL &&
+        WN_MAP32_Get(WN_MAP_ALIAS_CGNODE, wn) != 0) 
+    {
+      if (OPERATOR_is_call(WN_operator(wn)))
+        ss << " {callsite "
+           <<   WN_MAP32_Get(WN_MAP_ALIAS_CGNODE, wn)
+           << "}";
+      else
+        ss << " {cgnode " 
+           << WN_MAP32_Get(WN_MAP_ALIAS_CGNODE, wn)
+           << "}";
+         
+    }
 }
 
 

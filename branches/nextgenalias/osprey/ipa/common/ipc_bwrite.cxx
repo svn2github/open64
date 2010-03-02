@@ -229,13 +229,17 @@ IP_WRITE_pu_internal (PU_Info* pu, Output_File *outfile)
 	    ("IP_WRITE_pu_internal: Write_ALIAS_CLASS_Map inconsistent "
 	     "with internal state"));
   }
+   
+  // TODO: Set below state when the constraint graph solver is done
+  Write_ALIAS_CGNODE_Map = TRUE;
 
   if (PU_Info_state (pu, WT_FEEDBACK) == Subsect_InMem)
       WN_write_feedback (pu, outfile);
 
   WN_write_tree (pu, off_map, outfile);
 
-  if (Write_ALIAS_CLASS_Map || Write_AC_INTERNAL_Map) {
+  if (Write_ALIAS_CLASS_Map || Write_AC_INTERNAL_Map || 
+      Write_ALIAS_CGNODE_Map) {
 
     if (Write_AC_INTERNAL_Map) {
       WN_write_voidptr_map(pu, off_map, outfile, WT_AC_INTERNAL,
@@ -246,6 +250,11 @@ IP_WRITE_pu_internal (PU_Info* pu, Output_File *outfile)
     if (Write_ALIAS_CLASS_Map) {
       WN_write_INT32_map(pu, off_map, outfile, WT_ALIAS_CLASS,
 			 WN_MAP_ALIAS_CLASS, "alias class map");
+    }
+
+    if (Write_ALIAS_CGNODE_Map) {
+      WN_write_INT32_map(pu, off_map, outfile, WT_ALIAS_CGNODE,
+			 WN_MAP_ALIAS_CGNODE, "alias cgnode map");
     }
 
     WN_MAP_Delete(off_map);

@@ -453,7 +453,8 @@ const static char *PU_Info_subsect_name[WT_SUBSECTIONS] = {
   "WT_FEEDBACK",
   "WT_FREQ",
   "WT_AC_INTERNAL",
-  "WT_ALIAS_CLASS"
+  "WT_ALIAS_CLASS",
+  "WT_ALIAS_CGNODE"
 };
 
 void fdump_PU_Info_state(FILE *f, PU_Info *pu_info)

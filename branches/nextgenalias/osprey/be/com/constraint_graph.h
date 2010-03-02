@@ -24,6 +24,7 @@
 #define CG_PREG_SCALE       (Pointer_Size)
 
 // Symbol specific flags
+#define CG_ST_FLAGS_PREG      0x00000001 // preg
 #define CG_ST_FLAGS_HEAP      0x00000002 // heap var
 #define CG_ST_FLAGS_GLOBAL    0x00000004 // global var
 #define CG_ST_FLAGS_FUNC      0x00000020 // func var (potential callee)
@@ -73,20 +74,20 @@
 // Call site flags
 #define CS_FLAGS_UNKNOWN     0x01
 #define CS_FLAGS_INDIRECT    0x02
-#define CS_FLAGS_HAS_MOD_REF 0x03
+#define CS_FLAGS_HAS_MOD_REF 0x04
 
 // Map the WNs to CGNodeIds
 #define WN_MAP_CGNodeId_Set(wn,thing) \
- IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_CGNODE_ID, (wn), (INT32)(thing))
+ IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_CGNODE, (wn), (INT32)(thing))
 #define WN_MAP_CGNodeId_Get(wn) \
- (CGNodeId)IPA_WN_MAP32_Get(Current_Map_Tab, WN_MAP_ALIAS_CGNODE_ID, (wn))
+ (CGNodeId)IPA_WN_MAP32_Get(Current_Map_Tab, WN_MAP_ALIAS_CGNODE, (wn))
 
-// Map CALLs to CallSiteIds. We use the WN_MAP_ALIAS_CGNODE_ID
+// Map CALLs to CallSiteIds. We use the WN_MAP_ALIAS_CGNODE
 // to do the same
 #define WN_MAP_CallSiteId_Set(wn,thing) \
- IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_CGNODE_ID, (wn), (INT32)(thing))
+ IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_CGNODE, (wn), (INT32)(thing))
 #define WN_MAP_CallSiteId_Get(wn) \
- (CallSiteId)IPA_WN_MAP32_Get(Current_Map_Tab, WN_MAP_ALIAS_CGNODE_ID, (wn))
+ (CallSiteId)IPA_WN_MAP32_Get(Current_Map_Tab, WN_MAP_ALIAS_CGNODE, (wn))
 
 using namespace std;
 using namespace __gnu_cxx;
@@ -281,24 +282,20 @@ public:
   ConstraintGraphNode(ST_IDX st_idx, INT32 offset, MEM_POOL *memPool) :
     _nodeInfo(st_idx, offset, memPool),
     _id(0),
-    _inKCycle(0),
     _version(0),
     _maxAccessSize(0),
     _inCopySkewCGEdges(32),
     _outCopySkewCGEdges(32),
     _inLoadStoreCGEdges(32),
     _outLoadStoreCGEdges(32),
-    _nextOffset(NULL),
-    _repParent(NULL),
-    _repChild(NULL),
     _parentCG(NULL)
   {}
 
   CGNodeId id() const { return _id; }
   void setId(CGNodeId id) { _id = id; }
 
-  UINT32 inKCycle(void) const { return _inKCycle; }
-  void inKCycle(UINT32 val) { _inKCycle = val; }
+  UINT32 inKCycle(void) const { return _nodeInfo.inKCycle(); }
+  void inKCycle(UINT32 val) { _nodeInfo.inKCycle(val); }
 
   UINT8 maxAccessSize(void) const { return _maxAccessSize; }
 
@@ -306,19 +303,19 @@ public:
 
   INT32 offset() const { return nodeInfo().offset(); }
 
-  ConstraintGraphNode *nextOffset() const { return _nextOffset; }
+  ConstraintGraphNode *nextOffset() const { return _nodeInfo.nextOffset(); }
 
   void nextOffset(ConstraintGraphNode *nextOffset)
   {
-    _nextOffset = nextOffset;
+    _nodeInfo.nextOffset(nextOffset);
   }
 
   UINT16 flags() const { return _nodeInfo.flags(); }
   bool checkFlags(UINT16 flag) const { return  _nodeInfo.checkFlags(flag); }
   void addFlags(UINT16 flag) { _nodeInfo.addFlags(flag); }
 
-  ConstraintGraphNode *repParent(void) const { return _repParent; }
-  void repParent(ConstraintGraphNode *p) { _repParent = p; }
+  ConstraintGraphNode *repParent(void) const { return _nodeInfo.repParent(); }
+  void repParent(ConstraintGraphNode *p) { _nodeInfo.repParent(p); }
 
   void clearFlags(UINT8 flag) { _nodeInfo.clearFlags(flag); }
 
@@ -490,9 +487,12 @@ private:
       _st_idx(st_idx),
       _offset(offset),
       _flags(0),
+      _inKCycle(0),
       _pointsToGBL(memPool),
       _pointsToHZ(memPool),
-      _pointsToDN(memPool)
+      _pointsToDN(memPool),
+      _repParent(NULL),
+      _nextOffset(NULL)
     {}
 
     ST_IDX st_idx() const { return _st_idx; }
@@ -503,6 +503,19 @@ private:
     bool checkFlags(UINT16 flag) const { return _flags & flag; }
     void addFlags(UINT16 flag) { _flags |= flag; }
     void clearFlags(UINT8 flag) { _flags &= ~flag; }
+
+    ConstraintGraphNode *repParent() const { return _repParent; }
+    void repParent(ConstraintGraphNode *p) { _repParent = p; }
+
+    ConstraintGraphNode *nextOffset() const { return _nextOffset; }
+
+    void nextOffset(ConstraintGraphNode *nextOffset)
+    {
+      _nextOffset = nextOffset;
+    }
+
+    UINT32 inKCycle(void) const { return _inKCycle; }
+    void inKCycle(UINT32 val) { _inKCycle = val; }
 
     void addPointsTo(CGNodeId id, CGEdgeQual qual) 
     {
@@ -543,23 +556,27 @@ private:
       return (_st_idx == rhs._st_idx && _offset == rhs._offset); 
     }
 
-    void print(FILE *file);
-    void print(ostream& ostr);
+    void print(ConstraintGraph *cg, FILE *file);
+    void print(ConstraintGraph *cg, ostream& ostr);
 
   private:
     ST_IDX _st_idx;
     INT32  _offset;
     UINT16 _flags;
+    UINT32 _inKCycle;
     SparseBitSet<CGNodeId> _pointsToGBL;
     SparseBitSet<CGNodeId> _pointsToHZ;
     SparseBitSet<CGNodeId> _pointsToDN;
+    // For nodes that are unified
+    ConstraintGraphNode *_repParent;
+    // Nodes with different offset off of same base maintained in sorted order
+    ConstraintGraphNode *_nextOffset;
   };
 
   const NodeInfo& nodeInfo() const { return _nodeInfo; }
 
   NodeInfo _nodeInfo;
   CGNodeId _id;
-  UINT32   _inKCycle;
   UINT8    _version;
   // Max outgoing copy/load/store access size, used during
   // solving to determine accesses to overlapping fields.
@@ -573,13 +590,6 @@ private:
   CGEdgeSet _inLoadStoreCGEdges;
   CGEdgeSet _outLoadStoreCGEdges;
   
-  // Nodes with different offset off of same base maintained in sorted order
-  ConstraintGraphNode *_nextOffset;
-
-  // For nodes that are unified
-  ConstraintGraphNode *_repParent;
-  ConstraintGraphNode *_repChild;
-
   // The ConstraintGraph to which this node belongs
   ConstraintGraph *_parentCG;
 };
@@ -653,6 +663,9 @@ public:
 
     if (ST_class(st) == CLASS_FUNC)
       addFlags(CG_ST_FLAGS_FUNC);
+
+    if (ST_class(st) == CLASS_PREG)
+      addFlags(CG_ST_FLAGS_PREG);
 
     _firstOffset = NULL;
 
