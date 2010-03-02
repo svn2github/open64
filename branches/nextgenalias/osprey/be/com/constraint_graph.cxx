@@ -428,6 +428,8 @@ ConstraintGraph::processExpr(WN *expr)
     WN_MAP_CGNodeId_Set(expr, cgNode->id());
     return cgNode;
   } else if (opr == OPR_ALLOCA) {
+    // We create a local variable that represents the dynamically
+    // allocated stack location
     ST *stackST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgStack",
                                        CLASS_VAR, SCLASS_AUTO);
     ConstraintGraphNode *stackCGNode = getCGNode(ST_st_idx(stackST), 0);
@@ -435,7 +437,10 @@ ConstraintGraph::processExpr(WN *expr)
     stInfo(stackCGNode->st_idx())->addFlags(CG_ST_FLAGS_STACK);
     stInfo(stackCGNode->st_idx())->modulus(maxTypeSize);
     stInfo(stackCGNode->st_idx())->varSize(0);
-    return stackCGNode;
+    // Now we create a new temporary node that points-to the stack location
+    ConstraintGraphNode *tmpNode = genTempCGNode();
+    tmpNode->addPointsTo(stackCGNode,CQ_HZ);
+    return tmpNode;
   } else {
     for (INT i = 0; i < WN_kid_count(expr); i++) {
       WN *kid = WN_kid(expr, i);
@@ -733,10 +738,11 @@ ConstraintGraph::handleCall(WN *callWN)
   WN *stmt = WN_next(callWN);
   while (stmt != NULL && stmtStoresReturnValueFromCallee(stmt)) {
     ConstraintGraphNode *cgNode = processLHSofStore(stmt);
-    cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_RETURN);
 
     if (heapCGNode && !cgNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
-      cgNode->addPointsTo(heapCGNode, CQ_HZ);
+      cgNode->addPointsTo(heapCGNode,CQ_HZ);
+    else
+      cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_RETURN);
 
     callSite->setReturn(cgNode->id());
 

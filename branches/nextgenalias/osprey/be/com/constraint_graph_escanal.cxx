@@ -83,7 +83,7 @@ EscapeAnalysis::addStToWorkList(ConstraintGraphNode *node)
   }
   while (cur) {
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-      fprintf(stderr, "ESCANAL:   node %d\n",node->id());
+      fprintf(stderr, "ESCANAL:   node %d\n",cur->id());
     _workList.push(cur);
     cur = cur->nextOffset();
   }
