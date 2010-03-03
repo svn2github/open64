@@ -5,6 +5,7 @@
 #include "ttype.h"
 #include "targ_sim.h"
 #include "ir_reader.h"
+#include "cse_table.h"
 
 UINT32 ConstraintGraph::maxTypeSize = 0;
 
@@ -168,13 +169,15 @@ calleeReturnsNewMemory(const WN *const call_wn)
   if (WN_operator(call_wn) == OPR_CALL) {
     const ST *const st = WN_st(call_wn);
 
-    if ((strcmp("malloc", ST_name(st)) == 0) ||
-        (strcmp("realloc", ST_name(st)) == 0) ||
-        (strcmp("alloca", ST_name(st)) == 0) ||
-        (strcmp("calloc", ST_name(st)) == 0) ||
-        (strcmp("_F90_ALLOCATE", ST_name(st)) == 0)) {
+    CallSideEffectInfo call_info = 
+      CallSideEffectInfo::GetCallSideEffectInfo(call_wn);
+
+    if (call_info.isHeapAllocating())
       return TRUE;
-    }
+
+    
+    if (strcmp("alloca", ST_name(st)) == 0)
+      return TRUE;
   }
   else if (WN_operator(call_wn) == OPR_INTRINSIC_CALL) {
     if ((WN_intrinsic(call_wn) == INTRN_U4I4ALLOCA) ||
