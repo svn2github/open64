@@ -76,8 +76,6 @@ enum CSE_FUNC_ATTR
     // more attributes here:
     CFAT_has_format_string                   = 0x01000000,
     CFAT_is_printf_like                      = 0x02000000,
-    CFAT_fpsr_read                           = 0x04000000,
-    CFAT_fpsr_write                          = 0x08000000,
     CFAT_returns_exposed_memory              = 0x10000000,
 
     // some composite defaults:
@@ -108,8 +106,7 @@ enum CSE_FUNC_ATTR
                             CFAT_libcpp_globals_read      | 
                             CFAT_statics_read             | 
                             CFAT_exposed_memory_read      | 
-                            CFAT_hidden_data_read         | 
-                            CFAT_fpsr_read ),
+                            CFAT_hidden_data_read),
     CFAT_writes_all_attr  = (
                              CFAT_argument_indirectly_write |
                              CFAT_globals_write             |
@@ -117,9 +114,7 @@ enum CSE_FUNC_ATTR
                              CFAT_libcpp_globals_write      | 
                              CFAT_statics_write             | 
                              CFAT_exposed_memory_write      | 
-                             CFAT_hidden_data_write         | 
-                             CFAT_fpsr_write ),
-
+                             CFAT_hidden_data_write),
     CFAT_touches_all_attr = (
                              CFAT_reads_all_attr  |
                              CFAT_writes_all_attr |
@@ -182,8 +177,6 @@ inline bool cfa_read_exposed_memory(UINT32 s)  { return (s & CFAT_exposed_memory
 inline bool cfa_write_exposed_memory(UINT32 s) { return (s & CFAT_exposed_memory_write);}
 inline bool cfa_read_arg_indirectly(UINT32 s)  { return (s & CFAT_argument_indirectly_read);}
 inline bool cfa_write_arg_indirectly(UINT32 s) { return (s & CFAT_argument_indirectly_write);}
-inline bool cfa_read_fpsr(UINT32 s) { return ( s & CFAT_fpsr_read); }
-inline bool cfa_write_fpsr(UINT32 s) { return ( s & CFAT_fpsr_write); }
 inline bool cfa_expose_arg_address_to_return (UINT32 s) { return s & CFAT_exposes_argument_address_to_return; }
 inline bool cfa_expose_arg_address_to_globals (UINT32 s) { return s & CFAT_exposes_argument_address_to_globals; }
 inline bool cfa_is_marked_libcall(UINT32 s) { return (s & CFAT_is_marked_libcall); }
@@ -223,6 +216,7 @@ class CallSideEffectInfo : protected CallSideEffectInfoBase
 public:
   static CallSideEffectInfo GetDefaultCallSideEffectInfo(const WN* wn);
   static CallSideEffectInfo GetCallSideEffectInfo(const WN* call_node);
+  static CallSideEffectInfo GetCallSideEffectInfo(const ST* sym);
 
 
   bool isPureCall()         const { return cfa_is_pure(SideEffects); }
@@ -233,8 +227,6 @@ public:
   bool writeStatics()       const { return cfa_write_statics(SideEffects); }
   bool readHiddenData()     const { return cfa_read_hidden_data(SideEffects);    } 
   bool writeHiddenData()    const { return cfa_write_hidden_data(SideEffects);   } 
-  bool readFPSR()           const { return cfa_read_fpsr(SideEffects); }
-  bool writeFPSR()          const { return cfa_write_fpsr(SideEffects); }
   bool isHeapAllocating()   const { return cfa_is_heap_allocating(SideEffects);  } 
   bool isHeapDeallocating() const { return cfa_is_heap_deallocating(SideEffects);}
   bool returnsHeapMemory()  const { return cfa_returns_heap_memory(SideEffects); }
@@ -252,7 +244,7 @@ public:
   bool exposeArgAddressToGlobals() const { return cfa_expose_arg_address_to_globals(SideEffects);}
   bool returnsExposedMemory() const { return cfa_returns_exposed_memory(SideEffects);}
 
-  UINT32 GetArgumentAttr(WN* call_node, UINT32 arg_pos) const;
+  UINT32 GetArgumentAttr(UINT32 arg_pos, WN* call_node = NULL) const;
   void Print(WN*) const;
 
   friend class CallSideEffectInfoTable;
@@ -262,6 +254,8 @@ private:
   CallSideEffectInfo(CallSideEffectInfoBase&);
   CallSideEffectInfo(const WN* call_node);
   UINT32 GetArgumentAttr_() const;
+  static CallSideEffectInfo GetCallSideEffectInfo_(const char* func_name, 
+                                                   const WN* call_node);
 
   bool isDefault_() 
   { return 
@@ -277,7 +271,6 @@ private:
   {
     cfa_set_is_pure(SideEffects);
   }
-  void SetTouchesFPSR_() { SideEffects |= (CFAT_fpsr_read | CFAT_fpsr_write); }
   void SetNotReadStatics_()  { SideEffects &= (~CFAT_statics_read); }
   void SetNotWriteStatics_() { SideEffects &= (~CFAT_statics_write);}
 };

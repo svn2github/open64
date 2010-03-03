@@ -215,6 +215,7 @@ CallSideEffectInfoTable::CallSideEffectInfoTable()
 static bool
 doesFormatStringContainPercN(WN* call_node, UINT32 format_arg_pos)
 {
+  
 #if 0
   SyzNodePtr format_string = call_node->GetArgument(format_arg_pos);
   SYZ_OPCODE op = format_string->GetOpcode();
@@ -268,12 +269,11 @@ doesFormatStringContainPercN(WN* call_node, UINT32 format_arg_pos)
 
 
 UINT32
-CallSideEffectInfo::GetArgumentAttr(WN* call_node, 
-                                    UINT32 arg_pos) const
+CallSideEffectInfo::GetArgumentAttr(UINT32 arg_pos, 
+                                    WN* call_node) const
 {
   if (arg_pos < NumOfKnownPars)
   {
-    //SYZ_DBG_ASRT(arg_pos < C_max_cse_arg_num);
     return ParAttrs[arg_pos];
   }
 
@@ -285,30 +285,27 @@ CallSideEffectInfo::GetArgumentAttr(WN* call_node,
   //  
   if (SideEffects & CFAT_is_printf_like)
   {
-    // Now find the format string:
-    INT32 format_pos = -1;
-    for (INT32 i = 0; i < NumOfKnownPars; i ++)
-    {
-      if (ParAttrs[i] & CPA_is_format_string)
-      {
-        format_pos = i;
-        break;
-      }
-    }
-    //DBG_ASRT(format_pos != -1);
-    //DBG_ASRT(format_pos < call_node->GetNumArguments());
     arg_attr = GetArgumentAttr_();
-    if (doesFormatStringContainPercN(call_node,format_pos))
-      arg_attr =  arg_attr | CPA_one_level_write;
+
+    if (call_node) {
+      // Now find the format string:
+      INT32 format_pos = -1;
+      for (INT32 i = 0; i < NumOfKnownPars; i ++)
+      {
+        if (ParAttrs[i] & CPA_is_format_string)
+        {
+          format_pos = i;
+          break;
+        }
+      }
+      if (doesFormatStringContainPercN(call_node,format_pos))
+        arg_attr =  arg_attr | CPA_one_level_write;
+    }
+    else  // call_node is not available, we have to be conservative
+      arg_attr = arg_attr | CPA_one_level_write;
   }
   else arg_attr = GetArgumentAttr_();
 
-  // Now do some cacheing:
-  // if (arg_pos == NumOfKnownPars)
-  // {
-  //    NumOfKnownPars++;
-  //    ParAttrs[arg_pos] = arg_attr;
-  //}
   return arg_attr;
 }
 
@@ -352,43 +349,43 @@ CallSideEffectInfo::CallSideEffectInfo(const WN* call_node)
   NumOfKnownPars = 0;
   UINT32 side_effects = CFAT_default_attr;
 
-#if 0
-  // Pure call case:
-  // if (WN_Call_Pure(call_node))
-  if(ci->GetLibCall() == 2)
+  if (call_node)
   {
-    // Set Pure attribute:
-    side_effects &= ~CFAT_pure_call_attr_mask;
-
-    // Now special case for some math lib calls:
-    UINT32 num_args = call_node->GetNumArguments();
-    INT32 i;
-    for (i = 0; i < num_args; i++)
+#if 0
+    // Pure call case:
+    // if (WN_Call_Pure(call_node))
+    if(ci->GetLibCall() == 2)
     {
-      SyzNodePtr arg = call_node->GetArgument(i);
-      if (arg->GetResultType()->isPointer()) 
+      // Set Pure attribute:
+      side_effects &= ~CFAT_pure_call_attr_mask;
+      
+      // Now special case for some math lib calls:
+      UINT32 num_args = call_node->GetNumArguments();
+      INT32 i;
+      for (i = 0; i < num_args; i++)
       {
-        side_effects |= CFAT_argument_indirectly_read;
-        break;
+        SyzNodePtr arg = call_node->GetArgument(i);
+        if (arg->GetResultType()->isPointer()) 
+        {
+          side_effects |= CFAT_argument_indirectly_read;
+          break;
+        }
       }
+    
+      SideEffects = side_effects;
+      return;
     }
-    if (ci->GetFPEnvOptimization() == U2_FP_ENV_OPTIMIZATION_conservative_k )
-      side_effects |= (CFAT_fpsr_read | CFAT_fpsr_write);
-
-    SideEffects = side_effects;
-    return;
-  }
 #endif
 
-  if (WN_Call_Pure(call_node))
-    side_effects &= ~CFAT_pure_call_attr_mask;
-
-  if (WN_Call_Does_Mem_Alloc(call_node))
-  {
-    side_effects |= CFAT_allocates_heap_memory;
-    side_effects |= CFAT_returns_heap_memory;
+    if (WN_Call_Pure(call_node))
+      side_effects &= ~CFAT_pure_call_attr_mask;
+    
+    if (WN_Call_Does_Mem_Alloc(call_node))
+    {
+      side_effects |= CFAT_allocates_heap_memory;
+      side_effects |= CFAT_returns_heap_memory;
+    }
   }
-
   // TODO -- a few more side_effects may be retrieved from the WN
   // (specifically for Fortran intrinsic calls)
 
@@ -402,7 +399,7 @@ CallSideEffectInfo::CallSideEffectInfo(CallSideEffectInfoBase& csb)
 
 
 CallSideEffectInfo
-CallSideEffectInfo::GetDefaultCallSideEffectInfo(const WN* call_node)
+CallSideEffectInfo::GetDefaultCallSideEffectInfo(const WN* call_node )
 {
   CallSideEffectInfo csi(call_node);
   return csi;
@@ -417,17 +414,38 @@ CallSideEffectInfo::GetCallSideEffectInfo(const WN* call_node)
 
   if (!name_str) 
     return GetDefaultCallSideEffectInfo(call_node);
-  
-  CallSideEffectInfo* csip = CallSideEffectTable.Find(name_str);
+
+  return GetCallSideEffectInfo_(name_str, call_node);
+}
+
+CallSideEffectInfo
+CallSideEffectInfo::GetCallSideEffectInfo(const ST* call_sym)
+{
+  const char* name_str = 0;
+  // Firstly, find the name key to lookup the side effect table:
+  name_str = ST_name(call_sym);
+
+  if (!name_str) 
+    return GetDefaultCallSideEffectInfo(NULL);
+
+  return GetCallSideEffectInfo_(name_str, NULL);
+}
+
+CallSideEffectInfo
+CallSideEffectInfo::GetCallSideEffectInfo_(const char* func_name,
+                                           const WN* call_node)
+{
+  CallSideEffectInfo* csip = CallSideEffectTable.Find(func_name);
   // No entry found in the side effect table:
   if (csip == 0)
-    return GetDefaultCallSideEffectInfo(call_node);
+    return GetDefaultCallSideEffectInfo(NULL);
 
   // a copy is made:
   CallSideEffectInfo csi = *csip;
 
   return csi;
 }
+
 
 static bool  
 printAttr_(UINT32 side_effects, UINT32 attr, const char* encode,
@@ -466,7 +484,6 @@ CallSideEffectInfo::Print(WN* callnode) const
   // h/H -- hidden data read/write
   // s/S -- statics read/write
   // e/E -- exposed memory read/write
-  // f/F -- fpsr read/write
   // -------------------
   // rh  -- returns heap address
   // re  -- returns exposed locatiino
@@ -534,8 +551,6 @@ CallSideEffectInfo::Print(WN* callnode) const
   p =   printAttr_(SideEffects, CFAT_exposed_memory_write, "E", p, is_first);
   p =   printAttr_(SideEffects, CFAT_hidden_data_read, "h", false, is_first);
   p =   printAttr_(SideEffects, CFAT_hidden_data_write, "H", p, is_first);
-  p =   printAttr_(SideEffects, CFAT_fpsr_read, "f", false, is_first);
-  p =   printAttr_(SideEffects, CFAT_fpsr_write, "F", p, is_first);
   p =   printAttr_(SideEffects, CFAT_argument_indirectly_read, "a", false, is_first);
   p =   printAttr_(SideEffects, CFAT_argument_indirectly_write, "A", p, is_first);
   p =   printAttr_(SideEffects, CFAT_argument_one_level_deref, "ol", false, is_first);
