@@ -23,6 +23,18 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac)
   ac |= ALIAS_ANALYZER_RULE;
   ac &= ~(CLAS_RULE|IP_CLAS_RULE);
 
+  // Create ConstraintGraph from the summary information generated at IPA
+
+  // Set flag to dump the WN to CGNodeId map during Write_PU_Info
+  Write_ALIAS_CGNODE_Map = TRUE;
+}
+
+NystromAliasAnalyzer::NystromAliasAnalyzer()
+{
+  // Create ConstraintGraphs from the summary information generated at IPL
+
+  ConstraintGraph::inIPA(true);
+
   // Set flag to dump the WN to CGNodeId map during Write_PU_Info
   Write_ALIAS_CGNODE_Map = TRUE;
 }

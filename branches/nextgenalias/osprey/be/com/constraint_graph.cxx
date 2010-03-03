@@ -8,6 +8,7 @@
 #include "cse_table.h"
 
 UINT32 ConstraintGraph::maxTypeSize = 0;
+bool ConstraintGraph::_inIPA = false;
 
 template <typename T>
 static inline
@@ -349,6 +350,7 @@ ConstraintGraph::processExpr(WN *expr)
         cgNode->addFlags(CG_NODE_FLAGS_FORMAL_PARAM);
         break;
       case OPR_INTCONST:
+      case OPR_CONST:
         cgNode = _notAPointer;
         break;
       default:
@@ -1110,15 +1112,15 @@ void
 ConstraintGraphNode::NodeInfo::print(ConstraintGraph *cg, FILE *file)
 {
   fprintf(file, "sym: ");
-#ifdef BACK_END
-  (&St_Table[_st_idx])->Print(stderr);
-#else
-  if (ST_IDX_level(_st_idx) == GLOBAL_SYMTAB)
+  if (!cg->inIPA()) {
     (&St_Table[_st_idx])->Print(stderr);
-  else
-    fprintf(file, " <level:%d, idx:%d> (local)\n",
-            ST_IDX_level(_st_idx), ST_IDX_index(_st_idx));
-#endif
+  } else {
+    if (ST_IDX_level(_st_idx) == GLOBAL_SYMTAB)
+      (&St_Table[_st_idx])->Print(stderr);
+    else
+      fprintf(file, " <level:%d, idx:%d> (local)\n",
+              ST_IDX_level(_st_idx), ST_IDX_index(_st_idx));
+  }
   fprintf(file, " offset: %d", _offset);
   StInfo *stInfo = cg->stInfo(_st_idx);
   if (stInfo->checkFlags(CG_ST_FLAGS_PREG)) {
@@ -1138,15 +1140,15 @@ ConstraintGraphNode::NodeInfo::print(ConstraintGraph *cg, ostream &ostr)
 {
   ostr << " sym: ";
   ostr << St_Table[_st_idx];
-#ifdef BACK_END
-  ostr << St_Table[_st_idx];
-#else
-  if (ST_IDX_level(_st_idx) == GLOBAL_SYMTAB)
+  if (!cg->inIPA()) {
     ostr << St_Table[_st_idx];
-  else
-    ostr << " <level: " << ST_IDX_level(_st_idx) << ", idx: " 
-         << ST_IDX_index(_st_idx) << "> (local)" << endl;
-#endif
+  } else {
+    if (ST_IDX_level(_st_idx) == GLOBAL_SYMTAB)
+      ostr << St_Table[_st_idx];
+    else
+      ostr << " <level: " << ST_IDX_level(_st_idx) << ", idx: " 
+           << ST_IDX_index(_st_idx) << "> (local)" << endl;
+  }
   ostr << "offset: " << _offset;
   StInfo *stInfo = cg->stInfo(_st_idx);
   if (stInfo->checkFlags(CG_ST_FLAGS_PREG)) {

@@ -794,10 +794,16 @@ public:
 
   UINT32 blackHole(void) const { return _blackHole; }
 
+  static void inIPA(bool ipa) { _inIPA = ipa; }
+  static bool inIPA() { return _inIPA; }
+
 private:
 
   // Max size of all types
   static UINT32 maxTypeSize;
+
+  // Are we in IPA?
+  static bool _inIPA;
 
   // Constraint graph build methods
 
