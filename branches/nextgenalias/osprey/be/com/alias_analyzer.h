@@ -29,6 +29,7 @@ class AliasAnalyzer {
 private:
    static AliasAnalyzer *_alias_analyzer;
    WN_MAP _aliasTagMap; // Maps WNs to AliasTags
+   UINT32 _aliasQueryCount;   // Used for debugging
 
 protected:
    MEM_POOL _memPool;
@@ -40,7 +41,6 @@ public:
 
    static AliasAnalyzer *Create_Alias_Analyzer(ALIAS_CONTEXT &ac, 
                                                WN *tree);
-                                               
 
    static void Delete_Alias_Analyzer();
 
@@ -52,7 +52,7 @@ public:
 
    // Given a symbol, provide the corresponding AliasTag
    // For use in creating POINTS_TO from symbol and by mod-ref
-   virtual AliasTag genAliasTag(ST *st, INT64 ofst, INT64 size);
+   virtual AliasTag genAliasTag(ST *st, INT64 ofst, INT64 size, bool direct);
 
    // Mod-ref
    // Given a call (ST *) and the AliasTag of a possibly
@@ -87,6 +87,9 @@ public:
    {
      return (AliasTag)IPA_WN_MAP32_Get(Current_Map_Tab, _aliasTagMap, wn);
    }
+
+   UINT32 aliasQueryCount(void)      { return _aliasQueryCount; }
+   UINT32 incrAliasQueryCount(void)  { return _aliasQueryCount++; }
 };
 
 #endif // alias_analysis_INCLUDED

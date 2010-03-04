@@ -51,6 +51,7 @@ AliasAnalyzer::Delete_Alias_Analyzer()
 }
   
 AliasAnalyzer::AliasAnalyzer() 
+  : _aliasQueryCount(0)
 {
   MEM_POOL_Initialize(&_memPool, "AliasAnalyzer_pool", FALSE);
   _aliasTagMap = IPA_WN_MAP32_Create(Current_Map_Tab, &_memPool);
@@ -65,11 +66,12 @@ AliasAnalyzer::~AliasAnalyzer()
 ALIAS_RESULT
 AliasAnalyzer::aliased(AliasTag, AliasTag)
 {
+  incrAliasQueryCount();
   return POSSIBLY_ALIASED;
 }
 
 AliasTag
-AliasAnalyzer::genAliasTag(ST *, INT64, INT64)
+AliasAnalyzer::genAliasTag(ST *, INT64, INT64, bool)
 {
   return InvalidAliasTag;
 }

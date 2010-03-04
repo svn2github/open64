@@ -9,6 +9,35 @@ struct WN;
 
 using namespace __gnu_cxx;
 
+class StToAliasTagKey
+{
+public:
+  StToAliasTagKey(ST_IDX idx,UINT32 off,UINT32 size)
+  : _idx(idx),_offset(off),_size(size) {}
+
+  bool operator ==(const StToAliasTagKey &that) const
+  {
+    return _idx == that._idx &&
+           _offset == that._offset &&
+           _size == that._size;
+  }
+  size_t hash() const { return _idx << 16 ^ _offset << 8 ^ _size; }
+private:
+  ST_IDX _idx;
+  UINT32 _offset;
+  UINT32 _size;
+};
+typedef struct {
+bool operator()(const StToAliasTagKey &k1,
+                const StToAliasTagKey &k2) const { return (k1 == k2); }
+} equalStToAliasTagKey;
+typedef struct {
+  size_t operator() (const StToAliasTagKey &k) const { return (k.hash()); }
+} hashStToAliasTagKey;
+typedef hash_map<StToAliasTagKey, AliasTag,
+                 hashStToAliasTagKey,equalStToAliasTagKey> StToAliasTagMap;
+typedef StToAliasTagMap::iterator StToAliasTagMapIterator;
+
 // Class to map AliasTags to points-to set
 class AliasTagInfo 
 {
@@ -79,7 +108,7 @@ public:
 
    // Given a symbol, provide the corresponding AliasTag
    // For use in creating POINTS_TO from symbol and by mod-ref
-   AliasTag genAliasTag(ST *st, INT64 ofst, INT64 size);
+   AliasTag genAliasTag(ST *st, INT64 ofst, INT64 size, bool direct);
 
    // Mod-ref
    // Given a call (ST *) and the AliasTag of a possibly
@@ -156,6 +185,9 @@ private:
 
    // Maps the AliasTags to points-to sets
    hash_map<UINT32, AliasTagInfo *> _aliasTagInfo;
+
+   // Maps a symbol,offset,size triple to a previously created AliasTag
+   StToAliasTagMap _stToAliasTagMap;
 
    static PointsTo emptyPointsToSet;
 

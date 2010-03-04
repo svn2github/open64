@@ -41,7 +41,8 @@ NystromAliasAnalyzer::NystromAliasAnalyzer()
 
 NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
                                            WN *entryWN)
-  : AliasAnalyzer()
+  : AliasAnalyzer(),
+    _nextAliasTag(InitialAliasTag)
 {
   // Activate the use of the Nystrom points-to analysis by the
   // ALIAS_RULE harness and disable alias classification rules.
@@ -60,7 +61,8 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
     ConstraintGraphVCG::dumpVCG(_constraintGraph, buf);
   }
 
-  _constraintGraph->nonIPASolver();
+  if (!_constraintGraph->nonIPASolver())
+    return;
 
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_VCG_FLAG)) {
     char buf[1024];
@@ -72,9 +74,6 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
     fprintf(stderr,"Nystrom analysis...complete\n");
     _constraintGraph->print(stderr);
   }
-
-  // Initialize the alias tags
-  _nextAliasTag = InitialAliasTag;
 
   // Map WNs to AliasTags
   createAliasTags(entryWN);
@@ -88,6 +87,8 @@ NystromAliasAnalyzer::~NystromAliasAnalyzer() {}
 ALIAS_RESULT
 NystromAliasAnalyzer::aliased(AliasTag tag1, AliasTag tag2)
 {
+  incrAliasQueryCount();
+
   if (tag1 == InvalidAliasTag || tag1 == EmptyAliasTag ||
       tag2 == InvalidAliasTag || tag2 == EmptyAliasTag ||
       tag1 == tag2)
@@ -105,10 +106,90 @@ NystromAliasAnalyzer::aliased(AliasTag tag1, AliasTag tag2)
   return NOT_ALIASED;
 }
 
+/*
+ * Generates an AliasTag for a provided <ST,offset,size> triple.
+ * Assembles a points-to set that consists of the CGNodeIds for each
+ * existing <ST,offset> .... <ST,offset+size-1> that exists.
+ */
 AliasTag
-NystromAliasAnalyzer::genAliasTag(ST *, INT64, INT64)
+NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
 {
-  return InvalidAliasTag;
+  AliasTag aliasTag = InvalidAliasTag;
+
+  // At present we do not support negative offsets from a symbol
+  if (offset < 0)
+    return aliasTag;
+
+  // First we adjust the requested offset by any modulus that
+  // is being model by the constraint graph for this symbol.
+  ConstraintGraph *cg = _constraintGraph;
+  StInfo *stInfo = cg->stInfo(st->st_idx);
+  if (!stInfo)
+    return aliasTag;
+  if (!stInfo->checkFlags(CG_ST_FLAGS_PREG))
+    offset = offset % stInfo->modulus();
+
+  // First we check to see if we have been asked this question before...
+  StToAliasTagKey atKey(st->st_idx,offset,size);
+  StToAliasTagMapIterator atIter = _stToAliasTagMap.find(atKey);
+  if (atIter != _stToAliasTagMap.end())
+    aliasTag = atIter->second;
+  else {
+    // Apparently we did not find a previous query.  So, we either
+    // (a) find <ST,offset> exactly when size == 0
+    // (b) find <ST,offset> ... <ST,offset+size-1> when size >= zero
+    if (size == 0) {
+      ConstraintGraphNode *node = cg->checkCGNode(st->st_idx,offset);
+      if (node) {
+        aliasTag = newAliasTag();
+        AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
+        if (direct) {
+          aliasTagInfo->pointsTo().setBit(node->id());
+          if (node->pointsTo(CQ_GBL).isSet(cg->blackHoleId()))
+            aliasTagInfo->pointsTo().setBit(cg->blackHoleId());
+        }
+        else {
+          aliasTagInfo->pointsTo().setUnion(node->pointsTo(CQ_GBL));
+          aliasTagInfo->pointsTo().setUnion(node->pointsTo(CQ_DN));
+          aliasTagInfo->pointsTo().setUnion(node->pointsTo(CQ_HZ));
+        }
+        _stToAliasTagMap[atKey] = aliasTag;
+      }
+    }
+    else {
+      ConstraintGraphNode *node = stInfo->firstOffset();
+      AliasTagInfo *aliasTagInfo = NULL;
+      while (node && node->offset() < offset+size) {
+        if (node->offset() >= offset) {
+          if (aliasTag == InvalidAliasTag) {
+            aliasTag = newAliasTag();
+            aliasTagInfo = _aliasTagInfo[aliasTag];
+            // Save this result in case we are asked for it again
+            _stToAliasTagMap[atKey] = aliasTag;
+          }
+          if (direct) {
+            aliasTagInfo->pointsTo().setBit(node->id());
+            if (node->pointsTo(CQ_GBL).isSet(cg->blackHoleId()))
+              aliasTagInfo->pointsTo().setBit(cg->blackHoleId());
+          }
+          else {
+            aliasTagInfo->pointsTo().setUnion(node->pointsTo(CQ_GBL));
+            aliasTagInfo->pointsTo().setUnion(node->pointsTo(CQ_DN));
+            aliasTagInfo->pointsTo().setUnion(node->pointsTo(CQ_HZ));
+          }
+        }
+        node = node->nextOffset();
+      }
+    }
+    if (aliasTag != InvalidAliasTag &&
+        Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+      fprintf(stderr, "new aliasTag %d for <%d,%d,%d> with aliasTagInfo: ",
+              (UINT32)aliasTag,(INT32)st->st_idx,(INT32)offset,(INT32)size);
+      _aliasTagInfo[aliasTag]->print(stderr);
+      fprintf(stderr, "\n");
+    }
+  }
+  return aliasTag;
 }
 
 void
@@ -172,7 +253,12 @@ NystromAliasAnalyzer::meet(AliasTag dstTag, AliasTag srcTag)
   if (dstTag == EmptyAliasTag)
     retTag = newAliasTag();
   mergePointsTo(retTag,srcTag);
-
+  if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+    fprintf(stderr,"Meet of aliasTag %d, aliasTag %d:",dstTag,srcTag);
+    fprintf(stderr," result aliasTag %d [",retTag);
+    pointsTo(retTag).print(stderr);
+    fprintf(stderr,"]\n");
+  }
   return retTag;
 }
 
@@ -196,7 +282,7 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
         OPERATOR_is_scalar_load(opr) ||
         OPERATOR_is_scalar_store(opr) ||
         opr == OPR_MSTORE || 
-        opr == OPR_MLOAD) 
+        opr == OPR_MLOAD)
     {
       CGNodeId id;
       // For ILOADS, the points-to set is associated with the address
@@ -216,10 +302,15 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       FmtAssert(cgNode != NULL, ("CGNodeId : %d not mapped to a "
                 "ConstraintGraphNode\n", id));
 
+      // Any node flagged as unknown is a bad situation, we need
+      // to prevent generating an AliasTag for this node
+      if (cgNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+        continue;
+
       aliasTag = newAliasTag();
       AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
-   
-      // Union all the points-to set
+
+      // Union all the points-to ses
       if (OPERATOR_is_scalar_istore(opr) || 
           OPERATOR_is_scalar_iload(opr) ||
           opr == OPR_MSTORE || 
@@ -233,10 +324,11 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       else if (OPERATOR_is_scalar_load(opr) || OPERATOR_is_scalar_store(opr))
       {
         aliasTagInfo->pointsTo().setBit(cgNode->id());
-        // Here we add in the GBL points-to relation for the scalar
-        // to catch the fact that the scalar may have escaped and
-        // may have the "black hole" in its points-to set
-        aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_GBL));
+        // Here we must check to see if the scalar has escaped.  This
+        // this will be inidcated by the present of a "black hole" in
+        // its 'GBL' points-to set.
+        if (cgNode->pointsTo(CQ_GBL).isSet(_constraintGraph->blackHoleId()))
+          aliasTagInfo->pointsTo().setBit(_constraintGraph->blackHoleId());
       }
 
       // If the points-to set of the alias tag is empty at this point then

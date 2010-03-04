@@ -131,17 +131,15 @@ findDeclaredBaseAndOffset(ST_IDX  st_idx,
                           INT64  &declared_offset)
 {
   ST *st             = &St_Table[st_idx];
-  // Don't map a function up to the base, which is
-  // an opaque symbol representing all of text.  We
-  // need to track the actual function .
-  if (ST_class(st) == CLASS_FUNC) {
-    declared_base_idx = st_idx;
-    declared_offset = ST_ofst(st);
-    return;
-  }
-  if (ST_sclass(st) == SCLASS_FORMAL ||
+  // There are a number of storage classes for which we do
+  // not want to compute the base, i.e. the base storage class
+  // uninteresting and obfuscates things.
+  if (ST_sclass(st) == SCLASS_TEXT ||
+      ST_sclass(st) == SCLASS_FORMAL ||
       ST_sclass(st) == SCLASS_FSTATIC||
-      ST_sclass(st) == SCLASS_PSTATIC) {
+      ST_sclass(st) == SCLASS_PSTATIC||
+      ST_sclass(st) == SCLASS_DGLOBAL||
+      ST_sclass(st) == SCLASS_UGLOBAL) {
     declared_base_idx = st_idx;
     return;
   }
@@ -445,6 +443,7 @@ ConstraintGraph::processExpr(WN *expr)
     // Now we create a new temporary node that points-to the stack location
     ConstraintGraphNode *tmpNode = genTempCGNode();
     tmpNode->addPointsTo(stackCGNode,CQ_HZ);
+    WN_MAP_CGNodeId_Set(expr,tmpNode->id());
     return tmpNode;
   } else {
     for (INT i = 0; i < WN_kid_count(expr); i++) {

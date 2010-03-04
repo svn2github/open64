@@ -3677,8 +3677,16 @@ OPT_STAB::Transfer_alias_tag_to_occ_and_aux(RID *const rid,
         POINTS_TO *pt = psym->Points_to();
 
         // Extract the alias tag from the current WN and associate
-        // with the points-to of that symbol.
-        pt->Set_alias_tag(aa->getAliasTag(wn));
+        // with the points-to of that symbol.  In the case of an LDA
+        // we appear to be producing an alias tag that covers the
+        // entire object, rather than the exact field being accessed.
+        // TODO: Revisit how this should be done in the context of
+        // field sensitive points-to information.
+        AliasTag aliasTag = aa->genAliasTag(psym->St(),
+                                            pt->Byte_Ofst(),
+                                            pt->Byte_Size(),
+                                            true/*direct reference*/);
+        pt->Set_alias_tag(aliasTag);
       }
       else {
         Is_True(Get_occ(wn) != NULL,

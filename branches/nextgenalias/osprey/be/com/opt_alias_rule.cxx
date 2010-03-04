@@ -155,10 +155,24 @@ ALIAS_RULE::Aliased_Ip_Classification_Rule(const POINTS_TO *const mem1,
 
 BOOL
 ALIAS_RULE::Aliased_Alias_Analyzer_Rule(const POINTS_TO *const mem1,
-                                        const POINTS_TO *const mem2) const
-{
-  // TODO: Assert that _alias_analyzer != NULL
-  BOOL aliased = _alias_analyzer->aliased(mem1->Alias_tag(),mem2->Alias_tag());
+                                        const POINTS_TO *const mem2,
+                                        bool acResult) const
+                                        {
+  FmtAssert(_alias_analyzer,("Invoking Alias Analyzer Rule with NULL AliasAnalyzer"));
+
+  BOOL aliased;
+  INT32 count = _alias_analyzer->aliasQueryCount();
+  if (count < Alias_Query_Limit ) {
+    aliased = _alias_analyzer->aliased(mem1->Alias_tag(),mem2->Alias_tag());
+    if(Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
+      fprintf(stderr,"Query %d: aliased memop %d %d: %s Alias (ac %s)\n",
+              count,
+              mem1->Alias_tag(),mem2->Alias_tag(),
+              aliased?"May":"No",
+              acResult?"No":"May");
+  }
+  else
+    aliased = true;
   return aliased;
 }
 
@@ -864,18 +878,11 @@ ALIAS_KIND ALIAS_RULE::Aliased_Memop_By_Analysis
   if (Rule_enabled(IP_CLAS_RULE) && ipACResult)
     return ALIAS_KIND (AR_NOT_ALIAS);
 
-  if (Rule_enabled(ALIAS_ANALYZER_RULE) && !Aliased_Alias_Analyzer_Rule(p1,p2)) {
-    if(Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
-      fprintf(stderr,"Aliased Memop %d %d: No Alias (ac %s)\n",
-          p1->Alias_tag(),p2->Alias_tag(),
-          (localACResult||ipACResult)?"No":"May");
+  if (Rule_enabled(ALIAS_ANALYZER_RULE) &&
+      !Aliased_Alias_Analyzer_Rule(p1,p2,(localACResult||ipACResult))) {
     return ALIAS_KIND (AR_NOT_ALIAS);
   }
 
-  if (Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
-    fprintf(stderr,"Aliased Memop %d %d: May Alias (ac %s)\n",
-        p1->Alias_tag(),p2->Alias_tag(),
-        (localACResult||ipACResult)?"No":"May");
   return ALIAS_KIND (AR_POSSIBLE_ALIAS);
 }
   

@@ -422,7 +422,7 @@ private:
                              BOOL ignore_loop_carried) const;
   BOOL Aliased_F90_Target_Rule(const POINTS_TO *, const POINTS_TO *,
 			       TY_IDX , TY_IDX ) const;
-  BOOL Aliased_Alias_Analyzer_Rule(const POINTS_TO *, const POINTS_TO *) const;
+  BOOL Aliased_Alias_Analyzer_Rule(const POINTS_TO *, const POINTS_TO *,bool) const;
   
 public:
 

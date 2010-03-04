@@ -775,8 +775,12 @@ public:
       
   void print(FILE *file);
 
-  void solveConstraints();
-  void nonIPASolver();
+  // Driver for solving the constraint graph when not in IPA
+  // mode.  Returns true of the solution is complete, false otherwise
+  bool nonIPASolver();
+
+  bool solveConstraints();
+
 
   void postProcessPointsTo();
 
@@ -792,7 +796,7 @@ public:
 
   bool exprMayPoint(WN *const wn);
 
-  UINT32 blackHole(void) const { return _blackHole; }
+  CGNodeId blackHoleId(void) const { return _blackHoleId; }
 
   static void inIPA(bool ipa) { _inIPA = ipa; }
   static bool inIPA() { return _inIPA; }
@@ -871,7 +875,7 @@ private:
                              CGEdgeQual qual,
                              UINT32 size,
                              SparseBitSet<CGNodeId> &ptSet);
-  void createBlackHole(void);
+  ConstraintGraphNode *createBlackHole(void);
 
 
 
@@ -927,9 +931,9 @@ private:
   // processed in order to achieve a solution to the current graph
   EdgeDelta _edgeDelta;
 
-  // Created by the solver.  The ST_IDX of the symbol used
+  // Created by the solver.  The id() of the node used
   // to provide boundary conditions for incomplete programs
-  ST_IDX _blackHole;
+  CGNodeId _blackHoleId;
 
   // ST_IDX of the function corresponding to this ConstraintGraph
   ST_IDX _func_st_idx;

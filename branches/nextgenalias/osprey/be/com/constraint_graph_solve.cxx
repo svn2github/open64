@@ -247,7 +247,7 @@ ConstraintGraph::EdgeDelta::add(ConstraintGraphEdge *e)
 // Core method to solve a constraint graph assuming that the
 // boundary conditions for the solution are provided by 'delta'
 // This method assumes that the constraint graph is acyclic.
-void
+bool
 ConstraintGraph::solveConstraints()
 {
   // TODO: Perform cycle detection, here
@@ -343,24 +343,21 @@ ConstraintGraph::solveConstraints()
           // Bad news.  At the very least, this means that both
           // the src and dest of this edge were flagged as unknown,
           // which means we may as well give up.
-          return;
+          return false;
       }
     }
   } while (!copySkewList.empty());
 
   postProcessPointsTo();
+  return true;
 }
 
-void
+bool
 ConstraintGraph::nonIPASolver()
 {
-  // The "black hole" is meant to represent all memory that is possibly
-  // accessed by symbols that have references outside the scope of the
-  // current procedure.
-  createBlackHole();
-
   // Here we solve the constraint graph for the current procedure
-  solveConstraints();
+  if (!solveConstraints())
+    return false;
 
   // Now we perform escape analysis to in order to augment the
   // the points-to sets of "incomplete" symbols to facilitate
@@ -378,11 +375,16 @@ ConstraintGraph::nonIPASolver()
     if (flags & )
     */
     if (escAnal.escapeStFlags(node) & CG_ST_FLAGS_ESCALL) {
-      if (!bhNode)
-        bhNode = getCGNode(_blackHole,0);
+      if (!bhNode) {
+        // The "black hole" is meant to represent all memory that is possibly
+        // accessed by symbols that have references outside the scope of the
+        // current procedure.
+        bhNode = createBlackHole();
+      }
       node->addPointsTo(bhNode,CQ_GBL);
     }
   }
+  return true;
 }
 
 void
@@ -422,12 +424,15 @@ ConstraintGraph::postProcessPointsTo()
   }
 }
 
-void
+ConstraintGraphNode *
 ConstraintGraph::createBlackHole(void)
 {
   ST *bhST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgBlackHole",
                                    CLASS_VAR, SCLASS_AUTO);
-  _blackHole = ST_st_idx(bhST);
+  ST_IDX bh_idx = ST_st_idx(bhST);
+  ConstraintGraphNode *bhNode = getCGNode(bh_idx,0);
+  _blackHoleId = bhNode->id();
+  return bhNode;
 }
 
 void
