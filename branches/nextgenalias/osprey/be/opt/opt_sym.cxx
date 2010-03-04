@@ -3608,7 +3608,7 @@ void
 MU_NODE::Print(FILE *fp) const
 {
 #ifdef KEY
-  fprintf(fp, " sym%dv%d ", Aux_id(), Opnd());
+  fprintf(fp, " mu[ sym%dv%d ]\n", Aux_id(), Opnd());
 #else
   fprintf(fp, " sym%d ", Aux_id());
 #endif
@@ -3623,7 +3623,7 @@ MU_LIST::Print(FILE *fp)
 
   fprintf(fp, "       mu[");
   FOR_ALL_NODE(mnode, mu_iter, Init(this)) {
-    mnode->Print(fp);
+    fprintf(fp, " sym%dv%d ", mnode->Aux_id(), mnode->Opnd());
   }
   fprintf(fp, "]\n");
 }
