@@ -284,7 +284,7 @@ EscapeAnalysis::examineCallSites()
   CallSiteIterator iter = _graph->callSiteMap().begin();
   for ( ; iter != _graph->callSiteMap().end(); ++iter) {
     CallSite *callsite = iter->second;
-    if (!callsite->checkFlags(CS_FLAGS_INDIRECT)) {
+    if (callsite->isDirect() && !callsite->isIntrinsic()) {
       ST_IDX st_idx = callsite->st_idx();
       CallSideEffectInfo callInfo =
           CallSideEffectInfo::GetCallSideEffectInfo(&St_Table[st_idx]);

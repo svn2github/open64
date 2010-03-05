@@ -2,6 +2,7 @@
 #include "constraint_graph.h"
 #include "opt_wn.h"
 #include "wn_util.h"
+#include "wutil.h"
 #include "ttype.h"
 #include "targ_sim.h"
 #include "ir_reader.h"
@@ -173,10 +174,6 @@ calleeReturnsNewMemory(const WN *const call_wn)
       CallSideEffectInfo::GetCallSideEffectInfo(call_wn);
 
     if (call_info.isHeapAllocating())
-      return TRUE;
-
-    
-    if (strcmp("alloca", ST_name(st)) == 0)
       return TRUE;
   }
   else if (WN_operator(call_wn) == OPR_INTRINSIC_CALL) {
@@ -733,7 +730,10 @@ ConstraintGraph::handleCall(WN *callWN)
     callSite->cgNodeId(cgNode->id());
   else if (opr == OPR_CALL)
     callSite->st_idx(WN_st_idx(callWN));
-  else
+  else if (opr == OPR_INTRINSIC_CALL) {
+    callSite->addFlags(CS_FLAGS_INTRN);
+    callSite->intrinsic((INTRINSIC)WN_intrinsic(callWN));
+  } else
     callSite->addFlags(CS_FLAGS_UNKNOWN);
   
   // Process params
@@ -899,7 +899,7 @@ ConstraintGraph::print(FILE *file)
     iter->first->print(file);
     fprintf(stderr, " stInfo: ");
     stInfo(iter->first->st_idx())->print(file);
-    fprintf(stderr, "\n ");
+    fprintf(stderr, "\n");
   }
 
   for (CallSiteIterator iter = _callSiteMap.begin(); 
@@ -1316,13 +1316,17 @@ CallSite::print(FILE *file)
   fprintf(file, "callsite: %d", _id);
   fprintf(file, " [");
   if (checkFlags(CS_FLAGS_UNKNOWN))
-    fprintf(file, " %s", " UNKNOWN");
+    fprintf(file, " %s", "UNKNOWN");
   if (checkFlags(CS_FLAGS_INDIRECT))
-    fprintf(file, " %s", " INDIRECT");
+    fprintf(file, " %s", "INDIRECT");
+  if (checkFlags(CS_FLAGS_INTRN))
+    fprintf(file, " %s", "INTRINSIC");
   fprintf(file, " ]");
-  if (checkFlags(CS_FLAGS_INDIRECT))
+  if (isIndirect())
     fprintf(file, " cgNodeid: %d", cgNodeId());
-  else if (!checkFlags(CS_FLAGS_UNKNOWN))
+  else if (isIntrinsic())
+    fprintf(file, " intrinsic: %s", get_intrinsic_name(intrinsic()));
+  else if (isDirect() && !isIntrinsic())
     fprintf(file, " st: %s", ST_name(st_idx()));
   list<CGNodeId>::iterator iter;
   fprintf(file, " parms: [");

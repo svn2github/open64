@@ -74,7 +74,8 @@
 // Call site flags
 #define CS_FLAGS_UNKNOWN     0x01
 #define CS_FLAGS_INDIRECT    0x02
-#define CS_FLAGS_HAS_MOD_REF 0x04
+#define CS_FLAGS_INTRN       0x04
+#define CS_FLAGS_HAS_MOD_REF 0x08
 
 // Map the WNs to CGNodeIds
 #define WN_MAP_CGNodeId_Set(wn,thing) \
@@ -980,32 +981,44 @@ public:
   CGNodeId returnId(void) const { return _return; }
   void returnId(CGNodeId cgNodeId) { _return = cgNodeId; }
 
+  bool isDirect()    const { return !checkFlags(CS_FLAGS_INDIRECT); }
+  bool isIndirect()  const { return checkFlags(CS_FLAGS_INDIRECT); }
+  bool isIntrinsic() const { return checkFlags(CS_FLAGS_INTRN); }
+
   ST_IDX st_idx() const
   { 
-    FmtAssert(!checkFlags(CS_FLAGS_INDIRECT), 
-              ("Only direct calls have st_idx"));
+    FmtAssert(isDirect() && !isIntrinsic(), ("Only direct calls have st_idx"));
     return _callInfo.st_idx; 
   }
 
   CGNodeId cgNodeId() const 
   {
-    FmtAssert(checkFlags(CS_FLAGS_INDIRECT), 
-              ("Only indirect calls have cgNodeId"));
+    FmtAssert(isIndirect(), ("Only indirect calls have cgNodeId"));
     return _callInfo.cgNodeId;
+  }
+
+  INTRINSIC intrinsic() const
+  {
+    FmtAssert(isIntrinsic(), ("Expecting an intrinsic"));
+    return _callInfo.intrinsic;
   }
 
   void st_idx(ST_IDX st_idx)
   {
-    FmtAssert(!checkFlags(CS_FLAGS_INDIRECT), 
-              ("Only direct calls have st_idx"));
+    FmtAssert(isDirect() && !isIntrinsic(), ("Only direct calls have st_idx"));
     _callInfo.st_idx = st_idx;
   }
 
   void cgNodeId(CGNodeId cgNodeId)
   {
-    FmtAssert(checkFlags(CS_FLAGS_INDIRECT), 
-              ("Only indirect calls have cgNodeId"));
+    FmtAssert(isIndirect(), ("Only indirect calls have cgNodeId"));
     _callInfo.cgNodeId = cgNodeId;
+  }
+
+  void intrinsic(INTRINSIC ins)
+  {
+    FmtAssert(isIntrinsic(), ("Expecting intrinsic call"));
+    _callInfo.intrinsic = ins;
   }
 
   list<CGNodeId> &parms(void) { return _parms; }
@@ -1025,6 +1038,7 @@ private:
   union {
     ST_IDX st_idx;       // Symbol of the direct call
     CGNodeId cgNodeId;   // For indirect calls, id of the node of the address
+    INTRINSIC intrinsic; // For builtin intrinsics
   } _callInfo;          
   list<CGNodeId> _parms;
   CGNodeId _return;
