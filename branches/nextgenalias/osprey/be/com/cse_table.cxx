@@ -112,6 +112,15 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       }
     },
     {
+      "printf",
+      CFAT_libc_default_attr &
+      ~(CFAT_exposes_argument_address_to_return |CFAT_exposes_argument_address_to_globals)
+      | CFAT_argument_indirectly_read 
+      | CFAT_argument_one_level_deref | CFAT_is_printf_like | CFAT_has_format_string,
+      1,
+      { CPA_one_level_read | CPA_is_format_string }
+    },
+    {
       "fprintf",
       CFAT_libc_default_attr &
       ~(CFAT_exposes_argument_address_to_return |CFAT_exposes_argument_address_to_globals)
@@ -215,36 +224,12 @@ CallSideEffectInfoTable::CallSideEffectInfoTable()
 static bool
 doesFormatStringContainPercN(WN* call_node, UINT32 format_arg_pos)
 {
-  
-#if 0
-  SyzNodePtr format_string = call_node->GetArgument(format_arg_pos);
-  SYZ_OPCODE op = format_string->GetOpcode();
-  while (op == OP_typ || op == OP_typ_alias)
+  // get format string argument 
+  WN* format_node = WN_kid0(WN_kid(call_node, format_arg_pos));
+  if ((ST_sym_class(WN_st(format_node)) == CLASS_CONST) &&
+      (TCON_ty(STC_val(WN_st(format_node))) == MTYPE_STRING))
   {
-    format_string = format_string->GetValue();
-    op = format_string->GetOpcode();
-  }
-
-  ConstantPtr str_cst;
-  if (op == OP_ldc || op == OP_lda)
-  {
-    if (op == OP_ldc)
-      str_cst = format_string->GetConstant();
-    else 
-    {
-      AddressableDatumPtr format_datum = 
-        format_string->GetAddressableDatum();
-      if (format_datum->isInitialized())
-        str_cst = format_datum->GetInitializer();
-    }
-  }
-
-  if (str_cst != C_null)
-  {
-    if (str_cst->Kind() != CK_string_array) return false;
-
-    StringPtr str = str_cst->GetStringValue();
-    const char* format_string = str->GetCharString();
+    char* format_string = Targ_Print(NULL, STC_val(WN_st(format_node)));
     // Simple scan for %n
     const char* cur_c = format_string;
     while (*cur_c != '\0')
@@ -255,16 +240,15 @@ doesFormatStringContainPercN(WN* call_node, UINT32 format_arg_pos)
         while ((*cur_c == 'h') || (*cur_c == 'l') || (*cur_c == 'L') ||
                isdigit(*cur_c) || (*cur_c == '$'))
           ++cur_c;
-                    
+        
         // %%n --> produce can false positive -- should be ok.
         if (*cur_c == 'n') return true;
       }
     }
     return false;
   }
-  else return true; // may contain:
-#endif
-  return true;
+  
+  return true; // may contain:
 }
 
 
