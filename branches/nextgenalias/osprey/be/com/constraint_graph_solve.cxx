@@ -432,6 +432,8 @@ ConstraintGraph::createBlackHole(void)
   ST_IDX bh_idx = ST_st_idx(bhST);
   ConstraintGraphNode *bhNode = getCGNode(bh_idx,0);
   _blackHoleId = bhNode->id();
+  if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+    fprintf(stderr, "Creating blackHole CGNodeId: %d\n", _blackHoleId);
   return bhNode;
 }
 

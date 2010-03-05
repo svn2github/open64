@@ -6,6 +6,7 @@
 #include "targ_sim.h"
 #include "ir_reader.h"
 #include "cse_table.h"
+#include "opt_points_to.h"
 
 UINT32 ConstraintGraph::maxTypeSize = 0;
 bool ConstraintGraph::_inIPA = false;
@@ -303,18 +304,21 @@ ConstraintGraph::handleAssignment(WN *stmt)
     fprintf(stderr, "******************************************************\n");
   }
 
+  INT32 size;
+  if (WN_desc(stmt) == MTYPE_BS)
+    size = TY_size(WN_object_ty(stmt));
+  else
+    size = WN_object_size(stmt);
   if (OPERATOR_is_scalar_store(opr)) {
     bool added = false;
     // add a copy edge x <-- y
-    addEdge(cgNodeRHS, cgNodeLHS, ETYPE_COPY, CQ_HZ,
-            WN_object_size(stmt), added);
+    addEdge(cgNodeRHS, cgNodeLHS, ETYPE_COPY, CQ_HZ, size, added);
     if (stmtStoresReturnValueToCaller(stmt))
       cgNodeLHS->addFlags(CG_NODE_FLAGS_FORMAL_RETURN);
   } else if (opr == OPR_ISTORE || opr == OPR_ISTBITS || opr == OPR_MSTORE) {
     bool added = false;
     // Add store edge x *=<-- y
-    addEdge(cgNodeRHS, cgNodeLHS, ETYPE_STORE, CQ_HZ,
-            WN_object_size(stmt), added);
+    addEdge(cgNodeRHS, cgNodeLHS, ETYPE_STORE, CQ_HZ, size, added);
   }
 
   return WN_next(stmt);
@@ -410,8 +414,12 @@ ConstraintGraph::processExpr(WN *expr)
           WN_MAP_CGNodeId_Set(WN_kid0(expr), tmp1CGNode->id());
         }
         bool added = false;
-        addEdge(addrCGNode, tmpCGNode, ETYPE_LOAD, CQ_HZ,
-                WN_object_size(expr), added);
+        INT32 size;
+        if (WN_desc(expr) == MTYPE_BS)
+          size = TY_size(WN_object_ty(expr));
+        else
+          size = WN_object_size(expr);
+        addEdge(addrCGNode, tmpCGNode, ETYPE_LOAD, CQ_HZ, size, added);
         return tmpCGNode;
       }
       default:
@@ -761,18 +769,29 @@ ConstraintGraph::getCGNode(WN *wn)
 {
   FmtAssert(OPERATOR_is_scalar_store(WN_operator(wn)) ||
             OPCODE_is_leaf(WN_opcode(wn)), ("Can handle only leaf nodes"));
-  ST_IDX base_st_idx;
-  INT64 base_offset = WN_offset(wn);
-  findDeclaredBaseAndOffset(WN_st_idx(wn), base_st_idx, base_offset);
+  ST *st = &St_Table[WN_st_idx(wn)];
+  INT64 offset = WN_offset(wn);
+  ST *base_st;
+  INT64 base_offset;
+
+  Expand_ST_into_base_and_ofst(st, offset, &base_st, &base_offset);
+
+  if (WN_desc(wn) == MTYPE_BS) {
+    UINT cur_field_id = 0;
+    UINT64 field_offset = 0;
+    FLD_HANDLE fld = FLD_And_Offset_From_Field_Id(WN_ty(wn), WN_field_id(wn),
+                                                  cur_field_id, field_offset);
+    base_offset += field_offset;
+  }
 
   // Scale preg offsets by Pointer_Size to avoid overlaps with other registers
-  if (ST_class(&St_Table[base_st_idx]) == CLASS_PREG)
+  if (ST_class(base_st) == CLASS_PREG)
     base_offset *= CG_PREG_SCALE;
 
   if (base_offset < 0)
     base_offset = -base_offset;
 
-  return getCGNode(base_st_idx, base_offset);
+  return getCGNode(ST_st_idx(base_st), base_offset);
 }
 
 // Add edge between src and dest, return the newly added edge if it does

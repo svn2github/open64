@@ -3682,10 +3682,15 @@ OPT_STAB::Transfer_alias_tag_to_occ_and_aux(RID *const rid,
         // entire object, rather than the exact field being accessed.
         // TODO: Revisit how this should be done in the context of
         // field sensitive points-to information.
-        AliasTag aliasTag = aa->genAliasTag(psym->St(),
+        AliasTag aliasTag = aa->genAliasTag(pt->Base(),
                                             pt->Byte_Ofst(),
                                             pt->Byte_Size(),
                                             true/*direct reference*/);
+
+        // Since I have just created an alias tag for a scalar wn, set the
+        // aliasTag on the wn
+        aa->setAliasTag(wn, aliasTag);
+        
         pt->Set_alias_tag(aliasTag);
       }
       else {

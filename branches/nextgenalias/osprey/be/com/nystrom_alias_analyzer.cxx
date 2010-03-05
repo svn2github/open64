@@ -116,9 +116,12 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
 {
   AliasTag aliasTag = InvalidAliasTag;
 
-  // At present we do not support negative offsets from a symbol
+  // Scale preg offsets by Pointer_Size
+  if (ST_class(st) == CLASS_PREG)
+    offset *= Pointer_Size;
+
   if (offset < 0)
-    return aliasTag;
+    offset = -offset;
 
   // First we adjust the requested offset by any modulus that
   // is being model by the constraint graph for this symbol.
@@ -144,6 +147,11 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
         aliasTag = newAliasTag();
         AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
         if (direct) {
+          // Record the CGNode that materialised this aliasTag, so
+          // that we can restore the mapping from WN to CGNodeIds during
+          // CODEREP to WN lowering
+          _aliasTagToCGNodeIdMap[aliasTag] = node->id();
+          // Add self reference and black hole if required
           aliasTagInfo->pointsTo().setBit(node->id());
           if (node->pointsTo(CQ_GBL).isSet(cg->blackHoleId()))
             aliasTagInfo->pointsTo().setBit(cg->blackHoleId());
@@ -166,8 +174,14 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
             aliasTagInfo = _aliasTagInfo[aliasTag];
             // Save this result in case we are asked for it again
             _stToAliasTagMap[atKey] = aliasTag;
+            // Record the CGNode that materialised this aliasTag, so
+            // that we can restore the mapping from WN to CGNodeIds during
+            // CODEREP to WN lowering
+            if (direct)
+              _aliasTagToCGNodeIdMap[aliasTag] = node->id();
           }
           if (direct) {
+            // Add self reference and black hole if required
             aliasTagInfo->pointsTo().setBit(node->id());
             if (node->pointsTo(CQ_GBL).isSet(cg->blackHoleId()))
               aliasTagInfo->pointsTo().setBit(cg->blackHoleId());
@@ -277,10 +291,10 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
 
     AliasTag aliasTag = InvalidAliasTag;
 
+    // We only consider indirects; direct references are handled by genAliasTag
+    // called during Transfer_alias_tag
     if (OPERATOR_is_scalar_istore(opr) || 
         OPERATOR_is_scalar_iload(opr) ||
-        OPERATOR_is_scalar_load(opr) ||
-        OPERATOR_is_scalar_store(opr) ||
         opr == OPR_MSTORE || 
         opr == OPR_MLOAD)
     {
@@ -311,25 +325,9 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
 
       // Union all the points-to ses
-      if (OPERATOR_is_scalar_istore(opr) || 
-          OPERATOR_is_scalar_iload(opr) ||
-          opr == OPR_MSTORE || 
-          opr == OPR_MLOAD)
-      {
-        aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_GBL));
-        aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_DN));
-        aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_HZ));
-      } 
-      // For scalars, the points-to set contains the scalar itself
-      else if (OPERATOR_is_scalar_load(opr) || OPERATOR_is_scalar_store(opr))
-      {
-        aliasTagInfo->pointsTo().setBit(cgNode->id());
-        // Here we must check to see if the scalar has escaped.  This
-        // this will be inidcated by the present of a "black hole" in
-        // its 'GBL' points-to set.
-        if (cgNode->pointsTo(CQ_GBL).isSet(_constraintGraph->blackHoleId()))
-          aliasTagInfo->pointsTo().setBit(_constraintGraph->blackHoleId());
-      }
+      aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_GBL));
+      aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_DN));
+      aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_HZ));
 
       // If the points-to set of the alias tag is empty at this point then
       // either we have an escape analysis bug or an uninitialized variable.
