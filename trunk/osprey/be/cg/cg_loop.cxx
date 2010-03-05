@@ -7845,6 +7845,23 @@ void Perform_Loop_Optimizations()
 #endif // TARG_IA64
   }
 
+#ifdef TARG_IA64
+  // add clrrrb to the end of tail, in the case of when
+  // 1. output register number is not 0 and
+  // 2. rotating register reach it's max value 
+  // when the 2 conditions are satisfied, the output register is overlap with
+  // the rotating register, we have to put a clrrrb op in the end
+  // of every SWP loop in order to pass the integer parameter correctly
+  INT max_rotating = REGISTER_Last_Rotating_Registers(ISA_REGISTER_CLASS_integer) - REGISTER_First_Rotating_Registers(ISA_REGISTER_CLASS_integer) + 1;
+  if ( REGISTER_Number_Stacked_Output(ISA_REGISTER_CLASS_integer) &&
+       REGISTER_Number_Stacked_Rotating(ISA_REGISTER_CLASS_integer) == max_rotating )
+    for (INT i = 0; i < fixup.size(); i++)
+    {
+      BB * epilogbb = fixup[i].epilog;
+      OP * clrrrb_op = Mk_OP(TOP_clrrrb);
+      BB_Append_Op(epilogbb, clrrrb_op);
+    }
+#endif
   // Compute correct wrap around values for SWP loops
   for (INT i = 0; i < fixup.size(); i++)
     SWP_Fixup(fixup[i]);

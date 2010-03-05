@@ -142,7 +142,12 @@ EETARG_Fixup_Entry_Code (BB *bb)
 			ISA_REGISTER_CLASS_integer);
 		num_rotating = REGISTER_Number_Stacked_Rotating(
 			ISA_REGISTER_CLASS_integer);
-		num_output = MAX(num_output, num_rotating - num_local);
+		// make sure num_rotating <= num_local+num_output
+		num_local = MAX(num_local, num_rotating - num_output);
+		INT max_rotating = REGISTER_Last_Rotating_Registers(ISA_REGISTER_CLASS_integer) - REGISTER_First_Rotating_Registers(ISA_REGISTER_CLASS_integer) + 1;
+		if ( num_rotating > num_local && num_rotating != max_rotating )
+		  FmtAssert(FALSE, ("Bug: rotating register and output register are overlap but no need to be. local=%d,out=%d,rotate=%d,max_rotate=%d",
+				num_local,num_output,num_rotating,max_rotating));
 		if (num_local + num_output + num_rotating == 0) {
 			BB_Remove_Op (bb, op);
 		}
