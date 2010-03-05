@@ -53,6 +53,8 @@ private:
   void processPropEscapeNode(ConstraintGraphNode *node);
   void processFullEscapeNode(ConstraintGraphNode *node);
 
+  void examineCallSites();
+
   void printStFlags(UINT32 flags) const;
   UINT32 stOffset(const ConstraintGraphNode *node) const;
   UINT32 findStFlags(ConstraintGraphNode *node);

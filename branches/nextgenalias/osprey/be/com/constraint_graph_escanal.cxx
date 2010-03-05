@@ -6,6 +6,7 @@
  */
 
 #include "constraint_graph_escanal.h"
+#include "cse_table.h"
 #include "opt_defs.h"
 #include "tracing.h"
 
@@ -278,26 +279,47 @@ EscapeAnalysis::newFullEscapeNode(ConstraintGraphNode *node, UINT32 flags)
 }
 
 void
+EscapeAnalysis::examineCallSites()
+{
+  CallSiteIterator iter = _graph->callSiteMap().begin();
+  for ( ; iter != _graph->callSiteMap().end(); ++iter) {
+    CallSite *callsite = iter->second;
+    if (!callsite->checkFlags(CS_FLAGS_INDIRECT)) {
+      ST_IDX st_idx = callsite->st_idx();
+      CallSideEffectInfo callInfo =
+          CallSideEffectInfo::GetCallSideEffectInfo(&St_Table[st_idx]);
+      // Here we assume that if we have a routine performing heap
+      // (de)allocation that non- of the arguments escape.
+      if (callInfo.isHeapAllocating() || callInfo.isHeapDeallocating())
+        continue;
+    }
+    // If we get here, mark all actual parameters as propagating
+    // and all actual returns as holding.
+    for (list<CGNodeId>::const_iterator li = callsite->parms().begin();
+        li != callsite->parms().end(); ++li)
+      newPropEscapeNode(_graph->cgNode(*li),CG_ST_FLAGS_LPROP_ESC);
+    newContEscapeNode(_graph->cgNode(callsite->returnId()),CG_ST_FLAGS_LCONT_ESC);
+  }
+}
+
+void
 EscapeAnalysis::init(void)
 {
   /* formal(u) actual(u)  global(u)
    * --------  ---------  ---------
    *   CE(u)      PE(u)     FE(u)
+   *
+   *   Note that we handle actual parameter/return values
+   *   in a separate walk where we take into account the
+   *   any known semantics of the callee.
    */
-
    for (CGIdToNodeMapIterator iter = _graph->begin();
        iter != _graph->end(); ++iter) {
      ConstraintGraphNode *node = iter->second;
-     if (node->checkFlags(CG_NODE_FLAGS_FORMAL_PARAM|
-                          CG_NODE_FLAGS_ACTUAL_RETURN))
+     if (node->checkFlags(CG_NODE_FLAGS_FORMAL_PARAM))
        newContEscapeNode(node,CG_ST_FLAGS_LCONT_ESC);
      if (node->checkFlags(CG_NODE_FLAGS_FORMAL_RETURN))
        newPropEscapeNode(node,CG_ST_FLAGS_RETPROP_ESC);
-     if (!_ipaMode &&
-         node->checkFlags(CG_NODE_FLAGS_ACTUAL_PARAM) &&
-         // We do not mark non-pointer values as being escaped
-         !node->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
-       newPropEscapeNode(node,CG_ST_FLAGS_LPROP_ESC);
      if (!_ipaMode &&
          _graph->stInfo(node->st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
        newFullEscapeNode(node,CG_ST_FLAGS_LFULL_ESC);
@@ -423,7 +445,7 @@ EscapeAnalysis::processFullEscapeNode(ConstraintGraphNode *node)
       //        _ipamode.
       ConstraintGraphNode *revNode = _graph->cgNode(*iter);
       newContEscapeNode(_graph->cgNode(*iter),stFlags);
-      if (node->constraintGraph() != _graph &&
+      if (node->constraintGraph() == _graph &&
           (!_ipaMode ||
               !(stFlags & (CG_ST_FLAGS_GLOBAL|CG_ST_FLAGS_NOCNTXT))))
         addStFlags(node,CG_ST_FLAGS_LCONT_ESCLCL);

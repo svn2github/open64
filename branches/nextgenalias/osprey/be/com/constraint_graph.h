@@ -767,6 +767,8 @@ public:
     return NULL;
   }
 
+  CallSiteMap &callSiteMap(void) { return _callSiteMap; }
+
   // Return CGNode mapped to (st_idx, offset), if not create a new CGNode 
   ConstraintGraphNode *getCGNode(ST_IDX st_idx, INT64 offset);
 
@@ -796,6 +798,7 @@ public:
 
   bool exprMayPoint(WN *const wn);
 
+  void blackHoleId(CGNodeId id)    { _blackHoleId = id; }
   CGNodeId blackHoleId(void) const { return _blackHoleId; }
 
   static void inIPA(bool ipa) { _inIPA = ipa; }
@@ -832,21 +835,6 @@ private:
   UINT32 findMaxTypeSize();
 
   // Constraint graph solver
-#if 0
-  class WorkList {
-  public:
-    WorkList() {}
-    ~WorkList() {}
-
-    bool push(ConstraintGraphEdge *e);
-    ConstraintGraphEdge *pop(void);
-    ConstraintGraphEdge *front(void) { return _edgeList.front(); }
-    bool empty(void) const { return _edgeList.empty(); }
-
-  private:
-    list<ConstraintGraphEdge *> _edgeList;
-  };
-#endif
 
   class EdgeDelta {
   public:
@@ -989,7 +977,8 @@ public:
 
   void addParm(CGNodeId cgNodeId) { _parms.push_back(cgNodeId); }
 
-  void setReturn(CGNodeId cgNodeId) { _return = cgNodeId; }
+  CGNodeId returnId(void) const { return _return; }
+  void returnId(CGNodeId cgNodeId) { _return = cgNodeId; }
 
   ST_IDX st_idx() const
   { 
@@ -1018,6 +1007,8 @@ public:
               ("Only indirect calls have cgNodeId"));
     _callInfo.cgNodeId = cgNodeId;
   }
+
+  list<CGNodeId> &parms(void) { return _parms; }
 
   UINT8 flags() const { return _flags; }
   bool checkFlags(UINT8 flag) const { return _flags & flag; }

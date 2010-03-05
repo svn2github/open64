@@ -750,13 +750,12 @@ ConstraintGraph::handleCall(WN *callWN)
   WN *stmt = WN_next(callWN);
   while (stmt != NULL && stmtStoresReturnValueFromCallee(stmt)) {
     ConstraintGraphNode *cgNode = processLHSofStore(stmt);
+    cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_RETURN);
 
     if (heapCGNode && !cgNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
       cgNode->addPointsTo(heapCGNode,CQ_HZ);
-    else
-      cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_RETURN);
 
-    callSite->setReturn(cgNode->id());
+    callSite->returnId(cgNode->id());
 
     stmt = WN_next(stmt);
   }
