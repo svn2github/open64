@@ -284,13 +284,18 @@ EscapeAnalysis::examineCallSites()
   CallSiteIterator iter = _graph->callSiteMap().begin();
   for ( ; iter != _graph->callSiteMap().end(); ++iter) {
     CallSite *callsite = iter->second;
-    if (callsite->isDirect() && !callsite->isIntrinsic()) {
+    if (callsite->isDirect()) {
+      if (!callsite->intrinsic()) {
       ST_IDX st_idx = callsite->st_idx();
       CallSideEffectInfo callInfo =
           CallSideEffectInfo::GetCallSideEffectInfo(&St_Table[st_idx]);
       // Here we assume that if we have a routine performing heap
       // (de)allocation that non- of the arguments escape.
       if (callInfo.isHeapAllocating() || callInfo.isHeapDeallocating())
+        continue;
+      }
+      // The arguments to va_start() do not escape
+      else if (callsite->intrinsic() == INTRN_VA_START)
         continue;
     }
     // If we get here, mark all actual parameters as propagating
