@@ -1221,15 +1221,21 @@ bool TN_is_int_retrun_register(TN *tn)
 /* copy between different portion of the same register may have
  * side effect, such as "movslq %eax, %rax" 
  * another case is "movl %eax, %eax" will clear the upper portion
- * of %rax, so if the %eax is the return value it should be removed */
+ * of %rax, so if the %eax is the return value it should be removed 
+ *
+ * Since these side effects only exist on IA-32/x86_64, this
+ * function always return false for other platforms 
+ */
 bool
 Op_has_side_effect(OP *op)
 {
+#if defined(TARG_X8664)
   TN *tn1 = OP_result(op,0);
   TN *tn2 = OP_opnd(op,CGTARG_Copy_Operand(op));
   
   if ( TN_size(tn1) != TN_size(tn2) ) 
      return true;
+#endif
 
   return false;
 }
