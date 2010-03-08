@@ -42,9 +42,9 @@
  *
  * Module: driver_util.c
  * $Revisionr: 1.34 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/be/driver_util.cxx,v $
+ * $Date: 2007/09/07 09:39:42 $
+ * $Author: jaemok $
+ * $Source: /home/CVSROOT/open64-3.0-cache/kpro64/be/be/driver_util.cxx,v $
  *
  * Revision history:
  *  16-Feb-95 - Original Version
@@ -212,7 +212,12 @@ Process_Command_Line (INT argc, char **argv)
 	        Create_Cycle_Output = TRUE; 
 	        break;  
 
-	    case 'V':       /* CG-specific */
+	    case 'E':       /* CG-specific */
+	                    /* -EPS: Enhanced Pipeline Schedule related options */
+	        add_phase_args (PHASE_CG, argv[i]);
+	        break;          
+
+   	    case 'V':       /* CG-specific */
 	                    /* -VT: Visualization Tool related options */
 	        add_phase_args (PHASE_CG, argv[i]);
 	        break;          
