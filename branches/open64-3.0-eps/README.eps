@@ -1,0 +1,63 @@
+Enhanced Pipeline Schedule(EPS) usage.
+EPS phase is inserted in be after Global_Insn_Sched.
+You can find EPS starter code at be/cg/cg.cxx:881 in function CG_Generate_Code
+
+And you can give EPS options after -Wb,-EPS:
+
+For example, opencc -c -o test.o -O3 -Wb,-EPS:enable=on:gis=on:spec=4:join=4:cicm=1:heur=0:spld=0:forward=on:seme=off test.c
+
+Following are EPS specific flags.
+enable=on/off	turn EPS on/off
+gis=on/off	turn Global_Insn_Sched on/off
+gis_cspec=on/off	turn on/off Control Speculation during Global_Insn_Sched
+ms_level=0/1	allow Modulo Schedule(0) or not(1)
+
+debug=n		LOG level is n. (do not dump LOG for n=0)
+vcg=on/off	turn VCG graph on/off
+analysis=on/off	turn static analysis on/off
+
++function=foo	turn EPS on only for "foo" function
+-function=foo	turn EPS on except for "foo" function
+function=n	turn EPS on first n functions
++region=n	turn EPS on region ID n.
+-region=n	turn EPS on except for region ID n.
+region=n	turn EPS on first n regions.
++bb_ms=n	enable Modulo Schedule Basic Block ID n
+-bb_ms=n	disable Modulo Schedule Basic Block ID n
+
+preheader=on/off	generate loop preheaders
+exit_node=on/off	generate loop exit node
+			if loop exit to other inner region,
+			generate an empty block between inner regions.
+remove_empty_blocks=on/off	remove empty blocks generated during EPS phase.
+forward=on/off		do forward substitution or not.
+seme=on/off		do EPS even for SEME regions or not.
+
+split=n		split join blocks with less than n predecessors.
+spec=n		allow n speculative code motion.
+join=n		allow n bookkeeping code generation during code motion.
+cicm=n		allow n backedges(iterations) cross during code motion.
+heur=0/1/2/3	select scheduling heuristic (0/3 is recommended)
+spld=n		allow load instruction n speculative code motion.
+
+latency=n	set load latency to n.
+expred=on/off	exploit predication for load speculation.
+		for some cases, load instruction can be moved across conditional
+		branch without being speculated using predication.
+
++hotload=foo/r/d/s	in the function foo, in the region ID r,
+			load instruction with destination register number d,
+			with source register number s is hot load.
+only_hotload=on/off	schedule instructions related to hot loads
+			or schedule all instruction
+hl_spec=n	spec for hot loads and its related instructions.
+hl_join=n	join for hot loads and its related instructions.
+hl_cicm=n	cicm for hot loads and its related instructions.
+hl_spld=n	spld for hot loads and its related instructions.
+
+control_bad_join=on/off	do not allow join code motion for some code motions.
+			heuristics will filter the code motions.
+use_ddg_control=on/off	use data dependence graph information to filter bad
+			code motions out.
+
+
