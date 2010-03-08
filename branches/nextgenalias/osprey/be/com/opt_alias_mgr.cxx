@@ -697,9 +697,12 @@ ALIAS_MANAGER::Dup_tree_alias_id( const WN *old_wn, WN *new_wn )
     WN_MAP32_Set(WN_MAP_ALIAS_CLASS, new_wn, ip_alias_class);
   }
 
-  AliasTag tag = AliasAnalyzer::aliasAnalyzer()->getAliasTag(old_wn);
-  if (tag != 0) {
-    AliasAnalyzer::aliasAnalyzer()->setAliasTag(new_wn, tag);
+  AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
+  if (aa) {
+    AliasTag tag = aa->getAliasTag(old_wn);
+    if (tag != 0) {
+      AliasAnalyzer::aliasAnalyzer()->setAliasTag(new_wn, tag);
+    }
   }
 
   // now travel down the tree
