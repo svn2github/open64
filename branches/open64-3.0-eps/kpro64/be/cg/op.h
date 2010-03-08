@@ -337,6 +337,13 @@ typedef struct op {
   mUINT32       stride_profile_id;        /*  unique ID to indicate stride profile No. */
   mUINT64        exec_count;          /* Number of executed count */
   mUINT8        flag_stride_prefetch;     /*flag to identify stride_prefetch */
+
+  /* jaemok added for use in EPS module 2004.02.09 */
+  /* this field is initiated in New_OP subroutine. */
+  int           iteration_number;
+  mUINT32       eps_flags;
+  int           importance;
+
   struct tn     *res_opnd[10];	/* result/operand array (see OP_sizeof for info)
 				 * !!! THIS FIELD MUST BE LAST !!!
 				 */
@@ -462,6 +469,25 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_RENAMED	0x02000000 /*Is OP renamed by GLOS */
 #define OP_MASK_SPILL_RESTORE 0x04000000 /*Is OP a spill or restore  */
 
+// 2004.02.24 jaemok added flags
+#define OP_EPS_SPEC                 0x00000001  
+#define OP_EPS_JOIN                 0x00000002
+#define OP_EPS_CICM                 0x00000004  
+#define OP_EPS_UNIFIED              0x00000008  
+#define OP_EPS_BOOKKEEPING          0x00000010
+#define OP_EPS_RENAME_COPY          0x00000020  
+#define OP_EPS_SPECLOAD             0x00000040
+#define OP_EPS_ADVLOAD              0x00000080
+#define OP_EPS_CHK                  0x00000100
+#define OP_EPS_MOVED                0x00000200
+#define OP_EPS_PRED                 0x00000400
+#define OP_EPS_PRED_LOAD            0x00000800
+#define OP_EPS_LIVE_COPY            0x00001000
+#define OP_EPS_NORMAL_COPY          0x00002000
+#define OP_EPS_IN_CRITICAL          0x00004000
+#define OP_EPS_HOT_LOAD             0x00008000
+#define OP_EPS_HOT_LOAD_RELATED     0x00010000
+#define OP_EPS_IN_IMPORTANT_PATH    0x00020000
 
 #define OP_MASK_LAST    OP_MASK_DATA_SPEC
 #define OP_MASK_MAX     0x80000000 

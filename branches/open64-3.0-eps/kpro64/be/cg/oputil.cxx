@@ -37,10 +37,10 @@
  * ====================================================================
  *
  * Module: oputil.c
- * $Revision: 1.1.1.1 $
- * $Date: 2005/10/21 19:00:00 $
- * $Author: marcel $
- * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/oputil.cxx,v $
+ * $Revision: 1.3 $
+ * $Date: 2009/03/20 04:19:04 $
+ * $Author: jaemok $
+ * $Source: /home/CVSROOT/open64-3.0-cache/kpro64/be/cg/op.h,v $
  *
  * Revision history:
  *  12-Oct-89 - Original Version
@@ -191,6 +191,12 @@ New_OP ( INT results, INT opnds )
   PU_OP_Cnt++;
   Set_OP_opnds(op, opnds);
   Set_OP_results(op, results);
+
+  /* jaemok added for use in EPS module 2004.02.09 */
+  op->iteration_number = 0;
+  op->eps_flags = 0;
+  op->importance = 0;
+
   return op;
 }
 
@@ -219,7 +225,18 @@ Dup_OP ( OP *op )
   if (OP_has_tag(op)) {
 	Set_OP_Tag (new_op, Gen_Tag());
   }
-  
+
+  // 2009/02/15 jaemok
+  if(op->flags & OP_EPS_IN_CRITICAL) {
+      new_op->flags |= OP_EPS_IN_CRITICAL;
+  }
+  if(op->flags & OP_EPS_HOT_LOAD) {
+      new_op->flags |= OP_EPS_HOT_LOAD;
+  }
+  if(op->flags & OP_EPS_HOT_LOAD_RELATED) {
+      new_op->flags |= OP_EPS_HOT_LOAD_RELATED;
+  }
+
   return new_op;
 }
 

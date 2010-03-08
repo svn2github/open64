@@ -100,6 +100,13 @@
 #include <tlog.h>
 #include "whirl2ops.h"    /* for Copy_WN_For_Memory_OP */
 
+#include "file_util.h"
+#include "symtab.h"
+#include "glob.h"
+
+#include "eps.h"
+#include "eps_option.h"
+
 static char* _Global_Insn_Sched_Phase_Name = "ORC:Global code motion"  ;
 static char* _Local_Insn_Sched_Phase_Name = "ORC:Local code motion" ;
 static char* _Cur_Phase_Name = NULL ;
@@ -948,6 +955,9 @@ SCHEDULER::Get_OP_Prohibited_Spec_Type (OP *op) {
      *        without any transformation from this category.
      */
      if (OP_load (op)) {
+        if(!eps_option::gis_cspec()) {
+            return SPEC_COMB ;  // 2007.03.09 jaemok disables speculating load
+        }
 
         for (INT i = OP_results(op) - 1 ; i >= 0 ; --i) {
 
@@ -2967,6 +2977,8 @@ SCHEDULER::SCHEDULER (BB* bb, BOOL prepass,PRDB_GEN *prdb) :
     _dsrmgr.Init (_target_bb);
 }
 
+extern BOOL EPS_vcg;
+
 SCHEDULER::SCHEDULER (struct tagRGN_INFO * rgn_info, BOOL prepass, PRDB_GEN * prdb) :
         _dag_constructor (rgn_info->rgn, prdb, 
                           INCLUDE_ASSIGNED_REG_DEPS,
@@ -3211,18 +3223,21 @@ Global_Insn_Sched (REGION_TREE* rgn_tree, BOOL prepass) {
              iter != 0; ++iter) {
                 
             RGN_INFO * rgn_info = Get_Region_Info (*iter);
-    
-            if (rgn_info->Skip_Sched_Reason () == SKIP_RGN_NONE) {
+            BOOL eps = eps_option::enable() && eps_option::enable_function() && eps_option::enable_region(rgn_info->rgn->Id()) && (EPS::decide_region(rgn_info->rgn)) && rgn_info->rgn->Region_Type()==LOOP;
+
+            if (rgn_info->Skip_Sched_Reason () == SKIP_RGN_NONE && (eps_option::enable_gis() || rgn_info->rgn->_eps==FALSE)) {
 
                 if (rgn_info->In_Abnormal_Loop ()) {
                    Workaround_Dom_Info_For_In_Abnormal_Loop_Rgn 
                     (rgn_info->Region ()) ;
                 }
 
+                fprintf(stderr, "WHICH_SCHEDULER: GIS %s, Function : %s, Region : %d\n", Last_Pathname_Component(Src_File_Name), ST_name(Get_Current_PU_ST()), rgn_info->rgn->Id());
+
                 SCHEDULER scheduler (rgn_info, TRUE, prdb);
                 scheduler.Schedule_Region ();
-                
-            } else if (rgn_info->Skip_Sched_Reason () == 
+
+            } else if (rgn_info->rgn->_eps==TRUE || rgn_info->Skip_Sched_Reason () == 
                        SKIP_RGN_NO_FURTHER_OPT &&
                        IPFEC_Glos_Code_Motion_Across_Nested_Rgn) {
 
@@ -3237,6 +3252,7 @@ Global_Insn_Sched (REGION_TREE* rgn_tree, BOOL prepass) {
                                                 &rgn_cflow_mgr) ;
                 }
             }
+            if(EPS_vcg) visualize_region(rgn_info->rgn, "gisx");
         }
 
         if (prdb) { Delete_PRDB () ; prdb = NULL ; } ;

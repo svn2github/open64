@@ -3217,7 +3217,9 @@ void add_mem_arcs_from(UINT16 op_idx)
       if (latency <= mem_op_lat_0[op_idx][succ_idx-op_idx-1]) continue;
     }
 
-    if (get_mem_dep(op, succ, &definite, cyclic ? &omega : NULL)) {
+    // 2007.09.27 jaemok disabled memory disambiguation.
+    definite = FALSE;
+    if ((!cyclic) || get_mem_dep(op, succ, &definite, cyclic ? &omega : NULL)) {
 
       // For OOO machine (eg. T5), non-definite memory dependences can be 
       // relaxed to edges with zero latency. The belief is that this can 

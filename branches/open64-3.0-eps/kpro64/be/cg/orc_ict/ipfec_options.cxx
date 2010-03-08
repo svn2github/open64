@@ -687,3 +687,60 @@ IPFEC_Query_Skiplist ( SKIPLIST *skip, INT32 elmt, INT32 field )
 
   return FALSE;
 }
+
+BOOL EPS_enable = FALSE;
+BOOL EPS_gis_enable = TRUE;
+OPTION_LIST *EPS_file_include;
+OPTION_LIST *EPS_file_exclude;
+OPTION_LIST *EPS_function_include;
+OPTION_LIST *EPS_function_exclude;
+OPTION_LIST *EPS_hot_loads;
+int EPS_function = -1;
+OPTION_LIST *EPS_region_include;
+OPTION_LIST *EPS_region_exclude;
+int EPS_region = -1;
+OPTION_LIST *EPS_bb_include;
+OPTION_LIST *EPS_bb_exclude;
+int EPS_bb = -1;
+OPTION_LIST *EPS_bb_ms_include;
+OPTION_LIST *EPS_bb_ms_exclude;
+int EPS_fence = -1;
+int EPS_debug = 0;
+BOOL EPS_vcg = FALSE;
+BOOL EPS_analysis = FALSE;
+
+BOOL EPS_remove_empty_blocks = TRUE;
+BOOL EPS_preheader = TRUE;
+BOOL EPS_region_exit_node = TRUE;
+int EPS_split = 10;
+int EPS_spec = 100;
+int EPS_shp = 0;
+int EPS_join = 0;
+int EPS_cicm = 1;
+int EPS_heur = 0;
+int EPS_specload = 0;
+int EPS_ws = 64;
+int EPS_latency = 1;
+BOOL EPS_advanced_load = FALSE;
+BOOL EPS_forward_substitute = TRUE;
+BOOL EPS_SEME = TRUE;
+
+BOOL EPS_exploit_predicate = FALSE;
+BOOL EPS_exploit_predicate2 = FALSE;
+BOOL EPS_feedback = FALSE;
+
+BOOL EPS_only_hot_load = FALSE;
+int EPS_hl_spec = 100;
+int EPS_hl_join = 4;
+int EPS_hl_cicm = 2;
+int EPS_hl_spld = 100;
+
+int EPS_hl_latency = 8;
+
+int EPS_gis_cspec = 1;
+
+int EPS_ms_level = 0;
+
+BOOL EPS_control_bad_join = TRUE;
+BOOL EPS_use_ddg_control = TRUE;
+

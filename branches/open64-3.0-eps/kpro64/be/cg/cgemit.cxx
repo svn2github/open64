@@ -1267,6 +1267,60 @@ static void r_assemble_list (
     spec_str = "cd-spec" ;
   }
 
+  char eps_str[256] ;
+  sprintf(eps_str, "EPS");
+  if(op->eps_flags & OP_EPS_SPEC) {
+      strcat(eps_str, ":spec");;
+  }
+  if(op->eps_flags & OP_EPS_JOIN) {
+      strcat(eps_str, ":join");
+  }
+  if(op->eps_flags & OP_EPS_UNIFIED) {
+      strcat(eps_str, ":unif");
+  }
+  if(op->eps_flags & OP_EPS_CICM) {
+      strcat(eps_str, ":cicm");
+  }
+  if(op->eps_flags & OP_EPS_BOOKKEEPING) {
+      strcat(eps_str, ":bk");
+  }
+  if(op->eps_flags & OP_EPS_RENAME_COPY) {
+      strcat(eps_str, ":rename");
+  }
+  if(op->eps_flags & OP_EPS_SPECLOAD) {
+      strcat(eps_str, ":spld");
+  }
+  if(op->eps_flags & OP_EPS_ADVLOAD) {
+      strcat(eps_str, ":advld");
+  }
+  if(op->eps_flags & OP_EPS_CHK) {
+      strcat(eps_str, ":chk");
+  }
+  if(op->eps_flags & OP_EPS_PRED) {
+      strcat(eps_str, ":pred");
+  }
+  if(op->eps_flags & OP_EPS_PRED_LOAD) {
+      strcat(eps_str, ":prload");
+  }
+  if(op->eps_flags & OP_EPS_LIVE_COPY) {
+      strcat(eps_str, ":livecopy");
+  }
+  if(op->eps_flags & OP_EPS_NORMAL_COPY) {
+      strcat(eps_str, ":normalcopy");
+  }
+  if(op->eps_flags & OP_EPS_IN_CRITICAL) {
+      strcat(eps_str, ":crit");
+  }
+  if(op->eps_flags & OP_EPS_IN_IMPORTANT_PATH) {
+      strcat(eps_str, ":important");
+  }
+  if(op->eps_flags & OP_EPS_HOT_LOAD) {
+      strcat(eps_str, ":hotload");
+  }
+  if(op->eps_flags & OP_EPS_HOT_LOAD_RELATED) {
+      strcat(eps_str, ":hotload_rel");
+  }
+ 
   if (spec_str) {
     char tbuf[20];  
   
@@ -1276,6 +1330,14 @@ static void r_assemble_list (
     comment = vstr_concat(comment, tbuf);
   }
   
+   if(strlen(eps_str)>3) {
+    char tbuf[47];
+  
+    sprintf (tbuf, "\t[%s]",
+             eps_str);
+    comment = vstr_concat(comment, tbuf);
+  }
+
   if (OP_renamed(op)) {
     char tbuf[20];
     sprintf (tbuf, "\t[renamed]");
@@ -1326,6 +1388,9 @@ static void Verify_Operand(
     class_regs =   (sc == ISA_REGISTER_SUBCLASS_UNDEFINED)
 		 ? REGISTER_CLASS_universe(rc)
 		 : REGISTER_SUBCLASS_members(sc);
+
+    if(!REGISTER_SET_MemberP(class_regs, reg)) abort();
+
     FmtAssert(REGISTER_SET_MemberP(class_regs, reg),
 	      ("incorrect register for %s %d", res_or_opnd, opnd));
   } else if (ISA_OPERAND_VALTYP_Is_Literal(vtype)) {
@@ -1339,6 +1404,7 @@ static void Verify_Operand(
       if ((TFile != stdout) && !ISA_LC_Value_In_Class(imm, lc)) {
         Print_OP_No_SrcLine (op);
       }
+if(!ISA_LC_Value_In_Class(imm, lc)) abort();
       FmtAssert(ISA_LC_Value_In_Class(imm, lc),
 	        ("literal for %s %d is not in range", res_or_opnd, opnd));
     } else if (TN_is_label(tn)) {

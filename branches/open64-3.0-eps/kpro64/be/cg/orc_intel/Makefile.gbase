@@ -238,6 +238,19 @@ BE_ORC_SRCS = 		\
   multi_branch.cxx		\
   cache_analysis.cxx            \
   sched_spec_itf.cxx     \
+  eps.cxx               \
+  eps_debug.cxx         \
+  eps_option.cxx         \
+  eps_av.cxx            \
+  eps_attributes.cxx            \
+  eps_fence.cxx         \
+  eps_simulator.cxx               \
+  eps_join.cxx          \
+  eps_ddg.cxx           \
+  eps_specload.cxx           \
+  eps_gis_specld.cxx           \
+  eps_down.cxx               \
+  eps_prtn.cxx         \
   $(DERIVED_SRCS)
 
 

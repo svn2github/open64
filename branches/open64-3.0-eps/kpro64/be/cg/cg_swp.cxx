@@ -55,6 +55,7 @@
 #include "cgtarget.h"
 #include "findloops.h"
 #include "ti_res_count.h"
+#include "eps_option.h"
 
 static INT loop_index;
 
@@ -422,6 +423,14 @@ BOOL Perform_SWP(CG_LOOP& cl, SWP_FIXUP_VECTOR& fixup, bool is_doloop)
   const bool trace_details = Get_Trace(TP_SWPIPE, 4);
   const bool trace_bundling = Get_Trace(TP_SWPIPE, 0x1000);
   const bool show_result = Get_Trace(TP_SWPIPE, 1);
+
+  // 2008.12.26 jaemok
+  if(EPS_ms_level==1) {
+      return FALSE;
+  }
+  if(eps_option::enable() && eps_option::enable_function() && !eps_option::enable_bb_ms(BB_id(body))) {
+    return FALSE;
+  }
 
   if (CG_skip_local_swp && Is_Loop_Skipped()) return FALSE;
 

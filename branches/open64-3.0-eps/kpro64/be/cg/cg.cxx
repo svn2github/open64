@@ -118,6 +118,9 @@
 #include "cache_analysis.h"
 #include "multi_branch.h"
 
+#include "eps.h"
+extern void visualize_routine2(REGION_TREE* tree, const char *suffix);
+
 #define _value_profile_before_region_formation
 #define can_invoke_profile_with_current_cg_opt_level (CG_opt_level>1)
 //#define can_invoke_profile_with_current_cg_opt_level (1)
@@ -379,9 +382,6 @@ static void Config_Ipfec_Flags() {
       && (Instrumentation_Phase_Num==4 && Instrumentation_Type_Num & CG_VALUE_PROFILE) ); 
   IPFEC_Enable_Stride_Profile= IPFEC_Enable_Stride_Profile || ( (Instrumentation_Enabled || Instrumentation_Enabled_Before) 
   && (Instrumentation_Phase_Num==4 && Instrumentation_Type_Num & CG_STRIDE_PROFILE) ); 
-  IPFEC_Enable_Value_Profile_Annot = IPFEC_Enable_Value_Profile_Annot || Feedback_Enabled[PROFILE_PHASE_BEFORE_REGION];
-  IPFEC_Enable_Stride_Profile_Annot = IPFEC_Enable_Stride_Profile_Annot || Feedback_Enabled[PROFILE_PHASE_BEFORE_REGION];
-  IPFEC_Enable_Edge_Profile_Annot = IPFEC_Enable_Edge_Profile_Annot || Feedback_Enabled[PROFILE_PHASE_BEFORE_REGION];
   IPFEC_Enable_Opt_after_schedule=IPFEC_Enable_Opt_after_schedule && CG_Enable_Ipfec_Phases && CG_opt_level > 1;
   IPFEC_Enable_Region_Formation = IPFEC_Enable_Region_Formation && CG_Enable_Ipfec_Phases && CG_opt_level > 1;
   IPFEC_Enable_If_Conversion = IPFEC_Enable_If_Conversion && CG_Enable_Ipfec_Phases;
@@ -423,6 +423,12 @@ static void Config_Ipfec_Flags() {
     IPFEC_Chk_Compact = 0;
   }
 }
+
+int DDG_Node::_id_count;   // initialize in DDG constructor.
+unsigned int compute_time = 0;
+unsigned int select_time = 0;
+unsigned int move_time = 0;
+extern void print_routine();
 
 /* Can be called two ways:
    1) on a region (pu_dst is NULL, returns code)
@@ -696,9 +702,6 @@ CG_Generate_Code(
     // Perform hyperblock formation (if-conversion).  Only works for
     // IA-64 at the moment. 
     //
-        
-
-    
     if (CGTARG_Can_Predicate()) {
       if (IPFEC_Enable_If_Conversion) {
         Set_Error_Phase( "Ipfec if conversion"); 
@@ -768,6 +771,7 @@ CG_Generate_Code(
     }
 
     /* Optimize control flow (second pass) */
+
     if (CFLOW_opt_after_cgprep) {
       CFLOW_Optimize(CFLOW_ALL_OPTS, "CFLOW (second pass)");
       if (frequency_verify)
@@ -850,14 +854,47 @@ CG_Generate_Code(
     if(Enable_CG_Peephole)
       EBO_Pre_Process_Region (region ? REGION_get_rid(rwn) : NULL);
     Check_Self_Recursive();
+
+#if 1
+    {
+        extern BOOL EPS_enable;
+        extern BOOL EPS_analysis;
+
+        EPS eps(region_tree);
+
+        if(!EPS_enable) {
+            Global_Insn_Sched(region_tree, TRUE);
+        } else {
+
+            compute_time = 0;
+            select_time = 0;
+            move_time = 0;
+
+            //if(EPS_vcg) visualize_routine(REGION_First_BB, "before_gs");
+            Global_Insn_Sched(region_tree, TRUE);
+            if(EPS_vcg) visualize_routine2(region_tree, "after_gs");
+
+            eps.run();
+
+//            fprintf(stderr, "COMPAVTIME: %d\n", compute_time);
+//            fprintf(stderr, "SELEAVTIME: %d\n", select_time);
+//            fprintf(stderr, "MOVEAVTIME: %d\n", move_time);
+
+
+//            EPS::post_post_process(REGION_First_BB);
+//            GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
+        }
+//        if(EPS_analysis) EPS::analysis_regions(region_tree->Root());
+    }    
+#else
     Global_Insn_Sched(region_tree, TRUE);
+#endif
   } else if (IPFEC_Enable_Prepass_LOCS) {
     Local_Insn_Sched(TRUE);
   } else {
     IGLS_Schedule_Region (TRUE /* before register allocation */);
   }
 
-  
   if (CG_opt_level > 1 && IPFEC_Enable_PRDB) PRDB_Init(region_tree);
   if (IPFEC_Enable_Opt_after_schedule) {
     BOOL tmp = CG_localize_tns ;
@@ -1039,6 +1076,13 @@ CG_Generate_Code(
     BB_Verify_Flags();
   }
 #endif
+
+  {
+    if(EPS_analysis) {
+        EPS eps(region_tree);
+        EPS::analysis_regions(region_tree->Root(), 1);
+    }
+  }
 
   if(PRDB_Valid()) Delete_PRDB();
   if (IPFEC_Force_CHK_Fail)

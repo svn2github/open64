@@ -89,9 +89,6 @@ Match_Chk_Ld(OP *chk_op, OP *load_op)
     Is_True(OP_chk(chk_op),("Input a non-chk OP!"));
     Is_True(CGTARG_Is_OP_Speculative(load_op), ("Input a non-speculative load!"));
     Is_True((OP_float_chk(chk_op) ?  OP_Is_Float_Mem(load_op) : !OP_Is_Float_Mem(load_op)),("Doesn't match, no matter float/integer!"));
-        
-    if(!TNs_Are_Equivalent(Get_chk_reg(chk_op), OP_result(load_op,0))) 
-        return FALSE;
 
     if( OP_chk_s(chk_op) && CGTARG_Is_OP_Speculative(load_op) && !CGTARG_Is_OP_Advanced_Load(load_op) )
         return TRUE;
@@ -233,12 +230,14 @@ static BOOL
 Find_Path_in_Region(REGIONAL_CFG_NODE* from, 
                     REGIONAL_CFG_NODE* to, 
                     std::vector<REGIONAL_CFG_NODE *>& path, 
-                    std::vector<REGIONAL_CFG_NODE *>& visited)
+                    std::vector<REGIONAL_CFG_NODE *>& visited,
+                    bool across_backedge)
 {
     Is_True(to != NULL,("to node is NULL."));
 
     if(from == NULL)  
         return FALSE;
+#if 0
     for(std::vector<REGIONAL_CFG_NODE *>::iterator iter = visited.begin(); iter != visited.end(); iter++){
         if(from == *iter) 
             return FALSE;
@@ -248,13 +247,61 @@ Find_Path_in_Region(REGIONAL_CFG_NODE* from,
         path.push_back(from);
         return TRUE;
     }
+#else
+    // 2007/08/06 jaemok modified
+    for(std::vector<REGIONAL_CFG_NODE *>::iterator iter = visited.begin(); iter != visited.end(); iter++){
+        if(from == *iter) {
+            if (from == to && across_backedge) {
+                path.push_back(from);
+                return TRUE;
+            } else {
+                return FALSE;
+            }
+        }
+    }
+    visited.push_back(from);
+    if (from == to && !across_backedge) {
+        path.push_back(from);
+        return TRUE;
+    }
+#endif
+
     for (CFG_SUCC_NODE_ITER succ_iter(from); succ_iter != 0; ++succ_iter) {
         REGIONAL_CFG_NODE* cfg_node = *succ_iter;
-        if (Find_Path_in_Region(cfg_node, to, path, visited)){
+        if (Find_Path_in_Region(cfg_node, to, path, visited, across_backedge)){
             path.push_back(from);
             return TRUE;
         }
     }
+
+    // 2007/08/06 jaemok
+    // added the following, because of CICM of a load already speculated by GIS,
+    // We have to search path across the backedge.
+    if(across_backedge && !from->Is_Region()) {
+        BB* bnode = from->BB_Node();
+        BBLIST* bsuccs = NULL; 
+        FOR_ALL_BB_SUCCS(bnode, bsuccs) {
+            BB* bsucc = BBLIST_item(bsuccs);
+            REGIONAL_CFG_NODE* succ = Regional_Cfg_Node(bsucc);
+            if(succ->Home_Region()==from->Home_Region()) {
+                // succ is in the same region.
+                // check if the edge from node to succ exist, otherwise add edge.
+                REGIONAL_CFG_EDGE* se;
+                for(se=from->First_Succ(); se!=NULL; se=se->Next_Succ()) {
+                    if(se->Dest()==succ) break;
+                }
+                if(se==NULL) {
+                    // ther is no edge to "succ".
+                    // this is backedge.
+                    if (Find_Path_in_Region(succ, to, path, visited, FALSE)){
+                        path.push_back(from);
+                        return TRUE;
+                    }
+                }
+            }
+        }
+    }
+
     return FALSE;
 }
 
@@ -286,11 +333,13 @@ Find_Execution_Path(OP *from, OP *to)
     std::vector<REGIONAL_CFG_NODE *>  regional_cfg_path;
     std::vector<REGIONAL_CFG_NODE *>  visited_node;
 
-    if( from_node == to_node ){
+    if( from_node == to_node && from->iteration_number==0){
         regional_cfg_path.push_back(from_node);
     }else{
-        if(!Find_Path_in_Region(from_node, to_node, regional_cfg_path, visited_node))
+        if(!Find_Path_in_Region(from_node, to_node, regional_cfg_path, visited_node, from->iteration_number>0)) {
+            abort();
             FmtAssert(FALSE,("Can not find a regional cfg path!"));
+        }
     }
     
     std::list<OP *>  OP_path;
@@ -304,13 +353,137 @@ Find_Execution_Path(OP *from, OP *to)
         Is_True(start_op != NULL,("start_op can not be NULL!"));
         Is_True(end_op != NULL,("end_op can not be NULL!"));
 
-        for(OP *op = start_op; op != OP_next(end_op); op = OP_next(op)){
+        // 2007/08/06 jaemok  modified to check if op!=NULL
+        for(OP *op = start_op; op!=NULL && op != OP_next(end_op); op = OP_next(op)){
             OP_path.push_back(op);
         }
     }
     return OP_path;
 }
 
+// 2007/08/07 jaemok added////////////////////////////////////////////////////////////////////////////
+static std::list<OP*> Find_Execution_Path_New_Sub(OP* from, OP* to, REGIONAL_CFG_NODE* this_node, std::set<REGIONAL_CFG_NODE*>& visited, BOOL at_start)
+{
+    std::list<OP*> op_path;
+
+    if(visited.find(this_node)!=visited.end()) {
+        if(!this_node->Is_Region() && this_node->BB_Node()==OP_bb(from) && this_node->BB_Node()==OP_bb(to)) {
+            // specld and chk is in the same node.
+            // and chk is followed by specld.
+            // which means specld is CICMed.
+            // at this point, we have to look for chk.
+            BB* bb = this_node->BB_Node();
+            OP* op;
+            for(op=BB_first_op(bb); op!=to; op=OP_next(op)) {
+                FmtAssert(op!=from && op!=NULL, ("Something wrong"));
+                op_path.push_back(op);
+            }
+            FmtAssert(op==to, ("Something wrong"));
+            op_path.push_back(op);
+        }
+        return op_path;
+    }
+
+    visited.insert(this_node);
+
+    if(!at_start && !this_node->Is_Region()) {
+        for(OP* op=BB_first_op(this_node->BB_Node()); op!=NULL; op=OP_next(op)) {
+            op_path.push_back(op);
+            if(op==to) return op_path;
+        }
+    }
+
+    for(REGIONAL_CFG_EDGE* succ_e = this_node->First_Succ(); succ_e!=NULL; succ_e=succ_e->Next_Succ()) {
+        // assuming: there is only one path from specld to chk.
+        std::list<OP*> succ_op_path = Find_Execution_Path_New_Sub(from, to, succ_e->Dest(), visited, FALSE);
+        if(succ_op_path.empty()) continue;
+        if(succ_op_path.back()!=to) abort();
+        FmtAssert(succ_op_path.back()==to, ("Something wrong"));
+
+        op_path.insert(op_path.end(), succ_op_path.begin(), succ_op_path.end());
+        return op_path;
+    }
+
+    // reached here means we could not find chk from successors
+    // try backedges.
+    if(!this_node->Is_Region()) {
+        BB* bnode = this_node->BB_Node();
+        BBLIST* bsuccs = NULL; 
+        FOR_ALL_BB_SUCCS(bnode, bsuccs) {
+            BB* bsucc = BBLIST_item(bsuccs);
+            REGIONAL_CFG_NODE* succ = Regional_Cfg_Node(bsucc);
+            if(succ->Home_Region()==this_node->Home_Region()) {
+                // succ is in the same region.
+                // check if the edge from node to succ exist, otherwise add edge.
+                REGIONAL_CFG_EDGE* se;
+                for(se=this_node->First_Succ(); se!=NULL; se=se->Next_Succ()) {
+                    if(se->Dest()==succ) break;
+                }
+                if(se==NULL) {
+                    // ther is no edge to "succ".
+                    // this is backedge.
+                    FmtAssert(succ->Is_Entry(), ("Something wrong"));
+                    std::list<OP*> succ_op_path = Find_Execution_Path_New_Sub(from, to, succ, visited, FALSE);
+                    if(succ_op_path.empty()) continue;
+                    FmtAssert(succ_op_path.back()==to, ("Something wrong"));
+
+                    op_path.insert(op_path.end(), succ_op_path.begin(), succ_op_path.end());
+                    return op_path;
+                }
+            }
+        }
+    }
+
+    op_path.clear();
+    return op_path;
+}
+
+extern void eps_print_asm(FILE *vcg, const OP *op, BB *bb);
+
+static std::list<OP *>
+Find_Execution_Path_New(OP *from, OP *to)
+{
+    std::list<OP *>  OP_path;
+
+    REGIONAL_CFG_NODE* from_node = Regional_Cfg_Node(OP_bb(from));
+    std::set<REGIONAL_CFG_NODE *>  visited;
+
+    BB* from_bb = from_node->BB_Node();
+    OP* op;
+
+    for(op=from; op!=NULL; op=OP_next(op)) {
+        OP_path.push_back(op);
+        if(op==to) {
+            fprintf(stderr, "Find execution path for : ");
+            eps_print_asm(stderr, from, NULL);
+            for(std::list<OP*>::iterator it=OP_path.begin(); it!=OP_path.end(); it++) {
+                fprintf(stderr, "OP_PATH %p:", *it);
+                eps_print_asm(stderr, *it, NULL);
+            }
+            fprintf(stderr, "Find execution path print ended\n");
+            return OP_path;
+        }
+    }
+
+    std::list<OP*> succ_op_path = Find_Execution_Path_New_Sub(from, to, from_node, visited, TRUE);
+//    if(succ_op_path.back()!=to) abort();
+//    FmtAssert(succ_op_path.back()==to, ("Something wrong"));
+    OP_path.insert(OP_path.end(), succ_op_path.begin(), succ_op_path.end());
+
+    fprintf(stderr, "Find execution path for : ");
+    eps_print_asm(stderr, from, NULL);
+    for(std::list<OP*>::iterator it=OP_path.begin(); it!=OP_path.end(); it++) {
+        fprintf(stderr, "OP_PATH %p:", *it);
+        eps_print_asm(stderr, *it, NULL);
+    }
+    fprintf(stderr, "Find execution path print ended\n");
+
+    FmtAssert(succ_op_path.back()==to, ("Something wrong"));
+
+    return OP_path;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static inline BOOL
 In_OP_Vector(std::vector<OP*, OP_ALLOC>& opv, OP* op)
@@ -349,6 +522,7 @@ Do_Build_Recovery_Block(std::list<OP*>& Exec_Path)
     TN* spec_ld_ptn = OP_opnd(spec_ld,0);
     TN* chk_ptn = OP_opnd(chk,0);
 
+    if(!OP_chk(chk)) abort();
     Is_True(CGTARG_Is_OP_Speculative(spec_ld),("op is not a speculative load!"));
     Is_True(OP_chk(chk),("op is not a chk op!"));
     Is_True(Match_Chk_Ld(chk,spec_ld),("chk and spec_ld do not match!"));
@@ -413,9 +587,11 @@ Do_Build_Recovery_Block(std::list<OP*>& Exec_Path)
                 //                 ...
                 //                chk  r36 ...
                 //  Hence, we will find a baneful op(the st) on speculative chain from data flow. 
-                Is_True(    cur_ptn != spec_ld_ptn 
-                         && cur_ptn != chk_ptn
-                         && cur_ptn != True_TN,("find a baneful op on speculative chain!"));
+
+                if(!(cur_ptn!=spec_ld_ptn && cur_ptn!=chk_ptn && cur_ptn!=True_TN)) abort();
+//                Is_True(    cur_ptn != spec_ld_ptn 
+//                         && cur_ptn != chk_ptn
+//                         && cur_ptn != True_TN,("find a baneful op on speculative chain!"));
             }else if(depend_by_predicate){
                 candidate_ops.push_back(op);
                 Collect_Results(speculative_chain_def,op);
@@ -424,7 +600,11 @@ Do_Build_Recovery_Block(std::list<OP*>& Exec_Path)
                     || cur_ptn == chk_ptn
                     || cur_ptn == True_TN){
                     if(OP_load(op)){ 
-                        Is_True(CGTARG_Is_OP_Speculative_Load(op),("cascaded load is not a speculative load!"));
+//                        Is_True(CGTARG_Is_OP_Speculative_Load(op),("cascaded load is not a speculative load!"));
+                        if(!CGTARG_Is_OP_Speculative_Load(op)) {
+                            if(OP_Is_Float_Mem(op)) Change_ld_Form(op, ECV_fldtype_s);
+                            else Change_ld_Form(op, ECV_ldtype_s);
+                        }
                         cascaded_loads.push_back(op);
                         cascaded_ops.push_back(op);
                         Collect_Results(cascaded_chain_def,op);
@@ -564,13 +744,25 @@ Build_Recovery_Block()
         OP* chk_op  = iter->second;
         Is_True(Match_Chk_Ld(chk_op,load_op),("chk and spec_ld do not match!"));
 
-	std::list<OP *> OP_exec_path = Find_Execution_Path(load_op, chk_op); 
+        // 2007/08/07 jaemok coded a new version of Find_Execution_Path.
+        //std::list<OP *> OP_exec_path = Find_Execution_Path(load_op, chk_op); 
+        std::list<OP *> OP_exec_path = Find_Execution_Path_New(load_op, chk_op); 
         BB *recovery_bb = Do_Build_Recovery_Block(OP_exec_path);
         if( recovery_bb ){
             Set_BB_recovery(recovery_bb);
             TN *label_tn = Gen_Label_TN(Gen_Label_For_BB(recovery_bb), 0);            
             Set_chk_tgt(chk_op, label_tn); 
             chk_vector.push_back(chk_op);     
+
+            fprintf(stderr, "Recovery Block Generated for\n");
+            eps_print_asm(stderr, load_op, NULL);
+            eps_print_asm(stderr, chk_op, NULL);
+            fprintf(stderr, "Start RECOVERY ======================\n");
+            for(OP* op=BB_first_op(recovery_bb); op; op=OP_next(op)) {
+                fprintf(stderr, "RECOVERY: ");
+                eps_print_asm(stderr, op, NULL);
+            }
+            fprintf(stderr, "End RECOVERY   ======================\n");
         }
     }
     return;

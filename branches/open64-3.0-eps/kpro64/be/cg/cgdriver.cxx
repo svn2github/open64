@@ -99,6 +99,7 @@
 #include "register.h"
 #include "pqs_cg.h"
 #include "ipfec_options.h"
+#include "eps_option.h"
 
 extern void Set_File_In_Printsrc(char *);	/* defined in printsrc.c */
 
@@ -1240,6 +1241,111 @@ static OPTION_DESC Options_SKIP[] = {
   { OVK_COUNT }		/* List terminator -- must be last */
 };
 
+static OPTION_DESC Options_EPS[] = {
+  // EPS options.
+  { OVK_BOOL, OV_INTERNAL, TRUE, "enable", NULL,
+    0, 0, 0, &EPS_enable, NULL, "EPS enable/disable" },
+  { OVK_BOOL, OV_INTERNAL, TRUE, "gis", NULL,
+    0, 0, 0, &EPS_gis_enable, NULL, "EPS+gis enable/disable" },
+  { OVK_LIST, OV_INTERNAL, FALSE, "+file", NULL,
+    0, 0, 4096, &EPS_file_include, NULL, "EPS enable by file" },
+  { OVK_LIST, OV_INTERNAL, FALSE, "-file", NULL,
+    0, 0, 4096, &EPS_file_exclude, NULL, "EPS disable by file" },
+  { OVK_LIST, OV_INTERNAL, FALSE, "+function", "+func",
+    0, 0, 4096, &EPS_function_include, NULL, "EPS enable by function" },
+  { OVK_LIST, OV_INTERNAL, FALSE, "-function", "-func",
+    0, 0, 4096, &EPS_function_exclude, NULL, "EPS disable by function" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "function", "func",
+    0, 0, INT32_MAX, &EPS_function, NULL, "EPS from first to n by function" },
+  { OVK_LIST, OV_INTERNAL, FALSE, "+region", NULL,
+    0, 0, 4094, &EPS_region_include, NULL, "EPS enable by region" },
+  { OVK_LIST, OV_INTERNAL, FALSE, "-region", NULL,
+    0, 0, 4096, &EPS_region_exclude, NULL, "EPS disable by region" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "region", NULL,
+    0, 0, INT32_MAX, &EPS_region, NULL, "EPS from first to n by region" },
+  { OVK_LIST, OV_INTERNAL, FALSE, "+bb", NULL,
+    0, 0, 4096, &EPS_bb_include, NULL, "EPS enable by basic block" },
+  { OVK_LIST, OV_INTERNAL, FALSE, "-bb", NULL,
+    0, 0, 4096, &EPS_bb_exclude, NULL, "EPS disable by basic block" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "bb", NULL,
+    0, 0, INT32_MAX, &EPS_bb, NULL, "EPS from first to n by basic block" },
+  { OVK_LIST, OV_INTERNAL, FALSE, "+bb_ms", NULL,
+    0, 0, 4096, &EPS_bb_ms_include, NULL, "MS enable by basic block" },
+  { OVK_LIST, OV_INTERNAL, FALSE, "-bb_ms", NULL,
+    0, 0, 4096, &EPS_bb_ms_exclude, NULL, "MS disable by basic block" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "fence", NULL,
+    0, 0, INT32_MAX, &EPS_fence, NULL, "EPS from first to n by fence" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "ws", NULL,
+    0, 0, INT32_MAX, &EPS_ws, NULL, "EPS window size" },
+  { OVK_LIST, OV_INTERNAL, FALSE, "+hotload", NULL,
+    0, 0, 4096, &EPS_hot_loads, NULL, "EPS Hot load instructions" },
+
+   { OVK_INT32, OV_INTERNAL, FALSE, "debug", NULL,
+    0, 0, INT32_MAX, &EPS_debug, NULL, "EPS debug number" },
+  { OVK_BOOL, OV_INTERNAL, FALSE, "vcg", NULL,
+    0, 0, 0, &EPS_vcg, NULL, "EPS draw vcg files" },
+  { OVK_BOOL, OV_INTERNAL, FALSE, "analysis", NULL,
+    0, 0, 0, &EPS_analysis, NULL, "EPS analysis" },
+
+  { OVK_BOOL, OV_INTERNAL, FALSE, "preheader", NULL,
+    0, 0, 0, &EPS_preheader, NULL, "EPS make preheader" },
+  { OVK_BOOL, OV_INTERNAL, FALSE, "exit_node", NULL,
+    0, 0, 0, &EPS_region_exit_node, NULL, "EPS make region exit node" },
+  { OVK_BOOL, OV_INTERNAL, FALSE, "remove_empty_blocks", NULL,
+    0, 0, 0, &EPS_remove_empty_blocks, NULL, "EPS remove empty blocks" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "split", NULL,
+    0, 0, INT32_MAX, &EPS_split, NULL, "EPS split predecessors" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "spec", NULL,
+    0, 0, INT32_MAX, &EPS_spec, NULL, "EPS spec limit" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "shp", NULL,
+    0, 0, INT32_MAX, &EPS_shp, NULL, "EPS shp limit" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "join", NULL,
+    0, 0, INT32_MAX, &EPS_join, NULL, "EPS join limit" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "cicm", NULL,
+    0, 0, INT32_MAX, &EPS_cicm, NULL, "EPS cicm limit" },
+
+  { OVK_INT32, OV_INTERNAL, FALSE, "heur", NULL,
+    0, 0, INT32_MAX, &EPS_heur, NULL, "EPS heuristic " },
+  { OVK_INT32, OV_INTERNAL, FALSE, "spld", NULL,
+    0, 0, INT32_MAX, &EPS_specload, NULL, "EPS speculative load " },
+  { OVK_BOOL, OV_INTERNAL, FALSE, "advld", NULL,
+    0, 0, 0, &EPS_advanced_load, NULL, "EPS advanced load" },
+  { OVK_BOOL, OV_INTERNAL, FALSE, "forward", NULL,
+    0, 0, 0, &EPS_forward_substitute, NULL, "EPS forward substitute" },
+  { OVK_BOOL, OV_INTERNAL, FALSE, "seme", NULL,
+    0, 0, 0, &EPS_SEME, NULL, "EPS SEME" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "latency", NULL,
+    0, 0, INT32_MAX, &EPS_latency, NULL, "EPS load latency " },
+  { OVK_BOOL, OV_INTERNAL, FALSE, "expred", NULL,
+    0, 0, 0, &EPS_exploit_predicate, NULL, "EPS exploit predicate" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "expred2", NULL,
+    0, 0, INT32_MAX, &EPS_exploit_predicate2, NULL, "EPS exploit predicate aggressively" },
+  { OVK_BOOL, OV_INTERNAL, FALSE, "feedback", NULL,
+    0, 0, 0, &EPS_feedback, NULL, "feedback is enabled" },
+  { OVK_BOOL, OV_INTERNAL, FALSE, "only_hotload", NULL,
+    0, 0, 0, &EPS_only_hot_load, NULL, "only hot load is allowed to mbe moved." },
+  { OVK_INT32, OV_INTERNAL, FALSE, "hl_spec", NULL,
+    0, 0, INT32_MAX, &EPS_hl_spec, NULL, "EPS hot load speculative" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "hl_join", NULL,
+    0, 0, INT32_MAX, &EPS_hl_join, NULL, "EPS hot load join" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "hl_cicm", NULL,
+    0, 0, INT32_MAX, &EPS_hl_cicm, NULL, "EPS hot load cicm" },
+  { OVK_INT32, OV_INTERNAL, FALSE, "hl_spld", NULL,
+    0, 0, INT32_MAX, &EPS_hl_spld, NULL, "EPS hot load speculative load " },
+  { OVK_INT32, OV_INTERNAL, FALSE, "hl_latency", NULL,
+    0, 0, INT32_MAX, &EPS_hl_latency, NULL, "EPS hot load latency " },
+  { OVK_BOOL, OV_INTERNAL, FALSE, "gis_cspec", NULL,
+    0, 0, 0, &EPS_gis_cspec, NULL, "spec on gis." },
+  { OVK_INT32, OV_INTERNAL, FALSE, "ms_level", NULL,
+    0, 0, INT32_MAX, &EPS_ms_level, NULL, "ms level =0:do, ms =1:do not ms" },
+  { OVK_BOOL, OV_INTERNAL, FALSE, "control_bad_join", NULL,
+    0, 0, 0, &EPS_control_bad_join, NULL, "control join code motions by simulating." },
+  { OVK_BOOL, OV_INTERNAL, FALSE, "use_ddg_control", NULL,
+    0, 0, 0, &EPS_use_ddg_control, NULL, "use DDG to control join, spec load." },
+
+  { OVK_COUNT }
+};
+
 OPTION_GROUP Cg_Option_Groups[] = {
   { "SWP", ':', '=', Options_CG_SWP },
   { "CG", ':', '=', Options_CG },
@@ -1248,9 +1354,9 @@ OPTION_GROUP Cg_Option_Groups[] = {
   { "CYCLE", ':', '=', Options_CYCLE }, 
   { "VT", ':', '=', Options_VT },
   { "SKIP", ':', '=', Options_SKIP },
+  { "EPS", ':', '=', Options_EPS },
   { NULL }		/* List terminator -- must be last */
 };
-
 
 extern INT prefetch_ahead;
 INT _prefetch_ahead = 2;

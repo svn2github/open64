@@ -182,6 +182,9 @@
 /* Error tolerance for feedback-based frequency info */
 #define FB_TOL 0.05
 
+#include "eps.h"
+#include "eps_option.h"
+
 CG_LOOP *Current_CG_LOOP;
 
 BB *CG_LOOP_prolog;
@@ -5317,15 +5320,20 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, std::vector<SWP_FIXUP>& fixup,
       CG_LOOP_force_ifc > 0 &&
       Loop_Amenable_For_SWP(loop, trace_loop_opt)) {
 
-    BB *new_single_bb;
-    if (IPFEC_Enable_If_Conversion) {
-        IF_CONVERTOR convertor;
-        new_single_bb = convertor.Force_If_Convert(loop, CG_LOOP_force_ifc >= 2);
+    // jaemok modified 2009.02.20
+     BB *new_single_bb;
+    if(eps_option::enable() && eps_option::enable_function() && !eps_option::enable_bb_ms(BB_id(LOOP_DESCR_loophead(loop)))) {
+        fprintf(stderr, "Do not if-conversion for %s:%d for it will be EPSed\n", ST_name(Get_Current_PU_ST()), BB_id(LOOP_DESCR_loophead(loop)));
     } else {
-        new_single_bb = Force_If_Convert(loop, CG_LOOP_force_ifc >=2);
-    }
-    if (new_single_bb) {
-      single_bb = TRUE;
+      if (IPFEC_Enable_If_Conversion) {
+          IF_CONVERTOR convertor;
+          new_single_bb = convertor.Force_If_Convert(loop, CG_LOOP_force_ifc >= 2);
+      } else {
+          new_single_bb = Force_If_Convert(loop, CG_LOOP_force_ifc >=2);
+      }
+      if (new_single_bb) {
+        single_bb = TRUE;
+      }
     }
   }
 

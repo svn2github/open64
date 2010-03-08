@@ -64,6 +64,8 @@ class INNERMOST_REGION_FIRST_ITER;
 class INTERVAL_PROCESSOR; 
 class SCC_FINDER;
 
+class EPS;
+
 //=============================================================================
 //  Used to record global cycles.
 //=============================================================================
@@ -407,7 +409,7 @@ public:
     }
         
     BB *BB_Node(void) {
-        
+
         Is_True((_is_region == FALSE), ("REGIONAL_CFG_NODE::Node %d is not a bb",_id)); 
        
         return _node.bb;
@@ -538,6 +540,10 @@ friend class REGION_LOOP_UPDATE;
 
 friend class SCHEDULER;
 friend class CG_VALUE_INSTRUMENT_WALKER;
+
+friend class EPS;
+friend void visualize_region(REGION *rgn, const char *suffix, unsigned int level);
+
 //------------------------------------------------------------
 // some functions for maintainance of regional cfg as friends
 //------------------------------------------------------------
@@ -1325,6 +1331,8 @@ friend class REGION_TREE;
 friend class REGION_LOOP_UPDATE;
 friend class SCHEDULER;
 
+friend class EPS;
+
 private:
     BB                *Edge_Splitting(BB *from_bb, BB *to_bb);
 
@@ -1367,9 +1375,11 @@ public:
         _id        = 0;
         _type      = UNKNOWN;
         _cfg._r    = this;
+
+        _eps = FALSE;
     } 
     
-    REGION(REGIONAL_CFG *cfg);
+    //REGION(REGIONAL_CFG *cfg);
     ~REGION() {}
 
     REGION_TYPE Region_Type()                 { return _type; }  
@@ -1503,6 +1513,8 @@ public:
     void        Edge_Splitting(void);
 
     void        Print(FILE *f = stderr);
+
+    BOOL        _eps;
 };
 
 
