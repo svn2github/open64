@@ -144,14 +144,14 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
   // First we adjust the requested offset by any modulus that
   // is being model by the constraint graph for this symbol.
   ConstraintGraph *cg = _constraintGraph;
-  StInfo *stInfo = cg->stInfo(st->st_idx);
+  StInfo *stInfo = cg->stInfo(ST_st_idx(st));
   if (!stInfo)
     return aliasTag;
   if (!stInfo->checkFlags(CG_ST_FLAGS_PREG))
     offset = offset % stInfo->modulus();
 
   // First we check to see if we have been asked this question before...
-  StToAliasTagKey atKey(st->st_idx,offset,size);
+  StToAliasTagKey atKey(ST_st_idx(st),offset,size);
   StToAliasTagMapIterator atIter = _stToAliasTagMap.find(atKey);
   if (atIter != _stToAliasTagMap.end())
     aliasTag = atIter->second;
@@ -160,7 +160,7 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
     // (a) find <ST,offset> exactly when size == 0
     // (b) find <ST,offset> ... <ST,offset+size-1> when size >= zero
     if (size == 0) {
-      ConstraintGraphNode *node = cg->checkCGNode(st->st_idx,offset);
+      ConstraintGraphNode *node = cg->checkCGNode(ST_st_idx(st),offset);
       if (node) {
         aliasTag = newAliasTag();
         AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
@@ -216,7 +216,7 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
     if (aliasTag != InvalidAliasTag &&
         Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
       fprintf(stderr, "new aliasTag %d for %s <%d,%d,%d> with aliasTagInfo: ",
-              (UINT32)aliasTag,ST_name(st->st_idx),(INT32)st->st_idx,(INT32)offset,(INT32)size);
+              (UINT32)aliasTag,ST_name(ST_st_index(st)),(INT32)st->st_idx,(INT32)offset,(INT32)size);
       _aliasTagInfo[aliasTag]->print(stderr);
       fprintf(stderr, "\n");
     }
