@@ -165,6 +165,26 @@ SUMMARY_PROCEDURE::Print (FILE *fp, INT32 id) const
     if ( Ipl_Summary_Symbol ) {
 	Ipl_Summary_Symbol[Get_symbol_index()].Print (fp);
     }
+
+    // For the Nystrom alias analyzer
+    fprintf(fp, "constraint graph nodes count: %d idx: %d\n",
+            Get_constraint_graph_nodes_count(),
+            Get_constraint_graph_nodes_idx());
+    fprintf(fp, "constraint graph edges count: %d idx: %d\n",
+            Get_constraint_graph_edges_count(),
+            Get_constraint_graph_edges_idx());
+    fprintf(fp, "constraint graph stinfos count: %d idx: %d\n",
+            Get_constraint_graph_stinfos_count(),
+            Get_constraint_graph_stinfos_idx());
+    fprintf(fp, "constraint graph callsites count: %d idx: %d\n",
+            Get_constraint_graph_callsites_count(),
+            Get_constraint_graph_callsites_idx());
+    fprintf(fp, "constraint graph formal parm count: %d idx: %d\n",
+            Get_constraint_graph_formal_parm_count(),
+            Get_constraint_graph_formal_parm_idx());
+    fprintf(fp, "constraint graph formal ret count: %d idx: %d\n",
+            Get_constraint_graph_formal_ret_count(),
+            Get_constraint_graph_formal_ret_idx());
 } // SUMMARY_PROCEDURE::Print
 
 
@@ -245,6 +265,8 @@ SUMMARY_CALLSITE::Print (FILE* f) const
 	fputs (": ", f);
 	Ipl_Summary_Symbol[Get_symbol_index()].Print (f);
     }
+    if (_constraint_graph_callsite_id != 0)
+      fprintf (f, " cg callsite_id: %d\n", _constraint_graph_callsite_id);
 }
 
 // ====================================================================
@@ -1300,12 +1322,12 @@ SUMMARY_CONSTRAINT_GRAPH_NODE::Print( FILE *fp) const
 void
 SUMMARY_CONSTRAINT_GRAPH_NODE::Print_array(FILE* fp, INT32 size) const
 {
-  fprintf(fp, "%sStart cgnode array\n%s", SBar, SBar);
+  fprintf(fp, "%sStart cg node array\n%s", SBar, SBar);
   for (INT i = 0; i < size; ++i) {
     this[i].Print(fp);
     fprintf(fp, "\n");
   }
-  fprintf( fp, "%sEnd cgnode array \n%s", SBar, SBar);
+  fprintf( fp, "%sEnd cg node array \n%s", SBar, SBar);
 }
 
 void
@@ -1316,6 +1338,95 @@ SUMMARY_CONSTRAINT_GRAPH_NODE::Trace_array(INT32 size) const
 
 void
 SUMMARY_CONSTRAINT_GRAPH_NODE::Trace(void) const
+{
+  Print (TFile);
+}
+
+void
+SUMMARY_CONSTRAINT_GRAPH_EDGE::Print( FILE *fp) const
+{
+  fprintf(fp, "src %d dest: %d etype: %d qual: %d sizeOrSkew: %d", 
+          _srcId, _destId, _etype, _qual, _sizeOrSkew);
+} 
+
+void
+SUMMARY_CONSTRAINT_GRAPH_EDGE::Print_array(FILE* fp, INT32 size) const
+{
+  fprintf(fp, "%sStart cg edge array\n%s", SBar, SBar);
+  for (INT i = 0; i < size; ++i) {
+    this[i].Print(fp);
+    fprintf(fp, "\n");
+  }
+  fprintf( fp, "%sEnd cg edge array \n%s", SBar, SBar);
+}
+
+void
+SUMMARY_CONSTRAINT_GRAPH_EDGE::Trace_array(INT32 size) const
+{
+  Print_array(TFile, size);
+}
+
+void
+SUMMARY_CONSTRAINT_GRAPH_EDGE::Trace(void) const
+{
+  Print (TFile);
+}
+
+void
+SUMMARY_CONSTRAINT_GRAPH_STINFO::Print( FILE *fp) const
+{
+  fprintf(fp, "st_idx %d varsize: %lld modulus: %d firstoffset: %d", 
+          _st_idx, _varSize, _modulus, _firstOffset);
+} 
+
+void
+SUMMARY_CONSTRAINT_GRAPH_STINFO::Print_array(FILE* fp, INT32 size) const
+{
+  fprintf(fp, "%sStart cg stinfo array\n%s", SBar, SBar);
+  for (INT i = 0; i < size; ++i) {
+    this[i].Print(fp);
+    fprintf(fp, "\n");
+  }
+  fprintf( fp, "%sEnd cg stinfo array \n%s", SBar, SBar);
+}
+
+void
+SUMMARY_CONSTRAINT_GRAPH_STINFO::Trace_array(INT32 size) const
+{
+  Print_array(TFile, size);
+}
+
+void
+SUMMARY_CONSTRAINT_GRAPH_STINFO::Trace(void) const
+{
+  Print (TFile);
+}
+
+void
+SUMMARY_CONSTRAINT_GRAPH_CALLSITE::Print( FILE *fp) const
+{
+  fprintf(fp, "id %d numParms: %d paramNodesIdx: %d return: %d\n", 
+          _id, _numParms, _paramNodesIdx, _return);
+} 
+
+void
+SUMMARY_CONSTRAINT_GRAPH_CALLSITE::Print_array(FILE* fp, INT32 size) const
+{
+  fprintf(fp, "%sStart cg callsite array\n%s", SBar, SBar);
+  for (INT i = 0; i < size; ++i) {
+    this[i].Print(fp);
+  }
+  fprintf( fp, "%sEnd cg callsite array \n%s", SBar, SBar);
+}
+
+void
+SUMMARY_CONSTRAINT_GRAPH_CALLSITE::Trace_array(INT32 size) const
+{
+  Print_array(TFile, size);
+}
+
+void
+SUMMARY_CONSTRAINT_GRAPH_CALLSITE::Trace(void) const
 {
   Print (TFile);
 }

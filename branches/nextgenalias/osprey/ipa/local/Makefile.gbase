@@ -331,4 +331,6 @@ include $(COMMONRULES)
 #----------------------------------------------------------------------
 #  Temporary workaround
 #----------------------------------------------------------------------
+ifeq ($(BUILD_COMPILER), OSP)
 ipl_summarize_util.o: OPTIMIZER += -CG:all_sched=0
+endif

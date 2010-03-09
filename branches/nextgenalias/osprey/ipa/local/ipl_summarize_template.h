@@ -2104,6 +2104,37 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     if ( Has_local_pragma && Has_pdo_pragma)
 	proc->Set_has_pdo_pragma();
 
+    // For the Nystrom alias analyzer
+    NystromAliasAnalyzer *naa = 
+          static_cast<NystromAliasAnalyzer *>(AliasAnalyzer::aliasAnalyzer());
+    if (naa != NULL) {
+      ConstraintGraph *cg = naa->constraintGraph();
+      list<CGNodeId>::iterator iter;
+      list<CGNodeId> parameters = cg->parameters();
+      list<CGNodeId> returns = cg->returns();
+      // Add the cgnode ids of formal parameters
+      mUINT32 pcount = 0;
+      for (iter = parameters.begin(); iter != parameters.end(); iter++) {
+        INT new_idx = _constraint_graph_node_ids.Newidx();
+        _constraint_graph_node_ids[new_idx] = *iter;
+        pcount++;
+      }
+      proc->Set_constraint_graph_formal_parm_count(pcount);
+      proc->Set_constraint_graph_formal_parm_idx(
+                             _constraint_graph_node_ids.Lastidx() - pcount + 1);
+      // Add the cgnode ids of formal returns
+      mUINT32 rcount = 0;
+      for (iter = returns.begin(); iter != returns.end(); iter++) {
+        INT new_idx = _constraint_graph_node_ids.Newidx();
+        _constraint_graph_node_ids[new_idx] = *iter;
+        rcount++;
+      }
+      proc->Set_constraint_graph_formal_ret_count(rcount);
+      proc->Set_constraint_graph_formal_ret_idx( 
+                             _constraint_graph_node_ids.Lastidx() - rcount + 1);
+    }
+
+
 } // SUMMARIZE::Process_procedure
 				 
 //====================================================================
@@ -2517,6 +2548,10 @@ SUMMARIZE<program>::Process_callsite (WN *w, INT id, INT loopnest, float probabi
 			       OPCODE_name(WN_opcode(w)));
 	    break;
 	}
+
+        CallSiteId cgCSId = WN_MAP_CallSiteId_Get(w);
+        if (cgCSId != 0)
+          callsite->Set_constraint_graph_callsite_id(cgCSId);
     }
 
     // if there are parameters in this routine
@@ -3202,6 +3237,12 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
           static_cast<NystromAliasAnalyzer *>(AliasAnalyzer::aliasAnalyzer());
   if (naa == NULL)
     return;
+
+  mUINT32 numNodes = 0;
+  mUINT32 numEdges = 0;
+  mUINT32 numStInfos = 0;
+  mUINT32 numCallSites = 0;
+
   ConstraintGraph *cg = naa->constraintGraph();
   // Iterate over all nodes in the graph
   for (CGIdToNodeMapIterator iter = cg->begin(); iter != cg->end(); iter++) {
@@ -3209,10 +3250,11 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
     SUMMARY_CONSTRAINT_GRAPH_NODE *summCGNode = New_constraint_graph_node();
     ConstraintGraphNode *parent = cgNode->parent();
     // Set points to set only if it has no representative parent
-    if (!parent || parent == cgNode)
+    if (!parent || parent == cgNode) {
+      summCGNode->repParent(0);
       processPointsToSet(summCGNode, cgNode->pointsTo(CQ_GBL),
                          cgNode->pointsTo(CQ_HZ), cgNode->pointsTo(CQ_DN));
-    else
+    } else
       summCGNode->repParent(parent->id());
     summCGNode->cgNodeId(cgNode->id());
     summCGNode->st_idx(cgNode->st_idx());
@@ -3223,7 +3265,104 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
       summCGNode->nextOffset(cgNode->nextOffset()->id());
     else
       summCGNode->nextOffset(0);
+
+    // Add edges
+    CGEdgeSet &outCopySet = cgNode->outCopySkewEdges();
+    for (CGEdgeSetIterator outCopyIter = outCopySet.begin();
+         outCopyIter != outCopySet.end(); outCopyIter++) {
+      ConstraintGraphEdge *edge = *(outCopyIter);
+      SUMMARY_CONSTRAINT_GRAPH_EDGE *summCGEdge = New_constraint_graph_edge();
+      summCGEdge->etype(edge->edgeType());
+      summCGEdge->qual(edge->edgeQual());
+      summCGEdge->flags(edge->flags());
+      summCGEdge->sizeOrSkew(edge->edgeType() == ETYPE_SKEW ? edge->skew()
+                             : edge->size());
+      summCGEdge->src(edge->srcNode()->id());
+      summCGEdge->dest(edge->destNode()->id());
+      numEdges++;
+    }
+    CGEdgeSet &outLdSet = cgNode->outLoadStoreEdges();
+    for (CGEdgeSetIterator outLdIter = outLdSet.begin();
+         outLdIter != outLdSet.end(); outLdIter++)  {
+      ConstraintGraphEdge *edge = *(outLdIter);
+      SUMMARY_CONSTRAINT_GRAPH_EDGE *summCGEdge = New_constraint_graph_edge();
+      summCGEdge->etype(edge->edgeType());
+      summCGEdge->qual(edge->edgeQual());
+      summCGEdge->flags(edge->flags());
+      summCGEdge->sizeOrSkew(edge->edgeType() == ETYPE_SKEW ? edge->skew()
+                             : edge->size());
+      summCGEdge->src(edge->srcNode()->id());
+      summCGEdge->dest(edge->destNode()->id());
+      numEdges++;
+    }
+
+    numNodes++;
   }
+
+  // Add StInfos.
+  CGStInfoMap& stInfos = cg->stInfoMap();
+  for (CGStInfoMapIterator stiter = stInfos.begin(); stiter != stInfos.end();
+       stiter++) {
+    ST_IDX st_idx = stiter->first;
+    StInfo *s = stiter->second;
+    SUMMARY_CONSTRAINT_GRAPH_STINFO *summStInfo = New_constraint_graph_stinfo();
+    summStInfo->st_idx(st_idx);
+    summStInfo->flags(s->flags());
+    summStInfo->varSize(s->varSize());
+    summStInfo->modulus(s->modulus());
+    summStInfo->firstOffset(s->firstOffset() ? s->firstOffset()->id() : 0);
+    numStInfos++;
+  }
+
+  // Add Callsites
+  CallSiteMap& callSites = cg->callSiteMap();
+  for (CallSiteIterator citer = callSites.begin(); citer != callSites.end();
+       citer++) {
+    CallSite *cs = citer->second;
+    SUMMARY_CONSTRAINT_GRAPH_CALLSITE *summCallSite = 
+                                       New_constraint_graph_callsite();
+    summCallSite->id(cs->id());
+    summCallSite->flags(cs->flags());
+    if (cs->isDirect() && !cs->isIntrinsic())
+      summCallSite->st_idx(cs->st_idx());
+    else if (cs->isIndirect())
+      summCallSite->cgNodeId(cs->cgNodeId());
+    else if (cs->isIntrinsic())
+      summCallSite->intrinsic(cs->intrinsic());
+    // Process params
+    list<CGNodeId> parms = cs->parms();
+    UINT32 pcount = 0;
+    list<CGNodeId>::iterator iter;
+    for (iter = parms.begin(); iter != parms.end(); iter++) {
+      CGNodeId id = *iter;
+      INT new_idx = _constraint_graph_node_ids.Newidx();
+      _constraint_graph_node_ids[new_idx] = id;
+      pcount++;
+    }
+    summCallSite->numParms(pcount);
+    summCallSite->parmNodeIdx(_constraint_graph_node_ids.Lastidx() - 
+                              pcount + 1);
+    summCallSite->returnId(cs->returnId());
+    numCallSites++;
+  }
+
+  SUMMARY_PROCEDURE *currProc = Get_procedure(Get_procedure_idx());
+
+  currProc->Set_constraint_graph_nodes_count(numNodes);
+  currProc->Set_constraint_graph_nodes_idx(_constraint_graph_nodes.Lastidx() -
+                                           numNodes + 1);
+
+  currProc->Set_constraint_graph_edges_count(numEdges);
+  currProc->Set_constraint_graph_edges_idx(_constraint_graph_edges.Lastidx() -
+                                           numEdges + 1);
+
+  currProc->Set_constraint_graph_stinfos_count(numStInfos);
+  currProc->Set_constraint_graph_stinfos_idx(
+                          _constraint_graph_stinfos.Lastidx() - numStInfos + 1);
+
+  currProc->Set_constraint_graph_callsites_count(numCallSites);
+  currProc->Set_constraint_graph_callsites_idx(
+                      _constraint_graph_callsites.Lastidx() - numCallSites + 1);
 }
 
 // Since the pts-to-set is a sparse set, we store the CGNodeIds in the set
@@ -3241,32 +3380,32 @@ SUMMARIZE<program>::processPointsToSet(SUMMARY_CONSTRAINT_GRAPH_NODE *sumCGNode,
   int numGBLids = 0;
   for (PointsTo::SparseBitSetIterator iter(&gbl, 0); iter != 0; ++iter) {
     CGNodeId id = *iter;
-    INT new_idx = _constraint_graph_pts_ids.Newidx();
-    _constraint_graph_pts_ids[new_idx] = id;
+    INT new_idx = _constraint_graph_node_ids.Newidx();
+    _constraint_graph_node_ids[new_idx] = id;
     numGBLids++;
   }  
   sumCGNode->numBitsPtsGBL(numGBLids);
-  sumCGNode->ptsGBLidx(_constraint_graph_pts_ids.Lastidx() - numGBLids + 1);
+  sumCGNode->ptsGBLidx(_constraint_graph_node_ids.Lastidx() - numGBLids + 1);
   // Process HZs
   int numHZids = 0;
   for (PointsTo::SparseBitSetIterator iter(&hz, 0); iter != 0; ++iter) {
     CGNodeId id = *iter;
-    INT new_idx = _constraint_graph_pts_ids.Newidx();
-    _constraint_graph_pts_ids[new_idx] = id;
+    INT new_idx = _constraint_graph_node_ids.Newidx();
+    _constraint_graph_node_ids[new_idx] = id;
     numHZids++;
   }  
   sumCGNode->numBitsPtsHZ(numHZids);
-  sumCGNode->ptsHZidx(_constraint_graph_pts_ids.Lastidx() - numHZids + 1);
+  sumCGNode->ptsHZidx(_constraint_graph_node_ids.Lastidx() - numHZids + 1);
   // Process DNs
   int numDNids = 0;
   for (PointsTo::SparseBitSetIterator iter(&dn, 0); iter != 0; ++iter) {
     CGNodeId id = *iter;
-    INT new_idx = _constraint_graph_pts_ids.Newidx();
-    _constraint_graph_pts_ids[new_idx] = id;
+    INT new_idx = _constraint_graph_node_ids.Newidx();
+    _constraint_graph_node_ids[new_idx] = id;
     numDNids++;
   }  
   sumCGNode->numBitsPtsDN(numDNids);
-  sumCGNode->ptsDNidx(_constraint_graph_pts_ids.Lastidx() - numDNids + 1);
+  sumCGNode->ptsDNidx(_constraint_graph_node_ids.Lastidx() - numDNids + 1);
 
 }
 

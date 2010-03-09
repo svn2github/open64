@@ -101,7 +101,10 @@ IPA_irb_write_summary(Output_File *fl)
 #endif
     // Constraint graph summary for Nystrom Alias Analyzer
     INT offset_cg_nodes = 0;
-    INT offset_cg_pts_ids = 0;
+    INT offset_cg_edges = 0;
+    INT offset_cg_stinfos = 0;
+    INT offset_cg_callsites = 0;
+    INT offset_cg_node_ids = 0;
 
     Elf64_Word temp;
     offset_sym = offset_proc = offset_feedback = offset_call = 0;
@@ -285,9 +288,10 @@ IPA_irb_write_summary(Output_File *fl)
       offset_ty_info = offset_ty_info - cur_sec_disp;
     } 
 #endif
- 
+
     // Constraint graph specific data for Nystrom Alias Analyzer
     if (Summary->Has_constraint_graph_nodes()) {
+      
       // Dump the list of constraint graph nodes
       size = (Summary->Get_constraint_graph_nodes_idx() + 1) * 
                sizeof(SUMMARY_CONSTRAINT_GRAPH_NODE);
@@ -296,17 +300,49 @@ IPA_irb_write_summary(Output_File *fl)
                            size, sizeof(INT64), 0, fl);
       offset_cg_nodes = offset_cg_nodes - cur_sec_disp;
 
+      FmtAssert(Summary->Has_constraint_graph_stinfos(), 
+                ("CGNodes should have StInfos"));
+
+      // Dump the list of constraint graph stinfos
+      size = (Summary->Get_constraint_graph_stinfos_idx() + 1) * 
+               sizeof(SUMMARY_CONSTRAINT_GRAPH_STINFO);
+      offset_cg_stinfos = 
+        (INT)ir_b_save_buf(Summary->Get_constraint_graph_stinfo(0),
+                           size, sizeof(INT64), 0, fl);
+      offset_cg_stinfos = offset_cg_stinfos - cur_sec_disp;
+    }
+
+    if (Summary->Has_constraint_graph_edges()) {
+      // Dump the list of constraint graph edges
+      size = (Summary->Get_constraint_graph_edges_idx() + 1) * 
+               sizeof(SUMMARY_CONSTRAINT_GRAPH_EDGE);
+      offset_cg_edges = 
+        (INT)ir_b_save_buf(Summary->Get_constraint_graph_edge(0),
+                           size, sizeof(INT64), 0, fl);
+      offset_cg_edges = offset_cg_edges - cur_sec_disp;
+    }
+
+    if (Summary->Has_constraint_graph_callsites()) {
+      // Dump the list of constraint graph callsites
+      size = (Summary->Get_constraint_graph_callsites_idx() + 1) * 
+               sizeof(SUMMARY_CONSTRAINT_GRAPH_CALLSITE);
+      offset_cg_callsites = 
+        (INT)ir_b_save_buf(Summary->Get_constraint_graph_callsite(0),
+                           size, sizeof(INT64), 0, fl);
+      offset_cg_callsites = offset_cg_callsites - cur_sec_disp;
+    }
+
+    if (Summary->Has_constraint_graph_node_ids()) {
       // Dump the list of constraint graph ids that are in the pts-to-sets
       // of the corresponding nodes
-      size = (Summary->Get_constraint_graph_pts_ids_idx() + 1) * 
+      size = (Summary->Get_constraint_graph_node_ids_idx() + 1) * 
              sizeof(UINT32);
-      offset_cg_pts_ids = 
-        (INT)ir_b_save_buf(Summary->Get_constraint_graph_pts_id(0),
+      offset_cg_node_ids = 
+        (INT)ir_b_save_buf(Summary->Get_constraint_graph_node_id(0),
                            size, sizeof(INT64), 0, fl);
-      offset_cg_pts_ids = offset_cg_pts_ids - cur_sec_disp;
+      offset_cg_node_ids = offset_cg_node_ids - cur_sec_disp;
     }
  
-
     if (Do_Par)
      Array_Summary_Output->Write_summary(fl, cur_sec_disp);
     
@@ -358,7 +394,10 @@ IPA_irb_write_summary(Output_File *fl)
 #endif
     // Constraint graph summary for Nystrom Alias Analyzer
     header_addr->Set_constraint_graph_nodes_offset(offset_cg_nodes);
-    header_addr->Set_constraint_graph_pts_ids_offset(offset_cg_pts_ids);
+    header_addr->Set_constraint_graph_edges_offset(offset_cg_edges);
+    header_addr->Set_constraint_graph_stinfos_offset(offset_cg_stinfos);
+    header_addr->Set_constraint_graph_callsites_offset(offset_cg_callsites);
+    header_addr->Set_constraint_graph_node_ids_offset(offset_cg_node_ids);
 
     header_addr->Set_symbol_size(Summary->Get_symbol_idx() + 1);
     header_addr->Set_proc_size(Summary->Get_procedure_idx() + 1);
@@ -382,7 +421,10 @@ IPA_irb_write_summary(Output_File *fl)
 #endif
     // Constraint graph summary for Nystrom Alias Analyzer
     header_addr->Set_constraint_graph_nodes_size(Summary->Get_constraint_graph_nodes_idx() + 1);
-    header_addr->Set_constraint_graph_pts_ids_size(Summary->Get_constraint_graph_pts_ids_idx() + 1);
+    header_addr->Set_constraint_graph_edges_size(Summary->Get_constraint_graph_edges_idx() + 1);
+    header_addr->Set_constraint_graph_stinfos_size(Summary->Get_constraint_graph_stinfos_idx() + 1);
+    header_addr->Set_constraint_graph_callsites_size(Summary->Get_constraint_graph_callsites_idx() + 1);
+    header_addr->Set_constraint_graph_node_ids_size(Summary->Get_constraint_graph_node_ids_idx() + 1);
  
     header_addr->Set_symbol_entry_size(sizeof(SUMMARY_SYMBOL));
     header_addr->Set_proc_entry_size(sizeof(SUMMARY_PROCEDURE));
@@ -407,8 +449,10 @@ IPA_irb_write_summary(Output_File *fl)
 #endif
     // Constraint graph summary for Nystrom Alias Analyzer
     header_addr->Set_constraint_graph_nodes_entry_size(sizeof(SUMMARY_CONSTRAINT_GRAPH_NODE));
-    header_addr->Set_constraint_graph_pts_ids_size(sizeof(UINT32));
-   
+    header_addr->Set_constraint_graph_edges_entry_size(sizeof(SUMMARY_CONSTRAINT_GRAPH_EDGE));
+    header_addr->Set_constraint_graph_stinfos_entry_size(sizeof(SUMMARY_CONSTRAINT_GRAPH_STINFO));
+    header_addr->Set_constraint_graph_callsites_entry_size(sizeof(SUMMARY_CONSTRAINT_GRAPH_CALLSITE));
+    header_addr->Set_constraint_graph_node_ids_size(sizeof(UINT32));
 }
 
 
@@ -440,8 +484,11 @@ IPA_Trace_Summary_Section (FILE *f,		// File to trace to
 #ifdef KEY
     SUMMARY_TY_INFO * ty_info_array;
 #endif
-    SUMMARY_CONSTRAINT_GRAPH_NODE *cg_nodes_array;
-    UINT32 *cg_pts_ids_array;
+    SUMMARY_CONSTRAINT_GRAPH_NODE     *cg_nodes_array;
+    SUMMARY_CONSTRAINT_GRAPH_EDGE     *cg_edges_array;
+    SUMMARY_CONSTRAINT_GRAPH_STINFO   *cg_stinfos_array;
+    SUMMARY_CONSTRAINT_GRAPH_CALLSITE *cg_callsites_array;
+    UINT32 *cg_node_ids_array;
 
     ARRAY_SUMMARY_OUTPUT array_summary(Malloc_Mem_Pool);
 
@@ -672,20 +719,44 @@ IPA_Trace_Summary_Section (FILE *f,		// File to trace to
 #endif
     // Constraint graph summary for Nystrom Alias Analyzer
     if (file_header->Get_constraint_graph_nodes_size () != 0)
-	fprintf (f, format, "CGNODE",
+	fprintf (f, format, "CG NODE",
 		 file_header->Get_constraint_graph_nodes_offset (),
 		 file_header->Get_constraint_graph_nodes_entry_size (),
 		 file_header->Get_constraint_graph_nodes_size(),
 		 file_header->Get_constraint_graph_nodes_entry_size () *
 		 file_header->Get_constraint_graph_nodes_size ());
 
-    if (file_header->Get_constraint_graph_pts_ids_size () != 0)
-	fprintf (f, format, "CGNODE",
-		 file_header->Get_constraint_graph_pts_ids_offset (),
-		 file_header->Get_constraint_graph_pts_ids_entry_size (),
-		 file_header->Get_constraint_graph_pts_ids_size(),
-		 file_header->Get_constraint_graph_pts_ids_entry_size () *
-		 file_header->Get_constraint_graph_pts_ids_size ());
+    if (file_header->Get_constraint_graph_edges_size () != 0)
+	fprintf (f, format, "CG EDGES",
+		 file_header->Get_constraint_graph_edges_offset (),
+		 file_header->Get_constraint_graph_edges_entry_size (),
+		 file_header->Get_constraint_graph_edges_size(),
+		 file_header->Get_constraint_graph_edges_entry_size () *
+		 file_header->Get_constraint_graph_edges_size ());
+
+    if (file_header->Get_constraint_graph_stinfos_size () != 0)
+	fprintf (f, format, "CG STINFOS",
+		 file_header->Get_constraint_graph_stinfos_offset (),
+		 file_header->Get_constraint_graph_stinfos_entry_size (),
+		 file_header->Get_constraint_graph_stinfos_size(),
+		 file_header->Get_constraint_graph_stinfos_entry_size () *
+		 file_header->Get_constraint_graph_stinfos_size ());
+
+    if (file_header->Get_constraint_graph_callsites_size () != 0)
+	fprintf (f, format, "CG CALLSITES",
+		 file_header->Get_constraint_graph_callsites_offset (),
+		 file_header->Get_constraint_graph_callsites_entry_size (),
+		 file_header->Get_constraint_graph_callsites_size(),
+		 file_header->Get_constraint_graph_callsites_entry_size () *
+		 file_header->Get_constraint_graph_callsites_size ());
+
+    if (file_header->Get_constraint_graph_node_ids_size () != 0)
+	fprintf (f, format, "CGNODE IDS",
+		 file_header->Get_constraint_graph_node_ids_offset (),
+		 file_header->Get_constraint_graph_node_ids_entry_size (),
+		 file_header->Get_constraint_graph_node_ids_size(),
+		 file_header->Get_constraint_graph_node_ids_entry_size () *
+		 file_header->Get_constraint_graph_node_ids_size ());
     
     if (file_header->Get_symbol_size() != 0) {
 	sym_array = (SUMMARY_SYMBOL *)
@@ -805,11 +876,26 @@ IPA_Trace_Summary_Section (FILE *f,		// File to trace to
 	    (section_base + file_header->Get_constraint_graph_nodes_offset());
 	cg_nodes_array->Print_array ( f, file_header->Get_constraint_graph_nodes_size() );
     }
-    if (file_header->Get_constraint_graph_pts_ids_size() != 0) {
-	cg_pts_ids_array =  (UINT32 *)
-	    (section_base + file_header->Get_constraint_graph_pts_ids_offset());
-        for (INT i=0; i<file_header->Get_constraint_graph_pts_ids_size(); ++i) {
-          fprintf(f, " %d ",  cg_pts_ids_array[i]);
+    if (file_header->Get_constraint_graph_edges_size() != 0) {
+	cg_edges_array =  (SUMMARY_CONSTRAINT_GRAPH_EDGE *)
+	    (section_base + file_header->Get_constraint_graph_edges_offset());
+	cg_edges_array->Print_array ( f, file_header->Get_constraint_graph_edges_size() );
+    }
+    if (file_header->Get_constraint_graph_stinfos_size() != 0) {
+	cg_stinfos_array =  (SUMMARY_CONSTRAINT_GRAPH_STINFO *)
+	    (section_base + file_header->Get_constraint_graph_stinfos_offset());
+	cg_stinfos_array->Print_array ( f, file_header->Get_constraint_graph_stinfos_size() );
+    }
+    if (file_header->Get_constraint_graph_callsites_size() != 0) {
+	cg_callsites_array =  (SUMMARY_CONSTRAINT_GRAPH_CALLSITE *)
+	    (section_base + file_header->Get_constraint_graph_callsites_offset());
+	cg_callsites_array->Print_array ( f, file_header->Get_constraint_graph_callsites_size() );
+    }
+    if (file_header->Get_constraint_graph_node_ids_size() != 0) {
+	cg_node_ids_array =  (UINT32 *)
+           (section_base + file_header->Get_constraint_graph_node_ids_offset());
+        for (INT i=0; i<file_header->Get_constraint_graph_node_ids_size(); ++i) {
+          fprintf(f, " %d ",  cg_node_ids_array[i]);
         }
     }
     
@@ -922,11 +1008,25 @@ SUMMARIZE<IPL>::Trace(FILE* fp)
   if (Has_constraint_graph_nodes()) {
     Get_constraint_graph_node(0)->Print_array(fp, 
                                          Get_constraint_graph_nodes_idx()+1);
-    fprintf (fp, "%sStart cgnode pts ids array\n%s", SBar, SBar);
-    for (INT i=0; i<(Get_constraint_graph_pts_ids_idx()+1); ++i) {
-      fprintf(fp, " %d ",  _constraint_graph_pts_ids[i]);
+  }
+  if (Has_constraint_graph_edges()) {
+    Get_constraint_graph_edge(0)->Print_array(fp, 
+                                         Get_constraint_graph_edges_idx()+1);
+  }
+  if (Has_constraint_graph_stinfos()) {
+    Get_constraint_graph_stinfo(0)->Print_array(fp, 
+                                         Get_constraint_graph_stinfos_idx()+1);
+  }
+  if (Has_constraint_graph_callsites()) {
+    Get_constraint_graph_callsite(0)->Print_array(fp, 
+                                         Get_constraint_graph_callsites_idx()+1);
+  }
+  if (Has_constraint_graph_node_ids()) {
+    fprintf (fp, "%sStart cgnode node ids array\n%s", SBar, SBar);
+    for (INT i=0; i<(Get_constraint_graph_node_ids_idx()+1); ++i) {
+      fprintf(fp, " %d ",  _constraint_graph_node_ids[i]);
     }
-    fprintf ( fp, "\n%sEnd cgnode pts ids array \n%s", SBar, SBar );
+    fprintf ( fp, "\n%sEnd cgnode node ids array \n%s", SBar, SBar );
   }
 }
 

@@ -288,6 +288,28 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
       cg_nodes[i].st_idx(idx_maps->st[old_st_idx]);
     }
   }
+  INT32 num_cg_stinfos;
+  SUMMARY_CONSTRAINT_GRAPH_STINFO *cg_stinfos = 
+                    IPA_get_constraint_graph_stinfos_array(hdr, num_cg_stinfos);
+  for (i = 0; i < num_cg_stinfos; ++i) {
+    ST_IDX old_st_idx = cg_stinfos[i].st_idx();
+    if (ST_IDX_level(old_st_idx) == GLOBAL_SYMTAB) {
+      cg_stinfos[i].st_idx(idx_maps->st[old_st_idx]);
+    }
+  }
+  INT32 num_cg_callsites;
+  SUMMARY_CONSTRAINT_GRAPH_CALLSITE *cg_callsites = 
+                IPA_get_constraint_graph_callsites_array(hdr, num_cg_callsites);
+  for (i = 0; i < num_cg_callsites; ++i) {
+    // 0x7 = CS_FLAGS_UNKNOWN(0x1)|CS_FLAGS_INDIRECT(0x2)|CS_FLAGS_INTRN(0x4)
+    // see be/com/constraint_graph.h
+    if (cg_callsites[i].flags() & 0x7 == 0) {
+      ST_IDX old_st_idx = cg_callsites[i].st_idx();
+      if (ST_IDX_level(old_st_idx) == GLOBAL_SYMTAB) {
+        cg_stinfos[i].st_idx(idx_maps->st[old_st_idx]);
+      }
+    }
+  }
 
   // process all ty_idxs found in SUMMARY_STRUCT_ACCESS, and sum them up!
   if(IPA_Enable_Reorder){
