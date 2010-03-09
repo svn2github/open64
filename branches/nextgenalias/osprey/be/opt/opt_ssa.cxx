@@ -1327,6 +1327,14 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
       WOPT_Enable_Itself_Prop = FALSE; // can cause incorrectness in itself-prop
     }
 
+    // For a call, set the call site id for the Nystrom alias analyzer
+    // so as to restore it during CODEMAP -> WHIRL translation
+    if (OPERATOR_is_call(WN_operator(wn))) {
+      UINT32 callsite_id = WN_MAP32_Get(WN_MAP_ALIAS_CGNODE, wn);
+      if (callsite_id != 0)
+        stmt->Set_constraint_graph_callsite_id(callsite_id);
+    }
+
     // statement has mu only in returns and calls
     if (WN_has_mu(wn, Cfg()->Rgn_level())) {
       MU_LIST_ITER mu_iter;

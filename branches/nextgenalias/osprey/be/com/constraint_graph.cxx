@@ -228,7 +228,21 @@ ConstraintGraph::buildCG(WN *entryWN)
         ST_name(WN_st(entryWN)));
     fdump_tree(stderr, entryWN);
   }
+
+  // Create a varArg symbol to denote all parameters after the last fixed one
+  if (TY_is_varargs(ST_pu_type(WN_st(entryWN)))) {
+    ST *tmpST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgVarArgs",
+                                      CLASS_VAR, SCLASS_AUTO);
+    _varArgs = getCGNode(ST_st_idx(tmpST), 0);
+  }
+  
   processWN(entryWN);
+ 
+  // Add the varArgs paramters after all other paramters have been processed
+  if (_varArgs) {
+    _varArgs->addFlags(CG_NODE_FLAGS_FORMAL_PARAM);
+    _parameters.push_back(_varArgs->id());
+  }
 }
 
 WN *
@@ -246,8 +260,10 @@ ConstraintGraph::processWN(WN *wn)
   }
   else if (WN_operator(wn) == OPR_RETURN_VAL) {
     ConstraintGraphNode *cgNode = processExpr(WN_kid0(wn));
-    if (cgNode)
+    if (cgNode) {
       cgNode->addFlags(CG_NODE_FLAGS_FORMAL_RETURN);
+      _returns.push_back(cgNode->id());
+    }
     return WN_next(wn);
   }
   else if (OPCODE_is_call(opc)) {
@@ -310,8 +326,10 @@ ConstraintGraph::handleAssignment(WN *stmt)
     bool added = false;
     // add a copy edge x <-- y
     addEdge(cgNodeRHS, cgNodeLHS, ETYPE_COPY, CQ_HZ, size, added);
-    if (stmtStoresReturnValueToCaller(stmt))
+    if (stmtStoresReturnValueToCaller(stmt)) {
       cgNodeLHS->addFlags(CG_NODE_FLAGS_FORMAL_RETURN);
+      _returns.push_back(cgNodeLHS->id());
+    }
   } else if (opr == OPR_ISTORE || opr == OPR_ISTBITS || opr == OPR_MSTORE) {
     bool added = false;
     // Add store edge x *=<-- y
@@ -347,6 +365,7 @@ ConstraintGraph::processExpr(WN *expr)
       case OPR_IDNAME:
         cgNode = getCGNode(expr);
         cgNode->addFlags(CG_NODE_FLAGS_FORMAL_PARAM);
+        _parameters.push_back(cgNode->id());
         break;
       case OPR_INTCONST:
       case OPR_CONST:
@@ -726,16 +745,21 @@ ConstraintGraph::handleCall(WN *callWN)
   // For indirect calls, set the CGNodeId to the ConstraintGraphNode
   // corresponding to the address of the call. For direct calls,
   // set the st_idx of call. Else, mark UNKNOWN
-  if ((opr == OPR_ICALL || opr == OPR_VFCALL) && cgNode)
+  if ((opr == OPR_ICALL || opr == OPR_VFCALL) && cgNode) {
     callSite->cgNodeId(cgNode->id());
-  else if (opr == OPR_CALL)
+    if (TY_is_varargs(WN_ty(callWN)))
+      callSite->addFlags(CS_FLAGS_HAS_VARARGS);
+  } else if (opr == OPR_CALL) {
     callSite->st_idx(WN_st_idx(callWN));
-  else if (opr == OPR_INTRINSIC_CALL) {
+    // Check for varargs
+    if (TY_is_varargs(ST_pu_type(WN_st(callWN))))
+      callSite->addFlags(CS_FLAGS_HAS_VARARGS);
+  } else if (opr == OPR_INTRINSIC_CALL) {
     callSite->addFlags(CS_FLAGS_INTRN);
     callSite->intrinsic((INTRINSIC)WN_intrinsic(callWN));
   } else
     callSite->addFlags(CS_FLAGS_UNKNOWN);
-  
+
   // Process params
   for (INT i = 0; i < numParms; ++i) {
     WN *parmWN = WN_kid(callWN, i);
@@ -745,6 +769,34 @@ ConstraintGraph::handleCall(WN *callWN)
     cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_PARAM);
     callSite->addParm(cgNode->id());
     WN_MAP_CGNodeId_Set(parmWN, cgNode->id());
+  }
+
+  // For a VA_START, add the _varArgs node to the pts to set of
+  // of the first parameter which is of type va_list
+  if (callSite->isIntrinsic() && callSite->intrinsic() == INTRN_VA_START) {
+    FmtAssert(WN_operator(WN_kid0(WN_kid0(callWN))) == OPR_LDA, 
+              ("Expecting LDA"));
+    CGNodeId id = WN_MAP_CGNodeId_Get(WN_kid0(WN_kid0(callWN)));
+    // For a LDA, since we create a temp node with the address in the
+    // points-to-set of the temp node (t {va_list}), we need to crack open
+    // the pts-to-set of t to get to va_list and then add _varArgs to
+    // the pts-to-set of va_list
+    ConstraintGraphNode *tmpNode = this->cgNode(id);
+    PointsTo& ptsGBL = tmpNode->pointsTo(CQ_GBL);
+    PointsTo& ptsHZ = tmpNode->pointsTo(CQ_HZ);
+    if (!ptsGBL.isEmpty()) {
+      for (PointsTo::SparseBitSetIterator iter(&ptsGBL, 0); iter != 0; ++iter) {
+        ConstraintGraphNode *valistNode = this->cgNode(*iter);
+        stInfo(valistNode->st_idx())->modulus(Pointer_Size);
+        valistNode->addPointsTo(_varArgs, CQ_HZ);
+      }
+    } else if (!ptsHZ.isEmpty()) {
+      for (PointsTo::SparseBitSetIterator iter(&ptsHZ, 0); iter != 0; ++iter) {
+        ConstraintGraphNode *valistNode = this->cgNode(*iter);
+        stInfo(valistNode->st_idx())->modulus(Pointer_Size);
+        valistNode->addPointsTo(_varArgs, CQ_HZ);
+      }
+    }
   }
 
   WN *stmt = WN_next(callWN);
@@ -905,6 +957,15 @@ ConstraintGraph::print(FILE *file)
   for (CallSiteIterator iter = _callSiteMap.begin(); 
        iter != _callSiteMap.end(); iter++)
     iter->second->print(file);
+
+  list<CGNodeId>::iterator iter;
+  fprintf(stderr, "parameters: "); 
+  for (iter = _parameters.begin(); iter != _parameters.end(); iter++)
+    fprintf(file, " %d", *iter);
+  fprintf(stderr, ", returns: "); 
+  for (iter = _returns.begin(); iter != _returns.end(); iter++)
+    fprintf(file, " %d", *iter);
+  fprintf(file, "\n");
 }
 
 //
@@ -1321,6 +1382,8 @@ CallSite::print(FILE *file)
     fprintf(file, " %s", "INDIRECT");
   if (checkFlags(CS_FLAGS_INTRN))
     fprintf(file, " %s", "INTRINSIC");
+  if (checkFlags(CS_FLAGS_HAS_VARARGS))
+    fprintf(file, " %s", "VARARGS");
   fprintf(file, " ]");
   if (isIndirect())
     fprintf(file, " cgNodeid: %d", cgNodeId());

@@ -24,6 +24,8 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac)
   ac &= ~(CLAS_RULE|IP_CLAS_RULE);
 
   // Create ConstraintGraph from the summary information generated at IPA
+  // For now set it to null
+  _constraintGraph = NULL;
 
   // Set flag to dump the WN to CGNodeId map during Write_PU_Info
   Write_ALIAS_CGNODE_Map = TRUE;
@@ -115,6 +117,9 @@ AliasTag
 NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
 {
   AliasTag aliasTag = InvalidAliasTag;
+
+  if (_constraintGraph == NULL)
+    return aliasTag;
 
   // Scale preg offsets by Pointer_Size
   if (ST_class(st) == CLASS_PREG)

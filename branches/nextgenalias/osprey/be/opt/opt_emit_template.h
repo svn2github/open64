@@ -965,6 +965,12 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	  opr == OPR_BACKWARD_BARRIER ||
 	  opr == OPR_DEALLOCA) 
 	emitter->Alias_Mgr()->Gen_alias_id_list(rwn, srep->Pt_list());
+
+      // Restore the callsite id for the Nystrom alias analyzer
+      if (srep->Get_constraint_graph_callsite_id() != 0)
+        WN_MAP32_Set(WN_MAP_ALIAS_CGNODE, rwn, 
+                     srep->Get_constraint_graph_callsite_id());
+
     }
     break;
 

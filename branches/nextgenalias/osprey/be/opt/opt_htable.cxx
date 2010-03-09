@@ -5770,6 +5770,11 @@ void STMTREP::Clone(STMTREP *sr, CODEMAP *htable, MEM_POOL *pool)
     }
     Reset_has_zver();
   }
+
+  // For a call, set the call site id for the Nystrom alias analyzer
+  // so as to restore it during CODEMAP -> WHIRL translation
+  if (OPERATOR_is_call(sr->Opr()))
+    Set_constraint_graph_callsite_id(sr->Get_constraint_graph_callsite_id());
 }
 
 BOOL CODEREP::Has_volatile_content(void) const

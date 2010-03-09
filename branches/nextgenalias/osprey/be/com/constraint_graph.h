@@ -76,6 +76,7 @@
 #define CS_FLAGS_INDIRECT    0x02
 #define CS_FLAGS_INTRN       0x04
 #define CS_FLAGS_HAS_MOD_REF 0x08
+#define CS_FLAGS_HAS_VARARGS 0x10
 
 // Map the WNs to CGNodeIds
 #define WN_MAP_CGNodeId_Set(wn,thing) \
@@ -726,6 +727,8 @@ public:
     _nextCallSiteId(1),
     _cgIdToNodeMap(minSize), 
     _cgNodeToIdMap(minSize),
+    _varArgs(NULL),
+    _blackHoleId(0),
     _memPool(mpool)
   {
     if (maxTypeSize == 0)
@@ -770,6 +773,8 @@ public:
 
   CallSiteMap &callSiteMap(void) { return _callSiteMap; }
 
+  CGStInfoMap &stInfoMap(void) { return _cgStInfoMap; }
+
   // Return CGNode mapped to (st_idx, offset), if not create a new CGNode 
   ConstraintGraphNode *getCGNode(ST_IDX st_idx, INT64 offset);
 
@@ -801,6 +806,9 @@ public:
 
   void blackHoleId(CGNodeId id)    { _blackHoleId = id; }
   CGNodeId blackHoleId(void) const { return _blackHoleId; }
+
+  list<CGNodeId> &parameters(void) { return _parameters; }
+  list<CGNodeId> &returns(void) { return _returns; }
 
   static void inIPA(bool ipa) { _inIPA = ipa; }
   static bool inIPA() { return _inIPA; }
@@ -906,6 +914,9 @@ private:
   // Node to denote a non-pointer
   ConstraintGraphNode *_notAPointer;
 
+  // Node to denote varargs
+  ConstraintGraphNode *_varArgs;
+
   // Set of ConstraintGraphNodes
   CGIdToNodeMap _cgIdToNodeMap;
 
@@ -926,6 +937,10 @@ private:
 
   // ST_IDX of the function corresponding to this ConstraintGraph
   ST_IDX _func_st_idx;
+
+  // The formal parameters and return CGNodes for this function
+  list<CGNodeId> _parameters;
+  list<CGNodeId> _returns;
 
   // Map callsites in this function
   CallSiteMap _callSiteMap;
@@ -981,7 +996,10 @@ public:
   CGNodeId returnId(void) const { return _return; }
   void returnId(CGNodeId cgNodeId) { _return = cgNodeId; }
 
-  bool isDirect()    const { return !checkFlags(CS_FLAGS_INDIRECT); }
+  bool isDirect() const 
+  { 
+    return !checkFlags(CS_FLAGS_UNKNOWN) && !checkFlags(CS_FLAGS_INDIRECT); 
+  }
   bool isIndirect()  const { return checkFlags(CS_FLAGS_INDIRECT); }
   bool isIntrinsic() const { return checkFlags(CS_FLAGS_INTRN); }
 
