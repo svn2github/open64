@@ -138,7 +138,10 @@ private:
 #endif
   // Constraint graph summary for Nystrom Alias Analyzer
   Elf64_Word _constraint_graph_nodes_offset;
-  Elf64_Word _constraint_graph_pts_ids_offset;
+  Elf64_Word _constraint_graph_edges_offset;
+  Elf64_Word _constraint_graph_stinfos_offset;
+  Elf64_Word _constraint_graph_callsites_offset;
+  Elf64_Word _constraint_graph_node_ids_offset;
 
   // array section flow sensitive analysis information
   Elf64_Word _scalar_node_offset, _cfg_node_offset, _regions_array_offset;
@@ -159,7 +162,10 @@ private:
 #endif
   // Constraint graph summary for Nystrom Alias Analyzer
   mINT32 _constraint_graph_nodes_size;
-  mINT32 _constraint_graph_pts_ids_size;
+  mINT32 _constraint_graph_edges_size;
+  mINT32 _constraint_graph_stinfos_size;
+  mINT32 _constraint_graph_callsites_size;
+  mINT32 _constraint_graph_node_ids_size;
 
   // array section flow sensitive analysis information
   mINT32 _scalar_node_size, _cfg_node_size, _regions_array_size; 
@@ -180,7 +186,10 @@ private:
 #endif
   // Constraint graph summary for Nystrom Alias Analyzer
   mUINT32 _constraint_graph_nodes_entry_size;
-  mUINT32 _constraint_graph_pts_ids_entry_size;
+  mUINT32 _constraint_graph_edges_entry_size;
+  mUINT32 _constraint_graph_stinfos_entry_size;
+  mUINT32 _constraint_graph_callsites_entry_size;
+  mUINT32 _constraint_graph_node_ids_entry_size;
 
    // array section flow sensitive analysis information
   mINT32 _scalar_node_entry_size, _cfg_node_entry_size;
@@ -225,9 +234,21 @@ public:
   {
     _constraint_graph_nodes_offset = s;
   }
-  void Set_constraint_graph_pts_ids_offset(Elf64_Word s) 
+  void Set_constraint_graph_edges_offset(Elf64_Word s) 
   {
-    _constraint_graph_pts_ids_offset = s;
+    _constraint_graph_edges_offset = s;
+  }
+  void Set_constraint_graph_stinfos_offset(Elf64_Word s) 
+  {
+    _constraint_graph_stinfos_offset = s;
+  }
+  void Set_constraint_graph_callsites_offset(Elf64_Word s) 
+  {
+    _constraint_graph_callsites_offset = s;
+  }
+  void Set_constraint_graph_node_ids_offset(Elf64_Word s) 
+  {
+    _constraint_graph_node_ids_offset = s;
   }
 
 
@@ -277,9 +298,21 @@ s;};
   { 
     _constraint_graph_nodes_size = s; 
   }
-  void Set_constraint_graph_pts_ids_size(mINT32 s) 
+  void Set_constraint_graph_edges_size(mINT32 s) 
   { 
-    _constraint_graph_pts_ids_size = s; 
+    _constraint_graph_edges_size = s; 
+  }
+  void Set_constraint_graph_stinfos_size(mINT32 s) 
+  { 
+    _constraint_graph_stinfos_size = s; 
+  }
+  void Set_constraint_graph_callsites_size(mINT32 s) 
+  { 
+    _constraint_graph_callsites_size = s; 
+  }
+  void Set_constraint_graph_node_ids_size(mINT32 s) 
+  { 
+    _constraint_graph_node_ids_size = s; 
   }
 
   // array section flow sensitive analysis information
@@ -320,7 +353,10 @@ s;};
 #endif   
   // Constraint graph summary for Nystrom Alias Analyzer
   void Set_constraint_graph_nodes_entry_size(mINT32 s) { _constraint_graph_nodes_entry_size = s;};
-  void Set_constraint_graph_pts_ids_entry_size(mINT32 s) { _constraint_graph_pts_ids_entry_size = s;};
+  void Set_constraint_graph_edges_entry_size(mINT32 s) { _constraint_graph_edges_entry_size = s;};
+  void Set_constraint_graph_stinfos_entry_size(mINT32 s) { _constraint_graph_stinfos_entry_size = s;};
+  void Set_constraint_graph_callsites_entry_size(mINT32 s) { _constraint_graph_callsites_entry_size = s;};
+  void Set_constraint_graph_node_ids_entry_size(mINT32 s) { _constraint_graph_node_ids_entry_size = s;};
 
   void Set_scalar_node_entry_size(mINT32 s) { _scalar_node_entry_size = s;};
   void Set_cfg_node_entry_size(mINT32 s) {_cfg_node_entry_size = s;};
@@ -364,9 +400,21 @@ s;};
   { 
     return _constraint_graph_nodes_offset;
   };
-  Elf64_Word Get_constraint_graph_pts_ids_offset() const  
+  Elf64_Word Get_constraint_graph_edges_offset() const  
   { 
-    return _constraint_graph_pts_ids_offset;
+    return _constraint_graph_edges_offset;
+  };
+  Elf64_Word Get_constraint_graph_stinfos_offset() const  
+  { 
+    return _constraint_graph_stinfos_offset;
+  };
+  Elf64_Word Get_constraint_graph_callsites_offset() const  
+  { 
+    return _constraint_graph_callsites_offset;
+  };
+  Elf64_Word Get_constraint_graph_node_ids_offset() const  
+  { 
+    return _constraint_graph_node_ids_offset;
   };
 
   mUINT8  Get_opt_level() const { return _opt_level;};
@@ -417,9 +465,21 @@ s;};
   {
     return _constraint_graph_nodes_size;
   }
-  mINT32 Get_constraint_graph_pts_ids_size() const
+  mINT32 Get_constraint_graph_edges_size() const
   {
-    return _constraint_graph_pts_ids_size;
+    return _constraint_graph_edges_size;
+  }
+  mINT32 Get_constraint_graph_stinfos_size() const
+  {
+    return _constraint_graph_stinfos_size;
+  }
+  mINT32 Get_constraint_graph_callsites_size() const
+  {
+    return _constraint_graph_callsites_size;
+  }
+  mINT32 Get_constraint_graph_node_ids_size() const
+  {
+    return _constraint_graph_node_ids_size;
   }
   
   // array section flow sensitive analysis information
@@ -458,9 +518,21 @@ s;};
   { 
     return _constraint_graph_nodes_entry_size;
   };
-  mINT32 Get_constraint_graph_pts_ids_entry_size() 
+  mINT32 Get_constraint_graph_edges_entry_size() 
   { 
-    return _constraint_graph_pts_ids_entry_size;
+    return _constraint_graph_edges_entry_size;
+  };
+  mINT32 Get_constraint_graph_stinfos_entry_size() 
+  { 
+    return _constraint_graph_stinfos_entry_size;
+  };
+  mINT32 Get_constraint_graph_callsites_entry_size() 
+  { 
+    return _constraint_graph_callsites_entry_size;
+  };
+  mINT32 Get_constraint_graph_node_ids_entry_size() 
+  { 
+    return _constraint_graph_node_ids_entry_size;
   };
     
   mINT32 Get_scalar_node_entry_size() const  { 
@@ -586,6 +658,20 @@ private:
 						   // LOCAL pragma's st 
 #define PROC_NEVER_INVOKED 		0x40000000 // INLINING_TUNING
     LANGUAGE _l;
+
+    // For Nystrom alias analyzer
+    mUINT32 _constraint_graph_nodes_idx;
+    mUINT32 _constraint_graph_nodes_count;
+    mUINT32 _constraint_graph_edges_idx;
+    mUINT32 _constraint_graph_edges_count;
+    mUINT32 _constraint_graph_stinfos_idx;
+    mUINT32 _constraint_graph_stinfos_count;
+    mUINT32 _constraint_graph_callsites_idx;
+    mUINT32 _constraint_graph_callsites_count;
+    mUINT32 _constraint_graph_formal_parm_idx;
+    mUINT32 _constraint_graph_formal_parm_count;
+    mUINT32 _constraint_graph_formal_ret_idx;
+    mUINT32 _constraint_graph_formal_ret_count;
 
 public:
 
@@ -787,7 +873,109 @@ public:
     void Set_lang (LANGUAGE lang)	{ _l = lang; }
     LANGUAGE Get_lang() const		{ return _l; }
 
+    // For the Nystrom alias analyzer
+    mUINT32 Get_constraint_graph_nodes_idx() const
+    {
+      return _constraint_graph_nodes_idx;
+    }
+    void Set_constraint_graph_nodes_idx(mUINT32 i)
+    {
+      _constraint_graph_nodes_idx = i;
+    }
+    mUINT32 Get_constraint_graph_nodes_count() const
+    {
+      return _constraint_graph_nodes_count;
+    }
+    void Set_constraint_graph_nodes_count(mUINT32 c)
+    {
+      _constraint_graph_nodes_count = c;
+    }
 
+    mUINT32 Get_constraint_graph_edges_idx() const
+    {
+      return _constraint_graph_edges_idx;
+    }
+    void Set_constraint_graph_edges_idx(mUINT32 i)
+    {
+      _constraint_graph_edges_idx = i;
+    }
+    mUINT32 Get_constraint_graph_edges_count() const
+    {
+      return _constraint_graph_edges_count;
+    }
+    void Set_constraint_graph_edges_count(mUINT32 c)
+    {
+      _constraint_graph_edges_count = c;
+    }
+
+    mUINT32 Get_constraint_graph_stinfos_idx() const
+    {
+      return _constraint_graph_stinfos_idx;
+    }
+    void Set_constraint_graph_stinfos_idx(mUINT32 i)
+    {
+      _constraint_graph_stinfos_idx = i;
+    }
+    mUINT32 Get_constraint_graph_stinfos_count() const
+    {
+      return _constraint_graph_stinfos_count;
+    }
+    void Set_constraint_graph_stinfos_count(mUINT32 c)
+    {
+      _constraint_graph_stinfos_count = c;
+    }
+
+    mUINT32 Get_constraint_graph_callsites_idx() const
+    {
+      return _constraint_graph_callsites_idx;
+    }
+    void Set_constraint_graph_callsites_idx(mUINT32 i)
+    {
+      _constraint_graph_callsites_idx = i;
+    }
+    mUINT32 Get_constraint_graph_callsites_count() const
+    {
+      return _constraint_graph_callsites_count;
+    }
+    void Set_constraint_graph_callsites_count(mUINT32 c)
+    {
+      _constraint_graph_callsites_count = c;
+    }
+
+    mUINT32 Get_constraint_graph_formal_parm_idx() const
+    {
+      return _constraint_graph_formal_parm_idx;
+    }
+    void Set_constraint_graph_formal_parm_idx(mUINT32 i)
+    {
+      _constraint_graph_formal_parm_idx = i;
+    }
+    mUINT32 Get_constraint_graph_formal_parm_count() const
+    {
+      return _constraint_graph_formal_parm_count;
+    }
+    void Set_constraint_graph_formal_parm_count(mUINT32 c)
+    {
+      _constraint_graph_formal_parm_count = c;
+    }
+
+    mUINT32 Get_constraint_graph_formal_ret_idx() const
+    {
+      return _constraint_graph_formal_ret_idx;
+    }
+    void Set_constraint_graph_formal_ret_idx(mUINT32 i)
+    {
+      _constraint_graph_formal_ret_idx = i;
+    }
+    mUINT32 Get_constraint_graph_formal_ret_count() const
+    {
+      return _constraint_graph_formal_ret_count;
+    }
+    void Set_constraint_graph_formal_ret_count(mUINT32 c)
+    {
+      _constraint_graph_formal_ret_count = c;
+    }
+   
     /* operations */
 
     void Init (void) {
@@ -959,6 +1147,8 @@ private:
     mUINT32 _vtable_offset;             // virtual function position, the offset of the vtable 
     mUINT64 _vptr_offset;               // vtable field offset of this call 
 
+    mUINT32 _constraint_graph_callsite_id; // For the Nystrom alias analyzer
+
 public:
 
     /* access functions */
@@ -1062,6 +1252,16 @@ public:
     void Set_is_virtual_call() { _state |= IPL_IS_VIRTUAL_CALL; } 
     void Reset_is_virtual_call() { _state &= ~IPL_IS_VIRTUAL_CALL; }
     BOOL Is_virtual_call() { return _state & IPL_IS_VIRTUAL_CALL; } 
+
+    // For the Nystrom alias analyzer
+    UINT32 Get_constraint_graph_callsite_id() const
+    { 
+      return _constraint_graph_callsite_id; 
+    }
+    void Set_constraint_graph_callsite_id(UINT32 callSiteId)
+    {
+      _constraint_graph_callsite_id = callSiteId;
+    }
 
     /* operations */
 
@@ -2735,20 +2935,130 @@ public:
   void Trace(void) const;
   
 private:
-  UINT32   _cgNodeId;
-  ST_IDX   _st_idx;
-  INT32    _offset;  
-  UINT16   _flags;
-  UINT32   _numBitsPtsGBL;   // number of bits in GBL pts-to-set
-  UINT32   _numBitsPtsHZ;    // number of bits in HZ pts-to-set
-  UINT32   _numBitsPtsDN;    // number of bits in in DN pts-to-set
-  UINT32   _pointsToGBLIdx;  // index of the first GBL CGNodeId in pts ids array
-  UINT32   _pointsToHZIdx;   // index of the first HZ CGNodeId in pts ids arra
-  UINT32   _pointsToDNIdx;   // index of the first DN CGNodeId in pts ids arra
-  UINT32   _inKCycle;
-  UINT32   _nextOffset;
-  UINT32   _repParent;
+  UINT32 _cgNodeId;
+  ST_IDX _st_idx;
+  INT32  _offset;  
+  UINT16 _flags;
+  UINT32 _numBitsPtsGBL;   // number of bits in GBL pts-to-set
+  UINT32 _numBitsPtsHZ;    // number of bits in HZ pts-to-set
+  UINT32 _numBitsPtsDN;    // number of bits in in DN pts-to-set
+  UINT32 _pointsToGBLIdx;  // index of the first GBL CGNodeId in pts ids array
+  UINT32 _pointsToHZIdx;   // index of the first HZ CGNodeId in pts ids array
+  UINT32 _pointsToDNIdx;   // index of the first DN CGNodeId in pts ids array
+  UINT32 _inKCycle;
+  UINT32 _nextOffset;
+  UINT32 _repParent;
 };
 
+// Constraint graph edge summary for Nystrom Alias Analyzer
+class SUMMARY_CONSTRAINT_GRAPH_EDGE
+{
+public:
+  SUMMARY_CONSTRAINT_GRAPH_EDGE() {}
+
+  void etype(UINT8 et)     { _etype = et; }
+  void qual(UINT8 q)       { _qual = q; }
+  void flags(UINT16 f)     { _flags = f; }
+  void sizeOrSkew(INT32 s) { _sizeOrSkew = s; }
+  void src(UINT32 id)      { _srcId = id; }
+  void dest(UINT32 id)     { _destId = id; }
+
+  void Init()
+  {
+    BZERO(this, sizeof(SUMMARY_CONSTRAINT_GRAPH_EDGE));
+  }
+
+  void Print_array(FILE *fp, INT32 size) const;
+  void Trace_array(INT32 size) const ;
+  void Print(FILE *f) const;
+  void Trace(void) const;
+
+private:
+  UINT8  _etype;
+  UINT8  _qual;
+  UINT16 _flags;
+  INT32  _sizeOrSkew;
+  UINT32 _srcId;
+  UINT32 _destId;
+};
+
+// Constraint graph StInfo summary for Nystrom Alias Analyzer
+class SUMMARY_CONSTRAINT_GRAPH_STINFO
+{
+public:
+  SUMMARY_CONSTRAINT_GRAPH_STINFO() {}
+
+  ST_IDX st_idx() const { return _st_idx; }
+
+  void st_idx(ST_IDX s)      { _st_idx = s; }
+  void flags(UINT32 f)       { _flags = f; }
+  void varSize(INT64 s)      { _varSize = s; }
+  void modulus(UINT32 m)     { _modulus = m; }
+  void firstOffset(UINT32 o) { _firstOffset = o; }
+
+  void Init()
+  {
+    BZERO(this, sizeof(SUMMARY_CONSTRAINT_GRAPH_STINFO));
+  }
+
+  void Print_array(FILE *fp, INT32 size) const;
+  void Trace_array(INT32 size) const ;
+  void Print(FILE *f) const;
+  void Trace(void) const;
+
+private:
+  ST_IDX _st_idx;
+  UINT32 _flags;
+  INT64  _varSize;
+  UINT32 _modulus;
+  UINT32 _firstOffset; 
+};
+
+// Constraint graph CallSite summary for Nystrom Alias Analyzer
+class SUMMARY_CONSTRAINT_GRAPH_CALLSITE
+{
+public:
+  SUMMARY_CONSTRAINT_GRAPH_CALLSITE() {}
+
+  ST_IDX flags() const  { return _flags; }
+  ST_IDX st_idx() const { return _callInfo._st_idx; }
+
+  void id(UINT32 i)           { _id = i; }
+  void flags(UINT8 f)         { _flags = f; }
+  void st_idx(ST_IDX s)       { _callInfo._st_idx = s; }
+  void cgNodeId(UINT32 c)     { _callInfo._cgNodeId = c; }
+  void intrinsic(INTRINSIC i) { _callInfo._intrinsic = i; }
+  void numParms(UINT32 n)     { _numParms = n; }
+  void parmNodeIdx(UINT32 i)  { _paramNodesIdx = i; }
+  void returnId(UINT32 i)     { _return  = i; }
+
+  void Init()
+  {
+    BZERO(this, sizeof(SUMMARY_CONSTRAINT_GRAPH_CALLSITE));
+  }
+
+  void Print_array(FILE *fp, INT32 size) const;
+  void Trace_array(INT32 size) const ;
+  void Print(FILE *f) const;
+  void Trace(void) const;
+
+private:
+  UINT32 _id;
+  UINT8 _flags;
+  union {
+    ST_IDX _st_idx;
+    UINT32 _cgNodeId;
+    INTRINSIC _intrinsic;
+  } _callInfo;
+  UINT32 _numParms;        // Number of param nodes: We use the pts ids array
+                           // to store the param nodes
+  UINT32 _paramNodesIdx;   // index of the first param CGNodeId in pts ids array
+  UINT32 _return;
+  UINT32 _numBitsPtsMod;   // Number of bits in points-to-set of mod set
+  UINT32 _numBitsPtsRef;   // Number of bits in points-to-set of ref set
+  UINT32 _pointsToModIdx;  // index of the first mod CGNodeId in pts ids array
+  UINT32 _pointsToRefIdx;  // index of the first ref CGNodeId in pts ids array
+};
+  
 #endif /* ipl_summary_INCLUDED */
 
