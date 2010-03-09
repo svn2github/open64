@@ -216,7 +216,7 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
     if (aliasTag != InvalidAliasTag &&
         Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
       fprintf(stderr, "new aliasTag %d for %s <%d,%d,%d> with aliasTagInfo: ",
-              (UINT32)aliasTag,ST_name(ST_st_index(st)),(INT32)st->st_idx,(INT32)offset,(INT32)size);
+              (UINT32)aliasTag,ST_name(ST_st_idx(st)),(INT32)ST_st_idx(st),(INT32)offset,(INT32)size);
       _aliasTagInfo[aliasTag]->print(stderr);
       fprintf(stderr, "\n");
     }
