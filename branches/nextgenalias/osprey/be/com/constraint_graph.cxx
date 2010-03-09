@@ -1,5 +1,7 @@
 #include <sstream>
+
 #include "constraint_graph.h"
+#include "data_layout.h"
 #include "opt_wn.h"
 #include "wn_util.h"
 #include "wutil.h"
@@ -11,6 +13,9 @@
 
 UINT32 ConstraintGraph::maxTypeSize = 0;
 bool ConstraintGraph::_inIPA = false;
+CGNodeId ConstraintGraph::_blackHoleId = 0;
+MEM_POOL *ConstraintGraphNode::memPool = NULL;
+const PointsTo ConstraintGraphNode::NodeInfo::emptyPointsToSet;
 
 template <typename T>
 static inline
@@ -32,6 +37,41 @@ T gcd(T source, T target)
       t2 = rem;
    }
    return t2;
+}
+
+void
+ConstraintGraph::adjustPointsToForKCycle(UINT32 kCycle,
+                                         const PointsTo &src,
+                                         PointsTo &dst)
+{
+  FmtAssert(&src != &dst,("Expected two different sets"));
+  if (kCycle == 0) {
+    dst.setUnion(src);
+    return;
+  }
+
+  for (PointsTo::SparseBitSetIterator iter(&src,0); iter != 0; iter++)
+  {
+    CGNodeId nodeId = *iter;
+    ConstraintGraphNode *node = cgNode(nodeId);
+    // If the resulting K value is still larger than the size
+    // of a pointer, then we simply adjust the modulus of the
+    // underlying symbol to the min(rep->inKCycle(),modulus)
+    if (kCycle >= Pointer_Size) {
+      StInfo *st = stInfo(node->st_idx());
+      if (kCycle < st->modulus())
+        st->modulus(kCycle);
+      if (node->offset() >= st->modulus())
+        node = getCGNode(node->st_idx(),node->offset());
+    }
+    // If the K value is < the size of a pointer all offsets
+    // are mapped to -1.
+    else {
+      if (node->offset() != -1)
+        node = getCGNode(node->st_idx(),-1);
+    }
+    dst.setBit(node->id());
+  }
 }
 
 void 
@@ -757,6 +797,31 @@ ConstraintGraph::handleCall(WN *callWN)
   } else if (opr == OPR_INTRINSIC_CALL) {
     callSite->addFlags(CS_FLAGS_INTRN);
     callSite->intrinsic((INTRINSIC)WN_intrinsic(callWN));
+    // If we are calling va_start(), then we need to make sure
+    // that we correctly represent the fact that the variable
+    // arguments are being retrieved from two different locations
+    // on the stack.  In x86-64, this is the register save area
+    // represented by symbols _temp_varargnnn and the caller's
+    // stack frame represented by the UpFormal segment.  We will
+    // implicitly map all of these symbols to the single node
+    // referenced by the va_list.
+    if (WN_intrinsic(callWN) == INTRN_VA_START) {
+      FmtAsssert(_varArgs,
+                 ("Found _va_start() call, expected internal CG varargs node"));
+      ST_IDX vaIdx = _varArgs->st_idx();
+      StInfo *vaStInfo = stInfo(vaIdx);
+      for (INT i = First_Int_Preg_Param_Offset;
+          i < First_Int_Preg_Param_Offset+MAX_NUMBER_OF_REGISTER_PARAMETERS;
+          ++i) {
+        PLOC ploc = { i,0,0,0,0 };
+        ST *st = Get_Vararg_Symbol(ploc);
+        if (st)
+          _cgStInfoMap[st->st_idx] = vaStInfo;
+      }
+      ST *st = Get_Upformal_Segment();
+      if (st)
+        _cgStInfoMap[st->st_idx] = vaStInfo;
+    }
   } else
     callSite->addFlags(CS_FLAGS_UNKNOWN);
 
@@ -782,8 +847,8 @@ ConstraintGraph::handleCall(WN *callWN)
     // the pts-to-set of t to get to va_list and then add _varArgs to
     // the pts-to-set of va_list
     ConstraintGraphNode *tmpNode = this->cgNode(id);
-    PointsTo& ptsGBL = tmpNode->pointsTo(CQ_GBL);
-    PointsTo& ptsHZ = tmpNode->pointsTo(CQ_HZ);
+    const PointsTo& ptsGBL = tmpNode->pointsTo(CQ_GBL);
+    const PointsTo& ptsHZ = tmpNode->pointsTo(CQ_HZ);
     if (!ptsGBL.isEmpty()) {
       for (PointsTo::SparseBitSetIterator iter(&ptsGBL, 0); iter != 0; ++iter) {
         ConstraintGraphNode *valistNode = this->cgNode(*iter);
@@ -1207,9 +1272,9 @@ ConstraintGraphNode::NodeInfo::print(ConstraintGraph *cg, FILE *file)
                                                           : "dedicated");
   }
   fprintf(file, "\n");
-  fprintf(file, " GBL: "); _pointsToGBL.print(file);
-  fprintf(file, " HZ: "); _pointsToHZ.print(file);
-  fprintf(file, " DN: "); _pointsToDN.print(file);
+  fprintf(file, " GBL: "); pointsTo(CQ_GBL).print(file);
+  fprintf(file, " HZ: ");  pointsTo(CQ_HZ).print(file);
+  fprintf(file, " DN: ");  pointsTo(CQ_DN).print(file);
   fprintf(file, "\n");
 }
 

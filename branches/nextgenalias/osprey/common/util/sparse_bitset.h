@@ -310,7 +310,7 @@ public:
 
   ~SparseBitSet() { clear(); }
 
-  void setBit(T idx)
+  bool setBit(T idx)
   {
     UINT32 bit = (UINT32)idx;
     SparseBitSetElement *ptr = findElem(bit);
@@ -318,17 +318,22 @@ public:
     UINT32 bitNum  = bit % BITMAP_WORD_BITS;
     BITMAP_WORD bitVal = ((BITMAP_WORD) 1) << bitNum;
 
+    bool changed = true;
     if (ptr == NULL) {
       ptr = allocElem();
       ptr->_idx = bit / BITMAP_ELEMENT_ALL_BITS;
       ptr->_bits[wordNum] = bitVal;
       elementLink(ptr);
-    } else
+    } else {
+      if (ptr->_bits[wordNum] | bitVal)
+        changed = false;
       ptr->_bits[wordNum] |= bitVal;
+    }
+    return changed;
   }
 
   // Union rhs into 'this'. Return true if 'this' changes. 
-  bool setUnion(SparseBitSet &rhs)
+  bool setUnion(const SparseBitSet &rhs)
   {
     SparseBitSetElement *thisElem = _firstElem;
     SparseBitSetElement *rhsElem = rhs._firstElem;
@@ -375,7 +380,7 @@ public:
   }
 
   // this &= rhs
-  void setIntersect(SparseBitSet &rhs)
+  void setIntersect(const SparseBitSet &rhs)
   {
     SparseBitSetElement *thisElt = _firstElem;
     SparseBitSetElement *rhsElt = rhs._firstElem;
@@ -456,7 +461,7 @@ public:
 
   // Return true if this AND rhs is not empty.
   bool
-  intersect(SparseBitSet& rhs)
+  intersect(const SparseBitSet& rhs) const
   {
     SparseBitSetElement *thisElt;
     SparseBitSetElement *rhsElt;
@@ -496,7 +501,7 @@ public:
 
   // 'this' &= ~rhs. Returns true if 'this' changes
   bool
-  setDiff(SparseBitSet& rhs)
+  setDiff(const SparseBitSet& rhs) const
   {
     SparseBitSetElement *thisElt = _firstElem;
     SparseBitSetElement *rhsElt = rhs._firstElem;
@@ -534,7 +539,7 @@ public:
 
   bool isEmpty() const { return _firstElem == NULL; }
 
-  UINT32 numBits()
+  UINT32 numBits() const
   {
     UINT32 count = 0;
     SparseBitSetElement *elt;
@@ -550,7 +555,7 @@ public:
     return count;
   }
 
-  void print(FILE *file)
+  void print(FILE *file) const
   {
     const char *comma = "";
     SparseBitSetIterator si(this, 0);

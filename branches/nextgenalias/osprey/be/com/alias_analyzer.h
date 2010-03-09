@@ -2,6 +2,7 @@
 #ifndef alias_analysis_INCLUDED
 #define alias_analysis_INCLUDED
 
+#include <ext/hash_map>
 #include "mempool.h"
 #include "sparse_bitset.h"
 #include "opt_alias_interface.h"
@@ -24,12 +25,45 @@ enum AliasTag {
   InitialAliasTag,
 };
 
+class QueryFileKey {
+public:
+  QueryFileKey(UINT32 pu, AliasTag tag1, AliasTag tag2)
+   : _pu(pu), _tag1(tag1), _tag2(tag2) {}
+
+  UINT32   _pu;
+  AliasTag _tag1;
+  AliasTag _tag2;
+};
+
+typedef struct
+{
+  size_t operator()(const QueryFileKey &k) const
+  {
+    return (size_t)(k._pu << 16 | k._tag1 << 8 | k._tag2);
+  }
+} hashQueryFileKey;
+
+typedef struct
+{
+  bool operator()(const QueryFileKey &k1,
+                  const QueryFileKey &k2) const
+  {
+    return (k1._pu == k2._pu &&
+        k1._tag1 == k2._tag1 &&
+        k1._tag2 == k2._tag2);
+  }
+} equalQueryFileKey;
+
+typedef hash_map<QueryFileKey,bool,
+                 hashQueryFileKey,equalQueryFileKey> QueryFileMap;
+
 class AliasAnalyzer {
 
 private:
    static AliasAnalyzer *_alias_analyzer;
    WN_MAP _aliasTagMap; // Maps WNs to AliasTags
    UINT32 _aliasQueryCount;   // Used for debugging
+   QueryFileMap *_queryFileMap;
 
 protected:
    MEM_POOL _memPool;
@@ -90,6 +124,12 @@ public:
 
    UINT32 aliasQueryCount(void)      { return _aliasQueryCount; }
    UINT32 incrAliasQueryCount(void)  { return _aliasQueryCount++; }
+
+   bool checkQueryFile(UINT32 pu, AliasTag tag1, AliasTag tag2, bool &result);
+
+private:
+
+   void loadQueryFile(char *filename);
 };
 
 #endif // alias_analysis_INCLUDED

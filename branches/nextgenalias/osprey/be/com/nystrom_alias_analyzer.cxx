@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include "be_util.h"
 #include "cxx_memory.h"
 #include "opt_wn.h"
 #include "wn_util.h"
@@ -96,6 +97,18 @@ NystromAliasAnalyzer::aliased(AliasTag tag1, AliasTag tag2)
       tag1 == tag2)
     return POSSIBLY_ALIASED;
 
+  // Canonicalize the queries, eventually we will be caching
+  // the result rather than performing a set intersection
+  if (tag1 > tag2) {
+    AliasTag tmp = tag2;
+    tag2 = tag1;
+    tag1 = tmp;
+  }
+
+  bool result;
+  if (checkQueryFile((UINT32)Current_PU_Count(),tag1,tag2,result))
+    return result ? POSSIBLY_ALIASED : NOT_ALIASED;
+
   PointsTo& ptsSet1 = pointsTo(tag1);
   PointsTo& ptsSet2 = pointsTo(tag2);
   FmtAssert(!ptsSet1.isEmpty(),
@@ -152,13 +165,13 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
         aliasTag = newAliasTag();
         AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
         if (direct) {
-          // Record the CGNode that materialised this aliasTag, so
+          // Record the CGNode that materialized this aliasTag, so
           // that we can restore the mapping from WN to CGNodeIds during
           // CODEREP to WN lowering
           _aliasTagToCGNodeIdMap[aliasTag] = node->id();
           // Add self reference and black hole if required
           aliasTagInfo->pointsTo().setBit(node->id());
-          if (node->pointsTo(CQ_GBL).isSet(cg->blackHoleId()))
+          if (node->checkPointsTo(cg->cgNode(cg->blackHoleId()),CQ_GBL))
             aliasTagInfo->pointsTo().setBit(cg->blackHoleId());
         }
         else {
@@ -179,7 +192,7 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
             aliasTagInfo = _aliasTagInfo[aliasTag];
             // Save this result in case we are asked for it again
             _stToAliasTagMap[atKey] = aliasTag;
-            // Record the CGNode that materialised this aliasTag, so
+            // Record the CGNode that materialized this aliasTag, so
             // that we can restore the mapping from WN to CGNodeIds during
             // CODEREP to WN lowering
             if (direct)
@@ -188,7 +201,7 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
           if (direct) {
             // Add self reference and black hole if required
             aliasTagInfo->pointsTo().setBit(node->id());
-            if (node->pointsTo(CQ_GBL).isSet(cg->blackHoleId()))
+            if (node->checkPointsTo(cg->cgNode(cg->blackHoleId()),CQ_GBL))
               aliasTagInfo->pointsTo().setBit(cg->blackHoleId());
           }
           else {
@@ -202,8 +215,8 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
     }
     if (aliasTag != InvalidAliasTag &&
         Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
-      fprintf(stderr, "new aliasTag %d for <%d,%d,%d> with aliasTagInfo: ",
-              (UINT32)aliasTag,(INT32)st->st_idx,(INT32)offset,(INT32)size);
+      fprintf(stderr, "new aliasTag %d for %s <%d,%d,%d> with aliasTagInfo: ",
+              (UINT32)aliasTag,ST_name(st->st_idx),(INT32)st->st_idx,(INT32)offset,(INT32)size);
       _aliasTagInfo[aliasTag]->print(stderr);
       fprintf(stderr, "\n");
     }

@@ -621,7 +621,9 @@ private:
     // Constraint graph specific data for Nystrom Alias Analyzer
     void generateConstraintGraphSummary();
     void processPointsToSet(SUMMARY_CONSTRAINT_GRAPH_NODE *sumCGNode,
-                            PointsTo &gbl, PointsTo &hz, PointsTo &dn);
+                            const PointsTo &gbl,
+                            const PointsTo &hz,
+                            const PointsTo &dn);
 
 
     // Functions needed for execution cost analysis

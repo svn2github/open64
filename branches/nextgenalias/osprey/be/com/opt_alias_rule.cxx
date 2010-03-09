@@ -73,6 +73,7 @@
 static char *rcs_id = 	opt_alias_rule_CXX"$Revision: 1.8 $";
 #endif /* _KEEP_RCS_ID */
 
+#include "be_util.h"
 #include "defs.h"
 #include "stab.h"
 #include "tracing.h"
@@ -157,7 +158,7 @@ BOOL
 ALIAS_RULE::Aliased_Alias_Analyzer_Rule(const POINTS_TO *const mem1,
                                         const POINTS_TO *const mem2,
                                         bool acResult) const
-                                        {
+{
   FmtAssert(_alias_analyzer,("Invoking Alias Analyzer Rule with NULL AliasAnalyzer"));
 
   BOOL aliased;
@@ -165,8 +166,8 @@ ALIAS_RULE::Aliased_Alias_Analyzer_Rule(const POINTS_TO *const mem1,
   if (count < Alias_Query_Limit ) {
     aliased = _alias_analyzer->aliased(mem1->Alias_tag(),mem2->Alias_tag());
     if(Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
-      fprintf(stderr,"Query %d: aliased memop %d %d: %s Alias (ac %s)\n",
-              count,
+      fprintf(stderr,"Query %d,%d: aliased memop %d %d: %-3s Alias (ac %-3s)\n",
+              Current_PU_Count(),count,
               mem1->Alias_tag(),mem2->Alias_tag(),
               aliased?"May":"No",
               acResult?"No":"May");

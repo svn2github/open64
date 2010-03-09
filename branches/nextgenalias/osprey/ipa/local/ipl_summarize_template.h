@@ -3372,9 +3372,9 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
 template <PROGRAM program>
 void
 SUMMARIZE<program>::processPointsToSet(SUMMARY_CONSTRAINT_GRAPH_NODE *sumCGNode,
-                                       PointsTo &gbl,
-                                       PointsTo &hz,
-                                       PointsTo &dn)
+                                       const PointsTo &gbl,
+                                       const PointsTo &hz,
+                                       const PointsTo &dn)
 {
   // Process GBLs
   int numGBLids = 0;

@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 #include "alias_analyzer.h"
+#include "be_util.h"
 #include "config_opt.h"
 #include "ir_reader.h"  /* fdump_tree */
 #include "nystrom_alias_analyzer.h"
@@ -51,14 +52,21 @@ AliasAnalyzer::Delete_Alias_Analyzer()
 }
   
 AliasAnalyzer::AliasAnalyzer() 
-  : _aliasQueryCount(0)
+  : _aliasQueryCount(0),
+    _queryFileMap(NULL)
 {
   MEM_POOL_Initialize(&_memPool, "AliasAnalyzer_pool", FALSE);
   _aliasTagMap = IPA_WN_MAP32_Create(Current_Map_Tab, &_memPool);
+
+  if (Alias_Query_File) {
+    loadQueryFile(Alias_Query_File);
+  }
 }
 
 AliasAnalyzer::~AliasAnalyzer() 
 {
+  if (_queryFileMap)
+    delete _queryFileMap;
   MEM_POOL_Delete(&_memPool);
   IPA_WN_MAP_Delete(Current_Map_Tab, _aliasTagMap);
 }
@@ -86,4 +94,44 @@ AliasTag
 AliasAnalyzer::meet(AliasTag, AliasTag)
 {
   return InvalidAliasTag;
+}
+
+bool
+AliasAnalyzer::checkQueryFile(UINT32 pu, AliasTag tag1, AliasTag tag2,
+                              bool &result)
+{
+  if (_queryFileMap) {
+    QueryFileKey key(pu,tag1,tag2);
+    QueryFileMap::const_iterator iter = _queryFileMap->find(key);
+    if (iter != _queryFileMap->end()) {
+      result = iter->second;
+      return true;
+    }
+  }
+  return false;
+}
+
+void
+AliasAnalyzer::loadQueryFile(char *filename)
+{
+  FILE *qf = fopen(filename,"r");
+  if (qf) {
+    _queryFileMap = new QueryFileMap();
+    UINT32 pu, qId;
+    AliasTag tag1, tag2;
+    char result[8];
+    char result2[8];
+    while ( fscanf(qf,"Query %d,%d: aliased memop %d %d: %3c Alias (ac %3c)\n",
+                   &pu,&qId,(UINT32*)&tag1,(UINT32*)&tag2,result,result2) == 6 ) {
+      if (pu == Current_PU_Count()) {
+        QueryFileKey key(pu,tag1,tag2);
+        bool alias = (result[0] == 'N') ? false : true;
+        (*_queryFileMap)[key] = alias;
+
+        fprintf(stderr,"QueryMap <%d,%d,%d>: %s\n",
+                pu,tag1,tag2,alias ? "May" : "No");
+      }
+    }
+    fclose(qf);
+  }
 }

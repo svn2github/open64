@@ -1611,6 +1611,12 @@ Get_Vararg_Symbol (PLOC ploc)
 #endif
 }
 
+extern ST*
+Get_Upformal_Segment(void)
+{
+  return SF_Block(SFSEG_UPFORMAL);
+}
+
 #ifdef TARG_X8664
 /* used by the lower to determine the number of fixed integer and float
  * parameters passed in registers and return the symbol corresponding to the 

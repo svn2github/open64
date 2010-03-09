@@ -133,6 +133,8 @@ extern void Reset_UPFORMAL_Segment(void );
 /* get vararg symbol that corresponds to ploc value */
 extern ST* Get_Vararg_Symbol (PLOC);
 
+/* get the symbol corresponding to the upformal area */
+extern ST* Get_Upformal_Segment(void);
 /* 
  * Allocate the memory location for all global/static symbols.
  */

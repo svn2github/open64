@@ -67,7 +67,8 @@
 #define CG_NODE_FLAGS_SCCMEMBER     0x0200  // Used by cycle detection
 #define CG_NODE_FLAGS_INKVALMAP     0x0400  // Used by cycle detection
 #define CG_NODE_FLAGS_ADDRTAKEN     0x0800
-#define CG_NODE_FLAGS_COMPLETE      0x1000  // Points-to solution is complete
+#define CG_NODE_FLAGS_PTSMOD        0x1000  // Points-to set updated, implies
+                                            // rev points-to relation to be updated
 #define CG_NODE_FLAGS_ADDR_TAKEN    0x2000  // Has the node been placed in a pts?
 
 
@@ -270,6 +271,23 @@ private:
   EdgeInfo _edgeInfo;
 };
 
+class PointsToList {
+ public:
+   PointsToList(CGEdgeQual eq, MEM_POOL *mp)
+   : _qual(eq), _pointsTo(mp), _next(NULL) {}
+
+   CGEdgeQual qual(void) const { return _qual; }
+   PointsTo *pointsTo(void)    { return &_pointsTo; }
+
+   PointsToList *next(void) const { return _next; }
+   void next(PointsToList *n) { _next = n; }
+ private:
+   CGEdgeQual   _qual;
+   PointsTo      _pointsTo;
+   PointsToList *_next;
+ };
+
+
 class ConstraintGraph;
 
 typedef hash_set<ConstraintGraphEdge *,
@@ -338,21 +356,45 @@ public:
   // into the current node.
   void merge(ConstraintGraphNode *src);
 
-  void addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
+  bool addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
   { 
     node->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
-    findRep()->_nodeInfo.addPointsTo(node->id(),qual);
+    bool change = findRep()->_nodeInfo.addPointsTo(node->id(),qual);
+    if (change)
+      addFlags(CG_NODE_FLAGS_PTSMOD);
+    return change;
   }
 
-  bool unionPointsTo(PointsTo &ptsToSet, CGEdgeQual qual) 
+  bool checkPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
+  {
+    return findRep()->_nodeInfo.checkPointsTo(node->id(),qual);
+  }
+
+  bool unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual)
   { 
-    return pointsTo(qual).setUnion(ptsToSet);
+    bool change = findRep()->_nodeInfo.getPointsTo(qual).setUnion(ptsToSet);
+    if (change)
+      addFlags(CG_NODE_FLAGS_PTSMOD);
+    return change;
   }
 
-  PointsTo &pointsTo(CGEdgeQual qual)
+  const PointsTo &pointsTo(CGEdgeQual qual)
   {
     return findRep()->_nodeInfo.pointsTo(qual);
   }
+
+  bool addRevPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
+  {
+    return findRep()->_nodeInfo.addRevPointsTo(node->id(),qual);
+  }
+
+  const PointsTo &revPointsTo(CGEdgeQual qual)
+  {
+    return findRep()->_nodeInfo.revPointsTo(qual);
+  }
+
+  PointsToList *pointsToList(void)    { return _nodeInfo.pointsToList(); }
+  PointsToList *revPointsToList(void) { return _nodeInfo.revPointsToList(); }
 
   // Try adding edge to the in edge set. If the edge already exists
   // return the existing edge, else insert the new edge and return it
@@ -478,6 +520,8 @@ public:
     }
   } equalCGNode;
   
+  static MEM_POOL *memPool;
+
 private:
 
   // The information in NodeInfo is what gets passed from 
@@ -490,9 +534,8 @@ private:
       _offset(offset),
       _flags(0),
       _inKCycle(0),
-      _pointsToGBL(memPool),
-      _pointsToHZ(memPool),
-      _pointsToDN(memPool),
+      _pointsToList(NULL),
+      _revPointsToList(NULL),
       _repParent(NULL),
       _nextOffset(NULL)
     {}
@@ -519,34 +562,41 @@ private:
     UINT32 inKCycle(void) const { return _inKCycle; }
     void inKCycle(UINT32 val) { _inKCycle = val; }
 
-    void addPointsTo(CGNodeId id, CGEdgeQual qual) 
+    bool addPointsTo(CGNodeId id, CGEdgeQual qual)
     {
-      switch (qual) {
-        case CQ_GBL:
-          _pointsToGBL.setBit(id);
-          break;
-        case CQ_HZ:
-          _pointsToHZ.setBit(id);
-          break;
-        case CQ_DN:
-          _pointsToDN.setBit(id);
-          break;
-        default:
-          FmtAssert(FALSE, ("Unknown qual: %d Qualifiers for points-to set "
-                    "can be one of GBL/HZ/DN", qual));
-      }
+      PointsTo &pts = getPointsTo(qual,&_pointsToList);
+      return pts.setBit(id);
     }
 
-    PointsTo &pointsTo(CGEdgeQual qual) {
-      switch (qual) {
-      case CQ_GBL: return _pointsToGBL;
-      case CQ_DN:  return _pointsToDN;
-      case CQ_HZ:  return _pointsToHZ;
-      default:
-        FmtAssert(false,("Unexpected edge qualifier"));
-        return *(PointsTo *)NULL;
-      }
+    bool addRevPointsTo(CGNodeId id, CGEdgeQual qual)
+    {
+      PointsTo &pts = getPointsTo(qual,&_revPointsToList);
+      return pts.setBit(id);
     }
+
+    bool checkPointsTo(CGNodeId id, CGEdgeQual qual)
+    {
+      PointsTo *pts = findPointsTo(qual,_pointsToList);
+      return pts ? pts->isSet(id) : false;
+    }
+
+    PointsTo &getPointsTo(CGEdgeQual qual)
+    {
+      return getPointsTo(qual,&_pointsToList);
+    }
+
+    const PointsTo &pointsTo(CGEdgeQual qual) const {
+      PointsTo *pts = findPointsTo(qual,_pointsToList);
+      return (pts) ? *pts : emptyPointsToSet;
+    }
+
+    const PointsTo &revPointsTo(CGEdgeQual qual) const {
+       PointsTo *pts = findPointsTo(qual,_revPointsToList);
+       return (pts) ? *pts : emptyPointsToSet;
+    }
+
+    PointsToList *pointsToList(void)    { return _pointsToList; }
+    PointsToList *revPointsToList(void) {return _revPointsToList; }
 
     size_t hash() const 
     { 
@@ -561,18 +611,40 @@ private:
     void print(ConstraintGraph *cg, FILE *file);
     void print(ConstraintGraph *cg, ostream& ostr);
 
+    PointsTo *findPointsTo(CGEdgeQual qual, PointsToList *ptl) const
+    {
+      PointsToList *cur = ptl;
+      while (cur && cur->qual() != qual)
+        cur = cur->next();
+      return cur?cur->pointsTo():NULL;
+    }
+
+    PointsTo &getPointsTo(CGEdgeQual qual, PointsToList **ptl)
+    {
+      PointsTo *pts = findPointsTo(qual,*ptl);
+      if (!pts) {
+        MEM_POOL *memPool = ConstraintGraphNode::memPool;
+        PointsToList *newPTL = CXX_NEW(PointsToList(qual,memPool),memPool);
+        PointsToList *tmp = *ptl;
+        *ptl = newPTL;
+        newPTL->next(tmp);
+        pts = newPTL->pointsTo();
+      }
+      return *pts;
+    }
+
   private:
     ST_IDX _st_idx;
     INT32  _offset;
     UINT16 _flags;
     UINT32 _inKCycle;
-    SparseBitSet<CGNodeId> _pointsToGBL;
-    SparseBitSet<CGNodeId> _pointsToHZ;
-    SparseBitSet<CGNodeId> _pointsToDN;
+    PointsToList *_pointsToList;
+    PointsToList *_revPointsToList;
     // For nodes that are unified
     ConstraintGraphNode *_repParent;
     // Nodes with different offset off of same base maintained in sorted order
     ConstraintGraphNode *_nextOffset;
+    static const PointsTo emptyPointsToSet;
   };
 
   const NodeInfo& nodeInfo() const { return _nodeInfo; }
@@ -599,33 +671,15 @@ private:
 /* Iterator to abstract access to points-to sets */
 class PointsToIterator {
 public:
-  PointsToIterator(ConstraintGraphNode *n) : _index(0), _node(n) {}
+  PointsToIterator(ConstraintGraphNode *n, bool rev = false)
+  : _cur(!rev ? n->pointsToList() : n->revPointsToList()) {}
   ~PointsToIterator() {}
-  bool operator != (int val) { return _index != 3; }
-  void operator ++(void) { _index += 1; }
-  PointsTo &operator *(void) {
-    switch (_index) {
-    case 0: return _node->pointsTo(CQ_GBL);
-    case 1: return _node->pointsTo(CQ_HZ);
-    case 2: return _node->pointsTo(CQ_DN);
-    default: 
-      FmtAssert(FALSE, ("Invalid index"));
-      return *((PointsTo *)NULL);
-    }
-  }
-  CGEdgeQual qual(void) {
-    switch (_index) {
-    case 0: return CQ_GBL;
-    case 1: return CQ_HZ;
-    case 2: return CQ_DN;
-    default:
-      FmtAssert(FALSE, ("Invalid index"));
-      return CQ_NONE;
-    }
-  }
+  bool operator != (int val) { return _cur != NULL; }
+  void operator ++(void) { _cur = _cur->next(); }
+  PointsTo &operator *(void) { return *_cur->pointsTo(); }
+  CGEdgeQual qual(void) { return _cur->qual(); }
 private:
-  UINT32 _index;
-  ConstraintGraphNode *_node;
+  PointsToList *_cur;
 };
 
 // Class to represent symbol specific info that is common to all
@@ -728,11 +782,13 @@ public:
     _cgIdToNodeMap(minSize), 
     _cgNodeToIdMap(minSize),
     _varArgs(NULL),
-    _blackHoleId(0),
+//    _blackHoleId(0),
     _memPool(mpool)
   {
     if (maxTypeSize == 0)
       maxTypeSize = findMaxTypeSize();
+    if (ConstraintGraphNode::memPool != mpool)
+      ConstraintGraphNode::memPool = mpool;
     Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY, 
             ("Expecting FUNC_ENTRY when building ConstraintGraph"));
     _func_st_idx = WN_st_idx(entryWN);
@@ -787,13 +843,8 @@ public:
   // mode.  Returns true of the solution is complete, false otherwise
   bool nonIPASolver();
 
-  bool solveConstraints();
-
-
-  void postProcessPointsTo();
-
   void adjustPointsToForKCycle(ConstraintGraphNode *cgNode);
-  void adjustPointsToForKCycle(UINT32 kCycle,PointsTo &src,PointsTo &dst);
+  void adjustPointsToForKCycle(UINT32 kCycle,const PointsTo &src,PointsTo &dst);
 
   ConstraintGraphEdge *addEdge(ConstraintGraphNode *src,
                                 ConstraintGraphNode *dest,
@@ -804,8 +855,14 @@ public:
 
   bool exprMayPoint(WN *const wn);
 
-  void blackHoleId(CGNodeId id)    { _blackHoleId = id; }
-  CGNodeId blackHoleId(void) const { return _blackHoleId; }
+  CGNodeId blackHoleId(void)
+  {
+    return _blackHoleId!=0?_blackHoleId:createBlackHole();
+  }
+  void resetBlackHoleId(void)
+  {
+    _blackHoleId = 0;
+  }
 
   list<CGNodeId> &parameters(void) { return _parameters; }
   list<CGNodeId> &returns(void) { return _returns; }
@@ -843,65 +900,7 @@ private:
 
   UINT32 findMaxTypeSize();
 
-  // Constraint graph solver
-
-  class EdgeDelta {
-  public:
-    EdgeDelta() {}
-    ~EdgeDelta() {}
-
-    void add(ConstraintGraphEdge *e);
-    EdgeWorkList &copySkewList() { return _copySkew; }
-    EdgeWorkList &loadStoreList() { return _loadStore; }
-
-  private:
-    EdgeWorkList _copySkew;
-    EdgeWorkList _loadStore;
-  };
-
-  EdgeDelta &edgeDelta() { return _edgeDelta; }
-  void updateOffsets(const ConstraintGraphNode *, PointsTo &, CGEdgeQual);
-  void processAssign(const ConstraintGraphEdge *);
-  void processSkew(const ConstraintGraphEdge *);
-  void processLoad(const ConstraintGraphEdge *);
-  bool processStore(const ConstraintGraphEdge *);
-  void addEdgesToWorkList(ConstraintGraphNode *);
-  void addCopiesForLoadStore(ConstraintGraphNode *src,
-                             ConstraintGraphNode *dst,
-                             CGEdgeType etype,
-                             CGEdgeQual qual,
-                             UINT32 size,
-                             SparseBitSet<CGNodeId> &ptSet);
-  ConstraintGraphNode *createBlackHole(void);
-
-
-
-  /* Currently implements a context insensitive mapping */
-  CGEdgeQual qualMap(CGEdgeType et,CGEdgeQual aq,CGEdgeQual eq, bool cs)
-  {
-    /* context sensitive */
-    if (cs) {
-      if (et == ETYPE_STORE)
-        return (aq == CQ_DN) ? CQ_UP : aq;
-      else if (et == ETYPE_LOAD)
-        return aq;
-      else if (et == ETYPE_COPY) {
-        if (eq == CQ_HZ)
-          return aq;
-        else if (eq == CQ_DN || eq == CQ_GBL)
-          return eq;
-        else /* eq == CQ_UP */
-          return (aq == CQ_GBL) ? aq : CQ_NONE;
-      }
-    }
-    /* context insensitive */
-    else {
-      if (et == ETYPE_COPY)
-        return (eq == CQ_DN ? CQ_DN : CQ_GBL);
-      else
-        return CQ_GBL;
-    }
-  }
+  CGNodeId createBlackHole(void);
 
   // Data Members
 
@@ -927,13 +926,9 @@ private:
   // Provide additional per st info
   CGStInfoMap _cgStInfoMap;
 
-  // Used by the solver.  Contains the lists of edges that need to be
-  // processed in order to achieve a solution to the current graph
-  EdgeDelta _edgeDelta;
-
   // Created by the solver.  The id() of the node used
   // to provide boundary conditions for incomplete programs
-  CGNodeId _blackHoleId;
+  static CGNodeId _blackHoleId;
 
   // ST_IDX of the function corresponding to this ConstraintGraph
   ST_IDX _func_st_idx;

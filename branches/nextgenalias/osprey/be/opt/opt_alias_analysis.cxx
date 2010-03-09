@@ -3676,6 +3676,9 @@ OPT_STAB::Transfer_alias_tag_to_occ_and_aux(RID *const rid,
         AUX_STAB_ENTRY *psym = Aux_stab_entry(idx);
         POINTS_TO *pt = psym->Points_to();
 
+        fprintf(stderr,"xfer alias tag: IDX %d -> ST_IDX %d\n",
+                idx,pt->Base()->st_idx);
+
         // Extract the alias tag from the current WN and associate
         // with the points-to of that symbol.  In the case of an LDA
         // we appear to be producing an alias tag that covers the
