@@ -371,9 +371,6 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
 
       callAliasTagInfo->mod().setUnion(cs->mod());
       callAliasTagInfo->ref().setUnion(cs->ref());
-
-      // Map aliasTags to the callsite ids
-      _aliasTagToCallSiteIdMap[aliasTag] = id;
     } 
     else
       continue;

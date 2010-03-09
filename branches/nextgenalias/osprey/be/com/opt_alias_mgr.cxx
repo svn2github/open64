@@ -570,7 +570,7 @@ ALIAS_MANAGER::Gen_alias_id(WN *wn, POINTS_TO *pt)
   if (pt != NULL) {
     WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn, pt->Ip_alias_class());
  
-    // Restore the WN to CGNodeId/CallSiteId map
+    // Restore the WN to CGNodeId map
     NystromAliasAnalyzer *naa = static_cast<NystromAliasAnalyzer *>
                                 (AliasAnalyzer::aliasAnalyzer());
     if (naa) 
@@ -581,18 +581,12 @@ ALIAS_MANAGER::Gen_alias_id(WN *wn, POINTS_TO *pt)
       // AliasTag to CGNodeId map that was constructed during createAliasTags
       if (WN_MAP32_Get(WN_MAP_ALIAS_CGNODE, wn) == 0) {
         OPERATOR opr = WN_operator(wn);
-        if (OPERATOR_is_call(opr))
-        {
-          CallSiteId id = naa->callSiteId(tag);
-          if (id != 0)
-            WN_MAP32_Set(WN_MAP_ALIAS_CGNODE, wn, id);
-        } 
-        else if (OPERATOR_is_scalar_istore(opr) ||
-                 OPERATOR_is_scalar_iload(opr) ||
-                 OPERATOR_is_scalar_load(opr) ||
-                 OPERATOR_is_scalar_store(opr) ||
-                 opr == OPR_MSTORE ||
-                 opr == OPR_MLOAD) {
+        if (OPERATOR_is_scalar_istore(opr) ||
+            OPERATOR_is_scalar_iload(opr) ||
+            OPERATOR_is_scalar_load(opr) ||
+            OPERATOR_is_scalar_store(opr) ||
+            opr == OPR_MSTORE ||
+            opr == OPR_MLOAD) {
           CGNodeId id = naa->cgNodeId(tag);
           if (id != 0) {
             if (opr == OPR_ILDBITS || opr == OPR_MLOAD || opr == OPR_ILOAD)

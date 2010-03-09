@@ -133,15 +133,6 @@ public:
 
    ConstraintGraph *constraintGraph() const { return _constraintGraph; }
 
-   CallSiteId callSiteId(AliasTag tag) 
-   {
-     hash_map<UINT32, CallSiteId>::iterator iter = 
-                                   _aliasTagToCallSiteIdMap.find((UINT32)tag);
-     if (iter != _aliasTagToCallSiteIdMap.end())
-       return iter->second;
-     return 0;
-   }
-
    CGNodeId cgNodeId(AliasTag tag) 
    {
      hash_map<UINT32, CGNodeId>::iterator iter = 
@@ -191,11 +182,10 @@ private:
 
    static PointsTo emptyPointsToSet;
 
-   // Map AliasTags to their corresponding CGNode/CallSite ids
+   // Map AliasTags to their corresponding CGNode ids
    // so that during CODEREP -> WHIRL phase we can attach the original
    // CGNodeIds to the new WHIRL nodes from their AliasTags
    hash_map<UINT32, CGNodeId>   _aliasTagToCGNodeIdMap;
-   hash_map<UINT32, CallSiteId> _aliasTagToCallSiteIdMap;
 };
 
 #endif
