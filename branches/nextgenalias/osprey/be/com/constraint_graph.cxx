@@ -806,7 +806,7 @@ ConstraintGraph::handleCall(WN *callWN)
     // implicitly map all of these symbols to the single node
     // referenced by the va_list.
     if (WN_intrinsic(callWN) == INTRN_VA_START) {
-      FmtAsssert(_varArgs,
+      FmtAssert(_varArgs,
                  ("Found _va_start() call, expected internal CG varargs node"));
       ST_IDX vaIdx = _varArgs->st_idx();
       StInfo *vaStInfo = stInfo(vaIdx);
@@ -816,11 +816,11 @@ ConstraintGraph::handleCall(WN *callWN)
         PLOC ploc = { i,0,0,0,0 };
         ST *st = Get_Vararg_Symbol(ploc);
         if (st)
-          _cgStInfoMap[st->st_idx] = vaStInfo;
+          _cgStInfoMap[ST_st_idx(st)] = vaStInfo;
       }
       ST *st = Get_Upformal_Segment();
       if (st)
-        _cgStInfoMap[st->st_idx] = vaStInfo;
+        _cgStInfoMap[ST_st_idx(st)] = vaStInfo;
     }
   } else
     callSite->addFlags(CS_FLAGS_UNKNOWN);
