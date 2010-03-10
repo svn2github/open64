@@ -29,7 +29,7 @@ public:
   UINT32 escapeStFlags(ConstraintGraphNode *node) const;
 
 private:
-  typedef pair<ST_IDX,UINT32> StTableKey;
+  typedef pair<CG_ST_IDX,UINT32> StTableKey;
   typedef struct {
     size_t operator() (const StTableKey &k) const
     {

@@ -108,6 +108,8 @@
 #include "ipa_reorder.h"        //for merged_access --reorder
 #include "ipa_option.h"         // for IPA_Enable_Reorder and Merge_struct_access();
 
+#include "nystrom_alias_analyzer.h"
+
 IPA_CALL_GRAPH* IPA_Call_Graph;     // "The" call graph of IPA
 #ifdef KEY
 // Temporary graph built for pu-reordering based on edge frequencies.
@@ -283,18 +285,18 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
   SUMMARY_CONSTRAINT_GRAPH_NODE *cg_nodes = 
                     IPA_get_constraint_graph_nodes_array(hdr, num_cg_nodes);
   for (i = 0; i < num_cg_nodes; ++i) {
-    ST_IDX old_st_idx = cg_nodes[i].st_idx();
+    ST_IDX old_st_idx = SYM_ST_IDX(cg_nodes[i].cg_st_idx());
     if (ST_IDX_level(old_st_idx) == GLOBAL_SYMTAB) {
-      cg_nodes[i].st_idx(idx_maps->st[old_st_idx]);
+      cg_nodes[i].cg_st_idx(idx_maps->st[old_st_idx] & 0x00000000ffffffffLL);
     }
   }
   INT32 num_cg_stinfos;
   SUMMARY_CONSTRAINT_GRAPH_STINFO *cg_stinfos = 
                     IPA_get_constraint_graph_stinfos_array(hdr, num_cg_stinfos);
   for (i = 0; i < num_cg_stinfos; ++i) {
-    ST_IDX old_st_idx = cg_stinfos[i].st_idx();
+    ST_IDX old_st_idx = SYM_ST_IDX(cg_stinfos[i].cg_st_idx());
     if (ST_IDX_level(old_st_idx) == GLOBAL_SYMTAB) {
-      cg_stinfos[i].st_idx(idx_maps->st[old_st_idx]);
+      cg_stinfos[i].cg_st_idx(idx_maps->st[old_st_idx] & 0x00000000ffffffffLL);
     }
   }
   INT32 num_cg_callsites;
@@ -306,7 +308,7 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
     if (cg_callsites[i].flags() & 0x7 == 0) {
       ST_IDX old_st_idx = cg_callsites[i].st_idx();
       if (ST_IDX_level(old_st_idx) == GLOBAL_SYMTAB) {
-        cg_stinfos[i].st_idx(idx_maps->st[old_st_idx]);
+        cg_callsites[i].st_idx(idx_maps->st[old_st_idx]);
       }
     }
   }

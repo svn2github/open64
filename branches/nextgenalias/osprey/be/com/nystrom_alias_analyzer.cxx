@@ -144,14 +144,14 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
   // First we adjust the requested offset by any modulus that
   // is being model by the constraint graph for this symbol.
   ConstraintGraph *cg = _constraintGraph;
-  StInfo *stInfo = cg->stInfo(ST_st_idx(st));
+  StInfo *stInfo = cg->stInfo(CG_ST_st_idx(st));
   if (!stInfo)
     return aliasTag;
   if (!stInfo->checkFlags(CG_ST_FLAGS_PREG))
     offset = offset % stInfo->modulus();
 
   // First we check to see if we have been asked this question before...
-  StToAliasTagKey atKey(ST_st_idx(st),offset,size);
+  StToAliasTagKey atKey(CG_ST_st_idx(st),offset,size);
   StToAliasTagMapIterator atIter = _stToAliasTagMap.find(atKey);
   if (atIter != _stToAliasTagMap.end())
     aliasTag = atIter->second;
@@ -160,7 +160,7 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
     // (a) find <ST,offset> exactly when size == 0
     // (b) find <ST,offset> ... <ST,offset+size-1> when size >= zero
     if (size == 0) {
-      ConstraintGraphNode *node = cg->checkCGNode(ST_st_idx(st),offset);
+      ConstraintGraphNode *node = cg->checkCGNode(CG_ST_st_idx(st),offset);
       if (node) {
         aliasTag = newAliasTag();
         AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
@@ -351,7 +351,7 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       // either we have an escape analysis bug or an uninitialized variable.
       ConstraintGraph *cg = cgNode->constraintGraph();
       if (aliasTagInfo->pointsTo().isEmpty() &&
-          !cg->stInfo(cgNode->st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
+          !cg->stInfo(cgNode->cg_st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
         aliasTagInfo->pointsTo().setBit(cgNode->id());
 
       // We expect all alias sets to be non-empty...

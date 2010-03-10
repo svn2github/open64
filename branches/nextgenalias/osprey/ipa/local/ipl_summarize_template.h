@@ -3257,7 +3257,7 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
     } else
       summCGNode->repParent(parent->id());
     summCGNode->cgNodeId(cgNode->id());
-    summCGNode->st_idx(cgNode->st_idx());
+    summCGNode->cg_st_idx(cgNode->cg_st_idx());
     summCGNode->offset(cgNode->offset());
     summCGNode->flags(cgNode->flags());
     summCGNode->inKCycle(cgNode->inKCycle());
@@ -3303,10 +3303,10 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
   CGStInfoMap& stInfos = cg->stInfoMap();
   for (CGStInfoMapIterator stiter = stInfos.begin(); stiter != stInfos.end();
        stiter++) {
-    ST_IDX st_idx = stiter->first;
+    CG_ST_IDX cg_st_idx = stiter->first;
     StInfo *s = stiter->second;
     SUMMARY_CONSTRAINT_GRAPH_STINFO *summStInfo = New_constraint_graph_stinfo();
-    summStInfo->st_idx(st_idx);
+    summStInfo->cg_st_idx(cg_st_idx);
     summStInfo->flags(s->flags());
     summStInfo->varSize(s->varSize());
     summStInfo->modulus(s->modulus());

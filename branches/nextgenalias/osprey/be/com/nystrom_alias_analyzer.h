@@ -12,7 +12,7 @@ using namespace __gnu_cxx;
 class StToAliasTagKey
 {
 public:
-  StToAliasTagKey(ST_IDX idx,UINT32 off,UINT32 size)
+  StToAliasTagKey(CG_ST_IDX idx,UINT32 off,UINT32 size)
   : _idx(idx),_offset(off),_size(size) {}
 
   bool operator ==(const StToAliasTagKey &that) const
@@ -23,7 +23,7 @@ public:
   }
   size_t hash() const { return _idx << 16 ^ _offset << 8 ^ _size; }
 private:
-  ST_IDX _idx;
+  CG_ST_IDX _idx;
   UINT32 _offset;
   UINT32 _size;
 };

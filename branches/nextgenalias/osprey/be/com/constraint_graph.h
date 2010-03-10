@@ -79,6 +79,11 @@
 #define CS_FLAGS_HAS_MOD_REF 0x08
 #define CS_FLAGS_HAS_VARARGS 0x10
 
+typedef UINT32 CGNodeId;
+typedef UINT64 CG_ST_IDX;
+typedef UINT32 CallSiteId;
+typedef SparseBitSet<CGNodeId> PointsTo;
+
 // Map the WNs to CGNodeIds
 #define WN_MAP_CGNodeId_Set(wn,thing) \
  IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_CGNODE, (wn), (INT32)(thing))
@@ -92,13 +97,21 @@
 #define WN_MAP_CallSiteId_Get(wn) \
  (CallSiteId)IPA_WN_MAP32_Get(Current_Map_Tab, WN_MAP_ALIAS_CGNODE, (wn))
 
+// CG_ST_IDX is a 64-bit number, where the lower 32-bit is the symbol's
+// ST_IDX, the next 16-bit is the pu number and the most significant 16-bits
+// is the file number
+#define SYM_ST_IDX(cg_st_idx)      ((UINT32)((cg_st_idx) & 0xffffffff))
+#define PU_NUM_ST_IDX(cg_st_idx)   ((UINT16)(((cg_st_idx) >> 32) & 0xffff))
+#define FILE_NUM_ST_IDX(cg_st_idx) ((UINT16)(((cg_st_idx) >> 48) & 0xffff))
+
+// Given a ST * return the CG_ST_IDX, which is just the ST_st_idx of the ST *
+// with the upper 32 bits set to zero. This should be called only during ipl/be
+// where we assume the file and pu num is zero and the ST_IDX will be able
+// to uniquely identify the ST
+#define CG_ST_st_idx(s) (ST_st_idx((s)) & 0x00000000ffffffffLL)
+  
 using namespace std;
 using namespace __gnu_cxx;
-
-typedef UINT32 CGNodeId;
-typedef UINT32 CallSiteId;
-typedef SparseBitSet<CGNodeId> PointsTo;
-
 typedef enum {
   ETYPE_COPY,
   ETYPE_STORE,
@@ -113,6 +126,22 @@ typedef enum {
   CQ_GBL,
   CQ_NONE, /* Used in qualifier mapping (future) */
 } CGEdgeQual;
+
+typedef struct {
+  size_t operator()(const CG_ST_IDX k) const
+  {
+    return k;
+  }
+} hashCGstidx;
+
+typedef struct
+{
+  bool operator()(const CG_ST_IDX k1,
+                  const CG_ST_IDX k2) const
+  {
+    return k1 == k2;
+  }
+} equalCGstidx;
 
 class ConstraintGraphNode;
 class ConstraintGraphEdge;
@@ -299,8 +328,8 @@ typedef CGEdgeSet::const_iterator CGEdgeSetIterator;
 class ConstraintGraphNode 
 {
 public:
-  ConstraintGraphNode(ST_IDX st_idx, INT32 offset, MEM_POOL *memPool) :
-    _nodeInfo(st_idx, offset, memPool),
+  ConstraintGraphNode(CG_ST_IDX cg_st_idx, INT32 offset, MEM_POOL *memPool) :
+    _nodeInfo(cg_st_idx, offset, memPool),
     _id(0),
     _version(0),
     _maxAccessSize(0),
@@ -319,7 +348,7 @@ public:
 
   UINT8 maxAccessSize(void) const { return _maxAccessSize; }
 
-  ST_IDX st_idx() const { return nodeInfo().st_idx(); }
+  CG_ST_IDX cg_st_idx() const { return nodeInfo().cg_st_idx(); }
 
   INT32 offset() const { return nodeInfo().offset(); }
 
@@ -529,8 +558,8 @@ private:
   class NodeInfo
   {
   public:
-    NodeInfo(ST_IDX st_idx, INT32 offset, MEM_POOL *memPool) :
-      _st_idx(st_idx),
+    NodeInfo(CG_ST_IDX cg_st_idx, INT32 offset, MEM_POOL *memPool) :
+      _cg_st_idx(cg_st_idx),
       _offset(offset),
       _flags(0),
       _inKCycle(0),
@@ -540,7 +569,7 @@ private:
       _nextOffset(NULL)
     {}
 
-    ST_IDX st_idx() const { return _st_idx; }
+    CG_ST_IDX cg_st_idx() const { return _cg_st_idx; }
 
     INT32 offset() const { return _offset; }
 
@@ -600,12 +629,12 @@ private:
 
     size_t hash() const 
     { 
-      return size_t(_st_idx << 16 ^ _offset); 
+      return size_t(_cg_st_idx << 16 ^ _offset); 
     }
 
     bool operator==(const NodeInfo& rhs) const 
     { 
-      return (_st_idx == rhs._st_idx && _offset == rhs._offset); 
+      return (_cg_st_idx == rhs._cg_st_idx && _offset == rhs._offset); 
     }
 
     void print(ConstraintGraph *cg, FILE *file);
@@ -634,7 +663,7 @@ private:
     }
 
   private:
-    ST_IDX _st_idx;
+    CG_ST_IDX _cg_st_idx;
     INT32  _offset;
     UINT16 _flags;
     UINT32 _inKCycle;
@@ -761,7 +790,7 @@ typedef hash_map<ConstraintGraphNode *, CGNodeId,
                  ConstraintGraphNode::hashCGNode,
                  ConstraintGraphNode::equalCGNode> CGNodeToIdMap;
 
-typedef hash_map<ST_IDX, StInfo *> CGStInfoMap;
+typedef hash_map<CG_ST_IDX, StInfo *, hashCGstidx, equalCGstidx> CGStInfoMap;
 
 typedef CGIdToNodeMap::const_iterator CGIdToNodeMapIterator;
 typedef CGNodeToIdMap::const_iterator CGNodeToIdMapIterator;
@@ -791,7 +820,6 @@ public:
       ConstraintGraphNode::memPool = mpool;
     Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY, 
             ("Expecting FUNC_ENTRY when building ConstraintGraph"));
-    _func_st_idx = WN_st_idx(entryWN);
     _notAPointer = genTempCGNode();
     _notAPointer->addFlags(CG_NODE_FLAGS_NOT_POINTER);
     buildCG(entryWN);
@@ -799,9 +827,9 @@ public:
 
   UINT32 totalCGNodes() { return _nextCGNodeId; }
 
-  StInfo *stInfo(ST_IDX st_idx) const 
+  StInfo *stInfo(CG_ST_IDX cg_st_idx) const 
   { 
-    CGStInfoMapIterator stIter = _cgStInfoMap.find(st_idx);
+    CGStInfoMapIterator stIter = _cgStInfoMap.find(cg_st_idx);
     if (stIter != _cgStInfoMap.end())
       return stIter->second;
     return NULL;
@@ -831,11 +859,11 @@ public:
 
   CGStInfoMap &stInfoMap(void) { return _cgStInfoMap; }
 
-  // Return CGNode mapped to (st_idx, offset), if not create a new CGNode 
-  ConstraintGraphNode *getCGNode(ST_IDX st_idx, INT64 offset);
+  // Return CGNode mapped to (cg_st_idx, offset), if not create a new CGNode 
+  ConstraintGraphNode *getCGNode(CG_ST_IDX cg_st_idx, INT64 offset);
 
-  // Return CGNode mapped to (st_idx, offset), if not return NULL
-  ConstraintGraphNode *checkCGNode(ST_IDX st_idx, INT64 offset);
+  // Return CGNode mapped to (cg_st_idx, offset), if not return NULL
+  ConstraintGraphNode *checkCGNode(CG_ST_IDX cg_st_idx, INT64 offset);
       
   void print(FILE *file);
 
@@ -919,7 +947,7 @@ private:
   // Set of ConstraintGraphNodes
   CGIdToNodeMap _cgIdToNodeMap;
 
-  // Map a ConstraintGraphNode, represented uniquely using (ST_IDX, offset)
+  // Map a ConstraintGraphNode, represented uniquely using (CG_ST_IDX, offset)
   // to the node id
   CGNodeToIdMap _cgNodeToIdMap;
 
@@ -929,9 +957,6 @@ private:
   // Created by the solver.  The id() of the node used
   // to provide boundary conditions for incomplete programs
   static CGNodeId _blackHoleId;
-
-  // ST_IDX of the function corresponding to this ConstraintGraph
-  ST_IDX _func_st_idx;
 
   // The formal parameters and return CGNodes for this function
   list<CGNodeId> _parameters;
@@ -949,7 +974,7 @@ public:
   static void dumpVCG(ConstraintGraph *cg, const char *fileNamePrefix)
   {
     ConstraintGraphVCG vcg(cg, fileNamePrefix);
-    vcg.buildVCG(cg);
+    vcg.buildVCG();
   }
     
 private:
@@ -958,6 +983,7 @@ private:
   {
      MEM_POOL_Initialize(&_memPool, "AliasAnalyzer_pool", FALSE);
      _fileNamePrefix = fileNamePrefix;
+     _cg = cg;
   }
 
   char *getNodeLabel(ConstraintGraphNode *cgNode);
@@ -966,9 +992,10 @@ private:
   char *getNodeInfo(ConstraintGraphNode *cgNode);
   VCGNode *buildVCGNode(ConstraintGraphNode *cgNode);
 
-  void buildVCG(ConstraintGraph *cg);
+  void buildVCG();
 
   const char *_fileNamePrefix;
+  ConstraintGraph *_cg;
   MEM_POOL _memPool;
 };
 

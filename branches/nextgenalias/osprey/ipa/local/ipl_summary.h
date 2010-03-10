@@ -2914,7 +2914,7 @@ public:
   }
 
   void cgNodeId(UINT32 cgNodeId)  { _cgNodeId = cgNodeId; }
-  void st_idx(ST_IDX st_idx)      { _st_idx = st_idx; }
+  void cg_st_idx(UINT64 cg_st_idx){ _cg_st_idx = cg_st_idx; }
   void offset(INT32 offset)       { _offset = offset; }
   void flags(UINT16 flags)        { _flags = flags; }
   void inKCycle(UINT32 kcycle)    { _inKCycle = kcycle; }
@@ -2927,7 +2927,7 @@ public:
   void ptsHZidx(UINT32 idx)       { _pointsToHZIdx = idx; }
   void ptsDNidx(UINT32 idx)       { _pointsToDNIdx = idx; }
 
-  ST_IDX st_idx() const { return _st_idx; }
+  UINT64 cg_st_idx() const { return _cg_st_idx; }
 
   void Print_array(FILE *fp, INT32 size) const;
   void Trace_array(INT32 size) const ;
@@ -2936,7 +2936,7 @@ public:
   
 private:
   UINT32 _cgNodeId;
-  ST_IDX _st_idx;
+  UINT64 _cg_st_idx;
   INT32  _offset;  
   UINT16 _flags;
   UINT32 _numBitsPtsGBL;   // number of bits in GBL pts-to-set
@@ -2988,9 +2988,9 @@ class SUMMARY_CONSTRAINT_GRAPH_STINFO
 public:
   SUMMARY_CONSTRAINT_GRAPH_STINFO() {}
 
-  ST_IDX st_idx() const { return _st_idx; }
+  UINT64 cg_st_idx() const { return _cg_st_idx; }
 
-  void st_idx(ST_IDX s)      { _st_idx = s; }
+  void cg_st_idx(UINT64 s)   { _cg_st_idx = s; }
   void flags(UINT32 f)       { _flags = f; }
   void varSize(INT64 s)      { _varSize = s; }
   void modulus(UINT32 m)     { _modulus = m; }
@@ -3007,7 +3007,7 @@ public:
   void Trace(void) const;
 
 private:
-  ST_IDX _st_idx;
+  UINT64 _cg_st_idx;
   UINT32 _flags;
   INT64  _varSize;
   UINT32 _modulus;

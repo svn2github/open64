@@ -428,8 +428,7 @@ ConstraintGraph::createBlackHole(void)
 {
   ST *bhST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgBlackHole",
                                    CLASS_VAR, SCLASS_AUTO);
-  ST_IDX bh_idx = ST_st_idx(bhST);
-  ConstraintGraphNode *bhNode = getCGNode(bh_idx,0);
+  ConstraintGraphNode *bhNode = getCGNode(CG_ST_st_idx(bhST),0);
   _blackHoleId = bhNode->id();
   if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
     fprintf(stderr, "Creating blackHole CGNodeId: %d\n", _blackHoleId);
@@ -491,7 +490,7 @@ ConstraintGraphSolve::updateOffsets(const ConstraintGraphNode *dst,
   // offsets < dstStOffset, that have references covering dstStOffset
   // as needing to be reprocessed.
   else {
-    StInfo *dstStInfo = _cg->stInfo(dst->st_idx());
+    StInfo *dstStInfo = _cg->stInfo(dst->cg_st_idx());
     ConstraintGraphNode *cur = dstStInfo->firstOffset();
     // Do not assume that the firstOffset() is non-NULL.  For certain
     // types, e.g. preg, we do not generate an offset list.
@@ -579,10 +578,10 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
   UINT32 assignSize = edge->size();
   ConstraintGraphNode *src = edge->srcNode();
   ConstraintGraphNode *dst = edge->destNode();
-  StInfo *dstStInfo = _cg->stInfo(dst->st_idx());
+  StInfo *dstStInfo = _cg->stInfo(dst->cg_st_idx());
 
   // Is this constraint context sensitive?
-  bool cntxt = !_cg->stInfo(src->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
+  bool cntxt = !_cg->stInfo(src->cg_st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
 
   INT32 dstStOffset = dst->offset();
   INT32 srcStOffset = src->offset();
@@ -602,7 +601,7 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
           if (dstStOffset != -1) {
             INT32 dstOffset = dstStOffset + (cur->offset() - srcStOffset);
             // Creates node if necessary.
-            dstNode = _cg->getCGNode(dst->st_idx(),dstOffset);
+            dstNode = _cg->getCGNode(dst->cg_st_idx(),dstOffset);
           }
           else
             dstNode = dst;
@@ -699,7 +698,7 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
   UINT32 skew = edge->skew();
   CGEdgeQual edgeQual = edge->edgeQual();
   bool change = false;
-  bool cntxt = !_cg->stInfo(src->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
+  bool cntxt = !_cg->stInfo(src->cg_st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
   for ( PointsToIterator pti(src); pti != 0; ++pti ) {
     CGEdgeQual curQual = pti.qual();
     CGEdgeQual dstQual = qualMap(ETYPE_COPY/*COPY==SKEW*/,curQual,edgeQual,cntxt);
@@ -710,7 +709,7 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
       {
         CGNodeId nodeId = *iter;
         ConstraintGraphNode *node = _cg->cgNode(nodeId);
-        StInfo *st = _cg->stInfo(node->st_idx());
+        StInfo *st = _cg->stInfo(node->cg_st_idx());
         INT32 newOffset;
         // Computing the correct offset is interesting.
         // If the source offset is -1, the result is always -1.
@@ -730,7 +729,7 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
             st->modulus(dst->inKCycle());
           newOffset = node->offset() + skew;
         }
-        ConstraintGraphNode *skewNode = _cg->getCGNode(node->st_idx(),newOffset);
+        ConstraintGraphNode *skewNode = _cg->getCGNode(node->cg_st_idx(),newOffset);
         skewNode->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
         tmp.setBit(skewNode->id());
       }
@@ -799,7 +798,7 @@ ConstraintGraphSolve::processLoad(const ConstraintGraphEdge *edge)
     dst->addFlags(CG_NODE_FLAGS_UNKNOWN);
   }
 
-  bool cntxt = !_cg->stInfo(src->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
+  bool cntxt = !_cg->stInfo(src->cg_st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
   for ( PointsToIterator pti(src); pti != 0; ++pti ) {
      CGEdgeQual curQual = pti.qual();
      CGEdgeQual cpQual = qualMap(ETYPE_LOAD,curQual,edgeQual,cntxt);
@@ -854,7 +853,7 @@ ConstraintGraphSolve::processStore(const ConstraintGraphEdge *edge)
       return false;
   }
 
-  bool cntxt = !_cg->stInfo(dst->st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
+  bool cntxt = !_cg->stInfo(dst->cg_st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
   for ( PointsToIterator pti(dst); pti != 0; ++pti ) {
      CGEdgeQual curQual = pti.qual();
      CGEdgeQual cpQual = qualMap(ETYPE_STORE,curQual,edgeQual,cntxt);
