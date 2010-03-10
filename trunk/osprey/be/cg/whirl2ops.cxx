@@ -621,14 +621,13 @@ static void region_stack_push(RID *value)
   
 
 
-#ifndef TARG_IA64
 static BOOL WN_pragma_preamble_end_seen = FALSE;
 
 BOOL W2OPS_Pragma_Preamble_End_Seen ()
 {
    return WN_pragma_preamble_end_seen;
 }
-#endif
+
 /* Process the new OPs that have been created since the last call to 
  * this routine. We set their srcpos field and increment the count
  * of number of OPs in the BB. We check if any of the new OPs have
@@ -651,12 +650,12 @@ Process_New_OPs (void)
     }
     OP_srcpos(op) = current_srcpos;
     total_bb_insts++;
-#ifndef TARG_IA64
+
     if (WN_pragma_preamble_end_seen) {
       Set_OP_first_after_preamble_end(op);
       WN_pragma_preamble_end_seen = FALSE;
     }
-#endif
+
   }
   Last_Processed_OP = OPS_last(&New_OPs);
 }
@@ -7109,7 +7108,7 @@ static void Expand_Statement (WN *stmt)
       else
 	BB_Add_Annotation(Cur_BB, ANNOT_PRAGMA, stmt);
     }
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_IA64)
     if (WN_pragma(stmt) == WN_PRAGMA_INLINE_BODY_START)
     {
       OPCODE opcode = WN_opcode(stmt);
@@ -7127,9 +7126,9 @@ static void Expand_Statement (WN *stmt)
                            (void *)(WN_st_idx(stmt)+ST_index(st)));
       }
     }
+#endif
     if (WN_pragma(stmt) == WN_PRAGMA_PREAMBLE_END)
       WN_pragma_preamble_end_seen = TRUE;
-#endif
     break;
   case OPC_COMMENT:
     COMMENT_Add(Cur_BB, WN_GetComment(stmt));
