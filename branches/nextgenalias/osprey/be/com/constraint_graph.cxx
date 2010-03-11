@@ -11,11 +11,14 @@
 #include "cse_table.h"
 #include "opt_points_to.h"
 
+MEM_POOL *ConstraintGraph::edgeMemPool = NULL;
 UINT32 ConstraintGraph::maxTypeSize = 0;
-bool ConstraintGraph::_inIPA = false;
-CGNodeId ConstraintGraph::_blackHoleId = 0;
-MEM_POOL *ConstraintGraphNode::memPool = NULL;
-const PointsTo ConstraintGraphNode::NodeInfo::emptyPointsToSet;
+UINT32 ConstraintGraph::nextCGNodeId = 1;
+bool ConstraintGraph::isIPA = false;
+ConstraintGraphNode *ConstraintGraph::notAPointerCGNode = NULL;
+ConstraintGraphNode *ConstraintGraph::blackHoleCGNode = NULL;
+CGIdToNodeMap ConstraintGraph::cgIdToNodeMap(1024);
+const PointsTo ConstraintGraphNode::emptyPointsToSet;
 
 template <typename T>
 static inline
@@ -58,17 +61,17 @@ ConstraintGraph::adjustPointsToForKCycle(UINT32 kCycle,
     // of a pointer, then we simply adjust the modulus of the
     // underlying symbol to the min(rep->inKCycle(),modulus)
     if (kCycle >= Pointer_Size) {
-      StInfo *st = stInfo(node->cg_st_idx());
+      StInfo *st = node->cg()->stInfo(node->cg_st_idx());
       if (kCycle < st->modulus())
         st->modulus(kCycle);
       if (node->offset() >= st->modulus())
-        node = getCGNode(node->cg_st_idx(),node->offset());
+        node = node->cg()->getCGNode(node->cg_st_idx(),node->offset());
     }
     // If the K value is < the size of a pointer all offsets
     // are mapped to -1.
     else {
       if (node->offset() != -1)
-        node = getCGNode(node->cg_st_idx(),-1);
+        node = node->cg()->getCGNode(node->cg_st_idx(),-1);
     }
     dst.setBit(node->id());
   }
@@ -79,7 +82,7 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *cgNode)
 {
   for (PointsToIterator pti(cgNode); pti != 0; ++pti) {
     PointsTo &ptsTo = *pti;
-    PointsTo tmp(_memPool);
+    PointsTo tmp(Malloc_Mem_Pool);
     adjustPointsToForKCycle(cgNode->inKCycle(), ptsTo, tmp);
     ptsTo.clear();
     ptsTo.setUnion(tmp);
@@ -274,6 +277,7 @@ ConstraintGraph::buildCG(WN *entryWN)
     ST *tmpST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgVarArgs",
                                       CLASS_VAR, SCLASS_AUTO);
     _varArgs = getCGNode(CG_ST_st_idx(tmpST), 0);
+    stInfo(_varArgs->cg_st_idx())->addFlags(CG_ST_FLAGS_VARARGS);
   }
   
   processWN(entryWN);
@@ -409,7 +413,7 @@ ConstraintGraph::processExpr(WN *expr)
         break;
       case OPR_INTCONST:
       case OPR_CONST:
-        cgNode = _notAPointer;
+        cgNode = notAPointer();
         break;
       default:
         return NULL;
@@ -429,8 +433,8 @@ ConstraintGraph::processExpr(WN *expr)
           return NULL;
         }
         if (!exprMayPoint(expr)) {
-          WN_MAP_CGNodeId_Set(expr, _notAPointer->id());
-          return _notAPointer;
+          WN_MAP_CGNodeId_Set(expr, notAPointer()->id());
+          return notAPointer();
         }
         if (!addrCGNode || addrCGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
           return NULL;
@@ -516,8 +520,8 @@ ConstraintGraph::processExpr(WN *expr)
     }
 
     if (!exprMayPoint(expr)) {
-      WN_MAP_CGNodeId_Set(expr, _notAPointer->id());
-      return _notAPointer;
+      WN_MAP_CGNodeId_Set(expr, notAPointer()->id());
+      return notAPointer();
     }
 
     // TODO: This might be more strict than necessary
@@ -527,7 +531,7 @@ ConstraintGraph::processExpr(WN *expr)
       if (MTYPE_byte_size(WN_rtype(expr)) < Pointer_Size ||
           !MTYPE_is_unsigned(WN_rtype(expr)) || 
           !MTYPE_is_unsigned(WN_rtype(WN_kid0(expr))))
-        cgn = _notAPointer;
+        cgn = notAPointer();
       else {
         CGNodeId cgNodeId = WN_MAP_CGNodeId_Get(WN_kid0(expr));
         cgn = cgNodeId ? cgNode(cgNodeId) : NULL;
@@ -557,8 +561,8 @@ ConstraintGraph::processExpr(WN *expr)
       // Both are not a pointer, therefore the result will not be a pointer
       if (kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) &&
           kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
-        WN_MAP_CGNodeId_Set(expr, _notAPointer->id());
-        return _notAPointer;
+        WN_MAP_CGNodeId_Set(expr, notAPointer()->id());
+        return notAPointer();
       }
 
       // Skews
@@ -845,18 +849,18 @@ ConstraintGraph::handleCall(WN *callWN)
     // points-to-set of the temp node (t {va_list}), we need to crack open
     // the pts-to-set of t to get to va_list and then add _varArgs to
     // the pts-to-set of va_list
-    ConstraintGraphNode *tmpNode = this->cgNode(id);
+    ConstraintGraphNode *tmpNode = ConstraintGraph::cgNode(id);
     const PointsTo& ptsGBL = tmpNode->pointsTo(CQ_GBL);
     const PointsTo& ptsHZ = tmpNode->pointsTo(CQ_HZ);
     if (!ptsGBL.isEmpty()) {
       for (PointsTo::SparseBitSetIterator iter(&ptsGBL, 0); iter != 0; ++iter) {
-        ConstraintGraphNode *valistNode = this->cgNode(*iter);
+        ConstraintGraphNode *valistNode = ConstraintGraph::cgNode(*iter);
         stInfo(valistNode->cg_st_idx())->modulus(Pointer_Size);
         valistNode->addPointsTo(_varArgs, CQ_HZ);
       }
     } else if (!ptsHZ.isEmpty()) {
       for (PointsTo::SparseBitSetIterator iter(&ptsHZ, 0); iter != 0; ++iter) {
-        ConstraintGraphNode *valistNode = this->cgNode(*iter);
+        ConstraintGraphNode *valistNode = ConstraintGraph::cgNode(*iter);
         stInfo(valistNode->cg_st_idx())->modulus(Pointer_Size);
         valistNode->addPointsTo(_varArgs, CQ_HZ);
       }
@@ -914,7 +918,7 @@ ConstraintGraph::getCGNode(WN *wn)
 // set added = false
 ConstraintGraphEdge *
 ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
-                         CGEdgeType etype, CGEdgeQual qual, UINT32 size,
+                         CGEdgeType etype, CGEdgeQual qual, UINT32 size, 
                          bool &added)
 {
   ConstraintGraphEdge cgEdge(src, dest, etype, qual, size);
@@ -927,7 +931,7 @@ ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
 
   if (edgeExistsInNeither) {
     ConstraintGraphEdge *edge =
-      CXX_NEW(ConstraintGraphEdge(src, dest, etype, qual, size), _memPool);
+      CXX_NEW(ConstraintGraphEdge(src, dest, etype, qual, size), edgeMemPool);
     src->addOutEdge(edge);
     dest->addInEdge(edge);
     added = true;
@@ -948,7 +952,7 @@ ConstraintGraph::removeEdge(ConstraintGraphEdge *edge)
 {
   edge->srcNode()->removeOutEdge(edge);
   edge->destNode()->removeInEdge(edge);
-  CXX_DELETE(edge,_memPool);
+  CXX_DELETE(edge,edgeMemPool);
 }
 
 ConstraintGraphNode *
@@ -980,15 +984,14 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   if ((cgNode = checkCGNode(cg_st_idx, offset)) != NULL)
     return cgNode;
 
-  cgNode = CXX_NEW(ConstraintGraphNode(cg_st_idx, offset, _memPool), _memPool);
-  cgNode->constraintGraph(this);
+  cgNode = CXX_NEW(ConstraintGraphNode(cg_st_idx, offset, this), _memPool);
 
   // Add it to the _cgNodeToIdMap and the reverse _cgIdToNodeMap
-  _cgNodeToIdMap[cgNode] = _nextCGNodeId;
-  FmtAssert(_cgIdToNodeMap.find(_nextCGNodeId) == _cgIdToNodeMap.end(),
-            ("_nextCGNodeId: %d already in _cgIdToNodeMap\n", _nextCGNodeId));
-  _cgIdToNodeMap[_nextCGNodeId] = cgNode;
-  cgNode->setId(_nextCGNodeId++);
+  _cgNodeToIdMap[cgNode] = nextCGNodeId;
+  FmtAssert(cgIdToNodeMap.find(nextCGNodeId) == cgIdToNodeMap.end(),
+            ("nextCGNodeId: %d already in cgIdToNodeMap\n", nextCGNodeId));
+  cgIdToNodeMap[nextCGNodeId] = cgNode;
+  cgNode->setId(nextCGNodeId++);
 
   // Since each PREG is independent, we do not link it to the sorted
   // list of its associated symbol. So, the firstOffset of the StInfo
@@ -1011,6 +1014,21 @@ ConstraintGraph::checkCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   if (cgIter != _cgNodeToIdMap.end())
     return cgIter->first;
   return NULL;
+}
+
+PointsTo &
+ConstraintGraphNode::_getPointsTo(CGEdgeQual qual, PointsToList **ptl)
+{
+  PointsTo *pts = _findPointsTo(qual,*ptl);
+  if (!pts) {
+    MEM_POOL *memPool = _parentCG->memPool();
+    PointsToList *newPTL = CXX_NEW(PointsToList(qual,memPool),memPool);
+    PointsToList *tmp = *ptl;
+    *ptl = newPTL;
+    newPTL->next(tmp);
+    pts = newPTL->pointsTo();
+  }
+  return *pts;
 }
 
 void
@@ -1092,7 +1110,7 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
     if (edge->srcNode()->parent() != parent())
       delEdge = !edge->moveDest(const_cast<ConstraintGraphNode *>(this));
     if (delEdge)
-      constraintGraph()->removeEdge(edge);
+      ConstraintGraph::removeEdge(edge);
   }
   CGEdgeSet &inLdSet = src->inLoadStoreEdges();
   for (CGEdgeSetIterator inLdIter = inLdSet.begin();
@@ -1105,7 +1123,7 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
     // Note that we don't check for the source being the
     // current node, as a self ld/st edge is not problematic
     if (!edge->moveDest(const_cast<ConstraintGraphNode *>(this)))
-      constraintGraph()->removeEdge(edge);
+      ConstraintGraph::removeEdge(edge);
   }
 
   // 2) Migrate all edges outgoing
@@ -1133,7 +1151,7 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
     if (edge->destNode()->parent() != parent())
       delEdge = !edge->moveSrc(const_cast<ConstraintGraphNode *>(this));
     if (delEdge)
-      constraintGraph()->removeEdge(edge);
+      ConstraintGraph::removeEdge(edge);
   }
   CGEdgeSet &outLdSet = src->outLoadStoreEdges();
   for (CGEdgeSetIterator outLdIter = outLdSet.begin();
@@ -1146,13 +1164,13 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
     // Note that we don't check for the dest being the
     // current node, as a self ld/st edg is not problematic
     if (!edge->moveSrc(const_cast<ConstraintGraphNode *>(this)))
-      constraintGraph()->removeEdge(edge);
+      ConstraintGraph::removeEdge(edge);
   }
 
   // 4) Add special copy edge from representative
   bool added = false;
   ConstraintGraphEdge *newEdge;
-  newEdge = constraintGraph()->addEdge(this,src,ETYPE_COPY,CQ_HZ,0,added);
+  newEdge = ConstraintGraph::addEdge(this,src,ETYPE_COPY,CQ_HZ,0,added);
   FmtAssert(added,("ConstraintGraph::merge: failed to add special copy edge"));
   newEdge->addFlags(CG_EDGE_PARENT_COPY);
 
@@ -1165,16 +1183,40 @@ void
 ConstraintGraphNode::print(FILE *file)
 {
   fprintf(file, "*CGNodeId: %d*\n ", _id);
-  _nodeInfo.print(_parentCG, file);
-  if (nodeInfo().nextOffset())
-    fprintf(file, " nextCGNodeId: %d", nodeInfo().nextOffset()->_id);
+  fprintf(file, "sym: ");
+  if (!cg()->inIPA()) {
+    (&St_Table[SYM_ST_IDX(_cg_st_idx)])->Print(stderr);
+  } else {
+    if (ST_IDX_level(SYM_ST_IDX(_cg_st_idx)) == GLOBAL_SYMTAB)
+      (&St_Table[SYM_ST_IDX(_cg_st_idx)])->Print(stderr);
+    else
+      fprintf(file, " <file: %d pu: %d level:%d idx:%d>\n",
+              FILE_NUM_ST_IDX(_cg_st_idx),
+              PU_NUM_ST_IDX(_cg_st_idx),
+              ST_IDX_level(SYM_ST_IDX(_cg_st_idx)), 
+              ST_IDX_index(SYM_ST_IDX(_cg_st_idx)));
+  }
+  fprintf(file, " offset: %d", _offset);
+  StInfo *stInfo = cg()->stInfo(_cg_st_idx);
+  if (stInfo->checkFlags(CG_ST_FLAGS_PREG)) {
+    PREG_NUM p = PREG_NUM(_offset / CG_PREG_SCALE);
+    fprintf(file, " preg:%d,%s", p, !Preg_Is_Dedicated(p) ? Preg_Name(p) 
+                                                          : "dedicated");
+  }
+  fprintf(file, "\n");
+  fprintf(file, " GBL: "); pointsTo(CQ_GBL).print(file);
+  fprintf(file, " HZ: ");  pointsTo(CQ_HZ).print(file);
+  fprintf(file, " DN: ");  pointsTo(CQ_DN).print(file);
+  fprintf(file, "\n");
+  if (nextOffset())
+    fprintf(file, " nextCGNodeId: %d", nextOffset()->_id);
   else
     fprintf(file, " nextCGNodeId: null");
   if (parent())
     fprintf(file, " parent: %d", parent()->_id);
   else
     fprintf(file, " parent: null"); 
-  fprintf(file, " inKCycle: %d\n",  nodeInfo().inKCycle());
+  fprintf(file, " inKCycle: %d\n",  inKCycle());
   fprintf(file, " inCopySkewCGEdges: ");
   for (CGEdgeSetIterator iter = _inCopySkewCGEdges.begin();
        iter != _inCopySkewCGEdges.end();
@@ -1227,16 +1269,39 @@ ConstraintGraphNode::print(FILE *file)
 void ConstraintGraphNode::print(ostream& ostr)
 {
   ostr << "CGNodeId: " << id();
-  _nodeInfo.print(_parentCG, ostr);
-  if (nodeInfo().nextOffset())
-    ostr << "nextCGNodeId: " << nodeInfo().nextOffset()->_id;
+  ostr << " sym: ";
+  if (!cg()->inIPA()) {
+    ostr << St_Table[SYM_ST_IDX(_cg_st_idx)];
+  } else {
+    if (ST_IDX_level(SYM_ST_IDX(_cg_st_idx)) == GLOBAL_SYMTAB)
+      ostr << St_Table[SYM_ST_IDX(_cg_st_idx)];
+    else
+      ostr << " <file: " << FILE_NUM_ST_IDX(_cg_st_idx) 
+           << " pu: " << PU_NUM_ST_IDX(_cg_st_idx)
+           << " level: " << ST_IDX_level(SYM_ST_IDX(_cg_st_idx))
+           << " idx: " << ST_IDX_index(SYM_ST_IDX(_cg_st_idx)) << ">" << endl;
+  }
+  ostr << "offset: " << _offset;
+  StInfo *stInfo = cg()->stInfo(_cg_st_idx);
+  if (stInfo->checkFlags(CG_ST_FLAGS_PREG)) {
+    PREG_NUM p = PREG_NUM(_offset / CG_PREG_SCALE);
+    ostr << " preg:" << p << ","
+         << (!Preg_Is_Dedicated(p) ? Preg_Name(p) : "dedicated");
+  }
+  ostr << endl;
+  ostr << "GBL: " << pointsTo(CQ_GBL)
+       << " HZ: " << pointsTo(CQ_HZ)
+       << " DN: " << pointsTo(CQ_DN)
+       << endl;
+  if (nextOffset())
+    ostr << "nextCGNodeId: " << nextOffset()->_id;
   else
     ostr << "nextCGNodeId: null";
   if (parent())
     ostr << " parent: " << parent()->_id;
   else
     ostr << " parent: null";
-  ostr << " inKCycle: " << nodeInfo().inKCycle();
+  ostr << " inKCycle: " << inKCycle();
   ostr << endl;
   ostr << "CGNode flags: [";
   if (checkFlags(CG_NODE_FLAGS_UNKNOWN))
@@ -1254,65 +1319,6 @@ void ConstraintGraphNode::print(ostream& ostr)
   if (checkFlags(CG_NODE_FLAGS_NOT_POINTER))
     ostr << " !PTR";
   ostr << " ]" << endl;
-}
-
-void
-ConstraintGraphNode::NodeInfo::print(ConstraintGraph *cg, FILE *file)
-{
-  fprintf(file, "sym: ");
-  if (!cg->inIPA()) {
-    (&St_Table[SYM_ST_IDX(_cg_st_idx)])->Print(stderr);
-  } else {
-    if (ST_IDX_level(SYM_ST_IDX(_cg_st_idx)) == GLOBAL_SYMTAB)
-      (&St_Table[SYM_ST_IDX(_cg_st_idx)])->Print(stderr);
-    else
-      fprintf(file, " <file: %d pu: %d level:%d idx:%d>\n",
-              FILE_NUM_ST_IDX(_cg_st_idx),
-              PU_NUM_ST_IDX(_cg_st_idx),
-              ST_IDX_level(SYM_ST_IDX(_cg_st_idx)), 
-              ST_IDX_index(SYM_ST_IDX(_cg_st_idx)));
-  }
-  fprintf(file, " offset: %d", _offset);
-  StInfo *stInfo = cg->stInfo(_cg_st_idx);
-  if (stInfo->checkFlags(CG_ST_FLAGS_PREG)) {
-    PREG_NUM p = PREG_NUM(_offset / CG_PREG_SCALE);
-    fprintf(file, " preg:%d,%s", p, !Preg_Is_Dedicated(p) ? Preg_Name(p) 
-                                                          : "dedicated");
-  }
-  fprintf(file, "\n");
-  fprintf(file, " GBL: "); pointsTo(CQ_GBL).print(file);
-  fprintf(file, " HZ: ");  pointsTo(CQ_HZ).print(file);
-  fprintf(file, " DN: ");  pointsTo(CQ_DN).print(file);
-  fprintf(file, "\n");
-}
-
-void
-ConstraintGraphNode::NodeInfo::print(ConstraintGraph *cg, ostream &ostr)
-{
-  ostr << " sym: ";
-  if (!cg->inIPA()) {
-    ostr << St_Table[SYM_ST_IDX(_cg_st_idx)];
-  } else {
-    if (ST_IDX_level(SYM_ST_IDX(_cg_st_idx)) == GLOBAL_SYMTAB)
-      ostr << St_Table[SYM_ST_IDX(_cg_st_idx)];
-    else
-      ostr << " <file: " << FILE_NUM_ST_IDX(_cg_st_idx) 
-           << " pu: " << PU_NUM_ST_IDX(_cg_st_idx)
-           << " level: " << ST_IDX_level(SYM_ST_IDX(_cg_st_idx))
-           << " idx: " << ST_IDX_index(SYM_ST_IDX(_cg_st_idx)) << ">" << endl;
-  }
-  ostr << "offset: " << _offset;
-  StInfo *stInfo = cg->stInfo(_cg_st_idx);
-  if (stInfo->checkFlags(CG_ST_FLAGS_PREG)) {
-    PREG_NUM p = PREG_NUM(_offset / CG_PREG_SCALE);
-    ostr << " preg:" << p << ","
-         << (!Preg_Is_Dedicated(p) ? Preg_Name(p) : "dedicated");
-  }
-  ostr << endl;
-  ostr << "GBL: " << pointsTo(CQ_GBL)
-       << " HZ: " << pointsTo(CQ_HZ)
-       << " DN: " << pointsTo(CQ_DN)
-       << endl;
 }
 
 void
@@ -1389,13 +1395,6 @@ void
 ConstraintGraphEdge::print(FILE *file) const
 {
   fprintf(file, "(src: %d dest: %d ", _srcCGNode->id(), _destCGNode->id());
-  _edgeInfo.print(file);
-  fprintf(file, ")");
-}
-
-void
-ConstraintGraphEdge::EdgeInfo::print(FILE *file) const
-{
   char *es, *qs;
   switch (_etype) {
   case ETYPE_COPY:
@@ -1432,6 +1431,7 @@ ConstraintGraphEdge::EdgeInfo::print(FILE *file) const
   if (checkFlags(CG_EDGE_PARENT_COPY))
     fprintf(file, " PCOPY");
   fprintf(file, " ]");
+  fprintf(file, ")");
 }
 
 UINT32
@@ -1490,7 +1490,7 @@ char *
 ConstraintGraphVCG::getNodeLabel(ConstraintGraphNode *cgNode)
 {
   char buf[256];
-  if (!_cg->inIPA()) {
+  if (!ConstraintGraph::inIPA()) {
     sprintf(buf, "%d:%s %d", cgNode->id(), 
             ST_name(SYM_ST_IDX(cgNode->cg_st_idx())), cgNode->offset());
   } else {
@@ -1541,7 +1541,7 @@ ConstraintGraphVCG::getNodeInfo(ConstraintGraphNode *cgNode)
 {
   stringstream ss;
   cgNode->print(ss);
-  cgNode->constraintGraph()->stInfo(cgNode->cg_st_idx())->print(ss);
+  cgNode->cg()->stInfo(cgNode->cg_st_idx())->print(ss);
   char *str = (char *)MEM_POOL_Alloc(&_memPool, strlen(ss.str().data())*2 + 1);
   const char *p = ss.str().data();
   char *q = str;
@@ -1593,7 +1593,8 @@ ConstraintGraphVCG::buildVCG()
   UINT32 offsetClassId = vcg.edgeClass("Offset",true/*hidden*/);
 
   // Iterate over all nodes in the graph
-  for (CGIdToNodeMapIterator iter = _cg->begin(); iter != _cg->end(); iter++) {
+  for (CGIdToNodeMapIterator iter = ConstraintGraph::begin(); 
+       iter != ConstraintGraph::end(); iter++) {
     ConstraintGraphNode *cgNode = iter->second;
     const char *srcTitle = NULL;
     nodeToTitleMapIter = nodeToTitleMap.find(cgNode);

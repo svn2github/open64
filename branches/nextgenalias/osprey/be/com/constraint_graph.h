@@ -31,7 +31,7 @@
 #define CG_ST_FLAGS_TEMP      0x00000040 // unnamed temp var for graph
 #define CG_ST_FLAGS_ESCLOCAL  0x00000080 // local with escaping addr
 #define CG_ST_FLAGS_SUMMARY   0x00000100 // node came from summary
-#define CG_ST_FLAGS_ELLIPSE   0x00000400 // VARARGS ellipse marker
+#define CG_ST_FLAGS_VARARGS   0x00000400 // VARARGS dummy node
 #define CG_ST_FLAGS_STACK     0x00000800 // alloca dynamic stack
 
 #define CG_ST_FLAGS_NOFIELD   0x00001000 // Do not specialize fields
@@ -112,6 +112,7 @@ typedef SparseBitSet<CGNodeId> PointsTo;
   
 using namespace std;
 using namespace __gnu_cxx;
+
 typedef enum {
   ETYPE_COPY,
   ETYPE_STORE,
@@ -177,7 +178,6 @@ private:
 typedef WorkList<ConstraintGraphEdge,CG_EDGE_IN_WORKLIST> EdgeWorkList;
 typedef WorkList<ConstraintGraphNode,CG_NODE_FLAGS_IN_WORKLIST> NodeWorkList;
 
-
 class ConstraintGraphEdge 
 {
 public:
@@ -185,44 +185,47 @@ public:
                       CGEdgeType etype, CGEdgeQual qual, INT32 sizeOrSkew)
     : _srcCGNode(src),
       _destCGNode(dest),
-      _edgeInfo(etype,qual,0,sizeOrSkew)
+      _etype(etype),
+      _qual(qual), 
+      _flags(0), 
+      _sizeOrSkew(sizeOrSkew)
   {}
 
-  CGEdgeType edgeType() const { return edgeInfo().etype(); }
+  CGEdgeType edgeType() const { return _etype; }
 
-  CGEdgeQual edgeQual() const { return edgeInfo().qual(); }
+  CGEdgeQual edgeQual() const { return _qual; }
 
   ConstraintGraphNode *srcNode() const { return _srcCGNode; }
   ConstraintGraphNode *destNode() const { return _destCGNode; }
 
   UINT32 size() const
   {
-    FmtAssert(edgeInfo().etype() != ETYPE_SKEW, ("Not valid for SKEW edge"));
-    return edgeInfo().sizeOrSkew();
+    FmtAssert(edgeType() != ETYPE_SKEW, ("Not valid for SKEW edge"));
+    return _sizeOrSkew;
   }
 
   UINT32 skew() const
   {
-    FmtAssert(edgeInfo().etype() == ETYPE_SKEW, ("Expecting a SKEW edge"));
-    return edgeInfo().sizeOrSkew();
+    FmtAssert(edgeType() == ETYPE_SKEW, ("Expecting a SKEW edge"));
+    return _sizeOrSkew;
   }
 
   void size(UINT32 s)
   {
-    FmtAssert(edgeInfo().etype() != ETYPE_SKEW, ("Not valid for SKEW edge"));
-    _edgeInfo.sizeOrSkew(s);
+    FmtAssert(edgeType() != ETYPE_SKEW, ("Not valid for SKEW edge"));
+    _sizeOrSkew = s;
   }
 
   void skew(UINT32 s)
   {
-    FmtAssert(edgeInfo().etype() == ETYPE_SKEW, ("Expecting a SKEW edge"));
-    _edgeInfo.sizeOrSkew(s);
+    FmtAssert(edgeType() == ETYPE_SKEW, ("Expecting a SKEW edge"));
+    _sizeOrSkew = s;
   }
 
-  UINT16 flags() const { return _edgeInfo.flags(); }
-  bool checkFlags(UINT16 flag) const { return _edgeInfo.checkFlags(flag); }
-  void addFlags(UINT16 flag) { _edgeInfo.addFlags(flag); }
-  void clearFlags(UINT16 flag) { _edgeInfo.clearFlags(flag); }
+  UINT16 flags(void) const { return _flags; }
+  bool checkFlags(UINT16 flag) const { return _flags & flag; }
+  void addFlags(UINT16 flag) { _flags |= flag; }
+  void clearFlags(UINT16 flag) { _flags &= ~flag; }
 
   // Move the edge to the new source/destination nodes.  Either new
   // source/destination nodes may be identical to the current source/
@@ -237,8 +240,8 @@ public:
   {
     size_t operator()(const ConstraintGraphEdge *k) const
     {
-      return (k->edgeInfo().hash() ^ (size_t)k->_srcCGNode ^ 
-              (size_t)k->_destCGNode);
+      return ((k->_etype << 28 ^ k->_sizeOrSkew << 16) ^ 
+              (size_t)k->_srcCGNode ^ (size_t)k->_destCGNode);
     }
   } hashCGEdge;
 
@@ -247,7 +250,8 @@ public:
     bool operator()(const ConstraintGraphEdge *k1,
                     const ConstraintGraphEdge *k2) const
     {
-      return (k1->edgeInfo() == k2->edgeInfo() &&
+      return ((k1->_etype == k2->_etype && 
+               k1->_sizeOrSkew == k2->_sizeOrSkew) &&
               k1->_srcCGNode == k2->_srcCGNode &&
               k1->_destCGNode == k2->_destCGNode);
     }
@@ -258,46 +262,12 @@ private:
   void srcNode(ConstraintGraphNode *n)  { _srcCGNode = n; }
   void destNode(ConstraintGraphNode *n) { _destCGNode = n; }
 
-  // The information in EdgeInfo is what gets passed from 
-  // IPL to IPA and then back to BE for each ConstraintGraphEdge
-  class EdgeInfo {
-  public:
-    EdgeInfo(CGEdgeType t, CGEdgeQual q, UINT16 f, UINT32 s)
-      : _etype(t), _qual(q), _flags(f), _sizeOrSkew(s) {}
-
-    CGEdgeType etype(void) const { return _etype; }
-    CGEdgeQual qual(void) const { return _qual; }
-    UINT16 flags(void) const { return _flags; }
-    bool checkFlags(UINT16 flag) const { return _flags & flag; }
-    void addFlags(UINT16 flag) { _flags |= flag; }
-    void clearFlags(UINT16 flag) { _flags &= ~flag; }
-    INT32 sizeOrSkew(void) const { return _sizeOrSkew; }
-    void sizeOrSkew(INT32 s) { _sizeOrSkew = s; }
-
-    bool operator==(const EdgeInfo &that) const
-    {
-       return (etype() == that.etype() && sizeOrSkew() == that.sizeOrSkew());
-    }
-   
-    size_t hash(void) const 
-    {
-      return (etype() << 28 ^ sizeOrSkew() << 16);
-    }
-
-    void print(FILE *file) const;
-
-  private:
-    CGEdgeType _etype;
-    CGEdgeQual _qual;
-    UINT16     _flags;
-    INT32      _sizeOrSkew;  // size for a copy/load/store edge, skew otherwise
-  };
-
-  const EdgeInfo &edgeInfo(void) const { return _edgeInfo; }
-
   ConstraintGraphNode *_srcCGNode;
   ConstraintGraphNode *_destCGNode;
-  EdgeInfo _edgeInfo;
+  CGEdgeType _etype;
+  CGEdgeQual _qual;
+  UINT16     _flags;
+  INT32      _sizeOrSkew;  // size for a copy/load/store edge, skew otherwise
 };
 
 class PointsToList {
@@ -328,45 +298,56 @@ typedef CGEdgeSet::const_iterator CGEdgeSetIterator;
 class ConstraintGraphNode 
 {
 public:
-  ConstraintGraphNode(CG_ST_IDX cg_st_idx, INT32 offset, MEM_POOL *memPool) :
-    _nodeInfo(cg_st_idx, offset, memPool),
+  ConstraintGraphNode(CG_ST_IDX cg_st_idx, INT32 offset, 
+                      ConstraintGraph *parentCG) :
+    _cg_st_idx(cg_st_idx),
+    _offset(offset),
+    _flags(0),
+    _inKCycle(0),
+    _pointsToList(NULL),
+    _revPointsToList(NULL),
+    _repParent(NULL),
+    _nextOffset(NULL),
+    _parentCG(parentCG),
     _id(0),
     _version(0),
     _maxAccessSize(0),
     _inCopySkewCGEdges(32),
     _outCopySkewCGEdges(32),
     _inLoadStoreCGEdges(32),
-    _outLoadStoreCGEdges(32),
-    _parentCG(NULL)
+    _outLoadStoreCGEdges(32)
   {}
 
   CGNodeId id() const { return _id; }
   void setId(CGNodeId id) { _id = id; }
 
-  UINT32 inKCycle(void) const { return _nodeInfo.inKCycle(); }
-  void inKCycle(UINT32 val) { _nodeInfo.inKCycle(val); }
+  UINT32 inKCycle(void) const { return _inKCycle; }
+  void inKCycle(UINT32 val)   { _inKCycle = val; }
 
   UINT8 maxAccessSize(void) const { return _maxAccessSize; }
 
-  CG_ST_IDX cg_st_idx() const { return nodeInfo().cg_st_idx(); }
+  CG_ST_IDX cg_st_idx() const { return _cg_st_idx; }
 
-  INT32 offset() const { return nodeInfo().offset(); }
+  INT32 offset() const { return _offset; }
 
-  ConstraintGraphNode *nextOffset() const { return _nodeInfo.nextOffset(); }
+  ConstraintGraphNode *nextOffset() const { return _nextOffset; }
 
   void nextOffset(ConstraintGraphNode *nextOffset)
   {
-    _nodeInfo.nextOffset(nextOffset);
+    _nextOffset = nextOffset;
   }
 
-  UINT16 flags() const { return _nodeInfo.flags(); }
-  bool checkFlags(UINT16 flag) const { return  _nodeInfo.checkFlags(flag); }
-  void addFlags(UINT16 flag) { _nodeInfo.addFlags(flag); }
+  UINT16 flags() const { return _flags; }
+  bool checkFlags(UINT16 flag) const { return _flags & flag; }
+  void addFlags(UINT16 flag) { _flags |= flag; }
+  void clearFlags(UINT8 flag) { _flags &= ~flag; }
 
-  ConstraintGraphNode *repParent(void) const { return _nodeInfo.repParent(); }
-  void repParent(ConstraintGraphNode *p) { _nodeInfo.repParent(p); }
+  ConstraintGraphNode *repParent() const { return _repParent; }
+  void repParent(ConstraintGraphNode *p) { _repParent = p; }
 
-  void clearFlags(UINT8 flag) { _nodeInfo.clearFlags(flag); }
+  // Merge two constraint graph nodes.  The 'src' is merged
+  // into the current node.
+  void merge(ConstraintGraphNode *src);
 
   ConstraintGraphNode *findRep(void)
   {
@@ -381,14 +362,12 @@ public:
     return cur;
   }
 
-  // Merge two constraint graph nodes.  The 'src' is merged
-  // into the current node.
-  void merge(ConstraintGraphNode *src);
+  // PointsTo accessor functions
 
   bool addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
-  { 
+  {
     node->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
-    bool change = findRep()->_nodeInfo.addPointsTo(node->id(),qual);
+    bool change = findRep()->_addPointsTo(node->id(),qual);
     if (change)
       addFlags(CG_NODE_FLAGS_PTSMOD);
     return change;
@@ -396,12 +375,12 @@ public:
 
   bool checkPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
   {
-    return findRep()->_nodeInfo.checkPointsTo(node->id(),qual);
+    return findRep()->_checkPointsTo(node->id(),qual);
   }
 
   bool unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual)
-  { 
-    bool change = findRep()->_nodeInfo.getPointsTo(qual).setUnion(ptsToSet);
+  {
+    bool change = findRep()->_getPointsTo(qual).setUnion(ptsToSet);
     if (change)
       addFlags(CG_NODE_FLAGS_PTSMOD);
     return change;
@@ -409,21 +388,21 @@ public:
 
   const PointsTo &pointsTo(CGEdgeQual qual)
   {
-    return findRep()->_nodeInfo.pointsTo(qual);
+    return findRep()->_pointsTo(qual);
   }
 
   bool addRevPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
   {
-    return findRep()->_nodeInfo.addRevPointsTo(node->id(),qual);
+    return findRep()->_addRevPointsTo(node->id(),qual);
   }
 
   const PointsTo &revPointsTo(CGEdgeQual qual)
   {
-    return findRep()->_nodeInfo.revPointsTo(qual);
+    return findRep()->_revPointsTo(qual);
   }
 
-  PointsToList *pointsToList(void)    { return _nodeInfo.pointsToList(); }
-  PointsToList *revPointsToList(void) { return _nodeInfo.revPointsToList(); }
+  PointsToList *pointsToList(void)    { return _pointsToList; }
+  PointsToList *revPointsToList(void) { return _revPointsToList; }
 
   // Try adding edge to the in edge set. If the edge already exists
   // return the existing edge, else insert the new edge and return it
@@ -526,8 +505,7 @@ public:
 
   ConstraintGraphNode *parent() { return findRep(); }
 
-  ConstraintGraph *constraintGraph() const { return _parentCG; }
-  void constraintGraph(ConstraintGraph *cg) { _parentCG = cg; }
+  ConstraintGraph *cg() const { return _parentCG; }
 
   void print(FILE *file);
   void print(ostream &str);
@@ -536,7 +514,7 @@ public:
   {
     size_t operator()(const ConstraintGraphNode *k) const
     {
-      return k->nodeInfo().hash();
+      return size_t(k->_cg_st_idx << 16 ^ k->_offset); 
     }
   } hashCGNode;
 
@@ -545,140 +523,66 @@ public:
     bool operator()(const ConstraintGraphNode *k1,
                     const ConstraintGraphNode *k2) const
     {
-      return k1->nodeInfo() == k2->nodeInfo();
+      return (k1->_cg_st_idx == k2->_cg_st_idx && k1->_offset == k2->_offset); 
     }
   } equalCGNode;
-  
-  static MEM_POOL *memPool;
 
 private:
-
-  // The information in NodeInfo is what gets passed from 
-  // IPL to IPA and then back to BE for each ConstraintGraphNode
-  class NodeInfo
+  bool _addPointsTo(CGNodeId id, CGEdgeQual qual)
   {
-  public:
-    NodeInfo(CG_ST_IDX cg_st_idx, INT32 offset, MEM_POOL *memPool) :
-      _cg_st_idx(cg_st_idx),
-      _offset(offset),
-      _flags(0),
-      _inKCycle(0),
-      _pointsToList(NULL),
-      _revPointsToList(NULL),
-      _repParent(NULL),
-      _nextOffset(NULL)
-    {}
+    PointsTo &pts = _getPointsTo(qual,&_pointsToList);
+    return pts.setBit(id);
+  }
 
-    CG_ST_IDX cg_st_idx() const { return _cg_st_idx; }
+  bool _addRevPointsTo(CGNodeId id, CGEdgeQual qual)
+  {
+    PointsTo &pts = _getPointsTo(qual,&_revPointsToList);
+    return pts.setBit(id);
+  }
 
-    INT32 offset() const { return _offset; }
+  bool _checkPointsTo(CGNodeId id, CGEdgeQual qual)
+  {
+    PointsTo *pts = _findPointsTo(qual,_pointsToList);
+    return pts ? pts->isSet(id) : false;
+  }
 
-    UINT16 flags() const { return _flags; }
-    bool checkFlags(UINT16 flag) const { return _flags & flag; }
-    void addFlags(UINT16 flag) { _flags |= flag; }
-    void clearFlags(UINT8 flag) { _flags &= ~flag; }
+  PointsTo &_getPointsTo(CGEdgeQual qual)
+  {
+    return _getPointsTo(qual,&_pointsToList);
+  }
 
-    ConstraintGraphNode *repParent() const { return _repParent; }
-    void repParent(ConstraintGraphNode *p) { _repParent = p; }
+  const PointsTo &_pointsTo(CGEdgeQual qual) const {
+    PointsTo *pts = _findPointsTo(qual,_pointsToList);
+    return (pts) ? *pts : emptyPointsToSet;
+  }
 
-    ConstraintGraphNode *nextOffset() const { return _nextOffset; }
+  const PointsTo &_revPointsTo(CGEdgeQual qual) const {
+     PointsTo *pts = _findPointsTo(qual,_revPointsToList);
+     return (pts) ? *pts : emptyPointsToSet;
+  }
 
-    void nextOffset(ConstraintGraphNode *nextOffset)
-    {
-      _nextOffset = nextOffset;
-    }
+  PointsTo *_findPointsTo(CGEdgeQual qual, PointsToList *ptl) const
+  {
+    PointsToList *cur = ptl;
+    while (cur && cur->qual() != qual)
+      cur = cur->next();
+    return cur?cur->pointsTo():NULL;
+  }
 
-    UINT32 inKCycle(void) const { return _inKCycle; }
-    void inKCycle(UINT32 val) { _inKCycle = val; }
+  PointsTo &_getPointsTo(CGEdgeQual qual, PointsToList **ptl);
 
-    bool addPointsTo(CGNodeId id, CGEdgeQual qual)
-    {
-      PointsTo &pts = getPointsTo(qual,&_pointsToList);
-      return pts.setBit(id);
-    }
-
-    bool addRevPointsTo(CGNodeId id, CGEdgeQual qual)
-    {
-      PointsTo &pts = getPointsTo(qual,&_revPointsToList);
-      return pts.setBit(id);
-    }
-
-    bool checkPointsTo(CGNodeId id, CGEdgeQual qual)
-    {
-      PointsTo *pts = findPointsTo(qual,_pointsToList);
-      return pts ? pts->isSet(id) : false;
-    }
-
-    PointsTo &getPointsTo(CGEdgeQual qual)
-    {
-      return getPointsTo(qual,&_pointsToList);
-    }
-
-    const PointsTo &pointsTo(CGEdgeQual qual) const {
-      PointsTo *pts = findPointsTo(qual,_pointsToList);
-      return (pts) ? *pts : emptyPointsToSet;
-    }
-
-    const PointsTo &revPointsTo(CGEdgeQual qual) const {
-       PointsTo *pts = findPointsTo(qual,_revPointsToList);
-       return (pts) ? *pts : emptyPointsToSet;
-    }
-
-    PointsToList *pointsToList(void)    { return _pointsToList; }
-    PointsToList *revPointsToList(void) {return _revPointsToList; }
-
-    size_t hash() const 
-    { 
-      return size_t(_cg_st_idx << 16 ^ _offset); 
-    }
-
-    bool operator==(const NodeInfo& rhs) const 
-    { 
-      return (_cg_st_idx == rhs._cg_st_idx && _offset == rhs._offset); 
-    }
-
-    void print(ConstraintGraph *cg, FILE *file);
-    void print(ConstraintGraph *cg, ostream& ostr);
-
-    PointsTo *findPointsTo(CGEdgeQual qual, PointsToList *ptl) const
-    {
-      PointsToList *cur = ptl;
-      while (cur && cur->qual() != qual)
-        cur = cur->next();
-      return cur?cur->pointsTo():NULL;
-    }
-
-    PointsTo &getPointsTo(CGEdgeQual qual, PointsToList **ptl)
-    {
-      PointsTo *pts = findPointsTo(qual,*ptl);
-      if (!pts) {
-        MEM_POOL *memPool = ConstraintGraphNode::memPool;
-        PointsToList *newPTL = CXX_NEW(PointsToList(qual,memPool),memPool);
-        PointsToList *tmp = *ptl;
-        *ptl = newPTL;
-        newPTL->next(tmp);
-        pts = newPTL->pointsTo();
-      }
-      return *pts;
-    }
-
-  private:
-    CG_ST_IDX _cg_st_idx;
-    INT32  _offset;
-    UINT16 _flags;
-    UINT32 _inKCycle;
-    PointsToList *_pointsToList;
-    PointsToList *_revPointsToList;
-    // For nodes that are unified
-    ConstraintGraphNode *_repParent;
-    // Nodes with different offset off of same base maintained in sorted order
-    ConstraintGraphNode *_nextOffset;
-    static const PointsTo emptyPointsToSet;
-  };
-
-  const NodeInfo& nodeInfo() const { return _nodeInfo; }
-
-  NodeInfo _nodeInfo;
+  CG_ST_IDX _cg_st_idx;
+  INT32  _offset;
+  UINT16 _flags;
+  UINT32 _inKCycle;
+  PointsToList *_pointsToList;
+  PointsToList *_revPointsToList;
+  // For nodes that are unified
+  ConstraintGraphNode *_repParent;
+  // Nodes with different offset off of same base maintained in sorted order
+  ConstraintGraphNode *_nextOffset;
+  // The ConstraintGraph to which this node belongs
+  ConstraintGraph *_parentCG;
   CGNodeId _id;
   UINT8    _version;
   // Max outgoing copy/load/store access size, used during
@@ -692,9 +596,8 @@ private:
   // In/out load/store edges
   CGEdgeSet _inLoadStoreCGEdges;
   CGEdgeSet _outLoadStoreCGEdges;
-  
-  // The ConstraintGraph to which this node belongs
-  ConstraintGraph *_parentCG;
+
+  static const PointsTo emptyPointsToSet;
 };
 
 /* Iterator to abstract access to points-to sets */
@@ -804,46 +707,100 @@ typedef CallSiteMap::const_iterator CallSiteIterator;
 class ConstraintGraph 
 {
 public:
-  ConstraintGraph(WN *entryWN, MEM_POOL *mpool = Malloc_Mem_Pool,
-                  UINT32 minSize = 1024):
-    _nextCGNodeId(1),
-    _nextCallSiteId(1),
-    _cgIdToNodeMap(minSize), 
-    _cgNodeToIdMap(minSize),
-    _varArgs(NULL),
-//    _blackHoleId(0),
-    _memPool(mpool)
+  static ConstraintGraphNode *notAPointer(void)
+  { 
+    return notAPointerCGNode; 
+  }
+
+  static CGNodeId blackHoleId(void)           { return blackHoleCGNode->id(); }
+  static ConstraintGraphNode *blackHole(void) { return blackHoleCGNode; }
+
+  static void inIPA(bool ipa) { isIPA = ipa; }
+  static bool inIPA() { return isIPA; }
+
+  static void reset()
   {
+    notAPointerCGNode = NULL;
+    blackHoleCGNode = NULL;
+    nextCGNodeId = 1;
+    cgIdToNodeMap.clear();
+  }
+
+  static ConstraintGraphNode *cgNode(CGNodeId cgNodeId)
+  {
+    CGIdToNodeMapIterator iter = cgIdToNodeMap.find(cgNodeId);
+    if (iter != cgIdToNodeMap.end())
+      return iter->second;
+    return NULL;
+  }
+
+  // To facilitate traversal of the constraint graph
+  static CGIdToNodeMapIterator begin() { return cgIdToNodeMap.begin(); }
+  static CGIdToNodeMapIterator end()   { return cgIdToNodeMap.end(); }
+
+  static ConstraintGraphEdge *addEdge(ConstraintGraphNode *src,
+                                      ConstraintGraphNode *dest,
+                                      CGEdgeType etype, CGEdgeQual qual,
+                                      UINT32 size, bool &added);
+
+  static void removeEdge(ConstraintGraphEdge *edge);
+
+  static void adjustPointsToForKCycle(ConstraintGraphNode *cgNode);
+  static void adjustPointsToForKCycle(UINT32 kCycle,const PointsTo &src,
+                                      PointsTo &dst);
+
+  // To build ConstraintGraphs at IPL/BE
+  ConstraintGraph(WN *entryWN, MEM_POOL *mPool, UINT32 minSize = 1024):
+    _nextCallSiteId(1),
+    _varArgs(NULL),
+    _cgNodeToIdMap(minSize),
+    _cgStInfoMap(minSize),
+    _memPool(mPool)
+  {
+    if (notAPointerCGNode == NULL) {
+      notAPointerCGNode = genTempCGNode();
+      notAPointerCGNode->addFlags(CG_NODE_FLAGS_NOT_POINTER);
+    }
+    if (blackHoleCGNode == NULL) {
+      ST *bhST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgBlackHole",
+                                       CLASS_VAR, SCLASS_AUTO);
+      blackHoleCGNode = getCGNode(CG_ST_st_idx(bhST),0);
+    }
     if (maxTypeSize == 0)
       maxTypeSize = findMaxTypeSize();
-    if (ConstraintGraphNode::memPool != mpool)
-      ConstraintGraphNode::memPool = mpool;
     Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY, 
             ("Expecting FUNC_ENTRY when building ConstraintGraph"));
-    _notAPointer = genTempCGNode();
-    _notAPointer->addFlags(CG_NODE_FLAGS_NOT_POINTER);
+    edgeMemPool = mPool;
     buildCG(entryWN);
   }
 
-  UINT32 totalCGNodes() { return _nextCGNodeId; }
+  // To build ConstraintGraphs during IPA
+  ConstraintGraph(MEM_POOL *mPool, UINT32 minSize = 1024):
+    _nextCallSiteId(1),
+    _cgNodeToIdMap(minSize),
+    _cgStInfoMap(minSize),
+    _memPool(mPool)
+  {
+    if (notAPointerCGNode == NULL) {
+      notAPointerCGNode = genTempCGNode();
+      notAPointerCGNode->addFlags(CG_NODE_FLAGS_NOT_POINTER);
+    }
+    if (blackHoleCGNode == NULL) {
+      ST *bhST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgBlackHole",
+                                       CLASS_VAR, SCLASS_AUTO);
+      blackHoleCGNode = getCGNode(CG_ST_st_idx(bhST),0);
+    }
+    if (edgeMemPool == NULL)
+      edgeMemPool = mPool;
+  }
+
+  UINT32 totalCGNodes() const { return nextCGNodeId; }
 
   StInfo *stInfo(CG_ST_IDX cg_st_idx) const 
   { 
     CGStInfoMapIterator stIter = _cgStInfoMap.find(cg_st_idx);
     if (stIter != _cgStInfoMap.end())
       return stIter->second;
-    return NULL;
-  }
-
-  // To facilitate traversal of the constraint graph
-  CGIdToNodeMapIterator begin() { return _cgIdToNodeMap.begin(); }
-  CGIdToNodeMapIterator end()   { return _cgIdToNodeMap.end(); }
-
-  ConstraintGraphNode *cgNode(CGNodeId cgNodeId)
-  {
-    CGIdToNodeMapIterator iter = _cgIdToNodeMap.find(cgNodeId);
-    if (iter != _cgIdToNodeMap.end())
-      return iter->second;
     return NULL;
   }
 
@@ -871,32 +828,12 @@ public:
   // mode.  Returns true of the solution is complete, false otherwise
   bool nonIPASolver();
 
-  void adjustPointsToForKCycle(ConstraintGraphNode *cgNode);
-  void adjustPointsToForKCycle(UINT32 kCycle,const PointsTo &src,PointsTo &dst);
-
-  ConstraintGraphEdge *addEdge(ConstraintGraphNode *src,
-                                ConstraintGraphNode *dest,
-                                CGEdgeType etype, CGEdgeQual qual,
-                                UINT32 size,
-                                bool &added);
-  void removeEdge(ConstraintGraphEdge *edge);
-
   bool exprMayPoint(WN *const wn);
-
-  CGNodeId blackHoleId(void)
-  {
-    return _blackHoleId!=0?_blackHoleId:createBlackHole();
-  }
-  void resetBlackHoleId(void)
-  {
-    _blackHoleId = 0;
-  }
 
   list<CGNodeId> &parameters(void) { return _parameters; }
   list<CGNodeId> &returns(void) { return _returns; }
 
-  static void inIPA(bool ipa) { _inIPA = ipa; }
-  static bool inIPA() { return _inIPA; }
+  MEM_POOL *memPool() { return _memPool; }
 
 private:
 
@@ -904,7 +841,23 @@ private:
   static UINT32 maxTypeSize;
 
   // Are we in IPA?
-  static bool _inIPA;
+  static bool isIPA;
+
+  // Generate unique CGNodeId per procedure
+  static CGNodeId nextCGNodeId;
+
+  // Set of ConstraintGraphNodes
+  static CGIdToNodeMap cgIdToNodeMap;
+
+  // Node to denote a non-pointer
+  static ConstraintGraphNode *notAPointerCGNode;
+
+  // Created by the solver.  The id() of the node used
+  // to provide boundary conditions for incomplete programs
+  static ConstraintGraphNode *blackHoleCGNode;
+
+  // Pool to hold all edges, since edges span multiple ConstraintGraphs
+  static MEM_POOL *edgeMemPool;
 
   // Constraint graph build methods
 
@@ -928,24 +881,13 @@ private:
 
   UINT32 findMaxTypeSize();
 
-  CGNodeId createBlackHole(void);
-
   // Data Members
-
-  // Generate unique CGNodeId per procedure
-  CGNodeId _nextCGNodeId;
 
   // Generate unique CallSiteId per procedure
   CallSiteId _nextCallSiteId;
 
-  // Node to denote a non-pointer
-  ConstraintGraphNode *_notAPointer;
-
   // Node to denote varargs
   ConstraintGraphNode *_varArgs;
-
-  // Set of ConstraintGraphNodes
-  CGIdToNodeMap _cgIdToNodeMap;
 
   // Map a ConstraintGraphNode, represented uniquely using (CG_ST_IDX, offset)
   // to the node id
@@ -954,16 +896,12 @@ private:
   // Provide additional per st info
   CGStInfoMap _cgStInfoMap;
 
-  // Created by the solver.  The id() of the node used
-  // to provide boundary conditions for incomplete programs
-  static CGNodeId _blackHoleId;
+  // Map callsites in this function
+  CallSiteMap _callSiteMap;
 
   // The formal parameters and return CGNodes for this function
   list<CGNodeId> _parameters;
   list<CGNodeId> _returns;
-
-  // Map callsites in this function
-  CallSiteMap _callSiteMap;
 
   MEM_POOL *_memPool;
 };
@@ -971,19 +909,18 @@ private:
 class ConstraintGraphVCG 
 {
 public:
-  static void dumpVCG(ConstraintGraph *cg, const char *fileNamePrefix)
+  static void dumpVCG(const char *fileNamePrefix)
   {
-    ConstraintGraphVCG vcg(cg, fileNamePrefix);
+    ConstraintGraphVCG vcg(fileNamePrefix);
     vcg.buildVCG();
   }
     
 private:
 
-  ConstraintGraphVCG(ConstraintGraph *cg, const char *fileNamePrefix)
+  ConstraintGraphVCG(const char *fileNamePrefix)
   {
-     MEM_POOL_Initialize(&_memPool, "AliasAnalyzer_pool", FALSE);
-     _fileNamePrefix = fileNamePrefix;
-     _cg = cg;
+    MEM_POOL_Initialize(&_memPool, "AliasAnalyzer_pool", FALSE);
+    _fileNamePrefix = fileNamePrefix;
   }
 
   char *getNodeLabel(ConstraintGraphNode *cgNode);
@@ -995,7 +932,6 @@ private:
   void buildVCG();
 
   const char *_fileNamePrefix;
-  ConstraintGraph *_cg;
   MEM_POOL _memPool;
 };
 

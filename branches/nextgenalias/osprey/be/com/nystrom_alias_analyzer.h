@@ -95,9 +95,6 @@ public:
    // Invoked during post-ipa be when WN to CGNodeId map exists
    NystromAliasAnalyzer(ALIAS_CONTEXT &);
 
-   // Invoked during ipa
-   NystromAliasAnalyzer();
-
    ~NystromAliasAnalyzer();
 
    // Implement base class virtual methods

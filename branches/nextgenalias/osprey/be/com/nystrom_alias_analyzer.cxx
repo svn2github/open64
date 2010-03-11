@@ -32,16 +32,6 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac)
   Write_ALIAS_CGNODE_Map = TRUE;
 }
 
-NystromAliasAnalyzer::NystromAliasAnalyzer()
-{
-  // Create ConstraintGraphs from the summary information generated at IPL
-
-  ConstraintGraph::inIPA(true);
-
-  // Set flag to dump the WN to CGNodeId map during Write_PU_Info
-  Write_ALIAS_CGNODE_Map = TRUE;
-}
-
 NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
                                            WN *entryWN)
   : AliasAnalyzer(),
@@ -61,7 +51,7 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_VCG_FLAG)) {
     char buf[1024];
     sprintf(buf,"%s_initial",ST_name(WN_st(entryWN)));
-    ConstraintGraphVCG::dumpVCG(_constraintGraph, buf);
+    ConstraintGraphVCG::dumpVCG(buf);
   }
 
   if (!_constraintGraph->nonIPASolver())
@@ -70,7 +60,7 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_VCG_FLAG)) {
     char buf[1024];
     sprintf(buf,"%s_final",ST_name(WN_st(entryWN)));
-    ConstraintGraphVCG::dumpVCG(_constraintGraph, buf);
+    ConstraintGraphVCG::dumpVCG(buf);
   }
 
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG)) {
@@ -85,7 +75,11 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
   Write_ALIAS_CGNODE_Map = TRUE;
 }
 
-NystromAliasAnalyzer::~NystromAliasAnalyzer() {}
+NystromAliasAnalyzer::~NystromAliasAnalyzer() 
+{
+  // Clear the static members of the ConstraintGraph
+  ConstraintGraph::reset();
+}
 
 ALIAS_RESULT
 NystromAliasAnalyzer::aliased(AliasTag tag1, AliasTag tag2)
@@ -171,8 +165,8 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
           _aliasTagToCGNodeIdMap[aliasTag] = node->id();
           // Add self reference and black hole if required
           aliasTagInfo->pointsTo().setBit(node->id());
-          if (node->checkPointsTo(cg->cgNode(cg->blackHoleId()),CQ_GBL))
-            aliasTagInfo->pointsTo().setBit(cg->blackHoleId());
+          if (node->checkPointsTo(ConstraintGraph::blackHole(),CQ_GBL))
+            aliasTagInfo->pointsTo().setBit(ConstraintGraph::blackHoleId());
         }
         else {
           aliasTagInfo->pointsTo().setUnion(node->pointsTo(CQ_GBL));
@@ -201,8 +195,8 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
           if (direct) {
             // Add self reference and black hole if required
             aliasTagInfo->pointsTo().setBit(node->id());
-            if (node->checkPointsTo(cg->cgNode(cg->blackHoleId()),CQ_GBL))
-              aliasTagInfo->pointsTo().setBit(cg->blackHoleId());
+            if (node->checkPointsTo(ConstraintGraph::blackHole(),CQ_GBL))
+              aliasTagInfo->pointsTo().setBit(ConstraintGraph::blackHoleId());
           }
           else {
             aliasTagInfo->pointsTo().setUnion(node->pointsTo(CQ_GBL));
@@ -328,7 +322,7 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       if (id == 0)
         continue;
 
-      ConstraintGraphNode *cgNode = _constraintGraph->cgNode(id);
+      ConstraintGraphNode *cgNode = ConstraintGraph::cgNode(id);
       if (cgNode->parent())
         cgNode = cgNode->parent();
       FmtAssert(cgNode != NULL, ("CGNodeId : %d not mapped to a "
@@ -349,7 +343,7 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
 
       // If the points-to set of the alias tag is empty at this point then
       // either we have an escape analysis bug or an uninitialized variable.
-      ConstraintGraph *cg = cgNode->constraintGraph();
+      ConstraintGraph *cg = cgNode->cg();
       if (aliasTagInfo->pointsTo().isEmpty() &&
           !cg->stInfo(cgNode->cg_st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
         aliasTagInfo->pointsTo().setBit(cgNode->id());
