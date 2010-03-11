@@ -103,16 +103,31 @@ NystromAliasAnalyzer::aliased(AliasTag tag1, AliasTag tag2)
   if (checkQueryFile((UINT32)Current_PU_Count(),tag1,tag2,result))
     return result ? POSSIBLY_ALIASED : NOT_ALIASED;
 
+  // First we check the query cache to determine if this query
+  // has been made of this pair of tags before.  Presumably this
+  // will be faster than actually performing the set intersection
+  // for redundant queries and that savings will compensate for
+  // the additional hash_map lookup for "new" query.
+  QueryCacheKey key(tag1,tag2);
+  QueryCacheIterator iter = _queryCacheMap.find(key);
+  if (iter != _queryCacheMap.end()) {
+    if (Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
+      fprintf(stderr,"Found <%d,%d> in cache: %d\n",tag1,tag2,iter->second);
+    return iter->second ? POSSIBLY_ALIASED : NOT_ALIASED;
+  }
+
   PointsTo& ptsSet1 = pointsTo(tag1);
   PointsTo& ptsSet2 = pointsTo(tag2);
   FmtAssert(!ptsSet1.isEmpty(),
             ("Points-to set of alias tag %d is unexpectedly empty",tag1));
   FmtAssert(!ptsSet2.isEmpty(),
             ("Points-to set of alias tag %d is unexpectedly empty",tag2));
-  if (ptsSet1.intersect(ptsSet2))
-    return POSSIBLY_ALIASED;
+  result = ptsSet1.intersect(ptsSet2);
 
-  return NOT_ALIASED;
+  // Update the query cache
+  _queryCacheMap[key] = result;
+
+  return result ? POSSIBLY_ALIASED : NOT_ALIASED;
 }
 
 /*
@@ -209,7 +224,7 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
     }
     if (aliasTag != InvalidAliasTag &&
         Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
-      fprintf(stderr, "new aliasTag %d for %s <%d,%d,%d> with aliasTagInfo: ",
+      fprintf(stderr, "genAliasTag: new aliasTag %d for %s <%d,%d,%d> with aliasTagInfo: ",
               (UINT32)aliasTag,ST_name(ST_st_idx(st)),(INT32)ST_st_idx(st),(INT32)offset,(INT32)size);
       _aliasTagInfo[aliasTag]->print(stderr);
       fprintf(stderr, "\n");
@@ -280,12 +295,87 @@ NystromAliasAnalyzer::meet(AliasTag dstTag, AliasTag srcTag)
     retTag = newAliasTag();
   mergePointsTo(retTag,srcTag);
   if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
-    fprintf(stderr,"Meet of aliasTag %d, aliasTag %d:",dstTag,srcTag);
+    fprintf(stderr,"meet: aliasTag %d, aliasTag %d ->",dstTag,srcTag);
     fprintf(stderr," result aliasTag %d [",retTag);
     pointsTo(retTag).print(stderr);
     fprintf(stderr,"]\n");
   }
   return retTag;
+}
+
+void
+NystromAliasAnalyzer::transferAliasTag(WN *dstWN, const WN *srcWN)
+{
+  // First, we check the alias tag map to see if an aliasTag is
+  // easily retrievable.
+  AliasTag tag = getAliasTag(srcWN);
+  if (tag == InvalidAliasTag) {
+    // Now, provided that the target operation is one for which we
+    // are interested in providing an alias tag, we will work a bit
+    // harder to manufacture an aliasTag.  If the source node
+    // as a CGNode, then we will create new AliasTag for the target
+    // node.
+    const OPCODE   opc = WN_opcode(dstWN);
+    const OPERATOR opr = OPCODE_operator(opc);
+
+    // We only consider indirects; direct references are handled
+    // by genAliasTag called during Transfer_alias_tag
+    if (OPERATOR_is_scalar_istore(opr) ||
+        OPERATOR_is_scalar_iload(opr) ||
+        opr == OPR_MSTORE ||
+        opr == OPR_MLOAD)
+    {
+      CGNodeId id;
+      // For ILOADS, the points-to set is associated with the address
+      // of the iload. So get the CGNode corresponding to the address WN.
+      const OPCODE   srcOpc = WN_opcode(srcWN);
+      const OPERATOR srcOpr = OPCODE_operator(srcOpc);
+      if (srcOpr == OPR_ILDBITS || srcOpr == OPR_MLOAD || srcOpr == OPR_ILOAD)
+        id = WN_MAP_CGNodeId_Get(WN_kid0(srcWN));
+      else
+        id = WN_MAP_CGNodeId_Get(srcWN);
+
+      // WN not mapped to any CGNodes
+      if (id == 0)
+        return;
+
+      ConstraintGraphNode *cgNode = _constraintGraph->cgNode(id);
+      if (cgNode->parent())
+        cgNode = cgNode->parent();
+      FmtAssert(cgNode != NULL, ("CGNodeId : %d not mapped to a "
+          "ConstraintGraphNode\n", id));
+
+      // Any node flagged as unknown is a bad situation, we need
+      // to prevent generating an AliasTag for this node
+      if (cgNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+        return;
+
+      tag = newAliasTag();
+      AliasTagInfo *aliasTagInfo = _aliasTagInfo[tag];
+
+      // Union all the points-to sets
+      aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_GBL));
+      aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_DN));
+      aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_HZ));
+
+      // If the points-to set of the alias tag is empty at this point then
+      // either we have an escape analysis bug or an uninitialized variable.
+      ConstraintGraph *cg = cgNode->cg();
+      if (aliasTagInfo->pointsTo().isEmpty() &&
+          !cg->stInfo(cgNode->cg_st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
+        aliasTagInfo->pointsTo().setBit(cgNode->id());
+
+      WN_MAP_CGNodeId_Set(dstWN,id);
+
+      if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+        fprintf(stderr, "transferAliasTag: mapping aliasTag %d to aliasTagInfo: ",
+                (UINT32)tag);
+        _aliasTagInfo[tag]->print(stderr);
+        fprintf(stderr, "\n");
+      }
+    }
+  }
+  setAliasTag(dstWN,tag);
 }
 
 // Map the WNs to an AliasTag. Each AliasTag in turn is mapped to
@@ -295,7 +385,7 @@ void
 NystromAliasAnalyzer::createAliasTags(WN *entryWN)
 {
   for (WN_ITER *wni = WN_WALK_TreeIter(entryWN);
-       wni; wni = WN_WALK_TreeNext(wni))
+      wni; wni = WN_WALK_TreeNext(wni))
   {
     WN *wn = WN_ITER_wn(wni);
     const OPCODE   opc = WN_opcode(wn);
@@ -305,9 +395,9 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
 
     // We only consider indirects; direct references are handled by genAliasTag
     // called during Transfer_alias_tag
-    if (OPERATOR_is_scalar_istore(opr) || 
+    if (OPERATOR_is_scalar_istore(opr) ||
         OPERATOR_is_scalar_iload(opr) ||
-        opr == OPR_MSTORE || 
+        opr == OPR_MSTORE ||
         opr == OPR_MLOAD)
     {
       CGNodeId id;
@@ -326,7 +416,7 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       if (cgNode->parent())
         cgNode = cgNode->parent();
       FmtAssert(cgNode != NULL, ("CGNodeId : %d not mapped to a "
-                "ConstraintGraphNode\n", id));
+          "ConstraintGraphNode\n", id));
 
       // Any node flagged as unknown is a bad situation, we need
       // to prevent generating an AliasTag for this node
@@ -368,26 +458,26 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       FmtAssert(cs != NULL, ("CallSiteId : %d not mapped to a CallSite\n", id));
 
       // Ignore if marked UNKNOWN or has no mod/ref information
-      if (cs->checkFlags(CS_FLAGS_UNKNOWN) || 
+      if (cs->checkFlags(CS_FLAGS_UNKNOWN) ||
           !cs->checkFlags(CS_FLAGS_HAS_MOD_REF))
         continue;
 
       aliasTag = newCallAliasTag();
-      CallAliasTagInfo *callAliasTagInfo = 
-                       (CallAliasTagInfo *)_aliasTagInfo[aliasTag];
+      CallAliasTagInfo *callAliasTagInfo =
+          (CallAliasTagInfo *)_aliasTagInfo[aliasTag];
 
       callAliasTagInfo->mod().setUnion(cs->mod());
       callAliasTagInfo->ref().setUnion(cs->ref());
-    } 
+    }
     else
       continue;
-       
+
     // Map the WN to the new aliasTag
     setAliasTag(wn, aliasTag);
 
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
-      fprintf(stderr, "mapping aliasTag %d to aliasTagInfo: ",
-          (UINT32)aliasTag);
+      fprintf(stderr, "createAliasTag: mapping aliasTag %d to aliasTagInfo: ",
+              (UINT32)aliasTag);
       _aliasTagInfo[aliasTag]->print(stderr);
       fprintf(stderr, "\n");
     }

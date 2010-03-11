@@ -38,6 +38,20 @@ typedef hash_map<StToAliasTagKey, AliasTag,
                  hashStToAliasTagKey,equalStToAliasTagKey> StToAliasTagMap;
 typedef StToAliasTagMap::iterator StToAliasTagMapIterator;
 
+typedef pair<AliasTag,AliasTag> QueryCacheKey;
+typedef struct {
+  bool operator()(const QueryCacheKey &k1,
+                const QueryCacheKey &k2) const
+  { return k1.first == k2.first && k1.second == k2.second; }
+} equalQueryCacheKey;
+typedef struct {
+  size_t operator() (const QueryCacheKey &k) const
+  { return k.first << 16 ^ k.second; }
+} hashQueryCacheKey;
+typedef hash_map<QueryCacheKey, bool,
+                 hashQueryCacheKey,equalQueryCacheKey> QueryCacheMap;
+typedef QueryCacheMap::iterator QueryCacheIterator;
+
 // Class to map AliasTags to points-to set
 class AliasTagInfo 
 {
@@ -128,6 +142,8 @@ public:
 
    AliasTag meet(AliasTag dstTag, AliasTag srcTag);
 
+   void transferAliasTag(WN *dstWN, const WN *srcWN);
+
    ConstraintGraph *constraintGraph() const { return _constraintGraph; }
 
    CGNodeId cgNodeId(AliasTag tag) 
@@ -183,6 +199,11 @@ private:
    // so that during CODEREP -> WHIRL phase we can attach the original
    // CGNodeIds to the new WHIRL nodes from their AliasTags
    hash_map<UINT32, CGNodeId>   _aliasTagToCGNodeIdMap;
+
+   // Cache the results of alias queries to avoid set intersections
+   // on repeat queries of the same tags, presumably the map lookup
+   // will be faster.
+   QueryCacheMap  _queryCacheMap;
 };
 
 #endif

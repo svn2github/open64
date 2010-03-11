@@ -19,6 +19,7 @@ ConstraintGraphNode *ConstraintGraph::notAPointerCGNode = NULL;
 ConstraintGraphNode *ConstraintGraph::blackHoleCGNode = NULL;
 CGIdToNodeMap ConstraintGraph::cgIdToNodeMap(1024);
 const PointsTo ConstraintGraphNode::emptyPointsToSet;
+const CGEdgeSet ConstraintGraphNode::emptyCGEdgeSet;
 
 template <typename T>
 static inline
@@ -1021,7 +1022,7 @@ ConstraintGraphNode::_getPointsTo(CGEdgeQual qual, PointsToList **ptl)
 {
   PointsTo *pts = _findPointsTo(qual,*ptl);
   if (!pts) {
-    MEM_POOL *memPool = _parentCG->memPool();
+    MEM_POOL *memPool = cg()->memPool();
     PointsToList *newPTL = CXX_NEW(PointsToList(qual,memPool),memPool);
     PointsToList *tmp = *ptl;
     *ptl = newPTL;
@@ -1029,6 +1030,24 @@ ConstraintGraphNode::_getPointsTo(CGEdgeQual qual, PointsToList **ptl)
     pts = newPTL->pointsTo();
   }
   return *pts;
+}
+
+CGEdgeSet &
+ConstraintGraphNode::_getCGEdgeSet(CGEdgeType t, CGEdgeList **el)
+{
+  CGEdgeSet *es = _findCGEdgeSet(t,*el);
+  if (!es) {
+    MEM_POOL *mp = cg()->memPool();
+    CGEdgeType setType = (t & ETYPE_COPYSKEW) ?
+        ETYPE_COPYSKEW :
+        ETYPE_LOADSTORE;
+    CGEdgeList *newEL = CXX_NEW(CGEdgeList(setType),mp);
+    CGEdgeList *tmp = *el;
+    *el = newEL;
+    newEL->next(tmp);
+    es = newEL->cgEdgeSet();
+  }
+  return *es;
 }
 
 void
@@ -1085,16 +1104,14 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
   inKCycle(gcd(src->inKCycle(),inKCycle()));
 
   // 1) Migrate all edges incoming to 'src' to 'this'
-  CGEdgeSet &inCopySet = src->inCopySkewEdges();
+  const CGEdgeSet &inCopySet = src->inCopySkewEdges();
   for (CGEdgeSetIterator inCopyIter = inCopySet.begin();
       inCopyIter != inCopySet.end(); ) {
     ConstraintGraphEdge *edge = *(inCopyIter);
 
-    // Regardless of what happens to the edge we need to
-    // remove it from the current set
-    CGEdgeSetIterator save = inCopyIter;
+    // Regardless, the current edge will be removed from
+    // the set that we are iterating over
     ++inCopyIter;
-    inCopySet.erase(save);
 
     // If the source of the edge is a node within the
     // SCC, then we must update the inKCycle() value on
@@ -1112,14 +1129,14 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
     if (delEdge)
       ConstraintGraph::removeEdge(edge);
   }
-  CGEdgeSet &inLdSet = src->inLoadStoreEdges();
+  const CGEdgeSet &inLdSet = src->inLoadStoreEdges();
   for (CGEdgeSetIterator inLdIter = inLdSet.begin();
       inLdIter != inLdSet.end(); ) {
     ConstraintGraphEdge *edge = *(inLdIter);
-    // Remove the edge from the set...
-    CGEdgeSetIterator save = inLdIter;
+    // Regardless, the current edge will be removed from the set
+    // we are iterating over.
     ++inLdIter;
-    inLdSet.erase(save);
+
     // Note that we don't check for the source being the
     // current node, as a self ld/st edge is not problematic
     if (!edge->moveDest(const_cast<ConstraintGraphNode *>(this)))
@@ -1127,15 +1144,13 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
   }
 
   // 2) Migrate all edges outgoing
-  CGEdgeSet &outCopySet = src->outCopySkewEdges();
+  const CGEdgeSet &outCopySet = src->outCopySkewEdges();
   for (CGEdgeSetIterator outCopyIter = outCopySet.begin();
       outCopyIter != outCopySet.end(); ) {
     ConstraintGraphEdge *edge = *(outCopyIter);
     // Regardless of what happens to the edge we need to
     // remove it from the current set
-    CGEdgeSetIterator save = outCopyIter;
     ++outCopyIter;
-    outCopySet.erase(save);
 
     // If the target of the edge is a node within the
     // SCC, then we must update the inKCycle() value on
@@ -1153,14 +1168,13 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
     if (delEdge)
       ConstraintGraph::removeEdge(edge);
   }
-  CGEdgeSet &outLdSet = src->outLoadStoreEdges();
+  const CGEdgeSet &outLdSet = src->outLoadStoreEdges();
   for (CGEdgeSetIterator outLdIter = outLdSet.begin();
        outLdIter != outLdSet.end(); )  {
     ConstraintGraphEdge *edge = *(outLdIter);
-    // Remove the edge from the set...
-    CGEdgeSetIterator save = outLdIter;
+    // Regardless of what happens the edge is removed
     ++outLdIter;
-    outLdSet.erase(save);
+
     // Note that we don't check for the dest being the
     // current node, as a self ld/st edg is not problematic
     if (!edge->moveSrc(const_cast<ConstraintGraphNode *>(this)))
@@ -1218,31 +1232,35 @@ ConstraintGraphNode::print(FILE *file)
     fprintf(file, " parent: null"); 
   fprintf(file, " inKCycle: %d\n",  inKCycle());
   fprintf(file, " inCopySkewCGEdges: ");
-  for (CGEdgeSetIterator iter = _inCopySkewCGEdges.begin();
-       iter != _inCopySkewCGEdges.end();
+  const CGEdgeSet &inCopySkew = inCopySkewEdges();
+  for (CGEdgeSetIterator iter = inCopySkew.begin();
+       iter != inCopySkew.end();
        iter++) {
     (*iter)->print(file);
     fprintf(file, " ");
   }
   fprintf(file, "\n");
   fprintf(file, " outCopySkewCGEdges: ");
-  for (CGEdgeSetIterator iter = _outCopySkewCGEdges.begin();
-       iter != _outCopySkewCGEdges.end();
+  const CGEdgeSet &outCopySkew = outCopySkewEdges();
+  for (CGEdgeSetIterator iter = outCopySkew.begin();
+       iter != outCopySkew.end();
        iter++) {
     (*iter)->print(file);
     fprintf(file, " ");
   }
   fprintf(file, "\n inLoadStoreCGEdges: ");
-  for (CGEdgeSetIterator iter = _inLoadStoreCGEdges.begin();
-       iter != _inLoadStoreCGEdges.end();
+  const CGEdgeSet &inLoadStore = inLoadStoreEdges();
+  for (CGEdgeSetIterator iter = inLoadStore.begin();
+       iter != inLoadStore.end();
        iter++) {
     (*iter)->print(file);
     fprintf(file, " ");
   }
   fprintf(file, "\n");
   fprintf(file, " outLoadStoreCGEdges: ");
-  for (CGEdgeSetIterator iter = _outLoadStoreCGEdges.begin();
-       iter != _outLoadStoreCGEdges.end();
+  const CGEdgeSet &outLoadStore = outLoadStoreEdges();
+  for (CGEdgeSetIterator iter = outLoadStore.begin();
+       iter != outLoadStore.end();
        iter++) {
     (*iter)->print(file);
     fprintf(file, " ");

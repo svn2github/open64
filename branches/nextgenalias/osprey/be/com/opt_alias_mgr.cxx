@@ -692,12 +692,8 @@ ALIAS_MANAGER::Dup_tree_alias_id( const WN *old_wn, WN *new_wn )
   }
 
   AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
-  if (aa) {
-    AliasTag tag = aa->getAliasTag(old_wn);
-    if (tag != 0) {
-      AliasAnalyzer::aliasAnalyzer()->setAliasTag(new_wn, tag);
-    }
-  }
+  if (aa)
+    aa->transferAliasTag(new_wn,old_wn);
 
   // now travel down the tree
   if ( opc == OPC_BLOCK ) {
@@ -1362,12 +1358,8 @@ void Copy_alias_info(const ALIAS_MANAGER *am, WN *wn1, WN *wn2)
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
 
   AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
-  if (aa) {
-    AliasTag tag = aa->getAliasTag(wn1);
-    if (tag != 0)
-      aa->setAliasTag(wn2,tag);
-
-  }
+  if (aa)
+    aa->transferAliasTag(wn2,wn1);
 
   IDTYPE id = am->Id(wn1);
   if (id == 0) {
@@ -1413,11 +1405,8 @@ void Duplicate_alias_info(ALIAS_MANAGER *am, WN *wn1, WN *wn2)
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
 
   AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
-  if (aa) {
-    AliasTag tag = aa->getAliasTag(wn1);
-    if (tag != 0)
-      aa->setAliasTag(wn2,tag);
-  }
+  if (aa)
+    aa->transferAliasTag(wn2,wn1);
 
   // copy homing information
   if ( OPCODE_is_load(opc1) && OPCODE_is_load(opc2) ) {

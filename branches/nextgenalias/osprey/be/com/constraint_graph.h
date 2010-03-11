@@ -114,10 +114,12 @@ using namespace std;
 using namespace __gnu_cxx;
 
 typedef enum {
-  ETYPE_COPY,
-  ETYPE_STORE,
-  ETYPE_LOAD,
-  ETYPE_SKEW
+  ETYPE_COPY  = 0x1,
+  ETYPE_SKEW  = 0x2,
+  ETYPE_STORE = 0x4,
+  ETYPE_LOAD  = 0x8,
+  ETYPE_COPYSKEW  = ETYPE_SKEW|ETYPE_COPY,
+  ETYPE_LOADSTORE = ETYPE_LOAD|ETYPE_STORE,
 } CGEdgeType;
 
 typedef enum {
@@ -286,7 +288,6 @@ class PointsToList {
    PointsToList *_next;
  };
 
-
 class ConstraintGraph;
 
 typedef hash_set<ConstraintGraphEdge *,
@@ -295,8 +296,27 @@ typedef hash_set<ConstraintGraphEdge *,
 
 typedef CGEdgeSet::const_iterator CGEdgeSetIterator;
 
+class CGEdgeList {
+public:
+  CGEdgeList(CGEdgeType et)
+  : _type(et), _cgEdgeSet(8), _next(NULL) {}
+
+  CGEdgeType type(void) const { return _type; }
+  CGEdgeSet *cgEdgeSet(void)  { return &_cgEdgeSet; }
+
+  CGEdgeList *next(void) const { return _next; }
+  void next(CGEdgeList *n)     { _next = n; }
+private:
+  CGEdgeType  _type;
+  CGEdgeSet   _cgEdgeSet;
+  CGEdgeList *_next;
+};
+
 class ConstraintGraphNode 
 {
+private:
+
+
 public:
   ConstraintGraphNode(CG_ST_IDX cg_st_idx, INT32 offset, 
                       ConstraintGraph *parentCG) :
@@ -312,10 +332,8 @@ public:
     _id(0),
     _version(0),
     _maxAccessSize(0),
-    _inCopySkewCGEdges(32),
-    _outCopySkewCGEdges(32),
-    _inLoadStoreCGEdges(32),
-    _outLoadStoreCGEdges(32)
+    _inEdges(NULL),
+    _outEdges(NULL)
   {}
 
   CGNodeId id() const { return _id; }
@@ -408,9 +426,7 @@ public:
   // return the existing edge, else insert the new edge and return it
   ConstraintGraphEdge *addInEdge(ConstraintGraphEdge *edge) 
   {
-    CGEdgeSet &inEdgeSet = (edge->edgeType() == ETYPE_COPY ||
-                            edge->edgeType() == ETYPE_SKEW) ?
-                            _inCopySkewCGEdges : _inLoadStoreCGEdges;
+    CGEdgeSet &inEdgeSet = _getCGEdgeSet(edge->edgeType(),&_inEdges);
     pair<CGEdgeSet::iterator, bool> p;
     p = inEdgeSet.insert(edge);
     return *(p.first);
@@ -418,9 +434,7 @@ public:
 
   void removeInEdge(ConstraintGraphEdge *edge)
   {
-    CGEdgeSet &inEdgeSet = (edge->edgeType() == ETYPE_COPY ||
-                            edge->edgeType() == ETYPE_SKEW) ?
-                            _inCopySkewCGEdges : _inLoadStoreCGEdges;
+    CGEdgeSet &inEdgeSet = _getCGEdgeSet(edge->edgeType(),&_inEdges);
     CGEdgeSetIterator iter = inEdgeSet.find(edge);
     if (iter != inEdgeSet.end())
       inEdgeSet.erase(iter);
@@ -430,9 +444,7 @@ public:
   // return the existing edge, else insert the new edge and return it
   ConstraintGraphEdge *addOutEdge(ConstraintGraphEdge *edge) 
   {
-    CGEdgeSet &outEdgeSet = (edge->edgeType() == ETYPE_COPY ||
-                             edge->edgeType() == ETYPE_SKEW) ?
-                             _outCopySkewCGEdges : _outLoadStoreCGEdges;
+    CGEdgeSet &outEdgeSet = _getCGEdgeSet(edge->edgeType(),&_outEdges);
     pair<CGEdgeSet::iterator, bool> p;
     p = outEdgeSet.insert(edge);
     ConstraintGraphEdge *newEdge = *(p.first);
@@ -445,9 +457,7 @@ public:
 
   void removeOutEdge(ConstraintGraphEdge *edge)
   {
-    CGEdgeSet &outEdgeSet = (edge->edgeType() == ETYPE_COPY ||
-                             edge->edgeType() == ETYPE_SKEW) ?
-                             _outCopySkewCGEdges : _outLoadStoreCGEdges;
+    CGEdgeSet &outEdgeSet = _getCGEdgeSet(edge->edgeType(),&_outEdges);
     CGEdgeSetIterator iter = outEdgeSet.find(edge);
     if (iter != outEdgeSet.end())
       outEdgeSet.erase(iter);
@@ -456,14 +466,16 @@ public:
       FmtAssert(edge->size() < _maxAccessSize,
           ("ConstraintGraphNode::_maxAccessSize inconsistent"));
       UINT8 newMax = 0;
-      for (CGEdgeSetIterator outIter1 = _outCopySkewCGEdges.begin();
-          outIter1 != _outCopySkewCGEdges.end(); ++outIter1) {
+      const CGEdgeSet &outCopySkew = outCopySkewEdges();
+      for (CGEdgeSetIterator outIter1 = outCopySkew.begin();
+          outIter1 != outCopySkew.end(); ++outIter1) {
         ConstraintGraphEdge *e = *outIter1;
         if (e->edgeType() != ETYPE_SKEW && e->size() > newMax)
           newMax = e->size();
       }
-      for (CGEdgeSetIterator outIter2 = _outLoadStoreCGEdges.begin();
-          outIter2 != _outLoadStoreCGEdges.end(); ++outIter2) {
+      const CGEdgeSet &outLoadStore = outLoadStoreEdges();
+      for (CGEdgeSetIterator outIter2 = outLoadStore.begin();
+          outIter2 != outLoadStore.end(); ++outIter2) {
         ConstraintGraphEdge *e = *outIter2;
         if (e->size() > newMax)
           newMax = e->size();
@@ -476,12 +488,12 @@ public:
   // Returns the existing edge if yes, else NULL
   ConstraintGraphEdge *inEdge(ConstraintGraphEdge *edge)
   {
-    CGEdgeSet &inEdgeSet = (edge->edgeType() == ETYPE_COPY ||
-                            edge->edgeType() == ETYPE_SKEW) ?
-                            _inCopySkewCGEdges : _inLoadStoreCGEdges;
-    CGEdgeSetIterator iter = inEdgeSet.find(edge);
-    if (iter != inEdgeSet.end())
-      return *iter;
+    CGEdgeSet *inEdgeSet = _findCGEdgeSet(edge->edgeType(),_inEdges);
+    if (inEdgeSet) {
+      CGEdgeSetIterator iter = inEdgeSet->find(edge);
+      if (iter != inEdgeSet->end())
+        return *iter;
+    }
     return NULL;
   }
 
@@ -489,19 +501,35 @@ public:
   // Returns the existing edge if yes, else NULL
   ConstraintGraphEdge *outEdge(ConstraintGraphEdge *edge)
   {
-    CGEdgeSet &outEdgeSet = (edge->edgeType() == ETYPE_COPY ||
-                             edge->edgeType() == ETYPE_SKEW) ?
-                            _outCopySkewCGEdges : _outLoadStoreCGEdges;
-    CGEdgeSetIterator iter = outEdgeSet.find(edge);
-    if (iter != outEdgeSet.end())
-      return *iter;
+    CGEdgeSet *outEdgeSet = _findCGEdgeSet(edge->edgeType(),_outEdges);
+    if (outEdgeSet) {
+      CGEdgeSetIterator iter = outEdgeSet->find(edge);
+      if (iter != outEdgeSet->end())
+        return *iter;
+    }
     return NULL;
   }
 
-  CGEdgeSet &inCopySkewEdges(void)     { return _inCopySkewCGEdges; }
-  CGEdgeSet &inLoadStoreEdges(void)  { return _inLoadStoreCGEdges; }
-  CGEdgeSet &outCopySkewEdges(void)    { return _outCopySkewCGEdges; }
-  CGEdgeSet &outLoadStoreEdges(void) { return _outLoadStoreCGEdges; }
+  const CGEdgeSet &inCopySkewEdges(void)
+  {
+    CGEdgeSet *es = _findCGEdgeSet(ETYPE_COPYSKEW,_inEdges);
+    return es ? *es : emptyCGEdgeSet;
+  }
+  const CGEdgeSet &inLoadStoreEdges(void)
+  {
+    CGEdgeSet *es = _findCGEdgeSet(ETYPE_LOADSTORE,_inEdges);
+    return es ? *es : emptyCGEdgeSet;
+  }
+  const CGEdgeSet &outCopySkewEdges(void)
+  {
+    CGEdgeSet *es = _findCGEdgeSet(ETYPE_COPYSKEW,_outEdges);
+    return es ? *es : emptyCGEdgeSet;
+  }
+  const CGEdgeSet &outLoadStoreEdges(void)
+  {
+    CGEdgeSet *es = _findCGEdgeSet(ETYPE_LOADSTORE,_outEdges);
+    return es ? *es : emptyCGEdgeSet;
+  }
 
   ConstraintGraphNode *parent() { return findRep(); }
 
@@ -528,6 +556,17 @@ public:
   } equalCGNode;
 
 private:
+
+  CGEdgeSet *_findCGEdgeSet(CGEdgeType t, CGEdgeList *el) const
+  {
+    CGEdgeList *cur = el;
+    while (cur && !(cur->type() & t))
+      cur = cur->next();
+    return cur?cur->cgEdgeSet():NULL;
+  }
+
+  CGEdgeSet &_getCGEdgeSet(CGEdgeType t, CGEdgeList **el);
+
   bool _addPointsTo(CGNodeId id, CGEdgeQual qual)
   {
     PointsTo &pts = _getPointsTo(qual,&_pointsToList);
@@ -590,14 +629,18 @@ private:
   UINT8    _maxAccessSize;
 
   // In/out copy/skew edges
-  CGEdgeSet _inCopySkewCGEdges;
-  CGEdgeSet _outCopySkewCGEdges;
+  CGEdgeList *_inEdges;
+  //CGEdgeSet _inCopySkewCGEdges;
+  //CGEdgeSet _outCopySkewCGEdges;
 
   // In/out load/store edges
-  CGEdgeSet _inLoadStoreCGEdges;
-  CGEdgeSet _outLoadStoreCGEdges;
+  CGEdgeList *_outEdges;
+  //CGEdgeSet _inLoadStoreCGEdges;
+  //CGEdgeSet _outLoadStoreCGEdges;
 
   static const PointsTo emptyPointsToSet;
+
+  static const CGEdgeSet emptyCGEdgeSet;
 };
 
 /* Iterator to abstract access to points-to sets */

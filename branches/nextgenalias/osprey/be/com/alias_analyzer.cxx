@@ -96,6 +96,14 @@ AliasAnalyzer::meet(AliasTag, AliasTag)
   return InvalidAliasTag;
 }
 
+void
+AliasAnalyzer::transferAliasTag(WN *dstWN, const WN *srcWN)
+{
+  AliasTag tag = getAliasTag(srcWN);
+  if (tag != InvalidAliasTag)
+    setAliasTag(dstWN, tag);
+}
+
 bool
 AliasAnalyzer::checkQueryFile(UINT32 pu, AliasTag tag1, AliasTag tag2,
                               bool &result)

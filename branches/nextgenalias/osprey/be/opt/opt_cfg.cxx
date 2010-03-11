@@ -1314,11 +1314,8 @@ static WN *Copy_addr_expr(WN *wn, ALIAS_CLASSIFICATION *ac)
     if (ip_alias_class != OPTIMISTIC_AC_ID)
       WN_MAP32_Set(WN_MAP_ALIAS_CLASS, new_wn, ip_alias_class);
     AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
-    if (aa) {
-      AliasTag tag = aa->getAliasTag(wn);
-      if (tag != 0)
-        aa->setAliasTag(new_wn,tag);
-    }
+    if (aa)
+      aa->transferAliasTag(new_wn,wn);
   }
   for (INT i = 0; i < WN_kid_count(wn); i++) {
     WN *kid = WN_kid(wn, i);
@@ -1780,11 +1777,8 @@ CFG::Conv_to_select(WN* wn)
 	if (ip_alias_class != OPTIMISTIC_AC_ID)
 	  WN_MAP32_Set(WN_MAP_ALIAS_CLASS, load, ip_alias_class);
 	AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
-	if (aa) {
-	  AliasTag tag = aa->getAliasTag(stmt);
-	  if (tag != 0)
-	    aa->setAliasTag(load,tag);
-	}
+	if (aa)
+	  aa->transferAliasTag(load,stmt);
       }
     }
     WN *then_expr = empty_then ? load : WN_kid0(WN_first(then_wn));
@@ -1999,11 +1993,8 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
 	if (ip_alias_class != OPTIMISTIC_AC_ID)
 	  WN_MAP32_Set(WN_MAP_ALIAS_CLASS, load, ip_alias_class);
 	AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
-	if (aa) {
-	  AliasTag tag = aa->getAliasTag(stmt);
-	  if (tag != 0)
-	    aa->setAliasTag(load,tag);
-	}
+	if (aa)
+	  aa->transferAliasTag(load,stmt);
       }
     }
     WN *then_expr = empty_then ? load : WN_kid0(WN_first(then_wn));

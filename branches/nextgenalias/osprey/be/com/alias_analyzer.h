@@ -102,6 +102,7 @@ public:
    // Duplicate_alias_info()
    // Create_vector_alias()
    // Valid_alias()
+   virtual void transferAliasTag(WN *dstWN, const WN *srcWN);
 
    // Require interfaces to support ALIAS_MANAGER routines
    // Create_local_alias()

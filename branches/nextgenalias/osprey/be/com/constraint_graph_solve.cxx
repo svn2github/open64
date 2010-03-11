@@ -140,12 +140,12 @@ SCCDetection::find(void)
         visit(node);
       else {
         node->addFlags(CG_NODE_FLAGS_VISITED);
-        CGEdgeSet &outCopyEdges = node->outCopySkewEdges();
+        const CGEdgeSet &outCopyEdges = node->outCopySkewEdges();
         CGEdgeSetIterator outCopyIter = outCopyEdges.begin();
         FmtAssert(outCopyIter == outCopyEdges.end(),
             ("Found copy edge: expect node with representative "
                 "to be a leaf node.\n"));
-        CGEdgeSet &outLdEdges = node->outLoadStoreEdges();
+        const CGEdgeSet &outLdEdges = node->outLoadStoreEdges();
         CGEdgeSetIterator outLdIter = outLdEdges.begin();
         FmtAssert(outLdIter == outLdEdges.end(),
             ("Found copy edge: expect node with representative "
@@ -426,7 +426,7 @@ ConstraintGraphSolve::addEdgesToWorkList(ConstraintGraphNode *node)
   // edges to the work list for further processing:
 
   // 1) All outgoing copy/skew edges
-  CGEdgeSet &outCopySkew = node->outCopySkewEdges();
+  const CGEdgeSet &outCopySkew = node->outCopySkewEdges();
   for (CGEdgeSetIterator iter = outCopySkew.begin();
        iter != outCopySkew.end();
        iter++) {
@@ -434,7 +434,7 @@ ConstraintGraphSolve::addEdgesToWorkList(ConstraintGraphNode *node)
   }
 
   // 2) All outgoing load (assign_deref) edges
-  CGEdgeSet &outLoadStore = node->outLoadStoreEdges();
+  const CGEdgeSet &outLoadStore = node->outLoadStoreEdges();
   for (CGEdgeSetIterator iter = outLoadStore.begin();
        iter != outLoadStore.end();
        iter++) {
@@ -444,7 +444,7 @@ ConstraintGraphSolve::addEdgesToWorkList(ConstraintGraphNode *node)
   }
 
   // 3) All incoming store (deref_assign) edges
-  CGEdgeSet &inLoadStore = node->inLoadStoreEdges();
+  const CGEdgeSet &inLoadStore = node->inLoadStoreEdges();
   for (CGEdgeSetIterator iter = inLoadStore.begin();
        iter != inLoadStore.end();
        iter++) {

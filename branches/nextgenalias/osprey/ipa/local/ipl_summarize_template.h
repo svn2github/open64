@@ -3267,7 +3267,7 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
       summCGNode->nextOffset(0);
 
     // Add edges
-    CGEdgeSet &outCopySet = cgNode->outCopySkewEdges();
+    const CGEdgeSet &outCopySet = cgNode->outCopySkewEdges();
     for (CGEdgeSetIterator outCopyIter = outCopySet.begin();
          outCopyIter != outCopySet.end(); outCopyIter++) {
       ConstraintGraphEdge *edge = *(outCopyIter);
@@ -3281,7 +3281,7 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
       summCGEdge->dest(edge->destNode()->id());
       numEdges++;
     }
-    CGEdgeSet &outLdSet = cgNode->outLoadStoreEdges();
+    const CGEdgeSet &outLdSet = cgNode->outLoadStoreEdges();
     for (CGEdgeSetIterator outLdIter = outLdSet.begin();
          outLdIter != outLdSet.end(); outLdIter++)  {
       ConstraintGraphEdge *edge = *(outLdIter);
