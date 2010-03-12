@@ -336,6 +336,25 @@ public:
     _outEdges(NULL)
   {}
 
+  // For IPA
+  ConstraintGraphNode(CG_ST_IDX cg_st_idx, INT32 offset, UINT16 flags,
+                      UINT32 inKCycle, CGNodeId id, ConstraintGraph *parentCG) :
+    _cg_st_idx(cg_st_idx),
+    _offset(offset),
+    _flags(flags),
+    _inKCycle(inKCycle),
+    _pointsToList(NULL),
+    _revPointsToList(NULL),
+    _repParent(NULL),
+    _nextOffset(NULL),
+    _parentCG(parentCG),
+    _id(id),
+    _version(0),
+    _maxAccessSize(0),
+    _inEdges(NULL),
+    _outEdges(NULL)
+  {}
+
   CGNodeId id() const { return _id; }
   void setId(CGNodeId id) { _id = id; }
 
@@ -708,6 +727,14 @@ public:
     addFlags(CG_ST_FLAGS_NOCNTXT);
   }
 
+  // For IPA
+  StInfo(UINT32 flags, INT64 varSize, UINT32 modulus) :
+    _flags(flags),
+    _varSize(varSize),
+    _modulus(modulus),
+   _firstOffset(NULL)
+  {}
+
   UINT32 flags() const { return _flags; }
   bool checkFlags(UINT32 flag) const { return _flags & flag; }
   void addFlags(UINT32 flag) { _flags |= flag; }
@@ -777,9 +804,13 @@ public:
     return NULL;
   }
 
+  static UINT32 getNextCGNodeId() { return nextCGNodeId++; }
+
   // To facilitate traversal of the constraint graph
-  static CGIdToNodeMapIterator begin() { return cgIdToNodeMap.begin(); }
-  static CGIdToNodeMapIterator end()   { return cgIdToNodeMap.end(); }
+  static CGIdToNodeMapIterator gBegin() { return cgIdToNodeMap.begin(); }
+  static CGIdToNodeMapIterator gEnd()   { return cgIdToNodeMap.end(); }
+
+  static CGIdToNodeMap &getCGIdToNodeMap() { return cgIdToNodeMap; }
 
   static ConstraintGraphEdge *addEdge(ConstraintGraphNode *src,
                                       ConstraintGraphNode *dest,
@@ -825,13 +856,18 @@ public:
     _memPool(mPool)
   {
     if (notAPointerCGNode == NULL) {
-      notAPointerCGNode = genTempCGNode();
+      ST *notAPtrSt = New_ST(GLOBAL_SYMTAB);
+      ST_Init(notAPtrSt, Save_Str("_globalCGNotAPTR"), CLASS_VAR, 
+              SCLASS_UGLOBAL, EXPORT_INTERNAL, MTYPE_To_TY(Pointer_type));
+      notAPointerCGNode = getCGNode(CG_ST_st_idx(notAPtrSt), 0);
+      stInfo(notAPointerCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_TEMP);
       notAPointerCGNode->addFlags(CG_NODE_FLAGS_NOT_POINTER);
     }
     if (blackHoleCGNode == NULL) {
-      ST *bhST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgBlackHole",
-                                       CLASS_VAR, SCLASS_AUTO);
-      blackHoleCGNode = getCGNode(CG_ST_st_idx(bhST),0);
+      ST *bhST = New_ST(GLOBAL_SYMTAB);
+      ST_Init(bhST, Save_Str("_globalCGBlackHole"), CLASS_VAR, SCLASS_UGLOBAL, 
+              EXPORT_INTERNAL, MTYPE_To_TY(Pointer_type));
+      blackHoleCGNode = getCGNode(CG_ST_st_idx(bhST), 0);
     }
     if (edgeMemPool == NULL)
       edgeMemPool = mPool;
@@ -854,6 +890,12 @@ public:
       return iter->second;
     return NULL;
   }
+
+  // To iterate all nodes local to this constraint graph
+  CGNodeToIdMapIterator lBegin() { return _cgNodeToIdMap.begin(); }
+  CGNodeToIdMapIterator lEnd()   { return _cgNodeToIdMap.end(); }
+
+  CGNodeToIdMap &cgNodeToIdMap(void) { return _cgNodeToIdMap; }
 
   CallSiteMap &callSiteMap(void) { return _callSiteMap; }
 

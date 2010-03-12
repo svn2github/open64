@@ -3245,8 +3245,8 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
 
   ConstraintGraph *cg = naa->constraintGraph();
   // Iterate over all nodes in the graph
-  for (CGIdToNodeMapIterator iter = cg->begin(); iter != cg->end(); iter++) {
-    ConstraintGraphNode *cgNode = iter->second;
+  for (CGNodeToIdMapIterator iter = cg->lBegin(); iter != cg->lEnd(); iter++) {
+    ConstraintGraphNode *cgNode = iter->first;
     SUMMARY_CONSTRAINT_GRAPH_NODE *summCGNode = New_constraint_graph_node();
     ConstraintGraphNode *parent = cgNode->parent();
     // Set points to set only if it has no representative parent

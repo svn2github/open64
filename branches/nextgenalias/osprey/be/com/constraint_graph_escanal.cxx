@@ -102,8 +102,8 @@ EscapeAnalysis::reversePointsTo(CGNodeId id)
 void
 EscapeAnalysis::computeReversePointsTo()
 {
-  for (CGIdToNodeMapIterator iter = ConstraintGraph::begin();
-      iter != ConstraintGraph::end(); ++iter) {
+  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
+      iter != ConstraintGraph::gEnd(); ++iter) {
     ConstraintGraphNode *node = iter->second;
     // Only those nodes that have had an update to their points-to
     // set since the last time we performed escape analysis
@@ -325,9 +325,9 @@ EscapeAnalysis::init(void)
    *   in a separate walk where we take into account the
    *   any known semantics of the callee.
    */
-   for (CGIdToNodeMapIterator iter = ConstraintGraph::begin();
-       iter != ConstraintGraph::end(); ++iter) {
-     ConstraintGraphNode *node = iter->second;
+   for (CGNodeToIdMapIterator iter = _graph->lBegin();
+       iter != _graph->lEnd(); ++iter) {
+     ConstraintGraphNode *node = iter->first;
      if (node->checkFlags(CG_NODE_FLAGS_FORMAL_PARAM))
        newContEscapeNode(node,CG_ST_FLAGS_LCONT_ESC);
      if (node->checkFlags(CG_NODE_FLAGS_FORMAL_RETURN))

@@ -108,7 +108,7 @@
 #include "ipa_reorder.h"        //for merged_access --reorder
 #include "ipa_option.h"         // for IPA_Enable_Reorder and Merge_struct_access();
 
-#include "nystrom_alias_analyzer.h"
+#include "ipa_nystrom_alias_analyzer.h"
 
 IPA_CALL_GRAPH* IPA_Call_Graph;     // "The" call graph of IPA
 #ifdef KEY
@@ -848,6 +848,18 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     const UINT64 runtime_addr = ipa_node->Get_func_runtime_addr ();
     if (runtime_addr) addr_node_map[runtime_addr] = ipa_node;
 #endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+
+    IPA_NystromAliasAnalyzer *ipa_naa = IPA_NystromAliasAnalyzer::analyzer();
+    if (ipa_naa) {
+      ConstraintGraph *cg = 
+        ipa_naa->buildIPAConstraintGraph(ipa_node);
+    }
+
+#endif
+
+
     return ipa_node;
 	
 }
@@ -1912,6 +1924,10 @@ Delete_Function (NODE_INDEX node, BOOL update_modref_count, mUINT8 *visited)
 	fprintf (TFile, "%s deleted (unused)\n",
 		 ipa_node->Name ());
 
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    IPA_NystromAliasAnalyzer::analyzer()->deleteConstraintGraph(ipa_node);
+#endif
+
 #ifndef _LIGHTWEIGHT_INLINER
 
     if (update_modref_count) 
@@ -2876,7 +2892,7 @@ IPA_EDGE::Print ( const FILE* fp,		// File to which to print
   IPA_NODE* callee = cg->Callee(Edge_Index());
 
   fprintf ( (FILE*) fp,
-	    "name = %-20s (ix:%d, f:%02x:%02x, @%p) callsite %x:%d,%x\n",
+	    "name = %-20s (ix:%d, f:%02x:%02x, @%p) callsite %p:%d,%x\n",
 	    invert ? caller->Name() : callee->Name(), 
             Edge_Index(), 
             _flags,

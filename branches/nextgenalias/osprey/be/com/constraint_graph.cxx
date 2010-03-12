@@ -963,7 +963,14 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   StInfo *si;
   if (inIPA()) {
     si = stInfo(cg_st_idx);
-    FmtAssert(si != NULL, ("I do not know how to create a StInfo in IPA:("));
+    if (si == NULL) {
+      // Allow globals, since we have a global symtab at IPA
+      if (ST_IDX_level(SYM_ST_IDX(cg_st_idx)) == GLOBAL_SYMTAB) {
+        si = CXX_NEW(StInfo(SYM_ST_IDX(cg_st_idx)), _memPool);
+        _cgStInfoMap[cg_st_idx] = si;
+      } else
+        FmtAssert(FALSE, ("I do not know how to create a StInfo in IPA:("));
+    }
   } else {
     si = stInfo(cg_st_idx);
     if (si == NULL) {
@@ -1214,8 +1221,11 @@ ConstraintGraphNode::print(FILE *file)
   StInfo *stInfo = cg()->stInfo(_cg_st_idx);
   if (stInfo->checkFlags(CG_ST_FLAGS_PREG)) {
     PREG_NUM p = PREG_NUM(_offset / CG_PREG_SCALE);
-    fprintf(file, " preg:%d,%s", p, !Preg_Is_Dedicated(p) ? Preg_Name(p) 
-                                                          : "dedicated");
+    if (!cg()->inIPA())
+      fprintf(file, " preg:%d,%s", p, !Preg_Is_Dedicated(p) ? Preg_Name(p) 
+                                                            : "dedicated");
+    else
+      fprintf(file, " preg:%d", p);
   }
   fprintf(file, "\n");
   fprintf(file, " GBL: "); pointsTo(CQ_GBL).print(file);
@@ -1303,8 +1313,11 @@ void ConstraintGraphNode::print(ostream& ostr)
   StInfo *stInfo = cg()->stInfo(_cg_st_idx);
   if (stInfo->checkFlags(CG_ST_FLAGS_PREG)) {
     PREG_NUM p = PREG_NUM(_offset / CG_PREG_SCALE);
-    ostr << " preg:" << p << ","
-         << (!Preg_Is_Dedicated(p) ? Preg_Name(p) : "dedicated");
+    if (!cg()->inIPA())
+      ostr << " preg:" << p << ","
+           << (!Preg_Is_Dedicated(p) ? Preg_Name(p) : "dedicated");
+    else
+      ostr << " preg: " << p;
   }
   ostr << endl;
   ostr << "GBL: " << pointsTo(CQ_GBL)
@@ -1611,8 +1624,8 @@ ConstraintGraphVCG::buildVCG()
   UINT32 offsetClassId = vcg.edgeClass("Offset",true/*hidden*/);
 
   // Iterate over all nodes in the graph
-  for (CGIdToNodeMapIterator iter = ConstraintGraph::begin(); 
-       iter != ConstraintGraph::end(); iter++) {
+  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin(); 
+       iter != ConstraintGraph::gEnd(); iter++) {
     ConstraintGraphNode *cgNode = iter->second;
     const char *srcTitle = NULL;
     nodeToTitleMapIter = nodeToTitleMap.find(cgNode);

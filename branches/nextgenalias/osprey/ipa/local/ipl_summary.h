@@ -2927,7 +2927,11 @@ public:
   void ptsHZidx(UINT32 idx)       { _pointsToHZIdx = idx; }
   void ptsDNidx(UINT32 idx)       { _pointsToDNIdx = idx; }
 
+  UINT32 cgNodeId()  const { return _cgNodeId; }
   UINT64 cg_st_idx() const { return _cg_st_idx; }
+  INT32 offset()     const { return _offset; }
+  UINT16 flags()     const { return _flags; }
+  UINT32 inKCycle()  const { return _inKCycle; }
 
   void Print_array(FILE *fp, INT32 size) const;
   void Trace_array(INT32 size) const ;
@@ -2956,8 +2960,8 @@ class SUMMARY_CONSTRAINT_GRAPH_EDGE
 public:
   SUMMARY_CONSTRAINT_GRAPH_EDGE() {}
 
-  void etype(UINT8 et)     { _etype = et; }
-  void qual(UINT8 q)       { _qual = q; }
+  void etype(UINT16 et)    { _etype = et; }
+  void qual(UINT16 q)      { _qual = q; }
   void flags(UINT16 f)     { _flags = f; }
   void sizeOrSkew(INT32 s) { _sizeOrSkew = s; }
   void src(UINT32 id)      { _srcId = id; }
@@ -2974,8 +2978,8 @@ public:
   void Trace(void) const;
 
 private:
-  UINT8  _etype;
-  UINT8  _qual;
+  UINT16 _etype;
+  UINT16 _qual;
   UINT16 _flags;
   INT32  _sizeOrSkew;
   UINT32 _srcId;
@@ -2988,7 +2992,11 @@ class SUMMARY_CONSTRAINT_GRAPH_STINFO
 public:
   SUMMARY_CONSTRAINT_GRAPH_STINFO() {}
 
-  UINT64 cg_st_idx() const { return _cg_st_idx; }
+  UINT64 cg_st_idx()   const { return _cg_st_idx; }
+  UINT32 flags()       const { return _flags; }
+  INT64 varSize()      const { return _varSize; }
+  UINT32 modulus()     const { return _modulus; }
+  UINT32 firstOffset() const { return _firstOffset; }
 
   void cg_st_idx(UINT64 s)   { _cg_st_idx = s; }
   void flags(UINT32 f)       { _flags = f; }

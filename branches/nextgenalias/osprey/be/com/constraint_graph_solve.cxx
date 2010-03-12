@@ -126,9 +126,9 @@ SCCDetection::find(void)
 {
   // Visit each unvisited root node.   A root node is defined
   // to be a node that has no incoming copy/skew edges
-  for (CGIdToNodeMapIterator iter = _graph->begin();
-      iter != _graph->end(); iter++) {
-    ConstraintGraphNode *node = iter->second;
+  for (CGNodeToIdMapIterator iter = _graph->lBegin();
+      iter != _graph->lEnd(); iter++) {
+    ConstraintGraphNode *node = iter->first;
     if (!node->checkFlags(CG_NODE_FLAGS_VISITED)) {
       // We skip any nodes that have a representative other than
       // themselves.  Such nodes occur as a result of merging
@@ -159,9 +159,9 @@ void
 SCCDetection::unify(NodeToKValMap &nodeToKValMap)
 {
   // Unify the nodes in an SCC into a single node
-  for (CGIdToNodeMapIterator iter = _graph->begin();
-      iter != _graph->end(); iter++) {
-    ConstraintGraphNode *node = iter->second;
+  for (CGNodeToIdMapIterator iter = _graph->lBegin();
+      iter != _graph->lEnd(); iter++) {
+    ConstraintGraphNode *node = iter->first;
     FmtAssert(node->checkFlags(CG_NODE_FLAGS_VISITED),
         ("Node %d unvisited during SCC detection\n",node->id()));
     node->clearFlags(CG_NODE_FLAGS_VISITED|CG_NODE_FLAGS_SCCMEMBER);
@@ -369,7 +369,8 @@ ConstraintGraph::nonIPASolver()
   EscapeAnalysis escAnal(this,false,_memPool);
   escAnal.perform();
 
-  for (CGIdToNodeMapIterator iter = begin(); iter != end(); iter++) {
+  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin(); 
+       iter != ConstraintGraph::gEnd(); iter++) {
     ConstraintGraphNode *node = iter->second;
     if (escAnal.escapeStFlags(node) & CG_ST_FLAGS_ESCALL) {
       // The "black hole" is meant to represent all memory that is possibly
@@ -385,8 +386,8 @@ void
 ConstraintGraphSolve::postProcessPointsTo()
 {
   PointsTo adjustSet;
-  for (CGIdToNodeMapIterator iter = ConstraintGraph::begin();
-       iter != ConstraintGraph::end(); iter++) {
+  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
+       iter != ConstraintGraph::gEnd(); iter++) {
     ConstraintGraphNode *node = iter->second;
     for ( PointsToIterator pti(node); pti != 0; ++pti ) {
       PointsTo &curSet = *pti;
@@ -824,8 +825,8 @@ ConstraintGraphSolve::processStore(const ConstraintGraphEdge *edge)
     dst->print(stderr);
     fprintf(stderr,"=========================================\n");
     if (!src->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
-      for (CGIdToNodeMapIterator iter = ConstraintGraph::begin();
-           iter != ConstraintGraph::end(); iter++) {
+      for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
+           iter != ConstraintGraph::gEnd(); iter++) {
         ConstraintGraphNode *node = iter->second;
         if (!node->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
           bool change = false;

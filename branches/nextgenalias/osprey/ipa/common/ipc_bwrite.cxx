@@ -230,9 +230,6 @@ IP_WRITE_pu_internal (PU_Info* pu, Output_File *outfile)
 	     "with internal state"));
   }
    
-  // TODO: Set below state when the constraint graph solver is done
-  Write_ALIAS_CGNODE_Map = TRUE;
-
   if (PU_Info_state (pu, WT_FEEDBACK) == Subsect_InMem)
       WN_write_feedback (pu, outfile);
 

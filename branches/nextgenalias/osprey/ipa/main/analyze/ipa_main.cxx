@@ -85,6 +85,8 @@ extern void (*Preprocess_struct_access_p)(void);
 #endif /* KEY */
 #include "ipa_reorder.h"
 
+#include "ipa_nystrom_alias_analyzer.h"
+
 FILE* STDOUT = stdout; 
 
 //-----------------------------------------------------------------------
@@ -317,6 +319,9 @@ Perform_Interprocedural_Analysis ()
     // create and build a  call graph 
     {
 	Temporary_Error_Phase ephase ("IPA Call Graph Construction");
+
+        // Instantiate the Nystrom alias analyzer
+        IPA_NystromAliasAnalyzer::create();
 
 	if ( Get_Trace ( TKIND_ALLOC, TP_IPA ) ) {
 	    fprintf ( TFile,

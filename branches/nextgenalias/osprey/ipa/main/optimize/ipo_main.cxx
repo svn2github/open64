@@ -120,6 +120,7 @@
 #include "ir_bread.h"			// For second-pass WHIRL file
 #include "ir_bwrite.h"			// I/O for alias class
 #include "be_symtab.h" 
+#include "ipa_nystrom_alias_analyzer.h"
 
 #include "ipc_option.h"
 
@@ -2311,6 +2312,8 @@ Perform_Interprocedural_Optimization (void)
 
   Ip_alias_class->Release_resources();
   Ip_alias_class = NULL;
+
+  IPA_NystromAliasAnalyzer::clean();
 
 #if Is_True_On
   {
