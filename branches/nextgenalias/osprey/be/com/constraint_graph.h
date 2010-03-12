@@ -647,18 +647,11 @@ private:
   // solving to determine accesses to overlapping fields.
   UINT8    _maxAccessSize;
 
-  // In/out copy/skew edges
+  // Incoming and outgoing copy/skew/load/store edges
   CGEdgeList *_inEdges;
-  //CGEdgeSet _inCopySkewCGEdges;
-  //CGEdgeSet _outCopySkewCGEdges;
-
-  // In/out load/store edges
   CGEdgeList *_outEdges;
-  //CGEdgeSet _inLoadStoreCGEdges;
-  //CGEdgeSet _outLoadStoreCGEdges;
 
   static const PointsTo emptyPointsToSet;
-
   static const CGEdgeSet emptyCGEdgeSet;
 };
 
@@ -682,51 +675,7 @@ class StInfo
 {
 public:
   // Set the varSize from ST_IDX
-  StInfo(ST_IDX st_idx)
-  {
-    ST *st = &St_Table[st_idx];
-    TY& ty = Ty_Table[ST_type(st)];
-    // For arrays set size to element size
-    if (TY_kind(ty) == KIND_ARRAY) {
-      TY &etype = Ty_Table[TY_etype(ty)];
-      _varSize = TY_size(etype);
-    } else
-      _varSize = ST_size(st);
-    // As a fallback we resort to setting the size to the
-    // current pointer size to ensure a valid modulus for
-    // this type.
-    if (_varSize == 0)
-      _varSize = Pointer_Size;
-
-    _modulus = _varSize;
-    // Set the flags
-    _flags = 0;
-    ST_SCLASS storage_class = ST_sclass(st);
-    if (storage_class == SCLASS_PSTATIC ||
-        storage_class == SCLASS_FSTATIC ||
-        storage_class == SCLASS_COMMON ||
-        storage_class == SCLASS_UGLOBAL ||
-        storage_class == SCLASS_DGLOBAL ||
-        storage_class == SCLASS_UNKNOWN ||
-        storage_class == SCLASS_EXTERN)
-      addFlags(CG_ST_FLAGS_GLOBAL);
-
-    if (ST_class(st) == CLASS_FUNC)
-      addFlags(CG_ST_FLAGS_FUNC);
-
-    if (ST_class(st) == CLASS_PREG)
-      addFlags(CG_ST_FLAGS_PREG);
-
-    _firstOffset = NULL;
-
-    // Globals are treated context-insensitive
-    if (checkFlags(CG_ST_FLAGS_GLOBAL))
-      addFlags(CG_ST_FLAGS_NOCNTXT);
-
-    // Treat every symbol as context-insensitive
-    addFlags(CG_ST_FLAGS_NOCNTXT);
-  }
-
+  StInfo(ST_IDX st_idx);
   // For IPA
   StInfo(UINT32 flags, INT64 varSize, UINT32 modulus) :
     _flags(flags),
@@ -744,6 +693,16 @@ public:
   UINT32 modulus() const { return _modulus; }
   void modulus(UINT32 mod) { _modulus = mod; }
 
+  // The maximum number of offsets off this ST that we will allow
+  // before going field insensitive.  We will be able to configure
+  // this on a per-symbol basis.  This upper bound is used to ensure
+  // our solution converges in a timely manner in the presence of
+  // inter-procedural skew cycles that we are not removing from the
+  // constraint graph
+  UINT16 maxOffsets(void) const { return _maxOffsets; }
+  UINT16 numOffsets(void) const { return _numOffsets; }
+  void incrNumOffsets(void)     { _numOffsets += 1; }
+
   ConstraintGraphNode *firstOffset() const { return _firstOffset; }
   void firstOffset(ConstraintGraphNode *n) { _firstOffset = n; }
 
@@ -752,8 +711,10 @@ public:
 
 private:
   UINT32 _flags;
-  INT64  _varSize;
   UINT32 _modulus;
+  INT64  _varSize;
+  UINT16 _maxOffsets;
+  UINT16 _numOffsets;
   ConstraintGraphNode *_firstOffset; // Pointer to CGNode with smallest offset
 };
 

@@ -1,4 +1,5 @@
 #include <elf.h>
+#include "constraint_graph_solve.h"
 #include "defs.h"
 #include "ipl_summary.h"
 #include "ipa_summary.h"
@@ -119,4 +120,77 @@ IPA_NystromAliasAnalyzer::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
   CGStInfoMap &stInfoMap = parentCG->stInfoMap();
   stInfoMap[cg_st_idx] = stInfo;
   return stInfo;
+}
+
+
+void
+IPA_NystromAliasAnalyzer::solver(void)
+{
+  // Here we have a single driver that supports both a
+  // context-sensitive and context-insensitive solutions.
+  //
+  // Context-sensitive:  The context sensitive solution uses
+  // a iterative top-down, bottom-up approach that continues
+  // until we can make no future refinements to the call graph
+  // The bottom-up pass only is context sensitive
+  //
+  // Context-insensitive:  We perform iterative solution of the
+  // entire global constraint graph.
+
+  // Some up front work
+  // Constraint graph optimization
+  // Constraint graph-local cycle detection
+
+  bool change = false;
+  do {
+    // Top down
+    do {
+      EdgeDelta delta;
+
+      // Perform SCC detection and collapse within the call graph,
+      // connect param/return nodes.  This step wil provide
+      // 1) A topological ordering of call graph for bottom-up
+      // 2) The edge delta for the solution.
+
+      if (delta.empty())
+        break;
+
+      // Now, we solve the graph
+      ConstraintGraphSolve cgsolver(delta,NULL,&_memPool);
+      cgsolver.solveConstraints();
+
+      // Determine if there have been any changes to callsites
+      // and update the call graph
+
+    } while (1);
+
+    // Bottom up
+    if (0 /*context sensitive */) {
+      // Walk the call graph in reverse topological order, using
+      // the topological ordering found during SCC detection
+      while (0 /* rev topo list !empty*/) {
+
+        EdgeDelta delta;
+        // Apply summaries for the callees of the current routine.
+        // This provides the edge delta for the solution.
+
+        // Now, we solve the graph.  We actually perform cycle
+        // detect within the the current constraint graph
+        ConstraintGraphSolve cgsolver(delta,/*cg*/NULL,&_memPool);
+        cgsolver.solveConstraints();
+      }
+    }
+
+    // Determine if there have been any changes to call sites
+    // and update the call graph
+
+  } while (change);
+
+  // The solver has a solution, now we post-process the points-to
+  // sets to deal with covering references and field insensitive
+  // references
+  ConstraintGraphSolve::postProcessPointsTo();
+
+  // Don't forget escape analysis.
+
 }

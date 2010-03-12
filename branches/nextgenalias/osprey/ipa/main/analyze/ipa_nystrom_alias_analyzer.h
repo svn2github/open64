@@ -60,6 +60,9 @@ public:
                       IPA_NODE *ipaNode,
                       ConstraintGraph *parentCG);
 
+  // Perform a global context-[in]sensitive points-to solution
+  void solver(void);
+
 private:
 
   static IPA_NystromAliasAnalyzer *_ipa_naa;

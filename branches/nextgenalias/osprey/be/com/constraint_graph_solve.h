@@ -19,6 +19,8 @@ public:
   EdgeWorkList &copySkewList() { return _copySkew; }
   EdgeWorkList &loadStoreList() { return _loadStore; }
 
+  bool empty() const { return _copySkew.empty() &&
+                              _loadStore.empty(); }
 private:
   EdgeWorkList _copySkew;
   EdgeWorkList _loadStore;
@@ -40,6 +42,8 @@ public:
 
   bool solveConstraints();
 
+  static void postProcessPointsTo();
+
 private:
   void updateOffsets(const ConstraintGraphNode *, PointsTo &, CGEdgeQual);
   void processAssign(const ConstraintGraphEdge *);
@@ -53,8 +57,6 @@ private:
                              CGEdgeQual qual,
                              UINT32 size,
                              SparseBitSet<CGNodeId> &ptSet);
-
-  void postProcessPointsTo();
 
   EdgeDelta &edgeDelta() { return _edgeDelta; }
 

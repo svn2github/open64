@@ -92,6 +92,9 @@ SCCDetection::visit(ConstraintGraphNode *v)
     ConstraintGraphEdge *edge = *iter;
     if (!edge->checkFlags(CG_EDGE_PARENT_COPY)) {
       ConstraintGraphNode *w = edge->destNode();
+      // Cycle detection does not span constraint graphs
+      if (w->cg() != _graph)
+        continue;
       if (!w->checkFlags(CG_NODE_FLAGS_VISITED))
         visit(w);
       if (!w->checkFlags(CG_NODE_FLAGS_SCCMEMBER))
@@ -254,6 +257,7 @@ ConstraintGraphSolve::solveConstraints()
   // TODO: Perform cycle detection, here
   SCCDetection sccs(_cg,_memPool);
 
+  bool seed = edgeDelta().empty() && (_cg != NULL);
   EdgeWorkList &copySkewList = edgeDelta().copySkewList();
   EdgeWorkList &loadStoreList = edgeDelta().loadStoreList();
 
@@ -263,13 +267,14 @@ ConstraintGraphSolve::solveConstraints()
   do {
     // Here we walk the constraint graph to locate any SCCs and
     // collapse them to ensure that the solver will converge.
-    // TODO:  What is the scope of analyis during IPA, bottom-up walk?
-    sccs.findAndUnify();
+    if (_cg)
+      sccs.findAndUnify();
 
-    // TODO: We need to seed the the solver with the approprate
+    // We need to seed the the solver with the appropriate
     // edges, either based on the SCCDetection traversal or the
     // provided edge delta.
-    if (copySkewList.empty()) {
+    if (seed) {
+      seed = false;
       if (trace) fprintf(stderr,"\nSeeding solver:\n");
       SCCDetection::CGNodeStack &stack = sccs.topoNodeStack();
       while (!stack.empty()) {
@@ -349,7 +354,6 @@ ConstraintGraphSolve::solveConstraints()
     }
   } while (!copySkewList.empty());
 
-  postProcessPointsTo();
   return true;
 }
 
@@ -361,6 +365,11 @@ ConstraintGraph::nonIPASolver()
   ConstraintGraphSolve solver(delta,this,_memPool);
   if (!solver.solveConstraints())
     return false;
+
+  // The solver has a solution, now we post-process the points-to
+  // sets to deal with covering references and field insensitive
+  // references
+  solver.postProcessPointsTo();
 
   // Now we perform escape analysis to in order to augment the
   // the points-to sets of "incomplete" symbols to facilitate

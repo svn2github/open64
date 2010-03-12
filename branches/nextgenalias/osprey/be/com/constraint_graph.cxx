@@ -21,6 +21,53 @@ CGIdToNodeMap ConstraintGraph::cgIdToNodeMap(1024);
 const PointsTo ConstraintGraphNode::emptyPointsToSet;
 const CGEdgeSet ConstraintGraphNode::emptyCGEdgeSet;
 
+StInfo::StInfo(ST_IDX st_idx)
+  : _flags(0),
+    _varSize(0),
+    _maxOffsets(32),
+    _numOffsets(0),
+    _firstOffset(0)
+{
+  ST *st = &St_Table[st_idx];
+  TY& ty = Ty_Table[ST_type(st)];
+  // For arrays set size to element size
+  if (TY_kind(ty) == KIND_ARRAY) {
+    TY &etype = Ty_Table[TY_etype(ty)];
+    _varSize = TY_size(etype);
+  } else
+    _varSize = ST_size(st);
+  // As a fallback we resort to setting the size to the
+  // current pointer size to ensure a valid modulus for
+  // this type.
+  if (_varSize == 0)
+    _varSize = Pointer_Size;
+
+  _modulus = _varSize;
+  // Set the flags
+  ST_SCLASS storage_class = ST_sclass(st);
+  if (storage_class == SCLASS_PSTATIC ||
+      storage_class == SCLASS_FSTATIC ||
+      storage_class == SCLASS_COMMON ||
+      storage_class == SCLASS_UGLOBAL ||
+      storage_class == SCLASS_DGLOBAL ||
+      storage_class == SCLASS_UNKNOWN ||
+      storage_class == SCLASS_EXTERN)
+    addFlags(CG_ST_FLAGS_GLOBAL);
+
+  if (ST_class(st) == CLASS_FUNC)
+    addFlags(CG_ST_FLAGS_FUNC);
+
+  if (ST_class(st) == CLASS_PREG)
+    addFlags(CG_ST_FLAGS_PREG);
+
+  // Globals are treated context-insensitive
+  if (checkFlags(CG_ST_FLAGS_GLOBAL))
+    addFlags(CG_ST_FLAGS_NOCNTXT);
+
+  // Treat every symbol as context-insensitive
+  addFlags(CG_ST_FLAGS_NOCNTXT);
+}
+
 template <typename T>
 static inline
 T gcd(T source, T target)
@@ -991,6 +1038,19 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   // Check if node exists, if so return it
   if ((cgNode = checkCGNode(cg_st_idx, offset)) != NULL)
     return cgNode;
+
+  // In order to control runaway creation of <ST,ofst> pairs that
+  // may occur within an inter-procedural skew cycle, we have an
+  // upper bound on the number of offsets we will create for a
+  // given symbol.  If we reach this point, we are creating a
+  // new 'offset'.  At this point any new offsets will be mapped
+  // to -1, essentially forcing them to be treated as field
+  // insensitive.
+  if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
+    if (offset != -1 && (si->numOffsets() >= si->maxOffsets()))
+      offset = -1;
+    si->incrNumOffsets();
+  }
 
   cgNode = CXX_NEW(ConstraintGraphNode(cg_st_idx, offset, this), _memPool);
 
