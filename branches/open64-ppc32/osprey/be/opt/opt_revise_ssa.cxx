@@ -192,9 +192,6 @@ OPT_REVISE_SSA::Get_new_occ(CODEREP *cr, BOOL is_store)
   if (_tracing)
     fdump_wn(TFile, wn);
 
-#if 0  // cannot use Identify_vsym because it requires address expr in wn also
-  AUX_ID vsym_id = _opt_stab->Identify_vsym(wn);
-#endif
   AUX_ID vsym_id;	// the vsym to be used for the new ivar node
    // first, see if we can use the same vsym as the bit-field ivar
   AUX_ID old_vsym_id = cr->Ivar_occ()->Aux_id();
@@ -459,7 +456,6 @@ OPT_REVISE_SSA::Find_scalars_from_lda_iloads(CODEREP *cr)
     WN_set_desc(&wn, cr->Dsctyp());
     WN_set_rtype(&wn, cr->Dtyp());
     WN_store_offset(&wn) = cr->Offset() + lda->Offset();
-#if 1 // bug fix aug-14-02
     ST *lda_st;
     INT64 ofst;
     Expand_ST_into_base_and_ofst(_opt_stab->St(lda->Lda_aux_id()),
@@ -473,7 +469,6 @@ OPT_REVISE_SSA::Find_scalars_from_lda_iloads(CODEREP *cr)
 	WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
       }
     } else
-#endif
     WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
     WN_set_ty(&wn, cr->Ilod_ty());
     WN_set_field_id(&wn, cr->I_field_id());
@@ -570,7 +565,6 @@ OPT_REVISE_SSA::Find_scalars_from_lda_indirects(void)
 	  WN_set_desc(&wn, stmt->Desc());
 	  WN_set_rtype(&wn, MTYPE_V);
 	  WN_store_offset(&wn) = lhs->Offset() + lda->Offset();
-#if 1 // bug fix aug-14-02
 	  ST *lda_st;
 	  INT64 ofst;
 	  Expand_ST_into_base_and_ofst(_opt_stab->St(lda->Lda_aux_id()),
@@ -584,7 +578,6 @@ OPT_REVISE_SSA::Find_scalars_from_lda_indirects(void)
 	      WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
 	    }
 	  } else
-#endif
 	  WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
 	  WN_set_ty(&wn, lhs->Ilod_ty());
 	  WN_set_field_id(&wn, lhs->I_field_id());
@@ -967,17 +960,6 @@ OPT_REVISE_SSA::Create_COMPOSE_BITS(INT bit_offset, INT bit_size,
 				    CODEREP *v, CODEREP *rhs)
 {
   CODEREP stack_cr; 
-#if 0
-  if (MTYPE_bit_size(v->Dtyp()) != MTYPE_bit_size(rhs->Dtyp())) {
-    CODEREP cvt_cr;
-    FOLD ftmp;
-    OPCODE opc = OPCODE_make_op(OPR_CVT, v->Dtyp(), rhs->Dtyp());
-    cvt_cr.Init_expr(opc, rhs);
-    rhs = ftmp.Fold_Expr(&cvt_cr);
-    if (!rhs)
-      rhs = _htable->Rehash(&cvt_cr);
-  }
-#endif
   stack_cr.Init_expr(OPCODE_make_op(OPR_COMPOSE_BITS, v->Dtyp(), MTYPE_V), v);
   stack_cr.Set_kid_count(2);
   stack_cr.Set_opnd(1, rhs);
@@ -1394,22 +1376,18 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
     if (_opt_stab->Is_volatile(cr->Scalar_aux_id())) 
       x->Set_var_volatile();
 #endif
-#if 1 // bug fix aug-26-02
     // indirect load is not volatile, but folded-to scalar is volatile
     if (x->Is_var_volatile()) 
       return NULL;
-#endif
     if (x->Dsctyp() == 0 ||
         (MTYPE_is_integral(x->Dsctyp()) &&
          MTYPE_byte_size(cr->Dsctyp()) != MTYPE_byte_size(x->Dsctyp())))
         x->Set_dsctyp(cr->Dsctyp());
     x->Set_lod_ty(TY_pointed(cr->Ilod_base_ty()));
     x->Set_field_id(cr->I_field_id());
-#if 1 // bug fix sep-4-02
     if (x->Field_id() == 0 && x->Dsctyp() != MTYPE_M && 
 	TY_size(x->Lod_ty()) != MTYPE_byte_size(x->Dsctyp()))
       x->Set_lod_ty(MTYPE_To_TY(x->Dsctyp()));
-#endif
     if (cr->Dsctyp() == MTYPE_BS) // cannot use offset from opt_stab
       x->Set_offset(cr->Offset()+cr->Ilod_base()->Offset());
     if (cr->Opr() == OPR_ILDBITS) 
@@ -1530,11 +1508,9 @@ OPT_REVISE_SSA::Fold_lda_indirects(void)
 	  if (vaux == 0) // not folding because folded_scalar_limit reached 
 	    break;
 #endif
-#if 1 // bug fix aug-26-02
       	  // indirect load is not volatile, but folded-to scalar is volatile
 	  if (_opt_stab->Is_volatile(vaux)) 
 	    break;
-#endif
 	  // this indirect can be folded
 	  // first, generate a new version of the new scalar variable
 	  stmt->Set_lhs(_htable->Add_def(vaux, -1, stmt, 
@@ -1542,11 +1518,9 @@ OPT_REVISE_SSA::Fold_lda_indirects(void)
 			_opt_stab->St_ofst(vaux),
 			TY_pointed(lhs->Ilod_base_ty()), lhs->I_field_id(), 
 			TRUE));
-#if 1 // bug fix sep-4-02
 	  if (stmt->Lhs()->Field_id() == 0 && stmt->Lhs()->Dsctyp() != MTYPE_M && 
 	      TY_size(stmt->Lhs()->Lod_ty()) != MTYPE_byte_size(stmt->Lhs()->Dsctyp()))
 	    stmt->Lhs()->Set_lod_ty(MTYPE_To_TY(stmt->Lhs()->Dsctyp()));
-#endif
 	  if (lhs->Dsctyp() == MTYPE_BS) // cannot use offset from opt_stab
 	    stmt->Lhs()->Set_offset(lhs->Offset()+lhs->Istr_base()->Offset());
 	  if (stmt->Opr() == OPR_ISTORE)

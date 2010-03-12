@@ -2332,16 +2332,6 @@ extern enum reg_class mips_char_to_class[256];
    memory and loading that memory location into a register of CLASS2.
 
    Do not define this macro if its value would always be zero.  */
-#if 0
-#define SECONDARY_MEMORY_NEEDED(CLASS1, CLASS2, MODE)			\
-  ((!TARGET_DEBUG_H_MODE						\
-    && GET_MODE_CLASS (MODE) == MODE_INT				\
-    && ((CLASS1 == FP_REGS && GR_REG_CLASS_P (CLASS2))			\
-	|| (GR_REG_CLASS_P (CLASS1) && CLASS2 == FP_REGS)))		\
-   || (TARGET_FLOAT64 && !TARGET_64BIT && (MODE) == DFmode		\
-       && ((GR_REG_CLASS_P (CLASS1) && CLASS2 == FP_REGS)		\
-	   || (GR_REG_CLASS_P (CLASS2) && CLASS1 == FP_REGS))))
-#endif
 /* The HI and LO registers can only be reloaded via the general
    registers.  Condition code registers can only be loaded to the
    general registers, and from the floating point registers.  */
@@ -2395,12 +2385,6 @@ extern enum reg_class mips_char_to_class[256];
    dynamically allocates stack space, and there seems to be a bug in
    STACK_DYNAMIC_OFFSET, so don't define this right now.  */
 
-#if 0
-#define STACK_DYNAMIC_OFFSET(FUNDECL)					\
-  ((current_function_outgoing_args_size == 0 && current_function_calls_alloca) \
-	? 4*UNITS_PER_WORD						\
-	: current_function_outgoing_args_size)
-#endif
 
 /* The return address for the current frame is in r31 if this is a leaf
    function.  Otherwise, it is on the stack.  It is at a variable offset
@@ -2537,18 +2521,7 @@ extern enum reg_class mips_char_to_class[256];
    passed in $4.  However, at the current time, this produces a compiler
    that can't bootstrap, so comment it out for now.  */
 
-#if 0
-#define FIRST_PARM_OFFSET(FNDECL)					\
-  (FNDECL != 0								\
-   && TREE_TYPE (FNDECL) != 0						\
-   && TREE_TYPE (TREE_TYPE (FNDECL)) != 0				\
-   && (TREE_CODE (TREE_TYPE (TREE_TYPE (FNDECL))) == RECORD_TYPE	\
-       || TREE_CODE (TREE_TYPE (TREE_TYPE (FNDECL))) == UNION_TYPE)	\
-		? UNITS_PER_WORD					\
-		: 0)
-#else
 #define FIRST_PARM_OFFSET(FNDECL) 0
-#endif
 
 /* When a parameter is passed in a register, stack space is still
    allocated for it.  For the MIPS, stack space must be allocated, cf
@@ -3070,16 +3043,10 @@ typedef struct mips_args {
    if X (an RTX) is a legitimate memory address on the target
    machine for a memory operand of mode MODE.  */
 
-#if 1
 #define GO_PRINTF(x)	fprintf(stderr, (x))
 #define GO_PRINTF2(x,y)	fprintf(stderr, (x), (y))
 #define GO_DEBUG_RTX(x) debug_rtx(x)
 
-#else
-#define GO_PRINTF(x)
-#define GO_PRINTF2(x,y)
-#define GO_DEBUG_RTX(x)
-#endif
 
 #ifdef REG_OK_STRICT
 #define GO_IF_LEGITIMATE_ADDRESS(MODE, X, ADDR)	\
@@ -3292,11 +3259,6 @@ typedef struct mips_args {
 #define ASM_OUTPUT_POOL_EPILOGUE(FILE, FNNAME, FNDECL, SIZE)	\
   mips_string_length = 0;
 
-#if 0
-/* In mips16 mode, put most string constants after the function.  */
-#define CONSTANT_AFTER_FUNCTION_P(tree)				\
-  (TARGET_MIPS16 && mips16_constant_after_function_p (tree))
-#endif
 
 /* Specify the machine mode that this machine uses
    for the index in the tablejump instruction.

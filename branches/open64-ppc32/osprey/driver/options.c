@@ -66,10 +66,6 @@ typedef struct index_list_rec {
 typedef struct option_info_rec {
 	mask_t valid_langs;
 	mask_t valid_phases;
-#if 0
-	//obsolete
-	index_list_t *combo_list;
-#endif
 	option_list_t *implies;
 	char *name;
 	char *help_msg;
@@ -289,41 +285,6 @@ no_more_options (void)
 	return (current_option == 0);
 }
 
-#if 0
-//obsolete
-/*
- * iterate through options in option-combination-list
- * #define FOREACH_OPTION_IN_COMBO(i,c)	\
- *	for (i = first_combo_item(c); !no_more_combo_items(c); i = next_combo_item(c))
- */
-static index_list_t *current_combo;
-
-int 
-first_combo_item (int combo_flag)
-{
-	current_combo = options[combo_flag].combo_list;
-	if (current_combo == NULL)
-		return O_Unrecognized;
-	else
-		return current_combo->info_index;
-}
-
-int 
-next_combo_item (int combo_flag)
-{
-	current_combo = current_combo->next;
-	if (current_combo == NULL)
-		return O_Unrecognized;
-	else
-		return current_combo->info_index;
-}
-
-boolean 
-no_more_combo_items (int combo_flag)
-{
-	return (current_combo == NULL);
-}
-#endif
 
 /*
  * iterate through implied options for a particular option.
@@ -370,9 +331,6 @@ void
 dump_option (int flag)
 {
 	option_list_t *pi = options[flag].implies;
-#if 0
-	index_list_t *pc = options[flag].combo_list;
-#endif
 	printf("dump option %d", flag);
 	if (options[flag].name != NULL) {
 		printf(" (%s)", options[flag].name);
@@ -388,16 +346,6 @@ dump_option (int flag)
 		}
 	}
 	printf("\n");
-#if 0
-	if (pc != NULL) {
-		printf("\tcombos:");
-		while (pc != NULL) {
-			printf("  %d", pc->info_index);
-			pc = pc->next;
-		}
-		printf("\n");
-	}
-#endif
 }
 
 #include "init_options.i"

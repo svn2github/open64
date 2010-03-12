@@ -643,16 +643,6 @@ void Exp_Call (OPERATOR opr, TN *return_address, TN *target, OPS *ops)
     Build_OP (top,  target, ops);
     break;
   case OPR_ICALL:
-#if 0
-    if ( ! Get_Trace (TP_CGEXP, 256)) {
-      // target is at 0(target), gp at 8(target)
-      OPCODE opc = OPCODE_make_op (OPR_LDID, Pointer_Mtype, Pointer_Mtype);
-      TN *tmp1 = Build_TN_Of_Mtype (Pointer_Mtype);
-      Expand_Load (opc, GP_TN, target, Gen_Literal_TN(8, 4), V_NONE, ops);
-      Expand_Load (opc, tmp1, target, Gen_Literal_TN(0, 4), V_NONE, ops);
-      target = tmp1;
-    }
-#endif
     /*FALLTHROUGH*/
   case OPR_PICCALL:
     cnd = Gen_Literal_TN(6, 4);

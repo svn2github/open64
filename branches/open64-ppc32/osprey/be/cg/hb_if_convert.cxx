@@ -580,16 +580,6 @@ AND_Predicate_To_OP (OP *op, TN *ptn1, TN *ptn2,
 	// defines new ptn1, and then use ptn1 on op.
 	// Can get into use before def problems if ptn1 and ptn2 are
 	// defined in separate bb's, so check for that.
-#if 0
-	DEF_KIND kind;
-	compare_op = TN_Reaching_Value_At_Op(ptn1, op, &kind, TRUE);
-	if (compare_op == NULL 
-		|| kind != VAL_KNOWN 
-		|| OP_cond_def(compare_op)) 
-	{
-		compare_op = NULL;
-	}
-#else
 	// TN_Reaching_Value_At_Op doesn't work,
 	// because hbf has unlinked some of the previous bbs
 	// in the hb.  So instead do brute search in hb
@@ -618,7 +608,6 @@ AND_Predicate_To_OP (OP *op, TN *ptn1, TN *ptn2,
 		}
 	    }
 	}
-#endif
 	FmtAssert(def_ptn1_op != NULL, ("and_pred no def; try recompiling with -CG:hb_exclude_pgtns=on"));
 	FmtAssert(def_ptn2_op != NULL, ("and_pred2 no def; try recompiling with -CG:hb_exclude_pgtns=on"));
 	FmtAssert(OP_has_predicate(def_ptn1_op), ("and_pred no qp; try recompiling with -CG:hb_exclude_pgtns=on")); 

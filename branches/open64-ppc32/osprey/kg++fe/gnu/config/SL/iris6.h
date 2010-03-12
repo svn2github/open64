@@ -211,19 +211,6 @@ Boston, MA 02111-1307, USA.  */
 
 #undef SET_ASM_OP	/* Has no equivalent.  See ASM_OUTPUT_DEF below.  */
 
-#if 0
-/* This is *NOT* how to equate one symbol to another symbol.  The assembler
-   '=' syntax just equates a name to a constant expression.
-   See ASM_OUTPUT_WEAK_ALIAS.  */
-
-#define ASM_OUTPUT_DEF(FILE,LABEL1,LABEL2)				\
- do {	fprintf ((FILE), "\t");						\
-	assemble_name (FILE, LABEL1);					\
-	fprintf (FILE, " = ");						\
-	assemble_name (FILE, LABEL2);					\
-	fprintf (FILE, "\n");						\
-  } while (0)
-#endif
 
 /* Define the strings used for the special svr4 .type and .size directives.  */
 

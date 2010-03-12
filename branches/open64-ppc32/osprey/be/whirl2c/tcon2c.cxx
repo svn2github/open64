@@ -208,7 +208,10 @@ TCON2C_Append_String_Const(TOKEN_BUFFER tokens,
    char       *str;
    INT32       stridx;
 
-   str_base = str = (char *)alloca(2*strlen + 3); /* "'", orig_str, "'", and "\0" */
+   /* Why 4*strlen? if <orig_str> contains a non-printable char, 
+    * the output of that char would be something like "\123".
+    */
+   str_base = str = (char *)alloca(4*strlen + 3); /* "'", orig_str, "'", and "\0" */
    *(str++) = '\"';
    strlen = strlen - 1; // subtract 1 for the extra \0
    for (stridx = 0; stridx < strlen; stridx++)

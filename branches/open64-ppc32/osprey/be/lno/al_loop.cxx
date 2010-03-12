@@ -374,19 +374,6 @@ Get_Reshaped_Array_St(const WN *array_expr,
   // allow non-zero offsets: they can arise in structure references
   // and passing addresses into the middle of structures.
 
-#if 0
-  if (WN_operator(mem_wn) != OPR_PARM) {
-    // Invalid if offset is anything other than 0, except for prefetches
-    //
-    if ((WN_offset(mem_wn) != 0) && 
-        (WN_operator(mem_wn) != OPR_PREFETCH) &&
-        (WN_operator(mem_wn) != OPR_PREFETCHX))
-      {
-        *valid = FALSE;
-        return array_st;
-      }
-  }
-#endif
 
   // 
   // Check that the parent is an ILOAD/ISTORE/PREFETCH or IO_ITEM of kind IOL_VAR.

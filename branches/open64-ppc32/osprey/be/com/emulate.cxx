@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -3632,45 +3632,6 @@ static BOOL check_size(WN *size, WN *src, WN *dst)
 
 static void aux_memory_msg(const char *msg, WN *tree, WN *mstore)
 {
-#if 0
-  char	buff[120];
-  INT32 n;
-
-  // This is a pretty pointless thing to do, as it's awfully noisy
-
-  // If the size is 0, we inline expansion is empty. So we don't
-  // get a MSTORE. Check for that case.
-  if (WN_operator(mstore) != OPR_MSTORE) {
-    sprintf (buff, "inlined %s on line %d, size = 0", 
-			msg, Srcpos_To_Line(WN_Get_Linenum(tree)));
-    DevWarn (buff);
-    return;
-  }
-
-  WN *load = 	WN_kid0(mstore);
-  WN *size = 	WN_kid2(mstore);
-
-  n= sprintf(buff, "inlined %s on line %d, dst align=%d",
-	     msg,
-	     Srcpos_To_Line(WN_Get_Linenum(tree)),
-	     TY_align(TY_pointed(WN_ty(mstore))));
-
-  if (WN_opcode(load) == OPC_MLOAD)
-  {
-    n += sprintf(&buff[n], ", src align=%d", TY_align(TY_pointed(WN_ty(load))));
-  }
-
-  if (Is_Integer_Constant(size))
-  {
-    n += sprintf(&buff[n], ", size = %lld", WN_const_val(size));
-  }
-  else
-  {
-    n += sprintf(&buff[n], "size = unknown");
-  }
-  
-  DevWarn(buff);
-#endif
 }
 
 static WN *aux_memset(WN *var, WN *con, WN *size)
@@ -3853,10 +3814,6 @@ static WN *em_x8664_va_start(WN *block, WN *ap)
     Is_True(TY_kind(ty_idx) == KIND_POINTER,
 	    ("em_x8664_va_start: argument not of pointer type"));
     ty_idx = TY_pointed(ty_idx);
-#if 0 // bug 10098
-    Is_True(TY_kind(ty_idx) == KIND_ARRAY && TY_size(ty_idx) == 24,
-	("em_x8664_va_start: argument pointer does not point to type va_list"));
-#endif
     direct = TRUE;
     // va_list_struct_ty = TY_etype(ty_idx);
   }
@@ -4514,23 +4471,37 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
     /* Do the following conversion if either of -ffast-math or -OPT:fast_math
        are specified.
        
-       cos -> fastcos
-       exp -> fastexp
-       expf -> fastexpf
-       log -> fastlog
-       logf -> fastlogf
-       pow -> fastpow
-       powf -> fastpowf
-       sin -> fastsin
-       sincos -> fastsincos
+       acos -> fastacos, acosf -> fastacosf
+       asin -> fastasin, asinf -> fastasinf
+       atan -> fastatan, atanf -> fastatanf
+       atan2 -> fastatan2, atan2f -> fastatan2f
+       cos -> fastcos, cosf -> fastcosf
+       cosh -> fastcosh, coshf -> fastcoshf
+       exp -> fastexp, expf -> fastexpf
+       log -> fastlog, logf -> fastlogf
+       pow -> fastpow, powf -> fastpowf
+       sin -> fastsin, sinf -> fastsinf
+       sinh -> fastsinh, sinhf -> fastsinhf
+       sincos -> fastsincos, sincosf -> fastsincosf
+       tan -> fasttan, tanf -> fasttanf
+       tanh -> fasttanh, tanhf -> fasttanhf
 
-       (Bug 4680)	
     */
     if( Is_Target_64bit() &&
-        // !Is_Target_EM64T() &&
 	!Is_Target_Anyx86() &&
 	OPT_Fast_Math &&
-	( WN_intrinsic(tree) == INTRN_F8COS ||
+	( WN_intrinsic(tree) == INTRN_F8ACOS ||
+	  WN_intrinsic(tree) == INTRN_F4ACOS ||
+	  WN_intrinsic(tree) == INTRN_F8ASIN ||
+	  WN_intrinsic(tree) == INTRN_F4ASIN ||
+	  WN_intrinsic(tree) == INTRN_F8ATAN ||
+	  WN_intrinsic(tree) == INTRN_F4ATAN ||
+	  WN_intrinsic(tree) == INTRN_F8ATAN2 ||
+	  WN_intrinsic(tree) == INTRN_F4ATAN2 ||
+	  WN_intrinsic(tree) == INTRN_F8COS ||
+	  WN_intrinsic(tree) == INTRN_F4COS ||
+	  WN_intrinsic(tree) == INTRN_F8COSH ||
+	  WN_intrinsic(tree) == INTRN_F4COSH ||
 	  WN_intrinsic(tree) == INTRN_F8EXP ||
 	  WN_intrinsic(tree) == INTRN_F4EXP ||
 	  WN_intrinsic(tree) == INTRN_F8LOG ||
@@ -4538,7 +4509,15 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 	  WN_intrinsic(tree) == INTRN_F8EXPEXPR ||
 	  WN_intrinsic(tree) == INTRN_F4EXPEXPR ||
 	  WN_intrinsic(tree) == INTRN_F8SIN ||
+	  WN_intrinsic(tree) == INTRN_F4SIN ||
+	  WN_intrinsic(tree) == INTRN_F8SINH ||
+	  WN_intrinsic(tree) == INTRN_F4SINH ||
 	  WN_intrinsic(tree) == INTRN_SINCOS ||
+	  WN_intrinsic(tree) == INTRN_SINCOSF ||
+	  WN_intrinsic(tree) == INTRN_F8TAN ||
+	  WN_intrinsic(tree) == INTRN_F4TAN ||
+	  WN_intrinsic(tree) == INTRN_F8TANH ||
+	  WN_intrinsic(tree) == INTRN_F4TANH ||
 	  WN_intrinsic(tree) == INTRN_F8VSIN ||
 	  WN_intrinsic(tree) == INTRN_F8VCOS ||
 	  WN_intrinsic(tree) == INTRN_F8VEXP ||
@@ -4547,7 +4526,18 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 	  WN_intrinsic(tree) == INTRN_F8VLOG ) ) {
       BOOL vector_call_check_constant_stride = FALSE;
       switch (WN_intrinsic(tree)) {
+      case INTRN_F8ACOS:   st = Gen_Intrinsic_Function(ty, "fastacos"); break;
+      case INTRN_F4ACOS:   st = Gen_Intrinsic_Function(ty, "fastacosf"); break;
+      case INTRN_F8ASIN:   st = Gen_Intrinsic_Function(ty, "fastasin"); break;
+      case INTRN_F4ASIN:   st = Gen_Intrinsic_Function(ty, "fastasinf"); break;
+      case INTRN_F8ATAN:   st = Gen_Intrinsic_Function(ty, "fastatan"); break;
+      case INTRN_F4ATAN:   st = Gen_Intrinsic_Function(ty, "fastatanf"); break;
+      case INTRN_F8ATAN2:  st = Gen_Intrinsic_Function(ty, "fastatan2"); break;
+      case INTRN_F4ATAN2:  st = Gen_Intrinsic_Function(ty, "fastatan2f"); break;
       case INTRN_F8COS:    st = Gen_Intrinsic_Function(ty, "fastcos"); break;
+      case INTRN_F4COS:    st = Gen_Intrinsic_Function(ty, "fastcosf"); break;
+      case INTRN_F8COSH:   st = Gen_Intrinsic_Function(ty, "fastcosh"); break;
+      case INTRN_F4COSH:   st = Gen_Intrinsic_Function(ty, "fastcoshf"); break;
       case INTRN_F8EXP:    st = Gen_Intrinsic_Function(ty, "fastexp"); break;
       case INTRN_F4EXP:    st = Gen_Intrinsic_Function(ty, "fastexpf"); break;
       case INTRN_F8LOG:    st = Gen_Intrinsic_Function(ty, "fastlog"); break;
@@ -4555,7 +4545,15 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
       case INTRN_F8EXPEXPR:st = Gen_Intrinsic_Function(ty, "fastpow"); break;
       case INTRN_F4EXPEXPR:st = Gen_Intrinsic_Function(ty, "fastpowf"); break;
       case INTRN_F8SIN:    st = Gen_Intrinsic_Function(ty, "fastsin"); break;
-      case INTRN_SINCOS: st = Gen_Intrinsic_Function(ty, "fastsincos");break;
+      case INTRN_F4SIN:    st = Gen_Intrinsic_Function(ty, "fastsinf"); break;
+      case INTRN_F8SINH:   st = Gen_Intrinsic_Function(ty, "fastsinh"); break;
+      case INTRN_F4SINH:   st = Gen_Intrinsic_Function(ty, "fastsinhf"); break;
+      case INTRN_SINCOS:   st = Gen_Intrinsic_Function(ty, "fastsincos");break;
+      case INTRN_SINCOSF:  st = Gen_Intrinsic_Function(ty, "fastsincosf");break;
+      case INTRN_F8TAN:    st = Gen_Intrinsic_Function(ty, "fasttan"); break;
+      case INTRN_F4TAN:    st = Gen_Intrinsic_Function(ty, "fasttanf"); break;
+      case INTRN_F8TANH:   st = Gen_Intrinsic_Function(ty, "fasttanh"); break;
+      case INTRN_F4TANH:   st = Gen_Intrinsic_Function(ty, "fasttanhf"); break;
 
       case INTRN_F8VSIN: 
 	st = Gen_Intrinsic_Function(ty, "vrda_sin");	
@@ -4679,14 +4677,6 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
     }
 #elif defined(TARG_MIPS) && !defined(TARG_SL)
 
-#if 0  // Using __popcountsi2 fails at link-time on cross-compiler.
-    ST *st = NULL;
-    if (WN_intrinsic(tree) == INTRN_I4POPCNT &&
-	MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4) {
-      st = Gen_Intrinsic_Function(ty, "__popcountsi2");
-    } else
-      st = Gen_Intrinsic_Function(ty, function);
-#else
     if (WN_intrinsic(tree) == INTRN_I4POPCNT &&
 	MTYPE_byte_size(WN_rtype(WN_kid0(tree))) <= 4) {
       // Zero extend U4 to U8
@@ -4697,7 +4687,6 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 			       MTYPE_To_TY( MTYPE_U8 ), WN_PARM_BY_VALUE );
     }
     ST *st = Gen_Intrinsic_Function(ty, function);
-#endif
 
 #else
     ST	*st = Gen_Intrinsic_Function(ty, function);

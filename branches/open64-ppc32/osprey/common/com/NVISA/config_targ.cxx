@@ -492,16 +492,6 @@ Prepare_Target ( void )
   }
   Target_ISA = isa;
 
-#if 0
-  /* Now make sure ISA and ABI are consistent if both specified,
-   * and if one is default the other:
-   */
-  switch ( Target_ISA ) {
-    case TARGET_ISA_UNDEF:
-      Target_ISA = ..;
-      break;
-  }
-#endif
 
   /* Now check the target processor from -TARG:processor=xxx: */
   if ( Processor_Name != NULL ) {

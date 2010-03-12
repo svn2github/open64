@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1304,35 +1304,6 @@ WGEN_Array_Expr(gs_t exp,
   }
 }
 
-#if 0
-// wgen clean-up : Code to handle lowered GNU tree should not be needed
-// any more.
-
-// EXP is a RESULT_DECL that holds the function return value.  The
-// value is to be returned in the memory pointed to by the fake first
-// parm which was inserted by wgen.  This function converts the RESULT_DECL
-// into an INDIRECT_REF of it, and makes it write into the first fake
-// parameter.
-void
-WGEN_fixup_result_decl (gs_t exp)
-{
-  Is_True (gs_tree_code(exp) == GS_RESULT_DECL,
-           ("WGEN_fixup_result_decl: expected result_decl node"));
-  // gs_tree_type(exp) need not be the same as
-  //             gs_tree_type(gs_tree_type(Current_Function_Decl()))
-
-  // build a new result_decl node
-  gs_t ptr_var = gs_build_decl (GS_RESULT_DECL,
-                                gs_build_pointer_type(gs_tree_type(exp)));
-  // convert current node to indirect_ref
-  _gs_code(exp, GS_INDIRECT_REF);
-  gs_set_tree_operand (exp, 0, ptr_var);
-
-  // set ST
-  WN *first_formal = WN_formal(Current_Entry_WN(), 0);
-  set_DECL_ST (ptr_var, WN_st(first_formal));
-}
-#endif
 
 #ifdef TARG_SL
 /* For case: *p++(or --) op *p ... */
@@ -1448,12 +1419,10 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
 	Set_TY_is_volatile(ty_idx0);
 	volt = TRUE;
       }
-#if 1 // wgen bug 10470
       else {
 	Clear_TY_is_volatile(ty_idx0);
 	volt = FALSE;
       }
-#endif
 #endif
 #ifdef KEY
       FmtAssert (DECL_FIELD_ID(arg1) != 0,
@@ -1502,33 +1471,15 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
   case GS_VAR_DECL:
   case GS_RESULT_DECL:
     {
-#if 0 // def KEY
-      // wgen clean-up : code to handle lowered GNU tree should not be
-      // needed any more.
-      if (code == GS_RESULT_DECL &&
-          TY_return_in_mem(Get_TY
-                           (gs_tree_type
-                            (gs_tree_type(Current_Function_Decl()) ) ) ) )
-      {
-        WGEN_fixup_result_decl (lhs);
-        wn = WGEN_Lhs_Of_Modify_Expr (assign_code, lhs, NULL, need_result,
-                                      component_ty_idx, component_offset,
-                                      field_id, is_bit_field, rhs_wn,
-                                      rhs_preg_num, is_realpart, is_imagpart);
-        break;
-      }
-#endif
       TY_IDX hi_ty_idx = Get_TY(gs_tree_type(lhs)); // type associated with field_id
       if (gs_tree_this_volatile(lhs)) {
         Set_TY_is_volatile(hi_ty_idx);
         volt = TRUE;
       }
-#if 1 // wgen bug 10470
       else {
 	Clear_TY_is_volatile(hi_ty_idx);
 	volt = FALSE;
       }
-#endif
       TY_IDX desc_ty_idx = component_ty_idx;
       if (desc_ty_idx == 0)
         desc_ty_idx = hi_ty_idx;
@@ -2638,19 +2589,6 @@ WGEN_Address_Of(gs_t arg0)
   switch (code0) {
 #ifdef KEY
   case GS_RESULT_DECL:	// bug 3878
-#if 0
-    // wgen clean-up: code needed to handle lowered GNU tree should not
-    // be needed any more.
-    if (TY_return_in_mem(Get_TY
-                         (gs_tree_type
-                          (gs_tree_type(Current_Function_Decl()) ) ) ) )
-    {
-      WGEN_fixup_result_decl (arg0);
-      wn = WGEN_Address_Of (arg0);
-      break;
-    }
-    // fall through
-#endif
 #endif
   case GS_VAR_DECL:
   case GS_PARM_DECL:
@@ -2740,10 +2678,6 @@ WGEN_Address_Of(gs_t arg0)
     {
       DevWarn ("taking address of a label at line %d", lineno);
       LABEL_IDX label_idx = WGEN_Get_LABEL (arg0, FALSE);
-#if 0
-      FmtAssert (arg0->decl.symtab_idx == CURRENT_SYMTAB,
-                 ("line %d: taking address of a label not defined in current function currently not implemented", lineno));
-#endif
       wn = WN_LdaLabel (Pointer_Mtype, label_idx);
       Set_LABEL_addr_saved (label_idx);
 #ifdef KEY
@@ -2830,11 +2764,6 @@ WGEN_Address_Of(gs_t arg0)
       FmtAssert(!WN_has_side_effects(a) && !WN_has_side_effects(b),
                 ("Addr of MIN/MAX_EXPR with side effects not yet supported"));
 
-#if 0 // GCC's same_type_p is not duplicated in wgen because it is too
-      // complicated.
-      FmtAssert(gs_same_type_p(gs_tree_type(op0), gs_tree_type(op1)),
-                ("Types of MIN/MAX_EXPR operands differ"));
-#endif
       TY_IDX  ptr_ty    = Make_Pointer_Type (Get_TY(gs_tree_type(op0)), FALSE);
       TYPE_ID ptr_mtype = TY_mtype(ptr_ty);
       TY_IDX  arg_ty    = Get_TY(gs_tree_type(gs_tree_operand(arg0, 0)));
@@ -3633,77 +3562,6 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PMINSW128:
       *iopc = INTRN_PMINSW128;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_PEXTRW:
-      {
-        Is_True (gs_tree_code (gs_tree_value (gs_tree_chain (t_list))) == GS_INTEGER_CST,
-                 ("Immediate value required by pextrw"));
-        UINT val = gs_get_integer_value(gs_tree_value (gs_tree_chain (t_list)));
-        switch (val)
-        {
-          case 0:
-            *iopc = INTRN_PEXTRW0;
-            break;
-          case 1:
-            *iopc = INTRN_PEXTRW1;
-            break;
-          case 2:
-            *iopc = INTRN_PEXTRW2;
-            break;
-          case 3:
-            *iopc = INTRN_PEXTRW3;
-            break;
-          default:
-            Fail_FmtAssertion ("Invalid imm value %d to pextrw", val);
-        }
-        TY_IDX arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(t_list)));
-        TYPE_ID arg_mtype  = TY_mtype(arg_ty_idx);
-        arg0     = WN_CreateParm (Mtype_comparison (arg_mtype), arg0,
-                                  arg_ty_idx, WN_PARM_BY_VALUE);
-        wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, MTYPE_U4, MTYPE_V,
-                                      *iopc, 1, &arg0);
-        break;
-      }
-    case GSBI_IX86_BUILTIN_PINSRW:
-      {
-        Is_True (gs_tree_code (gs_tree_value (gs_tree_chain (gs_tree_chain (t_list)))) == GS_INTEGER_CST, ("Immediate value required by pinsrw"));
-        UINT val = gs_get_integer_value(gs_tree_value (gs_tree_chain (gs_tree_chain (t_list))));
-        switch (val)
-        {
-          case 0:
-            *iopc = INTRN_PINSRW0;
-            break;
-          case 1:
-            *iopc = INTRN_PINSRW1;
-            break;
-          case 2:
-            *iopc = INTRN_PINSRW2;
-            break;
-          case 3:
-            *iopc = INTRN_PINSRW3;
-            break;
-          default:
-            Fail_FmtAssertion ("Invalid imm value %d to pinsrw", val);
-                                                                                
-        }
-        WN * args[2];
-        for (int c=0; c<2; c++)
-        {
-            TY_IDX arg_ty_idx = Get_TY (gs_tree_type (gs_tree_value (t_list)));
-            TYPE_ID arg_mtype = TY_mtype (arg_ty_idx);
-            args[c] = WN_CreateParm (Mtype_comparison (arg_mtype), arg0,
-                                        arg_ty_idx, WN_PARM_BY_VALUE);
-            t_list = gs_tree_chain (t_list);
-            arg0 = arg1;
-        }
-                                                                                
-        wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, 
-                                  Target_SSE ? MTYPE_V8I2 : MTYPE_M8I2, 
-                                  MTYPE_V,
-                                  *iopc, 2, args);
-        break;
-      }
-#endif
     case GSBI_IX86_BUILTIN_PMOVMSKB:
       *iopc = INTRN_PMOVMSKB;
       break;
@@ -3827,15 +3685,6 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_CMPLESD:
       *iopc = INTRN_CMPLESD;
       break;
-#if 0
-    // GCC 4.2.0 FE does not support CMPGTSD, CMPGESD
-    case GSBI_IX86_BUILTIN_CMPGTSD:
-      *iopc = INTRN_CMPGTSD;
-      break;
-    case GSBI_IX86_BUILTIN_CMPGESD:
-      *iopc = INTRN_CMPGESD;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_CMPUNORDSD:
       *iopc = INTRN_CMPUNORDSD;
       break;
@@ -3848,15 +3697,6 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_CMPNLESD:
       *iopc = INTRN_CMPNLESD;
       break;
-#if 0
-    // GCC 4.2.0 FE does not support CMPNGTSD, CMPNGESD
-    case GSBI_IX86_BUILTIN_CMPNGTSD:
-      *iopc = INTRN_CMPNGTSD;
-      break;
-    case GSBI_IX86_BUILTIN_CMPNGESD:
-      *iopc = INTRN_CMPNGESD;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_CMPORDSD:
       *iopc = INTRN_CMPORDSD;
       break;
@@ -3869,15 +3709,6 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_CMPLESS:
       *iopc = INTRN_CMPLESS;
       break;
-#if 0
-    // GCC 4.2.0 FE does not support CMPGTSS, CMPGESS
-    case GSBI_IX86_BUILTIN_CMPGTSS:
-      *iopc = INTRN_CMPGTSS;
-      break;
-    case GSBI_IX86_BUILTIN_CMPGESS:
-      *iopc = INTRN_CMPGESS;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_CMPUNORDSS:
       *iopc = INTRN_CMPUNORDSS;
       break;
@@ -3982,15 +3813,6 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_CLFLUSH;
       *intrinsic_op = FALSE;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_LOADAPS:
-      *iopc = INTRN_LOADAPS;
-      break;
-    case GSBI_IX86_BUILTIN_STOREAPS:
-      *iopc = INTRN_STOREAPS;
-      *intrinsic_op = FALSE;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_PSLLDQI128:
       *iopc = INTRN_PSLLDQ;
       break;
@@ -4049,33 +3871,13 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_MOVNTDQ;
       *intrinsic_op = FALSE;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_LOADD:
-      *iopc = INTRN_LOADD;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_MOVNTPS:
       *iopc = INTRN_MOVNTPS;
       *intrinsic_op = FALSE;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_SSE_ZERO:
-      *iopc = INTRN_SSE_ZERO;
-      *intrinsic_op = FALSE;
-      break;
-    case GSBI_IX86_BUILTIN_CLRTI:
-      *iopc = INTRN_CLRTI;
-      *intrinsic_op = FALSE;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_PSHUFD:
       *iopc = INTRN_PSHUFD;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_LOADSS:
-      *iopc = INTRN_LOADSS;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_DIVPD:
       wn = WN_Div (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
@@ -4108,16 +3910,6 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_ORPD:
       *iopc = INTRN_ORPD;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_STORELPD:
-      *iopc = INTRN_STORELPD;
-      *intrinsic_op = FALSE;
-      break;
-    case GSBI_IX86_BUILTIN_STOREHPD:
-      *iopc = INTRN_STOREHPD;
-      *intrinsic_op = FALSE;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_LOADLPD:
       *iopc = INTRN_LOADLPD;
       break;
@@ -4145,20 +3937,9 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PSHUFW:
       *iopc = INTRN_PSHUFW;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_LOADDQA:
-      *iopc = INTRN_LOADDQA;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_LOADDQU:
       *iopc = INTRN_LOADDQU;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_STOREDQA:
-      *iopc = INTRN_STOREDQA;
-      *intrinsic_op = FALSE;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_STOREDQU:
       *iopc = INTRN_STOREDQU;
       *intrinsic_op = FALSE;
@@ -6295,9 +6076,7 @@ WGEN_Expand_Expr (gs_t exp,
 
 	if (gs_tree_this_volatile(exp))
 	  Set_TY_is_volatile(ty_idx);
-#if 1 // wgen bug 10470
 	else Clear_TY_is_volatile(ty_idx);
-#endif
 
 #ifdef KEY
 	if (code == GS_VAR_DECL && gs_decl_value_expr(exp)) {
@@ -6420,9 +6199,6 @@ WGEN_Expand_Expr (gs_t exp,
     case GS_EMPTY_CLASS_EXPR: // bugs 10846, 11138
       ty_idx = Get_TY (gs_tree_type(exp));
       st = Gen_Temp_Symbol (ty_idx, "__empty_class_expr");
-#if 0 // wgen TODO
-      WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
-#endif
       wn = WN_Ldid (TY_mtype (ty_idx), 0, st, ty_idx);
       break;
 
@@ -6619,7 +6395,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  if (MTYPE_size_min(mtyp) < MTYPE_size_min(WN_rtype(wn))) {
 	    if (MTYPE_size_min(mtyp) != 32)
 	      wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp), MTYPE_V,
-			         MTYPE_size_min(mtyp), wn);
+			         gs_type_type_precision(gs_tree_type(exp)), wn);
 	    else wn = WN_Cvt(WN_rtype(wn), mtyp, wn);
 	  }
 	  else {
@@ -7605,19 +7381,6 @@ WGEN_Expand_Expr (gs_t exp,
             break;
           }
         }
-#if 0
-	gs_t init_expr_opnd0 = gs_tree_operand(exp, 0);
-	if (gs_tree_code(gs_tree_operand(exp, 1)) == GS_NOP_EXPR &&
-	    gs_tree_code(gs_tree_operand(gs_tree_operand(exp, 1), 0)) == GS_TARGET_EXPR &&
-	    gs_tree_code(init_expr_opnd0) == GS_INDIRECT_REF &&
-	    gs_tree_code(gs_tree_operand(init_expr_opnd0, 0)) == GS_VAR_DECL) {
-	  gs_t t = gs_tree_operand(exp, 1);
-	  ST *st = Get_ST(gs_tree_operand(init_expr_opnd0, 0));
-	  WN *target_wn = WN_Ldid(Pointer_Mtype, 0, st, ST_type(st));
-	  wn = WGEN_Expand_Expr(t, TRUE, 0, 0, 0, 0, FALSE, FALSE, target_wn);
-	  break;
-	}
-#endif
       }
 #endif
       if (lang_cplus)
@@ -7740,46 +7503,6 @@ WGEN_Expand_Expr (gs_t exp,
 		   gs_code_name(gs_tree_code(gs_tree_operand(exp, 0))));
         }
 
-#if 0 // wgen clean-up: we should not need these codes any more, these
-         are required to process gimplified GNU tree. Also remove
-         definition of WGEN_Process_Initialization.
-
-        gs_t lhs = gs_tree_operand(exp,0);
-        gs_t rhs = gs_tree_operand(exp,1);
-        // wgen TODO: revisit this fix. During gimplification, GNU4 can
-        // strip off a target_expr from a modify_expr (see
-        // gimplify_modify_expr_rhs).
-        // So make sure the target_wn to use for returning object in memory
-        // is set, if appropriate.
-        if (!target_wn && gs_tree_code(exp) == GS_MODIFY_EXPR &&
-            gs_tree_code(rhs) == GS_CALL_EXPR)
-        {
-          TY_IDX ty = Get_TY (gs_tree_type(rhs));
-          if (TY_return_in_mem(ty))
-          {
-            if (gs_tree_code(lhs) == GS_VAR_DECL)
-            {
-              ST * s = Get_ST(lhs);
-              target_wn = WN_Lda (Pointer_Mtype, 0, s, 0);
-              wn = WGEN_Expand_Expr (rhs, TRUE, 0, 0, 0, 0, FALSE,
-                                     FALSE, target_wn);
-              break;
-            }
-          }
-        }
-        // DECL_EXPR nodes can be generally gimplified into either
-        //   1) modify_expr, removing the decl_initial of the lhs, or
-        //   2) generate no TREE code, but keeping decl_initial intact.
-        // (1) is handled here, (2) is handled in Create_ST_For_Tree.
-        // Bugs 11057, 11058
-        else if (gs_tree_code(exp) == GS_MODIFY_EXPR &&
-                 gs_tree_code(lhs) == GS_VAR_DECL &&
-                 gs_tree_code(rhs) == GS_STRING_CST)
-        {
-          WGEN_Process_Initialization (exp);
-          break;
-        }
-#endif
       }
       // fall through
 
@@ -7943,11 +7666,9 @@ WGEN_Expand_Expr (gs_t exp,
 
 	// generate the iload node
 	TY_IDX hi_ty_idx = Get_TY (gs_tree_type(exp));
-#if 1 // wgen bug 10448
 	if (gs_tree_this_volatile(exp))
 	  Set_TY_is_volatile(hi_ty_idx);
 	else Clear_TY_is_volatile(hi_ty_idx);
-#endif
 	desc_ty_idx = component_ty_idx;
 	if (desc_ty_idx == 0)
           desc_ty_idx = hi_ty_idx;
@@ -8046,11 +7767,9 @@ WGEN_Expand_Expr (gs_t exp,
         else
 #endif
         ty_idx = Get_TY(gs_tree_type(exp));
-#if 1 // wgen bug 10448
 	if (gs_tree_this_volatile(exp))
 	  Set_TY_is_volatile(ty_idx);
 	else Clear_TY_is_volatile(ty_idx);
-#endif
         if (need_result) {
           if (!WGEN_Keep_Zero_Length_Structs  &&
               TY_mtype (ty_idx) == MTYPE_M   &&
@@ -8475,7 +8194,43 @@ WGEN_Expand_Expr (gs_t exp,
                  if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
                  if (ret_mtype == MTYPE_F4) iopc = INTRN_F4ATAN;
                 else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8ATAN;
-                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'log'");
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'atan'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_ATAN2:
+              case GSBI_BUILT_IN_ATAN2F:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4ATAN2;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8ATAN2;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'atan2'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_SINH:
+              case GSBI_BUILT_IN_SINHF:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4SINH;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8SINH;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'sinh'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_COSH:
+              case GSBI_BUILT_IN_COSHF:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4COSH;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8COSH;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'cosh'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_TANH:
+              case GSBI_BUILT_IN_TANHF:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4TANH;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8TANH;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'tanh'");
                 intrinsic_op = TRUE;
                 break;
 
@@ -9726,11 +9481,9 @@ WGEN_Expand_Expr (gs_t exp,
 #endif // KEY
             arg_wn     = WGEN_Expand_Expr (gs_tree_value (list));
 	    arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
-#if 1 // wgen bug 10448
 	    if (gs_tree_this_volatile(gs_tree_value(list)))
 	      Set_TY_is_volatile(arg_ty_idx);
 	    else Clear_TY_is_volatile(arg_ty_idx);
-#endif
 #ifdef KEY
 	    }
 #endif // KEY
@@ -9744,13 +9497,11 @@ WGEN_Expand_Expr (gs_t exp,
 	  }
 
 	  arg_mtype  = TY_mtype(arg_ty_idx);
-#if 1 // wgen bug 10846
 	  // gcc allows non-struct actual to correspond to a struct formal;
 	  // fix mtype of parm node so as not to confuse back-end
 	  if (arg_mtype == MTYPE_M) {
 	    arg_mtype = WN_rtype(arg_wn);
 	  }
-#endif
           arg_wn = WN_CreateParm (Mtype_comparison (arg_mtype), arg_wn,
 		    		  arg_ty_idx, WN_PARM_BY_VALUE);
           WN_kid (call_wn, i++) = arg_wn;
@@ -10277,10 +10028,6 @@ WGEN_Expand_Expr (gs_t exp,
       {
         DevWarn ("taking address of a label at line %d", lineno);
         LABEL_IDX label_idx = WGEN_Get_LABEL (arg0, FALSE);
-#if 0
-        FmtAssert (arg0->decl.symtab_idx == CURRENT_SYMTAB,
-                   ("line %d: taking address of a label not defined in current function currently not implemented", lineno));
-#endif
         wn = WN_LdaLabel (Pointer_Mtype, label_idx);
         Set_LABEL_addr_saved (label_idx);
         Set_PU_no_inline (Get_Current_PU ());

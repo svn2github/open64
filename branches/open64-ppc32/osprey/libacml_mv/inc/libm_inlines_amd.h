@@ -1951,11 +1951,7 @@ static inline void __remainder_piby2f_inline(unsigned long long ux, double *r, i
 
       /* This method simulates multi-precision floating-point
          arithmetic and is accurate for all 1 <= x < infinity */
-#if 0
-      const int bitsper = 36;
-#else
 #define bitsper 36
-#endif
       unsigned long long res[10];
       unsigned long long u, carry, mask, mant, nextbits;
       int first, last, i, rexp, xexp, resexp, ltb, determ, bc;
@@ -2011,15 +2007,6 @@ static inline void __remainder_piby2f_inline(unsigned long long ux, double *r, i
 
       /* Do a long multiplication of the bits of 2/pi by the
          integer mantissa */
-#if 0
-      for (i = last; i >= first; i--)
-        {
-          u = pibits[i] * ux + carry;
-          res[i - first] = u & mask;
-          carry = u >> bitsper;
-        }
-      res[last - first + 1] = 0;
-#else
       /* Unroll the loop. This is only correct because we know
          that bitsper is fixed as 36. */
       res[4] = 0;
@@ -2034,7 +2021,6 @@ static inline void __remainder_piby2f_inline(unsigned long long ux, double *r, i
       carry = u >> bitsper;
       u = pibits[first] * ux + carry;
       res[0] = u & mask;
-#endif
 
 #ifdef DEBUGGING_PRINT
       printf("resexp = %d\n", resexp);

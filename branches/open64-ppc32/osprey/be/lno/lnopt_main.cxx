@@ -59,7 +59,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -2556,6 +2555,10 @@ Unroll_and_Jam(WN *loop, INT ufactor)
   DO_LOOP_INFO *dli = Get_Do_Loop_Info(loop);
   SNL_NEST_INFO ni(loop, nloops, &LNO_default_pool, TRUE);
 
+  // before calling the function SNL_Regtile_Loop, the condition that
+  // all the scalars must be expanded should be satisfied. 
+  if ( !ni.All_Var_Expandable(nloops) )
+    return NULL;
   INT outer = Do_Depth(loop);
 
   EST_REGISTER_USAGE est_register_usage =

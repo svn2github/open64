@@ -1143,9 +1143,6 @@ WN2F_select(TOKEN_BUFFER tokens, WN *wn, WN2F_CONTEXT context)
    WN2F_translate(tokens, WN_kid0(wn), context);
    
    Append_Token_Special(tokens, ')');
-#if 0
-   ASSERT_DBG_WARN(FALSE, (DIAG_UNIMPLEMENTED, "WN2F_select"));
-#endif
 
    return EMPTY_WN2F_STATUS;
 } /* WN2F_select */

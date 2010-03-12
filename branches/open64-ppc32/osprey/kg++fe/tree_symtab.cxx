@@ -248,12 +248,8 @@ Get_Mtype_For_Integer_Type(tree type_tree, INT64 tsize)
          mtype = MTYPE_I4;
 	     break;
 	  case 8:
-#if 0
-	     error("Don't support 8 bytes types now");
-#else
 	     DevWarn("8 byte types being used");
 	     mtype = MTYPE_I8;
-#endif
 	  /*
 	     if(TYPE_SBUF(type_tree)) {
 	          mtype = MTYPE_SB8;

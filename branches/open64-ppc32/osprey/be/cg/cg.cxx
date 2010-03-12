@@ -1479,23 +1479,6 @@ extern void Generate_Return_Address(void);
   }
   Check_for_Dump_ALL ( TP_CGEXP, NULL, "Pre LIS" );
 
-#if 0 /* EBO is turn on*/
-  /* for now we don't turn on ebo, it causes that there are lots of 
-   * jump to jump not converted to direct jump implemented in 
-   * CFLOW_Optimize in EBO_Post_Process_Region so we call 
-   * CFLOW_Optimize once immediately before Local scheduling as 
-   * walkaround.  After ebo turn on, we need back to use original 
-   * function call in ebo.
-   */
-  if( CG_Enable_Regional_Global_Sched && 
-      CG_Enable_REGION_formation &&
-      CG_opt_level > 1) {
-     CFLOW_Optimize( CFLOW_BRANCH | CFLOW_UNREACHABLE | CFLOW_MERGE | 
-                      CFLOW_REORDER, "CFLOW (third pass)");
-  }
-
-  Check_for_Dump_ALL ( TP_CGEXP, NULL, "after Sched" );
-#endif
 #else
   GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
   GRA_LIVE_Rename_TNs();

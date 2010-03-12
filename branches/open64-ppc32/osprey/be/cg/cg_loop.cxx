@@ -124,7 +124,6 @@
    
 */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <math.h>
 #include <stdarg.h>
@@ -6757,13 +6756,6 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
 
 	Convert_While_Loop_to_Fully_Predicated_Form(cg_loop);
 
-#if 0
-	if (SWP_Options.Predicate_Promotion) {
-	  list<BB*> bbl;
-	  bbl.push_front(cg_loop.Loop_header());
-	  CG_DEP_Prune_Dependence_Arcs(bbl, TRUE, trace_loop_opt);
-	}
-#endif
 
 	if (trace_loop_opt) 
 	  CG_LOOP_Trace_Loop(loop, "*** Before SINGLE_BB_WHILELOOP_SWP ***");
@@ -7536,20 +7528,6 @@ CG_LOOP_Zdl_Ident_Rec( LOOP_DESCR* loop )
     return;
   }
 
-#if 0
-  /* not single BB couldn't be zdl
-   */
-  BOOL single_bb = (BB_SET_Size(LOOP_DESCR_bbset(loop)) == 1);
-  if (!single_bb) {
-    if (trace) {
-      fprintf(TFile, "        --- can NOT be zdl,\n");
-      fprintf(TFile, "        --- because loop body is not single");
-      BB_SET_Print(LOOP_DESCR_bbset(loop), TFile);
-      fprintf(TFile, "\n");
-    }
-    return;
-  }
-#endif
 
   BOOL has_outside_br = FALSE;
   BOOL has_inside_br = FALSE;
@@ -7867,6 +7845,23 @@ void Perform_Loop_Optimizations()
 #endif // TARG_IA64
   }
 
+#ifdef TARG_IA64
+  // add clrrrb to the end of tail, in the case of when
+  // 1. output register number is not 0 and
+  // 2. rotating register reach it's max value 
+  // when the 2 conditions are satisfied, the output register is overlap with
+  // the rotating register, we have to put a clrrrb op in the end
+  // of every SWP loop in order to pass the integer parameter correctly
+  INT max_rotating = REGISTER_Last_Rotating_Registers(ISA_REGISTER_CLASS_integer) - REGISTER_First_Rotating_Registers(ISA_REGISTER_CLASS_integer) + 1;
+  if ( REGISTER_Number_Stacked_Output(ISA_REGISTER_CLASS_integer) &&
+       REGISTER_Number_Stacked_Rotating(ISA_REGISTER_CLASS_integer) == max_rotating )
+    for (INT i = 0; i < fixup.size(); i++)
+    {
+      BB * epilogbb = fixup[i].epilog;
+      OP * clrrrb_op = Mk_OP(TOP_clrrrb);
+      BB_Append_Op(epilogbb, clrrrb_op);
+    }
+#endif
   // Compute correct wrap around values for SWP loops
   for (INT i = 0; i < fixup.size(); i++)
     SWP_Fixup(fixup[i]);

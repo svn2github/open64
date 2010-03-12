@@ -252,7 +252,6 @@ Expand_Extract_Bits (TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_size
                   TN *tgt_tn, TN *src_tn, OPS *ops)
 {
   // FmtAssert( FALSE, ("Not IMP"));
-#if 1
   TN *tmp1_tn = tgt_tn;
   UINT pos = (Target_Byte_Sex != Host_Byte_Sex)
              ? MTYPE_bit_size(desc)-bit_offset-bit_size : bit_offset;
@@ -320,7 +319,6 @@ Expand_Extract_Bits (TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_size
 	       ops);      
   } else
     FmtAssert( FALSE, ("Handle this case"));
-#endif
 }
 
 BOOL
@@ -332,7 +330,6 @@ delete_subset_mem_op(OP *op,
 {
   // FmtAssert( FALSE, ("Not IMP"));
   return FALSE;
-#if 1    
   OP *pred_op = opinfo->in_op;
   BB *bb = OP_bb(op);
   INT opcount = OP_opnds(op);
@@ -455,7 +452,6 @@ delete_subset_mem_op(OP *op,
   OP_srcpos(OPS_first(&ops)) = OP_srcpos(op);
   BB_Insert_Ops_After(OP_bb(op), op, &ops);
   return TRUE;
-#endif  
 }
 
 /* 
@@ -1465,7 +1461,6 @@ cmovable_op (BB *bb, UINT *len, TN *no_define,
 {
   return NULL;
   
-#if 1
   *len = BB_length(bb);
   if (*len == 0)
     return NULL;
@@ -1535,7 +1530,6 @@ cmovable_op (BB *bb, UINT *len, TN *no_define,
     return NULL;
 
   return last;
-#endif
   return NULL;
 }
 
@@ -1549,132 +1543,6 @@ BOOL Special_Sequence (OP *op,
 {  
   // FmtAssert( FALSE, ("Not IMP"));  
   return FALSE; // PPC todo
-#if 0
-  if (!EBO_in_peep)
-    return FALSE;
-  if (OP_code(op) == TOP_beq ||
-      OP_code(op) == TOP_bne)  {
-    INT64 val = 0;
-    TN *opnd0 = OP_opnd(op, 0);
-    TN *opnd1 = OP_opnd(op, 1);
-    EBO_TN_INFO *opnd1_tninfo = get_tn_info(opnd1);
-    if (opnd1_tninfo &&
-	EBO_tn_available(OP_bb(op), opnd1_tninfo) &&
-	opnd1_tninfo->in_op &&
-	(OP_code(opnd1_tninfo->in_op) == TOP_addiu)) {
-      OP *op_in = opnd1_tninfo->in_op;
-      if (TN_has_value(OP_opnd(op_in, 1)) && 
-	  (TN_value(OP_opnd(op_in, 1)) != -1))
-	return FALSE;
-      else if (TN_has_value(OP_opnd(op_in, 1)))
-	val = -1;
-      else
-	return FALSE;
-    } else if (opnd1 != Zero_TN) {      
-      return FALSE;
-    }
-
-    // Try folding shift+beq/bne to bgez/bltz
-    EBO_TN_INFO *opnd0_tninfo = get_tn_info(opnd0);
-    if (opnd0_tninfo &&
-	EBO_tn_available(OP_bb(op), opnd0_tninfo) &&
-	opnd0_tninfo->in_op &&
-	(OP_code(opnd0_tninfo->in_op) == TOP_srawi || 
-	 OP_code(opnd0_tninfo->in_op) == TOP_sraw /* || 
-	 OP_code(opnd0_tninfo->in_op) == TOP_dsra32)*/) {
-      EBO_TN_INFO *tninfo;
-      OP *shift_op = opnd0_tninfo->in_op;
-
-      // Quit if result of the shift is live out of this BB
-      TN *shift_res = OP_result(shift_op, 0);
-      if (EBO_in_peep) {
-	if (REG_LIVE_Outof_BB (TN_register_class(shift_res), 
-			       TN_register(shift_res), 
-			       OP_bb(shift_op)))
-	  return FALSE;
-      } else {
-	if (CG_localize_tns && (TN_is_dedicated(shift_res) || 
-				TN_is_global_reg(shift_res)))
-	  return FALSE;
-	else if (GRA_LIVE_TN_Live_Outof_BB (shift_res, OP_bb(shift_op)))
-	  return FALSE;
-      }
-
-      // Find the control operand for the "shift".
-      TN *shift_ctrl_opnd = OP_opnd(shift_op, 1);
-      FmtAssert(TN_has_value(shift_ctrl_opnd), 
-		 ("shift ctrl opnd is not a constant"));
-      switch(shift_op->opr) {
-      case TOP_srawi:
-	if (TN_value(shift_ctrl_opnd) != 31)
-	  return FALSE;
-	break;
-      case TOP_sraw:
-	if ((TN_value(shift_ctrl_opnd) % 32) != 31)
-	  return FALSE;
-	break;
-      /* case TOP_dsra:
-	if (TN_value(shift_ctrl_opnd) == 63)
-	  FmtAssert(FALSE, ("shift of 63 with dsra encountered"));
-	break;	*/
-      }
-
-      OP *new_op;
-      OPS ops = OPS_EMPTY;
-      if (OP_code(op) == TOP_bne)
-	val = (val == 0)?-1:0;
-      new_op = Mk_OP((val==0)?TOP_bge:TOP_blt, 
-		     OP_opnd(shift_op, 0), OP_opnd(op, 2));
-      OP_srcpos(new_op) = OP_srcpos(op);
-      OPS_Append_Op(&ops, new_op);
-      BB_Insert_Ops(OP_bb(op), op, &ops, FALSE);
-      OP_Change_To_Noop(op);
-      OP_Change_To_Noop(shift_op);
-      if (EBO_Trace_Optimization) {
-	fprintf(TFile, "shift and beq combined to produce bgez.\n");
-      }
-      return TRUE;
-    }    
-  }
-
-  TOP top = OP_code(op);
-  
-#ifdef Is_True_On
-  if (EBO_Trace_Optimization)
-  {
-    fprintf(TFile, "OP: ");
-    Print_OP_No_SrcLine(op);
-    for (UINT i = 0; i < OP_opnds(op); i++)
-    {
-      fprintf(TFile, "  local tn: ");
-      Print_TN(OP_opnd(op, i), TRUE);
-      fprintf(TFile, "\n  ebo tn: ");
-      Print_TN(opnd_tn[i], TRUE);
-      fprintf(TFile, "\n   local in_op: ");
-      fprintf(TFile, "<null>\n");
-      fprintf(TFile, "   ebo in_op: ");
-      if (opnd_tninfo[i] && opnd_tninfo[i]->in_op)
-	Print_OP_No_SrcLine(opnd_tninfo[i]->in_op);
-      else
-	fprintf(TFile, "<null>\n");
-
-      if (opnd_tninfo[i] && opnd_tninfo[i]->replacement_tn)
-      {
-	fprintf(TFile, "  replace tn: ");
-	Print_TN(opnd_tninfo[i]->replacement_tn, TRUE);
-	fprintf(TFile, "\n   replace in_op: ");
-	if (opnd_tninfo[i]->replacement_tninfo &&
-	    opnd_tninfo[i]->replacement_tninfo->in_op)
-	  Print_OP_No_SrcLine(opnd_tninfo[i]->replacement_tninfo->in_op);
-	else
-	  fprintf(TFile, "<null>\n");
-      }
-    }
-  }
-#endif
-
-  return FALSE;
-#endif
   return FALSE;
 }
 
@@ -1697,7 +1565,6 @@ void Redundancy_Elimination()
     pw  = 0;
   }
   
-#if 1
   for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next( bb ) ){
     if( BB_rid(bb) && (RID_level(BB_rid(bb)) >= RL_CGSCHED) ){
       // don't change bb's which have already been through CG
@@ -1922,6 +1789,5 @@ void Redundancy_Elimination()
       }
     }
   }   
-#endif
 }
 

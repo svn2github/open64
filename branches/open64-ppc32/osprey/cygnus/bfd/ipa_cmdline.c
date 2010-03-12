@@ -283,13 +283,6 @@ check_for_whirl(char *name, bfd_boolean *is_elf)
     MALLOC_ASSERT(raw_bits);
 
     size = READ(fd, raw_bits, bufsize);
-#if 0
-    if (size != statb.st_size) {
-    	CLOSE(fd);
-    	FREE(raw_bits);
-    	return FALSE;
-    }
-#endif
     
 		/*
 		 * Check that the file is an elf executable.
@@ -475,16 +468,12 @@ blank_arg(char **argv, int ndx)
 
     len = strlen(argv[ndx]);
 
-#if 1
     if (len >=3)
     	strcpy(argv[ndx],"-g"); /* ignored by the linker */
     else {
     	for(j=0;j<len;j++)
     	    argv[ndx][j] = ' ';
     }
-#else
-    argv[ndx][0] = '\0';
-#endif
 
 }
 

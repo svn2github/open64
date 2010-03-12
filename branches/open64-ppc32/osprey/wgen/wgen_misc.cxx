@@ -138,9 +138,6 @@ enum debug_info_level
 };
 
 /* Specify how much debugging info to generate.  */
-#if 0 // wgen TODO
-extern 
-#endif
 enum debug_info_level debug_info_level;
 // End gnu/flags.h data decl
 

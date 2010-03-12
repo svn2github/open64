@@ -74,6 +74,7 @@ private:
   CODEREP*  Find_by_id(CODEREP *cr, IDTYPE id);
   void      Print_wo_loc(FILE *fp=stderr);
   BOOL      Write_once_check(IDTYPE id, BB_LIST_CONTAINER *bb_queue);
+  void      Canon_cr();
 
 public:
   WOVP(CFG *cfg, OPT_STAB *opt_stab)

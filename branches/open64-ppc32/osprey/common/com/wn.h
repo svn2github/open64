@@ -1032,11 +1032,6 @@ extern WN *WN_CreateAsm_Input (char *constraint, UINT32 opnd_num, WN *opnd_expr)
 extern WN *WN_CopyNode(const WN* src_wn);
 
 
-#if 0
-#define WN_Move_Maps(dst,src) \
-  IPA_WN_Move_Maps(Current_Map_Tab, (dst), (src))
-extern void IPA_WN_Move_Maps(WN_MAP_TAB *maptab, WN *dst, WN *src);
-#endif
 
 extern void IPA_WN_Move_Maps_PU(WN_MAP_TAB *src, WN_MAP_TAB *dst, WN *wn);
 

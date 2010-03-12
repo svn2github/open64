@@ -105,9 +105,7 @@ typedef struct {    /* all symbols specified in command line */
 typedef enum {
 	TOS_MIPS_O32,
 
-#if 1
 	TOS_MIPS_R32,
-#endif
 	TOS_MIPS_N32,
 	TOS_MIPS_64,
 	TOS_IA64_64,

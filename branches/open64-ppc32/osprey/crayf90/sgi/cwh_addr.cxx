@@ -2645,12 +2645,6 @@ cwh_addr_f90_pointer_reference(WN * addr)
        return (FALSE);
        
     case OPR_LDA:
-#if 0
-       st = WN_st(addr);
-       if (ST_class(st) == CLASS_VAR) {
-	  return (ST_auxst_is_f90_pointer(st));
-       }
-#endif
        return (FALSE);
        
     case OPR_ILOAD:
