@@ -12,6 +12,8 @@
 #include "sparse_bitset.h"
 #include "vcg.h"
 
+class EdgeDelta;
+
 // Constraint graph edge flags
 #define CG_EDGE_FLAGS_ARRAY  0x0001
 #define CG_EDGE_IN_WORKLIST  0x0002
@@ -466,9 +468,12 @@ public:
     p = outEdgeSet.insert(edge);
     ConstraintGraphEdge *newEdge = *(p.first);
     if (newEdge == edge &&
-        edge->edgeType() != ETYPE_SKEW &&
-        edge->size() > _maxAccessSize)
-      _maxAccessSize = edge->size();
+        edge->edgeType() != ETYPE_SKEW) {
+      if (edge->edgeType() == ETYPE_LOAD && Pointer_Size > _maxAccessSize)
+        _maxAccessSize = Pointer_Size;
+      else if (edge->size() > _maxAccessSize)
+        _maxAccessSize = edge->size();
+    }
     return newEdge;
   }
 
@@ -494,7 +499,9 @@ public:
       for (CGEdgeSetIterator outIter2 = outLoadStore.begin();
           outIter2 != outLoadStore.end(); ++outIter2) {
         ConstraintGraphEdge *e = *outIter2;
-        if (e->size() > newMax)
+        if (e->edgeType() == ETYPE_LOAD && Pointer_Size > newMax)
+          newMax = Pointer_Size;
+        else if (e->size() > newMax )
           newMax = e->size();
       }
       _maxAccessSize = newMax;
@@ -871,6 +878,8 @@ public:
     return NULL;
   }
 
+  ConstraintGraphNode *varargs(void) { return _varArgs; }
+
   // To iterate all nodes local to this constraint graph
   CGNodeToIdMapIterator lBegin() { return _cgNodeToIdMap.begin(); }
   CGNodeToIdMapIterator lEnd()   { return _cgNodeToIdMap.end(); }
@@ -899,6 +908,10 @@ public:
   IPA_NODE *ipaNode() const { return _ipaNode; }
 
   MEM_POOL *memPool() { return _memPool; }
+
+  void connect(CallSiteId id, ConstraintGraph *callee,
+               ST *calleeST, UINT32 *actualSize, UINT32 numActual,
+               EdgeDelta &delta);
 
 private:
 

@@ -40,7 +40,9 @@ public:
 
   ~ConstraintGraphSolve() {}
 
-  bool solveConstraints();
+  bool solveConstraints(UINT32 noMergeMask = 0);
+
+  void cycleDetection(UINT32 noMergeMask = 0);
 
   static void postProcessPointsTo();
 

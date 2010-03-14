@@ -46,7 +46,7 @@ public:
   ~SCCDetection() {}
 
   // Detect and unify all SCCS within the constraint graph.
-  void findAndUnify();
+  void findAndUnify(UINT32 noMergeMask = 0);
 
   // Return a handle to the stack of nodes in topological
   // order.  This will be used to seed the initial solution
@@ -67,7 +67,7 @@ public:
   void visit(ConstraintGraphNode *node);
 
   void find(void);
-  void unify(NodeToKValMap&);
+  void unify(UINT32 noMergeMap, NodeToKValMap&);
   void pointsToAdjust(NodeToKValMap&);
 
   ConstraintGraph       *_graph;
@@ -159,7 +159,7 @@ SCCDetection::find(void)
 }
 
 void
-SCCDetection::unify(NodeToKValMap &nodeToKValMap)
+SCCDetection::unify(UINT32 noMergeMask, NodeToKValMap &nodeToKValMap)
 {
   // Unify the nodes in an SCC into a single node
   for (CGNodeToIdMapIterator iter = _graph->lBegin();
@@ -169,6 +169,13 @@ SCCDetection::unify(NodeToKValMap &nodeToKValMap)
         ("Node %d unvisited during SCC detection\n",node->id()));
     node->clearFlags(CG_NODE_FLAGS_VISITED|CG_NODE_FLAGS_SCCMEMBER);
     if (node->repParent() && node->repParent() != node) {
+      // If this is a node that we do not want to merge, yes cycle
+      // detection may leave cycles in the graph, then we skip it.
+      // However, we must reset the representative.
+      if (node->cg()->stInfo(node->cg_st_idx())->flags() & noMergeMask) {
+        node->repParent(NULL);
+        continue;
+      }
       ConstraintGraphEdge dummy(node->repParent(),node,ETYPE_COPY,CQ_HZ,0);
       if (!node->inEdge(&dummy)) {
         if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
@@ -209,7 +216,7 @@ SCCDetection::pointsToAdjust(NodeToKValMap &nodeToKValMap)
 }
 
 void
-SCCDetection::findAndUnify()
+SCCDetection::findAndUnify(UINT32 noMergeMask)
 {
   // Reset state
   _I = 0;
@@ -222,7 +229,7 @@ SCCDetection::findAndUnify()
   NodeToKValMap nodeToKValMap;
 
   find();
-  unify(nodeToKValMap);
+  unify(noMergeMask,nodeToKValMap);
   pointsToAdjust(nodeToKValMap);
 
   CXX_DELETE_ARRAY(_D,_memPool);
@@ -247,12 +254,20 @@ EdgeDelta::add(ConstraintGraphEdge *e)
     fprintf(stderr,"\n");
   }
 }
+// Method to perform cycle detection/unification only
+void
+ConstraintGraphSolve::cycleDetection(UINT32 noMergeMask)
+{
+  FmtAssert(_cg,("cycleDetection: Requires ConstraintGraph!\n"));
+  SCCDetection sccs(_cg,_memPool);
+  sccs.findAndUnify(noMergeMask);
+}
 
 // Core method to solve a constraint graph assuming that the
 // boundary conditions for the solution are provided by 'delta'
 // This method assumes that the constraint graph is acyclic.
 bool
-ConstraintGraphSolve::solveConstraints()
+ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
 {
   // TODO: Perform cycle detection, here
   SCCDetection sccs(_cg,_memPool);
@@ -268,7 +283,7 @@ ConstraintGraphSolve::solveConstraints()
     // Here we walk the constraint graph to locate any SCCs and
     // collapse them to ensure that the solver will converge.
     if (_cg)
-      sccs.findAndUnify();
+      sccs.findAndUnify(noMergeMask);
 
     // We need to seed the the solver with the appropriate
     // edges, either based on the SCCDetection traversal or the
@@ -363,7 +378,7 @@ ConstraintGraph::nonIPASolver()
   // Here we solve the constraint graph for the current procedure
   EdgeDelta delta;
   ConstraintGraphSolve solver(delta,this,_memPool);
-  if (!solver.solveConstraints())
+  if (!solver.solveConstraints(CG_ST_FLAGS_GLOBAL))
     return false;
 
   // The solver has a solution, now we post-process the points-to

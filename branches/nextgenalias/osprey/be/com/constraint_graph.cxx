@@ -1,6 +1,7 @@
 #include <sstream>
 
 #include "constraint_graph.h"
+#include "constraint_graph_solve.h"
 #include "data_layout.h"
 #include "opt_wn.h"
 #include "wn_util.h"
@@ -1091,6 +1092,68 @@ ConstraintGraphNode::_getPointsTo(CGEdgeQual qual, PointsToList **ptl)
     pts = newPTL->pointsTo();
   }
   return *pts;
+}
+
+// Here we are connecting the actuals from the provided callsite
+// to the formals of the callee constraint graph.  Any new edges
+// added are inserted into the edge "delta" for the next solution
+// pass.
+void
+ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
+                         ST *calleeST, UINT32 *actualSize, UINT32 numActual,
+                         EdgeDelta &delta)
+{
+  CallSite *cs = callSite(id);
+
+  // Connect actual parameters in caller to formals of callee
+  list<CGNodeId>::const_iterator actualIter = cs->parms().begin();
+  list<CGNodeId>::const_iterator formalIter = callee->parameters().begin();
+  UINT32 actualIdx = 1;
+  for (; actualIter != cs->parms().end() && formalIter != callee->parameters().end();
+      ++actualIter, ++formalIter) {
+    ConstraintGraphNode *actual = cgNode(*actualIter);
+    ConstraintGraphNode *formal = cgNode(*formalIter);
+    FmtAssert(actualIdx < numActual,
+              ("connect: mismatch betw. provided actuals and CG CallSite\n"));
+    bool added = false;
+    ConstraintGraphEdge *edge = addEdge(actual,formal,ETYPE_COPY,CQ_DN,
+                                        actualSize[actualIdx++],added);
+    FmtAssert(added,("connect: expect actual->formal edge to be new"));
+    delta.add(edge);
+  }
+
+  // If we are in the first round of our top down analysis we will
+  // add all edges in the callee
+  // If we have more actuals than formals either we either have a
+  // signature mismatch or varargs.  For now we don't worry about
+  // the other mismatch cases.
+  if (actualIter != cs->parms().end() &&
+      formalIter == callee->parameters().end() &&
+      TY_is_varargs(ST_pu_type(calleeST))) {
+    // Hook up remaining actuals to the "varargs" node
+    for ( ; actualIter != cs->parms().end(); ++actualIter) {
+      FmtAssert(actualIdx < numActual,
+                ("connect: mismatch betw. provided actuals and CG CallSite\n"));
+      bool added = false;
+      ConstraintGraphEdge *edge = addEdge(cgNode(*actualIter),callee->varargs(),
+                                          ETYPE_COPY,CQ_DN,actualSize[actualIdx++],
+                                          added);
+      FmtAssert(added,("connect: expect actual->formal edge to be new"));
+      delta.add(edge);
+    }
+  }
+
+  // Now connect the formal returns in callee to actual returns of caller
+  list<CGNodeId>::const_iterator retIter = callee->returns().begin();
+  ConstraintGraphNode *actualRet = cgNode(cs->returnId());
+  for (; retIter != callee->returns().end(); ++retIter) {
+    ConstraintGraphNode *formalRet = cgNode(*retIter);
+    bool added;
+    ConstraintGraphEdge *edge = addEdge(formalRet,actualRet,ETYPE_COPY,CQ_UP,
+                                        actualSize[0],added);
+    FmtAssert(added,("connect: expect actual->formal edge to be new"));
+    delta.add(edge);
+  }
 }
 
 CGEdgeSet &

@@ -8,6 +8,8 @@
 using namespace std;
 using namespace __gnu_cxx;
 
+class EdgeDelta;
+
 typedef hash_map<NODE_INDEX, ConstraintGraph *> IPACGMap;
 typedef IPACGMap::const_iterator IPACGMapIterator;
 
@@ -57,7 +59,25 @@ public:
   // Perform a global context-[in]sensitive points-to solution
   void solver(void);
 
+  ConstraintGraph *cg(NODE_INDEX idx) const
+  {
+    hash_map<NODE_INDEX,ConstraintGraph*>::const_iterator iter=
+        _ipaConstraintGraphs.find(idx);
+    if (iter != _ipaConstraintGraphs.end())
+      return iter->second;
+    else
+      return NULL;
+  }
+
 private:
+
+  void callGraphPrep(IPA_CALL_GRAPH *ipaCG, list<IPA_EDGE *> &workList,
+                     EdgeDelta &delta, list<IPA_NODE *>&revTopOrder,
+                     UINT32 round);
+
+  void updateCallGraph(IPA_CALL_GRAPH *ipaCG,
+                       list<pair<IPA_NODE *,SUMMARY_CALLSITE *> > &indCallList,
+                       EdgeDelta &delta);
 
   static IPA_NystromAliasAnalyzer *_ipa_naa;
   IPACGMap _ipaConstraintGraphs;
