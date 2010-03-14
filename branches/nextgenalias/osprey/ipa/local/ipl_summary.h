@@ -668,6 +668,8 @@ private:
     mUINT32 _constraint_graph_stinfos_count;
     mUINT32 _constraint_graph_callsites_idx;
     mUINT32 _constraint_graph_callsites_count;
+    mUINT32 _constraint_graph_node_ids_idx;
+    mUINT32 _constraint_graph_node_ids_count;
     mUINT32 _constraint_graph_formal_parm_idx;
     mUINT32 _constraint_graph_formal_parm_count;
     mUINT32 _constraint_graph_formal_ret_idx;
@@ -940,6 +942,23 @@ public:
     void Set_constraint_graph_callsites_count(mUINT32 c)
     {
       _constraint_graph_callsites_count = c;
+    }
+
+    mUINT32 Get_constraint_graph_node_ids_idx() const
+    {
+      return _constraint_graph_node_ids_idx;
+    }
+    void Set_constraint_graph_node_ids_idx(mUINT32 i)
+    {
+      _constraint_graph_node_ids_idx = i;
+    }
+    mUINT32 Get_constraint_graph_node_ids_count() const
+    {
+      return _constraint_graph_node_ids_count;
+    }
+    void Set_constraint_graph_node_ids_count(mUINT32 c)
+    {
+      _constraint_graph_node_ids_count = c;
     }
 
     mUINT32 Get_constraint_graph_formal_parm_idx() const
@@ -2920,18 +2939,26 @@ public:
   void inKCycle(UINT32 kcycle)    { _inKCycle = kcycle; }
   void nextOffset(UINT32 noffset) { _nextOffset = noffset; }
   void repParent(UINT32 rparent)  { _repParent = rparent; }
-  void numBitsPtsGBL(int n)       { _numBitsPtsGBL = n; }
-  void numBitsPtsHZ(int n)        { _numBitsPtsHZ = n; }
-  void numBitsPtsDN(int n)        { _numBitsPtsDN = n; }
+  void numBitsPtsGBL(UINT32 n)    { _numBitsPtsGBL = n; }
+  void numBitsPtsHZ(UINT32 n)     { _numBitsPtsHZ = n; }
+  void numBitsPtsDN(UINT32 n)     { _numBitsPtsDN = n; }
   void ptsGBLidx(UINT32 idx)      { _pointsToGBLIdx = idx; }
   void ptsHZidx(UINT32 idx)       { _pointsToHZIdx = idx; }
   void ptsDNidx(UINT32 idx)       { _pointsToDNIdx = idx; }
 
-  UINT32 cgNodeId()  const { return _cgNodeId; }
-  UINT64 cg_st_idx() const { return _cg_st_idx; }
-  INT32 offset()     const { return _offset; }
-  UINT16 flags()     const { return _flags; }
-  UINT32 inKCycle()  const { return _inKCycle; }
+  UINT32 cgNodeId()      const { return _cgNodeId; }
+  UINT64 cg_st_idx()     const { return _cg_st_idx; }
+  INT32 offset()         const { return _offset; }
+  UINT32 nextOffset()    const { return _nextOffset; }
+  UINT16 flags()         const { return _flags; }
+  UINT32 inKCycle()      const { return _inKCycle; }
+  UINT32 repParent()     const { return _repParent; }
+  UINT32 numBitsPtsGBL() const { return _numBitsPtsGBL; }
+  UINT32 numBitsPtsHZ()  const { return _numBitsPtsHZ; }
+  UINT32 numBitsPtsDN()  const { return _numBitsPtsDN; }
+  UINT32 ptsGBLidx()     const { return _pointsToGBLIdx; } 
+  UINT32 ptsHZidx()      const { return _pointsToHZIdx; } 
+  UINT32 ptsDNidx()      const { return _pointsToDNIdx; } 
 
   void Print_array(FILE *fp, INT32 size) const;
   void Trace_array(INT32 size) const ;
@@ -2946,9 +2973,9 @@ private:
   UINT32 _numBitsPtsGBL;   // number of bits in GBL pts-to-set
   UINT32 _numBitsPtsHZ;    // number of bits in HZ pts-to-set
   UINT32 _numBitsPtsDN;    // number of bits in in DN pts-to-set
-  UINT32 _pointsToGBLIdx;  // index of the first GBL CGNodeId in pts ids array
-  UINT32 _pointsToHZIdx;   // index of the first HZ CGNodeId in pts ids array
-  UINT32 _pointsToDNIdx;   // index of the first DN CGNodeId in pts ids array
+  UINT32 _pointsToGBLIdx;  // index of the first GBL CGNodeId in ids array
+  UINT32 _pointsToHZIdx;   // index of the first HZ CGNodeId in ids array
+  UINT32 _pointsToDNIdx;   // index of the first DN CGNodeId in ids array
   UINT32 _inKCycle;
   UINT32 _nextOffset;
   UINT32 _repParent;
@@ -2966,6 +2993,13 @@ public:
   void sizeOrSkew(INT32 s) { _sizeOrSkew = s; }
   void src(UINT32 id)      { _srcId = id; }
   void dest(UINT32 id)     { _destId = id; }
+
+  UINT16 etype()      const { return _etype; }
+  UINT16 qual()       const { return _qual; }
+  UINT16 flags()      const { return _flags; }
+  INT32 sizeOrSkew()  const { return _sizeOrSkew; }
+  UINT32 src()        const { return _srcId; }
+  UINT32 dest()       const { return _destId; }
 
   void Init()
   {
@@ -3028,8 +3062,14 @@ class SUMMARY_CONSTRAINT_GRAPH_CALLSITE
 public:
   SUMMARY_CONSTRAINT_GRAPH_CALLSITE() {}
 
-  ST_IDX flags() const  { return _flags; }
-  ST_IDX st_idx() const { return _callInfo._st_idx; }
+  UINT32 id()           const { return _id; }
+  UINT8 flags()         const { return _flags; }
+  ST_IDX st_idx()       const { return _callInfo._st_idx; }
+  UINT32 cgNodeId()     const { return _callInfo._cgNodeId; }
+  INTRINSIC intrinsic() const { return _callInfo._intrinsic; }
+  UINT32 parmNodeIdx()  const { return _paramNodesIdx; }
+  UINT32 numParms()     const { return _numParms; }
+  UINT32 returnId()     const { return _return; }
 
   void id(UINT32 i)           { _id = i; }
   void flags(UINT8 f)         { _flags = f; }
@@ -3058,14 +3098,14 @@ private:
     UINT32 _cgNodeId;
     INTRINSIC _intrinsic;
   } _callInfo;
-  UINT32 _numParms;        // Number of param nodes: We use the pts ids array
+  UINT32 _numParms;        // Number of param nodes: We use the ids array
                            // to store the param nodes
-  UINT32 _paramNodesIdx;   // index of the first param CGNodeId in pts ids array
+  UINT32 _paramNodesIdx;   // index of the first param CGNodeId in ids array
   UINT32 _return;
   UINT32 _numBitsPtsMod;   // Number of bits in points-to-set of mod set
   UINT32 _numBitsPtsRef;   // Number of bits in points-to-set of ref set
-  UINT32 _pointsToModIdx;  // index of the first mod CGNodeId in pts ids array
-  UINT32 _pointsToRefIdx;  // index of the first ref CGNodeId in pts ids array
+  UINT32 _pointsToModIdx;  // index of the first mod CGNodeId in ids array
+  UINT32 _pointsToRefIdx;  // index of the first ref CGNodeId in ids array
 };
   
 #endif /* ipl_summary_INCLUDED */

@@ -70,6 +70,7 @@
 #define CG_NODE_FLAGS_PTSMOD        0x1000  // Points-to set updated, implies
                                             // rev points-to relation to be updated
 #define CG_NODE_FLAGS_ADDR_TAKEN    0x2000  // Has the node been placed in a pts?
+#define CG_NODE_FLAGS_ADJUST_K_CYCLE 0x0100  // Reuse VISITED during IPA CG construction
 
 
 // Call site flags
@@ -314,9 +315,6 @@ private:
 
 class ConstraintGraphNode 
 {
-private:
-
-
 public:
   ConstraintGraphNode(CG_ST_IDX cg_st_idx, INT32 offset, 
                       ConstraintGraph *parentCG) :
@@ -735,6 +733,10 @@ class CallSite;
 typedef hash_map<CallSiteId, CallSite *> CallSiteMap;
 typedef CallSiteMap::const_iterator CallSiteIterator;
 
+class IPA_NODE;
+class SUMMARY_CONSTRAINT_GRAPH_NODE;
+class SUMMARY_CONSTRAINT_GRAPH_STINFO;
+
 class ConstraintGraph 
 {
 public:
@@ -765,18 +767,14 @@ public:
     return NULL;
   }
 
-  static UINT32 getNextCGNodeId() { return nextCGNodeId++; }
-
   // To facilitate traversal of the constraint graph
   static CGIdToNodeMapIterator gBegin() { return cgIdToNodeMap.begin(); }
   static CGIdToNodeMapIterator gEnd()   { return cgIdToNodeMap.end(); }
 
-  static CGIdToNodeMap &getCGIdToNodeMap() { return cgIdToNodeMap; }
-
   static ConstraintGraphEdge *addEdge(ConstraintGraphNode *src,
                                       ConstraintGraphNode *dest,
                                       CGEdgeType etype, CGEdgeQual qual,
-                                      UINT32 size, bool &added);
+                                      INT32 sizeOrSkew, bool &added);
 
   static void removeEdge(ConstraintGraphEdge *edge);
 
@@ -784,36 +782,54 @@ public:
   static void adjustPointsToForKCycle(UINT32 kCycle,const PointsTo &src,
                                       PointsTo &dst);
 
+  static void addCGNodeInSortedOrder(StInfo *stInfo, 
+                                     ConstraintGraphNode *cgNode);
+
+  static bool checkCGNodeInSortedList(StInfo *stInfo,
+                                      ConstraintGraphNode *cgNode);
+
+  static ConstraintGraph *globalCG()        { return globalConstraintGraph; }
+  static void globalCG(ConstraintGraph *cg) { globalConstraintGraph = cg; }
+
   // To build ConstraintGraphs at IPL/BE
   ConstraintGraph(WN *entryWN, MEM_POOL *mPool, UINT32 minSize = 1024):
     _nextCallSiteId(1),
     _varArgs(NULL),
     _cgNodeToIdMap(minSize),
     _cgStInfoMap(minSize),
+    _ipaNode(NULL),
     _memPool(mPool)
   {
     if (notAPointerCGNode == NULL) {
-      notAPointerCGNode = genTempCGNode();
+      ST *notAPtrSt = 
+          Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgNotAPtr",
+                                CLASS_VAR, SCLASS_AUTO);
+      notAPointerCGNode = getCGNode(CG_ST_st_idx(notAPtrSt), 0);
       notAPointerCGNode->addFlags(CG_NODE_FLAGS_NOT_POINTER);
     }
     if (blackHoleCGNode == NULL) {
-      ST *bhST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgBlackHole",
-                                       CLASS_VAR, SCLASS_AUTO);
+      ST *bhST = 
+         Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgBlackHole",
+                               CLASS_VAR, SCLASS_AUTO);
       blackHoleCGNode = getCGNode(CG_ST_st_idx(bhST),0);
     }
     if (maxTypeSize == 0)
       maxTypeSize = findMaxTypeSize();
+
+    edgeMemPool = mPool;
+
     Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY, 
             ("Expecting FUNC_ENTRY when building ConstraintGraph"));
-    edgeMemPool = mPool;
     buildCG(entryWN);
   }
 
   // To build ConstraintGraphs during IPA
-  ConstraintGraph(MEM_POOL *mPool, UINT32 minSize = 1024):
+  ConstraintGraph(MEM_POOL *mPool, IPA_NODE *ipaNode = NULL, 
+                  UINT32 minSize = 1024):
     _nextCallSiteId(1),
     _cgNodeToIdMap(minSize),
     _cgStInfoMap(minSize),
+    _ipaNode(ipaNode),
     _memPool(mPool)
   {
     if (notAPointerCGNode == NULL) {
@@ -821,7 +837,6 @@ public:
       ST_Init(notAPtrSt, Save_Str("_globalCGNotAPTR"), CLASS_VAR, 
               SCLASS_UGLOBAL, EXPORT_INTERNAL, MTYPE_To_TY(Pointer_type));
       notAPointerCGNode = getCGNode(CG_ST_st_idx(notAPtrSt), 0);
-      stInfo(notAPointerCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_TEMP);
       notAPointerCGNode->addFlags(CG_NODE_FLAGS_NOT_POINTER);
     }
     if (blackHoleCGNode == NULL) {
@@ -830,8 +845,12 @@ public:
               EXPORT_INTERNAL, MTYPE_To_TY(Pointer_type));
       blackHoleCGNode = getCGNode(CG_ST_st_idx(bhST), 0);
     }
+
     if (edgeMemPool == NULL)
       edgeMemPool = mPool;
+
+    if (ipaNode)
+      buildCGipa(ipaNode);
   }
 
   UINT32 totalCGNodes() const { return nextCGNodeId; }
@@ -856,8 +875,6 @@ public:
   CGNodeToIdMapIterator lBegin() { return _cgNodeToIdMap.begin(); }
   CGNodeToIdMapIterator lEnd()   { return _cgNodeToIdMap.end(); }
 
-  CGNodeToIdMap &cgNodeToIdMap(void) { return _cgNodeToIdMap; }
-
   CallSiteMap &callSiteMap(void) { return _callSiteMap; }
 
   CGStInfoMap &stInfoMap(void) { return _cgStInfoMap; }
@@ -867,7 +884,7 @@ public:
 
   // Return CGNode mapped to (cg_st_idx, offset), if not return NULL
   ConstraintGraphNode *checkCGNode(CG_ST_IDX cg_st_idx, INT64 offset);
-      
+
   void print(FILE *file);
 
   // Driver for solving the constraint graph when not in IPA
@@ -878,6 +895,8 @@ public:
 
   list<CGNodeId> &parameters(void) { return _parameters; }
   list<CGNodeId> &returns(void) { return _returns; }
+
+  IPA_NODE *ipaNode() const { return _ipaNode; }
 
   MEM_POOL *memPool() { return _memPool; }
 
@@ -901,6 +920,9 @@ private:
   // Created by the solver.  The id() of the node used
   // to provide boundary conditions for incomplete programs
   static ConstraintGraphNode *blackHoleCGNode;
+
+  // The global constraint graph for IPA
+  static ConstraintGraph *globalConstraintGraph;
 
   // Pool to hold all edges, since edges span multiple ConstraintGraphs
   static MEM_POOL *edgeMemPool;
@@ -927,6 +949,17 @@ private:
 
   UINT32 findMaxTypeSize();
 
+  // Member functions for ConstraintGraph construction during IPA
+  void buildCGipa(IPA_NODE *ipaNode);
+
+  ConstraintGraphNode *buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE *summ,
+                                   IPA_NODE *ipaNode);
+
+  StInfo * buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
+                       IPA_NODE *ipaNode);
+
+  ConstraintGraphNode *findUniqueNode(CGNodeId id);
+
   // Data Members
 
   // Generate unique CallSiteId per procedure
@@ -948,6 +981,13 @@ private:
   // The formal parameters and return CGNodes for this function
   list<CGNodeId> _parameters;
   list<CGNodeId> _returns;
+
+  // For ConstraintGraph construction during IPA
+  CGIdToNodeMap _uniqueCGNodeIdMap;
+  CGStInfoMap   _ipaCGStIdxToStInfoMap;
+
+  // IPA call graph node corresponding to this CG
+  IPA_NODE *_ipaNode;
 
   MEM_POOL *_memPool;
 };
@@ -991,6 +1031,15 @@ public:
     _return(0),
     _mod(memPool),
     _ref(memPool)
+  {}
+
+  // For IPA
+  CallSite(CallSiteId id, UINT8 flags, MEM_POOL *memPool) :
+    _id(id),
+   _flags(flags),
+   _return(0),
+   _mod(memPool),
+   _ref(memPool)
   {}
 
   CallSiteId id() const { return _id; }
@@ -1067,5 +1116,26 @@ private:
   PointsTo _mod;
   PointsTo _ref;
 };
+
+template <typename T>
+inline T gcd(T source, T target)
+{
+   T t1 = (source >= 0) ? source : -source;
+   T t2 = (target >= 0) ? target : -target;
+   T rem;
+
+   if (t1 == 0) return t2;
+   else if (t2 == 0) return t1;
+
+   for(;;)
+   {
+      rem = t1 % t2;
+      if (rem == 0)
+         break;
+      t1 = t2;
+      t2 = rem;
+   }
+   return t2;
+}
 
 #endif // constraint_graph_INCLUDED

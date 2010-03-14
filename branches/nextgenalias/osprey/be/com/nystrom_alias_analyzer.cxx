@@ -306,6 +306,9 @@ NystromAliasAnalyzer::meet(AliasTag dstTag, AliasTag srcTag)
 void
 NystromAliasAnalyzer::transferAliasTag(WN *dstWN, const WN *srcWN)
 {
+  if (_constraintGraph == NULL)
+    return;
+
   // First, we check the alias tag map to see if an aliasTag is
   // easily retrievable.
   AliasTag tag = getAliasTag(srcWN);

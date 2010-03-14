@@ -17,108 +17,356 @@ adjustCGstIdx(IPA_NODE *ipaNode, CG_ST_IDX cg_st_idx)
   return cg_st_idx;
 }
 
-ConstraintGraph * 
+void
 IPA_NystromAliasAnalyzer::buildIPAConstraintGraph(IPA_NODE *ipaNode)
+{
+  ConstraintGraph *cg = CXX_NEW(ConstraintGraph(&_memPool, ipaNode), &_memPool);
+  _ipaConstraintGraphs[ipaNode->Node_Index()] = cg;
+}
+
+void 
+IPA_NystromAliasAnalyzer::print(FILE *file)
+{
+  fprintf(file, "\nPrinting globalConstraintGraph...\n");
+  ConstraintGraph::globalCG()->print(file);
+  IPACGMapIterator iter = _ipaConstraintGraphs.begin();
+  for (; iter != _ipaConstraintGraphs.end(); iter++) {
+    ConstraintGraph *cg = iter->second;
+    fprintf(file, "\nPrinting local ConstraintGraph...\n");
+    fprintf(file, "IPA node: proc: %s file: %s\n", 
+            cg->ipaNode()->Name(), cg->ipaNode()->File_Header().file_name);
+    cg->print(file);
+  }
+  char buf[32];
+  sprintf(buf,"ipa_initial");
+  ConstraintGraphVCG::dumpVCG(buf);
+}
+
+ConstraintGraphNode *
+ConstraintGraph::findUniqueNode(CGNodeId cgNodeId)
+{
+  CGIdToNodeMapIterator iter = _uniqueCGNodeIdMap.find(cgNodeId);
+  FmtAssert(iter != _uniqueCGNodeIdMap.end(), ("Unique id not found"));
+  return iter->second;
+}
+
+void 
+ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
 {
   INT32 size;
   SUMMARY_PROCEDURE *proc = ipaNode->Summary_Proc();
 
-  fprintf(stderr, "\nBuilding ConstraintGraph for proc: %s "
-          "file: %d pu: %d\n", ipaNode->Name(), ipaNode->File_Index(),
-          ipaNode->Proc_Info_Index());
+  fprintf(stderr, "Processing proc: %s file: %s\n",
+          ipaNode->Name(), ipaNode->File_Header().file_name);
 
-  // Clear old entries
-  _uniqueCGNodeIdMap.clear();
-
-  // Since not a ptr and black holes are created once and are ignored during
   // during summary to constraint graph construction, map them to their 
   // globally unique ids so that lookups don't fail
-  _uniqueCGNodeIdMap[ConstraintGraph::notAPointer()->id()] = 
-                     ConstraintGraph::notAPointer()->id();
-  _uniqueCGNodeIdMap[ConstraintGraph::blackHole()->id()] = 
-                     ConstraintGraph::blackHole()->id();
-
-  // Initialize ConstraintGraph
-  ConstraintGraph *cg = CXX_NEW(ConstraintGraph(&_memPool), &_memPool);
-
-  // Add the ConstraintGraphNodes
-  UINT32 nodeIdx = proc->Get_constraint_graph_nodes_idx();
-  SUMMARY_CONSTRAINT_GRAPH_NODE *summNodes = 
-          IPA_get_constraint_graph_nodes_array(ipaNode->File_Header(), size);
-  for (UINT32 i = 0; i < size; i++) {
-    SUMMARY_CONSTRAINT_GRAPH_NODE &summNode = summNodes[i];
-    ConstraintGraphNode *cgNode = buildCGNode(&summNode, ipaNode, cg);
-  }
+  _uniqueCGNodeIdMap[notAPointer()->id()] = notAPointer();
+  _uniqueCGNodeIdMap[blackHole()->id()]   = blackHole();
 
   // Add the StInfos.
   UINT32 stInfoIdx = proc->Get_constraint_graph_stinfos_idx();
+  UINT32 stInfoCount = proc->Get_constraint_graph_stinfos_count();
   SUMMARY_CONSTRAINT_GRAPH_STINFO *summStInfos = 
           IPA_get_constraint_graph_stinfos_array(ipaNode->File_Header(), size);
-  CGStInfoMap &stInfoMap = cg->stInfoMap();
-  for (UINT32 i = 0; i < size; i++) {
-    SUMMARY_CONSTRAINT_GRAPH_STINFO &summStInfo = summStInfos[i];
-    StInfo *stInfo = buildStInfo(&summStInfo, ipaNode, cg);
+  FmtAssert(stInfoCount <= size, ("Invalid stInfoCount"));
+  for (UINT32 i = 0; i < stInfoCount; i++) {
+    SUMMARY_CONSTRAINT_GRAPH_STINFO &summStInfo = summStInfos[stInfoIdx + i];
+    // Ignore notAPointer and blackHole StInfos; they have been already
+    // added to the globalConstraintGraph
+    if (summStInfo.firstOffset() == blackHole()->id() ||
+        summStInfo.firstOffset() == notAPointer()->id())
+      continue;
+    StInfo *stInfo;
+    // Determine which CG to add the StInfo
+    if (summStInfo.flags() & CG_ST_FLAGS_GLOBAL)
+      stInfo = globalCG()->buildStInfo(&summStInfo, ipaNode);
+    else
+      stInfo = buildStInfo(&summStInfo, ipaNode);
+    _ipaCGStIdxToStInfoMap[summStInfo.cg_st_idx()] = stInfo;
   }
 
-  _ipaConstraintGraphs[ipaNode->Node_Index()] = cg;
+  // Add the ConstraintGraphNodes
+  UINT32 nodeIdx = proc->Get_constraint_graph_nodes_idx();
+  UINT32 nodeCount = proc->Get_constraint_graph_nodes_count();
+  SUMMARY_CONSTRAINT_GRAPH_NODE *summNodes = 
+          IPA_get_constraint_graph_nodes_array(ipaNode->File_Header(), size);
+  FmtAssert(nodeCount <= size, ("Invalid nodeCount"));
+  for (UINT32 i = 0; i < nodeCount; i++) {
+    SUMMARY_CONSTRAINT_GRAPH_NODE &summNode = summNodes[nodeIdx + i];
+    // Ignore notAPointer and blackHole CGNodes; they have been already
+    // added to the globalConstraintGraph
+    if (summNode.cgNodeId() == notAPointer()->id() || 
+        summNode.cgNodeId() == blackHole()->id())
+      continue;
+    ConstraintGraphNode *cgNode;
+    // Determine which CG to add the ConstraintGraphNode
+    StInfo *stInfo = 
+            _ipaCGStIdxToStInfoMap.find(summNode.cg_st_idx())->second;
+    if (stInfo->checkFlags(CG_ST_FLAGS_GLOBAL))
+      cgNode = globalCG()->buildCGNode(&summNode, ipaNode);
+    else
+      cgNode = buildCGNode(&summNode, ipaNode);
+    _uniqueCGNodeIdMap[summNode.cgNodeId()] = cgNode;
+  }
 
-  cg->print(stderr);
+  // Set the firstOffset on the StInfo
+  for (UINT32 i = 0; i < stInfoCount; i++) {
+    SUMMARY_CONSTRAINT_GRAPH_STINFO &summStInfo = summStInfos[stInfoIdx + i];
+    // Ignore notAPointer and blackHole StInfos; they have been already
+    // added to the globalConstraintGraph
+    if (summStInfo.firstOffset() == blackHole()->id() ||
+        summStInfo.firstOffset() == notAPointer()->id())
+      continue;
+    UINT32 firstOffsetId = summStInfo.firstOffset();
+    if (firstOffsetId != 0) {
+      StInfo *stInfo = 
+              _ipaCGStIdxToStInfoMap.find(summStInfo.cg_st_idx())->second;
+      FmtAssert(!stInfo->checkFlags(CG_ST_FLAGS_PREG),
+                ("PREGs should have no nextOffset"));
+      ConstraintGraphNode *firstOffset = findUniqueNode(firstOffsetId);
+      // For GLOBALs check if the node is already in the StInfo's sorted list
+      if (stInfo->checkFlags(CG_ST_FLAGS_GLOBAL)) {
+        if (!checkCGNodeInSortedList(stInfo, firstOffset))
+          addCGNodeInSortedOrder(stInfo, firstOffset);
+      } else
+          addCGNodeInSortedOrder(stInfo, firstOffset);
+    }
+  }
 
-  return cg;
+  // Add the ConstraintGraphEdges
+  UINT32 edgeIdx = proc->Get_constraint_graph_edges_idx();
+  UINT32 edgeCount = proc->Get_constraint_graph_edges_count();
+  SUMMARY_CONSTRAINT_GRAPH_EDGE *summEdges = 
+          IPA_get_constraint_graph_edges_array(ipaNode->File_Header(), size);
+  FmtAssert(edgeCount <= size, ("Invalid edgeCount"));
+  for (UINT32 i = 0; i < edgeCount; i++) {
+    SUMMARY_CONSTRAINT_GRAPH_EDGE &summEdge = summEdges[edgeIdx + i];
+    ConstraintGraphNode *srcNode = findUniqueNode(summEdge.src());
+    ConstraintGraphNode *destNode = findUniqueNode(summEdge.dest());
+    bool added = false;
+    ConstraintGraphEdge *edge = 
+      ConstraintGraph::addEdge(srcNode, destNode, (CGEdgeType)summEdge.etype(),
+                               (CGEdgeQual)summEdge.qual(), 
+                               summEdge.sizeOrSkew(), added);
+    FmtAssert(added, ("ConstraintGraph::buildCGipa: failed to add edge"));
+    edge->addFlags(summEdge.flags());
+  }
+
+  // Node ids array
+  UINT32 nodeIdsIdx = proc->Get_constraint_graph_node_ids_idx();
+  UINT32 nodeIdsCount = proc->Get_constraint_graph_node_ids_count();
+  UINT32 *nodeIds = 
+          IPA_get_constraint_graph_node_ids_array(ipaNode->File_Header(), size);
+  FmtAssert(nodeIdsCount <= size, ("Invalid nodeIdsCount"));
+
+  // Update the CGNodeId references in the ConstraintGraphNodes
+  for (UINT32 i = 0; i < nodeCount; i++) {
+    SUMMARY_CONSTRAINT_GRAPH_NODE &summNode = summNodes[nodeIdx + i];
+    // Ignore notAPointer and blackHole CGNodes; they have been already
+    // created in the globalConstraintGraph
+    if (summNode.cgNodeId() == notAPointer()->id() || 
+        summNode.cgNodeId() == blackHole()->id())
+      continue;
+    ConstraintGraphNode *cgNode = findUniqueNode(summNode.cgNodeId());
+    // Set nextOffset
+    UINT32 nextOffsetId = summNode.nextOffset();
+    if (nextOffsetId != 0) {
+      StInfo *stInfo = 
+              _ipaCGStIdxToStInfoMap.find(summNode.cg_st_idx())->second;
+      FmtAssert(!stInfo->checkFlags(CG_ST_FLAGS_PREG),
+                ("PREGs should have no nextOffset"));
+      ConstraintGraphNode *nextOffset = findUniqueNode(nextOffsetId);
+      // For GLOBALs check if the node is already in the StInfo's sorted list
+      if (stInfo->checkFlags(CG_ST_FLAGS_GLOBAL)) {
+        if (!checkCGNodeInSortedList(stInfo, nextOffset))
+          addCGNodeInSortedOrder(stInfo, nextOffset);
+      } else
+          addCGNodeInSortedOrder(stInfo, nextOffset);
+    }
+
+    // Add the pts set
+    UINT32 numBitsPtsGBL = summNode.numBitsPtsGBL();
+    UINT32 numBitsPtsHZ  = summNode.numBitsPtsHZ();
+    UINT32 numBitsPtsDN  = summNode.numBitsPtsDN();
+    UINT32 ptsGBLidx     = summNode.ptsGBLidx();
+    UINT32 ptsHZidx      = summNode.ptsHZidx();
+    UINT32 ptsDNidx      = summNode.ptsDNidx();
+
+    // GBL
+    for (UINT32 i = 0; i < numBitsPtsGBL; i++) {
+      CGNodeId id = (CGNodeId)nodeIds[ptsGBLidx + i];
+      ConstraintGraphNode *pNode = findUniqueNode(id);
+      cgNode->addPointsTo(pNode, CQ_GBL);
+    }
+    // HZ
+    for (UINT32 i = 0; i < numBitsPtsHZ; i++) {
+      CGNodeId id = (CGNodeId)nodeIds[ptsHZidx + i];
+      ConstraintGraphNode *pNode = findUniqueNode(id);
+      cgNode->addPointsTo(pNode, CQ_HZ);
+    }
+    // DN
+    for (UINT32 i = 0; i < numBitsPtsDN; i++) {
+      CGNodeId id = (CGNodeId)nodeIds[ptsDNidx + i];
+      ConstraintGraphNode *pNode = findUniqueNode(id);
+      cgNode->addPointsTo(pNode, CQ_DN);
+    }
+
+    // Adjust pts set if required
+    if (cgNode->checkFlags(CG_NODE_FLAGS_ADJUST_K_CYCLE)) {
+      adjustPointsToForKCycle(cgNode);
+      cgNode->clearFlags(CG_NODE_FLAGS_ADJUST_K_CYCLE);
+    }
+
+    // Set repParent
+    UINT32 repParentId = summNode.repParent();
+    if (repParentId != 0) {
+      ConstraintGraphNode *newRepParent = findUniqueNode(repParentId);
+      ConstraintGraphNode *oldRepParent = cgNode->repParent();
+      if (oldRepParent != newRepParent) {
+        if (oldRepParent == NULL)
+          cgNode->repParent(newRepParent);
+        else {
+          // Merge with the other parent
+          newRepParent->merge(oldRepParent);
+          oldRepParent->repParent(newRepParent);
+          fprintf(stderr, "Merging oldRepParent %d with newRepParent %d\n",
+                  oldRepParent->id(), newRepParent->id());
+        }
+      }
+    }
+  }
+
+  // Add the formal paramters and return
+  UINT32 parmIdx = proc->Get_constraint_graph_formal_parm_idx();
+  UINT32 pcount = proc->Get_constraint_graph_formal_parm_count();
+  UINT32 retIdx = proc->Get_constraint_graph_formal_ret_idx();
+  UINT32 retCount = proc->Get_constraint_graph_formal_ret_count();
+  for (UINT32 i = 0; i < pcount; i++) {
+    CGNodeId id = (CGNodeId)nodeIds[parmIdx + i];   
+    ConstraintGraphNode *cn = findUniqueNode(id);
+    parameters().push_back(cn->id());
+  }
+  for (UINT32 i = 0; i < retCount; i++) {
+    CGNodeId id = (CGNodeId)nodeIds[retIdx + i];   
+    ConstraintGraphNode *cn = findUniqueNode(id);
+    returns().push_back(cn->id());
+  }
+
+  // Add CallSites
+  UINT32 callSiteIdx = proc->Get_constraint_graph_callsites_idx();
+  UINT32 callSiteCount = proc->Get_constraint_graph_callsites_count();
+  SUMMARY_CONSTRAINT_GRAPH_CALLSITE *summCallSites = 
+          IPA_get_constraint_graph_callsites_array(ipaNode->File_Header(),
+                                                   size);
+  FmtAssert(callSiteCount <= size, ("Invalid callSiteCount"));
+  for (UINT32 i = 0; i < callSiteCount; i++) {
+    SUMMARY_CONSTRAINT_GRAPH_CALLSITE &summCallSite = 
+                                       summCallSites[callSiteIdx + i];
+    CallSite *cs = CXX_NEW(CallSite(summCallSite.id(), summCallSite.flags(),
+                                    _memPool), _memPool);
+    _callSiteMap[cs->id()] = cs;
+
+    if (cs->isDirect() && !cs->isIntrinsic())
+      cs->st_idx(summCallSite.st_idx());
+    else if (cs->isIndirect())
+      cs->cgNodeId(summCallSite.cgNodeId());
+    else if (cs->isIntrinsic())
+      cs->intrinsic(summCallSite.intrinsic());
+
+    UINT32 paramIdx = summCallSite.parmNodeIdx();
+    UINT32 parmCount = summCallSite.numParms();
+    for (UINT32 i = 0; i < parmCount; i++) {
+      CGNodeId id = (CGNodeId)nodeIds[paramIdx + i];   
+      ConstraintGraphNode *cn = findUniqueNode(id);
+      cs->addParm(cn->id());
+    }
+    CGNodeId retId = summCallSite.returnId();
+    if (retId != 0) {
+      ConstraintGraphNode *cn = findUniqueNode(retId);
+      cs->returnId(cn->id());
+    }
+  }
 }
 
 ConstraintGraphNode *
-IPA_NystromAliasAnalyzer::buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE *summ,
-                                      IPA_NODE *ipaNode,
-                                      ConstraintGraph *parentCG)
+ConstraintGraph::buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE *summ,
+                             IPA_NODE *ipaNode)
 {
-  // Ignore notAPointer and blackHole CGNodes; they have been already
-  // created in the globalConstraintGraph
-  if (summ->cgNodeId() == ConstraintGraph::notAPointer()->id() || 
-      summ->cgNodeId() == ConstraintGraph::blackHole()->id())
-    return NULL;
-
-  // Adjust cg_st_idx with the current pu and file index
+  // Adjust cg_st_idx with the current pu and file index for non-globals
   CG_ST_IDX cg_st_idx = summ->cg_st_idx();
-  cg_st_idx = adjustCGstIdx(ipaNode, cg_st_idx);
+  if (this != globalCG())
+    cg_st_idx = adjustCGstIdx(ipaNode, cg_st_idx);
+
+  // The global CG might already have this ConstraintGraphNode
+  ConstraintGraphNode *cgNode = checkCGNode(cg_st_idx, summ->offset());
+  if (cgNode != NULL) {
+    FmtAssert(this == globalCG(), ("Expect this to be the globalCG"));
+    // Merge inKCycle
+    if (summ->inKCycle() != 0 && summ->inKCycle() != cgNode->inKCycle())
+      cgNode->addFlags(CG_NODE_FLAGS_ADJUST_K_CYCLE);
+    cgNode->inKCycle(gcd(cgNode->inKCycle(), summ->inKCycle()));
+    cgNode->addFlags(summ->flags());
+    fprintf(stderr, "Global entry found for CGNode oldId: %d newId: %d "
+            " old cg_st_idx: %llu new cg_st_idx: %llu\n",
+            summ->cgNodeId(), cgNode->id(), summ->cg_st_idx(), cg_st_idx);
+    return cgNode;
+  }
  
   // Remap the CGNodeId to a unique id
   CGNodeId oldCGNodeId = summ->cgNodeId(); 
-  CGNodeId newCGNodeId = parentCG->getNextCGNodeId();
-  _uniqueCGNodeIdMap[oldCGNodeId] = newCGNodeId;
-  ConstraintGraphNode *cgNode = 
-    CXX_NEW(ConstraintGraphNode(cg_st_idx, summ->offset(), summ->flags(),
-                                summ->inKCycle(), newCGNodeId, parentCG),
-            &_memPool);
+  CGNodeId newCGNodeId = nextCGNodeId++;
+  cgNode = CXX_NEW(ConstraintGraphNode(cg_st_idx, summ->offset(), 
+                                       summ->flags(), summ->inKCycle(),
+                                       newCGNodeId, this), _memPool);
 
   // Add to maps in the current ConstraintGraph
-  CGIdToNodeMap &cgIdToNodeMap = ConstraintGraph::getCGIdToNodeMap();
   cgIdToNodeMap[newCGNodeId] = cgNode;
-  CGNodeToIdMap &cgNodeToIdMap = parentCG->cgNodeToIdMap();
-  cgNodeToIdMap[cgNode] = newCGNodeId;
+  _cgNodeToIdMap[cgNode] = newCGNodeId;
+
+  fprintf(stderr, "Adding CGNode oldId: %d newId: %d to %s"
+          " old cg_st_idx: %llu new cg_st_idx: %llu\n",
+          summ->cgNodeId(), cgNode->id(),
+          (this == globalCG()) ? "global" : "local",
+          summ->cg_st_idx(), cg_st_idx);
 
   return cgNode;
 }
 
 StInfo *
-IPA_NystromAliasAnalyzer::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
-                                      IPA_NODE *ipaNode,
-                                      ConstraintGraph *parentCG)
+ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
+                             IPA_NODE *ipaNode)
 {
-  // Ignore notAPointer and blackHole CGNodes; they have been already
-  // created in the globalConstraintGraph
-  if (summ->firstOffset() == ConstraintGraph::notAPointer()->id() ||
-      summ->firstOffset() == ConstraintGraph::blackHole()->id())
-    return NULL;
+  // Adjust cg_st_idx with the current pu and file index for non-globals
+  CG_ST_IDX cg_st_idx = summ->cg_st_idx();
+  if (this != globalCG())
+    cg_st_idx = adjustCGstIdx(ipaNode, cg_st_idx);
+
+  // The global CG might already have this StInfo
+  CGStInfoMapIterator iter = _cgStInfoMap.find(cg_st_idx);
+  if (iter != _cgStInfoMap.end()) {
+    StInfo *stInfo = iter->second;
+    FmtAssert(this == globalCG(), ("Expect this to be the globalCG"));
+    FmtAssert(stInfo->varSize() == summ->varSize(), ("Inconsistent varSize"));
+    stInfo->addFlags(summ->flags());
+    if (summ->modulus() < stInfo->modulus())
+      stInfo->modulus(summ->modulus());
+    fprintf(stderr, "Global entry found for StInfo old cg_st_idx: %llu "
+                    "new cg_st_idx: %llu\n", summ->cg_st_idx(), cg_st_idx);
+    return stInfo;
+  }
      
   UINT32 flags = summ->flags(); 
   INT64 varSize = summ->varSize(); 
   UINT32 modulus = summ->modulus();
-  StInfo *stInfo = CXX_NEW(StInfo(flags, varSize, modulus), &_memPool);
+  StInfo *stInfo = CXX_NEW(StInfo(flags, varSize, modulus), _memPool);
   // Adjust cg_st_idx with the current pu and file index
-  CG_ST_IDX cg_st_idx = adjustCGstIdx(ipaNode, summ->cg_st_idx());
-  CGStInfoMap &stInfoMap = parentCG->stInfoMap();
-  stInfoMap[cg_st_idx] = stInfo;
+  _cgStInfoMap[cg_st_idx] = stInfo;
+
+  fprintf(stderr, "Adding StInfo old cg_stIdx: %llu "
+          "new cg_st_idx: %llu to %s\n", summ->cg_st_idx(), cg_st_idx,
+          (this == globalCG()) ? "global" : "local");
+
   return stInfo;
 }
 

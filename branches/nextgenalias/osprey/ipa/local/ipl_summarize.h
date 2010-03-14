@@ -623,7 +623,8 @@ private:
     void processPointsToSet(SUMMARY_CONSTRAINT_GRAPH_NODE *sumCGNode,
                             const PointsTo &gbl,
                             const PointsTo &hz,
-                            const PointsTo &dn);
+                            const PointsTo &dn,
+                            mUINT32 &numNodeIds);
 
 
     // Functions needed for execution cost analysis

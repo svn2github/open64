@@ -108,7 +108,9 @@
 #include "ipa_reorder.h"        //for merged_access --reorder
 #include "ipa_option.h"         // for IPA_Enable_Reorder and Merge_struct_access();
 
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
 #include "ipa_nystrom_alias_analyzer.h"
+#endif
 
 IPA_CALL_GRAPH* IPA_Call_Graph;     // "The" call graph of IPA
 #ifdef KEY
@@ -303,9 +305,8 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
   SUMMARY_CONSTRAINT_GRAPH_CALLSITE *cg_callsites = 
                 IPA_get_constraint_graph_callsites_array(hdr, num_cg_callsites);
   for (i = 0; i < num_cg_callsites; ++i) {
-    // 0x7 = CS_FLAGS_UNKNOWN(0x1)|CS_FLAGS_INDIRECT(0x2)|CS_FLAGS_INTRN(0x4)
-    // see be/com/constraint_graph.h
-    if (cg_callsites[i].flags() & 0x7 == 0) {
+    if ((cg_callsites[i].flags() & (CS_FLAGS_UNKNOWN | CS_FLAGS_INDIRECT |
+                                    CS_FLAGS_INTRN)) == 0) {
       ST_IDX old_st_idx = cg_callsites[i].st_idx();
       if (ST_IDX_level(old_st_idx) == GLOBAL_SYMTAB) {
         cg_callsites[i].st_idx(idx_maps->st[old_st_idx]);
@@ -851,9 +852,9 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 
 #if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
 
-    IPA_NystromAliasAnalyzer *ipa_naa = IPA_NystromAliasAnalyzer::analyzer();
+    IPA_NystromAliasAnalyzer *ipa_naa = 
+                              IPA_NystromAliasAnalyzer::aliasAnalyzer();
     if (ipa_naa) {
-      ConstraintGraph *cg = 
         ipa_naa->buildIPAConstraintGraph(ipa_node);
     }
 
@@ -1593,6 +1594,11 @@ Build_Call_Graph ()
 
     For_all_entries (IP_File_header, add_nodes ());
 
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    fprintf(stderr, "Printing ConstraintGraphs...\n");
+    IPA_NystromAliasAnalyzer::aliasAnalyzer()->print(stderr);
+#endif
+
     For_all_entries (IP_File_header, add_edges ());
 
     Connect_call_graph();
@@ -1925,7 +1931,7 @@ Delete_Function (NODE_INDEX node, BOOL update_modref_count, mUINT8 *visited)
 		 ipa_node->Name ());
 
 #if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
-    IPA_NystromAliasAnalyzer::analyzer()->deleteConstraintGraph(ipa_node);
+    IPA_NystromAliasAnalyzer::aliasAnalyzer()->deleteConstraintGraph(ipa_node);
 #endif
 
 #ifndef _LIGHTWEIGHT_INLINER

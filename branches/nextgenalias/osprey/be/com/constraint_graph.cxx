@@ -15,6 +15,7 @@ MEM_POOL *ConstraintGraph::edgeMemPool = NULL;
 UINT32 ConstraintGraph::maxTypeSize = 0;
 UINT32 ConstraintGraph::nextCGNodeId = 1;
 bool ConstraintGraph::isIPA = false;
+ConstraintGraph *ConstraintGraph::globalConstraintGraph = NULL;
 ConstraintGraphNode *ConstraintGraph::notAPointerCGNode = NULL;
 ConstraintGraphNode *ConstraintGraph::blackHoleCGNode = NULL;
 CGIdToNodeMap ConstraintGraph::cgIdToNodeMap(1024);
@@ -66,28 +67,6 @@ StInfo::StInfo(ST_IDX st_idx)
 
   // Treat every symbol as context-insensitive
   addFlags(CG_ST_FLAGS_NOCNTXT);
-}
-
-template <typename T>
-static inline
-T gcd(T source, T target)
-{
-   T t1 = (source >= 0) ? source : -source;
-   T t2 = (target >= 0) ? target : -target;
-   T rem;
-
-   if (t1 == 0) return t2;
-   else if (t2 == 0) return t1;
-
-   for(;;)
-   {
-      rem = t1 % t2;
-      if (rem == 0)
-         break;
-      t1 = t2;
-      t2 = rem;
-   }
-   return t2;
 }
 
 void
@@ -177,8 +156,22 @@ ConstraintGraph::exprMayPoint(WN *const wn)
   return true;
 }
 
-static void
-addCGNodeInSortedOrder(StInfo *stInfo, ConstraintGraphNode *cgNode)
+bool
+ConstraintGraph::checkCGNodeInSortedList(StInfo *stInfo,
+                                         ConstraintGraphNode *cgNode)
+{
+  ConstraintGraphNode *n = stInfo->firstOffset();
+  while (n) {
+    if (n == cgNode)
+      return true;
+    n = n->nextOffset();
+  }
+  return false;
+}
+
+void 
+ConstraintGraph::addCGNodeInSortedOrder(StInfo *stInfo, 
+                                        ConstraintGraphNode *cgNode)
 {
   if (!stInfo->firstOffset()) {
     stInfo->firstOffset(cgNode);
@@ -330,7 +323,7 @@ ConstraintGraph::buildCG(WN *entryWN)
   
   processWN(entryWN);
  
-  // Add the varArgs paramters after all other paramters have been processed
+  // Add the varArgs parameters after all other parameters have been processed
   if (_varArgs) {
     _varArgs->addFlags(CG_NODE_FLAGS_FORMAL_PARAM);
     _parameters.push_back(_varArgs->id());
@@ -549,7 +542,7 @@ ConstraintGraph::processExpr(WN *expr)
   } else if (opr == OPR_ALLOCA) {
     // We create a local variable that represents the dynamically
     // allocated stack location
-    ST *stackST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgStack",
+    ST *stackST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgStack",
                                        CLASS_VAR, SCLASS_AUTO);
     ConstraintGraphNode *stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
     stackCGNode->addPointsTo(stackCGNode,CQ_HZ);
@@ -818,7 +811,7 @@ ConstraintGraph::handleCall(WN *callWN)
   } else {
     numParms = WN_kid_count(callWN);
     if (calleeReturnsNewMemory(callWN)) {
-      ST *heapST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "cgHeap", 
+      ST *heapST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgHeap", 
                                          CLASS_VAR, SCLASS_AUTO);
       heapCGNode = getCGNode(CG_ST_st_idx(heapST), 0);
       heapCGNode->addPointsTo(heapCGNode,CQ_HZ);
@@ -966,10 +959,10 @@ ConstraintGraph::getCGNode(WN *wn)
 // set added = false
 ConstraintGraphEdge *
 ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
-                         CGEdgeType etype, CGEdgeQual qual, UINT32 size, 
+                         CGEdgeType etype, CGEdgeQual qual, INT32 sizeorSkew, 
                          bool &added)
 {
-  ConstraintGraphEdge cgEdge(src, dest, etype, qual, size);
+  ConstraintGraphEdge cgEdge(src, dest, etype, qual, sizeorSkew);
 
   ConstraintGraphEdge *retSrcEdge = src->outEdge(&cgEdge);
   ConstraintGraphEdge *retDestEdge = dest->inEdge(&cgEdge);
@@ -979,7 +972,8 @@ ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
 
   if (edgeExistsInNeither) {
     ConstraintGraphEdge *edge =
-      CXX_NEW(ConstraintGraphEdge(src, dest, etype, qual, size), edgeMemPool);
+      CXX_NEW(ConstraintGraphEdge(src, dest, etype, qual, sizeorSkew),
+              edgeMemPool);
     src->addOutEdge(edge);
     dest->addInEdge(edge);
     added = true;
@@ -1105,9 +1099,8 @@ ConstraintGraphNode::_getCGEdgeSet(CGEdgeType t, CGEdgeList **el)
   CGEdgeSet *es = _findCGEdgeSet(t,*el);
   if (!es) {
     MEM_POOL *mp = cg()->memPool();
-    CGEdgeType setType = (t & ETYPE_COPYSKEW) ?
-        ETYPE_COPYSKEW :
-        ETYPE_LOADSTORE;
+    CGEdgeType setType = (t & ETYPE_COPYSKEW) ? ETYPE_COPYSKEW
+                                              : ETYPE_LOADSTORE;
     CGEdgeList *newEL = CXX_NEW(CGEdgeList(setType),mp);
     CGEdgeList *tmp = *el;
     *el = newEL;
@@ -1271,13 +1264,12 @@ ConstraintGraphNode::print(FILE *file)
     if (ST_IDX_level(SYM_ST_IDX(_cg_st_idx)) == GLOBAL_SYMTAB)
       (&St_Table[SYM_ST_IDX(_cg_st_idx)])->Print(stderr);
     else
-      fprintf(file, " <file: %d pu: %d level:%d idx:%d>\n",
+      fprintf(file, " <file:%d pu:%d st_idx:%d>\n",
               FILE_NUM_ST_IDX(_cg_st_idx),
               PU_NUM_ST_IDX(_cg_st_idx),
-              ST_IDX_level(SYM_ST_IDX(_cg_st_idx)), 
-              ST_IDX_index(SYM_ST_IDX(_cg_st_idx)));
+              SYM_ST_IDX(_cg_st_idx));
   }
-  fprintf(file, " offset: %d", _offset);
+  fprintf(file, " cg_st_idx: %llu, offset: %d", _cg_st_idx, _offset);
   StInfo *stInfo = cg()->stInfo(_cg_st_idx);
   if (stInfo->checkFlags(CG_ST_FLAGS_PREG)) {
     PREG_NUM p = PREG_NUM(_offset / CG_PREG_SCALE);
@@ -1364,12 +1356,11 @@ void ConstraintGraphNode::print(ostream& ostr)
     if (ST_IDX_level(SYM_ST_IDX(_cg_st_idx)) == GLOBAL_SYMTAB)
       ostr << St_Table[SYM_ST_IDX(_cg_st_idx)];
     else
-      ostr << " <file: " << FILE_NUM_ST_IDX(_cg_st_idx) 
-           << " pu: " << PU_NUM_ST_IDX(_cg_st_idx)
-           << " level: " << ST_IDX_level(SYM_ST_IDX(_cg_st_idx))
-           << " idx: " << ST_IDX_index(SYM_ST_IDX(_cg_st_idx)) << ">" << endl;
+      ostr << " <file:" << FILE_NUM_ST_IDX(_cg_st_idx) 
+           << " pu:" << PU_NUM_ST_IDX(_cg_st_idx)
+           << " st_idx:" << SYM_ST_IDX(_cg_st_idx) << ">" << endl;
   }
-  ostr << "offset: " << _offset;
+  ostr << "cg_st_idx: " << _cg_st_idx << ", offset: " << _offset;
   StInfo *stInfo = cg()->stInfo(_cg_st_idx);
   if (stInfo->checkFlags(CG_ST_FLAGS_PREG)) {
     PREG_NUM p = PREG_NUM(_offset / CG_PREG_SCALE);

@@ -452,7 +452,7 @@ IPA_irb_write_summary(Output_File *fl)
     header_addr->Set_constraint_graph_edges_entry_size(sizeof(SUMMARY_CONSTRAINT_GRAPH_EDGE));
     header_addr->Set_constraint_graph_stinfos_entry_size(sizeof(SUMMARY_CONSTRAINT_GRAPH_STINFO));
     header_addr->Set_constraint_graph_callsites_entry_size(sizeof(SUMMARY_CONSTRAINT_GRAPH_CALLSITE));
-    header_addr->Set_constraint_graph_node_ids_size(sizeof(UINT32));
+    header_addr->Set_constraint_graph_node_ids_entry_size(sizeof(UINT32));
 }
 
 

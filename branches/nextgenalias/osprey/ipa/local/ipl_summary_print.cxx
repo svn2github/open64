@@ -179,6 +179,9 @@ SUMMARY_PROCEDURE::Print (FILE *fp, INT32 id) const
     fprintf(fp, "constraint graph callsites count: %d idx: %d\n",
             Get_constraint_graph_callsites_count(),
             Get_constraint_graph_callsites_idx());
+    fprintf(fp, "constraint graph node ids count: %d idx: %d\n",
+            Get_constraint_graph_node_ids_count(),
+            Get_constraint_graph_node_ids_idx());
     fprintf(fp, "constraint graph formal parm count: %d idx: %d\n",
             Get_constraint_graph_formal_parm_count(),
             Get_constraint_graph_formal_parm_idx());
@@ -1406,8 +1409,12 @@ SUMMARY_CONSTRAINT_GRAPH_STINFO::Trace(void) const
 void
 SUMMARY_CONSTRAINT_GRAPH_CALLSITE::Print( FILE *fp) const
 {
-  fprintf(fp, "id %d numParms: %d paramNodesIdx: %d return: %d\n", 
+  fprintf(fp, "id %d numParms: %d paramNodesIdx: %d return: %d ", 
           _id, _numParms, _paramNodesIdx, _return);
+   // 0x4 = CS_FLAGS_INTRN, 0x2 = CS_FLAGS_INDIRECT
+  if (!(_flags & 0x4) && !(_flags & 0x2))
+    fprintf(fp, " direct call: %s(%d)\n", 
+            ST_name(&St_Table[_callInfo._st_idx]), _callInfo._st_idx);
 } 
 
 void
