@@ -268,8 +268,7 @@ stmtStoresReturnValueFromCallee(const WN *const stmt)
   return ((WN_operator(stmt) == OPR_STID) &&
           (WN_operator(rhs) == OPR_LDID) &&
           (ST_sclass(WN_st(rhs)) == SCLASS_REG) &&
-          Preg_Is_Dedicated(WN_offset(rhs)) && 
-          Is_Return_Preg(WN_offset(rhs)));
+          Preg_Is_Dedicated(WN_offset(rhs)));
 }
 
 static BOOL
@@ -277,10 +276,8 @@ stmtStoresReturnValueToCaller(const WN *const stmt)
 {
   return ((WN_operator(stmt) == OPR_STID) &&
           (ST_sclass(WN_st(stmt)) == SCLASS_REG) &&
-          Preg_Is_Dedicated(WN_offset(stmt)) && 
-          Is_Return_Preg(WN_offset(stmt)));
+          Preg_Is_Dedicated(WN_offset(stmt)));
 }
-
 
 ConstraintGraphNode *
 ConstraintGraph::genTempCGNode()
