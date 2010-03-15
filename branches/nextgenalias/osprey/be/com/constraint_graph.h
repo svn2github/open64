@@ -468,12 +468,9 @@ public:
     p = outEdgeSet.insert(edge);
     ConstraintGraphEdge *newEdge = *(p.first);
     if (newEdge == edge &&
-        edge->edgeType() != ETYPE_SKEW) {
-      if (edge->edgeType() == ETYPE_LOAD && Pointer_Size > _maxAccessSize)
-        _maxAccessSize = Pointer_Size;
-      else if (edge->size() > _maxAccessSize)
-        _maxAccessSize = edge->size();
-    }
+        edge->edgeType() != ETYPE_SKEW &&
+        edge->size() > _maxAccessSize)
+      _maxAccessSize = edge->size();
     return newEdge;
   }
 
@@ -484,9 +481,7 @@ public:
     if (iter != outEdgeSet.end())
       outEdgeSet.erase(iter);
 
-    if (edge->edgeType() != ETYPE_SKEW && edge->size() != _maxAccessSize) {
-      FmtAssert(edge->size() < _maxAccessSize,
-          ("ConstraintGraphNode::_maxAccessSize inconsistent"));
+    if (edge->edgeType() != ETYPE_SKEW && edge->size() == _maxAccessSize) {
       UINT8 newMax = 0;
       const CGEdgeSet &outCopySkew = outCopySkewEdges();
       for (CGEdgeSetIterator outIter1 = outCopySkew.begin();
@@ -499,9 +494,7 @@ public:
       for (CGEdgeSetIterator outIter2 = outLoadStore.begin();
           outIter2 != outLoadStore.end(); ++outIter2) {
         ConstraintGraphEdge *e = *outIter2;
-        if (e->edgeType() == ETYPE_LOAD && Pointer_Size > newMax)
-          newMax = Pointer_Size;
-        else if (e->size() > newMax )
+        if (e->size() > newMax )
           newMax = e->size();
       }
       _maxAccessSize = newMax;
@@ -909,6 +902,8 @@ public:
   void connect(CallSiteId id, ConstraintGraph *callee,
                ST *calleeST, UINT32 *actualSize, UINT32 numActual,
                EdgeDelta &delta);
+
+  void applyCalleeSummaries(EdgeDelta &delta);
 
 private:
 
