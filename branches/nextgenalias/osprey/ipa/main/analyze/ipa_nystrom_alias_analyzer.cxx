@@ -125,12 +125,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       FmtAssert(!stInfo->checkFlags(CG_ST_FLAGS_PREG),
                 ("PREGs should have no nextOffset"));
       ConstraintGraphNode *firstOffset = findUniqueNode(firstOffsetId);
-      // For GLOBALs check if the node is already in the StInfo's sorted list
-      if (stInfo->checkFlags(CG_ST_FLAGS_GLOBAL)) {
-        if (!checkCGNodeInSortedList(stInfo, firstOffset))
-          addCGNodeInSortedOrder(stInfo, firstOffset);
-      } else
-          addCGNodeInSortedOrder(stInfo, firstOffset);
+      addCGNodeInSortedOrder(stInfo, firstOffset);
     }
   }
 
@@ -149,7 +144,6 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       ConstraintGraph::addEdge(srcNode, destNode, (CGEdgeType)summEdge.etype(),
                                (CGEdgeQual)summEdge.qual(), 
                                summEdge.sizeOrSkew(), added);
-    FmtAssert(added, ("ConstraintGraph::buildCGipa: failed to add edge"));
     edge->addFlags(summEdge.flags());
   }
 
@@ -177,12 +171,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       FmtAssert(!stInfo->checkFlags(CG_ST_FLAGS_PREG),
                 ("PREGs should have no nextOffset"));
       ConstraintGraphNode *nextOffset = findUniqueNode(nextOffsetId);
-      // For GLOBALs check if the node is already in the StInfo's sorted list
-      if (stInfo->checkFlags(CG_ST_FLAGS_GLOBAL)) {
-        if (!checkCGNodeInSortedList(stInfo, nextOffset))
-          addCGNodeInSortedOrder(stInfo, nextOffset);
-      } else
-          addCGNodeInSortedOrder(stInfo, nextOffset);
+      addCGNodeInSortedOrder(stInfo, nextOffset);
     }
 
     // Add the pts set
@@ -221,17 +210,26 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     // Set repParent
     UINT32 repParentId = summNode.repParent();
     if (repParentId != 0) {
-      ConstraintGraphNode *newRepParent = findUniqueNode(repParentId);
-      ConstraintGraphNode *oldRepParent = cgNode->repParent();
+      ConstraintGraphNode *newRepParent =
+                           findUniqueNode(repParentId)->findRep();
+      ConstraintGraphNode *oldRepParent = cgNode->findRep();
       if (oldRepParent != newRepParent) {
-        if (oldRepParent == NULL)
+        if (oldRepParent == cgNode)
           cgNode->repParent(newRepParent);
         else {
-          // Merge with the other parent
-          newRepParent->merge(oldRepParent);
-          oldRepParent->repParent(newRepParent);
-          fprintf(stderr, "Merging oldRepParent %d with newRepParent %d\n",
-                  oldRepParent->id(), newRepParent->id());
+          // Check if the old and the new parents are related
+          if (newRepParent->repParent() == oldRepParent) {
+            cgNode->repParent(newRepParent);
+          } else if (oldRepParent->repParent() == newRepParent) {
+            // Do nothing here
+            ;
+          } else {
+            // Merge with the other parent
+            newRepParent->merge(oldRepParent);
+            oldRepParent->repParent(newRepParent);
+            fprintf(stderr, "Merging oldRepParent %d with newRepParent %d\n",
+                    oldRepParent->id(), newRepParent->id());
+          }
         }
       }
     }

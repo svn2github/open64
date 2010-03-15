@@ -47,8 +47,7 @@ StInfo::StInfo(ST_IDX st_idx)
   _modulus = _varSize;
   // Set the flags
   ST_SCLASS storage_class = ST_sclass(st);
-  if (storage_class == SCLASS_PSTATIC ||
-      storage_class == SCLASS_FSTATIC ||
+  if (storage_class == SCLASS_FSTATIC ||
       storage_class == SCLASS_COMMON ||
       storage_class == SCLASS_UGLOBAL ||
       storage_class == SCLASS_DGLOBAL ||
@@ -157,20 +156,7 @@ ConstraintGraph::exprMayPoint(WN *const wn)
   return true;
 }
 
-bool
-ConstraintGraph::checkCGNodeInSortedList(StInfo *stInfo,
-                                         ConstraintGraphNode *cgNode)
-{
-  ConstraintGraphNode *n = stInfo->firstOffset();
-  while (n) {
-    if (n == cgNode)
-      return true;
-    n = n->nextOffset();
-  }
-  return false;
-}
-
-void 
+bool 
 ConstraintGraph::addCGNodeInSortedOrder(StInfo *stInfo, 
                                         ConstraintGraphNode *cgNode)
 {
@@ -184,8 +170,9 @@ ConstraintGraph::addCGNodeInSortedOrder(StInfo *stInfo,
       n = n->nextOffset();
     }
     if (prevn) {
-      FmtAssert(prevn->offset() != cgNode->offset(),
-          ("Found node with same offset"));
+      // Node already exists
+      if (prevn->offset() == cgNode->offset())
+        return false;
       cgNode->nextOffset(prevn->nextOffset());
       prevn->nextOffset(cgNode);
     }
@@ -194,6 +181,7 @@ ConstraintGraph::addCGNodeInSortedOrder(StInfo *stInfo,
       stInfo->firstOffset(cgNode);
     }
   }
+  return true;
 }
 
 static void
@@ -1059,8 +1047,10 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   // Since each PREG is independent, we do not link it to the sorted
   // list of its associated symbol. So, the firstOffset of the StInfo
   // will be NULL and so will the next offset of the ConstraintGraphNode
-  if (!si->checkFlags(CG_ST_FLAGS_PREG))
-    addCGNodeInSortedOrder(si, cgNode);
+  if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
+    bool added = addCGNodeInSortedOrder(si, cgNode);
+    FmtAssert(added, ("Failed to add ConstraintGraphNode"));
+  }
 
   if (cgNode->offset() == -1)
     seedOffsetMinusOnePointsTo(si,cgNode);

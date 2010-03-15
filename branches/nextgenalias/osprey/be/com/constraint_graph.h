@@ -789,11 +789,8 @@ public:
   static void adjustPointsToForKCycle(UINT32 kCycle,const PointsTo &src,
                                       PointsTo &dst);
 
-  static void addCGNodeInSortedOrder(StInfo *stInfo, 
+  static bool addCGNodeInSortedOrder(StInfo *stInfo, 
                                      ConstraintGraphNode *cgNode);
-
-  static bool checkCGNodeInSortedList(StInfo *stInfo,
-                                      ConstraintGraphNode *cgNode);
 
   static ConstraintGraph *globalCG()        { return globalConstraintGraph; }
   static void globalCG(ConstraintGraph *cg) { globalConstraintGraph = cg; }
