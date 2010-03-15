@@ -217,19 +217,11 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
         if (oldRepParent == cgNode)
           cgNode->repParent(newRepParent);
         else {
-          // Check if the old and the new parents are related
-          if (newRepParent->repParent() == oldRepParent) {
-            cgNode->repParent(newRepParent);
-          } else if (oldRepParent->repParent() == newRepParent) {
-            // Do nothing here
-            ;
-          } else {
-            // Merge with the other parent
-            newRepParent->merge(oldRepParent);
-            oldRepParent->repParent(newRepParent);
-            fprintf(stderr, "Merging oldRepParent %d with newRepParent %d\n",
-                    oldRepParent->id(), newRepParent->id());
-          }
+          // Merge with the new parent
+          newRepParent->merge(oldRepParent);
+          oldRepParent->repParent(newRepParent);
+          fprintf(stderr, "Merging oldRepParent %d with newRepParent %d\n",
+                  oldRepParent->id(), newRepParent->id());
         }
       }
     }
