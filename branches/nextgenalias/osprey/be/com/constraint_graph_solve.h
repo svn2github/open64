@@ -68,7 +68,7 @@ private:
   ConstraintGraph *_cg;
   ConstraintGraph *_globalCG;
   MEM_POOL        *_memPool;
-  EdgeDelta       _edgeDelta;
+  EdgeDelta       &_edgeDelta;
 };
 
 

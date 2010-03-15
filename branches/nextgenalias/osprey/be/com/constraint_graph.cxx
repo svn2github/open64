@@ -1095,22 +1095,28 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
   // Connect actual parameters in caller to formals of callee
   list<CGNodeId>::const_iterator actualIter = cs->parms().begin();
   list<CGNodeId>::const_iterator formalIter = callee->parameters().begin();
+  ConstraintGraphNode *lastFormal = NULL;
   UINT32 actualIdx = 1;
   for (; actualIter != cs->parms().end() && formalIter != callee->parameters().end();
       ++actualIter, ++formalIter) {
     ConstraintGraphNode *actual = cgNode(*actualIter);
     ConstraintGraphNode *formal = cgNode(*formalIter);
+    lastFormal = formal;
     FmtAssert(actualIdx < numActual,
-              ("connect: mismatch betw. provided actuals and CG CallSite\n"));
+                  ("connect: mismatch betw. provided actuals and CG CallSite\n"));
+    UINT32 size = actualSize[actualIdx++];
+
+    if (actual->checkFlags(CG_NODE_FLAGS_NOT_POINTER) ||
+        formal->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+      continue;
+
     bool added = false;
     ConstraintGraphEdge *edge = addEdge(actual,formal,ETYPE_COPY,CQ_DN,
-                                        actualSize[actualIdx++],added);
+                                        size,added);
     FmtAssert(added,("connect: expect actual->formal edge to be new"));
     delta.add(edge);
   }
 
-  // If we are in the first round of our top down analysis we will
-  // add all edges in the callee
   // If we have more actuals than formals either we either have a
   // signature mismatch or varargs.  For now we don't worry about
   // the other mismatch cases.
@@ -1118,13 +1124,19 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
       formalIter == callee->parameters().end() &&
       TY_is_varargs(ST_pu_type(calleeST))) {
     // Hook up remaining actuals to the "varargs" node
+    FmtAssert(callee->stInfo(lastFormal->cg_st_idx())
+                  ->checkFlags(CG_ST_FLAGS_VARARGS),
+                  ("Expect last formal to be varargs!\n"));
     for ( ; actualIter != cs->parms().end(); ++actualIter) {
+      ConstraintGraphNode *actual = cgNode(*actualIter);
       FmtAssert(actualIdx < numActual,
                 ("connect: mismatch betw. provided actuals and CG CallSite\n"));
+      UINT32 size = actualSize[actualIdx++];
+      if (actual->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+        continue;
       bool added = false;
-      ConstraintGraphEdge *edge = addEdge(cgNode(*actualIter),callee->varargs(),
-                                          ETYPE_COPY,CQ_DN,actualSize[actualIdx++],
-                                          added);
+      ConstraintGraphEdge *edge = addEdge(cgNode(*actualIter),lastFormal,
+                                          ETYPE_COPY,CQ_DN,size,added);
       FmtAssert(added,("connect: expect actual->formal edge to be new"));
       delta.add(edge);
     }
@@ -1133,13 +1145,17 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
   // Now connect the formal returns in callee to actual returns of caller
   list<CGNodeId>::const_iterator retIter = callee->returns().begin();
   ConstraintGraphNode *actualRet = cgNode(cs->returnId());
-  for (; retIter != callee->returns().end(); ++retIter) {
-    ConstraintGraphNode *formalRet = cgNode(*retIter);
-    bool added;
-    ConstraintGraphEdge *edge = addEdge(formalRet,actualRet,ETYPE_COPY,CQ_UP,
-                                        actualSize[0],added);
-    FmtAssert(added,("connect: expect actual->formal edge to be new"));
-    delta.add(edge);
+  if (actualRet && !actualRet->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+    for (; retIter != callee->returns().end(); ++retIter) {
+      ConstraintGraphNode *formalRet = cgNode(*retIter);
+      if (formalRet->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+        continue;
+      bool added;
+      ConstraintGraphEdge *edge = addEdge(formalRet,actualRet,ETYPE_COPY,CQ_UP,
+                                          actualSize[0],added);
+      FmtAssert(added,("connect: expect actual->formal edge to be new"));
+      delta.add(edge);
+    }
   }
 }
 
@@ -1608,6 +1624,13 @@ CallSite::print(FILE *file)
   fprintf(file, "\n");
 }
    
+void
+ConstraintGraphVCG::dumpVCG(const char *fileNamePrefix)
+{
+  ConstraintGraphVCG vcg(fileNamePrefix);
+  vcg.buildVCG();
+}
+
 char *
 ConstraintGraphVCG::getNodeTitle(ConstraintGraphNode *cgNode)
 { 

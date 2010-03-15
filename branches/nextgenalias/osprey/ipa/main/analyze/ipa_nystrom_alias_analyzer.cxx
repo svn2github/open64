@@ -1,11 +1,180 @@
 #include <elf.h>
+#include <stack>
+
 #include "constraint_graph_solve.h"
 #include "defs.h"
 #include "ipl_summary.h"
 #include "ipa_summary.h"
 #include "ipa_nystrom_alias_analyzer.h"
+#include "opt_defs.h"
 
 IPA_NystromAliasAnalyzer *IPA_NystromAliasAnalyzer::_ipa_naa = NULL;
+
+// Performs cycle detection within the call graph.  The
+// algorithm employed is Nuutila's algorithm:
+//
+// Esko Nuutila and Eljas Soisalon-Soininen, "On finding the
+//   strongly connected components in a directed graph".
+//   Inf. Process. Letters, 49(1):9-14, 1994.
+//
+// The algorithm provides two benefits.  First it is an improvement
+// over Tarjan's algorithm, runs in O(E) time.  Second it produces
+// a topological ordering of the target graph for free, which
+// will improve the efficiency of the constraint graph solver.
+//
+// The implementation is derived from the pseudo code in the
+// following paper:
+//
+// Pereira and Berlin, "Wave Propagation and Deep Propagation for
+//   Pointer Analysis", CGO 2009, 126-135, 2009.
+//
+
+class IPASCCDetection {
+public:
+  typedef stack<IPA_NODE *> IPANodeStack;
+
+  IPASCCDetection(IPA_NystromAliasAnalyzer *nyst, IPA_CALL_GRAPH *icg,
+                  MEM_POOL *mpool)
+  : _nyst(nyst),
+    _graph(icg),
+    _memPool(mpool),
+    _I(0),
+    _D(NULL)
+  {}
+
+  // Detect and unify all SCCS within the call graph.
+  void findAndUnify();
+
+  // Return a handle to the stack of nodes in topological
+  // order.  This will be used to seed the initial solution
+  // and improve efficiency.
+  IPANodeStack &topoNodeStack() { return _T; }
+
+private:
+
+  void visit(IPA_NODE *node);
+
+  void find(void);
+  void unify(void);
+
+  IPA_NystromAliasAnalyzer *_nyst;
+  IPA_CALL_GRAPH           *_graph;
+  MEM_POOL                 *_memPool;
+  UINT32                   _I;
+  UINT32                  *_D;
+  IPANodeStack             _S;
+  IPANodeStack             _T;
+};
+
+void
+IPASCCDetection::visit(IPA_NODE *v)
+{
+  if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+    fprintf(stderr,"visit: IPA_NODE %d, %s\n",v->Node_Index(),v->Name());
+  _I += 1;
+  _D[v->Node_Index()] = _I;
+  _nyst->rep(v,v);
+  _nyst->setVisited(v,true);
+  IPA_SUCC_ITER succIter(_graph,v);
+  for (succIter.First(); !succIter.Is_Empty(); succIter.Next())
+  {
+    IPA_EDGE *edge = succIter.Current_Edge();
+    IPA_NODE *w = _graph->Callee(edge);
+    if (!_nyst->visited(w))
+      visit(w);
+    if (!_nyst->inSCC(w))
+    {
+      IPA_NODE *rep;
+      rep = _D[_nyst->rep(v)->Node_Index()] < _D[_nyst->rep(w)->Node_Index()] ?
+          _nyst->rep(v) : _nyst->rep(w);
+      _nyst->rep(v,rep);
+    }
+  }
+  if (_nyst->rep(v) == v) {
+    _nyst->setInSCC(v,true);
+    while (!_S.empty()) {
+      IPA_NODE *w = _S.top();
+      if (_D[w->Node_Index()] <= _D[v->Node_Index()])
+        break;
+      else {
+        _S.pop();
+        _nyst->inSCC(w);
+        _nyst->rep(w,v);
+      }
+    }
+    _T.push(v);
+  }
+  else
+    _S.push(v);
+}
+
+void
+IPASCCDetection::find(void)
+{
+  // Visit each unvisited root node.   A root node is defined
+  // to be a node that has no incoming copy/skew edges
+  IPA_NODE_ITER nodeIter(_graph,DONTCARE);
+  for (nodeIter.First(); !nodeIter.Is_Empty(); nodeIter.Next()) {
+    IPA_NODE *node = nodeIter.Current();
+    if (!node) continue;
+    if (!_nyst->visited(node)) {
+      // We skip any nodes that have a representative other than
+      // themselves.  Such nodes occur as a result of merging
+      // nodes either through unifying an ACC or other node
+      // merging optimizations.  Any such node should have no
+      // outgoing edges and therefore should no longer be a member
+      // of an SCC.
+      if (_nyst->rep(node) == NULL || _nyst->rep(node) == node)
+        visit(node);
+      else
+        _nyst->visited(node);
+    }
+  }
+}
+
+void
+IPASCCDetection::unify()
+{
+  // Unify the nodes in an SCC into a single node
+  IPA_NODE_ITER nodeIter(_graph,DONTCARE);
+  for (nodeIter.First(); !nodeIter.Is_Empty(); nodeIter.Next()) {
+    IPA_NODE *node = nodeIter.Current();
+    if (!node) continue;
+    FmtAssert(_nyst->visited(node),
+        ("Node %d unvisited during SCC detection\n",node->Node_Index()));
+    _nyst->setVisited(node,false);
+    _nyst->setInSCC(node,false);
+    IPA_NODE *rep = _nyst->rep(node);
+    if (rep && rep != node) {
+      if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+        fprintf(stderr,"Unify: IPA_NODE %d,%s -> IPA_NODE %d,%s\n",
+              node->Node_Index(),node->Name(),
+              rep->Node_Index(),node->Name());
+      // TODO:  Actually merge constraint graphs for these nodes
+      ConstraintGraph *nodeCG = _nyst->cg(node->Node_Index());
+      ConstraintGraph *repCG =  _nyst->cg(rep->Node_Index());
+      //repCG->merge(nodeCG);
+    }
+  }
+}
+
+void
+IPASCCDetection::findAndUnify()
+{
+  // Reset state
+  _I = 0;
+  _D = CXX_NEW_ARRAY(UINT32,_graph->Node_Size(),_memPool);
+  while (!_S.empty()) _S.pop();
+  while (!_T.empty()) _T.pop();
+
+  // Make sure that our aux call graph info has been set up.
+  _nyst->allocSCCInfo(_graph);
+
+  find();
+  unify();
+
+  CXX_DELETE_ARRAY(_D,_memPool);
+}
 
 static CG_ST_IDX 
 adjustCGstIdx(IPA_NODE *ipaNode, CG_ST_IDX cg_st_idx)
@@ -361,7 +530,7 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
 }
 
 void
-IPA_NystromAliasAnalyzer::callGraphPrep(IPA_CALL_GRAPH *ipaCG,
+IPA_NystromAliasAnalyzer::callGraphPrep(IPA_CALL_GRAPH *ipaCallGraph,
                                         list<IPA_EDGE *> &workList,
                                         EdgeDelta &delta,
                                         list<IPA_NODE *> &revTopOrder,
@@ -370,17 +539,29 @@ IPA_NystromAliasAnalyzer::callGraphPrep(IPA_CALL_GRAPH *ipaCG,
   // (TODO: 1) Perform cycle detection on the call graph and
   //  merge nodes within SCCS.  A side-effect of the SCC
   //  analysis is the topological order of the acyclic call graph
+  if (!workList.empty()) {
+    IPASCCDetection scc(this,ipaCallGraph,&_memPool);
+    scc.findAndUnify();
+    IPASCCDetection::IPANodeStack &topoStack = scc.topoNodeStack();
 
+    // Compute the reverse topological order of the call graph
+    if (revTopOrder.empty())
+      while (!topoStack.empty()) {
+        revTopOrder.push_front(topoStack.top());
+        topoStack.pop();
+      }
+  }
   // 2) Connect param/return edges for edges within the workList.
   //    The 'delta' is populated with new constraint graph edges
   //    to be processed during the next solution pass.  The first
   //    time we do this, we will add *all* edges to the delta.
   UINT32 actualSize[32];
-  for (list<IPA_EDGE*>::const_iterator iter = workList.begin();
-       iter != workList.end(); ++iter) {
-    IPA_EDGE *edge = *iter;
-    IPA_NODE *caller = ipaCG->Caller(edge);
-    IPA_NODE *callee = ipaCG->Callee(edge);
+  while (!workList.empty()) {
+    IPA_EDGE *edge = workList.front();
+    workList.pop_front();
+
+    IPA_NODE *caller = ipaCallGraph->Caller(edge);
+    IPA_NODE *callee = ipaCallGraph->Callee(edge);
 
     SUMMARY_CALLSITE *sumCallSite = edge->Summary_Callsite();
     // Determine the "size" of each actual from the summary
@@ -408,6 +589,10 @@ IPA_NystromAliasAnalyzer::callGraphPrep(IPA_CALL_GRAPH *ipaCG,
     FmtAssert(calleeCG,("callGraphPrep: no constraint graph for callee"));
     UINT32 id = edge->Summary_Callsite()->Get_constraint_graph_callsite_id();
 
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+      fprintf(stderr,"Prep: connect %s (%d) -> %s\n",
+              caller->Name(),id,callee->Name());
+
     // Now, the real work.  Connect the actuals/formals for this callsite
     callerCG->connect(id,calleeCG,callee->Func_ST(),
                       actualSize,paramCnt+1,delta);
@@ -415,7 +600,7 @@ IPA_NystromAliasAnalyzer::callGraphPrep(IPA_CALL_GRAPH *ipaCG,
 }
 
 void
-IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCG,
+IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
                       list<pair<IPA_NODE *,SUMMARY_CALLSITE *> > &indCallList,
                       EdgeDelta &delta)
 {
@@ -425,9 +610,13 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCG,
 }
 
 void
-IPA_NystromAliasAnalyzer::solver(void)
+IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 {
   UINT32 round = 0;
+  bool contextSensitive = false;
+
+  if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
+    fprintf(stderr,"IPA Nystrom: Solver Begin\n");
 
   // Here we have a single driver that supports both a
   // context-sensitive and context-insensitive solutions.
@@ -440,20 +629,6 @@ IPA_NystromAliasAnalyzer::solver(void)
   // Context-insensitive:  We perform iterative solution of the
   // entire global constraint graph.
 
-  // Some up front work
-  hash_map<NODE_INDEX,ConstraintGraph *>::iterator iter;
-  EdgeDelta dummy;
-  for (iter = _ipaConstraintGraphs.begin();
-       iter != _ipaConstraintGraphs.end();
-       ++iter ) {
-    ConstraintGraph *cg = iter->second;
-    // Constraint graph optimization?
-
-    // Constraint graph-local cycle detection?
-    ConstraintGraphSolve solve(dummy,cg,&_memPool);
-    solve.cycleDetection();
-  }
-
   // Assemble a list of all call edges in the call graph to
   // serve as the seed input to the solution process.  On
   // subsequent iterations the work list will comprise only
@@ -461,10 +636,11 @@ IPA_NystromAliasAnalyzer::solver(void)
   // call targets.
   list<IPA_EDGE *> edgeList;
   list<pair<IPA_NODE *,SUMMARY_CALLSITE *> > indirectCallList;
-  IPA_NODE_ITER nodeIter(IPA_Call_Graph,DONTCARE);
+  IPA_NODE_ITER nodeIter(ipaCallGraph,DONTCARE);
   for (nodeIter.First(); !nodeIter.Is_Empty(); nodeIter.Next()) {
     IPA_NODE *caller = nodeIter.Current();
-    IPA_SUCC_ITER succIter(IPA_Call_Graph,caller);
+    if (caller == NULL) continue;
+    IPA_SUCC_ITER succIter(ipaCallGraph,caller);
     for (succIter.First(); !succIter.Is_Empty(); succIter.Next())
     {
       IPA_EDGE *edge = succIter.Current_Edge();
@@ -482,6 +658,12 @@ IPA_NystromAliasAnalyzer::solver(void)
     change = false;
     round++;
     FmtAssert(revTopOrder.empty(),("solver: expected rev top order list empty"));
+
+    if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG)) {
+      fprintf(stderr,"#### Round %d ####\n",round);
+      fprintf(stderr,"#### Round %d Top-Down ####\n",round);
+    }
+
     // Top down
     do {
       // Perform SCC detection and collapse within the call graph,
@@ -492,7 +674,7 @@ IPA_NystromAliasAnalyzer::solver(void)
       //    added to the graph.  Even for the first iteration, we
       //    assume that we are starting from a valid local solution
       //    computed during IPL.
-      callGraphPrep(IPA_Call_Graph,edgeList,delta,revTopOrder,round);
+      callGraphPrep(ipaCallGraph,edgeList,delta,revTopOrder,round);
       FmtAssert(edgeList.empty(),
                 ("solver: Expected all call edges to be processed"));
 
@@ -510,18 +692,26 @@ IPA_NystromAliasAnalyzer::solver(void)
 
     } while (1);
 
+    if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
+       fprintf(stderr,"#### Round %d Bottom-Up ####\n",round);
+
     // Bottom up
-    if (0 /*context sensitive */) {
+    if (contextSensitive) {
       // Walk the call graph in reverse topological order, using
       // the topological ordering found during SCC detection
-      while (0 /* rev topo list !empty*/) {
+      while (!revTopOrder.empty()) {
+        IPA_NODE *curNode = revTopOrder.front();
+        revTopOrder.pop_front();
 
         // Apply summaries for the callees of the current routine.
         // This provides the edge delta for the solution.
+        ConstraintGraph *curCG = cg(curNode->Node_Index());
+        FmtAssert(delta.empty(),("Bottom-Up: expect delta empty after solve"));
+        curCG->applyCalleeSummaries(delta);
 
         // Now, we solve the graph.  We actually perform cycle
         // detect within the the current constraint graph
-        ConstraintGraphSolve cgsolver(delta,/*cg*/NULL,&_memPool);
+        ConstraintGraphSolve cgsolver(delta,curCG,&_memPool);
         cgsolver.solveConstraints();
       }
     }
@@ -529,7 +719,7 @@ IPA_NystromAliasAnalyzer::solver(void)
     // Determine if there have been any changes to call sites
     // and update the call graph
     FmtAssert(delta.empty(),("Expect delta empty after solve"));
-    updateCallGraph(IPA_Call_Graph,indirectCallList,delta);
+    updateCallGraph(ipaCallGraph,indirectCallList,delta);
 
   } while (change);
 
@@ -542,4 +732,6 @@ IPA_NystromAliasAnalyzer::solver(void)
   // EscapeAnalysis escAnal();
   // escAnal.perform();
 
+  if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
+     fprintf(stderr,"IPA Nystrom: Solver Complete\n");
 }

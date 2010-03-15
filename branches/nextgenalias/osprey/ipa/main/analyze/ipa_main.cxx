@@ -602,6 +602,12 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
 	  fflush (stderr);
       }
 
+      IPA_NystromAliasAnalyzer *ipa_naa =
+                                    IPA_NystromAliasAnalyzer::aliasAnalyzer();
+      if (ipa_naa) {
+        ipa_naa->solver(IPA_Call_Graph);
+      }
+
       IPAA ipaa(NULL);
       ipaa.Do_Simple_IPAA ( *IPA_Call_Graph );
 

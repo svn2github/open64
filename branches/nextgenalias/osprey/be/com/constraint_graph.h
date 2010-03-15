@@ -1000,12 +1000,8 @@ private:
 class ConstraintGraphVCG 
 {
 public:
-  static void dumpVCG(const char *fileNamePrefix)
-  {
-    ConstraintGraphVCG vcg(fileNamePrefix);
-    vcg.buildVCG();
-  }
-    
+  static void dumpVCG(const char *fileNamePrefix);
+
 private:
 
   ConstraintGraphVCG(const char *fileNamePrefix)
