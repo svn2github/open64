@@ -315,6 +315,8 @@ private:
   CGEdgeList *_next;
 };
 
+class StInfo;
+
 class ConstraintGraphNode 
 {
 public:
@@ -364,6 +366,8 @@ public:
   UINT8 maxAccessSize(void) const { return _maxAccessSize; }
 
   CG_ST_IDX cg_st_idx() const { return _cg_st_idx; }
+
+  StInfo *stInfo();
 
   INT32 offset() const { return _offset; }
 
@@ -889,6 +893,8 @@ public:
   // Driver for solving the constraint graph when not in IPA
   // mode.  Returns true of the solution is complete, false otherwise
   bool nonIPASolver();
+
+  void simpleOptimizer();
 
   bool exprMayPoint(WN *const wn);
 

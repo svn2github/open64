@@ -23,6 +23,12 @@ CGIdToNodeMap ConstraintGraph::cgIdToNodeMap(1024);
 const PointsTo ConstraintGraphNode::emptyPointsToSet;
 const CGEdgeSet ConstraintGraphNode::emptyCGEdgeSet;
 
+StInfo *
+ConstraintGraphNode::stInfo() 
+{ 
+  return cg()->stInfo(_cg_st_idx); 
+}
+
 StInfo::StInfo(ST_IDX st_idx)
   : _flags(0),
     _varSize(0),
@@ -63,6 +69,10 @@ StInfo::StInfo(ST_IDX st_idx)
 
   // Globals are treated context-insensitive
   if (checkFlags(CG_ST_FLAGS_GLOBAL))
+    addFlags(CG_ST_FLAGS_NOCNTXT);
+
+  // Mark PSTATICs as context-insensitive
+  if (storage_class == SCLASS_PSTATIC)
     addFlags(CG_ST_FLAGS_NOCNTXT);
 
   // Treat every symbol as context-insensitive
@@ -1104,13 +1114,12 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
     lastFormal = formal;
     FmtAssert(actualIdx < numActual,
                   ("connect: mismatch betw. provided actuals and CG CallSite\n"));
-    UINT32 size = actualSize[actualIdx++];
-
     if (actual->checkFlags(CG_NODE_FLAGS_NOT_POINTER) ||
         formal->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
       continue;
 
     bool added = false;
+    INT64 size = formal->stInfo()->varSize();
     ConstraintGraphEdge *edge = addEdge(actual,formal,ETYPE_COPY,CQ_DN,
                                         size,added);
     FmtAssert(added,("connect: expect actual->formal edge to be new"));
@@ -1131,11 +1140,11 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
       ConstraintGraphNode *actual = cgNode(*actualIter);
       FmtAssert(actualIdx < numActual,
                 ("connect: mismatch betw. provided actuals and CG CallSite\n"));
-      UINT32 size = actualSize[actualIdx++];
       if (actual->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
         continue;
+      INT64 size = actual->stInfo()->varSize();
       bool added = false;
-      ConstraintGraphEdge *edge = addEdge(cgNode(*actualIter),lastFormal,
+      ConstraintGraphEdge *edge = addEdge(actual,lastFormal,
                                           ETYPE_COPY,CQ_DN,size,added);
       FmtAssert(added,("connect: expect actual->formal edge to be new"));
       delta.add(edge);
@@ -1150,9 +1159,10 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
       ConstraintGraphNode *formalRet = cgNode(*retIter);
       if (formalRet->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
         continue;
+      INT64 size = actualRet->stInfo()->varSize();
       bool added;
       ConstraintGraphEdge *edge = addEdge(formalRet,actualRet,ETYPE_COPY,CQ_UP,
-                                          actualSize[0],added);
+                                          size,added);
       FmtAssert(added,("connect: expect actual->formal edge to be new"));
       delta.add(edge);
     }

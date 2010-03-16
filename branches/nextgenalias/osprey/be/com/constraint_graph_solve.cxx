@@ -378,7 +378,8 @@ ConstraintGraph::nonIPASolver()
   // Here we solve the constraint graph for the current procedure
   EdgeDelta delta;
   ConstraintGraphSolve solver(delta,this,_memPool);
-  if (!solver.solveConstraints(CG_ST_FLAGS_GLOBAL))
+  // For now we try to cycle eliminate all variables including GLOBALS.
+  if (!solver.solveConstraints())
     return false;
 
   // The solver has a solution, now we post-process the points-to
@@ -906,3 +907,45 @@ ConstraintGraphSolve::qualMap(CGEdgeType et,
   }
 }
 
+void
+ConstraintGraph::simpleOptimizer()
+{
+  fprintf(stderr, "Optimizing ConstraintGraphs...\n");
+  // Iterate over all nodes in the graph
+  // Simple optimizer, find nodes that have single outgoing/incoming
+  // copy edge connecting the two nodes, and one of the nodes is a
+  // temporary and merge with the temporary
+  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
+       iter != ConstraintGraph::gEnd(); iter++) {
+    ConstraintGraphNode *srcNode = iter->second;
+    // Check if there are other offsets
+    if (srcNode->nextOffset() != NULL ||
+        (srcNode->stInfo()->firstOffset() != NULL &&
+         srcNode->stInfo()->firstOffset() != srcNode))
+      continue;
+    // Ignore if there are outgoing load/store edges
+    if (!srcNode->outLoadStoreEdges().empty())
+      continue;
+    // Single outgoing copy edge
+    if (srcNode->outCopySkewEdges().size() != 1)
+      continue;
+    const CGEdgeSet &eset = srcNode->outCopySkewEdges();
+    CGEdgeSetIterator eiter = eset.begin();
+    ConstraintGraphEdge *edge = *eiter;
+    // Handle only copy edges
+    if (edge->edgeType() != ETYPE_COPY)
+      continue;
+    ConstraintGraphNode *destNode = edge->destNode();
+    // Check if there are other offsets
+    if (destNode->nextOffset() != NULL ||
+        (destNode->stInfo()->firstOffset() != NULL &&
+         destNode->stInfo()->firstOffset() != destNode))
+      continue;
+    // Ignore if there are incoming load/store edges
+    if (!destNode->inLoadStoreEdges().empty())
+      continue;
+    if (!destNode->inCopySkewEdges().size() != 1)
+      continue;
+  }
+  fprintf(stderr, "Done optimizing ConstraintGraphs\n");
+}
