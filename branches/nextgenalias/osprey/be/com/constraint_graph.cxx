@@ -1122,8 +1122,8 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
     INT64 size = formal->stInfo()->varSize();
     ConstraintGraphEdge *edge = addEdge(actual,formal,ETYPE_COPY,CQ_DN,
                                         size,added);
-    FmtAssert(added,("connect: expect actual->formal edge to be new"));
-    delta.add(edge);
+    if (added)
+      delta.add(edge);
   }
 
   // If we have more actuals than formals either we either have a
@@ -1146,8 +1146,8 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
       bool added = false;
       ConstraintGraphEdge *edge = addEdge(actual,lastFormal,
                                           ETYPE_COPY,CQ_DN,size,added);
-      FmtAssert(added,("connect: expect actual->formal edge to be new"));
-      delta.add(edge);
+      if (added)
+        delta.add(edge);
     }
   }
 
@@ -1163,8 +1163,8 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
       bool added;
       ConstraintGraphEdge *edge = addEdge(formalRet,actualRet,ETYPE_COPY,CQ_UP,
                                           size,added);
-      FmtAssert(added,("connect: expect actual->formal edge to be new"));
-      delta.add(edge);
+      if (added)
+        delta.add(edge);
     }
   }
 }
