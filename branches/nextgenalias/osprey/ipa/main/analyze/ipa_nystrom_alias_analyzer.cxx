@@ -448,7 +448,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     if (cs->isDirect() && !cs->isIntrinsic())
       cs->st_idx(summCallSite.st_idx());
     else if (cs->isIndirect())
-      cs->cgNodeId(summCallSite.cgNodeId());
+      cs->cgNodeId(findUniqueNode(summCallSite.cgNodeId())->id());
     else if (cs->isIntrinsic())
       cs->intrinsic(summCallSite.intrinsic());
 
@@ -548,16 +548,111 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
   return stInfo;
 }
 
+/*
+ * Assemble the list of call edges in the IPA call graph, the list of all
+ * possible indirect call targets, and all virtual call sites.
+ *
+ * Eventually we would like to use IPA_EDGEs directly, but we are currently
+ * unable to update the call graph as indirect call targets are resolved to
+ * multiple targets.
+ */
+void
+IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
+                            list<IPAEdge> &edgeList,
+                            list<pair<IPA_NODE *, CallSiteId> > &indirectCallList)
+{
+  IPA_NODE_ITER nodeIter(ipaCallGraph,DONTCARE);
+  for (nodeIter.First(); !nodeIter.Is_Empty(); nodeIter.Next()) {
+    IPA_NODE *caller = nodeIter.Current();
+    if (caller == NULL) continue;
+    IPA_SUCC_ITER succIter(ipaCallGraph,caller);
+    for (succIter.First(); !succIter.Is_Empty(); succIter.Next())
+    {
+      IPA_EDGE *edge = succIter.Current_Edge();
+      IPA_NODE *callee = ipaCallGraph->Callee(edge);
+      CallSiteId csId =
+          edge->Summary_Callsite()->Get_constraint_graph_callsite_id();
+      edgeList.push_back(IPAEdge(caller->Node_Index(),callee->Node_Index(),csId));
+    }
+
+    // Collect list of possible indirect call targets
+    ST *st = caller->Func_ST();
+    if (ST_addr_passed(st) || (PU_ipa_addr_analysis(Pu_Table[ST_pu(st)]) &&
+        ST_addr_saved(st)))
+      _stToNodeMap[st] = caller;
+
+    // Collect the indirect/virtual callsites
+    SUMMARY_PROCEDURE *sumProc = caller->Summary_Proc();
+    SUMMARY_CALLSITE *sumCS = IPA_get_callsite_array(caller);
+    UINT32 cnt = sumProc->Get_callsite_count();
+    UINT32 idx = sumProc->Get_callsite_index();
+    for (INT i = 0; i < cnt; i++, idx++ ) {
+      CallSiteId csId = sumCS[idx].Get_constraint_graph_callsite_id();
+      if (sumCS[idx].Is_func_ptr() || sumCS[idx].Is_virtual_call())
+        indirectCallList.push_back(make_pair(caller,csId));
+    }
+  }
+
+  if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+    for (STToNodeMap::iterator i1 = _stToNodeMap.begin();
+        i1 != _stToNodeMap.end(); ++i1) {
+      ST *st = i1->first;
+      IPA_NODE *node = i1->second;
+      fprintf(stderr,"Indirect call target: %s (%d)\n",ST_name(st),node->Node_Index());
+    }
+
+    for (list<pair<IPA_NODE *,CallSiteId> >::iterator i2 = indirectCallList.begin();
+        i2 != indirectCallList.end(); ++i2) {
+      IPA_NODE *caller = i2->first;
+      CallSiteId id = i2->second;
+      fprintf(stderr,"Indirect call site: IPA_NODE %d, CallSiteId %d\n",
+              caller->Node_Index(),id);
+    }
+  }
+}
 void
 IPA_NystromAliasAnalyzer::callGraphPrep(IPA_CALL_GRAPH *ipaCallGraph,
-                                        list<IPA_EDGE *> &workList,
+                                        list<IPAEdge> &workList,
                                         EdgeDelta &delta,
                                         list<IPA_NODE *> &revTopOrder,
                                         UINT32 round)
 {
-  // (TODO: 1) Perform cycle detection on the call graph and
-  //  merge nodes within SCCS.  A side-effect of the SCC
-  //  analysis is the topological order of the acyclic call graph
+  // TODO:  We need to perform SCC detection here and then
+  // perform unification after the edges have been added.
+  // The topological ordering may be useful in computing the
+  // edge delta for the initial round.
+
+  // Connect param/return edges for edges within the workList.
+  // The 'delta' is populated with new constraint graph edges
+  // to be processed during the next solution pass.  The first
+  // time we do this, we will add *all* edges to the delta.
+  UINT32 actualSize[32];
+  UINT32 paramCnt = 0;
+  while (!workList.empty()) {
+    IPAEdge edge = workList.front();
+    workList.pop_front();
+
+    // Retrieve the caller/callee constraint graphs
+    ConstraintGraph *callerCG = cg(edge.callerIdx());
+    FmtAssert(callerCG,("callGraphPrep: no constraint graph for caller"));
+    ConstraintGraph *calleeCG = cg(edge.calleeIdx());
+    FmtAssert(calleeCG,("callGraphPrep: no constraint graph for callee"));
+    UINT32 id = edge.csId();
+
+    IPA_NODE *callee = ipaCallGraph->Graph()->Node_User(edge.calleeIdx());
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+      fprintf(stderr,"Prep: connect %s (%d) -> %s\n",
+              ipaCallGraph->Graph()->Node_User(edge.callerIdx())->Name(),
+              id,
+              callee->Name());
+
+    // Now, the real work.  Connect the actuals/formals for this callsite
+    callerCG->connect(id,calleeCG,callee->Func_ST(),delta);
+  }
+
+  // Perform cycle detection on the call graph and
+  // merge nodes within SCCS.  A side-effect of the SCC
+  // analysis is the topological order of the acyclic call graph
   if (!workList.empty()) {
     IPASCCDetection scc(this,ipaCallGraph,&_memPool);
     scc.findAndUnify();
@@ -570,62 +665,60 @@ IPA_NystromAliasAnalyzer::callGraphPrep(IPA_CALL_GRAPH *ipaCallGraph,
         topoStack.pop();
       }
   }
-  // 2) Connect param/return edges for edges within the workList.
-  //    The 'delta' is populated with new constraint graph edges
-  //    to be processed during the next solution pass.  The first
-  //    time we do this, we will add *all* edges to the delta.
-  UINT32 actualSize[32];
-  while (!workList.empty()) {
-    IPA_EDGE *edge = workList.front();
-    workList.pop_front();
 
-    IPA_NODE *caller = ipaCallGraph->Caller(edge);
-    IPA_NODE *callee = ipaCallGraph->Callee(edge);
-
-    SUMMARY_CALLSITE *sumCallSite = edge->Summary_Callsite();
-    // Determine the "size" of each actual from the summary
-    // information and provide this so that the edges added
-    // to the constraint graph are of the correct size.
-    // We provide an array of sizes in byte, the first is the
-    // the return type size, the remaining 'n' are for the
-    // actuals.
-    TYPE_ID retTypeId = sumCallSite->Get_return_type();
-    actualSize[0] = MTYPE_byte_size(retTypeId);
-
-    UINT32 actualIdx = sumCallSite->Get_actual_index();
-    UINT32 paramCnt = sumCallSite->Get_param_count();
-    SUMMARY_ACTUAL *actualArray = IPA_get_actual_array(caller);
-    for (INT i = 0; i < paramCnt; i++) {
-      SUMMARY_ACTUAL *actual = actualArray + actualIdx + i;
-      TY_IDX actualTYIdx = actual->Get_ty();
-      actualSize[i+1] = TY_size(Ty_Table[actualTYIdx]);
-    }
-
-    // Retrieve the caller/callee constraint graphs
-    ConstraintGraph *callerCG = cg(caller->Node_Index());
-    FmtAssert(callerCG,("callGraphPrep: no constraint graph for caller"));
-    ConstraintGraph *calleeCG = cg(callee->Node_Index());
-    FmtAssert(calleeCG,("callGraphPrep: no constraint graph for callee"));
-    UINT32 id = edge->Summary_Callsite()->Get_constraint_graph_callsite_id();
-
-    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-      fprintf(stderr,"Prep: connect %s (%d) -> %s\n",
-              caller->Name(),id,callee->Name());
-
-    // Now, the real work.  Connect the actuals/formals for this callsite
-    callerCG->connect(id,calleeCG,callee->Func_ST(),
-                      actualSize,paramCnt+1,delta);
-  }
 }
 
 void
 IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
-                      list<pair<IPA_NODE *,SUMMARY_CALLSITE *> > &indCallList,
-                      EdgeDelta &delta)
+                      list<pair<IPA_NODE *,CallSiteId> > &indCallList,
+                      list<IPAEdge> &edgeList)
 {
-  // TODO:  Walk each indirect call site and determine if there exists
-  //        an edge for in the call graph for CGNode in the points-to
-  //        set of the indirect call.
+  // Walk each indirect call site and determine if there exists
+  // an edge for in the call graph for CGNode in the points-to
+  // set of the indirect call.
+  list<pair<IPA_NODE *,CallSiteId> >::const_iterator iter;
+  for (iter = indCallList.begin(); iter != indCallList.end(); ++iter) {
+    IPA_NODE *caller = iter->first;
+    UINT32 id = iter->second;
+    ConstraintGraph *callerCG = cg(caller->Node_Index());
+    CallSite *cs = callerCG->callSite(id);
+    FmtAssert(cs->isIndirect(),
+              ("Expected indirect CallSite in caller constraint graph"));
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+      fprintf(stderr,"Indirect Call: %s (%d) maps to CGNodeId: %d\n",
+              caller->Name(),id,cs->cgNodeId());
+      fprintf(stderr,"Points To:\n");
+    }
+    for (PointsToIterator pti(ConstraintGraph::cgNode(cs->cgNodeId()));
+         pti != 0; ++pti) {
+      PointsTo &curPts = *pti;
+      for (PointsTo::SparseBitSetIterator iter(&curPts,0); iter != 0; iter++) {
+        CGNodeId nodeId = *iter;
+        ConstraintGraphNode *node = ConstraintGraph::cgNode(nodeId);
+        ST_IDX stIdx = SYM_ST_IDX(node->cg_st_idx());
+        ST *st = &St_Table[stIdx];
+        IPA_NODE *callee = _stToNodeMap[st];
+        IPAEdge newEdge(caller->Node_Index(),callee->Node_Index(),id);
+        // Have we seen this edge before?
+        IndirectEdgeSet::iterator iter = _indirectEdgeSet.find(newEdge);
+        bool isNew = (iter == _indirectEdgeSet.end());
+
+        if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+          fprintf(stderr,"  CGNode: %d, ST: %s, IPA_NODE: %d (%s)\n",
+                  nodeId,ST_name(st),callee->Node_Index(),
+                  isNew?"New":"Old");
+
+        // New edges are placed in our set of resolved indirect target
+        // edges and placed in the work list for the next round of
+        // call graph preparation.  Eventually we would like to actually
+        // add a true IPA_EDGE to the IPA_CALL_GRAPH here.
+        if (isNew) {
+          _indirectEdgeSet.insert(newEdge);
+          edgeList.push_front(newEdge);
+        }
+      }
+    }
+  }
 }
 
 void
@@ -653,22 +746,9 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   // subsequent iterations the work list will comprise only
   // those edges that correspond to newly discovered indirect
   // call targets.
-  list<IPA_EDGE *> edgeList;
-  list<pair<IPA_NODE *,SUMMARY_CALLSITE *> > indirectCallList;
-  IPA_NODE_ITER nodeIter(ipaCallGraph,DONTCARE);
-  for (nodeIter.First(); !nodeIter.Is_Empty(); nodeIter.Next()) {
-    IPA_NODE *caller = nodeIter.Current();
-    if (caller == NULL) continue;
-    IPA_SUCC_ITER succIter(ipaCallGraph,caller);
-    for (succIter.First(); !succIter.Is_Empty(); succIter.Next())
-    {
-      IPA_EDGE *edge = succIter.Current_Edge();
-      edgeList.push_back(edge);
-      SUMMARY_CALLSITE *sumCallSite = edge->Summary_Callsite();
-      if (sumCallSite->Is_func_ptr() || sumCallSite->Is_virtual_call())
-        indirectCallList.push_back(make_pair(caller,sumCallSite));
-    }
-  }
+  list<IPAEdge> edgeList;
+  list<pair<IPA_NODE *,CallSiteId> > indirectCallList;
+  callGraphSetup(ipaCallGraph,edgeList,indirectCallList);
 
   bool change;
   list<IPA_NODE *> revTopOrder;
@@ -706,8 +786,7 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
       // Determine if there have been any changes to call sites
       // and update the call graph
-      FmtAssert(delta.empty(),("Expect delta empty after solve"));
-      updateCallGraph(IPA_Call_Graph,indirectCallList,delta);
+      updateCallGraph(IPA_Call_Graph,indirectCallList,edgeList);
 
     } while (1);
 
@@ -738,7 +817,7 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
     // Determine if there have been any changes to call sites
     // and update the call graph
     FmtAssert(delta.empty(),("Expect delta empty after solve"));
-    updateCallGraph(ipaCallGraph,indirectCallList,delta);
+    updateCallGraph(ipaCallGraph,indirectCallList,edgeList);
 
   } while (change);
 

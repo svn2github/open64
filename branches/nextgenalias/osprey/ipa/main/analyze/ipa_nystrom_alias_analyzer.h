@@ -105,20 +105,71 @@ public:
   void setInSCC(const IPA_NODE *n,bool v)   {(*_ipaNodeSCCAuxInfo)[n].inSCC(v); }
   void rep(const IPA_NODE *n, IPA_NODE *r)  {(*_ipaNodeSCCAuxInfo)[n].rep(r); }
 
+  // Temporary table used to track indirect call edges resolved
+  // during analysis.  Eventually we should be able to update the
+  // IPA_CALL_GRAPH directly and add additional IPA_EDGEs.
+  class IPAEdge {
+  public:
+    IPAEdge(NODE_INDEX clr, NODE_INDEX cle, CallSiteId id)
+      : _callerIdx(clr), _calleeIdx(cle), _csId(id) {}
+
+    NODE_INDEX callerIdx(void) const { return _callerIdx; }
+    NODE_INDEX calleeIdx(void) const { return _calleeIdx; }
+    CallSiteId csId(void) const      { return _csId; }
+    size_t hash() const { return _callerIdx << 16 ^ _calleeIdx << 8 ^ _csId; }
+    bool operator ==(const IPAEdge &that) const {
+      return _callerIdx == that._callerIdx &&
+          _calleeIdx == that._calleeIdx &&
+          _csId == that._csId;
+    }
+  private:
+    NODE_INDEX _callerIdx;
+    NODE_INDEX _calleeIdx;
+    CallSiteId _csId;
+  };
+
+  typedef struct {
+    size_t operator() (const IPAEdge &k) const { return k.hash(); }
+  } hashIPAEdgeData;
+  typedef struct {
+    bool operator() (const IPAEdge &k1, const IPAEdge &k2) const { return k1 == k2; }
+  } equalIPAEdgeData;
+  typedef hash_set<IPAEdge, hashIPAEdgeData, equalIPAEdgeData> IndirectEdgeSet;
+
+  typedef struct {
+    size_t operator() (const ST * const&k) const { return (size_t)k; }
+  } hashSTToNode;
+  typedef struct {
+    bool operator() (const ST * const &k1, ST * const&k2) const { return k1 == k2; }
+  } equalSTToNode;
+  typedef hash_map<ST *,IPA_NODE *,hashSTToNode,equalSTToNode> STToNodeMap;
+
+
 private:
 
-  void callGraphPrep(IPA_CALL_GRAPH *ipaCG, list<IPA_EDGE *> &workList,
+  void callGraphSetup(IPA_CALL_GRAPH *, list<IPAEdge> &edgeList,
+                      list<pair<IPA_NODE *, CallSiteId> > &indirectCallList);
+
+  void callGraphPrep(IPA_CALL_GRAPH *ipaCG, list<IPAEdge> &workList,
                      EdgeDelta &delta, list<IPA_NODE *>&revTopOrder,
                      UINT32 round);
 
   void updateCallGraph(IPA_CALL_GRAPH *ipaCG,
-                       list<pair<IPA_NODE *,SUMMARY_CALLSITE *> > &indCallList,
-                       EdgeDelta &delta);
+                       list<pair<IPA_NODE *,CallSiteId> > &indCallList,
+                       list<IPAEdge> &edgeList);
 
   static IPA_NystromAliasAnalyzer *_ipa_naa;
   IPACGMap _ipaConstraintGraphs;
   MEM_POOL _memPool;
   IPANodeSCCAuxInfo * _ipaNodeSCCAuxInfo;
+
+  // Indirect edges that have been resolved in the IPA call graph
+  IndirectEdgeSet _indirectEdgeSet;
+
+  // Mapping from ST * to IPA_NODE * to facilitate resolving indirect
+  // call targets from the points-to set.
+  STToNodeMap _stToNodeMap;
+
 };
 
 #endif

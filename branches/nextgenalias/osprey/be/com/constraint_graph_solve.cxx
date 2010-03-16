@@ -373,7 +373,7 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
 }
 
 bool
-ConstraintGraph::nonIPASolver()
+ConstraintGraph::nonIPASolver(bool doEscAnal)
 {
   // Here we solve the constraint graph for the current procedure
   EdgeDelta delta;
@@ -391,17 +391,19 @@ ConstraintGraph::nonIPASolver()
   // the points-to sets of "incomplete" symbols to facilitate
   // comparison of their points-to sets with symbols for which
   // we have "complete" information.
-  EscapeAnalysis escAnal(this,false,_memPool);
-  escAnal.perform();
+  if (doEscAnal) {
+    EscapeAnalysis escAnal(this,false,_memPool);
+    escAnal.perform();
 
-  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin(); 
-       iter != ConstraintGraph::gEnd(); iter++) {
-    ConstraintGraphNode *node = iter->second;
-    if (escAnal.escapeStFlags(node) & CG_ST_FLAGS_ESCALL) {
-      // The "black hole" is meant to represent all memory that is possibly
-      // accessed by symbols that have references outside the scope of the
-      // current procedure.
-      node->addPointsTo(blackHole(),CQ_GBL);
+    for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
+        iter != ConstraintGraph::gEnd(); iter++) {
+      ConstraintGraphNode *node = iter->second;
+      if (escAnal.escapeStFlags(node) & CG_ST_FLAGS_ESCALL) {
+        // The "black hole" is meant to represent all memory that is possibly
+        // accessed by symbols that have references outside the scope of the
+        // current procedure.
+        node->addPointsTo(blackHole(),CQ_GBL);
+      }
     }
   }
   return true;

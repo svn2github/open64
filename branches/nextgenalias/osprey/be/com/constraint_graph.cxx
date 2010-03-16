@@ -1097,8 +1097,7 @@ ConstraintGraphNode::_getPointsTo(CGEdgeQual qual, PointsToList **ptl)
 // pass.
 void
 ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
-                         ST *calleeST, UINT32 *actualSize, UINT32 numActual,
-                         EdgeDelta &delta)
+                         ST *calleeST, EdgeDelta &delta)
 {
   CallSite *cs = callSite(id);
 
@@ -1106,14 +1105,11 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
   list<CGNodeId>::const_iterator actualIter = cs->parms().begin();
   list<CGNodeId>::const_iterator formalIter = callee->parameters().begin();
   ConstraintGraphNode *lastFormal = NULL;
-  UINT32 actualIdx = 1;
   for (; actualIter != cs->parms().end() && formalIter != callee->parameters().end();
       ++actualIter, ++formalIter) {
     ConstraintGraphNode *actual = cgNode(*actualIter);
     ConstraintGraphNode *formal = cgNode(*formalIter);
     lastFormal = formal;
-    FmtAssert(actualIdx < numActual,
-                  ("connect: mismatch betw. provided actuals and CG CallSite\n"));
     if (actual->checkFlags(CG_NODE_FLAGS_NOT_POINTER) ||
         formal->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
       continue;
@@ -1138,8 +1134,6 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
                   ("Expect last formal to be varargs!\n"));
     for ( ; actualIter != cs->parms().end(); ++actualIter) {
       ConstraintGraphNode *actual = cgNode(*actualIter);
-      FmtAssert(actualIdx < numActual,
-                ("connect: mismatch betw. provided actuals and CG CallSite\n"));
       if (actual->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
         continue;
       INT64 size = actual->stInfo()->varSize();
@@ -1634,6 +1628,12 @@ CallSite::print(FILE *file)
   fprintf(file, "\n");
 }
    
+static void
+dumpVCG(const char *fileNamePrefix)
+{
+  ConstraintGraphVCG::dumpVCG(fileNamePrefix);
+}
+
 void
 ConstraintGraphVCG::dumpVCG(const char *fileNamePrefix)
 {

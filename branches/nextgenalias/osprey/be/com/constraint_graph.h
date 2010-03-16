@@ -892,7 +892,7 @@ public:
 
   // Driver for solving the constraint graph when not in IPA
   // mode.  Returns true of the solution is complete, false otherwise
-  bool nonIPASolver();
+  bool nonIPASolver(bool doEscAnal);
 
   void simpleOptimizer();
 
@@ -906,8 +906,7 @@ public:
   MEM_POOL *memPool() { return _memPool; }
 
   void connect(CallSiteId id, ConstraintGraph *callee,
-               ST *calleeST, UINT32 *actualSize, UINT32 numActual,
-               EdgeDelta &delta);
+               ST *calleeST, EdgeDelta &delta);
 
   void applyCalleeSummaries(EdgeDelta &delta);
 

@@ -54,7 +54,11 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
     ConstraintGraphVCG::dumpVCG(buf);
   }
 
-  if (!_constraintGraph->nonIPASolver())
+  // We do not perform escape analysis during IPL as we do
+  // not want the "blackholes" to be injected prior to performing
+  // a whole program solution.
+  bool doEscAnal = !Run_ipl;
+  if (!_constraintGraph->nonIPASolver(doEscAnal))
     return;
 
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_VCG_FLAG)) {
