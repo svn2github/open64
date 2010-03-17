@@ -309,8 +309,10 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     ConstraintGraphNode *srcNode = findUniqueNode(summEdge.src());
     ConstraintGraphNode *destNode = findUniqueNode(summEdge.dest());
     bool added = false;
+    // Add the edges to the representative parents
     ConstraintGraphEdge *edge = 
-      ConstraintGraph::addEdge(srcNode, destNode, (CGEdgeType)summEdge.etype(),
+      ConstraintGraph::addEdge(srcNode->parent(), destNode->parent(), 
+                               (CGEdgeType)summEdge.etype(),
                                (CGEdgeQual)summEdge.qual(), 
                                summEdge.sizeOrSkew(), added);
     edge->addFlags(summEdge.flags());
@@ -383,34 +385,29 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
                            findUniqueNode(repParentId)->findRep();
       ConstraintGraphNode *oldRepParent = cgNode->findRep();
       if (oldRepParent != newRepParent) {
-        if (oldRepParent == cgNode)
-          cgNode->repParent(newRepParent);
-        else {
-          // Merge with the new parent
-          newRepParent->merge(oldRepParent);
-          // remove the pseudo copy edge from the newRepParent to oldRepParent
-          // since the above merge inserts a CQ_HZ edge, while we need
-          // a CQ_GBL edge if both the nodes are from different CGs
-          if (newRepParent->cg() != oldRepParent->cg()) {
-            // Get the edge
-            ConstraintGraphEdge dummyEdge(newRepParent, oldRepParent,
-                                          ETYPE_COPY, CQ_HZ, 0);
-            ConstraintGraphEdge *edge = newRepParent->outEdge(&dummyEdge);
-            FmtAssert(edge->checkFlags(CG_EDGE_PARENT_COPY),
-                      ("Expecting a parent copy edge "));
-            ConstraintGraph::removeEdge(edge);
-            bool added = false;
-            edge = ConstraintGraph::addEdge(newRepParent, oldRepParent,
-                                            ETYPE_COPY, CQ_GBL, 0, added);
-            FmtAssert(added, ("Failed to add edge"));
-            edge->addFlags(CG_EDGE_PARENT_COPY);
-          }
-          oldRepParent->repParent(newRepParent);
-          fprintf(stderr, "Merging oldRepParent %d with newRepParent %d"
-                  " for node: %d (%s)\n", 
-                  oldRepParent->id(), newRepParent->id(), cgNode->id(),
-                  (cgNode->cg() == globalCG()) ? "global" : "local");
+        // Merge with the new parent
+        newRepParent->merge(oldRepParent);
+        // Set the newParent as the parent of oldRepParent
+        oldRepParent->repParent(newRepParent);
+        // Add special copy edge from newRepParent if !PREG
+        if (!oldRepParent->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) {
+          bool added = false;
+          ConstraintGraphEdge *newEdge;
+          if (newRepParent->cg() != oldRepParent->cg())
+            newEdge =
+              ConstraintGraph::addEdge(newRepParent, oldRepParent, ETYPE_COPY,
+                                       CQ_GBL, 0, added, CG_EDGE_PARENT_COPY);
+          else
+            newEdge = 
+                ConstraintGraph::addEdge(newRepParent, oldRepParent, ETYPE_COPY,
+                                         CQ_HZ, 0, added, CG_EDGE_PARENT_COPY);
+          FmtAssert(added, ("ConstraintGraph::merge: failed to add "
+                            "special copy edge"));
         }
+        fprintf(stderr, "Merging oldRepParent %d with newRepParent %d"
+                " for node: %d (%s)\n", oldRepParent->id(), newRepParent->id(),
+                cgNode->id(), (cgNode->cg() == globalCG()) ? "global" 
+                                                           : "local");
       }
     }
   }

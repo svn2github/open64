@@ -357,6 +357,23 @@ public:
     _outEdges(NULL)
   {}
 
+  ~ConstraintGraphNode()
+  {
+    PointsToList *np;
+    PointsToList *p = _pointsToList;
+    while (p) {
+      np = p->next();
+      delete p;
+      p = np;
+    }
+    p = _revPointsToList;
+    while (p) {
+      np = p->next();
+      delete p;
+    }
+    // Assume the edges are either deleted or moved
+  }
+    
   CGNodeId id() const { return _id; }
   void setId(CGNodeId id) { _id = id; }
 
@@ -449,6 +466,11 @@ public:
   // return the existing edge, else insert the new edge and return it
   ConstraintGraphEdge *addInEdge(ConstraintGraphEdge *edge) 
   {
+    // If there is a representative parent, only allow adding special
+    // PARENT_COPY edges
+    if (!checkFlags(CG_NODE_FLAGS_SCCMEMBER) && parent() != this)
+      FmtAssert(edge->checkFlags(CG_EDGE_PARENT_COPY),
+                ("Only parent copy inEdges allowed"));
     CGEdgeSet &inEdgeSet = _getCGEdgeSet(edge->edgeType(),&_inEdges);
     pair<CGEdgeSet::iterator, bool> p;
     p = inEdgeSet.insert(edge);
@@ -467,6 +489,10 @@ public:
   // return the existing edge, else insert the new edge and return it
   ConstraintGraphEdge *addOutEdge(ConstraintGraphEdge *edge) 
   {
+    // If there is a representative parent, out edges should not be added
+    if (!checkFlags(CG_NODE_FLAGS_SCCMEMBER))
+      FmtAssert(parent() == this, 
+                ("OutEdges not allowed for nodes with representatives"));
     CGEdgeSet &outEdgeSet = _getCGEdgeSet(edge->edgeType(),&_outEdges);
     pair<CGEdgeSet::iterator, bool> p;
     p = outEdgeSet.insert(edge);
@@ -778,7 +804,8 @@ public:
   static ConstraintGraphEdge *addEdge(ConstraintGraphNode *src,
                                       ConstraintGraphNode *dest,
                                       CGEdgeType etype, CGEdgeQual qual,
-                                      INT32 sizeOrSkew, bool &added);
+                                      INT32 sizeOrSkew, bool &added,
+                                      UINT16 flags = 0);
 
   static void removeEdge(ConstraintGraphEdge *edge);
 
@@ -991,6 +1018,8 @@ private:
   // The formal parameters and return CGNodes for this function
   list<CGNodeId> _parameters;
   list<CGNodeId> _returns;
+
+  list<CGNodeId> _toBeDeletedNodes;
 
   // For ConstraintGraph construction during IPA
   CGIdToNodeMap _uniqueCGNodeIdMap;

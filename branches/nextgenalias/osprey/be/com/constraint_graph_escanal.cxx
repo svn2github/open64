@@ -109,7 +109,7 @@ EscapeAnalysis::computeReversePointsTo()
     // set since the last time we performed escape analysis
     if (node->checkFlags(CG_NODE_FLAGS_PTSMOD)) {
       node->clearFlags(CG_NODE_FLAGS_PTSMOD);
-      for (PointsToIterator pti(node); pti != 0; ++pti) {
+      for (PointsToIterator pti(node->parent()); pti != 0; ++pti) {
         PointsTo &pts = *pti;
         for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
           CGNodeId cgNodeId = *iter;

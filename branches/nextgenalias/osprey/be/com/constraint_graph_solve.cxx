@@ -190,6 +190,14 @@ SCCDetection::unify(UINT32 noMergeMask, NodeToKValMap &nodeToKValMap)
           rep->addFlags(CG_NODE_FLAGS_INKVALMAP);
         }
         rep->merge(node);
+        // PREGs are independent and hence do not need a PARENT_COPY edge
+        if (!node->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) {
+          bool added = false;
+          ConstraintGraphEdge *newEdge = 
+              ConstraintGraph::addEdge(rep, node, ETYPE_COPY, CQ_HZ, 0,
+                                       added, CG_EDGE_PARENT_COPY);
+          FmtAssert(added, (":merge: failed to add special copy edge"));
+        }
       }
     }
   }
@@ -578,22 +586,27 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
     edge->destNode()->addFlags(CG_NODE_FLAGS_UNKNOWN);
   }
 
-  // If the copy edge is a copy from parent to child, we
-  // simply mark the child, i.e. the dest, as needing
-  // processing.
-  if (edge->checkFlags(CG_EDGE_PARENT_COPY)) {
-    addEdgesToWorkList(edge->destNode());
-    return;
-  }
-
-  UINT32 assignSize = edge->size();
   ConstraintGraphNode *src = edge->srcNode();
   ConstraintGraphNode *dst = edge->destNode();
-  StInfo *dstStInfo = dst->cg()->stInfo(dst->cg_st_idx());
 
   // Is this constraint context sensitive?
   bool cntxt = 
        !src->cg()->stInfo(src->cg_st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
+
+  // If the copy edge is a copy from parent to child, we
+  // call updateOffsets on the child, i.e. the dest
+  if (edge->checkFlags(CG_EDGE_PARENT_COPY)) {
+    for (PointsToIterator pti(src); pti != 0; ++pti) {
+      CGEdgeQual srcQual = pti.qual();
+      CGEdgeQual edgeQual = edge->edgeQual();
+      CGEdgeQual dstQual = qualMap(ETYPE_COPY, srcQual, edgeQual, cntxt);
+      updateOffsets(dst, *pti, dstQual);
+      return;
+    }
+  }
+
+  UINT32 assignSize = edge->size();
+  StInfo *dstStInfo = dst->cg()->stInfo(dst->cg_st_idx());
 
   INT32 dstStOffset = dst->offset();
   INT32 srcStOffset = src->offset();
@@ -610,9 +623,11 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
         bool dstChange = false;
         while (cur != NULL && cur->offset() < curEndOffset) {
           ConstraintGraphNode *dstNode;
-          if (dstStOffset != -1) {
+          // We do not create new PREGs
+          if (dstStOffset != -1 && 
+              !dst->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) {
             INT32 dstOffset = dstStOffset + (cur->offset() - srcStOffset);
-            // Creates node if necessary.
+            // Creates node if necessary
             dstNode = dst->cg()->getCGNode(dst->cg_st_idx(),dstOffset);
           }
           else
@@ -920,11 +935,6 @@ ConstraintGraph::simpleOptimizer()
   for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
        iter != ConstraintGraph::gEnd(); iter++) {
     ConstraintGraphNode *srcNode = iter->second;
-    // Check if there are other offsets
-    if (srcNode->nextOffset() != NULL ||
-        (srcNode->stInfo()->firstOffset() != NULL &&
-         srcNode->stInfo()->firstOffset() != srcNode))
-      continue;
     // Ignore if there are outgoing load/store edges
     if (!srcNode->outLoadStoreEdges().empty())
       continue;
@@ -938,16 +948,37 @@ ConstraintGraph::simpleOptimizer()
     if (edge->edgeType() != ETYPE_COPY)
       continue;
     ConstraintGraphNode *destNode = edge->destNode();
-    // Check if there are other offsets
-    if (destNode->nextOffset() != NULL ||
-        (destNode->stInfo()->firstOffset() != NULL &&
-         destNode->stInfo()->firstOffset() != destNode))
-      continue;
     // Ignore if there are incoming load/store edges
     if (!destNode->inLoadStoreEdges().empty())
       continue;
+    // Single incoming copy edge
     if (!destNode->inCopySkewEdges().size() != 1)
       continue;
+    // One of them should be a temp reg
+    if ( !(srcNode->stInfo()->checkFlags(CG_ST_FLAGS_TEMP) &&
+           srcNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) &&
+         !(destNode->stInfo()->checkFlags(CG_ST_FLAGS_TEMP) &&
+           destNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) )
+      continue;
+    ConstraintGraphNode *toBeMergedNode, *parentNode;
+    if (srcNode->stInfo()->checkFlags(CG_ST_FLAGS_TEMP) &&
+        srcNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) {
+      toBeMergedNode = srcNode;
+      parentNode = destNode;
+    } else {
+      toBeMergedNode = destNode;
+      parentNode = srcNode;
+    }
+
+    // Perform the merge
+    parentNode->merge(toBeMergedNode);
+    toBeMergedNode->repParent(parentNode);
+    FmtAssert(!toBeMergedNode->checkFlags(CG_NODE_FLAGS_ADDRTAKEN), 
+              ("Address of temporary preg taken!"));
+    _toBeDeletedNodes.push_back(toBeMergedNode->id());
+    fprintf(stderr, "Adding node: " ); 
+    toBeMergedNode->print(stderr);
+    fprintf(stderr, " to deleted list...\n");
   }
   fprintf(stderr, "Done optimizing ConstraintGraphs\n");
 }

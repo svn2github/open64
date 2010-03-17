@@ -347,8 +347,6 @@ NystromAliasAnalyzer::transferAliasTag(WN *dstWN, const WN *srcWN)
         return;
 
       ConstraintGraphNode *cgNode = _constraintGraph->cgNode(id);
-      if (cgNode->parent())
-        cgNode = cgNode->parent();
       FmtAssert(cgNode != NULL, ("CGNodeId : %d not mapped to a "
           "ConstraintGraphNode\n", id));
 
@@ -420,8 +418,6 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
         continue;
 
       ConstraintGraphNode *cgNode = ConstraintGraph::cgNode(id);
-      if (cgNode->parent())
-        cgNode = cgNode->parent();
       FmtAssert(cgNode != NULL, ("CGNodeId : %d not mapped to a "
           "ConstraintGraphNode\n", id));
 

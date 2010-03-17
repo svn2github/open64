@@ -956,7 +956,7 @@ ConstraintGraph::getCGNode(WN *wn)
 ConstraintGraphEdge *
 ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
                          CGEdgeType etype, CGEdgeQual qual, INT32 sizeorSkew, 
-                         bool &added)
+                         bool &added, UINT16 flags)
 {
   ConstraintGraphEdge cgEdge(src, dest, etype, qual, sizeorSkew);
 
@@ -970,6 +970,7 @@ ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
     ConstraintGraphEdge *edge =
       CXX_NEW(ConstraintGraphEdge(src, dest, etype, qual, sizeorSkew),
               edgeMemPool);
+    edge->addFlags(flags);
     src->addOutEdge(edge);
     dest->addInEdge(edge);
     added = true;
@@ -1037,8 +1038,12 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   // to -1, essentially forcing them to be treated as field
   // insensitive.
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
-    if (offset != -1 && (si->numOffsets() >= si->maxOffsets()))
+    if (offset != -1 && (si->numOffsets() >= si->maxOffsets())) {
       offset = -1;
+      // Check if node exists, if so return it
+      if ((cgNode = checkCGNode(cg_st_idx, offset)) != NULL)
+        return cgNode;
+    }
     si->incrNumOffsets();
   }
 
@@ -1116,8 +1121,8 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
 
     bool added = false;
     INT64 size = formal->stInfo()->varSize();
-    ConstraintGraphEdge *edge = addEdge(actual,formal,ETYPE_COPY,CQ_DN,
-                                        size,added);
+    ConstraintGraphEdge *edge = addEdge(actual->parent(),formal->parent(),
+                                        ETYPE_COPY,CQ_DN,size,added);
     if (added)
       delta.add(edge);
   }
@@ -1138,7 +1143,7 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
         continue;
       INT64 size = actual->stInfo()->varSize();
       bool added = false;
-      ConstraintGraphEdge *edge = addEdge(actual,lastFormal,
+      ConstraintGraphEdge *edge = addEdge(actual->parent(),lastFormal->parent(),
                                           ETYPE_COPY,CQ_DN,size,added);
       if (added)
         delta.add(edge);
@@ -1155,8 +1160,9 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
         continue;
       INT64 size = actualRet->stInfo()->varSize();
       bool added;
-      ConstraintGraphEdge *edge = addEdge(formalRet,actualRet,ETYPE_COPY,CQ_UP,
-                                          size,added);
+      ConstraintGraphEdge *edge = 
+                addEdge(formalRet->parent(),actualRet->parent(),ETYPE_COPY,
+                        CQ_UP,size,added);
       if (added)
         delta.add(edge);
     }
@@ -1311,14 +1317,7 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
       ConstraintGraph::removeEdge(edge);
   }
 
-  // 4) Add special copy edge from representative
-  bool added = false;
-  ConstraintGraphEdge *newEdge;
-  newEdge = ConstraintGraph::addEdge(this,src,ETYPE_COPY,CQ_HZ,0,added);
-  FmtAssert(added,("ConstraintGraph::merge: failed to add special copy edge"));
-  newEdge->addFlags(CG_EDGE_PARENT_COPY);
-
-  // 5) Merge the points-to sets of the two nodes
+  // 4) Merge the points-to sets of the two nodes
   for ( PointsToIterator pti(src); pti != 0; ++pti )
     unionPointsTo(*pti,pti.qual());
 }
