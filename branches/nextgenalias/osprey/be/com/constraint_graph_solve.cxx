@@ -999,5 +999,18 @@ ConstraintGraph::simpleOptimizer()
         toBeMergedNode->canBeDeleted())
       _toBeDeletedNodes.insert(toBeMergedNode->id());
   }
+  // Adjust parents, so that nodes who have deleted nodes as their parents
+  // point to the parent of the deleted nodes, which should not be marked 
+  // deleted
+  for (CGNodeToIdMapIterator iter = ConstraintGraph::lBegin();
+       iter != ConstraintGraph::lEnd(); iter++) {
+    ConstraintGraphNode *n = iter->first;
+    n->findRep();
+    FmtAssert(_toBeDeletedNodes.find(n->parent()->id()) == 
+              _toBeDeletedNodes.end(), 
+              ("Parent %d of node: %d marked deleted!\n", n->parent()->id(),
+                                                          n->id()));
+  }
+
   fprintf(stderr, "Done optimizing ConstraintGraphs\n");
 }

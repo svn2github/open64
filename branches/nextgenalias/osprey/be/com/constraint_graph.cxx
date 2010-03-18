@@ -32,6 +32,8 @@ ConstraintGraph::remapDeletedNode(WN *wn)
     ConstraintGraphNode *old = ConstraintGraph::cgNode(oldId);
     ConstraintGraphNode *parent = old->findRep();
     FmtAssert(parent != old, ("No parent!"));
+    FmtAssert(_toBeDeletedNodes.find(parent->id()) == _toBeDeletedNodes.end(),
+              ("parent: %d deleted!\n", parent->id()));
     fprintf(stderr, "WN->CGNodeId: Remapping deleted node : %d to "
             "parent: %d\n", old->id(), parent->id());
     WN_MAP_CGNodeId_Set(wn, parent->id());
