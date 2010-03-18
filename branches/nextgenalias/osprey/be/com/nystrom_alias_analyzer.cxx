@@ -54,6 +54,8 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
     ConstraintGraphVCG::dumpVCG(buf);
   }
 
+  _constraintGraph->simpleOptimizer();
+
   // We do not perform escape analysis during IPL as we do
   // not want the "blackholes" to be injected prior to performing
   // a whole program solution.
@@ -74,6 +76,9 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
 
   // Map WNs to AliasTags
   createAliasTags(entryWN);
+
+  // Delete nodes that are marked deleted
+  _constraintGraph->deleteOptimizedNodes();
 
   // Set flag to dump the WN to CGNodeId map during Write_PU_Info
   Write_ALIAS_CGNODE_Map = TRUE;
@@ -398,6 +403,10 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
 
     AliasTag aliasTag = InvalidAliasTag;
 
+    // Check if the WN's CGNodeId has been marked as deleted and remap
+    if (!OPCODE_is_call(opc))
+      _constraintGraph->remapDeletedNode(wn);
+
     // We only consider indirects; direct references are handled by genAliasTag
     // called during Transfer_alias_tag
     if (OPERATOR_is_scalar_istore(opr) ||
@@ -408,9 +417,10 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       CGNodeId id;
       // For ILOADS, the points-to set is associated with the address
       // of the iload. So get the CGNode corresponding to the address WN.
-      if (opr == OPR_ILDBITS || opr == OPR_MLOAD || opr == OPR_ILOAD)
+      if (opr == OPR_ILDBITS || opr == OPR_MLOAD || opr == OPR_ILOAD) {
+        _constraintGraph->remapDeletedNode(WN_kid0(wn));
         id = WN_MAP_CGNodeId_Get(WN_kid0(wn));
-      else
+      } else
         id = WN_MAP_CGNodeId_Get(wn);
 
       // WN not mapped to any CGNodes

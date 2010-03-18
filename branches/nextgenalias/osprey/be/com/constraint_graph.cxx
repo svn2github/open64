@@ -23,10 +23,74 @@ CGIdToNodeMap ConstraintGraph::cgIdToNodeMap(1024);
 const PointsTo ConstraintGraphNode::emptyPointsToSet;
 const CGEdgeSet ConstraintGraphNode::emptyCGEdgeSet;
 
+void
+ConstraintGraph::remapDeletedNode(WN *wn)
+{
+  // Check if node has been marked as deleted and remap
+  CGNodeId oldId = WN_MAP_CGNodeId_Get(wn);
+  if (_toBeDeletedNodes.find(oldId) != _toBeDeletedNodes.end()) {
+    ConstraintGraphNode *old = ConstraintGraph::cgNode(oldId);
+    ConstraintGraphNode *parent = old->findRep();
+    FmtAssert(parent != old, ("No parent!"));
+    fprintf(stderr, "WN->CGNodeId: Remapping deleted node : %d to "
+            "parent: %d\n", old->id(), parent->id());
+    WN_MAP_CGNodeId_Set(wn, parent->id());
+  }
+}
+
+void
+ConstraintGraph::deleteOptimizedNodes()
+{
+  for (hash_set<CGNodeId>::const_iterator iter = _toBeDeletedNodes.begin();
+       iter != _toBeDeletedNodes.end(); iter++) {
+    fprintf(stderr, "Deleting node %d\n", *iter);
+    deleteNode(cgNode(*iter));
+  }
+}
+
 StInfo *
 ConstraintGraphNode::stInfo() 
 { 
   return cg()->stInfo(_cg_st_idx); 
+}
+
+bool
+ConstraintGraphNode::isOnlyOffset()
+{
+  // For now we know only about PREGs
+  return stInfo()->checkFlags(CG_ST_FLAGS_PREG);
+}
+
+bool
+ConstraintGraphNode::canBeDeleted()
+{
+  if ( checkFlags(CG_NODE_FLAGS_ADDR_TAKEN)    ||
+       checkFlags(CG_NODE_FLAGS_ACTUAL_RETURN) ||
+       checkFlags(CG_NODE_FLAGS_FORMAL_RETURN) ||
+       checkFlags(CG_NODE_FLAGS_ACTUAL_PARAM)  ||
+       checkFlags(CG_NODE_FLAGS_FORMAL_PARAM)  ||
+       checkFlags(CG_NODE_FLAGS_ICALL)         ||
+       checkFlags(CG_NODE_FLAGS_NOT_POINTER) )
+    return false;
+
+  // we will not have a CG to check for stInfo
+  // when creating dummy nodes in checkCGNode
+  if (cg()) {
+    if (stInfo()->checkFlags(CG_ST_FLAGS_VARARGS))
+      return false;
+    if (stInfo()->numOffsets() > 1)
+      return false;
+  }
+  return true;
+}
+     
+ConstraintGraphNode::~ConstraintGraphNode()
+{
+  FmtAssert(canBeDeleted(), ("Cannot delete this node!"));
+  FmtAssert(_pointsToList == NULL, ("pointsToList not empty!"));
+  FmtAssert(_revPointsToList == NULL, ("revPointsToList not empty!"));
+  FmtAssert(_inEdges == NULL, ("inEdges not empty!"));
+  FmtAssert(_outEdges == NULL, ("outEdges not empty!"));
 }
 
 StInfo::StInfo(ST_IDX st_idx)
@@ -1320,6 +1384,39 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
   // 4) Merge the points-to sets of the two nodes
   for ( PointsToIterator pti(src); pti != 0; ++pti )
     unionPointsTo(*pti,pti.qual());
+
+  // 5) Delete the points-to set
+  PointsToList *p = src->_pointsToList;
+  PointsToList *np;
+  while (p) {
+    np = p->next();
+    CXX_DELETE(p, cg()->memPool());
+    p = np;
+  }
+  src->_pointsToList = NULL;
+
+  // 6) Delete the incoming/outgoing edge sets
+  CGEdgeList *e = src->_inEdges;
+  CGEdgeList *ne;
+  while (e) {
+    ne = e->next();
+    FmtAssert(e->cgEdgeSet()->empty(), ("edge set not empty"));
+    CXX_DELETE(e, cg()->memPool());
+    e = ne;
+  }
+  src->_inEdges = NULL;
+  // outgoing edges
+  e = src->_outEdges;
+  while (e) {
+    ne = e->next();
+    FmtAssert(e->cgEdgeSet()->empty(), ("edge set not empty"));
+    CXX_DELETE(e, cg()->memPool());
+    e = ne;
+  }
+  src->_outEdges = NULL;
+
+  // 7) Mark node MERGED
+  src->addFlags(CG_NODE_FLAGS_MERGED);
 }
 
 void

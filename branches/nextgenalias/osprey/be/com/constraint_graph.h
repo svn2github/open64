@@ -64,14 +64,18 @@ class EdgeDelta;
 #define CG_NODE_FLAGS_ICALL         0x0020 // determines indirect-calls
 #define CG_NODE_FLAGS_NOT_POINTER   0x0040 // Used by CG builder to represent
                                            // CGNodes that will not be a ptr
-#define CG_NODE_FLAGS_IN_WORKLIST   0x0080
+#define CG_NODE_FLAGS_MERGED        0x0080 // CGNodes that have been merged
+
 #define CG_NODE_FLAGS_VISITED       0x0100  // Used by cycle detection
 #define CG_NODE_FLAGS_SCCMEMBER     0x0200  // Used by cycle detection
 #define CG_NODE_FLAGS_INKVALMAP     0x0400  // Used by cycle detection
 #define CG_NODE_FLAGS_ADDRTAKEN     0x0800
 #define CG_NODE_FLAGS_PTSMOD        0x1000  // Points-to set updated, implies
                                             // rev points-to relation to be updated
-#define CG_NODE_FLAGS_ADDR_TAKEN    0x2000  // Has the node been placed in a pts?
+#define CG_NODE_FLAGS_IN_WORKLIST   0x2000
+
+#define CG_NODE_FLAGS_ADDR_TAKEN    0x4000  // Has the node been placed in a pts?
+
 #define CG_NODE_FLAGS_ADJUST_K_CYCLE 0x0100  // Reuse VISITED during IPA CG construction
 
 
@@ -357,22 +361,7 @@ public:
     _outEdges(NULL)
   {}
 
-  ~ConstraintGraphNode()
-  {
-    PointsToList *np;
-    PointsToList *p = _pointsToList;
-    while (p) {
-      np = p->next();
-      delete p;
-      p = np;
-    }
-    p = _revPointsToList;
-    while (p) {
-      np = p->next();
-      delete p;
-    }
-    // Assume the edges are either deleted or moved
-  }
+  ~ConstraintGraphNode();
     
   CGNodeId id() const { return _id; }
   void setId(CGNodeId id) { _id = id; }
@@ -385,6 +374,10 @@ public:
   CG_ST_IDX cg_st_idx() const { return _cg_st_idx; }
 
   StInfo *stInfo();
+
+  bool isOnlyOffset();
+
+  bool canBeDeleted();
 
   INT32 offset() const { return _offset; }
 
@@ -466,9 +459,8 @@ public:
   // return the existing edge, else insert the new edge and return it
   ConstraintGraphEdge *addInEdge(ConstraintGraphEdge *edge) 
   {
-    // If there is a representative parent, only allow adding special
-    // PARENT_COPY edges
-    if (!checkFlags(CG_NODE_FLAGS_SCCMEMBER) && parent() != this)
+    // If node is merged only allow adding special PARENT_COPY edges
+    if (checkFlags(CG_NODE_FLAGS_MERGED))
       FmtAssert(edge->checkFlags(CG_EDGE_PARENT_COPY),
                 ("Only parent copy inEdges allowed"));
     CGEdgeSet &inEdgeSet = _getCGEdgeSet(edge->edgeType(),&_inEdges);
@@ -490,9 +482,8 @@ public:
   ConstraintGraphEdge *addOutEdge(ConstraintGraphEdge *edge) 
   {
     // If there is a representative parent, out edges should not be added
-    if (!checkFlags(CG_NODE_FLAGS_SCCMEMBER))
-      FmtAssert(parent() == this, 
-                ("OutEdges not allowed for nodes with representatives"));
+    FmtAssert(!checkFlags(CG_NODE_FLAGS_MERGED),
+              ("OutEdges not allowed for nodes with representatives"));
     CGEdgeSet &outEdgeSet = _getCGEdgeSet(edge->edgeType(),&_outEdges);
     pair<CGEdgeSet::iterator, bool> p;
     p = outEdgeSet.insert(edge);
@@ -616,6 +607,8 @@ private:
 
   bool _addPointsTo(CGNodeId id, CGEdgeQual qual)
   {
+    FmtAssert(!checkFlags(CG_NODE_FLAGS_MERGED),
+              ("Attempting addPointsTo on a merged node!"));
     PointsTo &pts = _getPointsTo(qual,&_pointsToList);
     return pts.setBit(id);
   }
@@ -881,6 +874,17 @@ public:
       buildCGipa(ipaNode);
   }
 
+  void deleteNode(ConstraintGraphNode *node)
+  {
+    FmtAssert(node != notAPointerCGNode, ("Deleting not a pointer node"));
+    FmtAssert(node != blackHoleCGNode, ("Deleting blackHole node"));
+    // The ConstraintGraphNode destructor additionally checks if the node
+    // is not a formal/actual/param/return
+    _cgNodeToIdMap.erase(node);
+    cgIdToNodeMap.erase(node->id());  
+    CXX_DELETE(node, _memPool);
+  }
+
   UINT32 totalCGNodes() const { return nextCGNodeId; }
 
   StInfo *stInfo(CG_ST_IDX cg_st_idx) const 
@@ -936,6 +940,10 @@ public:
                ST *calleeST, EdgeDelta &delta);
 
   void applyCalleeSummaries(EdgeDelta &delta);
+
+  void remapDeletedNode(WN *wn);
+
+  void deleteOptimizedNodes();
 
 private:
 
@@ -1019,7 +1027,7 @@ private:
   list<CGNodeId> _parameters;
   list<CGNodeId> _returns;
 
-  list<CGNodeId> _toBeDeletedNodes;
+  hash_set<CGNodeId> _toBeDeletedNodes;
 
   // For ConstraintGraph construction during IPA
   CGIdToNodeMap _uniqueCGNodeIdMap;

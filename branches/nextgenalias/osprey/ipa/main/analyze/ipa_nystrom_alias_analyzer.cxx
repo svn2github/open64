@@ -314,8 +314,10 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       ConstraintGraph::addEdge(srcNode->parent(), destNode->parent(), 
                                (CGEdgeType)summEdge.etype(),
                                (CGEdgeQual)summEdge.qual(), 
-                               summEdge.sizeOrSkew(), added);
-    edge->addFlags(summEdge.flags());
+                               summEdge.sizeOrSkew(), added, summEdge.flags());
+    // In case the edge already exists, just add the flags
+    if (!added)
+      edge->addFlags(summEdge.flags());
   }
 
   // Node ids array
@@ -390,7 +392,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
         // Set the newParent as the parent of oldRepParent
         oldRepParent->repParent(newRepParent);
         // Add special copy edge from newRepParent if !PREG
-        if (!oldRepParent->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) {
+        if (!oldRepParent->isOnlyOffset()) {
           bool added = false;
           ConstraintGraphEdge *newEdge;
           if (newRepParent->cg() != oldRepParent->cg())

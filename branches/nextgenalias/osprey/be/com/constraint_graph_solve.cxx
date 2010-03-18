@@ -190,8 +190,8 @@ SCCDetection::unify(UINT32 noMergeMask, NodeToKValMap &nodeToKValMap)
           rep->addFlags(CG_NODE_FLAGS_INKVALMAP);
         }
         rep->merge(node);
-        // PREGs are independent and hence do not need a PARENT_COPY edge
-        if (!node->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) {
+        // If node is the only offset, PARENT_COPY edges are not required
+        if (!node->isOnlyOffset()) {
           bool added = false;
           ConstraintGraphEdge *newEdge = 
               ConstraintGraph::addEdge(rep, node, ETYPE_COPY, CQ_HZ, 0,
@@ -930,11 +930,10 @@ ConstraintGraph::simpleOptimizer()
   fprintf(stderr, "Optimizing ConstraintGraphs...\n");
   // Iterate over all nodes in the graph
   // Simple optimizer, find nodes that have single outgoing/incoming
-  // copy edge connecting the two nodes, and one of the nodes is a
-  // temporary and merge with the temporary
-  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
-       iter != ConstraintGraph::gEnd(); iter++) {
-    ConstraintGraphNode *srcNode = iter->second;
+  // copy edge connecting the two nodes
+  for (CGNodeToIdMapIterator iter = ConstraintGraph::lBegin();
+       iter != ConstraintGraph::lEnd(); iter++) {
+    ConstraintGraphNode *srcNode = iter->first->parent();
     // Ignore if there are outgoing load/store edges
     if (!srcNode->outLoadStoreEdges().empty())
       continue;
@@ -947,22 +946,32 @@ ConstraintGraph::simpleOptimizer()
     // Handle only copy edges
     if (edge->edgeType() != ETYPE_COPY)
       continue;
+    // Already merged?
+    if (edge->checkFlags(CG_EDGE_PARENT_COPY))
+      continue;
     ConstraintGraphNode *destNode = edge->destNode();
+    FmtAssert(_toBeDeletedNodes.find(destNode->id()) == _toBeDeletedNodes.end(),
+              ("Node already deleted"));
+    // They should be from the same CG
+    if (srcNode->cg() != destNode->cg())
+      continue;
     // Ignore if there are incoming load/store edges
     if (!destNode->inLoadStoreEdges().empty())
       continue;
     // Single incoming copy edge
-    if (!destNode->inCopySkewEdges().size() != 1)
+    if (destNode->inCopySkewEdges().size() != 1)
       continue;
-    // One of them should be a temp reg
-    if ( !(srcNode->stInfo()->checkFlags(CG_ST_FLAGS_TEMP) &&
-           srcNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) &&
-         !(destNode->stInfo()->checkFlags(CG_ST_FLAGS_TEMP) &&
-           destNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) )
+
+    // src should be a node that will always
+    // have only a single offset (for now that means just pregs)
+    if (!srcNode->isOnlyOffset())
       continue;
-    ConstraintGraphNode *toBeMergedNode, *parentNode;
-    if (srcNode->stInfo()->checkFlags(CG_ST_FLAGS_TEMP) &&
-        srcNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) {
+
+    // We prefer the toBeMergedNode to be a preg that can be deleted
+    ConstraintGraphNode *parentNode;
+    ConstraintGraphNode *toBeMergedNode;
+    if (srcNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG) &&
+        srcNode->canBeDeleted()) {
       toBeMergedNode = srcNode;
       parentNode = destNode;
     } else {
@@ -973,12 +982,22 @@ ConstraintGraph::simpleOptimizer()
     // Perform the merge
     parentNode->merge(toBeMergedNode);
     toBeMergedNode->repParent(parentNode);
-    FmtAssert(!toBeMergedNode->checkFlags(CG_NODE_FLAGS_ADDRTAKEN), 
-              ("Address of temporary preg taken!"));
-    _toBeDeletedNodes.push_back(toBeMergedNode->id());
-    fprintf(stderr, "Adding node: " ); 
-    toBeMergedNode->print(stderr);
-    fprintf(stderr, " to deleted list...\n");
+    fprintf(stderr, "simpleOptimizer - Merging node %d with %d\n",
+            toBeMergedNode->id(), parentNode->id());
+
+    // If the toBeMergedNode is not the only offset (for dests only)
+    // then add a PARENT_COPY edge from parentNode to toBeMergedNode
+    if (!toBeMergedNode->isOnlyOffset()) {
+      FmtAssert(toBeMergedNode != srcNode, (""));
+      bool added = false;
+      ConstraintGraphEdge *newEdge = 
+         ConstraintGraph::addEdge(parentNode, toBeMergedNode, ETYPE_COPY,
+                                  CQ_HZ, 0, added, CG_EDGE_PARENT_COPY);
+      FmtAssert(added, ("merge: failed to add special copy edge"));
+    }
+    if (toBeMergedNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG) &&
+        toBeMergedNode->canBeDeleted())
+      _toBeDeletedNodes.insert(toBeMergedNode->id());
   }
   fprintf(stderr, "Done optimizing ConstraintGraphs\n");
 }
