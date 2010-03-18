@@ -1430,7 +1430,7 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
 	    else return cr->Opnd(0);
 	  }
         }
-#if !defined(TARG_MIPS) && !defined(TARG_X8664)  && !defined(TARG_NVISA)
+#if !defined(TARG_MIPS) && !defined(TARG_X8664)  && !defined(TARG_NVISA)&& !defined(TARG_LOONGSON)
         // undeletable since garbage in high bits untolerable
         else { // truncation
 	  if ((Livebits(cr) & ~Bitmask_of_size(MTYPE_size_min(dtyp))) == 0) {

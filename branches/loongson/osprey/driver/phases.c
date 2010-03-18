@@ -2759,6 +2759,9 @@ add_instr_archive (string_list_t* args)
       if (profile_type & (CG_EDGE_PROFILE |
 			  CG_VALUE_PROFILE | CG_STRIDE_PROFILE)) {
 	add_library (args,"cginstr");
+#ifdef TARG_LOONGSON
+	add_library (args, "stdc++");
+#endif
       }
 
       add_library (args, "instr");

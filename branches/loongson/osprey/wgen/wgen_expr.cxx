@@ -49,6 +49,11 @@ extern "C"{
 #ifdef TARG_X8664
 #include "config_opt.h"
 #endif
+#ifdef TARG_LOONGSON
+#include "targ_const.h"
+#include "quad.h"
+#include "quadsim.h"
+#endif
 #include "wn.h"
 #include "wn_util.h"
 #include "targ_sim.h"
@@ -358,7 +363,9 @@ struct operator_from_tree_t {
  GS_VEC_DELETE_EXPR,		OPERATOR_UNKNOWN,
  GS_VEC_NEW_EXPR,		OPERATOR_UNKNOWN,
  GS_TEMPLATE_TEMPLATE_PARM,	OPERATOR_UNKNOWN,
+#ifndef TARG_LOONGSON
  GS_FREQ_HINT_STMT,		OPERATOR_UNKNOWN,
+#endif
 };
 
 #ifdef FE_GNU_4_2_0
@@ -5008,8 +5015,19 @@ WGEN_Expand_Expr (gs_t exp,
           break;
 #else	  
 	case 12: 
-	case 16: 
+	case 16:
+#ifdef TARG_LOONGSON
+        {
+          INT32 i, rbuf_w[4];
+	   gs_t temp;
+	   temp = gs_operand (exp, GS_TREE_REAL_CST_LD);
+          for(i=0; i<4; i++)
+            rbuf_w[i] = temp->u1.data[i];
+          tcon = Host_To_Targ_Quad(*(QUAD_TYPE *) &rbuf_w);
+        }
+#else 
 	  tcon = Host_To_Targ_Quad(gs_tree_real_cst_ld(exp));
+#endif
 	  break;
 #endif
 	default:
@@ -5054,9 +5072,24 @@ WGEN_Expand_Expr (gs_t exp,
 #else	  
 	case 24:
 	case 32:
+#ifdef TARG_LOONGSON
+        {
+          INT32 i, rbuf_w[4], ibuf_w[4];
+	   gs_t temp_r, temp_i;
+	   temp_r = gs_operand (gs_tree_realpart(exp), GS_TREE_REAL_CST_LD);
+	   temp_i = gs_operand (gs_tree_imagpart(exp), GS_TREE_REAL_CST_LD);
+          for(i=0; i<4; i++)
+          {
+            rbuf_w[i] = temp_r->u1.data[i];
+	     ibuf_w[i] = temp_i->u1.data[i];
+          }
+          tcon = Host_To_Targ_Complex_Quad(*(QUAD_TYPE *) &rbuf_w, *(QUAD_TYPE *) &ibuf_w);
+        }
+#else
 	  tcon = Host_To_Targ_Complex_Quad(
 				   gs_tree_real_cst_ld(gs_tree_realpart(exp)),
 				   gs_tree_real_cst_ld(gs_tree_imagpart(exp)));
+#endif
 	  break;
 #endif
 	default:
@@ -8527,7 +8560,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  wn = WN_Mpy(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 8));
 	}
 #endif
-#ifdef TARG_MIPS // bug 12945: pad since long doubles are 16-byte aligned
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON) // bug 12945: pad since long doubles are 16-byte aligned
 	if (mtype == MTYPE_FQ) {
 	  wn = WN_Add(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 15));
 	  wn = WN_Div(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 16));
@@ -8770,9 +8803,11 @@ WGEN_Expand_Expr (gs_t exp,
       break;
 #endif
 
+#ifndef TARG_LOONGSON
     case GS_FREQ_HINT_STMT:
       WGEN_Expand_Pragma(exp);
       break;
+#endif
       
     default:
        FmtAssert(FALSE,

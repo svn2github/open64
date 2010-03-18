@@ -62,6 +62,7 @@ LIBRARY_SUBDIRS := \
 	libinstr2 \
 	libcginstr \
 	libunwindP \
+	libspin_4_2_0 \
 	libfortran
 
 
@@ -86,6 +87,7 @@ TOOL_SUBDIRS := \
 	ipa \
 	ipl \
 	crayf90 \
+	wgen_4_2_0 \
 	be_driver
 
 

@@ -73,6 +73,10 @@ ifeq ($(BUILD_TARGET), IA64)
 CFLAGS += -DTARG_IA64
 endif
 
+ifeq ($(BUILD_TARGET), LOONGSON)
+CFLAGS += -DTARG_LOONGSON
+endif
+
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 CFLAGS += -DIs_True_On
 endif

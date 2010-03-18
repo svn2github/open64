@@ -1413,8 +1413,30 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
     {
       DevWarn("insert cvt above zero-version");
       CODEREP cvt_cr;
+#ifdef TARG_LOONGSON
+      if ((cr->Dtyp() != cr->Dsctyp()) && (cr->Dsctyp() != x->Dtyp())) {
+        OPCODE opc1 = OPCODE_make_op_MACRO(OPR_CVT, cr->Dsctyp(), x->Dtyp());
+	 OPCODE opc2 = OPCODE_make_op_MACRO(OPR_CVT,cr->Dtyp(), cr->Dsctyp());
+	 if (Is_Valid_Opcode(opc1) && Is_Valid_Opcode(opc2)) {
+	   // in loongson, U4 -> I8 does not equal to U4->I4->I8
+	   // So, we need to convert to cr->Dsctyp() first, then convert to cr->Dtyp(). 
+          cvt_cr.Init_expr(OPCODE_make_op(OPR_CVT, cr->Dsctyp(), x->Dtyp()), x);
+	   x = _htable->Rehash(&cvt_cr);
+	   CODEREP cvt_cr1;
+	   cvt_cr1.Init_expr(OPCODE_make_op(OPR_CVT, cr->Dtyp(), cr->Dsctyp()), x);
+	   x = _htable->Rehash(&cvt_cr1);
+        } else {
+          cvt_cr.Init_expr(OPCODE_make_op(OPR_CVT, cr->Dtyp(), x->Dtyp()), x);
+          x = _htable->Rehash(&cvt_cr);
+        }
+      } else {
+        cvt_cr.Init_expr(OPCODE_make_op(OPR_CVT, cr->Dtyp(), x->Dtyp()), x);
+        x = _htable->Rehash(&cvt_cr);
+      }
+#else
       cvt_cr.Init_expr(OPCODE_make_op(OPR_CVT, cr->Dtyp(), x->Dtyp()), x);
       x = _htable->Rehash(&cvt_cr);
+#endif
     }
     else
       x->Set_dtyp(cr->Dtyp());

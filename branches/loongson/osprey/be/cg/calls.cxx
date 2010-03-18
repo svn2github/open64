@@ -790,7 +790,9 @@ Generate_Entry (BB *bb, BOOL gra_run )
      * we will not generate worse code by using another register for
      * gp.
      */
+#ifndef TARG_LOONGSON
     if ( !Use_Scratch_GP( TRUE ) ) {
+#endif		
       if ( Caller_GP_TN == NULL ) {
 	if ( stn = PREG_To_TN_Array[ Caller_GP_Preg ] )
 	  Caller_GP_TN = stn;
@@ -804,8 +806,9 @@ Generate_Entry (BB *bb, BOOL gra_run )
 	}
       }
       Exp_COPY (Caller_GP_TN, GP_TN, &ops);
+#ifndef TARG_LOONGSON
     }
-
+#endif
     // is possible for altentry to be marked as not_used
     // but we have gp_prolog for whole PU.  In that case,
     // don't generate prolog (that references altentry ST).
@@ -1688,7 +1691,9 @@ Generate_Exit (
      * gp.  we don't yet have the information necessary to perform
      * this optimization in the presence of regions.
      */
+#ifndef TARG_LOONGSON     
     if ( !Use_Scratch_GP( TRUE ) ) {
+#endif		
       if ( Caller_GP_TN == NULL ) {
 	if ( stn = PREG_To_TN_Array[ Caller_GP_Preg ] )
 	  Caller_GP_TN = stn;
@@ -1702,7 +1707,9 @@ Generate_Exit (
       }
       Exp_COPY (GP_TN, Caller_GP_TN, &ops);
     }
+#ifndef TARG_LOONGSON	
   }
+#endif  
 
   if ( gra_run )
     EETARG_Restore_Extra_Callee_Tns (&ops);

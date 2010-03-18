@@ -137,6 +137,7 @@ typedef enum
   
   EM_Q_ABS,		/* quad absolute value */
   EM_Q_SQRT,		/* quad square root */
+  EM_Q_FLOOR,           /* quad floor */
   EM_Q_ADD,		/* quad plus */
   EM_Q_SUB,		/* quad minus */
   EM_Q_MPY,		/* quad multiply */
@@ -155,6 +156,9 @@ typedef enum
   EM_Q_NEG,             /* quad negate */
   EM_KU_QINT,		/* convert quad to unsigned 64 bits int */
   EM_JU_QINT,		/* convert quad to unsigned 32 bits int */
+  EM_F_ISUNORDERED,
+  EM_D_ISUNORDERED,
+  EM_LL_ISUNORDERED,
 #endif
   EM_KI_QINT,		/* convert quad to 64 bits int */
   EM_JI_QINT,		/* convert quad to 32 bits int */
@@ -285,13 +289,18 @@ const EM_ROUTINES em_routines[]=
   EM_F_TRUNC_LL_F,  "__f_trunc_ll_f",PURE_NSE,  COERCE_none,
   EM_D_TO_LL,       "__d_to_ll",     PURE_NSE,  COERCE_none,
   EM_D_TO_ULL,      "__d_to_ull",    PURE_NSE,  COERCE_none,
+#ifdef TARG_LOONGSON
+  EM_D_ROUND_LL_D,  "floor",PURE_NSE,  COERCE_none,
+#else
   EM_D_ROUND_LL_D,  "__d_round_ll_d",PURE_NSE,  COERCE_none,
+#endif
   EM_D_TRUNC_LL_D,  "__d_trunc_ll_d",PURE_NSE,  COERCE_none,
   EM_LL_BIT_EXTRACT,"__ll_bit_extract",PURE_NSE,COERCE_none,
   EM_LL_BIT_INSERT, "__ll_bit_insert",PURE_NSE, COERCE_none,
 #ifdef TARG_LOONGSON
   EM_Q_ABS,         "fabsl",         PURE_NSE,  COERCE_none,
   EM_Q_SQRT,        "__qsqrt",       PURE_NSE,  COERCE_none,
+  EM_Q_FLOOR,       "__floorl",       PURE_NSE,  COERCE_none,
   EM_Q_ADD,         "__addtf3",      PURE_NSE,  COERCE_none,
   EM_Q_SUB,         "__subtf3",      PURE_NSE,  COERCE_none,
   EM_Q_MPY,         "__multf3",      PURE_NSE,  COERCE_none,
@@ -309,6 +318,12 @@ const EM_ROUTINES em_routines[]=
   EM_Q_NEG,         "__negtf2",      PURE_NSE,  COERCE_none,
   EM_KU_QINT,       "__fixunstfdi",  PURE_NSE,  COERCE_none,
   EM_JU_QINT,       "__fixunstfsi",  PURE_NSE,  COERCE_none,
+#ifdef TARG_LOONGSON
+  EM_F_ISUNORDERED,    "isnanf",   PURE_NSE,  COERCE_none,
+  EM_D_ISUNORDERED,    "isnan",   PURE_NSE,  COERCE_none,
+  EM_LL_ISUNORDERED,    "isnanl",    PURE_NSE,  COERCE_none,
+#endif
+
   EM_KI_QINT,       "__fixtfdi",     PURE_NSE,  COERCE_none,
   EM_JI_QINT,       "__fixtfsi",     PURE_NSE,  COERCE_none,
   EM_Q_EXT,         "__extendsftf2", PURE_NSE,  COERCE_none,
@@ -652,6 +667,27 @@ static EMULATION WN_emulation(WN *tree)
   TYPE_ID	type = OPCODE_rtype(op);
 
   switch (WN_operator(tree)) {
+ 
+#ifdef TARG_LOONGSON
+  case OPR_INTRINSIC_OP:
+  {
+    INTRINSIC  id = (INTRINSIC) WN_intrinsic(tree);
+    if (id == INTRN_ISUNORDERED) {
+       Is_True(WN_kid_count(tree)==2,
+               ("WN_emulation() %s (with WN_intrinsic=INTRN_ISUNORDERED) should have two kids!",
+               OPCODE_name(WN_opcode(tree))));
+       TYPE_ID  type_kid0 = OPCODE_rtype(WN_opcode(WN_kid0(tree)));
+       switch(type_kid0) {
+       case MTYPE_F4:  return EM_F_ISUNORDERED;
+       case MTYPE_F8:  return EM_D_ISUNORDERED;
+       case MTYPE_FQ:  return EM_LL_ISUNORDERED;
+       }
+       break;
+      }
+   }
+  break;
+#endif
+
   case OPR_SQRT:
     switch(type) {
     case MTYPE_C4:	return EM_C4_SQRT;
@@ -733,6 +769,7 @@ static EMULATION WN_emulation(WN *tree)
       case OPR_SUB:	return EM_Q_SUB;
 #ifdef TARG_LOONGSON
       case OPR_NEG:	return EM_Q_NEG;
+      case OPR_FLOOR:	return EM_Q_FLOOR;
 #endif
       case OPR_MPY:	return EM_Q_MPY;
       case OPR_DIV:	return EM_Q_DIV;
@@ -753,7 +790,9 @@ static EMULATION WN_emulation(WN *tree)
 	break;
 
       case OPR_CEIL:
+#ifndef TARG_LOONGSON
       case OPR_FLOOR:
+#endif
       case OPR_MOD:
       case OPR_REM:
       case OPR_CVTL:
@@ -801,6 +840,10 @@ static EMULATION WN_emulation(WN *tree)
     }
     break;
   }
+#ifdef TARG_LOONGSON
+  if(WN_operator(tree) == OPR_FLOOR && WN_desc(tree) == MTYPE_F8 && WN_rtype(tree) == MTYPE_F8)
+    return EM_D_ROUND_LL_D;
+#endif
   FmtAssert(FALSE, ("WN_emulation() %s not recognized", OPCODE_name(WN_opcode(tree))));
   return EM_LAST;
 }
@@ -4034,7 +4077,11 @@ static TYPE_ID INTR_parameter_type(WN *tree, INT32 arg)
 
 extern const char * INTR_intrinsic_name(WN *tree)
 {
+#ifdef TARG_LOONGSON
+  if (OPCODE_is_intrinsic(WN_opcode(tree)) && WN_intrinsic(tree)!=INTRN_ISUNORDERED)
+#else
   if (OPCODE_is_intrinsic(WN_opcode(tree)))
+#endif
   {
     INTRINSIC	id = (INTRINSIC) WN_intrinsic(tree);
 

@@ -376,7 +376,7 @@ int gspin_node_size(gs_code_t code)
   case IB_BIT_VECTOR:
   case IB_DOUBLE:	return 4*sizeof(char*);
 
-#ifdef ARCH_MIPS
+#if defined(ARCH_MIPS) || defined(TARG_LOONGSON)
   case IB_LONG_DOUBLE:	return 5*sizeof(char*);
 #else
   case IB_LONG_DOUBLE:	return 4*sizeof(char*);

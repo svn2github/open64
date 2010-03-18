@@ -71,6 +71,10 @@ ifeq ($(BUILD_TARGET), IA64)
 CFLAGS += -DTARG_IA64
 endif
 
+ifeq ($(BUILD_TARGET), LOONGSON)
+CFLAGS += -DTARG_LOONGSON
+endif
+
 all: $(LIBSPIN) $(GSPIN)
 
 devbuild: CFLAGS = -DIs_True_On -g -Wall

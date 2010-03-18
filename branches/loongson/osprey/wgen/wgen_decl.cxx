@@ -96,6 +96,12 @@ extern "C" {
 #include "dwarf_DST_dump.h"
 #include "targ_sim.h" // PUSH_RETURN_ADDRESS_ON_STACK
 
+#ifdef TARG_LOONGSON
+#include "targ_const.h"
+#include "quad.h"
+#include "quadsim.h"
+#endif
+
 #ifdef KEY
 #include <ext/hash_map>
 #endif
@@ -2044,7 +2050,20 @@ AGGINIT::WGEN_Add_Aggregate_Init_Real (gs_t real, INT size)
       ldbuffer.qval[2] = 0;
       ldbuffer.qval[3] = 0;
       ldbuffer.ld = gs_tree_real_cst_ld(real);
+#ifdef TARG_LOONGSON
+    {
+      INT32 rbuf[4], i;
+      gs_t temp = gs_operand (real, GS_TREE_REAL_CST_LD);
+      for (i = 0 ; i<4; i++)
+      {
+        rbuf[i] = temp->u1.data[i];
+        ldbuffer.qval[i] = temp->u1.data[i];
+      }
+      tc = Host_To_Targ_Quad (*(QUAD_TYPE *) &rbuf);
+    }
+#else
       tc = Host_To_Targ_Quad (ldbuffer.ld);
+#endif
       break;
 #endif
     default:
@@ -2097,13 +2116,39 @@ AGGINIT::WGEN_Add_Aggregate_Init_Complex (gs_t rval, gs_t ival, INT size)
 #else      
     case 24:
     case 32:
+#ifdef TARG_LOONGSON
+    {
+      INT32 rbuf[4], i;
+      gs_t temp = gs_operand (rval, GS_TREE_REAL_CST_LD);
+      for (i = 0 ; i<4; i++)
+      {
+        rbuf[i] = temp->u1.data[i];
+        ldbuffer.qval[i] = temp->u1.data[i];
+      }
+      rtc = Host_To_Targ_Quad (*(QUAD_TYPE *)rbuf);
+    }
+#else
       ldbuffer.qval[2] = 0;
       ldbuffer.qval[3] = 0;
       ldbuffer.ld = gs_tree_real_cst_ld(rval);
       rtc = Host_To_Targ_Quad(ldbuffer.ld);
+#endif
 
+#ifdef TARG_LOONGSON
+    {
+      INT32 ibuf[4], i;
+      gs_t temp = gs_operand (ival, GS_TREE_REAL_CST_LD);
+      for (i = 0 ; i<4; i++)
+      {
+        ibuf[i] = temp->u1.data[i];
+        ldbuffer.qval[i] = temp->u1.data[i];
+      }
+      itc = Host_To_Targ_Quad (*(QUAD_TYPE *)ibuf);
+    }
+#else
       ldbuffer.ld = gs_tree_real_cst_ld(ival);
       itc = Host_To_Targ_Quad(ldbuffer.ld);
+#endif
       break;
 #endif
     default:

@@ -475,6 +475,9 @@ inline BOOL OPCODE_is_intrinsic (OPCODE op)
      || (OPCODE_rtype((op)) == MTYPE_FQ)
      || (OPCODE_desc((op)) == MTYPE_CQ)
      || (OPCODE_rtype((op)) == MTYPE_CQ)
+     || ((OPCODE_operator(op) == OPR_FLOOR)
+          && (OPCODE_desc(op) == MTYPE_F8)
+          && (OPCODE_rtype(op) == MTYPE_F8))
 #endif
      )
     return true;
@@ -5410,7 +5413,23 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
     }
     break;
 #endif
+
+#ifdef TARG_LOONGSON
+  case OPR_FLOOR:
+    if(WN_desc(tree) == MTYPE_F8 && WN_rtype(tree) == MTYPE_F8 && Action(LOWER_INTRINSIC)){
+       tree = lower_emulation(block, tree, actions, intrinsic_lowered);
+    }
+  break;
+#endif
+
+
   case OPR_INTRINSIC_OP:
+#ifdef TARG_LOONGSON
+    if ((INTRINSIC) WN_intrinsic (tree) == INTRN_ISUNORDERED && Action (LOWER_INTRINSIC) ) {
+       tree = lower_emulation(block, tree, actions, intrinsic_lowered);
+       break;
+    }
+#endif
     if (INTRN_is_nary(WN_intrinsic(tree)))
       break;
 
@@ -9754,8 +9773,11 @@ static WN *lower_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
   */
   wn = NULL;
   emBlock = WN_CreateBlock();
-
+#ifdef TARG_LOONGSON
+  if (OPCODE_is_intrinsic(WN_opcode(tree)) && (INTRINSIC)WN_intrinsic(tree)!=INTRN_ISUNORDERED)
+#else
   if (OPCODE_is_intrinsic(WN_opcode(tree)))
+ #endif
   {
     Is_True((INTRN_is_nary(WN_intrinsic(tree))==FALSE),("nary slipped by"));
     if (Action(LOWER_INLINE_INTRINSIC) || Action(LOWER_INL_STACK_INTRINSIC))

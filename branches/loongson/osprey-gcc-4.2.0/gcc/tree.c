@@ -10678,7 +10678,14 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
               gs_set_operand ((gs_t) GS_NODE (t), GS_TREE_REAL_CST_F, value_f);
               _gs_d (value_d, strtod ((string), NULL));
               gs_set_operand ((gs_t) GS_NODE (t), GS_TREE_REAL_CST_D, value_d);
+#ifdef TARG_LOONGSON
+              int i, rbuf[4];
+              REAL_VALUE_TO_TARGET_LONG_DOUBLE (d, rbuf);
+              for(i=0; i<4; i++)
+                value_ld->u1.data[i] = rbuf [i];  
+#else
               _gs_ld (value_ld, strtold ((string), NULL));
+#endif
               gs_set_operand ((gs_t) GS_NODE (t), GS_TREE_REAL_CST_LD, value_ld);
             }
 	    break;

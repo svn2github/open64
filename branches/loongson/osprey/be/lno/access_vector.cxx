@@ -1930,6 +1930,19 @@ void ACCESS_VECTOR::Set_Condition(WN *wn, DOLOOP_STACK *stack, BOOL negate)
     Too_Messy = TRUE;
     return;
   }
+
+#ifdef TARG_LOONGSON
+  // If a signed compare operation has an unsigned operator,
+  // it is unsafe for the following operation.
+  if (OPERATOR_is_compare(WN_operator(wn))
+    && MTYPE_is_signed(WN_rtype(wn))   // type of the compare operator
+    && (MTYPE_is_unsigned(WN_rtype(WN_kid0(wn)))
+      ||MTYPE_is_unsigned(WN_rtype(WN_kid1(wn)))) // type of the compare operands
+    ) {
+    Too_Messy = TRUE;
+    return;
+  }
+#endif
   
   INT sign,offset;
   sign = negate ? -1 : 1;

@@ -1366,6 +1366,17 @@ ALIAS_CLASSIFICATION::Expr_may_contain_pointer (WN* const expr) {
     //   We have to be conservative at this moment.
     return TRUE;
   }
+  
+#ifdef TARG_LOONGSON
+  // for loongson, when an address-expr is figured out by an ADD operation,
+  // the 'res' type of it may be I4/I8. For the case, the expr may contain pointer.
+  TYPE_ID desc_type = WN_desc(expr);
+  if (MTYPE_byte_size (res) < Pointer_Size ||
+      (MTYPE_is_void (res)    || MTYPE_is_float (res) ||
+       MTYPE_is_complex (res) || MTYPE_is_vector (res))) {
+     return FALSE;
+  }
+#else
 
   if (MTYPE_byte_size (res) < Pointer_Size ||
       (MTYPE_is_void (res)    || MTYPE_is_float (res) || 
@@ -1373,7 +1384,8 @@ ALIAS_CLASSIFICATION::Expr_may_contain_pointer (WN* const expr) {
        MTYPE_is_boolean (res))) {
      return FALSE;
   }
-   
+#endif
+
   switch (WN_operator (expr)) {
   case OPR_MPY:
     return FALSE;

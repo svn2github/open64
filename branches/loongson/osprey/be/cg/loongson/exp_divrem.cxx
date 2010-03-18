@@ -952,7 +952,7 @@ Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
             {
                 TN *t1 = Build_TN_Like(result);
                 Expand_Multiply(t1, result, src2, mtype, ops, opcode);
-                Build_OP(TOP_sub, result2, True_TN, src1, t1, ops);
+                Build_OP(TOP_subu, result2, True_TN, src1, t1, ops);
             }
             return;
         }

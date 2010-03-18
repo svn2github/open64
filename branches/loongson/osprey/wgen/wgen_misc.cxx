@@ -385,6 +385,10 @@ WGEN_Init (INT argc, char **argv, char **envp )
   else ABI_Name = "n32";
 #endif
 
+#ifdef TARG_LOONGSON
+  ABI_Name = "n32";
+#endif
+
 #ifdef KEY
   if (lang_cplus)
     pstatic_as_global = TRUE;

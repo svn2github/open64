@@ -237,17 +237,17 @@ Expand_Convert_Length(TN *dest, TN *src, TN *length_tn, TYPE_ID mtype, BOOL sign
             Build_OP(TOP_sll, dest, True_TN, src, Gen_Literal_TN(0, 2), ops);
             return;
         }
-        else if (mtype == MTYPE_U4)
+        else if (mtype == MTYPE_U4 || (mtype == MTYPE_I4 && !signed_extension))
         {
-            // U8U4CVT, I8U4CVT
+            // U8U4CVT, I8U4CVT, U8I4CVT
             TN *tmp = Build_TN_Like(dest);
             Build_OP(TOP_dsll32, tmp, True_TN, src, Gen_Literal_TN(0, 2), ops);
             Build_OP(TOP_dsrl32, dest, True_TN, tmp, Gen_Literal_TN(0, 2), ops);
             return;
         }
-        else if (mtype == MTYPE_I4)
+        else if (mtype == MTYPE_I4 && signed_extension)
         {
-            // I8I4CVT, U8I4CVT
+            // I8I4CVT
             Expand_Copy(dest, src, MTYPE_U8, ops);
         }
         else
@@ -1150,8 +1150,11 @@ static void shladd(TN *r, TN *x1, INT s, TN *x2, TYPE_ID mtype, OPS *ops)
 
     // If the addend is zero, the add is not needed
     if ((TN_is_constant(x2) && TN_has_value(x2) && TN_value(x2) == 0)
-            || (x2 == Zero_TN))
+            || (x2 == Zero_TN)) {
+        Expand_Copy(r, r1, mtype, ops);
         return;
+    }
+            
 
     Expand_Add(r, r1, x2, mtype, ops);
 }

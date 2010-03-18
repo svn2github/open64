@@ -1535,7 +1535,7 @@ BOOL Special_Sequence(OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo)
             OPS ops = OPS_EMPTY;
             if (OP_code(op) == TOP_bne)
                 val = (val == 0)?-1:0;
-            new_op = Mk_OP((val==0)?TOP_bgez:TOP_bltz,
+            new_op = Mk_OP((val==0)?TOP_bgez:TOP_bltz, True_TN,
                            OP_opnd(shift_op, 1), OP_opnd(op, 3));
             OP_srcpos(new_op) = OP_srcpos(op);
             OPS_Append_Op(&ops, new_op);

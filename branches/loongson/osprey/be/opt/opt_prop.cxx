@@ -437,7 +437,7 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
        ))
       return NOT_PROPAGATABLE;
 
-#if !defined(TARG_IA64)
+#if !defined(TARG_IA64) && !defined(TARG_LOONGSON)
     // These code are not applied on TARG_IA64 since it will cause compilation time out
     // in RVI2 phase during building 403.gcc.
     // Too aggressive copy propagation may increase the compilation time in later phases

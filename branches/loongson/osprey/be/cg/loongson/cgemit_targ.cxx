@@ -237,7 +237,7 @@ extern INT
 CGEMIT_Relocs_In_Asm (TN *t, ST *st, vstring *buf, INT64 *val)
 {
 	INT paren = 1;	// num parens
-	char temp[200];
+	char temp[1000];
 
 	// only add in GP_DISP if based on gprel section
 	// not if based on ipa-generated extern.

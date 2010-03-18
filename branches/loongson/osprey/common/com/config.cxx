@@ -933,7 +933,7 @@ BOOL Enable_SWP = FALSE;		/* but see cgdriver.c */
 BOOL Enable_SWP_overridden = FALSE;
 
 /***** What is the byte	sex of the host	and target? *****/
-#if defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
 UINT8 Host_Byte_Sex = LITTLE_ENDIAN;	/* Set in config_host.c	*/
 UINT8 Target_Byte_Sex =	LITTLE_ENDIAN;	/* Set in config_targ.c	*/
 #else

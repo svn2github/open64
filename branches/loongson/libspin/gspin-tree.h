@@ -577,7 +577,7 @@ static inline gs_long_double_t gs_ld (gs_t node)
   realign.data[0] = node->u1.data[0];
   realign.data[1] = node->u1.data[1];
   realign.data[2] = node->u1.data[2];
-#ifdef ARCH_MIPS
+#if defined(ARCH_MIPS) || defined(TARG_LOONGSON)
   realign.data[3] = node->u1.data[3];
 #endif
   return realign.ld;

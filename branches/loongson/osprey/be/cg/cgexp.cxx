@@ -367,14 +367,13 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 #ifdef TARG_NVISA
 		// have to change register size, so not an in-place truncation
 		Expand_Convert (result, rtype, op1, desc, ops);
+#elif TARG_LOONGSON
+		Expand_Convert_Length (result, op1, op2, desc,
+			MTYPE_is_signed(rtype) || (MTYPE_bit_size(desc) > MTYPE_bit_size(rtype)),
+			ops);
 #else
-		Expand_Convert_Length ( result, op1, op2, 
-#ifdef TARG_LOONGSON
-			desc,
-#else
-			rtype,
-#endif
-			(MTYPE_is_signed(desc)
+		Expand_Convert_Length (result, op1, op2, rtype,
+			(MTYPE_is_singed(desc)
 #ifdef TARG_IA64
 			 && (MTYPE_bit_size(desc) < MTYPE_bit_size(rtype) ) ),
 			ops); // OSP_171

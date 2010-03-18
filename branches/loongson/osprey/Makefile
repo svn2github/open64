@@ -36,8 +36,9 @@ export OPEN64_INCLUDE_DIR := $(OPEN64_INSTALL_PREFIX)/lib/gcc-lib/$(OPEN64_TARGE
 top_dir := .
 compiler_dir := $(top_dir)/targia32_loongson
 cygnus_dir := $(top_dir)/targcygnus_ia32_loongson
+fe_4_2_0_dir := ../osprey-gcc-4.2.0/targia32_loongson
 
-all: compiler messages ipa_link
+all: compiler messages ipa_link fe_4_2_0
 
 compiler:
 	$(MAKE) -C $(compiler_dir)
@@ -51,10 +52,19 @@ ipa_link:
 	cd $(cygnus_dir) && ./CONFIGURE
 	$(MAKE) -C $(cygnus_dir)
 
+fe_4_2_0:
+	cd $(fe_4_2_0_dir) && ./CONFIGURE
+	$(MAKE) -C $(fe_4_2_0_dir)
 
 clean: compiler-clean ipa_link-clean
 	find $(compiler_dir) $(cygnus_dir)  \
 	  -name Makedepend -print0 | xargs -r0 rm -f
+
+	cd ../osprey-gcc-4.2.0/gcc; rm -f gspin-alloc.h  gspin-assert.h  gspin-base-types.h   gspin-io.h  gspin-list.h  gspin-mempool.h  gspin-tel.h  gspin-tree.h
+
+	cd $(fe_4_2_0_dir); ./CLOBBER
+
+	cd $(cygnus_dir); ./CLOBBER
 
 compiler-clean:
 	$(MAKE) clean -C $(compiler_dir) 

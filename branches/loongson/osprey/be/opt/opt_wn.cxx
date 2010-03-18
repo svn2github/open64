@@ -1423,6 +1423,18 @@ Create_identity_assignment(AUX_STAB_ENTRY *sym, AUX_ID aux_id, TY_IDX ty)
       stidop = OPCODE_make_op(OPR_STID, MTYPE_V,
                               Mtype_TransferSign(MTYPE_U4,OPCODE_desc(ldidop)));
     }
+#elif defined(TARG_LOONGSON)
+    INT32 mclass = sym->Mclass();
+    MTYPE mtype = sym->Mtype();
+    if (mtype == Pointer_type
+       && (mtype == MTYPE_U4   || mtype ==  MTYPE_U8)) {
+        // Here, we need to recover the unsigned type-class since it has been stripped out
+        // before. If the mtype is Pointer_type, it will impact the result of alias analysis. So
+        // we need to do so.
+        mclass = mclass | MTYPE_CLASS_UNSIGNED;
+    }
+    ldidop = Ldid_from_mtype_class_and_size(mclass, sym->Byte_size());
+    stidop = Stid_from_mtype_class_and_size(mclass, sym->Byte_size());
 #else
      ldidop = Ldid_from_mtype_class_and_size(sym->Mclass(), sym->Byte_size());
      stidop = Stid_from_mtype_class_and_size(sym->Mclass(), sym->Byte_size());

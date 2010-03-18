@@ -3293,7 +3293,7 @@ Is_CVT_Noop(WN *cvt, WN *parent)
 
       if ( ! Split_64_Bit_Int_Ops && ! Only_Unsigned_64_Bit_Ops)
       {
-#ifdef TARG_X8664
+#if defined (TARG_X8664) || defined (TARG_LOONGSON)
 	return FALSE;
 #else
 	return TRUE;
