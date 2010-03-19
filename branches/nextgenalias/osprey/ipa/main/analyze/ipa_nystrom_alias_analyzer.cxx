@@ -1,6 +1,9 @@
 #include <elf.h>
 #include <stack>
 
+#include "defs.h"
+#include "config_ipa.h"
+#include "constraint_graph_escanal.h"
 #include "constraint_graph_solve.h"
 #include "defs.h"
 #include "ipl_summary.h"
@@ -547,6 +550,19 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
   return stInfo;
 }
 
+void
+EscapeAnalysis::ipaInit(void)
+{
+  // Walk each of the PU constraint graphs
+  IPACGMap *map = static_cast<IPACGMap *>(_ipaCGMap);
+  for (IPACGMapIterator iter = map->begin();
+       iter != map->end(); ++iter) {
+    init(iter->second);
+  }
+  // Don't forget about the global constraint graph
+  init(ConstraintGraph::globalCG());
+}
+
 /*
  * Assemble the list of call edges in the IPA call graph, the list of all
  * possible indirect call targets, and all virtual call sites.
@@ -825,9 +841,13 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   // references
   ConstraintGraphSolve::postProcessPointsTo();
 
-  // Don't forget escape analysis.
-  // EscapeAnalysis escAnal();
-  // escAnal.perform();
+  // We perform escape analysis to determine which symbols may point
+  // to memory that is not visible within our scope.
+  EscapeAnalysis escAnal(&_ipaConstraintGraphs,
+                         IPA_Enable_Whole_Program_Mode,
+                         &_memPool);
+  escAnal.perform();
+  escAnal.markEscaped();
 
   if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
      fprintf(stderr,"IPA Nystrom: Solver Complete\n");

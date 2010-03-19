@@ -569,6 +569,30 @@ public:
     return es ? *es : emptyCGEdgeSet;
   }
 
+  bool root(void) const
+  {
+    bool isRoot = true;
+    CGEdgeSet *es = _findCGEdgeSet(ETYPE_COPYSKEW,_inEdges);
+    if (es && !es->empty())
+      isRoot = false;
+    es = _findCGEdgeSet(ETYPE_LOADSTORE,_inEdges);
+    if (es && !es->empty())
+      isRoot = false;
+    return isRoot;
+  }
+
+  bool leaf(void) const
+  {
+    bool isLeaf = true;
+    CGEdgeSet *es = _findCGEdgeSet(ETYPE_COPYSKEW,_outEdges);
+    if (es && !es->empty())
+      isLeaf = false;
+    es = _findCGEdgeSet(ETYPE_LOADSTORE,_outEdges);
+    if (es && !es->empty())
+      isLeaf = false;
+    return isLeaf;
+  }
+
   ConstraintGraphNode *parent() { return findRep(); }
 
   ConstraintGraph *cg() const { return _parentCG; }
@@ -712,7 +736,7 @@ public:
   INT64 varSize() const { return _varSize; }
   void varSize(INT64 size) { _varSize = size; }
   UINT32 modulus() const { return _modulus; }
-  void modulus(UINT32 mod) { _modulus = mod; }
+  void modulus(UINT32 mod);
 
   // The maximum number of offsets off this ST that we will allow
   // before going field insensitive.  We will be able to configure
@@ -814,6 +838,7 @@ public:
 
   // To build ConstraintGraphs at IPL/BE
   ConstraintGraph(WN *entryWN, MEM_POOL *mPool, UINT32 minSize = 1024):
+    _buildComplete(false),
     _nextCallSiteId(1),
     _varArgs(NULL),
     _cgNodeToIdMap(minSize),
@@ -842,6 +867,16 @@ public:
     Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY, 
             ("Expecting FUNC_ENTRY when building ConstraintGraph"));
     buildCG(entryWN);
+
+    _buildComplete = true;
+    // Here we are going to re-apply the final modulus, post
+    // build to perform any necessary aliasing of nodes having
+    // offsets larger than the new modulus.
+    for (CGStInfoMap::iterator iter = _cgStInfoMap.begin();
+         iter != _cgStInfoMap.end(); ++iter)  {
+      StInfo *stInfo = iter->second;
+      stInfo->modulus(stInfo->modulus());
+    }
   }
 
   // To build ConstraintGraphs during IPA
@@ -886,6 +921,8 @@ public:
   }
 
   UINT32 totalCGNodes() const { return nextCGNodeId; }
+
+  bool buildComplete(void) const { return _buildComplete; }
 
   StInfo *stInfo(CG_ST_IDX cg_st_idx) const 
   { 
@@ -944,6 +981,8 @@ public:
   void remapDeletedNode(WN *wn);
 
   void deleteOptimizedNodes();
+
+  void vcg(const char *prefix);
 
 private:
 
@@ -1006,6 +1045,7 @@ private:
   ConstraintGraphNode *findUniqueNode(CGNodeId id);
 
   // Data Members
+  bool _buildComplete;
 
   // Generate unique CallSiteId per procedure
   CallSiteId _nextCallSiteId;

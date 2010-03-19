@@ -91,41 +91,42 @@ EscapeAnalysis::addStToWorkList(ConstraintGraphNode *node)
   }
 }
 
-PointsTo *
-EscapeAnalysis::reversePointsTo(CGNodeId id)
+static inline void
+updateReversePointsTo(ConstraintGraphNode *node)
 {
-  hash_map<CGNodeId,PointsTo *>::iterator iter =
-      _revPtsTable.find(id);
-  return (iter != _revPtsTable.end()) ? iter->second : NULL;
+   // Only those nodes that have had an update to their points-to
+   // set since the last time we performed escape analysis
+   if (node->checkFlags(CG_NODE_FLAGS_PTSMOD)) {
+     node->clearFlags(CG_NODE_FLAGS_PTSMOD);
+     for (PointsToIterator pti(node->parent()); pti != 0; ++pti) {
+       PointsTo &pts = *pti;
+       for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
+         CGNodeId cgNodeId = *iter;
+         ConstraintGraphNode *revNode = ConstraintGraph::cgNode(cgNodeId);
+         revNode->addRevPointsTo(node,pti.qual());
+       }
+     }
+   }
+}
+
+void
+EscapeAnalysis::globalComputeReversePointsTo()
+{
+  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
+       iter != ConstraintGraph::gEnd(); ++iter)
+    updateReversePointsTo(iter->second);
 }
 
 void
 EscapeAnalysis::computeReversePointsTo()
 {
-  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
-      iter != ConstraintGraph::gEnd(); ++iter) {
-    ConstraintGraphNode *node = iter->second;
-    // Only those nodes that have had an update to their points-to
-    // set since the last time we performed escape analysis
-    if (node->checkFlags(CG_NODE_FLAGS_PTSMOD)) {
-      node->clearFlags(CG_NODE_FLAGS_PTSMOD);
-      for (PointsToIterator pti(node->parent()); pti != 0; ++pti) {
-        PointsTo &pts = *pti;
-        for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
-          CGNodeId cgNodeId = *iter;
-          ConstraintGraphNode *revNode = ConstraintGraph::cgNode(cgNodeId);
-          revNode->addRevPointsTo(node,pti.qual());
-        }
-      }
-    }
-  }
+  for (CGNodeToIdMapIterator iter = _graph->lBegin();
+      iter != _graph->lEnd(); ++iter)
+    updateReversePointsTo(iter->first);
 }
 
 EscapeAnalysis::~EscapeAnalysis()
 {
-  hash_map<CGNodeId,PointsTo *>::iterator iter = _revPtsTable.begin();
-  for (; iter != _revPtsTable.end(); ++iter)
-    CXX_DELETE(iter->second,_memPool);
 }
 
 bool
@@ -137,11 +138,11 @@ EscapeAnalysis::observed(ConstraintGraphNode *node)
 void
 EscapeAnalysis::newContEscapeNode(ConstraintGraphNode *node, UINT32 flags)
 {
-  if (node->cg() != _graph)
+  if (_graph && node->cg() != _graph)
     return;
 
   UINT32 stFlags = findStFlags(node);
-  if (_ipaMode &&
+  if (_summaryMode &&
       !(stFlags & CG_NODE_FLAGS_FORMAL_PARAM) &&
       !observed(node))
     return;
@@ -149,7 +150,7 @@ EscapeAnalysis::newContEscapeNode(ConstraintGraphNode *node, UINT32 flags)
   if (flags & CG_ST_FLAGS_LCONT_ESC) {
     /* Globals are never marked for local summarization */
     if (stFlags & CG_ST_FLAGS_LCONT_ESC ||
-        (_ipaMode &&
+        (_summaryMode &&
          (stFlags & (CG_ST_FLAGS_GLOBAL|CG_ST_FLAGS_NOCNTXT))))
       return;
 
@@ -164,14 +165,14 @@ EscapeAnalysis::newContEscapeNode(ConstraintGraphNode *node, UINT32 flags)
 void
 EscapeAnalysis::newPropEscapeNode(ConstraintGraphNode *node, UINT32 flags)
 {
-  if (node->cg() != _graph)
+  if (_graph && node->cg() != _graph)
     return;
 
   if (flags & CG_ST_FLAGS_LPROP_ESC) {
     UINT32 stFlags = findStFlags(node);
     /* Globals are never marked for local summarization */
      if (stFlags & CG_ST_FLAGS_LPROP_ESC ||
-         (_ipaMode &&
+         (_summaryMode &&
           (stFlags & (CG_ST_FLAGS_GLOBAL|CG_ST_FLAGS_NOCNTXT))))
        return;
 
@@ -197,14 +198,14 @@ EscapeAnalysis::newPropEscapeNode(ConstraintGraphNode *node, UINT32 flags)
 void
 EscapeAnalysis::newFullEscapeNode(ConstraintGraphNode *node, UINT32 flags)
 {
-  if (node->cg() != _graph)
+  if (_graph && node->cg() != _graph)
       return;
 
   if (flags & (CG_ST_FLAGS_LFULL_ESC|CG_ST_FLAGS_LPROP_ESC)) {
     UINT32 stFlags = findStFlags(node);
     /* Globals are never marked for local summarization */
     if (stFlags & CG_ST_FLAGS_LFULL_ESC ||
-        (_ipaMode &&
+        (_summaryMode &&
          (stFlags & (CG_ST_FLAGS_GLOBAL|CG_ST_FLAGS_NOCNTXT))))
       return;
 
@@ -230,9 +231,9 @@ EscapeAnalysis::newFullEscapeNode(ConstraintGraphNode *node, UINT32 flags)
                     CG_ST_FLAGS_LPROP_ESC);
     addStToWorkList(node);
 
-    FmtAssert(!_ipaMode ||
+    FmtAssert(!_summaryMode ||
               !node->cg()->stInfo(node->cg_st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL),(""));
-    FmtAssert(!_ipaMode ||
+    FmtAssert(!_summaryMode ||
               !node->cg()->stInfo(node->cg_st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT),(""));
 
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
@@ -254,7 +255,7 @@ EscapeAnalysis::newFullEscapeNode(ConstraintGraphNode *node, UINT32 flags)
   if (flags & CG_ST_FLAGS_RETPROP_ESC) {
     UINT32 stFlags = findStFlags(node);
     if (!(stFlags & CG_ST_FLAGS_NOLOCAL) ||
-        (_ipaMode &&
+        (_summaryMode &&
             (stFlags & (CG_ST_FLAGS_GLOBAL|CG_ST_FLAGS_NOCNTXT))))
       return;
 
@@ -266,9 +267,9 @@ EscapeAnalysis::newFullEscapeNode(ConstraintGraphNode *node, UINT32 flags)
                     CG_ST_FLAGS_LPROP_ESC);
     addStToWorkList(node);
 
-    FmtAssert(!_ipaMode ||
+    FmtAssert(!_summaryMode ||
               !node->cg()->stInfo(node->cg_st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL),(""));
-    FmtAssert(!_ipaMode ||
+    FmtAssert(!_summaryMode ||
               !node->cg()->stInfo(node->cg_st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT),(""));
 
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
@@ -285,10 +286,10 @@ EscapeAnalysis::newFullEscapeNode(ConstraintGraphNode *node, UINT32 flags)
 }
 
 void
-EscapeAnalysis::examineCallSites()
+EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
 {
-  CallSiteIterator iter = _graph->callSiteMap().begin();
-  for ( ; iter != _graph->callSiteMap().end(); ++iter) {
+  CallSiteIterator iter = graph->callSiteMap().begin();
+  for ( ; iter != graph->callSiteMap().end(); ++iter) {
     CallSite *callsite = iter->second;
     if (callsite->isDirect()) {
       if (!callsite->isIntrinsic()) {
@@ -314,8 +315,30 @@ EscapeAnalysis::examineCallSites()
   }
 }
 
+bool
+EscapeAnalysis::exposed(CG_ST_IDX idx)
+{
+  FmtAssert(!_wholeProgramMode,
+            ("Symbol only exposed when not in whole program mode!\n"));
+
+  // If we are not in ipa mode, consider all globals as exposed
+  if (!_ipaMode)
+    return true;
+
+  // Since we are not in whole program mode, these symbols must
+  // be considered as exposed during an -ipa compile
+  // of analysis scope
+  ST_IDX stIdx = SYM_ST_IDX(idx);
+  ST_EXPORT stExport = ST_export(&St_Table[stIdx]);
+  if (stExport == EXPORT_PREEMPTIBLE ||
+      stExport == EXPORT_PROTECTED)
+    return true;
+
+  return false;
+}
+
 void
-EscapeAnalysis::init(void)
+EscapeAnalysis::init(ConstraintGraph *graph)
 {
   /* formal(u) actual(u)  global(u)
    * --------  ---------  ---------
@@ -325,18 +348,32 @@ EscapeAnalysis::init(void)
    *   in a separate walk where we take into account the
    *   any known semantics of the callee.
    */
-   for (CGNodeToIdMapIterator iter = _graph->lBegin();
-       iter != _graph->lEnd(); ++iter) {
+   for (CGNodeToIdMapIterator iter = graph->lBegin();
+       iter != graph->lEnd(); ++iter) {
      ConstraintGraphNode *node = iter->first;
      if (node->checkFlags(CG_NODE_FLAGS_FORMAL_PARAM))
        newContEscapeNode(node,CG_ST_FLAGS_LCONT_ESC);
      if (node->checkFlags(CG_NODE_FLAGS_FORMAL_RETURN))
        newPropEscapeNode(node,CG_ST_FLAGS_RETPROP_ESC);
-     if (!_ipaMode &&
-         node->cg()->stInfo(node->cg_st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
+     // Global variables are only considered candidates for escape
+     // analysis iff:
+     // (1) We are not computing summary.  When computing summary,
+     //     globals are context insensitive (and should be in
+     //     another graph) and are irrelevant.
+     // (2) We are not in whole program mode.  If we are in whole
+     //     program mode, the only globals that are considered to
+     //     be escaped are "libc globals"
+     //     TODO:  Handle "libc globals" here
+     // (3) The global is visible outside the scope of the scope
+     //     of analysis, e.g. object file at -O2 or load module
+     //     under -ipa.  We ask is it "exposed"?
+     if (!_summaryMode &&
+         !_wholeProgramMode &&
+         node->stInfo()->checkFlags(CG_ST_FLAGS_GLOBAL) &&
+         exposed(node->cg_st_idx()))
        newFullEscapeNode(node,CG_ST_FLAGS_LFULL_ESC);
    }
-   examineCallSites();
+   examineCallSites(graph);
 }
 
 void
@@ -356,7 +393,7 @@ EscapeAnalysis::processContEscapeNode(ConstraintGraphNode *node)
   for (CGEdgeSetIterator outCopyIter = node->outCopySkewEdges().begin();
         outCopyIter != node->outCopySkewEdges().end(); ++outCopyIter) {
      ConstraintGraphEdge *edge = *outCopyIter;
-     if (_ipaMode)
+     if (_summaryMode)
        if (edge->edgeQual() == CQ_GBL || edge->edgeQual() == CQ_UP ||
            edge->edgeQual() == CQ_DN)
          continue;
@@ -374,7 +411,7 @@ EscapeAnalysis::processContEscapeNode(ConstraintGraphNode *node)
      ConstraintGraphEdge *edge = *outLdStIter;
      if (edge->edgeType() == ETYPE_STORE)
        continue;
-     if (_ipaMode)
+     if (_summaryMode)
        if (edge->edgeQual() == CQ_GBL || edge->edgeQual() == CQ_UP ||
            edge->edgeQual() == CQ_DN)
          continue;
@@ -391,7 +428,7 @@ EscapeAnalysis::processContEscapeNode(ConstraintGraphNode *node)
     ConstraintGraphEdge *edge = *inLdStIter;
     if (edge->edgeType() == ETYPE_LOAD)
       continue;
-    if (_ipaMode)
+    if (_summaryMode)
       if (edge->edgeQual() == CQ_GBL || edge->edgeQual() == CQ_UP ||
           edge->edgeQual() == CQ_DN)
         continue;
@@ -415,7 +452,7 @@ EscapeAnalysis::processPropEscapeNode(ConstraintGraphNode *node)
   for (CGEdgeSetIterator inCopyIter = node->inCopySkewEdges().begin();
        inCopyIter != node->inCopySkewEdges().end(); ++inCopyIter) {
     ConstraintGraphEdge *edge = *inCopyIter;
-    if (_ipaMode)
+    if (_summaryMode)
       if (edge->edgeQual() == CQ_GBL || edge->edgeQual() == CQ_UP ||
           edge->edgeQual() == CQ_DN)
       continue;
@@ -427,7 +464,7 @@ EscapeAnalysis::processPropEscapeNode(ConstraintGraphNode *node)
     *       FE(v)                         FE(v)
     */
   for (PointsToIterator pti(node); pti != 0; ++pti) {
-    if (!_ipaMode || pti.qual() == CQ_HZ) {
+    if (!_summaryMode || pti.qual() == CQ_HZ) {
       PointsTo &pts = *pti;
       for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter)
         newFullEscapeNode(ConstraintGraph::cgNode(*iter),nodeStFlags);
@@ -452,25 +489,49 @@ EscapeAnalysis::processFullEscapeNode(ConstraintGraphNode *node)
   // Here we are looking for the outgoing points-to relationship,
   // i.e. who points to the current node.
   for (PointsToIterator pti(node,true /*reverse */); pti != 0; ++pti) {
-     if (!_ipaMode || pti.qual() == CQ_HZ) {
+     if (!_summaryMode || pti.qual() == CQ_HZ) {
        PointsTo &pts = *pti;
        for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
          ConstraintGraphNode *revNode = ConstraintGraph::cgNode(*iter);
          newContEscapeNode(ConstraintGraph::cgNode(*iter),stFlags);
-         if (node->cg() == _graph &&
-             (!_ipaMode ||
-                 !(stFlags & (CG_ST_FLAGS_GLOBAL|CG_ST_FLAGS_NOCNTXT))))
-           addStFlags(node,CG_ST_FLAGS_LCONT_ESCLCL);
+         if (!_graph || node->cg() == _graph)
+           if (!_summaryMode ||
+               !(stFlags & (CG_ST_FLAGS_GLOBAL|CG_ST_FLAGS_NOCNTXT)))
+             addStFlags(node,CG_ST_FLAGS_LCONT_ESCLCL);
        }
      }
    }
 }
 
 void
+EscapeAnalysis::markEscaped(void)
+{
+  ConstraintGraphNode *bh = ConstraintGraph::blackHole();
+  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
+      iter != ConstraintGraph::gEnd(); iter++) {
+    ConstraintGraphNode *node = iter->second;
+    if (escapeStFlags(node) & CG_ST_FLAGS_ESCALL) {
+      // The "black hole" is meant to represent all memory that is possibly
+      // accessed by symbols that have references outside the scope of the
+      // current procedure.
+      node->addPointsTo(bh,CQ_GBL);
+    }
+  }
+}
+
+void
 EscapeAnalysis::perform(void)
 {
-  init();
-  computeReversePointsTo();
+  if (_ipaCGMap) {
+#ifndef BACK_END
+    ipaInit();
+#endif
+    globalComputeReversePointsTo();
+  }
+  else {
+    init(_graph);
+    computeReversePointsTo();
+  }
 
   UINT32 cnt = 0;
   while (!_workList.empty())  {

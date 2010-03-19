@@ -38,7 +38,7 @@ public:
   : _graph(graph),
     _memPool(mpool),
     _I(0),
-    _D(NULL),
+    _D(graph->totalCGNodes()),
     _S(CGNodeDeque(mpool)),
     _T(CGNodeDeque(mpool))
   {}
@@ -73,7 +73,7 @@ public:
   ConstraintGraph       *_graph;
   MEM_POOL              *_memPool;
   UINT32                 _I;
-  UINT32                *_D;
+  hash_map<CGNodeId,UINT32> _D;
   CGNodeStack            _S;
   CGNodeStack            _T;
 };
@@ -142,15 +142,12 @@ SCCDetection::find(void)
       if (node->repParent() == NULL || node->repParent() == node)
         visit(node);
       else {
-        node->addFlags(CG_NODE_FLAGS_VISITED);
-        const CGEdgeSet &outCopyEdges = node->outCopySkewEdges();
-        CGEdgeSetIterator outCopyIter = outCopyEdges.begin();
-        FmtAssert(outCopyIter == outCopyEdges.end(),
+        FmtAssert(node->checkFlags(CG_NODE_FLAGS_MERGED),
+                  ("Node with parent has not been merged!"));
+        FmtAssert(node->outCopySkewEdges().empty(),
             ("Found copy edge: expect node with representative "
                 "to be a leaf node.\n"));
-        const CGEdgeSet &outLdEdges = node->outLoadStoreEdges();
-        CGEdgeSetIterator outLdIter = outLdEdges.begin();
-        FmtAssert(outLdIter == outLdEdges.end(),
+        FmtAssert(node->outLoadStoreEdges().empty(),
             ("Found copy edge: expect node with representative "
                 "to be a leaf node.\n"));
       }
@@ -165,10 +162,11 @@ SCCDetection::unify(UINT32 noMergeMask, NodeToKValMap &nodeToKValMap)
   for (CGNodeToIdMapIterator iter = _graph->lBegin();
       iter != _graph->lEnd(); iter++) {
     ConstraintGraphNode *node = iter->first;
-    FmtAssert(node->checkFlags(CG_NODE_FLAGS_VISITED),
+    FmtAssert(node->checkFlags(CG_NODE_FLAGS_VISITED) ||
+              node->checkFlags(CG_NODE_FLAGS_MERGED),
         ("Node %d unvisited during SCC detection\n",node->id()));
-    node->clearFlags(CG_NODE_FLAGS_VISITED|CG_NODE_FLAGS_SCCMEMBER);
-    if (node->repParent() && node->repParent() != node) {
+    if (node->repParent() && node->repParent() != node &&
+        !node->checkFlags(CG_NODE_FLAGS_MERGED)) {
       // If this is a node that we do not want to merge, yes cycle
       // detection may leave cycles in the graph, then we skip it.
       // However, we must reset the representative.
@@ -200,6 +198,7 @@ SCCDetection::unify(UINT32 noMergeMask, NodeToKValMap &nodeToKValMap)
         }
       }
     }
+    node->clearFlags(CG_NODE_FLAGS_VISITED|CG_NODE_FLAGS_SCCMEMBER);
   }
 }
 
@@ -228,7 +227,7 @@ SCCDetection::findAndUnify(UINT32 noMergeMask)
 {
   // Reset state
   _I = 0;
-  _D = CXX_NEW_ARRAY(UINT32,_graph->totalCGNodes(),_memPool);
+  _D.clear();
   while (!_S.empty()) _S.pop();
   while (!_T.empty()) _T.pop();
 
@@ -239,8 +238,6 @@ SCCDetection::findAndUnify(UINT32 noMergeMask)
   find();
   unify(noMergeMask,nodeToKValMap);
   pointsToAdjust(nodeToKValMap);
-
-  CXX_DELETE_ARRAY(_D,_memPool);
 }
 
 void
@@ -400,19 +397,9 @@ ConstraintGraph::nonIPASolver(bool doEscAnal)
   // comparison of their points-to sets with symbols for which
   // we have "complete" information.
   if (doEscAnal) {
-    EscapeAnalysis escAnal(this,false,_memPool);
+    EscapeAnalysis escAnal(this,false/*not summary*/,_memPool);
     escAnal.perform();
-
-    for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
-        iter != ConstraintGraph::gEnd(); iter++) {
-      ConstraintGraphNode *node = iter->second;
-      if (escAnal.escapeStFlags(node) & CG_ST_FLAGS_ESCALL) {
-        // The "black hole" is meant to represent all memory that is possibly
-        // accessed by symbols that have references outside the scope of the
-        // current procedure.
-        node->addPointsTo(blackHole(),CQ_GBL);
-      }
-    }
+    escAnal.markEscaped();
   }
   return true;
 }
@@ -438,13 +425,44 @@ ConstraintGraphSolve::postProcessPointsTo()
           }
         }
         else {
+          // Handle changes in the size of the modulus that may have
+          // made the current offset "out of bounds"
+          UINT32 modulus = node->stInfo()->modulus();
+          if (node->offset() >= modulus) {
+            FmtAssert(node->repParent(),("Node beyond modulus must have parent\n"));
+            node = node->repParent();
+            adjustSet.setBit(node->id());
+            // If we have overrun our offset limit, then the parent may
+            // actually be <ST,-1> rather than <ST,offset%modulus>.
+            // In that case we are done.
+            if (node->offset() == -1)
+              continue;
+          }
+          else
+            adjustSet.setBit(node->id());
+
+          // Now we walk from offset to offset+accessSize and deal
+          // with any wraparound that may occur at 'modulus'
           UINT32 endOffset = node->offset() + node->maxAccessSize();
+          UINT32 endOffset2;
+          bool wrapAround = (endOffset > modulus);
+          if (wrapAround) {
+            endOffset = modulus;
+            endOffset2 = endOffset % modulus;
+          }
           ConstraintGraphNode *cur = node->nextOffset();
           while (cur && cur->offset() < endOffset) {
             adjustSet.setBit(cur->id());
             cur = cur->nextOffset();
           }
-          adjustSet.setBit(node->id());
+          if (wrapAround){
+            ConstraintGraphNode *cur = node->stInfo()->firstOffset();
+            if (cur->offset() == -1) cur = cur->nextOffset();
+            while (cur && cur->offset() < endOffset2) {
+              adjustSet.setBit(cur->id());
+              cur = cur->nextOffset();
+            }
+          }
         }
       }
       curSet.clear();

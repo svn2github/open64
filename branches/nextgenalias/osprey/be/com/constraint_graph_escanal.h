@@ -13,18 +13,34 @@
 class EscapeAnalysis {
 
 public:
-  EscapeAnalysis(ConstraintGraph *graph, bool ipaMode, MEM_POOL *memPool)
-  : _ipaMode(ipaMode),
+  EscapeAnalysis(ConstraintGraph *graph, bool summary, MEM_POOL *memPool)
+  : _summaryMode(summary),
+    _ipaMode(false),
+    _wholeProgramMode(false),
     _observedCnt(0),
     _localEscapeCnt(0),
     _globalEscapeCnt(0),
     _graph(graph),
+    _ipaCGMap(NULL),
     _memPool(memPool)
+  {}
+
+  EscapeAnalysis(void *map, bool wholeProgram,MEM_POOL *memPool)
+   : _summaryMode(false),
+     _ipaMode(true),
+     _wholeProgramMode(wholeProgram),
+     _observedCnt(0),
+     _localEscapeCnt(0),
+     _globalEscapeCnt(0),
+     _graph(NULL),
+     _ipaCGMap(map),
+     _memPool(memPool)
   {}
 
   ~EscapeAnalysis();
 
   void perform(void);
+  void markEscaped(void);
 
   UINT32 escapeStFlags(ConstraintGraphNode *node) const;
 
@@ -44,7 +60,8 @@ private:
   } equalStTableData;
   typedef hash_map<StTableKey,UINT32,hashStTableData,equalStTableData> StTable;
 
-  void init(void);
+  void init(ConstraintGraph *graph);
+  void ipaInit(void);
   bool observed(ConstraintGraphNode *node);
   void newContEscapeNode(ConstraintGraphNode *node, UINT32 flags);
   void newPropEscapeNode(ConstraintGraphNode *node, UINT32 flags);
@@ -53,7 +70,7 @@ private:
   void processPropEscapeNode(ConstraintGraphNode *node);
   void processFullEscapeNode(ConstraintGraphNode *node);
 
-  void examineCallSites();
+  void examineCallSites(ConstraintGraph *graph);
 
   void printStFlags(UINT32 flags) const;
   UINT32 stOffset(const ConstraintGraphNode *node) const;
@@ -61,19 +78,21 @@ private:
   void   addStFlags(ConstraintGraphNode *node, UINT32 flags);
   void   addStToWorkList(ConstraintGraphNode *node);
 
-  typedef hash_map<CGNodeId,PointsTo *> PointsToTable;
+  void      computeReversePointsTo(void);
+  void      globalComputeReversePointsTo(void);
 
-  void      computeReversePointsTo();
-  PointsTo *reversePointsTo(CGNodeId node);
+  bool      exposed(CG_ST_IDX idx);
 
+  bool             _summaryMode;
   bool             _ipaMode;
+  bool             _wholeProgramMode;
   UINT32           _observedCnt;
   UINT32           _localEscapeCnt;
   UINT32           _globalEscapeCnt;
   ConstraintGraph *_graph;
   NodeWorkList     _workList;
   StTable          _stTable;
-  PointsToTable    _revPtsTable;
+  void            *_ipaCGMap;
   MEM_POOL        *_memPool;
 };
 

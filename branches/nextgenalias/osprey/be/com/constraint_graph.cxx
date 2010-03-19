@@ -146,6 +146,37 @@ StInfo::StInfo(ST_IDX st_idx)
 }
 
 void
+StInfo::modulus(UINT32 mod)
+{
+  _modulus = mod;
+  if(_firstOffset && _firstOffset->cg()->buildComplete()) {
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+      fprintf(stderr,"Setting modulus of %s to %d\n",
+              ST_name(&St_Table[SYM_ST_IDX(_firstOffset->cg_st_idx())]),mod);
+    // We must apply the new modulus to all existing offsets
+    ConstraintGraphNode *cur = _firstOffset;
+    if (cur && cur->offset() == -1) cur = cur->nextOffset();
+    while (cur && cur->offset() < mod)
+      cur = cur->nextOffset();
+
+    while (cur) {
+      UINT32 newOffset = cur->offset() % mod;
+      ConstraintGraphNode *modNode =
+          cur->cg()->getCGNode(cur->cg_st_idx(),newOffset);
+
+      // Now we merge the two nodes together.  NOTE: the original
+      // node remains and uses the modulus offset node as its
+      // parent, for nodes that may have the original in their
+      // points-to sets.
+      modNode->merge(cur);
+      cur->repParent(modNode);
+
+      cur = cur->nextOffset();
+    }
+  }
+}
+
+void
 ConstraintGraph::adjustPointsToForKCycle(UINT32 kCycle,
                                          const PointsTo &src,
                                          PointsTo &dst)
@@ -1084,6 +1115,8 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   }
 
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
+    if (offset < -1)
+      offset = -offset;
     offset = offset % si->modulus();
     if (si->varSize() != 0)
       Is_True(offset < si->varSize(), ("getCGNode: offset: %lld >= varSize"
@@ -1726,10 +1759,10 @@ CallSite::print(FILE *file)
   fprintf(file, "\n");
 }
    
-static void
-dumpVCG(const char *fileNamePrefix)
+void
+ConstraintGraph::vcg(const char *prefix)
 {
-  ConstraintGraphVCG::dumpVCG(fileNamePrefix);
+  ConstraintGraphVCG::dumpVCG(prefix);
 }
 
 void
