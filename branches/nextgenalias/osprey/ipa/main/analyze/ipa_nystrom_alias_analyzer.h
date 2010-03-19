@@ -40,7 +40,7 @@ class IPA_NystromAliasAnalyzer {
 public:
   static IPA_NystromAliasAnalyzer *create() 
   {
-    if (1/*Alias_Nystrom_Analyzer -OPT processing is not done in ipa_link?*/)
+    if (Alias_Nystrom_Analyzer)
       if (_ipa_naa == NULL)
         _ipa_naa = new IPA_NystromAliasAnalyzer();
     return _ipa_naa;

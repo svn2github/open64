@@ -1595,8 +1595,11 @@ Build_Call_Graph ()
     For_all_entries (IP_File_header, add_nodes ());
 
 #if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
-    fprintf(stderr, "Printing ConstraintGraphs...\n");
-    IPA_NystromAliasAnalyzer::aliasAnalyzer()->print(stderr);
+    if (Alias_Nystrom_Analyzer)
+    {
+      fprintf(stderr, "Printing ConstraintGraphs...\n");
+      IPA_NystromAliasAnalyzer::aliasAnalyzer()->print(stderr);
+    }
 #endif
 
     For_all_entries (IP_File_header, add_edges ());

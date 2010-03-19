@@ -1241,7 +1241,7 @@ Configure (void)
   /* Configure the alias options first so the list is processed and
    * we can tell for -OPT:Ofast below what overrides have occurred:
    */
-  Configure_Alias_Options ( Alias_Option );
+  Configure_Alias_Options ();
 
   /* Check the -TARG:platform option (subordinate to Ofast): */
   if ( Platform_Name != NULL && *Platform_Name != 0 ) {
@@ -1720,10 +1720,12 @@ Configure_Source ( char	*filename )
  */
 
 void
-Configure_Alias_Options( OPTION_LIST *olist )
+Configure_Alias_Options()
 {
+  if (!Alias_Option) return;
+
   OPTION_LIST *ol;
-  for (ol = olist; ol != NULL; ol = OLIST_next(ol)) {
+  for (ol = Alias_Option; ol != NULL; ol = OLIST_next(ol)) {
     char *val = OLIST_val(ol);
     INT len = strlen (val);
     if (strncasecmp( val, "any", len) == 0) {
