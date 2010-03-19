@@ -1017,6 +1017,8 @@ ConstraintGraph::simpleOptimizer()
         toBeMergedNode->canBeDeleted())
       _toBeDeletedNodes.insert(toBeMergedNode->id());
   }
+
+  hash_set<CGNodeId> areParents;
   // Adjust parents, so that nodes who have deleted nodes as their parents
   // point to the parent of the deleted nodes, which should not be marked 
   // deleted
@@ -1028,6 +1030,34 @@ ConstraintGraph::simpleOptimizer()
               _toBeDeletedNodes.end(), 
               ("Parent %d of node: %d marked deleted!\n", n->parent()->id(),
                                                           n->id()));
+    // Record all nodes that are parents of another non-deleted node
+    if (n->parent() != n && 
+        _toBeDeletedNodes.find(n->id()) == _toBeDeletedNodes.end())
+      areParents.insert(n->parent()->id());
+  }
+
+  // Iterate until there are no more deleted nodes
+  bool change = true;
+  while (change) {
+    change = false;
+    for (CGNodeToIdMapIterator iter = ConstraintGraph::lBegin();
+         iter != ConstraintGraph::lEnd(); iter++) {
+      ConstraintGraphNode *destNode = iter->first->parent();
+      // If the destNode is a parent of someone, ignore
+      if (areParents.find(destNode->id()) != areParents.end())
+        continue;
+      // If destNode is marked deleted ignore
+      if (_toBeDeletedNodes.find(destNode->id()) != _toBeDeletedNodes.end())
+        continue;
+      // If node is not a preg that can be deleted, ignore
+      if (!(destNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG) &&
+            destNode->canBeDeleted()))
+        continue;
+      // Ignore if there are any outgoing edges
+      if (!destNode->outLoadStoreEdges().empty() ||
+          !destNode->outCopySkewEdges().empty())
+        continue;
+    }
   }
 
   fprintf(stderr, "Done optimizing ConstraintGraphs\n");

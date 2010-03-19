@@ -991,7 +991,7 @@ private:
 
   ConstraintGraphNode *processParam(WN *wn);
 
-  ConstraintGraphNode *processLHSofStore(WN *stmt);
+  ConstraintGraphNode *processLHSofStore(WN *stmt, INT32 &size);
 
   ConstraintGraphNode *processExpr(WN *expr);
 
