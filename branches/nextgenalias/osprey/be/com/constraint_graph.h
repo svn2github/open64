@@ -457,70 +457,15 @@ public:
 
   // Try adding edge to the in edge set. If the edge already exists
   // return the existing edge, else insert the new edge and return it
-  ConstraintGraphEdge *addInEdge(ConstraintGraphEdge *edge) 
-  {
-    // If node is merged only allow adding special PARENT_COPY edges
-    if (checkFlags(CG_NODE_FLAGS_MERGED))
-      FmtAssert(edge->checkFlags(CG_EDGE_PARENT_COPY),
-                ("Only parent copy inEdges allowed"));
-    CGEdgeSet &inEdgeSet = _getCGEdgeSet(edge->edgeType(),&_inEdges);
-    pair<CGEdgeSet::iterator, bool> p;
-    p = inEdgeSet.insert(edge);
-    return *(p.first);
-  }
+  ConstraintGraphEdge *addInEdge(ConstraintGraphEdge *edge);
 
-  void removeInEdge(ConstraintGraphEdge *edge)
-  {
-    CGEdgeSet &inEdgeSet = _getCGEdgeSet(edge->edgeType(),&_inEdges);
-    CGEdgeSetIterator iter = inEdgeSet.find(edge);
-    if (iter != inEdgeSet.end())
-      inEdgeSet.erase(iter);
-  }
+  void removeInEdge(ConstraintGraphEdge *edge);
 
   // Try adding edge to the out edge set. If the edge already exists
   // return the existing edge, else insert the new edge and return it
-  ConstraintGraphEdge *addOutEdge(ConstraintGraphEdge *edge) 
-  {
-    // If there is a representative parent, out edges should not be added
-    FmtAssert(!checkFlags(CG_NODE_FLAGS_MERGED),
-              ("OutEdges not allowed for nodes with representatives"));
-    CGEdgeSet &outEdgeSet = _getCGEdgeSet(edge->edgeType(),&_outEdges);
-    pair<CGEdgeSet::iterator, bool> p;
-    p = outEdgeSet.insert(edge);
-    ConstraintGraphEdge *newEdge = *(p.first);
-    if (newEdge == edge &&
-        edge->edgeType() != ETYPE_SKEW &&
-        edge->size() > _maxAccessSize)
-      _maxAccessSize = edge->size();
-    return newEdge;
-  }
+  ConstraintGraphEdge *addOutEdge(ConstraintGraphEdge *edge);
 
-  void removeOutEdge(ConstraintGraphEdge *edge)
-  {
-    CGEdgeSet &outEdgeSet = _getCGEdgeSet(edge->edgeType(),&_outEdges);
-    CGEdgeSetIterator iter = outEdgeSet.find(edge);
-    if (iter != outEdgeSet.end())
-      outEdgeSet.erase(iter);
-
-    if (edge->edgeType() != ETYPE_SKEW && edge->size() == _maxAccessSize) {
-      UINT8 newMax = 0;
-      const CGEdgeSet &outCopySkew = outCopySkewEdges();
-      for (CGEdgeSetIterator outIter1 = outCopySkew.begin();
-          outIter1 != outCopySkew.end(); ++outIter1) {
-        ConstraintGraphEdge *e = *outIter1;
-        if (e->edgeType() != ETYPE_SKEW && e->size() > newMax)
-          newMax = e->size();
-      }
-      const CGEdgeSet &outLoadStore = outLoadStoreEdges();
-      for (CGEdgeSetIterator outIter2 = outLoadStore.begin();
-          outIter2 != outLoadStore.end(); ++outIter2) {
-        ConstraintGraphEdge *e = *outIter2;
-        if (e->size() > newMax )
-          newMax = e->size();
-      }
-      _maxAccessSize = newMax;
-    }
-  }
+  void removeOutEdge(ConstraintGraphEdge *edge);
 
   // Checks if 'edge' is in the 'in' copy-skew/load-store edge set
   // Returns the existing edge if yes, else NULL
@@ -568,6 +513,9 @@ public:
     CGEdgeSet *es = _findCGEdgeSet(ETYPE_LOADSTORE,_outEdges);
     return es ? *es : emptyCGEdgeSet;
   }
+
+  CGEdgeList *inEdges(void)  { return _inEdges; }
+  CGEdgeList *outEdges(void) { return _outEdges; }
 
   bool root(void) const
   {
@@ -674,6 +622,10 @@ private:
 
   PointsTo &_getPointsTo(CGEdgeQual qual, PointsToList **ptl);
 
+  // Sets the _maxAccessSize based on the maximum size of all
+  // incoming and outgoing (non-SKEW) edges
+  void updateMaxAccessSize(void);
+
   CG_ST_IDX _cg_st_idx;
   INT32  _offset;
   UINT16 _flags;
@@ -713,6 +665,21 @@ public:
 private:
   PointsToList *_cur;
 };
+
+/* Iterator to abstract access to edge sets */
+class CGEdgeListIterator {
+public:
+  CGEdgeListIterator(ConstraintGraphNode *n, bool in = false)
+  : _cur(in ? n->inEdges() : n->outEdges()) {}
+
+  bool operator != (int val) { return _cur != NULL; }
+  void operator ++(void) { _cur = _cur->next(); }
+  CGEdgeSet &operator *(void) { return *_cur->cgEdgeSet(); }
+  CGEdgeType type(void) { return _cur->type(); }
+private:
+  CGEdgeList *_cur;
+};
+
 
 // Class to represent symbol specific info that is common to all
 // CGNodes with the same symbol but different offsets
@@ -847,16 +814,16 @@ public:
     _memPool(mPool)
   {
     if (notAPointerCGNode == NULL) {
-      ST *notAPtrSt = 
+      ST *notAPtrSt =
           Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgNotAPtr",
                                 CLASS_VAR, SCLASS_AUTO);
       notAPointerCGNode = getCGNode(CG_ST_st_idx(notAPtrSt), 0);
       notAPointerCGNode->addFlags(CG_NODE_FLAGS_NOT_POINTER);
     }
     if (blackHoleCGNode == NULL) {
-      ST *bhST = 
-         Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgBlackHole",
-                               CLASS_VAR, SCLASS_AUTO);
+      ST *bhST =
+          Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgBlackHole",
+                                CLASS_VAR, SCLASS_AUTO);
       blackHoleCGNode = getCGNode(CG_ST_st_idx(bhST),0);
     }
     if (maxTypeSize == 0)
@@ -864,7 +831,7 @@ public:
 
     edgeMemPool = mPool;
 
-    Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY, 
+    Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY,
             ("Expecting FUNC_ENTRY when building ConstraintGraph"));
     buildCG(entryWN);
 
@@ -873,11 +840,12 @@ public:
     // build to perform any necessary aliasing of nodes having
     // offsets larger than the new modulus.
     for (CGStInfoMap::iterator iter = _cgStInfoMap.begin();
-         iter != _cgStInfoMap.end(); ++iter)  {
+        iter != _cgStInfoMap.end(); ++iter)  {
       StInfo *stInfo = iter->second;
       stInfo->modulus(stInfo->modulus());
     }
-  }
+}
+
 
   // To build ConstraintGraphs during IPA
   ConstraintGraph(MEM_POOL *mPool, IPA_NODE *ipaNode = NULL, 
@@ -890,14 +858,14 @@ public:
   {
     if (notAPointerCGNode == NULL) {
       ST *notAPtrSt = New_ST(GLOBAL_SYMTAB);
-      ST_Init(notAPtrSt, Save_Str("_globalCGNotAPTR"), CLASS_VAR, 
+      ST_Init(notAPtrSt, Save_Str("_globalCGNotAPTR"), CLASS_VAR,
               SCLASS_UGLOBAL, EXPORT_INTERNAL, MTYPE_To_TY(Pointer_type));
       notAPointerCGNode = getCGNode(CG_ST_st_idx(notAPtrSt), 0);
       notAPointerCGNode->addFlags(CG_NODE_FLAGS_NOT_POINTER);
     }
     if (blackHoleCGNode == NULL) {
       ST *bhST = New_ST(GLOBAL_SYMTAB);
-      ST_Init(bhST, Save_Str("_globalCGBlackHole"), CLASS_VAR, SCLASS_UGLOBAL, 
+      ST_Init(bhST, Save_Str("_globalCGBlackHole"), CLASS_VAR, SCLASS_UGLOBAL,
               EXPORT_INTERNAL, MTYPE_To_TY(Pointer_type));
       blackHoleCGNode = getCGNode(CG_ST_st_idx(bhST), 0);
     }

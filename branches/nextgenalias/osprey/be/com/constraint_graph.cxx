@@ -85,7 +85,102 @@ ConstraintGraphNode::canBeDeleted()
   }
   return true;
 }
+
+// Try adding edge to the in edge set. If the edge already exists
+// return the existing edge, else insert the new edge and return it
+ConstraintGraphEdge *
+ConstraintGraphNode::addInEdge(ConstraintGraphEdge *edge)
+{
+  // If node is merged only allow adding special PARENT_COPY edges
+  if (checkFlags(CG_NODE_FLAGS_MERGED))
+    FmtAssert(edge->checkFlags(CG_EDGE_PARENT_COPY),
+              ("Only parent copy inEdges allowed"));
+  CGEdgeSet &inEdgeSet = _getCGEdgeSet(edge->edgeType(),&_inEdges);
+  pair<CGEdgeSet::iterator, bool> p;
+  p = inEdgeSet.insert(edge);
+  ConstraintGraphEdge *newEdge = *(p.first);
+  if (newEdge == edge &&
+      edge->edgeType() != ETYPE_SKEW &&
+      edge->size() > _maxAccessSize)
+    _maxAccessSize = edge->size();
+  return newEdge;
+}
+
+// Try adding edge to the out edge set. If the edge already exists
+// return the existing edge, else insert the new edge and return it
+ConstraintGraphEdge *
+ConstraintGraphNode::addOutEdge(ConstraintGraphEdge *edge)
+{
+  // If there is a representative parent, out edges should not be added
+  FmtAssert(!checkFlags(CG_NODE_FLAGS_MERGED),
+            ("OutEdges not allowed for nodes with representatives"));
+  CGEdgeSet &outEdgeSet = _getCGEdgeSet(edge->edgeType(),&_outEdges);
+  pair<CGEdgeSet::iterator, bool> p;
+  p = outEdgeSet.insert(edge);
+  ConstraintGraphEdge *newEdge = *(p.first);
+  if (newEdge == edge &&
+      edge->edgeType() != ETYPE_SKEW &&
+      edge->size() > _maxAccessSize)
+    _maxAccessSize = edge->size();
+  return newEdge;
+}
      
+void
+ConstraintGraphNode::updateMaxAccessSize()
+{
+  UINT8 newMax = 0;
+  for (CGEdgeListIterator inIter(this,true); inIter != 0; ++inIter) {
+    CGEdgeSet edges = *inIter;
+    for (CGEdgeSetIterator edgeIter = edges.begin();
+        edgeIter != edges.end(); ++edgeIter) {
+      ConstraintGraphEdge *e = *edgeIter;
+      if (e->edgeType() != ETYPE_SKEW && e->size() > newMax) {
+        newMax = e->size();
+        // We we find an edge with size equal to current size
+        // then we are done.
+        if (newMax == _maxAccessSize)
+          return;
+      }
+    }
+  }
+  for (CGEdgeListIterator outIter(this,false); outIter != 0; ++outIter) {
+    CGEdgeSet edges = *outIter;
+    for (CGEdgeSetIterator edgeIter = edges.begin();
+        edgeIter != edges.end(); ++edgeIter) {
+      ConstraintGraphEdge *e = *edgeIter;
+      if (e->edgeType() != ETYPE_SKEW && e->size() > newMax) {
+        newMax = e->size();
+        if (newMax == _maxAccessSize)
+          return;
+      }
+    }
+  }
+  _maxAccessSize = newMax;
+}
+
+void
+ConstraintGraphNode::removeInEdge(ConstraintGraphEdge *edge)
+{
+  CGEdgeSet &inEdgeSet = _getCGEdgeSet(edge->edgeType(),&_inEdges);
+  CGEdgeSetIterator iter = inEdgeSet.find(edge);
+  if (iter != inEdgeSet.end())
+    inEdgeSet.erase(iter);
+  if (edge->edgeType() != ETYPE_SKEW && edge->size() == _maxAccessSize)
+    updateMaxAccessSize();
+}
+
+void
+ConstraintGraphNode::removeOutEdge(ConstraintGraphEdge *edge)
+{
+  CGEdgeSet &outEdgeSet = _getCGEdgeSet(edge->edgeType(),&_outEdges);
+  CGEdgeSetIterator iter = outEdgeSet.find(edge);
+  if (iter != outEdgeSet.end())
+    outEdgeSet.erase(iter);
+
+  if (edge->edgeType() != ETYPE_SKEW && edge->size() == _maxAccessSize)
+    updateMaxAccessSize();
+}
+
 ConstraintGraphNode::~ConstraintGraphNode()
 {
   FmtAssert(canBeDeleted(), ("Cannot delete this node!"));
@@ -947,17 +1042,27 @@ ConstraintGraph::handleCall(WN *callWN)
       FmtAssert(_varArgs,
                  ("Found _va_start() call, expected internal CG varargs node"));
       StInfo *vaStInfo = stInfo(_varArgs->cg_st_idx());
+      bool nonNullVarArgSym = false;
       for (INT i = First_Int_Preg_Param_Offset;
           i < First_Int_Preg_Param_Offset+MAX_NUMBER_OF_REGISTER_PARAMETERS;
           ++i) {
         PLOC ploc = { i,0,0,0,0 };
         ST *st = Get_Vararg_Symbol(ploc);
+        if (st) {
+          _cgStInfoMap[CG_ST_st_idx(st)] = vaStInfo;
+          nonNullVarArgSym = true;
+        }
+      }
+      // Unless we retrieved a non-null vararg symbol, then
+      // we have most likely not initialized the stack frame.
+      // This means the upformal segment ST is junk left over
+      // from a previous PU.  This can happen when building
+      // the constraint graph at -O3 for example.
+      if (nonNullVarArgSym) {
+        ST *st = Get_Upformal_Segment();
         if (st)
           _cgStInfoMap[CG_ST_st_idx(st)] = vaStInfo;
       }
-      ST *st = Get_Upformal_Segment();
-      if (st)
-        _cgStInfoMap[CG_ST_st_idx(st)] = vaStInfo;
     }
   } else
     callSite->addFlags(CS_FLAGS_UNKNOWN);
