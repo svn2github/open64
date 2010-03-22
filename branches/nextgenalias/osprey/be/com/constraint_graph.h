@@ -545,6 +545,8 @@ public:
 
   ConstraintGraph *cg() const { return _parentCG; }
 
+  void cg(ConstraintGraph *p) { _parentCG = p; }
+
   void print(FILE *file);
   void print(ostream &str);
 
@@ -803,6 +805,8 @@ public:
   static ConstraintGraph *globalCG()        { return globalConstraintGraph; }
   static void globalCG(ConstraintGraph *cg) { globalConstraintGraph = cg; }
 
+  static CG_ST_IDX adjustCGstIdx(IPA_NODE *ipaNode, CG_ST_IDX cg_st_idx);
+
   // To build ConstraintGraphs at IPL/BE
   ConstraintGraph(WN *entryWN, MEM_POOL *mPool, UINT32 minSize = 1024):
     _buildComplete(false),
@@ -1011,6 +1015,8 @@ private:
                        IPA_NODE *ipaNode);
 
   ConstraintGraphNode *findUniqueNode(CGNodeId id);
+
+  void merge(ConstraintGraph *rhs);
 
   // Data Members
   bool _buildComplete;

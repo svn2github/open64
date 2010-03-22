@@ -357,6 +357,9 @@ ConstraintGraph::exprMayPoint(WN *const wn)
     case OPR_CEIL:
     case OPR_FLOOR:
     case OPR_BNOT:
+    case OPR_BIOR:
+    case OPR_BAND:
+    case OPR_BXOR:
     case OPR_LNOT:
     case OPR_LAND:
     case OPR_LIOR:
@@ -597,16 +600,12 @@ ConstraintGraph::handleAssignment(WN *stmt)
   if (cgNodeRHS == NULL) {
     cgNodeRHS = genTempCGNode();
     cgNodeRHS->addFlags(CG_NODE_FLAGS_UNKNOWN);
+    fprintf(stderr, "***WARNING!!! Setting RHS of STORE to UNKNOWN*******\n");
+    fdump_tree(stderr, stmt);
+    fprintf(stderr, "****************************************************\n");
   }
 
   OPERATOR opr = WN_operator(stmt);
-
-  if ((opr == OPR_ISTORE || opr == OPR_ISTBITS || opr == OPR_MSTORE) &&
-      cgNodeLHS->checkFlags(CG_NODE_FLAGS_UNKNOWN)) {
-    fprintf(stderr, "WARNING!!! ISTORE to UNKNOWN**************************\n");
-    fdump_tree(stderr, stmt);
-    fprintf(stderr, "******************************************************\n");
-  }
 
   // If processLHSofStore returns a size, use that, else recompute
   if (size == 0) {
@@ -817,6 +816,21 @@ ConstraintGraph::processExpr(WN *expr)
       WN_MAP_CGNodeId_Set(expr, cgn->id());
       return cgn;
     }
+    else if (opr == OPR_EXTRACT_BITS)
+    {
+      CGNodeId kid0CGNodeId = WN_MAP_CGNodeId_Get(WN_kid0(expr));
+      ConstraintGraphNode *kid0CGNode = 
+                           kid0CGNodeId ? cgNode(kid0CGNodeId) : NULL;
+      if (kid0CGNode == NULL ||
+          kid0CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+        return NULL;
+      if (kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+        WN_MAP_CGNodeId_Set(expr, notAPointer()->id());
+        return notAPointer();
+      }
+      WN_MAP_CGNodeId_Set(expr, kid0CGNodeId);
+      return kid0CGNode;
+    }
     // Handle binary operators which are not handled by exprMayPoint
     else if (WN_kid_count(expr) == 2) 
     {
@@ -938,6 +952,30 @@ ConstraintGraph::processExpr(WN *expr)
         WN_MAP_CGNodeId_Set(expr, rep->id());
         return rep;
       }
+      else if (opr == OPR_MIN || opr == OPR_MAX) 
+      {
+        // If one of the kids is possible pointer and other is not
+        // return the possible pointer
+        if (!kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) && 
+            kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+          WN_MAP_CGNodeId_Set(expr, kid0CGNode->id());
+          return kid0CGNode;
+        }
+        // Check the other kid
+        if (!kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) && 
+            kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+          WN_MAP_CGNodeId_Set(expr, kid1CGNode->id());
+          return kid1CGNode;
+        }
+
+        // both are possible pointers
+        ConstraintGraphNode *rep = genTempCGNode();
+        bool added = false;
+        addEdge(kid0CGNode, rep, ETYPE_COPY, CQ_HZ, 1, added);
+        addEdge(kid1CGNode, rep, ETYPE_COPY, CQ_HZ, 1, added);
+        WN_MAP_CGNodeId_Set(expr, rep->id());
+        return rep;
+      }
       else
       {
         // Any other binary operator
@@ -1026,6 +1064,9 @@ ConstraintGraph::processLHSofStore(WN *stmt, INT32& size)
     ConstraintGraphNode *tmpCGNode = genTempCGNode();
     tmpCGNode->addFlags(CG_NODE_FLAGS_UNKNOWN);
     cgNodeLHS = tmpCGNode;
+    fprintf(stderr, "***WARNING!!! Setting LHS of STORE to UNKNOWN*******\n");
+    fdump_tree(stderr, stmt);
+    fprintf(stderr, "****************************************************\n");
   }
     
   WN_MAP_CGNodeId_Set(stmt, cgNodeLHS->id());
@@ -1043,6 +1084,9 @@ ConstraintGraph::processParam(WN *wn)
     // Create a temp preg and set it UNKNOWN
     ConstraintGraphNode *tmpCGNode = genTempCGNode();
     tmpCGNode->addFlags(CG_NODE_FLAGS_UNKNOWN);
+    fprintf(stderr, "***WARNING!!! Setting Param to UNKNOWN**********\n");
+    fdump_tree(stderr, wn);
+    fprintf(stderr, "************************************************\n");
     return tmpCGNode;
   } 
 }
@@ -1626,8 +1670,10 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
   }
   src->_outEdges = NULL;
 
-  // 7) Mark node MERGED
+  // 7) Set flags
   src->addFlags(CG_NODE_FLAGS_MERGED);
+  if (src->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+    addFlags(CG_NODE_FLAGS_UNKNOWN);
 }
 
 void
@@ -1902,6 +1948,31 @@ ConstraintGraph::findMaxTypeSize()
   for (++ty; ty != Ty_tab.end(); ty++)
     size += TY_size(*ty);
   return size;
+}
+
+// Merge nodes in rhs to this.
+// Note: The cg_st_idx of the nodes merged into the new graph still have their
+// file, pu. and st_idx refer to the original graph's PU.
+void
+ConstraintGraph::merge(ConstraintGraph *rhs)
+{
+  // Transfer nodes
+  for (CGNodeToIdMapIterator iter = rhs->_cgNodeToIdMap.begin(); 
+       iter != rhs->_cgNodeToIdMap.end(); iter++) {
+    ConstraintGraphNode *node = iter->first;
+    node->cg(this);
+    rhs->_cgNodeToIdMap.erase(node);
+    _cgNodeToIdMap[node] = iter->second;
+  }
+
+  // Transfer StInfo
+  for (CGStInfoMapIterator iter = rhs->_cgStInfoMap.begin(); 
+       iter != rhs->_cgStInfoMap.end(); iter++) {
+    CG_ST_IDX cg_st_idx = iter->first;
+    StInfo *stInfo = iter->second;
+    rhs->_cgStInfoMap.erase(cg_st_idx);
+    _cgStInfoMap[cg_st_idx] = stInfo;
+  }
 }
 
 void

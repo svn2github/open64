@@ -179,13 +179,13 @@ IPASCCDetection::findAndUnify()
   CXX_DELETE_ARRAY(_D,_memPool);
 }
 
-static CG_ST_IDX 
-adjustCGstIdx(IPA_NODE *ipaNode, CG_ST_IDX cg_st_idx)
+CG_ST_IDX 
+ConstraintGraph::adjustCGstIdx(IPA_NODE *ipaNode, CG_ST_IDX cg_st_idx)
 {
   UINT16 fileIdx = (UINT16)(ipaNode->File_Index());
   UINT16 puIdx   = (UINT16)(ipaNode->Proc_Info_Index());
   UINT32 filePUIdx = (fileIdx << 16) | puIdx;
-  cg_st_idx = (((UINT64)filePUIdx) << 32) | cg_st_idx;
+  cg_st_idx = (((UINT64)filePUIdx) << 32) | (cg_st_idx & 0x00000000ffffffffLL);
   return cg_st_idx;
 }
 
