@@ -158,6 +158,10 @@ private:
                        list<pair<IPA_NODE *,CallSiteId> > &indCallList,
                        list<IPAEdge> &edgeList);
 
+  void findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGraph,
+                list<pair<IPA_NODE *,CallSiteId> > &indCallList,
+                list<IPAEdge> &edgeList);
+
   static IPA_NystromAliasAnalyzer *_ipa_naa;
   IPACGMap _ipaConstraintGraphs;
   MEM_POOL _memPool;
