@@ -1316,8 +1316,8 @@ SUMMARY_TY_INFO::Trace ( void ) const
 void
 SUMMARY_CONSTRAINT_GRAPH_NODE::Print( FILE *fp) const
 {
-  fprintf(fp, "CGNODE %d st: %lld offset: %d\n", 
-          _cgNodeId, _cg_st_idx, _offset);
+  fprintf(fp, "CGNODE %d st: %lld offset: %d flags: 0x%x\n",
+          _cgNodeId, _cg_st_idx, _offset, _flags);
   fprintf(fp, "_numBitsPtsGBL: %d idx: %d\n", _numBitsPtsGBL, _pointsToGBLIdx);
   fprintf(fp, "_numBitsPtsHZ: %d idx: %d\n", _numBitsPtsHZ, _pointsToHZIdx);
   fprintf(fp, "_numBitsPtsDN: %d idx: %d\n", _numBitsPtsDN, _pointsToDNIdx);

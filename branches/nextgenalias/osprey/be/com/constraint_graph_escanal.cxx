@@ -522,6 +522,10 @@ EscapeAnalysis::markEscaped(void)
 void
 EscapeAnalysis::perform(void)
 {
+  if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+    fprintf(stderr,"ESCANAL: Summary %d, IPA %d, WPM %d\n",
+            _summaryMode, _ipaMode, _wholeProgramMode);
+
   if (_ipaCGMap) {
 #ifndef BACK_END
     ipaInit();

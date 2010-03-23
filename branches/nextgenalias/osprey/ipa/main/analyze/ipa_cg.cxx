@@ -107,6 +107,7 @@
 #include "symtab_idx.h"         //for make_TY_IDX()-- in reorder
 #include "ipa_reorder.h"        //for merged_access --reorder
 #include "ipa_option.h"         // for IPA_Enable_Reorder and Merge_struct_access();
+#include "opt_defs.h"           // -ttALI tracing options
 
 #if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
 #include "ipa_nystrom_alias_analyzer.h"
@@ -1595,7 +1596,7 @@ Build_Call_Graph ()
     For_all_entries (IP_File_header, add_nodes ());
 
 #if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
-    if (Alias_Nystrom_Analyzer)
+    if (Alias_Nystrom_Analyzer && Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG))
     {
       fprintf(stderr, "Printing ConstraintGraphs...\n");
       IPA_NystromAliasAnalyzer::aliasAnalyzer()->print(stderr);

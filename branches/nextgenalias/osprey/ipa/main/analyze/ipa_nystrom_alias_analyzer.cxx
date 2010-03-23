@@ -231,6 +231,8 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
   fprintf(stderr, "Processing proc: %s file: %s\n",
           ipaNode->Name(), ipaNode->File_Header().file_name);
 
+  _name = ipaNode->Name();
+
   // during summary to constraint graph construction, map them to their 
   // globally unique ids so that lookups don't fail
   _uniqueCGNodeIdMap[notAPointer()->id()] = notAPointer();
@@ -467,6 +469,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       cs->returnId(cn->id());
     }
   }
+  _buildComplete = true;
 }
 
 ConstraintGraphNode *
@@ -689,7 +692,7 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
                       list<IPAEdge> &edgeList)
 {
   // Walk each indirect call site and determine if there exists
-  // an edge for in the call graph for CGNode in the points-to
+  // an edge in the call graph for each CGNode in the points-to
   // set of the indirect call.
   list<pair<IPA_NODE *,CallSiteId> >::const_iterator iter;
   for (iter = indCallList.begin(); iter != indCallList.end(); ++iter) {
@@ -704,12 +707,18 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
               caller->Name(),id,cs->cgNodeId());
       fprintf(stderr,"Points To:\n");
     }
-    for (PointsToIterator pti(ConstraintGraph::cgNode(cs->cgNodeId()));
-         pti != 0; ++pti) {
+    ConstraintGraphNode *csNode = ConstraintGraph::cgNode(cs->cgNodeId());
+    for (PointsToIterator pti(csNode); pti != 0; ++pti) {
       PointsTo &curPts = *pti;
       for (PointsTo::SparseBitSetIterator iter(&curPts,0); iter != 0; iter++) {
         CGNodeId nodeId = *iter;
         ConstraintGraphNode *node = ConstraintGraph::cgNode(nodeId);
+        StInfo *stInfo = node->stInfo();
+        if (!stInfo->checkFlags(CG_ST_FLAGS_FUNC)) {
+          fprintf(stderr,"Update Call Graph: callsite points to non-func: cgnode %d\n",
+                  node->id());
+          continue;
+        }
         ST_IDX stIdx = SYM_ST_IDX(node->cg_st_idx());
         ST *st = &St_Table[stIdx];
         IPA_NODE *callee = _stToNodeMap[st];
@@ -730,6 +739,60 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
         if (isNew) {
           _indirectEdgeSet.insert(newEdge);
           edgeList.push_front(newEdge);
+        }
+      }
+    }
+  }
+}
+
+void
+IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGraph,
+                                   list<pair<IPA_NODE *,CallSiteId> > &indCallList,
+                                   list<IPAEdge> &edgeList)
+{
+  // Walk each indirect call side and determine if there exists a
+  // "blackhole" in its points-to set.  If that is the case, then
+  // the target is determined by an incomplete (escaping) symbol.
+  list<pair<IPA_NODE *,CallSiteId> >::const_iterator iter;
+  for (iter = indCallList.begin(); iter != indCallList.end(); ++iter) {
+    IPA_NODE *caller = iter->first;
+    UINT32 id = iter->second;
+    ConstraintGraph *callerCG = cg(caller->Node_Index());
+    CallSite *cs = callerCG->callSite(id);
+    FmtAssert(cs->isIndirect(),
+              ("Expected indirect CallSite in caller constraint graph"));
+    ConstraintGraphNode *icallNode = ConstraintGraph::cgNode(cs->cgNodeId());
+    const PointsTo &gblPointsTo = icallNode->pointsTo(CQ_GBL);
+    // No, we could not use PointsTo.isSet() here because it is a non-const
+    // function.
+    for (PointsTo::SparseBitSetIterator sbsi(&gblPointsTo,0); sbsi != 0; sbsi++) {
+      if (*sbsi == ConstraintGraph::blackHoleId()) {
+        // We have an incomplete indirect call, now connect it up to "everything"
+        if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+          fprintf(stderr,"Incomplete Indirect Call: %s (%d) %s maps to CGNodeId: %d\n",
+                  caller->Name(),id,
+                  ST_name(&St_Table[SYM_ST_IDX(icallNode->cg_st_idx())]),
+                  cs->cgNodeId());
+        STToNodeMap::const_iterator iter = _stToNodeMap.begin();
+        for (; iter != _stToNodeMap.end(); ++iter) {
+          const ST *st = iter->first;
+          IPA_NODE *ipaNode = iter->second;
+          IPAEdge newEdge(caller->Node_Index(),ipaNode->Node_Index(),id);
+
+          // Have we seen this edge before?
+          IndirectEdgeSet::iterator iter = _indirectEdgeSet.find(newEdge);
+          bool isNew = (iter == _indirectEdgeSet.end());
+
+          // New edges are placed in our set of resolved indirect target
+          // edges and placed in the work list for the next round of
+          // call graph preparation.  Eventually we would like to actually
+          // add a true IPA_EDGE to the IPA_CALL_GRAPH here.
+          if (isNew) {
+            _indirectEdgeSet.insert(newEdge);
+            edgeList.push_front(newEdge);
+            if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+              fprintf(stderr,"  Now calls %s\n",ST_name(st));
+          }
         }
       }
     }
@@ -797,7 +860,13 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
       // Now, we solve the graph
       ConstraintGraphSolve cgsolver(delta,NULL,&_memPool);
-      cgsolver.solveConstraints();
+      if (!cgsolver.solveConstraints()) {
+        if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG)) {
+          ConstraintGraphVCG::dumpVCG("ipa_failed_soln");
+          fprintf(stderr,"IPA Nystrom: No solution found, likely unknown write\n");
+        }
+        return;
+      }
 
       // Determine if there have been any changes to call sites
       // and update the call graph
@@ -825,7 +894,11 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
         // Now, we solve the graph.  We actually perform cycle
         // detect within the the current constraint graph
         ConstraintGraphSolve cgsolver(delta,curCG,&_memPool);
-        cgsolver.solveConstraints();
+        if (!cgsolver.solveConstraints()) {
+          if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
+            fprintf(stderr,"IPA Nystrom: No solution found, likely unknown write\n");
+          return;
+        }
       }
     }
 
@@ -848,6 +921,19 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
                          &_memPool);
   escAnal.perform();
   escAnal.markEscaped();
+
+  // If at this point we still have incomplete indirect calls, then
+  // we must attach them to possible callee's and perform a final
+  // round of solution.  Initially, this may attempt to connect an
+  // indirect call with all possible callees.
+  findIncompleteIndirectCalls(ipaCallGraph,indirectCallList,edgeList);
+  if (!edgeList.empty())  {
+    callGraphPrep(ipaCallGraph,edgeList,delta,revTopOrder,+round);
+    if (!delta.empty()) {
+      ConstraintGraphSolve cgsolver(delta,NULL,&_memPool);
+      cgsolver.solveConstraints();
+    }
+  }
 
   if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
      fprintf(stderr,"IPA Nystrom: Solver Complete\n");
