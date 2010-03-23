@@ -3220,6 +3220,8 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
   // Iterate over all nodes in the graph
   for (CGNodeToIdMapIterator iter = cg->lBegin(); iter != cg->lEnd(); iter++) {
     ConstraintGraphNode *cgNode = iter->first;
+    if (cgNode == ConstraintGraph::blackHole())
+      continue;
     SUMMARY_CONSTRAINT_GRAPH_NODE *summCGNode = New_constraint_graph_node();
     ConstraintGraphNode *parent = cgNode->parent();
     // Set points to set only if it has no representative parent
@@ -3278,6 +3280,8 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
        stiter++) {
     CG_ST_IDX cg_st_idx = stiter->first;
     StInfo *s = stiter->second;
+    if (s->firstOffset() == ConstraintGraph::blackHole())
+      continue;
     SUMMARY_CONSTRAINT_GRAPH_STINFO *summStInfo = New_constraint_graph_stinfo();
     summStInfo->cg_st_idx(cg_st_idx);
     summStInfo->flags(s->flags());
@@ -3383,6 +3387,8 @@ SUMMARIZE<program>::processPointsToSet(SUMMARY_CONSTRAINT_GRAPH_NODE *sumCGNode,
   UINT32 numGBLids = 0;
   for (PointsTo::SparseBitSetIterator iter(&gbl, 0); iter != 0; ++iter) {
     CGNodeId id = *iter;
+    if (id == ConstraintGraph::blackHole()->id())
+      continue;
     INT new_idx = _constraint_graph_node_ids.Newidx();
     _constraint_graph_node_ids[new_idx] = id;
     numGBLids++;

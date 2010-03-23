@@ -208,28 +208,42 @@ ConstraintGraphNode::~ConstraintGraphNode()
 }
 
 ModulusRange *
-ModulusRange::build(TY &ty, UINT32 offset)
+ModulusRange::build(TY &ty, UINT32 offset, MEM_POOL *memPool)
 {
   FmtAssert(TY_kind(ty) == KIND_STRUCT,("Expecting only structs"));
-  ModulusRange *modRange = new ModulusRange(offset,offset+TY_size(ty)-1,TY_size(ty),ty);
+  ModulusRange *modRange = 
+    CXX_NEW(ModulusRange(offset,offset+TY_size(ty)-1,TY_size(ty),ty), memPool);
   ModulusRange *childRanges = NULL;
   ModulusRange *curRange = NULL;
   for (FLD_HANDLE fld = TY_flist(ty); !fld.Is_Null(); fld = FLD_next(fld)) {
     TY &fty = Ty_Table[FLD_type(fld)];
     ModulusRange *newRange = NULL;
     if (TY_kind(fty) == KIND_ARRAY) {
-      UINT32 size = TY_size(Ty_Table[TY_etype(fty)]);
+      UINT32 size = TY_size(fty);
       UINT32 start = offset+FLD_ofst(fld);
       UINT32 end = start+size-1;
-      newRange = new ModulusRange(start,end,size,fty);
+      newRange = CXX_NEW(ModulusRange(start,end,size,fty), memPool);
     }
     else if (TY_kind(fty) == KIND_STRUCT)
-      newRange = build(fty,offset+FLD_ofst(fld));
+      newRange = build(fty,offset+FLD_ofst(fld),memPool);
     if (newRange) {
       if (!childRanges)
         childRanges = newRange;
-      if (curRange)
-        curRange->_next = newRange;
+      if (curRange) {
+        // If the new range has same start offset as current range  (in case
+        // of unions), unify both the ranges to a single flattened range
+        if (curRange->_startOffset == newRange->_startOffset) {
+          if (newRange->_endOffset > curRange->_endOffset)
+            curRange->_endOffset = newRange->_endOffset;
+          if (newRange->_modulus < curRange->_modulus)
+            curRange->_modulus = newRange->_modulus;
+          removeRange(newRange, memPool);
+          removeRange(curRange->_child, memPool);
+          curRange->_child = NULL;
+          newRange = curRange;
+        } else
+          curRange->_next = newRange;
+      }
       curRange = newRange;
     }
   }
@@ -275,7 +289,7 @@ ModulusRange::print(ostream &str,UINT32 indent)
     _next->print(str,indent);
 }
 
-StInfo::StInfo(ST_IDX st_idx)
+StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
   : _flags(0),
     _varSize(0),
     _maxOffsets(32),
@@ -300,7 +314,7 @@ StInfo::StInfo(ST_IDX st_idx)
     _u._modulus = _varSize;
   else {
     addFlags(CG_ST_FLAGS_MODRANGE);
-    _u._modRange = ModulusRange::build(ty,0);
+    _u._modRange = ModulusRange::build(ty,0,memPool);
     _u._modRange->print(stderr);
   }
 
@@ -464,9 +478,11 @@ ConstraintGraph::exprMayPoint(WN *const wn)
       return false;
 
   switch (WN_operator(wn)) {
+    case OPR_ABS:
     case OPR_MPY:
     case OPR_DIV:
     case OPR_MOD:
+    case OPR_REM:
     case OPR_NEG:
     case OPR_RND:
     case OPR_TRUNC:
@@ -487,6 +503,11 @@ ConstraintGraph::exprMayPoint(WN *const wn)
     case OPR_GE:
     case OPR_EQ:
     case OPR_NE:
+    case OPR_PAIR:
+    case OPR_SQRT:
+    case OPR_INTRINSIC_OP:
+    case OPR_FIRSTPART:
+    case OPR_SECONDPART:
       return false;
     default:
       return true;
@@ -703,13 +724,42 @@ ConstraintGraph::handleAssignment(WN *stmt)
   // process RHS
   ConstraintGraphNode *cgNodeRHS = processExpr(rhs);
   // process LHS
-  INT32 size = 0;
-  ConstraintGraphNode *cgNodeLHS = processLHSofStore(stmt, size);
+  ConstraintGraphNode *cgNodeLHS = processLHSofStore(stmt);
 
   // For non-pointer lhs, check whether rhs may point
   if ((TY_kind(WN_object_ty(stmt)) != KIND_POINTER) && !exprMayPoint(rhs)) {
     if (OPERATOR_is_scalar_store(WN_operator(stmt)))
       cgNodeLHS->addFlags(CG_NODE_FLAGS_NOT_POINTER);
+    return WN_next(stmt);
+  }
+
+  // Handle ALLOCA which must appear as the rhs of a store 
+  if (WN_operator(rhs) == OPR_ALLOCA) {
+    TY &stack_ptr_ty = Ty_Table[WN_ty(stmt)];
+    FmtAssert(TY_kind(stack_ptr_ty) == KIND_POINTER,
+              ("Expecting KIND_POINTER"));
+    TY_IDX stack_ty_idx = TY_pointed(stack_ptr_ty);
+    TY &stack_ty = Ty_Table[stack_ty_idx];
+    // We create a local variable that represents the dynamically
+    // allocated stack location
+    ConstraintGraphNode *stackCGNode;
+    // If the pointed to type is a struct, create a symbol of that type
+    // else create a symbol of maxTypeSize
+    if (TY_kind(stack_ty) == KIND_STRUCT) {
+      ST *stackST = Gen_Temp_Named_Symbol(stack_ty_idx, "_cgStack",
+                                          CLASS_VAR, SCLASS_AUTO);
+      stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
+      stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
+    } else {
+      ST *stackST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgStack",
+                                          CLASS_VAR, SCLASS_AUTO);
+      stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
+      stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
+      stInfo(stackCGNode->cg_st_idx())->modulus(maxTypeSize);
+      stInfo(stackCGNode->cg_st_idx())->varSize(0);
+    }
+    // Add the stack location to the points to set of the lhs
+    cgNodeLHS->addPointsTo(stackCGNode, CQ_HZ);
     return WN_next(stmt);
   }
 
@@ -723,13 +773,11 @@ ConstraintGraph::handleAssignment(WN *stmt)
 
   OPERATOR opr = WN_operator(stmt);
 
-  // If processLHSofStore returns a size, use that, else recompute
-  if (size == 0) {
-    if (WN_desc(stmt) == MTYPE_BS)
-      size = TY_size(WN_object_ty(stmt));
-    else
-      size = WN_object_size(stmt);
-  }
+  INT32 size;
+  if (WN_desc(stmt) == MTYPE_BS)
+    size = TY_size(WN_object_ty(stmt));
+  else
+    size = WN_object_size(stmt);
   if (OPERATOR_is_scalar_store(opr)) {
     bool added = false;
     // add a copy edge x <-- y
@@ -802,35 +850,6 @@ ConstraintGraph::processExpr(WN *expr)
         }
         if (!addrCGNode || addrCGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
           return NULL;
-        UINT32 inKCycle;
-        // Adjust inKCycle based on the size of pointed-to type
-        // Special case for OPR_ARRAY 
-        INT32 size = 0;
-        WN *arrayAddr = NULL;
-        if ( WN_operator(WN_kid0(expr)) == OPR_ARRAY &&
-             (arrayAddr = WN_kid0(WN_kid0(expr))) &&
-             WN_operator(arrayAddr) == OPR_LDA ) {
-          // Get the base ST of the LDA's ST
-          ST *st = &St_Table[WN_st_idx(arrayAddr)];
-          INT64 offset = WN_offset(arrayAddr);
-          ST *base_st;
-          INT64 base_offset;
-          Expand_ST_into_base_and_ofst(st, offset, &base_st, &base_offset);
-          // If the base is KIND_STRUCT and non-zero offset
-          if (base_offset != 0 &&
-              TY_kind(ST_type(ST_st_idx(base_st))) == KIND_STRUCT)
-            size = getArraySize(WN_kid0(expr));
-        }
-        if (size != 0) {
-          inKCycle = 0;
-        } else {
-          if (opr == OPR_ILOAD || opr == OPR_ILDBITS)
-            inKCycle = TY_size(Ty_Table[TY_pointed(WN_load_addr_ty(expr))]); 
-          else if (opr == OPR_MLOAD)
-            inKCycle = TY_size(Ty_Table[TY_pointed(WN_ty(expr))]);
-        }
-        addrCGNode->inKCycle(inKCycle);
-        adjustPointsToForKCycle(addrCGNode);
         // Create a new temp CGNode
         ConstraintGraphNode *tmpCGNode = NULL;
         if (opr == OPR_MLOAD) {
@@ -859,13 +878,11 @@ ConstraintGraph::processExpr(WN *expr)
           WN_MAP_CGNodeId_Set(WN_kid0(expr), tmp1CGNode->id());
         }
         bool added = false;
-        // If the special OPR_ARRAY handling above hasn't set size
-        if (size == 0) {
-          if (WN_desc(expr) == MTYPE_BS)
-            size = TY_size(WN_object_ty(expr));
-          else
-            size = WN_object_size(expr);
-        }
+        INT32 size;
+        if (WN_desc(expr) == MTYPE_BS)
+          size = TY_size(WN_object_ty(expr));
+        else
+          size = WN_object_size(expr);
         addEdge(addrCGNode, tmpCGNode, ETYPE_LOAD, CQ_HZ, size, added);
         return tmpCGNode;
       }
@@ -878,32 +895,12 @@ ConstraintGraph::processExpr(WN *expr)
     ConstraintGraphNode *cgNode = processExpr(WN_kid0(expr));
     if (!cgNode || cgNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
       return NULL;
-    // We don't have to do this here, since the iload/istore that
-    // the array feeds into would set the k-cycle value appropriately
-    // Currently, leaving this code commented here in case we have to
-    // resurrect it.
-    // We set the k-cycle of array to the element size and adjust the 
-    // the pts to set of the array address
-    // cgNode->inKCycle(WN_element_size(expr));
-    // Adjust the points to set based on the inKCycle value
-    // adjustPointsToForKCycle(cgNode);
+    // Since it is a self skew, we just set the inKcycle value and adjust
+    // the points to set
+    cgNode->inKCycle(gcd(cgNode->inKCycle(), (UINT32)WN_element_size(expr)));
+    adjustPointsToForKCycle(cgNode);
     WN_MAP_CGNodeId_Set(expr, cgNode->id());
     return cgNode;
-  } else if (opr == OPR_ALLOCA) {
-    // We create a local variable that represents the dynamically
-    // allocated stack location
-    ST *stackST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgStack",
-                                       CLASS_VAR, SCLASS_AUTO);
-    ConstraintGraphNode *stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
-    stackCGNode->addPointsTo(stackCGNode,CQ_HZ);
-    stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
-    stInfo(stackCGNode->cg_st_idx())->modulus(maxTypeSize);
-    stInfo(stackCGNode->cg_st_idx())->varSize(0);
-    // Now we create a new temporary node that points-to the stack location
-    ConstraintGraphNode *tmpNode = genTempCGNode();
-    tmpNode->addPointsTo(stackCGNode,CQ_HZ);
-    WN_MAP_CGNodeId_Set(expr,tmpNode->id());
-    return tmpNode;
   } else {
     for (INT i = 0; i < WN_kid_count(expr); i++) {
       WN *kid = WN_kid(expr, i);
@@ -946,6 +943,51 @@ ConstraintGraph::processExpr(WN *expr)
       }
       WN_MAP_CGNodeId_Set(expr, kid0CGNodeId);
       return kid0CGNode;
+    }
+    else if (opr == OPR_SELECT || opr == OPR_CSELECT)
+    {
+      CGNodeId kid1CGNodeId = WN_MAP_CGNodeId_Get(WN_kid1(expr));
+      ConstraintGraphNode *kid1CGNode = 
+                           kid1CGNodeId ? cgNode(kid1CGNodeId) : NULL;
+      CGNodeId kid2CGNodeId = WN_MAP_CGNodeId_Get(WN_kid2(expr));
+      ConstraintGraphNode *kid2CGNode = 
+                           kid2CGNodeId ? cgNode(kid2CGNodeId) : NULL;
+
+      // If either is null/unknown return null
+      if (kid1CGNode == NULL ||
+          kid1CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN) ||
+          kid2CGNode == NULL ||
+          kid2CGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+         return NULL;
+
+      // Both are not a pointer, therefore the result will not be a pointer
+      if (kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) &&
+          kid2CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+        WN_MAP_CGNodeId_Set(expr, notAPointer()->id());
+        return notAPointer();
+      }
+
+      // If one of the kids is possible pointer and other is not
+      // return the possible pointer
+      if (!kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) && 
+          kid2CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+        WN_MAP_CGNodeId_Set(expr, kid1CGNode->id());
+        return kid1CGNode;
+      }
+      // Check the other kid
+      if (!kid2CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) && 
+          kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+        WN_MAP_CGNodeId_Set(expr, kid2CGNode->id());
+        return kid2CGNode;
+      }
+
+      // both are possible pointers
+      ConstraintGraphNode *rep = genTempCGNode();
+      bool added = false;
+      addEdge(kid1CGNode, rep, ETYPE_COPY, CQ_HZ, 1, added);
+      addEdge(kid2CGNode, rep, ETYPE_COPY, CQ_HZ, 1, added);
+      WN_MAP_CGNodeId_Set(expr, rep->id());
+      return rep;
     }
     // Handle binary operators which are not handled by exprMayPoint
     else if (WN_kid_count(expr) == 2) 
@@ -999,20 +1041,20 @@ ConstraintGraph::processExpr(WN *expr)
         }
 
         // If one of the kids is possible pointer and other is not
-        // we have some unknown skew. Treat it as a cycle and set
-        // the inKCycle to either 1 (conservative) or if the ST associated
+        // we have some unknown skew. Create a self skew cycle and set
+        // the skew size to either 1 (conservative) or if the ST associated
         // with the node is known and is of a pointer type, set it to the
         // size of the pointed-to type.
         if (!kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) && 
             kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
           ST *st = &St_Table[SYM_ST_IDX(kid0CGNode->cg_st_idx())];
           TY &ty = Ty_Table[ST_type(st)];
-          if (TY_kind(ty) == KIND_POINTER) {
-            UINT32 inKCycle = TY_size(Ty_Table[TY_pointed(ty)]);
-            kid0CGNode->inKCycle(inKCycle);
-          } else
-            kid0CGNode->inKCycle(1);
-          // Adjust the points to set based on the inKCycle value
+          INT32 size = 1;
+          if (TY_kind(ty) == KIND_POINTER)
+            size = TY_size(Ty_Table[TY_pointed(ty)]);
+          // Since it is a self skew, we just set the inKcycle value and adjust
+          // the points to set
+          kid0CGNode->inKCycle(gcd(kid0CGNode->inKCycle(), (UINT32)size));
           adjustPointsToForKCycle(kid0CGNode);
           WN_MAP_CGNodeId_Set(expr, kid0CGNode->id());
           return kid0CGNode;
@@ -1022,51 +1064,41 @@ ConstraintGraph::processExpr(WN *expr)
             kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
           ST *st = &St_Table[SYM_ST_IDX(kid1CGNode->cg_st_idx())];
           TY &ty = Ty_Table[ST_type(st)];
-          if (TY_kind(ty) == KIND_POINTER) {
-            UINT32 inKCycle = TY_size(Ty_Table[TY_pointed(ty)]);
-            kid1CGNode->inKCycle(inKCycle);
-          } else
-            kid1CGNode->inKCycle(1);
+          INT32 size = 1;
+          if (TY_kind(ty) == KIND_POINTER)
+            size = TY_size(Ty_Table[TY_pointed(ty)]);
+          // Since it is a self skew, we just set the inKcycle value and adjust
+          // the points to set
+          kid1CGNode->inKCycle(gcd(kid1CGNode->inKCycle(), (UINT32)size));
           adjustPointsToForKCycle(kid1CGNode);
           WN_MAP_CGNodeId_Set(expr, kid1CGNode->id());
           return kid1CGNode;
         }
 
         // both are pointers
-        // Treat both as a cycle and set the inKCycle to either 1
+        // Since we have an unknown skew create a cycle between the two nodes
+        // with the skew size set to either 1
         // (conservative) or if the ST associated with the node is known and 
-        // is of a pointer type, set it to the size of the pointed-to type, 
-        // Set inKCycle of first kid
-        UINT32 inKCycle0 = 1;
+        // is of a pointer type, set it to the size of the pointed-to type. 
+        // Compute size from first kid
+        INT32 size0 = 1;
         ST *kid0st = &St_Table[SYM_ST_IDX(kid0CGNode->cg_st_idx())];
         TY &kid0ty = Ty_Table[ST_type(kid0st)];
-        if (TY_kind(kid0ty) == KIND_POINTER) {
-          inKCycle0 = TY_size(Ty_Table[TY_pointed(kid0ty)]);
-        } 
-        // else if (TY_kind(kid0ty) == KIND_ARRAY) {
-        //  inKCycle0 =  TY_size(Ty_Table[TY_etype(kid0ty)]);
-        // }
-        kid0CGNode->inKCycle(inKCycle0);
-        adjustPointsToForKCycle(kid0CGNode);
-        // Set inKCycle of other kid
-        UINT32 inKCycle1 = 1;
+        if (TY_kind(kid0ty) == KIND_POINTER)
+          size0 = TY_size(Ty_Table[TY_pointed(kid0ty)]);
+        // Compute size from other kid
+        INT32 size1 = 1;
         ST *kid1st = &St_Table[SYM_ST_IDX(kid1CGNode->cg_st_idx())];
         TY &kid1ty = Ty_Table[ST_type(kid1st)];
-        if (TY_kind(kid1ty) == KIND_POINTER) {
-          inKCycle1 = TY_size(Ty_Table[TY_pointed(kid1ty)]);
-        } 
-        // else if (TY_kind(kid1ty) == KIND_ARRAY) {
-        //  inKCycle1 = TY_size(Ty_Table[TY_etype(kid1ty)]);
-        // } 
-        kid1CGNode->inKCycle(inKCycle1);
-        adjustPointsToForKCycle(kid1CGNode);
-        // Create a temp node and add copy edges from the kids to the temp
-        ConstraintGraphNode *rep = genTempCGNode();
+        if (TY_kind(kid1ty) == KIND_POINTER)
+          size1 = TY_size(Ty_Table[TY_pointed(kid1ty)]);
+        INT32 size = gcd(size0, size1);
+        // Add cycle
         bool added = false;
-        addEdge(kid0CGNode, rep, ETYPE_COPY, CQ_HZ, 1, added);
-        addEdge(kid1CGNode, rep, ETYPE_COPY, CQ_HZ, 1, added);
-        WN_MAP_CGNodeId_Set(expr, rep->id());
-        return rep;
+        addEdge(kid0CGNode, kid1CGNode, ETYPE_SKEW, CQ_HZ, size, added);
+        addEdge(kid1CGNode, kid0CGNode, ETYPE_SKEW, CQ_HZ, size, added);
+        WN_MAP_CGNodeId_Set(expr, kid0CGNode->id());
+        return kid0CGNode;
       }
       else if (opr == OPR_MIN || opr == OPR_MAX) 
       {
@@ -1109,6 +1141,18 @@ ConstraintGraph::processExpr(WN *expr)
           WN_MAP_CGNodeId_Set(expr, kid1CGNode->id());
           return kid1CGNode;
         }
+
+        if (opr == OPR_SHL || opr == OPR_ASHR || opr == OPR_LSHR) {
+          // both are possible pointers
+          ConstraintGraphNode *rep = genTempCGNode();
+          bool added = false;
+          addEdge(kid0CGNode, rep, ETYPE_COPY, CQ_HZ, 1, added);
+          addEdge(kid1CGNode, rep, ETYPE_COPY, CQ_HZ, 1, added);
+          WN_MAP_CGNodeId_Set(expr, rep->id());
+          return rep;
+        }
+
+        // UNKNOWN for rest
         return NULL;
       }
     } 
@@ -1119,7 +1163,7 @@ ConstraintGraph::processExpr(WN *expr)
 // Process x = y and *x = y
 // y is cgNodeRHS, resRHS indicates whether y is a direct address or a copy
 ConstraintGraphNode *
-ConstraintGraph::processLHSofStore(WN *stmt, INT32& size)
+ConstraintGraph::processLHSofStore(WN *stmt)
 {
   OPERATOR opr = WN_operator(stmt);
   ConstraintGraphNode *cgNodeLHS = NULL;
@@ -1136,32 +1180,6 @@ ConstraintGraph::processLHSofStore(WN *stmt, INT32& size)
       addrCGNode = NULL;
     }
     if (addrCGNode != NULL) {
-      UINT32 inKCycle;
-      // Adjust inKCycle based on the size of pointed-to type
-      // Special case for OPR_ARRAY 
-      WN *arrayAddr = NULL;
-      size = 0;
-      if ( WN_operator(WN_kid1(stmt)) == OPR_ARRAY &&
-           (arrayAddr = WN_kid0(WN_kid1(stmt))) &&
-           WN_operator(arrayAddr) == OPR_LDA ) {
-        // Get the base ST of the LDA's ST
-        ST *st = &St_Table[WN_st_idx(arrayAddr)];
-        INT64 offset = WN_offset(arrayAddr);
-        ST *base_st;
-        INT64 base_offset;
-        Expand_ST_into_base_and_ofst(st, offset, &base_st, &base_offset);
-        // If the base is KIND_STRUCT and non-zero offset
-        if (base_offset != 0 &&
-             TY_kind(ST_type(ST_st_idx(base_st))) == KIND_STRUCT)
-          size = getArraySize(WN_kid1(stmt));
-      }
-      if (size != 0)
-        inKCycle = 0;
-      else
-        inKCycle = TY_size(Ty_Table[TY_pointed(WN_ty(stmt))]);
-        
-      addrCGNode->inKCycle(inKCycle);
-      adjustPointsToForKCycle(addrCGNode);
       // For a non-zero offset, we need to construct a new tmp preg, t1
       // such that t1 = x + offset (a skew)
       if (WN_offset(stmt) != 0) {
@@ -1214,7 +1232,6 @@ ConstraintGraph::handleCall(WN *callWN)
   OPERATOR opr = OPCODE_operator(opc);
 
   INT numParms;
-  ConstraintGraphNode *heapCGNode = NULL;
 
   ConstraintGraphNode *cgNode = NULL;
   // For indirect calls, process the address of the call
@@ -1228,15 +1245,6 @@ ConstraintGraph::handleCall(WN *callWN)
     }
   } else {
     numParms = WN_kid_count(callWN);
-    if (calleeReturnsNewMemory(callWN)) {
-      ST *heapST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgHeap", 
-                                         CLASS_VAR, SCLASS_AUTO);
-      heapCGNode = getCGNode(CG_ST_st_idx(heapST), 0);
-      heapCGNode->addPointsTo(heapCGNode,CQ_HZ);
-      stInfo(heapCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_HEAP);
-      stInfo(heapCGNode->cg_st_idx())->modulus(maxTypeSize);
-      stInfo(heapCGNode->cg_st_idx())->varSize(0);
-    }
   }
 
   // Create a new call site
@@ -1336,14 +1344,37 @@ ConstraintGraph::handleCall(WN *callWN)
     }
   }
 
+  // Process the return value from the call
   WN *stmt = WN_next(callWN);
-  while (stmt != NULL && stmtStoresReturnValueFromCallee(stmt)) {
-    INT32 size;
-    ConstraintGraphNode *cgNode = processLHSofStore(stmt, size);
+  if (stmt != NULL && stmtStoresReturnValueFromCallee(stmt)) {
+    ConstraintGraphNode *cgNode = processLHSofStore(stmt);
     cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_RETURN);
 
-    if (heapCGNode && !cgNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+    // Create a heap node
+    if (calleeReturnsNewMemory(callWN)) {
+      ConstraintGraphNode *heapCGNode;
+      TY &heap_ptr_ty = Ty_Table[WN_ty(stmt)];
+      FmtAssert(TY_kind(heap_ptr_ty) == KIND_POINTER,
+                ("Expecting KIND_POINTER"));
+      TY_IDX heap_ty_idx = TY_pointed(heap_ptr_ty);
+      TY &heap_ty = Ty_Table[heap_ty_idx];
+      // If the pointed to type is a struct, create a symbol of that type
+      // else create a symbol of maxTypeSize
+      if (TY_kind(heap_ty) == KIND_STRUCT) {
+        ST *heapST = Gen_Temp_Named_Symbol(heap_ty_idx, "_cgHeap",
+                                           CLASS_VAR, SCLASS_AUTO);
+        heapCGNode = getCGNode(CG_ST_st_idx(heapST), 0);
+        stInfo(heapCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_HEAP);
+      } else {
+        ST *heapST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgHeap",
+                                           CLASS_VAR, SCLASS_AUTO);
+        heapCGNode = getCGNode(CG_ST_st_idx(heapST), 0);
+        stInfo(heapCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_HEAP);
+        stInfo(heapCGNode->cg_st_idx())->modulus(maxTypeSize);
+        stInfo(heapCGNode->cg_st_idx())->varSize(0);
+      }
       cgNode->addPointsTo(heapCGNode,CQ_HZ);
+    }
 
     callSite->returnId(cgNode->id());
 
@@ -1437,7 +1468,7 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
     if (si == NULL) {
       // Allow globals, since we have a global symtab at IPA
       if (ST_IDX_level(SYM_ST_IDX(cg_st_idx)) == GLOBAL_SYMTAB) {
-        si = CXX_NEW(StInfo(SYM_ST_IDX(cg_st_idx)), _memPool);
+        si = CXX_NEW(StInfo(SYM_ST_IDX(cg_st_idx), _memPool), _memPool);
         _cgStInfoMap[cg_st_idx] = si;
       } else
         FmtAssert(FALSE, ("I do not know how to create a StInfo in IPA:("));
@@ -1445,7 +1476,7 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   } else {
     si = stInfo(cg_st_idx);
     if (si == NULL) {
-      si = CXX_NEW(StInfo(SYM_ST_IDX(cg_st_idx)), _memPool);
+      si = CXX_NEW(StInfo(SYM_ST_IDX(cg_st_idx), _memPool), _memPool);
       _cgStInfoMap[cg_st_idx] = si;
     }
   }
@@ -1453,7 +1484,8 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
     if (offset < -1)
       offset = -offset;
-    offset = offset % si->modulus(offset);
+    if (offset != -1)
+      offset = offset % si->modulus(offset);
     if (si->varSize() != 0)
       Is_True(offset < si->varSize(), ("getCGNode: offset: %lld >= varSize"
               ": %lld\n", offset, si->varSize()));
@@ -1752,9 +1784,11 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
       ConstraintGraph::removeEdge(edge);
   }
 
-  // 4) Merge the points-to sets of the two nodes
+  // 4) Merge the points-to sets of the two nodes and adjust this's 
+  //    points to set
   for ( PointsToIterator pti(src); pti != 0; ++pti )
     unionPointsTo(*pti,pti.qual());
+  ConstraintGraph::adjustPointsToForKCycle(this);
 
   // 5) Delete the points-to set
   PointsToList *p = src->_pointsToList;

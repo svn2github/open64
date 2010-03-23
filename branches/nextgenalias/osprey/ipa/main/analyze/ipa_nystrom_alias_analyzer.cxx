@@ -236,7 +236,6 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
   // during summary to constraint graph construction, map them to their 
   // globally unique ids so that lookups don't fail
   _uniqueCGNodeIdMap[notAPointer()->id()] = notAPointer();
-  _uniqueCGNodeIdMap[blackHole()->id()]   = blackHole();
 
   // Add the StInfos.
   UINT32 stInfoIdx = proc->Get_constraint_graph_stinfos_idx();
@@ -246,10 +245,9 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
   FmtAssert(stInfoCount <= size, ("Invalid stInfoCount"));
   for (UINT32 i = 0; i < stInfoCount; i++) {
     SUMMARY_CONSTRAINT_GRAPH_STINFO &summStInfo = summStInfos[stInfoIdx + i];
-    // Ignore notAPointer and blackHole StInfos; they have been already
+    // Ignore notAPointer; they have been already
     // added to the globalConstraintGraph
-    if (summStInfo.firstOffset() == blackHole()->id() ||
-        summStInfo.firstOffset() == notAPointer()->id())
+    if (summStInfo.firstOffset() == notAPointer()->id())
       continue;
     StInfo *stInfo;
     // Determine which CG to add the StInfo
@@ -268,10 +266,9 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
   FmtAssert(nodeCount <= size, ("Invalid nodeCount"));
   for (UINT32 i = 0; i < nodeCount; i++) {
     SUMMARY_CONSTRAINT_GRAPH_NODE &summNode = summNodes[nodeIdx + i];
-    // Ignore notAPointer and blackHole CGNodes; they have been already
+    // Ignore notAPointer CGNodes; they have been already
     // added to the globalConstraintGraph
-    if (summNode.cgNodeId() == notAPointer()->id() || 
-        summNode.cgNodeId() == blackHole()->id())
+    if (summNode.cgNodeId() == notAPointer()->id())
       continue;
     ConstraintGraphNode *cgNode;
     // Determine which CG to add the ConstraintGraphNode
@@ -287,10 +284,9 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
   // Set the firstOffset on the StInfo
   for (UINT32 i = 0; i < stInfoCount; i++) {
     SUMMARY_CONSTRAINT_GRAPH_STINFO &summStInfo = summStInfos[stInfoIdx + i];
-    // Ignore notAPointer and blackHole StInfos; they have been already
+    // Ignore notAPointer; they have been already
     // added to the globalConstraintGraph
-    if (summStInfo.firstOffset() == blackHole()->id() ||
-        summStInfo.firstOffset() == notAPointer()->id())
+    if (summStInfo.firstOffset() == notAPointer()->id())
       continue;
     UINT32 firstOffsetId = summStInfo.firstOffset();
     if (firstOffsetId != 0) {
@@ -335,10 +331,9 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
   // Update the CGNodeId references in the ConstraintGraphNodes
   for (UINT32 i = 0; i < nodeCount; i++) {
     SUMMARY_CONSTRAINT_GRAPH_NODE &summNode = summNodes[nodeIdx + i];
-    // Ignore notAPointer and blackHole CGNodes; they have been already
+    // Ignore notAPointer CGNodes; they have been already
     // created in the globalConstraintGraph
-    if (summNode.cgNodeId() == notAPointer()->id() || 
-        summNode.cgNodeId() == blackHole()->id())
+    if (summNode.cgNodeId() == notAPointer()->id())
       continue;
     ConstraintGraphNode *cgNode = findUniqueNode(summNode.cgNodeId());
     // Set nextOffset

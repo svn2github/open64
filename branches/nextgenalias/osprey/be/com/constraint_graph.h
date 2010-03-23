@@ -751,7 +751,21 @@ public:
   // Used during StInfo construction to build the hierarchical
   // modulus range structure for a structure containing
   // aggregate fields.
-  static ModulusRange *build(TY &ty, UINT32 offset);
+  static ModulusRange *build(TY &ty, UINT32 offset, MEM_POOL *memPool);
+
+  static void removeRange(ModulusRange *mr, MEM_POOL *memPool)
+  {
+    ModulusRange *p = mr->_child;
+    if (p)
+      removeRange(p, memPool);
+    ModulusRange *np;
+    while (p) {
+      np = p->_next;
+      CXX_DELETE(p, memPool);
+      p = np;
+    }
+    CXX_DELETE(mr, memPool);
+  }
 
   // Used during StInfo construction to determine if a struct
   // is flat, and therefore does not require use of modulus ranges
@@ -775,13 +789,13 @@ class StInfo
 {
 public:
   // Set the varSize from ST_IDX
-  StInfo(ST_IDX st_idx);
+  StInfo(ST_IDX st_idx, MEM_POOL *memPool);
+
   // For IPA
   StInfo(UINT32 flags, INT64 varSize, UINT32 modulus) :
     _flags(flags),
     _varSize(varSize),
-    //_modulus(modulus),
-   _firstOffset(NULL)
+    _firstOffset(NULL)
   {}
 
   UINT32 flags() const { return _flags; }
@@ -1100,7 +1114,7 @@ private:
 
   ConstraintGraphNode *processParam(WN *wn);
 
-  ConstraintGraphNode *processLHSofStore(WN *stmt, INT32 &size);
+  ConstraintGraphNode *processLHSofStore(WN *stmt);
 
   ConstraintGraphNode *processExpr(WN *expr);
 
