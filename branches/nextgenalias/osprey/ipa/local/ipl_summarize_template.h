@@ -3282,7 +3282,7 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
     summStInfo->cg_st_idx(cg_st_idx);
     summStInfo->flags(s->flags());
     summStInfo->varSize(s->varSize());
-    summStInfo->modulus(s->modulus());
+    summStInfo->modulus(s->modulus(0));
     summStInfo->firstOffset(s->firstOffset() ? s->firstOffset()->id() : 0);
     numStInfos++;
   }

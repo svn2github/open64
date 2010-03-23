@@ -427,7 +427,7 @@ ConstraintGraphSolve::postProcessPointsTo()
         else {
           // Handle changes in the size of the modulus that may have
           // made the current offset "out of bounds"
-          UINT32 modulus = node->stInfo()->modulus();
+          UINT32 modulus = node->stInfo()->modulus(node->offset());
           if (node->offset() >= modulus) {
             FmtAssert(node->repParent(),("Node beyond modulus must have parent\n"));
             node = node->repParent();
@@ -771,7 +771,7 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
         else if (dst->inKCycle() < Pointer_Size)
           newOffset = -1;
         else {
-          if (dst->inKCycle() < st->modulus())
+          if (dst->inKCycle() < st->modulus(node->offset()/*+skew?*/))
             st->modulus(dst->inKCycle());
           newOffset = node->offset() + skew;
         }

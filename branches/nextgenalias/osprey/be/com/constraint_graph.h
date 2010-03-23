@@ -39,6 +39,8 @@ class EdgeDelta;
 #define CG_ST_FLAGS_NOFIELD   0x00001000 // Do not specialize fields
 #define CG_ST_FLAGS_NOCNTXT   0x00002000 // Do not specialize contexts
 #define CG_ST_FLAGS_NOLOCAL   0x00004000 // Can escape through a return
+#define CG_ST_FLAGS_MODRANGE  0x00008000 // Modulus ranges employed for
+                                         // symbol stride tracking
 
 // Symbol flags used during escape analysis
 #define CG_ST_FLAGS_CACHE        0x04000000
@@ -544,7 +546,6 @@ public:
   ConstraintGraphNode *parent() { return findRep(); }
 
   ConstraintGraph *cg() const { return _parentCG; }
-
   void cg(ConstraintGraph *p) { _parentCG = p; }
 
   void print(FILE *file);
@@ -682,6 +683,91 @@ private:
   CGEdgeList *_cur;
 };
 
+class ModulusRange
+{
+public:
+  ModulusRange(UINT32 start, UINT32 end, UINT32 mod, TY &ty):
+    _startOffset(start),
+    _endOffset(end),
+    _modulus(mod),
+    _child(NULL),
+    _next(NULL),
+    _ty(ty)
+  {}
+
+  UINT32 modulus(UINT32 offset) { return findRange(offset)->_modulus; }
+  UINT32 modulus(UINT32 offset, UINT32 &startOffset, UINT32 &endOffset) {
+    ModulusRange *r = findRange(offset);
+    startOffset = r->_startOffset;
+    endOffset = r->_endOffset;
+    return r->_modulus;
+  }
+
+  UINT32 modulus(UINT32 offset, UINT32 mod,
+                 UINT32 &startOffset, UINT32 &endOffset) {
+    ModulusRange *modRange = findRange(offset);
+    // Set the modulus of this range to 'mod' and cap
+    // the modulus all children to this new value.
+    if (mod < modRange->_modulus) {
+      modRange->_modulus = mod;
+      set(mod);
+    }
+    startOffset = modRange->_startOffset;
+    endOffset = modRange->_endOffset;
+  }
+
+  // The modulus of the current range is larger than the
+  // modulus of each child.  We return the deepest range
+  // containing the requested offset, hence providing the
+  // smallest modulus.
+  ModulusRange *findRange(UINT32 offset) {
+    if (_startOffset <= offset && offset <= _endOffset) {
+      if (_child) {
+        ModulusRange *r = _child->findRange(offset);
+        return r ? r : this;
+      }
+      else
+        return this;
+    }
+    else if (_next && offset > _next->_startOffset)
+      return _next->findRange(offset);
+    else
+      return NULL;
+  }
+
+  // Set the modulus of the current range to the provided
+  // value.  If the provided value is < current modulus,
+  // cap the children.  We also cap siblings under the
+  // assumption that modulus of the parent has been set
+  // to the provided value.
+  void set(UINT32 mod) {
+    if (mod < _modulus) {
+      _modulus = mod;
+      if (_child) _child->set(mod);
+    }
+    if (_next) _next->set(mod);
+  }
+
+  // Used during StInfo construction to build the hierarchical
+  // modulus range structure for a structure containing
+  // aggregate fields.
+  static ModulusRange *build(TY &ty, UINT32 offset);
+
+  // Used during StInfo construction to determine if a struct
+  // is flat, and therefore does not require use of modulus ranges
+  static bool flat(TY &ty);
+
+  void print(FILE *file, UINT32 indent=0);
+  void print(ostream &str, UINT32 indent=0);
+
+private:
+  UINT32        _startOffset;
+  UINT32        _endOffset;
+  UINT32        _modulus;
+  ModulusRange *_child;
+  ModulusRange *_next;
+  TY           &_ty;          // For debug
+};
 
 // Class to represent symbol specific info that is common to all
 // CGNodes with the same symbol but different offsets
@@ -694,7 +780,7 @@ public:
   StInfo(UINT32 flags, INT64 varSize, UINT32 modulus) :
     _flags(flags),
     _varSize(varSize),
-    _modulus(modulus),
+    //_modulus(modulus),
    _firstOffset(NULL)
   {}
 
@@ -704,8 +790,18 @@ public:
 
   INT64 varSize() const { return _varSize; }
   void varSize(INT64 size) { _varSize = size; }
-  UINT32 modulus() const { return _modulus; }
-  void modulus(UINT32 mod);
+  UINT32 modulus(UINT32 offset) const
+  {
+    if (!checkFlags(CG_ST_FLAGS_MODRANGE))
+      return _u._modulus;
+    else
+      return _u._modRange->modulus(offset);
+  }
+  void modulus(UINT32 mod, UINT32 offset);
+
+  // Called after constraint graph is constructed to apply the final
+  // modulus ranges to all existing offsets.
+  void applyModulus(void);
 
   // The maximum number of offsets off this ST that we will allow
   // before going field insensitive.  We will be able to configure
@@ -725,7 +821,10 @@ public:
 
 private:
   UINT32 _flags;
-  UINT32 _modulus;
+  union  {
+    UINT32        _modulus;
+    ModulusRange *_modRange;
+  }      _u;
   INT64  _varSize;
   UINT16 _maxOffsets;
   UINT16 _numOffsets;
@@ -809,6 +908,7 @@ public:
 
   // To build ConstraintGraphs at IPL/BE
   ConstraintGraph(WN *entryWN, MEM_POOL *mPool, UINT32 minSize = 1024):
+    _name(0),
     _buildComplete(false),
     _nextCallSiteId(1),
     _varArgs(NULL),
@@ -846,7 +946,7 @@ public:
     for (CGStInfoMap::iterator iter = _cgStInfoMap.begin();
         iter != _cgStInfoMap.end(); ++iter)  {
       StInfo *stInfo = iter->second;
-      stInfo->modulus(stInfo->modulus());
+      stInfo->applyModulus();
     }
 }
 
@@ -854,6 +954,7 @@ public:
   // To build ConstraintGraphs during IPA
   ConstraintGraph(MEM_POOL *mPool, IPA_NODE *ipaNode = NULL, 
                   UINT32 minSize = 1024):
+    _name(0),
     _nextCallSiteId(1),
     _cgNodeToIdMap(minSize),
     _cgStInfoMap(minSize),
@@ -879,6 +980,8 @@ public:
 
     if (ipaNode)
       buildCGipa(ipaNode);
+    else
+      _name = "__Global_Graph__";
   }
 
   void deleteNode(ConstraintGraphNode *node)
@@ -956,6 +1059,8 @@ public:
 
   void vcg(const char *prefix);
 
+  char *name(void) { return _name; }
+
 private:
 
   // Max size of all types
@@ -1021,6 +1126,9 @@ private:
   // Data Members
   bool _buildComplete;
 
+  // Used for debugging during IPA.
+  char *_name;
+
   // Generate unique CallSiteId per procedure
   CallSiteId _nextCallSiteId;
 
@@ -1057,6 +1165,14 @@ class ConstraintGraphVCG
 {
 public:
   static void dumpVCG(const char *fileNamePrefix);
+
+  typedef struct {
+      size_t operator()(const ConstraintGraph *k) const {return size_t (k);}
+  } hashCG;
+  typedef struct {
+      bool operator()(const ConstraintGraph *k1,
+                      const ConstraintGraph *k2) const  {return k1 == k2; }
+  } equalCG;
 
 private:
 

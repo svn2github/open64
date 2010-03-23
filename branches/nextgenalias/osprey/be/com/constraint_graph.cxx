@@ -207,6 +207,74 @@ ConstraintGraphNode::~ConstraintGraphNode()
   FmtAssert(_outEdges == NULL, ("outEdges not empty!"));
 }
 
+ModulusRange *
+ModulusRange::build(TY &ty, UINT32 offset)
+{
+  FmtAssert(TY_kind(ty) == KIND_STRUCT,("Expecting only structs"));
+  ModulusRange *modRange = new ModulusRange(offset,offset+TY_size(ty)-1,TY_size(ty),ty);
+  ModulusRange *childRanges = NULL;
+  ModulusRange *curRange = NULL;
+  for (FLD_HANDLE fld = TY_flist(ty); !fld.Is_Null(); fld = FLD_next(fld)) {
+    TY &fty = Ty_Table[FLD_type(fld)];
+    ModulusRange *newRange = NULL;
+    if (TY_kind(fty) == KIND_ARRAY) {
+      UINT32 size = TY_size(Ty_Table[TY_etype(fty)]);
+      UINT32 start = offset+FLD_ofst(fld);
+      UINT32 end = start+size-1;
+      newRange = new ModulusRange(start,end,size,fty);
+    }
+    else if (TY_kind(fty) == KIND_STRUCT)
+      newRange = build(fty,offset+FLD_ofst(fld));
+    if (newRange) {
+      if (!childRanges)
+        childRanges = newRange;
+      if (curRange)
+        curRange->_next = newRange;
+      curRange = newRange;
+    }
+  }
+  modRange->_child = childRanges;
+  return modRange;
+}
+
+bool
+ModulusRange::flat(TY &ty)
+{
+  FmtAssert(TY_kind(ty) == KIND_STRUCT,("Expecting only structs"));
+  for (FLD_HANDLE fld = TY_flist(ty); !fld.Is_Null(); fld = FLD_next(fld)) {
+    TY &fty = Ty_Table[FLD_type(fld)];
+    if (TY_kind(fty) == KIND_ARRAY ||
+        TY_kind(fty) == KIND_STRUCT)
+      return false;
+  }
+  return true;
+}
+
+void
+ModulusRange::print(FILE *file, UINT32 indent) {
+  for (int i = 0; i < indent; i++)
+    fprintf(file," ");
+  fprintf(file,"%s [%d, %d] mod: %d\n",
+          TY_name(_ty),_startOffset,_endOffset,_modulus);
+  if (_child)
+    _child->print(file,indent+2);
+  if (_next)
+    _next->print(file,indent);
+}
+
+void
+ModulusRange::print(ostream &str,UINT32 indent)
+{
+  for (int i = 0; i < indent; i++)
+    str << " ";
+  str << TY_name(_ty) << " [" << _startOffset << ", " << _endOffset << "]";
+  str << " mod: " << _modulus << endl;
+  if (_child)
+    _child->print(str,indent+2);
+  if (_next)
+    _next->print(str,indent);
+}
+
 StInfo::StInfo(ST_IDX st_idx)
   : _flags(0),
     _varSize(0),
@@ -228,7 +296,14 @@ StInfo::StInfo(ST_IDX st_idx)
   if (_varSize == 0)
     _varSize = Pointer_Size;
 
-  _modulus = _varSize;
+  if (TY_kind(ty) != KIND_STRUCT || ModulusRange::flat(ty))
+    _u._modulus = _varSize;
+  else {
+    addFlags(CG_ST_FLAGS_MODRANGE);
+    _u._modRange = ModulusRange::build(ty,0);
+    _u._modRange->print(stderr);
+  }
+
   // Set the flags
   ST_SCLASS storage_class = ST_sclass(st);
   if (storage_class == SCLASS_FSTATIC ||
@@ -258,9 +333,50 @@ StInfo::StInfo(ST_IDX st_idx)
 }
 
 void
-StInfo::modulus(UINT32 mod)
+StInfo::applyModulus(void)
 {
-  _modulus = mod;
+  ConstraintGraphNode *cur = _firstOffset;
+  if (cur && cur->offset() == -1)
+    cur = cur->nextOffset();
+
+  UINT32 startOffset, endOffset, modulus;
+  while (cur) {
+    if (!checkFlags(CG_ST_FLAGS_MODRANGE)) {
+      modulus = _u._modulus;
+      startOffset = 0;
+      endOffset = _varSize;
+    }
+    else
+      modulus = _u._modRange->modulus(cur->offset(),startOffset,endOffset);
+
+    if (cur->offset() >= startOffset + modulus) {
+      UINT32 newOffset = startOffset + cur->offset() % modulus;
+      ConstraintGraphNode *modNode =
+          cur->cg()->getCGNode(cur->cg_st_idx(),newOffset);
+
+      // Now we merge the two nodes together.  NOTE: the original
+      // node remains and uses the modulus offset node as its
+      // parent, for nodes that may have the original in their
+      // points-to sets.
+      modNode->merge(cur);
+      cur->repParent(modNode);
+    }
+    cur = cur->nextOffset();
+  }
+}
+
+void
+StInfo::modulus(UINT32 mod, UINT32 offset)
+{
+  UINT32 startOffset, endOffset;
+  if (!checkFlags(CG_ST_FLAGS_MODRANGE)) {
+    _u._modulus = mod;
+    startOffset = 0;
+    endOffset = _varSize;
+  }
+  else
+    _u._modRange->modulus(offset,mod,startOffset,endOffset);
+
   if(_firstOffset && _firstOffset->cg()->buildComplete()) {
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
       fprintf(stderr,"Setting modulus of %s to %d\n",
@@ -268,11 +384,11 @@ StInfo::modulus(UINT32 mod)
     // We must apply the new modulus to all existing offsets
     ConstraintGraphNode *cur = _firstOffset;
     if (cur && cur->offset() == -1) cur = cur->nextOffset();
-    while (cur && cur->offset() < mod)
+    while (cur && cur->offset() < startOffset + mod)
       cur = cur->nextOffset();
 
-    while (cur) {
-      UINT32 newOffset = cur->offset() % mod;
+    while (cur && cur->offset() <= endOffset) {
+      UINT32 newOffset = startOffset + cur->offset() % mod;
       ConstraintGraphNode *modNode =
           cur->cg()->getCGNode(cur->cg_st_idx(),newOffset);
 
@@ -306,11 +422,11 @@ ConstraintGraph::adjustPointsToForKCycle(UINT32 kCycle,
     // If the resulting K value is still larger than the size
     // of a pointer, then we simply adjust the modulus of the
     // underlying symbol to the min(rep->inKCycle(),modulus)
-    if (kCycle >= Pointer_Size) {
+    if (kCycle > Pointer_Size) {
       StInfo *st = node->cg()->stInfo(node->cg_st_idx());
-      if (kCycle < st->modulus())
-        st->modulus(kCycle);
-      if (node->offset() >= st->modulus())
+      if (kCycle < st->modulus(node->offset()))
+        st->modulus(kCycle,node->offset());
+      if (node->offset() >= st->modulus(node->offset()))
         node = node->cg()->getCGNode(node->cg_st_idx(),node->offset());
     }
     // If the K value is < the size of a pointer all offsets
@@ -1337,7 +1453,7 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
     if (offset < -1)
       offset = -offset;
-    offset = offset % si->modulus();
+    offset = offset % si->modulus(offset);
     if (si->varSize() != 0)
       Is_True(offset < si->varSize(), ("getCGNode: offset: %lld >= varSize"
               ": %lld\n", offset, si->varSize()));
@@ -1511,7 +1627,7 @@ ConstraintGraph::print(FILE *file)
   for (CGNodeToIdMapIterator iter = _cgNodeToIdMap.begin();
       iter != _cgNodeToIdMap.end(); iter++) {
     iter->first->print(file);
-    fprintf(stderr, " stInfo: ");
+    fprintf(stderr, " stInfo:");
     stInfo(iter->first->cg_st_idx())->print(file);
     fprintf(stderr, "\n");
   }
@@ -1553,6 +1669,8 @@ ConstraintGraph::print(FILE *file)
 void
 ConstraintGraphNode::merge(ConstraintGraphNode *src)
 {
+  fprintf(stderr,"Merging node %d into node %d\n",src->id(),id());
+
   // 0) The source node may be the rep of another cycle or
   //    have inKCycle() set for some other reason.  Make
   //    sure we merge it into the destination node
@@ -1829,7 +1947,7 @@ void ConstraintGraphNode::print(ostream& ostr)
 void
 StInfo::print(FILE *file)
 {
-  fprintf(file, "varSize: %lld modulus: %d", _varSize, _modulus);
+  fprintf(file, "varSize: %lld", _varSize);
   fprintf(file, " ST flags: [");
   if (checkFlags(CG_ST_FLAGS_GLOBAL))
     fprintf(file, "GLOBAL");
@@ -1845,14 +1963,20 @@ StInfo::print(FILE *file)
     fprintf(file, " CI");
   fprintf(file, "]");
   if (_firstOffset)
-    fprintf(file, " firstCGNodeId: %d\n", _firstOffset->id());
+    fprintf(file, " firstCGNodeId: %d", _firstOffset->id());
   else
-    fprintf(file, " firstCGNodeId: null\n");
+    fprintf(file, " firstCGNodeId: null");
+  if (!checkFlags(CG_ST_FLAGS_MODRANGE))
+    fprintf(file," modulus: %d\n",_u._modulus);
+  else {
+    fprintf(file,"\n  modulus ranges:\n");
+    _u._modRange->print(file,4);
+  }
 }
 
 void StInfo::print(ostream& str)
 {
-  str << "varSize: " << _varSize << " modulus: " << _modulus;
+  str << "varSize: " << _varSize;
   str << " ST flags: [";
   if (checkFlags(CG_ST_FLAGS_GLOBAL))
     str << "GLOBAL";
@@ -1866,9 +1990,15 @@ void StInfo::print(ostream& str)
     str << " CI";
   str << "]";
   if (_firstOffset)
-    str << " firstCGNodeId: " << _firstOffset->id() << endl;
+    str << " firstCGNodeId: " << _firstOffset->id();
   else
     str << " firstCGNodeId: null";
+  if (!checkFlags(CG_ST_FLAGS_MODRANGE))
+     str << " modulus: " << _u._modulus << endl;
+   else {
+     str << endl << " modulus ranges:" << endl;
+     _u._modRange->print(str,2);
+   }
 }
 
 bool
@@ -2111,6 +2241,9 @@ ConstraintGraphVCG::buildVCGNode(ConstraintGraphNode *cgNode)
   char *label = getNodeLabel(cgNode);
   char *nodeInfo = getNodeInfo(cgNode);
   VCGNode *node = CXX_NEW(VCGNode(title, label, Ellipse), &_memPool);
+  if (cgNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+    node->backGroundColor(Red);
+  node->textColor(Black);
   node->info(1, nodeInfo);
   return node;
 }
@@ -2125,6 +2258,9 @@ ConstraintGraphVCG::buildVCG()
   hash_map<ConstraintGraphNode *, const char *,
            ConstraintGraphNode::hashCGNode,
            ConstraintGraphNode::equalCGNode>::const_iterator nodeToTitleMapIter;
+
+  hash_map<ConstraintGraph *, VCGGraph *,hashCG,equalCG> cgToSubGraphMap;
+  hash_map<ConstraintGraph *, VCGGraph *,hashCG,equalCG>::iterator cgToSubGraphMapIter;
 
   VCGGraph vcg("ConstraintGraph VCG");
   vcg.infoName(1, "ConstraintGraph");
@@ -2146,7 +2282,23 @@ ConstraintGraphVCG::buildVCG()
       VCGNode *node = buildVCGNode(cgNode);      
       srcTitle = node->title();
       nodeToTitleMap[cgNode] = srcTitle;
-      vcg.addNode(*node);
+      // Check to see if we have created a sub graph for the
+      // parent constraint graph
+      VCGGraph *subGraph;
+      if (cgNode->cg()->name()) {
+        cgToSubGraphMapIter = cgToSubGraphMap.find(cgNode->cg());
+        if (cgToSubGraphMapIter == cgToSubGraphMap.end()) {
+          subGraph = new VCGGraph(cgNode->cg()->name());
+          subGraph->folding(true);
+          cgToSubGraphMap[cgNode->cg()] = subGraph;
+          vcg.addSubGraph(*subGraph);
+        }
+        else
+          subGraph = cgToSubGraphMapIter->second;
+      }
+      else
+        subGraph = &vcg;
+      subGraph->addNode(*node);
     } else 
       srcTitle = nodeToTitleMapIter->second;
     
