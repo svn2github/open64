@@ -532,8 +532,8 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
     FmtAssert(this == globalCG(), ("Expect this to be the globalCG"));
     FmtAssert(stInfo->varSize() == summ->varSize(), ("Inconsistent varSize"));
     stInfo->addFlags(summ->flags());
-    if (summ->modulus() < stInfo->modulus())
-      stInfo->modulus(summ->modulus());
+    if (summ->modulus() < stInfo->modulus(0))
+      stInfo->modulus(summ->modulus(),0);
     fprintf(stderr, "Global entry found for StInfo old cg_st_idx: %llu "
                     "new cg_st_idx: %llu\n", summ->cg_st_idx(), cg_st_idx);
     return stInfo;

@@ -290,7 +290,7 @@ StInfo::StInfo(ST_IDX st_idx)
     _varSize = TY_size(etype);
   } else
     _varSize = ST_size(st);
-  // As a fallback we resort to setting the size to the
+  // As a fall back we resort to setting the size to the
   // current pointer size to ensure a valid modulus for
   // this type.
   if (_varSize == 0)
@@ -1669,8 +1669,6 @@ ConstraintGraph::print(FILE *file)
 void
 ConstraintGraphNode::merge(ConstraintGraphNode *src)
 {
-  fprintf(stderr,"Merging node %d into node %d\n",src->id(),id());
-
   // 0) The source node may be the rep of another cycle or
   //    have inKCycle() set for some other reason.  Make
   //    sure we merge it into the destination node
@@ -2285,7 +2283,7 @@ ConstraintGraphVCG::buildVCG()
       // Check to see if we have created a sub graph for the
       // parent constraint graph
       VCGGraph *subGraph;
-      if (cgNode->cg()->name()) {
+      if (0/*cgNode->cg()->name()*/) {
         cgToSubGraphMapIter = cgToSubGraphMap.find(cgNode->cg());
         if (cgToSubGraphMapIter == cgToSubGraphMap.end()) {
           subGraph = new VCGGraph(cgNode->cg()->name());
