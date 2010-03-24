@@ -211,6 +211,8 @@ ModulusRange *
 ModulusRange::build(TY &ty, UINT32 offset, MEM_POOL *memPool)
 {
   FmtAssert(TY_kind(ty) == KIND_STRUCT,("Expecting only structs"));
+  if (TY_size(ty) <= 1)
+    return NULL;
   ModulusRange *modRange = 
     CXX_NEW(ModulusRange(offset,offset+TY_size(ty)-1,TY_size(ty),ty), memPool);
   ModulusRange *childRanges = NULL;
@@ -238,8 +240,10 @@ ModulusRange::build(TY &ty, UINT32 offset, MEM_POOL *memPool)
           if (newRange->_modulus < curRange->_modulus)
             curRange->_modulus = newRange->_modulus;
           removeRange(newRange, memPool);
-          removeRange(curRange->_child, memPool);
-          curRange->_child = NULL;
+          if (curRange->_child) {
+            removeRange(curRange->_child, memPool);
+            curRange->_child = NULL;
+          }
           newRange = curRange;
         } else
           curRange->_next = newRange;
@@ -310,7 +314,8 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
   if (_varSize == 0)
     _varSize = Pointer_Size;
 
-  if (TY_kind(ty) != KIND_STRUCT || ModulusRange::flat(ty))
+  if (TY_kind(ty) != KIND_STRUCT || ModulusRange::flat(ty) || 
+      TY_size(ty) <= Pointer_Size)
     _u._modulus = _varSize;
   else {
     addFlags(CG_ST_FLAGS_MODRANGE);
