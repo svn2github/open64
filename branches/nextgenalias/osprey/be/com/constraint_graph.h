@@ -695,7 +695,16 @@ public:
     _ty(ty)
   {}
 
-  UINT32 modulus(UINT32 offset) { return findRange(offset)->_modulus; }
+  UINT32 modulus(UINT32 offset) {
+    ModulusRange *r = findRange(offset);
+    if (r)
+      return r->_modulus;
+    // Offset must be larger than variable size, apply
+    // outermost modulus
+    FmtAssert(offset > _endOffset,("Expected out of range offset"));
+    return _modulus;
+  }
+
   UINT32 modulus(UINT32 offset, UINT32 &startOffset, UINT32 &endOffset) {
     ModulusRange *r = findRange(offset);
     startOffset = r->_startOffset;
