@@ -158,12 +158,26 @@ SCCDetection::find(void)
 void
 SCCDetection::unify(UINT32 noMergeMask, NodeToKValMap &nodeToKValMap)
 {
+  // We capture the current number of nodes in the graph.  As we
+  // merge nodes, additional offsets may materialize that will not
+  // be marked as "visited".  They should have no incoming/outgoing
+  // edges so we do not flag this as a problem.
+  UINT32 nodeCount = _graph->totalCGNodes();
+
   // Unify the nodes in an SCC into a single node
   for (CGNodeToIdMapIterator iter = _graph->lBegin();
       iter != _graph->lEnd(); iter++) {
     ConstraintGraphNode *node = iter->first;
     FmtAssert(node->checkFlags(CG_NODE_FLAGS_VISITED) ||
-              node->checkFlags(CG_NODE_FLAGS_MERGED),
+              node->checkFlags(CG_NODE_FLAGS_MERGED) ||
+              // New nodes created when merging nodes and
+              // adjusting the points-to set for an updated
+              // inKCycle() value.
+              (node->id() >= nodeCount &&
+                  node->outCopySkewEdges().empty() &&
+                  node->outLoadStoreEdges().empty() &&
+                  node->inCopySkewEdges().empty() &&
+                  node->inLoadStoreEdges().empty()),
         ("Node %d unvisited during SCC detection\n",node->id()));
     if (node->repParent() && node->repParent() != node &&
         !node->checkFlags(CG_NODE_FLAGS_MERGED)) {
