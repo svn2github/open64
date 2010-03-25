@@ -3286,7 +3286,11 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
     summStInfo->cg_st_idx(cg_st_idx);
     summStInfo->flags(s->flags());
     summStInfo->varSize(s->varSize());
-    summStInfo->modulus(s->modulus(0));
+    if (s->checkFlags(CG_ST_FLAGS_MODRANGE)) {
+      UINT32 modRangeIdx = processModRange(s->modRange());
+      summStInfo->modulus(modRangeIdx);
+    } else
+      summStInfo->modulus(s->mod());
     summStInfo->firstOffset(s->firstOffset() ? s->firstOffset()->id() : 0);
     numStInfos++;
   }
@@ -3369,6 +3373,25 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
   currProc->Set_constraint_graph_node_ids_count(numNodeIds);
   currProc->Set_constraint_graph_node_ids_idx(
                       _constraint_graph_node_ids.Lastidx() - numNodeIds + 1);
+}
+
+template <PROGRAM program>
+UINT32
+SUMMARIZE<program>::processModRange(ModulusRange *mr)
+{
+  SUMMARY_CONSTRAINT_GRAPH_MODRANGE *summMR = New_constraint_graph_modrange();
+  INT idx = Get_constraint_graph_modranges_idx();
+  summMR->startOffset(mr->startOffset());
+  summMR->endOffset(mr->endOffset());
+  summMR->modulus(mr->mod());
+#ifdef Is_True_On
+  summMR->ty_idx(mr->ty_idx());
+#endif
+  if (mr->child())
+    summMR->childIdx(processModRange(mr->child()));
+  if (mr->next())
+    summMR->nextIdx(processModRange(mr->next()));
+  return idx;
 }
 
 // Since the pts-to-set is a sparse set, we store the CGNodeIds in the set

@@ -430,6 +430,17 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     returns().push_back(cn->id());
   }
 
+  // Call applyModulus on the global StInfos to fixup any offsets if the modulus
+  // has changed during StInfo merging
+  for (CGStInfoMapIterator iter = globalCG()->_cgStInfoMap.begin();
+       iter != globalCG()->_cgStInfoMap.end(); iter++) {
+    StInfo *stInfo = iter->second;
+    if (stInfo->checkFlags(CG_ST_FLAGS_ADJUST_MODULUS)) {
+      stInfo->applyModulus();
+      stInfo->clearFlags(CG_ST_FLAGS_ADJUST_MODULUS);
+    }
+  }
+
   // Add CallSites
   UINT32 callSiteIdx = proc->Get_constraint_graph_callsites_idx();
   UINT32 callSiteCount = proc->Get_constraint_graph_callsites_count();
@@ -527,8 +538,28 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
     FmtAssert(this == globalCG(), ("Expect this to be the globalCG"));
     FmtAssert(stInfo->varSize() == summ->varSize(), ("Inconsistent varSize"));
     stInfo->addFlags(summ->flags());
-    if (summ->modulus() < stInfo->modulus(0))
-      stInfo->modulus(summ->modulus(),0);
+    // Check if we have a modrange or just a plain modulus
+    if (!stInfo->checkFlags(CG_ST_FLAGS_MODRANGE)) {
+      if (summ->modulus() != stInfo->mod()) {
+        stInfo->mod(gcd(stInfo->mod(), summ->modulus()));
+        stInfo->addFlags(CG_ST_FLAGS_ADJUST_MODULUS);
+      }
+    } else {
+      ModulusRange *newMR = buildModRange(summ->modulus(), ipaNode);
+      ModulusRange *oldMR = stInfo->modRange();
+      FmtAssert(oldMR != NULL, ("Old ModulusRange not found"));
+      FmtAssert(newMR != NULL, ("New ModulusRange not found"));
+      // If we have a range mismatch, collapse
+      if (!newMR->compare(oldMR)) {
+        if (oldMR->endOffset() < newMR->endOffset())
+          oldMR->endOffset(newMR->endOffset());
+        oldMR->mod(gcd(oldMR->mod(), newMR->mod()));
+        ModulusRange::removeRange(newMR, _memPool);
+        ModulusRange::removeRange(oldMR->child(), _memPool);
+        oldMR->child(NULL);
+        stInfo->addFlags(CG_ST_FLAGS_ADJUST_MODULUS);
+      }
+    }
     fprintf(stderr, "Global entry found for StInfo old cg_st_idx: %llu "
                     "new cg_st_idx: %llu\n", summ->cg_st_idx(), cg_st_idx);
     return stInfo;
@@ -536,8 +567,15 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
      
   UINT32 flags = summ->flags(); 
   INT64 varSize = summ->varSize(); 
-  UINT32 modulus = summ->modulus();
-  StInfo *stInfo = CXX_NEW(StInfo(flags, varSize, modulus), _memPool);
+  StInfo *stInfo = CXX_NEW(StInfo(flags, varSize), _memPool);
+  if (flags & CG_ST_FLAGS_MODRANGE) {
+    // Read in the ModRanges
+    ModulusRange *mr = buildModRange(summ->modulus(), ipaNode);
+    stInfo->modRange(mr);
+  } else {
+    UINT32 modulus = summ->modulus();
+    stInfo->mod(modulus);
+  }
   // Adjust cg_st_idx with the current pu and file index
   _cgStInfoMap[cg_st_idx] = stInfo;
 
@@ -546,6 +584,27 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
           (this == globalCG()) ? "global" : "local");
 
   return stInfo;
+}
+
+ModulusRange *
+ConstraintGraph::buildModRange(UINT32 modRangeIdx, IPA_NODE *ipaNode)
+{
+  // Get the modrange table
+  INT32 size;
+  SUMMARY_CONSTRAINT_GRAPH_MODRANGE *summModRanges = 
+          IPA_get_constraint_graph_modranges_array(ipaNode->File_Header(),
+                                                   size);
+  SUMMARY_CONSTRAINT_GRAPH_MODRANGE &summMR = summModRanges[modRangeIdx];
+  ModulusRange *mr = CXX_NEW(ModulusRange(summMR.startOffset(), 
+                                          summMR.endOffset(),
+                                          summMR.modulus(),
+                                          summMR.ty_idx()), _memPool);
+  if (summMR.childIdx() != 0)
+    mr->child(buildModRange(summMR.childIdx(), ipaNode));
+  if (summMR.nextIdx() != 0)
+    mr->child(buildModRange(summMR.nextIdx(), ipaNode));
+
+  return mr;
 }
 
 void

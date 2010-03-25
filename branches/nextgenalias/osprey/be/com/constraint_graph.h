@@ -42,6 +42,12 @@ class EdgeDelta;
 #define CG_ST_FLAGS_MODRANGE  0x00008000 // Modulus ranges employed for
                                          // symbol stride tracking
 
+#define CG_ST_FLAGS_ADJUST_MODULUS 0x10000000 // Used during ConstraintGraph
+                                              // construction during IPA
+                                              // to call applyModulus
+                                              // when merging two StInfos
+                                              // of inconsistent modulus
+
 // Symbol flags used during escape analysis
 #define CG_ST_FLAGS_CACHE        0x04000000
 #define CG_ST_FLAGS_LCONT_ESC    0x08000000 // Local contains escape object
@@ -686,14 +692,31 @@ private:
 class ModulusRange
 {
 public:
-  ModulusRange(UINT32 start, UINT32 end, UINT32 mod, TY &ty):
+  ModulusRange(UINT32 start, UINT32 end, UINT32 mod, TY_IDX ty_idx):
     _startOffset(start),
     _endOffset(end),
     _modulus(mod),
     _child(NULL),
-    _next(NULL),
-    _ty(ty)
+    _next(NULL)
+#ifdef Is_True_On
+    ,
+    _ty_idx(ty_idx)
+#endif
   {}
+
+  UINT32 startOffset()  const { return _startOffset; }
+  UINT32 endOffset()    const { return _endOffset; }
+  UINT32 mod()          const { return _modulus; }
+  ModulusRange *child() const { return _child; }
+  ModulusRange *next()  const { return _next; }
+#ifdef Is_True_On
+  TY_IDX ty_idx()       const { return _ty_idx; }
+#endif
+
+  void mod(UINT32 m)           { _modulus = m; }
+  void endOffset(UINT32 o)     { _endOffset = o; }
+  void child(ModulusRange *mr) { _child = mr; }
+  void next(ModulusRange *mr)  { _next = mr; }
 
   UINT32 modulus(UINT32 offset) {
     ModulusRange *r = findRange(offset);
@@ -760,22 +783,32 @@ public:
     if (_next) _next->set(mod);
   }
 
+  bool compare(ModulusRange *rhs) const
+  {
+    if (rhs == NULL)
+      return false;
+    if (this == rhs)
+      return true;
+    return ( _startOffset == rhs->_startOffset &&
+             _endOffset == rhs->_endOffset &&
+             _modulus ==  rhs->_modulus &&
+             (_child == rhs->_child  ||
+              _child->compare(rhs->_child)) &&
+             (_next == rhs->_next  ||
+              _next->compare(rhs->_next)) );
+  }
+
   // Used during StInfo construction to build the hierarchical
   // modulus range structure for a structure containing
   // aggregate fields.
-  static ModulusRange *build(TY &ty, UINT32 offset, MEM_POOL *memPool);
+  static ModulusRange *build(TY_IDX ty_idx, UINT32 offset, MEM_POOL *memPool);
 
   static void removeRange(ModulusRange *mr, MEM_POOL *memPool)
   {
-    ModulusRange *p = mr->_child;
-    if (p)
-      removeRange(p, memPool);
-    ModulusRange *np;
-    while (p) {
-      np = p->_next;
-      CXX_DELETE(p, memPool);
-      p = np;
-    }
+    if (mr == NULL)
+      return;
+    removeRange(mr->_child, memPool);
+    removeRange(mr->_next, memPool);
     CXX_DELETE(mr, memPool);
   }
 
@@ -792,7 +825,9 @@ private:
   UINT32        _modulus;
   ModulusRange *_child;
   ModulusRange *_next;
-  TY           &_ty;          // For debug
+#ifdef Is_True_On
+  TY_IDX        _ty_idx;          // For debug
+#endif
 };
 
 // Class to represent symbol specific info that is common to all
@@ -804,7 +839,7 @@ public:
   StInfo(ST_IDX st_idx, MEM_POOL *memPool);
 
   // For IPA
-  StInfo(UINT32 flags, INT64 varSize, UINT32 modulus) :
+  StInfo(UINT32 flags, INT64 varSize) :
     _flags(flags),
     _varSize(varSize),
     _firstOffset(NULL)
@@ -813,6 +848,7 @@ public:
   UINT32 flags() const { return _flags; }
   bool checkFlags(UINT32 flag) const { return _flags & flag; }
   void addFlags(UINT32 flag) { _flags |= flag; }
+  void clearFlags(UINT32 flag) { _flags &= ~flag; }
 
   INT64 varSize() const { return _varSize; }
   void varSize(INT64 size) { _varSize = size; }
@@ -841,6 +877,27 @@ public:
 
   ConstraintGraphNode *firstOffset() const { return _firstOffset; }
   void firstOffset(ConstraintGraphNode *n) { _firstOffset = n; }
+
+  ModulusRange *modRange() const 
+  { 
+    FmtAssert(checkFlags(CG_ST_FLAGS_MODRANGE), ("Expecting MODRANGE"));
+    return _u._modRange; 
+  }
+  UINT32 mod() const 
+  { 
+    FmtAssert(!checkFlags(CG_ST_FLAGS_MODRANGE), ("Not valid for MODRANGE"));
+    return _u._modulus; 
+  }
+  void modRange(ModulusRange *mr) 
+  { 
+    FmtAssert(checkFlags(CG_ST_FLAGS_MODRANGE), ("Expecting MODRANGE"));
+    _u._modRange = mr; 
+  }
+  void mod(UINT32 m)
+  { 
+    FmtAssert(!checkFlags(CG_ST_FLAGS_MODRANGE), ("Not valid for MODRANGE"));
+    _u._modulus = m;
+  }
 
   void print(FILE *file);
   void print(ostream& ostr);
@@ -1144,6 +1201,8 @@ private:
 
   StInfo * buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
                        IPA_NODE *ipaNode);
+
+  ModulusRange *buildModRange(UINT32 idx, IPA_NODE *ipaNode);
 
   ConstraintGraphNode *findUniqueNode(CGNodeId id);
 

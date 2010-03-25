@@ -1435,4 +1435,33 @@ SUMMARY_CONSTRAINT_GRAPH_CALLSITE::Trace(void) const
   Print (TFile);
 }
 
+void
+SUMMARY_CONSTRAINT_GRAPH_MODRANGE::Print( FILE *fp) const
+{
+  fprintf(fp, "start %d end: %d mod: %d child: %d next: %d", 
+          _startOffset, _endOffset, _modulus, _childIdx, _nextIdx);
+} 
+
+void
+SUMMARY_CONSTRAINT_GRAPH_MODRANGE::Print_array(FILE* fp, INT32 size) const
+{
+  fprintf(fp, "%sStart cg modrange array\n%s", SBar, SBar);
+  for (INT i = 0; i < size; ++i) {
+    this[i].Print(fp);
+    fprintf(fp, "\n");
+  }
+  fprintf( fp, "%sEnd cg modrange array \n%s", SBar, SBar);
+}
+
+void
+SUMMARY_CONSTRAINT_GRAPH_MODRANGE::Trace_array(INT32 size) const
+{
+  Print_array(TFile, size);
+}
+
+void
+SUMMARY_CONSTRAINT_GRAPH_MODRANGE::Trace(void) const
+{
+  Print (TFile);
+}
 

@@ -167,6 +167,18 @@ IPA_get_constraint_graph_callsites_array(const IP_FILE_HDR &hdr, INT32 &size)
   return NULL;
 }
 
+SUMMARY_CONSTRAINT_GRAPH_MODRANGE*
+IPA_get_constraint_graph_modranges_array(const IP_FILE_HDR &hdr, INT32 &size)
+{
+  const SUMMARY_FILE_HEADER *summary_header = IP_FILE_HDR_file_header(hdr);
+  if (size = summary_header->Get_constraint_graph_modranges_size()) {
+    return (SUMMARY_CONSTRAINT_GRAPH_MODRANGE *)
+      (IP_FILE_HDR_summary (hdr) + 
+                   summary_header->Get_constraint_graph_modranges_offset());
+  } 
+  return NULL;
+}
+
 UINT32 *
 IPA_get_constraint_graph_node_ids_array(const IP_FILE_HDR &hdr, INT32 &size)
 {

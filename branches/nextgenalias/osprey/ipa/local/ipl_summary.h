@@ -142,6 +142,7 @@ private:
   Elf64_Word _constraint_graph_stinfos_offset;
   Elf64_Word _constraint_graph_callsites_offset;
   Elf64_Word _constraint_graph_node_ids_offset;
+  Elf64_Word _constraint_graph_modranges_offset;
 
   // array section flow sensitive analysis information
   Elf64_Word _scalar_node_offset, _cfg_node_offset, _regions_array_offset;
@@ -166,6 +167,7 @@ private:
   mINT32 _constraint_graph_stinfos_size;
   mINT32 _constraint_graph_callsites_size;
   mINT32 _constraint_graph_node_ids_size;
+  mINT32 _constraint_graph_modranges_size;
 
   // array section flow sensitive analysis information
   mINT32 _scalar_node_size, _cfg_node_size, _regions_array_size; 
@@ -190,6 +192,7 @@ private:
   mUINT32 _constraint_graph_stinfos_entry_size;
   mUINT32 _constraint_graph_callsites_entry_size;
   mUINT32 _constraint_graph_node_ids_entry_size;
+  mUINT32 _constraint_graph_modranges_entry_size;
 
    // array section flow sensitive analysis information
   mINT32 _scalar_node_entry_size, _cfg_node_entry_size;
@@ -250,7 +253,10 @@ public:
   {
     _constraint_graph_node_ids_offset = s;
   }
-
+  void Set_constraint_graph_modranges_offset(Elf64_Word s) 
+  {
+    _constraint_graph_modranges_offset = s;
+  }
 
   void Set_opt_level(mUINT8 opt_level) { _opt_level = opt_level;};
 
@@ -314,6 +320,10 @@ s;};
   { 
     _constraint_graph_node_ids_size = s; 
   }
+  void Set_constraint_graph_modranges_size(mINT32 s) 
+  { 
+    _constraint_graph_modranges_size = s; 
+  }
 
   // array section flow sensitive analysis information
   void Set_scalar_node_size(mINT32 s) { _scalar_node_size = s;};
@@ -357,6 +367,7 @@ s;};
   void Set_constraint_graph_stinfos_entry_size(mINT32 s) { _constraint_graph_stinfos_entry_size = s;};
   void Set_constraint_graph_callsites_entry_size(mINT32 s) { _constraint_graph_callsites_entry_size = s;};
   void Set_constraint_graph_node_ids_entry_size(mINT32 s) { _constraint_graph_node_ids_entry_size = s;};
+  void Set_constraint_graph_modranges_entry_size(mINT32 s) { _constraint_graph_modranges_entry_size = s;};
 
   void Set_scalar_node_entry_size(mINT32 s) { _scalar_node_entry_size = s;};
   void Set_cfg_node_entry_size(mINT32 s) {_cfg_node_entry_size = s;};
@@ -415,6 +426,10 @@ s;};
   Elf64_Word Get_constraint_graph_node_ids_offset() const  
   { 
     return _constraint_graph_node_ids_offset;
+  };
+  Elf64_Word Get_constraint_graph_modranges_offset() const  
+  { 
+    return _constraint_graph_modranges_offset;
   };
 
   mUINT8  Get_opt_level() const { return _opt_level;};
@@ -481,6 +496,10 @@ s;};
   {
     return _constraint_graph_node_ids_size;
   }
+  mINT32 Get_constraint_graph_modranges_size() const
+  {
+    return _constraint_graph_modranges_size;
+  }
   
   // array section flow sensitive analysis information
   mINT32 Get_scalar_node_size()  const { return _scalar_node_size; };
@@ -533,6 +552,10 @@ s;};
   mINT32 Get_constraint_graph_node_ids_entry_size() 
   { 
     return _constraint_graph_node_ids_entry_size;
+  };
+  mINT32 Get_constraint_graph_modranges_entry_size() 
+  { 
+    return _constraint_graph_modranges_entry_size;
   };
     
   mINT32 Get_scalar_node_entry_size() const  { 
@@ -3107,6 +3130,51 @@ private:
   UINT32 _pointsToModIdx;  // index of the first mod CGNodeId in ids array
   UINT32 _pointsToRefIdx;  // index of the first ref CGNodeId in ids array
 };
-  
+
+// Constraint graph CallSite summary for Nystrom Alias Analyzer
+class SUMMARY_CONSTRAINT_GRAPH_MODRANGE
+{
+public:
+  SUMMARY_CONSTRAINT_GRAPH_MODRANGE() {}
+
+  void startOffset(UINT32 o) { _startOffset = o; }
+  void endOffset(UINT32 o)   { _endOffset = o; }
+  void modulus(UINT32 m)     { _modulus = m; }
+  void childIdx(UINT32 i)    { _childIdx = i; }
+  void nextIdx(UINT32 i)     { _nextIdx = i; }
+#ifdef Is_True_On
+  void ty_idx(UINT32 i)      { _ty_idx = i; }
+#endif
+
+  UINT32 startOffset() const { return _startOffset; }
+  UINT32 endOffset()   const { return _endOffset; }
+  UINT32 modulus()     const { return _modulus; }
+  UINT32 childIdx()    const { return _childIdx; }
+  UINT32 nextIdx()     const { return _nextIdx; }
+#ifdef Is_True_On
+  UINT32 ty_idx()      const { return _ty_idx; }
+#endif
+
+  void Init()
+  {
+    BZERO(this, sizeof(SUMMARY_CONSTRAINT_GRAPH_MODRANGE));
+  }
+
+  void Print_array(FILE *fp, INT32 size) const;
+  void Trace_array(INT32 size) const ;
+  void Print(FILE *f) const;
+  void Trace(void) const;
+
+private:
+  UINT32 _startOffset;
+  UINT32 _endOffset;
+  UINT32 _modulus;
+  UINT32 _childIdx;
+  UINT32 _nextIdx;
+#ifdef Is_True_On
+  TY_IDX _ty_idx;
+#endif
+};
+
 #endif /* ipl_summary_INCLUDED */
 

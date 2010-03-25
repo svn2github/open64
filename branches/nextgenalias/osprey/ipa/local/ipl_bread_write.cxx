@@ -105,6 +105,7 @@ IPA_irb_write_summary(Output_File *fl)
     INT offset_cg_stinfos = 0;
     INT offset_cg_callsites = 0;
     INT offset_cg_node_ids = 0;
+    INT offset_cg_modranges = 0;
 
     Elf64_Word temp;
     offset_sym = offset_proc = offset_feedback = offset_call = 0;
@@ -342,6 +343,16 @@ IPA_irb_write_summary(Output_File *fl)
                            size, sizeof(INT64), 0, fl);
       offset_cg_node_ids = offset_cg_node_ids - cur_sec_disp;
     }
+
+    if (Summary->Has_constraint_graph_modranges()) {
+      // Dump the list of constraint graph modranges
+      size = (Summary->Get_constraint_graph_modranges_idx() + 1) * 
+               sizeof(SUMMARY_CONSTRAINT_GRAPH_MODRANGE);
+      offset_cg_modranges = 
+        (INT)ir_b_save_buf(Summary->Get_constraint_graph_modrange(0),
+                           size, sizeof(INT64), 0, fl);
+      offset_cg_modranges = offset_cg_modranges - cur_sec_disp;
+    }
  
     if (Do_Par)
      Array_Summary_Output->Write_summary(fl, cur_sec_disp);
@@ -398,6 +409,7 @@ IPA_irb_write_summary(Output_File *fl)
     header_addr->Set_constraint_graph_stinfos_offset(offset_cg_stinfos);
     header_addr->Set_constraint_graph_callsites_offset(offset_cg_callsites);
     header_addr->Set_constraint_graph_node_ids_offset(offset_cg_node_ids);
+    header_addr->Set_constraint_graph_modranges_offset(offset_cg_modranges);
 
     header_addr->Set_symbol_size(Summary->Get_symbol_idx() + 1);
     header_addr->Set_proc_size(Summary->Get_procedure_idx() + 1);
@@ -425,6 +437,7 @@ IPA_irb_write_summary(Output_File *fl)
     header_addr->Set_constraint_graph_stinfos_size(Summary->Get_constraint_graph_stinfos_idx() + 1);
     header_addr->Set_constraint_graph_callsites_size(Summary->Get_constraint_graph_callsites_idx() + 1);
     header_addr->Set_constraint_graph_node_ids_size(Summary->Get_constraint_graph_node_ids_idx() + 1);
+    header_addr->Set_constraint_graph_modranges_size(Summary->Get_constraint_graph_modranges_idx() + 1);
  
     header_addr->Set_symbol_entry_size(sizeof(SUMMARY_SYMBOL));
     header_addr->Set_proc_entry_size(sizeof(SUMMARY_PROCEDURE));
@@ -453,6 +466,7 @@ IPA_irb_write_summary(Output_File *fl)
     header_addr->Set_constraint_graph_stinfos_entry_size(sizeof(SUMMARY_CONSTRAINT_GRAPH_STINFO));
     header_addr->Set_constraint_graph_callsites_entry_size(sizeof(SUMMARY_CONSTRAINT_GRAPH_CALLSITE));
     header_addr->Set_constraint_graph_node_ids_entry_size(sizeof(UINT32));
+    header_addr->Set_constraint_graph_modranges_entry_size(sizeof(SUMMARY_CONSTRAINT_GRAPH_MODRANGE));
 }
 
 
@@ -488,6 +502,7 @@ IPA_Trace_Summary_Section (FILE *f,		// File to trace to
     SUMMARY_CONSTRAINT_GRAPH_EDGE     *cg_edges_array;
     SUMMARY_CONSTRAINT_GRAPH_STINFO   *cg_stinfos_array;
     SUMMARY_CONSTRAINT_GRAPH_CALLSITE *cg_callsites_array;
+    SUMMARY_CONSTRAINT_GRAPH_MODRANGE *cg_modranges_array;
     UINT32 *cg_node_ids_array;
 
     ARRAY_SUMMARY_OUTPUT array_summary(Malloc_Mem_Pool);
@@ -757,6 +772,14 @@ IPA_Trace_Summary_Section (FILE *f,		// File to trace to
 		 file_header->Get_constraint_graph_node_ids_size(),
 		 file_header->Get_constraint_graph_node_ids_entry_size () *
 		 file_header->Get_constraint_graph_node_ids_size ());
+
+    if (file_header->Get_constraint_graph_modranges_size () != 0)
+	fprintf (f, format, "CG MODRANGES",
+		 file_header->Get_constraint_graph_modranges_offset (),
+		 file_header->Get_constraint_graph_modranges_entry_size (),
+		 file_header->Get_constraint_graph_modranges_size(),
+		 file_header->Get_constraint_graph_modranges_entry_size () *
+		 file_header->Get_constraint_graph_modranges_size ());
     
     if (file_header->Get_symbol_size() != 0) {
 	sym_array = (SUMMARY_SYMBOL *)
@@ -898,6 +921,11 @@ IPA_Trace_Summary_Section (FILE *f,		// File to trace to
           fprintf(f, " %d ",  cg_node_ids_array[i]);
         }
     }
+    if (file_header->Get_constraint_graph_modranges_size() != 0) {
+	cg_modranges_array =  (SUMMARY_CONSTRAINT_GRAPH_MODRANGE *)
+          (section_base + file_header->Get_constraint_graph_modranges_offset());
+	cg_modranges_array->Print_array ( f, file_header->Get_constraint_graph_modranges_size() );
+    }
     
     array_summary.Trace(f, sbase);
 }
@@ -1027,6 +1055,10 @@ SUMMARIZE<IPL>::Trace(FILE* fp)
       fprintf(fp, " %d ",  _constraint_graph_node_ids[i]);
     }
     fprintf ( fp, "\n%sEnd cgnode node ids array \n%s", SBar, SBar );
+  }
+  if (Has_constraint_graph_modranges()) {
+    Get_constraint_graph_modrange(0)->Print_array(fp, 
+                                      Get_constraint_graph_modranges_idx()+1);
   }
 }
 

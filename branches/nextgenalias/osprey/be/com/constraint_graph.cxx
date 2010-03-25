@@ -208,13 +208,14 @@ ConstraintGraphNode::~ConstraintGraphNode()
 }
 
 ModulusRange *
-ModulusRange::build(TY &ty, UINT32 offset, MEM_POOL *memPool)
+ModulusRange::build(TY_IDX ty_idx, UINT32 offset, MEM_POOL *memPool)
 {
+  TY &ty = Ty_Table[ty_idx];
   FmtAssert(TY_kind(ty) == KIND_STRUCT,("Expecting only structs"));
   if (TY_size(ty) <= 1)
     return NULL;
-  ModulusRange *modRange = 
-    CXX_NEW(ModulusRange(offset,offset+TY_size(ty)-1,TY_size(ty),ty), memPool);
+  ModulusRange *modRange = CXX_NEW(ModulusRange(offset,offset+TY_size(ty)-1,
+                                                TY_size(ty),ty_idx), memPool);
   ModulusRange *childRanges = NULL;
   ModulusRange *curRange = NULL;
   for (FLD_HANDLE fld = TY_flist(ty); !fld.Is_Null(); fld = FLD_next(fld)) {
@@ -224,10 +225,10 @@ ModulusRange::build(TY &ty, UINT32 offset, MEM_POOL *memPool)
       UINT32 size = TY_size(fty);
       UINT32 start = offset+FLD_ofst(fld);
       UINT32 end = start+size-1;
-      newRange = CXX_NEW(ModulusRange(start,end,size,fty), memPool);
+      newRange = CXX_NEW(ModulusRange(start,end,size,FLD_type(fld)), memPool);
     }
     else if (TY_kind(fty) == KIND_STRUCT)
-      newRange = build(fty,offset+FLD_ofst(fld),memPool);
+      newRange = build(FLD_type(fld),offset+FLD_ofst(fld),memPool);
     if (newRange) {
       if (!childRanges)
         childRanges = newRange;
@@ -237,13 +238,10 @@ ModulusRange::build(TY &ty, UINT32 offset, MEM_POOL *memPool)
         if (curRange->_startOffset == newRange->_startOffset) {
           if (newRange->_endOffset > curRange->_endOffset)
             curRange->_endOffset = newRange->_endOffset;
-          if (newRange->_modulus < curRange->_modulus)
-            curRange->_modulus = newRange->_modulus;
+          curRange->_modulus = gcd(curRange->_modulus, newRange->_modulus);
           removeRange(newRange, memPool);
-          if (curRange->_child) {
-            removeRange(curRange->_child, memPool);
-            curRange->_child = NULL;
-          }
+          removeRange(curRange->_child, memPool);
+          curRange->_child = NULL;
           newRange = curRange;
         } else
           curRange->_next = newRange;
@@ -272,8 +270,13 @@ void
 ModulusRange::print(FILE *file, UINT32 indent) {
   for (int i = 0; i < indent; i++)
     fprintf(file," ");
+#ifdef Is_True_On
   fprintf(file,"%s [%d, %d] mod: %d\n",
-          TY_name(_ty),_startOffset,_endOffset,_modulus);
+          TY_name(Ty_Table[_ty_idx]),_startOffset,_endOffset,_modulus);
+#else
+  fprintf(file,"[%d, %d] mod: %d\n",
+          _startOffset,_endOffset,_modulus);
+#endif
   if (_child)
     _child->print(file,indent+2);
   if (_next)
@@ -285,7 +288,12 @@ ModulusRange::print(ostream &str,UINT32 indent)
 {
   for (int i = 0; i < indent; i++)
     str << " ";
-  str << TY_name(_ty) << " [" << _startOffset << ", " << _endOffset << "]";
+#ifdef Is_True_On
+  str << TY_name(Ty_Table[_ty_idx]) << " [" << _startOffset << ", " 
+      << _endOffset << "]";
+#else
+  str << " [" << _startOffset << ", " << _endOffset << "]";
+#endif
   str << " mod: " << _modulus << endl;
   if (_child)
     _child->print(str,indent+2);
@@ -319,7 +327,7 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
     _u._modulus = _varSize;
   else {
     addFlags(CG_ST_FLAGS_MODRANGE);
-    _u._modRange = ModulusRange::build(ty,0,memPool);
+    _u._modRange = ModulusRange::build(ST_type(st),0,memPool);
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
       _u._modRange->print(stderr);
   }

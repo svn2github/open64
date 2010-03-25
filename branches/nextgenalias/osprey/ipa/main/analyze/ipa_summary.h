@@ -86,6 +86,7 @@ class SUMMARY_CONSTRAINT_GRAPH_NODE;
 class SUMMARY_CONSTRAINT_GRAPH_EDGE;
 class SUMMARY_CONSTRAINT_GRAPH_STINFO;
 class SUMMARY_CONSTRAINT_GRAPH_CALLSITE;
+class SUMMARY_CONSTRAINT_GRAPH_MODRANGE;
 
 class IPL_SUMMARY_PTRS
 {
@@ -204,6 +205,8 @@ SUMMARY_CONSTRAINT_GRAPH_CALLSITE *
 IPA_get_constraint_graph_callsites_array (const IP_FILE_HDR& hdr, INT32& size);
 UINT32 *
 IPA_get_constraint_graph_node_ids_array (const IP_FILE_HDR& hdr, INT32& size);
+SUMMARY_CONSTRAINT_GRAPH_MODRANGE *
+IPA_get_constraint_graph_modranges_array (const IP_FILE_HDR& hdr, INT32& size);
 
 
 // ----------------------------------------------------------------

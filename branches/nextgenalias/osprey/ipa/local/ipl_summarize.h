@@ -342,6 +342,7 @@ private:
     // CGnode ids. They are stored in a separate array with the start index
     // and count stored in the corresponding SUMMARY_CONSTRAINT_GRAPH_*
     DYN_ARRAY<UINT32> _constraint_graph_node_ids;
+    DYN_ARRAY<SUMMARY_CONSTRAINT_GRAPH_MODRANGE> _constraint_graph_modranges;
 
     BOOL Trace_Modref;			// trace mod/ref analysis
 
@@ -542,6 +543,13 @@ private:
       return &(_constraint_graph_callsites[new_idx]);
     }
 
+    SUMMARY_CONSTRAINT_GRAPH_MODRANGE *New_constraint_graph_modrange () 
+    {
+      INT new_idx = _constraint_graph_modranges.Newidx();
+      _constraint_graph_modranges[new_idx].Init();
+      return &(_constraint_graph_modranges[new_idx]);
+    }
+
     void Process_alt_procedure (WN *w, INT formal_index, INT formal_count);
     void Process_callsite (WN *w, INT id, INT loopnest, float =-1);
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
@@ -625,7 +633,7 @@ private:
                             const PointsTo &hz,
                             const PointsTo &dn,
                             mUINT32 &numNodeIds);
-
+    UINT32 processModRange(ModulusRange *mr);
 
     // Functions needed for execution cost analysis
     INT IPL_GEN_Value(WN* wn_value, DYN_ARRAY<SUMMARY_VALUE>* sv,
@@ -733,6 +741,11 @@ public:
     {
       return &(_constraint_graph_node_ids[idx]);
     }
+    SUMMARY_CONSTRAINT_GRAPH_MODRANGE *
+    Get_constraint_graph_modrange(INT idx) const 
+    {
+      return &(_constraint_graph_modranges[idx]);
+    }
     
     BOOL Has_procedure_entry () const	{ return _procedure.Lastidx () != -1; }
     BOOL Has_proc_info_entry () const	{ return _proc_info.Lastidx () != -1; }
@@ -765,6 +778,7 @@ public:
     BOOL Has_constraint_graph_stinfos() const { return _constraint_graph_stinfos.Lastidx () != -1; }
     BOOL Has_constraint_graph_callsites() const { return _constraint_graph_callsites.Lastidx () != -1; }
     BOOL Has_constraint_graph_node_ids() const { return _constraint_graph_node_ids.Lastidx () != -1; }
+    BOOL Has_constraint_graph_modranges() const { return _constraint_graph_modranges.Lastidx () != -1; }
 
     INT Get_procedure_idx () const	{ return _procedure.Lastidx (); }
     INT Get_proc_info_idx () const	{ return _proc_info.Lastidx (); }
@@ -796,6 +810,7 @@ public:
     INT Get_constraint_graph_stinfos_idx() const { return _constraint_graph_stinfos.Lastidx(); }
     INT Get_constraint_graph_callsites_idx() const { return _constraint_graph_callsites.Lastidx(); }
     INT Get_constraint_graph_node_ids_idx() const { return _constraint_graph_node_ids.Lastidx(); }
+    INT Get_constraint_graph_modranges_idx() const { return _constraint_graph_modranges.Lastidx(); }
 
     // constructor
 
@@ -834,6 +849,7 @@ public:
         _constraint_graph_stinfos.Set_Mem_Pool(m);
         _constraint_graph_callsites.Set_Mem_Pool(m);
         _constraint_graph_node_ids.Set_Mem_Pool(m);
+        _constraint_graph_modranges.Set_Mem_Pool(m);
 
 	Trace_Modref = FALSE;
 	entry_point = NULL;
