@@ -350,6 +350,7 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
       storage_class == SCLASS_UGLOBAL ||
       storage_class == SCLASS_DGLOBAL ||
       storage_class == SCLASS_UNKNOWN ||
+      storage_class == SCLASS_TEXT ||
       storage_class == SCLASS_EXTERN)
     addFlags(CG_ST_FLAGS_GLOBAL);
 
@@ -674,6 +675,75 @@ ConstraintGraph::genTempCGNode()
   return tmpCGNode;
 }
 
+void
+ConstraintGraph::processInitv(INITV_IDX initv_idx, PointsTo &pts)
+{
+  while (initv_idx) {
+    const INITV &initv = Initv_Table[initv_idx];
+    if (INITV_kind(initv) == INITVKIND_SYMOFF) {
+      ST_IDX initv_st_idx = INITV_st(initv);
+      ST *st = &St_Table[initv_st_idx];
+      INT64 offset = INITV_ofst(initv);
+      ST *base_st;
+      INT64 base_offset;
+      Expand_ST_into_base_and_ofst(st, offset, &base_st, &base_offset);
+      ConstraintGraphNode *node = getCGNode(CG_ST_st_idx(base_st), base_offset);
+      pts.setBit(node->id());
+    } 
+    else if (INITV_kind(initv) == INITVKIND_ZERO ||
+             INITV_kind(initv) == INITVKIND_ONE ||
+             INITV_kind(initv) == INITVKIND_VAL)
+    {
+      pts.setBit(notAPointer()->id());
+    }
+    else if (INITV_kind(initv) == INITVKIND_BLOCK)
+    {
+      processInitv(INITV_blk(initv), pts);
+    }
+    initv_idx = INITV_next(initv);
+  }
+}
+
+void
+ConstraintGraph::processInito(const INITO *const inito)
+{
+  ST_IDX inito_st_idx = INITO_st_idx(*inito);
+  ST *st = &St_Table[inito_st_idx];
+  INT64 offset = 0;
+  ST *base_st;
+  INT64 base_offset;
+  Expand_ST_into_base_and_ofst(st, offset, &base_st, &base_offset);
+  ConstraintGraphNode *node = getCGNode(CG_ST_st_idx(base_st), base_offset);
+  // Collect the init data for this symbol
+  PointsTo tmp(Malloc_Mem_Pool);
+  processInitv(INITO_val(*inito), tmp);
+  // If all the elements are not a pointer, then mark 'node' as not a pointer
+  bool foundPtr = false;
+  for (PointsTo::SparseBitSetIterator sbsi(&tmp, 0); sbsi != 0; ++sbsi) {
+    ConstraintGraphNode *node = ConstraintGraph::cgNode(*sbsi);
+    if (!node->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+      foundPtr = true;
+      break;
+    }
+  }
+  if (!foundPtr)
+    node->addFlags(CG_NODE_FLAGS_NOT_POINTER);
+  else {
+    // Lump all the objects to this node and make it field insensitive :(
+    node->unionPointsTo(tmp, CQ_GBL);
+    node->stInfo()->setModulus(1, node->offset());
+    fprintf(stderr, "processInito: setting modulus to 1 for StInfo: ");
+    node->stInfo()->print(stderr);
+    fprintf(stderr, " at offset %d\n", node->offset());
+  }
+}
+
+void 
+ConstraintGraph::processInitValues()
+{
+  For_all(*(Scope_tab[GLOBAL_SYMTAB].inito_tab), ProcessInitData(this));
+}
+
 void 
 ConstraintGraph::buildCG(WN *entryWN)
 {
@@ -841,13 +911,15 @@ ConstraintGraph::processExpr(WN *expr)
     switch (opr) {
       case OPR_LDA: {
         cgNode = getCGNode(expr);
-        // Create a temp preg t and add a to the points-to set of t.
-        ConstraintGraphNode *tmpCGNode = genTempCGNode();
-        if (stInfo(cgNode->cg_st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
-          tmpCGNode->addPointsTo(cgNode, CQ_GBL);
-        else
-          tmpCGNode->addPointsTo(cgNode, CQ_HZ);
-        cgNode = tmpCGNode;
+        if (!cgNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+          // Create a temp preg t and add a to the points-to set of t.
+          ConstraintGraphNode *tmpCGNode = genTempCGNode();
+          if (stInfo(cgNode->cg_st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
+            tmpCGNode->addPointsTo(cgNode, CQ_GBL);
+          else
+            tmpCGNode->addPointsTo(cgNode, CQ_HZ);
+          cgNode = tmpCGNode;
+        }
         break;
       }
       case OPR_LDID:
@@ -1433,6 +1505,9 @@ ConstraintGraph::getCGNode(WN *wn)
   INT64 base_offset;
 
   Expand_ST_into_base_and_ofst(st, offset, &base_st, &base_offset);
+
+  if (ST_class(base_st) == CLASS_CONST)
+    return notAPointer();
 
   if (WN_desc(wn) == MTYPE_BS) {
     UINT cur_field_id = 0;

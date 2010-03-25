@@ -962,6 +962,24 @@ class SUMMARY_CONSTRAINT_GRAPH_STINFO;
 class ConstraintGraph 
 {
 public:
+
+  // Functor to apply processInito on every INITO entry in the INITO_TAB
+  class ProcessInitData 
+  {
+  public:
+    ProcessInitData(ConstraintGraph *cg) :
+      _cg(cg)
+    {}
+
+    void operator()(UINT32, const INITO *const inito) const 
+    {
+      _cg->processInito(inito);
+    }
+
+  private:
+      ConstraintGraph *_cg;
+  };
+
   static ConstraintGraphNode *notAPointer(void)
   { 
     return notAPointerCGNode; 
@@ -1041,6 +1059,8 @@ public:
       maxTypeSize = findMaxTypeSize();
 
     edgeMemPool = mPool;
+
+    processInitValues();
 
     Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY,
             ("Expecting FUNC_ENTRY when building ConstraintGraph"));
@@ -1167,6 +1187,10 @@ public:
   void vcg(const char *prefix);
 
   char *name(void) { return _name; }
+
+  void processInitValues();
+  void processInito(const INITO *const inito);
+  void processInitv(INITV_IDX initv_idx, PointsTo &pts);
 
 private:
 
