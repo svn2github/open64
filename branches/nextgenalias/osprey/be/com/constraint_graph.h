@@ -717,9 +717,12 @@ public:
     ModulusRange *modRange = findRange(offset);
     // Set the modulus of this range to 'mod' and cap
     // the modulus all children to this new value.
+    if (modRange == NULL)
+      modRange = this;
     if (mod < modRange->_modulus) {
       modRange->_modulus = mod;
-      set(mod);
+      if (modRange->_child)
+        modRange->_child->set(mod);
     }
     startOffset = modRange->_startOffset;
     endOffset = modRange->_endOffset;

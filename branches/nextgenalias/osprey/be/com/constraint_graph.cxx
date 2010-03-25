@@ -320,7 +320,8 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
   else {
     addFlags(CG_ST_FLAGS_MODRANGE);
     _u._modRange = ModulusRange::build(ty,0,memPool);
-    _u._modRange->print(stderr);
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+      _u._modRange->print(stderr);
   }
 
   // Set the flags
@@ -438,20 +439,20 @@ ConstraintGraph::adjustPointsToForKCycle(UINT32 kCycle,
   {
     CGNodeId nodeId = *iter;
     ConstraintGraphNode *node = cgNode(nodeId);
-    // If the resulting K value is still larger than the size
-    // of a pointer, then we simply adjust the modulus of the
-    // underlying symbol to the min(rep->inKCycle(),modulus)
-    if (kCycle > Pointer_Size) {
-      StInfo *st = node->cg()->stInfo(node->cg_st_idx());
-      if (kCycle < st->modulus(node->offset()))
-        st->modulus(kCycle,node->offset());
-      if (node->offset() >= st->modulus(node->offset()))
-        node = node->cg()->getCGNode(node->cg_st_idx(),node->offset());
-    }
-    // If the K value is < the size of a pointer all offsets
-    // are mapped to -1.
-    else {
-      if (node->offset() != -1)
+    if (node->offset() != -1) {
+      // If the resulting K value is still larger than the size
+      // of a pointer, then we simply adjust the modulus of the
+      // underlying symbol to the min(rep->inKCycle(),modulus)
+      if (kCycle > Pointer_Size) {
+        StInfo *st = node->cg()->stInfo(node->cg_st_idx());
+        if (kCycle < st->modulus(node->offset()))
+          st->modulus(kCycle,node->offset());
+        if (node->offset() >= st->modulus(node->offset()))
+          node = node->cg()->getCGNode(node->cg_st_idx(),node->offset());
+      }
+      // If the K value is < the size of a pointer all offsets
+      // are mapped to -1.
+      else
         node = node->cg()->getCGNode(node->cg_st_idx(),-1);
     }
     dst.setBit(node->id());
@@ -741,31 +742,41 @@ ConstraintGraph::handleAssignment(WN *stmt)
   // Handle ALLOCA which must appear as the rhs of a store 
   if (WN_operator(rhs) == OPR_ALLOCA) {
     TY &stack_ptr_ty = Ty_Table[WN_ty(stmt)];
-    FmtAssert(TY_kind(stack_ptr_ty) == KIND_POINTER,
-              ("Expecting KIND_POINTER"));
-    TY_IDX stack_ty_idx = TY_pointed(stack_ptr_ty);
-    TY &stack_ty = Ty_Table[stack_ty_idx];
-    // We create a local variable that represents the dynamically
-    // allocated stack location
-    ConstraintGraphNode *stackCGNode;
-    // If the pointed to type is a struct, create a symbol of that type
-    // else create a symbol of maxTypeSize
-    if (TY_kind(stack_ty) == KIND_STRUCT) {
-      ST *stackST = Gen_Temp_Named_Symbol(stack_ty_idx, "_cgStack",
-                                          CLASS_VAR, SCLASS_AUTO);
-      stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
-      stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
-    } else {
-      ST *stackST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgStack",
-                                          CLASS_VAR, SCLASS_AUTO);
-      stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
-      stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
-      stInfo(stackCGNode->cg_st_idx())->modulus(maxTypeSize);
-      stInfo(stackCGNode->cg_st_idx())->varSize(0);
+    if (TY_kind(stack_ptr_ty) != KIND_POINTER) {
+      // May be looking at an ALLOCA with size 0, in which
+      // case we will simply skip this RHS.  These can result
+      // when lowering INTRN_F90_STACKTEMPALLOC for example.
+      WN *size = WN_kid0(rhs);
+      FmtAssert(WN_operator(size) == OPR_INTCONST &&
+                WN_const_val(size) == 0,
+                ("alloca with non-KIND_POINTER result expected to have"
+                    "0 byte allocation\n"));
     }
-    // Add the stack location to the points to set of the lhs
-    cgNodeLHS->addPointsTo(stackCGNode, CQ_HZ);
-    return WN_next(stmt);
+    else {
+      TY_IDX stack_ty_idx = TY_pointed(stack_ptr_ty);
+      TY &stack_ty = Ty_Table[stack_ty_idx];
+      // We create a local variable that represents the dynamically
+      // allocated stack location
+      ConstraintGraphNode *stackCGNode;
+      // If the pointed to type is a struct, create a symbol of that type
+      // else create a symbol of maxTypeSize
+      if (TY_kind(stack_ty) == KIND_STRUCT) {
+        ST *stackST = Gen_Temp_Named_Symbol(stack_ty_idx, "_cgStack",
+                                            CLASS_VAR, SCLASS_AUTO);
+        stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
+        stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
+      } else {
+        ST *stackST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgStack",
+                                            CLASS_VAR, SCLASS_AUTO);
+        stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
+        stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
+        stInfo(stackCGNode->cg_st_idx())->modulus(maxTypeSize);
+        stInfo(stackCGNode->cg_st_idx())->varSize(0);
+      }
+      // Add the stack location to the points to set of the lhs
+      cgNodeLHS->addPointsTo(stackCGNode, CQ_HZ);
+      return WN_next(stmt);
+    }
   }
 
   if (cgNodeRHS == NULL) {
@@ -1359,13 +1370,11 @@ ConstraintGraph::handleCall(WN *callWN)
     if (calleeReturnsNewMemory(callWN)) {
       ConstraintGraphNode *heapCGNode;
       TY &heap_ptr_ty = Ty_Table[WN_ty(stmt)];
-      FmtAssert(TY_kind(heap_ptr_ty) == KIND_POINTER,
-                ("Expecting KIND_POINTER"));
-      TY_IDX heap_ty_idx = TY_pointed(heap_ptr_ty);
-      TY &heap_ty = Ty_Table[heap_ty_idx];
       // If the pointed to type is a struct, create a symbol of that type
       // else create a symbol of maxTypeSize
-      if (TY_kind(heap_ty) == KIND_STRUCT) {
+      if (TY_kind(heap_ptr_ty) == KIND_POINTER &&
+          TY_kind(Ty_Table[TY_pointed(heap_ptr_ty)]) == KIND_STRUCT) {
+        TY_IDX heap_ty_idx = TY_pointed(heap_ptr_ty);
         ST *heapST = Gen_Temp_Named_Symbol(heap_ty_idx, "_cgHeap",
                                            CLASS_VAR, SCLASS_AUTO);
         heapCGNode = getCGNode(CG_ST_st_idx(heapST), 0);
