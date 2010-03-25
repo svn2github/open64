@@ -166,7 +166,7 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
   if (!stInfo)
     return aliasTag;
   if (!stInfo->checkFlags(CG_ST_FLAGS_PREG))
-    offset = offset % stInfo->modulus(offset);
+    offset = stInfo->applyModulus(offset);
 
   // First we check to see if we have been asked this question before...
   StToAliasTagKey atKey(CG_ST_st_idx(st),offset,size);

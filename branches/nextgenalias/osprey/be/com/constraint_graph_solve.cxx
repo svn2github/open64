@@ -440,9 +440,15 @@ ConstraintGraphSolve::postProcessPointsTo()
         }
         else {
           // Handle changes in the size of the modulus that may have
-          // made the current offset "out of bounds"
-          UINT32 modulus = node->stInfo()->modulus(node->offset());
-          if (node->offset() >= modulus) {
+          // made the current offset "out of bounds".  The modulus
+          // applied to an offset is defined by a range, start...end.
+          // We can infer the start offset by applying the modulus to
+          // the current offset
+          UINT32 modulus = node->stInfo()->getModulus(node->offset());
+          // applyOffset = startOffset + node->offset() % modulus
+          UINT32 applyOffset = node->stInfo()->applyModulus(node->offset());
+          UINT32 startOffset = applyOffset - (node->offset() % modulus);
+          if (node->offset() >= (startOffset+modulus)) {
             FmtAssert(node->repParent(),("Node beyond modulus must have parent\n"));
             node = node->repParent();
             adjustSet.setBit(node->id());
@@ -456,13 +462,13 @@ ConstraintGraphSolve::postProcessPointsTo()
             adjustSet.setBit(node->id());
 
           // Now we walk from offset to offset+accessSize and deal
-          // with any wraparound that may occur at 'modulus'
-          UINT32 endOffset = node->offset() + node->maxAccessSize();
+          // with any wrap around that may occur at 'modulus'
+          UINT32 endOffset = node->offset() + node->maxAccessSize()-1;
           UINT32 endOffset2;
-          bool wrapAround = (endOffset > modulus);
+          bool wrapAround = (endOffset >= (startOffset + modulus));
           if (wrapAround) {
-            endOffset = modulus;
-            endOffset2 = endOffset % modulus;
+            endOffset = startOffset + modulus;
+            endOffset2 = node->stInfo()->applyModulus(endOffset);
           }
           ConstraintGraphNode *cur = node->nextOffset();
           while (cur && cur->offset() < endOffset) {
@@ -471,7 +477,10 @@ ConstraintGraphSolve::postProcessPointsTo()
           }
           if (wrapAround){
             ConstraintGraphNode *cur = node->stInfo()->firstOffset();
-            if (cur->offset() == -1) cur = cur->nextOffset();
+            while (cur && cur->offset() < startOffset)
+              cur = cur->nextOffset();
+            // Now we walk the first part of the range until we hit
+            // the new offset.
             while (cur && cur->offset() < endOffset2) {
               adjustSet.setBit(cur->id());
               cur = cur->nextOffset();
@@ -785,8 +794,8 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
         else if (dst->inKCycle() < Pointer_Size)
           newOffset = -1;
         else {
-          if (dst->inKCycle() < st->modulus(node->offset()/*+skew?*/))
-            st->modulus(dst->inKCycle());
+          if (dst->inKCycle() < st->getModulus(node->offset()/*+skew?*/))
+            st->setModulus(dst->inKCycle(),node->offset());
           newOffset = node->offset() + skew;
         }
         ConstraintGraphNode *skewNode = 

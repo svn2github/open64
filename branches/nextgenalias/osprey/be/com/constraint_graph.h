@@ -718,6 +718,7 @@ public:
   void child(ModulusRange *mr) { _child = mr; }
   void next(ModulusRange *mr)  { _next = mr; }
 
+
   UINT32 modulus(UINT32 offset) {
     ModulusRange *r = findRange(offset);
     if (r)
@@ -728,8 +729,13 @@ public:
     return _modulus;
   }
 
+
   UINT32 modulus(UINT32 offset, UINT32 &startOffset, UINT32 &endOffset) {
     ModulusRange *r = findRange(offset);
+    if (!r) {
+      FmtAssert(offset > _endOffset,("Expected out of range offset"));
+      r = this;
+    }
     startOffset = r->_startOffset;
     endOffset = r->_endOffset;
     return r->_modulus;
@@ -764,7 +770,7 @@ public:
       else
         return this;
     }
-    else if (_next && offset > _next->_startOffset)
+    else if (_next && offset >= _next->_startOffset)
       return _next->findRange(offset);
     else
       return NULL;
@@ -852,14 +858,32 @@ public:
 
   INT64 varSize() const { return _varSize; }
   void varSize(INT64 size) { _varSize = size; }
-  UINT32 modulus(UINT32 offset) const
+
+  // Retrieve the modulus.  Note that the modulus obtained
+  // from this method should NOT be used to adjust the offset.
+  // If that is the goal, use applyModulus(UINT32) instead.
+  UINT32 getModulus(UINT32 offset) const
   {
     if (!checkFlags(CG_ST_FLAGS_MODRANGE))
       return _u._modulus;
     else
       return _u._modRange->modulus(offset);
   }
-  void modulus(UINT32 mod, UINT32 offset);
+
+  // Set the modulus for the provided offset
+  void setModulus(UINT32 mod, UINT32 offset);
+
+  // Find and apply the modulus for the provided offset.  The
+  // result is the adjusted offset.
+  UINT32 applyModulus(UINT32 offset) {
+    if (!checkFlags(CG_ST_FLAGS_MODRANGE))
+      return offset % _u._modulus;
+    else {
+      UINT32 start, end;
+      UINT32 modulus = _u._modRange->modulus(offset,start,end);
+      return start + offset % modulus;
+    }
+  }
 
   // Called after constraint graph is constructed to apply the final
   // modulus ranges to all existing offsets.

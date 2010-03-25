@@ -222,10 +222,16 @@ ModulusRange::build(TY_IDX ty_idx, UINT32 offset, MEM_POOL *memPool)
     TY &fty = Ty_Table[FLD_type(fld)];
     ModulusRange *newRange = NULL;
     if (TY_kind(fty) == KIND_ARRAY) {
-      UINT32 size = TY_size(fty);
       UINT32 start = offset+FLD_ofst(fld);
-      UINT32 end = start+size-1;
-      newRange = CXX_NEW(ModulusRange(start,end,size,FLD_type(fld)), memPool);
+      UINT32 end = start+TY_size(fty)-1;
+      // We need to dive into multi-dimensional arrays
+      // to determine the actual element size
+      TY_IDX etyIdx = TY_etype(fty);
+      while (TY_kind(Ty_Table[etyIdx]) == KIND_ARRAY)
+        etyIdx = TY_etype(Ty_Table[etyIdx]);
+      UINT32 elmtSize = TY_size(Ty_Table[etyIdx]);
+      newRange = CXX_NEW(ModulusRange(start,end,elmtSize,
+                                      FLD_type(fld)),memPool);
     }
     else if (TY_kind(fty) == KIND_STRUCT)
       newRange = build(FLD_type(fld),offset+FLD_ofst(fld),memPool);
@@ -312,7 +318,12 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
   TY& ty = Ty_Table[ST_type(st)];
   // For arrays set size to element size
   if (TY_kind(ty) == KIND_ARRAY) {
-    TY &etype = Ty_Table[TY_etype(ty)];
+    TY_IDX etyIdx = TY_etype(ty);
+    // We need to dive into multi-dimensional arrays
+    // to determine the actual element size
+    while (TY_kind(Ty_Table[etyIdx]) == KIND_ARRAY)
+      etyIdx = TY_etype(Ty_Table[etyIdx]);
+    TY &etype = Ty_Table[etyIdx];
     _varSize = TY_size(etype);
   } else
     _varSize = ST_size(st);
@@ -394,7 +405,7 @@ StInfo::applyModulus(void)
 }
 
 void
-StInfo::modulus(UINT32 mod, UINT32 offset)
+StInfo::setModulus(UINT32 mod, UINT32 offset)
 {
   UINT32 startOffset, endOffset;
   if (!checkFlags(CG_ST_FLAGS_MODRANGE)) {
@@ -453,9 +464,9 @@ ConstraintGraph::adjustPointsToForKCycle(UINT32 kCycle,
       // underlying symbol to the min(rep->inKCycle(),modulus)
       if (kCycle > Pointer_Size) {
         StInfo *st = node->cg()->stInfo(node->cg_st_idx());
-        if (kCycle < st->modulus(node->offset()))
-          st->modulus(kCycle,node->offset());
-        if (node->offset() >= st->modulus(node->offset()))
+        if (kCycle < st->getModulus(node->offset()))
+          st->setModulus(kCycle,node->offset());
+        if (node->offset() >= st->getModulus(node->offset()))
           node = node->cg()->getCGNode(node->cg_st_idx(),node->offset());
       }
       // If the K value is < the size of a pointer all offsets
@@ -778,7 +789,8 @@ ConstraintGraph::handleAssignment(WN *stmt)
                                             CLASS_VAR, SCLASS_AUTO);
         stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
         stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
-        stInfo(stackCGNode->cg_st_idx())->modulus(maxTypeSize);
+        stInfo(stackCGNode->cg_st_idx())->setModulus(maxTypeSize,
+                                                     stackCGNode->offset());
         stInfo(stackCGNode->cg_st_idx())->varSize(0);
       }
       // Add the stack location to the points to set of the lhs
@@ -884,7 +896,8 @@ ConstraintGraph::processExpr(WN *expr)
           tmpCGNode = getCGNode(CG_ST_st_idx(tmpST), 0);
           stInfo(tmpCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_TEMP);
           stInfo(tmpCGNode->cg_st_idx())->varSize(WN_const_val(WN_kid1(expr)));
-          stInfo(tmpCGNode->cg_st_idx())->modulus(WN_const_val(WN_kid1(expr)));
+          stInfo(tmpCGNode->cg_st_idx())->setModulus(WN_const_val(WN_kid1(expr)),
+                                                     tmpCGNode->offset());
         } else {
           tmpCGNode = genTempCGNode();
         }
@@ -1356,13 +1369,15 @@ ConstraintGraph::handleCall(WN *callWN)
     if (!ptsGBL.isEmpty()) {
       for (PointsTo::SparseBitSetIterator iter(&ptsGBL, 0); iter != 0; ++iter) {
         ConstraintGraphNode *valistNode = ConstraintGraph::cgNode(*iter);
-        stInfo(valistNode->cg_st_idx())->modulus(Pointer_Size);
+        stInfo(valistNode->cg_st_idx())->setModulus(Pointer_Size,
+                                                    valistNode->offset());
         valistNode->addPointsTo(_varArgs, CQ_HZ);
       }
     } else if (!ptsHZ.isEmpty()) {
       for (PointsTo::SparseBitSetIterator iter(&ptsHZ, 0); iter != 0; ++iter) {
         ConstraintGraphNode *valistNode = ConstraintGraph::cgNode(*iter);
-        stInfo(valistNode->cg_st_idx())->modulus(Pointer_Size);
+        stInfo(valistNode->cg_st_idx())->setModulus(Pointer_Size,
+                                                    valistNode->offset());
         valistNode->addPointsTo(_varArgs, CQ_HZ);
       }
     }
@@ -1392,7 +1407,8 @@ ConstraintGraph::handleCall(WN *callWN)
                                            CLASS_VAR, SCLASS_AUTO);
         heapCGNode = getCGNode(CG_ST_st_idx(heapST), 0);
         stInfo(heapCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_HEAP);
-        stInfo(heapCGNode->cg_st_idx())->modulus(maxTypeSize);
+        stInfo(heapCGNode->cg_st_idx())->setModulus(maxTypeSize,
+                                                    heapCGNode->offset());
         stInfo(heapCGNode->cg_st_idx())->varSize(0);
       }
       cgNode->addPointsTo(heapCGNode,CQ_HZ);
@@ -1507,7 +1523,7 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
     if (offset < -1)
       offset = -offset;
     if (offset != -1)
-      offset = offset % si->modulus(offset);
+      offset = si->applyModulus(offset);
     if (si->varSize() != 0)
       Is_True(offset < si->varSize(), ("getCGNode: offset: %lld >= varSize"
               ": %lld\n", offset, si->varSize()));
@@ -1938,6 +1954,12 @@ ConstraintGraphNode::print(FILE *file)
     fprintf(file, " ICALL");
   if (checkFlags(CG_NODE_FLAGS_NOT_POINTER))
     fprintf(file, " !PTR");
+  if (checkFlags(CG_NODE_FLAGS_MERGED))
+    fprintf(file, " MERGED");
+  if (checkFlags(CG_NODE_FLAGS_PTSMOD))
+    fprintf(file, " PTSMOD");
+  if (checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
+    fprintf(file, " ADDRTAKEN");
   fprintf(file, " ]\n");
 }
 
@@ -1995,6 +2017,12 @@ void ConstraintGraphNode::print(ostream& ostr)
     ostr << " ICALL";
   if (checkFlags(CG_NODE_FLAGS_NOT_POINTER))
     ostr << " !PTR";
+  if (checkFlags(CG_NODE_FLAGS_MERGED))
+    ostr << " MERGED";
+  if (checkFlags(CG_NODE_FLAGS_PTSMOD))
+    ostr << " PTSMOD";
+   if (checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
+    ostr << " ADDRTAKEN";
   ostr << " ]" << endl;
 }
 
