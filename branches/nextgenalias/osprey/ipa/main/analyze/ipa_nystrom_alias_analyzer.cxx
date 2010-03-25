@@ -602,7 +602,7 @@ ConstraintGraph::buildModRange(UINT32 modRangeIdx, IPA_NODE *ipaNode)
   if (summMR.childIdx() != 0)
     mr->child(buildModRange(summMR.childIdx(), ipaNode));
   if (summMR.nextIdx() != 0)
-    mr->child(buildModRange(summMR.nextIdx(), ipaNode));
+    mr->next(buildModRange(summMR.nextIdx(), ipaNode));
 
   return mr;
 }
