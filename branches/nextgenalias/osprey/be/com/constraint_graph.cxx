@@ -384,7 +384,7 @@ StInfo::applyModulus(void)
     if (!checkFlags(CG_ST_FLAGS_MODRANGE)) {
       modulus = _u._modulus;
       startOffset = 0;
-      endOffset = _varSize;
+      endOffset = _u._modulus;
     }
     else
       modulus = _u._modRange->modulus(cur->offset(),startOffset,endOffset);
@@ -410,9 +410,9 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
 {
   UINT32 startOffset, endOffset;
   if (!checkFlags(CG_ST_FLAGS_MODRANGE)) {
-    _u._modulus = mod;
     startOffset = 0;
-    endOffset = _varSize;
+    endOffset = _u._modulus;
+    _u._modulus = mod;
   }
   else
     _u._modRange->modulus(offset,mod,startOffset,endOffset);
