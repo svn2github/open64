@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 // ====================================================================
 // ====================================================================
@@ -264,9 +268,6 @@ private:
   // Update the value of the secondary IV at the merge block if the trip-count is determined.
   void Update_exit_stmt(const IV_CAND *secondary, BB_NODE *bb_merge, BB_LOOP *loop);
 
-  // Identify all IV candidates
-  void Ident_all_iv_cands(const BB_LOOP *loop, const BB_NODE *bb);
-
   // to be moved to opt_loop.cxx
   BB_LOOP *Ident_loop  (BB_NODE *first,// Identify the do loop for
 			BB_NODE *last, // the region between first
@@ -329,6 +330,10 @@ public:
   
   // Perform IVR for one loop
   BOOL     Process_one_loop(BB_LOOP *);
+
+  // Identify all IV candidates
+  void Ident_all_iv_cands(const BB_LOOP *loop, const BB_NODE *bb);
+  vector<IV_CAND*> &Get_iv_candidates(void) { return iv_cand_container; }
 };
 
 #endif  // Opt_ivr_INCLUDED

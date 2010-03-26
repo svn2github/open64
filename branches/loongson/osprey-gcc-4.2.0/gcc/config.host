@@ -204,7 +204,6 @@ case ${host} in
   *-*-linux*)
     out_host_hook_obj=host-linux.o
     host_xmake_file="${host_xmake_file} x-linux"
-    # KEY: use suffix in binary names
     host_exeext=42
     ;;
   ia64-*-hpux*)

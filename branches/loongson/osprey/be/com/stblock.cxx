@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -358,19 +362,6 @@ Create_And_Set_ST_Base(ST *blk1, ST *blk2, STACK_DIR dir)
 {
   ST *base;
   ST *blk1_base = Base_Symbol(blk1);
-#if 0
-  Is_True(ST_sclass(blk1) != SCLASS_UNKNOWN &&
-	  ST_sclass(blk2) != SCLASS_UNKNOWN,
-	  ("Block_Merge: Invalid SCLASS %d, %d",
-	   ST_sclass(blk1), ST_sclass(blk2)));
-
-  Is_True(ST_sclass(blk1) == ST_sclass(blk2),
-	  ("Block_Merge: Different SCLASS %d, %d",
-	   ST_sclass(blk1), ST_sclass(blk2)));
-
-  FmtAssert(Has_No_Base_Block(blk2),
-	    ("Block_Merge: ST_base of blk2 is already initialized"));
-#endif
   if (ST_class(blk1_base) != CLASS_BLOCK) {
       base = New_ST_Block (Save_Str2(ST_name(blk1_base),".BLOCK"), 
 	Is_Global_Symbol(blk1_base), 
@@ -712,7 +703,7 @@ Base_Symbol_And_Offset_For_Addressing (
 
   while( (ST_base(base) != base  ) 
 	 && (ST_sclass(base) != SCLASS_TEXT) 
-	 && !((Gen_PIC_Shared || Gen_PIC_Call_Shared) && ST_is_preemptible(base))
+	 && !((Gen_PIC_Shared || Gen_PIC_Call_Shared) && !ST_is_export_local(base))
 #ifdef KEY
 	 && !ST_is_weak_symbol(base)
 	 && !ST_is_thread_local(base)

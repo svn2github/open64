@@ -110,6 +110,14 @@ static boolean target_supports_sse = FALSE;
 static boolean target_supports_sse2 = FALSE;
 static boolean target_prefers_sse3 = FALSE;
 static boolean target_supports_sse4a = FALSE;
+static boolean target_supports_ssse3 = FALSE;
+static boolean target_supports_sse41 = FALSE;
+static boolean target_supports_sse42 = FALSE;
+static boolean target_supports_aes   = FALSE;
+static boolean target_supports_pclmul = FALSE;
+static boolean target_supports_avx   = FALSE;
+static boolean target_supports_xop   = FALSE;
+static boolean target_supports_fma4  = FALSE;
 #endif
 
 extern boolean parsing_default_options;
@@ -519,6 +527,20 @@ Process_Targ_Group ( char *targ_args )
 	    add_option_seen ( O_m64 );
 	    toggle ( &abi, ABI_64 );
 	  }
+          // aes and avx
+	  if (!strncasecmp(cp, "aes=on", 6)){
+	    add_option_seen(O_maes);
+	    toggle(&aes, TRUE);
+	  }else if (!strncasecmp(cp, "aes=off", 7)){
+	    add_option_seen(O_mno_aes);
+	    toggle(&aes, FALSE);
+	  }else if (!strncasecmp(cp, "avx=on", 6)){
+	    add_option_seen(O_mavx);
+	    toggle(&avx, TRUE);
+	  }else if (!strncasecmp(cp, "avx=off", 7)){
+	    add_option_seen(O_mno_avx);
+	    toggle(&avx, FALSE);
+          }
 #endif
 #ifdef TARG_LOONGSON
 	  if ( strncasecmp ( cp+4, "n32", 3 ) == 0 ) {
@@ -538,32 +560,18 @@ Process_Targ_Group ( char *targ_args )
 	}
 	break;
 
-#if 0	  /* temporary hack by gbl -- O_WlC no longer exists due to a change in OPTIONS */
-      case 'e':
-	if ( strncasecmp ( cp, "exc_enable", 10 ) == 0 && *(cp+10) == '=' ) {
-  	  int flag;
-  	  buffer_t buf;
-	  int mask = 0;
-	  cp += 11;
-    	  while ( *cp != 0 && *cp != ':' ) {
-	    switch (*cp) {
-	    case 'I': mask |= (1 << 5); break;
-	    case 'U': mask |= (1 << 4); break;
-	    case 'O': mask |= (1 << 3); break;
-	    case 'Z': mask |= (1 << 2); break;
-	    case 'D': mask |= (1 << 1); break;
-	    case 'V': mask |= (1 << 0); break;
-	    }
-	    ++cp;
-	  }
-	  flag = add_string_option(O_WlC, "-defsym,_IEEE_ENABLE_DEFINED=1");
-	  add_option_seen (flag);
-	  sprintf(buf, "-defsym,_IEEE_ENABLE=%#x", mask);
-	  flag = add_string_option(O_WlC, buf);
-	  add_option_seen (flag);
-	}
-	break;
+
+      case 'f':
+#ifdef TARG_X8664
+	if (!strncasecmp(cp, "fma4=on", 7)){
+	  add_option_seen(O_mfma4);
+	  toggle(&fma4, TRUE);
+	}else if (!strncasecmp(cp, "fma4=off", 8)){
+	  add_option_seen(O_mfma4);
+	  toggle(&fma4, FALSE);
+        }
 #endif
+	break;
 
       case 'i':
 	/* We support both isa=mipsn and plain mipsn in group.
@@ -599,6 +607,15 @@ Process_Targ_Group ( char *targ_args )
 	  }
 	}
 #endif
+#ifdef TARG_X8664
+	if (!strncasecmp(cp, "mmx=on", 6)) {
+	  add_option_seen(O_mmmx);
+	  toggle(&mmx, TRUE);
+	} else if (!strncasecmp(cp, "mmx=off", 7)) {
+	  add_option_seen(O_mno_mmx);
+	  toggle(&mmx, FALSE);
+	}
+#endif
 	break;
 
       case 'p':
@@ -608,43 +625,77 @@ Process_Targ_Group ( char *targ_args )
 	  set_cpu (target, M_ARCH);
 	}
 #endif
+#ifdef TARG_X8664
+	if (!strncasecmp(cp, "pclmul=on", 9)){
+	  add_option_seen(O_mpclmul);
+	  toggle(&pclmul, TRUE);
+	}else if (!strncasecmp(cp, "pclmul=off", 10)){
+	  add_option_seen(O_mno_pclmul);
+	  toggle(&pclmul, FALSE);
+        }
+#endif
 	break;
 
       case 's':
 #ifdef TARG_X8664
-		if (!strncasecmp(cp, "mmx=on", 7)) {
-		  add_option_seen(O_mmmx);
-		  toggle(&mmx, TRUE);
-		} else if (!strncasecmp(cp, "mmx=off", 8)) {
-		  add_option_seen(O_mno_mmx);
-		  toggle(&mmx, FALSE);
-		} else if (!strncasecmp(cp, "sse=on", 7)) {
-		  add_option_seen(O_msse);
-		  toggle(&sse, TRUE);
-		} else if (!strncasecmp(cp, "sse=off", 8)) {
-		  add_option_seen(O_mno_sse);
-		  toggle(&sse, FALSE);
-		} else if (!strncasecmp(cp, "sse2=on", 8)) {
-		  add_option_seen(O_msse2);
-		  toggle(&sse2, TRUE);
-		} else if (!strncasecmp(cp, "sse2=off", 9)) {
-		  add_option_seen(O_mno_sse2);
-		  toggle(&sse2, FALSE);
-		} else if (!strncasecmp(cp, "sse3=on", 8)) {
-		  add_option_seen(O_msse3);
-		  toggle(&sse3, TRUE);
-		} else if (!strncasecmp(cp, "sse3=off", 9)) {
-		  add_option_seen(O_mno_sse3);
-		  toggle(&sse3, FALSE);
-		}else if (!strncasecmp(cp, "sse4a=on", 9)){
-		  add_option_seen(O_mno_sse4a);
-		  toggle(&sse4a, TRUE);
-		}else if (!strncasecmp(cp, "sse4a=off", 10)){
-		  add_option_seen(O_mno_sse4a);
-		  toggle(&sse4a, FALSE);
-		}
+        // all sse flags
+	if (!strncasecmp(cp, "sse=on", 6)) {
+	  add_option_seen(O_msse);
+	  toggle(&sse, TRUE);
+	} else if (!strncasecmp(cp, "sse=off", 7)) {
+	  add_option_seen(O_mno_sse);
+	  toggle(&sse, FALSE);
+	} else if (!strncasecmp(cp, "sse2=on", 7)) {
+	  add_option_seen(O_msse2);
+	  toggle(&sse2, TRUE);
+	} else if (!strncasecmp(cp, "sse2=off", 8)) {
+	  add_option_seen(O_mno_sse2);
+	  toggle(&sse2, FALSE);
+	} else if (!strncasecmp(cp, "sse3=on", 7)) {
+	  add_option_seen(O_msse3);
+	  toggle(&sse3, TRUE);
+	} else if (!strncasecmp(cp, "sse3=off", 8)) {
+	  add_option_seen(O_mno_sse3);
+	  toggle(&sse3, FALSE);
+	}else if (!strncasecmp(cp, "sse4a=on", 8)){
+	  add_option_seen(O_msse4a);
+	  toggle(&sse4a, TRUE);
+	}else if (!strncasecmp(cp, "sse4a=off", 9)){
+	  add_option_seen(O_mno_sse4a);
+	  toggle(&sse4a, FALSE);
+	}else if (!strncasecmp(cp, "ssse3=on", 8)){
+	  add_option_seen(O_mssse3);
+	  toggle(&ssse3, TRUE);
+	}else if (!strncasecmp(cp, "ssse3=off", 9)){
+	  add_option_seen(O_mno_ssse3);
+	  toggle(&ssse3, FALSE);
+	}else if (!strncasecmp(cp, "sse41=on", 8)){
+	  add_option_seen(O_msse41);
+	  toggle(&sse41, TRUE);
+	}else if (!strncasecmp(cp, "sse41=off", 9)){
+	  add_option_seen(O_mno_sse41);
+	  toggle(&sse41, FALSE);
+	}else if (!strncasecmp(cp, "sse42=on", 8)){
+	  add_option_seen(O_msse42);
+	  toggle(&sse42, TRUE);
+	}else if (!strncasecmp(cp, "sse42=off", 9)){
+	  add_option_seen(O_mno_sse42);
+	  toggle(&sse42, FALSE);
+        }
 #endif
-		break;
+	break;
+
+      case 'x':
+#ifdef TARG_X8664
+	if (!strncasecmp(cp, "xop=on", 6)){
+	  add_option_seen(O_mxop);
+	  toggle(&xop, TRUE);
+	}else if (!strncasecmp(cp, "xop=off", 7)){
+	  add_option_seen(O_mno_xop);
+	  toggle(&xop, FALSE);
+	}
+#endif
+	break;
     }
 
     /* Skip to the next group option: */
@@ -666,6 +717,12 @@ Process_Targ_Group ( char *targ_args )
 void
 Check_Target ( void )
 {
+#ifdef TARG_PPC32
+  abi  = ABI_P32;
+  isa  = ISA_PPC32;
+  proc = 0;
+  return;
+#else
   int opt_id;
   int opt_val;
 
@@ -939,6 +996,7 @@ Check_Target ( void )
     fprintf ( stderr, "Check_Target done; ABI=%d ISA=%d Processor=%d\n",
 	      abi, isa, proc );
   }
+#endif
 }
 
 /* ====================================================================
@@ -1596,7 +1654,7 @@ print_file_path (char *fname, int exe)
   asprintf(&argv[2], "-print-%s-name=%s", exe ? "prog" : "file", fname);
   argv[3] = NULL;
   /* MINGW doesn't support execvp, everyone supports execlp */
-  execlp(argv[0], argv[1], argv[2], NULL);
+  execlp(argv[0], argv[0], argv[1], argv[2], argv[3]);
   fprintf(stderr, "could not execute %s: %m\n", argv[0]);
   exit(1);
 }
@@ -1609,7 +1667,7 @@ print_multi_lib ()
   asprintf(&argv[1], "-print-multi-lib");
   argv[2] = NULL;
   /* MINGW doesn't support execvp, everyone supports execlp */
-  execlp(argv[0], argv[1], NULL);
+  execlp(argv[0], argv[0], argv[1], argv[2]);
   fprintf(stderr, "could not execute %s: %m\n", argv[0]);
   exit(1);
 }
@@ -1649,29 +1707,61 @@ static struct
   boolean supports_sse2;	// TRUE if support SSE2
   boolean prefers_sse3;		// TRUE if target prefers code to use SSE3
   boolean supports_sse4a;       // TRUE if support SSE4a
+  boolean supports_ssse3;       // TRUE if support SSSE3
+  boolean supports_sse41;       // TRUE if support SSE41
+  boolean supports_sse42;       // TRUE if support SSE42
+  boolean supports_aes;         // TRUE if support AES
+  boolean supports_pclmul;      // TRUE if support PCLMUL
+  boolean supports_avx;         // TRUE if support AVX
+  boolean supports_xop;         // TRUE if support XOP
+  boolean supports_fma4;        // TRUE if support FMA4
 } supported_cpu_types[] = {
-  { "any_64bit_x86",	"anyx86",	ABI_64,		TRUE,	FALSE, FALSE},
-  { "any_32bit_x86",	"anyx86",	ABI_N32,	FALSE,	FALSE, FALSE},
-  { "i386",	"anyx86",		ABI_N32,	FALSE,	FALSE, FALSE},
-  { "i486",	"anyx86",		ABI_N32,	FALSE,	FALSE, FALSE},
-  { "i586",	"anyx86",		ABI_N32,	FALSE,	FALSE, FALSE},
-  { "athlon",	"athlon",		ABI_N32,	FALSE,	FALSE, FALSE},
-  { "athlon-mp", "athlon",		ABI_N32,	FALSE,	FALSE, FALSE},
-  { "athlon-xp", "athlon",		ABI_N32,	FALSE,	FALSE, FALSE},
-  { "athlon64",	"athlon64",		ABI_64,		TRUE,	FALSE, FALSE},
-  { "athlon64fx", "opteron",		ABI_64,		TRUE,	FALSE, FALSE},
-  { "turion",	"athlon64",		ABI_64,		TRUE,	FALSE, FALSE},
-  { "i686",	"pentium4",		ABI_N32,	FALSE,	FALSE, FALSE},
-  { "ia32",	"pentium4",		ABI_N32,	TRUE,	FALSE, FALSE},
-  { "k7",	"athlon",		ABI_N32,	FALSE,	FALSE, FALSE},
-  { "k8",	"opteron",		ABI_64,		TRUE,	FALSE, FALSE},
-  { "opteron",	"opteron",		ABI_64,		TRUE,	FALSE, FALSE},
-  { "pentium4",	"pentium4",		ABI_N32,	TRUE,	FALSE, FALSE},
-  { "xeon",	"xeon",			ABI_N32,	TRUE,	FALSE, FALSE},
-  { "em64t",	"em64t",		ABI_64,		TRUE,	TRUE,  FALSE},
-  { "core",	"core",			ABI_64,		TRUE,	TRUE,  FALSE},
-  { "wolfdale", "wolfdale",		ABI_64,		TRUE,	TRUE, FALSE},
-  { "barcelona","barcelona",		ABI_64,		TRUE,	TRUE, TRUE},
+  { "any_64bit_x86",	"anyx86",	ABI_64,		TRUE,	FALSE, FALSE, 
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "any_32bit_x86",	"anyx86",	ABI_N32,	FALSE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "i386",	"anyx86",		ABI_N32,	FALSE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "i486",	"anyx86",		ABI_N32,	FALSE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "i586",	"anyx86",		ABI_N32,	FALSE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "athlon",	"athlon",		ABI_N32,	FALSE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "athlon-mp", "athlon",		ABI_N32,	FALSE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "athlon-xp", "athlon",		ABI_N32,	FALSE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "athlon64",	"athlon64",		ABI_64,		TRUE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "athlon64fx", "opteron",		ABI_64,		TRUE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "turion",	"athlon64",		ABI_64,		TRUE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "i686",	"pentium4",		ABI_N32,	FALSE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "ia32",	"pentium4",		ABI_N32,	TRUE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "k7",	"athlon",		ABI_N32,	FALSE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "k8",	"opteron",		ABI_64,		TRUE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "opteron",	"opteron",		ABI_64,		TRUE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "pentium4",	"pentium4",		ABI_N32,	TRUE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "xeon",	"xeon",			ABI_N32,	TRUE,	FALSE, FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "em64t",	"em64t",		ABI_64,		TRUE,	TRUE,  FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "core",	"core",			ABI_64,		TRUE,	TRUE,  FALSE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "wolfdale", "wolfdale",		ABI_64,		TRUE,	TRUE,  FALSE,
+    TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
+  { "orochi",   "orochi",		ABI_64,		TRUE,	TRUE,  TRUE,
+    TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE  },
+  { "barcelona","barcelona",		ABI_64,		TRUE,	TRUE,  TRUE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
   { NULL,	NULL, },
 };
   
@@ -1823,10 +1913,12 @@ get_auto_cpu_name ()
 	    return "i386";
 
 	case 6:			// P6, Core, ...
-	  if (model == 23)
+	  if (model == 7 ||	// Harpertown	bug 14685
+	      model == 23 ||	// Wolfdale
+	      model == 26)	// Nehalem
 	    return "wolfdale";
 
-	  if (model == 15)
+	  if (model >= 15)
 	    return "core";
 
 	  // Treat the rest of the P6 family as generic x86 since we don't
@@ -1849,6 +1941,8 @@ get_auto_cpu_name ()
 	  return "opteron";
         case 16: 
 	  return "barcelona";   // Barcelona
+        case 21:
+	  return "orochi";      // Orochi
       }
     }
 
@@ -1938,6 +2032,14 @@ Get_x86_ISA ()
       target_supports_sse2 = supported_cpu_types[i].supports_sse2;
       target_prefers_sse3 = supported_cpu_types[i].prefers_sse3;
       target_supports_sse4a = supported_cpu_types[i].supports_sse4a;
+      target_supports_ssse3 = supported_cpu_types[i].supports_ssse3;
+      target_supports_sse41 = supported_cpu_types[i].supports_sse41;
+      target_supports_sse42 = supported_cpu_types[i].supports_sse42;
+      target_supports_aes   = supported_cpu_types[i].supports_aes;
+      target_supports_pclmul = supported_cpu_types[i].supports_pclmul;
+      target_supports_avx   = supported_cpu_types[i].supports_avx;
+      target_supports_xop   = supported_cpu_types[i].supports_xop;
+      target_supports_fma4  = supported_cpu_types[i].supports_fma4;
       break;
     }
   }
@@ -1959,9 +2061,57 @@ Get_x86_ISA_extensions ()
     return FALSE;
   }
 
-    if (sse4a == TRUE && //todo: sse4a may require sse2
+  if (sse4a == TRUE &&
       !target_supports_sse4a) {
     error("Target processor does not support SSE4a.");
+    return FALSE;
+  }
+
+  if (ssse3 == TRUE &&
+      !target_supports_ssse3) {
+    error("Target processor does not support SSSE3.");
+    return FALSE;
+  }
+
+  if (sse41 == TRUE &&
+      !target_supports_sse41) {
+    error("Target processor does not support SSE41.");
+    return FALSE;
+  }
+
+  if (sse42 == TRUE &&
+      !target_supports_sse42) {
+    error("Target processor does not support SSE42.");
+    return FALSE;
+  }
+
+  if (aes == TRUE &&
+      !target_supports_aes) {
+    error("Target processor does not support AES.");
+    return FALSE;
+  }
+
+  if (pclmul == TRUE &&
+      !target_supports_pclmul) {
+    error("Target processor does not support PCLMUL.");
+    return FALSE;
+  }
+
+  if (avx == TRUE &&
+      !target_supports_avx) {
+    error("Target processor does not support AVX.");
+    return FALSE;
+  }
+
+  if (xop == TRUE &&
+      !target_supports_xop) {
+    error("Target processor does not support XOP.");
+    return FALSE;
+  }
+
+  if (fma4 == TRUE &&
+      !target_supports_fma4) {
+    error("Target processor does not support FMA4.");
     return FALSE;
   }
 
@@ -1992,16 +2142,54 @@ Get_x86_ISA_extensions ()
     sse3 = TRUE;
   }
 
-#if 0 //temporarily disable it until we have assembler and linker support for
-      //sse4a instructions
- // Use SSE4a on systems that supports it.
-  if (target_supports_sse4a &&
+  if (target_supports_ssse3 &&
       sse2 != FALSE &&  
-      sse4a != FALSE){//not explicitly turned off
+      ssse3 != FALSE){//not explicitly turned off
     sse2 = TRUE;
-    sse4a = TRUE;
+    ssse3 = TRUE;
   }
-#endif
+  if (target_supports_sse41 &&
+      sse2 != FALSE &&  
+      sse41 != FALSE){//not explicitly turned off
+    sse2 = TRUE;
+    sse41 = TRUE;
+  }
+  if (target_supports_sse42 &&
+      sse2 != FALSE &&  
+      sse42 != FALSE){//not explicitly turned off
+    sse2 = TRUE;
+    sse42 = TRUE;
+  }
+  if (target_supports_aes &&
+      sse2 != FALSE &&  
+      aes != FALSE){//not explicitly turned off
+    sse2 = TRUE;
+    aes = TRUE;
+  }
+  if (target_supports_pclmul &&
+      sse2 != FALSE &&  
+      pclmul != FALSE){//not explicitly turned off
+    sse2 = TRUE;
+    pclmul = TRUE;
+  }
+  if (target_supports_avx &&
+      sse2 != FALSE &&  
+      avx != FALSE){//not explicitly turned off
+    sse2 = TRUE;
+    avx = TRUE;
+  }
+  if (target_supports_xop &&
+      sse2 != FALSE &&  
+      xop != FALSE){//not explicitly turned off
+    sse2 = TRUE;
+    xop = TRUE;
+  }
+  if (target_supports_fma4 &&
+      sse2 != FALSE &&  
+      fma4 != FALSE){//not explicitly turned off
+    sse2 = TRUE;
+    fma4 = TRUE;
+  }
  
   // No error.  Don't count warnings as errors.
   return TRUE;

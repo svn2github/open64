@@ -54,6 +54,8 @@
 #include <ctype.h>
 #endif
 
+extern int external_gcc;
+
 char *ldpath_for_pixie = NULL;
 
 /*
@@ -462,10 +464,25 @@ char *
 get_phase_dir (phases_t index)
 {
 #if defined(__linux__) || defined(__APPLE__)
-	if (index == P_ipa_link) {
-	  return phase_info[index].dir;
-	}
-	else if(phase_info[index].find_dir_by_path) {
+	char *name = phase_info[index].name;
+
+    if (external_gcc != TRUE) {
+
+        /* Construct the path to the internal gcc binaries. */
+        if (strcmp(name, "gcc") == 0 || strcmp(name, "g++") == 0) {
+            char *root_dir = directory_path(get_executable_dir());
+            char *bin_dir = concat_path(root_dir, INTERNAL_GCC_BIN);
+            char *gcc_path = concat_path(bin_dir, name);
+
+            if (is_executable(gcc_path)) {
+                free(gcc_path);
+                return bin_dir;
+            }
+            free(gcc_path);
+            free(bin_dir);
+        }
+    }
+	if (phase_info[index].find_dir_by_path) {
 		char cmd[PATH_BUF_LEN];
 		char result[PATH_BUF_LEN];
 
@@ -475,7 +492,7 @@ get_phase_dir (phases_t index)
 		return string_copy(result);
 	}
 #endif
-	  return phase_info[index].dir;
+	return phase_info[index].dir;
 }
 
 void

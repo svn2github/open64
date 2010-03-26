@@ -103,10 +103,6 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
     if (maxsize0 != 0 && maxsize0 != 64) { // generate comparison with 0
       if (hob_state0 == HOB_none)  
 	U64_LOWER_insert_cvtl_for_kid(new_nd, HOB_zero_xtd, 0, maxsize0, hob_state0);
-#if 0
-      U64_LOWER_set_kid0(new_nd, U64_LOWER_create_ne_0(Boolean_type, MTYPE_U8, 
-						       U64_LOWER_kid0(new_nd)));
-#endif
     }
     U64_LOWER_set_kid1(new_nd, U64_LOWER_expr(U64_LOWER_kid1(tree), maxsize1, 
 				  hob_state1, hob_to_do1, leave_CVTL_at_leaf));
@@ -156,11 +152,6 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
       hob_state = HOB_none;
       hob_to_do = MTYPE_signed(res) ? HOB_sign_xtd : HOB_zero_xtd;
       U64_LOWER_set_rtype(tree, Mtype_TransferSize(MTYPE_A8, res));
-#if 0 
-      // this triggers whirl verifier assertion due to desc's inconsistency 
-      // with TY's size
-      U64_LOWER_set_desc(tree, Mtype_TransferSize(MTYPE_A8, res));
-#endif
       return tree;
     }
     maxsize = MTYPE_bit_size(desc);
@@ -171,9 +162,6 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
     if (MTYPE_signed(desc)) { // change to unsigned
       U64_LOWER_set_desc(tree, Mtype_TransferSign(MTYPE_U8, desc));
     }
-#if 0 // this is done in post-pass instead
-    U64_LOWER_reset_sign_extd(tree);
-#endif
     // force 8-byte loads
     U64_LOWER_set_rtype(tree, Mtype_TransferSize(MTYPE_A8, U64_LOWER_desc(tree)));
 
@@ -198,9 +186,6 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
     if (MTYPE_signed(desc)) { // change to unsigned
       U64_LOWER_set_desc(new_nd, Mtype_TransferSign(MTYPE_U8, desc));
     }
-#if 0 // this is done in post-pass instead
-    U64_LOWER_reset_sign_extd(new_nd);
-#endif
     // force 8-byte loads
     U64_LOWER_set_rtype(new_nd, Mtype_TransferSize(MTYPE_A8, U64_LOWER_desc(new_nd)));
 
@@ -528,11 +513,6 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
     // contain garbage; will leave operation as original size (4 or 8 bytes) 
     // since smaller-size operation translates to shorter code sequence
     if (MTYPE_is_integral(res) && res != MTYPE_B) { 
-#if 0  // this has problem with pregs introduced by wopt of types I8/U8
-      Is_True(MTYPE_bit_size(res) >= maxsize &&
-	      MTYPE_bit_size(res) >= maxsize1, 
-	      ("size of operation smaller than size of operand"));
-#endif
       if (opr == OPR_DIV || opr == OPR_DIVREM)
 	new_maxsize = maxsize;
       else new_maxsize = maxsize1;
@@ -604,6 +584,18 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
       U64_LOWER_set_rtype(new_nd, Mtype_TransferSize(MTYPE_A8, res));
       hob_state = MTYPE_signed(desc) ? HOB_sign_xtd : HOB_zero_xtd;
       hob_to_do = HOB_none;
+    }
+    for (int i = 0; i < U64_LOWER_kid_count(new_nd); i++) { 
+      if (U64_LOWER_operator(U64_LOWER_kid(new_nd, i)) == OPR_CVTL) {
+        TYPE_ID new_res_ty; 
+        if (U64_LOWER_desc(new_nd) == MTYPE_V)
+          new_res_ty = Mtype_TransferSign(U64_LOWER_rtype(new_nd), 
+          	              U64_LOWER_rtype(U64_LOWER_kid(new_nd, i))); 
+        else 
+          new_res_ty = Mtype_TransferSign(U64_LOWER_desc(new_nd), 
+                                U64_LOWER_rtype(U64_LOWER_kid(new_nd, i))); 
+        U64_LOWER_set_rtype(U64_LOWER_kid(new_nd, i), new_res_ty); 
+      } 
     }
     return U64_LOWER_form_node(new_nd, tree);
 

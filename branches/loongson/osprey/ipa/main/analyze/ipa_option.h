@@ -101,13 +101,6 @@ extern INT32 OPT_Cyg_Instrument;     /* Limits DFE if on */
 #endif
 #undef DEMANGLE
 #define DEMANGLE(name) (name)
-#if 0
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
-#define DEMANGLE(name) (name)
-#else
-#define DEMANGLE(name) (always_demangle (name, (char) Demangle))
-#endif /* __STANDALONE_INLINER */
-#endif
     
 extern void Process_IPA_Options ( INT argc, char **argv );
 

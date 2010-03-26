@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -54,7 +58,6 @@
  * OMP_Prelower() : Transform Open MP pragmas to same form as MP ones
  * ==================================================================== */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <sys/types.h>
 #if ! defined(BUILD_OS_DARWIN)
@@ -3523,9 +3526,10 @@ This reprivatization is safe.
     if (first && WN_opcode(first) == OPC_PRAGMA &&
         WN_pragma(first) == WN_PRAGMA_PDO_BEGIN &&
 	WN_pragma_arg1(first) == 0) {
-      if (enclosing_pdo)
-        Fail_FmtAssertion("Privatize_Index_Vars_And_Check_Final_Scopes(): "
-	                  "nested orphaned PDOs!");
+// gcc frontend has issued a warning, and we ignore this issue.
+//      if (enclosing_pdo)
+//        Fail_FmtAssertion("Privatize_Index_Vars_And_Check_Final_Scopes(): "
+//	                  "nested orphaned PDOs!");
       enclosing_pdo = WN_region_pragmas(wn);
     }
   }

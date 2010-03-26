@@ -86,6 +86,11 @@ extern "C" {
 // with the enumeration in common/com/ia32/config_targ.h
 #undef TARGET_PENTIUM
 #endif /* TARG_IA32 */
+#if defined(TARG_PPC32)
+// the definition in gnu/config/ppc32/rs6000.h causes problem
+// with the enumeration in common/com/ppc32/config_targ.h
+#undef TARGET_POWERPC
+#endif /* TARG_PPC32 */
 
 #ifdef KEY 
 #ifdef TARG_MIPS
@@ -267,6 +272,8 @@ WFE_Assemble_Asm(char *asm_string)
     --CURRENT_SYMTAB;
 }
 
+extern ST* ap_tmp;
+extern ST* vararg_ofst;
 extern void
 WFE_Start_Function (tree fndecl)
 {
@@ -457,12 +464,6 @@ WFE_Start_Function (tree fndecl)
     Scope_tab [Current_scope].st = func_st;
 #endif // KEY
 
-#if 0 // this is causing IPA not to delete unused PUs (aug-5-03)
-#ifdef KEY
-    if (TREE_USED(fndecl)) /* support A_UNUSED attribute */
-      Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
-#endif
-#endif
 
 #if !defined(TARG_NVISA)
     if (lookup_attribute("used", DECL_ATTRIBUTES (fndecl)))  // bug 3697
@@ -502,6 +503,11 @@ WFE_Start_Function (tree fndecl)
     WN *body, *wn;
     body = WN_CreateBlock ( );
     wn = WN_CreateEntry ( num_args, func_st, body, NULL, NULL );
+
+#if defined(TARG_PPC32)
+	void Set_Current_PU_WN(WN * wn);
+	Set_Current_PU_WN(wn);
+#endif
 
     /* from 1..nkids, create idname args */
     INT i = 0;
@@ -583,6 +589,8 @@ WFE_Start_Function (tree fndecl)
     WFE_Stmt_Append (vla_block, Get_Srcpos());
 
     WFE_Vararg_Start_ST = NULL;
+    ap_tmp = NULL;
+    vararg_ofst = NULL;
 #ifndef KEY
 // current_function_varargs does not exist any more, current_function_stdarg
 // is still available.
@@ -1220,23 +1228,6 @@ Add_Initv_For_Tree (tree val, UINT size)
 		WFE_Add_Aggregate_Init_String (
 			TREE_STRING_POINTER(val), size);
 		break;
-#if 0
-	case PLUS_EXPR:
-		if ( TREE_CODE(TREE_OPERAND(val,0)) == ADDR_EXPR
-		     && TREE_CODE(TREE_OPERAND(val,1)) == INTEGER_CST)
-		{
-			tree addr_kid = TREE_OPERAND(TREE_OPERAND(val,0),0);
-			FmtAssert(TREE_CODE(addr_kid) == VAR_DECL
-				  || TREE_CODE(addr_kid) == FUNCTION_DECL,
-				("expected decl under plus_expr"));
-			WFE_Add_Aggregate_Init_Symbol ( Get_ST (addr_kid),
-			Get_Integer_Value(TREE_OPERAND(val,1)) );
-		}
-		else
-			FmtAssert(FALSE, ("unexpected tree code %s", 
-				tree_code_name[TREE_CODE(val)]));
-		break;
-#endif
 	case NOP_EXPR:
 		tree kid;
 		kid = TREE_OPERAND(val,0);
@@ -2639,7 +2630,9 @@ WFE_Alloca_ST (tree decl)
   Set_ST_base_idx (st, ST_st_idx (alloca_st));
 
   WN *swn = WFE_Expand_Expr (TYPE_SIZE_UNIT(TREE_TYPE(decl)));
-
+#ifdef TARG_PPC32
+  swn = WN_CreateCvtl(OPC_U4CVTL, 32, swn);
+#endif
   WN *wn  = WN_CreateAlloca (swn);
   wn = WN_Stid (Pointer_Mtype, 0, alloca_st, ST_type (alloca_st), wn);
   WFE_Stmt_Append (wn, Get_Srcpos());

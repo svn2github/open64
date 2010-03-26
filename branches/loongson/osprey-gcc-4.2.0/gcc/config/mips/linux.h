@@ -178,4 +178,3 @@ Boston, MA 02110-1301, USA.  */
 %{!shared: %{pthread:-lpthread} \
   %{profile:-lc_p} %{!profile: -lc}}"
 
-#define MD_UNWIND_SUPPORT "config/mips/linux-unwind.h"

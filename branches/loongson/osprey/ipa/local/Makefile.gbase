@@ -1,5 +1,7 @@
 # -*- Makefile -*-
 #
+#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2007. PathScale, LLC. All Rights Reserved.
 #
 #  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
@@ -107,6 +109,9 @@ ifeq ($(BUILD_TARGET), X8664)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
 ifeq ($(BUILD_TARGET), NVISA)
+HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
+ifeq ($(BUILD_TARGET), PPC32)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
 ifeq ($(BUILD_TARGET), LOONGSON)

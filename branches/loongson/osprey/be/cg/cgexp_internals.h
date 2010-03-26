@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -52,6 +56,9 @@ extern void Expand_Const (TN *dest, TN *src, TYPE_ID mtype, OPS *ops);
 extern void Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
 #if defined(TARG_PR)
 extern void Expand_SR_Adj(BOOL isAdd, TN *result, TN *imm, OPS *ops);
+#elif defined(TARG_PPC32)
+extern void Expand_SR_Adj(BOOL isAdd, TN *result, TN *imm, OPS *ops);
+extern void Expand_Convert_Length (TN *dest, TN *src, TN *length, TYPE_ID mtype, TYPE_ID desc, OPS *ops);
 #endif
 extern void Expand_Add (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Sub (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
@@ -70,6 +77,7 @@ extern void Expand_Binary_And (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS 
 extern void Expand_Binary_Or (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Binary_Xor (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Binary_Nor (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
+extern void Expand_Binary_Not (TN *dest, TN *src1, TYPE_ID mtype, OPS *ops);
 extern void Expand_Logical_Not (TN *dest, TN *src, VARIANT variant, OPS *ops);
 extern void Expand_Logical_And (TN *dest, TN *src1, TN *src2, VARIANT variant, OPS *ops);
 extern void Expand_Logical_Or (TN *dest, TN *src1, TN *src2, VARIANT variant, OPS *ops);
@@ -91,7 +99,7 @@ extern void Expand_Convert_Length (TN *dest, TN *src, TN *length, TYPE_ID mtype,
 #ifdef TARG_NVISA
 extern void Expand_Convert (TN *result, TYPE_ID rtype, TN *src, TYPE_ID stype, OPS *ops);
 #endif
-#if defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
+#if defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
 extern void Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
 #else
 extern void Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID mtype, OPS *ops);
@@ -140,9 +148,17 @@ void Create_TN_Pair( TN*, TN* );
 
 #if defined(TARG_IA64) || defined(TARG_LOONGSON)
 extern TN* Expand_Immediate_Into_Register (TN *src, OPS *ops);
+#elif defined(TARG_PPC32)
+#define OP_NEED_PAIR(t)  \
+   (((t)==MTYPE_I8 || (t)==MTYPE_U8))
+TN*   Get_TN_Pair(TN*);
+TN*   Create_TN_Pair(TN*, TYPE_ID);
+void  Create_TN_Pair(TN*, TN*);
+extern TN* Expand_Immediate_Into_Register (TN * reg, TN *src, TYPE_ID mtype, OPS *ops);
 #else
 extern TN* Expand_Immediate_Into_Register (TN *src, BOOL is_64bit, OPS *ops);
 #endif
+
 extern BOOL Expand_Special_And_Immed(TN *dest, TN *src1, INT64 imm, OPS *ops);
 
 /* enumerate the different kinds of shifts */
@@ -157,7 +173,7 @@ extern void Expand_Left_Rotate (TN *result, TN *src1, TN *src2, TYPE_ID rtype, T
 extern void Expand_Lda (TN *dest, TN *src, OPS *ops);
 
 // Need not distinguish them because in C++ they represent different function
-#if defined(TARG_MIPS) || defined(TARG_X8664)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_PPC32)
 extern void Expand_Load (OPCODE opcode, TN *result, TN *src1, TN *src2, OPS *ops);
 extern void Expand_Store (TYPE_ID mtype, TN *src1, TN *src2, TN *src3, OPS *ops);
 #else

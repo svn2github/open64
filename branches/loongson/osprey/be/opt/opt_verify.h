@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 // ====================================================================
 // ====================================================================
@@ -48,11 +52,7 @@
 #define opt_verify_INCLUDED
 
 #if Is_True_On
-#if defined(TARG_NVISA)
 extern BOOL Def_before_use(CODEREP *, const BB_NODE *);
-#else
-extern BOOL Def_before_use(const CODEREP *, const BB_NODE *);
-#endif
 #endif
 
 #endif

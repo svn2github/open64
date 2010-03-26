@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -64,7 +64,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 
 #include <errno.h>
@@ -2165,7 +2164,8 @@ Configure_CG_Options(void)
   if (OPT_Space && !CG_use_xortozero_Set)	// Bug 9717
     CG_use_xortozero = TRUE;
 
-  if (Target == TARGET_barcelona && ! CG_push_pop_int_saved_regs_Set)
+  if (((Target == TARGET_barcelona) || (Target == TARGET_orochi)) && 
+      !CG_push_pop_int_saved_regs_Set)
     CG_push_pop_int_saved_regs = TRUE;
 #endif
 }
@@ -2395,11 +2395,6 @@ Prepare_Source (void)
 #endif
     }
 
-#if 0
-    /* already called by main */
-    /* Configure internal options for this source file */
-    Configure_Source ( NULL );
-#endif
 }
 
 static void

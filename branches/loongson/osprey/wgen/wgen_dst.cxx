@@ -1959,66 +1959,6 @@ Create_DST_type_For_Tree (gs_t type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 
     case GS_FUNCTION_TYPE:
 		{	// new scope for local vars
-#if 0
-		tree arg;
-		INT32 num_args;
-		TY &ty = New_TY (idx);
-		TY_Init (ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, NULL); 
-		Set_TY_align (idx, 1);
-		TY_IDX ret_ty_idx;
-		TY_IDX arg_ty_idx;
-		TYLIST tylist_idx;
-
-		// allocate TYs for return as well as parameters
-		// this is needed to avoid mixing TYLISTs if one
-		// of the parameters is a pointer to a function
-
-		ret_ty_idx = Get_TY(TREE_TYPE(type_tree));
-		for (arg = TYPE_ARG_TYPES(type_tree);
-		     arg;
-		     arg = TREE_CHAIN(arg))
-			arg_ty_idx = Get_TY(TREE_VALUE(arg));
-
-		// if return type is pointer to a zero length struct
-		// convert it to void
-		if (!WFE_Keep_Zero_Length_Structs    &&
-		    TY_mtype (ret_ty_idx) == MTYPE_M &&
-		    TY_size (ret_ty_idx) == 0) {
-			// zero length struct being returned
-		  	DevWarn ("function returning zero length struct at line %d", lineno);
-			ret_ty_idx = Be_Type_Tbl (MTYPE_V);
-		}
-
-		Set_TYLIST_type (New_TYLIST (tylist_idx), ret_ty_idx);
-		Set_TY_tylist (ty, tylist_idx);
-		for (num_args = 0, arg = TYPE_ARG_TYPES(type_tree);
-		     arg;
-		     num_args++, arg = TREE_CHAIN(arg))
-		{
-			arg_ty_idx = Get_TY(TREE_VALUE(arg));
-			if (!WFE_Keep_Zero_Length_Structs    &&
-			    TY_mtype (arg_ty_idx) == MTYPE_M &&
-			    TY_size (arg_ty_idx) == 0) {
-				// zero length struct passed as parameter
-				DevWarn ("zero length struct encountered in function prototype at line %d", lineno);
-			}
-			else
-				Set_TYLIST_type (New_TYLIST (tylist_idx), arg_ty_idx);
-		}
-		if (num_args)
-		{
-			Set_TY_has_prototype(idx);
-			if (arg_ty_idx != Be_Type_Tbl(MTYPE_V))
-			{
-				Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
-				Set_TY_is_varargs(idx);
-			}
-			else
-				Set_TYLIST_type (Tylist_Table [tylist_idx], 0);
-		}
-		else
-			Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
-#endif
 		} // end FUNCTION_TYPE scope
 		break;
 #ifdef TARG_X8664
@@ -2351,10 +2291,8 @@ DST_Create_var(ST *var_st, gs_t decl)
 #ifdef KEY
     char *linkage_name = "";	
     if (!gs_decl_artificial (decl) && gs_decl_name(decl) 
-#if 1 // wgen
         && gs_decl_assembler_name_set_p(decl) 
 	&& gs_decl_assembler_name(decl) != NULL // bug 12666
-#endif
        )
       linkage_name = gs_identifier_pointer(gs_decl_assembler_name (decl));
 #else
@@ -2718,6 +2656,7 @@ DST_INFO_IDX
 DST_Create_Subprogram (ST *func_st, gs_t fndecl)
 {
     USRCPOS src;
+    DST_inline inlin;
     USRCPOS_srcpos(src) = Get_Srcpos();
     DST_INFO_IDX dst = DST_INVALID_INIT;
     DST_INFO_IDX ret_dst = DST_INVALID_IDX;
@@ -2833,14 +2772,18 @@ DST_Create_Subprogram (ST *func_st, gs_t fndecl)
 
     linkage_name = ST_name(func_st);
     ST_IDX fstidx = ST_st_idx(func_st);
+    if((Opt_Level >=2) && (fndecl))
+      inlin = gs_decl_inline(fndecl)?DW_INL_inlined:DW_INL_not_inlined;
+    else
+      inlin = DW_INL_not_inlined;
 
     dst = DST_mk_subprogram(
         src,			// srcpos
         funcname,
         ret_dst,        	// return type
         DST_INVALID_IDX,        // Index to alias for weak is set later
-        fstidx,         // index to fe routine for st_idx
-        DW_INL_not_inlined,     // applies to C++
+        fstidx,                 // index to fe routine for st_idx
+        inlin,                  // applies to C++
         DW_VIRTUALITY_none,     // applies to C++
         0,                      // vtable_elem_location
         FALSE,                  // is_declaration

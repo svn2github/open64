@@ -698,14 +698,6 @@ WGEN_Generate_Thunk (gs_t decl)
 
 static void process_local_classes()
 {
-#if 0 // wgen TODO
-  for (int i = 0; i < local_classes->elements_used; ++i) {
-    gs_t t = VARRAY_TREE(local_classes, i);
-      if (gs_tree_code(t) == GS_RECORD_TYPE ||
-	  gs_tree_code(t) == GS_UNION_TYPE)
-	Get_TY(t);
-  }
-#endif
 }
 
 void WGEN_Expand_Decl(gs_t decl, BOOL can_skip)
@@ -811,10 +803,6 @@ void WGEN_Expand_Decl(gs_t decl, BOOL can_skip)
 	   subdecl != NULL;
 	   subdecl = gs_tree_chain(subdecl))
 	WGEN_Expand_Decl(subdecl, TRUE);
-#if 0 // wgen TODO
-      if (decl == global_namespace)
-	process_local_classes(); 
-#endif
 #ifndef KEY
       while (deferred_function_i != -1) {
 //      fprintf(stderr, "NAMESPACE_DECL: Pop_Deferred_Function\n");
@@ -1225,9 +1213,7 @@ WGEN_Start_Function(gs_t fndecl)
 
     try_block_seen = false;
 
-#if 1 // wgen
     decl_arguments = NULL;
-#endif
    
     /* deallocate the old map table */
     if (Current_Map_Tab) {
@@ -1302,10 +1288,35 @@ WGEN_Start_Function(gs_t fndecl)
 	    gs_decl_namespace_scope_p (fndecl))))
 	    eclass = EXPORT_INTERNAL; // bug 7550
       else if (gs_tree_public(fndecl) || gs_decl_weak(fndecl)) {
-	if (gs_decl_inline(fndecl) || !gs_decl_weak(fndecl))
-	  eclass = EXPORT_PROTECTED;
-	else
-	  eclass = EXPORT_PREEMPTIBLE;
+        if (!gs_decl_declared_inline_p(fndecl)) {
+          // global non-inline function has to be preemptible
+          // unless it is changed by visibility option/attribute
+          eclass = EXPORT_PREEMPTIBLE;
+        }
+        else {
+          // inline function definition should be appeared in every 
+          // Translation Unit, it can be hidden (allow address be taken)
+          // one example of implicit address taken is dtor address be 
+          // used in __cxa_throw() arguments when the type is thrown
+          //
+          // gnu linker complains about protected symbol illegal relocation
+          // for taking its address, the hidden symbol' addres is ok to export 
+          // to other DSO or within the same module 
+          if (!interface_only || keep_inline_functions || 
+              !gs_decl_weak (fndecl)) {
+            // there are inline functions not weak function, such as
+            // global function's local class member, they have the same
+            // export class as hosting function
+            //
+            // if the inline function is under pragma implementation,
+            // or -fkeep-inline-function, it should be PREEMPTIBLE,
+            // so it will not be DFEed
+            eclass = EXPORT_PREEMPTIBLE;
+          }
+          else {
+            eclass = EXPORT_HIDDEN;
+          }
+	} 
       }
       else
 	 eclass = EXPORT_LOCAL;
@@ -1374,6 +1385,32 @@ WGEN_Start_Function(gs_t fndecl)
       wgen_invoke_inliner = TRUE;
     }
     Set_ST_export (func_st, eclass);
+
+    gs_symbol_visibility_kind_t vk = 
+      (gs_symbol_visibility_kind_t) gs_decl_visibility(fndecl);
+    if (gs_tree_public(fndecl) && 
+        (gs_decl_visibility_specified(fndecl) ||
+         GS_VISIBILITY_DEFAULT != vk)) {
+      ST_EXPORT export_class = EXPORT_PREEMPTIBLE;
+      switch (vk) {
+        case GS_VISIBILITY_DEFAULT:
+          export_class = EXPORT_PREEMPTIBLE;
+          break;
+        case GS_VISIBILITY_PROTECTED:
+          export_class = EXPORT_PROTECTED;
+          break;
+        case GS_VISIBILITY_HIDDEN:
+          export_class = EXPORT_HIDDEN;
+          break;
+        case GS_VISIBILITY_INTERNAL:
+          export_class = EXPORT_INTERNAL;
+          break;
+        default:
+          GS_ASSERT(0, "unknown decl visibility");
+          break;
+      }
+      Set_ST_export (func_st, export_class);
+    }
 
     // For extern inline in C++, we ensure the function is inlined at > -O0,
     // when inlining is not disabled. IF the inliner thinks it appropriate,
@@ -1470,7 +1507,7 @@ WGEN_Start_Function(gs_t fndecl)
 // Insert special variables into the local symtab, store their id's
 // in the PU_TAB, to be accessed later in the front-end, WN Lowerer,
 // inliner/ipa, and back-end.
-    if (key_exceptions)
+    if (emit_exceptions)
        Setup_Entry_For_EH ();
     else
        Dummy_Exc_Ptr_Expr = NULL;
@@ -1803,8 +1840,7 @@ WGEN_Finish_Function (gs_t fndecl)
     if (lang_cplus) {
       // Add any handler code
       Do_Handlers ();
-      // if (flag_exceptions)// check if exceptions are enabled
-      if (key_exceptions)
+      if (emit_exceptions)
 	Do_EH_Tables ();
     }
 
@@ -1951,23 +1987,6 @@ public:
   void Add_Inito_For_Tree (gs_t init, ST *st);
 };
 
-#if 0 // wgen
-void
-WGEN_Start_Aggregate_Init (gs_t decl)
-{
-  if (gs_tree_static(decl)) {
-	ST *st = Get_ST(decl);
-	Set_ST_is_initialized(st);
-	if (ST_sclass(st) == SCLASS_UGLOBAL ||
-	    ST_sclass(st) == SCLASS_EXTERN  ||
-	    ST_sclass(st) == SCLASS_COMMON)
-		Set_ST_sclass(st, SCLASS_DGLOBAL);
-	aggregate_inito = New_INITO (st);
-	not_at_root = FALSE;
-	last_aggregate_initv = 0;
-  }
-}
-#endif
 
 void
 AGGINIT::WGEN_Add_Aggregate_Init_Padding (INT size)
@@ -2452,33 +2471,6 @@ AGGINIT::WGEN_Add_Aggregate_Init_Vector (gs_t init_list)
 } /* WGEN_Add_Aggregate_Init_Vector */
 #endif
 
-#if 0 // wgen
-void
-AGGINIT::WGEN_Finish_Aggregate_Init (void)
-{
-  if (aggregate_inito == 0) return;
-  ST *st = INITO_st(aggregate_inito);
-  TY_IDX ty = ST_type(st);
-  if (TY_size(ty) == 0 ||
-      (TY_kind(ty) == KIND_ARRAY &&
-       !ARB_const_ubnd (TY_arb(ty)) &&
-       TY_size(ty) <= Get_INITO_Size(aggregate_inito))) {
-	// e.g. array whose size is determined by init;
-	// fill in with initv size
-	Set_TY_size(ty, Get_INITO_Size(aggregate_inito));
-	if (TY_kind(ty) == KIND_ARRAY) {
-		Set_ARB_const_ubnd (TY_arb(ty));
-		Set_ARB_ubnd_val (TY_arb(ty), 
-			(TY_size(ty) / TY_size(TY_etype(ty))) - 1 );
-	}
-  }
-  if (last_aggregate_initv == 0) {
-    WGEN_Add_Aggregate_Init_Padding (0);
-  }
-  aggregate_inito = 0;
-  not_at_root = FALSE;
-}
-#endif
 
 static BOOL
 Has_Non_Constant_Init_Value (gs_t init)
@@ -3841,6 +3833,18 @@ AGGINIT::Traverse_Aggregate_Vector (
   // bug 11615: If the entire vector has not been initialized, pad till the end
   INT pad = MTYPE_byte_size(mtyp) - emitted_bytes;
 
+#ifdef NEW_INITIALIZER
+    // When object size can't be obtained from mtyp, get it from
+    // the pointed-to object.
+    if ((MTYPE_byte_size(mtyp) == 0) && target 
+	&& (WN_operator(target) == OPR_LDA)) {
+      TY_IDX pointer_type = WN_ty(target);
+      TY_IDX object_type = TY_pointed(pointer_type);
+      UINT64 object_size = TY_size(object_type);
+      pad = object_size - emitted_bytes;
+    }
+#endif
+
   if (pad > 0)
 #ifdef NEW_INITIALIZER
     Traverse_Aggregate_Pad (target, gen_initv, pad, current_offset);
@@ -4510,83 +4514,6 @@ WGEN_Initialize_Decl (gs_t decl)
   }
 }
 
-#if 0 // wgen
-#ifdef KEY
-  // For initialization of any variables  except globals.
-extern void
-WGEN_Initialize_Nested_Decl (gs_t decl)
-{
-  gs_t init = gs_decl_initial(decl);
-
-  if (init == NULL)
-    return;
-
-  if (gs_decl_ignored_p(decl)) {
-  	// ignore initialization unless really used
-	// e.g. FUNCTION and PRETTY_FUNCTION
-	return;
-  }
-
-  if (gs_tree_code(decl) == GS_LABEL_DECL)
-	return;
-
-  if (gs_tree_code(decl) == GS_CONST_DECL) // bug 10201
-	return;
-
-  ST *st = Get_ST(decl);
-
-  if (gs_tree_static(decl) || gs_decl_context(decl) == NULL) 
-  {
-	// static or global context, so needs INITO
-	if ((ST_sclass(st) == SCLASS_UGLOBAL &&
-             !ST_init_value_zero(st)) ||
-	    ST_sclass(st) == SCLASS_EXTERN  ||
-	    ST_sclass(st) == SCLASS_COMMON)
-		Set_ST_sclass(st, SCLASS_DGLOBAL);
-	if (!ST_is_initialized(st)) {
-		Set_ST_is_initialized(st);
-		Add_Inito_For_Tree (init, st);
-		WGEN_Finish_Aggregate_Init ();
-	}
-	if (gs_tree_readonly(decl))
-		Set_ST_is_const_var (st);
-  }
-  else {
-	// mimic an assign
-	if (gs_tree_code(init) == GS_CONSTRUCTOR) {
-		// is aggregate
-		if (Use_Static_Init_For_Aggregate (st, init)) {
-			// create inito for initial copy
-			// and store that into decl
-			ST *copy = WGEN_Generate_Temp_For_Initialized_Aggregate(
-					init, ST_name(st));
-			WN *init_wn = WN_CreateLdid (OPR_LDID, MTYPE_M, MTYPE_M,
-				0, copy, ST_type(copy));
-			WGEN_Stmt_Append(
-				WN_CreateStid (OPR_STID, MTYPE_V, MTYPE_M,
-					0, st, ST_type(st), init_wn),
-				Get_Srcpos());
-		}
-		else {
-			// do sequence of stores for each element
-			Traverse_Aggregate_Constructor (st, init, 
-							gs_tree_type(init),
-							FALSE /*gen_initv*/, 
-							0, 0, 0);
-		}
-		return;
-	}
-	else {
-		INT emitted_bytes;
-		Gen_Assign_Of_Init_Val (st, init, 
-			0 /*offset*/, 0 /*array_elem_offset*/,
-			ST_type(st), FALSE, 0 /*field_id*/,
-			FLD_HANDLE(), emitted_bytes);
-	}
-  }
-}
-#endif /* KEY */
-#endif /* wgen */
 
 void
 WGEN_Decl (gs_t decl)
@@ -4808,10 +4735,6 @@ void
 WGEN_Process_Class_Decl (gs_t decl)
 {
 //fprintf(stderr, "CLASS_DECL: %s\n", IDENTIFIER_POINTER(gs_decl_name(decl)));
-#if 0 // wgen TODO
-  if (cp_type_quals(decl) != TYPE_UNQUALIFIED)
-    return;
-#endif
 
   if (TYPE_TY_IDX(decl))
     return;
@@ -4863,13 +4786,6 @@ WGEN_Process_Class_Decl (gs_t decl)
 void
 WGEN_Process_Type_Decl (gs_t decl)
 {
-#if 0 // wgen TODO
-//fprintf(stderr, "TYPE_DECL: %s\n", IDENTIFIER_POINTER(gs_decl_name(decl)));
-  if (gs_tree_code(gs_tree_type(decl)) == GS_RECORD_TYPE &&
-      cp_type_quals(decl) == TYPE_UNQUALIFIED) {
-    WGEN_Process_Class_Decl (gs_tree_type(decl));
-  }
-#endif
 } /* WGEN_Process_Type_Decl */
 
 void
@@ -4989,9 +4905,6 @@ WGEN_Process_Var_Decl (gs_t decl)
   if (gs_tree_public(decl)    &&
 //    !gs_decl_weak(decl)     &&
       !gs_decl_external(decl)
-#if 0 // bug 11266
-      && !DECL_ST(decl)
-#endif
       ) {
     if (!gs_decl_weak(decl)
 	|| decl_is_needed_vtable (decl)
@@ -5069,17 +4982,6 @@ WGEN_Process_Decl (gs_t decl)
 void
 WGEN_Process_Namespace_Decl (gs_t namespace_decl)
 {
-#if 0 // wgen TODO
-//fprintf(stderr, "NAMESPACE_DECL: %s\n", IDENTIFIER_POINTER(gs_decl_name(namespace_decl)));
-  gs_t decl;
-  if (!gs_decl_name(namespace_decl) && (namespace_decl != std_node)) {
-    for (decl = cp_namespace_decls(namespace_decl);
-         decl != NULL;
-         decl = gs_tree_chain(decl)) {
-      WGEN_Process_Decl(decl);
-    }
-  }
-#endif
 } /* WGEN_Process_Namespace_Decl */
 
 extern "C"
@@ -5092,13 +4994,6 @@ WGEN_Expand_Top_Level_Decl (gs_t top_level_decl)
   curr_namespace_decl = top_level_decl;
 #endif
 
-#if 0 // wgen TODO
-  if (top_level_decl == global_namespace) {
-   check_gnu_errors (&error_count, &sorry_count);
-   if (error_count || sorry_count)
-     return;
-  }
-#endif
 
   if (!Enable_WFE_DFE) {
     // Emit asm statements at global scope, before expanding the functions,

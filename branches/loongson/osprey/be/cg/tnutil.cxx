@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -55,7 +59,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "cg_pch.h"
@@ -200,6 +203,20 @@ TN **TN_Vec = NULL;		/* TN_number (TN_Vec[i]) == i */
 
 
 static TN_LIST *Hash_Table[HASH_TABLE_SIZE];
+
+#ifdef Is_True_On
+int trace_tn_number_ = -1;
+
+void set_trace_tn(int n) { trace_tn_number_ = n; }
+
+void reset_trace_tn() { trace_tn_number_ = -1; }
+
+void gdb_stop_here()
+{
+   return ;
+}
+
+#endif
 
 
 /* ====================================================================
@@ -411,6 +428,7 @@ static TN *f10_ded_tns[REGISTER_MAX + 1];
 #ifdef KEY
 #ifndef TARG_NVISA
 static TN *v16_ded_tns[REGISTER_MAX + 1];
+static TN *v32_ded_tns[REGISTER_MAX + 1];
 static TN *i1_ded_tns[REGISTER_MAX + 1];
 static TN *i2_ded_tns[REGISTER_MAX + 1];
 static TN *i4_ded_tns[REGISTER_MAX + 1];
@@ -425,6 +443,10 @@ TN* C2_COND_TN = NULL;
 TN* C2_MVSEL_TN = NULL;
 TN* C2_VLCS_TN = NULL;
 TN* C2_MOVPAT_TN = NULL;
+#endif
+
+#ifdef TARG_PPC32
+static TN* special_ded_tns[Last_Dedicated_Preg_Offset - Float_Preg_Max_Offset];
 #endif
 
 /* ====================================================================
@@ -589,9 +611,13 @@ Init_Dedicated_TNs (void)
 	Set_TN_size(f10_ded_tns[reg], 16);
 
 #endif
-#ifdef KEY
+#if defined(TARG_X8664)
+        ++tnum;
         v16_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
   	Set_TN_size(v16_ded_tns[reg], 16);
+        ++tnum;
+        v32_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
+        Set_TN_size(v32_ded_tns[reg], 32);
 #endif
     }
 
@@ -612,6 +638,12 @@ Init_Dedicated_TNs (void)
     }
 #endif // KEY
 #endif // ! NVISA
+#ifdef TARG_PPC32
+    for (reg= 0; reg < Last_Dedicated_Preg_Offset - Float_Preg_Max_Offset; reg++) {
+		special_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg + Float_Preg_Max_Offset + 1);
+		tnum++;
+    }
+#endif
 
 #if defined(TARG_SL)	 
     for (reg = REGISTER_MIN; 
@@ -638,6 +670,12 @@ Init_Dedicated_TNs (void)
 TN *
 Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
 {
+#ifdef TARG_PPC32
+  if (reg >Float_Preg_Max_Offset && reg <= Last_Dedicated_Preg_Offset) {
+  	return special_ded_tns[reg - Float_Preg_Max_Offset - 1];
+  }
+#endif
+
 #if defined(TARG_IA64)
   if (rclass == ISA_REGISTER_CLASS_float) {
     if (size == 4)
@@ -645,7 +683,7 @@ Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
     if (size == 16)
       return f10_ded_tns[reg];
   }
-#elif defined(TARG_X8664) || defined(TARG_MIPS)
+#elif defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_PPC32)
   // check for F4 tns and 16-byte vector tns
   if (rclass == ISA_REGISTER_CLASS_float
       && size != DEFAULT_RCLASS_SIZE(rclass) )
@@ -654,12 +692,13 @@ Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
       case 4:  return f4_ded_tns[reg];
 #if defined(TARG_X8664) 
       case 16: return v16_ded_tns[reg];
+      case 32: return v32_ded_tns[reg];
 #endif // TARG_X8664
     }
   }
 #endif
 
-#if defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_LOONGSON)
+#if defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
   // check for I4 tns
   if (rclass == ISA_REGISTER_CLASS_integer
       && size != DEFAULT_RCLASS_SIZE(rclass) )
@@ -701,7 +740,7 @@ Gen_Register_TN (ISA_REGISTER_CLASS rclass, INT size)
   	Check_TN_Vec_Size ();
   	Set_TN_number(tn,++Last_TN);
   	TNvec(Last_TN) = tn;
-  	if ( size > 16 ) ErrMsg ( EC_TN_Size, size );
+  	if ( size > 32 ) ErrMsg ( EC_TN_Size, size );
   	Set_TN_size(tn, size);
 #if !defined(TARG_SL)
   	if ( rclass == ISA_REGISTER_CLASS_float)  Set_TN_is_float(tn);
@@ -914,6 +953,13 @@ Gen_Tag_TN ( LABEL_IDX tag)
   return tn;
 }
 
+#if defined(TARG_PPC32)
+TN *
+Gen_CR_TN (UINT cr)
+{
+  return Build_Dedicated_TN(ISA_REGISTER_CLASS_condition, (REGISTER)(cr+1), 1);
+}
+#endif
 /* ====================================================================
  *
  * Gen_Adjusted_TN

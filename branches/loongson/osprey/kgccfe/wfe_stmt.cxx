@@ -38,7 +38,6 @@
 
 */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "glob.h"
@@ -147,10 +146,9 @@ WFE_Stmt_Init (void)
 } /* WFE_Stmt_Init */
 
 void
-WFE_Expand_Start_Cond (tree cond, int exitflag)
+WFE_Expand_Start_Cond_WN(WN* test,  int exitflag)
 {
   WN* if_stmt;
-  WN* test;
   WN* then_block;
   WN* else_block;
 
@@ -162,13 +160,20 @@ WFE_Expand_Start_Cond (tree cond, int exitflag)
   }
 
   if_else_info_stack [if_else_info_i] = FALSE;
-  test       = WFE_Expand_Expr_With_Sequence_Point (cond, Boolean_type);
   then_block = WN_CreateBlock ();
   else_block = WN_CreateBlock ();
   if_stmt    = WN_CreateIf (test, then_block, else_block);
   WFE_Stmt_Append (if_stmt, Get_Srcpos());
   WFE_Stmt_Push (else_block, wfe_stmk_if_else, Get_Srcpos());
   WFE_Stmt_Push (then_block, wfe_stmk_if_then, Get_Srcpos());
+}
+
+void
+WFE_Expand_Start_Cond (tree cond, int exitflag)
+{
+  WN* test;
+  test       = WFE_Expand_Expr_With_Sequence_Point (cond, Boolean_type);
+  WFE_Expand_Start_Cond_WN(test, exitflag);
 } /* WFE_Expand_Start_Cond */
 
 void

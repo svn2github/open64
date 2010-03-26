@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -66,7 +66,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "be_com_pch.h"
@@ -726,6 +725,7 @@ DOLOOP_STACK *stack, BOOL rebuild, BOOL skip_bad)
 	return(0);
   }
   Is_True(!calls->Elements() || Has_Call_Info(calls->Bottom_nth(0)->_call) ||
+    WN_operator(calls->Bottom_nth(0)->_call) == OPR_INTRINSIC_CALL ||
 	Do_Loop_Is_Concurrent_Call(Enclosing_Do_Loop(start)),
 	("Unexpected call in Build_Region"));
 

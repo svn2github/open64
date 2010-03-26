@@ -57,7 +57,8 @@ LIBRARY_SUBDIRS := \
 	libinstr2 \
 	libopenmp \
 	libopen64rt \
-	libhugetlbfs
+	libhugetlbfs \
+	libacml_mv
 
 	#libF77
 	#libm \

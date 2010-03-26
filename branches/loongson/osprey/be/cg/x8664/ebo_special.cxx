@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -171,18 +171,6 @@ static OP *Compose_Mem_Op_And_Copy_Info (OP *op, TN *index, TN *offset,
 void
 EBO_Special_Start (MEM_POOL *pool)
 {
-#if 0
-  st_initv_map = CXX_NEW(ST_TO_INITV_MAP(31, pool), pool);
-  st_initv_map_inited = FALSE;
-  work_gtn_set = GTN_SET_Create_Empty(Last_TN + 1, pool);
-  work_defined_set = BS_Create_Empty(Last_TN + 1, pool);
-  work_pool = pool;
-
-  INT32 idummy;
-  double ddummy;
-  CGTARG_Compute_Branch_Parameters(&idummy, &fixed_branch_cost,
-				   &taken_branch_cost, &ddummy);
-#endif
 
   Init_Addr_Modes();
 }
@@ -1374,13 +1362,6 @@ delete_memory_op (OP *op,
     if( EBO_Trace_Optimization ){
       fprintf( TFile, "Load - Store combination is not optimized\n" );
     }
-#if 0
-    if( OP_load( opinfo->in_op ) &&
-	OP_prev(op) == opinfo->in_op &&
-	OP_result( opinfo->in_op, 0 ) == OP_opnd( op, 0 ) ){
-      return TRUE;
-    }
-#endif
     return FALSE;
   }
 
@@ -2599,11 +2580,6 @@ static BOOL move_ext_is_replaced( OP* op, const EBO_TN_INFO* tninfo )
   OPS ops = OPS_EMPTY;
 
   if( TOP_is_move_ext( pred_top ) ){
-#if 0
-    if( ( OP_bb( pred ) != OP_bb( op ) ) &&
-	has_assigned_reg( OP_opnd(pred,0) ) )
-      return FALSE;
-#endif
     EBO_TN_INFO* opnd_info = get_tn_info( OP_opnd(pred,0) );
     if( opnd_info != NULL && opnd_info->sequence_num > tninfo->sequence_num )
       return FALSE;
@@ -2949,7 +2925,7 @@ BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
     if ( TOP_is_vector_packed_single ( OP_code (alu_op ) ) )
       op->opr = TOP_movaps;
     else if ( TOP_is_vector_packed_double ( OP_code (alu_op ) ) )
-      op->opr = TOP_movapd;
+      op->opr = TOP_movaps;
   }
 
   else if( top == TOP_jne || top == TOP_je ) {
@@ -3340,7 +3316,10 @@ static TN* Compose_Addr_offset( TN* ofst1, TN* ofst2, TN* scale )
     ST* sym = TN_var(ofst1);
     const INT64 ofst = TN_value(ofst2) * TN_value(scale) + TN_offset(ofst1);
 
-    return Gen_Symbol_TN( sym, ofst, TN_RELOC_NONE );
+    // keep the relocs for TLS object
+    Is_True ( TN_relocs(ofst2) == TN_RELOC_NONE, ("bad TN relocs for ofst2") );
+    return Gen_Symbol_TN( sym, ofst,
+                          ST_is_thread_local(sym) ? TN_relocs(ofst1) : TN_RELOC_NONE );
   }
 
   if( TN_is_symbol(ofst2) ){
@@ -3350,7 +3329,10 @@ static TN* Compose_Addr_offset( TN* ofst1, TN* ofst2, TN* scale )
     ST* sym = TN_var(ofst2);
     const INT64 ofst = TN_value(ofst1) + TN_offset(ofst2);
 
-    return Gen_Symbol_TN( sym, ofst, TN_RELOC_NONE );
+    // keep the relocs for TLS object
+    Is_True ( TN_relocs(ofst1) == TN_RELOC_NONE, ("bad TN relocs for ofst1") );
+    return Gen_Symbol_TN( sym, ofst, 
+                          ST_is_thread_local(sym) ? TN_relocs(ofst2) : TN_RELOC_NONE );
   }
 
   const INT64 value = TN_value(ofst1) + TN_value(ofst2) * TN_value(scale);
@@ -3391,12 +3373,18 @@ static BOOL Compose_Addr( OP* mem_op, EBO_TN_INFO* pt_tninfo,
 
   switch( top ){
   case TOP_lea32:
+    if( Is_Target_64bit() )
+      return FALSE;
+    // fall thru
   case TOP_lea64:
     a.base   = OP_opnd_use( addr_op, OU_base );
     a.offset = OP_opnd_use( addr_op, OU_offset );
     break;
 
   case TOP_leaxx32:
+    if( Is_Target_64bit() )
+      return FALSE;
+    // fall thru
   case TOP_leaxx64:
     a.index  = OP_opnd_use( addr_op, OU_index );
     a.offset = OP_opnd_use( addr_op, OU_offset );
@@ -3410,6 +3398,9 @@ static BOOL Compose_Addr( OP* mem_op, EBO_TN_INFO* pt_tninfo,
     break;
 
   case TOP_leax32:
+    if( Is_Target_64bit() )
+      return FALSE;
+    // fall thru
   case TOP_leax64:
     a.index  = OP_opnd_use( addr_op, OU_index );
     a.offset = OP_opnd_use( addr_op, OU_offset );
@@ -3774,6 +3765,7 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_UNDEFINED, TOP_ldss,	TOP_ldssx,	TOP_ldssxx,	TOP_ldss_n32},
   {TOP_UNDEFINED, TOP_ldsd,	TOP_ldsdx,	TOP_ldsdxx,	TOP_ldsd_n32},
   {TOP_UNDEFINED, TOP_lddqa,	TOP_lddqax,	TOP_lddqaxx,	TOP_lddqa_n32},
+  {TOP_UNDEFINED, TOP_ldupd,	TOP_ldupdx,	TOP_ldupdxx,	TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_lddqu,	TOP_lddqux,	TOP_lddquxx,	TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_ldlps,	TOP_ldlpsx,	TOP_ldlpsxx,	TOP_ldlps_n32},
   {TOP_UNDEFINED, TOP_ldlpd,	TOP_ldlpdx,	TOP_ldlpdxx,	TOP_UNDEFINED},
@@ -3786,7 +3778,33 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_UNDEFINED, TOP_ldhps,	TOP_ldhpsx,	TOP_ldhpsxx,	TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_ldhpd,	TOP_ldhpdx,	TOP_ldhpdxx,	TOP_ldhpd_n32},
   {TOP_UNDEFINED, TOP_sthps,	TOP_sthpsx,	TOP_sthpsxx,	TOP_UNDEFINED},
-  {TOP_UNDEFINED, TOP_sthpd,	TOP_sthpdx,	TOP_sthpdxx,	TOP_sthpd_n32},
+  {TOP_UNDEFINED, TOP_vstss,	TOP_vstssx,	TOP_vstssxx,	TOP_vstss_n32},
+  {TOP_UNDEFINED, TOP_vstsd,	TOP_vstsdx,	TOP_vstsdxx,	TOP_vstsd_n32},
+  {TOP_UNDEFINED, TOP_vstntss,  TOP_vstntssx,   TOP_vstntssxx,  TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vstntsd,  TOP_vstntsdx,   TOP_vstntsdxx,  TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vstdqa,	TOP_vstdqax,	TOP_vstdqaxx,	TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vstntpd,	TOP_vstntpdx,	TOP_vstntpdxx,	TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vstdqu,	TOP_vstdqux,	TOP_vstdquxx,	TOP_vstdqu_n32},
+  //{TOP_vmovsldup, TOP_vmovsldupx, TOP_vmovsldupxx, TOP_vmovsldupxxx, TOP_UNDEFINED},
+  //{TOP_vfmovshdup, TOP_vmovshdupx, TOP_vmovshdupxx, TOP_vmovshdupxxx, TOP_UNDEFINED},
+  {TOP_vmovddup,  TOP_vmovddupx,    TOP_vmovddupxx,   TOP_vmovddupxxx,   TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vldss,	TOP_vldssx,	TOP_vldssxx,	TOP_vldss_n32},
+  {TOP_UNDEFINED, TOP_vldsd,	TOP_vldsdx,	TOP_vldsdxx,	TOP_vldsd_n32},
+  {TOP_UNDEFINED, TOP_vlddqa,	TOP_vlddqax,	TOP_vlddqaxx,	TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_vldupd,	TOP_vldupdx,	TOP_vldupdxx,	TOP_vldupd_n32},
+  {TOP_UNDEFINED, TOP_vlddqu,	TOP_vlddqux,	TOP_vlddquxx,	TOP_vlddqu_n32},
+  {TOP_UNDEFINED, TOP_vldlps,	TOP_vldlpsx,	TOP_vldlpsxx,	TOP_vldlps_n32},
+  {TOP_UNDEFINED, TOP_vldlpd,	TOP_vldlpdx,	TOP_vldlpdxx,	TOP_vldlpd_n32},
+  {TOP_UNDEFINED, TOP_vldaps,	TOP_vldapsx,	TOP_vldapsxx,	TOP_vldaps_n32},
+  {TOP_UNDEFINED, TOP_vldapd,	TOP_vldapdx,	TOP_vldapdxx,	TOP_vldapd_n32},
+  {TOP_UNDEFINED, TOP_vstlps,	TOP_vstlpsx,	TOP_vstlpsxx,	TOP_vstlps_n32},
+  {TOP_UNDEFINED, TOP_vstlpd,	TOP_vstlpdx,	TOP_vstlpdxx,	TOP_vstlpd_n32},
+  {TOP_UNDEFINED, TOP_vstaps,	TOP_vstapsx,	TOP_vstapsxx,	TOP_vstaps_n32},
+  {TOP_UNDEFINED, TOP_vstapd,	TOP_vstapdx,	TOP_vstapdxx,	TOP_vstapd_n32},
+  {TOP_UNDEFINED, TOP_vldhps,	TOP_vldhpsx,	TOP_vldhpsxx,	TOP_vldhps_n32},
+  {TOP_UNDEFINED, TOP_vldhpd,	TOP_vldhpdx,	TOP_vldhpdxx,	TOP_vldhpd_n32},
+  {TOP_UNDEFINED, TOP_vsthps,	TOP_vsthpsx,	TOP_vsthpsxx,	TOP_vsthps_n32},
+  {TOP_UNDEFINED, TOP_vsthpd,	TOP_vsthpdx,	TOP_vsthpdxx,	TOP_vsthpd_n32},
   {TOP_UNDEFINED, TOP_ld8_64,	TOP_ldx8_64,	TOP_ldxx8_64,	TOP_ld8_64_off},
   {TOP_UNDEFINED, TOP_ldu8_64,	TOP_ldxu8_64,	TOP_ldxxu8_64, TOP_ldu8_64_off},
   {TOP_UNDEFINED, TOP_ld16_64,	TOP_ldx16_64,	TOP_ldxx16_64, TOP_ld16_64_off},
@@ -3813,10 +3831,15 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_add64,	TOP_addx64,	TOP_addxx64,	TOP_addxxx64,	TOP_UNDEFINED},
   {TOP_addss,	TOP_addxss,	TOP_addxxss,	TOP_addxxxss,	TOP_UNDEFINED},
   {TOP_addsd,	TOP_addxsd,	TOP_addxxsd,	TOP_addxxxsd,	TOP_UNDEFINED},	
-  {TOP_add128v8,  TOP_addx128v8,  TOP_addxx128v8,  TOP_addxxx128v8, TOP_UNDEFINED},
+  {TOP_addsd,	TOP_addxsd,	TOP_addxxsd,	TOP_addxxxsd,	TOP_UNDEFINED},	
+  {TOP_vfaddsd, TOP_vfaddxsd,   TOP_vfaddxxsd,  TOP_vfaddxxxsd, TOP_UNDEFINED},
   {TOP_add128v16, TOP_addx128v16, TOP_addxx128v16, TOP_addxxx128v16, TOP_UNDEFINED},
   {TOP_add128v32, TOP_addx128v32, TOP_addxx128v32, TOP_addxxx128v32, TOP_UNDEFINED},
   {TOP_add128v64, TOP_addx128v64, TOP_addxx128v64, TOP_addxxx128v64, TOP_UNDEFINED},
+  {TOP_vadd128v8,  TOP_vaddx128v8,  TOP_vaddxx128v8,  TOP_vaddxxx128v8, TOP_UNDEFINED},
+  {TOP_vadd128v16, TOP_vaddx128v16, TOP_vaddxx128v16, TOP_vaddxxx128v16, TOP_UNDEFINED},
+  {TOP_vadd128v32, TOP_vaddx128v32, TOP_vaddxx128v32, TOP_vaddxxx128v32, TOP_UNDEFINED},
+  {TOP_vadd128v64, TOP_vaddx128v64, TOP_vaddxx128v64, TOP_vaddxxx128v64, TOP_UNDEFINED},
   {TOP_fadd128v32,	TOP_faddx128v32,	TOP_faddxx128v32,	TOP_faddxxx128v32,	TOP_UNDEFINED},
   {TOP_fadd128v64,	TOP_faddx128v64,	TOP_faddxx128v64,	TOP_faddxxx128v64,	TOP_UNDEFINED},
   {TOP_fhadd128v32,	TOP_fhaddx128v32,	TOP_fhaddxx128v32,	TOP_fhaddxxx128v32,	TOP_UNDEFINED},
@@ -3825,53 +3848,95 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_faddsub128v64,	TOP_faddsubx128v64,	TOP_faddsubxx128v64,	TOP_faddsubxxx128v64,	TOP_UNDEFINED},
   {TOP_fhsub128v32,	TOP_fhsubx128v32,	TOP_fhsubxx128v32,	TOP_fhsubxxx128v32,	TOP_UNDEFINED},
   {TOP_fhsub128v64,	TOP_fhsubx128v64,	TOP_fhsubxx128v64,	TOP_fhsubxxx128v64,	TOP_UNDEFINED},
-
+  {TOP_vfadd128v32,	TOP_vfaddx128v32,	TOP_vfaddxx128v32,	TOP_vfaddxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfadd128v64,	TOP_vfaddx128v64,	TOP_vfaddxx128v64,	TOP_vfaddxxx128v64,	TOP_UNDEFINED},
+  {TOP_vfhadd128v32,	TOP_vfhaddx128v32,	TOP_vfhaddxx128v32,	TOP_vfhaddxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfhadd128v64,	TOP_vfhaddx128v64,	TOP_vfhaddxx128v64,	TOP_vfhaddxxx128v64,	TOP_UNDEFINED},
+  {TOP_vfaddsub128v32,	TOP_vfaddsubx128v32,	TOP_vfaddsubxx128v32,	TOP_vfaddsubxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfaddsub128v64,	TOP_vfaddsubx128v64,	TOP_vfaddsubxx128v64,	TOP_vfaddsubxxx128v64,	TOP_UNDEFINED},
+  {TOP_vfhsub128v32,	TOP_vfhsubx128v32,	TOP_vfhsubxx128v32,	TOP_vfhsubxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfhsub128v64,	TOP_vfhsubx128v64,	TOP_vfhsubxx128v64,	TOP_vfhsubxxx128v64,	TOP_UNDEFINED},
   {TOP_sub32,	TOP_subx32,	TOP_subxx32,	TOP_subxxx32,	TOP_UNDEFINED},
   {TOP_sub64,	TOP_subx64,	TOP_subxx64,	TOP_subxxx64,	TOP_UNDEFINED},
   {TOP_subss,	TOP_subxss,	TOP_subxxss,	TOP_subxxxss,	TOP_UNDEFINED},
   {TOP_subsd,	TOP_subxsd,	TOP_subxxsd,	TOP_subxxxsd,	TOP_UNDEFINED},
+  {TOP_vsubss,	TOP_vsubxss,	TOP_vsubxxss,	TOP_vsubxxxss,	TOP_UNDEFINED},
+  {TOP_vsubsd,	TOP_vsubxsd,	TOP_vsubxxsd,	TOP_vsubxxxsd,	TOP_UNDEFINED},
   {TOP_sub128v8,	TOP_subx128v8,	TOP_subxx128v8,	TOP_subxxx128v8,	TOP_UNDEFINED},
   {TOP_sub128v16,	TOP_subx128v16,	TOP_subxx128v16,	TOP_subxxx128v16,	TOP_UNDEFINED},
   {TOP_sub128v32,	TOP_subx128v32,	TOP_subxx128v32,	TOP_subxxx128v32,	TOP_UNDEFINED},
   {TOP_sub128v64,	TOP_subx128v64,	TOP_subxx128v64,	TOP_subxxx128v64,	TOP_UNDEFINED},
   {TOP_fsub128v32,	TOP_fsubx128v32, TOP_fsubxx128v32,	TOP_fsubxxx128v32,	TOP_UNDEFINED},
   {TOP_fsub128v64,	TOP_fsubx128v64, TOP_fsubxx128v64,	TOP_fsubxxx128v64,	TOP_UNDEFINED},
-
+  {TOP_vsub128v8,	TOP_vsubx128v8,		TOP_vsubxx128v8,	TOP_vsubxxx128v8,	TOP_UNDEFINED},
+  {TOP_vsub128v16,	TOP_vsubx128v16,	TOP_vsubxx128v16,	TOP_vsubxxx128v16,	TOP_UNDEFINED},
+  {TOP_vsub128v32,	TOP_vsubx128v32,	TOP_vsubxx128v32,	TOP_vsubxxx128v32,	TOP_UNDEFINED},
+  {TOP_vsub128v64,	TOP_vsubx128v64,	TOP_vsubxx128v64,	TOP_vsubxxx128v64,	TOP_UNDEFINED},
+  {TOP_vfsub128v32,	TOP_vfsubx128v32, 	TOP_vfsubxx128v32,	TOP_vfsubxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfsub128v64,	TOP_vfsubx128v64, 	TOP_vfsubxx128v64,	TOP_vfsubxxx128v64,	TOP_UNDEFINED},
   {TOP_mulss,	TOP_mulxss,	TOP_mulxxss,	TOP_mulxxxss,	TOP_UNDEFINED},
   {TOP_mulsd,	TOP_mulxsd,	TOP_mulxxsd,	TOP_mulxxxsd,	TOP_UNDEFINED},
+  {TOP_vmulss,	TOP_vmulxss,	TOP_vmulxxss,	TOP_vmulxxxss,	TOP_UNDEFINED},
+  {TOP_vmulsd,	TOP_vmulxsd,	TOP_vmulxxsd,	TOP_vmulxxxsd,	TOP_UNDEFINED},
   {TOP_fmul128v32, TOP_fmulx128v32, TOP_fmulxx128v32, TOP_fmulxxx128v32,	TOP_UNDEFINED},
   {TOP_fmul128v64, TOP_fmulx128v64, TOP_fmulxx128v64, TOP_fmulxxx128v64,	TOP_UNDEFINED},
   {TOP_cmpgt128v8, TOP_cmpgtx128v8, TOP_cmpgtxx128v8, TOP_cmpgtxxx128v8,	TOP_UNDEFINED},
+  {TOP_vfmul128v32, TOP_vfmulx128v32, TOP_vfmulxx128v32, TOP_vfmulxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfmul128v64, TOP_vfmulx128v64, TOP_vfmulxx128v64, TOP_vfmulxxx128v64,	TOP_UNDEFINED},
+  {TOP_vcmpgt128v8, TOP_vcmpgtx128v8, TOP_vcmpgtxx128v8, TOP_vcmpgtxxx128v8,	TOP_UNDEFINED},
   {TOP_cmpgt128v16,	TOP_cmpgtx128v16,	TOP_cmpgtxx128v16,	TOP_cmpgtxxx128v16,	TOP_UNDEFINED},
   {TOP_cmpgt128v32,	TOP_cmpgtx128v32,	TOP_cmpgtxx128v32,	TOP_cmpgtxxx128v32,	TOP_UNDEFINED},
   {TOP_cmpeq128v8,	TOP_cmpeqx128v8,	TOP_cmpeqxx128v8,	TOP_cmpeqxxx128v8,	TOP_UNDEFINED},
   {TOP_cmpeq128v16,	TOP_cmpeqx128v16,	TOP_cmpeqxx128v16,	TOP_cmpeqxxx128v16,	TOP_UNDEFINED},
   {TOP_cmpeq128v32,	TOP_cmpeqx128v32,	TOP_cmpeqxx128v32,	TOP_cmpeqxxx128v32,	TOP_UNDEFINED},
+  {TOP_vcmpgt128v16,	TOP_vcmpgtx128v16,	TOP_vcmpgtxx128v16,	TOP_vcmpgtxxx128v16,	TOP_UNDEFINED},
+  {TOP_vcmpgt128v32,	TOP_vcmpgtx128v32,	TOP_vcmpgtxx128v32,	TOP_vcmpgtxxx128v32,	TOP_UNDEFINED},
+  {TOP_vcmpeq128v8,	TOP_vcmpeqx128v8,	TOP_vcmpeqxx128v8,	TOP_vcmpeqxxx128v8,	TOP_UNDEFINED},
+  {TOP_vcmpeq128v16,	TOP_vcmpeqx128v16,	TOP_vcmpeqxx128v16,	TOP_vcmpeqxxx128v16,	TOP_UNDEFINED},
+  {TOP_vcmpeq128v32,	TOP_vcmpeqx128v32,	TOP_vcmpeqxx128v32,	TOP_vcmpeqxxx128v32,	TOP_UNDEFINED},
   {TOP_max128v8,	TOP_maxx128v8,	TOP_maxxx128v8,	TOP_maxxxx128v8,	TOP_UNDEFINED},
   {TOP_max128v16,	TOP_maxx128v16,	TOP_maxxx128v16, TOP_maxxxx128v16,	TOP_UNDEFINED},
   {TOP_min128v8,	TOP_minx128v8,	TOP_minxx128v8,	TOP_minxxx128v8,	TOP_UNDEFINED},
   {TOP_min128v16,	TOP_minx128v16,	TOP_minxx128v16, TOP_minxxx128v16,	TOP_UNDEFINED},
+  {TOP_vmaxs128v8,	TOP_vmaxsx128v8,	TOP_vmaxsxx128v8,	TOP_vmaxsxxx128v8,	TOP_UNDEFINED},
+  {TOP_vmaxs128v16,	TOP_vmaxsx128v16,	TOP_vmaxsxx128v16,	TOP_vmaxsxxx128v16,	TOP_UNDEFINED},
+  {TOP_vmins128v8,	TOP_vminsx128v8,	TOP_vminsxx128v8,	TOP_vminsxxx128v8,	TOP_UNDEFINED},
+  {TOP_vmins128v16,	TOP_vminsx128v16,	TOP_vminsxx128v16,	TOP_vminsxxx128v16,	TOP_UNDEFINED},
+  {TOP_vmaxu128v8,	TOP_vmaxux128v8,	TOP_vmaxuxx128v8,	TOP_vmaxuxxx128v8,	TOP_UNDEFINED},
+  {TOP_vmaxu128v16,	TOP_vmaxux128v16,	TOP_vmaxuxx128v16,	TOP_vmaxuxxx128v16,	TOP_UNDEFINED},
+  {TOP_vminu128v8,	TOP_vminux128v8,	TOP_vminuxx128v8,	TOP_vminuxxx128v8,	TOP_UNDEFINED},
+  {TOP_vminu128v16,	TOP_vminux128v16,	TOP_vminuxx128v16,	TOP_vminuxxx128v16,	TOP_UNDEFINED},
   {TOP_divss,	TOP_divxss,	TOP_divxxss,	TOP_divxxxss,	TOP_UNDEFINED},
   {TOP_divsd,	TOP_divxsd,	TOP_divxxsd,	TOP_divxxxsd,	TOP_UNDEFINED},
+  {TOP_vdivss,	TOP_vdivxss,	TOP_vdivxxss,	TOP_vdivxxxss,	TOP_UNDEFINED},
+  {TOP_vdivsd,	TOP_vdivxsd,	TOP_vdivxxsd,	TOP_vdivxxxsd,	TOP_UNDEFINED},
   {TOP_fdiv128v32,	TOP_fdivx128v32,	TOP_fdivxx128v32,	TOP_fdivxxx128v32,	TOP_UNDEFINED},
   {TOP_fdiv128v64,	TOP_fdivx128v64,	TOP_fdivxx128v64,	TOP_fdivxxx128v64,	TOP_UNDEFINED},
-
+  {TOP_vfdiv128v32,	TOP_vfdivx128v32,	TOP_vfdivxx128v32,	TOP_vfdivxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfdiv128v64,	TOP_vfdivx128v64,	TOP_vfdivxx128v64,	TOP_vfdivxxx128v64,	TOP_UNDEFINED},
   {TOP_and8,	TOP_andx8,	TOP_andxx8,	TOP_andxxx8,	TOP_UNDEFINED},
   {TOP_and16,	TOP_andx16,	TOP_andxx16,	TOP_andxxx16,	TOP_UNDEFINED},
   {TOP_and32,	TOP_andx32,	TOP_andxx32,	TOP_andxxx32,	TOP_UNDEFINED},
   {TOP_and64,	TOP_andx64,	TOP_andxx64,	TOP_andxxx64,	TOP_UNDEFINED},
-  {TOP_and128v8,	TOP_andx128v8,	TOP_andxx128v8,	TOP_andxxx128v8,	TOP_UNDEFINED},
-  {TOP_and128v16,	TOP_andx128v16,	TOP_andxx128v16,	TOP_andxxx128v16,	TOP_UNDEFINED},
-  {TOP_and128v32,	TOP_andx128v32,	TOP_andxx128v32,	TOP_andxxx128v32,	TOP_UNDEFINED },
-  {TOP_and128v64,	TOP_andx128v64,	TOP_andxx128v64,	TOP_andxxx128v64,	TOP_UNDEFINED},
+  {TOP_and128v8,	TOP_andx128v8,	        TOP_andxx128v8,	        TOP_andxxx128v8,	TOP_UNDEFINED},
+  {TOP_and128v16,	TOP_andx128v16,	        TOP_andxx128v16,	TOP_andxxx128v16,	TOP_UNDEFINED},
+  {TOP_and128v32,	TOP_andx128v32,	        TOP_andxx128v32,	TOP_andxxx128v32,	TOP_UNDEFINED },
+  {TOP_and128v64,	TOP_andx128v64,	        TOP_andxx128v64,	TOP_andxxx128v64,	TOP_UNDEFINED},
+  {TOP_vand128v8,	TOP_vandx128v8,		TOP_vandxx128v8,        TOP_vandxxx128v8,        TOP_UNDEFINED},
+  {TOP_vand128v16,	TOP_vandx128v16,	TOP_vandxx128v16,       TOP_vandxxx128v16,        TOP_UNDEFINED},
+  {TOP_vand128v32,	TOP_vandx128v32,	TOP_vandxx128v32,       TOP_vandxxx128v32,        TOP_UNDEFINED},
+  {TOP_vand128v64,	TOP_vandx128v64,	TOP_vandxx128v64,       TOP_vandxxx128v64,        TOP_UNDEFINED},
   {TOP_fand128v32,	TOP_fandx128v32,	TOP_fandxx128v32,	TOP_fandxxx128v32,	TOP_UNDEFINED},
   {TOP_fand128v64,	TOP_fandx128v64,	TOP_fandxx128v64,	TOP_fandxxx128v64,	TOP_UNDEFINED},
+  {TOP_vfand128v32,	TOP_vfandx128v32,	TOP_vfandxx128v32,	TOP_vfandxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfand128v64,	TOP_vfandx128v64,	TOP_vfandxx128v64,	TOP_vfandxxx128v64,	TOP_UNDEFINED},
   // andps/andpd share the same load-execute OPs as fand128v32/fand128v64.
   // Must put andps/andpd after fand128v32/fand128v64 so that the load-execute
   // OPs will have fand128v32/fand128v64 as the base mode.
   {TOP_andps,	TOP_fandx128v32,	TOP_fandxx128v32,	TOP_fandxxx128v32,	TOP_UNDEFINED},
   {TOP_andpd,	TOP_fandx128v64,	TOP_fandxx128v64,	TOP_fandxxx128v64,	TOP_UNDEFINED},
-
+  {TOP_vfand128v32,	TOP_vfandx128v32,	TOP_vfandxx128v32,	TOP_vfandxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfand128v64,	TOP_vfandx128v64,	TOP_vfandxx128v64,	TOP_vfandxxx128v64,	TOP_UNDEFINED},
   {TOP_or8,	TOP_orx8,	TOP_orxx8,	TOP_orxxx8,	TOP_UNDEFINED},
   {TOP_or16,	TOP_orx16,	TOP_orxx16,	TOP_orxxx16,	TOP_UNDEFINED},
   {TOP_or32,	TOP_orx32,	TOP_orxx32,	TOP_orxxx32,	TOP_UNDEFINED},
@@ -3882,33 +3947,51 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_or128v64,	TOP_orx128v64,	TOP_orxx128v64,	TOP_orxxx128v64,	TOP_UNDEFINED},
   {TOP_for128v32,	TOP_forx128v32,	TOP_forxx128v32,	TOP_forxxx128v32,	TOP_UNDEFINED},
   {TOP_for128v64,	TOP_forx128v64,	TOP_forxx128v64,	TOP_forxxx128v64,	TOP_UNDEFINED},
+  {TOP_vor128v8,	TOP_vorx128v8,		TOP_vorxx128v8,		TOP_vorxxx128v8,	TOP_UNDEFINED},
+  {TOP_vor128v16,	TOP_vorx128v16,		TOP_vorxx128v16,	TOP_vorxxx128v16,	TOP_UNDEFINED},
+  {TOP_vor128v32,	TOP_vorx128v32,		TOP_vorxx128v32,	TOP_vorxxx128v32,	TOP_UNDEFINED},
+  {TOP_vor128v64,	TOP_vorx128v64,		TOP_vorxx128v64,	TOP_vorxxx128v64,	TOP_UNDEFINED},
+  {TOP_vfor128v32,	TOP_vforx128v32,	TOP_vforxx128v32,	TOP_vforxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfor128v64,	TOP_vforx128v64,	TOP_vforxx128v64,	TOP_vforxxx128v64,	TOP_UNDEFINED},
   // orps/orpd share the same load-execute OPs as for128v32/for128v64.  Must
   // put orps/orpd after for128v32/for128v64 so that the load-execute OPs will
   // have for128v32/for128v64 as the base mode.
-  {TOP_orps,	TOP_forx128v32,	TOP_forxx128v32,	TOP_forxxx128v32,	TOP_UNDEFINED},
-  {TOP_orpd,	TOP_forx128v64,	TOP_forxx128v64,	TOP_forxxx128v64,	TOP_UNDEFINED},
-
+  {TOP_orps,	        TOP_forx128v32,	        TOP_forxx128v32,	TOP_forxxx128v32,	TOP_UNDEFINED},
+  {TOP_orpd,	        TOP_forx128v64,	        TOP_forxx128v64,	TOP_forxxx128v64,	TOP_UNDEFINED},
+  {TOP_vfor128v32,	TOP_vforx128v32,	TOP_vforxx128v32,	TOP_vforxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfor128v64,	TOP_vforx128v64,	TOP_vforxx128v64,	TOP_vforxxx128v64,	TOP_UNDEFINED},
   {TOP_xor8,	TOP_xorx8,	TOP_xorxx8,	TOP_xorxxx8,	TOP_UNDEFINED},
   {TOP_xor16,	TOP_xorx16,	TOP_xorxx16,	TOP_xorxxx16,	TOP_UNDEFINED},
   {TOP_xor32,	TOP_xorx32,	TOP_xorxx32,	TOP_xorxxx32,	TOP_UNDEFINED},
   {TOP_xor64,	TOP_xorx64,	TOP_xorxx64,	TOP_xorxxx64,	TOP_UNDEFINED},
-  {TOP_xor128v8,	TOP_xorx128v8,	TOP_xorxx128v8,	TOP_xorxxx128v8,	TOP_UNDEFINED},
+  {TOP_xor128v8,	TOP_xorx128v8,	TOP_xorxx128v8,	        TOP_xorxxx128v8,	TOP_UNDEFINED},
   {TOP_xor128v16,	TOP_xorx128v16,	TOP_xorxx128v16,	TOP_xorxxx128v16,	TOP_UNDEFINED},
   {TOP_xor128v32,	TOP_xorx128v32,	TOP_xorxx128v32,	TOP_xorxxx128v32,	TOP_UNDEFINED},
   {TOP_xor128v64,	TOP_xorx128v64,	TOP_xorxx128v64,	TOP_xorxxx128v64,	TOP_UNDEFINED},
   {TOP_fxor128v32,	TOP_fxorx128v32,	TOP_fxorxx128v32,	TOP_fxorxxx128v32,	TOP_UNDEFINED},
   {TOP_fxor128v64,	TOP_fxorx128v64,	TOP_fxorxx128v64,	TOP_fxorxxx128v64,	TOP_UNDEFINED},
+  {TOP_vxor128v8,	TOP_vxorx128v8,	        TOP_vxorxx128v8,	TOP_vxorxxx128v8,	TOP_UNDEFINED},
+  {TOP_vxor128v16,	TOP_vxorx128v16,	TOP_vxorxx128v16,	TOP_vxorxxx128v16,	TOP_UNDEFINED},
+  {TOP_vxor128v32,	TOP_vxorx128v32,	TOP_vxorxx128v32,	TOP_vxorxxx128v32,	TOP_UNDEFINED},
+  {TOP_vxor128v64,	TOP_vxorx128v64,	TOP_vxorxx128v64,	TOP_vxorxxx128v64,	TOP_UNDEFINED},
+  {TOP_vfxor128v32,	TOP_vfxorx128v32,	TOP_vfxorxx128v32,	TOP_vfxorxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfxor128v64,	TOP_vfxorx128v64,	TOP_vfxorxx128v64,	TOP_vfxorxxx128v64,	TOP_UNDEFINED},
   // xorps/xorpd share the same load-execute OPs as fxor128v32/fxor128v64.
   // Must put xorps/xorpd after fxor128v32/fxor128v64 so that the load-execute
   // OPs will have fxor128v32/fxor128v64 as the base mode.
-  {TOP_xorps,	TOP_fxorx128v32,	TOP_fxorxx128v32,	TOP_fxorxxx128v32,	TOP_UNDEFINED},
-  {TOP_xorpd,	TOP_fxorx128v64,	TOP_fxorxx128v64,	TOP_fxorxxx128v64,	TOP_UNDEFINED},
+  {TOP_xorps,	TOP_fxorx128v32,	        TOP_fxorxx128v32,	TOP_fxorxxx128v32,	TOP_UNDEFINED},
+  {TOP_xorpd,	TOP_fxorx128v64,	        TOP_fxorxx128v64,	TOP_fxorxxx128v64,	TOP_UNDEFINED},
+  {TOP_vfxor128v32,	TOP_vfxorx128v32,	TOP_vfxorxx128v32,	TOP_vfxorxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfxor128v64,	TOP_vfxorx128v64,	TOP_vfxorxx128v64,	TOP_vfxorxxx128v64,	TOP_UNDEFINED},
 
   {TOP_fmax128v32,	TOP_fmaxx128v32,	TOP_fmaxxx128v32,	TOP_fmaxxxx128v32,	TOP_UNDEFINED},
   {TOP_fmax128v64,	TOP_fmaxx128v64,	TOP_fmaxxx128v64,	TOP_fmaxxxx128v64,	TOP_UNDEFINED},
   {TOP_fmin128v32,	TOP_fminx128v32,	TOP_fminxx128v32,	TOP_fminxxx128v32,	TOP_UNDEFINED},
   {TOP_fmin128v64,	TOP_fminx128v64,	TOP_fminxx128v64,	TOP_fminxxx128v64,	TOP_UNDEFINED},
-
+  {TOP_vfmax128v32,	TOP_vfmaxx128v32,	TOP_vfmaxxx128v32,	TOP_vfmaxxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfmax128v64,	TOP_vfmaxx128v64,	TOP_vfmaxxx128v64,	TOP_vfmaxxxx128v64,	TOP_UNDEFINED},
+  {TOP_vfmin128v32,	TOP_vfminx128v32,	TOP_vfminxx128v32,	TOP_vfminxxx128v32,	TOP_UNDEFINED},
+  {TOP_vfmin128v64,	TOP_vfminx128v64,	TOP_vfminxx128v64,	TOP_vfminxxx128v64,	TOP_UNDEFINED},
   {TOP_cmp8,	TOP_cmpx8,	TOP_cmpxx8,	TOP_cmpxxx8,	TOP_UNDEFINED},
   {TOP_cmp16,	TOP_cmpx16,	TOP_cmpxx16,	TOP_cmpxxx16,	TOP_UNDEFINED},
   {TOP_cmp32,	TOP_cmpx32,	TOP_cmpxx32,	TOP_cmpxxx32,	TOP_UNDEFINED},
@@ -3922,23 +4005,283 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_test32,	TOP_testx32,	TOP_testxx32,	TOP_testxxx32,	TOP_UNDEFINED},
   {TOP_test64,	TOP_testx64,	TOP_testxx64,	TOP_testxxx64,	TOP_UNDEFINED},
   {TOP_comiss,	TOP_comixss,	TOP_comixxss,	TOP_comixxxss,	TOP_UNDEFINED},
-  {TOP_comisd,	TOP_comixsd,	TOP_comixxsd,	TOP_comixxxsd,	TOP_UNDEFINED},
-
-  {TOP_icall,	TOP_icallx,	TOP_icallxx,	TOP_icallxxx,	TOP_UNDEFINED},
-  {TOP_ijmp,	TOP_ijmpx,	TOP_ijmpxx,	TOP_ijmpxxx,	TOP_UNDEFINED},
-
-  {TOP_cvtsd2ss,	TOP_cvtsd2ss_x,	TOP_cvtsd2ss_xx,	TOP_cvtsd2ss_xxx,	TOP_UNDEFINED},
-  {TOP_cvtsi2ss,	TOP_cvtsi2ss_x,	TOP_cvtsi2ss_xx,	TOP_cvtsi2ss_xxx,	TOP_UNDEFINED},
-  {TOP_cvtsi2ssq,	TOP_cvtsi2ssq_x,	TOP_cvtsi2ssq_xx,	TOP_cvtsi2ssq_xxx,	TOP_UNDEFINED},
-  {TOP_cvtsi2sd,	TOP_cvtsi2sd_x,	TOP_cvtsi2sd_xx,	TOP_cvtsi2sd_xxx,	TOP_UNDEFINED},
-  {TOP_cvtsi2sdq,	TOP_cvtsi2sdq_x,	TOP_cvtsi2sdq_xx,	TOP_cvtsi2sdq_xxx,	TOP_UNDEFINED},
-
-  {TOP_cvtdq2pd,	TOP_cvtdq2pd_x,	TOP_cvtdq2pd_xx,	TOP_cvtdq2pd_xxx,	TOP_UNDEFINED},
-  {TOP_cvtdq2ps,	TOP_cvtdq2ps_x,	TOP_cvtdq2ps_xx,	TOP_cvtdq2ps_xxx,	TOP_UNDEFINED},
- {TOP_cvtps2pd,		TOP_cvtps2pd_x,	TOP_cvtps2pd_xx,	TOP_cvtps2pd_xxx,	TOP_UNDEFINED},
-  {TOP_cvtpd2ps,	TOP_cvtpd2ps_x,	TOP_cvtpd2ps_xx,	TOP_cvtpd2ps_xxx,	TOP_UNDEFINED},
-  {TOP_cvttps2dq,	TOP_cvttps2dq_x,	TOP_cvttps2dq_xx,	TOP_cvttps2dq_xxx,	TOP_UNDEFINED},
-  {TOP_cvttpd2dq,	TOP_cvttpd2dq_x,	TOP_cvttpd2dq_xx,	TOP_cvttpd2dq_xxx,	TOP_UNDEFINED}
+  {TOP_comisd,	       TOP_comixsd,	    TOP_comixxsd,	  TOP_comixxxsd, 	    TOP_UNDEFINED},
+  {TOP_vfmaddss,       TOP_vfmaddxss,	    TOP_vfmaddxxss,	  TOP_vfmaddxxxss,          TOP_UNDEFINED},
+  {TOP_vfmaddsd,       TOP_vfmaddxsd,	    TOP_vfmaddxxsd,	  TOP_vfmaddxxxsd,          TOP_UNDEFINED},
+  {TOP_vfmaddps,       TOP_vfmaddxps,	    TOP_vfmaddxxps,	  TOP_vfmaddxxxps,          TOP_UNDEFINED},
+  {TOP_vfmaddpd,       TOP_vfmaddxpd,  	    TOP_vfmaddxxpd,	  TOP_vfmaddxxxpd,          TOP_UNDEFINED},
+  {TOP_vfmaddsubps,    TOP_vfmaddsubxps,    TOP_vfmaddsubxxps,	  TOP_vfmaddsubxxxps,       TOP_UNDEFINED},
+  {TOP_vfmaddsubpd,    TOP_vfmaddsubxpd,    TOP_vfmaddsubxxpd,	  TOP_vfmaddsubxxxpd,       TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmaddxrss,      TOP_vfmaddxxrss,      TOP_vfmaddxxxrss,         TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmaddxrsd,      TOP_vfmaddxxrsd,      TOP_vfmaddxxxrsd,         TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmaddxrps,      TOP_vfmaddxxrps,      TOP_vfmaddxxxrps,         TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmaddxrpd,      TOP_vfmaddxxrpd,      TOP_vfmaddxxxrpd,         TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmaddsubxrps,   TOP_vfmaddsubxxrps,   TOP_vfmaddsubxxxrps,      TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmaddsubxrpd,   TOP_vfmaddsubxxrpd,   TOP_vfmaddsubxxxrpd,      TOP_UNDEFINED},
+  {TOP_vfmsubss,       TOP_vfmsubxss,	    TOP_vfmsubxxss,	  TOP_vfmsubxxxss,          TOP_UNDEFINED},
+  {TOP_vfmsubsd,       TOP_vfmsubxsd,	    TOP_vfmsubxxsd,	  TOP_vfmsubxxxsd,          TOP_UNDEFINED},
+  {TOP_vfmsubps,       TOP_vfmsubxps,	    TOP_vfmsubxxps,	  TOP_vfmsubxxxps,          TOP_UNDEFINED},
+  {TOP_vfmsubpd,       TOP_vfmsubxpd,  	    TOP_vfmsubxxpd, 	  TOP_vfmsubxxxpd,          TOP_UNDEFINED},
+  {TOP_vfmsubaddps,    TOP_vfmsubaddxps,    TOP_vfmsubaddxxps,	  TOP_vfmsubaddxxxps,       TOP_UNDEFINED},
+  {TOP_vfmsubaddpd,    TOP_vfmsubaddxpd,    TOP_vfmsubaddxxpd, 	  TOP_vfmsubaddxxxpd,       TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmsubxrss,      TOP_vfmsubxxrss,      TOP_vfmsubxxxrss,         TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmsubxrsd,      TOP_vfmsubxxrsd,      TOP_vfmsubxxxrsd,         TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmsubxrps,      TOP_vfmsubxxrps,      TOP_vfmsubxxxrps,         TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmsubxrpd,      TOP_vfmsubxxrpd,      TOP_vfmsubxxxrpd,         TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmsubaddxrps,   TOP_vfmsubaddxxrps,   TOP_vfmsubaddxxxrps,      TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfmsubaddxrpd,   TOP_vfmsubaddxxrpd,   TOP_vfmsubaddxxxrpd,      TOP_UNDEFINED},
+  {TOP_icall,	       TOP_icallx,	    TOP_icallxx,	  TOP_icallxxx,	            TOP_UNDEFINED},
+  {TOP_ijmp,	       TOP_ijmpx,	    TOP_ijmpxx,	          TOP_ijmpxxx,	            TOP_UNDEFINED},
+  {TOP_cvtsd2ss,       TOP_cvtsd2ss_x,	    TOP_cvtsd2ss_xx,	  TOP_cvtsd2ss_xxx,	    TOP_UNDEFINED},
+  {TOP_cvtsi2ss,       TOP_cvtsi2ss_x,	    TOP_cvtsi2ss_xx,	  TOP_cvtsi2ss_xxx,	    TOP_UNDEFINED},
+  {TOP_cvtsi2ssq,      TOP_cvtsi2ssq_x,     TOP_cvtsi2ssq_xx,	  TOP_cvtsi2ssq_xxx,	    TOP_UNDEFINED},
+  {TOP_cvtsi2sd,       TOP_cvtsi2sd_x,	    TOP_cvtsi2sd_xx,	  TOP_cvtsi2sd_xxx,	    TOP_UNDEFINED},
+  {TOP_cvtsi2sdq,      TOP_cvtsi2sdq_x,     TOP_cvtsi2sdq_xx,	  TOP_cvtsi2sdq_xxx,	    TOP_UNDEFINED},
+  {TOP_cvtdq2pd,       TOP_cvtdq2pd_x,	    TOP_cvtdq2pd_xx,	  TOP_cvtdq2pd_xxx,	    TOP_UNDEFINED},
+  {TOP_cvtdq2ps,       TOP_cvtdq2ps_x,	    TOP_cvtdq2ps_xx,	  TOP_cvtdq2ps_xxx,	    TOP_UNDEFINED},
+ {TOP_cvtps2pd,	       TOP_cvtps2pd_x,	    TOP_cvtps2pd_xx,	  TOP_cvtps2pd_xxx,	    TOP_UNDEFINED},
+  {TOP_cvtpd2ps,       TOP_cvtpd2ps_x,	    TOP_cvtpd2ps_xx,	  TOP_cvtpd2ps_xxx,	    TOP_UNDEFINED},
+  {TOP_cvttps2dq,      TOP_cvttps2dq_x,     TOP_cvttps2dq_xx,	  TOP_cvttps2dq_xxx,	    TOP_UNDEFINED},
+  {TOP_cvttpd2dq,      TOP_cvttpd2dq_x,     TOP_cvttpd2dq_xx,	  TOP_cvttpd2dq_xxx,	    TOP_UNDEFINED},
+  {TOP_vcvtsd2ss,      TOP_vcvtsd2ssx,	    TOP_vcvtsd2ssxx,	  TOP_vcvtsd2ssxxx,	    TOP_UNDEFINED},
+  {TOP_vcvtsi2ss,      TOP_vcvtsi2ssx,	    TOP_vcvtsi2ssxx,	  TOP_vcvtsi2ssxxx,	    TOP_UNDEFINED},
+  {TOP_vcvtsi2ssq,     TOP_vcvtsi2ssqx,     TOP_vcvtsi2ssqxx,	  TOP_vcvtsi2ssqxxx,	    TOP_UNDEFINED},
+  {TOP_vcvtsi2sd,      TOP_vcvtsi2sdx,      TOP_vcvtsi2sdxx,	  TOP_vcvtsi2sdxxx,	    TOP_UNDEFINED},
+  {TOP_vcvtsi2sdq,     TOP_vcvtsi2sdqx,     TOP_vcvtsi2sdqxx,	  TOP_vcvtsi2sdqxxx,	    TOP_UNDEFINED},
+  {TOP_vcvtdq2pd,      TOP_vcvtdq2pdx,	    TOP_vcvtdq2pdxx,	  TOP_vcvtdq2pdxxx,	    TOP_UNDEFINED},
+  {TOP_vcvtdq2ps,      TOP_vcvtdq2psx,	    TOP_vcvtdq2psxx,	  TOP_vcvtdq2psxxx,	    TOP_UNDEFINED},
+ {TOP_vcvtps2pd,       TOP_vcvtps2pdx,	    TOP_vcvtps2pdxx,	  TOP_vcvtps2pdxxx,	    TOP_UNDEFINED},
+  {TOP_vcvtpd2dq,      TOP_vcvtpd2dqx,	    TOP_vcvtpd2dqxx,	  TOP_vcvtpd2dqxxx,	    TOP_UNDEFINED},
+  {TOP_vcvtpd2dqy,     TOP_vcvtpd2dqyx,	    TOP_vcvtpd2dqyxx,	  TOP_vcvtpd2dqyxxx,	    TOP_UNDEFINED},
+  {TOP_vcvtpd2ps,      TOP_vcvtpd2psx,	    TOP_vcvtpd2psxx,	  TOP_vcvtpd2psxxx,	    TOP_UNDEFINED},
+  {TOP_vcvtpd2psy,     TOP_vcvtpd2psyx,	    TOP_vcvtpd2psyxx,	  TOP_vcvtpd2psyxxx,	    TOP_UNDEFINED},
+  {TOP_vcvttps2dq,     TOP_vcvttps2dqx,     TOP_vcvttps2dqxx,	  TOP_vcvttps2dqxxx,	    TOP_UNDEFINED},
+  {TOP_vcvttpd2dq,     TOP_vcvttpd2dqx,     TOP_vcvttpd2dqxx,	  TOP_vcvttpd2dqxxx,	    TOP_UNDEFINED},
+  {TOP_vcvttpd2dqy,    TOP_vcvttpd2dqyx,    TOP_vcvttpd2dqyxx,	  TOP_vcvttpd2dqyxxx,	    TOP_UNDEFINED},
+  // SSE 4.1:
+  {TOP_mpsadbw,        TOP_mpsadbwx,        TOP_mpsadbwxx,        TOP_mpsadbwxxx,           TOP_UNDEFINED},
+  {TOP_muldq,          TOP_muldqx,          TOP_muldqxx,          TOP_muldqxxx,             TOP_UNDEFINED},
+  {TOP_mul128v32,      TOP_mulx128v32,      TOP_mulxx128v32,      TOP_mulxxx128v32,         TOP_UNDEFINED},
+  {TOP_fdp128v32,      TOP_fdpx128v32,      TOP_fdpxx128v32,      TOP_fdpxxx128v32,         TOP_UNDEFINED},
+  {TOP_fdp128v64,      TOP_fdpx128v64,      TOP_fdpxx128v64,      TOP_fdpxxx128v64,      TOP_UNDEFINED},
+  {TOP_fblend128v32,   TOP_fblendx128v32,   TOP_fblendxx128v32,   TOP_fblendxxx128v32,      TOP_UNDEFINED},
+  {TOP_fblend128v64,   TOP_fblendx128v64,   TOP_fblendxx128v64,   TOP_fblendxxx128v64,      TOP_UNDEFINED},
+  {TOP_fblendv128v32,  TOP_fblendvx128v32,  TOP_fblendvxx128v32,  TOP_fblendvxxx128v32,     TOP_UNDEFINED},
+  {TOP_fblendv128v64,  TOP_fblendvx128v64,  TOP_fblendvxx128v64,  TOP_fblendvxxx128v64,     TOP_UNDEFINED},
+  {TOP_blendv128v8,    TOP_blendvx128v8,    TOP_blendvxx128v8,    TOP_blendvxxx128v8,       TOP_UNDEFINED},
+  {TOP_blend128v16,    TOP_blendx128v16,    TOP_blendxx128v16,    TOP_blendxxx128v16,       TOP_UNDEFINED},
+  {TOP_mins128v8,      TOP_minsx128v8,      TOP_minsxx128v8,      TOP_minsxxx128v8,         TOP_UNDEFINED},
+  {TOP_maxs128v8,      TOP_maxsx128v8,      TOP_maxsxx128v8,      TOP_maxsxxx128v8,         TOP_UNDEFINED},
+  {TOP_minu128v16,     TOP_minux128v16,     TOP_minuxx128v16,     TOP_minuxxx128v16,        TOP_UNDEFINED},
+  {TOP_maxu128v16,     TOP_maxux128v16,     TOP_maxuxx128v16,     TOP_maxuxxx128v16,        TOP_UNDEFINED},
+  {TOP_minu128v32,     TOP_minux128v32,     TOP_minuxx128v32,     TOP_minuxxx128v32,        TOP_UNDEFINED},
+  {TOP_maxu128v32,     TOP_maxux128v32,     TOP_maxuxx128v32,     TOP_maxuxxx128v32,        TOP_UNDEFINED},
+  {TOP_mins128v32,     TOP_minsx128v32,     TOP_minsxx128v32,     TOP_minsxxx128v32,        TOP_UNDEFINED},
+  {TOP_maxs128v32,     TOP_maxsx128v32,     TOP_maxsxx128v32,     TOP_maxsxxx128v32,        TOP_UNDEFINED},
+  {TOP_round128v32,    TOP_roundx128v32,    TOP_roundxx128v32,    TOP_roundxxx128v32,       TOP_UNDEFINED},
+  {TOP_roundss,        TOP_roundxss,        TOP_roundxxss,        TOP_roundxxxss,           TOP_UNDEFINED},
+  {TOP_round128v64,    TOP_roundx128v64,    TOP_roundxx128v64,    TOP_roundxxx128v64,       TOP_UNDEFINED},
+  {TOP_roundsd,        TOP_roundxsd,        TOP_roundxxsd,        TOP_roundxxxsd,           TOP_UNDEFINED},
+  {TOP_finsr128v32,    TOP_finsrx128v32,    TOP_finsrxx128v32,    TOP_finsrxxx128v32,       TOP_UNDEFINED},
+  {TOP_insr128v8,      TOP_insrx128v8,      TOP_insrxx128v8,      TOP_insrxxx128v8,         TOP_UNDEFINED},
+  {TOP_insr128v16,     TOP_insrx128v16,     TOP_insrxx128v16,     TOP_insrxxx128v16,        TOP_UNDEFINED},
+  {TOP_insr128v32,     TOP_insrx128v32,     TOP_insrxx128v32,     TOP_insrxxx128v32,        TOP_UNDEFINED},
+  {TOP_insr128v64,     TOP_insrx128v64,     TOP_insrxx128v64,     TOP_insrxxx128v64,        TOP_UNDEFINED},
+  {TOP_fextr128v32,    TOP_fextrx128v32,    TOP_fextrxx128v32,    TOP_fextrxxx128v32,       TOP_UNDEFINED},
+  {TOP_extr128v8,      TOP_extrx128v8,      TOP_extrxx128v8,      TOP_extrxxx128v8,         TOP_UNDEFINED},
+  {TOP_extr128v16,     TOP_extrx128v16,     TOP_extrxx128v16,     TOP_extrxxx128v16,        TOP_UNDEFINED},
+  {TOP_extr128v32,     TOP_extrx128v32,     TOP_extrxx128v32,     TOP_extrxxx128v32,        TOP_UNDEFINED},
+  {TOP_extr128v64,     TOP_extrx128v64,     TOP_extrxx128v64,     TOP_extrxxx128v64,        TOP_UNDEFINED},
+  {TOP_pmovsxbw,       TOP_pmovsxbwx,       TOP_pmovsxbwxx,       TOP_pmovsxbwxxx,          TOP_UNDEFINED},
+  {TOP_pmovzxbw,       TOP_pmovzxbwx,       TOP_pmovzxbwxx,       TOP_pmovzxbwxxx,          TOP_UNDEFINED},
+  {TOP_pmovsxbd,       TOP_pmovsxbdx,       TOP_pmovsxbdxx,       TOP_pmovsxbdxxx,          TOP_UNDEFINED},
+  {TOP_pmovzxbd,       TOP_pmovzxbdx,       TOP_pmovzxbdxx,       TOP_pmovzxbdxxx,          TOP_UNDEFINED},
+  {TOP_pmovsxbq,       TOP_pmovsxbqx,       TOP_pmovsxbqxx,       TOP_pmovsxbqxxx,          TOP_UNDEFINED},
+  {TOP_pmovzxbq,       TOP_pmovzxbqx,       TOP_pmovzxbqxx,       TOP_pmovzxbqxxx,          TOP_UNDEFINED},
+  {TOP_pmovsxwd,       TOP_pmovsxwdx,       TOP_pmovsxwdxx,       TOP_pmovsxwdxxx,          TOP_UNDEFINED},
+  {TOP_pmovzxwd,       TOP_pmovzxwdx,       TOP_pmovzxwdxx,       TOP_pmovzxwdxxx,          TOP_UNDEFINED},
+  {TOP_pmovsxwq,       TOP_pmovsxwqx,       TOP_pmovsxwqxx,       TOP_pmovsxwqxxx,          TOP_UNDEFINED},
+  {TOP_pmovzxwq,       TOP_pmovzxwqx,       TOP_pmovzxwqxx,       TOP_pmovzxwqxxx,          TOP_UNDEFINED},
+  {TOP_pmovsxdq,       TOP_pmovsxdqx,       TOP_pmovsxdqxx,       TOP_pmovsxdqxxx,          TOP_UNDEFINED},
+  {TOP_pmovzxdq,       TOP_pmovzxdqx,       TOP_pmovzxdqxx,       TOP_pmovzxdqxxx,          TOP_UNDEFINED},
+  {TOP_ptest128,       TOP_ptestx128,       TOP_ptestxx128,       TOP_ptestxxx128,          TOP_UNDEFINED},
+  {TOP_cmpeq128v64,    TOP_cmpeqx128v64,    TOP_cmpeqxx128v64,    TOP_cmpeqxxx128v64,       TOP_UNDEFINED},
+  {TOP_packusdw,       TOP_packusdwx,       TOP_packusdwxx,       TOP_packusdwxxx,          TOP_UNDEFINED},
+  // SSE4.2
+  {TOP_crc32b,         TOP_crc32bx,         TOP_crc32bxx,         TOP_crc32bxxx,            TOP_UNDEFINED},
+  {TOP_crc32w,         TOP_crc32wx,         TOP_crc32wxx,         TOP_crc32wxxx,            TOP_UNDEFINED},
+  {TOP_crc32d,         TOP_crc32dx,         TOP_crc32dxx,         TOP_crc32dxxx,            TOP_UNDEFINED},
+  {TOP_crc32q,         TOP_crc32qx,         TOP_crc32qxx,         TOP_crc32qxxx,            TOP_UNDEFINED},
+  {TOP_cmpestri,       TOP_cmpestrix,       TOP_cmpestrixx,       TOP_cmpestrixxx,          TOP_UNDEFINED},
+  {TOP_cmpestrm,       TOP_cmpestrmx,       TOP_cmpestrmxx,       TOP_cmpestrmxxx,          TOP_UNDEFINED},
+  {TOP_cmpistri,       TOP_cmpistrix,       TOP_cmpistrixx,       TOP_cmpistrixxx,          TOP_UNDEFINED},
+  {TOP_cmpistrm,       TOP_cmpistrmx,       TOP_cmpistrmxx,       TOP_cmpistrmxxx,          TOP_UNDEFINED},
+  {TOP_cmpgt128v64,    TOP_cmpgtx128v64,    TOP_cmpgtxx128v64,    TOP_cmpgtxxx128v64,       TOP_UNDEFINED},
+  {TOP_popcnt16,       TOP_popcntx16,       TOP_popcntxx16,       TOP_popcntxxx16,          TOP_UNDEFINED},
+  {TOP_popcnt32,       TOP_popcntx32,       TOP_popcntxx32,       TOP_popcntxxx32,          TOP_UNDEFINED},
+  {TOP_popcnt64,       TOP_popcntx64,       TOP_popcntxx64,       TOP_popcntxxx64,          TOP_UNDEFINED},
+  // SSSE3
+  {TOP_psign128v8,     TOP_psignx128v8,     TOP_psignxx128v8,     TOP_psignxxx128v8,        TOP_UNDEFINED},
+  {TOP_psign128v16,    TOP_psignx128v16,    TOP_psignxx128v16,    TOP_psignxxx128v16,       TOP_UNDEFINED},
+  {TOP_psign128v32,    TOP_psignx128v32,    TOP_psignxx128v32,    TOP_psignxxx128v32,       TOP_UNDEFINED},
+  {TOP_pabs128v8,      TOP_pabsx128v8,      TOP_pabsxx128v8,      TOP_pabsxxx128v8,         TOP_UNDEFINED},
+  {TOP_pabs128v16,     TOP_pabsx128v16,     TOP_pabsxx128v16,     TOP_pabsxxx128v16,        TOP_UNDEFINED},
+  {TOP_pabs128v32,     TOP_pabsx128v32,     TOP_pabsxx128v32,     TOP_pabsxxx128v32,        TOP_UNDEFINED},
+  {TOP_palignr128,     TOP_palignrx128,     TOP_palignrxx128,     TOP_palignrxxx128,        TOP_UNDEFINED},
+  {TOP_pshuf128v8,     TOP_pshufx128v8,     TOP_pshufxx128v8,     TOP_pshufxxx128v8,        TOP_UNDEFINED},
+  {TOP_pmulhrsw128,    TOP_pmulhrswx128,    TOP_pmulhrswxx128,    TOP_pmulhrswxxx128,        TOP_UNDEFINED},
+  {TOP_pmaddubsw128,   TOP_pmaddubswx128,   TOP_pmaddubswxx128,   TOP_pmaddubswxxx128,       TOP_UNDEFINED},
+  {TOP_phsub128v16,    TOP_phsubx128v16,    TOP_phsubxx128v16,    TOP_phsubxxx128v16,       TOP_UNDEFINED},
+  {TOP_phsub128v32,    TOP_phsubx128v32,    TOP_phsubxx128v32,    TOP_phsubxxx128v32,       TOP_UNDEFINED},
+  {TOP_phsubs128v16,   TOP_phsubsx128v16,   TOP_phsubsxx128v16,   TOP_phsubsxxx128v16,      TOP_UNDEFINED},
+  {TOP_phadd128v16,    TOP_phaddx128v16,    TOP_phaddxx128v16,    TOP_phaddxxx128v16,       TOP_UNDEFINED},
+  {TOP_phadd128v32,    TOP_phaddx128v32,    TOP_phaddxx128v32,    TOP_phaddxxx128v32,       TOP_UNDEFINED},
+  {TOP_phadds128v16,   TOP_phaddsx128v16,   TOP_phaddsxx128v16,   TOP_phaddsxxx128v16,      TOP_UNDEFINED},
+  // VEX SSE 4.1:
+  {TOP_vmpsadbw,       TOP_vmpsadbwx,       TOP_vmpsadbwxx,       TOP_vmpsadbwxxx,          TOP_UNDEFINED},
+  {TOP_vmuldq,         TOP_vmuldqx,         TOP_vmuldqxx,         TOP_vmuldqxxx,            TOP_UNDEFINED},
+  {TOP_vmulld,         TOP_vmulldx,         TOP_vmulldxx,         TOP_vmulldxxx,            TOP_UNDEFINED},
+  {TOP_vmul128v16,     TOP_vmulx128v16,     TOP_vmulxx128v16,     TOP_vmulxxx128v16,            TOP_UNDEFINED},
+  {TOP_vfdp128v32,     TOP_vfdpx128v32,     TOP_vfdpxx128v32,     TOP_vfdpxxx128v32,        TOP_UNDEFINED},
+  {TOP_vfdp128v64,     TOP_vfdpx128v64,     TOP_vfdpxx128v64,     TOP_vfdpxxx128v64,         TOP_UNDEFINED},
+  {TOP_vfblend128v32,  TOP_vfblendx128v32,  TOP_vfblendxx128v32,  TOP_vfblendxxx128v32,     TOP_UNDEFINED},
+  {TOP_vfblend128v64,  TOP_vfblendx128v64,  TOP_vfblendxx128v64,  TOP_vfblendxxx128v64,     TOP_UNDEFINED},
+  {TOP_vfblendv128v32, TOP_vfblendvx128v32, TOP_vfblendvxx128v32, TOP_vfblendvxxx128v32,    TOP_UNDEFINED},
+  {TOP_vfblendv128v64, TOP_vfblendvx128v64, TOP_vfblendvxx128v64, TOP_vfblendvxxx128v64,    TOP_UNDEFINED},
+  {TOP_vblendv128v8,   TOP_vblendvx128v8,   TOP_vblendvxx128v8,   TOP_vblendvxxx128v8,      TOP_UNDEFINED},
+  {TOP_vblend128v16,   TOP_vblendx128v16,   TOP_vblendxx128v16,   TOP_vblendxxx128v16,      TOP_UNDEFINED},
+  {TOP_vmins128v8,     TOP_vminsx128v8,     TOP_vminsxx128v8,     TOP_vminsxxx128v8,        TOP_UNDEFINED},
+  {TOP_vmaxs128v8,     TOP_vmaxsx128v8,     TOP_vmaxsxx128v8,     TOP_vmaxsxxx128v8,        TOP_UNDEFINED},
+  {TOP_vminu128v16,    TOP_vminux128v16,    TOP_vminuxx128v16,    TOP_vminuxxx128v16,       TOP_UNDEFINED},
+  {TOP_vmaxu128v16,    TOP_vmaxux128v16,    TOP_vmaxuxx128v16,    TOP_vmaxuxxx128v16,       TOP_UNDEFINED},
+  {TOP_vminu128v32,    TOP_vminux128v32,    TOP_vminuxx128v32,    TOP_vminuxxx128v32,       TOP_UNDEFINED},
+  {TOP_vmaxu128v32,    TOP_vmaxux128v32,    TOP_vmaxuxx128v32,    TOP_vmaxuxxx128v32,       TOP_UNDEFINED},
+  {TOP_vmins128v32,    TOP_vminsx128v32,    TOP_vminsxx128v32,    TOP_vminsxxx128v32,       TOP_UNDEFINED},
+  {TOP_vmaxs128v32,    TOP_vmaxsx128v32,    TOP_vmaxsxx128v32,    TOP_vmaxsxxx128v32,       TOP_UNDEFINED},
+  {TOP_vround128v32,   TOP_vroundx128v32,   TOP_vroundxx128v32,   TOP_vroundxxx128v32,      TOP_UNDEFINED},
+  {TOP_vroundss,       TOP_vroundxss,       TOP_vroundxxss,       TOP_vroundxxxss,          TOP_UNDEFINED},
+  {TOP_vround128v64,   TOP_vroundx128v64,   TOP_vroundxx128v64,   TOP_vroundxxx128v64,      TOP_UNDEFINED},
+  {TOP_vroundsd,       TOP_vroundxsd,       TOP_vroundxxsd,       TOP_vroundxxxsd,          TOP_UNDEFINED},
+  {TOP_vfinsr128v32,   TOP_vfinsrx128v32,   TOP_vfinsrxx128v32,   TOP_vfinsrxxx128v32,      TOP_UNDEFINED},
+  {TOP_vinsr128v8,     TOP_vinsrx128v8,     TOP_vinsrxx128v8,     TOP_vinsrxxx128v8,        TOP_UNDEFINED},
+  {TOP_vinsr128v16,    TOP_vinsrx128v16,    TOP_vinsrxx128v16,    TOP_vinsrxxx128v16,       TOP_UNDEFINED},
+  {TOP_vinsr128v32,    TOP_vinsrx128v32,    TOP_vinsrxx128v32,    TOP_vinsrxxx128v32,       TOP_UNDEFINED},
+  {TOP_vinsr128v64,    TOP_vinsrx128v64,    TOP_vinsrxx128v64,    TOP_vinsrxxx128v64,       TOP_UNDEFINED},
+  {TOP_vfextr128v32,   TOP_vfextrx128v32,   TOP_vfextrxx128v32,   TOP_vfextrxxx128v32,      TOP_UNDEFINED},
+  {TOP_vextr128v8,     TOP_vextrx128v8,     TOP_vextrxx128v8,     TOP_vextrxxx128v8,        TOP_UNDEFINED},
+  {TOP_vextr128v16,    TOP_vextrx128v16,    TOP_vextrxx128v16,    TOP_vextrxxx128v16,       TOP_UNDEFINED},
+  {TOP_vextr128v32,    TOP_vextrx128v32,    TOP_vextrxx128v32,    TOP_vextrxxx128v32,       TOP_UNDEFINED},
+  {TOP_vextr128v64,    TOP_vextrx128v64,    TOP_vextrxx128v64,    TOP_vextrxxx128v64,       TOP_UNDEFINED},
+  {TOP_vpmovsxbw,      TOP_vpmovsxbwx,      TOP_vpmovsxbwxx,      TOP_vpmovsxbwxxx,         TOP_UNDEFINED},
+  {TOP_vpmovzxbw,      TOP_vpmovzxbwx,      TOP_vpmovzxbwxx,      TOP_vpmovzxbwxxx,         TOP_UNDEFINED},
+  {TOP_vpmovsxbd,      TOP_vpmovsxbdx,      TOP_vpmovsxbdxx,      TOP_vpmovsxbdxxx,         TOP_UNDEFINED},
+  {TOP_vpmovzxbd,      TOP_vpmovzxbdx,      TOP_vpmovzxbdxx,      TOP_vpmovzxbdxxx,         TOP_UNDEFINED},
+  {TOP_vpmovsxbq,      TOP_vpmovsxbqx,      TOP_vpmovsxbqxx,      TOP_vpmovsxbqxxx,         TOP_UNDEFINED},
+  {TOP_vpmovzxbq,      TOP_vpmovzxbqx,      TOP_vpmovzxbqxx,      TOP_vpmovzxbqxxx,         TOP_UNDEFINED},
+  {TOP_vpmovsxwd,      TOP_vpmovsxwdx,      TOP_vpmovsxwdxx,      TOP_vpmovsxwdxxx,         TOP_UNDEFINED},
+  {TOP_vpmovzxwd,      TOP_vpmovzxwdx,      TOP_vpmovzxwdxx,      TOP_vpmovzxwdxxx,         TOP_UNDEFINED},
+  {TOP_vpmovsxwq,      TOP_vpmovsxwqx,      TOP_vpmovsxwqxx,      TOP_vpmovsxwqxxx,         TOP_UNDEFINED},
+  {TOP_vpmovzxwq,      TOP_vpmovzxwqx,      TOP_vpmovzxwqxx,      TOP_vpmovzxwqxxx,         TOP_UNDEFINED},
+  {TOP_vpmovsxdq,      TOP_vpmovsxdqx,      TOP_vpmovsxdqxx,      TOP_vpmovsxdqxxx,         TOP_UNDEFINED},
+  {TOP_vpmovzxdq,      TOP_vpmovzxdqx,      TOP_vpmovzxdqxx,      TOP_vpmovzxdqxxx,         TOP_UNDEFINED},
+  {TOP_vptest128,      TOP_vptestx128,      TOP_vptestxx128,      TOP_vptestxxx128,         TOP_UNDEFINED},
+  {TOP_vcmpeq128v64,   TOP_vcmpeqx128v64,   TOP_vcmpeqxx128v64,   TOP_vcmpeqxxx128v64,      TOP_UNDEFINED},
+  {TOP_vpackusdw,      TOP_vpackusdwx,      TOP_vpackusdwxx,      TOP_vpackusdwxxx,         TOP_UNDEFINED},
+  // VEX SSE4.2
+  {TOP_vcmpestri,      TOP_vcmpestrix,      TOP_vcmpestrixx,      TOP_vcmpestrixxx,         TOP_UNDEFINED},
+  {TOP_vcmpestrm,      TOP_vcmpestrmx,      TOP_vcmpestrmxx,      TOP_vcmpestrmxxx,         TOP_UNDEFINED},
+  {TOP_vcmpistri,      TOP_vcmpistrix,      TOP_vcmpistrixx,      TOP_vcmpistrixxx,         TOP_UNDEFINED},
+  {TOP_vcmpistrm,      TOP_vcmpistrmx,      TOP_vcmpistrmxx,      TOP_vcmpistrmxxx,         TOP_UNDEFINED},
+  {TOP_vcmpgt128v64,   TOP_vcmpgtx128v64,   TOP_vcmpgtxx128v64,   TOP_vcmpgtxxx128v64,      TOP_UNDEFINED},
+  // VEX SSSE3
+  {TOP_vpsign128v8,    TOP_vpsignx128v8,    TOP_vpsignxx128v8,    TOP_vpsignxxx128v8,       TOP_UNDEFINED},
+  {TOP_vpsign128v16,   TOP_vpsignx128v16,   TOP_vpsignxx128v16,   TOP_vpsignxxx128v16,      TOP_UNDEFINED},
+  {TOP_vpsign128v32,   TOP_vpsignx128v32,   TOP_vpsignxx128v32,   TOP_vpsignxxx128v32,      TOP_UNDEFINED},
+  {TOP_vabs128v8,      TOP_vabsx128v8,      TOP_vabsxx128v8,      TOP_vabsxxx128v8,        TOP_UNDEFINED},
+  {TOP_vabs128v16,     TOP_vabsx128v16,     TOP_vabsxx128v16,     TOP_vabsxxx128v16,       TOP_UNDEFINED},
+  {TOP_vabs128v32,     TOP_vabsx128v32,     TOP_vabsxx128v32,     TOP_vabsxxx128v32,       TOP_UNDEFINED},
+  {TOP_vpalignr128,    TOP_vpalignrx128,    TOP_vpalignrxx128,    TOP_vpalignrxxx128,       TOP_UNDEFINED},
+  {TOP_vpshuf128v8,    TOP_vpshufx128v8,    TOP_vpshufxx128v8,    TOP_vpshufxxx128v8,       TOP_UNDEFINED},
+  {TOP_vmulhrsw,       TOP_vmulhrswx,       TOP_vmulhrswxx,       TOP_vmulhrswxxx,          TOP_UNDEFINED},
+  {TOP_vpmaddubsw128,  TOP_vpmaddubswx128,  TOP_vpmaddubswxx128,  TOP_vpmaddubswxxx128,     TOP_UNDEFINED},
+  {TOP_vphsub128v16,   TOP_vphsubx128v16,   TOP_vphsubxx128v16,   TOP_vphsubxxx128v16,      TOP_UNDEFINED},
+  {TOP_vphsub128v32,   TOP_vphsubx128v32,   TOP_vphsubxx128v32,   TOP_vphsubxxx128v32,      TOP_UNDEFINED},
+  {TOP_vphsubs128v16,  TOP_vphsubsx128v16,  TOP_vphsubsxx128v16,  TOP_vphsubsxxx128v16,     TOP_UNDEFINED},
+  {TOP_vphadd128v16,   TOP_vphaddx128v16,   TOP_vphaddxx128v16,   TOP_vphaddxxx128v16,      TOP_UNDEFINED},
+  {TOP_vphadd128v32,   TOP_vphaddx128v32,   TOP_vphaddxx128v32,   TOP_vphaddxxx128v32,      TOP_UNDEFINED},
+  {TOP_vphadds128v16,  TOP_vphaddsx128v16,  TOP_vphaddsxx128v16,  TOP_vphaddsxxx128v16,     TOP_UNDEFINED},
+  // XOP
+  {TOP_vfrczpd,        TOP_vfrczpdx,        TOP_vfrczpdxx,        TOP_vfrczpdxxx,           TOP_UNDEFINED},
+  {TOP_vfrczps,        TOP_vfrczpsx,        TOP_vfrczpsxx,        TOP_vfrczpsxxx,           TOP_UNDEFINED},
+  {TOP_vfrczsd,        TOP_vfrczsdx,        TOP_vfrczsdxx,        TOP_vfrczsdxxx,           TOP_UNDEFINED},
+  {TOP_vfrczss,        TOP_vfrczssx,        TOP_vfrczssxx,        TOP_vfrczssxxx,           TOP_UNDEFINED},
+  {TOP_vpcmov,        TOP_vpcmovx,          TOP_vpcmovxx,         TOP_vpcmovxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vpcmovxr,         TOP_vpcmovxxr,        TOP_vpcmovxxxr,           TOP_UNDEFINED},
+  {TOP_vpcomb,        TOP_vpcombx,          TOP_vpcombxx,         TOP_vpcombxxx,            TOP_UNDEFINED},
+  {TOP_vpcomd,        TOP_vpcomdx,          TOP_vpcomdxx,         TOP_vpcomdxxx,            TOP_UNDEFINED},
+  {TOP_vpcomq,        TOP_vpcomqx,          TOP_vpcomqxx,         TOP_vpcomqxxx,            TOP_UNDEFINED},
+  {TOP_vpcomub,       TOP_vpcomubx,         TOP_vpcomubxx,        TOP_vpcomubxxx,           TOP_UNDEFINED},
+  {TOP_vpcomud,       TOP_vpcomudx,         TOP_vpcomudxx,        TOP_vpcomudxxx,           TOP_UNDEFINED},
+  {TOP_vpcomuq,       TOP_vpcomuqx,         TOP_vpcomuqxx,        TOP_vpcomuqxxx,           TOP_UNDEFINED},
+  {TOP_vpcomuw,       TOP_vpcomuwx,         TOP_vpcomuwxx,        TOP_vpcomuwxxx,           TOP_UNDEFINED},
+  {TOP_vpcomw,        TOP_vpcomwx,          TOP_vpcomwxx,         TOP_vpcomwxxx,            TOP_UNDEFINED},
+  {TOP_vphaddbd,      TOP_vphaddbdx,        TOP_vphaddbdxx,       TOP_vphaddbdxxx,          TOP_UNDEFINED},
+  {TOP_vphaddbq,      TOP_vphaddbqx,        TOP_vphaddbqxx,       TOP_vphaddbqxxx,          TOP_UNDEFINED},
+  {TOP_vphaddbw,      TOP_vphaddbwx,        TOP_vphaddbwxx,       TOP_vphaddbwxxx,          TOP_UNDEFINED},
+  {TOP_vphadddq,      TOP_vphadddqx,        TOP_vphadddqxx,       TOP_vphadddqxxx,          TOP_UNDEFINED},
+  {TOP_vphaddubd,     TOP_vphaddubdx,       TOP_vphaddubdxx,      TOP_vphaddubdxxx,         TOP_UNDEFINED},
+  {TOP_vphaddubq,     TOP_vphaddubqx,       TOP_vphaddubqxx,      TOP_vphaddubqxxx,         TOP_UNDEFINED},
+  {TOP_vphaddubw,     TOP_vphaddubwx,       TOP_vphaddubwxx,      TOP_vphaddubwxxx,         TOP_UNDEFINED},
+  {TOP_vphaddudq,     TOP_vphaddudqx,       TOP_vphaddudqxx,      TOP_vphaddudqxxx,         TOP_UNDEFINED},
+  {TOP_vphadduwd,     TOP_vphadduwdx,       TOP_vphadduwdxx,      TOP_vphadduwdxxx,         TOP_UNDEFINED},
+  {TOP_vphadduwq,     TOP_vphadduwqx,       TOP_vphadduwqxx,      TOP_vphadduwqxxx,         TOP_UNDEFINED},
+  {TOP_vphaddwd,      TOP_vphaddwdx,        TOP_vphaddwdxx,       TOP_vphaddwdxxx,          TOP_UNDEFINED},
+  {TOP_vphaddwq,      TOP_vphaddwqx,        TOP_vphaddwqxx,       TOP_vphaddwqxxx,          TOP_UNDEFINED},
+  {TOP_vphsubbw,      TOP_vphsubbwx,        TOP_vphsubbwxx,       TOP_vphsubbwxxx,          TOP_UNDEFINED},
+  {TOP_vphsubdq,      TOP_vphsubdqx,        TOP_vphsubdqxx,       TOP_vphsubdqxxx,          TOP_UNDEFINED},
+  {TOP_vphsubwd,      TOP_vphsubwdx,        TOP_vphsubwdxx,       TOP_vphsubwdxxx,          TOP_UNDEFINED},
+  {TOP_vpmacsdd,      TOP_vpmacsddx,        TOP_vpmacsddxx,       TOP_vpmacsddxxx,          TOP_UNDEFINED},
+  {TOP_vpmacsdqh,     TOP_vpmacsdqhx,       TOP_vpmacsdqhxx,      TOP_vpmacsdqhxxx,         TOP_UNDEFINED},
+  {TOP_vpmacsdql,     TOP_vpmacsdqlx,       TOP_vpmacsdqlxx,      TOP_vpmacsdqlxxx,         TOP_UNDEFINED},
+  {TOP_vpmacsdd,      TOP_vpmacsddx,        TOP_vpmacsddxx,       TOP_vpmacsddxxx,          TOP_UNDEFINED},
+  {TOP_vpmacssdqh,    TOP_vpmacssdqhx,      TOP_vpmacssdqhxx,     TOP_vpmacssdqhxxx,        TOP_UNDEFINED},
+  {TOP_vpmacssdql,    TOP_vpmacssdqlx,      TOP_vpmacssdqlxx,     TOP_vpmacssdqlxxx,        TOP_UNDEFINED},
+  {TOP_vpmacsswd,     TOP_vpmacsswdx,       TOP_vpmacsswdxx,      TOP_vpmacsswdxxx,         TOP_UNDEFINED},
+  {TOP_vpmacssww,     TOP_vpmacsswwx,       TOP_vpmacsswwxx,      TOP_vpmacsswwxxx,         TOP_UNDEFINED},
+  {TOP_vpmacswd,      TOP_vpmacswdx,        TOP_vpmacswdxx,       TOP_vpmacswdxxx,          TOP_UNDEFINED},
+  {TOP_vpmacsww,      TOP_vpmacswwx,        TOP_vpmacswwxx,       TOP_vpmacswwxxx,          TOP_UNDEFINED},
+  {TOP_vpmadcsswd,    TOP_vpmadcsswdx,      TOP_vpmadcsswdxx,     TOP_vpmadcsswdxxx,        TOP_UNDEFINED},
+  {TOP_vpmadcswd,     TOP_vpmadcswdx,       TOP_vpmadcswdxx,      TOP_vpmadcswdxxx,         TOP_UNDEFINED},
+  {TOP_vpperm,        TOP_vppermx,          TOP_vppermxx,         TOP_vppermxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vppermxr,         TOP_vppermxxr,        TOP_vppermxxxr,           TOP_UNDEFINED},
+  {TOP_vprotbi,       TOP_vprotbix,         TOP_vprotbixx,        TOP_vprotbixxx,           TOP_UNDEFINED},
+  {TOP_vprotb,        TOP_vprotbx,          TOP_vprotbxx,         TOP_vprotbxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vprotbxr,         TOP_vprotbxxr,        TOP_vprotbxxxr,           TOP_UNDEFINED},
+  {TOP_vprotdi,       TOP_vprotdix,         TOP_vprotdixx,        TOP_vprotdixxx,           TOP_UNDEFINED},
+  {TOP_vprotd,        TOP_vprotdx,          TOP_vprotdxx,         TOP_vprotdxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vprotdxr,         TOP_vprotdxxr,        TOP_vprotdxxxr,           TOP_UNDEFINED},
+  {TOP_vprotqi,       TOP_vprotqix,         TOP_vprotqixx,        TOP_vprotqixxx,           TOP_UNDEFINED},
+  {TOP_vprotq,        TOP_vprotqx,          TOP_vprotqxx,         TOP_vprotqxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vprotqxr,         TOP_vprotqxxr,        TOP_vprotqxxxr,           TOP_UNDEFINED},
+  {TOP_vprotwi,       TOP_vprotwix,         TOP_vprotwixx,        TOP_vprotwixxx,           TOP_UNDEFINED},
+  {TOP_vprotw,        TOP_vprotwx,          TOP_vprotwxx,         TOP_vprotwxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vprotwxr,         TOP_vprotwxxr,        TOP_vprotwxxxr,           TOP_UNDEFINED},
+  {TOP_vpshab,        TOP_vpshabx,          TOP_vpshabxx,         TOP_vpshabxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vpshabxr,         TOP_vpshabxxr,        TOP_vpshabxxxr,           TOP_UNDEFINED},
+  {TOP_vpshad,        TOP_vpshadx,          TOP_vpshadxx,         TOP_vpshadxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vpshadxr,         TOP_vpshadxxr,        TOP_vpshadxxxr,           TOP_UNDEFINED},
+  {TOP_vpshaq,        TOP_vpshaqx,          TOP_vpshaqxx,         TOP_vpshaqxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vpshaqxr,         TOP_vpshaqxxr,        TOP_vpshaqxxxr,           TOP_UNDEFINED},
+  {TOP_vpshaw,        TOP_vpshawx,          TOP_vpshawxx,         TOP_vpshawxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vpshawxr,         TOP_vpshawxxr,        TOP_vpshawxxxr,           TOP_UNDEFINED},
+  {TOP_vpshlb,        TOP_vpshlbx,          TOP_vpshlbxx,         TOP_vpshlbxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vpshlbxr,         TOP_vpshlbxxr,        TOP_vpshlbxxxr,           TOP_UNDEFINED},
+  {TOP_vpshld,        TOP_vpshldx,          TOP_vpshldxx,         TOP_vpshldxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vpshldxr,         TOP_vpshldxxr,        TOP_vpshldxxxr,           TOP_UNDEFINED},
+  {TOP_vpshlq,        TOP_vpshlqx,          TOP_vpshlqxx,         TOP_vpshlqxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vpshlqxr,         TOP_vpshlqxxr,        TOP_vpshlqxxxr,           TOP_UNDEFINED},
+  {TOP_vpshlw,        TOP_vpshlwx,          TOP_vpshlwxx,         TOP_vpshlwxxx,            TOP_UNDEFINED},
+  {TOP_UNDEFINED,     TOP_vpshlwxr,         TOP_vpshlwxxr,        TOP_vpshlwxxxr,           TOP_UNDEFINED},
 };
 
 // Associate an address mode group to an opcode.
@@ -4151,6 +4494,10 @@ BOOL EBO_Merge_Memory_Addr( OP* op,
 
   // TODO: support N32_MODE for -m32
   if( base_tn == NULL && index_tn == NULL )
+    return FALSE;
+
+  // disable merging memory addr on TLS initial-exec
+  if( TN_relocs(offset_tn) == TN_RELOC_X8664_GOTTPOFF )
     return FALSE;
 
   TN* rip = Rip_TN();
@@ -4725,10 +5072,15 @@ void EBO_SIMD_Compute_To( OP* simd_op )
     case TOP_movaps:
     case TOP_movapd:
     case TOP_movdq:
+    case TOP_vmovaps:
+    case TOP_vmovapd:
+    case TOP_vmovdqa:
       hoist_only_cand = TRUE;
       break;
     case TOP_movss:
     case TOP_movsd:
+    case TOP_vmovss:
+    case TOP_vmovsd:
       convert_cand = TRUE;
       break;
     default:
@@ -4890,9 +5242,14 @@ void EBO_SIMD_Compute_To( OP* simd_op )
   if (convert_cand && cand_ok) {
     // we have a single dependence arc on this def, we can convert
     if (OP_code(simd_op) == TOP_movsd) {
-      OP_Change_Opcode( simd_op, TOP_movapd );
+      OP_Change_Opcode( simd_op, TOP_movaps );
     } else if (OP_code(simd_op) == TOP_movss) {
       OP_Change_Opcode( simd_op, TOP_movaps );
+    }
+    if (OP_code(simd_op) == TOP_vmovsd) {
+      OP_Change_Opcode( simd_op, TOP_vmovapd );
+    } else if (OP_code(simd_op) == TOP_vmovss) {
+      OP_Change_Opcode( simd_op, TOP_vmovaps );
     }
   }
 }
@@ -5167,6 +5524,378 @@ BOOL EBO_Opt_Const_Array( OP* mem_op,
 }
 
 
+BOOL EBO_Process_SSE5_Load_Exectute_FMA_p1(TOP new_top, 
+                                           ADDR_MODE mode, 
+                                           TN* base, 
+                                           TN* scale, 
+                                           TN* index, 
+                                           TN* offset, 
+                                           TN* result,
+                                           OP* ld_op,
+                                           OP* alu_op,
+                                           EBO_TN_INFO** actual_tninfo)
+{
+  OP* new_op = NULL;
+  EBO_TN_INFO* tninfo;
+  TN *opnd0;
+  TN *opnd1;
+  BB* bb = OP_bb( alu_op );
+
+  // add load form: both mul opnds persist
+  tninfo = actual_tninfo[0];
+  opnd0 = tninfo->local_tn;
+  tninfo = actual_tninfo[1];
+  opnd1 = tninfo->local_tn;
+
+  if( mode == BASE_MODE ){
+    // base + offset
+    new_op = Mk_OP( new_top, result, opnd0, opnd1, base, offset );
+  } else if( mode == BASE_INDEX_MODE ){
+    // offset + base + index * scale
+    new_op = Mk_OP( new_top, result, opnd0, opnd1, base, index, scale, offset );
+  } else {
+    // offset + index * scale
+    new_op = Mk_OP( new_top, result, opnd0, opnd1, index, scale, offset );
+  }
+
+  Is_True( !EBO_in_loop, ("EBO_Process_SSE5_Load_Exectute_FMA_p1: NYI (1)") );
+
+  Set_OP_unrolling( new_op, OP_unrolling(alu_op) );
+  Set_OP_orig_idx( new_op, OP_map_idx(alu_op) );
+  Set_OP_unroll_bb( new_op, OP_unroll_bb(alu_op) );
+
+  Copy_WN_For_Memory_OP( new_op, ld_op );
+  if (OP_volatile(ld_op)) {
+    Reset_OP_volatile(ld_op);	// allow OP to be deleted
+    Set_OP_volatile(new_op);
+  }
+  OP_srcpos( new_op ) = OP_srcpos( alu_op );
+  BB_Insert_Op_After( bb, alu_op, new_op );
+
+  // If folding a restore of a spilled value, mark the spill store as needed
+  // even if all the restores are deleted.
+  ST *spill_loc = CGSPILL_OP_Spill_Location(ld_op);
+  if (spill_loc != (ST *)0) {		// It's a spill OP.
+    SPILL_SYM_INFO &info = CGSPILL_Get_Spill_Sym_Info(spill_loc);
+    info.Set_Used_By_Load_Exe();
+  }
+
+  if( EBO_Trace_Data_Flow ){
+    #pragma mips_frequency_hint NEVER
+    fprintf( TFile, "EBO_Process_SSE5_Load_Exectute_FMA_p1 merges " );
+    Print_OP_No_SrcLine( ld_op );
+    fprintf( TFile, "                   with   " );
+    Print_OP_No_SrcLine( alu_op );
+
+    fprintf( TFile, "                   new op " );
+    Print_OP_No_SrcLine( new_op );
+  }
+
+  return TRUE;
+}
+
+
+BOOL EBO_Process_SSE5_Load_Exectute_FMA_p2(TOP new_top, 
+                                           ADDR_MODE mode, 
+                                           TN* base, 
+                                           TN* scale, 
+                                           TN* index, 
+                                           TN* offset, 
+                                           TN* result,
+                                           OP* ld_op,
+                                           OP* alu_op,
+                                           EBO_TN_INFO** actual_tninfo)
+{
+  OP* new_op = NULL;
+  EBO_TN_INFO* tninfo;
+  TN *opnd0;
+  TN *opnd2;
+  BB* bb = OP_bb( alu_op );
+
+  // mul load form: the opnd0(the other mul opnd) and opnd2(add opnd) persist
+  tninfo = actual_tninfo[0];
+  opnd0 = tninfo->local_tn;
+  tninfo = actual_tninfo[2];
+  opnd2 = tninfo->local_tn;
+
+  if( mode == BASE_MODE ){
+    // base + offset
+    new_op = Mk_OP( new_top, result, opnd0, 
+                    base, offset, opnd2 );
+  } else if( mode == BASE_INDEX_MODE ){
+    // offset + base + index * scale
+    new_op = Mk_OP( new_top, result, opnd0, base, 
+                    index, scale, offset, opnd2 );
+  } else {
+    // offset + index * scale
+    new_op = Mk_OP( new_top, result, opnd0, 
+                    index, scale, offset, opnd2 );
+  }
+
+  Is_True( !EBO_in_loop, ("EBO_Process_SSE5_Load_Exectute_FMA_p1: NYI (1)") );
+
+  Set_OP_unrolling( new_op, OP_unrolling(alu_op) );
+  Set_OP_orig_idx( new_op, OP_map_idx(alu_op) );
+  Set_OP_unroll_bb( new_op, OP_unroll_bb(alu_op) );
+
+  Copy_WN_For_Memory_OP( new_op, ld_op );
+  if (OP_volatile(ld_op)) {
+    Reset_OP_volatile(ld_op);	// allow OP to be deleted
+    Set_OP_volatile(new_op);
+  }
+  OP_srcpos( new_op ) = OP_srcpos( alu_op );
+  BB_Insert_Op_After( bb, alu_op, new_op );
+
+  // If folding a restore of a spilled value, mark the spill store as needed
+  // even if all the restores are deleted.
+  ST *spill_loc = CGSPILL_OP_Spill_Location(ld_op);
+  if (spill_loc != (ST *)0) {		// It's a spill OP.
+    SPILL_SYM_INFO &info = CGSPILL_Get_Spill_Sym_Info(spill_loc);
+    info.Set_Used_By_Load_Exe();
+  }
+
+  if( EBO_Trace_Data_Flow ){
+    #pragma mips_frequency_hint NEVER
+    fprintf( TFile, "EBO_Process_SSE5_Load_Exectute_FMA_p1 merges " );
+    Print_OP_No_SrcLine( ld_op );
+    fprintf( TFile, "                   with   " );
+    Print_OP_No_SrcLine( alu_op );
+
+    fprintf( TFile, "                   new op " );
+    Print_OP_No_SrcLine( new_op );
+  }
+
+  return TRUE;
+}
+
+
+TOP EBO_Reset_Top(TOP top, ADDR_MODE mode)
+{
+  Addr_Mode_Group *group = Top_To_Addr_Mode_Group[top+4];
+  if (group != NULL) {
+    switch (mode) {
+      case BASE_MODE:           return group->base_mode;
+      case BASE_INDEX_MODE:     return group->base_index_mode;
+      case INDEX_MODE:          return group->index_mode;
+      case N32_MODE:            return group->n32_mode;
+    }
+    FmtAssert(FALSE, ("EBO_Reset_Top: address mode not handled"));
+  }
+  return TOP_UNDEFINED;
+}
+
+
+BOOL EBO_Process_SSE5_Load_Execute(TOP new_top, 
+                                   ADDR_MODE mode, 
+                                   int idx,
+                                   TN* base, 
+                                   TN* scale, 
+                                   TN* index, 
+                                   TN* offset, 
+                                   TN* result,
+                                   OP* ld_op,
+                                   OP* alu_op,
+                                   EBO_TN_INFO** actual_tninfo)
+{
+  // use the mul memopnd form if the add form is not present
+  if (idx != 2) {
+    Addr_Mode_Group *group = Top_To_Addr_Mode_Group[new_top];
+    new_top = EBO_Reset_Top(group->base_mode, mode);
+  }
+
+  switch (new_top) {
+
+  // pattern 1 - add src is memop
+  case TOP_vfmaddxss:
+  case TOP_vfmaddxxss:
+  case TOP_vfmaddxxxss:
+  case TOP_vfmaddxsd:
+  case TOP_vfmaddxxsd:
+  case TOP_vfmaddxxxsd:
+  case TOP_vfnmaddxss:
+  case TOP_vfnmaddxxss:
+  case TOP_vfnmaddxxxss:
+  case TOP_vfnmaddxsd:
+  case TOP_vfnmaddxxsd:
+  case TOP_vfnmaddxxxsd:
+  case TOP_vfmaddxps:
+  case TOP_vfmaddxxps:
+  case TOP_vfmaddxxxps:
+  case TOP_vfmaddxpd:
+  case TOP_vfmaddxxpd:
+  case TOP_vfmaddxxxpd:
+  case TOP_vfmaddsubxps:
+  case TOP_vfmaddsubxxps:
+  case TOP_vfmaddsubxxxps:
+  case TOP_vfmaddsubxpd:
+  case TOP_vfmaddsubxxpd:
+  case TOP_vfmaddsubxxxpd:
+  case TOP_vfnmaddxps:
+  case TOP_vfnmaddxxps:
+  case TOP_vfnmaddxxxps:
+  case TOP_vfnmaddxpd:
+  case TOP_vfnmaddxxpd:
+  case TOP_vfnmaddxxxpd:
+  case TOP_vfmsubxss:
+  case TOP_vfmsubxxss:
+  case TOP_vfmsubxxxss:
+  case TOP_vfmsubxsd:
+  case TOP_vfmsubxxsd:
+  case TOP_vfmsubxxxsd:
+  case TOP_vfnmsubxss:
+  case TOP_vfnmsubxxss:
+  case TOP_vfnmsubxxxss:
+  case TOP_vfnmsubxsd:
+  case TOP_vfnmsubxxsd:
+  case TOP_vfnmsubxxxsd:
+  case TOP_vfmsubxps:
+  case TOP_vfmsubxxps:
+  case TOP_vfmsubxxxps:
+  case TOP_vfmsubxpd:
+  case TOP_vfmsubxxpd:
+  case TOP_vfmsubxxxpd:
+  case TOP_vfmsubaddxps:
+  case TOP_vfmsubaddxxps:
+  case TOP_vfmsubaddxxxps:
+  case TOP_vfmsubaddxpd:
+  case TOP_vfmsubaddxxpd:
+  case TOP_vfmsubaddxxxpd:
+  case TOP_vfnmsubxps:
+  case TOP_vfnmsubxxps:
+  case TOP_vfnmsubxxxps:
+  case TOP_vfnmsubxpd:
+  case TOP_vfnmsubxxpd:
+  case TOP_vfnmsubxxxpd:
+    return EBO_Process_SSE5_Load_Exectute_FMA_p1(new_top, mode, base, 
+                                                 scale, index, offset, 
+                                                 result, ld_op,
+                                                 alu_op, actual_tninfo);
+
+  // pattern 2 - 2nd mul src is memop
+  case TOP_vfmaddxrss:
+  case TOP_vfmaddxxrss:
+  case TOP_vfmaddxxxrss:
+  case TOP_vfmaddxrsd:
+  case TOP_vfmaddxxrsd:
+  case TOP_vfmaddxxxrsd:
+  case TOP_vfnmaddxrss:
+  case TOP_vfnmaddxxrss:
+  case TOP_vfnmaddxxxrss:
+  case TOP_vfnmaddxrsd:
+  case TOP_vfnmaddxxrsd:
+  case TOP_vfnmaddxxxrsd:
+  case TOP_vfmaddxrps:
+  case TOP_vfmaddxxrps:
+  case TOP_vfmaddxxxrps:
+  case TOP_vfmaddxrpd:
+  case TOP_vfmaddxxrpd:
+  case TOP_vfmaddxxxrpd:
+  case TOP_vfmaddsubxrps:
+  case TOP_vfmaddsubxxrps:
+  case TOP_vfmaddsubxxxrps:
+  case TOP_vfmaddsubxrpd:
+  case TOP_vfmaddsubxxrpd:
+  case TOP_vfmaddsubxxxrpd:
+  case TOP_vfnmaddxrps:
+  case TOP_vfnmaddxxrps:
+  case TOP_vfnmaddxxxrps:
+  case TOP_vfnmaddxrpd:
+  case TOP_vfnmaddxxrpd:
+  case TOP_vfnmaddxxxrpd:
+  case TOP_vfmsubxrss:
+  case TOP_vfmsubxxrss:
+  case TOP_vfmsubxxxrss:
+  case TOP_vfmsubxrsd:
+  case TOP_vfmsubxxrsd:
+  case TOP_vfmsubxxxrsd:
+  case TOP_vfnmsubxrss:
+  case TOP_vfnmsubxxrss:
+  case TOP_vfnmsubxxxrss:
+  case TOP_vfnmsubxrsd:
+  case TOP_vfnmsubxxrsd:
+  case TOP_vfnmsubxxxrsd:
+  case TOP_vfmsubxrps:
+  case TOP_vfmsubxxrps:
+  case TOP_vfmsubxxxrps:
+  case TOP_vfmsubxrpd:
+  case TOP_vfmsubxxrpd:
+  case TOP_vfmsubxxxrpd:
+  case TOP_vfmsubaddxrps:
+  case TOP_vfmsubaddxxrps:
+  case TOP_vfmsubaddxxxrps:
+  case TOP_vfmsubaddxrpd:
+  case TOP_vfmsubaddxxrpd:
+  case TOP_vfmsubaddxxxrpd:
+  case TOP_vfnmsubxrps:
+  case TOP_vfnmsubxxrps:
+  case TOP_vfnmsubxxxrps:
+  case TOP_vfnmsubxrpd:
+  case TOP_vfnmsubxxrpd:
+  case TOP_vfnmsubxxxrpd:
+    return EBO_Process_SSE5_Load_Exectute_FMA_p2(new_top, mode, base, 
+                                                 scale, index, offset, 
+                                                 result, ld_op,
+                                                 alu_op, actual_tninfo);
+
+  // not yet implemented
+  default:
+    FmtAssert( FALSE, ("EBO_Process_SSE5_Load_Execute: NYI") );
+    break;
+  }
+
+  return FALSE;
+}
+
+
+BOOL EBO_Is_FMA4( OP* alu_op)
+{
+  const TOP top = OP_code(alu_op);
+  BOOL ret_val;
+
+  switch (top) {
+  case TOP_vfmaddss:
+  case TOP_vfmaddsd:
+  case TOP_vfmaddps:
+  case TOP_vfmaddpd:
+  case TOP_vfmaddsubps:
+  case TOP_vfmaddsubpd:
+  case TOP_vfmsubss:
+  case TOP_vfmsubsd:
+  case TOP_vfmsubps:
+  case TOP_vfmsubpd:
+  case TOP_vfmsubaddps:
+  case TOP_vfmsubaddpd:
+    ret_val = TRUE;
+    break;
+  default:
+    ret_val = FALSE;
+    break;
+  }
+
+  return ret_val;
+}
+
+static BOOL EBO_Allowable_Unaligned_Vector( OP *alu_op )
+{
+  const TOP top = OP_code(alu_op);
+  BOOL ret_val;
+
+  switch (top) {
+  case TOP_vcvtdq2pd:
+  case TOP_vcvtps2pd:
+  case TOP_cvtdq2pd:
+  case TOP_cvtps2pd:
+    ret_val = TRUE;
+    break;
+
+  default:
+    ret_val = FALSE;
+    break;
+  }
+  return ret_val;
+}
+
+
 BOOL EBO_Load_Execution( OP* alu_op, 
                          TN** opnd_tn,     
                          EBO_TN_INFO** actual_tninfo,
@@ -5206,6 +5935,40 @@ BOOL EBO_Load_Execution( OP* alu_op,
       opnd0_indx = OP_opnds(alu_op) - 1 - i;
       Is_True( opnd0_indx >= 0, ("NYI") );
     }
+#ifdef TARG_X8664
+  } else if ( EBO_Is_FMA4(alu_op) ) {
+    int i;
+    OP *mul_in_op = actual_tninfo[1]->in_op;
+    OP *add_sub_in_op2 = actual_tninfo[2]->in_op;
+
+    i = (mul_in_op && OP_load(mul_in_op)) ? 1 : -1;
+    if (i == -1) {
+      i = (add_sub_in_op2 && OP_load(add_sub_in_op2)) ? 2 : -1;
+    }
+    
+    // FMA4 ops can only have loads on opnd1 and opnd2.
+    if (i == -1) {
+      // However we can swap opnd1 and opnd0 because the mul part of the fma
+      // is communitive.
+      if (actual_tninfo[0]->in_op && OP_load(actual_tninfo[0]->in_op)) {
+        TN *tmp = opnd_tn[0];
+        tninfo = actual_tninfo[0];
+        actual_tninfo[0] = actual_tninfo[1];
+        opnd_tn[0] = opnd_tn[1];
+        actual_tninfo[1] = tninfo;
+        opnd_tn[1] = tmp;
+        i = 1;
+      } else
+        return FALSE;
+    } 
+
+    alu_cmp_idx = i;
+    if( TN_is_register( OP_opnd( alu_op, i ) ) ){
+      tninfo = actual_tninfo[i];
+      opnd0_indx = OP_opnds(alu_op) - 1 - i;
+      Is_True( opnd0_indx >= 0, ("NYI") );
+    }
+#endif
   } else {
     for( int i = OP_opnds(alu_op) - 1; i >= 0; i-- ){
       if( TN_is_register( OP_opnd( alu_op, i ) ) ){
@@ -5276,6 +6039,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
      a 16-byte boundary ..."
    */
   if( OP_unalign_mem( ld_op ) &&
+      !EBO_Allowable_Unaligned_Vector( alu_op ) &&
       TOP_is_vector_op( OP_code(ld_op) ) ){
     return FALSE;
   }
@@ -5387,6 +6151,17 @@ BOOL EBO_Load_Execution( OP* alu_op,
 
   OP* new_op = NULL;
 
+  if (OP_sse5(alu_op) && EBO_Is_FMA4(alu_op)) {
+    return EBO_Process_SSE5_Load_Execute(new_top, mode, alu_cmp_idx, base,
+                                         scale, index, offset,
+                                         result, ld_op, alu_op, 
+                                         actual_tninfo);
+  }
+
+  if( OP_opnds(alu_op) > 2 )
+    return FALSE;
+
+  // Standard Load Execute processing
   if( mode == BASE_MODE ){
     // base + offset
     if( OP_opnds(alu_op) == 1 ){
@@ -6434,6 +7209,9 @@ EBO_Fold_Load_Duplicate( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
   if (OP_code(op) != TOP_fmovddup)
     return FALSE;
 
+  if (OP_code(op) != TOP_vmovddup)
+    return FALSE;
+
   OP* shuf_op = actual_tninfo[0]->in_op;
   if (!shuf_op || shuf_op->bb != op->bb || 
       (OP_code(shuf_op) != TOP_shufpd && 
@@ -6507,24 +7285,35 @@ EBO_Fold_Load_Duplicate( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
   if (index_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, index_loc))
     return FALSE;
   
-  if (base && offset && index && scale)
-    new_op = Mk_OP (TOP_fmovddupxx, 
-		    OP_result(op, 0), 
-		    OP_opnd(load, 0), 
+  TOP topcode;
+  if (base && offset && index && scale) {
+    topcode = TOP_fmovddupxx;
+    if (Is_Target_Orochi() && Is_Target_AVX())
+      topcode = TOP_vmovddupxx;
+    new_op = Mk_OP (topcode, 
+  		    OP_result(op, 0), 
+  		    OP_opnd(load, 0), 
 		    OP_opnd(load, 1), 
 		    OP_opnd(load, 2), 
 		    OP_opnd(load, 3));
-  else if (base && offset)
-    new_op = Mk_OP (TOP_fmovddupx, 
+  } else if (base && offset) {
+    topcode = TOP_fmovddupx;
+    if (Is_Target_Orochi() && Is_Target_AVX())
+      topcode = TOP_vmovddupx;
+    new_op = Mk_OP (topcode, 
 		    OP_result(op, 0), 
 		    OP_opnd(load, 0), 
 		    OP_opnd(load, 1));
-  else if (index && scale && offset)
-    new_op = Mk_OP (TOP_fmovddupxxx, 
+  } else if (index && scale && offset) {
+    topcode = TOP_fmovddupxxx;
+    if (Is_Target_Orochi() && Is_Target_AVX())
+      topcode = TOP_vmovddupxxx;
+    new_op = Mk_OP (topcode, 
 		    OP_result(op, 0), 
 		    OP_opnd(load, 0), 
 		    OP_opnd(load, 1), 
 		    OP_opnd(load, 2));
+  }
   
   if ( op == shuf_op /* op uses result of a load */ &&
        TOP_is_vector_high_loadstore( OP_code( load ) ) ) {

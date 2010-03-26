@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
  */
 /*
@@ -134,9 +138,6 @@ enum debug_info_level
 };
 
 /* Specify how much debugging info to generate.  */
-#if 0 // wgen TODO
-extern 
-#endif
 enum debug_info_level debug_info_level;
 // End gnu/flags.h data decl
 
@@ -415,6 +416,7 @@ WGEN_Init (INT argc, char **argv, char **envp )
 
 #ifdef KEY
   WGEN_Guard_Var_Init ();
+  WGEN_Guard_Block_Stack_Init(); 
 #endif
 
   Init_Deferred_Function_Stack();
@@ -574,7 +576,7 @@ WGEN_Stmt_Top (void)
 bool
 Check_For_Call_Region (void)
 {
-  if (key_exceptions) {
+  if (emit_exceptions) {
 	if (wn_stmt_sp->kind == wgen_stmk_call_region_body) {
 		Setup_EH_Region();
 		return TRUE;
@@ -664,7 +666,7 @@ WGEN_Stmt_Pop (WGEN_STMT_KIND kind)
 #ifdef KEY
 // another hack.
   WN * to_be_pushed = 0;
-  if (key_exceptions && wn_stmt_sp->kind != kind)
+  if (emit_exceptions && wn_stmt_sp->kind != kind)
   {
     if (!opt_regions || !Did_Not_Terminate_Region)
     {
@@ -741,6 +743,55 @@ WGEN_Stmt_Prepend_Last (WN* wn, SRCPOS srcpos)
 // guard variable is needed but not yet allocated.
 std::vector<gs_t > guard_vars;
 
+std::vector<WN *> guard_init_block_stack;
+
+void
+WGEN_Guard_Block_Stack_Init()
+{ 
+  // Clear the stack.
+  if (lang_cplus)
+    guard_init_block_stack.clear();
+}
+
+// Indicate a new guard variable is needed.
+void
+WGEN_Guard_Init_Block_Push()
+{
+  // treat the current top of stack
+  // for guard init. 
+
+  if (lang_cplus)
+  { 
+    WN * top = WGEN_Stmt_Top(); 
+    if (top == NULL)
+    { 
+       WN *init = WN_CreateBlock(); 
+       WGEN_Stmt_Push (init, wgen_stmk_guard_init, Get_Srcpos());
+    } 
+    guard_init_block_stack.push_back(WGEN_Stmt_Top());
+  } 
+}
+
+WN *
+WGEN_Guard_Init_Block_Pop()
+{
+  if (!lang_cplus) return NULL;
+
+  FmtAssert (!guard_init_block_stack.empty(), ("WGEN_Guard_Init_Block_Var_Pop: no init blocks to pop "));
+  WN *t = guard_init_block_stack.back();
+  guard_init_block_stack.pop_back();
+  return t;
+}
+
+WN *
+WGEN_Guard_Init_Block_Stack_Top()
+{ 
+  // Clear the stack.
+  if (lang_cplus)
+    return guard_init_block_stack.back(); 
+  return NULL; 
+}
+ 
 static void
 WGEN_Guard_Var_Init()
 {

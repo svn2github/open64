@@ -136,9 +136,6 @@ static boolean string_md = FALSE;
 static boolean string_mmd = FALSE;
 extern string_list_t *feedback_files;
 
-#if 0
-extern boolean is_replacement_combo (int);
-#endif
 static void convert_saved_command_line_into_string(void);
 static char *make_ii_file_name(char *objname);
 static char *make_rii_file_name(char *objname);
@@ -409,6 +406,46 @@ add_targ_options ( string_list_t *args )
     add_string(args, "-TARG:sse4a=on");
   else
     add_string(args, "-TARG:sse4a=off");
+
+  if (ssse3 == TRUE)
+    add_string(args, "-TARG:ssse3=on");
+  else
+    add_string(args, "-TARG:ssse3=off");
+
+  if (sse41 == TRUE)
+    add_string(args, "-TARG:sse41=on");
+  else
+    add_string(args, "-TARG:sse41=off");
+
+  if (sse42 == TRUE)
+    add_string(args, "-TARG:sse42=on");
+  else
+    add_string(args, "-TARG:sse42=off");
+
+  if (aes == TRUE)
+    add_string(args, "-TARG:aes=on");
+  else
+    add_string(args, "-TARG:aes=off");
+
+  if (pclmul == TRUE)
+    add_string(args, "-TARG:pclmul=on");
+  else
+    add_string(args, "-TARG:pclmul=off");
+
+  if (avx == TRUE)
+    add_string(args, "-TARG:avx=on");
+  else
+    add_string(args, "-TARG:avx=off");
+
+  if (xop == TRUE)
+    add_string(args, "-TARG:xop=on");
+  else
+    add_string(args, "-TARG:xop=off");
+
+  if (fma4 == TRUE)
+    add_string(args, "-TARG:fma4=on");
+  else
+    add_string(args, "-TARG:fma4=off");
 #endif
 }
 
@@ -868,14 +905,6 @@ add_file_args (string_list_t *args, phases_t index)
 			break;
 		}
 
-#ifdef KEY
-		if (gnu_exceptions == FALSE &&		// bug 11732
-		    (source_lang == L_cc ||
-		     source_lang == L_CC)) {
-		  add_string(args, "-fno-exceptions");
-		}
-#endif
-
 		if (!option_was_seen(O_nostdinc)) {
 			char *root = directory_path(get_executable_dir());
 			#ifdef PSC_TO_OPEN64
@@ -927,11 +956,6 @@ add_file_args (string_list_t *args, phases_t index)
 			add_string(args, inc_path);
 		}
 #endif
-#ifdef TARG_X8664 
-		// Add a workaround for bug 3082 and bug 6186.
-		add_string(args, "-mfpmath=387");
-#endif
-		
 		add_string(args, input_source);
 		if (option_was_seen(O_E) && outfile != NULL) {
 			add_string(args, "-o");
@@ -1245,9 +1269,6 @@ add_file_args (string_list_t *args, phases_t index)
 		  }
 #endif
 		}
-		if (gnu_exceptions == FALSE) {			// bug 11732
-		  add_string(args, "-fno-gnu-exceptions");
-		}
 		if (fcxx_openmp == 1) {
 		  add_string(args, "-fcxx-openmp");
 		}
@@ -1365,6 +1386,9 @@ add_file_args (string_list_t *args, phases_t index)
 		add_string(args, the_file);
 		break;
 	case P_ipl:
+            if (oscale == TRUE)
+                add_string(args, "-OPT:scale=ON");
+
 		add_language_option ( args );
 		if (source_kind == S_B)
 		    sprintf (buf, "-fB,%s", the_file);
@@ -1426,7 +1450,7 @@ add_file_args (string_list_t *args, phases_t index)
 	case P_bec:
 #endif
 #ifdef TARG_LOONGSON
-                add_string(args,"-TENV:pic2");
+		add_string(args,"-TENV:pic2");
 #endif
 		add_language_option ( args );
 		add_targ_options ( args );
@@ -1692,8 +1716,11 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 #endif
 		break;
-	case P_collect:
 	case P_ipa_link:
+            if (oscale == TRUE)
+                add_string(args, "-IPA:scale=ON");
+	case P_collect:
+
 #if defined(TARG_X8664) || defined(TARG_NVISA)
 		if( abi == ABI_N32 ) {
 		  add_string(args, "-m32");
@@ -2023,7 +2050,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 		add_string(args, "-lmv");
 	//	add_string(args, "-lm" PSC_NAME_PREFIX);
 		add_string(args, "-lm");
-#ifdef TARG_X8664_WITH_LIBACML_MV
+#ifdef TARG_X8664
 		if (abi != ABI_N32)
                     add_library(args, "acml_mv");
 #endif
@@ -2106,20 +2133,20 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	       provided by libmblah.a lib.
 	    */
 	    if (invoked_lang != L_cc) {
-	      add_library(args, "mv");			// bug 5527
-	      // add_library(args, "m" PSC_NAME_PREFIX);	// bug 3092
-              // OSP -lm is needed
-              add_library(args, "m");
-#ifdef TARG_X8664_WITH_LIBACML_MV
+#ifdef TARG_X8664
 	      if (abi != ABI_N32) {
 		/* Sigh, g++ removes the first -lm since it is implicitly added by g++,
 		 * however adding two instances of -lm only removes one.
 		 */
                 if (invoked_lang == L_CC)
-		  add_library(args, "m");
 		add_library(args, "acml_mv");
+		  add_library(args, "m");
               }
 #endif
+	      add_library(args, "mv");			// bug 5527
+	      // add_library(args, "m" PSC_NAME_PREFIX);	// bug 3092
+              // OSP -lm is needed
+              add_library(args, "m");
 	    }
 #else
 			if (invoked_lang == L_CC)
@@ -2778,34 +2805,6 @@ add_instr_archive (string_list_t* args)
 
 extern char *get_binutils_lib_path(void);
 
-#if 0 // need not to set d_library_path
-static char *
-find_ld_library_path(char *program_name, char *ld_library_path)
-{
-	char buf[PATH_BUF_LEN];
-	int tail;
-
-	if(strchr(program_name, '/') == NULL) {
-		/* find arg0 in $PATH by cmd "which" */
-		sprintf(buf, "which %s", program_name);
-		read_cmd_out(buf, ld_library_path);
-
-		sprintf(buf, "dirname \"");
-		realpath(ld_library_path, buf + strlen(buf));
-
-	} else {
-		sprintf(buf, "dirname \"");
-		realpath(program_name, buf + strlen(buf));
-	}
-
-	tail = strlen(buf);
-	buf[tail] = '"';
-	buf[tail+1] = '\0';
-	read_cmd_out(buf, ld_library_path);
-
-	return ld_library_path;
-}
-#endif
 
 static char *
 find_toolroot(char *program_name, char *toolroot)
@@ -2863,12 +2862,6 @@ init_phase_info (void)
 	if (getenv("_XPG") != NULL) 
 	   xpg_flag = TRUE;
 	ld_library_path = getenv("LD_LIBRARY_PATH");
-#if 0
-	if(ld_library_path == NULL) {
-		ld_library_path = find_ld_library_path(orig_program_name, 
-							ld_library_path_found);
-	}
-#endif
 	ld_libraryn32_path = getenv("LD_LIBRARYN32_PATH");
 	old_ld_library_path = string_copy(ld_library_path);
 	// Replace ":" with ";" because ":" has special meaning to -INTERNAL.
@@ -3112,9 +3105,8 @@ run_ld (void)
 	    add_string(args, concat_strings("-INTERNAL:lang=", str));
 
 	    init_crt_paths ();
-	    if (invoked_lang == L_CC ||
-		instrumentation_invoked == TRUE ) {
-	      init_stdc_plus_plus_path();
+	    if (invoked_lang == L_CC || instrumentation_invoked == TRUE) {
+	      init_stdc_plus_plus_path(!option_was_seen(O_static));
 	    }
 	}
 	ldpath = get_full_phase_name(ldphase);

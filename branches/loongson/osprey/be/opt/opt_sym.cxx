@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -84,7 +88,6 @@
 #pragma hdrstop
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "limits.h"
 
@@ -838,10 +841,6 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
   
   // Lookup the opt_stab first
   while (idx && aux_stab[idx].St() != NULL) {
-#if 0 // necessitated by the fix to bug 6293
-    Is_True(aux_stab[idx].St() == st,
-	    ("Enter_aux_stab::lookup wrong ST chain."));
-#endif
     BOOL kind_match = FALSE;
     switch (aux_stab[idx].Stype()) {
     case VT_NO_LDA_SCALAR:
@@ -1725,15 +1724,22 @@ OPT_STAB::Convert_ST_to_AUX(WN *wn, WN *block_wn)
 				 WN_kid0(wn)); 
       if (twn) {
 	opr = WN_operator(twn);
+        FmtAssert(opr == OPR_LDID || opr == OPR_LDBITS || opr == OPR_INTCONST,
+                  ("Unknown operator: opr:%s when simpilfying iload", 
+                  OPERATOR_name(opr)));
 	rtype = WN_rtype(twn);
 	desc = WN_desc(twn);
         WN_set_operator(wn, opr);
 	WN_set_rtype(wn, rtype);
 	WN_set_desc(wn, desc);
-        WN_load_offset(wn) = WN_load_offset(twn);
-        WN_st_idx(wn) = WN_st_idx(twn);
-        WN_set_ty(wn, WN_ty(twn));
-	WN_kid0(wn) = NULL;
+        if (opr == OPR_INTCONST)
+          WN_const_val(wn) = WN_const_val(twn);
+        else {
+          WN_load_offset(wn) = WN_load_offset(twn);
+          WN_st_idx(wn) = WN_st_idx(twn);
+          WN_set_ty(wn, WN_ty(twn));
+	  WN_kid0(wn) = NULL;
+        }
 	WN_Delete(twn);
       }
     }
@@ -2517,7 +2523,7 @@ OPT_STAB::Collect_ST_attr(void)
     ST *st = psym->St();
     const INT32 stype = psym->Stype();
 
-    if (stype == VT_OTHER) continue;
+    if (stype == VT_OTHER || stype == VT_UNKNOWN) continue;
       
     // Update POINTS_TO 
     POINTS_TO *pt = psym->Points_to();
@@ -2756,11 +2762,6 @@ OPT_STAB::Create(COMP_UNIT *cu, REGION_LEVEL rgn_level)
   
   // Setup ST alias groups
   Make_st_group();
-#if 0 // OPT_REVISE_SSA will use Enter_symbol later
-  // st_chain_map is no longer needed now that we have ST alias groups 
-  CXX_DELETE(st_chain_map, &_st_chain_pool);
-  st_chain_map = NULL;
-#endif
   // Identify synonyms within aux_stab, and convert STs into their
   // lowest numbered synonyms
   Canonicalize();
@@ -3778,7 +3779,6 @@ AUX_STAB_ENTRY::Has_multiple_signs(void) const
 void OPT_STAB::Print_occ_tab(FILE *fp, WN *wn)
 #endif
 {
-#if 1
   /* WN_MAP_ITER has been removed because it does not work reliably for
      this sort of thing.  (The mapping may contain dangling pointers for
      WNs that have been deleted.)  If anyone needs this to work, it
@@ -3798,20 +3798,6 @@ void OPT_STAB::Print_occ_tab(FILE *fp, WN *wn)
       occ->Print(fp);
       for ( INT32 i = 0; i < WN_kid_count( wn ); i++ )
         Print_occ_tab( fp, WN_kid( wn, i ));
-  }
-#endif
-#else
-
-  WN_MAP_ITER map_iter;
-  INT32 category;
-  OCC_TAB_ENTRY **addr;
-  for (category = 0; category <  WN_MAP_CATEGORIES; category++) {
-    WN_MAP_ITER_Init(&map_iter, Current_Map_Tab, WN_sym_map(),
-		     (OPCODE_MAPCAT) category);
-    while (addr = (OCC_TAB_ENTRY **) WN_MAP_ITER_Step(&map_iter, NULL)) {
-      if (*addr != NULL)
-	(*addr)->Print(fp);
-    }
   }
 #endif
 }
@@ -4008,6 +3994,9 @@ OPT_STAB::Collect_nested_ref_info(void)
   // symtabs.
   FOR_ALL_NODE(var, aux_stab_iter, Init()) {
     ST *var_base;
+
+    if (Aux_stab_entry(var)->Stype() == VT_UNKNOWN)
+      continue;
 
     if (!Aux_stab_entry(var)->Has_nested_ref() &&
 	(ST_class(var_base = Aux_stab_entry(var)->Base()) == CLASS_VAR) &&

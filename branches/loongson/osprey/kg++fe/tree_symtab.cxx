@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
 */ 
 /* 
@@ -66,6 +70,9 @@ extern "C" {
 #include "cp-tree.h"
 }
 #undef TARGET_PENTIUM // hack around macro definition in gnu
+#if defined(TARG_PPC32)
+#undef TARGET_POWERPC
+#endif /* TARG_PPC32 */
 #include "symtab.h"
 #include "strtab.h"
 #include "wn.h"
@@ -241,12 +248,8 @@ Get_Mtype_For_Integer_Type(tree type_tree, INT64 tsize)
          mtype = MTYPE_I4;
 	     break;
 	  case 8:
-#if 0
-	     error("Don't support 8 bytes types now");
-#else
 	     DevWarn("8 byte types being used");
 	     mtype = MTYPE_I8;
-#endif
 	  /*
 	     if(TYPE_SBUF(type_tree)) {
 	          mtype = MTYPE_SB8;
@@ -1163,7 +1166,8 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
                           idx = MTYPE_To_TY (MTYPE_M8I2);
                           break;
                         case 4:
-                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)                            idx = MTYPE_To_TY (MTYPE_V8I4);
+                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)
+                            idx = MTYPE_To_TY (MTYPE_V8I4);
                           else
                             idx = MTYPE_To_TY (MTYPE_M8F4);
                           break;
@@ -1180,12 +1184,14 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
                           idx = MTYPE_To_TY (MTYPE_V16I2);
                           break;
                         case 4:
-                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)                            idx = MTYPE_To_TY (MTYPE_V16I4);
+                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)
+                            idx = MTYPE_To_TY (MTYPE_V16I4);
                           else
                             idx = MTYPE_To_TY (MTYPE_V16F4);
                           break;
                         case 8:
-                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)                            idx = MTYPE_To_TY (MTYPE_V16I8);
+                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)
+                            idx = MTYPE_To_TY (MTYPE_V16I8);
                           else
                             idx = MTYPE_To_TY (MTYPE_V16F8);
                           break;

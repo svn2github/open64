@@ -935,7 +935,6 @@ libgcj="target-libffi \
 target_libraries="target-libiberty \
 		target-libgloss \
 		target-newlib \
-		target-libstdc++-v3 \
 		target-libmudflap \
 		target-libssp \
 		target-libgfortran \
@@ -1643,7 +1642,7 @@ case "${target}" in
     noconfigdirs="$noconfigdirs target-libiberty target-libstdc++-v3 ${libgcj}"
     ;;
   *-*-linux* | *-*-gnu* | *-*-k*bsd*-gnu)
-    noconfigdirs="$noconfigdirs target-newlib target-libgloss target-libstdc++-v3"
+    noconfigdirs="$noconfigdirs target-newlib target-libgloss"
     ;;
   *-*-lynxos*)
     noconfigdirs="$noconfigdirs target-newlib target-libgloss ${libgcj}"
@@ -3377,7 +3376,10 @@ fi
 # for target_alias and gcc doesn't manage it consistently.
 target_configargs="--cache-file=./config.cache --build=${build_alias} --host=${target_alias} --target=${target_alias} ${target_configargs}"
 
+if [ "`uname -m | sed -e s/i.86/i386/`" != "i386" ]
+then
 FLAGS_FOR_TARGET=
+fi
 case " $target_configdirs " in
  *" newlib "*)
   case " $target_configargs " in

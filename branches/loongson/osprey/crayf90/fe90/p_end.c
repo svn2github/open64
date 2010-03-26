@@ -3008,9 +3008,6 @@ static void end_if_blk(boolean	err_call)
    int		ir_idx;
 # endif
 
-# if 0
-   int		sh_idx;
-# endif
 
 
    TRACE (Func_Entry, "end_if_blk", NULL);
@@ -3048,32 +3045,6 @@ static void end_if_blk(boolean	err_call)
    }
 
 
-#if 0
-   /* If the last clause of the IF construct is an ELSE IF, generate a        */
-   /* CONTINUE statement to define its branch-around label.                   */
-
-   if (CURR_BLK == If_Else_If_Blk &&  !error) {
-      gen_sh(Before, Continue_Stmt, stmt_start_line, stmt_start_col,
-             FALSE, TRUE, TRUE);
-
-      sh_idx              = SH_PREV_IDX(curr_stmt_sh_idx);
-      NTR_IR_TBL(ir_idx);
-      SH_IR_IDX(sh_idx)   = ir_idx;
-      IR_OPR(ir_idx)      = Label_Opr;
-      IR_TYPE_IDX(ir_idx) = TYPELESS_DEFAULT_TYPE;
-      IR_LINE_NUM(ir_idx) = stmt_start_line;
-      IR_COL_NUM(ir_idx)  = stmt_start_col;
-      IR_FLD_L(ir_idx)    = AT_Tbl_Idx;
-      IR_IDX_L(ir_idx)    = CURR_BLK_LABEL;
-      IR_LINE_NUM_L(ir_idx) = stmt_start_line;
-      IR_COL_NUM_L(ir_idx)  = stmt_start_col;
-
-      AT_DEFINED(CURR_BLK_LABEL)       = TRUE;
-      AT_DEF_LINE(CURR_BLK_LABEL)      = stmt_start_line;
-      ATL_DEF_STMT_IDX(CURR_BLK_LABEL) = sh_idx;
-      AT_REFERENCED(CURR_BLK_LABEL)    = Referenced;
-   }
-#endif
 
    
    if (CURR_BLK == If_Else_If_Blk  ||  CURR_BLK == If_Else_Blk) {
@@ -3104,31 +3075,6 @@ static void end_if_blk(boolean	err_call)
    SH_ERR_FLG(curr_stmt_sh_idx) = error;
 
 
-#if 0
-   /* Generate a CONTINUE statement to define the "end IF" label.             */
-
-   if (! error) {
-      gen_sh(Before, Continue_Stmt, stmt_start_line, stmt_start_col,
-             FALSE, TRUE, TRUE);
-
-      sh_idx				= SH_PREV_IDX(curr_stmt_sh_idx);
-      NTR_IR_TBL(ir_idx);
-      SH_IR_IDX(sh_idx)			= ir_idx;
-      IR_OPR(ir_idx)			= Label_Opr;
-      IR_TYPE_IDX(ir_idx)               = TYPELESS_DEFAULT_TYPE;
-      IR_LINE_NUM(ir_idx)		= stmt_start_line;
-      IR_COL_NUM(ir_idx)		= stmt_start_col;
-      IR_FLD_L(ir_idx)			= AT_Tbl_Idx;
-      IR_IDX_L(ir_idx)			= CURR_BLK_LABEL;
-      IR_LINE_NUM_L(ir_idx)		= stmt_start_line;
-      IR_COL_NUM_L(ir_idx)		= stmt_start_col;
-
-      AT_DEFINED(CURR_BLK_LABEL)	= TRUE;
-      AT_DEF_LINE(CURR_BLK_LABEL)	= stmt_start_line;
-      ATL_DEF_STMT_IDX(CURR_BLK_LABEL)	= sh_idx;
-      AT_REFERENCED(CURR_BLK_LABEL)	= Referenced;
-   }
-#endif
 
    /* Check before popping it because the program could be really messed up   */
    /* which would cause the Block Stack to be equally messed up.	      */

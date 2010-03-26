@@ -69,7 +69,6 @@ extern int gs_decode_reg_name (const char *asmspec);
 }
 
 extern char *WGEN_Tree_Node_Name(gs_t exp);
-
 #define ENLARGE(x) (x + (x >> 1))
 
 static BOOL  *if_else_info_stack;
@@ -378,22 +377,12 @@ Emit_Cleanup(gs_t cleanup)
     WGEN_Stmt_Append (if_stmt, Get_Srcpos());
     WGEN_Stmt_Push (then_block, wgen_stmk_if_then, Get_Srcpos());
     gs_t then_clause = gs_then_clause(cleanup);
-#if 0 // wgen TODO
-    if (gs_tree_code(then_clause) == EXPR_WITH_FILE_LOCATION)
-      then_clause = EXPR_WFL_NODE(then_clause);
-    else 
-#endif
     if (gs_tree_code(then_clause) == GS_CLEANUP_STMT)
       then_clause = gs_cleanup_expr(then_clause);
     WGEN_One_Stmt_Cleanup(then_clause);
     WGEN_Stmt_Pop(wgen_stmk_if_then);
   } else {
 
-#if 0 // wgen TODO
-    if (gs_tree_code(cleanup) == EXPR_WITH_FILE_LOCATION)
-      cleanup = EXPR_WFL_NODE(cleanup);
-    else 
-#endif
     if (gs_tree_code(cleanup) == GS_CLEANUP_STMT)
       cleanup = gs_cleanup_expr(cleanup);
     WGEN_One_Stmt_Cleanup (cleanup);
@@ -485,7 +474,7 @@ Do_Handlers (INT cleanups)
 
   // enable_cxx_openmp ensures that we do not need any special processing
   // while inside a C++ exception handler.
-  if (key_exceptions
+  if (emit_exceptions
 #ifdef FE_GNU_4_2_0
       && !enable_cxx_openmp
 #endif
@@ -525,7 +514,7 @@ Do_Handlers (INT cleanups)
 #ifdef KEY
   processing_handler = false;
   Do_Cleanups_For_EH(cleanups);
-  if (key_exceptions) 
+  if (emit_exceptions) 
     FmtAssert (cleanup_list_for_eh.size() == cleanups,
                ("EH Cleanup list not completely processed"));
 
@@ -905,7 +894,7 @@ Do_Temp_Cleanups (gs_t t)
   }
   --temp_cleanup_i;
 
-  if (key_exceptions && processing_handler && 
+  if (emit_exceptions && processing_handler && 
 	!cleanup_matches(temp_cleanup_stack[temp_cleanup_i+1].expr, t))
   {
     HANDLER_INFO hi = handler_stack.top();
@@ -1892,7 +1881,7 @@ WGEN_Expand_Break (void)
 
   if (scope)
   {
-    if (key_exceptions && processing_handler)
+    if (emit_exceptions && processing_handler)
 	Cleanup_To_Scope_From_Handler (scope);
     else
     	Cleanup_To_Scope (scope);
@@ -1933,7 +1922,7 @@ WGEN_Expand_Continue (void)
    }
   }
 
-  if (key_exceptions && processing_handler && !label_idx)
+  if (emit_exceptions && processing_handler && !label_idx)
   { // have not yet found the enclosing loop
 	INT32 j = hi.break_continue->size()-1;
 	while ((*hi.break_continue)[j].tree_code == GS_SWITCH_STMT) --j;
@@ -1944,7 +1933,7 @@ WGEN_Expand_Continue (void)
 
   if (scope)
   {
-    if (key_exceptions && processing_handler)
+    if (emit_exceptions && processing_handler)
 	Cleanup_To_Scope_From_Handler (scope);
     else
     	Cleanup_To_Scope (scope);
@@ -2137,12 +2126,12 @@ WGEN_Expand_Goto (gs_t label)	// KEY VERSION
       }
     }
 
-  if (in_handler && (!key_exceptions || !processing_handler))
+  if (in_handler && (!emit_exceptions || !processing_handler))
   	DevWarn ("Goto in exception handler but exceptions not enabled?");
 // If this is a handler, we have just emitted the cleanups within it. 
 // Now find out what other cleanups need to be emitted for variables 
 // outside the handler.
-  if (in_handler && processing_handler && key_exceptions)
+  if (in_handler && processing_handler && emit_exceptions)
   {
     HANDLER_INFO hi = handler_stack.top();
 
@@ -2177,6 +2166,8 @@ WGEN_Expand_Computed_Goto (gs_t exp)
   WN *wn   = WN_CreateAgoto (addr);
   WGEN_Stmt_Append (wn, Get_Srcpos());
 } /* WGEN_Expand_Computed_Goto */
+
+
 
 static void 
 WGEN_Expand_If (gs_t stmt)
@@ -2234,6 +2225,10 @@ comma_is_not_needed (WN * comma_block, WN * wn)
   if (WN_operator(last_stmt) != OPR_STID)
     return FALSE;
 
+  // if we have a nested COMMA expression, this comma is needed.
+  if (WN_operator(WN_kid0(last_stmt)) == OPR_COMMA)
+    return FALSE;
+
   ST * sym = WN_st(last_stmt);
 
   if (sym != WN_st(wn) ||
@@ -2245,35 +2240,6 @@ comma_is_not_needed (WN * comma_block, WN * wn)
   return TRUE;
 }
 
-#if 0
-// This code should no longer be necessary after the fix to bug 12698.
-// GNU 4.2.0 bug 12670: Try to decipher retval to find out what is being
-// returned from a function.
-WN *
-WGEN_Compute_Retval (gs_t retval)
-{
-  while (gs_tree_code(retval) == GS_NOP_EXPR)
-    retval = gs_tree_operand(retval, 0);
-
-  Is_True (retval, ("WGEN_Compute_Retval: NULL kid of NOP_EXPR"));
-  if (gs_tree_code(retval) == GS_BIND_EXPR &&
-      gs_tree_code(gs_bind_expr_body(retval)) == GS_STATEMENT_LIST)
-    retval = gs_bind_expr_body(retval);
-
-  if (gs_tree_code(retval) == GS_STATEMENT_LIST)
-  {
-    // Obtain the last statement and see if it helps in determining what
-    // is being returned.
-    INT num_stmts = gs_length(gs_statement_list_elts(retval));
-    gs_t decl = gs_index(gs_statement_list_elts(retval), num_stmts - 1);
-    if (gs_tree_code(decl) == GS_VAR_DECL ||
-        gs_tree_code(decl) == GS_PARM_DECL)
-      return WGEN_Expand_Expr (decl);
-  }
-
-  return NULL;
-}
-#endif
 #endif
 
 void
@@ -2309,7 +2275,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       --i;
     }
 #ifdef KEY
-    if (key_exceptions && processing_handler) {
+    if (emit_exceptions && processing_handler) {
 	HANDLER_INFO hi = handler_stack.top();
 	FmtAssert (hi.scope, ("NULL scope"));
 	int j = hi.scope->size()-1;
@@ -2388,16 +2354,6 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
     }
 #endif
 
-#if 0
-    // This code should no longer be necessary after fix to bug 12698.
-    // bug 12670: In GNU 4.2.0, the retval inside a RETURN_EXPR may not
-    // have a TARGET_EXPR, but may have a list of statements computing
-    // the return value. In this case, make another effort to determine
-    // the return value. This should not harm GNU 4.0.
-    if (!rhs_wn) {
-      rhs_wn = WGEN_Compute_Retval (retval);
-    }
-#endif
 
     WN * cleanup_block = WN_CreateBlock ();
     WGEN_Stmt_Push (cleanup_block, wgen_stmk_temp_cleanup, Get_Srcpos ());
@@ -2425,7 +2381,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       --i;
     }
 #ifdef KEY
-    if (key_exceptions && processing_handler) {
+    if (emit_exceptions && processing_handler) {
 	HANDLER_INFO hi = handler_stack.top();
 	FmtAssert (hi.scope, ("NULL scope"));
 	int j = hi.scope->size()-1;
@@ -2482,7 +2438,6 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
     if (WN_operator(rhs_wn) == OPR_COMMA) {
       WN * comma_block = WN_kid0(rhs_wn);
       if (WN_first(comma_block) &&
-          (TY_mtype (ret_ty_idx) != MTYPE_M) &&
           comma_is_not_needed(comma_block, WN_kid1(rhs_wn))) {
         WN * last = WN_last (comma_block);
         WN_EXTRACT_FromBlock (comma_block, last);
@@ -2539,16 +2494,8 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
     else if (rhs_wn) {
       WGEN_Set_ST_Addr_Saved (rhs_wn);
 #ifdef KEY // bug 15176 force return type to same size as declared return type
-      if (MTYPE_byte_size(TY_mtype(ret_ty_idx)) < MTYPE_byte_size(WN_rtype(rhs_wn)))
-	rhs_wn = WN_CreateCvtl(OPR_CVTL,
-			       Mtype_TransferSize(WN_rtype(rhs_wn), TY_mtype(ret_ty_idx)),
-			       MTYPE_V,
-			       MTYPE_size_min(TY_mtype(ret_ty_idx)), rhs_wn);
-      else if (MTYPE_byte_size(TY_mtype(ret_ty_idx)) >
-	       MTYPE_byte_size(WN_rtype(rhs_wn)))
-	rhs_wn = WN_Cvt(WN_rtype(rhs_wn),
-			Mtype_TransferSize(TY_mtype(ret_ty_idx), WN_rtype(rhs_wn)),
-			rhs_wn);
+      if (TY_mtype(ret_ty_idx) != WN_rtype(rhs_wn))
+        rhs_wn = WN_Type_Conversion(rhs_wn, TY_mtype(ret_ty_idx));
 #endif
       wn = WN_CreateReturn_Val(OPR_RETURN_VAL, WN_rtype(rhs_wn), MTYPE_V, rhs_wn);
     }
@@ -2995,10 +2942,6 @@ Tid_For_Handler (gs_t handler)
   while (gs_tree_code(t) != GS_COMPOUND_EXPR)
     t = gs_tree_chain(t);
   t = first_in_compound_expr(t);
-#if 0   /* START_CATCH_STMT no longer exists */
-  while (TREE_CODE(t) != START_CATCH_STMT)
-    t = TREE_CHAIN(t);
-#endif
   t = gs_tree_type(t);
   return t ? ST_st_idx(Get_ST (gs_tree_operand(t, 0))) : 0;
 }
@@ -3085,7 +3028,7 @@ Create_handler_list (int scope_index)
     if ((gs_tree_code(t) != GS_TRY_BLOCK) || gs_cleanup_p(t))	continue;
 
     gs_t h = gs_try_handlers (t);
-    if (key_exceptions)
+    if (emit_exceptions)
       FmtAssert (h, ("Create_handler_list: Null handlers"));
 
     HANDLER_ITER iter (h);
@@ -3249,7 +3192,7 @@ lookup_cleanups (INITV_IDX& iv)
   for (int i=temp_cleanup_i; i>=0; --i)
   {
 	TEMP_CLEANUP_INFO t = temp_cleanup_stack[i];
-  	if (t.label_idx && t.cleanup_eh_only)
+  	if (t.label_idx)
 	{
 		// need to call the delete operator
 		temp_cleanup = temp_cleanup_stack[i].expr;
@@ -3578,15 +3521,11 @@ WGEN_Expand_Try (gs_t stmt)
 #ifdef KEY
   vector<SCOPE_CLEANUP_INFO> *scope_cleanup = Get_Scope_Info ();
 // FIXME: handle temp cleanups for return from handler.
-#if 0 
-  vector<TEMP_CLEANUP_INFO> *temp_cleanup = Get_Temp_Cleanup_Info ();
-#else
   vector<TEMP_CLEANUP_INFO> *temp_cleanup = 0;
-#endif
   vector<BREAK_CONTINUE_INFO> *break_continue = Get_Break_Continue_Info ();
   int handler_count=0;
   WN * region_body;
-  if (key_exceptions)
+  if (emit_exceptions)
   {
     region_body = WN_CreateBlock();
     WGEN_Stmt_Push (region_body, wgen_stmk_region_body, Get_Srcpos());
@@ -3602,7 +3541,7 @@ WGEN_Expand_Try (gs_t stmt)
 
 #ifdef KEY
   LABEL_IDX start = 0;
-  if (key_exceptions)
+  if (emit_exceptions)
   {
     WGEN_Stmt_Pop (wgen_stmk_region_body);
     WN * region_pragmas = WN_CreateBlock();
@@ -3661,10 +3600,10 @@ WGEN_Expand_Try (gs_t stmt)
   cmp_idxs[1] = start;
   LABEL_IDX goto_idx=0;
   bool outermost = 0;
-  if (key_exceptions) outermost = Get_Cleanup_Info (cleanups, &goto_idx);
+  if (emit_exceptions) outermost = Get_Cleanup_Info (cleanups, &goto_idx);
   vector<ST_IDX> *handler_list = new vector<ST_IDX>();
   vector<ST_IDX> * eh_spec_list = NULL;
-  if (key_exceptions) 
+  if (emit_exceptions) 
   {
     Get_handler_list (handler_list);
     eh_spec_list = new vector<ST_IDX>();
@@ -3726,7 +3665,7 @@ WGEN_Expand_EH_Spec (gs_t stmt)
 #ifdef KEY
       int bkup = current_eh_spec_ofst;
       int initial_size = eh_spec_vector.size();
-      if (key_exceptions)
+      if (emit_exceptions)
       {
         // Generally, there is 1 exception specification per function.
         // After inlining (by the GNU front-end or inliner/ipa), the caller
@@ -3775,7 +3714,7 @@ WGEN_Expand_EH_Spec (gs_t stmt)
       WGEN_Expand_Stmt (EH_SPEC_STMTS (stmt));
 #endif
 #ifdef KEY
-      if (key_exceptions)
+      if (emit_exceptions)
       { // now clear eh_spec_vector, eh_spec_func_end stays.
       	if (!initial_size) eh_spec_vector.clear();
 	else
@@ -3800,25 +3739,11 @@ Call_Named_Function (ST * st)
 void
 Call_Throw (void)
 {
-#if 0
-  static ST * st = NULL;
-  if (st == NULL) {
-    st = Function_ST_For_String("__throw");
-  }
-  Call_Named_Function (st);
-#endif
 }
 
 void
 Call_Rethrow (void)
 {
-#if 0
-  static ST * st = NULL;
-  if (st == NULL) {
-    st = Function_ST_For_String ("__rethrow");
-  }
-  Call_Named_Function (st);
-#endif
 }
 
 void
@@ -3891,10 +3816,10 @@ Generate_unwind_resume (void)
 	call_unexpected = Generate_cxa_call_unexpected ();
   }
 
-  if (key_exceptions)
+  if (emit_exceptions)
   	WGEN_Stmt_Push (WN_CreateBlock(), wgen_stmk_region_body, Get_Srcpos());
   WGEN_Stmt_Append (call_wn, Get_Srcpos());
-  if (key_exceptions)
+  if (emit_exceptions)
   	Setup_EH_Region (1 /* for _Unwind_Resume */);
 // We would ideally want to put it inside the above region, but we cannot
 // jmp from outside a region into it.
@@ -3902,10 +3827,10 @@ Generate_unwind_resume (void)
   {
   	WGEN_Stmt_Append (WN_CreateLabel ((ST_IDX) 0, goto_unexpected, 0, NULL),
     		Get_Srcpos());
-  	if (key_exceptions)
+  	if (emit_exceptions)
   	    WGEN_Stmt_Push (WN_CreateBlock(), wgen_stmk_region_body, Get_Srcpos());
   	WGEN_Stmt_Append (call_unexpected, Get_Srcpos());
-  	if (key_exceptions)
+  	if (emit_exceptions)
   	    Setup_EH_Region (1 /* for __cxa_call_unexpected */);
   }
 }
@@ -3959,7 +3884,7 @@ WGEN_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
 
 #ifdef KEY
     HANDLER_ITER iter(t);
-    if (key_exceptions)
+    if (emit_exceptions)
     {
       // Generate the compare statements with eh-filter.
       for (iter.First(); iter.Not_Empty(); iter.Next())
@@ -3981,12 +3906,6 @@ WGEN_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
 	  else // catch-all, so do not compare filter
       		WGEN_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL, 
 				HANDLER_LABEL(t_copy)), Get_Srcpos());
-#if 0
-// we shouldn't need the following sort call
-// TODO: verify and remove it.
-	  sort (type_filter_vector.begin(), type_filter_vector.end(), 
-		cmp_types());
-#endif
         }
         else 
 	{
@@ -4016,7 +3935,7 @@ WGEN_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
       }
       else
       	WGEN_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL, goto_idx), Get_Srcpos());
-    } // key_exceptions
+    } // emit_exceptions
 #endif // KEY
     // Now, emit the actual exception handler body's.
     for (iter.First(); iter.Not_Empty(); iter.Next()) {
@@ -4044,12 +3963,6 @@ WGEN_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
 // We will see if control reaches here.
 // Let me comment this out, may need to do something else later.
       //Fail_FmtAssertion ("Handle it");
-#if 0
-      // Don't do anything for TREE_CODE(t) == BIND_EXPR.
-      // Clean up this code once it stabilizes.
-      WFE_One_Stmt (t);
-      Call_Rethrow();
-#endif
   }    
 }
 
@@ -4114,10 +4027,6 @@ WGEN_Expand_DO (gs_t stmt)
   incr = gs_omp_for_incr (stmt);
   cond = gs_omp_for_cond (stmt);
   body = gs_omp_for_body (stmt);
-#if 0
-  for (init = FOR_INIT_STMT(stmt); init; init = TREE_CHAIN(init))
-	WFE_Expand_Stmt(init);
-#endif
   expand_start_do_loop (init, cond, incr);
   while (body)
   {
@@ -4172,6 +4081,7 @@ WGEN_Expand_Stmt(gs_t stmt, WN* target_wn)
     if(gs_tree_has_location(stmt) == gs_true)
      WGEN_Set_Line_And_File (lineno, gs_expr_filename(stmt), TRUE);
 
+    WGEN_Guard_Init_Block_Push(); 
     if (lang_cplus) 
       switch (gs_tree_code_class(stmt)){
       case GS_TCC_REFERENCE:
@@ -4253,11 +4163,6 @@ WGEN_Expand_Stmt(gs_t stmt, WN* target_wn)
       break;
 
     case GS_FOR_STMT:
-#if 0 // wgen TODO
-      if (gs_tree_addressable (stmt))	// OpenMP DO loop
-        WGEN_Expand_DO (stmt);
-      else
-#endif
       WGEN_Expand_Loop (stmt);
       break;
 
@@ -4299,14 +4204,6 @@ WGEN_Expand_Stmt(gs_t stmt, WN* target_wn)
       // wgen TODO: gcc 4.x does not have any SCOPE_STMT, we need to handle
       // all the code executed for SCOPE_STMT.
       Fail_FmtAssertion ("WGEN_Expand_Stmt: Unexpected SCOPE_STMT");
-#if 0 // wgen TODO
-      if (opt_regions && Check_For_Call_Region ())
-          Did_Not_Terminate_Region = FALSE;
-      if (gs_scope_begin_p(stmt))
-	Push_Scope_Cleanup (stmt);
-      else
-	Pop_Scope_And_Do_Cleanups ();
-#endif
       break;
 
     case GS_SWITCH_STMT:
@@ -4321,12 +4218,6 @@ WGEN_Expand_Stmt(gs_t stmt, WN* target_wn)
       WGEN_Expand_Loop (stmt);
       break;
 
-#if 0 // wgen TODO no more of these tree_codes
-    case GS_FILE_STMT:
-      /* Simple enough to handle.  */
-      input_filename = FILE_STMT_FILENAME (stmt);
-      break;
-#endif
 
     case GS_EH_SPEC_BLOCK:
 #ifdef FE_GNU_4_2_0
@@ -4404,6 +4295,7 @@ WGEN_Expand_Stmt(gs_t stmt, WN* target_wn)
 	break;
       default: ;
       }
+     WGEN_Guard_Init_Block_Pop(); 
 } /* WGEN_Expand_Stmt */
 
 // RETVAL is a TARGET_EXPR that generates the function return value.  The
@@ -4539,23 +4431,6 @@ WGEN_Expand_Pragma (gs_t exp)
       break;
     }
     
-#if 0 // wgen TODO
-    case options_dir:
-    { // pragma options
-      TCON tcon;
-      exp = (gs_t) exp->omp.omp_clause_list;
-      tcon = Host_To_Targ_String (MTYPE_STRING,
-                                  const_cast<char*>TREE_STRING_POINTER(exp),
-                                  TREE_STRING_LENGTH(exp) - 1 /* ignore \0 */);
-      TY_IDX ty_idx = Get_TY(gs_tree_type(exp));
-      ST * st = New_Const_Sym (Enter_tcon (tcon), ty_idx);  
-      TREE_STRING_ST (exp) = st;
-      WN * wn = WN_CreatePragma (WN_PRAGMA_OPTIONS, st, 0, 0);
-      WN * func_wn = WGEN_Find_Stmt_In_Stack (wgen_stmk_func_entry);
-      WN_INSERT_BlockLast (WN_func_pragmas(func_wn), wn);
-      break;
-    }
-#endif
     default:
     {
        FmtAssert(FALSE, ("WGEN_Expand_Pragma: no yet implemented pragma %s", gs_code_name(code)));

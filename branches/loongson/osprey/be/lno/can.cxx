@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -72,7 +76,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -410,12 +413,19 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
         FALSE,FALSE,FALSE,FALSE,TRUE), &LNO_default_pool);
       dli->Depth = depth;
       dli->Is_Backward = Do_Loop_Is_Backward(wn); 
+      WN *loop_info = WN_do_loop_info(wn);
+      if (loop_info) {
+        if (WN_Loop_Multiversion_Alias(loop_info))
+          fprintf(stderr,"Multiversion alias flag arrived in LNO...\n");
+        dli->Multiversion_Alias = (WN_Loop_Multiversion_Alias(loop_info) != 0);
+      }
       WN_MAP_Set(LNO_Info_Map,wn,(void *)dli);
     } else {
       dli->Has_Calls=FALSE;
       dli->Has_Unsummarized_Calls=FALSE;
       dli->Has_Gotos_This_Level=FALSE;
       dli->Has_Exits=FALSE;
+      dli->Has_EH_Regions=FALSE;
       dli->Is_Inner=TRUE;
     }
     WN* wn_region = LWN_Get_Parent(LWN_Get_Parent(wn));
@@ -482,9 +492,12 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
       while (pwn) {
 	if (WN_opcode(pwn) == OPC_DO_LOOP) {
 	  DO_LOOP_INFO *dli = Get_Do_Loop_Info(pwn);
-	  if (dli && dli->Mp_Info) {
-	    // must be a parallel loop
-	    dli->Mp_Info->Disable_Plowering();
+	  if (dli) {
+            dli->Has_EH_Regions = TRUE;
+            if (dli->Mp_Info) {
+              // must be a parallel loop
+              dli->Mp_Info->Disable_Plowering();
+            }
 	  }
 	}
 	pwn = LWN_Get_Parent(pwn);

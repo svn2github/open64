@@ -60,6 +60,7 @@
 
 #include <math.h>
 #include <alloca.h>
+#include <stack>
 
 #include "defs.h"
 #include "config.h"
@@ -105,6 +106,7 @@
        BOOL    FREQ_freqs_computed; // True if freqs computed for region
 static BB_SET *Never_BBs;	// Set of BBs having "never" freq pragmas
 static BB_SET *Frequent_BBs;	// Set of BBs having "frequent" freq pragmas
+static BB_SET *LMV_Precond_BBs;
 static float   Frequent_Never_Ratio;
 static BB_MAP  dfo_map;		// Depth-first order mapping
 static BB    **dfo_vec;		// Vector of BBs ordered depth-first
@@ -653,13 +655,6 @@ BOOL WN_Is_Pointer(WN *wn)
     return TRUE;
 
   case OPR_LDID:
-#if 0
-    if (WN_class(wn) == CLASS_PREG) {
-
-      /* need to handle pregs specially, but how...
-       */
-    }
-#endif
     /*FALLTHROUGH*/
 
   case OPR_ILOAD:
@@ -787,7 +782,7 @@ Pointer_Heuristic(
 
   cond_wn = WN_kid0(br_wn);
 
-#if defined(TARG_SL)
+#if defined(TARG_SL) || defined(TARG_PPC32)  
   if (cond_wn == 0)  return FALSE;
 #endif
 
@@ -887,9 +882,11 @@ Opcode_Heuristic(
   WN *br_wn = BB_branch_wn(bb);
   if (br_wn) {
     WN *cond_wn = WN_kid0(br_wn);
-#if defined(TARG_SL)
+
+#if defined(TARG_SL) || defined(TARG_PPC32)
     if (!cond_wn) return FALSE;
 #endif    
+
     OPERATOR cond_oper = WN_operator(cond_wn);
     if (OPERATOR_is_compare(cond_oper)) {
       if (WN_Is_Pointer(WN_kid0(cond_wn)) || WN_Is_Pointer(WN_kid1(cond_wn))) {
@@ -1520,6 +1517,142 @@ Find_Freq_Hint_Pragmas(
   }
 }
 
+void
+Find_Freq_LMV_Predecessors(LOOP_DESCR *the_loops,
+                           BB_SET **freq_bbs,
+                           MEM_POOL *pool)
+{
+  INT i;
+  FILE *tfile = TFile;
+
+  i = 0;
+  for (LOOP_DESCR *cloop = the_loops; cloop != NULL;
+       cloop = LOOP_DESCR_next(cloop)) {
+    LOOPINFO *loopinfo = LOOP_DESCR_loopinfo(cloop);
+    if (loopinfo && LOOPINFO_multiversion(loopinfo)) {
+      BOOL found_lmv_pattern = FALSE;
+      std::stack<BB *> lmv_bbs;
+
+      BB *loophead = LOOP_DESCR_loophead(cloop);
+      fprintf(tfile,"LMV Loop: loop head: %d\n",BB_id(loophead));
+
+      // Find the header predecessor that is not inside the current
+      // loop, i.e. the loop preheader
+      BB *preheader = NULL;
+      EDGE *edge;
+      FOR_ALL_PRED_EDGES(loophead,edge) {
+        BB *pred = EDGE_pred(edge);
+        ANNOTATION *annot = ANNOT_Get(BB_annotations(pred),ANNOT_LOOPINFO);
+        if (annot == NULL || ANNOT_loopinfo(annot) != loopinfo) {
+          preheader = pred;
+          break;
+        }
+      }
+      if (!preheader)
+        continue;
+      fprintf(tfile,"LMV Loop: preheader %d\n",BB_id(preheader));
+      lmv_bbs.push(preheader);
+
+      // Follow the chain of single predecessors to find the
+      // LMV pre-condition chain.  The first block with multiple
+      // predecessors is the tail of the precondition chain, which
+      // has the following structure:
+      //
+      //         X (pred1)
+      //        / \
+      //       /   Y (pred2)
+      //       \  / \
+      //        \/   Z : path to conservative LMV loop (offpath)
+      //        M (merge)
+      //
+      int n_preds;
+      BB *bb = preheader;
+      do {
+        BB *single_pred;
+        n_preds = 0;
+        FOR_ALL_PRED_EDGES(bb,edge) {
+          single_pred = EDGE_pred(edge);
+          n_preds++;
+        }
+        if (n_preds == 1) {
+          bb = single_pred;
+          fprintf(tfile,"LMV Loop: next single pred %d\n",BB_id(bb));
+          lmv_bbs.push(bb);
+        }
+      } while (n_preds == 1);
+
+      // At this point we have the first block having multiple predecessors.
+      // Look for the pattern
+      BOOL match_pattern = FALSE;
+      BB *merge = bb;
+      BB *off_path = NULL;
+      BB *pred1 = NULL;
+      BB *pred2 = NULL;
+      do {
+        n_preds = 0;
+        FOR_ALL_PRED_EDGES(merge,edge) {
+          n_preds++;
+        }
+        if (n_preds == 2) {
+          BB *pred[2];
+          int i = 0;
+          FOR_ALL_PRED_EDGES(merge,edge) {
+            pred[i++] = EDGE_pred(edge);
+          }
+          if (BB_Find_Succ_Edge(pred[0],pred[1])) {
+            pred1 = pred[0];
+            pred2 = pred[1];
+          }
+          else if (BB_Find_Succ_Edge(pred[1],pred[0])) {
+            pred1 = pred[1];
+            pred2 = pred[0];
+          }
+          else
+             break;
+
+          BOOL off_path_match = FALSE;
+          int n_succ = 0;
+          FOR_ALL_SUCC_EDGES(pred2,edge) {
+            n_succ++;
+            if (EDGE_succ(edge) != merge) {
+              if (!off_path) {
+                off_path = EDGE_succ(edge);
+                off_path_match = TRUE;
+              }
+              else if (off_path == EDGE_succ(edge))
+                off_path_match = TRUE;
+            }
+          }
+          if (n_succ != 2 || !off_path_match)
+            break;
+
+          fprintf(tfile,"LMV Loop: next hammock %d, %d (m %d) (o %d)\n",
+              BB_id(pred1),BB_id(pred2),BB_id(merge),BB_id(off_path));
+
+          lmv_bbs.push(pred2);
+          lmv_bbs.push(merge);
+
+          merge = pred1;
+          match_pattern = TRUE;
+          found_lmv_pattern = TRUE;
+        }
+      } while (match_pattern);
+
+      /* If we managed to find the hammock pattern of the lmv precondition
+       * chain, we now insert all discovered BBs into the lmv hint set
+       */
+      if (found_lmv_pattern) {
+        if (*freq_bbs == NULL)
+          *freq_bbs = BB_SET_Create_Empty(PU_BB_Count + 2, pool);
+        while (!lmv_bbs.empty()) {
+          BB *bb = lmv_bbs.top();
+          lmv_bbs.pop();
+          BB_SET_Union1D(*freq_bbs,bb,NULL);
+        }
+      }
+    }
+  }
+}
 
 /* ====================================================================
  *
@@ -1684,6 +1817,38 @@ Compute_BR_Prob_From_Hint(BB *bb, INT n_succs)
 }
 
 
+static BOOL
+Compute_BR_Prob_From_LMV_Hint(BB *bb)
+{
+  EDGE *sedge;
+  enum prob_src {ps_heuristic, ps_never, ps_frequent} *prob_src;
+  INT isucc;
+  INT n_heuristic;
+  INT n_never = 0;
+  INT n_frequent = 0;
+
+  BB *lmv_succ = NULL;
+  FOR_ALL_SUCC_EDGES(bb, sedge) {
+    BB *succ = EDGE_succ(sedge);
+    if (BB_SET_MemberP(LMV_Precond_BBs,succ)) {
+      if (lmv_succ == NULL)
+        lmv_succ = succ;
+      else
+        return FALSE;
+    }
+  }
+  if (lmv_succ) {
+    FOR_ALL_SUCC_EDGES(bb, sedge) {
+        BB *succ = EDGE_succ(sedge);
+        EDGE_prob(sedge) = (succ == lmv_succ)? 1.0 : 0.0;
+    }
+    return TRUE;
+  }
+  else
+    return FALSE;
+}
+
+
 /* ====================================================================
  *
  * Compute_Branch_Probabilities
@@ -1741,8 +1906,9 @@ Compute_Branch_Probabilities(void)
       if(!BB_freq_unbalanced(bb) || !CG_PU_Has_Feedback)
 #endif	  	
       EDGE_prob(BB_succ_edges(bb)) = 1.0;
-    } else if (   (Frequent_BBs || Never_BBs)
-	       && Compute_BR_Prob_From_Hint(bb, n_succs)
+    } else if (   ((Frequent_BBs || Never_BBs)
+	       && Compute_BR_Prob_From_Hint(bb, n_succs)) ||
+	       (LMV_Precond_BBs && Compute_BR_Prob_From_LMV_Hint(bb))
     ) {
       if (CFLOW_Trace_Freq) {
 	#pragma mips_frequency_hint NEVER
@@ -2443,7 +2609,6 @@ Normalize_BB_Frequencies(void)
  */
 BB_SET *FREQ_Find_Never_BBs(MEM_POOL *pool)
 {
-#if 1
   BB_SET *pragma_bbs;
   BB_SET *never_bbs;
   BB *bb;
@@ -2510,75 +2675,6 @@ BB_SET *FREQ_Find_Never_BBs(MEM_POOL *pool)
   } while (!BB_SET_EmptyP(pragma_bbs));
 
   Free_Dominators_Memory();
-#endif
-#if 0
-  BB_SET *never_bbs;
-  INT32 i;
-  BB *bb;
-  BB_MAP topo_map;
-  INT32 max_topo_idx;
-  BB **topo_vec;
-  BOOL never_bbs_added;
-
-  Find_Freq_Hint_Pragmas(&never_bbs, NULL, pool);
-  if (never_bbs == NULL) return NULL;
-
-  topo_map = BB_Topological_Map(NULL, NULL);
-  topo_vec = (BB **)alloca(sizeof(BB *) * PU_BB_Count);
-  bzero(topo_vec, sizeof(BB *) * PU_BB_Count);
-  max_topo_idx = 0;
-  for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
-    INT32 topo_id = BB_MAP32_Get(topo_map, bb);
-    DevAssert(topo_id >= 0 && topo_id <= PU_BB_Count, ("bad <topo_map> value"));
-    if (topo_id > 0) {
-      max_topo_idx = MAX(topo_id, max_topo_idx);
-      topo_vec[topo_id - 1] = bb;
-    }
-  }
-  BB_MAP_Delete(topo_map);
-
-  do {
-    never_bbs_added = FALSE;
-
-    for (i = 0; i <= max_topo_idx; ++i) {
-      BBLIST *edge;
-      BB *bb = topo_vec[i];
-
-     if (bb == NULL) continue;
-
-      if (BB_preds(bb) && !BB_SET_MemberP(never_bbs, bb)) {
-	FOR_ALL_BB_PREDS(bb, edge) {
-	  BB *pred = BBLIST_item(edge);
-	  if (!BB_SET_MemberP(never_bbs, pred)) goto next_fwd_bb;
-	}
-	BB_SET_Union1D(never_bbs, bb, NULL);
-	never_bbs_added = TRUE;
-      }
-
-    next_fwd_bb:
-      ;
-    }
-
-    for (i = max_topo_idx; i >= 0; --i) {
-      BBLIST *edge;
-      BB *bb = topo_vec[i];
-
-      if (bb == NULL) continue;
-
-      if (BB_succs(bb) && !BB_SET_MemberP(never_bbs, bb)) {
-	FOR_ALL_BB_SUCCS(bb, edge) {
-	  BB *succ = BBLIST_item(edge);
-	  if (!BB_SET_MemberP(never_bbs, succ)) goto next_rev_bb;
-	}
-	BB_SET_Union1D(never_bbs, bb, NULL);
-	never_bbs_added = TRUE;
-      }
-
-    next_rev_bb:
-      ;
-    }
-  } while (never_bbs_added);
-#endif
 
   return never_bbs;
 }
@@ -2789,6 +2885,14 @@ Initialize_Compute_BB_Frequencies(void)
     #pragma mips_frequency_hint NEVER
     LOOP_DESCR_Print_List();
   }
+
+  Find_Freq_LMV_Predecessors(loop_list,&LMV_Precond_BBs,&MEM_local_pool);
+  if (CFLOW_Trace_Freq) {
+    #pragma mips_frequency_hint NEVER
+    fprintf(TFile, "BBs hinted as begin in LMV precondition chain: ");
+    BB_SET_Print(LMV_Precond_BBs,TFile);
+    fprintf(TFile,"\n");
+  }
 }
 
 
@@ -2810,6 +2914,13 @@ Finalize_Compute_BB_Frequencies(void)
 
   MEM_POOL_Pop(&MEM_local_pool);
   MEM_POOL_Pop(&MEM_local_nz_pool);
+
+  /* Make sure that we reset the bit sets allocated from the
+   * pools that we have just popped.
+   */
+  Frequent_BBs = NULL;
+  Never_BBs = NULL;
+  LMV_Precond_BBs = NULL;
 
   Free_Dominators_Memory();
 

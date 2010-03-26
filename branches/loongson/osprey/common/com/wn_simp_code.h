@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -524,10 +528,10 @@ static INT64 create_bitmask(INT64 num_bits)
    return ((1LL << num_bits) - 1);
 }
 
-/* Compute FLOOR(log2(x))
+/* Compute FLOOR(log2_u64(x))
  * 
  */
-static UINT64 log2(UINT64 x)
+static UINT64 log2_u64(UINT64 x)
 {
    UINT64 l;
 
@@ -1112,7 +1116,7 @@ static BOOL is_ok_to_reassociate(OPCODE opc)
  * ====================================================================
  */
 
-static OPCODE get_inverse_relop( OPCODE opc )
+OPCODE get_inverse_relop( OPCODE opc )
 {
    OPCODE iopc;
    OPERATOR iopr;
@@ -2716,84 +2720,6 @@ static simpnode  simp_times( OPCODE opc,
 }
 
 #ifdef KEY
-#if 0
-// See comment in the caller.
-static simpnode Can_Be_Divided(simpnode node, INT64 c1)
-{
-  INT64 val;
-  INT i;
-  simpnode new_k = NULL;
-  simpnode k0 = NULL;
-  simpnode k1 = NULL;
-  simpnode new_k0 = NULL;
-  simpnode new_k1 = NULL;
-  OPERATOR opr = SIMPNODE_operator(node);
-  TYPE_ID ty = SIMPNODE_rtype(node);
-  INT kids_count = SIMPNODE_kid_count(node);
-
-  if(!SIMP_IS_TYPE_INTEGRAL(ty))
-    return NULL;
-
-  switch(opr){
-
-  //      (a +- b) / c = a/c +- b/c
-
-  case OPR_ADD:
-  case OPR_SUB:
-    k0 = SIMPNODE_kid0(node);
-    k1 = SIMPNODE_kid1(node);
-    if (SIMP_Is_Constant(k0)){
-      if (SIMPNODE_const_val(k0) % c1 == 0){
-	val = SIMPNODE_const_val(k0);
-	new_k0 = SIMP_INTCONST(ty,val/c1);
-      }
-      else return NULL;
-    }
-    else if (!(new_k0 = Can_Be_Divided(k0, c1)))
-      return NULL;
-    if (SIMP_Is_Constant(k1)){
-      if (SIMPNODE_const_val(k1) % c1 == 0){
-	val = SIMPNODE_const_val(k1);
-	new_k1 = SIMP_INTCONST(ty,val/c1);
-      }
-      else return NULL;
-    }
-    else if (!(new_k1 = Can_Be_Divided(k1, c1)))
-      return NULL;
-    new_k = SIMPNODE_SimpCreateExp2(OPC_FROM_OPR(opr,ty),new_k0,new_k1);
-    break;
-      
-     //      a * c / c = a
-    
-  case OPR_MPY:
-    k0 = SIMPNODE_kid0(node);
-    k1 = SIMPNODE_kid1(node);
-    if (SIMP_Is_Constant(k1)){
-      if (SIMPNODE_const_val(k1) % c1 == 0){
-	val = SIMPNODE_const_val(k1);
-	new_k1 = SIMP_INTCONST(ty,val/c1);
-	new_k = SIMPNODE_SimpCreateExp2(OPC_FROM_OPR(opr,ty),k0,new_k1);
-	break;
-      }
-      else return NULL;
-    }
-    else if (new_k1 = Can_Be_Divided(k1, c1)){
-      new_k = SIMPNODE_SimpCreateExp2(OPC_FROM_OPR(opr,ty),k0,new_k1);
-      break;
-    }
-    else if (new_k0 = Can_Be_Divided(k0, c1)){
-      new_k = SIMPNODE_SimpCreateExp2(OPC_FROM_OPR(opr,ty),new_k0,k1);
-    break;
-    }
-    else return NULL;
-
-  case OPR_DIV:;
-  default:
-    return NULL;
-  }
-  return new_k;
-}
-#endif  
 #endif  
 
 
@@ -2899,7 +2825,11 @@ static simpnode  simp_div( OPCODE opc,
 	   (SIMPNODE_operator(k1) == OPR_SQRT ||
 	    SIMPNODE_operator(k1) == OPR_MPY))
 #else
+#ifdef TARG_PPC32
+         Recip_Allowed && ty != MTYPE_F8
+#else
 	  Recip_Allowed
+#endif
 #endif
 	  ) {
 	 SHOW_RULE("+-1.0 / a");
@@ -2921,35 +2851,6 @@ static simpnode  simp_div( OPCODE opc,
    }
 
 #ifdef KEY
-#if 0
-   // Yan Xie implemented this optimization but, 
-   // there is a problem with Can_Be_Divided. 
-   // Whenever the function fails (meaning it returns NULL), 
-   // it would have modified the WHIRL tree properties 
-   // (for example, the parent map), but it disables the following
-   // optimization. Because the optimization does not take effect,
-   // the WHIRL tree is left un-modified, but the new properties 
-   // may not be correct.
-   if( k0const && SIMP_IS_TYPE_INTEGRAL(ty) ){
-     if( SIMP_Int_ConstVal(k0) == 0 ){
-       SHOW_RULE(" 0 / x	");
-       SIMP_DELETE(k0);
-       SIMP_DELETE(k1);
-       return SIMP_INTCONST(ty,0);
-     }
-   }
-            
-   if( k1const && SIMP_IS_TYPE_INTEGRAL(ty)
-       && SIMP_Int_ConstVal(k1) != 0 ){
-     simpnode new_k0 = NULL;
-     c1 = SIMP_Int_ConstVal(k1); 
-     if( new_k0 = Can_Be_Divided(k0,c1)){
-       SIMP_DELETE(k1);
-       return new_k0;
-     }
-   }
-   
-#endif
 #endif
 
    if (!Enable_Cfold_Aggressive || r) return(r);
@@ -3245,6 +3146,73 @@ static simpnode  simp_min_max(OPCODE opc,
       r = k0;
       SIMP_DELETE_TREE(k1);
    }
+   if (!Allow_wrap_around_opt) 
+      return(r);
+   else{
+      simpnode const_term0 = NULL;
+      simpnode const_term1 = NULL;
+      simpnode var0 = NULL;
+      simpnode var1 = NULL;
+      BOOL is_int;
+      if (SIMPNODE_operator(k0) == OPR_ADD)
+      {
+        const_term0 = SIMPNODE_kid1(k0);
+	if (SIMPNODE_operator(SIMPNODE_kid0(k0)) == OPR_LDID)
+	   var0 = SIMPNODE_kid0(k0);
+      }
+      else if (SIMPNODE_operator(k0) == OPR_LDID)
+      	var0 = k0;
+      
+      if (SIMPNODE_operator(k1) == OPR_ADD)
+      {
+        const_term1 = SIMPNODE_kid1(k1);
+	if (SIMPNODE_operator(SIMPNODE_kid0(k1)) == OPR_LDID)
+	   var1 = SIMPNODE_kid0(k1);
+      }
+      else if (SIMPNODE_operator(k1) == OPR_LDID)
+      	var1 = k1;
+
+      if (var0 == NULL || var1 == NULL || 
+      	SIMPNODE_Simp_Compare_Trees(var0, var1) !=0)
+      	return (r);
+
+      {
+      	double ck0, ck1;
+        if ( const_term0 == NULL)
+	{
+	  ck0 = 0;
+	} else if (SIMP_Is_Int_Constant(const_term0)){
+	  ck0 = SIMP_Int_ConstVal(const_term0);
+	  if (!is_numeric_equal(const_term0, ck0))
+	    return (r);
+	}
+	else
+      	  return (r);
+	
+        if ( const_term1 == NULL)
+	{
+	  ck1 = 0;
+	} else if (SIMP_Is_Int_Constant(const_term1)){
+	  ck1 = SIMP_Int_ConstVal(const_term1);
+	  if (!is_numeric_equal(const_term1, ck1))
+	    return (r);
+	}
+	else
+      	  return (r);
+	SHOW_RULE(" MAX(x+c0,x+c1), MIN(x+c0,x+c1) ");
+        if (ck0 >= ck1 && ismax || !ismax && ck0 <= ck1)
+       	{	  
+	  r = k0;
+  	  SIMP_DELETE_TREE(k1);
+       	}
+	else{
+	  r = k1;
+	  SIMP_DELETE_TREE(k0);
+	}
+		
+      }
+   }
+
    return (r);
 }
 
@@ -3309,7 +3277,7 @@ static simpnode  simp_band( OPCODE opc,
 	 // When expanding into extract, need to take care of the endianness.
 	 // See gcc.c-torture/execute/200201271-1.c 
 	 if (Target_Byte_Sex != Host_Byte_Sex)
-	   shift_count = MTYPE_bit_size(ty) - shift_count - log2((UINT64)c1+1);
+	   shift_count = MTYPE_bit_size(ty) - shift_count - log2_u64((UINT64)c1+1);
 #endif
          mask_bits = create_bitmask(MTYPE_bit_size(ty) - shift_count);
 	 if ((mask_bits & c1) == mask_bits) {
@@ -3318,7 +3286,7 @@ static simpnode  simp_band( OPCODE opc,
 	   SIMP_DELETE(k1);
          } else if (Enable_extract_bits && IS_POWER_OF_2(c1+1)) {
 	   r = SIMPNODE_SimpCreateExtract(MTYPE_bit_size(ty) == 32 ? OPC_U4EXTRACT_BITS : OPC_U8EXTRACT_BITS,
-					  shift_count,log2((UINT64)c1+1),
+					  shift_count,log2_u64((UINT64)c1+1),
 					  SIMPNODE_kid0(k0));
 	   SIMP_DELETE(k1);
 	   SIMP_DELETE(SIMPNODE_kid1(k0));
@@ -3331,11 +3299,11 @@ static simpnode  simp_band( OPCODE opc,
          // When expanding into extract, need to take care of the endianness.
          // See gcc.c-torture/execute/200201271-1.c
          if (Target_Byte_Sex != Host_Byte_Sex)
-           shift_count = MTYPE_bit_size(ty) - shift_count - log2((UINT64)c1+1);
+           shift_count = MTYPE_bit_size(ty) - shift_count - log2_u64((UINT64)c1+1);
          mask_bits = create_bitmask(MTYPE_bit_size(ty) - shift_count);
          if (Enable_extract_bits && IS_POWER_OF_2(c1+1)) {
            r = SIMPNODE_SimpCreateExtract(MTYPE_bit_size(ty) == 32 ? OPC_U4EXTRACT_BITS : OPC_U8EXTRACT_BITS,
-                                          shift_count,log2((UINT64)c1+1),
+                                          shift_count,log2_u64((UINT64)c1+1),
                                           k0);
            SIMP_DELETE(k1);
          }
@@ -3562,14 +3530,14 @@ static simpnode  simp_bior( OPCODE opc,
      
      if (IS_POWER_OF_2(c1+1) && ((c2 & c1) == 0) && (((c2 | c1) & type_mask) == type_mask)) {
        SHOW_RULE("(J&mask1) | (k & mask2)");
-       r = SIMPNODE_SimpCreateDeposit(OPC_FROM_OPR(OPR_COMPOSE_BITS,ty),0,log2((UINT64)c1+1),
+       r = SIMPNODE_SimpCreateDeposit(OPC_FROM_OPR(OPR_COMPOSE_BITS,ty),0,log2_u64((UINT64)c1+1),
 				      SIMPNODE_kid0(k1),SIMPNODE_kid0(k0));
 #ifdef KEY
        // When expanding into deposit, need to take care of the endianness.
        if (Target_Byte_Sex != Host_Byte_Sex)
 	 r = SIMPNODE_SimpCreateDeposit(OPC_FROM_OPR(OPR_COMPOSE_BITS,ty),
-					MTYPE_bit_size(ty)-log2((UINT64)c1+1), 
-					log2((UINT64)c1+1),
+					MTYPE_bit_size(ty)-log2_u64((UINT64)c1+1), 
+					log2_u64((UINT64)c1+1),
 					SIMPNODE_kid0(k1),SIMPNODE_kid0(k0));
 #endif
        SIMP_DELETE(SIMPNODE_kid1(k0));
@@ -3578,14 +3546,14 @@ static simpnode  simp_bior( OPCODE opc,
        SIMP_DELETE(k1);
      } else if (IS_POWER_OF_2(c2+1) && ((c2 & c1) == 0) && (((c2 | c1) & type_mask) == type_mask)) {
        SHOW_RULE("(J&mask2) | (k & mask1)");
-       r = SIMPNODE_SimpCreateDeposit(OPC_FROM_OPR(OPR_COMPOSE_BITS,ty),0,log2((UINT64)c2+1),
+       r = SIMPNODE_SimpCreateDeposit(OPC_FROM_OPR(OPR_COMPOSE_BITS,ty),0,log2_u64((UINT64)c2+1),
 				      SIMPNODE_kid0(k0),SIMPNODE_kid0(k1));
 #ifdef KEY
        // When expanding into deposit, need to take care of the endianness.
        if (Target_Byte_Sex != Host_Byte_Sex)
          r = SIMPNODE_SimpCreateDeposit(OPC_FROM_OPR(OPR_COMPOSE_BITS,ty),
-					MTYPE_bit_size(ty)-log2((UINT64)c2+1), 
-					log2((UINT64)c2+1),
+					MTYPE_bit_size(ty)-log2_u64((UINT64)c2+1), 
+					log2_u64((UINT64)c2+1),
 					SIMPNODE_kid0(k0),SIMPNODE_kid0(k1));
 #endif
        SIMP_DELETE(SIMPNODE_kid1(k0));
@@ -4177,7 +4145,7 @@ static simpnode  simp_shift( OPCODE opc,
 #ifdef KEY
 	 // When expanding into deposit, need to take care of the endianness.
 	 if (Target_Byte_Sex != Host_Byte_Sex)
-	   c1 = MTYPE_bit_size(ty) - c1 - log2((UINT64)c2+1);
+	   c1 = MTYPE_bit_size(ty) - c1 - log2_u64((UINT64)c2+1);
 #endif
 	 /* See if the mask is all 1's in the right places */
 	 mask = create_bitmask(shift_size-c1);
@@ -4189,7 +4157,13 @@ static simpnode  simp_shift( OPCODE opc,
 	    return (r);
          } else if (Enable_compose_bits && IS_POWER_OF_2(c2+1)) {
 	   SHOW_RULE("(j & mask) << c1 -> COMPOSE");
-	   c2 = log2((UINT64)c2+1);
+	   c2 = log2_u64((UINT64)c2+1);
+#if defined(TARG_PPC32)
+     if (c1 < 0) {
+      c2 += c1;
+      c1 = 0;
+     }
+#endif
 	   r = SIMPNODE_SimpCreateDeposit(OPC_FROM_OPR(OPR_COMPOSE_BITS,ty),c1,c2,
 					  SIMP_INTCONST(ty,0),SIMPNODE_kid0(k0));
 	   SIMP_DELETE(SIMPNODE_kid1(k0));
@@ -4489,6 +4463,7 @@ static simpnode cancel_in_relop(OPCODE opc, TYPE_ID ty, simpnode k0, simpnode k1
 	  * cancellation, we need to do a SIGNED comparison on the two
 	  * remaining arguments cases.
 	  */
+#if !defined(TARG_PPC32)	  
 	 SHOW_RULE("(pointers) x+y relop x");
 	 /* Convert to signed comparison */
 	 if (ty == MTYPE_U8) {
@@ -4496,6 +4471,7 @@ static simpnode cancel_in_relop(OPCODE opc, TYPE_ID ty, simpnode k0, simpnode k1
 	 } else if (ty == MTYPE_U4) {
 	    opc = OPCODE_make_op(mainopr,OPCODE_rtype(opc),MTYPE_I4);
 	 }
+#endif   
 	 if (s_lhs && s_rhs) {
 	    r = SIMPNODE_SimpCreateExp2(opc,rhs,lhs);
 	 } else {
@@ -5736,18 +5712,6 @@ simpnode simp_cvtl(OPCODE opc, INT16 cvtl_bits, simpnode k0)
       }
       break;
 
-#if 0 // this rule is wrong because of the number 0x8000 in 16 bits;
-      // ABS(I4CVTL16(0x8000)) == 0x8000, and I4CVTL(0x8000) == 0xffff8000
-      // i.e. the negation of MININT is itself 
-    case OPR_ABS:
-       k1 = SIMPNODE_kid0(k0);
-       if (SIMPNODE_opcode(k1) == opc &&
-	   SIMPNODE_cvtl_bits(k1) == cvtl_bits) {
-	  SHOW_RULE("CVTL n (ABS CVTL n (X))");
-	  r = k0;
-       }
-       break;
-#endif
 
     case OPR_LT:
     case OPR_LE:

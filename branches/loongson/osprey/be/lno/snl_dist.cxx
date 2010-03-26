@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -45,7 +49,6 @@
 *** $Source: /home/bos/bk/kpro64-pending/be/lno/SCCS/s.snl_dist.cxx $
 **/
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -512,7 +515,7 @@ static void Print_Distribution(FILE* file,
   } 
   fprintf(file, ") at ("); 
   for (i = outer; i <= inner; i++) { 
-    fprintf(file, "%d", (INT) WN_linenum(stack->Bottom_nth(i))); 
+    fprintf(file, "%d", Srcpos_To_Line(WN_linenum(stack->Bottom_nth(i)))); 
     if (i < inner) 
       fprintf(file, ","); 
   } 

@@ -32,7 +32,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "config.h"
@@ -842,9 +841,6 @@ Exp_Immediate_Int (TN *dest, TN *src, TYPE_ID rtype, OPS *ops)
     TCON tcon = Host_To_Targ (MTYPE_I8, val);
     ST *sym = New_Const_Sym (Enter_tcon (tcon), Be_Type_Tbl(MTYPE_I8));
     Allocate_Object(sym);
-#if 0 // SC temp ifdef out for now to make kvm compile throug
-    FmtAssert((ST_gprel(sym)), ("sym not gp_rel: handle this"));
-#endif
 		if(ST_gprel(sym)) {
  			 //Build_OP(TOP_ld, dest, GP_TN, Gen_Symbol_TN(sym, 0, TN_RELOC_GPREL16), ops);			
 		     Build_OP(TOP_lw, dest, GP_TN, Gen_Symbol_TN(sym, 0, TN_RELOC_GPREL16), ops);
@@ -2483,14 +2479,6 @@ Expand_32Bit_Int_Less_Equal (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
     INT64 val;
     if (TN_has_value(src2)) 
       val = TN_value(src2);
-#if 0 // I doubt this case is working (fchow mar-12-03)
-    else if ( TN_is_symbol(src2) ) {
-      /* symbolic constant, gp-relative or sp-relative */
-      ST *base;
-      INT64 val;
-      Base_Symbol_And_Offset_For_Addressing (TN_var(src2), TN_offset(src2), &base, &val);
-    } 
-#endif
     else FmtAssert(FALSE,("unexpected constant in Expand_Int_Less_Equal"));
 
     if (ISA_LC_Value_In_Class ( val+1, LC_simm16)) {
@@ -3979,16 +3967,6 @@ Exp_Select_And_Condition (
     else
 	Expand_Int_Equal (p, cmp_kid1, cmp_kid2, desc, &new_ops);
     break;
-#if 0 // this case avoided by above transformation
-  case OPR_NE:
-    if (MTYPE_is_float(desc))
-	Expand_Float_Not_Equal (p, cmp_kid1, cmp_kid2, variant, desc, &new_ops);
-    else if (desc == MTYPE_B)
-	Expand_Bool_Not_Equal (p, cmp_kid1, cmp_kid2, &new_ops);
-    else
-	Expand_Int_Not_Equal (p, cmp_kid1, cmp_kid2, desc, &new_ops);
-    break;
-#endif
   case OPR_GE:
     if (MTYPE_is_float(desc))
 	Expand_Float_Greater_Equal (p, cmp_kid1, cmp_kid2, variant, desc, &new_ops);
@@ -4105,14 +4083,6 @@ Exp_Select_Part1(
     else
 	Expand_Int_Equal (p, cmp_kid1, cmp_kid2, desc, &new_ops);
     break;
-#if 0 // this case avoided by above transformation
-  case OPR_NE:
-    if (desc == MTYPE_B)
-	Expand_Bool_Not_Equal (p, cmp_kid1, cmp_kid2, &new_ops);
-    else
-	Expand_Int_Not_Equal (p, cmp_kid1, cmp_kid2, desc, &new_ops);
-    break;
-#endif
   case OPR_GE:
     Expand_Int_Greater_Equal (p, cmp_kid1, cmp_kid2, desc, &new_ops);
     break;

@@ -5557,16 +5557,6 @@ static int cvrt_attr_ntry(int	attr_idx)
                            msp.immtype,
                          (unsigned long) CN_INT_TO_C(ATD_OFFSET_IDX(attr_idx)));
 
-# if 0
-         /* JBL .. I pulled this */
-
-         sym.offset.tag = mtag_con;
-         sym.offset.val = mcon_lookup(&msp, 
-                                      get_basic_type(CN_TYPE_IDX(
-                                                   ATD_OFFSET_IDX(attr_idx))), 
-                                   (char *)&CN_CONST(ATD_OFFSET_IDX(attr_idx)), 
-                                      NONE);
-# endif
       }
 
       /* Storage block (if necessary) */
@@ -6945,18 +6935,6 @@ static void create_option_tbl(void)
 
 /* Don't know what this is. */
 
-# if 0
-   /* default IEEE rounding mode */
-
-	unsigned int /* enum mroundmode */ roundmode : 3;
-
-        mroundmode_none,        /* default value */
-        mroundmode_tonearest,   /* round to nearest representable value */
-        mroundmode_tozero,      /* round towards zero */
-        mroundmode_upward,      /* round up to nearest representable value */
-        mroundmode_downward,    /* round down to nearest representable value */
-        mroundmode_runtime      /* IEEE rounding mode set at load or run time */
-# endif
 
    /* arithmetic control flags */
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -81,6 +81,7 @@ extern "C"{
 #define BITS_PER_UNIT 8
 
 extern void WGEN_Expand_Return(gs_t, gs_t);
+extern WN *guard_var_init_block = NULL; 
 
 LABEL_IDX loop_expr_exit_label = 0; // exit label for LOOP_EXPRs
 
@@ -667,7 +668,16 @@ WGEN_add_guard_var (gs_t guard_var, WN *value_wn, BOOL need_comma = TRUE)
   WN *zero_wn = WN_Intconst(MTYPE_I4, 0);
   stid = WN_Stid(MTYPE_I4, 0, Get_ST(guard_var), MTYPE_To_TY(MTYPE_I4),
 		 zero_wn, 0);
-  WGEN_Stmt_Append(stid, Get_Srcpos());
+
+  SRCPOS srcpos = Get_Srcpos(); 
+  if (srcpos)
+  { 
+    WN_Set_Linenum ( stid, srcpos );
+  }
+  WN *guard_var_init_block = WGEN_Guard_Init_Block_Stack_Top(); 
+  FmtAssert( (guard_var_init_block != NULL), ("Missing init block for guard variable init!"));
+  WN_INSERT_BlockLast(guard_var_init_block, stid);
+
 
   // Set the guard variable to 1 while evaluating the value of the conditional
   // expression.
@@ -1301,35 +1311,6 @@ WGEN_Array_Expr(gs_t exp,
   }
 }
 
-#if 0
-// wgen clean-up : Code to handle lowered GNU tree should not be needed
-// any more.
-
-// EXP is a RESULT_DECL that holds the function return value.  The
-// value is to be returned in the memory pointed to by the fake first
-// parm which was inserted by wgen.  This function converts the RESULT_DECL
-// into an INDIRECT_REF of it, and makes it write into the first fake
-// parameter.
-void
-WGEN_fixup_result_decl (gs_t exp)
-{
-  Is_True (gs_tree_code(exp) == GS_RESULT_DECL,
-           ("WGEN_fixup_result_decl: expected result_decl node"));
-  // gs_tree_type(exp) need not be the same as
-  //             gs_tree_type(gs_tree_type(Current_Function_Decl()))
-
-  // build a new result_decl node
-  gs_t ptr_var = gs_build_decl (GS_RESULT_DECL,
-                                gs_build_pointer_type(gs_tree_type(exp)));
-  // convert current node to indirect_ref
-  _gs_code(exp, GS_INDIRECT_REF);
-  gs_set_tree_operand (exp, 0, ptr_var);
-
-  // set ST
-  WN *first_formal = WN_formal(Current_Entry_WN(), 0);
-  set_DECL_ST (ptr_var, WN_st(first_formal));
-}
-#endif
 
 #ifdef TARG_SL
 /* For case: *p++(or --) op *p ... */
@@ -1445,12 +1426,10 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
 	Set_TY_is_volatile(ty_idx0);
 	volt = TRUE;
       }
-#if 1 // wgen bug 10470
       else {
 	Clear_TY_is_volatile(ty_idx0);
 	volt = FALSE;
       }
-#endif
 #endif
 #ifdef KEY
       FmtAssert (DECL_FIELD_ID(arg1) != 0,
@@ -1499,33 +1478,15 @@ WGEN_Lhs_Of_Modify_Expr(gs_code_t assign_code,
   case GS_VAR_DECL:
   case GS_RESULT_DECL:
     {
-#if 0 // def KEY
-      // wgen clean-up : code to handle lowered GNU tree should not be
-      // needed any more.
-      if (code == GS_RESULT_DECL &&
-          TY_return_in_mem(Get_TY
-                           (gs_tree_type
-                            (gs_tree_type(Current_Function_Decl()) ) ) ) )
-      {
-        WGEN_fixup_result_decl (lhs);
-        wn = WGEN_Lhs_Of_Modify_Expr (assign_code, lhs, NULL, need_result,
-                                      component_ty_idx, component_offset,
-                                      field_id, is_bit_field, rhs_wn,
-                                      rhs_preg_num, is_realpart, is_imagpart);
-        break;
-      }
-#endif
       TY_IDX hi_ty_idx = Get_TY(gs_tree_type(lhs)); // type associated with field_id
       if (gs_tree_this_volatile(lhs)) {
         Set_TY_is_volatile(hi_ty_idx);
         volt = TRUE;
       }
-#if 1 // wgen bug 10470
       else {
 	Clear_TY_is_volatile(hi_ty_idx);
 	volt = FALSE;
       }
-#endif
       TY_IDX desc_ty_idx = component_ty_idx;
       if (desc_ty_idx == 0)
         desc_ty_idx = hi_ty_idx;
@@ -2367,7 +2328,7 @@ emit_barrier (bool type, gs_t list, INT32 k)
 } /* emit_barrier */
 
 static WN *
-emit_builtin_lock_test_and_set (gs_t exp, INT32 k)
+emit_builtin_lock_test_and_set (INTRINSIC iopc, gs_t exp, INT32 k)
 {
   WN        *wn;
   WN        *arg_wn;
@@ -2377,7 +2338,6 @@ emit_builtin_lock_test_and_set (gs_t exp, INT32 k)
   TYPE_ID    arg_mtype;
   gs_t       list = gs_tree_operand (exp, 1);
   OPCODE     opc;
-  INTRINSIC  iopc;
 
   obj_mtype  = TY_mtype (TY_pointed (Get_TY(gs_tree_type(gs_tree_value(list)))));
   arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
@@ -2393,31 +2353,18 @@ emit_builtin_lock_test_and_set (gs_t exp, INT32 k)
   ikids [1]  = arg_wn;
   list       = gs_tree_chain (list);
 
-  if (obj_mtype == MTYPE_I4) {
-    opc  = OPC_I4INTRINSIC_CALL;
-    iopc = INTRN_LOCK_TEST_AND_SET_I4;
+  if (obj_mtype == MTYPE_V) {
+    obj_mtype = INTRN_Size_Mtype(iopc);
   }
-  else
-  if (obj_mtype == MTYPE_U4) {
-    opc  = OPC_U4INTRINSIC_CALL;
-    iopc = INTRN_LOCK_TEST_AND_SET_I4;
-  }
-  else
-  if (obj_mtype == MTYPE_I8) {
-    opc  = OPC_I8INTRINSIC_CALL;
-    iopc = INTRN_LOCK_TEST_AND_SET_I8;
-  }
-  else
-  if (obj_mtype == MTYPE_U8) {
-    opc  = OPC_U8INTRINSIC_CALL;
-    iopc = INTRN_LOCK_TEST_AND_SET_I8;
-  }
-  else {
-    Fail_FmtAssertion ("unknown object type in __builtin_lock_test_and_set");
-    opc  = OPCODE_UNKNOWN;
-    iopc = INTRINSIC_NONE;
-  }
+  Is_True( (obj_mtype == MTYPE_I1 || obj_mtype == MTYPE_U1 ||
+            obj_mtype == MTYPE_I2 || obj_mtype == MTYPE_U2 ||
+            obj_mtype == MTYPE_I4 || obj_mtype == MTYPE_U4 ||
+            obj_mtype == MTYPE_I8 || obj_mtype == MTYPE_U8 ),
+           ("Unsupported object type in emit_builtin_lock_test_and_set") );
 
+  emit_barrier (TRUE, list, k);
+
+  opc = OPCODE_make_op(OPR_INTRINSIC_CALL, obj_mtype, MTYPE_V);
   wn = WN_Create_Intrinsic (opc, iopc, 2, ikids);
   WGEN_Stmt_Append (wn, Get_Srcpos());
 
@@ -2437,7 +2384,7 @@ emit_builtin_lock_test_and_set (gs_t exp, INT32 k)
 } /* emit_builtin_lock_test_and_set */
 
 static void
-emit_builtin_lock_release (gs_t exp, INT32 k)
+emit_builtin_lock_release (INTRINSIC iopc, gs_t exp, INT32 k)
 {
   WN        *wn;
   WN        *arg_wn;
@@ -2447,7 +2394,6 @@ emit_builtin_lock_release (gs_t exp, INT32 k)
   TYPE_ID    arg_mtype;
   gs_t       list = gs_tree_operand (exp, 1);
   OPCODE     opc;
-  INTRINSIC  iopc;
 
   obj_mtype  = TY_mtype (TY_pointed (Get_TY(gs_tree_type(gs_tree_value(list)))));
   arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
@@ -2457,32 +2403,25 @@ emit_builtin_lock_release (gs_t exp, INT32 k)
   ikids [0]  = arg_wn;
   list       = gs_tree_chain (list);
 
+  if (obj_mtype == MTYPE_V) {
+    // in case first arg is void*
+    obj_mtype = INTRN_Size_Mtype(iopc);
+  }
+  Is_True( (obj_mtype == MTYPE_I1 || obj_mtype == MTYPE_U1 ||
+            obj_mtype == MTYPE_I2 || obj_mtype == MTYPE_U2 ||
+            obj_mtype == MTYPE_I4 || obj_mtype == MTYPE_U4 ||
+            obj_mtype == MTYPE_I8 || obj_mtype == MTYPE_U8 ),
+           ("Unsupported object type in emit_builtin_lock_test_and_set") );
+
   emit_barrier (TRUE, list, k);
 
-  opc = OPC_VINTRINSIC_CALL;
-  if (obj_mtype == MTYPE_I4)
-    iopc = INTRN_LOCK_RELEASE_I4;
-  else
-  if (obj_mtype == MTYPE_U4)
-    iopc = INTRN_LOCK_RELEASE_I4;
-  else
-  if (obj_mtype == MTYPE_I8)
-    iopc = INTRN_LOCK_RELEASE_I8;
-  else
-  if (obj_mtype == MTYPE_U8)
-    iopc = INTRN_LOCK_RELEASE_I8;
-  else {
-    Fail_FmtAssertion ("unknown object type in __builtin_lock_test_and_set");
-    opc  = OPCODE_UNKNOWN;
-    iopc = INTRINSIC_NONE;
-  }
-
+  opc = OPCODE_make_op(OPR_INTRINSIC_CALL, obj_mtype, MTYPE_V);
   wn = WN_Create_Intrinsic (opc, iopc, 1, ikids);
   WGEN_Stmt_Append (wn, Get_Srcpos());
 } /* emit_builtin_lock_release */
 
 static WN *
-emit_builtin_compare_and_swap (gs_t exp, INT32 k)
+emit_builtin_compare_and_swap (INTRINSIC  iopc, gs_t exp, INT32 k)
 {
   WN        *wn;
   WN        *arg_wn;
@@ -2492,7 +2431,6 @@ emit_builtin_compare_and_swap (gs_t exp, INT32 k)
   TYPE_ID    arg_mtype;
   gs_t       list = gs_tree_operand (exp, 1);
   OPCODE     opc;
-  INTRINSIC  iopc;
 
   obj_mtype  = TY_mtype (TY_pointed (Get_TY(gs_tree_type(gs_tree_value(list)))));
   arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
@@ -2514,45 +2452,44 @@ emit_builtin_compare_and_swap (gs_t exp, INT32 k)
   ikids [2]  = arg_wn;
   list       = gs_tree_chain (list);
 
+  if (iopc == INTRN_BOOL_COMPARE_AND_SWAP_I1 ||
+      iopc == INTRN_BOOL_COMPARE_AND_SWAP_I2 ||
+      iopc == INTRN_BOOL_COMPARE_AND_SWAP_I4 ||
+      iopc == INTRN_BOOL_COMPARE_AND_SWAP_I8) {
+    obj_mtype = MTYPE_U1;
+  }
+  if (obj_mtype == MTYPE_V) {
+    // in case first arg is void*
+    obj_mtype = INTRN_Size_Mtype(iopc);
+  }
+  Is_True( (obj_mtype == MTYPE_I1 || obj_mtype == MTYPE_U1 ||
+            obj_mtype == MTYPE_I2 || obj_mtype == MTYPE_U2 ||
+            obj_mtype == MTYPE_I4 || obj_mtype == MTYPE_U4 ||
+            obj_mtype == MTYPE_I8 || obj_mtype == MTYPE_U8 ),
+           ("Unsupported object type in emit_builtin_lock_test_and_set") );
+
   emit_barrier (TRUE, list, k);
 
-  opc = OPC_I4INTRINSIC_CALL;
-  if (obj_mtype == MTYPE_I4)
-    iopc = INTRN_COMPARE_AND_SWAP_I4;
-  else
-  if (obj_mtype == MTYPE_U4)
-    iopc = INTRN_COMPARE_AND_SWAP_I4;
-  else
-  if (obj_mtype == MTYPE_I8)
-    iopc = INTRN_COMPARE_AND_SWAP_I8;
-  else
-  if (obj_mtype == MTYPE_U8)
-    iopc = INTRN_COMPARE_AND_SWAP_I8;
-  else {
-    Fail_FmtAssertion ("unknown object type in __builtin_lock_test_and_set");
-    opc  = OPCODE_UNKNOWN;
-    iopc = INTRINSIC_NONE;
-  }
-
+  opc = OPCODE_make_op(OPR_INTRINSIC_CALL, obj_mtype, MTYPE_V);
   wn = WN_Create_Intrinsic (opc, iopc, 3, ikids);
   WGEN_Stmt_Append (wn, Get_Srcpos());
 
-  ST       *preg_st = MTYPE_To_PREG(MTYPE_I4);
-  TY_IDX    preg_ty_idx = Be_Type_Tbl(MTYPE_I4);
-  PREG_NUM  preg = Create_Preg (MTYPE_I4, NULL);
+  ST       *preg_st = MTYPE_To_PREG(obj_mtype);
+  TY_IDX    preg_ty_idx = Be_Type_Tbl(obj_mtype);
+  PREG_NUM  preg = Create_Preg (obj_mtype, NULL);
 
-  wn = WN_Ldid (MTYPE_I4, -1, Return_Val_Preg, preg_ty_idx);
-  wn = WN_Stid (MTYPE_I4, preg, preg_st, preg_ty_idx, wn),
+  wn = WN_Ldid (obj_mtype, -1, Return_Val_Preg, preg_ty_idx);
+  wn = WN_Stid (obj_mtype, preg, preg_st, preg_ty_idx, wn),
   WGEN_Stmt_Append (wn, Get_Srcpos());
 
   emit_barrier (FALSE, list, k);
 
-  wn = WN_Ldid (MTYPE_I4, preg, preg_st, preg_ty_idx);
+  wn = WN_Ldid (obj_mtype, preg, preg_st, preg_ty_idx);
 
   return wn;
 } /* emit_builtin_compare_and_swap */
 
-/* OSP
+/*
  * emit_builtin_sync_fetch_op
  *   for FETCH_AND_OP (ADD, SUB, AND, OR, XOR, NAND)
  *   for OP_AND_FETCH (ADD, SUB, AND, OR, XOR, NAND)
@@ -2584,8 +2521,15 @@ emit_builtin_sync_fetch_op (INTRINSIC iopc, gs_t exp, INT32 k)
   ikids [1]  = arg_wn;
   list       = gs_tree_chain (list);
 
-  Is_True( (obj_mtype == MTYPE_I4 || obj_mtype == MTYPE_U4 ||
-            obj_mtype == MTYPE_I8 || obj_mtype == MTYPE_U8), 
+  if ( obj_mtype == MTYPE_V ) {
+    // in case first arg is void*
+    obj_mtype = INTRN_Size_Mtype(iopc);
+  }
+
+  Is_True( (obj_mtype == MTYPE_I1 || obj_mtype == MTYPE_U1 ||
+            obj_mtype == MTYPE_I2 || obj_mtype == MTYPE_U2 ||
+            obj_mtype == MTYPE_I4 || obj_mtype == MTYPE_U4 ||
+            obj_mtype == MTYPE_I8 || obj_mtype == MTYPE_U8 ),
            ("Unsupported object type in emit_builtin_sync_fetch_op") );
 
   emit_barrier (TRUE, list, k);
@@ -2652,19 +2596,6 @@ WGEN_Address_Of(gs_t arg0)
   switch (code0) {
 #ifdef KEY
   case GS_RESULT_DECL:	// bug 3878
-#if 0
-    // wgen clean-up: code needed to handle lowered GNU tree should not
-    // be needed any more.
-    if (TY_return_in_mem(Get_TY
-                         (gs_tree_type
-                          (gs_tree_type(Current_Function_Decl()) ) ) ) )
-    {
-      WGEN_fixup_result_decl (arg0);
-      wn = WGEN_Address_Of (arg0);
-      break;
-    }
-    // fall through
-#endif
 #endif
   case GS_VAR_DECL:
   case GS_PARM_DECL:
@@ -2754,10 +2685,6 @@ WGEN_Address_Of(gs_t arg0)
     {
       DevWarn ("taking address of a label at line %d", lineno);
       LABEL_IDX label_idx = WGEN_Get_LABEL (arg0, FALSE);
-#if 0
-      FmtAssert (arg0->decl.symtab_idx == CURRENT_SYMTAB,
-                 ("line %d: taking address of a label not defined in current function currently not implemented", lineno));
-#endif
       wn = WN_LdaLabel (Pointer_Mtype, label_idx);
       Set_LABEL_addr_saved (label_idx);
 #ifdef KEY
@@ -2844,11 +2771,6 @@ WGEN_Address_Of(gs_t arg0)
       FmtAssert(!WN_has_side_effects(a) && !WN_has_side_effects(b),
                 ("Addr of MIN/MAX_EXPR with side effects not yet supported"));
 
-#if 0 // GCC's same_type_p is not duplicated in wgen because it is too
-      // complicated.
-      FmtAssert(gs_same_type_p(gs_tree_type(op0), gs_tree_type(op1)),
-                ("Types of MIN/MAX_EXPR operands differ"));
-#endif
       TY_IDX  ptr_ty    = Make_Pointer_Type (Get_TY(gs_tree_type(op0)), FALSE);
       TYPE_ID ptr_mtype = TY_mtype(ptr_ty);
       TY_IDX  arg_ty    = Get_TY(gs_tree_type(gs_tree_operand(arg0, 0)));
@@ -3007,6 +2929,18 @@ WGEN_Address_Of(gs_t arg0)
                                   (gs_decl_initial (arg0), "");
       wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
       break;
+
+    case GS_VA_ARG_EXPR:
+      wn = WGEN_Expand_Expr (arg0);
+      Is_True( WN_operator(wn) == OPR_ILOAD, 
+                ("expand VA_ARG_EXPR does not return OPR_ILOAD") );
+      if (WN_operator(wn) == OPR_ILOAD) {
+        wn0 = WN_kid0 (wn);
+        wn1 = WN_Intconst (Pointer_Mtype, WN_offset (wn));
+        wn  = WN_Binary (OPR_ADD, Pointer_Mtype, wn0, wn1);
+      }
+      break;
+
 #endif
 
   default:
@@ -3391,20 +3325,24 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
   switch (ins_code)
   {
     // Generate WN
+    case GSBI_IX86_BUILTIN_PADDQ:
+      *iopc = INTRN_PADDQ;
+      break;
     case GSBI_IX86_BUILTIN_PADDB:
     case GSBI_IX86_BUILTIN_PADDW:
     case GSBI_IX86_BUILTIN_PADDD:
-    case GSBI_IX86_BUILTIN_PADDQ:
     case GSBI_IX86_BUILTIN_ADDPD:
     case GSBI_IX86_BUILTIN_PADDB128:
     case GSBI_IX86_BUILTIN_PADDQ128:
       wn = WN_Add (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
       break;
+    case GSBI_IX86_BUILTIN_PSUBQ:
+      *iopc = INTRN_PSUBQ;
+      break;
     case GSBI_IX86_BUILTIN_PSUBB:
     case GSBI_IX86_BUILTIN_PSUBW:
     case GSBI_IX86_BUILTIN_PSUBD:
-    case GSBI_IX86_BUILTIN_PSUBQ:
     case GSBI_IX86_BUILTIN_SUBPD:
     case GSBI_IX86_BUILTIN_PSUBB128:
     case GSBI_IX86_BUILTIN_PSUBW128:
@@ -3413,57 +3351,13 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       wn = WN_Sub (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
       break;
-#if 0
-    case GSBI_IX86_BUILTIN_PAND:
-      if (MTYPE_is_mmx_vector(res_type))
-	goto unsupported;
-      wn = WN_Band (res_type, arg0, arg1);
-      *intrinsic_op = FALSE;
-      break;
-    case GSBI_IX86_BUILTIN_PANDN:
-      if (MTYPE_is_mmx_vector(res_type))
-	goto unsupported;
-      wn = WN_Band (res_type, WN_Bnot (res_type, arg0), arg1);
-      *intrinsic_op = FALSE;
-      break;
-    case GSBI_IX86_BUILTIN_POR:
-      if (MTYPE_is_mmx_vector(res_type))
-	goto unsupported;
-      wn = WN_Bior (res_type, arg0, arg1);
-      *intrinsic_op = FALSE;
-      break;
-    case GSBI_IX86_BUILTIN_PXOR:
-      if (MTYPE_is_mmx_vector(res_type))
-	goto unsupported;
-      wn = WN_Bxor (res_type, arg0, arg1);
-      *intrinsic_op = FALSE;
-      break;
-#endif
-    case GSBI_IX86_BUILTIN_PSLLQ:
-      if (MTYPE_is_mmx_vector(res_type))
-	goto unsupported;
-      wn = WN_Shl (res_type, arg0, arg1);
-      *intrinsic_op = FALSE;
-      break;
-    case GSBI_IX86_BUILTIN_PSRLQ:
-      if (MTYPE_is_mmx_vector(res_type))
-	goto unsupported;
-      wn = WN_Lshr (res_type, arg0, arg1);
-      *intrinsic_op = FALSE;
-      break;
-                                                                                
+
     // Generate intrinsics to be expanded in CG expand
     case GSBI_IX86_BUILTIN_PADDSB:
       *iopc = INTRN_PADDSB;
       break;
     case GSBI_IX86_BUILTIN_PADDSW:
       *iopc = INTRN_PADDSW;
-      break;
-    case GSBI_IX86_BUILTIN_PADDD128:
-      *iopc = INTRN_PADDD128;
-      break;
-    case GSBI_IX86_BUILTIN_PADDW128:
-      *iopc = INTRN_PADDW128;
       break;
     case GSBI_IX86_BUILTIN_PSUBSB:
       *iopc = INTRN_PSUBSB;
@@ -3478,38 +3372,94 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_PADDUSW;
       break;
     case GSBI_IX86_BUILTIN_PSUBUSB:
-    case GSBI_IX86_BUILTIN_PSUBUSB128:
       *iopc = INTRN_PSUBUSB;
       break;
     case GSBI_IX86_BUILTIN_PSUBUSW:
-    case GSBI_IX86_BUILTIN_PSUBUSW128:
       *iopc = INTRN_PSUBUSW;
       break;
     case GSBI_IX86_BUILTIN_PMULLW:
       *iopc = INTRN_PMULLW;
       break;
     case GSBI_IX86_BUILTIN_PMULHW:
-    case GSBI_IX86_BUILTIN_PMULHW128:
       *iopc = INTRN_PMULHW;
+      break;
+    case GSBI_IX86_BUILTIN_PMULUDQ:
+      *iopc = INTRN_PMULUDQ;
+      break;
+    case GSBI_IX86_BUILTIN_PADDSB128:
+      *iopc = INTRN_PADDSB128;
+      break;
+    case GSBI_IX86_BUILTIN_PADDSW128:
+      *iopc = INTRN_PADDSW128;
+      break;
+    case GSBI_IX86_BUILTIN_PSUBSB128:
+      *iopc = INTRN_PSUBSB128;
+      break;
+    case GSBI_IX86_BUILTIN_PSUBSW128:
+      *iopc = INTRN_PSUBSW128;
+      break;
+    case GSBI_IX86_BUILTIN_PADDUSB128:
+      *iopc = INTRN_PADDUSB128;
+      break;
+    case GSBI_IX86_BUILTIN_PADDUSW128:
+      *iopc = INTRN_PADDUSW128;
+      break;
+    case GSBI_IX86_BUILTIN_PSUBUSB128:
+      *iopc = INTRN_PSUBUSB128;
+      break;
+    case GSBI_IX86_BUILTIN_PSUBUSW128:
+      *iopc = INTRN_PSUBUSW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMULLW128:
+      *iopc = INTRN_PMULLW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMULHW128:
+      *iopc = INTRN_PMULHW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMULUDQ128:
+      *iopc = INTRN_PMULUDQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PADDD128:
+      *iopc = INTRN_PADDD128;
+      break;
+    case GSBI_IX86_BUILTIN_PADDW128:
+      *iopc = INTRN_PADDW128;
       break;
     case GSBI_IX86_BUILTIN_PCMPEQB:
       *iopc = INTRN_PCMPEQB;
       break;
+    case GSBI_IX86_BUILTIN_PCMPEQB128:
+      *iopc = INTRN_PCMPEQB128;
+      break;
     case GSBI_IX86_BUILTIN_PCMPEQW:
-    case GSBI_IX86_BUILTIN_PCMPEQW128:
       *iopc = INTRN_PCMPEQW;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPEQW128:
+      *iopc = INTRN_PCMPEQW128;
       break;
     case GSBI_IX86_BUILTIN_PCMPEQD:
       *iopc = INTRN_PCMPEQD;
       break;
+    case GSBI_IX86_BUILTIN_PCMPEQD128:
+      *iopc = INTRN_PCMPEQD128;
+      break;
     case GSBI_IX86_BUILTIN_PCMPGTB:
       *iopc = INTRN_PCMPGTB;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPGTB128:
+      *iopc = INTRN_PCMPGTB128;
       break;
     case GSBI_IX86_BUILTIN_PCMPGTW:
       *iopc = INTRN_PCMPGTW;
       break;
+    case GSBI_IX86_BUILTIN_PCMPGTW128:
+      *iopc = INTRN_PCMPGTW128;
+      break;
     case GSBI_IX86_BUILTIN_PCMPGTD:
       *iopc = INTRN_PCMPGTD;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPGTD128:
+      *iopc = INTRN_PCMPGTD128;
       break;
     case GSBI_IX86_BUILTIN_PUNPCKHBW:
       *iopc = INTRN_PUNPCKHBW;
@@ -3520,8 +3470,16 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PUNPCKHDQ:
       *iopc = INTRN_PUNPCKHDQ;
       break;
+    case GSBI_IX86_BUILTIN_PUNPCKHBW128:
+      *iopc = INTRN_PUNPCKHBW128;
+      break;
+    case GSBI_IX86_BUILTIN_PUNPCKHWD128:
+      *iopc = INTRN_PUNPCKHWD128;
+      break;
+    case GSBI_IX86_BUILTIN_PUNPCKHDQ128:
+      *iopc = INTRN_PUNPCKHDQ128;
+      break;
     case GSBI_IX86_BUILTIN_PUNPCKLBW:
-    case GSBI_IX86_BUILTIN_PUNPCKLBW128:
       *iopc = INTRN_PUNPCKLBW;
       break;
     case GSBI_IX86_BUILTIN_PUNPCKLWD:
@@ -3530,16 +3488,38 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PUNPCKLDQ:
       *iopc = INTRN_PUNPCKLDQ;
       break;
+    case GSBI_IX86_BUILTIN_PUNPCKLBW128:
+      *iopc = INTRN_PUNPCKLBW128;
+      break;
+    case GSBI_IX86_BUILTIN_PUNPCKLWD128:
+      *iopc = INTRN_PUNPCKLWD128;
+      break;
+    case GSBI_IX86_BUILTIN_PUNPCKLDQ128:
+      *iopc = INTRN_PUNPCKLDQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PUNPCKHQDQ128:
+      *iopc = INTRN_PUNPCKHQDQ;
+      break;
+    case GSBI_IX86_BUILTIN_PUNPCKLQDQ128:
+      *iopc = INTRN_PUNPCKLQDQ;
+      break;
     case GSBI_IX86_BUILTIN_PACKSSWB:
       *iopc = INTRN_PACKSSWB;
       break;
     case GSBI_IX86_BUILTIN_PACKSSDW:
-    case GSBI_IX86_BUILTIN_PACKSSDW128:
       *iopc = INTRN_PACKSSDW;
       break;
     case GSBI_IX86_BUILTIN_PACKUSWB:
-    case GSBI_IX86_BUILTIN_PACKUSWB128:
       *iopc = INTRN_PACKUSWB;
+      break;
+    case GSBI_IX86_BUILTIN_PACKSSWB128:
+      *iopc = INTRN_PACKSSWB128;
+      break;
+    case GSBI_IX86_BUILTIN_PACKSSDW128:
+      *iopc = INTRN_PACKSSDW128;
+      break;
+    case GSBI_IX86_BUILTIN_PACKUSWB128:
+      *iopc = INTRN_PACKUSWB128;
       break;
     case GSBI_IX86_BUILTIN_PMULHUW:
       *iopc = INTRN_PMULHUW;
@@ -3553,6 +3533,18 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PSADBW:
       *iopc = INTRN_PSADBW;
       break;
+    case GSBI_IX86_BUILTIN_PMULHUW128:
+      *iopc = INTRN_PMULHUW128;
+      break;
+    case GSBI_IX86_BUILTIN_PAVGB128:
+      *iopc = INTRN_PAVGB128;
+      break;
+    case GSBI_IX86_BUILTIN_PAVGW128:
+      *iopc = INTRN_PAVGW128;
+      break;
+    case GSBI_IX86_BUILTIN_PSADBW128:
+      *iopc = INTRN_PSADBW128;
+      break;
     case GSBI_IX86_BUILTIN_PMAXUB:
       *iopc = INTRN_PMAXUB;
       break;
@@ -3565,75 +3557,18 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PMINSW:
       *iopc = INTRN_PMINSW;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_PEXTRW:
-      {
-        Is_True (gs_tree_code (gs_tree_value (gs_tree_chain (t_list))) == GS_INTEGER_CST,
-                 ("Immediate value required by pextrw"));
-        UINT val = gs_get_integer_value(gs_tree_value (gs_tree_chain (t_list)));
-        switch (val)
-        {
-          case 0:
-            *iopc = INTRN_PEXTRW0;
-            break;
-          case 1:
-            *iopc = INTRN_PEXTRW1;
-            break;
-          case 2:
-            *iopc = INTRN_PEXTRW2;
-            break;
-          case 3:
-            *iopc = INTRN_PEXTRW3;
-            break;
-          default:
-            Fail_FmtAssertion ("Invalid imm value %d to pextrw", val);
-        }
-        TY_IDX arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(t_list)));
-        TYPE_ID arg_mtype  = TY_mtype(arg_ty_idx);
-        arg0     = WN_CreateParm (Mtype_comparison (arg_mtype), arg0,
-                                  arg_ty_idx, WN_PARM_BY_VALUE);
-        wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, MTYPE_U4, MTYPE_V,
-                                      *iopc, 1, &arg0);
-        break;
-      }
-    case GSBI_IX86_BUILTIN_PINSRW:
-      {
-        Is_True (gs_tree_code (gs_tree_value (gs_tree_chain (gs_tree_chain (t_list)))) == GS_INTEGER_CST, ("Immediate value required by pinsrw"));
-        UINT val = gs_get_integer_value(gs_tree_value (gs_tree_chain (gs_tree_chain (t_list))));
-        switch (val)
-        {
-          case 0:
-            *iopc = INTRN_PINSRW0;
-            break;
-          case 1:
-            *iopc = INTRN_PINSRW1;
-            break;
-          case 2:
-            *iopc = INTRN_PINSRW2;
-            break;
-          case 3:
-            *iopc = INTRN_PINSRW3;
-            break;
-          default:
-            Fail_FmtAssertion ("Invalid imm value %d to pinsrw", val);
-                                                                                
-        }
-        WN * args[2];
-        for (int c=0; c<2; c++)
-        {
-            TY_IDX arg_ty_idx = Get_TY (gs_tree_type (gs_tree_value (t_list)));
-            TYPE_ID arg_mtype = TY_mtype (arg_ty_idx);
-            args[c] = WN_CreateParm (Mtype_comparison (arg_mtype), arg0,
-                                        arg_ty_idx, WN_PARM_BY_VALUE);
-            t_list = gs_tree_chain (t_list);
-            arg0 = arg1;
-        }
-                                                                                
-        wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, MTYPE_M8I2, MTYPE_V,
-                                  *iopc, 2, args);
-        break;
-      }
-#endif
+    case GSBI_IX86_BUILTIN_PMAXUB128:
+      *iopc = INTRN_PMAXUB128;
+      break;
+    case GSBI_IX86_BUILTIN_PMAXSW128:
+      *iopc = INTRN_PMAXSW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMINUB128:
+      *iopc = INTRN_PMINUB128;
+      break;
+    case GSBI_IX86_BUILTIN_PMINSW128:
+      *iopc = INTRN_PMINSW128;
+      break;
     case GSBI_IX86_BUILTIN_PMOVMSKB:
       *iopc = INTRN_PMOVMSKB;
       break;
@@ -3652,6 +3587,18 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_DIVPS:
       *iopc = INTRN_DIVPS;
       break;
+    case GSBI_IX86_BUILTIN_ADDSD:
+      *iopc = INTRN_ADDSD;
+      break;
+    case GSBI_IX86_BUILTIN_SUBSD:
+      *iopc = INTRN_SUBSD;
+      break;
+    case GSBI_IX86_BUILTIN_MULSD:
+      *iopc = INTRN_MULSD;
+      break;
+    case GSBI_IX86_BUILTIN_DIVSD:
+      *iopc = INTRN_DIVSD;
+      break;
     case GSBI_IX86_BUILTIN_ADDSS:
       *iopc = INTRN_ADDSS;
       break;
@@ -3663,6 +3610,42 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       break;
     case GSBI_IX86_BUILTIN_DIVSS:
       *iopc = INTRN_DIVSS;
+      break;
+    case GSBI_IX86_BUILTIN_CMPEQPD:
+      *iopc = INTRN_CMPEQPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPLTPD:
+      *iopc = INTRN_CMPLTPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPLEPD:
+      *iopc = INTRN_CMPLEPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPGTPD:
+      *iopc = INTRN_CMPGTPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPGEPD:
+      *iopc = INTRN_CMPGEPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPUNORDPD:
+      *iopc = INTRN_CMPUNORDPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNEQPD:
+      *iopc = INTRN_CMPNEQPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNLTPD:
+      *iopc = INTRN_CMPNLTPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNLEPD:
+      *iopc = INTRN_CMPNLEPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNGTPD:
+      *iopc = INTRN_CMPNGTPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNGEPD:
+      *iopc = INTRN_CMPNGEPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPORDPD:
+      *iopc = INTRN_CMPORDPD;
       break;
     case GSBI_IX86_BUILTIN_CMPEQPS:
       *iopc = INTRN_CMPEQPS;
@@ -3700,6 +3683,30 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_CMPORDPS:
       *iopc = INTRN_CMPORDPS;
       break;
+    case GSBI_IX86_BUILTIN_CMPEQSD:
+      *iopc = INTRN_CMPEQSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPLTSD:
+      *iopc = INTRN_CMPLTSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPLESD:
+      *iopc = INTRN_CMPLESD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPUNORDSD:
+      *iopc = INTRN_CMPUNORDSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNEQSD:
+      *iopc = INTRN_CMPNEQSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNLTSD:
+      *iopc = INTRN_CMPNLTSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNLESD:
+      *iopc = INTRN_CMPNLESD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPORDSD:
+      *iopc = INTRN_CMPORDSD;
+      break;
     case GSBI_IX86_BUILTIN_CMPEQSS:
       *iopc = INTRN_CMPEQSS;
       break;
@@ -3721,11 +3728,20 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_CMPNLESS:
       *iopc = INTRN_CMPNLESS;
       break;
+    case GSBI_IX86_BUILTIN_CMPNGTSS:
+      *iopc = INTRN_CMPNGTSS;
+      break;
+    case GSBI_IX86_BUILTIN_CMPNGESS:
+      *iopc = INTRN_CMPNGESS;
+      break;
     case GSBI_IX86_BUILTIN_CMPORDSS:
       *iopc = INTRN_CMPORDSS;
       break;
     case GSBI_IX86_BUILTIN_MAXPS:
       *iopc = INTRN_MAXPS;
+      break;
+    case GSBI_IX86_BUILTIN_MAXSD:
+      *iopc = INTRN_MAXSD;
       break;
     case GSBI_IX86_BUILTIN_MAXSS:
       *iopc = INTRN_MAXSS;
@@ -3733,11 +3749,17 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_MINPS:
       *iopc = INTRN_MINPS;
       break;
+    case GSBI_IX86_BUILTIN_MINSD:
+      *iopc = INTRN_MINSD;
+      break;
     case GSBI_IX86_BUILTIN_MINSS:
       *iopc = INTRN_MINSS;
       break;
     case GSBI_IX86_BUILTIN_ANDPS:
       *iopc = INTRN_ANDPS;
+      break;
+    case GSBI_IX86_BUILTIN_ANDNPD:
+      *iopc = INTRN_ANDNPD;
       break;
     case GSBI_IX86_BUILTIN_ANDNPS:
       *iopc = INTRN_ANDNPS;
@@ -3775,6 +3797,9 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_SQRTPS:
       *iopc = INTRN_SQRTPS;
       break;
+    case GSBI_IX86_BUILTIN_SQRTSD:
+      *iopc = INTRN_SQRTSD;
+      break;
     case GSBI_IX86_BUILTIN_RCPSS:
       *iopc = INTRN_RCPSS;
       break;
@@ -3791,17 +3816,8 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_EMMS;
       *intrinsic_op = FALSE;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_LOADAPS:
-      *iopc = INTRN_LOADAPS;
-      break;
-    case GSBI_IX86_BUILTIN_STOREAPS:
-      *iopc = INTRN_STOREAPS;
-      *intrinsic_op = FALSE;
-      break;
-#endif
-    case GSBI_IX86_BUILTIN_PXOR128:
-      wn = WN_Bxor (res_type, arg0, arg1);
+    case GSBI_IX86_BUILTIN_CLFLUSH:
+      *iopc = INTRN_CLFLUSH;
       *intrinsic_op = FALSE;
       break;
     case GSBI_IX86_BUILTIN_PSLLDQI128:
@@ -3811,84 +3827,64 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_PSRLDQ;
       break;
     case GSBI_IX86_BUILTIN_PSLLW128:
-      *iopc = INTRN_PSLLW;
+      *iopc = INTRN_PSLLW128;
       break;
     case GSBI_IX86_BUILTIN_PSLLD128:
-      *iopc = INTRN_PSLLD;
+      *iopc = INTRN_PSLLD128;
       break;
     case GSBI_IX86_BUILTIN_PSLLQ128:
-      *iopc = INTRN_PSLLQ;
+      *iopc = INTRN_PSLLQ128;
       break;
     case GSBI_IX86_BUILTIN_PSRLW128:
-      *iopc = INTRN_PSRLW;
+      *iopc = INTRN_PSRLW128;
       break;
     case GSBI_IX86_BUILTIN_PSRLD128:
-      *iopc = INTRN_PSRLD;
+      *iopc = INTRN_PSRLD128;
       break;
     case GSBI_IX86_BUILTIN_PSRLQ128:
-      *iopc = INTRN_PSRLQ;
+      *iopc = INTRN_PSRLQ128;
       break;
     case GSBI_IX86_BUILTIN_PSRAW128:
-      *iopc = INTRN_PSRAW;
+      *iopc = INTRN_PSRAW128;
       break;
     case GSBI_IX86_BUILTIN_PSRAD128:
-      *iopc = INTRN_PSRAD;
+      *iopc = INTRN_PSRAD128;
       break;
     case GSBI_IX86_BUILTIN_PSRAWI128:
-      *iopc = INTRN_PSRAW;
+      *iopc = INTRN_PSRAWI128;
       break;
     case GSBI_IX86_BUILTIN_PSRADI128:
-      *iopc = INTRN_PSRAD;
+      *iopc = INTRN_PSRADI128;
       break;
     case GSBI_IX86_BUILTIN_PSLLWI128:
-      *iopc = INTRN_PSLLW;
+      *iopc = INTRN_PSLLWI128;
       break;
     case GSBI_IX86_BUILTIN_PSLLDI128:
-      *iopc = INTRN_PSLLD;
+      *iopc = INTRN_PSLLDI128;
       break;
     case GSBI_IX86_BUILTIN_PSLLQI128:
-      *iopc = INTRN_PSLLQ;
+      *iopc = INTRN_PSLLQI128;
       break;
     case GSBI_IX86_BUILTIN_PSRLWI128:
-      *iopc = INTRN_PSRLW;
+      *iopc = INTRN_PSRLWI128;
       break;
     case GSBI_IX86_BUILTIN_PSRLDI128:
-      *iopc = INTRN_PSRLD;
+      *iopc = INTRN_PSRLDI128;
       break;
     case GSBI_IX86_BUILTIN_PSRLQI128:
-      *iopc = INTRN_PSRLQ;
+      *iopc = INTRN_PSRLQI128;
       break;
     case GSBI_IX86_BUILTIN_MOVNTDQ:
       *iopc = INTRN_MOVNTDQ;
       *intrinsic_op = FALSE;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_LOADD:
-      *iopc = INTRN_LOADD;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_MOVNTPS:
       *iopc = INTRN_MOVNTPS;
       *intrinsic_op = FALSE;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_SSE_ZERO:
-      *iopc = INTRN_SSE_ZERO;
-      *intrinsic_op = FALSE;
-      break;
-    case GSBI_IX86_BUILTIN_CLRTI:
-      *iopc = INTRN_CLRTI;
-      *intrinsic_op = FALSE;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_PSHUFD:
       *iopc = INTRN_PSHUFD;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_LOADSS:
-      *iopc = INTRN_LOADSS;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_DIVPD:
       wn = WN_Div (res_type, arg0, arg1);
       *intrinsic_op = FALSE;
@@ -3921,16 +3917,6 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_ORPD:
       *iopc = INTRN_ORPD;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_STORELPD:
-      *iopc = INTRN_STORELPD;
-      *intrinsic_op = FALSE;
-      break;
-    case GSBI_IX86_BUILTIN_STOREHPD:
-      *iopc = INTRN_STOREHPD;
-      *intrinsic_op = FALSE;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_LOADLPD:
       *iopc = INTRN_LOADLPD;
       break;
@@ -3958,20 +3944,9 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_PSHUFW:
       *iopc = INTRN_PSHUFW;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_LOADDQA:
-      *iopc = INTRN_LOADDQA;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_LOADDQU:
       *iopc = INTRN_LOADDQU;
       break;
-#if 0 // wgen TODO
-    case GSBI_IX86_BUILTIN_STOREDQA:
-      *iopc = INTRN_STOREDQA;
-      *intrinsic_op = FALSE;
-      break;
-#endif
     case GSBI_IX86_BUILTIN_STOREDQU:
       *iopc = INTRN_STOREDQU;
       *intrinsic_op = FALSE;
@@ -4001,22 +3976,52 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_PMADDWD;
       break;
     case GSBI_IX86_BUILTIN_PSLLW:
-      *iopc = INTRN_PSLLW_MMX;
+      *iopc = INTRN_PSLLW;
       break;
     case GSBI_IX86_BUILTIN_PSLLD:
-      *iopc = INTRN_PSLLD_MMX;
+      *iopc = INTRN_PSLLD;
+      break;
+    case GSBI_IX86_BUILTIN_PSLLQ:
+      *iopc = INTRN_PSLLQ;
       break;
     case GSBI_IX86_BUILTIN_PSRLW:
-      *iopc = INTRN_PSRLW_MMX;
+      *iopc = INTRN_PSRLW;
       break;
     case GSBI_IX86_BUILTIN_PSRLD:
-      *iopc = INTRN_PSRLD_MMX;
+      *iopc = INTRN_PSRLD;
+      break;
+    case GSBI_IX86_BUILTIN_PSRLQ:
+      *iopc = INTRN_PSRLQ;
       break;
     case GSBI_IX86_BUILTIN_PSRAW:
-      *iopc = INTRN_PSRAW_MMX;
+      *iopc = INTRN_PSRAW;
       break;
     case GSBI_IX86_BUILTIN_PSRAD:
-      *iopc = INTRN_PSRAD_MMX;
+      *iopc = INTRN_PSRAD;
+      break;
+    case GSBI_IX86_BUILTIN_PSRAWI:
+      *iopc = INTRN_PSRAWI;
+      break;
+    case GSBI_IX86_BUILTIN_PSRADI:
+      *iopc = INTRN_PSRADI;
+      break;
+    case GSBI_IX86_BUILTIN_PSLLWI:
+      *iopc = INTRN_PSLLWI;
+      break;
+    case GSBI_IX86_BUILTIN_PSLLDI:
+      *iopc = INTRN_PSLLDI;
+      break;
+    case GSBI_IX86_BUILTIN_PSLLQI:
+      *iopc = INTRN_PSLLQI;
+      break;
+    case GSBI_IX86_BUILTIN_PSRLWI:
+      *iopc = INTRN_PSRLWI;
+      break;
+    case GSBI_IX86_BUILTIN_PSRLDI:
+      *iopc = INTRN_PSRLDI;
+      break;
+    case GSBI_IX86_BUILTIN_PSRLQI:
+      *iopc = INTRN_PSRLQI;
       break;
     case GSBI_IX86_BUILTIN_PAND:
       *iopc = INTRN_PAND_MMX;
@@ -4029,6 +4034,18 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       break;
     case GSBI_IX86_BUILTIN_POR:
       *iopc = INTRN_POR_MMX;
+      break;
+    case GSBI_IX86_BUILTIN_PAND128:
+      *iopc = INTRN_PAND128;
+      break;
+    case GSBI_IX86_BUILTIN_PANDN128:
+      *iopc = INTRN_PANDN128;
+      break;
+    case GSBI_IX86_BUILTIN_POR128:
+      *iopc = INTRN_POR128;
+      break;
+    case GSBI_IX86_BUILTIN_PXOR128:
+      *iopc = INTRN_PXOR128;
       break;
     case GSBI_IX86_BUILTIN_VEC_INIT_V4HI: {
       WN *arg[4];
@@ -4282,6 +4299,1145 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_INSERTQ:
       *iopc = INTRN_INSERTQ;
       break;
+#ifdef FE_GNU_4_2_0
+    // SSSE3 intrinsics
+    case GSBI_IX86_BUILTIN_PABSB:
+    case GSBI_IX86_BUILTIN_PABSB128:
+      *iopc = INTRN_PABSB;
+      break;
+    case GSBI_IX86_BUILTIN_PABSD:
+    case GSBI_IX86_BUILTIN_PABSD128:
+      *iopc = INTRN_PABSD;
+      break;
+    case GSBI_IX86_BUILTIN_PABSW:
+    case GSBI_IX86_BUILTIN_PABSW128:
+      *iopc = INTRN_PABSW;
+      break;
+    case GSBI_IX86_BUILTIN_PALIGNR:
+    case GSBI_IX86_BUILTIN_PALIGNR128:
+      *iopc = INTRN_PALIGNR;
+      break;
+    case GSBI_IX86_BUILTIN_PHADDD:
+    case GSBI_IX86_BUILTIN_PHADDD128:
+      *iopc = INTRN_PHADDD;
+      break;
+    case GSBI_IX86_BUILTIN_PHADDSW:
+    case GSBI_IX86_BUILTIN_PHADDSW128:
+      *iopc = INTRN_PHADDSW;
+      break;
+    case GSBI_IX86_BUILTIN_PHADDW:
+    case GSBI_IX86_BUILTIN_PHADDW128:
+      *iopc = INTRN_PHADDW;
+      break;
+    case GSBI_IX86_BUILTIN_PHSUBD:
+    case GSBI_IX86_BUILTIN_PHSUBD128:
+      *iopc = INTRN_PHSUBD;
+      break;
+    case GSBI_IX86_BUILTIN_PHSUBSW:
+    case GSBI_IX86_BUILTIN_PHSUBSW128:
+      *iopc = INTRN_PHSUBSW;
+      break;
+    case GSBI_IX86_BUILTIN_PHSUBW:
+    case GSBI_IX86_BUILTIN_PHSUBW128:
+      *iopc = INTRN_PHSUBW;
+      break;
+    case GSBI_IX86_BUILTIN_PMADDUBSW:
+    case GSBI_IX86_BUILTIN_PMADDUBSW128:
+      *iopc = INTRN_PMADDUBSW;
+      break;
+    case GSBI_IX86_BUILTIN_PMULHRSW:
+    case GSBI_IX86_BUILTIN_PMULHRSW128:
+      *iopc = INTRN_PMULHRSW;
+      break;
+    case GSBI_IX86_BUILTIN_PSHUFB:
+    case GSBI_IX86_BUILTIN_PSHUFB128:
+      *iopc = INTRN_PSHUFB;
+      break;
+    case GSBI_IX86_BUILTIN_PSIGNB:
+    case GSBI_IX86_BUILTIN_PSIGNB128:
+      *iopc = INTRN_PSIGNB;
+      break;
+    case GSBI_IX86_BUILTIN_PSIGND:
+    case GSBI_IX86_BUILTIN_PSIGND128:
+      *iopc = INTRN_PSIGND;
+      break;
+    case GSBI_IX86_BUILTIN_PSIGNW:
+    case GSBI_IX86_BUILTIN_PSIGNW128:
+      *iopc = INTRN_PSIGNW;
+      break;
+    // SSE4.1 intrinsics
+    case GSBI_IX86_BUILTIN_BLENDPD:
+      *iopc = INTRN_BLENDPD;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDPS:
+      *iopc = INTRN_BLENDPS;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDVPD:
+      *iopc = INTRN_BLENDVPD;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDVPS:
+      *iopc = INTRN_BLENDVPS;
+      break;
+    case GSBI_IX86_BUILTIN_DPPD:
+      *iopc = INTRN_DPPD;
+      break;
+    case GSBI_IX86_BUILTIN_DPPS:
+      *iopc = INTRN_DPPS;
+      break;
+    case GSBI_IX86_BUILTIN_INSERTPS128:
+      *iopc = INTRN_INSERTPS128;
+      break;
+    case GSBI_IX86_BUILTIN_MOVNTDQA:
+      *iopc = INTRN_MOVNTDQA;
+      break;
+    case GSBI_IX86_BUILTIN_MPSADBW128:
+      *iopc = INTRN_MPSADBW128;
+      break;
+    case GSBI_IX86_BUILTIN_PACKUSDW128:
+      *iopc = INTRN_PACKUSDW128;
+      break;
+    case GSBI_IX86_BUILTIN_PBLENDVB128:
+      *iopc = INTRN_PBLENDVB128;
+      break;
+    case GSBI_IX86_BUILTIN_PBLENDW128:
+      *iopc = INTRN_PBLENDW128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPEQQ:
+      *iopc = INTRN_PCMPEQQ;
+      break;
+    case GSBI_IX86_BUILTIN_PHMINPOSUW128:
+      *iopc = INTRN_PHMINPOSUW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMAXSB128:
+      *iopc = INTRN_PMAXSB128;
+      break;
+    case GSBI_IX86_BUILTIN_PMAXSD128:
+      *iopc = INTRN_PMAXSD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMAXUD128:
+      *iopc = INTRN_PMAXUD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMAXUW128:
+      *iopc = INTRN_PMAXUW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMINSB128:
+      *iopc = INTRN_PMINSB128;
+      break;
+    case GSBI_IX86_BUILTIN_PMINSD128:
+      *iopc = INTRN_PMINSD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMINUD128:
+      *iopc = INTRN_PMINUD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMINUW128:
+      *iopc = INTRN_PMINUW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVSXBD128:
+      *iopc = INTRN_PMOVSXBD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVSXBQ128:
+      *iopc = INTRN_PMOVSXBQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVSXBW128:
+      *iopc = INTRN_PMOVSXBW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVSXDQ128:
+      *iopc = INTRN_PMOVSXDQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVSXWD128:
+      *iopc = INTRN_PMOVSXWD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVSXWQ128:
+      *iopc = INTRN_PMOVSXWQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVZXBD128:
+      *iopc = INTRN_PMOVZXBD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVZXBQ128:
+      *iopc = INTRN_PMOVZXBQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVZXBW128:
+      *iopc = INTRN_PMOVZXBW128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVZXDQ128:
+      *iopc = INTRN_PMOVZXDQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVZXWD128:
+      *iopc = INTRN_PMOVZXWD128;
+      break;
+    case GSBI_IX86_BUILTIN_PMOVZXWQ128:
+      *iopc = INTRN_PMOVZXWQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMULDQ128:
+      *iopc = INTRN_PMULDQ128;
+      break;
+    case GSBI_IX86_BUILTIN_PMULLD128:
+      *iopc = INTRN_PMULLD128;
+      break;
+    case GSBI_IX86_BUILTIN_VEC_SET_V16QI:
+      *iopc = INTRN_VEC_SET_V16QI;
+      break;
+    case GSBI_IX86_BUILTIN_VEC_SET_V2DI:
+      *iopc = INTRN_VEC_SET_V2DI;
+      break;
+    case GSBI_IX86_BUILTIN_VEC_SET_V4SF:
+      *iopc = INTRN_VEC_SET_V4SF;
+      break;
+    case GSBI_IX86_BUILTIN_VEC_SET_V4SI:
+      *iopc = INTRN_VEC_SET_V4SI;
+      break;
+    // SSE4.2 intrinsics
+    case GSBI_IX86_BUILTIN_CRC32DI:
+      *iopc = INTRN_CRC32DI;
+      break;
+    case GSBI_IX86_BUILTIN_CRC32HI:
+      *iopc = INTRN_CRC32HI;
+      break;
+    case GSBI_IX86_BUILTIN_CRC32QI:
+      *iopc = INTRN_CRC32QI;
+      break;
+    case GSBI_IX86_BUILTIN_CRC32SI:
+      *iopc = INTRN_CRC32SI;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRI128:
+      *iopc = INTRN_PCMPESTRI128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRA128:
+      *iopc = INTRN_PCMPESTRA128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRC128:
+      *iopc = INTRN_PCMPESTRC128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRO128:
+      *iopc = INTRN_PCMPESTRO128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRS128:
+      *iopc = INTRN_PCMPESTRS128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRZ128:
+      *iopc = INTRN_PCMPESTRZ128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPESTRM128:
+      *iopc = INTRN_PCMPESTRM128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPGTQ:
+      *iopc = INTRN_PCMPGTQ;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRI128:
+      *iopc = INTRN_PCMPISTRI128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRA128:
+      *iopc = INTRN_PCMPISTRA128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRC128:
+      *iopc = INTRN_PCMPISTRC128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRO128:
+      *iopc = INTRN_PCMPISTRO128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRS128:
+      *iopc = INTRN_PCMPISTRS128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRZ128:
+      *iopc = INTRN_PCMPISTRZ128;
+      break;
+    case GSBI_IX86_BUILTIN_PCMPISTRM128:
+      *iopc = INTRN_PCMPISTRM128;
+      break;
+    // AES intrinsics
+    case GSBI_IX86_BUILTIN_AESDEC128:
+      *iopc = INTRN_AESDEC128;
+      break;
+    case GSBI_IX86_BUILTIN_AESDECLAST128:
+      *iopc = INTRN_AESDECLAST128;
+      break;
+    case GSBI_IX86_BUILTIN_AESENC128:
+      *iopc = INTRN_AESENC128;
+      break;
+    case GSBI_IX86_BUILTIN_AESENCLAST128:
+      *iopc = INTRN_AESENCLAST128;
+      break;
+    case GSBI_IX86_BUILTIN_AESIMC128:
+      *iopc = INTRN_AESIMC128;
+      break;
+    case GSBI_IX86_BUILTIN_AESKEYGENASSIST128:
+      *iopc = INTRN_AESKEYGENASSIST128;
+      break;
+    // PCLMUL intrinsics
+    case GSBI_IX86_BUILTIN_PCLMULQDQ128:
+      *iopc = INTRN_PCLMULQDQ128;
+      break;
+    // AVX intrinsics
+    case GSBI_IX86_BUILTIN_ADDPD256:
+    case GSBI_IX86_BUILTIN_ADDPS256:
+       wn = WN_Add (res_type, arg0, arg1);
+       *intrinsic_op = FALSE;
+       break;
+    case GSBI_IX86_BUILTIN_ADDSUBPD256:
+      *iopc = INTRN_ADDSUBPD256;
+      break;
+    case GSBI_IX86_BUILTIN_ADDSUBPS256:
+      *iopc = INTRN_ADDSUBPS256;
+      break;
+    case GSBI_IX86_BUILTIN_ANDNPD256:
+      *iopc = INTRN_ANDNPD256;
+      break;
+    case GSBI_IX86_BUILTIN_ANDNPS256:
+      *iopc = INTRN_ANDNPS256;
+      break;
+    case GSBI_IX86_BUILTIN_ANDPD256:
+    case GSBI_IX86_BUILTIN_ANDPS256:
+      wn = WN_Band(res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDPD256:
+      *iopc = INTRN_BLENDPD256;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDPS256:
+      *iopc = INTRN_BLENDPS256;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDVPD256:
+      *iopc = INTRN_BLENDVPD256;
+      break;
+    case GSBI_IX86_BUILTIN_BLENDVPS256:
+      *iopc = INTRN_BLENDVPS256;
+      break;
+    case GSBI_IX86_BUILTIN_CMPPD:
+    case GSBI_IX86_BUILTIN_CMPPD256:
+      *iopc = INTRN_CMPPD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPPS:
+    case GSBI_IX86_BUILTIN_CMPPS256:
+      *iopc = INTRN_CMPPS;
+      break;
+    case GSBI_IX86_BUILTIN_CMPSD:
+      *iopc = INTRN_CMPSD;
+      break;
+    case GSBI_IX86_BUILTIN_CMPSS:
+      *iopc = INTRN_CMPSS;
+      break;
+    case GSBI_IX86_BUILTIN_CVTDQ2PD256:
+      *iopc = INTRN_CVTDQ2PD256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTDQ2PS256:
+      *iopc = INTRN_CVTDQ2PS256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTPD2DQ256:
+      *iopc = INTRN_CVTPD2DQ256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTPD2PS256:
+      *iopc = INTRN_CVTPD2PS256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTPS2DQ256:
+      *iopc = INTRN_CVTPS2DQ256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTPS2PD256:
+      *iopc = INTRN_CVTPS2PD256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTTPD2DQ256:
+      *iopc = INTRN_CVTTPD2DQ256;
+      break;
+    case GSBI_IX86_BUILTIN_CVTTPS2DQ256:
+      *iopc = INTRN_CVTTPS2DQ256;
+      break;
+    case GSBI_IX86_BUILTIN_DIVPD256:
+    case GSBI_IX86_BUILTIN_DIVPS256:
+      wn = WN_Div (res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_DPPS256:
+      *iopc = INTRN_DPPS256;
+      break;
+    case GSBI_IX86_BUILTIN_HADDPD256:
+      *iopc = INTRN_HADDPD256;
+      break;
+    case GSBI_IX86_BUILTIN_HADDPS256:
+      *iopc = INTRN_HADDPS256;
+      break;
+    case GSBI_IX86_BUILTIN_HSUBPD256:
+      *iopc = INTRN_HSUBPD256;
+      break;
+    case GSBI_IX86_BUILTIN_HSUBPS256:
+      *iopc = INTRN_HSUBPS256;
+      break;
+    case GSBI_IX86_BUILTIN_LDDQU256:
+      *iopc = INTRN_LDDQU256;
+      break;
+    case GSBI_IX86_BUILTIN_LOADDQU256:
+      *iopc = INTRN_LOADDQU256;
+      break;
+    case GSBI_IX86_BUILTIN_LOADUPD256:
+      *iopc = INTRN_LOADUPD256;
+      break;
+    case GSBI_IX86_BUILTIN_LOADUPS256:
+      *iopc = INTRN_LOADUPS256;
+      break;
+    case GSBI_IX86_BUILTIN_MASKLOADPD:
+      *iopc = INTRN_MASKLOADPD;
+      break;
+    case GSBI_IX86_BUILTIN_MASKLOADPD256:
+      *iopc = INTRN_MASKLOADPD256;
+      break;
+    case GSBI_IX86_BUILTIN_MASKLOADPS:
+      *iopc = INTRN_MASKLOADPS;
+      break;
+    case GSBI_IX86_BUILTIN_MASKLOADPS256:
+      *iopc = INTRN_MASKLOADPS256;
+      break;
+    case GSBI_IX86_BUILTIN_MASKSTOREPD:
+      *iopc = INTRN_MASKSTOREPD;
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_MASKSTOREPD256:
+      *iopc = INTRN_MASKSTOREPD256;
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_MASKSTOREPS:
+      *iopc = INTRN_MASKSTOREPS;
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_MASKSTOREPS256:
+      *iopc = INTRN_MASKSTOREPS256;
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_MAXPD256:
+    case GSBI_IX86_BUILTIN_MAXPS256:
+      wn = WN_Binary (OPR_MAX, res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_MINPD256:
+    case GSBI_IX86_BUILTIN_MINPS256:
+      wn = WN_Binary (OPR_MIN, res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_MOVDDUP256:
+      *iopc = INTRN_MOVDDUP256;
+      break;
+    case GSBI_IX86_BUILTIN_MOVMSKPD256:
+      *iopc = INTRN_MOVMSKPD256;
+      break;
+    case GSBI_IX86_BUILTIN_MOVMSKPS256:
+      *iopc = INTRN_MOVMSKPS256;
+      break;
+    case GSBI_IX86_BUILTIN_MOVNTDQ256:
+      *iopc = INTRN_MOVNTDQ256;
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_MOVNTPD256:
+      *iopc = INTRN_MOVNTPD256;
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_MOVNTPS256:
+      *iopc = INTRN_MOVNTPS256;
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_MOVSHDUP256:
+      *iopc = INTRN_MOVSHDUP256;
+      break;
+    case GSBI_IX86_BUILTIN_MOVSLDUP256:
+      *iopc = INTRN_MOVSLDUP256;
+      break;
+    case GSBI_IX86_BUILTIN_MULPD256:
+    case GSBI_IX86_BUILTIN_MULPS256:
+      wn = WN_Mpy (res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_ORPD256:
+      *iopc = INTRN_ORPD256;
+      break;
+    case GSBI_IX86_BUILTIN_ORPS256:
+      *iopc = INTRN_ORPS256;
+      break;
+    case GSBI_IX86_BUILTIN_PD256_PD:
+      *iopc = INTRN_PD256_PD;
+      break;
+    case GSBI_IX86_BUILTIN_PD_PD256:
+      *iopc = INTRN_PD_PD256;
+      break;
+    case GSBI_IX86_BUILTIN_PS256_PS:
+      *iopc = INTRN_PS256_PS;
+      break;
+    case GSBI_IX86_BUILTIN_PS_PS256:
+      *iopc = INTRN_PS_PS256;
+      break;
+    case GSBI_IX86_BUILTIN_PTESTC256:
+      *iopc = INTRN_PTESTC256;
+      break;
+    case GSBI_IX86_BUILTIN_PTESTNZC256:
+      *iopc = INTRN_PTESTNZC256;
+      break;
+    case GSBI_IX86_BUILTIN_PTESTZ256:
+      *iopc = INTRN_PTESTZ256;
+      break;
+    case GSBI_IX86_BUILTIN_RCPPS256:
+      *iopc = INTRN_RCPPS256;
+      break;
+    case GSBI_IX86_BUILTIN_ROUNDPD256:
+      *iopc = INTRN_ROUNDPD256;
+      break;
+    case GSBI_IX86_BUILTIN_ROUNDPS256:
+      *iopc = INTRN_ROUNDPS256;
+      break;
+    case GSBI_IX86_BUILTIN_RSQRTPS256:
+      *iopc = INTRN_RSQRTPS256;
+      break;
+    case GSBI_IX86_BUILTIN_RSQRTPS_NR256:
+      *iopc = INTRN_RSQRTPS_NR256;
+      break;
+    case GSBI_IX86_BUILTIN_SHUFPD256:
+      *iopc = INTRN_SHUFPD256;
+      break;
+    case GSBI_IX86_BUILTIN_SHUFPS256:
+      *iopc = INTRN_SHUFPS256;
+      break;
+    case GSBI_IX86_BUILTIN_SI256_SI:
+      *iopc = INTRN_SI256_SI;
+      break;
+    case GSBI_IX86_BUILTIN_SI_SI256:
+      *iopc = INTRN_SI_SI256;
+      break;
+    case GSBI_IX86_BUILTIN_SQRTPD256:
+      *iopc = INTRN_SQRTPD256;
+      break;
+    case GSBI_IX86_BUILTIN_SQRTPS256:
+      *iopc = INTRN_SQRTPS256;
+      break;
+    case GSBI_IX86_BUILTIN_SQRTPS_NR256:
+      *iopc = INTRN_SQRTPS_NR256;
+      break;
+    case GSBI_IX86_BUILTIN_STOREDQU256:
+      *iopc = INTRN_STOREDQU256;
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_STOREUPD256:
+      *iopc = INTRN_STOREUPD256;
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_STOREUPS256:
+      *iopc = INTRN_STOREUPS256;
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_SUBPD256:
+      *iopc = INTRN_SUBPD256;
+      break;
+    case GSBI_IX86_BUILTIN_SUBPS256:
+      *iopc = INTRN_SUBPS256;
+      break;
+    case GSBI_IX86_BUILTIN_UNPCKHPD256:
+      *iopc = INTRN_UNPCKHPD256;
+      break;
+    case GSBI_IX86_BUILTIN_UNPCKHPS256:
+      *iopc = INTRN_UNPCKHPS256;
+      break;
+    case GSBI_IX86_BUILTIN_UNPCKLPD256:
+      *iopc = INTRN_UNPCKLPD256;
+      break;
+    case GSBI_IX86_BUILTIN_UNPCKLPS256:
+      *iopc = INTRN_UNPCKLPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VBROADCASTPD256:
+      *iopc = INTRN_VBROADCASTPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VBROADCASTPS256:
+      *iopc = INTRN_VBROADCASTPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VBROADCASTSD256:
+      *iopc = INTRN_VBROADCASTSD256;
+      break;
+    case GSBI_IX86_BUILTIN_VBROADCASTSS:
+      *iopc = INTRN_VBROADCASTSS;
+      break;
+    case GSBI_IX86_BUILTIN_VBROADCASTSS256:
+      *iopc = INTRN_VBROADCASTSS256;
+      break;
+    case GSBI_IX86_BUILTIN_EXTRACTF128PD256:
+      *iopc = INTRN_EXTRACTF128PD256;
+      break;
+    case GSBI_IX86_BUILTIN_EXTRACTF128PS256:
+      *iopc = INTRN_EXTRACTF128PS256;
+      break;
+    case GSBI_IX86_BUILTIN_EXTRACTF128SI256:
+      *iopc = INTRN_EXTRACTF128SI256;
+      break;
+    case GSBI_IX86_BUILTIN_VINSERTF128PD256:
+      *iopc = INTRN_VINSERTF128PD256;
+      break;
+    case GSBI_IX86_BUILTIN_VINSERTF128PS256:
+      *iopc = INTRN_VINSERTF128PS256;
+      break;
+    case GSBI_IX86_BUILTIN_VINSERTF128SI256:
+      *iopc = INTRN_VINSERTF128SI256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERM2F128PD256:
+      *iopc = INTRN_VPERM2F128PD256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERM2F128PS256:
+      *iopc = INTRN_VPERM2F128PS256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERM2F128SI256:
+      *iopc = INTRN_VPERM2F128SI256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILPD:
+      *iopc = INTRN_VPERMILPD;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILPD256:
+      *iopc = INTRN_VPERMILPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILPS:
+      *iopc = INTRN_VPERMILPS;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILPS256:
+      *iopc = INTRN_VPERMILPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILVARPD:
+      *iopc = INTRN_VPERMILVARPD;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILVARPD256:
+      *iopc = INTRN_VPERMILVARPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILVARPS:
+      *iopc = INTRN_VPERMILVARPS;
+      break;
+    case GSBI_IX86_BUILTIN_VPERMILVARPS256:
+      *iopc = INTRN_VPERMILVARPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTCPD:
+      *iopc = INTRN_VTESTCPD;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTCPD256:
+      *iopc = INTRN_VTESTCPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTCPS:
+      *iopc = INTRN_VTESTCPS;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTCPS256:
+      *iopc = INTRN_VTESTCPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTNZCPD:
+      *iopc = INTRN_VTESTNZCPD;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTNZCPD256:
+      *iopc = INTRN_VTESTNZCPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTNZCPS:
+      *iopc = INTRN_VTESTNZCPS;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTNZCPS256:
+      *iopc = INTRN_VTESTNZCPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTZPD:
+      *iopc = INTRN_VTESTZPD;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTZPD256:
+      *iopc = INTRN_VTESTZPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTZPS:
+      *iopc = INTRN_VTESTZPS;
+      break;
+    case GSBI_IX86_BUILTIN_VTESTZPS256:
+      *iopc = INTRN_VTESTZPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VZEROALL:
+      *iopc = INTRN_VZEROALL;
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_VZEROUPPER:
+      *iopc = INTRN_VZEROUPPER;
+      *intrinsic_op = FALSE;
+      break;
+    case GSBI_IX86_BUILTIN_XORPD256:
+      *iopc = INTRN_XORPD256;
+      break;
+    case GSBI_IX86_BUILTIN_XORPS256:
+      *iopc = INTRN_XORPS256;
+      break;
+
+    // FMA4 intrinsics
+    case GSBI_IX86_BUILTIN_VFMADDPD:
+      *iopc = INTRN_VFMADDPD;
+      break;
+    case GSBI_IX86_BUILTIN_VFMADDPD256:
+      *iopc = INTRN_VFMADDPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VFMADDPS:
+      *iopc = INTRN_VFMADDPS;
+      break;
+    case GSBI_IX86_BUILTIN_VFMADDPS256:
+      *iopc = INTRN_VFMADDPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VFMADDSD:
+      *iopc = INTRN_VFMADDSD;
+      break;
+    case GSBI_IX86_BUILTIN_VFMADDSS:
+      *iopc = INTRN_VFMADDSS;
+      break;
+    case GSBI_IX86_BUILTIN_VFMADDSUBPD:
+      *iopc = INTRN_VFMADDSUBPD;
+      break;
+    case GSBI_IX86_BUILTIN_VFMADDSUBPD256:
+      *iopc = INTRN_VFMADDSUBPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VFMADDSUBPS:
+      *iopc = INTRN_VFMADDSUBPS;
+      break;
+    case GSBI_IX86_BUILTIN_VFMADDSUBPS256:
+      *iopc = INTRN_VFMADDSUBPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VFMSUBADDPD:
+      *iopc = INTRN_VFMSUBADDPD;
+      break;
+    case GSBI_IX86_BUILTIN_VFMSUBADDPD256:
+      *iopc = INTRN_VFMSUBADDPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VFMSUBADDPS:
+      *iopc = INTRN_VFMSUBADDPS;
+      break;
+    case GSBI_IX86_BUILTIN_VFMSUBADDPS256:
+      *iopc = INTRN_VFMSUBADDPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VFMSUBPD:
+      *iopc = INTRN_VFMSUBPD;
+      break;
+    case GSBI_IX86_BUILTIN_VFMSUBPD256:
+      *iopc = INTRN_VFMSUBPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VFMSUBPS:
+      *iopc = INTRN_VFMSUBPS;
+      break;
+    case GSBI_IX86_BUILTIN_VFMSUBPS256:
+      *iopc = INTRN_VFMSUBPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VFMSUBSD:
+      *iopc = INTRN_VFMSUBSD;
+      break;
+    case GSBI_IX86_BUILTIN_VFMSUBSS:
+      *iopc = INTRN_VFMSUBSS;
+      break;
+    case GSBI_IX86_BUILTIN_VFNMADDPD:
+      *iopc = INTRN_VFNMADDPD;
+      break;
+    case GSBI_IX86_BUILTIN_VFNMADDPD256:
+      *iopc = INTRN_VFNMADDPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VFNMADDPS:
+      *iopc = INTRN_VFNMADDPS;
+      break;
+    case GSBI_IX86_BUILTIN_VFNMADDPS256:
+      *iopc = INTRN_VFNMADDPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VFNMADDSD:
+      *iopc = INTRN_VFNMADDSD;
+      break;
+    case GSBI_IX86_BUILTIN_VFNMADDSS:
+      *iopc = INTRN_VFNMADDSS;
+      break;
+    case GSBI_IX86_BUILTIN_VFNMSUBPD:
+      *iopc = INTRN_VFNMSUBPD;
+      break;
+    case GSBI_IX86_BUILTIN_VFNMSUBPD256:
+      *iopc = INTRN_VFNMSUBPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VFNMSUBPS:
+      *iopc = INTRN_VFNMSUBPS;
+      break;
+    case GSBI_IX86_BUILTIN_VFNMSUBPS256:
+      *iopc = INTRN_VFNMSUBPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VFNMSUBSD:
+      *iopc = INTRN_VFNMSUBSD;
+      break;
+    case GSBI_IX86_BUILTIN_VFNMSUBSS:
+      *iopc = INTRN_VFNMSUBSS;
+      break;
+
+    // XOP intrinsics
+    case GSBI_IX86_BUILTIN_VFRCZPD:
+      *iopc = INTRN_VFRCZPD;
+      break;
+    case GSBI_IX86_BUILTIN_VFRCZPD256:
+      *iopc = INTRN_VFRCZPD256;
+      break;
+    case GSBI_IX86_BUILTIN_VFRCZPS:
+      *iopc = INTRN_VFRCZPS;
+      break;
+    case GSBI_IX86_BUILTIN_VFRCZPS256:
+      *iopc = INTRN_VFRCZPS256;
+      break;
+    case GSBI_IX86_BUILTIN_VFRCZSD:
+      *iopc = INTRN_VFRCZSD;
+      break;
+    case GSBI_IX86_BUILTIN_VFRCZSS:
+      *iopc = INTRN_VFRCZSS;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV:
+      *iopc = INTRN_VPCMOV;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV256:
+      *iopc = INTRN_VPCMOV256;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV_V16HI256:
+      *iopc = INTRN_VPCMOV_V16HI256;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV_V16QI:
+      *iopc = INTRN_VPCMOV_V16QI;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV_V2DF:
+      *iopc = INTRN_VPCMOV_V2DF;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV_V2DI:
+      *iopc = INTRN_VPCMOV_V2DI;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV_V32QI256:
+      *iopc = INTRN_VPCMOV_V32QI256;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV_V4DF256:
+      *iopc = INTRN_VPCMOV_V4DF256;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV_V4DI256:
+      *iopc = INTRN_VPCMOV_V4DI256;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV_V4SF:
+      *iopc = INTRN_VPCMOV_V4SF;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV_V4SI:
+      *iopc = INTRN_VPCMOV_V4SI;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV_V8HI:
+      *iopc = INTRN_VPCMOV_V8HI;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV_V8SF256:
+      *iopc = INTRN_VPCMOV_V8SF256;
+      break;
+    case GSBI_IX86_BUILTIN_VPCMOV_V8SI256:
+      *iopc = INTRN_VPCMOV_V8SI256;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMEQB:
+      *iopc = INTRN_VPCOMEQB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMEQD:
+      *iopc = INTRN_VPCOMEQD;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMEQQ:
+      *iopc = INTRN_VPCOMEQQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMEQUB:
+      *iopc = INTRN_VPCOMEQUB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMEQUD:
+      *iopc = INTRN_VPCOMEQUD;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMEQUQ:
+      *iopc = INTRN_VPCOMEQUQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMEQUW:
+      *iopc = INTRN_VPCOMEQUW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMEQW:
+      *iopc = INTRN_VPCOMEQW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMFALSEB:
+      *iopc = INTRN_VPCOMFALSEB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMFALSED:
+      *iopc = INTRN_VPCOMFALSED;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMFALSEQ:
+      *iopc = INTRN_VPCOMFALSEQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMFALSEUB:
+      *iopc = INTRN_VPCOMFALSEUB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMFALSEUD:
+      *iopc = INTRN_VPCOMFALSEUD;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMFALSEUQ:
+      *iopc = INTRN_VPCOMFALSEUQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMFALSEUW:
+      *iopc = INTRN_VPCOMFALSEUW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMFALSEW:
+      *iopc = INTRN_VPCOMFALSEW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGEB:
+      *iopc = INTRN_VPCOMGEB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGED:
+      *iopc = INTRN_VPCOMGED;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGEQ:
+      *iopc = INTRN_VPCOMGEQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGEUB:
+      *iopc = INTRN_VPCOMGEUB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGEUD:
+      *iopc = INTRN_VPCOMGEUD;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGEUQ:
+      *iopc = INTRN_VPCOMGEUQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGEUW:
+      *iopc = INTRN_VPCOMGEUW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGEW:
+      *iopc = INTRN_VPCOMGEW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGTB:
+      *iopc = INTRN_VPCOMGTB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGTD:
+      *iopc = INTRN_VPCOMGTD;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGTQ:
+      *iopc = INTRN_VPCOMGTQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGTUB:
+      *iopc = INTRN_VPCOMGTUB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGTUD:
+      *iopc = INTRN_VPCOMGTUD;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGTUQ:
+      *iopc = INTRN_VPCOMGTUQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGTUW:
+      *iopc = INTRN_VPCOMGTUW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMGTW:
+      *iopc = INTRN_VPCOMGTW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLEB:
+      *iopc = INTRN_VPCOMLEB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLED:
+      *iopc = INTRN_VPCOMLED;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLEQ:
+      *iopc = INTRN_VPCOMLEQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLEUB:
+      *iopc = INTRN_VPCOMLEUB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLEUD:
+      *iopc = INTRN_VPCOMLEUD;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLEUQ:
+      *iopc = INTRN_VPCOMLEUQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLEUW:
+      *iopc = INTRN_VPCOMLEUW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLEW:
+      *iopc = INTRN_VPCOMLEW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLTB:
+      *iopc = INTRN_VPCOMLTB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLTD:
+      *iopc = INTRN_VPCOMLTD;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLTQ:
+      *iopc = INTRN_VPCOMLTQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLTUB:
+      *iopc = INTRN_VPCOMLTUB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLTUD:
+      *iopc = INTRN_VPCOMLTUD;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLTUQ:
+      *iopc = INTRN_VPCOMLTUQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLTUW:
+      *iopc = INTRN_VPCOMLTUW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMLTW:
+      *iopc = INTRN_VPCOMLTW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMNEB:
+      *iopc = INTRN_VPCOMNEB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMNED:
+      *iopc = INTRN_VPCOMNED;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMNEQ:
+      *iopc = INTRN_VPCOMNEQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMNEUB:
+      *iopc = INTRN_VPCOMNEUB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMNEUD:
+      *iopc = INTRN_VPCOMNEUD;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMNEUQ:
+      *iopc = INTRN_VPCOMNEUQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMNEUW:
+      *iopc = INTRN_VPCOMNEUW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMNEW:
+      *iopc = INTRN_VPCOMNEW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMTRUEB:
+      *iopc = INTRN_VPCOMTRUEB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMTRUED:
+      *iopc = INTRN_VPCOMTRUED;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMTRUEQ:
+      *iopc = INTRN_VPCOMTRUEQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMTRUEUB:
+      *iopc = INTRN_VPCOMTRUEUB;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMTRUEUD:
+      *iopc = INTRN_VPCOMTRUEUD;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMTRUEUQ:
+      *iopc = INTRN_VPCOMTRUEUQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMTRUEUW:
+      *iopc = INTRN_VPCOMTRUEUW;
+      break;
+    case GSBI_IX86_BUILTIN_VPCOMTRUEW:
+      *iopc = INTRN_VPCOMTRUEW;
+      break;
+    case GSBI_IX86_BUILTIN_VPHADDBD:
+      *iopc = INTRN_VPHADDBD;
+      break;
+    case GSBI_IX86_BUILTIN_VPHADDBQ:
+      *iopc = INTRN_VPHADDBQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPHADDBW:
+      *iopc = INTRN_VPHADDBW;
+      break;
+    case GSBI_IX86_BUILTIN_VPHADDDQ:
+      *iopc = INTRN_VPHADDDQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPHADDUBD:
+      *iopc = INTRN_VPHADDUBD;
+      break;
+    case GSBI_IX86_BUILTIN_VPHADDUBQ:
+      *iopc = INTRN_VPHADDUBQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPHADDUBW:
+      *iopc = INTRN_VPHADDUBW;
+      break;
+    case GSBI_IX86_BUILTIN_VPHADDUDQ:
+      *iopc = INTRN_VPHADDUDQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPHADDUWD:
+      *iopc = INTRN_VPHADDUWD;
+      break;
+    case GSBI_IX86_BUILTIN_VPHADDUWQ:
+      *iopc = INTRN_VPHADDUWQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPHADDWD:
+      *iopc = INTRN_VPHADDWD;
+      break;
+    case GSBI_IX86_BUILTIN_VPHADDWQ:
+      *iopc = INTRN_VPHADDWQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPHSUBBW:
+      *iopc = INTRN_VPHSUBBW;
+      break;
+    case GSBI_IX86_BUILTIN_VPHSUBDQ:
+      *iopc = INTRN_VPHSUBDQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPHSUBWD:
+      *iopc = INTRN_VPHSUBWD;
+      break;
+    case GSBI_IX86_BUILTIN_VPMACSDD:
+      *iopc = INTRN_VPMACSDD;
+      break;
+    case GSBI_IX86_BUILTIN_VPMACSDQH:
+      *iopc = INTRN_VPMACSDQH;
+      break;
+    case GSBI_IX86_BUILTIN_VPMACSDQL:
+      *iopc = INTRN_VPMACSDQL;
+      break;
+    case GSBI_IX86_BUILTIN_VPMACSSDD:
+      *iopc = INTRN_VPMACSSDD;
+      break;
+    case GSBI_IX86_BUILTIN_VPMACSSDQH:
+      *iopc = INTRN_VPMACSSDQH;
+      break;
+    case GSBI_IX86_BUILTIN_VPMACSSDQL:
+      *iopc = INTRN_VPMACSSDQL;
+      break;
+    case GSBI_IX86_BUILTIN_VPMACSSWD:
+      *iopc = INTRN_VPMACSSWD;
+      break;
+    case GSBI_IX86_BUILTIN_VPMACSSWW:
+      *iopc = INTRN_VPMACSSWW;
+      break;
+    case GSBI_IX86_BUILTIN_VPMACSWD:
+      *iopc = INTRN_VPMACSWD;
+      break;
+    case GSBI_IX86_BUILTIN_VPMACSWW:
+      *iopc = INTRN_VPMACSWW;
+      break;
+    case GSBI_IX86_BUILTIN_VPMADCSSWD:
+      *iopc = INTRN_VPMADCSSWD;
+      break;
+    case GSBI_IX86_BUILTIN_VPMADCSWD:
+      *iopc = INTRN_VPMADCSWD;
+      break;
+    case GSBI_IX86_BUILTIN_VPPERM:
+      *iopc = INTRN_VPPERM;
+      break;
+    case GSBI_IX86_BUILTIN_VPROTB:
+      *iopc = INTRN_VPROTB;
+      break;
+    case GSBI_IX86_BUILTIN_VPROTB_IMM:
+      *iopc = INTRN_VPROTB_IMM;
+      break;
+    case GSBI_IX86_BUILTIN_VPROTD:
+      *iopc = INTRN_VPROTD;
+      break;
+    case GSBI_IX86_BUILTIN_VPROTD_IMM:
+      *iopc = INTRN_VPROTD_IMM;
+      break;
+    case GSBI_IX86_BUILTIN_VPROTQ:
+      *iopc = INTRN_VPROTQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPROTQ_IMM:
+      *iopc = INTRN_VPROTQ_IMM;
+      break;
+    case GSBI_IX86_BUILTIN_VPROTW:
+      *iopc = INTRN_VPROTW;
+      break;
+    case GSBI_IX86_BUILTIN_VPROTW_IMM:
+      *iopc = INTRN_VPROTW_IMM;
+      break;
+    case GSBI_IX86_BUILTIN_VPSHAB:
+      *iopc = INTRN_VPSHAB;
+      break;
+    case GSBI_IX86_BUILTIN_VPSHAD:
+      *iopc = INTRN_VPSHAD;
+      break;
+    case GSBI_IX86_BUILTIN_VPSHAQ:
+      *iopc = INTRN_VPSHAQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPSHAW:
+      *iopc = INTRN_VPSHAW;
+      break;
+    case GSBI_IX86_BUILTIN_VPSHLB:
+      *iopc = INTRN_VPSHLB;
+      break;
+    case GSBI_IX86_BUILTIN_VPSHLD:
+      *iopc = INTRN_VPSHLD;
+      break;
+    case GSBI_IX86_BUILTIN_VPSHLQ:
+      *iopc = INTRN_VPSHLQ;
+      break;
+    case GSBI_IX86_BUILTIN_VPSHLW:
+      *iopc = INTRN_VPSHLW;
+      break;
+
+#endif
+
     default:
 unsupported:
       if (Opt_Level > 0)
@@ -4308,39 +5464,68 @@ unsupported:
   // The following instructions expect both arguments as FP (xmm), but
   // the 2nd argument type for the corresponding builtin is INT, so we
   // need to insert a CVT here.
+  BOOL is_mmx = FALSE;
   switch (ins_code)
   {
-    case GSBI_IX86_BUILTIN_PSRAWI128:
-    case GSBI_IX86_BUILTIN_PSRADI128:
-    case GSBI_IX86_BUILTIN_PSLLWI128:
-    case GSBI_IX86_BUILTIN_PSLLDI128:
-    case GSBI_IX86_BUILTIN_PSLLQI128:
-    case GSBI_IX86_BUILTIN_PSRLWI128:
-    case GSBI_IX86_BUILTIN_PSRLDI128:
-    case GSBI_IX86_BUILTIN_PSRLQI128:
+    case GSBI_IX86_BUILTIN_PSRAW:
+    case GSBI_IX86_BUILTIN_PSRAD:
+    case GSBI_IX86_BUILTIN_PSLLW:
+    case GSBI_IX86_BUILTIN_PSLLD:
+    case GSBI_IX86_BUILTIN_PSRLW:
+    case GSBI_IX86_BUILTIN_PSRLD:
+      is_mmx = TRUE;
+      // fall thr
       Is_True (wn == NULL, ("WGEN_target_builtins: null WN expected"));
       WN * args[2];
-      //for (int c=0; c<2; c++)
-      {
-        // 1st argument
-        TY_IDX arg_ty_idx = Get_TY (gs_tree_type (gs_tree_value (t_list)));
-        TYPE_ID arg_mtype = TY_mtype (arg_ty_idx);
-        args[0] = WN_CreateParm (Mtype_comparison (arg_mtype), arg0,
-                                 arg_ty_idx, WN_PARM_BY_VALUE);
+      // 1st argument
+      TY_IDX arg_ty_idx = Get_TY (gs_tree_type (gs_tree_value (t_list)));
+      TYPE_ID arg_mtype = TY_mtype (arg_ty_idx);
+      args[0] = WN_CreateParm (Mtype_comparison (arg_mtype), arg0,
+                               arg_ty_idx, WN_PARM_BY_VALUE);
                                                                                 
-        // 2nd argument
-        arg1 = WN_Cvt (WN_rtype(arg1), MTYPE_V16I8, arg1);
-        arg_ty_idx = MTYPE_TO_TY_array[WN_rtype (arg1)];
-        arg_mtype = WN_rtype (arg1);
-        args[1] = WN_CreateParm (Mtype_comparison (arg_mtype), arg1,
-                                 arg_ty_idx, WN_PARM_BY_VALUE);
-      }
+      // 2nd argument
+      arg1 = WN_Cvt (WN_rtype(arg1), 
+                     is_mmx ? MTYPE_M8I4 : MTYPE_V16I8, arg1);
+      arg_ty_idx = MTYPE_TO_TY_array[WN_rtype (arg1)];
+      arg_mtype = WN_rtype (arg1);
+      args[1] = WN_CreateParm (Mtype_comparison (arg_mtype), arg1,
+                               arg_ty_idx, WN_PARM_BY_VALUE);
                                                                                 
       wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, res_type, MTYPE_V,
                                 *iopc, 2, args);
       break;
   }
-                                                                                
+  
+  // The following instructions expect both arguments are MMX, but both of the 
+  // argument type for the builtin is INT, so we insert a CVT here.
+  switch(ins_code)
+  {
+    TY_IDX arg_ty_idx;
+    TYPE_ID arg_mtype;
+    case GSBI_IX86_BUILTIN_PADDQ:
+    case GSBI_IX86_BUILTIN_PSUBQ:
+    case GSBI_IX86_BUILTIN_PSLLQ:
+    case GSBI_IX86_BUILTIN_PSRLQ:
+      Is_True (wn == NULL, ("WGEN_target_builtins: null WN expected"));
+      WN* args[2];
+      // 1st argument
+      arg0 = WN_Cvt (WN_rtype(arg0), MTYPE_M8I4, arg0);
+      arg_ty_idx = MTYPE_TO_TY_array[WN_rtype (arg0)];
+      arg_mtype = WN_rtype (arg0);
+      args[0] = WN_CreateParm (Mtype_comparison (arg_mtype), arg0,
+                               arg_ty_idx, WN_PARM_BY_VALUE);
+      // 2nd argument
+      arg1 = WN_Cvt (WN_rtype(arg1), MTYPE_M8I4, arg1);
+      arg_ty_idx = MTYPE_TO_TY_array[WN_rtype (arg1)];
+      arg_mtype = WN_rtype (arg1);
+      args[1] = WN_CreateParm (Mtype_comparison (arg_mtype), arg1,
+                               arg_ty_idx, WN_PARM_BY_VALUE);
+
+      wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, MTYPE_M8I4, MTYPE_V,
+                                *iopc, 2, args);
+      break;
+  }
+
   return wn;
 }
 #endif // TARG_X8664
@@ -4402,6 +5587,7 @@ get_wrapper_value (gs_t stmt)
             temp = gs_build_decl (GS_VAR_DECL, type);
             gs_t s = gs_build_2 (GS_TCC_EXPRESSION, GS_INIT_EXPR, temp,
                             gs_bind_expr_body(p));
+            gs_set_operand(s, GS_TREE_TYPE, type);  
             gs_set_operand(p, GS_BIND_EXPR_BODY, s);
             goto out;
           }
@@ -4417,6 +5603,7 @@ get_wrapper_value (gs_t stmt)
             temp = gs_build_decl (GS_VAR_DECL, type);
             gs_t s = gs_build_2 (GS_TCC_EXPRESSION, GS_INIT_EXPR, temp,
                             gs_tree_operand(p, 0));
+            gs_set_operand(s, GS_TREE_TYPE, type);  
             gs_set_tree_operand(p, 0, s);
             goto out;
           }
@@ -4437,6 +5624,7 @@ get_wrapper_value (gs_t stmt)
               {
                 temp = gs_build_decl (GS_VAR_DECL, type);
                 p = gs_build_2 (GS_TCC_EXPRESSION, GS_INIT_EXPR, temp, p);
+                gs_set_operand(p, GS_TREE_TYPE, type);  
                 gs_set_operand(list, 0, p);
                 goto out;
               }
@@ -4455,6 +5643,7 @@ get_wrapper_value (gs_t stmt)
           {
             temp = gs_build_decl (GS_VAR_DECL, type);
             p = gs_build_2 (GS_TCC_EXPRESSION, GS_INIT_EXPR, temp, p);
+            gs_set_operand(p, GS_TREE_TYPE, type);  
             gs_set_tree_operand(e, 1, p);
             goto out;
           }
@@ -4713,6 +5902,34 @@ WGEN_Expand_Expr (gs_t exp,
             FmtAssert(result_wn == NULL,
                       ("result_wn should be NULL for the result is passed as param."));
           }      
+	  //15210
+          else if (gs_tree_code(t) == GS_CALL_EXPR &&
+                   gs_tree_code(opnd0) == GS_COMPONENT_REF) {
+            WN *target_wn = WGEN_Address_Of(opnd0);
+            WN *result_wn = WGEN_Expand_Expr (t, TRUE /* for return_in_mem*/,
+                                              0, 0, 0, 0, FALSE, FALSE, target_wn);
+            wn = result_wn;
+            WN_set_rtype(wn, MTYPE_V);
+	    break;
+          }
+
+           // bug 15210
+           // Replace the VAR_DECL with the REF, for this case
+           //
+           else if (gs_tree_code(t) == GS_COND_EXPR &&
+                    gs_tree_code(opnd0) == GS_COMPONENT_REF &&
+                   gs_tree_code(gs_tree_operand(t,1)) == GS_TARGET_EXPR &&
+                   gs_tree_code(gs_tree_operand(t,2)) == GS_TARGET_EXPR ) {
+             gs_t t1, t2;
+ 
+             t1 = gs_tree_operand(t, 1);
+             t2 = gs_tree_operand(t, 2);
+             gs_set_tree_operand(t1, 0, opnd0);
+             gs_set_tree_operand(t2, 0, opnd0);
+             wn = WGEN_Expand_Expr(t);
+ 
+             break;
+          }
 
 	  // If the initializer returns the object in memory, then make sure
 	  // the type doesn't require a copy constructor, since such types
@@ -4866,9 +6083,7 @@ WGEN_Expand_Expr (gs_t exp,
 
 	if (gs_tree_this_volatile(exp))
 	  Set_TY_is_volatile(ty_idx);
-#if 1 // wgen bug 10470
 	else Clear_TY_is_volatile(ty_idx);
-#endif
 
 #ifdef KEY
 	if (code == GS_VAR_DECL && gs_decl_value_expr(exp)) {
@@ -4991,9 +6206,6 @@ WGEN_Expand_Expr (gs_t exp,
     case GS_EMPTY_CLASS_EXPR: // bugs 10846, 11138
       ty_idx = Get_TY (gs_tree_type(exp));
       st = Gen_Temp_Symbol (ty_idx, "__empty_class_expr");
-#if 0 // wgen TODO
-      WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
-#endif
       wn = WN_Ldid (TY_mtype (ty_idx), 0, st, ty_idx);
       break;
 
@@ -5216,7 +6428,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  if (MTYPE_size_min(mtyp) < MTYPE_size_min(WN_rtype(wn))) {
 	    if (MTYPE_size_min(mtyp) != 32)
 	      wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp), MTYPE_V,
-			         MTYPE_size_min(mtyp), wn);
+			         gs_type_type_precision(gs_tree_type(exp)), wn);
 	    else wn = WN_Cvt(WN_rtype(wn), mtyp, wn);
 	  }
 	  else {
@@ -5485,6 +6697,28 @@ WGEN_Expand_Expr (gs_t exp,
 	wn0 = WGEN_Expand_Expr (gs_tree_operand (exp, 0),
 	                        need_result || (mtyp != MTYPE_V));
 #endif
+#ifdef TARG_X8664
+        if (mtyp != MTYPE_V && WN_operator(wn0) == OPR_COMMA &&
+             gs_tree_code(gs_tree_operand (exp, 0)) == GS_CALL_EXPR ) {
+          WN *ret_val = WN_kid1(wn0);
+          if (WN_operator(ret_val) == OPR_LDID) { // load return value
+            TYPE_ID rtype = WN_rtype(ret_val); // type in register
+            TYPE_ID desc =  WN_desc(ret_val);  // type in memory
+            // widen the value with proper sign/zero extension
+            // such that I4I1LDID will be sign extended and
+            // U4U2 will be zero extended
+            // Normally the call return value is handled in GS_NOP_EXPR,
+            // but for call expression which is the child of GS_CONVERT_EXPR
+            // (e.g. the bool retuval is explicitly added a convert ), 
+            // it should be handled here
+            if (MTYPE_is_integral(rtype) && MTYPE_is_integral(desc) &&
+                 MTYPE_byte_size( rtype ) > MTYPE_byte_size( desc )) {
+               wn0 = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(desc), MTYPE_V,
+			     MTYPE_size_min(desc), wn0);
+            }
+          }
+        }
+#endif // TARG_X8664
 	if (mtyp == MTYPE_V)
 	  wn = wn0;
 	else if (MTYPE_byte_size(mtyp) < 4 && MTYPE_is_integral(WN_rtype(wn0)))
@@ -5495,6 +6729,18 @@ WGEN_Expand_Expr (gs_t exp,
 	  if (mtyp == WN_rtype(wn0) || mtyp == MTYPE_V)
 	    wn = wn0;
 	  else {
+#ifdef TARG_X8664
+            // in 32bit mode, unsigned int to float type conversion would cause
+            // precision lost if the MSB is '1', the reason for that is we use 
+            // cvtsi2ss to convert the unsigned int to float, it treats the 
+            // 32bit number as signed integer, so the round up is to the wrong
+            // direction. To avoid the lost of precision, we should convert the 
+            // unsigned int to 64bit int first
+            if (MTYPE_float(mtyp) && Is_Target_32bit() && 
+                  WN_rtype(wn0) == MTYPE_U4) {
+	       wn0 = WN_Int_Type_Conversion(wn0, MTYPE_I8);
+            }
+#endif // TARG_X8664
 #ifdef KEY // prevent zero extension when converting to 64-bit address type
 	    if (gs_tree_code(gs_tree_type(exp)) == GS_POINTER_TYPE &&
 		MTYPE_byte_size(FE_Pointer_Type_To_Mtype()) == 8) {
@@ -5860,10 +7106,19 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 
         FmtAssert( (wn0 != NULL), ("Child 0 of IF can not be NULL!"));
-
+	
+	//15210, generate IF-struct, and discard the LDIDs
+        bool typed_ite = false;
+        if( gs_tree_code(gs_tree_operand(exp, 1)) == GS_TARGET_EXPR &&
+            gs_tree_operand(exp, 2) != NULL       &&  // else statement can be NULL
+            gs_tree_code(gs_tree_operand(exp, 2)) == GS_TARGET_EXPR ){
+	 typed_ite = ( gs_tree_code(gs_tree_operand(gs_tree_operand(exp ,1), 0)) == GS_COMPONENT_REF &&
+          gs_tree_code(gs_tree_operand(gs_tree_operand(exp ,2), 0)) == GS_COMPONENT_REF );
+ 	} 
 	if (TY_mtype (ty_idx)  == MTYPE_V ||
             TY_mtype (ty_idx1) == MTYPE_V ||
-            TY_mtype (ty_idx2) == MTYPE_V) {
+            TY_mtype (ty_idx2) == MTYPE_V 
+	    || typed_ite) {
 	  // If ty_idx is MTYPE_V, no return value is needed
 	  // We convert it into if...then...else
 	  WN *then_block = WN_CreateBlock ();
@@ -5879,9 +7134,14 @@ WGEN_Expand_Expr (gs_t exp,
          // "then" statement
           WGEN_Stmt_Push (then_block, wgen_stmk_if_then, Get_Srcpos());
           WGEN_Guard_Var_Push();
-          wn1 = WGEN_Expand_Expr (gs_tree_operand (exp, 1), FALSE);
-          gs_t guard_var1 = WGEN_Guard_Var_Pop();
-          if (wn1) {
+          if (!typed_ite)
+	    wn1 = WGEN_Expand_Expr (gs_tree_operand (exp, 1), FALSE);
+          else
+   	  {
+   	    wn1 = WGEN_Expand_Expr (gs_tree_operand(exp, 1), FALSE, 0, 0, 0, 0, FALSE, FALSE, target_wn);
+	  }
+	  gs_t guard_var1 = WGEN_Guard_Var_Pop();
+          if (wn1 && !typed_ite) {
             wn1 = WN_CreateEval (wn1);
             WGEN_Stmt_Append (wn1, Get_Srcpos());
           }
@@ -5895,9 +7155,12 @@ WGEN_Expand_Expr (gs_t exp,
           if (gs_tree_operand(exp, 2) != NULL) {
             WGEN_Stmt_Push (else_block, wgen_stmk_if_else, Get_Srcpos());
             WGEN_Guard_Var_Push();
-            wn2 = WGEN_Expand_Expr (gs_tree_operand (exp, 2), FALSE);
+            if(!typed_ite)
+ 	      wn2 = WGEN_Expand_Expr (gs_tree_operand (exp, 2), FALSE);
+            else
+   	      wn2 = WGEN_Expand_Expr (gs_tree_operand(exp, 2), FALSE, 0, 0, 0, 0, FALSE, FALSE, target_wn);
             gs_t guard_var2 = WGEN_Guard_Var_Pop();
-            if (wn2) {
+            if (wn2 && !typed_ite) {
               wn2 = WN_CreateEval (wn2);
               WGEN_Stmt_Append (wn2, Get_Srcpos());
             }
@@ -6151,19 +7414,6 @@ WGEN_Expand_Expr (gs_t exp,
             break;
           }
         }
-#if 0
-	gs_t init_expr_opnd0 = gs_tree_operand(exp, 0);
-	if (gs_tree_code(gs_tree_operand(exp, 1)) == GS_NOP_EXPR &&
-	    gs_tree_code(gs_tree_operand(gs_tree_operand(exp, 1), 0)) == GS_TARGET_EXPR &&
-	    gs_tree_code(init_expr_opnd0) == GS_INDIRECT_REF &&
-	    gs_tree_code(gs_tree_operand(init_expr_opnd0, 0)) == GS_VAR_DECL) {
-	  gs_t t = gs_tree_operand(exp, 1);
-	  ST *st = Get_ST(gs_tree_operand(init_expr_opnd0, 0));
-	  WN *target_wn = WN_Ldid(Pointer_Mtype, 0, st, ST_type(st));
-	  wn = WGEN_Expand_Expr(t, TRUE, 0, 0, 0, 0, FALSE, FALSE, target_wn);
-	  break;
-	}
-#endif
       }
 #endif
       if (lang_cplus)
@@ -6252,51 +7502,40 @@ WGEN_Expand_Expr (gs_t exp,
             wn = WGEN_Expand_Expr(t);
             break;
           }
+
+           // bug 15210
+           // |-+COMPONENT_REF <this->m>
+           // |-+TARGET_EXPR
+           //   |-+VAR_DECL <tmp>
+           //   |-+COND_EXPR
+           // replace the VAR_DECL with the COMPONENT_REF, and do an EVAL to keep the code
+           // 1. g++fe would explicitly call copy constructor for operand 1 and 2, if the expression 
+	   //   is just a variable of the same type.
+           // 2. it would generate a target expr to hold the function call, if the expression is such a call, 
+	   //   which returns the same type.
+           // 3. constructor or conversion operators are called, if necessary, so we do not worry
+           else if (code == GS_INIT_EXPR &&
+               gs_tree_code(gs_tree_operand(exp, 0)) == GS_COMPONENT_REF &&
+               gs_tree_code(t) == GS_TARGET_EXPR
+              && gs_tree_code(gs_tree_operand(t, 1)) == GS_COND_EXPR &&
+             gs_tree_code(gs_tree_operand(gs_tree_operand(t,1), 1)) == GS_TARGET_EXPR &&
+             gs_tree_code(gs_tree_operand(gs_tree_operand(t,1), 2)) == GS_TARGET_EXPR ) {
+             WN *eval;
+ 
+             gs_set_tree_operand(t, 0, gs_tree_operand(exp,0));
+             WGEN_Expand_Expr(t,FALSE);
+//		eval = WN_CreateEval(WGEN_Expand_Expr(t));
+//             WGEN_Stmt_Append (eval, Get_Srcpos());
+ 
+             break;
+           }
+
+
 #endif
 	  DevWarn ("INIT_EXPR/MODIFY_EXPR kid1 is TARGET_EXPR, kid0 is %s\n",
 		   gs_code_name(gs_tree_code(gs_tree_operand(exp, 0))));
         }
 
-#if 0 // wgen clean-up: we should not need these codes any more, these
-         are required to process gimplified GNU tree. Also remove
-         definition of WGEN_Process_Initialization.
-
-        gs_t lhs = gs_tree_operand(exp,0);
-        gs_t rhs = gs_tree_operand(exp,1);
-        // wgen TODO: revisit this fix. During gimplification, GNU4 can
-        // strip off a target_expr from a modify_expr (see
-        // gimplify_modify_expr_rhs).
-        // So make sure the target_wn to use for returning object in memory
-        // is set, if appropriate.
-        if (!target_wn && gs_tree_code(exp) == GS_MODIFY_EXPR &&
-            gs_tree_code(rhs) == GS_CALL_EXPR)
-        {
-          TY_IDX ty = Get_TY (gs_tree_type(rhs));
-          if (TY_return_in_mem(ty))
-          {
-            if (gs_tree_code(lhs) == GS_VAR_DECL)
-            {
-              ST * s = Get_ST(lhs);
-              target_wn = WN_Lda (Pointer_Mtype, 0, s, 0);
-              wn = WGEN_Expand_Expr (rhs, TRUE, 0, 0, 0, 0, FALSE,
-                                     FALSE, target_wn);
-              break;
-            }
-          }
-        }
-        // DECL_EXPR nodes can be generally gimplified into either
-        //   1) modify_expr, removing the decl_initial of the lhs, or
-        //   2) generate no TREE code, but keeping decl_initial intact.
-        // (1) is handled here, (2) is handled in Create_ST_For_Tree.
-        // Bugs 11057, 11058
-        else if (gs_tree_code(exp) == GS_MODIFY_EXPR &&
-                 gs_tree_code(lhs) == GS_VAR_DECL &&
-                 gs_tree_code(rhs) == GS_STRING_CST)
-        {
-          WGEN_Process_Initialization (exp);
-          break;
-        }
-#endif
       }
       // fall through
 
@@ -6460,11 +7699,9 @@ WGEN_Expand_Expr (gs_t exp,
 
 	// generate the iload node
 	TY_IDX hi_ty_idx = Get_TY (gs_tree_type(exp));
-#if 1 // wgen bug 10448
 	if (gs_tree_this_volatile(exp))
 	  Set_TY_is_volatile(hi_ty_idx);
 	else Clear_TY_is_volatile(hi_ty_idx);
-#endif
 	desc_ty_idx = component_ty_idx;
 	if (desc_ty_idx == 0)
           desc_ty_idx = hi_ty_idx;
@@ -6563,11 +7800,9 @@ WGEN_Expand_Expr (gs_t exp,
         else
 #endif
         ty_idx = Get_TY(gs_tree_type(exp));
-#if 1 // wgen bug 10448
 	if (gs_tree_this_volatile(exp))
 	  Set_TY_is_volatile(ty_idx);
 	else Clear_TY_is_volatile(ty_idx);
-#endif
         if (need_result) {
           if (!WGEN_Keep_Zero_Length_Structs  &&
               TY_mtype (ty_idx) == MTYPE_M   &&
@@ -6886,7 +8121,13 @@ WGEN_Expand_Expr (gs_t exp,
 #ifdef TARG_IA64
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
 #else	      
+#ifdef TARG_X8664
+	      wn = WN_CreateExp1 (OPR_FLOOR, MTYPE_FQ, MTYPE_FQ, arg_wn);
+	      if (ret_mtype != MTYPE_FQ)
+		wn = WN_Type_Conversion(wn, ret_mtype);
+#else
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
+#endif
 #endif
 	      whirl_generated = TRUE;
               break;
@@ -6986,7 +8227,43 @@ WGEN_Expand_Expr (gs_t exp,
                  if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
                  if (ret_mtype == MTYPE_F4) iopc = INTRN_F4ATAN;
                 else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8ATAN;
-                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'log'");
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'atan'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_ATAN2:
+              case GSBI_BUILT_IN_ATAN2F:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4ATAN2;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8ATAN2;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'atan2'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_SINH:
+              case GSBI_BUILT_IN_SINHF:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4SINH;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8SINH;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'sinh'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_COSH:
+              case GSBI_BUILT_IN_COSHF:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4COSH;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8COSH;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'cosh'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_TANH:
+              case GSBI_BUILT_IN_TANHF:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4TANH;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8TANH;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'tanh'");
                 intrinsic_op = TRUE;
                 break;
 
@@ -7108,25 +8385,85 @@ WGEN_Expand_Expr (gs_t exp,
 #endif // KEY
                 break;
               }
-#if 0
-              case BUILT_IN_LOCK_TEST_AND_SET:
-                wn = emit_builtin_lock_test_and_set (exp, num_args-2);
+#if FE_GNU_4_2_0
+              case GSBI_BUILT_IN_LOCK_TEST_AND_SET_1:
+                wn = emit_builtin_lock_test_and_set (INTRN_LOCK_TEST_AND_SET_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_LOCK_TEST_AND_SET_2:
+                wn = emit_builtin_lock_test_and_set (INTRN_LOCK_TEST_AND_SET_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_LOCK_TEST_AND_SET_4:
+                wn = emit_builtin_lock_test_and_set (INTRN_LOCK_TEST_AND_SET_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_LOCK_TEST_AND_SET_8:
+                wn = emit_builtin_lock_test_and_set (INTRN_LOCK_TEST_AND_SET_I8, exp, num_args-2);
                 whirl_generated = TRUE;
                 break;
 
-              case BUILT_IN_LOCK_RELEASE:
-                emit_builtin_lock_release (exp, num_args-1);
+              case GSBI_BUILT_IN_LOCK_RELEASE_1:
+                emit_builtin_lock_release (INTRN_LOCK_RELEASE_I1, exp, num_args-1);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_LOCK_RELEASE_2:
+                emit_builtin_lock_release (INTRN_LOCK_RELEASE_I2, exp, num_args-1);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_LOCK_RELEASE_4:
+                emit_builtin_lock_release (INTRN_LOCK_RELEASE_I4, exp, num_args-1);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_LOCK_RELEASE_8:
+                emit_builtin_lock_release (INTRN_LOCK_RELEASE_I8, exp, num_args-1);
                 whirl_generated = TRUE;
                 break;
 
-              case BUILT_IN_COMPARE_AND_SWAP:
-                wn = emit_builtin_compare_and_swap (exp, num_args-3);
+              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_1:
+                wn = emit_builtin_compare_and_swap (INTRN_COMPARE_AND_SWAP_I1, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_2:
+                wn = emit_builtin_compare_and_swap (INTRN_COMPARE_AND_SWAP_I2, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_4:
+                wn = emit_builtin_compare_and_swap (INTRN_COMPARE_AND_SWAP_I4, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_8:
+                wn = emit_builtin_compare_and_swap (INTRN_COMPARE_AND_SWAP_I8, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_1:
+                wn = emit_builtin_compare_and_swap (INTRN_BOOL_COMPARE_AND_SWAP_I1, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_2:
+                wn = emit_builtin_compare_and_swap (INTRN_BOOL_COMPARE_AND_SWAP_I2, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_4:
+                wn = emit_builtin_compare_and_swap (INTRN_BOOL_COMPARE_AND_SWAP_I4, exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_BOOL_COMPARE_AND_SWAP_8:
+                wn = emit_builtin_compare_and_swap (INTRN_BOOL_COMPARE_AND_SWAP_I8, exp, num_args-3);
                 whirl_generated = TRUE;
                 break;
 #endif
 
 #ifdef FE_GNU_4_2_0
-	      // OSP
+              case GSBI_BUILT_IN_FETCH_AND_ADD_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_ADD_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_ADD_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_ADD_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
               case GSBI_BUILT_IN_FETCH_AND_ADD_4:
                 wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_ADD_I4, exp, num_args-2);
                 whirl_generated = TRUE;
@@ -7135,13 +8472,180 @@ WGEN_Expand_Expr (gs_t exp,
                 wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_ADD_I8, exp, num_args-2);
                 whirl_generated = TRUE;
                 break;
-
+              case GSBI_BUILT_IN_FETCH_AND_SUB_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_SUB_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_SUB_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_SUB_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_SUB_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_SUB_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_SUB_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_SUB_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_OR_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_OR_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_OR_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_OR_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_OR_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_OR_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_OR_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_OR_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_XOR_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_XOR_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_XOR_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_XOR_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_XOR_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_XOR_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_XOR_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_XOR_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_AND_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_AND_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_AND_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_AND_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_AND_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_AND_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_AND_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_AND_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_NAND_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_NAND_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_NAND_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_NAND_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_NAND_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_NAND_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_FETCH_AND_NAND_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_FETCH_AND_NAND_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_ADD_AND_FETCH_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_ADD_AND_FETCH_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_ADD_AND_FETCH_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_ADD_AND_FETCH_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
               case GSBI_BUILT_IN_ADD_AND_FETCH_4:
                 wn = emit_builtin_sync_fetch_op (INTRN_ADD_AND_FETCH_I4, exp, num_args-2);
                 whirl_generated = TRUE;
                 break;
               case GSBI_BUILT_IN_ADD_AND_FETCH_8:
                 wn = emit_builtin_sync_fetch_op (INTRN_ADD_AND_FETCH_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_SUB_AND_FETCH_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_SUB_AND_FETCH_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_SUB_AND_FETCH_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_SUB_AND_FETCH_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_SUB_AND_FETCH_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_SUB_AND_FETCH_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_SUB_AND_FETCH_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_SUB_AND_FETCH_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_OR_AND_FETCH_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_OR_AND_FETCH_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_OR_AND_FETCH_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_OR_AND_FETCH_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_OR_AND_FETCH_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_OR_AND_FETCH_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_OR_AND_FETCH_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_OR_AND_FETCH_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_XOR_AND_FETCH_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_XOR_AND_FETCH_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_XOR_AND_FETCH_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_XOR_AND_FETCH_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_XOR_AND_FETCH_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_XOR_AND_FETCH_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_XOR_AND_FETCH_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_XOR_AND_FETCH_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_AND_AND_FETCH_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_AND_AND_FETCH_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_AND_AND_FETCH_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_AND_AND_FETCH_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_AND_AND_FETCH_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_AND_AND_FETCH_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_AND_AND_FETCH_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_AND_AND_FETCH_I8, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_NAND_AND_FETCH_1:
+                wn = emit_builtin_sync_fetch_op (INTRN_NAND_AND_FETCH_I1, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_NAND_AND_FETCH_2:
+                wn = emit_builtin_sync_fetch_op (INTRN_NAND_AND_FETCH_I2, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_NAND_AND_FETCH_4:
+                wn = emit_builtin_sync_fetch_op (INTRN_NAND_AND_FETCH_I4, exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+              case GSBI_BUILT_IN_NAND_AND_FETCH_8:
+                wn = emit_builtin_sync_fetch_op (INTRN_NAND_AND_FETCH_I8, exp, num_args-2);
                 whirl_generated = TRUE;
                 break;
 #endif
@@ -7406,9 +8910,15 @@ WGEN_Expand_Expr (gs_t exp,
 	        break;
 	
 	      case GSBI_BUILT_IN_POPCOUNT:
+	        iopc = INTRN_I4POPCNT;
+	        intrinsic_op = TRUE;
+	        break;
 	      case GSBI_BUILT_IN_POPCOUNTL:
+	        iopc = Is_Target_32bit() ? INTRN_I4POPCNT : INTRN_I8POPCNT;
+	        intrinsic_op = TRUE;
+	        break;
 	      case GSBI_BUILT_IN_POPCOUNTLL:
-	        iopc = INTRN_POPCOUNT;
+	        iopc = INTRN_I8POPCNT;
 		intrinsic_op = TRUE;
 		break;
 	
@@ -7552,68 +9062,6 @@ WGEN_Expand_Expr (gs_t exp,
                 }
                 break;
 */
-#ifdef FE_GNU_4_2_0
-              // add
-              case GSBI_BUILT_IN_FETCH_AND_ADD_1:
-              case GSBI_BUILT_IN_FETCH_AND_ADD_2:
-                iopc = INTRN_FETCH_AND_ADD_I4;
-                break;
-
-              // sub
-              case GSBI_BUILT_IN_FETCH_AND_SUB_1:
-              case GSBI_BUILT_IN_FETCH_AND_SUB_2:
-              case GSBI_BUILT_IN_FETCH_AND_SUB_4:
-                iopc = INTRN_FETCH_AND_SUB_I4;
-                break;
-
-              case GSBI_BUILT_IN_FETCH_AND_SUB_8:
-                iopc = INTRN_FETCH_AND_SUB_I8;
-                break;
-
-              // or
-              case GSBI_BUILT_IN_FETCH_AND_OR_1:
-              case GSBI_BUILT_IN_FETCH_AND_OR_2:
-              case GSBI_BUILT_IN_FETCH_AND_OR_4:
-                iopc = INTRN_FETCH_AND_OR_I4;
-                break;
-
-              case GSBI_BUILT_IN_FETCH_AND_OR_8:
-                iopc = INTRN_FETCH_AND_OR_I8;
-                break;
-
-              // xor
-              case GSBI_BUILT_IN_FETCH_AND_XOR_1:
-              case GSBI_BUILT_IN_FETCH_AND_XOR_2:
-              case GSBI_BUILT_IN_FETCH_AND_XOR_4:
-                iopc = INTRN_FETCH_AND_XOR_I4;
-                break;
-
-              case GSBI_BUILT_IN_FETCH_AND_XOR_8:
-                iopc = INTRN_FETCH_AND_XOR_I8;
-                break;
-
-              // and
-              case GSBI_BUILT_IN_FETCH_AND_AND_1:
-              case GSBI_BUILT_IN_FETCH_AND_AND_2:
-              case GSBI_BUILT_IN_FETCH_AND_AND_4:
-                iopc = INTRN_FETCH_AND_AND_I4;
-                break;
-
-              case GSBI_BUILT_IN_FETCH_AND_AND_8:
-                iopc = INTRN_FETCH_AND_AND_I8;
-                break;
-
-              // compare_and_swap
-              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_1:
-              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_2:
-              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_4:
-                iopc = INTRN_COMPARE_AND_SWAP_I4;
-                break;
-
-              case GSBI_BUILT_IN_VAL_COMPARE_AND_SWAP_8:
-                iopc = INTRN_COMPARE_AND_SWAP_I8;
-                break;
-#endif // FE_GNU_4_2_0
 #endif
 #ifdef TARG_SL
               case GSBI_BUILT_IN_CVT64_HIGH:
@@ -8066,11 +9514,9 @@ WGEN_Expand_Expr (gs_t exp,
 #endif // KEY
             arg_wn     = WGEN_Expand_Expr (gs_tree_value (list));
 	    arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
-#if 1 // wgen bug 10448
 	    if (gs_tree_this_volatile(gs_tree_value(list)))
 	      Set_TY_is_volatile(arg_ty_idx);
 	    else Clear_TY_is_volatile(arg_ty_idx);
-#endif
 #ifdef KEY
 	    }
 #endif // KEY
@@ -8084,13 +9530,11 @@ WGEN_Expand_Expr (gs_t exp,
 	  }
 
 	  arg_mtype  = TY_mtype(arg_ty_idx);
-#if 1 // wgen bug 10846
 	  // gcc allows non-struct actual to correspond to a struct formal;
 	  // fix mtype of parm node so as not to confuse back-end
 	  if (arg_mtype == MTYPE_M) {
 	    arg_mtype = WN_rtype(arg_wn);
 	  }
-#endif
           arg_wn = WN_CreateParm (Mtype_comparison (arg_mtype), arg_wn,
 		    		  arg_ty_idx, WN_PARM_BY_VALUE);
           WN_kid (call_wn, i++) = arg_wn;
@@ -8102,7 +9546,7 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 
 #ifdef KEY
-	if (key_exceptions && !gs_tree_nothrow(exp) && 
+	if (emit_exceptions && !gs_tree_nothrow(exp) && 
 // Call terminate() "when the destruction of an object during stack 
 // unwinding (except.ctor) exits using an exception" [except.terminate]
 // So we don't want to form a region in such cases.
@@ -8127,7 +9571,7 @@ WGEN_Expand_Expr (gs_t exp,
 		inside_eh_region = true;
             	WGEN_Stmt_Push (region_body, wgen_stmk_call_region_body, Get_Srcpos());
 	    }
-	} else if (key_exceptions && inside_eh_region && opt_regions)
+	} else if (emit_exceptions && inside_eh_region && opt_regions)
 	{
 	    // The above conditions dictate that this call MUST not be inside
 	    // a region. So close the region.
@@ -8245,6 +9689,20 @@ WGEN_Expand_Expr (gs_t exp,
 
           wn  = WN_CreateComma (OPR_COMMA, WN_rtype (wn1), MTYPE_V,
                                 wn0, wn1);
+#ifdef TARG_X8664
+          if (WN_operator(wn1) == OPR_LDID) {
+            TYPE_ID rtype = WN_rtype(wn1); // type in register
+            TYPE_ID desc =  WN_desc(wn1);  // type in memory
+            // widen the value with proper sign/zero extension
+            // such that I4I1LDID will be sign extended and
+            // U4U2 will be zero extended
+            if (MTYPE_is_integral(rtype) && MTYPE_is_integral(desc) &&
+                 MTYPE_byte_size( rtype ) > MTYPE_byte_size( desc )) {
+               wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(desc), MTYPE_V,
+			     MTYPE_size_min(desc), wn);
+            }
+          }
+#endif
         }
       }
       break;
@@ -8418,7 +9876,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  }
 	  else if (mtype == MTYPE_C4) {
 	    wn = WGEN_x8664_va_arg(ap_wn, MTYPE_float(mtype), ty_idx, FALSE);
-	    wn = WN_CreateIload(OPR_ILOAD, MTYPE_M, MTYPE_M, 0, ty_idx,
+	    wn = WN_CreateIload(OPR_ILOAD, MTYPE_C4, MTYPE_C4, 0, ty_idx,
 				Make_Pointer_Type(ty_idx), wn);
 	  }
 	  else {
@@ -8603,10 +10061,6 @@ WGEN_Expand_Expr (gs_t exp,
       {
         DevWarn ("taking address of a label at line %d", lineno);
         LABEL_IDX label_idx = WGEN_Get_LABEL (arg0, FALSE);
-#if 0
-        FmtAssert (arg0->decl.symtab_idx == CURRENT_SYMTAB,
-                   ("line %d: taking address of a label not defined in current function currently not implemented", lineno));
-#endif
         wn = WN_LdaLabel (Pointer_Mtype, label_idx);
         Set_LABEL_addr_saved (label_idx);
         Set_PU_no_inline (Get_Current_PU ());
@@ -8637,7 +10091,7 @@ WGEN_Expand_Expr (gs_t exp,
 #ifdef KEY
     case GS_EXC_PTR_EXPR:
     {
-      if (key_exceptions)
+      if (emit_exceptions)
       {
 	ST_IDX exc_ptr_st = Get_exception_pointer_symbol ();
       	wn = WN_Ldid (Pointer_Mtype, 0, exc_ptr_st, Get_TY(gs_tree_type(exp)));

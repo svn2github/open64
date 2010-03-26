@@ -1,5 +1,7 @@
 # -*- Makefile -*-
 #
+#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -116,6 +118,9 @@ ifeq ($(BUILD_TARGET), X8664)
 TARGDEFS = -D__MIPS_AND_IA64_ELF_H
 endif
 ifeq ($(BUILD_TARGET), NVISA)
+TARGDEFS = -D__MIPS_AND_IA64_ELF_H
+endif
+ifeq ($(BUILD_TARGET), PPC32)
 TARGDEFS = -D__MIPS_AND_IA64_ELF_H
 endif
 ifeq ($(BUILD_TARGET), LOONGSON)
@@ -319,6 +324,11 @@ BE_CG_TARG_CXX_SRCS =	\
   pqs_cg.cxx            \
   pqs.cxx		\
   register_targ.cxx
+ifeq ($(OLIVE_AUTO_CG), TRUE)
+  BE_CG_TARG_CXX_SRCS += olive_gen_expr.cxx
+  BE_CG_TARG_CXX_SRCS += olive_convert_longlong.cxx
+  CXXFLAGS += -D_OLIVE_AUTO_CG_
+endif
 
 ifeq ($(BUILD_TARGET), IA64)
   BE_CG_TARG_CXX_SRCS += float_rf.cxx
@@ -353,6 +363,10 @@ ifeq ($(BUILD_TARGET), LOONGSON)
   BE_CG_TARG_CXX_SRCS += profile_util.cxx  
 endif
 
+ifeq ($(BUILD_TARGET), PPC32)
+  BE_CG_TARG_CXX_SRCS += cg_sas.cxx    
+  BE_CG_TARG_CXX_SRCS += olive_convert_wn.cxx
+endif
 ifeq ($(BUILD_TARGET), X8664)
   BE_CG_TARG_CXX_SRCS += cg_sched.cxx
   BE_CG_TARG_CXX_SRCS += cg_convert_x87.cxx
@@ -620,6 +634,9 @@ endif
 ifeq ($(BUILD_TARGET), X8664)
 TARGET_SO = opteron.so
 endif
+ifeq ($(BUILD_TARGET), PPC32)
+TARGET_SO = ppc.so
+endif
 ifeq ($(BUILD_TARGET), LOONGSON)
 TARGET_SO = loongson.so
 endif
@@ -637,6 +654,9 @@ LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
 LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
  endif
  ifeq ($(BUILD_TARGET), SL)
+LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
+ endif
+ ifeq ($(BUILD_TARGET), PPC32)
 LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
  endif
 LLDLIBS += $(TARG_LIBDWARF)/libdwarf.a \
@@ -673,6 +693,9 @@ ifndef SKIP_DEP_BUILD
 	$(call submake,$(TARG_LIBUNWIND))
   endif
   ifeq ($(BUILD_TARGET), SL)
+	$(call submake,$(TARG_LIBUNWIND))
+  endif
+  ifeq ($(BUILD_TARGET), PPC32)
 	$(call submake,$(TARG_LIBUNWIND))
   endif
   ifeq ($(BUILD_TARGET), LOONGSON)
@@ -870,6 +893,44 @@ gtn_set.h : gtn_set.td
 gtn_set.td : $(SETGEN) $(BE_CG_DIR)/gen_gtn_set
 	sh  $(BE_CG_DIR)/gen_gtn_set $(COMMON_UTIL_DIR) $(GEN_X_SET_OPTS)
 
+ifeq ($(OLIVE_AUTO_CG), TRUE)
+  BE_CG_OLIVE_DIR	= $(BE_CG_DIR)/olive
+  
+  OLIVE_GRAMMY		= $(BE_CG_OLIVE_DIR)/gram.y
+  OLIVE_GRAMMY_C	= $(BE_CG_OLIVE_DIR)/gram.c
+  OLIVE_GRAM_OBJ	= gram.o
+  OLIVE_OBJS		= x_arrayc.o x_arrayp.o	code.o iburg.o
+  OLIVE_SRCS		= $(BE_CG_OLIVE_DIR)/x_arrayc.c	$(BE_CG_OLIVE_DIR)/x_arrayp.c \
+			 $(BE_CG_OLIVE_DIR)/code.c	$(BE_CG_OLIVE_DIR)/iburg.c 
+  
+  OLIVE_TOOL		= olive
+  OLIVE_CG_GRAMMY	= $(BE_CG_TARG_DIR)/olive_gen_expr.brg
+  OLIVE_CG_OUTPUT	= olive_gen_expr.cxx
+
+
+  GRAMMY_TOOL		= gramgen
+  GRAMMY_CXX		= $(BE_CG_TARG_DIR)/gramgen.cxx
+  GRAMMY_RULES		= $(BE_CG_TARG_DIR)/rule_int.brg  $(BE_CG_TARG_DIR)/rule_bit.brg  $(BE_CG_TARG_DIR)/rule_float.brg \
+			  $(BE_CG_TARG_DIR)/rule_double.brg $(BE_CG_TARG_DIR)/rule_longlong.brg $(BE_CG_TARG_DIR)/rule_llbit.brg
+
+  OLIVE_CG_GRAMMY:	$(GRAMMY_CXX) $(GRAMMY_RULE)
+			$(CXX) -o $(GRAMMY_TOOL) $(GRAMMY_CXX)
+			./$(GRAMMY_TOOL) $(OLIVE_CG_GRAMMY) $(GRAMMY_RULES)
+
+
+  $(OLIVE_CG_OUTPUT):	$(OLIVE_TOOL) OLIVE_CG_GRAMMY
+			./$(OLIVE_TOOL) -I -L $(OLIVE_CG_GRAMMY)
+  $(OLIVE_TOOL):	$(OLIVE_OBJS) $(OLIVE_GRAM_OBJ)
+			$(CC) -o $(OLIVE_TOOL) $(LDFLAGS) $(OLIVE_OBJS) $(OLIVE_GRAM_OBJ)
+					
+  $(OLIVE_GRAM_OBJ):	$(OLIVE_GRAMMY_C)
+			$(CC) -c $(OLIVE_GRAMMY_C)		
+  $(OLIVE_GRAMMY_C):	$(OLIVE_GRAMMY)	
+			$(YACC)	-o $@ $?
+  $(OLIVE_OBJS):	$(OLIVE_SRCS)
+			$(CC) -c $?
+			
+endif
 # here's the target that gets made recursively
 derived_files : $(DERIVED_SRCS) $(DERIVED_INCS)
 
@@ -888,6 +949,10 @@ include $(COMMONRULES)
 ifneq ($(BUILD_TARGET), SL)
 ifeq (gcc,$(firstword $(CCNAME)))
 # work around gcc bug optimizing this file on ia32
+ifeq ($(BUILD_OPTIMIZE), DEBUG)
+cg_loop.o: OPTIMIZER = -O0 -g
+else
 cg_loop.o: OPTIMIZER = -O0
+endif
 endif
 endif

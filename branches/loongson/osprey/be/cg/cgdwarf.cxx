@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -813,8 +817,10 @@ put_subprogram(DST_flag flag,
    	dwarf_add_AT_unsigned_const (dw_dbg, die, DW_AT_inline, 
 			DST_SUBPROGRAM_def_inline(attr), &dw_error);
     }
-    if (PU_has_inlines(Get_Current_PU()))
-	put_flag (DW_AT_MIPS_has_inlines, die);
+    if((&Get_Current_PU()) != NULL){
+      if (PU_has_inlines(Get_Current_PU()))
+       	put_flag (DW_AT_MIPS_has_inlines, die);
+    }
   }
 }
 
@@ -849,13 +855,14 @@ get_ofst_from_label_ASSOC_INFO (DST_ASSOC_INFO assoc_info)
 		DST_ASSOC_INFO_st_index(assoc_info) );
   } else {
 	LABEL_IDX lab;
-	lab = DST_ASSOC_INFO_st_index(assoc_info);
+	lab = DST_ASSOC_INFO_st_idx(assoc_info);
   	FmtAssert ((lab > 0 && lab <= LABEL_Table_Size(DST_ASSOC_INFO_st_level(assoc_info))), 
 	    ("get_ofst_from_label_ASSOC_INFO: bad dst info from fe? (%d,%d)",
 		DST_ASSOC_INFO_st_level(assoc_info), 
 		DST_ASSOC_INFO_st_index(assoc_info) ));
 	return Get_Label_Offset(lab);
   }
+
   FmtAssert ((st != NULL), 
 	("get_ofst_from_label_ASSOC_INFO: bad dst info from fe? (%d,%d)",
 		DST_ASSOC_INFO_st_level(assoc_info), 
@@ -863,6 +870,15 @@ get_ofst_from_label_ASSOC_INFO (DST_ASSOC_INFO assoc_info)
   return (st != NULL) ? ST_ofst(st) : 0;
 }
 
+static mINT32
+get_ofst_from_inline_label_ASSOC_INFO (DST_ASSOC_INFO assoc_info)
+{
+  LABEL_IDX lab;
+  lab = DST_ASSOC_INFO_st_idx(assoc_info);
+  FmtAssert(lab != 0,
+        ("Label is not Created for inline"));
+  return Get_Label_Offset(lab);
+}
 extern INT
 Offset_from_FP (ST *st)
 {
@@ -1124,7 +1140,6 @@ put_pc_value_symbolic (Dwarf_Unsigned pc_attr,
 			      &dw_error);
 }
 
-#if 0
 static void
 put_pc_value (Dwarf_Unsigned pc_attr, INT32 pc_value, Dwarf_P_Die die)
 {
@@ -1136,13 +1151,11 @@ put_pc_value (Dwarf_Unsigned pc_attr, INT32 pc_value, Dwarf_P_Die die)
       cur_text_index,
       &dw_error);
 }
-#endif
 
 static void
 put_lexical_block(DST_flag flag, DST_LEXICAL_BLOCK *attr, Dwarf_P_Die die)
 {
   put_name (DST_LEXICAL_BLOCK_name(attr), die, pb_none);
-#if 1
   put_pc_value_symbolic (DW_AT_low_pc,
 			 Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
 					       (LABEL_IDX) DST_ASSOC_INFO_st_index(DST_LEXICAL_BLOCK_low_pc(attr)),
@@ -1155,40 +1168,17 @@ put_lexical_block(DST_flag flag, DST_LEXICAL_BLOCK *attr, Dwarf_P_Die die)
 					       cur_text_index),
 			 (Dwarf_Addr) 0,
 			 die);
-#else
-  put_pc_value (DW_AT_low_pc, 
-	get_ofst_from_label_ASSOC_INFO(DST_LEXICAL_BLOCK_low_pc(attr)),
-	die);
-  put_pc_value (DW_AT_high_pc,
-	get_ofst_from_label_ASSOC_INFO(DST_LEXICAL_BLOCK_high_pc(attr)),
-	die);
-#endif
 }
 
 static void
 put_inlined_subroutine(DST_INLINED_SUBROUTINE *attr, Dwarf_P_Die die)
 {
-#if 1
-  put_pc_value_symbolic (DW_AT_low_pc,
-			 Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
-					       (LABEL_IDX) DST_ASSOC_INFO_st_index(DST_LEXICAL_BLOCK_low_pc(attr)),
-					       cur_text_index),
-			 (Dwarf_Addr) 0,
-			 die);
-  put_pc_value_symbolic (DW_AT_high_pc,
-			 Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
-					       (LABEL_IDX) DST_ASSOC_INFO_st_index(DST_LEXICAL_BLOCK_high_pc(attr)),
-					       cur_text_index),
-			 (Dwarf_Addr) 0,
-			 die);
-#else
    put_pc_value (DW_AT_low_pc,
-	get_ofst_from_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_low_pc(attr)),
+	get_ofst_from_inline_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_low_pc(attr)),
 	die);
    put_pc_value (DW_AT_high_pc,
-	get_ofst_from_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_high_pc(attr)),
+	get_ofst_from_inline_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_high_pc(attr)),
 	die);
-#endif
 
    if (DST_IS_FOREIGN_OBJ (DST_INLINED_SUBROUTINE_abstract_origin(attr))) {
 	/* cross file inlining */
@@ -1213,10 +1203,6 @@ put_concrete_subprogram (DST_INFO_IDX abstract_idx,
 			 INT32        high_pc,
 			 Dwarf_P_Die  die)
 {
-#if 0
-   put_pc_value (DW_AT_low_pc, low_pc, die);
-   put_pc_value (DW_AT_high_pc, high_pc, die);
-#endif
    put_reference( abstract_idx, DW_AT_abstract_origin, die);
 }
 
@@ -2188,7 +2174,6 @@ Traverse_Extra_DST (void)
   Dwarf_P_Die parent;
   BOOL inlined_subp;
   BOOL visit_children;
-
   if (Trace_Dwarf) {
 	fprintf(TFile, "Trace Extra DST\n");
   }
@@ -2431,20 +2416,6 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
     dwarf_add_expr_gen (expr, 
                         Is_Target_64bit() ? DW_OP_breg7 : DW_OP_breg4, 
 			Frame_Len, 0, &dw_error) ;           
-#if 0
-  /* isa_registers.cxx order of registers is different from that of gdb 
-   * Try "info registers".  
-   * If we change the order in isa_registers now, it is total chaos.
-   */
-  if (Current_PU_Stack_Model != SMODEL_SMALL)
-    dwarf_add_expr_gen (expr, DW_OP_bregx,
-	6 /* REGISTER_machine_id (TN_register_class(FP_TN), TN_register(FP_TN)) */,
-	0, &dw_error);
-  else
-    dwarf_add_expr_gen (expr, DW_OP_bregx,
-	7 /* REGISTER_machine_id (TN_register_class(SP_TN), TN_register(SP_TN)) */,
-	Frame_Len, &dw_error);
-#endif 
 #endif /* TARG_X8664 */
 
   dwarf_add_AT_location_expr(dw_dbg, PU_die, DW_AT_frame_base, expr, &dw_error);
@@ -2593,6 +2564,21 @@ Cg_Dwarf_Begin (BOOL is_64bit)
   cu_idx = DST_get_compile_unit ();
   cu_info = DST_INFO_IDX_TO_PTR (cu_idx);
   Dwarf_Language = Get_Dwarf_Language (cu_info);
+
+  if (Dwarf_Language != DW_LANG_C_plus_plus)
+  {
+    DST_INFO_IDX idx;
+
+    for( idx = DST_INFO_sibling(DST_INFO_IDX_TO_PTR(cu_idx)); !DST_IS_NULL(idx);
+                   idx = DST_INFO_sibling(DST_INFO_IDX_TO_PTR(idx)) )
+    {
+      if (DW_LANG_C_plus_plus == Get_Dwarf_Language ( DST_INFO_IDX_TO_PTR(idx) ))
+      {
+        Dwarf_Language = DW_LANG_C_plus_plus;
+        break;
+      }
+    }
+  }
 
 #ifdef KEY
   if (!CG_emit_unwind_info)
@@ -2810,9 +2796,8 @@ Print_Directives_For_All_Files(void) {
 	      file_table[count].filename);
     else 
 #endif
-    fprintf(Asm_File, "\t%s\t%d\t\"%s/%s\"\n", AS_FILE, count, 
-	    incl_table[file_table[count].incl_index].path_name, 
-	    file_table[count].filename);
+    fprintf(Asm_File, "\t%s\t%d\t\"%s\"\n", AS_FILE, count,
+            file_table[count].filename);
     count++;
   }
   fputc ('\n', Asm_File);
@@ -3628,11 +3613,18 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
     UINT current_reloc_size = is_64bit?8:4; 
 
     if((reloc_count > 0) && reloc_buffer && k < reloc_count) {
-	// For cygnus semi-64-bit dwarf.
-	// targets of relocs in semi-64-bit vary.
-	// Some sections have no relocs and reloc_buffer can be null
-	// in such cases.
-      current_reloc_size = reloc_buffer[k].drd_length;
+      // For cygnus semi-64-bit dwarf.
+      // targets of relocs in semi-64-bit vary.
+      // Some sections have no relocs and reloc_buffer can be null
+      // in such cases.
+      // dwarf_drt_imported_declaration's length is different
+      // the pointer doesn't appear in the 'vsp' array. so we set the size
+      // to zero.
+      // refer _dwarf_pro_generate_debuginfo() in libdwarf/pro_section.c
+      if (reloc_buffer[k].drd_type == dwarf_drt_imported_declaration)
+        current_reloc_size = 0;
+      else
+        current_reloc_size = reloc_buffer[k].drd_length;
     }
 
     cur_byte += vsp.vsp_print_bytes(asm_file,current_reloc_target,cur_byte);

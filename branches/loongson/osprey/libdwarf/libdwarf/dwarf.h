@@ -276,11 +276,6 @@ extern "C" {
 #define DW_AT_MIPS_assumed_size			0x2011 /* MIPS/SGI */
 
 /* HP extensions. */
-#if 0
-#define DW_AT_HP_unmodifiable                   0x2001 /* conflict: MIPS */
-#define DW_AT_HP_actuals_stmt_list              0x2010 /* conflict: MIPS */
-#define DW_AT_HP_proc_per_section               0x2011 /* conflict: MIPS */
-#endif
 #define DW_AT_HP_raw_data_ptr                   0x2012 /* HP */
 #define DW_AT_HP_pass_by_reference              0x2013 /* HP */
 #define DW_AT_HP_opt_level                      0x2014 /* HP */
@@ -472,9 +467,6 @@ extern "C" {
 #define DW_OP_lo_user			0xe0
 
     /* HP extensions. */
-#if 0
-#define DW_OP_HP_unknown                0xe0 /* HP conflict: GNU */
-#endif
 #define DW_OP_HP_is_value               0xe1 /* HP */
 #define DW_OP_HP_fltconst4              0xe2 /* HP */
 #define DW_OP_HP_fltconst8              0xe3 /* HP */

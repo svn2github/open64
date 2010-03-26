@@ -1,5 +1,7 @@
 #
 #
+#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -41,11 +43,12 @@ MACHINE_TYPE = $(shell uname -m | sed -e s/i.86/i386/ )
 ifneq ($(MACHINE_TYPE), ia64)
 ifneq ($(MACHINE_TYPE), x86_64)
 ifneq ($(MACHINE_TYPE), i386)
+ifneq ($(MACHINE_TYPE), ppc)
   ABORT_BUILD = "Unsupported Platform: $(MACHINE_TYPE)"
 endif
 endif
 endif
-
+endif
 
 ifdef ABORT_BUILD
 PHONY: abort
@@ -60,19 +63,29 @@ ifeq ($(MACHINE_TYPE), ia64)
 # ia64
   NATIVE_BUILD_DIR    = osprey/targia64_ia64_nodebug
   NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia64_ia64
-  GNUFE_BUILD_DIR     = osprey-gcc/targia64_ia64
-  GNUFE42_BUILD_DIR   = osprey-gcc-4.2.0/targia64_ia64
+  GNUFE_BUILD_DIR     = osprey-gcc-4.2.0/targia64_ia64
+  GNUFE_BUILD_HOST    = ia64-redhat-linux
   TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/itanium.so 
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so
   LIB_BUILD_DIR       = osprey/targia64
 endif
+
+ifeq ($(MACHINE_TYPE), ppc)
+# ppc
+  NATIVE_BUILD_DIR    = osprey/targppc32_ppc32
+  NATIVE_BUILD_DIR_LD = osprey/targcygnus_ppc32_ppc32
+  GNUFE_BUILD_DIR     = osprey-gcc/targppc32_ppc32
+  TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/ppc.so
+  LIB_BUILD_DIR       = osprey/targppc32_builtonppc32
+endif
+
 ifeq ($(MACHINE_TYPE), i386)
 # i386
   NATIVE_BUILD_DIR    = osprey/targia32_x8664
   NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia32_x8664
-  GNUFE_BUILD_DIR     = osprey-gcc/targia32_x8664
-  GNUFE42_BUILD_DIR   = osprey-gcc-4.2.0/targia32_x8664
+  GNUFE_BUILD_DIR     = osprey-gcc-4.2.0/targia32_x8664
+  GNUFE_BUILD_HOST    = x86_64-redhat-linux
   TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/opteron.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/targ_info/em64t.so
   LIB_BUILD_DIR       = osprey/targia32_builtonia32
@@ -82,8 +95,8 @@ ifeq ($(MACHINE_TYPE), x86_64)
 # x86_64
   NATIVE_BUILD_DIR    = osprey/targx8664_x8664
   NATIVE_BUILD_DIR_LD = osprey/targcygnus_x8664_x8664
-  GNUFE_BUILD_DIR     = osprey-gcc/targx8664_x8664
-  GNUFE42_BUILD_DIR   = osprey-gcc-4.2.0/targx8664_x8664
+  GNUFE_BUILD_DIR     = osprey-gcc-4.2.0/targx8664_x8664
+  GNUFE_BUILD_HOST    = x86_64-redhat-linux
   TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/opteron.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/targ_info/em64t.so
   LIB_BUILD_DIR       = osprey/targx8664_builtonia32
@@ -107,22 +120,19 @@ BASIC_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/whirl2c/whirl2c \
                 $(NATIVE_BUILD_DIR)/whirl2f/whirl2f.so \
                 $(NATIVE_BUILD_DIR)/whirl2f/whirl2f \
-                $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a \
-                $(NATIVE_BUILD_DIR_LD)/ld/ld-new 
+                $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a
+ifneq ($(MACHINE_TYPE), ppc)
+BASIC_COMPONENTS += $(NATIVE_BUILD_DIR_LD)/ld/ld-new 
+endif
 
 GNU3_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/gccfe/gfec \
                 $(NATIVE_BUILD_DIR)/g++fe/gfecc
 
 GNU4_FE_COMPONENTS = \
-                $(NATIVE_BUILD_DIR)/wgen/wgen \
-                $(GNUFE_BUILD_DIR)/gcc/cc1  \
-                $(GNUFE_BUILD_DIR)/gcc/cc1plus
-
-GNU42_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/wgen_4_2_0/wgen42 \
-                $(GNUFE_BUILD_DIR)/gcc/cc142 \
-                $(GNUFE_BUILD_DIR)/gcc/cc1plus42
+                $(GNUFE_BUILD_DIR)/gcc/cc1 \
+                $(GNUFE_BUILD_DIR)/gcc/cc1plus
 
 FORT_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
@@ -137,21 +147,26 @@ FIRST_COMPONENTS = \
 		$(NATIVE_BUILD_DIR)/libelfutil \
 		$(NATIVE_BUILD_DIR)/libdwarf \
 		$(NATIVE_BUILD_DIR)/libunwindP \
-		$(NATIVE_BUILD_DIR)/libcif \
-		$(NATIVE_BUILD_DIR)/arith
+		$(NATIVE_BUILD_DIR)/libcif
+ifneq ($(MACHINE_TYPE), ppc)
+FIRST_COMPONENTS += $(NATIVE_BUILD_DIR)/arith
+endif
 
 NATIVE_COMPONENTS = $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ)  \
                     $(GNU3_FE_COMPONENTS) $(GNU4_FE_COMPONENTS) \
-                    $(GNU42_FE_COMPONENTS) $(FORT_FE_COMPONENTS) \
+                    $(FORT_FE_COMPONENTS) \
 		    $(FIRST_COMPONENTS) 
 
 CROSS_COMPONENTS =  $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
                     $(GNU3_FE_COMPONENTS) $(FORT_FE_COMPONENTS)
 
+
+BASIC_PHONY_TARGET = $(shell for i in $(BASIC_COMPONENTS); do basename "$$i" ; done)
+
 CROSS_PHONY_TARGET = $(shell for i in $(CROSS_COMPONENTS); do basename "$$i" ; done)
 
 PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done) 
-.PHONY : $(PHONY_TARGET) install clean clobber 
+.PHONY : $(PHONY_TARGET) all build install clean clobber backend
 
 #define SKIP_DEP_BUILD will disable the unnecessary dependency check
 export SKIP_DEP_BUILD=1 
@@ -187,9 +202,10 @@ libunwindP: targ_info
 
 libcif: include
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libcif
-
+ifneq ($(MACHINE_TYPE), ppc)
 arith:
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/arith
+endif
 
 $(NATIVE_BUILD_DIR)/driver/driver driver: include
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/driver
@@ -199,13 +215,13 @@ $(NATIVE_BUILD_DIR)/gccfe/gfec gfec: libiberty libcomutil libcmplrs
 
 $(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc: libiberty libcomutil libcmplrs
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/g++fe
-
+ifneq ($(MACHINE_TYPE), ppc)
 $(NATIVE_BUILD_DIR)/wgen/wgen wgen: libiberty libcomutil libcmplrs $(NATIVE_BUILD_DIR)/libspin/libgspin.a
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/wgen
 
 $(NATIVE_BUILD_DIR)/wgen_4_2_0/wgen42 wgen42: libiberty libcomutil libcmplrs $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/wgen_4_2_0
-
+endif
 $(NATIVE_BUILD_DIR)/be/be be: be.so 
 $(NATIVE_BUILD_DIR)/be/be.so be.so: include libiberty targ_info
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/be
@@ -245,17 +261,21 @@ $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so orc_intel.so: cg.so
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/orc_intel
 
 $(NATIVE_BUILD_DIR)/targ_info/itanium.so itanium.so: targ_info
-
+else
+ifeq ($(MACHINE_TYPE), ppc)
+$(NATIVE_BUILD_DIR)/targ_info/ppc.so ppc.so: targ_info
 else
 $(NATIVE_BUILD_DIR)/targ_info/opteron.so opteron.so: targ_info
 $(NATIVE_BUILD_DIR)/targ_info/em64t.so em64t.so: targ_info
 endif
+endif
 
 $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a: libcomutil
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/ir_tools
-
+ifneq ($(MACHINE_TYPE), ppc)
 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95 mfef95: libcomutil libcif arith
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/crayf90
+endif
 
 # some GNU components need different opt flags in debug/nodebug build
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
@@ -265,6 +285,7 @@ else
 endif
 
 .PHONY: Force libspin libspin42 phony_targets first
+ifneq ($(MACHINE_TYPE), ppc)
 $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
 	$(MAKE) -C $(NATIVE_BUILD_DIR_LD)
 
@@ -277,22 +298,35 @@ $(NATIVE_BUILD_DIR)/libspin/libgspin.a libspin:
 $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a  libspin42:
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0 
 
-# GNU 4.0.2 based FE
-$(GNUFE_BUILD_DIR)/gcc/cc1plus cc1plus: cc1
+# GNU 4.2.0 based FE
+cc1plus: $(GNUFE_BUILD_DIR)/gcc/cc1plus
+cc1: $(GNUFE_BUILD_DIR)/gcc/cc1
+cc1plus: cc1
+$(GNUFE_BUILD_DIR)/gcc/cc1plus cc1plus: $(GNUFE_BUILD_DIR)/gcc/cc1
 $(GNUFE_BUILD_DIR)/gcc/cc1 cc1: $(GNUFE_BUILD_DIR)/Makefile Force
 	$(MAKE) -C $(GNUFE_BUILD_DIR)
+	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
+	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
+	    install-common
+	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
+	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
+	    install-headers
+	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
+	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
+	    install-libgcc
+	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
+	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
+	    install-cpp
+	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
+	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
+	    install-driver
+	$(MAKE) -C $(GNUFE_BUILD_DIR)/$(GNUFE_BUILD_HOST)/libstdc++-v3 \
+	    DESTDIR=$(CURDIR)/$(GNUFE_BUILD_DIR) \
+	    install
 
-$(GNUFE_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin/libgspin.a
+$(GNUFE_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a
 	cd $(GNUFE_BUILD_DIR); BUILD_OPTIMIZE=$(BUILD_OPTIMIZE) CFLAGS=$(GNU_CFLAGS) ./CONFIGURE
-
-# GNU 4.2.0 based FE
-$(GNUFE42_BUILD_DIR)/gcc/cc1plus42 cc1plus42: cc142 
-$(GNUFE42_BUILD_DIR)/gcc/cc142 cc142: $(GNUFE42_BUILD_DIR)/Makefile Force
-	$(MAKE) -C $(GNUFE42_BUILD_DIR)
-
-$(GNUFE42_BUILD_DIR)/Makefile: $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a
-	cd $(GNUFE42_BUILD_DIR); BUILD_OPTIMIZE=$(BUILD_OPTIMIZE) CFLAGS=$(GNU_CFLAGS) ./CONFIGURE
-
+endif
 build:
 	$(MAKE) first
 	$(MAKE) phony_targets 
@@ -305,6 +339,8 @@ cross: CROSS_BUILD = true
 cross: $(CROSS_PHONY_TARGET)
 	echo $(CROSS_PHONY_TARGET)
 
+backend: $(BASIC_PHONY_TARGET)
+
 install: ;@./install_compiler.sh $(MACHINE_TYPE)
 install-cross: ;@./install_compiler.sh ia64-cross
 
@@ -312,6 +348,7 @@ install-cross: ;@./install_compiler.sh ia64-cross
 library lib: LIB_ACTION = default
 clean-library clean-lib: LIB_ACTION = clobber
 library lib clean-library clean-lib:
+ifneq ($(MACHINE_TYPE), ppc)
 	+@for d in $(LIB_BUILD_DIR); do \
 	    echo $(MAKE) -C $$d $(LIB_ACTION); \
 	    $(MAKE) -C $$d $(LIB_ACTION); \
@@ -325,15 +362,17 @@ library lib clean-library clean-lib:
 	    fi; \
 	done; \
 	exit $$exit
-
+endif
 
 clobber: clean 
 	rm -rf $(CROSSDIR) $(BOOTDIR)
 clean: clean-lib
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/driver clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber 
+ifneq ($(MACHINE_TYPE), ppc)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/wgen clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/wgen_4_2_0 clobber
+endif
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/g++fe clobber
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/be clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/cg clobber 
@@ -347,22 +386,27 @@ clean: clean-lib
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/../libkapi clean 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/targ_info clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/ir_tools clobber 
+ifneq ($(MACHINE_TYPE), ppc)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/crayf90 clobber
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/arith clobber
+endif
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/include clobber
+ifneq ($(MACHINE_TYPE), ppc)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin clobber
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0 clobber
+endif
 ifeq ($(MACHINE_TYPE), ia64)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/orc_ict clobber
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/orc_intel clobber
 endif
+ifneq ($(MACHINE_TYPE), ppc)
 	cd osprey-gcc/gcc; rm -f gspin-alloc.h  gspin-assert.h  gspin-base-types.h   gspin-io.h  gspin-list.h  gspin-mempool.h  gspin-tel.h  gspin-tree.h
 	cd osprey-gcc-4.2.0/gcc; rm -f gspin-alloc.h  gspin-assert.h  gspin-base-types.h   gspin-io.h  gspin-list.h  gspin-mempool.h  gspin-tel.h  gspin-tree.h
 	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER
 	cd $(GNUFE_BUILD_DIR); ./CLOBBER
-	cd $(GNUFE42_BUILD_DIR); ./CLOBBER
+endif
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
-		libiberty libunwindP libspin libspin_4_2_0; do  \
+		libiberty libunwindP; do  \
 		$(MAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \
 	done
 

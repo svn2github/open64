@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -339,11 +343,7 @@ WN_UNROLL::Replicate_expr(WN *expr, INT rep_cnt)
   INT i;
 
   WN *new_expr = WN_CopyNode(expr);
-#if 0
-  WN_COPY_All_Maps(new_expr, expr);
-#else
   WN_set_map_id(new_expr, (WN_MAP_ID) (-1));
-#endif
 
 
   switch (opr) {
@@ -452,11 +452,7 @@ WN_UNROLL::Replicate_stmt(WN *stmt, INT rep_cnt)
     }
 
   WN *new_stmt = WN_CopyNode(stmt);
-#if 0
-  WN_COPY_All_Maps(new_stmt, stmt);
-#else
   WN_set_map_id(new_stmt, (WN_MAP_ID) (-1));
-#endif
 
   switch (opr) {
   case OPR_COMMENT:
@@ -700,12 +696,6 @@ DevWarn("unrolled size would be %d * %d", wn_unroll.Node_count(), unroll_times);
     // use the size limit if there was no pragma specified unroll amount
     if (pragma_unroll_times == 0 && (unroll_times * wn_unroll.Node_count()) > max_unroll_size)
       return;	// too big
-#if 0
-    if (unroll_times > OPT_unroll_times)
-      return;	// too big
-    if (wn_unroll.Node_count() > OPT_unroll_size)
-      return;	// too big
-#endif
   }
   else
     return;	// no loop info
@@ -855,8 +845,22 @@ WN_UNROLL_suitable(WN *tree)
 void
 WN_unroll(WN *tree)
 {
+#ifdef TARG_X8664
+  UINT32 saved_unrolled_size_max;
+  UINT32 saved_unroll_times_max;
+#endif
+
   if (WOPT_Enable_WN_Unroll == 0)
     return;
+
+#ifdef TARG_X8664
+  if (WN_Loop_Multiversion_Alias(tree)) {
+    saved_unrolled_size_max = OPT_unroll_size;
+    saved_unroll_times_max = OPT_unroll_times;
+    OPT_unroll_size = 256;
+    OPT_unroll_times = 8;
+  }
+#endif
 
   Start_Timer(T_Lower_CU);
   Set_Error_Phase("WN_unroll");
@@ -874,6 +878,13 @@ WN_unroll(WN *tree)
   WN_Lower_Checkdump("After wn_unroll", tree, 0);   
 
   WN_verifier(tree);
+
+#ifdef TARG_X8664
+  if (WN_Loop_Multiversion_Alias(tree)) {
+    OPT_unroll_size = saved_unrolled_size_max;
+    OPT_unroll_times = saved_unroll_times_max;
+  }
+#endif
 
   return;
 }

@@ -2044,7 +2044,7 @@ lower_send_clauses (tree clauses, tree *ilist, tree *olist, omp_context *ctx)
 
       var = val = OMP_CLAUSE_DECL (c);
       if (ctx->is_nested)
-	var = lookup_decl_in_outer_ctx (val, ctx);
+	var = maybe_lookup_decl_in_outer_ctx (val, ctx);
 
       if (OMP_CLAUSE_CODE (c) != OMP_CLAUSE_COPYIN
 	  && is_global_var (var))

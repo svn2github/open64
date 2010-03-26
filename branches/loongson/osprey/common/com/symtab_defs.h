@@ -202,14 +202,17 @@ enum ST_FLAGS_EXT
     ST_IS_THIS_PTR      = 0x20, 	// ST is "this"-pointer
     ST_IS_PURE_VFUNC    = 0x40,         // ST is pure virtual function
     ST_IS_THREAD_LOCAL  = 0x80,         // ST is Thread-Local_Storage, __thread
+    ST_IS_ARRAY_REMAPPING_CANDIDATE = 0x100,
+    ST_IS_ARRAY_REMAPPING_CANDIDATE_MALLOC = 0x200, // storage for the remapped
+                                        // array is from malloc()
 #if defined(TARG_SL)
-    ST_IN_V1BUF = 0x100,                // ST is vector1 variable
-    ST_IN_V2BUF = 0x200,                // ST is vector2 variable 
-    ST_IN_V4BUF = 0x400,                // ST is vector4 variable 
-    ST_IN_SDRAM = 0x800,                // ST is sdram variable 
-    ST_IN_SBUF =  0x1000,                // ST is explcitly declared sbuf so 
-    ST_IS_VBUF_OFFSET = 0x2000,  // represent this symbol means offset instead of a absolute address
-    ST_IS_SBUF_OFFSET = 0x4000,  // same as above and will be deleted for we don't have sbuf in the future.
+    ST_IN_V1BUF = 0x400,                // ST is vector1 variable
+    ST_IN_V2BUF = 0x800,                // ST is vector2 variable 
+    ST_IN_V4BUF = 0x1000,               // ST is vector4 variable 
+    ST_IN_SDRAM = 0x2000,               // ST is sdram variable 
+    ST_IN_SBUF =  0x4000,               // ST is explcitly declared sbuf so 
+    ST_IS_VBUF_OFFSET = 0x8000,  // represent this symbol means offset instead of a absolute address
+    ST_IS_SBUF_OFFSET = 0x10000, // same as above and will be deleted for we don't have sbuf in the future.
 #endif     
 }; // ST_FLAGS_EXT
 #endif
@@ -226,9 +229,9 @@ public:
     mUINT32 flags;			// misc. attributes
 
 #if defined(TARG_SL)
-    mUINT16 flags_ext;			// more attributes
+    mUINT32 flags_ext;			// more attributes
 #else
-    mUINT8 flags_ext;			// more attributes
+    mUINT16 flags_ext;			// more attributes
 #endif
 
     ST_CLASS sym_class : 8;		// class info
@@ -584,7 +587,9 @@ enum TY_PU_FLAGS
     TY_HAS_SSEREG_PARM	= 0x00000008,	// SSE register parameters under i386
     TY_HAS_1_REG_PARM	= 0x00000010,	// 1 register parameter under i386
     TY_HAS_2_REG_PARM	= 0x00000020,	// 2 register parameters under i386
-    TY_HAS_3_REG_PARM	= 0x00000030	// 3 register parameters under i386
+    TY_HAS_3_REG_PARM	= 0x00000030,	// 3 register parameters under i386
+    TY_HAS_STDCALL      = 0x00000040,   // stdcall calling convention under i386
+    TY_HAS_FASTCALL     = 0x00000080    // fastcall calling convention under i386
 #endif
 };
 

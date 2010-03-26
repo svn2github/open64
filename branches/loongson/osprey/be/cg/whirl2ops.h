@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -143,7 +147,7 @@ extern void TN_CORRESPOND_Free(void);
 
 extern BB * Add_Label(LABEL_IDX);
 
-#ifdef KEY
+#if defined(KEY) || defined(TARG_PPC32)
 extern OPS New_OPs;
 extern OP *Last_Processed_OP;
 extern SRCPOS current_srcpos;
@@ -168,5 +172,5 @@ extern void Start_New_Label(LABEL_IDX lb_idx, LABEL *lb, const char *str);
  * for example: __tls_get_addr 
  */
 void Expand_New_Call_To_OPs(WN*, OPERATOR, OPS*);
-
+BB*  Start_New_Basic_Block();
 #endif /* whirl2ops_INCLUDED */

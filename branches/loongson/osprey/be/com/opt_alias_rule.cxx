@@ -215,14 +215,6 @@ ALIAS_RULE::Aliased_F90_Target_Rule(const POINTS_TO *const mem1,
 				    TY_IDX object_ty2) const
 {
   if (mem1->Known_f90_pointer()) {
-#if 0
-    fprintf(TFile, "---------------\n");
-    mem1->Print(TFile);
-    fprintf(TFile, "      and\n");
-    mem2->Print(TFile);
-    fprintf(TFile, "      do %salias\n",
-	    (!mem2->Known_not_f90_pointer() || !mem2->Not_f90_target() ? "" : "not "));
-#endif
     if (mem2->Base() != NULL) {
       Is_True(!mem2->Not_f90_target() ||
 	      (ST_class(mem2->Base()) != CLASS_VAR) ||
@@ -232,14 +224,6 @@ ALIAS_RULE::Aliased_F90_Target_Rule(const POINTS_TO *const mem1,
     return (!mem2->Known_not_f90_pointer() || !mem2->Not_f90_target());
   }
   if (mem2->Known_f90_pointer()) {
-#if 0
-    fprintf(TFile, "---------------\n");
-    mem2->Print(TFile);
-    fprintf(TFile, "      and\n");
-    mem1->Print(TFile);
-    fprintf(TFile, "      do %salias\n",
-	    (!mem1->Known_not_f90_pointer() || !mem1->Not_f90_target() ? "" : "not "));
-#endif
     if (mem1->Base() != NULL) {
       Is_True(!mem1->Not_f90_target() ||
 	      (ST_class(mem1->Base()) != CLASS_VAR) ||
@@ -346,7 +330,6 @@ LMV_may_alias (LMV_ALIAS_GROUP a1, LMV_ALIAS_GROUP a2) {
 BOOL ALIAS_RULE::Aliased_Qualifier_Rule(const POINTS_TO *mem1, const POINTS_TO *mem2, TY_IDX ty1, TY_IDX ty2) const
 {
   // If mem1 or mem2 is declared const, ...
-#if 1
   // If at least one of mem1 and mem2 is declared global const, and
   // they do not overlap, the two operations don't alias.
   if (((mem1->Const() &&
@@ -359,15 +342,6 @@ BOOL ALIAS_RULE::Aliased_Qualifier_Rule(const POINTS_TO *mem1, const POINTS_TO *
        !mem1->Overlap(mem2))) {
     return FALSE;
   }
-#else
-  if (Rule_enabled(C_RESTRICT_CONST_RULE) && ty1 != NULL && ty2 != NULL) {
-    // disabled analysis of const qualifier because of inlining of
-    // C constructors.
-    if ((TY_is_const(ty1) && mem2->Not_init_const()) ||
-	(TY_is_const(ty2) && mem1->Not_init_const()))
-      return FALSE;
-  }
-#endif
 
   // mem1 is a unique pointer
   if (mem1->Based_sym() != NULL &&
@@ -457,20 +431,27 @@ static hash_map<const TY_IDX, INT, __gnu_cxx::hash<TY_IDX>, TY_IDX_EQ> Stripped_
 #endif
 
 #ifdef TARG_X8664
-#define I1_VECTOR_TYPES    case MTYPE_V16I1: \
+#define I1_VECTOR_TYPES    case MTYPE_V32I1: \
+                           case MTYPE_V16I1: \
                            case MTYPE_V8I1:  \
                            case MTYPE_M8I1:
-#define I2_VECTOR_TYPES    case MTYPE_V16I2: \
+#define I2_VECTOR_TYPES    case MTYPE_V32I2: \
+                           case MTYPE_V16I2: \
                            case MTYPE_V8I2:  \
                            case MTYPE_M8I2:
-#define I4_VECTOR_TYPES    case MTYPE_V16I4: \
+#define I4_VECTOR_TYPES    case MTYPE_V32I4: \
+                           case MTYPE_V16I4: \
                            case MTYPE_V8I4:  \
                            case MTYPE_M8I4:
-#define I8_VECTOR_TYPES    case MTYPE_V16I8:
-#define F4_VECTOR_TYPES    case MTYPE_V16F4: \
+#define I8_VECTOR_TYPES    case MTYPE_V32I8: \
+                           case MTYPE_V16I8: \
+                           case MTYPE_V8I8:
+#define F4_VECTOR_TYPES    case MTYPE_V32F4: \
+                           case MTYPE_V16F4: \
                            case MTYPE_V8F4:  \
                            case MTYPE_M8F4:
-#define F8_VECTOR_TYPES    case MTYPE_V16F8:
+#define F8_VECTOR_TYPES    case MTYPE_V32F8: \
+                           case MTYPE_V16F8:
 #else
 #define I1_VECTOR_TYPES
 #define I2_VECTOR_TYPES
@@ -707,13 +688,6 @@ BOOL ALIAS_RULE::Aliased_Strongly_Typed_Rule(TY_IDX ty1, TY_IDX ty2) const
 //
 BOOL ALIAS_RULE::Aliased_C_Qualifier_Rule(const POINTS_TO *mem1, const POINTS_TO *mem2) const
 {
-#if 0
-  // OLD Restricted rule
-  if (mem1->Based_sym() != NULL && mem1->Restricted() &&
-      mem2->Based_sym() != NULL && mem2->Restricted() &&
-      mem1->Based_sym() != mem2->Based_sym())
-    return FALSE;
-#else
   // Implement restrict pointer like a unique_pt.
   //
   if (mem1->Based_sym() != NULL &&
@@ -733,7 +707,6 @@ BOOL ALIAS_RULE::Aliased_C_Qualifier_Rule(const POINTS_TO *mem1, const POINTS_TO
       mem2->Based_sym() != mem1->Based_sym() &&
       !mem1->Default_vsym())
     return FALSE;
-#endif
 
   return TRUE;
 }
@@ -790,6 +763,17 @@ BOOL ALIAS_RULE::Aliased_Disjoint(const POINTS_TO *mem1, const POINTS_TO *mem2) 
 //
 BOOL ALIAS_RULE::Same_location(const WN *wn1, const WN *wn2, const POINTS_TO *mem1, const POINTS_TO *mem2) const
 {
+  // The analysis performed in Same_location is quite weak and assumes
+  // that no dependence analysis is done.  This wasn't recognized
+  // early since Same_location returns FALSE for references to arrays
+  // with more than one element.  The problem is exposed for single
+  // element arrays, which are sometimes used in Fortran 77 to
+  // implement dynamic array allocation (that is, in each reference to
+  // the allocated array, an index base appears as a term in the
+  // index expression, where the index base points to the first
+  // element of the allocated array).
+  if (mem1->Is_array())
+    return FALSE;
   if (mem1->Same_base(mem2) &&
       mem1->Ofst_kind() == OFST_IS_FIXED &&
       mem2->Ofst_kind() == OFST_IS_FIXED &&

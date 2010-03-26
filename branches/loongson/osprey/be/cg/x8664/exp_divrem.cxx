@@ -251,7 +251,7 @@ static UINT64 determine_pseudo_inverse (
 }
 
 
-static UINT log2 (UINT i)
+static UINT log2_uint (UINT i)
 {
   UINT t = 0;
   i = i >> 1;
@@ -304,7 +304,7 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
   if (!is_double && CG_idivbyconst_opt) {
     if (is_signed) {
       UINT64 d = labs((UINT64)denom_val);
-      UINT l = log2((UINT)d);
+      UINT l = log2_uint((UINT)d);
       INT64 e = denom_val;
       UINT s, a;
       UINT64 m;
@@ -439,7 +439,7 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
 	n++;
       }
       
-      l = log2(t) + 1;
+      l = log2_uint(t) + 1;
       j = (((UINT64)(0xffffffff)) % ((UINT64)(t)));
       k = (((UINT64)(1)) << (32 + l)) / ((UINT64)(0xffffffff - j));
       m_low = (((UINT64)(1)) << (32 + l)) / t;
@@ -455,7 +455,7 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
 	a = 0;
       }
       else {
-	s = log2(t);
+	s = log2_uint(t);
 	m_low = (((UINT64)(1)) << (32 + s)) / ((UINT64)(t));
 	r = ((UINT)((((UINT64)(1)) << (32 + s)) % ((UINT64)(t))));
 	m = (r < ((t >> 1) + 1)) ? ((UINT)(m_low)) : ((UINT)(m_low)) + 1;

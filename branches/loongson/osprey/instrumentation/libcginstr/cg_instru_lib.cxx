@@ -574,7 +574,7 @@ PU_PROFILE_INFO * __value_profile_pu_init(char * outputfile,
         char* srcfile_pu_name, PROFILE_PHASE phase, UINT32 instr_count)
 {
 #ifdef VALUE_PROFILE_VERIFY
-    //new code here: this is for offline test, write all data into one txt file.
+    // new code here: this is for offline test, write all data into one txt file.
     if (!have_open_output_file)
     {
         if ((fout = fopen(outputfile, "wb")) == NULL)

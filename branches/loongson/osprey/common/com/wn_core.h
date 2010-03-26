@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -515,8 +515,11 @@ public:
       union {
         INT64       pragma_arg64;
         struct {
-           INT32    pragma_arg1;
-	   union {
+	  union{
+           WN* dummy3;
+	   INT32    pragma_arg1;
+	  };
+	  union {
 	     INT32    pragma_arg2;
 	     struct {
 	       mUINT32  pragma_asm_opnd_num : 8;
@@ -694,8 +697,6 @@ public:
   friend inline WN*         WN_last (const WN *);
   friend inline WN*&        WN_last (WN *);
 
-  friend inline INT64       WN_pragma_arg64 (const WN *);
-  friend inline INT64&      WN_pragma_arg64 (WN *);
   friend inline INT32       WN_pragma_arg1 (const WN *);
   friend inline INT32&      WN_pragma_arg1 (WN *);
   friend inline INT32       WN_pragma_arg2 (const WN *);
@@ -822,6 +823,8 @@ inline WN* WN_kid2 (const WN* wn) { return wn->u3.kids [2]; }
 inline WN*& WN_kid2 (WN* wn) { return wn->u3.kids [2]; }
 inline WN* WN_kid3 (const WN* wn) { return wn->u3.kids [3]; }
 inline WN*& WN_kid3 (WN* wn) { return wn->u3.kids [3]; }
+inline WN* WN_kid4 (const WN* wn) { return wn->u3.kids [4]; }
+inline WN*& WN_kid4 (WN* wn) { return wn->u3.kids [4]; }
 #pragma reset woff 1172
 inline INT64 WN_const_val (const WN* wn) { return wn->u3.const_val; }
 inline INT64& WN_const_val (WN* wn) { return wn->u3.const_val; }
@@ -837,8 +840,6 @@ inline UINT32 WN_asm_opnd_num (const WN *wn) { return wn->u1u2.uu.ua.asm_operand
 inline UINT32& WN_asm_opnd_num (WN *wn) { return wn->u1u2.uu.ua.asm_operand_num; }
 inline UINT32 WN_asm_num_clobbers (const WN *wn) { return wn->u3.asm_fields.num_clobbers; }
 inline UINT32& WN_asm_num_clobbers (WN *wn) { return wn->u3.asm_fields.num_clobbers; }
-inline INT64 WN_pragma_arg64 (const WN* wn) { return wn->u3.pragma.pragma_arg64; }
-inline INT64& WN_pragma_arg64 (WN* wn) { return wn->u3.pragma.pragma_arg64; }
 inline INT32 WN_pragma_arg1 (const WN* wn) { return wn->u3.pragma.up1.pragma_arg1; }
 inline INT32& WN_pragma_arg1 (WN* wn) { return wn->u3.pragma.up1.pragma_arg1; }
 inline INT32 WN_pragma_arg2 (const WN* wn) { return wn->u3.pragma.up1.pragma_arg2; }
@@ -921,11 +922,11 @@ inline void WN_Copy_sl_ext(WN* dst,  const WN* src)  { dst->sl_ext = src->sl_ext
 #define WN_kid1(x)              WN_kid((x),1)
 #define WN_kid2(x)              WN_kid((x),2)
 #define WN_kid3(x)              WN_kid((x),3)
+#define WN_kid4(x)              WN_kid((x),4)
 #define WN_const_val(x)         ((x)->u3.const_val)
 #define WN_label_flag(x)        ((x)->u3.label_flag_fields.label_flag)
 #define WN_first(x)             ((x)->u3.block.first)
 #define WN_last(x)              ((x)->u3.block.last)
-#define WN_pragma_arg64(x)      ((x)->u3.pragma.pragma_arg64)
 #define WN_pragma_arg1(x)       ((x)->u3.pragma.up1.pragma_arg1)
 #define WN_pragma_arg2(x)       ((x)->u3.pragma.up1.pragma_arg2)
 #define WN_pragma_distr_type(x) ((x)->u3.pragma.up2.pragma_distr_type)
@@ -1382,6 +1383,9 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 /* Is the loop a upward countable loop */
 #define WN_LOOP_UP_TRIP   0x40
 
+/* Is the memory alias improved via loop multi-versioning */
+#define WN_LOOP_MULTIVERSION_ALIAS 0x80
+
 /* Is the loop an innermost loop */
 #define WN_Loop_Innermost(x)		(WN_loop_flag(x) & WN_LOOP_INNERMOST)
 #define WN_Set_Loop_Innermost(x)	(WN_loop_flag(x) |= WN_LOOP_INNERMOST)
@@ -1431,6 +1435,19 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 #define WN_Loop_Up_Trip(x)         (WN_loop_flag(x) & WN_LOOP_UP_TRIP)
 #define WN_Set_Loop_Up_Trip(x)     (WN_loop_flag(x) |= WN_LOOP_UP_TRIP)
 #define WN_Reset_Loop_Up_Trip(x)   (WN_loop_flag(x) &= ~WN_LOOP_UP_TRIP)
+
+/* Through the use of multi-versioning we can provide improved aliasing
+ * results for the memory refrences within a loop.  This flag is applied
+ * to the loop in the multi-version pair for which the memory references
+ * have been divided into mult-version alias groups to provide runtime
+ * verified disambiguation.
+ */
+#define WN_Loop_Multiversion_Alias(x) \
+  (WN_loop_flag(x) & WN_LOOP_MULTIVERSION_ALIAS)
+#define WN_Set_Multiversion_Alias(x) \
+  (WN_loop_flag(x) |= WN_LOOP_MULTIVERSION_ALIAS)
+#define WN_Reset_Multiversion_Alias(x) \
+  (WN_loop_flag(x) &= ~WN_LOOP_MULTIVERSION_ALIAS)
 
 #define WN_LABEL_HANDLER_BEGIN 0x2
 #define WN_Label_Is_Handler_Begin(x)	   (WN_label_flag(x) & \

@@ -26,6 +26,11 @@
 #include "system.h"
 #include "gnu/tree.h"
 
+#if defined(TARG_PPC32)
+// the definition in gnu/config/ppc32/rs6000.h causes problem
+// with the enumeration in common/com/ppc32/config_targ.h
+#undef TARGET_POWERPC
+#endif /* TARG_PPC32 */
 #include "wn.h"
 #include "wfe_misc.h"
 #include "wfe_stmt.h"
@@ -2363,10 +2368,6 @@ void WFE_expand_end_atomic ()
 {
        WN *wn = WFE_Stmt_Top ();
        WFE_Stmt_Pop (wfe_stmk_scope);
-#if 0
-       // Remove this call later. This fix has been moved to omp-lowering
-       format_rhs_atomic_stmt (wn);
-#endif
        WFE_Stmt_Append (wn, Get_Srcpos());
        WFE_CS_pop(wfe_omp_atomic);
 };
@@ -2660,22 +2661,8 @@ void WFE_expand_threadprivate (ST_list *threadprivate_variables)
          {
             st = st_list->st;
             Set_ST_is_thread_private (* st);	
-#if 0
-            wn = WN_CreatePragma(WN_PRAGMA_THREADPRIVATE, st, 0, 0);
-// WN_PRAGMA_THREADPRIVATE is a new modifier Which should be
-// consistent with lower levels.
-            WN_set_pragma_omp(wn);  
-            WFE_Stmt_Append (wn, Get_Srcpos());
-#endif
          }
        //////////////// OPENMP CHECK STACK /////////////
-#if 0
-       SRCPOS srcpos = Get_Srcpos();
-       WFE_CS_push(wfe_omp_threadprivate,SRCPOS_linenum(srcpos), SRCPOS_filenum(srcpos));
-   
-       WFE_check_threadprivate(threadprivate_variables);
-       WFE_CS_pop(wfe_omp_threadprivate);
-#endif
        
 }
 

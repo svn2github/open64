@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -40,6 +44,7 @@
 #define intrn_info_INCLUDED "intrn_info.h"
 
 #include "defs.h"
+#include "mtypes.h"
 #include "wintrinsic.h"
 
 /* Enumeration of mnemonic names for the return types of intrinsic
@@ -74,11 +79,23 @@ typedef enum INTRN_RETKIND {
   IRETURN_V16F4,	     /* MTYPE_V16F4 */
   IRETURN_V16F8,	     /* MTYPE_V16F8 */
   IRETURN_V16C8,	     /* MTYPE_V16C8 */
+  IRETURN_V8I1,              /* MTYPE_V8I1 */
+  IRETURN_V8I2,              /* MTYPE_V8I2 */
+  IRETURN_V8I4,              /* MTYPE_V8I4 */
+  IRETURN_V8I8,              /* MTYPE_V8I8 */
   IRETURN_M8I1,              /* MTYPE_M8I1 */
   IRETURN_M8I2,              /* MTYPE_M8I2 */
   IRETURN_M8I4,              /* MTYPE_M8I4 */
   IRETURN_V16I8,             /* MTYPE_V16I8 */
   IRETURN_V16I1,             /* MTYPE_V16I1 */
+  IRETURN_V32C4,             /* MTYPE_V32C4 */
+  IRETURN_V32C8,             /* MTYPE_V32C8 */
+  IRETURN_V32I1,             /* MTYPE_V32I1 */
+  IRETURN_V32I2,             /* MTYPE_V32I2 */
+  IRETURN_V32I4,             /* MTYPE_V32I4 */
+  IRETURN_V32I8,             /* MTYPE_V32I8 */
+  IRETURN_V32F4,             /* MTYPE_V32F4 */
+  IRETURN_V32F8,             /* MTYPE_V32F8 */
 #endif
   IRETURN_PPU2,         /* return type of ctype_b_loc() */
   IRETURN_PPI4,         /* return type of ctype_toupper_loc() and ctype_tolower_loc() */
@@ -123,6 +140,8 @@ typedef struct intrn_info_t {
 } intrn_info_t;
 
 extern const intrn_info_t intrn_info[];
+
+extern TYPE_ID INTRN_Size_Mtype (const INTRINSIC id);
 
 inline BOOL INTRN_by_value (const INTRINSIC i)
 {

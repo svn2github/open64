@@ -610,7 +610,7 @@ Compute_Force_TNs(void)
   }
 #endif
 
-#if !defined(TARG_X8664) && !defined(TARG_LOONGSON)
+#if !defined(TARG_X8664) && !defined(TARG_LOONGSON) && !defined(TARG_PPC32)
   // OSP_426, always mark Caller_GP_TN global
   if (Caller_GP_TN != NULL) {
     Force_Live_Add(Caller_GP_TN);
@@ -1929,14 +1929,6 @@ GRA_LIVE_Merge_Blocks( BB *dst, BB *a, BB *b )
   GTN_SET *live_use;
   GTN_SET *live_def;
 
-#if 0
-  /* The 'in' vectors of the merged block is the same as the 'in'
-   * vectors of the first block. Since the first block will become
-   * the merged block, there's nothing to do.
-   */
-  BB_live_in(dst) = GTN_SET_CopyD(BB_live_in(a),&liveness_pool);
-  BB_defreach_in(dst) = GTN_SET_CopyD(BB_defreach_in(a),&liveness_pool);
-#endif
 
   /* The 'out' vectors of the merged block are the 'out' vectors of the
    * block being merged in.

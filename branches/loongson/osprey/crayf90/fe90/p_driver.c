@@ -3709,20 +3709,6 @@ static void parse_expr_for_evaluator(void)
 
    if (parse_expr(&opnd)) {
 
-# if 0  /* Do not want to generate a compiler temp here.  Need to insert */
-        /* a new statement type and operator.  Use it.                   */
-
-      GEN_COMPILER_TMP_ASG(ir_idx,
-                           attr_idx,
-                           TRUE,             /* Semantics done */
-                           OPND_LINE_NUM(opnd),
-                           OPND_COL_NUM(opnd),
-                           INTEGER_DEFAULT_TYPE,
-                           Priv);
-
-      SH_IR_IDX(curr_stmt_sh_idx)	= ir_idx;
-      COPY_OPND(IR_OPND_R(ir_idx),opnd); 
-# endif
       stmt_level_semantics();
    }
    else { /* Problems with expression - exit */

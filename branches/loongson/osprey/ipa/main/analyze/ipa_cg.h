@@ -682,13 +682,6 @@ public:
   struct pu_info *PU_Info(void) const 
   {
     Is_True(_func_st != 0, ("IPA NODE must have valid st"));
-#if 0
-    Is_True(&St_Table[PU_Info_proc_sym(IP_FILE_HDR_proc_info(
-                                                             File_Header())[Proc_Info_Index()].info)]
-            == _func_st,
-            ("IPA_NODE: file/proc indices [%d:%d] inconsistent with st",
-             _file_index, _proc_info_index));
-#endif
 
 #ifdef KEY
     if (this->Is_Builtin())
@@ -754,6 +747,8 @@ public:
   {
     fprintf (fp, "%s\n", Name());
   }
+
+  void Print(FILE *fp, IPA_CALL_GRAPH *cg);
 
   void Trace () const 
   {
@@ -1142,6 +1137,11 @@ public:
       edge->Set_Edge_Index (edge_index);
     }
     caller->Incr_Total_Succ();
+  }
+
+  void Delete_Edge(IPA_EDGE *edge)
+  {
+      _graph->Delete_Edge(edge->Edge_Index());
   }
     
   IPA_NODE* Caller (EDGE_INDEX edge_idx) const

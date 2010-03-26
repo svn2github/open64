@@ -299,12 +299,6 @@ RESTRICTED_MAP::Verify_info(const WN        *const wn,
       // correctly, LNO removes entries from the restricted map (via
       // Note_Invalid_Based_Symbol) under some conditions (like when
       // it distributes/rehapes an array).
-#if 0
-      Is_True(!pt->Unique_pt(),
-	      ("RESTRICTED_MAP: Spurious Unique_pt()"));
-      Is_True(!pt->Restricted(),
-	      ("RESTRICTED_MAP: Spurious Restricted()"));
-#endif
     }
   }
 #endif
@@ -379,11 +373,6 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
   MEM_POOL_Initialize(&_mem_pool, "ALIAS_pool", FALSE);
   MEM_POOL_Push(&_mem_pool);
 
-#if 0
-  _invalid_ip_alias_classes =
-    CXX_NEW(vector<IDTYPE, mempool_allocator<IDTYPE> > (&_mem_pool),
-	    &mem_pool);
-#else
   // Note: C++ is broken in that it uses the same preprocessor as C,
   // and the C preprocessor sees '<' as "less than" instead of "begin
   // template argument". Therefore it seems we can't use CXX_NEW
@@ -393,7 +382,6 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
   typedef vector<IDTYPE, mempool_allocator<IDTYPE> > STUPID_COMPILER;
   _invalid_ip_alias_classes =
     CXX_NEW(STUPID_COMPILER(&_mem_pool), &_mem_pool);
-#endif
 
   // initialized default context
   ALIAS_CONTEXT ac = (DEFAULT_COMMON_RULES | DEFAULT_ANALYSIS_RULES | DEFAULT_COMPATIABILITY_RULES);
@@ -1516,13 +1504,15 @@ void Print_alias_info(char *buf, const ALIAS_MANAGER *am, const WN *wn)
   POINTS_TO *pt = am->Pt(alias_id);
 
   if (pt->Expr_kind() == EXPR_IS_ADDR && pt->Base_kind() == BASE_IS_FIXED) {
+    const char* st_name = ST_class(pt->Base()) == CLASS_CONST ? "<constant>" : ST_name(pt->Base());
+    
     if (pt->Ofst_kind() == OFST_IS_FIXED) 
       sprintf(buf, "id:%d %s+0x%llx",
 	      alias_id, 
-	      ST_class(pt->Base())==CLASS_VAR ? ST_name(pt->Base()) : "not_variable",
+	      ST_class(pt->Base())==CLASS_VAR ? st_name : "not_variable",
 	      pt->Byte_Ofst());
     else
-      sprintf(buf, "id:%d %s", alias_id, ST_name(pt->Base()));
+      sprintf(buf, "id:%d %s", alias_id, st_name);
   } else if (pt->F_param() && pt->Based_sym() != NULL) {
     sprintf(buf, "id:%d parm:%s", alias_id, ST_name(pt->Based_sym()));
   } else if (pt->Unique_pt() && pt->Based_sym() != NULL) {

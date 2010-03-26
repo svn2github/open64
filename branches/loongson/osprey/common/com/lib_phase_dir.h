@@ -52,6 +52,9 @@
 
 #include <stamp.h>
 
+/* location of internal gcc binaries, relative to installation root */
+#define INTERNAL_GCC_BIN "open64-gcc-4.2.0/bin"
+
 #if defined(VENDOR_OSP)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -94,6 +97,15 @@
     #define ALTLIBPATH	 LIBPATH
     #define PHASEPATH	 "/ia32-sgi-linux/bin"
     #define GNUPHASEPATH "/lib"
+
+#elif defined(TARG_PPC32)
+#define NAMEPREFIX	 ""
+#define BINPATH		"/bin"
+#define ALTBINPATH	BINPATH
+#define LIBPATH		"/lib/gcc-lib/ppc32-open64-linux/" OPEN64_FULL_VERSION
+#define ALTLIBPATH	LIBPATH
+#define PHASEPATH	"/lib/gcc-lib/ppc32-open64-linux/" OPEN64_FULL_VERSION
+#define GNUPHASEPATH	"/lib/gcc-lib/ppc32-open64-linux/" OPEN64_FULL_VERSION
 
 #elif defined(TARG_LOONGSON)
     #ifndef CROSS_COMPILATION
@@ -215,6 +227,12 @@
     #define OPEN64_PHASE_PATH "/usr/mips-linux/bin"
     #define OPEN64_CMPLR_NAME_PREFIX "mips"
     #define OPEN64_TARGET_NAME "mips"
+#elif defined(TARG_PPC32)
+    #define OPEN64_TARGET "ppc32-linux"
+    #define VERSION ""
+    #define OPEN64_PHASE_PATH "bin"
+    #define OPEN64_CMPLR_NAME_PREFIX ""
+    #define OPEN64_TARGET_NAME "ppc32"
 #elif defined(TARG_LOONGSON)
     #define OPEN64_TARGET "loongson-linux"
     #define VERSION ""

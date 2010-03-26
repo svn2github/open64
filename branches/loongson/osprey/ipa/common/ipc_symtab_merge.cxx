@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -63,7 +67,6 @@
 // ====================================================================
 //
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "linker.h"
 
@@ -1225,8 +1228,32 @@ Synch_ST_flags (ST& merged_st, const ST& original_st)
 	(ST_GPREL | ST_NOT_GPREL)) {
 	Clear_ST_gprel (merged_st); 
     }
+
+    // if the named_section starts with .rodata., we
+    // need to set the ST as const_var, as gas will
+    // treat it as a rodata.
+    if (ST_is_const_var(merged_st))
+        return;
+
+    BOOL set_const_var = FALSE;
+    if (ST_has_named_section(&merged_st))
+    {
+        STR_IDX name = Find_Section_Name_For_ST(&merged_st);
+        if (strncmp(Index_To_Str(name), ".rodata.", 8) == 0)
+            set_const_var = TRUE;
+    }
+    if (!set_const_var && ST_has_named_section(&original_st))
+    {
+        STR_IDX name = Find_Section_Name_For_ST(&original_st);
+        if (strncmp(Index_To_Str(name), ".rodata.", 8) == 0)
+            set_const_var = TRUE;
+    }
+    if (set_const_var)
+        Set_ST_is_const_var(&merged_st);
+
 } // Synch_ST_flags
  
+
 
 static void
 Synch_St_With_St(const IPC_GLOBAL_TABS& original_tabs,

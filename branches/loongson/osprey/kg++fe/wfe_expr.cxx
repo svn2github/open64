@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -2744,10 +2748,6 @@ WFE_Address_Of(tree arg0)
     {
       DevWarn ("taking address of a label at line %d", lineno);
       LABEL_IDX label_idx = WFE_Get_LABEL (arg0, FALSE);
-#if 0
-      FmtAssert (arg0->decl.symtab_idx == CURRENT_SYMTAB,
-                 ("line %d: taking address of a label not defined in current function currently not implemented", lineno));
-#endif
       wn = WN_LdaLabel (Pointer_Mtype, label_idx);
       Set_LABEL_addr_saved (label_idx);
     }
@@ -4483,7 +4483,7 @@ WFE_Expand_Expr (tree exp,
 	    for (i = 0; i < 4; i++)
 	      rbuf_w[i] = rbuf[i];
 #ifdef TARG_LOONGSON
-            tcon = Host_To_Targ_Quad (*(QUAD_TYPE *) &rbuf_w);
+	    tcon = Host_To_Targ_Quad (*(QUAD_TYPE *) &rbuf_w);
 #else
 	    tcon = Host_To_Targ_Quad (*(long double *) &rbuf_w);
 #endif
@@ -6390,27 +6390,6 @@ WFE_Expand_Expr (tree exp,
 #endif // KEY
                 break;
               }
-#if 0
-              case BUILT_IN_LOCK_TEST_AND_SET:
-                wn = emit_builtin_lock_test_and_set (exp, num_args-2);
-                whirl_generated = TRUE;
-                break;
-
-              case BUILT_IN_LOCK_RELEASE:
-                emit_builtin_lock_release (exp, num_args-1);
-                whirl_generated = TRUE;
-                break;
-
-              case BUILT_IN_COMPARE_AND_SWAP:
-                wn = emit_builtin_compare_and_swap (exp, num_args-3);
-                whirl_generated = TRUE;
-                break;
-
-              case BUILT_IN_SYNCHRONIZE:
-                emit_builtin_synchronize (exp, num_args);
-                whirl_generated = TRUE;
-                break;
-#endif
 
               case BUILT_IN_RETURN_ADDRESS:
                 i = Get_Integer_Value (TREE_VALUE (TREE_OPERAND (exp, 1)));
@@ -6627,9 +6606,15 @@ WFE_Expand_Expr (tree exp,
 	        break;
 	
 	      case BUILT_IN_POPCOUNT:
+                iopc = INTRN_I4POPCNT;
+                intrinsic_op = TRUE;
+                break;
 	      case BUILT_IN_POPCOUNTL:
+                iopc = Is_Target_32bit() ? INTRN_I4POPCNT : INTRN_I8POPCNT;
+                intrinsic_op = TRUE;
+                break;
 	      case BUILT_IN_POPCOUNTLL:
-	        iopc = INTRN_POPCOUNT;
+	        iopc = INTRN_I8POPCNT;
 		intrinsic_op = TRUE;
 		break;
 	
@@ -7389,13 +7374,6 @@ WFE_Expand_Expr (tree exp,
 	  }
 
 	  arg_mtype  = TY_mtype(arg_ty_idx);
-#if 0
-	  // gcc allows non-struct actual to correspond to a struct formal;
-	  // fix mtype of parm node so as not to confuse back-end
-	  if (arg_mtype == MTYPE_M) {
-	    arg_mtype = WN_rtype(arg_wn);
-	  }
-#endif
           arg_wn = WN_CreateParm (Mtype_comparison (arg_mtype), arg_wn,
 		    		  arg_ty_idx, WN_PARM_BY_VALUE);
 #if defined(TARG_SL)

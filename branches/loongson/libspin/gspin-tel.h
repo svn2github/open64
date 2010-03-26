@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
   Copyright (C) 2007. PathScale, LLC.  All rights reserved.
  */
 
@@ -275,15 +279,17 @@ extern gs_t gs_build_2(gs_tree_code_class_t code_class,
 #define GS_THUNK_VIRTUAL_OFFSET		40
 #define GS_DECL_NAMED_RETURN_OBJECT	41
 #define GS_DECL_FLAG2                   42
-
-/* ---- begin GS_DECL_FLAG2 definition ---- */
+// ---- begin GS_DECL_FLAG2 definition ----
 #  define GS_DECL_TLS_MODEL             0    /* 3 bits */
 #  define GS_DECL_TLS_MODEL_BITS        3    
-#  define GS_DECL_FLAG2_LAST            3    /* next available bits, change it when */
+#  define GS_DECL_VISIBILITY_SPECIFIED  3    /* 1 bit */
+#  define GS_DECL_VISIBILITY            4    /* 2 bits */
+#  define GS_DECL_VISIBILITY_BITS       2    
+#  define GS_DECL_FLAG2_LAST            6    /* next available bits, change it when */
                                              /* you add more flags */
-/* ---- end GS_DECL_FLAG2 definition ---- */
+// ---- end GS_DECL_FLAG2 definition ----
 
-/*   ==== end GS_TCC_DECLARATION fields */
+//   ==== end GS_TCC_DECLARATION fields
 
 
 /* ------------------------------------- */
@@ -808,11 +814,17 @@ GS_LOOKUP (gs_decl_arg_type, GS_DECL_ARG_TYPE)
 GS_LOOKUP (gs_decl_arg_type_as_written, GS_DECL_ARG_TYPE_AS_WRITTEN)
 GS_LOOKUP (gs_tree_chain, GS_TREE_CHAIN)
 GS_LOOKUP (gs_type_name, GS_TYPE_NAME)
-GS_LOOKUP_BITS (GS_DECL_FLAG2, gs_decl_tls_model, GS_DECL_TLS_MODEL, GS_DECL_TLS_MODEL_BITS)
-GS_UPDATE_BITS (GS_DECL_FLAG2, gs_set_decl_tls_model, GS_DECL_TLS_MODEL, GS_DECL_TLS_MODEL_BITS)
 static inline gs_string_t gs_decl_mode (gs_t t) {
   return gs_s (gs_operand (t, GS_DECL_MODE));
 }
+
+GS_LOOKUP_BITS (GS_DECL_FLAG2, gs_decl_tls_model, GS_DECL_TLS_MODEL, GS_DECL_TLS_MODEL_BITS)
+GS_UPDATE_BITS (GS_DECL_FLAG2, gs_set_decl_tls_model, GS_DECL_TLS_MODEL, GS_DECL_TLS_MODEL_BITS)
+GS_LOOKUP_FLAG (GS_DECL_FLAG2, gs_decl_visibility_specified, GS_DECL_VISIBILITY_SPECIFIED)
+GS_UPDATE_FLAG (GS_DECL_FLAG2, gs_set_decl_visibility_specified, GS_DECL_VISIBILITY_SPECIFIED)
+GS_LOOKUP_BITS (GS_DECL_FLAG2, gs_decl_visibility, GS_DECL_VISIBILITY, GS_DECL_VISIBILITY_BITS)
+GS_UPDATE_BITS (GS_DECL_FLAG2, gs_set_decl_visibility, GS_DECL_VISIBILITY, GS_DECL_VISIBILITY_BITS)
+
 static inline gs_string_t gs_decl_source_file (gs_t t) {
   return gs_s (gs_operand (t, GS_DECL_SOURCE_FILE));
 }
@@ -1329,5 +1341,29 @@ gs_skip_artificial_parms_for (gs_t fn, gs_t list)
 #define gs_function_first_user_parmtype(fn) \
     gs_skip_artificial_parms_for (fn, gs_type_arg_types (gs_tree_type (fn)))
 #endif
+
+static inline gs_bool_t
+gs_type_anonymous_p(gs_t type_tree)
+{
+    /* anonymous struct/union */
+    if ( (((gs_tree_code(type_tree) == GS_UNION_TYPE ||
+            gs_tree_code(type_tree) == GS_RECORD_TYPE) &&
+            gs_type_lang_flag_5(type_tree))||
+            /* anonymous enumeration */
+            gs_tree_code(type_tree) == GS_ENUMERAL_TYPE) )
+    {
+        gs_t type_name;
+        gs_t decl_name;
+        if ( (type_name = gs_type_name(type_tree)) == NULL ||
+                (decl_name = gs_decl_name(type_name)) == NULL )
+            return gs_true;
+        else {
+            char *name = (char *)gs_identifier_pointer(decl_name);
+            if ( name[0] == '.' && name[1] == '_')
+                return gs_true;
+        }
+    }
+    return gs_false;
+}
 
 #endif /* __GSPIN_TEL_H__ */

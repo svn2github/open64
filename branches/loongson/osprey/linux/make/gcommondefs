@@ -104,9 +104,14 @@ endif
 
 
 ifeq ($(BUILD_COMPILER), GNU)
-  ASNAME = gcc  
-  CCNAME = gcc 
-  C++NAME = g++ 
+  ASNAME = gcc 
+  ifeq ($(BUILD_HOST), PPC32)
+    CCNAME = gcc -DHOST_PPC32 
+    C++NAME = g++ -DHOST_PPC32 
+  else
+    CCNAME = gcc 
+    C++NAME = g++ 
+  endif
   F90 = gfortran -fsecond-underscore
   F90_RTLIBS = -Wl,-Bstatic -lgfortran -Wl,-Bdynamic
   #F90 = ifort -assume 2underscores
@@ -180,7 +185,7 @@ ifeq ($(BUILD_COMPILER), OSP)
   CCNAME = opencc
   C++NAME = openCC
   F90 = openf90
-  F90_RTLIBS = -lfortran
+  F90_RTLIBS = -Wl,-Bstatic -lfortran -Wl,-Bdynamic
 
   ifeq ($(BUILD_TARGET), X8664)
     CCNAME  += -march=anyx86

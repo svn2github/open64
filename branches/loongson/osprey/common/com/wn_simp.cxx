@@ -46,7 +46,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "common_com_pch.h"
@@ -74,9 +73,9 @@
 
 #include "wn_simp.h"
 
-# if defined(KEY) && defined(Is_True_On)
-# include "config_opt.h"
-# endif
+#if defined(KEY) && defined(Is_True_On)
+#include "config_opt.h"
+#endif
 
 #ifdef BACK_END
 BOOL WN_Simp_Fold_ILOAD = TRUE;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -176,7 +176,7 @@ extern BOOL profile_arcs;
 extern BOOL Asm_Memory;
 extern BOOL Align_Unsafe;
 extern INT32 Enable_WN_Simp_Expr_Limit;
-extern BOOL OPT_Lower_To_Memlib;
+extern UINT32 OPT_Lower_To_Memlib;
 extern INT32 OPT_Threshold_To_Memlib;
 extern INT32 OPT_Enable_Lower_To_Memlib_Limit;
 extern BOOL OPT_Enable_Simp_Fold;
@@ -188,6 +188,7 @@ extern BOOL OPT_Icall_Instr;
 extern BOOL OPT_Int_Value_Instr;
 extern BOOL OPT_FP_Value_Instr;
 extern BOOL OPT_Ffast_Math;
+extern BOOL OPT_Scale;
 extern BOOL OPT_Funsafe_Math_Optimizations;
 
 extern BOOL OPT_Float_Via_Int;

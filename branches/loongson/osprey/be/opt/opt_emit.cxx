@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 //-*-c++-*-
@@ -76,7 +76,6 @@ static char *rcs_id = 	opt_emit_CXX"$Revision: 1.13 $";
 // standard types.
 #define USE_STANDARD_TYPES
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "tracing.h"
@@ -1112,8 +1111,10 @@ Raise_whiledo_stmt_to_doloop(EMITTER *emitter, BB_NODE *bb, BB_NODE *prev_bb, BB
   header->Set_loopstmt(rwn);
   emitter->Set_has_do_loop();
 
+  // A loop info may have been attached to the BB_LOOP by loop multiversion
+  WN *old_loop_info =loop ? loopbody->Label_loop_info() : NULL;
   if (WOPT_Enable_Add_Do_Loop_Info)
-    WN_set_do_loop_info(rwn, Build_new_loop_info(rwn, NULL));
+    WN_set_do_loop_info(rwn, Build_new_loop_info(rwn,old_loop_info));
 
 #if defined(TARG_NVISA)
   --cur_loop_depth;
@@ -1605,7 +1606,8 @@ EMITTER::Emit(COMP_UNIT *cu, DU_MANAGER *du_mgr,
 #if !defined(TARG_NVISA)
   {
     BOOL tr = _trace || Get_Trace (TP_GLOBOPT, ALIAS_DUMP_FLAG);
-    if (Opt_stab()->Phase() == PREOPT_LNO_PHASE) {
+    if (Opt_stab()->Phase() == PREOPT_LNO_PHASE
+        || Opt_stab()->Phase() == PREOPT_LNO1_PHASE) {
       Opt_stab()->Cr_sr_annot_mgr()->Export_annot 
                      (_opt_func, alias_mgr, FALSE, tr);
     } else {

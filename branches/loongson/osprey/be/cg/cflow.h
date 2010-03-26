@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -153,6 +157,8 @@ extern BOOL CFLOW_Trace_Empty_BB_Elim;
 	(CFLOW_UNREACHABLE|CFLOW_BRANCH|CFLOW_MERGE|CFLOW_REORDER\
 	|CFLOW_FREQ_ORDER|CFLOW_CLONE|CFLOW_COLD_REGION|CFLOW_HOT_REGION)
 #else
+//      This is a late unique opt, and so is excluded from all opts
+#define CFLOW_BR_FUSE			(0x00000200)
 #define CFLOW_ALL_OPTS \
 	(CFLOW_UNREACHABLE|CFLOW_BRANCH|CFLOW_MERGE|CFLOW_REORDER\
 	|CFLOW_FREQ_ORDER|CFLOW_CLONE)

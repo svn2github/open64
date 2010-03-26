@@ -465,6 +465,12 @@ parse_W_option (char **argv, int *argi)
 		if (phase == P_NONE) {
 			parse_error(option_name, "bad phase for -W option");
 		}
+		/* keep -Wa,-myopt for multi option. 
+		   We use "gcc -c" instead of as directly, 
+		   so we still need -Wa, to pass AS options. by dongyuan */
+		if (phase == P_any_as) {
+ 		        keep_phase_for_option(flag, argv[*argi -1]);
+		}
 		add_phase_for_option(flag, phase);
 	}
 

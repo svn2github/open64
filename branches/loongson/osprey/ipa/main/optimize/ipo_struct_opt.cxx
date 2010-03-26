@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 ////////////////////////////////////////////////////////////////////////////
@@ -28,7 +28,6 @@
 // Temple Place - Suite 330, Boston MA 02111-1307, USA.
 ////////////////////////////////////////////////////////////////////////////
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <math.h>
 
@@ -930,6 +929,8 @@ WN * traverse_wn_tree (WN * block, WN * grandparent, WN * parent, WN * wn, INT k
   return wn;
 }
 
+// complete structure relayout optimization
+
 static int global_ptrs_for_complete_struct_relayout_created = 0;
 static int complete_struct_relayout_size = 0;
 static int orig_complete_struct_relayout_size = 0;
@@ -1023,14 +1024,10 @@ static BOOL expr_contains_complete_struct_relayout(WN *wn)
     {
       child_ty_idx = WN_ty(child_wn);
       if (child_ty_idx != 0 &&
-          (TY_IDX_index(child_ty_idx) == complete_struct_relayout_type_id ||
-           TY_IDX_index(child_ty_idx) ==
-             another_complete_struct_relayout_type_id) ||
+          TY_IDX_index(child_ty_idx) == complete_struct_relayout_type_id ||
           (TY_kind(child_ty_idx) == KIND_POINTER &&
-           (TY_IDX_index(TY_pointed(child_ty_idx)) ==
-              complete_struct_relayout_type_id ||
-            TY_IDX_index(TY_pointed(child_ty_idx)) ==
-              another_complete_struct_relayout_type_id)))
+           TY_IDX_index(TY_pointed(child_ty_idx)) ==
+             complete_struct_relayout_type_id))
         return TRUE;
       if (child_ty_idx != 0 && TY_kind(child_ty_idx) == KIND_STRUCT &&
           WN_operator(child_wn) == OPR_ILOAD)
@@ -1152,8 +1149,7 @@ static WN *traverse_wn_tree_for_complete_struct_relayout_legality(WN *block_wn,
 
     case OPR_LDID:
     case OPR_STID:
-      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id ||
-          TY_IDX_index(WN_ty(wn)) == another_complete_struct_relayout_type_id)
+      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id)
       {
         continue_with_complete_struct_relayout = 0;
         if (Get_Trace(TP_IPA, 1))
@@ -1163,8 +1159,7 @@ static WN *traverse_wn_tree_for_complete_struct_relayout_legality(WN *block_wn,
       break;
 
     case OPR_ILOAD:
-      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id ||
-          TY_IDX_index(WN_ty(wn)) == another_complete_struct_relayout_type_id)
+      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id)
       {
         if (WN_operator(WN_kid0(wn)) == OPR_LDID &&
             (TY_kind(WN_ty(WN_kid0(wn))) != KIND_POINTER ||
@@ -1180,10 +1175,8 @@ static WN *traverse_wn_tree_for_complete_struct_relayout_legality(WN *block_wn,
 
     case OPR_ISTORE:
       if (TY_kind(WN_ty(wn)) == KIND_POINTER &&
-          (TY_IDX_index(TY_pointed(WN_ty(wn))) ==
-             complete_struct_relayout_type_id ||
-           TY_IDX_index(TY_pointed(WN_ty(wn))) ==
-             another_complete_struct_relayout_type_id))
+          TY_IDX_index(TY_pointed(WN_ty(wn))) ==
+            complete_struct_relayout_type_id)
       {
         if (WN_operator(WN_kid1(wn)) == OPR_LDID &&
             WN_ty(WN_kid1(wn)) != WN_ty(wn))
@@ -1206,10 +1199,8 @@ static WN *traverse_wn_tree_for_complete_struct_relayout_legality(WN *block_wn,
 
         TY_IDX ty_idx = WN_ty(WN_next(wn));
         if (TY_kind(ty_idx) == KIND_POINTER &&
-            (TY_IDX_index(TY_pointed(ty_idx)) ==
-               complete_struct_relayout_type_id ||
-             TY_IDX_index(TY_pointed(ty_idx)) ==
-               another_complete_struct_relayout_type_id))
+            TY_IDX_index(TY_pointed(ty_idx)) ==
+             complete_struct_relayout_type_id)
         {
           continue_with_complete_struct_relayout = 0;
           if (Get_Trace(TP_IPA, 1))
@@ -1226,10 +1217,8 @@ static WN *traverse_wn_tree_for_complete_struct_relayout_legality(WN *block_wn,
         TY_IDX ptr_to_struct_ty_idx = WN_ty(WN_kid0(WN_next(wn)));
         if (WN_ty(WN_next(wn)) != ptr_to_struct_ty_idx ||
             TY_kind(ptr_to_struct_ty_idx) != KIND_POINTER ||
-            (TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
-               complete_struct_relayout_type_id &&
-             TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
-               another_complete_struct_relayout_type_id))
+            TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
+              complete_struct_relayout_type_id)
           return wn;
 
         WN *arg0_wn = WN_kid0(WN_kid0(wn));
@@ -1382,8 +1371,7 @@ static WN *traverse_wn_tree_for_complete_struct_relayout(WN *block_wn,
       // Look for a load from our complete_struct_relayout.  Need to change
       // "= ptr->field_i" into
       // "= gptr_i[(ptr-gptr_0)/sizeof(complete_struct_relayout)]"
-      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id ||
-          TY_IDX_index(WN_ty(wn)) == another_complete_struct_relayout_type_id)
+      if (TY_IDX_index(WN_ty(wn)) == complete_struct_relayout_type_id)
       {
         TYPE_ID desc;
         WN *ldid_ptr_wn;
@@ -1439,10 +1427,8 @@ static WN *traverse_wn_tree_for_complete_struct_relayout(WN *block_wn,
       // change "ptr->field_i = ..." into
       // "gptr_i[(ptr-gptr_0)/sizeof(complete_struct_relayout)] = ..."
       if (TY_kind(WN_ty(wn)) == KIND_POINTER &&
-          (TY_IDX_index(TY_pointed(WN_ty(wn))) ==
-             complete_struct_relayout_type_id ||
-           TY_IDX_index(TY_pointed(WN_ty(wn))) ==
-             another_complete_struct_relayout_type_id))
+          TY_IDX_index(TY_pointed(WN_ty(wn))) ==
+            complete_struct_relayout_type_id)
       {
         TYPE_ID desc;
         WN *ldid_ptr_wn;
@@ -1509,10 +1495,8 @@ static WN *traverse_wn_tree_for_complete_struct_relayout(WN *block_wn,
 
         TY_IDX ty_idx = WN_ty(WN_next(wn));
         if (TY_kind(ty_idx) == KIND_POINTER &&
-            (TY_IDX_index(TY_pointed(ty_idx)) ==
-               complete_struct_relayout_type_id ||
-             TY_IDX_index(TY_pointed(ty_idx)) ==
-               another_complete_struct_relayout_type_id))
+            TY_IDX_index(TY_pointed(ty_idx)) ==
+              complete_struct_relayout_type_id)
         {
           // fprintf(stderr, "disable5\n"); legailty taken care of
           return wn;
@@ -1527,10 +1511,8 @@ static WN *traverse_wn_tree_for_complete_struct_relayout(WN *block_wn,
         TY_IDX ptr_to_struct_ty_idx = WN_ty(WN_kid0(WN_next(wn)));
         if (WN_ty(WN_next(wn)) != ptr_to_struct_ty_idx ||
             TY_kind(ptr_to_struct_ty_idx) != KIND_POINTER ||
-            (TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
-               complete_struct_relayout_type_id &&
-             TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
-               another_complete_struct_relayout_type_id))
+            TY_IDX_index(TY_pointed(ptr_to_struct_ty_idx)) !=
+              complete_struct_relayout_type_id)
           return wn; // does not assign into our complete_struct_relayout
 
         // Yes, this is the special calloc.  Do the following for every such
@@ -1620,6 +1602,975 @@ static WN *traverse_wn_tree_for_complete_struct_relayout(WN *block_wn,
   }
 
   return wn;
+}
+
+// array remapping optimization
+
+static int continue_with_array_remapping = 1;
+static int array_remapping_candidate_mtype = 0;
+static int array_remapping_candidate_mtype_size = 0;
+static int array_remapping_malloc_size = 0;
+static int array_remapping_pre_margin_size = 0;
+static int array_remapping_loop_depth = 0;
+static int array_remapping_num_groups = 0;
+static int array_remapping_loop_num_iterations = 0;
+static int array_remapping_num_elements_in_pre_margin;
+static int array_remapping_num_elements_in_array;
+static int array_remapping_num_elements_in_post_margin;
+static int array_remapping_num_elements_in_group;
+static int array_remapping_final_checked = 0;
+
+extern BOOL argument_in_callers_is_array_remapping_candidate_malloc
+  (IPA_NODE *node, int argument_num);
+
+// This function returns the argument number (0, 1, 2, ...) of the input st in
+// the input function_wn.  If this is not possible, -1 is returned.
+static int get_argument_num(ST *st, WN *function_wn)
+{
+  if (WN_operator(function_wn) == OPR_FUNC_ENTRY)
+  {
+    for (INT i = 0; i < WN_kid_count(function_wn); i++)
+    {
+      if (WN_operator(WN_kid(function_wn, i)) == OPR_IDNAME &&
+          WN_st(WN_kid(function_wn, i)) == st)
+        return i;
+    }
+  }
+  return -1;
+}
+
+// Can the input wn possibly be an array remapping candidate?  When in doubt,
+// return TRUE (and let the input wn go through more rigorous testing).  When it
+// is obvious that it cannot be (e.g. not an array reference, another array of
+// another type, etc.), return FALSE.
+static BOOL wn_can_be_array_remapping_candidate(WN *wn)
+{
+  if (WN_operator(wn) == OPR_LDID)
+  {
+    if (!(TY_kind(WN_ty(wn)) == KIND_POINTER &&
+          TY_kind(TY_pointed(WN_ty(wn))) == KIND_SCALAR))
+      return FALSE; // an array remapping candidate is a pointer to a scalar
+    if (array_remapping_candidate_mtype == 0)
+      return TRUE;
+    if (TY_mtype(TY_pointed(WN_ty(wn))) != array_remapping_candidate_mtype)
+      return FALSE; // array of another type
+  }
+  if (WN_operator(wn) == OPR_ARRAY)
+  {
+    // can we summarily return FALSE because OPR_ARRAY's are not malloced,
+    // whereas array remapping candidates must be?
+    WN *array_base_wn = WN_kid0(wn);
+    if (WN_operator(array_base_wn) == OPR_LDA &&
+        TY_kind(WN_ty(array_base_wn)) == KIND_POINTER &&
+        TY_kind(TY_pointed(WN_ty(array_base_wn))) == KIND_ARRAY &&
+        array_remapping_candidate_mtype != 0 &&
+        TY_mtype(TY_etype(TY_pointed(WN_ty(array_base_wn)))) !=
+          array_remapping_candidate_mtype)
+      return FALSE; // array of another type
+  }
+  return TRUE;
+}
+
+// Given a loop_wn, this function fills in the loop information (loop_index_st,
+// iteration starting, ending, and stride values).  If this is not possible,
+// FALSE is returned.
+static BOOL get_do_loop_info(WN *loop_wn, ST **loop_index_st, int *start,
+  int *end, int *stride)
+{
+  int temp_stride;
+
+  if (loop_wn == NULL)
+    return FALSE;
+  if (WN_operator(loop_wn) != OPR_DO_LOOP)
+    return FALSE;
+  *loop_index_st = WN_st(WN_kid(loop_wn, 0));
+  if (WN_operator(WN_kid(loop_wn, 1)) == OPR_STID &&
+      WN_st(WN_kid(loop_wn, 1)) == *loop_index_st &&
+      WN_operator(WN_kid0(WN_kid(loop_wn, 1))) == OPR_INTCONST)
+    *start = WN_const_val(WN_kid0(WN_kid(loop_wn, 1)));
+  else
+    return FALSE;
+
+  temp_stride = 1;
+  if (WN_operator(WN_kid(loop_wn, 2)) == OPR_LE &&
+      WN_operator(WN_kid1(WN_kid(loop_wn, 2))) == OPR_INTCONST)
+  {
+    if (WN_operator(WN_kid0(WN_kid(loop_wn, 2))) == OPR_LDID &&
+        WN_st(WN_kid0(WN_kid(loop_wn, 2))) == *loop_index_st)
+      *end = WN_const_val(WN_kid1(WN_kid(loop_wn, 2)));
+    else if (WN_operator(WN_kid0(WN_kid(loop_wn, 2))) == OPR_MPY &&
+             WN_operator(WN_kid0(WN_kid0(WN_kid(loop_wn, 2)))) == OPR_LDID &&
+             WN_st(WN_kid0(WN_kid0(WN_kid(loop_wn, 2)))) == *loop_index_st &&
+             WN_operator(WN_kid1(WN_kid0(WN_kid(loop_wn, 2)))) == OPR_INTCONST)
+    {
+      // index * c1 <= c2
+      *end = WN_const_val(WN_kid1(WN_kid(loop_wn, 2)));
+      temp_stride = WN_const_val(WN_kid1(WN_kid0(WN_kid(loop_wn, 2))));
+    }
+    else if (WN_operator(WN_kid0(WN_kid(loop_wn, 2))) == OPR_ADD &&
+             WN_operator(WN_kid1(WN_kid0(WN_kid(loop_wn, 2)))) ==
+               OPR_INTCONST &&
+             WN_operator(WN_kid0(WN_kid0(WN_kid(loop_wn, 2)))) == OPR_MPY &&
+             WN_operator(WN_kid0(WN_kid0(WN_kid0(WN_kid(loop_wn, 2))))) ==
+               OPR_LDID &&
+             WN_st(WN_kid0(WN_kid0(WN_kid0(WN_kid(loop_wn, 2))))) ==
+               *loop_index_st &&
+             WN_operator(WN_kid1(WN_kid0(WN_kid0(WN_kid(loop_wn, 2))))) ==
+               OPR_INTCONST)
+    {
+      // index * c1 + c2 <= c3
+      *end = WN_const_val(WN_kid1(WN_kid(loop_wn, 2))) -
+             WN_const_val(WN_kid1(WN_kid0(WN_kid(loop_wn, 2))));
+      temp_stride = WN_const_val(WN_kid1(WN_kid0(WN_kid0(WN_kid(loop_wn, 2)))));
+    }
+    else
+      return FALSE;
+  }
+  else
+    return FALSE;
+  if (WN_operator(WN_kid(loop_wn, 3)) == OPR_STID &&
+      WN_st(WN_kid(loop_wn, 3)) == *loop_index_st &&
+      WN_operator(WN_kid0(WN_kid(loop_wn, 3))) == OPR_ADD &&
+      WN_operator(WN_kid0(WN_kid0(WN_kid(loop_wn, 3)))) == OPR_LDID &&
+      WN_st(WN_kid0(WN_kid0(WN_kid(loop_wn, 3)))) == *loop_index_st &&
+      WN_operator(WN_kid1(WN_kid0(WN_kid(loop_wn, 3)))) == OPR_INTCONST)
+    *stride = temp_stride * WN_const_val(WN_kid1(WN_kid0(WN_kid(loop_wn, 3))));
+  else
+    return FALSE;
+  // everything is set, we can now return TRUE
+  return TRUE;
+}
+
+// This function visits the input wn looking for OPR_DIV and OPR_REM and tries
+// to simplify them.  Caution on the OPR_REM simplification:  this function will
+// always return the positive remainder.
+static WN *simplify_wn_for_div_and_rem(WN *wn)
+{
+  WN *wn0;
+  WN *wn1;
+  WN *constant_wn;
+
+  if (wn == NULL)
+    return wn;
+  switch (WN_operator(wn))
+  {
+    case OPR_ADD:
+    case OPR_SUB:
+    case OPR_MPY:
+      wn0 = simplify_wn_for_div_and_rem(WN_kid0(wn));
+      wn1 = simplify_wn_for_div_and_rem(WN_kid1(wn));
+      if (wn0 != WN_kid0(wn) || wn1 != WN_kid1(wn))
+        // something was changed
+        return WN_CreateExp2(OPCODE_make_op(WN_operator(wn), WN_rtype(wn),
+          WN_desc(wn)), WN_COPY_Tree(wn0), WN_COPY_Tree(wn1));
+      break;
+    case OPR_CVT:
+      wn0 = simplify_wn_for_div_and_rem(WN_kid0(wn));
+      if (wn0 != WN_kid0(wn))
+        // something was changed
+        return WN_CreateExp1(OPCODE_make_op(WN_operator(wn), WN_rtype(wn),
+          WN_desc(wn)), WN_COPY_Tree(wn0));
+      break;
+    case OPR_DIV:
+      wn0 = simplify_wn_for_div_and_rem(WN_kid0(wn));
+      wn1 = simplify_wn_for_div_and_rem(WN_kid1(wn));
+      if (WN_operator(wn1) == OPR_INTCONST &&
+          WN_operator(wn0) == OPR_MPY &&
+          WN_operator(WN_kid1(wn0)) == OPR_INTCONST &&
+          WN_const_val(wn1) == WN_const_val(WN_kid1(wn0)) &&
+          WN_const_val(wn1) > 0)
+        // (x * c) / c => x
+        return WN_COPY_Tree(WN_kid0(wn0));
+      if (WN_operator(wn1) == OPR_INTCONST &&
+          (WN_operator(wn0) == OPR_ADD || WN_operator(wn0) == OPR_SUB) &&
+          WN_operator(WN_kid0(wn0)) == OPR_MPY &&
+          WN_operator(WN_kid1(wn0)) == OPR_INTCONST &&
+          WN_operator(WN_kid1(WN_kid0(wn0))) == OPR_INTCONST &&
+          WN_const_val(WN_kid1(WN_kid0(wn0))) == WN_const_val(wn1) &&
+          WN_const_val(wn1) > 0 &&
+          WN_const_val(WN_kid1(wn0)) >= 0)
+      {
+        // ((x * c) +/- c1) / c => x +/- c1 / c
+        constant_wn = WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST, MTYPE_U4,
+          MTYPE_V), (INT)(WN_const_val(WN_kid1(wn0)) / WN_const_val(wn1)));
+        return WN_CreateExp2(OPCODE_make_op(WN_operator(wn0), WN_rtype(wn0),
+          WN_desc(wn0)), WN_COPY_Tree(WN_kid0(WN_kid0(wn0))), constant_wn);
+      }
+      if (wn0 != WN_kid0(wn) || wn1 != WN_kid1(wn))
+        // something was changed
+        return WN_CreateExp2(OPCODE_make_op(WN_operator(wn), WN_rtype(wn),
+          WN_desc(wn)), WN_COPY_Tree(wn0), WN_COPY_Tree(wn1));
+      break;
+    case OPR_REM:
+      wn0 = simplify_wn_for_div_and_rem(WN_kid0(wn));
+      wn1 = simplify_wn_for_div_and_rem(WN_kid1(wn));
+      if (WN_operator(wn1) == OPR_INTCONST &&
+          WN_operator(wn0) == OPR_MPY &&
+          WN_operator(WN_kid1(wn0)) == OPR_INTCONST &&
+          WN_const_val(wn1) == WN_const_val(WN_kid1(wn0)) &&
+          WN_const_val(wn1) > 0)
+        // (x * c) % c => 0
+        return WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST, MTYPE_U4,
+          MTYPE_V), (INT)0);
+      if (WN_operator(wn1) == OPR_INTCONST &&
+          (WN_operator(wn0) == OPR_ADD || WN_operator(wn0) == OPR_SUB) &&
+          WN_operator(WN_kid0(wn0)) == OPR_MPY &&
+          WN_operator(WN_kid1(wn0)) == OPR_INTCONST &&
+          WN_operator(WN_kid1(WN_kid0(wn0))) == OPR_INTCONST &&
+          WN_const_val(WN_kid1(WN_kid0(wn0))) == WN_const_val(wn1) &&
+          WN_const_val(wn1) > 0 &&
+          WN_const_val(WN_kid1(wn0)) >= 0)
+        // ((x * c) +/- c1) % c => c1 % c
+        // note:  this will always return a positive remainder
+        return WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST, MTYPE_U4,
+          MTYPE_V), (INT)(WN_const_val(WN_kid1(wn0)) % WN_const_val(wn1)));
+      if (wn0 != WN_kid0(wn) || wn1 != WN_kid1(wn))
+        // something was changed
+        return WN_CreateExp2(OPCODE_make_op(WN_operator(wn), WN_rtype(wn),
+          WN_desc(wn)), WN_COPY_Tree(wn0), WN_COPY_Tree(wn1));
+      break;
+    default:
+      break;
+  }
+  return wn;
+}
+
+// The first step in determining if we can safely remap an array candidate is to
+// check if we understand how this array was malloced.  This way, we can collect
+// information on the size of the array, whether it has padding for the margins
+// (pre- and post-array body), etc.  Traverse the input wn to mark all the
+// arrays that have been nicely malloced this way.
+static void traverse_wn_tree_for_array_remapping_legality_1(WN *wn,
+  int *argument_num, WN *function_wn)
+{
+  if (wn == NULL || continue_with_array_remapping == 0)
+    return; // nothing to do
+  if (!OPCODE_is_leaf(WN_opcode(wn)))
+  {
+    if (WN_opcode(wn) == OPC_BLOCK)
+    {
+      WN *child_wn = WN_first(wn);
+      while (child_wn != NULL)
+      {
+        traverse_wn_tree_for_array_remapping_legality_1(child_wn, argument_num,
+          function_wn);
+        if (continue_with_array_remapping == 0)
+          return;
+        child_wn = WN_next(child_wn);
+      }
+    }
+    else
+    {
+      INT child_num;
+      WN *child_wn;
+      for (child_num = 0; child_num < WN_kid_count(wn); child_num++)
+      {
+        child_wn = WN_kid(wn, child_num);
+        if (child_wn != NULL)
+        {
+          traverse_wn_tree_for_array_remapping_legality_1(child_wn,
+            argument_num, function_wn);
+          if (continue_with_array_remapping == 0)
+            return;
+        }
+      }
+    }
+  }
+  switch (WN_operator(wn))
+  {
+    case OPR_LDID:
+    case OPR_STID:
+      // (overly-stringent) restriction:  if there exists one array remapping
+      // candidate of scalar type "t", we require that *all* arrays of type "t"
+      // to be array remapping candidates also.  This is purely to simplify
+      // implementation.  If not, we will have to keep track of each individual
+      // array remapping candidate, and that may involve constructing an
+      // equivalence class of these arrays.  (Keep in mind that arrays can be
+      // assigned (b = array_remapping_candidate_a) or passed around as
+      // arguments).  The following records this type information
+      int mtype;
+      int mtype_size;
+
+      if (ST_is_array_remapping_candidate(WN_st(wn)))
+      {
+        // an array is simply a pointer to a scalar type
+        if (TY_kind(WN_ty(wn)) == KIND_POINTER &&
+            TY_kind(TY_pointed(WN_ty(wn))) == KIND_SCALAR)
+        {
+          mtype = TY_mtype(TY_pointed(WN_ty(wn)));
+          mtype_size = TY_size(TY_pointed(WN_ty(wn)));
+        }
+        else
+        {
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> array remapping disable -1\n");
+          continue_with_array_remapping = 0;
+          return;
+        }
+        if (array_remapping_candidate_mtype == 0)
+        {
+          array_remapping_candidate_mtype = mtype; // first time
+          array_remapping_candidate_mtype_size = mtype_size; // first time
+        }
+        else if (array_remapping_candidate_mtype != mtype ||
+                 array_remapping_candidate_mtype_size != mtype_size)
+        {
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> array remapping disable -2\n");
+          continue_with_array_remapping = 0;
+          return;
+        }
+      }
+      break;
+
+    case OPR_CALL:
+      INT need_to_check_parms;
+      ST *malloc_st;
+      ST *temp_malloc_st;
+      INT malloc_size;
+      INT pre_margin_size;
+      WN *wn1;
+      WN *wn2;
+      WN *wn3;
+
+      if (strcmp(ST_name(WN_st(wn)), "malloc") == 0)
+      {
+        wn1 = WN_next(wn);
+        if (!(WN_operator(wn1) == OPR_STID &&
+              WN_operator(WN_kid0(wn1)) == OPR_LDID))
+        {
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> array remapping disable -3\n");
+          continue_with_array_remapping = 0;
+          return; // not a regular malloc
+        }
+        need_to_check_parms = 0;
+        *argument_num = -1;
+        malloc_st = WN_st(wn1);
+        if (ST_class(malloc_st) == CLASS_VAR)
+          wn3 = wn1; // wn3 = malloc()
+        else
+        {
+          wn2 = WN_next(wn1);
+          if (WN_operator(wn2) == OPR_STID &&
+              WN_operator(WN_kid0(wn2)) == OPR_LDID &&
+              WN_st(WN_kid0(wn2)) == malloc_st &&
+              ST_class(WN_st(wn2)) == CLASS_VAR)
+            malloc_st = WN_st(wn2); // wn2 = wn1 = malloc()
+          else if (WN_operator(wn2) == OPR_ISTORE &&
+                   WN_operator(WN_kid0(wn2)) == OPR_LDID &&
+                   WN_st(WN_kid0(wn2)) == malloc_st &&
+                   WN_has_sym(WN_kid1(wn2)) &&
+                   WN_st(WN_kid1(wn2)) != NULL &&
+                   ST_class(WN_st(WN_kid1(wn2))) == CLASS_VAR)
+          {
+            temp_malloc_st = malloc_st;
+            malloc_st = WN_st(WN_kid1(wn2)); // *(malloc_st) =
+                                               // temp_malloc_st = malloc()
+            need_to_check_parms = 1;
+          }
+          else
+          {
+            // we may have to be more aggressive in the future
+            if (Get_Trace(TP_IPA, 1))
+              fprintf(TFile, "ipo -> array remapping disable -4\n");
+            continue_with_array_remapping = 0;
+            return;
+          }
+          wn3 = wn2; // wn3 = malloc()
+        }
+         
+        // determine the malloced size and pre-margin size
+        if (!(WN_operator(WN_kid0(wn)) == OPR_PARM &&
+              WN_operator(WN_kid0(WN_kid0(wn))) == OPR_INTCONST))
+        {
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> array remapping disable -5\n");
+          continue_with_array_remapping = 0;
+          return;
+        }
+        malloc_size = WN_const_val(WN_kid0(WN_kid0(wn)));
+        pre_margin_size = 0;
+        // look for an assignment such as malloc_st = malloc_st + constant
+        wn3 = WN_next(wn3);
+        while (wn3 != NULL)
+        {
+          if (need_to_check_parms == 0 &&
+              WN_operator(wn3) == OPR_STID &&
+              WN_st(wn3) == malloc_st &&
+              WN_operator(WN_kid0(wn3)) == OPR_ADD &&
+              WN_operator(WN_kid0(WN_kid0(wn3))) == OPR_LDID &&
+              WN_st(WN_kid0(WN_kid0(wn3))) == malloc_st &&
+              WN_operator(WN_kid1(WN_kid0(wn3))) == OPR_INTCONST)
+          {
+            pre_margin_size += WN_const_val(WN_kid1(WN_kid0(wn3))); // allow the
+              // pre-margin size to be accumulative
+            wn3 = WN_next(wn3);
+          }
+          else if (need_to_check_parms == 1 &&
+                   WN_operator(wn3) == OPR_ISTORE &&
+                   WN_operator(WN_kid1(wn3)) == OPR_LDID &&
+                   WN_st(WN_kid1(wn3)) == malloc_st &&
+                   WN_operator(WN_kid0(wn3)) == OPR_ADD &&
+                   WN_operator(WN_kid0(WN_kid0(wn3))) == OPR_LDID &&
+                   WN_st(WN_kid0(WN_kid0(wn3))) == temp_malloc_st &&
+                   WN_operator(WN_kid1(WN_kid0(wn3))) == OPR_INTCONST)
+          {
+            pre_margin_size += WN_const_val(WN_kid1(WN_kid0(wn3)));
+            wn3 = WN_next(wn3);
+          }
+          else if (WN_operator(wn3) == OPR_IF ||
+                   WN_operator(wn3) == OPR_PRAGMA)
+            wn3 = WN_next(wn3); // what if the increment is inside the if?
+          else
+            break; // encountered other operators
+        }
+        // the above code to look for pre-margin is not exhaustive; so what if
+        // the pre-margin thus determined is not correct?  We should note that
+        // the more accurate the pre-margin is the more efficient the array
+        // array remapping will be, but as long as the "map" is a bijection, it
+        // will still be correct.  As an additional precaution, since we are
+        // remapping all the arrays of type "t" (see stringent requirement
+        // above), we require that all such malloced sizes and pre-margins to be
+        // identical
+        if (array_remapping_malloc_size == 0)
+          array_remapping_malloc_size = malloc_size; // first time
+        if (array_remapping_pre_margin_size == 0)
+          array_remapping_pre_margin_size = pre_margin_size; // first time
+        if (array_remapping_malloc_size != malloc_size ||
+            array_remapping_pre_margin_size != pre_margin_size)
+        {
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> array remapping disable -6\n");
+          continue_with_array_remapping = 0;
+          return;
+        }
+        // mark malloc_st
+        Set_ST_is_array_remapping_candidate_malloc(malloc_st);
+        // but what if malloc_st is a passed-in argument?  In this case we will
+        // need to mark the corresponding argument in the caller also.  We
+        // simply do this by setting the argument_num and let the caller of this
+        // function do what needs to be done
+        if (need_to_check_parms == 1)
+        {
+          *argument_num = get_argument_num(malloc_st, function_wn);
+          if (*argument_num < 0)
+          {
+            if (Get_Trace(TP_IPA, 1))
+              fprintf(TFile, "ipo -> array remapping disable -7\n");
+            continue_with_array_remapping = 0;
+            return;
+          }
+        }
+      }
+      break;
+
+    default:
+      break;
+  }
+  return;
+}
+
+// The second step in determining if we can safely remap an array candidate is
+// to traverse the input wn and see if all the candidates have been correctly
+// malloced, and that there are no unexpected constructs that may render it
+// unsafe to remap the candidates.
+static void traverse_wn_tree_for_array_remapping_legality_2(WN *wn,
+  WN *function_wn, IPA_NODE *node, WN *loop_wn)
+{
+  if (wn == NULL || continue_with_array_remapping == 0)
+    return; // nothing to do
+  if (array_remapping_candidate_mtype == 0 ||
+      array_remapping_candidate_mtype_size == 0 ||
+      array_remapping_malloc_size == 0)
+  {
+    // traverse_wn_tree_for_array_remapping_legality_1 phase should have set
+    // these variables
+    if (Get_Trace(TP_IPA, 1))
+      fprintf(TFile, "ipo -> array remapping disable 0\n");
+    continue_with_array_remapping = 0;
+    return;
+  }
+
+  if (!OPCODE_is_leaf(WN_opcode(wn)))
+  {
+    if (WN_opcode(wn) == OPC_BLOCK)
+    {
+      WN *child_wn = WN_first(wn);
+      while (child_wn != NULL)
+      {
+        traverse_wn_tree_for_array_remapping_legality_2(child_wn, function_wn,
+          node, loop_wn);
+        if (continue_with_array_remapping == 0)
+          return;
+        child_wn = WN_next(child_wn);
+      }
+    }
+    else
+    {
+      INT child_num;
+      WN *child_wn;
+      if (WN_operator(wn) == OPR_DO_LOOP ||
+          WN_operator(wn) == OPR_WHILE_DO ||
+          WN_operator(wn) == OPR_DO_WHILE)
+      {
+        // found a loop.  Send loop information along down to
+        // traverse_wn_tree_for_array_remapping_legality_2 because if it is the
+        // outermost loop, there are additional legality checks
+        array_remapping_loop_depth++;
+        if (array_remapping_loop_depth == 1)
+          loop_wn = wn; // update the loop_wn
+      }
+      for (child_num = 0; child_num < WN_kid_count(wn); child_num++)
+      {
+        child_wn = WN_kid(wn, child_num);
+        if (child_wn != NULL)
+        {
+          traverse_wn_tree_for_array_remapping_legality_2(child_wn, function_wn,
+            node, loop_wn);
+          if (continue_with_array_remapping == 0)
+            return;
+        }
+      }
+      if (WN_operator(wn) == OPR_DO_LOOP ||
+          WN_operator(wn) == OPR_WHILE_DO ||
+          WN_operator(wn) == OPR_DO_WHILE)
+        array_remapping_loop_depth--; // reset array_remapping_loop_depth
+    }
+  }
+
+  switch (WN_operator(wn))
+  {
+    WN *array_index_mult_wn;
+    WN *array_element_size_wn;
+    int array_element_size;
+    ST *array_st;
+    int argument_num;
+    WN *wn1;
+
+    // this section of code has to be in sync with the corresponding section of
+    // code in the function traverse_wn_tree_for_array_remapping because the
+    // latter function will assume that all the array remapping candidates have
+    // passed the legality tests that are happening right here
+    case OPR_ILOAD:
+    case OPR_ISTORE:
+      if (WN_operator(wn) == OPR_ILOAD) 
+        wn1 = WN_kid0(wn);
+      else
+        wn1 = WN_kid1(wn);
+      // looking for array[]
+      if (wn_can_be_array_remapping_candidate(wn1) == FALSE)
+        return; // not a problem
+      if (WN_operator(wn1) == OPR_ADD)
+      {
+        if (wn_can_be_array_remapping_candidate(WN_kid0(wn1)) == FALSE ||
+            wn_can_be_array_remapping_candidate(WN_kid1(wn1)) == FALSE)
+          return; // not a problem
+      }
+      if (WN_operator(wn1) == OPR_SUB)
+      {
+        if (wn_can_be_array_remapping_candidate(WN_kid0(wn1)) == FALSE)
+          return; // not a problem
+      }
+      // wn1 is an array remapping candidate; see if it can pass the legality
+      // tests
+      if (!(WN_operator(wn1) == OPR_ADD &&
+            WN_operator(WN_kid0(wn1)) == OPR_LDID &&
+            WN_operator(WN_kid1(wn1)) == OPR_MPY &&
+            TY_kind(WN_ty(WN_kid0(wn1))) == KIND_POINTER &&
+            TY_kind(TY_pointed(WN_ty(WN_kid0(wn1)))) == KIND_SCALAR &&
+            TY_mtype(TY_pointed(WN_ty(WN_kid0(wn1)))) ==
+              array_remapping_candidate_mtype &&
+            TY_size(TY_pointed(WN_ty(WN_kid0(wn1)))) ==
+              array_remapping_candidate_mtype_size))
+      {
+        if (Get_Trace(TP_IPA, 1))
+          fprintf(TFile, "ipo -> array remapping disable 1\n");
+        continue_with_array_remapping = 0;
+        return;
+      }
+      array_index_mult_wn = WN_kid1(wn1);
+      if (WN_operator(WN_kid0(array_index_mult_wn)) == OPR_INTCONST)
+      {
+        // array_index_mult_wn = constant * index
+        array_element_size_wn = WN_kid0(array_index_mult_wn);
+        array_element_size = WN_const_val(array_element_size_wn);
+        if (array_element_size % array_remapping_candidate_mtype_size != 0)
+        {
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> array remapping disable 2\n");
+          continue_with_array_remapping = 0;
+          return;
+        }
+      }
+      else if (WN_operator(WN_kid1(array_index_mult_wn)) == OPR_INTCONST)
+      {
+        // array_index_mult_wn = index * constant
+        array_element_size_wn = WN_kid1(array_index_mult_wn);
+        array_element_size = WN_const_val(array_element_size_wn);
+        if (array_element_size % array_remapping_candidate_mtype_size != 0)
+        {
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> array remapping disable 3\n");
+          continue_with_array_remapping = 0;
+          return;
+        }
+      }
+      else
+      {
+        if (Get_Trace(TP_IPA, 1))
+          fprintf(TFile, "ipo -> array remapping disable 4\n");
+        continue_with_array_remapping = 0;
+        return;
+      }
+      if (WN_offset(wn) % array_remapping_candidate_mtype_size != 0)
+      {
+        if (Get_Trace(TP_IPA, 1))
+          fprintf(TFile, "ipo -> array remapping disable 5\n");
+        continue_with_array_remapping = 0;
+        return;
+      }
+
+      array_st = WN_st(WN_kid0(wn1));
+      // array_st is an array remapping candidate, it must have been malloced
+      // (and hence accordingly marked by
+      // traverse_wn_tree_for_array_remapping_legality_1)
+      if (!ST_is_array_remapping_candidate_malloc(array_st))
+      {
+        // perhaps the array is passed in as an argument and thus has not been
+        // propagated yet
+        argument_num = get_argument_num(array_st, function_wn);
+        if (argument_num >= 0)
+        {
+          // the array remapping candidate is indeed passed in as an arugment
+          if (argument_in_callers_is_array_remapping_candidate_malloc(node,
+              argument_num))
+            // propagate the property that this array remapping candidate has
+            // been malloced
+            Set_ST_is_array_remapping_candidate_malloc(array_st);
+          else
+          {
+            if (Get_Trace(TP_IPA, 1))
+              fprintf(TFile, "ipo -> array remapping disable 6\n");
+            continue_with_array_remapping = 0;
+            return;
+          }
+        }
+        else
+        {
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> array remapping disable 7\n");
+          continue_with_array_remapping = 0;
+          return;
+        }
+      }
+
+      // no legality restriction on the array index, but if this array remapping
+      // candidate is used inside an outermost loop, make sure that the loop
+      // iteration count and the group number are consistent throughout
+      if (array_remapping_loop_depth == 1)
+      {
+        if (loop_wn != NULL && WN_operator(loop_wn) == OPR_DO_LOOP)
+        {
+          BOOL loop_info_status;
+          ST *loop_index_st;
+          int start;
+          int end;
+          int stride;
+          int loop_num_iterations;
+
+          loop_info_status = get_do_loop_info(loop_wn, &loop_index_st, &start,
+            &end, &stride);
+          if (loop_info_status == FALSE)
+          {
+            if (Get_Trace(TP_IPA, 1))
+              fprintf(TFile, "ipo -> array remapping disable 8\n");
+            continue_with_array_remapping = 0;
+            return;
+          }
+          if (!(start >= 0 && end > 0 && end >= start && stride > 0))
+          {
+            if (Get_Trace(TP_IPA, 1))
+              fprintf(TFile, "ipo -> array remapping disable 9\n");
+            continue_with_array_remapping = 0;
+            return;
+          }
+          loop_num_iterations = (end - start + stride) / stride;
+          if (array_remapping_num_groups == 0)
+            array_remapping_num_groups = stride; // first time
+          if (array_remapping_loop_num_iterations == 0)
+            array_remapping_loop_num_iterations = loop_num_iterations; // first
+                                                                       // time
+          if (loop_num_iterations > array_remapping_loop_num_iterations)
+            array_remapping_loop_num_iterations = loop_num_iterations;
+          if (array_remapping_num_groups != stride)
+          {
+            if (Get_Trace(TP_IPA, 1))
+              fprintf(TFile, "ipo -> array remapping disable 10\n");
+            continue_with_array_remapping = 0;
+            return;
+          }
+        }
+        else
+        {
+          if (Get_Trace(TP_IPA, 1))
+            fprintf(TFile, "ipo -> array remapping disable 11\n");
+          continue_with_array_remapping = 0;
+          return;
+        }
+      }
+
+      break;
+
+    case OPR_LDID:
+    case OPR_STID:
+      // what's not allowed?  dereferencing array not going through iload/store
+      // walk up tree and only allow the familiar ops?
+      break;
+
+    default:
+      break;
+  }
+
+  return;
+}
+
+// We already know that it is legal (safe) to do array remapping, now perform
+// the optimization.
+static void traverse_wn_tree_for_array_remapping(WN *wn)
+{
+  if (wn == NULL)
+    return; // nothing to do
+
+  if (!OPCODE_is_leaf(WN_opcode(wn)))
+  {
+    if (WN_opcode(wn) == OPC_BLOCK)
+    {
+      WN *child_wn = WN_first(wn);
+      while (child_wn != NULL)
+      {
+        traverse_wn_tree_for_array_remapping(child_wn);
+        child_wn = WN_next(child_wn);
+      }
+    }
+    else
+    {
+      INT child_num;
+      WN *child_wn;
+      for (child_num = 0; child_num < WN_kid_count(wn); child_num++)
+      {
+        child_wn = WN_kid(wn, child_num);
+        if (child_wn != NULL)
+          traverse_wn_tree_for_array_remapping(child_wn);
+      }
+    }
+  }
+
+  // nodes that are of interest
+  switch (WN_operator(wn))
+  {
+    WN *num_elements_in_pre_margin_wn;
+    WN *num_elements_in_array_wn;
+    WN *num_elements_in_post_margin_wn;
+    WN *num_elements_in_group_wn;
+    WN *array_index_mult_wn;
+    WN *array_element_size_wn;
+    int array_element_size;
+    WN *array_index_wn;
+    WN *anchor_wn;
+    int anchor_kid_num;
+    TYPE_ID rtype;
+    TYPE_ID desc;
+    WN *pre_margin_mult_wn;
+    WN *new_wn;
+    WN *mod_wn;
+    WN *div_wn;
+    WN *wn1;
+
+    case OPR_ILOAD:
+    case OPR_ISTORE:
+      if (WN_operator(wn) == OPR_ILOAD) 
+        wn1 = WN_kid0(wn);
+      else
+        wn1 = WN_kid1(wn);
+      // looking for array[]
+      if (wn_can_be_array_remapping_candidate(wn1) == FALSE)
+        return; // not a problem
+      if (WN_operator(wn1) == OPR_ADD)
+      {
+        if (wn_can_be_array_remapping_candidate(WN_kid0(wn1)) == FALSE ||
+            wn_can_be_array_remapping_candidate(WN_kid1(wn1)) == FALSE)
+          return; // not a problem
+      }
+      if (WN_operator(wn1) == OPR_SUB)
+      {
+        if (wn_can_be_array_remapping_candidate(WN_kid0(wn1)) == FALSE)
+          return; // not a problem
+      }
+      // wn1 is an array remapping candidate; moreover, it has passed the
+      // legality tests
+      if (!(WN_operator(wn1) == OPR_ADD &&
+            WN_operator(WN_kid0(wn1)) == OPR_LDID &&
+            WN_operator(WN_kid1(wn1)) == OPR_MPY &&
+            TY_mtype(TY_pointed(WN_ty(WN_kid0(wn1)))) ==
+              array_remapping_candidate_mtype))
+      {
+        // legality tests assure us that this is not possible
+        FmtAssert(FALSE, ("Illegal array remapping construct 1."));
+      }
+      num_elements_in_pre_margin_wn = WN_CreateIntconst(OPCODE_make_op
+        (OPR_INTCONST, MTYPE_U4, MTYPE_V),
+        (INT)array_remapping_num_elements_in_pre_margin);
+      num_elements_in_array_wn = WN_CreateIntconst(OPCODE_make_op
+        (OPR_INTCONST, MTYPE_U4, MTYPE_V),
+        (INT)array_remapping_num_elements_in_array);
+      num_elements_in_post_margin_wn = WN_CreateIntconst(OPCODE_make_op
+        (OPR_INTCONST, MTYPE_U4, MTYPE_V),
+        (INT)array_remapping_num_elements_in_post_margin);
+      num_elements_in_group_wn = WN_CreateIntconst(OPCODE_make_op
+        (OPR_INTCONST, MTYPE_U4, MTYPE_V),
+        (INT)array_remapping_num_elements_in_group);
+      array_index_mult_wn = WN_kid1(wn1);
+      if (WN_operator(WN_kid0(array_index_mult_wn)) == OPR_INTCONST)
+      {
+        // array_index_mult_wn = constant * index
+        array_element_size_wn = WN_kid0(array_index_mult_wn);
+        array_element_size = WN_const_val(array_element_size_wn);
+        array_index_wn = WN_kid1(array_index_mult_wn);
+        anchor_wn = array_index_mult_wn;
+        anchor_kid_num = 1;
+        if (WN_operator(array_index_wn) == OPR_CVT)
+        {
+          // move the anchor down
+          anchor_wn = array_index_wn;
+          anchor_kid_num = 0;
+          array_index_wn = WN_kid0(array_index_wn);
+        }
+        rtype = WN_rtype(array_index_wn);
+        desc = WN_desc(array_index_wn);
+        if (array_element_size % array_remapping_candidate_mtype_size != 0)
+        {
+          // legality tests assure us that this is not possible
+          FmtAssert(FALSE, ("Illegal array remapping construct 2."));
+        }
+        if (array_element_size != array_remapping_candidate_mtype_size)
+        {
+          // normalize (array_element_size * index) to
+          // (array_remapping_candidate_mtype_size * (index *
+          // array_element_size / array_remapping_candidate_mtype_size))
+          array_index_wn = WN_CreateExp2(OPCODE_make_op(OPR_MPY, rtype, desc),
+            WN_COPY_Tree(array_index_wn), WN_CreateIntconst(OPCODE_make_op
+            (OPR_INTCONST, MTYPE_U4, MTYPE_V), (INT)(array_element_size /
+            array_remapping_candidate_mtype_size)));
+          WN_kid0(array_index_mult_wn) = WN_CreateIntconst(OPCODE_make_op
+            (OPR_INTCONST, MTYPE_U4, MTYPE_V),
+            (INT)array_remapping_candidate_mtype_size);
+        }
+      }
+      else if (WN_operator(WN_kid1(array_index_mult_wn)) == OPR_INTCONST)
+      {
+        // array_index_mult_wn = index * constant
+        array_element_size_wn = WN_kid1(array_index_mult_wn);
+        array_element_size = WN_const_val(array_element_size_wn);
+        array_index_wn = WN_kid0(array_index_mult_wn);
+        anchor_wn = array_index_mult_wn;
+        anchor_kid_num = 0;
+        if (WN_operator(array_index_wn) == OPR_CVT)
+        {
+          // move the anchor down
+          anchor_wn = array_index_wn;
+          anchor_kid_num = 0;
+          array_index_wn = WN_kid0(array_index_wn);
+        }
+        rtype = WN_rtype(array_index_wn);
+        desc = WN_desc(array_index_wn);
+        if (array_element_size % array_remapping_candidate_mtype_size != 0)
+        {
+          // legality tests assure us that this is not possible
+          FmtAssert(FALSE, ("Illegal array remapping construct 3."));
+        }
+        if (array_element_size != array_remapping_candidate_mtype_size)
+        {
+          // normalize (index * array_element_size) to ((index *
+          // array_element_size / array_remapping_candidate_mtype_size) *
+          // array_remapping_candidate_mtype_size)
+          array_index_wn = WN_CreateExp2(OPCODE_make_op(OPR_MPY, rtype, desc),
+            WN_COPY_Tree(array_index_wn), WN_CreateIntconst(OPCODE_make_op
+            (OPR_INTCONST, MTYPE_U4, MTYPE_V), (INT)(array_element_size /
+            array_remapping_candidate_mtype_size)));
+          WN_kid1(array_index_mult_wn) = WN_CreateIntconst(OPCODE_make_op
+            (OPR_INTCONST, MTYPE_U4, MTYPE_V),
+            (INT)array_remapping_candidate_mtype_size);
+        }
+      }
+      else
+      {
+        // legality tests assure us that this is not possible
+        FmtAssert(FALSE, ("Illegal array remapping construct 4."));
+      }
+      if (WN_offset(wn) % array_remapping_candidate_mtype_size != 0)
+      {
+        // legality tests assure us that this is not possible
+        FmtAssert(FALSE, ("Illegal array remapping construct 5."));
+      }
+      if (WN_offset(wn) != 0)
+      {
+        // normalize offset to 0 by adding offset /
+        // array_remapping_candidate_mtype_size to the index
+        array_index_wn = WN_CreateExp2(OPCODE_make_op(OPR_ADD, rtype, desc),
+          WN_COPY_Tree(array_index_wn), WN_CreateIntconst(OPCODE_make_op
+          (OPR_INTCONST, MTYPE_U4, MTYPE_V), (INT)(WN_offset(wn) /
+          array_remapping_candidate_mtype_size)));
+        WN_offset(wn) = 0;
+      }
+      // now perform the array remapping transformation:
+      // array[index] -> array[((index +
+      //                         array_remapping_num_elements_in_pre_margin *
+      //                         array_remapping_num_elements_in_group) %
+      //                        array_remapping_num_elements_in_group) *
+      //                       (array_remapping_num_elements_in_array +
+      //                        array_remapping_num_elements_in_pre_margin +
+      //                        array_remapping_num_elements_in_post_margin) +
+      //                       ((index +
+      //                         array_remapping_num_elements_in_pre_margin *
+      //                         array_remapping_num_elements_in_group) /
+      //                        array_remapping_num_elements_in_group) -
+      //                       array_remapping_num_elements_in_pre_margin *
+      //                       array_remapping_num_elements_in_group]
+      pre_margin_mult_wn = WN_CreateExp2(OPCODE_make_op(OPR_MPY, rtype, desc),
+        WN_COPY_Tree(num_elements_in_pre_margin_wn), WN_COPY_Tree
+        (num_elements_in_group_wn));
+      new_wn = WN_CreateExp2(OPCODE_make_op(OPR_ADD, rtype, desc),
+        WN_COPY_Tree(array_index_wn), WN_COPY_Tree(pre_margin_mult_wn));
+      mod_wn = WN_CreateExp2(OPCODE_make_op(OPR_REM, rtype, desc),
+        WN_COPY_Tree(new_wn), WN_COPY_Tree(num_elements_in_group_wn));
+      div_wn = WN_CreateExp2(OPCODE_make_op(OPR_DIV, rtype, desc),
+        WN_COPY_Tree(new_wn), WN_COPY_Tree(num_elements_in_group_wn));
+      new_wn = WN_CreateExp2(OPCODE_make_op(OPR_ADD, rtype, desc),
+        num_elements_in_array_wn, WN_COPY_Tree(num_elements_in_pre_margin_wn));
+      new_wn = WN_CreateExp2(OPCODE_make_op(OPR_ADD, rtype, desc), new_wn,
+        num_elements_in_post_margin_wn);
+      new_wn = WN_CreateExp2(OPCODE_make_op(OPR_MPY, rtype, desc), mod_wn,
+        new_wn);
+      new_wn = WN_CreateExp2(OPCODE_make_op(OPR_ADD, rtype, desc), div_wn,
+        new_wn);
+      new_wn = WN_CreateExp2(OPCODE_make_op(OPR_SUB, rtype, desc), new_wn,
+        WN_COPY_Tree(pre_margin_mult_wn));
+      // since the array remapping optimization guarantees that the remainders
+      // of interest are always positive, we can perform further simplification
+      new_wn = simplify_wn_for_div_and_rem(new_wn);
+      // now transform the subscript
+      WN_kid(anchor_wn, anchor_kid_num) = new_wn;
+      if (Get_Trace(TP_IPA, 1))
+        fprintf(TFile, "ipo -> array remapping for %s\n",
+          ST_name(WN_st(WN_kid0(wn1))));
+      break;
+
+    default:
+      break;
+  }
+
+  return;
 }
 
 extern INT struct_field_count(TY_IDX);
@@ -1815,8 +2766,9 @@ void IPO_WN_Update_For_Struct_Opt (IPA_NODE * node)
     Struct_update_index = IPA_Update_Struct;
   }
 
-  if (!Struct_split_candidate_index && complete_struct_relayout_type_id == 0)
-    return; // no structure splitting/peeling or complete_struct_relayout to do
+  // before the addition of array remapping ...
+  // if (!Struct_split_candidate_index && complete_struct_relayout_type_id == 0)
+  //   return; no structure splitting/peeling or complete_struct_relayout to do
 
   WN * tree = node->Whirl_Tree();
   preg_id = 0;
@@ -1853,8 +2805,11 @@ void IPO_WN_Update_For_Struct_Opt (IPA_NODE * node)
         complete_struct_relayout_type_id == 0 ||
         continue_with_complete_struct_relayout == 0 ||
         encountered_calloc_for_complete_struct_relayout == 0)
-      return; // nothing to do
-
+    {
+      // before the addition of array remapping ...
+      // return; nothing to do
+    }
+    else
     {
       // perform complete_struct_relayout optimization for this function
 
@@ -1866,6 +2821,74 @@ void IPO_WN_Update_For_Struct_Opt (IPA_NODE * node)
         fprintf(TFile, "ipo -> complete_struct_relayout for %s\n",
           ST_name(node->Func_ST()));
     }
+  }
+
+  // array remapping optimization
+  if (IPA_Enable_Struct_Opt != 0 && continue_with_array_remapping != 0)
+  {
+    if (array_remapping_final_checked == 0)
+    {
+      // one final check:  make sure the total malloc size for the array
+      // remapping candidate is consistent with the pre-margin size, post-margin
+      // size, and loop iteration size
+      if (array_remapping_malloc_size <=0 ||
+          array_remapping_candidate_mtype_size <= 0 ||
+          array_remapping_num_groups <= 0 ||
+          array_remapping_loop_num_iterations <= 0 ||
+          array_remapping_pre_margin_size % (array_remapping_num_groups *
+            array_remapping_candidate_mtype_size) != 0)
+      {
+        if (Get_Trace(TP_IPA, 1))
+          fprintf(TFile, "ipo -> array remapping disable 12\n");
+        continue_with_array_remapping = 0;
+      }
+      if (array_remapping_pre_margin_size == 0 &&
+          array_remapping_malloc_size == (array_remapping_candidate_mtype_size *
+            array_remapping_num_groups * array_remapping_loop_num_iterations))
+      {
+        array_remapping_num_elements_in_pre_margin =
+          array_remapping_pre_margin_size / array_remapping_num_groups /
+          array_remapping_candidate_mtype_size;
+        array_remapping_num_elements_in_post_margin =
+          array_remapping_num_elements_in_pre_margin;
+        array_remapping_num_elements_in_group = array_remapping_num_groups;
+        array_remapping_num_elements_in_array =
+          array_remapping_loop_num_iterations - 2 *
+          array_remapping_num_elements_in_post_margin;
+      }
+      // the following is more exact, but the problem is that sometimes the
+      // array_remapping_loop_num_iterations already *include* the pre/post-
+      // margin size (e.g., to initialize the *entire* array, etc.)
+      /* else if (array_remapping_pre_margin_size != 0 &&
+          array_remapping_malloc_size == (array_remapping_candidate_mtype_size *
+            array_remapping_num_groups * (array_remapping_loop_num_iterations +
+            2 * array_remapping_pre_margin_size / array_remapping_num_groups /
+            array_remapping_candidate_mtype_size))) */
+      else if (array_remapping_pre_margin_size != 0 &&
+          array_remapping_malloc_size == (array_remapping_candidate_mtype_size *
+            array_remapping_num_groups * array_remapping_loop_num_iterations))
+      {
+        array_remapping_num_elements_in_pre_margin =
+          array_remapping_pre_margin_size / array_remapping_num_groups /
+          array_remapping_candidate_mtype_size;
+        array_remapping_num_elements_in_post_margin =
+          array_remapping_num_elements_in_pre_margin;
+        array_remapping_num_elements_in_group = array_remapping_num_groups;
+        array_remapping_num_elements_in_array =
+          array_remapping_loop_num_iterations - 2 *
+          array_remapping_num_elements_in_post_margin;
+      }
+      else
+      {
+        if (Get_Trace(TP_IPA, 1))
+          fprintf(TFile, "ipo -> array remapping disable 13\n");
+        continue_with_array_remapping = 0;
+      }
+      array_remapping_final_checked = 1;
+    }
+    if (continue_with_array_remapping != 0)
+      // perform array remapping optimization for this function
+      traverse_wn_tree_for_array_remapping(WN_func_body(tree));
   }
 
   // parentize after
@@ -1887,4 +2910,24 @@ void IPO_WN_Update_For_Complete_Structure_Relayout_Legality(IPA_NODE *node)
   traverse_wn_tree_for_complete_struct_relayout_legality(NULL, NULL, tree,
     WN_func_body(tree), 0);
   // continue_with_complete_struct_relayout is set to 0 if anything is wrong
+}
+
+// This function checks if it is legal to perform the array remapping
+// optimization.
+void IPO_WN_Update_For_Array_Remapping_Legality(IPA_NODE *node, int pass,
+  int *argument_num)
+{
+  if (IPA_Enable_Struct_Opt == 0 || continue_with_array_remapping == 0)
+    return; // nothing to do
+
+  WN *tree = node->Whirl_Tree();
+  if (pass == 1)
+{
+    traverse_wn_tree_for_array_remapping_legality_1(WN_func_body(tree),
+      argument_num, tree);
+}
+  else
+    traverse_wn_tree_for_array_remapping_legality_2(WN_func_body(tree), tree,
+      node, NULL);
+  // continue_with_array_remapping is set to 0 if anything is wrong
 }

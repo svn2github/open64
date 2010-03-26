@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -45,7 +49,6 @@
 *** $Source: be/lno/SCCS/s.scalar_expand.cxx $
 **/
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -1356,7 +1359,7 @@ extern STACK<WN*>* Scalar_Equivalence_Class(WN* ref, DU_MANAGER* du,
 
     if (potential_read) {
       DEF_LIST *def_list=du->Ud_Get_Def(scalar_ref);
-      if (def_list->Incomplete()) {
+      if (!def_list || def_list->Incomplete()) {
 	if (find_restrict) 
 	  *wn_outer_loop = NULL; 
         CXX_DELETE(class_stack, pool);
@@ -1388,7 +1391,7 @@ extern STACK<WN*>* Scalar_Equivalence_Class(WN* ref, DU_MANAGER* du,
 
     if (potential_write) {
       USE_LIST *use_list=du->Du_Get_Use(scalar_ref);
-      if (use_list && use_list->Incomplete()) {
+      if (!use_list || use_list->Incomplete()) {
 	if (find_restrict) 
 	  *wn_outer_loop = NULL; 
         CXX_DELETE(class_stack, pool);
@@ -2387,11 +2390,11 @@ extern void Scalar_Expand(WN* allocregion,
     fprintf(stdout, "Scalar expanding %s %s%sin loop %s at %d\n",
       symbol.Name(), has_lcd ? "(with lcd) " : "", 
       finalize ? "(with finalization) " : "", 
-      WB_Whirl_Symbol(wn_outer), (INT) WN_linenum(wn_outer));
+      WB_Whirl_Symbol(wn_outer), Srcpos_To_Line(WN_linenum(wn_outer)));
     fprintf(TFile, "Scalar expanding %s %s%sin loop %s at %d\n",
       symbol.Name(), has_lcd ? "(with lcd) " : "", 
       finalize ? "(with finalization) " : "", 
-      WB_Whirl_Symbol(wn_outer), (INT) WN_linenum(wn_outer));
+      WB_Whirl_Symbol(wn_outer), Srcpos_To_Line(WN_linenum(wn_outer)));
   }
 
   // Step 1: How much space do we need, in bytes?  Put that in bsz.

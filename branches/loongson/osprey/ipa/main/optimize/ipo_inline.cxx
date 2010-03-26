@@ -47,7 +47,6 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 
@@ -66,12 +65,11 @@
 #include "ipl_summarize.h"		// for SUMMARY_CREF_SYMBOL
 #include "ipo_tlog_utils.h"		// for tlog
 #include "ipa_option.h"			// for Trace_IPA
-
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
-#include "dwarf_DST_producer.h"		// for DST_*
-#include "clone_DST_utils.h"		// for DST_enter_inlined_subroutine
-#include "ipaa.h"			// IPAA_NODE_INFO
-#endif // _STANDALONE_INLINER
+#include "dwarf_DST_producer.h"
+#include "dwarf_DST.h"
+#include "dwarf_DST_dump.h"
+#include "ipaa.h"
+#include "clone_DST_utils.h"
 
 #include "ipo_inline.h"
 
@@ -83,6 +81,8 @@ WN_MAP Parent_Map;
 extern FILE *Y_inlining;
 static BOOL Identify_Partial_Inline_Candiate(IPA_NODE *, WN *,
                                              BOOL, IPO_INLINE_AUX *);
+extern DST_IDX
+get_abstract_origin(DST_IDX concrete_instance);
 
 // ======================================================================
 // For easy switching of Scope_tab
@@ -1463,14 +1463,6 @@ IPO_INLINE::IPO_INLINE (IPA_NODE *caller_node,
     _caller_node(caller_node), _callee_node(callee_node), _call_edge(edge)
 {
    
-#if 0
-    {
-	// force both caller and callee to be read into memory
-	// for ipa, this has been guaranteed.
-	IPA_NODE_CONTEXT caller_context (caller_node);
-	IPA_NODE_CONTEXT callee_context (caller_node);
-    }
-#endif
 
   IP_FILE_HDR& file_hdr_caller = Caller_node()->File_Header ();
   IP_FILE_HDR& file_hdr_callee = Callee_node()->File_Header ();
@@ -2132,12 +2124,6 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	}
 	break;
 	
-#if 0
-    case OPR_PARM:
-       if (IPA_Enable_Inline_Var_Dim_Array && Callee_Summary_Proc()->Has_var_dim_array())
-	   fix_var_dim_array(WN_ty(wn), Symtab());
-	break;
-#endif
 #ifdef KEY
     case OPR_CALL:
     {
@@ -2912,10 +2898,6 @@ IPO_INLINE::Process_ST (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	return;
     }
   
-#if 0
-    if (IPA_Enable_Inline_Var_Dim_Array && Callee_Summary_Proc()->Has_var_dim_array())
-	fix_var_dim_array(ST_type(cp), Symtab());
-#endif
 
     // update the caller pragma list
     SUMMARY_PROCEDURE* caller_proc = Caller_node()->Summary_Proc ();
@@ -4161,12 +4143,12 @@ Identify_Partial_Inline_Candiate(IPA_NODE *callee, WN *wn, BOOL prune_tree,
                   } else {
                      // Select this as a partial inlining candidate
                      // only if the return path is very frequent.
-                     FB_FREQ if_freq = Cur_PU_Feedback->Query(wn2,
-                                       FB_EDGE_INCOMING);
                      FB_FREQ then_freq = Cur_PU_Feedback->Query(wn2,
+                                       FB_EDGE_BRANCH_TAKEN);
+                     FB_FREQ else_freq = Cur_PU_Feedback->Query(wn2,
                                        FB_EDGE_BRANCH_NOT_TAKEN);
 
-                     if ( (then_freq / if_freq) > FREQ_RTN_THRESHOLD )
+                     if ( (then_freq/(then_freq+else_freq) ) > FREQ_RTN_THRESHOLD )
                         return TRUE;
                      else
                         return FALSE;
@@ -4185,12 +4167,12 @@ Identify_Partial_Inline_Candiate(IPA_NODE *callee, WN *wn, BOOL prune_tree,
                   } else {
                      // Select this as a partial inlining candidate
                      // only if the return path is very frequent.
-                     FB_FREQ if_freq = Cur_PU_Feedback->Query(wn2,
-                                       FB_EDGE_INCOMING);
-                     FB_FREQ else_freq = Cur_PU_Feedback->Query(wn2,
+                     FB_FREQ then_freq = Cur_PU_Feedback->Query(wn2,
                                        FB_EDGE_BRANCH_TAKEN);
+                     FB_FREQ else_freq = Cur_PU_Feedback->Query(wn2,
+                                       FB_EDGE_BRANCH_NOT_TAKEN);
 
-                     if ( (else_freq / if_freq) > FREQ_RTN_THRESHOLD )
+                     if ( (else_freq/(then_freq+else_freq) ) > FREQ_RTN_THRESHOLD )
                         return TRUE;
                      else
                         return FALSE;
@@ -4286,12 +4268,12 @@ Identify_Partial_Inline_Candiate(IPA_NODE *callee, WN *wn, BOOL prune_tree,
                   // Select this as a partial inlining candidate
                   // only if the loop body is entered very few times
                   // and the return path is very frequent.
-                  FB_FREQ do_freq = Cur_PU_Feedback->Query(wn2,
-                                       FB_EDGE_INCOMING);
                   FB_FREQ iter_freq = Cur_PU_Feedback->Query(wn2,
                                        FB_EDGE_LOOP_ITERATE);
                   FB_FREQ rtn_freq = Cur_PU_Feedback->Query(WN_next(wn2),
                                        FB_EDGE_INCOMING);
+                  FB_FREQ do_freq = Cur_PU_Feedback->Query(wn2,
+                                       FB_EDGE_LOOP_ZERO) + iter_freq;
 
                   if ((iter_freq / do_freq) < (1.0 - FREQ_RTN_THRESHOLD) &&
                       (rtn_freq / do_freq) > FREQ_RTN_THRESHOLD) {
@@ -4499,10 +4481,21 @@ IPO_INLINE::Post_Process_Caller (IPO_INLINE_AUX& aux)
     const PU& pu = Pu_Table[ST_pu (Callee_node ()->Func_ST ())];
 
     {
+        DST_INFO_IDX dst1 = DST_INVALID_INIT;
 	INT64 lang = PU_src_lang (pu);
 	ST* cp = Callee_node ()->Func_ST ();
-	// pragma node that mark the begin and end of the inlined block
+        ST_IDX stidx = ST_st_idx(cp);
 
+        if(Caller_file_dst() == Callee_file_dst())
+        {
+          dst1 = DST_mk_inlined_subroutine(stidx,
+                                           stidx+ST_index(cp),
+                                           get_abstract_origin(Callee_dst()));
+          DST_RESET_assoc_fe (DST_INFO_flag(DST_INFO_IDX_TO_PTR(dst1)));
+          DST_append_child (Caller_dst(), dst1);       
+        }
+
+        // pragma node that mark the begin and end of the inlined block
 	WN* pragma_node_begin =
 	    WN_CreatePragma (WN_PRAGMA_INLINE_BODY_START, cp, lang, 0); 
   

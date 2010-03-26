@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -2298,6 +2298,20 @@ Has_Predecessor_Not_In_LRANGE( GRA_BB *gbb, LRANGE* lrange,
 	!pred->Is_Live_Out_LRANGE(lrange)) {
       return TRUE;
     }
+
+    // test if the pred_bb has a NEW restore that trashes the same register 
+    if (pred->Restore_Below(rc)) {
+      LRANGE_SUBUNIVERSE *su = pred->Region()->Subuniverse(rc);
+      LRANGE* lrange1;
+      for (lrange1 = LRANGE_SET_ChooseS(pred->Restore_Below(rc), su);
+           lrange1 != LRANGE_SET_CHOOSE_FAILURE;
+           lrange1 = LRANGE_SET_Choose_NextS(pred->Restore_Below(rc),
+      				   lrange1, su)){
+        if ( lrange1->Reg() == reg)
+          return TRUE;
+      }
+    }
+    
     if (GRA_optimize_boundary) {
       // If <pred> is a boundary BB where <lrange> is not live-out, then
       // <lrange>'s register could be used by another lrange at the end of
@@ -2980,6 +2994,11 @@ GRU_Fuse(void)
   // skip it if the optimization is not enabled
   if (!GRA_unspill_enable) return;
 
+  // GRA will free the dominator memory when loop splitting is on
+  if (GRA_loop_splitting) {
+    Calculate_Dominators();
+  }
+
   GRA_Init_Trace_Memory();
   MEM_POOL_Push ( &MEM_local_pool );
 
@@ -3003,6 +3022,11 @@ GRU_Fuse(void)
 			spill_count, priority_count);
   GRA_Trace_Memory("GRU_Fuse()");
   MEM_POOL_Pop ( &MEM_local_pool );
+
+  if (GRA_loop_splitting) {
+    Free_Dominators_Memory();
+  }
+
 }
 
 /////////////////////////////////////

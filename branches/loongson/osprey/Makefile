@@ -56,6 +56,7 @@ fe_4_2_0:
 	cd $(fe_4_2_0_dir) && ./CONFIGURE
 	$(MAKE) -C $(fe_4_2_0_dir)
 
+
 clean: compiler-clean ipa_link-clean
 	find $(compiler_dir) $(cygnus_dir)  \
 	  -name Makedepend -print0 | xargs -r0 rm -f
@@ -70,7 +71,7 @@ compiler-clean:
 	$(MAKE) clean -C $(compiler_dir) 
 
 ipa_link-clean:
-	cd $(cygnus_dir); ./CLOBBER
+	-[ -f $(cygnus_dir)/Makefile ] && $(MAKE) -C $(cygnus_dir) $
 
 
 install:

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -249,8 +249,12 @@ BOOL OPT_shared_memory = TRUE;	// assume use of shared memory
 /* Put each function in its own text section */
 BOOL Section_For_Each_Function = FALSE;
 BOOL Inline_Intrinsics_Early=FALSE;    /* Inline intrinsics just after VHO */
+#if defined(TARG_PPC32)
+BOOL Enable_extract_bits=FALSE;
+#else
 BOOL Enable_extract_bits=TRUE;     /* This is also forced off for MIPS and IA32 in
                                           config_targ.cxx */
+#endif
 #if defined(TARG_SL)
 BOOL Enable_compose_bits=TRUE;
 #else
@@ -283,7 +287,7 @@ UINT32 Div_Exe_Candidates = 2;  /* The top entries that will be considered. */
 UINT32 Mpy_Exe_Counter = 90000000;  
 UINT32 Mpy_Exe_Ratio = 100;      /* A cut-off percentage for value profiling. */
 BOOL   profile_arcs = FALSE;
-BOOL   OPT_Lower_To_Memlib = TRUE;  /* transform to library calls */
+UINT32 OPT_Lower_To_Memlib = 1;  /* transform to library calls */
 INT32  OPT_Threshold_To_Memlib = 256;    /* threshold to transform to mem calls */
 INT32  OPT_Enable_Lower_To_Memlib_Limit = -1;
 BOOL   OPT_Enable_Simp_Fold = TRUE;  /* enables new float/complex/str/intrinsic foldings */
@@ -316,7 +320,7 @@ BOOL OPT_Malloc_Alg_Set = FALSE;
 INT32 OPT_Hugepage_Heap_Limit = -1;  /* set huge page limit */
 BOOL OPT_Hugepage_Heap_Set = FALSE;
 INT32 OPT_Hugepage_Attr = 1;  /* set huge page mallopt */
-
+BOOL OPT_Scale=FALSE; // Enable scalability optimization */
 BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO(C/C++)
 BOOL Early_Goto_Conversion_Set = FALSE;
 #endif	// KEY
@@ -441,6 +445,9 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL, OV_INTERNAL, 	TRUE,	"ffast_math", "",
     0, 0, 0, &OPT_Ffast_Math, &OPT_Ffast_Math_Set,
     "Determines conformance to IEEE-754 arithmetic rules" },
+
+  { OVK_BOOL, OV_INTERNAL, 	TRUE,	"scale", "",
+    0, 0, 0, &OPT_Scale, NULL, "Perform scalability optimizations" },
 
   { OVK_BOOL, OV_INTERNAL, 	TRUE,	"funsafe_math_optimizations", "",
     0, 0, 0, &OPT_Funsafe_Math_Optimizations,
@@ -681,8 +688,8 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,    &Enable_SWP,	&Enable_SWP_overridden,
     "Enable software pipelining" },
 
-  { OVK_BOOL,   OV_INTERNAL,    FALSE, "transform_to_memlib",   "transform",
-    0, 0, 0,    &OPT_Lower_To_Memlib, NULL,
+  { OVK_UINT32,   OV_INTERNAL,    FALSE, "transform_to_memlib",   "transform",
+    1, 0, 2,    &OPT_Lower_To_Memlib, NULL,
     "Allow loop or struct memory copy/set to be library calls" },
 
   { OVK_INT32,  OV_INTERNAL,    TRUE, "threshold_to_memlib",    "",

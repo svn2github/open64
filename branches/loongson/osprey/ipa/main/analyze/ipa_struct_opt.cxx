@@ -26,7 +26,6 @@
 // Temple Place - Suite 330, Boston MA 02111-1307, USA.
 ////////////////////////////////////////////////////////////////////////////
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -43,7 +42,6 @@ Field_pos *Struct_field_layout = NULL;
 INT Struct_split_count = 0;
 
 TYPE_ID complete_struct_relayout_type_id = 0;
-TYPE_ID another_complete_struct_relayout_type_id = 0;
 TYPE_ID struct_with_field_pointing_to_complete_struct_relayout_type_id
   [MAX_NUM_STRUCTS_WITH_FIELD_POINTING_TO_COMPLETE_STRUCT_RELAYOUT];
 int struct_with_field_pointing_to_complete_struct_relayout_field_num
@@ -276,38 +274,7 @@ Traverse_TYs_for_complete_struct_relayout(void)
     complete_struct_relayout_type_id = 0;
     return; // nothing marked
   }
-
-  // sometimes when ipl marks the complete_struct_relayout, a new struct gets
-  // created; we want to work on both of them
-  for (iter = Ty_tab.begin(); iter != Ty_tab.end(); iter++)
-  {
-    TY& ty = *iter.Ptr();
-    if (TY_kind(ty) == KIND_STRUCT)
-    {
-      if (strcmp(TY_name(ty), TY_name(local_complete_struct_relayout_type_id <<
-            8)) == 0)
-      {
-        if (complete_struct_relayout_type_id == 0)
-          complete_struct_relayout_type_id = iter.Index();
-        else
-        {
-          if (TY_complete_struct_relayout_candidate(ty))
-          {
-            // this is the new one marked by ipl; only one such will be marked
-            another_complete_struct_relayout_type_id = iter.Index();
-          }
-          else
-          {
-            complete_struct_relayout_type_id = 0;
-            return; // we only perform complete_sturct_relayout for one struct
-          }
-        }
-      }
-    }
-  }
-
-  if (complete_struct_relayout_type_id == 0)
-    return;
+  complete_struct_relayout_type_id = local_complete_struct_relayout_type_id;
 
   // some more restrictions
   if (struct_field_count(complete_struct_relayout_type_id << 8) >=
@@ -315,23 +282,6 @@ Traverse_TYs_for_complete_struct_relayout(void)
   {
     complete_struct_relayout_type_id = 0;
     return;
-  }
-  if (another_complete_struct_relayout_type_id != 0)
-  {
-    // not only must their names have to be the same, pretty much everything
-    // else also (what about individual fields?)
-    if (struct_field_count(complete_struct_relayout_type_id << 8) !=
-        struct_field_count(another_complete_struct_relayout_type_id << 8) ||
-        TY_kind(complete_struct_relayout_type_id << 8) !=
-        TY_kind(another_complete_struct_relayout_type_id << 8) ||
-        TY_size(complete_struct_relayout_type_id << 8) !=
-        TY_size(another_complete_struct_relayout_type_id << 8) ||
-        TY_mtype(complete_struct_relayout_type_id << 8) !=
-        TY_mtype(another_complete_struct_relayout_type_id << 8))
-    {
-      complete_struct_relayout_type_id = 0;
-      return;
-    }
   }
 
   // now go through all the structures again and record all the fields whose
@@ -355,9 +305,7 @@ Traverse_TYs_for_complete_struct_relayout(void)
         FLD_HANDLE field_handle(field_iter);
         if (TY_kind(FLD_type(field_handle)) == KIND_POINTER &&
             (TY_IDX_index(TY_pointed(FLD_type(field_handle))) ==
-               complete_struct_relayout_type_id ||
-             TY_IDX_index(TY_pointed(FLD_type(field_handle))) ==
-               another_complete_struct_relayout_type_id))
+               complete_struct_relayout_type_id))
         {
           struct_with_field_pointing_to_complete_struct_relayout_type_id
             [num_structs_with_field_pointing_to_complete_struct_relayout] =
@@ -381,11 +329,9 @@ Traverse_TYs_for_complete_struct_relayout(void)
   if (complete_struct_relayout_type_id != 0)
   {
     if (Get_Trace(TP_IPA, 1))
-      fprintf(TFile, "ipa -> complete_struct_relayout %d %s another one %d %s\n",
+      fprintf(TFile, "ipa -> complete_struct_relayout %d %s\n",
         complete_struct_relayout_type_id,
-        TY_name(complete_struct_relayout_type_id << 8),
-        another_complete_struct_relayout_type_id,
-        TY_name(another_complete_struct_relayout_type_id << 8));
+        TY_name(complete_struct_relayout_type_id << 8));
   }
   return; // all ready for ipo
 }
@@ -410,6 +356,10 @@ void IPA_struct_opt_legality (void)
   // no opportunities for structure splitting/peeling were found; try
   // complete_struct_relayout optimization
   complete_struct_relayout_type_id = 0;
-  another_complete_struct_relayout_type_id = 0;
+  // save some compile time, only do this if -mso (multi-core scaling
+  // optimization is on) (otherwise nothing would have been marked anyway)
+  // comment out the following since this optimization benefits both mso as well
+  // as non-mso compilations
+  // if (IPA_Enable_Scale)
   Traverse_TYs_for_complete_struct_relayout();
 }

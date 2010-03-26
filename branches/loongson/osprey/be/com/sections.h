@@ -56,7 +56,7 @@ enum _sec_kind {
   _SEC_TEXT,
   _SEC_DATA,
   _SEC_SDATA,
-#if defined(KEY) && !defined(TARG_SL)
+#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_PPC32)
   _SEC_LDATA_MIPS_LOCAL,	// bug 12619
 #endif
   _SEC_LDATA,

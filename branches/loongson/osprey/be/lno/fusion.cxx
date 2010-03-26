@@ -2737,8 +2737,12 @@ extern BOOL Move_Adjacent(WN* stmt1, WN* stmt2) {
        }
     }
     Is_True(stmt==stmt2, ("Incorrect order of input in Move_Adjacent()\n"));
-    if (stmt!=stmt2)
+    if (stmt!=stmt2) {
+      CXX_DELETE(sdg,&FUSION_default_pool);
+      WN_MAP_Delete(sdm);
+      MEM_POOL_Pop(&FUSION_default_pool);
       return FALSE;
+    }
   }
 
   if (stmt2) {
@@ -2782,8 +2786,12 @@ extern BOOL Move_Adjacent(WN* stmt1, WN* stmt2) {
        }
     }
     Is_True(stmt==stmt1, ("Incorrect order of input in Move_Adjacent()\n"));
-    if (stmt!=stmt1)
+    if (stmt!=stmt1) {
+      CXX_DELETE(sdg,&FUSION_default_pool);
+      WN_MAP_Delete(sdm);
+      MEM_POOL_Pop(&FUSION_default_pool);
       return FALSE;
+    }
   }
 
   Statement_Dependence_Graph = NULL; 

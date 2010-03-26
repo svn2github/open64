@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 /* Process declarations and variables for C++ compiler.
@@ -2658,8 +2662,7 @@ finish_case_label (tree low_value, tree high_value)
   if (!check_switch_goto (switch_stack->level))
     return error_mark_node;
 
-  r = c_add_case_label (switch_stack->cases, cond, 
-            SWITCH_STMT_TYPE (switch_stack->switch_stmt),
+  r = c_add_case_label (switch_stack->cases, cond, TREE_TYPE (cond),
 			low_value, high_value);
 
   /* After labels, make any new cleanups in the function go into their
@@ -11294,7 +11297,7 @@ finish_function (int flags)
 	     we were to do this optimization in tree-ssa.  */
 	  && (outer = outer_curly_brace_block (fndecl))
 #if defined(KEY) && defined(TARG_X8664)
-	  && (TREE_CODE(TREE_TYPE(TREE_TYPE(fndecl))) != VECTOR_TYPE)
+	  && (!flag_spin_file || TREE_CODE(TREE_TYPE(TREE_TYPE(fndecl))) != VECTOR_TYPE)
 #endif
 	  && chain_member (r, BLOCK_VARS (outer)))
 	finalize_nrv (&DECL_SAVED_TREE (fndecl), r, DECL_RESULT (fndecl));
