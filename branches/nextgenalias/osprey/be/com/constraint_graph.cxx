@@ -48,12 +48,17 @@ ConstraintGraph::remapDeletedNode(WN *wn)
   if (_toBeDeletedNodes.find(oldId) != _toBeDeletedNodes.end()) {
     ConstraintGraphNode *old = ConstraintGraph::cgNode(oldId);
     ConstraintGraphNode *parent = old->findRep();
-    FmtAssert(parent != old, ("No parent!"));
-    FmtAssert(_toBeDeletedNodes.find(parent->id()) == _toBeDeletedNodes.end(),
-              ("parent: %d deleted!\n", parent->id()));
-    fprintf(stderr, "WN->CGNodeId: Remapping deleted node : %d to "
-            "parent: %d\n", old->id(), parent->id());
-    WN_MAP_CGNodeId_Set(wn, parent->id());
+    // If there is a parent, map the wn to the parent, else remove
+    // the WN to node mapping
+    if (parent != old)  {
+      FmtAssert(_toBeDeletedNodes.find(parent->id()) == _toBeDeletedNodes.end(),
+                ("parent: %d deleted!\n", parent->id()));
+      fprintf(stderr, "WN->CGNodeId: Remapping deleted node : %d to "
+              "parent: %d\n", old->id(), parent->id());
+      WN_MAP_CGNodeId_Set(wn, parent->id());
+    } else {
+      fprintf(stderr, "Unmapping WN->CGNodeId for node: %d\n", old->id());
+    }  
   }
 }
 
@@ -687,7 +692,11 @@ ConstraintGraph::processInitv(INITV_IDX initv_idx, PointsTo &pts)
       ST *base_st;
       INT64 base_offset;
       Expand_ST_into_base_and_ofst(st, offset, &base_st, &base_offset);
-      ConstraintGraphNode *node = getCGNode(CG_ST_st_idx(base_st), base_offset);
+      ConstraintGraphNode *node;
+      if (ST_class(base_st) == CLASS_CONST)
+        node = notAPointer();
+      else
+        node = getCGNode(CG_ST_st_idx(base_st), base_offset);
       pts.setBit(node->id());
     } 
     else if (INITV_kind(initv) == INITVKIND_ZERO ||
@@ -717,7 +726,7 @@ ConstraintGraph::processInito(const INITO *const inito)
   // Collect the init data for this symbol
   PointsTo tmp(Malloc_Mem_Pool);
   processInitv(INITO_val(*inito), tmp);
-  // If all the elements are not a pointer, then mark 'node' as not a pointer
+  // Check if any of the element is a pointer
   bool foundPtr = false;
   for (PointsTo::SparseBitSetIterator sbsi(&tmp, 0); sbsi != 0; ++sbsi) {
     ConstraintGraphNode *node = ConstraintGraph::cgNode(*sbsi);
@@ -726,13 +735,20 @@ ConstraintGraph::processInito(const INITO *const inito)
       break;
     }
   }
-  if (!foundPtr)
+
+  // If the symbol type is a scalar and if the init set does
+  // not contain a pointer mark the node as not a pointer
+  TY &sym_ty = Ty_Table[ST_type(base_st)];
+  if (TY_kind(sym_ty) == KIND_SCALAR && !foundPtr) {
     node->addFlags(CG_NODE_FLAGS_NOT_POINTER);
-  else {
+    fprintf(stderr, "processInito: Marking node: ");
+    node->print(stderr);
+    fprintf(stderr, " as not a pointer\n");
+  } else {
     // Lump all the objects to this node and make it field insensitive :(
     node->unionPointsTo(tmp, CQ_GBL);
     node->stInfo()->setModulus(1, node->offset());
-    fprintf(stderr, "processInito: setting modulus to 1 for StInfo: ");
+    fprintf(stderr, "processInito: Setting modulus to 1 for StInfo: ");
     node->stInfo()->print(stderr);
     fprintf(stderr, " at offset %d\n", node->offset());
   }
@@ -821,13 +837,16 @@ ConstraintGraph::handleAssignment(WN *stmt)
   // process LHS
   ConstraintGraphNode *cgNodeLHS = processLHSofStore(stmt);
 
-  // For non-pointer lhs, check whether rhs may point
-  if ((TY_kind(WN_object_ty(stmt)) != KIND_POINTER) && !exprMayPoint(rhs)) {
-    if (OPERATOR_is_scalar_store(WN_operator(stmt)))
+  // If rhs is not a pointer and if the lhs is not a pointer type and we are not
+  // doing an indirect store, mark lhs as not a pointer.
+  // If rhs is not a pointer, we do not need a copy/store edge to the lhs
+  if (!exprMayPoint(rhs)) {
+    if ((TY_kind(WN_object_ty(stmt)) != KIND_POINTER) &&
+        OPERATOR_is_scalar_store(WN_operator(stmt)))
       cgNodeLHS->addFlags(CG_NODE_FLAGS_NOT_POINTER);
     return WN_next(stmt);
   }
-
+    
   // Handle ALLOCA which must appear as the rhs of a store 
   if (WN_operator(rhs) == OPR_ALLOCA) {
     TY &stack_ptr_ty = Ty_Table[WN_ty(stmt)];
@@ -911,15 +930,13 @@ ConstraintGraph::processExpr(WN *expr)
     switch (opr) {
       case OPR_LDA: {
         cgNode = getCGNode(expr);
-        if (!cgNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
-          // Create a temp preg t and add a to the points-to set of t.
-          ConstraintGraphNode *tmpCGNode = genTempCGNode();
-          if (stInfo(cgNode->cg_st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
-            tmpCGNode->addPointsTo(cgNode, CQ_GBL);
-          else
-            tmpCGNode->addPointsTo(cgNode, CQ_HZ);
-          cgNode = tmpCGNode;
-        }
+        // Create a temp preg t and add a to the points-to set of t.
+        ConstraintGraphNode *tmpCGNode = genTempCGNode();
+        if (stInfo(cgNode->cg_st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT))
+          tmpCGNode->addPointsTo(cgNode, CQ_GBL);
+        else
+          tmpCGNode->addPointsTo(cgNode, CQ_HZ);
+        cgNode = tmpCGNode;
         break;
       }
       case OPR_LDID:

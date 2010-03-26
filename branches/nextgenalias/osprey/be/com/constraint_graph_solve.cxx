@@ -1065,21 +1065,37 @@ ConstraintGraph::simpleOptimizer()
     change = false;
     for (CGNodeToIdMapIterator iter = ConstraintGraph::lBegin();
          iter != ConstraintGraph::lEnd(); iter++) {
-      ConstraintGraphNode *destNode = iter->first->parent();
-      // If the destNode is a parent of someone, ignore
-      if (areParents.find(destNode->id()) != areParents.end())
+      ConstraintGraphNode *node = iter->first->parent();
+      // If the node is a parent of someone, ignore
+      if (areParents.find(node->id()) != areParents.end())
         continue;
       // If destNode is marked deleted ignore
-      if (_toBeDeletedNodes.find(destNode->id()) != _toBeDeletedNodes.end())
+      if (_toBeDeletedNodes.find(node->id()) != _toBeDeletedNodes.end())
         continue;
       // If node is not a preg that can be deleted, ignore
-      if (!(destNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG) &&
-            destNode->canBeDeleted()))
+      if (!(node->stInfo()->checkFlags(CG_ST_FLAGS_PREG) &&
+            node->canBeDeleted()))
         continue;
       // Ignore if there are any outgoing edges
-      if (!destNode->outLoadStoreEdges().empty() ||
-          !destNode->outCopySkewEdges().empty())
+      if (!node->outLoadStoreEdges().empty() ||
+          !node->outCopySkewEdges().empty())
         continue;
+      const CGEdgeSet &loadStoreSet = node->inLoadStoreEdges();
+      bool hasInStore = false;
+      for (CGEdgeSetIterator eiter = loadStoreSet.begin();
+           eiter != loadStoreSet.end(); eiter++) {
+        ConstraintGraphEdge *edge = *eiter;
+        if (edge->edgeType() == ETYPE_STORE) {
+          hasInStore = true;
+          break;
+        }
+      }
+      // Ignore if there are incoming store edges
+      if (hasInStore)
+        continue;
+
+      // _toBeDeletedNodes.insert(node->id());
+      // change = true;
     }
   }
 
