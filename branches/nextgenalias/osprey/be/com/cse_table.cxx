@@ -42,6 +42,54 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       { CPA_one_level_write }
     },
     {
+      "_Znwm",
+      CFAT_libcpp_default_attr &
+      ~(CFAT_exposes_argument_address_to_return 
+        | CFAT_exposes_argument_address_to_globals)
+      | CFAT_globals_read | CFAT_globals_write 
+      | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write  
+      | CFAT_is_marked_libcall
+      | CFAT_argument_one_level_deref | CFAT_allocates_heap_memory 
+      | CFAT_returns_heap_memory,
+      0,
+      { 0, }
+    },
+    {
+      "_Znam",
+      CFAT_libcpp_default_attr &
+      ~(CFAT_exposes_argument_address_to_return 
+        | CFAT_exposes_argument_address_to_globals)
+      | CFAT_globals_read | CFAT_globals_write 
+      | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write 
+      | CFAT_is_marked_libcall 
+      | CFAT_argument_one_level_deref | CFAT_allocates_heap_memory 
+      | CFAT_returns_heap_memory,
+      0,
+      { 0, }
+    },
+    {
+      "_ZdlPv",
+      CFAT_libcpp_default_attr &
+      ~(CFAT_exposes_argument_address_to_return 
+        | CFAT_exposes_argument_address_to_globals)
+      | CFAT_globals_read | CFAT_globals_write  | CFAT_is_marked_libcall
+      | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write 
+      | CFAT_argument_one_level_deref | CFAT_deallocates_heap_memory,
+      0,
+      { 0, }
+    },
+    {
+      "_ZdaPv",
+      CFAT_libcpp_default_attr &
+      ~(CFAT_exposes_argument_address_to_return 
+        | CFAT_exposes_argument_address_to_globals)
+      | CFAT_globals_read | CFAT_globals_write | CFAT_is_marked_libcall
+      | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write 
+      | CFAT_argument_one_level_deref | CFAT_deallocates_heap_memory,
+      0,
+      { 0, }
+    },
+    {
       "_F90_ALLOCATE",
       CFAT_argument_indirectly_read | CFAT_argument_indirectly_write |
       CFAT_allocates_heap_memory |CFAT_is_lib_f90,
