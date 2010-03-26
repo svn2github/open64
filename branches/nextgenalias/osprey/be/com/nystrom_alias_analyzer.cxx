@@ -452,7 +452,8 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
         aliasTagInfo->pointsTo().setBit(cgNode->id());
 
       // We expect all alias sets to be non-empty...
-      FmtAssert(!aliasTagInfo->pointsTo().isEmpty(),
+      FmtAssert(cgNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) ||
+                !aliasTagInfo->pointsTo().isEmpty(),
                 ("Alias tag %d (from cgnode %d) has empty alias set",
                     aliasTag,cgNode->id()));
 

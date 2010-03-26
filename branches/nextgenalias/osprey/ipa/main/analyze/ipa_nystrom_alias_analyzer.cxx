@@ -607,17 +607,47 @@ ConstraintGraph::buildModRange(UINT32 modRangeIdx, IPA_NODE *ipaNode)
   return mr;
 }
 
+
+
+class IPA_EscapeAnalysis : public EscapeAnalysis
+{
+public:
+  IPA_EscapeAnalysis(IPACGMap *map, bool wholePrgMode, MEM_POOL *memPool) :
+    EscapeAnalysis(NULL,false,memPool),
+    _ipaCGMap(map)
+  {
+    ipaMode(true);
+    wholeProgramMode(wholePrgMode);
+  }
+
+  void init();
+  void computeReversePointsTo();
+
+private:
+  IPACGMap *_ipaCGMap;
+};
+
 void
-EscapeAnalysis::ipaInit(void)
+IPA_EscapeAnalysis::init(void)
 {
   // Walk each of the PU constraint graphs
-  IPACGMap *map = static_cast<IPACGMap *>(_ipaCGMap);
+  IPACGMap *map = _ipaCGMap;
   for (IPACGMapIterator iter = map->begin();
        iter != map->end(); ++iter) {
-    init(iter->second);
+    initGraph(iter->second);
   }
   // Don't forget about the global constraint graph
-  init(ConstraintGraph::globalCG());
+  initGraph(ConstraintGraph::globalCG());
+
+
+}
+
+void
+IPA_EscapeAnalysis::computeReversePointsTo()
+{
+  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
+       iter != ConstraintGraph::gEnd(); ++iter)
+    updateReversePointsTo(iter->second);
 }
 
 /*
@@ -776,6 +806,14 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
         ST_IDX stIdx = SYM_ST_IDX(node->cg_st_idx());
         ST *st = &St_Table[stIdx];
         IPA_NODE *callee = _stToNodeMap[st];
+        if (!callee) {
+          FmtAssert(ST_sclass(st) == SCLASS_EXTERN,
+                    ("Expect func not in call graph to be extern"));
+          // assume whole program mode for the moment
+          fprintf(stderr,"Update Call Graph: callsite points to extern func: %s\n",
+                  ST_name(st));
+          continue;
+        }
         IPAEdge newEdge(caller->Node_Index(),callee->Node_Index(),id);
         // Have we seen this edge before?
         IndirectEdgeSet::iterator iter = _indirectEdgeSet.find(newEdge);
@@ -970,9 +1008,9 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
   // We perform escape analysis to determine which symbols may point
   // to memory that is not visible within our scope.
-  EscapeAnalysis escAnal(&_ipaConstraintGraphs,
-                         IPA_Enable_Whole_Program_Mode,
-                         &_memPool);
+  IPA_EscapeAnalysis escAnal(&_ipaConstraintGraphs,
+                             IPA_Enable_Whole_Program_Mode,
+                             &_memPool);
   escAnal.perform();
   escAnal.markEscaped();
 
@@ -991,4 +1029,8 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
   if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
      fprintf(stderr,"IPA Nystrom: Solver Complete\n");
+
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_VCG_FLAG))
+    ConstraintGraphVCG::dumpVCG("ipa_final");
+
 }

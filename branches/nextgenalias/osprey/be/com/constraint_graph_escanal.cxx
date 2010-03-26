@@ -91,30 +91,22 @@ EscapeAnalysis::addStToWorkList(ConstraintGraphNode *node)
   }
 }
 
-static inline void
-updateReversePointsTo(ConstraintGraphNode *node)
-{
-   // Only those nodes that have had an update to their points-to
-   // set since the last time we performed escape analysis
-   if (node->checkFlags(CG_NODE_FLAGS_PTSMOD)) {
-     node->clearFlags(CG_NODE_FLAGS_PTSMOD);
-     for (PointsToIterator pti(node->parent()); pti != 0; ++pti) {
-       PointsTo &pts = *pti;
-       for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
-         CGNodeId cgNodeId = *iter;
-         ConstraintGraphNode *revNode = ConstraintGraph::cgNode(cgNodeId);
-         revNode->addRevPointsTo(node,pti.qual());
-       }
-     }
-   }
-}
-
 void
-EscapeAnalysis::globalComputeReversePointsTo()
+EscapeAnalysis::updateReversePointsTo(ConstraintGraphNode *node)
 {
-  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
-       iter != ConstraintGraph::gEnd(); ++iter)
-    updateReversePointsTo(iter->second);
+  // Only those nodes that have had an update to their points-to
+  // set since the last time we performed escape analysis
+  if (node->checkFlags(CG_NODE_FLAGS_PTSMOD)) {
+    node->clearFlags(CG_NODE_FLAGS_PTSMOD);
+    for (PointsToIterator pti(node->parent()); pti != 0; ++pti) {
+      PointsTo &pts = *pti;
+      for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
+        CGNodeId cgNodeId = *iter;
+        ConstraintGraphNode *revNode = ConstraintGraph::cgNode(cgNodeId);
+        revNode->addRevPointsTo(node,pti.qual());
+      }
+    }
+  }
 }
 
 void
@@ -158,7 +150,8 @@ EscapeAnalysis::newContEscapeNode(ConstraintGraphNode *node, UINT32 flags)
     addStToWorkList(node);
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
       fprintf(stderr,"ESCANAL: CG_ST_IDX %lld (%s) marked holding\n",
-              node->cg_st_idx(),ST_name(SYM_ST_IDX(node->cg_st_idx())));
+              node->cg_st_idx(),
+              !node->cg()->inIPA()? ST_name(SYM_ST_IDX(node->cg_st_idx())):"?");
   }
 }
 
@@ -180,7 +173,8 @@ EscapeAnalysis::newPropEscapeNode(ConstraintGraphNode *node, UINT32 flags)
      addStToWorkList(node);
      if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
        fprintf(stderr,"ESCANAL: CG_ST_IDX %lld (%s) marked propagates\n",
-               node->cg_st_idx(),ST_name(SYM_ST_IDX(node->cg_st_idx())));
+               node->cg_st_idx(),
+               !node->cg()->inIPA()? ST_name(SYM_ST_IDX(node->cg_st_idx())):"?");
   }
 
   if (flags & CG_ST_FLAGS_RETPROP_ESC) {
@@ -190,7 +184,8 @@ EscapeAnalysis::newPropEscapeNode(ConstraintGraphNode *node, UINT32 flags)
       addStToWorkList(node);
       if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
         fprintf(stderr,"ESCANAL: CG_ST_IDX %lld (%s) marked propagates_ret\n",
-                node->cg_st_idx(),ST_name(SYM_ST_IDX(node->cg_st_idx())));
+                node->cg_st_idx(),
+                !node->cg()->inIPA()? ST_name(SYM_ST_IDX(node->cg_st_idx())):"?");
     }
   }
 }
@@ -238,7 +233,8 @@ EscapeAnalysis::newFullEscapeNode(ConstraintGraphNode *node, UINT32 flags)
 
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
             fprintf(stderr,"ESCANAL: CG_ST_IDX %lld (%s) marked opaque\n",
-                    node->cg_st_idx(),ST_name(SYM_ST_IDX(node->cg_st_idx())));
+                    node->cg_st_idx(),
+                    !node->cg()->inIPA()?ST_name(SYM_ST_IDX(node->cg_st_idx())):"?");
 
     if (stFlags & CG_ST_FLAGS_GLOBAL)
       _globalEscapeCnt++;
@@ -274,7 +270,8 @@ EscapeAnalysis::newFullEscapeNode(ConstraintGraphNode *node, UINT32 flags)
 
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
         fprintf(stderr,"ESCANAL: CG_ST_IDX %lld (%s) marked opaque\n",
-                node->cg_st_idx(),ST_name(SYM_ST_IDX(node->cg_st_idx())));
+                node->cg_st_idx(),
+                !node->cg()->inIPA()?ST_name(SYM_ST_IDX(node->cg_st_idx())):"?");
 
     if (stFlags & CG_ST_FLAGS_GLOBAL)
       _globalEscapeCnt++;
@@ -338,7 +335,13 @@ EscapeAnalysis::exposed(CG_ST_IDX idx)
 }
 
 void
-EscapeAnalysis::init(ConstraintGraph *graph)
+EscapeAnalysis::init(void)
+{
+  initGraph(_graph);
+}
+
+void
+EscapeAnalysis::initGraph(ConstraintGraph *graph)
 {
   /* formal(u) actual(u)  global(u)
    * --------  ---------  ---------
@@ -526,6 +529,10 @@ EscapeAnalysis::perform(void)
     fprintf(stderr,"ESCANAL: Summary %d, IPA %d, WPM %d\n",
             _summaryMode, _ipaMode, _wholeProgramMode);
 
+  init();
+  computeReversePointsTo();
+
+#if 0
   if (_ipaCGMap) {
 #ifndef BACK_END
     ipaInit();
@@ -536,6 +543,7 @@ EscapeAnalysis::perform(void)
     init(_graph);
     computeReversePointsTo();
   }
+#endif
 
   UINT32 cnt = 0;
   while (!_workList.empty())  {

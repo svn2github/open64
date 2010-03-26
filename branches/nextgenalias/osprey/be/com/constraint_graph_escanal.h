@@ -21,20 +21,8 @@ public:
     _localEscapeCnt(0),
     _globalEscapeCnt(0),
     _graph(graph),
-    _ipaCGMap(NULL),
+    //_ipaCGMap(NULL),
     _memPool(memPool)
-  {}
-
-  EscapeAnalysis(void *map, bool wholeProgram,MEM_POOL *memPool)
-   : _summaryMode(false),
-     _ipaMode(true),
-     _wholeProgramMode(wholeProgram),
-     _observedCnt(0),
-     _localEscapeCnt(0),
-     _globalEscapeCnt(0),
-     _graph(NULL),
-     _ipaCGMap(map),
-     _memPool(memPool)
   {}
 
   ~EscapeAnalysis();
@@ -43,6 +31,19 @@ public:
   void markEscaped(void);
 
   UINT32 escapeStFlags(ConstraintGraphNode *node) const;
+
+protected:
+  void ipaMode(bool val)            { _ipaMode = val; }
+  bool ipaMode(void) const          { return _ipaMode; }
+
+  void wholeProgramMode(bool val)   { _wholeProgramMode = val; }
+  bool wholeProgramMode(void) const { return _wholeProgramMode; }
+
+  virtual   void init(void);
+  virtual   void computeReversePointsTo(void);
+
+  void initGraph(ConstraintGraph *graph);
+  void updateReversePointsTo(ConstraintGraphNode *node);
 
 private:
   typedef pair<CG_ST_IDX,UINT32> StTableKey;
@@ -60,8 +61,8 @@ private:
   } equalStTableData;
   typedef hash_map<StTableKey,UINT32,hashStTableData,equalStTableData> StTable;
 
-  void init(ConstraintGraph *graph);
-  void ipaInit(void);
+
+  //void ipaInit(void);
   bool observed(ConstraintGraphNode *node);
   void newContEscapeNode(ConstraintGraphNode *node, UINT32 flags);
   void newPropEscapeNode(ConstraintGraphNode *node, UINT32 flags);
@@ -78,9 +79,6 @@ private:
   void   addStFlags(ConstraintGraphNode *node, UINT32 flags);
   void   addStToWorkList(ConstraintGraphNode *node);
 
-  void      computeReversePointsTo(void);
-  void      globalComputeReversePointsTo(void);
-
   bool      exposed(CG_ST_IDX idx);
 
   bool             _summaryMode;
@@ -92,7 +90,6 @@ private:
   ConstraintGraph *_graph;
   NodeWorkList     _workList;
   StTable          _stTable;
-  void            *_ipaCGMap;
   MEM_POOL        *_memPool;
 };
 
