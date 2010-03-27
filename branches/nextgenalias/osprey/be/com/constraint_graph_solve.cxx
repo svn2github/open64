@@ -5,6 +5,7 @@
 #include "constraint_graph_escanal.h"
 #include "constraint_graph_solve.h"
 #include "opt_defs.h"
+#include "opt_sys.h"
 #include "tracing.h"
 
 //
@@ -296,7 +297,13 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
   EdgeWorkList &loadStoreList = edgeDelta().loadStoreList();
 
   UINT32 iterCount = 0;
+  UINT32 copyCount = 0;
+  UINT32 skewCount = 0;
+  UINT32 loadCount = 0;
+  UINT32 storeCount = 0;
   bool trace = Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG);
+
+  UINT32 startTime = CLOCK_IN_MS();
 
   do {
     // Here we walk the constraint graph to locate any SCCs and
@@ -355,13 +362,16 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
         edge->print(stderr);
         fprintf(stderr,"\n");
       }
-      if (edge->edgeType() == ETYPE_COPY)
+      if (edge->edgeType() == ETYPE_COPY) {
         processAssign(edge);
+        copyCount += 1;
+      }
       else {
         FmtAssert(edge->edgeType() == ETYPE_SKEW,
             ("ConstraintGraph::solveConstraints: type %d edge in "
                 "copy/skew worklist",edge->edgeType()));
         processSkew(edge);
+        skewCount += 1;
       }
       copySkewList.pop();
     }
@@ -373,8 +383,10 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
         edge->print(stderr);
         fprintf(stderr,"\n");
       }
-      if (edge->edgeType() == ETYPE_LOAD)
+      if (edge->edgeType() == ETYPE_LOAD) {
         processLoad(edge);
+        loadCount += 1;
+      }
       else {
         FmtAssert(edge->edgeType() == ETYPE_STORE,
             ("ConstraintGraph::solveConstraints: type %d edge in"
@@ -384,10 +396,18 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
           // the src and dest of this edge were flagged as unknown,
           // which means we may as well give up.
           return false;
+        storeCount += 1;
       }
     }
   } while (!copySkewList.empty());
 
+  UINT32 endTime = CLOCK_IN_MS();
+
+  if (trace)
+    fprintf(stderr,"Solver required %d iter, "
+            "processed %d c, %d s, %d l, %d s edges in %.1lfs\n",
+            iterCount,copyCount,skewCount,loadCount,storeCount,
+            double(endTime-startTime)/1000);
   return true;
 }
 
@@ -449,7 +469,12 @@ ConstraintGraphSolve::postProcessPointsTo()
           UINT32 applyOffset = node->stInfo()->applyModulus(node->offset());
           UINT32 startOffset = applyOffset - (node->offset() % modulus);
           if (node->offset() >= (startOffset+modulus)) {
-            FmtAssert(node->repParent(),("Node beyond modulus must have parent\n"));
+            if (!node->repParent()) {
+              fprintf(stderr,"Insanity in StInfo %p\n",node->stInfo());
+              node->stInfo()->print(stderr,true);
+              FmtAssert(FALSE,("Node beyond modulus must have parent\n"));
+            }
+
             node = node->repParent();
             adjustSet.setBit(node->id());
             // If we have overrun our offset limit, then the parent may

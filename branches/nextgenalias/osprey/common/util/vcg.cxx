@@ -157,6 +157,8 @@ VCGGraph::emit(FILE *out) const
       // For a non-subgraph, these would be safe, but are unneeded.
       fprintf(out, "textcolor: %s \n", colorMnemonic[theTextColor]);
       fprintf(out, "shape: %s \n", shapeMnemonic[theShape]);
+      if (theFolding)
+        fprintf(out,"status: grey\n");
       // For the sub graph, setting the status to grey keeps it
       // folded by default. 
  

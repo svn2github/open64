@@ -264,6 +264,42 @@ ModulusRange::build(TY_IDX ty_idx, UINT32 offset, MEM_POOL *memPool)
   return modRange;
 }
 
+
+UINT32
+ModulusRange::modulus(UINT32 offset, UINT32 mod,
+                      UINT32 &startOffset, UINT32 &endOffset,
+                      MEM_POOL *memPool)
+{
+  ModulusRange *modRange = findRange(offset);
+  // Set the modulus of this range to 'mod' and cap
+  // the modulus all children to this new value.
+  if (modRange == NULL)
+    modRange = this;
+  if (mod < modRange->_modulus) {
+    modRange->_modulus = mod;
+
+    // Find first child range that spans new modulus
+    ModulusRange *q = NULL;
+    ModulusRange *r = modRange->_child;
+    while (r && r->_endOffset < mod) {
+      q = r;
+      r = r->_next;
+    }
+    if (r) {
+      removeRange(r,memPool);
+      if (q)
+        q->_next = NULL;
+      else
+        modRange->_child = NULL;
+    }
+    if (modRange->_child)
+      modRange->_child->set(mod);
+  }
+  startOffset = modRange->_startOffset;
+  endOffset = modRange->_endOffset;
+}
+
+
 bool
 ModulusRange::flat(TY &ty)
 {
@@ -317,7 +353,8 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
     _varSize(0),
     _maxOffsets(32),
     _numOffsets(0),
-    _firstOffset(0)
+    _firstOffset(0),
+    _memPool(memPool)
 {
   ST *st = &St_Table[st_idx];
   TY& ty = Ty_Table[ST_type(st)];
@@ -419,13 +456,28 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
     endOffset = _u._modulus;
     _u._modulus = mod;
   }
-  else
-    _u._modRange->modulus(offset,mod,startOffset,endOffset);
+  else {
+//    fprintf(stderr,"Before setting offset %d to modulus %d\n",offset,mod);
+//    _u._modRange->print(stderr,true);
+    _u._modRange->modulus(offset,mod,startOffset,endOffset,_memPool);
+  }
 
   if(_firstOffset && _firstOffset->cg()->buildComplete()) {
-    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-      fprintf(stderr,"Setting modulus of %s to %d\n",
-              ST_name(&St_Table[SYM_ST_IDX(_firstOffset->cg_st_idx())]),mod);
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+      fprintf(stderr,"Setting modulus of ");
+      CG_ST_IDX idx = _firstOffset->cg_st_idx();
+      if (!ConstraintGraph::inIPA() ||
+          ST_IDX_level(SYM_ST_IDX(idx)) == GLOBAL_SYMTAB)
+        fprintf(stderr,"%s",ST_name(&St_Table[SYM_ST_IDX(idx)]));
+      else
+        fprintf(stderr, " <file:%d pu:%d st_idx:%d>",
+                FILE_NUM_ST_IDX(idx),
+                PU_NUM_ST_IDX(idx),
+                SYM_ST_IDX(idx));
+
+      fprintf(stderr," to %d\n",mod);
+    }
+
     // We must apply the new modulus to all existing offsets
     ConstraintGraphNode *cur = _firstOffset;
     if (cur && cur->offset() == -1) cur = cur->nextOffset();
@@ -435,7 +487,7 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
     while (cur && cur->offset() <= endOffset) {
       UINT32 newOffset = startOffset + cur->offset() % mod;
       ConstraintGraphNode *modNode =
-          cur->cg()->getCGNode(cur->cg_st_idx(),newOffset);
+          cur->cg()->getCGNode(cur->cg_st_idx(),newOffset,false/*no -1*/);
 
       // Now we merge the two nodes together.  NOTE: the original
       // node remains and uses the modulus offset node as its
@@ -447,6 +499,12 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
       cur = cur->nextOffset();
     }
   }
+#if 0
+  if (checkFlags(CG_ST_FLAGS_MODRANGE)) {
+    fprintf(stderr,"After setting offset %d to modulus %d\n",offset,mod);
+    _u._modRange->print(stderr,true);
+  }
+#endif
 }
 
 void
@@ -1589,7 +1647,8 @@ ConstraintGraph::removeEdge(ConstraintGraphEdge *edge)
 }
 
 ConstraintGraphNode *
-ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
+ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset,
+                           bool allowMinusOne)
 {
   // Check if we have seen this symbol before
   StInfo *si;
@@ -1635,7 +1694,7 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   // to -1, essentially forcing them to be treated as field
   // insensitive.
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
-    if (offset != -1 && (si->numOffsets() >= si->maxOffsets())) {
+    if (offset != -1 && (si->numOffsets() >= si->maxOffsets()) && allowMinusOne) {
       offset = -1;
       // Check if node exists, if so return it
       if ((cgNode = checkCGNode(cg_st_idx, offset)) != NULL)
@@ -1663,6 +1722,12 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
 
   if (cgNode->offset() == -1)
     seedOffsetMinusOnePointsTo(si,cgNode);
+
+  if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+    fprintf(stderr,"Creating node:\n");
+    cgNode->print(stderr);
+  }
+
   return cgNode;
 }
 
@@ -1782,6 +1847,7 @@ ConstraintGraphNode::_getCGEdgeSet(CGEdgeType t, CGEdgeList **el)
   }
   return *es;
 }
+
 
 void
 ConstraintGraph::print(FILE *file)
@@ -1957,6 +2023,36 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
 }
 
 void
+dbgPrintCGNode(CGNodeId nodeId)
+{
+  ConstraintGraphNode *node = ConstraintGraph::cgNode(nodeId);
+  if (node)
+    node->dbgPrint();
+  fprintf(stderr,"Invalid CGNodeId %d\n",nodeId);
+}
+
+void
+ConstraintGraphNode::dbgPrint()
+{
+  print(stderr);
+}
+
+char *
+ConstraintGraphNode::stName() const
+{
+  static char buf[128];
+  if (!cg()->inIPA() ||
+      ST_IDX_level(SYM_ST_IDX(_cg_st_idx)) == GLOBAL_SYMTAB)
+    return ST_name(St_Table[SYM_ST_IDX(_cg_st_idx)]);
+  else
+    sprintf(buf, "<file:%d pu:%d st_idx:%d>",
+            FILE_NUM_ST_IDX(_cg_st_idx),
+            PU_NUM_ST_IDX(_cg_st_idx),
+            SYM_ST_IDX(_cg_st_idx));
+  return buf;
+}
+
+void
 ConstraintGraphNode::print(FILE *file)
 {
   fprintf(file, "*CGNodeId: %d*\n ", _id);
@@ -2119,7 +2215,13 @@ void ConstraintGraphNode::print(ostream& ostr)
 }
 
 void
-StInfo::print(FILE *file)
+StInfo::dbgPrint()
+{
+  print(stderr,true);
+}
+
+void
+StInfo::print(FILE *file,bool emitOffsetChain)
 {
   fprintf(file, "varSize: %lld", _varSize);
   fprintf(file, " ST flags: [");
@@ -2136,15 +2238,26 @@ StInfo::print(FILE *file)
   if (checkFlags(CG_ST_FLAGS_NOCNTXT))
     fprintf(file, " CI");
   fprintf(file, "]");
-  if (_firstOffset)
-    fprintf(file, " firstCGNodeId: %d", _firstOffset->id());
-  else
-    fprintf(file, " firstCGNodeId: null");
+  if (!emitOffsetChain)
+    if (_firstOffset)
+      fprintf(file, " firstCGNodeId: %d", _firstOffset->id());
+    else
+      fprintf(file, " firstCGNodeId: null");
   if (!checkFlags(CG_ST_FLAGS_MODRANGE))
     fprintf(file," modulus: %d\n",_u._modulus);
   else {
     fprintf(file,"\n  modulus ranges:\n");
     _u._modRange->print(file,4);
+  }
+  if (emitOffsetChain) {
+    ConstraintGraphNode *node = _firstOffset;
+    fprintf(file,"Offset list:\n");
+    while (node) {
+      fprintf(file,"  Id: %d, offset %d, parent %d\n",
+              node->id(),node->offset(),
+              node->repParent()?node->repParent()->id():node->id());
+      node = node->nextOffset();
+    }
   }
 }
 

@@ -567,7 +567,7 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
      
   UINT32 flags = summ->flags(); 
   INT64 varSize = summ->varSize(); 
-  StInfo *stInfo = CXX_NEW(StInfo(flags, varSize), _memPool);
+  StInfo *stInfo = CXX_NEW(StInfo(flags, varSize,_memPool), _memPool);
   if (flags & CG_ST_FLAGS_MODRANGE) {
     // Read in the ModRanges
     ModulusRange *mr = buildModRange(summ->modulus(), ipaNode);
@@ -658,11 +658,24 @@ IPA_EscapeAnalysis::computeReversePointsTo()
  * unable to update the call graph as indirect call targets are resolved to
  * multiple targets.
  */
+typedef struct
+{
+  size_t operator() (const ST *k) const { return (size_t)k; }
+} hashST;
+typedef struct
+{
+   bool operator() (const ST *k1, const ST *k2) const { return k1 == k2; }
+} equalST;
+
 void
 IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
                             list<IPAEdge> &edgeList,
                             list<pair<IPA_NODE *, CallSiteId> > &indirectCallList)
 {
+  STToNodeMap allFuncMap;
+
+  hash_set<ST *,hashST,equalST> calledFunc;
+
   IPA_NODE_ITER nodeIter(ipaCallGraph,DONTCARE);
   for (nodeIter.First(); !nodeIter.Is_Empty(); nodeIter.Next()) {
     IPA_NODE *caller = nodeIter.Current();
@@ -682,6 +695,7 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
     if (ST_addr_passed(st) || (PU_ipa_addr_analysis(Pu_Table[ST_pu(st)]) &&
         ST_addr_saved(st)))
       _stToNodeMap[st] = caller;
+    allFuncMap[st] = caller;
 
     // Collect the indirect/virtual callsites
     SUMMARY_PROCEDURE *sumProc = caller->Summary_Proc();
@@ -692,10 +706,28 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
       CallSiteId csId = sumCS[idx].Get_constraint_graph_callsite_id();
       if (sumCS[idx].Is_func_ptr() || sumCS[idx].Is_virtual_call())
         indirectCallList.push_back(make_pair(caller,csId));
+      else {
+        UINT32 symIdx = sumCS[idx].Get_symbol_index();
+        SUMMARY_SYMBOL *sumSYM = IPA_get_symbol_array(caller);
+        ST_IDX stIdx = sumSYM[symIdx].St_idx();
+        if (ST_IDX_level(stIdx) == GLOBAL_SYMTAB) {
+          calledFunc.insert(&St_Table[stIdx]);
+          if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+            fprintf(stderr,"Direct call: %s\n",ST_name(stIdx));
+        }
+      }
     }
   }
 
   if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+    for (hash_set<ST*,hashST,equalST>::iterator iter = calledFunc.begin();
+        iter != calledFunc.end(); ++iter) {
+      ST *calledFuncST = *iter;
+      STToNodeMap::iterator i3 = allFuncMap.find(calledFuncST);
+      if (i3 == allFuncMap.end())
+        fprintf(stderr,"External call: %s\n", ST_name(calledFuncST));
+    }
+
     for (STToNodeMap::iterator i1 = _stToNodeMap.begin();
         i1 != _stToNodeMap.end(); ++i1) {
       ST *st = i1->first;
@@ -805,15 +837,20 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
         }
         ST_IDX stIdx = SYM_ST_IDX(node->cg_st_idx());
         ST *st = &St_Table[stIdx];
-        IPA_NODE *callee = _stToNodeMap[st];
-        if (!callee) {
+        STToNodeMap::const_iterator ni = _stToNodeMap.find(st);
+        if (ni == _stToNodeMap.end()) {
           FmtAssert(ST_sclass(st) == SCLASS_EXTERN,
-                    ("Expect func not in call graph to be extern"));
-          // assume whole program mode for the moment
-          fprintf(stderr,"Update Call Graph: callsite points to extern func: %s\n",
-                  ST_name(st));
+                     ("Expect func not in call graph to be extern"));
+           // assume whole program mode for the moment
+           fprintf(stderr,"Update Call Graph: callsite points to extern func: %s\n",
+                   ST_name(st));
           continue;
         }
+        // We will skip main (that would be a nice cycle wouldn't it?)
+        if (PU_is_mainpu(Pu_Table[ST_pu(st)]))
+          continue;
+
+        IPA_NODE *callee = ni->second;
         IPAEdge newEdge(caller->Node_Index(),callee->Node_Index(),id);
         // Have we seen this edge before?
         IndirectEdgeSet::iterator iter = _indirectEdgeSet.find(newEdge);

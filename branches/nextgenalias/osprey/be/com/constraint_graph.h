@@ -380,6 +380,7 @@ public:
   UINT8 maxAccessSize(void) const { return _maxAccessSize; }
 
   CG_ST_IDX cg_st_idx() const { return _cg_st_idx; }
+  char *stName() const;
 
   StInfo *stInfo();
 
@@ -554,6 +555,7 @@ public:
   ConstraintGraph *cg() const { return _parentCG; }
   void cg(ConstraintGraph *p) { _parentCG = p; }
 
+  void dbgPrint();
   void print(FILE *file);
   void print(ostream &str);
 
@@ -742,20 +744,8 @@ public:
   }
 
   UINT32 modulus(UINT32 offset, UINT32 mod,
-                 UINT32 &startOffset, UINT32 &endOffset) {
-    ModulusRange *modRange = findRange(offset);
-    // Set the modulus of this range to 'mod' and cap
-    // the modulus all children to this new value.
-    if (modRange == NULL)
-      modRange = this;
-    if (mod < modRange->_modulus) {
-      modRange->_modulus = mod;
-      if (modRange->_child)
-        modRange->_child->set(mod);
-    }
-    startOffset = modRange->_startOffset;
-    endOffset = modRange->_endOffset;
-  }
+                 UINT32 &startOffset, UINT32 &endOffset,
+                 MEM_POOL *memPool);
 
   // The modulus of the current range is larger than the
   // modulus of each child.  We return the deepest range
@@ -845,11 +835,16 @@ public:
   StInfo(ST_IDX st_idx, MEM_POOL *memPool);
 
   // For IPA
-  StInfo(UINT32 flags, INT64 varSize) :
+  StInfo(UINT32 flags, INT64 varSize, MEM_POOL *memPool) :
     _flags(flags),
     _varSize(varSize),
-    _firstOffset(NULL)
-  {}
+    _maxOffsets(32),
+    _numOffsets(0),
+    _firstOffset(NULL),
+    _memPool(memPool)
+  {
+    _u._modulus = 0;
+  }
 
   UINT32 flags() const { return _flags; }
   bool checkFlags(UINT32 flag) const { return _flags & flag; }
@@ -923,7 +918,8 @@ public:
     _u._modulus = m;
   }
 
-  void print(FILE *file);
+  void dbgPrint();
+  void print(FILE *file,bool emitOffsetChain=false);
   void print(ostream& ostr);
 
 private:
@@ -936,6 +932,7 @@ private:
   UINT16 _maxOffsets;
   UINT16 _numOffsets;
   ConstraintGraphNode *_firstOffset; // Pointer to CGNode with smallest offset
+  MEM_POOL *_memPool;
 };
 
 typedef hash_map<CGNodeId, ConstraintGraphNode *> CGIdToNodeMap;
@@ -1152,8 +1149,14 @@ public:
 
   CGStInfoMap &stInfoMap(void) { return _cgStInfoMap; }
 
-  // Return CGNode mapped to (cg_st_idx, offset), if not create a new CGNode 
-  ConstraintGraphNode *getCGNode(CG_ST_IDX cg_st_idx, INT64 offset);
+  // Return CGNode mapped to (cg_st_idx, offset), if not create a new CGNode
+  // This method may return an offset other than the one requested, e.g. if
+  // the number of existing offsets is exceeding a threshold we may start
+  // mapping additional references context insensitively.  Certain clients,
+  // e.g. those performing modulus adjustments and merging cannot accept
+  // <ST,-1> we must create the requested offset.
+  ConstraintGraphNode *getCGNode(CG_ST_IDX cg_st_idx, INT64 offset,
+                                 bool allowMinusOne=true);
 
   // Return CGNode mapped to (cg_st_idx, offset), if not return NULL
   ConstraintGraphNode *checkCGNode(CG_ST_IDX cg_st_idx, INT64 offset);
