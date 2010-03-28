@@ -412,7 +412,7 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
 }
 
 bool
-ConstraintGraph::nonIPASolver(bool doEscAnal)
+ConstraintGraph::nonIPASolver()
 {
   // Here we solve the constraint graph for the current procedure
   EdgeDelta delta;
@@ -430,11 +430,10 @@ ConstraintGraph::nonIPASolver(bool doEscAnal)
   // the points-to sets of "incomplete" symbols to facilitate
   // comparison of their points-to sets with symbols for which
   // we have "complete" information.
-  if (doEscAnal) {
-    EscapeAnalysis escAnal(this,false/*not summary*/,_memPool);
-    escAnal.perform();
-    escAnal.markEscaped();
-  }
+  EscapeAnalysis escAnal(this,false/*not summary*/,_memPool);
+  escAnal.perform();
+  escAnal.markEscaped();
+
   return true;
 }
 
@@ -993,7 +992,8 @@ ConstraintGraphSolve::qualMap(CGEdgeType et,
 void
 ConstraintGraph::simpleOptimizer()
 {
-  fprintf(stderr, "Optimizing ConstraintGraphs...\n");
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_OPT_FLAG))
+    fprintf(stderr, "Optimizing ConstraintGraphs...\n");
   // Iterate over all nodes in the graph
   // Simple optimizer, find nodes that have single outgoing/incoming
   // copy edge connecting the two nodes
@@ -1048,8 +1048,10 @@ ConstraintGraph::simpleOptimizer()
     // Perform the merge
     parentNode->merge(toBeMergedNode);
     toBeMergedNode->repParent(parentNode);
-    fprintf(stderr, "simpleOptimizer - Merging node %d with %d\n",
-            toBeMergedNode->id(), parentNode->id());
+
+    if (Get_Trace(TP_ALIAS,NYSTROM_CG_OPT_FLAG))
+      fprintf(stderr, "simpleOptimizer - Merging node %d with %d\n",
+              toBeMergedNode->id(), parentNode->id());
 
     // If the toBeMergedNode is not the only offset (for dests only)
     // then add a PARENT_COPY edge from parentNode to toBeMergedNode
@@ -1089,7 +1091,8 @@ ConstraintGraph::simpleOptimizer()
   while (change) {
     change = false;
     for (CGNodeToIdMapIterator iter = ConstraintGraph::lBegin();
-         iter != ConstraintGraph::lEnd(); iter++) {
+         iter != ConstraintGraph::lEnd(); iter++) 
+    {
       ConstraintGraphNode *node = iter->first->parent();
       // If the node is a parent of someone, ignore
       if (areParents.find(node->id()) != areParents.end())
@@ -1119,10 +1122,42 @@ ConstraintGraph::simpleOptimizer()
       if (hasInStore)
         continue;
 
-      // _toBeDeletedNodes.insert(node->id());
-      // change = true;
+      // Delete incoming edges
+      CGEdgeSet deleteEdges;
+      for (CGEdgeSetIterator eiter = loadStoreSet.begin();
+           eiter != loadStoreSet.end(); eiter++) {
+        ConstraintGraphEdge *edge = *eiter;
+        deleteEdges.insert(edge);
+      }
+      const CGEdgeSet &copySkewSet = node->inCopySkewEdges();
+      for (CGEdgeSetIterator eiter = copySkewSet.begin();
+           eiter != copySkewSet.end(); eiter++) {
+        ConstraintGraphEdge *edge = *eiter;
+        deleteEdges.insert(edge);
+      }
+      for (CGEdgeSetIterator eiter = deleteEdges.begin();
+           eiter != deleteEdges.end(); eiter++)
+        removeEdge(*eiter);
+
+      node->deleteEdgesAndPtsSetList();
+      
+      // Mark the node for deletion and iterate
+      _toBeDeletedNodes.insert(node->id());
+      change = true;
+    }
+    // Update nodes that are parents
+    areParents.clear();
+    for (CGNodeToIdMapIterator iter = ConstraintGraph::lBegin();
+         iter != ConstraintGraph::lEnd(); iter++) 
+    {
+      ConstraintGraphNode *n = iter->first;
+      // Record all nodes that are parents of another non-deleted node
+      if (n->parent() != n && 
+          _toBeDeletedNodes.find(n->id()) == _toBeDeletedNodes.end())
+        areParents.insert(n->parent()->id());
     }
   }
 
-  fprintf(stderr, "Done optimizing ConstraintGraphs\n");
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_OPT_FLAG))
+    fprintf(stderr, "Done optimizing ConstraintGraphs\n");
 }

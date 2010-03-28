@@ -299,34 +299,25 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     }
   }
 
-  // Add the ConstraintGraphEdges
-  UINT32 edgeIdx = proc->Get_constraint_graph_edges_idx();
-  UINT32 edgeCount = proc->Get_constraint_graph_edges_count();
-  SUMMARY_CONSTRAINT_GRAPH_EDGE *summEdges = 
-          IPA_get_constraint_graph_edges_array(ipaNode->File_Header(), size);
-  FmtAssert(edgeCount <= size, ("Invalid edgeCount"));
-  for (UINT32 i = 0; i < edgeCount; i++) {
-    SUMMARY_CONSTRAINT_GRAPH_EDGE &summEdge = summEdges[edgeIdx + i];
-    ConstraintGraphNode *srcNode = findUniqueNode(summEdge.src());
-    ConstraintGraphNode *destNode = findUniqueNode(summEdge.dest());
-    bool added = false;
-    // Add the edges to the representative parents
-    ConstraintGraphEdge *edge = 
-      ConstraintGraph::addEdge(srcNode->parent(), destNode->parent(), 
-                               (CGEdgeType)summEdge.etype(),
-                               (CGEdgeQual)summEdge.qual(), 
-                               summEdge.sizeOrSkew(), added, summEdge.flags());
-    // In case the edge already exists, just add the flags
-    if (!added)
-      edge->addFlags(summEdge.flags());
-  }
-
   // Node ids array
   UINT32 nodeIdsIdx = proc->Get_constraint_graph_node_ids_idx();
   UINT32 nodeIdsCount = proc->Get_constraint_graph_node_ids_count();
   UINT32 *nodeIds = 
           IPA_get_constraint_graph_node_ids_array(ipaNode->File_Header(), size);
   FmtAssert(nodeIdsCount <= size, ("Invalid nodeIdsCount"));
+
+  // Update parents of node provided it does not have an existing parent
+  for (UINT32 i = 0; i < nodeCount; i++) {
+    SUMMARY_CONSTRAINT_GRAPH_NODE &summNode = summNodes[nodeIdx + i];
+    // Ignore notAPointer CGNodes; they have been already
+    if (summNode.cgNodeId() == notAPointer()->id())
+      continue;
+    ConstraintGraphNode *cgNode = findUniqueNode(summNode.cgNodeId());
+    UINT32 repParentId = summNode.repParent();
+    // If the node does not have an existing parent 
+    if (repParentId != 0 && cgNode->repParent() == NULL)
+      cgNode->repParent(findUniqueNode(repParentId));
+  }
 
   // Update the CGNodeId references in the ConstraintGraphNodes
   for (UINT32 i = 0; i < nodeCount; i++) {
@@ -380,9 +371,9 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       cgNode->clearFlags(CG_NODE_FLAGS_ADJUST_K_CYCLE);
     }
 
-    // Set repParent
+    // Handle the case where the node has an existing parent
     UINT32 repParentId = summNode.repParent();
-    if (repParentId != 0) {
+    if (repParentId != 0 && cgNode->repParent() != NULL) {
       ConstraintGraphNode *newRepParent =
                            findUniqueNode(repParentId)->findRep();
       ConstraintGraphNode *oldRepParent = cgNode->findRep();
@@ -413,6 +404,29 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       }
     }
   }
+
+  // Add the ConstraintGraphEdges
+  UINT32 edgeIdx = proc->Get_constraint_graph_edges_idx();
+  UINT32 edgeCount = proc->Get_constraint_graph_edges_count();
+  SUMMARY_CONSTRAINT_GRAPH_EDGE *summEdges = 
+          IPA_get_constraint_graph_edges_array(ipaNode->File_Header(), size);
+  FmtAssert(edgeCount <= size, ("Invalid edgeCount"));
+  for (UINT32 i = 0; i < edgeCount; i++) {
+    SUMMARY_CONSTRAINT_GRAPH_EDGE &summEdge = summEdges[edgeIdx + i];
+    ConstraintGraphNode *srcNode = findUniqueNode(summEdge.src());
+    ConstraintGraphNode *destNode = findUniqueNode(summEdge.dest());
+    bool added = false;
+    // Add the edges to the representative parents
+    ConstraintGraphEdge *edge = 
+      ConstraintGraph::addEdge(srcNode->parent(), destNode->parent(), 
+                               (CGEdgeType)summEdge.etype(),
+                               (CGEdgeQual)summEdge.qual(), 
+                               summEdge.sizeOrSkew(), added, summEdge.flags());
+    // In case the edge already exists, just add the flags
+    if (!added)
+      edge->addFlags(summEdge.flags());
+  }
+
 
   // Add the formal paramters and return
   UINT32 parmIdx = proc->Get_constraint_graph_formal_parm_idx();
@@ -497,8 +511,9 @@ ConstraintGraph::buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE *summ,
     cgNode->inKCycle(gcd(cgNode->inKCycle(), summ->inKCycle()));
     cgNode->addFlags(summ->flags());
     fprintf(stderr, "Global entry found for CGNode oldId: %d newId: %d "
-            " old cg_st_idx: %llu new cg_st_idx: %llu\n",
-            summ->cgNodeId(), cgNode->id(), summ->cg_st_idx(), cg_st_idx);
+            " old cg_st_idx: %llu new cg_st_idx: %llu flags: 0x%x\n",
+            summ->cgNodeId(), cgNode->id(), summ->cg_st_idx(), cg_st_idx,
+            cgNode->flags());
     return cgNode;
   }
  
@@ -514,10 +529,10 @@ ConstraintGraph::buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE *summ,
   _cgNodeToIdMap[cgNode] = newCGNodeId;
 
   fprintf(stderr, "Adding CGNode oldId: %d newId: %d to %s"
-          " old cg_st_idx: %llu new cg_st_idx: %llu\n",
+          " old cg_st_idx: %llu new cg_st_idx: %llu flags: 0x%x\n",
           summ->cgNodeId(), cgNode->id(),
           (this == globalCG()) ? "global" : "local",
-          summ->cg_st_idx(), cg_st_idx);
+          summ->cg_st_idx(), cg_st_idx, cgNode->flags());
 
   return cgNode;
 }
@@ -543,6 +558,7 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
       if (summ->modulus() != stInfo->mod()) {
         stInfo->mod(gcd(stInfo->mod(), summ->modulus()));
         stInfo->addFlags(CG_ST_FLAGS_ADJUST_MODULUS);
+        fprintf(stderr, "Adjust modulus for global st_idx: %llu\n", cg_st_idx);
       }
     } else {
       ModulusRange *newMR = buildModRange(summ->modulus(), ipaNode);
@@ -558,6 +574,7 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
         ModulusRange::removeRange(oldMR->child(), _memPool);
         oldMR->child(NULL);
         stInfo->addFlags(CG_ST_FLAGS_ADJUST_MODULUS);
+        fprintf(stderr, "Adjust modulus for global st_idx: %llu\n", cg_st_idx);
       }
     }
     fprintf(stderr, "Global entry found for StInfo old cg_st_idx: %llu "

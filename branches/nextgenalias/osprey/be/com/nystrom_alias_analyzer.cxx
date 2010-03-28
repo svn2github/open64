@@ -44,6 +44,7 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
 
   _constraintGraph = CXX_NEW(ConstraintGraph(entryWN, &_memPool), &_memPool);
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG)) {
+    fprintf(stderr, "Printing initial ConstraintGraph\n");
     _constraintGraph->print(stderr);
     fdump_tree(stderr, entryWN);
   }
@@ -56,11 +57,8 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
 
   _constraintGraph->simpleOptimizer();
 
-  // We do not perform escape analysis during IPL as we do
-  // not want the "blackholes" to be injected prior to performing
-  // a whole program solution.
-  bool doEscAnal = !Run_ipl;
-  if (!_constraintGraph->nonIPASolver(doEscAnal))
+  // Solve the constraint graph
+  if (!_constraintGraph->nonIPASolver())
     return;
 
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_VCG_FLAG)) {
@@ -71,6 +69,7 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
 
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG)) {
     fprintf(stderr,"Nystrom analysis...complete\n");
+    fprintf(stderr, "Printing final ConstraintGraph\n");
     _constraintGraph->print(stderr);
   }
 

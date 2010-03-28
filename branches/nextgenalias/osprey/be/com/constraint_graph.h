@@ -555,6 +555,8 @@ public:
   ConstraintGraph *cg() const { return _parentCG; }
   void cg(ConstraintGraph *p) { _parentCG = p; }
 
+  void deleteEdgesAndPtsSetList();
+
   void dbgPrint();
   void print(FILE *file);
   void print(ostream &str);
@@ -785,13 +787,26 @@ public:
       return false;
     if (this == rhs)
       return true;
-    return ( _startOffset == rhs->_startOffset &&
-             _endOffset == rhs->_endOffset &&
-             _modulus ==  rhs->_modulus &&
-             (_child == rhs->_child  ||
-              _child->compare(rhs->_child)) &&
-             (_next == rhs->_next  ||
-              _next->compare(rhs->_next)) );
+    bool eval =  _startOffset == rhs->_startOffset &&
+                 _endOffset == rhs->_endOffset &&
+                 _modulus ==  rhs->_modulus;
+
+    if (eval) {
+      if (_child == rhs->_child)
+        eval = true;
+      else if (_child == NULL && rhs->_child != NULL)
+        eval = false;
+      else
+        eval = _child->compare(rhs->_child);
+    }
+  
+    if (eval) {
+      if (_next == rhs->_next)
+        return true;
+      else if (_next == NULL && rhs->_next != NULL)
+        return false;
+      return _next->compare(rhs->_next);
+    }    
   }
 
   // Used during StInfo construction to build the hierarchical
@@ -964,17 +979,20 @@ public:
   class ProcessInitData 
   {
   public:
-    ProcessInitData(ConstraintGraph *cg) :
-      _cg(cg)
+    ProcessInitData(ConstraintGraph *cg, ST_IDX st_idx) :
+      _cg(cg),
+      _st_idx(st_idx)
     {}
 
     void operator()(UINT32, const INITO *const inito) const 
     {
-      _cg->processInito(inito);
+      if (INITO_st_idx(*inito) == _st_idx)
+        _cg->processInito(inito);
     }
 
   private:
-      ConstraintGraph *_cg;
+    ConstraintGraph *_cg;
+    ST_IDX _st_idx;       // ST_IDX whose init values are to be processed
   };
 
   static ConstraintGraphNode *notAPointer(void)
@@ -1045,6 +1063,7 @@ public:
                                 CLASS_VAR, SCLASS_AUTO);
       notAPointerCGNode = getCGNode(CG_ST_st_idx(notAPtrSt), 0);
       notAPointerCGNode->addFlags(CG_NODE_FLAGS_NOT_POINTER);
+      notAPointerCGNode->stInfo()->setModulus(1, notAPointerCGNode->offset());
     }
     if (blackHoleCGNode == NULL) {
       ST *bhST =
@@ -1056,8 +1075,6 @@ public:
       maxTypeSize = findMaxTypeSize();
 
     edgeMemPool = mPool;
-
-    processInitValues();
 
     Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY,
             ("Expecting FUNC_ENTRY when building ConstraintGraph"));
@@ -1072,8 +1089,7 @@ public:
       StInfo *stInfo = iter->second;
       stInfo->applyModulus();
     }
-}
-
+  }
 
   // To build ConstraintGraphs during IPA
   ConstraintGraph(MEM_POOL *mPool, IPA_NODE *ipaNode = NULL, 
@@ -1091,6 +1107,7 @@ public:
               SCLASS_UGLOBAL, EXPORT_INTERNAL, MTYPE_To_TY(Pointer_type));
       notAPointerCGNode = getCGNode(CG_ST_st_idx(notAPtrSt), 0);
       notAPointerCGNode->addFlags(CG_NODE_FLAGS_NOT_POINTER);
+      notAPointerCGNode->stInfo()->setModulus(1, notAPointerCGNode->offset());
     }
     if (blackHoleCGNode == NULL) {
       ST *bhST = New_ST(GLOBAL_SYMTAB);
@@ -1161,11 +1178,13 @@ public:
   // Return CGNode mapped to (cg_st_idx, offset), if not return NULL
   ConstraintGraphNode *checkCGNode(CG_ST_IDX cg_st_idx, INT64 offset);
 
+  ConstraintGraphNode *handleAlloca(WN *stmt);
+
   void print(FILE *file);
 
   // Driver for solving the constraint graph when not in IPA
   // mode.  Returns true of the solution is complete, false otherwise
-  bool nonIPASolver(bool doEscAnal);
+  bool nonIPASolver();
 
   void simpleOptimizer();
 
@@ -1191,9 +1210,10 @@ public:
 
   char *name(void) { return _name; }
 
-  void processInitValues();
+  void processInitValues(ST_IDX st_idx);
   void processInito(const INITO *const inito);
   void processInitv(INITV_IDX initv_idx, PointsTo &pts);
+  list<pair<UINT32, PointsTo *> > *processInitv(TY &ty, INITV_IDX initv_idx);
 
 private:
 
@@ -1285,7 +1305,11 @@ private:
   list<CGNodeId> _parameters;
   list<CGNodeId> _returns;
 
+  // Nodes marked deleted by optimizer to be removed after createAliasTags
   hash_set<CGNodeId> _toBeDeletedNodes;
+
+  // Mark nodes that have their init vals processed
+  hash_set<ST_IDX> _processedInitVals;
 
   // For ConstraintGraph construction during IPA
   CGIdToNodeMap _uniqueCGNodeIdMap;

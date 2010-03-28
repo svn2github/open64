@@ -163,6 +163,7 @@ Is_fortran(void)
 #define NYSTROM_CG_POST_FLAG      0x00000004 /* text dump of constraint graph after solve */
 #define NYSTROM_CG_VCG_FLAG       0x00000008 /* dump vcg before/after solve */
 #define NYSTROM_QUERY_TRACE_FLAG  0x00000010 /* emit trace of all "aliased()" queries */
+#define NYSTROM_CG_OPT_FLAG       0x00000020 /* emit trace of optimized nodes */
 
 /* TP_GLOBOPT (phase-number) */
 #define DOM_DUMP_FLAG	     0x0001 /* print dominator tree */

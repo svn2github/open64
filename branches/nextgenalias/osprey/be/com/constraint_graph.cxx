@@ -45,20 +45,23 @@ ConstraintGraph::remapDeletedNode(WN *wn)
 {
   // Check if node has been marked as deleted and remap
   CGNodeId oldId = WN_MAP_CGNodeId_Get(wn);
-  if (_toBeDeletedNodes.find(oldId) != _toBeDeletedNodes.end()) {
+  if (_toBeDeletedNodes.find(oldId) != _toBeDeletedNodes.end()) 
+  {
     ConstraintGraphNode *old = ConstraintGraph::cgNode(oldId);
     ConstraintGraphNode *parent = old->findRep();
-    // If there is a parent, map the wn to the parent, else remove
-    // the WN to node mapping
-    if (parent != old)  {
-      FmtAssert(_toBeDeletedNodes.find(parent->id()) == _toBeDeletedNodes.end(),
-                ("parent: %d deleted!\n", parent->id()));
-      fprintf(stderr, "WN->CGNodeId: Remapping deleted node : %d to "
-              "parent: %d\n", old->id(), parent->id());
-      WN_MAP_CGNodeId_Set(wn, parent->id());
+    // If there is a parent who is not deleted, map the wn to the parent,
+    //  else remove the WN to node mapping
+    if (parent == old ||
+        _toBeDeletedNodes.find(parent->id()) != _toBeDeletedNodes.end())  {
+      if (Get_Trace(TP_ALIAS,NYSTROM_CG_OPT_FLAG))
+        fprintf(stderr, "Unmapping WN->CGNodeId for node: %d\n", old->id());
+      WN_MAP_CGNodeId_Set(wn, 0);
     } else {
-      fprintf(stderr, "Unmapping WN->CGNodeId for node: %d\n", old->id());
-    }  
+      if (Get_Trace(TP_ALIAS,NYSTROM_CG_OPT_FLAG))
+        fprintf(stderr, "WN->CGNodeId: Remapping deleted node : %d to "
+                "parent: %d\n", old->id(), parent->id());
+      WN_MAP_CGNodeId_Set(wn, parent->id());
+    }
   }
 }
 
@@ -67,7 +70,8 @@ ConstraintGraph::deleteOptimizedNodes()
 {
   for (hash_set<CGNodeId>::const_iterator iter = _toBeDeletedNodes.begin();
        iter != _toBeDeletedNodes.end(); iter++) {
-    fprintf(stderr, "Deleting node %d\n", *iter);
+    if (Get_Trace(TP_ALIAS,NYSTROM_CG_OPT_FLAG))
+      fprintf(stderr, "Deleting node %d\n", *iter);
     deleteNode(cgNode(*iter));
   }
 }
@@ -440,8 +444,8 @@ StInfo::applyModulus(void)
       // node remains and uses the modulus offset node as its
       // parent, for nodes that may have the original in their
       // points-to sets.
-      modNode->merge(cur);
-      cur->repParent(modNode);
+      modNode->parent()->merge(cur);
+      cur->repParent(modNode->parent());
     }
     cur = cur->nextOffset();
   }
@@ -771,6 +775,11 @@ ConstraintGraph::processInitv(INITV_IDX initv_idx, PointsTo &pts)
   }
 }
 
+list<pair<UINT32, PointsTo *> > * 
+ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx)
+{
+}
+
 void
 ConstraintGraph::processInito(const INITO *const inito)
 {
@@ -799,23 +808,27 @@ ConstraintGraph::processInito(const INITO *const inito)
   TY &sym_ty = Ty_Table[ST_type(base_st)];
   if (TY_kind(sym_ty) == KIND_SCALAR && !foundPtr) {
     node->addFlags(CG_NODE_FLAGS_NOT_POINTER);
-    fprintf(stderr, "processInito: Marking node: ");
-    node->print(stderr);
-    fprintf(stderr, " as not a pointer\n");
+    if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG)) {
+      fprintf(stderr, "processInito: Marking node:\n");
+      node->print(stderr);
+      fprintf(stderr, " as not a pointer\n");
+    }
   } else {
     // Lump all the objects to this node and make it field insensitive :(
     node->unionPointsTo(tmp, CQ_GBL);
     node->stInfo()->setModulus(1, node->offset());
-    fprintf(stderr, "processInito: Setting modulus to 1 for StInfo: ");
-    node->stInfo()->print(stderr);
-    fprintf(stderr, " at offset %d\n", node->offset());
+    if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG)) {
+      fprintf(stderr, "processInito: Setting modulus to 1 for node:\n");
+      node->print(stderr);
+      fprintf(stderr, "\n");
+    }
   }
 }
 
 void 
-ConstraintGraph::processInitValues()
+ConstraintGraph::processInitValues(ST_IDX st_idx)
 {
-  For_all(*(Scope_tab[GLOBAL_SYMTAB].inito_tab), ProcessInitData(this));
+  For_all(*(Scope_tab[GLOBAL_SYMTAB].inito_tab), ProcessInitData(this, st_idx));
 }
 
 void 
@@ -886,6 +899,50 @@ ConstraintGraph::processWN(WN *wn)
   }
 }
 
+ConstraintGraphNode *
+ConstraintGraph::handleAlloca(WN *stmt)
+{
+  WN *rhs = WN_kid0(stmt);
+  FmtAssert(WN_operator(rhs) == OPR_ALLOCA, ("Expecting alloca as kid 0"));
+  // Handle ALLOCA which must appear as the rhs of a store 
+  TY &stack_ptr_ty = Ty_Table[WN_ty(stmt)];
+  if (TY_kind(stack_ptr_ty) != KIND_POINTER) {
+    // May be looking at an ALLOCA with size 0, in which
+    // case we will simply skip this RHS.  These can result
+    // when lowering INTRN_F90_STACKTEMPALLOC for example.
+    WN *size = WN_kid0(rhs);
+    FmtAssert(WN_operator(size) == OPR_INTCONST &&
+              WN_const_val(size) == 0,
+              ("alloca with non-KIND_POINTER result expected to have"
+                  "0 byte allocation\n"));
+    return NULL;
+  }
+  else {
+    TY_IDX stack_ty_idx = TY_pointed(stack_ptr_ty);
+    TY &stack_ty = Ty_Table[stack_ty_idx];
+    // We create a local variable that represents the dynamically
+    // allocated stack location
+    ConstraintGraphNode *stackCGNode;
+    // If the pointed to type is a struct, create a symbol of that type
+    // else create a symbol of maxTypeSize
+    if (TY_kind(stack_ty) == KIND_STRUCT) {
+      ST *stackST = Gen_Temp_Named_Symbol(stack_ty_idx, "_cgStack",
+                                          CLASS_VAR, SCLASS_AUTO);
+      stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
+      stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
+    } else {
+      ST *stackST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgStack",
+                                          CLASS_VAR, SCLASS_AUTO);
+      stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
+      stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
+      stInfo(stackCGNode->cg_st_idx())->setModulus(maxTypeSize,
+                                                     stackCGNode->offset());
+      stInfo(stackCGNode->cg_st_idx())->varSize(0);
+    }
+    return stackCGNode;
+  }
+}
+
 WN *
 ConstraintGraph::handleAssignment(WN *stmt)
 {
@@ -904,46 +961,13 @@ ConstraintGraph::handleAssignment(WN *stmt)
       cgNodeLHS->addFlags(CG_NODE_FLAGS_NOT_POINTER);
     return WN_next(stmt);
   }
-    
-  // Handle ALLOCA which must appear as the rhs of a store 
+
+  // Handle ALLOCA which must appear as the rhs of a store
+  // Add the stack location to the points to set of the lhs
   if (WN_operator(rhs) == OPR_ALLOCA) {
-    TY &stack_ptr_ty = Ty_Table[WN_ty(stmt)];
-    if (TY_kind(stack_ptr_ty) != KIND_POINTER) {
-      // May be looking at an ALLOCA with size 0, in which
-      // case we will simply skip this RHS.  These can result
-      // when lowering INTRN_F90_STACKTEMPALLOC for example.
-      WN *size = WN_kid0(rhs);
-      FmtAssert(WN_operator(size) == OPR_INTCONST &&
-                WN_const_val(size) == 0,
-                ("alloca with non-KIND_POINTER result expected to have"
-                    "0 byte allocation\n"));
-    }
-    else {
-      TY_IDX stack_ty_idx = TY_pointed(stack_ptr_ty);
-      TY &stack_ty = Ty_Table[stack_ty_idx];
-      // We create a local variable that represents the dynamically
-      // allocated stack location
-      ConstraintGraphNode *stackCGNode;
-      // If the pointed to type is a struct, create a symbol of that type
-      // else create a symbol of maxTypeSize
-      if (TY_kind(stack_ty) == KIND_STRUCT) {
-        ST *stackST = Gen_Temp_Named_Symbol(stack_ty_idx, "_cgStack",
-                                            CLASS_VAR, SCLASS_AUTO);
-        stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
-        stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
-      } else {
-        ST *stackST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgStack",
-                                            CLASS_VAR, SCLASS_AUTO);
-        stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
-        stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
-        stInfo(stackCGNode->cg_st_idx())->setModulus(maxTypeSize,
-                                                     stackCGNode->offset());
-        stInfo(stackCGNode->cg_st_idx())->varSize(0);
-      }
-      // Add the stack location to the points to set of the lhs
-      cgNodeLHS->addPointsTo(stackCGNode, CQ_HZ);
-      return WN_next(stmt);
-    }
+    ConstraintGraphNode *stackCGNode = handleAlloca(stmt);
+    cgNodeLHS->addPointsTo(stackCGNode, CQ_HZ);
+    return WN_next(stmt);
   }
 
   if (cgNodeRHS == NULL) {
@@ -1395,6 +1419,15 @@ ConstraintGraph::processLHSofStore(WN *stmt)
 ConstraintGraphNode *
 ConstraintGraph::processParam(WN *wn)
 {
+  // Handle ALLOCA 
+  // Create a temp node and add the stack location to its points to set 
+  if (WN_operator(WN_kid0(wn)) == OPR_ALLOCA) {
+    ConstraintGraphNode *tmpCGNode = genTempCGNode();
+    ConstraintGraphNode *stackCGNode = handleAlloca(wn);
+    tmpCGNode->addPointsTo(stackCGNode, CQ_HZ);
+    return tmpCGNode;
+  }
+
   ConstraintGraphNode *cgNodeKid = processExpr(WN_kid0(wn));
   if (cgNodeKid) {
     return cgNodeKid;
@@ -1402,7 +1435,7 @@ ConstraintGraph::processParam(WN *wn)
     // Create a temp preg and set it UNKNOWN
     ConstraintGraphNode *tmpCGNode = genTempCGNode();
     tmpCGNode->addFlags(CG_NODE_FLAGS_UNKNOWN);
-    fprintf(stderr, "***WARNING!!! Setting Param to UNKNOWN**********\n");
+    fprintf(stderr, "***WARNING!!! Setting param to UNKNOWN**********\n");
     fdump_tree(stderr, wn);
     fprintf(stderr, "************************************************\n");
     return tmpCGNode;
@@ -1599,7 +1632,28 @@ ConstraintGraph::getCGNode(WN *wn)
   if (base_offset < 0)
     base_offset = -base_offset;
 
-  return getCGNode(CG_ST_st_idx(base_st), base_offset);
+  ConstraintGraphNode *n = checkCGNode(CG_ST_st_idx(base_st), base_offset);
+  if (n)
+    return n;
+
+  // If this is the first time we encounter this symbol/node
+  if (ST_is_initialized(*base_st) && 
+      _processedInitVals.find(ST_st_idx(base_st)) == _processedInitVals.end()) {
+    processInitValues(ST_st_idx(base_st));
+    _processedInitVals.insert(ST_st_idx(base_st));
+  }
+
+  n = getCGNode(CG_ST_st_idx(base_st), base_offset);
+
+  // If the ST is initialized to zero and is a scalar, mark it as 
+  // not a pointer
+  if (ST_class(base_st) == CLASS_VAR &&
+      ST_is_initialized(*base_st) && 
+      ST_init_value_zero(*base_st) && 
+      TY_kind(ST_type(base_st)) == KIND_SCALAR)
+    n->addFlags(CG_NODE_FLAGS_NOT_POINTER);
+
+  return n;
 }
 
 // Add edge between src and dest, return the newly added edge if it does
@@ -1986,18 +2040,30 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
     unionPointsTo(*pti,pti.qual());
   ConstraintGraph::adjustPointsToForKCycle(this);
 
-  // 5) Delete the points-to set
-  PointsToList *p = src->_pointsToList;
+  // 5) Delete edges and pts to set
+  src->deleteEdgesAndPtsSetList();
+
+  // 7) Set flags
+  src->addFlags(CG_NODE_FLAGS_MERGED);
+  if (src->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+    addFlags(CG_NODE_FLAGS_UNKNOWN);
+}
+
+void
+ConstraintGraphNode::deleteEdgesAndPtsSetList()
+{
+  // Delete the points-to set
+  PointsToList *p = _pointsToList;
   PointsToList *np;
   while (p) {
     np = p->next();
     CXX_DELETE(p, cg()->memPool());
     p = np;
   }
-  src->_pointsToList = NULL;
+  _pointsToList = NULL;
 
-  // 6) Delete the incoming/outgoing edge sets
-  CGEdgeList *e = src->_inEdges;
+  // Delete the incoming/outgoing edge sets
+  CGEdgeList *e = _inEdges;
   CGEdgeList *ne;
   while (e) {
     ne = e->next();
@@ -2005,21 +2071,16 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
     CXX_DELETE(e, cg()->memPool());
     e = ne;
   }
-  src->_inEdges = NULL;
+  _inEdges = NULL;
   // outgoing edges
-  e = src->_outEdges;
+  e = _outEdges;
   while (e) {
     ne = e->next();
     FmtAssert(e->cgEdgeSet()->empty(), ("edge set not empty"));
     CXX_DELETE(e, cg()->memPool());
     e = ne;
   }
-  src->_outEdges = NULL;
-
-  // 7) Set flags
-  src->addFlags(CG_NODE_FLAGS_MERGED);
-  if (src->checkFlags(CG_NODE_FLAGS_UNKNOWN))
-    addFlags(CG_NODE_FLAGS_UNKNOWN);
+  _outEdges = NULL;
 }
 
 void
