@@ -5,6 +5,7 @@
 #include "config_opt.h"
 #include "constraint_graph.h"
 #include "ipa_cg.h"
+#include "opt_defs.h"
 
 using namespace std;
 using namespace __gnu_cxx;
@@ -57,6 +58,8 @@ public:
   IPA_NystromAliasAnalyzer()  
     : _ipaNodeSCCAuxInfo(NULL)
   {
+    if (Get_Trace(TP_ALIAS, NYSTROM_MEMORY_TRACE_FLAG))
+      MEM_Tracing_Enable();
     MEM_POOL_Initialize(&_memPool, "IPA_NystromAliasAnalyzer_pool", FALSE);
     ConstraintGraph::inIPA(true);
     ConstraintGraph::globalCG(CXX_NEW(ConstraintGraph(&_memPool), &_memPool));

@@ -379,8 +379,10 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
   if (_varSize == 0)
     _varSize = Pointer_Size;
 
-  if (TY_kind(ty) != KIND_STRUCT || ModulusRange::flat(ty) || 
-      TY_size(ty) <= Pointer_Size)
+  if (ST_sclass(st) == SCLASS_TEXT)
+    _u._modulus = 1;
+  else if (TY_kind(ty) != KIND_STRUCT || ModulusRange::flat(ty) ||
+           TY_size(ty) <= Pointer_Size)
     _u._modulus = _varSize;
   else {
     addFlags(CG_ST_FLAGS_MODRANGE);

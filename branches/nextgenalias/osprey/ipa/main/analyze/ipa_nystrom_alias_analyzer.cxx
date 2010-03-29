@@ -707,11 +707,19 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
       edgeList.push_back(IPAEdge(caller->Node_Index(),callee->Node_Index(),csId));
     }
 
-    // Collect list of possible indirect call targets
+    // Collect list of possible indirect call targets, here we check
+    // to see whether the StInfo associated with this routine is address
+    // taken.  Likely if there exists a CGNode for this routine it is
+    // address taken, otherwise it would not exist.  Earlier attempts
+    // to make use of the ST_addr_passed/ST_addr_save flags for the PU
+    // ST provided to be extremely conservative for some reason.
     ST *st = caller->Func_ST();
-    if (ST_addr_passed(st) || (PU_ipa_addr_analysis(Pu_Table[ST_pu(st)]) &&
-        ST_addr_saved(st)))
-      _stToNodeMap[st] = caller;
+    if (ST_IDX_level(st->st_idx) == GLOBAL_SYMTAB) {
+      ConstraintGraphNode *clrCGNode =
+          ConstraintGraph::globalCG()->checkCGNode(st->st_idx,0);
+      if (clrCGNode && clrCGNode->checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
+        _stToNodeMap[st] = caller;
+    }
     allFuncMap[st] = caller;
 
     // Collect the indirect/virtual callsites
@@ -916,9 +924,7 @@ IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGra
         // We have an incomplete indirect call, now connect it up to "everything"
         if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
           fprintf(stderr,"Incomplete Indirect Call: %s (%d) %s maps to CGNodeId: %d\n",
-                  caller->Name(),id,
-                  ST_name(&St_Table[SYM_ST_IDX(icallNode->cg_st_idx())]),
-                  cs->cgNodeId());
+                  caller->Name(),id,icallNode->stName(),cs->cgNodeId());
         STToNodeMap::const_iterator iter = _stToNodeMap.begin();
         for (; iter != _stToNodeMap.end(); ++iter) {
           const ST *st = iter->first;
@@ -953,6 +959,11 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
   if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
     fprintf(stderr,"IPA Nystrom: Solver Begin\n");
+
+  if (Get_Trace(TP_ALIAS, NYSTROM_MEMORY_TRACE_FLAG)) {
+    fprintf(TFile,"Memory usage before IPA solve.\n");
+    MEM_Trace();
+  }
 
   // Here we have a single driver that supports both a
   // context-sensitive and context-insensitive solutions.
@@ -1068,6 +1079,11 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   escAnal.perform();
   escAnal.markEscaped();
 
+  if (Get_Trace(TP_ALIAS,NYSTROM_MEMORY_TRACE_FLAG)) {
+    fprintf(TFile,("Memory usage after core solver, before fixup.\n"));
+    MEM_Trace();
+  }
+
   // If at this point we still have incomplete indirect calls, then
   // we must attach them to possible callee's and perform a final
   // round of solution.  Initially, this may attempt to connect an
@@ -1080,6 +1096,12 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
       cgsolver.solveConstraints();
     }
   }
+
+  if (Get_Trace(TP_ALIAS,NYSTROM_MEMORY_TRACE_FLAG)) {
+    fprintf(TFile,("Memory usage after IPA solve.\n"));
+    MEM_Trace();
+  }
+
 
   if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
      fprintf(stderr,"IPA Nystrom: Solver Complete\n");

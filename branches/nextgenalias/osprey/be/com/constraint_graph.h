@@ -77,7 +77,6 @@ class EdgeDelta;
 #define CG_NODE_FLAGS_VISITED       0x0100  // Used by cycle detection
 #define CG_NODE_FLAGS_SCCMEMBER     0x0200  // Used by cycle detection
 #define CG_NODE_FLAGS_INKVALMAP     0x0400  // Used by cycle detection
-#define CG_NODE_FLAGS_ADDRTAKEN     0x0800
 #define CG_NODE_FLAGS_PTSMOD        0x1000  // Points-to set updated, implies
                                             // rev points-to relation to be updated
 #define CG_NODE_FLAGS_IN_WORKLIST   0x2000
@@ -305,9 +304,11 @@ class PointsToList {
 
 class ConstraintGraph;
 
+typedef mempool_allocator<ConstraintGraphEdge *> CGEdgeAllocator;
 typedef hash_set<ConstraintGraphEdge *,
                  ConstraintGraphEdge::hashCGEdge,
-                 ConstraintGraphEdge::equalCGEdge> CGEdgeSet;
+                 ConstraintGraphEdge::equalCGEdge,
+                 CGEdgeAllocator> CGEdgeSet;
 
 typedef CGEdgeSet::const_iterator CGEdgeSetIterator;
 
