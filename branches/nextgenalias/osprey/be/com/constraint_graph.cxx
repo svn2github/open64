@@ -98,6 +98,7 @@ ConstraintGraphNode::canBeDeleted()
        checkFlags(CG_NODE_FLAGS_ACTUAL_PARAM)  ||
        checkFlags(CG_NODE_FLAGS_FORMAL_PARAM)  ||
        checkFlags(CG_NODE_FLAGS_ICALL)         ||
+       checkFlags(CG_NODE_FLAGS_MEMOP)         ||
        checkFlags(CG_NODE_FLAGS_NOT_POINTER) )
     return false;
 
@@ -499,8 +500,8 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
       // node remains and uses the modulus offset node as its
       // parent, for nodes that may have the original in their
       // points-to sets.
-      modNode->merge(cur);
-      cur->repParent(modNode);
+      modNode->parent()->merge(cur);
+      cur->repParent(modNode->parent());
 
       cur = cur->nextOffset();
     }
@@ -777,9 +778,57 @@ ConstraintGraph::processInitv(INITV_IDX initv_idx, PointsTo &pts)
   }
 }
 
-list<pair<UINT32, PointsTo *> > * 
-ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx)
+ListOffsetPointsTo *
+ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
+                              MEM_POOL *memPool)
 {
+  const INITV &initv = Initv_Table[initv_idx];
+  if (INITV_kind(initv) == INITVKIND_SYMOFF) 
+  {
+    ST_IDX initv_st_idx = INITV_st(initv);
+    ST *st = &St_Table[initv_st_idx];
+    INT64 offset = INITV_ofst(initv);
+    ST *base_st;
+    INT64 base_offset;
+    Expand_ST_into_base_and_ofst(st, offset, &base_st, &base_offset);
+    ConstraintGraphNode *node;
+    if (ST_class(base_st) == CLASS_CONST)
+      node = notAPointer();
+    else
+      node = getCGNode(CG_ST_st_idx(base_st), base_offset);
+    PointsTo pts(memPool);
+    pts.setBit(node->id());
+    ListOffsetPointsTo *valList = CXX_NEW(ListOffsetPointsTo(), memPool);
+    valList->push_back(make_pair(startOffset, pts));
+    return valList;
+  } 
+  else if (INITV_kind(initv) == INITVKIND_ZERO ||
+           INITV_kind(initv) == INITVKIND_ONE ||
+           INITV_kind(initv) == INITVKIND_VAL)
+  {
+    PointsTo pts(memPool);
+    pts.setBit(notAPointer()->id());
+    ListOffsetPointsTo *valList = CXX_NEW(ListOffsetPointsTo(), memPool);
+    valList->push_back(make_pair(startOffset, pts));
+    return valList;
+  }
+  else if (INITV_kind(initv) == INITVKIND_BLOCK)
+  {
+    FmtAssert(TY_kind(ty) == KIND_STRUCT || TY_kind(ty) == KIND_ARRAY,
+              ("Expecting KIND_STRUCT or KIND_ARRAY"));
+    if (TY_kind(ty) == KIND_STRUCT) {
+      ListOffsetPointsTo *valList = CXX_NEW(ListOffsetPointsTo(), _memPool);
+      // Iterate over all fields in the struct
+      for (FLD_HANDLE fld = TY_flist(ty); !fld.Is_Null(); fld = FLD_next(fld)) {
+        TY &fty = Ty_Table[FLD_type(fld)];
+        ListOffsetPointsTo *fldList = 
+                            processInitv(fty, INITV_blk(initv),
+                                         startOffset + FLD_ofst(fld), memPool);
+        valList->splice(valList->end(), *fldList);
+      }
+    }
+  }
+  return NULL;
 }
 
 void
@@ -1026,6 +1075,7 @@ ConstraintGraph::processExpr(WN *expr)
       case OPR_LDID:
       case OPR_LDBITS:
         cgNode = getCGNode(expr);
+        cgNode->addFlags(CG_NODE_FLAGS_MEMOP);
         break;
       case OPR_IDNAME:
         cgNode = getCGNode(expr);
@@ -1087,6 +1137,7 @@ ConstraintGraph::processExpr(WN *expr)
           // with the newly created temp CGNode
           WN_MAP_CGNodeId_Set(WN_kid0(expr), tmp1CGNode->id());
         }
+        addrCGNode->addFlags(CG_NODE_FLAGS_MEMOP);
         bool added = false;
         INT32 size;
         if (WN_desc(expr) == MTYPE_BS)
@@ -1413,6 +1464,7 @@ ConstraintGraph::processLHSofStore(WN *stmt)
     fprintf(stderr, "****************************************************\n");
   }
     
+  cgNodeLHS->addFlags(CG_NODE_FLAGS_MEMOP);
   WN_MAP_CGNodeId_Set(stmt, cgNodeLHS->id());
 
   return cgNodeLHS;

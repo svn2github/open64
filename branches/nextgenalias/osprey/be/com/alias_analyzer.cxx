@@ -14,6 +14,7 @@
 #include "nystrom_alias_analyzer.h"
 #include "opt_defs.h"  /* Trace flags */
 #include "tracing.h"
+#include "pu_info.h"
 
 extern BOOL Read_ALIAS_CGNODE_Map;
 
@@ -53,6 +54,7 @@ AliasAnalyzer::Delete_Alias_Analyzer()
   
 AliasAnalyzer::AliasAnalyzer() 
   : _aliasQueryCount(0),
+    _aliasedCount(0),
     _queryFileMap(NULL)
 {
   MEM_POOL_Initialize(&_memPool, "AliasAnalyzer_pool", FALSE);
@@ -67,6 +69,12 @@ AliasAnalyzer::~AliasAnalyzer()
 {
   if (_queryFileMap)
     delete _queryFileMap;
+  if (Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
+    fprintf(stderr, "Query stats: Proc: %s(%d) total: %d aliased: %d (%f)\n",
+            ST_name(Current_PU_Info->proc_sym), Current_PU_Count(),
+            _aliasQueryCount, _aliasedCount, 
+            (float)_aliasedCount/(float)_aliasQueryCount * 100.0);
+  
   MEM_POOL_Delete(&_memPool);
   IPA_WN_MAP_Delete(Current_Map_Tab, _aliasTagMap);
 }

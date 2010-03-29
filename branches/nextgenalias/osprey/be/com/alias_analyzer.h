@@ -63,6 +63,7 @@ private:
    static AliasAnalyzer *_alias_analyzer;
    WN_MAP _aliasTagMap; // Maps WNs to AliasTags
    UINT32 _aliasQueryCount;   // Used for debugging
+   UINT32 _aliasedCount;      // Used for debugging
    QueryFileMap *_queryFileMap;
 
 protected:
@@ -125,6 +126,7 @@ public:
 
    UINT32 aliasQueryCount(void)      { return _aliasQueryCount; }
    UINT32 incrAliasQueryCount(void)  { return _aliasQueryCount++; }
+   UINT32 incrAliasedCount(void)     { return _aliasedCount++; }
 
    bool checkQueryFile(UINT32 pu, AliasTag tag1, AliasTag tag2, bool &result);
 

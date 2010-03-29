@@ -2958,7 +2958,7 @@ public:
   void cgNodeId(UINT32 cgNodeId)  { _cgNodeId = cgNodeId; }
   void cg_st_idx(UINT64 cg_st_idx){ _cg_st_idx = cg_st_idx; }
   void offset(INT32 offset)       { _offset = offset; }
-  void flags(UINT16 flags)        { _flags = flags; }
+  void flags(UINT32 flags)        { _flags = flags; }
   void inKCycle(UINT32 kcycle)    { _inKCycle = kcycle; }
   void nextOffset(UINT32 noffset) { _nextOffset = noffset; }
   void repParent(UINT32 rparent)  { _repParent = rparent; }
@@ -2973,7 +2973,7 @@ public:
   UINT64 cg_st_idx()     const { return _cg_st_idx; }
   INT32 offset()         const { return _offset; }
   UINT32 nextOffset()    const { return _nextOffset; }
-  UINT16 flags()         const { return _flags; }
+  UINT32 flags()         const { return _flags; }
   UINT32 inKCycle()      const { return _inKCycle; }
   UINT32 repParent()     const { return _repParent; }
   UINT32 numBitsPtsGBL() const { return _numBitsPtsGBL; }
@@ -2992,7 +2992,7 @@ private:
   UINT32 _cgNodeId;
   UINT64 _cg_st_idx;
   INT32  _offset;  
-  UINT16 _flags;
+  UINT32 _flags;
   UINT32 _numBitsPtsGBL;   // number of bits in GBL pts-to-set
   UINT32 _numBitsPtsHZ;    // number of bits in HZ pts-to-set
   UINT32 _numBitsPtsDN;    // number of bits in in DN pts-to-set
