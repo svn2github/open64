@@ -64,27 +64,32 @@ class EdgeDelta;
 #define CG_ST_FLAGS_PROPAGATES_RET CG_ST_FLAGS_RETPROP_ESC
 
 // Constraint graph node flags
-#define CG_NODE_FLAGS_UNKNOWN       0x0001 // Points-to set is unknown
-#define CG_NODE_FLAGS_FORMAL_RETURN 0x0002 // Returns value to caller
-#define CG_NODE_FLAGS_ACTUAL_RETURN 0x0004 // Returns value to caller
-#define CG_NODE_FLAGS_FORMAL_PARAM  0x0008 // formal param
-#define CG_NODE_FLAGS_ACTUAL_PARAM  0x0010 // formal param
-#define CG_NODE_FLAGS_ICALL         0x0020 // determines indirect-calls
-#define CG_NODE_FLAGS_NOT_POINTER   0x0040 // Used by CG builder to represent
-                                           // CGNodes that will not be a ptr
-#define CG_NODE_FLAGS_MERGED        0x0080 // CGNodes that have been merged
+#define CG_NODE_FLAGS_UNKNOWN       0x00000001 // Points-to set is unknown
+#define CG_NODE_FLAGS_FORMAL_RETURN 0x00000002 // Returns value to caller
+#define CG_NODE_FLAGS_ACTUAL_RETURN 0x00000004 // Returns value to caller
+#define CG_NODE_FLAGS_FORMAL_PARAM  0x00000008 // formal param
+#define CG_NODE_FLAGS_ACTUAL_PARAM  0x00000010 // formal param
+#define CG_NODE_FLAGS_ICALL         0x00000020 // determines indirect-calls
+#define CG_NODE_FLAGS_NOT_POINTER   0x00000040 // Used by CG builder to 
+                                               // represent CGNodes that 
+                                               // will not be a ptr
+#define CG_NODE_FLAGS_MERGED        0x00000080 // CGNodes that have been merged
 
-#define CG_NODE_FLAGS_VISITED       0x0100  // Used by cycle detection
-#define CG_NODE_FLAGS_SCCMEMBER     0x0200  // Used by cycle detection
-#define CG_NODE_FLAGS_INKVALMAP     0x0400  // Used by cycle detection
-#define CG_NODE_FLAGS_PTSMOD        0x1000  // Points-to set updated, implies
-                                            // rev points-to relation to be updated
-#define CG_NODE_FLAGS_IN_WORKLIST   0x2000
+#define CG_NODE_FLAGS_VISITED       0x00000100 // Used by cycle detection
+#define CG_NODE_FLAGS_SCCMEMBER     0x00000200 // Used by cycle detection
+#define CG_NODE_FLAGS_INKVALMAP     0x00000400 // Used by cycle detection
+#define CG_NODE_FLAGS_PTSMOD        0x00001000 // Points-to set updated, implies
+                                               // rev points-to relation to
+                                               // be updated
+#define CG_NODE_FLAGS_IN_WORKLIST   0x00002000
 
-#define CG_NODE_FLAGS_ADDR_TAKEN    0x4000  // Has the node been placed in a pts?
+#define CG_NODE_FLAGS_ADDR_TAKEN    0x00004000  // Has the node been placed 
+                                                // in a pts?
 
-#define CG_NODE_FLAGS_ADJUST_K_CYCLE 0x0100  // Reuse VISITED during IPA CG construction
-
+#define CG_NODE_FLAGS_ADJUST_K_CYCLE 0x00010000 // Adjust K cycle for merged 
+                                                // nodes during IPA CG build
+#define CG_NODE_FLAGS_MEMOP          0x00020000 // CG nodes corresponding to
+                                                // WN load/store
 
 // Call site flags
 #define CS_FLAGS_UNKNOWN     0x01
@@ -352,7 +357,7 @@ public:
   {}
 
   // For IPA
-  ConstraintGraphNode(CG_ST_IDX cg_st_idx, INT32 offset, UINT16 flags,
+  ConstraintGraphNode(CG_ST_IDX cg_st_idx, INT32 offset, UINT32 flags,
                       UINT32 inKCycle, CGNodeId id, ConstraintGraph *parentCG) :
     _cg_st_idx(cg_st_idx),
     _offset(offset),
@@ -398,10 +403,10 @@ public:
     _nextOffset = nextOffset;
   }
 
-  UINT16 flags() const { return _flags; }
-  bool checkFlags(UINT16 flag) const { return _flags & flag; }
-  void addFlags(UINT16 flag) { _flags |= flag; }
-  void clearFlags(UINT8 flag) { _flags &= ~flag; }
+  UINT32 flags() const { return _flags; }
+  bool checkFlags(UINT32 flag) const { return _flags & flag; }
+  void addFlags(UINT32 flag) { _flags |= flag; }
+  void clearFlags(UINT32 flag) { _flags &= ~flag; }
 
   ConstraintGraphNode *repParent() const { return _repParent; }
   void repParent(ConstraintGraphNode *p) { _repParent = p; }
@@ -642,7 +647,7 @@ private:
 
   CG_ST_IDX _cg_st_idx;
   INT32  _offset;
-  UINT16 _flags;
+  UINT32 _flags;
   UINT32 _inKCycle;
   PointsToList *_pointsToList;
   PointsToList *_revPointsToList;
@@ -808,6 +813,7 @@ public:
         return false;
       return _next->compare(rhs->_next);
     }    
+    return eval;
   }
 
   // Used during StInfo construction to build the hierarchical
@@ -971,6 +977,8 @@ typedef CallSiteMap::const_iterator CallSiteIterator;
 class IPA_NODE;
 class SUMMARY_CONSTRAINT_GRAPH_NODE;
 class SUMMARY_CONSTRAINT_GRAPH_STINFO;
+
+typedef list<pair<UINT32, PointsTo> > ListOffsetPointsTo;
 
 class ConstraintGraph 
 {
@@ -1214,7 +1222,8 @@ public:
   void processInitValues(ST_IDX st_idx);
   void processInito(const INITO *const inito);
   void processInitv(INITV_IDX initv_idx, PointsTo &pts);
-  list<pair<UINT32, PointsTo *> > *processInitv(TY &ty, INITV_IDX initv_idx);
+  ListOffsetPointsTo *processInitv(TY &ty, INITV_IDX initv_idx,
+                                   UINT32 startOffset, MEM_POOL *memPool);
 
 private:
 
