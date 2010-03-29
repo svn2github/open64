@@ -1191,6 +1191,8 @@ public:
 
   void print(FILE *file);
 
+  static void stats(void);
+
   // Driver for solving the constraint graph when not in IPA
   // mode.  Returns true of the solution is complete, false otherwise
   bool nonIPASolver();

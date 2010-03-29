@@ -11,6 +11,7 @@ using namespace std;
 using namespace __gnu_cxx;
 
 class EdgeDelta;
+class IPA_EscapeAnalysis;
 
 typedef hash_map<NODE_INDEX, ConstraintGraph *> IPACGMap;
 typedef IPACGMap::const_iterator IPACGMapIterator;
@@ -163,7 +164,8 @@ private:
 
   void findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGraph,
                 list<pair<IPA_NODE *,CallSiteId> > &indCallList,
-                list<IPAEdge> &edgeList);
+                list<IPAEdge> &edgeList,
+                IPA_EscapeAnalysis &escAnal);
 
   static IPA_NystromAliasAnalyzer *_ipa_naa;
   IPACGMap _ipaConstraintGraphs;

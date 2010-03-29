@@ -902,7 +902,8 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
 void
 IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGraph,
                                    list<pair<IPA_NODE *,CallSiteId> > &indCallList,
-                                   list<IPAEdge> &edgeList)
+                                   list<IPAEdge> &edgeList,
+                                   IPA_EscapeAnalysis &escAnal)
 {
   // Walk each indirect call side and determine if there exists a
   // "blackhole" in its points-to set.  If that is the case, then
@@ -916,11 +917,14 @@ IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGra
     FmtAssert(cs->isIndirect(),
               ("Expected indirect CallSite in caller constraint graph"));
     ConstraintGraphNode *icallNode = ConstraintGraph::cgNode(cs->cgNodeId());
+    if (escAnal.escaped(icallNode)) {
+#if 0
     const PointsTo &gblPointsTo = icallNode->pointsTo(CQ_GBL);
     // No, we could not use PointsTo.isSet() here because it is a non-const
     // function.
     for (PointsTo::SparseBitSetIterator sbsi(&gblPointsTo,0); sbsi != 0; sbsi++) {
       if (*sbsi == ConstraintGraph::blackHoleId()) {
+#endif
         // We have an incomplete indirect call, now connect it up to "everything"
         if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
           fprintf(stderr,"Incomplete Indirect Call: %s (%d) %s maps to CGNodeId: %d\n",
@@ -948,7 +952,6 @@ IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGra
         }
       }
     }
-  }
 }
 
 void
@@ -956,6 +959,7 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 {
   UINT32 round = 0;
   bool contextSensitive = false;
+  void *sbrk1 = sbrk(0);
 
   if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
     fprintf(stderr,"IPA Nystrom: Solver Begin\n");
@@ -1071,15 +1075,19 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   // references
   ConstraintGraphSolve::postProcessPointsTo();
 
+  { //Limit scope of escape analysis
+
   // We perform escape analysis to determine which symbols may point
   // to memory that is not visible within our scope.
   IPA_EscapeAnalysis escAnal(&_ipaConstraintGraphs,
                              IPA_Enable_Whole_Program_Mode,
                              &_memPool);
   escAnal.perform();
-  escAnal.markEscaped();
 
   if (Get_Trace(TP_ALIAS,NYSTROM_MEMORY_TRACE_FLAG)) {
+    void *sbrk2 = sbrk(0);
+    fprintf(stderr,"High water: %d after core solver\n",
+            (char *)sbrk2 - (char *)sbrk1);
     fprintf(TFile,("Memory usage after core solver, before fixup.\n"));
     MEM_Trace();
   }
@@ -1088,7 +1096,8 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   // we must attach them to possible callee's and perform a final
   // round of solution.  Initially, this may attempt to connect an
   // indirect call with all possible callees.
-  findIncompleteIndirectCalls(ipaCallGraph,indirectCallList,edgeList);
+  findIncompleteIndirectCalls(ipaCallGraph,indirectCallList,edgeList,escAnal);
+  } // Limit scope of escape analysis
   if (!edgeList.empty())  {
     callGraphPrep(ipaCallGraph,edgeList,delta,revTopOrder,+round);
     if (!delta.empty()) {
@@ -1098,10 +1107,25 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   }
 
   if (Get_Trace(TP_ALIAS,NYSTROM_MEMORY_TRACE_FLAG)) {
-    fprintf(TFile,("Memory usage after IPA solve.\n"));
-    MEM_Trace();
+    void *sbrk2 = sbrk(0);
+    fprintf(stderr,"High water: %d after indirect update solve\n",
+                (char *)sbrk2 - (char *)sbrk1);
   }
 
+  IPA_EscapeAnalysis escAnalFinal(&_ipaConstraintGraphs,
+                                  IPA_Enable_Whole_Program_Mode,
+                                  &_memPool);
+  escAnalFinal.perform();
+  escAnalFinal.markEscaped();
+
+  if (Get_Trace(TP_ALIAS,NYSTROM_MEMORY_TRACE_FLAG)) {
+    void *sbrk2 = sbrk(0);
+    fprintf(stderr,"High water: %d after final escape analysis\n",
+                (char *)sbrk2 - (char *)sbrk1);
+    fprintf(TFile,("Memory usage after IPA solve.\n"));
+    MEM_Trace();
+    ConstraintGraph::stats();
+  }
 
   if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
      fprintf(stderr,"IPA Nystrom: Solver Complete\n");

@@ -29,8 +29,9 @@ public:
 
   void perform(void);
   void markEscaped(void);
+  bool escaped(const ConstraintGraphNode *node) const;
 
-  UINT32 escapeStFlags(ConstraintGraphNode *node) const;
+  UINT32 escapeStFlags(const ConstraintGraphNode *node) const;
 
 protected:
   void ipaMode(bool val)            { _ipaMode = val; }

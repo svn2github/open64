@@ -30,7 +30,7 @@ EscapeAnalysis::printStFlags(UINT32 flags) const
 }
 
 UINT32
-EscapeAnalysis::escapeStFlags(ConstraintGraphNode *node) const
+EscapeAnalysis::escapeStFlags(const ConstraintGraphNode *node) const
 {
   StTable::const_iterator iter;
   iter = _stTable.find(StTableKey(node->cg_st_idx(),stOffset(node)));
@@ -84,9 +84,11 @@ EscapeAnalysis::addStToWorkList(ConstraintGraphNode *node)
     fprintf(stderr,"\n");
   }
   while (cur) {
-    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-      fprintf(stderr, "ESCANAL:       node %d\n",cur->id());
-    _workList.push(cur);
+    if (!cur->checkFlags(CG_NODE_FLAGS_MERGED)) {
+      if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+        fprintf(stderr, "ESCANAL:       node %d\n",cur->id());
+      _workList.push(cur);
+    }
     cur = cur->nextOffset();
   }
 }
@@ -524,6 +526,12 @@ EscapeAnalysis::markEscaped(void)
       node->addPointsTo(bh,CQ_GBL);
     }
   }
+}
+
+bool
+EscapeAnalysis::escaped(const ConstraintGraphNode *node) const
+{
+  return (escapeStFlags(node) & CG_ST_FLAGS_ESCALL) != 0;
 }
 
 void

@@ -554,7 +554,7 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *cgNode)
 {
   for (PointsToIterator pti(cgNode); pti != 0; ++pti) {
     PointsTo &ptsTo = *pti;
-    PointsTo tmp(Malloc_Mem_Pool);
+    PointsTo tmp;
     adjustPointsToForKCycle(cgNode->inKCycle(), ptsTo, tmp);
     ptsTo.clear();
     ptsTo.setUnion(tmp);
@@ -1783,6 +1783,20 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset,
       offset = -offset;
     if (offset != -1)
       offset = si->applyModulus(offset);
+    else {
+      // If we are requesting offset -1 for a symbol that is already
+      // field insensitive, there is no need to create a new node
+      if (!si->checkFlags(CG_ST_FLAGS_MODRANGE)) {
+        ConstraintGraphNode *n = si->firstOffset();
+        Is_True(n,("We should always have at least one offset.\n"));
+        if (n->offset() != -1 && si->getModulus(n->offset()) == 1) {
+          Is_True(n->offset() == 0,("Only offset should be zero!\n"));
+          offset = 0;
+        }
+      }
+      else if (si->checkFlags(CG_ST_FLAGS_NOFIELD))
+        offset = si->firstOffset()->offset();
+    }
     if (si->varSize() != 0)
       Is_True(offset < si->varSize(), ("getCGNode: offset: %lld >= varSize"
               ": %lld\n", offset, si->varSize()));
@@ -1956,6 +1970,46 @@ ConstraintGraphNode::_getCGEdgeSet(CGEdgeType t, CGEdgeList **el)
   return *es;
 }
 
+void
+ConstraintGraph::stats()
+{
+  UINT32 nodeCount = 0;
+  UINT32 ptsCount = 0;
+  UINT32 ptsElemCount = 0;
+  UINT32 emptyPtsCount = 0;
+  UINT32 totalCardinality = 0;
+  for (CGIdToNodeMapIterator iter = gBegin(); iter != gEnd(); ++iter)
+  {
+    ConstraintGraphNode *node = iter->second;
+    nodeCount += 1;
+    for (PointsToIterator pti(node); pti != 0; ++pti) {
+      PointsTo &pts = *pti;
+      ptsCount += 1;
+      UINT32 card = pts.numBits();
+      totalCardinality += card;
+      if (card == 0)
+        emptyPtsCount += 1;
+      ptsElemCount += pts.numElements();
+    }
+    for (PointsToIterator pti(node,true); pti != 0; ++pti) {
+      PointsTo &pts = *pti;
+      ptsCount += 1;
+      UINT32 card = pts.numBits();
+      totalCardinality += card;
+      if (card == 0)
+        emptyPtsCount += 1;
+      ptsElemCount += pts.numElements();
+    }
+  }
+  fprintf(stderr,"Points to set statistics\n");
+  fprintf(stderr,"  CG Node count:   %d\n",nodeCount);
+  fprintf(stderr,"  Points-to count: %d\n",ptsCount);
+  fprintf(stderr,"     Empty:        %d\n",emptyPtsCount);
+  fprintf(stderr,"  Bits / pts:      %d\n",totalCardinality/ptsCount);
+  fprintf(stderr,"  Bits / elem:     %d\n",totalCardinality/ptsElemCount);
+  fprintf(stderr,"  Elem / pts:      %d\n",ptsElemCount/ptsCount);
+  fprintf(stderr,"  Elem memory:     %d\n",ptsElemCount * 28);
+}
 
 void
 ConstraintGraph::print(FILE *file)

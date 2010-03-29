@@ -539,6 +539,16 @@ public:
 
   bool isEmpty() const { return _firstElem == NULL; }
 
+  UINT32 numElements() const {
+    UINT32 count = 0;
+    SparseBitSetElement *elt;
+
+    for (elt = _firstElem; elt; elt = elt->_next)
+      count += 1;
+
+    return count;
+  }
+
   UINT32 numBits() const
   {
     UINT32 count = 0;

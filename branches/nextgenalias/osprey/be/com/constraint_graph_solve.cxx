@@ -228,7 +228,7 @@ SCCDetection::pointsToAdjust(NodeToKValMap &nodeToKValMap)
     UINT32 origKVal = iter->second;
     UINT32 newKVal = rep->inKCycle();
     for ( PointsToIterator pti(rep); pti != 0; ++pti ) {
-      PointsTo tmp(_memPool);
+      PointsTo tmp;
       PointsTo &ptsTo = *pti;
       ConstraintGraph::adjustPointsToForKCycle(newKVal,ptsTo,tmp);
       ptsTo.clear();
@@ -684,7 +684,7 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
       CGEdgeQual dstQual = qualMap(ETYPE_COPY,srcQual,edgeQual,cntxt);
       if (dstQual != CQ_NONE) {
         ConstraintGraphNode *cur = src;
-        SparseBitSet<CGNodeId> sum(_memPool);
+        PointsTo sum;
         bool dstChange = false;
         while (cur != NULL && cur->offset() < curEndOffset) {
           ConstraintGraphNode *dstNode;
@@ -709,7 +709,7 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
           // need to map the points-to set to the field insensitive
           // equivalent.
           else {
-            PointsTo tmp(_memPool);
+            PointsTo tmp;
             ConstraintGraph::adjustPointsToForKCycle(dstNode->inKCycle(),
                                                      cur->pointsTo(srcQual),
                                                      tmp);
@@ -736,7 +736,7 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
         if (dst->inKCycle() == 0)
           change |= dst->unionPointsTo(*pti, dstQual);
         else {
-          PointsTo tmp(_memPool);
+          PointsTo tmp;
           ConstraintGraph::adjustPointsToForKCycle(dst->inKCycle(),*pti,tmp);
           change |= dst->unionPointsTo(tmp, dstQual);
         }
