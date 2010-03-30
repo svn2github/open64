@@ -296,6 +296,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
                 ("PREGs should have no nextOffset"));
       ConstraintGraphNode *firstOffset = findUniqueNode(firstOffsetId);
       addCGNodeInSortedOrder(stInfo, firstOffset);
+      stInfo->incrNumOffsets();
     }
   }
 
@@ -336,6 +337,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
                 ("PREGs should have no nextOffset"));
       ConstraintGraphNode *nextOffset = findUniqueNode(nextOffsetId);
       addCGNodeInSortedOrder(stInfo, nextOffset);
+      stInfo->incrNumOffsets();
     }
 
     // Add the pts set
@@ -1069,6 +1071,11 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
     updateCallGraph(ipaCallGraph,indirectCallList,edgeList);
 
   } while (change);
+
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG)) {
+    fprintf(stderr, "Printing final ConstraintGraphs...\n");
+    IPA_NystromAliasAnalyzer::aliasAnalyzer()->print(stderr);
+  }
 
   // The solver has a solution, now we post-process the points-to
   // sets to deal with covering references and field insensitive

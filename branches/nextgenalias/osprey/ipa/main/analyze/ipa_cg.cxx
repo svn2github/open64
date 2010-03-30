@@ -1598,7 +1598,7 @@ Build_Call_Graph ()
 #if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     if (Alias_Nystrom_Analyzer && Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG))
     {
-      fprintf(stderr, "Printing ConstraintGraphs...\n");
+      fprintf(stderr, "Printing initial ConstraintGraphs...\n");
       IPA_NystromAliasAnalyzer::aliasAnalyzer()->print(stderr);
     }
 #endif
