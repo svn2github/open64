@@ -1945,7 +1945,7 @@ cwh_stab_adjust_name(ST * st)
   } else {
 
     c = '.' ;
-    p = strchr(s,c);
+    p = (char*)strchr(s,c);
     
     if (p != NULL) {
 

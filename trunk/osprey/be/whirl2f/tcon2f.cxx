@@ -297,7 +297,7 @@ TCON2F_translate(TOKEN_BUFFER tokens, TCON tvalue, BOOL is_logical)
       case MTYPE_F4:
 	 str = Targ_Print("%.10e", tvalue);
 	 strbase = Remove_Trailing_Zero_Fraction(str);
-	 if (str = strchr(strbase, 'd'))
+	 if (str = (char*)strchr(strbase, 'd'))
 	    *str = 'E';
 	 Append_Token_String(tokens, strbase);
 	 break;
@@ -305,9 +305,9 @@ TCON2F_translate(TOKEN_BUFFER tokens, TCON tvalue, BOOL is_logical)
       case MTYPE_F8:
 	 str = Targ_Print("%.20e", tvalue);
 	 strbase = Remove_Trailing_Zero_Fraction(str);
-	 if (str = strchr(strbase, 'E')) /* due to bug in targ_const.h */
+	 if (str = (char*)strchr(strbase, 'E')) /* due to bug in targ_const.h */
 	    *str = 'D';
-	 else if (str = strchr(strbase, 'd'))
+	 else if (str = (char*)strchr(strbase, 'd'))
 	    *str = 'D';
 	 else
 	    strbase = Concat2_Strings(strbase, "D00");
@@ -317,9 +317,9 @@ TCON2F_translate(TOKEN_BUFFER tokens, TCON tvalue, BOOL is_logical)
       case MTYPE_FQ:
 	 str = Targ_Print(NULL, tvalue);
 	 strbase = Remove_Trailing_Zero_Fraction(str);
-	 if (str = strchr(strbase, 'E')) /* due to bug in targ_const.h */
+	 if (str = (char*)strchr(strbase, 'E')) /* due to bug in targ_const.h */
 	    *str = 'Q';
-	 else if (str = strchr(strbase, 'd'))
+	 else if (str = (char*)strchr(strbase, 'd'))
 	    *str = 'Q';
 	 else
 	    strbase = Concat2_Strings(strbase, "Q00");
