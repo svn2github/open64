@@ -353,8 +353,10 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
       }
     }
 
-    if (trace)
+    if (trace) {
       fprintf(stderr,"Solver Iteration %d\n",++iterCount);
+      ConstraintGraph::stats();
+    }
     while (!copySkewList.empty()) {
       ConstraintGraphEdge *edge = copySkewList.front();
       if (trace) {
@@ -670,6 +672,9 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
     }
   }
 
+  CGNodeId trackNodeId = 0;
+  PointsTo origPts;
+
   UINT32 assignSize = edge->size();
   StInfo *dstStInfo = dst->cg()->stInfo(dst->cg_st_idx());
 
@@ -702,9 +707,33 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
           // all other <ST,off> nodes.  Or we are writing <ST,off1...offn>
           // and we need to update <ST,-1>.  Both occur in updateOffset().
           sum.setUnion(cur->pointsTo(srcQual));
+
+#if 0
+          if ( dstNode->id() == trackNodeId )
+            origPts = dstNode->pointsTo(dstQual);
+#endif
+
           bool change = false;
-          if (dstNode->inKCycle() == 0)
+          if (dstNode->inKCycle() == 0) {
             change |= dstNode->unionPointsTo(cur->pointsTo(srcQual), dstQual);
+#if 0
+            for (PointsTo::SparseBitSetIterator iter(&dstNode->pointsTo(dstQual),0);
+                iter != 0; ++iter) {
+              ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
+              if (node->offset() == -1) {
+                for (PointsTo::SparseBitSetIterator iter2(&dstNode->pointsTo(dstQual),0);
+                    iter2 != 0; ++iter2) {
+                  ConstraintGraphNode *node2 = ConstraintGraph::cgNode(*iter2);
+                  if (node2->offset() != -1 && node2->cg_st_idx() == node->cg_st_idx())
+                    ;/*fprintf(stderr,"\tRDX: Node %d pts: contains <%d,%d> and <%d,%d>\n",
+                            dstNode->id(),
+                            SYM_ST_IDX(node->cg_st_idx()),node->offset(),
+                            SYM_ST_IDX(node2->cg_st_idx()),node2->offset());*/
+                }
+              }
+            }
+#endif
+          }
           // We are updating the representative node of an SCC, so we
           // need to map the points-to set to the field insensitive
           // equivalent.
@@ -716,8 +745,20 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
             change |= dstNode->unionPointsTo(tmp, dstQual);
           }
           dstChange |= change;
-          if (change)
+          if (change) {
             addEdgesToWorkList(dstNode);
+#if 0
+            if (dstNode->id() == trackNodeId) {
+              origPts.setDiff(dstNode->pointsTo(dstQual));
+              for (PointsTo::SparseBitSetIterator sbsi(&origPts,0);
+                  sbsi != 0; ++sbsi) {
+                ConstraintGraphNode *n = ConstraintGraph::cgNode(*sbsi);
+                fprintf(stderr,"\t Adding <%d,%d>: %s\n",
+                        n->id(),n->offset(),n->stName());
+              }
+            }
+#endif
+          }
           cur = cur->nextOffset();
         }
         if (dstChange)
@@ -837,6 +878,47 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
 }
 
 void
+ConstraintGraphSolve::removeFieldSensitiveEdges(CGEdgeType etype,
+                                                ConstraintGraphEdge *edge)
+{
+  // We have added an edge to (store) or from (load) <ST,-1>.  At this
+  // point there may already be edges to (store) or from (load) <ST,ofst>,
+  // which are now completely redundant and should be removed to
+  // improve solution time.
+  ConstraintGraphNode *minusOne = (etype == ETYPE_LOAD) ?
+                                   edge->srcNode() : edge->destNode();
+
+  CGEdgeSetIterator begin;
+  CGEdgeSetIterator end;
+  if (etype == ETYPE_LOAD) {
+    begin = edge->destNode()->inCopySkewEdges().begin();
+    end = edge->destNode()->inCopySkewEdges().end();
+  }
+  else {
+    begin = edge->srcNode()->outCopySkewEdges().begin();
+    end = edge->srcNode()->outCopySkewEdges().end();
+  }
+
+  // Finding the redundant edges via "hash" lookups may be more efficient,
+  // but that requires additional work on the hashCGEdge, equalCGEdge and
+  // all clients of ConstraintGraph::addEdge().
+  for (CGEdgeSetIterator iter = begin; iter != end; ) {
+    ConstraintGraphEdge *e = *iter;
+    ++iter;  // We may remove the current edge
+    ConstraintGraphNode *node = (etype == ETYPE_LOAD) ?
+                                 e->srcNode() : e->destNode();
+    if (node->offset() != -1 && node->cg_st_idx() == minusOne->cg_st_idx()) {
+      fprintf(stderr,"New edge <%d,%d>:",SYM_ST_IDX(minusOne->cg_st_idx()),minusOne->offset());
+      edge->print(stderr);
+      fprintf(stderr," makes <%d,%d>:",SYM_ST_IDX(node->cg_st_idx()),node->offset());
+      e->print(stderr);
+      fprintf(stderr,"redundant\n");
+      ConstraintGraph::removeEdge(e);
+    }
+  }
+}
+
+void
 ConstraintGraphSolve::addCopiesForLoadStore(ConstraintGraphNode *src,
                                             ConstraintGraphNode *dst,
                                             CGEdgeType etype,
@@ -861,11 +943,51 @@ ConstraintGraphSolve::addCopiesForLoadStore(ConstraintGraphNode *src,
     // we add the new edge to the worklist.
     ConstraintGraphEdge *newEdge;
     bool added = false;
-    newEdge = ConstraintGraph::addEdge(etype == ETYPE_LOAD ? nodeRep : src,
-                                       etype == ETYPE_LOAD ? dst : nodeRep,
+    ConstraintGraphNode *copySrc;
+    ConstraintGraphNode *copyDst;
+    if (etype == ETYPE_LOAD) {
+      copySrc = nodeRep;
+      copyDst = dst;
+    }
+    else {
+      copySrc = src;
+      copyDst = nodeRep;
+    }
+
+    // If we are adding an edge <src,ofst1> to <dst, ofst2> and the
+    // following edge already exists:
+    // (a) ETYPE_LOAD :  <src,-1>   to <dst,ofst2>
+    // (b) ETYPE_STORE:  <src,ofst1> to <dst,-1>
+    // The new edge is redundant.
+    if (nodeRep->offset() != -1) {
+      ConstraintGraphNode *minusOne =
+          copySrc->cg()->checkCGNode(nodeRep->cg_st_idx(),-1);
+      if (minusOne) {
+        ConstraintGraphEdge cgEdge((etype == ETYPE_LOAD)?minusOne:copySrc,
+                                   (etype == ETYPE_LOAD)?copyDst:minusOne,
+                                   ETYPE_COPY,CQ_HZ,size);
+        ConstraintGraphEdge *foundEdge = (etype == ETYPE_LOAD) ?
+                                          copyDst->inEdge(&cgEdge) :
+                                          copySrc->outEdge(&cgEdge);
+        if (foundEdge) {
+          fprintf(stderr,"Exist edge <%d,%d>:",
+                  SYM_ST_IDX(minusOne->cg_st_idx()),minusOne->offset());
+          foundEdge->print(stderr);
+          fprintf(stderr," makes %s <%d,%d> redundant\n",
+                  (etype == ETYPE_LOAD)?"from":"to",
+                      SYM_ST_IDX(nodeRep->cg_st_idx()),nodeRep->offset());
+          continue;
+        }
+      }
+    }
+
+    newEdge = ConstraintGraph::addEdge(copySrc, copyDst,
                                        ETYPE_COPY,qual,size,added);
-    if (added)
+    if (added) {
+      if (nodeRep->offset() == -1)
+        removeFieldSensitiveEdges(etype,newEdge);
       edgeDelta().add(newEdge);
+    }
   }
 }
 

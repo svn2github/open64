@@ -494,7 +494,7 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
     while (cur && cur->offset() <= endOffset) {
       UINT32 newOffset = startOffset + cur->offset() % mod;
       ConstraintGraphNode *modNode =
-          cur->cg()->getCGNode(cur->cg_st_idx(),newOffset,false/*no -1*/);
+          cur->cg()->getCGNode(cur->cg_st_idx(),newOffset);
 
       // Now we merge the two nodes together.  NOTE: the original
       // node remains and uses the modulus offset node as its
@@ -1756,8 +1756,7 @@ ConstraintGraph::removeEdge(ConstraintGraphEdge *edge)
 }
 
 ConstraintGraphNode *
-ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset,
-                           bool allowMinusOne)
+ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
 {
   // Check if we have seen this symbol before
   StInfo *si;
@@ -1814,11 +1813,10 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset,
   // upper bound on the number of offsets we will create for a
   // given symbol.  If we reach this point, we are creating a
   // new 'offset'.  At this point any new offsets will be mapped
-  // to -1, essentially forcing them to be treated as field
-  // insensitive.
+  // to offset zero.
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
-    if (offset != -1 && (si->numOffsets() >= si->maxOffsets()) && allowMinusOne) {
-      offset = -1;
+    if (offset != -1 && (si->numOffsets() >= si->maxOffsets())) {
+      offset = 0;
       // Check if node exists, if so return it
       if ((cgNode = checkCGNode(cg_st_idx, offset)) != NULL)
         return cgNode;
@@ -2007,9 +2005,12 @@ ConstraintGraph::stats()
   fprintf(stderr,"  CG Node count:   %d\n",nodeCount);
   fprintf(stderr,"  Points-to count: %d\n",ptsCount);
   fprintf(stderr,"     Empty:        %d\n",emptyPtsCount);
-  fprintf(stderr,"  Bits / pts:      %d\n",totalCardinality/ptsCount);
-  fprintf(stderr,"  Bits / elem:     %d\n",totalCardinality/ptsElemCount);
-  fprintf(stderr,"  Elem / pts:      %d\n",ptsElemCount/ptsCount);
+  fprintf(stderr,"  Bits / pts:      %d\n",
+          ptsCount > 0 ? totalCardinality/ptsCount : 0);
+  fprintf(stderr,"  Bits / elem:     %d\n",
+          ptsCount > 0 ? totalCardinality/ptsElemCount : 0);
+  fprintf(stderr,"  Elem / pts:      %d\n",
+          ptsCount > 0 ? ptsElemCount/ptsCount : 0);
   fprintf(stderr,"  Elem memory:     %d\n",ptsElemCount * 28);
 }
 

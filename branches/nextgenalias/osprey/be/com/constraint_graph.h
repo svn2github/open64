@@ -271,7 +271,7 @@ public:
     bool operator()(const ConstraintGraphEdge *k1,
                     const ConstraintGraphEdge *k2) const
     {
-      return ((k1->_etype == k2->_etype && 
+      return ((k1->_etype == k2->_etype &&
                k1->_sizeOrSkew == k2->_sizeOrSkew) &&
               k1->_srcCGNode == k2->_srcCGNode &&
               k1->_destCGNode == k2->_destCGNode);
@@ -1178,11 +1178,8 @@ public:
   // Return CGNode mapped to (cg_st_idx, offset), if not create a new CGNode
   // This method may return an offset other than the one requested, e.g. if
   // the number of existing offsets is exceeding a threshold we may start
-  // mapping additional references context insensitively.  Certain clients,
-  // e.g. those performing modulus adjustments and merging cannot accept
-  // <ST,-1> we must create the requested offset.
-  ConstraintGraphNode *getCGNode(CG_ST_IDX cg_st_idx, INT64 offset,
-                                 bool allowMinusOne=true);
+  // mapping additional references to offset zero.
+  ConstraintGraphNode *getCGNode(CG_ST_IDX cg_st_idx, INT64 offset);
 
   // Return CGNode mapped to (cg_st_idx, offset), if not return NULL
   ConstraintGraphNode *checkCGNode(CG_ST_IDX cg_st_idx, INT64 offset);

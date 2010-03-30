@@ -59,6 +59,7 @@ private:
                              CGEdgeQual qual,
                              UINT32 size,
                              SparseBitSet<CGNodeId> &ptSet);
+  void removeFieldSensitiveEdges(CGEdgeType etype,ConstraintGraphEdge *edge);
 
   EdgeDelta &edgeDelta() { return _edgeDelta; }
 
