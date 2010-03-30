@@ -439,6 +439,27 @@ ConstraintGraph::nonIPASolver()
   return true;
 }
 
+static UINT32
+computeMaxAccessSize(ConstraintGraphNode *node)
+{
+  UINT32 max = 1;
+  for (CGEdgeSetIterator i1 = node->inLoadStoreEdges().begin();
+      i1 != node->inLoadStoreEdges().end(); ++i1) {
+    ConstraintGraphEdge *edge = *i1;
+    if (edge->edgeType() == ETYPE_STORE)
+      if (edge->size() > max)
+        max = edge->size();
+  }
+  for (CGEdgeSetIterator i2 = node->outLoadStoreEdges().begin();
+      i2 != node->outLoadStoreEdges().end(); ++i2) {
+    ConstraintGraphEdge *edge = *i2;
+    if (edge->edgeType() == ETYPE_LOAD)
+      if (edge->size() > max)
+        max = edge->size();
+  }
+  return max;
+}
+
 void
 ConstraintGraphSolve::postProcessPointsTo()
 {
@@ -446,6 +467,9 @@ ConstraintGraphSolve::postProcessPointsTo()
   for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
        iter != ConstraintGraph::gEnd(); iter++) {
     ConstraintGraphNode *gNode = iter->second;
+    // Max access size is defined to be the max across all outgoing
+    // load and incoming store edges.  We default to 1.
+    UINT32 maxAccessSize = computeMaxAccessSize(gNode);
     for ( PointsToIterator pti(gNode); pti != 0; ++pti ) {
       PointsTo &curSet = *pti;
       for (PointsTo::SparseBitSetIterator sbsi(&curSet,0); sbsi != 0; ++sbsi)
@@ -458,6 +482,12 @@ ConstraintGraphSolve::postProcessPointsTo()
             adjustSet.setBit(cur->id());
             cur = cur->nextOffset();
           }
+          // We must preserve the presence of <ST,-1> in the points
+          // to set for communication between IPL and IPA_LINK. The
+          // current theory being the presence of <ST,-1> does not
+          // degrade the quality of the subsequent escape analysis
+          // nor the IPL alias queries.
+          adjustSet.setBit(node->id());
         }
         else {
           // Handle changes in the size of the modulus that may have
@@ -489,7 +519,7 @@ ConstraintGraphSolve::postProcessPointsTo()
 
           // Now we walk from offset to offset+accessSize and deal
           // with any wrap around that may occur at 'modulus'
-          UINT32 endOffset = node->offset() + gNode->maxAccessSize()-1;
+          UINT32 endOffset = node->offset() + maxAccessSize-1;
           UINT32 endOffset2;
           bool wrapAround = (endOffset >= (startOffset + modulus));
           if (wrapAround) {
@@ -595,6 +625,55 @@ ConstraintGraphSolve::updateOffsets(const ConstraintGraphNode *dst,
     }
   }
 }
+
+#if 0
+void removeOffsets(PointsTo &dst, CG_ST_IDX idx)
+{
+  for (PointsTo::SparseBitSetIterator iter(&dst,0); iter != 0; ++iter) {
+    ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
+    if (node->cg_st_idx() == idx && node->offset() != -1)
+      dst.clearBit(node->id());
+  }
+}
+//  Given a 'src' and 'dest' points to set, insert the contents
+// of 'src' into 'dest' subject to the followin rules.
+// (1) if 'src' contains <ST,ofst>, 'dst' gets <ST,ofst> iff it
+//     does not contain <ST,-1>
+// (2) if 'src' contains <ST,-1>, 'dst' get <ST,-1> and all
+//     <ST,ofst> are removed from 'dst'.
+void foo(PointsTo &dst, PointsTo &src)
+{
+  PointsTo diff;
+  diff = src;
+  diff.setDiff(dst);
+  // Now we have only the nodes that are node present in the
+  // target points-to set.
+  for (PointsTo::SparseBitSetIterator siter(&diff,0); siter != 0; ++siter) {
+    ConstraintGraphNode *node = ConstraintGraph::cgNode(*siter);
+    if (node->offset() != -1) {
+      ConstraintGraphNode *minusOne =
+          node->cg()->checkCGNode(node->cg_st_idx(),-1);
+      // Destination set contains <ST, -1>, so we skip the current node
+      if (minusOne && dst.isSet(minusOne->id()))
+        continue;
+      else {
+        FmtAssert(!minusOne || !diff.isSet(minusOne->id()),
+                  ("Have both <%d,%d> and <%d,-1> in the incoming pts.\n",
+                      SYM_ST_IDX(node->cg_st_idx()),node->offset(),
+                      SYM_ST_IDX(node->cg_st_idx())));
+        dst.setBit(node->id());
+      }
+    }
+    // The current node is <ST,-1> so we need to remove all
+    // occurrences of <ST,ofst> from the destination set
+    else {
+      removeOffsets(dst,node->cg_st_idx());
+      dst.setBit(node->id());
+    }
+  }
+}
+#endif
+
 
 /*
  * Here is the original assignment rule from Nystrom's implementation

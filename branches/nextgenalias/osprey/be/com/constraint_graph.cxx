@@ -126,10 +126,6 @@ ConstraintGraphNode::addInEdge(ConstraintGraphEdge *edge)
   pair<CGEdgeSet::iterator, bool> p;
   p = inEdgeSet.insert(edge);
   ConstraintGraphEdge *newEdge = *(p.first);
-  if (newEdge == edge &&
-      edge->edgeType() != ETYPE_SKEW &&
-      edge->size() > _maxAccessSize)
-    _maxAccessSize = edge->size();
   return newEdge;
 }
 
@@ -146,7 +142,7 @@ ConstraintGraphNode::addOutEdge(ConstraintGraphEdge *edge)
   p = outEdgeSet.insert(edge);
   ConstraintGraphEdge *newEdge = *(p.first);
   if (newEdge == edge &&
-      edge->edgeType() != ETYPE_SKEW &&
+      edge->edgeType() == ETYPE_COPY &&
       edge->size() > _maxAccessSize)
     _maxAccessSize = edge->size();
   return newEdge;
@@ -156,6 +152,7 @@ void
 ConstraintGraphNode::updateMaxAccessSize()
 {
   UINT8 newMax = 0;
+#if 0
   for (CGEdgeListIterator inIter(this,true); inIter != 0; ++inIter) {
     CGEdgeSet edges = *inIter;
     for (CGEdgeSetIterator edgeIter = edges.begin();
@@ -170,12 +167,13 @@ ConstraintGraphNode::updateMaxAccessSize()
       }
     }
   }
+#endif
   for (CGEdgeListIterator outIter(this,false); outIter != 0; ++outIter) {
     CGEdgeSet edges = *outIter;
     for (CGEdgeSetIterator edgeIter = edges.begin();
         edgeIter != edges.end(); ++edgeIter) {
       ConstraintGraphEdge *e = *edgeIter;
-      if (e->edgeType() != ETYPE_SKEW && e->size() > newMax) {
+      if (e->edgeType() == ETYPE_COPY && e->size() > newMax) {
         newMax = e->size();
         if (newMax == _maxAccessSize)
           return;
@@ -192,8 +190,6 @@ ConstraintGraphNode::removeInEdge(ConstraintGraphEdge *edge)
   CGEdgeSetIterator iter = inEdgeSet.find(edge);
   if (iter != inEdgeSet.end())
     inEdgeSet.erase(iter);
-  if (edge->edgeType() != ETYPE_SKEW && edge->size() == _maxAccessSize)
-    updateMaxAccessSize();
 }
 
 void
@@ -204,7 +200,7 @@ ConstraintGraphNode::removeOutEdge(ConstraintGraphEdge *edge)
   if (iter != outEdgeSet.end())
     outEdgeSet.erase(iter);
 
-  if (edge->edgeType() != ETYPE_SKEW && edge->size() == _maxAccessSize)
+  if (edge->edgeType() == ETYPE_COPY && edge->size() == _maxAccessSize)
     updateMaxAccessSize();
 }
 
