@@ -21,7 +21,7 @@ enum CSE_PAR_ATTR
     // For heap allocator that returns heap
     // address via reference formal:
     CPA_is_pointer_to_heap_addr_loc = 0x00000100,
-    CPA_is_format_string  =  0x00000200,
+    CPA_is_format_string  =  0x00000200, /* for printf_like funcs */
 
     // Default conservative value
     CPA_default_attr  =  
@@ -58,6 +58,7 @@ enum CSE_FUNC_ATTR
     CFAT_hidden_data_read                    = 0x00001000,
     CFAT_hidden_data_write                   = 0x00002000,
     CFAT_allocates_heap_memory               = 0x00004000,
+    // allocated memory is passed back via return ptr. 
     CFAT_returns_heap_memory                 = 0x00008000,
     CFAT_deallocates_heap_memory             = 0x00010000,
     CFAT_exposes_argument_address_to_return  = 0x00020000,
@@ -76,6 +77,7 @@ enum CSE_FUNC_ATTR
     // more attributes here:
     CFAT_has_format_string                   = 0x01000000,
     CFAT_is_printf_like                      = 0x02000000,
+    // return parameter is exposed
     CFAT_returns_exposed_memory              = 0x10000000,
 
     // some composite defaults:
@@ -215,8 +217,10 @@ class CallSideEffectInfo : protected CallSideEffectInfoBase
 {
 public:
   static CallSideEffectInfo GetDefaultCallSideEffectInfo(const WN* wn);
-  static CallSideEffectInfo GetCallSideEffectInfo(const WN* call_node);
-  static CallSideEffectInfo GetCallSideEffectInfo(const ST* sym);
+  static CallSideEffectInfo GetCallSideEffectInfo(const WN* call_node,
+                                                  bool* in_table = NULL);
+  static CallSideEffectInfo GetCallSideEffectInfo(const ST* sym,
+                                                  bool* in_table = NULL);
 
 
   bool isPureCall()         const { return cfa_is_pure(SideEffects); }
@@ -255,7 +259,8 @@ private:
   CallSideEffectInfo(const WN* call_node);
   UINT32 GetArgumentAttr_() const;
   static CallSideEffectInfo GetCallSideEffectInfo_(const char* func_name, 
-                                                   const WN* call_node);
+                                                   const WN* call_node,
+                                                   bool* in_table);
 
   bool isDefault_() 
   { return 
