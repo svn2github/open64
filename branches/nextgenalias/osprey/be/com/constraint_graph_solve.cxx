@@ -445,8 +445,8 @@ ConstraintGraphSolve::postProcessPointsTo()
   PointsTo adjustSet;
   for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
        iter != ConstraintGraph::gEnd(); iter++) {
-    ConstraintGraphNode *node = iter->second;
-    for ( PointsToIterator pti(node); pti != 0; ++pti ) {
+    ConstraintGraphNode *gNode = iter->second;
+    for ( PointsToIterator pti(gNode); pti != 0; ++pti ) {
       PointsTo &curSet = *pti;
       for (PointsTo::SparseBitSetIterator sbsi(&curSet,0); sbsi != 0; ++sbsi)
       {
@@ -489,7 +489,7 @@ ConstraintGraphSolve::postProcessPointsTo()
 
           // Now we walk from offset to offset+accessSize and deal
           // with any wrap around that may occur at 'modulus'
-          UINT32 endOffset = node->offset() + node->maxAccessSize()-1;
+          UINT32 endOffset = node->offset() + gNode->maxAccessSize()-1;
           UINT32 endOffset2;
           bool wrapAround = (endOffset >= (startOffset + modulus));
           if (wrapAround) {
