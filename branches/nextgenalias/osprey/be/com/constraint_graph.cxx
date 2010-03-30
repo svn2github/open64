@@ -1103,12 +1103,26 @@ ConstraintGraph::processExpr(WN *expr)
           processExpr(WN_kid1(expr));
           return NULL;
         }
+        if (!addrCGNode || addrCGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
+          return NULL;
+        // For a non-zero offset, we need to construct a new tmp preg, t1
+        // such that t1 = y + offset (a skew)
+        if (WN_offset(expr) != 0) {
+          ConstraintGraphNode *tmp1CGNode = genTempCGNode();
+          bool added = false;
+          addEdge(addrCGNode, tmp1CGNode, ETYPE_SKEW, CQ_HZ, 
+                  WN_offset(expr), added);
+          addrCGNode = tmp1CGNode;
+          // Adjust the CGNode associated with the address (kid0)
+          // with the newly created temp CGNode
+          WN_MAP_CGNodeId_Set(WN_kid0(expr), tmp1CGNode->id());
+        }
+        addrCGNode->addFlags(CG_NODE_FLAGS_MEMOP);
+        // If the load can never load a pointer, return notAPointer
         if (!exprMayPoint(expr)) {
           WN_MAP_CGNodeId_Set(expr, notAPointer()->id());
           return notAPointer();
         }
-        if (!addrCGNode || addrCGNode->checkFlags(CG_NODE_FLAGS_UNKNOWN))
-          return NULL;
         // Create a new temp CGNode
         ConstraintGraphNode *tmpCGNode = NULL;
         if (opr == OPR_MLOAD) {
@@ -1125,19 +1139,6 @@ ConstraintGraph::processExpr(WN *expr)
           tmpCGNode = genTempCGNode();
         }
         WN_MAP_CGNodeId_Set(expr, tmpCGNode->id());
-        // For a non-zero offset, we need to construct a new tmp preg, t1
-        // such that t1 = y + offset (a skew)
-        if (WN_offset(expr) != 0) {
-          ConstraintGraphNode *tmp1CGNode = genTempCGNode();
-          bool added = false;
-          addEdge(addrCGNode, tmp1CGNode, ETYPE_SKEW, CQ_HZ, 
-                  WN_offset(expr), added);
-          addrCGNode = tmp1CGNode;
-          // Adjust the CGNode associated with the address (kid0)
-          // with the newly created temp CGNode
-          WN_MAP_CGNodeId_Set(WN_kid0(expr), tmp1CGNode->id());
-        }
-        addrCGNode->addFlags(CG_NODE_FLAGS_MEMOP);
         bool added = false;
         INT32 size;
         if (WN_desc(expr) == MTYPE_BS)
@@ -1848,6 +1849,7 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset,
   if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
     fprintf(stderr,"Creating node:\n");
     cgNode->print(stderr);
+    si->print(stderr);
   }
 
   return cgNode;
@@ -2418,6 +2420,7 @@ StInfo::print(FILE *file,bool emitOffsetChain)
     fprintf(file,"\n  modulus ranges:\n");
     _u._modRange->print(file,4);
   }
+  fprintf(file, " numOffsets: %d\n", numOffsets());
   if (emitOffsetChain) {
     ConstraintGraphNode *node = _firstOffset;
     fprintf(file,"Offset list:\n");
