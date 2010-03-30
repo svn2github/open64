@@ -995,7 +995,6 @@ static void Print_Dynsym (FILE *pfile, ST *st)
     }
   }
   else {
-#if defined(TARG_X8664)
     const char *eclass_label = NULL;
     switch (ST_export(st)) {
       case EXPORT_INTERNAL:
@@ -1015,7 +1014,6 @@ static void Print_Dynsym (FILE *pfile, ST *st)
       EMT_Write_Qualified_Name(pfile, st);
       putc ('\n', pfile);
     }
-#endif
   }
 }
 
