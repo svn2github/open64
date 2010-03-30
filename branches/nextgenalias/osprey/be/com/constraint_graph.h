@@ -1350,8 +1350,13 @@ private:
 
   ConstraintGraphVCG(const char *fileNamePrefix)
   {
-    MEM_POOL_Initialize(&_memPool, "AliasAnalyzer_pool", FALSE);
+    MEM_POOL_Initialize(&_memPool, "ConstraintGraphVCG_pool", FALSE);
     _fileNamePrefix = fileNamePrefix;
+  }
+
+  ~ConstraintGraphVCG()
+  {
+    MEM_POOL_Delete(&_memPool);
   }
 
   char *getNodeLabel(ConstraintGraphNode *cgNode);
