@@ -301,7 +301,18 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
     if (ST_IDX_level(old_st_idx) == GLOBAL_SYMTAB) {
       cg_stinfos[i].cg_st_idx(idx_maps->st[old_st_idx] & 0x00000000ffffffffLL);
     }
+    TY_IDX old_ty_idx = cg_stinfos[i].ty_idx();
+    cg_stinfos[i].ty_idx(idx_maps->ty[old_ty_idx]);
   }
+#if Is_True_On
+  INT32 num_cg_modranges;
+  SUMMARY_CONSTRAINT_GRAPH_MODRANGE *cg_modranges = 
+                IPA_get_constraint_graph_modranges_array(hdr, num_cg_modranges);
+  for (i = 0; i < num_cg_modranges; ++i) {
+    TY_IDX old_ty_idx = cg_modranges[i].ty_idx();
+    cg_modranges[i].ty_idx(idx_maps->ty[old_ty_idx]);
+  }
+#endif
   INT32 num_cg_callsites;
   SUMMARY_CONSTRAINT_GRAPH_CALLSITE *cg_callsites = 
                 IPA_get_constraint_graph_callsites_array(hdr, num_cg_callsites);

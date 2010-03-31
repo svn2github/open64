@@ -554,6 +554,7 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
     StInfo *stInfo = iter->second;
     FmtAssert(this == globalCG(), ("Expect this to be the globalCG"));
     FmtAssert(stInfo->varSize() == summ->varSize(), ("Inconsistent varSize"));
+    FmtAssert(stInfo->ty_idx() == summ->ty_idx(), ("Inconsistent ty_idx"));
     stInfo->addFlags(summ->flags());
     // Check if we have a modrange or just a plain modulus
     if (!stInfo->checkFlags(CG_ST_FLAGS_MODRANGE)) {
@@ -586,7 +587,8 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
      
   UINT32 flags = summ->flags(); 
   INT64 varSize = summ->varSize(); 
-  StInfo *stInfo = CXX_NEW(StInfo(flags, varSize,_memPool), _memPool);
+  TY_IDX ty_idx = summ->ty_idx();
+  StInfo *stInfo = CXX_NEW(StInfo(flags, varSize, ty_idx, _memPool), _memPool);
   if (flags & CG_ST_FLAGS_MODRANGE) {
     // Read in the ModRanges
     ModulusRange *mr = buildModRange(summ->modulus(), ipaNode);

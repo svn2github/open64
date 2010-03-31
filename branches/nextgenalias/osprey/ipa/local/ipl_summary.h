@@ -3054,12 +3054,14 @@ public:
   INT64 varSize()      const { return _varSize; }
   UINT32 modulus()     const { return _modulus; }
   UINT32 firstOffset() const { return _firstOffset; }
+  TY_IDX ty_idx()      const { return _ty_idx; }
 
   void cg_st_idx(UINT64 s)   { _cg_st_idx = s; }
   void flags(UINT32 f)       { _flags = f; }
   void varSize(INT64 s)      { _varSize = s; }
   void modulus(UINT32 m)     { _modulus = m; }
   void firstOffset(UINT32 o) { _firstOffset = o; }
+  void ty_idx(TY_IDX t)      { _ty_idx = t; }
 
   void Init()
   {
@@ -3077,6 +3079,7 @@ private:
   INT64  _varSize;
   UINT32 _modulus;
   UINT32 _firstOffset; 
+  TY_IDX _ty_idx;
 };
 
 // Constraint graph CallSite summary for Nystrom Alias Analyzer

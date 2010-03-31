@@ -3286,6 +3286,7 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
     summStInfo->cg_st_idx(cg_st_idx);
     summStInfo->flags(s->flags());
     summStInfo->varSize(s->varSize());
+    summStInfo->ty_idx(s->ty_idx());
     if (s->checkFlags(CG_ST_FLAGS_MODRANGE)) {
       UINT32 modRangeIdx = processModRange(s->modRange());
       summStInfo->modulus(modRangeIdx);

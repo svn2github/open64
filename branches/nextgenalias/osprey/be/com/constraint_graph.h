@@ -857,12 +857,13 @@ public:
   StInfo(ST_IDX st_idx, MEM_POOL *memPool);
 
   // For IPA
-  StInfo(UINT32 flags, INT64 varSize, MEM_POOL *memPool) :
+  StInfo(UINT32 flags, INT64 varSize, TY_IDX ty_idx, MEM_POOL *memPool) :
     _flags(flags),
     _varSize(varSize),
     _maxOffsets(32),
     _numOffsets(0),
     _firstOffset(NULL),
+    _ty_idx(ty_idx),
     _memPool(memPool)
   {
     _u._modulus = 0;
@@ -897,6 +898,8 @@ public:
       return offset % _u._modulus;
     else {
       UINT32 start, end;
+      // Apply the outer most modulus always before the inner ranges
+      offset = offset % _u._modRange->mod();
       UINT32 modulus = _u._modRange->modulus(offset,start,end);
       return start + offset % modulus;
     }
@@ -940,6 +943,8 @@ public:
     _u._modulus = m;
   }
 
+  TY_IDX ty_idx() const { return _ty_idx; }
+
   void dbgPrint();
   void print(FILE *file,bool emitOffsetChain=false);
   void print(ostream& ostr);
@@ -954,6 +959,7 @@ private:
   UINT16 _maxOffsets;
   UINT16 _numOffsets;
   ConstraintGraphNode *_firstOffset; // Pointer to CGNode with smallest offset
+  TY_IDX _ty_idx; // TY_IDX of the symbol corresponding to this StInfo
   MEM_POOL *_memPool;
 };
 
@@ -1044,7 +1050,8 @@ public:
   static void removeEdge(ConstraintGraphEdge *edge);
 
   static void adjustPointsToForKCycle(ConstraintGraphNode *cgNode);
-  static void adjustPointsToForKCycle(UINT32 kCycle,const PointsTo &src,
+  static void adjustPointsToForKCycle(ConstraintGraphNode *destNode,
+                                      const PointsTo &src,
                                       PointsTo &dst);
 
   static bool addCGNodeInSortedOrder(StInfo *stInfo, 

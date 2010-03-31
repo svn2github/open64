@@ -11,6 +11,7 @@
 #include "ir_reader.h"
 #include "cse_table.h"
 #include "opt_points_to.h"
+#include "pu_info.h"
 
 MEM_POOL *ConstraintGraph::edgeMemPool = NULL;
 UINT32 ConstraintGraph::maxTypeSize = 0;
@@ -358,6 +359,7 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
     _memPool(memPool)
 {
   ST *st = &St_Table[st_idx];
+  _ty_idx = ST_type(st);
   TY& ty = Ty_Table[ST_type(st)];
   // For arrays set size to element size
   if (TY_kind(ty) == KIND_ARRAY) {
@@ -511,10 +513,11 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
 }
 
 void
-ConstraintGraph::adjustPointsToForKCycle(UINT32 kCycle,
+ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *destNode,
                                          const PointsTo &src,
                                          PointsTo &dst)
 {
+  UINT32 kCycle = destNode->inKCycle();
   FmtAssert(&src != &dst,("Expected two different sets"));
   if (kCycle == 0) {
     dst.setUnion(src);
@@ -529,17 +532,25 @@ ConstraintGraph::adjustPointsToForKCycle(UINT32 kCycle,
       // If the resulting K value is still larger than the size
       // of a pointer, then we simply adjust the modulus of the
       // underlying symbol to the min(rep->inKCycle(),modulus)
-      if (kCycle > Pointer_Size) {
-        StInfo *st = node->cg()->stInfo(node->cg_st_idx());
+      StInfo *st = node->stInfo();
+      if (st->getModulus(node->offset()) <= Pointer_Size ||
+          kCycle > Pointer_Size) 
+      {
         if (kCycle < st->getModulus(node->offset()))
           st->setModulus(kCycle,node->offset());
         if (node->offset() >= st->getModulus(node->offset()))
           node = node->cg()->getCGNode(node->cg_st_idx(),node->offset());
       }
-      // If the K value is < the size of a pointer all offsets
-      // are mapped to -1.
-      else
+      // If the K value is <= the size of a pointer and 
+      // modulus > Pointer_Size then all offsets are mapped to -1.
+      else 
+      {
+        //fprintf(stderr, "Setting -1 on node\n ");
+        //node->print(stderr); node->stInfo()->print(stderr);
+        //fprintf(stderr, " due to destNode: \n");
+        //destNode->print(stderr); destNode->stInfo()->print(stderr);
         node = node->cg()->getCGNode(node->cg_st_idx(),-1);
+      }
     }
     dst.setBit(node->id());
   }
@@ -551,7 +562,7 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *cgNode)
   for (PointsToIterator pti(cgNode); pti != 0; ++pti) {
     PointsTo &ptsTo = *pti;
     PointsTo tmp;
-    adjustPointsToForKCycle(cgNode->inKCycle(), ptsTo, tmp);
+    adjustPointsToForKCycle(cgNode, ptsTo, tmp);
     ptsTo.clear();
     ptsTo.setUnion(tmp);
   }
@@ -699,6 +710,10 @@ calleeReturnsNewMemory(const WN *const call_wn)
 
     if (call_info.isHeapAllocating())
       return TRUE;
+
+//    if (!strcmp(ST_name(st), "sre_malloc"))
+//      return TRUE;
+//  !strcmp(ST_name(PU_Info_proc_sym(Current_PU_Info)), "AllocPlan7Shell"))
   }
   else if (WN_operator(call_wn) == OPR_INTRINSIC_CALL) {
     if ((WN_intrinsic(call_wn) == INTRN_U4I4ALLOCA) ||
@@ -963,29 +978,16 @@ ConstraintGraph::handleAlloca(WN *stmt)
               ("alloca with non-KIND_POINTER result expected to have"
                   "0 byte allocation\n"));
     return NULL;
-  }
-  else {
+  } else {
     TY_IDX stack_ty_idx = TY_pointed(stack_ptr_ty);
-    TY &stack_ty = Ty_Table[stack_ty_idx];
     // We create a local variable that represents the dynamically
     // allocated stack location
-    ConstraintGraphNode *stackCGNode;
     // If the pointed to type is a struct, create a symbol of that type
     // else create a symbol of maxTypeSize
-    if (TY_kind(stack_ty) == KIND_STRUCT) {
-      ST *stackST = Gen_Temp_Named_Symbol(stack_ty_idx, "_cgStack",
-                                          CLASS_VAR, SCLASS_AUTO);
-      stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
-      stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
-    } else {
-      ST *stackST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgStack",
-                                          CLASS_VAR, SCLASS_AUTO);
-      stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
-      stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
-      stInfo(stackCGNode->cg_st_idx())->setModulus(maxTypeSize,
-                                                     stackCGNode->offset());
-      stInfo(stackCGNode->cg_st_idx())->varSize(0);
-    }
+    ST *stackST = Gen_Temp_Named_Symbol(stack_ty_idx, "_cgStack",
+                                        CLASS_VAR, SCLASS_AUTO);
+    ConstraintGraphNode *stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
+    stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
     return stackCGNode;
   }
 }
@@ -1622,26 +1624,16 @@ ConstraintGraph::handleCall(WN *callWN)
 
     // Create a heap node
     if (calleeReturnsNewMemory(callWN)) {
-      ConstraintGraphNode *heapCGNode;
       TY &heap_ptr_ty = Ty_Table[WN_ty(stmt)];
       // If the pointed to type is a struct, create a symbol of that type
       // else create a symbol of maxTypeSize
-      if (TY_kind(heap_ptr_ty) == KIND_POINTER &&
-          TY_kind(Ty_Table[TY_pointed(heap_ptr_ty)]) == KIND_STRUCT) {
-        TY_IDX heap_ty_idx = TY_pointed(heap_ptr_ty);
-        ST *heapST = Gen_Temp_Named_Symbol(heap_ty_idx, "_cgHeap",
-                                           CLASS_VAR, SCLASS_AUTO);
-        heapCGNode = getCGNode(CG_ST_st_idx(heapST), 0);
-        stInfo(heapCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_HEAP);
-      } else {
-        ST *heapST = Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgHeap",
-                                           CLASS_VAR, SCLASS_AUTO);
-        heapCGNode = getCGNode(CG_ST_st_idx(heapST), 0);
-        stInfo(heapCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_HEAP);
-        stInfo(heapCGNode->cg_st_idx())->setModulus(maxTypeSize,
-                                                    heapCGNode->offset());
-        stInfo(heapCGNode->cg_st_idx())->varSize(0);
-      }
+      FmtAssert(TY_kind(heap_ptr_ty) == KIND_POINTER, 
+                ("Expecting KIND_POINTER"));
+      TY_IDX heap_ty_idx = TY_pointed(heap_ptr_ty);
+      ST *heapST = Gen_Temp_Named_Symbol(heap_ty_idx, "_cgHeap",
+                                         CLASS_VAR, SCLASS_AUTO);
+      ConstraintGraphNode *heapCGNode = getCGNode(CG_ST_st_idx(heapST), 0);
+      stInfo(heapCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_HEAP);
       cgNode->addPointsTo(heapCGNode,CQ_HZ);
     }
 
@@ -2016,7 +2008,7 @@ ConstraintGraph::print(FILE *file)
   for (CGNodeToIdMapIterator iter = _cgNodeToIdMap.begin();
       iter != _cgNodeToIdMap.end(); iter++) {
     iter->first->print(file);
-    fprintf(stderr, " stInfo:");
+    fprintf(stderr, " StInfo:\n");
     stInfo(iter->first->cg_st_idx())->print(file);
     fprintf(stderr, "\n");
   }
@@ -2388,10 +2380,67 @@ StInfo::dbgPrint()
   print(stderr,true);
 }
 
+static void
+printType(TY_IDX ty_idx, FILE *file)
+{
+  TY &ty = Ty_Table[ty_idx];
+
+  const char *name_str = TY_name_idx(ty) == 0 ? NULL : TY_name(ty);
+
+  fputs(name_str ? name_str : "(anon)", file);
+
+  const TY *pty = &ty;
+  INT pcount = 0;
+  while (TY_kind(*pty) == KIND_POINTER) {
+    pty = &Ty_Table[TY_pointed(*pty)];
+    ++pcount;
+  }
+
+  if (TY_kind(ty) == KIND_SCALAR && TY_mtype(ty) != MTYPE_UNKNOWN)
+    name_str = MTYPE_name(TY_mtype(ty));
+  else
+    name_str = Kind_Name(TY_kind(ty));
+
+  fprintf(file, " (#%d, %s", TY_IDX_index(ty_idx), name_str);
+  while (pcount-- > 0)
+    fputc('*', file);
+  fputc(')', file);
+}
+
+static void
+printType(TY_IDX ty_idx, ostream &str)
+{
+  TY &ty = Ty_Table[ty_idx];
+
+  const char *name_str = TY_name_idx(ty) == 0 ? NULL : TY_name(ty);
+
+  if (name_str)
+   str << name_str;
+  else
+   str << "(anon)";
+
+  const TY *pty = &ty;
+  INT pcount = 0;
+  while (TY_kind(*pty) == KIND_POINTER) {
+    pty = &Ty_Table[TY_pointed(*pty)];
+    ++pcount;
+  }
+
+  if (TY_kind(ty) == KIND_SCALAR && TY_mtype(ty) != MTYPE_UNKNOWN)
+    name_str = MTYPE_name(TY_mtype(ty));
+  else
+    name_str = Kind_Name(TY_kind(ty));
+
+  str << " (#" << TY_IDX_index(ty_idx) << " " << name_str;
+  while (pcount-- > 0)
+    str << "*";
+  str << ")";
+}
+
 void
 StInfo::print(FILE *file,bool emitOffsetChain)
 {
-  fprintf(file, "varSize: %lld", _varSize);
+  fprintf(file, "  varSize: %lld", _varSize);
   fprintf(file, " ST flags: [");
   if (checkFlags(CG_ST_FLAGS_GLOBAL))
     fprintf(file, "GLOBAL");
@@ -2411,18 +2460,21 @@ StInfo::print(FILE *file,bool emitOffsetChain)
       fprintf(file, " firstCGNodeId: %d", _firstOffset->id());
     else
       fprintf(file, " firstCGNodeId: null");
+  fprintf(file, " numOffsets: %d ", numOffsets());
   if (!checkFlags(CG_ST_FLAGS_MODRANGE))
     fprintf(file," modulus: %d\n",_u._modulus);
   else {
     fprintf(file,"\n  modulus ranges:\n");
     _u._modRange->print(file,4);
   }
-  fprintf(file, " numOffsets: %d\n", numOffsets());
+  fprintf(file, "  type: "); 
+  printType(_ty_idx, file);
+  fprintf(file, "\n");
   if (emitOffsetChain) {
     ConstraintGraphNode *node = _firstOffset;
-    fprintf(file,"Offset list:\n");
+    fprintf(file,"  Offset list:\n");
     while (node) {
-      fprintf(file,"  Id: %d, offset %d, parent %d\n",
+      fprintf(file,"   Id: %d, offset %d, parent %d\n",
               node->id(),node->offset(),
               node->repParent()?node->repParent()->id():node->id());
       node = node->nextOffset();
@@ -2432,7 +2484,7 @@ StInfo::print(FILE *file,bool emitOffsetChain)
 
 void StInfo::print(ostream& str)
 {
-  str << "varSize: " << _varSize;
+  str << "  varSize: " << _varSize;
   str << " ST flags: [";
   if (checkFlags(CG_ST_FLAGS_GLOBAL))
     str << "GLOBAL";
@@ -2449,12 +2501,16 @@ void StInfo::print(ostream& str)
     str << " firstCGNodeId: " << _firstOffset->id();
   else
     str << " firstCGNodeId: null";
+  str << " numOffsets: " << numOffsets();
   if (!checkFlags(CG_ST_FLAGS_MODRANGE))
      str << " modulus: " << _u._modulus << endl;
    else {
-     str << endl << " modulus ranges:" << endl;
+     str << endl << "  modulus ranges:" << endl;
      _u._modRange->print(str,2);
    }
+  str << "  type: ";
+  printType(_ty_idx, str);
+  str << endl;
 }
 
 bool
@@ -2670,6 +2726,7 @@ ConstraintGraphVCG::getNodeInfo(ConstraintGraphNode *cgNode)
 {
   stringstream ss;
   cgNode->print(ss);
+  ss << "StInfo:" << endl;
   cgNode->cg()->stInfo(cgNode->cg_st_idx())->print(ss);
   char *str = (char *)MEM_POOL_Alloc(&_memPool, strlen(ss.str().data())*2 + 1);
   const char *p = ss.str().data();

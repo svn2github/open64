@@ -230,7 +230,7 @@ SCCDetection::pointsToAdjust(NodeToKValMap &nodeToKValMap)
     for ( PointsToIterator pti(rep); pti != 0; ++pti ) {
       PointsTo tmp;
       PointsTo &ptsTo = *pti;
-      ConstraintGraph::adjustPointsToForKCycle(newKVal,ptsTo,tmp);
+      ConstraintGraph::adjustPointsToForKCycle(rep,ptsTo,tmp);
       ptsTo.clear();
       ptsTo.setUnion(tmp);
     }
@@ -818,7 +818,7 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
           // equivalent.
           else {
             PointsTo tmp;
-            ConstraintGraph::adjustPointsToForKCycle(dstNode->inKCycle(),
+            ConstraintGraph::adjustPointsToForKCycle(dstNode,
                                                      cur->pointsTo(srcQual),
                                                      tmp);
             change |= dstNode->unionPointsTo(tmp, dstQual);
@@ -857,7 +857,7 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
           change |= dst->unionPointsTo(*pti, dstQual);
         else {
           PointsTo tmp;
-          ConstraintGraph::adjustPointsToForKCycle(dst->inKCycle(),*pti,tmp);
+          ConstraintGraph::adjustPointsToForKCycle(dst,*pti,tmp);
           change |= dst->unionPointsTo(tmp, dstQual);
         }
         if (change) {
@@ -1235,10 +1235,19 @@ ConstraintGraph::simpleOptimizer()
       continue;
 
     // We prefer the toBeMergedNode to be a preg that can be deleted
+    // else we prefer atleast a preg so as that we we can avoid a PARENT_COPY
+    // edge since we know that they will have only a single offset
     ConstraintGraphNode *parentNode;
     ConstraintGraphNode *toBeMergedNode;
     if (srcNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG) &&
         srcNode->canBeDeleted()) {
+      toBeMergedNode = srcNode;
+      parentNode = destNode;
+    } else if (destNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG) &&
+               destNode->canBeDeleted()) {
+      toBeMergedNode = destNode;
+      parentNode = srcNode;
+    } else if (srcNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) {
       toBeMergedNode = srcNode;
       parentNode = destNode;
     } else {
