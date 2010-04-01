@@ -540,7 +540,7 @@ CallSideEffectInfoTable::CallSideEffectInfoTable()
 }
 
 // check %n in the format string:
-static bool
+extern bool
 doesFormatStringContainPercN(WN* call_node, UINT32 format_arg_pos)
 {
   // get format string argument 
@@ -573,7 +573,8 @@ doesFormatStringContainPercN(WN* call_node, UINT32 format_arg_pos)
 
 UINT32
 CallSideEffectInfo::GetArgumentAttr(UINT32 arg_pos, 
-                                    WN* call_node) const
+                                    WN* call_node,
+                                    bool ignore_format_string) const
 {
   if (arg_pos < NumOfKnownPars)
   {
@@ -586,7 +587,7 @@ CallSideEffectInfo::GetArgumentAttr(UINT32 arg_pos,
   // when %n is detected in the format string, it should be CPA_one_level_write 
   // (conservatively for all trailing arguments).
   //  
-  if (SideEffects & CFAT_is_printf_like)
+  if ((SideEffects & CFAT_is_printf_like) && !ignore_format_string)
   {
     arg_attr = GetArgumentAttr_();
 
@@ -727,7 +728,8 @@ CallSideEffectInfo::GetCallSideEffectInfo(const WN* call_node,
 }
 
 CallSideEffectInfo
-CallSideEffectInfo::GetCallSideEffectInfo(const ST* call_sym, bool* from_table)
+CallSideEffectInfo::GetCallSideEffectInfo(const ST* call_sym,
+                                          bool* from_table)
 {
   const char* name_str = 0;
   // Firstly, find the name key to lookup the side effect table:

@@ -204,6 +204,9 @@ inline bool cfa_is_safe(UINT32 s) {
   return (s & CFAT_safe_call_attr_mask) == 0;
 }
 
+extern bool
+doesFormatStringContainPercN(WN* call_node, UINT32 format_arg_pos);
+
 const UINT32 C_max_cse_arg_num = 6; // TODO
 struct CallSideEffectInfoBase
 {
@@ -218,10 +221,9 @@ class CallSideEffectInfo : protected CallSideEffectInfoBase
 public:
   static CallSideEffectInfo GetDefaultCallSideEffectInfo(const WN* wn);
   static CallSideEffectInfo GetCallSideEffectInfo(const WN* call_node,
-                                                  bool* in_table = NULL);
+                                                  bool* from_table = NULL);
   static CallSideEffectInfo GetCallSideEffectInfo(const ST* sym,
-                                                  bool* in_table = NULL);
-
+                                                  bool* from_table = NULL);
 
   bool isPureCall()         const { return cfa_is_pure(SideEffects); }
   bool isSafeCall()         const { return cfa_is_safe(SideEffects); }
@@ -248,7 +250,8 @@ public:
   bool exposeArgAddressToGlobals() const { return cfa_expose_arg_address_to_globals(SideEffects);}
   bool returnsExposedMemory() const { return cfa_returns_exposed_memory(SideEffects);}
 
-  UINT32 GetArgumentAttr(UINT32 arg_pos, WN* call_node = NULL) const;
+  UINT32 GetArgumentAttr(UINT32 arg_pos, WN* call_node = NULL, 
+                         bool ignore_format_string = false) const;
   void Print(WN*) const;
 
   friend class CallSideEffectInfoTable;
@@ -260,7 +263,7 @@ private:
   UINT32 GetArgumentAttr_() const;
   static CallSideEffectInfo GetCallSideEffectInfo_(const char* func_name, 
                                                    const WN* call_node,
-                                                   bool* in_table);
+                                                   bool* from_table);
 
   bool isDefault_() 
   { return 
