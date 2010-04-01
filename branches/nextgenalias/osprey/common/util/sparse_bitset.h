@@ -332,6 +332,24 @@ public:
     return changed;
   }
 
+  bool clearBit(T idx)
+  {
+    UINT32 bit = (UINT32)idx;
+    SparseBitSetElement *ptr = findElem(bit);
+    UINT32 wordNum = bit / BITMAP_WORD_BITS % BITMAP_ELEMENT_WORDS;
+    UINT32 bitNum  = bit % BITMAP_WORD_BITS;
+    BITMAP_WORD bitVal = ((BITMAP_WORD) 1) << bitNum;
+
+    bool changed = false;
+    if (ptr != NULL) {
+      if (ptr->_bits[wordNum] | bitVal) {
+        changed = true;
+        ptr->_bits[wordNum] &= (~bitVal);
+      }
+    }
+    return changed;
+  }
+
   // Union rhs into 'this'. Return true if 'this' changes. 
   bool setUnion(const SparseBitSet &rhs)
   {
@@ -501,7 +519,7 @@ public:
 
   // 'this' &= ~rhs. Returns true if 'this' changes
   bool
-  setDiff(const SparseBitSet& rhs) const
+  setDiff(const SparseBitSet& rhs)
   {
     SparseBitSetElement *thisElt = _firstElem;
     SparseBitSetElement *rhsElt = rhs._firstElem;

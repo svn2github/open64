@@ -5,6 +5,7 @@
 #include "config_ipa.h"
 #include "constraint_graph_escanal.h"
 #include "constraint_graph_solve.h"
+#include "cse_table.h"
 #include "defs.h"
 #include "ipl_summary.h"
 #include "ipa_summary.h"
@@ -349,23 +350,29 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     UINT32 ptsDNidx      = summNode.ptsDNidx();
 
     // GBL
+    // First, we find all <ST,-1> nodes
     for (UINT32 i = 0; i < numBitsPtsGBL; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsGBLidx + i];
       ConstraintGraphNode *pNode = findUniqueNode(id);
       cgNode->addPointsTo(pNode, CQ_GBL);
     }
+    Is_True(cgNode->sanityCheckPointsTo(CQ_GBL),("GBL: <ST,x> and <ST,-1>"));
+
     // HZ
     for (UINT32 i = 0; i < numBitsPtsHZ; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsHZidx + i];
       ConstraintGraphNode *pNode = findUniqueNode(id);
       cgNode->addPointsTo(pNode, CQ_HZ);
     }
+    Is_True(cgNode->sanityCheckPointsTo(CQ_HZ),("HZ: <ST,x> and <ST,-1>"));
+
     // DN
     for (UINT32 i = 0; i < numBitsPtsDN; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsDNidx + i];
       ConstraintGraphNode *pNode = findUniqueNode(id);
       cgNode->addPointsTo(pNode, CQ_DN);
     }
+    Is_True(cgNode->sanityCheckPointsTo(CQ_DN),("DN: <ST,x> and <ST,-1>"));
 
     // Adjust pts set if required
     if (cgNode->checkFlags(CG_NODE_FLAGS_ADJUST_K_CYCLE)) {
@@ -633,16 +640,18 @@ ConstraintGraph::buildModRange(UINT32 modRangeIdx, IPA_NODE *ipaNode)
 class IPA_EscapeAnalysis : public EscapeAnalysis
 {
 public:
-  IPA_EscapeAnalysis(IPACGMap *map, bool wholePrgMode, MEM_POOL *memPool) :
+  IPA_EscapeAnalysis(IPACGMap *map, bool wholePrgMode,
+                     Mode mode, MEM_POOL *memPool) :
     EscapeAnalysis(NULL,false,memPool),
     _ipaCGMap(map)
   {
-    ipaMode(true);
+    ipaMode(mode);
     wholeProgramMode(wholePrgMode);
   }
 
   void init();
   void computeReversePointsTo();
+  bool formalsEscape(ConstraintGraph *graph) const;
 
 private:
   IPACGMap *_ipaCGMap;
@@ -671,6 +680,31 @@ IPA_EscapeAnalysis::computeReversePointsTo()
     updateReversePointsTo(iter->second);
 }
 
+bool
+IPA_EscapeAnalysis::formalsEscape(ConstraintGraph *graph) const
+{
+  // Formals are considered to be escaped iff
+  // (1) We are not in -ipa mode
+  // (2) We are in -ipa mode and the routine is an indirect
+  //     call target and we have not resolved all indirect
+  //     call edges.
+  if (ipaMode() == IPANo)
+    return true;
+
+  if (ipaMode() == IPAComplete)
+    return false;
+
+  if (ipaMode() == IPAIncomplete && graph != ConstraintGraph::globalCG()) {
+    ST *funcSt = graph->ipaNode()->Func_ST();
+    ConstraintGraphNode *clrCGNode =
+        ConstraintGraph::globalCG()->checkCGNode(funcSt->st_idx,0);
+    if (!clrCGNode || !clrCGNode->checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
+      return false;
+  }
+
+  // Be defensive...
+  return true;
+}
 /*
  * Assemble the list of call edges in the IPA call graph, the list of all
  * possible indirect call targets, and all virtual call sites.
@@ -702,10 +736,14 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
     IPA_NODE *caller = nodeIter.Current();
     if (caller == NULL) continue;
     IPA_SUCC_ITER succIter(ipaCallGraph,caller);
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+      fprintf(stderr,"Processing: %s\n",caller->Name());
     for (succIter.First(); !succIter.Is_Empty(); succIter.Next())
     {
       IPA_EDGE *edge = succIter.Current_Edge();
       IPA_NODE *callee = ipaCallGraph->Callee(edge);
+      if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+        fprintf(stderr," Callee: %s\n",callee->Name());
       CallSiteId csId =
           edge->Summary_Callsite()->Get_constraint_graph_callsite_id();
       edgeList.push_back(IPAEdge(caller->Node_Index(),callee->Node_Index(),csId));
@@ -742,7 +780,7 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
         if (ST_IDX_level(stIdx) == GLOBAL_SYMTAB) {
           calledFunc.insert(&St_Table[stIdx]);
           if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-            fprintf(stderr,"Direct call: %s\n",ST_name(stIdx));
+            fprintf(stderr," Direct call: %s\n",ST_name(stIdx));
         }
       }
     }
@@ -753,8 +791,13 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
         iter != calledFunc.end(); ++iter) {
       ST *calledFuncST = *iter;
       STToNodeMap::iterator i3 = allFuncMap.find(calledFuncST);
-      if (i3 == allFuncMap.end())
-        fprintf(stderr,"External call: %s\n", ST_name(calledFuncST));
+      if (i3 == allFuncMap.end()) {
+        bool inTable = false;
+        CallSideEffectInfo::GetCallSideEffectInfo(calledFuncST,&inTable);
+        if (!inTable)
+          fprintf(stderr,"External call: %s (%d)\n", ST_name(calledFuncST),
+                  ST_sclass(calledFuncST));
+      }
     }
 
     for (STToNodeMap::iterator i1 = _stToNodeMap.begin();
@@ -1079,17 +1122,13 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
     IPA_NystromAliasAnalyzer::aliasAnalyzer()->print(stderr);
   }
 
-  // The solver has a solution, now we post-process the points-to
-  // sets to deal with covering references and field insensitive
-  // references
-  ConstraintGraphSolve::postProcessPointsTo();
-
   { //Limit scope of escape analysis
 
   // We perform escape analysis to determine which symbols may point
   // to memory that is not visible within our scope.
   IPA_EscapeAnalysis escAnal(&_ipaConstraintGraphs,
                              IPA_Enable_Whole_Program_Mode,
+                             EscapeAnalysis::IPAIncomplete,
                              &_memPool);
   escAnal.perform();
 
@@ -1123,6 +1162,7 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
   IPA_EscapeAnalysis escAnalFinal(&_ipaConstraintGraphs,
                                   IPA_Enable_Whole_Program_Mode,
+                                  EscapeAnalysis::IPAComplete,
                                   &_memPool);
   escAnalFinal.perform();
   escAnalFinal.markEscaped();

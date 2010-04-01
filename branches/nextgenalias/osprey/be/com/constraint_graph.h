@@ -97,6 +97,7 @@ class EdgeDelta;
 #define CS_FLAGS_INTRN       0x04
 #define CS_FLAGS_HAS_MOD_REF 0x08
 #define CS_FLAGS_HAS_VARARGS 0x10
+#define CS_FLAGS_PRINTF_NOPRECN 0x20
 
 typedef UINT32 CGNodeId;
 typedef UINT64 CG_ST_IDX;
@@ -430,27 +431,34 @@ public:
 
   // PointsTo accessor functions
 
-  bool addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
+  bool addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual);
+#if 0
   {
+    FmtAssert(node->cg()->buildComplete() && node->offset() != -1,
+              ("Attempting to directly add <%d,%d> to pts\n",
+                  SYM_ST_IDX(node->cg_st_idx()),node->offset()));
     node->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
     bool change = findRep()->_addPointsTo(node->id(),qual);
     if (change)
       addFlags(CG_NODE_FLAGS_PTSMOD);
     return change;
   }
+#endif
 
   bool checkPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
   {
     return findRep()->_checkPointsTo(node->id(),qual);
   }
 
-  bool unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual)
+  bool unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual);
+#if 0
   {
     bool change = findRep()->_getPointsTo(qual).setUnion(ptsToSet);
     if (change)
       addFlags(CG_NODE_FLAGS_PTSMOD);
     return change;
   }
+#endif
 
   const PointsTo &pointsTo(CGEdgeQual qual)
   {
@@ -563,6 +571,17 @@ public:
 
   void deleteEdgesAndPtsSetList();
 
+  // Meant be called from createAliasTags, to provide a points-to
+  // set adjusted for <ST,-1> and access size.  The result is placed
+  // into the provided points-to set
+  void postProcessPointsTo(PointsTo &adjustSet);
+  UINT32 computeMaxAccessSize(void);
+
+  // Remove redundant nodes, in the presence of <ST, -1>
+  static void sanitizePointsTo(PointsTo &pts);
+
+  bool sanityCheckPointsTo(CGEdgeQual qual);
+
   void dbgPrint();
   void print(FILE *file);
   void print(ostream &str);
@@ -640,6 +659,8 @@ private:
   }
 
   PointsTo &_getPointsTo(CGEdgeQual qual, PointsToList **ptl);
+
+  static void _removeOffsets(PointsTo &dst, CG_ST_IDX);
 
   // Sets the _maxAccessSize based on the maximum size of all
   // incoming and outgoing (non-SKEW) edges
@@ -1111,6 +1132,7 @@ public:
   ConstraintGraph(MEM_POOL *mPool, IPA_NODE *ipaNode = NULL, 
                   UINT32 minSize = 1024):
     _name(0),
+    _buildComplete(false),
     _nextCallSiteId(1),
     _cgNodeToIdMap(minSize),
     _cgStInfoMap(minSize),
@@ -1293,6 +1315,13 @@ private:
 
   ConstraintGraphNode *findUniqueNode(CGNodeId id);
 
+  // Used during IPA constraint graph construction to pre-process
+  // points-to sets, i.e. reverse post-processing done during IPL
+  void collectMinusOneSts(hash_set<UINT64> &minusOneSts, UINT32 *nodeIds,
+                          UINT32 numBits, UINT32 ptsIdx);
+  bool includeInPointsTo(hash_set<UINT64> &minusOneSts,
+                         ConstraintGraphNode *cgNode);
+
   void merge(ConstraintGraph *rhs);
 
   // Data Members
@@ -1409,6 +1438,9 @@ public:
   }
   bool isIndirect()  const { return checkFlags(CS_FLAGS_INDIRECT); }
   bool isIntrinsic() const { return checkFlags(CS_FLAGS_INTRN); }
+
+  bool percN(void) const { return checkFlags(CS_FLAGS_PRINTF_NOPRECN); }
+  void setPercN()        { return addFlags(CS_FLAGS_PRINTF_NOPRECN); }
 
   ST_IDX st_idx() const
   { 

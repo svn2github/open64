@@ -711,8 +711,8 @@ calleeReturnsNewMemory(const WN *const call_wn)
     if (call_info.isHeapAllocating())
       return TRUE;
 
-//    if (!strcmp(ST_name(st), "sre_malloc"))
-//      return TRUE;
+    if (!strcmp(ST_name(st), "sre_malloc"))
+      return TRUE;
 //  !strcmp(ST_name(PU_Info_proc_sym(Current_PU_Info)), "AllocPlan7Shell"))
   }
   else if (WN_operator(call_wn) == OPR_INTRINSIC_CALL) {
@@ -724,6 +724,24 @@ calleeReturnsNewMemory(const WN *const call_wn)
     }
   }
   return FALSE;
+}
+
+static WN *
+nextStmtStoresResultOfCurrentStmt(const WN *const stmt)
+{
+  WN *nextStmt = WN_next(stmt);
+  if (!nextStmt)
+    return NULL;
+
+  WN *rhs = WN_kid0(nextStmt);
+  if (WN_operator(nextStmt) == OPR_STID &&
+      WN_operator(rhs) == OPR_LDID &&
+      ST_sclass(WN_st(rhs)) == SCLASS_REG &&
+      ST_sclass(WN_st(stmt)) == SCLASS_REG &&
+      WN_offset(rhs) == WN_offset(stmt))
+    return nextStmt;
+  else
+    return NULL;
 }
 
 static BOOL
@@ -877,6 +895,7 @@ ConstraintGraph::processInito(const INITO *const inito)
     }
   } else {
     // Lump all the objects to this node and make it field insensitive :(
+    ConstraintGraphNode::sanitizePointsTo(tmp);
     node->unionPointsTo(tmp, CQ_GBL);
     node->stInfo()->setModulus(1, node->offset());
     if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG)) {
@@ -977,7 +996,7 @@ ConstraintGraph::handleAlloca(WN *stmt)
               WN_const_val(size) == 0,
               ("alloca with non-KIND_POINTER result expected to have"
                   "0 byte allocation\n"));
-    return NULL;
+    return ConstraintGraph::notAPointer();
   } else {
     TY_IDX stack_ty_idx = TY_pointed(stack_ptr_ty);
     // We create a local variable that represents the dynamically
@@ -1495,6 +1514,17 @@ ConstraintGraph::processParam(WN *wn)
   } 
 }
 
+static bool
+formatContainsPercN(CallSideEffectInfo callInfo, WN *callWN)
+{
+  for (INT i = 0; i < WN_kid_count(callWN); i++ ) {
+    UINT32 argAttr = callInfo.GetArgumentAttr(i,callWN);
+    if (argAttr & CPA_is_format_string)
+      return doesFormatStringContainPercN(callWN,i);
+  }
+  return false;
+}
+
 WN *
 ConstraintGraph::handleCall(WN *callWN)
 {
@@ -1535,6 +1565,15 @@ ConstraintGraph::handleCall(WN *callWN)
     // Check for varargs
     if (TY_is_varargs(ST_pu_type(WN_st(callWN))))
       callSite->addFlags(CS_FLAGS_HAS_VARARGS);
+
+    // Because a *printf routine man have %n in its format string, we
+    // examine the call here to avoid having to conservatively assume
+    // that all operands after the format string are modified by the call.
+    CallSideEffectInfo callInfo =
+        CallSideEffectInfo::GetCallSideEffectInfo(callWN);
+    if (callInfo.isPrintfLike() && formatContainsPercN(callInfo,callWN))
+      callSite->setPercN();
+
   } else if (opr == OPR_INTRINSIC_CALL) {
     callSite->addFlags(CS_FLAGS_INTRN);
     callSite->intrinsic((INTRINSIC)WN_intrinsic(callWN));
@@ -1624,13 +1663,23 @@ ConstraintGraph::handleCall(WN *callWN)
 
     // Create a heap node
     if (calleeReturnsNewMemory(callWN)) {
-      TY &heap_ptr_ty = Ty_Table[WN_ty(stmt)];
-      // If the pointed to type is a struct, create a symbol of that type
-      // else create a symbol of maxTypeSize
-      FmtAssert(TY_kind(heap_ptr_ty) == KIND_POINTER, 
-                ("Expecting KIND_POINTER"));
-      TY_IDX heap_ty_idx = TY_pointed(heap_ptr_ty);
-      ST *heapST = Gen_Temp_Named_Symbol(heap_ty_idx, "_cgHeap",
+      // We want to create a symbol of the pointed-to type.  We
+      // may have to work a little bit to actually find it.  If
+      // we cannot then we create symbol of 'Pointer_type'
+      TY_IDX ty_idx;
+      if (TY_kind(Ty_Table[WN_ty(stmt)]) != KIND_POINTER) {
+        WN *tmpStmt = nextStmtStoresResultOfCurrentStmt(stmt);
+        if (tmpStmt && TY_kind(Ty_Table[WN_ty(tmpStmt)]) == KIND_POINTER) {
+          ty_idx = TY_pointed(Ty_Table[WN_ty(tmpStmt)]);
+          stmt = tmpStmt;
+        }
+        else
+          ty_idx = MTYPE_To_TY(Pointer_type);
+      }
+      else
+        ty_idx = TY_pointed(Ty_Table[WN_ty(stmt)]);
+
+      ST *heapST = Gen_Temp_Named_Symbol(ty_idx, "_cgHeap",
                                          CLASS_VAR, SCLASS_AUTO);
       ConstraintGraphNode *heapCGNode = getCGNode(CG_ST_st_idx(heapST), 0);
       stInfo(heapCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_HEAP);
@@ -1804,7 +1853,7 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   // to offset zero.
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
     if (offset != -1 && (si->numOffsets() >= si->maxOffsets())) {
-      offset = 0;
+      offset = -1;
       // Check if node exists, if so return it
       if ((cgNode = checkCGNode(cg_st_idx, offset)) != NULL)
         return cgNode;

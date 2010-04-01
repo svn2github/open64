@@ -423,10 +423,12 @@ ConstraintGraph::nonIPASolver()
   if (!solver.solveConstraints())
     return false;
 
+#if 0
   // The solver has a solution, now we post-process the points-to
   // sets to deal with covering references and field insensitive
   // references
   solver.postProcessPointsTo();
+#endif
 
   // Now we perform escape analysis to in order to augment the
   // the points-to sets of "incomplete" symbols to facilitate
@@ -439,25 +441,102 @@ ConstraintGraph::nonIPASolver()
   return true;
 }
 
-static UINT32
-computeMaxAccessSize(ConstraintGraphNode *node)
+UINT32
+ConstraintGraphNode::computeMaxAccessSize()
 {
   UINT32 max = 1;
-  for (CGEdgeSetIterator i1 = node->inLoadStoreEdges().begin();
-      i1 != node->inLoadStoreEdges().end(); ++i1) {
+  for (CGEdgeSetIterator i1 = inLoadStoreEdges().begin();
+      i1 != inLoadStoreEdges().end(); ++i1) {
     ConstraintGraphEdge *edge = *i1;
     if (edge->edgeType() == ETYPE_STORE)
       if (edge->size() > max)
         max = edge->size();
   }
-  for (CGEdgeSetIterator i2 = node->outLoadStoreEdges().begin();
-      i2 != node->outLoadStoreEdges().end(); ++i2) {
+  for (CGEdgeSetIterator i2 = outLoadStoreEdges().begin();
+      i2 != outLoadStoreEdges().end(); ++i2) {
     ConstraintGraphEdge *edge = *i2;
     if (edge->edgeType() == ETYPE_LOAD)
       if (edge->size() > max)
         max = edge->size();
   }
   return max;
+}
+
+void
+ConstraintGraphNode::postProcessPointsTo(PointsTo &adjustSet)
+{
+  // Max access size is defined to be the max across all outgoing
+  // load and incoming store edges.  We default to 1.
+  UINT32 maxAccessSize = computeMaxAccessSize();
+  for (PointsToIterator pti(this); pti != 0; ++pti ) {
+    PointsTo &curSet = *pti;
+    for (PointsTo::SparseBitSetIterator sbsi(&curSet,0); sbsi != 0; ++sbsi)
+    {
+      ConstraintGraphNode *node = ConstraintGraph::cgNode(*sbsi);
+      if (node->offset() == -1)
+      {
+        ConstraintGraphNode *cur = node->nextOffset();
+        while (cur) {
+          adjustSet.setBit(cur->id());
+          cur = cur->nextOffset();
+        }
+      }
+      else {
+        // Handle changes in the size of the modulus that may have
+        // made the current offset "out of bounds".  The modulus
+        // applied to an offset is defined by a range, start...end.
+        // We can infer the start offset by applying the modulus to
+        // the current offset
+        UINT32 modulus = node->stInfo()->getModulus(node->offset());
+        // applyOffset = startOffset + node->offset() % modulus
+        UINT32 applyOffset = node->stInfo()->applyModulus(node->offset());
+        UINT32 startOffset = applyOffset - (node->offset() % modulus);
+        if (node->offset() >= (startOffset+modulus)) {
+          if (!node->repParent()) {
+            fprintf(stderr,"Insanity in StInfo %p\n",node->stInfo());
+            node->stInfo()->print(stderr,true);
+            FmtAssert(FALSE,("Node beyond modulus must have parent\n"));
+          }
+
+          node = node->repParent();
+          adjustSet.setBit(node->id());
+          // If we have overrun our offset limit, then the parent may
+          // actually be <ST,-1> rather than <ST,offset%modulus>.
+          // In that case we are done.
+          if (node->offset() == -1)
+            continue;
+        }
+        else
+          adjustSet.setBit(node->id());
+
+        // Now we walk from offset to offset+accessSize and deal
+        // with any wrap around that may occur at 'modulus'
+        UINT32 endOffset = node->offset() + maxAccessSize-1;
+        UINT32 endOffset2;
+        bool wrapAround = (endOffset >= (startOffset + modulus));
+        if (wrapAround) {
+          endOffset = startOffset + modulus;
+          endOffset2 = node->stInfo()->applyModulus(endOffset);
+        }
+        ConstraintGraphNode *cur = node->nextOffset();
+        while (cur && cur->offset() < endOffset) {
+          adjustSet.setBit(cur->id());
+          cur = cur->nextOffset();
+        }
+        if (wrapAround){
+          ConstraintGraphNode *cur = node->stInfo()->firstOffset();
+          while (cur && cur->offset() < startOffset)
+            cur = cur->nextOffset();
+          // Now we walk the first part of the range until we hit
+          // the new offset.
+          while (cur && cur->offset() < endOffset2) {
+            adjustSet.setBit(cur->id());
+            cur = cur->nextOffset();
+          }
+        }
+      }
+    }
+  }
 }
 
 void
@@ -469,7 +548,7 @@ ConstraintGraphSolve::postProcessPointsTo()
     ConstraintGraphNode *gNode = iter->second;
     // Max access size is defined to be the max across all outgoing
     // load and incoming store edges.  We default to 1.
-    UINT32 maxAccessSize = computeMaxAccessSize(gNode);
+    UINT32 maxAccessSize = gNode->computeMaxAccessSize();
     for ( PointsToIterator pti(gNode); pti != 0; ++pti ) {
       PointsTo &curSet = *pti;
       for (PointsTo::SparseBitSetIterator sbsi(&curSet,0); sbsi != 0; ++sbsi)
@@ -485,9 +564,10 @@ ConstraintGraphSolve::postProcessPointsTo()
           // We must preserve the presence of <ST,-1> in the points
           // to set for communication between IPL and IPA_LINK. The
           // current theory being the presence of <ST,-1> does not
-          // degrade the quality of the subsequent escape analysis
+          // degrade the quality of the O escape analysis
           // nor the IPL alias queries.
-          adjustSet.setBit(node->id());
+          if (!ConstraintGraph::inIPA())
+            adjustSet.setBit(node->id());
         }
         else {
           // Handle changes in the size of the modulus that may have
@@ -626,54 +706,161 @@ ConstraintGraphSolve::updateOffsets(const ConstraintGraphNode *dst,
   }
 }
 
-#if 0
-void removeOffsets(PointsTo &dst, CG_ST_IDX idx)
+void
+ConstraintGraphNode::_removeOffsets(PointsTo &dst, CG_ST_IDX idx)
 {
   for (PointsTo::SparseBitSetIterator iter(&dst,0); iter != 0; ++iter) {
     ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
-    if (node->cg_st_idx() == idx && node->offset() != -1)
+    if (node->cg_st_idx() == idx && node->offset() != -1) {
+      //fprintf(stderr,"Removing node %d\n",node->id());
       dst.clearBit(node->id());
+    }
   }
 }
+
+void
+ConstraintGraphNode::sanitizePointsTo(PointsTo &pts)
+{
+   hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx> minusOneSts;
+   for (PointsTo::SparseBitSetIterator i1(&pts,0); i1 != 0; ++i1) {
+     ConstraintGraphNode *node = ConstraintGraph::cgNode(*i1);
+     if (node->offset() == -1)
+       minusOneSts.insert(node->cg_st_idx());
+   }
+
+   hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx>::iterator iter;
+   for (iter = minusOneSts.begin(); iter != minusOneSts.end(); ++iter) {
+     CG_ST_IDX idx = *iter;
+     _removeOffsets(pts,idx);
+   }
+}
+
+bool
+ConstraintGraphNode::sanityCheckPointsTo(CGEdgeQual qual)
+{
+  const PointsTo &pts = pointsTo(qual);
+  hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx> minusOneSts;
+  for (PointsTo::SparseBitSetIterator i1(&pts,0); i1 != 0; ++i1) {
+    ConstraintGraphNode *node = ConstraintGraph::cgNode(*i1);
+    if (node->offset() == -1)
+      minusOneSts.insert(node->cg_st_idx());
+  }
+
+  for (PointsTo::SparseBitSetIterator i2(&pts,0); i2 != 0; ++i2) {
+    ConstraintGraphNode *node = ConstraintGraph::cgNode(*i2);
+    if (node->offset() != -1) {
+      hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx>::const_iterator iter =
+          minusOneSts.find(node->cg_st_idx());
+      if (iter != minusOneSts.end())
+        return false;
+    }
+  }
+  return true;
+}
+
+bool
+ConstraintGraphNode::addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
+{
+  FmtAssert(!cg()->buildComplete() || node->offset() != -1,
+            ("Attempting to directly add <%d,%d> to pts\n",
+                SYM_ST_IDX(node->cg_st_idx()),node->offset()));
+  node->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
+  bool change = findRep()->_addPointsTo(node->id(),qual);
+  if (change)
+    addFlags(CG_NODE_FLAGS_PTSMOD);
+  return change;
+}
+
+static
+void printPointsTo(const PointsTo &pts)
+{
+  for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
+    ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
+    fprintf(stderr,"<%d,%d> ",SYM_ST_IDX(node->cg_st_idx()),node->offset());
+  }
+}
+
 //  Given a 'src' and 'dest' points to set, insert the contents
 // of 'src' into 'dest' subject to the followin rules.
 // (1) if 'src' contains <ST,ofst>, 'dst' gets <ST,ofst> iff it
 //     does not contain <ST,-1>
 // (2) if 'src' contains <ST,-1>, 'dst' get <ST,-1> and all
 //     <ST,ofst> are removed from 'dst'.
-void foo(PointsTo &dst, PointsTo &src)
+bool
+ConstraintGraphNode::unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual)
 {
+  bool change = false;
+
+  // First we compute the difference between the current points-to
+  // and the "new" values to be merged.
   PointsTo diff;
-  diff = src;
+  PointsTo &dst = findRep()->_getPointsTo(qual);
+  diff = ptsToSet;
   diff.setDiff(dst);
-  // Now we have only the nodes that are node present in the
-  // target points-to set.
+
+#if 0
+  UINT32 trackNodeId = 6603;
+  if (id() == trackNodeId && !diff.isEmpty()) {
+    fprintf(stderr,"In union points to:\n");
+    fprintf(stderr,"  Cur: ");
+    //dst.print(stderr);
+    printPointsTo(dst);
+    fprintf(stderr,"\n  New: ");
+    //ptsToSet.print(stderr);
+    printPointsTo(ptsToSet);
+    fprintf(stderr,"\n  Dif: ");
+    //diff.print(stderr);
+    printPointsTo(diff);
+    fprintf(stderr,"\n");
+  }
+#endif
+
+  // Now we have to walk only the nodes that are not present
+  // in the target points-to set.
   for (PointsTo::SparseBitSetIterator siter(&diff,0); siter != 0; ++siter) {
     ConstraintGraphNode *node = ConstraintGraph::cgNode(*siter);
     if (node->offset() != -1) {
       ConstraintGraphNode *minusOne =
           node->cg()->checkCGNode(node->cg_st_idx(),-1);
       // Destination set contains <ST, -1>, so we skip the current node
-      if (minusOne && dst.isSet(minusOne->id()))
+      if (minusOne && dst.isSet(minusOne->id())) {
+        //fprintf(stderr,"Prevent adding %d\n",node->id());
         continue;
+      }
       else {
         FmtAssert(!minusOne || !diff.isSet(minusOne->id()),
-                  ("Have both <%d,%d> and <%d,-1> in the incoming pts.\n",
+                  ("Have both <%d,%d> and <%d,-1> in the incoming pts (dest is %d).\n",
                       SYM_ST_IDX(node->cg_st_idx()),node->offset(),
-                      SYM_ST_IDX(node->cg_st_idx())));
+                      SYM_ST_IDX(node->cg_st_idx()),id()));
         dst.setBit(node->id());
+        change = true;
       }
     }
     // The current node is <ST,-1> so we need to remove all
     // occurrences of <ST,ofst> from the destination set
     else {
-      removeOffsets(dst,node->cg_st_idx());
+      _removeOffsets(dst,node->cg_st_idx());
       dst.setBit(node->id());
+      change = true;
     }
   }
-}
+
+#if 0
+  if (id() == trackNodeId && !diff.isEmpty()) {
+    fprintf(stderr,"  Mrg:");
+    //dst.print(stderr);
+    printPointsTo(dst);
+    fprintf(stderr,"\n");
+  }
 #endif
 
+ // Is_True(!sanityCheckPointsTo(qual),
+ //   ("Node %d destination contains <ST,x> and <ST,-1>\n",id()));
+
+  if (change)
+    addFlags(CG_NODE_FLAGS_PTSMOD);
+  return change;
+}
 
 /*
  * Here is the original assignment rule from Nystrom's implementation
@@ -987,11 +1174,13 @@ ConstraintGraphSolve::removeFieldSensitiveEdges(CGEdgeType etype,
     ConstraintGraphNode *node = (etype == ETYPE_LOAD) ?
                                  e->srcNode() : e->destNode();
     if (node->offset() != -1 && node->cg_st_idx() == minusOne->cg_st_idx()) {
+#if 0
       fprintf(stderr,"New edge <%d,%d>:",SYM_ST_IDX(minusOne->cg_st_idx()),minusOne->offset());
       edge->print(stderr);
       fprintf(stderr," makes <%d,%d>:",SYM_ST_IDX(node->cg_st_idx()),node->offset());
       e->print(stderr);
       fprintf(stderr,"redundant\n");
+#endif
       ConstraintGraph::removeEdge(e);
     }
   }

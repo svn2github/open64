@@ -438,10 +438,8 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       aliasTag = newAliasTag();
       AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
 
-      // Union all the points-to ses
-      aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_GBL));
-      aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_DN));
-      aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_HZ));
+      // Union all the points-to sets
+      cgNode->findRep()->postProcessPointsTo(aliasTagInfo->pointsTo());
 
       // If the points-to set of the alias tag is empty at this point then
       // either we have an escape analysis bug or an uninitialized variable.

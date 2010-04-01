@@ -288,19 +288,58 @@ EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
     if (callsite->isDirect()) {
       if (!callsite->isIntrinsic()) {
         ST_IDX st_idx = callsite->st_idx();
+        bool inTable;
         CallSideEffectInfo callInfo =
-            CallSideEffectInfo::GetCallSideEffectInfo(&St_Table[st_idx]);
+            CallSideEffectInfo::GetCallSideEffectInfo(&St_Table[st_idx],&inTable);
         // Here we assume that if we have a routine performing heap
         // (de)allocation that non- of the arguments escape.
         if (callInfo.isHeapAllocating() || callInfo.isHeapDeallocating())
           continue;
+
+        UINT32 argPos = 0;
+        for(list<CGNodeId>::const_iterator li = callsite->parms().begin();
+            li != callsite->parms().end(); ++li) {
+          UINT32 argAttr = callInfo.GetArgumentAttr(argPos++,NULL,
+                                                    !callsite->percN());
+
+          if(argAttr & CPA_no_ptr_deref_and_expose)
+            continue;
+
+          // If the argument is not being written and is not exposed to
+          // globals, then it does not escape.
+          UINT32 written = CPA_one_level_write|
+                           CPA_two_level_write|
+                           CPA_multi_level_write;
+          UINT32 exposed = CPA_exposed_to_globals|
+                           CPA_exposed_to_return; /* until connect this */
+          if (!(argAttr & (written|exposed)))
+            continue;
+
+          newPropEscapeNode(ConstraintGraph::cgNode(*li),CG_ST_FLAGS_LPROP_ESC);
+        }
+        if (callsite->returnId())
+          newContEscapeNode(ConstraintGraph::cgNode(callsite->returnId()),CG_ST_FLAGS_LCONT_ESC);
+        continue;
       }
       // The arguments to va_start() do not escape
       else if (callsite->intrinsic() == INTRN_VA_START)
         continue;
     }
-    // If we get here, mark all actual parameters as propagating
-    // and all actual returns as holding.
+
+    // If we get here, then we need to mark the actual parameter/return
+    // appropriately.  There are three possibilities:
+    // 1) We are not in -ipa mode, hence all actuals are propagating escape
+    // 2) During -ipa, if the call is direct to a non-external function,
+    //    the actuals are not escaping.
+    // 3) During -ipa, if the call is indirect, we have hooked up all
+    //    possible callees, so the actuals are not escaping
+    if ( _ipaMode != IPANo && callsite->isDirect() && !callsite->isIntrinsic() &&
+        ST_sclass(St_Table[callsite->st_idx()]) != SCLASS_EXTERN)  /* (2) */
+      continue;
+
+    if (_ipaMode == IPAComplete && callsite->isIndirect())  /* (3) */
+      continue;
+
     for (list<CGNodeId>::const_iterator li = callsite->parms().begin();
         li != callsite->parms().end(); ++li)
       newPropEscapeNode(ConstraintGraph::cgNode(*li),CG_ST_FLAGS_LPROP_ESC);
@@ -331,6 +370,13 @@ EscapeAnalysis::exposed(CG_ST_IDX idx)
   return false;
 }
 
+bool
+EscapeAnalysis::formalsEscape(ConstraintGraph *graph) const
+{
+  // This routine is more interesting for the IPA case
+  return true;
+}
+
 void
 EscapeAnalysis::init(void)
 {
@@ -348,32 +394,35 @@ EscapeAnalysis::initGraph(ConstraintGraph *graph)
    *   in a separate walk where we take into account the
    *   any known semantics of the callee.
    */
-   for (CGNodeToIdMapIterator iter = graph->lBegin();
-       iter != graph->lEnd(); ++iter) {
-     ConstraintGraphNode *node = iter->first;
-     if (node->checkFlags(CG_NODE_FLAGS_FORMAL_PARAM))
-       newContEscapeNode(node,CG_ST_FLAGS_LCONT_ESC);
-     if (node->checkFlags(CG_NODE_FLAGS_FORMAL_RETURN))
-       newPropEscapeNode(node,CG_ST_FLAGS_RETPROP_ESC);
-     // Global variables are only considered candidates for escape
-     // analysis iff:
-     // (1) We are not computing summary.  When computing summary,
-     //     globals are context insensitive (and should be in
-     //     another graph) and are irrelevant.
-     // (2) We are not in whole program mode.  If we are in whole
-     //     program mode, the only globals that are considered to
-     //     be escaped are "libc globals"
-     //     TODO:  Handle "libc globals" here
-     // (3) The global is visible outside the scope of the scope
-     //     of analysis, e.g. object file at -O2 or load module
-     //     under -ipa.  We ask is it "exposed"?
-     if (!_summaryMode &&
-         !_wholeProgramMode &&
-         node->stInfo()->checkFlags(CG_ST_FLAGS_GLOBAL) &&
-         exposed(node->cg_st_idx()))
-       newFullEscapeNode(node,CG_ST_FLAGS_LFULL_ESC);
-   }
-   examineCallSites(graph);
+  bool escFormals = formalsEscape(graph);
+  for (CGNodeToIdMapIterator iter = graph->lBegin();
+      iter != graph->lEnd(); ++iter) {
+    ConstraintGraphNode *node = iter->first;
+    if (escFormals) {
+      if (node->checkFlags(CG_NODE_FLAGS_FORMAL_PARAM))
+        newContEscapeNode(node,CG_ST_FLAGS_LCONT_ESC);
+      if (node->checkFlags(CG_NODE_FLAGS_FORMAL_RETURN))
+        newPropEscapeNode(node,CG_ST_FLAGS_RETPROP_ESC);
+    }
+    // Global variables are only considered candidates for escape
+    // analysis iff:
+    // (1) We are not computing summary.  When computing summary,
+    //     globals are context insensitive (and should be in
+    //     another graph) and are irrelevant.
+    // (2) We are not in whole program mode.  If we are in whole
+    //     program mode, the only globals that are considered to
+    //     be escaped are "libc globals"
+    //     TODO:  Handle "libc globals" here
+    // (3) The global is visible outside the scope of the scope
+    //     of analysis, e.g. object file at -O2 or load module
+    //     under -ipa.  We ask is it "exposed"?
+    if (!_summaryMode &&
+        !_wholeProgramMode &&
+        node->stInfo()->checkFlags(CG_ST_FLAGS_GLOBAL) &&
+        exposed(node->cg_st_idx()))
+      newFullEscapeNode(node,CG_ST_FLAGS_LFULL_ESC);
+  }
+  examineCallSites(graph);
 }
 
 void
@@ -502,11 +551,11 @@ EscapeAnalysis::processFullEscapeNode(ConstraintGraphNode *node)
        PointsTo &pts = *pti;
        for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
          ConstraintGraphNode *revNode = ConstraintGraph::cgNode(*iter);
-         newContEscapeNode(ConstraintGraph::cgNode(*iter),stFlags);
-         if (!_graph || node->cg() == _graph)
+         newContEscapeNode(revNode,stFlags);
+         if (!_graph || revNode->cg() == _graph)
            if (!_summaryMode ||
                !(stFlags & (CG_ST_FLAGS_GLOBAL|CG_ST_FLAGS_NOCNTXT)))
-             addStFlags(node,CG_ST_FLAGS_LCONT_ESCLCL);
+             addStFlags(revNode,CG_ST_FLAGS_LCONT_ESCLCL);
        }
      }
    }

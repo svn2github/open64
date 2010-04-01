@@ -13,9 +13,14 @@
 class EscapeAnalysis {
 
 public:
+  enum Mode {
+    IPANo,          // Not IPA Mode
+    IPAIncomplete,  // IPA with missing indirect call edges
+    IPAComplete,    // IPA with all possible indirect call edges
+  };
   EscapeAnalysis(ConstraintGraph *graph, bool summary, MEM_POOL *memPool)
   : _summaryMode(summary),
-    _ipaMode(false),
+    _ipaMode(IPANo),
     _wholeProgramMode(false),
     _observedCnt(0),
     _localEscapeCnt(0),
@@ -34,14 +39,15 @@ public:
   UINT32 escapeStFlags(const ConstraintGraphNode *node) const;
 
 protected:
-  void ipaMode(bool val)            { _ipaMode = val; }
-  bool ipaMode(void) const          { return _ipaMode; }
+  void ipaMode(Mode val)            { _ipaMode = val; }
+  Mode ipaMode(void) const          { return _ipaMode; }
 
   void wholeProgramMode(bool val)   { _wholeProgramMode = val; }
   bool wholeProgramMode(void) const { return _wholeProgramMode; }
 
   virtual   void init(void);
   virtual   void computeReversePointsTo(void);
+  virtual   bool formalsEscape(ConstraintGraph *graph) const;
 
   void initGraph(ConstraintGraph *graph);
   void updateReversePointsTo(ConstraintGraphNode *node);
@@ -63,7 +69,6 @@ private:
   typedef hash_map<StTableKey,UINT32,hashStTableData,equalStTableData> StTable;
 
 
-  //void ipaInit(void);
   bool observed(ConstraintGraphNode *node);
   void newContEscapeNode(ConstraintGraphNode *node, UINT32 flags);
   void newPropEscapeNode(ConstraintGraphNode *node, UINT32 flags);
@@ -83,8 +88,8 @@ private:
   bool      exposed(CG_ST_IDX idx);
 
   bool             _summaryMode;
-  bool             _ipaMode;
   bool             _wholeProgramMode;
+  Mode             _ipaMode;
   UINT32           _observedCnt;
   UINT32           _localEscapeCnt;
   UINT32           _globalEscapeCnt;
