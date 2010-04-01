@@ -914,16 +914,23 @@ public:
 
   // Find and apply the modulus for the provided offset.  The
   // result is the adjusted offset.
-  UINT32 applyModulus(UINT32 offset) {
-    if (!checkFlags(CG_ST_FLAGS_MODRANGE))
+  UINT32 applyModulus(UINT32 offset, UINT32 &start) {
+    if (!checkFlags(CG_ST_FLAGS_MODRANGE)) {
+      start = 0;
       return offset % _u._modulus;
+    }
     else {
-      UINT32 start, end;
+      UINT32 end;
       // Apply the outer most modulus always before the inner ranges
       offset = offset % _u._modRange->mod();
       UINT32 modulus = _u._modRange->modulus(offset,start,end);
-      return start + offset % modulus;
+      return start + ((offset-start)%modulus);
     }
+  }
+
+  UINT32 applyModulus(UINT32 offset) {
+    UINT32 start;
+    return applyModulus(offset,start);
   }
 
   // Called after constraint graph is constructed to apply the final

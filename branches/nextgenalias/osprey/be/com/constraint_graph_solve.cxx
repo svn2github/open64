@@ -485,13 +485,13 @@ ConstraintGraphNode::postProcessPointsTo(PointsTo &adjustSet)
         // Handle changes in the size of the modulus that may have
         // made the current offset "out of bounds".  The modulus
         // applied to an offset is defined by a range, start...end.
-        // We can infer the start offset by applying the modulus to
-        // the current offset
+        UINT32 startOffset;
         UINT32 modulus = node->stInfo()->getModulus(node->offset());
-        // applyOffset = startOffset + node->offset() % modulus
-        UINT32 applyOffset = node->stInfo()->applyModulus(node->offset());
-        UINT32 startOffset = applyOffset - (node->offset() % modulus);
-        if (node->offset() >= (startOffset+modulus)) {
+        UINT32 applyOffset =
+            node->stInfo()->applyModulus(node->offset(),startOffset);
+        if (node->offset() < (startOffset+modulus))
+          adjustSet.setBit(node->id());
+        else {
           if (!node->repParent()) {
             fprintf(stderr,"Insanity in StInfo %p\n",node->stInfo());
             node->stInfo()->print(stderr,true);
@@ -506,8 +506,6 @@ ConstraintGraphNode::postProcessPointsTo(PointsTo &adjustSet)
           if (node->offset() == -1)
             continue;
         }
-        else
-          adjustSet.setBit(node->id());
 
         // Now we walk from offset to offset+accessSize and deal
         // with any wrap around that may occur at 'modulus'
