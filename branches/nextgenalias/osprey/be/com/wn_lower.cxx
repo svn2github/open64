@@ -2995,7 +2995,9 @@ static WN *lower_linearize_array_addr(WN *block, WN *tree,
 
   result = lower_expr(block, result, actions);
 
-  WN_Delete(tree);	    /* ARRAY node not used */
+  // We should not be deleting this array tree as this
+  // leaves the consumer hanging with an invalid kid.
+  //WN_Delete(tree);	    /* ARRAY node not used */
 
   return result;
 }
