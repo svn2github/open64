@@ -545,7 +545,8 @@ doesFormatStringContainPercN(WN* call_node, UINT32 format_arg_pos)
 {
   // get format string argument 
   WN* format_node = WN_kid0(WN_kid(call_node, format_arg_pos));
-  if ((ST_sym_class(WN_st(format_node)) == CLASS_CONST) &&
+  if ((WN_operator(format_node) == OPR_LDA) &&
+      (ST_sym_class(WN_st(format_node)) == CLASS_CONST) &&
       (TCON_ty(STC_val(WN_st(format_node))) == MTYPE_STRING))
   {
     char* format_string = Targ_Print(NULL, STC_val(WN_st(format_node)));
