@@ -1765,6 +1765,7 @@ ST::Print (FILE *f, BOOL verbose) const
 	    if (flags & PU_IS_EXTERN_INLINE) fprintf (f, " extern_inline");
 	    if (flags & PU_IS_MARKED_INLINE) fprintf (f, " inline_keyword");
 	    if (flags & PU_NO_INSTRUMENT) fprintf (f, " no_instrument");
+	    if (flags & PU_HAS_ATTR_MALLOC) fprintf (f, " attr_malloc");
 	    if (flags & PU_NEED_TRAMPOLINE) fprintf (f, " need_trampoline");
 #endif
 #ifdef TARG_X8664

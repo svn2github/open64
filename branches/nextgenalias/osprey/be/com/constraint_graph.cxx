@@ -20,7 +20,7 @@ bool ConstraintGraph::isIPA = false;
 ConstraintGraph *ConstraintGraph::globalConstraintGraph = NULL;
 ConstraintGraphNode *ConstraintGraph::notAPointerCGNode = NULL;
 ConstraintGraphNode *ConstraintGraph::blackHoleCGNode = NULL;
-CGIdToNodeMap ConstraintGraph::cgIdToNodeMap(1024);
+CGIdToNodeMap ConstraintGraph::cgIdToNodeMap(8192);
 const PointsTo ConstraintGraphNode::emptyPointsToSet;
 const CGEdgeSet ConstraintGraphNode::emptyCGEdgeSet;
 
@@ -348,6 +348,49 @@ ModulusRange::print(ostream &str,UINT32 indent)
     _child->print(str,indent+2);
   if (_next)
     _next->print(str,indent);
+}
+
+StInfo::StInfo(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
+  : _flags(flags),
+    _varSize(0),
+    _maxOffsets(32),
+    _numOffsets(0),
+    _firstOffset(0),
+    _ty_idx(ty_idx),
+    _memPool(memPool)
+{
+  TY& ty = Ty_Table[_ty_idx];
+  // For arrays set size to element size
+  if (TY_kind(ty) == KIND_ARRAY) {
+    TY_IDX etyIdx = TY_etype(ty);
+    // We need to dive into multi-dimensional arrays
+    // to determine the actual element size
+    while (TY_kind(Ty_Table[etyIdx]) == KIND_ARRAY)
+      etyIdx = TY_etype(Ty_Table[etyIdx]);
+    TY &etype = Ty_Table[etyIdx];
+    _varSize = TY_size(etype);
+  } else
+    _varSize = TY_size(ty);
+  // As a fall back we resort to setting the size to the
+  // current pointer size to ensure a valid modulus for
+  // this type.
+  if (_varSize == 0)
+    _varSize = Pointer_Size;
+
+  if (TY_kind(ty) == KIND_FUNCTION)
+    _u._modulus = 1;
+  else if (TY_kind(ty) != KIND_STRUCT || ModulusRange::flat(ty) ||
+           TY_size(ty) <= Pointer_Size)
+    _u._modulus = _varSize;
+  else {
+    addFlags(CG_ST_FLAGS_MODRANGE);
+    _u._modRange = ModulusRange::build(ty_idx,0,memPool);
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+      _u._modRange->print(stderr);
+  }
+
+  // Treat every symbol as context-insensitive
+  addFlags(CG_ST_FLAGS_NOCNTXT);
 }
 
 StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
@@ -711,9 +754,6 @@ calleeReturnsNewMemory(const WN *const call_wn)
     if (call_info.isHeapAllocating())
       return TRUE;
 
-    if (!strcmp(ST_name(st), "sre_malloc"))
-      return TRUE;
-//  !strcmp(ST_name(PU_Info_proc_sym(Current_PU_Info)), "AllocPlan7Shell"))
   }
   else if (WN_operator(call_wn) == OPR_INTRINSIC_CALL) {
     if ((WN_intrinsic(call_wn) == INTRN_U4I4ALLOCA) ||
@@ -1000,15 +1040,25 @@ ConstraintGraph::handleAlloca(WN *stmt)
   } else {
     TY_IDX stack_ty_idx = TY_pointed(stack_ptr_ty);
     // We create a local variable that represents the dynamically
-    // allocated stack location
-    // If the pointed to type is a struct, create a symbol of that type
-    // else create a symbol of maxTypeSize
+    // allocated stack location.
+    // Create a symbol based in the pointed to type
     ST *stackST = Gen_Temp_Named_Symbol(stack_ty_idx, "_cgStack",
                                         CLASS_VAR, SCLASS_AUTO);
     ConstraintGraphNode *stackCGNode = getCGNode(CG_ST_st_idx(stackST), 0);
     stInfo(stackCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_STACK);
     return stackCGNode;
   }
+}
+
+static bool
+isLHSaPointer(WN *stmt)
+{
+  TY_IDX stmt_ty;
+  if (stmtStoresReturnValueToCaller(stmt))
+    stmt_ty = TY_ret_type(Ty_Table[PU_prototype(Get_Current_PU())]);
+  else
+    stmt_ty = WN_object_ty(stmt);
+  return (TY_kind(stmt_ty) == KIND_POINTER);
 }
 
 WN *
@@ -1024,8 +1074,7 @@ ConstraintGraph::handleAssignment(WN *stmt)
   // doing an indirect store, mark lhs as not a pointer.
   // If rhs is not a pointer, we do not need a copy/store edge to the lhs
   if (!exprMayPoint(rhs)) {
-    if ((TY_kind(WN_object_ty(stmt)) != KIND_POINTER) &&
-        OPERATOR_is_scalar_store(WN_operator(stmt)))
+    if (!isLHSaPointer(stmt) && OPERATOR_is_scalar_store(WN_operator(stmt)))
       cgNodeLHS->addFlags(CG_NODE_FLAGS_NOT_POINTER);
     return WN_next(stmt);
   }
@@ -1915,79 +1964,6 @@ ConstraintGraphNode::_getPointsTo(CGEdgeQual qual, PointsToList **ptl)
     pts = newPTL->pointsTo();
   }
   return *pts;
-}
-
-// Here we are connecting the actuals from the provided callsite
-// to the formals of the callee constraint graph.  Any new edges
-// added are inserted into the edge "delta" for the next solution
-// pass.
-void
-ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
-                         ST *calleeST, EdgeDelta &delta)
-{
-  CallSite *cs = callSite(id);
-
-  // Connect actual parameters in caller to formals of callee
-  list<CGNodeId>::const_iterator actualIter = cs->parms().begin();
-  list<CGNodeId>::const_iterator formalIter = callee->parameters().begin();
-  ConstraintGraphNode *lastFormal = NULL;
-  for (; actualIter != cs->parms().end() && formalIter != callee->parameters().end();
-      ++actualIter, ++formalIter) {
-    ConstraintGraphNode *actual = cgNode(*actualIter);
-    ConstraintGraphNode *formal = cgNode(*formalIter);
-    lastFormal = formal;
-    if (actual->checkFlags(CG_NODE_FLAGS_NOT_POINTER) ||
-        formal->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
-      continue;
-
-    bool added = false;
-    INT64 size = formal->stInfo()->varSize();
-    ConstraintGraphEdge *edge = addEdge(actual->parent(),formal->parent(),
-                                        ETYPE_COPY,CQ_DN,size,added);
-    if (added)
-      delta.add(edge);
-  }
-
-  // If we have more actuals than formals either we either have a
-  // signature mismatch or varargs.  For now we don't worry about
-  // the other mismatch cases.
-  if (actualIter != cs->parms().end() &&
-      formalIter == callee->parameters().end() &&
-      TY_is_varargs(ST_pu_type(calleeST))) {
-    // Hook up remaining actuals to the "varargs" node
-    FmtAssert(callee->stInfo(lastFormal->cg_st_idx())
-                  ->checkFlags(CG_ST_FLAGS_VARARGS),
-                  ("Expect last formal to be varargs!\n"));
-    for ( ; actualIter != cs->parms().end(); ++actualIter) {
-      ConstraintGraphNode *actual = cgNode(*actualIter);
-      if (actual->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
-        continue;
-      INT64 size = actual->stInfo()->varSize();
-      bool added = false;
-      ConstraintGraphEdge *edge = addEdge(actual->parent(),lastFormal->parent(),
-                                          ETYPE_COPY,CQ_DN,size,added);
-      if (added)
-        delta.add(edge);
-    }
-  }
-
-  // Now connect the formal returns in callee to actual returns of caller
-  list<CGNodeId>::const_iterator retIter = callee->returns().begin();
-  ConstraintGraphNode *actualRet = cgNode(cs->returnId());
-  if (actualRet && !actualRet->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
-    for (; retIter != callee->returns().end(); ++retIter) {
-      ConstraintGraphNode *formalRet = cgNode(*retIter);
-      if (formalRet->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
-        continue;
-      INT64 size = actualRet->stInfo()->varSize();
-      bool added;
-      ConstraintGraphEdge *edge = 
-                addEdge(formalRet->parent(),actualRet->parent(),ETYPE_COPY,
-                        CQ_UP,size,added);
-      if (added)
-        delta.add(edge);
-    }
-  }
 }
 
 CGEdgeSet &

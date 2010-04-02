@@ -438,6 +438,8 @@ ConstraintGraph::nonIPASolver()
   escAnal.perform();
   escAnal.markEscaped();
 
+  escAnal.identifyMallocWrappers();
+
   return true;
 }
 

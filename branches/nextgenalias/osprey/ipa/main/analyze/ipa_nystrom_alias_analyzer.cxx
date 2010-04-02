@@ -607,6 +607,19 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
   // Adjust cg_st_idx with the current pu and file index
   _cgStInfoMap[cg_st_idx] = stInfo;
 
+
+  // Find max non-global st_idx 
+  SYMTAB_IDX level = ST_IDX_level(CG_ST_IDX(summ->cg_st_idx()));
+  if (level != GLOBAL_SYMTAB) {
+    FmtAssert(this != globalCG(), ("Expect this to be a local CG"));
+    UINT32 index     = ST_IDX_index(CG_ST_IDX(summ->cg_st_idx()));
+    UINT32 max_index = ST_IDX_index(_max_st_idx);
+    FmtAssert(_max_st_idx == 0 || (ST_IDX_level(_max_st_idx) == level),
+              ("Inconsistent SYMTAB_IDX"));
+    if (index > max_index)
+      _max_st_idx = make_ST_IDX(index, level);
+  }
+
   fprintf(stderr, "Adding StInfo old cg_stIdx: %llu "
           "new cg_st_idx: %llu to %s\n", summ->cg_st_idx(), cg_st_idx,
           (this == globalCG()) ? "global" : "local");
@@ -1182,4 +1195,157 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_VCG_FLAG))
     ConstraintGraphVCG::dumpVCG("ipa_final");
 
+}
+
+CG_ST_IDX
+ConstraintGraph::buildLocalStInfo(TY_IDX ty_idx)
+{
+  StInfo *stInfo = CXX_NEW(StInfo(ty_idx, CG_ST_FLAGS_IPA_LOCAL, _memPool),
+                           _memPool);
+  UINT32 index     = ST_IDX_index(_max_st_idx);
+  SYMTAB_IDX level = ST_IDX_level(_max_st_idx);
+  index++;
+  _max_st_idx = make_ST_IDX(index, level);
+  CG_ST_IDX cg_st_idx = adjustCGstIdx(_ipaNode, _max_st_idx);
+  _cgStInfoMap[cg_st_idx] = stInfo;
+  return cg_st_idx;
+}
+
+// Check if a preg node has a single outgoing copy edge and return its type
+static bool 
+copyTarget(ConstraintGraphNode *node, TY &ty)
+{
+  if (!node->stInfo()->checkFlags(CG_ST_FLAGS_PREG))
+    return false;
+  // Check if node has a single outgoing copy target
+  if (!node->outLoadStoreEdges().empty())
+    return false;
+  if (!node->inLoadStoreEdges().empty())
+    return false;
+  if (!node->inCopySkewEdges().empty())
+    return false;
+  const CGEdgeSet &edgeSet = node->outCopySkewEdges();
+  if (edgeSet.size() != 1)
+    return false;
+  CGEdgeSetIterator eiter = edgeSet.begin();
+  ConstraintGraphEdge *edge = *eiter;
+  if (edge->edgeType() != ETYPE_COPY)
+    return false;
+  ty = Ty_Table[edge->destNode()->parent()->stInfo()->ty_idx()];
+  return true;
+}
+
+// Here we are connecting the actuals from the provided callsite
+// to the formals of the callee constraint graph.  Any new edges
+// added are inserted into the edge "delta" for the next solution
+// pass.
+void
+ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
+                         ST *calleeST, EdgeDelta &delta)
+{
+  CallSite *cs = callSite(id);
+
+  // Connect actual parameters in caller to formals of callee
+  list<CGNodeId>::const_iterator actualIter = cs->parms().begin();
+  list<CGNodeId>::const_iterator formalIter = callee->parameters().begin();
+  ConstraintGraphNode *lastFormal = NULL;
+  for (; actualIter != cs->parms().end() && formalIter != callee->parameters().end();
+      ++actualIter, ++formalIter) {
+    ConstraintGraphNode *actual = cgNode(*actualIter);
+    ConstraintGraphNode *formal = cgNode(*formalIter);
+    lastFormal = formal;
+    if (actual->checkFlags(CG_NODE_FLAGS_NOT_POINTER) ||
+        formal->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+      continue;
+
+    bool added = false;
+    INT64 size = formal->stInfo()->varSize();
+    ConstraintGraphEdge *edge = addEdge(actual->parent(),formal->parent(),
+                                        ETYPE_COPY,CQ_DN,size,added);
+    if (added)
+      delta.add(edge);
+  }
+
+  // If we have more actuals than formals either we either have a
+  // signature mismatch or varargs.  For now we don't worry about
+  // the other mismatch cases.
+  if (actualIter != cs->parms().end() &&
+      formalIter == callee->parameters().end() &&
+      TY_is_varargs(ST_pu_type(calleeST))) {
+    // Hook up remaining actuals to the "varargs" node
+    FmtAssert(callee->stInfo(lastFormal->cg_st_idx())
+                  ->checkFlags(CG_ST_FLAGS_VARARGS),
+                  ("Expect last formal to be varargs!\n"));
+    for ( ; actualIter != cs->parms().end(); ++actualIter) {
+      ConstraintGraphNode *actual = cgNode(*actualIter);
+      if (actual->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+        continue;
+      INT64 size = actual->stInfo()->varSize();
+      bool added = false;
+      ConstraintGraphEdge *edge = addEdge(actual->parent(),lastFormal->parent(),
+                                          ETYPE_COPY,CQ_DN,size,added);
+      if (added)
+        delta.add(edge);
+    }
+  }
+
+  PU &calleePU = Pu_Table[ST_pu(calleeST)];
+  // If the callee is a malloc wrapper, create a heap CGNode and add
+  // it to the points to set of the actual return. The formal and actual
+  // return nodes are not connected.
+  if (PU_has_attr_malloc(calleePU)) {
+    // Get the type of the actual return
+    ConstraintGraphNode *actualRet = cgNode(cs->returnId())->parent();
+    TY &ret_type = Ty_Table[actualRet->stInfo()->ty_idx()];
+    TY_IDX heap_ty_idx;
+    if (TY_kind(ret_type) == KIND_POINTER)
+      heap_ty_idx = TY_pointed(ret_type);
+    else if (copyTarget(actualRet, ret_type) &&
+             TY_kind(ret_type) == KIND_POINTER)
+      heap_ty_idx = TY_pointed(ret_type);
+    else
+      FmtAssert(FALSE, ("**** Expecting KIND_POINTER *****"));
+     //  heap_ty_idx = MTYPE_To_TY(Pointer_type);
+    CG_ST_IDX new_cg_st_idx = buildLocalStInfo(heap_ty_idx);
+    ConstraintGraphNode *heapCGNode = getCGNode(new_cg_st_idx, 0);
+    heapCGNode->stInfo()->addFlags(CG_ST_FLAGS_HEAP);
+    actualRet->addPointsTo(heapCGNode, CQ_HZ);
+    fprintf(stderr, "Adding heap due to callee: %s to caller: %s\n",
+            ST_name(calleeST), ST_name(_ipaNode->Func_ST()));
+    heapCGNode->print(stderr);
+    heapCGNode->stInfo()->print(stderr);
+    // Add the in/out edges to the edge delta
+    CGEdgeSetIterator iter = actualRet->outCopySkewEdges().begin();
+    for (; iter != actualRet->outCopySkewEdges().end(); iter++)
+      delta.add(*iter);
+    iter = actualRet->outLoadStoreEdges().begin();
+    for (; iter != actualRet->outLoadStoreEdges().end(); iter++) {
+      if ((*iter)->edgeType() == ETYPE_LOAD)
+        delta.add(*iter);
+    }
+    iter = actualRet->inLoadStoreEdges().begin();
+    for (; iter != actualRet->inLoadStoreEdges().end(); iter++) {
+      if ((*iter)->edgeType() == ETYPE_STORE)
+        delta.add(*iter);
+    }
+    return;
+  }
+
+  // Now connect the formal returns in callee to actual returns of caller
+  list<CGNodeId>::const_iterator retIter = callee->returns().begin();
+  ConstraintGraphNode *actualRet = cgNode(cs->returnId());
+  if (actualRet && !actualRet->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+    for (; retIter != callee->returns().end(); ++retIter) {
+      ConstraintGraphNode *formalRet = cgNode(*retIter);
+      if (formalRet->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+        continue;
+      INT64 size = actualRet->stInfo()->varSize();
+      bool added;
+      ConstraintGraphEdge *edge = 
+                addEdge(formalRet->parent(),actualRet->parent(),ETYPE_COPY,
+                        CQ_UP,size,added);
+      if (added)
+        delta.add(edge);
+    }
+  }
 }

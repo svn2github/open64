@@ -38,6 +38,10 @@ public:
 
   UINT32 escapeStFlags(const ConstraintGraphNode *node) const;
 
+  // Check if the function corresponding to this ConstraintGraph
+  // is a malloc wrapper
+  void identifyMallocWrappers();
+
 protected:
   void ipaMode(Mode val)            { _ipaMode = val; }
   Mode ipaMode(void) const          { return _ipaMode; }

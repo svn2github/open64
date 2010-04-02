@@ -629,3 +629,74 @@ EscapeAnalysis::perform(void)
   }
 }
 
+void
+EscapeAnalysis::identifyMallocWrappers()
+{
+  hash_set<CGNodeId> nonEscapingHeaps;
+
+  for (CGNodeToIdMapIterator iter = _graph->lBegin(); 
+       iter != _graph->lEnd(); ++iter) {
+    ConstraintGraphNode *n = iter->first;
+    // Expect to have a single offset
+    if (n->stInfo()->numOffsets() != 1)
+      continue;
+    // Is a heap
+    if (!n->stInfo()->checkFlags(CG_ST_FLAGS_HEAP))
+      continue;
+    // No in/out edges
+    if (!n->inLoadStoreEdges().empty() || !n->inCopySkewEdges().empty() ||
+        !n->outLoadStoreEdges().empty() || !n->outCopySkewEdges().empty())
+      continue;
+    // Scan the reverse points-to set
+    for (PointsToIterator piter(n, true); piter != 0; ++piter) {
+      PointsTo &rpts = *piter;
+      for (PointsTo::SparseBitSetIterator bsi(&rpts, 0); bsi != 0; ++bsi) {
+        ConstraintGraphNode *rn = ConstraintGraph::cgNode(*bsi);
+        UINT32 flags = findStFlags(rn);
+        if ((flags & CG_ST_FLAGS_PROPAGATES) || (flags & CG_ST_FLAGS_OPAQUE))
+          return;
+      }
+    }
+    nonEscapingHeaps.insert(n->id());
+  }
+
+  if (nonEscapingHeaps.empty())
+    return;
+
+  if (_graph->returns().empty())
+    return;
+
+  for (list<CGNodeId>::const_iterator retIter = _graph->returns().begin();
+       retIter != _graph->returns().end(); retIter++) {
+    ConstraintGraphNode *formalRet = ConstraintGraph::cgNode(*retIter);
+    // Check if the return contain only the heap variables
+    for (PointsToIterator piter(formalRet); piter != 0; ++piter) {
+      PointsTo &pts = *piter;
+      for (PointsTo::SparseBitSetIterator bsi(&pts, 0); bsi != 0; ++bsi) {
+        CGNodeId id = *bsi;
+        if (id == _graph->blackHole()->id())
+          continue;
+        if (nonEscapingHeaps.find(id) == nonEscapingHeaps.end())
+          return;
+      }
+    }
+    // Check if all the heap variables are in the return
+    for (hash_set<CGNodeId>::const_iterator siter = nonEscapingHeaps.begin();
+         siter != nonEscapingHeaps.end(); siter++) {
+      CGNodeId h = *siter;
+      bool present = false;
+      for (PointsToIterator piter(formalRet); piter != 0; ++piter) {
+        PointsTo &pts = *piter;
+        if (pts.isSet(h)) {
+          present = true;
+          break;
+        }
+      }
+      if (!present)
+        return;
+    }
+  }
+
+  fprintf(stderr, "%s is malloc wrapper\n", ST_name(Get_Current_PU_ST()));
+  Set_PU_has_attr_malloc(Get_Current_PU());
+}

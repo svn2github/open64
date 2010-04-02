@@ -42,11 +42,12 @@ class EdgeDelta;
 #define CG_ST_FLAGS_MODRANGE  0x00008000 // Modulus ranges employed for
                                          // symbol stride tracking
 
-#define CG_ST_FLAGS_ADJUST_MODULUS 0x10000000 // Used during ConstraintGraph
+#define CG_ST_FLAGS_ADJUST_MODULUS 0x00010000 // Used during ConstraintGraph
                                               // construction during IPA
                                               // to call applyModulus
                                               // when merging two StInfos
                                               // of inconsistent modulus
+#define CG_ST_FLAGS_IPA_LOCAL      0x00020000
 
 // Symbol flags used during escape analysis
 #define CG_ST_FLAGS_CACHE        0x04000000
@@ -890,6 +891,9 @@ public:
     _u._modulus = 0;
   }
 
+  // To create local symbols during IPA
+  StInfo(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool);
+
   UINT32 flags() const { return _flags; }
   bool checkFlags(UINT32 flag) const { return _flags & flag; }
   void addFlags(UINT32 flag) { _flags |= flag; }
@@ -1144,6 +1148,7 @@ public:
     _cgNodeToIdMap(minSize),
     _cgStInfoMap(minSize),
     _ipaNode(ipaNode),
+    _max_st_idx(0),
     _memPool(mPool)
   {
     if (notAPointerCGNode == NULL) {
@@ -1221,6 +1226,8 @@ public:
   ConstraintGraphNode *checkCGNode(CG_ST_IDX cg_st_idx, INT64 offset);
 
   ConstraintGraphNode *handleAlloca(WN *stmt);
+
+  CG_ST_IDX buildLocalStInfo(TY_IDX ty_idx);
 
   void print(FILE *file);
 
@@ -1369,6 +1376,9 @@ private:
 
   // IPA call graph node corresponding to this CG
   IPA_NODE *_ipaNode;
+
+  // To track the max local st_idx 
+  UINT32 _max_st_idx;
 
   MEM_POOL *_memPool;
 };
