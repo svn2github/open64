@@ -1120,14 +1120,17 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
         // of the symbol of the node.
         if (node->offset() == -1)
           newOffset = -1;
-        else if (dst->inKCycle() == 0)
+        else if (dst->inKCycle() == 0) {
           newOffset = node->offset() + skew;
+          if (newOffset < 0) newOffset = -newOffset;
+        }
         else if (dst->inKCycle() < Pointer_Size)
           newOffset = -1;
         else {
           if (dst->inKCycle() < st->getModulus(node->offset()/*+skew?*/))
             st->setModulus(dst->inKCycle(),node->offset());
           newOffset = node->offset() + skew;
+          if (newOffset < 0) newOffset = -newOffset;
         }
         ConstraintGraphNode *skewNode = 
                        node->cg()->getCGNode(node->cg_st_idx(),newOffset);

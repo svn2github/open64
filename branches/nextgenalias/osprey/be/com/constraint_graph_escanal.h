@@ -52,6 +52,7 @@ protected:
   virtual   void init(void);
   virtual   void computeReversePointsTo(void);
   virtual   bool formalsEscape(ConstraintGraph *graph) const;
+  virtual   bool externalCall(ST_IDX idx) const;
 
   void initGraph(ConstraintGraph *graph);
   void updateReversePointsTo(ConstraintGraphNode *node);

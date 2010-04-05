@@ -296,30 +296,37 @@ EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
         if (callInfo.isHeapAllocating() || callInfo.isHeapDeallocating())
           continue;
 
-        UINT32 argPos = 0;
-        for(list<CGNodeId>::const_iterator li = callsite->parms().begin();
-            li != callsite->parms().end(); ++li) {
-          UINT32 argAttr = callInfo.GetArgumentAttr(argPos++,NULL,
-                                                    !callsite->percN());
+        // Here we process the actuals only for calls in the cse table.  Other
+        // calls are handled below.
+        if (inTable) {
+          UINT32 argPos = 0;
+          for(list<CGNodeId>::const_iterator li = callsite->parms().begin();
+              li != callsite->parms().end(); ++li) {
+            UINT32 argAttr = callInfo.GetArgumentAttr(argPos++,NULL,
+                                                      !callsite->percN());
 
-          if(argAttr & CPA_no_ptr_deref_and_expose)
-            continue;
+            if(argAttr & CPA_no_ptr_deref_and_expose)
+              continue;
 
-          // If the argument is not being written and is not exposed to
-          // globals, then it does not escape.
-          UINT32 written = CPA_one_level_write|
-                           CPA_two_level_write|
-                           CPA_multi_level_write;
-          UINT32 exposed = CPA_exposed_to_globals|
-                           CPA_exposed_to_return; /* until connect this */
-          if (!(argAttr & (written|exposed)))
-            continue;
+            // If the argument is not being written and is not exposed to
+            // globals, then it does not escape.
+            UINT32 written = CPA_one_level_write|
+                CPA_two_level_write|
+                CPA_multi_level_write;
+            UINT32 exposed = CPA_exposed_to_globals|
+                CPA_exposed_to_return; /* until connect this */
+            if (!(argAttr & (written|exposed)))
+              continue;
 
-          newPropEscapeNode(ConstraintGraph::cgNode(*li),CG_ST_FLAGS_LPROP_ESC);
+            newPropEscapeNode(ConstraintGraph::cgNode(*li),CG_ST_FLAGS_LPROP_ESC);
+          }
+          if (callsite->returnId()) {
+            fprintf(stderr,"ESCANAL: call to %s\n",ST_name(st_idx));
+            newContEscapeNode(ConstraintGraph::cgNode(callsite->returnId()),
+                              CG_ST_FLAGS_LCONT_ESC);
+          }
+          continue;
         }
-        if (callsite->returnId())
-          newContEscapeNode(ConstraintGraph::cgNode(callsite->returnId()),CG_ST_FLAGS_LCONT_ESC);
-        continue;
       }
       // The arguments to va_start() do not escape
       else if (callsite->intrinsic() == INTRN_VA_START)
@@ -334,7 +341,7 @@ EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
     // 3) During -ipa, if the call is indirect, we have hooked up all
     //    possible callees, so the actuals are not escaping
     if ( _ipaMode != IPANo && callsite->isDirect() && !callsite->isIntrinsic() &&
-        ST_sclass(St_Table[callsite->st_idx()]) != SCLASS_EXTERN)  /* (2) */
+        !externalCall(callsite->st_idx()))  /* (2) */
       continue;
 
     if (_ipaMode == IPAComplete && callsite->isIndirect())  /* (3) */
@@ -343,8 +350,13 @@ EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
     for (list<CGNodeId>::const_iterator li = callsite->parms().begin();
         li != callsite->parms().end(); ++li)
       newPropEscapeNode(ConstraintGraph::cgNode(*li),CG_ST_FLAGS_LPROP_ESC);
-    if (callsite->returnId())
-      newContEscapeNode(ConstraintGraph::cgNode(callsite->returnId()),CG_ST_FLAGS_LCONT_ESC);
+    if (callsite->returnId()) {
+      fprintf(stderr,"ESCANAL: call to %s\n",
+              callsite->isDirect()&&!callsite->isIntrinsic()?
+                  ST_name(callsite->st_idx()):"???");
+      newContEscapeNode(ConstraintGraph::cgNode(callsite->returnId()),
+                        CG_ST_FLAGS_LCONT_ESC);
+    }
   }
 }
 
@@ -377,6 +389,13 @@ EscapeAnalysis::formalsEscape(ConstraintGraph *graph) const
   return true;
 }
 
+bool
+EscapeAnalysis::externalCall(ST_IDX idx) const
+{
+  // All calls are external for non-ipa compiles
+  return true;
+}
+
 void
 EscapeAnalysis::init(void)
 {
@@ -399,8 +418,10 @@ EscapeAnalysis::initGraph(ConstraintGraph *graph)
       iter != graph->lEnd(); ++iter) {
     ConstraintGraphNode *node = iter->first;
     if (escFormals) {
-      if (node->checkFlags(CG_NODE_FLAGS_FORMAL_PARAM))
+      if (node->checkFlags(CG_NODE_FLAGS_FORMAL_PARAM)) {
+        fprintf(stderr,"ESCANAL: formal of %s\n",graph->name());
         newContEscapeNode(node,CG_ST_FLAGS_LCONT_ESC);
+      }
       if (node->checkFlags(CG_NODE_FLAGS_FORMAL_RETURN))
         newPropEscapeNode(node,CG_ST_FLAGS_RETPROP_ESC);
     }
@@ -568,7 +589,9 @@ EscapeAnalysis::markEscaped(void)
   for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
       iter != ConstraintGraph::gEnd(); iter++) {
     ConstraintGraphNode *node = iter->second;
-    if (escapeStFlags(node) & CG_ST_FLAGS_ESCALL) {
+    if (escapeStFlags(node) & (CG_ST_FLAGS_HOLDING|
+                               CG_ST_FLAGS_HOLDING_ESC|
+                               CG_ST_FLAGS_OPAQUE)) {
       // The "black hole" is meant to represent all memory that is possibly
       // accessed by symbols that have references outside the scope of the
       // current procedure.

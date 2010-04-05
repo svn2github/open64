@@ -653,9 +653,11 @@ ConstraintGraph::buildModRange(UINT32 modRangeIdx, IPA_NODE *ipaNode)
 class IPA_EscapeAnalysis : public EscapeAnalysis
 {
 public:
-  IPA_EscapeAnalysis(IPACGMap *map, bool wholePrgMode,
+  IPA_EscapeAnalysis(STToNodeMap &stToIPANodeMap,
+                     IPACGMap &map, bool wholePrgMode,
                      Mode mode, MEM_POOL *memPool) :
     EscapeAnalysis(NULL,false,memPool),
+    _stToNodeMap(stToIPANodeMap),
     _ipaCGMap(map)
   {
     ipaMode(mode);
@@ -665,24 +667,24 @@ public:
   void init();
   void computeReversePointsTo();
   bool formalsEscape(ConstraintGraph *graph) const;
+  bool externalCall(ST_IDX idx) const;
 
 private:
-  IPACGMap *_ipaCGMap;
+  IPACGMap       &_ipaCGMap;
+  STToNodeMap    &_stToNodeMap;
 };
 
 void
 IPA_EscapeAnalysis::init(void)
 {
   // Walk each of the PU constraint graphs
-  IPACGMap *map = _ipaCGMap;
-  for (IPACGMapIterator iter = map->begin();
-       iter != map->end(); ++iter) {
+  IPACGMap &map = _ipaCGMap;
+  for (IPACGMapIterator iter = map.begin();
+       iter != map.end(); ++iter) {
     initGraph(iter->second);
   }
   // Don't forget about the global constraint graph
   initGraph(ConstraintGraph::globalCG());
-
-
 }
 
 void
@@ -718,6 +720,14 @@ IPA_EscapeAnalysis::formalsEscape(ConstraintGraph *graph) const
   // Be defensive...
   return true;
 }
+
+bool
+IPA_EscapeAnalysis::externalCall(ST_IDX idx) const
+{
+  STToNodeMap::iterator iter = _stToNodeMap.find(&St_Table[idx]);
+  return (iter == _stToNodeMap.end());
+}
+
 /*
  * Assemble the list of call edges in the IPA call graph, the list of all
  * possible indirect call targets, and all virtual call sites.
@@ -740,8 +750,6 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
                             list<IPAEdge> &edgeList,
                             list<pair<IPA_NODE *, CallSiteId> > &indirectCallList)
 {
-  STToNodeMap allFuncMap;
-
   hash_set<ST *,hashST,equalST> calledFunc;
 
   IPA_NODE_ITER nodeIter(ipaCallGraph,DONTCARE);
@@ -773,9 +781,9 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
       ConstraintGraphNode *clrCGNode =
           ConstraintGraph::globalCG()->checkCGNode(st->st_idx,0);
       if (clrCGNode && clrCGNode->checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
-        _stToNodeMap[st] = caller;
+        _stToIndTgtMap[st] = caller;
     }
-    allFuncMap[st] = caller;
+    _stToIPANodeMap[st] = caller;
 
     // Collect the indirect/virtual callsites
     SUMMARY_PROCEDURE *sumProc = caller->Summary_Proc();
@@ -803,8 +811,8 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
     for (hash_set<ST*,hashST,equalST>::iterator iter = calledFunc.begin();
         iter != calledFunc.end(); ++iter) {
       ST *calledFuncST = *iter;
-      STToNodeMap::iterator i3 = allFuncMap.find(calledFuncST);
-      if (i3 == allFuncMap.end()) {
+      STToNodeMap::iterator i3 = _stToIPANodeMap.find(calledFuncST);
+      if (i3 == _stToIPANodeMap.end()) {
         bool inTable = false;
         CallSideEffectInfo::GetCallSideEffectInfo(calledFuncST,&inTable);
         if (!inTable)
@@ -813,8 +821,8 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
       }
     }
 
-    for (STToNodeMap::iterator i1 = _stToNodeMap.begin();
-        i1 != _stToNodeMap.end(); ++i1) {
+    for (STToNodeMap::iterator i1 = _stToIndTgtMap.begin();
+        i1 != _stToIndTgtMap.end(); ++i1) {
       ST *st = i1->first;
       IPA_NODE *node = i1->second;
       fprintf(stderr,"Indirect call target: %s (%d)\n",ST_name(st),node->Node_Index());
@@ -922,8 +930,8 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
         }
         ST_IDX stIdx = SYM_ST_IDX(node->cg_st_idx());
         ST *st = &St_Table[stIdx];
-        STToNodeMap::const_iterator ni = _stToNodeMap.find(st);
-        if (ni == _stToNodeMap.end()) {
+        STToNodeMap::const_iterator ni = _stToIndTgtMap.find(st);
+        if (ni == _stToIndTgtMap.end()) {
           FmtAssert(ST_sclass(st) == SCLASS_EXTERN,
                      ("Expect func not in call graph to be extern"));
            // assume whole program mode for the moment
@@ -989,8 +997,8 @@ IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGra
         if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
           fprintf(stderr,"Incomplete Indirect Call: %s (%d) %s maps to CGNodeId: %d\n",
                   caller->Name(),id,icallNode->stName(),cs->cgNodeId());
-        STToNodeMap::const_iterator iter = _stToNodeMap.begin();
-        for (; iter != _stToNodeMap.end(); ++iter) {
+        STToNodeMap::const_iterator iter = _stToIndTgtMap.begin();
+        for (; iter != _stToIndTgtMap.end(); ++iter) {
           const ST *st = iter->first;
           IPA_NODE *ipaNode = iter->second;
           IPAEdge newEdge(caller->Node_Index(),ipaNode->Node_Index(),id);
@@ -1139,7 +1147,8 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
   // We perform escape analysis to determine which symbols may point
   // to memory that is not visible within our scope.
-  IPA_EscapeAnalysis escAnal(&_ipaConstraintGraphs,
+  IPA_EscapeAnalysis escAnal(_stToIPANodeMap,
+                             _ipaConstraintGraphs,
                              IPA_Enable_Whole_Program_Mode,
                              EscapeAnalysis::IPAIncomplete,
                              &_memPool);
@@ -1173,7 +1182,8 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
                 (char *)sbrk2 - (char *)sbrk1);
   }
 
-  IPA_EscapeAnalysis escAnalFinal(&_ipaConstraintGraphs,
+  IPA_EscapeAnalysis escAnalFinal(_stToIPANodeMap,
+                                  _ipaConstraintGraphs,
                                   IPA_Enable_Whole_Program_Mode,
                                   EscapeAnalysis::IPAComplete,
                                   &_memPool);
@@ -1194,7 +1204,6 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_VCG_FLAG))
     ConstraintGraphVCG::dumpVCG("ipa_final");
-
 }
 
 CG_ST_IDX
@@ -1213,7 +1222,7 @@ ConstraintGraph::buildLocalStInfo(TY_IDX ty_idx)
 
 // Check if a preg node has a single outgoing copy edge and return its type
 static bool 
-copyTarget(ConstraintGraphNode *node, TY &ty)
+copyTarget(ConstraintGraphNode *node, TY_IDX &ty_idx/*TY &ty*/)
 {
   if (!node->stInfo()->checkFlags(CG_ST_FLAGS_PREG))
     return false;
@@ -1231,7 +1240,7 @@ copyTarget(ConstraintGraphNode *node, TY &ty)
   ConstraintGraphEdge *edge = *eiter;
   if (edge->edgeType() != ETYPE_COPY)
     return false;
-  ty = Ty_Table[edge->destNode()->parent()->stInfo()->ty_idx()];
+  ty_idx = edge->destNode()->parent()->stInfo()->ty_idx();
   return true;
 }
 
@@ -1298,14 +1307,16 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
     ConstraintGraphNode *actualRet = cgNode(cs->returnId())->parent();
     TY &ret_type = Ty_Table[actualRet->stInfo()->ty_idx()];
     TY_IDX heap_ty_idx;
+    TY_IDX copy_ty_idx;
     if (TY_kind(ret_type) == KIND_POINTER)
       heap_ty_idx = TY_pointed(ret_type);
-    else if (copyTarget(actualRet, ret_type) &&
-             TY_kind(ret_type) == KIND_POINTER)
-      heap_ty_idx = TY_pointed(ret_type);
-    else
-      FmtAssert(FALSE, ("**** Expecting KIND_POINTER *****"));
-     //  heap_ty_idx = MTYPE_To_TY(Pointer_type);
+    else if (copyTarget(actualRet, copy_ty_idx) &&
+             TY_kind(Ty_Table[copy_ty_idx]) == KIND_POINTER)
+      heap_ty_idx = TY_pointed(Ty_Table[copy_ty_idx]);
+    else {
+      //FmtAssert(FALSE, ("**** Expecting KIND_POINTER *****"));
+      heap_ty_idx = MTYPE_To_TY(Pointer_type);
+    }
     CG_ST_IDX new_cg_st_idx = buildLocalStInfo(heap_ty_idx);
     ConstraintGraphNode *heapCGNode = getCGNode(new_cg_st_idx, 0);
     heapCGNode->stInfo()->addFlags(CG_ST_FLAGS_HEAP);

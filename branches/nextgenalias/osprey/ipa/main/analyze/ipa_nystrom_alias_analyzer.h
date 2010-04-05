@@ -16,6 +16,15 @@ class IPA_EscapeAnalysis;
 typedef hash_map<NODE_INDEX, ConstraintGraph *> IPACGMap;
 typedef IPACGMap::const_iterator IPACGMapIterator;
 
+typedef struct {
+   size_t operator() (const ST * const&k) const { return (size_t)k; }
+ } hashSTToNode;
+typedef struct {
+   bool operator() (const ST * const &k1, ST * const&k2) const { return k1 == k2; }
+} equalSTToNode;
+typedef hash_map<ST *,IPA_NODE *,hashSTToNode,equalSTToNode> STToNodeMap;
+
+
 extern BOOL Write_ALIAS_CGNODE_Map;
 
 class IPANodeSCCInfo {
@@ -140,14 +149,6 @@ public:
   } equalIPAEdgeData;
   typedef hash_set<IPAEdge, hashIPAEdgeData, equalIPAEdgeData> IndirectEdgeSet;
 
-  typedef struct {
-    size_t operator() (const ST * const&k) const { return (size_t)k; }
-  } hashSTToNode;
-  typedef struct {
-    bool operator() (const ST * const &k1, ST * const&k2) const { return k1 == k2; }
-  } equalSTToNode;
-  typedef hash_map<ST *,IPA_NODE *,hashSTToNode,equalSTToNode> STToNodeMap;
-
 
 private:
 
@@ -177,8 +178,11 @@ private:
 
   // Mapping from ST * to IPA_NODE * to facilitate resolving indirect
   // call targets from the points-to set.
-  STToNodeMap _stToNodeMap;
+  STToNodeMap _stToIndTgtMap;
 
+  // Mapping from ST* to all functions in the IPA scope, used for
+  // determining calls to external functions.
+  STToNodeMap _stToIPANodeMap;
 };
 
 #endif
