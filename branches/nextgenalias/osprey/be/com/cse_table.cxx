@@ -448,6 +448,82 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       }
     },
     {
+      "_IO_getc",
+      CFAT_libc_default_attr &
+      ~(CFAT_exposes_argument_address_to_return |CFAT_exposes_argument_address_to_globals)
+      | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
+      | CFAT_argument_one_level_deref,
+      1,
+      { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write, }
+    },
+    {
+      "_IO_putc",
+      CFAT_libc_default_attr &
+      ~(CFAT_exposes_argument_address_to_return |CFAT_exposes_argument_address_to_globals)
+      | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
+      | CFAT_argument_one_level_deref,
+      2,
+      { 
+        0,
+        CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write,
+      }
+    },
+    {
+      "__rawmemchr",
+      CFAT_default_attr & ~CFAT_pure_call_attr_mask | CFAT_is_libc_entry 
+      |CFAT_argument_indirectly_read 
+      |CFAT_argument_one_level_deref |CFAT_exposes_argument_address_to_return,
+      2,
+      {
+        CPA_one_level_read |CPA_exposed_to_return, 
+        CPA_no_ptr_deref_and_expose
+      }
+    },
+    {
+      "__strtod_internal",
+      CFAT_libc_default_attr &
+      ~(CFAT_exposes_argument_address_to_return |CFAT_exposes_argument_address_to_globals)
+      | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
+      | CFAT_argument_one_level_deref,
+      2,
+      { CPA_one_level_read, CPA_one_level_write}
+    },
+    {
+      "__strtol_internal",
+      CFAT_libc_default_attr &
+      ~(CFAT_exposes_argument_address_to_return |CFAT_exposes_argument_address_to_globals)
+      | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
+      | CFAT_argument_one_level_deref,
+      3,
+      { CPA_one_level_read, CPA_one_level_write,CPA_no_ptr_deref_and_expose }
+    },
+    {
+      "__strtoll_internal",
+      CFAT_libc_default_attr &
+      ~(CFAT_exposes_argument_address_to_return |CFAT_exposes_argument_address_to_globals)
+      | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
+      | CFAT_argument_one_level_deref,
+      3,
+      { CPA_one_level_read, CPA_one_level_write,CPA_no_ptr_deref_and_expose }
+    },    {
+      "__strtoul_internal",
+      CFAT_libc_default_attr &
+      ~(CFAT_exposes_argument_address_to_return |CFAT_exposes_argument_address_to_globals)
+      | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
+      | CFAT_argument_one_level_deref,
+      3,
+      { CPA_one_level_read, CPA_one_level_write,CPA_no_ptr_deref_and_expose }
+    },
+    {
+      "__strtoull_internal",
+      CFAT_libc_default_attr &
+      ~(CFAT_exposes_argument_address_to_return |CFAT_exposes_argument_address_to_globals)
+      | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
+      | CFAT_argument_one_level_deref,
+      3,
+      { CPA_one_level_read, CPA_one_level_write,CPA_no_ptr_deref_and_expose }
+    },
+    {
       "_ZdaPv",
       CFAT_libcpp_default_attr &
       ~(CFAT_exposes_argument_address_to_return 
