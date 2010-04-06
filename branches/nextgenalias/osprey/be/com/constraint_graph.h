@@ -1016,7 +1016,8 @@ class IPA_NODE;
 class SUMMARY_CONSTRAINT_GRAPH_NODE;
 class SUMMARY_CONSTRAINT_GRAPH_STINFO;
 
-typedef list<pair<UINT32, PointsTo> > ListOffsetPointsTo;
+typedef list<pair<UINT32, PointsTo *> > OffsetPointsToList;
+typedef OffsetPointsToList::const_iterator OffsetPointsToListIterator;
 
 class ConstraintGraph 
 {
@@ -1264,8 +1265,13 @@ public:
   void processInitValues(ST_IDX st_idx);
   void processInito(const INITO *const inito);
   void processInitv(INITV_IDX initv_idx, PointsTo &pts);
-  ListOffsetPointsTo *processInitv(TY &ty, INITV_IDX initv_idx,
+  OffsetPointsToList *processInitv(TY &ty, INITV_IDX initv_idx,
                                    UINT32 startOffset, MEM_POOL *memPool);
+  OffsetPointsToList *processFlatInitvals(TY &ty,
+                                          INITV_IDX &initv_idx,
+                                          UINT32 startOffset,
+                                          UINT32 &repeat,
+                                          MEM_POOL *memPool);
 
 private:
 

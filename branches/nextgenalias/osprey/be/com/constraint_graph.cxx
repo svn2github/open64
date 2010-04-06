@@ -814,6 +814,8 @@ ConstraintGraph::genTempCGNode()
   return tmpCGNode;
 }
 
+// This just recursively processes all initvs starting from initv_idx
+// and adds any nodes that correspond to symbols to pts
 void
 ConstraintGraph::processInitv(INITV_IDX initv_idx, PointsTo &pts)
 {
@@ -829,8 +831,11 @@ ConstraintGraph::processInitv(INITV_IDX initv_idx, PointsTo &pts)
       ConstraintGraphNode *node;
       if (ST_class(base_st) == CLASS_CONST)
         node = notAPointer();
-      else
+      else {
+        // Do initial value processing for the symbol
+        processInitValues(ST_st_idx(base_st));
         node = getCGNode(CG_ST_st_idx(base_st), base_offset);
+      }
       pts.setBit(node->id());
     } 
     else if (INITV_kind(initv) == INITVKIND_ZERO ||
@@ -847,11 +852,92 @@ ConstraintGraph::processInitv(INITV_IDX initv_idx, PointsTo &pts)
   }
 }
 
-ListOffsetPointsTo *
+// Special handling for arrays/structs whose init values are not enclosed
+// in INITVKIND_BLOCK, but instead provided as a list of INITVKIND_VAL.
+// Parses through the INITVKIND_VALs/PADs and updates initv_idx
+OffsetPointsToList *
+ConstraintGraph::processFlatInitvals(TY &ty, 
+                                     INITV_IDX &initv_idx,
+                                     UINT32 startOffset, 
+                                     UINT32 &repeat,
+                                     MEM_POOL *memPool)
+{
+  FmtAssert(TY_kind(ty) == KIND_ARRAY || TY_kind(ty) == KIND_STRUCT,
+            ("Expecting KIND_ARRAY or KIND_STRUCT"));
+  FmtAssert(INITV_kind(Initv_Table[initv_idx]) == INITVKIND_VAL ||
+            INITV_kind(Initv_Table[initv_idx]) == INITVKIND_PAD,
+            ("Expecting INITVKIND_VAL or INITVKIND_PAD"));
+  UINT32 size = 0;
+  // Iterate over all INITVKIND_VALs/PADs until size of ty
+  UINT32 rep = 0;
+  while (size < TY_size(ty) && initv_idx != 0) {
+    rep++;
+    const INITV &initv = Initv_Table[initv_idx];
+    FmtAssert(INITV_kind(initv) == INITVKIND_PAD ||
+              INITV_kind(initv) == INITVKIND_VAL, 
+               ("Expecting INITVKIND_PAD || INITVKIND_VAL"));
+    if (INITV_kind(initv) == INITVKIND_PAD) {
+      size += INITV_pad(initv);
+    } else if (TCON_ty(INITV_tc_val(initv)) == MTYPE_STR) {
+      size += TCON_str_len(INITV_tc_val(initv));
+    } else {
+      size += MTYPE_byte_size(TCON_ty(INITV_tc_val(initv)));
+    }
+    // Check number of times this initv has been used and proceed to next
+    // if repeat factor has been exhausted and we haven't accounted for all
+    // of TY_size
+    if ((INITV_kind(initv) == INITVKIND_PAD || 
+        (INITV_kind(initv) == INITVKIND_VAL && rep == INITV_repeat2(initv))) &&
+         size < TY_size(ty)) {
+      initv_idx = INITV_next(initv);
+      rep = 0;
+    }
+  }
+  // Update the number of times the repeat factor was used
+  repeat = rep;
+  // FmtAssert(size == TY_size(ty), ("Inconsistent size"));
+  // With padding it is impossible to determine how many initvs
+  // constitute the initial value of this ty. So bail out if we are not able
+  // to verify this.
+  if (size != TY_size(ty))
+    return NULL;
+  PointsTo *pts = CXX_NEW(PointsTo(memPool), memPool);
+  pts->setBit(notAPointer()->id());
+  OffsetPointsToList *valList = CXX_NEW(OffsetPointsToList(), memPool);
+  valList->push_back(make_pair(startOffset, pts));
+  return valList;
+}
+
+static bool
+isFlatArrayOrStruct(TY &ty, INITV_IDX initv_idx)
+{
+  const INITV &initv = Initv_Table[initv_idx];
+  if ( (TY_kind(ty) == KIND_ARRAY || TY_kind(ty) == KIND_STRUCT) &&
+       (INITV_kind(initv) == INITVKIND_VAL || 
+        INITV_kind(initv) == INITVKIND_PAD) )
+    return true;
+
+  return false;
+}
+
+OffsetPointsToList *
 ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
                               MEM_POOL *memPool)
 {
   const INITV &initv = Initv_Table[initv_idx];
+
+  // Special handling for arrays/struct whose init values are not enclosed
+  // in INITVKIND_BLOCK, but instead provided as a list of INITVKIND_VAL/PAD
+  if (isFlatArrayOrStruct(ty, initv_idx)) {
+    UINT32 rep;
+    return processFlatInitvals(ty, initv_idx, startOffset, rep, memPool);
+  }
+
+  if (TY_kind(ty) == KIND_ARRAY || TY_kind(ty) == KIND_STRUCT) {
+    FmtAssert(INITV_kind(initv) == INITVKIND_BLOCK,
+              ("Expecting INITVKIND_BLOCK"));
+  }
+  
   if (INITV_kind(initv) == INITVKIND_SYMOFF) 
   {
     ST_IDX initv_st_idx = INITV_st(initv);
@@ -863,11 +949,18 @@ ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
     ConstraintGraphNode *node;
     if (ST_class(base_st) == CLASS_CONST)
       node = notAPointer();
-    else
+    else {
+      // Process the init vals of this symbol
+      if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG))
+        fprintf(stderr, "Processing symbol value...\n");
+      processInitValues(ST_st_idx(base_st));
+      if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG))
+        fprintf(stderr, "End processing symbol value...\n");
       node = getCGNode(CG_ST_st_idx(base_st), base_offset);
-    PointsTo pts(memPool);
-    pts.setBit(node->id());
-    ListOffsetPointsTo *valList = CXX_NEW(ListOffsetPointsTo(), memPool);
+    }
+    PointsTo *pts = CXX_NEW(PointsTo(memPool), memPool);
+    pts->setBit(node->id());
+    OffsetPointsToList *valList = CXX_NEW(OffsetPointsToList(), memPool);
     valList->push_back(make_pair(startOffset, pts));
     return valList;
   } 
@@ -875,9 +968,9 @@ ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
            INITV_kind(initv) == INITVKIND_ONE ||
            INITV_kind(initv) == INITVKIND_VAL)
   {
-    PointsTo pts(memPool);
-    pts.setBit(notAPointer()->id());
-    ListOffsetPointsTo *valList = CXX_NEW(ListOffsetPointsTo(), memPool);
+    PointsTo *pts = CXX_NEW(PointsTo(memPool), memPool);
+    pts->setBit(notAPointer()->id());
+    OffsetPointsToList *valList = CXX_NEW(OffsetPointsToList(), memPool);
     valList->push_back(make_pair(startOffset, pts));
     return valList;
   }
@@ -885,17 +978,110 @@ ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
   {
     FmtAssert(TY_kind(ty) == KIND_STRUCT || TY_kind(ty) == KIND_ARRAY,
               ("Expecting KIND_STRUCT or KIND_ARRAY"));
+    OffsetPointsToList *valList = CXX_NEW(OffsetPointsToList(), _memPool);
+    INITV_IDX child_initv_idx = INITV_blk(initv);
     if (TY_kind(ty) == KIND_STRUCT) {
-      ListOffsetPointsTo *valList = CXX_NEW(ListOffsetPointsTo(), _memPool);
       // Iterate over all fields in the struct
-      for (FLD_HANDLE fld = TY_flist(ty); !fld.Is_Null(); fld = FLD_next(fld)) {
-        TY &fty = Ty_Table[FLD_type(fld)];
-        ListOffsetPointsTo *fldList = 
-                            processInitv(fty, INITV_blk(initv),
-                                         startOffset + FLD_ofst(fld), memPool);
-        valList->splice(valList->end(), *fldList);
+      FLD_HANDLE fld = TY_flist(ty);
+      while (!fld.Is_Null() && child_initv_idx != 0) 
+      {
+        const INITV &child_initv = Initv_Table[child_initv_idx];
+        UINT repeat; 
+        if (INITV_kind(child_initv) == INITVKIND_ZERO ||
+            INITV_kind(child_initv) == INITVKIND_ONE ||
+            INITV_kind(child_initv) == INITVKIND_VAL)
+          repeat = INITV_repeat2(child_initv);
+        else
+          repeat = INITV_repeat1(child_initv);
+        UINT r = 0;
+        while (r < repeat) {
+          FmtAssert(!fld.Is_Null(), ("Premature end of fld"));
+          TY &fty = Ty_Table[FLD_type(fld)];
+          OffsetPointsToList *fldList;
+          // Special handling for arrays/structs whose init values are not 
+          // enclosed in INITVKIND_BLOCK, but instead provided as a list of 
+          // INITVKIND_VAL/PAD
+          if (isFlatArrayOrStruct(fty, child_initv_idx)) {
+            UINT32 rep;
+            fldList = processFlatInitvals(Ty_Table[FLD_type(fld)], 
+                                          child_initv_idx,
+                                          startOffset +  FLD_ofst(fld),
+                                          rep,
+                                          memPool);
+            r += rep;
+          } else {
+            fldList = processInitv(fty, child_initv_idx,
+                                   startOffset + FLD_ofst(fld), memPool);
+            r++;
+          }
+          if (fldList == NULL)
+            return NULL;
+          valList->splice(valList->end(), *fldList);
+          // Skip through fields with same offsets
+          while (!FLD_next(fld).Is_Null() && 
+                 (FLD_ofst(fld) == FLD_ofst(FLD_next(fld))))
+            fld = FLD_next(fld);
+          fld = FLD_next(fld);
+        }
+        child_initv_idx = INITV_next(Initv_Table[child_initv_idx]);
+        // Skip inter field padding
+        if (child_initv_idx &&
+            INITV_kind(Initv_Table[child_initv_idx]) == INITVKIND_PAD) {
+          child_initv_idx = INITV_next(Initv_Table[child_initv_idx]);
+        }
       }
+    } else if (TY_kind(ty) == KIND_ARRAY) {
+      TY_IDX etyIdx = TY_etype(ty);
+      TY &etype = Ty_Table[etyIdx];
+      UINT32 numElems = TY_size(ty) / TY_size(etype);
+      // Iterate over all elements in the array
+      INITV_IDX child_initv_idx = INITV_blk(initv);
+      UINT i = 0;
+      while (i < numElems && child_initv_idx != 0) 
+      {
+        const INITV &child_initv = Initv_Table[child_initv_idx];
+        // Skip elements to handle padding
+        if (INITV_kind(child_initv) == INITVKIND_PAD) {
+          i += (INITV_pad(child_initv) / TY_size(etype));
+          child_initv_idx = INITV_next(child_initv);
+          continue;
+        }
+        UINT repeat; 
+        if (INITV_kind(child_initv) == INITVKIND_ZERO ||
+            INITV_kind(child_initv) == INITVKIND_ONE ||
+            INITV_kind(child_initv) == INITVKIND_VAL)
+          repeat = INITV_repeat2(child_initv);
+        else
+          repeat = INITV_repeat1(child_initv);
+        UINT r = 0;
+        while (r < repeat) {
+          FmtAssert(i < numElems, ("Premature end of array elems"));
+          OffsetPointsToList *elemList;
+          // Special handling for arrays/structs whose init values are not 
+          // enclosed in INITVKIND_BLOCK, but instead provided as a list of 
+          // INITVKIND_VAL/PAD
+          if (isFlatArrayOrStruct(etype, child_initv_idx)) {
+            UINT32 rep;
+            elemList = processFlatInitvals(etype, child_initv_idx, 
+                                           startOffset + i * TY_size(etype),
+                                           rep, memPool);
+            r += rep;
+          } else {
+            elemList = processInitv(etype, child_initv_idx,
+                                    startOffset + i * TY_size(etype), memPool); 
+            r++;
+          }
+          if (elemList == NULL)
+            return NULL;
+          valList->splice(valList->end(), *elemList);
+          i++;
+        }
+        child_initv_idx = INITV_next(Initv_Table[child_initv_idx]);
+      }
+      FmtAssert(i == numElems && child_initv_idx == 0,
+                ("Inconsistent init values for array"));
     }
+    return valList;
   }
   return NULL;
 }
@@ -909,41 +1095,69 @@ ConstraintGraph::processInito(const INITO *const inito)
   ST *base_st;
   INT64 base_offset;
   Expand_ST_into_base_and_ofst(st, offset, &base_st, &base_offset);
-  ConstraintGraphNode *node = getCGNode(CG_ST_st_idx(base_st), base_offset);
-  // Collect the init data for this symbol
-  PointsTo tmp(Malloc_Mem_Pool);
-  processInitv(INITO_val(*inito), tmp);
-  // Check if any of the element is a pointer
-  bool foundPtr = false;
-  for (PointsTo::SparseBitSetIterator sbsi(&tmp, 0); sbsi != 0; ++sbsi) {
-    ConstraintGraphNode *node = ConstraintGraph::cgNode(*sbsi);
-    if (!node->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
-      foundPtr = true;
-      break;
-    }
-  }
 
-  // If the symbol type is a scalar and if the init set does
-  // not contain a pointer mark the node as not a pointer
-  TY &sym_ty = Ty_Table[ST_type(base_st)];
-  if (TY_kind(sym_ty) == KIND_SCALAR && !foundPtr) {
-    node->addFlags(CG_NODE_FLAGS_NOT_POINTER);
-    if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG)) {
-      fprintf(stderr, "processInito: Marking node:\n");
-      node->print(stderr);
-      fprintf(stderr, " as not a pointer\n");
+  fprintf(stderr, "Processing inito for symbol: ");
+  base_st->Print(stderr);
+  fprintf(stderr, " offset: %lld\n", base_offset);
+
+  MEM_POOL memPool;
+  MEM_POOL_Initialize(&memPool, "NystromInitval_Pool", FALSE);
+
+  INITV_IDX initv_idx = INITO_val(*inito);
+  TY &base_st_ty = Ty_Table[ST_type(base_st)];
+  OffsetPointsToList *valList = 
+                processInitv(base_st_ty, initv_idx, base_offset, &memPool);
+  if (valList == NULL) {
+    fprintf(stderr, "processInitv returning null\n");
+    // The init section was not consistent with the type
+    // Lump all the init data for this symbol to this node and 
+    // make it field insensitive :( (unless its all not a pointer)
+    PointsTo tmp;
+    processInitv(INITO_val(*inito), tmp);
+    // Check if any of the element is a pointer
+    bool foundPtr = false;
+    for (PointsTo::SparseBitSetIterator sbsi(&tmp, 0); sbsi != 0; ++sbsi) {
+      ConstraintGraphNode *node = ConstraintGraph::cgNode(*sbsi);
+      if (!node->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+        foundPtr = true;
+        break;
+      }
     }
-  } else {
-    // Lump all the objects to this node and make it field insensitive :(
+
+    // If the init vals did not have a pointer, ignore any initializations
+    if (!foundPtr)
+      return;
+
     ConstraintGraphNode::sanitizePointsTo(tmp);
+    ConstraintGraphNode *node = getCGNode(CG_ST_st_idx(base_st), base_offset);
     node->unionPointsTo(tmp, CQ_GBL);
     node->stInfo()->setModulus(1, node->offset());
+    fprintf(stderr, "processInito: Setting modulus to 1 for node:\n");
+    node->print(stderr);
+    fprintf(stderr, "\n");
+    return;
+  }
+
+  // For every <offset, pts> pair, create a new node and initialize its 
+  // points to set
+  for (OffsetPointsToListIterator iter = valList->begin();
+       iter != valList->end(); iter++) {
+    UINT32 offset = iter->first;
+    PointsTo *pts = iter->second;
+    ConstraintGraphNode *node = getCGNode(CG_ST_st_idx(base_st),
+                                          base_offset + offset);
+    ConstraintGraphNode::sanitizePointsTo(*pts);
+    node->unionPointsTo(*pts, CQ_HZ);
     if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG)) {
-      fprintf(stderr, "processInito: Setting modulus to 1 for node:\n");
-      node->print(stderr);
+      fprintf(stderr, "  node offset: %d val offset: %d, pts: ",
+              node->offset(), offset);
+      pts->print(stderr);
       fprintf(stderr, "\n");
     }
+    // node->print(stderr);
   }
+
+  MEM_POOL_Delete(&memPool);
 }
 
 void 
