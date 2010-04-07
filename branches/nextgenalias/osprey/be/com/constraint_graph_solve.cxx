@@ -1111,24 +1111,9 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
         ConstraintGraphNode *node = ConstraintGraph::cgNode(nodeId);
         StInfo *st = node->cg()->stInfo(node->cg_st_idx());
         INT32 newOffset;
-        // Computing the correct offset is interesting.
-        // If the source offset is -1, the result is always -1.
-        // If the target node is not involved in a cycle, then we
-        // simply add (offset + skew).  If the cycle is less
-        // than Pointer_Size then we go field insensitive and set
-        // the offset to -1.  If > Pointer_Size we adjust the modulus
-        // of the symbol of the node.
         if (node->offset() == -1)
           newOffset = -1;
-        else if (dst->inKCycle() == 0) {
-          newOffset = node->offset() + skew;
-          if (newOffset < 0) newOffset = -newOffset;
-        }
-        else if (dst->inKCycle() < Pointer_Size)
-          newOffset = -1;
         else {
-          if (dst->inKCycle() < st->getModulus(node->offset()/*+skew?*/))
-            st->setModulus(dst->inKCycle(),node->offset());
           newOffset = node->offset() + skew;
           if (newOffset < 0) newOffset = -newOffset;
         }
@@ -1137,10 +1122,12 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
         skewNode->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
         tmp.setBit(skewNode->id());
       }
-      bool change = dst->unionPointsTo(tmp,dstQual);
+      PointsTo tmp1;
+      ConstraintGraph::adjustPointsToForKCycle(dst, tmp, tmp1);
+      bool change = dst->unionPointsTo(tmp1,dstQual);
       if (change) {
         addEdgesToWorkList(dst);
-        updateOffsets(dst,tmp,dstQual);
+        updateOffsets(dst,tmp1,dstQual);
       }
     }
   }
