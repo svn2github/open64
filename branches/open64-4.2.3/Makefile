@@ -64,7 +64,7 @@ ifeq ($(MACHINE_TYPE), ia64)
   NATIVE_BUILD_DIR    = osprey/targia64_ia64_nodebug
   NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia64_ia64
   GNUFE_BUILD_DIR     = osprey-gcc-4.2.0/targia64_ia64
-  GNUFE_BUILD_HOST    = ia64-unknown-linux-gnu
+  GNUFE_BUILD_HOST    = ia64-redhat-linux
   TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/itanium.so 
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so
   TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so

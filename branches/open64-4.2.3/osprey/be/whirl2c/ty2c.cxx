@@ -99,7 +99,7 @@ typedef struct SCALAR_C_NAME
 const char TY2C_Aligned_Block_Name[] = "__block";
 
 #if defined(TARG_X8664)
-#define MTYPE_PREDEF MTYPE_V16F8
+#define MTYPE_PREDEF MTYPE_V32F8
 #else
 #define MTYPE_PREDEF MTYPE_F16
 #endif /* TARG_X8664 */
@@ -137,12 +137,12 @@ static const SCALAR_C_NAME Scalar_C_Names[MTYPE_LAST + 1] =
 #ifdef TARG_X8664
     {Name_Unknown_Type,        "_CMPLX8[2]"},   /* MTYPE_V16C4 = 28 */
     {Name_Unknown_Type,        "_CMPLX16[1]"},  /* MTYPE_V16C8 = 29 */
-    {"signed char[16]",        "_INT8[16]"},    /* MTYPE_V16I1 = 30 */
-    {"signed short[8]",        "_INT16[8]"},    /* MTYPE_V16I2 = 31 */
-    {"signed int[4]",          "_INT32[4]"},    /* MTYPE_V16I4 = 32 */
-    {"signed long long int[2]","_INT64[2]"},    /* MTYPE_V16I8 = 33 */
-    {"float[4]",               "_IEEE32[4]"},   /* MTYPE_V16F4 = 34 */
-    {"double[2]",              "_IEEE64[2]"},   /* MTYPE_V16F8 = 35 */
+    {Name_Unknown_Type,        "V16I1"},        /* MTYPE_V16I1 = 30 */
+    {Name_Unknown_Type,        "V16I2"},        /* MTYPE_V16I2 = 31 */
+    {Name_Unknown_Type,        "V16I4"},        /* MTYPE_V16I4 = 32 */
+    {Name_Unknown_Type,        "V16I8"},        /* MTYPE_V16I8 = 33 */
+    {Name_Unknown_Type,        "V16F4"},        /* MTYPE_V16F4 = 34 */
+    {Name_Unknown_Type,        "V16F8"},        /* MTYPE_V16F8 = 35 */
     {Name_Unknown_Type,        ""},             /* MTYPE_V8I1 = 36 */
     {Name_Unknown_Type,        ""},             /* MTYPE_V8I2 = 37 */
     {Name_Unknown_Type,        ""},             /* MTYPE_V8I4 = 38 */

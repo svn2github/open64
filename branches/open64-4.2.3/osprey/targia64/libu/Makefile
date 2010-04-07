@@ -55,6 +55,8 @@ BUILD_COMPILER = SGI
 BUILD_OS       = LINUX
 BUILD_HOST     = IA32
 
+# workaround for 4.2.3 release
+defgu2s.o: OPTIMIZER += -OPT:ro=0
 
 #ifdef IRIX
 # smake

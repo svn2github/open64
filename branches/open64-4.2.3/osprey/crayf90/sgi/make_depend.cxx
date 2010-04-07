@@ -192,7 +192,7 @@ MDfile_init ( MDfile_t *m ) {
 static
 int	
 MDtoolcmp ( const char *tool, const char *s, int slen ) {
-	char	*t;
+	const char *t;
 	int	toollen;
 	
 	t = strpbrk(tool," \n");	
@@ -215,7 +215,7 @@ MDtoolcmp ( const char *tool, const char *s, int slen ) {
 static
 int	
 MDtargcmp ( const char *targ, const char *s, int slen ) {
-	char	*t;
+	const char *t;
 	int	targlen;
 	
 	t = strpbrk(targ,": ");	

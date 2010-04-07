@@ -585,6 +585,18 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
       hob_state = MTYPE_signed(desc) ? HOB_sign_xtd : HOB_zero_xtd;
       hob_to_do = HOB_none;
     }
+    for (int i = 0; i < U64_LOWER_kid_count(new_nd); i++) { 
+      if (U64_LOWER_operator(U64_LOWER_kid(new_nd, i)) == OPR_CVTL) {
+        TYPE_ID new_res_ty; 
+        if (U64_LOWER_desc(new_nd) == MTYPE_V)
+          new_res_ty = Mtype_TransferSign(U64_LOWER_rtype(new_nd), 
+          	              U64_LOWER_rtype(U64_LOWER_kid(new_nd, i))); 
+        else 
+          new_res_ty = Mtype_TransferSign(U64_LOWER_desc(new_nd), 
+                                U64_LOWER_rtype(U64_LOWER_kid(new_nd, i))); 
+        U64_LOWER_set_rtype(U64_LOWER_kid(new_nd, i), new_res_ty); 
+      } 
+    }
     return U64_LOWER_form_node(new_nd, tree);
 
   case OPR_EQ: case OPR_NE: 
