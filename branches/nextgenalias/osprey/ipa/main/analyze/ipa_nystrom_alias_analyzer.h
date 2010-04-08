@@ -183,6 +183,9 @@ private:
   // Mapping from ST* to all functions in the IPA scope, used for
   // determining calls to external functions.
   STToNodeMap _stToIPANodeMap;
+
+  // The set of external calls made from within the IPA scope
+  hash_set<ST_IDX> _extCallSet;
 };
 
 #endif

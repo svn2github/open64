@@ -1,4 +1,5 @@
 #include "cse_table.h"
+#include "intrn_info.h"
 
 CallSideEffectInfoBase RawLibcallSideEffectTable[] =
   {
@@ -664,7 +665,7 @@ CallSideEffectInfo::GetArgumentAttr(UINT32 arg_pos,
   // when %n is detected in the format string, it should be CPA_one_level_write 
   // (conservatively for all trailing arguments).
   //  
-  if ((SideEffects & CFAT_is_printf_like) && !ignore_format_string)
+  if (SideEffects & CFAT_is_printf_like)
   {
     arg_attr = GetArgumentAttr_();
 
@@ -684,6 +685,9 @@ CallSideEffectInfo::GetArgumentAttr(UINT32 arg_pos,
     }
     else  // call_node is not available, we have to be conservative
       arg_attr = arg_attr | CPA_one_level_write;
+
+    if (ignore_format_string)
+       arg_attr &= ~CPA_one_level_write;
   }
   else arg_attr = GetArgumentAttr_();
 
@@ -792,7 +796,12 @@ CallSideEffectInfo::GetCallSideEffectInfo(const WN* call_node,
 {
   const char* name_str = 0;
   // Firstly, find the name key to lookup the side effect table:
-  name_str = ST_name(WN_st(call_node));
+  OPCODE opc = WN_opcode(call_node);
+  OPERATOR opr = OPCODE_operator(opc);
+  if (opr == OPR_INTRINSIC_CALL)
+    name_str = INTRN_c_name(WN_intrinsic(call_node));
+  else
+    name_str = ST_name(WN_st(call_node));
 
   if (!name_str) 
   {

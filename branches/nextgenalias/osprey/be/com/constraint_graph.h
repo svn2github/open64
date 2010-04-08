@@ -79,6 +79,8 @@ class EdgeDelta;
 #define CG_NODE_FLAGS_VISITED       0x00000100 // Used by cycle detection
 #define CG_NODE_FLAGS_SCCMEMBER     0x00000200 // Used by cycle detection
 #define CG_NODE_FLAGS_INKVALMAP     0x00000400 // Used by cycle detection
+#define CG_NODE_FLAGS_ACTUAL_MODELED 0x00000800// Constraint graph models callsite
+                                               // reference pattern for actual
 #define CG_NODE_FLAGS_PTSMOD        0x00001000 // Points-to set updated, implies
                                                // rev points-to relation to
                                                // be updated
@@ -1309,6 +1311,10 @@ private:
   WN *handleAssignment(WN *wn);
   
   WN *handleCall(WN *wn);
+
+  void handleMemcopy(CallSite *cs);
+  void handleMemset(CallSite *cs);
+  void handleExposedToReturn(const WN *call, CallSite *cs) const;
 
   ConstraintGraphNode *processParam(WN *wn);
 

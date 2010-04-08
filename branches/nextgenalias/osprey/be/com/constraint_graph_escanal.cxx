@@ -7,6 +7,7 @@
 
 #include "constraint_graph_escanal.h"
 #include "cse_table.h"
+#include "intrn_info.h"
 #include "opt_defs.h"
 #include "tracing.h"
 
@@ -76,6 +77,9 @@ EscapeAnalysis::addStFlags(ConstraintGraphNode *node, UINT32 flags)
 void
 EscapeAnalysis::addStToWorkList(ConstraintGraphNode *node)
 {
+  if (node == ConstraintGraph::notAPointer())
+    return;
+
   StInfo *stInfo = node->cg()->stInfo(node->cg_st_idx());
   ConstraintGraphNode *cur = stInfo->firstOffset() ? stInfo->firstOffset() : node;
   if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
@@ -279,6 +283,8 @@ EscapeAnalysis::newFullEscapeNode(ConstraintGraphNode *node, UINT32 flags)
   }
 }
 
+extern void printPointsTo(const PointsTo &pts);
+
 void
 EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
 {
@@ -301,8 +307,8 @@ EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
         if (inTable) {
           UINT32 argPos = 0;
           for(list<CGNodeId>::const_iterator li = callsite->parms().begin();
-              li != callsite->parms().end(); ++li) {
-            UINT32 argAttr = callInfo.GetArgumentAttr(argPos++,NULL,
+              li != callsite->parms().end(); ++li, ++argPos) {
+            UINT32 argAttr = callInfo.GetArgumentAttr(argPos,NULL,
                                                       !callsite->percN());
 
             if(argAttr & CPA_no_ptr_deref_and_expose)
@@ -318,16 +324,39 @@ EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
             if (!(argAttr & (written|exposed)))
               continue;
 
-            newPropEscapeNode(ConstraintGraph::cgNode(*li),CG_ST_FLAGS_LPROP_ESC);
+            ConstraintGraphNode *actual = ConstraintGraph::cgNode(*li);
+            if (actual->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
+              continue;
+
+            if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+              fprintf(stderr,"ESCANAL: cse param %d of %s prop\n",
+                      argPos,ST_name(st_idx));
+              for (PointsToIterator pti(graph->cgNode(*li)); pti != 0; ++pti) {
+                PointsTo &pts = *pti;
+                for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
+                  ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
+                  fprintf(stderr,"<%d,%d> ",node->id(),node->offset());
+                }
+                fprintf(stderr,"\n");
+              }
+            }
+            newPropEscapeNode(actual,CG_ST_FLAGS_LPROP_ESC);
           }
           if (callsite->returnId()) {
-            fprintf(stderr,"ESCANAL: call to %s\n",ST_name(st_idx));
-            newContEscapeNode(ConstraintGraph::cgNode(callsite->returnId()),
-                              CG_ST_FLAGS_LCONT_ESC);
+            ConstraintGraphNode *actual = ConstraintGraph::cgNode(callsite->returnId());
+            if (!actual->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
+              if(Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+                fprintf(stderr,"ESCANAL: cse return of %s holding\n",ST_name(st_idx));
+            newContEscapeNode(actual,CG_ST_FLAGS_LCONT_ESC);
           }
           continue;
         }
       }
+      // The actuals of pure, side-effect free calls do not escape
+      // Could we actually refine this to be side-effect free?
+      else if (INTRN_is_pure(callsite->intrinsic()) &&
+                             INTRN_has_no_side_effects(callsite->intrinsic()))
+        continue;
       // The arguments to va_start() do not escape
       else if (callsite->intrinsic() == INTRN_VA_START)
         continue;
@@ -340,22 +369,46 @@ EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
     //    the actuals are not escaping.
     // 3) During -ipa, if the call is indirect, we have hooked up all
     //    possible callees, so the actuals are not escaping
-    if ( _ipaMode != IPANo && callsite->isDirect() && !callsite->isIntrinsic() &&
-        !externalCall(callsite->st_idx()))  /* (2) */
-      continue;
+    if ( _ipaMode != IPANo && callsite->isDirect() && !callsite->isIntrinsic()) {
+      if (!externalCall(callsite->st_idx()))  /* (2) */
+        continue;
+      else {
+        if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+          fprintf(stderr,"ESCANAL: external call %s\n",ST_name(callsite->st_idx()));
+      }
+    }
 
     if (_ipaMode == IPAComplete && callsite->isIndirect())  /* (3) */
       continue;
 
+    UINT32 argPos = 0;
     for (list<CGNodeId>::const_iterator li = callsite->parms().begin();
-        li != callsite->parms().end(); ++li)
-      newPropEscapeNode(ConstraintGraph::cgNode(*li),CG_ST_FLAGS_LPROP_ESC);
+        li != callsite->parms().end(); ++li, ++argPos) {
+      ConstraintGraphNode *actual = ConstraintGraph::cgNode(*li);
+      if (!actual->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED)) {
+        if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+          fprintf(stderr,"ESCANAL: call to %s (param %d) not in cse table\n",
+                   callsite->isDirect() ?
+                       (!callsite->isIntrinsic() ?
+                           ST_name(callsite->st_idx()) :
+                           INTRN_specific_name(callsite->intrinsic())) :
+                           "????",argPos);
+          for (PointsToIterator pti(graph->cgNode(*li)); pti != 0; ++pti) {
+            PointsTo &pts = *pti;
+            for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
+              ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
+              fprintf(stderr,"<%d,%d> ",node->id(),node->offset());
+            }
+            fprintf(stderr,"\n");
+          }
+        }
+        newPropEscapeNode(actual,CG_ST_FLAGS_LPROP_ESC);
+      }
+    }
     if (callsite->returnId()) {
-      fprintf(stderr,"ESCANAL: call to %s\n",
-              callsite->isDirect()&&!callsite->isIntrinsic()?
-                  ST_name(callsite->st_idx()):"???");
-      newContEscapeNode(ConstraintGraph::cgNode(callsite->returnId()),
-                        CG_ST_FLAGS_LCONT_ESC);
+      ConstraintGraphNode *actual = ConstraintGraph::cgNode(callsite->returnId());
+      if (!actual->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
+        newContEscapeNode(actual,CG_ST_FLAGS_LCONT_ESC);
     }
   }
 }
@@ -418,12 +471,17 @@ EscapeAnalysis::initGraph(ConstraintGraph *graph)
       iter != graph->lEnd(); ++iter) {
     ConstraintGraphNode *node = iter->first;
     if (escFormals) {
+
       if (node->checkFlags(CG_NODE_FLAGS_FORMAL_PARAM)) {
-        fprintf(stderr,"ESCANAL: formal of %s\n",graph->name());
+        if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+          fprintf(stderr,"ESCANAL: formal param of %s\n",graph->name());
         newContEscapeNode(node,CG_ST_FLAGS_LCONT_ESC);
       }
-      if (node->checkFlags(CG_NODE_FLAGS_FORMAL_RETURN))
+      if (node->checkFlags(CG_NODE_FLAGS_FORMAL_RETURN)) {
+        if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+          fprintf(stderr,"ESCANAL: formal return of %s\n",graph->name());
         newPropEscapeNode(node,CG_ST_FLAGS_RETPROP_ESC);
+      }
     }
     // Global variables are only considered candidates for escape
     // analysis iff:

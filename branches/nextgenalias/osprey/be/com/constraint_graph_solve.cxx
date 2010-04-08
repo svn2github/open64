@@ -771,7 +771,6 @@ ConstraintGraphNode::addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
   return change;
 }
 
-static
 void printPointsTo(const PointsTo &pts)
 {
   for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
@@ -1211,6 +1210,11 @@ ConstraintGraphSolve::addCopiesForLoadStore(ConstraintGraphNode *src,
       copySrc = src;
       copyDst = nodeRep;
     }
+
+    // We don't add copy edges to "not-a-pointer"...
+    if (copyDst == ConstraintGraph::notAPointer())
+       continue;
+
 
     // If we are adding an edge <src,ofst1> to <dst, ofst2> and the
     // following edge already exists:

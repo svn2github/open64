@@ -1788,6 +1788,120 @@ formatContainsPercN(CallSideEffectInfo callInfo, WN *callWN)
   return false;
 }
 
+/*
+ * The semantics of str/memcpy are that we are copying the
+ * contents of the second parameter into the locations
+ * pointed-to by the first argument.
+ */
+void
+ConstraintGraph::handleMemcopy(CallSite *cs)
+{
+  list<CGNodeId>::const_iterator li = cs->parms().begin();
+  CGNodeId firstParmId = *li;
+  ++li;
+  CGNodeId secondParmId = *li;
+
+  ConstraintGraphNode *p1Node = cgNode(firstParmId);
+  ConstraintGraphNode *p2Node = cgNode(secondParmId);
+  ConstraintGraphNode *tmp = genTempCGNode();
+
+  // Now, we model the semantics by inserting a read edge from
+  // the source to our temporary node and a write from the
+  // temporary node to the destination.
+  bool added = false;
+  addEdge(p2Node,tmp,ETYPE_LOAD,CQ_HZ,1,added);
+  FmtAssert(added,("Adding of memcpy load edge failed\n"));
+  added = false;
+  addEdge(tmp,p1Node,ETYPE_STORE,CQ_HZ,1,added);
+  FmtAssert(added,("Adding of memcpy store edge failed\n"));
+
+  // We need to mark both the source and destination has being
+  // involved in a byte cycle
+  p1Node->inKCycle(1);
+  adjustPointsToForKCycle(p1Node);
+  p2Node->inKCycle(1);
+  adjustPointsToForKCycle(p2Node);
+
+  // Mark graph to indicate the semantics of the callsite are
+  // modeled for these actuals.
+  p1Node->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
+  p2Node->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
+}
+
+/*
+ * The semantics of memset are such that we are writing
+ * a "non-pointer" value into the locations pointed-to
+ * by the first argument. The actual value being written
+ * is irrelevant.
+ */
+void
+ConstraintGraph::handleMemset(CallSite *cs)
+{
+  list<CGNodeId>::const_iterator li = cs->parms().begin();
+  CGNodeId firstParmId = *li;
+  ConstraintGraphNode *pNode = cgNode(firstParmId);
+
+  // We are going to simply add a store edge into the first
+  // actual parameter of "not-a-pointer".
+  bool added = false;
+  addEdge(notAPointer(),pNode,ETYPE_STORE,CQ_HZ,1,added);
+  FmtAssert(added,("Adding of memset store edge failed\n"));
+
+  // We mark the destination node has being involved in a byte cycle
+  pNode->inKCycle(1);
+  adjustPointsToForKCycle(pNode);
+
+  // Mark the graph to indicate that the semantics of the callsite
+  // are modeled for this actual
+  pNode->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
+}
+
+/*
+ * For known calls, arguments may be exposed to the return, e.g.
+ * strcat, which essentially returns a pointer to the dest argument.
+ * We model that by adding an explicit copy edge from the actual parm
+ * to the actual return, marking both as being "modeled".
+ */
+void
+ConstraintGraph::handleExposedToReturn(const WN *call, CallSite *cs) const
+{
+  // First, determine whether the call is "known"
+  bool inTable;
+  CallSideEffectInfo callInfo =
+      CallSideEffectInfo::GetCallSideEffectInfo(call,&inTable);
+  if (!inTable) return;
+
+  // Does this call expose any of its arguments to return?  Typically there
+  // is only one such argument, but we will add one copy edge for each
+  // argument that is possibly exposed to the return.
+  if (!callInfo.exposeArgAddressToReturn())
+    return;
+
+  ConstraintGraphNode *actualReturn = cs->returnId()?cgNode(cs->returnId()):NULL;
+  UINT32 argPos = 0;
+  list<CGNodeId>::const_iterator li = cs->parms().begin();
+  for ( ; li != cs->parms().end(); ++li,++argPos) {
+    UINT32 argAttr = callInfo.GetArgumentAttr(argPos,NULL,true);
+    if (argAttr & CPA_exposed_to_return) {
+      ConstraintGraphNode *actualParm = cgNode(*li);
+      // We mark the actual parameter as being modeled even if we do not
+      // have a return actual, as long as we are not writing the result to
+      // globals....
+      if (!(argAttr & CPA_exposed_to_globals))
+        actualParm->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
+
+      // Hook up the actual parameter to the return via copy edge...
+      if (actualReturn) {
+        bool added = false;
+        UINT32 size = actualParm->stInfo()->varSize();
+        addEdge(actualParm,actualReturn,ETYPE_COPY,CQ_HZ,size,added);
+        FmtAssert(added,("Adding copy edge from actual parm to return failed\n"));
+        actualReturn->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
+      }
+    }
+  }
+}
+
 WN *
 ConstraintGraph::handleCall(WN *callWN)
 {
@@ -1816,6 +1930,17 @@ ConstraintGraph::handleCall(WN *callWN)
   _callSiteMap[callSite->id()] = callSite;
   WN_MAP_CallSiteId_Set(callWN, callSite->id());
 
+  // Process params
+  for (INT i = 0; i < numParms; ++i) {
+    WN *parmWN = WN_kid(callWN, i);
+    if (WN_parm_flag(parmWN) & WN_PARM_DUMMY)
+      continue;
+    ConstraintGraphNode *cgNode = processParam(parmWN);
+    cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_PARAM);
+    callSite->addParm(cgNode->id());
+    WN_MAP_CGNodeId_Set(parmWN, cgNode->id());
+  }
+
   // For indirect calls, set the CGNodeId to the ConstraintGraphNode
   // corresponding to the address of the call. For direct calls,
   // set the st_idx of call. Else, mark UNKNOWN
@@ -1832,11 +1957,24 @@ ConstraintGraph::handleCall(WN *callWN)
     // Because a *printf routine man have %n in its format string, we
     // examine the call here to avoid having to conservatively assume
     // that all operands after the format string are modified by the call.
+    bool inTable = false;
     CallSideEffectInfo callInfo =
-        CallSideEffectInfo::GetCallSideEffectInfo(callWN);
+        CallSideEffectInfo::GetCallSideEffectInfo(callWN,&inTable);
     if (callInfo.isPrintfLike() && formatContainsPercN(callInfo,callWN))
       callSite->setPercN();
 
+    if (inTable) {
+      // Here we take care of the copy semantics of the mem*, str*
+      // routines.
+      const char *funcName = ST_name(WN_st(callWN));
+      if (!strcmp(funcName,"memcpy") ||
+          !strcmp(funcName,"memmove") ||
+          !strcmp(funcName,"strcpy") ||
+          !strcmp(funcName,"strncpy"))
+        handleMemcopy(callSite);
+      else if (!strcmp(funcName,"memset"))
+        handleMemset(callSite);
+    }
   } else if (opr == OPR_INTRINSIC_CALL) {
     callSite->addFlags(CS_FLAGS_INTRN);
     callSite->intrinsic((INTRINSIC)WN_intrinsic(callWN));
@@ -1873,56 +2011,53 @@ ConstraintGraph::handleCall(WN *callWN)
         if (st)
           _cgStInfoMap[CG_ST_st_idx(st)] = vaStInfo;
       }
+
+      // For a VA_START, add the _varArgs node to the pts to set of
+      // of the first parameter which is of type va_list
+      FmtAssert(WN_operator(WN_kid0(WN_kid0(callWN))) == OPR_LDA,
+                ("Expecting LDA"));
+      CGNodeId id = WN_MAP_CGNodeId_Get(WN_kid0(WN_kid0(callWN)));
+      // For a LDA, since we create a temp node with the address in the
+      // points-to-set of the temp node (t {va_list}), we need to crack open
+      // the pts-to-set of t to get to va_list and then add _varArgs to
+      // the pts-to-set of va_list
+      ConstraintGraphNode *tmpNode = ConstraintGraph::cgNode(id);
+      const PointsTo& ptsGBL = tmpNode->pointsTo(CQ_GBL);
+      const PointsTo& ptsHZ = tmpNode->pointsTo(CQ_HZ);
+      if (!ptsGBL.isEmpty()) {
+        for (PointsTo::SparseBitSetIterator iter(&ptsGBL, 0); iter != 0; ++iter) {
+          ConstraintGraphNode *valistNode = ConstraintGraph::cgNode(*iter);
+          stInfo(valistNode->cg_st_idx())->setModulus(Pointer_Size,
+                                                      valistNode->offset());
+          valistNode->addPointsTo(_varArgs, CQ_HZ);
+        }
+      } else if (!ptsHZ.isEmpty()) {
+        for (PointsTo::SparseBitSetIterator iter(&ptsHZ, 0); iter != 0; ++iter) {
+          ConstraintGraphNode *valistNode = ConstraintGraph::cgNode(*iter);
+          stInfo(valistNode->cg_st_idx())->setModulus(Pointer_Size,
+                                                      valistNode->offset());
+          valistNode->addPointsTo(_varArgs, CQ_HZ);
+        }
+      }
     }
+    else if (callSite->intrinsic() == INTRN_MEMCPY ||
+        callSite->intrinsic() == INTRN_MEMMOVE||
+        callSite->intrinsic() == INTRN_STRCPY ||
+        callSite->intrinsic() == INTRN_STRNCPY)
+      handleMemcopy(callSite);
+    else if (callSite->intrinsic() == INTRN_MEMSET)
+      handleMemset(callSite);
   } else
     callSite->addFlags(CS_FLAGS_UNKNOWN);
 
-  // Process params
-  for (INT i = 0; i < numParms; ++i) {
-    WN *parmWN = WN_kid(callWN, i);
-    if (WN_parm_flag(parmWN) & WN_PARM_DUMMY)
-      continue;
-    ConstraintGraphNode *cgNode = processParam(parmWN);
-    cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_PARAM);
-    callSite->addParm(cgNode->id());
-    WN_MAP_CGNodeId_Set(parmWN, cgNode->id());
-  }
-
-  // For a VA_START, add the _varArgs node to the pts to set of
-  // of the first parameter which is of type va_list
-  if (callSite->isIntrinsic() && callSite->intrinsic() == INTRN_VA_START) {
-    FmtAssert(WN_operator(WN_kid0(WN_kid0(callWN))) == OPR_LDA, 
-              ("Expecting LDA"));
-    CGNodeId id = WN_MAP_CGNodeId_Get(WN_kid0(WN_kid0(callWN)));
-    // For a LDA, since we create a temp node with the address in the
-    // points-to-set of the temp node (t {va_list}), we need to crack open
-    // the pts-to-set of t to get to va_list and then add _varArgs to
-    // the pts-to-set of va_list
-    ConstraintGraphNode *tmpNode = ConstraintGraph::cgNode(id);
-    const PointsTo& ptsGBL = tmpNode->pointsTo(CQ_GBL);
-    const PointsTo& ptsHZ = tmpNode->pointsTo(CQ_HZ);
-    if (!ptsGBL.isEmpty()) {
-      for (PointsTo::SparseBitSetIterator iter(&ptsGBL, 0); iter != 0; ++iter) {
-        ConstraintGraphNode *valistNode = ConstraintGraph::cgNode(*iter);
-        stInfo(valistNode->cg_st_idx())->setModulus(Pointer_Size,
-                                                    valistNode->offset());
-        valistNode->addPointsTo(_varArgs, CQ_HZ);
-      }
-    } else if (!ptsHZ.isEmpty()) {
-      for (PointsTo::SparseBitSetIterator iter(&ptsHZ, 0); iter != 0; ++iter) {
-        ConstraintGraphNode *valistNode = ConstraintGraph::cgNode(*iter);
-        stInfo(valistNode->cg_st_idx())->setModulus(Pointer_Size,
-                                                    valistNode->offset());
-        valistNode->addPointsTo(_varArgs, CQ_HZ);
-      }
-    }
-  }
 
   // Process the return value from the call
   WN *stmt = WN_next(callWN);
   if (stmt != NULL && stmtStoresReturnValueFromCallee(stmt)) {
     ConstraintGraphNode *cgNode = processLHSofStore(stmt);
     cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_RETURN);
+
+    callSite->returnId(cgNode->id());
 
     // Create a heap node
     if (calleeReturnsNewMemory(callWN)) {
@@ -1949,10 +2084,12 @@ ConstraintGraph::handleCall(WN *callWN)
       cgNode->addPointsTo(heapCGNode,CQ_HZ);
     }
 
-    callSite->returnId(cgNode->id());
-
     stmt = WN_next(stmt);
   }
+
+  // Attach parameters to the return if necessary.
+  if (callSite->isDirect())
+     handleExposedToReturn(callWN,callSite);
 
   return stmt;
 }
@@ -2547,6 +2684,8 @@ ConstraintGraphNode::print(FILE *file)
     fprintf(file, " PTSMOD");
   if (checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
     fprintf(file, " ADDRTAKEN");
+  if (checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
+    fprintf(file, " AMODELED");
   fprintf(file, " ]\n");
 }
 
@@ -2608,8 +2747,10 @@ void ConstraintGraphNode::print(ostream& ostr)
     ostr << " MERGED";
   if (checkFlags(CG_NODE_FLAGS_PTSMOD))
     ostr << " PTSMOD";
-   if (checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
+  if (checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
     ostr << " ADDRTAKEN";
+  if (checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
+    ostr << " AMODELED";
   ostr << " ]" << endl;
 }
 
@@ -2869,6 +3010,8 @@ CallSite::print(FILE *file)
     fprintf(file, " %s", "INTRINSIC");
   if (checkFlags(CS_FLAGS_HAS_VARARGS))
     fprintf(file, " %s", "VARARGS");
+  if (checkFlags(CS_FLAGS_PRINTF_NOPRECN))
+    fprintf(file, " %s", "NOPRECN");
   fprintf(file, " ]");
   if (isIndirect())
     fprintf(file, " cgNodeid: %d", cgNodeId());
