@@ -108,6 +108,7 @@ extern BOOL Show_OPT_Warnings;		/* Display OPT warning messages */
 extern OPTION_LIST* Alias_Option;
 extern INT32 Alias_Query_Limit;
 extern char *Alias_Query_File;
+extern INT32 Alias_Nystrom_Solver_Track;
 extern BOOL Alias_Pointer_Parms;	/* Reference parms indep? */
 extern BOOL Alias_Pointer_Types;	/* Ptrs to distinct basic types indep? */
 extern BOOL Alias_Not_In_Union;	/* Ptrs point to non-union types */

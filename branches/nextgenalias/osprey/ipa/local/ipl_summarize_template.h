@@ -3234,6 +3234,7 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
       summCGNode->repParent(parent->id());
     summCGNode->cgNodeId(cgNode->id());
     summCGNode->cg_st_idx(cgNode->cg_st_idx());
+    summCGNode->ty_idx(cgNode->ty_idx());
     summCGNode->offset(cgNode->offset());
     summCGNode->flags(cgNode->flags());
     summCGNode->inKCycle(cgNode->inKCycle());

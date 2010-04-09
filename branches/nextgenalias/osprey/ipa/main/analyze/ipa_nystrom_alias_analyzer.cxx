@@ -532,6 +532,7 @@ ConstraintGraph::buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE *summ,
   cgNode = CXX_NEW(ConstraintGraphNode(cg_st_idx, summ->offset(), 
                                        summ->flags(), summ->inKCycle(),
                                        newCGNodeId, this), _memPool);
+  cgNode->ty_idx(summ->ty_idx());
 
   // Add to maps in the current ConstraintGraph
   cgIdToNodeMap[newCGNodeId] = cgNode;
@@ -1321,6 +1322,18 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
       //FmtAssert(FALSE, ("**** Expecting KIND_POINTER *****"));
       heap_ty_idx = MTYPE_To_TY(Pointer_type);
     }
+
+    TY &newRetType = Ty_Table[actualRet->ty_idx()];
+    if (TY_kind(newRetType) == KIND_POINTER) {
+      TY_IDX new_heap_ty_idx = TY_pointed(newRetType);
+      fprintf(stderr,"CONNECT: New ty_idx %d, size %d - old ty_idx %d, size %d\n",
+              new_heap_ty_idx,(UINT32)TY_size(new_heap_ty_idx),
+              heap_ty_idx,(UINT32)TY_size(heap_ty_idx));
+      heap_ty_idx = new_heap_ty_idx;
+    }
+    else
+      fprintf(stderr,"CONNECT: New ty_idx is not a pointer!\n");
+
     CG_ST_IDX new_cg_st_idx = buildLocalStInfo(heap_ty_idx);
     ConstraintGraphNode *heapCGNode = getCGNode(new_cg_st_idx, 0);
     heapCGNode->stInfo()->addFlags(CG_ST_FLAGS_HEAP);
@@ -1329,6 +1342,8 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
             ST_name(calleeST), ST_name(_ipaNode->Func_ST()));
     heapCGNode->print(stderr);
     heapCGNode->stInfo()->print(stderr);
+    fprintf(stderr, "*** Actual return %d now points to %d\n",
+            actualRet->id(),heapCGNode->id());
     // Add the in/out edges to the edge delta
     CGEdgeSetIterator iter = actualRet->outCopySkewEdges().begin();
     for (; iter != actualRet->outCopySkewEdges().end(); iter++)

@@ -2968,6 +2968,7 @@ public:
   void ptsGBLidx(UINT32 idx)      { _pointsToGBLIdx = idx; }
   void ptsHZidx(UINT32 idx)       { _pointsToHZIdx = idx; }
   void ptsDNidx(UINT32 idx)       { _pointsToDNIdx = idx; }
+  void ty_idx(UINT32 idx)         { _ty_idx = idx; }
 
   UINT32 cgNodeId()      const { return _cgNodeId; }
   UINT64 cg_st_idx()     const { return _cg_st_idx; }
@@ -2982,6 +2983,7 @@ public:
   UINT32 ptsGBLidx()     const { return _pointsToGBLIdx; } 
   UINT32 ptsHZidx()      const { return _pointsToHZIdx; } 
   UINT32 ptsDNidx()      const { return _pointsToDNIdx; } 
+  UINT32 ty_idx()        const { return _ty_idx; }
 
   void Print_array(FILE *fp, INT32 size) const;
   void Trace_array(INT32 size) const ;
@@ -3002,6 +3004,7 @@ private:
   UINT32 _inKCycle;
   UINT32 _nextOffset;
   UINT32 _repParent;
+  TY_IDX _ty_idx;
 };
 
 // Constraint graph edge summary for Nystrom Alias Analyzer

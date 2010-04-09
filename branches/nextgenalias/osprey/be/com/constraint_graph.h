@@ -356,6 +356,7 @@ public:
     _id(0),
     _version(0),
     _maxAccessSize(0),
+    _ty_idx(0),
     _inEdges(NULL),
     _outEdges(NULL)
   {}
@@ -375,6 +376,7 @@ public:
     _id(id),
     _version(0),
     _maxAccessSize(0),
+    _ty_idx(0),
     _inEdges(NULL),
     _outEdges(NULL)
   {}
@@ -388,6 +390,9 @@ public:
   void inKCycle(UINT32 val)   { _inKCycle = val; }
 
   UINT8 maxAccessSize(void) const { return _maxAccessSize; }
+
+  TY_IDX ty_idx(void) const { return _ty_idx; }
+  void ty_idx(TY_IDX idx)   { _ty_idx = idx; }
 
   CG_ST_IDX cg_st_idx() const { return _cg_st_idx; }
   char *stName() const;
@@ -686,6 +691,8 @@ private:
   // Max outgoing copy/load/store access size, used during
   // solving to determine accesses to overlapping fields.
   UINT8    _maxAccessSize;
+
+  TY_IDX   _ty_idx;
 
   // Incoming and outgoing copy/skew/load/store edges
   CGEdgeList *_inEdges;
@@ -1315,6 +1322,7 @@ private:
   void handleMemcopy(CallSite *cs);
   void handleMemset(CallSite *cs);
   void handleExposedToReturn(const WN *call, CallSite *cs) const;
+  void handleOneLevelWrite(const WN *call, CallSite *cs);
 
   ConstraintGraphNode *processParam(WN *wn);
 

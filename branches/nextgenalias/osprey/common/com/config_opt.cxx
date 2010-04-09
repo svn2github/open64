@@ -92,6 +92,7 @@ BOOL Show_OPT_Warnings = TRUE;          /* Display OPT warning messages */
 OPTION_LIST *Alias_Option = NULL;
 INT32 Alias_Query_Limit=INT32_MAX;
 char *Alias_Query_File=NULL;
+INT32 Alias_Nystrom_Solver_Track=0;
 BOOL Alias_Pointer_Parms = TRUE;        /* Parms ptr indep? */
 BOOL Alias_Pointer_Cray = FALSE;        /* Cray pointer semantics? */
 #if defined(TARG_SL)
@@ -366,6 +367,11 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_NAME, OV_INTERNAL, TRUE, "alias_query_file", "alias_query_file",
       0, 0, 0, &Alias_Query_File, NULL,
     "File specifies responses to alias queries"
+  },
+
+  { OVK_INT32, OV_INTERNAL, TRUE, "nystrom_pts_track", "nystrom_pts_track",
+      0, 0, INT32_MAX, &Alias_Nystrom_Solver_Track, NULL,
+      "Track updates to the points-to set of provided node"
   },
 
   { OVK_INT32,	OV_SHY,		TRUE, "align_instructions",	"align_i",

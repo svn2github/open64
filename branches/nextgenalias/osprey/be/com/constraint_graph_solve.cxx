@@ -1,6 +1,7 @@
 
 #include <stack>
 #include "be_util.h"
+#include "config_opt.h"
 #include "constraint_graph.h"
 #include "constraint_graph_escanal.h"
 #include "constraint_graph_solve.h"
@@ -775,7 +776,8 @@ void printPointsTo(const PointsTo &pts)
 {
   for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
     ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
-    fprintf(stderr,"<%d,%d> ",SYM_ST_IDX(node->cg_st_idx()),node->offset());
+    fprintf(stderr,"(%d)<%d,%d> ",
+            node->id(),SYM_ST_IDX(node->cg_st_idx()),node->offset());
   }
 }
 
@@ -797,22 +799,21 @@ ConstraintGraphNode::unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual)
   diff = ptsToSet;
   diff.setDiff(dst);
 
-#if 0
-  UINT32 trackNodeId = 6603;
+
+  UINT32 trackNodeId = Alias_Nystrom_Solver_Track;
   if (id() == trackNodeId && !diff.isEmpty()) {
-    fprintf(stderr,"In union points to:\n");
-    fprintf(stderr,"  Cur: ");
-    //dst.print(stderr);
+    fprintf(stderr,"TRACK: In union points to:\n");
+    fprintf(stderr,"TRACK:  Cur: ");
     printPointsTo(dst);
-    fprintf(stderr,"\n  New: ");
-    //ptsToSet.print(stderr);
+    fprintf(stderr,"\nTRACK:  New: ");
     printPointsTo(ptsToSet);
-    fprintf(stderr,"\n  Dif: ");
-    //diff.print(stderr);
+    fprintf(stderr,"\nTRACK:  Dif: ");
     printPointsTo(diff);
     fprintf(stderr,"\n");
   }
-#endif
+
+  if (diff.isSet(trackNodeId))
+    fprintf(stderr,"TRACK: adding %d to pts of %d\n",trackNodeId,id());
 
   // Now we have to walk only the nodes that are not present
   // in the target points-to set.
@@ -844,14 +845,12 @@ ConstraintGraphNode::unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual)
     }
   }
 
-#if 0
-  if (id() == trackNodeId && !diff.isEmpty()) {
-    fprintf(stderr,"  Mrg:");
-    //dst.print(stderr);
+
+  if ((id() == trackNodeId && !diff.isEmpty()) || diff.isSet(trackNodeId)) {
+    fprintf(stderr,"TRACK:  Mrg: ");
     printPointsTo(dst);
     fprintf(stderr,"\n");
   }
-#endif
 
  // Is_True(!sanityCheckPointsTo(qual),
  //   ("Node %d destination contains <ST,x> and <ST,-1>\n",id()));

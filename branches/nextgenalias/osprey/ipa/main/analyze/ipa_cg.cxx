@@ -292,6 +292,8 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
     if (ST_IDX_level(old_st_idx) == GLOBAL_SYMTAB) {
       cg_nodes[i].cg_st_idx(idx_maps->st[old_st_idx] & 0x00000000ffffffffLL);
     }
+    TY_IDX old_ty_idx = cg_nodes[i].ty_idx();
+    cg_nodes[i].ty_idx(idx_maps->ty[old_ty_idx]);
   }
   INT32 num_cg_stinfos;
   SUMMARY_CONSTRAINT_GRAPH_STINFO *cg_stinfos = 

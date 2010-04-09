@@ -353,7 +353,7 @@ ModulusRange::print(ostream &str,UINT32 indent)
 StInfo::StInfo(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
   : _flags(flags),
     _varSize(0),
-    _maxOffsets(32),
+    _maxOffsets(256),
     _numOffsets(0),
     _firstOffset(0),
     _ty_idx(ty_idx),
@@ -396,7 +396,7 @@ StInfo::StInfo(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
 StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
   : _flags(0),
     _varSize(0),
-    _maxOffsets(32),
+    _maxOffsets(256),
     _numOffsets(0),
     _firstOffset(0),
     _memPool(memPool)
@@ -1808,12 +1808,12 @@ ConstraintGraph::handleMemcopy(CallSite *cs)
   // Now, we model the semantics by inserting a read edge from
   // the source to our temporary node and a write from the
   // temporary node to the destination.
-  bool added = false;
-  addEdge(p2Node,tmp,ETYPE_LOAD,CQ_HZ,1,added);
-  FmtAssert(added,("Adding of memcpy load edge failed\n"));
-  added = false;
-  addEdge(tmp,p1Node,ETYPE_STORE,CQ_HZ,1,added);
-  FmtAssert(added,("Adding of memcpy store edge failed\n"));
+  bool added;
+  ConstraintGraphEdge *edge;
+  edge = addEdge(p2Node,tmp,ETYPE_LOAD,CQ_HZ,1,added);
+  FmtAssert(edge,("Adding of memcpy load edge failed\n"));
+  edge = addEdge(tmp,p1Node,ETYPE_STORE,CQ_HZ,1,added);
+  FmtAssert(edge,("Adding of memcpy store edge failed\n"));
 
   // We need to mark both the source and destination has being
   // involved in a byte cycle
@@ -1826,6 +1826,51 @@ ConstraintGraph::handleMemcopy(CallSite *cs)
   // modeled for these actuals.
   p1Node->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
   p2Node->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
+}
+
+void
+ConstraintGraph::handleOneLevelWrite(const WN *call, CallSite *cs)
+{
+  // First, determine whether the call is "known"
+  bool inTable;
+  CallSideEffectInfo callInfo =
+      CallSideEffectInfo::GetCallSideEffectInfo(call,&inTable);
+  if (!inTable) return;
+
+  // Does this call write any of its arguments?  If so, we will
+  // model single level writes as long as the same argument is not
+  // written beyond two levels.
+  if (!callInfo.writeArgIndirectly())
+    return;
+
+  UINT32 argPos = 0;
+  list<CGNodeId>::const_iterator li = cs->parms().begin();
+  for ( ; li != cs->parms().end(); ++li,++argPos) {
+    UINT32 argAttr = callInfo.GetArgumentAttr(argPos,NULL,true);
+    if ((argAttr & CPA_one_level_write) &&
+        !(argAttr & (CPA_two_level_write|
+                     CPA_multi_level_write|
+                     CPA_exposed_to_globals))) {
+      ConstraintGraphNode *aNode = cgNode(*li);
+      if (aNode->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
+        continue;
+      bool added;
+      ConstraintGraphEdge *edge;
+      edge = addEdge(notAPointer(),aNode,ETYPE_STORE,CQ_HZ,1,added);
+      FmtAssert(edge,("Adding of edge for modeling one level write failed\n"));
+
+      // We mark the destination node has being involved in a byte cycle.
+      // While this is supposed to prevent the entire object from escaping
+      // we do not known the extent of the write so we model it as
+      // context insensitive.
+      aNode->inKCycle(1);
+      adjustPointsToForKCycle(aNode);
+
+      // Mark the graph to indicate that the semantics of the callsite
+      // are modeled for this actual
+      aNode->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
+    }
+  }
 }
 
 /*
@@ -1843,9 +1888,10 @@ ConstraintGraph::handleMemset(CallSite *cs)
 
   // We are going to simply add a store edge into the first
   // actual parameter of "not-a-pointer".
-  bool added = false;
-  addEdge(notAPointer(),pNode,ETYPE_STORE,CQ_HZ,1,added);
-  FmtAssert(added,("Adding of memset store edge failed\n"));
+  bool added;
+  ConstraintGraphEdge *edge;
+  edge = addEdge(notAPointer(),pNode,ETYPE_STORE,CQ_HZ,1,added);
+  FmtAssert(edge,("Adding memset store edge failed!"));
 
   // We mark the destination node has being involved in a byte cycle
   pNode->inKCycle(1);
@@ -1892,10 +1938,11 @@ ConstraintGraph::handleExposedToReturn(const WN *call, CallSite *cs) const
 
       // Hook up the actual parameter to the return via copy edge...
       if (actualReturn) {
-        bool added = false;
+        bool added;
+        ConstraintGraphEdge *edge;
         UINT32 size = actualParm->stInfo()->varSize();
-        addEdge(actualParm,actualReturn,ETYPE_COPY,CQ_HZ,size,added);
-        FmtAssert(added,("Adding copy edge from actual parm to return failed\n"));
+        edge = addEdge(actualParm,actualReturn,ETYPE_COPY,CQ_HZ,size,added);
+        FmtAssert(edge,("Adding copy edge from actual parm to return failed\n"));
         actualReturn->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
       }
     }
@@ -1972,8 +2019,8 @@ ConstraintGraph::handleCall(WN *callWN)
           !strcmp(funcName,"strcpy") ||
           !strcmp(funcName,"strncpy"))
         handleMemcopy(callSite);
-      else if (!strcmp(funcName,"memset"))
-        handleMemset(callSite);
+      //else if (!strcmp(funcName,"memset"))
+      //  handleMemset(callSite);
     }
   } else if (opr == OPR_INTRINSIC_CALL) {
     callSite->addFlags(CS_FLAGS_INTRN);
@@ -2045,8 +2092,8 @@ ConstraintGraph::handleCall(WN *callWN)
         callSite->intrinsic() == INTRN_STRCPY ||
         callSite->intrinsic() == INTRN_STRNCPY)
       handleMemcopy(callSite);
-    else if (callSite->intrinsic() == INTRN_MEMSET)
-      handleMemset(callSite);
+    //else if (callSite->intrinsic() == INTRN_MEMSET)
+    //  handleMemset(callSite);
   } else
     callSite->addFlags(CS_FLAGS_UNKNOWN);
 
@@ -2087,9 +2134,11 @@ ConstraintGraph::handleCall(WN *callWN)
     stmt = WN_next(stmt);
   }
 
-  // Attach parameters to the return if necessary.
-  if (callSite->isDirect())
+  // Model the behavior of this callsite in the graph, if possible
+  if (callSite->isDirect()) {
+     handleOneLevelWrite(callWN,callSite);
      handleExposedToReturn(callWN,callSite);
+  }
 
   return stmt;
 }
@@ -2144,6 +2193,8 @@ ConstraintGraph::getCGNode(WN *wn)
       ST_init_value_zero(*base_st) && 
       TY_kind(ST_type(base_st)) == KIND_SCALAR)
     n->addFlags(CG_NODE_FLAGS_NOT_POINTER);
+
+  n->ty_idx(WN_object_ty(wn));
 
   return n;
 }
@@ -2615,6 +2666,7 @@ ConstraintGraphNode::print(FILE *file)
       fprintf(file, " preg:%d", p);
   }
   fprintf(file, "\n");
+  fprintf(file, " ty_idx: %d\n",ty_idx());
   fprintf(file, " GBL: "); pointsTo(CQ_GBL).print(file);
   fprintf(file, " HZ: ");  pointsTo(CQ_HZ).print(file);
   fprintf(file, " DN: ");  pointsTo(CQ_DN).print(file);
@@ -2714,6 +2766,7 @@ void ConstraintGraphNode::print(ostream& ostr)
       ostr << " preg: " << p;
   }
   ostr << endl;
+  ostr << " ty_idx: " << ty_idx() << endl;
   ostr << "GBL: " << pointsTo(CQ_GBL)
        << " HZ: " << pointsTo(CQ_HZ)
        << " DN: " << pointsTo(CQ_DN)
