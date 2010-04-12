@@ -442,18 +442,6 @@ public:
   // PointsTo accessor functions
 
   bool addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual);
-#if 0
-  {
-    FmtAssert(node->cg()->buildComplete() && node->offset() != -1,
-              ("Attempting to directly add <%d,%d> to pts\n",
-                  SYM_ST_IDX(node->cg_st_idx()),node->offset()));
-    node->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
-    bool change = findRep()->_addPointsTo(node->id(),qual);
-    if (change)
-      addFlags(CG_NODE_FLAGS_PTSMOD);
-    return change;
-  }
-#endif
 
   bool checkPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
   {
@@ -461,14 +449,6 @@ public:
   }
 
   bool unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual);
-#if 0
-  {
-    bool change = findRep()->_getPointsTo(qual).setUnion(ptsToSet);
-    if (change)
-      addFlags(CG_NODE_FLAGS_PTSMOD);
-    return change;
-  }
-#endif
 
   const PointsTo &pointsTo(CGEdgeQual qual)
   {
