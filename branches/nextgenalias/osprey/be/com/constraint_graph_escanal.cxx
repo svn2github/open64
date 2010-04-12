@@ -43,6 +43,10 @@ EscapeAnalysis::escapeStFlags(const ConstraintGraphNode *node) const
 UINT32
 EscapeAnalysis::stOffset(const ConstraintGraphNode *node) const
 {
+  // Now that we are field sensitive, we cache ST flags for
+  // each <ST,offset> tuple.
+  return node->offset();
+#if 0
   // pregs are special in that they all map to the same CG_ST_IDX,
   // but we must treat each offset as a distinct symbol
   UINT32 offset = 0;
@@ -50,6 +54,7 @@ EscapeAnalysis::stOffset(const ConstraintGraphNode *node) const
   if (stInfo->checkFlags(CG_ST_FLAGS_PREG))
     offset = node->offset();
   return offset;
+#endif
 }
 
 UINT32
@@ -57,7 +62,7 @@ EscapeAnalysis::findStFlags(ConstraintGraphNode *node)
 {
   UINT32 &stFlags = _stTable[StTableKey(node->cg_st_idx(),stOffset(node))];
   if (!(stFlags & CG_ST_FLAGS_CACHE)) {
-    stFlags |= node->cg()->stInfo(node->cg_st_idx())->flags();
+    stFlags |= node->stInfo()->flags();
     stFlags |= CG_ST_FLAGS_CACHE;
   }
   return stFlags;
@@ -68,10 +73,23 @@ EscapeAnalysis::addStFlags(ConstraintGraphNode *node, UINT32 flags)
 {
   UINT32 &stFlags = _stTable[StTableKey(node->cg_st_idx(),stOffset(node))];
   if (!(stFlags & CG_ST_FLAGS_CACHE)) {
-    stFlags |= node->cg()->stInfo(node->cg_st_idx())->flags();
+    stFlags |= node->stInfo()->flags();
     stFlags |= CG_ST_FLAGS_CACHE;
   }
   stFlags |= flags;
+}
+
+void
+EscapeAnalysis::addToWorkList(ConstraintGraphNode *node)
+{
+  if (node == ConstraintGraph::notAPointer())
+    return;
+
+  if (!node->checkFlags(CG_NODE_FLAGS_MERGED)) {
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+      fprintf(stderr, "ESCANAL:       node %d (single)\n",node->id());
+    _workList.push(node);
+  }
 }
 
 void
@@ -83,14 +101,14 @@ EscapeAnalysis::addStToWorkList(ConstraintGraphNode *node)
   StInfo *stInfo = node->cg()->stInfo(node->cg_st_idx());
   ConstraintGraphNode *cur = stInfo->firstOffset() ? stInfo->firstOffset() : node;
   if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
-    fprintf(stderr,"ESCANAL:      adding node(s) to worklist- ");
+    fprintf(stderr,"ESCANAL:      adding all nodes for this ST to worklist- ");
     printStFlags(findStFlags(node));
     fprintf(stderr,"\n");
   }
   while (cur) {
     if (!cur->checkFlags(CG_NODE_FLAGS_MERGED)) {
       if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-        fprintf(stderr, "ESCANAL:       node %d\n",cur->id());
+        fprintf(stderr, "ESCANAL:       node %d (ST)\n",cur->id());
       _workList.push(cur);
     }
     cur = cur->nextOffset();
@@ -133,6 +151,120 @@ EscapeAnalysis::observed(ConstraintGraphNode *node)
   return !node->pointsTo(CQ_DN).isEmpty();
 }
 
+class OffsetListIterator {
+public:
+  OffsetListIterator(ConstraintGraphNode *node, UINT32 size);
+
+  ConstraintGraphNode *operator *(void) const { return _cur; }
+  bool operator ++(void);
+  bool operator !=(int i) const { return _cur != NULL; }
+
+private:
+  void findFirst(void);
+  UINT32 accessSize(ConstraintGraphNode *node) const;
+
+  UINT32               _size;
+  ConstraintGraphNode *_base;
+  ConstraintGraphNode *_cur;
+};
+
+OffsetListIterator::OffsetListIterator(ConstraintGraphNode *node, UINT32 size):
+    _size(size),
+    _base(node),
+    _cur(NULL)
+{
+  findFirst();
+}
+
+UINT32
+OffsetListIterator::accessSize(ConstraintGraphNode *node) const
+{
+  UINT32 max = 1;
+  for (CGEdgeSetIterator i1 = node->inCopySkewEdges().begin();
+      i1 != node->inLoadStoreEdges().end(); ++i1) {
+    ConstraintGraphEdge *edge = *i1;
+    if (edge->edgeType() == ETYPE_COPY)
+      if (edge->size() > max)
+        max = edge->size();
+  }
+  for (CGEdgeSetIterator i2 = node->inLoadStoreEdges().begin();
+      i2 != node->inLoadStoreEdges().end(); ++i2) {
+    ConstraintGraphEdge *edge = *i2;
+    if (edge->edgeType() == ETYPE_STORE)
+      if (edge->size() > max)
+        max = edge->size();
+  }
+  for (CGEdgeSetIterator i3 = node->outCopySkewEdges().begin();
+      i3 != node->outLoadStoreEdges().end(); ++i3) {
+    ConstraintGraphEdge *edge = *i3;
+    if (edge->edgeType() == ETYPE_COPY)
+      if (edge->size() > max)
+        max = edge->size();
+  }
+  for (CGEdgeSetIterator i4 = node->outLoadStoreEdges().begin();
+      i4 != node->outLoadStoreEdges().end(); ++i4) {
+    ConstraintGraphEdge *edge = *i4;
+    if (edge->edgeType() == ETYPE_LOAD)
+      if (edge->size() > max)
+        max = edge->size();
+  }
+  return max;
+}
+
+void
+OffsetListIterator::findFirst(void)
+{
+  if (_base->offset() == -1)
+    _cur = _base;
+  else {
+    StInfo *baseStInfo = _base->stInfo();
+    if (baseStInfo->checkFlags(CG_ST_FLAGS_PREG))
+      _cur = _base;
+    else {
+      ConstraintGraphNode *node = baseStInfo->firstOffset();
+      // Do not assume that the firstOffset() is non-NULL.  For certain
+      // types, e.g. preg, we do not generate an offset list.
+      if (node && node->offset() == -1)
+        node = node->nextOffset();
+
+      while (node != NULL && node != _base) {
+        // We start with the first node that has accesses that span
+        // the '_base' node or with the '_base' node itself.
+        if (node->offset() + accessSize(node) > _base->offset())
+          break;
+        node = node->nextOffset();
+      }
+      _cur = node;
+    }
+  }
+}
+
+bool
+OffsetListIterator::operator ++(void)
+{
+  if (_cur->offset() == -1)
+    _cur = NULL;
+  else {
+    // We continue walking from our starting pointer until we
+    // have visited all nodes up to <ST,base->offset()+_size-1>
+    ConstraintGraphNode *node = _cur->nextOffset();
+    if (node && node->offset() < _base->offset()+_size)
+      _cur = node;
+    else
+      _cur = NULL;
+  }
+}
+
+void
+EscapeAnalysis::newContEscapeNode(ConstraintGraphNode *node,
+                                  UINT32 size, UINT32 flags)
+{
+  for (OffsetListIterator iter(node,size); iter != 0; ++iter) {
+    ConstraintGraphNode *n = *iter;
+    newContEscapeNode(n,flags);
+  }
+}
+
 void
 EscapeAnalysis::newContEscapeNode(ConstraintGraphNode *node, UINT32 flags)
 {
@@ -156,7 +288,17 @@ EscapeAnalysis::newContEscapeNode(ConstraintGraphNode *node, UINT32 flags)
        fprintf(stderr,"ESCANAL:     Node %d CG_ST_IDX %lld (%s) marked holding\n",
                node->id(),node->cg_st_idx(),node->stName());
     addStFlags(node,CG_ST_FLAGS_LCONT_ESC);
-    addStToWorkList(node);
+    addToWorkList(node);
+  }
+}
+
+void
+EscapeAnalysis::newPropEscapeNode(ConstraintGraphNode *node,
+                                  UINT32 size, UINT32 flags)
+{
+  for (OffsetListIterator iter(node,size); iter != 0; ++iter) {
+    ConstraintGraphNode *n = *iter;
+    newPropEscapeNode(n,flags);
   }
 }
 
@@ -178,7 +320,7 @@ EscapeAnalysis::newPropEscapeNode(ConstraintGraphNode *node, UINT32 flags)
        fprintf(stderr,"ESCANAL:     Node %d CG_ST_IDX %lld (%s) marked propagates\n",
                node->id(),node->cg_st_idx(),node->stName());
      addStFlags(node,CG_ST_FLAGS_LPROP_ESC);
-     addStToWorkList(node);
+     addToWorkList(node);
   }
 
   if (flags & CG_ST_FLAGS_RETPROP_ESC) {
@@ -188,7 +330,7 @@ EscapeAnalysis::newPropEscapeNode(ConstraintGraphNode *node, UINT32 flags)
         fprintf(stderr,"ESCANAL:     Node %d CG_ST_IDX %lld (%s) marked propagates_ret\n",
                 node->id(),node->cg_st_idx(),node->stName());
       addStFlags(node,CG_ST_FLAGS_RETPROP_ESC);
-      addStToWorkList(node);
+      addToWorkList(node);
     }
   }
 }
@@ -340,14 +482,14 @@ EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
                 fprintf(stderr,"\n");
               }
             }
-            newPropEscapeNode(actual,CG_ST_FLAGS_LPROP_ESC);
+            newPropEscapeNode(actual,actual->stInfo()->varSize(),CG_ST_FLAGS_LPROP_ESC);
           }
           if (callsite->returnId()) {
             ConstraintGraphNode *actual = ConstraintGraph::cgNode(callsite->returnId());
             if (!actual->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
               if(Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
                 fprintf(stderr,"ESCANAL: cse return of %s holding\n",ST_name(st_idx));
-            newContEscapeNode(actual,CG_ST_FLAGS_LCONT_ESC);
+            newContEscapeNode(actual,actual->stInfo()->varSize(),CG_ST_FLAGS_LCONT_ESC);
           }
           continue;
         }
@@ -402,13 +544,13 @@ EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
             fprintf(stderr,"\n");
           }
         }
-        newPropEscapeNode(actual,CG_ST_FLAGS_LPROP_ESC);
+        newPropEscapeNode(actual,actual->stInfo()->varSize(),CG_ST_FLAGS_LPROP_ESC);
       }
     }
     if (callsite->returnId()) {
       ConstraintGraphNode *actual = ConstraintGraph::cgNode(callsite->returnId());
       if (!actual->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
-        newContEscapeNode(actual,CG_ST_FLAGS_LCONT_ESC);
+        newContEscapeNode(actual,actual->stInfo()->varSize(),CG_ST_FLAGS_LCONT_ESC);
     }
   }
 }
@@ -475,12 +617,12 @@ EscapeAnalysis::initGraph(ConstraintGraph *graph)
       if (node->checkFlags(CG_NODE_FLAGS_FORMAL_PARAM)) {
         if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
           fprintf(stderr,"ESCANAL: formal param of %s\n",graph->name());
-        newContEscapeNode(node,CG_ST_FLAGS_LCONT_ESC);
+        newContEscapeNode(node,node->stInfo()->varSize(),CG_ST_FLAGS_LCONT_ESC);
       }
       if (node->checkFlags(CG_NODE_FLAGS_FORMAL_RETURN)) {
         if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
           fprintf(stderr,"ESCANAL: formal return of %s\n",graph->name());
-        newPropEscapeNode(node,CG_ST_FLAGS_RETPROP_ESC);
+        newPropEscapeNode(node,node->stInfo()->varSize(),CG_ST_FLAGS_RETPROP_ESC);
       }
     }
     // Global variables are only considered candidates for escape
@@ -528,7 +670,9 @@ EscapeAnalysis::processContEscapeNode(ConstraintGraphNode *node)
        if (edge->edgeQual() == CQ_GBL || edge->edgeQual() == CQ_UP ||
            edge->edgeQual() == CQ_DN)
          continue;
-     newContEscapeNode(edge->destNode(),nodeStFlags);
+     newContEscapeNode(edge->destNode(),
+                       edge->edgeType() == ETYPE_COPY ? edge->size() : 0,
+                       nodeStFlags);
   }
 
 
@@ -546,7 +690,7 @@ EscapeAnalysis::processContEscapeNode(ConstraintGraphNode *node)
        if (edge->edgeQual() == CQ_GBL || edge->edgeQual() == CQ_UP ||
            edge->edgeQual() == CQ_DN)
          continue;
-     newContEscapeNode(edge->destNode(),nodeStFlags);
+     newContEscapeNode(edge->destNode(),edge->size(),nodeStFlags);
   }
 
 
@@ -563,7 +707,7 @@ EscapeAnalysis::processContEscapeNode(ConstraintGraphNode *node)
       if (edge->edgeQual() == CQ_GBL || edge->edgeQual() == CQ_UP ||
           edge->edgeQual() == CQ_DN)
         continue;
-    newPropEscapeNode(edge->srcNode(),CG_ST_FLAGS_LPROP_ESC);
+    newPropEscapeNode(edge->srcNode(),edge->size(),CG_ST_FLAGS_LPROP_ESC);
   }
 }
 
@@ -590,7 +734,9 @@ EscapeAnalysis::processPropEscapeNode(ConstraintGraphNode *node)
       if (edge->edgeQual() == CQ_GBL || edge->edgeQual() == CQ_UP ||
           edge->edgeQual() == CQ_DN)
       continue;
-    newPropEscapeNode(edge->srcNode(),nodeStFlags);
+    newPropEscapeNode(edge->srcNode(),
+                      edge->edgeType() == ETYPE_COPY ? edge->size() : 0,
+                      nodeStFlags);
   }
 
   /* u = &v, FE(u) or PE(u)         u = &v , PE(u)
@@ -630,7 +776,7 @@ EscapeAnalysis::processFullEscapeNode(ConstraintGraphNode *node)
        PointsTo &pts = *pti;
        for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
          ConstraintGraphNode *revNode = ConstraintGraph::cgNode(*iter);
-         newContEscapeNode(revNode,stFlags);
+         newContEscapeNode(revNode,0,stFlags);
          if (!_graph || revNode->cg() == _graph)
            if (!_summaryMode ||
                !(stFlags & (CG_ST_FLAGS_GLOBAL|CG_ST_FLAGS_NOCNTXT)))
@@ -647,13 +793,19 @@ EscapeAnalysis::markEscaped(void)
   for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
       iter != ConstraintGraph::gEnd(); iter++) {
     ConstraintGraphNode *node = iter->second;
-    if (escapeStFlags(node) & (CG_ST_FLAGS_HOLDING|
-                               CG_ST_FLAGS_HOLDING_ESC|
-                               CG_ST_FLAGS_OPAQUE)) {
+    UINT32 flags = escapeStFlags(node);
+    if (flags & (CG_ST_FLAGS_HOLDING|
+                 CG_ST_FLAGS_HOLDING_ESC|
+                 CG_ST_FLAGS_OPAQUE)) {
       // The "black hole" is meant to represent all memory that is possibly
       // accessed by symbols that have references outside the scope of the
       // current procedure.
       node->addPointsTo(bh,CQ_GBL);
+
+      // Has this non-global node fully escaped?
+      if (!(flags & (CG_ST_FLAGS_GLOBAL|CG_ST_FLAGS_HEAP|CG_ST_FLAGS_FUNC)) &&
+          (flags & CG_ST_FLAGS_OPAQUE))
+        node->stInfo()->addFlags(CG_ST_FLAGS_ESCLOCAL);
     }
   }
 }

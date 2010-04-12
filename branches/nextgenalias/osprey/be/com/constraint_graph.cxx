@@ -594,6 +594,8 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *destNode,
         //destNode->print(stderr); destNode->stInfo()->print(stderr);
         node = node->cg()->getCGNode(node->cg_st_idx(),-1);
       }
+      if (node->offset() == -1)
+        destNode->removeOffsets(dst,node->cg_st_idx());
     }
     dst.setBit(node->id());
   }
@@ -1843,6 +1845,11 @@ ConstraintGraph::handleOneLevelWrite(const WN *call, CallSite *cs)
   if (!callInfo.writeArgIndirectly())
     return;
 
+  // Skip free(), we will conveniently ignore the fact that the
+  // returned heap memory is written.
+  if (callInfo.isHeapDeallocating())
+    return;
+
   UINT32 argPos = 0;
   list<CGNodeId>::const_iterator li = cs->parms().begin();
   for ( ; li != cs->parms().end(); ++li,++argPos) {
@@ -2887,6 +2894,8 @@ StInfo::print(FILE *file,bool emitOffsetChain)
     fprintf(file, " STACK");
   if (checkFlags(CG_ST_FLAGS_NOCNTXT))
     fprintf(file, " CI");
+  if (checkFlags(CG_ST_FLAGS_ESCLOCAL))
+    fprintf(file, " ESCLCL");
   fprintf(file, "]");
   if (!emitOffsetChain)
     if (_firstOffset)
@@ -2929,6 +2938,8 @@ void StInfo::print(ostream& str)
     str << " STACK";
   if (checkFlags(CG_ST_FLAGS_NOCNTXT))
     str << " CI";
+  if (checkFlags(CG_ST_FLAGS_ESCLOCAL))
+    str << " ESCLCL";
   str << "]";
   if (_firstOffset)
     str << " firstCGNodeId: " << _firstOffset->id();

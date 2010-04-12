@@ -88,6 +88,8 @@ class EdgeDelta;
 
 #define CG_NODE_FLAGS_ADDR_TAKEN    0x00004000  // Has the node been placed 
                                                 // in a pts?
+#define CG_NODE_FLAGS_OPAQUE        0x00008000  // Node address has fully
+                                                // escaped.
 
 #define CG_NODE_FLAGS_ADJUST_K_CYCLE 0x00010000 // Adjust K cycle for merged 
                                                 // nodes during IPA CG build
@@ -587,6 +589,7 @@ public:
 
   // Remove redundant nodes, in the presence of <ST, -1>
   static void sanitizePointsTo(PointsTo &pts);
+  static void removeOffsets(PointsTo &dst, CG_ST_IDX);
 
   bool sanityCheckPointsTo(CGEdgeQual qual);
 
@@ -667,8 +670,6 @@ private:
   }
 
   PointsTo &_getPointsTo(CGEdgeQual qual, PointsToList **ptl);
-
-  static void _removeOffsets(PointsTo &dst, CG_ST_IDX);
 
   // Sets the _maxAccessSize based on the maximum size of all
   // incoming and outgoing (non-SKEW) edges
@@ -891,7 +892,7 @@ public:
   StInfo(UINT32 flags, INT64 varSize, TY_IDX ty_idx, MEM_POOL *memPool) :
     _flags(flags),
     _varSize(varSize),
-    _maxOffsets(32),
+    _maxOffsets(256),
     _numOffsets(0),
     _firstOffset(NULL),
     _ty_idx(ty_idx),

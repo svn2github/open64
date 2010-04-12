@@ -188,7 +188,12 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
           _aliasTagToCGNodeIdMap[aliasTag] = node->id();
           // Add self reference and black hole if required
           aliasTagInfo->pointsTo().setBit(node->id());
-          if (node->checkPointsTo(ConstraintGraph::blackHole(),CQ_GBL))
+          // If the node is address taken, we must add "black hole" to
+          // the points-to set to cover intersection with other escaped
+          // references.  If the node is *not* address taken nothing can
+          // point to it.
+          if (node->stInfo()->checkFlags(CG_ST_FLAGS_ESCLOCAL) &&
+              node->checkPointsTo(ConstraintGraph::blackHole(),CQ_GBL))
             aliasTagInfo->pointsTo().setBit(ConstraintGraph::blackHoleId());
         }
         else {
@@ -218,7 +223,12 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
           if (direct) {
             // Add self reference and black hole if required
             aliasTagInfo->pointsTo().setBit(node->id());
-            if (node->checkPointsTo(ConstraintGraph::blackHole(),CQ_GBL))
+            // If the node is address taken, we must add "black hole" to
+            // the points-to set to cover intersection with other escaped
+            // references.  If the node is *not* address taken nothing can
+            // point to it.
+            if (node->stInfo()->checkFlags(CG_ST_FLAGS_ESCLOCAL) &&
+                node->checkPointsTo(ConstraintGraph::blackHole(),CQ_GBL))
               aliasTagInfo->pointsTo().setBit(ConstraintGraph::blackHoleId());
           }
           else {

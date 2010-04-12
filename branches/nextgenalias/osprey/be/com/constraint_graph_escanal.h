@@ -76,7 +76,9 @@ private:
 
   bool observed(ConstraintGraphNode *node);
   void newContEscapeNode(ConstraintGraphNode *node, UINT32 flags);
+  void newContEscapeNode(ConstraintGraphNode *node, UINT32 size, UINT32 flags);
   void newPropEscapeNode(ConstraintGraphNode *node, UINT32 flags);
+  void newPropEscapeNode(ConstraintGraphNode *node, UINT32 size, UINT32 flags);
   void newFullEscapeNode(ConstraintGraphNode *node, UINT32 flags);
   void processContEscapeNode(ConstraintGraphNode *node);
   void processPropEscapeNode(ConstraintGraphNode *node);
@@ -89,6 +91,7 @@ private:
   UINT32 findStFlags(ConstraintGraphNode *node);
   void   addStFlags(ConstraintGraphNode *node, UINT32 flags);
   void   addStToWorkList(ConstraintGraphNode *node);
+  void   addToWorkList(ConstraintGraphNode *node);
 
   bool      exposed(CG_ST_IDX idx);
 

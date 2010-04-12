@@ -708,7 +708,7 @@ ConstraintGraphSolve::updateOffsets(const ConstraintGraphNode *dst,
 }
 
 void
-ConstraintGraphNode::_removeOffsets(PointsTo &dst, CG_ST_IDX idx)
+ConstraintGraphNode::removeOffsets(PointsTo &dst, CG_ST_IDX idx)
 {
   for (PointsTo::SparseBitSetIterator iter(&dst,0); iter != 0; ++iter) {
     ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
@@ -732,7 +732,7 @@ ConstraintGraphNode::sanitizePointsTo(PointsTo &pts)
    hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx>::iterator iter;
    for (iter = minusOneSts.begin(); iter != minusOneSts.end(); ++iter) {
      CG_ST_IDX idx = *iter;
-     _removeOffsets(pts,idx);
+     removeOffsets(pts,idx);
    }
 }
 
@@ -829,8 +829,11 @@ ConstraintGraphNode::unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual)
       }
       else {
         FmtAssert(!minusOne || !diff.isSet(minusOne->id()),
-                  ("Have both <%d,%d> and <%d,-1> in the incoming pts (dest is %d).\n",
+                  ("Have both %d:<%d,%d> and %d:<%d,-1> in the "
+                      "incoming pts (dest is %d).\n",
+                      node->id(),
                       SYM_ST_IDX(node->cg_st_idx()),node->offset(),
+                      minusOne->id(),
                       SYM_ST_IDX(node->cg_st_idx()),id()));
         dst.setBit(node->id());
         change = true;
@@ -839,7 +842,7 @@ ConstraintGraphNode::unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual)
     // The current node is <ST,-1> so we need to remove all
     // occurrences of <ST,ofst> from the destination set
     else {
-      _removeOffsets(dst,node->cg_st_idx());
+      removeOffsets(dst,node->cg_st_idx());
       dst.setBit(node->id());
       change = true;
     }
@@ -852,8 +855,8 @@ ConstraintGraphNode::unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual)
     fprintf(stderr,"\n");
   }
 
- // Is_True(!sanityCheckPointsTo(qual),
- //   ("Node %d destination contains <ST,x> and <ST,-1>\n",id()));
+  Is_True(sanityCheckPointsTo(qual),
+          ("Node %d destination contains <ST,x> and <ST,-1>\n",id()));
 
   if (change)
     addFlags(CG_NODE_FLAGS_PTSMOD);
