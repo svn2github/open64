@@ -87,6 +87,7 @@
 #include "be_ipa_util.h"
 #endif
 
+#include "ipa_nystrom_alias_analyzer.h"
 
 extern "C" void add_to_tmp_file_list (char*);
 #pragma weak add_to_tmp_file_list
@@ -877,6 +878,9 @@ extern "C" void IP_WRITE_pu (IP_FILE_HDR *s , INT pindex)
     clean_up_deleted_nested_pu_info(pu);
 
     IPA_NODE* node = Get_Node_From_PU (pu);
+
+    if (Alias_Nystrom_Analyzer)
+      IPA_NystromAliasAnalyzer::aliasAnalyzer()->updateCGForBE(node);
 
     if (IPA_Enable_Alias_Class) {
       Temporary_Error_Phase ephase("Alias class analysis");

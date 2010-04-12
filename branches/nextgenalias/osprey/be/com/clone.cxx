@@ -73,6 +73,9 @@
 
 #include "clone.h"                      // IPO_CLONE, IPO_SYMTAB, 
 #include "targ_sim.h"
+#include "constraint_graph.h"
+
+extern BOOL Alias_Nystrom_Analyzer;
 
 // ======================================================================
 // For easy switching of Scope_tab
@@ -368,6 +371,16 @@ IPO_CLONE::Clone_Tree (WN *wn, ST *clone_st)
 	else if (OPCODE_has_sym(op) || OPCODE_has_label(op))
             Fix_ST (ret_wn, wn);
 
+       // Nystrom alias analyzer:
+       // Clone the WN to CGNodeId mapping for the cloned node into the caller
+       if (Alias_Nystrom_Analyzer) {
+         ConstraintGraph::cloneWNtoCallSiteCGNodeIdMap(wn, ret_wn, this);
+         // Map the original st_idx to its clone for non globals
+         if (OPCODE_has_sym(op) && !OPCODE_is_call(WN_opcode(wn)) && 
+             WN_st(wn) && (ST_IDX_level(WN_st_idx(wn)) != GLOBAL_SYMTAB))
+           ConstraintGraph::updateOrigToCloneStIdxMap(WN_st_idx(wn),
+                                                      WN_st_idx(ret_wn));
+       }
   }
 
           

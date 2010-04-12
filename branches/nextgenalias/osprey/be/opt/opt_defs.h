@@ -165,6 +165,9 @@ Is_fortran(void)
 #define NYSTROM_QUERY_TRACE_FLAG  0x00000010 /* emit trace of all "aliased()" queries */
 #define NYSTROM_CG_OPT_FLAG       0x00000020 /* emit trace of optimized nodes */
 #define NYSTROM_MEMORY_TRACE_FLAG 0x00000040 /* collect emit memory tracing */
+#define NYSTROM_CG_BE_MAP_FLAG    0x00000080 /* CG clone and map updates 
+                                                during IPA for BE */
+#define NYSTROM_CG_BUILD_FLAG     0x00000100 /* CG build trace */
 
 /* TP_GLOBOPT (phase-number) */
 #define DOM_DUMP_FLAG	     0x0001 /* print dominator tree */

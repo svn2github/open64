@@ -397,6 +397,7 @@ public:
   void ty_idx(TY_IDX idx)   { _ty_idx = idx; }
 
   CG_ST_IDX cg_st_idx() const { return _cg_st_idx; }
+
   char *stName() const;
 
   StInfo *stInfo();
@@ -576,6 +577,9 @@ public:
   void dbgPrint();
   void print(FILE *file);
   void print(ostream &str);
+
+  // Copy contents of node into 'this'
+  void copy(ConstraintGraphNode *node);
 
   typedef struct
   {
@@ -1003,8 +1007,10 @@ typedef hash_map<CallSiteId, CallSite *> CallSiteMap;
 typedef CallSiteMap::const_iterator CallSiteIterator;
 
 class IPA_NODE;
+class IPO_CLONE;
 class SUMMARY_CONSTRAINT_GRAPH_NODE;
 class SUMMARY_CONSTRAINT_GRAPH_STINFO;
+class SUMMARY_CALLSITE;
 
 typedef list<pair<UINT32, PointsTo *> > OffsetPointsToList;
 typedef OffsetPointsToList::const_iterator OffsetPointsToListIterator;
@@ -1049,6 +1055,7 @@ public:
     notAPointerCGNode = NULL;
     blackHoleCGNode = NULL;
     nextCGNodeId = 1;
+    nextCallSiteId = 1;
     cgIdToNodeMap.clear();
   }
 
@@ -1085,17 +1092,50 @@ public:
 
   static CG_ST_IDX adjustCGstIdx(IPA_NODE *ipaNode, CG_ST_IDX cg_st_idx);
 
+  // Map from unique call site id to CallSite in ipa
+  static CallSite *uniqueCallSite(CallSiteId uniqueCallSiteId)
+  {
+    CallSiteIterator iter = csIdToCallSiteMap.find(uniqueCallSiteId);
+    if (iter != csIdToCallSiteMap.end())
+      return iter->second;
+    return NULL;
+  }
+
+  static void cloneWNtoCallSiteCGNodeIdMap(WN *orig_wn,
+                                           WN *clone_wn,
+                                           IPO_CLONE *ipoClone);
+
+  static void cloneConstraintGraphMaps(IPA_NODE *caller, IPA_NODE *callee);
+
+  static void updateCloneStIdxMap(ST_IDX old_clone_idx, ST_IDX new_clone_idx);
+
+  static void updateOrigToCloneStIdxMap(ST_IDX orig_st_idx,
+                                        ST_IDX clone_st_idx);
+
+  static void stats(void);
+
+  static char *
+  printCGStIdx(CG_ST_IDX cg_st_idx, char *buf, int n) 
+  {
+    memset(buf, 0, n);
+    sprintf(buf, "<file:%d pu:%d st_idx:%d>",
+            FILE_NUM_ST_IDX(cg_st_idx),
+            PU_NUM_ST_IDX(cg_st_idx),
+            SYM_ST_IDX(cg_st_idx));
+    return buf;
+  }
+
   // To build ConstraintGraphs at IPL/BE
   ConstraintGraph(WN *entryWN, MEM_POOL *mPool, UINT32 minSize = 1024):
-    _name(0),
     _buildComplete(false),
-    _nextCallSiteId(1),
     _varArgs(NULL),
     _cgNodeToIdMap(minSize),
     _cgStInfoMap(minSize),
     _ipaNode(NULL),
     _memPool(mPool)
   {
+    memset(_name, 0, sizeof(_name));
+
     if (notAPointerCGNode == NULL) {
       ST *notAPtrSt =
           Gen_Temp_Named_Symbol(MTYPE_To_TY(Pointer_type), "_cgNotAPtr",
@@ -1133,15 +1173,15 @@ public:
   // To build ConstraintGraphs during IPA
   ConstraintGraph(MEM_POOL *mPool, IPA_NODE *ipaNode = NULL, 
                   UINT32 minSize = 1024):
-    _name(0),
     _buildComplete(false),
-    _nextCallSiteId(1),
     _cgNodeToIdMap(minSize),
     _cgStInfoMap(minSize),
     _ipaNode(ipaNode),
     _max_st_idx(0),
     _memPool(mPool)
   {
+    memset(_name, 0, sizeof(_name));
+
     if (notAPointerCGNode == NULL) {
       ST *notAPtrSt = New_ST(GLOBAL_SYMTAB);
       ST_Init(notAPtrSt, Save_Str("_globalCGNotAPTR"), CLASS_VAR,
@@ -1163,7 +1203,7 @@ public:
     if (ipaNode)
       buildCGipa(ipaNode);
     else
-      _name = "__Global_Graph__";
+      sprintf(_name,  "__Global_Graph__");
   }
 
   void deleteNode(ConstraintGraphNode *node)
@@ -1222,8 +1262,6 @@ public:
 
   void print(FILE *file);
 
-  static void stats(void);
-
   // Driver for solving the constraint graph when not in IPA
   // mode.  Returns true of the solution is complete, false otherwise
   bool nonIPASolver();
@@ -1263,6 +1301,23 @@ public:
                                           UINT32 &repeat,
                                           MEM_POOL *memPool);
 
+  ConstraintGraphNode *findUniqueNode(CGNodeId id);
+
+  CallSite *findUniqueCallSite(CallSiteId id);
+
+  void updateSummaryCallSiteId(SUMMARY_CALLSITE &summCallSite);
+
+  void updateCallSiteForBE(CallSite *cs);
+
+  ConstraintGraphNode *cloneCGNode(ConstraintGraphNode *node,
+                                   CG_ST_IDX new_cg_st_idx);
+
+  void mapCGNode(ConstraintGraphNode *node);
+
+  void mapStInfo(StInfo *stInfo,
+                 CG_ST_IDX cg_st_idx,
+                 CG_ST_IDX new_cg_st_idx);
+
 private:
 
   // Max size of all types
@@ -1274,8 +1329,15 @@ private:
   // Generate unique CGNodeId per procedure
   static CGNodeId nextCGNodeId;
 
+  // Generate unique CallSiteId per procedure
+  static CallSiteId nextCallSiteId;
+
   // Set of ConstraintGraphNodes
   static CGIdToNodeMap cgIdToNodeMap;
+
+  // Set of all call sites keyed on the unique callsite id
+  // that is maintained during IPA
+  static CallSiteMap csIdToCallSiteMap;
 
   // Node to denote a non-pointer
   static ConstraintGraphNode *notAPointerCGNode;
@@ -1289,6 +1351,10 @@ private:
 
   // Pool to hold all edges, since edges span multiple ConstraintGraphs
   static MEM_POOL *edgeMemPool;
+
+  // Maintain mapping from orig to cloned to ST_IDX so as to clone the
+  // relevant CGNode/StInfo after IPA inlining
+  static hash_map<ST_IDX, ST_IDX> origToCloneStIdxMap;
 
   // Constraint graph build methods
 
@@ -1328,8 +1394,6 @@ private:
 
   ModulusRange *buildModRange(UINT32 idx, IPA_NODE *ipaNode);
 
-  ConstraintGraphNode *findUniqueNode(CGNodeId id);
-
   // Used during IPA constraint graph construction to pre-process
   // points-to sets, i.e. reverse post-processing done during IPL
   void collectMinusOneSts(hash_set<UINT64> &minusOneSts, UINT32 *nodeIds,
@@ -1343,10 +1407,7 @@ private:
   bool _buildComplete;
 
   // Used for debugging during IPA.
-  char *_name;
-
-  // Generate unique CallSiteId per procedure
-  CallSiteId _nextCallSiteId;
+  char _name[256];
 
   // Node to denote varargs
   ConstraintGraphNode *_varArgs;
@@ -1373,6 +1434,7 @@ private:
 
   // For ConstraintGraph construction during IPA
   CGIdToNodeMap _uniqueCGNodeIdMap;
+  CallSiteMap   _uniqueCallSiteIdMap;
   CGStInfoMap   _ipaCGStIdxToStInfoMap;
 
   // IPA call graph node corresponding to this CG

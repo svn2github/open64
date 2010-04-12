@@ -968,6 +968,18 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 	
     for (INT j = 0; j < callsite_count; ++j, ++callsite_index) {
 
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+      // The summary callsite contains the Nystrom alias analyzer's
+      // call site id, which has been remapped to a unique id during IPA
+      // CG construction for an IPA_NODE. So update the callsite id of the
+      // summary to reflect the new id.
+      if (Alias_Nystrom_Analyzer) {
+        ConstraintGraph *callerCG = 
+            IPA_NystromAliasAnalyzer::aliasAnalyzer()->cg(caller->Node_Index());
+        callerCG->updateSummaryCallSiteId(callsite_array[callsite_index]);
+      }
+#endif
+      
 #ifdef KEY
       if (IPA_Enable_Pure_Call_Opt &&
 	  (callsite_array[callsite_index].Is_func_ptr() ||

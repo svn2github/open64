@@ -711,6 +711,11 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
 	
   }
 
+  // Map WN to its new unique CGNodeId for the Nystrom alias analyzer
+  if (Alias_Nystrom_Analyzer)
+    IPA_NystromAliasAnalyzer::aliasAnalyzer()->
+                              mapWNToUniqCallSiteCGNodeId(node);
+
   return node;
 } // IPO_Process_node
 

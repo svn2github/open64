@@ -12,17 +12,21 @@
 #include "cse_table.h"
 #include "opt_points_to.h"
 #include "pu_info.h"
+#include "clone.h"
 
 MEM_POOL *ConstraintGraph::edgeMemPool = NULL;
 UINT32 ConstraintGraph::maxTypeSize = 0;
-UINT32 ConstraintGraph::nextCGNodeId = 1;
+CGNodeId ConstraintGraph::nextCGNodeId = 1;
+CallSiteId ConstraintGraph::nextCallSiteId = 1;
 bool ConstraintGraph::isIPA = false;
 ConstraintGraph *ConstraintGraph::globalConstraintGraph = NULL;
 ConstraintGraphNode *ConstraintGraph::notAPointerCGNode = NULL;
 ConstraintGraphNode *ConstraintGraph::blackHoleCGNode = NULL;
 CGIdToNodeMap ConstraintGraph::cgIdToNodeMap(8192);
+CallSiteMap ConstraintGraph::csIdToCallSiteMap(1024);
 const PointsTo ConstraintGraphNode::emptyPointsToSet;
 const CGEdgeSet ConstraintGraphNode::emptyCGEdgeSet;
+hash_map<ST_IDX, ST_IDX> ConstraintGraph::origToCloneStIdxMap;
 
 static INT32
 getArraySize(WN *wn)
@@ -953,10 +957,10 @@ ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
       node = notAPointer();
     else {
       // Process the init vals of this symbol
-      if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG))
+      if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
         fprintf(stderr, "Processing symbol value...\n");
       processInitValues(ST_st_idx(base_st));
-      if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG))
+      if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
         fprintf(stderr, "End processing symbol value...\n");
       node = getCGNode(CG_ST_st_idx(base_st), base_offset);
     }
@@ -1098,9 +1102,11 @@ ConstraintGraph::processInito(const INITO *const inito)
   INT64 base_offset;
   Expand_ST_into_base_and_ofst(st, offset, &base_st, &base_offset);
 
-  fprintf(stderr, "Processing inito for symbol: ");
-  base_st->Print(stderr);
-  fprintf(stderr, " offset: %lld\n", base_offset);
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG)) {
+    fprintf(stderr, "Processing inito for symbol: ");
+    base_st->Print(stderr);
+    fprintf(stderr, " offset: %lld\n", base_offset);
+  }
 
   MEM_POOL memPool;
   MEM_POOL_Initialize(&memPool, "NystromInitval_Pool", FALSE);
@@ -1110,7 +1116,8 @@ ConstraintGraph::processInito(const INITO *const inito)
   OffsetPointsToList *valList = 
                 processInitv(base_st_ty, initv_idx, base_offset, &memPool);
   if (valList == NULL) {
-    fprintf(stderr, "processInitv returning null\n");
+    if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
+      fprintf(stderr, "processInitv returning null\n");
     // The init section was not consistent with the type
     // Lump all the init data for this symbol to this node and 
     // make it field insensitive :( (unless its all not a pointer)
@@ -1134,9 +1141,11 @@ ConstraintGraph::processInito(const INITO *const inito)
     ConstraintGraphNode *node = getCGNode(CG_ST_st_idx(base_st), base_offset);
     node->unionPointsTo(tmp, CQ_GBL);
     node->stInfo()->setModulus(1, node->offset());
-    fprintf(stderr, "processInito: Setting modulus to 1 for node:\n");
-    node->print(stderr);
-    fprintf(stderr, "\n");
+    if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG)) {
+      fprintf(stderr, "processInito: Setting modulus to 1 for node:\n");
+      node->print(stderr);
+      fprintf(stderr, "\n");
+    }
     return;
   }
 
@@ -1150,7 +1159,7 @@ ConstraintGraph::processInito(const INITO *const inito)
                                           base_offset + offset);
     ConstraintGraphNode::sanitizePointsTo(*pts);
     node->unionPointsTo(*pts, CQ_HZ);
-    if (Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG)) {
+    if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG)) {
       fprintf(stderr, "  node offset: %d val offset: %d, pts: ",
               node->offset(), offset);
       pts->print(stderr);
@@ -1389,11 +1398,25 @@ ConstraintGraph::processExpr(WN *expr)
           return NULL;
         // For a non-zero offset, we need to construct a new tmp preg, t1
         // such that t1 = y + offset (a skew)
-        if (WN_offset(expr) != 0) {
+        INT32 skew = 0;
+        if (WN_offset(expr) != 0)
+          skew = WN_offset(expr);
+        // For MTYPE_BS, use the field offset
+        if (WN_desc(expr) == MTYPE_BS) {
+          UINT cur_field_id = 0;
+          UINT64 field_offset = 0;
+          TY &ptr_ty = Ty_Table[WN_load_addr_ty(expr)]; 
+          FmtAssert(TY_kind(ptr_ty) == KIND_POINTER, ("Expect KIND_POINTER"));
+          TY_IDX ptd_ty_idx = TY_pointed(ptr_ty);
+          FLD_HANDLE fld = 
+                     FLD_And_Offset_From_Field_Id(ptd_ty_idx, WN_field_id(expr),
+                                                  cur_field_id, field_offset);
+          skew += field_offset;
+        }
+        if (skew != 0) {
           ConstraintGraphNode *tmp1CGNode = genTempCGNode();
           bool added = false;
-          addEdge(addrCGNode, tmp1CGNode, ETYPE_SKEW, CQ_HZ, 
-                  WN_offset(expr), added);
+          addEdge(addrCGNode, tmp1CGNode, ETYPE_SKEW, CQ_HZ, skew, added);
           addrCGNode = tmp1CGNode;
           // Adjust the CGNode associated with the address (kid0)
           // with the newly created temp CGNode
@@ -1726,11 +1749,25 @@ ConstraintGraph::processLHSofStore(WN *stmt)
     if (addrCGNode != NULL) {
       // For a non-zero offset, we need to construct a new tmp preg, t1
       // such that t1 = x + offset (a skew)
-      if (WN_offset(stmt) != 0) {
-        ConstraintGraphNode *tmp1CGNode = genTempCGNode();
+      INT32 skew = 0;
+      if (WN_offset(stmt) != 0)
+        skew = WN_offset(stmt);
+      // For MTYPE_BS, use the field offset
+      if (WN_desc(stmt) == MTYPE_BS) {
+        UINT cur_field_id = 0;
+        UINT64 field_offset = 0;
+        TY &ptr_ty = Ty_Table[WN_ty(stmt)];
+        FmtAssert(TY_kind(ptr_ty) == KIND_POINTER, ("Expect KIND_POINTER"));
+        TY_IDX ptd_ty_idx = TY_pointed(ptr_ty);
+        FLD_HANDLE fld = 
+                   FLD_And_Offset_From_Field_Id(ptd_ty_idx, WN_field_id(stmt),
+                                                cur_field_id, field_offset);
+        skew += field_offset;
+      }
+      if (skew != 0) {
         bool added = false;
-        addEdge(addrCGNode, tmp1CGNode, ETYPE_SKEW, CQ_HZ, 
-                WN_offset(stmt), added);
+        ConstraintGraphNode *tmp1CGNode = genTempCGNode();
+        addEdge(addrCGNode, tmp1CGNode, ETYPE_SKEW, CQ_HZ, skew, added);
         addrCGNode = tmp1CGNode;
       }
     }
@@ -1980,7 +2017,7 @@ ConstraintGraph::handleCall(WN *callWN)
 
   // Create a new call site
   CallSite *callSite = CXX_NEW(CallSite(opr == OPR_ICALL || opr == OPR_VFCALL,
-                                        _nextCallSiteId++, _memPool), _memPool);
+                                        nextCallSiteId++, _memPool), _memPool);
   _callSiteMap[callSite->id()] = callSite;
   WN_MAP_CallSiteId_Set(callWN, callSite->id());
 
@@ -3059,6 +3096,106 @@ ConstraintGraph::merge(ConstraintGraph *rhs)
     rhs->_cgStInfoMap.erase(cg_st_idx);
     _cgStInfoMap[cg_st_idx] = stInfo;
   }
+}
+
+void
+ConstraintGraph::updateCloneStIdxMap(ST_IDX old_clone_idx,
+                                     ST_IDX new_clone_idx)
+{
+  for (hash_map<ST_IDX, ST_IDX>::iterator iter = origToCloneStIdxMap.begin();
+       iter != origToCloneStIdxMap.end(); iter++)
+  {
+    ST_IDX orig_st_idx  = iter->first;
+    ST_IDX clone_st_idx = iter->second;
+    if (clone_st_idx == old_clone_idx) {
+      origToCloneStIdxMap[orig_st_idx] = new_clone_idx;
+      return;
+    }
+  }
+}
+
+void
+ConstraintGraph::updateOrigToCloneStIdxMap(ST_IDX orig_st_idx,
+                                           ST_IDX clone_st_idx)
+{
+  origToCloneStIdxMap[orig_st_idx] = clone_st_idx;
+}
+
+void
+ConstraintGraph::cloneWNtoCallSiteCGNodeIdMap(WN *orig_wn,
+                                              WN *clone_wn,
+                                              IPO_CLONE *ipoClone)
+{
+  UINT32 id = IPA_WN_MAP32_Get(ipoClone->Get_Orig_maptab(),
+                               WN_MAP_ALIAS_CGNODE, orig_wn);
+  if (id != 0)
+    IPA_WN_MAP32_Set(ipoClone->Get_Cloned_maptab(),
+                     WN_MAP_ALIAS_CGNODE, clone_wn, id);
+}
+
+void
+ConstraintGraphNode::copy(ConstraintGraphNode *node)
+{
+  _id            = node->_id;
+  _flags         = node->_flags;
+  _inKCycle      = node->_inKCycle;
+  _pointsToList  = node->_pointsToList;
+  _repParent     = node->_repParent;
+  _nextOffset    = node->_nextOffset;
+  _maxAccessSize = node->_maxAccessSize;
+}
+
+// Create a new ConstraintGraphNode with new_cg_st_idx, but the old node's id
+// and offset. The new node is added to this CG using the new_cg_st_idx.
+ConstraintGraphNode *
+ConstraintGraph::cloneCGNode(ConstraintGraphNode *node, CG_ST_IDX new_cg_st_idx)
+{
+  ConstraintGraphNode *newCGNode = 
+    CXX_NEW(ConstraintGraphNode(new_cg_st_idx, node->offset(), this), _memPool);
+  newCGNode->copy(node);
+  FmtAssert(_cgNodeToIdMap.find(newCGNode) == _cgNodeToIdMap.end(),
+            ("Node already mapped"));
+  _cgNodeToIdMap[newCGNode] = node->id();
+  char buf1[128];
+  char buf2[128];
+  if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
+    fprintf(stderr, "  cloneCGNode: node id:%d idx:%s off:%d cg:%s "
+            "to node idx:%s off:%d cg:%s\n", node->id(),
+            printCGStIdx(node->cg_st_idx(), buf1, 128), node->offset(),
+            node->cg()->name(), printCGStIdx(newCGNode->cg_st_idx(), buf2, 128),
+            newCGNode->offset(), name());
+  return newCGNode;
+}
+
+// Add node to this CG using node's cg_st_idx, offset
+void
+ConstraintGraph::mapCGNode(ConstraintGraphNode *node)
+{
+  FmtAssert(_cgNodeToIdMap.find(node) == _cgNodeToIdMap.end(),
+            ("Node already mapped"));
+  _cgNodeToIdMap[node] = node->id();
+  char buf1[128];
+  if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
+    fprintf(stderr, "  mapCGNode: node id:%d: idx:%s off:%d cg:%s to cg:%s\n",
+            node->id(), printCGStIdx(node->cg_st_idx(), buf1, 128), 
+            node->offset(), node->cg()->name(), name());
+}
+
+// Add StInfo to this CG indexed using new_cg_st_idx
+void
+ConstraintGraph::mapStInfo(StInfo *stInfo,
+                           CG_ST_IDX cg_st_idx,
+                           CG_ST_IDX new_cg_st_idx)
+{
+  FmtAssert(_cgStInfoMap.find(new_cg_st_idx) == _cgStInfoMap.end(),
+            ("StInfo already mapped"));
+  _cgStInfoMap[new_cg_st_idx] = stInfo;
+  char buf1[128];
+  char buf2[128];
+  if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
+    fprintf(stderr, " mapStInfo: old idx:%s new idx:%s to cg:%s\n",
+            printCGStIdx(cg_st_idx, buf1, 128),
+            printCGStIdx(new_cg_st_idx, buf2, 128), name());
 }
 
 void

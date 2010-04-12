@@ -11,6 +11,8 @@
 #include "ipa_summary.h"
 #include "ipa_nystrom_alias_analyzer.h"
 #include "opt_defs.h"
+#include "wn_util.h"
+#include "ir_reader.h"
 
 IPA_NystromAliasAnalyzer *IPA_NystromAliasAnalyzer::_ipa_naa = NULL;
 
@@ -223,16 +225,27 @@ ConstraintGraph::findUniqueNode(CGNodeId cgNodeId)
   return iter->second;
 }
 
+CallSite *
+ConstraintGraph::findUniqueCallSite(CallSiteId csid)
+{
+  CallSiteIterator iter = _uniqueCallSiteIdMap.find(csid);
+  FmtAssert(iter != _uniqueCallSiteIdMap.end(), ("Unique cs id not found"));
+  return iter->second;
+}
+
 void 
 ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
 {
   INT32 size;
   SUMMARY_PROCEDURE *proc = ipaNode->Summary_Proc();
 
-  fprintf(stderr, "Processing proc: %s file: %s\n",
-          ipaNode->Name(), ipaNode->File_Header().file_name);
+  fprintf(stderr, "Processing proc: %s(%d) file: %s(%d)\n",
+          ipaNode->Name(), ipaNode->Proc_Info_Index(),
+          ipaNode->File_Header().file_name, ipaNode->File_Index());
 
-  _name = ipaNode->Name();
+  sprintf(_name, "%s(%d),%s(%d)", 
+          ipaNode->File_Header().file_name, ipaNode->File_Index(),
+          ipaNode->Name(), ipaNode->Proc_Info_Index());
 
   // during summary to constraint graph construction, map them to their 
   // globally unique ids so that lookups don't fail
@@ -474,9 +487,14 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
   for (UINT32 i = 0; i < callSiteCount; i++) {
     SUMMARY_CONSTRAINT_GRAPH_CALLSITE &summCallSite = 
                                        summCallSites[callSiteIdx + i];
-    CallSite *cs = CXX_NEW(CallSite(summCallSite.id(), summCallSite.flags(),
+    CallSiteId newCSId = nextCallSiteId++;
+    CallSite *cs = CXX_NEW(CallSite(newCSId, summCallSite.flags(),
                                     _memPool), _memPool);
-    _callSiteMap[cs->id()] = cs;
+    _callSiteMap[newCSId] = cs;
+    _uniqueCallSiteIdMap[summCallSite.id()] = cs;
+    csIdToCallSiteMap[newCSId] = cs;
+    fprintf(stderr, "Adding CSoldId: %d to CSnewId: %d\n",
+            summCallSite.id(), newCSId);
 
     if (cs->isDirect() && !cs->isIntrinsic())
       cs->st_idx(summCallSite.st_idx());
@@ -1307,7 +1325,8 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
   // If the callee is a malloc wrapper, create a heap CGNode and add
   // it to the points to set of the actual return. The formal and actual
   // return nodes are not connected.
-  if (PU_has_attr_malloc(calleePU)) {
+  if (PU_has_attr_malloc(calleePU) && cs->returnId() != 0) {
+    FmtAssert(cs->returnId() != 0, ("No return id for malloc wrapper"));
     // Get the type of the actual return
     ConstraintGraphNode *actualRet = cgNode(cs->returnId())->parent();
     TY &ret_type = Ty_Table[actualRet->stInfo()->ty_idx()];
@@ -1378,4 +1397,280 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
         delta.add(edge);
     }
   }
+}
+
+void
+ConstraintGraph::updateSummaryCallSiteId(SUMMARY_CALLSITE &summCallSite)
+{
+  UINT32 oldCSid = summCallSite.Get_constraint_graph_callsite_id();
+  CallSite *cs = findUniqueCallSite(oldCSid);
+  FmtAssert(cs != NULL, ("call site: %d not mapped", oldCSid));
+  UINT32 newCSid = cs->id();
+  summCallSite.Set_constraint_graph_callsite_id(newCSid);
+}
+
+void
+IPA_NystromAliasAnalyzer::mapWNToUniqCallSiteCGNodeId(IPA_NODE *node)
+{
+  WN *entryWN = node->Whirl_Tree();
+  FmtAssert(entryWN != NULL, ("Null WN tree!\n"));
+
+  ConstraintGraph *cg = this->cg(node->Node_Index());
+  if (cg == NULL)
+    return; 
+
+  // fprintf(stderr, "mapWNToUniqCGNodeId: %s\n", cg->name());
+
+  // Remap the WNs to its unique CG nodes ids.
+  for (WN_ITER *wni = WN_WALK_TreeIter(entryWN);
+      wni; wni = WN_WALK_TreeNext(wni))
+  {
+    WN *wn = WN_ITER_wn(wni);
+    const OPCODE   opc = WN_opcode(wn);
+
+    UINT32 id = IPA_WN_MAP32_Get(Current_Map_Tab, WN_MAP_ALIAS_CGNODE, wn);
+
+    if (id == 0)
+      continue;
+
+    if (OPCODE_is_call(opc)) {
+      CallSiteId newCallSiteId = cg->findUniqueCallSite(id)->id();
+      // fprintf(stderr, " Mapping WN (call) from old id:%d to new id:%d\n", 
+      //         id, newCallSiteId);
+      WN_MAP_CallSiteId_Set(wn, newCallSiteId);
+    } else {
+      CGNodeId newId = cg->findUniqueNode(id)->id();
+      // fprintf(stderr, " Mapping WN from old id:%d to new id:%d\n", 
+      //         id, newId);
+      WN_MAP_CGNodeId_Set(wn, newId);
+    }
+  }
+}
+
+void
+ConstraintGraph::updateCallSiteForBE(CallSite *cs)
+{
+  FmtAssert(callSite(cs->id()) == NULL, ("Callsite already exists\n"));
+  _callSiteMap[cs->id()] = cs;
+  // fprintf(stderr, " Mapping callsite %d\n", cs->id());
+}
+
+void
+IPA_NystromAliasAnalyzer::updateCGForBE(IPA_NODE *ipaNode)
+{
+  ConstraintGraph *localCG = this->cg(ipaNode->Node_Index());
+
+  if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
+    fprintf(stderr, "updateCGForBE: %s\n", localCG->name());
+
+  WN *entryWN = ipaNode->Whirl_Tree();
+  for (WN_ITER *wni = WN_WALK_TreeIter(entryWN); wni; 
+       wni = WN_WALK_TreeNext(wni))
+  {
+    WN *wn = WN_ITER_wn(wni);
+    const OPCODE   opc = WN_opcode(wn);
+
+    // Get the symbol from the WN and add StInfos/CGNodes associated
+    // with the symbol
+    OPCODE op = WN_opcode(wn);
+    ST_IDX st_idx = WN_st_idx(wn);
+    if (OPCODE_has_sym(op) && st_idx != 0) 
+    {
+      // Global not-preg symbol
+      if (ST_IDX_level(st_idx) == GLOBAL_SYMTAB &&
+          ST_class(&St_Table[st_idx]) != CLASS_PREG) 
+      {
+        CG_ST_IDX cg_st_idx = st_idx;
+        StInfo *globalStInfo = ConstraintGraph::globalCG()->stInfo(cg_st_idx);
+        if (globalStInfo) {
+          StInfo *globalStInfoCopy = localCG->stInfo(cg_st_idx);
+          if (globalStInfoCopy) {
+            FmtAssert(globalStInfoCopy == globalStInfo,
+                      ("Expecting global StInfos to be the same"));
+          } else {
+            // Map the StInfo and all nodes to the localCG
+            if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
+              fprintf(stderr, " updateCGForBE global: %s\n",
+                      ST_name(cg_st_idx));
+            localCG->mapStInfo(globalStInfo, cg_st_idx, cg_st_idx);
+            ConstraintGraphNode *globalCGNode = globalStInfo->firstOffset();
+            while (globalCGNode) {
+              FmtAssert(localCG->checkCGNode(cg_st_idx, globalCGNode->offset())
+                        == NULL, ("globalCGNode not expected in localCG"));
+              localCG->mapCGNode(globalCGNode);
+              globalCGNode = globalCGNode->nextOffset();
+            }
+          }
+        }
+      }
+      else if (ST_IDX_level(st_idx) != GLOBAL_SYMTAB)
+      {
+        // Local symbols are expected to be in the localCG
+        CG_ST_IDX cg_st_idx = ConstraintGraph::adjustCGstIdx(ipaNode, st_idx);
+        if (localCG->stInfo(cg_st_idx) == NULL) {
+          if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
+            fprintf(stderr, "Found local symbol %s with no StInfo mapping"
+                    " in local CG: %s\n", ST_name(St_Table[st_idx]),
+                    localCG->name());
+        }
+        // fdump_tree(stderr, entryWN);
+        // FmtAssert(localCG->stInfo(cg_st_idx) != NULL, 
+        //         ("Expecting local symbol to be already present in localCG"));
+      }
+    }
+                  
+    UINT32 id = IPA_WN_MAP32_Get(ipaNode->Map_Table(), WN_MAP_ALIAS_CGNODE, wn);
+
+    if (id == 0)
+      continue;
+
+    if (OPCODE_is_call(opc)) {
+      // Check if the call site is local to this PU
+      CallSite *cs = localCG->callSite(id);
+      if (cs == NULL) {
+        // Query the unique id to call site map
+        cs = ConstraintGraph::uniqueCallSite(id);
+        FmtAssert(cs != NULL, ("Callsite: %d not mapped", id));
+        // Add this call site to the local CG
+        localCG->updateCallSiteForBE(cs);
+      }
+    } else {
+      ConstraintGraphNode *uniqNode = ConstraintGraph::cgNode(id);
+      FmtAssert(uniqNode != NULL, ("CGNodeId: %d not mapped", id));
+      // Check if the node mapped to the WN belongs to the global CG
+      ConstraintGraph *remoteCG = uniqNode->cg();
+      if (remoteCG == ConstraintGraph::globalCG()) 
+      {
+        // Check if it is already mapped to the localCG
+        if (! localCG->checkCGNode(uniqNode->cg_st_idx(), uniqNode->offset()) ) 
+        {
+          // Add the StInfo and all the nodes
+          CG_ST_IDX cg_st_idx = uniqNode->cg_st_idx();
+          StInfo *globalStInfo = uniqNode->stInfo();
+          FmtAssert(localCG->stInfo(cg_st_idx) == NULL,
+                    ("Not expecting StInfo"));
+          if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
+            fprintf(stderr, " updateCGForBE global: %s\n", ST_name(cg_st_idx));
+          localCG->mapStInfo(globalStInfo, cg_st_idx, cg_st_idx);
+          ConstraintGraphNode *globalCGNode = globalStInfo->firstOffset();
+          while (globalCGNode) {
+            FmtAssert(localCG->checkCGNode(cg_st_idx, 
+                                           globalCGNode->offset()) == NULL,
+                      ("globalCGNode not expected in localCG"));
+            localCG->mapCGNode(globalCGNode);
+            globalCGNode = globalCGNode->nextOffset();
+          }
+          // This node should have been added by now
+          FmtAssert(localCG->checkCGNode(uniqNode->cg_st_idx(),
+                                         uniqNode->offset()) != NULL,
+                    ("Node should have been mapped"));
+        }
+      } 
+      else if (remoteCG != localCG)
+      {
+        // The node mapped to the WN belongs to a remote non-global CG
+        // Check if its a PREG
+        StInfo *remoteStInfo = uniqNode->stInfo();
+        if (remoteStInfo->checkFlags(CG_ST_FLAGS_PREG)) 
+        {
+          CG_ST_IDX cg_st_idx = uniqNode->cg_st_idx();
+          // PREGs will retain their remote CGs unique file/pu idx
+          // Check if it is already mapped to the localCG
+          if (! localCG->checkCGNode(cg_st_idx, uniqNode->offset()) ) {
+            if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
+              fprintf(stderr, " updateCGForBE preg node: %d\n", uniqNode->id());
+            if (! localCG->stInfo(cg_st_idx) )
+              localCG->mapStInfo(remoteStInfo, cg_st_idx, cg_st_idx);
+            localCG->mapCGNode(uniqNode);
+          }
+        }
+        else
+        {
+          // Its a local symbol of a remote CG
+          // Check if the node exists locally
+          bool found = false;
+          for (CGNodeToIdMapIterator iter = localCG->lBegin();
+               iter != localCG->lEnd(); iter++) {
+            if (iter->second == uniqNode->id()) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            // Remap the remote StInfo and its associated nodes to the localCG
+            // using the remote pu/file idx   
+            StInfo *remoteStInfo = uniqNode->stInfo();
+            FmtAssert(localCG->stInfo(uniqNode->cg_st_idx()) == NULL,
+                      ("remoteStInfo not expected in localCG"));
+            localCG->mapStInfo(remoteStInfo, uniqNode->cg_st_idx(),
+                               uniqNode->cg_st_idx());
+            ConstraintGraphNode *remoteCGNode = remoteStInfo->firstOffset();
+            while (remoteCGNode) {
+              FmtAssert(localCG->checkCGNode(uniqNode->cg_st_idx(), 
+                                             remoteCGNode->offset()) == NULL,
+                        ("remoteCGNode not expected in localCG"));
+              if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
+                fprintf(stderr, " updateCGForBE remotelocal node %d\n",
+                      remoteCGNode->id());
+              localCG->mapCGNode(remoteCGNode);
+              remoteCGNode = remoteCGNode->nextOffset();
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void 
+ConstraintGraph::cloneConstraintGraphMaps(IPA_NODE *caller, IPA_NODE *callee)
+{
+  ConstraintGraph *callerCG = 
+            IPA_NystromAliasAnalyzer::aliasAnalyzer()->cg(caller->Node_Index());
+  ConstraintGraph *calleeCG = 
+            IPA_NystromAliasAnalyzer::aliasAnalyzer()->cg(callee->Node_Index());
+
+  if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
+    fprintf(stderr, "cloneConstraintGraphMaps: caller: %s callee: %s\n",
+            callerCG->name(), calleeCG->name());
+
+  for (hash_map<ST_IDX, ST_IDX>::iterator iter = origToCloneStIdxMap.begin(); 
+       iter != origToCloneStIdxMap.end(); iter++) 
+  {
+    ST_IDX orig_st_idx  = iter->first;
+    ST_IDX clone_st_idx = iter->second;
+
+    // fprintf(stderr, "orig_st_idx: %d clone_st_idx: %d\n",
+    //        orig_st_idx, clone_st_idx);
+
+    // Clone the StInfo and all its CGNodes
+    CG_ST_IDX orig_cg_st_idx = 
+              ConstraintGraph::adjustCGstIdx(callee, orig_st_idx);
+    StInfo *origStInfo = calleeCG->stInfo(orig_cg_st_idx);
+    FmtAssert(origStInfo != NULL , ("Expecting original StInfo in callee"));
+
+    CG_ST_IDX clone_cg_st_idx = 
+              ConstraintGraph::adjustCGstIdx(caller, clone_st_idx);
+    StInfo *cloneStInfo = callerCG->stInfo(clone_cg_st_idx);
+    // if StInfo does not exist, add
+    if (cloneStInfo == NULL) {
+      // Map the StInfo
+      callerCG->mapStInfo(origStInfo, orig_cg_st_idx, clone_cg_st_idx);
+      ConstraintGraphNode *orig_node = origStInfo->firstOffset();
+      while (orig_node) {
+        callerCG->cloneCGNode(orig_node, clone_cg_st_idx);
+        orig_node = orig_node->nextOffset(); 
+      }
+    }
+  }
+  origToCloneStIdxMap.clear();
+}
+
+void
+dbgCGStIdx(CG_ST_IDX cg_st_idx)
+{
+  fprintf(stderr, "<file:%d pu:%d st_idx:%d>",
+          FILE_NUM_ST_IDX(cg_st_idx),
+          PU_NUM_ST_IDX(cg_st_idx),
+          SYM_ST_IDX(cg_st_idx));
 }

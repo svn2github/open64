@@ -104,6 +104,10 @@ public:
       return NULL;
   }
 
+  void mapWNToUniqCallSiteCGNodeId(IPA_NODE *node);
+
+  void updateCGForBE(IPA_NODE *node);
+
   // For IPA call graph SCC detection
   void allocSCCInfo(IPA_CALL_GRAPH *icg)
   {
