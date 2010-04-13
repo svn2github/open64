@@ -976,7 +976,8 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
       if (Alias_Nystrom_Analyzer) {
         ConstraintGraph *callerCG = 
             IPA_NystromAliasAnalyzer::aliasAnalyzer()->cg(caller->Node_Index());
-        callerCG->updateSummaryCallSiteId(callsite_array[callsite_index]);
+        if (!callsite_array[callsite_index].Is_virtual_function_target())
+          callerCG->updateSummaryCallSiteId(callsite_array[callsite_index]);
       }
 #endif
       

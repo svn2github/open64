@@ -1647,7 +1647,11 @@ ConstraintGraph::cloneConstraintGraphMaps(IPA_NODE *caller, IPA_NODE *callee)
     CG_ST_IDX orig_cg_st_idx = 
               ConstraintGraph::adjustCGstIdx(callee, orig_st_idx);
     StInfo *origStInfo = calleeCG->stInfo(orig_cg_st_idx);
-    FmtAssert(origStInfo != NULL , ("Expecting original StInfo in callee"));
+    // FmtAssert(origStInfo != NULL , ("Expecting original StInfo in callee"));
+    // If we haven't seen this symbol before, we may not have an StInfo
+    // in the callee
+    if (origStInfo == NULL)
+      continue;
 
     CG_ST_IDX clone_cg_st_idx = 
               ConstraintGraph::adjustCGstIdx(caller, clone_st_idx);
