@@ -3203,12 +3203,16 @@ template <PROGRAM program>
 void
 SUMMARIZE<program>::generateConstraintGraphSummary()
 {
+  SUMMARY_PROCEDURE *currProc = Get_procedure(Get_procedure_idx());
+
   NystromAliasAnalyzer *naa = 
           static_cast<NystromAliasAnalyzer *>(AliasAnalyzer::aliasAnalyzer());
-  if (naa == NULL)
+  if (naa == NULL) {
+    currProc->hasConstraintGraph(FALSE);
     return;
+  }
 
-  SUMMARY_PROCEDURE *currProc = Get_procedure(Get_procedure_idx());
+  currProc->hasConstraintGraph(TRUE);
 
   mUINT32 numNodes = 0;
   mUINT32 numEdges = 0;

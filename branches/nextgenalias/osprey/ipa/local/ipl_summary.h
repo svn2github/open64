@@ -683,6 +683,7 @@ private:
     LANGUAGE _l;
 
     // For Nystrom alias analyzer
+    BOOL    _has_constraint_graph;
     mUINT32 _constraint_graph_nodes_idx;
     mUINT32 _constraint_graph_nodes_count;
     mUINT32 _constraint_graph_edges_idx;
@@ -899,6 +900,8 @@ public:
     LANGUAGE Get_lang() const		{ return _l; }
 
     // For the Nystrom alias analyzer
+    BOOL hasConstraintGraph() const { return _has_constraint_graph; }
+    void hasConstraintGraph(BOOL c) { _has_constraint_graph = c; }
     mUINT32 Get_constraint_graph_nodes_idx() const
     {
       return _constraint_graph_nodes_idx;

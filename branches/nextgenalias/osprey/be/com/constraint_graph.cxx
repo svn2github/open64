@@ -3187,6 +3187,20 @@ ConstraintGraph::mapStInfo(StInfo *stInfo,
             printCGStIdx(new_cg_st_idx, buf2, 128), name());
 }
 
+void 
+ConstraintGraph::promoteCallSiteToDirect(CallSiteId csid, ST_IDX st_idx)
+{
+  CallSite *cs = callSite(csid);
+  if (cs) {
+    FmtAssert(cs->isIndirect(), ("Expect callsite to be indirect"));
+    FmtAssert(!cs->isIntrinsic(), ("Expect callsite to be not an intrinsic"));
+    fprintf(stderr, "Promoting call site: %d to direct call of %s\n",
+            csid, ST_name(St_Table[st_idx]));
+    cs->clearFlags(CS_FLAGS_INDIRECT);
+    cs->st_idx(st_idx);
+  }
+}
+
 void
 CallSite::print(FILE *file)
 {

@@ -195,6 +195,10 @@ ConstraintGraph::adjustCGstIdx(IPA_NODE *ipaNode, CG_ST_IDX cg_st_idx)
 void
 IPA_NystromAliasAnalyzer::buildIPAConstraintGraph(IPA_NODE *ipaNode)
 {
+  if ( ! ipaNode->Summary_Proc()->hasConstraintGraph() ) {
+    fprintf(stderr, "ConstraintGraph missing for proc: %s\n", ipaNode->Name());
+    return;
+  }
   ConstraintGraph *cg = CXX_NEW(ConstraintGraph(&_memPool, ipaNode), &_memPool);
   _ipaConstraintGraphs[ipaNode->Node_Index()] = cg;
 }
@@ -340,12 +344,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       // incoming/outgoing edges, i.e. they are all mapped onto the
       // parent.  When we read the edges for this PU (below) we will
       // materialize the 'repPNode' -- =0 --> 'cgNode' parent copy.
-      bool merged = cgNode->checkFlags(CG_NODE_FLAGS_MERGED);
-      if (merged)
-        cgNode->clearFlags(CG_NODE_FLAGS_MERGED);
       repPNode->merge(cgNode);
-      if (merged)
-        cgNode->addFlags(CG_NODE_FLAGS_MERGED);
       cgNode->repParent(repPNode);
     }
   }
@@ -564,7 +563,11 @@ ConstraintGraph::buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE *summ,
     if (summ->inKCycle() != 0 && summ->inKCycle() != cgNode->inKCycle())
       cgNode->addFlags(CG_NODE_FLAGS_ADJUST_K_CYCLE);
     cgNode->inKCycle(gcd(cgNode->inKCycle(), summ->inKCycle()));
-    cgNode->addFlags(summ->flags());
+    // Clear the MERGE flag, since if this node has a parent
+    // we will be merging this node with the parent and the MERGED flag
+    // will be set.
+    UINT32 flags = (summ->flags() & (~CG_NODE_FLAGS_MERGED));
+    cgNode->addFlags(flags);
     fprintf(stderr, "Global entry found for CGNode oldId: %d newId: %d "
             " old cg_st_idx: %llu new cg_st_idx: %llu flags: 0x%x\n",
             summ->cgNodeId(), cgNode->id(), summ->cg_st_idx(), cg_st_idx,
@@ -1462,10 +1465,12 @@ void
 ConstraintGraph::updateSummaryCallSiteId(SUMMARY_CALLSITE &summCallSite)
 {
   UINT32 oldCSid = summCallSite.Get_constraint_graph_callsite_id();
-  CallSite *cs = findUniqueCallSite(oldCSid);
-  FmtAssert(cs != NULL, ("call site: %d not mapped", oldCSid));
-  UINT32 newCSid = cs->id();
-  summCallSite.Set_constraint_graph_callsite_id(newCSid);
+  if (oldCSid != 0) {
+    CallSite *cs = findUniqueCallSite(oldCSid);
+    FmtAssert(cs != NULL, ("call site: %d not mapped", oldCSid));
+    UINT32 newCSid = cs->id();
+    summCallSite.Set_constraint_graph_callsite_id(newCSid);
+  }
 }
 
 void

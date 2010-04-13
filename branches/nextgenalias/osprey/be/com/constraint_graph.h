@@ -1320,6 +1320,8 @@ public:
                  CG_ST_IDX cg_st_idx,
                  CG_ST_IDX new_cg_st_idx);
 
+  void promoteCallSiteToDirect(CallSiteId csid, ST_IDX st_idx);
+
 private:
 
   // Max size of all types
@@ -1565,6 +1567,7 @@ public:
   UINT8 flags() const { return _flags; }
   bool checkFlags(UINT8 flag) const { return _flags & flag; }
   void addFlags(UINT8 flag) { _flags |= flag; }
+  void clearFlags(UINT8 flag) { _flags &= ~flag; }
 
   PointsTo &mod() { return _mod; }
   PointsTo &ref() { return _ref; }
