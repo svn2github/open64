@@ -569,6 +569,7 @@ public:
   UINT32 computeMaxAccessSize(void);
 
   // Remove redundant nodes, in the presence of <ST, -1>
+  void sanitizePointsTo(CGEdgeQual qual);
   static void sanitizePointsTo(PointsTo &pts);
   static void removeOffsets(PointsTo &dst, CG_ST_IDX);
 
@@ -970,6 +971,7 @@ public:
   }
 
   TY_IDX ty_idx() const { return _ty_idx; }
+  void ty_idx(TY_IDX idx) { _ty_idx = idx; }
 
   void dbgPrint();
   void print(FILE *file,bool emitOffsetChain=false);

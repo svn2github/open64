@@ -720,6 +720,14 @@ ConstraintGraphNode::removeOffsets(PointsTo &dst, CG_ST_IDX idx)
 }
 
 void
+ConstraintGraphNode::sanitizePointsTo(CGEdgeQual qual)
+{
+  PointsTo *pts = _findPointsTo(qual,_pointsToList);
+  if (pts)
+    sanitizePointsTo(*pts);
+}
+
+void
 ConstraintGraphNode::sanitizePointsTo(PointsTo &pts)
 {
    hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx> minusOneSts;

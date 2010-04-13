@@ -330,8 +330,24 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     ConstraintGraphNode *cgNode = findUniqueNode(summNode.cgNodeId());
     UINT32 repParentId = summNode.repParent();
     // If the node does not have an existing parent 
-    if (repParentId != 0 && cgNode->repParent() == NULL)
-      cgNode->repParent(findUniqueNode(repParentId));
+    if (repParentId != 0 && cgNode->repParent() == NULL) {
+      ConstraintGraphNode *repPNode = findUniqueNode(repParentId);
+      // Here we are going to call merge to merge 'cgNode' into
+      // the equivalent of the parent.  Why?  It may be the case,
+      // that 'summNode.cgNodeId()' was mapped to an existing node
+      // having incoming edges.  Now that we are going to give it a
+      // representative we must call merge() to ensure it has no
+      // incoming/outgoing edges, i.e. they are all mapped onto the
+      // parent.  When we read the edges for this PU (below) we will
+      // materialize the 'repPNode' -- =0 --> 'cgNode' parent copy.
+      bool merged = cgNode->checkFlags(CG_NODE_FLAGS_MERGED);
+      if (merged)
+        cgNode->clearFlags(CG_NODE_FLAGS_MERGED);
+      repPNode->merge(cgNode);
+      if (merged)
+        cgNode->addFlags(CG_NODE_FLAGS_MERGED);
+      cgNode->repParent(repPNode);
+    }
   }
 
   // Update the CGNodeId references in the ConstraintGraphNodes
@@ -369,6 +385,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       ConstraintGraphNode *pNode = findUniqueNode(id);
       cgNode->addPointsTo(pNode, CQ_GBL);
     }
+    cgNode->sanitizePointsTo(CQ_GBL);
     Is_True(cgNode->sanityCheckPointsTo(CQ_GBL),("GBL: <ST,x> and <ST,-1>"));
 
     // HZ
@@ -377,6 +394,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       ConstraintGraphNode *pNode = findUniqueNode(id);
       cgNode->addPointsTo(pNode, CQ_HZ);
     }
+    cgNode->sanitizePointsTo(CQ_HZ);
     Is_True(cgNode->sanityCheckPointsTo(CQ_HZ),("HZ: <ST,x> and <ST,-1>"));
 
     // DN
@@ -385,6 +403,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       ConstraintGraphNode *pNode = findUniqueNode(id);
       cgNode->addPointsTo(pNode, CQ_DN);
     }
+    cgNode->sanitizePointsTo(CQ_DN);
     Is_True(cgNode->sanityCheckPointsTo(CQ_DN),("DN: <ST,x> and <ST,-1>"));
 
     // Adjust pts set if required
@@ -438,9 +457,18 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     ConstraintGraphNode *srcNode = findUniqueNode(summEdge.src());
     ConstraintGraphNode *destNode = findUniqueNode(summEdge.dest());
     bool added = false;
+    ConstraintGraphNode *srcParent = srcNode->parent();
+    // If the parent of the destination node is actually the source
+    // of the end, we must respect the original parent relationship
+    // no additional merging has happened.
+    ConstraintGraphNode *destParent;
+    if (destNode->parent() == srcParent && (summEdge.flags() & CG_EDGE_PARENT_COPY))
+      destParent = destNode;
+    else
+      destParent = destNode->parent();
     // Add the edges to the representative parents
     ConstraintGraphEdge *edge = 
-      ConstraintGraph::addEdge(srcNode->parent(), destNode->parent(), 
+      ConstraintGraph::addEdge(srcParent, destParent,
                                (CGEdgeType)summEdge.etype(),
                                (CGEdgeQual)summEdge.qual(), 
                                summEdge.sizeOrSkew(), added, summEdge.flags());
@@ -579,9 +607,29 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
   if (iter != _cgStInfoMap.end()) {
     StInfo *stInfo = iter->second;
     FmtAssert(this == globalCG(), ("Expect this to be the globalCG"));
-    FmtAssert(stInfo->varSize() == summ->varSize(), ("Inconsistent varSize"));
-    FmtAssert(stInfo->ty_idx() == summ->ty_idx(), ("Inconsistent ty_idx"));
     stInfo->addFlags(summ->flags());
+    // We expect the variable sizes and types to be consistent, however
+    // in the case of forward and extern declarations we may find ourselves
+    // having different variable sizes and even different types.
+    // In the situation where the variable size is different, we expect
+    // one of them to be size zero, that being the forward declaration.
+    // We will keep the type, size, modulus of the non-zero sized StInfo.
+    if (stInfo->varSize() != summ->varSize()) {
+      if (stInfo->varSize() == 0) {
+        stInfo->varSize(summ->varSize());
+        stInfo->ty_idx(summ->ty_idx());
+        // We are checking the flags on the current stInfo because we
+        // merged the flags above.
+        if (!stInfo->checkFlags(CG_ST_FLAGS_MODRANGE))
+          stInfo->mod(summ->modulus());
+        else
+          stInfo->modRange(buildModRange(summ->modulus(),ipaNode));
+      }
+      else
+        FmtAssert(summ->varSize() == 0,("Inconsistent varsize, expect zero\n"));
+      return stInfo;
+    }
+    //FmtAssert(stInfo->ty_idx() == summ->ty_idx(), ("Inconsistent ty_idx"));
     // Check if we have a modrange or just a plain modulus
     if (!stInfo->checkFlags(CG_ST_FLAGS_MODRANGE)) {
       if (summ->modulus() != stInfo->mod()) {
@@ -772,57 +820,62 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
   hash_set<ST *,hashST,equalST> calledFunc;
 
   IPA_NODE_ITER nodeIter(ipaCallGraph,DONTCARE);
+  // First a quick walk of the call graph to determine all functions
+  // that are actually present within our IPA scope.  The mapping from
+  // ST to IPA_NODE will come in handy later.
+  for (nodeIter.First(); !nodeIter.Is_Empty(); nodeIter.Next()) {
+     IPA_NODE *caller = nodeIter.Current();
+     if (caller == NULL) continue;
+     ST *st = caller->Func_ST();
+     _stToIPANodeMap[st] = caller;
+     // Collect list of possible indirect call targets, here we check
+     // to see whether the StInfo associated with this routine is address
+     // taken.  Likely if there exists a CGNode for this routine it is
+     // address taken, otherwise it would not exist.  Earlier attempts
+     // to make use of the ST_addr_passed/ST_addr_save flags for the PU
+     // ST provided to be extremely conservative for some reason.
+     if (ST_IDX_level(st->st_idx) == GLOBAL_SYMTAB) {
+       ConstraintGraphNode *clrCGNode =
+           ConstraintGraph::globalCG()->checkCGNode(st->st_idx,0);
+       if (clrCGNode && clrCGNode->checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
+         _stToIndTgtMap[st] = caller;
+     }
+  }
+
+  // Now the real walk to locate the direct/indirect callsites and
+  // populate the list of call edges to be connected in the constraint
+  // graph.
   for (nodeIter.First(); !nodeIter.Is_Empty(); nodeIter.Next()) {
     IPA_NODE *caller = nodeIter.Current();
     if (caller == NULL) continue;
-    IPA_SUCC_ITER succIter(ipaCallGraph,caller);
+    //IPA_SUCC_ITER succIter(ipaCallGraph,caller);
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
       fprintf(stderr,"Processing: %s\n",caller->Name());
-    for (succIter.First(); !succIter.Is_Empty(); succIter.Next())
-    {
-      IPA_EDGE *edge = succIter.Current_Edge();
-      IPA_NODE *callee = ipaCallGraph->Callee(edge);
-      if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-        fprintf(stderr," Callee: %s\n",callee->Name());
-      CallSiteId csId =
-          edge->Summary_Callsite()->Get_constraint_graph_callsite_id();
-      edgeList.push_back(IPAEdge(caller->Node_Index(),callee->Node_Index(),csId));
-    }
 
-    // Collect list of possible indirect call targets, here we check
-    // to see whether the StInfo associated with this routine is address
-    // taken.  Likely if there exists a CGNode for this routine it is
-    // address taken, otherwise it would not exist.  Earlier attempts
-    // to make use of the ST_addr_passed/ST_addr_save flags for the PU
-    // ST provided to be extremely conservative for some reason.
-    ST *st = caller->Func_ST();
-    if (ST_IDX_level(st->st_idx) == GLOBAL_SYMTAB) {
-      ConstraintGraphNode *clrCGNode =
-          ConstraintGraph::globalCG()->checkCGNode(st->st_idx,0);
-      if (clrCGNode && clrCGNode->checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
-        _stToIndTgtMap[st] = caller;
-    }
-    _stToIPANodeMap[st] = caller;
-
-    // Collect the indirect/virtual callsites
-    SUMMARY_PROCEDURE *sumProc = caller->Summary_Proc();
-    SUMMARY_CALLSITE *sumCS = IPA_get_callsite_array(caller);
-    UINT32 cnt = sumProc->Get_callsite_count();
-    UINT32 idx = sumProc->Get_callsite_index();
-    for (INT i = 0; i < cnt; i++, idx++ ) {
-      CallSiteId csId = sumCS[idx].Get_constraint_graph_callsite_id();
-      if (sumCS[idx].Is_func_ptr() || sumCS[idx].Is_virtual_call())
-        indirectCallList.push_back(make_pair(caller,csId));
-      else {
-        UINT32 symIdx = sumCS[idx].Get_symbol_index();
-        SUMMARY_SYMBOL *sumSYM = IPA_get_symbol_array(caller);
-        ST_IDX stIdx = sumSYM[symIdx].St_idx();
-        if (ST_IDX_level(stIdx) == GLOBAL_SYMTAB) {
-          calledFunc.insert(&St_Table[stIdx]);
+    // We use the call site information on the constraint graph, rather
+    // than the summary callsite information because transformations
+    // may make the summary callsite to CallSite mapping inconsistent.
+    ConstraintGraph *graph = cg(caller->Node_Index());
+    for (CallSiteIterator csi = graph->callSiteMap().begin();
+        csi != graph->callSiteMap().end(); ++csi) {
+      CallSite *callsite = csi->second;
+      if (callsite->isDirect() && !callsite->isIntrinsic()) {
+        ST_IDX calleeStIdx = callsite->st_idx();
+        ST *funcST = &St_Table[calleeStIdx];
+        STToNodeMap::iterator iter = _stToIPANodeMap.find(funcST);
+        if (iter != _stToIPANodeMap.end()) {
           if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-            fprintf(stderr," Direct call: %s\n",ST_name(stIdx));
+            fprintf(stderr," Direct call: %s\n",ST_name(funcST));
+          IPA_NODE *callee = iter->second;
+          edgeList.push_back(IPAEdge(caller->Node_Index(),
+                                     callee->Node_Index(),callsite->id()));
         }
+        // We are also tracking all called functions for determining
+        // external calls
+        calledFunc.insert(funcST);
       }
+      else if (callsite->isIndirect())
+        indirectCallList.push_back(make_pair(caller,callsite->id()));
     }
   }
 
@@ -1325,6 +1378,12 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
   // If the callee is a malloc wrapper, create a heap CGNode and add
   // it to the points to set of the actual return. The formal and actual
   // return nodes are not connected.
+  // NOTE:  Due to conservative treatment of the call graph it is possible
+  // for us to believe this routine calls a malloc wrapper when it in
+  // fact does not.  If the callsite does not have a returnId(), then the
+  // callee cannot be returning new memory through the return value of this
+  // callsite, so we skip this optimization.  Can we assert that since there
+  // is not return that we should not be connecting this call edge?
   if (PU_has_attr_malloc(calleePU) && cs->returnId() != 0) {
     FmtAssert(cs->returnId() != 0, ("No return id for malloc wrapper"));
     // Get the type of the actual return

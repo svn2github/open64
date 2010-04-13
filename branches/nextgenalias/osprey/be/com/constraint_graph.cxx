@@ -157,22 +157,7 @@ void
 ConstraintGraphNode::updateMaxAccessSize()
 {
   UINT8 newMax = 0;
-#if 0
-  for (CGEdgeListIterator inIter(this,true); inIter != 0; ++inIter) {
-    CGEdgeSet edges = *inIter;
-    for (CGEdgeSetIterator edgeIter = edges.begin();
-        edgeIter != edges.end(); ++edgeIter) {
-      ConstraintGraphEdge *e = *edgeIter;
-      if (e->edgeType() != ETYPE_SKEW && e->size() > newMax) {
-        newMax = e->size();
-        // We we find an edge with size equal to current size
-        // then we are done.
-        if (newMax == _maxAccessSize)
-          return;
-      }
-    }
-  }
-#endif
+
   for (CGEdgeListIterator outIter(this,false); outIter != 0; ++outIter) {
     CGEdgeSet edges = *outIter;
     for (CGEdgeSetIterator edgeIter = edges.begin();
@@ -375,13 +360,15 @@ StInfo::StInfo(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
     _varSize = TY_size(etype);
   } else
     _varSize = TY_size(ty);
-  // As a fall back we resort to setting the size to the
-  // current pointer size to ensure a valid modulus for
-  // this type.
-  if (_varSize == 0)
-    _varSize = Pointer_Size;
 
-  if (TY_kind(ty) == KIND_FUNCTION)
+  // In the case of _varSize == 0, i.e. a forward declaration,
+  // we default to modulus of 1 as we should see no references
+  // of any offsets other than 0.
+  // We use a modulus of 1 for function pointers as it makes no
+  // sense to apply an offset beyond 0, so we prevent any
+  // imprecision in the points-to sets from generating "random"
+  // offsets off the function address via skew edges.
+  if (_varSize == 0 || TY_kind(ty) == KIND_FUNCTION)
     _u._modulus = 1;
   else if (TY_kind(ty) != KIND_STRUCT || ModulusRange::flat(ty) ||
            TY_size(ty) <= Pointer_Size)
@@ -419,13 +406,15 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
     _varSize = TY_size(etype);
   } else
     _varSize = ST_size(st);
-  // As a fall back we resort to setting the size to the
-  // current pointer size to ensure a valid modulus for
-  // this type.
-  if (_varSize == 0)
-    _varSize = Pointer_Size;
 
-  if (ST_sclass(st) == SCLASS_TEXT)
+  // In the case of _varSize == 0, i.e. a forward declaration,
+  // we default to modulus of 1 as we should see no references
+  // of any offsets other than 0.
+  // We use a modulus of 1 for function pointers as it makes no
+  // sense to apply an offset beyond 0, so we prevent any
+  // imprecision in the points-to sets from generating "random"
+  // offsets off the function address via skew edges.
+  if (_varSize == 0  || ST_sclass(st) == SCLASS_TEXT)
     _u._modulus = 1;
   else if (TY_kind(ty) != KIND_STRUCT || ModulusRange::flat(ty) ||
            TY_size(ty) <= Pointer_Size)
