@@ -830,7 +830,8 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
      IPA_NODE *caller = nodeIter.Current();
      if (caller == NULL) continue;
      ST *st = caller->Func_ST();
-     _stToIPANodeMap[st] = caller;
+     if (cg(caller->Node_Index()) != NULL)
+       _stToIPANodeMap[st] = caller;
      // Collect list of possible indirect call targets, here we check
      // to see whether the StInfo associated with this routine is address
      // taken.  Likely if there exists a CGNode for this routine it is

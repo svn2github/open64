@@ -1131,6 +1131,7 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
         skewNode->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
         tmp.setBit(skewNode->id());
       }
+      ConstraintGraphNode::sanitizePointsTo(tmp);
       PointsTo tmp1;
       ConstraintGraph::adjustPointsToForKCycle(dst, tmp, tmp1);
       bool change = dst->unionPointsTo(tmp1,dstQual);
@@ -1173,13 +1174,6 @@ ConstraintGraphSolve::removeFieldSensitiveEdges(CGEdgeType etype,
     ConstraintGraphNode *node = (etype == ETYPE_LOAD) ?
                                  e->srcNode() : e->destNode();
     if (node->offset() != -1 && node->cg_st_idx() == minusOne->cg_st_idx()) {
-#if 0
-      fprintf(stderr,"New edge <%d,%d>:",SYM_ST_IDX(minusOne->cg_st_idx()),minusOne->offset());
-      edge->print(stderr);
-      fprintf(stderr," makes <%d,%d>:",SYM_ST_IDX(node->cg_st_idx()),node->offset());
-      e->print(stderr);
-      fprintf(stderr,"redundant\n");
-#endif
       ConstraintGraph::removeEdge(e);
     }
   }
