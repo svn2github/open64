@@ -229,6 +229,10 @@ ifndef SKIP_DEP_BUILD
 endif
 
 last: make_deps
+	rm -f opencc openCC openf90
+	ln -s driver opencc
+	ln -s driver openCC
+	ln -s driver openf90
 
 ifeq ($(BUILD_VARIANT), NO_LICENSE)
 

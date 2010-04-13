@@ -103,8 +103,8 @@ TARGDIR			= $(BUILD_AREA)
 ifdef LOCAL_BE_DIR
 TARG_BE_DIR = $(TARGDIR)/$(LOCAL_BE_DIR)
 else
-TARG_BE_DIR = $(TARGDIR)/be
-TARG_IPL_DIR = $(TARGDIR)/ipl
+TARG_BE_DIR = $(BUILD_TARG_DIR)/be
+TARG_IPL_DIR = $(BUILD_TARG_DIR)/ipl
 endif
 
 # These are the directories in which to look for source files.
@@ -127,7 +127,10 @@ HEADER_DIRS = \
   $(LD_COMMON_DIR)	\
   $(LD_DIR)		\
   $(TARGDIR)/be		\
-  $(BUILD_TOT)/include
+  $(BUILD_TOT)/include  \
+  $(BUILD_SRC_AREA)/be  \
+  $(BUILD_TARG_DIR)/be  \
+  $(BUILD_SRC_AREA)/targ_info
 
 ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
 HEADER_DIRS += $(TARGDIR)/include/libelf

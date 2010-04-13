@@ -77,7 +77,7 @@ CVERSION  =  -xansi
 TARG_BE_DIR = $(TARGDIR)/$(LOCAL_BE_DIR)
 else
 CVERSION =
-TARG_BE_DIR = $(TARGDIR)/be
+TARG_BE_DIR = $(BUILD_TARG_DIR)/be
 endif
 
 #----------------------------------------------------------------------
@@ -143,7 +143,10 @@ HEADER_DIRS = \
   $(BE_BE_DIR)		\
   $(BE_CG_DIR)		\
   $(BE_OPT_DIR)		\
-  $(BE_LNO_DIR)
+  $(BE_LNO_DIR) 	\
+  $(BUILD_SRC_AREA)/be  \
+  $(BUILD_TARG_DIR)/be  \
+  $(BUILD_SRC_AREA)/targ_info
 
 
 #----------------------------------------------------------------------
@@ -319,21 +322,21 @@ whirl2c.so:  $(WHIRL2C_CXX_OBJS) $(BE_WHIRL2C_DIR)/Exported \
 #
 
 whirl2c_be: whirl2c.so
-	(cd $(TARGDIR)/be; \
+	(cd $(BUILD_TARG_DIR)/be; \
 		$(MAKE) BE_OPT_DIR='$(BE_OPT_DIR)' \
 		LINK_DSO='$(LINK_DSO)' \
 		LINK_DSO_OPTS='$(LINK_DSO_OPTS) -L.' \
 		be)
-	if ! test -e whirl2c_be; then ln -sf $(TARGDIR)/be/be whirl2c_be ; fi
+	if ! test -e whirl2c_be; then ln -sf $(BUILD_TARG_DIR)/be/be whirl2c_be ; fi
 
 whirl2c: whirl2c.so whirl2c_be $(WHIRL2C_MAIN_OBJS)
 	$(link.cxxf) -o whirl2c $(WHIRL2C_MAIN_OBJS) $(LDFLAGS)
 
 be.so:
-	if ! test -e be.so; then ln -sf $(TARGDIR)/be/be.so .; fi
+	if ! test -e be.so; then ln -sf $(BUILD_TARG_DIR)/be/be.so .; fi
 
 be:
-	if ! test -e be; then ln -sf $(TARGDIR)/be/be .; fi  
+	if ! test -e be; then ln -sf $(BUILD_TARG_DIR)/be/be .; fi  
 
 
 # For debugging, set LD_LIBRARY_PATH manually and invoke whirl2c_dbg

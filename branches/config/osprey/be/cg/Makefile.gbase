@@ -127,17 +127,22 @@ ifeq ($(BUILD_TARGET), LOONGSON)
 TARGDEFS = -D__MIPS_AND_IA64_ELF_H
 endif
 
-TARG_TARG_INFO = $(TARGDIR)/targ_info
+#TARG_TARG_INFO = $(TARGDIR)/targ_info
+TARG_TARG_INFO = $(BUILD_TARG_DIR)/targ_info
 ifeq ($(BUILD_OS), IRIX)
 TARG_LIBELF = $(TARGDIR)/libelf_xtnd
 TARG_LIBELFUTIL = $(TARGDIR)/libelfutil_xtnd
 TARG_LIBDWARF = $(TARGDIR)/libdwarf_xtnd
 else
-TARG_LIBELF = $(TARGDIR)/libelf
-TARG_LIBELFUTIL = $(TARGDIR)/libelfutil
-TARG_LIBDWARF = $(TARGDIR)/libdwarf
+#TARG_LIBELF = $(TARGDIR)/libelf
+#TARG_LIBELFUTIL = $(TARGDIR)/libelfutil
+#TARG_LIBDWARF = $(TARGDIR)/libdwarf
+TARG_LIBELF = $(BUILD_TARG_DIR)/libelf
+TARG_LIBELFUTIL = $(BUILD_TARG_DIR)/libelfutil
+TARG_LIBDWARF = $(BUILD_TARG_DIR)/libdwarf
 endif
-TARG_LIBUNWIND = $(TARGDIR)/libunwindP
+#TARG_LIBUNWIND = $(TARGDIR)/libunwindP
+TARG_LIBUNWIND = $(BUILD_TARG_DIR)/libunwindP
 
 
 #----------------------------------------------------------------------
@@ -205,7 +210,8 @@ SRC_DIRS = \
   $(BE_CG_GSCHED_DIR)
 
 ifndef TARG_BE
-TARG_BE = $(TARGDIR)/be
+#TARG_BE = $(TARGDIR)/be
+TARG_BE = $(BUILD_TARG_DIR)/be
 endif
 
 HEADER_DIRS = \
@@ -223,7 +229,9 @@ HEADER_DIRS = \
   $(LIBDWARF_DIR)	\
   $(BUILD_TOT)/include	\
   $(BUILD_TOT)/linux/include \
-  $(BUILD_TOT)/libdwarf/libdwarf
+  $(BUILD_TOT)/libdwarf/libdwarf \
+  $(BUILD_SRC_AREA)/targ_info \
+  $(BUILD_SRC_AREA)/be
 
 ifeq ($(BUILD_OS), LINUX)
 HEADER_DIRS += $(TARGDIR)/include/libelf
@@ -370,6 +378,7 @@ endif
 ifeq ($(BUILD_TARGET), X8664)
   BE_CG_TARG_CXX_SRCS += cg_sched.cxx
   BE_CG_TARG_CXX_SRCS += cg_convert_x87.cxx
+  BE_CG_TARG_CXX_SRCS += cg_misc.cxx
 endif
 
 CG_CXX_PCH_SRCS = 	\

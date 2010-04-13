@@ -79,7 +79,7 @@ LC++DEFS += $(HOSTDEFS) $(TARGDEFS)
 
 GLDOPTS = $(STD_LOAD_OPTS)
 
-LIBCOMUTIL = $(BUILD_AREA)/libcomutil/libcomutil.a
+LIBCOMUTIL = $(BUILD_TARG_DIR)/libcomutil/libcomutil.a
 LLDLIBS	= $(LIBCOMUTIL) -lm
 
 TARGETS = ir_b2a ir_size ir_sel ir_all

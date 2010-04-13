@@ -718,3 +718,15 @@ get_source_lang (source_kind_t sk)
 	}
 	return L_NONE;
 }
+
+void
+override_phase(int phase, char *phase_name, char *new_path, char *new_name)
+{
+	phase_info[phase].set_ld_library_path = FALSE;
+	if (new_path != NULL) {
+		phase_info[phase].find_dir_by_path = FALSE;
+		phase_info[phase].dir = string_copy(new_path);
+	}
+	if (new_name != NULL)
+		phase_info[phase].name = string_copy(new_name);
+}

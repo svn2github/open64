@@ -1,0 +1,15 @@
+
+default clean clobber:
+	+@for d in @LIBLIST@; do \
+	    echo "MAKE   $@ in $(PWD)/$$d"; \
+	    $(MAKE) $(if $V,,--no-print-directory) -C $$d $@; \
+	    retval=$$?; \
+	    if [ $$retval != 0 ]; then \
+		if grep -q k <<<'$(MAKEFLAGS)'; then \
+		    exit=$$retval; \
+		else \
+		    exit $$retval; \
+		fi; \
+	    fi; \
+	done; \
+	exit $$exit

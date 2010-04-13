@@ -63,7 +63,7 @@ include $(COMMONDEFS)
 ifdef LOCAL_BE_DIR
 TARG_BE_DIR = $(TARGDIR)/$(LOCAL_BE_DIR)
 else
-TARG_BE_DIR = $(TARGDIR)/be
+TARG_BE_DIR = $(BUILD_TARG_DIR)/be
 endif
 
 #----------------------------------------------------------------------
@@ -130,7 +130,9 @@ HEADER_DIRS = \
   $(COMMON_UTIL_DIR)	\
   $(TARG_BE_DIR)	\
   $(BE_VHO_DIR)		\
-  $(BUILD_TOT)/include
+  $(BUILD_TOT)/include  \
+  $(BUILD_SRC_AREA)/be  \
+  $(BUILD_SRC_AREA)/targ_info
 
 IPA_INLINE_CXX_SRCS = \
 	inline_driver.cxx \

@@ -58,9 +58,9 @@
 TARGDIR = $(BUILD_AREA)
 CURDIR  = .
 
-ARITH_TARG_DIR = $(TARGDIR)/arith
+ARITH_TARG_DIR = $(BUILD_TARG_DIR)/arith
 F90SGI_TARG_DIR = ../libf90sgi
-LIBCIF_TARG_DIR = $(TARGDIR)/libcif
+LIBCIF_TARG_DIR = $(BUILD_TARG_DIR)/libcif
 
 #----------------------------------------------------------------------
 #  Include the usual commondefs

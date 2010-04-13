@@ -167,6 +167,8 @@ HEADER_DIRS = \
   $(BE_VHO_DIR)		\
   $(BE_REGION_DIR)      \
   $(TARGDIR)/be         \
+  $(BUILD_SRC_AREA)/be  \
+  $(BUILD_TARG_DIR)/be	\
   $(BUILD_TOT)/include
 
 IPA_LOCAL_CXX_SRCS = \
@@ -267,7 +269,7 @@ default:
 	$(MAKE) make_deps
 
 make_deps: $(TARGETS)
-$(DEP_OBJECTS): $(BUILD_AREA)/be/preg_list.h
+$(DEP_OBJECTS): $(BUILD_TARG_DIR)/be/preg_list.h
 .PHONY: default make_deps
 
 #----------------------------------------------------------------------

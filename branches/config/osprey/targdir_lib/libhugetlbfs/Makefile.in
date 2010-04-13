@@ -1,0 +1,12 @@
+#  Define build parameters
+
+BUILD_BASE     = @top_srcdir@/osprey/libhugetlbfs
+#BUILD_OPTIMIZE = -O
+
+# for libhugetlbfs, indicate whether the library is built as native binaries.
+ifeq ($(BUILD_TARGET), X8664)
+  BUILD_LIB_TYPE   = NATIVEONLY
+endif
+
+#  Include setup file which will then include Makefile.base
+include @top_builddir@/osprey/Makefile.gsetup

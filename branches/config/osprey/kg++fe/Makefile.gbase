@@ -173,10 +173,10 @@ endif
 GNU_CP_DIR		= $(BUILD_BASE)/gnu/cp
 # TARG_LIBM_DIR		= $(TARGDIR)/libm
 ############################################################
-TARG_COMUTIL_DIR	= $(TARGDIR)/libcomutil
-TARG_CMPLRS_DIR		= $(TARGDIR)/libcmplrs
-TARG_LIBIBERTY_DIR      = $(TARGDIR)/libiberty
-TARG_GNU_DIR		= $(TARGDIR)/g++fe/gnu
+TARG_COMUTIL_DIR	= $(BUILD_TARG_DIR)/libcomutil
+TARG_CMPLRS_DIR		= $(BUILD_TARG_DIR)/libcmplrs
+TARG_LIBIBERTY_DIR      = $(BUILD_TARG_DIR)/libiberty
+TARG_GNU_DIR		= $(BUILD_TARG_DIR)/g++fe/gnu
 
 # These are the directories in which to look for source files.
 
@@ -189,6 +189,7 @@ SRC_DIRS =		\
   $(COMMON_TARG_INFO_ACCESS_DIR)
 INC_DIRS =		\
   $(INCLUDE_DIR)	\
+  $(BUILD_TARG_DIR)/include \
   $(COMMON_COM_DIR)	\
   $(COMMON_COM_TARG_DIR)\
   $(COMMON_UTIL_DIR)	\

@@ -189,6 +189,8 @@ SRC_DIRS += $(BUILD_TOT)/libfi/array \
         $(BUILD_TOT)/libfi/prodsum \
         $(BUILD_TOT)/libfi/subrtn
 
+LCINCS += -I$(BUILD_TARG_DIR)/libfortran
+
 # No additional files 
 
 F90OBJECTS = $(F90FILES:.F90=.o)

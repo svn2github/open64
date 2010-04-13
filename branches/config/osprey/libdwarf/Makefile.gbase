@@ -141,7 +141,7 @@ default:
 	$(MAKE) make_libdeps
 
 make_libdeps: $(TARGETS)
-$(OBJECTS): $(BUILD_AREA)/include/pathscale_defs.h
+$(OBJECTS): $(BUILD_TARG_DIR)/include/pathscale_defs.h
 .PHONY: default install make_libdeps first 
 
 first:
@@ -192,7 +192,7 @@ endif
 
 
 $(DUMP): $(DUMP_OBJECTS) $(LIBRARY)
-	$(cc) -o $@ $^ -L. -L$(BUILD_AREA)/libelf -ldwarf -lelf
+	$(cc) -o $@ $^ -L. -L$(BUILD_TARG_DIR)/libelf -ldwarf -lelf
 
 dwarf_names.o: LCINCS += -I$(BUILD_BASE)/dwarfdump
 dwarfdump.o print_%.o: _MIPS_SZLONG:=32

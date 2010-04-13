@@ -126,11 +126,11 @@ COMMON_UTIL_TARG_DIR    = $(BUILD_TOT)/common/util/$(BUILD_TARGET_DIR)
 INCLUDE_DIR             = $(BUILD_AREA)/include \
                           $(BUILD_TOT)/../libspin
 
-TARG_COMUTIL_DIR        = $(TARGDIR)/libcomutil
-TARG_CMPLRS_DIR         = $(TARGDIR)/libcmplrs
-TARG_LIBIBERTY_DIR      = $(TARGDIR)/libiberty
-TARG_LIBSPIN_DIR      	= $(TARGDIR)/libspin
-TARG_LIBSPIN42_DIR      	= $(TARGDIR)/libspin_4_2_0
+TARG_COMUTIL_DIR        = $(BUILD_TARG_DIR)/libcomutil
+TARG_CMPLRS_DIR         = $(BUILD_TARG_DIR)/libcmplrs
+TARG_LIBIBERTY_DIR      = $(BUILD_TARG_DIR)/libiberty
+TARG_LIBSPIN_DIR      	= $(BUILD_OBJ_DIR)/libspin
+TARG_LIBSPIN42_DIR     	= $(BUILD_TARG_DIR)/libspin_4_2_0
 
 # These are the directories in which to look for source files.
 

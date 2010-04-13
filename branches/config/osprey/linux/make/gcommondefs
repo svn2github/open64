@@ -207,6 +207,38 @@ ifeq ($(BUILD_COMPILER), OSP)
   AR      = ar
 endif
 
+ifeq ($(BUILD_COMPILER), SELF)
+  ASNAME = $(COMPILER_TARG_DIR)/driver/opencc
+  CCNAME = $(COMPILER_TARG_DIR)/driver/opencc
+  C++NAME = $(COMPILER_TARG_DIR)/driver/openCC
+  F90 = $(COMPILER_TARG_DIR)/driver/openf90
+  F90_RTLIBS = -Wl,-Bstatic -lfortran -Wl,-Bdynamic
+
+  ASNAME += -run-build=$(TOP_BUILDDIR)
+  CCNAME += -run-build=$(TOP_BUILDDIR) -L$(BUILD_TARG_DIR)/libopen64rt -L$(BUILD_TARG_DIR)/libacml_mv
+  C++NAME += -run-build=$(TOP_BUILDDIR)
+  F90 += -run-build=$(TOP_BUILDDIR)
+
+  ifeq ($(BUILD_TARGET), X8664)
+    CCNAME  += -march=anyx86
+    C++NAME += -march=anyx86
+    F90 += -march=anyx86
+  endif
+  ifeq ($(BUILD_TARGET), IA32)
+    CCNAME  += -march=anyx86
+    C++NAME += -march=anyx86
+    F90 += -march=anyx86
+  endif
+  ifeq ($(BUILD_TARGET), IA64)
+    # only 64bit libraries set the BUILD_ARCH to X8664 
+    CCNAME  += 
+    C++NAME +=  
+    F90 += 
+  endif
+  F77 = $(F90)
+  AR      = ar
+endif
+
 ifeq ($(BUILD_ARCH), IA32)
 # only 32bit libraries set the BUILD_TARGET to IA32
   CCNAME  += -m32 -mno-sse2 
@@ -319,7 +351,7 @@ CSTYLE=
 
 GCOPTS	= $(CSTYLE) $(OPTIMIZER) $(ENDIAN) $(SIZEDEFS) $(MKDEPOPT)
 GCDEFS	=
-GCINCS  = -I$(INCLDIR)
+GCINCS  = $(INCLDIRS)
 
 #
 # Cc flags, composed of:
@@ -375,7 +407,7 @@ C++DEFS   = $(VC++DEFS) $(LC++DEFS) $(GC++DEFS)
 C++INCS   = $(VC++INCS) $(LC++INCS) $(GC++INCS)
 
 GC++OPTS  = $(CSTYLE) $(OPTIMIZER) $(ENDIAN) $(SIZEDEFS) $(MKDEPOPT)
-GC++INCS  = -I$(INCLDIR)
+GC++INCS  = $(INCLDIRS)
 GC++DEFS  = 
 
 #
@@ -537,9 +569,9 @@ LEXMKDEPFLAGS=
 # Include directory shorthands, used in CFLAGS and LDFLAGS components.
 #
 ifneq ($(BUILD_OS), IRIX)
-INCLDIR	= $(BUILD_AREA)/include
+INCLDIRS = -I$(BUILD_AREA)/include -I$(BUILD_OBJ_DIR) -I$(BUILD_TARG_DIR)/include -I$(BUILD_SRC_AREA)/include -I$(BUILD_TOT)/include
 else
-INCLDIR = $(ROOT)/usr/include
+INCLDIRS = -I$(ROOT)/usr/include
 endif
 
 #
