@@ -2177,3 +2177,32 @@ Perform_Inline_Analysis (IPA_CALL_GRAPH* cg, MEM_POOL* pool)
         fclose(Verbose_inlining);
     }
 } // Perform_Inline_Analysis
+
+void
+Inline_Small_funcs(IPA_CALL_GRAPH *cg, UINT32 pu_size, MEM_POOL *pool)
+{  
+  IPA_NODE_ITER cg_iter( cg, PREORDER, pool ); 
+  UINT32 orig =   IPA_PU_Minimum_Size;
+  IPA_PU_Minimum_Size = pu_size;
+  for (cg_iter.First (); !cg_iter.Is_Empty(); cg_iter.Next ()) {
+  	IPA_NODE* callee = cg_iter.Current ();
+        if ((callee == NULL) || 
+            (callee->Weight() > pu_size)){
+          continue; 
+ 	} 
+
+        // Go through all the predecessors and inline the call
+
+        IPA_PRED_ITER edge_iter( cg, callee );
+
+        for( edge_iter.First (); !edge_iter.Is_Empty (); edge_iter.Next() ){
+           IPA_EDGE *edge = edge_iter.Current_Edge ();
+           if( edge != NULL)
+           { 
+             Analyze_call (cg->Caller(edge), edge, cg);
+	   } 
+	}
+    } 
+
+  IPA_PU_Minimum_Size = orig ;
+}

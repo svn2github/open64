@@ -158,6 +158,7 @@ extern BOOL	IPA_Bloat_Factor_Set;
 extern UINT32	IPA_PU_Limit;	/* Max nodes per PU after inlining */
 extern BOOL	IPA_PU_Limit_Set;	/* if IPA_PU_Limit is set by user */
 
+
 /* absolute max. # of nodes per PU after inlining (1.25 * IPA_PU_Limit) */
 extern UINT32	IPA_PU_Hard_Limit;
 extern BOOL	IPA_PU_Hard_Limit_Set;
@@ -330,6 +331,8 @@ extern BOOL	INLINE_Ignore_Bloat; // ignore code bloat
 extern UINT32	INLINE_Callee_Limit; // for functions marked inline by user
 #endif
 
+extern BOOL     INLINE_Inline_only_small_funcs;  /* only inline small functions */
+extern UINT32    INLINE_PU_Small_Size;            /* small pu size for stand alone */
 extern struct option_list *INLINE_List_Names;	/* Must/never/file/library 
 						   options */
 extern struct option_list *INLINE_Spec_Files;	/* Specification files     */

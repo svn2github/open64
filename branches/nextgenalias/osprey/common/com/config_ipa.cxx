@@ -181,6 +181,8 @@ BOOL	IPA_PU_Hard_Limit_Set = FALSE;
 
 /* Size of small PU that's always inlined */
 UINT32	IPA_PU_Minimum_Size = DEFAULT_SMALL_PU;
+UINT32  INLINE_PU_Small_Size = 100;
+
 
 /* Callees larger than this size are not inlined, except ...  */
 UINT32	IPA_Small_Callee_Limit = DEFAULT_SMALL_CALLEE; 
@@ -213,6 +215,8 @@ UINT32  IPA_Min_Hotness = DEFAULT_MIN_HOTNESS;
 
 /* ignore zero-freq. statements when estimating size of a PU */
 BOOL IPA_Use_Effective_Size = TRUE;
+
+BOOL INLINE_Inline_only_small_funcs  = FALSE; // used by standalone inliner. 
 
 /* max. gp-relative space available for auto Gnum */
 UINT32	IPA_Gspace = DEFAULT_GSPACE - 72;// Kluge to get around gcc problem
@@ -760,6 +764,11 @@ static OPTION_DESC Options_INLINE[] = {
     { OVK_BOOL,	OV_INTERNAL,	FALSE, "auto",	"",
 	  0, 0, 0,		&INLINE_Enable_Auto_Inlining,	NULL,
 	  "Enable inliner automatic inline analysis" },
+    { OVK_BOOL, OV_INTERNAL,	FALSE, "inline_only_small_funcs",  "",	
+	  0, 0, 0,               &INLINE_Inline_only_small_funcs, NULL},
+    { OVK_UINT32, OV_VISIBLE,	FALSE, "small_pu",	"",
+	  DEFAULT_SMALL_PU, 1, UINT32_MAX, &INLINE_PU_Small_Size, NULL },
+
     { OVK_BOOL, OV_INTERNAL,	FALSE,	"restrict",	"",
 	  0, 0, 0,		&INLINE_Enable_Restrict_Pointers, NULL,
 	  "Allow inlining of PUs with restrict pointer as formal parameters" },
