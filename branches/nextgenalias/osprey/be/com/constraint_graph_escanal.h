@@ -50,7 +50,7 @@ protected:
   bool wholeProgramMode(void) const { return _wholeProgramMode; }
 
   virtual   void init(void);
-  virtual   void computeReversePointsTo(void);
+  //virtual   void computeReversePointsTo(void);
   virtual   bool formalsEscape(ConstraintGraph *graph) const;
   virtual   bool externalCall(ST_IDX idx) const;
 

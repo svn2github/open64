@@ -735,7 +735,7 @@ public:
   }
 
   void init();
-  void computeReversePointsTo();
+  //void computeReversePointsTo();
   bool formalsEscape(ConstraintGraph *graph) const;
   bool externalCall(ST_IDX idx) const;
 
@@ -757,6 +757,7 @@ IPA_EscapeAnalysis::init(void)
   initGraph(ConstraintGraph::globalCG());
 }
 
+#if 0
 void
 IPA_EscapeAnalysis::computeReversePointsTo()
 {
@@ -764,6 +765,7 @@ IPA_EscapeAnalysis::computeReversePointsTo()
        iter != ConstraintGraph::gEnd(); ++iter)
     updateReversePointsTo(iter->second);
 }
+#endif
 
 bool
 IPA_EscapeAnalysis::formalsEscape(ConstraintGraph *graph) const
