@@ -266,8 +266,7 @@ public:
   SparseBitSetElement *
   insertAfter(SparseBitSetElement *elt, UINT32 idx)
   {
-    SparseBitSetElement *node = 
-                         TYPE_MEM_POOL_ALLOC(SparseBitSetElement, _memPool);
+    SparseBitSetElement *node = allocElem();
     node->_idx = idx;
     if (!elt) {
       if (!_currElem) {
@@ -290,6 +289,14 @@ public:
     return node;
   }
 
+  bool isElementZero(SparseBitSetElement *element) 
+  {
+    for (UINT32 i = 0; i < BITMAP_ELEMENT_WORDS; i++)
+      if (element->_bits[i] != 0)
+        return false;
+    return true;
+  }
+
   SparseBitSetElement *_firstElem; // First element in linked list.
   SparseBitSetElement *_currElem;  // Last element looked at
   UINT32 _currIdx;                 // Index of last element looked at.
@@ -306,6 +313,34 @@ public:
   {
     T obj;
     assert(sizeof((UINT32)obj) <= sizeof(UINT32));
+  }
+
+  SparseBitSet(const SparseBitSet &rhs) :
+    _firstElem(NULL), 
+    _currElem(NULL),
+    _currIdx(0),
+    _memPool(Malloc_Mem_Pool)
+  {
+    SparseBitSetElement *fromPtr = NULL;
+    SparseBitSetElement *toPtr = NULL;
+
+    // Copy elements in forward direction one at a time.
+    for (fromPtr = rhs._firstElem; fromPtr; fromPtr = fromPtr->_next) {
+      SparseBitSetElement *toElt = allocElem();
+      toElt->_idx = fromPtr->_idx;
+      memcpy(toElt->_bits, fromPtr->_bits, sizeof (toElt->_bits));
+
+      if (toPtr == NULL) {
+        _firstElem = _currElem = toElt;
+        _currIdx = toElt->_idx;
+        toElt->_next = toElt->_prev = NULL;
+      } else {
+        toElt->_prev = toPtr;
+        toElt->_next = NULL;
+        toPtr->_next = toElt;
+      }
+      toPtr = toElt;
+    }
   }
 
   ~SparseBitSet() { clear(); }
@@ -346,6 +381,8 @@ public:
         changed = true;
         ptr->_bits[wordNum] &= (~bitVal);
       }
+      if (isElementZero(ptr))
+        freeElem(ptr);
     }
     return changed;
   }
