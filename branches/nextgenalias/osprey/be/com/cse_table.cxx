@@ -765,7 +765,10 @@ CallSideEffectInfo::CallSideEffectInfo(const WN* call_node)
     if (WN_Call_Pure(call_node))
       side_effects &= ~CFAT_pure_call_attr_mask;
     
-    if (WN_Call_Does_Mem_Alloc(call_node))
+    if (WN_Call_Does_Mem_Alloc(call_node) ||
+        (WN_has_sym(call_node) &&
+         ST_class(WN_st(call_node)) == CLASS_FUNC &&
+         PU_has_attr_malloc(Pu_Table[ST_pu(WN_st(call_node))])) )
     {
       side_effects |= CFAT_allocates_heap_memory;
       side_effects |= CFAT_returns_heap_memory;
@@ -827,8 +830,15 @@ CallSideEffectInfo::GetCallSideEffectInfo(const ST* call_sym,
       *from_table = false;
     return GetDefaultCallSideEffectInfo(NULL);
   }
-
-  return GetCallSideEffectInfo_(name_str, NULL, from_table);
+  if (ST_class(call_sym) == CLASS_FUNC &&
+      PU_has_attr_malloc(Pu_Table[ST_pu(call_sym)])) {
+      CallSideEffectInfo ret_info = GetDefaultCallSideEffectInfo(NULL);
+      ret_info.SideEffects |= CFAT_allocates_heap_memory;
+      ret_info.SideEffects |= CFAT_returns_heap_memory;
+    return ret_info;
+  }
+  else
+    return GetCallSideEffectInfo_(name_str, NULL, from_table);
 }
 
 CallSideEffectInfo
@@ -842,7 +852,17 @@ CallSideEffectInfo::GetCallSideEffectInfo_(const char* func_name,
   {
     if (from_table)
       *from_table = false;
-    return GetDefaultCallSideEffectInfo(NULL);
+    if (call_node &&
+        WN_has_sym(call_node) &&
+        ST_class(WN_st(call_node)) == CLASS_FUNC && 
+        PU_has_attr_malloc(Pu_Table[ST_pu(WN_st(call_node))])) {
+        CallSideEffectInfo ret_info = GetDefaultCallSideEffectInfo(NULL);
+        ret_info.SideEffects |= CFAT_allocates_heap_memory;
+        ret_info.SideEffects |= CFAT_returns_heap_memory;
+      return ret_info;
+    }
+    else
+      return GetDefaultCallSideEffectInfo(NULL);
   }
 
   // a copy is made:
