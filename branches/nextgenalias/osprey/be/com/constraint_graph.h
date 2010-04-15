@@ -636,7 +636,7 @@ private:
 
   bool _checkRevPointsTo(CGNodeId id, CGEdgeQual qual)
   {
-    PointsTo *pts = _findPoitnsTo(qual,_revPointsToList);
+    PointsTo *pts = _findPointsTo(qual,_revPointsToList);
     return pts ? pts->isSet(id) : false;
   }
 
