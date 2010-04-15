@@ -198,12 +198,20 @@ public:
   T *front(void) const   { return _list.front(); }
   bool empty(void) const { return _list.empty(); }
 
+  void remove(T *t) {
+    if (t->checkFlags(flag)) {
+      _list.remove(t);
+      t->clearFlags(flag);
+    }
+  }
+
 private:
   list<T *> _list;
 };
 
 typedef WorkList<ConstraintGraphEdge,CG_EDGE_IN_WORKLIST> EdgeWorkList;
 typedef WorkList<ConstraintGraphNode,CG_NODE_FLAGS_IN_WORKLIST> NodeWorkList;
+
 
 class ConstraintGraphEdge 
 {
@@ -1145,6 +1153,9 @@ public:
   static void updateOrigToCloneStIdxMap(ST_IDX orig_st_idx,
                                         ST_IDX clone_st_idx);
 
+  static EdgeDelta *workList(void) { return _workList; }
+  static void workList(EdgeDelta *list)   { _workList = list; }
+
   static void stats(void);
 
   static char *
@@ -1390,6 +1401,10 @@ private:
   // Maintain mapping from orig to cloned to ST_IDX so as to clone the
   // relevant CGNode/StInfo after IPA inlining
   static hash_map<ST_IDX, ST_IDX> origToCloneStIdxMap;
+
+  // Worklist used by the solver, but updated by other methods that
+  // may delete edges during the solution process
+  static EdgeDelta *_workList;
 
   // Constraint graph build methods
 

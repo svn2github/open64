@@ -420,16 +420,16 @@ ConstraintGraph::nonIPASolver()
   // Here we solve the constraint graph for the current procedure
   EdgeDelta delta;
   ConstraintGraphSolve solver(delta,this,_memPool);
-  // For now we try to cycle eliminate all variables including GLOBALS.
-  if (!solver.solveConstraints())
-    return false;
 
-#if 0
-  // The solver has a solution, now we post-process the points-to
-  // sets to deal with covering references and field insensitive
-  // references
-  solver.postProcessPointsTo();
-#endif
+  // Provide the constraint graph with a handle on the edge delta
+  // so that we updated it correctly when deleting edges
+  workList(&delta);
+
+  // For now we try to cycle eliminate all variables including GLOBALS.
+  if (!solver.solveConstraints()) {
+    workList(NULL);
+    return false;
+  }
 
   // Now we perform escape analysis to in order to augment the
   // the points-to sets of "incomplete" symbols to facilitate
@@ -440,6 +440,8 @@ ConstraintGraph::nonIPASolver()
   escAnal.markEscaped();
 
   escAnal.identifyMallocWrappers();
+
+  workList(NULL);
 
   return true;
 }
@@ -758,8 +760,8 @@ bool
 ConstraintGraphNode::sanityCheckPointsTo(CGEdgeQual qual)
 {
   // Merged nodes should not have any non-PCOPY incoming edges
-  //FmtAssert(!checkFlags(CG_NODE_FLAGS_MERGED),
-            //("Not expecting merged nodes"));
+  FmtAssert(!checkFlags(CG_NODE_FLAGS_MERGED),
+            ("Not expecting merged nodes"));
 
   const PointsTo &pts = pointsTo(qual);
   hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx> minusOneSts;
@@ -994,11 +996,6 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
       return;
     }
   }
-
-  // FIXME!!!!!! We temporarily skip any incoming copies to nodes that
-  // have a parent.  This is because the worklist is inconsistent.
-  if (dst->checkFlags(CG_NODE_FLAGS_MERGED))
-    return;
 
   CGNodeId trackNodeId = 0;
   PointsTo origPts;

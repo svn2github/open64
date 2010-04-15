@@ -27,6 +27,7 @@ CallSiteMap ConstraintGraph::csIdToCallSiteMap(1024);
 const PointsTo ConstraintGraphNode::emptyPointsToSet;
 const CGEdgeSet ConstraintGraphNode::emptyCGEdgeSet;
 hash_map<ST_IDX, ST_IDX> ConstraintGraph::origToCloneStIdxMap;
+EdgeDelta *ConstraintGraph::_workList = NULL;
 
 static INT32
 getArraySize(WN *wn)
@@ -2281,6 +2282,8 @@ ConstraintGraph::removeEdge(ConstraintGraphEdge *edge)
 {
   edge->srcNode()->removeOutEdge(edge);
   edge->destNode()->removeInEdge(edge);
+  if (workList())
+    workList()->remove(edge);
   CXX_DELETE(edge,edgeMemPool);
 }
 

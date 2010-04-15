@@ -1154,6 +1154,9 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   bool change;
   list<IPA_NODE *> revTopOrder;
   EdgeDelta delta;
+  // Provide the constraint graph with a handle on the worklist
+  // to ensure proper update during edge deletion
+  ConstraintGraph::workList(&delta);
   do {
     change = false;
     round++;
@@ -1188,6 +1191,7 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
           ConstraintGraphVCG::dumpVCG("ipa_failed_soln");
           fprintf(stderr,"IPA Nystrom: No solution found, likely unknown write\n");
         }
+        ConstraintGraph::workList(NULL);
         return;
       }
 
@@ -1220,6 +1224,7 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
         if (!cgsolver.solveConstraints()) {
           if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
             fprintf(stderr,"IPA Nystrom: No solution found, likely unknown write\n");
+          ConstraintGraph::workList(NULL);
           return;
         }
       }
@@ -1292,6 +1297,8 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
     MEM_Trace();
     ConstraintGraph::stats();
   }
+
+  ConstraintGraph::workList(NULL);
 
   if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
      fprintf(stderr,"IPA Nystrom: Solver Complete\n");
