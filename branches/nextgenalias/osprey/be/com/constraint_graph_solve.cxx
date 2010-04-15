@@ -931,6 +931,11 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
   ConstraintGraphNode *src = edge->srcNode();
   ConstraintGraphNode *dst = edge->destNode();
 
+  if (src->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+    fprintf(stderr,"SOLVE: Copy source %d is not a pointer!\n",src->id());
+  if (dst->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+    fprintf(stderr,"SOLVE: Copy target %d is not a pointer!\n",dst->id());
+
   // Is this constraint context sensitive?
   bool cntxt = 
        !src->cg()->stInfo(src->cg_st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
@@ -982,57 +987,24 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
           // all other <ST,off> nodes.  Or we are writing <ST,off1...offn>
           // and we need to update <ST,-1>.  Both occur in updateOffset().
           sum.setUnion(cur->pointsTo(srcQual));
-
-#if 0
-          if ( dstNode->id() == trackNodeId )
-            origPts = dstNode->pointsTo(dstQual);
-#endif
-
           bool change = false;
           if (dstNode->inKCycle() == 0) {
             change |= dstNode->unionPointsTo(cur->pointsTo(srcQual), dstQual);
-#if 0
-            for (PointsTo::SparseBitSetIterator iter(&dstNode->pointsTo(dstQual),0);
-                iter != 0; ++iter) {
-              ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
-              if (node->offset() == -1) {
-                for (PointsTo::SparseBitSetIterator iter2(&dstNode->pointsTo(dstQual),0);
-                    iter2 != 0; ++iter2) {
-                  ConstraintGraphNode *node2 = ConstraintGraph::cgNode(*iter2);
-                  if (node2->offset() != -1 && node2->cg_st_idx() == node->cg_st_idx())
-                    ;/*fprintf(stderr,"\tRDX: Node %d pts: contains <%d,%d> and <%d,%d>\n",
-                            dstNode->id(),
-                            SYM_ST_IDX(node->cg_st_idx()),node->offset(),
-                            SYM_ST_IDX(node2->cg_st_idx()),node2->offset());*/
-                }
-              }
-            }
-#endif
           }
           // We are updating the representative node of an SCC, so we
           // need to map the points-to set to the field insensitive
           // equivalent.
           else {
             PointsTo tmp;
-            ConstraintGraph::adjustPointsToForKCycle(dstNode,
-                                                     cur->pointsTo(srcQual),
-                                                     tmp);
+            PointsTo diff;
+            diff = cur->pointsTo(srcQual);
+            diff.setDiff(dstNode->pointsTo(dstQual));
+            ConstraintGraph::adjustPointsToForKCycle(dstNode,diff,tmp);
             change |= dstNode->unionPointsTo(tmp, dstQual);
           }
           dstChange |= change;
           if (change) {
             addEdgesToWorkList(dstNode);
-#if 0
-            if (dstNode->id() == trackNodeId) {
-              origPts.setDiff(dstNode->pointsTo(dstQual));
-              for (PointsTo::SparseBitSetIterator sbsi(&origPts,0);
-                  sbsi != 0; ++sbsi) {
-                ConstraintGraphNode *n = ConstraintGraph::cgNode(*sbsi);
-                fprintf(stderr,"\t Adding <%d,%d>: %s\n",
-                        n->id(),n->offset(),n->stName());
-              }
-            }
-#endif
           }
           cur = cur->nextOffset();
         }
@@ -1114,6 +1086,7 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
     if (dstQual != CQ_NONE) {
       PointsTo &srcPTS = *pti;
       PointsTo tmp;
+      bool addedMinusOne = false;
       for (PointsTo::SparseBitSetIterator iter(&srcPTS,0); iter != 0; iter++)
       {
         CGNodeId nodeId = *iter;
@@ -1130,10 +1103,16 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
                        node->cg()->getCGNode(node->cg_st_idx(),newOffset);
         skewNode->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
         tmp.setBit(skewNode->id());
+        if (newOffset != -1 && skewNode->offset() == -1)
+          addedMinusOne = true;
       }
-      ConstraintGraphNode::sanitizePointsTo(tmp);
+      if (addedMinusOne)
+        ConstraintGraphNode::sanitizePointsTo(tmp);
       PointsTo tmp1;
-      ConstraintGraph::adjustPointsToForKCycle(dst, tmp, tmp1);
+      PointsTo diff;
+      diff = tmp;
+      diff.setDiff(dst->pointsTo(dstQual));
+      ConstraintGraph::adjustPointsToForKCycle(dst, diff, tmp1);
       bool change = dst->unionPointsTo(tmp1,dstQual);
       if (change) {
         addEdgesToWorkList(dst);

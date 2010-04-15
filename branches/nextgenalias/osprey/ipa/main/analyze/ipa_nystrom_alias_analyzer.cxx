@@ -1420,12 +1420,14 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
     ConstraintGraphNode *heapCGNode = getCGNode(new_cg_st_idx, 0);
     heapCGNode->stInfo()->addFlags(CG_ST_FLAGS_HEAP);
     actualRet->addPointsTo(heapCGNode, CQ_HZ);
-    fprintf(stderr, "Adding heap due to callee: %s to caller: %s\n",
-            ST_name(calleeST), ST_name(_ipaNode->Func_ST()));
-    heapCGNode->print(stderr);
-    heapCGNode->stInfo()->print(stderr);
-    fprintf(stderr, "*** Actual return %d now points to %d\n",
-            actualRet->id(),heapCGNode->id());
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+      fprintf(stderr, "Adding heap due to callee: %s to caller: %s\n",
+              ST_name(calleeST), ST_name(_ipaNode->Func_ST()));
+      heapCGNode->print(stderr);
+      heapCGNode->stInfo()->print(stderr);
+      fprintf(stderr, "*** Actual return %d now points to %d\n",
+              actualRet->id(),heapCGNode->id());
+    }
     // Add the in/out edges to the edge delta
     CGEdgeSetIterator iter = actualRet->outCopySkewEdges().begin();
     for (; iter != actualRet->outCopySkewEdges().end(); iter++)

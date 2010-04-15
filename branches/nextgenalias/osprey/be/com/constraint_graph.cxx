@@ -500,7 +500,7 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
   else {
 //    fprintf(stderr,"Before setting offset %d to modulus %d\n",offset,mod);
 //    _u._modRange->print(stderr,true);
-    _u._modRange->modulus(offset,mod,startOffset,endOffset,_memPool);
+      _u._modRange->modulus(offset,mod,startOffset,endOffset,_memPool);
   }
 
   if(_firstOffset && _firstOffset->cg()->buildComplete()) {
@@ -511,10 +511,11 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
           ST_IDX_level(SYM_ST_IDX(idx)) == GLOBAL_SYMTAB)
         fprintf(stderr,"%s",ST_name(&St_Table[SYM_ST_IDX(idx)]));
       else
-        fprintf(stderr, " <file:%d pu:%d st_idx:%d>",
+        fprintf(stderr, " <file:%d pu:%d st_idx:%d> %llu",
                 FILE_NUM_ST_IDX(idx),
                 PU_NUM_ST_IDX(idx),
-                SYM_ST_IDX(idx));
+                SYM_ST_IDX(idx),
+                idx);
 
       fprintf(stderr," to %d\n",mod);
     }
@@ -581,10 +582,22 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *destNode,
       // modulus > Pointer_Size then all offsets are mapped to -1.
       else 
       {
-        //fprintf(stderr, "Setting -1 on node\n ");
-        //node->print(stderr); node->stInfo()->print(stderr);
-        //fprintf(stderr, " due to destNode: \n");
-        //destNode->print(stderr); destNode->stInfo()->print(stderr);
+#if 0
+        fprintf(stderr, "Setting -1 on node\n ");
+        node->print(stderr); node->stInfo()->print(stderr);
+        fprintf(stderr, " due to destNode: \n");
+        destNode->print(stderr); destNode->stInfo()->print(stderr);
+#endif
+#if 0
+        if (st->checkFlags(CG_ST_FLAGS_MODRANGE)) {
+          ModulusRange *outerRange = st->modRange();
+          outerRange->mod(1);
+        }
+        else
+          st->mod(1);
+        st->applyModulus();
+        node = node->cg()->getCGNode(node->cg_st_idx(),0);
+#endif
         node = node->cg()->getCGNode(node->cg_st_idx(),-1);
       }
       if (node->offset() == -1)
@@ -1283,6 +1296,9 @@ ConstraintGraph::handleAssignment(WN *stmt)
   ConstraintGraphNode *cgNodeRHS = processExpr(rhs);
   // process LHS
   ConstraintGraphNode *cgNodeLHS = processLHSofStore(stmt);
+
+  if (cgNodeLHS->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+    return WN_next(stmt);
 
   // If rhs is not a pointer and if the lhs is not a pointer type and we are not
   // doing an indirect store, mark lhs as not a pointer.
@@ -2137,6 +2153,12 @@ ConstraintGraph::handleCall(WN *callWN)
     ConstraintGraphNode *cgNode = processLHSofStore(stmt);
     cgNode->addFlags(CG_NODE_FLAGS_ACTUAL_RETURN);
 
+    // If the return value of the call can be determined to be
+    // not a pointer, we want to flag the node that represents
+    // the target of that return value as !PTR
+    if (!exprMayPoint(WN_kid0(stmt)))
+      cgNode->addFlags(CG_NODE_FLAGS_NOT_POINTER);
+
     callSite->returnId(cgNode->id());
 
     // Create a heap node
@@ -2276,6 +2298,52 @@ ConstraintGraph::removeEdge(ConstraintGraphEdge *edge)
   CXX_DELETE(edge,edgeMemPool);
 }
 
+static INT64
+alignOffset(TY_IDX ty_idx, INT64 offset)
+{
+  // If the offset is already aligned to Pointer_Size, there
+  // is not need to adjust.  It is the sub-pointer size offsets
+  // that will cause issues, especially if the offsets to not
+  // match up with a valid field offset in the current TY
+  if (offset & (~(Pointer_Size-1)) == offset)
+    return offset;
+
+  TY& ty = Ty_Table[ty_idx];
+  TY_KIND kind = TY_kind(ty);
+
+  // For arrays, we dive into the array to determine the actual
+  // element type
+  if (kind == KIND_ARRAY) {
+    TY_IDX etyIdx = TY_etype(ty);
+    while (TY_kind(Ty_Table[etyIdx]) == KIND_ARRAY)
+      etyIdx = TY_etype(Ty_Table[etyIdx]);
+    kind = TY_kind(Ty_Table[etyIdx]);
+  }
+  if (kind == KIND_SCALAR ||
+      kind == KIND_FUNCTION ||
+      kind == KIND_POINTER ||
+      kind == KIND_VOID)
+    offset = offset & (~(Pointer_Size-1));
+  else { // kind == KIND_STRUCT
+    FmtAssert(kind == KIND_STRUCT,("Expecting only structs here"));
+
+    for (FLD_HANDLE fld = TY_flist(ty); !fld.Is_Null(); fld = FLD_next(fld)) {
+       TY &fty = Ty_Table[FLD_type(fld)];
+       UINT32 start = offset+FLD_ofst(fld);
+       UINT32 end = start+TY_size(fty)-1;
+       if (start <= offset && offset <= end) {
+         if (TY_kind(fty) == KIND_ARRAY ||
+             TY_kind(fty) == KIND_STRUCT)
+           offset = alignOffset(FLD_type(fld),offset);
+         else
+           offset = start;
+         break;
+       }
+    }
+  }
+  return offset;
+}
+
 ConstraintGraphNode *
 ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
 {
@@ -2318,6 +2386,16 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
       else if (si->checkFlags(CG_ST_FLAGS_NOFIELD))
         offset = si->firstOffset()->offset();
     }
+    // Ensure that the computed offset is aligned to a field boundary
+    INT64 origOffset = offset;
+    offset = alignOffset(si->ty_idx(),origOffset);
+#if 0
+    if (offset != origOffset) {
+      fprintf(stderr,"Aligned offset %d to %d for the following ST\n",
+              (int)origOffset,(int)offset);
+      si->print(stderr,true);
+    }
+#endif
     if (si->varSize() != 0)
       Is_True(offset < si->varSize(), ("getCGNode: offset: %lld >= varSize"
               ": %lld\n", offset, si->varSize()));
