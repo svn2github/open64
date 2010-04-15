@@ -384,28 +384,28 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     for (UINT32 i = 0; i < numBitsPtsGBL; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsGBLidx + i];
       ConstraintGraphNode *pNode = findUniqueNode(id);
-      cgNode->addPointsTo(pNode, CQ_GBL);
+      cgNode->parent()->addPointsTo(pNode->parent(), CQ_GBL);
     }
-    cgNode->sanitizePointsTo(CQ_GBL);
-    Is_True(cgNode->sanityCheckPointsTo(CQ_GBL),("GBL: <ST,x> and <ST,-1>"));
+    cgNode->parent()->sanitizePointsTo(CQ_GBL);
+    Is_True(cgNode->parent()->sanityCheckPointsTo(CQ_GBL),(""));
 
     // HZ
     for (UINT32 i = 0; i < numBitsPtsHZ; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsHZidx + i];
       ConstraintGraphNode *pNode = findUniqueNode(id);
-      cgNode->addPointsTo(pNode, CQ_HZ);
+      cgNode->parent()->addPointsTo(pNode->parent(), CQ_HZ);
     }
-    cgNode->sanitizePointsTo(CQ_HZ);
-    Is_True(cgNode->sanityCheckPointsTo(CQ_HZ),("HZ: <ST,x> and <ST,-1>"));
+    cgNode->parent()->sanitizePointsTo(CQ_HZ);
+    Is_True(cgNode->parent()->sanityCheckPointsTo(CQ_HZ),(""));
 
     // DN
     for (UINT32 i = 0; i < numBitsPtsDN; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsDNidx + i];
       ConstraintGraphNode *pNode = findUniqueNode(id);
-      cgNode->addPointsTo(pNode, CQ_DN);
+      cgNode->parent()->addPointsTo(pNode->parent(), CQ_DN);
     }
-    cgNode->sanitizePointsTo(CQ_DN);
-    Is_True(cgNode->sanityCheckPointsTo(CQ_DN),("DN: <ST,x> and <ST,-1>"));
+    cgNode->parent()->sanitizePointsTo(CQ_DN);
+    Is_True(cgNode->parent()->sanityCheckPointsTo(CQ_DN),(""));
 
     // Adjust pts set if required
     if (cgNode->checkFlags(CG_NODE_FLAGS_ADJUST_K_CYCLE)) {

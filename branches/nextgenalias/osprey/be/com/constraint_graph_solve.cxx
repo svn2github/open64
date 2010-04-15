@@ -721,7 +721,7 @@ ConstraintGraphNode::removeNonMinusOneOffsets(PointsTo &dst, CG_ST_IDX idx,
       if (theNode) {
         FmtAssert(&theNode->pointsTo(qual) == &dst,
                   ("Expect PointsTo to be associated with provided CG node!\n"));
-        //node->_clearRevPointsTo(theNode->id(),qual);
+        node->_removeRevPointsTo(theNode->id(),qual);
       }
     }
   }
@@ -757,12 +757,21 @@ ConstraintGraphNode::sanitizePointsTo(PointsTo &pts,
 bool
 ConstraintGraphNode::sanityCheckPointsTo(CGEdgeQual qual)
 {
+  // Merged nodes should not have any non-PCOPY incoming edges
+  //FmtAssert(!checkFlags(CG_NODE_FLAGS_MERGED),
+            //("Not expecting merged nodes"));
+
   const PointsTo &pts = pointsTo(qual);
   hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx> minusOneSts;
   for (PointsTo::SparseBitSetIterator i1(&pts,0); i1 != 0; ++i1) {
     ConstraintGraphNode *node = ConstraintGraph::cgNode(*i1);
     if (node->offset() == -1)
       minusOneSts.insert(node->cg_st_idx());
+    // If "node is present in the pts, it had better not have
+    // a parent node.
+    FmtAssert(node->parent() == node,
+              ("Merge node failure: found node %d with parent %d "
+                  "in pts of node %d",node->id(),node->parent()->id(),id()));
     // If "node" is present in the pts of "this", then "this"
     // must be in the rev-pts of "node".  Here we are checking
     // for missing nodes in the rev-pts set.
@@ -776,7 +785,7 @@ ConstraintGraphNode::sanityCheckPointsTo(CGEdgeQual qual)
     if (node->offset() != -1) {
       hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx>::const_iterator iter =
           minusOneSts.find(node->cg_st_idx());
-      FmtAssert(iter != minusOneSts.end(),
+      FmtAssert(iter == minusOneSts.end(),
                 ("Node %d contains ST:%s offsets %d and -1\n",
                     id(),node->stName(),node->offset()));
     }
@@ -985,6 +994,11 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
       return;
     }
   }
+
+  // FIXME!!!!!! We temporarily skip any incoming copies to nodes that
+  // have a parent.  This is because the worklist is inconsistent.
+  if (dst->checkFlags(CG_NODE_FLAGS_MERGED))
+    return;
 
   CGNodeId trackNodeId = 0;
   PointsTo origPts;

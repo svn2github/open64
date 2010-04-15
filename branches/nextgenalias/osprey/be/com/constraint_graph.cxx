@@ -569,7 +569,7 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *destNode,
         fprintf(stderr, " due to destNode: \n");
         destNode->print(stderr); destNode->stInfo()->print(stderr);
 #endif
-#if 0
+//#if 0
         if (st->checkFlags(CG_ST_FLAGS_MODRANGE)) {
           ModulusRange *outerRange = st->modRange();
           outerRange->mod(1);
@@ -578,8 +578,8 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *destNode,
           st->mod(1);
         st->applyModulus();
         node = node->cg()->getCGNode(node->cg_st_idx(),0);
-#endif
-        node = node->cg()->getCGNode(node->cg_st_idx(),-1);
+///#endif
+        //node = node->cg()->getCGNode(node->cg_st_idx(),-1);
       }
       if (node->offset() == -1)
         destNode->removeNonMinusOneOffsets(dst,node->cg_st_idx(),
@@ -2401,6 +2401,7 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   // to offset zero.
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
     if (offset != -1 && (si->numOffsets() >= si->maxOffsets())) {
+      FmtAssert(false,("Need to fix getCGNode: too many offsets!\n"));
       offset = -1;
       // Check if node exists, if so return it
       if ((cgNode = checkCGNode(cg_st_idx, offset)) != NULL)
@@ -2797,7 +2798,8 @@ dbgPrintCGNode(CGNodeId nodeId)
   ConstraintGraphNode *node = ConstraintGraph::cgNode(nodeId);
   if (node)
     node->dbgPrint();
-  fprintf(stderr,"Invalid CGNodeId %d\n",nodeId);
+  else
+    fprintf(stderr,"Invalid CGNodeId %d\n",nodeId);
 }
 
 void
