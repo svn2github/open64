@@ -552,7 +552,8 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
 void
 ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *destNode,
                                          const PointsTo &src,
-                                         PointsTo &dst)
+                                         PointsTo &dst,
+                                         CGEdgeQual qual)
 {
   UINT32 kCycle = destNode->inKCycle();
   FmtAssert(&src != &dst,("Expected two different sets"));
@@ -601,7 +602,8 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *destNode,
         node = node->cg()->getCGNode(node->cg_st_idx(),-1);
       }
       if (node->offset() == -1)
-        destNode->removeOffsets(dst,node->cg_st_idx());
+        destNode->removeNonMinusOneOffsets(dst,node->cg_st_idx(),
+                                           qual!=CQ_NONE?destNode:NULL,qual);
     }
     dst.setBit(node->id());
   }
@@ -613,7 +615,7 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *cgNode)
   for (PointsToIterator pti(cgNode); pti != 0; ++pti) {
     PointsTo &ptsTo = *pti;
     PointsTo tmp;
-    adjustPointsToForKCycle(cgNode, ptsTo, tmp);
+    adjustPointsToForKCycle(cgNode, ptsTo, tmp, pti.qual());
     ptsTo.clear();
     ptsTo.setUnion(tmp);
   }
@@ -1139,7 +1141,7 @@ ConstraintGraph::processInito(const INITO *const inito)
     if (!foundPtr)
       return;
 
-    ConstraintGraphNode::sanitizePointsTo(tmp);
+    ConstraintGraphNode::sanitizePointsTo(tmp,NULL,CQ_NONE);
     ConstraintGraphNode *node = getCGNode(CG_ST_st_idx(base_st), base_offset);
     node->unionPointsTo(tmp, CQ_GBL);
     node->stInfo()->setModulus(1, node->offset());
@@ -1159,7 +1161,7 @@ ConstraintGraph::processInito(const INITO *const inito)
     PointsTo *pts = iter->second;
     ConstraintGraphNode *node = getCGNode(CG_ST_st_idx(base_st),
                                           base_offset + offset);
-    ConstraintGraphNode::sanitizePointsTo(*pts);
+    ConstraintGraphNode::sanitizePointsTo(*pts,NULL,CQ_NONE);
     node->unionPointsTo(*pts, CQ_HZ);
     if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG)) {
       fprintf(stderr, "  node offset: %d val offset: %d, pts: ",

@@ -231,7 +231,7 @@ SCCDetection::pointsToAdjust(NodeToKValMap &nodeToKValMap)
     for ( PointsToIterator pti(rep); pti != 0; ++pti ) {
       PointsTo tmp;
       PointsTo &ptsTo = *pti;
-      ConstraintGraph::adjustPointsToForKCycle(rep,ptsTo,tmp);
+      ConstraintGraph::adjustPointsToForKCycle(rep,ptsTo,tmp,pti.qual());
       ptsTo.clear();
       ptsTo.setUnion(tmp);
     }
@@ -708,13 +708,21 @@ ConstraintGraphSolve::updateOffsets(const ConstraintGraphNode *dst,
 }
 
 void
-ConstraintGraphNode::removeOffsets(PointsTo &dst, CG_ST_IDX idx)
+ConstraintGraphNode::removeNonMinusOneOffsets(PointsTo &dst, CG_ST_IDX idx,
+                                              ConstraintGraphNode *theNode,
+                                              CGEdgeQual qual)
 {
   for (PointsTo::SparseBitSetIterator iter(&dst,0); iter != 0; ++iter) {
     ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
     if (node->cg_st_idx() == idx && node->offset() != -1) {
-      //fprintf(stderr,"Removing node %d\n",node->id());
       dst.clearBit(node->id());
+      // If we are actually removing bits from the pts of a node,
+      // rather than a temporary, we must update the rev pts as well.
+      if (theNode) {
+        FmtAssert(&theNode->pointsTo(qual) == &dst,
+                  ("Expect PointsTo to be associated with provided CG node!\n"));
+        //node->_clearRevPointsTo(theNode->id(),qual);
+      }
     }
   }
 }
@@ -724,11 +732,13 @@ ConstraintGraphNode::sanitizePointsTo(CGEdgeQual qual)
 {
   PointsTo *pts = _findPointsTo(qual,_pointsToList);
   if (pts)
-    sanitizePointsTo(*pts);
+    sanitizePointsTo(*pts,this,qual);
 }
 
 void
-ConstraintGraphNode::sanitizePointsTo(PointsTo &pts)
+ConstraintGraphNode::sanitizePointsTo(PointsTo &pts,
+                                      ConstraintGraphNode *theNode,
+                                      CGEdgeQual qual)
 {
    hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx> minusOneSts;
    for (PointsTo::SparseBitSetIterator i1(&pts,0); i1 != 0; ++i1) {
@@ -740,7 +750,7 @@ ConstraintGraphNode::sanitizePointsTo(PointsTo &pts)
    hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx>::iterator iter;
    for (iter = minusOneSts.begin(); iter != minusOneSts.end(); ++iter) {
      CG_ST_IDX idx = *iter;
-     removeOffsets(pts,idx);
+     removeNonMinusOneOffsets(pts,idx,theNode,qual);
    }
 }
 
@@ -753,6 +763,12 @@ ConstraintGraphNode::sanityCheckPointsTo(CGEdgeQual qual)
     ConstraintGraphNode *node = ConstraintGraph::cgNode(*i1);
     if (node->offset() == -1)
       minusOneSts.insert(node->cg_st_idx());
+    // If "node" is present in the pts of "this", then "this"
+    // must be in the rev-pts of "node".  Here we are checking
+    // for missing nodes in the rev-pts set.
+    FmtAssert(node->_checkRevPointsTo(id(),qual),
+              ("Node %d in pts of %d, but %d not in rev-pts of %d\n",
+                  node->id(),id(),id(),node->id()));
   }
 
   for (PointsTo::SparseBitSetIterator i2(&pts,0); i2 != 0; ++i2) {
@@ -760,10 +776,23 @@ ConstraintGraphNode::sanityCheckPointsTo(CGEdgeQual qual)
     if (node->offset() != -1) {
       hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx>::const_iterator iter =
           minusOneSts.find(node->cg_st_idx());
-      if (iter != minusOneSts.end())
-        return false;
+      FmtAssert(iter != minusOneSts.end(),
+                ("Node %d contains ST:%s offsets %d and -1\n",
+                    id(),node->stName(),node->offset()));
     }
   }
+
+  const PointsTo &revPts = revPointsTo(qual);
+  for (PointsTo::SparseBitSetIterator i3(&revPts,0); i3 != 0; ++i3) {
+    ConstraintGraphNode *node = ConstraintGraph::cgNode(*i3);
+    // If "node" is present in the rev-pts of "this", then "this"
+    // must be in the pts of "node".  Here we are checking for extra
+    // nodes in the rev-pts set.
+    FmtAssert(node->checkPointsTo(this,qual),
+              ("Node %d in rev pts of %d, but %d not in pts of %d\n",
+                  node->id(),id(),id(),node->id()));
+  }
+
   return true;
 }
 
@@ -774,9 +803,12 @@ ConstraintGraphNode::addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
             ("Attempting to directly add <%d,%d> to pts\n",
                 SYM_ST_IDX(node->cg_st_idx()),node->offset()));
   node->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
-  bool change = findRep()->_addPointsTo(node->id(),qual);
-  if (change)
+  ConstraintGraphNode *repNode = findRep();
+  bool change = repNode->_addPointsTo(node->id(),qual);
+  if (change) {
     addFlags(CG_NODE_FLAGS_PTSMOD);
+    node->_addRevPointsTo(repNode->id(),qual);
+  }
   return change;
 }
 
@@ -844,14 +876,16 @@ ConstraintGraphNode::unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual)
                       minusOne->id(),
                       SYM_ST_IDX(node->cg_st_idx()),id()));
         dst.setBit(node->id());
+        node->_addRevPointsTo(id(),qual);
         change = true;
       }
     }
     // The current node is <ST,-1> so we need to remove all
     // occurrences of <ST,ofst> from the destination set
     else {
-      removeOffsets(dst,node->cg_st_idx());
+      removeNonMinusOneOffsets(dst,node->cg_st_idx(),this,qual);
       dst.setBit(node->id());
+      node->_addRevPointsTo(id(),qual);
       change = true;
     }
   }
@@ -999,7 +1033,7 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
             PointsTo diff;
             diff = cur->pointsTo(srcQual);
             diff.setDiff(dstNode->pointsTo(dstQual));
-            ConstraintGraph::adjustPointsToForKCycle(dstNode,diff,tmp);
+            ConstraintGraph::adjustPointsToForKCycle(dstNode,diff,tmp,CQ_NONE);
             change |= dstNode->unionPointsTo(tmp, dstQual);
           }
           dstChange |= change;
@@ -1025,7 +1059,7 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
           change |= dst->unionPointsTo(*pti, dstQual);
         else {
           PointsTo tmp;
-          ConstraintGraph::adjustPointsToForKCycle(dst,*pti,tmp);
+          ConstraintGraph::adjustPointsToForKCycle(dst,*pti,tmp,CQ_NONE);
           change |= dst->unionPointsTo(tmp, dstQual);
         }
         if (change) {
@@ -1107,12 +1141,12 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
           addedMinusOne = true;
       }
       if (addedMinusOne)
-        ConstraintGraphNode::sanitizePointsTo(tmp);
+        ConstraintGraphNode::sanitizePointsTo(tmp,NULL,CQ_NONE);
       PointsTo tmp1;
       PointsTo diff;
       diff = tmp;
       diff.setDiff(dst->pointsTo(dstQual));
-      ConstraintGraph::adjustPointsToForKCycle(dst, diff, tmp1);
+      ConstraintGraph::adjustPointsToForKCycle(dst, diff, tmp1,CQ_NONE);
       bool change = dst->unionPointsTo(tmp1,dstQual);
       if (change) {
         addEdgesToWorkList(dst);

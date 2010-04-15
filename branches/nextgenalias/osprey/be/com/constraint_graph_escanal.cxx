@@ -115,6 +115,7 @@ EscapeAnalysis::addStToWorkList(ConstraintGraphNode *node)
   }
 }
 
+#if 0
 void
 EscapeAnalysis::updateReversePointsTo(ConstraintGraphNode *node)
 {
@@ -140,6 +141,8 @@ EscapeAnalysis::computeReversePointsTo()
       iter != _graph->lEnd(); ++iter)
     updateReversePointsTo(iter->first);
 }
+#endif
+
 
 EscapeAnalysis::~EscapeAnalysis()
 {
@@ -824,20 +827,7 @@ EscapeAnalysis::perform(void)
             _summaryMode, _ipaMode, _wholeProgramMode);
 
   init();
-  computeReversePointsTo();
-
-#if 0
-  if (_ipaCGMap) {
-#ifndef BACK_END
-    ipaInit();
-#endif
-    globalComputeReversePointsTo();
-  }
-  else {
-    init(_graph);
-    computeReversePointsTo();
-  }
-#endif
+  //computeReversePointsTo();
 
   UINT32 cnt = 0;
   while (!_workList.empty())  {

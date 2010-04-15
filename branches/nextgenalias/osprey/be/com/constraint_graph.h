@@ -456,10 +456,12 @@ public:
     return findRep()->_pointsTo(qual);
   }
 
+#if 0
   bool addRevPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
   {
     return findRep()->_addRevPointsTo(node->id(),qual);
   }
+#endif
 
   const PointsTo &revPointsTo(CGEdgeQual qual)
   {
@@ -570,8 +572,9 @@ public:
 
   // Remove redundant nodes, in the presence of <ST, -1>
   void sanitizePointsTo(CGEdgeQual qual);
-  static void sanitizePointsTo(PointsTo &pts);
-  static void removeOffsets(PointsTo &dst, CG_ST_IDX);
+  static void sanitizePointsTo(PointsTo &,ConstraintGraphNode *,CGEdgeQual);
+  static void removeNonMinusOneOffsets(PointsTo &, CG_ST_IDX,
+                                       ConstraintGraphNode *,CGEdgeQual);
 
   bool sanityCheckPointsTo(CGEdgeQual qual);
 
@@ -628,6 +631,12 @@ private:
   bool _checkPointsTo(CGNodeId id, CGEdgeQual qual)
   {
     PointsTo *pts = _findPointsTo(qual,_pointsToList);
+    return pts ? pts->isSet(id) : false;
+  }
+
+  bool _checkRevPointsTo(CGNodeId id, CGEdgeQual qual)
+  {
+    PointsTo *pts = _findPoitnsTo(qual,_revPointsToList);
     return pts ? pts->isSet(id) : false;
   }
 
@@ -1084,7 +1093,8 @@ public:
   static void adjustPointsToForKCycle(ConstraintGraphNode *cgNode);
   static void adjustPointsToForKCycle(ConstraintGraphNode *destNode,
                                       const PointsTo &src,
-                                      PointsTo &dst);
+                                      PointsTo &dst,
+                                      CGEdgeQual qual);
 
   static bool addCGNodeInSortedOrder(StInfo *stInfo, 
                                      ConstraintGraphNode *cgNode);
