@@ -194,6 +194,17 @@ ConstraintGraphNode::removeOutEdge(ConstraintGraphEdge *edge)
     updateMaxAccessSize();
 }
 
+// Remove node from the points to set with qualifier qual of 'this'
+void
+ConstraintGraphNode::removePointsTo(ConstraintGraphNode *node,
+                                    CGEdgeQual qual)
+{
+  // Remove node from the pts of 'this'
+  _removePointsTo(node->id(), qual);
+  // Remove 'this' from the reverse pts of node
+  node->_removeRevPointsTo(this->id(), qual);
+}
+
 ConstraintGraphNode::~ConstraintGraphNode()
 {
   FmtAssert(canBeDeleted(), ("Cannot delete this node!"));
@@ -339,15 +350,17 @@ ModulusRange::print(ostream &str,UINT32 indent)
     _next->print(str,indent);
 }
 
-StInfo::StInfo(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
-  : _flags(flags),
-    _varSize(0),
-    _maxOffsets(256),
-    _numOffsets(0),
-    _firstOffset(0),
-    _ty_idx(ty_idx),
-    _memPool(memPool)
+void
+StInfo::init(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
 {
+  _flags = flags;
+  _varSize = 0;
+  _maxOffsets = 256;
+  _numOffsets = 0;
+  _firstOffset = 0;
+  _ty_idx = ty_idx;
+  _memPool = memPool;
+
   TY& ty = Ty_Table[_ty_idx];
   // For arrays set size to element size
   if (TY_kind(ty) == KIND_ARRAY) {
@@ -368,7 +381,8 @@ StInfo::StInfo(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
   // sense to apply an offset beyond 0, so we prevent any
   // imprecision in the points-to sets from generating "random"
   // offsets off the function address via skew edges.
-  if (_varSize == 0 || TY_kind(ty) == KIND_FUNCTION)
+  if (_varSize == 0 || 
+      (TY_kind(ty) != KIND_ARRAY && TY_kind(ty) != KIND_STRUCT))
     _u._modulus = 1;
   else if (TY_kind(ty) != KIND_STRUCT || ModulusRange::flat(ty) ||
            TY_size(ty) <= Pointer_Size)
@@ -384,47 +398,16 @@ StInfo::StInfo(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
   addFlags(CG_ST_FLAGS_NOCNTXT);
 }
 
+StInfo::StInfo(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
+{
+  init(ty_idx, flags, memPool);
+}
+
 StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
-  : _flags(0),
-    _varSize(0),
-    _maxOffsets(256),
-    _numOffsets(0),
-    _firstOffset(0),
-    _memPool(memPool)
 {
   ST *st = &St_Table[st_idx];
-  _ty_idx = ST_type(st);
-  TY& ty = Ty_Table[ST_type(st)];
-  // For arrays set size to element size
-  if (TY_kind(ty) == KIND_ARRAY) {
-    TY_IDX etyIdx = TY_etype(ty);
-    // We need to dive into multi-dimensional arrays
-    // to determine the actual element size
-    while (TY_kind(Ty_Table[etyIdx]) == KIND_ARRAY)
-      etyIdx = TY_etype(Ty_Table[etyIdx]);
-    TY &etype = Ty_Table[etyIdx];
-    _varSize = TY_size(etype);
-  } else
-    _varSize = ST_size(st);
 
-  // In the case of _varSize == 0, i.e. a forward declaration,
-  // we default to modulus of 1 as we should see no references
-  // of any offsets other than 0.
-  // We use a modulus of 1 for function pointers as it makes no
-  // sense to apply an offset beyond 0, so we prevent any
-  // imprecision in the points-to sets from generating "random"
-  // offsets off the function address via skew edges.
-  if (_varSize == 0  || ST_sclass(st) == SCLASS_TEXT)
-    _u._modulus = 1;
-  else if (TY_kind(ty) != KIND_STRUCT || ModulusRange::flat(ty) ||
-           TY_size(ty) <= Pointer_Size)
-    _u._modulus = _varSize;
-  else {
-    addFlags(CG_ST_FLAGS_MODRANGE);
-    _u._modRange = ModulusRange::build(ST_type(st),0,memPool);
-    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-      _u._modRange->print(stderr);
-  }
+  init(ST_type(st), 0, memPool);
 
   // Set the flags
   ST_SCLASS storage_class = ST_sclass(st);
@@ -450,9 +433,6 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
   // Mark PSTATICs as context-insensitive
   if (storage_class == SCLASS_PSTATIC)
     addFlags(CG_ST_FLAGS_NOCNTXT);
-
-  // Treat every symbol as context-insensitive
-  addFlags(CG_ST_FLAGS_NOCNTXT);
 }
 
 void
@@ -1306,8 +1286,10 @@ ConstraintGraph::handleAssignment(WN *stmt)
   // doing an indirect store, mark lhs as not a pointer.
   // If rhs is not a pointer, we do not need a copy/store edge to the lhs
   if (!exprMayPoint(rhs)) {
-    if (!isLHSaPointer(stmt) && OPERATOR_is_scalar_store(WN_operator(stmt)))
+    if (!isLHSaPointer(stmt) && OPERATOR_is_scalar_store(WN_operator(stmt))) {
       cgNodeLHS->addFlags(CG_NODE_FLAGS_NOT_POINTER);
+      cgNodeLHS->deleteInOutEdges();
+    }
     return WN_next(stmt);
   }
 
@@ -2158,8 +2140,10 @@ ConstraintGraph::handleCall(WN *callWN)
     // If the return value of the call can be determined to be
     // not a pointer, we want to flag the node that represents
     // the target of that return value as !PTR
-    if (!exprMayPoint(WN_kid0(stmt)))
+    if (!exprMayPoint(WN_kid0(stmt))) {
       cgNode->addFlags(CG_NODE_FLAGS_NOT_POINTER);
+      cgNode->deleteInOutEdges();
+    }
 
     callSite->returnId(cgNode->id());
 
@@ -2586,7 +2570,10 @@ ConstraintGraph::print(FILE *file)
 //    'src' may belong.  This need only be done in the case
 //    of unifying an SCC and will likely be made conditional
 //    in a generalized version of this routine.
-// 5) Union the points-to sets of the two nodes
+//    NOTE: This is now done by the caller, if required
+// 5) Union the points-to sets of the two nodes, adjustPointsToForKCycle
+//    and delete the pts set and edges of src
+// 6) Replace src with 'this' node from the pts of nodes that references this
 void
 ConstraintGraphNode::merge(ConstraintGraphNode *src)
 {
@@ -2679,13 +2666,86 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
     unionPointsTo(*pti,pti.qual());
   ConstraintGraph::adjustPointsToForKCycle(this);
 
-  // 5) Delete edges and pts to set
+  // 5) Since src is now merged with 'this', we have to replace src 
+  // from nodes that point to src by 'this'
+  for (PointsToIterator pti(src,true); pti != 0; ++pti) {
+    PointsTo &rpts = *pti;
+    CGEdgeQual qual = pti.qual();
+    for (PointsTo::SparseBitSetIterator sbsi(&rpts,0); sbsi != 0; ++sbsi) {
+      ConstraintGraphNode *ptrNode = ConstraintGraph::cgNode(*sbsi);
+      ptrNode->removePointsTo(src, qual);
+      ptrNode->addPointsTo(this, qual);
+    }
+  }
+
+  // 6) Delete edges and pts to set
   src->deleteEdgesAndPtsSetList();
 
   // 7) Set flags
   src->addFlags(CG_NODE_FLAGS_MERGED);
   if (src->checkFlags(CG_NODE_FLAGS_UNKNOWN))
     addFlags(CG_NODE_FLAGS_UNKNOWN);
+}
+
+void ConstraintGraphNode::deleteInOutEdges()
+{
+  CGEdgeSet deleteEdges;
+  const CGEdgeSet &inLoadStoreSet = inLoadStoreEdges();
+  for (CGEdgeSetIterator eiter = inLoadStoreSet.begin();
+       eiter != inLoadStoreSet.end(); eiter++) {
+    ConstraintGraphEdge *edge = *eiter;
+    deleteEdges.insert(edge);
+  }
+  const CGEdgeSet &inCopySkewSet = inCopySkewEdges();
+  for (CGEdgeSetIterator eiter = inCopySkewSet.begin();
+       eiter != inCopySkewSet.end(); eiter++) {
+    ConstraintGraphEdge *edge = *eiter;
+    deleteEdges.insert(edge);
+  }
+  for (CGEdgeSetIterator eiter = deleteEdges.begin();
+       eiter != deleteEdges.end(); eiter++)
+    ConstraintGraph::removeEdge(*eiter);
+
+  // Delete the incoming edge sets
+  CGEdgeList *e = _inEdges;
+  CGEdgeList *ne;
+  while (e) {
+    ne = e->next();
+    FmtAssert(e->cgEdgeSet()->empty(), ("edge set not empty"));
+    CXX_DELETE(e, cg()->memPool());
+    e = ne;
+  }
+  _inEdges = NULL;
+
+  // Delete outgoing edges
+  deleteEdges.clear();
+
+  const CGEdgeSet &outLoadStoreSet = outLoadStoreEdges();
+  for (CGEdgeSetIterator eiter = outLoadStoreSet.begin();
+       eiter != outLoadStoreSet.end(); eiter++) {
+    ConstraintGraphEdge *edge = *eiter;
+    deleteEdges.insert(edge);
+  }
+  const CGEdgeSet &outCopySkewSet = outCopySkewEdges();
+  for (CGEdgeSetIterator eiter = outCopySkewSet.begin();
+       eiter != outCopySkewSet.end(); eiter++) {
+    ConstraintGraphEdge *edge = *eiter;
+    deleteEdges.insert(edge);
+  }
+  for (CGEdgeSetIterator eiter = deleteEdges.begin();
+       eiter != deleteEdges.end(); eiter++)
+    ConstraintGraph::removeEdge(*eiter);
+
+  // Delete the outgoing edge sets
+  e = _outEdges;
+  ne;
+  while (e) {
+    ne = e->next();
+    FmtAssert(e->cgEdgeSet()->empty(), ("edge set not empty"));
+    CXX_DELETE(e, cg()->memPool());
+    e = ne;
+  }
+  _outEdges = NULL;
 }
 
 void
@@ -2700,6 +2760,15 @@ ConstraintGraphNode::deleteEdgesAndPtsSetList()
     p = np;
   }
   _pointsToList = NULL;
+
+  // Delete reverse points-to set
+  p = _revPointsToList;
+  while (p) {
+    np = p->next();
+    CXX_DELETE(p, cg()->memPool());
+    p = np;
+  }
+  _revPointsToList = NULL;
 
   // Delete the incoming/outgoing edge sets
   CGEdgeList *e = _inEdges;

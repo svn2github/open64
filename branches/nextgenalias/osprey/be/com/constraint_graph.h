@@ -444,6 +444,8 @@ public:
 
   bool addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual);
 
+  void removePointsTo(ConstraintGraphNode *node, CGEdgeQual qual);
+
   bool checkPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
   {
     return findRep()->_checkPointsTo(node->id(),qual);
@@ -562,6 +564,7 @@ public:
   ConstraintGraph *cg() const { return _parentCG; }
   void cg(ConstraintGraph *p) { _parentCG = p; }
 
+  void deleteInOutEdges();
   void deleteEdgesAndPtsSetList();
 
   // Meant be called from createAliasTags, to provide a points-to
@@ -620,6 +623,22 @@ private:
               ("Attempting addPointsTo on a merged node!"));
     PointsTo &pts = _getPointsTo(qual,&_pointsToList);
     return pts.setBit(id);
+  }
+
+  void _removePointsTo(CGNodeId id, CGEdgeQual qual)
+  {
+    PointsTo *pts = _findPointsTo(qual, _pointsToList);
+    FmtAssert(pts != NULL, ("cannot find pts"));
+    FmtAssert(pts->isSet(id), ("cannot find element"));
+    pts->clearBit(id);
+  }
+
+  void _removeRevPointsTo(CGNodeId id, CGEdgeQual qual)
+  {
+    PointsTo *pts = _findPointsTo(qual, _revPointsToList);
+    FmtAssert(pts != NULL, ("cannot find pts"));
+    FmtAssert(pts->isSet(id), ("cannot find element"));
+    pts->clearBit(id);
   }
 
   bool _addRevPointsTo(CGNodeId id, CGEdgeQual qual)
@@ -987,6 +1006,8 @@ public:
   void print(ostream& ostr);
 
 private:
+  void init(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool);
+
   UINT32 _flags;
   union  {
     UINT32        _modulus;

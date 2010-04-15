@@ -313,8 +313,9 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       FmtAssert(!stInfo->checkFlags(CG_ST_FLAGS_PREG),
                 ("PREGs should have no nextOffset"));
       ConstraintGraphNode *firstOffset = findUniqueNode(firstOffsetId);
-      addCGNodeInSortedOrder(stInfo, firstOffset);
-      stInfo->incrNumOffsets();
+      bool added = addCGNodeInSortedOrder(stInfo, firstOffset);
+      if (added)
+        stInfo->incrNumOffsets();
     }
   }
 
@@ -365,8 +366,9 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       FmtAssert(!stInfo->checkFlags(CG_ST_FLAGS_PREG),
                 ("PREGs should have no nextOffset"));
       ConstraintGraphNode *nextOffset = findUniqueNode(nextOffsetId);
-      addCGNodeInSortedOrder(stInfo, nextOffset);
-      stInfo->incrNumOffsets();
+      bool added = addCGNodeInSortedOrder(stInfo, nextOffset);
+      if (added)     
+        stInfo->incrNumOffsets();
     }
 
     // Add the pts set
@@ -854,14 +856,15 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
   for (nodeIter.First(); !nodeIter.Is_Empty(); nodeIter.Next()) {
     IPA_NODE *caller = nodeIter.Current();
     if (caller == NULL) continue;
-    //IPA_SUCC_ITER succIter(ipaCallGraph,caller);
+    ConstraintGraph *graph = cg(caller->Node_Index());
+    if (graph == NULL)
+      continue;
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
       fprintf(stderr,"Processing: %s\n",caller->Name());
 
     // We use the call site information on the constraint graph, rather
     // than the summary callsite information because transformations
     // may make the summary callsite to CallSite mapping inconsistent.
-    ConstraintGraph *graph = cg(caller->Node_Index());
     for (CallSiteIterator csi = graph->callSiteMap().begin();
         csi != graph->callSiteMap().end(); ++csi) {
       CallSite *callsite = csi->second;
@@ -941,11 +944,6 @@ IPA_NystromAliasAnalyzer::callGraphPrep(IPA_CALL_GRAPH *ipaCallGraph,
     IPAEdge edge = workList.front();
     workList.pop_front();
 
-    // Retrieve the caller/callee constraint graphs
-    ConstraintGraph *callerCG = cg(edge.callerIdx());
-    FmtAssert(callerCG,("callGraphPrep: no constraint graph for caller"));
-    ConstraintGraph *calleeCG = cg(edge.calleeIdx());
-    FmtAssert(calleeCG,("callGraphPrep: no constraint graph for callee"));
     UINT32 id = edge.csId();
 
     IPA_NODE *callee = ipaCallGraph->Graph()->Node_User(edge.calleeIdx());
@@ -955,6 +953,20 @@ IPA_NystromAliasAnalyzer::callGraphPrep(IPA_CALL_GRAPH *ipaCallGraph,
               id,
               callee->Name());
 
+    // Retrieve the caller/callee constraint graphs
+    ConstraintGraph *callerCG = cg(edge.callerIdx());
+    ConstraintGraph *calleeCG = cg(edge.calleeIdx());
+
+    if (!callerCG) {
+      fprintf(stderr, "callGraphPrep: No CG for caller: %s\n", 
+              ipaCallGraph->Graph()->Node_User(edge.callerIdx())->Name());
+      continue;
+    }
+    if (!calleeCG) {
+      fprintf(stderr, "callGraphPrep: No CG for callee: %s\n", callee->Name());
+      continue;
+    }
+      
     // Now, the real work.  Connect the actuals/formals for this callsite
     callerCG->connect(id,calleeCG,callee->Func_ST(),delta);
   }
