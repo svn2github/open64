@@ -15,9 +15,8 @@
 class EdgeDelta;
 
 // Constraint graph edge flags
-#define CG_EDGE_FLAGS_ARRAY  0x0001
-#define CG_EDGE_IN_WORKLIST  0x0002
-#define CG_EDGE_PARENT_COPY  0x0004 // Special copy edge from parent
+#define CG_EDGE_IN_WORKLIST  0x0001
+#define CG_EDGE_PARENT_COPY  0x0002 // Special copy edge from parent
                                     // to ensure proper processing of
                                     // dest node, but no points-to
                                     // propagation is performed.
@@ -95,6 +94,7 @@ class EdgeDelta;
                                                 // nodes during IPA CG build
 #define CG_NODE_FLAGS_MEMOP          0x00020000 // CG nodes corresponding to
                                                 // WN load/store
+#define CG_NODE_FLAGS_ARRAY          0x00040000 // Access using OPR_ARRAY
 
 // Call site flags
 #define CS_FLAGS_UNKNOWN     0x01
@@ -599,6 +599,11 @@ public:
 
   // Copy contents of node into 'this'
   void copy(ConstraintGraphNode *node);
+
+  void removeRevPointsTo(CGNodeId id, CGEdgeQual qual)
+  {
+    _removeRevPointsTo(id, qual);
+  }
 
   typedef struct
   {

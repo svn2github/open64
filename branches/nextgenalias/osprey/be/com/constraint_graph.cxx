@@ -385,15 +385,12 @@ StInfo::init(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
   // In the case of _varSize == 0, i.e. a forward declaration,
   // we default to modulus of 1 as we should see no references
   // of any offsets other than 0.
-  // We use a modulus of 1 for function pointers as it makes no
-  // sense to apply an offset beyond 0, so we prevent any
-  // imprecision in the points-to sets from generating "random"
-  // offsets off the function address via skew edges.
+  // We use a modulus of 1 for any non aggregate types as it makes no
+  // sense to apply an offset beyond 0
   if (_varSize == 0 || 
       (TY_kind(ty) != KIND_ARRAY && TY_kind(ty) != KIND_STRUCT))
     _u._modulus = 1;
-  else if (TY_kind(ty) != KIND_STRUCT || ModulusRange::flat(ty) ||
-           TY_size(ty) <= Pointer_Size)
+  else if (TY_kind(ty) != KIND_STRUCT || ModulusRange::flat(ty))
     _u._modulus = _varSize;
   else {
     addFlags(CG_ST_FLAGS_MODRANGE);
@@ -481,7 +478,8 @@ StInfo::applyModulus(void)
       // Now we merge the two nodes together.  NOTE: the original
       // node remains and uses the modulus offset node as its
       // parent, for nodes that may have the original in their
-      // points-to sets.
+      // points-to sets. The merge should appropriately delete the original 
+      // from the pts to set of other nodes
       modNode->parent()->merge(cur);
       cur->repParent(modNode->parent());
       if (prev)
@@ -571,40 +569,66 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *destNode,
     CGNodeId nodeId = *iter;
     ConstraintGraphNode *node = cgNode(nodeId);
     if (node->offset() != -1) {
-      // If the resulting K value is still larger than the size
-      // of a pointer, then we simply adjust the modulus of the
-      // underlying symbol to the min(rep->inKCycle(),modulus)
-      StInfo *st = node->stInfo();
-      if (st->getModulus(node->offset()) <= Pointer_Size ||
-          kCycle > Pointer_Size) 
+      // A non-array based access is unbounded, so ignore any modulus
+      // associated with the node offset and operate on the underlying
+      // symbol
+      if (!node->checkFlags(CG_NODE_FLAGS_ARRAY)) 
       {
-        if (kCycle < st->getModulus(node->offset()))
-          st->setModulus(kCycle,node->offset());
-        if (node->offset() >= st->getModulus(node->offset()))
-          node = node->cg()->getCGNode(node->cg_st_idx(),node->offset());
-      }
-      // If the K value is <= the size of a pointer and 
-      // modulus > Pointer_Size then all offsets are mapped to -1.
-      else 
-      {
-#if 0
-        fprintf(stderr, "Setting -1 on node\n ");
-        node->print(stderr); node->stInfo()->print(stderr);
-        fprintf(stderr, " due to destNode: \n");
-        destNode->print(stderr); destNode->stInfo()->print(stderr);
-#endif
-//#if 0
-        if (st->checkFlags(CG_ST_FLAGS_MODRANGE)) {
-          ModulusRange *outerRange = st->modRange();
-          outerRange->mod(1);
-        }
+        StInfo *st = node->stInfo();
+        // Get the mod
+        UINT32 mod;
+        if (st->checkFlags(CG_ST_FLAGS_MODRANGE))
+          mod = st->modRange()->mod();
         else
-          st->mod(1);
-        st->applyModulus();
-        node = node->cg()->getCGNode(node->cg_st_idx(),0);
-///#endif
-        //node = node->cg()->getCGNode(node->cg_st_idx(),-1);
+          mod = st->mod();
+        // If the mod is <= pointer size or if the resulting K value is still 
+        // larger than the pointer size, then we simply adjust the modulus of
+        // the underlying symbol
+        if (mod <= Pointer_Size || kCycle > Pointer_Size) 
+        {
+          if (kCycle < mod) {
+            if (st->checkFlags(CG_ST_FLAGS_MODRANGE))
+              st->modRange()->mod(kCycle);
+            else
+              st->mod(kCycle);
+          }
+          st->applyModulus();
+          node = node->cg()->getCGNode(node->cg_st_idx(),node->offset());
+        }
+        // If the K value is <= the size of a pointer and 
+        // modulus > Pointer_Size then all offsets are mapped to -1.
+        else 
+        {
+#if 0
+          fprintf(stderr, "Setting -1 on node\n ");
+          node->print(stderr); node->stInfo()->print(stderr);
+          fprintf(stderr, " due to destNode: \n");
+          destNode->print(stderr); destNode->stInfo()->print(stderr);
+          node = node->cg()->getCGNode(node->cg_st_idx(),-1);
+#endif
+#if 1
+          // Instead of -1, reduce the symbol to a single node
+          if (st->checkFlags(CG_ST_FLAGS_MODRANGE)) {
+            ModulusRange *outerRange = st->modRange();
+            outerRange->mod(1);
+          }
+          else
+            st->mod(1);
+          st->applyModulus();
+          node = node->cg()->getCGNode(node->cg_st_idx(),0);
+#endif
+        }
+      } 
+      else
+      {
+        // For an array based access, we always set the modulus associated
+        // with node->offset(), to kCycle
+        StInfo *st = node->stInfo();
+        if (kCycle < st->getModulus(node->offset()))
+          st->setModulus(kCycle, node->offset());
+        node = node->cg()->getCGNode(node->cg_st_idx(),node->offset());
       }
+
       if (node->offset() == -1)
         destNode->removeNonMinusOneOffsets(dst,node->cg_st_idx(),
                                            qual!=CQ_NONE?destNode:NULL,qual);
@@ -1478,6 +1502,7 @@ ConstraintGraph::processExpr(WN *expr)
     // Since it is a self skew, we just set the inKcycle value and adjust
     // the points to set
     cgNode->inKCycle(gcd(cgNode->inKCycle(), (UINT32)WN_element_size(expr)));
+    cgNode->addFlags(CG_NODE_FLAGS_ARRAY);
     adjustPointsToForKCycle(cgNode);
     WN_MAP_CGNodeId_Set(expr, cgNode->id());
     return cgNode;
@@ -2417,7 +2442,7 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
 
   // Check if node exists, if so return it
   if ((cgNode = checkCGNode(cg_st_idx, offset)) != NULL)
-    return cgNode;
+    return cgNode->parent();
 
   // In order to control runaway creation of <ST,ofst> pairs that
   // may occur within an inter-procedural skew cycle, we have an

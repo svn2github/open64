@@ -1560,6 +1560,24 @@ ConstraintGraph::simpleOptimizer()
            eiter != deleteEdges.end(); eiter++)
         removeEdge(*eiter);
 
+      // Remove 'node' from the reverse points to set of all nodes in 'node's'
+      // points to set
+      for (PointsToIterator pti(node); pti != 0; ++pti) {
+        PointsTo &pts = *pti;
+        CGEdgeQual qual = pti.qual();
+        for (PointsTo::SparseBitSetIterator sbsi(&pts,0); sbsi != 0; ++sbsi) {
+          ConstraintGraphNode *ptdNode = ConstraintGraph::cgNode(*sbsi);
+          ptdNode->removeRevPointsTo(node->id(), qual);
+        }
+      }
+
+      // Verify that its reverse pts set is empty
+      for (PointsToIterator pti(node,true); pti != 0; ++pti) {
+        PointsTo &rpts = *pti;
+        FmtAssert(rpts.isEmpty(), 
+                  ("node: %d's rev pts not empty\n", node->id()));
+      }
+
       node->deleteEdgesAndPtsSetList();
       
       // Mark the node for deletion and iterate
