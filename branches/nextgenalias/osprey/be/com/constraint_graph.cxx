@@ -572,7 +572,7 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *destNode,
       // A non-array based access is unbounded, so ignore any modulus
       // associated with the node offset and operate on the underlying
       // symbol
-      if (!node->checkFlags(CG_NODE_FLAGS_ARRAY)) 
+      if (!destNode->checkFlags(CG_NODE_FLAGS_ARRAY)) 
       {
         StInfo *st = node->stInfo();
         // Get the mod
