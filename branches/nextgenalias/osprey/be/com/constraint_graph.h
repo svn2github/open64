@@ -573,6 +573,10 @@ public:
   void cg(ConstraintGraph *p) { _parentCG = p; }
 
   void deleteInOutEdges();
+  void deleteInEdgeSet();
+  void deleteOutEdgeSet();
+  void deletePointsToSet();
+  void deleteRevPointsToSet();
   void deleteEdgesAndPtsSetList();
 
   // Meant be called from createAliasTags, to provide a points-to

@@ -76,9 +76,16 @@ ConstraintGraph::deleteOptimizedNodes()
 {
   for (hash_set<CGNodeId>::const_iterator iter = _toBeDeletedNodes.begin();
        iter != _toBeDeletedNodes.end(); iter++) {
+    // We may have a black hole in the pts to set..check and clean 
+    ConstraintGraphNode *node = cgNode(*iter);
+    for (PointsToIterator pti(node); pti != 0; ++pti) {
+      PointsTo &pts = *pti;
+      FmtAssert(pts.isSet(blackHole()->id()), ("Only expecting blackhole"));
+    }
+    node->deletePointsToSet();
     if (Get_Trace(TP_ALIAS,NYSTROM_CG_OPT_FLAG))
-      fprintf(stderr, "Deleting node %d\n", *iter);
-    deleteNode(cgNode(*iter));
+      fprintf(stderr, "Deleting node %d\n", node->id());
+    deleteNode(node);
   }
 }
 
@@ -395,6 +402,18 @@ StInfo::init(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
       _u._modRange->print(stderr);
   }
 
+#if 0
+  if (_varSize > 1024) {
+    if (checkFlags(CG_ST_FLAGS_MODRANGE)) {
+      ModulusRange *outerRange = modRange();
+      outerRange->mod(1024);
+    }
+    else
+      mod(1024);
+    applyModulus();
+  }
+#endif
+
   // Treat every symbol as context-insensitive
   addFlags(CG_ST_FLAGS_NOCNTXT);
 }
@@ -444,6 +463,7 @@ StInfo::applyModulus(void)
     cur = cur->nextOffset();
 
   UINT32 startOffset, endOffset, modulus;
+  ConstraintGraphNode *prev = NULL;
   while (cur) {
     if (!checkFlags(CG_ST_FLAGS_MODRANGE)) {
       modulus = _u._modulus;
@@ -464,7 +484,10 @@ StInfo::applyModulus(void)
       // points-to sets.
       modNode->parent()->merge(cur);
       cur->repParent(modNode->parent());
+      if (prev)
+        prev->nextOffset(cur->nextOffset());
     }
+    prev = cur; 
     cur = cur->nextOffset();
   }
 }
@@ -2668,7 +2691,19 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
   //    points to set
   for ( PointsToIterator pti(src); pti != 0; ++pti )
     unionPointsTo(*pti,pti.qual());
+
   ConstraintGraph::adjustPointsToForKCycle(this);
+
+  // Remove src from the reverse points to set of all nodes in src's 
+  // points to set
+  for (PointsToIterator pti(src); pti != 0; ++pti) {
+    PointsTo &pts = *pti;
+    CGEdgeQual qual = pti.qual();
+    for (PointsTo::SparseBitSetIterator sbsi(&pts,0); sbsi != 0; ++sbsi) {
+      ConstraintGraphNode *ptdNode = ConstraintGraph::cgNode(*sbsi);
+      ptdNode->_removeRevPointsTo(src->id(), qual);
+    }
+  }
 
   // 5) Since src is now merged with 'this', we have to replace src 
   // from nodes that point to src by 'this'
@@ -2677,7 +2712,7 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
     CGEdgeQual qual = pti.qual();
     for (PointsTo::SparseBitSetIterator sbsi(&rpts,0); sbsi != 0; ++sbsi) {
       ConstraintGraphNode *ptrNode = ConstraintGraph::cgNode(*sbsi);
-      ptrNode->removePointsTo(src, qual);
+      ptrNode->_removePointsTo(src->id(), qual);
       ptrNode->addPointsTo(this, qual);
     }
   }
@@ -2710,16 +2745,7 @@ void ConstraintGraphNode::deleteInOutEdges()
        eiter != deleteEdges.end(); eiter++)
     ConstraintGraph::removeEdge(*eiter);
 
-  // Delete the incoming edge sets
-  CGEdgeList *e = _inEdges;
-  CGEdgeList *ne;
-  while (e) {
-    ne = e->next();
-    FmtAssert(e->cgEdgeSet()->empty(), ("edge set not empty"));
-    CXX_DELETE(e, cg()->memPool());
-    e = ne;
-  }
-  _inEdges = NULL;
+  deleteInEdgeSet();
 
   // Delete outgoing edges
   deleteEdges.clear();
@@ -2740,9 +2766,54 @@ void ConstraintGraphNode::deleteInOutEdges()
        eiter != deleteEdges.end(); eiter++)
     ConstraintGraph::removeEdge(*eiter);
 
-  // Delete the outgoing edge sets
-  e = _outEdges;
-  ne;
+  deleteOutEdgeSet();
+}
+
+void
+ConstraintGraphNode::deletePointsToSet()
+{
+  PointsToList *p = _pointsToList;
+  PointsToList *np;
+  while (p) {
+    np = p->next();
+    CXX_DELETE(p, cg()->memPool());
+    p = np;
+  }
+  _pointsToList = NULL;
+}
+
+void
+ConstraintGraphNode::deleteRevPointsToSet()
+{
+  PointsToList *p = _revPointsToList;
+  PointsToList *np;
+  while (p) {
+    np = p->next();
+    CXX_DELETE(p, cg()->memPool());
+    p = np;
+  }
+  _revPointsToList = NULL;
+}
+
+void
+ConstraintGraphNode::deleteInEdgeSet()
+{
+  CGEdgeList *e = _inEdges;
+  CGEdgeList *ne;
+  while (e) {
+    ne = e->next();
+    FmtAssert(e->cgEdgeSet()->empty(), ("edge set not empty"));
+    CXX_DELETE(e, cg()->memPool());
+    e = ne;
+  }
+  _inEdges = NULL;
+}
+
+void
+ConstraintGraphNode::deleteOutEdgeSet()
+{
+  CGEdgeList *e = _outEdges;
+  CGEdgeList *ne;
   while (e) {
     ne = e->next();
     FmtAssert(e->cgEdgeSet()->empty(), ("edge set not empty"));
@@ -2756,43 +2827,15 @@ void
 ConstraintGraphNode::deleteEdgesAndPtsSetList()
 {
   // Delete the points-to set
-  PointsToList *p = _pointsToList;
-  PointsToList *np;
-  while (p) {
-    np = p->next();
-    CXX_DELETE(p, cg()->memPool());
-    p = np;
-  }
-  _pointsToList = NULL;
+  deletePointsToSet();
 
-  // Delete reverse points-to set
-  p = _revPointsToList;
-  while (p) {
-    np = p->next();
-    CXX_DELETE(p, cg()->memPool());
-    p = np;
-  }
-  _revPointsToList = NULL;
+  // Delete the reverse points-to set
+  deleteRevPointsToSet();
 
   // Delete the incoming/outgoing edge sets
-  CGEdgeList *e = _inEdges;
-  CGEdgeList *ne;
-  while (e) {
-    ne = e->next();
-    FmtAssert(e->cgEdgeSet()->empty(), ("edge set not empty"));
-    CXX_DELETE(e, cg()->memPool());
-    e = ne;
-  }
-  _inEdges = NULL;
-  // outgoing edges
-  e = _outEdges;
-  while (e) {
-    ne = e->next();
-    FmtAssert(e->cgEdgeSet()->empty(), ("edge set not empty"));
-    CXX_DELETE(e, cg()->memPool());
-    e = ne;
-  }
-  _outEdges = NULL;
+  deleteInEdgeSet();
+
+  deleteOutEdgeSet();
 }
 
 void
@@ -2857,6 +2900,10 @@ ConstraintGraphNode::print(FILE *file)
   fprintf(file, " GBL: "); pointsTo(CQ_GBL).print(file);
   fprintf(file, " HZ: ");  pointsTo(CQ_HZ).print(file);
   fprintf(file, " DN: ");  pointsTo(CQ_DN).print(file);
+  fprintf(file, "\n");
+  fprintf(file, " R-GBL: "); revPointsTo(CQ_GBL).print(file);
+  fprintf(file, " R-HZ: ");  revPointsTo(CQ_HZ).print(file);
+  fprintf(file, " R-DN: ");  revPointsTo(CQ_DN).print(file);
   fprintf(file, "\n");
   if (nextOffset())
     fprintf(file, " nextCGNodeId: %d", nextOffset()->_id);

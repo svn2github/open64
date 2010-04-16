@@ -360,7 +360,7 @@ public:
       ptr->_bits[wordNum] = bitVal;
       elementLink(ptr);
     } else {
-      if (ptr->_bits[wordNum] | bitVal)
+      if (ptr->_bits[wordNum] & bitVal)
         changed = false;
       ptr->_bits[wordNum] |= bitVal;
     }
@@ -377,7 +377,7 @@ public:
 
     bool changed = false;
     if (ptr != NULL) {
-      if (ptr->_bits[wordNum] | bitVal) {
+      if (ptr->_bits[wordNum] & bitVal) {
         changed = true;
         ptr->_bits[wordNum] &= (~bitVal);
       }
