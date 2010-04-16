@@ -45,7 +45,7 @@ LC++INCS = -I$(BUILD_TOT)/common/com \
 	   -I$(BUILD_TOT)/common/util
 # set compilation includes
 ifeq ($(BUILD_VARIANT), PRODUCER)
-LCINCS = -I$(BUILD_TOT)/common/com -I$(BUILD_TARG_DIR)/include -I$(BUILD_AREA)/targ_info
+LCINCS = -I$(BUILD_TOT)/common/com -I$(BUILD_TARG_DIR)/include -I$(BUILD_TARG_DIR)/targ_info -I$(BUILD_AREA)/targ_info
 else
 LCINCS = -I$(BUILD_TOT)/common/com -I.
 endif
