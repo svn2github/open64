@@ -612,7 +612,6 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
   if (iter != _cgStInfoMap.end()) {
     StInfo *stInfo = iter->second;
     FmtAssert(this == globalCG(), ("Expect this to be the globalCG"));
-    stInfo->addFlags(summ->flags());
     // We expect the variable sizes and types to be consistent, however
     // in the case of forward and extern declarations we may find ourselves
     // having different variable sizes and even different types.
@@ -625,40 +624,57 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
         stInfo->ty_idx(summ->ty_idx());
         // We are checking the flags on the current stInfo because we
         // merged the flags above.
-        if (!stInfo->checkFlags(CG_ST_FLAGS_MODRANGE))
+        if (!(summ->flags() & CG_ST_FLAGS_MODRANGE))
           stInfo->mod(summ->modulus());
         else
           stInfo->modRange(buildModRange(summ->modulus(),ipaNode));
       }
       else
         FmtAssert(summ->varSize() == 0,("Inconsistent varsize, expect zero\n"));
+      stInfo->addFlags(summ->flags());
       return stInfo;
     }
     //FmtAssert(stInfo->ty_idx() == summ->ty_idx(), ("Inconsistent ty_idx"));
-    // Check if we have a modrange or just a plain modulus
+    // Merge mod ranges/modulus
     if (!stInfo->checkFlags(CG_ST_FLAGS_MODRANGE)) {
-      if (summ->modulus() != stInfo->mod()) {
+      if (summ->flags() & CG_ST_FLAGS_MODRANGE) {
+        ModulusRange *newMR = buildModRange(summ->modulus(), ipaNode);
+        FmtAssert(newMR != NULL, ("New ModulusRange not found"));
+        stInfo->mod(gcd(stInfo->mod(), newMR->mod()));
+        ModulusRange::removeRange(newMR, _memPool);
+        stInfo->addFlags(CG_ST_FLAGS_ADJUST_MODULUS);
+        fprintf(stderr, "Adjust modulus for global st_idx: %llu\n", cg_st_idx);
+      } else if (stInfo->mod() != summ->modulus()) {
         stInfo->mod(gcd(stInfo->mod(), summ->modulus()));
         stInfo->addFlags(CG_ST_FLAGS_ADJUST_MODULUS);
         fprintf(stderr, "Adjust modulus for global st_idx: %llu\n", cg_st_idx);
       }
     } else {
-      ModulusRange *newMR = buildModRange(summ->modulus(), ipaNode);
+      // If stInfo has a MODRANGE, and summary does not or if their
       ModulusRange *oldMR = stInfo->modRange();
-      FmtAssert(oldMR != NULL, ("Old ModulusRange not found"));
-      FmtAssert(newMR != NULL, ("New ModulusRange not found"));
-      // If we have a range mismatch, collapse
-      if (!newMR->compare(oldMR)) {
-        if (oldMR->endOffset() < newMR->endOffset())
-          oldMR->endOffset(newMR->endOffset());
-        oldMR->mod(gcd(oldMR->mod(), newMR->mod()));
-        ModulusRange::removeRange(newMR, _memPool);
-        ModulusRange::removeRange(oldMR->child(), _memPool);
-        oldMR->child(NULL);
+      // mod ranges mismatch, then collapse
+      if (summ->flags() & CG_ST_FLAGS_MODRANGE) {
+        ModulusRange *newMR = buildModRange(summ->modulus(), ipaNode);
+        FmtAssert(oldMR != NULL, ("Old ModulusRange not found"));
+        FmtAssert(newMR != NULL, ("New ModulusRange not found"));
+        // If we have a range mismatch, collapse
+        if (!newMR->compare(oldMR)) {
+          ModulusRange::setModulus(oldMR, 
+                                   gcd(oldMR->mod(), newMR->mod()),
+                                   stInfo->memPool());
+          ModulusRange::removeRange(newMR, _memPool);
+          stInfo->addFlags(CG_ST_FLAGS_ADJUST_MODULUS);
+          fprintf(stderr, "Adjust modulus for global st_idx: %llu\n",
+                  cg_st_idx);
+        }
+      } else {
+        ModulusRange::setModulus(oldMR, gcd(oldMR->mod(), summ->modulus()),
+                                 stInfo->memPool());
         stInfo->addFlags(CG_ST_FLAGS_ADJUST_MODULUS);
         fprintf(stderr, "Adjust modulus for global st_idx: %llu\n", cg_st_idx);
       }
     }
+    stInfo->addFlags(summ->flags());
     fprintf(stderr, "Global entry found for StInfo old cg_st_idx: %llu "
                     "new cg_st_idx: %llu\n", summ->cg_st_idx(), cg_st_idx);
     return stInfo;
@@ -1122,6 +1138,8 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   UINT32 round = 0;
   bool contextSensitive = false;
   void *sbrk1 = sbrk(0);
+
+  //ConstraintGraph::globalCG()->ipaSimpleOptimizer();
 
   if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
     fprintf(stderr,"IPA Nystrom: Solver Begin\n");

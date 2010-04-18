@@ -208,9 +208,9 @@ ConstraintGraphNode::removePointsTo(ConstraintGraphNode *node,
                                     CGEdgeQual qual)
 {
   // Remove node from the pts of 'this'
-  _removePointsTo(node->id(), qual);
+  removePointsTo(node->id(), qual);
   // Remove 'this' from the reverse pts of node
-  node->_removeRevPointsTo(this->id(), qual);
+  node->removeRevPointsTo(this->id(), qual);
 }
 
 ConstraintGraphNode::~ConstraintGraphNode()
@@ -274,6 +274,30 @@ ModulusRange::build(TY_IDX ty_idx, UINT32 offset, MEM_POOL *memPool)
   return modRange;
 }
 
+void
+ModulusRange::setModulus(ModulusRange *modRange, UINT32 mod, MEM_POOL *memPool)
+{
+  if (mod < modRange->_modulus) {
+    modRange->_modulus = mod;
+
+    // Find first child range that spans new modulus
+    ModulusRange *q = NULL;
+    ModulusRange *r = modRange->_child;
+    while (r && r->_endOffset < mod) {
+      q = r;
+      r = r->_next;
+    }
+    if (r) {
+      removeRange(r,memPool);
+      if (q)
+        q->_next = NULL;
+      else
+        modRange->_child = NULL;
+    }
+    if (modRange->_child)
+      modRange->_child->set(mod);
+  }
+}
 
 UINT32
 ModulusRange::modulus(UINT32 offset, UINT32 mod,
@@ -399,18 +423,6 @@ StInfo::init(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
       _u._modRange->print(stderr);
   }
 
-#if 0
-  if (_varSize > 1024) {
-    if (checkFlags(CG_ST_FLAGS_MODRANGE)) {
-      ModulusRange *outerRange = modRange();
-      outerRange->mod(1024);
-    }
-    else
-      mod(1024);
-    applyModulus();
-  }
-#endif
-
   // Treat every symbol as context-insensitive
   addFlags(CG_ST_FLAGS_NOCNTXT);
 }
@@ -459,8 +471,10 @@ StInfo::applyModulus(void)
   if (cur && cur->offset() == -1)
     cur = cur->nextOffset();
 
+  hash_set<CGNodeId> collapsedNodes;
+  hash_set<CGNodeId> modNodes;
+
   UINT32 startOffset, endOffset, modulus;
-  ConstraintGraphNode *prev = NULL;
   while (cur) {
     if (!checkFlags(CG_ST_FLAGS_MODRANGE)) {
       modulus = _u._modulus;
@@ -475,18 +489,39 @@ StInfo::applyModulus(void)
       ConstraintGraphNode *modNode =
           cur->cg()->getCGNode(cur->cg_st_idx(),newOffset);
 
-      // Now we merge the two nodes together.  NOTE: the original
-      // node remains and uses the modulus offset node as its
-      // parent, for nodes that may have the original in their
-      // points-to sets. The merge should appropriately delete the original 
-      // from the pts to set of other nodes
-      modNode->parent()->merge(cur);
-      cur->repParent(modNode->parent());
-      if (prev)
-        prev->nextOffset(cur->nextOffset());
+      modNode = modNode->parent();
+
+      // Now we collapse cur into modNode
+      modNode->collapse(cur);
+
+      collapsedNodes.insert(cur->id());
+      modNodes.insert(modNode->id());
     }
-    prev = cur; 
     cur = cur->nextOffset();
+  }
+
+  // Remove the collapsed nodes from StInfo's sorted node list
+  ConstraintGraphNode *prev = NULL;
+  ConstraintGraphNode *n = _firstOffset;
+  while (n) {
+    if (collapsedNodes.find(n->id()) != collapsedNodes.end())  {
+      FmtAssert(prev != NULL, ("prev offset of node: %d not found", n->id()));
+      prev->nextOffset(n->nextOffset());
+      ConstraintGraphNode *deln = n;
+      n = n->nextOffset();
+      deln->nextOffset(NULL);
+    } else {
+      prev = n;
+      n = n->nextOffset();
+    }
+  }
+
+  // Adjust pts of target of merge
+  for (hash_set<CGNodeId>::iterator iter = modNodes.begin();
+       iter != modNodes.end(); iter++) {
+    ConstraintGraphNode *modNode = ConstraintGraph::cgNode(*iter);
+    if (modNode->inKCycle() > 0)
+      ConstraintGraph::adjustPointsToForKCycle(modNode);
   }
 }
 
@@ -522,6 +557,9 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
       fprintf(stderr," to %d\n",mod);
     }
 
+    hash_set<CGNodeId> collapsedNodes;
+    hash_set<CGNodeId> modNodes;
+
     // We must apply the new modulus to all existing offsets
     ConstraintGraphNode *cur = _firstOffset;
     if (cur && cur->offset() == -1) cur = cur->nextOffset();
@@ -533,14 +571,38 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
       ConstraintGraphNode *modNode =
           cur->cg()->getCGNode(cur->cg_st_idx(),newOffset);
 
-      // Now we merge the two nodes together.  NOTE: the original
-      // node remains and uses the modulus offset node as its
-      // parent, for nodes that may have the original in their
-      // points-to sets.
-      modNode->parent()->merge(cur);
-      cur->repParent(modNode->parent());
+      modNode = modNode->parent();
+
+      // Now we collapse cur into modNode
+      modNode->collapse(cur);
+
+      collapsedNodes.insert(cur->id());
+      modNodes.insert(modNode->id());
 
       cur = cur->nextOffset();
+    }
+    // Remove the collapsed nodes from StInfo's sorted node list
+    ConstraintGraphNode *prev = NULL;
+    ConstraintGraphNode *n = _firstOffset;
+    while (n) {
+      if (collapsedNodes.find(n->id()) != collapsedNodes.end())  {
+        FmtAssert(prev != NULL, ("prev offset of node: %d not found", n->id()));
+        prev->nextOffset(n->nextOffset());
+        ConstraintGraphNode *deln = n;
+        n = n->nextOffset();
+        deln->nextOffset(NULL);
+      } else {
+        prev = n;
+        n = n->nextOffset();
+      }
+    }
+
+    // Adjust pts of target of merge
+    for (hash_set<CGNodeId>::iterator iter = modNodes.begin();
+         iter != modNodes.end(); iter++) {
+      ConstraintGraphNode *modNode = ConstraintGraph::cgNode(*iter);
+      if (modNode->inKCycle() > 0)
+        ConstraintGraph::adjustPointsToForKCycle(modNode);
     }
   }
 #if 0
@@ -588,11 +650,11 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *destNode,
         {
           if (kCycle < mod) {
             if (st->checkFlags(CG_ST_FLAGS_MODRANGE))
-              st->modRange()->mod(kCycle);
+              ModulusRange::setModulus(st->modRange(), kCycle, st->memPool());
             else
               st->mod(kCycle);
+            st->applyModulus();
           }
-          st->applyModulus();
           node = node->cg()->getCGNode(node->cg_st_idx(),node->offset());
         }
         // If the K value is <= the size of a pointer and 
@@ -608,13 +670,9 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *destNode,
 #endif
 #if 1
           // Instead of -1, reduce the symbol to a single node
-          if (st->checkFlags(CG_ST_FLAGS_MODRANGE)) {
-            ModulusRange *outerRange = st->modRange();
-            outerRange->mod(1);
-          }
-          else
-            st->mod(1);
-          st->applyModulus();
+          fprintf(stderr, "Collapsing St cg_st_idx: %llu\n", node->cg_st_idx());
+          st->print(stderr, true);
+          st->collapse();
           node = node->cg()->getCGNode(node->cg_st_idx(),0);
 #endif
         }
@@ -2442,7 +2500,7 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
 
   // Check if node exists, if so return it
   if ((cgNode = checkCGNode(cg_st_idx, offset)) != NULL)
-    return cgNode->parent();
+    return cgNode;
 
   // In order to control runaway creation of <ST,ofst> pairs that
   // may occur within an inter-procedural skew cycle, we have an
@@ -2601,6 +2659,83 @@ ConstraintGraph::print(FILE *file)
   for (iter = _returns.begin(); iter != _returns.end(); iter++)
     fprintf(file, " %d", *iter);
   fprintf(file, "\n");
+
+  fprintf(file, "StInfos:\n");
+  for (CGStInfoMapIterator iter = _cgStInfoMap.begin();
+       iter != _cgStInfoMap.end(); iter++) {
+    fprintf(file, "cg_st_idx: %llu\n", iter->first);
+    iter->second->print(file, true);
+    fprintf(file, "\n");
+  }
+}
+
+// Make the St field insenstive.
+// 1) Merge all offsets to first offset.
+// 2) Set the modulus to 1. 
+// 3) Remove all references to the merged offsets from the pts/rev-pts
+//    set of other nodes and replace with the merged node
+void
+StInfo::collapse()
+{
+  if (checkFlags(CG_ST_FLAGS_MODRANGE)) {
+    ModulusRange *outerRange = modRange();
+    ModulusRange::setModulus(outerRange, 1, _memPool);
+  }
+  else
+    mod(1);
+
+  applyModulus();
+}
+
+// Collapse cur with 'this' node
+void
+ConstraintGraphNode::collapse(ConstraintGraphNode *cur)
+{
+  // Merge cur with 'this' node
+  ConstraintGraphNode *curParent = cur->parent();
+
+  if (curParent != this) {
+    this->merge(curParent);
+    curParent->repParent(this);
+
+    // If cur has a parent which is the only offset, 
+    // or if cur does not have a distinct parent,
+    // PARENT_COPY edges are not required
+    if (cur != curParent && !curParent->isOnlyOffset()) {
+      bool added = false;
+      ConstraintGraphEdge *newEdge =
+      ConstraintGraph::addEdge(this, curParent, ETYPE_COPY, CQ_HZ, 0,
+                               added, CG_EDGE_PARENT_COPY);
+      FmtAssert(added, (":merge: failed to add special copy edge"));
+    }
+  }
+
+  // When cur's parent is merged with this, we might have transfered
+  // a parent copy edge from cur's parent to cur, which needs to be removed
+  cur->deleteInOutEdges();
+      
+  // We replace cur from the pts to set of CGNodes that point to cur 
+  // with 'this'.
+  // Use the reverse pts to set to find nodes that point to cur and 
+  // replace by 'this'
+  for (PointsToIterator pti(cur,true); pti != 0; ++pti) {
+    PointsTo &rpts = *pti;
+    CGEdgeQual qual = pti.qual();
+    for (PointsTo::SparseBitSetIterator sbsi(&rpts,0); sbsi != 0; ++sbsi) {
+      ConstraintGraphNode *ptrNode = ConstraintGraph::cgNode(*sbsi);
+      // If cur does not exist in ptrNode's pts, the parent 'this' should exist
+      if (!ptrNode->checkPointsTo(cur, qual)) {
+        FmtAssert(ptrNode->checkPointsTo(this, qual), 
+                  ("node: %d shouldn't exist in ptrNode: %d's pts set\n",
+                  this->id(), ptrNode->id()));
+      } else {
+        ptrNode->removePointsTo(cur->id(), qual);
+        ptrNode->addPointsTo(this, qual);
+      }
+    }
+  }
+  cur->deleteRevPointsToSet();
+  cur->addFlags(CG_NODE_FLAGS_COLLAPSED);
 }
 
 //
@@ -2625,7 +2760,6 @@ ConstraintGraph::print(FILE *file)
 //    NOTE: This is now done by the caller, if required
 // 5) Union the points-to sets of the two nodes, adjustPointsToForKCycle
 //    and delete the pts set and edges of src
-// 6) Replace src with 'this' node from the pts of nodes that references this
 void
 ConstraintGraphNode::merge(ConstraintGraphNode *src)
 {
@@ -2717,8 +2851,6 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
   for ( PointsToIterator pti(src); pti != 0; ++pti )
     unionPointsTo(*pti,pti.qual());
 
-  ConstraintGraph::adjustPointsToForKCycle(this);
-
   // Remove src from the reverse points to set of all nodes in src's 
   // points to set
   for (PointsToIterator pti(src); pti != 0; ++pti) {
@@ -2726,24 +2858,14 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
     CGEdgeQual qual = pti.qual();
     for (PointsTo::SparseBitSetIterator sbsi(&pts,0); sbsi != 0; ++sbsi) {
       ConstraintGraphNode *ptdNode = ConstraintGraph::cgNode(*sbsi);
-      ptdNode->_removeRevPointsTo(src->id(), qual);
-    }
-  }
-
-  // 5) Since src is now merged with 'this', we have to replace src 
-  // from nodes that point to src by 'this'
-  for (PointsToIterator pti(src,true); pti != 0; ++pti) {
-    PointsTo &rpts = *pti;
-    CGEdgeQual qual = pti.qual();
-    for (PointsTo::SparseBitSetIterator sbsi(&rpts,0); sbsi != 0; ++sbsi) {
-      ConstraintGraphNode *ptrNode = ConstraintGraph::cgNode(*sbsi);
-      ptrNode->_removePointsTo(src->id(), qual);
-      ptrNode->addPointsTo(this, qual);
+      ptdNode->removeRevPointsTo(src->id(), qual);
     }
   }
 
   // 6) Delete edges and pts to set
-  src->deleteEdgesAndPtsSetList();
+  src->deleteInEdgeSet();
+  src->deleteOutEdgeSet();
+  src->deletePointsToSet();
 
   // 7) Set flags
   src->addFlags(CG_NODE_FLAGS_MERGED);
@@ -2874,6 +2996,12 @@ dbgPrintCGNode(CGNodeId nodeId)
 }
 
 void
+dbgPrintPointsTo(PointsTo &pts)
+{
+  pts.print(stderr);
+}
+
+void
 ConstraintGraphNode::dbgPrint()
 {
   print(stderr);
@@ -2926,9 +3054,9 @@ ConstraintGraphNode::print(FILE *file)
   fprintf(file, " HZ: ");  pointsTo(CQ_HZ).print(file);
   fprintf(file, " DN: ");  pointsTo(CQ_DN).print(file);
   fprintf(file, "\n");
-  fprintf(file, " R-GBL: "); revPointsTo(CQ_GBL).print(file);
-  fprintf(file, " R-HZ: ");  revPointsTo(CQ_HZ).print(file);
-  fprintf(file, " R-DN: ");  revPointsTo(CQ_DN).print(file);
+  fprintf(file, " R-GBL: "); myRevPointsTo(CQ_GBL).print(file);
+  fprintf(file, " R-HZ: ");  myRevPointsTo(CQ_HZ).print(file);
+  fprintf(file, " R-DN: ");  myRevPointsTo(CQ_DN).print(file);
   fprintf(file, "\n");
   if (nextOffset())
     fprintf(file, " nextCGNodeId: %d", nextOffset()->_id);
@@ -2997,6 +3125,10 @@ ConstraintGraphNode::print(FILE *file)
     fprintf(file, " ADDRTAKEN");
   if (checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
     fprintf(file, " AMODELED");
+  if (checkFlags(CG_NODE_FLAGS_ARRAY))
+    fprintf(file, " ARRAY");
+  if (checkFlags(CG_NODE_FLAGS_COLLAPSED))
+    fprintf(file, " COLLAPSED");
   fprintf(file, " ]\n");
 }
 
@@ -3063,6 +3195,10 @@ void ConstraintGraphNode::print(ostream& ostr)
     ostr << " ADDRTAKEN";
   if (checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
     ostr << " AMODELED";
+  if (checkFlags(CG_NODE_FLAGS_ARRAY))
+    ostr << " ARRAY";
+  if (checkFlags(CG_NODE_FLAGS_COLLAPSED))
+    ostr << " COLLAPSED";
   ostr << " ]" << endl;
 }
 
@@ -3135,7 +3271,7 @@ StInfo::print(FILE *file,bool emitOffsetChain)
   fprintf(file, "  varSize: %lld", _varSize);
   fprintf(file, " ST flags: [");
   if (checkFlags(CG_ST_FLAGS_GLOBAL))
-    fprintf(file, "GLOBAL");
+    fprintf(file, " GLOBAL");
   if (checkFlags(CG_ST_FLAGS_TEMP))
     fprintf(file, " TEMP");
   if (checkFlags(CG_ST_FLAGS_PREG))
@@ -3148,7 +3284,7 @@ StInfo::print(FILE *file,bool emitOffsetChain)
     fprintf(file, " CI");
   if (checkFlags(CG_ST_FLAGS_ESCLOCAL))
     fprintf(file, " ESCLCL");
-  fprintf(file, "]");
+  fprintf(file, " ]");
   if (!emitOffsetChain)
     if (_firstOffset)
       fprintf(file, " firstCGNodeId: %d", _firstOffset->id());
@@ -3181,7 +3317,7 @@ void StInfo::print(ostream& str)
   str << "  varSize: " << _varSize;
   str << " ST flags: [";
   if (checkFlags(CG_ST_FLAGS_GLOBAL))
-    str << "GLOBAL";
+    str << " GLOBAL";
   if (checkFlags(CG_ST_FLAGS_TEMP))
     str << " TEMP";
   if (checkFlags(CG_ST_FLAGS_HEAP))
@@ -3192,7 +3328,7 @@ void StInfo::print(ostream& str)
     str << " CI";
   if (checkFlags(CG_ST_FLAGS_ESCLOCAL))
     str << " ESCLCL";
-  str << "]";
+  str << " ]";
   if (_firstOffset)
     str << " firstCGNodeId: " << _firstOffset->id();
   else

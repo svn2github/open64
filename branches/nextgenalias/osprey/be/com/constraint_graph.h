@@ -95,6 +95,10 @@ class EdgeDelta;
 #define CG_NODE_FLAGS_MEMOP          0x00020000 // CG nodes corresponding to
                                                 // WN load/store
 #define CG_NODE_FLAGS_ARRAY          0x00040000 // Access using OPR_ARRAY
+#define CG_NODE_FLAGS_COLLAPSED      0x00080000 // Node has been collapsed with
+                                                // its parent and all references
+                                                // to node in other's pts have
+                                                // been replaced.
 
 // Call site flags
 #define CS_FLAGS_UNKNOWN     0x01
@@ -435,6 +439,9 @@ public:
   // into the current node.
   void merge(ConstraintGraphNode *src);
 
+  // Collapse src into 'this'. Replace all occurences of src with 'this'
+  void collapse(ConstraintGraphNode *src);
+
   ConstraintGraphNode *findRep(void)
   {
     ConstraintGraphNode *cur = this;
@@ -453,6 +460,22 @@ public:
   bool addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual);
 
   void removePointsTo(ConstraintGraphNode *node, CGEdgeQual qual);
+
+  void removePointsTo(CGNodeId id, CGEdgeQual qual)
+  {
+    PointsTo *pts = _findPointsTo(qual, _pointsToList);
+    FmtAssert(pts != NULL, ("cannot find pts"));
+    FmtAssert(pts->isSet(id), ("cannot find element"));
+    pts->clearBit(id);
+  }
+
+  void removeRevPointsTo(CGNodeId id, CGEdgeQual qual)
+  {
+    PointsTo *pts = _findPointsTo(qual, _revPointsToList);
+    FmtAssert(pts != NULL, ("cannot find pts"));
+    FmtAssert(pts->isSet(id), ("cannot find element"));
+    pts->clearBit(id);
+  }
 
   bool checkPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
   {
@@ -476,6 +499,11 @@ public:
   const PointsTo &revPointsTo(CGEdgeQual qual)
   {
     return findRep()->_revPointsTo(qual);
+  }
+
+  const PointsTo &myRevPointsTo(CGEdgeQual qual)
+  {
+    return _revPointsTo(qual);
   }
 
   PointsToList *pointsToList(void)    { return _pointsToList; }
@@ -590,6 +618,7 @@ public:
   static void sanitizePointsTo(PointsTo &,ConstraintGraphNode *,CGEdgeQual);
   static void removeNonMinusOneOffsets(PointsTo &, CG_ST_IDX,
                                        ConstraintGraphNode *,CGEdgeQual);
+  static void removeCollapsedNodes(PointsTo &pts);
 
   bool sanityCheckPointsTo(CGEdgeQual qual);
 
@@ -599,11 +628,6 @@ public:
 
   // Copy contents of node into 'this'
   void copy(ConstraintGraphNode *node);
-
-  void removeRevPointsTo(CGNodeId id, CGEdgeQual qual)
-  {
-    _removeRevPointsTo(id, qual);
-  }
 
   typedef struct
   {
@@ -640,22 +664,6 @@ private:
               ("Attempting addPointsTo on a merged node!"));
     PointsTo &pts = _getPointsTo(qual,&_pointsToList);
     return pts.setBit(id);
-  }
-
-  void _removePointsTo(CGNodeId id, CGEdgeQual qual)
-  {
-    PointsTo *pts = _findPointsTo(qual, _pointsToList);
-    FmtAssert(pts != NULL, ("cannot find pts"));
-    FmtAssert(pts->isSet(id), ("cannot find element"));
-    pts->clearBit(id);
-  }
-
-  void _removeRevPointsTo(CGNodeId id, CGEdgeQual qual)
-  {
-    PointsTo *pts = _findPointsTo(qual, _revPointsToList);
-    FmtAssert(pts != NULL, ("cannot find pts"));
-    FmtAssert(pts->isSet(id), ("cannot find element"));
-    pts->clearBit(id);
   }
 
   bool _addRevPointsTo(CGNodeId id, CGEdgeQual qual)
@@ -883,6 +891,8 @@ public:
   // aggregate fields.
   static ModulusRange *build(TY_IDX ty_idx, UINT32 offset, MEM_POOL *memPool);
 
+  static void setModulus(ModulusRange *mr, UINT32 mod, MEM_POOL *memPool);
+
   static void removeRange(ModulusRange *mr, MEM_POOL *memPool)
   {
     if (mr == NULL)
@@ -1017,6 +1027,10 @@ public:
 
   TY_IDX ty_idx() const { return _ty_idx; }
   void ty_idx(TY_IDX idx) { _ty_idx = idx; }
+
+  void collapse();
+
+  MEM_POOL *memPool() { return _memPool; }
 
   void dbgPrint();
   void print(FILE *file,bool emitOffsetChain=false);
@@ -1320,6 +1334,7 @@ public:
   bool nonIPASolver();
 
   void simpleOptimizer();
+  void ipaSimpleOptimizer();
 
   bool exprMayPoint(WN *const wn);
 

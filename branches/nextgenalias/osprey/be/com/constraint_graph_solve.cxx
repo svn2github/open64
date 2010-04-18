@@ -710,6 +710,22 @@ ConstraintGraphSolve::updateOffsets(const ConstraintGraphNode *dst,
 }
 
 void
+ConstraintGraphNode::removeCollapsedNodes(PointsTo &dst)
+{
+  for (PointsTo::SparseBitSetIterator iter(&dst,0); iter != 0; ++iter) {
+    ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
+    // For COLLAPSED nodes, replace the node with the parent
+    if (node->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
+      dst.clearBit(node->id());
+      FmtAssert(!node->parent()->checkFlags(CG_NODE_FLAGS_COLLAPSED),
+                ("parent: %d of node: %d is also collapsed\n",
+                node->parent()->id(), node->id()));
+      dst.setBit(node->parent()->id());
+    }
+  }
+}
+
+void
 ConstraintGraphNode::removeNonMinusOneOffsets(PointsTo &dst, CG_ST_IDX idx,
                                               ConstraintGraphNode *theNode,
                                               CGEdgeQual qual)
@@ -723,7 +739,7 @@ ConstraintGraphNode::removeNonMinusOneOffsets(PointsTo &dst, CG_ST_IDX idx,
       if (theNode) {
         FmtAssert(&theNode->pointsTo(qual) == &dst,
                   ("Expect PointsTo to be associated with provided CG node!\n"));
-        node->_removeRevPointsTo(theNode->id(),qual);
+        node->removeRevPointsTo(theNode->id(),qual);
       }
     }
   }
@@ -769,11 +785,11 @@ ConstraintGraphNode::sanityCheckPointsTo(CGEdgeQual qual)
     ConstraintGraphNode *node = ConstraintGraph::cgNode(*i1);
     if (node->offset() == -1)
       minusOneSts.insert(node->cg_st_idx());
-    // If "node is present in the pts, it had better not have
-    // a parent node.
-    FmtAssert(node->parent() == node,
-              ("Merge node failure: found node %d with parent %d "
-                  "in pts of node %d",node->id(),node->parent()->id(),id()));
+    // If node is present in the pts, it had better not have
+    // the COLLASPED flag.
+    FmtAssert(!node->checkFlags(CG_NODE_FLAGS_COLLAPSED),
+              ("Merge node failure: found COLLAPSED node %d with parent %d "
+               "in pts of node %d",node->id(),node->parent()->id(),id()));
     // If "node" is present in the pts of "this", then "this"
     // must be in the rev-pts of "node".  Here we are checking
     // for missing nodes in the rev-pts set.
@@ -1469,6 +1485,8 @@ ConstraintGraph::simpleOptimizer()
     // Perform the merge
     parentNode->merge(toBeMergedNode);
     toBeMergedNode->repParent(parentNode);
+    if (parentNode->inKCycle() > 0)
+      ConstraintGraph::adjustPointsToForKCycle(parentNode);
 
     if (Get_Trace(TP_ALIAS,NYSTROM_CG_OPT_FLAG))
       fprintf(stderr, "simpleOptimizer - Merging node %d with %d\n",
@@ -1599,4 +1617,64 @@ ConstraintGraph::simpleOptimizer()
 
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_OPT_FLAG))
     fprintf(stderr, "Done optimizing ConstraintGraphs\n");
+}
+
+#define MAX_ALLOWED_ST_PER_TYPE 32
+
+void
+ConstraintGraph::ipaSimpleOptimizer()
+{
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_OPT_FLAG))
+    fprintf(stderr, "IPA optimizing ConstraintGraphs...\n");
+
+  hash_map<TY_IDX, UINT32> stInfoCount;
+  hash_map<TY_IDX, StInfo *> repStofType;
+
+  for (CGStInfoMapIterator iter = _cgStInfoMap.begin();
+       iter != _cgStInfoMap.end(); iter++) {
+    StInfo *stInfo = iter->second;
+    TY_IDX ty_idx = stInfo->ty_idx();
+    TY &ty = Ty_Table[ty_idx];
+    if (TY_kind(ty) == KIND_STRUCT || TY_kind(ty) == KIND_ARRAY) {
+      stInfoCount[ty_idx]++;
+      if (stInfoCount[ty_idx] > MAX_ALLOWED_ST_PER_TYPE) {
+        if (repStofType.find(ty_idx) == repStofType.end()) {
+          // Collapse the StInfo to create a single node for this StInfo
+          if (stInfo->checkFlags(CG_ST_FLAGS_MODRANGE)) {
+            ModulusRange *outerRange = stInfo->modRange();
+            ModulusRange::setModulus(outerRange, 1, stInfo->memPool());
+          }
+          else
+            stInfo->mod(1);
+          stInfo->applyModulus();
+          // Mark this collapsed StInfo as the representative
+          repStofType[ty_idx] = stInfo;
+          fprintf(stderr, "Identifying rep..\n");
+          stInfo->print(stderr);
+          stInfo->firstOffset()->print(stderr);
+          FmtAssert(stInfo->firstOffset()->nextOffset() == NULL,
+                    ("Only single offset expected"));
+        }
+        else {
+          ConstraintGraphNode *repNode = 
+                    repStofType.find(ty_idx)->second->firstOffset()->parent();
+          FmtAssert(repNode != NULL, ("Representative node not found"));
+          ConstraintGraphNode *node = stInfo->firstOffset();
+          while (node) {
+            fprintf(stderr, "Merging node: %d with %d\n", node->id(),
+                    repNode->id());
+            node->print(stderr);
+            repNode->merge(node);
+            node->repParent(repNode);
+            if (repNode->inKCycle() > 0)
+              ConstraintGraph::adjustPointsToForKCycle(repNode);
+            node = node->nextOffset();
+          }
+        }
+      }
+    }
+  }
+
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_OPT_FLAG))
+    fprintf(stderr, "Done IPA optimizing ConstraintGraphs\n");
 }
