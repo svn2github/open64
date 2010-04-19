@@ -2610,7 +2610,8 @@ ConstraintGraph::stats()
     nodeCount += 1;
     for (PointsToIterator pti(node); pti != 0; ++pti) {
       PointsTo &pts = *pti;
-      ptsCount += 1;
+      if (!pts.isEmpty())
+        ptsCount += 1;
       UINT32 card = pts.numBits();
       totalCardinality += card;
       if (card == 0)
@@ -2619,7 +2620,8 @@ ConstraintGraph::stats()
     }
     for (PointsToIterator pti(node,true); pti != 0; ++pti) {
       PointsTo &pts = *pti;
-      ptsCount += 1;
+      if (!pts.isEmpty())
+        ptsCount += 1;
       UINT32 card = pts.numBits();
       totalCardinality += card;
       if (card == 0)

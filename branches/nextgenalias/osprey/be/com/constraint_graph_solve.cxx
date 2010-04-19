@@ -1152,7 +1152,10 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
       {
         CGNodeId nodeId = *iter;
         ConstraintGraphNode *node = ConstraintGraph::cgNode(nodeId);
-        StInfo *st = node->cg()->stInfo(node->cg_st_idx());
+        StInfo *st = node->stInfo();
+        FmtAssert(!st->checkFlags(CG_ST_FLAGS_PREG),
+                  ("processSkew: preg found in pts set of node: %d\n", 
+                  node->id()));
         INT32 newOffset;
         if (node->offset() == -1)
           newOffset = -1;
