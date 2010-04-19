@@ -2326,8 +2326,12 @@ ConstraintGraph::getCGNode(WN *wn)
     base_offset = -base_offset;
 
   ConstraintGraphNode *n = checkCGNode(CG_ST_st_idx(base_st), base_offset);
-  if (n)
+  if (n) {
+    if (n->checkFlags(CG_NODE_FLAGS_COLLAPSED))
+      return n->parent();
+    FmtAssert(n->parent() == n, ("Not expecting parent unless collapsed\n"));
     return n;
+  }
 
   // If this is the first time we encounter this symbol/node
   if (ST_is_initialized(*base_st) && 
@@ -2745,6 +2749,11 @@ ConstraintGraphNode::collapse(ConstraintGraphNode *cur)
   }
   cur->deleteRevPointsToSet();
   cur->addFlags(CG_NODE_FLAGS_COLLAPSED);
+
+  UINT32 transferFlags = cur->flags() & (CG_NODE_FLAGS_NOT_POINTER);
+  this->addFlags(transferFlags);
+  if (cur->inKCycle() > 0)
+    this->inKCycle(gcd(this->inKCycle(), cur->inKCycle()));
 }
 
 //
