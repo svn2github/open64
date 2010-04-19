@@ -2750,8 +2750,8 @@ ConstraintGraphNode::collapse(ConstraintGraphNode *cur)
   cur->deleteRevPointsToSet();
   cur->addFlags(CG_NODE_FLAGS_COLLAPSED);
 
-  UINT32 transferFlags = cur->flags() & (CG_NODE_FLAGS_NOT_POINTER);
-  this->addFlags(transferFlags);
+  if (!(cur->checkFlags(CG_NODE_FLAGS_NOT_POINTER)))
+    this->clearFlags(CG_NODE_FLAGS_NOT_POINTER);
   if (cur->inKCycle() > 0)
     this->inKCycle(gcd(this->inKCycle(), cur->inKCycle()));
 }
