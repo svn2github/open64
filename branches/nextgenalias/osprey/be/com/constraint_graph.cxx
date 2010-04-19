@@ -489,8 +489,6 @@ StInfo::applyModulus(void)
       ConstraintGraphNode *modNode =
           cur->cg()->getCGNode(cur->cg_st_idx(),newOffset);
 
-      modNode = modNode->parent();
-
       // Now we collapse cur into modNode
       modNode->collapse(cur);
 
@@ -510,6 +508,7 @@ StInfo::applyModulus(void)
       ConstraintGraphNode *deln = n;
       n = n->nextOffset();
       deln->nextOffset(NULL);
+      _numOffsets--;      
     } else {
       prev = n;
       n = n->nextOffset();
@@ -520,6 +519,9 @@ StInfo::applyModulus(void)
   for (hash_set<CGNodeId>::iterator iter = modNodes.begin();
        iter != modNodes.end(); iter++) {
     ConstraintGraphNode *modNode = ConstraintGraph::cgNode(*iter);
+    // Since the merge is done to the parent of modNode,
+    // adjustPointsToForKCycle for its parent
+    modNode = modNode->parent();
     if (modNode->inKCycle() > 0)
       ConstraintGraph::adjustPointsToForKCycle(modNode);
   }
@@ -571,8 +573,6 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
       ConstraintGraphNode *modNode =
           cur->cg()->getCGNode(cur->cg_st_idx(),newOffset);
 
-      modNode = modNode->parent();
-
       // Now we collapse cur into modNode
       modNode->collapse(cur);
 
@@ -591,6 +591,7 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
         ConstraintGraphNode *deln = n;
         n = n->nextOffset();
         deln->nextOffset(NULL);
+        _numOffsets--;      
       } else {
         prev = n;
         n = n->nextOffset();
@@ -601,6 +602,9 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
     for (hash_set<CGNodeId>::iterator iter = modNodes.begin();
          iter != modNodes.end(); iter++) {
       ConstraintGraphNode *modNode = ConstraintGraph::cgNode(*iter);
+      // Since the merge is done to the parent of modNode,
+      // adjustPointsToForKCycle for its parent
+      modNode = modNode->parent();
       if (modNode->inKCycle() > 0)
         ConstraintGraph::adjustPointsToForKCycle(modNode);
     }
@@ -2694,9 +2698,12 @@ ConstraintGraphNode::collapse(ConstraintGraphNode *cur)
   // Merge cur with 'this' node
   ConstraintGraphNode *curParent = cur->parent();
 
-  if (curParent != this) {
-    this->merge(curParent);
-    curParent->repParent(this);
+  // When merging, merge with 'this's parent
+  ConstraintGraphNode *thisParent = this->parent();
+
+  if (curParent != thisParent) {
+    thisParent->merge(curParent);
+    curParent->repParent(thisParent);
 
     // If cur has a parent which is the only offset, 
     // or if cur does not have a distinct parent,
@@ -2704,7 +2711,7 @@ ConstraintGraphNode::collapse(ConstraintGraphNode *cur)
     if (cur != curParent && !curParent->isOnlyOffset()) {
       bool added = false;
       ConstraintGraphEdge *newEdge =
-      ConstraintGraph::addEdge(this, curParent, ETYPE_COPY, CQ_HZ, 0,
+      ConstraintGraph::addEdge(thisParent, curParent, ETYPE_COPY, CQ_HZ, 0,
                                added, CG_EDGE_PARENT_COPY);
       FmtAssert(added, (":merge: failed to add special copy edge"));
     }

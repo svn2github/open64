@@ -1256,7 +1256,8 @@ ConstraintGraphSolve::addCopiesForLoadStore(ConstraintGraphNode *src,
     }
 
     // We don't add copy edges to "not-a-pointer"...
-    if (copyDst == ConstraintGraph::notAPointer())
+    if (copySrc->checkFlags(CG_NODE_FLAGS_NOT_POINTER) ||
+        copyDst->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
        continue;
 
 

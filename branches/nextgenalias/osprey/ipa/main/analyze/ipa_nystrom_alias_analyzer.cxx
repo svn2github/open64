@@ -467,6 +467,12 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       destParent = destNode;
     else
       destParent = destNode->parent();
+
+    // If src/dest is not a pointer, do not add edges
+    if (srcParent->checkFlags(CG_NODE_FLAGS_NOT_POINTER) ||
+        destParent->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+      continue;
+
     // Add the edges to the representative parents
     ConstraintGraphEdge *edge = 
       ConstraintGraph::addEdge(srcParent, destParent,
