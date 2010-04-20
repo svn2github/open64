@@ -732,8 +732,11 @@ ConstraintGraph::buildModRange(UINT32 modRangeIdx, IPA_NODE *ipaNode)
   SUMMARY_CONSTRAINT_GRAPH_MODRANGE &summMR = summModRanges[modRangeIdx];
   ModulusRange *mr = CXX_NEW(ModulusRange(summMR.startOffset(), 
                                           summMR.endOffset(),
-                                          summMR.modulus(),
-                                          summMR.ty_idx()), _memPool);
+                                          summMR.modulus()
+#ifdef Is_True_On
+					  ,summMR.ty_idx()
+#endif
+			       ), _memPool);
   if (summMR.childIdx() != 0)
     mr->child(buildModRange(summMR.childIdx(), ipaNode));
   if (summMR.nextIdx() != 0)

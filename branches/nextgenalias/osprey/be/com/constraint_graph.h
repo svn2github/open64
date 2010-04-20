@@ -772,7 +772,11 @@ private:
 class ModulusRange
 {
 public:
-  ModulusRange(UINT32 start, UINT32 end, UINT32 mod, TY_IDX ty_idx):
+  ModulusRange(UINT32 start, UINT32 end, UINT32 mod
+#ifdef Is_True_On
+	       , TY_IDX ty_idx
+#endif
+):
     _startOffset(start),
     _endOffset(end),
     _modulus(mod),

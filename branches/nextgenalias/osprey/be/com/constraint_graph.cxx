@@ -229,8 +229,12 @@ ModulusRange::build(TY_IDX ty_idx, UINT32 offset, MEM_POOL *memPool)
   FmtAssert(TY_kind(ty) == KIND_STRUCT,("Expecting only structs"));
   if (TY_size(ty) <= 1)
     return NULL;
-  ModulusRange *modRange = CXX_NEW(ModulusRange(offset,offset+TY_size(ty)-1,
-                                                TY_size(ty),ty_idx), memPool);
+  ModulusRange *modRange = CXX_NEW(ModulusRange(offset,offset+TY_size(ty)-1, 
+						TY_size(ty)
+#ifdef Is_True_On
+						,ty_idx
+#endif
+				     ), memPool);
   ModulusRange *childRanges = NULL;
   ModulusRange *curRange = NULL;
   for (FLD_HANDLE fld = TY_flist(ty); !fld.Is_Null(); fld = FLD_next(fld)) {
@@ -245,8 +249,12 @@ ModulusRange::build(TY_IDX ty_idx, UINT32 offset, MEM_POOL *memPool)
       while (TY_kind(Ty_Table[etyIdx]) == KIND_ARRAY)
         etyIdx = TY_etype(Ty_Table[etyIdx]);
       UINT32 elmtSize = TY_size(Ty_Table[etyIdx]);
-      newRange = CXX_NEW(ModulusRange(start,end,elmtSize,
-                                      FLD_type(fld)),memPool);
+      newRange = CXX_NEW(ModulusRange(start,end,elmtSize
+#ifdef Is_True_On
+				      ,
+                                      FLD_type(fld)
+#endif
+),memPool);
     }
     else if (TY_kind(fty) == KIND_STRUCT)
       newRange = build(FLD_type(fld),offset+FLD_ofst(fld),memPool);
