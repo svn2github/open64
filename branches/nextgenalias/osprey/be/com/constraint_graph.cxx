@@ -475,6 +475,13 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
 void
 StInfo::applyModulus(void)
 {
+  // If not in IPA, and we are in the middle of building the CG,
+  // we do not want to apply the modulus. We apply the modulus after 
+  // the build is done
+  if (!ConstraintGraph::inIPA() && _firstOffset &&
+      !_firstOffset->cg()->buildComplete())
+    return;
+
   ConstraintGraphNode *cur = _firstOffset;
   if (cur && cur->offset() == -1)
     cur = cur->nextOffset();
@@ -550,73 +557,24 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
       _u._modRange->modulus(offset,mod,startOffset,endOffset,_memPool);
   }
 
-  if(_firstOffset && _firstOffset->cg()->buildComplete()) {
-    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
-      fprintf(stderr,"Setting modulus of ");
-      CG_ST_IDX idx = _firstOffset->cg_st_idx();
-      if (!ConstraintGraph::inIPA() ||
-          ST_IDX_level(SYM_ST_IDX(idx)) == GLOBAL_SYMTAB)
-        fprintf(stderr,"%s",ST_name(&St_Table[SYM_ST_IDX(idx)]));
-      else
-        fprintf(stderr, " <file:%d pu:%d st_idx:%d> %llu",
-                FILE_NUM_ST_IDX(idx),
-                PU_NUM_ST_IDX(idx),
-                SYM_ST_IDX(idx),
-                idx);
+  if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+    fprintf(stderr,"Setting modulus of ");
+    CG_ST_IDX idx = _firstOffset->cg_st_idx();
+    if (!ConstraintGraph::inIPA() ||
+        ST_IDX_level(SYM_ST_IDX(idx)) == GLOBAL_SYMTAB)
+      fprintf(stderr,"%s",ST_name(&St_Table[SYM_ST_IDX(idx)]));
+    else
+      fprintf(stderr, " <file:%d pu:%d st_idx:%d> %llu",
+              FILE_NUM_ST_IDX(idx),
+              PU_NUM_ST_IDX(idx),
+              SYM_ST_IDX(idx),
+              idx);
 
-      fprintf(stderr," to %d\n",mod);
-    }
-
-    hash_set<CGNodeId> collapsedNodes;
-    hash_set<CGNodeId> modNodes;
-
-    // We must apply the new modulus to all existing offsets
-    ConstraintGraphNode *cur = _firstOffset;
-    if (cur && cur->offset() == -1) cur = cur->nextOffset();
-    while (cur && cur->offset() < startOffset + mod)
-      cur = cur->nextOffset();
-
-    while (cur && cur->offset() <= endOffset) {
-      UINT32 newOffset = startOffset + cur->offset() % mod;
-      ConstraintGraphNode *modNode =
-          cur->cg()->getCGNode(cur->cg_st_idx(),newOffset);
-
-      // Now we collapse cur into modNode
-      modNode->collapse(cur);
-
-      collapsedNodes.insert(cur->id());
-      modNodes.insert(modNode->id());
-
-      cur = cur->nextOffset();
-    }
-    // Remove the collapsed nodes from StInfo's sorted node list
-    ConstraintGraphNode *prev = NULL;
-    ConstraintGraphNode *n = _firstOffset;
-    while (n) {
-      if (collapsedNodes.find(n->id()) != collapsedNodes.end())  {
-        FmtAssert(prev != NULL, ("prev offset of node: %d not found", n->id()));
-        prev->nextOffset(n->nextOffset());
-        ConstraintGraphNode *deln = n;
-        n = n->nextOffset();
-        deln->nextOffset(NULL);
-        _numOffsets--;      
-      } else {
-        prev = n;
-        n = n->nextOffset();
-      }
-    }
-
-    // Adjust pts of target of merge
-    for (hash_set<CGNodeId>::iterator iter = modNodes.begin();
-         iter != modNodes.end(); iter++) {
-      ConstraintGraphNode *modNode = ConstraintGraph::cgNode(*iter);
-      // Since the merge is done to the parent of modNode,
-      // adjustPointsToForKCycle for its parent
-      modNode = modNode->parent();
-      if (modNode->inKCycle() > 0)
-        ConstraintGraph::adjustPointsToForKCycle(modNode);
-    }
+    fprintf(stderr," to %d\n",mod);
   }
+
+  applyModulus();
+
 #if 0
   if (checkFlags(CG_ST_FLAGS_MODRANGE)) {
     fprintf(stderr,"After setting offset %d to modulus %d\n",offset,mod);
@@ -2334,12 +2292,8 @@ ConstraintGraph::getCGNode(WN *wn)
     base_offset = -base_offset;
 
   ConstraintGraphNode *n = checkCGNode(CG_ST_st_idx(base_st), base_offset);
-  if (n) {
-    if (n->checkFlags(CG_NODE_FLAGS_COLLAPSED))
-      return n->parent();
-    FmtAssert(n->parent() == n, ("Not expecting parent unless collapsed\n"));
+  if (n)
     return n;
-  }
 
   // If this is the first time we encounter this symbol/node
   if (ST_is_initialized(*base_st) && 

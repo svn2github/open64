@@ -384,7 +384,12 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     for (UINT32 i = 0; i < numBitsPtsGBL; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsGBLidx + i];
       ConstraintGraphNode *pNode = findUniqueNode(id);
-      cgNode->parent()->addPointsTo(pNode, CQ_GBL);
+      if (pNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
+        FmtAssert(pNode != pNode->parent(), ("Expecting a distinct parent "
+                  "for COLLAPSED node: %d\n", pNode->id()));
+        cgNode->parent()->addPointsTo(pNode->parent(), CQ_GBL);
+      } else
+        cgNode->parent()->addPointsTo(pNode, CQ_GBL);
     }
     cgNode->parent()->sanitizePointsTo(CQ_GBL);
     Is_True(cgNode->parent()->sanityCheckPointsTo(CQ_GBL),(""));
@@ -393,7 +398,12 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     for (UINT32 i = 0; i < numBitsPtsHZ; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsHZidx + i];
       ConstraintGraphNode *pNode = findUniqueNode(id);
-      cgNode->parent()->addPointsTo(pNode, CQ_HZ);
+      if (pNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
+        FmtAssert(pNode != pNode->parent(), ("Expecting a distinct parent "
+                  "for COLLAPSED node: %d\n", pNode->id()));
+        cgNode->parent()->addPointsTo(pNode->parent(), CQ_HZ);
+      } else
+        cgNode->parent()->addPointsTo(pNode, CQ_HZ);
     }
     cgNode->parent()->sanitizePointsTo(CQ_HZ);
     Is_True(cgNode->parent()->sanityCheckPointsTo(CQ_HZ),(""));
@@ -402,7 +412,12 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     for (UINT32 i = 0; i < numBitsPtsDN; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsDNidx + i];
       ConstraintGraphNode *pNode = findUniqueNode(id);
-      cgNode->parent()->addPointsTo(pNode, CQ_DN);
+      if (pNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
+        FmtAssert(pNode != pNode->parent(), ("Expecting a distinct parent "
+                  "for COLLAPSED node: %d\n", pNode->id()));
+        cgNode->parent()->addPointsTo(pNode->parent(), CQ_DN);
+      } else
+        cgNode->parent()->addPointsTo(pNode, CQ_DN);
     }
     cgNode->parent()->sanitizePointsTo(CQ_DN);
     Is_True(cgNode->parent()->sanityCheckPointsTo(CQ_DN),(""));
