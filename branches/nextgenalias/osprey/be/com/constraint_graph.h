@@ -1191,6 +1191,8 @@ public:
   static void updateOrigToCloneStIdxMap(ST_IDX orig_st_idx,
                                         ST_IDX clone_st_idx);
 
+  static void addEdgesToWorkList(ConstraintGraphNode *node);
+
   static EdgeDelta *workList(void) { return _workList; }
   static void workList(EdgeDelta *list)   { _workList = list; }
 

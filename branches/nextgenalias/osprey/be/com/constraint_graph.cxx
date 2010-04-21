@@ -2322,10 +2322,10 @@ ConstraintGraph::getCGNode(WN *wn)
 // set added = false
 ConstraintGraphEdge *
 ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
-                         CGEdgeType etype, CGEdgeQual qual, INT32 sizeorSkew, 
+                         CGEdgeType etype, CGEdgeQual qual, INT32 sizeOrSkew, 
                          bool &added, UINT16 flags)
 {
-  ConstraintGraphEdge cgEdge(src, dest, etype, qual, sizeorSkew);
+  ConstraintGraphEdge cgEdge(src, dest, etype, qual, sizeOrSkew);
 
   ConstraintGraphEdge *retSrcEdge = src->outEdge(&cgEdge);
   ConstraintGraphEdge *retDestEdge = dest->inEdge(&cgEdge);
@@ -2335,7 +2335,7 @@ ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
 
   if (edgeExistsInNeither) {
     ConstraintGraphEdge *edge =
-      CXX_NEW(ConstraintGraphEdge(src, dest, etype, qual, sizeorSkew),
+      CXX_NEW(ConstraintGraphEdge(src, dest, etype, qual, sizeOrSkew),
               edgeMemPool);
     edge->addFlags(flags);
     src->addOutEdge(edge);
@@ -2345,6 +2345,11 @@ ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
   } else if (edgeExistsInBoth) {
     added = false;
     FmtAssert(retSrcEdge == retDestEdge, ("src and dest edge not same!\n"));
+    // If the edge already exists, update the size/skew
+    if (etype == ETYPE_SKEW)
+      retSrcEdge->skew(MIN(retSrcEdge->skew(), sizeOrSkew));
+    else 
+      retSrcEdge->size(MAX(retSrcEdge->size(), sizeOrSkew));
     return retSrcEdge;
   } else  {
     FmtAssert(FALSE, 
@@ -2830,8 +2835,11 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
 
   // 4) Merge the points-to sets of the two nodes and adjust this's 
   //    points to set
-  for ( PointsToIterator pti(src); pti != 0; ++pti )
-    unionPointsTo(*pti,pti.qual());
+  for ( PointsToIterator pti(src); pti != 0; ++pti ) {
+    bool change = unionPointsTo(*pti,pti.qual());
+    if (change && ConstraintGraph::workList())
+      ConstraintGraph::addEdgesToWorkList(this);
+  }
 
   // Remove src from the reverse points to set of all nodes in src's 
   // points to set

@@ -59,7 +59,6 @@ private:
   void processSkew(const ConstraintGraphEdge *);
   void processLoad(const ConstraintGraphEdge *);
   bool processStore(const ConstraintGraphEdge *);
-  void addEdgesToWorkList(ConstraintGraphNode *);
   void addCopiesForLoadStore(ConstraintGraphNode *src,
                              ConstraintGraphNode *dst,
                              CGEdgeType etype,

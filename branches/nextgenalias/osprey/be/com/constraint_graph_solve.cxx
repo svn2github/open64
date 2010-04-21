@@ -635,8 +635,9 @@ ConstraintGraphSolve::postProcessPointsTo()
 }
 
 void
-ConstraintGraphSolve::addEdgesToWorkList(ConstraintGraphNode *node)
+ConstraintGraph::addEdgesToWorkList(ConstraintGraphNode *node)
 {
+  EdgeDelta *edgeDelta = workList();
   // If this routine is being called, then the points-to set of
   // this node has been updated.  We need to add the following
   // edges to the work list for further processing:
@@ -646,7 +647,7 @@ ConstraintGraphSolve::addEdgesToWorkList(ConstraintGraphNode *node)
   for (CGEdgeSetIterator iter = outCopySkew.begin();
        iter != outCopySkew.end();
        iter++) {
-    edgeDelta().add(*iter);
+    edgeDelta->add(*iter);
   }
 
   // 2) All outgoing load (assign_deref) edges
@@ -656,7 +657,7 @@ ConstraintGraphSolve::addEdgesToWorkList(ConstraintGraphNode *node)
        iter++) {
     ConstraintGraphEdge *e = (*iter);
     if (e->edgeType() == ETYPE_LOAD)
-      edgeDelta().add(e);
+      edgeDelta->add(e);
   }
 
   // 3) All incoming store (deref_assign) edges
@@ -666,7 +667,7 @@ ConstraintGraphSolve::addEdgesToWorkList(ConstraintGraphNode *node)
        iter++) {
     ConstraintGraphEdge *e = (*iter);
     if (e->edgeType() == ETYPE_STORE)
-      edgeDelta().add(e);
+      edgeDelta->add(e);
   }
 }
 
@@ -680,8 +681,9 @@ ConstraintGraphSolve::updateOffsets(const ConstraintGraphNode *dst,
     while (cur != NULL) {
       bool change = false;
       change |= cur->unionPointsTo(pts, dstQual);
+      // Mark outgoing edges as to be updated....
       if (change)
-        addEdgesToWorkList(cur); // Mark outgoing edges as to be updated....
+        ConstraintGraph::addEdgesToWorkList(cur); 
       cur = cur->nextOffset();
     }
   }
@@ -698,12 +700,12 @@ ConstraintGraphSolve::updateOffsets(const ConstraintGraphNode *dst,
       // if it exists
       bool change = cur->unionPointsTo(pts,dstQual);
       if (change)
-        addEdgesToWorkList(cur);
+        ConstraintGraph::addEdgesToWorkList(cur);
       cur = cur->nextOffset();
     }
     while (cur != NULL && cur->offset() < dst->offset()) {
       if (cur->offset() + cur->maxAccessSize() > dst->offset())
-        addEdgesToWorkList(cur);
+        ConstraintGraph::addEdgesToWorkList(cur);
       cur = cur->nextOffset();
     }
   }
@@ -1065,7 +1067,7 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
           }
           dstChange |= change;
           if (change) {
-            addEdgesToWorkList(dstNode);
+            ConstraintGraph::addEdgesToWorkList(dstNode);
           }
           cur = cur->nextOffset();
         }
@@ -1090,7 +1092,7 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
           change |= dst->unionPointsTo(tmp, dstQual);
         }
         if (change) {
-          addEdgesToWorkList(dst);
+          ConstraintGraph::addEdgesToWorkList(dst);
           updateOffsets(dst,*pti,dstQual);
         }
       }
@@ -1179,7 +1181,7 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
       ConstraintGraph::adjustPointsToForKCycle(dst, diff, tmp1,CQ_NONE);
       bool change = dst->unionPointsTo(tmp1,dstQual);
       if (change) {
-        addEdgesToWorkList(dst);
+        ConstraintGraph::addEdgesToWorkList(dst);
         updateOffsets(dst,tmp1,dstQual);
       }
     }
@@ -1372,7 +1374,7 @@ ConstraintGraphSolve::processStore(const ConstraintGraphEdge *edge)
           for (PointsToIterator pti(src); pti != 0; ++pti)
             change |= node->unionPointsTo(*pti,CQ_GBL);
           if (change)
-            addEdgesToWorkList(node);
+            ConstraintGraph::addEdgesToWorkList(node);
         }
       }
     }
