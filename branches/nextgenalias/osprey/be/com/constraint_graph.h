@@ -365,6 +365,7 @@ public:
     _pointsToList(NULL),
     _revPointsToList(NULL),
     _repParent(NULL),
+    _collapsedParent(0),
     _nextOffset(NULL),
     _parentCG(parentCG),
     _id(0),
@@ -385,6 +386,7 @@ public:
     _pointsToList(NULL),
     _revPointsToList(NULL),
     _repParent(NULL),
+    _collapsedParent(0),
     _nextOffset(NULL),
     _parentCG(parentCG),
     _id(id),
@@ -409,6 +411,7 @@ public:
   void ty_idx(TY_IDX idx)   { _ty_idx = idx; }
 
   CG_ST_IDX cg_st_idx() const { return _cg_st_idx; }
+  void cg_st_idx(CG_ST_IDX cg_st_idx) { _cg_st_idx = cg_st_idx; }
 
   char *stName() const;
 
@@ -434,6 +437,12 @@ public:
 
   ConstraintGraphNode *repParent() const { return _repParent; }
   void repParent(ConstraintGraphNode *p) { _repParent = p; }
+
+  CGNodeId collapsedParent() const { return _collapsedParent; }
+  CGNodeId collapsedParent(CGNodeId p)
+  {
+    _collapsedParent = p;
+  }
 
   // Merge two constraint graph nodes.  The 'src' is merged
   // into the current node.
@@ -721,6 +730,8 @@ private:
   PointsToList *_revPointsToList;
   // For nodes that are unified
   ConstraintGraphNode *_repParent;
+  // For nodes that are collapsed
+  CGNodeId _collapsedParent;
   // Nodes with different offset off of same base maintained in sorted order
   ConstraintGraphNode *_nextOffset;
   // The ConstraintGraph to which this node belongs
@@ -1318,6 +1329,8 @@ public:
 
   CGStInfoMap &stInfoMap(void) { return _cgStInfoMap; }
 
+  CGNodeToIdMap &nodeToIdMap(void) { return _cgNodeToIdMap; }
+
   // Return CGNode mapped to (cg_st_idx, offset), if not create a new CGNode
   // This method may return an offset other than the one requested, e.g. if
   // the number of existing offsets is exceeding a threshold we may start
@@ -1384,6 +1397,8 @@ public:
   ConstraintGraphNode *cloneCGNode(ConstraintGraphNode *node,
                                    CG_ST_IDX new_cg_st_idx);
 
+  void remapCGNode(ConstraintGraphNode *node, CG_ST_IDX new_cg_st_idx);
+
   void mapCGNode(ConstraintGraphNode *node);
 
   void mapStInfo(StInfo *stInfo,
@@ -1391,6 +1406,8 @@ public:
                  CG_ST_IDX new_cg_st_idx);
 
   void promoteCallSiteToDirect(CallSiteId csid, ST_IDX st_idx);
+
+  CGStInfoMap &newLocalStInfos() { return _newLocalStInfos; }
 
 private:
 
@@ -1520,6 +1537,9 @@ private:
 
   // To track the max local st_idx 
   UINT32 _max_st_idx;
+
+  // Track the newly created StInfos created in buildLocalStInfo
+  CGStInfoMap _newLocalStInfos;
 
   MEM_POOL *_memPool;
 };

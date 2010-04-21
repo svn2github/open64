@@ -1358,7 +1358,9 @@ ConstraintGraph::buildLocalStInfo(TY_IDX ty_idx)
   SYMTAB_IDX level = ST_IDX_level(_max_st_idx);
   index++;
   _max_st_idx = make_ST_IDX(index, level);
+  // Record the newly generated local StInfos
   CG_ST_IDX cg_st_idx = adjustCGstIdx(_ipaNode, _max_st_idx);
+  _newLocalStInfos[cg_st_idx] = stInfo;
   _cgStInfoMap[cg_st_idx] = stInfo;
   return cg_st_idx;
 }
@@ -1536,6 +1538,57 @@ ConstraintGraph::updateSummaryCallSiteId(SUMMARY_CALLSITE &summCallSite)
     FmtAssert(cs != NULL, ("call site: %d not mapped", oldCSid));
     UINT32 newCSid = cs->id();
     summCallSite.Set_constraint_graph_callsite_id(newCSid);
+  }
+}
+
+void
+IPA_NystromAliasAnalyzer::updateLocalSyms(IPA_NODE *node)
+{
+  ConstraintGraph *cg = this->cg(node->Node_Index());
+  if (cg == NULL)
+    return; 
+
+  if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
+    fprintf(stderr, "updateLocalSyms: %s\n", cg->name());
+
+  CGStInfoMap &cgStInfoMap = cg->stInfoMap();
+  CGNodeToIdMap &cgNodeToIdMap = cg->nodeToIdMap();
+
+  // Remove the old StInfos
+  for (CGStInfoMapIterator iter = cg->newLocalStInfos().begin(); 
+       iter != cg->newLocalStInfos().end(); iter++)  
+  {
+    StInfo *stInfo = iter->second;
+    CG_ST_IDX old_cg_st_idx = iter->first;
+    FmtAssert(cgStInfoMap.find(old_cg_st_idx) != cgStInfoMap.end(),
+              ("Could not find old_cg_st_idx"));
+    cgStInfoMap.erase(cgStInfoMap.find(old_cg_st_idx));
+    ConstraintGraphNode *cgNode = stInfo->firstOffset();
+    while (cgNode) {
+      FmtAssert(cgNodeToIdMap.find(cgNode) != cgNodeToIdMap.end(),
+                ("Could not find node: %d", cgNode->id()));
+      cgNodeToIdMap.erase(cgNodeToIdMap.find(cgNode));
+      cgNode = cgNode->nextOffset();
+    }
+  }
+
+  // For the new StInfos that we have created, create local symbols
+  for (CGStInfoMapIterator iter = cg->newLocalStInfos().begin(); 
+       iter != cg->newLocalStInfos().end(); iter++)  
+  {
+    StInfo *stInfo = iter->second;
+    // Create the new symbol
+    ST *st = Gen_Temp_Named_Symbol(stInfo->ty_idx(), "_cgIPAsym", 
+                                   CLASS_VAR, SCLASS_AUTO);
+    ST_IDX new_st_idx = ST_st_idx(st);
+    // Fix the cg_st_idx with the st_idx of the new local symbol
+    CG_ST_IDX new_cg_st_idx = ConstraintGraph::adjustCGstIdx(node, new_st_idx);
+    cg->mapStInfo(stInfo, iter->first, new_cg_st_idx);
+    ConstraintGraphNode *cgNode = stInfo->firstOffset();
+    while (cgNode) {
+      cg->remapCGNode(cgNode, new_cg_st_idx);
+      cgNode = cgNode->nextOffset();
+    }  
   }
 }
 
@@ -1801,7 +1854,7 @@ ConstraintGraph::cloneConstraintGraphMaps(IPA_NODE *caller, IPA_NODE *callee)
 }
 
 void
-dbgCGStIdx(CG_ST_IDX cg_st_idx)
+dbgPrintCGStIdx(CG_ST_IDX cg_st_idx)
 {
   fprintf(stderr, "<file:%d pu:%d st_idx:%d>",
           FILE_NUM_ST_IDX(cg_st_idx),

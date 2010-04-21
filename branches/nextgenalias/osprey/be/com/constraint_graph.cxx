@@ -2711,6 +2711,7 @@ ConstraintGraphNode::collapse(ConstraintGraphNode *cur)
     }
   }
   cur->deleteRevPointsToSet();
+  cur->collapsedParent(this->id());
   cur->addFlags(CG_NODE_FLAGS_COLLAPSED);
 
   if (!(cur->checkFlags(CG_NODE_FLAGS_NOT_POINTER)))
@@ -3473,6 +3474,7 @@ ConstraintGraphNode::copy(ConstraintGraphNode *node)
   _inKCycle      = node->_inKCycle;
   _pointsToList  = node->_pointsToList;
   _repParent     = node->_repParent;
+  _collapsedParent = node->_collapsedParent;
   _nextOffset    = node->_nextOffset;
   _maxAccessSize = node->_maxAccessSize;
 }
@@ -3497,6 +3499,26 @@ ConstraintGraph::cloneCGNode(ConstraintGraphNode *node, CG_ST_IDX new_cg_st_idx)
             node->cg()->name(), printCGStIdx(newCGNode->cg_st_idx(), buf2, 128),
             newCGNode->offset(), name());
   return newCGNode;
+}
+
+// Remap node to this CG using new cg_st_idx
+void
+ConstraintGraph::remapCGNode(ConstraintGraphNode *node, CG_ST_IDX new_cg_st_idx)
+{
+  char buf1[128];
+  char buf2[128];
+  if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
+    fprintf(stderr, "  remapCGNode: node id:%d: old idx: %s to new idx:%s "
+            "in cg: %s\n", node->id(),
+             printCGStIdx(node->cg_st_idx(), buf1, 128),
+             printCGStIdx(new_cg_st_idx, buf2, 128),
+             name());
+  // Set the new cg_st_idx
+  node->cg_st_idx(new_cg_st_idx);
+  FmtAssert(_cgNodeToIdMap.find(node) == _cgNodeToIdMap.end(),
+            ("Node already mapped"));
+  // Add back to the map
+  _cgNodeToIdMap[node] = node->id();
 }
 
 // Add node to this CG using node's cg_st_idx, offset

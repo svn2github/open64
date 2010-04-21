@@ -106,6 +106,8 @@ public:
 
   void mapWNToUniqCallSiteCGNodeId(IPA_NODE *node);
 
+  void updateLocalSyms(IPA_NODE *node);
+
   void updateCGForBE(IPA_NODE *node);
 
   // For IPA call graph SCC detection
