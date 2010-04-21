@@ -2373,7 +2373,7 @@ alignOffset(TY_IDX ty_idx, INT64 offset)
   if (offset & (~(Pointer_Size-1)) == offset)
     return offset;
 
-  TY& ty = Ty_Table[ty_idx];
+  TY ty = Ty_Table[ty_idx];
   TY_KIND kind = TY_kind(ty);
 
   // For arrays, we dive into the array to determine the actual
@@ -2383,6 +2383,7 @@ alignOffset(TY_IDX ty_idx, INT64 offset)
     while (TY_kind(Ty_Table[etyIdx]) == KIND_ARRAY)
       etyIdx = TY_etype(Ty_Table[etyIdx]);
     kind = TY_kind(Ty_Table[etyIdx]);
+    ty = Ty_Table[etyIdx];
   }
   if (kind == KIND_SCALAR ||
       kind == KIND_FUNCTION ||
@@ -2394,7 +2395,7 @@ alignOffset(TY_IDX ty_idx, INT64 offset)
 
     for (FLD_HANDLE fld = TY_flist(ty); !fld.Is_Null(); fld = FLD_next(fld)) {
        TY &fty = Ty_Table[FLD_type(fld)];
-       UINT32 start = offset+FLD_ofst(fld);
+       UINT32 start = FLD_ofst(fld);
        UINT32 end = start+TY_size(fty)-1;
        if (start <= offset && offset <= end) {
          if (TY_kind(fty) == KIND_ARRAY ||
