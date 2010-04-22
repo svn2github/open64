@@ -236,7 +236,7 @@ ModulusRange::build(TY_IDX ty_idx, UINT32 offset, MEM_POOL *memPool)
 {
   TY &ty = Ty_Table[ty_idx];
   FmtAssert(TY_kind(ty) == KIND_STRUCT,("Expecting only structs"));
-  if (TY_size(ty) <= 1)
+  if (TY_size(ty) < 1)
     return NULL;
   ModulusRange *modRange = CXX_NEW(ModulusRange(offset,offset+TY_size(ty)-1, 
 						TY_size(ty)
