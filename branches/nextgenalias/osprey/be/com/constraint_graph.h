@@ -20,6 +20,8 @@ class EdgeDelta;
                                     // to ensure proper processing of
                                     // dest node, but no points-to
                                     // propagation is performed.
+#define CG_EDGE_TO_BE_DELETED 0x0004// Mark edges that are currently in the
+                                    // worklist to be deleted when extracted.
 
 #define CG_NODE_ALL_OFFSETS (-1)
 #define CG_PREG_SCALE       (Pointer_Size)
@@ -208,6 +210,8 @@ public:
       t->clearFlags(flag);
     }
   }
+
+  list<T *> &workList(void) { return _list; }
 
 private:
   list<T *> _list;
@@ -1212,6 +1216,7 @@ public:
   // To build ConstraintGraphs at IPL/BE
   ConstraintGraph(WN *entryWN, MEM_POOL *mPool, UINT32 minSize = 1024):
     _buildComplete(false),
+    _doNotConnect(false),
     _varArgs(NULL),
     _cgNodeToIdMap(minSize),
     _cgStInfoMap(minSize),
@@ -1257,7 +1262,8 @@ public:
   // To build ConstraintGraphs during IPA
   ConstraintGraph(MEM_POOL *mPool, IPA_NODE *ipaNode = NULL, 
                   UINT32 minSize = 1024):
-    _buildComplete(false),
+    _buildComplete(true),
+    _doNotConnect(false),
     _cgNodeToIdMap(minSize),
     _cgStInfoMap(minSize),
     _ipaNode(ipaNode),
@@ -1304,6 +1310,9 @@ public:
   UINT32 totalCGNodes() const { return nextCGNodeId; }
 
   bool buildComplete(void) const { return _buildComplete; }
+
+  void doNotConnect(bool v) { _doNotConnect = v; }
+  bool doNotConnect(void) const { return _doNotConnect; }
 
   StInfo *stInfo(CG_ST_IDX cg_st_idx) const 
   { 
@@ -1502,6 +1511,8 @@ private:
 
   // Data Members
   bool _buildComplete;
+
+  bool _doNotConnect;
 
   // Used for debugging during IPA.
   char _name[256];

@@ -42,7 +42,8 @@ public:
     _I(0),
     _D(graph->totalCGNodes()),
     _S(CGNodeDeque(mpool)),
-    _T(CGNodeDeque(mpool))
+    _T(CGNodeDeque(mpool)),
+    _nodeCount(0)
   {}
 
   ~SCCDetection() {}
@@ -64,20 +65,39 @@ public:
   typedef hash_map<ConstraintGraphNode*,UINT32,hashCGNodeId> NodeToKValMap;
   typedef NodeToKValMap::const_iterator NodeToKValMapIterator;
 
-  private:
+
+
+protected:
+
+  virtual void find(void);
+  void checkFind(ConstraintGraphNode *node);
+
+  virtual void unify(UINT32 noMergeMap, NodeToKValMap&);
+  void checkUnify(ConstraintGraphNode *node, UINT32 noMergeMap, NodeToKValMap&);
+
+  UINT32                 _nodeCount;
+
+private:
 
   void visit(ConstraintGraphNode *node);
-
-  void find(void);
-  void unify(UINT32 noMergeMap, NodeToKValMap&);
   void pointsToAdjust(NodeToKValMap&);
 
   ConstraintGraph       *_graph;
   MEM_POOL              *_memPool;
   UINT32                 _I;
-  hash_map<CGNodeId,UINT32> _D;
+  hash_map<CGNodeId,UINT32>   _D;
+  hash_map<CGNodeId,CGNodeId> _R;
   CGNodeStack            _S;
   CGNodeStack            _T;
+};
+
+class IPA_SCCDetection : public SCCDetection {
+public:
+  IPA_SCCDetection(MEM_POOL *mPool):
+    SCCDetection(NULL,mPool) {}
+
+  virtual void find(void);
+  virtual void unify(UINT32 noMergeMap, NodeToKValMap&);
 };
 
 void
@@ -87,7 +107,8 @@ SCCDetection::visit(ConstraintGraphNode *v)
     fprintf(stderr,"visit: Node %d\n",v->id());
   _I += 1;
   _D[v->id()] = _I;
-  v->repParent(v);
+  _R[v->id()] = v->id();
+  //v->repParent(v);
   v->addFlags(CG_NODE_FLAGS_VISITED);
   for (CGEdgeSetIterator iter = v->outCopySkewEdges().begin();
       iter != v->outCopySkewEdges().end(); ++iter ) {
@@ -95,20 +116,25 @@ SCCDetection::visit(ConstraintGraphNode *v)
     if (!edge->checkFlags(CG_EDGE_PARENT_COPY)) {
       ConstraintGraphNode *w = edge->destNode();
       // Cycle detection does not span constraint graphs
-      if (w->cg() != _graph)
+      if (_graph && w->cg() != _graph)
         continue;
       if (!w->checkFlags(CG_NODE_FLAGS_VISITED))
         visit(w);
       if (!w->checkFlags(CG_NODE_FLAGS_SCCMEMBER))
       {
+        CGNodeId rep;
+        rep = _D[_R[v->id()]] < _D[_R[w->id()]] ? _R[v->id()] : _R[w->id()];
+        _R[v->id()] = rep;
+#if 0
         ConstraintGraphNode *rep;
         rep = _D[v->repParent()->id()] < _D[w->repParent()->id()] ?
             v->repParent() : w->repParent();
         v->repParent(rep);
+#endif
       }
     }
   }
-  if (v->repParent() == v) {
+  if (_R[v->id()] == v->id() /*v->repParent() == v*/) {
     v->addFlags(CG_NODE_FLAGS_SCCMEMBER);
     while (!_S.empty()) {
       ConstraintGraphNode *w = _S.top();
@@ -117,7 +143,7 @@ SCCDetection::visit(ConstraintGraphNode *v)
       else {
         _S.pop();
         w->addFlags(CG_NODE_FLAGS_SCCMEMBER);
-        w->repParent(v);
+        _R[w->id()] = v->id(); /*w->repParent(v);*/
       }
     }
     _T.push(v);
@@ -127,95 +153,154 @@ SCCDetection::visit(ConstraintGraphNode *v)
 }
 
 void
-SCCDetection::find(void)
+SCCDetection::checkFind(ConstraintGraphNode *node)
 {
-  // Visit each unvisited root node.   A root node is defined
-  // to be a node that has no incoming copy/skew edges
-  for (CGNodeToIdMapIterator iter = _graph->lBegin();
-      iter != _graph->lEnd(); iter++) {
-    ConstraintGraphNode *node = iter->first;
-    if (!node->checkFlags(CG_NODE_FLAGS_VISITED)) {
-      // We skip any nodes that have a representative other than
-      // themselves.  Such nodes occur as a result of merging
-      // nodes either through unifying an ACC or other node
-      // merging optimizations.  Any such node should have no
-      // outgoing edges and therefore should no longer be a member
-      // of an SCC.
-      if (node->repParent() == NULL || node->repParent() == node)
-        visit(node);
-      else {
-        FmtAssert(node->checkFlags(CG_NODE_FLAGS_MERGED),
-                  ("Node with parent has not been merged!"));
-        FmtAssert(node->outCopySkewEdges().empty(),
-            ("Found copy edge: expect node with representative "
-                "to be a leaf node.\n"));
-        FmtAssert(node->outLoadStoreEdges().empty(),
-            ("Found copy edge: expect node with representative "
-                "to be a leaf node.\n"));
-      }
+  if (!node->checkFlags(CG_NODE_FLAGS_VISITED)) {
+    // We skip any nodes that have a representative other than
+    // themselves.  Such nodes occur as a result of merging
+    // nodes either through unifying an ACC or other node
+    // merging optimizations.  Any such node should have no
+    // outgoing edges and therefore should no longer be a member
+    // of an SCC.
+    if (node->repParent() == NULL || node->repParent() == node)
+      visit(node);
+    else {
+      FmtAssert(node->checkFlags(CG_NODE_FLAGS_MERGED),
+                ("Node with parent has not been merged!"));
+      FmtAssert(node->outCopySkewEdges().empty(),
+                ("Found copy edge: expect node with representative "
+                    "to be a leaf node.\n"));
+      FmtAssert(node->outLoadStoreEdges().empty(),
+                ("Found copy edge: expect node with representative "
+                    "to be a leaf node.\n"));
     }
   }
 }
 
 void
-SCCDetection::unify(UINT32 noMergeMask, NodeToKValMap &nodeToKValMap)
+SCCDetection::find(void)
 {
   // We capture the current number of nodes in the graph.  As we
   // merge nodes, additional offsets may materialize that will not
   // be marked as "visited".  They should have no incoming/outgoing
   // edges so we do not flag this as a problem.
-  UINT32 nodeCount = _graph->totalCGNodes();
+  _nodeCount = 0;
 
+  // Visit each unvisited root node.   A root node is defined
+  // to be a node that has no incoming copy/skew edges
+  for (CGNodeToIdMapIterator iter = _graph->lBegin();
+      iter != _graph->lEnd(); iter++, _nodeCount++) {
+    ConstraintGraphNode *node = iter->first;
+    checkFind(node);
+  }
+}
+
+void
+IPA_SCCDetection::find(void)
+{
+  //if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
+    fprintf(stderr,"SCC: Global cycle detection begin\n");
+
+  // We capture the current number of nodes in the graph.  As we
+  // merge nodes, additional offsets may materialize that will not
+  // be marked as "visited".  They should have no incoming/outgoing
+  // edges so we do not flag this as a problem.
+  _nodeCount = 0;
+
+  // Visit each unvisited root node.   A root node is defined
+  // to be a node that has no incoming copy/skew edges
+  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
+       iter != ConstraintGraph::gEnd(); iter++, _nodeCount++) {
+    ConstraintGraphNode *node = iter->second;
+    if (!node->checkFlags(CG_NODE_FLAGS_MERGED))
+      for ( PointsToIterator pti(node); pti != 0; ++pti )
+        node->sanityCheckPointsTo(pti.qual());
+    checkFind(node);
+  }
+}
+
+void
+SCCDetection::checkUnify(ConstraintGraphNode *node,
+                         UINT32 noMergeMask,
+                         NodeToKValMap &nodeToKValMap)
+{
+  FmtAssert(node->checkFlags(CG_NODE_FLAGS_VISITED) ||
+            node->checkFlags(CG_NODE_FLAGS_MERGED) ||
+            // New nodes created when merging nodes and
+            // adjusting the points-to set for an updated
+            // inKCycle() value.
+            (node->id() >= _nodeCount &&
+                node->outCopySkewEdges().empty() &&
+                node->outLoadStoreEdges().empty() &&
+                node->inCopySkewEdges().empty() &&
+                node->inLoadStoreEdges().empty()),
+                ("Node %d unvisited during SCC detection\n",node->id()));
+  // The _R[] table should contain only those visited nodes that do
+  // have a representative prior
+  if (!node->checkFlags(CG_NODE_FLAGS_MERGED) &&
+      _R[node->id()] != node->id()) {
+#if 0
+  if (node->repParent() && node->repParent() != node &&
+      !node->checkFlags(CG_NODE_FLAGS_MERGED)) {
+#endif
+    // If this is a node that we do not want to merge, yes cycle
+    // detection may leave cycles in the graph, then we skip it.
+    // However, we must reset the representative.
+    if (node->stInfo()->flags() & noMergeMask) {
+      //node->repParent(NULL);
+      return;
+    }
+    ConstraintGraphEdge dummy(node->repParent(),node,ETYPE_COPY,CQ_HZ,0);
+    if (!node->inEdge(&dummy)) {
+      CGNodeId repId = _R[node->id()];
+      //if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+        fprintf(stderr,"Unify: Node %d -> Node %d\n",
+                node->id(),repId);
+      // We need to track this node so as to update the modulus
+      // of the representative points-to set based on the 'new'
+      // value of inKCycle() after the SCC has been collapsed.
+      ConstraintGraphNode *rep = ConstraintGraph::cgNode(repId); //node->findRep();
+      if (!rep->checkFlags(CG_NODE_FLAGS_INKVALMAP)) {
+        nodeToKValMap[rep] = rep->inKCycle();
+        rep->addFlags(CG_NODE_FLAGS_INKVALMAP);
+      }
+      rep->merge(node);
+      node->repParent(rep);
+      // If node is the only offset, PARENT_COPY edges are not required
+      if (!node->isOnlyOffset()) {
+        bool added = false;
+        ConstraintGraphEdge *newEdge =
+            ConstraintGraph::addEdge(rep, node, ETYPE_COPY, CQ_HZ, 0,
+                                     added, CG_EDGE_PARENT_COPY);
+        FmtAssert(added, (":merge: failed to add special copy edge"));
+      }
+    }
+  }
+  node->clearFlags(CG_NODE_FLAGS_VISITED|CG_NODE_FLAGS_SCCMEMBER);
+}
+
+void
+SCCDetection::unify(UINT32 noMergeMask, NodeToKValMap &nodeToKValMap)
+{
   // Unify the nodes in an SCC into a single node
   for (CGNodeToIdMapIterator iter = _graph->lBegin();
       iter != _graph->lEnd(); iter++) {
     ConstraintGraphNode *node = iter->first;
-    FmtAssert(node->checkFlags(CG_NODE_FLAGS_VISITED) ||
-              node->checkFlags(CG_NODE_FLAGS_MERGED) ||
-              // New nodes created when merging nodes and
-              // adjusting the points-to set for an updated
-              // inKCycle() value.
-              (node->id() >= nodeCount &&
-                  node->outCopySkewEdges().empty() &&
-                  node->outLoadStoreEdges().empty() &&
-                  node->inCopySkewEdges().empty() &&
-                  node->inLoadStoreEdges().empty()),
-        ("Node %d unvisited during SCC detection\n",node->id()));
-    if (node->repParent() && node->repParent() != node &&
-        !node->checkFlags(CG_NODE_FLAGS_MERGED)) {
-      // If this is a node that we do not want to merge, yes cycle
-      // detection may leave cycles in the graph, then we skip it.
-      // However, we must reset the representative.
-      if (node->cg()->stInfo(node->cg_st_idx())->flags() & noMergeMask) {
-        node->repParent(NULL);
-        continue;
-      }
-      ConstraintGraphEdge dummy(node->repParent(),node,ETYPE_COPY,CQ_HZ,0);
-      if (!node->inEdge(&dummy)) {
-        if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-          fprintf(stderr,"Unify: Node %d -> Node %d\n",
-              node->id(),node->repParent()->id());
-        // We need to track this node so as to update the modulus
-        // of the representative points-to set based on the 'new'
-        // value of inKCycle() after the SCC has been collapsed.
-        ConstraintGraphNode *rep = node->findRep();
-        if (!rep->checkFlags(CG_NODE_FLAGS_INKVALMAP)) {
-          nodeToKValMap[rep] = rep->inKCycle();
-          rep->addFlags(CG_NODE_FLAGS_INKVALMAP);
-        }
-        rep->merge(node);
-        // If node is the only offset, PARENT_COPY edges are not required
-        if (!node->isOnlyOffset()) {
-          bool added = false;
-          ConstraintGraphEdge *newEdge = 
-              ConstraintGraph::addEdge(rep, node, ETYPE_COPY, CQ_HZ, 0,
-                                       added, CG_EDGE_PARENT_COPY);
-          FmtAssert(added, (":merge: failed to add special copy edge"));
-        }
-      }
-    }
-    node->clearFlags(CG_NODE_FLAGS_VISITED|CG_NODE_FLAGS_SCCMEMBER);
+    checkUnify(node,noMergeMask,nodeToKValMap);
   }
+}
+
+void
+IPA_SCCDetection::unify(UINT32 noMergeMask, NodeToKValMap &nodeToKValMap)
+{
+  // Unify the nodes in an SCC into a single node
+  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
+        iter != ConstraintGraph::gEnd(); iter++) {
+    ConstraintGraphNode *node = iter->second;
+    checkUnify(node,noMergeMask,nodeToKValMap);
+  }
+  //if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
+     fprintf(stderr,"SCC: Global cycle detection end\n");
 }
 
 void
@@ -244,6 +329,7 @@ SCCDetection::findAndUnify(UINT32 noMergeMask)
   // Reset state
   _I = 0;
   _D.clear();
+  _R.clear();
   while (!_S.empty()) _S.pop();
   while (!_T.empty()) _T.pop();
 
@@ -275,6 +361,61 @@ EdgeDelta::add(ConstraintGraphEdge *e)
     fprintf(stderr,"\n");
   }
 }
+
+void
+EdgeDelta::find(CGNodeId src, CGNodeId dst)
+{
+  list<ConstraintGraphEdge *> &copyList = copySkewList().workList();
+  list<ConstraintGraphEdge *>::iterator copyIter = copyList.begin();
+  for ( ; copyIter != copyList.end(); ++copyIter ) {
+    ConstraintGraphEdge *edge = *copyIter;
+    if (edge->srcNode()->id() == src &&
+        edge->destNode()->id() == dst) {
+      fprintf(stderr,"Found: ");
+      edge->print(stderr);
+      fprintf(stderr," flags 0x%x\n",edge->flags());
+    }
+  }
+
+  list<ConstraintGraphEdge *> &loadList = loadStoreList().workList();
+  list<ConstraintGraphEdge *>::iterator loadIter = loadList.begin();
+  for ( ; loadIter != loadList.end(); ++loadIter ) {
+    ConstraintGraphEdge *edge = *copyIter;
+    if (edge->srcNode()->id() == src &&
+        edge->destNode()->id() == dst) {
+      fprintf(stderr,"Found: ");
+      edge->print(stderr);
+      fprintf(stderr," flags 0x%x\n",edge->flags());
+    }
+  }
+}
+
+void
+EdgeDelta::findPtr(ConstraintGraphEdge *e)
+{
+  list<ConstraintGraphEdge *> &copyList = copySkewList().workList();
+  list<ConstraintGraphEdge *>::iterator copyIter = copyList.begin();
+  for ( ; copyIter != copyList.end(); ++copyIter ) {
+    ConstraintGraphEdge *edge = *copyIter;
+    if (edge == e) {
+      fprintf(stderr,"Found: ");
+      edge->print(stderr);
+      fprintf(stderr," flags 0x%x\n",edge->flags());
+    }
+  }
+
+  list<ConstraintGraphEdge *> &loadList = loadStoreList().workList();
+  list<ConstraintGraphEdge *>::iterator loadIter = loadList.begin();
+  for ( ; loadIter != loadList.end(); ++loadIter ) {
+    ConstraintGraphEdge *edge = *copyIter;
+    if (edge == e) {
+      fprintf(stderr,"Found: ");
+      edge->print(stderr);
+      fprintf(stderr," flags 0x%x\n",edge->flags());
+    }
+  }
+}
+
 // Method to perform cycle detection/unification only
 void
 ConstraintGraphSolve::cycleDetection(UINT32 noMergeMask)
@@ -291,7 +432,11 @@ bool
 ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
 {
   // TODO: Perform cycle detection, here
-  SCCDetection sccs(_cg,_memPool);
+  SCCDetection  *sccs;
+  if (_cg)
+    sccs = new SCCDetection(_cg,_memPool);
+  else if (Alias_Nystrom_Global_Cycle_Detection)
+    sccs = new IPA_SCCDetection(_memPool);
 
   bool seed = edgeDelta().empty() && (_cg != NULL);
   EdgeWorkList &copySkewList = edgeDelta().copySkewList();
@@ -309,8 +454,8 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
   do {
     // Here we walk the constraint graph to locate any SCCs and
     // collapse them to ensure that the solver will converge.
-    if (_cg)
-      sccs.findAndUnify(noMergeMask);
+    if (sccs)
+      sccs->findAndUnify(noMergeMask);
 
     // We need to seed the the solver with the appropriate
     // edges, either based on the SCCDetection traversal or the
@@ -318,7 +463,7 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
     if (seed) {
       seed = false;
       if (trace) fprintf(stderr,"\nSeeding solver:\n");
-      SCCDetection::CGNodeStack &stack = sccs.topoNodeStack();
+      SCCDetection::CGNodeStack &stack = sccs->topoNodeStack();
       while (!stack.empty()) {
         ConstraintGraphNode *node = stack.top();
         stack.pop();
@@ -359,7 +504,11 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
       ConstraintGraph::stats();
     }
     while (!copySkewList.empty()) {
-      ConstraintGraphEdge *edge = copySkewList.front();
+      ConstraintGraphEdge *edge = copySkewList.pop();
+      if (edge->checkFlags(CG_EDGE_TO_BE_DELETED)) {
+        ConstraintGraph::removeEdge(edge);
+        continue;
+      }
       if (trace) {
         fprintf(stderr," Copy Edge:");
         edge->print(stderr);
@@ -376,11 +525,14 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
         processSkew(edge);
         skewCount += 1;
       }
-      copySkewList.pop();
     }
 
     while (!loadStoreList.empty()) {
       ConstraintGraphEdge *edge = loadStoreList.pop();
+      if (edge->checkFlags(CG_EDGE_TO_BE_DELETED)) {
+        ConstraintGraph::removeEdge(edge);
+        continue;
+      }
       if (trace) {
         fprintf(stderr," Ld/St Edge:");
         edge->print(stderr);
@@ -411,6 +563,10 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
             "processed %d c, %d s, %d l, %d s edges in %.1lfs\n",
             iterCount,copyCount,skewCount,loadCount,storeCount,
             double(endTime-startTime)/1000);
+
+  if (sccs)
+    delete sccs;
+
   return true;
 }
 

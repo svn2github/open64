@@ -22,12 +22,9 @@ public:
   bool empty() const { return _copySkew.empty() &&
                               _loadStore.empty(); }
 
-  void remove(ConstraintGraphEdge *e) {
-    if (e->edgeType() & ETYPE_COPYSKEW)
-      _copySkew.remove(e);
-    else
-      _loadStore.remove(e);
-  }
+  void find(CGNodeId src, CGNodeId dst);
+  void findPtr(ConstraintGraphEdge *e);
+
 private:
   EdgeWorkList _copySkew;
   EdgeWorkList _loadStore;

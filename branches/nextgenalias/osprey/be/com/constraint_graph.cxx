@@ -186,8 +186,13 @@ ConstraintGraphNode::removeInEdge(ConstraintGraphEdge *edge)
 {
   CGEdgeSet &inEdgeSet = _getCGEdgeSet(edge->edgeType(),&_inEdges);
   CGEdgeSetIterator iter = inEdgeSet.find(edge);
-  if (iter != inEdgeSet.end())
-    inEdgeSet.erase(iter);
+  while (iter != inEdgeSet.end()) {
+    if (*iter == edge) {
+      inEdgeSet.erase(iter);
+      break;
+    }
+    ++iter;
+  }
 }
 
 void
@@ -195,11 +200,15 @@ ConstraintGraphNode::removeOutEdge(ConstraintGraphEdge *edge)
 {
   CGEdgeSet &outEdgeSet = _getCGEdgeSet(edge->edgeType(),&_outEdges);
   CGEdgeSetIterator iter = outEdgeSet.find(edge);
-  if (iter != outEdgeSet.end())
-    outEdgeSet.erase(iter);
-
-  if (edge->edgeType() == ETYPE_COPY && edge->size() == _maxAccessSize)
-    updateMaxAccessSize();
+  while (iter != outEdgeSet.end()) {
+    if (*iter == edge) {
+      outEdgeSet.erase(iter);
+      if (edge->edgeType() == ETYPE_COPY && edge->size() == _maxAccessSize)
+        updateMaxAccessSize();
+      break;
+    }
+    ++iter;
+  }
 }
 
 // Remove node from the points to set with qualifier qual of 'this'
@@ -429,6 +438,18 @@ StInfo::init(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
     _u._modRange = ModulusRange::build(ty_idx,0,memPool);
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
       _u._modRange->print(stderr);
+#if 0
+    if ( _u._modRange->mod() > Pointer_Size * 24 )
+    {
+      _u._modRange->mod(Pointer_Size * 24);
+      applyModulus();
+      if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+      {
+        fprintf(stderr,"Clamping modulus at: %d\n",Pointer_Size*24);
+        _u._modRange->print(stderr);
+      }
+    }
+#endif
   }
 
   // Treat every symbol as context-insensitive
@@ -2363,9 +2384,10 @@ ConstraintGraph::removeEdge(ConstraintGraphEdge *edge)
 {
   edge->srcNode()->removeOutEdge(edge);
   edge->destNode()->removeInEdge(edge);
-  if (workList())
-    workList()->remove(edge);
-  CXX_DELETE(edge,edgeMemPool);
+  if (!edge->checkFlags(CG_EDGE_IN_WORKLIST))
+    CXX_DELETE(edge,edgeMemPool);
+  else
+    edge->addFlags(CG_EDGE_TO_BE_DELETED);
 }
 
 static INT64
@@ -2407,7 +2429,7 @@ alignOffset(TY_IDX ty_idx, INT64 offset)
              TY_kind(fty) == KIND_STRUCT)
            offset = alignOffset(FLD_type(fld),offset);
          else
-           offset = start;
+           offset = offset & (~(Pointer_Size-1));
          break;
        }
     }
@@ -2486,6 +2508,7 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   // to offset zero.
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
     if (offset != -1 && (si->numOffsets() >= si->maxOffsets())) {
+      si->print(stderr,true);
       FmtAssert(false,("Need to fix getCGNode: too many offsets!\n"));
       offset = -1;
       // Check if node exists, if so return it

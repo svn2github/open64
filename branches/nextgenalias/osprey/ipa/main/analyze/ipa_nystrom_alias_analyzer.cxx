@@ -865,6 +865,7 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
                             list<pair<IPA_NODE *, CallSiteId> > &indirectCallList)
 {
   hash_set<ST *,hashST,equalST> calledFunc;
+  hash_map<NODE_INDEX,UINT32>   callerCount;
 
   IPA_NODE_ITER nodeIter(ipaCallGraph,DONTCARE);
   // First a quick walk of the call graph to determine all functions
@@ -918,6 +919,8 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
           IPA_NODE *callee = iter->second;
           edgeList.push_back(IPAEdge(caller->Node_Index(),
                                      callee->Node_Index(),callsite->id()));
+          UINT32 &cnt = callerCount[callee->Node_Index()];
+          cnt += 1;
         }
         // We are also tracking all called functions for determining
         // external calls
@@ -945,8 +948,25 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
     }
   }
 
+#if 0
+  const UINT32 callerLimit = 200;
+  for (hash_map<NODE_INDEX,UINT32>::iterator ix = callerCount.begin();
+      ix != callerCount.end(); ++ix) {
+    NODE_INDEX nodeIdx = ix->first;
+    UINT32 cnt = ix->second;
+    if ( cnt > callerLimit && nodeIdx != 1522 && nodeIdx != 2650) {
+      ConstraintGraph *calleeCG = cg(nodeIdx);
+      calleeCG->doNotConnect(true);
+      fprintf(stderr,"Callee %d has %d (> %d) callers: %s\n",
+              nodeIdx,cnt,callerLimit,
+              ipaCallGraph->Graph()->Node_User(nodeIdx)->Name());
+    }
+  }
+#endif
+
   if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
-      for (STToNodeMap::iterator i1 = _stToIndTgtMap.begin();
+
+    for (STToNodeMap::iterator i1 = _stToIndTgtMap.begin();
         i1 != _stToIndTgtMap.end(); ++i1) {
       ST *st = i1->first;
       IPA_NODE *node = i1->second;
@@ -1004,6 +1024,10 @@ IPA_NystromAliasAnalyzer::callGraphPrep(IPA_CALL_GRAPH *ipaCallGraph,
     }
     if (!calleeCG) {
       fprintf(stderr, "callGraphPrep: No CG for callee: %s\n", callee->Name());
+      continue;
+    }
+    if (calleeCG->doNotConnect()) {
+      fprintf(stderr, "callGraphPrep: Skipping callee: %s\n", callee->Name());
       continue;
     }
       

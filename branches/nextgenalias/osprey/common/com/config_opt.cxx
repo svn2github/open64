@@ -93,6 +93,7 @@ OPTION_LIST *Alias_Option = NULL;
 INT32 Alias_Query_Limit=INT32_MAX;
 char *Alias_Query_File=NULL;
 INT32 Alias_Nystrom_Solver_Track=0;
+BOOL Alias_Nystrom_Global_Cycle_Detection = TRUE;
 BOOL Alias_Pointer_Parms = TRUE;        /* Parms ptr indep? */
 BOOL Alias_Pointer_Cray = FALSE;        /* Cray pointer semantics? */
 #if defined(TARG_SL)
@@ -372,6 +373,12 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_INT32, OV_INTERNAL, TRUE, "nystrom_pts_track", "nystrom_pts_track",
       0, 0, INT32_MAX, &Alias_Nystrom_Solver_Track, NULL,
       "Track updates to the points-to set of provided node"
+  },
+
+  { OVK_BOOL, OV_INTERNAL, TRUE, "nystrom_global_cycle_detect",
+        "nystrom_global_cycle_detect",
+        0, 0, 0, &Alias_Nystrom_Global_Cycle_Detection, NULL,
+        "Control the use of cycle detection in the ipa constraint graph"
   },
 
   { OVK_INT32,	OV_SHY,		TRUE, "align_instructions",	"align_i",
