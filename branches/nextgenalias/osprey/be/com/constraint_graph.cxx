@@ -28,6 +28,7 @@ const PointsTo ConstraintGraphNode::emptyPointsToSet;
 const CGEdgeSet ConstraintGraphNode::emptyCGEdgeSet;
 hash_map<ST_IDX, ST_IDX> ConstraintGraph::origToCloneStIdxMap;
 EdgeDelta *ConstraintGraph::_workList = NULL;
+NodeWorkList *ConstraintGraph::_solverModList = NULL;
 
 static INT32
 getArraySize(WN *wn)
@@ -439,7 +440,7 @@ StInfo::init(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
       _u._modRange->print(stderr);
 #if 0
-    if ( _u._modRange->mod() > Pointer_Size * 24 )
+    if ( _u._modRange->mod() > Pointer_Size * 12 )
     {
       _u._modRange->mod(Pointer_Size * 24);
       applyModulus();
@@ -2463,8 +2464,19 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
     if (offset < -1)
       offset = -offset;
-    if (offset != -1)
+    if (offset != -1) {
+      // Ensure that the computed offset is aligned to a field boundary
+      INT64 origOffset = offset;
+      offset = alignOffset(si->ty_idx(),origOffset);
+#if 0
+      if (offset != origOffset) {
+        fprintf(stderr,"Aligned offset %d to %d for the following ST\n",
+                (int)origOffset,(int)offset);
+        si->print(stderr,true);
+      }
+#endif
       offset = si->applyModulus(offset);
+    }
     else {
       // If we are requesting offset -1 for a symbol that is already
       // field insensitive, there is no need to create a new node
@@ -2479,16 +2491,6 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
       else if (si->checkFlags(CG_ST_FLAGS_NOFIELD))
         offset = si->firstOffset()->offset();
     }
-    // Ensure that the computed offset is aligned to a field boundary
-    INT64 origOffset = offset;
-    offset = alignOffset(si->ty_idx(),origOffset);
-#if 0
-    if (offset != origOffset) {
-      fprintf(stderr,"Aligned offset %d to %d for the following ST\n",
-              (int)origOffset,(int)offset);
-      si->print(stderr,true);
-    }
-#endif
     if (si->varSize() != 0)
       Is_True(offset < si->varSize(), ("getCGNode: offset: %lld >= varSize"
               ": %lld\n", offset, si->varSize()));
@@ -2858,11 +2860,11 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
 
   // 4) Merge the points-to sets of the two nodes and adjust this's 
   //    points to set
-  for ( PointsToIterator pti(src); pti != 0; ++pti ) {
-    bool change = unionPointsTo(*pti,pti.qual());
-    if (change && ConstraintGraph::workList())
-      ConstraintGraph::addEdgesToWorkList(this);
-  }
+  bool change = false;
+  for ( PointsToIterator pti(src); pti != 0; ++pti )
+    change |= unionPointsTo(*pti,pti.qual());
+  if (change && ConstraintGraph::solverModList())
+    ConstraintGraph::solverModList()->push(this);
 
   // Remove src from the reverse points to set of all nodes in src's 
   // points to set
@@ -3079,6 +3081,8 @@ ConstraintGraphNode::print(FILE *file)
     fprintf(file, " parent: %d", parent()->_id);
   else
     fprintf(file, " parent: null"); 
+  if (checkFlags(CG_NODE_FLAGS_COLLAPSED))
+    fprintf(file, " collapsed: %d", collapsedParent());
   fprintf(file, " inKCycle: %d\n",  inKCycle());
   fprintf(file, " inCopySkewCGEdges: ");
   const CGEdgeSet &inCopySkew = inCopySkewEdges();

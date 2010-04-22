@@ -211,6 +211,10 @@ public:
     }
   }
 
+  UINT32 size() const {
+    return _list.size();
+  }
+
   list<T *> &workList(void) { return _list; }
 
 private:
@@ -366,6 +370,7 @@ public:
     _offset(offset),
     _flags(0),
     _inKCycle(0),
+    _topoOrderNum(0),
     _pointsToList(NULL),
     _revPointsToList(NULL),
     _repParent(NULL),
@@ -387,6 +392,7 @@ public:
     _offset(offset),
     _flags(flags),
     _inKCycle(inKCycle),
+    _topoOrderNum(0),
     _pointsToList(NULL),
     _revPointsToList(NULL),
     _repParent(NULL),
@@ -438,6 +444,11 @@ public:
   bool checkFlags(UINT32 flag) const { return _flags & flag; }
   void addFlags(UINT32 flag) { _flags |= flag; }
   void clearFlags(UINT32 flag) { _flags &= ~flag; }
+
+  // Determined during cycle detection, used to improve
+  // solver efficiency.
+  UINT32 topoOrderNum(void) const { return _topoOrderNum; }
+  void topoOrderNum(UINT32 v)     { _topoOrderNum = v; }
 
   ConstraintGraphNode *repParent() const { return _repParent; }
   void repParent(ConstraintGraphNode *p) { _repParent = p; }
@@ -729,6 +740,7 @@ private:
   CG_ST_IDX _cg_st_idx;
   INT32  _offset;
   UINT32 _flags;
+  UINT32 _topoOrderNum;
   UINT32 _inKCycle;
   PointsToList *_pointsToList;
   PointsToList *_revPointsToList;
@@ -1200,6 +1212,9 @@ public:
   static EdgeDelta *workList(void) { return _workList; }
   static void workList(EdgeDelta *list)   { _workList = list; }
 
+  static NodeWorkList *solverModList(void)   { return _solverModList; }
+  static void solverModList(NodeWorkList *l) { _solverModList = l; }
+
   static void stats(void);
 
   static char *
@@ -1461,6 +1476,11 @@ private:
   // Worklist used by the solver, but updated by other methods that
   // may delete edges during the solution process
   static EdgeDelta *_workList;
+
+  // List of nodes modified by the latest round of copy/skew edge
+  // processing in the solver.  Used to reduce outgoing edge walks
+  // during the solver.
+  static NodeWorkList *_solverModList;
 
   // Constraint graph build methods
 

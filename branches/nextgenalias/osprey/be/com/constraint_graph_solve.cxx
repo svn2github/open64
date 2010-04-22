@@ -42,8 +42,9 @@ public:
     _I(0),
     _D(graph->totalCGNodes()),
     _S(CGNodeDeque(mpool)),
-    _T(CGNodeDeque(mpool)),
-    _nodeCount(0)
+    //_T(CGNodeDeque(mpool)),
+    _nodeCount(0),
+    _topoOrderIndex(0)
   {}
 
   ~SCCDetection() {}
@@ -54,7 +55,7 @@ public:
   // Return a handle to the stack of nodes in topological
   // order.  This will be used to seed the initial solution
   // and improve efficiency.
-  CGNodeStack &topoNodeStack() { return _T; }
+  //CGNodeStack &topoNodeStack() { return _T; }
 
   typedef struct {
     size_t operator()(const ConstraintGraphNode *k) const
@@ -64,7 +65,6 @@ public:
   } hashCGNodeId;
   typedef hash_map<ConstraintGraphNode*,UINT32,hashCGNodeId> NodeToKValMap;
   typedef NodeToKValMap::const_iterator NodeToKValMapIterator;
-
 
 
 protected:
@@ -88,7 +88,8 @@ private:
   hash_map<CGNodeId,UINT32>   _D;
   hash_map<CGNodeId,CGNodeId> _R;
   CGNodeStack            _S;
-  CGNodeStack            _T;
+  //CGNodeStack            _T;
+  UINT32                 _topoOrderIndex;
 };
 
 class IPA_SCCDetection : public SCCDetection {
@@ -108,7 +109,6 @@ SCCDetection::visit(ConstraintGraphNode *v)
   _I += 1;
   _D[v->id()] = _I;
   _R[v->id()] = v->id();
-  //v->repParent(v);
   v->addFlags(CG_NODE_FLAGS_VISITED);
   for (CGEdgeSetIterator iter = v->outCopySkewEdges().begin();
       iter != v->outCopySkewEdges().end(); ++iter ) {
@@ -125,12 +125,6 @@ SCCDetection::visit(ConstraintGraphNode *v)
         CGNodeId rep;
         rep = _D[_R[v->id()]] < _D[_R[w->id()]] ? _R[v->id()] : _R[w->id()];
         _R[v->id()] = rep;
-#if 0
-        ConstraintGraphNode *rep;
-        rep = _D[v->repParent()->id()] < _D[w->repParent()->id()] ?
-            v->repParent() : w->repParent();
-        v->repParent(rep);
-#endif
       }
     }
   }
@@ -146,7 +140,8 @@ SCCDetection::visit(ConstraintGraphNode *v)
         _R[w->id()] = v->id(); /*w->repParent(v);*/
       }
     }
-    _T.push(v);
+    v->topoOrderNum(++_topoOrderIndex);
+    //_T.push(v);
   }
   else
     _S.push(v);
@@ -331,7 +326,7 @@ SCCDetection::findAndUnify(UINT32 noMergeMask)
   _D.clear();
   _R.clear();
   while (!_S.empty()) _S.pop();
-  while (!_T.empty()) _T.pop();
+  //while (!_T.empty()) _T.pop();
 
   // Mapping of representative node points to the original K value
   // used to determine the updated needed to the merged points-to sets.
@@ -425,6 +420,14 @@ ConstraintGraphSolve::cycleDetection(UINT32 noMergeMask)
   sccs.findAndUnify(noMergeMask);
 }
 
+static int
+topoCGNodeCompare(const void *n1, const void *n2)
+{
+  const ConstraintGraphNode *cgn1 = static_cast<const ConstraintGraphNode *>(n1);
+  const ConstraintGraphNode *cgn2 = static_cast<const ConstraintGraphNode *>(n2);
+  return (cgn1->topoOrderNum() < cgn2->topoOrderNum() ? -1 : 1);
+}
+
 // Core method to solve a constraint graph assuming that the
 // boundary conditions for the solution are provided by 'delta'
 // This method assumes that the constraint graph is acyclic.
@@ -441,6 +444,9 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
   bool seed = edgeDelta().empty() && (_cg != NULL);
   EdgeWorkList &copySkewList = edgeDelta().copySkewList();
   EdgeWorkList &loadStoreList = edgeDelta().loadStoreList();
+
+  NodeWorkList modNodeList;
+  ConstraintGraph::solverModList(&modNodeList);
 
   UINT32 iterCount = 0;
   UINT32 copyCount = 0;
@@ -463,69 +469,82 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
     if (seed) {
       seed = false;
       if (trace) fprintf(stderr,"\nSeeding solver:\n");
-      SCCDetection::CGNodeStack &stack = sccs->topoNodeStack();
-      while (!stack.empty()) {
-        ConstraintGraphNode *node = stack.top();
-        stack.pop();
+      ConstraintGraphNode **topoOrderArray =
+          (ConstraintGraphNode **)malloc(sizeof(ConstraintGraphNode *)*
+                                         _cg->totalCGNodes());
+      UINT32 i = 0;
+      for (CGNodeToIdMapIterator iter = _cg->lBegin(); iter != _cg->lEnd(); ++iter)
+        topoOrderArray[i++] = iter->first;
+      qsort(topoOrderArray,i,sizeof(ConstraintGraphNode *),topoCGNodeCompare);
+      // Add edges to be processed in topological order
+      for ( UINT32 j = 0; j < i; j++) {
+        ConstraintGraphNode *node = topoOrderArray[j];
         if (trace) fprintf(stderr,"Node %d\n",node->id());
-        CGEdgeSetIterator iter = node->outCopySkewEdges().begin();
-        if (iter != node->outCopySkewEdges().end()) {
-          if (trace) fprintf(stderr," Copy Edges:\n");
-          for ( ; iter != node->outCopySkewEdges().end();
-              iter++) {
-            ConstraintGraphEdge *edge = *iter;
-            if (trace) {
-              fprintf(stderr,"  Adding edge:");
-              edge->print(stderr);
-              fprintf(stderr,"\n");
-            }
-            copySkewList.push(edge);
-          }
-        }
-        CGEdgeSetIterator ldIter = node->outLoadStoreEdges().begin();
-        if (ldIter != node->outLoadStoreEdges().end()){
-          if (trace) fprintf(stderr," Ld/St Edges:\n");
-          for ( ; ldIter != node->outLoadStoreEdges().end();
-              ldIter++) {
-            ConstraintGraphEdge *edge = *ldIter;
-            if (trace) {
-              fprintf(stderr,"  Adding edge:");
-              edge->print(stderr);
-              fprintf(stderr,"\n");
-            }
-            loadStoreList.push(edge);
-          }
-        }
+        ConstraintGraph::addEdgesToWorkList(node);
       }
+      free(topoOrderArray);
     }
 
     if (trace) {
       fprintf(stderr,"Solver Iteration %d\n",++iterCount);
       ConstraintGraph::stats();
     }
-    while (!copySkewList.empty()) {
-      ConstraintGraphEdge *edge = copySkewList.pop();
-      if (edge->checkFlags(CG_EDGE_TO_BE_DELETED)) {
-        ConstraintGraph::removeEdge(edge);
-        continue;
+    do {
+      while (!copySkewList.empty()) {
+        ConstraintGraphEdge *edge = copySkewList.pop();
+        if (edge->checkFlags(CG_EDGE_TO_BE_DELETED)) {
+          ConstraintGraph::removeEdge(edge);
+          continue;
+        }
+        if (trace) {
+          fprintf(stderr," Copy Edge:");
+          edge->print(stderr);
+          fprintf(stderr,"\n");
+        }
+        if (edge->edgeType() == ETYPE_COPY) {
+          processAssign(edge);
+          copyCount += 1;
+        }
+        else {
+          FmtAssert(edge->edgeType() == ETYPE_SKEW,
+                    ("ConstraintGraph::solveConstraints: type %d edge in "
+                        "copy/skew worklist",edge->edgeType()));
+          processSkew(edge);
+          skewCount += 1;
+        }
       }
-      if (trace) {
-        fprintf(stderr," Copy Edge:");
-        edge->print(stderr);
-        fprintf(stderr,"\n");
+
+      // Determine which edges need to be visited as a result of the
+      // most recent round of copy edge processing.  We also do some
+      // work on the pts of the modified nodes to improve solver efficiency.
+      //NodeWorkList *modNodes = ConstraintGraph::solverModList();
+      if (!modNodeList.empty()) {
+        UINT32 numNodes = modNodeList.size();
+        if (trace)
+          fprintf(stderr, "Processing %d modified nodes\n",numNodes);
+        ConstraintGraphNode **topoOrderArray =
+            (ConstraintGraphNode **)malloc(sizeof(ConstraintGraphNode *)*
+                                           numNodes);
+        // Copy node ptrs to array
+        UINT32 i = 0;
+        while (!modNodeList.empty()) {
+          ConstraintGraphNode *node = modNodeList.pop();
+          topoOrderArray[i++] = node;
+
+          // Here we perform lots of other work on the points-to sets
+          // of the modified nodes
+
+          // aka "Place Holder"
+        }
+        // Sort based on topo-order num
+        qsort(topoOrderArray,i,sizeof(ConstraintGraphNode *),topoCGNodeCompare);
+        // Add edges to be processed in topological order
+        for ( UINT32 j = 0; j < i; j++)
+          ConstraintGraph::addEdgesToWorkList(topoOrderArray[j]);
+        free(topoOrderArray);
       }
-      if (edge->edgeType() == ETYPE_COPY) {
-        processAssign(edge);
-        copyCount += 1;
-      }
-      else {
-        FmtAssert(edge->edgeType() == ETYPE_SKEW,
-            ("ConstraintGraph::solveConstraints: type %d edge in "
-                "copy/skew worklist",edge->edgeType()));
-        processSkew(edge);
-        skewCount += 1;
-      }
-    }
+
+    } while (!copySkewList.empty());
 
     while (!loadStoreList.empty()) {
       ConstraintGraphEdge *edge = loadStoreList.pop();
@@ -564,6 +583,7 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
             iterCount,copyCount,skewCount,loadCount,storeCount,
             double(endTime-startTime)/1000);
 
+  ConstraintGraph::solverModList(NULL);
   if (sccs)
     delete sccs;
 
@@ -839,7 +859,7 @@ ConstraintGraphSolve::updateOffsets(const ConstraintGraphNode *dst,
       change |= cur->unionPointsTo(pts, dstQual);
       // Mark outgoing edges as to be updated....
       if (change)
-        ConstraintGraph::addEdgesToWorkList(cur); 
+        ConstraintGraph::solverModList()->push(cur);
       cur = cur->nextOffset();
     }
   }
@@ -856,12 +876,12 @@ ConstraintGraphSolve::updateOffsets(const ConstraintGraphNode *dst,
       // if it exists
       bool change = cur->unionPointsTo(pts,dstQual);
       if (change)
-        ConstraintGraph::addEdgesToWorkList(cur);
+        ConstraintGraph::solverModList()->push(cur);
       cur = cur->nextOffset();
     }
     while (cur != NULL && cur->offset() < dst->offset()) {
       if (cur->offset() + cur->maxAccessSize() > dst->offset())
-        ConstraintGraph::addEdgesToWorkList(cur);
+        ConstraintGraph::solverModList()->push(cur);
       cur = cur->nextOffset();
     }
   }
@@ -1223,7 +1243,7 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
           }
           dstChange |= change;
           if (change) {
-            ConstraintGraph::addEdgesToWorkList(dstNode);
+            ConstraintGraph::solverModList()->push(dstNode);
           }
           cur = cur->nextOffset();
         }
@@ -1248,7 +1268,7 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
           change |= dst->unionPointsTo(tmp, dstQual);
         }
         if (change) {
-          ConstraintGraph::addEdgesToWorkList(dst);
+          ConstraintGraph::solverModList()->push(dst);
           updateOffsets(dst,*pti,dstQual);
         }
       }
@@ -1337,7 +1357,7 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
       ConstraintGraph::adjustPointsToForKCycle(dst, diff, tmp1,CQ_NONE);
       bool change = dst->unionPointsTo(tmp1,dstQual);
       if (change) {
-        ConstraintGraph::addEdgesToWorkList(dst);
+        ConstraintGraph::solverModList()->push(dst);
         updateOffsets(dst,tmp1,dstQual);
       }
     }
@@ -1530,7 +1550,7 @@ ConstraintGraphSolve::processStore(const ConstraintGraphEdge *edge)
           for (PointsToIterator pti(src); pti != 0; ++pti)
             change |= node->unionPointsTo(*pti,CQ_GBL);
           if (change)
-            ConstraintGraph::addEdgesToWorkList(node);
+            ConstraintGraph::solverModList()->push(node);
         }
       }
     }
