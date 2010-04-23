@@ -442,15 +442,12 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
         // Add special copy edge from newRepParent if !PREG
         if (!oldRepParent->isOnlyOffset()) {
           bool added = false;
-          ConstraintGraphEdge *newEdge;
           if (newRepParent->cg() != oldRepParent->cg())
-            newEdge =
-              ConstraintGraph::addEdge(newRepParent, oldRepParent, ETYPE_COPY,
-                                       CQ_GBL, 0, added, CG_EDGE_PARENT_COPY);
+            ConstraintGraph::addEdge(newRepParent, oldRepParent, ETYPE_COPY,
+                                     CQ_GBL, 0, added, CG_EDGE_PARENT_COPY);
           else
-            newEdge = 
-                ConstraintGraph::addEdge(newRepParent, oldRepParent, ETYPE_COPY,
-                                         CQ_HZ, 0, added, CG_EDGE_PARENT_COPY);
+            ConstraintGraph::addEdge(newRepParent, oldRepParent, ETYPE_COPY,
+                                     CQ_HZ, 0, added, CG_EDGE_PARENT_COPY);
           FmtAssert(added, ("ConstraintGraph::merge: failed to add "
                             "special copy edge"));
         }
@@ -1438,10 +1435,11 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
 
     bool added = false;
     INT64 size = formal->stInfo()->varSize();
-    ConstraintGraphEdge *edge = addEdge(actual->parent(),formal->parent(),
-                                        ETYPE_COPY,CQ_DN,size,added);
+    CGEdgeSet edgeSet;
+    added = addPtrAlignedEdges(actual->parent(),formal->parent(),
+                               ETYPE_COPY,CQ_DN,size,edgeSet);
     if (added)
-      delta.add(edge);
+      delta.add(edgeSet);
   }
 
   // If we have more actuals than formals either we either have a
@@ -1460,10 +1458,11 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
         continue;
       INT64 size = actual->stInfo()->varSize();
       bool added = false;
-      ConstraintGraphEdge *edge = addEdge(actual->parent(),lastFormal->parent(),
-                                          ETYPE_COPY,CQ_DN,size,added);
+      CGEdgeSet edgeSet;
+      added = addPtrAlignedEdges(actual->parent(),lastFormal->parent(),
+                                 ETYPE_COPY,CQ_DN,size,edgeSet);
       if (added)
-        delta.add(edge);
+        delta.add(edgeSet);
     }
   }
 
@@ -1543,12 +1542,12 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
       if (formalRet->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
         continue;
       INT64 size = actualRet->stInfo()->varSize();
-      bool added;
-      ConstraintGraphEdge *edge = 
-                addEdge(formalRet->parent(),actualRet->parent(),ETYPE_COPY,
-                        CQ_UP,size,added);
+      bool added = false;
+      CGEdgeSet edgeSet;
+      added = addPtrAlignedEdges(formalRet->parent(),actualRet->parent(),
+                                 ETYPE_COPY,CQ_UP,size,edgeSet);
       if (added)
-        delta.add(edge);
+        delta.add(edgeSet);
     }
   }
 }

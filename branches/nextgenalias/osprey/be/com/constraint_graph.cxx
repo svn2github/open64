@@ -1237,6 +1237,9 @@ ConstraintGraph::processInito(const INITO *const inito)
        iter != valList->end(); iter++) {
     UINT32 offset = iter->first;
     PointsTo *pts = iter->second;
+    if (pts->numBits() == 1 && 
+        pts->isSet(ConstraintGraph::notAPointer()->id()))
+      continue;
     ConstraintGraphNode *node = getCGNode(CG_ST_st_idx(base_st),
                                           base_offset + offset);
     ConstraintGraphNode::sanitizePointsTo(*pts,NULL,CQ_NONE);
@@ -2339,14 +2342,132 @@ ConstraintGraph::getCGNode(WN *wn)
   return n;
 }
 
+// Return off that is pointer aligned
+static INT32 
+applyModulusAndPtrAlign(StInfo *stInfo, INT32 off)
+{
+  off = stInfo->applyModulus(off);
+  while ((off & (Pointer_Size-1)) != 0) {
+    off = off & ~(Pointer_Size-1);
+    off  = stInfo->applyModulus(off);
+  }
+  return off;
+}
+
+bool
+ConstraintGraph::addPtrAlignedEdges(ConstraintGraphNode *src,
+                                    ConstraintGraphNode *dest,
+                                    CGEdgeType etype,
+                                    CGEdgeQual qual,
+                                    INT32 sizeOrSkew,
+                                    CGEdgeSet &edgeSet,
+                                    UINT16 flags)
+{
+  bool added = false;
+  ConstraintGraphNode *nsrc1 = NULL;
+  ConstraintGraphNode *nsrc2 = NULL;
+  ConstraintGraphNode *ndest1 = NULL;
+  ConstraintGraphNode *ndest2 = NULL;
+
+  if (sizeOrSkew == 0)
+    return false;
+
+  if (etype == ETYPE_COPY) 
+  {
+    sizeOrSkew = (sizeOrSkew + Pointer_Size-1) & ~(Pointer_Size-1);
+    for (UINT32 i = 0; i < sizeOrSkew/Pointer_Size; i++) {
+      // If src is -1, preg
+      if (src->offset() == -1 || 
+          src->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) {
+        nsrc1 = src;
+        nsrc2 = src;
+      } else {
+        // Get the 2 offsets that the src offset + Pointer_Size could span
+        // Note, they could be same if the offset is aligned
+        INT32 noff = src->offset() + i*Pointer_Size;
+        INT32 off1 = noff & ~(Pointer_Size-1);
+        off1 = applyModulusAndPtrAlign(src->stInfo(), off1);
+        INT32 off2 = (noff + Pointer_Size-1) & ~(Pointer_Size-1);
+        off2 = applyModulusAndPtrAlign(src->stInfo(), off2);
+        nsrc1 = src->cg()->getCGNode(src->cg_st_idx(), off1);
+        nsrc2 = src->cg()->getCGNode(src->cg_st_idx(), off2);
+      }
+      // If dest is -1, preg
+      if (dest->offset() == -1 || 
+          dest->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) {
+        ndest1 = dest;
+        ndest2 = dest;
+      } else {
+        // Get the 2 offsets that the dest offset + Pointer_Size could span
+        // Note, they could be same if the offset is aligned
+        INT32 noff = dest->offset() + i*Pointer_Size;
+        INT32 off1 = noff & ~(Pointer_Size-1);
+        off1 = applyModulusAndPtrAlign(dest->stInfo(), off1);
+        INT32 off2 = (noff + Pointer_Size-1) & ~(Pointer_Size-1);
+        off2 = applyModulusAndPtrAlign(dest->stInfo(), off2);
+        ndest1 = dest->cg()->getCGNode(dest->cg_st_idx(), off1);
+        ndest2 = dest->cg()->getCGNode(dest->cg_st_idx(), off2);
+      }
+      bool eadded1 = false;
+      bool eadded2 = false;
+      // Since the new aligned src/dest could be different from the original
+      // src and dest (which are expected to not be merged nodes), we need
+      // to materialize the edges between their parents, in case the new 
+      // src/dest are merged
+      ConstraintGraphEdge *edge1 = 
+          _addEdge(nsrc1->parent(), ndest1->parent(), etype, qual,
+                   Pointer_Size, eadded1, flags);
+      ConstraintGraphEdge *edge2 = 
+          _addEdge(nsrc2->parent(), ndest2->parent(), etype, qual,
+                   Pointer_Size, eadded2, flags);
+      added |= (eadded1 | eadded2);
+      edgeSet.insert(edge1);
+    }
+    // Since we could have added multiple edges, return NULL
+    return added;
+  } 
+  // Skew/Load/Store
+  else 
+  {
+    // Align skews to nearest pointer boundary that is less than src/dest offset
+    if (src->stInfo()->checkFlags(CG_ST_FLAGS_PREG) ||
+        src->offset() == -1)
+      nsrc1 = src;
+    else {
+      INT32 newOffset = src->offset() & ~(Pointer_Size - 1);
+      nsrc1 = src->cg()->getCGNode(src->cg_st_idx(), newOffset);
+    }
+    if (dest->stInfo()->checkFlags(CG_ST_FLAGS_PREG) ||
+        dest->offset() == -1)
+      ndest1 = dest;
+    else {
+      INT32 newOffset = dest->offset() & ~(Pointer_Size - 1);
+      ndest1 = dest->cg()->getCGNode(dest->cg_st_idx(), newOffset);
+    }
+    // Since the new aligned src/dest could be different from the original
+    // src and dest (which are expected to not be merged nodes), we need
+    // to materialize the edges between their parents, in case the new
+    // src and dest are merged
+    ConstraintGraphEdge *edge = 
+              _addEdge(nsrc1->parent(), ndest1->parent(), etype, qual,
+                       sizeOrSkew, added, flags);
+    edgeSet.insert(edge);
+    return added;
+  }
+}
+                                    
 // Add edge between src and dest, return the newly added edge if it does
 // not exist and set added = true, else return the existing edge and
 // set added = false
+// Called if you want to directly connect src and dest
 ConstraintGraphEdge *
-ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
-                         CGEdgeType etype, CGEdgeQual qual, INT32 sizeOrSkew, 
-                         bool &added, UINT16 flags)
+ConstraintGraph::_addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
+                          CGEdgeType etype, CGEdgeQual qual, INT32 sizeOrSkew, 
+                          bool &added, UINT16 flags)
 {
+  src->checkIsPtrAligned();
+  dest->checkIsPtrAligned();
+
   ConstraintGraphEdge cgEdge(src, dest, etype, qual, sizeOrSkew);
 
   ConstraintGraphEdge *retSrcEdge = src->outEdge(&cgEdge);
@@ -2377,6 +2498,25 @@ ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
     FmtAssert(FALSE, 
               ("Either edge exists in one of src/dest but not in other!\n"));
     return NULL;
+  }
+}
+
+ConstraintGraphEdge *
+ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
+                         CGEdgeType etype, CGEdgeQual qual, INT32 sizeOrSkew, 
+                         bool &added, UINT16 flags)
+{
+  // For  parent copy, add edge directly, as they are expected to be ptr
+  // aligned
+  if (etype == ETYPE_COPY && (flags & CG_EDGE_PARENT_COPY))
+    return _addEdge(src, dest, etype, qual, sizeOrSkew, added, flags);
+  else
+  {
+    CGEdgeSet edgeSet;
+    added = addPtrAlignedEdges(src, dest, etype, qual, sizeOrSkew,
+                               edgeSet, flags);
+    // We could potentially add multiple edges. Return the first one
+    return edgeSet.empty() ? NULL : *(edgeSet.begin());
   }
 }
 
@@ -2709,7 +2849,6 @@ ConstraintGraphNode::collapse(ConstraintGraphNode *cur)
     // PARENT_COPY edges are not required
     if (cur != curParent && !curParent->isOnlyOffset()) {
       bool added = false;
-      ConstraintGraphEdge *newEdge =
       ConstraintGraph::addEdge(thisParent, curParent, ETYPE_COPY, CQ_HZ, 0,
                                added, CG_EDGE_PARENT_COPY);
       FmtAssert(added, (":merge: failed to add special copy edge"));
@@ -3439,6 +3578,16 @@ ConstraintGraph::findMaxTypeSize()
   for (++ty; ty != Ty_tab.end(); ty++)
     size += TY_size(*ty);
   return size;
+}
+
+// We expect pts to sets to be at ptr aligned boundaries
+void
+ConstraintGraphNode::checkIsPtrAligned()
+{
+  FmtAssert(stInfo()->checkFlags(CG_ST_FLAGS_PREG) ||
+            offset() == -1 ||
+            (offset() % Pointer_Size == 0),
+            ("Expecting node: %d to be aligned\n", id()));
 }
 
 // Merge nodes in rhs to this.

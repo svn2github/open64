@@ -264,9 +264,8 @@ SCCDetection::checkUnify(ConstraintGraphNode *node,
       // If node is the only offset, PARENT_COPY edges are not required
       if (!node->isOnlyOffset()) {
         bool added = false;
-        ConstraintGraphEdge *newEdge =
-            ConstraintGraph::addEdge(rep, node, ETYPE_COPY, CQ_HZ, 0,
-                                     added, CG_EDGE_PARENT_COPY);
+        ConstraintGraph::addEdge(rep, node, ETYPE_COPY, CQ_HZ, 0,
+                                 added, CG_EDGE_PARENT_COPY);
         FmtAssert(added, (":merge: failed to add special copy edge"));
       }
     }
@@ -337,6 +336,13 @@ SCCDetection::findAndUnify(UINT32 noMergeMask)
   pointsToAdjust(nodeToKValMap);
 }
 
+void
+EdgeDelta::add(CGEdgeSet &edgeSet)
+{
+  for (CGEdgeSetIterator iter = edgeSet.begin(); iter != edgeSet.end(); iter++)
+    add(*iter);
+}
+      
 void
 EdgeDelta::add(ConstraintGraphEdge *e)
 {
@@ -967,7 +973,7 @@ ConstraintGraphNode::sanityCheckPointsTo(CGEdgeQual qual)
     // the COLLASPED flag.
     FmtAssert(!node->checkFlags(CG_NODE_FLAGS_COLLAPSED),
               ("Merge node failure: found COLLAPSED node %d with parent %d "
-               "in pts of node %d",node->id(),node->parent()->id(),id()));
+               "in pts of node %d",node->id(),node->collapsedParent(),id()));
     // If "node" is present in the pts of "this", then "this"
     // must be in the rev-pts of "node".  Here we are checking
     // for missing nodes in the rev-pts set.
@@ -1009,6 +1015,9 @@ ConstraintGraphNode::addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
                 SYM_ST_IDX(node->cg_st_idx()),node->offset()));
   node->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
   ConstraintGraphNode *repNode = findRep();
+  // Check if add to a ptr aligned node. Ignore if we are adding blackholes
+  if (node->id() != ConstraintGraph::blackHole()->id())
+    repNode->checkIsPtrAligned();
   bool change = repNode->_addPointsTo(node->id(),qual);
   if (change) {
     addFlags(CG_NODE_FLAGS_PTSMOD);
@@ -1036,6 +1045,11 @@ bool
 ConstraintGraphNode::unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual)
 {
   bool change = false;
+
+  if (ptsToSet.isEmpty())
+    return change;
+
+  findRep()->checkIsPtrAligned();
 
   // First we compute the difference between the current points-to
   // and the "new" values to be merged.
@@ -1469,12 +1483,18 @@ ConstraintGraphSolve::addCopiesForLoadStore(ConstraintGraphNode *src,
       }
     }
 
-    newEdge = ConstraintGraph::addEdge(copySrc, copyDst,
-                                       ETYPE_COPY,qual,size,added);
+    CGEdgeSet newEdgeSet;
+    added = ConstraintGraph::addPtrAlignedEdges(copySrc, copyDst, ETYPE_COPY,
+                                                qual, size, newEdgeSet);
     if (added) {
-      if (nodeRep->offset() == -1)
-        removeFieldSensitiveEdges(etype,newEdge);
-      edgeDelta().add(newEdge);
+     if (nodeRep->offset() == -1) {
+        for (CGEdgeSetIterator iter = newEdgeSet.begin();
+             iter != newEdgeSet.end(); iter++) {
+          ConstraintGraphEdge *newEdge = *iter;
+          removeFieldSensitiveEdges(etype,newEdge);
+        }
+      }
+      edgeDelta().add(newEdgeSet);
     }
   }
 }
@@ -1679,9 +1699,8 @@ ConstraintGraph::simpleOptimizer()
     if (!toBeMergedNode->isOnlyOffset()) {
       FmtAssert(toBeMergedNode != srcNode, (""));
       bool added = false;
-      ConstraintGraphEdge *newEdge = 
-         ConstraintGraph::addEdge(parentNode, toBeMergedNode, ETYPE_COPY,
-                                  CQ_HZ, 0, added, CG_EDGE_PARENT_COPY);
+      ConstraintGraph::addEdge(parentNode, toBeMergedNode, ETYPE_COPY,
+                               CQ_HZ, 0, added, CG_EDGE_PARENT_COPY);
       FmtAssert(added, ("merge: failed to add special copy edge"));
     }
     if (toBeMergedNode->stInfo()->checkFlags(CG_ST_FLAGS_PREG) &&

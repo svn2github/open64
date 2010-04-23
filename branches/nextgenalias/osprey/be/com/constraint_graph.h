@@ -653,6 +653,8 @@ public:
   // Copy contents of node into 'this'
   void copy(ConstraintGraphNode *node);
 
+  void checkIsPtrAligned();
+
   typedef struct
   {
     size_t operator()(const ConstraintGraphNode *k) const
@@ -1167,6 +1169,14 @@ public:
   static CGIdToNodeMapIterator gBegin() { return cgIdToNodeMap.begin(); }
   static CGIdToNodeMapIterator gEnd()   { return cgIdToNodeMap.end(); }
 
+  static bool addPtrAlignedEdges(ConstraintGraphNode *src,
+                                 ConstraintGraphNode *dest,
+                                 CGEdgeType etype,
+                                 CGEdgeQual qual,
+                                 INT32 sizeOrSkew,
+                                 CGEdgeSet &edgeSet,
+                                 UINT16 flags = 0);
+
   static ConstraintGraphEdge *addEdge(ConstraintGraphNode *src,
                                       ConstraintGraphNode *dest,
                                       CGEdgeType etype, CGEdgeQual qual,
@@ -1483,6 +1493,12 @@ private:
   // processing in the solver.  Used to reduce outgoing edge walks
   // during the solver.
   static NodeWorkList *_solverModList;
+
+  static ConstraintGraphEdge *_addEdge(ConstraintGraphNode *src,
+                                       ConstraintGraphNode *dest,
+                                       CGEdgeType etype, CGEdgeQual qual,
+                                       INT32 sizeOrSkew, bool &added,
+                                       UINT16 flags = 0);
 
   // Constraint graph build methods
 
