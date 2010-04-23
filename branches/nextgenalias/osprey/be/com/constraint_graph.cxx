@@ -2391,8 +2391,8 @@ ConstraintGraph::removeEdge(ConstraintGraphEdge *edge)
     edge->addFlags(CG_EDGE_TO_BE_DELETED);
 }
 
-static INT64
-alignOffset(TY_IDX ty_idx, INT64 offset)
+INT64
+StInfo::alignOffset(TY_IDX ty_idx, INT64 offset)
 {
   // If the offset is already aligned to Pointer_Size, there
   // is not need to adjust.  It is the sub-pointer size offsets
@@ -2467,7 +2467,7 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
     if (offset != -1) {
       // Ensure that the computed offset is aligned to a field boundary
       INT64 origOffset = offset;
-      offset = alignOffset(si->ty_idx(),origOffset);
+      offset = si->alignOffset(si->ty_idx(),origOffset);
 #if 0
       if (offset != origOffset) {
         fprintf(stderr,"Aligned offset %d to %d for the following ST\n",

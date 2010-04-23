@@ -983,6 +983,8 @@ public:
   INT64 varSize() const { return _varSize; }
   void varSize(INT64 size) { _varSize = size; }
 
+  INT64 alignOffset(TY_IDX ty_idx, INT64 offset);
+
   // Retrieve the modulus.  Note that the modulus obtained
   // from this method should NOT be used to adjust the offset.
   // If that is the goal, use applyModulus(UINT32) instead.
