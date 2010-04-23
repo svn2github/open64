@@ -648,6 +648,13 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
 
   IPA_NODE_CONTEXT context (node);	// switch to this node's context
 
+  // Map WN to its new unique CGNodeId for the Nystrom alias analyzer
+  if (Alias_Nystrom_Analyzer) {
+    IPA_NystromAliasAnalyzer::aliasAnalyzer()->updateLocalSyms(node);
+    IPA_NystromAliasAnalyzer::aliasAnalyzer()->
+                              mapWNToUniqCallSiteCGNodeId(node);
+  }
+
 #ifdef KEY
   if (PU_src_lang (node->Get_PU()) & PU_CXX_LANG)
     IPA_update_ehinfo_in_pu (node);
@@ -710,11 +717,6 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
 				      !node->Has_No_Aggr_Cprop()));
 	
   }
-
-  // Map WN to its new unique CGNodeId for the Nystrom alias analyzer
-  if (Alias_Nystrom_Analyzer)
-    IPA_NystromAliasAnalyzer::aliasAnalyzer()->
-                              mapWNToUniqCallSiteCGNodeId(node);
 
   return node;
 } // IPO_Process_node
