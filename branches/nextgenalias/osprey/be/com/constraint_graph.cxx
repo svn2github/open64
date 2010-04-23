@@ -2430,7 +2430,7 @@ StInfo::alignOffset(TY_IDX ty_idx, INT64 offset)
              TY_kind(fty) == KIND_STRUCT)
            offset = alignOffset(FLD_type(fld),offset);
          else
-           offset = offset & (~(Pointer_Size-1));
+           offset = start;
          break;
        }
     }
