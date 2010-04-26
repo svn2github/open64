@@ -2374,8 +2374,9 @@ ConstraintGraph::addPtrAlignedEdges(ConstraintGraphNode *src,
 
   if (etype == ETYPE_COPY) 
   {
-    sizeOrSkew = (sizeOrSkew + Pointer_Size-1) & ~(Pointer_Size-1);
-    for (UINT32 i = 0; i < sizeOrSkew/Pointer_Size; i++) {
+    UINT32 rem = sizeOrSkew;
+    UINT32 s = (sizeOrSkew + Pointer_Size-1) & ~(Pointer_Size-1);
+    for (UINT32 i = 0; i < s/Pointer_Size; i++, rem-=Pointer_Size) {
       // If src is -1, preg
       if (src->offset() == -1 || 
           src->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) {
@@ -2387,7 +2388,11 @@ ConstraintGraph::addPtrAlignedEdges(ConstraintGraphNode *src,
         INT32 noff = src->offset() + i*Pointer_Size;
         INT32 off1 = noff & ~(Pointer_Size-1);
         off1 = applyModulusAndPtrAlign(src->stInfo(), off1);
-        INT32 off2 = (noff + Pointer_Size-1) & ~(Pointer_Size-1);
+        INT32 off2;
+        if (rem < Pointer_Size) 
+          off2 = (noff + rem) & ~(Pointer_Size-1);
+        else
+          off2 = (noff + Pointer_Size-1) & ~(Pointer_Size-1);
         off2 = applyModulusAndPtrAlign(src->stInfo(), off2);
         nsrc1 = src->cg()->getCGNode(src->cg_st_idx(), off1);
         nsrc2 = src->cg()->getCGNode(src->cg_st_idx(), off2);
@@ -2403,7 +2408,11 @@ ConstraintGraph::addPtrAlignedEdges(ConstraintGraphNode *src,
         INT32 noff = dest->offset() + i*Pointer_Size;
         INT32 off1 = noff & ~(Pointer_Size-1);
         off1 = applyModulusAndPtrAlign(dest->stInfo(), off1);
-        INT32 off2 = (noff + Pointer_Size-1) & ~(Pointer_Size-1);
+        INT32 off2;
+        if (rem < Pointer_Size) 
+          off2 = (noff + rem) & ~(Pointer_Size-1);
+        else
+          off2 = (noff + Pointer_Size-1) & ~(Pointer_Size-1);
         off2 = applyModulusAndPtrAlign(dest->stInfo(), off2);
         ndest1 = dest->cg()->getCGNode(dest->cg_st_idx(), off1);
         ndest2 = dest->cg()->getCGNode(dest->cg_st_idx(), off2);
@@ -2423,18 +2432,18 @@ ConstraintGraph::addPtrAlignedEdges(ConstraintGraphNode *src,
       added |= (eadded1 | eadded2);
       edgeSet.insert(edge1);
     }
-    // Since we could have added multiple edges, return NULL
     return added;
   } 
   // Skew/Load/Store
   else 
   {
-    // Align skews to nearest pointer boundary that is less than src/dest offset
+    // Align to nearest pointer boundary that is less than src/dest offset
     if (src->stInfo()->checkFlags(CG_ST_FLAGS_PREG) ||
         src->offset() == -1)
       nsrc1 = src;
     else {
       INT32 newOffset = src->offset() & ~(Pointer_Size - 1);
+      newOffset = applyModulusAndPtrAlign(src->stInfo(), newOffset);
       nsrc1 = src->cg()->getCGNode(src->cg_st_idx(), newOffset);
     }
     if (dest->stInfo()->checkFlags(CG_ST_FLAGS_PREG) ||
@@ -2442,6 +2451,7 @@ ConstraintGraph::addPtrAlignedEdges(ConstraintGraphNode *src,
       ndest1 = dest;
     else {
       INT32 newOffset = dest->offset() & ~(Pointer_Size - 1);
+      newOffset = applyModulusAndPtrAlign(dest->stInfo(), newOffset);
       ndest1 = dest->cg()->getCGNode(dest->cg_st_idx(), newOffset);
     }
     // Since the new aligned src/dest could be different from the original

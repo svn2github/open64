@@ -1661,6 +1661,20 @@ ConstraintGraph::updateCallSiteForBE(CallSite *cs)
   // fprintf(stderr, " Mapping callsite %d\n", cs->id());
 }
 
+static void 
+mapStInfoAndNodesLocally(StInfo *stInfo, CG_ST_IDX cg_st_idx,
+                         ConstraintGraph *localCG)
+{
+  localCG->mapStInfo(stInfo, cg_st_idx, cg_st_idx);
+  ConstraintGraphNode *node = stInfo->firstOffset();
+  while (node) {
+    FmtAssert(localCG->checkCGNode(cg_st_idx, node->offset()) == NULL,
+              ("node: %d not expected in localCG", node->id()));
+    localCG->mapCGNode(node);
+    node = node->nextOffset();
+  }
+}
+
 void
 IPA_NystromAliasAnalyzer::updateCGForBE(IPA_NODE *ipaNode)
 {
@@ -1698,14 +1712,7 @@ IPA_NystromAliasAnalyzer::updateCGForBE(IPA_NODE *ipaNode)
             if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
               fprintf(stderr, " updateCGForBE global: %s\n",
                       ST_name(cg_st_idx));
-            localCG->mapStInfo(globalStInfo, cg_st_idx, cg_st_idx);
-            ConstraintGraphNode *globalCGNode = globalStInfo->firstOffset();
-            while (globalCGNode) {
-              FmtAssert(localCG->checkCGNode(cg_st_idx, globalCGNode->offset())
-                        == NULL, ("globalCGNode not expected in localCG"));
-              localCG->mapCGNode(globalCGNode);
-              globalCGNode = globalCGNode->nextOffset();
-            }
+            mapStInfoAndNodesLocally(globalStInfo, cg_st_idx, localCG);
           }
         }
       }
@@ -1750,6 +1757,18 @@ IPA_NystromAliasAnalyzer::updateCGForBE(IPA_NODE *ipaNode)
         // Check if it is already mapped to the localCG
         if (! localCG->checkCGNode(uniqNode->cg_st_idx(), uniqNode->offset()) ) 
         {
+          if (uniqNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
+            if (localCG->stInfo(uniqNode->cg_st_idx()) == NULL)
+              mapStInfoAndNodesLocally(uniqNode->stInfo(),
+                                       uniqNode->cg_st_idx(),
+                                       localCG);
+            // The collapsed node may/may not be in the StInfo list.
+            // So check and add 
+            if (! localCG->checkCGNode(uniqNode->cg_st_idx(),
+                                       uniqNode->offset()) )
+              localCG->mapCGNode(uniqNode);
+            continue;
+          }
           // Add the StInfo and all the nodes
           CG_ST_IDX cg_st_idx = uniqNode->cg_st_idx();
           StInfo *globalStInfo = uniqNode->stInfo();
@@ -1757,15 +1776,7 @@ IPA_NystromAliasAnalyzer::updateCGForBE(IPA_NODE *ipaNode)
                     ("Not expecting StInfo"));
           if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
             fprintf(stderr, " updateCGForBE global: %s\n", ST_name(cg_st_idx));
-          localCG->mapStInfo(globalStInfo, cg_st_idx, cg_st_idx);
-          ConstraintGraphNode *globalCGNode = globalStInfo->firstOffset();
-          while (globalCGNode) {
-            FmtAssert(localCG->checkCGNode(cg_st_idx, 
-                                           globalCGNode->offset()) == NULL,
-                      ("globalCGNode not expected in localCG"));
-            localCG->mapCGNode(globalCGNode);
-            globalCGNode = globalCGNode->nextOffset();
-          }
+          mapStInfoAndNodesLocally(globalStInfo, cg_st_idx, localCG);
           // This node should have been added by now
           FmtAssert(localCG->checkCGNode(uniqNode->cg_st_idx(),
                                          uniqNode->offset()) != NULL,
@@ -1803,26 +1814,43 @@ IPA_NystromAliasAnalyzer::updateCGForBE(IPA_NODE *ipaNode)
             }
           }
           if (!found) {
+            if (uniqNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
+              if (localCG->stInfo(uniqNode->cg_st_idx()) == NULL)
+                mapStInfoAndNodesLocally(uniqNode->stInfo(), 
+                                         uniqNode->cg_st_idx(),
+                                         localCG);
+              // The collapsed node may/may not be in the StInfo list.
+              // So check and add 
+              if (! localCG->checkCGNode(uniqNode->cg_st_idx(),
+                                         uniqNode->offset()) )
+                localCG->mapCGNode(uniqNode);
+              continue;
+            }
             // Remap the remote StInfo and its associated nodes to the localCG
             // using the remote pu/file idx   
             StInfo *remoteStInfo = uniqNode->stInfo();
             FmtAssert(localCG->stInfo(uniqNode->cg_st_idx()) == NULL,
                       ("remoteStInfo not expected in localCG"));
-            localCG->mapStInfo(remoteStInfo, uniqNode->cg_st_idx(),
-                               uniqNode->cg_st_idx());
-            ConstraintGraphNode *remoteCGNode = remoteStInfo->firstOffset();
-            while (remoteCGNode) {
-              FmtAssert(localCG->checkCGNode(uniqNode->cg_st_idx(), 
-                                             remoteCGNode->offset()) == NULL,
-                        ("remoteCGNode not expected in localCG"));
-              if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
-                fprintf(stderr, " updateCGForBE remotelocal node %d\n",
-                      remoteCGNode->id());
-              localCG->mapCGNode(remoteCGNode);
-              remoteCGNode = remoteCGNode->nextOffset();
+            
+            if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG)) {
+              char buf[128];
+              fprintf(stderr, " updateCGForBE remotelocal st %s\n",
+                      ConstraintGraph::printCGStIdx(uniqNode->cg_st_idx(),
+                                                    buf, 128));
             }
+            mapStInfoAndNodesLocally(remoteStInfo,
+                                     uniqNode->cg_st_idx(),
+                                     localCG);
           }
         }
+      } 
+      else 
+      {
+        // We expect the node to be in this local CG
+        FmtAssert(localCG->checkCGNode(uniqNode->cg_st_idx(),
+                                       uniqNode->offset()),
+                  ("Expecting node: %d to be in localCG: %s\n",
+                   uniqNode->id(), localCG->name()));
       }
     }
   }
