@@ -1,8 +1,8 @@
 
-x86 Open64 4.2.3.1 Release Notes 
+x86 Open64 4.2.3.2 Release Notes 
 
 
-               January 29, 2010
+               April 26, 2010
 
 
 1. Overview
@@ -27,7 +27,7 @@ x86 Open64 4.2.3.1 Release Notes
 1. Overview
 ===========
 
- This is version 4.2.3.1 of the x86 Open64 compiler suite. It is a bug fix and
+ This is version 4.2.3.2 of the x86 Open64 compiler suite. It is a bug fix and
  maintenance release for version 4.2.3.
 
  x86 Open64 is an open source, optimizing compiler for 32-bit (x86) and
@@ -42,8 +42,25 @@ x86 Open64 4.2.3.1 Release Notes
 
 
 
-2. Issues Resolved in x86 Open64 4.2.3.1
+2. Issues Resolved in x86 Open64 4.2.3.2
 ========================================
+
+2.1 Issues Resolved in version 4.2.2.3
+--------------------------------------
+
+ o Enhance the OpenMP runtime library's logic for detecting processor
+   topology.  On AMD Magny-Cours systems, the previous version could
+   sometimes fault on program startup.
+
+ o Fix an issue in PIC code generation: labels for switch jump tables should
+   be placed into a relocatable section.  The symptom of this issue was the
+   following message when linking a shared object:
+
+     /usr/bin/ld: warning: creating a DT_TEXTREL in a shared object
+
+
+2.2 Issues Resolved in version 4.2.2.1
+--------------------------------------
 
  o Include 32-bit floating-point types in reassociation for more consistent
    results when compiling floating-point intensive programs with '-Ofast'.
@@ -93,17 +110,17 @@ x86 Open64 4.2.3.1 Release Notes
 
  This compiler is available in both binary and source-code forms.
 
- o x86_open64-4.2.3.1-1.src.tar.bz2
+ o x86_open64-4.2.3.2-1.src.tar.bz2
 
    This package contains the compiler's source code. To unpack the source, use
    the command:
 
-     tar xjvf x86_open64-4.2.3.1-1.src.tar.bz2
+     tar xjvf x86_open64-4.2.3.2-1.src.tar.bz2
 
    For instructions on how to build the compiler from source, see the included
    INSTALL file.
 
- o x86_open64-4.2.3.1-1.x86_64.tar.bz2
+ o x86_open64-4.2.3.2-1.x86_64.tar.bz2
 
    This package contains the binary code for x86-64 machines.
 
@@ -114,7 +131,7 @@ x86 Open64 4.2.3.1 Release Notes
    libraries. The x86 Open64 4.2.2.3 release can be downloaded from
    http://developer.amd.com/cpu/open64.
 
- o x86_open64-4.2.3.1-1.x86_64.rpm
+ o x86_open64-4.2.3.2-1.x86_64.rpm
 
    This package contains the same binaries as the tar.bz2 package in RPM form.
 
@@ -125,8 +142,8 @@ x86 Open64 4.2.3.1 Release Notes
 
  The two binary packages,
 
- o x86_open64-4.2.3.1-1.x86_64.tar.bz2
- o x86_open64-4.2.3.1-1.x86_64.rpm
+ o x86_open64-4.2.3.2-1.x86_64.tar.bz2
+ o x86_open64-4.2.3.2-1.x86_64.rpm
 
  are tested and validated on 64-bit Linux systems running:
 
@@ -152,11 +169,11 @@ x86 Open64 4.2.3.1 Release Notes
 
  To install the compiler from the bz2 package:
 
- o Expand x86_open64-4.2.3.1-1.x86_64.tar.bz2 with the command:
+ o Expand x86_open64-4.2.3.2-1.x86_64.tar.bz2 with the command:
 
-   tar xjvf x86_open64-4.2.3.1-1.x86_64.tar.bz2
+   tar xjvf x86_open64-4.2.3.2-1.x86_64.tar.bz2
 
- o If desired, move the x86_open64-4.2.3.1 directory to the final
+ o If desired, move the x86_open64-4.2.3.2 directory to the final
    installation location using the 'mv' command.
 
    The C, C++, FORTRAN compilers are now available in the 'bin'
@@ -170,15 +187,15 @@ x86 Open64 4.2.3.1 Release Notes
 
  To install the compiler from RPM:
 
- $ rpm -ivh x86_open64-4.2.3.1-1.x86_64.rpm
+ $ rpm -ivh x86_open64-4.2.3.2-1.x86_64.rpm
 
  This command will install the x86 Open64 compiler to
- /opt/x86_open64-4.2.3.1. The C, C++, FORTRAN compilers are in folder
- /opt/x86_open64-4.2.3.1/bin.
+ /opt/x86_open64-4.2.3.2. The C, C++, FORTRAN compilers are in folder
+ /opt/x86_open64-4.2.3.2/bin.
 
  To install the compiler to another location:
 
- $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.3.1-1.x86_64.rpm
+ $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.3.2-1.x86_64.rpm
 
  Then the compiler will be installed to /path/to/folder.
 
