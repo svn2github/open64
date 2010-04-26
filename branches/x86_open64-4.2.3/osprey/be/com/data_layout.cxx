@@ -3180,9 +3180,7 @@ Allocate_Object ( ST *st )
     {
       if (ST_is_constant(st))
         // GNU puts CLASS_CONST data in .rodata.
-        if (Gen_PIC_Shared &&
-            !ST_NO_LINKAGE(st) && 
-            ST_sym_class(st) != CLASS_CONST)
+        if (Gen_PIC_Shared && ST_sym_class(st) != CLASS_CONST)
           sec = _SEC_DATA_REL_RO; // bug 10097
         else
           sec = _SEC_RDATA;
