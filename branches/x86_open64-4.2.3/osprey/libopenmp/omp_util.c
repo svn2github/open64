@@ -37,6 +37,7 @@
  */
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/resource.h>
 #include <ctype.h>
@@ -200,7 +201,8 @@ Get_Ordered_Corelist(int *list, int total_cores)
   char buf[256], *data;
   int proc_id, proc_done=0, tmp_id, list_id;
   int core_id = -1, socket_id = -1;
-  int siblings= 0, cores=0, max_core_id = -1;
+  int siblings= 0, cores=0;
+  int min_socket_id = INT32_MAX, max_core_id = -1;
   int i, *thread_count;
 
   if (total_cores == 1) {
@@ -224,29 +226,40 @@ Get_Ordered_Corelist(int *list, int total_cores)
   if ((fp = fopen ("/proc/cpuinfo", "r")) == NULL) SET_DEFAULT;
   while (fgets (buf, 256, fp))
   {
-    if (!strncasecmp (buf, "siblings", 8)) {
+    int num;
+
+    if(!strncasecmp (buf, "physical id", 11))
+    {
       strtok (buf, ":");
       data = strtok (NULL, "\n");
-      siblings = atoi(data);
-
-      while (fgets (buf, 256, fp))
-      {
-        if (!strncasecmp (buf, "cpu cores", 9)) {
-            strtok (buf, ":");
-            data = strtok (NULL, "\n");
-            cores = atoi(data);
-        }
-        if (!strncasecmp (buf, "core id", 7)) {
-            int id;
-
-            strtok (buf, ":");
-            data = strtok (NULL, "\n");
-            id = atoi(data);
-            if (max_core_id < id)
-                max_core_id = id;
-        }
-      }
-
+      num = atoi(data);
+      if (num < min_socket_id)
+        min_socket_id = num;
+    }
+    else if (!strncasecmp (buf, "siblings", 8)) {
+      strtok (buf, ":");
+      data = strtok (NULL, "\n");
+      num = atoi(data);
+      if (siblings == 0)
+        siblings = num;
+      if (siblings != num) // assume the siblings are the same
+        SET_DEFAULT;
+    }
+    else if (!strncasecmp (buf, "core id", 7)) {
+      strtok (buf, ":");
+      data = strtok (NULL, "\n");
+      num = atoi(data);
+      if (max_core_id < num)
+        max_core_id = num;
+    }
+    else if (!strncasecmp (buf, "cpu cores", 9)) {
+      strtok (buf, ":");
+      data = strtok (NULL, "\n");
+      num = atoi(data);
+      if (cores == 0)
+        cores = num;
+      if (cores != num) // assume the cores are the same
+        SET_DEFAULT;
     }
   }
   
@@ -282,7 +295,7 @@ Get_Ordered_Corelist(int *list, int total_cores)
          {
            strtok (buf, ":");
            data = strtok (NULL, "\n");
-           socket_id = atoi(data);
+           socket_id = atoi(data) - min_socket_id;
          }
          if(!strncasecmp (buf, "core id", 7)) 
          {
