@@ -127,23 +127,17 @@ ifeq ($(BUILD_TARGET), LOONGSON)
 TARGDEFS = -D__MIPS_AND_IA64_ELF_H
 endif
 
-#TARG_TARG_INFO = $(TARGDIR)/targ_info
-TARG_TARG_INFO = $(BUILD_TARG_DIR)/targ_info
+TARG_TARG_INFO = $(TARGDIR)/targ_info
 ifeq ($(BUILD_OS), IRIX)
 TARG_LIBELF = $(TARGDIR)/libelf_xtnd
 TARG_LIBELFUTIL = $(TARGDIR)/libelfutil_xtnd
 TARG_LIBDWARF = $(TARGDIR)/libdwarf_xtnd
 else
-#TARG_LIBELF = $(TARGDIR)/libelf
-#TARG_LIBELFUTIL = $(TARGDIR)/libelfutil
-#TARG_LIBDWARF = $(TARGDIR)/libdwarf
-TARG_LIBELF = $(BUILD_TARG_DIR)/libelf
-TARG_LIBELFUTIL = $(BUILD_TARG_DIR)/libelfutil
-TARG_LIBDWARF = $(BUILD_TARG_DIR)/libdwarf
+TARG_LIBELF = $(TARGDIR)/libelf
+TARG_LIBELFUTIL = $(TARGDIR)/libelfutil
+TARG_LIBDWARF = $(TARGDIR)/libdwarf
 endif
-#TARG_LIBUNWIND = $(TARGDIR)/libunwindP
-TARG_LIBUNWIND = $(BUILD_TARG_DIR)/libunwindP
-
+TARG_LIBUNWIND = $(TARGDIR)/libunwindP
 
 #----------------------------------------------------------------------
 #  Generator options
@@ -210,8 +204,7 @@ SRC_DIRS = \
   $(BE_CG_GSCHED_DIR)
 
 ifndef TARG_BE
-#TARG_BE = $(TARGDIR)/be
-TARG_BE = $(BUILD_TARG_DIR)/be
+TARG_BE = $(TARGDIR)/be
 endif
 
 HEADER_DIRS = \

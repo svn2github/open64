@@ -70,32 +70,32 @@ CURDIR  = .
 
 
 ifndef TARG_BE
-TARG_BE = $(BUILD_TARG_DIR)/be
+TARG_BE = $(TARGDIR)/be
 endif
 
 ifndef TARG_CG
-TARG_CG = $(BUILD_TARG_DIR)/cg
+TARG_CG = $(TARGDIR)/cg
 endif
 
 ifndef TARG_ORC_INTEL
-TARG_ORC_INTEL = $(BUILD_TARG_DIR)/orc_intel
+TARG_ORC_INTEL = $(TARGDIR)/orc_intel
 endif
 
 ifndef TARG_ORC_ICT
-TARG_ORC_ICT = $(BUILD_TARG_DIR)/orc_ict
+TARG_ORC_ICT = $(TARGDIR)/orc_ict
 endif
 
-TARG_TARG_INFO = $(BUILD_TARG_DIR)/targ_info
-TARG_LIBUNWIND = $(BUILD_TARG_DIR)/libunwindP
+TARG_TARG_INFO = $(TARGDIR)/targ_info
+TARG_LIBUNWIND = $(TARGDIR)/libunwindP
 
 ifeq ($(BUILD_OS), IRIX)
 TARG_LIBELF = $(TARGDIR)/libelf_xtnd
 TARG_LIBELFUTIL = $(TARGDIR)/libelfutil_xtnd
 TARG_LIBDWARF = $(TARGDIR)/libdwarf_xtnd
 else
-TARG_LIBELF = $(BUILD_TARG_DIR)/libelf
-TARG_LIBELFUTIL = $(BUILD_TARG_DIR)/libelfutil
-TARG_LIBDWARF = $(BUILD_TARG_DIR)/libdwarf
+TARG_LIBELF = $(TARGDIR)/libelf
+TARG_LIBELFUTIL = $(TARGDITARGDIR)/libelfutil
+TARG_LIBDWARF = $(TARGDIR)/libdwarf
 endif
 
 #----------------------------------------------------------------------
@@ -169,7 +169,7 @@ COMMON_UTIL_TARG_DIR 	= $(COMMON_UTIL_DIR)/$(BUILD_TARGET_DIR)
 INCLUDE_DIR 		= $(ROOT)/usr/include
 IPA_COM_DIR 		= $(BUILD_TOT)/ipa/common/
 LIBCOMUTIL_DIR 		= $(BUILD_TOT)/libcomutil
-TARG_TARG_INFO          = $(BUILD_TARG_DIR)/targ_info
+TARG_TARG_INFO          = $(TARGDIR)/targ_info
 
 # These are the directories in which to look for source files.
 
@@ -189,7 +189,6 @@ HEADER_DIRS = \
   $(COMMON_TARG_INFO_GENERATE_DIR)\
   $(COMMON_MSCHED_TABLE)   \
   $(TARGDIR)/targ_info	\
-  $(BUILD_TARG_DIR)/targ_info \
   $(TARGDIR)/include	\
   $(COMMON_UTIL_DIR)	\
   $(TARG_BE)		\

@@ -99,7 +99,7 @@ endif
 ifdef LOCAL_TARG_INFO_DIR
 TARG_TARG_INFO_DIR = $(TARGDIR)/$(LOCAL_TARG_INFO_DIR)
 else
-TARG_TARG_INFO_DIR = $(BUILD_TARG_DIR)/targ_info
+TARG_TARG_INFO_DIR = $(TARGDIR)/targ_info
 endif
 
 #----------------------------------------------------------------------
@@ -154,7 +154,7 @@ BUILD_SKIP_WHIRL2F = TRUE
 endif
 
 TARG_INFO_INC_DIR = $(TARG_TARG_INFO_DIR)
-TARG_INFO_LIB_DIR = $(BUILD_TARG_DIR)/targ_info
+TARG_INFO_LIB_DIR = $(TARGDIR)/targ_info
 
 TARG_INFO_INC_SRC_DIR = $(BUILD_SRC_AREA)/targ_info
 
@@ -696,7 +696,7 @@ endif
 #----------------------------------------------------------------------
 #  Variables describing additional sources, objects, and libraries
 #----------------------------------------------------------------------
-TARG_LIBIBERTY_DIR = $(BUILD_TARG_DIR)/libiberty
+TARG_LIBIBERTY_DIR = $(TARGDIR)/libiberty
 LIBIBERTY_OBJS = $(TARG_LIBIBERTY_DIR)/libiberty.a
 
 ifneq ($(BUILD_TYPE), NONSHARED)

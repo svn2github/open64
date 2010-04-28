@@ -61,11 +61,11 @@
 TARGDIR = $(BUILD_AREA)
 CURDIR  = .
 
-ARITH_TARG_DIR = $(BUILD_TARG_DIR)/arith
+ARITH_TARG_DIR = $(TARGDIR)/arith
 FE90_TARG_DIR = ../fe90
 SGI_TARG_DIR   = ../sgi
 F90SGI_TARG_DIR = ../libf90sgi
-LIBCIF_TARG_DIR = $(BUILD_TARG_DIR)/libcif
+LIBCIF_TARG_DIR = $(TARGDIR)/libcif
 
 #----------------------------------------------------------------------
 #  Include the usual commondefs
@@ -142,7 +142,7 @@ LIBFORTRAN_DIR          = $(TARGDIR)/libfortran
 endif
 LIBCOMUTIL_DIR 		= $(BUILD_TOT)/libcomutil
 
-TARG_COMUTIL_DIR	= $(BUILD_TARG_DIR)/libcomutil
+TARG_COMUTIL_DIR	= $(TARGDIR)/libcomutil
 
 SRC_DIRS                = $(SGI_DIR) \
 	                  $(COMMON_COM_DIR) \

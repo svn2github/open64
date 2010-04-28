@@ -189,7 +189,7 @@ SRC_DIRS += $(BUILD_TOT)/libfi/array \
         $(BUILD_TOT)/libfi/prodsum \
         $(BUILD_TOT)/libfi/subrtn
 
-LCINCS += -I$(BUILD_TARG_DIR)/libfortran
+LCINCS += -I$(TARGDIR)/libfortran
 
 # No additional files 
 

@@ -78,16 +78,13 @@
 
 
 ifndef BUILD_AREA
-     BUILD_AREA     = @abs_top_srcdir@/osprey/targdir
+     BUILD_AREA     = @abs_top_builddir@/osprey/targdir
 endif
 ifndef BUILD_SRC_AREA
      BUILD_SRC_AREA = @abs_top_srcdir@/osprey/@BUILD_TARGET_NAME@
 endif
 ifndef BUILD_OBJ_DIR
      BUILD_OBJ_DIR  = @abs_top_builddir@
-endif
-ifndef BUILD_TARG_DIR
-     BUILD_TARG_DIR = @abs_top_builddir@/osprey/targdir
 endif
 ifndef BUILD_TOT
      BUILD_TOT      = @abs_top_srcdir@/osprey

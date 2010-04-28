@@ -215,7 +215,7 @@ ifeq ($(BUILD_COMPILER), SELF)
   F90_RTLIBS = -Wl,-Bstatic -lfortran -Wl,-Bdynamic
 
   ASNAME += -run-build=$(TOP_BUILDDIR)
-  CCNAME += -run-build=$(TOP_BUILDDIR) -L$(BUILD_TARG_DIR)/libopen64rt -L$(BUILD_TARG_DIR)/libacml_mv
+  CCNAME += -run-build=$(TOP_BUILDDIR) -L$(BUILD_AREA)/libopen64rt -L$(BUILD_AREA)/libacml_mv
   C++NAME += -run-build=$(TOP_BUILDDIR)
   F90 += -run-build=$(TOP_BUILDDIR)
 
@@ -569,7 +569,7 @@ LEXMKDEPFLAGS=
 # Include directory shorthands, used in CFLAGS and LDFLAGS components.
 #
 ifneq ($(BUILD_OS), IRIX)
-INCLDIRS = -I$(BUILD_AREA)/include -I$(BUILD_OBJ_DIR) -I$(BUILD_TARG_DIR)/include -I$(BUILD_SRC_AREA)/include -I$(BUILD_TOT)/include
+INCLDIRS = -I$(BUILD_AREA)/include -I$(BUILD_OBJ_DIR) -I$(TARGDIR)/include -I$(BUILD_SRC_AREA)/include -I$(BUILD_TOT)/include
 else
 INCLDIRS = -I$(ROOT)/usr/include
 endif

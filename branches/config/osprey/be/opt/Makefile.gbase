@@ -79,7 +79,7 @@ include $(COMMONDEFS)
 ifdef LOCAL_BE_DIR
 TARG_BE_DIR = $(TARGDIR)/$(LOCAL_BE_DIR)
 else
-TARG_BE_DIR = $(BUILD_TARG_DIR)/be
+TARG_BE_DIR = $(TARGDIR)/be
 endif
 
 #----------------------------------------------------------------------
@@ -146,8 +146,7 @@ WOPT_HEADER_DIRS = \
   $(TARGDIR)/include	\
   $(TARG_BE_DIR) \
   $(BUILD_SRC_AREA)/be \
-  $(BUILD_SRC_AREA)/targ_info \
-  $(BUILD_TARG_DIR)/targ_info
+  $(BUILD_SRC_AREA)/targ_info
 
 
 

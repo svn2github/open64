@@ -93,7 +93,7 @@ include $(COMMONDEFS)
 ifdef LOCAL_BE_DIR
 TARG_BE_DIR = $(TARGDIR)/$(LOCAL_BE_DIR)
 else
-TARG_BE_DIR = $(BUILD_TARG_DIR)/be
+TARG_BE_DIR = $(TARGDIR)/be
 endif
 
 #----------------------------------------------------------------------
@@ -171,9 +171,8 @@ HEADER_DIRS = \
   $(IPA_IPL_DIR)	\
   $(BE_PROMPF_DIR)	\
   $(BUILD_TOT)/include  \
-  $(BUILD_TARG_DIR)/targ_info \
   $(BUILD_SRC_AREA)/be  \
-  $(BUILD_TARG_DIR)/be  \
+  $(TARGDIR)/be  	\
   $(BUILD_SRC_AREA)/targ_info
 
 #----------------------------------------------------------------------
