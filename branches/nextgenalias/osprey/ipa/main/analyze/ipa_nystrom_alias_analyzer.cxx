@@ -439,6 +439,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
         newRepParent->merge(oldRepParent);
         // Set the newParent as the parent of oldRepParent
         oldRepParent->repParent(newRepParent);
+#if 0
         // Add special copy edge from newRepParent if !PREG
         if (!oldRepParent->isOnlyOffset()) {
           bool added = false;
@@ -451,6 +452,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
           FmtAssert(added, ("ConstraintGraph::merge: failed to add "
                             "special copy edge"));
         }
+#endif
         fprintf(stderr, "Merging oldRepParent %d with newRepParent %d"
                 " for node: %d (%s)\n", oldRepParent->id(), newRepParent->id(),
                 cgNode->id(), (cgNode->cg() == globalCG()) ? "global" 

@@ -52,7 +52,7 @@ public:
   static void postProcessPointsTo();
 
 private:
-  void updateOffsets(const ConstraintGraphNode *, PointsTo &, CGEdgeQual);
+  void updateOffsets(const ConstraintGraphNode *, const PointsTo &, CGEdgeQual);
   void processAssign(const ConstraintGraphEdge *);
   void processSkew(const ConstraintGraphEdge *);
   void processLoad(const ConstraintGraphEdge *);

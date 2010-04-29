@@ -155,31 +155,7 @@ ConstraintGraphNode::addOutEdge(ConstraintGraphEdge *edge)
   pair<CGEdgeSet::iterator, bool> p;
   p = outEdgeSet.insert(edge);
   ConstraintGraphEdge *newEdge = *(p.first);
-  if (newEdge == edge &&
-      edge->edgeType() == ETYPE_COPY &&
-      edge->size() > _maxAccessSize)
-    _maxAccessSize = edge->size();
   return newEdge;
-}
-     
-void
-ConstraintGraphNode::updateMaxAccessSize()
-{
-  UINT8 newMax = 0;
-
-  for (CGEdgeListIterator outIter(this,false); outIter != 0; ++outIter) {
-    CGEdgeSet edges = *outIter;
-    for (CGEdgeSetIterator edgeIter = edges.begin();
-        edgeIter != edges.end(); ++edgeIter) {
-      ConstraintGraphEdge *e = *edgeIter;
-      if (e->edgeType() == ETYPE_COPY && e->size() > newMax) {
-        newMax = e->size();
-        if (newMax == _maxAccessSize)
-          return;
-      }
-    }
-  }
-  _maxAccessSize = newMax;
 }
 
 void
@@ -187,12 +163,11 @@ ConstraintGraphNode::removeInEdge(ConstraintGraphEdge *edge)
 {
   CGEdgeSet &inEdgeSet = _getCGEdgeSet(edge->edgeType(),&_inEdges);
   CGEdgeSetIterator iter = inEdgeSet.find(edge);
-  while (iter != inEdgeSet.end()) {
-    if (*iter == edge) {
-      inEdgeSet.erase(iter);
-      break;
-    }
-    ++iter;
+  // Since we don't allow duplicate edges, if we find an edge it
+  // had better match the provided edge
+  if (iter != inEdgeSet.end()) {
+    Is_True((*iter == edge),("removeInEdge: found wrong edge!\n"));
+    inEdgeSet.erase(iter);
   }
 }
 
@@ -201,14 +176,11 @@ ConstraintGraphNode::removeOutEdge(ConstraintGraphEdge *edge)
 {
   CGEdgeSet &outEdgeSet = _getCGEdgeSet(edge->edgeType(),&_outEdges);
   CGEdgeSetIterator iter = outEdgeSet.find(edge);
-  while (iter != outEdgeSet.end()) {
-    if (*iter == edge) {
-      outEdgeSet.erase(iter);
-      if (edge->edgeType() == ETYPE_COPY && edge->size() == _maxAccessSize)
-        updateMaxAccessSize();
-      break;
-    }
-    ++iter;
+  // Since we don't allow duplicate edges, if we find an edge it
+  // had better match the provided edge
+  if (iter != outEdgeSet.end()) {
+    Is_True((*iter == edge),("removeOutEdge: found wrong edge!\n"));
+    outEdgeSet.erase(iter);
   }
 }
 
@@ -440,13 +412,13 @@ StInfo::init(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
       _u._modRange->print(stderr);
 #if 0
-    if ( _u._modRange->mod() > Pointer_Size * 12 )
+    if ( _u._modRange->mod() > Pointer_Size * 1 )
     {
-      _u._modRange->mod(Pointer_Size * 24);
+      _u._modRange->mod(Pointer_Size * 1);
       applyModulus();
       if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
       {
-        fprintf(stderr,"Clamping modulus at: %d\n",Pointer_Size*24);
+        fprintf(stderr,"Clamping modulus at: %d\n",Pointer_Size*1);
         _u._modRange->print(stderr);
       }
     }
@@ -596,13 +568,73 @@ StInfo::setModulus(UINT32 mod, UINT32 offset)
   }
 
   applyModulus();
+}
 
+void
+ConstraintGraph::adjustNodeForKCycle(ConstraintGraphNode *destNode,
+                                     ConstraintGraphNode *pointedToNode,
+                                     ConstraintGraphNode *&adjPointedToNode)
+{
+  UINT32 kCycle = destNode->inKCycle();
+  if (pointedToNode->offset() != -1) {
+    // A non-array based access is unbounded, so ignore any modulus
+    // associated with the node offset and operate on the underlying
+    // symbol
+    if (!destNode->checkFlags(CG_NODE_FLAGS_ARRAY))
+    {
+      StInfo *st = pointedToNode->stInfo();
+      // Get the mod
+      UINT32 mod;
+      if (st->checkFlags(CG_ST_FLAGS_MODRANGE))
+        mod = st->modRange()->mod();
+      else
+        mod = st->mod();
+      // If the mod is <= pointer size or if the resulting K value is still
+      // larger than the pointer size, then we simply adjust the modulus of
+      // the underlying symbol
+      if (mod <= Pointer_Size || kCycle > Pointer_Size)
+      {
+        if (kCycle < mod) {
+          if (st->checkFlags(CG_ST_FLAGS_MODRANGE))
+            ModulusRange::setModulus(st->modRange(), kCycle, st->memPool());
+          else
+            st->mod(kCycle);
+          st->applyModulus();
+        }
+        adjPointedToNode = pointedToNode->cg()->getCGNode(pointedToNode->cg_st_idx(),
+                                                          pointedToNode->offset());
+      }
+      // If the K value is <= the size of a pointer and
+      // modulus > Pointer_Size then all offsets are mapped to -1.
+      else
+      {
 #if 0
-  if (checkFlags(CG_ST_FLAGS_MODRANGE)) {
-    fprintf(stderr,"After setting offset %d to modulus %d\n",offset,mod);
-    _u._modRange->print(stderr,true);
-  }
+        fprintf(stderr, "Setting -1 on node\n ");
+        node->print(stderr); node->stInfo()->print(stderr);
+        fprintf(stderr, " due to destNode: \n");
+        destNode->print(stderr); destNode->stInfo()->print(stderr);
+        node = node->cg()->getCGNode(node->cg_st_idx(),-1);
 #endif
+#if 1
+        // Instead of -1, reduce the symbol to a single node
+        fprintf(stderr, "Collapsing St cg_st_idx: %llu\n", pointedToNode->cg_st_idx());
+        st->print(stderr, true);
+        st->collapse();
+        adjPointedToNode = pointedToNode->cg()->getCGNode(pointedToNode->cg_st_idx(),0);
+#endif
+      }
+    }
+    else
+    {
+      // For an array based access, we always set the modulus associated
+      // with node->offset(), to kCycle
+      StInfo *st = pointedToNode->stInfo();
+      if (kCycle < st->getModulus(pointedToNode->offset()))
+        st->setModulus(kCycle, pointedToNode->offset());
+      adjPointedToNode = pointedToNode->cg()->getCGNode(pointedToNode->cg_st_idx(),
+                                                        pointedToNode->offset());
+    }
+  }
 }
 
 void
@@ -622,68 +654,9 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *destNode,
   {
     CGNodeId nodeId = *iter;
     ConstraintGraphNode *node = cgNode(nodeId);
-    if (node->offset() != -1) {
-      // A non-array based access is unbounded, so ignore any modulus
-      // associated with the node offset and operate on the underlying
-      // symbol
-      if (!destNode->checkFlags(CG_NODE_FLAGS_ARRAY)) 
-      {
-        StInfo *st = node->stInfo();
-        // Get the mod
-        UINT32 mod;
-        if (st->checkFlags(CG_ST_FLAGS_MODRANGE))
-          mod = st->modRange()->mod();
-        else
-          mod = st->mod();
-        // If the mod is <= pointer size or if the resulting K value is still 
-        // larger than the pointer size, then we simply adjust the modulus of
-        // the underlying symbol
-        if (mod <= Pointer_Size || kCycle > Pointer_Size) 
-        {
-          if (kCycle < mod) {
-            if (st->checkFlags(CG_ST_FLAGS_MODRANGE))
-              ModulusRange::setModulus(st->modRange(), kCycle, st->memPool());
-            else
-              st->mod(kCycle);
-            st->applyModulus();
-          }
-          node = node->cg()->getCGNode(node->cg_st_idx(),node->offset());
-        }
-        // If the K value is <= the size of a pointer and 
-        // modulus > Pointer_Size then all offsets are mapped to -1.
-        else 
-        {
-#if 0
-          fprintf(stderr, "Setting -1 on node\n ");
-          node->print(stderr); node->stInfo()->print(stderr);
-          fprintf(stderr, " due to destNode: \n");
-          destNode->print(stderr); destNode->stInfo()->print(stderr);
-          node = node->cg()->getCGNode(node->cg_st_idx(),-1);
-#endif
-#if 1
-          // Instead of -1, reduce the symbol to a single node
-          fprintf(stderr, "Collapsing St cg_st_idx: %llu\n", node->cg_st_idx());
-          st->print(stderr, true);
-          st->collapse();
-          node = node->cg()->getCGNode(node->cg_st_idx(),0);
-#endif
-        }
-      } 
-      else
-      {
-        // For an array based access, we always set the modulus associated
-        // with node->offset(), to kCycle
-        StInfo *st = node->stInfo();
-        if (kCycle < st->getModulus(node->offset()))
-          st->setModulus(kCycle, node->offset());
-        node = node->cg()->getCGNode(node->cg_st_idx(),node->offset());
-      }
-
-      if (node->offset() == -1)
-        destNode->removeNonMinusOneOffsets(dst,node->cg_st_idx(),
-                                           qual!=CQ_NONE?destNode:NULL,qual);
-    }
-    dst.setBit(node->id());
+    ConstraintGraphNode *adjNode = NULL;
+    adjustNodeForKCycle(destNode,node,adjNode);
+    dst.setBit(adjNode->id());
   }
 }
 
@@ -2567,7 +2540,7 @@ StInfo::alignOffset(TY_IDX ty_idx, INT64 offset)
       kind == KIND_FUNCTION ||
       kind == KIND_POINTER ||
       kind == KIND_VOID)
-    offset = offset & (~(Pointer_Size-1));
+    offset = offset & (~(TY_size(ty)-1));
   else { // kind == KIND_STRUCT
     FmtAssert(kind == KIND_STRUCT,("Expecting only structs here"));
 
@@ -2578,7 +2551,7 @@ StInfo::alignOffset(TY_IDX ty_idx, INT64 offset)
        if (start <= offset && offset <= end) {
          if (TY_kind(fty) == KIND_ARRAY ||
              TY_kind(fty) == KIND_STRUCT)
-           offset = alignOffset(FLD_type(fld),offset);
+           offset = start + alignOffset(FLD_type(fld),(offset-start));
          else
            offset = start;
          break;
@@ -2618,13 +2591,6 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
       // Ensure that the computed offset is aligned to a field boundary
       INT64 origOffset = offset;
       offset = si->alignOffset(si->ty_idx(),origOffset);
-#if 0
-      if (offset != origOffset) {
-        fprintf(stderr,"Aligned offset %d to %d for the following ST\n",
-                (int)origOffset,(int)offset);
-        si->print(stderr,true);
-      }
-#endif
       offset = si->applyModulus(offset);
     }
     else {
@@ -2712,12 +2678,22 @@ ConstraintGraph::checkCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
 }
 
 PointsTo &
-ConstraintGraphNode::_getPointsTo(CGEdgeQual qual, PointsToList **ptl)
+ConstraintGraphNode::_getPointsTo(CGEdgeQual qual, PtsType type)
 {
-  PointsTo *pts = _findPointsTo(qual,*ptl);
+  PointsToList **ptl;
+  MEM_POOL *memPool = cg()->memPool();
+  MEM_POOL *ptp = memPool;
+  switch (type) {
+  case Pts:     ptl = &_pointsToList; break;
+  case PtsRev:  ptl = &_revPointsToList; break;
+  case PtsDiff:
+    ptl = &_diffPointsToList;
+    ptp = Malloc_Mem_Pool;
+    break;
+  }
+  PointsTo *pts = _findPointsTo(qual,type);
   if (!pts) {
-    MEM_POOL *memPool = cg()->memPool();
-    PointsToList *newPTL = CXX_NEW(PointsToList(qual,memPool),memPool);
+    PointsToList *newPTL = CXX_NEW(PointsToList(qual,ptp),memPool);
     PointsToList *tmp = *ptl;
     *ptl = newPTL;
     newPTL->next(tmp);
@@ -2765,7 +2741,7 @@ ConstraintGraph::stats()
         emptyPtsCount += 1;
       ptsElemCount += pts.numElements();
     }
-    for (PointsToIterator pti(node,true); pti != 0; ++pti) {
+    for (PointsToIterator pti(node,PtsRev); pti != 0; ++pti) {
       PointsTo &pts = *pti;
       if (!pts.isEmpty())
         ptsCount += 1;
@@ -2853,16 +2829,6 @@ ConstraintGraphNode::collapse(ConstraintGraphNode *cur)
   if (curParent != thisParent) {
     thisParent->merge(curParent);
     curParent->repParent(thisParent);
-
-    // If cur has a parent which is the only offset, 
-    // or if cur does not have a distinct parent,
-    // PARENT_COPY edges are not required
-    if (cur != curParent && !curParent->isOnlyOffset()) {
-      bool added = false;
-      ConstraintGraph::addEdge(thisParent, curParent, ETYPE_COPY, CQ_HZ, 0,
-                               added, CG_EDGE_PARENT_COPY);
-      FmtAssert(added, (":merge: failed to add special copy edge"));
-    }
   }
 
   // When cur's parent is merged with this, we might have transfered
@@ -2873,7 +2839,7 @@ ConstraintGraphNode::collapse(ConstraintGraphNode *cur)
   // with 'this'.
   // Use the reverse pts to set to find nodes that point to cur and 
   // replace by 'this'
-  for (PointsToIterator pti(cur,true); pti != 0; ++pti) {
+  for (PointsToIterator pti(cur,PtsRev); pti != 0; ++pti) {
     PointsTo &rpts = *pti;
     CGEdgeQual qual = pti.qual();
     for (PointsTo::SparseBitSetIterator sbsi(&rpts,0); sbsi != 0; ++sbsi) {
@@ -3012,6 +2978,8 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
   bool change = false;
   for ( PointsToIterator pti(src); pti != 0; ++pti )
     change |= unionPointsTo(*pti,pti.qual());
+  for ( PointsToIterator ptid(src,PtsDiff); ptid != 0; ++ptid)
+    change |= unionDiffPointsTo(*ptid,ptid.qual());
   if (change && ConstraintGraph::solverModList())
     ConstraintGraph::solverModList()->push(this);
 
@@ -3520,6 +3488,11 @@ ConstraintGraphEdge::move(ConstraintGraphNode * newSrc,
   srcNode()->removeOutEdge(this);
   destNode()->removeInEdge(this);
 
+  // Save the original src/dest to restore if move fails.
+  ConstraintGraphNode *origSrc = srcNode();
+  ConstraintGraphNode *origDest = destNode();
+
+  // Now we modify the src/dest nodes if necessary
   if (srcNode() != newSrc)   srcNode(newSrc);
   if (destNode() != newDest) destNode(newDest);
 
@@ -3529,6 +3502,8 @@ ConstraintGraphEdge::move(ConstraintGraphNode * newSrc,
   if (insOutEdge != this) {
     FmtAssert(insInEdge != this,
         ("ConstraintGraphEdge::move: inconsistent edge sets"));
+    if (srcNode() != origSrc)   srcNode(origSrc);
+    if (destNode() != origDest) destNode(origDest);
     return false;
   }
   FmtAssert(insInEdge == this,
@@ -3670,7 +3645,7 @@ ConstraintGraphNode::copy(ConstraintGraphNode *node)
   _repParent     = node->_repParent;
   _collapsedParent = node->_collapsedParent;
   _nextOffset    = node->_nextOffset;
-  _maxAccessSize = node->_maxAccessSize;
+  //_maxAccessSize = node->_maxAccessSize;
 }
 
 // Create a new ConstraintGraphNode with new_cg_st_idx, but the old node's id

@@ -774,7 +774,7 @@ EscapeAnalysis::processFullEscapeNode(ConstraintGraphNode *node)
 
   // Here we are looking for the outgoing points-to relationship,
   // i.e. who points to the current node.
-  for (PointsToIterator pti(node,true /*reverse */); pti != 0; ++pti) {
+  for (PointsToIterator pti(node,PtsRev); pti != 0; ++pti) {
      if (!_summaryMode || pti.qual() == CQ_HZ) {
        PointsTo &pts = *pti;
        for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
@@ -871,7 +871,7 @@ EscapeAnalysis::identifyMallocWrappers()
         !n->outLoadStoreEdges().empty() || !n->outCopySkewEdges().empty())
       continue;
     // Scan the reverse points-to set
-    for (PointsToIterator piter(n, true); piter != 0; ++piter) {
+    for (PointsToIterator piter(n,PtsRev); piter != 0; ++piter) {
       PointsTo &rpts = *piter;
       for (PointsTo::SparseBitSetIterator bsi(&rpts, 0); bsi != 0; ++bsi) {
         ConstraintGraphNode *rn = ConstraintGraph::cgNode(*bsi);

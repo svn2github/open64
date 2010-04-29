@@ -115,6 +115,12 @@ typedef UINT64 CG_ST_IDX;
 typedef UINT32 CallSiteId;
 typedef SparseBitSet<CGNodeId> PointsTo;
 
+enum PtsType {
+  Pts,
+  PtsRev,
+  PtsDiff
+};
+
 // Map the WNs to CGNodeIds
 #define WN_MAP_CGNodeId_Set(wn,thing) \
  IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_CGNODE, (wn), (INT32)(thing))
@@ -373,13 +379,13 @@ public:
     _topoOrderNum(0),
     _pointsToList(NULL),
     _revPointsToList(NULL),
+    _diffPointsToList(NULL),
     _repParent(NULL),
     _collapsedParent(0),
     _nextOffset(NULL),
     _parentCG(parentCG),
     _id(0),
     _version(0),
-    _maxAccessSize(0),
     _ty_idx(0),
     _inEdges(NULL),
     _outEdges(NULL)
@@ -395,13 +401,13 @@ public:
     _topoOrderNum(0),
     _pointsToList(NULL),
     _revPointsToList(NULL),
+    _diffPointsToList(NULL),
     _repParent(NULL),
     _collapsedParent(0),
     _nextOffset(NULL),
     _parentCG(parentCG),
     _id(id),
     _version(0),
-    _maxAccessSize(0),
     _ty_idx(0),
     _inEdges(NULL),
     _outEdges(NULL)
@@ -414,8 +420,6 @@ public:
 
   UINT32 inKCycle(void) const { return _inKCycle; }
   void inKCycle(UINT32 val)   { _inKCycle = val; }
-
-  UINT8 maxAccessSize(void) const { return _maxAccessSize; }
 
   TY_IDX ty_idx(void) const { return _ty_idx; }
   void ty_idx(TY_IDX idx)   { _ty_idx = idx; }
@@ -487,7 +491,7 @@ public:
 
   void removePointsTo(CGNodeId id, CGEdgeQual qual)
   {
-    PointsTo *pts = _findPointsTo(qual, _pointsToList);
+    PointsTo *pts = _findPointsTo(qual, Pts);
     FmtAssert(pts != NULL, ("cannot find pts"));
     FmtAssert(pts->isSet(id), ("cannot find element"));
     pts->clearBit(id);
@@ -495,7 +499,7 @@ public:
 
   void removeRevPointsTo(CGNodeId id, CGEdgeQual qual)
   {
-    PointsTo *pts = _findPointsTo(qual, _revPointsToList);
+    PointsTo *pts = _findPointsTo(qual, PtsRev);
     FmtAssert(pts != NULL, ("cannot find pts"));
     FmtAssert(pts->isSet(id), ("cannot find element"));
     pts->clearBit(id);
@@ -507,6 +511,8 @@ public:
   }
 
   bool unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual);
+
+  bool unionDiffPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual);
 
   const PointsTo &pointsTo(CGEdgeQual qual)
   {
@@ -532,6 +538,7 @@ public:
 
   PointsToList *pointsToList(void)    { return _pointsToList; }
   PointsToList *revPointsToList(void) { return _revPointsToList; }
+  PointsToList *diffPointsToList(void){ return _diffPointsToList; }
 
   // Try adding edge to the in edge set. If the edge already exists
   // return the existing edge, else insert the new edge and return it
@@ -637,6 +644,11 @@ public:
   void postProcessPointsTo(PointsTo &adjustSet);
   UINT32 computeMaxAccessSize(void);
 
+  // Here we process the points-to set of a modified node during copy/skew
+  // processing.  This includes handling if Kcycle adjustments, <ST,-1>
+  // cleanup and establishing the reverse points-to relationship.
+  bool updatePointsToFromDiff(void);
+
   // Remove redundant nodes, in the presence of <ST, -1>
   void sanitizePointsTo(CGEdgeQual qual);
   static void sanitizePointsTo(PointsTo &,ConstraintGraphNode *,CGEdgeQual);
@@ -688,56 +700,57 @@ private:
   {
     FmtAssert(!checkFlags(CG_NODE_FLAGS_MERGED),
               ("Attempting addPointsTo on a merged node!"));
-    PointsTo &pts = _getPointsTo(qual,&_pointsToList);
+    PointsTo &pts = _getPointsTo(qual,Pts);
     return pts.setBit(id);
   }
 
   bool _addRevPointsTo(CGNodeId id, CGEdgeQual qual)
   {
-    PointsTo &pts = _getPointsTo(qual,&_revPointsToList);
+    PointsTo &pts = _getPointsTo(qual,PtsRev);
     return pts.setBit(id);
   }
 
   bool _checkPointsTo(CGNodeId id, CGEdgeQual qual)
   {
-    PointsTo *pts = _findPointsTo(qual,_pointsToList);
+    PointsTo *pts = _findPointsTo(qual,Pts);
     return pts ? pts->isSet(id) : false;
   }
 
   bool _checkRevPointsTo(CGNodeId id, CGEdgeQual qual)
   {
-    PointsTo *pts = _findPointsTo(qual,_revPointsToList);
+    PointsTo *pts = _findPointsTo(qual,PtsRev);
     return pts ? pts->isSet(id) : false;
   }
 
   PointsTo &_getPointsTo(CGEdgeQual qual)
   {
-    return _getPointsTo(qual,&_pointsToList);
+    return _getPointsTo(qual,Pts);
   }
 
   const PointsTo &_pointsTo(CGEdgeQual qual) const {
-    PointsTo *pts = _findPointsTo(qual,_pointsToList);
+    PointsTo *pts = _findPointsTo(qual,Pts);
     return (pts) ? *pts : emptyPointsToSet;
   }
 
   const PointsTo &_revPointsTo(CGEdgeQual qual) const {
-     PointsTo *pts = _findPointsTo(qual,_revPointsToList);
+     PointsTo *pts = _findPointsTo(qual,PtsRev);
      return (pts) ? *pts : emptyPointsToSet;
   }
 
-  PointsTo *_findPointsTo(CGEdgeQual qual, PointsToList *ptl) const
+  PointsTo *_findPointsTo(CGEdgeQual qual, PtsType type) const
   {
-    PointsToList *cur = ptl;
+    PointsToList *cur;
+    switch (type) {
+    case Pts:     cur = _pointsToList; break;
+    case PtsRev:  cur = _revPointsToList; break;
+    case PtsDiff: cur = _diffPointsToList; break;
+    }
     while (cur && cur->qual() != qual)
       cur = cur->next();
     return cur?cur->pointsTo():NULL;
   }
 
-  PointsTo &_getPointsTo(CGEdgeQual qual, PointsToList **ptl);
-
-  // Sets the _maxAccessSize based on the maximum size of all
-  // incoming and outgoing (non-SKEW) edges
-  void updateMaxAccessSize(void);
+  PointsTo &_getPointsTo(CGEdgeQual qual, PtsType type);
 
   CG_ST_IDX _cg_st_idx;
   INT32  _offset;
@@ -746,6 +759,7 @@ private:
   UINT32 _inKCycle;
   PointsToList *_pointsToList;
   PointsToList *_revPointsToList;
+  PointsToList *_diffPointsToList;
   // For nodes that are unified
   ConstraintGraphNode *_repParent;
   // For nodes that are collapsed
@@ -756,9 +770,6 @@ private:
   ConstraintGraph *_parentCG;
   CGNodeId _id;
   UINT8    _version;
-  // Max outgoing copy/load/store access size, used during
-  // solving to determine accesses to overlapping fields.
-  UINT8    _maxAccessSize;
 
   TY_IDX   _ty_idx;
 
@@ -773,8 +784,10 @@ private:
 /* Iterator to abstract access to points-to sets */
 class PointsToIterator {
 public:
-  PointsToIterator(ConstraintGraphNode *n, bool rev = false)
-  : _cur(!rev ? n->pointsToList() : n->revPointsToList()) {}
+  PointsToIterator(ConstraintGraphNode *n, PtsType list = Pts)
+  : _cur(list == Pts ? n->pointsToList() :
+          list == PtsRev ? n->revPointsToList() :
+                           n->diffPointsToList()) {}
   ~PointsToIterator() {}
   bool operator != (int val) { return _cur != NULL; }
   void operator ++(void) { _cur = _cur->next(); }
@@ -1190,6 +1203,9 @@ public:
                                       const PointsTo &src,
                                       PointsTo &dst,
                                       CGEdgeQual qual);
+  static void adjustNodeForKCycle(ConstraintGraphNode *destNode,
+                                  ConstraintGraphNode *pointedToNode,
+                                  ConstraintGraphNode *&adjPointedToNode);
 
   static bool addCGNodeInSortedOrder(StInfo *stInfo, 
                                      ConstraintGraphNode *cgNode);
