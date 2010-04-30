@@ -1089,11 +1089,11 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
         ST *st = &St_Table[stIdx];
         STToNodeMap::const_iterator ni = _stToIndTgtMap.find(st);
         if (ni == _stToIndTgtMap.end()) {
-          FmtAssert(ST_sclass(st) == SCLASS_EXTERN,
-                     ("Expect func not in call graph to be extern"));
+          if (ST_sclass(st) != SCLASS_EXTERN)
+            fprintf(stderr,"Update Call Graph: callsite points to possibly deleted func: %s\n", ST_name(st));
+          else
+            fprintf(stderr,"Update Call Graph: callsite points to extern func: %s\n", ST_name(st));
            // assume whole program mode for the moment
-           fprintf(stderr,"Update Call Graph: callsite points to extern func: %s\n",
-                   ST_name(st));
           continue;
         }
         // We will skip main (that would be a nice cycle wouldn't it?)
@@ -1186,7 +1186,7 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   bool contextSensitive = false;
   void *sbrk1 = sbrk(0);
 
-  //ConstraintGraph::globalCG()->ipaSimpleOptimizer();
+  //ConstraintGraph::ipaSimpleOptimizer();
 
   if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
     fprintf(stderr,"IPA Nystrom: Solver Begin\n");
@@ -1682,6 +1682,9 @@ IPA_NystromAliasAnalyzer::updateCGForBE(IPA_NODE *ipaNode)
 {
   ConstraintGraph *localCG = this->cg(ipaNode->Node_Index());
 
+  if (localCG == NULL)
+    return;
+
   if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
     fprintf(stderr, "updateCGForBE: %s\n", localCG->name());
 
@@ -1865,6 +1868,9 @@ ConstraintGraph::cloneConstraintGraphMaps(IPA_NODE *caller, IPA_NODE *callee)
             IPA_NystromAliasAnalyzer::aliasAnalyzer()->cg(caller->Node_Index());
   ConstraintGraph *calleeCG = 
             IPA_NystromAliasAnalyzer::aliasAnalyzer()->cg(callee->Node_Index());
+
+  if (callerCG == NULL || calleeCG == NULL)
+    return;
 
   if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
     fprintf(stderr, "cloneConstraintGraphMaps: caller: %s callee: %s\n",

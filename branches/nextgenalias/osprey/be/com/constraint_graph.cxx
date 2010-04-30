@@ -2514,6 +2514,42 @@ ConstraintGraph::removeEdge(ConstraintGraphEdge *edge)
     edge->addFlags(CG_EDGE_TO_BE_DELETED);
 }
 
+TY_IDX
+StInfo::getOffsetType(TY_IDX ty_idx, INT64 offset)
+{
+  TY_KIND kind = TY_kind(Ty_Table[ty_idx]);
+
+  // For arrays, we dive into the array to determine the actual
+  // element type
+  if (kind == KIND_ARRAY) {
+    ty_idx = TY_etype(Ty_Table[ty_idx]);
+    while (TY_kind(Ty_Table[ty_idx]) == KIND_ARRAY)
+      ty_idx = TY_etype(Ty_Table[ty_idx]);
+    kind = TY_kind(Ty_Table[ty_idx]);
+  }
+
+  if (kind == KIND_SCALAR ||
+      kind == KIND_FUNCTION ||
+      kind == KIND_POINTER ||
+      kind == KIND_VOID)
+    return ty_idx;
+  else { // kind == KIND_STRUCT
+    FmtAssert(kind == KIND_STRUCT,("Expecting only structs here"));
+    // We do not distinguish between the struct and the first field
+    if (offset == 0)
+      return ty_idx;
+    TY &ty = Ty_Table[ty_idx];
+    for (FLD_HANDLE fld = TY_flist(ty); !fld.Is_Null(); fld = FLD_next(fld)) {
+      TY &fty = Ty_Table[FLD_type(fld)];
+      UINT32 start = FLD_ofst(fld);
+      UINT32 end = start+TY_size(fty)-1;
+      if (start <= offset && offset <= end)
+        return getOffsetType(FLD_type(fld), (offset-start));
+    }
+  }
+  return 0;
+}
+
 INT64
 StInfo::alignOffset(TY_IDX ty_idx, INT64 offset)
 {
@@ -2727,6 +2763,12 @@ ConstraintGraph::stats()
   UINT32 ptsElemCount = 0;
   UINT32 emptyPtsCount = 0;
   UINT32 totalCardinality = 0;
+
+  UINT32 r_ptsCount = 0;
+  UINT32 r_ptsElemCount = 0;
+  UINT32 r_emptyPtsCount = 0;
+  UINT32 r_totalCardinality = 0;
+
   for (CGIdToNodeMapIterator iter = gBegin(); iter != gEnd(); ++iter)
   {
     ConstraintGraphNode *node = iter->second;
@@ -2744,12 +2786,12 @@ ConstraintGraph::stats()
     for (PointsToIterator pti(node,PtsRev); pti != 0; ++pti) {
       PointsTo &pts = *pti;
       if (!pts.isEmpty())
-        ptsCount += 1;
+        r_ptsCount += 1;
       UINT32 card = pts.numBits();
-      totalCardinality += card;
+      r_totalCardinality += card;
       if (card == 0)
-        emptyPtsCount += 1;
-      ptsElemCount += pts.numElements();
+        r_emptyPtsCount += 1;
+      r_ptsElemCount += pts.numElements();
     }
   }
   fprintf(stderr,"Points to set statistics\n");
@@ -2762,7 +2804,18 @@ ConstraintGraph::stats()
           ptsCount > 0 ? totalCardinality/ptsElemCount : 0);
   fprintf(stderr,"  Elem / pts:      %d\n",
           ptsCount > 0 ? ptsElemCount/ptsCount : 0);
-  fprintf(stderr,"  Elem memory:     %d\n",ptsElemCount * 28);
+
+  fprintf(stderr,"  Rev Points-to count: %d\n",r_ptsCount);
+  fprintf(stderr,"     Rev Empty:        %d\n",r_emptyPtsCount);
+  fprintf(stderr,"  Rev Bits / pts:      %d\n",
+          r_ptsCount > 0 ? r_totalCardinality/r_ptsCount : 0);
+  fprintf(stderr,"  Rev Bits / elem:     %d\n",
+          r_ptsCount > 0 ? r_totalCardinality/r_ptsElemCount : 0);
+  fprintf(stderr,"  Rev Elem / pts:      %d\n",
+          r_ptsCount > 0 ? r_ptsElemCount/r_ptsCount : 0);
+
+  fprintf(stderr,"  Total Elem memory:     %d\n",
+          (ptsElemCount+r_ptsElemCount) * sizeof(SparseBitSetElement));
 }
 
 void
@@ -2858,6 +2911,7 @@ ConstraintGraphNode::collapse(ConstraintGraphNode *cur)
   cur->deleteRevPointsToSet();
   cur->collapsedParent(this->id());
   cur->addFlags(CG_NODE_FLAGS_COLLAPSED);
+  this->addFlags(CG_NODE_FLAGS_COLLAPSED_PARENT);
 
   if (!(cur->checkFlags(CG_NODE_FLAGS_NOT_POINTER)))
     this->clearFlags(CG_NODE_FLAGS_NOT_POINTER);
@@ -3732,6 +3786,74 @@ ConstraintGraph::promoteCallSiteToDirect(CallSiteId csid, ST_IDX st_idx)
             csid, ST_name(St_Table[st_idx]));
     cs->clearFlags(CS_FLAGS_INDIRECT);
     cs->st_idx(st_idx);
+  }
+}
+
+void
+ConstraintGraphNode::collapseTypeIncompatibleNodes()
+{
+  // Ignore pregs, or aggregates. We expect the node to be a just a single
+  // offset off its StInfo.
+  // Also, ignore any node with strided access or if it is a target of
+  // a collapse
+  if (stInfo()->checkFlags(CG_ST_FLAGS_PREG) || offset() != 0 ||
+      stInfo()->numOffsets() != 1 || inKCycle() != 0 ||
+      checkFlags(CG_NODE_FLAGS_COLLAPSED_PARENT))
+    return;
+
+  // Ignoring any non-pointer types
+  TY &ty = Ty_Table[stInfo()->ty_idx()];
+  if (TY_kind(ty) != KIND_POINTER)
+    return;
+
+  TY &ptd_ty = Ty_Table[TY_pointed(ty)];
+  INT64 ptdSize = TY_size(ptd_ty);
+  
+  for (PointsToIterator pti(this); pti != 0; ++pti ) {
+    PointsTo &pts = *pti;
+    ConstraintGraphNode *repNode = NULL;
+    for (PointsTo::SparseBitSetIterator siter(&pts,0); siter != 0; ++siter) {
+      ConstraintGraphNode *ptdNode = ConstraintGraph::cgNode(*siter);
+      if (ptdNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+        continue;
+      // We don't want to collapse symbols corresponding to functions
+      if (TY_kind(Ty_Table[ptdNode->stInfo()->ty_idx()]) == KIND_FUNCTION)
+        continue;
+      TY_IDX ty_idx = 
+             ptdNode->stInfo()->getOffsetType(ptdNode->stInfo()->ty_idx(),
+                                              ptdNode->offset());
+      INT64 size;
+      if (ty_idx == 0)
+        size = ptdNode->stInfo()->varSize();
+      else
+        size = TY_size(Ty_Table[ty_idx]);
+
+      if (size == 0)
+        continue;
+
+      if (size >= ptdSize)
+        continue;
+      fprintf(stderr, "Found incompatible node %d in pts set of %d\n",
+              ptdNode->id(), this->id());
+      //ptdNode->print(stderr);
+      //fprintf(stderr, " in pts set of: \n");
+      ptdNode->stInfo()->collapse();
+      if (repNode == NULL) {
+        FmtAssert(ptdNode->stInfo()->firstOffset()->nextOffset() == NULL,
+                  ("Only single offset expected"));
+        repNode = ptdNode->stInfo()->firstOffset();
+        fprintf(stderr, "ptr stinfo:\n");
+        stInfo()->print(stderr);
+        fprintf(stderr, "Identifying rep: %d\n", repNode->id());
+        repNode->stInfo()->print(stderr);
+      } else {
+        repNode->collapse(ptdNode);
+        fprintf(stderr, "Collapsing node: %d with %d\n", ptdNode->id(),
+                repNode->id());
+        fprintf(stderr, "ptd stinfo:\n");
+        ptdNode->stInfo()->print(stderr);
+      }
+    }
   }
 }
 

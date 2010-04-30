@@ -495,7 +495,7 @@ bool
 ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
 {
   // TODO: Perform cycle detection, here
-  SCCDetection  *sccs;
+  SCCDetection  *sccs = NULL;
   if (_cg)
     sccs = new SCCDetection(_cg,_memPool);
   else if (Alias_Nystrom_Global_Cycle_Detection)
@@ -615,6 +615,13 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
         }
         // Sort based on topo-order number
         qsort(topoOrderArray,i,sizeof(ConstraintGraphNode *),topoCGNodeCompare);
+
+        // If we have objects in the pts of the updated object 
+        // whose types are incompatible with the type of the updated object
+        // collapse them
+        for (UINT32 j = 0; j < i; j++)
+          topoOrderArray[j]->collapseTypeIncompatibleNodes();
+
         // Add edges to be processed in topological order
         for ( UINT32 j = 0; j < i; j++)
           ConstraintGraph::addEdgesToWorkList(topoOrderArray[j]);
@@ -1843,7 +1850,7 @@ ConstraintGraph::simpleOptimizer()
     fprintf(stderr, "Done optimizing ConstraintGraphs\n");
 }
 
-#define MAX_ALLOWED_ST_PER_TYPE 32
+#define MAX_ALLOWED_ST_PER_TYPE 2
 
 void
 ConstraintGraph::ipaSimpleOptimizer()
@@ -1851,51 +1858,54 @@ ConstraintGraph::ipaSimpleOptimizer()
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_OPT_FLAG))
     fprintf(stderr, "IPA optimizing ConstraintGraphs...\n");
 
+  CGStInfoMap allStInfos;
+  for (CGIdToNodeMapIterator iter = gBegin(); iter != gEnd(); iter++) 
+  {
+    ConstraintGraphNode *node = iter->second;
+    if (node->stInfo()->checkFlags(CG_ST_FLAGS_PREG))
+      continue;
+    if (allStInfos.find(node->cg_st_idx()) == allStInfos.end()) 
+      allStInfos[node->cg_st_idx()] = node->stInfo();
+  }
+    
   hash_map<TY_IDX, UINT32> stInfoCount;
   hash_map<TY_IDX, StInfo *> repStofType;
 
-  for (CGStInfoMapIterator iter = _cgStInfoMap.begin();
-       iter != _cgStInfoMap.end(); iter++) {
+  for (CGStInfoMapIterator iter = allStInfos.begin();
+       iter != allStInfos.end(); iter++) 
+  {
     StInfo *stInfo = iter->second;
     TY_IDX ty_idx = stInfo->ty_idx();
     TY &ty = Ty_Table[ty_idx];
-    if (TY_kind(ty) == KIND_STRUCT || TY_kind(ty) == KIND_ARRAY) {
-      stInfoCount[ty_idx]++;
+    if (TY_kind(ty) == KIND_STRUCT || TY_kind(ty) == KIND_ARRAY)
+    {
       if (stInfoCount[ty_idx] > MAX_ALLOWED_ST_PER_TYPE) {
+        // Collapse the StInfo to create a single node for this StInfo
+        fprintf(stderr, "Count: %d exceeded threshold for st cg_st_idx: %llu "
+                "..collapsing\n", stInfoCount[ty_idx], iter->first);
+        stInfo->print(stderr);
+        stInfo->collapse();
         if (repStofType.find(ty_idx) == repStofType.end()) {
-          // Collapse the StInfo to create a single node for this StInfo
-          if (stInfo->checkFlags(CG_ST_FLAGS_MODRANGE)) {
-            ModulusRange *outerRange = stInfo->modRange();
-            ModulusRange::setModulus(outerRange, 1, stInfo->memPool());
-          }
-          else
-            stInfo->mod(1);
-          stInfo->applyModulus();
           // Mark this collapsed StInfo as the representative
           repStofType[ty_idx] = stInfo;
-          fprintf(stderr, "Identifying rep..\n");
+          fprintf(stderr, "Identifying rep:\n");
           stInfo->print(stderr);
-          stInfo->firstOffset()->print(stderr);
           FmtAssert(stInfo->firstOffset()->nextOffset() == NULL,
                     ("Only single offset expected"));
         }
         else {
-          ConstraintGraphNode *repNode = 
-                    repStofType.find(ty_idx)->second->firstOffset()->parent();
-          FmtAssert(repNode != NULL, ("Representative node not found"));
+          StInfo *repStInfo = repStofType.find(ty_idx)->second;
+          FmtAssert(stInfo->firstOffset()->nextOffset() == NULL,
+                    ("Only single offset expected"));
+          ConstraintGraphNode *repNode = repStInfo->firstOffset();
           ConstraintGraphNode *node = stInfo->firstOffset();
-          while (node) {
-            fprintf(stderr, "Merging node: %d with %d\n", node->id(),
-                    repNode->id());
-            node->print(stderr);
-            repNode->merge(node);
-            node->repParent(repNode);
-            if (repNode->inKCycle() > 0)
-              ConstraintGraph::adjustPointsToForKCycle(repNode);
-            node = node->nextOffset();
-          }
+          // Collapse the firstOffset with the rep's firstOffset
+          repNode->collapse(node);
+          fprintf(stderr, "Collapsing node: %d with %d\n", node->id(),
+                  repNode->id());
         }
-      }
+      } else
+        stInfoCount[ty_idx]++;
     }
   }
 

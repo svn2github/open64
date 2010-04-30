@@ -101,6 +101,7 @@ class EdgeDelta;
                                                 // its parent and all references
                                                 // to node in other's pts have
                                                 // been replaced.
+#define CG_NODE_FLAGS_COLLAPSED_PARENT 0x00100000 // Target of a collapse
 
 // Call site flags
 #define CS_FLAGS_UNKNOWN     0x01
@@ -667,6 +668,8 @@ public:
 
   void checkIsPtrAligned();
 
+  void collapseTypeIncompatibleNodes();
+
   typedef struct
   {
     size_t operator()(const ConstraintGraphNode *k) const
@@ -1000,6 +1003,8 @@ public:
 
   INT64 alignOffset(TY_IDX ty_idx, INT64 offset);
 
+  TY_IDX getOffsetType(TY_IDX ty_idx, INT64 offset);
+
   // Retrieve the modulus.  Note that the modulus obtained
   // from this method should NOT be used to adjust the offset.
   // If that is the goal, use applyModulus(UINT32) instead.
@@ -1243,6 +1248,8 @@ public:
   static NodeWorkList *solverModList(void)   { return _solverModList; }
   static void solverModList(NodeWorkList *l) { _solverModList = l; }
 
+  static void ipaSimpleOptimizer();
+
   static void stats(void);
 
   static char *
@@ -1405,7 +1412,6 @@ public:
   bool nonIPASolver();
 
   void simpleOptimizer();
-  void ipaSimpleOptimizer();
 
   bool exprMayPoint(WN *const wn);
 
