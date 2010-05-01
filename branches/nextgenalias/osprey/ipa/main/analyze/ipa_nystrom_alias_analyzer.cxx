@@ -1116,6 +1116,18 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
           continue;
 
         IPA_NODE *callee = ni->second;
+        // If we have a parameter mismatch, then we are likely calling the
+        // wrong function.  We are not yet clear how strong our assertion
+        // can be at this point, depends on language, etc.  So, for now
+        // we experiment with pruning just based on a different number of
+        // formals vs. actuals.
+        if (cs->parms().size() != callee->Num_Formals()) {
+          if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+            fprintf(stderr,"  CGNode: %d, ST: %s, IPA_NODE: %d (skipping)\n",
+                              nodeId,ST_name(st),callee->Node_Index());
+          continue;
+        }
+
         IPAEdge newEdge(caller->Node_Index(),callee->Node_Index(),id);
         // Have we seen this edge before?
         IndirectEdgeSet::iterator iter = _indirectEdgeSet.find(newEdge);
@@ -1158,13 +1170,6 @@ IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGra
               ("Expected indirect CallSite in caller constraint graph"));
     ConstraintGraphNode *icallNode = ConstraintGraph::cgNode(cs->cgNodeId());
     if (escAnal.escaped(icallNode)) {
-#if 0
-    const PointsTo &gblPointsTo = icallNode->pointsTo(CQ_GBL);
-    // No, we could not use PointsTo.isSet() here because it is a non-const
-    // function.
-    for (PointsTo::SparseBitSetIterator sbsi(&gblPointsTo,0); sbsi != 0; sbsi++) {
-      if (*sbsi == ConstraintGraph::blackHoleId()) {
-#endif
         // We have an incomplete indirect call, now connect it up to "everything"
         if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
           fprintf(stderr,"Incomplete Indirect Call: %s (%d) %s maps to CGNodeId: %d\n",
@@ -1173,9 +1178,16 @@ IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGra
         for (; iter != _stToIndTgtMap.end(); ++iter) {
           const ST *st = iter->first;
           IPA_NODE *ipaNode = iter->second;
-          IPAEdge newEdge(caller->Node_Index(),ipaNode->Node_Index(),id);
+          // If we have a parameter mismatch, then we are likely calling the
+          // wrong function.  We are not yet clear how strong our assertion
+          // can be at this point, depends on language, etc.  So, for now
+          // we experiment with pruning just based on a different number of
+          // formals vs. actuals.
+          if (cs->parms().size() != ipaNode->Num_Formals())
+            continue;
 
           // Have we seen this edge before?
+          IPAEdge newEdge(caller->Node_Index(),ipaNode->Node_Index(),id);
           IndirectEdgeSet::iterator iter = _indirectEdgeSet.find(newEdge);
           bool isNew = (iter == _indirectEdgeSet.end());
 
@@ -1496,6 +1508,7 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
   // callee cannot be returning new memory through the return value of this
   // callsite, so we skip this optimization.  Can we assert that since there
   // is not return that we should not be connecting this call edge?
+#if 0
   if (PU_has_attr_malloc(calleePU) && cs->returnId() != 0) {
     FmtAssert(cs->returnId() != 0, ("No return id for malloc wrapper"));
     // Get the type of the actual return
@@ -1552,6 +1565,7 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
     }
     return;
   }
+#endif
 
   // Now connect the formal returns in callee to actual returns of caller
   list<CGNodeId>::const_iterator retIter = callee->returns().begin();

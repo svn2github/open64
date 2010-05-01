@@ -377,7 +377,7 @@ StInfo::init(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
 {
   _flags = flags;
   _varSize = 0;
-  _maxOffsets = 256;
+  _maxOffsets = 512;
   _numOffsets = 0;
   _firstOffset = 0;
   _ty_idx = ty_idx;
