@@ -95,6 +95,7 @@
 
 #if defined(BACK_END)
 #include "xstats.h"
+#include "ipa_be_read.h"
 #endif
 #if defined(BACK_END) || defined(BUILD_WHIRL2C) || defined(BUILD_WHIRL2F)
 #include "pf_cg.h"
@@ -1568,7 +1569,10 @@ Read_Local_Info (MEM_POOL *pool, PU_Info *pu)
 			   WT_AC_INTERNAL, WN_MAP_AC_INTERNAL) == -1) {
       ErrMsg ( EC_IR_Scn_Read, "alias class internal map", local_ir_file);
     }
-
+    
+#ifdef BACK_END
+    IPA_read_alias_summary(local_fhandle, pu, pool);
+#endif
     Set_Error_Phase(save_phase);
 }
 

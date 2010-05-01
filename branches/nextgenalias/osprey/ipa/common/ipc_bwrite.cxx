@@ -66,6 +66,7 @@
 
 #include "erglob.h"			// error codes
 
+#include "config_opt.h"
 #include "ipa_option.h"			// option flags
 #include "ipa_cg.h"			// call graph
 #include "ipaa.h"			// for Mod_Ref_Set
@@ -80,6 +81,7 @@
 #include <cmplrs/host.h>        // for typedef string
 #include "ld_ipa_option.h"      // For ld_ipa_opt 
 #include "ipc_weak.h"           
+
 
 #ifdef KEY
 #include "ipa_builtins.h"
@@ -171,10 +173,12 @@ extern "C" void IP_write_global_symtab(void)
 
   WN_write_globals(symtab_file);
   WN_write_strtab(Index_To_Str(0), STR_Table_Size(), symtab_file);
+
 #ifdef KEY
   if (Mod_Ref_Info_Table_Size() != 0)
     IPA_write_summary (IPA_irb_write_mod_ref_info, symtab_file);
 #endif
+
   WN_write_revision(symtab_file);  
 
   add_to_tmp_file_list(symtab_file_name);
@@ -235,7 +239,7 @@ IP_WRITE_pu_internal (PU_Info* pu, Output_File *outfile)
       WN_write_feedback (pu, outfile);
 
   WN_write_tree (pu, off_map, outfile);
-
+   
   if (Write_ALIAS_CLASS_Map || Write_AC_INTERNAL_Map || 
       Write_ALIAS_CGNODE_Map) {
 
@@ -258,12 +262,12 @@ IP_WRITE_pu_internal (PU_Info* pu, Output_File *outfile)
     WN_MAP_Delete(off_map);
     MEM_POOL_Pop(MEM_local_nz_pool_ptr);
   }
+
 }
 
 // Write a PU, and all of its children.  (But not its siblings.)
 void IP_write_PU_tree(Output_File* f, PU_Info* pu) {
   IP_WRITE_pu_internal(pu, f);
-
 
   PU_Info* prev_child = NULL;
   PU_Info* child = PU_Info_child(pu);

@@ -107,6 +107,7 @@
 #endif
 
 // Constraint graph summary for Nystrom Alias Analyzer
+#include "ipa_be_summary.h"
 #include "constraint_graph.h"
 
 //---------------------------------------------------------------

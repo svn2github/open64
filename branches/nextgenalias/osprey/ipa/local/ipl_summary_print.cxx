@@ -60,6 +60,7 @@
 #include "defs.h"
 #include "strtab.h"             // Current_Strtab
 #include "ipl_summary.h"        // SUMMARY_* classes
+#include "ipa_be_summary.h"     // SUMMARY_CONSTRAINT_* classes
 #include "ipc_symtab_merge.h"   // IPC_GLOBAL_IDX_MAP
 #include "ipl_tlog.h"
 

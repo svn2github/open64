@@ -9,6 +9,7 @@
 #include "defs.h"
 #include "ipl_summary.h"
 #include "ipa_summary.h"
+#include "ipa_be_summary.h"
 #include "ipa_nystrom_alias_analyzer.h"
 #include "opt_defs.h"
 #include "wn_util.h"
@@ -243,9 +244,10 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
   INT32 size;
   SUMMARY_PROCEDURE *proc = ipaNode->Summary_Proc();
 
-  fprintf(stderr, "Processing proc: %s(%d) file: %s(%d)\n",
-          ipaNode->Name(), ipaNode->Proc_Info_Index(),
-          ipaNode->File_Header().file_name, ipaNode->File_Index());
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
+    fprintf(stderr, "Processing proc: %s(%d) file: %s(%d)\n",
+            ipaNode->Name(), ipaNode->Proc_Info_Index(),
+            ipaNode->File_Header().file_name, ipaNode->File_Index());
 
   sprintf(_name, "%s(%d),%s(%d)", 
           ipaNode->File_Header().file_name, ipaNode->File_Index(),
@@ -453,10 +455,11 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
                             "special copy edge"));
         }
 #endif
-        fprintf(stderr, "Merging oldRepParent %d with newRepParent %d"
-                " for node: %d (%s)\n", oldRepParent->id(), newRepParent->id(),
-                cgNode->id(), (cgNode->cg() == globalCG()) ? "global" 
-                                                           : "local");
+        if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
+          fprintf(stderr, "Merging oldRepParent %d with newRepParent %d"
+                  " for node: %d (%s)\n", oldRepParent->id(), newRepParent->id(),
+                  cgNode->id(), (cgNode->cg() == globalCG()) ? "global" 
+                  : "local");
       }
     }
   }
@@ -497,7 +500,6 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     if (!added)
       edge->addFlags(summEdge.flags());
   }
-
 
   // Add the formal paramters and return
   UINT32 parmIdx = proc->Get_constraint_graph_formal_parm_idx();
@@ -542,9 +544,10 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     _callSiteMap[newCSId] = cs;
     _uniqueCallSiteIdMap[summCallSite.id()] = cs;
     csIdToCallSiteMap[newCSId] = cs;
-    fprintf(stderr, "Adding CSoldId: %d to CSnewId: %d\n",
-            summCallSite.id(), newCSId);
-
+    if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
+      fprintf(stderr, "Adding CSoldId: %d to CSnewId: %d\n",
+              summCallSite.id(), newCSId);
+    
     if (cs->isDirect() && !cs->isIntrinsic())
       cs->st_idx(summCallSite.st_idx());
     else if (cs->isIndirect())
@@ -585,15 +588,17 @@ ConstraintGraph::buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE *summ,
     if (summ->inKCycle() != 0 && summ->inKCycle() != cgNode->inKCycle())
       cgNode->addFlags(CG_NODE_FLAGS_ADJUST_K_CYCLE);
     cgNode->inKCycle(gcd(cgNode->inKCycle(), summ->inKCycle()));
+
     // Clear the MERGE flag, since if this node has a parent
     // we will be merging this node with the parent and the MERGED flag
     // will be set.
     UINT32 flags = (summ->flags() & (~CG_NODE_FLAGS_MERGED));
     cgNode->addFlags(flags);
-    fprintf(stderr, "Global entry found for CGNode oldId: %d newId: %d "
-            " old cg_st_idx: %llu new cg_st_idx: %llu flags: 0x%x\n",
-            summ->cgNodeId(), cgNode->id(), summ->cg_st_idx(), cg_st_idx,
-            cgNode->flags());
+    if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
+      fprintf(stderr, "Global entry found for CGNode oldId: %d newId: %d "
+              " old cg_st_idx: %llu new cg_st_idx: %llu flags: 0x%x\n",
+              summ->cgNodeId(), cgNode->id(), summ->cg_st_idx(), cg_st_idx,
+              cgNode->flags());
     return cgNode;
   }
  
@@ -609,11 +614,12 @@ ConstraintGraph::buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE *summ,
   cgIdToNodeMap[newCGNodeId] = cgNode;
   _cgNodeToIdMap[cgNode] = newCGNodeId;
 
-  fprintf(stderr, "Adding CGNode oldId: %d newId: %d to %s"
-          " old cg_st_idx: %llu new cg_st_idx: %llu flags: 0x%x\n",
-          summ->cgNodeId(), cgNode->id(),
-          (this == globalCG()) ? "global" : "local",
-          summ->cg_st_idx(), cg_st_idx, cgNode->flags());
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
+    fprintf(stderr, "Adding CGNode oldId: %d newId: %d to %s"
+            " old cg_st_idx: %llu new cg_st_idx: %llu flags: 0x%x\n",
+            summ->cgNodeId(), cgNode->id(),
+            (this == globalCG()) ? "global" : "local",
+            summ->cg_st_idx(), cg_st_idx, cgNode->flags());
 
   return cgNode;
 }
@@ -663,11 +669,15 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
         stInfo->mod(gcd(stInfo->mod(), newMR->mod()));
         ModulusRange::removeRange(newMR, _memPool);
         stInfo->addFlags(CG_ST_FLAGS_ADJUST_MODULUS);
-        fprintf(stderr, "Adjust modulus for global st_idx: %llu\n", cg_st_idx);
+        if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
+          fprintf(stderr, "Adjust modulus for global st_idx: %llu\n", 
+                  cg_st_idx);
       } else if (stInfo->mod() != summ->modulus()) {
         stInfo->mod(gcd(stInfo->mod(), summ->modulus()));
         stInfo->addFlags(CG_ST_FLAGS_ADJUST_MODULUS);
-        fprintf(stderr, "Adjust modulus for global st_idx: %llu\n", cg_st_idx);
+        if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
+          fprintf(stderr, "Adjust modulus for global st_idx: %llu\n", 
+                  cg_st_idx);
       }
     } else {
       // If stInfo has a MODRANGE, and summary does not or if their
@@ -684,19 +694,23 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
                                    stInfo->memPool());
           ModulusRange::removeRange(newMR, _memPool);
           stInfo->addFlags(CG_ST_FLAGS_ADJUST_MODULUS);
-          fprintf(stderr, "Adjust modulus for global st_idx: %llu\n",
-                  cg_st_idx);
+          if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
+            fprintf(stderr, "Adjust modulus for global st_idx: %llu\n",
+                    cg_st_idx);
         }
       } else {
         ModulusRange::setModulus(oldMR, gcd(oldMR->mod(), summ->modulus()),
                                  stInfo->memPool());
         stInfo->addFlags(CG_ST_FLAGS_ADJUST_MODULUS);
-        fprintf(stderr, "Adjust modulus for global st_idx: %llu\n", cg_st_idx);
+        if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
+          fprintf(stderr, "Adjust modulus for global st_idx: %llu\n", 
+                  cg_st_idx);
       }
     }
     stInfo->addFlags(summ->flags());
-    fprintf(stderr, "Global entry found for StInfo old cg_st_idx: %llu "
-                    "new cg_st_idx: %llu\n", summ->cg_st_idx(), cg_st_idx);
+    if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
+      fprintf(stderr, "Global entry found for StInfo old cg_st_idx: %llu "
+              "new cg_st_idx: %llu\n", summ->cg_st_idx(), cg_st_idx);
     return stInfo;
   }
      
@@ -728,10 +742,11 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
       _max_st_idx = make_ST_IDX(index, level);
   }
 
-  fprintf(stderr, "Adding StInfo old cg_stIdx: %llu "
-          "new cg_st_idx: %llu to %s\n", summ->cg_st_idx(), cg_st_idx,
-          (this == globalCG()) ? "global" : "local");
-
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
+    fprintf(stderr, "Adding StInfo old cg_stIdx: %llu "
+            "new cg_st_idx: %llu to %s\n", summ->cg_st_idx(), cg_st_idx,
+            (this == globalCG()) ? "global" : "local");
+  
   return stInfo;
 }
 
@@ -1363,6 +1378,9 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
     ConstraintGraph::stats();
   }
 
+  // post-process the points-to sets
+  ConstraintGraphSolve::postProcessPointsTo();
+
   ConstraintGraph::workList(NULL);
 
   if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
@@ -1693,7 +1711,7 @@ IPA_NystromAliasAnalyzer::updateCGForBE(IPA_NODE *ipaNode)
        wni = WN_WALK_TreeNext(wni))
   {
     WN *wn = WN_ITER_wn(wni);
-    const OPCODE   opc = WN_opcode(wn);
+    const OPCODE opc = WN_opcode(wn);
 
     // Get the symbol from the WN and add StInfos/CGNodes associated
     // with the symbol

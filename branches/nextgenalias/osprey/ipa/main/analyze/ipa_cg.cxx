@@ -99,6 +99,7 @@
 #include "ipo_clone.h"                  // IPO_Clone
 #include "ipo_defs.h"                   // IPA_NODE_CONTEXT
 #include "ipaa.h"			// IPAA_NODE_INFO
+#include "ipa_be_summary.h"             // SUMMARY_CONSTRAINT_GRAPH_*
 
 #include "ipa_nested_pu.h"
 #include "ipa_cg.h"

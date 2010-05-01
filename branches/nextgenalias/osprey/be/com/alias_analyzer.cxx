@@ -32,9 +32,9 @@ AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree)
   // What alias analyzer are we going to use?
   if ( Alias_Nystrom_Analyzer ) {
     if (Read_ALIAS_CGNODE_Map)
-      _alias_analyzer = new NystromAliasAnalyzer(ac);
+      _alias_analyzer = new NystromAliasAnalyzer(ac, tree, true);
     else
-      _alias_analyzer = new NystromAliasAnalyzer(ac,tree);
+      _alias_analyzer = new NystromAliasAnalyzer(ac, tree);
     if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG))
       fdump_tree(stderr, tree);
     return _alias_analyzer;

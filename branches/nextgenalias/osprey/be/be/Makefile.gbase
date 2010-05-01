@@ -516,6 +516,7 @@ BE_COM_PCH_CXX_SRCS = \
   emulate.cxx		\
   fb_cfg.cxx		\
   fb_whirl.cxx		\
+  ipa_be_read.cxx       \
   nystrom_alias_analyzer.cxx \
   opt_alias_mgr.cxx	\
   opt_alias_rule.cxx	\

@@ -119,6 +119,7 @@
 #include "ipo_alias_class.h"
 #include "ir_bread.h"			// For second-pass WHIRL file
 #include "ir_bwrite.h"			// I/O for alias class
+#include "ipa_be_write.h"               // for nystrom alias summary
 #include "be_symtab.h" 
 #include "ipa_nystrom_alias_analyzer.h"
 
@@ -1168,6 +1169,12 @@ Perform_Alias_Class_Annotation(void)
     // Write the PU_Info's and DST to the output file.
     WN_write_PU_Infos(pu_info_tree, output_file);
     WN_write_dst(Current_DST, output_file);
+    
+    if (Alias_Nystrom_Analyzer)
+    {
+      IPA_write_alias_summary(pu_info_tree, output_file);
+    }
+    
 
 #if defined(TARG_SL)
     if (ld_ipa_opt[LD_IPA_IPISR].flag)

@@ -89,6 +89,7 @@
 #define INIT_TMP_MAPPED_SIZE    MAPPED_SIZE
 
 #ifdef BACK_END
+
 #define DEFAULT_NUM_OF_PREFETCHES 64
 WN **prefetch_ldsts;
 INT num_prefetch_ldsts;
@@ -108,7 +109,8 @@ INT max_alias_cgnode_nodes;
 WN **ac_internals;
 INT num_ac_internal_nodes;
 INT max_ac_internal_nodes;
-#endif
+
+#endif // BACK_END
 
 #ifndef __GNUC__
 #define __ALIGNOF(x) __builtin_alignof(x)
@@ -859,3 +861,4 @@ IPA_irb_write_mod_ref_info(Output_File *fl)
     header_addr->entsize = sizeof(pu_mod_ref_info);
 }
 #endif
+

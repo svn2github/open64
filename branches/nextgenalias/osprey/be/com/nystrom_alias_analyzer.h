@@ -107,7 +107,7 @@ public:
    NystromAliasAnalyzer(ALIAS_CONTEXT &,WN *);
 
    // Invoked during post-ipa be when WN to CGNodeId map exists
-   NystromAliasAnalyzer(ALIAS_CONTEXT &);
+   NystromAliasAnalyzer(ALIAS_CONTEXT &, WN*, bool);
 
    ~NystromAliasAnalyzer();
 
@@ -182,6 +182,8 @@ private:
         return iter->second->pointsTo();
       return emptyPointsToSet;
    }
+
+   ConstraintGraph* buildCGFromSummary();
 
    AliasTag _nextAliasTag;  // to generate unique AliasTags
 

@@ -2291,7 +2291,7 @@ main (INT argc, char **argv)
 
   INT pu_num;
   pu_tree = Read_Global_Info (&pu_num);
-
+  
 #if defined(TARG_SL)
   if (Run_ipisr) {
     isr_cg = CXX_NEW_ARRAY(ISR_NODE, pu_num, &MEM_src_nz_pool);

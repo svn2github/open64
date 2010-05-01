@@ -103,6 +103,7 @@
 #include "pf_cg.h"
 #include "instr_reader.h"
 #include "fb_whirl.h"			// for feedback stuff
+#include "ipa_be_write.h"
 
 BOOL Write_BE_Maps = FALSE;
 BOOL Write_AC_INTERNAL_Map = FALSE;
@@ -229,7 +230,7 @@ ir_bwrite_signal_handler (int sig, int err_num)
 /* Elf-related routines */
 #define DEFAULT_NUM_OF_SECTIONS 8	
 
-static Section *
+Section *
 get_section (Elf64_Word sh_info, const char *name, Output_File *fl)
 {
     register INT i;
@@ -1014,6 +1015,9 @@ WN_write_feedback (PU_Info* pu, Output_File* fl)
  *  Write out the IPA summary information.
  */
 
+
+// This routine is used to write the old mod_ref_info.  The output
+// file in this case is symtab.I
 void
 IPA_write_summary (void (*IPA_irb_write_summary) (Output_File*),
 		   Output_File *fl)
@@ -1032,6 +1036,29 @@ IPA_write_summary (void (*IPA_irb_write_summary) (Output_File*),
 
 }
 
+
+#if 0
+// This routine is used to write the Nystrom Alias Analysis results,
+// including the new Mod-Ref info based on NAA.  The output file in
+// this case is #.I and only information relevant to the PUs in the
+// output file are written out
+void
+IPA_write_alias_summary (PU_Info* pu_info_tree, Output_File *fl)
+{
+
+    Section *cur_section;
+
+    cur_section = get_section(WT_IPA_SUMMARY, MIPS_WHIRL_SUMMARY, fl);
+
+    fl->file_size = ir_b_align(fl->file_size, sizeof(mINT64), 0);
+    cur_section->shdr.sh_offset = fl->file_size;
+    
+    IPA_irb_write_nystrom_alias_info(pu_info_tree, fl);
+
+    cur_section->shdr.sh_size = fl->file_size - cur_section->shdr.sh_offset;
+    cur_section->shdr.sh_addralign = sizeof(mINT64);
+}
+#endif
 
 /*
  * Write out the dependence graph mapping.  Dependence graphs are written
@@ -1536,6 +1563,12 @@ Write_Global_Info (PU_Info *pu_tree)
       IPA_write_summary (IPA_irb_write_mod_ref_info, ir_output);
 #endif
 
+#if 0
+    if ()
+    {
+
+    }
+#endif
 }
 
 void

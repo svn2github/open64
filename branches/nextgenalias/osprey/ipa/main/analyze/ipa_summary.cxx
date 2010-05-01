@@ -52,6 +52,7 @@
 #include "ipa_cg.h"                     // IPA_NODE, IPA_Call_Graph_Built
 #include "ipa_summary.h"        
 #include "ipl_summarize.h"              // SUMMARY
+#include "ipa_be_summary.h"
 
 // --------------------------------------------------------------
 // Functions that take IP_FILE_HDR parameter also return the size

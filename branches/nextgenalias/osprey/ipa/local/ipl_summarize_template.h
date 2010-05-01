@@ -88,6 +88,7 @@
 #include "wb_ipl.h"
 
 // Generate summary information for Nystrom alias analyzer
+#include "ipa_be_summary.h"
 #include "nystrom_alias_analyzer.h"
 #include "constraint_graph.h"
 
@@ -3246,6 +3247,8 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
       summCGNode->nextOffset(cgNode->nextOffset()->id());
     else
       summCGNode->nextOffset(0);
+    if (cgNode->flags() & CG_NODE_FLAGS_COLLAPSED)
+      summCGNode->collapsedParent(cgNode->collapsedParent());
 
     // Add edges
     const CGEdgeSet &outCopySet = cgNode->outCopySkewEdges();

@@ -486,6 +486,7 @@ public:
 
   // PointsTo accessor functions
 
+  bool addPointsTo(CGNodeId id, CGEdgeQual qual);
   bool addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual);
 
   void removePointsTo(ConstraintGraphNode *node, CGEdgeQual qual);
@@ -1294,19 +1295,24 @@ public:
 
     edgeMemPool = mPool;
 
-    Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY,
-            ("Expecting FUNC_ENTRY when building ConstraintGraph"));
-    buildCG(entryWN);
-
-    _buildComplete = true;
-    // Here we are going to re-apply the final modulus, post
-    // build to perform any necessary aliasing of nodes having
-    // offsets larger than the new modulus.
-    for (CGStInfoMap::iterator iter = _cgStInfoMap.begin();
-        iter != _cgStInfoMap.end(); ++iter)  {
-      StInfo *stInfo = iter->second;
-      stInfo->applyModulus();
+    if (entryWN)
+    {
+      Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY,
+              ("Expecting FUNC_ENTRY when building ConstraintGraph"));
+      buildCG(entryWN);
+      // Here we are going to re-apply the final modulus, post
+      // build to perform any necessary aliasing of nodes having
+      // offsets larger than the new modulus.
+      for (CGStInfoMap::iterator iter = _cgStInfoMap.begin();
+           iter != _cgStInfoMap.end(); ++iter)  {
+        StInfo *stInfo = iter->second;
+        stInfo->applyModulus();
+      }
     }
+    else
+      buildCGFromSummary();
+      
+    _buildComplete = true;
   }
 
   // To build ConstraintGraphs during IPA
@@ -1549,13 +1555,18 @@ private:
 
   UINT32 findMaxTypeSize();
 
+  void buildCGFromSummary();
+  ConstraintGraphNode* buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE* summ);
+  StInfo *buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ);
+  ModulusRange* buildModRange(UINT32 idx);
+
   // Member functions for ConstraintGraph construction during IPA
   void buildCGipa(IPA_NODE *ipaNode);
 
   ConstraintGraphNode *buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE *summ,
                                    IPA_NODE *ipaNode);
 
-  StInfo * buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
+  StInfo *buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
                        IPA_NODE *ipaNode);
 
   ModulusRange *buildModRange(UINT32 idx, IPA_NODE *ipaNode);

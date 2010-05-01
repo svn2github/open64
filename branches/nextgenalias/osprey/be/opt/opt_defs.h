@@ -168,6 +168,7 @@ Is_fortran(void)
 #define NYSTROM_CG_BE_MAP_FLAG    0x00000080 /* CG clone and map updates 
                                                 during IPA for BE */
 #define NYSTROM_CG_BUILD_FLAG     0x00000100 /* CG build trace */
+#define NYSTROM_SUMMARY_FLAG      0x00000200 /* IPA-BE summary trace */
 
 /* TP_GLOBOPT (phase-number) */
 #define DOM_DUMP_FLAG	     0x0001 /* print dominator tree */

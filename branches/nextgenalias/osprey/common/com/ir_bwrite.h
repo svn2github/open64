@@ -100,6 +100,8 @@ extern Output_File *WN_open_output (char *file_name);
 extern void WN_close_output (Output_File *fl);
 extern void WN_close_file (void *fl);
 
+extern Section *
+get_section (Elf64_Word sh_info, const char *name, Output_File *fl);
 
 /*
  * Write global tables to their own Elf sections.  These should only be
@@ -112,6 +114,7 @@ extern void WN_write_strtab (const void *strtab, UINT64 size, Output_File *fl);
 extern void WN_write_localmap (void *localmap, Output_File *fl);
 extern void IPA_write_summary (void (*IPA_irb_write_summary) (Output_File*),
 			      Output_File *fl);
+  // extern void IPA_write_alias_summary (PU_Info* pu, Output_File *fl);
 extern void IPA_copy_PU(PU_Info *pu, char *section_base, Output_File *outfile);
 
 extern void WN_write_flags (INT argc, char **argv, Output_File *fl);
