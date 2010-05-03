@@ -388,7 +388,8 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       if (pNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
         FmtAssert(pNode != pNode->parent(), ("Expecting a distinct parent "
                   "for COLLAPSED node: %d\n", pNode->id()));
-        cgNode->parent()->addPointsTo(pNode->collapsedParent(), CQ_GBL);
+        cgNode->parent()->addPointsTo(
+                ConstraintGraph::cgNode(pNode->collapsedParent()), CQ_GBL);
       } else
         cgNode->parent()->addPointsTo(pNode, CQ_GBL);
     }
@@ -402,7 +403,8 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       if (pNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
         FmtAssert(pNode != pNode->parent(), ("Expecting a distinct parent "
                   "for COLLAPSED node: %d\n", pNode->id()));
-        cgNode->parent()->addPointsTo(pNode->collapsedParent(), CQ_HZ);
+        cgNode->parent()->addPointsTo(
+                ConstraintGraph::cgNode(pNode->collapsedParent()), CQ_HZ);
       } else
         cgNode->parent()->addPointsTo(pNode, CQ_HZ);
     }
@@ -416,7 +418,8 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       if (pNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
         FmtAssert(pNode != pNode->parent(), ("Expecting a distinct parent "
                   "for COLLAPSED node: %d\n", pNode->id()));
-        cgNode->parent()->addPointsTo(pNode->collapsedParent(), CQ_DN);
+        cgNode->parent()->addPointsTo(
+                ConstraintGraph::cgNode(pNode->collapsedParent()), CQ_DN);
       } else
         cgNode->parent()->addPointsTo(pNode, CQ_DN);
     }
