@@ -339,6 +339,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     // If the node does not have an existing parent 
     if (repParentId != 0 && cgNode->repParent() == NULL) {
       ConstraintGraphNode *repPNode = findUniqueNode(repParentId);
+      ConstraintGraphNode *repPNodeParent = repPNode->findRep();
       // Here we are going to call merge to merge 'cgNode' into
       // the equivalent of the parent.  Why?  It may be the case,
       // that 'summNode.cgNodeId()' was mapped to an existing node
@@ -347,8 +348,10 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       // incoming/outgoing edges, i.e. they are all mapped onto the
       // parent.  When we read the edges for this PU (below) we will
       // materialize the 'repPNode' -- =0 --> 'cgNode' parent copy.
-      repPNode->merge(cgNode);
-      cgNode->repParent(repPNode);
+      if (repPNodeParent != cgNode) {
+        repPNodeParent->merge(cgNode);
+        cgNode->repParent(repPNodeParent);
+      }
     }
   }
 
