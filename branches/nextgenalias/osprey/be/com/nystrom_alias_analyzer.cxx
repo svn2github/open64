@@ -35,7 +35,7 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac, WN* entryWN,
                              &_memPool);
 
   // Map WNs to AliasTags
-  createAliasTags(entryWN);
+  createAliasTags(entryWN, true);
 
   // Set flag to dump the WN to CGNodeId map during Write_PU_Info
   Write_ALIAS_CGNODE_Map = TRUE;
@@ -198,7 +198,10 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
           // CODEREP to WN lowering
           _aliasTagToCGNodeIdMap[aliasTag] = node->id();
           // Add self reference and black hole if required
-          aliasTagInfo->pointsTo().setBit(node->id());
+          if (node->checkFlags(CG_NODE_FLAGS_COLLAPSED))
+            aliasTagInfo->pointsTo().setBit(node->collapsedParent());
+          else
+            aliasTagInfo->pointsTo().setBit(node->id());
           // If the node is address taken, we must add "black hole" to
           // the points-to set to cover intersection with other escaped
           // references.  If the node is *not* address taken nothing can
@@ -233,7 +236,10 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
           }
           if (direct) {
             // Add self reference and black hole if required
-            aliasTagInfo->pointsTo().setBit(node->id());
+            if (node->checkFlags(CG_NODE_FLAGS_COLLAPSED))
+              aliasTagInfo->pointsTo().setBit(node->collapsedParent());
+            else
+              aliasTagInfo->pointsTo().setBit(node->id());
             // If the node is address taken, we must add "black hole" to
             // the points-to set to cover intersection with other escaped
             // references.  If the node is *not* address taken nothing can
@@ -412,7 +418,7 @@ NystromAliasAnalyzer::transferAliasTag(WN *dstWN, const WN *srcWN)
 // an AliasTagInfo which stores the points-to set (CGNodeIds) of the
 // locations accessed by the WN
 void
-NystromAliasAnalyzer::createAliasTags(WN *entryWN)
+NystromAliasAnalyzer::createAliasTags(WN *entryWN, bool isPostIPA)
 {
   for (WN_ITER *wni = WN_WALK_TreeIter(entryWN);
       wni; wni = WN_WALK_TreeNext(wni))
@@ -460,7 +466,8 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
 
       // Union all the points-to sets
-      cgNode->findRep()->postProcessPointsTo(aliasTagInfo->pointsTo());
+      if (!isPostIPA)
+        cgNode->findRep()->postProcessPointsTo(aliasTagInfo->pointsTo());
 
       // If the points-to set of the alias tag is empty at this point then
       // either we have an escape analysis bug or an uninitialized variable.

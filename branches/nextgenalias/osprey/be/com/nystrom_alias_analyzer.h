@@ -168,7 +168,7 @@ private:
    // Traverse the whirl tree starting from the func entry
    // and for each WN for which there is a valid CGNodeId, create
    // an AliasTag and its associated AliasTagInfo and update the aliasTagMap
-   void createAliasTags(WN *entryWN);
+   void createAliasTags(WN *entryWN, bool isPostIPA = false);
 
    // Unions the points-to set of srcTag into the points-to set
    // of dstTag.
