@@ -486,7 +486,7 @@ public:
 
   // PointsTo accessor functions
 
-  bool addPointsTo(CGNodeId id, CGEdgeQual qual);
+  bool setPointsTo(CGNodeId id, CGEdgeQual qual);
   bool addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual);
 
   void removePointsTo(ConstraintGraphNode *node, CGEdgeQual qual);

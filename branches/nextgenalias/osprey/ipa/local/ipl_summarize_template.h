@@ -3248,7 +3248,16 @@ SUMMARIZE<program>::generateConstraintGraphSummary()
     else
       summCGNode->nextOffset(0);
     if (cgNode->flags() & CG_NODE_FLAGS_COLLAPSED)
-      summCGNode->collapsedParent(cgNode->collapsedParent());
+    {
+      CGNodeId cpid = cgNode->CollapsedParent();
+      ConstraintGraphNode* cp = cg->cgNode(cpid);
+      while (cp && (cp->flags() & CG_NODE_FLAGS_COLLAPSED))
+      {
+        cpid = cp->collapsedParent();
+        cp = cg->cgNode(cpid);
+      }
+      summCGNode->collapsedParent(cpid);
+    }
 
     // Add edges
     const CGEdgeSet &outCopySet = cgNode->outCopySkewEdges();

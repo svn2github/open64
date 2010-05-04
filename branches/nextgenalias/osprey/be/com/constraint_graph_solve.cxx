@@ -739,7 +739,7 @@ ConstraintGraphNode::postProcessPointsTo(PointsTo &adjustSet)
     for (PointsTo::SparseBitSetIterator sbsi(&curSet,0); sbsi != 0; ++sbsi)
     {
       ConstraintGraphNode *node = ConstraintGraph::cgNode(*sbsi);
-      if (node && node->offset() == -1)
+      if (node->offset() == -1)
       {
         ConstraintGraphNode *cur = node->nextOffset();
         while (cur) {
@@ -747,7 +747,7 @@ ConstraintGraphNode::postProcessPointsTo(PointsTo &adjustSet)
           cur = cur->nextOffset();
         }
       }
-      else if (node) {
+      else {
         // Handle changes in the size of the modulus that may have
         // made the current offset "out of bounds".  The modulus
         // applied to an offset is defined by a range, start...end.
@@ -1002,7 +1002,7 @@ ConstraintGraphNode::sanitizePointsTo(PointsTo &pts,
    hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx> minusOneSts;
    for (PointsTo::SparseBitSetIterator i1(&pts,0); i1 != 0; ++i1) {
      ConstraintGraphNode *node = ConstraintGraph::cgNode(*i1);
-     if (node && node->offset() == -1)
+     if (node->offset() == -1)
        minusOneSts.insert(node->cg_st_idx());
    }
 
@@ -1024,27 +1024,24 @@ ConstraintGraphNode::sanityCheckPointsTo(CGEdgeQual qual)
   hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx> minusOneSts;
   for (PointsTo::SparseBitSetIterator i1(&pts,0); i1 != 0; ++i1) {
     ConstraintGraphNode *node = ConstraintGraph::cgNode(*i1);
-    if (node && (node->offset() == -1))
+    if (node->offset() == -1)
       minusOneSts.insert(node->cg_st_idx());
     // If node is present in the pts, it had better not have
     // the COLLASPED flag.
-    if (node)
-    {
-      FmtAssert(!node->checkFlags(CG_NODE_FLAGS_COLLAPSED),
-                ("Merge node failure: found COLLAPSED node %d with parent %d "
-                 "in pts of node %d",node->id(),node->collapsedParent(),id()));
-      // If "node" is present in the pts of "this", then "this"
-      // must be in the rev-pts of "node".  Here we are checking
-      // for missing nodes in the rev-pts set.
-      FmtAssert(node->_checkRevPointsTo(id(),qual),
-                ("Node %d in pts of %d, but %d not in rev-pts of %d\n",
-                 node->id(),id(),id(),node->id()));
-    }
+    FmtAssert(!node->checkFlags(CG_NODE_FLAGS_COLLAPSED),
+              ("Merge node failure: found COLLAPSED node %d with parent %d "
+               "in pts of node %d",node->id(),node->collapsedParent(),id()));
+    // If "node" is present in the pts of "this", then "this"
+    // must be in the rev-pts of "node".  Here we are checking
+    // for missing nodes in the rev-pts set.
+    FmtAssert(node->_checkRevPointsTo(id(),qual),
+              ("Node %d in pts of %d, but %d not in rev-pts of %d\n",
+               node->id(),id(),id(),node->id()));
   }
 
   for (PointsTo::SparseBitSetIterator i2(&pts,0); i2 != 0; ++i2) {
     ConstraintGraphNode *node = ConstraintGraph::cgNode(*i2);
-    if (node && (node->offset() != -1)) {
+    if (node->offset() != -1) {
       hash_set<CG_ST_IDX,hashCGstidx,equalCGstidx>::const_iterator iter =
         minusOneSts.find(node->cg_st_idx());
       FmtAssert(iter == minusOneSts.end(),
@@ -1059,17 +1056,17 @@ ConstraintGraphNode::sanityCheckPointsTo(CGEdgeQual qual)
     // If "node" is present in the rev-pts of "this", then "this"
     // must be in the pts of "node".  Here we are checking for extra
     // nodes in the rev-pts set.
-    if (node)
-      FmtAssert(node->checkPointsTo(this,qual),
-                ("Node %d in rev pts of %d, but %d not in pts of %d\n",
-                 node->id(),id(),id(),node->id()));
+    FmtAssert(node->checkPointsTo(this,qual),
+              ("Node %d in rev pts of %d, but %d not in pts of %d\n",
+               node->id(),id(),id(),node->id()));
   }
 
   return true;
 }
 
+// called during CG reconstruction only
 bool 
-ConstraintGraphNode::addPointsTo(CGNodeId id, CGEdgeQual qual)
+ConstraintGraphNode::setPointsTo(CGNodeId id, CGEdgeQual qual)
 {
   bool change = findRep()->_addPointsTo(id, qual);
   if (change)

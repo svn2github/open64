@@ -204,7 +204,16 @@ IPA_irb_write_nystrom_alias_info(PU_Info* pu_info_tree, Output_File *fl)
       else
         summCGNode->nextOffset(0);
       if (cgNode->flags() & CG_NODE_FLAGS_COLLAPSED)
-        summCGNode->collapsedParent(cgNode->collapsedParent());
+      {
+        CGNodeId cpid = cgNode->collapsedParent();
+        ConstraintGraphNode* cp = cg->cgNode(cpid);
+        while (cp && (cp->flags() & CG_NODE_FLAGS_COLLAPSED))
+        {
+          cpid = cp->collapsedParent();
+          cp = cg->cgNode(cpid);
+        }
+        summCGNode->collapsedParent(cpid);
+      }
 
       num_cgnodes++;
     }

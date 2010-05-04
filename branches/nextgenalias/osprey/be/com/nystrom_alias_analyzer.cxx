@@ -731,10 +731,10 @@ ConstraintGraph::buildCGFromSummary()
       if (pNode)
         cgnode->parent()->addPointsTo(pNode, CQ_GBL);
       else
-        cgnode->parent()->addPointsTo(id, CQ_GBL);
+        cgnode->parent()->setPointsTo(id, CQ_GBL);
     }
-    cgnode->parent()->sanitizePointsTo(CQ_GBL);
-    Is_True(cgnode->parent()->sanityCheckPointsTo(CQ_GBL),(""));
+    // cgnode->parent()->sanitizePointsTo(CQ_GBL);
+    // Is_True(cgnode->parent()->sanityCheckPointsTo(CQ_GBL),(""));
 
     // HZ
     for (UINT32 i = 0; i < numBitsPtsHZ; i++) {
@@ -743,10 +743,10 @@ ConstraintGraph::buildCGFromSummary()
       if (pNode)
         cgnode->parent()->addPointsTo(pNode, CQ_HZ);
       else
-        cgnode->parent()->addPointsTo(id, CQ_HZ);
+        cgnode->parent()->setPointsTo(id, CQ_HZ);
     }
-    cgnode->parent()->sanitizePointsTo(CQ_HZ);
-    Is_True(cgnode->parent()->sanityCheckPointsTo(CQ_HZ),(""));
+    // cgnode->parent()->sanitizePointsTo(CQ_HZ);
+    // Is_True(cgnode->parent()->sanityCheckPointsTo(CQ_HZ),(""));
 
     // DN
     for (UINT32 i = 0; i < numBitsPtsDN; i++) {
@@ -755,10 +755,10 @@ ConstraintGraph::buildCGFromSummary()
       if (pNode)
         cgnode->parent()->addPointsTo(pNode, CQ_DN);
       else 
-        cgnode->parent()->addPointsTo(id, CQ_DN);
+        cgnode->parent()->setPointsTo(id, CQ_DN);
     }
-    cgnode->parent()->sanitizePointsTo(CQ_DN);
-    Is_True(cgnode->parent()->sanityCheckPointsTo(CQ_DN),(""));
+    // cgnode->parent()->sanitizePointsTo(CQ_DN);
+    // Is_True(cgnode->parent()->sanityCheckPointsTo(CQ_DN),(""));
 
     // Adjust pts set if required
     if (cgnode->checkFlags(CG_NODE_FLAGS_ADJUST_K_CYCLE)) {
