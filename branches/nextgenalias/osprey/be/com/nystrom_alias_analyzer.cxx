@@ -23,7 +23,8 @@ PointsTo NystromAliasAnalyzer::emptyPointsToSet;
 
 NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac, WN* entryWN,
                                            bool backend)
-  : AliasAnalyzer()
+  : AliasAnalyzer(),
+    _nextAliasTag(InitialAliasTag)
 {
   // Activate the use of the Nystrom points-to analysis by the
   // ALIAS_RULE harness and disable alias classification rules.
