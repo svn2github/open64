@@ -136,6 +136,7 @@ NystromAliasAnalyzer::aliased(AliasTag tag1, AliasTag tag2)
 
   PointsTo& ptsSet1 = pointsTo(tag1);
   PointsTo& ptsSet2 = pointsTo(tag2);
+
   FmtAssert(!ptsSet1.isEmpty(),
             ("Points-to set of alias tag %d is unexpectedly empty",tag1));
   FmtAssert(!ptsSet2.isEmpty(),
@@ -469,6 +470,11 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN, bool isPostIPA)
       // Union all the points-to sets
       if (!isPostIPA)
         cgNode->findRep()->postProcessPointsTo(aliasTagInfo->pointsTo());
+      else {
+        aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_GBL));
+        aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_DN));
+        aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_HZ));
+      }
 
       // If the points-to set of the alias tag is empty at this point then
       // either we have an escape analysis bug or an uninitialized variable.
