@@ -1300,6 +1300,7 @@ public:
       Is_True(WN_operator(entryWN) == OPR_FUNC_ENTRY,
               ("Expecting FUNC_ENTRY when building ConstraintGraph"));
       buildCG(entryWN);
+      _buildComplete = true;
       // Here we are going to re-apply the final modulus, post
       // build to perform any necessary aliasing of nodes having
       // offsets larger than the new modulus.
@@ -1311,8 +1312,6 @@ public:
     }
     else
       buildCGFromSummary();
-      
-    _buildComplete = true;
   }
 
   // To build ConstraintGraphs during IPA

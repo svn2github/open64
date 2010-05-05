@@ -353,6 +353,18 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
         cgNode->repParent(repPNodeParent);
       }
     }
+
+    // Set the collapsed parent
+    if (cgNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
+      if (summNode.collapsedParent() != 0) {
+        ConstraintGraphNode *cp = findUniqueNode(summNode.collapsedParent());
+        FmtAssert(cgNode->collapsedParent() == 0, 
+                  ("Attempting to collapse node: %d that has an existing "
+                   "collapsed parent: %d to new collapsed parent: %d\n",
+                   cgNode->id(), cgNode->collapsedParent(), cp->id()));
+        cgNode->collapsedParent(cp->id());
+      }
+    }
   }
 
   // Update the CGNodeId references in the ConstraintGraphNodes
@@ -1513,7 +1525,6 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
   // callee cannot be returning new memory through the return value of this
   // callsite, so we skip this optimization.  Can we assert that since there
   // is not return that we should not be connecting this call edge?
-#if 0
   if (PU_has_attr_malloc(calleePU) && cs->returnId() != 0) {
     FmtAssert(cs->returnId() != 0, ("No return id for malloc wrapper"));
     // Get the type of the actual return
@@ -1570,7 +1581,6 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
     }
     return;
   }
-#endif
 
   // Now connect the formal returns in callee to actual returns of caller
   list<CGNodeId>::const_iterator retIter = callee->returns().begin();

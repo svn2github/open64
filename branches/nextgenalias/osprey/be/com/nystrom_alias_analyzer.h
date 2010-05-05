@@ -155,6 +155,8 @@ public:
      return 0;
    }
 
+   bool isPostIPA() const { return _isPostIPA; }
+
 private:
 
    // Creates a new AliasTag for use during client update of
@@ -168,7 +170,7 @@ private:
    // Traverse the whirl tree starting from the func entry
    // and for each WN for which there is a valid CGNodeId, create
    // an AliasTag and its associated AliasTagInfo and update the aliasTagMap
-   void createAliasTags(WN *entryWN, bool isPostIPA = false);
+   void createAliasTags(WN *entryWN);
 
    // Unions the points-to set of srcTag into the points-to set
    // of dstTag.
@@ -206,6 +208,8 @@ private:
    // on repeat queries of the same tags, presumably the map lookup
    // will be faster.
    QueryCacheMap  _queryCacheMap;
+
+   bool _isPostIPA;
 };
 
 #endif

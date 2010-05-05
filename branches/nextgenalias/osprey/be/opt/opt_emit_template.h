@@ -962,7 +962,7 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
           // information in the Nystrom alias analyzer accordingly
           NystromAliasAnalyzer *naa = static_cast<NystromAliasAnalyzer *>
                                       (AliasAnalyzer::aliasAnalyzer());
-          if (naa && naa->constraintGraph())
+          if (naa && !naa->isPostIPA() && naa->constraintGraph())
             naa->constraintGraph()->promoteCallSiteToDirect(
                            WN_MAP_CallSiteId_Get(rwn), WN_st_idx(rwn));
 	  break;

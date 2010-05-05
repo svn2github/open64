@@ -24,7 +24,8 @@ PointsTo NystromAliasAnalyzer::emptyPointsToSet;
 NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac, WN* entryWN,
                                            bool backend)
   : AliasAnalyzer(),
-    _nextAliasTag(InitialAliasTag)
+    _nextAliasTag(InitialAliasTag),
+    _isPostIPA(true)
 {
   // Activate the use of the Nystrom points-to analysis by the
   // ALIAS_RULE harness and disable alias classification rules.
@@ -36,7 +37,7 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac, WN* entryWN,
                              &_memPool);
 
   // Map WNs to AliasTags
-  createAliasTags(entryWN, true);
+  createAliasTags(entryWN);
 
   // Set flag to dump the WN to CGNodeId map during Write_PU_Info
   Write_ALIAS_CGNODE_Map = TRUE;
@@ -45,7 +46,8 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac, WN* entryWN,
 NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac,
                                            WN *entryWN)
   : AliasAnalyzer(),
-    _nextAliasTag(InitialAliasTag)
+    _nextAliasTag(InitialAliasTag),
+    _isPostIPA(false)
 {
   // Activate the use of the Nystrom points-to analysis by the
   // ALIAS_RULE harness and disable alias classification rules.
@@ -420,7 +422,7 @@ NystromAliasAnalyzer::transferAliasTag(WN *dstWN, const WN *srcWN)
 // an AliasTagInfo which stores the points-to set (CGNodeIds) of the
 // locations accessed by the WN
 void
-NystromAliasAnalyzer::createAliasTags(WN *entryWN, bool isPostIPA)
+NystromAliasAnalyzer::createAliasTags(WN *entryWN)
 {
   for (WN_ITER *wni = WN_WALK_TreeIter(entryWN);
       wni; wni = WN_WALK_TreeNext(wni))
@@ -468,7 +470,7 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN, bool isPostIPA)
       AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
 
       // Union all the points-to sets
-      if (!isPostIPA)
+      if (!_isPostIPA)
         cgNode->findRep()->postProcessPointsTo(aliasTagInfo->pointsTo());
       else {
         aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_GBL));
