@@ -140,6 +140,10 @@ IPA_irb_write_nystrom_alias_info(PU_Info* pu_info_tree, Output_File *fl)
     IPA_NODE* ipa_node = Get_Node_From_PU(cur_pu);
     
     ConstraintGraph* cg = naa->cg(ipa_node->Node_Index());
+
+    if (cg == NULL)
+      continue;
+
     if (Get_Trace(TP_ALIAS,NYSTROM_SUMMARY_FLAG))
       fprintf(stderr, "writing summary for %s\n", cg->name());
 
