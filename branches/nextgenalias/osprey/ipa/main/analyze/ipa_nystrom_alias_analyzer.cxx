@@ -358,7 +358,8 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     if (cgNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
       if (summNode.collapsedParent() != 0) {
         ConstraintGraphNode *cp = findUniqueNode(summNode.collapsedParent());
-        FmtAssert(cgNode->collapsedParent() == 0, 
+        FmtAssert(cgNode->collapsedParent() == 0 ||
+                  cgNode->collapsedParent() == cp->id(),
                   ("Attempting to collapse node: %d that has an existing "
                    "collapsed parent: %d to new collapsed parent: %d\n",
                    cgNode->id(), cgNode->collapsedParent(), cp->id()));
@@ -665,16 +666,16 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
       if (stInfo->varSize() == 0) {
         stInfo->varSize(summ->varSize());
         stInfo->ty_idx(summ->ty_idx());
+        stInfo->addFlags(summ->flags());
         // We are checking the flags on the current stInfo because we
         // merged the flags above.
-        if (!(summ->flags() & CG_ST_FLAGS_MODRANGE))
+        if (!(stInfo->flags() & CG_ST_FLAGS_MODRANGE))
           stInfo->mod(summ->modulus());
         else
           stInfo->modRange(buildModRange(summ->modulus(),ipaNode));
       }
       else
         FmtAssert(summ->varSize() == 0,("Inconsistent varsize, expect zero\n"));
-      stInfo->addFlags(summ->flags());
       return stInfo;
     }
     //FmtAssert(stInfo->ty_idx() == summ->ty_idx(), ("Inconsistent ty_idx"));
@@ -698,8 +699,8 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
       }
     } else {
       // If stInfo has a MODRANGE, and summary does not or if their
-      ModulusRange *oldMR = stInfo->modRange();
       // mod ranges mismatch, then collapse
+      ModulusRange *oldMR = stInfo->modRange();
       if (summ->flags() & CG_ST_FLAGS_MODRANGE) {
         ModulusRange *newMR = buildModRange(summ->modulus(), ipaNode);
         FmtAssert(oldMR != NULL, ("Old ModulusRange not found"));

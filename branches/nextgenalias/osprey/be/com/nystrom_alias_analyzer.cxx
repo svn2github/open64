@@ -139,10 +139,12 @@ NystromAliasAnalyzer::aliased(AliasTag tag1, AliasTag tag2)
   PointsTo& ptsSet1 = pointsTo(tag1);
   PointsTo& ptsSet2 = pointsTo(tag2);
 
+#if 0
   FmtAssert(!ptsSet1.isEmpty(),
             ("Points-to set of alias tag %d is unexpectedly empty",tag1));
   FmtAssert(!ptsSet2.isEmpty(),
             ("Points-to set of alias tag %d is unexpectedly empty",tag2));
+#endif
   result = ptsSet1.intersect(ptsSet2);
 
   // Update the query cache
@@ -478,6 +480,7 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
         aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_HZ));
       }
 
+#if 0
       // If the points-to set of the alias tag is empty at this point then
       // either we have an escape analysis bug or an uninitialized variable.
       ConstraintGraph *cg = cgNode->cg();
@@ -490,6 +493,7 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
                 !aliasTagInfo->pointsTo().isEmpty(),
                 ("Alias tag %d (from cgnode %d) has empty alias set",
                     aliasTag,cgNode->id()));
+#endif
 
       // Map aliasTags to the cgnode ids
       _aliasTagToCGNodeIdMap[aliasTag] = id;

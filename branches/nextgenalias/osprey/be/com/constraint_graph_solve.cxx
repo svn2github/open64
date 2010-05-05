@@ -620,8 +620,10 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
         // If we have objects in the pts of the updated object 
         // whose types are incompatible with the type of the updated object
         // collapse them
-        for (UINT32 j = 0; j < i; j++)
-          topoOrderArray[j]->collapseTypeIncompatibleNodes();
+        if (ConstraintGraph::inIPA()) {
+          for (UINT32 j = 0; j < i; j++)
+            topoOrderArray[j]->collapseTypeIncompatibleNodes();
+        }
 
         // Add edges to be processed in topological order
         for ( UINT32 j = 0; j < i; j++)
