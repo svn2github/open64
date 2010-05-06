@@ -1585,7 +1585,7 @@ private:
   bool _doNotConnect;
 
   // Used for debugging during IPA.
-  char _name[256];
+  char _name[1024];
 
   // Node to denote varargs
   ConstraintGraphNode *_varArgs;

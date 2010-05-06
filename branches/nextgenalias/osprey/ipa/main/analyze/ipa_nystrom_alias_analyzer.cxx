@@ -252,6 +252,7 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
   sprintf(_name, "%s(%d),%s(%d)", 
           ipaNode->File_Header().file_name, ipaNode->File_Index(),
           ipaNode->Name(), ipaNode->Proc_Info_Index());
+  FmtAssert(strlen(_name)<1024,("Procedure name too long..."));
 
   // during summary to constraint graph construction, map them to their 
   // globally unique ids so that lookups don't fail
