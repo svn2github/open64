@@ -76,9 +76,9 @@ private:
 
   bool observed(ConstraintGraphNode *node);
   void newContEscapeNode(ConstraintGraphNode *node, UINT32 flags);
-  void newContEscapeNode(ConstraintGraphNode *node, UINT32 size, UINT32 flags);
+  void newContEscapeSt(ConstraintGraphNode *node, UINT32 flags);
   void newPropEscapeNode(ConstraintGraphNode *node, UINT32 flags);
-  void newPropEscapeNode(ConstraintGraphNode *node, UINT32 size, UINT32 flags);
+  void newPropEscapeSt(ConstraintGraphNode *node, UINT32 flags);
   void newFullEscapeNode(ConstraintGraphNode *node, UINT32 flags);
   void processContEscapeNode(ConstraintGraphNode *node);
   void processPropEscapeNode(ConstraintGraphNode *node);
@@ -87,9 +87,9 @@ private:
   void examineCallSites(ConstraintGraph *graph);
 
   void printStFlags(UINT32 flags) const;
-  UINT32 stOffset(const ConstraintGraphNode *node) const;
   UINT32 findStFlags(ConstraintGraphNode *node);
   void   addStFlags(ConstraintGraphNode *node, UINT32 flags);
+  void   addStFlagsAll(ConstraintGraphNode *node, UINT32 flags);
   void   addStToWorkList(ConstraintGraphNode *node);
   void   addToWorkList(ConstraintGraphNode *node);
 

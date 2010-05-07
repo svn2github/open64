@@ -139,12 +139,10 @@ NystromAliasAnalyzer::aliased(AliasTag tag1, AliasTag tag2)
   PointsTo& ptsSet1 = pointsTo(tag1);
   PointsTo& ptsSet2 = pointsTo(tag2);
 
-#if 0
   FmtAssert(!ptsSet1.isEmpty(),
             ("Points-to set of alias tag %d is unexpectedly empty",tag1));
   FmtAssert(!ptsSet2.isEmpty(),
             ("Points-to set of alias tag %d is unexpectedly empty",tag2));
-#endif
   result = ptsSet1.intersect(ptsSet2);
 
   // Update the query cache
@@ -480,21 +478,25 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
         aliasTagInfo->pointsTo().setUnion(cgNode->pointsTo(CQ_HZ));
       }
 
-#if 0
+      // To handle corner case where we might have a null pointer read/write
+      if (cgNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
+        if (aliasTagInfo->pointsTo().isEmpty())
+          aliasTagInfo->pointsTo().setBit(ConstraintGraph::notAPointer()->id());
+      }
+
       // If the points-to set of the alias tag is empty at this point then
       // either we have an escape analysis bug or an uninitialized variable.
-      ConstraintGraph *cg = cgNode->cg();
-      if (aliasTagInfo->pointsTo().isEmpty() &&
-          !cg->stInfo(cgNode->cg_st_idx())->checkFlags(CG_ST_FLAGS_GLOBAL))
-        aliasTagInfo->pointsTo().setBit(cgNode->id());
 
       // We expect all alias sets to be non-empty...
-      FmtAssert(cgNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) ||
-                !aliasTagInfo->pointsTo().isEmpty(),
-                ("Alias tag %d (from cgnode %d) has empty alias set",
-                    aliasTag,cgNode->id()));
-#endif
-
+      // FmtAssert(!aliasTagInfo->pointsTo().isEmpty(),
+      //           ("Alias tag %d (from cgnode %d) has empty alias set",
+      //               aliasTag,cgNode->id()));
+      if (aliasTagInfo->pointsTo().isEmpty()) {
+        fprintf(stderr, "Alias tag %d (from cgnode %d) has empty alias set\n",
+                aliasTag,cgNode->id());
+        aliasTagInfo->pointsTo().setBit(ConstraintGraph::notAPointer()->id());
+      }
+      
       // Map aliasTags to the cgnode ids
       _aliasTagToCGNodeIdMap[aliasTag] = id;
     }

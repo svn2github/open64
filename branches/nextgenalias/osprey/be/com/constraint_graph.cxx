@@ -1210,11 +1210,28 @@ ConstraintGraph::processInito(const INITO *const inito)
        iter != valList->end(); iter++) {
     UINT32 offset = iter->first;
     PointsTo *pts = iter->second;
-    if (pts->numBits() == 1 && 
-        pts->isSet(ConstraintGraph::notAPointer()->id()))
-      continue;
+    StInfo *sti = stInfo(CG_ST_st_idx(base_st));
+    if (sti != NULL) {
+       UINT32 off = sti->applyModulus(base_offset + offset);
+       // Ignore if not ptr aligned
+       if ((off & (Pointer_Size - 1)) != 0) {
+         FmtAssert(pts->isEmpty() ||
+                   (pts->numBits() == 1 &&
+                    pts->isSet(ConstraintGraph::notAPointer()->id())),
+                   ("Expecting only not a ptr or empty pts\n"));
+         continue;
+       }
+    }
     ConstraintGraphNode *node = getCGNode(CG_ST_st_idx(base_st),
                                           base_offset + offset);
+    // If offset is not ptr aligned, ignore
+    if ((node->offset() & (Pointer_Size - 1)) != 0) {
+      FmtAssert(pts->isEmpty() ||
+                (pts->numBits() == 1 &&
+                 pts->isSet(ConstraintGraph::notAPointer()->id())),
+                ("Expecting only not a ptr or empty pts\n"));
+      continue;
+    }
     ConstraintGraphNode::sanitizePointsTo(*pts,NULL,CQ_NONE);
     node->unionPointsTo(*pts, CQ_HZ);
     if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG)) {
@@ -1232,7 +1249,8 @@ ConstraintGraph::processInito(const INITO *const inito)
 void 
 ConstraintGraph::processInitValues(ST_IDX st_idx)
 {
-  For_all(*(Scope_tab[GLOBAL_SYMTAB].inito_tab), ProcessInitData(this, st_idx));
+  UINT8 level = ST_IDX_level(st_idx);
+  For_all(*(Scope_tab[level].inito_tab), ProcessInitData(this, st_idx));
 }
 
 void 
@@ -1341,7 +1359,15 @@ isLHSaPointer(WN *stmt)
     stmt_ty = TY_ret_type(Ty_Table[PU_prototype(Get_Current_PU())]);
   else
     stmt_ty = WN_object_ty(stmt);
-  return (TY_kind(stmt_ty) == KIND_POINTER);
+
+  TYPE_ID mtype = TY_mtype(stmt_ty);
+
+  return (TY_kind(stmt_ty) == KIND_POINTER ||
+          (ST_sclass(WN_st(stmt)) == SCLASS_REG &&
+           !MTYPE_is_float(mtype)               &&
+           !MTYPE_is_complex(mtype)             &&
+           !MTYPE_is_vector(mtype)              &&
+           MTYPE_byte_size(mtype) >= Pointer_Size) );
 }
 
 WN *
@@ -1360,7 +1386,7 @@ ConstraintGraph::handleAssignment(WN *stmt)
   // doing an indirect store, mark lhs as not a pointer.
   // If rhs is not a pointer, we do not need a copy/store edge to the lhs
   if (!exprMayPoint(rhs)) {
-    if (!isLHSaPointer(stmt) && OPERATOR_is_scalar_store(WN_operator(stmt))) {
+    if (OPERATOR_is_scalar_store(WN_operator(stmt)) && !isLHSaPointer(stmt)) {
       cgNodeLHS->addFlags(CG_NODE_FLAGS_NOT_POINTER);
       cgNodeLHS->deleteInOutEdges();
     }
@@ -1368,11 +1394,13 @@ ConstraintGraph::handleAssignment(WN *stmt)
   }
 
   // Handle ALLOCA which must appear as the rhs of a store
-  // Add the stack location to the points to set of the lhs
+  // Create a tmp for the rhs and Add the stack location to the points to 
+  // set of the tmp
   if (WN_operator(rhs) == OPR_ALLOCA) {
     ConstraintGraphNode *stackCGNode = handleAlloca(stmt);
-    cgNodeLHS->addPointsTo(stackCGNode, CQ_HZ);
-    return WN_next(stmt);
+    cgNodeRHS = genTempCGNode();
+    cgNodeRHS->addPointsTo(stackCGNode, CQ_HZ);
+    WN_MAP_CGNodeId_Set(rhs, cgNodeRHS->id());
   }
 
   if (cgNodeRHS == NULL) {
@@ -1723,13 +1751,20 @@ ConstraintGraph::processExpr(WN *expr)
         TY &kid1ty = Ty_Table[ST_type(kid1st)];
         if (TY_kind(kid1ty) == KIND_POINTER)
           size1 = TY_size(Ty_Table[TY_pointed(kid1ty)]);
-        INT32 size = gcd(size0, size1);
-        // Add cycle
+
+        // Set the inKCycle and adjust pts
+        kid0CGNode->inKCycle(gcd(kid0CGNode->inKCycle(), (UINT32)size0));
+        adjustPointsToForKCycle(kid0CGNode);
+        kid1CGNode->inKCycle(gcd(kid1CGNode->inKCycle(), (UINT32)size1));
+        adjustPointsToForKCycle(kid1CGNode);
+
+        // Add copies from both the kids to a new temp
+        ConstraintGraphNode *rep = genTempCGNode();
         bool added = false;
-        addEdge(kid0CGNode, kid1CGNode, ETYPE_SKEW, CQ_HZ, size, added);
-        addEdge(kid1CGNode, kid0CGNode, ETYPE_SKEW, CQ_HZ, size, added);
-        WN_MAP_CGNodeId_Set(expr, kid0CGNode->id());
-        return kid0CGNode;
+        addEdge(kid0CGNode, rep, ETYPE_COPY, CQ_HZ, 1, added);
+        addEdge(kid1CGNode, rep, ETYPE_COPY, CQ_HZ, 1, added);
+        WN_MAP_CGNodeId_Set(expr, rep->id());
+        return rep;
       }
       else if (opr == OPR_MIN || opr == OPR_MAX) 
       {
@@ -2252,7 +2287,7 @@ ConstraintGraph::handleCall(WN *callWN)
 
   // Model the behavior of this callsite in the graph, if possible
   if (callSite->isDirect()) {
-     handleOneLevelWrite(callWN,callSite);
+     //handleOneLevelWrite(callWN,callSite);
      handleExposedToReturn(callWN,callSite);
   }
 
@@ -3184,7 +3219,11 @@ dbgPrintCGNode(CGNodeId nodeId)
 void
 dbgPrintPointsTo(PointsTo &pts)
 {
-  pts.print(stderr);
+  const char *comma = "";
+  for (PointsTo::SparseBitSetIterator iter(&pts, 0); iter != 0; ++iter) {
+    printf("%s%d", comma, *iter);
+    comma = ", ";
+  }
 }
 
 void
