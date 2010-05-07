@@ -3,6 +3,7 @@
 
 #include "defs.h"
 #include "wn.h"
+#include "intrn_info.h"
 #include <ext/hash_map>
 using __gnu_cxx::hash_map;
 using __gnu_cxx::hash;
@@ -22,6 +23,8 @@ enum CSE_PAR_ATTR
     // address via reference formal:
     CPA_is_pointer_to_heap_addr_loc = 0x00000100,
     CPA_is_format_string  =  0x00000200, /* for printf_like funcs */
+    CPA_is_not_escaping   =  0x00000400, /* points-to, escape analysis treats */
+                                         /* parm as not escaping              */
 
     // Default conservative value
     CPA_default_attr  =  
@@ -34,7 +37,8 @@ enum CSE_PAR_ATTR
       CPA_exposed_to_globals |
       CPA_exposed_to_return)      &
      ~CPA_is_pointer_to_heap_addr_loc &
-     ~CPA_is_format_string ),
+     ~CPA_is_format_string &
+     ~CPA_is_not_escaping),
 
     CPA_no_ptr_deref_and_expose  = 0,
 
@@ -224,6 +228,8 @@ public:
                                                   bool* from_table = NULL);
   static CallSideEffectInfo GetCallSideEffectInfo(const ST* sym,
                                                   bool* from_table = NULL);
+  static CallSideEffectInfo GetCallSideEffectInfo(const INTRINSIC intr_id,
+                                                  bool *from_table = NULL);
 
   bool isPureCall()         const { return cfa_is_pure(SideEffects); }
   bool isSafeCall()         const { return cfa_is_safe(SideEffects); }

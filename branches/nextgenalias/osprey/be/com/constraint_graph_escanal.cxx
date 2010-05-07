@@ -437,74 +437,86 @@ EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
   for ( ; iter != graph->callSiteMap().end(); ++iter) {
     CallSite *callsite = iter->second;
     if (callsite->isDirect()) {
-      if (!callsite->isIntrinsic()) {
-        ST_IDX st_idx = callsite->st_idx();
-        bool inTable;
-        CallSideEffectInfo callInfo =
-            CallSideEffectInfo::GetCallSideEffectInfo(&St_Table[st_idx],&inTable);
-        // Here we assume that if we have a routine performing heap
-        // (de)allocation that non- of the arguments escape.
-        if (callInfo.isHeapAllocating() || callInfo.isHeapDeallocating())
-          continue;
+      bool inTable;
+      CallSideEffectInfo callInfo =
+          !callsite->isIntrinsic() ?
+              CallSideEffectInfo::GetCallSideEffectInfo(&St_Table[callsite->st_idx()],
+                                                        &inTable) :
+              CallSideEffectInfo::GetCallSideEffectInfo(callsite->intrinsic(),&inTable);
 
-        // Here we process the actuals only for calls in the cse table.  Other
-        // calls are handled below.
-        if (inTable) {
-          UINT32 argPos = 0;
-          for(list<CGNodeId>::const_iterator li = callsite->parms().begin();
-              li != callsite->parms().end(); ++li, ++argPos) {
-            UINT32 argAttr = callInfo.GetArgumentAttr(argPos,NULL,
-                                                      !callsite->percN());
+      // Here we assume that if we have a routine performing heap
+      // (de)allocation that non- of the arguments escape.
+      if (callInfo.isHeapAllocating() || callInfo.isHeapDeallocating())
+        continue;
 
-            if(argAttr & CPA_no_ptr_deref_and_expose)
-              continue;
+      // Here we process the actuals only for calls in the cse table.  Other
+      // calls are handled below.
+      if (inTable) {
+        UINT32 argPos = 0;
+        for(list<CGNodeId>::const_iterator li = callsite->parms().begin();
+            li != callsite->parms().end(); ++li, ++argPos) {
+          UINT32 argAttr = callInfo.GetArgumentAttr(argPos,NULL,
+                                                    !callsite->percN());
 
-            // If the argument is not being written and is not exposed to
-            // globals, then it does not escape.
-            UINT32 written = CPA_one_level_write|
-                CPA_two_level_write|
-                CPA_multi_level_write;
-            UINT32 exposed = CPA_exposed_to_globals|
-                CPA_exposed_to_return; /* until connect this */
-            if (!(argAttr & (written|exposed)))
-              continue;
+          if (argAttr & CPA_no_ptr_deref_and_expose)
+            continue;
 
-            ConstraintGraphNode *actual = ConstraintGraph::cgNode(*li);
-            if (actual->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
-              continue;
+          // Have we been explicitly told that the argument does not
+          // escape?
+          if (argAttr & CPA_is_not_escaping)
+            continue;
 
-            if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
-              fprintf(stderr,"ESCANAL: cse param %d of %s prop\n",
-                      argPos,ST_name(st_idx));
-              for (PointsToIterator pti(graph->cgNode(*li)); pti != 0; ++pti) {
-                PointsTo &pts = *pti;
-                for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
-                  ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
-                  fprintf(stderr,"<%d,%d> ",node->id(),node->offset());
-                }
-                fprintf(stderr,"\n");
+          // If the argument is not being written and is not exposed to
+          // globals, then it does not escape.
+          UINT32 written = CPA_one_level_write|
+              CPA_two_level_write|
+              CPA_multi_level_write;
+          UINT32 exposed = CPA_exposed_to_globals|
+              CPA_exposed_to_return; /* until connect this */
+          if (!(argAttr & (written|exposed)))
+            continue;
+
+          ConstraintGraphNode *actual = ConstraintGraph::cgNode(*li);
+          if (actual->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
+            continue;
+
+          if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+            fprintf(stderr,"ESCANAL: cse param %d of %s prop\n",
+                    argPos,
+                    !callsite->isIntrinsic()?ST_name(callsite->st_idx()):
+                        INTRN_c_name(callsite->intrinsic()));
+            for (PointsToIterator pti(graph->cgNode(*li)); pti != 0; ++pti) {
+              PointsTo &pts = *pti;
+              for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
+                ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
+                fprintf(stderr,"<%d,%d> ",node->id(),node->offset());
               }
+              fprintf(stderr,"\n");
             }
-            newPropEscapeNode(actual,actual->stInfo()->varSize(),CG_ST_FLAGS_LPROP_ESC);
           }
-          if (callsite->returnId()) {
-            ConstraintGraphNode *actual = ConstraintGraph::cgNode(callsite->returnId());
-            if (!actual->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
-              if(Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-                fprintf(stderr,"ESCANAL: cse return of %s holding\n",ST_name(st_idx));
-            newContEscapeNode(actual,actual->stInfo()->varSize(),CG_ST_FLAGS_LCONT_ESC);
-          }
-          continue;
+          newPropEscapeNode(actual,actual->stInfo()->varSize(),CG_ST_FLAGS_LPROP_ESC);
         }
+        if (callsite->returnId()) {
+          ConstraintGraphNode *actual = ConstraintGraph::cgNode(callsite->returnId());
+          if (!actual->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
+            if(Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+              fprintf(stderr,"ESCANAL: cse return of %s holding\n",
+                      !callsite->isIntrinsic()?ST_name(callsite->st_idx()):
+                          INTRN_c_name(callsite->intrinsic()));
+          newContEscapeNode(actual,actual->stInfo()->varSize(),CG_ST_FLAGS_LCONT_ESC);
+        }
+        continue;
       }
       // The actuals of pure, side-effect free calls do not escape
       // Could we actually refine this to be side-effect free?
-      else if (INTRN_is_pure(callsite->intrinsic()) &&
-                             INTRN_has_no_side_effects(callsite->intrinsic()))
-        continue;
-      // The arguments to va_start() do not escape
-      else if (callsite->intrinsic() == INTRN_VA_START)
-        continue;
+      else if (callsite->isIntrinsic()) {
+        if (INTRN_is_pure(callsite->intrinsic()) &&
+            INTRN_has_no_side_effects(callsite->intrinsic()))
+          continue;
+        // The arguments to va_start() do not escape
+        else if (callsite->intrinsic() == INTRN_VA_START)
+          continue;
+      }
     }
 
     // If we get here, then we need to mark the actual parameter/return

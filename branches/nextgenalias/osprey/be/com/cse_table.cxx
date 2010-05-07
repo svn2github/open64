@@ -1,5 +1,5 @@
 #include "cse_table.h"
-#include "intrn_info.h"
+
 
 CallSideEffectInfoBase RawLibcallSideEffectTable[] =
   {
@@ -44,7 +44,8 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
       | CFAT_argument_one_level_deref,
       1,
-      { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write}
+      { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write
+        |CPA_is_not_escaping }
     },
     {
       "feof",
@@ -53,7 +54,8 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
       | CFAT_argument_one_level_deref,
       1,
-      { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write }
+      { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write
+          |CPA_is_not_escaping }
     },
     {
       "fflush",
@@ -62,7 +64,8 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
       | CFAT_argument_one_level_deref,
       1,
-      { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write}
+      { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write
+        |CPA_is_not_escaping}
     },
     {
       "fgets",
@@ -72,9 +75,10 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_one_level_deref  |CFAT_exposes_argument_address_to_return,
       3,
       { 
-        CPA_one_level_write | CPA_one_level_read | CPA_exposed_to_return,
+        CPA_one_level_write | CPA_one_level_read | CPA_exposed_to_return |CPA_is_not_escaping,
         0,
         CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write
+        |CPA_is_not_escaping
       }
     },
     {
@@ -93,7 +97,8 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_indirectly_read /* default for var args */
       | CFAT_argument_one_level_deref |CFAT_is_printf_like | CFAT_has_format_string,
       2,
-      { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write|CPA_two_level_write,
+      { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write|CPA_two_level_write
+          |CPA_is_not_escaping,
         CPA_one_level_read |CPA_is_format_string, }
     },
     {
@@ -105,7 +110,8 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       2,
       { 
         CPA_one_level_read ,
-        CPA_one_level_read |CPA_one_level_write |CPA_two_level_read | CPA_two_level_write,
+        CPA_one_level_read |CPA_one_level_write |CPA_two_level_read | CPA_two_level_write
+         |CPA_is_not_escaping,
       }
     },
     {
@@ -115,8 +121,9 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
       | CFAT_argument_one_level_deref,
       4,
-      { CPA_one_level_write, 0, 0, 
-        CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write}
+      { CPA_one_level_write |CPA_is_not_escaping, 0, 0,
+        CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write
+         |CPA_is_not_escaping}
     },
     {
       "free",
@@ -135,7 +142,8 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
       | CFAT_argument_one_level_deref,
       1,
-      { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write,}
+      { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write
+          |CPA_is_not_escaping}
     },
     {
       "ftell",
@@ -146,7 +154,7 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_one_level_deref,
       1,
       { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write 
-        |CPA_two_level_write, }
+        |CPA_two_level_write |CPA_is_not_escaping, }
     },
     {
       "fwrite",
@@ -156,7 +164,8 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_one_level_deref,
       4,
       { CPA_one_level_read, 0, 0, 
-        CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write}
+        CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write
+         |CPA_is_not_escaping}
     },
     {
       "getenv",
@@ -237,7 +246,7 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_one_level_deref,
       2,
       {
-        CPA_one_level_write | CPA_exposed_to_return,
+        CPA_one_level_write | CPA_exposed_to_return ,
         CPA_no_ptr_deref_and_expose
       }
     },
@@ -305,7 +314,7 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
       | CFAT_argument_one_level_deref |CFAT_is_printf_like |CFAT_has_format_string,
       2,
-      { CPA_one_level_write, CPA_one_level_read |CPA_is_format_string }
+      { CPA_one_level_write, CPA_one_level_read |CPA_is_format_string |CPA_is_not_escaping }
     },
     {
       "strcat",
@@ -414,7 +423,8 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       CFAT_exposes_argument_address_to_return | CFAT_exposes_argument_address_to_globals,
       2,
       {
-        CPA_one_level_read | CPA_one_level_write |CPA_exposed_to_return |CPA_exposed_to_globals,
+        CPA_one_level_read | CPA_one_level_write |CPA_exposed_to_return |CPA_exposed_to_globals
+        |CPA_is_not_escaping,
         CPA_one_level_read
       }
     },
@@ -434,7 +444,8 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
       | CFAT_argument_one_level_deref,
       2,
-      { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write,
+      { CPA_one_level_read |CPA_two_level_read |CPA_one_level_write |CPA_two_level_write
+          |CPA_is_not_escaping,
         CPA_one_level_read }
     },
     {
@@ -487,7 +498,7 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
       | CFAT_argument_one_level_deref,
       2,
-      { CPA_one_level_read, CPA_one_level_write}
+      { CPA_one_level_read, CPA_one_level_write |CPA_is_not_escaping}
     },
     {
       "__strtol_internal",
@@ -496,7 +507,7 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
       | CFAT_argument_one_level_deref,
       3,
-      { CPA_one_level_read, CPA_one_level_write,CPA_no_ptr_deref_and_expose }
+      { CPA_one_level_read, CPA_one_level_write|CPA_is_not_escaping,CPA_no_ptr_deref_and_expose }
     },
     {
       "__strtoll_internal",
@@ -505,7 +516,7 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
       | CFAT_argument_one_level_deref,
       3,
-      { CPA_one_level_read, CPA_one_level_write,CPA_no_ptr_deref_and_expose }
+      { CPA_one_level_read, CPA_one_level_write|CPA_is_not_escaping,CPA_no_ptr_deref_and_expose }
     },    {
       "__strtoul_internal",
       CFAT_libc_default_attr &
@@ -513,7 +524,7 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
       | CFAT_argument_one_level_deref,
       3,
-      { CPA_one_level_read, CPA_one_level_write,CPA_no_ptr_deref_and_expose }
+      { CPA_one_level_read, CPA_one_level_write|CPA_is_not_escaping,CPA_no_ptr_deref_and_expose }
     },
     {
       "__strtoull_internal",
@@ -522,7 +533,7 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
       | CFAT_argument_one_level_deref,
       3,
-      { CPA_one_level_read, CPA_one_level_write,CPA_no_ptr_deref_and_expose }
+      { CPA_one_level_read, CPA_one_level_write|CPA_is_not_escaping,CPA_no_ptr_deref_and_expose }
     },
     {
       "_ZdaPv",
@@ -814,6 +825,14 @@ CallSideEffectInfo::GetCallSideEffectInfo(const WN* call_node,
   }
 
   return GetCallSideEffectInfo_(name_str, call_node, from_table);
+}
+
+CallSideEffectInfo
+CallSideEffectInfo::GetCallSideEffectInfo(const INTRINSIC intr_id,
+                                          bool *from_table)
+{
+  const char *name_str = INTRN_c_name(intr_id);
+  return GetCallSideEffectInfo_(name_str, NULL, from_table);
 }
 
 CallSideEffectInfo
