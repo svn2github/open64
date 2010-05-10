@@ -898,7 +898,7 @@ extern void LNO_Check_Graph(ARRAY_DIRECTED_GRAPH16* dg);
 extern void  MP_Sanity_Check_Func(WN *func_nd);
 #endif
 
-#ifdef TARG_X8664 //introduced by bug 10953
+#if defined(TARG_X8664) || defined(TARG_IA64) //introduced by bug 10953
 extern WN *Inductive_Base_Addr_Const_Stride(WN *array, WN *loop, WN **base, 
                BOOL *inductive_use, BOOL *indirect_base, mINT32 *stride_val);
 

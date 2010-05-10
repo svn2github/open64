@@ -603,6 +603,7 @@ void SSA::Construct(CODEMAP *htable, CFG *cfg, OPT_STAB *opt_stab)
 
   OPT_POOL_Pop(&defs_bb_pool, SSA_DUMP_FLAG);
   OPT_POOL_Delete(&defs_bb_pool, SSA_DUMP_FLAG);
+  _opt_stab->Reset_def_bbs();
 
   MEM_POOL rename_pool;
   OPT_POOL_Initialize(&rename_pool, "SSA rename pool", FALSE, SSA_DUMP_FLAG);

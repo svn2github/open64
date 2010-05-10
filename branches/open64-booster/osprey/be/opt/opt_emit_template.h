@@ -189,7 +189,11 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       }
     case OPR_CVTL:
       {
-	if (WOPT_Enable_Cvt_Folding && ! emitter->For_preopt()) {
+	if (WOPT_Enable_Cvt_Folding && ! emitter->For_preopt()
+	    /* when exp->Offset() are 8, 16 , 32, 64 , load and then cvtl can be fold into
+	     I8I1load  U8U2load ... etc*/
+	    && (exp->Offset() == 8 || exp->Offset() == 16 
+		|| exp->Offset() == 32 || exp->Offset() == 64 )) {
 	  CODEREP *kid = exp->Get_opnd(0);
 	  WN      *opnd;
 	  actual_type = Actual_cvtl_type(exp->Op(), exp->Offset());

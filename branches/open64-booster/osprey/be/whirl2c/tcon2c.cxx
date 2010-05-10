@@ -208,7 +208,10 @@ TCON2C_Append_String_Const(TOKEN_BUFFER tokens,
    char       *str;
    INT32       stridx;
 
-   str_base = str = (char *)alloca(2*strlen + 3); /* "'", orig_str, "'", and "\0" */
+   /* Why 4*strlen? if <orig_str> contains a non-printable char, 
+    * the output of that char would be something like "\123".
+    */
+   str_base = str = (char *)alloca(4*strlen + 3); /* "'", orig_str, "'", and "\0" */
    *(str++) = '\"';
    strlen = strlen - 1; // subtract 1 for the extra \0
    for (stridx = 0; stridx < strlen; stridx++)
@@ -292,7 +295,7 @@ TCON2C_translate(TOKEN_BUFFER tokens, TCON tvalue)
       str = Targ_Print("%.10e", tvalue);
       strbase = Remove_Trailing_Zero_Fraction(str);
       /* Undo the 'e'->'d' conversion */
-      if ((str = strchr(strbase, 'd')) != NULL)
+      if ((str = (char*)strchr(strbase, 'd')) != NULL)
 	 *str = 'e';
 
       /* Add F suffix */
@@ -303,7 +306,7 @@ TCON2C_translate(TOKEN_BUFFER tokens, TCON tvalue)
       str = Targ_Print("%.20e", tvalue);
       strbase = Remove_Trailing_Zero_Fraction(str);
       /* Undo the 'e'->'d' conversion */
-      if ((str = strchr(strbase, 'd')) != NULL)
+      if ((str = (char*)strchr(strbase, 'd')) != NULL)
 	 *str = 'e';
       Append_Token_String(tokens, strbase);
       break;
@@ -312,7 +315,7 @@ TCON2C_translate(TOKEN_BUFFER tokens, TCON tvalue)
       str = Targ_Print(NULL, tvalue);
       strbase = Remove_Trailing_Zero_Fraction(str);
       /* Undo the 'e'->'d' conversion */
-      if ((str = strchr(strbase, 'd')) != NULL)
+      if ((str = (char*)strchr(strbase, 'd')) != NULL)
          *str = 'e';
       Append_Token_String(tokens, strbase);
       break;
@@ -321,7 +324,7 @@ TCON2C_translate(TOKEN_BUFFER tokens, TCON tvalue)
       str = Targ_Print(NULL, tvalue);
       strbase = Remove_Trailing_Zero_Fraction(str);
       /* Undo the 'e'->'d' conversion */
-      if ((str = strchr(strbase, 'd')) != NULL)
+      if ((str = (char*)strchr(strbase, 'd')) != NULL)
 	 *str = 'e'; 
 
       /* Add L suffix */
@@ -382,7 +385,7 @@ TCON2C_translate(TOKEN_BUFFER tokens, TCON tvalue)
      str = Targ_Print("%.10e", tvalue);
      strbase = Remove_Trailing_Zero_Fraction(str);
      /* Undo the 'e'->'d' conversion */
-     if ((str = strchr(strbase, 'd')) != NULL)
+     if ((str = (char*)strchr(strbase, 'd')) != NULL)
        *str = 'e';
      
      newstr = (char *)malloc(sizeof(char)*1000); //((strlen(strbase)+1)*4+15));
@@ -396,7 +399,7 @@ TCON2C_translate(TOKEN_BUFFER tokens, TCON tvalue)
      str = Targ_Print("%.20e", tvalue);
      strbase = Remove_Trailing_Zero_Fraction(str);
      /* Undo the 'e'->'d' conversion */
-     if ((str = strchr(strbase, 'd')) != NULL)
+     if ((str = (char*)strchr(strbase, 'd')) != NULL)
        *str = 'e';
      newstr = (char *)malloc(sizeof(char)*1000); //((strlen(strbase)+1)*2+15));
      sprintf(newstr, "[%s, %s]", strbase, strbase);

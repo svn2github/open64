@@ -1928,7 +1928,7 @@ Build_Skiplist ( OPTION_LIST *olist )
 	++count, ol = OLIST_next(ol) )
   {
     // ignore goto/region/ddb prefix of skip name
-    char *opt_name = strstr(OLIST_opt(ol), "skip");
+    const char *opt_name = strstr(OLIST_opt(ol), "skip");
     if ( !strncmp ( "skip_a", opt_name, 6 )) {
       Set_SKIPLIST_kind ( sl, count, SK_AFTER );
     } else if ( !strncmp ( "skip_b", opt_name, 6 )) {
