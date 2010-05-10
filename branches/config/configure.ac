@@ -15,6 +15,23 @@ along with this file; ; see the file osprey/COPYING.  If not, see
 <http://www.gnu.org/licenses/>.
 
 
+# When modifying this file, configure.ac, the person making the changes
+# should use autoconf 2.59 to regenerate the configure script.  Both
+# configure.ac and configure should be checked in to subversion.  This is
+# so that developers or users can build open64 without needing autoconf on
+# their systems.
+
+# It may be necessary from time to time to also update some of the files
+# used by autoconf.  These are config.guess, config.sub, install-sh.
+# The official versions of these three files are actually part of automake
+# (which open64 does not use).  If any of these files need updating, the
+# required change should be made to the latest automake sources first
+# (if they are not already there) and then the files should be copied
+# from the automake sources to our source tree.  Our versions of these
+# files should always match some version of the automake sources and
+# not diverge by having local changes in them.
+
+
 AC_PREREQ([2.59])
 AC_INIT([opencc],[4.2])
 AC_CANONICAL_HOST
