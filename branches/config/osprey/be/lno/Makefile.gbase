@@ -171,9 +171,7 @@ HEADER_DIRS = \
   $(IPA_IPL_DIR)	\
   $(BE_PROMPF_DIR)	\
   $(BUILD_TOT)/include  \
-  $(BUILD_SRC_AREA)/be  \
-  $(TARGDIR)/be  	\
-  $(BUILD_SRC_AREA)/targ_info
+  $(TARGDIR)/be
 
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.

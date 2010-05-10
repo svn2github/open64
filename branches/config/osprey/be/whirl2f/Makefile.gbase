@@ -145,9 +145,7 @@ HEADER_DIRS = \
   $(BE_CG_DIR)		\
   $(BE_OPT_DIR)		\
   $(BE_LNO_DIR)		\
-  $(BUILD_SRC_AREA)/be  \
-  $(TARGDIR)/be  	\
-  $(BUILD_SRC_AREA)/targ_info
+  $(TARGDIR)/be
 
 
 #----------------------------------------------------------------------

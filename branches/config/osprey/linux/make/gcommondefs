@@ -569,7 +569,7 @@ LEXMKDEPFLAGS=
 # Include directory shorthands, used in CFLAGS and LDFLAGS components.
 #
 ifneq ($(BUILD_OS), IRIX)
-INCLDIRS = -I$(BUILD_AREA)/include -I$(BUILD_OBJ_DIR) -I$(TARGDIR)/include -I$(BUILD_SRC_AREA)/include -I$(BUILD_TOT)/include
+INCLDIRS = -I$(BUILD_AREA)/include -I$(BUILD_OBJ_DIR) -I$(TARGDIR)/include -I$(BUILD_TOT)/include
 else
 INCLDIRS = -I$(ROOT)/usr/include
 endif

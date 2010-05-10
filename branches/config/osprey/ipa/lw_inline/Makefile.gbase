@@ -130,9 +130,7 @@ HEADER_DIRS = \
   $(COMMON_UTIL_DIR)	\
   $(TARG_BE_DIR)	\
   $(BE_VHO_DIR)		\
-  $(BUILD_TOT)/include  \
-  $(BUILD_SRC_AREA)/be  \
-  $(BUILD_SRC_AREA)/targ_info
+  $(BUILD_TOT)/include
 
 IPA_INLINE_CXX_SRCS = \
 	inline_driver.cxx \

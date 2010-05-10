@@ -156,8 +156,6 @@ endif
 TARG_INFO_INC_DIR = $(TARG_TARG_INFO_DIR)
 TARG_INFO_LIB_DIR = $(TARGDIR)/targ_info
 
-TARG_INFO_INC_SRC_DIR = $(BUILD_SRC_AREA)/targ_info
-
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
 #----------------------------------------------------------------------
@@ -216,7 +214,6 @@ HEADER_DIRS = \
   $(SRC_DIRS)		\
   $(COMMON_TARG_INFO_ACCESS_DIR)\
   $(TARG_INFO_INC_DIR)	\
-  $(TARG_INFO_INC_SRC_DIR) \
   $(COMMON_UTIL_DIR)	\
   $(CURDIR)		\
   $(BE_DIR)		\

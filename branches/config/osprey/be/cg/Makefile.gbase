@@ -139,6 +139,7 @@ TARG_LIBDWARF = $(TARGDIR)/libdwarf
 endif
 TARG_LIBUNWIND = $(TARGDIR)/libunwindP
 
+
 #----------------------------------------------------------------------
 #  Generator options
 #
@@ -222,9 +223,7 @@ HEADER_DIRS = \
   $(LIBDWARF_DIR)	\
   $(BUILD_TOT)/include	\
   $(BUILD_TOT)/linux/include \
-  $(BUILD_TOT)/libdwarf/libdwarf \
-  $(BUILD_SRC_AREA)/targ_info \
-  $(BUILD_SRC_AREA)/be
+  $(BUILD_TOT)/libdwarf/libdwarf
 
 ifeq ($(BUILD_OS), LINUX)
 HEADER_DIRS += $(TARGDIR)/include/libelf

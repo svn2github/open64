@@ -127,9 +127,7 @@ HEADER_DIRS = \
   $(LD_COMMON_DIR)	\
   $(LD_DIR)		\
   $(TARGDIR)/be		\
-  $(BUILD_TOT)/include  \
-  $(BUILD_SRC_AREA)/be  \
-  $(BUILD_SRC_AREA)/targ_info
+  $(BUILD_TOT)/include
 
 ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
 HEADER_DIRS += $(TARGDIR)/include/libelf

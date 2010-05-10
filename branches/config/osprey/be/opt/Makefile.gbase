@@ -144,9 +144,7 @@ WOPT_HEADER_DIRS = \
   $(COMMON_COM_TARG_DIR) \
   $(TARGDIR)/targ_info	\
   $(TARGDIR)/include	\
-  $(TARG_BE_DIR) \
-  $(BUILD_SRC_AREA)/be \
-  $(BUILD_SRC_AREA)/targ_info
+  $(TARG_BE_DIR)
 
 
 
