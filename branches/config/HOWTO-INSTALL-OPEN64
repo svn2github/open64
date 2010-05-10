@@ -78,9 +78,42 @@ There are two ways:
 Compiling
 ---------
 
-Create a directory (obj) somewhere not underneath the open64 directory
-containing the source files.  Switch to that directory and execute
-the commands:
+The open64 build process has been changed to use the autoconf tool that
+many other opensource products use.  In the old build process, it was
+necessary to set variables on the make command to control the build;
+MACHINE_TYPE, BUILD_OPTIMIZE, and TOOLROOT arguments were passed to the
+make command to control what type of open64 compiler to build.
+
+In the new build process, these arguments are passed to the configure
+script (using a different syntax) and then the 'make all' and 'make
+install' commands are run without any arguments.
+
+Here is a mapping for some of the old make options to configure options:
+
+	Makefile setting	configure option
+	MACHINE_TYPE=i386	--target=i386-unknown-linux-gnu(1)
+	MACHINE_TYPE=ia64	--target=ia64-unknown-linux-gnu
+	BUILD_OPTIMIZE=DEBUG	--with-build-optimize=DEBUG
+	BUILD_COMPILER=GNU	--with-build-compiler=GNU
+	TOOLROOT=/opt/open64	--prefix=/opt/open64
+
+(1) If you are building on an 386/x86_64 system, the target will
+    default to building a 32 bit compiler with 32 and 64 bit libraries
+    and you do not have to use this option.
+
+Other differences between the old and new build are that 'make' or 'make
+all' now builds both the compiler and the libraries.  It is no longer
+neccessary to run 'make all' to build the compiler and then 'make lib'
+to build the libraries.
+
+Additionally, the libraries that need to be compiled with the open64
+compiler will be built using the compiler that was just created during
+the make process.  A seperate open64 compiler is not needed to build
+these libraries.
+
+To build open64 create a directory (obj) somewhere not underneath the
+open64 directory containing the source files.  Switch to that directory
+and execute the commands:
 
   <path-to-open64-dir>/open64/configure
   make all
