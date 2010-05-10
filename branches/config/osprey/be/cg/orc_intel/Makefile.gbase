@@ -94,7 +94,7 @@ TARG_LIBELFUTIL = $(TARGDIR)/libelfutil_xtnd
 TARG_LIBDWARF = $(TARGDIR)/libdwarf_xtnd
 else
 TARG_LIBELF = $(TARGDIR)/libelf
-TARG_LIBELFUTIL = $(TARGDITARGDIR)/libelfutil
+TARG_LIBELFUTIL = $(TARGDIR)/libelfutil
 TARG_LIBDWARF = $(TARGDIR)/libdwarf
 endif
 
