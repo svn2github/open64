@@ -50,6 +50,9 @@
 #  The BUILD_* parameters are:
 #     BUILD_AREA     = specifies the top of this build area subtree
 #                      (that is, the targ* level)
+#     BUILD_OBJ_DIR  = specifies the top of the object directory build
+#		       location (as opposed to BUILD_TOT which is the
+#		       top of the souce tree)
 #     BUILD_TOT      = specifies the Top-Of-Trunk directory containing
 #                      Makefile.setup
 #     BUILD_BASE     = specifies the base directory containing Makefile.base
