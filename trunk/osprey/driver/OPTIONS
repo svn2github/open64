@@ -650,6 +650,8 @@ I-D_LANGUAGE_FORTRAN	;		FTN	CPP	self
 	"-W<phase>,<arg> sends arg to phase {p=cpp,f=fe,b=be,a=as,l=ld}"
 -Y%s	change_phase_path(optargs); 	ALL	ipap	"-Y%s"
 	"-Y<phase>,<path> uses path to find phase {p=cpp,f=fe,b=be,a=as,l=ld,i=inline,I=include,S=startup,L=libraries}"
+-run-build=%s	run_from_build(optargs);	ALL	NONE	""
+	"Run compiler from build directory specified in option."
 
 % XPG requires ability to do -O 0 as well as -O0
 -O*0	toggle(&olevel,0);		ALL	CMP,CPP	"-O0"

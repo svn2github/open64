@@ -848,7 +848,7 @@ ALL_CPPFLAGS = $(INCLUDES) $(CPPFLAGS) $(X_CPPFLAGS) $(T_CPPFLAGS)
 #LIBGSPIN = ../../../libspin/libgspin42.a
 #This is a symbol link, create by the CONFIGURE script
 #LIBGSPIN = ../../../libspin/libgspin42.a
-LIBGSPIN = ../libgspin42.a
+LIBGSPIN = ../../osprey/targdir/libspin_4_2_0/libgspin42.a
 
 # Build and host support libraries.
 LIBIBERTY = ../libiberty/libiberty.a

@@ -50,6 +50,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <sys/param.h>
 #if !defined(_WIN32)
 #include <sys/utsname.h>
 #endif
@@ -125,6 +126,9 @@ extern boolean drop_option;
 
 static void set_cpu(char *name, m_flag flag_type);
 static void add_hugepage_desc(HUGEPAGE_ALLOC, HUGEPAGE_SIZE, int);
+
+/* Run opencc from build directory (-run-build option)  */
+int run_build = 0;
 
 #ifdef KEY
 void set_memory_model(char *model);
@@ -1153,6 +1157,90 @@ change_phase_path (char *arg)
 #endif
 		}
 	}
+}
+
+/* Reset location of sub-pieces to run compiler from build directory.
+   This overrides some settings from init_phase_info.  */
+
+static void
+run_from_build (char *builddir)
+{
+	char new_path[MAXPATHLEN];
+	char new_ld_path[MAXPATHLEN];
+	char ld_env[MAXPATHLEN];
+	int builddir_len;
+
+	run_build = 1;
+
+	if (ld_library_path)
+		strcpy(new_ld_path, ld_library_path);
+	else
+		new_ld_path[0] = NULL;
+
+	builddir_len = strlen(builddir);
+	strcpy(new_path, builddir);
+	strcat(new_path, "/osprey-gcc-4.2.0/gcc");
+	strcat(new_ld_path, ":");
+	strcat(new_ld_path, new_path);
+	override_phase(P_gcpp, "P_gcpp", new_path, "xgcc");
+	override_phase(P_gas, "P_gas", new_path, "xgcc");
+	override_phase(P_ld, "P_ld", new_path, "xgcc");
+	override_phase(P_gcpp, "P_gcpp_plus", new_path, "g++");
+	override_phase(P_ldplus, "P_ldplus", new_path, "g++");
+	override_phase(P_spin_cc1, "P_spin_cc1", new_path, "cc1");
+	override_phase(P_spin_cc1plus, "P_spin_cc1plus", new_path, "cc1plus");
+	new_path[builddir_len] = NULL;
+	strcat(new_path, "/osprey/targdir/crayf90/sgi");
+	override_phase(P_f90_fe, "P_f90_fe", new_path, "mfef95");
+	new_path[builddir_len] = NULL;
+        strcat(new_path, "/osprey/targdir/lw_inline");
+	strcat(new_ld_path, ":");
+	strcat(new_ld_path, new_path);
+	override_phase(P_inline, "P_inline", new_path, "lw_inline");
+	new_path[builddir_len] = NULL;
+        strcat(new_path, "/osprey/targdir/wgen");
+	strcat(new_ld_path, ":");
+	strcat(new_ld_path, new_path);
+	override_phase(P_wgen, "P_wgen", new_path, "wgen42");
+	new_path[builddir_len] = NULL;
+	strcat(new_path, "/osprey/targdir/be");
+	strcat(new_ld_path, ":");
+	strcat(new_ld_path, new_path);
+	override_phase(P_be, "P_be", new_path, "be");
+	new_path[builddir_len] = NULL;
+	strcat(new_path, "/osprey/targdir/cg");
+	strcat(new_ld_path, ":");
+	strcat(new_ld_path, new_path);
+	new_path[builddir_len] = NULL;
+	strcat(new_path, "/osprey/targdir/lno");
+	strcat(new_ld_path, ":");
+	strcat(new_ld_path, new_path);
+	new_path[builddir_len] = NULL;
+	strcat(new_path, "/osprey/targdir/wopt");
+	strcat(new_ld_path, ":");
+	strcat(new_ld_path, new_path);
+	new_path[builddir_len] = NULL;
+	strcat(new_path, "/osprey/targdir/targ_info");
+	strcat(new_ld_path, ":");
+	strcat(new_ld_path, new_path);
+	new_path[builddir_len] = NULL;
+	strcat(new_path, "/osprey/targdir/orc_ict");
+	strcat(new_ld_path, ":");
+	strcat(new_ld_path, new_path);
+	new_path[builddir_len] = NULL;
+	strcat(new_path, "/osprey/targdir/orc_intel");
+	strcat(new_ld_path, ":");
+	strcat(new_ld_path, new_path);
+	new_path[builddir_len] = NULL;
+
+	if (ld_library_path)
+		free(ld_library_path);
+	ld_library_path = malloc(strlen(new_ld_path) + 1);
+
+	strcpy(ld_library_path, new_ld_path);
+	strcpy(ld_env, "LD_LIBRARY_PATH=");
+	strcat(ld_env, new_ld_path);
+	putenv(ld_env);
 }
 
 /* halt after a particular phase, e.g. -Hb */

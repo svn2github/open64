@@ -370,6 +370,7 @@ endif
 ifeq ($(BUILD_TARGET), X8664)
   BE_CG_TARG_CXX_SRCS += cg_sched.cxx
   BE_CG_TARG_CXX_SRCS += cg_convert_x87.cxx
+  BE_CG_TARG_CXX_SRCS += cg_misc.cxx
 endif
 
 CG_CXX_PCH_SRCS = 	\

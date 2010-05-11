@@ -98,6 +98,8 @@ cross )
     ;;
 esac
 
+AREA="osprey/targdir"
+
 # get the TOOLROOT
 if [ -z ${TOOLROOT} ] ; then
     echo "NOTE: \$TOOLROOT is not set! You can either set \$TOOLROOT or specify an install directory."
@@ -120,9 +122,9 @@ TARG_OS="linux"
 BUILD_OS="linux"
 
 # prepare the source dir
-GNUFE_AREA="osprey-gcc/targ${BUILD_HOST}_${TARG_HOST}"
-GNUFE42_AREA="osprey-gcc-4.2.0/targ${BUILD_HOST}_${TARG_HOST}"
-LD_NEW_DIR="osprey/targcygnus_${BUILD_HOST}_${TARG_HOST}/ld"
+GNUFE_AREA="osprey-gcc"
+GNUFE42_AREA="osprey-gcc-4.2.0"
+LD_NEW_DIR="osprey/cygnus/ld"
 
 # prepare the distination dir
 INTERPOSE=
@@ -164,10 +166,10 @@ INSTALL_DATA_SUB () {
 INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${PHASEPATH}/driver
     if [ "$TARG_HOST" = "ia64" ] || [ "$TARG_HOST" = "x8664" ]; then
-      INSTALL_EXEC_SUB ${AREA}/driver/kdriver  ${PHASEPATH}/kdriver
+      INSTALL_EXEC_SUB ${TOP_SRCDIR}/osprey/targdir/driver/kdriver  ${PHASEPATH}/kdriver
     fi
     if [ "$TARG_HOST" = "ppc32" ]; then
-      INSTALL_EXEC_SUB ${AREA}/driver/kdriver  ${PHASEPATH}/kdriver
+      INSTALL_EXEC_SUB ${TOP_SRCDIR}/osprey/targdir/driver/kdriver  ${PHASEPATH}/kdriver
     fi
 
     [ ! -d ${BIN_DIR}       ] && mkdir -p ${BIN_DIR}
@@ -181,10 +183,10 @@ INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95-${VERSION}
 
     if [ "$TARG_HOST" = "ia64" ] || [ "$TARG_HOST" = "x8664" ]; then
-      INSTALL_EXEC_SUB ${AREA}/driver/kdriver ${BIN_DIR}/kopencc
+      INSTALL_EXEC_SUB ${TOP_SRCDIR}/osprey/targdir/driver/kdriver ${BIN_DIR}/kopencc
     fi
     if [ "$TARG_HOST" = "ppc32" ]; then
-      INSTALL_EXEC_SUB ${AREA}/driver/kdriver ${BIN_DIR}/kopencc
+      INSTALL_EXEC_SUB ${TOP_SRCDIR}/osprey/targdir/driver/kdriver ${BIN_DIR}/kopencc
     fi
 
     return 0
@@ -240,7 +242,7 @@ INSTALL_FE () {
     INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
     INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
     # GNU 4.2.0 based FE
-    INSTALL_EXEC_SUB ${AREA}/wgen_4_2_0/wgen42 ${PHASEPATH}/wgen42
+    INSTALL_EXEC_SUB ${AREA}/wgen/wgen42 ${PHASEPATH}/wgen42
     LIBEXEC=libexec/gcc/${PHASE_DIR_PREFIX}-redhat-linux/4.2.0
     (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1 cc142)
     (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1plus cc1plus42)
@@ -309,7 +311,7 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
 
     if [ "$TARG_HOST" = "ia64" ] ; then
         # These stuffs are only valid on ia64
-        LIBAREA="osprey/targ${TARG_HOST}/"
+	LIBAREA="osprey/targdir_lib"
 
         # f90 related archieves 
         INSTALL_DATA_SUB ${AREA}/temp_f90libs/lib.cat  ${PHASEPATH}/lib.cat
@@ -322,8 +324,8 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         #  SGI implementation for turning on FLUSH to ZERO
         INSTALL_DATA_SUB ${LIBAREA}/init/ftz.o     ${PHASEPATH}/ftz.o
     elif [ "$TARG_HOST" = "ppc32" ] ;  then
-        LIBAREA=osprey/targppc32_ppc32
-        LIB32AREA=osprey/targppc32_ppc32
+	LIBAREA="osprey/targdir_lib"
+	LIB32AREA="osprey/targdir_lib2"
         # 64bit libraries
         INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
@@ -337,9 +339,9 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.a           ${PHASEPATH}/32/libmv.a
     else
         # IA32 and x86_64
-        LIBAREA=osprey/targx8664_builtonia32
-        LIB32AREA=osprey/targia32_builtonia32
-        HUGETLB=osprey/libhugetlbfs
+	LIBAREA="osprey/targdir_lib2"
+	LIB32AREA="osprey/targdir_lib"
+        HUGETLB=${TOP_SRCDIR}/osprey/libhugetlbfs
 
         INSTALL_DATA_SUB ${LIBAREA}/libinstr2/libinstr.a      ${PHASEPATH}/libinstr.a
         INSTALL_DATA_SUB ${LIB32AREA}/libinstr2/libinstr.a      ${PHASEPATH}/32/libinstr.a
@@ -385,7 +387,7 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
 INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
 
     if [ "$TARG_HOST" = "ia64" ] ; then
-        LIBAREA="osprey/targ${TARG_HOST}/"
+	LIBAREA="osprey/targdir_lib"
         INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a 
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
         # libmsgi.a is no longer needed
@@ -394,11 +396,11 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/libm.a ${PHASEPATH}/libm.a
 	INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
     elif [ "$TARG_HOST" = "ppc32" ] ; then
-        LIBAREA=osprey/targppc32_builtonppc32
-        LIB32AREA=osprey/targppc32_buildonppc32
+	LIBAREA="osprey/targdir_lib"
+	LIB32AREA="osprey/targdir_lib2"
     else
-        LIBAREA=osprey/targx8664_builtonia32
-        LIB32AREA=osprey/targia32_builtonia32
+	LIBAREA="osprey/targdir_lib2"
+        LIB32AREA="osprey/targdir_lib"
         # 64bit libraries
         INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a
         INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.so ${PHASEPATH}/libfortran.so
@@ -525,8 +527,8 @@ INSTALL_NATIVE_HEADER () {
     #INSTALL_DATA_SUB osprey/include/nue/stdarg.h  ${PHASEPATH}/include/stdarg.h
     #INSTALL_DATA_SUB osprey/include/nue/va-ia64.h  ${PHASEPATH}/include/va-ia64.h 
     #cp -f -a osprey/include ${PHASEPATH}/ 
-    INSTALL_DATA_SUB osprey/include/whirl2c.h  ${ROOT}/include/${VERSION}/whirl2c.h
-    INSTALL_DATA_SUB osprey/include/whirl2f.h  ${ROOT}/include/${VERSION}/whirl2f.h
+    INSTALL_DATA_SUB ${TOP_SRCDIR}/osprey/include/whirl2c.h  ${ROOT}/include/${VERSION}/whirl2c.h
+    INSTALL_DATA_SUB ${TOP_SRCDIR}/osprey/include/whirl2f.h  ${ROOT}/include/${VERSION}/whirl2f.h
 
     INSTALL_DATA_SUB ${AREA}/include/dwarf.h  ${ROOT}/include/${VERSION}/dwarf.h
     INSTALL_DATA_SUB ${AREA}/include/libdwarf.h  ${ROOT}/include/${VERSION}/libdwarf.h
@@ -534,9 +536,9 @@ INSTALL_NATIVE_HEADER () {
     INSTALL_DATA_SUB ${AREA}/include/libelf/libelf.h  ${ROOT}/include/${VERSION}/libelf/libelf.h
     INSTALL_DATA_SUB ${AREA}/include/libelf/sys_elf.h  ${ROOT}/include/${VERSION}/libelf/sys_elf.h
 
-    INSTALL_DATA_SUB osprey/include/omp/omp.h  ${ROOT}/include/${VERSION}/omp.h
-    INSTALL_DATA_SUB osprey/include/omp/omp_lib.h  ${ROOT}/include/${VERSION}/omp_lib.h
-    INSTALL_DATA_SUB osprey/include/omp/omp_lib.f  ${ROOT}/include/${VERSION}/omp_lib.f
+    INSTALL_DATA_SUB ${TOP_SRCDIR}/osprey/include/omp/omp.h  ${ROOT}/include/${VERSION}/omp.h
+    INSTALL_DATA_SUB ${TOP_SRCDIR}/osprey/include/omp/omp_lib.h  ${ROOT}/include/${VERSION}/omp_lib.h
+    INSTALL_DATA_SUB ${TOP_SRCDIR}/osprey/include/omp/omp_lib.f  ${ROOT}/include/${VERSION}/omp_lib.f
 
     return 0
 }
@@ -590,7 +592,7 @@ INSTALL_MISC () {
     return 0
 }
 
-cd `dirname $0`
+# cd `dirname $0`
 
 [ ! -d ${BIN_DIR} ] && mkdir -p ${BIN_DIR}
 [ ! -d ${NATIVE_LIB_DIR} ] && mkdir -p ${NATIVE_LIB_DIR}

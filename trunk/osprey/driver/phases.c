@@ -151,6 +151,8 @@ static void set_f90_source_form(string_list_t *args,boolean set_line_length) ;
 static void set_stack_size();
 #endif
 
+extern int run_build;
+
 static phases_t
 post_fe_phase (void);
 
@@ -755,6 +757,11 @@ add_file_args_first (string_list_t *args, phases_t index)
   switch (index) {
     case P_gcpp:
     case P_gcpp_plus:
+      if (run_build) {
+	char p[PATH_BUF_LEN];
+	sprintf(p, "-B%s", get_phase_dir(index));
+	add_string(args, p);
+      }
       // -Dfoo before user options, since user might specify -Ufoo.  Bug 6874.
       if (option_was_seen(O_pthread))
 	add_string(args, "-D_REENTRANT");
@@ -1634,6 +1641,11 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 		current_phase = P_any_as;
 #if defined TARG_X8664 || ( defined(KEY) && !defined(CROSS_COMPILATION))
+      		if (run_build) {
+			char p[PATH_BUF_LEN];
+			sprintf(p, "-B%s", get_phase_dir(index));
+			add_string(args, p);
+      		}
 		add_string(args, "-c");		// gcc -c
 #endif
 #ifdef TARG_SL
@@ -1697,6 +1709,11 @@ add_file_args (string_list_t *args, phases_t index)
 		else
 		  add_string(args, "-mabi=64");
 #endif
+      		if (run_build) {
+			char p[PATH_BUF_LEN];
+			sprintf(p, "-B%s", get_phase_dir(index));
+			add_string(args, p);
+      		}
 		set_library_paths(args);
 		if (outfile != NULL) {
 			add_string(args, "-o");
@@ -2979,7 +2996,7 @@ void
 init_frontend_phase_names (int gnu_major_version, int gnu_minor_version)
 {
   // Select the appropriate GNU 4 front-end.
-  if (gnu_major_version == 4) {
+  if ((gnu_major_version == 4) && !run_build) {
     switch (gnu_minor_version) {
       case 0:	// Default is 4.0.
         break;
