@@ -158,7 +158,7 @@ IPA_irb_write_nystrom_alias_info(PU_Info* pu_info_tree, Output_File *fl)
     for (CGNodeToIdMapIterator iter = cg->lBegin(); iter != cg->lEnd(); iter++)
     {
       ConstraintGraphNode* cgNode = iter->first;
-      if (cgNode->flags() & CG_NODE_FLAGS_COLLAPSED)
+      if (cgNode->checkFlags(CG_NODE_FLAGS_COLLAPSED))
       {
         // if it's a collapsed node with a missing StInfo, don't emit
         // it its parent has probably been remapped during update
@@ -201,11 +201,11 @@ IPA_irb_write_nystrom_alias_info(PU_Info* pu_info_tree, Output_File *fl)
         summCGNode->nextOffset(cgNode->nextOffset()->id());
       else
         summCGNode->nextOffset(0);
-      if (cgNode->flags() & CG_NODE_FLAGS_COLLAPSED)
+      if (cgNode->checkFlags(CG_NODE_FLAGS_COLLAPSED))
       {
         CGNodeId cpid = cgNode->collapsedParent();
         ConstraintGraphNode* cp = cg->cgNode(cpid);
-        while (cp && (cp->flags() & CG_NODE_FLAGS_COLLAPSED))
+        while (cp && (cp->checkFlags(CG_NODE_FLAGS_COLLAPSED)))
         {
           cpid = cp->collapsedParent();
           cp = cg->cgNode(cpid);

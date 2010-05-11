@@ -432,8 +432,8 @@ ConstraintGraphNode::updatePointsToFromDiff()
       ConstraintGraphNode *ptNode = ConstraintGraph::cgNode(*siter);
       // This may happen because the diff sets are not updated
       // when nodes are collapsed.
-      if (ptNode->checkFlags(CG_NODE_FLAGS_COLLAPSED))
-        ptNode = ptNode->findRep();
+      while (ptNode->checkFlags(CG_NODE_FLAGS_COLLAPSED))
+        ptNode = ConstraintGraph::cgNode(ptNode->collapsedParent());
 
       // First we deal with any K Cycle value that may exist on
       // the current node.
@@ -957,13 +957,15 @@ ConstraintGraphNode::removeCollapsedNodes(PointsTo &dst)
 {
   for (PointsTo::SparseBitSetIterator iter(&dst,0); iter != 0; ++iter) {
     ConstraintGraphNode *node = ConstraintGraph::cgNode(*iter);
-    // For COLLAPSED nodes, replace the node with the parent
+    // For COLLAPSED nodes, replace the node with the collapsed parent
     if (node->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
       dst.clearBit(node->id());
-      FmtAssert(!node->parent()->checkFlags(CG_NODE_FLAGS_COLLAPSED),
-                ("parent: %d of node: %d is also collapsed\n",
-                node->parent()->id(), node->id()));
-      dst.setBit(node->parent()->id());
+      ConstraintGraphNode *collapsedParent = 
+                           ConstraintGraph::cgNode(node->collapsedParent());
+      FmtAssert(!collapsedParent->checkFlags(CG_NODE_FLAGS_COLLAPSED),
+                ("collapsed parent: %d of node: %d is also collapsed\n",
+                node->collapsedParent(), node->id()));
+      dst.setBit(node->collapsedParent());
     }
   }
 }

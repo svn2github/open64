@@ -2223,7 +2223,8 @@ ConstraintGraph::handleCall(WN *callWN)
       const PointsTo& ptsGBL = tmpNode->pointsTo(CQ_GBL);
       const PointsTo& ptsHZ = tmpNode->pointsTo(CQ_HZ);
       if (!ptsGBL.isEmpty()) {
-        for (PointsTo::SparseBitSetIterator iter(&ptsGBL, 0); iter != 0; ++iter) {
+        for (PointsTo::SparseBitSetIterator iter(&ptsGBL, 0); 
+             iter != 0; ++iter) {
           ConstraintGraphNode *valistNode = ConstraintGraph::cgNode(*iter);
           stInfo(valistNode->cg_st_idx())->setModulus(Pointer_Size,
                                                       valistNode->offset());
@@ -2288,6 +2289,10 @@ ConstraintGraph::handleCall(WN *callWN)
       ConstraintGraphNode *heapCGNode = getCGNode(CG_ST_st_idx(heapST), 0);
       stInfo(heapCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_HEAP);
       cgNode->addPointsTo(heapCGNode,CQ_HZ);
+      fprintf(stderr, "Adding heap due to callee: %s to caller: %s\n",
+              !callSite->isIntrinsic() ? ST_name(callSite->st_idx()) :
+                 INTRN_c_name(callSite->intrinsic()), 
+              ST_name(ST_st_idx(Get_Current_PU_ST())));
     }
 
     stmt = WN_next(stmt);

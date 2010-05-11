@@ -3248,11 +3248,11 @@ SUMMARIZE<program>::generateConstraintGraphSummary(WN *w)
       summCGNode->nextOffset(cgNode->nextOffset()->id());
     else
       summCGNode->nextOffset(0);
-    if (cgNode->flags() & CG_NODE_FLAGS_COLLAPSED)
+    if (cgNode->checkFlags(CG_NODE_FLAGS_COLLAPSED))
     {
       CGNodeId cpid = cgNode->collapsedParent();
       ConstraintGraphNode* cp = cg->cgNode(cpid);
-      while (cp && (cp->flags() & CG_NODE_FLAGS_COLLAPSED))
+      while (cp && (cp->checkFlags(CG_NODE_FLAGS_COLLAPSED)))
       {
         cpid = cp->collapsedParent();
         cp = cg->cgNode(cpid);

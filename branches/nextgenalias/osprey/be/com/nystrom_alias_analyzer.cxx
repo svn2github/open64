@@ -593,7 +593,7 @@ ConstraintGraph::buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE* summ)
                                        summ->cgNodeId(), this), _memPool);
   cgNode->ty_idx(summ->ty_idx());
   // Set the collapsed parent
-  if (cgNode->flags() & CG_NODE_FLAGS_COLLAPSED)
+  if (cgNode->checkFlags(CG_NODE_FLAGS_COLLAPSED))
     cgNode->collapsedParent(summ->collapsedParent());
 
   cgIdToNodeMap[summ->cgNodeId()] = cgNode;
