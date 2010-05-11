@@ -196,10 +196,6 @@ ConstraintGraph::adjustCGstIdx(IPA_NODE *ipaNode, CG_ST_IDX cg_st_idx)
 void
 IPA_NystromAliasAnalyzer::buildIPAConstraintGraph(IPA_NODE *ipaNode)
 {
-  if ( ! ipaNode->Summary_Proc()->hasConstraintGraph() ) {
-    fprintf(stderr, "ConstraintGraph missing for proc: %s\n", ipaNode->Name());
-    return;
-  }
   ConstraintGraph *cg = CXX_NEW(ConstraintGraph(&_memPool, ipaNode), &_memPool);
   _ipaConstraintGraphs[ipaNode->Node_Index()] = cg;
 }
@@ -931,8 +927,8 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
     IPA_NODE *caller = nodeIter.Current();
     if (caller == NULL) continue;
     ConstraintGraph *graph = cg(caller->Node_Index());
-    if (graph == NULL)
-      continue;
+    FmtAssert(graph != NULL, ("ConstraintGraph missing for caller: %s\n",
+              caller->Name()));
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
       fprintf(stderr,"Processing: %s\n",caller->Name());
 
@@ -1348,11 +1344,6 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
   } while (change);
 
-  if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG)) {
-    fprintf(stderr, "Printing final ConstraintGraphs...\n");
-    IPA_NystromAliasAnalyzer::aliasAnalyzer()->print(stderr);
-  }
-
   { //Limit scope of escape analysis
 
   // We perform escape analysis to determine which symbols may point
@@ -1407,6 +1398,11 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
     fprintf(TFile,("Memory usage after IPA solve.\n"));
     MEM_Trace();
     ConstraintGraph::stats();
+  }
+
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG)) {
+    fprintf(stderr, "Printing final ConstraintGraphs...\n");
+    IPA_NystromAliasAnalyzer::aliasAnalyzer()->print(stderr);
   }
 
   // post-process the points-to sets
@@ -1619,8 +1615,6 @@ void
 IPA_NystromAliasAnalyzer::updateLocalSyms(IPA_NODE *node)
 {
   ConstraintGraph *cg = this->cg(node->Node_Index());
-  if (cg == NULL)
-    return; 
 
   if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
     fprintf(stderr, "updateLocalSyms: %s\n", cg->name());
@@ -1673,8 +1667,6 @@ IPA_NystromAliasAnalyzer::mapWNToUniqCallSiteCGNodeId(IPA_NODE *node)
   FmtAssert(entryWN != NULL, ("Null WN tree!\n"));
 
   ConstraintGraph *cg = this->cg(node->Node_Index());
-  if (cg == NULL)
-    return; 
 
   // fprintf(stderr, "mapWNToUniqCGNodeId: %s\n", cg->name());
 
@@ -1730,9 +1722,6 @@ void
 IPA_NystromAliasAnalyzer::updateCGForBE(IPA_NODE *ipaNode)
 {
   ConstraintGraph *localCG = this->cg(ipaNode->Node_Index());
-
-  if (localCG == NULL)
-    return;
 
   if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
     fprintf(stderr, "updateCGForBE: %s\n", localCG->name());
@@ -1917,9 +1906,6 @@ ConstraintGraph::cloneConstraintGraphMaps(IPA_NODE *caller, IPA_NODE *callee)
             IPA_NystromAliasAnalyzer::aliasAnalyzer()->cg(caller->Node_Index());
   ConstraintGraph *calleeCG = 
             IPA_NystromAliasAnalyzer::aliasAnalyzer()->cg(callee->Node_Index());
-
-  if (callerCG == NULL || calleeCG == NULL)
-    return;
 
   if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
     fprintf(stderr, "cloneConstraintGraphMaps: caller: %s callee: %s\n",

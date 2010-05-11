@@ -509,7 +509,7 @@ SUMMARIZE<program>::Summarize (WN *w)
   }
 
   // Generate summary information for Nystrom alias analyzer
-  generateConstraintGraphSummary();
+  generateConstraintGraphSummary(w);
 
 #ifdef KEY
   if (Get_Trace (TP_IPL, TT_IPL_SUMMARY))
@@ -3202,18 +3202,19 @@ SUMMARIZE<program>::Record_ty_info_for_type (TY_IDX ty, TY_FLAGS flags)
 // Generate constraint graph summary for Nystrom Alias Analyzer
 template <PROGRAM program>
 void
-SUMMARIZE<program>::generateConstraintGraphSummary()
+SUMMARIZE<program>::generateConstraintGraphSummary(WN *w)
 {
   SUMMARY_PROCEDURE *currProc = Get_procedure(Get_procedure_idx());
 
   NystromAliasAnalyzer *naa = 
           static_cast<NystromAliasAnalyzer *>(AliasAnalyzer::aliasAnalyzer());
+  // In case we haven't invoked Preopt due to +Olimit, we should still
+  // create the constraint graph so as to perform alias analysis during IPA
   if (naa == NULL) {
-    currProc->hasConstraintGraph(FALSE);
-    return;
+    ALIAS_CONTEXT ac;
+    AliasAnalyzer::Create_Alias_Analyzer(ac,w);
+    naa = static_cast<NystromAliasAnalyzer *>(AliasAnalyzer::aliasAnalyzer());
   }
-
-  currProc->hasConstraintGraph(TRUE);
 
   mUINT32 numNodes = 0;
   mUINT32 numEdges = 0;

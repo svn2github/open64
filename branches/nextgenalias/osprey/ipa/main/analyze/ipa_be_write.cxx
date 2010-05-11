@@ -23,8 +23,6 @@ IPA_Summary_ProcessPointsToSet(DYN_ARRAY<UINT32>* cg_nodeids,
   UINT32 numGBLids = 0;
   for (PointsTo::SparseBitSetIterator iter(&gbl, 0); iter != 0; ++iter) {
     CGNodeId id = *iter;
-    if (id == ConstraintGraph::blackHole()->id())
-      continue;
     INT new_idx = cg_nodeids->Newidx();
     (*cg_nodeids)[new_idx] = id;
     numGBLids++;
@@ -135,14 +133,12 @@ IPA_irb_write_nystrom_alias_info(PU_Info* pu_info_tree, Output_File *fl)
   DYN_ARRAY<UINT32> cg_nodeids(Malloc_Mem_Pool);
   DYN_ARRAY<SUMMARY_CONSTRAINT_GRAPH_MODRANGE> cg_modranges(Malloc_Mem_Pool);
   
-  for (PU_Info* cur_pu = pu_info_tree; cur_pu != NULL; cur_pu = PU_Info_next(cur_pu))
+  for (PU_Info* cur_pu = pu_info_tree; cur_pu != NULL;
+       cur_pu = PU_Info_next(cur_pu))
   {
     IPA_NODE* ipa_node = Get_Node_From_PU(cur_pu);
     
     ConstraintGraph* cg = naa->cg(ipa_node->Node_Index());
-
-    if (cg == NULL)
-      continue;
 
     if (Get_Trace(TP_ALIAS,NYSTROM_SUMMARY_FLAG))
       fprintf(stderr, "writing summary for %s\n", cg->name());
@@ -185,17 +181,15 @@ IPA_irb_write_nystrom_alias_info(PU_Info* pu_info_tree, Output_File *fl)
       SUMMARY_CONSTRAINT_GRAPH_NODE *summCGNode = &(cg_nodes[new_idx]);
 
       ConstraintGraphNode* parent = cgNode->parent();
-      if (parent == cgNode)
-      {      
-        summCGNode->repParent(0);
-        IPA_Summary_ProcessPointsToSet(&cg_nodeids, 
-                                       summCGNode, cgNode->pointsTo(CQ_GBL),
-                                       cgNode->pointsTo(CQ_HZ), 
-                                       cgNode->pointsTo(CQ_DN),
-                                       num_nodeids);
-      }
-      else
-        summCGNode->repParent(parent->id());
+      // We don't care about parents anymore, since the parent might
+      // not be present in the local graph. So add the pts set directly
+      // to the node.
+      summCGNode->repParent(0);
+      IPA_Summary_ProcessPointsToSet(&cg_nodeids, 
+                                     summCGNode, cgNode->pointsTo(CQ_GBL),
+                                     cgNode->pointsTo(CQ_HZ), 
+                                     cgNode->pointsTo(CQ_DN),
+                                     num_nodeids);
       summCGNode->cgNodeId(cgNode->id());
       // if this is a 'local' st, strip off the file and pu ids
       UINT64 cgstidx = IPA_irb_adjust_cg_st_idx(cgNode->cg_st_idx(), ipa_node);

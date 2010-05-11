@@ -90,6 +90,14 @@ ConstraintGraph::deleteOptimizedNodes()
   }
 }
 
+// called during CG reconstruction only
+bool
+ConstraintGraphNode::setPointsTo(CGNodeId id, CGEdgeQual qual)
+{
+  PointsTo &pts = _getPointsTo(qual,Pts);
+  return pts.setBit(id);
+}
+
 StInfo *
 ConstraintGraphNode::stInfo() 
 { 

@@ -628,7 +628,7 @@ private:
 #endif
 
     // Constraint graph specific data for Nystrom Alias Analyzer
-    void generateConstraintGraphSummary();
+    void generateConstraintGraphSummary(WN *w);
     void processPointsToSet(SUMMARY_CONSTRAINT_GRAPH_NODE *sumCGNode,
                             const PointsTo &gbl,
                             const PointsTo &hz,

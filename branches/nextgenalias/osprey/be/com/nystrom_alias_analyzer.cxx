@@ -560,20 +560,6 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ)
     st_info->mod(modulus);
   }
   _cgStInfoMap[cg_st_idx] = st_info;
-
-#if 0
-    // Find max non-global st_idx 
-  SYMTAB_IDX level = ST_IDX_level(CG_ST_IDX(summ->cg_st_idx()));
-  if (level != GLOBAL_SYMTAB) {
-    FmtAssert(this != globalCG(), ("Expect this to be a local CG"));
-    UINT32 index     = ST_IDX_index(CG_ST_IDX(summ->cg_st_idx()));
-    UINT32 max_index = ST_IDX_index(_max_st_idx);
-    FmtAssert(_max_st_idx == 0 || (ST_IDX_level(_max_st_idx) == level),
-              ("Inconsistent SYMTAB_IDX"));
-    if (index > max_index)
-      _max_st_idx = make_ST_IDX(index, level);
-  }
-#endif
 }
 
 ModulusRange*
@@ -600,17 +586,13 @@ ConstraintGraph::buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE* summ)
 {
   CG_ST_IDX cg_st_idx = summ->cg_st_idx();
   ConstraintGraphNode* cgNode = checkCGNode(cg_st_idx, summ->offset());
-  if (cgNode != NULL)
-  {
-    return cgNode;
-  }
+  FmtAssert(cgNode == NULL, ("CGNode: %d already exists", cgNode->id()));
 
-  //  CGNodeId newCGNodeId = nextCGNodeId++;
   cgNode = CXX_NEW(ConstraintGraphNode(cg_st_idx, summ->offset(),
                                        summ->flags(), summ->inKCycle(),
                                        summ->cgNodeId(), this), _memPool);
-                                       // newCGNodeId, this), _memPool);
   cgNode->ty_idx(summ->ty_idx());
+  // Set the collapsed parent
   if (cgNode->flags() & CG_NODE_FLAGS_COLLAPSED)
     cgNode->collapsedParent(summ->collapsedParent());
 
@@ -618,14 +600,9 @@ ConstraintGraph::buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE* summ)
   _cgNodeToIdMap[cgNode] = summ->cgNodeId();
 }
 
-
-
-
 void
 ConstraintGraph::buildCGFromSummary()
 {
-  // ConstraintGraph *cg = CXX_NEW(ConstraintGraph(&_memPool), &_memPool);
-
   // now build the constraint graph from the summary
   SUMMARY_CONSTRAINT_GRAPH_PU_HEADER* summPUHeaders = 
     CURRENT_BE_SUMMARY.GetProcHeadersArray();
@@ -637,7 +614,6 @@ ConstraintGraph::buildCGFromSummary()
     CURRENT_BE_SUMMARY.GetCGCallsitesArray();
   UINT32* nodeIds =
     CURRENT_BE_SUMMARY.GetCGNodeIdsArray();
-  
   
   // Get the header corresponding to the current PU
   SUMMARY_CONSTRAINT_GRAPH_PU_HEADER& cur_hdr = summPUHeaders[0];
@@ -654,7 +630,6 @@ ConstraintGraph::buildCGFromSummary()
   FmtAssert(found == true, ("constraint graph not found!"));
   if (!found) return;
     
-  
   UINT32 nodesCount =     cur_hdr.cgNodesCount();
   UINT32 stInfosCount =   cur_hdr.cgStInfosCount();
   UINT32 callsitesCount = cur_hdr.cgCallsitesCount();
@@ -701,25 +676,13 @@ ConstraintGraph::buildCGFromSummary()
       FmtAssert(!stinfo->checkFlags(CG_ST_FLAGS_PREG),
                 ("PREGs should have no firstOffset"));
       ConstraintGraphNode * firstOffset = cgNode(firstOffsetId);
+      FmtAssert(firstOffset != NULL, ("Expecting firstOffset"));
       bool added = addCGNodeInSortedOrder(stinfo, firstOffset);
       if (added)
         stinfo->incrNumOffsets();
     }
   }
   
-  // Node Ids Array
-  for (UINT32 i = 0; i < nodesCount; i++)
-  {
-    SUMMARY_CONSTRAINT_GRAPH_NODE& summNode = summCGNodes[nodesIdx + i];
-    if (summNode.cgNodeId() == notAPointer()->id())
-      continue;
-    ConstraintGraphNode* cgnode = cgNode(summNode.cgNodeId());
-    UINT32 repParentId = summNode.repParent();
-    if (repParentId != 0 && cgnode->repParent() == NULL)
-      cgnode->repParent(cgNode(repParentId));
-
-  }
-
   for (UINT32 i = 0; i < nodesCount; i++)
   {
     SUMMARY_CONSTRAINT_GRAPH_NODE& summNode = summCGNodes[nodesIdx + i];
@@ -733,6 +696,7 @@ ConstraintGraph::buildCGFromSummary()
       FmtAssert(!stinfo->checkFlags(CG_ST_FLAGS_PREG),
                 ("PREGs should have no nextOffset"));
       ConstraintGraphNode* nextOffset = cgNode(nextOffsetId);
+      FmtAssert(nextOffset != NULL, ("Expecting nextOffset"));
       bool added = addCGNodeInSortedOrder(stinfo, nextOffset);
       if (added)
         stinfo->incrNumOffsets();
@@ -746,74 +710,21 @@ ConstraintGraph::buildCGFromSummary()
     UINT32 ptsDNidx      = summNode.ptsDNidx();
 
     // GBL
-    // First, we find all <ST,-1> nodes
     for (UINT32 i = 0; i < numBitsPtsGBL; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsGBLidx + i];
-      ConstraintGraphNode *pNode = cgNode(id);
-      if (pNode)
-        cgnode->parent()->addPointsTo(pNode, CQ_GBL);
-      else
-        cgnode->parent()->setPointsTo(id, CQ_GBL);
+      cgnode->setPointsTo(id, CQ_GBL);
     }
-    // cgnode->parent()->sanitizePointsTo(CQ_GBL);
-    // Is_True(cgnode->parent()->sanityCheckPointsTo(CQ_GBL),(""));
 
     // HZ
     for (UINT32 i = 0; i < numBitsPtsHZ; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsHZidx + i];
-      ConstraintGraphNode *pNode = cgNode(id);
-      if (pNode)
-        cgnode->parent()->addPointsTo(pNode, CQ_HZ);
-      else
-        cgnode->parent()->setPointsTo(id, CQ_HZ);
+      cgnode->setPointsTo(id, CQ_HZ);
     }
-    // cgnode->parent()->sanitizePointsTo(CQ_HZ);
-    // Is_True(cgnode->parent()->sanityCheckPointsTo(CQ_HZ),(""));
 
     // DN
     for (UINT32 i = 0; i < numBitsPtsDN; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsDNidx + i];
-      ConstraintGraphNode *pNode = cgNode(id);
-      if (pNode)
-        cgnode->parent()->addPointsTo(pNode, CQ_DN);
-      else 
-        cgnode->parent()->setPointsTo(id, CQ_DN);
-    }
-    // cgnode->parent()->sanitizePointsTo(CQ_DN);
-    // Is_True(cgnode->parent()->sanityCheckPointsTo(CQ_DN),(""));
-
-    // Adjust pts set if required
-    if (cgnode->checkFlags(CG_NODE_FLAGS_ADJUST_K_CYCLE)) {
-      adjustPointsToForKCycle(cgnode);
-      cgnode->clearFlags(CG_NODE_FLAGS_ADJUST_K_CYCLE);
-    }
-
-    // Handle the case where the node has an existing parent
-    UINT32 repParentId = summNode.repParent();
-    if (repParentId != 0 && cgnode->repParent() != NULL) {
-      ConstraintGraphNode *newRepParent = cgNode(repParentId)->findRep();
-      ConstraintGraphNode *oldRepParent = cgnode->findRep();
-      if (oldRepParent != newRepParent) {
-        // Merge with the new parent
-        newRepParent->merge(oldRepParent);
-        // Set the newParent as the parent of oldRepParent
-        oldRepParent->repParent(newRepParent);
-        // Add special copy edge from newRepParent if !PREG
-        if (!oldRepParent->isOnlyOffset()) {
-          bool added = false;
-          ConstraintGraphEdge *newEdge;
-          if (newRepParent->cg() != oldRepParent->cg())
-            newEdge =
-              ConstraintGraph::addEdge(newRepParent, oldRepParent, ETYPE_COPY,
-                                       CQ_GBL, 0, added, CG_EDGE_PARENT_COPY);
-          else
-            newEdge = 
-                ConstraintGraph::addEdge(newRepParent, oldRepParent, ETYPE_COPY,
-                                         CQ_HZ, 0, added, CG_EDGE_PARENT_COPY);
-          FmtAssert(added, ("ConstraintGraph::merge: failed to add "
-                            "special copy edge"));
-        }
-      }
+      cgnode->setPointsTo(id, CQ_DN);
     }
   }
   
@@ -821,14 +732,12 @@ ConstraintGraph::buildCGFromSummary()
   for (UINT32 i = 0; i < formalsCount; i++)
   {
     CGNodeId id = (CGNodeId)nodeIds[formalsIdx + i];
-    // ConstraintGraphNode* cn = cgNode(id);
     parameters().push_back(id);
   }
 
   for (UINT32 i = 0; i < returnsCount; i++)
   {
     CGNodeId id = (CGNodeId)nodeIds[returnsIdx + i];
-    // ConstraintGraphNode* cn = cgNode(id);
     returns().push_back(id);
   }
 
@@ -850,7 +759,6 @@ ConstraintGraph::buildCGFromSummary()
     for (UINT32 i = 0; i < formalsCount; i++)
     {
       CGNodeId id = (CGNodeId) nodeIds[formalsIdx + i];
-      // ConstraintGraphNode* cn = cgNode(id);
       cs->addParm(id);
     }
     CGNodeId retId = summCallsite.returnId();

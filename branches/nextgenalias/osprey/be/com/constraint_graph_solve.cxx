@@ -1066,16 +1066,6 @@ ConstraintGraphNode::sanityCheckPointsTo(CGEdgeQual qual)
   return true;
 }
 
-// called during CG reconstruction only
-bool 
-ConstraintGraphNode::setPointsTo(CGNodeId id, CGEdgeQual qual)
-{
-  bool change = findRep()->_addPointsTo(id, qual);
-  if (change)
-    addFlags(CG_NODE_FLAGS_PTSMOD);
-  return change;
-}
-
 bool
 ConstraintGraphNode::addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
 {
