@@ -110,6 +110,7 @@ class EdgeDelta;
 #define CS_FLAGS_HAS_MOD_REF 0x08
 #define CS_FLAGS_HAS_VARARGS 0x10
 #define CS_FLAGS_PRINTF_NOPRECN 0x20
+#define CS_FLAGS_HEAP_MODELED   0x40
 
 typedef UINT32 CGNodeId;
 typedef UINT64 CG_ST_IDX;

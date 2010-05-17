@@ -1236,6 +1236,7 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   if (Get_Trace(TP_ALIAS, NYSTROM_MEMORY_TRACE_FLAG)) {
     fprintf(TFile,"Memory usage before IPA solve.\n");
     MEM_Trace();
+    ConstraintGraph::stats();
   }
 
   // Here we have a single driver that supports both a
@@ -1377,6 +1378,9 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
     }
   }
 
+  // Print solver statistics for all iterations
+  ConstraintGraphSolve::printStats();
+
   if (Get_Trace(TP_ALIAS,NYSTROM_MEMORY_TRACE_FLAG)) {
     void *sbrk2 = sbrk(0);
     fprintf(stderr,"High water: %d after indirect update solve\n",
@@ -1471,8 +1475,8 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
   list<CGNodeId>::const_iterator actualIter = cs->parms().begin();
   list<CGNodeId>::const_iterator formalIter = callee->parameters().begin();
   ConstraintGraphNode *lastFormal = NULL;
-  for (; actualIter != cs->parms().end() && formalIter != callee->parameters().end();
-      ++actualIter, ++formalIter) {
+  for (; actualIter != cs->parms().end() && 
+       formalIter != callee->parameters().end(); ++actualIter, ++formalIter) {
     ConstraintGraphNode *actual = cgNode(*actualIter);
     ConstraintGraphNode *formal = cgNode(*formalIter);
     lastFormal = formal;
@@ -1514,6 +1518,10 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
   }
 
   PU &calleePU = Pu_Table[ST_pu(calleeST)];
+
+  if (PU_has_attr_malloc(calleePU) && cs->checkFlags(CS_FLAGS_HEAP_MODELED))
+    return;
+
   // If the callee is a malloc wrapper, create a heap CGNode and add
   // it to the points to set of the actual return. The formal and actual
   // return nodes are not connected.
@@ -1543,13 +1551,16 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
     TY &newRetType = Ty_Table[actualRet->ty_idx()];
     if (TY_kind(newRetType) == KIND_POINTER) {
       TY_IDX new_heap_ty_idx = TY_pointed(newRetType);
-      fprintf(stderr,"CONNECT: New ty_idx %d, size %d - old ty_idx %d, size %d\n",
-              new_heap_ty_idx,(UINT32)TY_size(new_heap_ty_idx),
-              heap_ty_idx,(UINT32)TY_size(heap_ty_idx));
+      if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+        fprintf(stderr,"CONNECT: New ty_idx %d, size %d - old ty_idx %d, "
+                "size %d\n", new_heap_ty_idx,(UINT32)TY_size(new_heap_ty_idx),
+                heap_ty_idx,(UINT32)TY_size(heap_ty_idx));
       heap_ty_idx = new_heap_ty_idx;
     }
-    else
-      fprintf(stderr,"CONNECT: New ty_idx is not a pointer!\n");
+    else {
+      if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+        fprintf(stderr,"CONNECT: New ty_idx is not a pointer!\n");
+    }
 
     CG_ST_IDX new_cg_st_idx = buildLocalStInfo(heap_ty_idx);
     ConstraintGraphNode *heapCGNode = getCGNode(new_cg_st_idx, 0);

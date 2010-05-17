@@ -9,6 +9,13 @@
 #include "opt_sys.h"
 #include "tracing.h"
 
+double ConstraintGraphSolve::totalTime       = 0.0;
+UINT32 ConstraintGraphSolve::totalIterCount  = 0;
+UINT32 ConstraintGraphSolve::totalCopyCount  = 0;
+UINT32 ConstraintGraphSolve::totalSkewCount  = 0;
+UINT32 ConstraintGraphSolve::totalLoadCount  = 0;
+UINT32 ConstraintGraphSolve::totalStoreCount = 0;
+
 //
 // Performs cycle detection within the constraint graph.  The
 // algorithm employed is Nuutila's algorithm:
@@ -481,6 +488,18 @@ ConstraintGraphNode::updatePointsToFromDiff()
   return ptsChange;
 }
 
+static void
+checkNode(ConstraintGraphNode *n)
+{
+  for (PointsToIterator pti(n); pti != 0; ++pti ) {
+    PointsTo &curSet = *pti;
+    if (curSet.numBits() > 100) {
+      fprintf(stderr, "\nExcess pts set for n (qual:%d)",  pti.qual());
+      n->print(stderr);
+    }
+  }
+}
+
 static int
 topoCGNodeCompare(const void *n1, const void *n2)
 {
@@ -623,6 +642,9 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
         if (ConstraintGraph::inIPA()) {
           for (UINT32 j = 0; j < i; j++)
             topoOrderArray[j]->collapseTypeIncompatibleNodes();
+
+          //for (UINT32 j = 0; j < i; j++)
+          //  checkNode(topoOrderArray[j]);
         }
 
         // Add edges to be processed in topological order
@@ -670,11 +692,27 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
             iterCount,copyCount,skewCount,loadCount,storeCount,
             double(endTime-startTime)/1000);
 
+  totalIterCount += iterCount;
+  totalCopyCount += copyCount;
+  totalSkewCount += skewCount;
+  totalLoadCount += loadCount;
+  totalStoreCount += storeCount;
+  totalTime += (double(endTime-startTime)/1000);
+
   ConstraintGraph::solverModList(NULL);
   if (sccs)
     delete sccs;
 
   return true;
+}
+
+void
+ConstraintGraphSolve::printStats()
+{
+  fprintf(stderr,"Overall Solver required %d iter, "
+          "processed %d c, %d s, %d l, %d s edges in %.1lfs\n",
+          totalIterCount,totalCopyCount,totalSkewCount,totalLoadCount,
+          totalStoreCount,totalTime);
 }
 
 bool
@@ -1855,7 +1893,7 @@ ConstraintGraph::simpleOptimizer()
     fprintf(stderr, "Done optimizing ConstraintGraphs\n");
 }
 
-#define MAX_ALLOWED_ST_PER_TYPE 2
+#define MAX_ALLOWED_ST_PER_TYPE 32
 
 void
 ConstraintGraph::ipaSimpleOptimizer()

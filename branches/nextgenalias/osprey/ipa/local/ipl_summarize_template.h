@@ -3204,6 +3204,9 @@ template <PROGRAM program>
 void
 SUMMARIZE<program>::generateConstraintGraphSummary(WN *w)
 {
+  if (!Alias_Nystrom_Analyzer)
+    return;
+
   SUMMARY_PROCEDURE *currProc = Get_procedure(Get_procedure_idx());
 
   NystromAliasAnalyzer *naa = 

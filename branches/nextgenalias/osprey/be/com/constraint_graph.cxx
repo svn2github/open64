@@ -723,6 +723,7 @@ ConstraintGraph::exprMayPoint(WN *const wn)
     case OPR_INTRINSIC_OP:
     case OPR_FIRSTPART:
     case OPR_SECONDPART:
+    case OPR_RECIP:
       return false;
     default:
       return true;
@@ -2289,10 +2290,12 @@ ConstraintGraph::handleCall(WN *callWN)
       ConstraintGraphNode *heapCGNode = getCGNode(CG_ST_st_idx(heapST), 0);
       stInfo(heapCGNode->cg_st_idx())->addFlags(CG_ST_FLAGS_HEAP);
       cgNode->addPointsTo(heapCGNode,CQ_HZ);
-      fprintf(stderr, "Adding heap due to callee: %s to caller: %s\n",
-              !callSite->isIntrinsic() ? ST_name(callSite->st_idx()) :
-                 INTRN_c_name(callSite->intrinsic()), 
-              ST_name(ST_st_idx(Get_Current_PU_ST())));
+      if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+        fprintf(stderr, "Adding heap (ipl) due to callee: %s to caller: %s\n",
+                !callSite->isIntrinsic() ? ST_name(callSite->st_idx()) :
+                   INTRN_c_name(callSite->intrinsic()), 
+                ST_name(ST_st_idx(Get_Current_PU_ST())));
+      callSite->addFlags(CS_FLAGS_HEAP_MODELED);
     }
 
     stmt = WN_next(stmt);
@@ -2817,6 +2820,11 @@ ConstraintGraph::stats()
   UINT32 r_emptyPtsCount = 0;
   UINT32 r_totalCardinality = 0;
 
+  UINT32 totalCopy = 0;
+  UINT32 totalSkew = 0;
+  UINT32 totalLoad = 0;
+  UINT32 totalStore = 0;
+
   for (CGIdToNodeMapIterator iter = gBegin(); iter != gEnd(); ++iter)
   {
     ConstraintGraphNode *node = iter->second;
@@ -2841,6 +2849,25 @@ ConstraintGraph::stats()
         r_emptyPtsCount += 1;
       r_ptsElemCount += pts.numElements();
     }
+    // Collect edge stats
+    for (CGEdgeSetIterator iter = node->outCopySkewEdges().begin();
+         iter != node->outCopySkewEdges().end(); iter++)
+    {
+      ConstraintGraphEdge *edge = *iter;
+      if (edge->edgeType() == ETYPE_COPY)
+        totalCopy++;
+      else
+        totalSkew++;
+    }
+    for (CGEdgeSetIterator iter = node->outLoadStoreEdges().begin();
+         iter != node->outLoadStoreEdges().end(); iter++)
+    {
+      ConstraintGraphEdge *edge = *iter;
+      if (edge->edgeType() == ETYPE_LOAD)
+        totalLoad++;
+      else
+        totalStore++;
+    }
   }
   fprintf(stderr,"Points to set statistics\n");
   fprintf(stderr,"  CG Node count:   %d\n",nodeCount);
@@ -2864,6 +2891,10 @@ ConstraintGraph::stats()
 
   fprintf(stderr,"  Total Elem memory:     %d\n",
           (ptsElemCount+r_ptsElemCount) * sizeof(SparseBitSetElement));
+
+  fprintf(stderr, "Node/edge stats: %d nodes %d c, %d s, %d l, %d s "
+          "edges\n", ConstraintGraph::globalCG()->totalCGNodes(),
+          totalCopy, totalSkew, totalLoad, totalStore);
 }
 
 void

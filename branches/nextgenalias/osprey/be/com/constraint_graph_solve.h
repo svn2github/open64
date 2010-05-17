@@ -51,7 +51,17 @@ public:
 
   static void postProcessPointsTo();
 
+  static void printStats();
+
 private:
+  // Solver statistics
+  static double totalTime;
+  static UINT32 totalIterCount;
+  static UINT32 totalCopyCount;
+  static UINT32 totalSkewCount;
+  static UINT32 totalLoadCount;
+  static UINT32 totalStoreCount;
+
   void updateOffsets(const ConstraintGraphNode *, const PointsTo &, CGEdgeQual);
   void processAssign(const ConstraintGraphEdge *);
   void processSkew(const ConstraintGraphEdge *);
