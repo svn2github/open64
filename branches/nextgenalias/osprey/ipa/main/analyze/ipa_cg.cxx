@@ -844,6 +844,16 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     // Mark overrides for externally visible routines
 
     Mark_inline_overrides(ipa_node, st);
+
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+
+    IPA_NystromAliasAnalyzer *ipa_naa = 
+                              IPA_NystromAliasAnalyzer::aliasAnalyzer();
+    if (ipa_naa) {
+        ipa_naa->buildIPAConstraintGraph(ipa_node);
+    }
+
+#endif
 #ifdef KEY
     } // else of '(REORDER_BY_EDGE_FREQ && IPA_Call_Graph_Tmp)'
 #endif
@@ -865,15 +875,6 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     if (runtime_addr) addr_node_map[runtime_addr] = ipa_node;
 #endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
 
-#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
-
-    IPA_NystromAliasAnalyzer *ipa_naa = 
-                              IPA_NystromAliasAnalyzer::aliasAnalyzer();
-    if (ipa_naa) {
-        ipa_naa->buildIPAConstraintGraph(ipa_node);
-    }
-
-#endif
 
 
     return ipa_node;
@@ -968,20 +969,6 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
     INT callsite_index = proc_array[i].Get_callsite_index();
 	
     for (INT j = 0; j < callsite_count; ++j, ++callsite_index) {
-
-#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
-      // The summary callsite contains the Nystrom alias analyzer's
-      // call site id, which has been remapped to a unique id during IPA
-      // CG construction for an IPA_NODE. So update the callsite id of the
-      // summary to reflect the new id.
-      if (Alias_Nystrom_Analyzer) {
-        ConstraintGraph *callerCG = 
-            IPA_NystromAliasAnalyzer::aliasAnalyzer()->cg(caller->Node_Index());
-        if (callerCG)
-          callerCG->updateSummaryCallSiteId(callsite_array[callsite_index]);
-      }
-#endif
-      
 #ifdef KEY
       if (IPA_Enable_Pure_Call_Opt &&
 	  (callsite_array[callsite_index].Is_func_ptr() ||
@@ -1622,14 +1609,6 @@ Build_Call_Graph ()
 
     For_all_entries (IP_File_header, add_nodes ());
 
-#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
-    if (Alias_Nystrom_Analyzer && Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG))
-    {
-      fprintf(stderr, "Printing initial ConstraintGraphs...\n");
-      IPA_NystromAliasAnalyzer::aliasAnalyzer()->print(stderr);
-    }
-#endif
-
     For_all_entries (IP_File_header, add_edges ());
 
     Connect_call_graph();
@@ -1651,6 +1630,14 @@ Build_Call_Graph ()
 	node_map.clear();
     }
   }
+#endif
+
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    if (Alias_Nystrom_Analyzer && Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG))
+    {
+      fprintf(stderr, "Printing initial ConstraintGraphs...\n");
+      IPA_NystromAliasAnalyzer::aliasAnalyzer()->print(stderr);
+    }
 #endif
 
   IPA_Call_Graph_Built = TRUE;
