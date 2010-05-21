@@ -940,9 +940,8 @@ ConstraintGraph::processFlatInitvals(TY &ty,
             ("Expecting INITVKIND_VAL or INITVKIND_PAD"));
   UINT32 size = 0;
   // Iterate over all INITVKIND_VALs/PADs until size of ty
-  UINT32 rep = 0;
   while (size < TY_size(ty) && initv_idx != 0) {
-    rep++;
+    used_repeat++;
     const INITV &initv = Initv_Table[initv_idx];
     FmtAssert(INITV_kind(initv) == INITVKIND_PAD ||
               INITV_kind(initv) == INITVKIND_VAL, 
@@ -958,22 +957,24 @@ ConstraintGraph::processFlatInitvals(TY &ty,
     // if repeat factor has been exhausted and we haven't accounted for all
     // of TY_size
     if ((INITV_kind(initv) == INITVKIND_PAD || 
-        (INITV_kind(initv) == INITVKIND_VAL && rep == INITV_repeat2(initv))) &&
+        (INITV_kind(initv) == INITVKIND_VAL && used_repeat == INITV_repeat2(initv))) &&
          size < TY_size(ty)) {
       initv_idx = INITV_next(initv);
-      rep = 0;
-      if (initv_idx != 0) {
-        if (INITV_kind(Initv_Table[initv_idx]) == INITVKIND_VAL)
-          next_repeat = INITV_repeat2(Initv_Table[initv_idx]);
-        else if (INITV_kind(Initv_Table[initv_idx]) == INITVKIND_PAD)
-          next_repeat = 0;
-        else
-          FmtAssert(FALSE, ("Expecting INITVKIND_PAD || INITVKIND_VAL"));
-      }
+      used_repeat = 0;
     }
   }
-  // Update the number of times the repeat factor was used
-  used_repeat = rep;
+
+  if (initv_idx != 0) {
+    if (INITV_kind(Initv_Table[initv_idx]) == INITVKIND_VAL)
+      next_repeat = INITV_repeat2(Initv_Table[initv_idx]);
+    else if (INITV_kind(Initv_Table[initv_idx]) == INITVKIND_PAD)
+       next_repeat = 0;
+    else
+       FmtAssert(FALSE, ("Expecting INITVKIND_PAD || INITVKIND_VAL"));
+  }
+  else 
+    next_repeat = 0;
+  
   // FmtAssert(size == TY_size(ty), ("Inconsistent size"));
   // With padding it is impossible to determine how many initvs
   // constitute the initial value of this ty. So bail out if we are not able
@@ -987,13 +988,30 @@ ConstraintGraph::processFlatInitvals(TY &ty,
   return valList;
 }
 
+static bool INITV_BLKIsFlat(INITV_IDX initv_idx)
+{
+  const INITV &initv = Initv_Table[initv_idx];
+  if(INITV_kind(initv) == INITVKIND_BLOCK) {
+    // only has one child is val or pad
+    INITV_IDX child_initv_idx = INITV_blk(initv);
+    if((INITV_kind(child_initv_idx) == INITVKIND_VAL ||
+         INITV_kind(child_initv_idx) == INITVKIND_PAD) &&
+         INITV_next(child_initv_idx) == 0) {
+         return true;
+    }
+  }
+  return false;
+}
+
+
 static bool
 isFlatArrayOrStruct(TY &ty, INITV_IDX initv_idx)
 {
   const INITV &initv = Initv_Table[initv_idx];
   if ( (TY_kind(ty) == KIND_ARRAY || TY_kind(ty) == KIND_STRUCT) &&
        (INITV_kind(initv) == INITVKIND_VAL || 
-        INITV_kind(initv) == INITVKIND_PAD) )
+        INITV_kind(initv) == INITVKIND_PAD ||
+        INITV_BLKIsFlat(initv_idx)) )
     return true;
 
   return false;
@@ -1010,6 +1028,9 @@ ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
   if (isFlatArrayOrStruct(ty, initv_idx)) {
     UINT32 rep;
     UINT32 nextRep;
+    if(INITV_kind(initv) == INITVKIND_BLOCK)
+        initv_idx = INITV_blk(initv);
+
     return processFlatInitvals(ty, initv_idx, startOffset, rep, nextRep,
                                memPool);
   }
@@ -1087,14 +1108,12 @@ ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
           // enclosed in INITVKIND_BLOCK, but instead provided as a list of 
           // INITVKIND_VAL/PAD
           if (isFlatArrayOrStruct(fty, child_initv_idx)) {
-            UINT32 used_rep;
             fldList = processFlatInitvals(Ty_Table[FLD_type(fld)], 
                                           child_initv_idx,
                                           startOffset +  FLD_ofst(fld),
-                                          used_rep,
+                                          r,
                                           repeat,
                                           memPool);
-            r += used_rep;
           } else {
             fldList = processInitv(fty, child_initv_idx,
                                    startOffset + FLD_ofst(fld), memPool);
@@ -1151,11 +1170,9 @@ ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
           // enclosed in INITVKIND_BLOCK, but instead provided as a list of 
           // INITVKIND_VAL/PAD
           if (isFlatArrayOrStruct(etype, child_initv_idx)) {
-            UINT32 used_rep;
             elemList = processFlatInitvals(etype, child_initv_idx, 
                                            startOffset + i * TY_size(etype),
-                                           used_rep, repeat, memPool);
-            r += used_rep;
+                                           r, repeat, memPool);
           } else {
             elemList = processInitv(etype, child_initv_idx,
                                     startOffset + i * TY_size(etype), memPool); 
