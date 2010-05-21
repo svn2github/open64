@@ -30,6 +30,18 @@ hash_map<ST_IDX, ST_IDX> ConstraintGraph::origToCloneStIdxMap;
 EdgeDelta *ConstraintGraph::_workList = NULL;
 NodeWorkList *ConstraintGraph::_solverModList = NULL;
 
+// Return off that is pointer aligned
+static INT32 
+applyModulusAndPtrAlign(StInfo *stInfo, INT32 off)
+{
+  off = stInfo->applyModulus(off);
+  while ((off & (Pointer_Size-1)) != 0) {
+    off = off & ~(Pointer_Size-1);
+    off  = stInfo->applyModulus(off);
+  }
+  return off;
+}
+
 static INT32
 getArraySize(WN *wn)
 {
@@ -140,6 +152,7 @@ ConstraintGraphNode::canBeDeleted()
 ConstraintGraphEdge *
 ConstraintGraphNode::addInEdge(ConstraintGraphEdge *edge)
 {
+  this->checkIsPtrAligned();
   // If node is merged only allow adding special PARENT_COPY edges
   if (checkFlags(CG_NODE_FLAGS_MERGED))
     FmtAssert(edge->checkFlags(CG_EDGE_PARENT_COPY),
@@ -156,6 +169,7 @@ ConstraintGraphNode::addInEdge(ConstraintGraphEdge *edge)
 ConstraintGraphEdge *
 ConstraintGraphNode::addOutEdge(ConstraintGraphEdge *edge)
 {
+  this->checkIsPtrAligned();
   // If there is a representative parent, out edges should not be added
   FmtAssert(!checkFlags(CG_NODE_FLAGS_MERGED),
             ("OutEdges not allowed for nodes with representatives"));
@@ -474,6 +488,20 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
     addFlags(CG_ST_FLAGS_NOCNTXT);
 }
 
+bool
+ConstraintGraphNode::isAPossiblePtr()
+{
+  if (inCopySkewEdges().size() != 0 ||
+      inLoadStoreEdges().size() != 0 ||
+      outCopySkewEdges().size() != 0 ||
+      outLoadStoreEdges().size() != 0 ||
+      !pointsTo(CQ_GBL).isEmpty() ||
+      !pointsTo(CQ_HZ).isEmpty() ||
+      !pointsTo(CQ_DN).isEmpty())
+    return true;
+  return false;
+}
+
 void
 StInfo::applyModulus(void)
 {
@@ -503,9 +531,20 @@ StInfo::applyModulus(void)
 
     if (cur->offset() >= startOffset + modulus) {
       UINT32 newOffset = startOffset + cur->offset() % modulus;
-      ConstraintGraphNode *modNode =
-          cur->cg()->getCGNode(cur->cg_st_idx(),newOffset);
 
+      // When collapsing cur to newOffset, if it is a ptr, the newOffset
+      // has to be ptr aligned
+      if (cur->parent()->isAPossiblePtr()) {
+        newOffset = newOffset & ~(Pointer_Size-1);
+        newOffset = applyModulusAndPtrAlign(this, newOffset);
+      }
+
+      ConstraintGraphNode *modNode =
+                           cur->cg()->getCGNode(cur->cg_st_idx(),newOffset);
+
+      if (modNode->checkFlags(CG_NODE_FLAGS_COLLAPSED))
+        modNode = ConstraintGraph::cgNode(modNode->collapsedParent());
+        
       // Now we collapse cur into modNode
       modNode->collapse(cur);
 
@@ -662,6 +701,10 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *destNode,
   {
     CGNodeId nodeId = *iter;
     ConstraintGraphNode *node = cgNode(nodeId);
+
+    while (node->checkFlags(CG_NODE_FLAGS_COLLAPSED))
+      node = ConstraintGraph::cgNode(node->collapsedParent());
+
     ConstraintGraphNode *adjNode = NULL;
     adjustNodeForKCycle(destNode,node,adjNode);
     dst.setBit(adjNode->id());
@@ -675,6 +718,12 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *cgNode)
     PointsTo &ptsTo = *pti;
     PointsTo tmp;
     adjustPointsToForKCycle(cgNode, ptsTo, tmp, pti.qual());
+    // Before we clear ptsTo, remove cgNode from rev pts of nodes in ptsTo
+    for (PointsTo::SparseBitSetIterator sbsi(&ptsTo, 0); sbsi != 0; ++sbsi) {
+      CGNodeId p = *sbsi;
+      ConstraintGraphNode *pn = ConstraintGraph::cgNode(p);
+      pn->removeRevPointsTo(cgNode->id(), pti.qual());
+    }
     ptsTo.clear();
     cgNode->unionPointsTo(tmp, pti.qual());
   }
@@ -2410,18 +2459,6 @@ ConstraintGraph::getCGNode(WN *wn)
   return n;
 }
 
-// Return off that is pointer aligned
-static INT32 
-applyModulusAndPtrAlign(StInfo *stInfo, INT32 off)
-{
-  off = stInfo->applyModulus(off);
-  while ((off & (Pointer_Size-1)) != 0) {
-    off = off & ~(Pointer_Size-1);
-    off  = stInfo->applyModulus(off);
-  }
-  return off;
-}
-
 bool
 ConstraintGraph::addPtrAlignedEdges(ConstraintGraphNode *src,
                                     ConstraintGraphNode *dest,
@@ -3985,6 +4022,8 @@ ConstraintGraphNode::collapseTypeIncompatibleNodes()
         FmtAssert(ptdNode->stInfo()->firstOffset()->nextOffset() == NULL,
                   ("Only single offset expected"));
         ptdNode = ptdNode->stInfo()->firstOffset();
+        if (ptdNode->collapsedParent() == repNode->id())
+          continue;
         repNode->collapse(ptdNode);
         fprintf(stderr, "Collapsing node: %d with %d\n", ptdNode->id(),
                 repNode->id());

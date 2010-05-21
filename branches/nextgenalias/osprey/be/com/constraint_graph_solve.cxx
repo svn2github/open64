@@ -307,8 +307,14 @@ SCCDetection::pointsToAdjust(NodeToKValMap &nodeToKValMap)
       PointsTo tmp;
       PointsTo &ptsTo = *pti;
       ConstraintGraph::adjustPointsToForKCycle(rep,ptsTo,tmp,pti.qual());
+      // Before we clear ptsTo, remove rep from rev pts of nodes in ptsTo
+      for (PointsTo::SparseBitSetIterator sbsi(&ptsTo, 0); sbsi != 0; ++sbsi) {
+        CGNodeId p = *sbsi;
+        ConstraintGraphNode *pn = ConstraintGraph::cgNode(p);
+        pn->removeRevPointsTo(rep->id(), pti.qual());
+      }
       ptsTo.clear();
-      ptsTo.setUnion(tmp);
+      rep->unionPointsTo(tmp, pti.qual());
     }
   }
 }

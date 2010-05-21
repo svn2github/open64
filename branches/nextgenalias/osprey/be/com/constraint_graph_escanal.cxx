@@ -157,7 +157,10 @@ EscapeAnalysis::newContEscapeNode(ConstraintGraphNode *node, UINT32 flags)
       fprintf(stderr,"ESCANAL:     Node %d CG_ST_IDX %lld (%s) marked holding\n",
                node->id(),node->cg_st_idx(),node->stName());
     addStFlags(node,CG_ST_FLAGS_LCONT_ESC);
-    addToWorkList(node);
+    if (node->checkFlags(CG_NODE_FLAGS_MERGED))
+      newContEscapeNode(node->parent(),CG_ST_FLAGS_LCONT_ESC);
+    else
+      addToWorkList(node);
   }
 }
 
@@ -195,7 +198,10 @@ EscapeAnalysis::newPropEscapeNode(ConstraintGraphNode *node, UINT32 flags)
        fprintf(stderr,"ESCANAL:     Node %d CG_ST_IDX %lld (%s) marked propagates\n",
                node->id(),node->cg_st_idx(),node->stName());
      addStFlags(node,CG_ST_FLAGS_LPROP_ESC);
-     addToWorkList(node);
+     if (node->checkFlags(CG_NODE_FLAGS_MERGED))
+       newPropEscapeNode(node->parent(),CG_ST_FLAGS_LPROP_ESC);
+     else
+       addToWorkList(node);
   }
 
   if (flags & CG_ST_FLAGS_RETPROP_ESC) {
@@ -205,7 +211,10 @@ EscapeAnalysis::newPropEscapeNode(ConstraintGraphNode *node, UINT32 flags)
         fprintf(stderr,"ESCANAL:     Node %d CG_ST_IDX %lld (%s) marked propagates_ret\n",
                 node->id(),node->cg_st_idx(),node->stName());
       addStFlags(node,CG_ST_FLAGS_RETPROP_ESC);
-      addToWorkList(node);
+      if (node->checkFlags(CG_NODE_FLAGS_MERGED))
+        newPropEscapeNode(node->parent(),CG_ST_FLAGS_RETPROP_ESC);
+      else
+        addToWorkList(node);
     }
   }
 }

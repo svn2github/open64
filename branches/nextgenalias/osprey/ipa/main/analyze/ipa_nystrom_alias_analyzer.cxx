@@ -560,17 +560,6 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     returns().push_back(cn->id());
   }
 
-  // Call applyModulus on the global StInfos to fixup any offsets if the modulus
-  // has changed during StInfo merging
-  for (CGStInfoMapIterator iter = globalCG()->_cgStInfoMap.begin();
-       iter != globalCG()->_cgStInfoMap.end(); iter++) {
-    StInfo *stInfo = iter->second;
-    if (stInfo->checkFlags(CG_ST_FLAGS_ADJUST_MODULUS)) {
-      stInfo->applyModulus();
-      stInfo->clearFlags(CG_ST_FLAGS_ADJUST_MODULUS);
-    }
-  }
-
   // Add CallSites
   UINT32 callSiteIdx = proc->Get_constraint_graph_callsites_idx();
   UINT32 callSiteCount = proc->Get_constraint_graph_callsites_count();
@@ -1269,6 +1258,18 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   UINT32 round = 0;
   bool contextSensitive = false;
   void *sbrk1 = sbrk(0);
+
+  // Call applyModulus on the global StInfos to fixup any offsets if the modulus
+  // has changed during StInfo merging during buildCGipa
+  for (CGStInfoMapIterator iter = 
+       ConstraintGraph::globalCG()-> stInfoMap().begin();
+       iter != ConstraintGraph::globalCG()->stInfoMap().end(); iter++) {
+    StInfo *stInfo = iter->second;
+    if (stInfo->checkFlags(CG_ST_FLAGS_ADJUST_MODULUS)) {
+      stInfo->applyModulus();
+      stInfo->clearFlags(CG_ST_FLAGS_ADJUST_MODULUS);
+    }
+  }
 
   //ConstraintGraph::ipaSimpleOptimizer();
 

@@ -678,6 +678,8 @@ public:
 
   void checkIsPtrAligned();
 
+  bool isAPossiblePtr();
+
   void collapseTypeIncompatibleNodes();
 
   typedef struct
