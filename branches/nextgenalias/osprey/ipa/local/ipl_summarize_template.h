@@ -3409,10 +3409,20 @@ SUMMARIZE<program>::processModRange(ModulusRange *mr)
 #ifdef Is_True_On
   summMR->ty_idx(mr->ty_idx());
 #endif
-  if (mr->child())
-    summMR->childIdx(processModRange(mr->child()));
-  if (mr->next())
-    summMR->nextIdx(processModRange(mr->next()));
+  if (mr->child()) {
+    INT cidx = processModRange(mr->child());
+    // Get the summMR, since after a realloc of the underlying DYN_ARRAY
+    // the above summMR ptr may not be valid
+    summMR = Get_constraint_graph_modrange(idx);
+    summMR->childIdx(cidx);
+  }
+  if (mr->next()) {
+    INT nidx = processModRange(mr->next());
+    // Get the summMR, since after a realloc of the underlying DYN_ARRAY
+    // the above summMR ptr may not be valid
+    summMR = Get_constraint_graph_modrange(idx);
+    summMR->nextIdx(nidx);
+  }
   return idx;
 }
 

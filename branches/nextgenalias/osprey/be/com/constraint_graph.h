@@ -384,6 +384,7 @@ public:
     _diffPointsToList(NULL),
     _repParent(NULL),
     _collapsedParent(0),
+    _nextCollapsedSt(0),
     _nextOffset(NULL),
     _parentCG(parentCG),
     _id(0),
@@ -406,6 +407,7 @@ public:
     _diffPointsToList(NULL),
     _repParent(NULL),
     _collapsedParent(0),
+    _nextCollapsedSt(0),
     _nextOffset(NULL),
     _parentCG(parentCG),
     _id(id),
@@ -463,6 +465,12 @@ public:
   CGNodeId collapsedParent(CGNodeId p)
   {
     _collapsedParent = p;
+  }
+
+  CGNodeId nextCollapsedSt() const { return _nextCollapsedSt; }
+  CGNodeId nextCollapsedSt(CGNodeId c)
+  {
+    _nextCollapsedSt = c;
   }
 
   // Merge two constraint graph nodes.  The 'src' is merged
@@ -769,6 +777,11 @@ private:
   ConstraintGraphNode *_repParent;
   // For nodes that are collapsed
   CGNodeId _collapsedParent;
+  // Used to link the Sts that have been collapsed
+  // When a St is collapsed, it only has a single offset. We link the
+  // these offsets using this field to track all Sts that were collapsed
+  // to the COLLAPSED_PARENT. (See collapsedTypeIncompatibleNodes())
+  CGNodeId _nextCollapsedSt;
   // Nodes with different offset off of same base maintained in sorted order
   ConstraintGraphNode *_nextOffset;
   // The ConstraintGraph to which this node belongs
@@ -1449,7 +1462,8 @@ public:
   OffsetPointsToList *processFlatInitvals(TY &ty,
                                           INITV_IDX &initv_idx,
                                           UINT32 startOffset,
-                                          UINT32 &repeat,
+                                          UINT32 &used_repeat,
+                                          UINT32 &next_repeat,
                                           MEM_POOL *memPool);
 
   ConstraintGraphNode *findUniqueNode(CGNodeId id);

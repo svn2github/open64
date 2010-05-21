@@ -456,25 +456,52 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
         newRepParent->merge(oldRepParent);
         // Set the newParent as the parent of oldRepParent
         oldRepParent->repParent(newRepParent);
-#if 0
-        // Add special copy edge from newRepParent if !PREG
-        if (!oldRepParent->isOnlyOffset()) {
-          bool added = false;
-          if (newRepParent->cg() != oldRepParent->cg())
-            ConstraintGraph::addEdge(newRepParent, oldRepParent, ETYPE_COPY,
-                                     CQ_GBL, 0, added, CG_EDGE_PARENT_COPY);
-          else
-            ConstraintGraph::addEdge(newRepParent, oldRepParent, ETYPE_COPY,
-                                     CQ_HZ, 0, added, CG_EDGE_PARENT_COPY);
-          FmtAssert(added, ("ConstraintGraph::merge: failed to add "
-                            "special copy edge"));
-        }
-#endif
         if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
-          fprintf(stderr, "Merging oldRepParent %d with newRepParent %d"
-                  " for node: %d (%s)\n", oldRepParent->id(), newRepParent->id(),
+          fprintf(stderr, "Merging oldRepParent %d with newRepParent %d for "
+                  "node: %d (%s)\n", oldRepParent->id(), newRepParent->id(),
                   cgNode->id(), (cgNode->cg() == globalCG()) ? "global" 
                   : "local");
+      }
+    }
+  }
+
+  // A node that is marked COLLAPSED , could still be in the offset
+  // list and pts set of another node when processing an earlier procedure
+  // So remove from the offset list and pts set
+  for (UINT32 i = 0; i < stInfoCount; i++) {
+    SUMMARY_CONSTRAINT_GRAPH_STINFO &summStInfo = summStInfos[stInfoIdx + i];
+    if (summStInfo.firstOffset() == notAPointer()->id())
+      continue;
+    StInfo *stInfo = 
+            _ipaCGStIdxToStInfoMap.find(summStInfo.cg_st_idx())->second;
+    if (stInfo->checkFlags(CG_ST_FLAGS_PREG))
+      continue;
+    ConstraintGraphNode *prev = stInfo->firstOffset();
+    ConstraintGraphNode *n = prev->nextOffset();
+    while (n) {
+      if (n->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
+        // We replace n from the pts to set of CGNodes that point to n
+        // with n's collapsedParent
+        // Use the reverse pts to set to find nodes that point to n and
+        // replace by the collapsedParent
+        for (PointsToIterator pti(n,PtsRev); pti != 0; ++pti) {
+          PointsTo &rpts = *pti;
+          CGEdgeQual qual = pti.qual();
+          for (PointsTo::SparseBitSetIterator sbsi(&rpts,0);
+               sbsi != 0; ++sbsi) {
+            ConstraintGraphNode *ptrNode = ConstraintGraph::cgNode(*sbsi);
+            ptrNode->removePointsTo(n->id(), qual);
+            ptrNode->addPointsTo(ConstraintGraph::cgNode(n->collapsedParent()),
+                                 qual);
+          }
+        }
+        n->deleteRevPointsToSet();
+        prev->nextOffset(n->nextOffset());
+        n->nextOffset(NULL);
+        n = prev->nextOffset();
+      } else {
+        prev = n;
+        n = n->nextOffset();
       }
     }
   }
@@ -495,7 +522,8 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     // of the end, we must respect the original parent relationship
     // no additional merging has happened.
     ConstraintGraphNode *destParent;
-    if (destNode->parent() == srcParent && (summEdge.flags() & CG_EDGE_PARENT_COPY))
+    if (destNode->parent() == srcParent && 
+        (summEdge.flags() & CG_EDGE_PARENT_COPY))
       destParent = destNode;
     else
       destParent = destNode->parent();
@@ -722,7 +750,10 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
                   cg_st_idx);
       }
     }
+    bool noModRange = !stInfo->checkFlags(CG_ST_FLAGS_MODRANGE);
     stInfo->addFlags(summ->flags());
+    if (noModRange)
+      stInfo->clearFlags(CG_ST_FLAGS_MODRANGE);
     if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
       fprintf(stderr, "Global entry found for StInfo old cg_st_idx: %llu "
               "new cg_st_idx: %llu\n", summ->cg_st_idx(), cg_st_idx);
@@ -1108,58 +1139,69 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
       PointsTo &curPts = *pti;
       for (PointsTo::SparseBitSetIterator iter(&curPts,0); iter != 0; iter++) {
         CGNodeId nodeId = *iter;
+        // If the node is collapsed, inspect other Sts that were collapsed
+        // with the node
         ConstraintGraphNode *node = ConstraintGraph::cgNode(nodeId);
-        StInfo *stInfo = node->stInfo();
-        if (!stInfo->checkFlags(CG_ST_FLAGS_FUNC)) {
-          fprintf(stderr,"Update Call Graph: callsite points to non-func: cgnode %d\n",
-                  node->id());
-          continue;
-        }
-        ST_IDX stIdx = SYM_ST_IDX(node->cg_st_idx());
-        ST *st = &St_Table[stIdx];
-        STToNodeMap::const_iterator ni = _stToIndTgtMap.find(st);
-        if (ni == _stToIndTgtMap.end()) {
-          if (ST_sclass(st) != SCLASS_EXTERN)
-            fprintf(stderr,"Update Call Graph: callsite points to possibly deleted func: %s\n", ST_name(st));
-          else
-            fprintf(stderr,"Update Call Graph: callsite points to extern func: %s\n", ST_name(st));
-           // assume whole program mode for the moment
-          continue;
-        }
-        // We will skip main (that would be a nice cycle wouldn't it?)
-        if (PU_is_mainpu(Pu_Table[ST_pu(st)]))
-          continue;
+        for (; nodeId != 0; nodeId = node->nextCollapsedSt()) {
+          node = ConstraintGraph::cgNode(nodeId);
+          StInfo *stInfo = node->stInfo();
+          if (!stInfo->checkFlags(CG_ST_FLAGS_FUNC)) {
+            //if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+            //  fprintf(stderr,"Update Call Graph: callsite points to "
+            //          "non-func: cgnode %d\n", node->id());
+            continue;
+          }
+          ST_IDX stIdx = SYM_ST_IDX(node->cg_st_idx());
+          ST *st = &St_Table[stIdx];
+          STToNodeMap::const_iterator ni = _stToIndTgtMap.find(st);
+          if (ni == _stToIndTgtMap.end()) {
+            if (ST_sclass(st) != SCLASS_EXTERN) {
+              if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+                fprintf(stderr,"Update Call Graph: callsite points to possibly "
+                        "deleted func: %s\n", ST_name(st));
+            } else {
+              if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+                fprintf(stderr,"Update Call Graph: callsite points to extern "
+                        "func: %s\n", ST_name(st));
+            }
+            // assume whole program mode for the moment
+            continue;
+          }
+          // We will skip main (that would be a nice cycle wouldn't it?)
+          if (PU_is_mainpu(Pu_Table[ST_pu(st)]))
+            continue;
 
-        IPA_NODE *callee = ni->second;
-        // If we have a parameter mismatch, then we are likely calling the
-        // wrong function.  We are not yet clear how strong our assertion
-        // can be at this point, depends on language, etc.  So, for now
-        // we experiment with pruning just based on a different number of
-        // formals vs. actuals.
-        if (cs->parms().size() != callee->Num_Formals()) {
+          IPA_NODE *callee = ni->second;
+          // If we have a parameter mismatch, then we are likely calling the
+          // wrong function.  We are not yet clear how strong our assertion
+          // can be at this point, depends on language, etc.  So, for now
+          // we experiment with pruning just based on a different number of
+          // formals vs. actuals.
+          if (cs->parms().size() != callee->Num_Formals()) {
+            if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+              fprintf(stderr,"  CGNode: %d, ST: %s, IPA_NODE: %d (skipping)\n",
+                                nodeId,ST_name(st),callee->Node_Index());
+            continue;
+          }
+
+          IPAEdge newEdge(caller->Node_Index(),callee->Node_Index(),id);
+          // Have we seen this edge before?
+          IndirectEdgeSet::iterator iter = _indirectEdgeSet.find(newEdge);
+          bool isNew = (iter == _indirectEdgeSet.end());
+
           if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-            fprintf(stderr,"  CGNode: %d, ST: %s, IPA_NODE: %d (skipping)\n",
-                              nodeId,ST_name(st),callee->Node_Index());
-          continue;
-        }
+            fprintf(stderr,"  CGNode: %d, ST: %s, IPA_NODE: %d (%s)\n",
+                    nodeId,ST_name(st),callee->Node_Index(),
+                    isNew?"New":"Old");
 
-        IPAEdge newEdge(caller->Node_Index(),callee->Node_Index(),id);
-        // Have we seen this edge before?
-        IndirectEdgeSet::iterator iter = _indirectEdgeSet.find(newEdge);
-        bool isNew = (iter == _indirectEdgeSet.end());
-
-        if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-          fprintf(stderr,"  CGNode: %d, ST: %s, IPA_NODE: %d (%s)\n",
-                  nodeId,ST_name(st),callee->Node_Index(),
-                  isNew?"New":"Old");
-
-        // New edges are placed in our set of resolved indirect target
-        // edges and placed in the work list for the next round of
-        // call graph preparation.  Eventually we would like to actually
-        // add a true IPA_EDGE to the IPA_CALL_GRAPH here.
-        if (isNew) {
-          _indirectEdgeSet.insert(newEdge);
-          edgeList.push_front(newEdge);
+          // New edges are placed in our set of resolved indirect target
+          // edges and placed in the work list for the next round of
+          // call graph preparation.  Eventually we would like to actually
+          // add a true IPA_EDGE to the IPA_CALL_GRAPH here.
+          if (isNew) {
+            _indirectEdgeSet.insert(newEdge);
+            edgeList.push_front(newEdge);
+          }
         }
       }
     }

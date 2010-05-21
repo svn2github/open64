@@ -832,6 +832,12 @@ CallSideEffectInfo::GetCallSideEffectInfo(const INTRINSIC intr_id,
                                           bool *from_table)
 {
   const char *name_str = INTRN_c_name(intr_id);
+  if (!name_str)
+  { 
+    if (from_table)
+      *from_table = false;
+    return GetDefaultCallSideEffectInfo(NULL);
+  }
   return GetCallSideEffectInfo_(name_str, NULL, from_table);
 }
 

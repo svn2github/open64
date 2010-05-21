@@ -419,14 +419,14 @@ StInfo::init(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
     _u._modRange = ModulusRange::build(ty_idx,0,memPool);
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
       _u._modRange->print(stderr);
-#if 0
-    if ( _u._modRange->mod() > Pointer_Size * 1 )
+#if 1
+    if ( _u._modRange->mod() > 2000 )
     {
-      _u._modRange->mod(Pointer_Size * 1);
+      _u._modRange->mod(2000);
       applyModulus();
       if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
       {
-        fprintf(stderr,"Clamping modulus at: %d\n",Pointer_Size*1);
+        fprintf(stderr,"Clamping modulus at: %d\n",2000);
         _u._modRange->print(stderr);
       }
     }
@@ -676,7 +676,7 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *cgNode)
     PointsTo tmp;
     adjustPointsToForKCycle(cgNode, ptsTo, tmp, pti.qual());
     ptsTo.clear();
-    ptsTo.setUnion(tmp);
+    cgNode->unionPointsTo(tmp, pti.qual());
   }
 }
 
@@ -929,7 +929,8 @@ OffsetPointsToList *
 ConstraintGraph::processFlatInitvals(TY &ty, 
                                      INITV_IDX &initv_idx,
                                      UINT32 startOffset, 
-                                     UINT32 &repeat,
+                                     UINT32 &used_repeat,
+                                     UINT32 &next_repeat,
                                      MEM_POOL *memPool)
 {
   FmtAssert(TY_kind(ty) == KIND_ARRAY || TY_kind(ty) == KIND_STRUCT,
@@ -961,10 +962,18 @@ ConstraintGraph::processFlatInitvals(TY &ty,
          size < TY_size(ty)) {
       initv_idx = INITV_next(initv);
       rep = 0;
+      if (initv_idx != 0) {
+        if (INITV_kind(Initv_Table[initv_idx]) == INITVKIND_VAL)
+          next_repeat = INITV_repeat2(Initv_Table[initv_idx]);
+        else if (INITV_kind(Initv_Table[initv_idx]) == INITVKIND_PAD)
+          next_repeat = 0;
+        else
+          FmtAssert(FALSE, ("Expecting INITVKIND_PAD || INITVKIND_VAL"));
+      }
     }
   }
   // Update the number of times the repeat factor was used
-  repeat = rep;
+  used_repeat = rep;
   // FmtAssert(size == TY_size(ty), ("Inconsistent size"));
   // With padding it is impossible to determine how many initvs
   // constitute the initial value of this ty. So bail out if we are not able
@@ -1000,7 +1009,9 @@ ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
   // in INITVKIND_BLOCK, but instead provided as a list of INITVKIND_VAL/PAD
   if (isFlatArrayOrStruct(ty, initv_idx)) {
     UINT32 rep;
-    return processFlatInitvals(ty, initv_idx, startOffset, rep, memPool);
+    UINT32 nextRep;
+    return processFlatInitvals(ty, initv_idx, startOffset, rep, nextRep,
+                               memPool);
   }
 
   if (TY_kind(ty) == KIND_ARRAY || TY_kind(ty) == KIND_STRUCT) {
@@ -1065,20 +1076,25 @@ ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
           repeat = INITV_repeat1(child_initv);
         UINT r = 0;
         while (r < repeat) {
-          FmtAssert(!fld.Is_Null(), ("Premature end of fld"));
+          // FmtAssert(!fld.Is_Null(), ("Premature end of fld"));
+          if (fld.Is_Null()) {
+            fprintf(stderr, "Premature end of fld");
+            return NULL;
+          }
           TY &fty = Ty_Table[FLD_type(fld)];
           OffsetPointsToList *fldList;
           // Special handling for arrays/structs whose init values are not 
           // enclosed in INITVKIND_BLOCK, but instead provided as a list of 
           // INITVKIND_VAL/PAD
           if (isFlatArrayOrStruct(fty, child_initv_idx)) {
-            UINT32 rep;
+            UINT32 used_rep;
             fldList = processFlatInitvals(Ty_Table[FLD_type(fld)], 
                                           child_initv_idx,
                                           startOffset +  FLD_ofst(fld),
-                                          rep,
+                                          used_rep,
+                                          repeat,
                                           memPool);
-            r += rep;
+            r += used_rep;
           } else {
             fldList = processInitv(fty, child_initv_idx,
                                    startOffset + FLD_ofst(fld), memPool);
@@ -1125,17 +1141,21 @@ ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
           repeat = INITV_repeat1(child_initv);
         UINT r = 0;
         while (r < repeat) {
-          FmtAssert(i < numElems, ("Premature end of array elems"));
+          // FmtAssert(i < numElems, ("Premature end of array elems"));
+          if (i >= numElems) {
+            fprintf(stderr, "Premature end of array elems");
+            return NULL;
+          }
           OffsetPointsToList *elemList;
           // Special handling for arrays/structs whose init values are not 
           // enclosed in INITVKIND_BLOCK, but instead provided as a list of 
           // INITVKIND_VAL/PAD
           if (isFlatArrayOrStruct(etype, child_initv_idx)) {
-            UINT32 rep;
+            UINT32 used_rep;
             elemList = processFlatInitvals(etype, child_initv_idx, 
                                            startOffset + i * TY_size(etype),
-                                           rep, memPool);
-            r += rep;
+                                           used_rep, repeat, memPool);
+            r += used_rep;
           } else {
             elemList = processInitv(etype, child_initv_idx,
                                     startOffset + i * TY_size(etype), memPool); 
@@ -1148,8 +1168,12 @@ ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
         }
         child_initv_idx = INITV_next(Initv_Table[child_initv_idx]);
       }
-      FmtAssert(i == numElems && child_initv_idx == 0,
-                ("Inconsistent init values for array"));
+      // FmtAssert(i == numElems && child_initv_idx == 0,
+      //           ("Inconsistent init values for array"));
+      if (i != numElems || child_initv_idx != 0) {
+        fprintf(stderr, "Inconsistent init values for array");
+        return NULL;
+      }
     }
     return valList;
   }
@@ -1219,6 +1243,9 @@ ConstraintGraph::processInito(const INITO *const inito)
        iter != valList->end(); iter++) {
     UINT32 offset = iter->first;
     PointsTo *pts = iter->second;
+    if (pts->isEmpty() || (pts->numBits() == 1 &&
+                           pts->isSet(ConstraintGraph::notAPointer()->id())))
+      continue;
     StInfo *sti = stInfo(CG_ST_st_idx(base_st));
     if (sti != NULL) {
        UINT32 off = sti->applyModulus(base_offset + offset);
@@ -2952,6 +2979,11 @@ StInfo::collapse()
 void
 ConstraintGraphNode::collapse(ConstraintGraphNode *cur)
 {
+  FmtAssert(!checkFlags(CG_NODE_FLAGS_COLLAPSED), 
+            ("Not expecting this node: %d to be collasped", id()));
+  FmtAssert(!cur->checkFlags(CG_NODE_FLAGS_COLLAPSED), 
+            ("Not expecting cur node: %d to be collasped", cur->id()));
+
   // Merge cur with 'this' node
   ConstraintGraphNode *curParent = cur->parent();
 
@@ -3251,6 +3283,13 @@ ConstraintGraphNode::deleteEdgesAndPtsSetList()
 }
 
 void
+dbgPrintPointsTo(PointsTo &pts)
+{
+  pts.print(stderr);
+  fprintf(stderr, "\n");
+}
+
+void
 dbgPrintCGNode(CGNodeId nodeId)
 {
   ConstraintGraphNode *node = ConstraintGraph::cgNode(nodeId);
@@ -3258,16 +3297,6 @@ dbgPrintCGNode(CGNodeId nodeId)
     node->dbgPrint();
   else
     fprintf(stderr,"Invalid CGNodeId %d\n",nodeId);
-}
-
-void
-dbgPrintPointsTo(PointsTo &pts)
-{
-  const char *comma = "";
-  for (PointsTo::SparseBitSetIterator iter(&pts, 0); iter != 0; ++iter) {
-    printf("%s%d", comma, *iter);
-    comma = ", ";
-  }
 }
 
 void
@@ -3897,11 +3926,11 @@ ConstraintGraphNode::collapseTypeIncompatibleNodes()
     ConstraintGraphNode *repNode = NULL;
     for (PointsTo::SparseBitSetIterator siter(&pts,0); siter != 0; ++siter) {
       ConstraintGraphNode *ptdNode = ConstraintGraph::cgNode(*siter);
-      if (ptdNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+      if (ptdNode == ConstraintGraph::notAPointer())
         continue;
       // We don't want to collapse symbols corresponding to functions
-      if (TY_kind(Ty_Table[ptdNode->stInfo()->ty_idx()]) == KIND_FUNCTION)
-        continue;
+      //if (TY_kind(Ty_Table[ptdNode->stInfo()->ty_idx()]) == KIND_FUNCTION)
+      //  continue;
       TY_IDX ty_idx = 
              ptdNode->stInfo()->getOffsetType(ptdNode->stInfo()->ty_idx(),
                                               ptdNode->offset());
@@ -3911,11 +3940,17 @@ ConstraintGraphNode::collapseTypeIncompatibleNodes()
       else
         size = TY_size(Ty_Table[ty_idx]);
 
-      if (size == 0)
+      bool incompatible = false;
+      if ((ty_idx != 0 && TY_kind(Ty_Table[ty_idx]) == KIND_FUNCTION &&
+           TY_kind(ptd_ty) != KIND_FUNCTION) || 
+          (ty_idx != 0 && TY_kind(Ty_Table[ty_idx]) != KIND_FUNCTION &&
+           TY_kind(ptd_ty) == KIND_FUNCTION) || 
+          size < ptdSize)
+        incompatible = true;
+
+      if (!incompatible)
         continue;
 
-      if (size >= ptdSize)
-        continue;
       fprintf(stderr, "Found incompatible node %d in pts set of %d\n",
               ptdNode->id(), this->id());
       //ptdNode->print(stderr);
@@ -3930,11 +3965,23 @@ ConstraintGraphNode::collapseTypeIncompatibleNodes()
         fprintf(stderr, "Identifying rep: %d\n", repNode->id());
         repNode->stInfo()->print(stderr);
       } else {
+        FmtAssert(ptdNode->stInfo()->firstOffset()->nextOffset() == NULL,
+                  ("Only single offset expected"));
+        ptdNode = ptdNode->stInfo()->firstOffset();
         repNode->collapse(ptdNode);
         fprintf(stderr, "Collapsing node: %d with %d\n", ptdNode->id(),
                 repNode->id());
         fprintf(stderr, "ptd stinfo:\n");
         ptdNode->stInfo()->print(stderr);
+        // Find the last collasped St of repNode
+        ConstraintGraphNode *c = repNode;
+        CGNodeId cid = repNode->nextCollapsedSt();
+        while (cid != 0) {
+          c = ConstraintGraph::cgNode(cid);
+          cid = c->nextCollapsedSt();
+        }
+        // Link ptdNode to list of collapsed Sts of repNode
+        c->nextCollapsedSt(ptdNode->id());
       }
     }
   }
