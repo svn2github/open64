@@ -3326,6 +3326,9 @@ SUMMARIZE<program>::generateConstraintGraphSummary(WN *w)
                                        New_constraint_graph_callsite();
     summCallSite->id(cs->id());
     summCallSite->flags(cs->flags());
+    summCallSite->actualModeled(cs->actualModeled());
+    if (cs->checkFlags(CS_FLAGS_VIRTUAL))
+      summCallSite->virtualClass(cs->virtualClass());
     if (cs->isDirect() && !cs->isIntrinsic())
       summCallSite->st_idx(cs->st_idx());
     else if (cs->isIndirect())

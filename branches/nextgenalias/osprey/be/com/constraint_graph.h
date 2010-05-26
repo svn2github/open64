@@ -80,8 +80,6 @@ class EdgeDelta;
 #define CG_NODE_FLAGS_VISITED       0x00000100 // Used by cycle detection
 #define CG_NODE_FLAGS_SCCMEMBER     0x00000200 // Used by cycle detection
 #define CG_NODE_FLAGS_INKVALMAP     0x00000400 // Used by cycle detection
-#define CG_NODE_FLAGS_ACTUAL_MODELED 0x00000800// Constraint graph models callsite
-                                               // reference pattern for actual
 #define CG_NODE_FLAGS_PTSMOD        0x00001000 // Points-to set updated, implies
                                                // rev points-to relation to
                                                // be updated
@@ -111,6 +109,7 @@ class EdgeDelta;
 #define CS_FLAGS_HAS_VARARGS 0x10
 #define CS_FLAGS_PRINTF_NOPRECN 0x20
 #define CS_FLAGS_HEAP_MODELED   0x40
+#define CS_FLAGS_VIRTUAL        0x80
 
 typedef UINT32 CGNodeId;
 typedef UINT64 CG_ST_IDX;
@@ -1686,9 +1685,11 @@ private:
 class CallSite
 {
 public:
-  CallSite(bool isIndirect, CallSiteId id, MEM_POOL *memPool) :
+  CallSite(bool isIndirect, bool isVirtual, CallSiteId id, MEM_POOL *memPool) :
     _id(id),
-    _flags(isIndirect ? CS_FLAGS_INDIRECT : 0),
+    _flags(isIndirect ? (CS_FLAGS_INDIRECT|(isVirtual?CS_FLAGS_VIRTUAL:0)) : 0),
+    _actualModeled(0),
+    _virtualClass(0),
     _return(0),
     _mod(memPool),
     _ref(memPool)
@@ -1698,6 +1699,8 @@ public:
   CallSite(CallSiteId id, UINT8 flags, MEM_POOL *memPool) :
     _id(id),
    _flags(flags),
+   _actualModeled(0),
+   _virtualClass(0),
    _return(0),
    _mod(memPool),
    _ref(memPool)
@@ -1716,6 +1719,7 @@ public:
   }
   bool isIndirect()  const { return checkFlags(CS_FLAGS_INDIRECT); }
   bool isIntrinsic() const { return checkFlags(CS_FLAGS_INTRN); }
+  bool isVirtual()   const { return checkFlags(CS_FLAGS_VIRTUAL); }
 
   bool percN(void) const { return checkFlags(CS_FLAGS_PRINTF_NOPRECN); }
   void setPercN()        { return addFlags(CS_FLAGS_PRINTF_NOPRECN); }
@@ -1738,6 +1742,12 @@ public:
     return _callInfo.intrinsic;
   }
 
+  TY_IDX virtualClass() const
+  {
+    FmtAssert(isVirtual(), ("Expecting virtual call"));
+    return _virtualClass;
+  }
+
   void st_idx(ST_IDX st_idx)
   {
     FmtAssert(isDirect() && !isIntrinsic(), ("Only direct calls have st_idx"));
@@ -1756,6 +1766,12 @@ public:
     _callInfo.intrinsic = ins;
   }
 
+  void virtualClass(TY_IDX idx)
+  {
+    FmtAssert(isVirtual(), ("Expecting virtual call"));
+    _virtualClass = idx;
+  }
+
   list<CGNodeId> &parms(void) { return _parms; }
 
   UINT8 flags() const { return _flags; }
@@ -1763,14 +1779,38 @@ public:
   void addFlags(UINT8 flag) { _flags |= flag; }
   void clearFlags(UINT8 flag) { _flags &= ~flag; }
 
+
+  void setActualParmModeled(UINT8 parmIdx)   { _setActualModeledFlag(parmIdx+1); }
+  bool actualParmModeled(UINT8 parmIdx) const { return _actualModeledFlag(parmIdx+1); }
+  void setActualReturnModeled(void)    { _setActualModeledFlag(0); }
+  bool actualReturnModeled(void) const { _actualModeledFlag(0); }
+
+  // For use by summary
+  UINT32 actualModeled(void) const { return _actualModeled; }
+  void setActualModeled(UINT32 m)  { _actualModeled = m;    }
+
   PointsTo &mod() { return _mod; }
   PointsTo &ref() { return _ref; }
 
   void print(FILE *f);
 
 private:
+  void _setActualModeledFlag(UINT8 actualIdx)
+  {
+    if (actualIdx < 32)  // Only handle first 32 arguments
+      _actualModeled |= (1 << actualIdx);
+  }
+  bool _actualModeledFlag(UINT8 actualIdx) const
+  {
+    return (actualIdx < 32) ? ((_actualModeled & (1<<actualIdx))!=0) : false;
+  }
+
   CallSiteId _id;
   UINT8 _flags;
+  UINT32 _actualModeled;
+  // Only used for virtual functions.  Unfortunately we also need
+  // the cgNodeId in the _callInfo as well.
+  TY_IDX _virtualClass;
   union {
     ST_IDX st_idx;       // Symbol of the direct call
     CGNodeId cgNodeId;   // For indirect calls, id of the node of the address

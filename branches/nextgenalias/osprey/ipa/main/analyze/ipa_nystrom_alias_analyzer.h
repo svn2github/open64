@@ -174,6 +174,8 @@ private:
                 list<IPAEdge> &edgeList,
                 IPA_EscapeAnalysis &escAnal);
 
+  bool validTargetOfVirtualCall(CallSite *cs, ST_IDX stIdx);
+
   static IPA_NystromAliasAnalyzer *_ipa_naa;
   IPACGMap _ipaConstraintGraphs;
   MEM_POOL _memPool;

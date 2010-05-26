@@ -362,7 +362,7 @@ EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
             continue;
 
           ConstraintGraphNode *actual = ConstraintGraph::cgNode(*li);
-          if (actual->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
+          if (callsite->actualParmModeled(argPos))
             continue;
 
           if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
@@ -384,12 +384,13 @@ EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
         if (callsite->returnId()) {
           ConstraintGraphNode *actual = 
                                ConstraintGraph::cgNode(callsite->returnId());
-          if (!actual->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
+          if (!callsite->actualReturnModeled()) {
             if(Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
               fprintf(stderr,"ESCANAL: cse return of %s holding\n",
                       !callsite->isIntrinsic()?ST_name(callsite->st_idx()):
                           INTRN_c_name(callsite->intrinsic()));
-          newContEscapeSt(actual,CG_ST_FLAGS_LCONT_ESC);
+            newContEscapeSt(actual,CG_ST_FLAGS_LCONT_ESC);
+          }
         }
         continue;
       }

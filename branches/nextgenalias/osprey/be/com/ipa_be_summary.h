@@ -210,6 +210,8 @@ public:
 
   UINT32 id()           const { return _id; }
   UINT8 flags()         const { return _flags; }
+  UINT32 actualModeled()const { return _actualModeled; }
+  TY_IDX virtualClass() const { return _virtualClass; }
   ST_IDX st_idx()       const { return _callInfo._st_idx; }
   UINT32 cgNodeId()     const { return _callInfo._cgNodeId; }
   INTRINSIC intrinsic() const { return _callInfo._intrinsic; }
@@ -219,6 +221,8 @@ public:
 
   void id(UINT32 i)           { _id = i; }
   void flags(UINT8 f)         { _flags = f; }
+  void actualModeled(UINT32 m){ _actualModeled = m; }
+  void virtualClass(TY_IDX i) { _virtualClass = i; }
   void st_idx(ST_IDX s)       { _callInfo._st_idx = s; }
   void cgNodeId(UINT32 c)     { _callInfo._cgNodeId = c; }
   void intrinsic(INTRINSIC i) { _callInfo._intrinsic = i; }
@@ -238,7 +242,9 @@ public:
 
 private:
   UINT32 _id;
-  UINT8 _flags;
+  UINT8  _flags;
+  UINT32 _actualModeled;
+  TY_IDX _virtualClass;
   union {
     ST_IDX _st_idx;
     UINT32 _cgNodeId;

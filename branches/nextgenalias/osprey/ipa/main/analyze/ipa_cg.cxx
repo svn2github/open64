@@ -327,6 +327,10 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
         cg_callsites[i].st_idx(idx_maps->st[old_st_idx]);
       }
     }
+    if (cg_callsites[i].flags() & CS_FLAGS_VIRTUAL) {
+      TY_IDX old_ty_idx = cg_callsites[i].virtualClass();
+      cg_callsites[i].virtualClass(idx_maps->ty[old_ty_idx]);
+    }
   }
 
   // process all ty_idxs found in SUMMARY_STRUCT_ACCESS, and sum them up!

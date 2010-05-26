@@ -613,6 +613,7 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
                                            numNodes);
         // Copy node ptrs to array
         UINT32 i = 0;
+        UINT32 dumped = 5;
         while (!modNodeList.empty()) {
           ConstraintGraphNode *node = modNodeList.pop();
           // During this loop we may encounter merged nodes as the
@@ -638,6 +639,35 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
             numNodes *= 2;
           }
           topoOrderArray[i++] = node;
+
+          if (dumped>0) {
+            UINT32 card = 0;
+            for (PointsToIterator pti(node); pti != 0; ++pti) {
+              PointsTo &pts = *pti;
+              card += pts.numBits();
+            }
+            if (card > 500) {
+              fprintf(stderr,"Excess pts set (card %d):\n",card);
+              fprintf(stderr,"  Node %d, offset %d, ty %s, cg %s\n",
+                      node->id(),node->offset(),
+                      TY_name(node->ty_idx()),
+                      node->cg()->name());
+              fprintf(stderr,"  Points to...\n");
+              for (PointsToIterator pti(node); pti != 0; ++pti) {
+                PointsTo &pts = *pti;
+                for (PointsTo::SparseBitSetIterator iter(&pts,0);
+                    iter != 0; ++iter) {
+                  ConstraintGraphNode *n = ConstraintGraph::cgNode(*iter);
+                  fprintf(stderr,"    Node %d, offset %d, ty %s, cg %s\n",
+                          n->id(),n->offset(),
+                          TY_name(n->id()),n->cg()->name());
+                  if (n->id() == 4148)
+                    n->print(stderr);
+                }
+              }
+              dumped -= 1;
+            }
+          }
         }
         // Sort based on topo-order number
         qsort(topoOrderArray,i,sizeof(ConstraintGraphNode *),topoCGNodeCompare);

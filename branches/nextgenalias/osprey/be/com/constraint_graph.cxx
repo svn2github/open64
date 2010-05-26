@@ -2064,8 +2064,8 @@ ConstraintGraph::handleMemcopy(CallSite *cs)
 
   // Mark graph to indicate the semantics of the callsite are
   // modeled for these actuals.
-  p1Node->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
-  p2Node->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
+  cs->setActualParmModeled(0);
+  cs->setActualParmModeled(1);
 }
 
 void
@@ -2097,7 +2097,7 @@ ConstraintGraph::handleOneLevelWrite(const WN *call, CallSite *cs)
                      CPA_multi_level_write|
                      CPA_exposed_to_globals))) {
       ConstraintGraphNode *aNode = cgNode(*li);
-      if (aNode->checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
+      if (cs->actualParmModeled(argPos))
         continue;
       bool added;
       ConstraintGraphEdge *edge;
@@ -2113,7 +2113,7 @@ ConstraintGraph::handleOneLevelWrite(const WN *call, CallSite *cs)
 
       // Mark the graph to indicate that the semantics of the callsite
       // are modeled for this actual
-      aNode->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
+      cs->setActualParmModeled(argPos);
     }
   }
 }
@@ -2144,7 +2144,7 @@ ConstraintGraph::handleMemset(CallSite *cs)
 
   // Mark the graph to indicate that the semantics of the callsite
   // are modeled for this actual
-  pNode->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
+  cs->setActualParmModeled(0);
 }
 
 /*
@@ -2179,7 +2179,7 @@ ConstraintGraph::handleExposedToReturn(const WN *call, CallSite *cs) const
       // have a return actual, as long as we are not writing the result to
       // globals....
       if (!(argAttr & CPA_exposed_to_globals))
-        actualParm->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
+        cs->setActualParmModeled(argPos);
 
       // Hook up the actual parameter to the return via copy edge...
       if (actualReturn) {
@@ -2188,7 +2188,7 @@ ConstraintGraph::handleExposedToReturn(const WN *call, CallSite *cs) const
         UINT32 size = actualParm->stInfo()->varSize();
         edge = addEdge(actualParm,actualReturn,ETYPE_COPY,CQ_HZ,size,added);
         FmtAssert(edge,("Adding copy edge from actual parm to return failed\n"));
-        actualReturn->addFlags(CG_NODE_FLAGS_ACTUAL_MODELED);
+        cs->setActualReturnModeled();
       }
     }
   }
@@ -2218,6 +2218,7 @@ ConstraintGraph::handleCall(WN *callWN)
 
   // Create a new call site
   CallSite *callSite = CXX_NEW(CallSite(opr == OPR_ICALL || opr == OPR_VFCALL,
+                                        WN_Call_Is_Virtual(callWN),
                                         nextCallSiteId++, _memPool), _memPool);
   _callSiteMap[callSite->id()] = callSite;
   WN_MAP_CallSiteId_Set(callWN, callSite->id());
@@ -2240,6 +2241,21 @@ ConstraintGraph::handleCall(WN *callWN)
     callSite->cgNodeId(cgNode->id());
     if (TY_is_varargs(WN_ty(callWN)))
       callSite->addFlags(CS_FLAGS_HAS_VARARGS);
+    if (WN_Call_Is_Virtual(callWN)) {
+      WN *last = WN_kid(callWN, WN_kid_count(callWN)-1);
+      // The following works only for TARG_X8664
+#ifndef TARG_X8664
+      FmtAssert(false,("Virtual class TY_IDX NYI for this target"));
+#endif
+#ifdef TARG_X8664
+      FmtAssert(WN_operator_is(last, OPR_ILOAD),
+                ("Virtual function call does node use ILOAD."));
+      WN *vptr = WN_kid0(last);
+      FmtAssert(WN_operator_is(vptr, OPR_ILOAD) || WN_operator_is(vptr, OPR_LDID),
+                ("Virtual function call does not use ILOAD or LDID."));
+      callSite->virtualClass(WN_ty(vptr));
+#endif
+    }
   } else if (opr == OPR_CALL) {
     callSite->st_idx(WN_st_idx(callWN));
     // Check for varargs
@@ -3109,6 +3125,7 @@ ConstraintGraphNode::collapse(ConstraintGraphNode *cur)
 void
 ConstraintGraphNode::merge(ConstraintGraphNode *src)
 {
+  fprintf(stderr,"Merge: %d <- %d\n",id(),src->id());
   // 0) The source node may be the rep of another cycle or
   //    have inKCycle() set for some other reason.  Make
   //    sure we merge it into the destination node
@@ -3477,8 +3494,6 @@ ConstraintGraphNode::print(FILE *file)
     fprintf(file, " PTSMOD");
   if (checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
     fprintf(file, " ADDRTAKEN");
-  if (checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
-    fprintf(file, " AMODELED");
   if (checkFlags(CG_NODE_FLAGS_ARRAY))
     fprintf(file, " ARRAY");
   if (checkFlags(CG_NODE_FLAGS_COLLAPSED))
@@ -3547,8 +3562,6 @@ void ConstraintGraphNode::print(ostream& ostr)
     ostr << " PTSMOD";
   if (checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
     ostr << " ADDRTAKEN";
-  if (checkFlags(CG_NODE_FLAGS_ACTUAL_MODELED))
-    ostr << " AMODELED";
   if (checkFlags(CG_NODE_FLAGS_ARRAY))
     ostr << " ARRAY";
   if (checkFlags(CG_NODE_FLAGS_COLLAPSED))

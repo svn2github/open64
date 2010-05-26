@@ -749,6 +749,9 @@ ConstraintGraph::buildCGFromSummary()
     CallSite* cs = CXX_NEW(CallSite(summCallsite.id(), summCallsite.flags(),
                                     _memPool), _memPool);
     _callSiteMap[cs->id()] = cs;
+    cs->setActualModeled(summCallsite.actualModeled());
+    if (cs->checkFlags(CS_FLAGS_VIRTUAL))
+      cs->virtualClass(summCallsite.virtualClass());
     if (cs->isDirect() && !cs->isIntrinsic())
       cs->st_idx(summCallsite.st_idx());
     else if (cs->isIndirect())

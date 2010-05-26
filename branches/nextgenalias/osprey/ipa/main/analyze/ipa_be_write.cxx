@@ -256,6 +256,7 @@ IPA_irb_write_nystrom_alias_info(PU_Info* pu_info_tree, Output_File *fl)
 
       summCallSite->id(cs->id());
       summCallSite->flags(cs->flags());
+      summCallSite->flags(cs->actualModeled());
       if (cs->isDirect() && !cs->isIntrinsic())
         summCallSite->st_idx(cs->st_idx());// TODO: adjust?
       else if (cs->isIndirect())

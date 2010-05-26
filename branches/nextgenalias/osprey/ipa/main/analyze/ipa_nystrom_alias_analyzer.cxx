@@ -14,6 +14,8 @@
 #include "opt_defs.h"
 #include "wn_util.h"
 #include "ir_reader.h"
+#include "ipa_chg.h"
+#include "demangle.h"
 
 IPA_NystromAliasAnalyzer *IPA_NystromAliasAnalyzer::_ipa_naa = NULL;
 
@@ -580,6 +582,10 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       fprintf(stderr, "Adding CSoldId: %d to CSnewId: %d\n",
               summCallSite.id(), newCSId);
     
+    cs->setActualModeled(summCallSite.actualModeled());
+    if (cs->checkFlags(CS_FLAGS_VIRTUAL))
+      cs->virtualClass(summCallSite.virtualClass());
+
     if (cs->isDirect() && !cs->isIntrinsic())
       cs->st_idx(summCallSite.st_idx());
     else if (cs->isIndirect())
@@ -826,11 +832,13 @@ public:
   }
 
   void init();
-  //void computeReversePointsTo();
   bool formalsEscape(ConstraintGraph *graph) const;
   bool externalCall(ST_IDX idx) const;
 
 private:
+  bool _possibleIndirectCallTarget(ConstraintGraph *graph) const;
+  bool _hasDirectPredecessors(ConstraintGraph *graph) const;
+
   IPACGMap         &_ipaCGMap;
   hash_set<ST_IDX> &_extCallSet;
 };
@@ -848,15 +856,34 @@ IPA_EscapeAnalysis::init(void)
   initGraph(ConstraintGraph::globalCG());
 }
 
-#if 0
-void
-IPA_EscapeAnalysis::computeReversePointsTo()
+bool
+IPA_EscapeAnalysis::_possibleIndirectCallTarget(ConstraintGraph *graph) const
 {
-  for (CGIdToNodeMapIterator iter = ConstraintGraph::gBegin();
-       iter != ConstraintGraph::gEnd(); ++iter)
-    updateReversePointsTo(iter->second);
+  ST *funcSt = graph->ipaNode()->Func_ST();
+  ConstraintGraphNode *clrCGNode =
+      ConstraintGraph::globalCG()->checkCGNode(funcSt->st_idx,0);
+  if (!clrCGNode || !clrCGNode->checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
+    return false;
+  else
+    return true;
 }
-#endif
+
+bool
+IPA_EscapeAnalysis::_hasDirectPredecessors(ConstraintGraph *graph) const
+{
+  IPA_NODE *ipaNode = graph->ipaNode();
+  IPA_PRED_ITER predIter(ipaNode);
+  for (predIter.First(); !predIter.Is_Empty(); predIter.Next())
+  {
+    IPA_EDGE * edge = predIter.Current_Edge();
+    // Have we found a direct call?
+    if (edge &&
+        !edge->Summary_Callsite()->Is_func_ptr() &&
+        !edge->Summary_Callsite()->Is_virtual_call())
+      return true;
+  }
+  return false;
+}
 
 bool
 IPA_EscapeAnalysis::formalsEscape(ConstraintGraph *graph) const
@@ -869,14 +896,21 @@ IPA_EscapeAnalysis::formalsEscape(ConstraintGraph *graph) const
   if (ipaMode() == IPANo)
     return true;
 
-  if (ipaMode() == IPAComplete)
-    return false;
+  if (ipaMode() == IPAComplete) {
+    // If we have a callee that is not an indirect target yet has no direct
+    // predecessors, we must treat its formals as escaping.  A key assumption
+    // here is that we have a constraint graph for all possible direct
+    // predecessors.
+    if (graph != ConstraintGraph::globalCG() &&
+        (_possibleIndirectCallTarget(graph) ||  // complete graph
+            _hasDirectPredecessors(graph)))     // any callers?
+      return false;
+  }
 
-  if (ipaMode() == IPAIncomplete && graph != ConstraintGraph::globalCG()) {
-    ST *funcSt = graph->ipaNode()->Func_ST();
-    ConstraintGraphNode *clrCGNode =
-        ConstraintGraph::globalCG()->checkCGNode(funcSt->st_idx,0);
-    if (!clrCGNode || !clrCGNode->checkFlags(CG_NODE_FLAGS_ADDR_TAKEN))
+  if (ipaMode() == IPAIncomplete) {
+    if (graph != ConstraintGraph::globalCG() &&
+        !_possibleIndirectCallTarget(graph) &&
+        _hasDirectPredecessors(graph))
       return false;
   }
 
@@ -1102,6 +1136,68 @@ IPA_NystromAliasAnalyzer::callGraphPrep(IPA_CALL_GRAPH *ipaCallGraph,
 
 }
 
+bool
+IPA_NystromAliasAnalyzer::validTargetOfVirtualCall(CallSite *cs, ST_IDX stIdx)
+{
+  ST *st = &St_Table[stIdx];
+  const char *calleeName = ST_name(stIdx);
+  if (calleeName[0] == '_' && calleeName[1] == 'Z') {
+    char *demangledName = cplus_demangle(calleeName,0);
+    FmtAssert(demangledName,("Unable to demangle: %s\n",calleeName));
+    //fprintf(stderr,"\tChecking of cs %d can call %s",cs->id(),demangledName);
+    char *colon = strchr(demangledName,':');
+    // If the function is not a class member we cannot call it from here
+    if (!colon) {
+      return false;
+      //if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+      //  fprintf(stderr, "  virtual call cannot call: %s\n",ST_name(st));
+    }
+    *colon = '\0';
+    // At this point we have the demangled class name.  This should
+    // exist in the string table.   We will use this string index
+    // to compare with the nodes in the class hierarchy for the
+    // virtual class at this callsite.
+    STR_IDX strIdx = Save_Str(demangledName);
+    //fprintf(stderr,"\t found str_idx %d for %s\n",(int)strIdx,demangledName);
+    TY_INDEX virtClass = cs->virtualClass() >> 8;
+    TY_INDEX baseClass = IPA_Class_Hierarchy->Get_Base_Class(virtClass,0);
+    hash_set<TY_INDEX> classes;
+    IPA_Class_Hierarchy->Get_Sub_Class_Hierarchy(baseClass,classes);
+    bool match = false;
+    for (hash_set<TY_INDEX>::iterator cls = classes.begin();
+        cls != classes.end(); ++cls ) {
+      TY_INDEX tyIndex = *cls;
+      STR_IDX classNameIdx = TY_name_idx(make_TY_IDX(tyIndex));
+      //fprintf(stderr,"\t  comparing against ty_idx %d: %s with str_idx %d",
+             // tyIndex,TY_name(tyIndex),classNameIdx);
+      if (strIdx == classNameIdx) {
+        //fprintf(stderr," (match)");
+        match = true;
+        break;
+      }
+      //fprintf(stderr,"\n");
+    }
+    if (!match)
+      return false;
+#if 0
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+      char *demangleCaller = cplus_demangle(ST_name(st),0);
+      fprintf(stderr,"  CGNode: %d, ST: %s calls %s\n",
+              nodeId,demangleCaller,demangledName);
+      free(demangleCaller);
+    }
+#endif
+    free(demangledName);
+    return true;
+  }
+  // Not a mangled C++ name, cannot be called from virtual callsite
+  else {
+    //if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+    //  fprintf(stderr, "  virtual call cannot call: %s\n",ST_name(st));
+    return false;
+  }
+}
+
 void
 IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
                       list<pair<IPA_NODE *,CallSiteId> > &indCallList,
@@ -1178,6 +1274,17 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
           IndirectEdgeSet::iterator iter = _indirectEdgeSet.find(newEdge);
           bool isNew = (iter == _indirectEdgeSet.end());
 
+          // Okay, we have a virtual call.  Is the current callee a valid
+          // potential target of this virtual call?
+          if (isNew && cs->checkFlags(CS_FLAGS_VIRTUAL)) {
+            if (!validTargetOfVirtualCall(cs,stIdx)) {
+              if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+                fprintf(stderr,"  CGNode: %d, ST: %s, IPA_NODE: %d (not valid target)\n",
+                        nodeId,ST_name(st),callee->Node_Index());
+              continue;
+            }
+          }
+
           if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
             fprintf(stderr,"  CGNode: %d, ST: %s, IPA_NODE: %d (%s)\n",
                     nodeId,ST_name(st),callee->Node_Index(),
@@ -1236,6 +1343,19 @@ IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGra
           IPAEdge newEdge(caller->Node_Index(),ipaNode->Node_Index(),id);
           IndirectEdgeSet::iterator iter = _indirectEdgeSet.find(newEdge);
           bool isNew = (iter == _indirectEdgeSet.end());
+
+          // Okay, we have a virtual call.  Is the current callee a valid
+          // potential target of this virtual call?
+          if (isNew && cs->checkFlags(CS_FLAGS_VIRTUAL)) {
+            ST_IDX stIdx = st->st_idx;
+            //ST_IDX stIdx = SYM_ST_IDX(ipaNode->cg_st_idx());
+            if (!validTargetOfVirtualCall(cs,stIdx)) {
+              if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+                fprintf(stderr,"  ST: %s, IPA_NODE: %d (not valid target)\n",
+                        ST_name(st),ipaNode->Node_Index());
+              continue;
+            }
+          }
 
           // New edges are placed in our set of resolved indirect target
           // edges and placed in the work list for the next round of
