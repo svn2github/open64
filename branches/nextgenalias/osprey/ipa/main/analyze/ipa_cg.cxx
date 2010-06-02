@@ -1953,7 +1953,9 @@ Delete_Function (NODE_INDEX node, BOOL update_modref_count, mUINT8 *visited)
 		 ipa_node->Name ());
 
 #if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
-    IPA_NystromAliasAnalyzer::aliasAnalyzer()->deleteConstraintGraph(ipa_node);
+    if (Alias_Nystrom_Analyzer)
+      IPA_NystromAliasAnalyzer::aliasAnalyzer()->
+                                deleteConstraintGraph(ipa_node);
 #endif
 
 #ifndef _LIGHTWEIGHT_INLINER

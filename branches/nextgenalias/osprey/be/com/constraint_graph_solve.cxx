@@ -251,7 +251,7 @@ SCCDetection::checkUnify(ConstraintGraphNode *node,
     ConstraintGraphEdge dummy(node->repParent(),node,ETYPE_COPY,CQ_HZ,0);
     if (!node->inEdge(&dummy)) {
       CGNodeId repId = _R[node->id()];
-      //if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+      if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
         fprintf(stderr,"Unify: Node %d -> Node %d\n",
                 node->id(),repId);
       // We need to track this node so as to update the modulus

@@ -114,8 +114,11 @@ IPA_irb_adjust_cg_st_idx(UINT64 orig_idx, IPA_NODE* cur_node)
   if ((file_idx == (UINT16) cur_node->File_Index()) && 
       (pu_idx == (UINT16) cur_node->Proc_Info_Index()))
     return (orig_idx & 0x00000000ffffffffLL);
-  
-  return orig_idx;
+
+  file_idx++;
+  pu_idx++;
+  UINT32 filePUIdx = (file_idx << 16) | pu_idx;
+  return (((UINT64)filePUIdx) << 32) | (orig_idx & 0x00000000ffffffffLL);
 }
 
 void

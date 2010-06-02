@@ -1385,12 +1385,14 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args,"--");
 		add_string(args, the_file);
 
+#if 0
                 // invoke standalone inliner to inline small funcs
                 if (ipa==TRUE)
 		{ 
                   sprintf (buf, "-INLINE:inline_only_small_funcs=on");
 		  add_string(args,buf);
 		}
+#endif
 		break;
 	case P_ipl:
             if (oscale == TRUE)
@@ -2635,10 +2637,12 @@ determine_phase_order (void)
 
 		case P_wgen:
 			add_phase(next_phase);
+#if 0
 			if (ipa == TRUE)
      		        {
   		          add_phase(P_inline);
 			}
+#endif
 			next_phase = post_fe_phase ();
 			break;
 #endif

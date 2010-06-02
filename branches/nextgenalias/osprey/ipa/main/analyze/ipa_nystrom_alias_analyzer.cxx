@@ -693,11 +693,18 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
           stInfo->mod(summ->modulus());
         else
           stInfo->modRange(buildModRange(summ->modulus(),ipaNode));
+        return stInfo;
       }
-      else
-        FmtAssert(summ->varSize() == 0,("Inconsistent varsize, expect zero\n"));
-      return stInfo;
+      else {
+        // FmtAssert(summ->varSize() == 0,
+        //             ("Inconsistent varsize, expect zero\n"));
+        if (summ->varSize() < stInfo->varSize()) {
+          stInfo->varSize(summ->varSize());
+          stInfo->ty_idx(summ->ty_idx());
+        }
+      }
     }
+    
     //FmtAssert(stInfo->ty_idx() == summ->ty_idx(), ("Inconsistent ty_idx"));
     // Merge mod ranges/modulus
     if (!stInfo->checkFlags(CG_ST_FLAGS_MODRANGE)) {
@@ -770,10 +777,9 @@ ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ,
   // Adjust cg_st_idx with the current pu and file index
   _cgStInfoMap[cg_st_idx] = stInfo;
 
-
-  // Find max non-global st_idx 
+  // Find max local st_idx 
   SYMTAB_IDX level = ST_IDX_level(CG_ST_IDX(summ->cg_st_idx()));
-  if (level != GLOBAL_SYMTAB) {
+  if (level == PU_lexical_level(ipaNode->Func_ST())) {
     FmtAssert(this != globalCG(), ("Expect this to be a local CG"));
     UINT32 index     = ST_IDX_index(CG_ST_IDX(summ->cg_st_idx()));
     UINT32 max_index = ST_IDX_index(_max_st_idx);

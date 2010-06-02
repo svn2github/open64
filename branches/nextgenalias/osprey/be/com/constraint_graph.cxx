@@ -2384,10 +2384,8 @@ ConstraintGraph::handleCall(WN *callWN)
       TY_IDX ty_idx;
       if (TY_kind(Ty_Table[WN_ty(stmt)]) != KIND_POINTER) {
         WN *tmpStmt = nextStmtStoresResultOfCurrentStmt(stmt);
-        if (tmpStmt && TY_kind(Ty_Table[WN_ty(tmpStmt)]) == KIND_POINTER) {
+        if (tmpStmt && TY_kind(Ty_Table[WN_ty(tmpStmt)]) == KIND_POINTER)
           ty_idx = TY_pointed(Ty_Table[WN_ty(tmpStmt)]);
-          stmt = tmpStmt;
-        }
         else
           ty_idx = MTYPE_To_TY(Pointer_type);
       }
@@ -3125,7 +3123,9 @@ ConstraintGraphNode::collapse(ConstraintGraphNode *cur)
 void
 ConstraintGraphNode::merge(ConstraintGraphNode *src)
 {
-  fprintf(stderr,"Merge: %d <- %d\n",id(),src->id());
+  if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+    fprintf(stderr,"Merge: %d <- %d\n",id(),src->id());
+
   // 0) The source node may be the rep of another cycle or
   //    have inKCycle() set for some other reason.  Make
   //    sure we merge it into the destination node
@@ -4035,7 +4035,11 @@ ConstraintGraphNode::collapseTypeIncompatibleNodes()
         FmtAssert(ptdNode->stInfo()->firstOffset()->nextOffset() == NULL,
                   ("Only single offset expected"));
         ptdNode = ptdNode->stInfo()->firstOffset();
-        if (ptdNode->collapsedParent() == repNode->id())
+        // SparseBitSetIterator caches ids when iterating. So of the 'effect'
+        // of collapsing is not immediately visible, in which case we might
+        // encounter collapsed nodes when iterating the pts
+        if (ptdNode->collapsedParent() == repNode->id() ||
+            ptdNode->id() == repNode->id())
           continue;
         repNode->collapse(ptdNode);
         fprintf(stderr, "Collapsing node: %d with %d\n", ptdNode->id(),
