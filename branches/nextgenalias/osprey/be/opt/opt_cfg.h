@@ -428,6 +428,7 @@ private:
   BB_LOOP*     LMV_clone_BB_LOOP (LMV_CFG_ADAPTOR*);
   void         LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR*);
   void         LMV_clone_BB_IFINFO (LMV_CFG_ADAPTOR* );
+  void         LMV_clone_frequency(LMV_CFG_ADAPTOR* );
 
 
   // From here on, all are public access functions

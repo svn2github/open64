@@ -1179,7 +1179,11 @@ MEM_ACCESS_ANALYZER::Assemble_aliased_mem_groups(const ALIAS_RULE *alias_rule,
          * loop for 'ptr1', as to why there may not be any accesses???
          */
         if (v1.size() == 0 || v2.size() == 0)
+        {
+          if (_trace)
+            fprintf(TFile, "----> AAMG: empty access vector\n");
           return FALSE;
+        }
 
         if (!alias_rule->Aliased_Memop (v1[0]->Points_to(_opt_stab),
             v2[0]->Points_to(_opt_stab), (TY_IDX)0, (TY_IDX)0))
@@ -1191,7 +1195,11 @@ MEM_ACCESS_ANALYZER::Assemble_aliased_mem_groups(const ALIAS_RULE *alias_rule,
          */
         if (ptr1->Kind() == MA_PTR_TOO_MESSY ||
             ptr2->Kind() == MA_PTR_TOO_MESSY)
+        {
+          if (_trace)
+            fprintf(TFile, "----> AAMG: too messy\n");
           return FALSE;
+        }
 
         MA_OFFSET ofst;
         ofst.Set_fixed_ofst(0);
@@ -1207,7 +1215,12 @@ MEM_ACCESS_ANALYZER::Assemble_aliased_mem_groups(const ALIAS_RULE *alias_rule,
         r->Set_base_ptr (ptr2);
         r->Set_access_range (&ofst, _loopinfo, sz);
         if (!r->Access_range().low.Is_const ())
+        {
+          if (_trace)
+            fprintf(TFile, "----> AAMG: access range non const\n");
+
           return FALSE;
+        }
 
         MEM_GROUP *mg = CXX_NEW(MEM_GROUP(v2,r,ptr2->St_cnt()>0),_mp);
         groups.push_back(mg);
@@ -1233,7 +1246,11 @@ MEM_ACCESS_ANALYZER::Assemble_aliased_mem_groups(const ALIAS_RULE *alias_rule,
         r->Set_base_ptr (ptr1);
         r->Set_access_range (&ofst, _loopinfo, sz);
         if (!r->Access_range().low.Is_const ())
+        {
+          if (_trace)
+            fprintf(TFile, "----> AAMG: access range non const\n");
           return FALSE;
+        }
 
         MEM_GROUP *mg = CXX_NEW(MEM_GROUP(v,r,TRUE),_mp);
         groups.push_back(mg);

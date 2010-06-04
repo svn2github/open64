@@ -168,7 +168,7 @@ ALIAS_RULE::Aliased_Alias_Analyzer_Rule(const POINTS_TO *const mem1,
     if (aliased)
       _alias_analyzer->incrAliasedCount();
     if(Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
-      fprintf(stderr,"Query %d,%d: aliased memop %d %d: %-3s Alias (ac %-3s)\n",
+      fprintf(TFile,"Query %d,%d: aliased memop %d %d: %-3s Alias (ac %-3s)\n",
               Current_PU_Count(),count,
               mem1->Alias_tag(),mem2->Alias_tag(),
               aliased?"May":"No",

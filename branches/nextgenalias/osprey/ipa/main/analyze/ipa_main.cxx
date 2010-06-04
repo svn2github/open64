@@ -321,7 +321,8 @@ Perform_Interprocedural_Analysis ()
 	Temporary_Error_Phase ephase ("IPA Call Graph Construction");
 
         // Instantiate the Nystrom alias analyzer
-        IPA_NystromAliasAnalyzer::create();
+        if (Alias_Nystrom_Analyzer)
+          IPA_NystromAliasAnalyzer::create();
 
 	if ( Get_Trace ( TKIND_ALLOC, TP_IPA ) ) {
 	    fprintf ( TFile,

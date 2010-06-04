@@ -33,6 +33,7 @@
 #include <vector>
 #include <algorithm>
 #include <stack>
+#include <list>
 using namespace std;
 
 #include "tracing.h"
@@ -48,7 +49,8 @@ using idmap::ID_MAP;
 #include "opt_ivr.h"
 
 const INT LMV_HEURISTIC::_low_trip_count = 40; 
-const INT LMV_HEURISTIC::_max_access_vectors = 16;
+//const INT LMV_HEURISTIC::_max_access_vectors = 16;
+const INT LMV_HEURISTIC::_max_access_vectors = 6;
 const INT LMV_HEURISTIC::_max_write_vectors = 3;
 const INT LMV_HEURISTIC::_min_write_vectors = 1;
 
@@ -500,6 +502,12 @@ LOOP_MULTIVER::Gen_test_cond (LMV_CANDIDATE* cand) {
       for (MEM_GROUP_VECT_CITER iter2 = mem_groups.begin();
           iter2 != mem_groups.end(); iter2++) {
         MEM_GROUP *grp2 = *iter2;
+        if (!_alias_rule->Aliased_Memop
+            ((grp1->Mem_accesses())[0]->Points_to(_opt_stab),
+             (grp2->Mem_accesses())[0]->Points_to(_opt_stab),
+             (TY_IDX)0, (TY_IDX)0))
+          continue;
+
         if(grp1 != grp2 && write_checked.Lookup(grp2) == 0) {
           const MEM_RANGE& r1 = *grp1->Mem_range();
           const MEM_RANGE& r2 = *grp2->Mem_range();
@@ -859,7 +867,7 @@ LOOP_MULTIVER::Annotate_alias_group (LMV_CANDIDATE* cand)
 //
 BOOL
 LOOP_MULTIVER::Perform_transformation (LMV_CANDIDATE* cand) {
-  
+
   CODEREP* precond = Gen_test_cond (cand);
   if (!precond) {
     // it is possible because currently we cannot handle some cases.
@@ -1113,7 +1121,6 @@ CFG::LMV_clone_block (const BB_NODE* src, LMV_CFG_ADAPTOR* adaptor) {
     clone->Add_label (this);
     adaptor->Map_cloned_label (src->Labnam(), clone->Labnam());
   }
-
   return clone;
 }
 
@@ -1132,7 +1139,7 @@ CFG::LMV_create_alike_block (BB_KIND kind, BB_NODE* model) {
   new_bb->Set_phi_list (CXX_NEW(PHI_LIST(new_bb), Mem_pool()));
   new_bb->Set_linenum (model->Linenum());
   new_bb->Set_freq (model->Freq());
-
+  
   return new_bb;
 }
 
@@ -1144,7 +1151,7 @@ CFG::LMV_create_alike_block (BB_KIND kind, BB_NODE* model) {
 //
 void
 CFG::LMV_clone_pred_succ_relationship (LMV_CFG_ADAPTOR* adaptor) {
-  
+
   BB_LOOP* src_loop = adaptor->Src_loop();
 
   BB_NODE* src_blk;
@@ -1455,15 +1462,24 @@ CFG::LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR* adaptor) {
   BB_NODE* new_merge = Create_and_allocate_bb (BB_GOTO);
 
   orig_merge->Insert_Before (new_merge);
-
+  
   BB_LIST_ITER pred_iter;
   BB_NODE* t;
   FOR_ALL_ELEM (t, pred_iter, Init(orig_merge->Pred())) {
     t->Replace_succ (orig_merge, new_merge);
+    if (OPT_FEEDBACK* fb = Feedback ()) {
+      fb->Add_node (new_merge->Id ());
+      fb->Move_edge_dest (t->Id(), orig_merge->Id(), new_merge->Id());
+    }
   }
   new_merge->Set_pred (orig_merge->Pred());
   orig_merge->Set_pred (NULL);
   Connect_predsucc (new_merge, orig_merge);
+  if (OPT_FEEDBACK* fb = Feedback ()) {
+    fb->Add_edge (new_merge->Id(), orig_merge->Id(), 
+                  FB_EDGE_OUTGOING,
+                  fb->Get_node_freq_in (new_merge->Id()));
+  }
 
   // update the labels of branches of merge block's predecessors.
   //
@@ -1488,6 +1504,7 @@ CFG::LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR* adaptor) {
   BB_NODE* orig_phdr = src_loop->Preheader();
   BB_NODE* precond = LMV_create_alike_block(BB_LOGIF,orig_phdr);
   precond->Set_flag(0);
+  adaptor->Set_precond_blk(precond);
 
   // splice into pred/next list and permute the precond right before 
   // original preheader.
@@ -1497,6 +1514,12 @@ CFG::LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR* adaptor) {
   BB_NODE* pred;
   FOR_ALL_ELEM (pred, pred_iter, Init(orig_phdr->Pred())) {
     pred->Replace_succ (orig_phdr, precond); 
+    if (OPT_FEEDBACK* fb = Feedback ()) {
+      fb->Add_node (precond->Id ());  
+      fprintf(stderr, "*** precond FB node id = %d\n", precond->Id());
+      fb->Move_edge_dest (pred->Id(), orig_phdr->Id(), precond->Id());
+    }
+
     // If the preheader is the then/else of a lowered IF/THEN/ELSE
     // construct then we must update the BB_IFINFO on the predecessor
     if (pred->Kind()==BB_LOGIF) {
@@ -1565,7 +1588,6 @@ CFG::LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR* adaptor) {
 
   //connect the precond and the preheader of cloned loop
   Connect_predsucc (precond, adaptor->Cloned_loop_preheader());
-
   // Update the BB_LOOP of src loop
   src_loop->Set_merge (new_merge);
   
@@ -1597,8 +1619,99 @@ CFG::LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR* adaptor) {
 }
 
 void
+CFG::LMV_clone_frequency (LMV_CFG_ADAPTOR* adaptor) {
+
+  OPT_FEEDBACK* fb = Feedback ();
+  if (fb == NULL) return;
+   
+  BB_LOOP* src_loop = adaptor->Src_loop ();
+  std::list<BB_NODE*> all_src_blk;
+  std::map<BB_NODE*, BB_NODE*> clone_map;
+
+  // step 1: collect all src blocks
+  //
+  {
+    BB_NODE_SET* body = src_loop->True_body_set(); 
+    BB_NODE* blk;
+    BB_NODE_SET_ITER iter;
+    FOR_ALL_ELEM (blk, iter, Init (body)) {
+      all_src_blk.push_back (blk);
+      clone_map[blk] = adaptor->Get_cloned_bb (blk);
+    }
+
+    blk = src_loop->Preheader ();
+    all_src_blk.push_back (blk);
+    clone_map[blk] = adaptor->Cloned_loop_preheader ();
+
+    blk = src_loop->Merge ();
+    all_src_blk.push_back (blk);
+    clone_map[blk] = adaptor->Cloned_loop_merge ();
+  }
+
+  // step 2: allocate a feedback block for each newly created 
+  //
+  for (std::map<BB_NODE*, BB_NODE*>::iterator iter = clone_map.begin (), 
+       iter_e = clone_map.end (); iter != iter_e; iter++) {
+    BB_NODE* blk = (*iter).second;  
+    fb->Add_node (blk->Id());
+  }
+
+  // step 3: clone edge frequency.
+  //
+  for (std::list<BB_NODE*>::iterator iter = all_src_blk.begin (), 
+       iter_e = all_src_blk.end (); iter != iter_e; iter++) {
+
+    BB_NODE* blk = *iter;    
+    BB_NODE* cloned = clone_map[blk];
+    BB_NODE* succ;
+    BB_NODE* cloned_succ;
+    BB_LIST_ITER succ_iter;
+	FOR_ALL_ELEM (succ, succ_iter, Init (blk->Succ())) {
+      cloned_succ = clone_map[succ];
+      if (!cloned_succ) {
+        Is_True (blk == src_loop->Merge(), ("internal inconsistency"));
+        cloned_succ = succ;
+      }
+
+      if (fb->Edge_has_freq (blk->Id(), succ->Id())) {
+        fb->Clone_edge (blk->Id(), succ->Id(), cloned->Id(), 
+                        cloned_succ->Id(), 0.5f);
+      }
+    }
+  }
+
+  // step 4: set precondition outgoing edge freq
+  //
+  {
+    FB_FREQ freq = fb->Get_edge_freq (src_loop->Preheader()->Id(), 
+                                      src_loop->Header()->Id ());
+    BB_NODE* precond = adaptor->Precond_blk();
+    BB_NODE* succ = precond->Nth_succ(0);
+    IDTYPE src_id, dst_id;
+    src_id = precond->Id();
+    dst_id = succ->Id();
+
+    fb->Delete_edge (src_id, dst_id);
+    fb->Add_edge (src_id, dst_id, 
+                  precond->Next () != succ ? 
+                  FB_EDGE_BRANCH_TAKEN : FB_EDGE_BRANCH_NOT_TAKEN, 
+                  precond->Next () != succ ? 
+                  0. : freq);
+
+    succ = precond->Nth_succ(1);
+    dst_id = succ->Id();
+    fb->Delete_edge (src_id, dst_id);
+    fb->Add_edge (src_id, dst_id, 
+                  precond->Next () != succ ? 
+                  FB_EDGE_BRANCH_TAKEN : FB_EDGE_BRANCH_NOT_TAKEN, 
+                  precond->Next() != succ ?
+                  0. : freq);
+  }
+}
+
+void
 CFG::LMV_clone_loop (LMV_CFG_ADAPTOR* adaptor) {
- 
+
   if (adaptor->Trace()) {
     fprintf (TFile, 
        "Duplicating loop (BB:%d)\nthe map between original and new blocks" 
@@ -1664,4 +1777,12 @@ CFG::LMV_clone_loop (LMV_CFG_ADAPTOR* adaptor) {
   // step 8: Generate preconditiong block and splic then/else clause in the CFG.
   //
   LMV_gen_precondioning_stuff (adaptor);
+
+  // step 9: copy freq feedback
+  if (Feedback ()) {
+    LMV_clone_frequency (adaptor);
+    fprintf(stderr, "*************** Feedback after LMV\n");
+    Feedback()->Print(stderr);
+    fprintf(stderr, "*************** End of feedback after LMV\n");
+  }  
 }
