@@ -332,6 +332,7 @@ BOOL EMIT_explicit_bundles = TRUE;
 INT32 EMIT_Long_Branch_Limit = DEFAULT_LONG_BRANCH_LIMIT;
 
 INT32 CGEXP_expandconstant = DEFAULT_CGEXP_CONSTANT;
+BOOL CG_divrem_opt = FALSE;
 BOOL CGEXP_use_copyfcc = TRUE;
 BOOL CGEXP_normalize_logical = FALSE;
 BOOL CGEXP_gp_prolog_call_shared = TRUE;

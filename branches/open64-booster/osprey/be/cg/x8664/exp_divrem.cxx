@@ -753,7 +753,9 @@ Expand_Power_Of_2_Rem (TN *result, TN *src1, INT64 src2_val, TYPE_ID mtype, OPS 
     /* Avoid generating multi-BBs under -m32, which does not have too many
        registers.
     */
-    if( CG_use_setcc || Is_Target_32bit() || src2_val < 0 ){
+    if (src2_val > 0 && CG_divrem_opt) {
+      Expand_Fast_Power_Of_2_Rem( result, src1, src2_val, mtype, ops );
+    } else if( CG_use_setcc || Is_Target_32bit() || src2_val < 0 ){
       TN *t1 = Build_TN_Of_Mtype(mtype);
       INT64 absdvsr = src2_val < 0 ? -src2_val : src2_val;
       BOOL is_double = MTYPE_is_size_double(mtype);

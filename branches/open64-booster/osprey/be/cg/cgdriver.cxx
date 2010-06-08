@@ -770,6 +770,8 @@ static OPTION_DESC Options_CG[] = {
 
   // Whirl2ops / Expander options.
 
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "divrem_opt", "",
+    0, 0, 0,	&CG_divrem_opt, NULL },
   { OVK_NAME,	OV_INTERNAL, TRUE,"fdiv_algorithm", "fdiv",
     0, 0, 0, &CGEXP_fdiv_algorithm, NULL },
   { OVK_NAME,	OV_INTERNAL, TRUE,"sqrt_algorithm", "sqrt",

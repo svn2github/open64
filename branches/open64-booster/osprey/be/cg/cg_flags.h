@@ -692,6 +692,7 @@ extern BOOL  CG_round_spreg;
 extern BOOL  CG_check_packed;
 extern BOOL CG_branch_taken;
 #endif
+extern BOOL CG_divrem_opt;
 
 extern BOOL EMIT_pjump_all;
 extern BOOL EMIT_use_cold_section;
