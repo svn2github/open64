@@ -7493,6 +7493,7 @@ void expand_strcmp_bb(BB * call_bb) {
           arg1 = opnd;
           stack_arg1 = OP_opnd(ld_arg1, 1);
           first_store = 1;
+          break;
         }
       }
     }
@@ -7604,7 +7605,7 @@ void expand_strcmp_bb(BB * call_bb) {
   BB_Append_Op(diff_bb, set_result);
   set_result = Mk_OP(TOP_or32, result, Gen_Literal_TN(1, 8));
   BB_Append_Op(diff_bb, set_result);
-  ld_byte1 = Mk_OP(TOP_ld32,arg1,stack_arg1/*arg1*/,Gen_Literal_TN(0, 8));
+  ld_byte1 = Mk_OP(TOP_ld32,arg1,stack_arg1/*arg1*/,Gen_Literal_TN(0, 4));
   ld_byte2 = Mk_OP(TOP_ld32,arg2,stack_arg2/*arg1*/,Gen_Literal_TN(4, 8));
   BB_Prepend_Op(old_succ,ld_byte1);
   BB_Prepend_Op(old_succ,ld_byte2);

@@ -3701,7 +3701,8 @@ EBO_Add_BB_to_EB (BB * bb)
 
   EBO_Remove_Unused_Ops(bb, normal_conditions);
 #ifdef TARG_X8664
-  Expand_strcmp(bb);
+  if(CG_strcmp_expand)
+    Expand_strcmp(bb);
 #endif
 
  /* Remove information about TN's and OP's in this block. */
