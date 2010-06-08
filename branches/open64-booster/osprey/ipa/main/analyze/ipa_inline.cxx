@@ -1797,8 +1797,7 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
     }
 #endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
 #ifdef KEY
-    else if (PU_is_nested_func(caller->Get_PU()) ||
-             PU_is_nested_func(callee->Get_PU()) ||
+    else if (PU_is_nested_func(callee->Get_PU()) ||
              PU_uplevel(callee->Get_PU())) {
             result = FALSE;
             reason = "not inlining nested functions";
