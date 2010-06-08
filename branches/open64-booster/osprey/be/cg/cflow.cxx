@@ -1541,6 +1541,7 @@ Br_Fuse_BB(BB *bp)
         }
       }
 
+      OP_scycle(cmp) = OP_scycle(br);
       BB_Move_Op_Before(bp, br, bp, cmp);
       CG_DEP_Delete_Graph (bp);
     }

@@ -5880,6 +5880,10 @@ static BOOL EBO_Allowable_Unaligned_Vector( OP *alu_op )
   const TOP top = OP_code(alu_op);
   BOOL ret_val;
 
+  // no alignment constraint on orochi targets for vector ops
+  if (Is_Target_Orochi() && OP_sse5(alu_op))
+    return TRUE;
+
   switch (top) {
   case TOP_vcvtdq2pd:
   case TOP_vcvtps2pd:
@@ -5895,6 +5899,22 @@ static BOOL EBO_Allowable_Unaligned_Vector( OP *alu_op )
   return ret_val;
 }
 
+static BOOL Process_Side_Effects(TN** opnd_tn, 
+                                 EBO_TN_INFO** actual_tninfo,
+                                 BOOL rval,
+                                 BOOL opnds_swapped)
+{
+  if ( !rval && opnds_swapped ) {
+    // return operands to original state
+    TN *tmp = opnd_tn[0];
+    EBO_TN_INFO* tninfo = actual_tninfo[0];
+    actual_tninfo[0] = actual_tninfo[1];
+    opnd_tn[0] = opnd_tn[1];
+    actual_tninfo[1] = tninfo;
+    opnd_tn[1] = tmp;
+  }
+  return rval;
+}
 
 BOOL EBO_Load_Execution( OP* alu_op, 
                          TN** opnd_tn,     
@@ -5905,6 +5925,8 @@ BOOL EBO_Load_Execution( OP* alu_op,
   if (!(EBO_Opt_Mask & EBO_LOAD_EXECUTION)) return FALSE;
 #endif
   const TOP top = OP_code(alu_op);
+  BOOL opnds_swapped = FALSE;
+  BOOL rval = FALSE;
 
   if( top == TOP_xor64 ||
       top == TOP_or64  ||
@@ -5935,11 +5957,13 @@ BOOL EBO_Load_Execution( OP* alu_op,
       opnd0_indx = OP_opnds(alu_op) - 1 - i;
       Is_True( opnd0_indx >= 0, ("NYI") );
     }
-#ifdef TARG_X8664
   } else if ( EBO_Is_FMA4(alu_op) ) {
     int i;
     OP *mul_in_op = actual_tninfo[1]->in_op;
     OP *add_sub_in_op2 = actual_tninfo[2]->in_op;
+
+    if (CG_fma4_load_exec == FALSE)
+      return FALSE;
 
     i = (mul_in_op && OP_load(mul_in_op)) ? 1 : -1;
     if (i == -1) {
@@ -5958,9 +5982,14 @@ BOOL EBO_Load_Execution( OP* alu_op,
         actual_tninfo[1] = tninfo;
         opnd_tn[1] = tmp;
         i = 1;
+        opnds_swapped = TRUE;
       } else
         return FALSE;
     } 
+
+    // none of the load operands for fma4 can be move contrained
+    if (actual_tninfo[i]->in_opinfo->op_must_not_be_moved)
+      return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
     alu_cmp_idx = i;
     if( TN_is_register( OP_opnd( alu_op, i ) ) ){
@@ -5968,7 +5997,6 @@ BOOL EBO_Load_Execution( OP* alu_op,
       opnd0_indx = OP_opnds(alu_op) - 1 - i;
       Is_True( opnd0_indx >= 0, ("NYI") );
     }
-#endif
   } else {
     for( int i = OP_opnds(alu_op) - 1; i >= 0; i-- ){
       if( TN_is_register( OP_opnd( alu_op, i ) ) ){
@@ -5988,7 +6016,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
   if (( EBO_flow_safe ) && 
       ( ld_op != NULL) && 
       ( ld_opinfo->op_must_not_be_moved ))
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
   if( ld_op == NULL || !OP_load( ld_op ) ||
       ld_opinfo->op_must_not_be_moved ){
@@ -5997,7 +6025,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
 
     if( !EBO_flow_safe ) {
       if( !TOP_is_commutative( OP_code(alu_op) ) )
-        return FALSE;
+        return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
     } 
 
     tninfo = actual_tninfo[0];
@@ -6006,14 +6034,14 @@ BOOL EBO_Load_Execution( OP* alu_op,
 
     if( ld_op == NULL || !OP_load( ld_op ) ||
 	ld_opinfo->op_must_not_be_moved )
-      return FALSE;
+      return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
     // Check whether we can swap opnd0 and opnd1 of <alu_op>
     TN* result = OP_result( alu_op, 0 );
     TN* opnd0 = OP_opnd( alu_op, 0 );
 
     if( EBO_in_peep && TNs_Are_Equivalent( result, opnd0 ) )
-      return FALSE;
+      return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
     opnd0_indx = 1;
   }
@@ -6021,13 +6049,13 @@ BOOL EBO_Load_Execution( OP* alu_op,
   BB* bb = OP_bb( alu_op );
 
   if( (OP_bb( ld_op ) != bb) && !EBO_flow_safe )
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
 #ifdef TARG_X8664
   if ((OP_bb( ld_op ) != bb) && EBO_flow_safe ) {
     BB *ld_bb = OP_bb( ld_op );
     if (!BS_MemberP(BB_dom_set(bb), BB_id(ld_bb)))
-      return FALSE; 
+      return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
 #endif
 
@@ -6041,7 +6069,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
   if( OP_unalign_mem( ld_op ) &&
       !EBO_Allowable_Unaligned_Vector( alu_op ) &&
       TOP_is_vector_op( OP_code(ld_op) ) ){
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
 
   /* Check <index> and <base> will not be re-defined between
@@ -6062,14 +6090,14 @@ BOOL EBO_Load_Execution( OP* alu_op,
   if( mode == N32_MODE ){
     // We need to add one more addressing mode for m32.
     //DevWarn( "Support me!!!" );
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
 
   if( index_reg >= 0 ){
     const TN* opnd = OP_opnd( ld_op, index_reg );
     const EBO_TN_INFO* ptinfo = get_tn_info( opnd );
     if( ptinfo != NULL && ptinfo->sequence_num >= tninfo->sequence_num ){
-      return FALSE;
+      return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
     }
   }
 
@@ -6077,7 +6105,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
     const TN* opnd = OP_opnd( ld_op, base_reg );
     const EBO_TN_INFO* ptinfo = get_tn_info( opnd );
     if( ptinfo != NULL && ptinfo->sequence_num >= tninfo->sequence_num ){
-      return FALSE;
+      return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
     }
   }
 
@@ -6101,7 +6129,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
          pred_op &&	// Bug 7596
 #endif
 	 OP_store( pred_op ) )
-	return FALSE;
+        return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
       opinfo = opinfo->same;
     }
@@ -6110,7 +6138,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
   TOP new_top = Load_Execute_Format( ld_op, alu_op, mode );
 
   if( new_top == TOP_UNDEFINED )
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
   if( EBO_flow_safe && (opnd0_indx == 1) ) {
     new_top = Fit_Cmp_By_Load_Usage( new_top, TRUE );
@@ -6122,14 +6150,14 @@ BOOL EBO_Load_Execution( OP* alu_op,
    */
   if( ( load_uses > CG_load_execute ) &&
       ( CGTARG_Latency(top) < CGTARG_Latency(new_top) ) ){
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
 
   // If load is volatile, replace with exactly one load-exe OP, in order to
   // maintain the same number of memory accesses.
   if (OP_volatile(ld_op) &&
       load_uses != 1) {
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
 
   TN* offset = OP_opnd( ld_op, OP_find_opnd_use( ld_op, OU_offset ) );
@@ -6152,14 +6180,16 @@ BOOL EBO_Load_Execution( OP* alu_op,
   OP* new_op = NULL;
 
   if (OP_sse5(alu_op) && EBO_Is_FMA4(alu_op)) {
-    return EBO_Process_SSE5_Load_Execute(new_top, mode, alu_cmp_idx, base,
-                                         scale, index, offset,
-                                         result, ld_op, alu_op, 
-                                         actual_tninfo);
+    // succeed or fail based on layout match
+    rval = EBO_Process_SSE5_Load_Execute(new_top, mode, alu_cmp_idx, base,
+                                           scale, index, offset,
+                                           result, ld_op, alu_op, 
+                                           actual_tninfo);
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
 
   if( OP_opnds(alu_op) > 2 )
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
   // Standard Load Execute processing
   if( mode == BASE_MODE ){

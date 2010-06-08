@@ -4582,22 +4582,39 @@ Handle_Fma_Operation(WN* expr, TN* result, WN *mul_wn, BOOL mul_kid0)
   TN* opnd2;
   TOP opcode; 
   TYPE_ID rtype = OPCODE_rtype(WN_opcode(expr));
-  BOOL is_vector = MTYPE_is_mmx_vector(rtype);
+  BOOL is_vector = MTYPE_is_vector(rtype);
+
+  // now match a scalar or vector fma4 
+  switch (WN_opcode(mul_wn)) {
+  case OPC_F4MPY:
+    opcode = TOP_vfmaddss;
+    break;
+  case OPC_F8MPY:
+    opcode = TOP_vfmaddsd;
+    break;
+  case OPC_V16F4MPY:
+  case OPC_V16C4MPY:
+    FmtAssert(is_vector, ("unexpected fma vector form"));
+    opcode = TOP_vfmaddps;
+    break;
+  case OPC_V16F8MPY:
+  case OPC_V16C8MPY:
+    FmtAssert(is_vector, ("unexpected fma vector form"));
+    opcode = TOP_vfmaddpd;
+    break;
+  default:
+    FmtAssert(FALSE, ("unexpected fma form"));
+    break;
+  }
 
   opnd2 = Expand_Expr(add_wn, expr,  NULL); 
   opnd1 = Expand_Expr(WN_kid1(mul_wn), mul_wn, NULL);
   opnd0 = Expand_Expr(WN_kid0(mul_wn), mul_wn, NULL);
  
-  if (WN_opcode(mul_wn) == OPC_F8MPY) {
-    opcode = (is_vector) ? TOP_vfmaddpd : TOP_vfmaddsd;
-  } else if (WN_opcode(mul_wn) == OPC_F4MPY) {
-    opcode = (is_vector) ? TOP_vfmaddps : TOP_vfmaddss;
-  }
-  
   if(result == NULL) 
     result = Allocate_Result_TN(expr, NULL); 
 
-  // Position tn's from loads on the 2nd operand if possible.
+  // Position tn's from loads on operand 1's position if possible.
   if (OPCODE_is_load(WN_opcode(WN_kid0(mul_wn))))
     Build_OP(opcode,  result,  opnd1,  opnd0, opnd2, &New_OPs); 
   else
@@ -4619,18 +4636,35 @@ Handle_Fms_Operation(WN* expr, TN* result, WN *mul_wn, BOOL mul_kid0)
   TN* opnd2;
   TOP opcode; 
   TYPE_ID rtype = OPCODE_rtype(WN_opcode(expr));
-  BOOL is_vector = MTYPE_is_mmx_vector(rtype);
+  BOOL is_vector = MTYPE_is_vector(rtype);
+
+  // now match a scalar or vector fma4 
+  switch (WN_opcode(mul_wn)) {
+  case OPC_F4MPY:
+    opcode = TOP_vfmsubss;
+    break;
+  case OPC_F8MPY:
+    opcode = TOP_vfmsubsd;
+    break;
+  case OPC_V16F4MPY:
+  case OPC_V16C4MPY:
+    FmtAssert(is_vector, ("unexpected fms vector form"));
+    opcode = TOP_vfmsubps;
+    break;
+  case OPC_V16F8MPY:
+  case OPC_V16C8MPY:
+    FmtAssert(is_vector, ("unexpected fms vector form"));
+    opcode = TOP_vfmsubpd;
+    break;
+  default:
+    FmtAssert(FALSE, ("unexpected fms form"));
+    break;
+  }
 
   opnd2 = Expand_Expr(sub_wn, expr,  NULL); 
   opnd1 = Expand_Expr(WN_kid1(mul_wn), mul_wn, NULL);
   opnd0 = Expand_Expr(WN_kid0(mul_wn), mul_wn, NULL);
- 
-  if (WN_opcode(mul_wn) == OPC_F8MPY) {
-    opcode = (is_vector) ? TOP_vfmsubpd : TOP_vfmsubsd;
-  } else if (WN_opcode(mul_wn) == OPC_F4MPY) {
-    opcode = (is_vector) ? TOP_vfmsubps : TOP_vfmsubss;
-  }
-  
+
   if(result == NULL) 
     result = Allocate_Result_TN(expr, NULL); 
 
@@ -5227,26 +5261,24 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
       TYPE_ID rtype = OPCODE_rtype(opcode);
       WN *mul_wn = NULL;
       // Looking for a fm{a/s} candidate via FMA4 insns
-      if (MTYPE_is_float(rtype)) {
-        if ((WN_operator(mul_wn = WN_kid(expr, 1)) == OPR_MPY) &&
+      if (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) {
+        if ((WN_operator(mul_wn = WN_kid(expr, 0)) == OPR_MPY) &&
             (WN_opcode(mul_wn) != OPC_FQMPY)) {
           rtype = OPCODE_rtype(WN_opcode (mul_wn));
-          if (MTYPE_is_float(rtype)) {
-            if (WN_operator(expr) == OPR_ADD) {
-              return Handle_Fma_Operation(expr, result, mul_wn, FALSE);
-            } else if (WN_operator(expr) == OPR_SUB) {
-              return Handle_Fms_Operation(expr, result, mul_wn, FALSE);
-            }
-          }
-        } else if ((WN_operator(mul_wn = WN_kid(expr, 0)) == OPR_MPY) &&
-                   (WN_opcode(mul_wn) != OPC_FQMPY)) {
-          rtype = OPCODE_rtype(WN_opcode (mul_wn));
-          if (MTYPE_is_float(rtype)) {
+          if (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) {
             if (WN_operator(expr) == OPR_ADD) {
               return Handle_Fma_Operation(expr, result, mul_wn, TRUE);
             } else if (WN_operator(expr) == OPR_SUB) {
               return Handle_Fms_Operation(expr, result, mul_wn, TRUE);
             }
+          }
+        } else if ((WN_operator(mul_wn = WN_kid(expr, 1)) == OPR_MPY) &&
+                   (WN_opcode(mul_wn) != OPC_FQMPY)) {
+          rtype = OPCODE_rtype(WN_opcode (mul_wn));
+          if (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) {
+            if (WN_operator(expr) == OPR_ADD) {
+              return Handle_Fma_Operation(expr, result, mul_wn, FALSE);
+            } 
           }
         }
       }

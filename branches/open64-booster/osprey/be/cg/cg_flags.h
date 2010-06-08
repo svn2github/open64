@@ -94,6 +94,10 @@
  *     Enable cmp load exec EBO optimization which folds loads onto
  *      cmp operations for X8664.
  *
+ *  BOOL CG_fma4_load_exec
+ *     Enable fma4 load exec EBO optimization which folds loads onto
+ *      fma4 operations for X8664.
+ *
  *  BOOL CG_skip_local_swp
  *	Enable skipping of pipelining of inner loops based on the 
  *	-CG:skip_local_[after,before,equal] options.
@@ -514,6 +518,7 @@ extern BOOL CG_skip_local_sched;
 extern BOOL CG_skip_local_swp;
 #ifdef TARG_X8664
 extern BOOL CG_cmp_load_exec;
+extern BOOL CG_fma4_load_exec;
 #endif
 extern INT CG_opt_level;
 extern BOOL CG_localize_tns;
