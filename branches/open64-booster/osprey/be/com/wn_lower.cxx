@@ -8047,7 +8047,9 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 
       realTY =	Mtype_complex_to_real( WN_desc(tree));
       lower_complex_expr(block, WN_kid0(tree), actions, &realexp, &imagexp);
-      if (imagexp == NULL)
+      // if realTY != WN_rtype(WN_kid0(tree)) a C4 is packed into a F8
+      // it is a special case ignored here
+      if (imagexp == NULL && realTY == WN_rtype(WN_kid0(tree)))
       {
         imagexp = WN_Floatconst(realTY, 0.0);
         WN_kid0(tree) = WN_CreateExp2( OPR_PAIR, WN_desc(tree), MTYPE_V, 
