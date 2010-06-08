@@ -1991,7 +1991,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
       // of the PU size.
       for (i = label_use_map.begin(); i != label_use_map.end(); i++)
       {
-        Is_True ((*i).second.wn, ("Process_procedure: Undefined label?"));
+        Is_True (Do_Altentry || (*i).second.wn, ("Process_procedure: Undefined label?"));
         if (!(*i).second.seen)
         {
           unused_labels++;
