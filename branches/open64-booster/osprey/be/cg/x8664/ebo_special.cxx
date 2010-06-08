@@ -7478,7 +7478,7 @@ void expand_strcmp_bb(BB * call_bb) {
 
   for (ld_arg1 = OP_prev(last_op); ld_arg1; ld_arg1 = OP_prev(ld_arg1)) {
       result = OP_result(ld_arg1, 0);
-      if((OP_code(ld_arg1) == 403) && (first_store == 1))
+      if((OP_code(ld_arg1) == TOP_store32) && (first_store == 1))
       {
         TN *opnd = OP_opnd(ld_arg1, 0);
         arg2 = opnd;
@@ -7487,7 +7487,7 @@ void expand_strcmp_bb(BB * call_bb) {
       }
       else
       {
-        if((OP_code(ld_arg1) == 403) && (first_store == 2))
+        if((OP_code(ld_arg1) == TOP_store32) && (first_store == 2))
         {
           TN *opnd = OP_opnd(ld_arg1, 0);
           arg1 = opnd;
