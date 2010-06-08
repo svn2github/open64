@@ -7265,17 +7265,17 @@ EBO_Fold_Load_Duplicate( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
   if (!(EBO_Opt_Mask & EBO_FOLD_LOAD_DUPLICATE)) return FALSE;
 #endif
 
-  if (OP_code(op) != TOP_fmovddup)
-    return FALSE;
-
-  if (OP_code(op) != TOP_vmovddup)
+  BOOL do_unpckhpd = FALSE;
+  if (OP_code(op) != TOP_fmovddup && OP_code(op) != TOP_vmovddup)
     return FALSE;
 
   OP* shuf_op = actual_tninfo[0]->in_op;
   if (!shuf_op || shuf_op->bb != op->bb || 
       (OP_code(shuf_op) != TOP_shufpd && 
        OP_code(shuf_op) != TOP_ldhpd &&
-       OP_code(shuf_op) != TOP_ldapd))
+       OP_code(shuf_op) != TOP_ldapd &&
+       OP_code(shuf_op) != TOP_ldupd &&
+       OP_code(shuf_op) != TOP_ldsd))
     return FALSE;
 
   if (!TOP_is_load(OP_code(shuf_op)) &&
@@ -7308,88 +7308,101 @@ EBO_Fold_Load_Duplicate( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 
   EBO_TN_INFO *loaded_tn_info = get_tn_info( OP_opnd(shuf_op, 0) );
   OP* load = loaded_tn_info->in_op;
-  if (!load || load->bb != shuf_op->bb || !TOP_is_load(OP_code(load)))
-    return FALSE;
-
-  EBO_TN_INFO *src_info = get_tn_info( OP_result(load, 0) );
-  if (loaded_tn_info->sequence_num > src_info->sequence_num)
-    return FALSE;
-  
   OP* new_op = NULL;
-  INT base_loc = OP_find_opnd_use( load, OU_base );
-  INT offset_loc = OP_find_opnd_use( load, OU_offset );
-  INT index_loc = OP_find_opnd_use( load, OU_index );
-  INT scale_loc = OP_find_opnd_use( load, OU_scale );
-  
-  TN *base   = NULL;
-  TN *offset   = NULL;
-  TN *index   = NULL;
-  TN *scale   = NULL;
-  if (base_loc >= 0) 
-    base = OP_opnd( load, OP_find_opnd_use( load, OU_base ) );
-  if (offset_loc >= 0) 
-    offset = OP_opnd( load, OP_find_opnd_use( load, OU_offset ) );
-  if (index_loc >= 0) 
-    index = OP_opnd( load, OP_find_opnd_use( load, OU_index ) );
-  if (scale_loc >= 0) 
-    scale = OP_opnd( load, OP_find_opnd_use( load, OU_scale ) );
-  
-  if (!offset || TN_is_symbol(offset))
+  if (!load || load->bb != shuf_op->bb || !TOP_is_load(OP_code(load)))
+  {
+    if(OP_code(shuf_op) == TOP_shufpd && 
+       TNs_Are_Equivalent(OP_opnd(shuf_op, 1), OP_opnd(shuf_op, 0)))
+    {
+      do_unpckhpd = TRUE; 
+      new_op = Mk_OP (TOP_unpckhpd, 
+		    OP_result(op, 0), 
+		    OP_opnd(shuf_op, 0), 
+		    OP_opnd(shuf_op, 0)); 
+    } else
     return FALSE;
-  
-  // base and index, if defined, should not be re-defined between
-  // load and op.
-  if (base_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, base_loc))
-    return FALSE;
-  if (index_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, index_loc))
-    return FALSE;
-  
-  TOP topcode;
-  if (base && offset && index && scale) {
-    topcode = TOP_fmovddupxx;
-    if (Is_Target_Orochi() && Is_Target_AVX())
-      topcode = TOP_vmovddupxx;
-    new_op = Mk_OP (topcode, 
-  		    OP_result(op, 0), 
-  		    OP_opnd(load, 0), 
+  }
+
+  if (!do_unpckhpd)
+  {
+    EBO_TN_INFO *src_info = get_tn_info( OP_result(load, 0) );
+    if (loaded_tn_info->sequence_num > src_info->sequence_num)
+      return FALSE;
+
+    INT base_loc = OP_find_opnd_use( load, OU_base );
+    INT offset_loc = OP_find_opnd_use( load, OU_offset );
+    INT index_loc = OP_find_opnd_use( load, OU_index );
+    INT scale_loc = OP_find_opnd_use( load, OU_scale );
+
+    TN *base   = NULL;
+    TN *offset   = NULL;
+    TN *index   = NULL;
+    TN *scale   = NULL;
+    if (base_loc >= 0) 
+      base = OP_opnd( load, OP_find_opnd_use( load, OU_base ) );
+    if (offset_loc >= 0) 
+      offset = OP_opnd( load, OP_find_opnd_use( load, OU_offset ) );
+    if (index_loc >= 0) 
+      index = OP_opnd( load, OP_find_opnd_use( load, OU_index ) );
+    if (scale_loc >= 0) 
+      scale = OP_opnd( load, OP_find_opnd_use( load, OU_scale ) );
+
+    if (!offset || TN_is_symbol(offset))
+      return FALSE;
+
+    // base and index, if defined, should not be re-defined between
+    // load and op.
+    if (base_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, base_loc))
+      return FALSE;
+    if (index_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, index_loc))
+      return FALSE;
+
+    TOP topcode;
+    if (base && offset && index && scale) {
+      topcode = TOP_fmovddupxx;
+      if (Is_Target_Orochi() && Is_Target_AVX())
+	topcode = TOP_vmovddupxx;
+      new_op = Mk_OP (topcode, 
+	  OP_result(op, 0), 
+	  OP_opnd(load, 0), 
 		    OP_opnd(load, 1), 
 		    OP_opnd(load, 2), 
 		    OP_opnd(load, 3));
-  } else if (base && offset) {
-    topcode = TOP_fmovddupx;
-    if (Is_Target_Orochi() && Is_Target_AVX())
-      topcode = TOP_vmovddupx;
-    new_op = Mk_OP (topcode, 
-		    OP_result(op, 0), 
-		    OP_opnd(load, 0), 
-		    OP_opnd(load, 1));
-  } else if (index && scale && offset) {
-    topcode = TOP_fmovddupxxx;
-    if (Is_Target_Orochi() && Is_Target_AVX())
-      topcode = TOP_vmovddupxxx;
-    new_op = Mk_OP (topcode, 
-		    OP_result(op, 0), 
-		    OP_opnd(load, 0), 
-		    OP_opnd(load, 1), 
-		    OP_opnd(load, 2));
-  }
-  
-  if ( op == shuf_op /* op uses result of a load */ &&
-       TOP_is_vector_high_loadstore( OP_code( load ) ) ) {
-    INT offset_loc = OP_find_opnd_use( new_op, OU_offset );
-    INT offset_value = TN_value( OP_opnd( new_op, offset_loc ) );
-    Set_OP_opnd( new_op, offset_loc, 
-		 Gen_Literal_TN( offset_value - 8, 
-				 TN_size( OP_opnd( new_op, offset_loc ) ) ) );    
-  }
-  else if ( !TOP_is_vector_high_loadstore( OP_code( load ) ) ) {
-    INT offset_loc = OP_find_opnd_use( new_op, OU_offset );
-    INT offset_value = TN_value( OP_opnd( new_op, offset_loc ) );
-    Set_OP_opnd( new_op, offset_loc, 
+    } else if (base && offset) {
+      topcode = TOP_fmovddupx;
+      if (Is_Target_Orochi() && Is_Target_AVX())
+	topcode = TOP_vmovddupx;
+      new_op = Mk_OP (topcode, 
+	  OP_result(op, 0), 
+	  OP_opnd(load, 0), 
+	  OP_opnd(load, 1));
+    } else if (index && scale && offset) {
+      topcode = TOP_fmovddupxxx;
+      if (Is_Target_Orochi() && Is_Target_AVX())
+	topcode = TOP_vmovddupxxx;
+      new_op = Mk_OP (topcode, 
+	  OP_result(op, 0), 
+	  OP_opnd(load, 0), 
+	  OP_opnd(load, 1), 
+	  OP_opnd(load, 2));
+    }
+
+    if ( op == shuf_op /* op uses result of a load */ &&
+	TOP_is_vector_high_loadstore( OP_code( load ) ) ) {
+      INT offset_loc = OP_find_opnd_use( new_op, OU_offset );
+      INT offset_value = TN_value( OP_opnd( new_op, offset_loc ) );
+      Set_OP_opnd( new_op, offset_loc, 
+	  Gen_Literal_TN( offset_value - 8, 
+	    TN_size( OP_opnd( new_op, offset_loc ) ) ) );    
+    }
+    else if ( op != shuf_op && !TOP_is_vector_high_loadstore( OP_code( load ) ) ) {
+      INT offset_loc = OP_find_opnd_use( new_op, OU_offset );
+      INT offset_value = TN_value( OP_opnd( new_op, offset_loc ) );
+      Set_OP_opnd( new_op, offset_loc, 
 		 Gen_Literal_TN( offset_value + 8, 
 				 TN_size( OP_opnd( new_op, offset_loc ) ) ) );
+    }
   }
-
   if (new_op) {
     if (shuf_op != op) {
       if( EBO_Trace_Data_Flow ){
