@@ -3512,3 +3512,128 @@ BOOL WN_Intrinsic_OP_Slave (WN *wn) {
     return FALSE;	
 }
 #endif
+
+// Query whether wn represents a bit operation.
+BOOL
+WN_is_bit_op(WN * wn)
+{
+  switch (WN_operator(wn)) {
+  case OPR_BAND:
+  case OPR_BXOR:
+  case OPR_BNOT:
+  case OPR_BIOR:
+  case OPR_BNOR:
+    return TRUE;
+  default:
+    ;
+  }
+  return FALSE;
+}
+
+// Get bit position of the TRUE bit for an integer constant WHIRL if its value is a power of 2.
+// Return -1 if the value is not a power of 2.
+int
+WN_get_bit_from_const(WN * wn)
+{
+  OPERATOR opr = WN_operator(wn);
+  FmtAssert((opr == OPR_INTCONST), ("Expect an integer constant"));
+
+  INT64 val = WN_const_val(wn);
+  int count = 0;
+  int bit_pos = 0;
+  int bit_true;
+
+  while (val > 0) {
+    if ((val & 0x1) == 1) {
+      count++;
+      bit_true = bit_pos;
+    }
+      
+    val >>= 1;
+    bit_pos++;
+  }
+
+  if (count == 1)
+    return bit_true;
+
+  return -1;
+}
+
+// Get bit position of the TRUE bit for an integral expression if its value is a power of 2.
+// Return NULL if the value is not a power of 2 or if we can't tell.
+// This routine does not process constants. Use WN_get_bit_from_const for constants.
+WN *
+WN_get_bit_from_expr(WN * wn)
+{
+  OPERATOR opr = WN_operator(wn);
+  FmtAssert((opr != OPR_INTCONST), ("Do not expect an integer constant"));
+
+  if (opr == OPR_SHL) {
+    WN * wn_tmp = WN_kid(wn, 0);
+
+    if ((WN_operator(wn_tmp) == OPR_INTCONST)
+	&& (WN_const_val(wn_tmp) == 1)) 
+      return WN_kid(wn, 1);
+  }
+
+  return NULL;
+}
+
+// Query whether wn has a value that is a power of 2.
+// Return FALSE if the value is not a power of 2 or if we can't tell.
+BOOL
+WN_is_power_of_2(WN * wn)
+{
+  OPERATOR opr = WN_operator(wn);
+
+  if (opr == OPR_INTCONST) {
+    if (WN_get_bit_from_const(wn) >= 0)
+      return TRUE;
+  }
+  else if (WN_get_bit_from_expr(wn)) 
+    return TRUE;
+
+  return FALSE;
+}
+
+// Match pattern:
+//  a = a  bit-op  ( 1 << b)
+// where bit-op is a bit operation.
+//
+// If matched, Return the RHS WHIRL tree "a bit-op ( 1 << b)",
+WN *
+WN_get_bit_reduction(WN * wn)
+{
+  OPERATOR opr = WN_operator(wn);
+
+  if (OPERATOR_is_store(opr)) {
+    WN * wn_data = WN_kid(wn, 0);
+    WN * wn_addr = NULL;
+
+    if (!OPERATOR_is_scalar_store(opr))
+      wn_addr = WN_kid(wn, 1);
+
+    if (WN_is_bit_op(wn_data)) {
+      WN * wn_tmp = WN_kid(wn_data, 0);
+      opr = WN_operator(wn_tmp);
+      
+      if (OPERATOR_is_load(opr)) {
+	if (!OPERATOR_is_scalar_load(opr)) {
+	  if (wn_addr && (WN_Simp_Compare_Trees(WN_kid(wn_tmp, 0), wn_addr) == 0)) {
+	    wn_tmp = WN_kid(wn_data, 1);
+	    if (wn_tmp && WN_is_power_of_2(wn_tmp))
+	      return wn_data;
+	  }
+	}
+	else if ((wn_addr == NULL) && (WN_st_idx(wn_tmp) == WN_st_idx(wn))
+		 && WN_offset(wn_tmp) == WN_offset(wn)) {
+	  wn_tmp = WN_kid(wn_data, 1);
+	  if (wn_tmp && WN_is_power_of_2(wn_tmp))
+	    return wn_data;
+	}
+      }
+    }
+  }
+  
+  return NULL;
+}

@@ -1278,6 +1278,9 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 	actions |= LOWER_BIT_FIELD_ID;
     else
 	actions |= LOWER_BITS_OP;
+
+    if (WOPT_Simplify_Bit_Op)
+      actions |= LOWER_SIMPLIFY_BIT_OP;
                                                                                                                                                              
     actions |= LOWER_TO_MEMLIB; // add memlib transformation
  

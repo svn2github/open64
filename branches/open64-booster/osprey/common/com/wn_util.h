@@ -204,7 +204,7 @@
 ***
 ***  To delete node "wn" from a BLOCK node. Note, WN_DELETE_Tree is called 
 ***  which is a recursive delete, it deletes all the kids.
-*** 
+***
 ***  WN *WN_EXTRACT_FromBlock(
 ***       WN *parent,
 ***       WN *item)

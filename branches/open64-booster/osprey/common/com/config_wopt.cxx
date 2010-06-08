@@ -331,7 +331,7 @@ INT32 WOPT_Enable_Pro_Loop_Interchange_Func_Limit = -1; // Enable proactive loop
                                                         // functions within the limit.
 BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans = TRUE;  // Enables proactive loop fusion transformation
 BOOL  WOPT_Enable_Pro_Loop_Interchange_Trans = TRUE; // Enables proactive loop interchange transformation
-BOOL  WOPT_Enable_If_Flip = TRUE; // Enable specialized if-merging involving bit operations.
+BOOL  WOPT_Simplify_Bit_Op = TRUE; // Enable specialized bit operation optimizations.
 BOOL  WOPT_Enable_Reassociation_CSE = TRUE;  // Enables Reassociation based CSE
 
 BOOL  WOPT_Enable_Mem_Clear_Remove = TRUE;  // Enables removal of redundant mem clear after a calloc
@@ -769,8 +769,8 @@ static OPTION_DESC Options_WOPT[] = {
     FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Fusion_Trans, NULL },
   { OVK_BOOL,	OV_VISIBLE, TRUE, "pro_loop_interchange_trans", "pro_loop_interchange_trans",
     FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Interchange_Trans, NULL },
-  { OVK_BOOL,	OV_VISIBLE, TRUE, "if_flip", "if_flip",
-    FALSE, 0, 1, &WOPT_Enable_If_Flip, NULL },
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "simp_bit_op", "simp_bit_op",
+    FALSE, 0, 1, &WOPT_Simplify_Bit_Op, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "reasso_cse", "reasso_cse",
     TRUE, 0, 1, &WOPT_Enable_Reassociation_CSE, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "mem_clear_remove", "mem_clear_remove",

@@ -1659,7 +1659,7 @@ IF_MERGE_TRANS::Top_down_trans(SC_NODE * sc)
     sc1 = sc1->Next_sibling_of_type(SC_IF);
   }
 
-  if (WOPT_Enable_If_Flip) {
+  if (WOPT_Simplify_Bit_Op) {
     // Do if-flipping
     _action = DO_IFFLIP;
     sc1 = sc->First_kid_of_type(SC_IF);
@@ -2011,7 +2011,7 @@ CFG_TRANS::Maybe_assigned_expr(WN * wn1, WN * wn_root)
 	&& Is_aliased(wn1, wn_root))
       return TRUE;
   }
-  if (WOPT_Enable_If_Flip) {
+  if (WOPT_Simplify_Bit_Op) {
     // No alias if wn1 is a reduction of a single bit operation on an object, 
     // and wn_root is a bit operation on a different bit of the same object.
     WN * wn_bit_op = WN_get_bit_reduction(wn1);
@@ -2431,6 +2431,20 @@ IF_MERGE_TRANS::Is_candidate(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
       // if (a & (1 << b)) {
       //   ......
       // }
+
+      OPERATOR opr = WN_operator(expr1);
+      if ((opr != OPR_EQ) && (opr != OPR_NE)) {
+	Delete_val_range_maps();
+	return FALSE;
+      }
+      
+      WN * wn_const = WN_kid(expr1, 1);
+      if ((WN_operator(wn_const) != OPR_INTCONST)
+	  || (WN_const_val(wn_const) != 0)) {
+	Delete_val_range_maps();
+	return FALSE;
+      }
+      
       WN * wn_and = WN_kid(expr1, 0);
 
       if (!wn_and || (WN_operator(wn_and) != OPR_BAND)) {
