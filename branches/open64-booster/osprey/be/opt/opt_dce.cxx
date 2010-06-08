@@ -4216,7 +4216,34 @@ DCE::Strip_try_region_helper (BB_REGION* rgn) {
     return FALSE;
   }
 
-  // step 1 :check the calls in the region
+  // step 1: don't touch this region if it isn't in good shape.
+  //
+  if (rgn_first_bb->Next() != rgn_last_bb) {
+    for (BB_NODE* t = rgn_first_bb->Next(); TRUE; t = t->Next ()) {
+      if (t->Kind () == BB_REGIONSTART) {
+        // We need to skip inner regions, therefore the region-info
+        // should be well maintained.
+        //
+        BB_REGION* inner_rgn = t->Regioninfo ();
+        if (!inner_rgn || !inner_rgn->Region_end () || 
+            inner_rgn->Region_end () == rgn_last_bb) {
+          if (Tracing ()) {
+            fprintf (TFile, 
+                     "Strip_try_region_helper: skip region started at BB%d "
+                     "because inner region start at BB%d isn't in good shape",
+                     rgn_first_bb->Id(), t->Id());
+          } 
+          return FALSE;
+        }
+      }
+
+      if (t == rgn_last_bb) {
+        break;
+      }
+    } // end of for-loop
+  }
+
+  // step 2 :check the calls in the region
   //
   for (BB_NODE* bb = rgn_first_bb; bb; bb = bb->Next ()) {
       if (BB_may_throw (bb)) return FALSE; 
@@ -4229,23 +4256,26 @@ DCE::Strip_try_region_helper (BB_REGION* rgn) {
              " bb%d->bb%d\n", rgn_first_bb->Id(), rgn_last_bb->Id());
   }
 
-  // step 2: remove the region information associated with the 1st block of 
+  // step 3: remove the region information associated with the 1st block of 
   //   the region.
   //
   Remove_region_entry (rgn_first_bb);
   rgn_first_bb->Set_kind (BB_GOTO);
 
-  // step 3: remove the region information associated with the last block
-  //   of the region.
+  // step 4: Convert OPR_REGION_EXIT to goto; change BB_REGIONEXIT to BB_GOTO.
   //
-  Is_True (rgn_last_bb->Kind () == BB_REGIONEXIT, 
-           ("last bb is not BB_REGIONEXIT"));
-  rgn_last_bb->Set_regioninfo (NULL);
-  rgn_last_bb->Set_kind (BB_GOTO);
+  for (BB_NODE* blk = rgn_first_bb; TRUE; ) {
 
-  // step 4: convert OPR_REGION_EXIT to goto
-  //
-  for (BB_NODE* blk = rgn_first_bb; TRUE;  blk = blk->Next ()) {
+    // skip innert regions 
+    //
+    BB_NODE* next_blk = blk->Next ();
+    if (blk->Kind () == BB_REGIONSTART) {
+      next_blk = blk->Regioninfo()->Region_end ()->Next();
+    }
+
+    // Change BB_REGIONEXIT to BB_GOTO, and remove region information associated
+    // with it.
+    //
     if (blk->Kind() == BB_REGIONEXIT) {
       blk->Set_regioninfo (NULL);
       blk->Set_kind (BB_GOTO);
@@ -4266,8 +4296,11 @@ DCE::Strip_try_region_helper (BB_REGION* rgn) {
       }
     }
 
+    // advance to next block
+    //
     if (blk == rgn_last_bb) { break; }
-  } // end of for-loop
+    blk = next_blk;
+  }
   
   return TRUE;
 }
