@@ -2990,6 +2990,9 @@ static void IPA_identify_no_return_proc_recursive(IPA_NODE *node)
       IPA_NODE *caller = IPA_Call_Graph->Caller(edge);
       IPA_NODE_CONTEXT context(caller);
       caller->Whirl_Tree(TRUE);
+      if (caller->Has_Pending_Icalls() || 
+          caller->Has_Pending_Virtual_Functions())
+        continue;
       IPA_Call_Graph->Map_Callsites(caller);
       WN *call = edge->Whirl_Node();
       WN_Set_Call_Never_Return(call);
