@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007 Pathscale, LLC. All Rights Reserved.
  */
 

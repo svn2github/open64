@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 /* placeholder for license */
 
 #ifndef opt_peel_unroll_INCLUDED

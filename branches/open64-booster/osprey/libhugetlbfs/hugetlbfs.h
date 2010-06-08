@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * libhugetlbfs - Easy use of Linux hugepages
  * Copyright (C) 2005-2006 David Gibson & Adam Litke, IBM Corporation.
  *

@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 /* Placeholder for license */
 
 #include "tracing.h"
