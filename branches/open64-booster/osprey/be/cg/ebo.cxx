@@ -4385,7 +4385,8 @@ void EBO_swap_subtract_operands()
               // possibly saving the copy operation
               Set_OP_opnd(op, 0, opnd1_tn);
               Set_OP_opnd(op, 1, opnd0_tn);
-              subtract_operands_swapped = 1;
+              subtract_operands_swapped = 0; // TNs_Are_Equivalent() is not
+                                             // precise enough for copy prop
             }
           }
         }
