@@ -124,7 +124,7 @@ BOOL CG_fma4_load_exec = FALSE;
 BOOL CG_128bitstore = TRUE;
 BOOL CG_branch_fuse = TRUE;
 BOOL CG_dispatch_schedule = FALSE;
-BOOL CG_strcmp_expand = TRUE;
+BOOL CG_strcmp_expand = FALSE;
 #endif
 BOOL CG_opt_level;
 BOOL CG_localize_tns = FALSE;
