@@ -49,6 +49,7 @@
 #include "ipc_symtab_merge.h"
 #include "ipc_ty_hash.h"
 #include "ipa_chg.h"
+#include "ipa_trace.h"
 #include "ipa_devirtual.h"
 
 using std::queue;
@@ -90,7 +91,8 @@ static queue <CONVERSION_CANDIDATE> conversion_list;
  * Find the corresponding INITO entry that stores vtable by ST index.
  */
 INITO_IDX
-Find_inito_by_st(ST_IDX st_idx) {
+Find_inito_by_st(ST_IDX st_idx)
+{
     if (st_inito_map.find(st_idx) == st_inito_map.end()) {
         UINT inito_count = INITO_Table_Size(GLOBAL_SYMTAB);
         for (UINT i = 1; i < inito_count; i++) {
@@ -229,7 +231,8 @@ Find_virtual_function(TY_IDX actual_class,
 
 // if the function is constructor, return its base class type and set sym_pu as its PU_IDX.
 TY_INDEX
-Is_constructor(SUMMARY_SYMBOL *func_sym, PU_IDX *sym_pu) {
+Is_constructor(SUMMARY_SYMBOL *func_sym, PU_IDX *sym_pu)
+{
     ST_IDX func_st_idx = func_sym->St_idx();
     ST *func_st = &St_Table[func_st_idx];
     PU_IDX pui = ST_pu(func_st);
@@ -244,7 +247,8 @@ Is_constructor(SUMMARY_SYMBOL *func_sym, PU_IDX *sym_pu) {
 
 // Collect the instances of classes
 void
-IPA_collect_class_instances() {
+IPA_collect_class_instances()
+{
     hash_set <TY_INDEX> invoked_base_classes;
     IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
     // Traverse the call graph
@@ -294,7 +298,8 @@ IPA_collect_class_instances() {
  *  Otherwise, return SUBCLASS_UNSET (no instantiated class) or SUBCLASS_MORE_THAN_ONE.
  */
 TY_INDEX
-Class_has_subclass(TY_INDEX base) {
+Class_has_subclass(TY_INDEX base)
+{
     if (base_sub_map.find(base) == base_sub_map.end()) {
         TY_INDEX live_sub = SUBCLASS_UNSET;
         for (hash_map <TY_INDEX, PU_IDX>::const_iterator iter
@@ -322,7 +327,9 @@ Class_has_subclass(TY_INDEX base) {
  * They must be in the same PU node that method indicates.
  */
 void
-Convert_virtual_call(IPA_NODE *method) { // Left by earlier developer.
+Convert_virtual_call(IPA_NODE *method)
+{
+   // Left by earlier developer.
 
     // wn_map maps the id of WN to WN
     hash_map <WN_MAP_ID, WN *> wn_map;
@@ -447,7 +454,8 @@ Is_Return_Store_Stmt (WN * wn)
  */
 
 void
-IPA_devirtualization() { 
+IPA_devirtualization()
+{ 
 
     live_class.clear();
     base_sub_map.clear();
@@ -663,7 +671,8 @@ Apply_Virtual_Function_Transform() {
 */
 
 void 
-IPA_Fast_Static_Analysis_VF () {
+IPA_Fast_Static_Analysis_VF ()
+{
     IPA_VIRTUAL_FUNCTION_TRANSFORM vf_transform;
     vf_transform.Initialize_Virtual_Function_Transform ();
     vf_transform.Prepare_Virtual_Function_Transform ();
@@ -677,8 +686,9 @@ IPA_Fast_Static_Analysis_VF () {
     vf_transform.Miss_Hit_Profile ();
 }
 
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Initialize_Virtual_Function_Transform () {
-    Enable_Debug = false;
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Initialize_Virtual_Function_Transform ()
+{
+    Enable_Debug = Get_Trace(TP_IPA, IPA_TRACE_ICALL_DEVIRTURAL);
     if (Enable_Debug == true) {
         Virtual_Whirls = fopen ("Virtual_Whirls.log", "w");
         Transformed_Whirls = fopen ("Tranformed_Whirls.log", "w");
@@ -725,14 +735,16 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Initialize_Virtual_Function_Transform () {
     Class_Type_Analysis = false;
 }
 
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Finalize_Virtual_Function_Transform () {
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Finalize_Virtual_Function_Transform ()
+{
     if (Enable_Debug == true) {
         fclose(Virtual_Whirls);
         fclose(Transformed_Whirls);
     }
 }
 
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Build_PU_NODE_INDEX_Map () {
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Build_PU_NODE_INDEX_Map ()
+{
     IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
     for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
         IPA_NODE *method = cg_iter.Current();
@@ -757,7 +769,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Build_PU_NODE_INDEX_Map () {
     }
 }
 
-int IPA_VIRTUAL_FUNCTION_TRANSFORM::Get_Callsite_Count (IPA_NODE* method) {
+int IPA_VIRTUAL_FUNCTION_TRANSFORM::Get_Callsite_Count (IPA_NODE* method)
+{
     SUMMARY_PROCEDURE* method_summary = method->Summary_Proc();
     SUMMARY_CALLSITE* callsite_array =
         IPA_get_callsite_array(method) + 
@@ -768,7 +781,8 @@ int IPA_VIRTUAL_FUNCTION_TRANSFORM::Get_Callsite_Count (IPA_NODE* method) {
 
 // Following two functions,Identify_Constructors, Get_Constructor_Type
 // are for collecting constructors from call graph
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Identify_Constructors () {
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Identify_Constructors ()
+{
     IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
     for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
         IPA_NODE *method = cg_iter.Current();
@@ -814,7 +828,7 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Identify_Constructors () {
                       } else {
                           if (Enable_Debug == true) {
                               if (pui < PU_IDX_ZERO || pui > PU_Table_Size()) 
-                                  printf ("IPA_fast_static_analysis_VF:%s %d %s %d",  
+                                  fprintf (Virtual_Whirls, "IPA_fast_static_analysis_VF:%s %d %s %d",  
                                           "Node's PU_IDX:", pui,
                                           "not in range 0 <= idx <",
                                            PU_Table_Size());
@@ -835,7 +849,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Identify_Constructors () {
 }
 
 TY_INDEX IPA_VIRTUAL_FUNCTION_TRANSFORM::Get_Constructor_Type (
-        SUMMARY_SYMBOL* func_sym) {
+        SUMMARY_SYMBOL* func_sym)
+{
     Is_True((ST_IDX_level(func_sym->St_idx()) <= GLOBAL_SYMTAB),
             ("SUMMARY_SYMBOL for function call not a global Symbol"));
 
@@ -854,14 +869,16 @@ TY_INDEX IPA_VIRTUAL_FUNCTION_TRANSFORM::Get_Constructor_Type (
 // This function IPA_VIRTUAL_FUNCTION_TRANSFORM::Prepare_Virtual_Function_Transform 
 // 1: builds the class hierarchy, 
 // 2: collects constructor calls from the call graph
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Prepare_Virtual_Function_Transform () {
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Prepare_Virtual_Function_Transform ()
+{
     IPA_Class_Hierarchy = Build_Class_Hierarchy (); 
     Identify_Constructors ();
 }
 
 // This function does the crux of the work, find virtual function and transform them
 // after heuristic analysis
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Transform_Virtual_Functions () {
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Transform_Virtual_Functions ()
+{
     IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
     for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
         IPA_NODE *method = cg_iter.Current();
@@ -876,7 +893,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Transform_Virtual_Functions () {
 }
 
 void IPA_VIRTUAL_FUNCTION_TRANSFORM::Transform_Virtual_Functions_Per_Node (
-        IPA_NODE *method) {
+        IPA_NODE *method)
+{
     Is_True ((method != NULL), 
              ("IPA_fast_static_analysis_VF:%s %s\n",
               "Test method != NULL fails in", 
@@ -1053,6 +1071,12 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Transform_Virtual_Functions_Per_Node (
                                 }
                             }
                         }
+                        else {
+                            // change the dummy callsite to icall target so later 
+                            // the icall_process can handle the call
+                            dummy_cs->Set_icall_target();
+                            dummy_cs->Reset_virtual_function_target();
+                        }
                     }
                     callsite_array++;
                     count--;
@@ -1086,7 +1110,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Transform_Virtual_Functions_Per_Node (
 }
 
 void IPA_VIRTUAL_FUNCTION_TRANSFORM::Apply_Virtual_Function_Transform (
-        VIRTUAL_FUNCTION_CANDIDATE vcand) {
+        VIRTUAL_FUNCTION_CANDIDATE vcand)
+{
     //
     // This function contains the "oracle based static dispatch" 
     // function calling scheme.  We add code to load the ST
@@ -1427,16 +1452,19 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Apply_Virtual_Function_Transform (
     }
 }
 
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Update_Class_Hierarchy_Depth(int index) {
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Update_Class_Hierarchy_Depth(int index)
+{
     Class_Hierarchy_Depth[index] = Class_Hierarchy_Depth[index] + 1;
 }
         
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Update_Instances (int index) {
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Update_Instances (int index)
+{
     Num_Instances[index] = Num_Instances[index] + 1;
 }
 
 void IPA_VIRTUAL_FUNCTION_TRANSFORM::Build_Virtual_Function_Whirl_Map (
-    IPA_NODE *method, WN_IPA_MAP& a_wn_ipa_map) {
+    IPA_NODE *method, WN_IPA_MAP& a_wn_ipa_map)
+{
     IPA_NODE_CONTEXT context(method);
     WN *wn_start = method->Whirl_Tree(TRUE);
     Is_True(wn_start, ("IPA_fast_static_analysis_VF: Whirl node is empty."));
@@ -1470,7 +1498,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Build_Virtual_Function_Whirl_Map (
 
 hash_set<TY_INDEX> 
     IPA_VIRTUAL_FUNCTION_TRANSFORM::Identify_Instances_From_Subclass_Hierarchy (
-        TY_INDEX declared_class) {
+        TY_INDEX declared_class)
+{
     hash_set<TY_INDEX> targets;
     hash_set <TY_INDEX> inter_set;
     IPA_Class_Hierarchy->Get_Sub_Class_Hierarchy (declared_class, targets);
@@ -1488,7 +1517,8 @@ hash_set<TY_INDEX>
 void IPA_VIRTUAL_FUNCTION_TRANSFORM::Identify_Virtual_Function (
             hash_set<TY_INDEX> constructed_types_set, 
             SUMMARY_CALLSITE *callsite,
-            VIRTUAL_FUNCTION_CANDIDATE& vcand) {
+            VIRTUAL_FUNCTION_CANDIDATE& vcand)
+{
     //
     // The following is borrowed directly from the 
     // earlier developer's work.
@@ -1711,7 +1741,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Identify_Virtual_Function (
 void IPA_VIRTUAL_FUNCTION_TRANSFORM::Locate_Virtual_Function_In_Virtual_Table (
     IPA_NODE *constructor,
     WN* vtab, size_t func_offset, 
-    VIRTUAL_FUNCTION_CANDIDATE& vcand) {
+    VIRTUAL_FUNCTION_CANDIDATE& vcand)
+{
     
     // I borrowed everything here from 
     // the earlier developer.
@@ -1777,7 +1808,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Locate_Virtual_Function_In_Virtual_Table (
     vcand.Transform_Function_ST_IDX = st_id;
 }
 
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Dump_Constructors () {
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Dump_Constructors ()
+{
     if (Enable_Debug == true) {
         FILE *fp = fopen("Constructors.log", "w");
         for (hash_map<TY_INDEX, PU_IDX>::iterator cm_it = Constructor_Map.begin();
@@ -1804,7 +1836,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Dump_Constructors () {
     }
 }
 
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Dump_Virtual_Function_Transform_Candidates () {
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Dump_Virtual_Function_Transform_Candidates ()
+{
     if (Enable_Debug == true) {
         FILE *fp = fopen("VF_opt_set.log", "w");
         for (VIRTUAL_FUNCTION_DEBUG_DATA::iterator vf_it = 
@@ -1856,7 +1889,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Dump_Virtual_Function_Transform_Candidates 
     }
 }
 
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Fixup_Virtual_Function_Callsites () {
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Fixup_Virtual_Function_Callsites ()
+{
     IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
     for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
         IPA_NODE *method = cg_iter.Current();
@@ -1870,7 +1904,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Fixup_Virtual_Function_Callsites () {
 }
 
 void IPA_VIRTUAL_FUNCTION_TRANSFORM::Fixup_Virtual_Function_Callsites_Per_Node (
-        IPA_NODE *method) {
+        IPA_NODE *method)
+{
     if (method == NULL)
         return;
     PU_IDX pui = ST_pu(method->Func_ST());
@@ -1912,7 +1947,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Fixup_Virtual_Function_Callsites_Per_Node (
     }
 }
 
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Print_Statistics () {
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Print_Statistics ()
+{
     if (Enable_Statistics == true) {
         FILE *statistics_file = fopen("Statistics.log", "w");
         fprintf (statistics_file, 
@@ -2002,7 +2038,8 @@ int main () {
 }
 */
 
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Miss_Hit_Profile () {
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Miss_Hit_Profile ()
+{
     if (Enable_Profile == true) {
         if (Hit_ST_IDX != ST_IDX_ZERO && Miss_ST_IDX != ST_IDX_ZERO) {
             FILE *csvfile = fopen("Miss_hit_profile.csv", "w");
@@ -2037,7 +2074,8 @@ void IPA_VIRTUAL_FUNCTION_TRANSFORM::Miss_Hit_Profile () {
    3,1085 
 */
 
-void IPA_VIRTUAL_FUNCTION_TRANSFORM::Histogram_Statistics () {
+void IPA_VIRTUAL_FUNCTION_TRANSFORM::Histogram_Statistics ()
+{
     if (Enable_Statistics == true) {
         if ((Class_Hierarchy_Depth.size() != 0) || (Num_Instances.size() != 0)) {
             FILE *csvfile = fopen ("vf_class_hist.csv", "w");

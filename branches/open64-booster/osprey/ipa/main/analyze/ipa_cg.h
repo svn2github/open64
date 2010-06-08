@@ -420,6 +420,10 @@ public:
   INLINED_BODY_LIST& Inlined_list ()    { return _inlined_list; }
 #endif // _LIGHTWEIGHT_INLINER
 
+  // return true if the call expresion node has an edge in the 
+  // IPA_NODE
+  BOOL has_edge_for_node(WN *wn) const;
+
   // node is the result of cloning  
   void Set_Clone ()	        { _flags |= _clone; }
   BOOL Is_Clone () const        { return _flags & _clone; }
@@ -1198,7 +1202,7 @@ public:
 
 
   void Print_vobose (FILE*);
-  void Print_vobose (FILE*, TRAVERSAL_ORDER);
+  void Print_vobose (FILE*, TRAVERSAL_ORDER, BOOL);
 
   
   // map callsites in the caller to WN nodes

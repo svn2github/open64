@@ -558,7 +558,7 @@ void inline_do_it (IPA_EDGE * ed, IPA_NODE * caller, IPA_NODE * callee,
 						  callee);
     if (Trace_IPA || Trace_Perf) {
         UINT32 callee_weight = Effective_weight (callee);
-	fprintf (stderr, "%s inlined into %s", callee->Name(),caller->Name());
+	fprintf (stderr, "%s inlined into %s\n", callee->Name(),caller->Name());
 	fprintf (TFile, "%s inlined into ", DEMANGLE (callee->Name()));
 	fprintf (TFile, "%s (size: %d + %d = %d)   (edge# %d) \n", DEMANGLE (caller->Name()), callee_weight, caller_weight, combined_weight, ed->Edge_Index());
     }
@@ -933,7 +933,7 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
     inline_do_it (ed, caller, callee, cg);
 #else
     inline_do_it: if (Trace_IPA || Trace_Perf) {
-	fprintf (stderr, "%s inlined into %s", callee->Name(),caller->Name());
+	fprintf (stderr, "%s inlined into %s\n", callee->Name(),caller->Name());
 	fprintf (TFile, "%s inlined into ", DEMANGLE (callee->Name()));
 	fprintf (TFile, "%s (size: %d + %d = %d)   (edge# %d) \n",
                  DEMANGLE (caller->Name()), callee_weight, caller_weight, combined_weight, ed->Edge_Index());

@@ -89,6 +89,9 @@
 #include "intrn_info.h"
 #endif
 
+#include <set>
+using std::set;
+
 #ifdef KEEP_WHIRLSTATS
 INT32 whirl_num_allocated=0;
 INT32 whirl_bytes_allocated=0;
@@ -101,6 +104,10 @@ void whirlstats()
    fprintf(stderr,"Num deallocated = %d\nbytes deallocated = %d\n",whirl_num_deallocated,whirl_bytes_deallocated);
 }
 #endif
+
+UINT32 WN::the_unique_id = 0;
+BOOL IR_dump_wn_addr = FALSE;
+BOOL IR_dump_wn_id = FALSE;
 
 MEM_POOL WN_mem_pool;
 MEM_POOL *WN_mem_pool_ptr = &WN_mem_pool;
@@ -531,6 +538,44 @@ void WN_Reset_Num_Delete_Cleanup_Fns(void)
  */
 #define New_Map_Id() ((WN_MAP_ID) (-1))
 
+static WN* trace_wn_node=NULL;
+static mINT64 trace_wn_mapid = -1;
+static UINT32 trace_wn_id = 0;
+void Set_Trace_Wn_Node(WN* n) { trace_wn_node = n; }
+void Set_Trace_Wn_mapid(mINT64 mapid) { trace_wn_mapid = mapid; }
+void gdb_stop_here()
+{
+   return ;
+}
+
+void Check_Traced_Wn_Node(WN *n)
+{
+   if (n && (n == trace_wn_node 
+             || trace_wn_mapid != -1 && WN_map_id(n) == trace_wn_mapid
+             || trace_wn_id != 0 && trace_wn_id == WN_id(n)
+             ) ) {
+      gdb_stop_here();
+   }
+}
+
+static set<UINT32> copied_ids;
+
+void Set_Trace_Wn_id(UINT32 wn_id) 
+{ 
+   trace_wn_id = wn_id; 
+   copied_ids.insert(wn_id);
+}
+
+void Trace_Wn_Copy(const WN *wn, const WN *src_wn)
+{
+   set<UINT32>::iterator itr = copied_ids.find(WN_id(src_wn));
+   if (itr != copied_ids.end()) {
+      // found src_wn's wn_id in copied list
+      copied_ids.insert(WN_id(wn));
+      gdb_stop_here();
+   }
+}
+
 /* ---------------------------------------------------------------------
  * WN *WN_Create(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, mINT16 kid_count)
  *
@@ -594,6 +639,7 @@ WN_Create (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, mINT16 kid_count)
     WN_set_desc(wn, desc);
     WN_set_kid_count(wn, kid_count);
     WN_set_map_id(wn, New_Map_Id());
+    wn->set_unique_id();
 
     return wn;
 }
@@ -2065,6 +2111,9 @@ WN *WN_CopyNode (const WN* src_wn)
     if (WN_kid_count(src_wn) == 3)
       WN_kid(wn, 2) = WN_kid(src_wn, 2);
 #endif
+
+    // trace copy wn node here
+    Trace_Wn_Copy(wn, src_wn);
     return(wn);
 }
 

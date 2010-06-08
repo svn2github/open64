@@ -357,6 +357,9 @@ IPO_CLONE::Copy_Node (const WN *src_wn)
     WN_Copy_sl_ext(wn, src_wn); 
 #endif 
 
+    // trace copy wn node here
+    Trace_Wn_Copy(wn, src_wn);
+
     return(wn);
 } // Copy_Node
 

@@ -212,11 +212,6 @@ void set_trace_tn(int n) { trace_tn_number_ = n; }
 
 void reset_trace_tn() { trace_tn_number_ = -1; }
 
-void gdb_stop_here()
-{
-   return ;
-}
-
 #endif
 
 

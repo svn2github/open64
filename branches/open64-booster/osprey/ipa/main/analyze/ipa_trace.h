@@ -62,5 +62,6 @@
 #define IPA_TRACE_SIMPLIFY          131072
 #define IPA_TRACE_TUNING           0x40000
 #define IPA_TRACE_TUNING_NEW       0x80000
+#define IPA_TRACE_ICALL_DEVIRTURAL 0x100000
 
 #endif /* ipa_trace_INCLUDED */

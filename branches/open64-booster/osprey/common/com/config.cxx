@@ -1238,6 +1238,14 @@ Configure (void)
     }
   }
 
+  if ( Get_Trace( TP_MISC, 0x200 ) ) {
+     IR_dump_wn_addr = TRUE;
+  }
+  if ( Get_Trace( TP_MISC, 0x400 ) ) {
+     IR_dump_wn_id = TRUE;
+  }
+  
+
 #ifdef KEEP_WHIRLSTATS
   atexit(whirlstats);
 #endif
