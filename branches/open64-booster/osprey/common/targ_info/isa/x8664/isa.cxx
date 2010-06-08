@@ -580,6 +580,7 @@ main ()
 	      "testxxx64",
 	      "testi32",
 	      "testi64",
+              "testb",
 	      "xor8",
 	      "xor16",
 	      "xor32",

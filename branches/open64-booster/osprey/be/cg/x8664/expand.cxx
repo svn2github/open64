@@ -6414,7 +6414,7 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
     ISA_REGISTER_CLASS src_rc = TN_register_class(src_tn);
 
     if (tgt_rc == src_rc && tgt_rc == ISA_REGISTER_CLASS_integer) {
-      Build_OP( is_64bit ? TOP_mov64 : TOP_mov32, tgt_tn, src_tn, ops );
+      Build_OP( Is_Target_64bit() ? TOP_mov64 : TOP_mov32, tgt_tn, src_tn, ops );
       Set_OP_copy (OPS_last(ops));
 
       // Copy the hi part of a TN pair.  Bug 8755.
@@ -6432,7 +6432,7 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
 	    hi_tgt_tn != NULL) {
 	  Is_True((hi_tgt_tn != NULL) && (hi_src_tn != NULL),
 		  ("Exp_COPY: src or target TN pair missing"));
-	  Build_OP(is_64bit ? TOP_mov64 : TOP_mov32, hi_tgt_tn, hi_src_tn, ops);
+	  Build_OP(Is_Target_64bit() ? TOP_mov64 : TOP_mov32, hi_tgt_tn, hi_src_tn, ops);
 	  Set_OP_copy (OPS_last(ops));
 	}
       }

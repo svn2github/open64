@@ -194,6 +194,7 @@ int main (int argc, char *argv[])
 		     TOP_test64,
 		     TOP_testi32,
 		     TOP_testi64,
+                     TOP_testb,
 		     TOP_setb,
 		     TOP_setae,
 		     TOP_setp,

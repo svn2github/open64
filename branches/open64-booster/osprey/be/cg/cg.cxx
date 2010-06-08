@@ -160,7 +160,7 @@ MEM_POOL MEM_local_region_pool; /* allocations local to processing a region */
 MEM_POOL MEM_local_region_nz_pool;
 
 BOOL Trace_REGION_Interface = FALSE;
-
+BOOL is_str_expand = FALSE;
 #if defined(TARG_IA64) || defined(TARG_LOONGSON)
 INT32 current_PU_handle = 0;
 INT32 rse_budget;

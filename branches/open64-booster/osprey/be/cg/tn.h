@@ -413,10 +413,11 @@ TN_RELOC_GPREL_SL2_S  = 0x50,
 #define       TN_is_constant(r)	(TN_flags(r) &   TN_CONSTANT)
 #define   Set_TN_is_constant(r)	(TN_flags(r) |=  TN_CONSTANT)
 #define       TN_is_register(r)	(!TN_is_constant(r))
-
+extern  BOOL is_str_expand;
 inline TN * CAN_USE_REG_TN (const TN *t)
 {
-	Is_True(TN_is_register(t), ("not a register tn"));
+        if(!is_str_expand)
+	  Is_True(TN_is_register(t), ("not a register tn"));
 	return (TN*)t;
 }
 

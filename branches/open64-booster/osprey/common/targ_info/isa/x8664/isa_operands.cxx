@@ -4503,6 +4503,13 @@ main()
   Operand(0, int32, opnd1);
   Operand(1, int32, opnd2);
 
+  Instruction_Group("int8 test",
+                     TOP_testb,
+                     TOP_UNDEFINED);
+  Result(0,  eflags);
+  Operand(0, int8, opnd1);
+  Operand(1, int8, opnd2);
+
   Instruction_Group("int64 compare/test",
 		    TOP_cmp64,
 		    TOP_test64,

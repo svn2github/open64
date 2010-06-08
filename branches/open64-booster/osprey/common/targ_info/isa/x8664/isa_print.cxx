@@ -159,6 +159,7 @@ main()
 			   TOP_test64,
 			   TOP_testi32,
 			   TOP_testi64,
+                           TOP_testb,
 			   TOP_fucomi,
 			   TOP_fucomip,
                            /* SSE4.1 instructions */

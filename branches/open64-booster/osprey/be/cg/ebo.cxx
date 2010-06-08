@@ -276,6 +276,8 @@ typedef union {
   }s;
 } EBO_REG_ENTRY;
 
+extern void expand_strcmp_bb(BB * call_bb);
+void Expand_strcmp(BB *bb);
 #define EBO_REG_ENTRY_ptr(re)			(re.ptr)
 #define EBO_REG_ENTRY_def_count(re)		(re.s.def_count)
 #define EBO_REG_ENTRY_reg_assigned(re)		(re.s.reg_assigned)
@@ -3698,6 +3700,9 @@ EBO_Add_BB_to_EB (BB * bb)
   }
 
   EBO_Remove_Unused_Ops(bb, normal_conditions);
+#ifdef TARG_X8664
+  Expand_strcmp(bb);
+#endif
 
  /* Remove information about TN's and OP's in this block. */
   backup_tninfo_list(save_last_tninfo);
@@ -4391,3 +4396,25 @@ BOOL Is_Copy_Instruction(OP *op)
   }
   return FALSE;
 }
+#ifdef TARG_X8664
+void Expand_strcmp(BB *bb)
+{
+  if(EBO_in_pre && (Is_Target_Orochi() || Is_Target_Barcelona())
+     && Is_Target_32bit()){
+    if(!CG_enable_feedback)
+    {
+      if (BB_call(bb)) {
+        const char *name;
+        ANNOTATION *callant = ANNOT_Get(BB_annotations(bb), ANNOT_CALLINFO);
+        CALLINFO *callinfo = ANNOT_callinfo(callant);
+        ST *st = CALLINFO_call_st(callinfo);
+        if (st != NULL){
+          name = ST_name(st);
+          if (!strcmp(name, "strcmp"))
+            expand_strcmp_bb(bb);
+        }
+      }
+    }
+  }
+}
+#endif

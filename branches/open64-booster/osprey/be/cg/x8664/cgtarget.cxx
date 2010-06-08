@@ -1712,7 +1712,8 @@ VARIANT CGTARG_Analyze_Branch(
     if( OP_code(cmp_op) == TOP_test32  ||
 	OP_code(cmp_op) == TOP_test64  ||
 	OP_code(cmp_op) == TOP_testi32 ||
-	OP_code(cmp_op) == TOP_testi64 ){
+	OP_code(cmp_op) == TOP_testi64 ||
+        OP_code(cmp_op) == TOP_testb){
       if( *tn1 == *tn2 )
 	*tn2 = Gen_Literal_TN( 0, 4 );
       else
@@ -2676,7 +2677,8 @@ CGTARG_Generate_Countdown_Loop ( TN *trip_count_tn,
   for ( op = branch->prev; op != NULL; op = op->prev ) {
     if (!cmp_found) {
       // Quit if the comparion before the branch is actually a "test".  
-      if (OP_code(op) == TOP_test32 || OP_code(op) == TOP_test64)
+      if (OP_code(op) == TOP_test32 || OP_code(op) == TOP_test64  
+          || OP_code(op) == TOP_testb)
 	return;
 
       if (OP_code(op) == TOP_cmp32 || OP_code(op) == TOP_cmp64) {

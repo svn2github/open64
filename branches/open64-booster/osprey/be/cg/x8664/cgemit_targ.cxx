@@ -3407,6 +3407,7 @@ static void Init_OP_Name()
   OP_Name[TOP_fsubxx128v64] = "subpd";
   OP_Name[TOP_fsubxxx128v64] = "subpd";
   OP_Name[TOP_test32]   = "testl";
+  OP_Name[TOP_testb]    = "testb";
   OP_Name[TOP_testx32]  = "testl";
   OP_Name[TOP_testxx32]  = "testl";
   OP_Name[TOP_testxxx32] = "testl";

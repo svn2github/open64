@@ -127,7 +127,7 @@ static const char source_file[] = __FILE__;
 #include "config_lno.h"
 
 extern BOOL TN_live_out_of( TN*, BB* );
-
+extern void Set_flags_strcmp_expand();
 
 /* Define a macro to strip off any bits outside of the left most 4 bytes. */
 #define TRUNC_32(val) (val & 0x00000000ffffffffll)
@@ -166,7 +166,7 @@ static TOP Get_Top_For_Addr_Mode (TOP, ADDR_MODE);
 static OP *Compose_Mem_Op_And_Copy_Info (OP *op, TN *index, TN *offset,
 					 TN *scale, TN *base,
 					 EBO_TN_INFO **load_actual_tninfo);
-
+void expand_strcmp_bb(BB * call_bb);
 /* Initialize and finalize ebo special routines. */
 void
 EBO_Special_Start (MEM_POOL *pool)
@@ -2856,7 +2856,7 @@ BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
       return TRUE;
   }
 
-  if( ( top == TOP_test32 || top == TOP_test64 ) &&
+  if( ( top == TOP_testb || top == TOP_test32 || top == TOP_test64 ) &&
       TNs_Are_Equivalent( OP_opnd(op,0), OP_opnd(op,1) ) ){
 
     const EBO_TN_INFO* tninfo = opnd_tninfo[0];
@@ -2964,7 +2964,8 @@ BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
     OP* test_op = tninfo == NULL ? NULL : tninfo->in_op;
     if ( test_op && 
 	 ( OP_code( test_op ) == TOP_test32 ||
-	   OP_code( test_op ) == TOP_test64 ) &&
+	   OP_code( test_op ) == TOP_test64 ||
+           OP_code( test_op ) == TOP_testb) &&
 	 TNs_Are_Equivalent( OP_opnd(test_op, 0), OP_opnd(test_op, 1) ) ) {
       const EBO_TN_INFO* test_tninfo = get_tn_info( OP_opnd(test_op, 0 ));
       OP* set_op = test_tninfo == NULL ? NULL : test_tninfo->in_op;
@@ -7433,4 +7434,229 @@ EBO_Can_Eliminate_Zero_Opnd_OP (OP *op)
       return TRUE;
   }
   return FALSE;
+}
+void expand_strcmp_bb(BB * call_bb) {
+  int i;
+  BB *bb;
+  TOP loadc;
+  int dont_expand = 0;
+  BB *beg_bb, *diff_bb, *same_bb, *cmpz_bb, *cmpbyte2_bb, *incidx_bb, *old_succ;
+  TN *beglb_tn, *difflb_tn, *oldsucclb_tn, *samelb_tn;
+  TN *arg1,*stack_arg1,*stack_arg2,*char1of1, *cmp_res, *arg2, *cmpz_res, *char2of1, *char1of2,*result, *ret_reg,*char1of3;
+  LABEL_IDX beglb, difflb, oldsucclb, samelb;
+  OP *ld_arg1, *ld_byte1, *ld_byte3, *cmp_bytes, *ld_arg2, *jne, *cmpz_byte, *je, *ld_byte2,*ld1,*ld2;
+  OP *inc_arg1, *inc_arg2, *reset_result, *jmp, *set_result, *op_iter;
+  static int first_store = 1;
+
+  Set_flags_strcmp_expand();
+  is_str_expand = TRUE;
+  /* assume that call to strcmp is the last op. This assumption is correct,
+     but should we have an IsTrue and verify to make sure?
+     verify that last op of BB is call to strcmp.
+     can also be jmp */
+  OP* last_op = BB_last_op(call_bb);
+  Is_True(OP_code(last_op) == TOP_call, ("Last op of BB is not a call"));
+
+  if (OP_code(last_op) == TOP_call) {
+    BBLIST* old_ftsucc_list = BBlist_Fall_Thru_Succ(call_bb);
+    if (old_ftsucc_list)
+      old_succ = old_ftsucc_list->item;
+  }
+
+  TOP last_op_code = OP_code(last_op);
+  if(last_op_code != TOP_call) {
+    fprintf(stderr, "unexpected opcode\n");
+  }
+
+  BB* last_bb;
+  for(last_bb = REGION_First_BB; BB_next(last_bb); last_bb = BB_next(last_bb))
+    ;
+  REGISTER rx,reg;
+  ISA_REGISTER_CLASS rc;
+  arg1 = 0;
+  arg2 = 0;
+
+  for (ld_arg1 = OP_prev(last_op); ld_arg1; ld_arg1 = OP_prev(ld_arg1)) {
+      result = OP_result(ld_arg1, 0);
+      if((OP_code(ld_arg1) == 403) && (first_store == 1))
+      {
+        TN *opnd = OP_opnd(ld_arg1, 0);
+        arg2 = opnd;
+        stack_arg2 = OP_opnd(ld_arg1, 1);
+        first_store++;
+      }
+      else
+      {
+        if((OP_code(ld_arg1) == 403) && (first_store == 2))
+        {
+          TN *opnd = OP_opnd(ld_arg1, 0);
+          arg1 = opnd;
+          stack_arg1 = OP_opnd(ld_arg1, 1);
+          first_store = 1;
+        }
+      }
+    }
+    /* Create the 6 blocks needed to expand strcmp.
+     * Add them between the call block and its successor.
+     * Chain them together by setting their prev/next fields.
+     * Set up their pred/succ and fallthrough attributes
+     */
+  BB* mylist = Gen_BB_N (6);
+
+  beg_bb = &mylist[0];
+  beglb = Gen_Label_For_BB(beg_bb);
+  beglb_tn = Gen_Label_TN(beglb, 0);
+
+  diff_bb = &mylist[5];
+  difflb = Gen_Label_For_BB(diff_bb);
+  difflb_tn = Gen_Label_TN(difflb, 0);
+  Unlink_Pred_Succ(call_bb, old_succ);
+  Target_Simple_Fall_Through_BB(call_bb, &mylist[0]);
+
+  for(i = 1; i < 6; i++){
+    Insert_BB(&mylist[i], &mylist[i-1]);
+    if (i != 5)
+      Target_Simple_Fall_Through_BB(&mylist[i-1], &mylist[i]);
+  }
+
+  Target_Simple_Fall_Through_BB(&mylist[5], old_succ);
+  Set_TN_is_global_reg(arg1); //This will make TN6 map to %rsi stay
+  Set_TN_is_global_reg(arg2);
+  Set_TN_is_global_reg(stack_arg1); //This will make TN6 map to %rsi stay
+  Set_TN_is_global_reg(stack_arg2);
+  char1of1 = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
+  Set_TN_is_global_reg(char1of1);
+  char1of2 = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
+  Set_TN_is_global_reg(char1of2);
+  char1of3 = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 1);
+  Set_TN_is_global_reg(char1of3);
+  ld_byte1 = Mk_OP(TOP_ld32,char1of1,arg1,Gen_Literal_TN(0, 4));
+
+  BB_Append_Op(beg_bb,ld_byte1);
+
+
+  cmp_res = Gen_Register_TN(ISA_REGISTER_CLASS_rflags, 8);
+  Set_TN_is_global_reg(cmp_res);
+  cmp_bytes = Mk_OP(TOP_cmpxxx8, cmp_res, char1of1, arg2,
+                    Gen_Literal_TN(1, 8) /* scaling factor */,
+                    Gen_Literal_TN(0,8));
+  BB_Append_Op(beg_bb, cmp_bytes);
+  jne = Mk_OP(TOP_jne, cmp_res, difflb_tn);
+  BB_Append_Op(beg_bb, jne);
+  oldsucclb = Gen_Label_For_BB(old_succ);
+  oldsucclb_tn = Gen_Label_TN(oldsucclb, 0);
+  Link_Pred_Succ(beg_bb, diff_bb);
+  BB_Remove_Op(call_bb, last_op);
+  /* remove the tag that says this is a call block */
+
+  ANNOTATION *ant = ANNOT_Get(BB_annotations(call_bb), ANNOT_CALLINFO);
+  BB_annotations(call_bb) = ANNOT_Unlink(BB_annotations(call_bb), ant);
+  Reset_BB_call(call_bb);
+
+  same_bb = &mylist[4];
+
+  samelb = Gen_Label_For_BB(same_bb);
+  samelb_tn = Gen_Label_TN(samelb, 0);
+
+  cmpz_bb = &mylist[1];
+  cmpz_res = cmp_res;
+  cmpz_byte = Mk_OP(TOP_testb, cmpz_res, char1of1, char1of1);
+  BB_Append_Op(cmpz_bb, cmpz_byte);
+  je = Mk_OP(TOP_je, cmpz_res, samelb_tn);
+  BB_Append_Op(cmpz_bb, je);
+  Link_Pred_Succ(cmpz_bb, same_bb);
+  cmpbyte2_bb = &mylist[2];
+  char2of1 = char1of1;
+  ld_byte2 = Mk_OP(TOP_ld8_32, char2of1, arg1, Gen_Literal_TN(1, 8));
+  BB_Append_Op(cmpbyte2_bb, ld_byte2);
+ cmp_bytes = Mk_OP(TOP_cmpxxx8, cmp_res, char2of1, arg2, Gen_Literal_TN(1, 8), Gen_Literal_TN(1,8));
+  BB_Append_Op(cmpbyte2_bb, cmp_bytes);
+  jne = Mk_OP(TOP_jne, cmp_res, difflb_tn);
+  BB_Append_Op(cmpbyte2_bb, jne);
+  Link_Pred_Succ(cmpbyte2_bb, diff_bb);
+
+
+  incidx_bb = &mylist[3];
+  TOP ptr_add = Is_Target_32bit() ? TOP_add32 : TOP_add64;
+  inc_arg1 = Mk_OP(ptr_add, arg1, arg1, Gen_Literal_TN(2, 8));
+  BB_Append_Op(incidx_bb, inc_arg1);
+  inc_arg2 = Mk_OP(ptr_add, arg2, arg2, Gen_Literal_TN(2, 8));
+  BB_Append_Op(incidx_bb, inc_arg2);
+
+  cmpz_byte = Mk_OP(TOP_testb, cmpz_res, char1of1, char1of1);
+  BB_Append_Op(incidx_bb, cmpz_byte);
+  jne = Mk_OP(TOP_jne, cmpz_res, beglb_tn);
+  BB_Append_Op(incidx_bb, jne);
+  Link_Pred_Succ(incidx_bb, beg_bb);
+  if(Is_Target_32bit()){
+    loadc = TOP_zero32;
+  }
+  else
+   loadc = TOP_zero64;
+  result = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 8);
+  Set_TN_is_global_reg(result);
+  reset_result = Mk_OP(loadc, result, Gen_Literal_TN(0, 8));
+  BB_Append_Op(same_bb, reset_result);
+  jmp = Mk_OP(TOP_jmp, oldsucclb_tn);
+  Link_Pred_Succ(same_bb, old_succ);
+
+  set_result = Mk_OP(TOP_sbb32, result, result, result);
+  BB_Append_Op(diff_bb, set_result);
+  set_result = Mk_OP(TOP_or32, result, Gen_Literal_TN(1, 8));
+  BB_Append_Op(diff_bb, set_result);
+  ld_byte1 = Mk_OP(TOP_ld32,arg1,stack_arg1/*arg1*/,Gen_Literal_TN(0, 8));
+  ld_byte2 = Mk_OP(TOP_ld32,arg2,stack_arg2/*arg1*/,Gen_Literal_TN(4, 8));
+  BB_Prepend_Op(old_succ,ld_byte1);
+  BB_Prepend_Op(old_succ,ld_byte2);
+  BB_Append_Op(same_bb, jmp);
+
+  if (BB_preds_len(old_succ) == 2) {
+    /* %eax in this block refers to result of strcmp,
+       replace its use with the result register in all
+       ops of old_succ till it is defined
+     */
+    int result_reg_def = 0;
+    for (op_iter = BB_first_op(old_succ); (!result_reg_def && op_iter);
+         op_iter = OP_next(op_iter)) {
+      for (i = 0; i < OP_opnds(op_iter); i++) {
+        TN *otn = OP_opnd(op_iter, i);
+        if (TN_is_dedicated(otn) // the dedicated tag should be removed
+            && (TN_register_and_class(otn) == CLASS_AND_REG_v0)) { //<-- int ret value
+
+          Set_OP_opnd(op_iter, i, result);
+        }
+      }
+      for (i = 0; i < OP_results(op_iter); i++) {
+        TN *rtn = OP_result(op_iter, i);
+        if (TN_is_dedicated(rtn)
+            && (TN_register_and_class(rtn) == CLASS_AND_REG_v0)) {
+          result_reg_def = 1;
+          continue;
+        }
+      }
+    }
+  }
+  else {
+    /* %eax in this block could refer to result of call to another
+       instruction in one of the other predecessor. In this case,
+       put result of strcmp in %eax in bb #9 and #10.
+     */
+    /* this case is unlikely to happen. check with a test case. if so, place an assertion here.*/
+    ret_reg = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 8);
+    Set_TN_register_and_class(ret_reg, CLASS_AND_REG_v0);//missing a call in this or earlier block-maybe
+    Set_TN_is_dedicated(ret_reg); // might not need this
+    Set_TN_is_global_reg(ret_reg);
+    TOP mov = Is_Target_32bit() ? TOP_mov32 : TOP_mov64;
+    OP *copy_result = Mk_OP(mov, ret_reg, result);
+   BB_Insert_Op(same_bb, jmp, copy_result, true);
+
+    ret_reg = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 8);
+    Set_TN_register_and_class(ret_reg, CLASS_AND_REG_v0);//missing a call in this or earlier block-maybe
+    Set_TN_is_dedicated(ret_reg); // might not need this
+    Set_TN_is_global_reg(ret_reg);
+    mov = Is_Target_32bit() ? TOP_mov32 : TOP_mov64;
+    copy_result = Mk_OP(mov, ret_reg, result);
+    BB_Append_Op(diff_bb, copy_result);
+  }
+  GRA_LIVE_Recalc_Liveness(NULL);
 }

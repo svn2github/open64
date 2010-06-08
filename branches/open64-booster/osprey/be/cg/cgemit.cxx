@@ -207,6 +207,7 @@ extern void Early_Terminate (INT status);
  * of BB_Is_Cold.
  */
 enum { IHOT=FALSE, ICOLD=TRUE };
+static BOOL is_strcmp_expand = FALSE;
 
 /* Overload BB flag <local_flag1> to indicate if a BB is cold or hot --
  * it's less overhead than BB_Is_Cold.
@@ -2127,6 +2128,10 @@ static void Verify_Operand(
     FmtAssert(FALSE, ("unhandled vtype in Verify_Operand"));
   }
 }
+void Set_flags_strcmp_expand()
+{
+   is_strcmp_expand = TRUE;
+}
 
 /* ====================================================================
  *
@@ -2168,7 +2173,8 @@ static void Verify_Instruction(OP *op)
     // Don't complain if jnp appears in a BB without a compare OP.  This is
     // because Expand_Ordered_Select_Compare can generate a compare followed by
     // 2 conditional branches, the second of which is jnp.
-    FmtAssert(prev != NULL || OP_code(op) == TOP_jnp,
+    if(!is_strcmp_expand)
+      FmtAssert(prev != NULL || OP_code(op) == TOP_jnp,
 	      ("set_rflags op is missing") );
   }
 

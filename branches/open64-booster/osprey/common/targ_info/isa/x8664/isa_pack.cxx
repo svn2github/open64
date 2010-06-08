@@ -683,6 +683,7 @@ main()
 		    TOP_test64,	0x000000ff,
 		    TOP_testi32,	0x000000ff,
 		    TOP_testi64,	0x000000ff,
+                    TOP_testb, 0x000000ff,
 		    TOP_xor8,	0x000000ff,
 		    TOP_xor16,	0x000000ff,
 		    TOP_xorx8,	0x000000ff,
