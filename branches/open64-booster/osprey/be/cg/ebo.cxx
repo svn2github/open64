@@ -182,7 +182,8 @@ static void Init_Remove_Dead_LRA_Stores(BS **bs, MEM_POOL *pool);
 static void Mark_LRA_Spill_Reference(OP *op, BS **bs, MEM_POOL *pool);
 static BOOL Delete_Dead_LRA_Spill(OP *op, BS **bs);
 #endif
-
+void EBO_Eliminate_movaps();
+BOOL Is_Copy_Instruction(OP *op);
 /* ===================================================================== */
 /* Global Data:								 */
 /* ===================================================================== */
@@ -3806,6 +3807,10 @@ EBO_Process ( BB *first_bb )
     CFLOW_Optimize(CFLOW_BRANCH | CFLOW_UNREACHABLE, "CFLOW (from ebo)");
 #endif
   }
+  /* Check for movaps with same source and destination registers and eliminate
+     them */
+  if(EBO_in_peep)
+    EBO_Eliminate_movaps();
 
   EBO_Finish();
 
@@ -4165,4 +4170,52 @@ EBO_Adjust_Pred_Branch_Target (BB *bb)
       }
     }
   }
+}
+/* Eliminate movaps with same source and destination registers */
+void EBO_Eliminate_movaps()
+{
+  BB *bb;
+  for (bb= REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
+    OP *op;
+    TN *src;
+    if (BB_first_op(bb)){
+      op = BB_first_op(bb);
+      for ( ; op; op = OP_next(op))
+      {
+        if(Is_Copy_Instruction(op))
+        {
+          src = OP_opnd( op, CGTARG_Copy_Operand(op));
+          TN* result = OP_result( op, 0 );
+          if(TN_is_register(src) && TN_is_register(result) && 
+            (TN_register(result) == TN_register(src)))
+          {
+            OP *remove_op = op;
+            op = OP_prev( op );
+            BB_Remove_Op( bb, remove_op );
+            if( op == NULL )
+              op = BB_first_op( bb );
+          }
+        }
+     } 
+    } 
+  } 
+}
+
+BOOL Is_Copy_Instruction(OP *op)
+{
+
+   if (((OP_code(op) == TOP_movaps)||
+       (OP_code(op) == TOP_movapd) ||(OP_code(op) == TOP_movss)||
+       (OP_code(op) == TOP_movsd) ||(OP_code(op) == TOP_movdq)||
+       (OP_code(op) == TOP_mov64) ||(OP_code(op) == TOP_mov32)||
+       (OP_code(op) == TOP_vmovaps) ||(OP_code(op) == TOP_vmovsd)||
+       (OP_code(op) == TOP_vmovsd)  || (OP_code(op) == TOP_vmovapd))&&
+       (CGTARG_Copy_Operand(op)>=0)){
+
+         if(Is_Target_Orochi() && OP_opnds(op)<=1) 
+           return TRUE;
+         if(!Is_Target_Orochi()) 
+           return TRUE;
+  }
+  return FALSE;
 }
