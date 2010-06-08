@@ -886,6 +886,7 @@ private:
   static const mUINT32 _must_inline	= 0x20;
   static const mUINT32 _no_inline	= 0x40;
   static const mUINT32 _partial_inline	= 0x80;
+  static const mUINT32 _updated_caller  = 0x100; // for a deletable edge caller has been updated.  
   
   EDGE_INDEX _edge_index;			// index to the edge array in graph
   IPA_EDGE_INDEX _array_index;		// index into the IPA_EDGE_ARRAY
@@ -966,6 +967,9 @@ public:
 
   void Set_Deletable ()			{ _flags |= _deletable; }
   BOOL Is_Deletable () const		{ return _flags & _deletable; }
+
+  void Set_Updated_Caller()      	{ _flags |= _updated_caller; }
+  BOOL Has_Updated_Caller() const	{ return _flags & _updated_caller; }
 
   void Set_Recursive ()			{ _flags |= _recursive; }
   BOOL Is_Recursive () const		{ return _flags & _recursive;}

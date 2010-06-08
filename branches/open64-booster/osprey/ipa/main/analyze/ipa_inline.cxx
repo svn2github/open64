@@ -1352,9 +1352,8 @@ IPA_NODE::UpdateSize (IPA_NODE *callee, IPA_EDGE *ed)
 // size
 //--------------------------------------------------------------
 void
-Update_Call_Graph (IPA_NODE *n)
+Update_Call_Graph (IPA_NODE *n, IPA_EDGE *edge)
 {
-
     /* by removing a call, we decrease the number of basic block by 1 */
     PU_SIZE size = n->PU_Size ();
     size.Inc_PU_Size (-1, 0, -1);
@@ -1366,6 +1365,10 @@ Update_Call_Graph (IPA_NODE *n)
     n->Summary_Proc()->Decr_call_count ();
     n->Summary_Proc()->Decr_callsite_count ();
     // Don't update Total_Succ as the edge is still present.
+
+    // mark the edge to indicate that caller has been updated.
+    edge->Set_Updated_Caller();
+
 
 } // Update_Call_Graph 
 
@@ -1959,6 +1962,14 @@ Analyze_call (IPA_NODE* caller, IPA_EDGE* edge, const IPA_CALL_GRAPH* cg)
 	    
     if (IPA_Enable_DCE) {
 	// Do dead call elimination analysis
+
+        if (edge->Has_Updated_Caller())
+	{
+	  // this edge is deleted and caller is updated, so return.
+          // this will allow invoking Analyze_call() on an edge multiple
+          // times.
+          return;
+	}
 		
 	if (!callee->Summary_Proc()->Has_pragma_side_effect() && // KEY
 	    ((edge->Is_Deletable () || // set by const. propagation
@@ -1988,7 +1999,7 @@ Analyze_call (IPA_NODE* caller, IPA_EDGE* edge, const IPA_CALL_GRAPH* cg)
 			DEMANGLE (caller->Name())); 
 	    }
 
-	    Update_Call_Graph (caller);
+	    Update_Call_Graph (caller,edge);
 			
 	    if (IPA_Enable_DFE)
 		Update_Total_Prog_Size (caller, callee, cg);
@@ -2466,8 +2477,7 @@ Inline_Analyzer::analyze()
   /* traverse all nodes at levelorder */
   for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
 	IPA_NODE* caller = cg_iter.Current();
-        if ( (caller==NULL)
-             || call_in_loop[caller->Array_Index()]) continue;
+        if (caller==NULL) continue;
         analyze_calls_in_caller(caller, the_cg, *cost_vector);
   }
 
