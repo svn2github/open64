@@ -2158,6 +2158,9 @@ Proactive_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   COMP_UNIT *comp_unit = CXX_NEW(COMP_UNIT(wn_tree, alias_mgr,
 					   (OPT_PHASE)phase, &Opt_global_pool, &Opt_local_pool),
 				 &Opt_global_pool);
+#ifdef Is_True_On
+  g_comp_unit = comp_unit;
+#endif
 
   REGION_LEVEL rgn_level = RID_preopt_level(phase);
 
