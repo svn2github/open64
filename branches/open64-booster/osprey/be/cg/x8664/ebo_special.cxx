@@ -5157,7 +5157,6 @@ BOOL search_preds_for_alias(BS* visit_set, OP * last_op, OP *def_op, TN* base_tn
         examine_backward_bb(visit_set, last_op, def_op, base_tn)))
         return TRUE;
     
-    Is_True(BB_preds_len(OP_bb(last_op))==1, ("should has only one pred"));
     BBLIST *lst;
     for (lst = BB_preds(OP_bb(last_op)); lst != NULL; lst = BBLIST_next(lst)) {
         BB * cur_bb = BBLIST_item(lst);
