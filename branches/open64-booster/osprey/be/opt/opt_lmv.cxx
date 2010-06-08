@@ -1472,7 +1472,11 @@ CFG::LMV_clone_BB_LOOPs (LMV_CFG_ADAPTOR* adaptor) {
 
     if (BB_LOOP* sibling = src->Next ()) {
       BB_LOOP_MAP::iterator iter = bb_loop_map.find (sibling); 
-      dest->Set_child (iter != bb_loop_map.end () ? (*iter).second : sibling);
+      // if <iter> is null, it means the <src> is the outmost loop we are 
+      // cloning, set the sibling to NULL. The laber CFG::Analyze_loops() will
+      // reestablish the prev/next link.
+      //
+      dest->Set_Next (iter != bb_loop_map.end () ? (*iter).second : NULL);
     }
   }
 
