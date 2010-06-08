@@ -136,6 +136,9 @@ static char *opt_cfgrcs_id =	opt_cfg_INCLUDED"$Revision: 1.7 $";
 #ifndef opt_bb_INCLUDED
 #include "opt_bb.h"
 #endif
+#ifndef opt_proactive_INCLUDED
+#include "opt_proactive.h"
+#endif
 #ifndef opt_fb_INCLUDED
 #include "opt_fb.h"
 #endif
