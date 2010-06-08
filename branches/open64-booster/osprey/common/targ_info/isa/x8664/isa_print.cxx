@@ -157,11 +157,14 @@ main()
 			   TOP_cmp16,
 			   TOP_cmp32,
 			   TOP_cmp64,
+			   TOP_test8,
+			   TOP_test16,
 			   TOP_test32,
 			   TOP_test64,
+			   TOP_testi8,
+			   TOP_testi16,
 			   TOP_testi32,
 			   TOP_testi64,
-                           TOP_testb,
 			   TOP_fucomi,
 			   TOP_fucomip,
                            /* SSE4.1 instructions */
@@ -179,6 +182,8 @@ main()
   Operand(1);
   Operand(0);
   Instruction_Print_Group( cmpx,
+			   TOP_testx8,
+			   TOP_testx16,
 			   TOP_testx32,
 			   TOP_testx64,
 			   TOP_cmpx8,
@@ -237,6 +242,8 @@ main()
   Operand(3);
   Operand(0);
   Instruction_Print_Group( cmpxx,
+			   TOP_testxx8,
+			   TOP_testxx16,
 			   TOP_testxx32,
 			   TOP_testxx64,
 			   TOP_cmpxx8,
@@ -297,6 +304,8 @@ main()
   Operand(2);
   Operand(0);
   Instruction_Print_Group( cmpxxx,
+			   TOP_testxxx8,
+			   TOP_testxxx16,
 			   TOP_testxxx32,
 			   TOP_testxxx64,
 			   TOP_cmpxxx8,

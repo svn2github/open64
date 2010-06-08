@@ -3412,8 +3412,15 @@ static void Init_OP_Name()
   OP_Name[TOP_fsubx128v64] = "subpd";
   OP_Name[TOP_fsubxx128v64] = "subpd";
   OP_Name[TOP_fsubxxx128v64] = "subpd";
+  OP_Name[TOP_test8]   = "testb";
+  OP_Name[TOP_testx8]  = "testb";
+  OP_Name[TOP_testxx8]  = "testb";
+  OP_Name[TOP_testxxx8] = "testb";
+  OP_Name[TOP_test16]   = "testw";
+  OP_Name[TOP_testx16]  = "testw";
+  OP_Name[TOP_testxx16]  = "testw";
+  OP_Name[TOP_testxxx16] = "testw";
   OP_Name[TOP_test32]   = "testl";
-  OP_Name[TOP_testb]    = "testb";
   OP_Name[TOP_testx32]  = "testl";
   OP_Name[TOP_testxx32]  = "testl";
   OP_Name[TOP_testxxx32] = "testl";
@@ -3421,6 +3428,8 @@ static void Init_OP_Name()
   OP_Name[TOP_testx64]  = "testq";
   OP_Name[TOP_testxx64] = "testq";
   OP_Name[TOP_testxxx64]= "testq";
+  OP_Name[TOP_testi8]  = "testb";
+  OP_Name[TOP_testi16]  = "testw";
   OP_Name[TOP_testi32]  = "testl";
   OP_Name[TOP_testi64]  = "testq";
   OP_Name[TOP_xor32]   = "xorl";

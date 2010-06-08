@@ -538,6 +538,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,	&CG_loadbw_execute, NULL },
   { OVK_BOOL,   OV_INTERNAL, TRUE, "valgrind_friendly", "valgrind",
     0, 0, 0,    &CG_valgrind_friendly, NULL },
+  { OVK_BOOL,   OV_INTERNAL, TRUE, "movext_icmp", "movext_icmp",
+    0, 0, 0,    &CG_Movext_ICMP, NULL },
 #endif
 
   // CG Dependence Graph related options.

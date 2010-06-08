@@ -4393,6 +4393,7 @@ main()
 
   Instruction_Group("int8 compare/test with simm",
 		    TOP_cmpi8,
+		    TOP_testi8,
 		    TOP_UNDEFINED);
   Result(0,  eflags);
   Operand(0, int8,  opnd1);
@@ -4400,6 +4401,7 @@ main()
 
   Instruction_Group("int16 compare/test with simm",
 		    TOP_cmpi16,
+		    TOP_testi16,
 		    TOP_UNDEFINED);
   Result(0,  eflags);
   Operand(0, int16,  opnd1);
@@ -4483,6 +4485,7 @@ main()
 
   Instruction_Group("int8 compare/test",
   		    TOP_cmp8,
+  		    TOP_test8,
 		    TOP_UNDEFINED);
   Result(0,  eflags);
   Operand(0, int8, opnd1);
@@ -4490,6 +4493,7 @@ main()
 
   Instruction_Group("int16 compare/test",
 		    TOP_cmp16,
+		    TOP_test16,
 		    TOP_UNDEFINED);
   Result(0,  eflags);
   Operand(0, int16, opnd1);
@@ -4503,13 +4507,6 @@ main()
   Operand(0, int32, opnd1);
   Operand(1, int32, opnd2);
 
-  Instruction_Group("int8 test",
-                     TOP_testb,
-                     TOP_UNDEFINED);
-  Result(0,  eflags);
-  Operand(0, int8, opnd1);
-  Operand(1, int8, opnd2);
-
   Instruction_Group("int64 compare/test",
 		    TOP_cmp64,
 		    TOP_test64,
@@ -4520,6 +4517,7 @@ main()
 
    Instruction_Group("int8 compare/test mem opnd",
   		    TOP_cmpx8,
+  		    TOP_testx8,
 		    TOP_UNDEFINED);
   Result(0,  eflags);
   Operand(0, int8, opnd1);
@@ -4528,6 +4526,7 @@ main()
 
   Instruction_Group("int16 compare/test mem opnd",
 		    TOP_cmpx16,
+		    TOP_testx16,
 		    TOP_UNDEFINED);
   Result(0,  eflags);
   Operand(0, int16, opnd1);
@@ -4554,6 +4553,7 @@ main()
 
   Instruction_Group("int8 compare/test mem opnd w/ scaled-index",
   		    TOP_cmpxx8,
+  		    TOP_testxx8,
 		    TOP_UNDEFINED);
   Result(0,  eflags);
   Operand(0, int8, opnd1);
@@ -4564,6 +4564,7 @@ main()
 
   Instruction_Group("int16 compare/test mem opnd w/ scaled-index",
 		    TOP_cmpxx16,
+		    TOP_testxx16,
 		    TOP_UNDEFINED);
   Result(0,  eflags);
   Operand(0, int16, opnd1);
@@ -4596,6 +4597,7 @@ main()
 
   Instruction_Group("int8 compare/test mem opnd w/ scaled-index w/o base",
   		    TOP_cmpxxx8,
+  		    TOP_testxxx8,
 		    TOP_UNDEFINED);
   Result(0,  eflags);
   Operand(0, int8, opnd1);
@@ -4605,6 +4607,7 @@ main()
 
   Instruction_Group("int16 compare/test mem opnd w/ scaled-index w/o base",
 		    TOP_cmpxxx16,
+		    TOP_testxxx16,
 		    TOP_UNDEFINED);
   Result(0,  eflags);
   Operand(0, int16, opnd1);
