@@ -2063,7 +2063,9 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
       }
 #ifdef TARG_X8664
       if ((ctype != MTYPE_C8 && ctype != MTYPE_V16C8) ||
-	      !Is_Target_SSE3() || !Vcast_Complex)
+        ST_sclass(WN_st(tree)) == SCLASS_REG && 
+	Is_Return_Preg(WN_offset(tree)) ||
+        !Is_Target_SSE3() || !Vcast_Complex)
       {
 #endif
 	*realpart = WN_Ldid(type, offset,
@@ -7055,15 +7057,21 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
     tree = WN_NaryToExpr(tree);
   }
   
-  if (Action(LOWER_COMPLEX) && WN_rtype(tree) == MTYPE_C8){
+#ifdef TARG_X8664
+  if (Action(LOWER_COMPLEX) && (WN_rtype(tree) == MTYPE_C8 ||
+       WN_desc(tree) == MTYPE_V16C8 && WN_has_sym(tree) && 
+       ST_sclass(WN_st(tree)) == SCLASS_REG && 
+       Is_Return_Preg(WN_offset(tree)))){
     WN *realexp, *imagexp;
     lower_complex_expr(block, tree, actions, &realexp, &imagexp);
     if (WN_operator(tree) == OPR_PARM)
       WN_kid0(tree) = WN_Complex(MTYPE_C8, realexp, imagexp);
-    else 
+    else if(WN_rtype(tree) == MTYPE_C8)
       tree = WN_Complex(MTYPE_C8, realexp, imagexp);
+    else
+      tree = WN_Complex(MTYPE_V16C8, realexp, imagexp);
   }
-
+#endif
   /* Lower kids if not done already. */
   if (! kids_lowered)
   {
@@ -8026,7 +8034,8 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
     }
 #endif
 #ifdef TARG_X8664 // fortran complex treated as structs (bug 1664)
-    if (Action(LOWER_RETURN_VAL) && MTYPE_is_complex(WN_desc(tree)) &&
+    if (Action(LOWER_RETURN_VAL) && 
+       (MTYPE_is_complex(WN_desc(tree)) || WN_desc(tree) == MTYPE_V16C8)  &&
        (Is_Target_32bit() || last_call_ff2c_abi || F2c_Abi) &&
        WN_operator(WN_kid0(tree)) == OPR_LDID && 
        WN_st(WN_kid0(tree)) == Return_Val_Preg) {
@@ -8047,7 +8056,12 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 	return lower_store_bits (block, tree, actions);
     }
 
-    if (Action(LOWER_COMPLEX) && MTYPE_is_complex(WN_desc(tree)))
+    if (Action(LOWER_COMPLEX) && (MTYPE_is_complex(WN_desc(tree)) 
+#ifdef TARG_X8664
+      || WN_desc(tree) == MTYPE_V16C8 && ST_sclass(WN_st(tree)) == SCLASS_REG 
+      && Is_Return_Preg(WN_offset(tree))
+#endif
+       ))
     {
       WN	*realexp, *imagexp;
       TYPE_ID	realTY;
@@ -8195,7 +8209,9 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 	}
 
 	if (ST_class(WN_st(tree)) == CLASS_PREG && WN_desc(tree)== MTYPE_C8
-		       	&& Is_Target_SSE3() && Vcast_Complex)
+	   && Is_Target_SSE3() && Vcast_Complex &&
+	   !(ST_sclass(WN_st(tree)) == SCLASS_REG && 
+		   Is_Return_Preg(WN_offset(tree))))
 	{
 	  PREG_NUM zN;
 	  TYPE_ID type;
