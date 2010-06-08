@@ -1251,11 +1251,12 @@ static INT current_level=0;
 static int local_num=0;
 
 extern WN* Find_Stmt_Under(WN* stmt,WN* body);
-extern void Fully_Unroll_Short_Loops(WN *);
+extern BOOL Fully_Unroll_Short_Loops(WN *);
 //don't do invariant factorization if current level >=3
 #define STOP_LEVEL 3
 #define GOOD_FACTORS 4
  
+static BOOL unrolled = FALSE;
 static INT In_Invar_Stack(WN *wn, STACK_OF_WN *invar_stack)
 {
   for(INT i=0; i<invar_stack->Elements(); i++){
@@ -1994,7 +1995,10 @@ static BOOL Factorize_Loop(WN *loop)
  else
  { 
    if (contains_loop_with_delayed_unrolling(loop))
-      Fully_Unroll_Short_Loops(loop);
+   {
+      BOOL u = Fully_Unroll_Short_Loops(loop);
+      unrolled |= u;
+   }
  }
 
  return has_factorization;
@@ -2108,8 +2112,9 @@ extern BOOL Is_Invariant_Factorization_Beneficial(WN *loop){
 
 static BOOL pool_initialized = FALSE;
 
-extern void Invariant_Factorization(WN *func_nd)
+extern BOOL Invariant_Factorization(WN *func_nd)
 { 
+  unrolled = FALSE;
   if(!pool_initialized){ 
    MEM_POOL_Initialize(&FACT_default_pool,"FACT_default_pool",FALSE);
    MEM_POOL_Push(&FACT_default_pool);
@@ -2145,6 +2150,8 @@ extern void Invariant_Factorization(WN *func_nd)
      factorized_loops++;
     }
   }
+
+ return unrolled;
   
   //MEM_POOL_Pop(&FACT_default_pool);
   //MEM_POOL_Delete(&FACT_default_pool);  //memory to be cleaned

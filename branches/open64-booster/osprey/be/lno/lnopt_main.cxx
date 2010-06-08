@@ -1599,14 +1599,16 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       }
       if (graph_is_ok)
       { 
-        Invariant_Factorization(func_nd);
-        Array_Dependence_Graph->Erase_Graph();
-        graph_is_ok =  Build_Array_Dependence_Graph (func_nd);
-        if (graph_is_ok)
-	    { 
-           Minvariant_Removal(func_nd, Array_Dependence_Graph);
-	    }
-
+        BOOL rebuild_dg = Invariant_Factorization(func_nd);
+        if (rebuild_dg)
+        {
+          Array_Dependence_Graph->Erase_Graph();
+          graph_is_ok =  Build_Array_Dependence_Graph (func_nd);
+          if (graph_is_ok)
+	  { 
+             Minvariant_Removal(func_nd, Array_Dependence_Graph);
+          }
+	}
         for(INT ii=0; ii<unroll_and_jammed_loops->Elements(); ii++){
             WN *loop = unroll_and_jammed_loops->Bottom_nth(ii);
             INT64 trip_count = Num_Iters(loop);
