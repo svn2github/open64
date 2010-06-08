@@ -1011,6 +1011,7 @@ enum BB_FLAG {
 #if defined(TARG_SL) //PARA_EXTENSION
   BB_SL2_PARA_REGION = 0x2000, // block is inside a SL2 parallel region
 #endif
+  BB_EH_REGION = 0x4000,
 };
 
 #define BB_VISIT    (BB_DFORDER)
@@ -1091,6 +1092,8 @@ private:
   IDTYPE       _pdom_dfs_last;// _pdom_dfs_id number of last post-dominated block
   BB_NODE_SET *_dom_frontier;// point to dominance frontier set
   BB_NODE_SET *_rcfg_dom_frontier;// point to dominance frontier set for reverse CFG
+  IDTYPE       _layout_id;          // it is used to represent where to place BB in reconstrucing CFG
+  
   // structure containing everything related to the label for this bb
   struct {
     mINT32     _labnam;      // label number in the WN node
@@ -1165,7 +1168,6 @@ private:
   } _u13;
 
   	       BB_NODE& operator = (const BB_NODE&);
-
 
 public:
   void         Clear(void);
@@ -1292,6 +1294,15 @@ public:
   BOOL         MP_region(void)   const  { return (_flags & BB_MP_REGION);}
   void         Set_MP_region(void)      { _flags=(BB_FLAG)(_flags|BB_MP_REGION);}
   void         Reset_MP_region(void)    { _flags=(BB_FLAG)(_flags&~BB_MP_REGION);}
+
+  BOOL         EH_region(void)   const  { return (_flags & BB_EH_REGION);}
+  void         Set_EH_region(void)      { _flags=(BB_FLAG)(_flags|BB_EH_REGION);}
+  void         Reset_EH_region(void)    { _flags=(BB_FLAG)(_flags&~BB_EH_REGION);}
+
+  IDTYPE       layout_Id(void)          const  { return _layout_id;}
+  void         Set_layout_id(IDTYPE i )        { _layout_id = i;}
+  void         Set_layout_id(BB_NODE * node)   { _layout_id = node->layout_Id() ? node->layout_Id() : node->Id(); }
+    
 #if defined(TARG_SL) //PARA_EXTENSION
   BOOL         SL2_para_region(void) const    { return (_flags & BB_SL2_PARA_REGION);}
   void         Set_SL2_para_region(void)      { _flags=(BB_FLAG)(_flags|BB_SL2_PARA_REGION);}

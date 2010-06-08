@@ -113,7 +113,8 @@ CFG::CFG(MEM_POOL *pool, MEM_POOL *lpool)
        _sl2_para_rid(pool),
        _sl2_para_type(pool),
 #endif
-       _bb_region(pool)
+       _bb_region(pool),
+       _eh_rid(pool)
 {
   _mem_pool = pool;
   _loc_pool = lpool;
@@ -2809,6 +2810,7 @@ CFG::Add_one_region( WN *wn, END_BLOCK *ends_bb )
   // box?  If it's a black-box, we just leave it as a "region" op
   // and don't lower it further.
   if ( RID_level(rid) >= Rgn_level() ) { // black box region
+
     WN *wtmp;
     BB_NODE *bsave = _current_bb;
 
@@ -2914,12 +2916,22 @@ CFG::Add_one_region( WN *wn, END_BLOCK *ends_bb )
     Pop_sl2_para_type();
     Pop_sl2_para_rid();
   }
-#endif 
+#endif
+
+  if (REGION_is_EH(wn)) 
+  {
+    if (_current_bb->Succ() ||
+        _current_bb->Kind() == BB_EXIT)
+        (void) New_bb(FALSE, BB_REGIONEXIT);
+    else
+        (void) New_bb(TRUE, BB_REGIONEXIT);
+  }
+    
   Pop_bb_region();
 
   // remember the last block in the region
   BB_NODE *last_region_bb = _current_bb;
-
+    
   // bug 8690
   if (REGION_is_mp(wn) && _rgn_level != RL_MAINOPT &&
       Is_region_with_pragma(wn,WN_PRAGMA_SINGLE_PROCESS_BEGIN)) {
@@ -3725,7 +3737,7 @@ CFG::Process_multi_entryexit( BOOL is_whirl )
 {
   Is_Trace(Trace(), (TFile,"CFG::Process_multi_entryexit\n"));
 
-  // For our purposes "is_whirl" also means we can disconnect
+  // For our iurposes "is_whirl" also means we can disconnect
   // unreachable blocks because we have not yet inserted phi nodes.
   Process_not_reached( is_whirl );
 
@@ -3836,6 +3848,61 @@ CFG::Ident_mp_regions(void)
       }
     }
   }  
+}
+
+/* ============================================================================
+*  This routine is to identify eh regions based on regionstart and 
+*  regionexit bbs. It will mark all the bbs between regionstart
+*  and regionexit to be eh_region_bb and set its rid_id to be the current 
+*  eh_region rid. regionexit BB's rid_id is the parent eh_region's rid.
+============================================================================ */
+void
+CFG::Ident_eh_regions(void)
+{
+  CFG_ITER cfg_iter(this); 
+  BB_NODE *bb;
+  BB_REGION *bb_region;
+  INT32 eh_level = 0;
+
+  Clear_eh_rid();
+  
+  // EH region can be single entry and multiple exits
+  // In the mainopt, LOWER_REGION_EXITS is on, region_exits is changed to goto.
+  // however, the goto exit has stmt, while the newly added region_exit is empty bb.
+  FOR_ALL_NODE( bb, cfg_iter, Init() ) {
+  
+    if (bb->Kind() == BB_REGIONSTART) {
+      bb_region = bb->Regioninfo();
+      Is_True(bb_region != NULL, ("CFG::Ident_eh_regions, no regioninfo"));
+      if (RID_TYPE_eh(bb_region->Rid())) {
+        eh_level ++;
+        Push_eh_rid(bb_region->Rid());
+      }
+    }
+      
+    if (eh_level > 0 ) {
+      bb->Set_EH_region();
+      bb->Set_rid_id(RID_id(Top_eh_rid()));
+    }
+
+    if (bb->Kind() == BB_REGIONEXIT ) {
+      bb_region = bb->Regioninfo();
+      Is_True(bb_region != NULL, ("CFG::Ident_eh_regions, no regioninfo"));
+      // empty regionexit bb is the one that was added as the region end marker
+      if (RID_TYPE_eh(bb_region->Rid()) && !bb->Firststmt()) {
+        eh_level --;
+        Is_True(eh_level >= 0 , ("CFG::Ident_eh_regions, not match regionstart and regionexit"));
+        Pop_eh_rid();
+        if (!Null_eh_rid())
+            bb->Set_rid_id(RID_id(Top_eh_rid()));
+        else
+            bb->Set_rid_id(0);
+      }
+    }
+  }
+
+  Is_True(eh_level == 0 , ("CFG::Ident_eh_regions, not match regionstart and regionexit"));
+
 }
 
 #if defined(TARG_SL) //PARA_EXTENSION
@@ -3959,6 +4026,8 @@ CFG::Create(WN *func_wn, BOOL lower_fully, BOOL calls_break,
     opt_tail.Mutate();
   }
 
+  Ident_eh_regions();
+ 
   Process_multi_entryexit( TRUE/*is_whirl*/ );
 
   Ident_mp_regions();
@@ -4593,10 +4662,13 @@ CFG::Find_exit_blocks( void )
 void
 CFG::Remove_fake_entryexit_arcs( void )
 {
+  BOOL fakeentry_to_fakeexit = false;
+  
   if ( Fake_entry_bb() != NULL ) {
     BB_NODE     *succ;
     BB_LIST_ITER bb_succ_iter;
     FOR_ALL_ELEM( succ, bb_succ_iter, Init(Fake_entry_bb()->Succ()) ) {
+      if (succ == Fake_exit_bb()) fakeentry_to_fakeexit = true;
       succ->Remove_pred( Fake_entry_bb(), Mem_pool() );
     }
   }
@@ -4607,6 +4679,15 @@ CFG::Remove_fake_entryexit_arcs( void )
       pred->Remove_succ( Fake_exit_bb(), Mem_pool() );
     }
   }
+
+  // If the fake exit is the fake entry's succ
+  // then fake entry will be removed from fake exit's pred list
+  // thus the fake exit could not be removed from the fake 
+  // entry's succ list by the above remove_succ. We need to
+  // do it here.
+  if (fakeentry_to_fakeexit)
+    Fake_entry_bb()->Remove_succ(Fake_exit_bb(), Mem_pool() );
+    
 }
 
 // ====================================================================
@@ -6563,6 +6644,7 @@ void CFG::Clone_bb(IDTYPE src, IDTYPE dst, BOOL clone_wn)
   destbb->Set_labnam(0);
   destbb->Set_phi_list(CXX_NEW(PHI_LIST(destbb), Mem_pool()));
   destbb->Set_linenum(srcbb->Linenum());
+  destbb->Set_rid_id(srcbb->Rid_id());
   // UPDATE FREQUENCY -- OLD CODE: destbb->Set_freq(srcbb->Freq());
 
   // Fix zero version for phi.

@@ -1340,6 +1340,20 @@ void RID_Tree_Print(FILE *FD, RID *rid)
   }
 }
 
+/* =======================================================================
+   RID_is_valid: to check whether id is a valid id in the rid tree
+   ====================================================================*/
+bool RID_is_valid(RID *rid, mUINT16 id)
+{
+    if (rid) {
+        if ( RID_id(rid) == id) return true;
+        for (RID *kid = RID_first_kid(rid); kid; kid=RID_next(kid))
+            if (RID_is_valid(kid, id))
+                return true;
+    }        
+    return false;
+}
+
 /* ======================================================================
    RID_WN_Tree_Print
    ====================================================================== */

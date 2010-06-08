@@ -908,6 +908,7 @@ Fully_Unroll_Short_Loops(WN* wn)
   }
   else if (oper == OPR_DO_LOOP    &&
            !Do_Loop_Has_Calls(wn) &&
+           !Do_Loop_Has_EH_Regions(wn) &&
 #ifndef KEY
            (!Do_Loop_Has_Exits(wn) || Do_Loop_Is_Regular(wn)) &&
 	   !Do_Loop_Has_Conditional(wn) &&

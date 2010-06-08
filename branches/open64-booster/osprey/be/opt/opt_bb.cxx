@@ -418,6 +418,7 @@ BB_NODE::Clear()
   _loop = NULL;
   _hi._ifinfo = NULL;
   Set_exp_phi(NULL);
+  _layout_id= 0;
 }
 
 // ====================================================================
@@ -585,7 +586,8 @@ BB_NODE::Append_stmtrep(STMTREP *stmt)
 void
 BB_NODE::Prepend_stmtrep(STMTREP *stmt)
 {
-  Is_True(Kind() != BB_REGIONSTART && Kind() != BB_ENTRY,
+  Is_True((Kind() != BB_REGIONSTART && Kind() != BB_ENTRY) ||
+    (Kind() == BB_REGIONSTART && stmt->Op() == OPC_LABEL), 
 	  ("BB_NODE::Prepend_stmtrep(), inserting into a %s (bb:%d)",
 	   Kind_name(), Id()));
 
@@ -608,7 +610,8 @@ BB_NODE::Prepend_stmtrep(STMTREP *stmt)
 void
 BB_NODE::Insert_stmtrep_before(STMTREP *stmt, STMTREP *before_stmt)
 {
-  Is_True(Kind() != BB_REGIONSTART && Kind() != BB_ENTRY,
+  Is_True((Kind() != BB_REGIONSTART && Kind() != BB_ENTRY) ||
+    (Kind() == BB_REGIONSTART && stmt->Op() == OPC_LABEL),
 	  ("BB_NODE::Insert_stmtrep(), inserting into a %s",Kind_name()));
 
   STMTREP_ITER stmtrep_iter(&_stmtlist);

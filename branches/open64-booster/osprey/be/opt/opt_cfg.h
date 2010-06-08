@@ -224,6 +224,8 @@ private:
   STACK<MP_TY> _mp_type;        // the mp region type
   STACK<RID *> _mp_rid;         // the rid of the region
   STACK<BB_REGION *> _bb_region;// the BB_REGION of the parent (not just mp)
+  STACK<RID *> _eh_rid;         // the stack of eh_region's rid
+  
 #if defined(TARG_SL) //PARA_EXTENSION
   STACK<SL2_PARA_TY> _sl2_para_type;  // the sl2_para region type
   STACK<RID *> _sl2_para_rid;   // the rid of the region
@@ -418,6 +420,7 @@ private:
   void         Screen_out_false_loopnest(BB_LOOP *loop, BB_LOOP *sibling);
 
   void         Ident_mp_regions(void);
+  void         Ident_eh_regions(void);
 #if defined(TARG_SL) //PARA_EXTENSION
   void         Ident_sl2_para_regions(void);
 #endif
@@ -562,6 +565,12 @@ public:
   BOOL         NULL_mp_type(void) const  { return _mp_type.Is_Empty(); }
   void         Clear_mp_type(void)       { _mp_type.Clear(); }
   void         Clear_mp_rid(void)        { _mp_rid.Clear(); }
+
+  void         Push_eh_rid(RID *rid)     { _eh_rid.Push(rid); }
+  RID         *Pop_eh_rid(void)          { return _eh_rid.Pop(); }
+  RID         *Top_eh_rid(void) const    { return _eh_rid.Top(); }
+  void         Clear_eh_rid(void)        { _eh_rid.Clear(); }
+  BOOL         Null_eh_rid(void) const   { return _eh_rid.Is_Empty(); }
 
   BOOL         Inside_mp_do(void)        { return !NULL_mp_type() &&
                                              Top_mp_type() != MP_REGION;

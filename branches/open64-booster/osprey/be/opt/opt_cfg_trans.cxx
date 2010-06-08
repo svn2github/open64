@@ -129,27 +129,37 @@ extern void mark_translated_vertex(vertex_id, vertex_id);
 #endif
 
 
+enum CFG_REGION_TYPE
+{
+    CFG_no_regions = 0,
+    CFG_EH_regions,
+    CFG_other_regions
+};
 // Build successor graph and collect fall-thru requirement.
 //    - BB_ENTRY must be empty.
 //
-//  CFG containing REGIONs is not handled:
-//      - BB_REGIONSTART must be empty.
-//      - Region entry/Region exit must have specific ordering
-//      - exception region must be contagious.
+// Now CFG_transformation can handle CFG containing EH REGIONs
+// by having a layout id to represent where BB should be placed
+// The function return the region type that CFG has 
 //
 template <class Insert_iterator>
-bool
+static CFG_REGION_TYPE
 build_successor_graph(CFG *cfg, successor_graph& g, Insert_iterator entry)
 {
+  bool containing_eh = false;
+
   for (BB_NODE *bb = cfg->First_bb();
        bb != NULL;
        bb = bb->Next()) {
-      
-    if (bb->Kind() == BB_REGIONSTART)
-      return false; 
 
-    if (bb->Branch_stmtrep() && bb->Branch_stmtrep()->Op() == OPC_REGION)
-      return false;
+    if (bb->Kind() == BB_REGIONSTART ||
+        bb->Branch_stmtrep() && bb->Branch_stmtrep()->Op() == OPC_REGION)
+    {    
+        if (bb->EH_region())
+            containing_eh = true;
+        else
+            return CFG_other_regions;
+    }
 
     if (bb->Kind() == BB_ENTRY)
       *entry++ = bb->Id();
@@ -172,11 +182,9 @@ build_successor_graph(CFG *cfg, successor_graph& g, Insert_iterator entry)
       if (count == 2 || 
 	  bb->Kind() == BB_REGIONSTART ||
 	  bb->Kind() == BB_ENTRY ||
-	  (bb->Next() != NULL &&
-	   bb->Next()->Kind() == BB_REGIONSTART) ||   
 	  (count == 1 &&
 	   bb->Branch_stmtrep() != NULL &&
-	   bb->Branch_stmtrep()->Op() != OPC_GOTO)) {
+	   bb->Branch_stmtrep()->Op() != OPC_GOTO)) { 
 	edge *e = find_edge(g, bb->Id(), fall_thru->Id());
 	e->must_fall_thru = true;
       }
@@ -203,7 +211,9 @@ build_successor_graph(CFG *cfg, successor_graph& g, Insert_iterator entry)
   }
 #endif
 
-  return true;
+  if (containing_eh) return CFG_EH_regions;
+
+  return CFG_no_regions;
 }
 
 #define PRO_LOOP_FUSION_THRESHOLD 280
@@ -241,13 +251,13 @@ COMP_UNIT::Pro_loop_trans()
     vector<vertex_id> entry;
     successor_graph _g_tmp;
 
-    bool ok = build_successor_graph(_cfg, _g_tmp,
+    CFG_REGION_TYPE ok = build_successor_graph(_cfg, _g_tmp,
 				    insert_iterator<vector<vertex_id> >
 				    (entry, entry.begin()));
     
-    if (!ok) {
+    if (ok != CFG_no_regions) {
       if (trace) {
-	printf(("skip Proactive Loop Transformation because of REGION."));
+	    printf(("skip Proactive Loop Transformation because of REGION.\n"));
       }
     }
     else {
@@ -332,12 +342,43 @@ COMP_UNIT::Pro_loop_trans()
   }
 }
 
+// Function to sort BBs when reconstructing CFG
+// If layout_id is not 0, using layout_id to sort, otherwise
+// using the BB id. 
+//
+class COMPARE_IDS {
+
+private:
+  CFG * _cfg;
+
+public:
+  COMPARE_IDS(CFG * cfg) { _cfg = cfg; }
+          
+  bool operator()(const int& r1, const int& r2) {
+    int id1, id2;
+
+    if (_cfg->Get_bb(r1)->layout_Id() != 0)
+        id1 =  _cfg->Get_bb(r1)->layout_Id();
+    else
+        id1 = r1;
+        
+    if (_cfg->Get_bb(r2)->layout_Id() != 0) 
+        id2 =  _cfg->Get_bb(r2)->layout_Id();
+    else
+        id2 = r2;
+         
+    if (id1 == id2) return r1 < r2;
+
+    return id1 < id2;
+  }
+};
+
 // reconstruct_CFG will build the WOPT CFG from the generic graph.
 // It assumes basic block cloning has been done, i.e. does not need
 // to replicate statements or expressions, with the exception of
 // generating new basic block containing single goto statements.
 void
-reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
+reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace, bool eh_regions)
 {
   if (trace) {
     fprintf(TFile, "edges: \n");
@@ -357,6 +398,11 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
 	 ++ep) {
       if ((*ep).must_fall_thru) {
 	if (was_fall_thru_target[second(*ep)]) {
+      // since the incoming edge of bb_regionstart is not marked as must_fall_thru
+      // the dst of the must_fall_thru edge should not be a bb_regionstart
+      Is_True(cfg->Get_bb(second(*ep))->Kind() != BB_REGIONSTART, 
+         ("fall thru should not be region start"));
+      INT dst_rid = cfg->Get_bb(second(*ep))->Rid_id();   
 	  successor_graph::cluster_id v = next_cluster_id++;
 	  out_buffer.push_back(pair<edge,edge>(*ep,edge(v, second(*ep))));
 	  (*ep).second = v; 
@@ -369,6 +415,8 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
 	  bb->Set_labnam(0);
 	  bb->Set_kind(BB_GOTO);
 	  bb->Set_phi_list(NULL);
+      bb->Set_layout_id(cfg->Get_bb(first(*ep)));
+      bb->Set_rid_id(dst_rid);
 	} else
 	  was_fall_thru_target[second(*ep)] = true;
       }
@@ -393,6 +441,17 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
   {
     vector<int> rpo;
     generate_reverse_post_order(g, cfg->First_bb()->Id(), rpo);
+
+    // After getting rpo order of BBs, sort them using their layout_id
+    // layout_id represents where the BB should be placed with regards to 
+    // eh_region restriction 
+    // 
+    if (eh_regions) 
+    {
+        vector<int>::iterator first_id(rpo.begin());
+        vector<int>::iterator last_id(rpo.end());
+        stable_sort(first_id, last_id, COMPARE_IDS(cfg));
+    }   
 
     if (trace) {
       fprintf(TFile, "rpo order: ");
@@ -452,7 +511,7 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
 	}
       } while (cont);
     }
-
+    
     if (trace) {
       fprintf(TFile, "layout order: ");
       for (int i = 0; i < layout_order.size(); ++i)
@@ -531,7 +590,7 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
   // Add/Remove goto/labels
   {
     vector<bool> need_label(g.size(), false);
-
+    int bb_count = g.size();
     // update gotos
     int i;
     for (i = 0; i < layout_order.size(); ++i) {
@@ -560,9 +619,34 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
 
 	    STMTREP *branch_sr = bb->Branch_stmtrep();
 	    if (branch_sr == NULL) {
-	      branch_sr = CXX_NEW( STMTREP(OPC_GOTO), cfg->Mem_pool() );
-	      branch_sr->Init_Goto( NULL, goto_bb->Labnam(), 0);
-	      bb->Append_stmtrep( branch_sr);
+          branch_sr = CXX_NEW( STMTREP(OPC_GOTO), cfg->Mem_pool() );
+          branch_sr->Init_Goto( NULL, goto_bb->Labnam(), 0);
+          if (bb->Kind() != BB_REGIONEXIT)
+              bb->Append_stmtrep( branch_sr);
+          else {
+            // add a fall through block to place goto stmt
+            // otherwise the goto inside the bb_regionexit will be lost
+            //
+            BB_NODE *new_bb = cfg->Create_and_allocate_bb(BB_GOTO);
+            new_bb->Append_stmtrep( branch_sr);
+            BB_LIST * succ = bb->Succ();
+            Is_True(succ && !succ->Multiple_bbs(), ("unexpected region exit"));
+            new_bb->Append_succ(succ->Node(), cfg->Mem_pool());
+            succ->Node()->Replace_pred(bb, new_bb);
+            bb->Replace_succ(succ->Node(), new_bb);
+            new_bb->Append_pred(bb, cfg->Mem_pool());
+            new_bb->Set_next(bb->Next());
+            bb->Next()->Set_prev(new_bb);
+            new_bb->Set_prev(bb);
+            bb->Set_next(new_bb);
+            new_bb->Set_layout_id(bb);
+            new_bb->Set_rid_id(bb->Rid_id());
+            if (cfg->Feedback())
+            {
+                cfg->Feedback()->Split_edge(bb->Id(), new_bb->Id(), 
+                    new_bb->Succ()->Node()->Id());
+            }
+          }
 	    } else {
 #ifdef KEY // bug 12839
 	      if (branch_sr->Op() == OPC_AGOTO) {
@@ -572,7 +656,8 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
 		bb->Set_kind(BB_GOTO);
 	      }
 #endif
-	      Is_True(branch_sr->Op() == OPC_GOTO, ("expected OPC_GOTO"));
+	      Is_True(branch_sr->Op() == OPC_GOTO ||
+            branch_sr->Op() == OPC_REGION_EXIT, ("expected OPC_GOTO"));
 	      branch_sr->Set_label_number(goto_bb->Labnam());
 	    }
 	  }
@@ -783,6 +868,7 @@ static bool no_bad_interference(zone& z1, zone& z2)
 // by restructuring is intact.
 static bool can_be_merged(zone& z1, zone& z2)
 {
+
   if (z1.loop_butterfly || z2.loop_butterfly) return false;
 
   vector<edge> t;
@@ -1085,13 +1171,14 @@ generate_zones(COMP_UNIT *cu, successor_graph &g, zone_container& zones,
 //   -- change edge (*,old_header) to (*,new_preheader) 
 //      where edge is in zone.{entry,clone,exit,side_entry}.
 //   -- add edge (new_preheader, new_header)
+//   -- return the last old_preheader's id
 //
-//
-static void connect_butterfly_zone(successor_graph& g, zone& z, 
+static vertex_id connect_butterfly_zone(successor_graph& g, zone& z, 
 				   vertex_id old_header, vertex_id new_header,
 				   vertex_id new_preheader,
 				   OPT_FEEDBACK *feedback)
 {
+  vertex_id old_preheader = 0;
   vector<edge> edge_incident_to_header;
   insert_iterator<vector<edge> > ins(edge_incident_to_header,
 				     edge_incident_to_header.begin());
@@ -1121,6 +1208,7 @@ static void connect_butterfly_zone(successor_graph& g, zone& z,
       vertex_id to = (*e).second;
       edge *fix = find_edge(g, from, to);
       (*fix).second = new_preheader;
+      old_preheader = (old_preheader > from) ? old_preheader : from;
     }
   }
   add_edge(g, edge(new_preheader, new_header, true));
@@ -1129,6 +1217,8 @@ static void connect_butterfly_zone(successor_graph& g, zone& z,
     feedback->Split_node(old_header, new_preheader);
     feedback->Move_edge_dest(new_preheader, old_header, new_header);
   }
+
+  return old_preheader;
 }
 
 
@@ -1169,6 +1259,7 @@ clone_zones(successor_graph& g, vector<vertex_id>& entry,
 {
   vertex_id new_id = cfg->Total_bb_count();
   map<vertex_id, vertex_id> new_to_old;
+  map<vertex_id, vertex_id> new_to_old_preheader;
 
   if (trace) {
     fprintf(TFile, "before clone_zone:\n");
@@ -1180,7 +1271,7 @@ clone_zones(successor_graph& g, vector<vertex_id>& entry,
 
     if ((*ri).skip) continue;
     if ((*ri).id != (*ri).merged_into) continue;
-    
+
     map<vertex_id, vertex_id> old_to_new; 
 
     zone::iterator e;
@@ -1217,8 +1308,10 @@ clone_zones(successor_graph& g, vector<vertex_id>& entry,
     vertex_id new_preheader = new_id++;
     if ((*ri).loop_butterfly) {
       vertex_id header = (*ri).loop_butterfly;
-      connect_butterfly_zone(g, *ri, header, old_to_new[header],
+      vertex_id old_preheader = 
+        connect_butterfly_zone(g, *ri, header, old_to_new[header],
 			     new_preheader, cfg->Feedback());
+      new_to_old_preheader[new_preheader] = old_preheader;            
     } else 
       connect_acyclic_zone(g, *ri, old_to_new, cfg->Feedback());
 
@@ -1263,10 +1356,22 @@ clone_zones(successor_graph& g, vector<vertex_id>& entry,
 #endif
 
   vertex_id i;
-  for (i = 0; i < g.size(); i++) 
-    if (reachable[i] &&	new_to_old[i] != 0) 
+  for (i = 0; i < g.size(); i++) {
+    if (reachable[i] &&	new_to_old[i] != 0) {
       cfg->Clone_bb(new_to_old[i] /*src*/, i /*dest*/, FALSE);
+      // set the new cloned BB's layout_id to the the original BB's 
+      // layout_id (if layout_id is not 0) or to original BB's id
+      cfg->Get_bb(i)->Set_layout_id(cfg->Get_bb(new_to_old[i]));
+    } 
 
+    // set the new_preheader's layout_id to the old_preheader's layout_id 
+    // (if layout_id is not 0) or old_preheader's id
+    if(new_to_old_preheader[i] != 0)
+    {
+        cfg->Get_bb(i)->Set_rid_id(cfg->Get_bb(new_to_old_preheader[i])->Rid_id());
+        cfg->Get_bb(i)->Set_layout_id(cfg->Get_bb(new_to_old_preheader[i]));
+    }    
+  }
 #ifdef Is_True_On
   if (display) {
     mark_attr_begin();
@@ -1286,14 +1391,16 @@ CFG_transformation(COMP_UNIT *cu, bool do_butterfly, bool trace, bool display)
 
   successor_graph g;
   vector<vertex_id> entry;
-  bool ok = build_successor_graph(cfg, g, 
+  CFG_REGION_TYPE ok = build_successor_graph(cfg, g, 
 				  insert_iterator<vector<vertex_id> >
 				  (entry, entry.begin()));
-  if (!ok) {
+
+  if (ok == CFG_other_regions) {
     if (trace)
-      fprintf(TFile, ("skip CFG transformation because of REGION."));
+      fprintf(TFile, ("skip CFG transformation because of non-EH REGION."));
     return;
   }
+
   if (trace) {
     fprintf(TFile, "Successor graph:\n");
     print_nodes(g, TFile);
@@ -1308,7 +1415,7 @@ CFG_transformation(COMP_UNIT *cu, bool do_butterfly, bool trace, bool display)
   generate_zones(cu, g, zones, do_butterfly, trace, display);
   clone_zones(g, entry, zones.begin(), zones.end(), cfg, trace, display);
 
-  reconstruct_CFG(g, cfg, trace);
+  reconstruct_CFG(g, cfg, trace, ok == CFG_EH_regions);
 
   cfg->Invalidate_loops();
   cfg->Analyze_loops();
