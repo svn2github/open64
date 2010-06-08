@@ -13690,6 +13690,265 @@ static WN* simplify_multiply ( WN* do_loop, LOWER_ACTIONS actions )
 }
 #endif
 
+/* ======================================================================
+ * BOOL lower_find(WN * tree, WN * wn)
+ * 
+ * Find a match of wn in tree.  Return TRUE if found.
+ *
+ * ===================================================================== */
+
+static BOOL lower_find(WN * tree, WN * wn)
+{
+  if (WN_Simp_Compare_Trees(tree, wn) == 0)
+    return TRUE;
+
+  for (int i = 0; i < WN_kid_count(tree); i++)
+    if (lower_find(WN_kid(tree, i), wn))
+      return TRUE;
+
+  return FALSE;
+}
+
+/* ======================================================================
+ * void lower_match_and_replace(WN * tree, WN * wn_old, WN * wn_new)
+ *
+ * Walk upward in the tree, find the operand that matches wn_old,
+ * replace it with wn_new.
+ *
+ * ====================================================================== */
+static void lower_match_and_replace(WN * tree, WN * wn_old, WN * wn_new)
+{
+  for (int i = 0; i < WN_kid_count(tree); i++) {
+    WN * wn_kid = WN_kid(tree, i);
+    if (WN_Simp_Compare_Trees(wn_kid, wn_old) == 0) {
+      WN_DELETE_Tree(wn_kid);
+      WN_kid(tree, i) = wn_new;
+      break;
+    }
+    else
+      lower_match_and_replace(wn_kid, wn_old, wn_new);
+  }
+}
+
+static BOOL  Is_Invaried_Value(WN *expr, WN *ind) 
+{
+   if (WN_operator_is(expr, OPR_INTCONST)) return TRUE;
+
+   //If another indirect load, it may be varied 
+   if (WN_operator_is(expr, OPR_ILOAD) || WN_operator_is(expr, OPR_LDA)) 
+     return FALSE; 
+
+   if (WN_operator_is(expr, OPR_LDID)){
+        if (WN_same_id(expr, ind))
+              return FALSE;
+   else // it is not an induction 
+             return TRUE;
+   }
+   
+   else { //check all the kids
+           for (int i=0; i< WN_kid_count(expr); i++) 
+               if (!Is_Invaried_Value(WN_kid(expr,i), ind)) 
+                 return FALSE;
+
+        return TRUE; //all kids are constant
+  }
+
+}
+
+/* =======================================================================
+ * WN lower_iv_simplification(WN *block, WN *tree, LOWER_ACTIONS actions, WN ** ret_next)
+ *
+ * Recognize bit operation patterns in induction variable expression and replace
+ * a DO-LOOP by a bit-and operation with a bit-mask if possible.
+ *
+ * From:
+ * for (j = 0; j < width; j++)
+ *    pat2 += state & (((unsigned long long) 1 << (width + j)));
+ *
+ *
+ * To:
+ * if (width < 32) {
+ *    rmask1 = ((unsigned long long) 1 << (width + width)) - 1;
+ *    rmask2 = rmask1 & ~((((unsigned long long) 1) << width) - 1);
+ *    rmask3 = ((width > 0) ? rmask2 : 0;
+ *    pat2 += (state & rmask3);
+ * }
+ * else {
+ *    for (j =  0; j < width; j++)
+ *       pat2 += state & (unsigned int) (((unsigned long long) 1 << (width + j)));
+ * }
+ *
+ * ======================================================================= */ 
+static WN *lower_iv_simplification(WN *block, WN *tree, LOWER_ACTIONS actions)
+{
+  Is_True(WN_opcode(tree)==OPC_DO_LOOP,
+	  ("expected DO_LOOP node, not %s", OPCODE_name(WN_opcode(tree))));
+
+  WN * loop_body = WN_do_body(tree);
+  WN * loop_info = WN_do_loop_info(tree);
+  WN * wn_first = WN_first(loop_body);
+  WN * wn_last = WN_last(loop_body);
+
+  if (loop_info && wn_first && (wn_first == wn_last)) {
+    OPERATOR st_opr = WN_operator(wn_first);
+    // match for a += b & ( 1 << m), where "b" and "m" do not depend on "a".
+    // and m = invar + induc, where "invar" is a loop invariant, 
+    // and "induc" is loop induction variable.
+    // Currenly, we limit to the case that "a" is a scalar non-address taken
+    // local variable.
+    if (OPERATOR_is_store(st_opr)) {
+      WN * wn_add = WN_kid(wn_first,0);
+      if (WN_operator(wn_add) == OPR_ADD) {
+	WN * wn_op1 = WN_kid(wn_add,0);
+	WN * wn_op2 = WN_kid(wn_add,1);
+	WN * wn_ld = (OPERATOR_is_load(WN_operator(wn_op1)) ? wn_op1 : 
+		      ((OPERATOR_is_load(WN_operator(wn_op2))) ? wn_op2 : NULL));
+	if (wn_ld) {
+	  OPERATOR ld_opr = WN_operator(wn_ld);
+	  WN * wn_and = (wn_op1 == wn_ld) ? wn_op2 : wn_op1;
+
+	  if (WN_operator(wn_and) == OPR_BAND) {
+	    WN * wn_shift = WN_kid(wn_and, 1);
+	    WN * wn_shift_count = NULL;
+	    WN * wn_b = WN_kid(wn_and, 0);
+	    WN * wn_induc = NULL;
+	    WN * wn_invar = NULL;
+	    WN * loop_indvar = WN_loop_induction(loop_info);
+
+	    if (WN_operator(wn_b) == OPR_CVT)
+	      wn_b = WN_kid(wn_b,0);
+	  
+	    if (WN_is_power_of_2(wn_shift)
+		&& OPERATOR_is_scalar_load(WN_operator(wn_b))) {
+	      if (WN_operator(wn_shift) == OPR_CVT)
+		wn_shift = WN_kid(wn_shift, 0);		
+
+	      if ((MTYPE_byte_size(WN_rtype(wn_shift)) == 8)
+		  && OPERATOR_is_scalar_store(st_opr)
+		  && OPERATOR_is_scalar_load(ld_opr)) {
+		ST * st = &St_Table[WN_st_idx(wn_first)];
+
+		if ((WN_st_idx(wn_first) == WN_st_idx(wn_ld))
+		    && (WN_offset(wn_first) == WN_offset(wn_ld))
+		    && (ST_sclass(st) == SCLASS_AUTO)
+		    && !ST_addr_passed(st)
+		    && !ST_addr_saved(st)
+		    && !lower_find(wn_and, wn_ld)) {
+		  wn_shift_count = WN_get_bit_from_expr(wn_shift);
+		  
+		  // Match "m = invar + induc"
+		  if (wn_shift_count && (WN_operator(wn_shift_count) == OPR_ADD)) {
+		    WN * wn1 = WN_kid(wn_shift_count, 0);
+		    WN * wn2 = WN_kid(wn_shift_count, 1);
+		    
+		    if (Is_Invaried_Value(wn1, loop_indvar)
+			&& !Is_Invaried_Value(wn2, loop_indvar)) {
+		      wn_invar = wn1;
+		      wn_induc = wn2;
+		    }
+		    else if (Is_Invaried_Value(wn2, loop_indvar)
+			     && !Is_Invaried_Value(wn1, loop_indvar)) {
+		      wn_invar = wn2;
+		      wn_induc = wn1;
+		    }
+		  }
+		}
+	      }
+	    }
+
+	    // Check whether the loop has a uni-stride increment.
+	    if (wn_invar && wn_induc && (WN_operator(wn_induc) == OPR_LDID)) {
+	      BOOL is_incr;
+	      OPCODE ub_compare;
+	      WN * loop_stride = WN_LOOP_Increment(tree, &is_incr);
+	      WN * lower_bound = WN_LOOP_LowerBound(tree);
+	      WN * upper_bound = WN_LOOP_UpperBound(tree, &ub_compare, TRUE);
+	      OPERATOR ub_opr = OPCODE_operator(ub_compare);
+
+	      if (is_incr && (WN_operator(loop_stride) == OPR_INTCONST)
+		  && (WN_const_val(loop_stride) == 1)
+		  && (ub_opr == OPR_LT)
+		  && (WN_operator(lower_bound) == OPR_INTCONST)
+		  && (WN_const_val(lower_bound) == 0)
+		  && (WN_Simp_Compare_Trees(upper_bound, wn_invar) == 0)) {
+		WN * wn_hi = NULL;
+		WN * wn_lo = NULL;
+		
+		// Create "width".
+		wn_lo = lower_copy_tree(wn_invar, actions);
+	      
+		// Create "width + width".
+		wn_hi = WN_Binary(OPR_ADD, WN_rtype(wn_invar),
+				  lower_copy_tree(wn_invar, actions),
+				  lower_copy_tree(upper_bound, actions));
+
+		// Create "(((unsigned long long) 1) << width)"
+		WN * wn_shift_lo = lower_copy_tree(wn_shift, actions);
+		lower_match_and_replace(wn_shift_lo, wn_shift_count, wn_lo);
+
+		// Create "((unsigned long long) 1 << (width + width))"
+		WN * wn_shift_hi = lower_copy_tree(wn_shift, actions);
+		lower_match_and_replace(wn_shift_hi, wn_shift_count, wn_hi);
+
+		// Create rmask1
+		WN * wn_rmask1 = WN_Binary(OPR_SUB, WN_rtype(wn_shift_hi),
+					   wn_shift_hi,
+					   WN_Intconst(WN_rtype(wn_shift_hi), 1));
+		
+		// Create "(((unsigned long long) 1) << invar) - 1"
+
+		WN * wn_bnot_op = WN_Binary(OPR_SUB, WN_rtype(wn_shift_lo),
+					    wn_shift_lo,
+					    WN_Intconst(WN_rtype(wn_shift_lo), 1));
+
+		// Create "~((((unsigned long long) 1) << width) - 1)"
+		WN * wn_bnot = WN_Unary(OPR_BNOT, WN_rtype(wn_shift), wn_bnot_op);
+
+		// Create rmask2
+		WN * wn_rmask2 = WN_Binary(OPR_BAND, WN_rtype(wn_shift),
+					   wn_rmask1, wn_bnot);
+		
+		// Create "width > 0"
+		WN * wn_rel = WN_Relational(ub_opr, Boolean_type,
+					    lower_copy_tree(lower_bound, actions),
+					    lower_copy_tree(upper_bound, actions));
+		// Create rmask3
+		WN * wn_rmask3 = WN_Ternary(OPR_SELECT,WN_rtype(wn_shift), wn_rel,
+					    wn_rmask2, WN_Intconst(WN_rtype(wn_shift), 0));
+
+		// Create the final statement.
+		WN * wn_st = lower_copy_tree(wn_first, actions);
+		lower_match_and_replace(wn_st, wn_shift, wn_rmask3);
+
+		// Create if-statement.
+		WN * wn_then = WN_CreateBlock();
+		WN_INSERT_BlockFirst(wn_then, wn_st);
+		WN * wn_else = WN_CreateBlock();
+		WN_INSERT_BlockFirst(wn_else, tree);
+		WN * wn_test = WN_Relational(ub_opr, Boolean_type,
+					     lower_copy_tree(upper_bound, actions),
+					     WN_Intconst(WN_rtype(upper_bound), 32));
+		WN * wn_if = WN_CreateIf(wn_test, wn_then, wn_else);
+		WN_Set_Linenum(wn_if, WN_Get_Linenum(tree));
+
+		// Lower if-statement.
+		FmtAssert(Action(LOWER_SIMPLIFY_BIT_OP), ("Unexpected action bit"));
+		actions -= LOWER_SIMPLIFY_BIT_OP;
+		WN * wn_ret = lower_if(block, wn_if, actions, NULL);
+		actions |= LOWER_SIMPLIFY_BIT_OP;
+		
+		return wn_ret;
+	      }
+	    }
+	  }
+	}
+      }
+    }
+  }
+
+  return tree;
+}
+
 /* ====================================================================
  *
  * WN *lower_do_loop(WN *block, WN *tree, LOWER_ACTIONS actions)
@@ -13714,9 +13973,9 @@ static WN *lower_do_loop(WN *block, WN *tree, LOWER_ACTIONS actions)
   }
 
   if (Action(LOWER_SIMPLIFY_BIT_OP)) {
-    tree = Lower_iv_simplification(block, tree, actions);
+    tree = lower_iv_simplification(block, tree, actions);
     // Check if transformed. If not, continue with do_loop 
-    if (WN_opcode(tree) != OPC_DO_LOOP)
+    if (WN_opcode(tree) != OPC_DO_LOOP) 
       return tree;
   }
 
@@ -16645,32 +16904,6 @@ static BOOL Valid_Array_Addr(WN *wn, WN *ind, int bytenum)
 }
 
 
-
-static BOOL  Is_Invaried_Value(WN *expr, WN *ind) 
-{
-   if (WN_operator_is(expr, OPR_INTCONST)) return TRUE;
-
-   //If another indirect load, it may be varied 
-   if (WN_operator_is(expr, OPR_ILOAD) || WN_operator_is(expr, OPR_LDA)) 
-     return FALSE; 
-
-   if (WN_operator_is(expr, OPR_LDID)){
-        if (WN_same_id(expr, ind))
-              return FALSE;
-   else // it is not an induction 
-             return TRUE;
-   }
-   
-   else { //check all the kids
-           for (int i=0; i< WN_kid_count(expr); i++) 
-               if (!Is_Invaried_Value(WN_kid(expr,i), ind)) 
-                 return FALSE;
-
-        return TRUE; //all kids are constant
-  }
-
-}
-
 /* IGNORE: opcode to ignore 
  * ABORT_OPT: opcode to abort the transformation
  * CONT_OPT: opcode to continue the transformation
@@ -17362,227 +17595,3 @@ if (!alias)
 
   return return_block;
 }
-/* ======================================================================
- *
- * BOOL lower_find(WN * tree, WN * wn)
- * 
- * Find a match of wn in tree.  Return TRUE if found.
- *
- * ===================================================================== */
-
-static BOOL lower_find(WN * tree, WN * wn)
-{
-  if (WN_Simp_Compare_Trees(tree, wn) == 0)
-    return TRUE;
-
-  for (int i = 0; i < WN_kid_count(tree); i++)
-    if (lower_find(WN_kid(tree, i), wn))
-      return TRUE;
-
-  return FALSE;
-}
-
-/* ======================================================================
- * void lower_match_and_replace(WN * tree, WN * wn_old, WN * wn_new)
- *
- * Walk upward in the tree, find the operand that matches wn_old,
- * replace it with wn_new.
- *
- * ====================================================================== */
-static void lower_match_and_replace(WN * tree, WN * wn_old, WN * wn_new)
-{
-  for (int i = 0; i < WN_kid_count(tree); i++) {
-    WN * wn_kid = WN_kid(tree, i);
-    if (WN_Simp_Compare_Trees(wn_kid, wn_old) == 0) {
-      WN_DELETE_Tree(wn_kid);
-      WN_kid(tree, i) = wn_new;
-    }
-    else
-      lower_match_and_replace(wn_kid, wn_old, wn_new);
-  }
-}
-
-/* =======================================================================
- *
- * WN *Lower_iv_simplification(WN *block, WN *tree, LOWER_ACTIONS actions)
- *
- * Recognize bit operation patterns in induction variable expression
- * and replace a DO-LOOP by a bit-and operation with a bit-mask.
- *
- * From:
- * for (j = 0; j < width; j++)
- *    pat2 += state & ( (unsigned long long) 1 << (width + j));
- *
- * To:
- *   pat2 += (state & ((width > 0) ? ((width == 32) ? (unsigned long long) (-1) : 
- *           (((unsigned long long) 1 << (2 * width)) - 1)) : 0));
- *
- * ======================================================================= */ 
-
-WN *Lower_iv_simplification(WN *block, WN *tree, LOWER_ACTIONS actions)
-{
-  Is_True(WN_opcode(tree)==OPC_DO_LOOP,
-	  ("expected DO_LOOP node, not %s", OPCODE_name(WN_opcode(tree))));
-
-  WN * loop_body = WN_do_body(tree);
-  WN * loop_info = WN_do_loop_info(tree);
-  WN * wn_first = WN_first(loop_body);
-  WN * wn_last = WN_last(loop_body);
-
-  if (loop_info && wn_first && (wn_first == wn_last)) {
-    OPERATOR st_opr = WN_operator(wn_first);
-    // match for a += b & ( 1 << m), where "b" and "m" do not depend on "a".
-    // and m = invar + induc, where "invar" is a loop invariant, 
-    // and "induc" is loop induction variable.
-    // Currenly, we limit to the case that "a" is a scalar non-address taken
-    // local variable.
-    if (OPERATOR_is_store(st_opr)) {
-      WN * wn_add = WN_kid(wn_first,0);
-      if (WN_operator(wn_add) == OPR_ADD) {
-	WN * wn_op1 = WN_kid(wn_add,0);
-	WN * wn_op2 = WN_kid(wn_add,1);
-	WN * wn_ld = (OPERATOR_is_load(WN_operator(wn_op1)) ? wn_op1 : 
-		      ((OPERATOR_is_load(WN_operator(wn_op2))) ? wn_op2 : NULL));
-	if (wn_ld) {
-	  OPERATOR ld_opr = WN_operator(wn_ld);
-	  WN * wn_and = (wn_op1 == wn_ld) ? wn_op2 : wn_op1;
-
-	  if (WN_operator(wn_and) == OPR_BAND) {
-	    WN * wn_shift = WN_kid(wn_and, 1);
-	    WN * wn_shift_count = NULL;
-	    WN * wn_b = WN_kid(wn_and, 0);
-	    WN * wn_induc = NULL;
-	    WN * wn_invar = NULL;
-	    WN * loop_indvar = WN_loop_induction(loop_info);
-
-	    if (WN_operator(wn_b) == OPR_CVT)
-	      wn_b = WN_kid(wn_b,0);
-	  
-	    if (WN_is_power_of_2(wn_shift)
-		&& OPERATOR_is_scalar_load(WN_operator(wn_b))) {
-	      if (OPERATOR_is_scalar_store(st_opr)) {
-		if (OPERATOR_is_scalar_load(ld_opr)) {
-		  ST * st = &St_Table[WN_st_idx(wn_first)];
-
-		  if ((WN_st_idx(wn_first) == WN_st_idx(wn_ld))
-		      && (WN_offset(wn_first) == WN_offset(wn_ld))
-		      && (ST_sclass(st) == SCLASS_AUTO)
-		      && !ST_addr_passed(st)
-		      && !ST_addr_saved(st)
-		      && !lower_find(wn_and, wn_ld)) {
-		    wn_shift_count = WN_get_bit_from_expr(wn_shift);
-		  
-		    // Match "m = invar + induc"
-		    if (wn_shift_count && (WN_operator(wn_shift_count) == OPR_ADD)) {
-		      WN * wn1 = WN_kid(wn_shift_count, 0);
-		      WN * wn2 = WN_kid(wn_shift_count, 1);
-		    
-		      if (Is_Invaried_Value(wn1, loop_indvar)
-			  && !Is_Invaried_Value(wn2, loop_indvar)) {
-			wn_invar = wn1;
-			wn_induc = wn2;
-		      }
-		      else if (Is_Invaried_Value(wn2, loop_indvar)
-			       && !Is_Invaried_Value(wn1, loop_indvar)) {
-			wn_invar = wn2;
-			wn_induc = wn1;
-		      }
-		    }
-		  }
-		}
-	      }
-	    }
-
-	    // Check whether the loop has a uni-stride increment.
-	    if (wn_invar && wn_induc && (WN_operator(wn_induc) == OPR_LDID)) {
-	      BOOL is_incr;
-	      OPCODE ub_compare;
-	      WN * loop_stride = WN_LOOP_Increment(tree, &is_incr);
-	      WN * lower_bound = WN_LOOP_LowerBound(tree);
-	      WN * upper_bound = WN_LOOP_UpperBound(tree, &ub_compare, TRUE);
-	      OPERATOR ub_opr = OPCODE_operator(ub_compare);
-
-	      if (is_incr && (WN_operator(loop_stride) == OPR_INTCONST)
-		  && (WN_const_val(loop_stride) == 1)
-		  && ((ub_opr == OPR_LT) || (ub_opr == OPR_LE))) {
-		WN * wn_hi = NULL;
-		WN * wn_lo = NULL;
-
-		// Create "width", as shown in beginning comments.
-		if ((WN_operator(lower_bound) == OPR_INTCONST)
-		    && (WN_const_val(lower_bound) == 0)) 
-		  wn_lo = lower_copy_tree(wn_invar, actions);
-		else 
-		  wn_lo = WN_Binary(OPR_ADD, WN_rtype(wn_invar),
-				    lower_copy_tree(wn_invar, actions),
-				    lower_copy_tree(lower_bound, actions));
-	      
-		// Create "2 * width", as shown in beginning comments.
-		wn_hi = WN_Binary(OPR_ADD, WN_rtype(wn_invar),
-				  lower_copy_tree(wn_invar, actions),
-				  lower_copy_tree(upper_bound, actions));
-
-		if (ub_compare == OPR_LE)
-		  wn_hi = WN_Binary(OPR_ADD, WN_rtype(wn_hi),
-				    wn_hi,
-				    WN_Intconst(WN_rtype(wn_hi), 1));
-
-		// Create "(((unsigned long long) 1) << width)"
-		WN * wn_shift_lo = lower_copy_tree(wn_shift, actions);
-		lower_match_and_replace(wn_shift_lo, wn_shift_count, wn_lo);
-
-		// Create "((unsigned long long) 1 << (2 * width))"
-		WN * wn_shift_hi = lower_copy_tree(wn_shift, actions);
-		lower_match_and_replace(wn_shift_hi, wn_shift_count, wn_hi);
-
-		// Create "(width == 32) ? (unsigned long long) (-1) : 
-		// (((unsigned long long) 1 << (2 * width)) - 1))"
-		WN * wn_select_op2 = WN_Binary(OPR_SUB, WN_rtype(wn_shift_hi),
-					       wn_shift_hi,
-					       WN_Intconst(WN_rtype(wn_shift_hi), 1));
-	      
-		WN * wn_select_op1 = WN_Intconst(WN_rtype(wn_shift_hi), -1);
-
-		WN * wn_rel = WN_Relational(OPR_EQ, Boolean_type, 
-					    lower_copy_tree(wn_invar, actions),
-					    WN_Intconst(WN_rtype(wn_invar), 32));
-	      
-		WN * wn_select = WN_Ternary(OPR_SELECT, WN_rtype(wn_select_op2), wn_rel,
-					    wn_select_op1, wn_select_op2);
-
-		// Create "(((unsigned long long) 1) << width) - 1"
-
-		WN * wn_bnot_op = WN_Binary(OPR_SUB, WN_rtype(wn_shift_lo),
-					    wn_shift_lo,
-					    WN_Intconst(WN_rtype(wn_shift_lo), 1));
-		WN * wn_bnot = WN_Unary(OPR_BNOT, WN_rtype(wn_and), wn_bnot_op);
-	      
-		WN * wn_rmask = WN_Binary(OPR_BAND, WN_rtype(wn_and),
-					  wn_select, wn_bnot);
-
-		// Create "0 < width"
-		wn_rel = WN_Relational(ub_opr, Boolean_type,
-				       lower_copy_tree(lower_bound, actions),
-				       lower_copy_tree(upper_bound, actions));
-
-		// Create "((width > 0) ? ((width == 32) ? (unsigned long long) (-1) : 
-		//             (((unsigned long long) 1 << (2 * width)) - 1)) : 0)"
-	      
-		wn_rmask = WN_Ternary(OPR_SELECT,WN_rtype(wn_select), wn_rel,
-				      wn_rmask, WN_Intconst(WN_rtype(wn_select), 0));
-
-		// Create the final statement.
-		WN * wn_ret = lower_copy_tree(wn_first, actions);
-		lower_match_and_replace(wn_ret, wn_shift, wn_rmask);
-		return wn_ret;
-	      }
-	    }
-	  }
-	}
-      }
-    }
-  }
-
-  return tree;
-}
-
