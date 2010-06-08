@@ -1835,40 +1835,52 @@ WN_get_val(WN * wn, int * val, const WN_MAP& wn_map)
   return FALSE;
 }
 
-// Collect leaf operands of a WHIRL tree whose non-leaf operands match the given operator
-// and whose leaf operands are either loads or integer constants.
+// Walk nodes in the given WHIRL tree, collect operands for ADD operators.
+//
+// For example, given the following tree,
+//   I4I4LDID  0 <st 2> 
+//   I4I4LDID 49 <st 80>
+//  I4SUB
+//  I4INTCONST -1 (0xffffffffffffffff)
+// I4ADD
+//
+// We will collect two nodes:
+//   I4I4LDID  0 <st 2> 
+//   I4I4LDID 49 <st 80>
+//  I4SUB
+//
+//  I4INTCONST -1 (0xffffffffffffffff)
+
 static STACK<WN *> * 
-Collect_operands(WN * wn, MEM_POOL * pool, OPERATOR opr)
+Collect_operands(WN * wn, MEM_POOL * pool)
 {
   STACK<WN *> * stack1 = NULL;
   STACK<WN *> * stack2 = NULL;
+  OPERATOR opr = WN_operator(wn);
 
-  if (WN_operator(wn) == opr) {
+  if ((opr == OPR_ADD) || (OPERATOR_is_load(opr))) {
     stack1 = CXX_NEW(STACK<WN *>(pool), pool);
     stack1->Push(wn);
   }
 
-  while (!stack1->Is_Empty()) {
+  while (stack1 && !stack1->Is_Empty()) {
     WN * wn_iter = stack1->Pop();
     OPERATOR opr_iter = WN_operator(wn_iter);
 
-    if (opr_iter == opr) {
+    if (opr_iter == OPR_ADD) {
       stack1->Push(WN_kid(wn_iter, 0));
       stack1->Push(WN_kid(wn_iter, 1));
     }
-    else if ((OPERATOR_is_load(opr_iter)) || (opr_iter == OPR_INTCONST)) {
+    else {
       if (stack2 == NULL)
 	stack2 = CXX_NEW(STACK<WN *>(pool), pool);
 
       stack2->Push(wn_iter);
     }
-    else {
-      CXX_DELETE(stack1, pool);
-      if (stack2)
-	CXX_DELETE(stack2, pool);
-      return NULL;
-    }
   }
+
+  if (stack1)
+    CXX_DELETE(stack1, pool);
 
   return stack2;
 }
@@ -1923,8 +1935,8 @@ WN_has_disjoint_val_range(WN * wn1, WN * wn2, const WN_MAP& lo_map, const WN_MAP
   }
   else {
     MEM_POOL * pool = Malloc_Mem_Pool;
-    STACK<WN *> * stack1 = Collect_operands(wn1, pool, OPR_ADD);
-    STACK<WN *> * stack2 = Collect_operands(wn2, pool, OPR_ADD);
+    STACK<WN *> * stack1 = Collect_operands(wn1, pool);
+    STACK<WN *> * stack2 = Collect_operands(wn2, pool);
     STACK<WN *> * stack_tmp = NULL;
 
     // Shuffle stack1 and stack2 so that stack1 contains more elements.
@@ -1972,7 +1984,7 @@ WN_has_disjoint_val_range(WN * wn1, WN * wn2, const WN_MAP& lo_map, const WN_MAP
 	  WN * wn1_iter = stack1->Top_nth(j);
 
 	  if (wn1_iter && (WN_Simp_Compare_Trees(wn1_iter, wn2_iter) == 0)) {
-	    stack1->DeleteElement(j);
+	    stack1->DeleteTop(j);
 	    found = TRUE;
 	    break;
 	  }

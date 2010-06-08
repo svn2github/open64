@@ -3568,7 +3568,12 @@ WN_get_bit_from_expr(WN * wn)
   OPERATOR opr = WN_operator(wn);
   FmtAssert((opr != OPR_INTCONST), ("Do not expect an integer constant"));
 
-  if (opr == OPR_SHL) {
+  if (opr == OPR_CVT) {
+    WN * wn_kid = WN_kid(wn, 0);
+    if (WN_operator(wn_kid) != OPR_INTCONST)
+      return WN_get_bit_from_expr(wn_kid);
+  }
+  else if (opr == OPR_SHL) {
     WN * wn_tmp = WN_kid(wn, 0);
 
     if ((WN_operator(wn_tmp) == OPR_INTCONST)

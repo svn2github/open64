@@ -228,6 +228,10 @@ public:
        _array[_lastidx] = NULL;
        Decidx();
     }
+    else if (idx == _lastidx) {
+        _array[idx] = NULL;
+        Decidx();
+    }
   }
   mUINT32 Elements () const  { return (_lastidx+1); }
 
@@ -335,7 +339,8 @@ public:
   void    Free()                                { _stack.Free_array(); }
   void    Alloc(const INT32 n)                  { _stack.Alloc_array(n); }
   mINT32  Elements() const			{ return(_stack.Lastidx() +1);}
-  void    DeleteElement(mUINT32 idx)            { _stack.DeleteElement(idx); }
+  // Delete Top_nth(n) element.
+  void    DeleteTop(mUINT32 n)         { _stack.DeleteElement(_stack.Lastidx() - n); }
 };
 
 

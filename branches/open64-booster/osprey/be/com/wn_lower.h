@@ -171,6 +171,7 @@ extern WN *WN_Lower(WN *tree, LOWER_ACTIONS actions, struct ALIAS_MANAGER *alias
 
 //xur
 extern WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions, struct ALIAS_MANAGER *alias=NULL);
+extern WN *Lower_iv_simplification(WN *block, WN *tree, LOWER_ACTIONS actions);
 
 /*
  * lower an scf node but not things underneath it 
