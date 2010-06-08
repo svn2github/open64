@@ -1076,7 +1076,8 @@ BB_NODE::Is_empty()
 }
 
 BOOL
-BB_NODE::Clonable(BOOL allow_loop_cloning, const BVECTOR *cr_vol_map)
+BB_NODE::Clonable(BOOL allow_loop_cloning, const BVECTOR *cr_vol_map, 
+                  BOOL allow_clone_calls)
 {
   // Note that we ignore the volatile attributes of codereps if 
   // cr_vol_map==NULL.
@@ -1129,7 +1130,11 @@ BB_NODE::Clonable(BOOL allow_loop_cloning, const BVECTOR *cr_vol_map)
     OPERATOR opr = OPCODE_operator(stmt->Op());
     if (opr == OPR_PREFETCH) return FALSE;  // prefetch map contains back pointer
     if (opr == OPR_REGION) return FALSE;    // black box region -- very difficult to clone
-    if (OPERATOR_is_volatile(opr)) return FALSE;
+    if (OPERATOR_is_volatile(opr)) {
+      if (!OPERATOR_is_call (opr) || !allow_clone_calls) {
+        return FALSE;
+      }
+    }
     if (cr_vol_map != NULL &&
 	stmt->Contains_volatile_ref(*cr_vol_map)) return FALSE;
     // The followings are represented by volatile operator

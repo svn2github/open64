@@ -6701,7 +6701,7 @@ void CFG::Clone_bb(IDTYPE src, IDTYPE dst, BOOL clone_wn)
   BB_NODE *srcbb = Get_bb(src);
   BB_NODE *destbb = Get_bb(dst);
 
-  Is_True( srcbb->Clonable(TRUE),
+  Is_True( srcbb->Clonable(TRUE, NULL, _allow_clone_calls),
 	   ("CFG::Clone_bb:  BB%d is not clonable.", src) );
     
   destbb->Clear();

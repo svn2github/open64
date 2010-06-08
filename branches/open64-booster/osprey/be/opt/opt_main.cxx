@@ -360,7 +360,7 @@
 #include "opt_wovp.h"     // for write once variable promotion
 #include "opt_misc.h"
 #include "opt_lmv.h"
-#include "opt_lmv_helper.h"
+#include "opt_peel_unroll.h"
 
 #if defined(TARG_SL)
 #include "opt_lclsc.h"
@@ -1196,7 +1196,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   SET_OPT_PHASE("Preparation");
 
   if (Get_Trace(TP_GLOBOPT, -1)) {
-    fprintf (TFile,  "%s \t Pre_Optimizer phase=%d\n %s\n", DBar, phase, DBar);
+    fprintf (TFile,  "%s \t Pre_Optimizer phase=%d\n%s\n", DBar, phase, DBar);
   }
 
   Is_True(phase == PREOPT_IPA0_PHASE ||
@@ -1998,6 +1998,11 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       lm.Perform_loop_multiversioning ();
     }
 
+    if (phase == PREOPT_LNO_PHASE && WOPT_Enable_Multiver_and_Unroll_Opt) {
+        LOOP_PEEL_UNROLL_DRIVER peel_unroller (comp_unit,
+            LOOP_PEEL_UNROLL_DRIVER::LPU_OPT_MV_FULLY_UNROLL);
+        peel_unroller.Perform_peeling_or_unroll ();
+    }
 
     if (WOPT_Enable_Useless_Store_Elimination)
     {

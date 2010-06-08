@@ -162,10 +162,12 @@ class MOD_PHI_BB_CONTAINER;
 class OPT_STAB;
 class OPT_TAIL;
 class LMV_CFG_ADAPTOR; 
+class LOOP_UNROLL_UTIL;
 
 class CFG {
 friend class EXITBB_ITER;
 friend class OPT_TAIL;
+friend class LOOP_UNROLL_UTIL;
 private:
   BOOL		_trace;		// -ttOPT:0x0008 or 0x0004
 
@@ -234,6 +236,7 @@ private:
   REGION_LEVEL _rgn_level;	// context for cfg: preopt/mainopt/rvi
   BOOL         _has_regions;	// does the cfg have region nodes?
   INT32        _dohead_cnt;     // number of DOHEAD block, for PRE
+  BOOL         _allow_clone_calls; // allow clone block having calls
 
   BB_NODE_SET *_bb_set;         // A scratch bb set for temporary use
   BB_NODE_SET *_non_true_body_set; // scratch bb set for use in Compute_true_loop_body_set
@@ -713,6 +716,9 @@ public:
   BOOL         Fall_through(BB_NODE *bb1, BB_NODE *bb2);  // bb1 falls through to bb2
 
   void         Delete_empty_BB();
+
+  BOOL         Allow_clone_calls (void) const { return _allow_clone_calls; }
+  void         Set_allow_clone_calls (BOOL b) { _allow_clone_calls = b; }
 
   // Clone a BB_NODE
   void         Clone_bb(IDTYPE source, IDTYPE dest, BOOL clone_wn);

@@ -1640,7 +1640,8 @@ public:
 
   // Can this BB be cloned?
   BOOL         Clonable(BOOL           allow_loop_cloning, 
-			const BVECTOR *cr_vol_map = NULL);
+			const BVECTOR *cr_vol_map = NULL,
+			BOOL allow_clone_calls=FALSE);
   INT32        Code_size_est(void) const;
 
   // Does this BB dominate every BB in the given  SC_NODE?

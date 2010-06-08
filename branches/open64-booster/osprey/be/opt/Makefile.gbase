@@ -236,7 +236,8 @@ BE_OPT_CXX_SRCS = \
   opt_lclsc.cxx         \
   opt_misc.cxx          \
   opt_lmv.cxx           \
-  opt_lmv_helper.cxx
+  opt_lmv_helper.cxx   \
+  opt_peel_unroll.cxx
 
 ifeq ($(BUILD_PCH), USE_PCH)
 BACK_END_PCH_OBJS = $(BE_OPT_CXX_SRCS:.cxx=.o)
