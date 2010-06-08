@@ -414,6 +414,7 @@ private:
   void	       Compute_true_loop_body_set(BB_LOOP *loop);
   BOOL         Loop_itself_is_empty(BB_LOOP *loop);
   BB_LOOP     *Get_last_loop(BB_LOOP *loop);
+  void         Remove_loop_construct (BB_LOOP *);
 
   // screen out those BBs originally assigned to the 'loop' but
   // actually does not belong to the 'loop'.
@@ -431,7 +432,8 @@ private:
   void         LMV_clone_pred_succ_relationship (LMV_CFG_ADAPTOR*); 
   void         LMV_clone_loop_body (LMV_CFG_ADAPTOR*); 
   void         LMV_update_internal_labels (LMV_CFG_ADAPTOR*);
-  BB_LOOP*     LMV_clone_BB_LOOP (LMV_CFG_ADAPTOR*);
+  BB_LOOP*     LMV_clone_BB_LOOPs (LMV_CFG_ADAPTOR*);
+  BB_LOOP*     LMV_clone_BB_LOOP (LMV_CFG_ADAPTOR*, BB_LOOP*);
   void         LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR*);
   void         LMV_clone_BB_IFINFO (LMV_CFG_ADAPTOR* );
 

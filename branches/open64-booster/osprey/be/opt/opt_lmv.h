@@ -33,6 +33,8 @@
 #ifndef opt_lmv_INCLUDED
 #define opt_lmv_INCLUDED
 
+#include <list>
+
 #include "defs.h"
 #include "opt_defs.h"
 #include "cxx_base.h"
@@ -203,11 +205,14 @@ public:
     { _old_to_new_blk[src->Id()] = clone->Id(); }
 
   BB_NODE* Get_cloned_bb (const BB_NODE* src) const {
+      if (src == NULL) return NULL;
       std::map<IDTYPE, IDTYPE>::const_iterator iter;
       iter = _old_to_new_blk.find (src->Id());
       return iter != _old_to_new_blk.end() ? 
              _cfg->Get_bb ((*iter).second) : NULL;
     }
+
+  void Get_all_src_bb (std::list<BB_NODE*>& bb_list) const;
 
   void Map_cloned_label (INT src, INT clone) 
     { _old_to_new_lab[src] = clone; }

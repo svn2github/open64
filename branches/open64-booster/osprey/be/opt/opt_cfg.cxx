@@ -5128,6 +5128,71 @@ CFG::Get_last_loop(BB_LOOP *loop)
   return last_loop;
 }
 
+// Remove given BB_LOOP from loop hierarchy. It is removed because
+// the loop construct no longer exist (because, for instance, 
+// fully-unrolling).
+//
+void
+CFG::Remove_loop_construct (BB_LOOP* loop) {
+        
+  // step 1: Bypass this loop "vertically" through step 1.1 and 1.2.
+  //
+  //  step 1.1 Set all immediate nested loops' nesting loop to be this 
+  //       <loop>'s immediate parent.
+  //
+  if (BB_LOOP* nested = (BB_LOOP*)loop->Child ()) {
+
+    BB_LOOP_ITER iter (nested);
+    BB_LOOP* nested_loop;
+    BB_LOOP* last_nested_loop = NULL;
+
+    FOR_ALL_NODE (nested_loop, iter, Init()) {
+      nested_loop->Set_parent (loop->Parent ()); 
+      last_nested_loop = nested_loop;
+    }
+  
+    // step 1.2: "promote" immediate nested loops to be this <loop>'s siblling.
+    //
+    loop->Set_child (NULL);
+    last_nested_loop->Set_Next (loop->Next ());
+    loop->Set_Next (nested);
+  }
+
+  // step 2: Bypass this <loop> "horizontally" by hooking this <loop>'s previous
+  //   sibling and next sibling.
+  //
+  BB_LOOP* first_sibling;
+  if (loop->Parent ())
+    first_sibling = loop->Parent ()->Child ();
+  else
+    first_sibling = Loops ();
+
+  {
+    BB_LOOP_ITER iter (first_sibling);
+    BB_LOOP* sibling;
+    FOR_ALL_NODE (sibling, iter, Init()) {
+      if (sibling->Next () == loop) {
+        sibling->Set_Next (loop->Next ());
+        break;
+      }
+    }
+
+    if (Loops () == loop) {
+      // change loop hierarchy root
+      //
+      Set_loops (loop->Next ());
+    }
+  }
+
+  // In case this <loop> is its parent's first kid, change parent's first kid
+  // to be <loop>'s next sibling.
+  //
+  if (loop->Parent() && loop->Parent()->Child () == loop) {
+    loop->Parent ()->Set_child (loop->Next ());  
+  }
+
+  CXX_DELETE (loop, Mem_pool ());
+}
 
 // bb is a member of loop->Body_set(), but has not yet been determined if it
 // is member of loop->True_body_set() or member of _non_true_body_set.  It 
@@ -6849,12 +6914,16 @@ CFG::Clone_loop(BB_LOOP * bb_loop)
   BB_NODE * old_body = bb_loop->Body();
   BB_NODE * old_step = bb_loop->Step();
   BB_NODE * old_merge = bb_loop->Merge();
+  BB_NODE * old_preheader = bb_loop->Preheader ();
+  BB_NODE * old_tail = bb_loop->Tail ();
   WN *      new_index = NULL;
   BB_NODE * new_start = old_start ? Get_cloned_bb(old_start) : NULL;
   BB_NODE * new_end = old_end ? Get_cloned_bb(old_end) : NULL;
   BB_NODE * new_body = old_body ? Get_cloned_bb(old_body) : NULL;
   BB_NODE * new_step = old_step ? Get_cloned_bb(old_step) : NULL;
   BB_NODE * new_merge = old_merge ? Get_cloned_bb(old_merge) : NULL;
+  BB_NODE * new_preheader = old_preheader ? Get_cloned_bb(old_preheader) : NULL;
+  BB_NODE * new_tail = old_tail ? Get_cloned_bb(old_tail) : NULL;
 
   if (new_start && new_start->Loop())
     return new_start->Loop();
@@ -6893,6 +6962,8 @@ CFG::Clone_loop(BB_LOOP * bb_loop)
   if (bb_loop->Orig_wn())
     new_loopinfo->Set_orig_wn(bb_loop->Orig_wn());
   
+  new_loopinfo->Set_preheader (new_preheader);
+
   return new_loopinfo;
 }
 

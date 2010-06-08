@@ -96,6 +96,41 @@ static char *rcs_id = 	opt_bb_CXX"$Revision: 1.1.1.1 $";
 #include "idx_32_set.h"
 #include "wn_simp.h"
 
+BB_LOOP::BB_LOOP (WN *index, BB_NODE *start, BB_NODE *end,
+	              BB_NODE *body, BB_NODE *step, BB_NODE *merge) { 
+  _child = NULL;
+  _parent = NULL;
+  _loopstmt = NULL;
+  _index = index;
+  _u1._start = start;
+  _end = end;
+  _body = body;
+  _step = step;
+  _u2._merge = merge;
+  _body_set = NULL;
+  _true_body_set = NULL;
+  _trip_count_stmt = NULL;
+  _trip_count_expr = NULL;
+  _entry_test = NULL;
+  _wn_trip_count = NULL;
+  _iv = NULL;
+  _iv_replacement = NULL;
+  _lftr_non_candidates = NULL;
+  _flags = LOOP_EMPTY;
+  _orig_wn = NULL;
+  _promoted_do = FALSE;
+  has_entry_guard = FALSE;
+  well_formed = FALSE;
+  _valid_doloop = TRUE;
+  header = NULL;
+  _size_estimate = 0;  
+
+  header = tail = preheader = loopback = NULL;
+  header_pred_count = -1;
+  preheader_pred_num = -1;
+  max_depth = depth = -1;
+}
+
 BB_LOOP*
 BB_LOOP::Append (BB_LOOP *loop)
 {
