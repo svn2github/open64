@@ -2849,6 +2849,13 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
 	  WN_Delete(tree);
 	}
         break;
+      case INTRN_V16C8MPY_ADDSUB:
+	{
+	  lower_complex_expr(block, WN_CreateExp2(OPR_MPY, MTYPE_V16C8, MTYPE_V, 
+				  WN_actual(tree, 0), WN_actual(tree, 2)), actions,
+			  realpart, imagpart);
+	}
+        break;	
 
 	//*****************************************************************
 	//
