@@ -347,7 +347,7 @@ Targ_Name ( TARGET_PROCESSOR b)
     case TARGET_xeon: return "Xeon";
     case TARGET_anyx86: return "Anyx86";
     case TARGET_barcelona: return "Barcelona";
-    case TARGET_orochi: return "Orochi";
+    case TARGET_orochi: return "Bdver1";
     default:
       r = bnb[bnb_used].name;
       bnb_used = (bnb_used + 1) % 4;
@@ -489,7 +489,7 @@ Prepare_Target ( void )
 #endif
       targ = TARGET_barcelona;
     }
-    else if ( strcasecmp ( Processor_Name, "orochi" ) == 0 ) {
+    else if ( strcasecmp ( Processor_Name, "bdver1" ) == 0 ) {
       if (!Target_SSE2_Set && !Target_SSE3_Set)
         Target_SSE3 = TRUE;
 #if 0 //temporily disable setting default sse4a true for orochi

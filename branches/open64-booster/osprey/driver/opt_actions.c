@@ -1808,7 +1808,7 @@ static struct
     FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
   { "wolfdale", "wolfdale",		ABI_64,		TRUE,	TRUE,  FALSE,
     TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
-  { "orochi",   "orochi",		ABI_64,		TRUE,	TRUE,  TRUE,
+  { "bdver1",   "bdver1",		ABI_64,		TRUE,	TRUE,  TRUE,
     TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE  },
   { "barcelona","barcelona",		ABI_64,		TRUE,	TRUE,  TRUE,
     FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
