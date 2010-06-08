@@ -3123,6 +3123,8 @@ BOOL ICMP_Is_Replaced ( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
   Is_True( TOP_is_icmp ( top ), ( "unexpected opcode" ) );
   TN* src0 = opnd_tn[0];
   TN* src1 = opnd_tn[1];
+  EBO_TN_INFO *tninfo0 = opnd_tninfo[0];
+  EBO_TN_INFO *tninfo1 = opnd_tninfo[1];
 
   // 1. op must be test or comapre
   //    category test/compare into test/testi/compare/comparei
@@ -3137,6 +3139,14 @@ BOOL ICMP_Is_Replaced ( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
     case TOP_test64:
       if ( TN_has_value(src1) )
         is_testi = TRUE;
+      else if ( TN_has_value(src0) ) {
+        is_testi = TRUE;
+        // interchange src0, src1
+        src0 = opnd_tn[1];
+        src1 = opnd_tn[0];
+        tninfo0 = opnd_tninfo[1];
+        tninfo1 = opnd_tninfo[0];
+      }
       else 
         is_test = TRUE;
       break;
@@ -3152,6 +3162,8 @@ BOOL ICMP_Is_Replaced ( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
     case TOP_cmp64:
       if ( TN_has_value(src1) )
         is_cmpi = TRUE;
+      else if ( TN_has_value(src0) ) 
+        return FALSE;
       else 
         is_cmp = TRUE;
       break;
@@ -3174,8 +3186,6 @@ BOOL ICMP_Is_Replaced ( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
   OP* mov_ext0 = NULL;
   OP* mov_ext1 = NULL;
   INT32 test_size = Test_Compare_Size( top );
-  EBO_TN_INFO *tninfo0 = opnd_tninfo[0];
-  EBO_TN_INFO *tninfo1 = opnd_tninfo[1];
   struct SIZE_EXT_INFO ext_info0;
   struct SIZE_EXT_INFO ext_info1;
   TN* new_src0;     // source in new op
