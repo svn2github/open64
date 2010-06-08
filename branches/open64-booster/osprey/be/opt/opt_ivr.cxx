@@ -1333,6 +1333,7 @@ IVR::Choose_primary_IV(const BB_LOOP *loop)
       STMTREP *init_stmt = init_value->Create_cpstmt(init_cr, Htable()->Mem_pool());
       Loop()->Preheader()->Append_stmtrep(init_stmt);
       init_stmt->Set_bb(Loop()->Preheader());
+      init_stmt->Set_linenum(Loop()->Preheader()->Linenum());
 
       OPCODE addop = OPCODE_make_op(OPR_ADD, mtype, MTYPE_V);
       CODEREP *step = Htable()->Add_const(mtype, 1);
