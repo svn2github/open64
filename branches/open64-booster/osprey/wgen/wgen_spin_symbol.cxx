@@ -1557,7 +1557,6 @@ Create_ST_For_Tree (gs_t decl_node)
   ST_EXPORT  eclass;
   SYMTAB_IDX level;
   static INT anon_count = 0;
-  BOOL anon_st = FALSE;
 
 
   // If the decl is a function decl, and there are duplicate decls for the
@@ -1576,7 +1575,6 @@ Create_ST_For_Tree (gs_t decl_node)
   if (gs_tree_code(decl_node) == GS_RESULT_DECL) {
     sprintf(tempname, ".result_decl_%d", gs_decl_uid(decl_node));
     name = tempname;
-    anon_st = TRUE;
   }
   else if ((gs_tree_code(decl_node) == GS_FUNCTION_DECL ||
             gs_tree_code(decl_node) == GS_PARM_DECL ||
@@ -1591,7 +1589,6 @@ Create_ST_For_Tree (gs_t decl_node)
   else {
     sprintf(tempname, "anon%d", ++anon_count);
     name = tempname;
-    anon_st = TRUE;
   }
 
 #ifdef KEY
@@ -1939,7 +1936,7 @@ Create_ST_For_Tree (gs_t decl_node)
 	     (lang_cplus && gs_cp_decl_threadprivate_p (decl_node))))
 	  Set_ST_is_thread_private (st);
 
-	if (gs_tree_code (decl_node) == GS_VAR_DECL && anon_st)
+	if (gs_tree_code (decl_node) == GS_VAR_DECL && sclass == SCLASS_AUTO)
 	  WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
 #endif
 
