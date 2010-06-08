@@ -96,6 +96,7 @@ typedef struct {
 extern int pstatic_as_global;
 extern BOOL flag_no_common;
 extern gs_t decl_arguments;
+extern BOOL gv_cond_expr;
 
 extern void Push_Deferred_Function(gs_t);
 extern char *WGEN_Tree_Node_Name(gs_t op);
@@ -1883,8 +1884,10 @@ Create_ST_For_Tree (gs_t decl_node)
             }
           }
         }
-        // Make g++ guard variables local unless it's weak.
 	if (guard_var) {
+          // This is a guard variable created by the g++ front-end to protect
+          // against multiple initializations (and destruction) of symbols 
+          // with static storage class. Make it local unless it's weak.
 	  level = GLOBAL_SYMTAB;
           if ( gs_decl_weak(decl_node) ) {
 	    sclass = SCLASS_UGLOBAL;
@@ -1895,6 +1898,17 @@ Create_ST_For_Tree (gs_t decl_node)
             eclass = EXPORT_LOCAL;
           }
 	}
+        else if (gv_cond_expr) {
+          //Make guard variable for condtional expressions a local stack 
+          //variable to avoid being over-written when evaluating nested 
+          //conditional expressions.
+          //See comments for WGEN_add_guard_var in wgen_expr.cxx 
+          //for information on conditional expressions.
+          level = DECL_SYMTAB_IDX(decl_node) ?
+                  DECL_SYMTAB_IDX(decl_node) : CURRENT_SYMTAB;
+          sclass = SCLASS_AUTO;
+          eclass = EXPORT_LOCAL;
+	} 
 
 	// The tree under DECL_ARG_TYPE(decl_node) could reference decl_node.
 	// If that's the case, the Get_TY would create the ST for decl_node.
