@@ -110,6 +110,7 @@ Insert_var_phi(CODEREP *lhs, BB_NODE *bb, COMP_UNIT *cu, BOOL trace)
       phi->Set_live();
       phi->Set_result(phi_res);
       phi->Set_visited();
+      phi->Set_res_is_cr();
 
       Is_Trace(trace,
 	       (TFile, "SSA RENAME: insert new phi at BB%d for sym%d\n", bb->Id(),

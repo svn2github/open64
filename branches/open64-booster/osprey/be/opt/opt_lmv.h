@@ -157,6 +157,7 @@ private:
   BB_NODE* _new_header;
   BB_NODE* _new_preheader;
   BB_NODE* _new_merge;
+  BB_NODE* _precond; // the block hosting precondition
 
   // The first/last block of the prev/next list of the cloned loop, 
   // After the duplication is done, the head and tail should be the 
@@ -175,10 +176,10 @@ private:
 public:
   LMV_CFG_ADAPTOR (MEM_POOL* mp, CFG* cfg, BOOL trace, 
                    BB_LOOP* src, CODEREP* predicate)
-    :_mp(mp), _src_loop(src), _cfg(cfg) {
+    :_mp(mp), _cfg(cfg), _src_loop(src) {
 
     _cloned_loop = NULL;
-    _new_header = _new_preheader = _new_merge = NULL;
+    _new_header = _new_preheader = _new_merge = _precond = NULL;
     _dup_loop_body = 
       CXX_NEW (BB_NODE_SET((INT)(_cfg->Last_bb()->Id()*1.5), 
                _cfg, _mp, BBNS_EMPTY), _mp);
@@ -200,6 +201,9 @@ public:
     { return _new_merge; }
   void Set_cloned_loop_merge (BB_NODE* merge)
     { _new_merge = merge; }
+
+  BB_NODE* Precond_blk (void) const { return _precond; }
+  void Set_precond_blk (BB_NODE* b) { _precond = b; }
 
   void Map_cloned_bb (const BB_NODE* src, const BB_NODE* clone)
     { _old_to_new_blk[src->Id()] = clone->Id(); }

@@ -525,7 +525,7 @@ public:
   INT32 Id (void) const { return _id; }
  
   INT Indirect_level (void) const { return _ind_level; } 
-  INT Set_indirect_level (INT level) { _ind_level = level; }
+  void Set_indirect_level (INT level) { _ind_level = level; }
 
   TY_IDX Obj_ty (void) const { return _obj_ty; }
   void Set_obj_ty (TY_IDX ty) { _obj_ty = ty; }

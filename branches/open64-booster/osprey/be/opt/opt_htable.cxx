@@ -5250,7 +5250,12 @@ STMTREP::Print(FILE *fp) const
   fprintf(fp, " b=%s",Print_bit());
   fprintf(fp, " flags:0x%x", _flags&0x1f );
   fprintf(fp, " pj%d", Proj_op_uses());
-  fprintf(fp, " Sid%d\n", Stmt_id());
+  fprintf(fp, " Sid%d", Stmt_id());
+  if (OPERATOR_is_call (_opr) && OPERATOR_has_sym (_opr)) {
+    ST* st = St();
+    if (st && ST_name (*st)) { fprintf (fp, " #%s", ST_name (*st)); }
+  }
+  fprintf (fp, "\n");
 
   if (Has_chi()) {
     CHI_NODE *cnode;
