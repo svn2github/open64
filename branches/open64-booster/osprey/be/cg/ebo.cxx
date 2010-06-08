@@ -4192,6 +4192,9 @@ void EBO_Eliminate_movaps()
             OP *remove_op = op;
             op = OP_prev( op );
             BB_Remove_Op( bb, remove_op );
+            if (BB_length(bb) == 0)
+              break;
+
             if( op == NULL )
               op = BB_first_op( bb );
           }
