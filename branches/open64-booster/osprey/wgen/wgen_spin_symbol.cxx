@@ -1660,6 +1660,16 @@ Create_ST_For_Tree (gs_t decl_node)
             eclass != EXPORT_LOCAL &&
             eclass != EXPORT_LOCAL_INTERNAL)
 	  Set_ST_is_weak_symbol(st);
+
+        // process attributes for FUNCTION_DECL
+        gs_t attr_list = gs_decl_attributes(decl_node);
+        for ( ; attr_list != NULL; attr_list = gs_tree_chain(attr_list) ) {
+                Is_True(gs_tree_code(attr_list) == GS_TREE_LIST,
+                                ("lookup_attributes: TREE_LIST node not found"));
+                gs_t attr = gs_tree_purpose(attr_list);
+                if ( is_attribute("noreturn", attr) ) // __attribute__((noreturn))
+                        Set_PU_has_attr_noreturn (pu);
+        }
       }
       break;
 

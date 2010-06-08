@@ -1810,6 +1810,12 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
             ed->Set_reason_id (38);
     } 
 #endif
+    else if (PU_has_attr_noreturn(callee->Get_PU()) &&
+             callee->PU_Size().Stmt_count() > TINY_SIZE ) {
+            result = FALSE;
+            reason = "not inlining non-tiny noreturn functions";
+            ed->Set_reason_id (39);
+    }
     // The following else-if must be last
     else if (!IPA_Enable_Lang) {
 	if ((callee->Summary_Proc()->Get_lang() == LANG_F77) || 
