@@ -314,11 +314,10 @@ extern INT32 WOPT_Enable_Pro_Loop_Fusion_Func_Limit; // Enable proactive loop fu
 extern INT32 WOPT_Enable_Pro_Loop_Interchange_Func_Limit; // Enable proactive loop interchange
                                                           // transformation for functions within the limit.
                                                          
-extern INT32 WOPT_Enable_If_Merge_Limit;  // Limit number of if-merging transformations per function.
-extern INT32 WOPT_Enable_Tail_Dup_Limit;  // Limit number of tail-duplication transformations per function.
-extern INT32 WOPT_Enable_If_Cond_Limit; // Limit number of if-condition transformations per function.
+extern INT32 WOPT_Enable_Pro_Loop_Limit;  // Limit number of proactive loop transformations per function.
 extern INT32 WOPT_Tail_Dup_Max_Clone; // Limit code size bloats (in statement count)
                                                     // due to tail-duplication.
+extern BOOL WOPT_Enable_If_Flip; // Enable specialized if-merging involving bit operations.
 
 #ifdef KEY
 extern BOOL  WOPT_Enable_Preserve_Mem_Opnds; // if TRUE, suppress EPRE on 

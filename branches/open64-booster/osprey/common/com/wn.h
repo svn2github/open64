@@ -1514,6 +1514,7 @@ extern void WN_set_st_addr_saved (WN *);
 extern BOOL WN_has_side_effects (const WN*);
 
 extern WN *WN_Rrotate (TYPE_ID desc, WN *src, WN *cnt);
+extern BOOL WN_is_executable(WN *);
 
 #if defined(TARG_SL)
 extern WN* WN_CreateFork(INT32 label_number, BOOL major);

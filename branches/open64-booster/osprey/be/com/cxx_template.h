@@ -219,6 +219,16 @@ public:
     _array[Newidx()] = val;
 #endif
   }
+  void DeleteElement(mUINT32 idx)
+  {
+    if (idx < _lastidx) {
+       for (int iter = idx; iter < _lastidx; iter++) {
+          _array[idx] = _array[idx+1];
+       }
+       _array[_lastidx] = NULL;
+       Decidx();
+    }
+  }
   mUINT32 Elements () const  { return (_lastidx+1); }
 
   mUINT32 Newidx(void);                  // allocate a valid index
@@ -325,6 +335,7 @@ public:
   void    Free()                                { _stack.Free_array(); }
   void    Alloc(const INT32 n)                  { _stack.Alloc_array(n); }
   mINT32  Elements() const			{ return(_stack.Lastidx() +1);}
+  void    DeleteElement(mUINT32 idx)            { _stack.DeleteElement(idx); }
 };
 
 
@@ -491,7 +502,6 @@ void STACK<T>::Settop(const T& val)
   Is_True(idx >= 0, ("STACK::Settop(): Stack Empty"));
   _stack[idx] = val;
 }
-
 
 template <class T>
 T& STACK<T>::Top_nth(const INT32 n) const

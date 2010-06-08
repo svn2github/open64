@@ -1734,6 +1734,8 @@ public:
   int  Executable_stmt_count();
   // Does this BB_NODE end with a branch targeting the given BB_NODE?
   BOOL Is_branch_to(BB_NODE *);
+  // Find first executable statement in this BB_NODE.
+  WN * First_executable_stmt();
 
 #if defined(TARG_SL)
   // if predecessors of current bb are from different region, this function  
@@ -1973,6 +1975,8 @@ public:
   SC_NODE * Find_lcp(SC_NODE *);
   BB_NODE * First_bb();
   BB_NODE * Last_bb();
+  // Find first executable statement in this SC_NODE.
+  WN * First_executable_stmt();
   BOOL Is_pred_in_tree(SC_NODE *);
   int Num_of_loops(SC_NODE *, BOOL, BOOL);
   int Executable_stmt_count();

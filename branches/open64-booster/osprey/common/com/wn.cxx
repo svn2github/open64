@@ -3431,6 +3431,20 @@ WN_has_side_effects (const WN* wn)
   }
 } /* WN_has_side_effects */
 
+// Check whether given WHIRL is an executable statement.
+BOOL
+WN_is_executable(WN * wn)
+{
+  switch (WN_operator(wn)) {
+  case OPR_PRAGMA:
+  case OPR_LABEL:
+    break;
+  default:
+    return TRUE;
+  }
+
+  return FALSE;
+}
 
 WN *
 WN_Rrotate (TYPE_ID desc, WN *src, WN *cnt)

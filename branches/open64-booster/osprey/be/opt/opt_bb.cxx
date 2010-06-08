@@ -1544,8 +1544,7 @@ BB_NODE::Executable_stmt_count()
   int count = 0;
 
   for (tmp = Firststmt(); tmp != NULL; tmp = WN_next(tmp)) {
-    if ((WN_operator(tmp) != OPR_LABEL)
-	&& (WN_operator(tmp) != OPR_PRAGMA))
+    if (WN_is_executable(tmp))
       count++;
 
     if (tmp == Laststmt())
@@ -1577,6 +1576,20 @@ BB_NODE::Remove_succs(MEM_POOL * pool)
     bb_list = bb_list->Remove(bb, pool);
   }
   _succ = NULL;
+}
+
+// Return the first executable statement in this BB_NODE.
+WN *
+BB_NODE::First_executable_stmt(void)
+{
+  WN * wn;
+  STMT_ITER stmt_iter;
+  FOR_ALL_ELEM (wn, stmt_iter, Init(this->Firststmt(), this->Laststmt())) {
+    if (WN_is_executable(wn))
+      return wn;
+  }
+
+  return NULL;
 }
 
 // Reset/clear fields.
@@ -1923,6 +1936,42 @@ SC_NODE::First_bb()
     bb_tmp = sc_tmp->First_bb();
     if (bb_tmp)
       return bb_tmp;
+  }
+  
+  return NULL;
+}
+
+// Return the first real statement in this SC_NODE.
+WN *
+SC_NODE::First_executable_stmt()
+{
+  BB_NODE * bb_tmp = Get_bb_rep();
+  WN * wn = NULL;
+
+  if (bb_tmp) {
+    wn = bb_tmp->First_executable_stmt();
+    if (wn)
+      return wn;
+  }
+
+  BB_LIST * bb_list = Get_bbs();
+  if (bb_list) {
+    BB_LIST_ITER bb_list_iter(bb_list);
+
+    FOR_ALL_ELEM(bb_tmp, bb_list_iter, Init()) {
+      wn = bb_tmp->First_executable_stmt();
+      if (wn)
+	return wn;
+    }
+  }
+
+  SC_LIST_ITER sc_list_iter(kids);
+  SC_NODE * sc_tmp;
+
+  FOR_ALL_ELEM(sc_tmp, sc_list_iter, Init()) {
+    wn = sc_tmp->First_executable_stmt();
+    if (wn)
+      return wn;
   }
   
   return NULL;
@@ -2726,6 +2775,7 @@ SC_LIST::Print(FILE *fp) const
     if (tmp)
       fprintf(fp, "%d ",tmp->Id());
   }
+  fprintf(fp, "\n ");
 }
 
 void

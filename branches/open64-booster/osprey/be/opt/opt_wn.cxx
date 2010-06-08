@@ -103,6 +103,7 @@ static char *rcs_id = 	opt_wn_CXX"$Revision: 1.31 $";
 #include "config_opt.h"		// for Delay_U64_Lowering
 #include "opt_cvtl_rule.h"
 #include "opt_main.h"
+#include "wn_simp.h"
 
 
 STMT_ITER::STMT_ITER(WN *f)
@@ -1796,4 +1797,358 @@ BOOL OPERATOR_is_volatile(OPERATOR oper)
 BOOL OPCODE_is_volatile(OPCODE opc)
 {
   return OPERATOR_is_volatile(OPCODE_operator(opc));
+}
+
+// Query whether wn represents a bit operation.
+BOOL
+WN_is_bit_op(WN * wn)
+{
+  switch (WN_operator(wn)) {
+  case OPR_BAND:
+  case OPR_BXOR:
+  case OPR_BNOT:
+  case OPR_BIOR:
+  case OPR_BNOR:
+    return TRUE;
+  default:
+    ;
+  }
+  return FALSE;
+}
+
+// Get bit position of the TRUE bit for an integer constant WHIRL if its value is a power of 2.
+// Return -1 if the value is not a power of 2.
+int
+WN_get_bit_from_const(WN * wn)
+{
+  OPERATOR opr = WN_operator(wn);
+  FmtAssert((opr == OPR_INTCONST), ("Expect an integer constant"));
+
+  INT64 val = WN_const_val(wn);
+  int count = 0;
+  int bit_pos = 0;
+  int bit_true;
+
+  while (val > 0) {
+    if ((val & 0x1) == 1) {
+      count++;
+      bit_true = bit_pos;
+    }
+      
+    val >>= 1;
+    bit_pos++;
+  }
+
+  if (count == 1)
+    return bit_true;
+
+  return -1;
+}
+
+// Get bit position of the TRUE bit for an integral expression if its value is a power of 2.
+// Return NULL if the value is not a power of 2 or if we can't tell.
+// This routine does not process constants. Use WN_get_bit_from_const for constants.
+WN *
+WN_get_bit_from_expr(WN * wn)
+{
+  OPERATOR opr = WN_operator(wn);
+  FmtAssert((opr != OPR_INTCONST), ("Do not expect an integer constant"));
+
+  if (opr == OPR_SHL) {
+    WN * wn_tmp = WN_kid(wn, 0);
+
+    if ((WN_operator(wn_tmp) == OPR_INTCONST)
+	&& (WN_const_val(wn_tmp) == 1)) 
+      return WN_kid(wn, 1);
+  }
+
+  return NULL;
+}
+
+// Query whether wn has a value that is a power of 2.
+// Return FALSE if the value is not a power of 2 or if we can't tell.
+BOOL
+WN_is_power_of_2(WN * wn)
+{
+  OPERATOR opr = WN_operator(wn);
+
+  if (opr == OPR_INTCONST) {
+    if (WN_get_bit_from_const(wn) >= 0)
+      return TRUE;
+  }
+  else if (WN_get_bit_from_expr(wn)) 
+    return TRUE;
+
+  return FALSE;
+}
+
+// Match pattern:
+//  a = a  bit-op  ( 1 << b)
+// where bit-op is a bit operation.
+//
+// If matched, Return the RHS WHIRL tree "a bit-op ( 1 << b)",
+WN *
+WN_get_bit_reduction(WN * wn)
+{
+  OPERATOR opr = WN_operator(wn);
+
+  if (OPERATOR_is_store(opr)) {
+    WN * wn_data = WN_kid(wn, 0);
+    WN * wn_addr = NULL;
+
+    if (!OPERATOR_is_scalar_store(opr))
+      wn_addr = WN_kid(wn, 1);
+
+    if (WN_is_bit_op(wn_data)) {
+      WN * wn_tmp = WN_kid(wn_data, 0);
+      opr = WN_operator(wn_tmp);
+      
+      if (OPERATOR_is_load(opr)) {
+	if (!OPERATOR_is_scalar_load(opr)) {
+	  if (wn_addr && (WN_Simp_Compare_Trees(WN_kid(wn_tmp, 0), wn_addr) == 0)) {
+	    wn_tmp = WN_kid(wn_data, 1);
+	    if (wn_tmp && WN_is_power_of_2(wn_tmp))
+	      return wn_data;
+	  }
+	}
+	else if ((wn_addr == NULL) && (WN_aux(wn_tmp) == WN_aux(wn))
+		 && WN_offset(wn_tmp) == WN_offset(wn)) {
+	  wn_tmp = WN_kid(wn_data, 1);
+	  if (wn_tmp && WN_is_power_of_2(wn_tmp))
+	    return wn_data;
+	}
+      }
+    }
+  }
+  
+  return NULL;
+}
+
+// Evaluate value of an integral WHIRL, return it in *val.
+// Return FALSE if wn is not evaluatable. wn_map gives a WHIRL-to-WHIRL
+// map that maps a WHIRL to another WHIRL containing the same value.
+// (TODO: Implementation is incomplete for all operators)
+BOOL
+WN_get_val(WN * wn, int * val, const WN_MAP& wn_map)
+{
+  int val1, val2;
+  OPERATOR opr = WN_operator(wn);
+
+  if (opr == OPR_INTCONST) {
+    *val = WN_const_val(wn);
+    return TRUE;
+  }
+  else if (wn_map) {
+    WN * wn_val = (WN *) WN_MAP_Get(wn_map, wn);
+    if (wn_val)
+      return WN_get_val(wn_val, val, wn_map);
+  }
+
+  switch (opr) {
+  case OPR_ADD:
+    if (WN_get_val(WN_kid(wn,0), &val1, wn_map)
+	&& WN_get_val(WN_kid(wn, 1), &val2, wn_map)) {
+      *val = val1 + val2;
+      return TRUE;
+    }
+    break;
+    
+  default:
+    ;
+  }
+
+  return FALSE;
+}
+
+// Collect leaf operands of a WHIRL tree whose non-leaf operands match the given operator
+// and whose leaf operands are either loads or integer constants.
+static STACK<WN *> * 
+Collect_operands(WN * wn, MEM_POOL * pool, OPERATOR opr)
+{
+  STACK<WN *> * stack1 = NULL;
+  STACK<WN *> * stack2 = NULL;
+
+  if (WN_operator(wn) == opr) {
+    stack1 = CXX_NEW(STACK<WN *>(pool), pool);
+    stack1->Push(wn);
+  }
+
+  while (!stack1->Is_Empty()) {
+    WN * wn_iter = stack1->Pop();
+    OPERATOR opr_iter = WN_operator(wn_iter);
+
+    if (opr_iter == opr) {
+      stack1->Push(WN_kid(wn_iter, 0));
+      stack1->Push(WN_kid(wn_iter, 1));
+    }
+    else if ((OPERATOR_is_load(opr_iter)) || (opr_iter == OPR_INTCONST)) {
+      if (stack2 == NULL)
+	stack2 = CXX_NEW(STACK<WN *>(pool), pool);
+
+      stack2->Push(wn_iter);
+    }
+    else {
+      CXX_DELETE(stack1, pool);
+      if (stack2)
+	CXX_DELETE(stack2, pool);
+      return NULL;
+    }
+  }
+
+  return stack2;
+}
+
+// Query whether two integral WHIRLs have disjointed value ranges.
+// Return FALSE if this is not the case or if we can't tell.
+// lo_map and hi_map are maps from "WN *" to "UNSIGNED long long" that
+// give low/high boundaries.
+BOOL
+WN_has_disjoint_val_range(WN * wn1, WN * wn2, const WN_MAP& lo_map, const WN_MAP& hi_map)
+{
+  FmtAssert((MTYPE_is_integral(WN_rtype(wn1)) && MTYPE_is_integral(WN_rtype(wn2))),
+	    ("Expect integral values"));
+
+  OPERATOR opr1 = WN_operator(wn1);
+  OPERATOR opr2 = WN_operator(wn2);
+  int val;
+
+  if ((opr1 == OPR_INTCONST) && (opr2 == OPR_INTCONST)) {
+    return (WN_const_val(wn1) != WN_const_val(wn2));
+  }
+  else if (opr1 == OPR_INTCONST) {
+    // Swap parameters so that the second one is a constant.
+    return WN_has_disjoint_val_range(wn2, wn1, lo_map, hi_map);
+  }
+  else if (WN_is_power_of_2(wn1) && WN_is_power_of_2(wn2)) {
+    // Only need to compare position of TRUE bits for power-of-2 values.
+    WN * bit1 = WN_get_bit_from_expr(wn1); 
+
+    if (opr2 == OPR_INTCONST) {
+      int bit2 = WN_get_bit_from_const(wn2);
+
+      if (WN_get_val(bit1, &val, lo_map) && (val > bit2))
+	return TRUE;
+      else if (WN_get_val(bit1, &val, hi_map) && (val < bit2))
+	return TRUE;
+    }
+    else {
+      WN * bit2 = WN_get_bit_from_expr(wn2);
+
+      if (WN_has_disjoint_val_range(bit1, bit2, lo_map, hi_map))
+	return TRUE;
+    }
+  }
+  else if ( opr2 == OPR_INTCONST) {
+    int int_val = WN_const_val(wn2);
+
+    if (WN_get_val(wn1, &val, lo_map) && (val > int_val))
+      return TRUE;
+    else if (WN_get_val(wn1, &val, hi_map) && (val < int_val))
+      return TRUE;
+  }
+  else {
+    MEM_POOL * pool = Malloc_Mem_Pool;
+    STACK<WN *> * stack1 = Collect_operands(wn1, pool, OPR_ADD);
+    STACK<WN *> * stack2 = Collect_operands(wn2, pool, OPR_ADD);
+    STACK<WN *> * stack_tmp = NULL;
+
+    // Shuffle stack1 and stack2 so that stack1 contains more elements.
+    if ((!stack1 && stack2)
+	|| ((stack1 && stack2) 
+	    && (stack1->Elements() < stack2->Elements()))) {
+      stack_tmp = stack1;
+      stack1 = stack2;
+      stack2 = stack_tmp;
+    }
+
+    // Evaluate diff of stack1 and stack2.
+
+    int delta = 0;
+
+    if (stack1) {
+      for (int i = 0; i < stack1->Elements(); i++) {
+	WN * wn_iter = stack1->Top_nth(i);
+	if (WN_operator(wn_iter) == OPR_INTCONST) 
+	  delta += WN_const_val(wn_iter);
+      }
+    }
+
+    if (stack2) {
+      for (int i = 0; i < stack2->Elements(); i++) {
+	WN * wn_iter = stack2->Top_nth(i);
+	if (WN_operator(wn_iter) == OPR_INTCONST) 
+	  delta -= WN_const_val(wn_iter);
+      }
+    }
+
+    int delta_lo = delta;
+    int delta_hi = delta;
+
+    if (stack2) {
+      for (int i = 0; i < stack2->Elements(); i++) {
+	WN * wn2_iter = stack2->Top_nth(i);
+	
+	if (WN_operator(wn2_iter) == OPR_INTCONST)
+	  continue;
+
+	BOOL found = FALSE;
+
+	for (int j = 0; j < stack1->Elements(); j++) {
+	  WN * wn1_iter = stack1->Top_nth(j);
+
+	  if (wn1_iter && (WN_Simp_Compare_Trees(wn1_iter, wn2_iter) == 0)) {
+	    stack1->DeleteElement(j);
+	    found = TRUE;
+	    break;
+	  }
+	}
+
+	if (!found) {
+	  int val;
+
+	  if (WN_get_val(wn2_iter, &val, lo_map)) 
+	    delta_hi -= val;
+	  else if (WN_get_val(wn2_iter, &val, hi_map))
+	    delta_lo -= val;
+	  else {
+	    CXX_DELETE(stack1, pool);
+	    CXX_DELETE(stack2, pool);
+	    return FALSE;
+	  }
+	}
+      }
+    }
+
+    if (stack1) {
+      for (int i = 0; i < stack1->Elements(); i++) {
+	WN * wn_iter = stack1->Top_nth(i);
+	int val;
+
+	if (WN_operator(wn_iter) == OPR_INTCONST)
+	  continue;
+	
+	if (WN_get_val(wn_iter, &val, lo_map)) 
+	  delta_lo += val;
+	else if (WN_get_val(wn_iter, &val, hi_map))
+	  delta_hi += val;
+	else {
+	  CXX_DELETE(stack1, pool);
+	  if (stack2)
+	    CXX_DELETE(stack2, pool);
+	  return FALSE;
+	}
+      }
+    }
+
+    if (stack1)
+      CXX_DELETE(stack1, pool);
+
+    if (stack2)
+      CXX_DELETE(stack2, pool);
+
+    if ((delta_lo > 0) || (delta_hi < 0))
+      return TRUE;
+  }
+
+  return FALSE;
 }

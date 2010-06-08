@@ -65,6 +65,7 @@ static char *opt_wnrcs_id = 	opt_wn_INCLUDED"$Revision: 1.5 $";
 #include "wn.h"
 #include "opt_alias_interface.h"   // for READ_WRITE
 #include "region_util.h" // for REGION_LEVEL
+#include "opt_base.h"
 
 // Forward declaration
 class ALIAS_MANAGER;
@@ -344,6 +345,13 @@ extern BOOL OPERATOR_is_fake(OPERATOR oper);
 extern BOOL OPCODE_is_fake(OPCODE opc);
 extern BOOL OPERATOR_is_volatile(OPERATOR oper);
 extern BOOL OPCODE_is_volatile(OPCODE opc);
+extern BOOL WN_is_bit_op(WN *);
+extern int  WN_get_bit_from_const(WN *);
+extern WN * WN_get_bit_from_expr(WN *);
+extern BOOL WN_is_power_of_2(WN *);
+extern WN * WN_get_bit_reduction(WN *);
+extern BOOL WN_get_val(WN *, int *, const WN_MAP&);
+extern BOOL WN_has_disjoint_val_range(WN *, WN *, const WN_MAP&, const WN_MAP&);
 
 static inline BOOL
 OPERATOR_is_scalar_load (OPERATOR opr)

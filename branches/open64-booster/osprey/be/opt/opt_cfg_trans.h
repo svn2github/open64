@@ -711,44 +711,37 @@ void generate_conditional_const_zones(COMP_UNIT *cu, successor_graph &g,
 void generate_loop_butterfly_zones(COMP_UNIT *cu, successor_graph &g,
 				   zone_container& zones, int, bool trace);
 
-// forward declaration.
-class PRO_LOOP_FUSION_TRANS;
-
-// bit mask for if-merging actions.
-typedef enum IF_MERGE_ACTION {
-  DO_NONE = 0x0,
-  DO_IFMERGE = 0x1,
-  DO_IFCOLLAPSE = 0x2
-};
-
-// bit mask for if-merging pass
-typedef enum IF_MERGE_PASS {
-  PASS_NONE = 0x0,
-  PASS_GLOBAL = 0x1,
-  PASS_LOCAL = 0x2
-};
-
-class PRO_LOOP_INTERCHANGE_TRANS;
-
-class IF_MERGE_TRANS {
-friend class PRO_LOOP_INTERCHANGE_TRANS;
+// Generic CFG transformations.
+class CFG_TRANS {
 private:
+  BS * _true_val;   // a bit set of TRUE values, scratch field.
+  MAP * _val_map;   // map from an interger to a value number.
+  WN_MAP _low_map;  // map from WN * to a constant that gives value's low boundary.
+  WN_MAP _high_map; // map from WN * to a constant that gives value's high boundary.
+  MAP * _def_wn_map;   // map AUX_ID to definition WN *.
+  MAP * _const_wn_map; // map an integer constant to WHIRL.
+
+protected:
   COMP_UNIT * _cu;
   BOOL _trace;
   BOOL _dump;
-  int _count;
-  MAP * _val_map;   // map from an interger to a value number.
-  BS * _true_val;   // a bit set of TRUE values, scratch field.
+  int _transform_count;
   MEM_POOL * _pool;
-  PRO_LOOP_FUSION_TRANS * _tail_dup;
-  IF_MERGE_ACTION _action;
-  IF_MERGE_PASS _pass;
+  INT32 _code_bloat_count;
   MAP * _invar_map;  // hash BB_NODE Id to SC_NODE *
-  MAP * _def_cnt_map; // hash aux id to def count
-  int _region_id;    // Id of currently processed region.
+
 private:
+  void Infer_val_range(WN *, BOOL, BOOL);
+  void Match_def(WN *);
+  STACK<WN *> * Collect_operands(WN *);
+  void Set_map(WN_MAP &, WN *, WN *);
+
+protected:
+  void Inc_transform_count() { _transform_count++; }
   void Delete_val_map();
   void Init_val_map(WN *, BOOL);
+  void Infer_val_range(SC_NODE *, SC_NODE *);
+  void Delete_val_range_maps();
   BOOL Val_mod(SC_NODE *, WN *, BOOL);
   BOOL Val_match(WN *);
   BOOL Is_trackable_var(AUX_ID);
@@ -758,7 +751,10 @@ private:
   AUX_ID Get_val(AUX_ID);
   void Set_val(AUX_ID, AUX_ID);
   void Remove_val(WN *, WN *);
-  BOOL Is_if_collapse_cand(SC_NODE * sc1, SC_NODE * sc2);
+  void Fix_parent_info(SC_NODE *, SC_NODE *);
+  void Insert_region(BB_NODE *, BB_NODE *, BB_NODE *, BB_NODE *, MEM_POOL *);
+  BOOL Has_side_effect(WN *);
+  BOOL Is_aliased(WN *, WN *);
   BOOL Maybe_assigned_expr(WN *, WN *);
   BOOL Maybe_assigned_expr(SC_NODE *, WN *, BOOL);
   BOOL Maybe_assigned_expr(BB_NODE *, WN *);
@@ -766,65 +762,93 @@ private:
   BOOL Maybe_assigned_expr(SC_NODE *, SC_NODE *);
   BOOL Maybe_assigned_expr(BB_NODE *, BB_NODE *);  
   BOOL Maybe_assigned_expr(BB_NODE *, SC_NODE *);
-  MAP * Get_invar_map() { return _invar_map ; }
-  void New_invar_map();
-  void Delete_invar_map();
-  void Delete_branch(BB_NODE *);
-public:
-  void      Top_down_trans(SC_NODE * sc);
-  BOOL      Is_cand(SC_NODE *, SC_NODE *, BOOL);
-  SC_NODE * Do_merge(SC_NODE *, SC_NODE *);
-  void      Set_trace(BOOL i)                { _trace = i; }
-  void      Set_dump(BOOL i)                 { _dump = i; }
-  PRO_LOOP_FUSION_TRANS *  Get_tail_dup()    { return _tail_dup; }
-  void      Set_tail_dup(PRO_LOOP_FUSION_TRANS * i) { _tail_dup = i; }
-  void      Set_pass(IF_MERGE_PASS i) { _pass = i; }
-  void      Set_count(int i) { _count = i; }
-  void      Set_region_id(int i) { _region_id = i; }
-
-  IF_MERGE_TRANS(void) { Clear(); }
-  IF_MERGE_TRANS(COMP_UNIT * i) { Clear(); _cu = i; }
-  IF_MERGE_TRANS(const IF_MERGE_TRANS&);
-  ~IF_MERGE_TRANS(void) {};
-
-  void Clear(void);
-  int Count() { return _count; }
-  void Inc_count() { _count ++; }
-  void Set_pool(MEM_POOL * i) { _pool = i; };
-  void Merge_CFG(SC_NODE *, SC_NODE *);
-  void Merge_SC(SC_NODE *, SC_NODE *);
   BOOL Has_dependency(SC_NODE *, SC_NODE *);
   BOOL Has_dependency(SC_NODE *, BB_NODE *);
   BOOL Has_dependency(BB_NODE *, BB_NODE *);
   BOOL Has_dependency(SC_NODE * , WN *);
   BOOL Has_dependency(BB_NODE *, WN *);
-  BOOL Is_aliased(WN *, WN *);
+  BOOL Is_invariant(SC_NODE *, SC_NODE *, AUX_ID);
+  BOOL Is_invariant(SC_NODE *, BB_NODE *, AUX_ID);
+  BOOL Is_invariant(BB_NODE *, BB_NODE *, AUX_ID);
+  BOOL Is_invariant(BB_NODE *, WN * wn, AUX_ID);
+  BOOL Is_invariant(SC_NODE *, WN * wn, AUX_ID);
   BOOL Can_be_speculative(SC_NODE *);
   BOOL Can_be_speculative(BB_NODE *);
   BOOL Can_be_speculative(WN *);
-  BOOL Is_executable_stmt(OPERATOR i) { return ((i != OPR_PRAGMA) && (i != OPR_LABEL)); }
-  BOOL Has_side_effect(WN *);
-  void Hash_def_map(SC_NODE *);
-  void Hash_def_map(BB_NODE *);
-  void Delete_def_map();
-  unsigned long Get_def_cnt(AUX_ID i) 
-      { return (unsigned long) _def_cnt_map->Get_val((POINTER) i); }
   ST * Get_st(WN *);
+  void Delete_branch(BB_NODE *);
+  MAP * Get_invar_map() { return _invar_map ; }
+  void New_invar_map();
+  void Delete_invar_map();
+  void Hash_invar(BB_NODE *, SC_NODE *);
+  void Clear();
+  void Delete();
+  void Set_cu(COMP_UNIT * i) { _cu = i; }
+  COMP_UNIT * Get_cu();
+  WN * Get_const_wn(long long);
+
+public:
+  void Set_trace(BOOL i) { _trace = i; }
+  void Set_dump(BOOL i)  { _dump = i; }
+  void Set_pool(MEM_POOL * i) { _pool = i; }
+  int Transform_count() { return _transform_count; }
+  void Do_code_motion(SC_NODE *, SC_NODE *);
+  void Do_head_duplication(SC_NODE *, SC_NODE *);
+  void Do_tail_duplication(SC_NODE *, SC_NODE *);
 };
 
-class PRO_LOOP_FUSION_TRANS {
+// bit mask for if-merging actions.
+typedef enum IF_MERGE_ACTION {
+  DO_NONE = 0x0,
+  DO_IFMERGE = 0x1,
+  DO_IFCOLLAPSE = 0x2,
+  DO_IFFLIP = 0x4
+};
+
+// bit mask for if-merging pass
+typedef enum IF_MERGE_PASS {
+  PASS_NONE = 0x0,
+  PASS_GLOBAL = 0x1,
+  PASS_LOCAL = 0x2
+};
+
+// If-merging transformation.
+class IF_MERGE_TRANS : public CFG_TRANS {
 private:
-  COMP_UNIT * _cu;
-  BOOL _trace;
-  BOOL _dump;
-  int _transform_count;
-  IF_MERGE_TRANS * _if_merge;
-  MEM_POOL * _pool;
+  IF_MERGE_ACTION _action;
+
+protected:
+  IF_MERGE_PASS _pass;
+  int _region_id;    // Id of currently processed region.
+
+private:
+  void Merge_CFG(SC_NODE *, SC_NODE *);
+  void Merge_SC(SC_NODE *, SC_NODE *);
+  BOOL Is_if_collapse_cand(SC_NODE * sc1, SC_NODE * sc2);
+
+protected:
+  void Set_region_id(int i) { _region_id = i; }
+  SC_NODE * Do_merge(SC_NODE *, SC_NODE *);
+  BOOL      Is_candidate(SC_NODE *, SC_NODE *, BOOL);
+  void Clear(void);
+
+public:
+  void Top_down_trans(SC_NODE * sc);
+  IF_MERGE_TRANS(void) { Clear(); }
+  IF_MERGE_TRANS(COMP_UNIT * i) { Clear(); Set_cu(i); }
+  IF_MERGE_TRANS(const IF_MERGE_TRANS&);
+  ~IF_MERGE_TRANS(void) {};
+  void Set_pass(IF_MERGE_PASS i) { _pass = i; }
+};
+
+// Proactive loop fusion transformation.
+class PRO_LOOP_FUSION_TRANS : virtual public IF_MERGE_TRANS {
+private:
   MAP  *_loop_depth_to_loop_map;  // map from SC tree depth to a list of SC_LOOPs, scratch field
   SC_LIST * _loop_list;          // a list of SC_LOOPs, scratch field
   int _last_class_id;
   BOOL _edit_loop_class;
-  INT32 _code_bloat_count;
+
 private:
   void Reset_loop_class(SC_NODE *, int);
   void Find_loop_class(SC_NODE *);
@@ -832,28 +856,19 @@ private:
   BOOL Is_cand_type(SC_TYPE type) { return ((type == SC_IF) || (type == SC_LOOP)); }
   void Find_cand(SC_NODE *, SC_NODE **, SC_NODE **, SC_NODE *);
   BOOL Traverse_trans(SC_NODE *, SC_NODE *);
-  void Insert_region(BB_NODE *, BB_NODE *, BB_NODE *, BB_NODE *, MEM_POOL *);
   BOOL Is_delayed(SC_NODE *, SC_NODE *);
-  void Fix_parent_info(SC_NODE *, SC_NODE *);
   BOOL Is_worthy(SC_NODE *);
-public:
-  void Clear();
-  PRO_LOOP_FUSION_TRANS(void) { Clear(); }
-  PRO_LOOP_FUSION_TRANS(COMP_UNIT * i) { Clear(); _cu = i; }
-  void Set_trace(BOOL i) { _trace = i; }
-  void Set_dump(BOOL i)  { _dump = i; }
-  void Set_if_merge(IF_MERGE_TRANS * i) { _if_merge = i; }
-  void Set_pool(MEM_POOL * i) { _pool = i; }
-  MEM_POOL * Loc_pool() { return _pool; }
-  int Transform_count() { return _transform_count; }
-  void Inc_transform_count() { _transform_count++; }
-  void Top_down_trans(SC_NODE *);
   void Nonrecursive_trans(SC_NODE *, BOOL);
-  void Classify_loops(SC_NODE *);
   int New_class_id() { _last_class_id ++; return _last_class_id; }
-  void Do_code_motion(SC_NODE *, SC_NODE *);
-  void Do_head_duplication(SC_NODE *, SC_NODE *);
-  void Do_tail_duplication(SC_NODE *, SC_NODE *);
+
+protected:
+  void Clear();
+
+public:
+  PRO_LOOP_FUSION_TRANS(void) { Clear(); }
+  PRO_LOOP_FUSION_TRANS(COMP_UNIT * i) { Clear(); Set_cu(i); }
+  void Top_down_trans(SC_NODE *);
+  void Classify_loops(SC_NODE *);
 };
 
 // bit mask for proactive loop interchange actions.
@@ -872,14 +887,10 @@ typedef enum CANON_ACTION {
     TAIL_DUP = 0x4  // Tail duplicate SC_IF's merge.
 };
 
-class PRO_LOOP_INTERCHANGE_TRANS {
+// Proactive loop interchange transformation.
+class PRO_LOOP_INTERCHANGE_TRANS : virtual public IF_MERGE_TRANS {
 private:
-    COMP_UNIT * _cu;
-    BOOL _trace;
-    BOOL _dump;
-    int _transform_count;
-    IF_MERGE_TRANS * _if_merge;
-    MEM_POOL * _pool;
+    MAP * _def_cnt_map; // hash aux id to def count
     STACK<SC_NODE *> * _outer_stack; // a stack of outer SC_LOOPs. 
     STACK<SC_NODE *> * _inner_stack; // a stack of inner SC_LOOPs. 
     STACK<SC_NODE *> * _local_stack; // scratch field.
@@ -888,14 +899,10 @@ private:
     int _action;
     MAP * _def_map; //  Map symbol auxiliary Id to definition WN *.
     STACK<SC_NODE *> * _unlink_sc; // A stack of unlinked SC_NODE *.
+
 private:
     int Nonrecursive_trans(SC_NODE *, SC_NODE *);
     BOOL Is_candidate(SC_NODE *, SC_NODE *);
-    BOOL Is_invariant(SC_NODE *, SC_NODE *, AUX_ID);
-    BOOL Is_invariant(SC_NODE *, BB_NODE *, AUX_ID);
-    BOOL Is_invariant(BB_NODE *, BB_NODE *, AUX_ID);
-    BOOL Is_invariant(BB_NODE *, WN * wn, AUX_ID);
-    BOOL Is_invariant(SC_NODE *, WN * wn, AUX_ID);
     WN * Get_cond(SC_NODE *, BOOL);
     WN * Merge_cond(WN *, WN *, OPERATOR);
     BOOL Do_if_cond_tree_height_reduction(SC_NODE *, SC_NODE *);
@@ -908,7 +915,6 @@ private:
     void Do_if_cond_wrap(BB_NODE *, SC_NODE *, BOOL);
     BOOL Check_sibling(SC_NODE *, SC_NODE *);
     void Do_canon(SC_NODE *, SC_NODE *, int);
-    void Hash_invar(BB_NODE *, SC_NODE *);
     void Remove_block(SC_NODE *);
     void Remove_block(BB_NODE *);
     void Invalidate_invar(SC_NODE *);
@@ -939,18 +945,31 @@ private:
     SC_NODE * Find_dist_cand(SC_NODE *);
     BOOL Can_interchange(SC_NODE *, SC_NODE *);
     BOOL Can_fuse(SC_NODE *);
-public:
+    unsigned long Get_def_cnt(AUX_ID i) 
+        { return (unsigned long) _def_cnt_map->Get_val((POINTER) i); }
+
+protected:
     void Clear();
+    void Delete();
+
+public:
     PRO_LOOP_INTERCHANGE_TRANS(void) { Clear(); }
-    PRO_LOOP_INTERCHANGE_TRANS(COMP_UNIT * i) { Clear(); _cu = i; }
-    void Set_trace(BOOL i) { _trace = i; }
-    void Set_dump(BOOL i)  { _dump = i; }
-    void Set_if_merge(IF_MERGE_TRANS * i) { _if_merge = i; }
-    void Set_pool(MEM_POOL * i) { _pool = i; }
-    MEM_POOL * Loc_pool() { return _pool; }
-    int Transform_count() { return _transform_count; }
-    void Inc_transform_count() { _transform_count++; }
+    PRO_LOOP_INTERCHANGE_TRANS(COMP_UNIT * i) { Clear(); Set_cu(i); }
     BOOL Top_down_trans(SC_NODE *, BOOL);
+    void Hash_def_cnt_map(SC_NODE *);
+    void Hash_def_cnt_map(BB_NODE *);
+};
+
+// Proactive loop transformations.
+class PRO_LOOP_TRANS :  public PRO_LOOP_FUSION_TRANS, 
+                        public PRO_LOOP_INTERCHANGE_TRANS {
+private:
+    void Clear();
+
+public:
+    PRO_LOOP_TRANS(void) { Clear(); }
+    PRO_LOOP_TRANS(COMP_UNIT * i) { Clear(); Set_cu(i); }
+    void Delete();
 };
 
 #endif
