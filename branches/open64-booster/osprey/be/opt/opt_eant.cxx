@@ -140,7 +140,7 @@ BB_in_complex_loop(BB_NODE *bb, std::map<IDTYPE, BOOL> * complex_loop_map, CFG *
             if (bb_loop_it != complex_loop_map->end() && (*bb_loop_it).second ||
                 bb_loop->Branch_stmtrep() != NULL &&
                 bb_loop->Branch_stmtrep()->Opr() == OPR_COMPGOTO &&
-                bb_loop->Switchentries() > WOPT_Enable_Aggressive_CM_Threshold) {
+                bb_loop->Switchentries() > WOPT_Enable_Aggressive_CM_Switch_Threshold) {
                 (*complex_loop_map)[bb->Id()] = TRUE;
                 return TRUE;
             }
@@ -151,7 +151,7 @@ BB_in_complex_loop(BB_NODE *bb, std::map<IDTYPE, BOOL> * complex_loop_map, CFG *
        }
     }
 
-    if (branch > WOPT_Enable_Aggressive_CM_Threshold) {
+    if (branch > WOPT_Enable_Aggressive_CM_Branch_Threshold) {
         (*complex_loop_map)[bb->Id()] = TRUE;
         return TRUE;
     }
