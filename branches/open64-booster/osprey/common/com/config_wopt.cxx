@@ -87,7 +87,7 @@ BOOL  WOPT_Enable_Add_Do_Loop_Info = TRUE;
 BOOL  WOPT_Enable_Add_Label_Loop_Info = TRUE;
 BOOL  WOPT_Enable_Aggressive_Code_Motion = TRUE;
 INT32 WOPT_Enable_Aggressive_CM_Limit = INT32_MAX;
-INT32 WOPT_Enable_Aggressive_CM_Threshold = 70;
+INT32 WOPT_Enable_Aggressive_CM_Threshold = 10;
 BOOL  WOPT_Enable_Aggressive_dce = TRUE;
 BOOL  WOPT_Enable_Aggressive_dce_for_bbs = TRUE;
 BOOL  WOPT_Enable_Aggressive_Doloop_Promotion = FALSE;
@@ -398,7 +398,7 @@ static OPTION_DESC Options_WOPT[] = {
   { OVK_INT32,	OV_VISIBLE,	TRUE, "aggcm_limit",		"",
     INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_Aggressive_CM_Limit, NULL },
   { OVK_INT32,	OV_VISIBLE,	TRUE, "aggcm_threshold",	"aggcm_thres",
-    0, 0, 101,	&WOPT_Enable_Aggressive_CM_Threshold, NULL },
+    0, 0, 10,	&WOPT_Enable_Aggressive_CM_Threshold, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "agglftr",		"agglftr",
     0, 0, 0,	&WOPT_Enable_Aggressive_Lftr, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "aggphi_simp",		"aggphi",

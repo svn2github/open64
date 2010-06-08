@@ -2612,6 +2612,7 @@ ETABLE::ETABLE(CFG *cfg,
 
   LPRE_set_do_loads(pre_kind == PK_LPRE);
   LPRE_set_do_consts(pre_kind == PK_LPRE);
+  _complex_loop_map.clear();
 }
 
 ETABLE::~ETABLE(void)

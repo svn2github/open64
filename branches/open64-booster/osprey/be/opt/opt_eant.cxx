@@ -113,6 +113,54 @@ BB_has_backedge(BB_NODE *bb, BOOL loop_tail = FALSE)
   return FALSE;
 }
 
+//=======================================================================
+// BB_NODE is inside a loop which has a large compgoto or deep branch
+// chain. Here, "large" compgoto means the number of entries is larger
+// than  WOPT_Enable_Aggressive_CM_Threshold (default is 10).
+// "deep" branch chains means the number of branchs is larger than
+// WOPT_Enable_Aggressive_CM_Threshold. It is not beneficial to do 
+// speculative code motion in this case because register pressure can be high.
+//=======================================================================
+static BOOL 
+BB_in_complex_loop(BB_NODE *bb, std::map<IDTYPE, BOOL> * complex_loop_map, CFG * cfg)
+{
+    std::map<IDTYPE, BOOL>::iterator bb_it = complex_loop_map->find(bb->Id());
+    if (bb_it != complex_loop_map->end())
+        return (*bb_it).second;
+
+    BB_NODE *bb_loop;
+    BB_NODE_SET_ITER bb_iter;
+    int branch = 0;
+    
+    const BB_LOOP *loop = cfg->Find_innermost_loop_contains(bb);
+    if (loop && loop->True_body_set()->MemberP(bb)) {
+        FOR_ALL_ELEM(bb_loop, bb_iter, Init(loop->True_body_set())) {
+            std::map<IDTYPE, BOOL>::iterator bb_loop_it;
+            bb_loop_it = complex_loop_map->find(bb_loop->Id());
+            if (bb_loop_it != complex_loop_map->end() && (*bb_loop_it).second ||
+                bb_loop->Branch_stmtrep() != NULL &&
+                bb_loop->Branch_stmtrep()->Opr() == OPR_COMPGOTO &&
+                bb_loop->Switchentries() > WOPT_Enable_Aggressive_CM_Threshold) {
+                (*complex_loop_map)[bb->Id()] = TRUE;
+                return TRUE;
+            }
+            if (bb_loop->Branch_stmtrep() != NULL &&
+                (bb_loop->Branch_stmtrep()->Opr() == OPR_TRUEBR || 
+                bb_loop->Branch_stmtrep()->Opr() == OPR_FALSEBR))
+                branch ++;
+       }
+    }
+
+    if (branch > WOPT_Enable_Aggressive_CM_Threshold) {
+        (*complex_loop_map)[bb->Id()] = TRUE;
+        return TRUE;
+    }
+        
+    (*complex_loop_map)[bb->Id()] = FALSE;
+    return FALSE;   
+
+}
+
 static BOOL
 Exp_phi_is_invariant(ETABLE *etable, EXP_PHI *exp_phi, BOOL forward_pre)
 {
@@ -228,7 +276,8 @@ EXP_WORKLST::Propagate_downsafe(ETABLE *etable)
 	    phi->Dead_phi_region() ||
 	    (is_spre && phi_occ->Occurrence() == NULL) ||
 	    !BB_has_backedge(phi->Bb(),is_spre) ||
-	    !Exp_phi_is_invariant(etable, phi, !is_spre)) {
+	    !Exp_phi_is_invariant(etable, phi, !is_spre) ||
+        BB_in_complex_loop(phi->Bb(), etable->Complex_loop_map(), etable->Cfg())) {
 	  worklist.Push(phi_occ);
 	} 
 	else {
@@ -264,7 +313,8 @@ EXP_WORKLST::Propagate_downsafe(ETABLE *etable)
 		cur_phi->Dead_phi_region() ||
 		(is_spre && def_occ->Occurrence() == NULL) ||
 		!BB_has_backedge(def_phi->Bb(),is_spre) ||
-		!Exp_phi_is_invariant(etable, def_phi, !is_spre)) {
+		!Exp_phi_is_invariant(etable, def_phi, !is_spre) ||
+         BB_in_complex_loop(def_phi->Bb(),  etable->Complex_loop_map(), etable->Cfg())) {
 	      def_phi->Set_not_down_safe();
 	      if (cur_phi->Dead_phi_region())
 	        def_phi->Set_dead_phi_region();
