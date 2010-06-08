@@ -359,9 +359,9 @@ SEGMENTED_ARRAY<T,block_size>::Update_Map(T    *marker,
 {
   do {
     map.push_back(std::pair<T*, BOOL>(marker, own_memory));
-    // own_memory = FALSE;
     new_size -= block_size;
     marker += block_size;
+    own_memory = FALSE;
   } while (new_size);
 } // SEGMENTED_ARRAY<T,block_size>::Update_Map
 
