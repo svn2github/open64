@@ -261,15 +261,16 @@ static void SE_Indxs_and_Bounds(WN* loops[],
 	   (wtype == MTYPE_I2 || wtype == MTYPE_U2) ? 2 :  
 	   (wtype == MTYPE_I8 || wtype == MTYPE_U8 ||
 	    wtype == MTYPE_F8 || wtype == MTYPE_C4) ? 8 :
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
 	   (wtype == MTYPE_F10) ? 16 :
+	   (wtype == MTYPE_C10) ? 32 :
 #endif
 	   (wtype == MTYPE_I4 || wtype == MTYPE_U4 ||
 	    wtype == MTYPE_F4) ? 4 :
 	   (wtype == MTYPE_F8) ? 8 :
            (wtype == MTYPE_F16) ? 16 :
 	   (wtype == MTYPE_FQ || wtype == MTYPE_C8) ? 16 :
-	   (wtype == MTYPE_CQ) ? 32 : 0;
+	   (wtype == MTYPE_CQ || wtype == MTYPE_C16 ) ? 32 : 0;
   FmtAssert(sz > 0, ("Bad type in scalar expansion"));
 
   TYPE_ID bsztype;

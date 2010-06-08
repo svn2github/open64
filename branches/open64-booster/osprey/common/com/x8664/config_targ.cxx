@@ -382,11 +382,11 @@ static void Adjust_m32_MTYPE_Info()
   MTYPE_alignment(MTYPE_F8) = 4;
   MTYPE_alignment(MTYPE_C8) = 4;
 
-  MTYPE_bit_size(MTYPE_FQ)  = 96;
-  MTYPE_alignment(MTYPE_FQ) = 4;
+  MTYPE_bit_size(MTYPE_F10)  = 96;
+  MTYPE_alignment(MTYPE_F10) = 4;
 
-  MTYPE_bit_size(MTYPE_CQ)  = 192;
-  MTYPE_alignment(MTYPE_CQ) = 4;
+  MTYPE_bit_size(MTYPE_C10)  = 192;
+  MTYPE_alignment(MTYPE_C10) = 4;
 }
 
 

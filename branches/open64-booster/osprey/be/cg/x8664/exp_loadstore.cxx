@@ -170,7 +170,7 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
       return base != NULL ? TOP_fldl : TOP_fldl_n32;
   case MTYPE_F16:
       return TOP_lddqu;
-  case MTYPE_FQ:
+  case MTYPE_F10:
     return base != NULL ? TOP_fldt : TOP_fldt_n32;
   case MTYPE_V16F4:
   case MTYPE_V16C4:
@@ -432,7 +432,7 @@ Pick_Store_Instruction( TYPE_ID mtype,
       return base != NULL ? TOP_fstpl : TOP_fstpl_n32;
   case MTYPE_F16:
     return TOP_stdqu;
-  case MTYPE_FQ:
+  case MTYPE_F10:
     return base != NULL ? TOP_fstpt : TOP_fstpt_n32;
   case MTYPE_V16F4: 
   case MTYPE_V16C4: 

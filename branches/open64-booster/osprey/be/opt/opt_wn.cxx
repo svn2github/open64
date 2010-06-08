@@ -555,13 +555,13 @@ Ldid_from_mtype( MTYPE mtype )
     case MTYPE_U8:	return OPC_U8U8LDID;
     case MTYPE_F4:	return OPC_F4F4LDID;
     case MTYPE_F8:	return OPC_F8F8LDID;
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
     case MTYPE_F10:	return OPC_F10F10LDID;
 #endif
     case MTYPE_FQ:	return OPC_FQFQLDID;
     case MTYPE_C4:	return OPC_C4C4LDID;
     case MTYPE_C8:	return OPC_C8C8LDID;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
     case MTYPE_C10:	return OPC_C10C10LDID;
 #endif
     case MTYPE_CQ:	return OPC_CQCQLDID;
@@ -700,8 +700,11 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 16: return MTYPE_C8;
 #if defined(TARG_IA64)
       case 32: return MTYPE_C10;
+#elif defined(TARG_X8664) 
+      case 24:  // -m32 long double complex
+      case 32: return MTYPE_C10;
 #else
-      case 24:
+      case 24:  // -m32 long double complex
       case 32: return MTYPE_CQ;
 #endif
     }
@@ -711,6 +714,9 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 4:  return MTYPE_F4;
       case 8:  return MTYPE_F8;
 #if defined(TARG_IA64)
+      case 16: return MTYPE_F10;
+#elif defined(TARG_X8664) 
+      case 12:  // -m32 long double
       case 16: return MTYPE_F10;
 #else
       case 12:
@@ -816,6 +822,9 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 16: return OPC_C8C8LDID;
 #if defined(TARG_IA64)
       case 32: return OPC_C10C10LDID;
+#elif defined(TARG_X8664)
+      case 24:
+      case 32: return OPC_C10C10LDID;
 #else
       case 24:
       case 32: return OPC_CQCQLDID;
@@ -827,6 +836,9 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 4:  return OPC_F4F4LDID;
       case 8:  return OPC_F8F8LDID;
 #if defined(TARG_IA64)
+      case 16: return OPC_F10F10LDID;
+#elif defined(TARG_X8664)
+      case 12:
       case 16: return OPC_F10F10LDID;
 #else
       case 12:
@@ -932,6 +944,9 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 16: return OPC_C8STID;
 #if defined(TARG_IA64)
       case 32: return OPC_C10STID;
+#elif defined(TARG_X8664)
+      case 24:
+      case 32: return OPC_C10STID;
 #else
       case 24:
       case 32: return OPC_CQSTID;
@@ -943,6 +958,9 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 4:  return OPC_F4STID;
       case 8:  return OPC_F8STID;
 #if defined(TARG_IA64)
+      case 16: return OPC_F10STID;
+#elif defined(TARG_X8664)
+      case 12:
       case 16: return OPC_F10STID;
 #else
       case 12:

@@ -135,6 +135,7 @@ typedef UINT64 VARIANT;
 #define V_BR_QGE	52	/* Quad floating point A >= B */
 #define V_BR_QLT	53	/* Quad floating point A < B */
 #define V_BR_QLE	54	/* Quad floating point A <= B */
+
 #ifdef TARG_IA64
 #define V_BR_I4EQ	55	/* 4-byte signed integer A = B */
 #define V_BR_I4NE	56	/* 4-byte signed integer A != B */
@@ -221,9 +222,16 @@ typedef UINT64 VARIANT;
 #define V_BR_WTOP	87	/* Mod-sched while loop (top) */
 #define V_BR_WEXIT	88	/* Mod-sched while loop (exit) */
 
-#define V_BR_ALWAYS	89	/* Unconditional branch */
-#define V_BR_NEVER	90	/* Never branch */
-#define V_BR_LAST	91	/* Last one defined */
+#define V_BR_XEQ        89      /* Double extended  A = B */
+#define V_BR_XNE        90      /* Double extended  A != B */
+#define V_BR_XGT        91      /* Double extended  A > B */
+#define V_BR_XGE        92      /* Double extended  A >= B */
+#define V_BR_XLT        93      /* Double extended  A < B */
+#define V_BR_XLE        94      /* Double extended  A <= B */
+
+#define V_BR_ALWAYS	95	/* Unconditional branch */
+#define V_BR_NEVER	96	/* Never branch */
+#define V_BR_LAST	97	/* Last one defined, must < 128 */
 
 #endif // TARG_IA64
 

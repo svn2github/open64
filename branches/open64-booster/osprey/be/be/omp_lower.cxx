@@ -1772,7 +1772,7 @@ static void Atomic_Using_Critical(WN *atomic, WN *store)
   WN *parent = Get_Parent(atomic);
   INT64 line = WN_Get_Linenum(atomic);
 
-  char name[25];
+  char name[128];
   switch (WN_desc(store)) {
     case MTYPE_I1: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_I1");
@@ -1804,9 +1804,12 @@ static void Atomic_Using_Critical(WN *atomic, WN *store)
     case MTYPE_F8: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_F8");
       break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
     case MTYPE_F10: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_F10");
+      break;
+    case MTYPE_C10:
+      sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_C10");
       break;
 #endif
     case MTYPE_FQ: 
@@ -1818,11 +1821,6 @@ static void Atomic_Using_Critical(WN *atomic, WN *store)
     case MTYPE_C8: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_C8");
       break;
-#ifdef TARG_IA64
-    case MTYPE_C10:
-      sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_C10");
-      break;
-#endif
     case MTYPE_CQ: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_CQ");
       break;
@@ -1830,7 +1828,6 @@ static void Atomic_Using_Critical(WN *atomic, WN *store)
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_??");
       break;
   }
-  name[24] = 0;
   TCON tc = Host_To_Targ_String ( MTYPE_STRING, name,strlen(name));
   ST *string = Gen_String_Sym (&tc, MTYPE_To_TY(MTYPE_STRING), FALSE );
   WN *critical1 = WN_CreatePragma(WN_PRAGMA_CRITICAL_SECTION_BEGIN,string,0,0);
@@ -2643,12 +2640,11 @@ ATOMIC_Lowering_Class WN_ATOMIC_STORE_Lowering_Class(WN *store)
 #endif
       break;
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
     case MTYPE_F10:
+    case MTYPE_C10:
 	alclass = ALCLASS_CRITICAL;	/* XXX - ALCLASS_SWAP? */
 	break;
-
-    case MTYPE_C10:
 #endif
     case MTYPE_U1: case MTYPE_U2: case MTYPE_I1: case MTYPE_I2:
     case MTYPE_C4: case MTYPE_C8: case MTYPE_CQ: case MTYPE_FQ:

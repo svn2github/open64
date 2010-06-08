@@ -1715,7 +1715,7 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
     // regular floating point
     else if (desc  == MTYPE_F4 || 
              desc  == MTYPE_F8 ||
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
              desc  == MTYPE_F10 ||
              rtype  == MTYPE_F10 ||
 #endif
@@ -3403,10 +3403,6 @@ LAT_DIRECTED_GRAPH16::Add_Vertices_Op_Edges_Rec(VINDEX16 store,
            !OPERATOR_is_load(oper) &&
            oper != OPR_CONST) {
     // an fp expression
-    if (desc == MTYPE_FQ || rtype == MTYPE_FQ) {
-      return -1;
-    } 
-    // an fp expression
     if (desc  == MTYPE_FQ || 
         desc  == MTYPE_CQ || 
         rtype == MTYPE_FQ ||
@@ -3416,7 +3412,7 @@ LAT_DIRECTED_GRAPH16::Add_Vertices_Op_Edges_Rec(VINDEX16 store,
     // regular floating point
     else if (desc  == MTYPE_F4 || 
              desc  == MTYPE_F8 ||
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
              desc  == MTYPE_F10 ||
              rtype  == MTYPE_F10 ||
 #endif
@@ -4139,7 +4135,7 @@ WN2INT *se_needed, ARRAY_REF *ar)
           (*num_scalar_refs)++;
           Enter(&symb, is_store, 1);
         } else if ((type == MTYPE_C4) || (type==MTYPE_C8) ||
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
 		   (type == MTYPE_F10) ||
 #endif
                    (type == MTYPE_FQ)) {
@@ -4147,8 +4143,8 @@ WN2INT *se_needed, ARRAY_REF *ar)
           (*num_scalar_refs)+=2;
           Enter(&symb, is_store, 2);
         } else if (type == MTYPE_CQ
-#if defined(TARG_IA64)
-	    || type == MTYPE_CQ
+#if defined(TARG_IA64) || defined(TARG_X8664)
+	    || type == MTYPE_C10
 #endif
 	      ) {
           SYMBOL symb(wn);
@@ -4235,14 +4231,14 @@ void SYMBOL_TREE::Enter_Scalar_Refs(WN *wn, ARRAY_REF *ar,
         Enter(&symb, is_store, 1);
         (*num_scalar_refs)++;
       } else if ((type == MTYPE_C4) || (type==MTYPE_C8) || 
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
       	(type == MTYPE_F10) ||
 #endif
       	(type == MTYPE_FQ)) {
         Enter(&symb, is_store, 2);
         (*num_scalar_refs)+=2;
       } else if (type == MTYPE_CQ
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
       	|| type == MTYPE_C10
 #endif
       	) {
@@ -4572,7 +4568,7 @@ REGISTER_MODEL::Count_Op(WN* wn)
     TYPE_ID ti2 = OPCODE_desc(opcode);
     if ((ti == MTYPE_C4) || (ti == MTYPE_C8) || (ti == MTYPE_CQ) ||
         (ti2 == MTYPE_C4) || (ti2 == MTYPE_C8) || (ti2 == MTYPE_CQ) ||
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
 	ti == MTYPE_C10 || ti2 == MTYPE_C10 ||
         ti == MTYPE_F10 || ti2 == MTYPE_F10 ||
 #endif

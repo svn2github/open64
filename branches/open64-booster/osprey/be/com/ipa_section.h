@@ -153,7 +153,7 @@ private:
   } u;
   
   WN_OFFSET _offset;
-  mTYPE_ID  _mtype;
+  mTYPE_ID  _mtype:8;
   mBOOL     _is_formal;
   
 public:

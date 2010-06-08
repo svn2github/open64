@@ -170,6 +170,12 @@ Combine_intrinsic_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
       new_intr_opc = OPC_C8INTRINSIC_OP;
       new_intr = INTRN_F8CIS; new_complex = OPC_F8IMAGPART;
       goto handle_sin;
+#if  0 // TODO defined(TARG_X8664)
+    case INTRN_F10SIN:
+      new_intr_opc = OPC_C8INTRINSIC_OP;
+      new_intr = INTRN_F10CIS; new_complex = OPC_F10IMAGPART;
+      goto handle_sin;
+#endif
     case INTRN_FQSIN:
       new_intr_opc = OPC_CQINTRINSIC_OP;
       new_intr = INTRN_FQCIS; new_complex = OPC_FQIMAGPART;
@@ -196,6 +202,12 @@ Combine_intrinsic_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
       new_intr_opc = OPC_C8INTRINSIC_OP;
       new_intr = INTRN_F8CIS; new_complex = OPC_F8REALPART;
       goto handle_cos;
+#if  0 // TODO defined(TARG_X8664)
+    case INTRN_F10COS:
+      new_intr_opc = OPC_CQINTRINSIC_OP;
+      new_intr = INTRN_F10CIS; new_complex = OPC_F10REALPART;
+      goto handle_cos;
+#endif
     case INTRN_FQCOS:
       new_intr_opc = OPC_CQINTRINSIC_OP;
       new_intr = INTRN_FQCIS; new_complex = OPC_FQREALPART;
@@ -440,6 +452,12 @@ Uncombine_imagrealpart_operator(WN *old_wn,WN **new_wn,OPCODE old_wn_opc)
 	new_intr_opc = OPC_F8INTRINSIC_OP;
 	goto handle_sincos;
 
+#if  0 // TODO defined(TARG_X8664)
+      case INTRN_F10CIS:
+	new_intr = old_wn_opr == OPR_IMAGPART ? INTRN_F10SIN : INTRN_F10COS;
+	new_intr_opc = OPC_F10INTRINSIC_OP;
+	goto handle_sincos;
+#endif
       case INTRN_FQCIS:
 	new_intr = old_wn_opr == OPR_IMAGPART ? INTRN_FQSIN : INTRN_FQCOS;
 	new_intr_opc = OPC_FQINTRINSIC_OP;

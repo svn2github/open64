@@ -3234,7 +3234,9 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 	valid =	((rtype == MTYPE_I1 || rtype == MTYPE_I2 || 
 		  rtype == MTYPE_I4 || rtype == MTYPE_I8 || 
 		  rtype == MTYPE_F4 || rtype == MTYPE_F8 ||
-		  rtype == MTYPE_FQ ||
+		  rtype == MTYPE_FQ || 
+                  rtype == MTYPE_F10 || rtype == MTYPE_F16 ||
+                  rtype == MTYPE_C10 || rtype == MTYPE_C16 ||
 		  rtype == MTYPE_C4 || rtype == MTYPE_C8 ||
 		  rtype == MTYPE_V16C4 || rtype == MTYPE_V16C8 ||
 		  rtype == MTYPE_V16F4 || rtype == MTYPE_V16F8 ||

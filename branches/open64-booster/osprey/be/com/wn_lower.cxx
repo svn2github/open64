@@ -384,7 +384,7 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_U8,       /* MTYPE_U8 */
   MTYPE_F4,       /* MTYPE_F4 */
   MTYPE_F8,       /* MTYPE_F8 */
-#ifdef TARG_IA64
+#if defined(TARG_I64) || defined(TARG_X8664)
   MTYPE_F10,      /* MTYPE_F10 */
 #else
   MTYPE_UNKNOWN,  /* MTYPE_F10 */
@@ -401,7 +401,7 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
  ,MTYPE_UNKNOWN,  /* MTYPE_BS */
   MTYPE_UNKNOWN,  /* MTYPE_A4 */
   MTYPE_UNKNOWN,  /* MTYPE_A8 */
-#ifdef TARG_IA64
+#if defined(TARG_I64) || defined(TARG_X8664)
   MTYPE_C10,	  /* MTYPE_C10 */
 #else
   MTYPE_UNKNOWN,  /* MTYPE_C10 */
@@ -3105,6 +3105,9 @@ static WN *lower_float_to_unsigned(WN *block, WN *expr, TYPE_ID src,
      r = WN_Cvt(MTYPE_I8,dst,WN_Trunc(src,MTYPE_I8,expr));
   } else if (src==MTYPE_FQ) {  /* Need to do this this way because there
 				* is no quad floor */
+#if defined (TARG_X8664)
+     FmtAssert(FALSE, ("MTYPE_FQ: unexpected mtype"));
+#endif
      
      /*
       *  store the expr into a preg to avoid building a dag
@@ -4570,10 +4573,13 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
       }
 
       if( Is_Target_32bit() && ! sseregparm && ! MTYPE_is_complex(mtype) ||
-    	      MTYPE_is_quad(mtype) ){
+    	      mtype == MTYPE_F10 || mtype == MTYPE_C10){
 	WN_st_idx(tree) = ST_st_idx( MTYPE_To_PREG(mtype) );
 	WN_load_offset(tree) = First_X87_Preg_Return_Offset;
       }
+
+      if (mtype == MTYPE_FQ || mtype == MTYPE_CQ)
+         FmtAssert(FALSE, ("MTYPE_FQ: unexpected mtype"));
 #endif
       return tree;
 
@@ -6731,6 +6737,9 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
   {
     if (WN_desc(tree) == MTYPE_FQ)
     {
+#if defined (TARG_X8664)
+      FmtAssert(FALSE, ("MTYPE_FQ: unexpected mtype"));
+#endif
       switch (WN_operator(tree))
       {
       case OPR_CONST:
@@ -6756,6 +6765,9 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
     }
     if (WN_rtype(tree) == MTYPE_FQ)
     {
+#if defined (TARG_X8664)
+      FmtAssert(FALSE, ("MTYPE_FQ: unexpected mtype"));
+#endif
       switch (WN_operator(tree))
       {
       case OPR_CONST:
@@ -11708,7 +11720,7 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
 	preg_st = Float_Preg;
 #endif
 #else
-	preg_st = (mtype==MTYPE_FQ || mtype==MTYPE_CQ || MTYPE_is_vector(mtype) ) ?
+	preg_st = (MTYPE_is_F10_or_C10(mtype) || MTYPE_is_vector(mtype) ) ?
 	             MTYPE_To_PREG(mtype) : Float_Preg;
 #endif
       else preg_st = (mtype==MTYPE_I8 || mtype==MTYPE_U8 || MTYPE_is_vector(mtype) ) ? 
@@ -11721,9 +11733,9 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
       if( Is_Target_SSE2()         &&
 	  Preg_Offset_Is_X87(preg) &&
 	  mtype != MTYPE_C4 &&
-	  !MTYPE_is_quad( mtype ) ){
-	WN_kid0(tree) = WN_Cvt( Promoted_Mtype[mtype], MTYPE_FQ, WN_kid0(tree) );
-	wn = WN_CreateStid( OPR_STID, MTYPE_V, MTYPE_FQ,
+	  !MTYPE_is_F10_or_C10( mtype ) ){
+	WN_kid0(tree) = WN_Cvt( Promoted_Mtype[mtype], MTYPE_F10, WN_kid0(tree) );
+	wn = WN_CreateStid( OPR_STID, MTYPE_V, MTYPE_F10,
 			    preg, preg_st, Be_Type_Tbl(mtype), WN_kid0(tree) );
       } else
 #endif // TARG_X8664
@@ -15339,7 +15351,11 @@ static WN *lower_trapuv(WN *block, WN *tree, LOWER_ACTIONS actions)
 #ifdef KEY
 	  // Load the constant using integer registers instead of floating
 	  // point registers, since storing NaN from x87 registers will trap.
-	  if (btype == MTYPE_FQ) {
+	  if (btype == MTYPE_FQ || btype == MTYPE_F10) {
+#if defined (TARG_X8664)
+            if (btype == MTYPE_FQ)
+              FmtAssert(FALSE, ("MTYPE_FQ: unexpected mtype"));
+#endif
 	    TYPE_ID ty = MTYPE_U8;
 	    TCON c = ST_tcon_val(WN_st(con));
 	    WN *intconst = WN_Intconst(ty, TCON_k0(c));

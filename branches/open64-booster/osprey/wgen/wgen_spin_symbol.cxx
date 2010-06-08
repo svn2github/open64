@@ -414,7 +414,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 	TYPE_ID mtype;
 	INT64 tsize;
 	BOOL variable_size = FALSE;
+        
 	gs_t type_size = gs_type_size(type_tree);
+        gs_string_t type_mode  = gs_type_mode (type_tree);
 #ifndef KEY
 	UINT align = gs_type_align(type_tree) / BITSPERBYTE;
 #endif
@@ -547,14 +549,27 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		switch (tsize) {
 		case 4:  mtype = MTYPE_F4; break;
 		case 8:  mtype = MTYPE_F8; break;
-#ifdef TARG_IA64
-		case 12:
-		case 16: mtype = MTYPE_F10; break;
+#if defined(TARG_IA64) || defined(TARG_X8664)
+                // the correct way to get the type is from type mode
+                // so it can support float_128
+                case 12:
+                  FmtAssert(!TARGET_64BIT, ("Get_TY unexpected size"));
+                  // fall through
+                case 16: 
+                  {
+#ifdef SUPPORT_FLOAT128
+                     if (strcmp("XF", type_mode) == 0)
+                       mtype = MTYPE_F10; 
+                     else if (strcmp("TF",type_mode) == 0)
+                       mtype = MTYPE_F16;
+                     else 
+                       FmtAssert(FALSE, ("Get_TY unexpected size"));
+#else
+                     mtype = MTYPE_F10;
 #endif
-#ifdef TARG_X8664
-		case 12: mtype = MTYPE_FQ; break;
-#endif
-#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+                     break;
+                  }
+#elif defined(TARG_MIPS) || defined(TARG_IA32) 
 		case 16: mtype = MTYPE_FQ; break;
 #endif /* TARG_MIPS */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
@@ -567,13 +582,27 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		case 4: ErrMsg (EC_Unsupported_Type, "Complex integer");
 		case  8:  mtype = MTYPE_C4; break;
 		case 16:  mtype = MTYPE_C8; break;
-#ifdef TARG_IA64
-		case 32: mtype = MTYPE_C10; break;
+#if defined(TARG_IA64) || defined(TARG_X8664)
+                // the correct way to get the type is from type mode
+                // so it can support float_128
+                case 24:
+                  FmtAssert(!TARGET_64BIT, ("Get_TY unexpected size"));
+                  // fall through
+                case 32: 
+                  {
+#ifdef SUPPORT_FLOAT128
+                     if (strcmp("XC", type_mode) == 0)
+                       mtype = MTYPE_C10; 
+                     else if (strcmp("TC",type_mode) == 0)
+                       mtype = MTYPE_C16;
+                     else 
+                       FmtAssert(FALSE, ("Get_TY unexpected size"));
+#else
+                     mtype = MTYPE_C10;
 #endif
-#ifdef TARG_X8664
-		case 24:  mtype = MTYPE_CQ; break;
-#endif
-#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+                     break;
+                  }
+#elif defined(TARG_MIPS) || defined(TARG_IA32) 
 		case 32: mtype = MTYPE_CQ; break;
 #endif /* TARG_MIPS */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));

@@ -1126,12 +1126,14 @@ Operand_type( OPCODE op, INT which_kid, INT num_kids )
 	return MTYPE_F4;
       else if ( rtype == MTYPE_C8 )
 	return MTYPE_F8;
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
       else if ( rtype == MTYPE_C10 )
 	return MTYPE_F10;
 #endif
       else if ( rtype == MTYPE_CQ )
 	return MTYPE_FQ;
+      else if ( rtype == MTYPE_C16 )
+	return MTYPE_F16;
       else {
 	FmtAssert( FALSE, 
 		   ("CODEREP::Operand_type: unknown type %d", rtype) );
@@ -1147,12 +1149,14 @@ Operand_type( OPCODE op, INT which_kid, INT num_kids )
 	return MTYPE_C4;
       else if ( rtype == MTYPE_F8 )
 	return MTYPE_C8;
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
       else if ( rtype == MTYPE_F10 )
 	return MTYPE_C10;
 #endif
       else if ( rtype == MTYPE_FQ )
 	return MTYPE_CQ;
+      else if ( rtype == MTYPE_F16 )
+	return MTYPE_C16;
       else {
 	FmtAssert( FALSE, 
 		   ("CODEREP::Operand_type: unknown type %d", rtype) );
@@ -2864,7 +2868,7 @@ CODEMAP::Add_tcon(TCON_IDX tc)
 
     case MTYPE_F4:
     case MTYPE_F8:
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
     case MTYPE_F10:
     case MTYPE_C10:
 #endif
@@ -2872,6 +2876,8 @@ CODEMAP::Add_tcon(TCON_IDX tc)
     case MTYPE_C4:
     case MTYPE_C8:
     case MTYPE_CQ:
+    case MTYPE_F16:
+    case MTYPE_C16:
       {
         ST *new_sym = New_Const_Sym(tc, MTYPE_To_TY(mtype));
 	cr->Init_rconst(mtype, new_sym);

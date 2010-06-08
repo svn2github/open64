@@ -454,6 +454,13 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
 	is_64bit = TRUE;
 	break;
 
+      case V_BR_XEQ:
+      case V_BR_XNE:
+      case V_BR_XGT:
+      case V_BR_XGE:
+      case V_BR_XLT:
+      case V_BR_XLE:
+
       case V_BR_QEQ:
       case V_BR_QNE:
       case V_BR_QGT:
@@ -543,6 +550,7 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
       case V_BR_U8NE:	jmp_opcode = TOP_jne; break;
 
       case V_BR_QEQ:
+      case V_BR_XEQ:
 	jmp_opcode = false_br ? TOP_jne : TOP_je;
 	cmp_opcode = TOP_fucomi;
 	break;
@@ -553,6 +561,7 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
 	  ? ( is_64bit ? TOP_comisd : TOP_comiss ) : TOP_fucomi;
 	break;
       case V_BR_QNE:
+      case V_BR_XNE:
 	jmp_opcode = false_br ? TOP_je : TOP_jne;
 	cmp_opcode = TOP_fucomi;
 	break;
@@ -563,6 +572,7 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
 	  ? ( is_64bit ? TOP_comisd : TOP_comiss ) : TOP_fucomi;
 	break;
       case V_BR_QGT:
+      case V_BR_XGT:
 	jmp_opcode = false_br ? TOP_jbe : TOP_ja;
 	cmp_opcode = TOP_fucomi;
 	break;
@@ -573,6 +583,7 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
 	  ? ( is_64bit ? TOP_comisd : TOP_comiss ) : TOP_fucomi;
 	break;
       case V_BR_QGE:
+      case V_BR_XGE:
 	jmp_opcode = false_br ? TOP_jb : TOP_jae;
 	cmp_opcode = TOP_fucomi;
 	break;
@@ -583,6 +594,7 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
 	  ? ( is_64bit ? TOP_comisd : TOP_comiss ) : TOP_fucomi;
 	break;
       case V_BR_QLT:
+      case V_BR_XLT:
         flip_opnds = TRUE;
 	jmp_opcode = false_br ? TOP_jbe : TOP_ja;
 	cmp_opcode = TOP_fucomi;
@@ -595,6 +607,7 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
 	  ? ( is_64bit ? TOP_comisd : TOP_comiss ) : TOP_fucomi;
 	break;
       case V_BR_QLE:
+      case V_BR_XLE:
         flip_opnds = false_br;
 	jmp_opcode = false_br ? TOP_jb : TOP_jbe;
 	cmp_opcode = TOP_fucomi;

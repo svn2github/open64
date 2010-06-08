@@ -3183,7 +3183,7 @@ static void Gen_Iolist_PutFieldWN ( WN * block, ST * st, INT32 foffset,
 	      WN_CreateExp1 ( OPC_I4F8CVT,
 	      WN_CreateLdid ( OPC_F8F8LDID, WN_offset(wn), WN_st(wn),
 			      Be_Type_Tbl(MTYPE_F8) )));
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
       else if (vtype == MTYPE_F10)
         wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
               WN_CreateExp1 ( OPC_I4F10CVT,
@@ -3217,7 +3217,7 @@ static void Gen_Iolist_PutFieldWN ( WN * block, ST * st, INT32 foffset,
 	      WN_CreateExp1 ( OPC_I8F8CVT,
 	      WN_CreateLdid ( OPC_F8F8LDID, WN_offset(wn), WN_st(wn),
 			      Be_Type_Tbl(MTYPE_F8) )));
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
       else if (vtype == MTYPE_F10)
         wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
               WN_CreateExp1 ( OPC_I8F10CVT,

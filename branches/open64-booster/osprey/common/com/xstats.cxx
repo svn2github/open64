@@ -147,7 +147,7 @@ Count_WN_Operator (OPERATOR opr, TYPE_ID rtype, INT32& bbs, INT32& stmts,
 	}
 	/* if may create two blocks if else present,
 	 * but can't tell just from opcode */
-    } else if ((rtype == MTYPE_FQ || rtype == MTYPE_CQ) &&
+    } else if (MTYPE_is_quad(rtype) &&
 	       OPERATOR_is_expression(opr) &&
 	       !OPERATOR_is_load(opr) &&
 	       !OPERATOR_is_leaf(opr) ) {

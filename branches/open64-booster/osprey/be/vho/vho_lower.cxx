@@ -197,13 +197,12 @@ TYPE_ID Promoted_Mtype [MTYPE_LAST + 1] = {
   MTYPE_C4,       /* MTYPE_C4 */
   MTYPE_C8,       /* MTYPE_C8 */
   MTYPE_CQ,       /* MTYPE_CQ */
-  MTYPE_V,         /* MTYPE_V */
-#if defined(TARG_IA64)
+  MTYPE_V,        /* MTYPE_V */
   MTYPE_UNKNOWN,  /* MTYPE_BS */
   MTYPE_UNKNOWN,  /* MTYPE_A4 */
   MTYPE_UNKNOWN,  /* MTYPE_A8 */
   MTYPE_C10,      /* MTYPE_C10 */
-#endif
+  MTYPE_C16,      /* MTYPE_C16 */
 };
 
 #ifdef VHO_DEBUG

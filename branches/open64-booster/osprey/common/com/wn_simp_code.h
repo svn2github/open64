@@ -270,7 +270,7 @@ inline BOOL SIMP_Check (TYPE_ID rtype, simpnode x)
     if (!MTYPE_is_float (tcon_type) && !MTYPE_is_complex (tcon_type))
       return FALSE;
     if (rtype == tcon_type ||
-#ifdef TARG_IA64
+#if defined(TARG_X8664) || defined(TARG_IA64)
         (rtype == MTYPE_F10 && tcon_type == MTYPE_C10) ||
 #endif
         (rtype == MTYPE_F8 && tcon_type == MTYPE_C8) ||
@@ -1684,7 +1684,7 @@ static simpnode  simp_recip(OPCODE opc, simpnode k0, simpnode k1,
  *  is the list of types this type can be converted into without loss of information
  */
 #define B(t) (1<<t)
-#ifdef TARG_IA64
+#if defined(TARG_X8664) || defined(TARG_IA64)
 #define PRECISE_I1 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_I1)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)
 #define PRECISE_I2 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)
 #define PRECISE_I4 B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_I4)|B(MTYPE_I8)
@@ -1696,7 +1696,7 @@ static simpnode  simp_recip(OPCODE opc, simpnode k0, simpnode k1,
 #define PRECISE_F4 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)
 #define PRECISE_F8 B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)
 #define PRECISE_F10 B(MTYPE_F10)|B(MTYPE_FQ)
-#else // TARG_IA64
+#else // TARG_IA64 || TARG_X8664
 #define PRECISE_I1 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_FQ)|B(MTYPE_I1)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)
 #define PRECISE_I2 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_FQ)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)
 #define PRECISE_I4 B(MTYPE_F8)|B(MTYPE_FQ)|B(MTYPE_I4)|B(MTYPE_I8)
@@ -1707,7 +1707,7 @@ static simpnode  simp_recip(OPCODE opc, simpnode k0, simpnode k1,
 #define PRECISE_U8 B(MTYPE_FQ)
 #define PRECISE_F4 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_FQ)
 #define PRECISE_F8 B(MTYPE_F8)|B(MTYPE_FQ)
-#endif // TARG_IA64
+#endif // TARG_IA64 || TARG_X8664
 #define PRECISE_FQ B(MTYPE_FQ)
 #define TESTABLE_TYPE (B(MTYPE_U1)|B(MTYPE_U2)|B(MTYPE_U4)|B(MTYPE_U8)|\
 		       B(MTYPE_I1)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)|\
@@ -1751,7 +1751,7 @@ static BOOL convert_precise(TYPE_ID t1, TYPE_ID t2)
        case MTYPE_F8:
 	 precise_bits = PRECISE_F8;
 	 break;
-#ifdef TARG_IA64
+#if defined(TARG_X8664) || defined(TARG_IA64)
        case MTYPE_F10:
          precise_bits = PRECISE_F10;
          break;

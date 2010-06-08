@@ -134,12 +134,13 @@ static struct winfo {
   UINT_TYPE,     INT_TYPE,      8,  /* MTYPE_U8 */
   FLOAT_TYPE,    FLOAT_TYPE,    4,  /* MTYPE_F4 */
   FLOAT_TYPE,    FLOAT_TYPE,    8,  /* MTYPE_F8 */
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
   FLOAT_TYPE,    FLOAT_TYPE,   16,  /* MTYPE_F10*/
+  FLOAT_TYPE,    FLOAT_TYPE,   16,  /* MTYPE_F16*/
 #else
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_F10*/
-#endif
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_F16*/
+#endif
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_STR*/
   FLOAT_TYPE,    FLOAT_TYPE,   16,  /* MTYPE_FQ  */
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_M  */
@@ -151,6 +152,11 @@ static struct winfo {
   UINT_TYPE,     INT_TYPE,      4,  /* MTYPE_A4 */
   UINT_TYPE,     INT_TYPE,      8,  /* MTYPE_A8 */
   COMPLEX_TYPE,  COMPLEX_TYPE, 32,  /* MTYPE_C10 */
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  COMPLEX_TYPE,  COMPLEX_TYPE, 32,  /* MTYPE_C16 */
+#else
+  UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_C16*/
+#endif
 };
 
 #define WTYPE_base_type(w) WINFO[w].base_type

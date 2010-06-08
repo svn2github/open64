@@ -2951,20 +2951,24 @@ WGEN_Address_Of(gs_t arg0)
 	  case MTYPE_C8:
 	    imag_mtype = MTYPE_F8;
 	    break;
-#ifdef TARG_IA64
 	  case MTYPE_C10:
 	    imag_mtype = MTYPE_F10;
 	    break;
-#else
 	  case MTYPE_CQ:
 	    imag_mtype = MTYPE_FQ;
 	    break;
-#endif
 	  default:
 	    Fail_FmtAssertion ("WGEN_Address_Of: Unexpected rtype in IMAGPART_EXPR");
 	}
 	INT ofst;
-	if (imag_mtype == MTYPE_FQ)
+	if (imag_mtype == MTYPE_F10)
+	{
+#ifdef TARG_X8664
+	  if (Is_Target_32bit()) ofst = 12; else
+#endif // TARG_X8664
+	  ofst = 16;
+	}
+        else if (imag_mtype == MTYPE_FQ)
 	{
 #ifdef TARG_X8664
 	  if (Is_Target_32bit()) ofst = 12; else
@@ -6437,9 +6441,10 @@ WGEN_Expand_Expr (gs_t exp,
 	case 8: 
 	  tcon = Host_To_Targ_Float(MTYPE_F8, gs_tree_real_cst_d(exp));
 	  break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
         case 12:
         case 16:
+          // TODO handle MTYPE_F16
           tcon = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(exp));
           break;
 #else	  
@@ -6487,7 +6492,14 @@ WGEN_Expand_Expr (gs_t exp,
                                      gs_tree_real_cst_ld(gs_tree_realpart(exp)),
                                      gs_tree_real_cst_ld(gs_tree_imagpart(exp)));
           break;
-#else	  
+#elif defined(TARG_X8664)	  
+	case 24:
+	case 32:
+	  tcon = Host_To_Targ_Complex_10(MTYPE_C10,
+				   gs_tree_real_cst_ld(gs_tree_realpart(exp)),
+				   gs_tree_real_cst_ld(gs_tree_imagpart(exp)));
+	  break;
+#else
 	case 24:
 	case 32:
 	  tcon = Host_To_Targ_Complex_Quad(
@@ -8368,14 +8380,12 @@ WGEN_Expand_Expr (gs_t exp,
               arg_wn = WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
 #ifdef TARG_IA64
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
-#else	      
-#ifdef TARG_X8664
-	      wn = WN_CreateExp1 (OPR_FLOOR, MTYPE_FQ, MTYPE_FQ, arg_wn);
-	      if (ret_mtype != MTYPE_FQ)
+#elif defined(TARG_X8664)
+	      wn = WN_CreateExp1 (OPR_FLOOR, MTYPE_F10, MTYPE_F10, arg_wn);
+	      if (ret_mtype != MTYPE_F10)
 		wn = WN_Type_Conversion(wn, ret_mtype);
 #else
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
-#endif
 #endif
 	      whirl_generated = TRUE;
               break;
@@ -8404,11 +8414,11 @@ WGEN_Expand_Expr (gs_t exp,
                 if (!Force_IEEE_Comparisons)
                 {
                   iopc = INTRN_SINL;
-		  if (ret_mtype != MTYPE_FQ)
+		  if (ret_mtype != MTYPE_F10)
 		  {
 		    // generate a cvt to 'cvt_to'
 		    cvt_to = ret_mtype;
-		    ret_mtype = MTYPE_FQ;
+		    ret_mtype = MTYPE_F10;
 		  }
                   break;
                 }
@@ -8430,11 +8440,11 @@ WGEN_Expand_Expr (gs_t exp,
                 if (!Force_IEEE_Comparisons)
                 {
                   iopc = INTRN_COSL;
-		  if (ret_mtype != MTYPE_FQ)
+		  if (ret_mtype != MTYPE_F10)
 		  {
 		    // generate a cvt to 'cvt_to'
 		    cvt_to = ret_mtype;
-		    ret_mtype = MTYPE_FQ;
+		    ret_mtype = MTYPE_F10;
 		  }
                   break;
                 }
@@ -8588,19 +8598,19 @@ WGEN_Expand_Expr (gs_t exp,
 		break;
 
 	      case GSBI_BUILT_IN_POWIL: // bug 11246
-#ifdef TARG_IA64
-		// on IA64, we use MTYPE_F10 for long double
+#if defined(TARG_IA64) || defined(TARG_X8664)
+		// on IA64 or TARG_8664, we use MTYPE_F10 for long double
 		if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F10;
 		FmtAssert(ret_mtype == MTYPE_F10,
                           ("unexpected mtype for intrinsic 'powil'"));
+		iopc = INTRN_F10F10I4EXPEXPR;
 #else		
 		if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_FQ;
 		FmtAssert(ret_mtype == MTYPE_FQ,
 			  ("unexpected mtype for intrinsic 'powil'"));
+		iopc = INTRN_FQFQI4EXPEXPR;
 #endif
-		iopc = INTRN_FQFQI4EXPEXPR;
 		intrinsic_op = TRUE;
-		iopc = INTRN_FQFQI4EXPEXPR;
 		break;
 #endif // KEY
 
@@ -9266,11 +9276,11 @@ WGEN_Expand_Expr (gs_t exp,
                 {
                   iopc = INTRN_COSL;
                   intrinsic_op = TRUE;
-		  if (ret_mtype != MTYPE_FQ)
+		  if (ret_mtype != MTYPE_F10)
 		  {
 		    // generate a cvt to 'cvt_to'
 		    cvt_to = ret_mtype;
-		    ret_mtype = MTYPE_FQ;
+		    ret_mtype = MTYPE_F10;
 		  }
                 }
                 break;
@@ -9281,11 +9291,11 @@ WGEN_Expand_Expr (gs_t exp,
                 {
                   iopc = INTRN_SINL;
                   intrinsic_op = TRUE;
-		  if (ret_mtype != MTYPE_FQ)
+		  if (ret_mtype != MTYPE_F10)
 		  {
 		    // generate a cvt to 'cvt_to'
 		    cvt_to = ret_mtype;
-		    ret_mtype = MTYPE_FQ;
+		    ret_mtype = MTYPE_F10;
 		  }
                 }
                 break;
@@ -10121,7 +10131,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  TY_IDX ty_idx = Get_TY (gs_tree_type(exp));
 	  TYPE_ID mtype = Fix_TY_mtype(ty_idx);
 
-	  if (mtype != MTYPE_FQ && mtype != MTYPE_M && !MTYPE_is_complex(mtype)) {
+	  if (mtype != MTYPE_F10 && mtype != MTYPE_M && !MTYPE_is_complex(mtype)) {
 	    wn = WGEN_x8664_va_arg(ap_wn, MTYPE_float(mtype), ty_idx, FALSE);
 	    wn = WN_CreateIload(OPR_ILOAD, Widen_Mtype (mtype), mtype, 0,
 				ty_idx, Make_Pointer_Type(ty_idx), wn);
@@ -10170,7 +10180,7 @@ WGEN_Expand_Expr (gs_t exp,
 	      }
 	    }
 	    
-	    if( mtype == MTYPE_FQ )
+	    if( mtype == MTYPE_F10 )
 	      wn = WN_CreateIload(OPR_ILOAD, Widen_Mtype (mtype), mtype, 0,
 				  ty_idx, Make_Pointer_Type(ty_idx), wn);
 	    else
@@ -10256,13 +10266,11 @@ WGEN_Expand_Expr (gs_t exp,
 			  WN_Intconst (Pointer_Mtype, -8));
 	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
 			  WN_Intconst (Pointer_Mtype, rounded_size));
-	} else
-
-	/* Compute new value for AP.  */
-    {
-      wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+	} else {
+          /* Compute new value for AP.  */
+          wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
           WN_Intconst (Pointer_Mtype, rounded_size));
-    }
+        }
 #ifdef TARG_X8664 // bug 12118: pad since under -m32, vector types are 8-byte aligned
 	if (MTYPE_is_vector(mtype) && ! TARGET_64BIT) {
 	  wn = WN_Add(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 7));

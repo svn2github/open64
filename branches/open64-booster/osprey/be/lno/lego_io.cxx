@@ -629,8 +629,9 @@ static ST* Create_Tmp_Array(ST *array_st, WN *IO_node, WN **tmp_array_def,
     case MTYPE_I2: case MTYPE_U2: element_size=2; break;
     case MTYPE_I4: case MTYPE_U4: case MTYPE_F4: element_size=4; break;
     case MTYPE_I8: case MTYPE_U8: case MTYPE_F8: case MTYPE_C4: element_size=8; break;
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
     case MTYPE_F10: element_size=16; break;
+    case MTYPE_C10: element_size=32; break;
 #endif    
     case MTYPE_C8: case MTYPE_FQ: element_size=16; break;
     case MTYPE_CQ: element_size=32; break;

@@ -419,7 +419,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_FLOOR:
 #ifdef TARG_X8664
     if( MTYPE_is_float( rtype ) ){
-      if( MTYPE_is_quad( rtype ) )
+      if( MTYPE_is_F10( rtype ) )
 	Expand_Float_To_Float_Floorl( result, op1, rtype, desc, ops );
       else if( rtype == MTYPE_F8 )
 	Expand_Float_To_Float_Floor( result, op1, rtype, desc, ops );

@@ -5279,7 +5279,7 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
       // Looking for a fm{a/s} candidate via FMA4 insns
       if (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) {
         if ((WN_operator(mul_wn = WN_kid(expr, 0)) == OPR_MPY) &&
-            (WN_opcode(mul_wn) != OPC_FQMPY)) {
+            (WN_opcode(mul_wn) != OPC_FQMPY) && (WN_opcode(mul_wn) != OPC_F10MPY) ) {
           rtype = OPCODE_rtype(WN_opcode (mul_wn));
           if (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) {
             if (WN_operator(expr) == OPR_ADD) {
@@ -5289,7 +5289,7 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
             }
           }
         } else if ((WN_operator(mul_wn = WN_kid(expr, 1)) == OPR_MPY) &&
-                   (WN_opcode(mul_wn) != OPC_FQMPY)) {
+                   (WN_opcode(mul_wn) != OPC_FQMPY) && (WN_opcode(mul_wn) != OPC_F10MPY)) {
           rtype = OPCODE_rtype(WN_opcode (mul_wn));
           if (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) {
             if (WN_operator(expr) == OPR_ADD) {
@@ -5942,7 +5942,8 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4EQ: case OPC_I4U4EQ: variant = V_BR_U4EQ; break;
   case OPC_U4FQEQ:
   case OPC_BFQEQ: case OPC_I4FQEQ: variant = V_BR_QEQ; break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  case OPC_U4F10EQ:
   case OPC_BF10EQ: case OPC_I4F10EQ: variant = V_BR_XEQ; break;
 #endif
   case OPC_U4F8EQ:
@@ -5977,7 +5978,8 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4NE: case OPC_I4U4NE: variant = V_BR_U4NE; break;
   case OPC_U4FQNE:
   case OPC_BFQNE: case OPC_I4FQNE: variant = V_BR_QNE; break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  case OPC_U4F10NE:
   case OPC_BF10NE: case OPC_I4F10NE: variant = V_BR_XNE; break;
 #endif
   case OPC_U4F8NE:
@@ -6012,7 +6014,8 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4GT: case OPC_I4U4GT: variant = V_BR_U4GT; break;
   case OPC_U4FQGT:
   case OPC_BFQGT: case OPC_I4FQGT: variant = V_BR_QGT; break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  case OPC_U4F10GT:
   case OPC_BF10GT: case OPC_I4F10GT: variant = V_BR_XGT; break;
 #endif
   case OPC_U4F8GT:
@@ -6048,7 +6051,8 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4GE: case OPC_I4U4GE: variant = V_BR_U4GE; break;
   case OPC_U4FQGE:
   case OPC_BFQGE: case OPC_I4FQGE: variant = V_BR_QGE; break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  case OPC_U4F10GE:
   case OPC_BF10GE: case OPC_I4F10GE: variant = V_BR_XGE; break;
 #endif
   case OPC_U4F8GE:
@@ -6084,10 +6088,11 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4LT: case OPC_I4U4LT: variant = V_BR_U4LT; break;
   case OPC_U4FQLT:
   case OPC_BFQLT: case OPC_I4FQLT: variant = V_BR_QLT; break;
-  case OPC_U4F8LT:
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  case OPC_U4F10LT:
   case OPC_BF10LT: case OPC_I4F10LT: variant = V_BR_XLT; break;
 #endif
+  case OPC_U4F8LT:
   case OPC_BF8LT: case OPC_I4F8LT: variant = V_BR_DLT; 
 #ifdef TARG_LOONGSON
     need_negative = FALSE;
@@ -6120,7 +6125,8 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4LE: case OPC_I4U4LE: variant = V_BR_U4LE; break;
   case OPC_U4FQLE:
   case OPC_BFQLE: case OPC_I4FQLE: variant = V_BR_QLE; break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  case OPC_U4F10LE:
   case OPC_BF10LE: case OPC_I4F10LE: variant = V_BR_XLE; break;
 #endif
   case OPC_U4F8LE:
@@ -6733,14 +6739,14 @@ Handle_ASM (const WN* asm_wn)
     if (TN_is_register(tn)) {
 #ifdef TARG_X8664
       if( ( TN_register_class(tn) == ISA_REGISTER_CLASS_x87 ) &&
-	  ( WN_rtype(load) != MTYPE_FQ ) ){
+	  ( WN_rtype(load) != MTYPE_F10 ) ){
 	const TYPE_ID rtype = WN_rtype(load);
 	extern void Expand_Float_To_Float( TN*, TN*, TYPE_ID, TYPE_ID, OPS* );
 	FmtAssert( MTYPE_is_float(rtype), ("NYI") );
 	TN* tmp_tn = Gen_Typed_Register_TN( rtype, MTYPE_byte_size(rtype) );
 
 	Expand_Expr( load, NULL, tmp_tn );
-	Expand_Float_To_Float( tn, tmp_tn, MTYPE_FQ, rtype, &New_OPs );
+	Expand_Float_To_Float( tn, tmp_tn, MTYPE_F10, rtype, &New_OPs );
       } else
 #endif // TARG_X8664
 	Expand_Expr (load, NULL, tn);

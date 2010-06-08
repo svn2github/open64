@@ -291,7 +291,7 @@ private:
   mINT8   stype;                      // Type of the symbol
   UINT8  _more_flags;	      // overflow field for flags field (AUXF2_FLAGS)
   UINT8  _mclass;                  // mtype class, e.g. INT, FLOAT, COMPLEX
-  mTYPE_ID _mtype;                    // mtype 
+  mTYPE_ID _mtype:8;                  // mtype 
   mINT32  _flags;                     // flags field (AUXF_FLAGS)
   ST      *st;                        // ST *
   mINT64  _st_ofst;                   // Offset from ST.

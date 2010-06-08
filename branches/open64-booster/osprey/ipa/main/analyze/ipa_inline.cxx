@@ -124,13 +124,8 @@ OPCODE Stid_Opcode [MTYPE_LAST + 1] = {
   OPC_U8STID,     /* MTYPE_U8 */
   OPC_F4STID,     /* MTYPE_F4 */
   OPC_F8STID,     /* MTYPE_F8 */
-#ifdef TARG_IA64
   OPC_F10STID,    /* MTYPE_F10 */
   OPC_F16STID,    /* MTYPE_F16 */
-#elif TARG_X8664
-  OPC_UNKNOWN,    /* MTYPE_F10 */ 
-  OPC_UNKNOWN,    /* MTYPE_F16 */ 
-#endif
   OPC_UNKNOWN,    /* MTYPE_STR */
   OPC_FQSTID,     /* MTYPE_FQ */
   OPC_UNKNOWN,    /* MTYPE_M */

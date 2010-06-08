@@ -113,6 +113,7 @@ OPCODE_To_TOP (OPCODE opcode)
     else if (rtype == MTYPE_F8) return TOP_noop;
 #ifdef TARG_X8664
     else if (rtype == MTYPE_FQ) return TOP_noop;
+    else if (rtype == MTYPE_F10) return TOP_noop;
     else if (rtype == MTYPE_I1) return TOP_noop;
     else if (rtype == MTYPE_I2) return TOP_noop;
     else if (rtype == MTYPE_I4) return TOP_noop;

@@ -178,7 +178,7 @@ Adjusted_Alignment(ST *sym)
     */
     if( ST_sclass(sym) == SCLASS_AUTO &&
 	Align_Double ){
-      if( ( TY_mtype(ty) == MTYPE_FQ ||
+      if( ( TY_mtype(ty) == MTYPE_FQ || TY_mtype(ty) == MTYPE_F10 ||
 	    TY_mtype(ty) == MTYPE_F8 ) &&
 	  ( align < 8 ) ){
 	Is_True( Stack_Alignment() >= 8, ("stack is not double word aligned") );

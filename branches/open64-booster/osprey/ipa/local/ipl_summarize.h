@@ -190,7 +190,7 @@ private:
     IPA_CONST_TYPE _type;
     BOOL _addr_of;			// see description in SUMMARY_VALUE
     BOOL _convertible_to_global;	// see description in SUMMARY_VALUE
-    TYPE_ID _target_mtype;		// see description in SUMMARY_VALUE
+    TYPE_ID _target_mtype : 8;		// see description in SUMMARY_VALUE
 
 public:
 

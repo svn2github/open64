@@ -1324,7 +1324,7 @@ static type_trans ate_types[] = {
  8, "INTEGER*8", DW_ATE_unsigned,	/* MTYPE_U8  */
  4, "REAL_4",    DW_ATE_float,		/* MTYPE_F4  */
  8, "REAL_8",    DW_ATE_float,		/* MTYPE_F8  */
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
  16,"REAL_10",   DW_ATE_float,          /* MTYPE_F10 */
 #else
  10,"UNK",       DW_ATE_float,		/* MTYPE_F10 */
@@ -1341,11 +1341,14 @@ static type_trans ate_types[] = {
  1, "UNK",       0,                     /* MTYPE_BS  */
  4, "ADDRESS_4", DW_ATE_unsigned,       /* MTYPE_A4  */
  8, "ADDRESS_8", DW_ATE_unsigned,       /* MTYPE_A8  */
- 32,"COMPLEX_16",DW_ATE_complex_float,  /* MTYPE_C10 */
 #else
  1, "LOGICAL_1", DW_ATE_boolean,	
  2, "LOGICAL_2", DW_ATE_boolean,	
  4, "LOGICAL_4", DW_ATE_boolean,	
+#endif
+#if defined(TARG_IA64) || defined(TARG_X8664)
+ 32,"COMPLEX_10",DW_ATE_complex_float,  /* MTYPE_C10 */
+#else
  8, "LOGICAL_8", DW_ATE_boolean,	
 #endif
 } ;

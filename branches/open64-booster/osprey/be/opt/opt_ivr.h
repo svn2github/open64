@@ -144,7 +144,7 @@ private:
   CODEREP  *_incr_var;  
   CODEREP  *_init_value;
   CODEREP  *_step_value;  // the value that the var incremented every time
-  MTYPE     _dtype;
+  MTYPE     _dtype : 8;
   BOOL      _is_primary;
 
   IV_CAND(const IV_CAND&);

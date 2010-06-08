@@ -1179,7 +1179,7 @@ Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
 {
   const BOOL is_128bit = (MTYPE_size_reg(mtype) == 128);
 
-  if( MTYPE_is_quad( mtype ) ){
+  if( MTYPE_is_F10( mtype ) ){
     Build_OP( TOP_fmov, result, src, ops );
 
   } else if( MTYPE_is_float(mtype) ){
@@ -1713,7 +1713,7 @@ Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
       Build_OP( is_64bit ? TOP_neg64 : TOP_neg32, result, src, ops );
     }
 
-  } else if( MTYPE_is_quad(mtype) ||
+  } else if( MTYPE_is_F10(mtype) ||
 	     !Is_Target_SSE2() ){
     Build_OP( TOP_fchs, result, src, ops );
 
@@ -1783,7 +1783,7 @@ Expand_Abs (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
       Expand_Cmov (TOP_cmovs, dest, src, Rflags_TN(), ops);
     }
 
-  } else if( MTYPE_is_quad( mtype ) ||
+  } else if( MTYPE_is_F10( mtype ) ||
 	     !Is_Target_SSE2() ){
     Build_OP( TOP_fabs, dest, src, ops );
 
@@ -2869,7 +2869,8 @@ Expand_Long_Double_To_Int(TN* dest, TN* src, TYPE_ID imtype, OPS* ops)
     WN_kid0(BB_branch_wn(bb_entry)) = NULL;
     WN_label_number(BB_branch_wn(bb_entry)) = bb_exit_label;
 
-    TCON tcon = Host_To_Targ_Quad( 0 );
+    TCON tcon = Host_To_Targ_Float_10(MTYPE_F10, 0); // Host_To_Targ_Quad( 0 );
+    // TODO verfy this is the correct long double constant for MTYPE_F10
     TCON_u0( tcon ) = 0x0;
     TCON_u1( tcon ) = 0x80000000;
     TCON_u2( tcon ) = 0x403e;
@@ -2886,7 +2887,7 @@ Expand_Long_Double_To_Int(TN* dest, TN* src, TYPE_ID imtype, OPS* ops)
     TN* max_value_tn = Build_TN_Like( src );
     Expand_Const( max_value_tn,
 		  Gen_Symbol_TN( tcon_base_sym, tcon_base_ofst, TN_RELOC_NONE ),
-		  MTYPE_FQ, ops );
+		  MTYPE_F10, ops );
 
     // Build bb_entry
     {
@@ -2974,8 +2975,8 @@ static void Expand_Float_To_Long_m32( TN* dest,
   FmtAssert( TN_register_class(src) == ISA_REGISTER_CLASS_float,
 	     ("Expand_Float_To_Long_m32: source is not a xmm register") );
 
-  TN* x87_src = Build_TN_Of_Mtype( MTYPE_FQ );
-  Expand_Float_To_Float( x87_src, src, MTYPE_FQ, fmtype, ops );
+  TN* x87_src = Build_TN_Of_Mtype( MTYPE_F10 );
+  Expand_Float_To_Float( x87_src, src, MTYPE_F10, fmtype, ops );
   Expand_Long_Double_To_Int( dest, x87_src, imtype, ops );  
 }
 
@@ -3051,7 +3052,7 @@ Expand_Float_To_Int (ROUND_MODE rm, TN *dest, TN *src, TYPE_ID imtype, TYPE_ID f
 {
   TOP top = TOP_UNDEFINED;
 
-  if( MTYPE_is_quad( fmtype ) ||
+  if( MTYPE_is_F10( fmtype ) ||
       !Is_Target_SSE2() ){
     Expand_Long_Double_To_Int( dest, src, imtype, ops );
     return;
@@ -3444,7 +3445,7 @@ Expand_Float_To_Int_Floor (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OP
     Build_OP( TOP_fldz, src1, ops );
 
   // Compare <src> with 0.0
-  Build_OP( ( MTYPE_is_quad( imtype ) || !Is_Target_SSE2() )
+  Build_OP( ( MTYPE_is_F10( imtype ) || !Is_Target_SSE2() )
 	    ? TOP_fucomi : ( is_double ? TOP_comisd : TOP_comiss ),
 	    rflags, src, src1, ops );
   
@@ -3453,7 +3454,7 @@ Expand_Float_To_Int_Floor (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OP
   Expand_Int_To_Float( src1, dest, imtype, fmtype, ops );
 
   // Compare <src> with itself at the integer side.
-  Build_OP( ( MTYPE_is_quad( imtype ) || !Is_Target_SSE2() )
+  Build_OP( ( MTYPE_is_F10( imtype ) || !Is_Target_SSE2() )
 	    ? TOP_fucomi : ( is_double ? TOP_comisd : TOP_comiss ),
 	    rflags, src, src1, ops );
 
@@ -3484,7 +3485,7 @@ Expand_Float_To_Int_Ceil (TN *result, TN *src, TYPE_ID imtype, TYPE_ID fmtype, O
     Build_OP( TOP_fldz, src1, ops );
 
   // Compare <src> with 0.0
-  Build_OP( ( MTYPE_is_quad( imtype ) || !Is_Target_SSE2() )
+  Build_OP( ( MTYPE_is_F10( imtype ) || !Is_Target_SSE2() )
 	    ? TOP_fucomi : ( is_double ? TOP_comisd : TOP_comiss ),
 	    rflags, src, src1, ops );
   
@@ -3493,7 +3494,7 @@ Expand_Float_To_Int_Ceil (TN *result, TN *src, TYPE_ID imtype, TYPE_ID fmtype, O
   Expand_Int_To_Float( src1, dest, imtype, fmtype, ops );
 
   // Compare <src> with itself at the integer side.
-  Build_OP( ( MTYPE_is_quad( imtype ) || !Is_Target_SSE2() )
+  Build_OP( ( MTYPE_is_F10( imtype ) || !Is_Target_SSE2() )
 	    ? TOP_fucomi : ( is_double ? TOP_comisd : TOP_comiss ),
 	    rflags, src, src1, ops );
 
@@ -3508,8 +3509,8 @@ void
 Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops)
 {
   if( Is_Target_SSE2()        &&
-      !MTYPE_is_quad( rtype ) &&
-      !MTYPE_is_quad( desc ) ){
+      !MTYPE_is_F10( rtype ) &&
+      !MTYPE_is_F10( desc ) ){
     if (!MTYPE_is_vector(rtype)){
 #ifdef KEY //bug 14346: fp-fp scalar conversion for barcelona is special
      if(Is_Target_Barcelona() || Is_Target_Orochi())
@@ -3532,7 +3533,7 @@ Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops)
     return;
   }
 
-  const TY_IDX ty = MTYPE_To_TY( !MTYPE_is_quad(rtype) ? rtype : desc );
+  const TY_IDX ty = MTYPE_To_TY( !MTYPE_is_F10(rtype) ? rtype : desc );
   ST* st = Gen_Temp_Symbol( ty, "x87_cvt" );
   Allocate_Temp_To_Memory( st ); 
 
@@ -3546,12 +3547,12 @@ Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops)
   TN* base_tn = base_sym == SP_Sym ? SP_TN : FP_TN;
   TN* ofst_tn = Gen_Literal_TN( base_ofst, 4 );
 
-  if( MTYPE_is_quad( desc ) ){
+  if( MTYPE_is_F10( desc ) ){
     // long double -> float/double
     CGTARG_Store_To_Memory( src, st, ops );
     CGTARG_Load_From_Memory( dest, st, ops );
     
-  } else if( MTYPE_is_quad( rtype ) ){
+  } else if( MTYPE_is_F10( rtype ) ){
     // float/double -> long double
     CGTARG_Store_To_Memory( src, st, ops );
     CGTARG_Load_From_Memory( dest, st, ops );
@@ -3866,7 +3867,8 @@ static void Expand_Int_To_Long_Double( TN* result, TN* src,
     // Build bb_then here.
     {
       OPS* bb_then_ops = &New_OPs;
-      TCON tcon = Host_To_Targ_Quad( 0 );
+      TCON tcon = Host_To_Targ_Float_10(MTYPE_F10, 0); // Host_To_Targ_Quad( 0 );
+      // TODO verfy this is the correct long double constant for MTYPE_F10
       TCON_u0( tcon ) = 0x0;
       TCON_u1( tcon ) = 0x80000000;
       TCON_u2( tcon ) = 0x403f;
@@ -3882,7 +3884,7 @@ static void Expand_Int_To_Long_Double( TN* result, TN* src,
 
       TN* max_value_tn = Build_TN_Like( dest );
       Expand_Const( max_value_tn, Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE ),
-		    MTYPE_FQ, bb_then_ops );
+		    MTYPE_F10, bb_then_ops );
 
       Build_OP( TOP_fadd, dest, dest, max_value_tn, bb_then_ops );
 
@@ -3915,10 +3917,10 @@ static void Expand_Long_To_Float_m32( TN* dest,
      conversion can expose the awkwardness.)
   */
 
-  TN* x87_dest = Build_TN_Of_Mtype( MTYPE_FQ );
-  Expand_Int_To_Long_Double( x87_dest, src, imtype, MTYPE_FQ, ops );
+  TN* x87_dest = Build_TN_Of_Mtype( MTYPE_F10 );
+  Expand_Int_To_Long_Double( x87_dest, src, imtype, MTYPE_F10, ops );
   // Now, convert <x87_dest> to <dest>.
-  Expand_Float_To_Float( dest, x87_dest, fmtype, MTYPE_FQ, ops );
+  Expand_Float_To_Float( dest, x87_dest, fmtype, MTYPE_F10, ops );
 }
 
 
@@ -3927,7 +3929,7 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
 {
   TOP top = TOP_UNDEFINED;
 
-  if( MTYPE_is_quad( fmtype ) ){
+  if( MTYPE_is_F10( fmtype ) ){
     Expand_Int_To_Long_Double( dest, src, imtype, fmtype, ops );
     return;
   }
@@ -3938,12 +3940,12 @@ Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops
   */
   if( !Is_Target_SSE2() ){
     TN* x87_dest =
-      ( imtype == MTYPE_U8 ) ? Build_TN_Of_Mtype( MTYPE_FQ ) : dest;
-    Expand_Int_To_Long_Double( x87_dest, src, imtype, MTYPE_FQ, ops );
+      ( imtype == MTYPE_U8 ) ? Build_TN_Of_Mtype( MTYPE_F10 ) : dest;
+    Expand_Int_To_Long_Double( x87_dest, src, imtype, MTYPE_F10, ops );
 
     // Now, convert <x87_dest> to <dest>, if necessary.
     if( x87_dest != dest )
-      Expand_Float_To_Float( dest, x87_dest, fmtype, MTYPE_FQ, ops );
+      Expand_Float_To_Float( dest, x87_dest, fmtype, MTYPE_F10, ops );
 
     return;
   }
@@ -4160,7 +4162,7 @@ Expand_Select (
 {
   Is_True( TN_register_class(cond_tn) == ISA_REGISTER_CLASS_integer,
 	   ("Handle this case in Expand_Select") );
-  const BOOL non_sse2_fp = MTYPE_is_quad(mtype) ||
+  const BOOL non_sse2_fp = MTYPE_is_F10(mtype) ||
     ( MTYPE_is_float(mtype) && !Is_Target_SSE2() );
 
   if( dest_tn == false_tn ){
@@ -4267,7 +4269,7 @@ Expand_Min (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 
   } else if( MTYPE_is_float(mtype) &&
 	     Is_Target_SSE2()      &&
-	     !MTYPE_is_quad( mtype ) ){
+	     !MTYPE_is_F10( mtype ) ){
     switch(mtype) {
     case MTYPE_V32F4:
     case MTYPE_V16F4:
@@ -4388,7 +4390,7 @@ Expand_Max (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 
   } else if( MTYPE_is_float(mtype) &&
 	     Is_Target_SSE2()      &&
-	     !MTYPE_is_quad(mtype) ){
+	     !MTYPE_is_F10(mtype) ){
     switch(mtype) {
     case MTYPE_V32F4:
     case MTYPE_V16F4:
@@ -4511,7 +4513,7 @@ Expand_MinMax (TN *dest_min, TN *dest_max,
 
   } else if( MTYPE_is_float(mtype) &&
 	     Is_Target_SSE2()      &&
-	     !MTYPE_is_quad(mtype) ){
+	     !MTYPE_is_F10(mtype) ){
     switch(mtype) {
     case MTYPE_V32F4:
     case MTYPE_V16F4:
@@ -4878,7 +4880,7 @@ Exp_Select_And_Condition (
 
   } else if( MTYPE_is_float(select_type) &&
       Is_Target_SSE2()            &&
-      !MTYPE_is_quad(select_type) ){
+      !MTYPE_is_F10(select_type) ){
     /* For case where <result>, <true_tn> and <false_tn> are fp type.
 
        Paraphrase Section 6.7 of AMD Opteron Optimization Guide:
@@ -5062,7 +5064,7 @@ Exp_Select_And_Condition (
       ? TOP_fucomi : ( is_ssize_double ? TOP_cmp64 : TOP_cmp32 );
 
     if( MTYPE_is_float(desc) ){
-      cmp_opcode = ( MTYPE_is_quad(desc) || !Is_Target_SSE2() )
+      cmp_opcode = ( MTYPE_is_F10(desc) || !Is_Target_SSE2() )
 	? TOP_fucomi : ( is_ssize_double ? TOP_comisd : TOP_comiss );
 
     } else if( TN_has_value( cmp_kid2 ) ){
@@ -5332,7 +5334,7 @@ Expand_Sqrt (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
     Build_OP(TOP_fsqrt128v64, result, src, ops);
     break;
   default:    
-    if( MTYPE_is_quad(mtype) ||
+    if( MTYPE_is_F10(mtype) ||
 	!Is_Target_SSE2() ) {
       Build_OP( TOP_fsqrt, result, src, ops);
     }
@@ -5350,7 +5352,7 @@ Expand_Float_Compares(TOP set_opcode,
 		      TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 {
   const BOOL is_double = MTYPE_is_size_double(mtype);
-  const TOP top = ( MTYPE_is_quad(mtype) || !Is_Target_SSE2() )
+  const TOP top = ( MTYPE_is_F10(mtype) || !Is_Target_SSE2() )
     ? TOP_fucomi : ( is_double ? TOP_comisd : TOP_comiss );
 
   TN* rflags = Rflags_TN();
@@ -5515,8 +5517,7 @@ static void Expand_Recip( TN* result, TN* src2, TYPE_ID mtype, OPS* ops )
     tcon = Create_Simd_Const ( MTYPE_V16F8,
                                Host_To_Targ_Float_4 ( MTYPE_F8, 1.0 ) );
   else
-    tcon = MTYPE_is_quad(mtype)
-      ? Host_To_Targ_Quad( 1.0 ) : Host_To_Targ_Float( mtype, 1.0 );
+    tcon = Host_To_Targ_Float( mtype, 1.0 );
 
   sym = New_Const_Sym( Enter_tcon(tcon),  Be_Type_Tbl( TCON_ty(tcon) ) );
 
@@ -5529,7 +5530,7 @@ static void Expand_Recip( TN* result, TN* src2, TYPE_ID mtype, OPS* ops )
   Expand_Const( src1, Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE ), 
 		mtype, ops );
 
-  const BOOL non_sse2_fp = MTYPE_is_quad(mtype) || !Is_Target_SSE2();
+  const BOOL non_sse2_fp = MTYPE_is_F10(mtype) || !Is_Target_SSE2();
   if (mtype == MTYPE_V16F4)    
     Build_OP( TOP_fdiv128v32, result, src1, src2, ops );
   else if (mtype == MTYPE_V16F8)
@@ -5671,7 +5672,7 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
       opc = TOP_addsd;
       break;
     }  /* fall thru */
-  case OPC_FQADD:
+  case OPC_F10ADD:
     opc = TOP_fadd;
     break;
   case OPC_V32F4ADD:
@@ -5695,7 +5696,7 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
       opc = TOP_subsd;
       break;
     }  /* fall thru */
-  case OPC_FQSUB:
+  case OPC_F10SUB:
     opc = TOP_fsub;
     break;
   case OPC_V16F4SUB:
@@ -5716,7 +5717,7 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
       opc = TOP_mulsd;
       break;
     }  /* fall thru */
-  case OPC_FQMPY:
+  case OPC_F10MPY:
     opc = TOP_fmul;
     break;
   case OPC_V32F4MPY:
@@ -5764,7 +5765,7 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
       opc = TOP_divsd;
       break;
     }  /* fall thru */
-  case OPC_FQDIV:
+  case OPC_F10DIV:
     opc = TOP_fdiv;
     break;
   case OPC_V32F4DIV:
@@ -5777,7 +5778,7 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
     break;
   case OPC_F4RECIP:
   case OPC_F8RECIP:
-  case OPC_FQRECIP:
+  case OPC_F10RECIP:
   case OPC_V16F4RECIP:
   case OPC_V16F8RECIP:
     Expand_Recip( result, src1, OPCODE_rtype(opcode), ops );
@@ -6467,7 +6468,7 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
 
     } else if( tgt_rc == ISA_REGISTER_CLASS_x87 &&
 	       src_rc == ISA_REGISTER_CLASS_float ){
-      Expand_Float_To_Float( tgt_tn, src_tn, MTYPE_FQ,
+      Expand_Float_To_Float( tgt_tn, src_tn, MTYPE_F10,
 			     TN_size(src_tn) == 8 ? MTYPE_F8 : MTYPE_F4,
 			     ops );
 
@@ -6475,7 +6476,7 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
 	       src_rc == ISA_REGISTER_CLASS_x87 ){
       Expand_Float_To_Float( tgt_tn, src_tn,
 			     TN_size(tgt_tn) == 8 ? MTYPE_F8 : MTYPE_F4,
-			     MTYPE_FQ,
+			     MTYPE_F10,
 			     ops );
 
     } else if( tgt_rc == ISA_REGISTER_CLASS_integer &&
@@ -6795,7 +6796,7 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
   TN* result_tmp = Build_TN_Of_Mtype( MTYPE_U1 );
   BOOL need_zero_ext = FALSE;	// if zero ext is needed, if yes, `movzb{l|q} result_tmp, result' is appended
   const BOOL is_double = MTYPE_is_size_double(mtype);
-  const TOP cmp_opcode = ( MTYPE_is_quad(mtype) || !Is_Target_SSE2() )
+  const TOP cmp_opcode = ( MTYPE_is_F10(mtype) || !Is_Target_SSE2() )
     ? TOP_fucomi : ( is_double ? TOP_comisd : TOP_comiss );
 
   if (INTRN_return_kind(id) == IRETURN_M8I1 ||

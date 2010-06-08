@@ -3327,7 +3327,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
     // It is really the user's responsibility to do any type conversions between
     // long double and double/float. We will not handle any type conversions
     // as part of handling the inline asm. This is what Gcc does.
-    ret_tn = (pref_tn ? pref_tn : Build_TN_Of_Mtype(MTYPE_FQ));
+    ret_tn = (pref_tn ? pref_tn : Build_TN_Of_Mtype(MTYPE_F10));
   }
   else if (*constraint == 'f')
   {

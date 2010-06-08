@@ -2111,8 +2111,10 @@ AGGINIT::WGEN_Add_Aggregate_Init_Real (gs_t real, INT size)
       WGEN_Convert_To_Host_Order((long *)&buffer);
       tc = Host_To_Targ_Float (MTYPE_F8, buffer);
       break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+    case 12:
     case 16:
+      // TODO handle MTYPE_F16
       tc = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(real));
       break;
 #else
@@ -2166,8 +2168,10 @@ AGGINIT::WGEN_Add_Aggregate_Init_Complex (gs_t rval, gs_t ival, INT size)
       WGEN_Convert_To_Host_Order((long *)&buffer);
       itc = Host_To_Targ_Float (MTYPE_F8, buffer);
       break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+    case 24:
     case 32:
+      // TODO handle MTYPE_F16
       rtc = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(rval));
       itc = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(ival));
       break;

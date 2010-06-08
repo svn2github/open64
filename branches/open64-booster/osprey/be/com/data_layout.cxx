@@ -703,7 +703,7 @@ Allocate_Space(ST *base, ST *blk, INT32 lpad, INT32 rpad, INT64 maxsize)
 #ifdef KEY
 		  align
 #else
-		  TY_align(ST_type(blk) 
+		  TY_align(ST_type(blk))
 #endif // KEY
 		  );
   }
@@ -2872,7 +2872,7 @@ if (Trace_Frame) fprintf(TFile, "<lay> didn't check Gspace for %s\n", ST_NAME(st
        case MTYPE_U8:
 	 newsec = _SEC_LIT8;
 	 break;
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
        case MTYPE_F10:
        case MTYPE_C10:
 #endif

@@ -227,11 +227,9 @@ Make_Const ( TCON c )
     case MTYPE_C8:
       opc = OPC_C8CONST;
       break;
-#ifdef TARG_IA64
     case MTYPE_C10:
       opc = OPC_C10CONST;
       break;
-#endif
     case MTYPE_CQ:
       opc = OPC_CQCONST;
       break;
@@ -314,7 +312,7 @@ Make_Zerocon ( TYPE_ID ty )
 WN *
 Make_Comparison_Result_Const ( INT16 val )
 {
-  return Make_Const ( Host_To_Targ ( Comparison_Result_Mtype, val ) );
+  return Make_Const ( Host_To_Targ ( (TYPE_ID)Comparison_Result_Mtype, val ) );
 }
 
 
@@ -336,7 +334,7 @@ Make_Integer_Const ( INT16 mtype, TARG_INT val )
     */
 
    /* NOTE: TARG_INT should be INT64 for this to work! */
-   return (WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST,mtype,MTYPE_V), val));
+   return (WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST,(TYPE_ID)mtype,MTYPE_V), val));
 
 }
 
@@ -623,7 +621,7 @@ WN * Make_Reduction_Identity ( INT32 opr, TYPE_ID mtype )
                                           (opr == OPR_CAND) ? 1.0 : 0.0));
         break;
 
-       default:
+      default:
 	 Fail_FmtAssertion ( "No reduction identity for operator %d, type %d",
 			    opr, mtype);
       }

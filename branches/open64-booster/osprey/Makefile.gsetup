@@ -335,7 +335,7 @@ else
  ifeq ($(BUILD_OPTIMIZE), NODEBUG)
    OPTIMIZER = -O2 -fno-strict-aliasing
  else
-   OPTIMIZER = $(BUILD_OPTIMIZE)
+   OPTIMIZER = $(BUILD_OPTIMIZE) -fno-strict-aliasing
  endif
 endif
 
