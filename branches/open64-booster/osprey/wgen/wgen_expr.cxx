@@ -8563,6 +8563,7 @@ WGEN_Expand_Expr (gs_t exp,
                 break;
 
 	      case GSBI_BUILT_IN_POW:
+	      case GSBI_BUILT_IN_POWF:
                 // Bug 8195: If for whatever reason the pow(3) call is unused,
                 // need_result will be false. Then, the value that this very
                 // function assigns to ret_mtype for pow(3) is MTYPE_V. So,
@@ -8574,9 +8575,9 @@ WGEN_Expand_Expr (gs_t exp,
 
                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
 		if (! gs_flag_errno_math(program)) {  // Bug 14262
-		  FmtAssert(ret_mtype == MTYPE_F8,
-			    ("unexpected mtype for intrinsic 'pow'"));
-		  iopc = INTRN_F8EXPEXPR;
+                  if (ret_mtype == MTYPE_F4) iopc = INTRN_F4EXPEXPR;
+                  else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8EXPEXPR;
+		  else Fail_FmtAssertion ("unexpected mtype for intrinsic 'pow'");
 		  intrinsic_op = TRUE;
 		}
 		break;
