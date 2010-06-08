@@ -6414,8 +6414,8 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
     ISA_REGISTER_CLASS src_rc = TN_register_class(src_tn);
 
     if (tgt_rc == src_rc && tgt_rc == ISA_REGISTER_CLASS_integer) {
-      if(CG_strcmp_expand)
-        Build_OP( Is_Target_64bit() ? TOP_mov64 : TOP_mov32, tgt_tn, src_tn, ops );
+      if(CG_strcmp_expand && Is_Target_32bit())
+        Build_OP(TOP_mov32, tgt_tn, src_tn, ops );
       else
         Build_OP( is_64bit ? TOP_mov64 : TOP_mov32, tgt_tn, src_tn, ops );
       Set_OP_copy (OPS_last(ops));
@@ -6435,8 +6435,8 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
 	    hi_tgt_tn != NULL) {
 	  Is_True((hi_tgt_tn != NULL) && (hi_src_tn != NULL),
 		  ("Exp_COPY: src or target TN pair missing"));
-          if(CG_strcmp_expand)
-	    Build_OP(Is_Target_64bit() ? TOP_mov64 : TOP_mov32, hi_tgt_tn, hi_src_tn, ops);
+          if(CG_strcmp_expand && Is_Target_32bit())
+	    Build_OP(TOP_mov32, hi_tgt_tn, hi_src_tn, ops);
           else
              Build_OP(is_64bit ? TOP_mov64 : TOP_mov32, hi_tgt_tn, hi_src_tn, ops);
 	  Set_OP_copy (OPS_last(ops));
