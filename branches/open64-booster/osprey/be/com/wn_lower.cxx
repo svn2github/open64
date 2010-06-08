@@ -16558,6 +16558,8 @@ extern WN *  Transform_To_Memcpy(WN *dst, WN *src, INT32 offset, TY_IDX dstTY, T
                            MTYPE_To_TY(WN_rtype(size)),
                            WN_PARM_BY_VALUE);
 
+  WN_Set_Parm_Passed_Not_Saved (parms[0]);
+  WN_Set_Parm_Passed_Not_Saved (parms[1]);
 
   call= WN_Generate_Intrinsic_Call(NULL, INTRN_MEMCPY, 3, parms);
   return call;
