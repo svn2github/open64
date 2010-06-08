@@ -2698,7 +2698,7 @@ static void Init_OP_Name()
   OP_Name[TOP_vxzero32] = "vxorps";
   OP_Name[TOP_vzeroall] = "vzeroall";
 
-#if 0
+#ifdef FMA3
   // Intel fma TOP to instruction map
   OP_Name[TOP_xfmaddpd132] = "vfmadd132pd";
   OP_Name[TOP_xfmaddx132pdx] = "vfmadd132pd";
