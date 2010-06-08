@@ -1199,6 +1199,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   Is_True(phase == PREOPT_IPA0_PHASE ||
 	  phase == PREOPT_IPA1_PHASE ||
 	  phase == PREOPT_LNO_PHASE ||
+	  phase == PREOPT_LNO1_PHASE ||
 	  phase == PREOPT_DUONLY_PHASE ||
 	  phase == PREOPT_PHASE ||
 	  phase == MAINOPT_PHASE,
@@ -1508,6 +1509,9 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   comp_unit->Cfg()->Remove_fake_entryexit_arcs();
   comp_unit->Cfg()->Compute_dom_frontier(); // create dominance frontier
   comp_unit->Cfg()->Compute_control_dependence(); // create control-dependence set
+
+  SET_OPT_PHASE("Proactive Loop Transformation");
+  comp_unit->Pro_loop_trans();
   comp_unit->Cfg()->Analyze_loops();
 
   // Setup flow free alias information  --  CHI and MU list 
@@ -1638,74 +1642,76 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   }
 #endif
 
-  for (INT i = 0; i < WOPT_Enable_Extra_Rename_Pass; ++i) {
+  if (phase != PREOPT_LNO1_PHASE) {
+    for (INT i = 0; i < WOPT_Enable_Extra_Rename_Pass; ++i) {
 
-    if (Get_Trace(TP_WOPT2, SECOND_RENAME_FLAG)) 
-      fprintf(TFile, "%sEXTRA RENAME PASS %d:\n%s", DBar, i+1, DBar);
+      if (Get_Trace(TP_WOPT2, SECOND_RENAME_FLAG)) 
+	fprintf(TFile, "%sEXTRA RENAME PASS %d:\n%s", DBar, i+1, DBar);
 
-    // only enable during MAINOPT_PHASE because the update of high level
-    // structure is not implemented.  -Raymond 5/29/98.
-    //
-    if (WOPT_Enable_CFG_Opt && phase == MAINOPT_PHASE) {
-      SET_OPT_PHASE("CFG optimization");
-      CFG_transformation(comp_unit,
-			 WOPT_Enable_CFG_Opt2 && i == 0, // first pass
-			 Get_Trace(TP_WOPT2, CFG_OPT_FLAG),
-			 WOPT_Enable_CFG_Display);
+      // only enable during MAINOPT_PHASE because the update of high level
+      // structure is not implemented.  -Raymond 5/29/98.
+      //
+      if (WOPT_Enable_CFG_Opt && phase == MAINOPT_PHASE) {
+	SET_OPT_PHASE("CFG optimization");
+	CFG_transformation(comp_unit,
+			   WOPT_Enable_CFG_Opt2 && i == 0, // first pass
+			   Get_Trace(TP_WOPT2, CFG_OPT_FLAG),
+			   WOPT_Enable_CFG_Display);
 
-      if ( comp_unit->Cfg()->Feedback() )
-	comp_unit->Cfg()->Feedback()->Verify( comp_unit->Cfg(),
-					      "after CFG Optimization" );
-    }
+	if ( comp_unit->Cfg()->Feedback() )
+	  comp_unit->Cfg()->Feedback()->Verify( comp_unit->Cfg(),
+						"after CFG Optimization" );
+      }
 
-    SET_OPT_PHASE("Second rename");
-    Rename_CODEMAP(comp_unit);
+      SET_OPT_PHASE("Second rename");
+      Rename_CODEMAP(comp_unit);
 
-    if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
-      SET_OPT_PHASE("Skip verify Live-Range because timing trace is on");
-    } else {
-      SET_OPT_PHASE("Verify Live-Range");
-      comp_unit->Verify_version();
-    }
+      if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
+	SET_OPT_PHASE("Skip verify Live-Range because timing trace is on");
+      } else {
+	SET_OPT_PHASE("Verify Live-Range");
+	comp_unit->Verify_version();
+      }
 
-    // do flow free copy propagation
-    if (WOPT_Enable_Copy_Propagate) {
-      SET_OPT_PHASE("Copy Propagation");
-      comp_unit->Do_copy_propagate();
-    }
+      // do flow free copy propagation
+      if (WOPT_Enable_Copy_Propagate) {
+	SET_OPT_PHASE("Copy Propagation");
+	comp_unit->Do_copy_propagate();
+      }
 
-    if (WOPT_Enable_DCE) {
-      SET_OPT_PHASE("Dead Code Elimination");
-      BOOL paths_removed;
-      BOOL dce_renumber_pregs = This_preopt_renumbers_pregs(phase);
-      comp_unit->Do_dead_code_elim(TRUE, TRUE, TRUE, TRUE,
-				   WOPT_Enable_Copy_Propagate,
-				   dce_renumber_pregs,
-				   &paths_removed);
+      if (WOPT_Enable_DCE) {
+	SET_OPT_PHASE("Dead Code Elimination");
+	BOOL paths_removed;
+	BOOL dce_renumber_pregs = This_preopt_renumbers_pregs(phase);
+	comp_unit->Do_dead_code_elim(TRUE, TRUE, TRUE, TRUE,
+				     WOPT_Enable_Copy_Propagate,
+				     dce_renumber_pregs,
+				     &paths_removed);
 
-      if ( comp_unit->Cfg()->Feedback() )
-	comp_unit->Cfg()->Feedback()->Verify( comp_unit->Cfg(),
-					      "Dead Code Elimination" );
+	if ( comp_unit->Cfg()->Feedback() )
+	  comp_unit->Cfg()->Feedback()->Verify( comp_unit->Cfg(),
+						"Dead Code Elimination" );
       
-      if (!paths_removed) break;
+	if (!paths_removed) break;
     }
 
 #ifdef KEY // moved here because renaming causes bad code when there is
     	   // overlapped live ranges, which can be created by copy propagation
-    if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
-      SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
-      comp_unit->Fold_lda_iload_istore();
-    }
+      if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
+	SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
+	comp_unit->Fold_lda_iload_istore();
+      }
 #endif
 
-    // synchronize CFG and feedback info
-    // comp_unit->Cfg()->Feedback().make_coherent();
+      // synchronize CFG and feedback info
+      // comp_unit->Cfg()->Feedback().make_coherent();
 
-    if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
-      SET_OPT_PHASE("Skip verify Live-Range because timing trace is on");
-    } else {
-      SET_OPT_PHASE("Verify Live-Range");
-      comp_unit->Verify_version();
+      if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
+	SET_OPT_PHASE("Skip verify Live-Range because timing trace is on");
+      } else {
+	SET_OPT_PHASE("Verify Live-Range");
+	comp_unit->Verify_version();
+      }
     }
   }
 
