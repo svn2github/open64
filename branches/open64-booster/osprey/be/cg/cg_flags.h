@@ -98,6 +98,9 @@
  *     Enable fma4 load exec EBO optimization which folds loads onto
  *      fma4 operations for X8664.
  *
+ *  BOOL CG_dispatch_schedule
+ *     Enable dispatch scheduling for Orochi style architectures.
+ *
  *  BOOL CG_128bitstore
  *     Enable 128bit unaligned stores optimization which emits movup{s|d}
  *     instead of movhp{s|d} with movlp{s|d}.
@@ -526,6 +529,7 @@ extern BOOL CG_skip_local_swp;
 #ifdef TARG_X8664
 extern BOOL CG_cmp_load_exec;
 extern BOOL CG_fma4_load_exec;
+extern BOOL CG_dispatch_schedule;
 extern BOOL CG_128bitstore;
 extern BOOL CG_branch_fuse;
 #endif

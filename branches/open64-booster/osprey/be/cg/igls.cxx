@@ -606,6 +606,7 @@ IGLS_Schedule_Region (BOOL before_regalloc)
     } /* for (bb= REGION_First_BB).. */
 
 #ifdef TARG_X8664
+    if (Is_Target_Orochi() == FALSE)
     {
       extern void CG_Sched( MEM_POOL*, BOOL );
       CG_Sched( &MEM_local_pool, Get_Trace( TP_SCHED, 1 ) );

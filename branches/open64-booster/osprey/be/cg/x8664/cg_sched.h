@@ -54,7 +54,7 @@ private:
 
   void Tighten_Release_Time( OP* );
   OP* last_mem_op;
-  OP* Winner( OP*, OP* );
+  OP* Winner( OP*, OP*, int );
   OP* Select_Variable( int );
 
   void Init();

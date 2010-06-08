@@ -468,6 +468,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,	&CG_cmp_load_exec, NULL },
   { OVK_BOOL,	OV_VISIBLE, TRUE, "fma4_peep", "",
     0, 0, 0,	&CG_fma4_load_exec, NULL },
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "dsched", "",
+    0, 0, 0,	&CG_dispatch_schedule, NULL },
   { OVK_BOOL,	OV_VISIBLE, TRUE, "unalign_st", "",
     0, 0, 0,	&CG_128bitstore, NULL },
   { OVK_BOOL,	OV_VISIBLE, TRUE, "brfuse", "",
@@ -2608,6 +2610,12 @@ CG_Init (void)
 	fprintf(stderr, "warning: -CG:local_fwd_sched ignored,"
 			" conflicts with -CG:local_sched_alg\n");
       }
+    }
+    if (Is_Target_Orochi()) {
+      // TODO: add CG_dispatch_schedule set to TRUE once
+      //       we have binutils support
+      if (CG_loop32 == FALSE)
+        CG_loop32 = TRUE; 
     }
 #endif // KEY
 } /* CG_Init */

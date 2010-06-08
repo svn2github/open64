@@ -1922,7 +1922,14 @@ static void r_assemble_list (
 #else
     fprintf (Asm_File, " [%d*II+%d]", OP_scycle(op) / ii, OP_scycle(op) % ii);
     } else if (BB_scheduled(bb))
+#ifdef TARG_X8664
+        if (Is_Target_Orochi())
+          fprintf (Asm_File, " [%d], [%d]", OP_scycle(op), OP_dgroup(op));
+        else
+          fprintf (Asm_File, " [%d]", OP_scycle(op));
+#else
         fprintf (Asm_File, " [%d]", OP_scycle(op));
+#endif
 #endif
   if (vstr_len(comment) == 0) {
     WN *wn = Get_WN_From_Memory_OP (op);

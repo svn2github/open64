@@ -1138,6 +1138,8 @@ int main (int argc, char *argv[])
   Instruction_Group("float-alu comi",
                     TOP_comisd,
                     TOP_comiss,
+                    TOP_ucomisd,
+                    TOP_ucomiss,
                     TOP_fxch,
                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
@@ -2022,6 +2024,12 @@ int main (int argc, char *argv[])
                     TOP_comixxss,
                     TOP_comixxxsd,
                     TOP_comixxxss,
+                    TOP_ucomixsd,
+                    TOP_ucomixxsd,
+                    TOP_ucomixss,
+                    TOP_ucomixxss,
+                    TOP_ucomixxxsd,
+                    TOP_ucomixxxss,
                     TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(3);

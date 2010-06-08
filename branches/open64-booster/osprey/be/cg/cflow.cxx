@@ -1525,6 +1525,7 @@ Finalize_BB(BB *bp)
 
 
 #ifdef TARG_X8664
+
 /* ====================================================================
  *
  * Br_Fuse_BB
@@ -1539,7 +1540,9 @@ Br_Fuse_BB(BB *bp)
   if (BBINFO_kind(bp) == BBKIND_LOGIF) {
     OP *br = BB_branch_op(bp);
     OP *cmp = BBINFO_compare_op(bp);
-    if ((cmp != NULL) &&
+    // now see if we pass the entrance criteria
+    if ((cmp != NULL) && 
+        (OP_load_exe(cmp) == false) &&
         (br != cmp) &&
         (OP_bb(cmp) == bp)) {
       ARC_LIST *arcs;
@@ -1572,7 +1575,11 @@ Br_Fuse_BB(BB *bp)
         }
       }
 
+      // Even if the cmp still winds up in the last
+      // slot of the last dispatch group, and the fusion
+      // does not happen, this is not a destructive activity.
       OP_scycle(cmp) = OP_scycle(br);
+      OP_dgroup(cmp) = OP_dgroup(br);
       BB_Move_Op_Before(bp, br, bp, cmp);
       CG_DEP_Delete_Graph (bp);
     }

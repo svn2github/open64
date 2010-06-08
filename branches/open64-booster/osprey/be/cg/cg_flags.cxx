@@ -124,6 +124,7 @@ BOOL CG_cmp_load_exec = FALSE;
 BOOL CG_fma4_load_exec = FALSE;
 BOOL CG_128bitstore = TRUE;
 BOOL CG_branch_fuse = TRUE;
+BOOL CG_dispatch_schedule = FALSE;
 #endif
 BOOL CG_opt_level;
 BOOL CG_localize_tns = FALSE;
