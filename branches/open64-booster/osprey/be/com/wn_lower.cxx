@@ -8047,6 +8047,12 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 
       realTY =	Mtype_complex_to_real( WN_desc(tree));
       lower_complex_expr(block, WN_kid0(tree), actions, &realexp, &imagexp);
+      if (imagexp == NULL)
+      {
+        imagexp = WN_Floatconst(realTY, 0.0);
+        WN_kid0(tree) = WN_CreateExp2( OPR_PAIR, WN_desc(tree), MTYPE_V, 
+			realexp, imagexp);
+      }
 
 #ifdef TARG_X8664 // MTYPE_C4 is returned in one SSE register
       if (WN_rtype(WN_kid0(tree)) == MTYPE_F8) {
