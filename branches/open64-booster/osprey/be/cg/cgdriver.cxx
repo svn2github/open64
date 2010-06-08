@@ -468,6 +468,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,	&CG_cmp_load_exec, NULL },
   { OVK_BOOL,	OV_VISIBLE, TRUE, "fma4_peep", "",
     0, 0, 0,	&CG_fma4_load_exec, NULL },
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "unalign_st", "",
+    0, 0, 0,	&CG_128bitstore, NULL },
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "brfuse", "",
+    0, 0, 0,	&CG_branch_fuse, NULL },
 #endif
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_sched", "",
     0, 0, 0,	&CG_skip_local_sched, NULL },

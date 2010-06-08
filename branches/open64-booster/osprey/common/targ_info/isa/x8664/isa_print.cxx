@@ -2885,6 +2885,8 @@ main()
 			   TOP_ldhps_n32,
 			   TOP_ldlpd_n32,
 			   TOP_ldhpd_n32,
+                           TOP_stups_n32,
+                           TOP_stupd_n32,
 			   TOP_cvtss2si,
 			   TOP_cvtsd2si,
 			   TOP_cvtss2siq,
@@ -3105,6 +3107,7 @@ main()
                            TOP_vstapd_n32,
                            TOP_vstaps_n32,
                            TOP_vstlpd_n32,
+                           TOP_vstups_n32,
                            TOP_vstupd_n32,
                            TOP_vsthpd_n32,
                            TOP_vsthps_n32,
@@ -3399,7 +3402,6 @@ main()
 			   TOP_maskmovdqu,
 			   TOP_maskmovq,
                            /* AVX instructions */
-                           TOP_vstups_n32,
                            TOP_vstsd_n32,
                            TOP_vstss_n32,
 			   TOP_UNDEFINED );
@@ -3704,6 +3706,8 @@ main()
 			   TOP_sthpdx,
 			   TOP_stapsx,
 			   TOP_stapdx,
+                           TOP_stupdx,
+                           TOP_stupsx,
                            /* SSE4.1 instructions */
                            TOP_stntdqx,
                            /* AVX instructions */
@@ -3785,6 +3789,8 @@ main()
 			   TOP_stntpsxx,
 			   TOP_stapsxx,
 			   TOP_stapdxx,
+                           TOP_stupdxx,
+                           TOP_stupsxx,
                            /* SSE4.1 instructions */
                            TOP_stntdqxx,
                            /* AVX instructions */

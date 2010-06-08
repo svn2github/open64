@@ -3499,7 +3499,13 @@ static void Init_OP_Name()
   OP_Name[TOP_stapd] = "movapd";
   OP_Name[TOP_stapd_n32] = "movapd";
   OP_Name[TOP_stupd] = "movupd";
+  OP_Name[TOP_stupdx] = "movupd";
+  OP_Name[TOP_stupdxx] = "movupd";
+  OP_Name[TOP_stupd_n32] = "movupd";
   OP_Name[TOP_stups] = "movups";
+  OP_Name[TOP_stupsx] = "movups";
+  OP_Name[TOP_stupsxx] = "movups";
+  OP_Name[TOP_stups_n32] = "movups";
   OP_Name[TOP_ldaps] = "movaps";
   OP_Name[TOP_ldaps_n32] = "movaps";
   OP_Name[TOP_ldapd] = "movapd";

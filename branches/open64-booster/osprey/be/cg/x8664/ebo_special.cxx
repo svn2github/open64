@@ -3799,6 +3799,8 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_UNDEFINED, TOP_stlpd,	TOP_stlpdx,	TOP_stlpdxx,	TOP_stlpd_n32},
   {TOP_UNDEFINED, TOP_staps,	TOP_stapsx,	TOP_stapsxx,	TOP_staps_n32},
   {TOP_UNDEFINED, TOP_stapd,	TOP_stapdx,	TOP_stapdxx,	TOP_stapd_n32},
+  {TOP_UNDEFINED, TOP_stups,	TOP_stupsx,	TOP_stupsxx,	TOP_stups_n32},
+  {TOP_UNDEFINED, TOP_stupd,	TOP_stupdx,	TOP_stupdxx,	TOP_stupd_n32},
   {TOP_UNDEFINED, TOP_ldhps,	TOP_ldhpsx,	TOP_ldhpsxx,	TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_ldhpd,	TOP_ldhpdx,	TOP_ldhpdxx,	TOP_ldhpd_n32},
   {TOP_UNDEFINED, TOP_sthps,	TOP_sthpsx,	TOP_sthpsxx,	TOP_UNDEFINED},

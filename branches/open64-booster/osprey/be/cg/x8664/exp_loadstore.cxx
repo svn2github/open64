@@ -696,32 +696,46 @@ Expand_Misaligned_Store (TYPE_ID mtype, TN *obj_tn, TN *base_tn, TN *disp_tn, VA
     else Build_OP(!Is_Target_SSE2() ? TOP_stlps_n32 : TOP_store64_fsse_n32, obj_tn, disp_tn, ops);
   }
   else if (mtype == MTYPE_V16F4 || mtype == MTYPE_V16C4) {
-    TN* ofst = TN_is_symbol( disp_tn )
-      ? Gen_Symbol_TN( TN_var(disp_tn), TN_offset(disp_tn) + 8, TN_RELOC_NONE )
-      : Gen_Literal_TN( TN_value(disp_tn) + 8, TN_size(disp_tn) );
-    if (base_tn != NULL) {
-      Build_OP (TOP_stlps, obj_tn, base_tn, disp_tn, ops);    
-      Build_OP (TOP_sthps, obj_tn, base_tn, ofst, ops);    
+    if(Is_Target_Orochi() && CG_128bitstore){
+      if(base_tn != NULL)
+        Build_OP (TOP_stups, obj_tn, base_tn, disp_tn, ops);
+      else Build_OP (TOP_stups_n32, obj_tn, disp_tn, ops);
     }
-    else {
-      Build_OP (TOP_stlps_n32, obj_tn, disp_tn, ops);    
-      Build_OP (TOP_sthps_n32, obj_tn, ofst, ops);    
+    else{
+      TN* ofst = TN_is_symbol( disp_tn )
+        ? Gen_Symbol_TN( TN_var(disp_tn), TN_offset(disp_tn) + 8, TN_RELOC_NONE )
+        : Gen_Literal_TN( TN_value(disp_tn) + 8, TN_size(disp_tn) );
+      if (base_tn != NULL) {
+        Build_OP (TOP_stlps, obj_tn, base_tn, disp_tn, ops);    
+        Build_OP (TOP_sthps, obj_tn, base_tn, ofst, ops);    
+      }
+      else {
+        Build_OP (TOP_stlps_n32, obj_tn, disp_tn, ops);    
+        Build_OP (TOP_sthps_n32, obj_tn, ofst, ops);    
+      }
+      Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
     }
-    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
   } 
   else if (mtype == MTYPE_V16F8 || mtype == MTYPE_V16C8) {
-    TN* ofst = TN_is_symbol( disp_tn )
-      ? Gen_Symbol_TN( TN_var(disp_tn), TN_offset(disp_tn) + 8, TN_RELOC_NONE )
-      : Gen_Literal_TN( TN_value(disp_tn) + 8, TN_size(disp_tn) );
-    if (base_tn != NULL) {
-      Build_OP (TOP_stlpd, obj_tn, base_tn, disp_tn, ops);    
-      Build_OP (TOP_sthpd, obj_tn, base_tn, ofst, ops);    
+    if(Is_Target_Orochi() && CG_128bitstore){
+      if(base_tn != NULL)
+        Build_OP (TOP_stupd, obj_tn, base_tn, disp_tn, ops);
+      else Build_OP (TOP_stupd_n32, obj_tn, disp_tn, ops);
     }
-    else {
-      Build_OP (TOP_stlpd_n32, obj_tn, disp_tn, ops);    
-      Build_OP (TOP_sthpd_n32, obj_tn, ofst, ops);    
+    else{
+      TN* ofst = TN_is_symbol( disp_tn )
+        ? Gen_Symbol_TN( TN_var(disp_tn), TN_offset(disp_tn) + 8, TN_RELOC_NONE )
+        : Gen_Literal_TN( TN_value(disp_tn) + 8, TN_size(disp_tn) );
+      if (base_tn != NULL) {
+        Build_OP (TOP_stlpd, obj_tn, base_tn, disp_tn, ops);    
+        Build_OP (TOP_sthpd, obj_tn, base_tn, ofst, ops);    
+      }
+      else {
+        Build_OP (TOP_stlpd_n32, obj_tn, disp_tn, ops);    
+        Build_OP (TOP_sthpd_n32, obj_tn, ofst, ops);    
+      }
+      Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
     }
-    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
   }
   else
     Expand_Composed_Store (mtype, obj_tn, base_tn, disp_tn, variant, ops);

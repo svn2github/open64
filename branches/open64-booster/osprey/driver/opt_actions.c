@@ -527,20 +527,6 @@ Process_Targ_Group ( char *targ_args )
 	    add_option_seen ( O_m64 );
 	    toggle ( &abi, ABI_64 );
 	  }
-          // aes and avx
-	  if (!strncasecmp(cp, "aes=on", 6)){
-	    add_option_seen(O_maes);
-	    toggle(&aes, TRUE);
-	  }else if (!strncasecmp(cp, "aes=off", 7)){
-	    add_option_seen(O_mno_aes);
-	    toggle(&aes, FALSE);
-	  }else if (!strncasecmp(cp, "avx=on", 6)){
-	    add_option_seen(O_mavx);
-	    toggle(&avx, TRUE);
-	  }else if (!strncasecmp(cp, "avx=off", 7)){
-	    add_option_seen(O_mno_avx);
-	    toggle(&avx, FALSE);
-          }
 #endif
 #ifdef TARG_LOONGSON
 	  if ( strncasecmp ( cp+4, "n32", 3 ) == 0 ) {
@@ -557,7 +543,26 @@ Process_Targ_Group ( char *targ_args )
 	    toggle ( &abi, ABI_W64 );
 	  }
 #endif
-	}
+	} else {
+#ifdef TARG_X8664
+          // non abi TARG options
+          // aes and avx
+	  if (!strncasecmp(cp, "aes=on", 6)){
+	    add_option_seen(O_maes);
+	    toggle(&aes, TRUE);
+	  }else if (!strncasecmp(cp, "aes=off", 7)){
+	    add_option_seen(O_mno_aes);
+	    toggle(&aes, FALSE);
+	  }else if (!strncasecmp(cp, "avx=on", 6)){
+	    add_option_seen(O_mavx);
+	    toggle(&avx, TRUE);
+	  }else if (!strncasecmp(cp, "avx=off", 7)){
+	    add_option_seen(O_mno_avx);
+	    toggle(&avx, FALSE);
+          }
+#endif
+        }
+
 	break;
 
 #if 0	  /* temporary hack by gbl -- O_WlC no longer exists due to a change in OPTIONS */

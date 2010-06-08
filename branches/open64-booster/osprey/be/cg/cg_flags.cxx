@@ -122,6 +122,8 @@ BOOL CG_skip_local_swp = FALSE;
 #ifdef TARG_X8664
 BOOL CG_cmp_load_exec = FALSE;
 BOOL CG_fma4_load_exec = FALSE;
+BOOL CG_128bitstore = TRUE;
+BOOL CG_branch_fuse = TRUE;
 #endif
 BOOL CG_opt_level;
 BOOL CG_localize_tns = FALSE;

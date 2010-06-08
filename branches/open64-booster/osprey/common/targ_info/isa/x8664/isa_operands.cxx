@@ -3897,6 +3897,7 @@ main()
   Operand(2, simm32, offset);
 
   Instruction_Group("float store vector w/o base or index",
+                    TOP_stups_n32,
 		    TOP_stdqa_n32,
 		    TOP_stdqu_n32,
 		    TOP_stapd_n32,
@@ -3904,6 +3905,7 @@ main()
 		    TOP_stlps_n32,
 		    TOP_sthps_n32,
 		    TOP_stlpd_n32,
+                    TOP_stupd_n32,
 		    TOP_sthpd_n32,
                     /* AVX instructions */
                     TOP_vstups_n32,
@@ -5238,6 +5240,8 @@ main()
 		    TOP_stapdx,
 		    TOP_stntpdx,
 		    TOP_stntpsx,
+                    TOP_stupdx,
+                    TOP_stupsx,
                     /* AVX instructions */
                     TOP_vstdqax,
                     TOP_vstapdx,
@@ -5286,6 +5290,8 @@ main()
 		    TOP_stapdxx,
 		    TOP_stntpdxx,
 		    TOP_stntpsxx,
+                    TOP_stupdxx,
+                    TOP_stupsxx,
                     /* AVX instructions */
                     TOP_vstdqaxx,
                     TOP_vstapdxx,
