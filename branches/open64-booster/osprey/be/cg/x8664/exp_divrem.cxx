@@ -1045,19 +1045,17 @@ Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
     if (MTYPE_is_signed(mtype)) {
       const INT64 minintval = is_double ? INT64_MIN : INT32_MIN;
       if (src1_val == minintval && src2_val == -1) {
-	// Bug 952 - instead of asserting, generate a divide for a compile-only 	// test (Gcc compatible - but why can't Gcc compute this even at higher 	// optimization levels ?)
-	// FmtAssert (FALSE, ("Division overflow detected.\n"));
-	printf(OPEN64_NAME_PREFIX "cc - division overflow detected\n");
-	INT tn_size = MTYPE_is_size_double(mtype) ? 8 : 4;
-	src2 = Expand_Immediate_Into_Register(Gen_Literal_TN(src2_val, tn_size), 
-					      is_double, ops);
-	src1 = Expand_Immediate_Into_Register(Gen_Literal_TN(src1_val, tn_size),
-					      is_double, ops);
-	TN *src3;
-	Extend_Dividend(&src1, &src3, mtype, is_double, ops);
-	Build_OP(is_double ? TOP_idiv64 : TOP_idiv32, 
-		 result, result2, src1, src3, src2, ops);	
-	return;
+        //
+        // INT_MIN/-1 => INT_MIN * 1/-1 => INT_MIN * -1 
+        //  => -INT_MIN => ~INT_MIN + 1 => INT_MIN 
+        // 
+        // INT_MIN % -1 => 0
+
+        BOOL is_signed = true;
+        INT tn_size = is_double ? 8 : 4;
+        Exp_Immediate(result, Gen_Literal_TN(minintval, tn_size), is_signed, ops);
+        Exp_Immediate(result2, Gen_Literal_TN(0, tn_size), is_signed, ops);
+        return;
       }
     }
     INT64 quot_val, rem_val;
