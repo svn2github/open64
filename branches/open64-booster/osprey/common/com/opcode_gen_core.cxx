@@ -3330,7 +3330,7 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 	break;
       case OPR_SHUFFLE:
         valid = (desc == rtype &&
-		 MTYPE_is_vector(desc));
+		 (MTYPE_is_vector(desc)) || desc == MTYPE_C8);
 	break;
 #endif /* TARG_X8664 */
       default:

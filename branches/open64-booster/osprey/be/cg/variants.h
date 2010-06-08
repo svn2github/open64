@@ -333,6 +333,9 @@ extern const char *BR_Variant_Name(VARIANT variant);
 #define Set_V_volatile(v)		((v) |= V_VOLATILE)
 #define Reset_V_volatile(v)		((v) &= ~V_VOLATILE)
 
+/*the high/low 64 bit of the 128 bit data is load/stored */
+#define V_HIGH64		0x0400
+#define V_LOW64			0x0800
 /* Prefetch flags: The prefetch flags, if any, for a memory OP are
  * stored in the V_PF_FLAGS field.
  */

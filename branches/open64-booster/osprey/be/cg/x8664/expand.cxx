@@ -3209,7 +3209,7 @@ Expand_Int_To_Float_Tas (TN *dest, TN *src, TYPE_ID fmtype, OPS *ops)
   }
   else {
     // store the int value to memory
-    Expand_Store(MTYPE_U8, src, base_tn, ofst_tn, ops );
+    Expand_Store(MTYPE_U8, src, base_tn, ofst_tn, 0, ops );
     // load the value into a float register.
     Build_OP(Is_Target_SSE2() ? TOP_ldsd : TOP_fldl, dest, base_tn, ofst_tn, ops );
   }
@@ -3239,7 +3239,7 @@ Expand_Int_To_Vect_Tas (TN *dest, TN *src, TYPE_ID vectype, OPS *ops)
   TN* ofst_tn = Gen_Literal_TN( base_ofst, 4 );
 
   // store the int value to memory
-  Expand_Store(MTYPE_U8, src, base_tn, ofst_tn, ops);
+  Expand_Store(MTYPE_U8, src, base_tn, ofst_tn, 0, ops);
 
   // load the value into the vector register
   Expand_Load(OPCODE_make_op(OPR_LDID,vectype,vectype), dest, base_tn, ofst_tn,
@@ -5540,6 +5540,20 @@ static void Expand_Recip( TN* result, TN* src2, TYPE_ID mtype, OPS* ops )
 	      result, src1, src2, ops );
 }
 
+void Expand_Complex( OPCODE opcode, TN *result, 
+		     TN *src1, TN *src2, OPS *ops )
+{
+    Build_OP(TOP_unpcklpd, result, src1, src2, ops);
+    return;
+}
+void Expand_Firstpart( OPCODE opcode, TN *result, 
+		     TN *src1, OPS *ops ){
+    Build_OP(TOP_movsd, result, src1, ops);
+}
+void Expand_Secondpart( OPCODE opcode, TN *result, 
+		     TN *src1, OPS *ops ){
+    Build_OP(TOP_unpckhpd, result, src1, result, ops);
+}
 static void Expand_Complex_Multiply( OPCODE opcode, TN *result, 
 				     TN *src1, TN *src2, OPS *ops )
 {
@@ -5559,6 +5573,21 @@ static void Expand_Complex_Multiply( OPCODE opcode, TN *result,
     Build_OP(TOP_fmul128v32, tmp5, tmp3, tmp4, ops);
     Build_OP(TOP_faddsub128v32, result, tmp2, tmp5, ops);
 
+  } else if (TN_size(src1) != TN_size(src2)){
+    TN* src1_t;
+    TN* src2_t;
+    if (TN_size(src1) < TN_size(src2)) {
+      src1_t = src1;
+      src2_t = src2;
+    } else {
+      src2_t = src1;
+      src1_t = src2;
+    }
+    
+    TN* tmp1 = Build_TN_Like(src2_t);
+
+    Build_OP(TOP_fmovddup, tmp1, src1_t, ops);
+    Build_OP(TOP_fmul128v64, result, src2_t, tmp1, ops);
   } else { // OPC_V16C8MPY
     // The WN simplifier always orders a multiply between an iload and a ldid 
     // as 'iload * ldid' and so we need to commute the operation to make sure 
@@ -5590,9 +5619,76 @@ static void Expand_Complex_Multiply( OPCODE opcode, TN *result,
 static void Expand_Complex_Divide( OPCODE opcode, TN *result, 
 				     TN *src1, TN *src2, OPS *ops )
 {
-  FmtAssert(opcode == OPC_V16C4DIV, ("NYI"));
+  FmtAssert(opcode == OPC_V16C4DIV || opcode == OPC_V16C8DIV, ("NYI"));
   
-  if (opcode == OPC_V16C4DIV) {
+  if (opcode == OPC_V16C8DIV && TN_size(src2) == TN_size(src1)/2) {
+    
+    TN* tmp1 = Build_TN_Like(src1);
+
+    Build_OP(TOP_fmovddup, tmp1, src2, ops);
+    Build_OP(TOP_fdiv128v64, result, src1, tmp1, ops);
+
+  } else if (opcode == OPC_V16C8DIV && TN_size(src1) == TN_size(src2)) {
+    FmtAssert(TN_size(src1) == 16, ("Unexpected operand for V16C8DIV"));
+    /*
+     *   z / w
+     *    real =	(R(z)*R(w) + I(z)*I(w) /  ( R(w)**2 + I(w)**2 )
+     *    imag =	(I(z)*R(w) - R(z)*I(w) /  ( R(w)**2 + I(w)**2 )
+     *
+     */
+    
+    TN* tmp1 = Build_TN_Like(src1);
+    TN* tmp2 = Build_TN_Like(src1);
+    TN* tmp3 = Build_TN_Like(src1);
+    TN* tmp4 = Build_TN_Like(src1);
+    TN* tmp5 = Build_TN_Like(src1);
+    TN* tmp6 = Build_TN_Like(src1);
+    TN* tmp7 = Build_TN_Like(src1);
+    TN* tmp8 = Build_TN_Like(src1);
+    TN* tmp9 = Build_TN_Like(src1);
+    TN* tmp10 = Build_TN_Like(src1);
+    TN* tmp11 = Build_TN_Like(src1);
+    // TODO: adjust tn size for sd
+    Build_OP(TOP_mulsd, tmp1, src2, src2, ops); 
+    Build_OP(TOP_unpckhpd, tmp2, src2, src2, ops);
+    Build_OP(TOP_mulsd, tmp3, tmp2, tmp2, ops);
+    Build_OP(TOP_addsd, tmp4, tmp3, tmp1, ops);
+    Build_OP(TOP_fmovddup, tmp5, tmp4, ops);
+    Build_OP(TOP_fmovddup, tmp6, src2, ops);
+    Build_OP(TOP_fmul128v64, tmp8, tmp6, src1, ops);
+    Build_OP(TOP_shufpd, tmp9, src1, src1, Gen_Literal_TN(1, 1), ops);
+    Build_OP(TOP_fmul128v64, tmp10, tmp9, tmp2, ops);
+    Build_OP(TOP_faddsub128v64, tmp11, tmp10, tmp8, ops);
+    Build_OP(TOP_fdiv128v64, result, tmp11, tmp5, ops);
+
+  } else if (opcode == OPC_V16C8DIV) {
+    FmtAssert( TN_size(src1) == TN_size(src2)/2, ("NYI"));
+    // iz == 0
+    /*
+     *   z / w
+     *    real =      R(z)*R(w) /  ( R(w)**2 + I(w)**2 )
+     *    imag =     -R(z)*I(w) /  ( R(w)**2 + I(w)**2 )
+     *   
+     */
+    TN* tmp1 = Build_TN_Like(src1);
+    TN* tmp2 = Build_TN_Like(src2);
+    TN* tmp3 = Build_TN_Like(src1);
+    TN* tmp4 = Build_TN_Like(src1);
+    TN* tmp5 = Build_TN_Like(src2);
+    TN* tmp6 = Build_TN_Like(src2);
+    TN* tmp7 = Build_TN_Like(src2);
+    TN* tmp8 = Build_TN_Like(src2);
+    Build_OP(TOP_mulsd, tmp1, src2, src2, ops); 
+    Build_OP(TOP_unpckhpd, tmp2, src2, src2, ops);			
+    Build_OP(TOP_mulsd, tmp3, tmp2, tmp2, ops);
+    Build_OP(TOP_addsd, tmp4, tmp3, tmp1, ops);
+    Build_OP(TOP_fmovddup, tmp5, tmp4, ops);
+    Build_OP(TOP_fmovddup, tmp6, src1, ops);
+    Build_OP(TOP_fmul128v64, tmp7, tmp6, src2, ops);
+    Exp_Intrinsic_Op (INTRN_V16C8CONJG, tmp8, tmp7, NULL, NULL, NULL, NULL, MTYPE_V16C8, ops);
+    Build_OP(TOP_fdiv128v64, result, tmp8, tmp5, ops);
+    
+  } else if (opcode == OPC_V16C4DIV) {
     TN* tmp1 = Build_TN_Like(src1);
     TN* tmp2 = Build_TN_Like(src1);
     TN* tmp3 = Build_TN_Like(src1);
@@ -5651,9 +5747,9 @@ static void Expand_Complex_Divide( OPCODE opcode, TN *result,
     Build_OP(TOP_fdiv128v64, tmp27, tmp26, tmp24, ops);
     Build_OP(TOP_cvtpd2ps, tmp28, tmp27, ops);
     Build_OP(TOP_movlhps, result, tmp28, ops);
-    Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
   }
 
+  Set_OP_cond_def_kind( OPS_last(ops), OP_ALWAYS_COND_DEF );
   return;
 }
 
@@ -5683,9 +5779,27 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
     break;
   case OPC_V32F8ADD:
   case OPC_V16F8ADD:
-  case OPC_V16C8ADD:
     opc = TOP_fadd128v64;
     break;
+  case OPC_V16C8ADD:
+    if (TN_size(src1) < MTYPE_byte_size(MTYPE_V16C8) || 
+	TN_size(src2) < MTYPE_byte_size(MTYPE_V16C8))
+    {  
+      FmtAssert(TN_size(src1) == MTYPE_byte_size(MTYPE_V16C8) ||
+       TN_size(src2) == MTYPE_byte_size(MTYPE_V16C8),
+       ("at least one opnd should be complex"));
+      if (TN_size(src1) < MTYPE_byte_size(MTYPE_V16C8))
+      {
+	Build_OP(TOP_movaps, result, src2, ops);
+	Build_OP(TOP_addsd, result, src1, result, ops);
+      }
+      else {
+	Build_OP(TOP_movaps, result, src1, ops);
+	Build_OP(TOP_addsd, result, src2, result, ops);
+      }
+    } else 
+      Build_OP(TOP_fadd128v64, result, src1, src2, ops);
+    return;
   case OPC_F4SUB:
     if( Is_Target_SSE2() ){
       opc = TOP_subss;
@@ -5704,9 +5818,27 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
     opc = TOP_fsub128v32;
     break;
   case OPC_V16F8SUB:
-  case OPC_V16C8SUB:
     opc = TOP_fsub128v64;
     break;
+  case OPC_V16C8SUB:
+    if (TN_size(src1) < MTYPE_byte_size(MTYPE_V16C8) || 
+	TN_size(src2) < MTYPE_byte_size(MTYPE_V16C8))
+    {  
+      FmtAssert(TN_size(src1) == MTYPE_byte_size(MTYPE_V16C8) ||
+	      TN_size(src2) == MTYPE_byte_size(MTYPE_V16C8),
+	      ("at least one opnd should be complex"));
+      if (TN_size(src1) == MTYPE_byte_size(MTYPE_V16C8))
+      {
+        Build_OP(TOP_movaps, result, src1, ops);
+        Build_OP(TOP_subsd, result, result, src2, ops);
+      } else if (TN_size(src2) == MTYPE_byte_size(MTYPE_V16C8)){
+	TN *tmp1 = Build_TN_Like(result);
+        Exp_Intrinsic_Op (INTRN_V16C8CONJG, tmp1, src2, NULL, NULL, NULL, NULL, MTYPE_V16C8, ops);
+        Build_OP(TOP_subsd, result, src1, tmp1, ops);
+      }
+    } else 
+      Build_OP(TOP_fsub128v64, result, src1, src2, ops);
+    return;
   case OPC_F4MPY:
     if( Is_Target_SSE2() ){
       opc = TOP_mulss;
@@ -5798,6 +5930,7 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
     return;
 
   case OPC_V16C4DIV:
+  case OPC_V16C8DIV:
     Expand_Complex_Divide(opcode, result, src1, src2, ops);
     return;
 
@@ -10134,7 +10267,7 @@ Store_To_Temp_Stack(TYPE_ID desc, TN *src, const char *sym_name, TN **mem_base_t
 					&mem_base_ofst);
   *mem_base_tn = mem_base_sym == SP_Sym ? SP_TN : FP_TN;
   *mem_ofst_tn = Gen_Literal_TN(mem_base_ofst, 4);
-  Expand_Store(desc, src, *mem_base_tn, *mem_ofst_tn, ops);
+  Expand_Store(desc, src, *mem_base_tn, *mem_ofst_tn, 0, ops);
 }
 
 // This function attempts to handle a range of to/from vector conversions,

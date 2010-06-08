@@ -515,7 +515,7 @@ static void Expand_Split_Store( TYPE_ID mtype,
 
 
 void
-Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst, OPS *ops)
+Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst, VARIANT variant, OPS *ops)
 {
   TOP top =
     Pick_Store_Instruction( mtype, base, ofst, TN_register_class(src) );
@@ -536,6 +536,9 @@ Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst, OPS *ops)
 	top = TOP_stdqa;
     }      
   }
+
+  if (variant & V_HIGH64)
+	  top = TOP_sthpd;
 
   if( OP_NEED_PAIR( mtype ) ){
     Expand_Split_Store( mtype, src, base, ofst, ops );
@@ -678,7 +681,7 @@ Expand_Misaligned_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT vari
 static void
 Expand_Composed_Store (TYPE_ID mtype, TN *obj, TN *base, TN *disp, VARIANT variant, OPS *ops)
 {
-  return Expand_Store( mtype, obj, base, disp, ops );
+  return Expand_Store( mtype, obj, base, disp, variant, ops );
 }
 
 void
@@ -1374,7 +1377,7 @@ Exp_Ldst (
 	Expand_Misaligned_Store (OPCODE_desc(opcode), tn, base_tn, ofst_tn, 
 	                         variant, &newops);
       else
-	Expand_Store (OPCODE_desc(opcode), tn, base_tn, ofst_tn, &newops);
+	Expand_Store (OPCODE_desc(opcode), tn, base_tn, ofst_tn, variant, &newops);
 
     } else if( is_load ){
       if ( opcode == OPC_V16C8V16C8LDID ||

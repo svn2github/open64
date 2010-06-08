@@ -68,7 +68,7 @@ simp_cior, 	/* OPR_CIOR */
 NULL, 	/* OPR_COMMA */
 NULL, 	/* OPR_COMMENT */
 NULL, 	/* OPR_COMPGOTO */
-NULL, 	/* OPR_COMPLEX */
+simp_pair, 	/* OPR_COMPLEX */
 NULL, 	/* OPR_CONST */
 NULL, 	/* OPR_CSELECT */
 simp_cvt,	 /* OPR_CVT */

@@ -1331,7 +1331,7 @@ CG_Instrument_Arcs()
     const_tn = Gen_Literal_TN(1,4);
     result_tn = Build_TN_Of_Mtype(rtype);
     Exp_OP2 (OPC_U4ADD, result_tn, ld_2nd_result_tn, const_tn, &new_ops);
-#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_PPC32)
+#if defined(TARG_MIPS) || defined(TARG_PPC32)
     Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
 #else
     Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);
@@ -1381,7 +1381,7 @@ CG_Instrument_Arcs()
 	const_tn = Gen_Literal_TN(1,4);
 	result_tn = Build_TN_Of_Mtype(rtype);
 	Exp_OP2 (OPC_U4ADD, result_tn, ld_2nd_result_tn, const_tn, &new_ops);
-#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_PPC32)
+#if defined(TARG_MIPS) || defined(TARG_SL) || defined(TARG_PPC32)
 	Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
 #else
 	Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);

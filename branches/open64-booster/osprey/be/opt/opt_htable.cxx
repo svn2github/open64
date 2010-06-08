@@ -2875,6 +2875,7 @@ CODEMAP::Add_tcon(TCON_IDX tc)
     case MTYPE_FQ:
     case MTYPE_C4:
     case MTYPE_C8:
+    case MTYPE_V16C8:
     case MTYPE_CQ:
     case MTYPE_F16:
     case MTYPE_C16:

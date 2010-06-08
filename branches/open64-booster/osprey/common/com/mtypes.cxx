@@ -401,6 +401,10 @@ TYPE_ID Mtype_TransferSize(TYPE_ID x, TYPE_ID y)
  */
 TYPE_ID Mtype_complex_to_real(TYPE_ID type)
 {
+#ifdef TARG_X8664 
+  if( type == MTYPE_V16C8)
+	return MTYPE_F8;
+#endif
   if (MTYPE_is_complex(type))
   {
     switch(type) {

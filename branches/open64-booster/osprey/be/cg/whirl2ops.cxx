@@ -2978,7 +2978,17 @@ Handle_ISTORE (WN *istore, OPCODE opcode)
 {
   VARIANT variant  = Memop_Variant(istore);
   WN *kid1 = WN_kid1(istore);
-  TN *kid0_tn = Expand_Expr (WN_kid0(istore), istore, NULL);
+  TN *kid0_tn;
+  if (WN_operator(WN_kid0(istore)) == OPR_FIRSTPART)
+  {
+    kid0_tn = Expand_Expr(WN_kid0(WN_kid0(istore)),istore,NULL);
+    variant |= V_LOW64;
+  } else if (WN_operator(WN_kid0(istore)) == OPR_SECONDPART){
+    kid0_tn = Expand_Expr(WN_kid0(WN_kid0(istore)),istore,NULL);
+    variant |= V_HIGH64; 
+  } else {
+    kid0_tn = Expand_Expr (WN_kid0(istore), istore, NULL);
+  }
   ST *st;
 
 #if defined(EMULATE_LONGLONG) && !defined(TARG_SL) && !defined(TARG_PPC32)

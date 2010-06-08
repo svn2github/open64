@@ -112,9 +112,10 @@ Combine_div_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
     //             1 b  =>      b
     // That case is valid on Recip_Allowed, which is less harmful.
     if ( Div_Split_Allowed ) {
-      const OPCODE recip_opc = OPCODE_make_op(OPR_RECIP,rtype,desc);
+      MTYPE rtyped = OPCODE_rtype(WN_opcode(WN_kid1(old_wn)));
+      const OPCODE recip_opc = OPCODE_make_op(OPR_RECIP,rtyped,MTYPE_V);
       WN *recip = WN_CreateExp1(recip_opc, WN_kid(old_wn,1));
-      const OPCODE mpy_opc = OPCODE_make_op(OPR_MPY,rtype,desc);
+      const OPCODE mpy_opc = OPCODE_make_op(OPR_MPY,rtype,MTYPE_V);
       WN *mpy = WN_CreateExp2(mpy_opc, WN_kid0(old_wn), recip);
       *new_wn = mpy;
       return TRUE;
@@ -339,6 +340,13 @@ Combine_Operations( WN *old_wn, WN **new_wn )
   return FALSE;
 }
 
+static TYPE_ID unify_recip_mpy_div_rtype(TYPE_ID dividend, TYPE_ID divisor)
+{
+  if (dividend == MTYPE_V16C8 || divisor == MTYPE_V16C8)
+     return MTYPE_V16C8;
+  else
+     return dividend;
+}
 // ====================================================================
 // handle the MPY operator
 // ====================================================================
@@ -352,6 +360,9 @@ Uncombine_mpy_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
   WN *kid1 = WN_kid1(old_wn);
   const OPCODE   kid1_opc = WN_opcode(kid1);
   const OPERATOR kid1_opr = OPCODE_operator(kid1_opc);
+  WN *kid0 = WN_kid0(old_wn);
+  const OPCODE   kid0_opc = WN_opcode(kid0);
+  const OPERATOR kid0_opr = OPCODE_operator(kid0_opc);
 
 #ifdef KEY
   if (Recip_Allowed)
@@ -362,23 +373,23 @@ Uncombine_mpy_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
     // Transform:  MPY       into  DIV
     //            a  RECIP         a b
     //                 b
+    TYPE_ID rtype = unify_recip_mpy_div_rtype(OPCODE_rtype(kid0_opc), 
+		                      OPCODE_rtype(kid1_opc));
     const OPCODE div_opc = OPCODE_make_op(OPR_DIV,
-			OPCODE_rtype(kid1_opc),OPCODE_desc(kid1_opc) );
+			rtype, OPCODE_desc(kid1_opc) );
     WN *div = WN_CreateExp2(div_opc, WN_kid0(old_wn), WN_kid0(kid1));
     *new_wn = div;
     return TRUE;
   }
 
-  WN *kid0 = WN_kid0(old_wn);
-  const OPCODE   kid0_opc = WN_opcode(kid0);
-  const OPERATOR kid0_opr = OPCODE_operator(kid0_opc);
-
   if ( kid0_opr == OPR_RECIP ) {
     // Transform:  MPY       into  DIV
     //            RECIP b          b a
     //              a   
+    TYPE_ID rtype = unify_recip_mpy_div_rtype(OPCODE_rtype(kid0_opc), 
+		                      OPCODE_rtype(kid1_opc));
     const OPCODE div_opc = OPCODE_make_op(OPR_DIV,
-			OPCODE_rtype(kid0_opc),OPCODE_desc(kid0_opc) );
+			rtype,OPCODE_desc(kid0_opc) );
     WN *div = WN_CreateExp2(div_opc, WN_kid1(old_wn), WN_kid0(kid0));
     *new_wn = div;
     return TRUE;

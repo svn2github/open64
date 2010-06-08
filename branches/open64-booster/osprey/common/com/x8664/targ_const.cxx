@@ -407,12 +407,19 @@ static TCON complex_divide(TCON c0, TCON c1)
 
    switch (TCON_ty(c0)) {
     case MTYPE_C4:
+    case MTYPE_F4:
       {
 	 float c0r,c0i,c1r,c1i,t1,t2,t3;
 	 c0r = TCON_R4(c0);
-	 c0i = TCON_IR4(c0);
+	 if(TCON_ty(c0) != MTYPE_C4)
+           c0i = 0.0;
+	 else
+  	   c0i = TCON_IR4(c0);
 	 c1r = TCON_R4(c1);
-	 c1i = TCON_IR4(c1);
+	 if(TCON_ty(c1) != MTYPE_C4)
+	   c1i = 0.0;
+	 else
+	   c1i = TCON_IR4(c1);
 	 if (fabsf(c1r) < fabsf(c1i)) {
 	    t2 = c1r*(c1r/c1i) + c1i;
 	    t1 = (c0i*(c1r/c1i) - c0r)/t2;
@@ -428,12 +435,19 @@ static TCON complex_divide(TCON c0, TCON c1)
       break;
       
     case MTYPE_C8:
+    case MTYPE_F8:
       {
 	 double c0r,c0i,c1r,c1i,t1,t2,t3;
 	 c0r = TCON_R8(c0);
-	 c0i = TCON_IR8(c0);
+	 if (TCON_ty(c0) == MTYPE_C8)
+	   c0i = TCON_IR8(c0);
+	 else
+           c0i = 0.0;
 	 c1r = TCON_R8(c1);
-	 c1i = TCON_IR8(c1);
+	 if (TCON_ty(c1) == MTYPE_C8)
+	   c1i = TCON_IR8(c1);
+	 else
+           c1i = 0.0;
 	 if (fabs(c1r) < fabs(c1i)) {
 	    t2 = c1r*(c1r/c1i) + c1i;
 	    t1 = (c0i*(c1r/c1i) - c0r)/t2;
@@ -471,14 +485,21 @@ static TCON complex_divide(TCON c0, TCON c1)
       
 #ifdef TARG_NEEDS_QUAD_OPS
     case MTYPE_CQ:
+    case MTYPE_FQ:
       {
 	 QUAD_TYPE c0r,c0i,c1r,c1i,t1,t2,t3,t4,ar,ai,q0;
 	 INT err;
 	 q0 = 0.0;
 	 c0r = TCON_R16(c0);
-	 c0i = TCON_IR16(c0);
+	 if (TCON_ty(c0) == MTYPE_CQ)
+	   c0i = TCON_IR16(c0);
+	 else
+           c0i = 0.0;
 	 c1r = TCON_R16(c1);
-	 c1i = TCON_IR16(c1);
+	 if (TCON_ty(c1) == MTYPE_CQ)
+	   c1i = TCON_IR16(c1);
+	 else
+           c1i = 0.0;
 	 ar = c1r;
 	 ai = c1i;
 	 if ( ar < q0 ) ar = -ar;
@@ -789,6 +810,7 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
        TCON_v1(c0) = 0;
        break;
      case MTYPE_C8:
+     case MTYPE_V16C8:
        switch (opr) {
        case OPR_EQ: TCON_v0(c0) = (TCON_R8(c0) == TCON_R8(c1)) && 
 				  (TCON_IR8(c0) == TCON_IR8(c1)); break; 
@@ -2627,6 +2649,7 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_IR8(r) = 0.0;
       break;
     case FROM_TO(MTYPE_I4, MTYPE_C8):
+    case FROM_TO(MTYPE_I4, MTYPE_V16C8):
     case FROM_TO(MTYPE_I2, MTYPE_C8):
     case FROM_TO(MTYPE_I1, MTYPE_C8):
       TCON_R8(r) = TCON_v0(c);
@@ -2661,6 +2684,12 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_IR4(r) = TCON_IR16(c);
       break;
 #endif /* TARG_NEEDS_QUAD_OPS */
+#ifdef TARG_X8664
+    case FROM_TO(MTYPE_C8, MTYPE_V16C8):
+      TCON_R8(r) = TCON_R8(c);
+      TCON_IR8(r) = TCON_IR8(c);
+      break;
+#endif
     case FROM_TO(MTYPE_C8, MTYPE_C4):
       TCON_R4(r) = TCON_R8(c);
       TCON_IR4(r) = TCON_IR8(c);
@@ -3562,6 +3591,9 @@ Targ_Print ( const char *fmt, TCON c )
       break;
 
     case MTYPE_C8:
+#if defined(TARG_X8664)
+    case MTYPE_V16C8:
+#endif
       if (fmt == NULL) fmt = "%#21.16g, %#21.16g";
       sprintf(r, fmt, TCON_R8(c), TCON_IR8(c));
 #if !(defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS))
@@ -4262,6 +4294,7 @@ Extract_Complex_Real(TCON complex)
      return c;
 
   case MTYPE_C8:
+  case MTYPE_V16C8:
      TCON_ty(c) = MTYPE_F8;
      Set_TCON_R8(c, TCON_R8(complex));
      return c;
@@ -4296,6 +4329,7 @@ Extract_Complex_Imag(TCON complex)
      return c;
 
   case MTYPE_C8:
+  case MTYPE_V16C8:
      TCON_ty(c) = MTYPE_F8;
      Set_TCON_R8(c, TCON_IR8(complex));
      return c;
@@ -4309,7 +4343,7 @@ Extract_Complex_Imag(TCON complex)
      TCON_ty(c) = MTYPE_FQ;
      Set_TCON_R16(c, TCON_IR16(complex));
      return c;
-     
+  
   default:
      ErrMsg ( EC_Inv_Mtype, Mtype_Name(TCON_ty(complex)), "Extract_Complex_Real" );
      TCON_ty(c) = MTYPE_F4;
@@ -5994,6 +6028,9 @@ Hash_TCON ( TCON * t, UINT32 modulus )
       break;
     case MTYPE_V16F4:
     case MTYPE_V16F8:
+#if defined(TARG_X8664)
+    case MTYPE_V16C8:
+#endif
       hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
       break;
     case MTYPE_V32I1:

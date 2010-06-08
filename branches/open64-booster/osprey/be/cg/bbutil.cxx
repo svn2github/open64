@@ -1299,6 +1299,20 @@ void dump_bbs (BB *bb)
 
 /* ================================================================= */
 
+void Print_BB_by_id ( mBB_NUM id) 
+{
+  BB *bp;
+
+  for (bp = REGION_First_BB; bp; bp = BB_next(bp)) {
+    if (bp->id == id){
+      Print_BB ( bp );
+      fprintf ( TFile,"\n" );
+      break;
+    }
+  }
+}
+/* ================================================================= */
+
 void Print_All_BBs ( void ) 
 {
   BB *bp;
