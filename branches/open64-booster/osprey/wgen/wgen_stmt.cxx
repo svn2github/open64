@@ -3,7 +3,7 @@
  */
 
 /*
- * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ * Copyright (C) 2007, 2008, 2009 PathScale, LLC.  All Rights Reserved.
  */
 
 /*
@@ -1482,9 +1482,22 @@ Wgen_Expand_Asm_Operands (gs_t  string,
 
       WN *input_rvalue = WGEN_Expand_Expr (gs_tree_value (tail));
 
+      // bugs 14402, 14799: If there is a conversion operator, we need
+      // to preserve the conversion. If the address of the input needs
+      // to be taken, we should perform any conversion before using its
+      // address (bug 14402). For non-address constraints, load of the
+      // temporary will contain the updated type (bug 14799).
+      BOOL needs_temp = gs_tree_code(gs_tree_value(tail)) == GS_NOP_EXPR;
+      // For constant inputs, CG expects to find the constant as a direct
+      // kid of the asm_input. So it should not be copied to a temporary.
+      BOOL const_input = WN_operator(input_rvalue) == OPR_INTCONST ||
+                         (WN_operator(input_rvalue) == OPR_LDA &&
+                          ST_sym_class(WN_st(input_rvalue)) == CLASS_CONST);
+
       if (constraint_by_address(constraint_string)) {
-	WN *addr_of_rvalue = address_of(input_rvalue);
-	if (addr_of_rvalue != NULL) {
+	WN *addr_of_rvalue;
+	if ((!needs_temp || const_input) &&  // bug 14402
+	    (addr_of_rvalue = address_of(input_rvalue)) != NULL) {
 	  // Pass the address of the input rvalue, because the
 	  // constraint says we pass the operand by its address.
 	  input_rvalue = addr_of_rvalue;
@@ -1510,6 +1523,18 @@ Wgen_Expand_Asm_Operands (gs_t  string,
 				 (UINT) 0);
 	}
       }
+      else if (needs_temp && !const_input) { // bug 14799
+	TY_IDX ty_idx = Get_TY(gs_tree_type(gs_tree_value(tail)));
+	ST *temp_st = Gen_Temp_Symbol(ty_idx, "asm.input");
+	WN *stid_wn = WN_Stid(TY_mtype(ty_idx),
+			      0,
+			      temp_st,
+			      ty_idx,
+			      input_rvalue);
+	WGEN_Stmt_Append (stid_wn, Get_Srcpos ());
+	input_rvalue = WN_Ldid(TY_mtype(ty_idx), 0, temp_st, ty_idx);
+      }
+
 
 #ifdef KEY
       // Get the new operand numbers from map.
