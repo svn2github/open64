@@ -180,6 +180,7 @@ Get_Affinity_Map(int **list, int total_cores)
         for (i=0; i<total_cores; i++)\
            list[i] = i; \
         if (fp != NULL) fclose(fp); \
+        free(thread_count); \
         return; }
 
 void
@@ -187,24 +188,46 @@ Get_Ordered_Corelist(int *list, int total_cores)
 {
   FILE * fp;
   char buf[256], *data;
-  int proc_id, proc_done=0;
-  int core_id = -1, socket_id = -1, cores = 0;   
-  int i;
+  int proc_id, proc_done=0, tmp_id, list_id;
+  int core_id = -1, socket_id = -1;
+  int siblings= 0, cores=0;   
+  int i, *thread_count;
 
+  // When the HT is turned on, there are more than
+  // one threads on a core. These threads have
+  // the same socket_id and core_id, thus we need to
+  // use the thread_count to distinguish them
+  thread_count = (int*) malloc(sizeof(int) * total_cores);
+  for (i=0; i<total_cores; i++) thread_count[i]=0;
+  
   // could not find /proc/cpuinfo  
   if ((fp = fopen ("/proc/cpuinfo", "r")) == NULL) SET_DEFAULT;
   while (fgets (buf, 256, fp))
   {
-    if (!strncasecmp (buf, "cpu cores", 9)) {
+    if (!strncasecmp (buf, "siblings", 8)) {
       strtok (buf, ":");
       data = strtok (NULL, "\n");
-      cores = atoi(data); 
-      break;  
+      siblings = atoi(data);
+
+      while (fgets (buf, 256, fp))
+      {
+        if (!strncasecmp (buf, "cpu cores", 9)) {
+            strtok (buf, ":");
+            data = strtok (NULL, "\n");
+            cores = atoi(data);
+            break;
+        }
+      }
+
+      if (cores) break;
     }
+
   }
   
   // illegal cpu cores
-  if (cores == 0 || cores > total_cores) SET_DEFAULT;
+  if (cores <= 0 ||  cores > total_cores ||
+      siblings <= 0 || siblings > total_cores)
+      SET_DEFAULT;
 
   rewind(fp);
   while (fgets (buf, 256, fp))
@@ -234,11 +257,33 @@ Get_Ordered_Corelist(int *list, int total_cores)
 
          if((socket_id >= 0) && (core_id >= 0)) 
          {
-           // illegal socket_id or cores_id
-           if (socket_id * cores + core_id >= total_cores)
-             SET_DEFAULT;
+            
+           // bind the omp threads to adjunct cores on a socket
+           // while do not bind adjunct omp threads to the HT threads 
+           // on the same core. For example, a topolgy is
+           // (0-8 2-10 4-12 6-14) (1-9 3-11 5-13 7-15)
+           // 0-8 means proc 0 and proc 8 are two threads on a core
+           // they have the same socket_id and core_id
+           // the following binding order is better and is used
+           // 0 2 4 6 1 3 5 7 8 10 12 14 9 11 13 15
 
-           list[socket_id * cores + core_id] = proc_id;
+           tmp_id = socket_id * cores + core_id;
+		   list_id = tmp_id + thread_count[tmp_id] * siblings;
+		   
+           if (list_id >= total_cores) SET_DEFAULT;
+               
+           list[list_id] = proc_id;
+
+           thread_count[tmp_id] = thread_count[tmp_id] +1;
+
+           // thread_count should not be larger 
+           // under the assumption that siblings / cores is the number
+           // of threads on a core in cpuinfo
+           // that means, two procs that have the same physical id and 
+           // core id are considered as illegal config, except when HT 
+           // is enabled and can be shown through "siblings / cores" 
+           if (thread_count[tmp_id] > siblings / cores) SET_DEFAULT;
+           
            socket_id = -1;
            core_id = -1;
            proc_done ++;
@@ -251,6 +296,8 @@ Get_Ordered_Corelist(int *list, int total_cores)
   if (proc_done != total_cores) SET_DEFAULT;
 
   fclose(fp);  
+
+  free(thread_count);
 }
 
 /*

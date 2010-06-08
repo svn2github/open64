@@ -409,6 +409,7 @@ inline void __omp_get_available_processors()
      if (CPU_ISSET(ordered_core_list[i], &cpuset))
        __omp_list_processors[cur_count++] = ordered_core_list[i];
   }
+  Is_Valid(cur_count > 0, ("no processors were deemed available"));
   __omp_core_list_size = cur_count;
 
   if (ordered_core_list!= NULL)
