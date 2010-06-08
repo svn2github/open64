@@ -2285,6 +2285,7 @@ void
 WGEN_Expand_Return (gs_t stmt, gs_t retval)
 {
   WN *wn = NULL;
+  WN *block = NULL;
 
   if (retval == NULL ||
       gs_tree_code(gs_tree_type(gs_tree_type(Current_Function_Decl()))) == GS_VOID_TYPE) {
@@ -2482,19 +2483,23 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       }
     }
 
-#ifdef KEY
-    // bug 11660
+    // bug 11660: remove any COMMA if it is unnecessary
+    // Reworked fix extracted from PSC 3.3 beta.
+    // bug 14345: removing the COMMA may cause a C++ call to reside
+    // inside an exception region, and the LDID of its return value
+    // outside. Fix this by grouping all statements from now until
+    // the end inside BLOCK, and appending the BLOCK at the end.
     if (WN_operator(rhs_wn) == OPR_COMMA) {
       WN * comma_block = WN_kid0(rhs_wn);
       if (WN_first(comma_block) &&
           comma_is_not_needed(comma_block, WN_kid1(rhs_wn))) {
         WN * last = WN_last (comma_block);
         WN_EXTRACT_FromBlock (comma_block, last);
-        WGEN_Stmt_Append (comma_block, Get_Srcpos());
+        block = WN_CreateBlock();
+        WN_INSERT_BlockLast (block, comma_block);
         rhs_wn = WN_kid0 (last);
       }
     }
-#endif
 
     if ((!WGEN_Keep_Zero_Length_Structs    &&
          TY_mtype (ret_ty_idx) == MTYPE_M &&
@@ -2561,7 +2566,11 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       wn = WN_CreateReturn_Val(OPR_RETURN_VAL, WN_rtype(rhs_wn), MTYPE_V, rhs_wn);
     }
   }
-  if (wn) {
+  if (block) {
+    if (wn)
+      WN_INSERT_BlockLast(block, wn);
+    WGEN_Stmt_Append(block, Get_Srcpos());
+  } else if (wn) {
     WGEN_Stmt_Append(wn, Get_Srcpos());
   }
 } /* WGEN_Expand_Return */

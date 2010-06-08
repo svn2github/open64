@@ -588,7 +588,26 @@ Process_Targ_Group ( char *targ_args )
 	  sprintf(buf, "-defsym,_IEEE_ENABLE=%#x", mask);
 	  flag = add_string_option(O_WlC, buf);
 	  add_option_seen (flag);
-	}
+	} else {
+#ifdef TARG_X8664
+          // non abi TARG options
+          // aes and avx
+	  if (!strncasecmp(cp, "aes=on", 6)){
+	    add_option_seen(O_maes);
+	    toggle(&aes, TRUE);
+	  }else if (!strncasecmp(cp, "aes=off", 7)){
+	    add_option_seen(O_mno_aes);
+	    toggle(&aes, FALSE);
+	  }else if (!strncasecmp(cp, "avx=on", 6)){
+	    add_option_seen(O_mavx);
+	    toggle(&avx, TRUE);
+	  }else if (!strncasecmp(cp, "avx=off", 7)){
+	    add_option_seen(O_mno_avx);
+	    toggle(&avx, FALSE);
+          }
+#endif
+        }
+
 	break;
 #endif
 
