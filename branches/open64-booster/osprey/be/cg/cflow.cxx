@@ -1510,8 +1510,10 @@ Br_Fuse_BB(BB *bp)
   if (BBINFO_kind(bp) == BBKIND_LOGIF) {
     OP *br = BB_branch_op(bp);
     OP *cmp = BBINFO_compare_op(bp);
-    if (cmp != NULL && OP_bb(cmp) == bp) {
-      ARC_LIST *anti_arcs;
+    if ((cmp != NULL) &&
+        (br != cmp) &&
+        (OP_bb(cmp) == bp)) {
+      ARC_LIST *arcs;
       OP *cmp_next = OP_next(cmp);
 
       // If we are already optimal, do nothing.
@@ -1528,16 +1530,16 @@ Br_Fuse_BB(BB *bp)
                              NULL);
 
       // Check for anti-deps on the cmp's src operands
-      for (anti_arcs = OP_succs(cmp);
-           anti_arcs != NULL; anti_arcs = ARC_LIST_rest(anti_arcs)) {
-        ARC *anti_arc = ARC_LIST_first(anti_arcs);
-        OP *succ_op = ARC_succ(anti_arc);
-        if (ARC_kind(anti_arc) != CG_DEP_REGANTI) continue;
+      for (arcs = OP_succs(cmp);
+           arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+        ARC *arc = ARC_LIST_first(arcs);
+        OP *succ_op = ARC_succ(arc);
+        if (succ_op == br) continue;
 
-        // if the current def precedes the br we cannot perform the fuse.
+        // any other reader/writer represents a scheduling barrier
         if (OP_Precedes(succ_op, br)) {
           CG_DEP_Delete_Graph (bp);
-          return; 
+          return;
         }
       }
 

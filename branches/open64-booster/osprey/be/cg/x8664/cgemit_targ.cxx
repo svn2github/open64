@@ -3390,8 +3390,8 @@ static void Init_OP_Name()
       OP_Name[TOP_movsd] = "movaps"; 
     } else if (Is_Target_Orochi()) {
       OP_Name[TOP_movsd] = "movaps";  
-      OP_Name[TOP_vmovsd] = "vmovapd";  
-      OP_Name[TOP_vmovss] = "vmovaps";  
+      OP_Name[TOP_vmovsd] = "vmovsd";  
+      OP_Name[TOP_vmovss] = "vmovss";  
       OP_Name[TOP_vldsd] = "vmovsd";
       OP_Name[TOP_vldsd_n32] = "vmovsd";
       OP_Name[TOP_vstsdx]  = "vmovsd";
