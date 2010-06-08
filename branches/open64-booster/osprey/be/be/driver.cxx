@@ -1795,6 +1795,17 @@ Preprocess_PU (PU_Info *current_pu)
 #endif
 
   Stop_Timer (T_ReadIR_CU);
+
+  /* If -tf is set then IR_dump_wn_addr and IR_dump_wn_id
+   * won't be set in Configure().
+   */
+  if ( Get_Trace( TP_MISC, 0x200 ) ) {
+     IR_dump_wn_addr = TRUE;
+  }
+  if ( Get_Trace( TP_MISC, 0x400 ) ) {
+     IR_dump_wn_id = TRUE;
+  }
+
   Check_for_IR_Dump(TP_IR_READ,pu,"IR_READ");
 
   if (Show_Progress) {
