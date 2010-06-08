@@ -3439,7 +3439,6 @@ static void free_get_stmt (void)
                      break;
 
                   case Pound_Include_Exit_Line:
-                     include_complete = TRUE;
                      nxt_line_type         = Comment_Line;
                      curr_glb_line--;
                      SRC_STK_FILE_LINE(src_stk_idx)--;
@@ -3467,7 +3466,9 @@ static void free_get_stmt (void)
 		     if (open_include_file (FALSE))
 #endif /* KEY Bug 10151 */
 		     {
-		        include_found  = TRUE;		/* flag begin of file */
+                        if( nxt_line_type == Include_Line ) {
+		          include_found  = TRUE;		/* flag begin of file */
+                        }
 		        include_switch = TRUE;		/* flag file switch   */
 		     }
 		     break;
@@ -3641,6 +3642,7 @@ START:
                ch =  nxt_line[++PP_IDX];
             }
             include_file[idx] = '\0';
+            char_delim = 0;
 
             ch =  nxt_line[++PP_IDX];
             while (ch == blank | ch == tab) {
@@ -4445,6 +4447,8 @@ START:
    }  /* else */
 
    if (PP_LINE_TYPE != Comment_Line && 
+       PP_LINE_TYPE != Pound_Include_Enter_Line &&
+       PP_LINE_TYPE != Pound_Include_Exit_Line &&
        PP_LINE_TYPE != Cond_Comp_Line &&
        PP_LINE_TYPE != Dir_Line) {
       PP_EXPECTED_LINE = Regular_Line;
@@ -4465,9 +4469,11 @@ START:
    /* count.                                             */
 
 
-   if (PP_LINE_TYPE == Regular_Line          | 
-       PP_LINE_TYPE == Dir_Line              |
-       PP_LINE_TYPE == Dir_Continuation_Line |
+   if (PP_LINE_TYPE == Regular_Line          || 
+       PP_LINE_TYPE == Dir_Line              ||
+       PP_LINE_TYPE == Dir_Continuation_Line ||
+       PP_LINE_TYPE == Pound_Include_Enter_Line || 
+       PP_LINE_TYPE == Pound_Include_Exit_Line || 
        PP_LINE_TYPE == Continuation_Line)    {
 
       if (PP_LINE_TYPE != Continuation_Line      &&
