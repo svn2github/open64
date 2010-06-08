@@ -1699,6 +1699,10 @@ Create_ST_For_Tree (gs_t decl_node)
                 if ( is_attribute("noreturn", attr) ) // __attribute__((noreturn))
                         Set_PU_has_attr_noreturn (pu);
         }
+
+        if (gs_tree_nothrow (decl_node)) {
+          Set_PU_nothrow (pu);
+        }
       }
       break;
 

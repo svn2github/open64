@@ -321,6 +321,7 @@ BOOL  WOPT_Enable_Pt_Keep_Track_Ptr = TRUE;  // POINTS_TO keeps track of pointer
   // POINTS_TO keeps track of complex address of iload/istore. 
 BOOL  WOPT_Enable_Aggr_Pt_Keep_Track_Ptr = TRUE; 
 BOOL  WOPT_Enable_Noreturn_Attr_Opt = TRUE;
+BOOL  WOPT_Enable_Nothrow_Opt = TRUE;
 BOOL  WOPT_Enable_Pt_Summary = FALSE;  // points-to summary/annotation 
 INT32 WOPT_Enable_Pro_Loop_Limit = -1;  // Limit number of if-condition transformations per function.
 INT32 WOPT_Tail_Dup_Max_Clone = -1; // Limit code size bloats (in statement count)
@@ -825,6 +826,8 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,   &WOPT_Enable_Aggr_Pt_Keep_Track_Ptr, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "noreturn_attr",   NULL, 
     0, 0, 0,   &WOPT_Enable_Noreturn_Attr_Opt, NULL },
+  { OVK_BOOL,  OV_INTERNAL,    TRUE, "nothrow_opt",   NULL, 
+    0, 0, 0,   &WOPT_Enable_Nothrow_Opt, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "pt_summary",   NULL, 
     0, 0, 0,   &WOPT_Enable_Pt_Summary, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "loop_multiver",   NULL, 

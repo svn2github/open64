@@ -168,6 +168,12 @@ class DCE {
     vector<STMTREP *> *_injured_aux_intrnop; // stacks used for store aux intrinsic op need repaired to live
 #endif
 
+    // If a block belong to neither _may_throw_bbs nor _nothrow_bbs, 
+    // it must be a new block created after Collect_may_throw_bbs() is called. 
+    //
+    std::map<IDTYPE, BOOL> _may_throw_bbs;
+    std::map<IDTYPE, BOOL> _nothrow_bbs;
+
     // which phase of DCE is running
     enum {
       DCE_UNKNOWN,		// default value until set
@@ -354,6 +360,12 @@ class DCE {
 		      return FALSE;
 		  }
 		}
+
+     void Collect_may_throw_bbs (void);
+     BOOL BB_may_throw (BB_NODE* b);
+     BOOL Strip_try_region_helper (BB_REGION*);
+     BOOL Strip_try_region (void);
+
 public:
 
     DCE(CFG *cfg, OPT_STAB *optstab, ALIAS_RULE *alias_rule, 
@@ -458,7 +470,7 @@ public:
     void Set_phase_dead_store( void )
 		{ _dce_phase = DCE_DEAD_STORE; }
     BOOL Tracing(void) const	{ return _tracing; }
-    BOOL Unreachable_code_elim(void) const;
+    BOOL Unreachable_code_elim(void);
     BOOL Dead_store_elim(void) ;
     void Init_return_vsym( void );
 #if defined(TARG_SL)
@@ -469,6 +481,7 @@ public:
 #endif
     
 }; // end of class DCE
+
 
 #if defined(TARG_SL)
 void
@@ -1726,7 +1739,7 @@ DCE::Check_unreachable_blocks( void ) const
 // ====================================================================
 
 BOOL
-DCE::Unreachable_code_elim( void ) const
+DCE::Unreachable_code_elim( void ) 
 {
   // say no blocks are reached initially
   CFG_ITER cfg_iter(_cfg);
@@ -1744,6 +1757,8 @@ DCE::Unreachable_code_elim( void ) const
     changed_cflow = Check_conditional_branches_dom( _cfg->Entry_bb(), &cb_path );
     changed_cflow |= Check_conditional_branches_pred( _cfg );
   }
+
+  changed_cflow |= Strip_try_region ();
 
   // find the blocks that are reached
   _cfg->Find_not_reached();
@@ -4089,6 +4104,213 @@ DCE::Check_required_region( BB_NODE *bb ) const
   Region_start_bbs()->Union1D( bb );
 }
 
+BOOL
+DCE::BB_may_throw (BB_NODE* bb) {
+
+  if (_may_throw_bbs.find (bb->Id()) != _may_throw_bbs.end()) {
+    return TRUE;
+  }
+
+  if (_nothrow_bbs.find (bb->Id ()) != _nothrow_bbs.end ()) {
+    return FALSE;
+  }
+
+  if (!bb->Hascall ()) {
+    return FALSE;
+  }
+
+  BOOL may_throw = FALSE;
+
+  // Examine STMTREPs
+  //
+  if (bb->First_stmtrep ()) {
+    STMTREP_ITER stmt_iter(bb->Stmtlist());
+    STMTREP *stmt;
+    FOR_ALL_NODE (stmt, stmt_iter, Init()) {
+      OPERATOR opr = stmt->Opr ();
+      if (!OPERATOR_is_call (opr)) {
+          continue;
+      }
+  
+      if (opr == OPR_CALL) {
+        ST* st = stmt->St ();
+        PU& pu = Pu_Table [ST_pu(*st)];
+        if (!PU_nothrow (pu)) {
+          may_throw = TRUE;
+          break;
+        }
+      } else {
+        // not able to handle indirect calls, virtual functions calls
+        may_throw = TRUE;
+        break;
+      }
+    } // end of FOR_ALL_NODE 
+  }
+
+  // Examine WN statements
+  //
+  if (!may_throw && bb->Firststmt ()) {
+    // HINT: calls are not necessarily at the end of the block depending on 
+    //   CFG::Calls_break().
+    //
+    WN* wn;
+    STMT_ITER iter;
+    FOR_ALL_ELEM (wn, iter, Init (bb->Firststmt(), bb->Laststmt())) {
+      OPERATOR opr = WN_operator (wn);  
+      if (!OPERATOR_is_call (opr)) {
+        continue;
+      }
+  
+      if (opr == OPR_CALL) {
+        ST* st = WN_st (wn);
+        PU& pu = Pu_Table [ST_pu(*st)];
+        if (!PU_nothrow (pu)) {
+          may_throw = TRUE;
+          break;
+        }
+      } else {
+        // not able to handle indirect calls, virtual functions calls
+        may_throw = TRUE;
+        break;
+      }
+    } // end of FOR_ALL_ELEM 
+  }
+  
+  if (may_throw) {
+    _may_throw_bbs[bb->Id()] = TRUE;
+  } else {
+    _nothrow_bbs[bb->Id()] = TRUE;
+  }
+
+  return may_throw;
+}
+
+void
+DCE::Collect_may_throw_bbs (void) {
+
+  if (!_cfg->Has_regions () || Language != LANG_CPLUS) {
+    _may_throw_bbs.clear ();
+  }
+
+  {
+    CFG_ITER iter(_cfg);
+    BB_NODE *bb;
+    FOR_ALL_NODE (bb, iter, Init()) {
+
+      if (!bb->Hascall () || !BB_may_throw (bb)) {
+        _nothrow_bbs[bb->Id()] = TRUE;
+      } else {
+        _may_throw_bbs[bb->Id()] = TRUE;
+      }
+    } // end of FOR_ALL_NODE(..) 
+  }
+}
+
+BOOL
+DCE::Strip_try_region_helper (BB_REGION* rgn) {
+
+  BB_NODE* rgn_first_bb = rgn->Region_start();
+  BB_NODE* rgn_last_bb = rgn->Region_end(); 
+  if (!RID_TYPE_try (rgn->Rid())) {
+    // not appliable
+    return FALSE;
+  }
+
+  // step 1 :check the calls in the region
+  //
+  for (BB_NODE* bb = rgn_first_bb; bb; bb = bb->Next ()) {
+      if (BB_may_throw (bb)) return FALSE; 
+      if (bb == rgn_last_bb) break;
+  }
+
+  if (Tracing ()) {
+    fprintf (TFile, 
+             "Strip_try_region_helper: identify unnecessary try region"
+             " bb%d->bb%d\n", rgn_first_bb->Id(), rgn_last_bb->Id());
+  }
+
+  // step 2: remove the region information associated with the 1st block of 
+  //   the region.
+  //
+  Remove_region_entry (rgn_first_bb);
+  rgn_first_bb->Set_kind (BB_GOTO);
+
+  // step 3: remove the region information associated with the last block
+  //   of the region.
+  //
+  Is_True (rgn_last_bb->Kind () == BB_REGIONEXIT, 
+           ("last bb is not BB_REGIONEXIT"));
+  rgn_last_bb->Set_regioninfo (NULL);
+  rgn_last_bb->Set_kind (BB_GOTO);
+
+  // step 4: convert OPR_REGION_EXIT to goto
+  //
+  for (BB_NODE* blk = rgn_first_bb; TRUE;  blk = blk->Next ()) {
+    if (blk->Kind() == BB_REGIONEXIT) {
+      blk->Set_regioninfo (NULL);
+      blk->Set_kind (BB_GOTO);
+    }
+
+    if (STMTREP* stmt = blk->Last_stmtrep()) {
+      if (stmt->Opr() == OPR_REGION_EXIT) {
+        INT32 lab_num = stmt->Label_number ();
+        blk->Remove_stmtrep (stmt);
+        stmt = CXX_NEW (STMTREP (OPC_GOTO), _cfg->Mem_pool());
+        stmt->Set_label_number (lab_num);
+        blk->Append_stmtrep (stmt);
+      }
+    } else if (WN* wn = blk->Laststmt ()) {
+      if (WN_operator (wn) == OPR_REGION_EXIT) {
+        INT32 lab_num = WN_label_number (wn);
+        Is_True (FALSE, ("TODO: replace OPR_REGION_EXIT with OPR_GOTO"));
+      }
+    }
+
+    if (blk == rgn_last_bb) { break; }
+  } // end of for-loop
+  
+  return TRUE;
+}
+
+// Get rid of the "try" region if the calls in the region don't throw exception.
+//
+BOOL
+DCE::Strip_try_region (void) {
+
+  if ( ! _cfg->Has_regions() )
+    return FALSE;
+
+  if (!WOPT_Enable_Nothrow_Opt)
+    return FALSE;
+
+  BOOL change = FALSE;
+
+  // step 1: identify those blocks which contains a call which may throw exception.
+  //
+  Collect_may_throw_bbs ();
+
+  // step 2: loop over each try-region, examining the code in it. Remove the region 
+  //  if the calls in the region won't throw exception.
+  //
+  CFG_ITER cfg_iter(_cfg);
+  BB_NODE *bb;
+  FOR_ALL_NODE (bb, cfg_iter, Init() ) {
+
+    if (bb->Kind() != BB_REGIONSTART) {
+      continue; 
+    }
+
+    BB_REGION* rgn = bb->Regioninfo();
+    if (rgn && RID_TYPE_try (rgn->Rid())) {
+      if (Strip_try_region_helper (rgn)) {
+        change = TRUE;
+      }
+    }
+  }
+
+  return change;
+}
+
 // ====================================================================
 // Update the region information after all check_required is done.
 // For EH Guard Regions we need to call Keep_unreached_bb on all its blocks.
@@ -4671,7 +4893,7 @@ DCE::Remove_dead_statements( void )
 
       // entire block found to be unreached
       if ( Tracing() ) {
-	fprintf( TFile, "DCE_A: BB%d unreached (0x%p)\n", bb->Id(), bb );
+	fprintf( TFile, "DCE_A: BB%d unreached (%p)\n", bb->Id(), bb );
       }
 
       if ( Enable_aggressive_dce() ) {

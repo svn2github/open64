@@ -74,6 +74,94 @@ Analyze_pu_noreturn_attr (OPT_STAB* stab, PU* pu, ST* pu_st) {
  
 }
 
+static void
+Analyze_nothrow_attr (OPT_STAB* opt_stab, ST* pu_st) {
+  
+  PU& pu = Pu_Table[ST_pu(pu_st)];
+  if (PU_nothrow (pu)) {
+    return;
+  }
+
+  // NOTE: We should not check language type and give up if it is 
+  //  not C++. Here is an example, a() call b() which call c(), a() 
+  //  and c() are C++ src, and b() is C code. We cannot blindly assume 
+  //  b() will not throw exception.
+  //
+
+  BOOL may_throw = FALSE;
+
+  CFG_ITER iter (opt_stab->Cfg ());
+  BB_NODE *bb;
+  FOR_ALL_NODE (bb, iter, Init()) {
+    if (!bb->Hascall ())
+      continue;
+
+    // Examine WN statements
+    //
+    if (bb->Firststmt ()) {
+      // HINT: calls are not necessarily at the end of the block depending on 
+      //   CFG::Calls_break().
+      //
+      WN* wn;
+      STMT_ITER iter;
+      FOR_ALL_ELEM (wn, iter, Init (bb->Firststmt(), bb->Laststmt())) {
+        OPERATOR opr = WN_operator (wn);  
+        if (!OPERATOR_is_call (opr)) {
+          continue;
+        }
+
+        if (opr == OPR_CALL) {
+          ST* st = WN_st (wn);
+          PU& pu = Pu_Table [ST_pu(*st)];
+          if (!PU_nothrow (pu)) {
+            may_throw = TRUE;
+            break;
+          }
+        } else {
+          // not able to handle indirect calls, virtual functions calls
+          may_throw = TRUE;
+          break;
+        }
+      } // end of FOR_ALL_ELEM 
+    }
+
+    if (may_throw)
+      break;
+
+    // Examine STMTREPs
+    //
+    if (bb->First_stmtrep ()) {
+      STMTREP_ITER stmt_iter(bb->Stmtlist());
+      STMTREP *stmt;
+      FOR_ALL_NODE (stmt, stmt_iter, Init()) {
+        OPERATOR opr = stmt->Opr ();
+        if (!OPERATOR_is_call (opr)) {
+            continue;
+        }
+
+        if (opr == OPR_CALL) {
+          ST* st = stmt->St ();
+          PU& pu = Pu_Table [ST_pu(*st)];
+          if (!PU_nothrow (pu)) {
+            may_throw = TRUE;
+            break;
+          }
+        } else {
+          // not able to handle indirect calls, virtual functions calls
+          may_throw = TRUE;
+          break;
+        }
+      } // end of FOR_ALL_NODE 
+    }
+    
+    if (may_throw) { break; }
+  }
+
+  if (!may_throw) {
+    Set_PU_nothrow (pu);
+  }
+}
+
 // Analyze_pu_attr() conducts following things
 //
 //   - reveal _attribute_ semantics
@@ -99,6 +187,9 @@ Analyze_pu_attr (OPT_STAB* opt_stab, ST* pu_st) {
     SET_OPT_PHASE("Points-to Summary");
     opt_stab->Summarize_points_to ();
   }
+
+  // analyze if PU throw exception
+  Analyze_nothrow_attr (opt_stab, pu_st);
 }
 
 // Check if the array node is in a 'form' suitable to be a candidate

@@ -304,6 +304,7 @@ extern BOOL  WOPT_Enable_Pt_Keep_Track_Ptr;  // POINTS_TO keep track pointer of 
   // POINTS_TO keep track complex address of ilod/istore
 extern BOOL  WOPT_Enable_Aggr_Pt_Keep_Track_Ptr;  
 extern BOOL  WOPT_Enable_Noreturn_Attr_Opt;  // __attribute_((noreturn)) related opt
+extern BOOL  WOPT_Enable_Nothrow_Opt; // remove unneceesary RID for calls that won't throw exception
 extern BOOL  WOPT_Enable_Pt_Summary;  // Points-to summary/annotation
 extern BOOL  WOPT_Enable_Reassociation_CSE; // Enables reassociative CSE
 extern BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans; // Enables proactive loop fusion transformation
