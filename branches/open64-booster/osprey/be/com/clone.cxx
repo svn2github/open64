@@ -139,43 +139,6 @@ IPO_CLONE::Set_Entry_Point(WN *wn, WN *cloned_wn, ST *cloned_st)
 } // IPO_CLONE::Set_Entry_Point
 
 
-#if 0 // obsolete function
-// ======================================================================
-// Create a new global ST for this entry point, with new symbol name
-// ======================================================================
-
-void
-IPO_CLONE::Set_Entry_Point (WN* wn, WN* cloned_wn)
-{
-  Is_True(wn && cloned_wn && _sym,
-          ("IPO_CLONE::Set_Entry_Point parameter is null"));
-  Is_True(WN_opcode(wn) == OPC_FUNC_ENTRY || 
-          WN_opcode(wn) == OPC_ALTENTRY,
-          ("Set_Entry_Point can only be invoked on FUNCTIONs\n"));
-
-  ST* st = WN_st(wn);
-  ST* cloned_st = _sym->IPO_Copy_ST(st, GLOBAL_SYMTAB);
-
-  if (WN_opcode(wn) == OPC_FUNC_ENTRY) {
-    // Create a PU (don't do it for alternate entry points)
-    PU_IDX pu_idx;
-    PU& pu = New_PU (pu_idx);
-    PU_Init (pu, ST_pu_type(st), PU_lexical_level(st));
-    Set_ST_pu (cloned_st, pu_idx);
-  }
-
-  // reset this bit since all the unknown edges which may be
-  // due to addr taken and saved will point to the original procedure
-  Set_ST_addr_not_saved(cloned_st);
-
-  Set_ST_export (cloned_st, EXPORT_INTERNAL);
-
-  WN_st_idx(cloned_wn) = ST_st_idx(cloned_st);
-
-  _sym->Hide_Cloned_ST (st);  // so that recursive calls go to the orig.
-
-} // IPO_CLONE::Set_Entry_Point
-#endif // obsolete function
 
 
 // ======================================================================
@@ -394,23 +357,6 @@ IPO_CLONE::Clone_Tree (WN *wn, ST *clone_st)
       // which occur in the exception handling opcode
       // Exceptions now come as REGIONS (not as EXC_SCOPE_BEGINS)
       if ((WN_operator(wn) == OPR_REGION) && (WN_region_is_EH(wn))) {
-#if 0
-    // ensure that sym is not null (which is true when promoting pstatics
-      if (_sym && (!_sym->Get_Cloned_Scope_Tab())) {
-          INITO_IDX init_idx = WN_ereg_supp(wn);
-          if (init_idx) {
-              // check if this is a result of moving initos to
-              // the global symtab due to promoting static
-              // variables
-              INITO_IDX init_cp_idx;
-              if (init_cp_idx = _sym->Get_Cloned_INITO_IDX(Get_INITO(init_idx))) {
-                  WN_ereg_supp(wn) = init_cp_idx;
-                  WN_ereg_supp(ret_wn) = init_cp_idx;
-              }
-          }
-      }
-      else
-#endif
         // else we need to fix up the inito's occuring in whirl
             Fix_INITO(ret_wn, wn);
   }
@@ -425,19 +371,6 @@ IPO_CLONE::Clone_Tree (WN *wn, ST *clone_st)
 	else if (OPCODE_has_sym(op) || OPCODE_has_label(op))
             Fix_ST (ret_wn, wn);
 
-#if 0
-        // fix the ST_base, this occurs in fortran for local
-        // data statements and equivalences. see test case
-        // mf77tests/rag_misc/test028.f, test029.f
-        if (OPCODE_has_sym(op) && WN_st(wn)) {
-            ST * st = _sym->Get_Cloned_ST(ST_base(WN_st(wn)));
-            if (st) {
-              Set_ST_sclass(ST_base(WN_st(wn)),SCLASS_AUTO);
-              Set_ST_base_idx(WN_st(ret_wn), ST_st_idx(st));
-              Set_ST_base_idx(WN_st(wn), ST_st_idx(st));
-            }
-        }
-#endif
   }
 
           
@@ -513,14 +446,6 @@ IPO_CLONE::New_Clone (ST *clone_st)
 
   FmtAssert(_orig_pu,("IPO_CLONE::orig_pu is null"));
   ST * s = WN_st(_orig_pu);
-#if 0
-  SYMTAB_IDX o_symtab = _sym->Get_Orig_Level();
-  // copy the initos for the local symtab
-  if (o_symtab && PU_has_exc_scopes(Get_Current_PU()))
-    {
-      _sym->Copy_INITO();
-    }
-#endif
 
   _cloned_map_tab = WN_MAP_TAB_Create (_mem);
 
@@ -651,18 +576,6 @@ IPO_SYMTAB::Copy_Local_Tables(BOOL label_only)
 #ifdef KEY
 	if (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG)
 	{
-#if 0
-	// For lang other than C++, the copy below won't be done anyway 
-	// since it depends on sclass. But then prevent the unnecessary loop
-	// for other languages.
-	  for (int i=start_idx; 
-	     i<(_orig_scope_tab[_orig_level].inito_tab)->Size(); ++i)
-	  {
-	    INITO copy = (*_orig_scope_tab[_orig_level].inito_tab)[i];
-	    if (ST_sclass(INITO_st(copy)) == SCLASS_EH_REGION_SUPP)
-	    	(*_cloned_scope_tab[_cloned_level].inito_tab).Insert (copy);
-	  }
-#else
 	    // bug 4091: for C++ copy all INITOs
 	    // We really need to clone only the EH initos here, but if
 	    // we only clone them, we will need to do lots of fixups.
@@ -670,7 +583,6 @@ IPO_SYMTAB::Copy_Local_Tables(BOOL label_only)
 			           *_cloned_scope_tab[_cloned_level].inito_tab, 
 			           start_idx, 
 			           (_orig_scope_tab[_orig_level].inito_tab)->Size());
-#endif
 	}
 #endif
   }

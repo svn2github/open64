@@ -60,7 +60,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -1263,16 +1262,6 @@ Perform_Gather_Scatter(
     // create a 'new_ind = new_id + 1' and replace the loop 'step'
     WN* wn_step = WN_step(loop_current);
 
-#if 0
-    DEF_LIST *def_list=Du_Mgr->Ud_Get_Def(WN_kid0(WN_kid0(wn_step)));
-    Is_True(def_list,("Empty definition nodes \n"));
-    DEF_LIST_ITER d_iter(def_list);
-    for (DU_NODE *def_node=(DU_NODE *)d_iter.First();
-	 !d_iter.Is_Empty(); def_node = (DU_NODE *)d_iter.Next()){
-      WN* def=def_node->Wn();
-      Dump_WN(def,stdout,1,2,2);
-    }
-#endif
 
     Replace_Symbol(wn_step,old_symbol,new_ind,NULL);
     cons_1 = LWN_Copy_Tree(cons_1);

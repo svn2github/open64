@@ -443,10 +443,6 @@ extern "C" {
 #define TYPE_ALLOCA(type) ((type *)alloca(sizeof(type)))
 #define TYPE_ALLOCA_N(type,n) ((type *)alloca(sizeof(type) * (n)))
 
-#if 0
-#define TYPE_MALLOC(type) ((type *) malloc(sizeof(type)))
-#define TYPE_MALLOC_N(type,n) ((type *) malloc(sizeof(type) * (n)))
-#endif
 
 #define Malloc_Mem_Pool  (MEM_POOL *) 1
 #define Default_Mem_Pool  (MEM_POOL *) 0

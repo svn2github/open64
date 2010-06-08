@@ -1111,9 +1111,6 @@ Exp_Ldst (
 	!ISA_LC_Value_In_Class(base_ofst, LC_simm32) &&
 	mcmodel < MEDIUM ){
       // use %got_page and %got_offset
-#if 0 // bug 4622
-      FmtAssert( FALSE, ("offset cannot be fit into 32-bit") );
-#endif
     }
   }
 
@@ -1195,9 +1192,6 @@ Exp_Ldst (
 		   Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_X8664_32 ),
 		   &newops );
 	} else {
-#if 0 // bug 4622
-	  FmtAssert( mcmodel >= MEDIUM, ("code model is not medium or higher") );
-#endif
 	  TN* sym_tn = NULL;
 
 	  if( ISA_LC_Value_In_Class(base_ofst, LC_simm32) ){
@@ -1682,10 +1676,4 @@ void
 Expand_Lda_Label (TN *dest, TN *lab, OPS *ops)
 {
   Exp_Immediate(dest, lab, FALSE, ops);
-#if 0
-  if (Use_32_Bit_Pointers)
-    Build_OP(TOP_ld32, dest, rip, lab, ops);
-  else
-    Build_OP(TOP_ld64, dest, rip, lab, ops);
-#endif
 }

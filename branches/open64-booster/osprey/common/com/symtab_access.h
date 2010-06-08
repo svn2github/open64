@@ -1981,44 +1981,6 @@ Clear_FILE_INFO_has_mp (FILE_INFO& f){ f.flags &= ~FI_HAS_MP; }
 // access functions for the TABLES
 //----------------------------------------------------------------------
 
-#if 0
-inline ST&
-SYMBOL_TABLE::operator[] (ST_IDX idx)
-{
-    SYMTAB_IDX level = ST_IDX_level (idx);
-    UINT32 index = ST_IDX_index (idx);
-    return Scope_tab[level].st_tab->Entry (index);
-}
-
-inline ST&
-SYMBOL_TABLE::operator() (SYMTAB_IDX level, UINT32 index) {
-    Is_True (Scope_tab[level].st_tab != NULL, ("Uninitialized ST_TAB"));
-    return Scope_tab[level].st_tab->Entry (index);
-}
-
-
-inline INITO&
-INITO_TABLE::operator[] (INITO_IDX idx) {
-    SYMTAB_IDX level = INITO_IDX_level (idx);
-    UINT32 index = INITO_IDX_index (idx);
-    return Scope_tab[level].inito_tab->Entry (index);
-}
-
-inline INITO&
-INITO_TABLE::operator() (SYMTAB_IDX level, UINT32 index) {
-    Is_True (Scope_tab[level].inito_tab != NULL, ("Uninitialized INITO_TAB"));
-    return Scope_tab[level].inito_tab->Entry (index);
-}
-inline LABEL&
-LABEL_TABLE::operator[] (LABEL_IDX idx) {
-    return Scope_tab[CURRENT_SYMTAB].label_tab->Entry (idx);
-}
-
-inline LABEL&
-LABEL_TABLE::operator() (SYMTAB_IDX level, LABEL_IDX idx) {
-    return Scope_tab[level].label_tab->Entry (idx);
-}
-#endif
 
 inline PREG&
 PREG_TABLE::operator[] (PREG_IDX idx) {

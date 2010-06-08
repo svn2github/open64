@@ -49,7 +49,6 @@
 *** $Source: be/lno/SCCS/s.scalar_expand.cxx $
 **/
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"

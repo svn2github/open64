@@ -969,15 +969,6 @@ void parse_module_stmt (void)
                         AT_OBJ_NAME_PTR(attr_idx));
             }
 
-# if 0
-            if ((cif_flags & XREF_RECS) != 0) {
-               cif_usage_rec(attr_idx,
-                             AT_Tbl_Idx,
-                             TOKEN_LINE(token),
-                             TOKEN_COLUMN(token),
-                             CIF_Symbol_Declaration);
-            }
-# endif
 
             /* If the context is okay, interface_idx will be non NULL.  If */
             /* so enter into interface list and set ATI_INTERFACE_CLASS.   */

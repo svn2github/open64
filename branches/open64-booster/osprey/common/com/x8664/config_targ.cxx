@@ -483,19 +483,11 @@ Prepare_Target ( void )
     else if ( strcasecmp ( Processor_Name, "barcelona" ) == 0 ) {
       if (!Target_SSE2_Set && !Target_SSE3_Set)
         Target_SSE3 = TRUE;
-#if 0 //temporily disable setting default sse4a true for barcelona
-      if (!Target_SSE2_Set && !Target_SSE4a_Set)
-        Target_SSE4a = TRUE;
-#endif
       targ = TARGET_barcelona;
     }
     else if ( strcasecmp ( Processor_Name, "bdver1" ) == 0 ) {
       if (!Target_SSE2_Set && !Target_SSE3_Set)
         Target_SSE3 = TRUE;
-#if 0 //temporily disable setting default sse4a true for orochi
-      if (!Target_SSE2_Set && !Target_SSE4a_Set)
-        Target_SSE4a = TRUE;
-#endif
       if (!Target_SSE2_Set && !Target_SSSE3_Set)
         Target_SSSE3 = TRUE;
       if (!Target_SSE2_Set && !Target_SSE41_Set)

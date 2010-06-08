@@ -71,7 +71,6 @@
 static char *rcs_id = opt_fold_CXX"$Revision: 1.9 $";
 #endif /* _KEEP_RCS_ID */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "errors.h"

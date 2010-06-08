@@ -38,7 +38,6 @@
 */
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <limits.h>                     // for PATH_MAX
 #include <unistd.h>                     // for read(2)/write(2)
@@ -483,49 +482,6 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
 
   if (argc > 0) {
     argv.push_back((*command_map)["cc"]);
-#if 0
-    // We do not get the commanf from TOOLROOT
-    // the (*command_map)["cc"] has considered both the $TOOLROOT and $COMPILER_BIN and $PATH
-    char* command = base_addr + args[0];
-
-    // Look up the command name in the map; we may need to turn into into
-    // a full pathname.
-    if (command_map->find(command) == command_map->end()) {
-      char* toolroot = getenv("TOOLROOT");
-      if (toolroot == 0 || strchr(command, '/') != 0) 
-        (*command_map)[command] = command;
-      else {
-        int len = strlen(toolroot) + strlen(command) + 116;
-        char* buf = static_cast<char*>(malloc(len));
-        if (!buf)
-          ErrMsg (EC_No_Mem, "get_command_line");
-        strcpy(buf, toolroot);
-
-        strcat(buf, LIBPATH "/");
-        strcat(buf, command);
-
-        if (!file_exists(buf)) {
-	   BZERO(buf, strlen(buf));
-	   strcpy(buf, toolroot);
-	   strcat(buf, BINPATH "/");
-           strcat(buf, command);
-	}
-
-        if (!file_exists(buf)) {
-	   BZERO(buf, strlen(buf));
-	   strcpy(buf, toolroot);
-           strcat(buf, ALTBINPATH "/");
-	}
-        (*command_map)[command] = buf;
-      }
-    }
-
-    Is_True(command_map->find(command) != command_map->end()
-            && (*command_map)[command] != 0
-            && strlen((*command_map)[command]) != 0,
-            ("Full pathname for %s not found in command map", command));
-    argv.push_back((*command_map)[command]);
-#endif
 
     for (INT i = 1; i < argc; ++i) {
       argv.push_back (base_addr + args[i]);
@@ -905,9 +861,6 @@ void ipacom_doit (const char* ipaa_filename)
 
     print_all_outfiles(tmpdir_macro);
 
-#if 0
-    fputs("\n", makefile);
-#endif
 
     // The final link command is just ld -from <cmdfile>.  Everything else
     // goes into cmdfile.
@@ -943,7 +896,7 @@ void ipacom_doit (const char* ipaa_filename)
 #ifdef KEY
       // Since we are using GCC to link, don't print out the run-time support
       // files.
-      char *p;
+      const char *p;
 #ifndef TARG_SL // jczhang: use slcc specific crt*.o
       if (((p = strstr(*i, "/crt1.o")) && p[7] == '\0') ||
 	  ((p = strstr(*i, "/crti.o")) && p[7] == '\0') ||
@@ -1349,11 +1302,7 @@ void ipacom_doit (const char* ipaa_filename)
 #endif
   fprintf(sh_cmdfile, "%s -f %s ", smake_name, makefile_name);
 
-#if 1
   if (!ld_ipa_opt[LD_IPA_SHOW].flag)
-#else
-  if (!IPA_Echo_Commands)
-#endif
     fprintf(sh_cmdfile, "-s ");
 
 #ifdef KEY
@@ -1440,12 +1389,10 @@ static const char* get_extra_args(const char* ipaa_filename)
     break;
   }
   
-#if 1
   // -IPA:keeplight:=ON, which is the default, means that we keep only
   // the .I files, not the .s files.
   if (ld_ipa_opt[LD_IPA_KEEP_TEMPS].flag && !IPA_Enable_Keeplight)
     args.push_back("-keep");
-#endif
 
   if (ld_ipa_opt[LD_IPA_SHOW].flag)
     args.push_back("-show");
@@ -1469,7 +1416,6 @@ static const char* get_extra_args(const char* ipaa_filename)
     string p = ipc_copy_of (WB_flags);
     while (*p) {
       args.push_back(p);
-#if 1
       while (*p) {
         if (*p == ',') {
           if (p[1] != ',') {
@@ -1483,7 +1429,6 @@ static const char* get_extra_args(const char* ipaa_filename)
           escape_char (p);
         p++;
       }
-#endif
     }
   }
 

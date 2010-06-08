@@ -1184,10 +1184,6 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
 	if ( Cur_PU_Feedback ) {
 	  Cur_PU_Feedback->Verify("after WOPT");
 	}
-#if 0  // this is now unnecessary because the lowering is done inside wopt
-	if (Only_Unsigned_64_Bit_Ops && Delay_U64_Lowering)
-	  U64_lower_wn(rwn, FALSE);
-#endif
       }
 
       /* we may still have to print the .O file:		   */
@@ -1211,10 +1207,6 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
 	rwn = WN_Lower(rwn, LOWER_SCF, NULL, 
 		       "Lower structured control flow");
 	WN_Instrument(rwn, PROFILE_PHASE_BEFORE_CG);
-#if 0
-	extern void wb_gwe(WN*); // hack to check __profile calls.
-	wb_gwe(rwn);
-#endif
       } else if (Feedback_Enabled[PROFILE_PHASE_BEFORE_CG]) {
 	rwn = WN_Lower(rwn, LOWER_SCF, NULL, 
 		       "Lower structured control flow");
@@ -1874,10 +1866,6 @@ Preprocess_PU (PU_Info *current_pu)
        && (Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_VHO)) {
     if (!is_mp_nested_pu )
       WN_Instrument(pu, PROFILE_PHASE_BEFORE_VHO); 
-#if 0
-    extern void wb_gwe(WN*); // hack to check __profile calls.
-    wb_gwe(pu);
-#endif
   } else if ( Feedback_Enabled[PROFILE_PHASE_BEFORE_VHO] ) {
     WN_Annotate(pu, PROFILE_PHASE_BEFORE_VHO, &MEM_pu_pool);
   }

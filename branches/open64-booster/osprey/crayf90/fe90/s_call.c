@@ -3546,26 +3546,6 @@ boolean final_arg_work(opnd_type	*list_opnd,
          }
 
 
-# if 0
-         /* This section is for the target dummy arg constraint. */
-         /* I'm going to save it just in case the interp changes.*/
-         /* BHJ DOPE VECTOR TARGET */
-
-         if (ATD_TARGET(dummy)                 &&
-             ((! arg_info_list[info_idx].ed.target  &&
-               ! arg_info_list[info_idx].ed.pointer)  ||
-              arg_info_list[info_idx].ed.vector_subscript)) {
-            find_opnd_line_and_column((opnd_type *) &IL_OPND(list_idx),
-                                      &opnd_line,
-                                      &opnd_column);
-
-            PRINTMSG(opnd_line, 622, Error,
-                     opnd_column,
-                     AT_OBJ_NAME_PTR(dummy));
-
-            ok = FALSE;
-         }
-# endif
 
          if (arg_info_list[info_idx].ed.assumed_size             &&
              ATD_ARRAY_IDX(dummy)                                &&
@@ -5302,19 +5282,6 @@ boolean final_arg_work(opnd_type	*list_opnd,
 
             /* generate address temp */
 
-# if 0
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
-            NTR_IR_LIST_TBL(false_list_idx);
-            NTR_IR_TBL(false_parm_idx);
-            IR_OPR(false_parm_idx) = False_Parm_Opr;
-            IR_TYPE_IDX(false_parm_idx) = CRI_Ptr_8;
-            IR_LINE_NUM(false_parm_idx) = line;
-            IR_COL_NUM(false_parm_idx)  = col;
-            COPY_OPND(IR_OPND_L(false_parm_idx), IL_OPND(list_idx));
-            IL_FLD(false_list_idx) = IR_Tbl_Idx;
-            IL_IDX(false_list_idx) = false_parm_idx;
-# endif
-# endif
             addr_tmp_idx = gen_compiler_tmp(line, col, Priv, TRUE);
 
 # ifdef _TRANSFORM_CHAR_SEQUENCE
@@ -5373,14 +5340,6 @@ boolean final_arg_work(opnd_type	*list_opnd,
 
             contig_test_ir_idx    = present_idx;
 
-# if 0
-            OPND_FLD(opnd) = CN_Tbl_Idx;
-            OPND_IDX(opnd) = CN_INTEGER_ZERO_IDX;
-            OPND_LINE_NUM(opnd) = line;
-            OPND_COL_NUM(opnd) = col;
-
-            gen_internal_call_stmt("DUMP", &opnd, Before);
-# endif
 
             /* set address temp = address from dope vector or */
             /* loc (base subtree).         Before             */
@@ -5448,14 +5407,6 @@ boolean final_arg_work(opnd_type	*list_opnd,
             true_start_sh_idx2 = curr_stmt_sh_idx;
             true_end_sh_idx2 = SH_NEXT_IDX(curr_stmt_sh_idx);
 
-# if 0
-            OPND_FLD(opnd) = CN_Tbl_Idx;
-            OPND_IDX(opnd) = CN_INTEGER_ONE_IDX;
-            OPND_LINE_NUM(opnd) = line;
-            OPND_COL_NUM(opnd) = col;
-
-            gen_internal_call_stmt("DUMP", &opnd, Before);
-# endif
 
             /* capture bounding stmts before curr_stmt_sh_idx */
             false_start_sh_idx = SH_PREV_IDX(curr_stmt_sh_idx);
@@ -5571,15 +5522,6 @@ boolean final_arg_work(opnd_type	*list_opnd,
                         line,
                         col);
                         
-# if 0
-            OPND_FLD(opnd) = CN_Tbl_Idx;
-            OPND_IDX(opnd) = CN_INTEGER_ONE_IDX;
-            OPND_LINE_NUM(opnd) = line;
-            OPND_COL_NUM(opnd) = col;
-
-            gen_internal_call_stmt("DUMP", &opnd, After);
-            curr_stmt_sh_idx = SH_PREV_IDX(curr_stmt_sh_idx);
-# endif
 
 
             /* generate if (!contig) test After */
@@ -5677,14 +5619,6 @@ static dummy_arg_type get_dummy_arg_type(int	darg_idx)
                   ATD_IM_A_DOPE(darg_idx))  {
             d_type = Intrin_Dope_Dummy;
          }
-# if 0
-         /* BHJ DOPE VECTOR TARGET */
-         /* save this in case the interp changes. */
-
-         else if (ATD_TARGET(darg_idx)) {
-            d_type = Scalar_Target_Dummy;
-         }
-# endif
          else {
             d_type = Scalar_Dummy;
          }
@@ -5729,15 +5663,6 @@ static dummy_arg_type get_dummy_arg_type(int	darg_idx)
                   ATD_IM_A_DOPE(darg_idx))  {
             d_type = Intrin_Dope_Dummy;
          }
-# if 0
-         /* BHJ DOPE VECTOR TARGET */
-         /* save this in case the interp changes. */
-
-
-         else if (ATD_TARGET(darg_idx)) {
-            d_type = Array_Target_Dummy;
-         }
-# endif
          else {
             d_type = Sequence_Array_Dummy;
          }
@@ -9331,9 +9256,6 @@ int	get_stmt_tmp(int	type_idx,
    int			list_idx;
    int			tmp_idx = NULL_IDX;
 
-# if 0
-   int			save_curr_stmt_sh_idx;
-# endif
 
 
    TRACE (Func_Entry, "get_stmt_tmp", NULL);
@@ -9367,38 +9289,6 @@ int	get_stmt_tmp(int	type_idx,
       if (stmt_tmp_tbl[linear_type].dope_vector_tmps_head[rank] == NULL_IDX) {
 
          goto EXIT;
-# if 0
-         /* create new tmp, put it on list */
-
-         tmp_idx			= gen_compiler_tmp(stmt_start_line,
-                                                           stmt_start_col,
-                                                           Priv, TRUE);
-         ATD_TYPE_IDX(tmp_idx)		= type_idx;
-         ATD_STOR_BLK_IDX(tmp_idx)	= SCP_SB_STACK_IDX(curr_scp_idx);
-         AT_SEMANTICS_DONE(tmp_idx)	= TRUE;
-
-         if (rank) {
-            /* Positions 1-7 are deferred shape entries in the bd table. */
-            ATD_ARRAY_IDX(tmp_idx) = rank;
-         }
-
-         ATD_IM_A_DOPE(tmp_idx)	= TRUE;
-
-         save_curr_stmt_sh_idx	= curr_stmt_sh_idx;
-         curr_stmt_sh_idx	= SH_PREV_IDX(curr_stmt_sh_idx);
-
-         gen_entry_dope_code(tmp_idx);
-
-         curr_stmt_sh_idx = save_curr_stmt_sh_idx;
-
-         NTR_IR_LIST_TBL(list_idx);
-         IL_LINE_NUM(list_idx) = stmt_start_line;
-         IL_COL_NUM(list_idx)  = stmt_start_col;
-         IL_IDX(list_idx)      = tmp_idx;
-         IL_FLD(list_idx)      = AT_Tbl_Idx;
-         stmt_tmp_tbl[linear_type].dope_vector_tmps_head[rank] = list_idx;
-         stmt_tmp_tbl[linear_type].dope_vector_tmps_tail[rank] = list_idx;
-# endif
       }
       else {
  
@@ -9411,38 +9301,6 @@ int	get_stmt_tmp(int	type_idx,
             /* create new tmp, put it on list */
 
             goto EXIT;
-# if 0
-            tmp_idx			= gen_compiler_tmp(stmt_start_line,
-                                                           stmt_start_col,
-                                                           Priv, TRUE);
-            ATD_TYPE_IDX(tmp_idx)	= type_idx;
-            ATD_STOR_BLK_IDX(tmp_idx)	= SCP_SB_STACK_IDX(curr_scp_idx);
-            AT_SEMANTICS_DONE(tmp_idx)	= TRUE;
-
-            if (rank) {
-               /* Positions 1-7 are deferred shape entries in the bd table. */
-               ATD_ARRAY_IDX(tmp_idx) = rank;
-            }
-
-            ATD_IM_A_DOPE(tmp_idx)    = TRUE;
-
-            save_curr_stmt_sh_idx = curr_stmt_sh_idx;
-            curr_stmt_sh_idx = SH_PREV_IDX(curr_stmt_sh_idx);
-
-            gen_entry_dope_code(tmp_idx);
-   
-            curr_stmt_sh_idx = save_curr_stmt_sh_idx;
-
-            NTR_IR_LIST_TBL(list_idx);
-            IL_LINE_NUM(list_idx) = stmt_start_line;
-            IL_COL_NUM(list_idx)  = stmt_start_col;
-            IL_IDX(list_idx)      = tmp_idx;
-            IL_FLD(list_idx)      = AT_Tbl_Idx;
-
-            IL_NEXT_LIST_IDX(stmt_tmp_tbl[linear_type].
-                               dope_vector_tmps_tail[rank]) = list_idx;
-            stmt_tmp_tbl[linear_type].dope_vector_tmps_tail[rank] = list_idx;
-# endif
 
          }
          else {

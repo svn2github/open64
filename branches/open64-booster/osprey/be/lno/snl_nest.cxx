@@ -873,3 +873,9 @@ void SNL_NEST_INFO::Exclude_Outer_Loops(INT how_many)
   }
 }
 
+BOOL SNL_NEST_INFO::All_Var_Expandable(int nloops)
+{
+  if ( nloops > _nloops_general && nloops > _nloops_invariant )
+    return FALSE;
+  return TRUE;
+}

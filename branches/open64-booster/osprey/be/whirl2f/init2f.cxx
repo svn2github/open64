@@ -1113,13 +1113,6 @@ INIT2F_array(TOKEN_BUFFER lhs_tokens,
 
       INITV&  initv = Initv_Table[initv_array[*initv_idx]];
 
-#if 0      
-      ASSERT_DBG_FATAL(!(TY_Is_Array_Of_Chars(object_ty)    &&
-			 INITV_kind(initv) == INITVKIND_VAL &&
-			 TCON_ty(INITV_tc_val(initv)) == MTYPE_STRING),
-		       (DIAG_W2F_UNEXPECTED_INITV, 
-			INITV_kind(initv), "INITV2F_array"));
-#endif
       /* Get the last consecutive initv and the array segment-size
        * implied by this consecutive sequence of initializers.
        */

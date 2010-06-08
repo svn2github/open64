@@ -54,7 +54,6 @@
 
 #define ONST(x, y) (y)
 
-#define __STDC_LIMIT_MACROS
 #include <alloca.h>             // alloca
 #include <unistd.h>             // write
 #include <stdint.h>
@@ -1089,10 +1088,6 @@ DRA_Add_Clone (PU_Info *orig_pu,
   Set_PU_Info_state(new_pu, WT_TREE,     Subsect_InMem);
   Set_PU_Info_state(new_pu, WT_SYMTAB,   Subsect_InMem);
   Set_PU_Info_state(new_pu, WT_PROC_SYM, Subsect_InMem);
-#if 0
-  Set_PU_Info_state(new_pu, WT_DEPGRAPH, Subsect_InMem);
-  Set_PU_Info_depgraph_ptr(new_pu, NULL);
-#endif
 
   if (pu_has_feedback) {
     Set_PU_Info_state(new_pu, WT_FREQ, Subsect_InMem);

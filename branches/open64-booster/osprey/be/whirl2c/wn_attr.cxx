@@ -714,6 +714,7 @@ WN_Tree_Type(const WN *wn)
       case OPR_REDUCE_MAX:
       case OPR_REDUCE_MIN:
       case OPR_SHUFFLE:
+      case OPR_ATOMIC_RSQRT:
 	ty = Stab_Mtype_To_Ty(WN_opc_rtype(wn));
 	break;
 

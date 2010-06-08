@@ -978,17 +978,6 @@ IVR::Generate_step(CODEREP *nv, CODEREP *iv) const
     }
   }
   
-#if 0
-  Disable this temp because iv has no type!  Bugs in htable?
-  
-  // call the simplifier to deal with more complicated expressions
-  if (delta == NULL && MTYPE_is_integral(nv->Dtyp())) {
-    OPCODE subop = OPCODE_make_op(OPR_SUB, dtype, MTYPE_V);
-    delta =  Htable()->Add_bin_node_and_fold(subop, 
-					     nv->Insert_CVTL(dtype,Htable()), 
-					     iv);
-  }
-#endif
   
   // The step expression contains the induction variable, either the
   // simplifier is not good enough, or it is not a valid candidate.
@@ -1217,10 +1206,6 @@ Primary_IV_preference(IV_CAND *iv, OPT_STAB *opt_stab)
   AUX_STAB_ENTRY *psym = opt_stab->Aux_stab_entry(aux_id);
   INT32 score = 1;
 
-#if 0	// IRM no longer supported
-  if (psym->Irm_generated())    // IRM generated, has no i=i insertion
-    score += 1000;
-#endif
 
   if (!psym->Points_to()->No_alias())  // has alias, unlikely to be dead
     score += 100;

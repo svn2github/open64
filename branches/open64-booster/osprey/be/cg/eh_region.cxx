@@ -726,6 +726,12 @@ struct ADJUST_PARENT {
 };
 
 
+struct SET_NUM_EH_RANGE {
+  void operator()(EH_RANGE & r) {
+    RID_num_eh_ranges(r.rid) = 1;  // every eh region contains 1 eh_range before flatten
+  }
+};
+
 void
 EH_Prune_Range_List(void)
 {
@@ -1096,6 +1102,9 @@ static void flatten_regions (void)
   int i, j;
   const int no_child = -1;
 
+  // set the num_eh_ranges for all eh region to 1
+  for_each  (range_list.begin(), range_list.end(), SET_NUM_EH_RANGE());
+
   for ( j = range_list.size() - 1; j > 0; j--)
   {
     int first_child, last_child;
@@ -1146,8 +1155,10 @@ static void flatten_regions (void)
   }
 
   for (vector<EH_RANGE>::iterator iter = new_ranges.begin();
-       iter != new_ranges.end(); ++iter)
+       iter != new_ranges.end(); ++iter) {
     range_list.add_range (*iter);
+    RID_num_eh_ranges(iter->rid) ++;
+  }
 }
 
 #include <map>
@@ -1603,7 +1614,10 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
     ST* st = INITO_st(range.ereg_supp);
     if (ST_is_not_used(st)) 	continue;
 
-    Set_ST_is_not_used(st);
+    RID_num_eh_ranges(range.rid) --;
+    if ( RID_num_eh_ranges(range.rid) == 0 ) // all flatten eh_ranges has been processed
+      Set_ST_is_not_used(st);
+
     INITV_IDX blk = INITO_val(range.ereg_supp);
     if (INITV_kind(blk) != INITVKIND_BLOCK) {
 	    Set_ST_is_not_used(st);
@@ -1626,7 +1640,8 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
      *    char*	cs_start; //	offset to Start IP of current proc
      *    char*	cs_len;	  //	length to the next call-site?
      *    char*	cs_lp;	  //	ladding pad offset to lpStart
-     *    char*	cs_action;//    the first action table offset (biased by 1, 0 indicates there are no     *                          actions)
+     *    char*	cs_action;//    the first action table offset (biased by 1, 0 indicates there are no
+     *                          actions)
      * };
      */ 
     // call-site record
@@ -1823,12 +1838,6 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
     INITO_IDX ereg = range_list[i].ereg_supp;
     INITV_IDX first_initv = INITV_blk (INITO_val (ereg));
     Set_ST_is_not_used (*(INITO_st (ereg)));
-#if 0
-    if ((INITV_kind(first_initv) != INITVKIND_LABEL) &&
-                PU_is_mainpu (Get_Current_PU ())) {
-      continue;
-    }
-#endif
 
     LABEL_IDX pad_label=0;
     if (INITV_kind(first_initv) != INITVKIND_ZERO)

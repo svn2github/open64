@@ -1222,27 +1222,6 @@ WN_get_const_val(WN *wn)
   } val;
 
   val.i8 = WN_const_val(wn);
-#if 0
-  MTYPE rtype = WN_rtype(wn);
-  switch (rtype) {
-  case MTYPE_I1: 
-    return (INT64) val.i1.b1;
-  case MTYPE_I2: 
-    return (INT64) val.i2.s1;
-  case MTYPE_I4: 
-    return (INT64) val.i4.lo;
-  case MTYPE_I8: 
-    return (INT64) val.i8;
-  case MTYPE_U1: 
-    return (INT64) val.u1.ub1;
-  case MTYPE_U2: 
-    return (INT64) val.u2.us1;
-  case MTYPE_U4:
-    return (INT64) val.u4.ulo;
-  case MTYPE_U8: 
-    return (INT64) val.u8;
-  }
-#endif
   return val.i8;
 }
 

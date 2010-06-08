@@ -528,67 +528,6 @@ Get_Return_Info (TY_IDX rtype, Mtype_Return_Level level)
               ((hfa_mtype != MTYPE_F4 && hfa_mtype != MTYPE_C4) ||
                ((hfa_mtype == MTYPE_F4 || hfa_mtype == MTYPE_C4) &&
                 8 * size <= SIM_INFO.max_struct_result))) {
-#if 0                
-            FmtAssert (FALSE, ("PPC no HFA Get_Return_Info\n"));
-            PREG_NUM reg = PR_first_reg(SIM_INFO.flt_results);
-            INT32 n;
-            INT32 i;
-            INT32 step;
-
-            info.return_via_first_arg = FALSE;
-
-            switch (hfa_mtype) {
-
-              case MTYPE_F4:
-              case MTYPE_F8:
-              case MTYPE_F10:
-
-                break;
-
-              case MTYPE_C4:
-              case MTYPE_C8:
-              case MTYPE_C10:
-
-                if (level != Use_Simulated)
-                  hfa_mtype = Mtype_complex_to_real(hfa_mtype);
-                break;
-            }
-                  
-            switch (hfa_mtype) {
-
-              case MTYPE_F4:
-              case MTYPE_C4:
-
-                n = TY_size (rtype) / TY_size (Be_Type_Tbl (MTYPE_F4));
-                info.count = n;
-
-                for (i = 0; i < n; i++) {
-
-                  info.mtype [i] = hfa_mtype; 
-                  info.preg  [i] = reg; 
-                  reg += PR_skip_value(SIM_INFO.flt_results);
-                }
-                break;
-
-              case MTYPE_F8:
-              case MTYPE_F10:
-              case MTYPE_C8:
-              case MTYPE_C10:
-
-                n = TY_size (rtype) / TY_size (Be_Type_Tbl (hfa_mtype));
-                step = TY_size (Be_Type_Tbl (hfa_mtype)) /
-                       TY_size (Be_Type_Tbl (MTYPE_F8));
-                info.count = n;
-
-                for (i = 0; i < n; i++) {
-
-                  info.mtype [i] = hfa_mtype; 
-                  info.preg  [i] = reg; 
-                  reg += step * PR_skip_value(SIM_INFO.flt_results);
-                }
-                break;
-            }
-#endif            
           }
 
           else
@@ -877,9 +816,6 @@ Setup_Struct_Parameter_Locations (TY_IDX struct_ty)
     PSTRUCT_struct = ! TY_is_union (struct_ty);
     PSTRUCT_first_call = TRUE;
     PSTRUCT_hfa = FALSE;
-#if 0  // not supported in PPC32
-    PSTRUCT_hfa = Struct_Is_HFA (struct_ty, No_Simulated, PSTRUCT_hfa_mtype);
-#endif
     PSTRUCT_offset = 0;
     PSTRUCT_size = TY_size (struct_ty);
 }
@@ -902,7 +838,6 @@ Get_Struct_Parameter_Location (PLOC prev)
       return next;
     }
 
-#if 1
     if (PSTRUCT_struct && PSTRUCT_hfa &&
 	!(Current_Param_Num > Last_Fixed_Param && !SIM_varargs_floats)) {
       if (PSTRUCT_hfa_mtype == MTYPE_F4 || PSTRUCT_hfa_mtype == MTYPE_C4) {
@@ -940,7 +875,6 @@ Get_Struct_Parameter_Location (PLOC prev)
 
       return next;
     }
-#endif
 
     PLOC_size(next) = ireg_size;
     PSTRUCT_offset += ireg_size;
@@ -951,14 +885,6 @@ Get_Struct_Parameter_Location (PLOC prev)
     } else if (PSTRUCT_first_call) {
       PSTRUCT_first_call = FALSE;
       PLOC_reg(next) = PLOC_reg(prev);
-#if 0
-      if (!(Is_Int_Output_Preg(PLOC_reg(next)) || IS_INT_PREG(PLOC_reg(next))))
-        PLOC_reg(next) = 0;
-    } else if (Is_Int_Output_Preg(PLOC_reg(prev))) {
-      PLOC_reg(next) =  PLOC_reg(prev) - PR_skip_value(SIM_INFO.int_args);
-      if (!Is_Int_Output_Preg(PLOC_reg(next)))
-        PLOC_reg(next) = 0;
-#endif
     } else if (IS_INT_PREG(PLOC_reg(prev))) {
       PLOC_reg(next) =  PLOC_reg(prev) + PR_skip_value(SIM_INFO.int_args);
       if (!IS_INT_PREG(PLOC_reg(next)))

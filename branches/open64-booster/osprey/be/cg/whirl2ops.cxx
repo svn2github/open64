@@ -621,14 +621,13 @@ static void region_stack_push(RID *value)
   
 
 
-#ifndef TARG_IA64
 static BOOL WN_pragma_preamble_end_seen = FALSE;
 
 BOOL W2OPS_Pragma_Preamble_End_Seen ()
 {
    return WN_pragma_preamble_end_seen;
 }
-#endif
+
 /* Process the new OPs that have been created since the last call to 
  * this routine. We set their srcpos field and increment the count
  * of number of OPs in the BB. We check if any of the new OPs have
@@ -651,12 +650,12 @@ Process_New_OPs (void)
     }
     OP_srcpos(op) = current_srcpos;
     total_bb_insts++;
-#ifndef TARG_IA64
+
     if (WN_pragma_preamble_end_seen) {
       Set_OP_first_after_preamble_end(op);
       WN_pragma_preamble_end_seen = FALSE;
     }
-#endif
+
   }
   Last_Processed_OP = OPS_last(&New_OPs);
 }
@@ -918,21 +917,6 @@ Process_OPs_For_Stmt (void)
 {
   Process_New_OPs ();
 
-#if 0	// now done later in Split_BBs()
-  if (Enable_BB_Splitting && (total_bb_insts > Split_BB_Length)) {
-    /* We assume in LRA that the number of instructions in a BB fits
-     * in 16 bits.
-     */
-    FmtAssert (total_bb_insts < 32768,
-  	  ("Convert_WHIRL_To_OPs: Too many instructions for 1 statment (%d)\n", 
-	   total_bb_insts));
-    if (Trace_WhirlToOp) {
-          fprintf (TFile, "Convert_WHIRL_To_OPs: splitting a large BB (%d)\n", 
-		    total_bb_insts);
-    }
-    Start_New_Basic_Block ();
-  }
-#endif
 }
 
 
@@ -6565,18 +6549,6 @@ Handle_ASM (const WN* asm_wn)
   ASM_OP_wn(asm_info) = asm_wn;
 
 #ifdef TARG_IA32
-#if 0  
-  // Adding eflags register to the clobber set causes a problem
-  // in LRA, because a live range that includes such an ASM OP
-  // cannot use eflags register for allocation. Given that we
-  // currently don't do any dependence-based transformations for
-  // IA-32, it should be safe to ignore Asm_Clobbers_Cc flag.
-  //
-  if (WN_Asm_Clobbers_Cc(asm_wn)) {
-    ASM_OP_clobber_set(asm_info)[ISA_REGISTER_CLASS_eflags] = 
-      REGISTER_SET_Union1(REGISTER_SET_EMPTY_SET, REGISTER_MIN);
-  }
-#endif
 #endif
 
   // process ASM clobber list
@@ -7184,7 +7156,7 @@ static void Expand_Statement (WN *stmt)
       else
 	BB_Add_Annotation(Cur_BB, ANNOT_PRAGMA, stmt);
     }
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_IA64)
     if (WN_pragma(stmt) == WN_PRAGMA_INLINE_BODY_START)
     {
       OPCODE opcode = WN_opcode(stmt);
@@ -7202,9 +7174,9 @@ static void Expand_Statement (WN *stmt)
                            (void *)(WN_st_idx(stmt)+ST_index(st)));
       }
     }
+#endif
     if (WN_pragma(stmt) == WN_PRAGMA_PREAMBLE_END)
       WN_pragma_preamble_end_seen = TRUE;
-#endif
     break;
   case OPC_COMMENT:
     COMMENT_Add(Cur_BB, WN_GetComment(stmt));

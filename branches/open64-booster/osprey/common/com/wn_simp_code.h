@@ -3023,84 +3023,6 @@ static simpnode  simp_times( OPCODE opc,
 }
 
 #ifdef KEY
-#if 0
-// See comment in the caller.
-static simpnode Can_Be_Divided(simpnode node, INT64 c1)
-{
-  INT64 val;
-  INT i;
-  simpnode new_k = NULL;
-  simpnode k0 = NULL;
-  simpnode k1 = NULL;
-  simpnode new_k0 = NULL;
-  simpnode new_k1 = NULL;
-  OPERATOR opr = SIMPNODE_operator(node);
-  TYPE_ID ty = SIMPNODE_rtype(node);
-  INT kids_count = SIMPNODE_kid_count(node);
-
-  if(!SIMP_IS_TYPE_INTEGRAL(ty))
-    return NULL;
-
-  switch(opr){
-
-  //      (a +- b) / c = a/c +- b/c
-
-  case OPR_ADD:
-  case OPR_SUB:
-    k0 = SIMPNODE_kid0(node);
-    k1 = SIMPNODE_kid1(node);
-    if (SIMP_Is_Constant(k0)){
-      if (SIMPNODE_const_val(k0) % c1 == 0){
-	val = SIMPNODE_const_val(k0);
-	new_k0 = SIMP_INTCONST(ty,val/c1);
-      }
-      else return NULL;
-    }
-    else if (!(new_k0 = Can_Be_Divided(k0, c1)))
-      return NULL;
-    if (SIMP_Is_Constant(k1)){
-      if (SIMPNODE_const_val(k1) % c1 == 0){
-	val = SIMPNODE_const_val(k1);
-	new_k1 = SIMP_INTCONST(ty,val/c1);
-      }
-      else return NULL;
-    }
-    else if (!(new_k1 = Can_Be_Divided(k1, c1)))
-      return NULL;
-    new_k = SIMPNODE_SimpCreateExp2(OPC_FROM_OPR(opr,ty),new_k0,new_k1);
-    break;
-      
-     //      a * c / c = a
-    
-  case OPR_MPY:
-    k0 = SIMPNODE_kid0(node);
-    k1 = SIMPNODE_kid1(node);
-    if (SIMP_Is_Constant(k1)){
-      if (SIMPNODE_const_val(k1) % c1 == 0){
-	val = SIMPNODE_const_val(k1);
-	new_k1 = SIMP_INTCONST(ty,val/c1);
-	new_k = SIMPNODE_SimpCreateExp2(OPC_FROM_OPR(opr,ty),k0,new_k1);
-	break;
-      }
-      else return NULL;
-    }
-    else if (new_k1 = Can_Be_Divided(k1, c1)){
-      new_k = SIMPNODE_SimpCreateExp2(OPC_FROM_OPR(opr,ty),k0,new_k1);
-      break;
-    }
-    else if (new_k0 = Can_Be_Divided(k0, c1)){
-      new_k = SIMPNODE_SimpCreateExp2(OPC_FROM_OPR(opr,ty),new_k0,k1);
-    break;
-    }
-    else return NULL;
-
-  case OPR_DIV:;
-  default:
-    return NULL;
-  }
-  return new_k;
-}
-#endif  
 #endif  
 
 
@@ -3284,35 +3206,6 @@ static simpnode  simp_div( OPCODE opc,
    }
 
 #ifdef KEY
-#if 0
-   // Yan Xie implemented this optimization but, 
-   // there is a problem with Can_Be_Divided. 
-   // Whenever the function fails (meaning it returns NULL), 
-   // it would have modified the WHIRL tree properties 
-   // (for example, the parent map), but it disables the following
-   // optimization. Because the optimization does not take effect,
-   // the WHIRL tree is left un-modified, but the new properties 
-   // may not be correct.
-   if( k0const && SIMP_IS_TYPE_INTEGRAL(ty) ){
-     if( SIMP_Int_ConstVal(k0) == 0 ){
-       SHOW_RULE(" 0 / x	");
-       SIMP_DELETE(k0);
-       SIMP_DELETE(k1);
-       return SIMP_INTCONST(ty,0);
-     }
-   }
-            
-   if( k1const && SIMP_IS_TYPE_INTEGRAL(ty)
-       && SIMP_Int_ConstVal(k1) != 0 ){
-     simpnode new_k0 = NULL;
-     c1 = SIMP_Int_ConstVal(k1); 
-     if( new_k0 = Can_Be_Divided(k0,c1)){
-       SIMP_DELETE(k1);
-       return new_k0;
-     }
-   }
-   
-#endif
 #endif
 
    if (!Enable_Cfold_Aggressive || r) return(r);
@@ -6191,18 +6084,6 @@ simpnode simp_cvtl(OPCODE opc, INT16 cvtl_bits, simpnode k0)
       }
       break;
 
-#if 0 // this rule is wrong because of the number 0x8000 in 16 bits;
-      // ABS(I4CVTL16(0x8000)) == 0x8000, and I4CVTL(0x8000) == 0xffff8000
-      // i.e. the negation of MININT is itself 
-    case OPR_ABS:
-       k1 = SIMPNODE_kid0(k0);
-       if (SIMPNODE_opcode(k1) == opc &&
-	   SIMPNODE_cvtl_bits(k1) == cvtl_bits) {
-	  SHOW_RULE("CVTL n (ABS CVTL n (X))");
-	  r = k0;
-       }
-       break;
-#endif
 
     case OPR_LT:
     case OPR_LE:

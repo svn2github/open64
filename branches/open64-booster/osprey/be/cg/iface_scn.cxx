@@ -923,10 +923,6 @@ Update_Interface_Scn( INTERFACE_SCN *iface_scn )
 
   if ( sym != NULL ) {
 Is_True((pINTERFACE_SCN_eid(iface_scn).symbol != 0), ("null elf index in Update_Interface_Scn"));
-#if 0
-    /* get the Elf symbol number associated with this symbol */
-    pINTERFACE_SCN_eid(iface_scn).symbol = EMT_Put_Elf_Symbol (sym);
-#endif
   }
 }
 

@@ -69,7 +69,6 @@
 // the full (old symtab) version of the file.
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -709,27 +708,6 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
 				      !is_fortran &&
 				      !node->Has_No_Aggr_Cprop()));
 	
-#if 0	/* sample code sequence for calling preopt */
-	WN *pu_wn = node->Whirl_Tree();
-	REGION_Initialize(pu_wn, FALSE);
-
-	Current_PU = WN_st(pu_wn);
-
-	MEM_POOL_Push(&MEM_local_pool);
-
-	Set_Error_Phase ("Global Optimizer");
-	IPO_Load_Preopt();
-	DU_MANAGER* du_mgr = Create_Du_Manager(MEM_pu_nz_pool_ptr);
-	ALIAS_MANAGER* alias_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr);
-
-	WN *opt_pu = Pre_Optimizer(PREOPT_IPA1_PHASE, pu_wn, du_mgr, alias_mgr);
-	node->Set_Whirl_Tree(opt_pu);
-
-	Delete_Du_Manager(du_mgr,MEM_pu_nz_pool_ptr);
-	Delete_Alias_Manager(alias_mgr,MEM_pu_nz_pool_ptr);
-
-	MEM_POOL_Pop(&MEM_local_pool);
-#endif
   }
 
   return node;
@@ -975,12 +953,6 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	}
 #endif // TODO
 	    
-#if 0
-	if (cg->Graph()->Is_Recursive_Edge(edge->Edge_Index())) {
-	    caller->Set_Undeletable();
-	    callee->Set_Undeletable();
-	}
-#endif
 	    
 	if (!edge->Is_Processed ())
 	    IPO_Process_edge (caller, callee, edge, cg);
@@ -1118,11 +1090,6 @@ Preorder_annotate_PU_and_kids(const char *const input_file_name,
   // Read the analyzed PU from the input file
   Read_Local_Info(MEM_pu_nz_pool_ptr, current_pu);
 
-#if 0
-  if (PU_Info_state(current_pu, WT_AC_INTERNAL) != Subsect_InMem) {
-    ErrMsg(EC_IR_Scn_Read, "alias class internal map", input_file_name);
-  }
-#endif
 
   Ip_alias_class->Finalize_memops(PU_Info_tree_ptr(current_pu));
 

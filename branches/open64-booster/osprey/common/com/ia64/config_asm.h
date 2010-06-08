@@ -195,6 +195,8 @@ static char *config_asm_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/com
 #define AS_IDENT	"#ident" /* Make this ASM_CMNT_START if no ident */
 // bug fix for OSP_155
 #define AS_HIDDEN	".hidden"
+#define AS_INTERNAL     ".internal"
+#define AS_PROTECTED    ".protected"
 
 /* The directive for emitting an address depends on the target pointer
  * size.  The following is defined and initialized in config_targ.c:

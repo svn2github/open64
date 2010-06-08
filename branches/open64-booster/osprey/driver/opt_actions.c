@@ -565,51 +565,6 @@ Process_Targ_Group ( char *targ_args )
 
 	break;
 
-#if 0	  /* temporary hack by gbl -- O_WlC no longer exists due to a change in OPTIONS */
-      case 'e':
-	if ( strncasecmp ( cp, "exc_enable", 10 ) == 0 && *(cp+10) == '=' ) {
-  	  int flag;
-  	  buffer_t buf;
-	  int mask = 0;
-	  cp += 11;
-    	  while ( *cp != 0 && *cp != ':' ) {
-	    switch (*cp) {
-	    case 'I': mask |= (1 << 5); break;
-	    case 'U': mask |= (1 << 4); break;
-	    case 'O': mask |= (1 << 3); break;
-	    case 'Z': mask |= (1 << 2); break;
-	    case 'D': mask |= (1 << 1); break;
-	    case 'V': mask |= (1 << 0); break;
-	    }
-	    ++cp;
-	  }
-	  flag = add_string_option(O_WlC, "-defsym,_IEEE_ENABLE_DEFINED=1");
-	  add_option_seen (flag);
-	  sprintf(buf, "-defsym,_IEEE_ENABLE=%#x", mask);
-	  flag = add_string_option(O_WlC, buf);
-	  add_option_seen (flag);
-	} else {
-#ifdef TARG_X8664
-          // non abi TARG options
-          // aes and avx
-	  if (!strncasecmp(cp, "aes=on", 6)){
-	    add_option_seen(O_maes);
-	    toggle(&aes, TRUE);
-	  }else if (!strncasecmp(cp, "aes=off", 7)){
-	    add_option_seen(O_mno_aes);
-	    toggle(&aes, FALSE);
-	  }else if (!strncasecmp(cp, "avx=on", 6)){
-	    add_option_seen(O_mavx);
-	    toggle(&avx, TRUE);
-	  }else if (!strncasecmp(cp, "avx=off", 7)){
-	    add_option_seen(O_mno_avx);
-	    toggle(&avx, FALSE);
-          }
-#endif
-        }
-
-	break;
-#endif
 
       case 'f':
 #ifdef TARG_X8664
@@ -2192,16 +2147,6 @@ Get_x86_ISA_extensions ()
     sse3 = TRUE;
   }
 
-#if 0 //temporarily disable it until we have assembler and linker support for
-      //sse4a instructions
-  // Use SSE4a on systems that supports it.
-  if (target_supports_sse4a &&
-      sse2 != FALSE &&  
-      sse4a != FALSE){//not explicitly turned off
-    sse2 = TRUE;
-    sse4a = TRUE;
-  }
-#endif
   if (target_supports_ssse3 &&
       sse2 != FALSE &&  
       ssse3 != FALSE){//not explicitly turned off

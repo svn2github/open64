@@ -284,9 +284,6 @@ next_real_field (gs_t type_tree, gs_t field)
 
   if (field == gs_type_vfield(type_tree))
   {
-#if 0 // bug 13102
-    Is_True (lang_cplus, ("next_real_field: TYPE_VFIELD used for C"));
-#endif
     first_real_field = TRUE; // return first real field
   }
 
@@ -1121,17 +1118,13 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 
 			if ((TY_align (fty_idx) > align) || (TY_is_packed (fty_idx)))
 				Set_TY_is_packed (ty);
-#if 1 // wgen bug 10470
 			if (! gs_tree_this_volatile(field))
 			  Clear_TY_is_volatile (fty_idx);
-#endif
 			Set_FLD_type(fld, fty_idx);
 
 			if ( ! gs_decl_bit_field(field)
-#if 1 // wgen bug 10901
 			  	&& gs_tree_code(gs_tree_type(field)) != GS_RECORD_TYPE
 			  	&& gs_tree_code(gs_tree_type(field)) != GS_UNION_TYPE
-#endif
 			  	&& gs_decl_size(field) // bug 10305
 				&& gs_get_integer_value(gs_decl_size(field)) > 0
 #ifdef KEY
@@ -1497,7 +1490,6 @@ Create_DST_For_Tree (gs_t decl_node, ST* st)
   return;
 }
 
-#if 1 // wgen
 // if there is a PARM_DECL with the same name (as opposed to same node), 
 // use the ST created for it
 ST *
@@ -1520,7 +1512,6 @@ Search_decl_arguments(char *name)
   }
   return NULL;
 }
-#endif
 
 #ifdef KEY // bug 12668
 static BOOL
@@ -1716,24 +1707,6 @@ Create_ST_For_Tree (gs_t decl_node)
         
 #ifdef KEY
     case GS_RESULT_DECL: // bug 3878
-#if 0
-    // wgen clean-up: These codes, needed to handle gimplified GNU tree
-       should not be needed any more.
-      if (TY_return_in_mem
-          (Get_TY
-           (gs_tree_type
-            (gs_tree_type
-             (Current_Function_Decl()) ) ) ) )
-      {
-        // We should have already set up the first formal for holding
-        // the return object.
-        WN *first_formal = WN_formal(Current_Entry_WN(), 0);
-        if (!get_DECL_ST(decl_node))
-          set_DECL_ST(decl_node, WN_st(first_formal));
-        return get_DECL_ST(decl_node);
-      }
-      // fall through
-#endif
 #endif
     case GS_PARM_DECL:
     case GS_VAR_DECL:
@@ -1938,9 +1911,7 @@ Create_ST_For_Tree (gs_t decl_node)
 		Set_TY_is_const (ty_idx);
 	if (gs_tree_this_volatile(decl_node))
 		Set_TY_is_volatile (ty_idx);
-#if 1 // wgen bug 10470
 	else Clear_TY_is_volatile (ty_idx);
-#endif
 #ifdef KEY
         // Handle aligned attribute (bug 7331)
         if (gs_decl_user_align (decl_node))

@@ -47,7 +47,6 @@
 
 // -*-C++-*-
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -644,14 +643,6 @@ static SANITY_CHECK_RVAL SNL_Sanity_Check_Loop(WN* wn, INT depth)
     SC_ASSERT((r.has_loops == FALSE) == (dli->Is_Inner != FALSE),
               ("sanity check failed: index=%s (%p): has_loops: %d %d",
                indexname, wn, r.has_loops, dli->Is_Inner));
-#if 0
-    // this would be a good idea, but the malloc() and free() cannot
-    // be marked bad without messing up the dependence graph, so
-    // we have to make r.has_calls recognize that malloc/free are not calls.
-    SC_ASSERT((r.has_calls == FALSE) == (dli->Has_Calls == FALSE),
-              ("sanity check failed: index=%s (%p): has_calls: %d %d",
-               indexname, wn, r.has_calls, dli->Has_Calls));
-#endif
     SC_ASSERT(depth+1 == dli->Depth,
               ("sanity check failed: index=%s (%p): depth: %d %d",
                indexname, wn, depth+1, dli->Depth));
@@ -729,14 +720,6 @@ WN* SNL_Sanity_Check_Exp(WN* wn)
   }
 
   if (opr == OPR_STID) {
-#if 0
-    if (!Alias_Mgr->Id(wn)) {
-      fprintf(stdout,
-              "sanity check warning(%s): missing alias for def of %s in\n",
-              Cur_PU_Name, SYMBOL(wn).Name());
-      fflush(stdout);
-    }
-#endif
     USE_LIST* ul = Du_Mgr->Du_Get_Use(wn);
     if ((!ul || (!ul->Incomplete() && ul->Len() == 0)) &&
         !((ST_class(WN_st(wn))==CLASS_PREG)
@@ -747,15 +730,6 @@ WN* SNL_Sanity_Check_Exp(WN* wn)
     }
   }
   else if (opr == OPR_LDID) {
-#if 0
-    if (!Alias_Mgr->Id(wn)) {
-      fprintf(stdout,
-              "sanity check warning(%s): missing alias for use of %s in\n",
-              Cur_PU_Name, SYMBOL(wn).Name());
-      WN* prnt = LWN_Get_Parent(wn);
-      fflush(stdout);
-    }
-#endif
     DEF_LIST* dl = Du_Mgr->Ud_Get_Def(wn);
     if (!dl || dl->Len() == 0) {
       DevWarn("sanity check warning(%s): missing defs for use (%p) of %s <%s> <id %d:%d>\n",

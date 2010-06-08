@@ -106,9 +106,6 @@ private:
   void Save_occurrence_as_l_value(EXP_OCCURS *occur);
   void Save_shrunk_lr_def(EXP_OCCURS *occur);
 
-#if 0
-  CODEREP *Save_and_replace(EXP_OCCURS *);
-#endif
 
   // strength-reduction related functions
   CODEREP *Get_new_temp_cr(void) const;
@@ -154,14 +151,10 @@ ETABLE::Generate_stid_to_preg( CODEREP *lhs, CODEREP *rhs, MTYPE rhs_type,
     else if (MTYPE_size_min(rhs->Dtyp()) == 32 &&
 	     MTYPE_size_min(lhs->Dsctyp()) == 64 &&
 	     inCODEKIND(rhs->Kind(), CK_VAR|CK_IVAR)) {
-#if 1
       if (MTYPE_signed(rhs->Dtyp()))
         new_cr->Init_expr(OPC_I8I4CVT, rhs);
       else new_cr->Init_expr(OPC_U8U4CVT, rhs);
       rhs = Rehash_exp(new_cr, Gvn(rhs));
-#else // this is no good because U4U4LDID to U8U4LDID contradicts sign_extd bit
-      rhs->Set_dtyp(Mtype_TransferSize(MTYPE_A8, rhs->Dtyp()));
-#endif
     }
   }
 #endif
@@ -1005,20 +998,8 @@ CSE::Repair_injury_real_phi_opnd( EXP_OCCURS *def, EXP_OCCURS *use, CODEREP *tem
 			 "CSE::Repair_injury_real_phi_opnd: def/use match\n"));
     return temp;
   }
-#if 0
-  if (use->Occurrence() == NULL) {
-    // get the cr that comes from the pred
-    CODEREP *pred_occur = Etable()->Phi_pred_cr( use->Bb() );
-    use->Set_occurrence( pred_occur ); // Stuff in an appropriate occurrence
-  }
-#endif
   CODEREP *iv_def, *iv_use, *multiplier;
   Str_red()->Find_iv_and_mult( def, &iv_def, use, &iv_use, &multiplier);
-#if 0
-  if (use->Occurrence()->Coderep_id() == 0)
-    // for sanity, clear out the phi-pred's occurrence
-    use->Set_occurrence( NULL );
-#endif
   if ( Tracing() ) {
     fprintf( TFile, "Repair_injury_real_phi_opnd: iv_def: " );
     iv_def->Print(0,TFile);
@@ -1087,20 +1068,8 @@ CSE::Repair_injury_phi_phi_opnd( EXP_OCCURS *def, EXP_OCCURS *use,
     ("CSE::Repair_injury_phi_phi_opnd: not phi-pred-occur") );
 
   CODEREP *iv_def, *iv_use, *multiplier;
-#if 0
-  if (use->Occurrence() == NULL) {
-    // Stuff in an appropriate occurrence
-    CODEREP *pred_occur = Etable()->Phi_pred_cr( use->Bb() );
-    use->Set_occurrence( pred_occur );
-  }
-#endif
   // this function can handle real or phi-result defs
   Str_red()->Find_iv_and_mult( def, &iv_def, use, &iv_use, &multiplier);
-#if 0
-  if (use->Occurrence()->Coderep_id() == 0) 
-    // for sanity, clear out the phi-pred's occurrence
-    use->Set_occurrence( NULL );
-#endif
   if ( Tracing() ) {
     fprintf(TFile, "Repair_injury_phi_phi_opnd: phi-pred in BB%d\n",
 	    use->Bb()->Id());
@@ -1119,30 +1088,6 @@ CSE::Repair_injury_phi_phi_opnd( EXP_OCCURS *def, EXP_OCCURS *use,
   return new_t;
 }
 
-#if 0
-// =====================================================================
-// Save_and_replace - common parts of Do_cse cases.
-// =====================================================================
-CODEREP *
-CSE::Save_and_replace(EXP_OCCURS *tos)
-{
-  CODEREP *temp_cr = tos->Get_temp_cr(_worklist, _etable->Htable());
-  if (temp_cr->Defstmt() == NULL) {
-    Is_True(tos->Save_to_temp(),
-	    ("CSE::Save_and_replace: Incorrect Save_to_temp() from step 5"));
-
-    if (tos->Occurs_as_lvalue()) {
-      Save_occurrence_as_l_value(tos);
-    } else {
-      Save_real_occurrence(tos);
-      // rehash tree containing this expr being replaced by temp
-      Etable()->Replace_by_temp(tos, tos->Temp_cr());
-    }
-    _worklist->Inc_save_count();
-  }
-  return temp_cr;
-}
-#endif
 
 // ======================================================================
 // Do_cse_pass_1 - pass 1 of main routine for this file (without a stack). 
@@ -1476,17 +1421,6 @@ CSE::Do_cse_pass_2(void)
 	  if (// exp_phi->Is_live() && // need to keep dead phi around
 	      exp_phi->Will_b_avail()) {
 	    if (!exp_phi->Identity()) {
-#if 0
-	      // to allow LFTR to work
-	      if (WOPT_Enable_Avoid_Rehash && 
-		  _etable->Lftr()->Is_lftr_exp(_worklist->Exp()) &&
-		  occur->Occurrence()->Is_flag_set(CF_OWNED_BY_TEMP)) {
-		// must be CK_OP
-		CODEREP *newcr = CXX_NEW_VARIANT(CODEREP(*occur->Occurrence()),
-			    occur->Occurrence()->Extra_space_used(), &_mempool);
-		occur->Set_occurrence(newcr);
-	      }
-#endif
 	      if (!occur->T_ver_owns_coderep()) {
 	        Is_True(occur->Temp_cr() == NULL,
 		        ("CSE::Do_cse_pass_1: at expression phi, temp_cr of result not NULL"));

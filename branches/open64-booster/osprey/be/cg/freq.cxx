@@ -655,13 +655,6 @@ BOOL WN_Is_Pointer(WN *wn)
     return TRUE;
 
   case OPR_LDID:
-#if 0
-    if (WN_class(wn) == CLASS_PREG) {
-
-      /* need to handle pregs specially, but how...
-       */
-    }
-#endif
     /*FALLTHROUGH*/
 
   case OPR_ILOAD:
@@ -2610,7 +2603,6 @@ Normalize_BB_Frequencies(void)
  */
 BB_SET *FREQ_Find_Never_BBs(MEM_POOL *pool)
 {
-#if 1
   BB_SET *pragma_bbs;
   BB_SET *never_bbs;
   BB *bb;
@@ -2677,75 +2669,6 @@ BB_SET *FREQ_Find_Never_BBs(MEM_POOL *pool)
   } while (!BB_SET_EmptyP(pragma_bbs));
 
   Free_Dominators_Memory();
-#endif
-#if 0
-  BB_SET *never_bbs;
-  INT32 i;
-  BB *bb;
-  BB_MAP topo_map;
-  INT32 max_topo_idx;
-  BB **topo_vec;
-  BOOL never_bbs_added;
-
-  Find_Freq_Hint_Pragmas(&never_bbs, NULL, pool);
-  if (never_bbs == NULL) return NULL;
-
-  topo_map = BB_Topological_Map(NULL, NULL);
-  topo_vec = (BB **)alloca(sizeof(BB *) * PU_BB_Count);
-  bzero(topo_vec, sizeof(BB *) * PU_BB_Count);
-  max_topo_idx = 0;
-  for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
-    INT32 topo_id = BB_MAP32_Get(topo_map, bb);
-    DevAssert(topo_id >= 0 && topo_id <= PU_BB_Count, ("bad <topo_map> value"));
-    if (topo_id > 0) {
-      max_topo_idx = MAX(topo_id, max_topo_idx);
-      topo_vec[topo_id - 1] = bb;
-    }
-  }
-  BB_MAP_Delete(topo_map);
-
-  do {
-    never_bbs_added = FALSE;
-
-    for (i = 0; i <= max_topo_idx; ++i) {
-      BBLIST *edge;
-      BB *bb = topo_vec[i];
-
-     if (bb == NULL) continue;
-
-      if (BB_preds(bb) && !BB_SET_MemberP(never_bbs, bb)) {
-	FOR_ALL_BB_PREDS(bb, edge) {
-	  BB *pred = BBLIST_item(edge);
-	  if (!BB_SET_MemberP(never_bbs, pred)) goto next_fwd_bb;
-	}
-	BB_SET_Union1D(never_bbs, bb, NULL);
-	never_bbs_added = TRUE;
-      }
-
-    next_fwd_bb:
-      ;
-    }
-
-    for (i = max_topo_idx; i >= 0; --i) {
-      BBLIST *edge;
-      BB *bb = topo_vec[i];
-
-      if (bb == NULL) continue;
-
-      if (BB_succs(bb) && !BB_SET_MemberP(never_bbs, bb)) {
-	FOR_ALL_BB_SUCCS(bb, edge) {
-	  BB *succ = BBLIST_item(edge);
-	  if (!BB_SET_MemberP(never_bbs, succ)) goto next_rev_bb;
-	}
-	BB_SET_Union1D(never_bbs, bb, NULL);
-	never_bbs_added = TRUE;
-      }
-
-    next_rev_bb:
-      ;
-    }
-  } while (never_bbs_added);
-#endif
 
   return never_bbs;
 }

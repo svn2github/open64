@@ -1328,12 +1328,6 @@ GRA_Color_Prev_Allocated_Region( GRA_REGION* region )
       continue;
     else {
       // Skip the following to disable coloring of SWP region
-#if 0
-      if ( ! Color_Region_With_Preferences(region,rc) ) {
-      // If we can't get what we want, just take what we already had.
-      DevWarn("Couldn't recolor a previously allocated region. "
-              "Keeping original.");
-#endif
       Choose_Original_Registers(region,rc);
     }
   }
@@ -1627,16 +1621,6 @@ GRA_Color_Complement( GRA_REGION* region )
 			      split_alloc_lr->Format(buff)));
 	priority_count += split_alloc_lr->Priority();
       }
-#if 0
-      // Allocate a reclaimable register to the lrange.  Skip this step because
-      // finding a reclaimable register over the entire lrange is unlikely to
-      // be successful due to high register pressure.  The code is fully
-      // implemented but requires more testing.
-      else if (GRA_reclaim_register &&
-	       Choose_Reclaimable_Register(split_alloc_lr, region)) {
-	priority_count += lr->Priority();
-      }
-#endif
       // Split lrange to fit in a reclaimable register.
       else if (GRA_reclaim_register &&
 	       LRANGE_Split(lr, &iter, &split_alloc_lr, TRUE) &&

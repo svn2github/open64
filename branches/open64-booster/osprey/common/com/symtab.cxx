@@ -2167,7 +2167,6 @@ FILE_INFO::Print (FILE *f) const
     
 
 
-#if 1 // Fix 10-26-2002: Enhancement to reset addr_saved flag before Mainopt
 struct clear_addr_flag_op
 {
     clear_addr_flag_op() {};
@@ -2183,7 +2182,6 @@ Clear_local_symtab_addr_flags(const SCOPE& scope)
 {
   For_all_entries (*scope.st_tab, clear_addr_flag_op(), 1);
 }
-#endif
 
 // function object used in "For_all"
 template <class T>

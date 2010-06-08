@@ -101,9 +101,7 @@ static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon
 #pragma hdrstop
 
 #include <math.h>
-#if 1 // workaround at PathScale for build problem
 #include <float.h>      // FLT_MAX
-#endif
 #include <limits.h>
 
 #include "defs.h"
@@ -176,47 +174,6 @@ static INT split_lunit_count;
 
 // Here are some things I found useful for debugging this module.
 //
-#if 0
-
-/////////////////////////////////////
-static void
-Print_Globals(GRA_BB* gbb, ISA_REGISTER_CLASS rc)
-/////////////////////////////////////
-//
-//  Print the globals that are live in <gbb> and <rc> (from the
-//  BB_LIVE_GLOBALs set).
-//
-/////////////////////////////////////
-{
-  INTERFERE_ITER iter;
-
-  for (iter.Init(gbb->Global_Lranges(rc), gbb->Region()->Subuniverse(rc));
-       ! iter.Done(); iter.Step()) {
-    LRANGE* global_lrange = iter.Current();
-
-    fprintf(stderr,"TN%d\n",TN_number(LRANGE_tn(global_lrange)));
-  }
-}
-
-/////////////////////////////////////
-static void
-Print_Globals_N(INT n, ISA_REGISTER_CLASS rc)
-/////////////////////////////////////
-//
-//  Print the globals that are live in the GRA_BB corresponding to the BB with
-//  _id == <n> (and register class <rc>.
-//
-/////////////////////////////////////
-{
-  BB *bb;
-
-  for ( bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ) {
-    if ( BB_id(bb) == n )
-      Print_Globals(GRA_BB_Get(bb),rc);
-  }
-}
-
-#endif
 
 /////////////////////////////////////
 static BOOL
