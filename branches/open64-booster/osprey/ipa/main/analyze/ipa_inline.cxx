@@ -133,7 +133,7 @@ OPCODE Stid_Opcode [MTYPE_LAST + 1] = {
   ,OPC_BSSTID,    /* MTYPE_BS */
   OPC_A4STID,     /* MTYPE_A4 */
   OPC_A8STID,     /* MTYPE_A8 */
-  OPC_UNKNOWN,    /* MTYPE_C10 */
+  OPC_C10STID,    /* MTYPE_C10 */
   OPC_UNKNOWN,    /* MTYPE_C16 */
   OPC_UNKNOWN,    /* MTYPE_I16 */
   OPC_UNKNOWN     /* MTYPE_U16 */
