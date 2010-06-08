@@ -1944,6 +1944,12 @@ Get_Sorted_Callsite_List (IPA_NODE *n, IPA_CALL_GRAPH *cg,
 
 
 // decide if the given call could be deleted or inlined
+// This function has effects when IPA_Enable_DCE is true.
+// A deletable edge is marked so and the call graph and 
+// call counts are updated.  So the client should make
+// sure that this method is called only once on any edge.
+// In future, we can separate this functionality from
+// Analyze_call().  
 static void
 Analyze_call (IPA_NODE* caller, IPA_EDGE* edge, const IPA_CALL_GRAPH* cg)
 {
@@ -2460,7 +2466,8 @@ Inline_Analyzer::analyze()
   /* traverse all nodes at levelorder */
   for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
 	IPA_NODE* caller = cg_iter.Current();
-        if ( (caller==NULL)) continue;
+        if ( (caller==NULL)
+             || call_in_loop[caller->Array_Index()]) continue;
         analyze_calls_in_caller(caller, the_cg, *cost_vector);
   }
 
