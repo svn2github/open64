@@ -1196,7 +1196,24 @@ LOOP_UNROLL_UTIL::LOOP_UNROLL_UTIL
         }
     }
 
-    _all_blks = _bbs_of_orig_loop;
+    // NOTE: gcc 4.2.* will emit kinda "ambiguous != operator" complains when compiling 
+    //  following assignment.
+    //
+    //   _all_blks = _bbs_of_orig_loop;
+    // 
+    // For a quick workaround, I replace this concise assgnment with unwieldy loop.
+    // TODO: restore it back when following statements are removed from 
+    //   opt_cfg_trans.h
+    //
+    // > #ifdef KEY // fix g++ 3.2 problems
+    // > template <class C>
+    // > bool operator!=(C x, C y) { return !(x == y); }
+    //
+    _all_blks.clear ();
+    for (BB_NODE_LIST::const_iterator iter = _bbs_of_orig_loop.begin (),
+         iter_e = _bbs_of_orig_loop.end (); iter != iter_e; iter++) {
+        _all_blks.push_back (*iter);
+    }
 }
 
 // Establish map between labels of original loop and <clone_idx>-th cloned 
