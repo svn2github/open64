@@ -2431,4 +2431,35 @@ Process_Hugepage_Group(char * hugepage_args)
         add_option_seen(O_HP);
 }
 
+#ifdef TARG_X8664
+
+static void
+Process_fp(char *level)
+{
+    if (!strcmp(level, "strict")) {
+	add_option_seen(add_string_option(O_OPT_, "IEEE_arith=1"));
+	add_option_seen(add_string_option(O_OPT_, "roundoff=0"));
+    }
+    else if (!strcmp(level, "strict-contract")) {
+	/* Same as strict but allow contractions like fma (floating
+	   point multiply and add) if they are available.  */
+	add_option_seen(add_string_option(O_OPT_, "IEEE_arith=1"));
+	add_option_seen(add_string_option(O_OPT_, "roundoff=0"));
+    }
+    else if (!strcmp(level, "relaxed")) {
+	add_option_seen(add_string_option(O_OPT_, "IEEE_arith=2"));
+	add_option_seen(add_string_option(O_OPT_, "roundoff=1"));
+    }
+    else if (!strcmp(level, "aggressive")) {
+	add_option_seen(add_string_option(O_OPT_, "IEEE_arith=3"));
+	add_option_seen(add_string_option(O_OPT_, "roundoff=2"));
+	add_option_seen(add_string_option(O_TENV_, "simd_amask=off"));
+	add_option_seen(add_string_option(O_TENV_, "simd_fmask=off"));
+    }
+    else {
+	warning("Ignored illegal argument: %s in -fp-accuracy", level);
+    }
+}
+#endif
+
 #include "opt_action.i"
