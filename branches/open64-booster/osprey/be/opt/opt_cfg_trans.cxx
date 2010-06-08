@@ -4855,7 +4855,9 @@ PRO_LOOP_INTERCHANGE_TRANS::Top_down_trans(SC_NODE * sc, BOOL do_init)
 	if (inner_loop && inner_loop->Loopinfo()->Is_flag_set(LOOP_PRE_DO)) {
 	  // Do loop fusion 
 	  if (Can_fuse(inner_loop)) {
-	    Do_loop_fusion(inner_loop);
+	    sc_tmp = Do_loop_fusion(inner_loop);
+	    if (sc_tmp)
+	      IF_MERGE_TRANS::Top_down_trans(sc_tmp->Find_kid_of_type(SC_LP_BODY));
 	  }
 
 	  // Do loop distribution
