@@ -6397,13 +6397,16 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
        Set_ST_is_temp_var(st);
       r = AssignExpr(block, WN_kid0(tree), ftype);
       i = AssignExpr(block, WN_kid1(tree), ftype); 
-      WN_INSERT_BlockLast(block, WN_Stid(ftype, 0, st, MTYPE_To_TY(ftype), WN_LdidPreg(ftype, r))); 
-      WN_INSERT_BlockLast(block, WN_Stid(ftype, 8, st, MTYPE_To_TY(ftype), WN_LdidPreg(ftype, i))); 
+      WN_INSERT_BlockLast(block, 
+        WN_Stid(ftype, 0, st, MTYPE_To_TY(ftype), WN_LdidPreg(ftype, r))); 
+      WN_INSERT_BlockLast(block, 
+        WN_Stid(ftype, 8, st, MTYPE_To_TY(ftype), WN_LdidPreg(ftype, i))); 
       tree = WN_Ldid(type, 0, ST_st_idx(st), MTYPE_To_TY(type));
     }
     break;
   case OPR_EQ:
-    if (Action(LOWER_COMPLEX) && MTYPE_is_complex(WN_desc(tree)))
+    if (Action(LOWER_COMPLEX) && (MTYPE_is_complex(WN_desc(tree)) 
+			    || MTYPE_V16C8 == WN_desc(tree)))
     {
       /*
        *  x == y
@@ -6423,7 +6426,8 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
     break;
 
   case OPR_NE:
-    if (Action(LOWER_COMPLEX) && MTYPE_is_complex(WN_desc(tree)))
+    if (Action(LOWER_COMPLEX) && (MTYPE_is_complex(WN_desc(tree)) 
+			    || MTYPE_V16C8 == WN_desc(tree)))
     {
       /*
        *  x != y

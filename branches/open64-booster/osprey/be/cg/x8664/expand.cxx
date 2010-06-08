@@ -5648,6 +5648,8 @@ static void Expand_Complex_Divide( OPCODE opcode, TN *result,
     TN* tmp9 = Build_TN_Like(src1);
     TN* tmp10 = Build_TN_Like(src1);
     TN* tmp11 = Build_TN_Like(src1);
+    TN* tmp12 = Build_TN_Like(src1);
+    TN* tmp13 = Build_TN_Like(src1);
     // TODO: adjust tn size for sd
     Build_OP(TOP_mulsd, tmp1, src2, src2, ops); 
     Build_OP(TOP_unpckhpd, tmp2, src2, src2, ops);
@@ -5657,8 +5659,10 @@ static void Expand_Complex_Divide( OPCODE opcode, TN *result,
     Build_OP(TOP_fmovddup, tmp6, src2, ops);
     Build_OP(TOP_fmul128v64, tmp8, tmp6, src1, ops);
     Build_OP(TOP_shufpd, tmp9, src1, src1, Gen_Literal_TN(1, 1), ops);
-    Build_OP(TOP_fmul128v64, tmp10, tmp9, tmp2, ops);
-    Build_OP(TOP_faddsub128v64, tmp11, tmp10, tmp8, ops);
+    Expand_Neg(tmp12, tmp2, MTYPE_F8, ops);
+    Build_OP(TOP_fmovddup, tmp13, tmp12, ops);
+    Build_OP(TOP_fmul128v64, tmp10, tmp9, tmp13, ops);
+    Build_OP(TOP_faddsub128v64, tmp11, tmp8, tmp10, ops);
     Build_OP(TOP_fdiv128v64, result, tmp11, tmp5, ops);
 
   } else if (opcode == OPC_V16C8DIV) {
