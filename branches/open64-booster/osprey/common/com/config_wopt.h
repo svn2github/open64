@@ -93,7 +93,7 @@ extern UINT32 WOPT_Ip_Alias_Class_Limit;
 extern BOOL WOPT_Ldx_Ratio_RegIns;
 extern BOOL WOPT_Enable_Add_Do_Loop_Info;
 extern BOOL WOPT_Enable_Add_Label_Loop_Info;
-extern BOOL WOPT_Enable_Aggressive_Code_Motion;
+extern UINT32 WOPT_Enable_Aggressive_Code_Motion;
 extern INT32 WOPT_Enable_Aggressive_CM_Limit;	
 extern INT32 WOPT_Enable_Aggressive_CM_Switch_Threshold;
 extern INT32 WOPT_Enable_Aggressive_CM_Branch_Threshold;

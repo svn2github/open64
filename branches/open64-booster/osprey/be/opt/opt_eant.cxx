@@ -116,14 +116,22 @@ BB_has_backedge(BB_NODE *bb, BOOL loop_tail = FALSE)
 //=======================================================================
 // BB_NODE is inside a loop which has a large compgoto or deep branch
 // chain. Here, "large" compgoto means the number of entries is larger
-// than  WOPT_Enable_Aggressive_CM_Threshold (default is 10).
+// than  WOPT_Enable_Aggressive_CM_Switch_Threshold (default is 20).
 // "deep" branch chains means the number of branchs is larger than
-// WOPT_Enable_Aggressive_CM_Threshold. It is not beneficial to do 
-// speculative code motion in this case because register pressure can be high.
+// WOPT_Enable_Aggressive_CM_Branch_Threshold (default is 10). It is not 
+// beneficial to do speculative code motion in this case because
+// register pressure can be high.
 //=======================================================================
 static BOOL 
 BB_in_complex_loop(BB_NODE *bb, std::map<IDTYPE, BOOL> * complex_loop_map, CFG * cfg)
 {
+
+// curtail aggressive code motion if target arch has small 
+// register file (e.g., x86)
+#if defined(TARG_X8664)
+
+    if (WOPT_Enable_Aggressive_Code_Motion >= 2) return FALSE;
+
     std::map<IDTYPE, BOOL>::iterator bb_it = complex_loop_map->find(bb->Id());
     if (bb_it != complex_loop_map->end())
         return (*bb_it).second;
@@ -157,6 +165,9 @@ BB_in_complex_loop(BB_NODE *bb, std::map<IDTYPE, BOOL> * complex_loop_map, CFG *
     }
         
     (*complex_loop_map)[bb->Id()] = FALSE;
+
+#endif
+
     return FALSE;   
 
 }
