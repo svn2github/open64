@@ -850,7 +850,13 @@ static WN *checkForZero(WN *block, TYPE_ID type, PREG_NUM xN, WN *if_else, WN *v
 		  WN_LdidPreg(type, xN),
 		  WN_Zerocon(type));
     else
-      cond = WN_Intconst(MTYPE_I4, 0);
+    {
+      cond = WN_LAND( 
+        WN_EQ(MTYPE_F8, WN_Unary(OPR_FIRSTPART, MTYPE_F8, 
+          WN_LdidPreg(type, xN)), WN_Zerocon(MTYPE_F8)), 
+        WN_EQ(MTYPE_F8, WN_Unary(OPR_SECONDPART, MTYPE_F8, 
+          WN_LdidPreg(type, xN)), WN_Zerocon(MTYPE_F8))); 
+    }
 
     IF = WN_CreateIf(cond, if_then, if_else);
     WN_INSERT_BlockLast(block, IF);

@@ -5500,7 +5500,7 @@ void Expand_Firstpart( OPCODE opcode, TN *result,
 }
 void Expand_Secondpart( OPCODE opcode, TN *result, 
 		     TN *src1, OPS *ops ){
-    Build_OP(TOP_unpckhpd, result, src1, result, ops);
+    Build_OP(TOP_pshufd, result, src1, Gen_Literal_TN(0xe,1), ops);
 }
 static void Expand_Complex_Multiply( OPCODE opcode, TN *result, 
 				     TN *src1, TN *src2, OPS *ops )

@@ -16309,7 +16309,7 @@ static void vcast_complex_types_stmt_expr(WN* tree, WN* parent, INT kid)
   OPCODE opcode = WN_opcode(tree);
   OPERATOR opr = WN_operator(tree);
 
-  if (opr == OPR_FIRSTPART || opr == OPR_SECONDPART)
+  if (opr == OPR_FIRSTPART || opr == OPR_SECONDPART || opr == OPR_IO)
     return;
 
   for (UINT kidno=0; kidno<WN_kid_count(tree); kidno++)
