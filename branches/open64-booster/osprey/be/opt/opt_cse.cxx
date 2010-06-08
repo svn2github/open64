@@ -1298,7 +1298,8 @@ CSE::Do_cse_pass_2(void)
 		    occur->Bb() == end_bb && 
 		    occur->Stmt() == term_test &&
 		    (occur->Occurrence() == term_test->Rhs() ||
-		     occur->Occurrence() == term_test->Rhs()->Opnd(0)))
+		     (term_test->Rhs()->Kind() == CK_OP && 
+                      occur->Occurrence() == term_test->Rhs()->Opnd(0)) ))
 		  occur->Bb()->Loop()->Set_iv_replacement(tempcr);
 	      }
 	    }
