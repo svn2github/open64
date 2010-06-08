@@ -5119,6 +5119,69 @@ Compose_Mem_Op_And_Copy_Info(OP* op, TN* index_tn, TN* offset_tn, TN* scale_tn,
   return new_op;
 }
 
+static
+BOOL examine_backward_bb(BS * visit_set, OP* last_op, OP *def_op, TN* base_tn) 
+{
+
+    Is_True(!BS_MemberP(visit_set, BB_id(OP_bb(last_op))), ("bb should not visited"));
+    Is_True(TN_is_gra_homeable(base_tn), ("only homeable tn is passed"));
+    
+    visit_set = BS_Union1D(visit_set, BB_id(OP_bb(last_op)), &MEM_local_pool);
+    OP* op = NULL;
+    for (op = last_op; op != NULL; op = OP_prev(op)) {
+
+        if (op == def_op)  break;
+
+        if (OP_store(op)) {
+            WN *wn = Get_WN_From_Memory_OP(op);
+            if (wn != NULL) {
+
+                // if there is no alias manager, be conservative
+                if (Alias_Manager == NULL) return TRUE;
+                
+                ALIAS_RESULT result = Aliased(Alias_Manager, TN_home(base_tn), wn);
+                if (result == POSSIBLY_ALIASED || result == SAME_LOCATION )
+                    return TRUE;
+            }
+        }
+   }
+
+   return FALSE;
+
+}
+
+static
+BOOL search_preds_for_alias(BS* visit_set, OP * last_op, OP *def_op, TN* base_tn)
+{
+    if (!BS_MemberP(visit_set, BB_id(OP_bb(last_op)) && 
+        examine_backward_bb(visit_set, last_op, def_op, base_tn)))
+        return TRUE;
+    
+    Is_True(BB_preds_len(OP_bb(last_op))==1, ("should has only one pred"));
+    BBLIST *lst;
+    for (lst = BB_preds(OP_bb(last_op)); lst != NULL; lst = BBLIST_next(lst)) {
+        BB * cur_bb = BBLIST_item(lst);
+        if (search_preds_for_alias(visit_set, BB_last_op(cur_bb), def_op, base_tn)) 
+            return TRUE;
+    }
+
+    return FALSE;
+}
+
+// check whether there is a store that is alias with base_tn's home
+// in the path from def_op to use_op
+static
+BOOL alias_store_in_path(OP* use_op, OP* def_op, TN* base_tn)
+{
+    BB_SET* visit_set = BB_SET_Universe(PU_BB_Count+2, &MEM_local_pool);
+    BS_ClearD(visit_set);
+    
+    if(search_preds_for_alias(visit_set, use_op, def_op, base_tn))
+        return TRUE;
+
+    return FALSE;
+    
+}
 
 BOOL EBO_Merge_Memory_Addr( OP* op,
 			    TN** opnd_tn,
@@ -5182,6 +5245,23 @@ BOOL EBO_Merge_Memory_Addr( OP* op,
   TN* rip = Rip_TN();
   if ( index_tn == rip || base_tn == rip )
     return FALSE;
+
+  // when base_tn is gra_homeable and there is an alias
+  // def in between, we need to make tn to be none homeable
+  // For example,
+  // s1: t = ld x
+  // s2: t1 = t
+  // s3: st x
+  // s4: st t1
+  // after ebo merging address, s4 changes to
+  // s4: st t
+  // If t is homeable and is chosen to be spilled, it will be restored
+  // from its home location at s4. Thus, it will have wrong value. 
+  if(base_tn != NULL && TN_is_gra_homeable(base_tn) &&
+     alias_store_in_path(op, addr_op, base_tn)){
+     Reset_TN_is_gra_homeable(base_tn);
+     Set_TN_home(base_tn, NULL);
+  }
 
   OP* new_op = Compose_Mem_Op_And_Copy_Info(op, index_tn, offset_tn, scale_tn,
 					    base_tn, actual_tninfo);
