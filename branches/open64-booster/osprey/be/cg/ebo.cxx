@@ -4594,10 +4594,15 @@ void EBO_Eliminate_movaps()
           src = OP_opnd( op, CGTARG_Copy_Operand(op));
           TN* result = OP_result( op, 0 );
           if(TN_is_register(src) && TN_is_register(result) && 
-            (TN_register(result) == TN_register(src)))
+            (TN_register(result) == TN_register(src)) &&
+            !Op_has_side_effect(op))
           {
             OP *remove_op = op;
             op = OP_prev( op );
+            if (EBO_Trace_Optimization) {
+              fprintf (TFile, "Remove Redundant OP: ");
+              Print_OP_No_SrcLine (op);
+            }
             BB_Remove_Op( bb, remove_op );
             if (BB_length(bb) == 0)
               break;

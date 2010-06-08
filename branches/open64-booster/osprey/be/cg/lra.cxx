@@ -1235,6 +1235,10 @@ Op_has_side_effect(OP *op)
   
   if ( TN_size(tn1) != TN_size(tn2) ) 
      return true;
+
+  if (Is_Target_64bit() && TN_is_int_retrun_register(tn2)) {
+     return true;
+  }
 #endif
 
   return false;
