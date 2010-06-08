@@ -8475,7 +8475,43 @@ WGEN_Expand_Expr (gs_t exp,
                  if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
                  if (ret_mtype == MTYPE_F4) iopc = INTRN_F4ATAN;
                 else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8ATAN;
-                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'log'");
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'atan'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_ATAN2:
+              case GSBI_BUILT_IN_ATAN2F:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4ATAN2;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8ATAN2;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'atan2'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_SINH:
+              case GSBI_BUILT_IN_SINHF:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4SINH;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8SINH;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'sinh'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_COSH:
+              case GSBI_BUILT_IN_COSHF:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4COSH;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8COSH;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'cosh'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_TANH:
+              case GSBI_BUILT_IN_TANHF:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4TANH;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8TANH;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'tanh'");
                 intrinsic_op = TRUE;
                 break;
 
