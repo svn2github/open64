@@ -1931,7 +1931,22 @@ BOOL Factorize_Stmts(WN *loop, BOOL group)
 }
      
 
-
+static BOOL
+contains_loop_with_delayed_unrolling(WN *loop)
+{
+  for (LWN_ITER* itr = LWN_WALK_TreeIter(loop);
+       itr; itr=LWN_WALK_TreeNext(itr))
+  {
+     WN *wn = itr->wn;
+     if (WN_operator(wn)==OPR_DO_LOOP)
+     {
+        DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
+        if (dli && dli->Delay_Full_Unroll == TRUE)
+          return TRUE;
+     }
+  }
+  return FALSE;
+}
 
 //need to determine which loops are good candidates
 static BOOL Factorize_Loop(WN *loop)
@@ -1978,7 +1993,8 @@ static BOOL Factorize_Loop(WN *loop)
  }
  else
  { 
-   Fully_Unroll_Short_Loops(loop);
+   if (contains_loop_with_delayed_unrolling(loop))
+      Fully_Unroll_Short_Loops(loop);
  }
 
  return has_factorization;
