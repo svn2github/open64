@@ -2039,10 +2039,11 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
           //         so change OP_has_sideeffects to implicit_interactions
           if (TN_is_local_reg(result_tn) &&
 	      (unused_tn_def[result_cl] != NULL) &&
-	      !OP_has_implicit_interactions(op)) {
+	      !OP_has_implicit_interactions(op))
 #else
-          if (TN_is_local_reg(result_tn) && (unused_tn_def[result_cl] != NULL) && !OP_side_effects(op)) {
+          if (TN_is_local_reg(result_tn) && (unused_tn_def[result_cl] != NULL) && !OP_side_effects(op))
 #endif
+	    {
             result_tn = unused_tn_def[result_cl];
             Set_OP_result(op,resnum,result_tn);
 
@@ -2152,10 +2153,11 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 	  ok_to_free_result = FALSE;
 	}
 
-	if (ok_to_free_result) {
+	if (ok_to_free_result)
 #else
-      if (ok_to_free_result && opnum == LR_first_def(clr)) {
+      if (ok_to_free_result && opnum == LR_first_def(clr))
 #endif
+	{
 
 /*
  * Remember all the information needed to free registers.
@@ -2177,8 +2179,11 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 
 #ifdef KEY
       // If ASM writes to a callee-saved register, then add the register to
-      // Callee_Saved_Regs_Used.
-      if (!result_failed &&
+      // Callee_Saved_Regs_Used.  This should not be done when "calculating
+      // fat points", since out-of-range allocations can occur when fat
+      // points are "calculated".
+      if (!Calculating_Fat_Points() &&
+	  !result_failed &&
 	  asm_info &&
 	  REGISTER_SET_MemberP(REGISTER_CLASS_callee_saves(result_cl),
 			       result_reg)) {
