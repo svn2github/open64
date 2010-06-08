@@ -111,7 +111,7 @@ ConstraintGraphNode::setPointsTo(CGNodeId id, CGEdgeQual qual)
 }
 
 StInfo *
-ConstraintGraphNode::stInfo() 
+ConstraintGraphNode::stInfo() const
 { 
   return cg()->stInfo(_cg_st_idx); 
 }
@@ -234,11 +234,7 @@ ModulusRange::build(TY_IDX ty_idx, UINT32 offset, MEM_POOL *memPool)
   if (TY_size(ty) < 1)
     return NULL;
   ModulusRange *modRange = CXX_NEW(ModulusRange(offset,offset+TY_size(ty)-1, 
-						TY_size(ty)
-#ifdef Is_True_On
-						,ty_idx
-#endif
-				     ), memPool);
+						TY_size(ty) ,ty_idx), memPool);
   ModulusRange *childRanges = NULL;
   ModulusRange *curRange = NULL;
   for (FLD_HANDLE fld = TY_flist(ty); !fld.Is_Null(); fld = FLD_next(fld)) {
@@ -253,12 +249,8 @@ ModulusRange::build(TY_IDX ty_idx, UINT32 offset, MEM_POOL *memPool)
       while (TY_kind(Ty_Table[etyIdx]) == KIND_ARRAY)
         etyIdx = TY_etype(Ty_Table[etyIdx]);
       UINT32 elmtSize = TY_size(Ty_Table[etyIdx]);
-      newRange = CXX_NEW(ModulusRange(start,end,elmtSize
-#ifdef Is_True_On
-				      ,
-                                      FLD_type(fld)
-#endif
-),memPool);
+      newRange = 
+         CXX_NEW(ModulusRange(start,end,elmtSize,FLD_type(fld)),memPool);
     }
     else if (TY_kind(fty) == KIND_STRUCT)
       newRange = build(FLD_type(fld),offset+FLD_ofst(fld),memPool);
@@ -363,13 +355,8 @@ void
 ModulusRange::print(FILE *file, UINT32 indent) {
   for (int i = 0; i < indent; i++)
     fprintf(file," ");
-#ifdef Is_True_On
   fprintf(file,"%s [%d, %d] mod: %d\n",
           TY_name(Ty_Table[_ty_idx]),_startOffset,_endOffset,_modulus);
-#else
-  fprintf(file,"[%d, %d] mod: %d\n",
-          _startOffset,_endOffset,_modulus);
-#endif
   if (_child)
     _child->print(file,indent+2);
   if (_next)
@@ -381,12 +368,8 @@ ModulusRange::print(ostream &str,UINT32 indent)
 {
   for (int i = 0; i < indent; i++)
     str << " ";
-#ifdef Is_True_On
   str << TY_name(Ty_Table[_ty_idx]) << " [" << _startOffset << ", " 
       << _endOffset << "]";
-#else
-  str << " [" << _startOffset << ", " << _endOffset << "]";
-#endif
   str << " mod: " << _modulus << endl;
   if (_child)
     _child->print(str,indent+2);
@@ -648,8 +631,9 @@ ConstraintGraph::adjustNodeForKCycle(ConstraintGraphNode *destNode,
             st->mod(kCycle);
           st->applyModulus();
         }
-        adjPointedToNode = pointedToNode->cg()->getCGNode(pointedToNode->cg_st_idx(),
-                                                          pointedToNode->offset());
+        adjPointedToNode = 
+                    pointedToNode->cg()->getCGNode(pointedToNode->cg_st_idx(),
+                                                   pointedToNode->offset());
       }
       // If the K value is <= the size of a pointer and
       // modulus > Pointer_Size then all offsets are mapped to -1.
@@ -657,17 +641,20 @@ ConstraintGraph::adjustNodeForKCycle(ConstraintGraphNode *destNode,
       {
 #if 0
         fprintf(stderr, "Setting -1 on node\n ");
-        node->print(stderr); node->stInfo()->print(stderr);
+        pointedToNode->print(stderr); pointedToNode->stInfo()->print(stderr);
         fprintf(stderr, " due to destNode: \n");
         destNode->print(stderr); destNode->stInfo()->print(stderr);
-        node = node->cg()->getCGNode(node->cg_st_idx(),-1);
+        adjPointedToNode = 
+           pointedToNode->cg()->getCGNode(pointedToNode->cg_st_idx(),-1);
 #endif
 #if 1
         // Instead of -1, reduce the symbol to a single node
-        fprintf(stderr, "Collapsing St cg_st_idx: %llu\n", pointedToNode->cg_st_idx());
+        fprintf(stderr, "Collapsing St cg_st_idx: %llu\n", 
+                pointedToNode->cg_st_idx());
         st->print(stderr, true);
         st->collapse();
-        adjPointedToNode = pointedToNode->cg()->getCGNode(pointedToNode->cg_st_idx(),0);
+        adjPointedToNode = 
+                  pointedToNode->cg()->getCGNode(pointedToNode->cg_st_idx(),0);
 #endif
       }
     }
@@ -678,9 +665,12 @@ ConstraintGraph::adjustNodeForKCycle(ConstraintGraphNode *destNode,
       StInfo *st = pointedToNode->stInfo();
       if (kCycle < st->getModulus(pointedToNode->offset()))
         st->setModulus(kCycle, pointedToNode->offset());
-      adjPointedToNode = pointedToNode->cg()->getCGNode(pointedToNode->cg_st_idx(),
-                                                        pointedToNode->offset());
+      adjPointedToNode = 
+        pointedToNode->cg()->getCGNode(pointedToNode->cg_st_idx(),
+                                       pointedToNode->offset());
     }
+  } else {
+    adjPointedToNode = pointedToNode;
   }
 }
 
@@ -3041,6 +3031,13 @@ StInfo::collapse()
     mod(1);
 
   applyModulus();
+
+  // If we have a -1, collapse -1 with the 0 offset
+  if (firstOffset()->offset() == -1) {
+    firstOffset()->nextOffset()->collapse(firstOffset());
+    firstOffset(firstOffset()->nextOffset());
+    firstOffset()->nextOffset(NULL);
+  }
 }
 
 // Collapse cur with 'this' node
@@ -3239,6 +3236,16 @@ ConstraintGraphNode::merge(ConstraintGraphNode *src)
   src->addFlags(CG_NODE_FLAGS_MERGED);
   if (src->checkFlags(CG_NODE_FLAGS_UNKNOWN))
     addFlags(CG_NODE_FLAGS_UNKNOWN);
+
+  // Add PARENT_COPY edge for -1, if they have different StInfos
+  bool added = false;
+  ConstraintGraphNode *firstOffset = src->stInfo()->firstOffset();
+  if (src->stInfo() != this->stInfo() && firstOffset && 
+      firstOffset->offset() == -1) {
+    ConstraintGraph::addEdge(this, src, ETYPE_COPY, CQ_HZ, 0,
+                             added, CG_EDGE_PARENT_COPY);
+    FmtAssert(added, (":merge: failed to add special parent copy edge"));
+  }
 }
 
 void ConstraintGraphNode::deleteInOutEdges()

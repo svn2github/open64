@@ -169,7 +169,7 @@ private:
                        list<pair<IPA_NODE *,CallSiteId> > &indCallList,
                        list<IPAEdge> &edgeList);
 
-  void findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGraph,
+  bool findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGraph,
                 list<pair<IPA_NODE *,CallSiteId> > &indCallList,
                 list<IPAEdge> &edgeList,
                 IPA_EscapeAnalysis &escAnal);

@@ -271,18 +271,14 @@ public:
   void modulus(UINT32 m)     { _modulus = m; }
   void childIdx(UINT32 i)    { _childIdx = i; }
   void nextIdx(UINT32 i)     { _nextIdx = i; }
-#ifdef Is_True_On
   void ty_idx(UINT32 i)      { _ty_idx = i; }
-#endif
 
   UINT32 startOffset() const { return _startOffset; }
   UINT32 endOffset()   const { return _endOffset; }
   UINT32 modulus()     const { return _modulus; }
   UINT32 childIdx()    const { return _childIdx; }
   UINT32 nextIdx()     const { return _nextIdx; }
-#ifdef Is_True_On
   UINT32 ty_idx()      const { return _ty_idx; }
-#endif
 
   void Init()
   {
@@ -300,9 +296,7 @@ private:
   UINT32 _modulus;
   UINT32 _childIdx;
   UINT32 _nextIdx;
-#ifdef Is_True_On
   TY_IDX _ty_idx;
-#endif
 };
 
 #endif // ipa_be_summary_INCLUDED

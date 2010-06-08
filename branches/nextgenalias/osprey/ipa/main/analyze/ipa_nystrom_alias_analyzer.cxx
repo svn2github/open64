@@ -808,11 +808,8 @@ ConstraintGraph::buildModRange(UINT32 modRangeIdx, IPA_NODE *ipaNode)
   SUMMARY_CONSTRAINT_GRAPH_MODRANGE &summMR = summModRanges[modRangeIdx];
   ModulusRange *mr = CXX_NEW(ModulusRange(summMR.startOffset(), 
                                           summMR.endOffset(),
-                                          summMR.modulus()
-#ifdef Is_True_On
-					  ,summMR.ty_idx()
-#endif
-			       ), _memPool);
+                                          summMR.modulus(),
+					  summMR.ty_idx()), _memPool);
   if (summMR.childIdx() != 0)
     mr->child(buildModRange(summMR.childIdx(), ipaNode));
   if (summMR.nextIdx() != 0)
@@ -1310,11 +1307,12 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
   }
 }
 
-void
-IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGraph,
-                                   list<pair<IPA_NODE *,CallSiteId> > &indCallList,
-                                   list<IPAEdge> &edgeList,
-                                   IPA_EscapeAnalysis &escAnal)
+bool
+IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(
+                              IPA_CALL_GRAPH *ipaCallGraph,
+                              list<pair<IPA_NODE *,CallSiteId> > &indCallList,
+                              list<IPAEdge> &edgeList,
+                              IPA_EscapeAnalysis &escAnal)
 {
   // Walk each indirect call side and determine if there exists a
   // "blackhole" in its points-to set.  If that is the case, then
@@ -1329,53 +1327,61 @@ IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(IPA_CALL_GRAPH *ipaCallGra
               ("Expected indirect CallSite in caller constraint graph"));
     ConstraintGraphNode *icallNode = ConstraintGraph::cgNode(cs->cgNodeId());
     if (escAnal.escaped(icallNode)) {
-        // We have an incomplete indirect call, now connect it up to "everything"
-        if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-          fprintf(stderr,"Incomplete Indirect Call: %s (%d) %s maps to CGNodeId: %d\n",
-                  caller->Name(),id,icallNode->stName(),cs->cgNodeId());
-        STToNodeMap::const_iterator iter = _stToIndTgtMap.begin();
-        for (; iter != _stToIndTgtMap.end(); ++iter) {
-          const ST *st = iter->first;
-          IPA_NODE *ipaNode = iter->second;
-          // If we have a parameter mismatch, then we are likely calling the
-          // wrong function.  We are not yet clear how strong our assertion
-          // can be at this point, depends on language, etc.  So, for now
-          // we experiment with pruning just based on a different number of
-          // formals vs. actuals.
-          if (cs->parms().size() != ipaNode->Num_Formals())
-            continue;
+      // We have an incomplete indirect call, now connect it up to "everything"
+      if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+        fprintf(stderr,
+                "Incomplete Indirect Call: %s (%d) %s maps to CGNodeId: %d\n",
+                caller->Name(),id,icallNode->stName(),cs->cgNodeId());
+      STToNodeMap::const_iterator iter = _stToIndTgtMap.begin();
+      INT numTargets = 0;
+      for (; iter != _stToIndTgtMap.end(); ++iter) {
+        if (numTargets > 1000) {
+          fprintf(stderr, "Too many calls..IPA assumed to be incomplete\n");
+          return false;
+        }
+        const ST *st = iter->first;
+        IPA_NODE *ipaNode = iter->second;
+        // If we have a parameter mismatch, then we are likely calling the
+        // wrong function.  We are not yet clear how strong our assertion
+        // can be at this point, depends on language, etc.  So, for now
+        // we experiment with pruning just based on a different number of
+        // formals vs. actuals.
+        if (cs->parms().size() != ipaNode->Num_Formals())
+          continue;
 
-          // Have we seen this edge before?
-          IPAEdge newEdge(caller->Node_Index(),ipaNode->Node_Index(),id);
-          IndirectEdgeSet::iterator iter = _indirectEdgeSet.find(newEdge);
-          bool isNew = (iter == _indirectEdgeSet.end());
+        // Have we seen this edge before?
+        IPAEdge newEdge(caller->Node_Index(),ipaNode->Node_Index(),id);
+        IndirectEdgeSet::iterator iter = _indirectEdgeSet.find(newEdge);
+        bool isNew = (iter == _indirectEdgeSet.end());
 
-          // Okay, we have a virtual call.  Is the current callee a valid
-          // potential target of this virtual call?
-          if (isNew && cs->checkFlags(CS_FLAGS_VIRTUAL)) {
-            ST_IDX stIdx = st->st_idx;
-            //ST_IDX stIdx = SYM_ST_IDX(ipaNode->cg_st_idx());
-            if (!validTargetOfVirtualCall(cs,stIdx)) {
-              if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-                fprintf(stderr,"  ST: %s, IPA_NODE: %d (not valid target)\n",
-                        ST_name(st),ipaNode->Node_Index());
-              continue;
-            }
-          }
-
-          // New edges are placed in our set of resolved indirect target
-          // edges and placed in the work list for the next round of
-          // call graph preparation.  Eventually we would like to actually
-          // add a true IPA_EDGE to the IPA_CALL_GRAPH here.
-          if (isNew) {
-            _indirectEdgeSet.insert(newEdge);
-            edgeList.push_front(newEdge);
+        // Okay, we have a virtual call.  Is the current callee a valid
+        // potential target of this virtual call?
+        if (isNew && cs->checkFlags(CS_FLAGS_VIRTUAL)) {
+          ST_IDX stIdx = st->st_idx;
+          //ST_IDX stIdx = SYM_ST_IDX(ipaNode->cg_st_idx());
+          if (!validTargetOfVirtualCall(cs,stIdx)) {
             if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-              fprintf(stderr,"  Now calls %s\n",ST_name(st));
+              fprintf(stderr,"  ST: %s, IPA_NODE: %d (not valid target)\n",
+                      ST_name(st),ipaNode->Node_Index());
+            continue;
           }
+        }
+
+        // New edges are placed in our set of resolved indirect target
+        // edges and placed in the work list for the next round of
+        // call graph preparation.  Eventually we would like to actually
+        // add a true IPA_EDGE to the IPA_CALL_GRAPH here.
+        if (isNew) {
+          _indirectEdgeSet.insert(newEdge);
+          edgeList.push_front(newEdge);
+          if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+            fprintf(stderr,"  Now calls %s\n",ST_name(st));
+          numTargets++;
         }
       }
     }
+  }
+  return true;
 }
 
 void
@@ -1514,6 +1520,7 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
   } while (change);
 
+  bool completeIndirect = false;
   { //Limit scope of escape analysis
 
   // We perform escape analysis to determine which symbols may point
@@ -1537,10 +1544,11 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   // we must attach them to possible callee's and perform a final
   // round of solution.  Initially, this may attempt to connect an
   // indirect call with all possible callees.
-  findIncompleteIndirectCalls(ipaCallGraph,indirectCallList,edgeList,escAnal);
+  completeIndirect = 
+    findIncompleteIndirectCalls(ipaCallGraph,indirectCallList,edgeList,escAnal);
   } // Limit scope of escape analysis
   if (!edgeList.empty())  {
-    callGraphPrep(ipaCallGraph,edgeList,delta,revTopOrder,+round);
+    callGraphPrep(ipaCallGraph,edgeList,delta,revTopOrder,round);
     if (!delta.empty()) {
       ConstraintGraphSolve cgsolver(delta,NULL,&_memPool);
       cgsolver.solveConstraints();
@@ -1558,8 +1566,12 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
   IPA_EscapeAnalysis escAnalFinal(_extCallSet,
                                   _ipaConstraintGraphs,
-                                  IPA_Enable_Whole_Program_Mode,
-                                  EscapeAnalysis::IPAComplete,
+                                  completeIndirect
+                                    ? IPA_Enable_Whole_Program_Mode
+                                    : false,
+                                  completeIndirect
+                                    ? EscapeAnalysis::IPAComplete
+                                    : EscapeAnalysis::IPAIncomplete,
                                   &_memPool);
   escAnalFinal.perform();
   escAnalFinal.markEscaped();

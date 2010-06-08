@@ -437,7 +437,6 @@ ConstraintGraphNode::updatePointsToFromDiff()
             ("Node %d should not be merged at the beginning of update.\n",id()));
 
   bool ptsChange = false;
-  bool minusOnePresent = false;
   for ( PointsToIterator pti(this,PtsDiff); pti != 0; ++pti ) {
     PointsTo &diff = *pti;
     PointsTo &dstPts = _getPointsTo(pti.qual());
@@ -463,20 +462,19 @@ ConstraintGraphNode::updatePointsToFromDiff()
       if (checkFlags(CG_NODE_FLAGS_MERGED))
         return false;
 
-      if (minusOnePresent) {
-        if (adjPtNode->offset() != -1) {
-          ConstraintGraphNode *minusOne =
+      if (adjPtNode->offset() != -1) {
+        ConstraintGraphNode *minusOne =
               adjPtNode->cg()->checkCGNode(adjPtNode->cg_st_idx(),-1);
-          // Destination set contains <ST, -1>, so we skip the current node
-          if (minusOne && dstPts.isSet(minusOne->id()))
-            continue;
-        }
-        // The current node is <ST,-1> so we need to remove all
-        // occurrences of <ST,ofst> from the destination set
-        else {
-          ConstraintGraphNode::removeNonMinusOneOffsets(dstPts,adjPtNode->cg_st_idx(),
-                                                        this,pti.qual());
-        }
+        // Destination set contains <ST, -1>, so we skip the current node
+        if (minusOne && dstPts.isSet(minusOne->id()))
+          continue;
+      }
+      // The current node is <ST,-1> so we need to remove all
+      // occurrences of <ST,ofst> from the destination set
+      else {
+        ConstraintGraphNode::removeNonMinusOneOffsets(dstPts,
+                                                      adjPtNode->cg_st_idx(),
+                                                      this,pti.qual());
       }
 
       // Set up the (rev)points-to relationship.
@@ -571,8 +569,10 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
       free(topoOrderArray);
     }
 
+    ++iterCount;
+
     if (trace) {
-      fprintf(stderr,"Solver Iteration %d\n",++iterCount);
+      fprintf(stderr,"Solver Iteration %d\n",iterCount);
       ConstraintGraph::stats();
     }
     do {
@@ -1023,6 +1023,14 @@ ConstraintGraphSolve::updateOffsets(const ConstraintGraphNode *dst,
         ConstraintGraph::solverModList()->push(cur);
       cur = cur->nextOffset();
     }
+  } else {
+    ConstraintGraphNode *firstOffset = dst->stInfo()->firstOffset();
+    if (firstOffset && firstOffset->offset() == -1) {
+      bool change = firstOffset->unionDiffPointsTo(pts, dstQual);
+      // Mark outgoing edges as to be updated....
+      if (change)
+        ConstraintGraph::solverModList()->push(firstOffset);
+    }
   }
 }
 
@@ -1145,9 +1153,9 @@ ConstraintGraphNode::sanityCheckPointsTo(CGEdgeQual qual)
 bool
 ConstraintGraphNode::addPointsTo(ConstraintGraphNode *node, CGEdgeQual qual)
 {
-  FmtAssert(!cg()->buildComplete() || node->offset() != -1,
-            ("Attempting to directly add <%d,%d> to pts\n",
-                SYM_ST_IDX(node->cg_st_idx()),node->offset()));
+//  FmtAssert(!cg()->buildComplete() || node->offset() != -1,
+//            ("Attempting to directly add <%d,%d> to pts\n",
+//                SYM_ST_IDX(node->cg_st_idx()),node->offset()));
   node->addFlags(CG_NODE_FLAGS_ADDR_TAKEN);
   ConstraintGraphNode *repNode = findRep();
   // Check if add to a ptr aligned node. Ignore if we are adding blackholes
@@ -1367,6 +1375,18 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
   bool cntxt = 
        !src->cg()->stInfo(src->cg_st_idx())->checkFlags(CG_ST_FLAGS_NOCNTXT);
 
+  // If the copy edge is a copy from parent to child, we
+  // call updateOffsets on the child, i.e. the dest
+  if (edge->checkFlags(CG_EDGE_PARENT_COPY)) {
+    for (PointsToIterator pti(src); pti != 0; ++pti) {
+      CGEdgeQual srcQual = pti.qual();
+      CGEdgeQual edgeQual = edge->edgeQual();
+      CGEdgeQual dstQual = qualMap(ETYPE_COPY, srcQual, edgeQual, cntxt);
+      updateOffsets(dst, *pti, dstQual);
+      return;
+    }
+  }
+
   CGNodeId trackNodeId = 0;
   PointsTo origPts;
 
@@ -1376,39 +1396,17 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
   INT32 dstStOffset = dst->offset();
   INT32 srcStOffset = src->offset();
   INT32 curEndOffset = src->offset() + assignSize;
-  // Case 1 & 2
-  if (srcStOffset != -1) {
-    CGEdgeQual edgeQual = edge->edgeQual();
-    for ( PointsToIterator pti(src); pti != 0; ++pti ) {
-      CGEdgeQual srcQual = pti.qual();
-      CGEdgeQual dstQual = qualMap(ETYPE_COPY,srcQual,edgeQual,cntxt);
-      if (dstQual != CQ_NONE) {
-        bool change = false;
-        change |= dst->unionDiffPointsTo(src->pointsTo(srcQual), dstQual);
-        if (change) {
-          ConstraintGraph::solverModList()->push(dst);
-          updateOffsets(dst,src->pointsTo(srcQual),dstQual);
-        }
-      }
-    }
-  }
-  // Case 3 & 4
-  else {
-    bool change = false;
-    CGEdgeQual edgeQual = edge->edgeQual();
-    for ( PointsToIterator pti(src); pti != 0; ++pti ) {
-      CGEdgeQual srcQual = pti.qual();
-      CGEdgeQual dstQual = qualMap(ETYPE_COPY,srcQual,edgeQual,cntxt);
-      if (dstQual != CQ_NONE) {
-        if (dst->inKCycle() == 0)
-          change |= dst->unionDiffPointsTo(*pti, dstQual);
-        else {
-          change |= dst->unionDiffPointsTo(*pti,dstQual);
-        }
-        if (change) {
-          ConstraintGraph::solverModList()->push(dst);
-          updateOffsets(dst,*pti,dstQual);
-        }
+
+  CGEdgeQual edgeQual = edge->edgeQual();
+  for ( PointsToIterator pti(src); pti != 0; ++pti ) {
+    CGEdgeQual srcQual = pti.qual();
+    CGEdgeQual dstQual = qualMap(ETYPE_COPY,srcQual,edgeQual,cntxt);
+    if (dstQual != CQ_NONE) {
+      bool change = false;
+      change |= dst->unionDiffPointsTo(src->pointsTo(srcQual), dstQual);
+      if (change) {
+        ConstraintGraph::solverModList()->push(dst);
+        updateOffsets(dst,src->pointsTo(srcQual),dstQual);
       }
     }
   }
@@ -1575,6 +1573,7 @@ ConstraintGraphSolve::addCopiesForLoadStore(ConstraintGraphNode *src,
        continue;
 
 
+#if 0
     // If we are adding an edge <src,ofst1> to <dst, ofst2> and the
     // following edge already exists:
     // (a) ETYPE_LOAD :  <src,-1>   to <dst,ofst2>
@@ -1601,11 +1600,13 @@ ConstraintGraphSolve::addCopiesForLoadStore(ConstraintGraphNode *src,
         }
       }
     }
+#endif
 
     CGEdgeSet newEdgeSet;
     added = ConstraintGraph::addPtrAlignedEdges(copySrc, copyDst, ETYPE_COPY,
                                                 qual, size, newEdgeSet);
     if (added) {
+#if 0
      if (nodeRep->offset() == -1) {
         for (CGEdgeSetIterator iter = newEdgeSet.begin();
              iter != newEdgeSet.end(); iter++) {
@@ -1613,6 +1614,7 @@ ConstraintGraphSolve::addCopiesForLoadStore(ConstraintGraphNode *src,
           removeFieldSensitiveEdges(etype,newEdge);
         }
       }
+#endif
       edgeDelta().add(newEdgeSet);
     }
   }

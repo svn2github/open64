@@ -432,7 +432,7 @@ public:
 
   char *stName() const;
 
-  StInfo *stInfo();
+  StInfo *stInfo() const;
 
   bool isOnlyOffset();
 
@@ -833,20 +833,13 @@ private:
 class ModulusRange
 {
 public:
-  ModulusRange(UINT32 start, UINT32 end, UINT32 mod
-#ifdef Is_True_On
-	       , TY_IDX ty_idx
-#endif
-):
+  ModulusRange(UINT32 start, UINT32 end, UINT32 mod, TY_IDX ty_idx):
     _startOffset(start),
     _endOffset(end),
     _modulus(mod),
     _child(NULL),
-    _next(NULL)
-#ifdef Is_True_On
-    ,
+    _next(NULL),
     _ty_idx(ty_idx)
-#endif
   {}
 
   UINT32 startOffset()  const { return _startOffset; }
@@ -854,9 +847,7 @@ public:
   UINT32 mod()          const { return _modulus; }
   ModulusRange *child() const { return _child; }
   ModulusRange *next()  const { return _next; }
-#ifdef Is_True_On
   TY_IDX ty_idx()       const { return _ty_idx; }
-#endif
 
   void mod(UINT32 m)           { _modulus = m; }
   void endOffset(UINT32 o)     { _endOffset = o; }
@@ -980,9 +971,7 @@ private:
   UINT32        _modulus;
   ModulusRange *_child;
   ModulusRange *_next;
-#ifdef Is_True_On
-  TY_IDX        _ty_idx;          // For debug
-#endif
+  TY_IDX        _ty_idx;
 };
 
 // Class to represent symbol specific info that is common to all

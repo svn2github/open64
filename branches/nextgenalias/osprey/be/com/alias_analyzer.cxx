@@ -26,12 +26,17 @@ AliasAnalyzer *AliasAnalyzer::_alias_analyzer = NULL;
 AliasAnalyzer *
 AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree)
 {
-  if (_alias_analyzer != NULL)
+  if (_alias_analyzer != NULL) {
+    // Activate the use of the Nystrom points-to analysis by the
+    // ALIAS_RULE harness and disable alias classification rules.
+    //ac |= ALIAS_ANALYZER_RULE;
+    //ac &= ~(CLAS_RULE|IP_CLAS_RULE);
     return _alias_analyzer;
+  }
 
   // What alias analyzer are we going to use?
   if ( Alias_Nystrom_Analyzer ) {
-    if (Read_ALIAS_CGNODE_Map)
+    if (FILE_INFO_ipa(File_info))
       _alias_analyzer = new NystromAliasAnalyzer(ac, tree, true);
     else
       _alias_analyzer = new NystromAliasAnalyzer(ac, tree);

@@ -3409,9 +3409,7 @@ SUMMARIZE<program>::processModRange(ModulusRange *mr)
   summMR->startOffset(mr->startOffset());
   summMR->endOffset(mr->endOffset());
   summMR->modulus(mr->mod());
-#ifdef Is_True_On
   summMR->ty_idx(mr->ty_idx());
-#endif
   if (mr->child()) {
     INT cidx = processModRange(mr->child());
     // Get the summMR, since after a realloc of the underlying DYN_ARRAY

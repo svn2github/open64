@@ -59,8 +59,6 @@ EscapeAnalysis::addStFlagsAll(ConstraintGraphNode *node, UINT32 flags)
     return;
   }
   ConstraintGraphNode *cur = node->stInfo()->firstOffset();
-  if (cur && cur->offset() == -1)
-    cur = cur->nextOffset();
   while (cur) {
     addStFlags(cur,flags);
     cur = cur->nextOffset();
@@ -94,14 +92,22 @@ EscapeAnalysis::addStToWorkList(ConstraintGraphNode *node)
   if (node == ConstraintGraph::notAPointer())
     return;
 
-  StInfo *stInfo = node->stInfo();
-  ConstraintGraphNode *cur = stInfo->firstOffset() ? stInfo->firstOffset()
-                                                   : node;
   if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
     fprintf(stderr,"ESCANAL:      adding all nodes for this ST to worklist- ");
     printStFlags(findStFlags(node));
     fprintf(stderr,"\n");
   }
+
+  if (node->stInfo()->checkFlags(CG_ST_FLAGS_PREG)) {
+    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+      fprintf(stderr, "ESCANAL:       node %d (ST)\n",node->id());
+    _workList.push(node);
+    return;
+  }
+
+  ConstraintGraphNode *cur = node->stInfo()->firstOffset();
+  if (cur && cur->offset() == -1)
+    cur = cur->nextOffset();
   while (cur) {
     if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
       fprintf(stderr, "ESCANAL:       node %d (ST)\n",cur->id());
@@ -572,6 +578,8 @@ EscapeAnalysis::processContEscapeNode(ConstraintGraphNode *node)
        if (edge->edgeQual() == CQ_GBL || edge->edgeQual() == CQ_UP ||
            edge->edgeQual() == CQ_DN)
          continue;
+     if (edge->destNode()->offset() == -1)
+       newContEscapeSt(edge->destNode(), nodeStFlags);
      newContEscapeNode(edge->destNode(),nodeStFlags);
   }
 
@@ -639,6 +647,8 @@ EscapeAnalysis::processPropEscapeNode(ConstraintGraphNode *node)
       if (edge->edgeQual() == CQ_GBL || edge->edgeQual() == CQ_UP ||
           edge->edgeQual() == CQ_DN)
       continue;
+    if (edge->srcNode()->offset() == -1)
+      newPropEscapeSt(edge->srcNode(), nodeStFlags);
     newPropEscapeNode(edge->srcNode(),nodeStFlags);
   }
 
@@ -649,8 +659,12 @@ EscapeAnalysis::processPropEscapeNode(ConstraintGraphNode *node)
   for (PointsToIterator pti(node); pti != 0; ++pti) {
     if (!_summaryMode || pti.qual() == CQ_HZ) {
       PointsTo &pts = *pti;
-      for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter)
-        newFullEscapeNode(ConstraintGraph::cgNode(*iter),nodeStFlags);
+      for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
+        ConstraintGraphNode *n = ConstraintGraph::cgNode(*iter);
+        if (n->offset() == -1)
+          newFullEscapeNode(n->nextOffset(),nodeStFlags);
+        newFullEscapeNode(n,nodeStFlags);
+      }
     }
   }
 }
