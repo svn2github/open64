@@ -313,6 +313,8 @@ private:
 
   void     Set_rebuild_loops(void) { _rebuild_loops = TRUE; }
 
+  void     Canon_loop_end_br (BB_LOOP*, IV_CAND*);
+
 public:
   IVR(COMP_UNIT *cu, BOOL trace);
   ~IVR(void);

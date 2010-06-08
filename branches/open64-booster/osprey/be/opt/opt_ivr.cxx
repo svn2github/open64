@@ -2773,6 +2773,99 @@ IVR::Update_exit_stmt(const IV_CAND *secondary,
   Inc_exit_value_counter();
 }
 
+// This function is to canonicalize loop-exit brach. The necessity can 
+// be explained by the following example:
+//
+//   for (int i = n ; i < m; i++) { ... }
+// 
+// IVR introduces a var, say <prim_iv>, serveing as primary IV, making <i> 
+// secondary IV. Replace_secondary_IV() will replace all secondary IVs with 
+// <prim_iv>'s linear expr. In this case, the result would be:
+//
+//   for (int prim_iv = 0 ; (prim_iv + n) < m; prim_iv++) { ... }
+//
+//  The loop-exit branch is awkward. It is desirable to be in the form of:
+//      "prim_iv < m-n"
+//  This function is to serve for that purpose.
+//
+void
+IVR::Canon_loop_end_br (BB_LOOP* loop, IV_CAND* prim_iv_cand)
+{
+  if (!prim_iv_cand->Init_value () ||
+      prim_iv_cand->Init_value()->Kind () != CK_CONST ||
+      prim_iv_cand->Init_value()->Const_val () != 0) {
+    // TODO: handle these cases. These cases are possible if IVR is invoked 
+    //   in WOPT phase.
+    return;
+  }
+
+  STMTREP *stmt = loop->End()->Last_stmtrep();
+  if (stmt->Opr() != OPR_TRUEBR && stmt->Opr() != OPR_FALSEBR)
+    return; 
+
+  // step 1: Check to see if the loop-exit branch is in the form of
+  //   "secondary_iv <cm_op> up-bound".
+  //
+  CODEREP* cmp = stmt->Rhs ();
+  CODEREP* kid0 = cmp->Opnd (0);
+  CODEREP* kid1 = cmp->Opnd (1);
+
+  if (kid0->Kind () != CK_VAR)
+    return;
+
+  // figure out which secondary IV is involed in the branch
+  //
+  IV_CAND* second_iv_cand = NULL; 
+  for (vector<IV_CAND*>::iterator iter = iv_cand_container.begin(); 
+       iter != iv_cand_container.end(); iter++) {
+    
+    IV_CAND *iv = *iter;
+    if (iv->Var () && iv->Var()->Aux_id() == kid0->Aux_id ()) {
+      second_iv_cand = iv; 
+      break;
+    }
+  }
+
+  if (!second_iv_cand)
+    return;
+
+  CODEREP* second_iv = second_iv_cand->Var ();
+  CODEREP* prim_iv = prim_iv_cand->Var ();
+  if (second_iv->Aux_id () == prim_iv->Aux_id ()) {
+    // don't bother. It is already canonilocalized
+    //
+    return;
+  }
+
+  if (second_iv_cand->Step_value () == NULL ||
+      second_iv_cand->Step_value ()->Kind () != CK_CONST ||
+      second_iv_cand->Step_value ()->Const_val () != 1) {
+    // TODO: handle non-unit stride
+    return;
+  }
+  
+  MTYPE second_iv_ty = second_iv->Dtyp ();
+  MTYPE prim_iv_ty = prim_iv->Dtyp ();
+
+  if (MTYPE_is_signed (second_iv_ty) != MTYPE_is_signed (prim_iv_ty) ||
+      MTYPE_byte_size (second_iv_ty) != MTYPE_byte_size (prim_iv_ty)) {
+    // TODO: handle these cases.
+    return;
+  }
+
+  // step 2: generate normalized comparision: "<prim_iv> <cmp_op> expr".
+  //
+  OPCODE subop = OPCODE_make_op (OPR_SUB, prim_iv->Dtyp (), MTYPE_V);
+  CODEREP* norm_iv = Htable()->Add_bin_node_and_fold (subop, 
+                                kid1, second_iv_cand->Init_value());
+                                     
+  OPCODE cmp_op = OPCODE_make_op (cmp->Opr (), prim_iv->Dtyp(), prim_iv->Dtyp());
+  CODEREP* new_cmp = Htable()->Add_bin_node_and_fold (cmp_op, prim_iv, norm_iv);
+
+  // step 3: update the branch statement
+  //
+  stmt->Set_rhs (new_cmp);
+}
 
 // ====================================================================
 //
@@ -2906,6 +2999,8 @@ IVR::Convert_all_ivs(BB_LOOP *loop)
 
   loop->Set_iv(primary->Var());
   if (_trace) { fprintf(TFile, "PRIMARY "); primary->Print(TFile); }
+
+  Canon_loop_end_br (loop, primary);
 
   for (iv_cand_iter = iv_cand_container.begin(); 
        iv_cand_iter != iv_cand_container.end();
