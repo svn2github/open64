@@ -192,7 +192,7 @@ MDfile_init ( MDfile_t *m ) {
 static
 int	
 MDtoolcmp ( const char *tool, const char *s, int slen ) {
-	const char *t;
+	char	*t;
 	int	toollen;
 	
 	t = strpbrk(tool," \n");	
@@ -215,7 +215,7 @@ MDtoolcmp ( const char *tool, const char *s, int slen ) {
 static
 int	
 MDtargcmp ( const char *targ, const char *s, int slen ) {
-	const char *t;
+	char	*t;
 	int	targlen;
 	
 	t = strpbrk(targ,": ");	
@@ -226,6 +226,28 @@ MDtargcmp ( const char *targ, const char *s, int slen ) {
 	return strncmp(targ,s,slen);
 }
 
+#if 0
+/*
+ * MDstrcatdup
+ *
+ * Concatenates the two strings into a new, malloc'd string and
+ * returns the pointer to the new string. 
+ *
+ */
+static
+char * MDstrcatdup ( const char *s1, const char *s2 ) {
+	int s1_len, s2_len, targ_len;
+	char *targ;
+	s1_len	= strlen(s1);
+	s2_len	= strlen(s2);
+	targ_len= s1_len + s2_len;
+	targ = (char*)malloc(targ_len);
+	bcopy(s1,targ,s1_len);
+	bcopy(s2,&targ[s1_len], s2_len);
+	targ[targ_len]='\0';
+	return targ;
+}
+#endif
 
 /*
  * MDnewstab

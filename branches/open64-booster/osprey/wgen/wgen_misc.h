@@ -157,6 +157,10 @@ extern void WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *,
 void Add_Pragma_To_MP_Regions (WN_VECTOR *, WN_PRAGMA_ID, ST *, WN_OFFSET,
                                WN_MAP, BOOL, BOOL);
 #endif
+#if 0
+extern char *Spin_File_Name;
+extern FILE *Spin_File;
+#endif
 extern UINT current_file;		/* from wgen_dst.cxx */
 
 // get the srcpos info from the global variable lineno

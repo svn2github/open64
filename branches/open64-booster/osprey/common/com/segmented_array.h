@@ -535,6 +535,25 @@ For_all_entries (SEGMENTED_ARRAY<T, block_size>& array, const OP &op,
 // The following function is ifdefed out because, until we have
 // partial ordering of function templates, the compiler will flag it
 // as ambiguous.
+#if 0
+
+template <class T, UINT block_size, class OP>
+inline void
+For_all_entries (const SEGMENTED_ARRAY<T, block_size>& array, const OP &op,
+		 UINT32 first = 0)
+{
+    UINT last = array.size ();
+
+    while (first < last) {
+	const T *block = &array[first];
+	UINT size = array.Get_block_size (first);
+	for (UINT j = 0; j < size; ++j, ++block)
+	    op (first + j, block);
+	first += size;
+    }
+}
+
+#endif
 
 template <class T, UINT block_size, class OP>
 inline void

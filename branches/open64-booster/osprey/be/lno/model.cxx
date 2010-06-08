@@ -319,6 +319,7 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -521,6 +522,22 @@ LOOP_MODEL::Model(WN* wn,
   WN *tmp = wn;
   _blocking_disabled = LNO_Blocking == 0;
 
+#if 0
+  //bug 11567 comments out this. This is because blocking is not the direct
+  //reason that prevents vectorizing an innermost loop except that the block
+  //size may be small in some cases. Instead, the culprit is the interchange.
+#ifdef TARG_X8664
+  // Bug 2456 - if the innerloop is vectorizable then disable blocking for
+  // thae loop.
+  // TODO: If the innerloop overflows the cache then it may still be good to
+  // cache-block. We need a model for estimating the trade-off between 
+  // vectorization and cache-blocking. For now, we may shut this off 
+  // by preventing cache-blocking only under -LNO:simd=2. Need to come across
+  // a case yet. (That case is bug 4672.)
+  //  if (Is_Vectorizable_Loop(wn) && Is_Vectorization_Beneficial(WN_do_body(wn)))
+  //    _blocking_disabled = TRUE;
+#endif
+#endif
 
 #ifdef TARG_X8664
    // Bug 5880: if this loop contains a vectorizable intrinsic, and the user
@@ -773,6 +790,18 @@ LOOP_MODEL::Model(WN* wn,
   }
   if (LNO_Verbose) {
     printf("Evaluated %d combinations\n",_num_evaluations);
+#if 0   // the snl code prints this out later in an easier to read format
+    printf("And the results are:\n");
+    printf("Transform<loop,reg> = (");
+    for (INT b=0; b<num_good+num_bad; b++) 
+      printf("<%d,%d>", _new_order[b], _block_number[b]);
+    if (_nstrips > 0) {
+      printf("cblk(sd=%d)=",_stripdepth);
+      for (INT s=0; s<_nstrips; s++)
+        printf("(%d,%d)",_iloop[s],_stripsz[s]);
+    }
+    printf(")\n");
+#endif
     if (_OP_resource_count==NULL)
       printf("Couldn't accurately evaluate ops\n");
     else if (_num_fp_regs > Target_FPRs)

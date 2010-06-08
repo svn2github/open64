@@ -27,11 +27,19 @@
 #include "gspin-mempool.h"
 
 // following 3 defines must be in sync with each other
+#if 0 // this version for testing
+#define GS_MEMBLOCK_SIZE 0x1000 // must be power of 2 and multiple of
+				 // sizeof(struct gspin) so that we can easily
+				 // convert between index and byte address
+#define GS_BLOCK_IDX_SHIFT_AMT 12
+#define GS_OFST_IN_BLK_MASK 0xfff
+#else
 #define GS_MEMBLOCK_SIZE 0x1000000// must be power of 2 and multiple of
 				 // sizeof(struct gspin) so that we can easily
 				 // convert between index and byte address
 #define GS_BLOCK_IDX_SHIFT_AMT 24
 #define GS_OFST_IN_BLK_MASK 0xffffff
+#endif
 
 gs_arena_t gs_mempool[GS_ARENA_COUNT] = {
 

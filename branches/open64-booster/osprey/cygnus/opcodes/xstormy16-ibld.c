@@ -136,6 +136,11 @@ insert_normal (CGEN_CPU_DESC cd,
   if (length == 0)
     return NULL;
 
+#if 0
+  if (CGEN_INT_INSN_P
+      && word_offset != 0)
+    abort ();
+#endif
 
   if (word_length > 32)
     abort ();
@@ -369,6 +374,9 @@ extract_1 (CGEN_CPU_DESC cd,
 {
   unsigned long x;
   int shift;
+#if 0
+  int big_p = CGEN_CPU_INSN_ENDIAN (cd) == CGEN_ENDIAN_BIG;
+#endif
   x = cgen_get_insn_value (cd, bufp, word_length);
 
   if (CGEN_INSN_LSB0_P)
@@ -431,6 +439,11 @@ extract_normal (CGEN_CPU_DESC cd,
       return 1;
     }
 
+#if 0
+  if (CGEN_INT_INSN_P
+      && word_offset != 0)
+    abort ();
+#endif
 
   if (word_length > 32)
     abort ();

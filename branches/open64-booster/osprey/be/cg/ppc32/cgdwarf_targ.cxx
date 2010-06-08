@@ -247,7 +247,11 @@ CIE_dump2asm(Dwarf_P_Cie cie)
     fprintf(Asm_File, "\t%s\t\"%s\"\n", AS_ASCII, cie->cie_aug); 
   else
      fprintf(Asm_File, "\t%s \"\\000\"\n", ".ascii");
+#if 0 // we must set 1 here, don't know why
+  fprintf(Asm_File, fmt_string, AS_ULEBW, cie->cie_code_align); 
+#else
   fprintf(Asm_File, fmt_string, AS_ULEBW, 1); 
+#endif
   fprintf(Asm_File, fmt_string, AS_SLEBW, cie->cie_data_align); 
   fprintf(Asm_File, fmt_string, AS_1BYTE, cie->cie_ret_reg); 
 	  
@@ -775,6 +779,309 @@ Build_Fde_For_Proc (Dwarf_P_Debug dw_dbg, BB *firstbb, LABEL_IDX begin_label, LA
     FDE_end_dump2asm();*/
   return fde;
 
+#if 0
+  Dwarf_P_Fde fde;
+  FD_REG fd_reg;
+  BOOL has_fp = (Current_PU_Stack_Model != SMODEL_SMALL);
+  BOOL seen_entry_sp_adj;
+  BB *bb;
+  OP *op;
+  TN *ra_sv = NULL;
+  CGD_STATES current_state[FD_LAST];
+  CGD_STATES init_state;
+  INT i;
+  ST *slink_sym = NULL;
+
+  for (fd_reg = FD_FIRST; fd_reg < FD_LAST; fd_reg++) {
+    current_state[fd_reg] = DS_In_Register;
+    fd_to_spill_loc[fd_reg] = NULL;
+    prev_fd_to_spill_loc[fd_reg] = NULL;
+	curr_fd_to_spill_loc[fd_reg] = NULL;
+  }
+
+  curloc = 0;
+  lastloc = 0;
+
+  /* get a new Fde */
+  fde = dwarf_new_fde (dw_dbg, &dw_error);
+
+  if (Assembly) // ensure section is now the right one
+    fprintf(Asm_File, "\t%s\t%s\n", AS_SECTION, ".debug_frame");
+
+
+  // emit CIE for THIS procedure
+  Is_True(dw_dbg->de_last_cie, ("CIE pointer is NULL"));
+  if (Assembly && (Current_PU_Count() == 0)) {
+    CIE_dump2asm(dw_dbg->de_last_cie);
+    // only need to emit this once at CIE level
+    fde = Add_Fde_Inst (fde,DW_CFA_def_cfa, DW_FRAME_REG29, 0);
+  }
+
+  /* At the start of the procedure, CFA is the same as SP. */
+  current_state[FD_CFA] = DS_CFA_Is_SP;
+
+  /* For nested procedures, initialize static link to be r2 */
+  if (PU_is_nested_func(Get_Current_PU())) {
+    fde = Add_Fde_Inst (fde, DW_CFA_register, DW_FRAME_STATIC_LINK,
+			fd_to_dwarf[FD_SL]);
+    slink_sym = Find_Slink_Symbol(CURRENT_SYMTAB);
+  }
+
+  // end the CIE and start the FDE in assembly
+  if (Assembly) {
+    CIE_end_dump2asm();
+    FDE_dump2asm(low_pc, high_pc);
+  }
+
+  Compute_Reg_State (firstbb);
+
+  for ( bb = firstbb; bb; bb = BB_next(bb) ) 
+  {
+    if (BB_unreachable(bb)) {
+      for (op = BB_first_op(bb); op; op = OP_next(op)) {
+        curloc += OP_Real_Ops(op) ? ((ISA_PACK_Inst_Words(OP_code(op))) * 2) : 0;
+      }
+      continue;
+    }
+
+    if ( Trace_Dwarf ) {
+      fprintf ( TFile, "<update_state> BB:%d\n", BB_id(bb) );
+    }
+
+    seen_entry_sp_adj = FALSE;
+
+    /* Handle the state changes at the start of a basic block. Check to 
+     * see if the <bb> is reachable. This can be determined by checking
+     * if the FD_LAST bit is set. It can be set only for unreachable 
+     * blocks.
+     */
+    if (!(ENTRY_STATE(bb) & (1 << FD_LAST))) {
+      /* upate CFA for the new bb first. */
+      /* handlers are special-case:  they don't have direct pred,
+       * but they do get entered with same sp & fp as the PU,
+       * so set CFA to be same as pu's CFA.  */
+      init_state = (BB_entry(bb) && !BB_handler(bb)) ? DS_CFA_Is_SP : 
+	  			((has_fp) ? DS_CFA_Is_FP : DS_CFA_Is_Adj_SP); 
+      if (current_state[FD_CFA] != init_state) {
+        fde = update_state (fde, FD_CFA, current_state, init_state);
+      }
+      /* update the state for all the callee-save regs */
+      for ( fd_reg = FD_FIRST; fd_reg < FD_CFA; fd_reg++ ) {
+	if (fd_to_track[fd_reg] == 0)
+	  continue;
+        init_state = (CGD_STATES) ((ENTRY_STATE(bb) >> fd_reg) & 1);
+        if (current_state[fd_reg] != init_state) {
+          fde = update_state (fde, fd_reg, current_state, init_state);
+        }
+      }
+    }
+
+    for (op = BB_first_op(bb); op; op = OP_next(op)) 
+    {
+      curloc += OP_Real_Ops(op) ? ((ISA_PACK_Inst_Words(OP_code(op))) * 2) : 0;
+
+      /* we don't need to update state for the last instruction in the 
+       * procedure. The state after this instruction is not important 
+       * since we are no longer in the procedure.  
+       */
+      if (curloc == high_pc) break;
+
+      if (OP_dummy(op) || OP_noop(op)) continue;
+
+      /* Check if the current OP modifies the state of any callee save
+       * register. We do this by checking if the result or the first 
+       * operand of the OP is a save_reg.
+       */
+      for (i = 0; i < OP_results(op); ++i) {
+	TN *result_tn = OP_result(op,i);
+	if (TN_is_save_reg(result_tn) || TN_is_ra_reg(result_tn)) {
+	  if (OP_load(op)) {
+	    // we assume load will not directly go to RA register, which is a spec reg
+	    fde = update_state (fde, TN_to_fd(result_tn), current_state, DS_In_Register);
+	  }
+	  else {
+	    if (TN_is_save_reg(result_tn)) {
+#ifdef TARG_SL
+		  if ((OP_code(op) == TOP_mvfc16) && (OP_opnd(op, 0) == RA_TN)) {
+#else
+  		if ((OP_opnd(op, 0) == RA_TN)) {
+#endif
+
+		  	// printf("get ra_sv\n");
+		    ra_sv = result_tn;	
+			// extern void dump_st(ST *);
+       	    // dump_st(TN_var(ra_sv));
+		  } else {		  
+	      fd_reg = Save_TN_to_fd (result_tn);
+	      fde = Add_Fde_Inst (
+				  fde, 
+				  DW_CFA_register, 
+				  fd_to_dwarf[fd_reg],
+				  /* machine_id is the same as dwarf register no. */
+				  REGISTER_machine_id(TN_register_class(result_tn),
+						      TN_register(result_tn)));
+	      current_state[fd_reg] = DS_In_Register;
+		  }
+	    }
+
+#ifdef TARG_SL
+	    else if (OP_code(op) == TOP_mvtc16) {
+	      // result is RA_TN 
+	      TN *src_tn = OP_opnd(op, 0);
+	      fde = Add_Fde_Inst (fde,
+				  DW_CFA_register,
+				  REGISTER_machine_id(TN_register_class(src_tn),
+						      TN_register(src_tn)),
+				  fd_to_dwarf[FD_RA]);
+
+	      current_state[FD_RA] = DS_In_Register;
+	    }
+#endif
+	  }
+	}
+      }
+      if (OP_opnds(op) > 0) {
+	TN *src_tn = OP_opnd(op,0);
+	if (TN_is_register(src_tn) && TN_is_save_reg(src_tn)) {
+          fd_reg = TN_to_fd (src_tn);
+	  if (OP_store(op)) {
+	  	prev_fd_to_spill_loc[fd_reg] = curr_fd_to_spill_loc[fd_reg];
+		curr_fd_to_spill_loc[fd_reg] = TN_spill(OP_opnd(op,2));
+	  	if ((ra_sv != NULL) && (OP_opnd(op, 0) == ra_sv)) {
+		  // printf("store ra_sv\n");
+		  // extern void dump_st(ST *);
+		  // dump_st(TN_var(ra_sv));
+		  fde = Add_Fde_Inst(fde, DW_CFA_offset, fd_to_dwarf[FD_RA], 
+		  	Offset_from_FP(TN_var(ra_sv))/data_alignment_factor);
+		  current_state[FD_RA] = DS_In_Memory;
+	  	}
+		else
+	    fde = update_state (fde, fd_reg, current_state, DS_In_Memory);
+	  }
+	  else if (OP_copy(op)) {
+	    //	    fde = Add_Fde_Inst (fde, DW_CFA_same_value, fd_to_dwarf[fd_reg], 0);
+	    current_state[fd_reg] = DS_In_Register;
+	  }
+	}
+      }
+
+      // look for spills of callee-save registers that are not marked as 
+      // save tns.  LRA can insert this spills because it sees that a 
+      // register is not used in the bb so it does a spill 
+      // but it doesn't know whether the register is currently 
+      // a save-tn or has already been spilled.
+      // the spill/restores here must be local to the bb.
+      if (OP_store(op) 
+	&& ! TN_is_save_reg(OP_opnd(op,0)) 
+        && REGISTER_SET_MemberP(
+	    REGISTER_CLASS_callee_saves(TN_register_class(OP_opnd(op,0))),
+	    TN_register(OP_opnd(op,0)) ) )
+      {
+	TN *tn = OP_opnd(op,0);
+	fd_reg = Machine_Reg_To_FD (tn, REGISTER_machine_id (
+		TN_register_class(tn), TN_register(tn) ),ISA_REGISTER_CLASS_integer);
+	if (current_state[fd_reg] == DS_In_Register
+		&& CGSPILL_Is_Spill_Op(op)
+		&& Has_Matching_Load_In_BB (bb, tn, OP_opnd(op,2)) )
+	{
+DevWarn("found local store of callee_save reg that was not save_reg:  bb %d, reg %d",
+BB_id(bb), REGISTER_machine_id( TN_register_class(tn), TN_register(tn)) );
+		prev_fd_to_spill_loc[fd_reg] = fd_to_spill_loc[fd_reg];
+		fd_to_spill_loc[fd_reg] = TN_spill(OP_opnd(op,2));
+		curr_fd_to_spill_loc[fd_reg] = TN_spill(OP_opnd(op,2));
+		// TODO:  could add sanity-checker that would check for any
+		// use of a callee-save tn when that tn is in register,
+		// as it should be saved in memory before being used.
+		// What if not a later matching restore?
+		// would be user error....
+    		fde = update_state (fde, fd_reg, current_state, DS_In_Memory);
+	}
+      }
+      else if (OP_load(op) 
+	&& OP_has_result(op)	// in case is cache op
+	&& ! TN_is_save_reg(OP_result(op,0)) 
+        && REGISTER_SET_MemberP(
+	    REGISTER_CLASS_callee_saves(TN_register_class(OP_result(op,0))),
+	    TN_register(OP_result(op,0)) ) )
+      {
+	TN *tn = OP_result(op,0);
+	fd_reg = Machine_Reg_To_FD (tn, REGISTER_machine_id (
+		TN_register_class(tn), TN_register(tn) ), ISA_REGISTER_CLASS_integer);
+	if (current_state[fd_reg] == DS_In_Memory
+		&& TN_is_symbol(OP_opnd(op,1)) && TN_spill(OP_opnd(op,1))
+    		&& fd_to_spill_loc[fd_reg] == TN_spill(OP_opnd(op,1))
+		&& Has_Matching_Store_In_BB (bb, tn, OP_opnd(op,1)) )
+	{
+	  DevWarn("found local load of callee_save reg:  bb %d, reg %d",
+		  BB_id(bb), 
+		  REGISTER_machine_id(TN_register_class(tn),TN_register(tn)));
+	  fde = update_state (fde, fd_reg, current_state, DS_In_Register);
+	  fd_to_spill_loc[fd_reg] = prev_fd_to_spill_loc[fd_reg];
+	}
+      }
+
+      // look for spill of static link
+      if (PU_is_nested_func(Get_Current_PU()) && BB_entry(bb) && OP_store(op)) {
+	if (TN_is_register(OP_opnd(op,0)) 
+		&& TN_is_static_link_reg(OP_opnd(op,0))
+		&& TN_is_symbol(OP_opnd(op,2)) 
+		&& TN_var(OP_opnd(op,2)) == slink_sym) 
+	{
+	    fd_to_spill_loc[FD_SL] = slink_sym;
+	    fde = update_state (fde, FD_SL, current_state, DS_In_Memory);
+	}
+      }
+
+      /* Now deal with the special cases of changes to CFA in the entry
+       * and exit basic blocks.
+       */
+      if (BB_entry(bb) && !seen_entry_sp_adj) {
+        if ( op == BB_entry_sp_adj_op(bb) ) {
+	  seen_entry_sp_adj = TRUE;
+	}
+	if (OP_Defs_Reg (op, REGISTER_CLASS_sp, REGISTER_sp)) {
+	  fde = update_state(fde, FD_CFA, current_state,DS_CFA_Is_Adj_SP);
+	  continue;
+	}
+	if (has_fp && OP_Defs_TN (op, FP_TN)) {
+	  /* this is the op that makes the frame-pointer the cfa */
+	  fde = update_state( fde, FD_CFA, current_state, DS_CFA_Is_FP );
+	  continue;
+	}
+      }
+
+      if (BB_exit(bb) && op == BB_exit_sp_adj_op(bb)) {
+	  fde = update_state(fde, FD_CFA, current_state,DS_CFA_Is_Adj_SP);
+	Is_True( OP_Defs_Reg(op, REGISTER_CLASS_sp, REGISTER_sp),
+	  ("(BB:%d) BB_exit_sp_adj_op does not define SP",BB_id(bb)));
+
+	/* check if there are any other OPs after the exit SP adjustment. 
+	 * If yes, change state for any callee save registers that are in 
+	 * memory to be in register.
+	 */
+	if (op != BB_last_op(bb)) {
+	  fde = update_state (fde, FD_CFA, current_state,DS_CFA_Is_SP);
+	  for ( fd_reg = FD_FIRST; fd_reg < FD_CFA; fd_reg++ ) {
+	    if (current_state[fd_reg] == DS_In_Memory) {
+	      update_state (fde, fd_reg, current_state, DS_In_Register);
+	    }
+	  }
+	}
+      }
+
+    }
+  }
+#ifdef TARG_SL
+  /* Add user-defined CFAs to FDE. */
+  fde = Add_Fde_Inst (fde,DW_CFA_SL_gpr_reginfo, gpr_saved, 0);
+  fde = Add_Fde_Inst (fde,DW_CFA_SL_cr_reginfo, ctrl_saved, 0);
+  fde = Add_Fde_Inst (fde,DW_CFA_SL_sr_reginfo, spe_saved, 0);
+#endif
+  if (Assembly)
+    FDE_end_dump2asm();
+
+  return fde;
+#endif
 }
 
 // does unwind follow simple pattern of saves in entry, restores in exit?
@@ -782,6 +1089,18 @@ static BOOL
 Is_Unwind_Simple (void)
 {
   if (has_asm) return FALSE;
+#if 0
+  for (ue_iter = ue_list.begin(); ue_iter != ue_list.end(); ++ue_iter) {
+    	// if not first or last bb, then not a simple unwind
+    	if (BB_prev(ue_iter->bb) != NULL && BB_next(ue_iter->bb) != NULL) {
+		return FALSE;
+    	}
+	// if not entry or exit bb, then not a simple unwind
+	if ( ! BB_entry(ue_iter->bb) && ! BB_exit(ue_iter->bb)) {
+		return FALSE;
+	}
+  }
+#endif
 
   return TRUE;
 }
@@ -796,6 +1115,20 @@ Init_Unwind_Info (BOOL trace)
 
   //  Find_Unwind_Info ();
   simple_unwind = Is_Unwind_Simple();
+#if 0
+
+  last_label = 0;
+  next_when = 0;
+  proc_region = UNDEFINED_UREGION;
+  if ( ! simple_unwind) {
+	if (Trace_Unwind) fprintf (TFile, "need to propagate unwind info\n");
+	// need to propagate unwind info to each block,
+	// and update ue_list with state changes
+	Do_Control_Flow_Analysis_Of_Unwind_Info ();
+	if ( ! has_asm) simple_unwind = TRUE;
+  }
+  Compute_Region_Sizes();
+#endif
   if (Trace_Unwind) {
 	fprintf (TFile, "%s unwind\n", (simple_unwind ? "simple" : "complicated"));
 	//	Print_All_Unwind_Elem ("unwind2");

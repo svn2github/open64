@@ -3146,6 +3146,9 @@ static void dump_dv(FILE                *out_file,
    int  num_chars;
    char *char_ptr;
 
+# if 0
+   char str[80];
+# endif
 
 
    if (dv == NULL) {
@@ -3171,6 +3174,9 @@ static void dump_dv(FILE                *out_file,
 # endif
    fprintf(out_file, "num_dims  = %d\n", dv->num_dims);
 
+# if 0
+   dump_io_type_code_ntry(out_file, (long_type *)&(dv->type_code), 0);
+# endif
 
 #if defined(_HOST32) && defined(_TARGET64)
    fprintf(out_file, "orig_base = 0x%x\n", dv->orig_base);
@@ -3199,6 +3205,49 @@ static void dump_dv(FILE                *out_file,
 #endif
 
 
+# if 0
+   lptr = (long *)(dv->base_addr);
+
+   if (lptr != NULL &&
+       dv->num_dims == 1 &&
+       dump_it) {
+
+      /* this assumes that the array is contiguous */
+
+      if (dv_type == DV_ASCII_CHAR) {
+
+         char_ptr = (char *)(dv->base_addr);
+
+         idx = 0;
+
+         for (k = 0; k < dv->dim[0].extent; k++) {
+            fprintf(out_file,"\"");
+            for (i = 0; i < num_chars; i++) {
+               fprintf(out_file, "%c", char_ptr[idx]);
+               idx++;
+            }
+            fprintf(out_file,"\"  ");
+         }
+         fprintf(out_file, "\n");
+      }
+      else {
+
+         for (k = 0; k < dv->dim[0].extent; k++) {
+#if 1
+            fprintf(out_file, "  %x  ", 
+                              lptr[num_host_wds[TYP_LINEAR(type_idx)] * k]);
+# else
+
+            fprintf(out_file, "  %s  ",
+             convert_to_string(&(lptr[num_host_wds[TYP_LINEAR(type_idx)] * k]),
+                               type_idx,
+                               str));
+# endif
+         }
+         fprintf(out_file, "\n");
+      }
+   }
+# endif
 
    return;
 
@@ -6423,6 +6472,11 @@ static void dump_eq_ntry (FILE  *out_file,
                      "EQ_GRP_IDX", EQ_GRP_IDX(eq_idx),
                      "EQ_LINE_NUM", EQ_LINE_NUM(eq_idx));
 
+# if 0
+   if (EQ_LIST_IDX(eq_idx) != NULL_IDX) {
+      print_list(out_file, IL_IDX(EQ_LIST_IDX(eq_idx)), 4, 1, FALSE);
+   }
+# endif
 
    fprintf(out_file, "  %-16s= %-7d %-16s= %-7s %-16s= %-8d\n",
                      "EQ_LIST_IDX", EQ_LIST_IDX(eq_idx),
@@ -7892,6 +7946,11 @@ PROCESS_SIBLING:
            "SCP_COPY_ASSUMED_LIS", SCP_COPY_ASSUMED_LIST(scp_idx),
            "SCP_DARG_LIST", SCP_DARG_LIST(scp_idx));
 
+# if 0
+   fprintf(out_file,"%18s%-20s= %-7s  %-20s= %-9s\n", " ",
+           "SCP_DBG_PRINT_STMT", boolean_str[SCP_DBG_PRINT_STMT(scp_idx)],
+           "SCP_DBG_PRINT_SYTB", boolean_str[SCP_DBG_PRINT_SYTB(scp_idx)]);
+# endif
 
    fprintf(out_file,"%18s%-20s= %-27s\n", " ",
            "SCP_DEFAULT_STORAGE", 

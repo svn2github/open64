@@ -502,6 +502,13 @@ typedef	struct bb {
 #define	BB_preds(x)	 (CAN_USE_BB(x)->preds)
 #define	BB_succs(x)	 (CAN_USE_BB(x)->succs)
 #define BB_cycle(x)	 (CAN_USE_BB(x)->bb_cycle)
+#if 0
+/* Don't define BB_ops! OPs must only be manipulated with the provided
+ * utility routines in order to keep automatically maintained data structures
+ * correct.
+ */
+#define BB_ops(x)        (CAN_USE_BB(x)->ops)
+#endif
 #define	BB_flag(b)	(CAN_USE_BB(b)->flags)
 #define	BB_nest_level(b) (CAN_USE_BB(b)->nest_level)
 #define	BB_rid(b)	(CAN_USE_BB(b)->rid)

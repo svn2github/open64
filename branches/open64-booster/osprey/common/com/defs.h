@@ -133,6 +133,9 @@ extern "C" {
 #define BV_LITTLE_ENDIAN_BIT_NUMBERING	1
 
 /* Should bit vector packages use table lookup instead of shifts? */
+#if 0
+#define BV_MEMORY_BIT_MASKS	/* when shifting is slow */
+#endif
 
 /* ====================================================================
  *
@@ -343,6 +346,11 @@ typedef mUINT64 mTARG_UINT;
  * files which need them, e.g. to use /usr/include expansions which
  * require them.
  */
+#if 0 /* !defined(USE_STANDARD_TYPES) && !defined(_NEW_SYMTAB) */
+# define short	SYNTAX_ERROR_short
+# define int	SYNTAX_ERROR_int
+# define long	SYNTAX_ERROR_long
+#endif /* USE_STANDARD_TYPES */
 
 
 

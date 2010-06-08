@@ -90,6 +90,9 @@ static	void	section_semantics (int, opnd_type *, int *);
 static	void	set_global_value_variables (opnd_type *, opnd_type *, int);
 static 	void	vv_subscript_semantics(int, int, expr_arg_type *);
 
+# if 0  /* Not used */
+static	int	reenter_const_as_hollerith(int, int, int, holler_type);
+# endif
 
 /******************************************************************************\
 |*                                                                            *|
@@ -5377,6 +5380,45 @@ EXIT:
 |*	NOTHING								      *|
 |*									      *|
 \******************************************************************************/
+# if 0
+
+static int reenter_const_as_hollerith(int		value_idx,
+				      int		offset,
+				      int		type_idx,
+				      holler_type	hollerith_type)
+
+{
+   int		cn_idx;
+   long64	i;
+   long64	words;
+
+   TRACE (Func_Entry, "reenter_const_as_hollerith", NULL);
+
+   cn_idx = ntr_const_tbl(type_idx, 
+                          (TYP_TYPE(type_idx) == Character ? TRUE : FALSE), 
+                          NULL);
+
+   if (TYP_TYPE(type_idx) == Typeless) {
+      words = TARGET_BITS_TO_WORDS(TYP_BIT_LEN(type_idx));
+   }
+   else if (TYP_TYPE(type_idx) == Character) {
+      words = TARGET_BYTES_TO_WORDS(CN_INT_TO_C(TYP_IDX(type_idx)));
+   }
+
+   for (i = 0; i < words; i++) {
+      CP_CONSTANT(CN_POOL_IDX(cn_idx) + i) = 
+                          CP_CONSTANT(CN_POOL_IDX(value_idx) + offset + i);
+   }
+
+   CN_HOLLERITH_TYPE(cn_idx) = hollerith_type;
+
+   TRACE (Func_Exit, "reenter_const_as_hollerith", NULL);
+
+   return(cn_idx);
+
+}  /* reenter_const_as_hollerith */
+
+# endif
 
 
 /******************************************************************************\

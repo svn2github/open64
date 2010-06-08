@@ -3699,6 +3699,25 @@ OPCODE_name (OPCODE opc)
 }
 
 
+#if 0
+// This stuff sets up a fast OPCODE_is_valid_opcode_table lookup table
+// If an opcode is valid, it contains the opcode. Otherwise, is contains OPCODE_UNKNOWN.
+OPCODE OPCODE_is_valid_opcode_table[OPCODE_LAST+1];
+
+static struct setup_the_opcode_valid_table {
+public:
+   setup_the_opcode_valid_table() {
+      INT i;
+      for (i=0; i <= OPCODE_LAST; i++) {
+	 if (Is_Valid_Opcode_FUNC((OPCODE) i)) {
+	    OPCODE_is_valid_opcode_table[i] = (OPCODE) i;
+	 } else {
+	    OPCODE_is_valid_opcode_table[i] = OPCODE_UNKNOWN;
+	 }	    
+      }
+   }
+} dummy_setup_the_opcode;
+#endif
 
 
 

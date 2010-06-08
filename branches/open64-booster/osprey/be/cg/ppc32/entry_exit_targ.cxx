@@ -83,11 +83,84 @@ Exp_Immediate (TN *dest, TN *src, BOOL is_signed, OPS *ops);
 void
 EETARG_Fixup_Entry_Code(BB *bb)
 {
+#if 0
+  extern INT64 PU_Frame_Size;
+  OP * op;
+  FOR_ALL_OPS_OPs(&bb->ops, op) {
+    if (OP_LR_spill(op)) {			
+      if (CGTARG_Can_Fit_Immediate_In_Add_Instruction (PU_Frame_Size + 4)) {
+        FmtAssert(OP_code(op) == TOP_stw, ("Store lr opcode error"));        
+        Set_OP_opnd(op, 2, Gen_Literal_TN(PU_Frame_Size + 4, 4));
+      }
+      else {
+        FmtAssert(OP_code(op) == TOP_stwx, ("Store lr opcode error"));
+        OPS ops;
+        OPS_Init(&ops);
+
+        // hack
+        OP * prev = OP_prev(op);
+        TN * im   = OP_opnd(prev, 0);
+        TN * len  = OP_result(prev, 0);
+        FmtAssert(TN_has_value(im), ("Not a value tn"));
+        FmtAssert(TN_is_register(len), ("Not a register tn"));
+
+        /*
+        Set_TN_value(im, PU_Frame_Size + 4);
+        Exp_Immediate (len, im, FALSE, &ops); */
+        INT64 val = PU_Frame_Size + 4;
+        short sv = (short)((val >> 16)&0xffff);
+        // Set_TN_value(im, sv);
+        Build_OP (TOP_lis, len, Gen_Literal_TN(sv, 4), &ops);    
+	      Build_OP (TOP_ori, len, len, Gen_Literal_TN(val & 0xffff, 4), &ops); 
+        
+        BB_Insert_Ops_Before(bb, op, &ops);
+        BB_Remove_Op(bb, prev);
+      }
+      Reset_OP_LR_spill(op);
+      break;
+    }
+  }
+#endif  
 }
 
 void
 EETARG_Fixup_Exit_Code (BB *bb)
 {
+#if 0
+  extern INT64 PU_Frame_Size;
+  OP * op;
+  FOR_ALL_OPS_OPs_REV(&bb->ops, op) {
+    if (OP_LR_spill(op)) {			
+      if (CGTARG_Can_Fit_Immediate_In_Add_Instruction (PU_Frame_Size + 4)) {
+        FmtAssert(OP_code(op) == TOP_lwz, ("load lr opcode error"));        
+        Set_OP_opnd(op, 1, Gen_Literal_TN(PU_Frame_Size + 4, 4));
+      }
+      else {
+        FmtAssert(OP_code(op) == TOP_lwzx, ("load lr opcode error"));
+        OPS ops;
+        OPS_Init(&ops);
+
+        // hack
+        OP * prev = OP_prev(op);
+        TN * im   = OP_opnd(prev, 0);
+        TN * len  = OP_result(prev, 0);
+        FmtAssert(TN_has_value(im), ("Not a value tn"));
+        FmtAssert(TN_is_register(len), ("Not a register tn"));
+
+        INT64 val= PU_Frame_Size + 4;
+        short sv = (short)((val >> 16)&0xffff);
+        // Set_TN_value(im, sv);
+        Build_OP (TOP_lis, len, Gen_Literal_TN(sv, 4), &ops);    
+	      Build_OP (TOP_ori, len, len, Gen_Literal_TN(val & 0xffff, 4), &ops); 
+        
+        BB_Insert_Ops_Before(bb, op, &ops);
+        BB_Remove_Op(bb, prev);
+      }
+      Reset_OP_LR_spill(op);
+      break;
+    }
+  }
+#endif  
 }  
 
 void

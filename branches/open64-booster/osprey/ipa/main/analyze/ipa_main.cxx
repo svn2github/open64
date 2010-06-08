@@ -46,6 +46,7 @@
 
 
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>
@@ -699,6 +700,15 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
         IPA_Call_Graph->Print(TFile);
       }
     
+#if 0
+      // Optionally, we could remove quasi clones without making them real
+      for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+        IPA_NODE* node = (IPA_NODE*) cg_iter.Current();
+        if (node && node->Is_Quasi_Clone()) {
+          IPA_Call_Graph->Remove_Quasi_Clone(node);
+        }
+      }
+#endif
     
       if (IPA_Enable_Common_Const) {
         MEM_POOL_Pop(&local_cprop_pool);

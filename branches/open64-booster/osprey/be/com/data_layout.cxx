@@ -2841,12 +2841,20 @@ Shorten_Section ( ST *st, SECTION_IDX sec )
 	size = MAX(size, Adjusted_Alignment(st));
 	if (size <= Gspace_Available) {
 		Gspace_Available -= size;
+#if 0
+		if (Trace_Frame) fprintf(TFile, "<lay> use Gspace for %s (size %d, align %d)\n", ST_NAME(st), TY_size(ST_type(st)), Adjusted_Alignment(st));
+#endif
 	}
 	else {
 		if (Trace_Frame) fprintf(TFile, "<lay> not enough Gspace, so didn't assign %s to gprel section\n", ST_NAME(st));
 		return sec;
 	}
    }
+#if 0
+else {
+if (Trace_Frame) fprintf(TFile, "<lay> didn't check Gspace for %s\n", ST_NAME(st));
+}
+#endif
 
    if (sec == _SEC_RDATA && ST_class(st) == CLASS_CONST) {
      /* by default put all short .rodata items into .srdata, unless 

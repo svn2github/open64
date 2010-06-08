@@ -166,8 +166,10 @@ Get_ST (gs_t decl_tree)
 		    !ST_is_weak_symbol(st) &&
 		    !gs_decl_external(decl_tree)        &&
 		    !gs_decl_initial(decl_tree)
+#if 1 // wgen, bug 10324
 		     &&
 		    gs_tree_static(decl_tree)
+#endif
 		    )
 		{
 		    if (flag_no_common || gs_decl_section_name(decl_tree))

@@ -429,33 +429,6 @@ Get_Vector_Type (vector_info_t *v)
 	return ty;
 }
 
-inline BOOL
-Vector_Is_Padded (vector_info_t *v)
-{
-        TY_IDX ty = Get_Vector_Type(v);
-
-        // if the vector elements are STRUCT or
-        // ARRAY of STRUCT, check if it has padding
-        if (TY_kind(ty) == KIND_ARRAY) {
-                ty = TY_etype(ty);
-        }
-       
-        if (TY_kind(ty) == KIND_STRUCT) {
-                FLD_ITER fld_iter = Make_fld_iter(TY_fld(ty));
-                int total_size = 0;
-
-                do
-                {
-                        FLD_HANDLE fld(fld_iter);
-                        total_size += TY_size(FLD_type(fld));
-                } while (!FLD_last_field(fld_iter++));
-
-                if (TY_size(ty) > total_size) return TRUE;
-        }
-
-        return FALSE;
-}
-
 static BOOL Vector_Is_Possible (vector_info_t *v)
 {
 	if (v->index < 1)
@@ -503,14 +476,11 @@ static BOOL Vector_Is_Possible (vector_info_t *v)
 			return FALSE;
 		break;
 	case 2:
-                // No real advantage to emitting v3,
-                // since hw doesn't do 12-byte accesses.
-                // Instead, try to do v4 if aligned load or
-                // aligned store to padded struct,
-                // or v2 of first or last two accesses.
-                if ((TY_align(ty) % min_alignment) == 0 &&
-                    (Vector_Is_Load(v) || 
-                     (Vector_Is_Store(v) && Vector_Is_Padded(v)))) {
+		// No real advantage to emitting v3,
+		// since hw doesn't do 12-byte accesses.
+		// Instead, try to do v4 if aligned load,
+		// or v2 of first or last two accesses.
+                if ((TY_align(ty) % min_alignment) == 0 && Vector_Is_Load(v)) {
                     // try to change to v4
                     INT i = Find_Gap_In_Vector(v,0,2);
                     if (i == 0) {
@@ -527,23 +497,19 @@ static BOOL Vector_Is_Possible (vector_info_t *v)
                         // create dummy op with unused dest, new offset
                         OP *new_op = Dup_OP(v->op[0]);
                         Copy_WN_For_Memory_OP (new_op, v->op[0]);
-                        if (Vector_Is_Load(v)) {
-                            Set_OP_result(new_op,0, Unused_TN(
-                                        TN_register_class(OP_result(v->op[0],0))));
-                        } 
-
+                        Set_OP_result(new_op,0, Unused_TN(
+                          TN_register_class(OP_result(v->op[0],0))));
                         if (i > 0) {
-                            Set_OP_opnd(new_op, 
-                                    OP_find_opnd_use(new_op,OU_offset),
-                                    Gen_Literal_TN(
-                                        Vector_Offset_Value(v,i-1) + step_size,4));
+                          Set_OP_opnd(new_op, 
+                            OP_find_opnd_use(new_op,OU_offset),
+                            Gen_Literal_TN(
+                              Vector_Offset_Value(v,i-1) + step_size,4));
                         } else {
-                            Set_OP_opnd(new_op, 
-                                    OP_find_opnd_use(new_op,OU_offset),
-                                    Gen_Literal_TN(
-                                        Vector_Offset_Value(v,0) - step_size,4));
+                          Set_OP_opnd(new_op, 
+                            OP_find_opnd_use(new_op,OU_offset),
+                            Gen_Literal_TN(
+                              Vector_Offset_Value(v,0) - step_size,4));
                         }
-
                         BB_Insert_Op_After (OP_bb(v->op[0]), v->op[0], new_op);
                         Add_To_Vector (v, new_op);
                         if (!Vector_Is_Possible(v)) { 

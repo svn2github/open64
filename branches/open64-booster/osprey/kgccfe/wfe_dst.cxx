@@ -1457,6 +1457,66 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 		break;
     case FUNCTION_TYPE:
 		{	// new scope for local vars
+#if 0
+		tree arg;
+		INT32 num_args;
+		TY &ty = New_TY (idx);
+		TY_Init (ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, NULL); 
+		Set_TY_align (idx, 1);
+		TY_IDX ret_ty_idx;
+		TY_IDX arg_ty_idx;
+		TYLIST tylist_idx;
+
+		// allocate TYs for return as well as parameters
+		// this is needed to avoid mixing TYLISTs if one
+		// of the parameters is a pointer to a function
+
+		ret_ty_idx = Get_TY(TREE_TYPE(type_tree));
+		for (arg = TYPE_ARG_TYPES(type_tree);
+		     arg;
+		     arg = TREE_CHAIN(arg))
+			arg_ty_idx = Get_TY(TREE_VALUE(arg));
+
+		// if return type is pointer to a zero length struct
+		// convert it to void
+		if (!WFE_Keep_Zero_Length_Structs    &&
+		    TY_mtype (ret_ty_idx) == MTYPE_M &&
+		    TY_size (ret_ty_idx) == 0) {
+			// zero length struct being returned
+		  	DevWarn ("function returning zero length struct at line %d", lineno);
+			ret_ty_idx = Be_Type_Tbl (MTYPE_V);
+		}
+
+		Set_TYLIST_type (New_TYLIST (tylist_idx), ret_ty_idx);
+		Set_TY_tylist (ty, tylist_idx);
+		for (num_args = 0, arg = TYPE_ARG_TYPES(type_tree);
+		     arg;
+		     num_args++, arg = TREE_CHAIN(arg))
+		{
+			arg_ty_idx = Get_TY(TREE_VALUE(arg));
+			if (!WFE_Keep_Zero_Length_Structs    &&
+			    TY_mtype (arg_ty_idx) == MTYPE_M &&
+			    TY_size (arg_ty_idx) == 0) {
+				// zero length struct passed as parameter
+				DevWarn ("zero length struct encountered in function prototype at line %d", lineno);
+			}
+			else
+				Set_TYLIST_type (New_TYLIST (tylist_idx), arg_ty_idx);
+		}
+		if (num_args)
+		{
+			Set_TY_has_prototype(idx);
+			if (arg_ty_idx != Be_Type_Tbl(MTYPE_V))
+			{
+				Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
+				Set_TY_is_varargs(idx);
+			}
+			else
+				Set_TYLIST_type (Tylist_Table [tylist_idx], 0);
+		}
+		else
+			Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
+#endif
 		} // end FUNCTION_TYPE scope
 		break;
 #ifdef TARG_X8664

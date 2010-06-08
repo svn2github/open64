@@ -136,6 +136,9 @@ static boolean string_md = FALSE;
 static boolean string_mmd = FALSE;
 extern string_list_t *feedback_files;
 
+#if 0
+extern boolean is_replacement_combo (int);
+#endif
 static void convert_saved_command_line_into_string(void);
 static char *make_ii_file_name(char *objname);
 static char *make_rii_file_name(char *objname);
@@ -2804,6 +2807,34 @@ add_instr_archive (string_list_t* args)
 
 extern char *get_binutils_lib_path(void);
 
+#if 0 // need not to set d_library_path
+static char *
+find_ld_library_path(char *program_name, char *ld_library_path)
+{
+	char buf[PATH_BUF_LEN];
+	int tail;
+
+	if(strchr(program_name, '/') == NULL) {
+		/* find arg0 in $PATH by cmd "which" */
+		sprintf(buf, "which %s", program_name);
+		read_cmd_out(buf, ld_library_path);
+
+		sprintf(buf, "dirname \"");
+		realpath(ld_library_path, buf + strlen(buf));
+
+	} else {
+		sprintf(buf, "dirname \"");
+		realpath(program_name, buf + strlen(buf));
+	}
+
+	tail = strlen(buf);
+	buf[tail] = '"';
+	buf[tail+1] = '\0';
+	read_cmd_out(buf, ld_library_path);
+
+	return ld_library_path;
+}
+#endif
 
 static char *
 find_toolroot(char *program_name, char *toolroot)
@@ -2861,6 +2892,12 @@ init_phase_info (void)
 	if (getenv("_XPG") != NULL) 
 	   xpg_flag = TRUE;
 	ld_library_path = getenv("LD_LIBRARY_PATH");
+#if 0
+	if(ld_library_path == NULL) {
+		ld_library_path = find_ld_library_path(orig_program_name, 
+							ld_library_path_found);
+	}
+#endif
 	ld_libraryn32_path = getenv("LD_LIBRARYN32_PATH");
 	old_ld_library_path = string_copy(ld_library_path);
 	// Replace ":" with ";" because ":" has special meaning to -INTERNAL.

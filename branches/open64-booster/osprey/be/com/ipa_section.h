@@ -1228,6 +1228,10 @@ private:
 
 public:
 
+#if 0
+  void Set_type(enum cfg_type t) { _type = t;};
+  enum cfg_type Get_type() { return _type;};
+#endif
   void Set_type_if()      { _type = CFG_IF; }
   void Set_type_do_loop() { _type = CFG_DO_LOOP; }
   void Set_type_entry()   { _type = CFG_ENTRY; }
@@ -1238,6 +1242,10 @@ public:
   BOOL Is_entry()   const { return _type == CFG_ENTRY; }
   BOOL Is_else()    const { return _type == CFG_ELSE; }
 
+#if 0
+  void Set_state(mUINT8 s) { _state = s;};
+  mUINT8 Get_state() const { return _state;};
+#endif
   void Set_has_calls()   { _state = (_cfg_state) (_state | CFG_HAS_CALLS); }
   void Set_is_executed() { _state = (_cfg_state) (_state | CFG_IS_EXECUTED); }
 

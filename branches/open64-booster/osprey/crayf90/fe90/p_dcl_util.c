@@ -1583,6 +1583,26 @@ boolean parse_type_spec(boolean		chk_kind)
    }
 
 
+#if 0
+
+   /* LRR    2 Feb 1996							      */
+   /* I turned off the following code in response to an email direction to do */
+   /* so from Peggy Boike.  I did not remove the code due to the belief that  */
+   /* we just might need to turn it back on.  If some months go by, and the   */
+   /* libraries really can handle this, then the code should be safe to       */
+   /* actually be removed.						      */
+
+   if ((target_triton  &&  target_ieee)   &&
+       (TYP_LINEAR(ATD_TYPE_IDX(AT_WORK_IDX)) == Real_16  ||
+       TYP_LINEAR(ATD_TYPE_IDX(AT_WORK_IDX)) == Complex_16)) {
+
+      /* Temporary warning because PRECISION may not be as high as requested */
+
+      PRINTMSG(TOKEN_LINE(token), 1145, Warning, 0);
+      SET_MSG_SUPPRESS_TBL(1145);  /* Issue once per compilation unit */
+   }
+
+#endif
 
 
    parse_err			= SH_ERR_FLG(curr_stmt_sh_idx);

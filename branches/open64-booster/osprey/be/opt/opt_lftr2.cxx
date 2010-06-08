@@ -265,6 +265,12 @@ LFTR::Lftr_comparison(CODEREP *cr, STMTREP *stmt, INT32 stmt_kid_num)
     Is_Trace(Trace(),
 	   (TFile,"LFTR::Lftr_comparison, found comparison inside a loop\n"));
   } else {		// comparison is outside a loop
+#if 0 // we may want to re-visit non-loop LFTR some day
+    if (rhs && rhs->Kind() != CK_CONST) {   // 5) RHS is not a constant
+      Is_Trace(Trace(),
+	  (TFile,"LFTR::Lftr_comparison, return 5 - RHS is not a constant\n"));
+    }
+#endif
     Is_Trace(Trace(),
 	   (TFile,"LFTR::Lftr_comparison, found comparison outside a loop\n"));
     return;
@@ -1095,6 +1101,21 @@ LFTR::Replace_comparison(EXP_OCCURS *comp, BOOL cur_expr_is_sr_candidate)
       MTYPE_is_unsigned(comp->Occurrence()->Dsctyp()) && ! eq_neq)
     return;
 
+#if 0
+  // not needed any more because of addition of other checks
+  // check the unsign comp operator with 0 on the RHS and the tos
+  // expression contains + or -.
+  {
+    CODEREP *comp_cr = comp->Occurrence();
+    if (MTYPE_is_unsigned(comp_cr->Dsctyp()) &&
+        comp_cr->Opr() != OPR_EQ &&
+        comp_cr->Opr() != OPR_NE &&
+        comp_cr->Opnd(1)->Kind() == CK_CONST &&
+        comp_cr->Opnd(1)->Const_val() == 0)
+      if (tos->Occurrence()->Opr() != OPR_MPY)
+        return;
+  }
+#endif
 
   // if the multiply factor is unknown, we cannot perform fenceposting
   // because the invariant might be 0.

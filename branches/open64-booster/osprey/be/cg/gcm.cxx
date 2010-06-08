@@ -56,6 +56,7 @@
  * =======================================================================
  */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 #include "defs.h"
@@ -489,6 +490,18 @@ Check_If_Ignore_BB(BB *bb, LOOP_DESCR *loop)
 #endif
     return TRUE;
 
+#if 0
+  // If PRE-GCM enabled, invok POST-GCM phase, only if the register 
+  // allocator has inserted any spill instructions (i.e. reset the bb_schedule
+  // flag. Otherwise, we expect that the PRE-GCM phase has explored all
+  // previous possibilities.
+  if (!GCM_POST_Force_Scheduling && 
+      (Cur_Gcm_Type & GCM_AFTER_GRA) &&
+      GCM_PRE_Pass_Enabled) {
+    if (BB_scheduled(bb) && !BB_scheduled_hbs(bb))
+      return TRUE;
+  }
+#endif
 
 #ifdef TARG_X8664
   // Don't mess with GOT computation.  Bug 14452.
@@ -1943,6 +1956,37 @@ Can_OP_Move(OP *cur_op, BB *src_bb, BB *tgt_bb, BB_SET **pred_bbs,
                                motion_type, &cur_spec_type))
        return FALSE;
 
+#if 0
+     /* HD - I don't think we need to check so many un-certain conditions.
+      *      The implementation of Null_Ptr_Deref_Spec is so ugly, and I cannot
+      *      understand it at all. I skipped this, and I can turn on this 
+      *      later when necessary.
+      */
+     // detect cases where movement of mem ops past the null ptr test
+     // condition can be possible and allow them only when the
+     // corresponding flags are true.
+     if (OP_memory(cur_op) &&
+         Null_Ptr_Deref_Spec(cur_op, src_bb, cur_bb)) {
+       if (!(GCM_Pointer_Spec && GCM_Eager_Null_Ptr_Deref)) {
+         return FALSE;
+       } else {
+         Set_EAGER_NULL_PTR_SPEC(cur_spec_type);
+         Use_Page_Zero = TRUE;
+       }
+     }
+
+     *spec_type |= cur_spec_type;
+
+     // if <cur_op> can't be speculated (as shown by <can_spec>) and
+     // that the eager_null_ptr test returned FALSE (as shown by <spec_type>)
+     // then it's safe to conclude that <cur_op> can't be speculated.
+
+     if ( can_spec || 
+          (*spec_type & SPEC_EAGER_NULL_PTR) ||
+          (*spec_type & SPEC_EAGER_PTR) || 
+          (*spec_type & SPEC_CIRC_PTR_ABOVE) )
+       return FALSE;
+#endif
      /* HD - But I like to set Use_Page_Zero aggresively */
      Use_Page_Zero = TRUE;
 #else // TARG_SL

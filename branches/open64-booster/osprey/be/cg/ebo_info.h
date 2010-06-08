@@ -309,6 +309,9 @@ extern BOOL EBO_Trace_Hash_Search;
 void tn_info_entry_dump (EBO_TN_INFO *tninfo);
 void tn_info_table_dump ();
 #ifdef KEY
+#if 0
+void delete_useless_store_op (EBO_OP_INFO *opinfo);
+#endif
 #endif
 
 inline EBO_TN_INFO *
@@ -637,6 +640,11 @@ inline void backup_opinfo_list (EBO_OP_INFO *previous_last)
    /* Update the hash table entry with any previous ptr. */
     while (opinfo != previous_last) {
 #ifdef KEY      
+#if 0
+      if (opinfo->in_op &&
+         OP_store(opinfo->in_op))    
+        delete_useless_store_op(opinfo);
+#endif
 #endif
       EBO_opinfo_table[opinfo->hash_index] = opinfo->same;
       opinfo = opinfo->prior;

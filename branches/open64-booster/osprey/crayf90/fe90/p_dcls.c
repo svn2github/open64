@@ -262,6 +262,18 @@ void parse_common_stmt (void)
                last_attr_idx	= ATD_NEXT_MEMBER_IDX(last_attr_idx);
             }
          }
+# if 0
+         /* we want to allow THREADPRIVATE before the common stmt. */
+         /* I'm leaving this in for now. BHJ                       */
+
+         else if (SB_BLK_TYPE(sb_idx) == Threadprivate && !SB_DCL_ERR(sb_idx)) {
+
+            /* Must be declared completely before THREADPRIVATE */
+
+            PRINTMSG(TOKEN_LINE(token), 1479, Error, TOKEN_COLUMN(token),
+                     SB_NAME_PTR(sb_idx));
+         }
+# endif
 
          if ((cif_flags & XREF_RECS) != 0) {
             cif_sb_usage_rec(sb_idx,
@@ -4039,6 +4051,11 @@ void parse_type_dcl_stmt (void)
          if (attr_list & (1 << Automatic_Attr)) {
             merge_automatic(TRUE, id_line, id_column, attr_idx);
          }
+#if 0 && defined(KEY) /* Bug 14150 */
+         if (attr_list & (1 << Bind_Attr)) {
+            merge_bind(TRUE, id_line, id_column, attr_idx);
+         }
+#endif /* KEY Bug 14150 */
          if (attr_list & (1 << Value_Attr)) {
             merge_value(TRUE, id_line, id_column, attr_idx);
          }
@@ -5252,7 +5269,14 @@ static long parse_attr_spec(int		*array_idx,
             }
 
 	    if (parse_language_binding_spec(&new_binding_label)) {
+#if 1
               /* parse_attrs() will merge in the binding label */
+#else
+	      /* Set OBJ_CLASS and CLASS just to avoid sytb_var_error */
+	      AT_OBJ_CLASS(AT_WORK_IDX) = Data_Obj;
+	      ATD_CLASS(AT_WORK_IDX) = Variable;
+	      set_binding_label(AT_Tbl_Idx, AT_WORK_IDX, &new_binding_label);
+#endif
 	    }
 	    break;
 

@@ -846,6 +846,13 @@ int srch_kwd_name(char		*name,
          for (i = 0; i < num_dargs; i++) {
             np_idx = SN_NP_IDX(*sn_idx + i);  
 
+# if 0  /* JBL,BHJ - These are not vectorizing. Doing this makes it vectorize */
+
+               tst_val = id[0] - name_pool[np_idx].name_long;
+               if (tst_val == 0 && SN_LEN(*sn_idx + i) == id_char_len) {
+                  break;
+               } 
+# endif
             if (SN_LEN(*sn_idx + i) == id_char_len) {
                tst_val = id[0] - name_pool[np_idx].name_long;
 
@@ -1562,6 +1569,11 @@ void	init_sytb()
       PRINTMSG(1, 138, Internal, 0, "Module link table");
    }
 
+# if 0
+   if (sizeof(mod_tbl_type) != (NUM_MD_WDS * HOST_BYTES_PER_WORD)) {
+      PRINTMSG(1, 138, Internal, 0, "Module table");
+   }
+# endif
 
    if (sizeof(scp_tbl_type) != (NUM_SCP_WDS * HOST_BYTES_PER_WORD)) {
       PRINTMSG(1, 138, Internal, 0, "Scope table");
@@ -1958,6 +1970,12 @@ ATTACH_POOL_IDX:
 
 FOUND:
 
+# if 0
+   printf("************************************************************\n");
+   dump_cn_tree(cn_root_idx[TYP_LINEAR(type_idx)],
+                type_idx,
+                0);
+# endif
 
 
    TRACE (Func_Exit, "ntr_const_tbl", NULL);
@@ -4826,6 +4844,10 @@ int	make_in_parent_string(int	 name_str_idx,
       name_pool[idx].name_long = 0;
    }
 
+# if 0
+       name_pool[new_name_idx].name_char[idx] = 
+                 tolower(name_pool[name_str_idx].name_char[idx]);
+# endif
 
    strcat(&name_pool[new_name_idx].name_char, 
           &name_pool[name_str_idx].name_char);
@@ -5151,6 +5173,12 @@ void	set_stride_for_first_dim(int			 type_idx,
                               storage_bit_size_tbl[TYP_LINEAR(type_idx)],
                               storage_bit_size_tbl[CG_INTEGER_DEFAULT_TYPE] );
 
+# if 0 /* OSP_467, #2, double_stride is no longer needed */
+# if defined(_TARGET64) && defined(_WHIRL_HOST64_TARGET64)
+      if (double_stride && (storage_bit_size_tbl[TYP_LINEAR(type_idx)] > 32))
+        length *= 2;
+# endif /* defined(_TARGET64) && defined(_WHIRL_HOST64_TARGET64) */
+# endif
       (*stride).fld	= CN_Tbl_Idx;
       (*stride).idx	= C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, length);
       break;
@@ -5855,6 +5883,26 @@ void assign_offset(int	attr_idx)
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))
 
+# if 0
+   else if (cmd_line_flags.align8) {
+      align_bit_length(&offset, 8);
+      ATD_ALIGNMENT(attr_idx)	= Align_8;
+
+      if (offset.fld == NO_Tbl_Idx) {
+         offset.fld = CN_Tbl_Idx;
+         offset.idx = ntr_const_tbl(offset.type_idx, FALSE, offset.constant);
+      }
+   }
+   else if (cmd_line_flags.align16) {
+      align_bit_length(&offset, 16);
+      ATD_ALIGNMENT(attr_idx)	= Align_16;
+
+      if (offset.fld == NO_Tbl_Idx) {
+         offset.fld = CN_Tbl_Idx;
+         offset.idx = ntr_const_tbl(offset.type_idx, FALSE, offset.constant);
+      }
+   }
+# endif
    else if (cmd_line_flags.align32) {
       align_bit_length(&offset, 32);
       ATD_ALIGNMENT(attr_idx)	= Align_32;
@@ -6813,6 +6861,11 @@ void	fill_in_global_attr_ntry(int	ga_idx,
          GAP_NEEDS_EXPL_ITRFC(ga_idx)	= TRUE;
       }
 
+# if 0
+      if (attr_idx == SCP_ATTR_IDX(curr_scp_idx) ||
+          (ATP_ALT_ENTRY(attr_idx) && ATP_SCP_ALIVE(attr_idx))) {
+      } /* remove this bracket */
+# endif
       if (ATP_EXPL_ITRFC(attr_idx)) {
          GA_DEFINED(ga_idx)	= TRUE;
 

@@ -44,6 +44,7 @@
 /*Perhaps we'll lose some accuracy here.                                */
 /*----------------------------------------------------------------------*/
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <vector>
 #include <stack>

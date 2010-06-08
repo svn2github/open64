@@ -579,6 +579,10 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 // ia32,x86,ia64,nvisa,sl all don't want to do this cause it can cause 
 // inconsistent sizes for the same symbol
 #if defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_NVISA) || defined(TARG_SL)
+#if 0 // this can cause inconsistent sizes for the same symbol
+    if (vsize <= 32 && dtyp == MTYPE_U8 && (signess & SIGN_0_EXTD)) 
+      dtyp = MTYPE_U4;
+#endif
 #elif !defined(TARG_IA64)
     // ia64 has similar problem (inconsistent sizes for the same symbol)
     // -- OSP_185
@@ -2810,7 +2814,13 @@ ETABLE::Bottom_up_stmt(STMTREP *stmt)
 	   (TFile, "----- stmt: %s -----\n", OPCODE_name(stmt->Op())));
   Is_Trace_cmd(Tracing(),stmt->Print(TFile));
     
+#if 0
+  // Assign each statement a unique statement number for LFTR
+  if (Lftr()->Lftr_on())
+    Lftr()->Assign_stmt_no(stmt);
+#else
   stmt->Set_stmt_id(Cfg()->Get_stmt_id());
+#endif
 
   // for each statement see if they have a rhs and lhs and traverse
   // any expressions there
@@ -2939,6 +2949,11 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 		Insert_real_occurrence(cr, stmt, stmt_kid_num, depth, FALSE,
 				       urgent == URGENT_INSERT);
 	      }
+#if 0
+	      // How can the following ever do anything?!? *cr is an
+	      // ILOAD, not a comparison.
+	      Lftr()->Insert_comp_occurrence(cr, stmt, stmt_kid_num);
+#endif
 	    }
 	  } else {
 	    Bottom_up_cr(stmt, stmt_kid_num, cr->Ilod_base(), FALSE, urgent, 
@@ -2963,6 +2978,11 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 		Is_Trace_cmd(Tracing(),cr->Print(2,TFile));
 		Insert_real_occurrence(cr, stmt, stmt_kid_num, depth, FALSE, urgent);
 	      }
+#if 0
+	      // How can the following ever do anything?!? *cr is an
+	      // ILOAD, not a comparison.
+	      Lftr()->Insert_comp_occurrence(cr, stmt, stmt_kid_num);
+#endif
 	    }
 	  } else {
 	    Bottom_up_cr(stmt, stmt_kid_num, cr->Istr_base(), FALSE, urgent,
@@ -4680,6 +4700,13 @@ ETABLE::Perform_PRE_optimization(void)
              cur_worklst->Dense_ssa_count(),
              cur_worklst->Dense_ssa_count() * 100 / (bb_cnt+edge_cnt));
 
+#if 0
+    // this line is to generate statistics for journal paper
+    fprintf(TFile, "journal statistics: (phis, realoccs, inserts, deletes, bb_cnt, ssa_edge_cnt, edge_cnt) %d %d %d %d %d %d %d\n",
+	    cur_worklst->Phi_count(), cur_worklst->Realocc_count(),
+	    cur_worklst->Insert_count(), cur_worklst->Reload_count(), bb_cnt, 
+	    cur_worklst->Ssa_edge_count(), edge_cnt);
+#endif
 
     total_phi_count += cur_worklst->Phi_count();
     total_opt_ssa_count += cur_worklst->Optimistic_ssa_count();
@@ -4747,6 +4774,9 @@ ETABLE::Perform_PRE_optimization(void)
     Delete_EXP_HOISTING(_exp_hoisting);
 
 #ifdef Is_True_On
+#if 0 // uncomment following line for lexically identical expr statistics
+    Count_lex_ident_exprs(cur_worklst_idx);
+#endif
 #endif
 }
 
@@ -5354,6 +5384,14 @@ ETABLE::Count_lex_ident_exprs(INT32 simple_count)
 
   fprintf(TFile, "%8d simple and %8d compound expressions seen by SSAPRE in PU %s\n",
 	  simple_count, xtable._compound_count, Cur_PU_Name);
+#if 0
+  // for following assertion to pass, needs to compile with 
+  // -WOPT:lftr2=0:new_sr=0:second=0:ocopy=0
+  Is_True(simple_count + xtable._compound_count >= xtable._expr_count && 
+      xtable._expr_count >= 0.98 * (simple_count + xtable._compound_count),
+	  ("Etable::Count_lex_ident_exprs: error in counting: total is %d",
+	   xtable._expr_count));
+#endif
 
   OPT_POOL_Pop(&local_pool, -1);
   OPT_POOL_Delete(&local_pool, -1);

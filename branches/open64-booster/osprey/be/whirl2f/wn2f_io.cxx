@@ -275,6 +275,9 @@ WN2F_io_format(TOKEN_BUFFER tokens,
 		      (DIAG_W2F_UNEXPECTED_IOF,
 		       IOITEM_name(WN_IOITEM(item)), "WN2F_io_format"));
       Append_Token_String(tokens, IOITEM_name(WN_IOITEM(item)));
+#if 0
+      WN2F_translate(tokens, WN_kid0(item), context);      
+#endif
       break;
 
    case IOF_LABEL:

@@ -1395,6 +1395,19 @@ extern WN* Get_Array_Dimension_Size (TY_IDX array_ty, INT i) {
     ret_wn = LWN_Make_Icon (MTYPE_I8, (TY_AR_ubnd_val(array_ty,i) -
                                     TY_AR_lbnd_val(array_ty,i) + 1));
     
+#if 0
+    if (TY_AR_stride_val(array_ty, i) == elem_size) {
+      ret_wn = LWN_Make_Icon (MTYPE_I8,(TY_AR_ubnd_val(array_ty,i) -
+                                    TY_AR_lbnd_val(array_ty,i) + 1));
+    }
+    else {
+      ret_wn = LWN_Make_Icon(MTYPE_I8, ((TY_AR_ubnd_val(array_ty,i) -
+                                     TY_AR_lbnd_val(array_ty,i) + 1)/
+                                     (TY_AR_stride_val(array_ty,i)/
+                                         elem_size)));
+      DevWarn ("Stride on distributed array is not 1");
+    }
+#endif
   }
   else {
     // something is non-const, so generate an expression
@@ -3340,4 +3353,19 @@ void Generate_Runtime_Stuff () {
                           Be_Type_Tbl(MTYPE_V),
                           voidpty);
 
+#if 0
+  // These are now defined in be/be/dra_ec.cxx
+  //
+  distr_st_entries[ECHT_Check] = 
+    Declare_Func_One_Arg (".__dsm_echt_check", "__dsm_echt_check",
+                          voidpty,
+                          voidpty);
+
+  arg_ty[0] = arg_ty[1] = voidpty;
+  distr_st_entries[ECHT_Compare] = 
+    Declare_Func_N_Arg (".__dsm_echt_compare", "__dsm_echt_compare",
+                        Be_Type_Tbl(MTYPE_V),
+                        4,
+                        arg_ty);
+#endif
 }

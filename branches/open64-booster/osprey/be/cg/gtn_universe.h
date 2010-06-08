@@ -150,10 +150,19 @@ extern void GTN_UNIVERSE_Add_TN( TN *tn );
 inline INT32
 GTN_UNIVERSE_TN_int( TN *tn)
 {
+#if 0
+  /* the following assertion fails at several places in CG. Comment 
+     it out till those references are fixed. */
+  Is_True (TN_is_register(tn) && 
+	   TN_is_global_reg(tn) &&
+	   (TN_number(tn) < tn_int_map_allocated_size),
+		("Invalid TN%d in GTN_UNIVERSE_TN_int", TN_number(tn)));
+#else
   if (!(TN_is_register(tn) && 
 	TN_is_global_reg(tn) &&
 	(TN_number(tn) < tn_int_map_allocated_size)))
     return 0;
+#endif
 
   return GTN_UNIVERSE_tn_int_map[TN_number(tn)];
 }

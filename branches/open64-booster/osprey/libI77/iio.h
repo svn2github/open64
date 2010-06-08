@@ -61,6 +61,7 @@ extern int e_wsfi();
 extern int e_rsfi_mp(unit **);
 extern int e_wsfi_mp(unit **);
 
+#if 11
 extern int s_wsfi64(icilist64 *);
 extern int s_wsfi64_mp(icilist64 *, unit**);
 extern int e_rsfi64();
@@ -68,6 +69,9 @@ extern int e_wsfi64();
 extern int e_rsfi64_mp(unit **);
 extern int e_wsfi64_mp(unit **);
 extern int c_si(icilist64 *, unit *);
+#else
+extern int c_si(icilist *, unit *);
+#endif
 
 extern XINT icnum, icpos;
 extern char *icptr, *icend;

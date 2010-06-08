@@ -40,6 +40,7 @@
 
 */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <ext/hash_set>
 #include <ext/functional>
@@ -1032,6 +1033,41 @@ static UINT collecting_recursive_ty = 0;
 void
 Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
 {
+#if 0
+    // why make following assumption?, the sizeof() and __alignof__ 
+    // may varies from system to system. - sxyang, 3/19/2006
+    
+    // check if the assumption used by fast comparision of structs are valid
+#ifdef  __GNUC__
+#ifndef TARG_SL
+    Is_True (sizeof(TY)  == 28 && __alignof__(TY)  == 4 &&
+	     sizeof(FLD) == 28 && __alignof__(FLD) == 4 &&
+	     sizeof(ARB) == 32 && __alignof__(ARB) == 4,
+	     ("Invalid size/alignment assumption:"
+	      " TY sz %d al %d, FLD sz%d al %d, ARB sz %d al %d",
+	      sizeof(TY), __alignof__(TY), sizeof(FLD),
+	      __alignof__(FLD), sizeof(ARB), __alignof__(ARB)));
+#else
+    // On MIPS architecture, INT64 has alignment 8, so TY and FLD hash
+    // functions must accommodate four bytes padding at end
+    Is_True (sizeof(TY)  == 32 && __alignof__(TY)  == 8 &&
+	     sizeof(FLD) == 32 && __alignof__(FLD) == 8 &&
+	     sizeof(ARB) == 32 && __alignof__(ARB) == 8,
+	     ("Invalid size/alignment assumption:"
+	      " TY sz %d al %d, FLD sz%d al %d, ARB sz %d al %d",
+	      sizeof(TY), __alignof__(TY), sizeof(FLD),
+	      __alignof__(FLD), sizeof(ARB), __alignof__(ARB)));
+#endif // ! TARG_SL
+#else // for SL as well as IRIX, this is guaranteed by compiler, except for packed data
+    Is_True (sizeof(TY)  == 32 && __builtin_alignof(TY)  == 8 &&
+	     sizeof(FLD) == 32 && __builtin_alignof(FLD) == 8 &&
+	     sizeof(ARB) == 32 && __builtin_alignof(ARB) == 8,
+	     ("Invalid size/alignment assumption:"
+	      " TY sz %d al %d, FLD sz%d al %d, ARB sz %d al %d",
+	      sizeof(TY), __builtin_alignof(TY), sizeof(FLD),
+	      __builtin_alignof(FLD), sizeof(ARB), __builtin_alignof(ARB)));
+#endif // __GNUC__
+#endif // 0
     ty_hash_table = CXX_NEW (NEW_TY_HASH_TABLE (1000, TY_HASH (), TY_IS_EQUIVALENT(), 
 					    TY_EXTRACT_KEY (), pool),
 			     pool);

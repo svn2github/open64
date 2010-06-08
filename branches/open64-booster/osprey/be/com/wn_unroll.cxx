@@ -343,7 +343,11 @@ WN_UNROLL::Replicate_expr(WN *expr, INT rep_cnt)
   INT i;
 
   WN *new_expr = WN_CopyNode(expr);
+#if 0
+  WN_COPY_All_Maps(new_expr, expr);
+#else
   WN_set_map_id(new_expr, (WN_MAP_ID) (-1));
+#endif
 
 
   switch (opr) {
@@ -452,7 +456,11 @@ WN_UNROLL::Replicate_stmt(WN *stmt, INT rep_cnt)
     }
 
   WN *new_stmt = WN_CopyNode(stmt);
+#if 0
+  WN_COPY_All_Maps(new_stmt, stmt);
+#else
   WN_set_map_id(new_stmt, (WN_MAP_ID) (-1));
+#endif
 
   switch (opr) {
   case OPR_COMMENT:
@@ -696,6 +704,12 @@ DevWarn("unrolled size would be %d * %d", wn_unroll.Node_count(), unroll_times);
     // use the size limit if there was no pragma specified unroll amount
     if (pragma_unroll_times == 0 && (unroll_times * wn_unroll.Node_count()) > max_unroll_size)
       return;	// too big
+#if 0
+    if (unroll_times > OPT_unroll_times)
+      return;	// too big
+    if (wn_unroll.Node_count() > OPT_unroll_size)
+      return;	// too big
+#endif
   }
   else
     return;	// no loop info

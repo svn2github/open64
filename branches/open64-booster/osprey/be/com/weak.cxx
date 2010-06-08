@@ -148,8 +148,10 @@ BOOL (*Verify_alias_p) (ALIAS_MANAGER *, WN *);
 // from be/opt/opt_alias_analysis.cxx
 void (*Print_points_to_p) (FILE *fp, POINTS_TO *ptmp);
 
+#if 1
 // from be/opt/opt_wn.h
 AUX_ID (*WN_aux_p) (const WN*);
+#endif
 
 // from be/opt/opt_du.h
 BOOL (DU_MANAGER::*CD_is_br_taken_p) (IDTYPE);

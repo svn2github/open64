@@ -186,6 +186,27 @@ ipa_init_link_line (int argc, char** argv)
     // Push the path and name of the final link tool
 #if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
 
+#if 0
+    char *t_path = arg_vector[0];
+    char *t_name;
+    char *buf;
+    int len = strlen(t_path);
+    int i,new_len;
+    
+    t_name = t_path + (len-1);
+    for (i=0; i<len; i++,t_name--) {
+    	if (*t_name == '/')
+	    break;
+    }
+    new_len = len-i;
+    buf = (char *)malloc(strlen(LINKER_NAME)+new_len+1);
+    
+    strncpy(buf,t_path,new_len);
+    strcat(buf,LINKER_NAME);
+    ld_flags_part1->push_back (buf);
+    
+    free(buf);
+#endif
     ld_flags_part1->push_back (get_linker_name(arg_count, arg_vector));
 #if defined(TARG_IA64) && defined(CROSS_COMPILATION) 
     ld_flags_part1->push_back (DYNAMIC_LINKER);

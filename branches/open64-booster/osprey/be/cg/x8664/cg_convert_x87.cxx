@@ -351,6 +351,13 @@ static void Print_Stack( Stack* stack )
 
   fprintf( TFile, "x87 stack [" );
 
+#if 0
+  REGISTER reg;
+
+  FOR_ALL_REGISTER_SET_members( stack->reg_set, reg ){
+    fprintf( TFile, " %s ", REGISTER_name(ISA_REGISTER_CLASS_x87,reg) );
+  }
+#endif
 
   for( int i = 0; i <= stack->top; i++ ){
     fprintf( TFile, " %s",
@@ -1575,6 +1582,15 @@ void Convert_x87_Regs( MEM_POOL* _mem_pool )
     Adjust_Input_Stack( bb, true );
   }
 
+#if 0
+  /* TODO:
+     Turn it on to see whether cflow can optimize the final pu a bit.
+  */
+  if( CG_opt_level > 0 && CFLOW_opt_after_cgprep && new_bbs > 5 ){
+    CFLOW_Optimize( CFLOW_BRANCH | CFLOW_MERGE | CFLOW_FREQ_ORDER,
+		    "CFLOW (from cg_convert_x87)" );
+  }
+#endif
 
   BB_MAP_Delete( bb_stack_info_map );
   BB_MAP_Delete( dfs_map );

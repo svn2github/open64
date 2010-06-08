@@ -34,6 +34,18 @@ static struct disassemble_info *local_info;
 
 static void print_operand PARAMS ((int, char *, int *));
 
+#if 0
+static char *lname[] = { "r0","r1","r2","r3","r4","r5","r6","r7","s0" };
+
+static char *
+findname (val)
+     unsigned int val;
+{
+  if (val >= 0x10 && val <= 0x20)
+    return lname[(val - 0x10) / 2];
+  return 0;
+}
+#endif
 static void
 print_operand (lookup, format, args)
      int lookup;
@@ -51,6 +63,12 @@ print_operand (lookup, format, args)
 	  val = args[(*format++) - '0'];
 	  if (lookup)
 	    {
+#if 0
+	      name = findname (val);
+	      if (name)
+		fpr (stream, "%s", name);
+	      else
+#endif
 		local_info->print_address_func (val, local_info);
 	    }
 	  else

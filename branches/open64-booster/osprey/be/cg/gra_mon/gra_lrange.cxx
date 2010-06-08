@@ -60,7 +60,11 @@ static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/cg/gra_mon
 #endif
 
 #if defined(__GNUC__)
+#if 0 // workaround at PathScale for build problem
+#include <math.h>       // FLT_MAX
+#else
 #include <float.h>	// FLT_MAX
+#endif
 #else
 #include <limits.h>
 #endif

@@ -171,6 +171,18 @@ static OP *Compose_Mem_Op_And_Copy_Info (OP *op, TN *index, TN *offset,
 void
 EBO_Special_Start (MEM_POOL *pool)
 {
+#if 0
+  st_initv_map = CXX_NEW(ST_TO_INITV_MAP(31, pool), pool);
+  st_initv_map_inited = FALSE;
+  work_gtn_set = GTN_SET_Create_Empty(Last_TN + 1, pool);
+  work_defined_set = BS_Create_Empty(Last_TN + 1, pool);
+  work_pool = pool;
+
+  INT32 idummy;
+  double ddummy;
+  CGTARG_Compute_Branch_Parameters(&idummy, &fixed_branch_cost,
+				   &taken_branch_cost, &ddummy);
+#endif
 
   Init_Addr_Modes();
 }
@@ -1362,6 +1374,13 @@ delete_memory_op (OP *op,
     if( EBO_Trace_Optimization ){
       fprintf( TFile, "Load - Store combination is not optimized\n" );
     }
+#if 0
+    if( OP_load( opinfo->in_op ) &&
+	OP_prev(op) == opinfo->in_op &&
+	OP_result( opinfo->in_op, 0 ) == OP_opnd( op, 0 ) ){
+      return TRUE;
+    }
+#endif
     return FALSE;
   }
 
@@ -2580,6 +2599,11 @@ static BOOL move_ext_is_replaced( OP* op, const EBO_TN_INFO* tninfo )
   OPS ops = OPS_EMPTY;
 
   if( TOP_is_move_ext( pred_top ) ){
+#if 0
+    if( ( OP_bb( pred ) != OP_bb( op ) ) &&
+	has_assigned_reg( OP_opnd(pred,0) ) )
+      return FALSE;
+#endif
     EBO_TN_INFO* opnd_info = get_tn_info( OP_opnd(pred,0) );
     if( opnd_info != NULL && opnd_info->sequence_num > tninfo->sequence_num )
       return FALSE;

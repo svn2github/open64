@@ -525,6 +525,74 @@ DSE::Set_Required_MU( MU_NODE *mu, BOOL real_use ) const
 }
 
 
+#if 0  // OSP_468, remove Set_Required_Imp_VSE()
+void 
+DSE::Set_Required_Imp_VSE( VER_ID vid, BOOL real_use) const
+{
+  VER_STAB_ENTRY *vse = Opt_stab()->Ver_stab_entry(vid);
+  AUX_ID vaid = vse->Aux_id();
+
+  STMT_TYPE vtype = vse->Type();
+  switch ( vtype ) {
+    case WHIRL_STMT: 
+    case CHI_STMT:
+      {
+        WN *wn;
+	if (vtype  == WHIRL_STMT)
+	  wn = vse->Wn();
+	else
+	  wn = vse->Chi_wn();
+
+        CHI_LIST *chi_list = Opt_stab()->Get_generic_chi_list(wn);
+        FmtAssert(OPERATOR_is_scalar_store ( WN_operator(wn) ) || chi_list, 
+                          ("DSE::Set_Required_Implicit_Use: chi list is null."));
+        if(chi_list == NULL) 
+          break;
+        CHI_LIST_ITER chi_iter;
+        CHI_NODE *cnode;
+        FOR_ALL_NODE( cnode, chi_iter, Init(chi_list)) {
+          AUX_ID caid = cnode->Aux_id();
+          if(caid != vaid && Aliased_aux(caid, vaid)) {
+            FmtAssert( vid != cnode->Result(), ("DSE::Set_Required_Imp_VSE: confused version"));
+            VER_STAB_ENTRY *cvse = Opt_stab()->Ver_stab_entry(cnode->Result());
+            Set_last_store(caid, NULL); //from a implicit use, so reset last store
+            Set_Required_VSE(cvse, real_use, NULL);
+          }
+        }
+      }
+      break;
+
+    case PHI_STMT:
+      {
+	BB_NODE *bb = Opt_stab()->Ver_stab_entry(vid)->Bb();
+	PHI_LIST_ITER phi_iter;
+	PHI_NODE *phi;
+	FOR_ALL_ELEM (phi, phi_iter, Init(bb->Phi_list())) {
+          AUX_ID paid = phi->Aux_id();
+          if( paid != vaid && Aliased_aux(paid, vaid)) {
+            FmtAssert( vid != phi->Result(), ("DSE::Set_Required_Imp_VSE: confused version"));
+            VER_STAB_ENTRY *pvse = Opt_stab()->Ver_stab_entry(phi->Result());
+            Set_last_store(paid, NULL); //from a implicit use, so reset last store
+            Set_Required_VSE(pvse, real_use, NULL);
+          }
+	}
+      }
+      break;
+
+    case ENTRY_STMT:
+      // no need to handle
+      break;
+
+    case MU_STMT:   // mu could not define anything
+    case NO_STMT:
+    default:
+      ErrMsg( EC_Misc_Int, "DSE::Set_Required_Implicit_Use invalid type", vse->Type() );
+      break;
+  }
+  return;
+
+}
+#endif
 
 static bool Is_identity_asgn(WN *wn, OPT_STAB *opt_stab)
 {

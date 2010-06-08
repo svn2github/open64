@@ -110,6 +110,7 @@ get_cilist64( cilist64 *a64, cilist *a )
 #endif
 }
 
+#if 11
 void get_inlist64(inlist64 *dst, inlist *src)
  {
 dst->inerr = src->inerr;
@@ -171,6 +172,7 @@ dst->inbuffsize = NULL;
 
 #endif /* MIPSpro */
 }
+#endif
 
 void get_icilist64(icilist64 *dst, icilist *src)
  {

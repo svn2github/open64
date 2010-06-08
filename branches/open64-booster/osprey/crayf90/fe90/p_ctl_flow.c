@@ -2385,6 +2385,10 @@ void parse_else_stmt (void)
    blk_cntxt_type	blk_type		= If_Else_Blk;
    opnd_type            cond_expr;
 
+# if 0
+   int			cont_lbl_idx;
+   int			end_lbl_idx;
+# endif
 
    blk_cntxt_type	err_blk;
 #ifdef KEY /* Bug 10177 */
@@ -2733,6 +2737,17 @@ void parse_else_stmt (void)
          }
 # endif
 
+#if 0
+         if (CURR_BLK == If_Then_Blk) {
+            cont_lbl_idx                 = BLK_LABEL(blk_stk_idx - 1);
+            end_lbl_idx                  = gen_internal_lbl(stmt_start_line);
+            BLK_LABEL(blk_stk_idx - 1)   = end_lbl_idx;
+         }
+         else {
+            cont_lbl_idx = CURR_BLK_LABEL;
+            end_lbl_idx  = BLK_LABEL(blk_stk_idx - 1);
+         }
+#endif
 
       }
 
@@ -2815,8 +2830,60 @@ void parse_else_stmt (void)
                IR_FLD_L(ir_idx)      = SH_Tbl_Idx;
                IR_IDX_L(ir_idx)      = sh_idx;
             }
+#if 0
+               CURR_BLK_LABEL        = gen_internal_lbl(stmt_start_line);
+               IR_LINE_NUM_R(ir_idx) = stmt_start_line;
+               IR_COL_NUM_R(ir_idx)  = stmt_start_col;
+               IR_FLD_R(ir_idx)      = AT_Tbl_Idx;
+               IR_IDX_R(ir_idx)      = CURR_BLK_LABEL;
+#endif
            
 
+#if 0
+            /* Now AHEAD of the ELSE IF or ELSE SH, generate a GO TO stmt to  */
+            /* branch to the end of the IF construct and a CONTINUE stmt to   */
+            /* define the start of the ELSE IF or ELSE. 		      */
+
+            gen_sh(Before, Goto_Stmt,
+                   SH_GLB_LINE(SH_PREV_IDX(curr_stmt_sh_idx)), 
+                   SH_COL_NUM(SH_PREV_IDX(curr_stmt_sh_idx)),
+                   FALSE, FALSE, TRUE);
+
+            sh_idx                 = SH_PREV_IDX(curr_stmt_sh_idx);
+            NTR_IR_TBL(ir_idx);
+            SH_IR_IDX(sh_idx)      = ir_idx;
+            IR_OPR(ir_idx)         = Br_Uncond_Opr;
+            /* LRR - bhj put in short typeless as type idx */
+            IR_TYPE_IDX(ir_idx)         = TYPELESS_DEFAULT_TYPE;
+            IR_LINE_NUM(ir_idx)    = SH_GLB_LINE(SH_PREV_IDX(sh_idx));
+            IR_COL_NUM(ir_idx)     = SH_COL_NUM(SH_PREV_IDX(sh_idx));
+            
+            IR_LINE_NUM_R(ir_idx)  = SH_GLB_LINE(SH_PREV_IDX(sh_idx));
+            IR_COL_NUM_R(ir_idx)   = SH_COL_NUM(SH_PREV_IDX(sh_idx));
+            IR_FLD_R(ir_idx)       = AT_Tbl_Idx;
+            IR_IDX_R(ir_idx)       = end_lbl_idx;
+
+            gen_sh(Before, Continue_Stmt, stmt_start_line, stmt_start_col,
+                   FALSE, TRUE, TRUE);
+         
+            sh_idx                         = SH_PREV_IDX(curr_stmt_sh_idx);
+            NTR_IR_TBL(ir_idx);
+            SH_IR_IDX(sh_idx)              = ir_idx;
+            IR_OPR(ir_idx)                 = Label_Opr;
+            /* LRR - bhj put in short typeless as type idx */
+            IR_TYPE_IDX(ir_idx)            = TYPELESS_DEFAULT_TYPE;
+            IR_LINE_NUM(ir_idx)            = stmt_start_line;
+            IR_COL_NUM(ir_idx)             = stmt_start_col;
+            IR_LINE_NUM_L(ir_idx)          = stmt_start_line;
+            IR_COL_NUM_L(ir_idx)           = stmt_start_col;
+            IR_FLD_L(ir_idx)               = AT_Tbl_Idx;
+            IR_IDX_L(ir_idx)               = cont_lbl_idx;
+            AT_DEFINED(cont_lbl_idx)       = TRUE;
+            AT_DEF_LINE(cont_lbl_idx)      = stmt_start_line;
+            AT_DEF_COLUMN(cont_lbl_idx)    = stmt_start_col;
+            AT_REFERENCED(cont_lbl_idx)    = Referenced;
+            ATL_DEF_STMT_IDX(cont_lbl_idx) = sh_idx;
+#endif
          }
       }
    }
@@ -2848,6 +2915,13 @@ void parse_else_stmt (void)
             SH_ERR_FLG(curr_stmt_sh_idx) = TRUE;
          }
 
+# if 0
+         if (cif_flags & XREF_RECS) {
+            cif_usage_rec(CURR_BLK_NAME, AT_Tbl_Idx,
+   		          TOKEN_LINE(token), TOKEN_COLUMN(token),
+		          CIF_Construct_Name_Reference);
+         }
+# endif
       }
    }
 
@@ -3873,6 +3947,13 @@ void parse_if_stmt (void)
                IR_LINE_NUM(ir_idx)         = expr_start_line;
                IR_COL_NUM(ir_idx)          = expr_start_col;
                COPY_OPND(IR_OPND_L(ir_idx), cond_expr);
+#if 0
+               CURR_BLK_LABEL              = gen_internal_lbl(stmt_start_line);
+               IR_LINE_NUM_R(ir_idx)       = expr_start_line;
+               IR_COL_NUM_R(ir_idx)        = expr_start_col;
+               IR_FLD_R(ir_idx)            = AT_Tbl_Idx;
+               IR_IDX_R(ir_idx)            = CURR_BLK_LABEL;
+#endif
             }
 
             /* Generate a Then_Stmt SH and block stack entry.  This is needed */

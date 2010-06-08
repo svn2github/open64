@@ -70,6 +70,12 @@ coderep_obj_ty (CODEREP* cr) {
       if (TY_kind(ty) == KIND_STRUCT) {
         return get_field_type (ty, fld_id);
       } else {
+        #if 0
+        // too much warnings
+        DevWarn ("CODEREP-%d has non-zero field-id, "
+                 "but Lod_ty()/Ilod_ty() returns non aggregate type '%s'",
+                 cr->Coderep_id(), TY_name(ty));
+        #endif
       }
     }
     return ty;

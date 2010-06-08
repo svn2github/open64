@@ -600,6 +600,14 @@ Copy_Array(DISTR_INFO* di, ST *local_st, WN *mp_region, WN *tmp_array_def,
       stride=LWN_Make_Icon(index_type,1);
     }
 
+#if 0
+    //the following code handles variable stride but did not consider
+    // element size
+    if (ARB_const_stride(arb))
+      stride=LWN_Make_Icon(index_type,ARB_stride_val(arb));
+    else
+      stride=LWN_Copy_Tree((WN*)ARB_stride_tree(arb));
+#endif
 
     WN *add = LWN_CreateExp2(OPCODE_make_op(OPR_ADD,index_type,MTYPE_V),
                              step_use, stride);

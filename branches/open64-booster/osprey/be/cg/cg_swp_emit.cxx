@@ -408,18 +408,6 @@ SWP_REG_ASSIGNMENT::SWP_REG_ASSIGNMENT()
     non_rotating_reg[i] = REGISTER_CLASS_allocatable(i);
 #endif
   }
-#ifdef TARG_IA64
-  // if the function call other function with integer parameter, 
-  // reserve 8 reg from the rotating_reg_avail, or if the rotating 
-  // register share a same register with the output registers, function
-  // call in this function will get wrong parameter's. 
-  // output registers should be already set at the begining of 
-  // CG_Generate_Code through functino Convert_WHIRL_To_OPs 
-
-  if ( REGISTER_Number_Stacked_Output (ISA_REGISTER_CLASS_integer) )
-    rotating_reg_avail[ISA_REGISTER_CLASS_integer] -= 8 ;
-#endif
-
 }
 
 

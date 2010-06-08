@@ -510,7 +510,7 @@ static struct {
 bool
 DaVinci::Parse_Event(const char *line, EVENT_T *event)
 {
-  const char *epfx;  // immediately after '(' or at end of reply.
+  char *epfx;  // immediately after '(' or at end of reply.
 
   epfx = strchr( line, '(' );
   if ( epfx == NULL ) {

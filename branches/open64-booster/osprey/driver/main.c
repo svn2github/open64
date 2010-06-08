@@ -93,6 +93,11 @@ boolean add_heap_limit;
 int heap_limit;
 int hugepage_attr;
 
+#if 0
+// obsolete, see comments in DESIGN_DOC
+//extern void check_for_combos(void);
+extern boolean is_replacement_combo(int);
+#endif
 
 extern void toggle_implicits(void);
 extern void set_defaults(void);
@@ -435,6 +440,10 @@ main (int argc, char *argv[])
 		}
 	}
 
+#if 0
+	/* check for certain combinations of options */
+	check_for_combos(); //obsolete, see comments in DESIGN_DOC
+#endif
 
 	if ((option_was_seen(O_fpic) ||
 	     option_was_seen(O_fPIC))
@@ -891,6 +900,19 @@ dump_args (char *msg)
 	printf("dump args %s: ", msg);
 	FOREACH_OPTION_SEEN(i) {
 		if (i == O_Unrecognized) continue;
+#if 0
+		// obsolete, see comments in DESIGN_DOC
+		/* there are some combos that result in a warning 
+		 * and replacing one of the args; in that case the
+		 * option name looks like "arg1 arg2" but the implied
+		 * list is just "arg1". */
+		if (is_replacement_combo(i)) {
+			int iflag;
+			FOREACH_IMPLIED_OPTION(iflag, i) {
+				printf(" %s", get_current_implied_name());
+			}
+		} else {
+#endif
 		printf(" %s", get_option_name(i));
 	}
 	printf("\n");
@@ -1002,6 +1024,25 @@ prescan_options (int argc, char *argv[])
   }
 
   // Disable for SiCortex 5069.
+#if 0
+  // Turn off IPA for certain flag combinations.  Must turn off IPA before
+  // adding objects because the objects' suffix depends on whether IPA is
+  // invoked.  Bug 7879.
+  if (ipa &&
+      ipa_conflict_option != NULL) {
+    char msg[200];
+    for (i = 1; i < argc; i++) {
+      if (!strcasecmp(argv[i], "-ipa") ||
+	  !strcmp(argv[i], "-Ofast")) {
+	sprintf(msg, "%s %s combination not allowed, replaced with %s",
+		argv[i], ipa_conflict_option, ipa_conflict_option);
+	warning(msg);
+	ipa = FALSE;
+	argv[i] = "-dummy";
+      }
+    }
+  }
+#endif
 }
 
 static void

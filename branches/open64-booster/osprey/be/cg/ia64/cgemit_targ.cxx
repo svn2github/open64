@@ -132,7 +132,14 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
     strcpy(p, "progbits");
   }
   fprintf (asm_file, " \"%s\"\n", scn_type_string);
+#if 0   // contrary to document, it should be align, not power of it.
+  UINT32 tmp, power;
+  power = 0;
+  for (tmp = scn__align; tmp > 1; tmp >>= 1) power++;
+  fprintf (asm_file, "\t%s\t%d\n", AS_ALIGN, power);
+#else
   fprintf (asm_file, "\t%s\t%d\n", AS_ALIGN, scn_align);  
+#endif
 }
 
 extern void
@@ -282,6 +289,12 @@ CGEMIT_Gen_Asm_Frame (INT64 frame_len)
 {
   // .fframe is only used for unwind info,
   // and we plan on emitting that info directly.
+#if 0
+  if (Current_PU_Stack_Model != SMODEL_SMALL)
+	fprintf ( Asm_File, "\t%s\t%lld\n", AS_FRAME, frame_len);
+  else
+	fprintf ( Asm_File, "\t%s\t%lld\n", AS_FRAME, frame_len);
+#endif
 }
 
 

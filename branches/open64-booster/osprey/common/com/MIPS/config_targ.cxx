@@ -364,10 +364,14 @@ Prepare_Target ( void )
     if ( strcmp ( ABI_Name, "n32" ) == 0 ) {
       Target_ABI = ABI_N32;
       isa_default = TARGET_ISA_M2;
+#if 0 // for non-KEY, default target is r10000
+      targ_default = TARGET_sb1;
+#else
 #ifdef TARG_SL
       targ_default = TARGET_sl1_pcore;
 #else
       targ_default = TARGET_R10K;
+#endif
 #endif
       Use_32_Bit_Pointers = TRUE;
     } else if ( strcmp ( ABI_Name, "n64" ) == 0 ) {

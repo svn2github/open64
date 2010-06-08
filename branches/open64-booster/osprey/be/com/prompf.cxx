@@ -37,6 +37,7 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "be_com_pch.h"

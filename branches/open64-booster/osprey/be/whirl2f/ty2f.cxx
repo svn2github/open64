@@ -1282,6 +1282,9 @@ TY2F_pointer(TOKEN_BUFFER decl_tokens, TY_IDX ty)
 
       if (TY2F_Pointer_To_Dope(ty))
       {
+#if 0
+	Prepend_Token_String(decl_tokens,",POINTER ::");
+#endif
 	TY2F_translate(decl_tokens,Be_Type_Tbl(Pointer_Mtype));
       } 
       else
@@ -1290,6 +1293,10 @@ TY2F_pointer(TOKEN_BUFFER decl_tokens, TY_IDX ty)
 
 	if (TY_kind(TY_pointed(ty)) == KIND_STRUCT)
 	{
+#if 0
+	  Prepend_Token_String(decl_tokens,",POINTER ::");
+	  Prepend_Token_String(decl_tokens,W2CF_Symtab_Nameof_Ty(TY_pointed(ty)));
+#endif
  	  TY2F_translate(decl_tokens,Be_Type_Tbl(Pointer_Mtype));
 
 	} else

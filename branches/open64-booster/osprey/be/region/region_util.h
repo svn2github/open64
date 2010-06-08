@@ -259,7 +259,6 @@ typedef struct region_id {
 
   LOWER_ACTIONS	lowered; /* lowerer actions already applied to region	*/
   struct EH_RANGE  *eh_range_ptr; /* pointer to current EH range   	*/
-  INT32 num_eh_ranges;   /* how many eh_ranges in this eh region        */
 
 } RID;
 
@@ -279,7 +278,6 @@ typedef struct region_id {
 #define RID_rloop(r)         	((r)->rloop)
 #define RID_lowered(r)       	((r)->lowered)
 #define RID_eh_range_ptr(r) 	((r)->eh_range_ptr)
-#define RID_num_eh_ranges(r)    ((r)->num_eh_ranges)
 #define RID_type(r)          	((r)->rid_type)
 
 /* flag macros */

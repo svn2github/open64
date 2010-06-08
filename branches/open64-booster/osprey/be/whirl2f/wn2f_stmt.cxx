@@ -1187,6 +1187,31 @@ WN2F_Append_Symtab_Consts(TOKEN_BUFFER tokens,
    /* When "tokens" is NULL, we write the consts directly to the
     * Whirl2f_file; otherwise, append them to the given token-list.
     */
+#if 0   
+   /* Declare static variables for symbolic constants */
+   FOR_ALL_CONSTANTS(st, const_idx)
+   {
+      /* TODO: Full support for sym_consts */
+
+	 if (tokens != NULL)
+	 {
+	    Append_F77_Indented_Newline(tokens, 
+				       lines_between_decls, NULL/*label*/);
+	    ST2F_decl_translate(tokens, st);
+	 }
+	 else
+	 {
+	    tmp_tokens = New_Token_Buffer();
+	    Append_F77_Indented_Newline(tmp_tokens, 
+				       lines_between_decls, NULL/*label*/);
+	    ST2F_decl_translate(tmp_tokens, st);
+	    Write_And_Reclaim_Tokens(W2F_File[W2F_FTN_FILE],
+				     W2F_File[W2F_LOC_FILE],
+				     &tmp_tokens);
+	 }
+      }
+   }
+#endif
 
 } /* WN2F_Append_Symtab_Consts */
 

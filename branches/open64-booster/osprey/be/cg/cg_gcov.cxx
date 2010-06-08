@@ -317,6 +317,53 @@ CG_Init_Func_Infos(ST *func_infos)
 #endif
 }
 
+#if 0
+/* Information about section of counters for a function.  */
+struct counter_section
+{
+  unsigned tag;         /* Tag of the section.  */
+  unsigned n_counters;  /* Number of counters in the section.  */
+};
+
+/* Information about section of counters for an object file.  */
+struct counter_section_data
+{
+  unsigned tag;         /* Tag of the section.  */
+  unsigned n_counters;  /* Number of counters in the section.  */
+  gcov_type *counters;  /* The data.  */
+};
+
+/* Information about a single function.  */
+struct function_info
+{
+  const char *name;             /* (mangled) name of function */
+  unsigned checksum;            /* function checksum */
+  unsigned n_counter_sections;  /* Number of types of counters */
+  const struct counter_section *counter_sections;
+                                /* The section descriptions */
+};
+
+/* Information about a single object file.  */
+struct gcov_info
+{
+  unsigned long version;        /* expected version number */
+  struct gcov_info *next;       /* link to next, used by libgcc */
+                                                                                                                                                             
+  const char *filename;         /* output file name */
+  long wkspc;                   /* libgcc workspace */
+                                                                                                                                                             
+  unsigned n_functions;             /* number of functions */
+  const struct function_info *functions; /* table of functions */
+                                                                                                                                                             
+  unsigned n_counter_sections;  /* Number of types of counters */
+  const struct counter_section_data *counter_sections;
+                                /* The data to be put into the sections.  */
+};
+
+
+
+
+#endif
 void
 CG_End_Final()
 {
@@ -450,6 +497,27 @@ CG_End_Final()
          The following are GNU extensions:
          5:  Number of bytes in this header.
          6:  address of table of function checksums (LPBX7).  */
+#if 0
+struct bb_function_info {
+  long checksum;
+  int arc_count;
+  const char *name;
+};
+                                                                         
+/* Structure emitted by --profile-arcs  */
+struct bb
+{
+  long zero_word;
+  const char *filename;
+  gcov_type *counts;
+  long ncounts;
+  struct bb *next;
+                                                                         
+  /* Older GCC's did not emit these fields.  */
+  long sizeof_bb;
+  struct bb_function_info *function_infos;
+};
+#endif
   TYPE_ID rtype;
   INT32 ty_size;
 

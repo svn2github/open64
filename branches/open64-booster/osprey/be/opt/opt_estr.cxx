@@ -1457,6 +1457,54 @@ STR_RED::Find_iv_and_mult_phi_res( const EXP_OCCURS *def, CODEREP **iv_def,
 // candidate
 //======================================================================
 // Unused?
+#if 0
+void
+EXP_WORKLST::Exclude_strength_reduction_cands(ETABLE *etable)
+{
+  EXP_OCCURS        *exp_occ;
+  EXP_OCCURS_ITER    exp_occ_iter;
+
+  // if we're not enabled, this everything is excluded
+  if ( ! WOPT_Enable_New_SR ) {
+    Set_exclude_sr_cand();
+    return;
+  }
+
+#ifdef EXCLUDE_IV_RHS_FROM_SR
+  // is it even something we would accept as an iv update?
+  //
+
+  // if it's not an op, we don't consider it as an rhs of iv-update
+  if ( Exp()->Kind() != CK_OP ) {
+    return;
+  }
+
+  // if it's not an add/sub, we don't consider it as an rhs of iv-update
+  const OPERATOR exp_opr = Exp()->Opr();
+  if ( exp_opr != OPR_ADD && exp_opr != OPR_SUB ) {
+    return;
+  }
+
+  // we now have an expression that *may* show up on the rhs of an
+  // iv update, so see if it ever does
+  FOR_ALL_NODE (exp_occ, exp_occ_iter, Init(Real_occurs().Head())) {
+    STMTREP *occ_stmt = exp_occ->Enclosed_in_stmt();
+    if ( occ_stmt->Rhs() == exp_occ->Occurrence() &&
+         etable->Str_red()->Determine_iv_update(occ_stmt,NULL) )
+    {
+      // we'll have to exclude this expression from strength-reduction
+      Set_exclude_sr_cand();
+
+      Is_Trace(etable->Tracing(),
+	(TFile,"Exclude_strength_reduction_cands: excluded iv rhs\n"));
+
+      break;
+    }
+  }
+#endif // EXCLUDE_IV_RHS_FROM_SR
+
+}
+#endif
 
 void
 STR_RED::Perform_per_expr_cleanup(void)

@@ -39,6 +39,7 @@
 
 /* CGEXP routines for expanding divide and rem */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <signal.h>
 #include "defs.h"
@@ -129,6 +130,13 @@ Expand_Power_Of_2_Divide (TN *result, TN *numer, INT64 dvsr, TYPE_ID mtype, OPS 
     Expand_Shift(result, numer, Gen_Literal_TN(n, 4), mtype, shift_lright, ops);
   } 
   else {
+#if 0  	
+    if (TN_is_dedicated(result)) {
+      tmp_result = Build_TN_Of_Mtype(mtype);
+    }
+    else
+      tmp_result = result;
+#endif	
 
 /*For MIPS3*/
     TN *t1 = Build_TN_Of_Mtype(mtype);
@@ -152,6 +160,41 @@ Expand_Power_Of_2_Divide (TN *result, TN *numer, INT64 dvsr, TYPE_ID mtype, OPS 
     if (dvsr < 0) Expand_Neg(result, t2, mtype, ops);
 
 /*The following code is for MIPS4, to be merged with MIPS3*/
+#if 0
+#if defined(TARG_SL)
+    //  result = numer < 0 ? (numer + absdvsr - 1) : numer;
+    Expand_Add (t1, Gen_Literal_TN(absdvsr-1, is_double ? 8 : 4), 
+		numer, mtype, ops);
+    int unsignedflag = (mtype == MTYPE_U4) ? 1 : 0;    
+    Is_True((mtype == MTYPE_U4 || mtype==MTYPE_I4) , 
+            (" Expand_Power_Of_2_Divide:: mtype must be MTYPE_I4 or MTYPE_U4" ));
+    Exp_2inst_MC_Zero(TOP_mc_z_lt, tmp_result, t1, numer, numer, unsignedflag, ops);
+#else
+    TN *p1 = Build_TN_Of_Mtype(MTYPE_I4);
+    Build_OP(TOP_slt, p1, numer, Zero_TN, ops);
+    Expand_Add (t1, Gen_Literal_TN(absdvsr-1, is_double ? 8 : 4), 
+		numer, mtype, ops);
+    Build_OP(TOP_movz, t1, numer, p1, ops);
+    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
+#endif
+    if (n > 31 && is_double)
+#ifdef TARG_SL
+      Build_OP(TOP_dsra32, t2, tmp_result, Gen_Literal_TN(n-32, 4), ops);
+#else     
+      Build_OP(TOP_dsra32, t2, t1, Gen_Literal_TN(n-32, 4), ops);
+#endif       
+    else 
+#ifdef TARG_SL
+    Build_OP(is_double ? TOP_dsra : TOP_sra, t2, tmp_result, Gen_Literal_TN(n, 4), ops);
+    if (dvsr < 0) Expand_Neg(tmp_result, t2, mtype, ops);
+    if (tmp_result != result) {
+      Expand_Copy(result, tmp_result, mtype, ops);
+    }
+#else 
+    Build_OP(is_double ? TOP_dsra : TOP_sra, t2, t1, Gen_Literal_TN(n, 4), ops);
+    if (dvsr < 0) Expand_Neg(result, t2, mtype, ops);
+#endif     	
+#endif
   }
 }
 
@@ -643,6 +686,10 @@ Expand_Rem (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   INT64 src2_val;
   BOOL const_src2 = TN_Value_At_Op (src2, NULL, &src2_val);
   if (const_src2) {
+#if 0
+    if (src2_val == 0) // Division by Zero!
+      FmtAssert (FALSE, ("Division by zero detected.\n"));
+#endif
 
     /* Handle powers of 2 specially.
      */

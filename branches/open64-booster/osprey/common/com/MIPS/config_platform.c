@@ -79,7 +79,11 @@ static PLATFORM_OPTIONS PF_Opts[] =
   /* This is the default -- it must be first.  Nickname is used for
    * default warning messages:
    */
+#if 0 // for non-Key, we want r10000
+  { IP0, "ip??", "sb1", PROC_SB1, "sibyte" },
+#else
   { IP0, "ip??", "r10000", PROC_R10000, "R10000" },
+#endif
   { IP_END,	"",	"",	PROC_NONE, "End of list" } /* Must be last */
 };
 

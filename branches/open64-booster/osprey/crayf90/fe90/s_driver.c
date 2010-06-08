@@ -3097,6 +3097,22 @@ static void	check_and_allocate_common_storage(int	sb_idx)
                   "SECTION_NON_GP");
          SB_DCL_ERR(sb_idx)	= TRUE;
       }
+# if 0
+      else if (SB_ALIGN_SYMBOL(sb_idx)) {
+         PRINTMSG(SB_DEF_LINE(sb_idx), 1502, Error,
+                  SB_DEF_COLUMN(sb_idx), 
+                  SB_NAME_PTR(sb_idx),
+                  "ALIGN_SYMBOL");
+         SB_DCL_ERR(sb_idx)	= TRUE;
+      }
+      else if (SB_FILL_SYMBOL(sb_idx)) {
+         PRINTMSG(SB_DEF_LINE(sb_idx), 1502, Error,
+                  SB_DEF_COLUMN(sb_idx), 
+                  SB_NAME_PTR(sb_idx),
+                  "FILL_SYMBOL");
+         SB_DCL_ERR(sb_idx)	= TRUE;
+      }
+# endif
       else if (SB_DCL_COMMON_DIR(sb_idx)) {
          SB_DCL_ERR(sb_idx)	= TRUE;
          PRINTMSG(SB_DEF_LINE(sb_idx), 1128, Error,
@@ -3737,6 +3753,11 @@ static void	storage_blk_resolution()
                                                    NULL_IDX,
                                                    TRUE)) {
                         same_common_block	= FALSE;
+# if 0
+                        PRINTMSG(AT_DEF_LINE(attr_idx), 1603, Caution,
+                                 AT_DEF_COLUMN(attr_idx),
+                                 SB_NAME_PTR(sb_idx));
+# endif
                         break;
                      }
                      attr_idx	= ATD_NEXT_MEMBER_IDX(attr_idx);

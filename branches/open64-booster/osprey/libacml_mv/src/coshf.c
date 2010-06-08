@@ -201,9 +201,15 @@ float FN_PROTOTYPE(coshf)(float fx)
   if (y >= max_cosh_arg)
     {
       /* Return infinity with overflow flag. */
+#if 0
+      /* This way handles non-POSIX behaviour but weirdly causes
+         sinhf to run half as fast for all arguments on Hammer */
+      return retval_errno_erange(fx);
+#else
       /* This handles POSIX behaviour */
       __set_errno(ERANGE);
         z = infinityf_with_flags(AMD_F_OVERFLOW);
+#endif
     }
   else if (y >= small_threshold)
     {

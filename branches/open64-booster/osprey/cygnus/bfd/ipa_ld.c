@@ -649,6 +649,10 @@ make_link (const string dest, const string src)
     static string working_dir = 0;
     int link_result;
 
+#if 0
+    LD_ASSERT (dest && src, thisfile,
+	       "NULL path name passed to symbolic_link()");
+#endif
 
     /* try hard link first */
 
@@ -1366,6 +1370,13 @@ ipa_symbol_sync(struct bfd_link_hash_entry *p_bfd_link_hash, PTR info)
     if (p_elf_link_hash->hidden) {
     }
 
+#if 0	// binutils 2.16.1's elf_link_hash_entry has no bitfield corresponding
+	// to 2.15's ELF_LINK_HASH_ADDRESS_TAKEN.  Comment out this 2.15 code
+	// until proven incorrect.
+    if (p_elf_link_hash->elf_link_hash_flags & ELF_LINK_HASH_ADDRESS_TAKEN) {
+	result |= ADDR_TAKEN_IN_OBJ;
+    }
+#endif
 
     if (p_elf_link_hash->ipa_indx != WHIRL_ST_IDX_UNINITIALIZED &&
     	p_elf_link_hash->ipa_indx != WHIRL_ST_IDX_NOT_AVAILABLE) {
@@ -1405,6 +1416,14 @@ cleanup_symtab_for_ipa (void)
 
     bfd_link_hash_traverse (link_info.hash, ipa_symbol_sync, (PTR) NULL);
 
+#if 0
+    /* TODO */
+    /* collect autognum and other info and pass them to ipa */
+    if (threadlocalsyms)
+	mark_all_xlocal_not_gp_rel ();
+
+    /* finally release all unnecessary storage allocated in ld. */
+#endif
     
 }  /* cleanup_symtab_for_ipa */
 

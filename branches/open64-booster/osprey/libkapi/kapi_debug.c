@@ -78,6 +78,10 @@ KDebug_DumpMachineDescription( FILE *fp, knobs_t *pknobs, int nTab )
 
    KDebug_DumpS2SLatencyTable( fp, pknobs, nTab+1 );
 
+#if 0
+   KDebug_DumpInstTable( fp, pknobs, nTab+1 );
+   fprintf( fp, "\n" );
+#endif
 }
 
 void

@@ -371,6 +371,11 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
       exit = 1;
       break;
 
+# if 0
+      DST_CONST_VALUE_form(cval) = DST_FORM_STRING;
+      DST_CONST_VALUE_form_string(cval) =
+           DST_mk_string (Index_to_char_array (TCON_str_idx (ST_tcon_val(st))));
+# endif
 
    case MTYPE_UNKNOWN: 
 
@@ -1608,6 +1613,21 @@ cwh_dst_mk_subroutine_type(TY_IDX  ty)
   t = cwh_dst_basetype(Be_Type_Tbl(MTYPE_V));
 /*   t = cwh_dst_mk_type(TY_ret_type(ty)); TODO fix with scope */
 
+#if 0
+  if (!DST_IS_NULL(t)) {
+
+    USRCPOS_clear(s);
+    
+    i = DST_mk_subroutine_type(s,
+			       NULL,
+			       t,
+			       DST_INVALID_IDX,
+			       FALSE);
+
+  }
+  DST_append_child(current_scope_idx,i);
+  return i;
+#endif
   return t ;
 }
 

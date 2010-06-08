@@ -149,6 +149,9 @@ int _xlate_binary_search_for_addr(xlate_table_con tab,
   int retstatus = XLATE_TB_STATUS_NO_ERROR;
   struct memo_s *memodata;
 
+#if 0
+printf("dadebug binary search: new? %d addr 0x%llx\n",isNewAddress,addr_in);
+#endif
 #ifndef TURN_OFF_MEMO
   if(isNewAddress) {
 	memodata = &tab->xc_memo_new;
@@ -161,9 +164,15 @@ int _xlate_binary_search_for_addr(xlate_table_con tab,
 		addr_in, addr_out,range_out);
 	if(retstatus == XLATE_TB_STATUS_NO_ERROR) {
 
+#if 0
+printf("dadebug FOUND in memo\n");
+#endif
 		return retstatus;
 	}
   }
+#if 0
+printf("dadebug invalidate memo, search\n");
+#endif
   memodata->mm_is_valid = 0;
 #endif
   
@@ -262,6 +271,9 @@ int _xlate_special_search_for_addr(xlate_table_con tab,
   struct memo_s *memodata;
   
 
+#if 0
+printf("dadebug special search: new? %d addr 0x%llx\n",isNewAddress,addr_in);
+#endif
 #ifndef TURN_OFF_MEMO
   if(isNewAddress) {
         memodata = &tab->xc_memo_new;
@@ -273,10 +285,16 @@ int _xlate_special_search_for_addr(xlate_table_con tab,
 		memodata,
 		addr_in, addr_out,range_out);
 	if(retstatus == XLATE_TB_STATUS_NO_ERROR) {
+#if 0
+printf("dadebug FOUND in memo\n");
+#endif
 		return retstatus;
 	}
   }
 
+#if 0
+printf("dadebug invalidate memo, search\n");
+#endif
   memodata->mm_is_valid = 0;
 #endif
   for(curblock = 0; curblock <= last_block_index; ++curblock) {

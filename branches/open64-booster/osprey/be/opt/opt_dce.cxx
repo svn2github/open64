@@ -1912,6 +1912,42 @@ DCE::Find_current_version( const STMTREP *ref_stmt, const CODEREP *cr ) const
 }
 
 
+#if 0
+// Do not use this function.  Use the one defined in opt_htable 
+// because COPYPROP and DCE need to cooperate.
+//
+// ====================================================================
+// Determine if the assignment is " i = i "
+// ====================================================================
+
+BOOL
+DCE::Is_identity_assignment( const STMTREP *stmt ) const
+{
+  if ( ! Allow_dce_prop() )
+    return FALSE;
+
+  Is_True ( stmt->Opr() == OPR_STID,
+    ("DCE::Is_identity_assignment: non-STID operator") );
+
+  const CODEREP *lhs = stmt->Lhs();
+
+  // store to a volatile location?
+  if (lhs->Is_var_volatile())
+    return ( FALSE );
+
+  // statements of form i = i are not required (unless volatile)
+  //  (even it stores a dedicated register)
+  if (stmt->Rhs()->Kind() == CK_VAR &&
+      stmt->Rhs()->Aux_id() == stmt->Lhs()->Aux_id() &&
+      !stmt->Rhs()->Is_var_volatile() &&
+      Find_current_version(stmt, stmt->Rhs()) == stmt->Rhs() )
+  {
+    return ( TRUE );
+  }
+
+  return ( FALSE );
+}
+#endif
 
 // ====================================================================
 // Required_store -  Is this direct   store statement required?
@@ -1988,6 +2024,13 @@ DCE::Required_istore( const STMTREP *stmt, OPERATOR oper ) const
     return ( TRUE );
 
   // remove the following as part of the fix for 597561.
+#if 0
+  // istore to unqiue pt
+  if (stmt->Lhs()->Points_to(Opt_stab())->Unique_pt()) {
+    Warn_todo("Handle unique pts.");
+    return TRUE;
+  }
+#endif
   // istore to restrict pt
   // All items aliased with dereferences of __restrict pointers are
   // assumed to be live because of C scoping rules. A __restrict
@@ -2368,6 +2411,55 @@ DCE::Mark_chinode_live( CHI_NODE *chi, STMTREP *def_stmt ) const
        chi->OPND()->Aux_id() == Return_vsym() )
     return;
  
+#if 0
+  // These optimizations are turned off because they create overlapped 
+  // live-ranges
+
+  // may not need to make this chi live if it's not aliased
+  if ( Enable_dce_alias() && def_stmt != NULL &&
+	Points_to_stack()->Elements() > 0 )
+  {
+    if ( ! Aliased( def_stmt->Points_to(Opt_stab()), 
+		    Points_to_stack()->Top() ) )
+    {
+      MU_NODE *tos_mu = Mu_stack()->Top();
+      CODEREP *old_opnd = tos_mu->OPND();
+
+      // the "current" mu is not really defined by this chi, but is
+      // instead possibly defined by what defines its operand
+      Warn_todo( "DCE::Mark_chinode_live: update pvl list?" );
+      tos_mu->Set_OPND( chi->OPND() );
+
+      if ( Tracing() ) {
+	fprintf( TFile, "DCE::Mark_chinode_live: revising chi from\n" );
+	old_opnd->Print( 0, TFile );
+	fprintf( TFile, "  to\n" );
+	chi->OPND()->Print( 0, TFile );
+      }
+
+      // no need to follow the chi-chain any further
+      return;
+    }
+  }
+
+
+  CODEREP *opnd = chi->OPND();
+  CODEREP *res  = chi->RESULT();
+  
+  //  For eliminating 
+  //    *p = ...
+  //    *p = ...
+  if ( Allow_dce_prop() && opnd->Is_flag_set(CF_DEF_BY_CHI) ) {
+    Is_True(res->Kind() == CK_VAR && opnd->Kind() == CK_VAR, ("chi must contain CK_VAR."));
+    if (res->Defstmt()->Same_lhs(opnd->Defstmt())) {
+      // update the chi opnd to skip this definition.
+      chi->Set_OPND( opnd->Defchi()->OPND());
+      // follow the chi-chain.
+      Mark_chinode_live( chi, def_stmt );
+      return;
+    }
+  }
+#endif
 
   CODEREP *cr = Dce_prop(chi->OPND());
   if (cr != NULL) {
@@ -3471,6 +3563,11 @@ DCE::Mark_block_live( BB_NODE *bb ) const
 void
 DCE::Mark_statements_dead( void ) const
 {
+#if 0
+  // Clear all the DCE_VISITED flags to allow DCE to be called for
+  // the second time
+  Htable()->Reset_DCE_visited_flags();
+#endif
 
   CFG_ITER cfg_iter(_cfg);
   BB_NODE *bb;

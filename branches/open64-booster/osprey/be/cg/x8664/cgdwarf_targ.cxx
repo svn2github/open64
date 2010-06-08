@@ -193,7 +193,7 @@ static const char *drop_these[] = {
       // don't output it.
 	DEBUG_LINE_SECTNAME,
 #endif /* defined(BUILD_OS_DARWIN) */
-#if defined(BUILD_OS_DARWIN)
+#if 0 || defined(BUILD_OS_DARWIN)
      /* Note following comment: if gdb doesn't use them, why aren't we omitting
       * them? */
      // gdb does not use the MIPS sections

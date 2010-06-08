@@ -216,6 +216,9 @@ typedef enum {
  WN_PRAGMA_SL2_SECTION,  
 #endif 
 
+#if 0
+#define WN_PRAGMA_PAGE_ALLOCATE WN_PRAGMA_PAGE_PLACE	/* to be removed */
+#endif
   WN_PRAGMA_ONTO,
   WN_PRAGMA_LASTTHREAD, 
 

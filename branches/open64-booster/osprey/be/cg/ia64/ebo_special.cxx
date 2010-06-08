@@ -118,6 +118,13 @@ static MEM_POOL *work_pool = NULL;
 
 /* Initialize and finalize ebo special routines. */
 
+#if 0
+void
+EBO_Special_Start (MEM_POOL *pool)
+{
+  Init_Addr_Modes();
+}
+#endif
 
 void
 EBO_Special_Finish (void)

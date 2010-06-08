@@ -189,11 +189,7 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       }
     case OPR_CVTL:
       {
-	if (WOPT_Enable_Cvt_Folding && ! emitter->For_preopt()
-	    /* when exp->Offset() are 8, 16 , 32, 64 , load and then cvtl can be fold into
-	     I8I1load  U8U2load ... etc*/
-	    && (exp->Offset() == 8 || exp->Offset() == 16 
-		|| exp->Offset() == 32 || exp->Offset() == 64 )) {
+	if (WOPT_Enable_Cvt_Folding && ! emitter->For_preopt()) {
 	  CODEREP *kid = exp->Get_opnd(0);
 	  WN      *opnd;
 	  actual_type = Actual_cvtl_type(exp->Op(), exp->Offset());
@@ -257,6 +253,21 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	    if (new_type) actual_type = new_type;
 	  }
 
+#if 0 // the analysis in No_truncation_by_value_size  assumes state 
+      // before BDCE, so this code has to be disabled now
+	  if (actual_type == actual_opnd_type ||
+	      (WOPT_Enable_Min_Type &&
+	       kid->Kind() == CK_VAR &&
+	       MTYPE_is_integral( actual_opnd_type ) &&
+	       No_truncation_by_value_size(actual_type, 
+					   MTYPE_is_signed(actual_type), 
+					   kid, emitter->Opt_stab() )
+	       )
+	      ) {
+	    wn = opnd;
+	    connect_cr_to_wn = FALSE;
+	  } else 
+#endif
 	  {
 	    BOOL enabled = WN_Simplifier_Enable(TRUE);
 	    wn = WN_CreateCvtl(exp->Op(), (INT16)exp->Offset(), opnd);
@@ -381,7 +392,9 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
               if (ty == MTYPE_I1 || ty == MTYPE_I2 || ty == MTYPE_U1 || ty == MTYPE_U2)
                 WN_kid(wn, i) = WN_Int_Type_Conversion( WN_kid(WN_kid(wn, i),0), ty );
               else if (
+#if 1 // bug 13104
 		       ! MTYPE_is_float(exp->Asm_input_rtype()) &&
+#endif
 		       exp->Asm_input_rtype() != exp->Asm_input_dsctype()) {
                 WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
                 WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
@@ -491,13 +504,23 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	      	   MTYPE_byte_size(exp->Dtyp()) == 4) {
 	    if (WN_operator(opnd0) == OPR_INTCONST && 
 		MTYPE_byte_size(WN_rtype(opnd0)) == 8) {
+#if 0
+	      Is_True(( WN_const_val(opnd0) << 32 >> 32) == WN_const_val(opnd0),
+	      	      ("Inconsistent INTCONST type"));
+#else
 	      if ((WN_const_val(opnd0) << 32 >> 32) == WN_const_val(opnd0))
 	        WN_set_rtype(opnd0, Mtype_TransferSize(exp->Dtyp(), WN_rtype(opnd0)));
+#endif
 	    }
 	    if (WN_operator(opnd1) == OPR_INTCONST && 
 		MTYPE_byte_size(WN_rtype(opnd1)) == 8) {
+#if 0 // umlau6.f of sixtrack hits this assertion
+	      Is_True((WN_const_val(opnd1) << 32 >> 32) == WN_const_val(opnd1),
+	      	      ("Inconsistent INTCONST type"));
+#else
 	      if ((WN_const_val(opnd1) << 32 >> 32) == WN_const_val(opnd1))
 	        WN_set_rtype(opnd1, Mtype_TransferSize(exp->Dtyp(), WN_rtype(opnd1)));
+#endif
 	    }
 	    if (OPCODE_is_load(WN_opcode(opnd0)) && 
 		MTYPE_byte_size(WN_rtype(opnd0)) == 8 &&

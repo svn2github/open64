@@ -393,6 +393,10 @@ fei_proc_def(char         *name_string,
     }
   }
 
+#if 0
+  if (sym_class == Fort_Blockdata)
+    DevWarn(("TODO_NEW_SYMTAB: blockdata"));
+#endif
 
   if (sym_class == F90_Module) {
      cwh_add_to_module_files_table(name_string);
@@ -1945,7 +1949,7 @@ cwh_stab_adjust_name(ST * st)
   } else {
 
     c = '.' ;
-    p = (char*)strchr(s,c);
+    p = strchr(s,c);
     
     if (p != NULL) {
 

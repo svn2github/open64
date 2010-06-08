@@ -71,6 +71,7 @@
 #pragma hdrstop
 #define USE_STANDARD_TYPES
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <cmplrs/fb.h>
 #include <stdlib.h>
@@ -1199,6 +1200,23 @@ FEEDBACK::Annot_icall( WN *wn, const FB_Info_Icall& fb_info )
   INT32 fb_index = Add_index_icall( wn );
   _icalls[fb_index] = fb_info;
 
+#if 0
+  UINT64 counter = 0;
+  int i;
+  for( i = 0; i < FB_TNV_SIZE; i++ ){
+    if( fb_info.tnv._values[i] == 0 )
+      break;
+    counter += fb_info.tnv._counters[i];
+  }
+
+  if( i < FB_TNV_SIZE ){
+    FmtAssert( fb_info.tnv._exec_counter == counter,
+	       ("icall counters don't match") );
+  } else {
+    FmtAssert( fb_info.tnv._exec_counter >= counter,
+	       ("icall counters don't match") );
+  }
+#endif // Is_True_On
 
   if ( _trace ) {
     fprintf( TFile, "FEEDBACK::Annot_icall(0x%p):\n", wn );
@@ -3692,7 +3710,7 @@ Read_Feedback_Info (FEEDBACK* fb, WN* tree, const Pu_Hdr& pu_hdr)
 
 } // Read_Feedback_Info
 
-#if ! defined(BUILD_OS_DARWIN) /* Temporarily remove whirl browser */
+#if 1 && ! defined(BUILD_OS_DARWIN) /* Temporarily remove whirl browser */
 #include <sys/types.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>

@@ -61,6 +61,7 @@
 #define TRACE_EXIT(x)
 #define TRACE_EXIT_i(x,i)
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <limits.h>
 #include "defs.h"

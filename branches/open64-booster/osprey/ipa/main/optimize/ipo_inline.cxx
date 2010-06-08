@@ -47,6 +47,7 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <alloca.h>
 
@@ -70,6 +71,11 @@
 #include "dwarf_DST_dump.h"
 #include "ipaa.h"
 #include "clone_DST_utils.h"
+#if 0
+#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#include "ipaa.h"			// IPAA_NODE_INFO
+#endif // _STANDALONE_INLINER
+#endif
 
 #include "ipo_inline.h"
 
@@ -1463,6 +1469,14 @@ IPO_INLINE::IPO_INLINE (IPA_NODE *caller_node,
     _caller_node(caller_node), _callee_node(callee_node), _call_edge(edge)
 {
    
+#if 0
+    {
+	// force both caller and callee to be read into memory
+	// for ipa, this has been guaranteed.
+	IPA_NODE_CONTEXT caller_context (caller_node);
+	IPA_NODE_CONTEXT callee_context (caller_node);
+    }
+#endif
 
   IP_FILE_HDR& file_hdr_caller = Caller_node()->File_Header ();
   IP_FILE_HDR& file_hdr_callee = Callee_node()->File_Header ();
@@ -2124,6 +2138,12 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	}
 	break;
 	
+#if 0
+    case OPR_PARM:
+       if (IPA_Enable_Inline_Var_Dim_Array && Callee_Summary_Proc()->Has_var_dim_array())
+	   fix_var_dim_array(WN_ty(wn), Symtab());
+	break;
+#endif
 #ifdef KEY
     case OPR_CALL:
     {
@@ -2898,6 +2918,10 @@ IPO_INLINE::Process_ST (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	return;
     }
   
+#if 0
+    if (IPA_Enable_Inline_Var_Dim_Array && Callee_Summary_Proc()->Has_var_dim_array())
+	fix_var_dim_array(ST_type(cp), Symtab());
+#endif
 
     // update the caller pragma list
     SUMMARY_PROCEDURE* caller_proc = Caller_node()->Summary_Proc ();

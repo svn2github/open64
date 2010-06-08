@@ -83,6 +83,7 @@
 // ====================================================================
 // ====================================================================
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifndef STANDALONE_SWP_ALLOCATOR
 #include <stdio.h>

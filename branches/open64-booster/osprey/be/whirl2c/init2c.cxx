@@ -466,6 +466,12 @@ INITV2C_struct_fill(TOKEN_BUFFER tokens,
 	 /* The tcon bytes of relevance are now in tcon_bytes */
 	 for (pad_byte = 0; pad_byte < tcon_size; pad_byte++)
 	 {
+#if 0 //this might be needed
+	    if (pad_byte > 0)
+	       Append_Token_Special(tokens, ',');
+	    Append_Token_String(tokens, 
+	       Number_as_String(tcon_bytes.byte[pad_byte], "%llu"));
+#endif
 	 }
 	 *current_offset += tcon_size;
 	 break;

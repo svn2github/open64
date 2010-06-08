@@ -377,12 +377,22 @@ Emit_Cleanup(gs_t cleanup)
     WGEN_Stmt_Append (if_stmt, Get_Srcpos());
     WGEN_Stmt_Push (then_block, wgen_stmk_if_then, Get_Srcpos());
     gs_t then_clause = gs_then_clause(cleanup);
+#if 0 // wgen TODO
+    if (gs_tree_code(then_clause) == EXPR_WITH_FILE_LOCATION)
+      then_clause = EXPR_WFL_NODE(then_clause);
+    else 
+#endif
     if (gs_tree_code(then_clause) == GS_CLEANUP_STMT)
       then_clause = gs_cleanup_expr(then_clause);
     WGEN_One_Stmt_Cleanup(then_clause);
     WGEN_Stmt_Pop(wgen_stmk_if_then);
   } else {
 
+#if 0 // wgen TODO
+    if (gs_tree_code(cleanup) == EXPR_WITH_FILE_LOCATION)
+      cleanup = EXPR_WFL_NODE(cleanup);
+    else 
+#endif
     if (gs_tree_code(cleanup) == GS_CLEANUP_STMT)
       cleanup = gs_cleanup_expr(cleanup);
     WGEN_One_Stmt_Cleanup (cleanup);
@@ -2240,6 +2250,35 @@ comma_is_not_needed (WN * comma_block, WN * wn)
   return TRUE;
 }
 
+#if 0
+// This code should no longer be necessary after the fix to bug 12698.
+// GNU 4.2.0 bug 12670: Try to decipher retval to find out what is being
+// returned from a function.
+WN *
+WGEN_Compute_Retval (gs_t retval)
+{
+  while (gs_tree_code(retval) == GS_NOP_EXPR)
+    retval = gs_tree_operand(retval, 0);
+
+  Is_True (retval, ("WGEN_Compute_Retval: NULL kid of NOP_EXPR"));
+  if (gs_tree_code(retval) == GS_BIND_EXPR &&
+      gs_tree_code(gs_bind_expr_body(retval)) == GS_STATEMENT_LIST)
+    retval = gs_bind_expr_body(retval);
+
+  if (gs_tree_code(retval) == GS_STATEMENT_LIST)
+  {
+    // Obtain the last statement and see if it helps in determining what
+    // is being returned.
+    INT num_stmts = gs_length(gs_statement_list_elts(retval));
+    gs_t decl = gs_index(gs_statement_list_elts(retval), num_stmts - 1);
+    if (gs_tree_code(decl) == GS_VAR_DECL ||
+        gs_tree_code(decl) == GS_PARM_DECL)
+      return WGEN_Expand_Expr (decl);
+  }
+
+  return NULL;
+}
+#endif
 #endif
 
 void
@@ -2354,6 +2393,16 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
     }
 #endif
 
+#if 0
+    // This code should no longer be necessary after fix to bug 12698.
+    // bug 12670: In GNU 4.2.0, the retval inside a RETURN_EXPR may not
+    // have a TARGET_EXPR, but may have a list of statements computing
+    // the return value. In this case, make another effort to determine
+    // the return value. This should not harm GNU 4.0.
+    if (!rhs_wn) {
+      rhs_wn = WGEN_Compute_Retval (retval);
+    }
+#endif
 
     WN * cleanup_block = WN_CreateBlock ();
     WGEN_Stmt_Push (cleanup_block, wgen_stmk_temp_cleanup, Get_Srcpos ());
@@ -2496,6 +2545,18 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 #ifdef KEY // bug 15176 force return type to same size as declared return type
       if (TY_mtype(ret_ty_idx) != WN_rtype(rhs_wn))
         rhs_wn = WN_Type_Conversion(rhs_wn, TY_mtype(ret_ty_idx));
+#if 0
+      if (MTYPE_byte_size(TY_mtype(ret_ty_idx)) < MTYPE_byte_size(WN_rtype(rhs_wn)))
+	rhs_wn = WN_CreateCvtl(OPR_CVTL,
+			       Mtype_TransferSize(WN_rtype(rhs_wn), TY_mtype(ret_ty_idx)),
+			       MTYPE_V,
+			       MTYPE_size_min(TY_mtype(ret_ty_idx)), rhs_wn);
+      else if (MTYPE_byte_size(TY_mtype(ret_ty_idx)) >
+	       MTYPE_byte_size(WN_rtype(rhs_wn)))
+	rhs_wn = WN_Cvt(WN_rtype(rhs_wn),
+			Mtype_TransferSize(TY_mtype(ret_ty_idx), WN_rtype(rhs_wn)),
+			rhs_wn);
+#endif
 #endif
       wn = WN_CreateReturn_Val(OPR_RETURN_VAL, WN_rtype(rhs_wn), MTYPE_V, rhs_wn);
     }
@@ -2942,6 +3003,10 @@ Tid_For_Handler (gs_t handler)
   while (gs_tree_code(t) != GS_COMPOUND_EXPR)
     t = gs_tree_chain(t);
   t = first_in_compound_expr(t);
+#if 0   /* START_CATCH_STMT no longer exists */
+  while (TREE_CODE(t) != START_CATCH_STMT)
+    t = TREE_CHAIN(t);
+#endif
   t = gs_tree_type(t);
   return t ? ST_st_idx(Get_ST (gs_tree_operand(t, 0))) : 0;
 }
@@ -3521,7 +3586,11 @@ WGEN_Expand_Try (gs_t stmt)
 #ifdef KEY
   vector<SCOPE_CLEANUP_INFO> *scope_cleanup = Get_Scope_Info ();
 // FIXME: handle temp cleanups for return from handler.
+#if 0 
+  vector<TEMP_CLEANUP_INFO> *temp_cleanup = Get_Temp_Cleanup_Info ();
+#else
   vector<TEMP_CLEANUP_INFO> *temp_cleanup = 0;
+#endif
   vector<BREAK_CONTINUE_INFO> *break_continue = Get_Break_Continue_Info ();
   int handler_count=0;
   WN * region_body;
@@ -3739,11 +3808,25 @@ Call_Named_Function (ST * st)
 void
 Call_Throw (void)
 {
+#if 0
+  static ST * st = NULL;
+  if (st == NULL) {
+    st = Function_ST_For_String("__throw");
+  }
+  Call_Named_Function (st);
+#endif
 }
 
 void
 Call_Rethrow (void)
 {
+#if 0
+  static ST * st = NULL;
+  if (st == NULL) {
+    st = Function_ST_For_String ("__rethrow");
+  }
+  Call_Named_Function (st);
+#endif
 }
 
 void
@@ -3906,6 +3989,12 @@ WGEN_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
 	  else // catch-all, so do not compare filter
       		WGEN_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL, 
 				HANDLER_LABEL(t_copy)), Get_Srcpos());
+#if 0
+// we shouldn't need the following sort call
+// TODO: verify and remove it.
+	  sort (type_filter_vector.begin(), type_filter_vector.end(), 
+		cmp_types());
+#endif
         }
         else 
 	{
@@ -3963,6 +4052,12 @@ WGEN_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
 // We will see if control reaches here.
 // Let me comment this out, may need to do something else later.
       //Fail_FmtAssertion ("Handle it");
+#if 0
+      // Don't do anything for TREE_CODE(t) == BIND_EXPR.
+      // Clean up this code once it stabilizes.
+      WFE_One_Stmt (t);
+      Call_Rethrow();
+#endif
   }    
 }
 
@@ -4027,6 +4122,10 @@ WGEN_Expand_DO (gs_t stmt)
   incr = gs_omp_for_incr (stmt);
   cond = gs_omp_for_cond (stmt);
   body = gs_omp_for_body (stmt);
+#if 0
+  for (init = FOR_INIT_STMT(stmt); init; init = TREE_CHAIN(init))
+	WFE_Expand_Stmt(init);
+#endif
   expand_start_do_loop (init, cond, incr);
   while (body)
   {
@@ -4163,6 +4262,11 @@ WGEN_Expand_Stmt(gs_t stmt, WN* target_wn)
       break;
 
     case GS_FOR_STMT:
+#if 0 // wgen TODO
+      if (gs_tree_addressable (stmt))	// OpenMP DO loop
+        WGEN_Expand_DO (stmt);
+      else
+#endif
       WGEN_Expand_Loop (stmt);
       break;
 
@@ -4204,6 +4308,14 @@ WGEN_Expand_Stmt(gs_t stmt, WN* target_wn)
       // wgen TODO: gcc 4.x does not have any SCOPE_STMT, we need to handle
       // all the code executed for SCOPE_STMT.
       Fail_FmtAssertion ("WGEN_Expand_Stmt: Unexpected SCOPE_STMT");
+#if 0 // wgen TODO
+      if (opt_regions && Check_For_Call_Region ())
+          Did_Not_Terminate_Region = FALSE;
+      if (gs_scope_begin_p(stmt))
+	Push_Scope_Cleanup (stmt);
+      else
+	Pop_Scope_And_Do_Cleanups ();
+#endif
       break;
 
     case GS_SWITCH_STMT:
@@ -4218,6 +4330,12 @@ WGEN_Expand_Stmt(gs_t stmt, WN* target_wn)
       WGEN_Expand_Loop (stmt);
       break;
 
+#if 0 // wgen TODO no more of these tree_codes
+    case GS_FILE_STMT:
+      /* Simple enough to handle.  */
+      input_filename = FILE_STMT_FILENAME (stmt);
+      break;
+#endif
 
     case GS_EH_SPEC_BLOCK:
 #ifdef FE_GNU_4_2_0
@@ -4431,6 +4549,23 @@ WGEN_Expand_Pragma (gs_t exp)
       break;
     }
     
+#if 0 // wgen TODO
+    case options_dir:
+    { // pragma options
+      TCON tcon;
+      exp = (gs_t) exp->omp.omp_clause_list;
+      tcon = Host_To_Targ_String (MTYPE_STRING,
+                                  const_cast<char*>TREE_STRING_POINTER(exp),
+                                  TREE_STRING_LENGTH(exp) - 1 /* ignore \0 */);
+      TY_IDX ty_idx = Get_TY(gs_tree_type(exp));
+      ST * st = New_Const_Sym (Enter_tcon (tcon), ty_idx);  
+      TREE_STRING_ST (exp) = st;
+      WN * wn = WN_CreatePragma (WN_PRAGMA_OPTIONS, st, 0, 0);
+      WN * func_wn = WGEN_Find_Stmt_In_Stack (wgen_stmk_func_entry);
+      WN_INSERT_BlockLast (WN_func_pragmas(func_wn), wn);
+      break;
+    }
+#endif
     default:
     {
        FmtAssert(FALSE, ("WGEN_Expand_Pragma: no yet implemented pragma %s", gs_code_name(code)));

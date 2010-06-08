@@ -1164,8 +1164,7 @@ W2C_Outfile_Init(BOOL emit_global_decls)
 
       /* Include <whirl2c.h> in the .h file */
       Write_String(W2C_File[W2C_DOTH_FILE], NULL/* No srcpos map */,
-		   "/* Include builtin types and operators.*/"
-           "\n/* It is like under $TOOLROOT/include/$REL_VER/ */\n"
+		   "/* Include builtin types and operators */\n"
 		   "#include <whirl2c.h>\n\n");
 
       /* Include the .h file in the .c file */

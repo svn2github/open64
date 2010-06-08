@@ -290,6 +290,74 @@ main (int argc, char *argv[])
   Any_Result_Available_Time(2);
   Resource_Requirement(res_issue, 0);
 
+#if 0
+  Instruction_Group("mac",
+		    TOP_mula_aa_hh,
+		    TOP_mula_aa_hl,
+		    TOP_mula_aa_lh,
+		    TOP_mula_aa_ll,
+		    TOP_mula_ad_hh,
+		    TOP_mula_ad_hl,
+		    TOP_mula_ad_lh,
+		    TOP_mula_ad_ll,
+		    TOP_mula_da_hh,
+		    TOP_mula_da_hl,
+		    TOP_mula_da_lh,
+		    TOP_mula_da_ll,
+		    TOP_mula_dd_hh,
+		    TOP_mula_dd_hl,
+		    TOP_mula_dd_lh,
+		    TOP_mula_dd_ll,
+		    TOP_muls_aa_hh,
+		    TOP_muls_aa_hl,
+		    TOP_muls_aa_lh,
+		    TOP_muls_aa_ll,
+		    TOP_muls_ad_hh,
+		    TOP_muls_ad_hl,
+		    TOP_muls_ad_lh,
+		    TOP_muls_ad_ll,
+		    TOP_muls_da_hh,
+		    TOP_muls_da_hl,
+		    TOP_muls_da_lh,
+		    TOP_muls_da_ll,
+		    TOP_muls_dd_hh,
+		    TOP_muls_dd_hl,
+		    TOP_muls_dd_lh,
+		    TOP_muls_dd_ll,
+		    TOP_UNDEFINED);
+  Operand_Access_Time(0, 0);
+  Operand_Access_Time(1, 0);
+  Operand_Access_Time(2, 1);
+  Any_Result_Available_Time(2);
+  Resource_Requirement(res_issue, 0);
+
+  Instruction_Group("macld",
+		    TOP_mula_da_hh_lddec,
+		    TOP_mula_da_hh_ldinc,
+		    TOP_mula_da_hl_lddec,
+		    TOP_mula_da_hl_ldinc,
+		    TOP_mula_da_lh_lddec,
+		    TOP_mula_da_lh_ldinc,
+		    TOP_mula_da_ll_lddec,
+		    TOP_mula_da_ll_ldinc,
+		    TOP_mula_dd_hh_lddec,
+		    TOP_mula_dd_hh_ldinc,
+		    TOP_mula_dd_hl_lddec,
+		    TOP_mula_dd_hl_ldinc,
+		    TOP_mula_dd_lh_lddec,
+		    TOP_mula_dd_lh_ldinc,
+		    TOP_mula_dd_ll_lddec,
+		    TOP_mula_dd_ll_ldinc,
+		    TOP_UNDEFINED);
+  Operand_Access_Time(0, 0);
+  Operand_Access_Time(1, 0);
+  Operand_Access_Time(2, 0);
+  Operand_Access_Time(3, 1);
+  Result_Available_Time(0, 2);
+  Result_Available_Time(1, 1);
+  Result_Available_Time(2, 2);
+  Resource_Requirement(res_issue, 0);
+#endif
 
   Instruction_Group("pseudo1",
 		    TOP_asm,

@@ -1482,8 +1482,13 @@ void
 c4x_encode_section_info (decl)
   tree decl;
 {
+#if 0
+  if (TREE_CODE (TREE_TYPE (decl)) == FUNCTION_TYPE)   
+    SYMBOL_REF_FLAG (XEXP (DECL_RTL (decl), 0)) = 1;
+#else
   if (TREE_CODE (decl) == FUNCTION_DECL)   
     SYMBOL_REF_FLAG (XEXP (DECL_RTL (decl), 0)) = 1;
+#endif
 }
 
 
@@ -3974,6 +3979,10 @@ c4x_valid_operands (code, operands, mode, force)
 
       /* Any valid memory operand screened by src_operand is OK.  */      
     case MEM:
+#if 0
+      if (code2 != REG)
+	return 0;
+#endif
       break;
 
       /* After CSE, any remaining (ADDRESSOF:P reg) gets converted

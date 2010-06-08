@@ -1064,6 +1064,14 @@ CGSPILL_Prepend_Ops (BB *bb, OPS *ops)
 {
   if (OPS_first(ops) == NULL) return;
 
+#if 0
+  OP *op;
+  SRCPOS srcpos = 0;
+  /* want ops srcpos associated with beginning of bb */
+  srcpos = BB_first_op(bb) ? OP_srcpos(BB_first_op(bb)) 
+	: OP_srcpos(BB_last_op(BB_prev(bb)));
+  FOR_ALL_OPS_OPs(ops, op) OP_srcpos(op) = srcpos;
+#endif
 
   Reset_BB_scheduled (bb);
 

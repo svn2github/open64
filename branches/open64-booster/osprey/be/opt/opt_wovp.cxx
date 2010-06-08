@@ -256,35 +256,6 @@ void WOVP::Promote(void)
   }
 }
 
-void WOVP::Canon_cr()
-{
-  CODEREP_ITER cr_iter;
-  CODEREP *cr,*bucket;
-  CODEMAP_ITER codemap_iter;
-  CODEMAP *cr_map = _cfg->Htable();
-
-  FOR_ALL_ELEM(bucket, codemap_iter, Init(cr_map)) {
-    IDX_32 hash_idx = codemap_iter.Cur();
-    FOR_ALL_NODE(cr, cr_iter, Init(bucket)) {
-      switch (cr->Kind()) {
-      case CK_VAR:
-      case CK_IVAR:
-      case CK_CONST:
-      case CK_RCONST:
-        break;
-      case CK_OP:
-	if (OPERATOR_is_call(cr->Opr()))
-	  break;
-        cr_map->Hash_Op(cr);
-        break;
-      case CK_LDA:
-        cr_map->Hash_Lda(cr);
-        break;
-      }
-    }
-  }
-}
-
 // Main entrance of write once variable promotion optimization
 void WOVP::Do_wovp()
 {
@@ -303,7 +274,7 @@ void WOVP::Do_wovp()
     Promote();
     // wovp optimization modified the symbol and need to canonicalize 
     // the coderep of cfg
-    Canon_cr();
+    _cfg->Htable()->Verify_hashing();
 
   }  if(Get_Trace(TP_WOPT2, WOVP_DUMP_FLAG)){
     fprintf(TFile, "%sAfter Write Once Variable Promotion\n%s", DBar, DBar);

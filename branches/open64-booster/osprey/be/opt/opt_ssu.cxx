@@ -936,6 +936,11 @@ void SSU::Rename(BB_NODE *bb)
 		  occur->Exp_phi()->Set_opnd(pos, spre_stack->Top()->Def_occur());
 	      }
 	    } // otherwise, leave as NULL iphi operand
+#if 0
+	    // create iphi_succ (phi_pred) occurrence node 
+	    // create it later to save memory
+	    _etable->Append_iphi_succ_occurrence(bb, wk);
+#endif
 	  }
 	}
       }
@@ -1080,4 +1085,15 @@ void SSU::Construct(void)
 
   OPT_POOL_Pop(Loc_pool(), SSA_DUMP_FLAG);
   
+#if 0
+  if ( Get_Trace(TP_GLOBOPT, SSU_DUMP_FLAG)) {
+    // Dump iphi functions
+    fprintf(TFile, "IPHI INSERTION: \n");
+    FOR_ALL_ELEM (bb, cfg_iter, Init(cfg)) 
+      if (bb->Iphi_list()->Len() > 0) {
+	fprintf(TFile, "BB%d: \n", bb->Id());
+	bb->Iphi_list()->PRINT(TFile);
+      }
+  }
+#endif
 }

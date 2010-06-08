@@ -227,9 +227,15 @@ float FN_PROTOTYPE(sinhf)(float fx)
          return handle_errorf("sinhf", PINFBITPATT_SP32, _OVERFLOW,
                               AMD_F_OVERFLOW, ERANGE, fx, 0.0F);
 #else
+#if 0
+      /* This way handles non-POSIX behaviour but weirdly causes
+         sinhf to run half as fast for all arguments on Hammer */
+      return retval_errno_erange(fx, xneg);
+#else
       /* This handles POSIX behaviour */
       __set_errno(ERANGE);
         z = infinity_with_flags(AMD_F_OVERFLOW);
+#endif
 #endif
     }
   else if (y >= small_threshold)

@@ -124,6 +124,63 @@ static boolean interpret_index_opr(int, expr_arg_type *, boolean, long64 *);
 extern int double_stride;
 #endif /* _WHIRL_HOST64_TARGET64 */
 
+#if 0 /* OSP_467, #1, We do not need these stuffs any more */
+/******************************************************************************\
+ * |*                                                                            *|
+ * |* Description:                                                               *|
+ * |*      pack two 32-bit int into a 64-bit long. See OSP_454                   *|
+ * |*      only used in 64-bit compiler (sizeof(long_type) == 64)                *|
+ * |*      the order is controlled by _WHIRL_HOST64_TARGET64                     *|
+ * |*      if _WHIRL_HOST64_TARGET64 is defined,                                 *|
+ * |*          the high 32bit of result is opnds[1]                              *|
+ * |*          the low 32bit of result is opnds[0]                               *|
+ * |* TODO:                                                                      *|
+ * |*      big-endian and small-endian                                           *|
+ * |* Input parameters:                                                          *|
+ * |*      opnds     - opnds[0] and opnd[1] will be packed into the result       *|
+ * |* Returns:                                                                   *|
+ * |*      long_type - the result made up by opnds[0] and opnds[1].              *|
+ * \******************************************************************************/
+static long_type pack_int32_to_int64(long_type* opnds)
+{
+   long_type result = 0LL;
+# ifdef _WHIRL_HOST64_TARGET64
+   result |= opnds[1] << 32;
+   result |= result_value[0];
+# else
+   result |= result_value[0] << 32;
+   result |= result_value[1];
+# endif /* _WHIRL_HOST64_TARGET64 */
+   return result;
+}
+
+/******************************************************************************\
+ * |*                                                                            *|
+ * |* Description:                                                               *|
+ * |*      unpack a 64-bit long into two 32bit int. See OSP_454                  *|
+ * |*      only used in 64-bit compiler (sizeof(long_type) == 64)                *|
+ * |*      the order is controlled by _WHIRL_HOST64_TARGET64                     *|
+ * |*      if _WHIRL_HOST64_TARGET64 is defined,                                 *|
+ * |*          the high 32bit of result is written to opnds[1]                   *|
+ * |*          the low 32bit of result is written to opnds[0]                    *|
+ * |* TODO:                                                                      *|
+ * |*      big-endian and small-endian                                           *|
+ * |* Input parameters:                                                          *|
+ * |*      opnd     - the 64bit long to be unpacked                              *|
+ * |*      results  - the high and low half of opnd will be written to results   *|
+ * |*                 at least, results contains two elements                    *|
+ * \******************************************************************************/
+void unpack_int64_to_int32(long_type opnd, long_type* results)
+{
+# ifdef _WHIRL_HOST64_TARGET64
+   results[1] = opnd >> 32;
+   results[0] = opnd & 0xffffffff;
+# else
+   results[0] = opnd >> 32;
+   results[1] = opnd & 0xffffffff;
+# endif /* _WHIRL_HOST64_TARGET64 */
+}
+#endif
 
 
 /******************************************************************************\
@@ -388,6 +445,9 @@ boolean create_constructor_constant(opnd_type	   *top_opnd,
       }
 
 # ifdef _DEBUG
+# if 0
+      print_cn(the_cn_idx);
+# endif
 # endif
 
    } /* ! single_value_array */
@@ -413,6 +473,21 @@ boolean create_constructor_constant(opnd_type	   *top_opnd,
 
    exp_desc->constructor = TRUE;
 
+# if 0
+   /* we are not doing this for now. All aggregates are returned */
+   /* as data init'd temps.                                      */
+
+   if (stmt_type == Data_Stmt) {
+      /* no tmps, just pass back the constant */
+      OPND_FLD((*top_opnd)) = CN_Tbl_Idx;
+      OPND_IDX((*top_opnd)) = the_cn_idx;
+      OPND_LINE_NUM((*top_opnd)) = line;
+      OPND_COL_NUM((*top_opnd))  = col;
+      exp_desc->foldable         = TRUE;
+      exp_desc->constant         = TRUE;
+      goto EXIT;
+   }
+# endif
 
    /* create tmp init here */
 
@@ -2151,6 +2226,24 @@ static void write_constant(int			type_idx)
       }
    }
    
+# if 0  /* OSP_467, #1, We do not need these stuffs any more 
+	   since the COMPLEX_4 is packed into a 64-bit long on TARGET64 */  
+# if defined(_TARGET64)
+   if (TYP_LINEAR(type_idx) == Complex_4 &&   /* BRIANJ - ?? */
+       bits == TARGET_BITS_PER_WORD) {
+
+      /* the result value is in two words, must get packed */
+      /* BHJ assumes that the result constant is word aligned */
+      /* also, hard coded 32 here. Hope that's not a problem */
+
+      cn_word_offset = the_cn_bit_offset/TARGET_BITS_PER_WORD;
+      /* OSP_454, abandoned */
+      CP_CONSTANT(CN_POOL_IDX(the_cn_idx)+cn_word_offset) = 
+                  pack_int32_to_int64(result_value);
+   }
+   else 
+# endif
+# endif
 
    if (bits % TARGET_BITS_PER_WORD != 0) {
       if (bits < TARGET_BITS_PER_WORD) {
@@ -4220,6 +4313,30 @@ ZERO_ARRAY:
          }
       }
       else {
+# if 0 /* OSP_467, #1, We do not need these stuffs any more
+          since the COMPLEX_4 is packed into a 64-bit long on TARGET64 */
+# if defined(_TARGET64)
+         if (exp_desc->linear_type == Complex_4 &&
+             num_bits == TARGET_BITS_PER_WORD) {
+
+            /* must split the complex into two result_value elements */
+            /* BHJ assumes these are word aligned.                   */
+            /* BRIANJ */
+
+            if (single_value_const) {
+               result_value[0] = CP_CONSTANT(CN_POOL_IDX(base_cn_idx));
+               result_value[1] = CP_CONSTANT(CN_POOL_IDX(base_cn_idx) + 1);
+            }
+            else {
+               word_offset = bit_offset/TARGET_BITS_PER_WORD;
+               /* OSP_454, abandoned */
+               unpack_int64_to_int32 (
+                     CP_CONSTANT(CN_POOL_IDX(base_cn_idx) + word_offset), result_value );
+	    }
+         }
+         else 
+# endif
+# endif
          if (single_value_const &&
              num_bits < TARGET_BITS_PER_WORD &&
              (exp_desc->type == Integer ||
@@ -4387,6 +4504,29 @@ ZERO_ARRAY:
          }
       }
       else {
+#if 0 /* OSP_467, #1, We do not need these stuffs any more
+         since the COMPLEX_4 is packed into a 64-bit long on TARGET64 */
+# if defined(_TARGET64)
+         if (exp_desc->linear_type == Complex_4 &&
+             num_bits == TARGET_BITS_PER_WORD) {
+
+            if (single_value_const) {  /* BRIANJ */
+               result_value[0] = CP_CONSTANT(CN_POOL_IDX(base_cn_idx));
+               result_value[1] = CP_CONSTANT(CN_POOL_IDX(base_cn_idx) + 1);
+            }
+            else {
+               /* must split the complex into two result_value elements */
+               /* BHJ assumes these are word aligned.                   */
+
+               word_offset = bit_offset/TARGET_BITS_PER_WORD;
+               /* OSP_454, abandoned */
+               unpack_int64_to_int32 (
+                     CP_CONSTANT(CN_POOL_IDX(base_cn_idx) + word_offset), result_value );
+            }
+         }
+         else 
+# endif
+# endif		 
          if (single_value_const &&
              num_bits < TARGET_BITS_PER_WORD &&
              (exp_desc->type == Integer ||
@@ -4683,6 +4823,29 @@ ZERO_ARRAY:
                }
             }
             else {
+# if 0 /* OSP_467, #1, We do not need these stuffs any more
+          since the COMPLEX_4 is packed into a 64-bit long on TARGET64 */
+# if defined(_TARGET64)
+               if (exp_desc->linear_type == Complex_4 &&
+                   num_bits == TARGET_BITS_PER_WORD) {
+
+                  if (single_value_const) {
+                     result_value[0] = CP_CONSTANT(CN_POOL_IDX(base_cn_idx));
+                     result_value[1] = CP_CONSTANT(CN_POOL_IDX(base_cn_idx)+1);
+                  }
+                  else {
+                     /* must split the complex into two result_value elements */
+                     /* BHJ assumes these are word aligned.                   */
+
+                     word_offset = bit_offset/TARGET_BITS_PER_WORD;
+                     /* OSP_454, abandoned */
+                     unpack_int64_to_int32 (
+                           CP_CONSTANT(CN_POOL_IDX(base_cn_idx) + word_offset), result_value );
+		  }
+               }
+               else
+# endif
+# endif		       
                if (single_value_const &&
                    num_bits < TARGET_BITS_PER_WORD &&
                    (exp_desc->type == Integer ||

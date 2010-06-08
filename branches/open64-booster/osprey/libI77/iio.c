@@ -163,6 +163,7 @@ int s_wsfi (icilist *a)
     return( s_wsfi_mp( a, &f77curunit ) );
 }
 
+#if 11
 int s_wsfi64 (icilist64 *a)
 {
     return( s_wsfi64_mp( a, &f77curunit ) );
@@ -181,6 +182,9 @@ int s_wsfi_mp (icilist *a, unit** fu)
 }
 
 int s_wsfi64_mp (icilist64 *a, unit** fu)
+#else
+int s_wsfi_mp (icilist *a, unit** fu)
+#endif
 {
    int             n;
    unit *ftnunit;
@@ -207,8 +211,13 @@ int s_wsfi64_mp (icilist64 *a, unit** fu)
    return (0);
 }
 
+#if 11
 int
 c_si (icilist64 *a, unit *ftnunit)
+#else
+int
+c_si (icilist *a, unit *ftnunit)
+#endif
 {
    ftnunit->f77fmtbuf = a->icifmt;
    if (f77vfmt_com_.PFI != NULL) {

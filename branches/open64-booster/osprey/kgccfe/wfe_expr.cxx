@@ -6501,6 +6501,27 @@ WFE_Expand_Expr (tree exp,
                 break;
               }
 
+#if 0
+              case BUILT_IN_LOCK_TEST_AND_SET:
+                wn = emit_builtin_lock_test_and_set (exp, num_args-2);
+                whirl_generated = TRUE;
+                break;
+
+              case BUILT_IN_LOCK_RELEASE:
+                emit_builtin_lock_release (exp, num_args-1);
+                whirl_generated = TRUE;
+                break;
+
+              case BUILT_IN_COMPARE_AND_SWAP:
+                wn = emit_builtin_compare_and_swap (exp, num_args-3);
+                whirl_generated = TRUE;
+                break;
+
+              case BUILT_IN_SYNCHRONIZE:
+                emit_builtin_synchronize (exp, num_args);
+                whirl_generated = TRUE;
+                break;
+#endif
 
 #ifdef TARG_NVISA
               case BUILT_IN_SYNCHRONIZE:
@@ -6970,6 +6991,88 @@ WFE_Expand_Expr (tree exp,
                 break;
 #endif
 
+#if 0
+	      case BUILT_IN_ROUND_F2LL:
+                arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+                wn = WN_CreateExp1 (OPR_RND, MTYPE_I8, MTYPE_F4, arg_wn);
+                whirl_generated = TRUE;
+                break;
+
+	      case BUILT_IN_ROUND_D2LL:
+                arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+                wn = WN_CreateExp1 (OPR_RND, MTYPE_I8, MTYPE_F8, arg_wn);
+                whirl_generated = TRUE;
+                break;
+
+	      case BUILT_IN_ROUND_ED2LL:
+                arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+                wn = WN_CreateExp1 (OPR_RND, MTYPE_I8, MTYPE_F10, arg_wn);
+                whirl_generated = TRUE;
+                break;
+
+	      case BUILT_IN_CAST_I2F:
+		list = TREE_OPERAND (exp, 1);
+		wn = WFE_Expand_Expr (TREE_VALUE (list));
+		wn = WN_Tas (MTYPE_F4, Be_Type_Tbl(MTYPE_I4), wn);
+		whirl_generated = TRUE;
+		break;
+
+	      case BUILT_IN_CAST_F2I:
+		list = TREE_OPERAND (exp, 1);
+		wn = WFE_Expand_Expr (TREE_VALUE (list));
+		wn = WN_Tas (MTYPE_I4, Be_Type_Tbl(MTYPE_F4), wn);
+		whirl_generated = TRUE;
+		break;
+
+	      case BUILT_IN_CAST_LL2D:
+		list = TREE_OPERAND (exp, 1);
+		wn = WFE_Expand_Expr (TREE_VALUE (list));
+		wn = WN_Tas (MTYPE_F8, Be_Type_Tbl(MTYPE_I8), wn);
+		whirl_generated = TRUE;
+		break;
+
+	      case BUILT_IN_CAST_D2LL:
+		list = TREE_OPERAND (exp, 1);
+		wn = WFE_Expand_Expr (TREE_VALUE (list));
+		wn = WN_Tas (MTYPE_I8, Be_Type_Tbl(MTYPE_F8), wn);
+		whirl_generated = TRUE;
+		break;
+
+	      case BUILT_IN_GETF_EXP:
+		iopc = INTRN_GETF_EXP;
+		intrinsic_op = TRUE;
+		break;
+
+	      case BUILT_IN_GETF_SIG:
+		iopc = INTRN_GETF_SIG;
+		intrinsic_op = TRUE;
+		break;
+
+	      case BUILT_IN_SETF_EXP:
+		iopc = INTRN_SETF_EXP;
+		intrinsic_op = TRUE;
+		break;
+
+	      case BUILT_IN_SETF_SIG:
+		iopc = INTRN_SETF_SIG;
+		intrinsic_op = TRUE;
+		break;
+
+	      case BUILT_IN_FMERGE_NS:
+		iopc = INTRN_FMERGE_NS;
+		intrinsic_op = TRUE;
+		break;
+
+	      case BUILT_IN_FMERGE_S:
+		iopc = INTRN_FMERGE_S;
+		intrinsic_op = TRUE;
+		break;
+
+	      case BUILT_IN_FMERGE_SE:
+		iopc = INTRN_FMERGE_SE;
+		intrinsic_op = TRUE;
+		break;
+#endif
 
 #if defined(TARG_SL)
             case BUILT_IN_PERIPHERAL_RW_BEGIN:

@@ -492,6 +492,9 @@ WN2F_Offset_Symref(TOKEN_BUFFER tokens,
    /* Do the symbol translation from the base of fully split common symbols */
    if (ST_is_split_common(st))
    {
+#if 0
+      offset += Stab_Full_Split_Offset(st);  /* offset of split common now zero. */
+#endif
       Clear_BE_ST_w2fc_referenced(st);       /* don't put out split base, just user COMMON */
       st = ST_full(st);
       Set_BE_ST_w2fc_referenced(st);

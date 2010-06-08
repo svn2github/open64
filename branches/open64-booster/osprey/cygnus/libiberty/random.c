@@ -54,6 +54,14 @@ control over the state of the random number generator.
 
 #include <errno.h>
 
+#if 0
+
+#include <ansidecl.h>
+#include <limits.h>
+#include <stddef.h>
+#include <stdlib.h>
+
+#else
 
 #define	ULONG_MAX  ((unsigned long)(~0L))     /* 0xFFFFFFFF for 32-bits */
 #define	LONG_MAX   ((long)(ULONG_MAX >> 1))   /* 0x7FFFFFFF for 32-bits*/
@@ -70,6 +78,7 @@ control over the state of the random number generator.
 #  endif
 #endif
 
+#endif
 
 long int random ();
 

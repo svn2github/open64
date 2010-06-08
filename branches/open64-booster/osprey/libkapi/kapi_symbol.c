@@ -82,6 +82,9 @@ kapi_pstnLookup( knobs_t *pknobs, char *pch )
    int idx, fcmp;
    stn_t *pstn, *pstnPrev;
 
+#if 0
+   printf("Searching for %s -- ", pch );
+#endif
    idx = iHash_stn( pch );
 
    pstnPrev = &(pknobs->dmpstn[ idx ] );
@@ -106,11 +109,19 @@ kapi_pstnLookup( knobs_t *pknobs, char *pch )
 
       pstnNew->pstnHashNext = pstn;
       pstnPrev->pstnHashNext = pstnNew;
+#if 0
+   printf("NOT found\n" );
+#endif
       return( pstnNew );
    }
 
    /* if equal */
    if ( fcmp == 0 ) {
+#if 0
+   printf("found -- " );
+   KDebug_DumpIdent( stdout, pstn, 0 );
+   printf("\n" );
+#endif
       return( pstn );
    }
 

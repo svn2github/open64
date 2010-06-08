@@ -58,10 +58,17 @@
 static char sccsid[] = "@(#)gmon.c	5.3 (Berkeley) 5/22/91";
 #endif /* not lint */
 
+#if 0
+#include <unistd.h>
+
+#endif
 #ifdef DEBUG
 #include <stdio.h>
 #endif
 
+#if 0
+#include "i386/gmon.h"
+#else
 
 struct phdr {
                 char    *lpc;
@@ -90,6 +97,7 @@ struct rawarc {
 };
 #define ROUNDDOWN(x,y)  (((x)/(y))*(y))
 #define ROUNDUP(x,y)    ((((x)+(y)-1)/(y))*(y))
+#endif
 
 /* char *minbrk; */
 

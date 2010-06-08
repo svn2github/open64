@@ -480,6 +480,9 @@ public:
 
   // Extern interface 
   void Set_Entry_Point (WN *, WN *, ST *); // Set node as entry point
+#if 0
+  void Set_Entry_Point (WN *, WN *);       // Set node as entry point
+#endif
 
   // Actual copying of the tree
   WN *Clone_Tree (WN *, ST *clone_st = NULL); 

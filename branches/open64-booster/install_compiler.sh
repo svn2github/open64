@@ -39,6 +39,7 @@ VER_MAJOR="4"
 VER_MINOR="2"
 #PATCH_LEVEL=""
 VERSION="${OPEN64_FULL_VERSION:-${VER_MAJOR}.${VER_MINOR}}"
+HOST_MACHINE_TYPE=`uname -m`
 
 PREBUILT_LIB="./lib"
 PREBUILT_BIN="./bin"
@@ -204,29 +205,12 @@ INSTALL_GCC () {
 
     # Make links to gcc runtime libraries
     cd ${ROOT}
-    if [ "$TARG_HOST" = "x8664" ]
-    then
-	for i in open64-gcc-4.2.0/lib64/lib*.so*; do
-	    if [ -e "$i" ]
-	    then
-		(cd $PHASEPATH; ln -sf ../../../../$i `basename $i`)
-	    fi
-	done
-	for i in open64-gcc-4.2.0/lib/lib*.so*; do
-	    if [ -e "$i" ]
-	    then
-		(cd $PHASEPATH/32; ln -sf ../../../../../$i `basename $i`)
-	    fi
-	done
-    elif [ "$TARG_HOST" = "ia64" ]
-    then
-	for i in open64-gcc-4.2.0/lib/lib*.so*; do
-	    if [ -e "$i" ]
-	    then
-		(cd $PHASEPATH; ln -sf ../../../../$i `basename $i`)
-	    fi
-	done
-    fi
+    for i in open64-gcc-4.2.0/lib64/lib*.so*; do
+        (cd $PHASEPATH; ln -sf ../../../../$i `basename $i`)
+    done
+    for i in open64-gcc-4.2.0/lib/lib*.so*; do
+        (cd $PHASEPATH/32; ln -sf ../../../../../$i `basename $i`)
+    done
 
     popd
 
@@ -241,7 +225,7 @@ INSTALL_FE () {
     INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
     # GNU 4.2.0 based FE
     INSTALL_EXEC_SUB ${AREA}/wgen_4_2_0/wgen42 ${PHASEPATH}/wgen42
-    LIBEXEC=libexec/gcc/${PHASE_DIR_PREFIX}-redhat-linux/4.2.0
+    LIBEXEC=libexec/gcc/${HOST_MACHINE_TYPE}-redhat-linux/4.2.0
     (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1 cc142)
     (cd $PHASEPATH; ln -sf ../../../../open64-gcc-4.2.0/${LIBEXEC}/cc1plus cc1plus42)
 

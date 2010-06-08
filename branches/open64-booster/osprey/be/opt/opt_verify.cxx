@@ -1211,6 +1211,11 @@ CODEMAP::Verify_hashing(void)
       case CK_RCONST:
 	// Make this into assertion after bug fixes
 	if (hash_idx != Hash(cr)) {
+#if 0	  
+	  DevWarn("CODEMAP::Verify_hashing:  cr%d does not belong to hash bucket %d, "
+		  "should be in bucket %d.",
+		  cr->Coderep_id(), hash_idx, Hash(cr));
+#endif
 	}
       }
     }

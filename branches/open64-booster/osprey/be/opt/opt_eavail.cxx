@@ -528,7 +528,14 @@ public:
       // stops forward movement.
       //
       // Actually, the operand stops forward movement regardless.
+#if 0
+      if (def_phi->Will_b_avail() ||
+	  !use_phi->Will_b_avail()) {
+#endif
 	use_phi->Set_opnd_stops(opnd_idx);
+#if 0
+      }
+#endif
     }
 
   BOOL Start_from(const node_type *const phi) const

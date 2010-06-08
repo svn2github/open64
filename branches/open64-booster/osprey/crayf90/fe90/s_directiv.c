@@ -1322,6 +1322,17 @@ void directive_stmt_semantics(void)
             exp_desc.rank = 0;
             ok &= expr_semantics(&opnd, &exp_desc);
 
+# if 0
+            if (OPND_FLD(opnd) == CN_Tbl_Idx &&
+                exp_desc.rank  == 0          &&
+                exp_desc.type  == Integer)   {
+
+               if (compare_cn_and_value(OPND_IDX(opnd), 0, Lt_Opr) {
+                  find_opnd_line_and_column(&opnd, &line, &column);
+                  PRINTMSG(line, 796, Error, column);
+               }
+            }
+# endif
 
             COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
@@ -5902,6 +5913,14 @@ static void open_mp_directive_semantics(open_mp_directive_type directive)
                            "REDUCTION", open_mp_dir_str[directive]);
                }
                /* the following is deleted by jhs, 02.9.10 */
+#if 0
+		else if (ATD_ARRAY_IDX(attr_idx) != NULL_IDX) {
+                  PRINTMSG(IL_LINE_NUM(list2_idx), 1483, Error,
+                           IL_COL_NUM(list2_idx),
+                           AT_OBJ_NAME_PTR(attr_idx),
+                           open_mp_dir_str[directive]);
+               }
+#endif
 	       /* the above is deleted by jhs, 02.9.10 */
                else if (ATD_CLASS(attr_idx) == CRI__Pointee) {
                   PRINTMSG(IL_LINE_NUM(list2_idx), 1477, Error,
@@ -6013,6 +6032,28 @@ static void open_mp_directive_semantics(open_mp_directive_type directive)
                AT_LOCKED_IN(attr_idx) = TRUE;
             }
 
+# if 0
+  /* do not do this for open mp. pv 658750 */
+
+            if (! ATD_TASK_PRIVATE(attr_idx) &&
+                ! ATD_TASK_FIRSTPRIVATE(attr_idx) &&
+                ! ATD_TASK_LASTPRIVATE(attr_idx)) {
+
+               NTR_IR_LIST_TBL(list3_idx);
+               IL_NEXT_LIST_IDX(list3_idx) =
+                         IL_IDX(cdir_switches.lastprivate_list_idx);
+               if (IL_IDX(cdir_switches.lastprivate_list_idx) != NULL_IDX) {
+                  IL_PREV_LIST_IDX(IL_IDX(cdir_switches.lastprivate_list_idx))=
+                                          list3_idx;
+               }
+               IL_IDX(cdir_switches.lastprivate_list_idx) = list3_idx;
+               IL_FLD(cdir_switches.lastprivate_list_idx) = IL_Tbl_Idx;
+               IL_LIST_CNT(cdir_switches.lastprivate_list_idx)++;
+               IL_FLD(list3_idx) = AT_Tbl_Idx;
+               IL_IDX(list3_idx) = attr_idx;
+               ATD_TASK_LASTPRIVATE(attr_idx) = TRUE;
+            }
+# endif
 
             IL_IDX(list2_idx) = attr_idx;
             list2_idx = IL_NEXT_LIST_IDX(list2_idx);
@@ -6503,6 +6544,11 @@ static void end_blk_mp_semantics(boolean	open_mp)
       set_mp_task_flags(ir_idx, FALSE);
    }
 
+# if 0
+      {extern char *operator_str[];
+      printf(" ending block for %s\n", operator_str[IR_OPR(ir_idx)]);
+      }
+# endif
 
    pop_task_blk();
 

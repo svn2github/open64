@@ -1332,6 +1332,16 @@ MEM_POOL_Realloc_P
   if ( new_size == old_size )
     return old_block;
 
+#if 0
+#ifdef Is_True_On
+  if (new_size < old_size)
+    DevWarn ("MEMORY: shrinking an object in (%s) from %d to %d bytes",
+	     MEM_POOL_name(pool), old_size, new_size);
+  else if (new_size < old_size * 1.5 && old_size > 256)
+    DevWarn ("MEMORY: small grow from %d to %d bytes (mempool: %s)",
+	     old_size, new_size, MEM_POOL_name(pool));
+#endif
+#endif
 
   if (old_size <= MIN_LARGE_BLOCK_SIZE) {
     if (new_size < old_size)

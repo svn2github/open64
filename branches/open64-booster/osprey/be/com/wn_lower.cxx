@@ -47,6 +47,7 @@
 
 //-*-c++-*-
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <math.h>
 #ifdef USE_PCH
@@ -3986,6 +3987,10 @@ static WN *lower_split_sym_addrs(WN *tree, INT64 offset, LOWER_ACTIONS actions)
        * so we could then get 1-instruction accesses to large offsets.
        * But that requires a cgexp change too, so wait on it.
        */
+#if 0
+      if (Uses_Small_Offset(sym, offset))
+        break;
+#endif
       return NULL;
 
     case SCLASS_EXTERN:
@@ -4821,6 +4826,29 @@ lower_store_bits (WN* block, WN* wn, LOWER_ACTIONS actions)
   return lower_store (block, wn, actions);
 } // lower_store_bits
 
+#if 0
+/* ====================================================================
+ *
+ * check_unaligned
+ *
+ * required_alignment is the natural alignment; offset is the actual offset
+ * used in the current access; ty_align is the alignment in the TY of the
+ * current access.  Return whether the access is unaligned.
+ *
+ * ==================================================================== */
+static bool check_unaligned(INT required_alignment, INT offset, INT ty_align)
+{
+  if (required_alignment <= 1)
+    return FALSE;
+  INT align = ty_align;
+  if (offset) {
+    INT offset_align = offset % required_alignment;
+    if (offset_align)
+      align = MIN(align, offset_align);
+  }
+  return align < required_alignment;
+}
+#endif
 
 
 // --------------------------------------------------------------------
@@ -4917,6 +4945,10 @@ static void lower_bit_field_id(WN *wn)
     rtype = TY_mtype(fld_ty_idx);
   else rtype = WN_rtype(wn);
   INT ofst = field_offset;
+#if 0
+  BOOL unaligned_field = check_unaligned(bytes_accessed * 8, ofst,
+					 TY_align(struct_ty_idx));
+#endif
   if (ofst >= 0)
     ofst = ofst / bytes_accessed * bytes_accessed;
   else ofst =  (ofst - bytes_accessed + 1) / bytes_accessed * bytes_accessed;

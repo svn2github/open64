@@ -187,6 +187,7 @@ extern int   do_fioxc4v_mp (float, float, unit **);
 extern int   do_fioxc8v_mp (double, double, unit **);
 extern int   do_fioxc16v_mp (long double, long double, unit **);
 
+#if 11
 extern int   do_fio64(ftnint *, XINT *, char *, ftnlen);
 extern int   do_fio64_1dim(ftnint *, char *, flex *, XINT *,XINT *, XINT *, ftnlen, ftnlen);
 extern int do_fio64_mp_1dim(  ftnint *type, char *ptr,
@@ -196,6 +197,9 @@ extern int do_fio64_mp_1dim(  ftnint *type, char *ptr,
                 ftnlen len, ftnlen idxlen);
 extern int   do_fio64_mp(ftnint *, XINT *, char *, unit **, ftnlen);
 #define do_fio_SIZE_mp	do_fio64_mp
+#else
+#define do_fio_SIZE_mp	do_fio_mp
+#endif
 
 
 /* wsj FIO_ALLOC defined as 128 in MIPS, 32*1024 in cypress */

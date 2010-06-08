@@ -532,6 +532,30 @@ poplevel (keep, reverse, functionbody)
 
   /* This warning is turned off because it causes warnings for
      declarations like `extern struct foo *x'.  */
+#if 0
+  /* Warn about incomplete structure types in this level.  */
+  for (link = tags; link; link = TREE_CHAIN (link))
+    if (!COMPLETE_TYPE_P (TREE_VALUE (link)))
+      {
+	tree type = TREE_VALUE (link);
+	tree type_name = TYPE_NAME (type);
+	char *id = IDENTIFIER_POINTER (TREE_CODE (type_name) == IDENTIFIER_NODE
+				       ? type_name
+				       : DECL_NAME (type_name));
+	switch (TREE_CODE (type))
+	  {
+	  case RECORD_TYPE:
+	    error ("`struct %s' incomplete in scope ending here", id);
+	    break;
+	  case UNION_TYPE:
+	    error ("`union %s' incomplete in scope ending here", id);
+	    break;
+	  case ENUMERAL_TYPE:
+	    error ("`enum %s' incomplete in scope ending here", id);
+	    break;
+	  }
+      }
+#endif /* 0 */
 
   /* Get the decls in the order they were written.
      Usually current_binding_level->names is in reverse order.
@@ -1998,6 +2022,17 @@ pushdecl (x)
 		}
 	    }
 
+#if 0
+	  /* This case is probably sometimes the right thing to do.  */
+	  /* If we have a local external declaration,
+	     then any file-scope declaration should not
+	     have been static.  */
+	  if (oldlocal == 0 && oldglobal != 0
+	      && !TREE_PUBLIC (oldglobal)
+	      && DECL_EXTERNAL (x) && TREE_PUBLIC (x))
+	    warning ("`%s' locally external but globally static",
+		     IDENTIFIER_POINTER (name));
+#endif
 
 	  /* If we have a local external declaration,
 	     and no file-scope declaration has yet been seen,
@@ -2085,6 +2120,11 @@ implicitly_declare (functionid)
   /* We used to reuse an old implicit decl here,
      but this loses with inline functions because it can clobber
      the saved decl chains.  */
+#if 0
+  if (IDENTIFIER_IMPLICIT_DECL (functionid) != 0)
+    decl = IDENTIFIER_IMPLICIT_DECL (functionid);
+  else
+#endif
     decl = build_decl (FUNCTION_DECL, functionid, default_function_type);
 
   /* Warn of implicit decl following explicit local extern decl.
@@ -2919,6 +2959,14 @@ start_decl (declarator, declspecs, initialized, attributes)
 
   if (initialized)
     {
+#if 0
+      /* Seems redundant with grokdeclarator.  */
+      if (current_binding_level != global_binding_level
+	  && DECL_EXTERNAL (decl)
+	  && TREE_CODE (decl) != FUNCTION_DECL)
+	warning ("declaration of `%s' has `extern' and is initialized",
+		 IDENTIFIER_POINTER (DECL_NAME (decl)));
+#endif
       DECL_EXTERNAL (decl) = 0;
       if (current_binding_level == global_binding_level)
 	TREE_STATIC (decl) = 1;
@@ -3305,6 +3353,16 @@ push_parm_decl (parm)
 			 TREE_PURPOSE (TREE_PURPOSE (parm)), PARM, 0);
   decl_attributes (&decl, TREE_VALUE (parm), 0);
 
+#if 0
+  if (DECL_NAME (decl))
+    {
+      tree olddecl;
+      olddecl = lookup_name (DECL_NAME (decl));
+      if (pedantic && olddecl != 0 && TREE_CODE (olddecl) == TYPE_DECL)
+	pedwarn_with_decl (decl,
+			   "ISO C forbids parameter `%s' shadowing typedef");
+    }
+#endif
 
   decl = pushdecl (decl);
 
@@ -4317,6 +4375,13 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
 	  if (pedantic && !COMPLETE_TYPE_P (type))
 	    pedwarn ("array type has incomplete element type");
 
+#if 0
+	  /* We shouldn't have a function type here at all!
+	     Functions aren't allowed as array elements.  */
+	  if (pedantic && TREE_CODE (type) == FUNCTION_TYPE
+	      && (constp || volatilep))
+	    pedwarn ("ISO C forbids const or volatile function types");
+#endif
 
 	  /* Build the array type itself, then merge any constancy or
 	     volatility into the target type.  We must do it in this order
@@ -4683,6 +4748,10 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
 	    type = build_array_type (c_build_qualified_type (TREE_TYPE (type),
 							     type_quals),
 				     TYPE_DOMAIN (type));
+#if 0
+	    /* Leave the field const or volatile as well.  */
+	    type_quals = TYPE_UNQUALIFIED;
+#endif
 	  }
 #if defined(TARG_SL)
      else if(internal_mem && TREE_CODE(declarator) == IDENTIFIER_NODE )
@@ -4808,6 +4877,9 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
 							     type_quals),
 				     TYPE_DOMAIN (type));
 	    TYPE_ALIGN (type) = saved_align;
+#if 0 /* Leave the variable const or volatile as well.  */
+	    type_quals = TYPE_UNQUALIFIED;
+#endif
 	  }
 	else if (type_quals)
 	  type = c_build_qualified_type (type, type_quals);
@@ -4944,6 +5016,10 @@ grokparms (parms_info, funcdef_flag)
 	 These tags can never be defined in the scope of the declaration,
 	 so the types can never be completed,
 	 and no call can be compiled successfully.  */
+#if 0
+      /* In a fcn definition, arg types must be complete.  */
+      if (funcdef_flag)
+#endif
 	for (parm = last_function_parms, typelt = first_parm;
 	     parm;
 	     parm = TREE_CHAIN (parm))
@@ -4967,6 +5043,27 @@ grokparms (parms_info, funcdef_flag)
 		      TREE_TYPE (parm) = error_mark_node;
 		    }
 		}
+#if 0
+	      /* This has been replaced by parm_tags_warning, which
+		 uses a more accurate criterion for what to warn
+		 about.  */
+	      else
+		{
+		  /* Now warn if is a pointer to an incomplete type.  */
+		  while (TREE_CODE (type) == POINTER_TYPE
+			 || TREE_CODE (type) == REFERENCE_TYPE)
+		    type = TREE_TYPE (type);
+		  type = TYPE_MAIN_VARIANT (type);
+		  if (!COMPLETE_TYPE_P (type))
+		    {
+		      if (DECL_NAME (parm) != 0)
+			warning ("parameter `%s' points to incomplete type",
+				 IDENTIFIER_POINTER (DECL_NAME (parm)));
+		      else
+			warning ("parameter points to incomplete type");
+		    }
+		}
+#endif
 	      typelt = TREE_CHAIN (typelt);
 	    }
 
@@ -6330,6 +6427,21 @@ store_parm_decls ()
 	 and record in the function.  */
       DECL_ARGUMENTS (fndecl) = getdecls ();
 
+#if 0
+      /* If this function takes a variable number of arguments,
+	 add a phony parameter to the end of the parm list,
+	 to represent the position of the first unnamed argument.  */
+      if (TREE_VALUE (tree_last (TYPE_ARG_TYPES (TREE_TYPE (fndecl))))
+	  != void_type_node)
+	{
+	  tree dummy = build_decl (PARM_DECL, NULL_TREE, void_type_node);
+	  /* Let's hope the address of the unnamed parm
+	     won't depend on its type.  */
+	  TREE_TYPE (dummy) = integer_type_node;
+	  DECL_ARG_TYPE (dummy) = integer_type_node;
+	  DECL_ARGUMENTS (fndecl) = chainon (DECL_ARGUMENTS (fndecl), dummy);
+	}
+#endif
 
       /* Now pushdecl the enum constants.  */
       for (parm = others; parm; parm = next)
@@ -6599,6 +6711,9 @@ store_parm_decls ()
 
   /* ??? This might be an improvement,
      but needs to be thought about some more.  */
+#if 0
+  keep_next_level_flag = 1;
+#endif
 
   /* Write a record describing this function definition to the prototypes
      file (if requested).  */
@@ -6644,6 +6759,13 @@ store_parm_decls ()
     mark_varargs();
 #endif // !KEY
   dump_parse_tree ("store_parm_decls", fndecl);
+#if 0
+  // Bug 1024 - provide a context for innerscope variables before creating
+  // DST entry. Start all functions here.
+  // Start only non-nested functions here. Nested functions will be started
+  // in c_expand_body.
+  if (WFE_Get_Current_Scope () == 1) // Global Scope
+#endif
     WFE_Start_Function (fndecl);
 #endif /* SGI_MONGOOSE */
 }
@@ -6664,6 +6786,11 @@ finish_function (nested, can_defer_p)
 {
   tree fndecl = current_function_decl;
 
+#if 0
+  /* This caused &foo to be of type ptr-to-const-function which then
+     got a warning when stored in a ptr-to-function variable.  */
+  TREE_READONLY (fndecl) = 1;
+#endif
 
   poplevel (1, 0, 1);
   BLOCK_SUPERCONTEXT (DECL_INITIAL (fndecl)) = fndecl;
@@ -6754,6 +6881,16 @@ c_expand_deferred_function (fndecl)
       // Refer to comments inside c_expand_body for bug 1566
       // NULL all the references to WHIRL ST from the body of this function
       // We should reallocate all these entries later.
+#if 0
+      // This call has been moved into c_expand_body.
+      // NULLing out these references here is too late in some cases. If the 
+      // function has statics, we want to create new STs for them while
+      // expanding the inlined body. NULLing out here won't let us do that,
+      // since we will expand the inlined body before reaching here.
+      walk_tree_without_duplicates(&DECL_SAVED_TREE(fndecl), 
+				   (walk_tree_fn)WFE_Null_ST_References,
+				   NULL);
+#endif
       WFE_Start_Function(fndecl);
 #endif
       c_expand_body (fndecl, 0, 0);
@@ -6813,6 +6950,12 @@ c_expand_body (fndecl, nested_p, can_defer_p)
    * will apply to body of function (since scan whole func first). */
   WFE_Set_Line_And_File (lineno, input_filename);
 
+#if 0
+  // Bug 1024 - provide a context for innerscope variables before creating
+  // DST entry.
+  if (nested_p)
+    WFE_Start_Function (fndecl);
+#endif
 #endif /* SGI_MONGOOSE */
 
   if (flag_inline_trees)

@@ -59,6 +59,7 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -679,7 +680,7 @@ BOOL Peel_2D_Triangle_Loops(WN* outer_loop)
     if (red_manager) 
       red_manager->Unroll_Update(wn_holder, 2);
     Unrolled_DU_Update((WN**)wn_holder, 2, Do_Loop_Depth(outer_loop)-1, TRUE, FALSE);
-    if (!dg->Add_Deps_To_Copy_Block(outer_loop, nest_copy, TRUE)) {
+    if (!dg->Add_Deps_To_Copy_Block(outer_loop, nest_copy, FALSE)) {
       SNL_DEBUG0(0, "Peel_2D_Triangle_Loops() failed -- continueing");
       LWN_Update_Dg_Delete_Tree(nest_copy, dg);
       LNO_Erase_Dg_From_Here_In(nest_copy, dg);
@@ -740,7 +741,7 @@ BOOL Peel_2D_Triangle_Loops(WN* outer_loop)
   //make Triangle_Peel_Factor copy of the original
   for (INT i = 1; i <= Triangle_Peel_Factor; i++) {
     nest_copy = LWN_Copy_Tree(outer_loop, TRUE, LNO_Info_Map);
-    if (!dg->Add_Deps_To_Copy_Block(outer_loop, nest_copy, TRUE)){
+    if (!dg->Add_Deps_To_Copy_Block(outer_loop, nest_copy, FALSE)){
       SNL_DEBUG0(0, "Peel_2D_Triangle_Loops() failed -- continueing");
       LWN_Update_Dg_Delete_Tree(nest_copy, dg);
       LNO_Erase_Dg_From_Here_In(nest_copy, dg);
@@ -2555,10 +2556,6 @@ Unroll_and_Jam(WN *loop, INT ufactor)
   DO_LOOP_INFO *dli = Get_Do_Loop_Info(loop);
   SNL_NEST_INFO ni(loop, nloops, &LNO_default_pool, TRUE);
 
-  // before calling the function SNL_Regtile_Loop, the condition that
-  // all the scalars must be expanded should be satisfied. 
-  if ( !ni.All_Var_Expandable(nloops) )
-    return NULL;
   INT outer = Do_Depth(loop);
 
   EST_REGISTER_USAGE est_register_usage =

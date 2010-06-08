@@ -2401,6 +2401,10 @@ Lit_Class_For_Mtype (TYPE_ID mtype)
 BOOL
 TN_Can_Use_Constant_Value (TN *tn, TYPE_ID mtype, INT64 *val)
 {
+#if 0
+  if (!MTYPE_is_integral(mtype))
+        return FALSE;
+#endif
   if (TN_has_value(tn))
         *val = TN_value(tn);
   else if (TN_is_rematerializable(tn) && WN_operator(TN_home(tn)) == OPR_INTCONST)

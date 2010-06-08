@@ -10,3 +10,5 @@
 
 
 #if defined( SOLARIS_STDIO_TAG_CHECK )
+#if	0
+#endif  /* SOLARIS_STDIO_TAG_CHECK */

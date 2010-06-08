@@ -58,6 +58,7 @@
  * OMP_Prelower() : Transform Open MP pragmas to same form as MP ones
  * ==================================================================== */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <sys/types.h>
 #if ! defined(BUILD_OS_DARWIN)

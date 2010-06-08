@@ -506,6 +506,10 @@ PDGCS_do_proc(void)
   Verify_SYMTAB (CURRENT_SYMTAB);
   Write_PU_Info (pu);
 
+#if 0
+  if (Get_Trace (TP_IRB,TINFO_STATS)) /* -ttIRB:16 */
+    cwh_stats_print(PU_Info_proc_sym(pu));
+#endif
 
   WN_MAP_Delete(array_name_map);
   WN_Mem_Pop();
@@ -602,6 +606,47 @@ cwh_pdgcs_pu_mem(void)
  *
  *===============================================
  */ 
+#if 0
+static char *
+basename ( char * const s )
+{
+  char * p;
+  char * last;
+  char * name;
+  int    size;
+
+  if ( s == NULL || *s == '\0' )
+    return ".";
+
+  else {
+
+    p = s + strlen ( s );
+
+    /* skip trailing '/' */
+
+    while ( p != s && *p == '/' )
+      --p;
+
+    last = p;
+
+    while ( p != s ) {
+
+      if ( *--p == '/' ) {
+
+        ++p;
+        break;
+      }
+    }
+
+    size = last - p;
+    name = (char *) malloc ( size + 1);
+    strncpy ( name, p, size );
+    name [size] = '\0';
+
+    return name;
+  }
+} /* basename */
+#endif
 
 static const char *
 dirname ( char * const s )

@@ -130,6 +130,9 @@ void DB_Trace_BB(BB *bb)
   if ( !CG_enable_reverse_if_conversion ||
       Original_DB_count < 2 ) return;
 
+#if 0
+  if ( LC_Failed() ) return;
+#endif
 
   fprintf ( TFile, "\n<cgprep> ****************************************");
   fprintf(TFile, " if converted BB:%d \n",BB_id(bb));

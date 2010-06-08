@@ -1354,6 +1354,17 @@ static void process_d_option (char *optargs)
          break;
 # endif
 
+# if 0
+
+      /* Take this out for now because we want IEEE intrinsics to always      */
+      /* be recognized.  Leave the option here in case customers scream too   */
+      /* much about name space encroachment.				      */
+
+      case 'e':
+         on_off_flags.ieee = FALSE;
+         break;
+
+# endif
 
       case 'f':
 
@@ -1623,6 +1634,16 @@ static void process_e_option (char *optargs)
 # endif
 
 
+# if 0
+      /* Take this out for now because we want IEEE intrinsics to always      */
+      /* be recognized.  Leave the option here in case customers scream too   */
+      /* much about name space encroachment.				      */
+
+      case 'e':
+         on_off_flags.ieee = TRUE;
+         break;
+
+# endif
 
       case 'f':
 
@@ -5298,6 +5319,24 @@ static	void	process_a_option(char	*optargs)
           *optargs++;
       }
 
+# if 0
+      if (EQUAL_STRS(cp, "lign8")) {
+
+#        if defined(_ACCEPT_CMD_align)
+            cmd_line_flags.align8	= TRUE;
+#        else
+            ntr_msg_queue(0, 744, Log_Warning, 0, "align8", 'a', ARG_STR_ARG);
+#        endif
+      }
+      else if (EQUAL_STRS(cp, "lign16")) {
+
+#        if defined(_ACCEPT_CMD_align)
+            cmd_line_flags.align16	= TRUE;
+#        else
+            ntr_msg_queue(0, 744, Log_Warning, 0, "align16", 'a', ARG_STR_ARG);
+#        endif
+      }
+# endif
       if (EQUAL_STRS(cp, "lign32")) {
 
 #        if defined(_ACCEPT_CMD_align)

@@ -464,6 +464,12 @@ WFE_Start_Function (tree fndecl)
     Scope_tab [Current_scope].st = func_st;
 #endif // KEY
 
+#if 0 // this is causing IPA not to delete unused PUs (aug-5-03)
+#ifdef KEY
+    if (TREE_USED(fndecl)) /* support A_UNUSED attribute */
+      Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
+#endif
+#endif
 
 #if !defined(TARG_NVISA)
     if (lookup_attribute("used", DECL_ATTRIBUTES (fndecl)))  // bug 3697
@@ -1228,6 +1234,23 @@ Add_Initv_For_Tree (tree val, UINT size)
 		WFE_Add_Aggregate_Init_String (
 			TREE_STRING_POINTER(val), size);
 		break;
+#if 0
+	case PLUS_EXPR:
+		if ( TREE_CODE(TREE_OPERAND(val,0)) == ADDR_EXPR
+		     && TREE_CODE(TREE_OPERAND(val,1)) == INTEGER_CST)
+		{
+			tree addr_kid = TREE_OPERAND(TREE_OPERAND(val,0),0);
+			FmtAssert(TREE_CODE(addr_kid) == VAR_DECL
+				  || TREE_CODE(addr_kid) == FUNCTION_DECL,
+				("expected decl under plus_expr"));
+			WFE_Add_Aggregate_Init_Symbol ( Get_ST (addr_kid),
+			Get_Integer_Value(TREE_OPERAND(val,1)) );
+		}
+		else
+			FmtAssert(FALSE, ("unexpected tree code %s", 
+				tree_code_name[TREE_CODE(val)]));
+		break;
+#endif
 	case NOP_EXPR:
 		tree kid;
 		kid = TREE_OPERAND(val,0);

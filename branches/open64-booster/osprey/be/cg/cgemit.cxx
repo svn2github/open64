@@ -62,6 +62,7 @@
  */
 
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <ctype.h>
 #include <fcntl.h>
@@ -995,6 +996,7 @@ static void Print_Dynsym (FILE *pfile, ST *st)
     }
   }
   else {
+#if defined(TARG_X8664)
     const char *eclass_label = NULL;
     switch (ST_export(st)) {
       case EXPORT_INTERNAL:
@@ -1014,6 +1016,7 @@ static void Print_Dynsym (FILE *pfile, ST *st)
       EMT_Write_Qualified_Name(pfile, st);
       putc ('\n', pfile);
     }
+#endif
   }
 }
 
@@ -2432,6 +2435,11 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
   INT i;
   BOOL predicated = OP_has_predicate(op) != 0;
 
+#if 0	// wait until srcpos are more robust
+  if (!OP_noop(op) && SRCPOS_linenum(OP_srcpos(op)) == 0) {
+	DevWarn("0 linenum on op at PC 0x%x", PC);
+  }
+#endif
   for (i = 0; i < OP_opnds(op); i++) {
     tn = OP_opnd (op, i);
     if (TN_is_register(tn)) {
@@ -8843,6 +8851,17 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   }
 #endif
   
+#if 0
+      // This code has been moved to EMT_Assemble_BB with the aim of emitting
+      // it at the start of the 1st BB in the PU.
+#ifdef TARG_X8664
+      if( Assembly &&
+	  ( strcmp( Cur_PU_Name, "MAIN__" ) == 0 ||
+	    strcmp( Cur_PU_Name, "main" ) == 0 ) ){
+	CGEMIT_Setup_Ctrl_Register( Asm_File );
+      }
+#endif
+#endif // 0
 #ifdef TARG_SL
   if (Trace_PC) {
     fprintf(TFile, "\n\n%s\n" , ST_name(pu));

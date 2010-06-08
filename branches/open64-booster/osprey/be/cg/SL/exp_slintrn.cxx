@@ -10,6 +10,7 @@
 |*                                                                  *|
 \********************************************************************/
 
+#define __STDC_LIMIT_MACROS
 #include <intrn_info.h>
 #include <stdint.h>
 #include <stdarg.h>

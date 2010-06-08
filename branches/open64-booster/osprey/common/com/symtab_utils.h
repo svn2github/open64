@@ -108,8 +108,10 @@ Make_Function_Type(TY_IDX return_ty_idx);  // implementation still
 TY_IDX
 Make_Array_Type(TYPE_ID element_type, INT32 ndim, INT64 len);
 
+#if 1 // Fix 10-26-2002: Enhancement to reset addr_saved flag before Mainopt
 void
 Clear_local_symtab_addr_flags (const SCOPE& scope);
+#endif
 
 //----------------------------------------------------------------------
 // TY-related utilities

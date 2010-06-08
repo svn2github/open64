@@ -45,6 +45,7 @@
 static const char *source_file = __FILE__;
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/sgi_cmd_line.cxx,v $ $Revision: 1.1.1.1 $";
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 /* SGI includes */
 #include "stamp.h"

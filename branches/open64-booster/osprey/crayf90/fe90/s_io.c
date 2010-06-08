@@ -550,6 +550,16 @@ void buffer_stmt_semantics (void)
                                             NULL);
       COPY_OPND(IR_OPND_R(ir_idx), opnd);
       create_io_call_descriptor(ir_idx, Buffer_Desc);
+# if 0
+# if defined(_FILE_IO_OPRS)
+      if (buffer_in) {
+         IR_OPR(ir_idx) = Buffer_In_Opr;
+      }
+      else {
+         IR_OPR(ir_idx) = Buffer_Out_Opr;
+      }
+# endif
+# endif
    }
 
    /* restore arg_info_list to previous "stack frame" */
@@ -1843,6 +1853,54 @@ void print_stmt_semantics (void)
 
       if (namelist_descriptor_attr) {
 
+# if 0
+        /* call the namelist table dump routine */
+
+        {int	_call_idx, _list_idx, _loc_idx;
+         int	_dump_nml_idx;
+        _dump_nml_idx = create_lib_entry_attr("DUMP_NML",
+                                            8,
+                                            stmt_start_line,
+                                            stmt_start_col);
+
+        ADD_ATTR_TO_LOCAL_LIST(_dump_nml_idx);
+   
+        NTR_IR_TBL(_call_idx);
+        IR_OPR(_call_idx) = Call_Opr;
+        IR_TYPE_IDX(_call_idx) = CG_INTEGER_DEFAULT_TYPE;
+        IR_LINE_NUM(_call_idx) = stmt_start_line;
+        IR_COL_NUM(_call_idx) = stmt_start_col;
+        IR_FLD_L(_call_idx) = AT_Tbl_Idx;
+        IR_IDX_L(_call_idx) = _dump_nml_idx;
+        IR_LINE_NUM_L(_call_idx) = stmt_start_line;
+        IR_COL_NUM_L(_call_idx) = stmt_start_col;
+   
+        NTR_IR_LIST_TBL(_list_idx);
+        IR_FLD_R(_call_idx) = IL_Tbl_Idx;
+        IR_IDX_R(_call_idx) = _list_idx;
+        IR_LIST_CNT_R(_call_idx) = 1;
+   
+        NTR_IR_TBL(_loc_idx);
+        IR_OPR(_loc_idx) = Aloc_Opr;
+        IR_TYPE_IDX(_loc_idx) = CRI_Ptr_8;
+        IR_LINE_NUM(_loc_idx) = stmt_start_line;
+        IR_COL_NUM(_loc_idx)  = stmt_start_col;
+        IL_FLD(_list_idx) = IR_Tbl_Idx;
+        IL_IDX(_list_idx) = _loc_idx;
+   
+        IR_FLD_L(_loc_idx) = AT_Tbl_Idx;
+        IR_IDX_L(_loc_idx) = namelist_descriptor_attr;
+        IR_LINE_NUM_L(_loc_idx) = stmt_start_line;
+        IR_COL_NUM_L(_loc_idx)  = stmt_start_col;
+   
+        gen_sh(Before, Call_Stmt, stmt_start_line,
+                stmt_start_col, FALSE, FALSE, TRUE);
+   
+        SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx))     = _call_idx;
+        SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx)) = TRUE;
+        }
+   
+# endif
          NTR_IR_LIST_TBL(list_idx);
          IR_FLD_R(ir_idx)		= IL_Tbl_Idx;
          IR_LIST_CNT_R(ir_idx)		= 1;
@@ -2087,6 +2145,54 @@ void read_stmt_semantics (void)
       }
 
       if (namelist_descriptor_attr) {
+# if 0
+        /* call the namelist table dump routine */
+
+        {int    _call_idx, _list_idx, _loc_idx;
+         int    _dump_nml_idx;
+        _dump_nml_idx = create_lib_entry_attr("DUMP_NML",
+                                            8,
+                                            stmt_start_line,
+                                            stmt_start_col);
+
+        ADD_ATTR_TO_LOCAL_LIST(_dump_nml_idx);
+   
+        NTR_IR_TBL(_call_idx);
+        IR_OPR(_call_idx) = Call_Opr;
+        IR_TYPE_IDX(_call_idx) = CG_INTEGER_DEFAULT_TYPE;
+        IR_LINE_NUM(_call_idx) = stmt_start_line;
+        IR_COL_NUM(_call_idx) = stmt_start_col;
+        IR_FLD_L(_call_idx) = AT_Tbl_Idx;
+        IR_IDX_L(_call_idx) = _dump_nml_idx;
+        IR_LINE_NUM_L(_call_idx) = stmt_start_line;
+        IR_COL_NUM_L(_call_idx) = stmt_start_col;
+   
+        NTR_IR_LIST_TBL(_list_idx);
+        IR_FLD_R(_call_idx) = IL_Tbl_Idx;
+        IR_IDX_R(_call_idx) = _list_idx;
+        IR_LIST_CNT_R(_call_idx) = 1;
+   
+        NTR_IR_TBL(_loc_idx);
+        IR_OPR(_loc_idx) = Aloc_Opr;
+        IR_TYPE_IDX(_loc_idx) = CRI_Ptr_8;
+        IR_LINE_NUM(_loc_idx) = stmt_start_line;
+        IR_COL_NUM(_loc_idx) = stmt_start_col;
+        IL_FLD(_list_idx) = IR_Tbl_Idx;
+        IL_IDX(_list_idx) = _loc_idx;
+   
+        IR_FLD_L(_loc_idx) = AT_Tbl_Idx;
+        IR_IDX_L(_loc_idx) = namelist_descriptor_attr;
+        IR_LINE_NUM_L(_loc_idx) = stmt_start_line;
+        IR_COL_NUM_L(_loc_idx) = stmt_start_col;
+  
+        gen_sh(Before, Call_Stmt, stmt_start_line,
+                stmt_start_col, FALSE, FALSE, TRUE);
+  
+        SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx))     = _call_idx;
+        SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx)) = TRUE;
+        }
+
+# endif
 
          NTR_IR_LIST_TBL(list_idx);
          IR_FLD_R(ir_idx)		= IL_Tbl_Idx;
@@ -2565,6 +2671,54 @@ void write_stmt_semantics (void)
       }
 
       if (namelist_descriptor_attr) {
+# if 0
+        /* call the namelist table dump routine */
+
+        {int    _call_idx, _list_idx, _loc_idx;
+         int    _dump_nml_idx;
+        _dump_nml_idx = create_lib_entry_attr("DUMP_NML",
+                                            8,
+                                            stmt_start_line,
+                                            stmt_start_col);
+
+        ADD_ATTR_TO_LOCAL_LIST(_dump_nml_idx);
+   
+        NTR_IR_TBL(_call_idx);
+        IR_OPR(_call_idx) = Call_Opr;
+        IR_TYPE_IDX(_call_idx) = CG_INTEGER_DEFAULT_TYPE;
+        IR_LINE_NUM(_call_idx) = stmt_start_line;
+        IR_COL_NUM(_call_idx) = stmt_start_col;
+        IR_FLD_L(_call_idx) = AT_Tbl_Idx;
+        IR_IDX_L(_call_idx) = _dump_nml_idx;
+        IR_LINE_NUM_L(_call_idx) = stmt_start_line;
+        IR_COL_NUM_L(_call_idx) = stmt_start_col;
+   
+        NTR_IR_LIST_TBL(_list_idx);
+        IR_FLD_R(_call_idx) = IL_Tbl_Idx;
+        IR_IDX_R(_call_idx) = _list_idx;
+        IR_LIST_CNT_R(_call_idx) = 1;
+   
+        NTR_IR_TBL(_loc_idx);
+        IR_OPR(_loc_idx) = Aloc_Opr;
+        IR_TYPE_IDX(_loc_idx) = CRI_Ptr_8;
+        IR_LINE_NUM(_loc_idx) = stmt_start_line;
+        IR_COL_NUM(_loc_idx) = stmt_start_col;
+        IL_FLD(_list_idx) = IR_Tbl_Idx;
+        IL_IDX(_list_idx) = _loc_idx;
+   
+        IR_FLD_L(_loc_idx) = AT_Tbl_Idx;
+        IR_IDX_L(_loc_idx) = namelist_descriptor_attr;
+        IR_LINE_NUM_L(_loc_idx) = stmt_start_line;
+        IR_COL_NUM_L(_loc_idx) = stmt_start_col;
+  
+        gen_sh(Before, Call_Stmt, stmt_start_line,
+                stmt_start_col, FALSE, FALSE, TRUE);
+  
+        SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx))     = _call_idx;
+        SH_P2_SKIP_ME(SH_PREV_IDX(curr_stmt_sh_idx)) = TRUE;
+        }
+
+# endif
 
          NTR_IR_LIST_TBL(list_idx);
          IR_FLD_R(ir_idx)		= IL_Tbl_Idx;
@@ -8392,11 +8546,24 @@ static void create_io_call_descriptor(int			call_idx,
 
       /* replace the call list with the descriptor */
 
+# if 0
+      if (IR_IDX_L(call_idx) == glb_tbl_idx[Buffer_In_Attr_Idx] ||
+          IR_IDX_L(call_Idx) == glb_tbl_idx[Buffer_Out_Attr_Idx]) {
+   
+         list_idx = IR_IDX_R(call_idx);
+      }
+      else {
+         IR_LIST_CNT_R(call_idx) = 1;
+         NTR_IR_LIST_TBL(list_idx);
+         IR_IDX_R(call_idx) = list_idx;
+      }
+# else
 
       IR_LIST_CNT_R(call_idx) = 1;
       NTR_IR_LIST_TBL(list_idx);
       IR_IDX_R(call_idx) = list_idx;
 
+# endif
 
       NTR_IR_TBL(loc_idx);
       IR_OPR(loc_idx) = Aloc_Opr;

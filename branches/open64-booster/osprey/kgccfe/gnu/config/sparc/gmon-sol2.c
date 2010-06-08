@@ -35,6 +35,9 @@
 #include "config.h"
 #include "system.h"
 
+#if 0
+#include "sparc/gmon.h"
+#else
 struct phdr {
   char *lpc;
   char *hpc;
@@ -58,6 +61,7 @@ struct rawarc {
 #define ROUNDDOWN(x,y)  (((x)/(y))*(y))
 #define ROUNDUP(x,y)    ((((x)+(y)-1)/(y))*(y))
 
+#endif
 
 /* extern mcount() asm ("mcount"); */
 /*extern*/ char *minbrk /* asm ("minbrk") */;

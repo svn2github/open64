@@ -61,6 +61,7 @@
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/ipa/main/analyze/ipa_option.cxx,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "linker.h"
 

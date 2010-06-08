@@ -100,9 +100,19 @@ typedef struct {
 //
 typedef struct abi {
   const char *name;		// Name
+#if 0
+  //Obsolete
+  std::list<ABI_PROPERTY> flags;	// Non-register flag properties
+  std::list<ABI_PROPERTY> values;	// Non-register value properties
+#endif
 #if ISA_REGISTER_MAX < NUM_REGISTERS_LIMIT
   std::list<ABI_PROPERTY> reg_flags[ISA_REGISTER_CLASS_MAX+1][ISA_REGISTER_MAX+1];
 				// Register flag properties
+#if 0
+  //Obsolete
+  std::list<ABI_PROPERTY> reg_values[ISA_REGISTER_CLASS_MAX+1][ISA_REGISTER_MAX+1];
+				// Register value properties
+#endif
   const char *reg_names[ISA_REGISTER_CLASS_MAX+1][ISA_REGISTER_MAX+1];
 				// Register names
 #else

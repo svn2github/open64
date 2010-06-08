@@ -37,6 +37,9 @@
    software emulation routines (for FP ops) are needed in order to
    complete the port.  */
 
+#if 0
+#include <math.h>
+#endif
 
 extern double acos (double);
 extern double asin (double);

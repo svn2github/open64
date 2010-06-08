@@ -1527,6 +1527,10 @@ MIR_Partition_Lists(WN* loop,
   if (Minv_Debug) {
     fprintf(TFile, "MIR_Partition_Lists for loop %s, depth %d:\n",
             SYMBOL(WN_index(loop)).Name(), Do_Depth(loop));
+#if 0
+    fprintf(TFile, "old lists:\n");
+    Print_Lists(TFile, old_lists);
+#endif
   }
 
   DYN_ARRAY<MIR_REFLIST*>* rval = MIR_Build_Loop_List(loop, pool);

@@ -698,6 +698,14 @@ OP* KEY_SCH::Winner( OP* op_a, OP* op_b )
   OPR* opr_a = Get_OPR( op_a );
   OPR* opr_b = Get_OPR( op_b );
 
+#if 0
+  if( mrt.Memory_Saturated( OPR_issue_time( opr_a ) ) ){
+    if( OP_memory( op_a ) )
+      return op_b;
+    if( OP_memory( op_b ) )
+      return op_a;
+  }
+#endif
   
   // Pick the one with the earliest completion time.
   if( OPR_issue_time( opr_a ) != OPR_issue_time( opr_b ) ){
@@ -912,6 +920,12 @@ KEY_SCH::KEY_SCH( BB* bb, MEM_POOL* pool, BOOL trace )
     }
   }
 
+#if 0
+  if( !( strcmp( Cur_PU_Name, "resid_" ) == 0 &&
+	 BB_id( bb ) == 8 ) ){
+    return;
+  }
+#endif
 
   if( BB_length(bb) > 2 ){
     CG_DEP_Compute_Graph( bb, 

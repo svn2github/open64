@@ -708,6 +708,16 @@ n_indx(
 
 		oldp	= inptr->inptr;
 
+#if	0
+		dummy	= 0;
+
+		(void) NICONV(oldp, &dummy, &dummy, &dummy, &mode, &subs[i],
+			&newp, &stat);
+
+		if (stat != NV32I) {
+			RNLERROR(FENLBNDY);
+		}
+#else
 
 		for (j = 0; j < inptr->incnt; j++) {
 
@@ -732,6 +742,7 @@ n_indx(
 		}
 #endif
 
+#endif
 
 		inptr->inptr	= newp;
 		inptr->incnt	= inptr->incnt - (newp - oldp);

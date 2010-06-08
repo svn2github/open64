@@ -1745,8 +1745,26 @@ OPT_STAB::REGION_verify_bound(RID *rid, AUX_ID aux_id)
   Is_True(st != NULL, ("OPT_STAB::REGION_verify_bound, NULL st"));
 
   if (st && ST_class(st) == CLASS_PREG) { // pregs
+#if 1
     // ignore all pregs, they can be created by IVR or goto conversion
     return TRUE;
+#else
+    PREG_NUM pr = psym->St_ofst();
+
+    // ignore all dedicated pregs, they come from black regions
+    if (pr < 72)
+      return TRUE;
+
+    Is_True(REGION_search_preg_set(RID_pregs_in(rid), pr),
+	 ("OPT_STAB::REGION_verify_bound, PREG %d not in preg-in set, RGN %d",
+	  pr,RID_id(rid)));
+    if (RID_pregs_out(rid)) {
+      for (INT i=0; i<RID_num_exits(rid); i++)
+	Is_True(REGION_search_preg_set(RID_pregs_out_i(rid, i), pr),
+	  ("OPT_STAB::REGION_verify_bound, PREG %d not in preg-in set, RGN %d",
+		 pr,RID_id(rid)));
+    }
+#endif
   } else { // variables
 
     // if const LDA, ignore
@@ -2024,10 +2042,20 @@ OPT_STAB::Allocate_vsym(WN * memop_wn, POINTS_TO *memop_pt)
       return vp_idx;
     }
     else {
+#if 0
+      vp_idx = Find_vsym_with_base(occ->Based_sym());
+      if (vp_idx == NULL) {
+	vp_idx = Create_vsym(EXPR_IS_ANY);
+	AUX_STAB_ENTRY *vsym = Aux_stab_entry(vp_idx);
+	vsym->Points_to()->Set_based_sym(occ->Based_sym());
+	// What about vsym->Set_stype(something) here?
+      }
+#else
       // Replace the Based_sym() in the AUX_STAB_ENTRY with the
       // Based_sym() of the OCC_TAB_ENTRY. This should happen only
       // once, and we should never switch it back!
       pt->Set_based_sym(memop_pt->Based_sym());
+#endif
       return vp_idx;
     }
   }
@@ -2121,10 +2149,20 @@ OPT_STAB::Adjust_vsym(AUX_ID vp_idx, OCC_TAB_ENTRY *occ)
       return vp_idx;
     }
     else {
+#if 0
+      vp_idx = Find_vsym_with_base(occ->Based_sym());
+      if (vp_idx == NULL) {
+	vp_idx = Create_vsym(EXPR_IS_ANY);
+	AUX_STAB_ENTRY *vsym = Aux_stab_entry(vp_idx);
+	vsym->Points_to()->Set_based_sym(occ->Based_sym());
+	// What about vsym->Set_stype(something) here?
+      }
+#else
       // Replace the Based_sym() in the AUX_STAB_ENTRY with the
       // Based_sym() of the OCC_TAB_ENTRY. This should happen only
       // once, and we should never switch it back!
       pt->Set_based_sym(occ->Points_to()->Based_sym());
+#endif
       return vp_idx;
     }
   }
@@ -2327,6 +2365,11 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
         pt.Set_base_kind(BASE_IS_UNKNOWN);
         pt.Set_ofst_kind(OFST_IS_INVALID);
 
+#if 0   // This is "HACK" from Enter_occ_tab, so we disable it until
+	// we know why it is required.
+        if (WN_operator(wn) == OPR_PARM && aux_id == _default_vsym)
+	        occ->Points_to()->Set_expr_kind(EXPR_IS_ANY);
+#endif
         pt.Analyze_Parameter_Base(WN_kid0(wn), *this);
         Update_From_Restricted_Map(wn, &pt);
         Is_True(pt.Alias_class() == OPTIMISTIC_AC_ID ||
@@ -2851,6 +2894,10 @@ OPT_STAB::Generate_asm_mu_chi(WN *wn, MU_LIST *mu, CHI_LIST *chi)
     }
 
     if (Asm_Memory || asm_clobbers_mem)
+#if 0 // bug 10016
+      if (Addr_saved(idx) || Addr_passed(idx) || Addr_used_locally(idx) ||
+	  idx == Default_vsym()) 
+#endif
       {
 	how = READ_AND_WRITE;
 	goto label_how;
@@ -3588,6 +3635,12 @@ OPT_STAB::Transfer_alias_class_to_occ_and_aux(RID *const rid,
 	  // and the copy overlap. The discarding of the alias class
 	  // information (and the IP alias class information) happens
 	  // inside POINTS_TO::Meet_info_from_alias_class(). -- RK
+#if 0
+	  Is_True((vsym_pt->Alias_class() == OPTIMISTIC_AC_ID) ||
+		  (vsym_pt->Alias_class() == alias_class),
+		  ("Transfer_alias_class_to_occ_and_aux: Inconsistent alias "
+		   "class for vsym"));
+#endif
 	  // Note: Since the above assertion doesn't hold in general,
 	  if (alias_class != OPTIMISTIC_AC_ID &&
 	      alias_class != PESSIMISTIC_AC_ID &&
@@ -3619,6 +3672,14 @@ OPT_STAB::Transfer_alias_class_to_occ_and_aux(RID *const rid,
 	  }
 	  // The following assertion removed 981116; see comments
 	  // above for the per-PU case that explain why. -- RK
+#if 0
+	  Is_True((vsym_pt->Ip_alias_class() == OPTIMISTIC_AC_ID) ||
+		  (vsym_pt->Ip_alias_class() ==
+		   WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn)) ||
+		  (WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn) == OPTIMISTIC_AC_ID),
+		  ("Transfer_alias_class_to_occ_and_aux: Inconsistent IP alias "
+		   "class for vsym"));
+#endif
 #if Is_True_On
 	  if ((WOPT_Ip_Alias_Class_Limit == UINT32_MAX) &&
 	      (WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn) ==

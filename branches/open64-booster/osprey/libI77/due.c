@@ -62,25 +62,34 @@ static int f_find_com (flist64 *a, int lock);
 int
 f_find (flist *a)
 {
+#if 11
     flist64 a64;
 
     a64.ferr = a->ferr;;
     a64.funit = a->funit;;
     a64.frec  = a->frec;
     return( f_find_com( &a64, 0 ) );
+#else
+    return( f_find_com( a, 0 ) );
+#endif
 }
 
 int
 f_find_mp (flist *a)
 {
+#if 11
     flist64 a64;
 
     a64.ferr = a->ferr;;
     a64.funit = a->funit;;
     a64.frec  = a->frec;
     return( f_find_com( &a64, 1 ) );
+#else
+    return( f_find_com( a, 1 ) );
+#endif
 }
 
+#if 11
 int
 f_find64 (flist64 *a)
 {
@@ -96,6 +105,10 @@ f_find64_mp (flist64 *a)
 
 static int
 f_find_com (flist64 *a, int lock)
+#else
+static int
+f_find_com (flist *a, int lock)
+#endif
 {
    unit *ftnunit;
 
@@ -139,6 +152,7 @@ s_rdue (cilist *a)
    return (s_rdue_mp (a, &f77curunit));
 }
 
+#if 11
 
 int
 s_rdue_mp (cilist *a, unit **fu)
@@ -157,6 +171,11 @@ s_rdue64(cilist64 *a)
 
 int
 s_rdue64_mp (cilist64 *a, unit **fu)
+#else
+
+int
+s_rdue_mp (cilist *a, unit **fu)
+#endif
 {
    int             n;
    unit	          *ftnunit;
@@ -182,6 +201,7 @@ s_wdue (cilist *a)
    return( s_wdue_mp( a, &f77curunit ));
 }
 
+#if 11
 
 int
 s_wdue_mp (cilist *a, unit **fu)
@@ -200,6 +220,11 @@ s_wdue64(cilist64 *a)
 
 int
 s_wdue64_mp (cilist64 *a, unit **fu)
+#else
+
+int
+s_wdue_mp (cilist *a, unit **fu)
+#endif
 {
    int             n;
 
@@ -330,8 +355,10 @@ e_wdue_mp (unit **fu)
    return (0);
 }
 
+#if 11
 #pragma weak e_rdue64 = e_rdue
 #pragma weak e_rdue64_mp = e_rdue_mp
 #pragma weak e_wdue64 = e_wdue
 #pragma weak e_wdue64_mp = e_wdue_mp
+#endif
 

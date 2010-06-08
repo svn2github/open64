@@ -60,6 +60,7 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
@@ -672,6 +673,11 @@ extern WN* Parallelize_Doacross_Loop(
       WN_MAP_Set(LNO_Info_Map,wn_if,(void *)if_info);
       LNO_Build_If_Access(wn_if, loop_stack);
 
+#if 0
+LWN_Delete_DU(wn_if);
+LWN_Delete_LNO_dep_graph(wn_if);
+LWN_Delete_Tree(wn_if);
+#endif
     }
 
     WN* wn_lower_do_while=NULL;
@@ -718,6 +724,11 @@ extern WN* Parallelize_Doacross_Loop(
       WN_MAP_Set(LNO_Info_Map,wn_if,(void *)if_info);
       LNO_Build_If_Access(wn_if, loop_stack);
 
+#if 0
+LWN_Delete_DU(wn_if);
+LWN_Delete_LNO_dep_graph(wn_if);
+LWN_Delete_Tree(wn_if);
+#endif
     }
 
   }
