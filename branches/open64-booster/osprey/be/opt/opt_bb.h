@@ -1093,6 +1093,7 @@ private:
   BB_NODE_SET *_dom_frontier;// point to dominance frontier set
   BB_NODE_SET *_rcfg_dom_frontier;// point to dominance frontier set for reverse CFG
   IDTYPE       _layout_id;          // it is used to represent where to place BB in reconstrucing CFG
+  RID         *_rid;          // which region BB belongs to, cannot use _rid_id because it may not be unique
   
   // structure containing everything related to the label for this bb
   struct {
@@ -1262,6 +1263,8 @@ public:
   void         Set_loopdepth(mUINT8 dep){ _loopdepth = dep;}
   mUINT16      Rid_id(void)         const  { return _rid_id;}
   void         Set_rid_id(mUINT16 id)   { _rid_id = id;}
+  RID          *Rid(void)          const{ return _rid;}
+  void         Set_rid(RID* rid)        { _rid = rid; }
   BB_FLAG      Flag(void)        const  { return _flags; }
   BOOL         Willexit(void)    const  { return (_flags & BB_WILLEXIT);}
   void         Set_willexit(void)       { _flags=(BB_FLAG)(_flags|BB_WILLEXIT);}

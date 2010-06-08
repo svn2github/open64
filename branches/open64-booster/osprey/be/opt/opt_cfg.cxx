@@ -3882,7 +3882,7 @@ CFG::Ident_eh_regions(void)
       
     if (eh_level > 0 ) {
       bb->Set_EH_region();
-      bb->Set_rid_id(RID_id(Top_eh_rid()));
+      bb->Set_rid(Top_eh_rid());
     }
 
     if (bb->Kind() == BB_REGIONEXIT ) {
@@ -3894,9 +3894,9 @@ CFG::Ident_eh_regions(void)
         Is_True(eh_level >= 0 , ("CFG::Ident_eh_regions, not match regionstart and regionexit"));
         Pop_eh_rid();
         if (!Null_eh_rid())
-            bb->Set_rid_id(RID_id(Top_eh_rid()));
+            bb->Set_rid(Top_eh_rid());
         else
-            bb->Set_rid_id(0);
+            bb->Set_rid(NULL);
       }
     }
   }
@@ -6645,6 +6645,7 @@ void CFG::Clone_bb(IDTYPE src, IDTYPE dst, BOOL clone_wn)
   destbb->Set_phi_list(CXX_NEW(PHI_LIST(destbb), Mem_pool()));
   destbb->Set_linenum(srcbb->Linenum());
   destbb->Set_rid_id(srcbb->Rid_id());
+  destbb->Set_rid(srcbb->Rid());
   // UPDATE FREQUENCY -- OLD CODE: destbb->Set_freq(srcbb->Freq());
 
   // Fix zero version for phi.

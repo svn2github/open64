@@ -1090,6 +1090,8 @@ CFG::LMV_clone_block (const BB_NODE* src, LMV_CFG_ADAPTOR* adaptor) {
   Clone_bb (src->Id(), clone->Id(), FALSE); 
   clone->Set_loopdepth (src->Loopdepth());
   clone->Set_rid_id (src->Rid_id());
+  clone->Set_rid(src->Rid());
+  clone->Set_layout_id(src->layout_Id());
   clone->Set_flag (src->Flag());
   // When cloning a 'DO' loop we lower the loop back to a while loop
   // because we cannot manufacture (yet) all the state contained in
@@ -1125,6 +1127,8 @@ CFG::LMV_create_alike_block (BB_KIND kind, BB_NODE* model) {
   BB_NODE* new_bb = Create_and_allocate_bb (kind);
   new_bb->Set_loopdepth (model->Loopdepth());
   new_bb->Set_rid_id (model->Rid_id());
+  new_bb->Set_rid(model->Rid());
+  new_bb->Set_layout_id(model->layout_Id());
   new_bb->Set_flag (model->Flag());
 
   // DCE requires non-null PHI-list to transfer dead phi functions

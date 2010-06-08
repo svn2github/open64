@@ -402,7 +402,7 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace, bool eh_regions)
       // the dst of the must_fall_thru edge should not be a bb_regionstart
       Is_True(cfg->Get_bb(second(*ep))->Kind() != BB_REGIONSTART, 
          ("fall thru should not be region start"));
-      INT dst_rid = cfg->Get_bb(second(*ep))->Rid_id();   
+      RID *dst_rid = cfg->Get_bb(second(*ep))->Rid();   
 	  successor_graph::cluster_id v = next_cluster_id++;
 	  out_buffer.push_back(pair<edge,edge>(*ep,edge(v, second(*ep))));
 	  (*ep).second = v; 
@@ -416,7 +416,7 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace, bool eh_regions)
 	  bb->Set_kind(BB_GOTO);
 	  bb->Set_phi_list(NULL);
       bb->Set_layout_id(cfg->Get_bb(first(*ep)));
-      bb->Set_rid_id(dst_rid);
+      bb->Set_rid(dst_rid);
 	} else
 	  was_fall_thru_target[second(*ep)] = true;
       }
@@ -640,7 +640,7 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace, bool eh_regions)
             new_bb->Set_prev(bb);
             bb->Set_next(new_bb);
             new_bb->Set_layout_id(bb);
-            new_bb->Set_rid_id(bb->Rid_id());
+            new_bb->Set_rid(bb->Rid());
             if (cfg->Feedback())
             {
                 cfg->Feedback()->Split_edge(bb->Id(), new_bb->Id(), 
@@ -1368,7 +1368,7 @@ clone_zones(successor_graph& g, vector<vertex_id>& entry,
     // (if layout_id is not 0) or old_preheader's id
     if(new_to_old_preheader[i] != 0)
     {
-        cfg->Get_bb(i)->Set_rid_id(cfg->Get_bb(new_to_old_preheader[i])->Rid_id());
+        cfg->Get_bb(i)->Set_rid(cfg->Get_bb(new_to_old_preheader[i])->Rid());
         cfg->Get_bb(i)->Set_layout_id(cfg->Get_bb(new_to_old_preheader[i]));
     }    
   }

@@ -420,12 +420,11 @@ ML_WHIRL_EMITTER::Emit(void)
 
     // Add an assertion to make sure that the BB layout is right with respect
     // to eh_region. That is, if BB is inside a valid eh region (dce may 
-    // remove some eh region and make rid invalid), its BB rid_id should 
-    // match with the top eh_region's rid's id
-    if (bb->Kind() != BB_REGIONEXIT && bb->EH_region() && 
-        bb->Rid_id() != 0 &&
-        RID_is_valid(Cfg()->Rid(), bb->Rid_id()))
-        Is_True(bb->Rid_id() == _region_stack.Top()->Region_start()->Rid_id(),
+    // remove some eh region and make rid invalid), its BB rid should 
+    // match with the top eh_region's rid
+    if (bb->Kind() != BB_REGIONEXIT && bb->EH_region() && bb->Rid() && 
+        RID_is_valid(Cfg()->Rid(), bb->Rid()))
+        Is_True(bb->Rid() == _region_stack.Top()->Region_start()->Rid(),
         ("ML_WHIRL_EMITTER::Emit: BB region id not match"));
 
       // generate alternate entry statement if necessary

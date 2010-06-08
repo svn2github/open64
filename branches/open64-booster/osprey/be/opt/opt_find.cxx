@@ -747,6 +747,9 @@ CODEMAP::Fix_zero_version(PHI_NODE *phi, INT opnd_idx, bool allow_real_or_no_def
 	   (TFile, "CODEMAP::Fix_zero_version aux-id %d, bb %d, opnd %d\n",
 	    phi->Aux_id(), phi->Bb()->Id(), opnd_idx));
 
+  // It is possible that phi->BB's pred changes 
+  if (phi->Bb()->Pred()->Len() <= opnd_idx) return;
+  
   // Constructor for def_stmt will perform the find-def operation
   // (by aux_id) and set the fields of def_stmt accordingly.
 

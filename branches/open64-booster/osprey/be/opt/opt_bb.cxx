@@ -419,6 +419,7 @@ BB_NODE::Clear()
   _hi._ifinfo = NULL;
   Set_exp_phi(NULL);
   _layout_id= 0;
+  _rid = NULL;
 }
 
 // ====================================================================
@@ -472,6 +473,8 @@ BB_NODE::BB_NODE(const BB_NODE& old)
   _u12 = old._u12;
   _u13 = old._u13;
   Set_exp_phi(NULL);
+  _layout_id = old._layout_id;
+  _rid = old._rid;
 }
 
 
@@ -1061,6 +1064,9 @@ BB_NODE::Clonable(BOOL allow_loop_cloning, const BVECTOR *cr_vol_map)
   case BB_REPEATEND:
     if (!allow_loop_cloning) return FALSE;
   }
+
+  if (Regionend()) return FALSE;
+
   if (Loop() && Loop()->Header()==this)
     if (!allow_loop_cloning) return FALSE;
 
