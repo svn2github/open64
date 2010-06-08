@@ -265,10 +265,11 @@ Get_Ordered_Corelist(int *list, int total_cores)
            // 0-8 means proc 0 and proc 8 are two threads on a core
            // they have the same socket_id and core_id
            // the following binding order is better and is used
-           // 0 2 4 6 1 3 5 7 8 10 12 14 9 11 13 15
+           // 0 2 4 6 8 10 12 14 1 3 5 7 9 11 13 15
+           // do not mingle the cores on different sockets
 
-           tmp_id = socket_id * cores + core_id;
-		   list_id = tmp_id + thread_count[tmp_id] * siblings;
+           tmp_id = socket_id * siblings + core_id;
+		   list_id = tmp_id + thread_count[tmp_id] * cores;
 		   
            if (list_id >= total_cores) SET_DEFAULT;
                
