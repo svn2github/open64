@@ -2151,6 +2151,14 @@ static simpnode  simp_add_sub(OPCODE opc,
 #ifdef TARG_X8664
    if (MTYPE_C8 == ty)
    {
+      if (MTYPE_F8 == SIMPNODE_rtype(k0) && MTYPE_F8 == SIMPNODE_rtype(k1))
+      {
+	if (issub)
+          r = SIMPNODE_SimpCreateExp2(OPC_F8SUB, k0, k1);
+	else
+          r = SIMPNODE_SimpCreateExp2(OPC_F8ADD, k0, k1);
+        return r;
+      }
       /* complex const converted to real const */
       if (k0const && SIMPNODE_rtype(k0) == ty)
       {
@@ -3226,6 +3234,11 @@ static simpnode  simp_div( OPCODE opc,
 	    r = SIMPNODE_SimpCreateExp2(opc, k0, SIMPNODE_kid0(k1));
 	    return r;
 	 }
+      }
+      if (MTYPE_F8 == SIMPNODE_rtype(k0) && MTYPE_F8 == SIMPNODE_rtype(k1))
+      {
+	 r = SIMPNODE_SimpCreateExp2(OPC_F8DIV, k0, k1);
+	 return r;
       }
       
    }
