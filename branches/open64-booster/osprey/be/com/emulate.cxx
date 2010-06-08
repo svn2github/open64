@@ -4425,6 +4425,10 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
      *  This is known in the FE as RSTYLE_VIA_FIRST_ARG
      *  The parameter is by reference
      */
+#ifdef TARG_X8664
+    if (WN_rtype(tree) == MTYPE_V16C8)
+      WN_set_rtype(tree, MTYPE_C8);
+#endif
     TYPE_ID	rtype = WN_rtype(tree);
 
     switch(rtype)
