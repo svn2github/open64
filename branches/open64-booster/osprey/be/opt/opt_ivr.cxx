@@ -2803,26 +2803,34 @@ IVR::Canon_loop_end_br (BB_LOOP* loop, IV_CAND* prim_iv_cand)
   if (stmt->Opr() != OPR_TRUEBR && stmt->Opr() != OPR_FALSEBR)
     return; 
 
-  // step 1: Check to see if the loop-exit branch is in the form of
-  //   "secondary_iv <cm_op> up-bound".
-  //
-  CODEREP* cmp = stmt->Rhs ();
-  CODEREP* kid0 = cmp->Opnd (0);
-  CODEREP* kid1 = cmp->Opnd (1);
-
-  if (kid0->Kind () != CK_VAR)
-    return;
-
-  // figure out which secondary IV is involed in the branch
-  //
   IV_CAND* second_iv_cand = NULL; 
+  CODEREP* up_bound = NULL;
+
+  CODEREP* cmp = stmt->Rhs ();
+  if (cmp->Kind() != CK_OP || !OPERATOR_is_compare (cmp->Opr ())) {
+    return;
+  }
+  CODEREP* kid_0 = cmp->Opnd (0);
+  CODEREP* kid_1 = cmp->Opnd (1);
+
+  // step 1: Figure out which secondary IV is involed in the branch,
+  //    in the mean time, figure out which operand is up-bound.
+  //
   for (vector<IV_CAND*>::iterator iter = iv_cand_container.begin(); 
        iter != iv_cand_container.end(); iter++) {
     
     IV_CAND *iv = *iter;
-    if (iv->Var () && iv->Var()->Aux_id() == kid0->Aux_id ()) {
-      second_iv_cand = iv; 
-      break;
+    if (iv->Var ()) {
+      IDTYPE aux_id = iv->Var()->Aux_id();   
+      if (kid_0->Kind () == CK_VAR && aux_id == kid_0->Aux_id ()) {
+        up_bound = kid_1;
+        second_iv_cand = iv; 
+        break;
+      } else if (kid_1->Kind () == CK_VAR && aux_id == kid_1->Aux_id ()) {
+        up_bound = kid_0;
+        second_iv_cand = iv; 
+        break;
+      }
     }
   }
 
@@ -2853,14 +2861,22 @@ IVR::Canon_loop_end_br (BB_LOOP* loop, IV_CAND* prim_iv_cand)
     return;
   }
 
-  // step 2: generate normalized comparision: "<prim_iv> <cmp_op> expr".
+  // step 2: generate normalized comparision: "<prim_iv> <cmp_op> expr"
+  //   or "<expr> <cmp_op> <prim_iv> depending on the order of orignial 
+  //   comparision.
   //
   OPCODE subop = OPCODE_make_op (OPR_SUB, prim_iv->Dtyp (), MTYPE_V);
   CODEREP* norm_iv = Htable()->Add_bin_node_and_fold (subop, 
-                                kid1, second_iv_cand->Init_value());
+                                up_bound, second_iv_cand->Init_value());
                                      
   OPCODE cmp_op = OPCODE_make_op (cmp->Opr (), prim_iv->Dtyp(), prim_iv->Dtyp());
-  CODEREP* new_cmp = Htable()->Add_bin_node_and_fold (cmp_op, prim_iv, norm_iv);
+
+  CODEREP* new_cmp;
+  if (up_bound == kid_1) {
+    new_cmp = Htable()->Add_bin_node_and_fold (cmp_op, prim_iv, norm_iv);
+  } else {
+    new_cmp = Htable()->Add_bin_node_and_fold (cmp_op, norm_iv, prim_iv);
+  }
 
   // step 3: update the branch statement
   //
