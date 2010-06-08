@@ -182,6 +182,7 @@ static void Init_Remove_Dead_LRA_Stores(BS **bs, MEM_POOL *pool);
 static void Mark_LRA_Spill_Reference(OP *op, BS **bs, MEM_POOL *pool);
 static BOOL Delete_Dead_LRA_Spill(OP *op, BS **bs);
 #endif
+void EBO_swap_subtract_operands();
 void EBO_Eliminate_movaps();
 BOOL Is_Copy_Instruction(OP *op);
 /* ===================================================================== */
@@ -3813,6 +3814,8 @@ EBO_Process ( BB *first_bb )
     CFLOW_Optimize(CFLOW_BRANCH | CFLOW_UNREACHABLE, "CFLOW (from ebo)");
 #endif
   }
+  if (EBO_in_pre || EBO_in_peep)
+    EBO_swap_subtract_operands();
   /* Check for movaps with same source and destination registers and eliminate
      them */
   if(EBO_in_peep)
@@ -4346,6 +4349,404 @@ EBO_Adjust_Pred_Branch_Target (BB *bb)
     }
   }
 }
+
+// TO DO:  replace the bb walks in the following 4 functions by using the more
+// efficient CG_DEP_Compute_Graph.
+
+// This function counts the number of times the input (non constant) tn appears
+// in the results of all the ops in the input bb.  If the count is positive, the
+// first (or respectively last) such op is returned in *def_op.
+static int num_defs_in_bb(BB *bb, TN *tn, BOOL first, OP **def_op)
+{
+  int num_defs;
+
+  if (TN_is_constant(tn))
+    return 0;
+  num_defs = 0;
+  for (OP *op = BB_first_op(bb); op != NULL; op = OP_next(op))
+  {
+    for (int i = 0; i < OP_results(op); i++)
+    {
+      if (!TN_is_constant(OP_result(op, i)) &&
+          TNs_Are_Equivalent(tn, OP_result(op, i)))
+      {
+        if (num_defs == 0 || first == FALSE)
+          *def_op = op;
+        num_defs++;
+      }
+    }
+  }
+  return num_defs;
+}
+
+// This function counts the number of times the input (non constant) tn appears
+// in the operands of all the ops in the input bb.  If the count is positive,
+// the first (or respectively last) such op is returned in *use_op.
+static int num_uses_in_bb(BB *bb, TN *tn, BOOL first, OP **use_op)
+{
+  int num_uses;
+
+  if (TN_is_constant(tn))
+    return 0;
+  num_uses = 0;
+  for (OP *op = BB_first_op(bb); op != NULL; op = OP_next(op))
+  {
+    for (int i = 0; i < OP_opnds(op); i++)
+    {
+      if (!TN_is_constant(OP_opnd(op, i)) &&
+          TNs_Are_Equivalent(tn, OP_opnd(op, i)))
+      {
+        if (num_uses == 0 || first == FALSE)
+          *use_op = op;
+        num_uses++;
+      }
+    }
+  }
+  return num_uses;
+}
+
+// Starting with the input op, this function returns the next (up or down) op in
+// bb that contains (non constant) tn in the results.  A null op denotes to
+// start at the top of bb (if down is TRUE) or bottom of bb (if down is FALSE).
+static OP *next_def_in_bb(BB *bb, TN *tn, OP *op, BOOL down)
+{
+  OP *temp_op;
+
+  if (TN_is_constant(tn))
+    return NULL;
+  if (down)
+  {
+    if (op == NULL)
+      temp_op = BB_first_op(bb);
+    else
+      temp_op = OP_next(op);
+    for (; temp_op != NULL; temp_op = OP_next(temp_op))
+    {
+      for (int i = 0; i < OP_results(temp_op); i++)
+      {
+        if (!TN_is_constant(OP_result(temp_op, i)) &&
+            TNs_Are_Equivalent(tn, OP_result(temp_op, i)))
+          return temp_op;
+      }
+    }
+    return NULL;
+  }
+  else
+  {
+    if (op == NULL)
+      temp_op = BB_last_op(bb);
+    else
+      temp_op = OP_prev(op);
+    for (; temp_op != NULL; temp_op = OP_prev(temp_op))
+    {
+      for (int i = 0; i < OP_results(temp_op); i++)
+      {
+        if (!TN_is_constant(OP_result(temp_op, i)) &&
+            TNs_Are_Equivalent(tn, OP_result(temp_op, i)))
+          return temp_op;
+      }
+    }
+    return NULL;
+  }
+}
+
+// Starting with the input op, this function returns the next (up or down) op in
+// bb that contains (non constant) tn in the operands.  A null op denotes to
+// start at the top of bb (if down is TRUE) or bottom of bb (if down is FALSE).
+static OP *next_use_in_bb(BB *bb, TN *tn, OP *op, BOOL down)
+{
+  OP *temp_op;
+
+  if (TN_is_constant(tn))
+    return NULL;
+  if (down)
+  {
+    if (op == NULL)
+      temp_op = BB_first_op(bb);
+    else
+      temp_op = OP_next(op);
+    for (; temp_op != NULL; temp_op = OP_next(temp_op))
+    {
+      for (int i = 0; i < OP_opnds(temp_op); i++)
+      {
+        if (!TN_is_constant(OP_opnd(temp_op, i)) &&
+            TNs_Are_Equivalent(tn, OP_opnd(temp_op, i)))
+          return temp_op;
+      }
+    }
+    return NULL;
+  }
+  else
+  {
+    if (op == NULL)
+      temp_op = BB_last_op(bb);
+    else
+      temp_op = OP_prev(op);
+    for (; temp_op != NULL; temp_op = OP_prev(temp_op))
+    {
+      for (int i = 0; i < OP_opnds(temp_op); i++)
+      {
+        if (!TN_is_constant(OP_opnd(temp_op, i)) &&
+            TNs_Are_Equivalent(tn, OP_opnd(temp_op, i)))
+          return temp_op;
+      }
+    }
+    return NULL;
+  }
+}
+
+static int subtract_operands_swapped;
+
+// This function checks if it is legal and profitable to swap the two operands
+// in a subtract operation, and if so, swap them.  After the swapping, this
+// function also performs a minor copy propagation to clean up some copy
+// operations that become redundant after the swap.
+void EBO_swap_subtract_operands()
+{
+  if (EBO_in_pre)
+  {
+    TN *opnd0_tn;
+    TN *opnd1_tn;
+    TN *result_tn;
+    int num_defs_opnd0;
+    int num_defs_opnd1;
+    int num_defs_result;
+    int num_uses_opnd0;
+    int num_uses_opnd1;
+    int num_uses_result;
+    OP *result_use_op;
+
+    // look for subtraction operands swapping opportunity
+    subtract_operands_swapped = 0;
+    for (BB *bb = REGION_First_BB; bb != NULL; bb = BB_next(bb))
+    {
+      for (OP *op = BB_first_op(bb); op != NULL; op = OP_next(op))
+      {
+        if (OP_code(op) == TOP_subsd &&
+            OP_opnds(op) == 2 && OP_results(op) == 1)
+        {
+          opnd0_tn = OP_opnd(op, 0);
+          opnd1_tn = OP_opnd(op, 1);
+          result_tn = OP_result(op, 0);
+          if (!TN_is_global_reg(result_tn))
+          {
+            // if the result is global, we don't quite know how it is used
+            // outside of this block; don't do it
+            num_defs_opnd0 = num_defs_in_bb(bb, opnd0_tn, 0, &result_use_op);
+            num_defs_opnd1 = num_defs_in_bb(bb, opnd1_tn, 0, &result_use_op);
+            num_defs_result = num_defs_in_bb(bb, result_tn, 0, &result_use_op);
+            num_uses_opnd0 = num_uses_in_bb(bb, opnd0_tn, 0, &result_use_op);
+            num_uses_opnd1 = num_uses_in_bb(bb, opnd1_tn, 0, &result_use_op);
+            num_uses_result = num_uses_in_bb(bb, result_tn, 0, &result_use_op);
+            if (num_uses_opnd0 == 1 && num_uses_opnd1 == 1 &&
+                num_defs_opnd0 == 0 && num_defs_opnd1 > 0 &&
+                num_defs_result == 1 && num_uses_result == 2 &&
+                OP_Precedes(op, result_use_op) &&
+                OP_code(result_use_op) == TOP_mulsd &&
+                OP_opnd(result_use_op, 0) == result_tn &&
+                OP_opnd(result_use_op, 1) == result_tn)
+            {
+              // result = a (bb invariant) - b (bb variant)
+              // ... = result * result
+              // since a is bb invariant, we need to copy it to a temp before
+              // the subtract (so it won't be written over).  Here we can
+              // exploit the fact that (a-b)**2 == (b-a)**2 and swap a and b,
+              // possibly saving the copy operation
+              Set_OP_opnd(op, 0, opnd1_tn);
+              Set_OP_opnd(op, 1, opnd0_tn);
+              subtract_operands_swapped = 1;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (EBO_in_peep && subtract_operands_swapped)
+  {
+    TN *opnd_tn;
+    TN *result_tn;
+    OP *next_opnd_def_op;
+    OP *next_result_use_op;
+    int same_def_use;
+    OP *same_def_use_op;
+    OP *next_result_def_op;
+    OP *stop_op;
+    int use_encountered;
+    OP *next_opnd_use_op;
+    int global_reg_encountered;
+
+    // some subtract operations' operands were swapped; look for copy
+    // propagation/clean up of redundant copy opportunities
+    subtract_operands_swapped = 0;
+    for (BB *bb = REGION_First_BB; bb != NULL; bb = BB_next(bb))
+    {
+      for (OP *op = BB_first_op(bb); op != NULL; op = OP_next(op))
+      {
+        if (OP_code(op) == TOP_movsd &&
+            OP_opnds(op) == 1 && OP_results(op) == 1 &&
+            !TN_is_global_reg(OP_result(op, 0)))
+        {
+          // if the result is global, we don't quite know how it is used outside
+          // of this block; don't do it
+          opnd_tn = OP_opnd(op, 0);
+          result_tn = OP_result(op, 0);
+          // "a = b"
+          next_opnd_def_op = next_def_in_bb(bb, opnd_tn, op, 1);
+          if (next_opnd_def_op != NULL)
+          {
+            // we require that "b = ..." appear later in the block (to serve as
+            // a delimiter)
+            next_result_use_op = next_use_in_bb(bb, result_tn, next_opnd_def_op,
+              1);
+            if (next_result_use_op == NULL)
+            {
+              // we require that "... = a" *NOT* appear after (the previous)
+              // "b = ..." statement, since if so, replacing "a" to "b" would
+              // pick up the new "b", which would be wrong
+              same_def_use = 1;
+              same_def_use_op = op;
+              // identify the maximum region of the copy propagation
+              while (same_def_use)
+              {
+                same_def_use = 0;
+                same_def_use_op = next_def_in_bb(bb, result_tn, same_def_use_op,
+                  1);
+                if (same_def_use_op != NULL)
+                {
+                  for (int i = 0; i < OP_opnds(same_def_use_op); i++)
+                  {
+                    if (!TN_is_constant(OP_opnd(same_def_use_op, i)) &&
+                        TNs_Are_Equivalent(result_tn, OP_opnd(same_def_use_op,
+                          i)))
+                    {
+                      // found "a = a ..."; keep going, otherwise stop at
+                      // "a = (no a)"
+                      same_def_use = 1;
+                    }
+                  }
+                }
+              }
+              next_result_def_op = same_def_use_op;
+              // the range of the copy propagation should start right after op
+              // "a = b", and extend to the *earlier* of next_result_def_op
+              // "a = (no a)" or next_opnd_def_op ("b = ...")
+              if (next_result_def_op == NULL ||
+                  OP_Precedes(next_opnd_def_op, next_result_def_op))
+                stop_op = next_opnd_def_op;
+              else
+                stop_op = next_result_def_op;
+
+              // between the first definition of "a = a ..." (exclusive) and
+              // "b = ..." (inclusive) we require that there is no use of "b",
+              // otherwise when "a = ..." is changed to "b = ..." the (old) use
+              // of b would pick up the new "b", which would be wrong
+              use_encountered = 0;
+              next_result_def_op = next_def_in_bb(bb, result_tn, op, 1);
+              if (next_result_def_op != NULL)
+              {
+                same_def_use = 0;
+                for (int i = 0; i < OP_opnds(next_result_def_op); i++)
+                {
+                  if (!TN_is_constant(OP_opnd(next_result_def_op, i)) &&
+                      TNs_Are_Equivalent(result_tn, OP_opnd(next_result_def_op,
+                        i)))
+                  {
+                    same_def_use = 1;
+                  }
+                }
+                if (same_def_use == 0)
+                  next_result_def_op = NULL;
+              }
+              if (next_result_def_op != NULL &&
+                  OP_Precedes(next_result_def_op, next_opnd_def_op))
+              {
+                next_opnd_use_op = next_use_in_bb(bb, opnd_tn,
+                  next_result_def_op, 1);
+                if (next_opnd_use_op != NULL &&
+                    (OP_Precedes(next_opnd_use_op, next_opnd_def_op) ||
+                     next_opnd_use_op == next_opnd_def_op))
+                  use_encountered = 1;
+              }
+
+              if (use_encountered == 0)
+              {
+                // check to see if we would be copy propagating into any global
+                // registers; if so, don't do it
+                global_reg_encountered = 0;
+                for (OP *temp_op = OP_next(op); temp_op != stop_op;
+                     temp_op = OP_next(temp_op))
+                {
+                  for (int i = 0; i < OP_opnds(temp_op); i++)
+                  {
+                    if (!TN_is_constant(OP_opnd(temp_op, i)) &&
+                        TNs_Are_Equivalent(OP_opnd(temp_op, i), result_tn))
+                    {
+                      if (TN_is_global_reg(OP_opnd(temp_op, i)))
+                        global_reg_encountered = 1;
+                    }
+                  }
+                  for (int i = 0; i < OP_results(temp_op); i++)
+                  {
+                    if (!TN_is_constant(OP_result(temp_op, i)) &&
+                        TNs_Are_Equivalent(OP_result(temp_op, i), result_tn))
+                    {
+                      if (TN_is_global_reg(OP_result(temp_op, i)))
+                        global_reg_encountered = 1;
+                    }
+                  }
+                }
+                for (int i = 0; i < OP_opnds(stop_op); i++)
+                {
+                  if (!TN_is_constant(OP_opnd(stop_op, i)) &&
+                      TNs_Are_Equivalent(OP_opnd(stop_op, i), result_tn))
+                  {
+                    if (TN_is_global_reg(OP_opnd(stop_op, i)))
+                      global_reg_encountered = 1;
+                  }
+                }
+
+                if (global_reg_encountered == 0)
+                {
+                  // perform copy propagation
+                  for (OP *temp_op = OP_next(op); temp_op != stop_op;
+                       temp_op = OP_next(temp_op))
+                  {
+                    for (int i = 0; i < OP_opnds(temp_op); i++)
+                    {
+                      if (!TN_is_constant(OP_opnd(temp_op, i)) &&
+                          TNs_Are_Equivalent(OP_opnd(temp_op, i), result_tn))
+                      {
+                        Set_OP_opnd(temp_op, i, opnd_tn);
+                      }
+                    }
+                    for (int i = 0; i < OP_results(temp_op); i++)
+                    {
+                      if (!TN_is_constant(OP_result(temp_op, i)) &&
+                          TNs_Are_Equivalent(OP_result(temp_op, i), result_tn))
+                      {
+                        Set_OP_result(temp_op, i, opnd_tn);
+                      }
+                    }
+                  }
+                  for (int i = 0; i < OP_opnds(stop_op); i++)
+                  {
+                    if (!TN_is_constant(OP_opnd(stop_op, i)) &&
+                        TNs_Are_Equivalent(OP_opnd(stop_op, i), result_tn))
+                    {
+                      Set_OP_opnd(stop_op, i, opnd_tn);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 /* Eliminate movaps with same source and destination registers */
 void EBO_Eliminate_movaps()
 {
