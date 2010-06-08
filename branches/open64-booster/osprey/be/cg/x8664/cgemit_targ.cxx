@@ -4102,28 +4102,52 @@ void CGEMIT_Setup_Ctrl_Register( FILE* f )
 
   BOOL is_MAIN__ = !strcmp(Cur_PU_Name, "MAIN__");
 
-  if (IEEE_Arithmetic <= IEEE_ACCURATE &&
-      !is_MAIN__ &&
-      SIMD_IMask &&
-      SIMD_DMask &&
-      SIMD_ZMask &&
-      SIMD_OMask &&
-      SIMD_UMask &&
-      SIMD_PMask &&
-      !DEBUG_Trap_Uv)
+  BOOL and_mask_set = (!SIMD_IMask || !SIMD_DMask || !SIMD_ZMask || 
+		       !SIMD_OMask || !SIMD_UMask || !SIMD_PMask ||
+		       DEBUG_Trap_Uv);
+
+  BOOL or_mask_set  = (SIMD_AMask || SIMD_FMask);
+
+  if (IEEE_Arithmetic <= IEEE_ACCURATE && !and_mask_set && !or_mask_set)
     return;
 
   /* The following sequence of code is used to turn off
-     hardware underflow exception handling.
+     hardware underflow exception handling and/or to turn on
+     flush to zero and denormalized as zero functionality.
    */
 
   const int mask = 32768 ;
-  const int simd_imask = 0xff7f; // bit 7 : f f 0111 f
-  const int simd_dmask = 0xfeff; // bit 8 : f 1110 f f
-  const int simd_zmask = 0xfdff; // bit 9 : f 1101 f f
-  const int simd_omask = 0xfbff; // bit 10: f 1011 f f
-  const int simd_umask = 0xf7ff; // bit 11: f 0111 f f
-  const int simd_pmask = 0xefff; // bit 12: 1110 f f f
+  const int simd_imask = 0xff7f; // bit 7 : f f 0111 f - Invalid Operation Mask
+  const int simd_dmask = 0xfeff; // bit 8 : f 1110 f f - Denormal Mask
+  const int simd_zmask = 0xfdff; // bit 9 : f 1101 f f - Divide by Zero Mask
+  const int simd_omask = 0xfbff; // bit 10: f 1011 f f - Overflow Mask
+  const int simd_umask = 0xf7ff; // bit 11: f 0111 f f - Underflow Mask
+  const int simd_pmask = 0xefff; // bit 12: 1110 f f f - Precision Mask
+
+  const int simd_amask = 0x0040; // bit 6 : 0 0 0100 0 - Denorm as Zero
+  const int simd_fmask = 0x8000; // bit 15: 1000 0 0 0 - Flush To Zero
+
+  int and_mask = 0xffff;
+  int or_mask = 0x0000;
+
+  if ( !SIMD_IMask || DEBUG_Trap_Uv)		// trap invalid operands
+    and_mask = and_mask & simd_imask;
+  if ( !SIMD_DMask )
+    and_mask = and_mask & simd_dmask;
+  if ( !SIMD_ZMask )
+    and_mask = and_mask & simd_zmask;
+  if ( !SIMD_OMask )
+    and_mask = and_mask & simd_omask;
+  if ( !SIMD_UMask )
+    and_mask = and_mask & simd_umask;
+  if ( !SIMD_PMask )
+    and_mask = and_mask & simd_pmask;
+
+  if ( SIMD_AMask )
+    or_mask = or_mask | simd_amask;
+  if ( SIMD_FMask )
+    or_mask = or_mask | simd_fmask;
+
   // bits 16..31 are 0, and must remain 0
 
   if( Is_Target_64bit() ){
@@ -4133,40 +4157,28 @@ void CGEMIT_Setup_Ctrl_Register( FILE* f )
       fprintf( f, "\torq $%d, (%%rsp)\n", mask);
     else if (is_MAIN__)				// bug 8926
       fprintf( f, "\tandq $%d, (%%rsp)\n", ~mask);
-    if ( !SIMD_IMask || DEBUG_Trap_Uv)		// trap invalid operands
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_imask );
-    if ( !SIMD_DMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_dmask );
-    if ( !SIMD_ZMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_zmask );
-    if ( !SIMD_OMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_omask );
-    if ( !SIMD_UMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_umask );
-    if ( !SIMD_PMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_pmask );
+
+    if ( and_mask_set )
+      fprintf( f, "\tandq $%d, (%%rsp)\n", and_mask );
+    if ( or_mask_set )
+      fprintf( f, "\torq $%d, (%%rsp)\n", or_mask );
+
     fprintf( f, "\t%s\n", "ldmxcsr (%rsp)"        );
     fprintf( f, "\t%s\n", "addq    $8,%rsp"       );
 
-  } else {
+  } else if Is_Target_SSE() {
     fprintf( f, "\t%s\n", "addl    $-8,%esp"      );
     fprintf( f, "\t%s\n", "stmxcsr (%esp)"        );
     if (IEEE_Arithmetic > IEEE_ACCURATE)
       fprintf( f, "\torl $%d, (%%esp)\n", mask);
     else if (is_MAIN__)				// bug 8926
       fprintf( f, "\tandl $%d, (%%esp)\n", ~mask);
-    if ( !SIMD_IMask || DEBUG_Trap_Uv)		// trap invalid operands
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_imask );
-    if ( !SIMD_DMask )
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_dmask );
-    if ( !SIMD_ZMask )
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_zmask );
-    if ( !SIMD_OMask )
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_omask );
-    if ( !SIMD_UMask )
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_umask );
-    if ( !SIMD_PMask)
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_pmask );
+
+    if ( and_mask_set )
+      fprintf( f, "\tandl $%d, (%%esp)\n", and_mask );
+    if ( or_mask_set )
+      fprintf( f, "\torl $%d, (%%esp)\n", or_mask );
+
     fprintf( f, "\t%s\n", "ldmxcsr (%esp)"        );
     fprintf( f, "\t%s\n", "addl    $8,%esp"       );
   }

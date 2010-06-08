@@ -781,6 +781,8 @@ extern BOOL SIMD_ZMask;
 extern BOOL SIMD_OMask;
 extern BOOL SIMD_UMask;
 extern BOOL SIMD_PMask;
+extern BOOL SIMD_AMask;
+extern BOOL SIMD_FMask;
 
 extern BOOL Use_Sse_Reg_Parm;
 extern INT32 Use_Reg_Parm;
