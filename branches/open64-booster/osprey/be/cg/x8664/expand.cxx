@@ -5794,12 +5794,16 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
        ("at least one opnd should be complex"));
       if (TN_size(src1) < MTYPE_byte_size(MTYPE_V16C8))
       {
-	Build_OP(TOP_movaps, result, src2, ops);
-	Build_OP(TOP_addsd, result, src1, result, ops);
+	TN *tmp1 = Build_TN_Like(result);
+	Build_OP(TOP_unpckhpd, tmp1, src2, tmp1, ops);
+	Build_OP(TOP_addsd, result, src1, src2, ops);
+	Build_OP(TOP_unpcklpd, result, result, tmp1, ops);
       }
       else {
-	Build_OP(TOP_movaps, result, src1, ops);
-	Build_OP(TOP_addsd, result, src2, result, ops);
+	TN *tmp1 = Build_TN_Like(result);
+	Build_OP(TOP_unpckhpd, tmp1, src1, tmp1, ops);
+	Build_OP(TOP_addsd, result, src1, src2, ops);
+	Build_OP(TOP_unpcklpd, result, result, tmp1, ops);
       }
     } else 
       Build_OP(TOP_fadd128v64, result, src1, src2, ops);
@@ -5833,12 +5837,17 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
 	      ("at least one opnd should be complex"));
       if (TN_size(src1) == MTYPE_byte_size(MTYPE_V16C8))
       {
-        Build_OP(TOP_movaps, result, src1, ops);
-        Build_OP(TOP_subsd, result, result, src2, ops);
+	TN *tmp1 = Build_TN_Like(result);
+	Build_OP(TOP_unpckhpd, tmp1, src1, tmp1, ops);
+	Build_OP(TOP_subsd, result, src1, src2, ops);
+	Build_OP(TOP_unpcklpd, result, result, tmp1, ops);
       } else if (TN_size(src2) == MTYPE_byte_size(MTYPE_V16C8)){
 	TN *tmp1 = Build_TN_Like(result);
-        Exp_Intrinsic_Op (INTRN_V16C8CONJG, tmp1, src2, NULL, NULL, NULL, NULL, MTYPE_V16C8, ops);
-        Build_OP(TOP_subsd, result, src1, tmp1, ops);
+	TN *tmp2 = Build_TN_Like(result);
+	Build_OP(TOP_unpckhpd, tmp1, src2, tmp1, ops);
+	Expand_Neg(tmp2, tmp1, MTYPE_F8, ops);
+	Build_OP(TOP_subsd, result, src1, src2, ops);
+	Build_OP(TOP_unpcklpd, result, result, tmp2, ops);
       }
     } else 
       Build_OP(TOP_fsub128v64, result, src1, src2, ops);
