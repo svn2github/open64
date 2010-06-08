@@ -1552,8 +1552,7 @@ static simpnode  simp_neg(OPCODE opc, simpnode k0, simpnode k1,
 
    if (SIMPNODE_operator(k0) == OPR_PAIR)
    {
-      OPCODE cneg = OPCODE_make_op(OPR_NEG, SIMPNODE_rtype(SIMPNODE_kid0(k0)), 
-		      SIMPNODE_desc(SIMPNODE_kid0(k0)));
+      OPCODE cneg = OPC_FROM_OPR(OPR_NEG, SIMPNODE_rtype(SIMPNODE_kid0(k0))); 
       r = SIMPNODE_SimpCreateExp2(SIMPNODE_opcode(k0), 
 		      SIMPNODE_SimpCreateExp1(cneg, SIMPNODE_kid0(k0)),
 		      SIMPNODE_SimpCreateExp1(cneg, SIMPNODE_kid1(k0)));
@@ -2148,6 +2147,8 @@ static simpnode  simp_add_sub(OPCODE opc,
 	 SIMP_DELETE(k1);
       }
    }
+   if (r) return r;
+
 #ifdef TARG_X8664
    if (MTYPE_C8 == ty)
    {
