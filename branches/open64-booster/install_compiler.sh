@@ -574,6 +574,15 @@ INSTALL_MISC () {
     return 0
 }
 
+# Create the Fortran module files for the OpenMP interface
+INSTALL_MODULES () {
+    if [ ! -e ${ROOT}/include/${VERSION}/OMP_LIB.mod ] ; then
+        (cd ${ROOT}/include/${VERSION}; ${ROOT}/bin/openf90 -c omp_lib.f)
+    fi
+
+    return 0
+}
+
 cd `dirname $0`
 
 [ ! -d ${BIN_DIR} ] && mkdir -p ${BIN_DIR}
@@ -616,6 +625,7 @@ INSTALL_PREBUILD_OPEN64_NATIVE_LIB
 INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP 
 [ "$INSTALL_TYPE" = "ia64-cross" ] && INSTALL_CROSS_UTIL
 INSTALL_PREBUILD_PHASE 
+INSTALL_MODULES
 
 exit 0
 
