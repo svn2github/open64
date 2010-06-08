@@ -3121,7 +3121,9 @@ BOOL ICMP_Is_Replaced ( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
 { 
   const TOP top = OP_code( op );
   Is_True( TOP_is_icmp ( top ), ( "unexpected opcode" ) );
-  
+  TN* src0 = opnd_tn[0];
+  TN* src1 = opnd_tn[1];
+
   // 1. op must be test or comapre
   //    category test/compare into test/testi/compare/comparei
   BOOL is_test = FALSE;
@@ -3133,7 +3135,10 @@ BOOL ICMP_Is_Replaced ( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
     case TOP_test16:
     case TOP_test32:
     case TOP_test64:
-      is_test = TRUE;
+      if ( TN_has_value(src1) )
+        is_testi = TRUE;
+      else 
+        is_test = TRUE;
       break;
     case TOP_testi8:
     case TOP_testi16:
@@ -3145,7 +3150,10 @@ BOOL ICMP_Is_Replaced ( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
     case TOP_cmp16:
     case TOP_cmp32:
     case TOP_cmp64:
-      is_cmp = TRUE;
+      if ( TN_has_value(src1) )
+        is_cmpi = TRUE;
+      else 
+        is_cmp = TRUE;
       break;
     case TOP_cmpi8:
     case TOP_cmpi16:
@@ -3163,8 +3171,6 @@ BOOL ICMP_Is_Replaced ( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
   //    here genreate change_mask indicate which status flag register
   //    will be changed if test/compare is changed.
   INT32 change_mask = 0;
-  TN* src0 = opnd_tn[0];
-  TN* src1 = opnd_tn[1];
   OP* mov_ext0 = NULL;
   OP* mov_ext1 = NULL;
   INT32 test_size = Test_Compare_Size( top );
