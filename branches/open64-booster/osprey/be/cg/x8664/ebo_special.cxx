@@ -5160,7 +5160,8 @@ BOOL search_preds_for_alias(BS* visit_set, OP * last_op, OP *def_op, TN* base_tn
     BBLIST *lst;
     for (lst = BB_preds(OP_bb(last_op)); lst != NULL; lst = BBLIST_next(lst)) {
         BB * cur_bb = BBLIST_item(lst);
-        if (search_preds_for_alias(visit_set, BB_last_op(cur_bb), def_op, base_tn)) 
+        if (BB_last_op(cur_bb) &&
+            search_preds_for_alias(visit_set, BB_last_op(cur_bb), def_op, base_tn)) 
             return TRUE;
     }
 
