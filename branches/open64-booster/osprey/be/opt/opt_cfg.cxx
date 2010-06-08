@@ -5630,7 +5630,8 @@ verify_loops(CFG *cfg)
 		loop->Loopback()->Kind() == BB_GOTO ||
 		loop->Loopback()->Kind() == BB_LOGIF ||
 		loop->Loopback()->Kind() == BB_VARGOTO||
-		loop->Loopback()->Kind() == BB_REGIONSTART,
+		loop->Loopback()->Kind() == BB_REGIONSTART ||
+        loop->Loopback()->Kind() == BB_REGIONEXIT,
 		("found inconsistent BB_LOOP -- loopback is not BB_GOTO"));
       } else {
 	Is_True(loop->Start()->Loop() == loop &&
