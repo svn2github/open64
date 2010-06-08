@@ -367,6 +367,13 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
 
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64_1G.xBDT    ${PHASEPATH}/elf_1G.xBDT
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386_1G.xBDT      ${PHASEPATH}/32/elf_1G.xBDT
+
+        INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/elf.xBD    ${PHASEPATH}/elf.xBD
+        INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/elf.xBD      ${PHASEPATH}/32/elf.xBD
+
+        INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/elf_1G.xBD    ${PHASEPATH}/elf_1G.xBD
+        INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/elf_1G.xBD      ${PHASEPATH}/32/elf_1G.xBD
+
     fi
 
     # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archives

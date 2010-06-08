@@ -57,6 +57,7 @@ BUILD_TARGET   = X8664
 BUILD_COMPILER = GNU
 BUILD_OS       = LINUX
 BUILD_HOST     = IA32
+BUILD_HOST_TAG = x86_64
 
 # for libhugetlbfs, indicate whether the library is built as native binaries.
 BUILD_LIB_TYPE   = NATIVEONLY

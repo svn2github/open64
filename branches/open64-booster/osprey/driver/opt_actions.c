@@ -2328,6 +2328,15 @@ Process_Hugepage_Group(char * hugepage_args)
             else
                 continue;
         }
+        else if (strncmp(p, "bd=", 3) == 0) {
+            p = &p[3];
+            hugepage_alloc = ALLOC_BD;
+            process_state = 1;
+            if (!(*p))
+                has_err = TRUE;
+            else
+                continue;
+        }
         else if (strncmp(p, "bdt=", 4) == 0) {
             p = &p[4];
             hugepage_alloc = ALLOC_BDT;

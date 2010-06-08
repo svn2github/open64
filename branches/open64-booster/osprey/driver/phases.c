@@ -2309,14 +2309,24 @@ postprocess_ld_args (string_list_t *args)
                     HUGEPAGE_DESC desc;
 
                     for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
-                        if (desc->alloc == ALLOC_BDT && !do_link) {
+                        if ((desc->alloc == ALLOC_BD
+			     || desc->alloc == ALLOC_BDT)
+			    && !do_link) {
                             /* libhugetlbfs linker script only supports dynamic link. 
                              */
                             if (!option_was_seen(O_static)) {
-                                if (desc->size == SIZE_2M)
-                                    dir = concat_strings(dir, "/elf.xBDT");
-                                else if (desc->size == SIZE_1G)
-                                    dir = concat_strings(dir, "/elf_1G.xBDT");
+				if (desc->alloc == ALLOC_BD) {
+				    if (desc->size == SIZE_2M)
+					dir = concat_strings(dir, "/elf.xBD");
+				    else if (desc->size == SIZE_1G)
+					dir = concat_strings(dir, "/elf_1G.xBD");
+				}
+				else {
+				    if (desc->size == SIZE_2M)
+					dir = concat_strings(dir, "/elf.xBDT");
+				    else if (desc->size == SIZE_1G)
+					dir = concat_strings(dir, "/elf_1G.xBDT");
+				}
                                 
                                 add_after_string(args, p, concat_strings("-Wl,-T", dir));
                                 do_link = TRUE;

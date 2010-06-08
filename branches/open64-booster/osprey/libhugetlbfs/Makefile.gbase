@@ -151,11 +151,21 @@ export LIBDIR32
 export LIBDIR64
 
 # MOD
-default: 
+default: ldscripts
 	make $(VERSION)
 	make libs
 
-.PHONY:	tests libs
+.PHONY:	tests libs ldscripts
+
+ldscripts: elf.xBD elf_1G.xBD
+
+elf.xBD: $(BUILD_BASE)/ldscripts/elf_$(BUILD_HOST_TAG).xBDT
+	sed '/htext.*0x00100005/s/0x00100005/0x01100005/' < $(BUILD_BASE)/ldscripts/elf_$(BUILD_HOST_TAG).xBDT > elf.xBD
+
+elf_1G.xBD: $(BUILD_BASE)/ldscripts/elf_$(BUILD_HOST_TAG)_1G.xBDT
+	sed '/htext.*0x00100005/s/0x00100005/0x01100005/' < $(BUILD_BASE)/ldscripts/elf_$(BUILD_HOST_TAG)_1G.xBDT > elf_1G.xBD
+
+
 
 libs:	$(foreach file,$(INSTALL_OBJ_LIBS),$(OBJDIRS:%=%/$(file)))
 
@@ -231,6 +241,8 @@ clean:
 	rm -rf obj*
 	rm -f ldscripts/*~
 	rm -f libhugetlbfs-sock
+	rm -f libhugetlbfs-sock
+	rm -f elf.xBD elf_1G.xBD
 
 %.d: %.c $(VERSION)
 	@$(CC) $(CPPFLAGS) -MM -MT "$(foreach DIR,$(OBJDIRS),$(DIR)/$*.o) $@" $< > $@
