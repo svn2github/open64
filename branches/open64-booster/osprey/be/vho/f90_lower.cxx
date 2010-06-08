@@ -2711,6 +2711,9 @@ static DIR_FLAG Analyze_index(WN *i1, WN *i2) {
 
    /* if neither is a triplet, return here as well */
    if (opr1 != OPR_TRIPLET && opr2 != OPR_TRIPLET) {
+      /* if we do not know more about the two scalars, to assume DIR_ZERO 
+       * is safe, and it is better than DIR_UNKNOWN */
+      r = DIR_ZERO; 
       SHOW_REASON("no triplets");
       return(r);
    }
