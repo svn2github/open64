@@ -2407,16 +2407,16 @@ CODEMAP::Add_def(IDTYPE st, mINT16 version, STMTREP *stmt,
       Delay_U64_Lowering) {
 
     // Fix 777333.   Also add CVT for I8I4LDID.
-    if ( dtyp == MTYPE_U8 && dsctyp == MTYPE_U4 ) {
+    if ( dtyp == MTYPE_U8 && MTYPE_byte_size(dsctyp) <= 4 ) {
       // make U8U4LDID into U8U4CVT(U4U4LDID)
       if ( ! is_store ) 
-        need_cvt = Need_type_conversion(dsctyp, dtyp, &opc);
+        need_cvt = Need_type_conversion(MTYPE_U4, dtyp, &opc);
       dtyp = MTYPE_U4;
     }
-    if ( dtyp == MTYPE_I8 && dsctyp == MTYPE_I4 ) {
+    if ( dtyp == MTYPE_I8 && MTYPE_byte_size(dsctyp) <= 4 ) {
       // make I8I4LDID into I8I4CVT(I4I4LDID)
       if ( ! is_store ) 
-        need_cvt = Need_type_conversion(dsctyp, dtyp, &opc);
+        need_cvt = Need_type_conversion(MTYPE_I4, dtyp, &opc);
       dtyp = MTYPE_I4;
     }
   }
