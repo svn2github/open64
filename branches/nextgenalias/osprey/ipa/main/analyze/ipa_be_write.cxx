@@ -195,7 +195,15 @@ IPA_irb_write_nystrom_alias_info(PU_Info* pu_info_tree, Output_File *fl)
                                      num_nodeids);
       summCGNode->cgNodeId(cgNode->id());
       // if this is a 'local' st, strip off the file and pu ids
-      UINT64 cgstidx = IPA_irb_adjust_cg_st_idx(cgNode->cg_st_idx(), ipa_node);
+      UINT64 cgstidx;
+      StInfo* stInfo = cg->stInfo(cgNode->cg_st_idx());
+      if (stInfo->checkFlags(CG_ST_FLAGS_GLOBAL)) {
+        FmtAssert(PU_NUM_ST_IDX(cgNode->cg_st_idx()) == 0 &&
+                  FILE_NUM_ST_IDX(cgNode->cg_st_idx()) == 0, 
+                  ("file/pu should be 0 for globals"));
+        cgstidx = cgNode->cg_st_idx();
+      } else
+        cgstidx = IPA_irb_adjust_cg_st_idx(cgNode->cg_st_idx(), ipa_node);
       summCGNode->cg_st_idx(cgstidx);
       summCGNode->offset(cgNode->offset());
       summCGNode->flags(cgNode->flags());
@@ -232,8 +240,15 @@ IPA_irb_write_nystrom_alias_info(PU_Info* pu_info_tree, Output_File *fl)
       INT new_idx = cg_stinfos.Newidx();
       cg_stinfos[new_idx].Init();
       SUMMARY_CONSTRAINT_GRAPH_STINFO *summStInfo = &(cg_stinfos[new_idx]);
-
-      summStInfo->cg_st_idx(IPA_irb_adjust_cg_st_idx(cg_st_idx, ipa_node));
+      UINT64 cgstidx;
+      if (s->checkFlags(CG_ST_FLAGS_GLOBAL)) {
+        FmtAssert(PU_NUM_ST_IDX(cg_st_idx) == 0 &&
+                  FILE_NUM_ST_IDX(cg_st_idx) == 0, 
+                  ("file/pu should be 0 for globals"));
+        cgstidx = cg_st_idx;
+      } else
+        cgstidx = IPA_irb_adjust_cg_st_idx(cg_st_idx, ipa_node);
+      summStInfo->cg_st_idx(cgstidx);
       summStInfo->flags(s->flags());
       summStInfo->varSize(s->varSize());
       summStInfo->ty_idx(s->ty_idx());
