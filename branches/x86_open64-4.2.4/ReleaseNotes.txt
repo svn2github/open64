@@ -1,0 +1,202 @@
+
+x86 Open64 4.2.4 Release Notes 
+
+
+               June 25, 2010
+
+
+1. Overview
+
+2. Features
+
+3. The Packages of the Compiler Suite
+
+4. Supported Operating Systems
+
+5. Installing the Compiler Suite
+  5.1 Install from bz2 Package
+  5.2 Install from RPM packages
+
+6. Bug Reporting and Support
+
+7. Known Issues and Limitations
+
+
+1. Overview
+===========
+
+ This is version 4.2.4 of the x86 Open64 compiler suite.
+
+ x86 Open64 is an open source, optimizing compiler for 32-bit (x86) and
+ 64-bit (x86-64) achitectures. x86 Open64 supports Fortran 77/90/95, C (C89
+ and C99 with GNU extensions), and C++ (C++98 with GNU extensions), as well as
+ the shared memory programming model OpenMP (version 2.5).
+
+ The compiler source code and instrumentation library (libinstr) are released
+ under GPL v2. Libraries intended for redistribution are licensed under
+ LGPL v2.1. These libraries include libffio, libfortran, libhugetlbfs, libmv,
+ libopen64rt, libopen64rt_shared, libacml_mv, and libopenmp.
+
+
+
+2. New Features in x86 Open64 4.2.4
+===================================
+
+ o [TBD]
+
+
+
+3. The Packages of the Compiler Suite
+=====================================
+
+ This compiler is available in both binary and source-code forms.
+
+ o x86_open64-4.2.4-1.src.tar.bz2
+
+   This package contains the compiler's source code. To unpack the source, use
+   the command:
+
+     tar xjvf x86_open64-4.2.4-1.src.tar.bz2
+
+   For instructions on how to build the compiler from source, see the included
+   INSTALL file.
+
+ o x86_open64-4.2.4-1.x86_64.tar.bz2
+
+   This package contains the binary code for x86-64 machines.
+
+   The compiler is built on an x86-64-based system running SUSE Linux
+   Enterprise Server (SLES) 10 with SP2 installed. We use the system
+   compilers (GCC 4.1.2) to build the compiler components and a prebuilt
+   binary release of the x86 Open64 compiler, version 4.2.3.2, to build the
+   libraries. The x86 Open64 4.2.3.2 release can be downloaded from
+   http://developer.amd.com/cpu/open64.
+
+ o x86_open64-4.2.4-1.x86_64.rpm
+
+   This package contains the same binaries as the tar.bz2 package in RPM form.
+
+
+
+4. Supported Operating Systems
+==============================
+
+ The two binary packages,
+
+ o x86_open64-4.2.4-1.x86_64.tar.bz2
+ o x86_open64-4.2.4-1.x86_64.rpm
+
+ are tested and validated on 64-bit Linux systems running:
+
+ o SUSE Linux Enterprise Server (SLES) 10 with SP2
+ o SUSE Linux Enterprise Server (SLES) 11
+ o Red Hat Enterprise Linux (RHEL) 5.3
+ o Red Hat Enterprise Linux (RHEL) 5.4
+
+ x86 Open64 compilers make use of the GNU binutils package.
+ Packages known to work include:
+
+ o binutils-2.16.91.0.5-23.31 (SLES 10 with SP2)
+ o binutils-2.19-11.28 (SLES 11)
+ o binutils-2.17.50.0.6-9.el5 (RHEL 5.3)
+ o binutils-2.17.50.0.6-12.el5 (RHEL 5.4)
+
+
+5. Installing the Compiler Suite
+================================
+
+5.1 Install from bz2 Package
+----------------------------
+
+ To install the compiler from the bz2 package:
+
+ o Expand x86_open64-4.2.4-1.x86_64.tar.bz2 with the command:
+
+   tar xjvf x86_open64-4.2.4-1.x86_64.tar.bz2
+
+ o If desired, move the x86_open64-4.2.4 directory to the final
+   installation location using the 'mv' command.
+
+   The C, C++, FORTRAN compilers are now available in the 'bin'
+   subdirectory.
+
+
+5.2 Install from RPM Package
+----------------------------
+
+ Normally you must have superuser privileges to install RPM packages.
+
+ To install the compiler from RPM:
+
+ $ rpm -ivh x86_open64-4.2.4-1.x86_64.rpm
+
+ This command will install the x86 Open64 compiler to
+ /opt/x86_open64-4.2.4.2. The C, C++, FORTRAN compilers are in folder
+ /opt/x86_open64-4.2.4/bin.
+
+ To install the compiler to another location:
+
+ $ rpm --prefix=/path/to/folder -ivh x86_open64-4.2.4-1.x86_64.rpm
+
+ Then the compiler will be installed to /path/to/folder.
+
+
+
+6. Bug Reporting and Support
+============================
+
+ To report a bug or get help with the binary releases, please see the Support
+ section on http://developer.amd.com/cpu/open64.
+
+ Bug reports should include these items in order to be reproduced:
+
+ o The compiler release version.
+
+ o System details -- the OS, libc version, etc.
+
+ o The compilation flags that trigger the bug.
+
+ o The test file if applicable (it is highly appreciated if the test file is
+   minimized).
+
+ o The correct output of the test file.
+
+
+
+7. Known Issues and Limitations
+===============================
+
+ o Linux Operating Systems are frequently configured with a soft limit on
+   process stack sizes. Programs that exceed these limits by methods such as
+   placing very large arrays on the stack will terminate with a segmentation
+   violation. You can query and alter these limits using the ulimit command
+   (ksh, sh and bash) or limit command (tcsh, csh).
+
+ o Open64 does not support the following GCC extensions:
+   - complex integer data types
+   - decimal floating point types
+   - GCC vector types containing a single element
+   - GCC vector types whose base type is char and whose overall size is less
+     than 8 bytes
+   - the __builtin_object_size function
+   - the __builtin_apply function
+   - vector types other than MMX (8-byte) and SSE (16-bit)
+
+   The __builtin_return_address function is supported only with no
+   optimization.  The 'long double' implementation is not compatible with GCC.
+
+ o Open64 does not fully support C99 variable length arrays.
+
+ o To provide the best runtime performance, the compiler makes assumptions that
+   runtime integer arithmetic expressions that arise in certain contexts do not
+   overflow (that is, they do not produce values that are too high or too low
+   to represent).  These assumptions apply to expressions that are present in
+   user code as well as expressions that the compiler constructs.  Note that if
+   an integer arithmetic overflow assumption is violated, runtime behavior is
+   undefined.
+
+   Option '-OPT:wrap_around_unsafe=off' instructs the compiler to be
+   conservative about integer overflow assumptions and avoid performing
+   optimizations that are based on integer overflow assumptions, for example,
+   linear function test replacement.
+

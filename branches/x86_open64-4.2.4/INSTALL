@@ -1,0 +1,221 @@
+Introduction
+------------
+
+This document explains how to compile and install x86 Open64 from source
+on an x86-64 based system. There are many variations on this process; for
+simplicity, we describe the steps that we used to build the x86 Open64
+4.2.4 binary packages available on http://developer.amd.com/cpu/open64.
+
+We also describe some known issues encountered when building on Ubuntu
+and Fedora systems. We plan to address some of these issues in a future
+release.
+
+    * Prerequisites
+    * Obtaining the Source Code
+    * Compiling
+    * Installation
+    * Notes on Building on Ubuntu 9.10
+    * Notes on Building on Fedora 12
+
+
+Prerequisites
+-------------
+
+Although the x86 Open64 compiler suite can be built on 32-bit or 64-bit
+Linux systems, we always build on a 64-bit Linux system where both 32-bit
+and 64-bit code generation can be tested. We used 64-bit SUSE Linux
+Enterprise Server 10 with SP2 installed.
+
+By default, the build process will use GCC to build most compiler
+components. We used GCC 4.1.2 as provided with SLES 10 SP2.
+
+To build the x86 Open64 libraries, we used the x86 Open64 4.2.3.2 binary
+release for x86_64 as downloaded from http://developer.amd.com/cpu/open64.
+This document assumes that x86 Open64 4.2.3.2 is installed into /opt on
+the build system.
+
+
+Obtaining the Source Code
+-------------------------
+
+You can obtain the source code archive from the Downloads section at
+http://developer.amd.com/cpu/open64.
+
+To extract the source code, use the command:
+
+  tar xjvf x86_open64-4.2.4-1.src.tar.bz2
+
+
+Compiling
+---------
+
+First set your environment to use the installed x86 Open64 4.2.3.2 compiler.
+This step will be necessary to build the libraries. These commands assume you
+are using an sh-compatible shell, such as bash.
+
+  export TOOLROOT=/opt/x86_open64-4.2.3.2
+  export PATH=${TOOLROOT}/bin:$PATH
+
+Now, to build the x86 Open64 compiler components, switch to the
+x86_open64-4.2.4 directory and execute the following command:
+
+  make all MACHINE_TYPE=i386
+
+We build using 'MACHINE_TYPE=i386' because there are some known problems
+when using the 64-bit compiler binaries to generate 32-bit code. The
+compiler binaries can generate both 32-bit and 64-bit code regardless of
+how they are built.
+
+To build the libraries, execute the following commands:
+
+  make lib MACHINE_TYPE=i386 BUILD_COMPILER=OSP
+  make -C osprey/targx8664_builtonia32 BUILD_COMPILER=OSP
+
+
+Installation
+------------
+
+The install script will install the Open64 compiler and library components
+in the directory defined by the environment TOOLROOT. In this example,
+we install to the directory 'myopen64' in the current home directory:
+
+  export TOOLROOT=${HOME}/myopen64
+  ./install_compiler.sh i386
+
+To use the compiler, you just need to put the 'myopen64/bin' directory on
+your PATH. You could add a command like the following to your .bashrc:
+
+  export PATH=${HOME}/myopen64/bin:$PATH
+
+You do not normally need to set the TOOLROOT environment variable to run
+the compiler.
+
+
+Notes on Building on Ubuntu 9.10
+--------------------------------
+
+We were able to build the 4.2.4 Open64 compiler on ubuntu 9.10 from these
+sources by making changes to address the issues listed below.  After
+applying these changes, we followed instructions given in the Compiling
+section of this document to complete our build:
+
+1. Install pre-requisite packages if they are not already installed:
+
+   apt-get install gcc g++ flex bison gawk
+   apt-get install gcc-4.4-multilib g++-4.4-multilib
+   apt-get install gfortran-4.2 lib32gfortran2
+
+2. Find the proper location for 32-bit system libraries from /lib32
+   on an ubuntu system.  We changed the following files:
+
+   osprey-gcc/gcc/config/i386/t-linux64
+   osprey-gcc-4.2.0/gcc/config/i386/t-linux64
+
+   to change the line that says:
+
+   MULTILIB_OSDIRNAMES = ../lib64 ../lib
+
+   to instead say:
+
+   MULTILIB_OSDIRNAMES = ../lib64 ../lib32
+
+3. The definition of strstr(3C) is function returns a "const char *"
+   instead of a "char *".  Hence, in places where this function is used
+   the results should either be assigned to a "const char *" variable
+   or an explicit cast can be inserted.  We changed the following files
+   for this change:
+
+   osprey/be/com/DaVinci.cxx
+   osprey/be/whirl2c/tcon2c.cxx
+   osprey/be/whirl2f/tcon2f.cxx
+   osprey/common/com/config.cxx
+   osprey/crayf90/sgi/cwh_stab.cxx
+   osprey/crayf90/sgi/make_depend.cxx
+   osprey/ipa/common/ipc_compile.cxx
+
+4. A static function definition of "basename" conflicts with <string.h>
+   header file.  We worked around this by renaming the function in the
+   file:
+
+   osprey/be/be/dra_file_util.cxx
+
+5. Several Makefiles assume the shell redirection syntax is /bin/bash.
+   We worked around this by explicitly changing the following Makefiles:
+
+   Makefile
+   osprey/targia32_x8664/Makefile
+
+   to specify:
+
+   SHELL=/bin/bash
+
+6. One file assumes gawk extensions to the awk command.  We changed
+   the following file:
+
+   osprey/linux/make/gcommondefs
+
+   to change the following declaration:
+
+   AWK = awk
+
+   to instead be:
+
+   AWK = gawk
+
+7. During the build, gfortran was unable to find 32-bit versions of
+   system libraries.  We worked around this issue by changing the 
+   following file:
+
+   osprey/linux/make/gcommondefs
+
+   to change the following lines:
+
+   F90 = gfortran -fsecond-underscore
+   F90_RTLIBS = -Wl,-Bstatic -lgfortran -Wl,-Bdynamic
+
+   to instead be:
+
+   F90 = gfortran-4.2 -fsecond-underscore
+   F90_RTLIBS = -Wl,-Bstatic -L /usr/lib/gcc/x86_64-linux-gnu/4.2/32 \
+      -lgfortran -Wl,-Bdynamic
+
+After making these source changes and then following instructions in the
+Compiling section, we were able to successfully build and run on ubuntu.
+
+
+Notes on Building on Fedora 12
+------------------------------
+
+We were able to build the 4.2.4 Open64 compiler on Fedora 12 from these
+sources by making changes to address the issues listed below.  After
+applying these changes, we followed instructions given in the Compiling
+section of this document to complete our build:
+
+1. Install pre-requisite packages if they are not already installed:
+
+   yum install gcc gcc-c++ flex bison
+   yum install libstdc++.i686 glibc-devel.i686
+
+2. The definition of strstr(3C) is function returns a "const char *"
+   instead of a "char *".  Hence, in places where this function is used
+   the results should either be assigned to a "const char *" variable
+   or an explicit cast can be inserted.  We changed the following files
+   for this change:
+
+   osprey/be/com/DaVinci.cxx
+   osprey/be/whirl2c/tcon2c.cxx
+   osprey/be/whirl2f/tcon2f.cxx
+   osprey/common/com/config.cxx
+   osprey/crayf90/sgi/cwh_stab.cxx
+   osprey/crayf90/sgi/make_depend.cxx
+   osprey/ipa/common/ipc_compile.cxx
+
+3. A static function definition of "basename" conflicts with <string.h>
+   header file.  We worked around this by renaming the function in the
+   file:
+
+   osprey/be/be/dra_file_util.cxx
+
+After making these source changes and then following instructions in the
+Compiling section, we were able to successfully build and run on Fedora.
+
