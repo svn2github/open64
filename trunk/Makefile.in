@@ -332,31 +332,22 @@ LIB_ARGS = BUILD_TARGET=$(LIB_BUILD_TARGET) BUILD_COMPILER=SELF BUILD_AREA=$(LIB
 LIB2_ARGS = BUILD_TARGET=$(LIB2_BUILD_TARGET) BUILD_COMPILER=SELF BUILD_AREA=$(LIB2_BUILD_AREA) MACHINE_TYPE=$(LIB2_MACHINE_TYPE) BUILD_ABI=$(LIB2_BUILD_ABI) BUILD_ARCH=$(LIB2_BUILD_ARCH) BUILD_HOST=$(LIB2_BUILD_HOST)
 
 .PHONY: library lib clean-library clean-lib
-library lib: LIB_ACTION = default
-clean-library clean-lib: LIB_ACTION = clobber
-library lib clean-library clean-lib: build
-	+@for d in $(LIB_BUILD_DIR); do \
-	    echo $(MAKE) -C $$d $(LIB_ACTION) $(LIB_ARGS); \
-	    $(MAKE) -C $$d $(LIB_ACTION) $(LIB_ARGS); \
-	    retval=$$?; \
-	    if [ $$retval != 0 ]; then \
-		if grep -q k <<<'$(MAKEFLAGS)'; then \
-		    exit=$$retval; \
-		else \
-		    exit $$retval; \
-		fi; \
-	    fi; \
-	done; \
-	exit $$exit
-
-
 .PHONY: library2 lib2 clean-library2 clean-lib2
-library lib: LIB2_ACTION = default
-clean-library clean-lib: LIB2_ACTION = clobber
-library2 lib2 clean-library2 clean-lib2: build
-	+@for d in $(LIB2_BUILD_DIR); do \
-	    echo $(MAKE) -C $$d $(LIB2_ACTION) $(LIB2_ARGS); \
-	    $(MAKE) -C $$d $(LIB2_ACTION) $(LIB2_ARGS); \
+
+library lib library2 lib2 : LOCAL_LIB_ACTION = default
+clean-library clean-lib clean-library2 clean-lib2 : LOCAL_LIB_ACTION = clobber
+
+library lib clean-library clean-lib : LOCAL_LIB_BUILD_DIR = $(LIB_BUILD_DIR)
+library lib clean-library clean-lib : LOCAL_LIB_ARGS = $(LIB_ARGS)
+library2 lib2 clean-library2 clean-lib2 : LOCAL_LIB_BUILD_DIR = $(LIB2_BUILD_DIR)
+library2 lib2 clean-library2 clean-lib2 : LOCAL_LIB_ARGS = $(LIB2_ARGS)
+
+library lib library2 lib2 : build
+
+library lib clean-library clean-lib library2 lib2 clean-library2 clean-lib2:
+	+@for d in $(LOCAL_LIB_BUILD_DIR); do \
+	    echo $(MAKE) -C $$d $(LOCAL_LIB_ACTION) $(LOCAL_LIB_ARGS); \
+	    $(MAKE) -C $$d $(LOCAL_LIB_ACTION) $(LOCAL_LIB_ARGS); \
 	    retval=$$?; \
 	    if [ $$retval != 0 ]; then \
 		if grep -q k <<<'$(MAKEFLAGS)'; then \
@@ -367,7 +358,6 @@ library2 lib2 clean-library2 clean-lib2: build
 	    fi; \
 	done; \
 	exit $$exit
-
 
 clobber: clean 
 	rm -rf $(CROSSDIR) $(BOOTDIR)
