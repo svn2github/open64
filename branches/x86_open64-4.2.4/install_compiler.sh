@@ -638,6 +638,9 @@ INSTALL_WHIRL_STUFF
 INSTALL_MISC
 INSTALL_NATIVE_HEADER
 
+# copy release notes to top level
+cp ReleaseNotes.txt $ROOT
+
 #cat << _EOF_
 # ------------------------------------------------------------------------
 # NOTE: Following archives may not present. these archives are built on 
