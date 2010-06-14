@@ -1595,7 +1595,7 @@ export GCC_CONFIGURE_CFLAGS
 
 
 # List of configurable files to create in object directory.
-                                                                                                                                                                                                                                                                                                                                                                                  ac_config_files="$ac_config_files Makefile osprey/Makefile.gsetup osprey/targdir/libspin/Makefile osprey/targdir/libspin_4_2_0/Makefile osprey/targdir/include/Makefile osprey/targdir/driver/Makefile osprey/targdir/libiberty/Makefile osprey/targdir/targ_info/Makefile osprey/targdir/be/Makefile osprey/targdir/libelf/Makefile osprey/targdir/libelfutil/Makefile osprey/targdir/libdwarf/Makefile osprey/targdir/libunwindP/Makefile osprey/targdir/cg/Makefile osprey/targdir/wopt/Makefile osprey/targdir/ipl/Makefile osprey/targdir/lno/Makefile osprey/targdir/lw_inline/Makefile osprey/targdir/ipa/Makefile osprey/targdir/whirl2c/Makefile osprey/targdir/whirl2f/Makefile osprey/targdir/libcomutil/Makefile osprey/targdir/ir_tools/Makefile osprey/targdir/libcmplrs/Makefile osprey/targdir/wgen/Makefile osprey/targdir/libcif/Makefile osprey/targdir/arith/Makefile osprey/targdir/orc_ict/Makefile osprey/targdir/orc_intel/Makefile osprey/targdir/crayf90/Makefile osprey/targdir/crayf90/fe90/Makefile osprey/targdir/crayf90/libf90sgi/Makefile osprey/targdir/crayf90/sgi/Makefile osprey/targdir/gccfe/Makefile osprey/targdir/gccfe/gnu/Makefile osprey/targdir/g++fe/Makefile osprey/targdir/g++fe/gnu/Makefile"
+                                                                                                                                                                                                                                                                                                                                                                                            ac_config_files="$ac_config_files Makefile osprey/Makefile.gsetup osprey/targdir/libspin/Makefile osprey/targdir/libspin_4_2_0/Makefile osprey/targdir/include/Makefile osprey/targdir/driver/Makefile osprey/targdir/libiberty/Makefile osprey/targdir/targ_info/Makefile osprey/targdir/be/Makefile osprey/targdir/libelf/Makefile osprey/targdir/libelfutil/Makefile osprey/targdir/libdwarf/Makefile osprey/targdir/libunwindP/Makefile osprey/targdir/cg/Makefile osprey/targdir/wopt/Makefile osprey/targdir/ipl/Makefile osprey/targdir/lno/Makefile osprey/targdir/lw_inline/Makefile osprey/targdir/ipa/Makefile osprey/targdir/whirl2c/Makefile osprey/targdir/whirl2f/Makefile osprey/targdir/libcomutil/Makefile osprey/targdir/ir_tools/Makefile osprey/targdir/libcmplrs/Makefile osprey/targdir/wgen/Makefile osprey/targdir/libcif/Makefile osprey/targdir/arith/Makefile osprey/targdir/orc_ict/Makefile osprey/targdir/orc_intel/Makefile osprey/targdir/libkapi/Makefile osprey/targdir/crayf90/Makefile osprey/targdir/crayf90/fe90/Makefile osprey/targdir/crayf90/libf90sgi/Makefile osprey/targdir/crayf90/sgi/Makefile osprey/targdir/gccfe/Makefile osprey/targdir/gccfe/gnu/Makefile osprey/targdir/g++fe/Makefile osprey/targdir/g++fe/gnu/Makefile"
 
 
 # The directories created under targdir_lib (and targdir_lib2) also
@@ -1604,22 +1604,22 @@ export GCC_CONFIGURE_CFLAGS
 # under targdir_lib you need to add it to AC_CONFIG_FILES and add it to
 # LIBLIST.
 
-LIBLIST="include libelf libopenmp libfortran libhugetlbfs"
+LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
 
-                                                            ac_config_files="$ac_config_files osprey/targdir_lib/Makefile osprey/targdir_lib/include/Makefile osprey/targdir_lib/libelf/Makefile osprey/targdir_lib/libopenmp/Makefile osprey/targdir_lib/libfortran/Makefile osprey/targdir_lib/libhugetlbfs/Makefile"
+                                                                                ac_config_files="$ac_config_files osprey/targdir_lib/Makefile osprey/targdir_lib/include/Makefile osprey/targdir_lib/libelf/Makefile osprey/targdir_lib/libopenmp/Makefile osprey/targdir_lib/libfortran/Makefile osprey/targdir_lib/libhugetlbfs/Makefile osprey/targdir_lib/libmv/Makefile osprey/targdir_lib/libu/Makefile"
 
 
 if test $BUILD_TARGET = "X8664" || $BUILD_TARGET = "IA32"; then
-  LIBLIST="libopen64rt $LIBLIST libu libinstr2 libacml_mv libmv"
-                                                    ac_config_files="$ac_config_files osprey/targdir_lib/libopen64rt/Makefile osprey/targdir_lib/libmv/Makefile osprey/targdir_lib/libu/Makefile osprey/targdir_lib/libinstr2/Makefile osprey/targdir_lib/libacml_mv/Makefile"
+  LIBLIST="libopen64rt libacml_mv $LIBLIST libu libinstr2"
+                                ac_config_files="$ac_config_files osprey/targdir_lib/libopen64rt/Makefile osprey/targdir_lib/libinstr2/Makefile osprey/targdir_lib/libacml_mv/Makefile"
 
 fi
 
 if test $BUILD_MULTILIB = "YES"; then
-                                                              ac_config_files="$ac_config_files osprey/targdir_lib2/Makefile:osprey/targdir_lib/Makefile.in osprey/targdir_lib2/include/Makefile:osprey/targdir_lib/include/Makefile.in osprey/targdir_lib2/libelf/Makefile:osprey/targdir_lib/libelf/Makefile.in osprey/targdir_lib2/libopenmp/Makefile:osprey/targdir_lib/libopenmp/Makefile.in osprey/targdir_lib2/libfortran/Makefile:osprey/targdir_lib/libfortran/Makefile.in osprey/targdir_lib2/libhugetlbfs/Makefile:osprey/targdir_lib/libhugetlbfs/Makefile.in"
+                                                                                  ac_config_files="$ac_config_files osprey/targdir_lib2/Makefile:osprey/targdir_lib/Makefile.in osprey/targdir_lib2/include/Makefile:osprey/targdir_lib/include/Makefile.in osprey/targdir_lib2/libelf/Makefile:osprey/targdir_lib/libelf/Makefile.in osprey/targdir_lib2/libopenmp/Makefile:osprey/targdir_lib/libopenmp/Makefile.in osprey/targdir_lib2/libfortran/Makefile:osprey/targdir_lib/libfortran/Makefile.in osprey/targdir_lib2/libhugetlbfs/Makefile:osprey/targdir_lib/libhugetlbfs/Makefile.in osprey/targdir_lib2/libmv/Makefile:osprey/targdir_lib/libmv/Makefile.in osprey/targdir_lib2/libu/Makefile:osprey/targdir_lib/libu/Makefile.in"
 
   if test $BUILD_TARGET = "X8664" || $BUILD_TARGET = "IA32"; then
-                                                      ac_config_files="$ac_config_files osprey/targdir_lib2/libopen64rt/Makefile:osprey/targdir_lib/libopen64rt/Makefile.in osprey/targdir_lib2/libmv/Makefile:osprey/targdir_lib/libmv/Makefile.in osprey/targdir_lib2/libu/Makefile:osprey/targdir_lib/libu/Makefile.in osprey/targdir_lib2/libinstr2/Makefile:osprey/targdir_lib/libinstr2/Makefile.in osprey/targdir_lib2/libacml_mv/Makefile:osprey/targdir_lib/libacml_mv/Makefile.in"
+                                  ac_config_files="$ac_config_files osprey/targdir_lib2/libopen64rt/Makefile:osprey/targdir_lib/libopen64rt/Makefile.in osprey/targdir_lib2/libinstr2/Makefile:osprey/targdir_lib/libinstr2/Makefile.in osprey/targdir_lib2/libacml_mv/Makefile:osprey/targdir_lib/libacml_mv/Makefile.in"
 
   fi
 fi
@@ -2215,6 +2215,7 @@ do
   "osprey/targdir/arith/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir/arith/Makefile" ;;
   "osprey/targdir/orc_ict/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir/orc_ict/Makefile" ;;
   "osprey/targdir/orc_intel/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir/orc_intel/Makefile" ;;
+  "osprey/targdir/libkapi/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir/libkapi/Makefile" ;;
   "osprey/targdir/crayf90/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir/crayf90/Makefile" ;;
   "osprey/targdir/crayf90/fe90/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir/crayf90/fe90/Makefile" ;;
   "osprey/targdir/crayf90/libf90sgi/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir/crayf90/libf90sgi/Makefile" ;;
@@ -2229,9 +2230,9 @@ do
   "osprey/targdir_lib/libopenmp/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libopenmp/Makefile" ;;
   "osprey/targdir_lib/libfortran/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libfortran/Makefile" ;;
   "osprey/targdir_lib/libhugetlbfs/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libhugetlbfs/Makefile" ;;
-  "osprey/targdir_lib/libopen64rt/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libopen64rt/Makefile" ;;
   "osprey/targdir_lib/libmv/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libmv/Makefile" ;;
   "osprey/targdir_lib/libu/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libu/Makefile" ;;
+  "osprey/targdir_lib/libopen64rt/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libopen64rt/Makefile" ;;
   "osprey/targdir_lib/libinstr2/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libinstr2/Makefile" ;;
   "osprey/targdir_lib/libacml_mv/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libacml_mv/Makefile" ;;
   "osprey/targdir_lib2/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib2/Makefile:osprey/targdir_lib/Makefile.in" ;;
@@ -2240,9 +2241,9 @@ do
   "osprey/targdir_lib2/libopenmp/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib2/libopenmp/Makefile:osprey/targdir_lib/libopenmp/Makefile.in" ;;
   "osprey/targdir_lib2/libfortran/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib2/libfortran/Makefile:osprey/targdir_lib/libfortran/Makefile.in" ;;
   "osprey/targdir_lib2/libhugetlbfs/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib2/libhugetlbfs/Makefile:osprey/targdir_lib/libhugetlbfs/Makefile.in" ;;
-  "osprey/targdir_lib2/libopen64rt/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib2/libopen64rt/Makefile:osprey/targdir_lib/libopen64rt/Makefile.in" ;;
   "osprey/targdir_lib2/libmv/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib2/libmv/Makefile:osprey/targdir_lib/libmv/Makefile.in" ;;
   "osprey/targdir_lib2/libu/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib2/libu/Makefile:osprey/targdir_lib/libu/Makefile.in" ;;
+  "osprey/targdir_lib2/libopen64rt/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib2/libopen64rt/Makefile:osprey/targdir_lib/libopen64rt/Makefile.in" ;;
   "osprey/targdir_lib2/libinstr2/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib2/libinstr2/Makefile:osprey/targdir_lib/libinstr2/Makefile.in" ;;
   "osprey/targdir_lib2/libacml_mv/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib2/libacml_mv/Makefile:osprey/targdir_lib/libacml_mv/Makefile.in" ;;
   *) { { echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5

@@ -299,6 +299,7 @@ AC_CONFIG_FILES([
   osprey/targdir/arith/Makefile
   osprey/targdir/orc_ict/Makefile
   osprey/targdir/orc_intel/Makefile
+  osprey/targdir/libkapi/Makefile
   osprey/targdir/crayf90/Makefile
   osprey/targdir/crayf90/fe90/Makefile
   osprey/targdir/crayf90/libf90sgi/Makefile
@@ -315,7 +316,7 @@ AC_CONFIG_FILES([
 # under targdir_lib you need to add it to AC_CONFIG_FILES and add it to
 # LIBLIST.
 
-LIBLIST="include libelf libopenmp libfortran libhugetlbfs"
+LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
 
 AC_CONFIG_FILES([
   osprey/targdir_lib/Makefile
@@ -324,14 +325,14 @@ AC_CONFIG_FILES([
   osprey/targdir_lib/libopenmp/Makefile
   osprey/targdir_lib/libfortran/Makefile
   osprey/targdir_lib/libhugetlbfs/Makefile
+  osprey/targdir_lib/libmv/Makefile
+  osprey/targdir_lib/libu/Makefile
 ])
 
 if test $BUILD_TARGET = "X8664" || $BUILD_TARGET = "IA32"; then
-  LIBLIST="libopen64rt $LIBLIST libu libinstr2 libacml_mv libmv"
+  LIBLIST="libopen64rt libacml_mv $LIBLIST libu libinstr2"
   AC_CONFIG_FILES([
     osprey/targdir_lib/libopen64rt/Makefile
-    osprey/targdir_lib/libmv/Makefile
-    osprey/targdir_lib/libu/Makefile
     osprey/targdir_lib/libinstr2/Makefile
     osprey/targdir_lib/libacml_mv/Makefile
   ])
@@ -345,12 +346,12 @@ if test $BUILD_MULTILIB = "YES"; then
     osprey/targdir_lib2/libopenmp/Makefile:osprey/targdir_lib/libopenmp/Makefile.in
     osprey/targdir_lib2/libfortran/Makefile:osprey/targdir_lib/libfortran/Makefile.in
     osprey/targdir_lib2/libhugetlbfs/Makefile:osprey/targdir_lib/libhugetlbfs/Makefile.in
+    osprey/targdir_lib2/libmv/Makefile:osprey/targdir_lib/libmv/Makefile.in
+    osprey/targdir_lib2/libu/Makefile:osprey/targdir_lib/libu/Makefile.in
   ])
   if test $BUILD_TARGET = "X8664" || $BUILD_TARGET = "IA32"; then
     AC_CONFIG_FILES([
       osprey/targdir_lib2/libopen64rt/Makefile:osprey/targdir_lib/libopen64rt/Makefile.in
-      osprey/targdir_lib2/libmv/Makefile:osprey/targdir_lib/libmv/Makefile.in
-      osprey/targdir_lib2/libu/Makefile:osprey/targdir_lib/libu/Makefile.in
       osprey/targdir_lib2/libinstr2/Makefile:osprey/targdir_lib/libinstr2/Makefile.in
       osprey/targdir_lib2/libacml_mv/Makefile:osprey/targdir_lib/libacml_mv/Makefile.in
     ])

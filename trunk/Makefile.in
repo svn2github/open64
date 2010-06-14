@@ -375,7 +375,7 @@ clean: clean-lib
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/lw_inline clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/whirl2c clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/whirl2f clobber 
-	$(MAKE) -C $(NATIVE_BUILD_DIR)/../libkapi clean 
+	$(MAKE) -C $(NATIVE_BUILD_DIR)/libkapi clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/targ_info clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/ir_tools clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/crayf90 clobber
@@ -387,8 +387,8 @@ ifeq ($(MACHINE_TYPE), ia64)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/orc_ict clobber
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/orc_intel clobber
 endif
-	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER
-	cd $(GNUFE_BUILD_DIR); ./CLOBBER
+	$(MAKE) -C $(NATIVE_BUILD_DIR_LD) clean
+	$(MAKE) -C $(GNUFE_BUILD_DIR) clean
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
 		libiberty libunwindP libspin; do  \
 		$(MAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \

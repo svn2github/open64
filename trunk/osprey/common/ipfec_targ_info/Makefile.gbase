@@ -81,7 +81,7 @@ TARGDEFS =
 
 CURRENT_DIR		= .
 COMMON_DIR		= $(BUILD_TOT)/common
-KAPI_DIR        = $(BUILD_TOT)/libkapi
+KAPI_DIR		= $(BUILD_AREA)/libkapi
 COMMON_COM_DIR		= $(COMMON_DIR)/com $(COMMON_DIR)/util
 TARGINFO_DIR		= $(BUILD_BASE)
 
