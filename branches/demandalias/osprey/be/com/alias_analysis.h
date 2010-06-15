@@ -1,3 +1,12 @@
+/*
+  Copyright (C) 2009, 2010 Xiaomi An.  All Rights Reserved.
+
+  This program is free software; you can redistribute it and/or modify it
+  under the terms of Apache License as published by
+  the Free Software Foundation.
+  Author: Xiaomi An, 2009.
+*/
+
 #ifndef alias_analysis_INCLUDED
 #define alias_analysis_INCLUDED "alias_analysis.h"
 
