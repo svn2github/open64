@@ -62,9 +62,13 @@ BUILD_COMPILER=GNU)
 case "$BUILD_COMPILER" in
   GNU|gnu|gcc)
     BUILD_COMPILER=GNU
+    GCC_CONFIGURE_COMPILER=gcc
+    CYGNUS_CONFIGURE_COMPILER=gcc
     ;;
   OSP|osp|opencc|open64)
     BUILD_COMPILER=OSP
+    GCC_CONFIGURE_COMPILER=opencc
+    CYGNUS_CONFIGURE_COMPILER=opencc
     ;;
   *)
     AC_MSG_ERROR(["BUILD_COMPILER=$BUILD_COMPILER is not supported"])
@@ -79,9 +83,11 @@ BUILD_OPTIMIZE=DEFAULT)
 case "$BUILD_OPTIMIZE" in
   DEFAULT|default)
     BUILD_OPTIMIZE=DEFAULT
+    GCC_CONFIGURE_CFLAGS="-O2"
     ;;
   DEBUG|debug)
     BUILD_OPTIMIZE=DEBUG
+    GCC_CONFIGURE_CFLAGS="-O0 -g -DIs_True_On"
     ;;
   *)
     AC_MSG_ERROR(["BUILD_OPTIMIZE=$BUILD_OPTIMIZE is not supported"])
@@ -142,7 +148,6 @@ case "$host" in
 esac
 
 CYGNUS_CONFIGURE_CFLAGS=
-GCC_CONFIGURE_CFLAGS=
 
 # Set variables based on the target machine that the compiler will generate
 # code for.
@@ -160,7 +165,8 @@ case "$target" in
 		LIB2_BUILD_ARCH=X8664
 		CYGNUS_CONFIGURE_TARG=x86_64-open64-linux
 		GCC_CONFIGURE_TARG=x86_64-redhat-linux
-		GCC_CONFIGURE_CFLAGS="-m64 -DTARG_X8664"
+		GCC_CONFIGURE_COMPILER+=" -m64"
+		GCC_CONFIGURE_CFLAGS+=" -DTARG_X8664"
 		BUILD_MULTILIB=YES
 		;;
 	i*86*-*-linux*)
@@ -176,7 +182,8 @@ case "$target" in
 		LIB2_BUILD_ARCH=X8664
 		CYGNUS_CONFIGURE_TARG=x86_64-open64-linux
 		GCC_CONFIGURE_TARG=x86_64-redhat-linux
-		GCC_CONFIGURE_CFLAGS="-m32 -DTARG_X8664"
+		GCC_CONFIGURE_COMPILER+=" -m32"
+		GCC_CONFIGURE_CFLAGS+=" -DTARG_X8664"
 		CYGNUS_CONFIGURE_CFLAGS="-m32"
 		BUILD_MULTILIB=YES
 		;;
@@ -185,7 +192,7 @@ case "$target" in
 		BUILD_TARGET=IA64
 		CYGNUS_CONFIGURE_TARG=ia64-linux-gnu
 		GCC_CONFIGURE_TARG=ia64-redhat-linux
-		GCC_CONFIGURE_CFLAGS="-DTARG_IA64"
+		GCC_CONFIGURE_CFLAGS+=" -DTARG_IA64"
 		TARG_INFO_NAME=ipfec_targ_info
 		;;
 	*)
@@ -224,14 +231,6 @@ if test "$LIB2_BUILD_ARCH" = ""; then
 fi
 if test "$LIB2_BUILD_HOST" = ""; then
   LIB2_BUILD_HOST=$BUILD_HOST
-fi
-
-if test "$BUILD_COMPILER" = "GNU"; then
-  GCC_CONFIGURE_COMPILER=gcc
-  CYGNUS_CONFIGURE_COMPILER=gcc
-else
-  GCC_CONFIGURE_COMPILER=opencc
-  CYGNUS_CONFIGURE_COMPILER=opencc
 fi
 
 # Export these variables so they can be used in the 'subconfigures run in

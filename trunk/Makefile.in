@@ -257,13 +257,6 @@ $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a: libcomutil
 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95 mfef95: libcomutil libcif arith
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/crayf90
 
-# some GNU components need different opt flags in debug/nodebug build
-ifeq ($(BUILD_OPTIMIZE), DEBUG)
-    GNU_CFLAGS = '-O0 -g -DIs_True_On'
-else
-    GNU_CFLAGS = '-O2'
-endif
-
 .PHONY: libspin phony_targets first
 $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new:
 	$(MAKE) -C $(NATIVE_BUILD_DIR_LD)
