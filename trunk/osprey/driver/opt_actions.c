@@ -1233,8 +1233,6 @@ run_from_build (char *builddir)
 	strcat(new_ld_path, new_path);
 	new_path[builddir_len] = NULL;
 
-	if (ld_library_path)
-		free(ld_library_path);
 	ld_library_path = malloc(strlen(new_ld_path) + 1);
 
 	strcpy(ld_library_path, new_ld_path);
