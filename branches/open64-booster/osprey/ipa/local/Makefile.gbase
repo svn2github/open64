@@ -167,6 +167,7 @@ HEADER_DIRS = \
   $(BE_VHO_DIR)		\
   $(BE_REGION_DIR)      \
   $(TARGDIR)/be         \
+  $(BUILD_SRC_AREA)/be  \
   $(BUILD_TOT)/include
 
 IPA_LOCAL_CXX_SRCS = \

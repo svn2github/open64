@@ -214,6 +214,8 @@ extern char *get_phase_name (phases_t index);
 extern char *get_full_phase_name (phases_t index);
 /* set phase name */
 extern void set_phase_name (phases_t index, char *s);
+/* Override a directory for a phase */
+extern void override_phase(int phase, char *phase_name, char *new_path, char *new_name);
 
 /* get language index associated with name */
 extern languages_t get_named_language (char *name);

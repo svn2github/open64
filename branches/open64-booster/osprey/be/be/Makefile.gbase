@@ -154,7 +154,7 @@ BUILD_SKIP_WHIRL2F = TRUE
 endif
 
 TARG_INFO_INC_DIR = $(TARG_TARG_INFO_DIR)
-TARG_INFO_LIB_DIR = $(TARG_TARG_INFO_DIR)
+TARG_INFO_LIB_DIR = $(TARGDIR)/targ_info
 
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
