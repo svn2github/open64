@@ -3261,7 +3261,7 @@ void EBO_Remove_Unused_Ops (BB *bb, BOOL BB_completely_processed)
 
     rslt_count = OP_results(op);
     if (rslt_count == 0) goto op_is_needed;
-#ifdef TARG_IA64
+#ifdef defined(TARG_IA64) || defined(TARG_LOONGSON)
     for (int i = 0; i < rslt_count ; i++) {
       if (OP_result(op,i) == RA_TN) goto op_is_needed;
       extern TN *Caller_GP_TN;

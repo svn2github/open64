@@ -1,8 +1,4 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
- */
-
-/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -148,8 +144,10 @@ BOOL (*Verify_alias_p) (ALIAS_MANAGER *, WN *);
 // from be/opt/opt_alias_analysis.cxx
 void (*Print_points_to_p) (FILE *fp, POINTS_TO *ptmp);
 
+#if 1
 // from be/opt/opt_wn.h
 AUX_ID (*WN_aux_p) (const WN*);
+#endif
 
 // from be/opt/opt_du.h
 BOOL (DU_MANAGER::*CD_is_br_taken_p) (IDTYPE);
@@ -187,9 +185,10 @@ SI_ISSUE_SLOT *(*SI_issue_slots_p)[];
 INT *SI_ID_count_p;
 SI *(*SI_ID_si_p)[];
 #endif
+
 // from be/cg/eh_region.h
 void (*EH_Generate_Range_List_p) (WN *);
-#if defined(TARG_IA64) || defined(TARG_X8664) 
+#if defined(TARG_IA64) || defined(TARG_X8664) || defined(TARG_LOONGSON)
 void (*EH_Dump_INITOs_p) (WN *, FILE *);
 #endif
 #ifdef TARG_X8664

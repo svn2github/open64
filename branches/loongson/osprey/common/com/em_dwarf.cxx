@@ -297,11 +297,17 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
   // got removed.
   if (is_cplus)	/* may have eh info */
   {
+#ifndef TARG_LOONGSON
     	if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
 	    augmenter = PIC_DW_CIE_AUGMENTER_STRING_V0;
 	else
 	    augmenter = DW_CIE_AUGMENTER_STRING_V0;
+#else
+	augmenter = DW_CIE_AUGMENTER_STRING_V0;
+
+#endif
 	personality = Save_Str ("__gxx_personality_v0");
+#ifndef TARG_LOONGSON
         if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
         {
             ST * pic_personality_st = New_ST (GLOBAL_SYMTAB);
@@ -328,6 +334,7 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 	      Assign_ST_To_Named_Section (pic_personality_st,
 	                                  ST_ATTR_section_name (st_attr));
 	}
+#endif
   }
   else
     // Bug 7278 - implement "zR" CFA augmentation for non-C++ code.
@@ -371,7 +378,7 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 				 cie_init_byte_len,
 				 &dw_error);
 
-#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_MIPS)
+#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_MIPS) && !defined(TARG_LOONGSON) 
   // Generate a CIE for .eh_frame only if it is C++ or if -DEBUG:eh_frame=on
   if (is_cplus || DEBUG_Emit_Ehframe)
     eh_cie_index = dwf_add_ehframe_cie (dw_dbg, augmenter,
@@ -737,24 +744,7 @@ void Em_Dwarf_Process_PU (Dwarf_Unsigned begin_label,
 				(Dwarf_Unsigned) end_label,
 				end_offset,
 				eh_offset, eh_symindex, &dw_error);
-#ifdef TARG_PPC32
-    if (eh_offset == DW_DLX_NO_EH_OFFSET)	/* no exception handler */
-  	dwf_add_ehframe_fde_b (dw_dbg, fde, PU_die, eh_cie_index, 
-			       begin_offset,
-			       0 /* dummy code length */,
-			       (Dwarf_Unsigned) begin_label,
-			       (Dwarf_Unsigned) end_label,
-			       end_offset,
-			       &dw_error);
-  else
-  	dwf_add_ehframe_info_b (dw_dbg, fde, PU_die, eh_cie_index, 
-				begin_offset,
-				0 /* dummy code length */,
-				(Dwarf_Unsigned) begin_label,
-				(Dwarf_Unsigned) end_label,
-				end_offset,
-				eh_offset, eh_symindex, &dw_error);
-#endif
+
 #ifdef TARG_X8664
   if (eh_fde == NULL)
   	return;

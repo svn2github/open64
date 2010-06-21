@@ -241,7 +241,7 @@ BOOL CG_emit_unwind_info_Set = FALSE;
 BOOL CG_emit_unwind_directives = FALSE;
 #elif defined(TARG_LOONGSON)
 BOOL CG_emit_asm_dwarf    = TRUE;
-BOOL CG_emit_unwind_info  = FALSE;
+BOOL CG_emit_unwind_info  = TRUE;
 BOOL CG_emit_unwind_info_Set = FALSE;
 BOOL CG_emit_unwind_directives = FALSE;
 #else
@@ -6175,8 +6175,6 @@ Trace_Init_Loc ( INT scn_idx, Elf64_Xword scn_ofst, INT32 repeat)
 #endif
     fprintf ( TFile, "<init>: Section %s (offset %4lld x%d): ",
   	      ST_name(em_scn[scn_idx].sym), (INT64)scn_ofst, repeat );
-}
-
 
 #ifndef TARG_IA64
 // because we have different EH implementation with pathscale-3.0 in cg.
@@ -6890,7 +6888,7 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
 #if defined(TARG_SL)
   Elf64_Word prev_scn_ofst;
   Elf64_Word skip_space;
-  #define V2BUF_SKIP_SPACE 16  // we still need to handle other vbuf type      
+  #define V2BUF_SKIP_SPACE 16  //  still need to handle other vbuf type      
   #define V4BUF_SKIP_SPACE 48
   #define vector_line_num 16
 #endif  // TARG_SL
@@ -7126,7 +7124,7 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
   return scn_ofst;
 }
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 static int
 sizeof_signed_leb128 (int value)
 {
@@ -7265,26 +7263,37 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
   nRangeTable++;
   char begin_lab[30], end_lab[30];
   INITV_IDX inv = INITV_next(first);
-#define LSDA_HANDLER_START	"thu_LFE_"
-#define LSDA_START		"thu_LSDA_"
-#define LSDA_TT_START		"thu_LSDA_TT_Start_"
-#define LSDA_TT_END		"thu_LSDA_TT_End_"
-#define LSDA_CS_START		"thu_LSDA_CS_Start_"
-#define LSDA_CS_END		"thu_LSDA_CS_End_"
+#define LSDA_HANDLER_START  "$LFE"
+#define LSDA_START      "$LLSDA"
+#define LSDA_TT_START       "$LLSDATTD"
+#define LSDA_TT_END     "$LLSDATT"
+#define LSDA_CS_START       "$LLSDACSB"
+#define LSDA_CS_END     "$LLSDACSE"
 
   fprintf(Asm_File, ".%s%d:\n", LSDA_HANDLER_START, nRangeTable);
+#ifdef TARG_IA64
   fprintf(Asm_File, "\t.personality\t__gxx_personality_v0#\n");
   fprintf(Asm_File, "\t.handlerdata\n");
   fprintf(Asm_File, "\t.align\t8\n");
+#else
+  fprintf(Asm_File, "\t.globl\t__gxx_personality_v0#\n");
+  fprintf(Asm_File, "\t.align\t2\n");
+#endif
   fprintf(Asm_File, ".%s%d:\n", LSDA_START, nRangeTable);
 
   // lpStart_encoding
   INITV_Init_Integer_2(first, MTYPE_I1, 0xff, 1);
   scn_ofst = Write_INITV (first, scn_idx, scn_ofst);
 
+#ifdef TARG_IA64
   // ttype_encoding
   INITV_Init_Integer_2(first, MTYPE_I1, 0xb4, 1);
   scn_ofst = Write_INITV (first, scn_idx, scn_ofst);
+#else
+  // ttype_encoding
+  INITV_Init_Integer_2(first, MTYPE_I1, 0x0, 1);
+  scn_ofst = Write_INITV (first, scn_idx, scn_ofst);
+#endif
 
   // @type_start
   sprintf(begin_lab, ".%s%d", LSDA_TT_START, nRangeTable);
@@ -7355,12 +7364,18 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
   // end action table
 
   // single type table
+#ifdef TARG_IA64
   fprintf(Asm_File, "\t.align\t8\n");
+#else
+  fprintf(Asm_File, "\t.align\t2\n");
+#endif
+
   inv = INITV_next(type_inv);
   for(; inv && inv != eh_spec_inv; inv = INITV_next(inv)) {
     ST_IDX type_st_idx = 0;
     if (INITVKIND_ZERO != INITV_kind(inv))
       type_st_idx = TCON_uval(INITV_tc_val(inv));
+#ifdef TARG_IA64
     if (type_st_idx == 0)
       fprintf(Asm_File, "\tdata8.ua\t0\n");
     else {
@@ -7369,6 +7384,16 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
     //  else
     //    fprintf(Asm_File, "\tdata8.ua\t%s\n", ST_name(&St_Table[type_st_idx]));
     }
+#else
+    if (type_st_idx == 0)
+      fprintf(Asm_File, "\t.word\t0\n");
+    else {
+    //  if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
+        fprintf(Asm_File, "\t.word\t%s\n", ST_name(&St_Table[type_st_idx]));
+    //  else
+    //    fprintf(Asm_File, "\tdata8.ua\t%s\n", ST_name(&St_Table[type_st_idx]));
+    }
+#endif
   }
 
   // end of single type table
@@ -7391,12 +7416,10 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
 }
 
 #else // TARG_IA64
-#ifdef KEY
 static Elf64_Xword
 Generate_Exception_Table_Header (INT scn_idx,
                                  Elf64_Xword scn_ofst,
                                  LABEL_IDX *);
-#endif // KEY
 #endif // TARG_IA64
 /* Emit the initialized object to the object file */
 static void
@@ -7527,7 +7550,6 @@ Write_INITO (
 }
 
 #ifndef TARG_IA64
-//#ifdef KEY
 static Elf64_Word
 Write_Diff (
   LABEL_IDX lab1,       /* left symbol */
@@ -7631,7 +7653,7 @@ Generate_Exception_Table_Header (INT scn_idx, Elf64_Xword scn_ofst, LABEL_IDX *l
     fprintf ( Asm_File, "%s:\n", LABEL_name(csb));
     return scn_ofst;
 }
-#endif // KEY
+#endif 
 
 /* change to a new section and new origin */
 static void
@@ -8886,7 +8908,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   Setup_Text_Section_For_BB(REGION_First_BB);
   Is_True(PU_base == text_base, ("first region BB was not in text section"));
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
   /* output LSDA */
   if (EH_Get_PU_Range_INITO(false) && EH_Get_PU_Range_ST()) {
     ST* eh_range = EH_Get_PU_Range_ST();
@@ -8935,7 +8957,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
     Elf64_Word symindex;
     INT eh_offset;
     BOOL has_exc_scopes = PU_has_exc_scopes(ST_pu(pu));
-#ifndef TARG_LOONGSON
+//#ifndef TARG_LOONGSON
     if (Object_Code)
     	Em_Add_New_Event (EK_PEND, PC - INST_BYTES, 0, 0, 0, PU_section);
     /* get exception handling info */ 
@@ -8953,7 +8975,8 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 	Base_Symbol_And_Offset (sym, &base, &ofst);
 	eh_offset = ofst;
 	Init_Section(base);	/* make sure eh_region is inited */
-#ifdef KEY /* TARG_X8664 */
+//#ifdef KEY /* TARG_X8664 */
+#ifdef TARG_X8664
 // emit the begin label instead of the section name, since the section name
 // is same for different PUs, the label is different.
 	symindex = EMT_Put_Elf_Symbol (sym);
@@ -9002,7 +9025,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 		// us specify ranges symbolically.
 		Initial_Pu_PC, PC);
 #endif // TARG_X8664
-#endif // TARG_LOONGSON
+//#endif // TARG_LOONGSON
   }
   if (Run_prompf) {
     fputc ('\n', anl_file);

@@ -57,20 +57,18 @@ LIBRARY_SUBDIRS := \
 	libelf \
 	libdwarf \
 	libelfutil \
-	libiberty \
+	libiberty 
+	#libu \
+	#libinstr2\
+	#libcginstr\
+#	libfortran \
 	libu \
-	libinstr2 \
-	libcginstr \
-	libunwindP \
-	libspin_4_2_0 \
-	libfortran
+	libmv \
+	libmsgi \
 
 
 #
 #  Finally, the compiler tools (components) are built.
-#
-#  Note that be_driver must come last since it depends on other components
-#  being built first.
 #
 TOOL_SUBDIRS := \
 	be \
@@ -85,10 +83,11 @@ TOOL_SUBDIRS := \
 	whirl2f \
 	wopt \
 	ipa \
-	ipl \
+	crayf90
+	#wgen \
 	crayf90 \
-	wgen_4_2_0 \
-	be_driver
+	wgen_4_2_0
+	#f95_coco 
 
 
 SUBDIRS := $(INCLUDE_SUBDIRS) $(LIBRARY_SUBDIRS) $(TOOL_SUBDIRS)

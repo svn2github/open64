@@ -156,7 +156,7 @@ static enum {
 BOOL LC_Used_In_PU;
 
 /* TNs to save the callers GP and FP if needed */
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 TN *Caller_GP_TN;
 TN *Caller_FP_TN;
 TN *Caller_Pfs_TN;
@@ -549,7 +549,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
   	return;
   }
 
-#ifdef TARG_IA64
+#ifdef defined(TARG_IA64) || defined(TARG_LOONGSON)
   /*
   Do not generate entry code for handler entry, it is a co-design with unwind directives generation in cgdwarf_targ.cxx
   */

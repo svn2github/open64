@@ -1529,7 +1529,7 @@ EH_Get_PU_Range_INITO(bool bSetNull)
 
 
 
-#ifdef TARG_IA64 
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 bool pu_need_LSDA;
 /* This trick seems that only reasonable on IA64, you can refer to 
    eh_personality routine in libstdc++ for more details.
@@ -1580,6 +1580,8 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
   INITV_IDX inv_blk = New_INITV();
   INITV_IDX inv, prev_inv, cinv, inv_action, backup;
   int act_offset = 1;	// biased by 1
+
+  INITO* eh_spec = Create_Type_Filter_Map ();
 
   eh_pu_range_inito = &Inito_Table[inito];
 
@@ -1667,9 +1669,11 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
       bHasLandingPad = false;
     }
 
+#if 1
     // cs_action pointer
     WINUX_ALLOC_INV(inv)
     INITV_Init_Integer_2(inv, MTYPE_U4, act_offset, 1);
+#endif
 
     /*
      * struct ActionRecord
@@ -1687,6 +1691,83 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
     int ar_count = 0;
     bool bNeedCleanup = false;
     for (INITV_IDX next = INITV_next(first); next; next = INITV_next(next)) {
+#if 0
+      // begin write action record (cinv, next)
+      BOOL catch_all = FALSE;   // catch-all clause
+      int tmp = 0;
+      int filter = 0;
+      if (INITVKIND_ZERO != INITV_kind(next))
+        filter = TCON_uval(INITV_tc_val(next));
+
+      if (!filter)
+        //catch_all = (tfmap.find(filter) != tfmap.end());
+        catch_all = (type_filter_map.find(filter) != type_filter_map.end());
+      // if a region has eh specifications, we at least need:
+      // 0 /* zero means zero */
+      // 1 /* offset */
+      // -filter /* eh spec typeinfo offset */
+      // 0
+      // But catch-all typeinfo is also zero. How to distinguish between
+      // the first zero and a catch-all zero? The following hack is used:
+      // if the next typeinfo is negative, then "zero means zero".
+      if (catch_all && INITV_next(next)) {
+        INITV_IDX next_tmp = INITV_next(next);
+        if (INITVKIND_VAL == INITV_kind(next_tmp))
+          if (TCON_ival(INITV_tc_val(next_tmp)) < 0) {  // eh-spec
+            catch_all = FALSE;
+          }
+      }
+
+      // If there is no landing pad for this region, there should not be
+      // a catch-all clause for it.
+      if (catch_all && !bHasLandingPad)
+        catch_all == FALSE;
+
+      /// action field
+      // Check if we have any action for this eh-region, if not, emit 0
+      // for action start marker.
+      BOOL zero_action = FALSE;
+
+      if(filter < 0) { // eh spec offset
+        WINUX_ALLOC_INV(cinv);
+        INITV_Init_Integer_2(cinv, MTYPE_I4, filter, 1);    // ar_filter
+        bytes_for_filter = sizeof_signed_leb128 (filter);
+      } else if (filter || catch_all) { // handler or catch_all where filter can be < 0
+        WINUX_ALLOC_INV(cinv);
+        filter = Get_EH_Filter_By_Type(filter, tfmap);
+        INITV_Init_Integer_2(cinv, MTYPE_I4, filter, 1);    // ar_filter
+        bytes_for_filter = sizeof_signed_leb128 (filter);
+      } else {
+        //INITV_Init_Integer_2(cinv, MTYPE_I4, 0, 1);
+        WINUX_ALLOC_INV(cinv);
+        tmp = Get_EH_Filter_By_Type(filter, tfmap);
+        INITV_Init_Integer_2(cinv, MTYPE_I4, tmp, 1);
+        bytes_for_filter = 1;
+        zero_action = TRUE;
+      }
+
+      if(!ar_count) {
+        if(zero_action && !INITV_next(next)) {
+          // cs_action pointer
+          WINUX_ALLOC_INV(inv)
+          INITV_Init_Integer_2(inv, MTYPE_U4, 0, 1);
+        } else {
+          WINUX_ALLOC_INV(inv)
+          INITV_Init_Integer_2(inv, MTYPE_U4, act_offset, 1);
+        }
+      }
+
+      ar_count++;
+      WINUX_ALLOC_INV(cinv)
+      if (INITV_next(next) == 0) {
+        INITV_Init_Integer_2(cinv, MTYPE_I4, 0, 1); // ar_next
+      }
+      else {
+        INITV_Init_Integer_2(cinv, MTYPE_I4, 1, 1);
+      }
+      act_offset += (bytes_for_filter + 1);
+      // end write action record
+#else
       // begin write action record (cinv, next)
       int filter = 0;
       if (INITVKIND_ZERO != INITV_kind(next))
@@ -1731,6 +1812,7 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
       } 
       act_offset += sizeof_signed_leb128(filter) + 1;
       // end write action record
+#endif
     } // end action record .for
 
     if (bNeedCleanup && ar_count) {
@@ -1748,7 +1830,6 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
       INITV_Init_Integer_2(inv, MTYPE_U4, 0, 1);
     else
       INITV_Init_Integer_2(cinv, MTYPE_U4, 0, 1);
-      
   } // end range_list.for
 
   Set_INITV_next(inv, inv_action);

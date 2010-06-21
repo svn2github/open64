@@ -1,6 +1,10 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
 
-  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+/*
+
+  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -32,12 +36,30 @@
 
 */
 
-#include <elf.h>
+
+/* ====================================================================
+ *
+ * Module: cgemit_targ.c
+ * $Revision: 1.4 $
+ * $Date: 2006/04/28 08:13:16 $
+ * $Author: weitang $
+ * $Source: /depot/CVSROOT/javi/src/sw/cmplr/be/cg/MIPS/cgemit_targ.cxx,v $
+ *
+ * Description:
+ *
+ * Target-specific cgemit code.
+ *
+ * ====================================================================
+ * ====================================================================
+ */
+
+
 #include "elf_stuff.h"
 
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"
-#include "targ_isa_lits.h"
+#include "targ_const.h"
+#include "targ_const_private.h"
 #include "vstring.h"
 #include "config_asm.h"
 #include "em_elf.h"
@@ -51,108 +73,91 @@
 #include "iface_scn.h"
 #include "cg_flags.h"
 #include "glob.h"
-#include "cg.h" //To help emit assembly code
-#include "cgdwarf.h" 
-#include "calls.h"
+#include "sections.h"
 
-// file numbers in ST are 1 origin.
-// gas expects zero origin (as that is what dwarf2 uses).
-// There is a problem here: what if file 1 (ST numbering)
-// has no generated code? If 0 gets skipped will gas
-// work ok? Answer: file numbers ignored if file name
-// present: gas then checks/assigns by file name, numbering
-// starting at 0.  see gas/config/tc-ia64.c
-static INT max_visited_file = 0;
+static ST *current_pu = NULL;
 
-// Control assemly output on file number
-typedef mempool_allocator<INT> INT_ALLOC;
-typedef vector<INT, INT_ALLOC>  INT_CONTAINER;
-	
-static INT_CONTAINER asm_file_visited;
-INT Asm_File_Visited(INT file_number)
-{   
-    INT i = 1;
-    INT_CONTAINER::iterator iter;
-    for(iter = asm_file_visited.begin();iter != asm_file_visited.end();iter++)
-    {
-        if (*iter == file_number) return i;
-        i++;
-    }
-    asm_file_visited.push_back(file_number);
-    return i;
+static BOOL
+Non_Default_Text_Section (ST *pu)
+{
+  if (!pu || !ST_base(pu))
+    return FALSE;
+
+  return ((ST_sclass(ST_base(pu)) == SCLASS_TEXT) && 
+	  strcmp(ST_name(ST_base(pu)), ".text"));
 }
 
-extern void
+
+void
+CGEMIT_Targ_Initialize (ST *pu)
+{
+  current_pu = pu;
+}
+
+
+void
+CGEMIT_Targ_Text_Initialize (ST *pu)
+{
+  if (Non_Default_Text_Section(pu))
+    fprintf (Asm_File, "\t.begin\tliteral_prefix %s\n", ST_name(ST_base(pu)));
+}
+
+
+void
+CGEMIT_Targ_Text_Finalize (ST *pu)
+{
+  if (Non_Default_Text_Section(pu))
+    fprintf (Asm_File, "\t.end\tliteral_prefix\n");
+}
+
+
+BOOL
+CGEMIT_Align_Section_Once (const char *scn_name)
+{
+  return strcmp(scn_name, ".literal") && strcmp(scn_name, ".text");
+}
+
+void
 CGEMIT_Prn_File_Dir_In_Asm(USRCPOS usrcpos,
                         const char *pathname,
                         const char *filename)
 {
-    INT File_Num = USRCPOS_filenum(usrcpos);
-    if( !CG_emit_asm_dwarf || Asm_File_Visited(File_Num) <= max_visited_file) {
-      fprintf (Asm_File, "%s ",ASM_CMNT_LINE); // turn the rest into comment
-    } else {
-      max_visited_file = Asm_File_Visited(File_Num); 
-    }
-    fprintf (Asm_File, "\t%s\t%d \"%s/%s\" %s %d\n",AS_FILE, 
-		Asm_File_Visited(File_Num),
-		pathname,filename,ASM_CMNT,File_Num);
+  if (CG_emit_non_gas_syntax)
+    fprintf (Asm_File, "\t%s\t%d\t\"%s/%s\"\n",
+	     AS_FILE, USRCPOS_filenum(usrcpos)-1, pathname, filename);
+#ifdef TARG_SL
+  else {
+    if (pathname == NULL)
+	fprintf (Asm_File, "\t%s\t%d\t\"%s\"\n",
+		 AS_FILE, USRCPOS_filenum(usrcpos), filename);
+    else
+	fprintf (Asm_File, "\t%s\t%d\t\"%s/%s\"\n",
+		 AS_FILE, USRCPOS_filenum(usrcpos), pathname, filename);
+  }
+#else
+  else fprintf (Asm_File, "\t%s\t%d\t\"%s/%s\"\n",
+	   AS_FILE, USRCPOS_filenum(usrcpos), pathname, filename);
+#endif
 }
 
 extern void
 CGEMIT_Prn_Line_Dir_In_Asm (USRCPOS usrcpos)
 {
-    if( !CG_emit_asm_dwarf) {
-      fprintf (Asm_File, "%s ",ASM_CMNT_LINE);  // turn the rest into comment
-    }
+  if(!CG_emit_asm_dwarf) { 
+    fprintf (Asm_File, " # "); //turn the rest into comment
+  }
+  if (CG_emit_non_gas_syntax)
     fprintf (Asm_File, "\t.loc\t%d\t%d\t%d\n", 
-		USRCPOS_filenum(usrcpos),
-		USRCPOS_linenum(usrcpos),
-		USRCPOS_column(usrcpos));
-}
-
-
-extern void
-CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
-		       const char *scn_name,
-		       Elf64_Word  scn_type,
-		       Elf64_Word  scn_flags,
-		       Elf64_Xword scn_entsize,
-		       Elf64_Word  scn_align,
-		       const char *cur_scn_name)
-{
-  char scn_flags_string[5];
-  char scn_type_string[10];  // min of strlen("progbits") + 1
-  char *p = &scn_flags_string[0];
-
-  fprintf (asm_file, "\n\t%s %s", AS_SECTION, scn_name);
-  
-  if (scn_flags & SHF_WRITE) *p++ = 'w';
-  if (scn_flags & SHF_ALLOC) *p++ = 'a';
-  if (scn_flags & SHF_EXECINSTR) *p++ = 'x';
-  // short sections are only recognized by name, not by "s" qualifier
-  // if (scn_flags & SHF_IRIX_GPREL) *p++ = 's';
-  *p = '\0'; // null terminate the string.
-  fprintf (asm_file, ", \"%s\",", scn_flags_string);
-
-  p = &scn_type_string[0];
-  if (scn_type == SHT_NOBITS) {
-    strcpy(p, "nobits");
+	     USRCPOS_filenum(usrcpos)-1,
+	     USRCPOS_linenum(usrcpos),
+	     USRCPOS_column(usrcpos));
+  else
+    fprintf (Asm_File, "\t.loc\t%d\t%d\t%d\n", 
+	     USRCPOS_filenum(usrcpos),
+	     USRCPOS_linenum(usrcpos),
+	     USRCPOS_column(usrcpos));    
   }
-  else if (scn_type == SHT_PROGBITS) {
-    strcpy(p, "progbits");
-  }
-  else {
-    DevWarn("Intel assembler definition inadequate for "
-	    "ELF section type 0x%llx; using \"progbits\"", (UINT64)scn_type);
-    strcpy(p, "progbits");
-  }
-  fprintf (asm_file, " @%s\n", scn_type_string);
 
-  UINT32 tmp, power;
-  power = 0;
-  for (tmp = scn_align; tmp > 1; tmp >>= 1) power++;
-  fprintf (asm_file, "\t%s\t%d\n", AS_ALIGN, power);
-}
 
 extern void
 CGEMIT_Prn_Scn_In_Asm (ST *st, Elf64_Word scn_type, Elf64_Word scn_flags,
@@ -162,152 +167,239 @@ CGEMIT_Prn_Scn_In_Asm (ST *st, Elf64_Word scn_type, Elf64_Word scn_flags,
 			scn_entsize, STB_align(st),
 			cur_section != NULL ? ST_name(cur_section) : NULL);
 }
+void
+CGEMIT_Prn_Scn_In_Asm (ST *st, ST *cur_section)
+{
+  UINT32 tmp, power;
+  power = 0;
+  for (tmp = STB_align(st); tmp > 1; tmp >>= 1) power++;
+  CGEMIT_Prn_Scn_In_Asm(Asm_File,
+			ST_name(st),
+			Get_Section_Elf_Type(STB_section_idx(st)),
+			Get_Section_Elf_Flags(STB_section_idx(st)),
+			Get_Section_Elf_Entsize(STB_section_idx(st)),
+			power,
+			(cur_section != NULL) ? ST_name(cur_section) : NULL);
+}
+
+void
+CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
+		       const char *scn_name,
+		       Elf64_Word  scn_type,
+		       Elf64_Word  scn_flags,
+		       Elf64_Xword scn_entsize,
+		       Elf64_Word  scn_align,
+		       const char *cur_scn_name)
+{
+  if ((cur_scn_name != NULL) && !strcmp(cur_scn_name, ".literal"))
+  {
+
+    /* If we added a prefix to the literal section, then end the
+       prefix region */
+    if (Non_Default_Text_Section(current_pu))
+      fprintf (asm_file, "\t.end\tliteral_prefix\n");
+  }
+  
+  /* Handle .text, .data, and .literal specially. */
+
+  if (!strcmp(scn_name, ".data") || !strcmp(scn_name, ".text"))
+  {
+    fprintf (asm_file, "\n\t%s", scn_name);
+  }
+  else if (!strcmp(scn_name, ".literal"))
+  {
+    /* If we need to add a prefix to the literal section, then emit
+       the correct cabbage for that to happen. */
+    if (Non_Default_Text_Section(current_pu))
+    {
+      CGEMIT_Prn_Scn_In_Asm(ST_base(current_pu), NULL);
+      fprintf (asm_file, "\t.begin\tliteral_prefix %s\n",
+	       ST_name(ST_base(current_pu)));
+    }
+    else
+    {
+      fprintf (asm_file, "\n\t.text\n");
+    }
+    fprintf (asm_file, "\t.literal_position\n");
+  }
+  else
+  {
+    char scn_flags_string[5];
+    char *p = &scn_flags_string[0];
+    
+    fprintf (asm_file, "\n\t%s %s", AS_SECTION, scn_name);
+    if (CG_emit_non_gas_syntax && strcmp(scn_name, ".srdata") == 0) {
+      static BOOL printed = FALSE;
+      if (!printed) {
+	fprintf(asm_file, ", %d, %#x, %lld, ", 
+		scn_type, scn_flags, scn_entsize);
+	int tmp1 = 1, tmp2 = scn_align;
+	for (; tmp2 >= 1; tmp1 *= 2, tmp2 --);
+	fprintf(asm_file, "%d", tmp1);
+	printed = TRUE;
+      }
+    }
+    if (! CG_emit_non_gas_syntax) {
+      if (scn_flags & SHF_WRITE) *p++ = 'w';
+      if (scn_flags & SHF_ALLOC) *p++ = 'a';
+      if (scn_flags & SHF_EXECINSTR) *p++ = 'x';
+      *p = '\0'; // null terminate the string.
+      fprintf (asm_file, ", \"%s\"", scn_flags_string);
+    }
+  }
+
+  fprintf (asm_file, "\n");
+
+  /* For most sections, we only emit the alignment the first time we
+     see it (in cgemit.cxx:Init_Section), because .org is used to
+     place/align all data items relative to the start of the
+     section. But some we always align. */
+
+  if (!CGEMIT_Align_Section_Once(scn_name))
+    fprintf (asm_file, "\t%s\t%d\n", AS_ALIGN, scn_align);
+}
+
+void
+CGEMIT_Change_Origin_In_Asm (ST *st, INT64 offset)
+{
+  /* Make sure these match what is used in eh_region.cxx (with "t"
+     changed to "e" or "h"). */
+#define EH_REGION_LINKONCE_PREFIX ".gnu.linkonce.e."
+#define EH_DESC_LINKONCE_PREFIX ".gnu.linkonce.h."
+    
+  /* We don't want to emit .org for literal sections, since the .org
+     for these gets reset for every pu; and because we don't need them
+     here.
+
+     We don't want to emit .org for exception region or descriptors
+     since the section contains both .xt_except_table/.xt_except_desc
+     and .gnu.linkonce.e.* / .gnu.linkonce.h.* sections. We don't need
+     the .org for these because there are no alignment issues since
+     all INITVs in the section are 4 bytes, and the section start is 4
+     byte aligned. */
+
+  if (strcmp(ST_name(st), ".literal") &&
+      strcmp(ST_name(st), ".xt_except_table") &&
+      strcmp(ST_name(st), ".xt_desc_table") &&
+      strncmp(ST_name(st), EH_REGION_LINKONCE_PREFIX,
+	      strlen(EH_REGION_LINKONCE_PREFIX)) &&
+      strncmp(ST_name(st), EH_DESC_LINKONCE_PREFIX,
+	      strlen(EH_DESC_LINKONCE_PREFIX)))
+  {
+   /*
+   Don't generate .org for except_table section. It would cause as errors 
+   "attempt to move .org backwards". by Huimin
+   */
+    if(strcmp(ST_name(st),".except_table")) {
+       if (CG_emit_non_gas_syntax)
+         fprintf (Asm_File, "\t%s 0x%llx\n", ".origin", offset);
+       else fprintf (Asm_File, "\t%s 0x%llx\n", AS_ORIGIN, offset);
+    }
+    fprintf ( Asm_File, "\t%s\t0\n", AS_ALIGN );
+    
+  }
+}
+
 
 // whether to use the base st for the reloc
 extern BOOL
 CGEMIT_Use_Base_ST_For_Reloc (INT reloc, ST *st)
 {
-    // don't use the base st for the reloc in godson2
-    return FALSE;
+	if (reloc == TN_RELOC_IA_LTOFF_FPTR) 
+		// gas doesn't like addends
+		return FALSE;
+	// to handle function pointers.
+	// example: see gcc.c-torture/execute/func-ptr-1.c
+	else if (ST_sclass(st) == SCLASS_TEXT)
+	        return FALSE;
+	else 
+		return ST_is_export_local(st);
 }
 
-#include "targ_const_private.h"
-/* Get a symbol's name in .s file. */
-void
-Get_Qualified_Name (ST *st, char* str)
-{
-  char buffer[10];
-  if (ST_class(st) == CLASS_CONST) {
-  	ST *base_st;
-	INT64 base_ofst;
-	Base_Symbol_And_Offset (st, &base_st, &base_ofst);
-  	strcat(str,Label_Name_Prefix);
-	strcat(str,ST_name(base_st)+1);
-	strcat(str,Label_Name_Separator);
-	sprintf( buffer, "%lld", base_ofst);
-	strcat(str,buffer);
-
-    /* Compiling fortran, there is a st which occupies 0 byte in rdata section. */    
-	TCON tcon = ST_tcon_val(st);
-    if(TCON_ty(tcon) == MTYPE_STRING && TCON_len(tcon) == 0) {
-      strcat(str, Label_Name_Separator);
-      strcat(str, "NULL");
-    }
-    
-  } else if (ST_name(st) && *(ST_name(st)) != '\0') {
-
-    /* If a st is an Fortran equivalence, its base_st will be used instead. */
-    if (ST_is_equivalenced(st) && ST_class(st) == CLASS_VAR) {
-      st = ST_base(st); 
-    } 
-  
-	strcat(str,ST_name(st));
-	if ( ST_is_export_local(st) && ST_class(st) == CLASS_VAR) {
-		// local var, but being written out.
-		// so add suffix to help .s file distinguish names.
-		// assume that statics in mult. pu's will 
-		// get moved to global symtab, so don't need pu-num
-		if (ST_level(st) == GLOBAL_SYMTAB) {
-                    // bug 14517, OSP 490
-                    if (Emit_Global_Data || ST_sclass(st) == SCLASS_PSTATIC){
-		   	strcat(str,Label_Name_Separator);
-		   	sprintf( buffer, "%d", ST_index(st));
-		        strcat(str,buffer);
-                   }
-		} else {
-		    strcat(str,Label_Name_Separator);
-		    sprintf( buffer, "%d", ST_pu(Get_Current_PU_ST()));
-		    strcat(str,buffer);
-		    strcat(str,Label_Name_Separator);
-		    sprintf( buffer, "%d", ST_index(st));
-		  	strcat(str,buffer);
-		}
-	} else if (*Symbol_Name_Suffix != '\0') 
-		strcat(str,Symbol_Name_Suffix);
-  } else {
-	strcat(str,Label_Name_Prefix);
-	strcat(str,ST_name(ST_base(st)));
-	strcat(str,Label_Name_Separator);
-	sprintf( buffer, "%lld", ST_ofst(st));
-	strcat(str,buffer);
-  }
- }
-
+	  
 extern INT
 CGEMIT_Relocs_In_Asm (TN *t, ST *st, vstring *buf, INT64 *val)
 {
 	INT paren = 1;	// num parens
-	char temp[1000];
-
 	// only add in GP_DISP if based on gprel section
 	// not if based on ipa-generated extern.
 	if (ST_class(st) == CLASS_BLOCK && STB_section(st)) {
 		*val -= GP_DISP;
 	}
 	switch (TN_relocs(t)) {
-    	case TN_RELOC_IA_GPREL22:
-       		*buf = vstr_concat (*buf, "@gprel");
+	case TN_RELOC_GOT_DISP:
+        	*buf = vstr_concat (*buf, "%got_disp");
 		break;
-		case TN_RELOC_IA_LTOFF22:
-        	*buf = vstr_concat (*buf, "@ltoff");
+	case TN_RELOC_GOT_PAGE:
+        	*buf = vstr_concat (*buf, "%got_page");
 		break;
-		case TN_RELOC_IA_LTOFF_FPTR:
-        	*buf = vstr_concat (*buf, "@ltoff(@fptr");
-		++paren;
+	case TN_RELOC_GOT_OFST:
+        	*buf = vstr_concat (*buf, "%got_ofst");
 		break;
-		case TN_RELOC_HIGH16:
-			*buf = vstr_concat (*buf, AS_HI);
+	case TN_RELOC_HI_GPSUB:
+        	*buf = vstr_concat (*buf, "%hi(%neg(%gp_rel");
+		paren += 2;
 		break;
-		case TN_RELOC_LOW16:
-			*buf = vstr_concat (*buf, AS_LO);
+	case TN_RELOC_LO_GPSUB:
+        	*buf = vstr_concat (*buf, "%lo(%neg(%gp_rel");
+		paren += 2;
 		break;
-		case TN_RELOC_NEG:
-			*buf = vstr_concat (*buf, AS_NEG);
+	case TN_RELOC_GPREL16:
+        	*buf = vstr_concat (*buf, "%gp_rel");
 		break;
-		case TN_RELOC_GPREL16:
-			*buf = vstr_concat (*buf, AS_GP_REL);
+	case TN_RELOC_HIGH16:
+        	*buf = vstr_concat (*buf, "%hi");
 		break;
-		case TN_RELOC_GOT_DISP:
-			*buf = vstr_concat (*buf, AS_GOT_DISP);
+	case TN_RELOC_LOW16:
+        	*buf = vstr_concat (*buf, "%lo");
 		break;
-		case TN_RELOC_GOT_PAGE:
-			*buf = vstr_concat (*buf, AS_GOT_PAGE);
+#ifdef TARG_SL
+   case TN_RELOC_GPREL_V1:
+        *buf = vstr_concat(*buf, "%secrel_v1");
+        break;
+   case TN_RELOC_GPREL_V2:
+        *buf = vstr_concat(*buf, "%secrel_v2");
+        break;
+   case TN_RELOC_GPREL_V4:
+        *buf = vstr_concat(*buf, "%secrel_v4");
+        break;
+   case TN_RELOC_GPREL_S:
+        *buf = vstr_concat(*buf, "%secrel_s");
+        break;
+   case TN_RELOC_GPREL_V1_15:
+        *buf = vstr_concat(*buf, "%secrel_v1_15");
+        break;
+   case TN_RELOC_GPREL_V2_15:
+        *buf = vstr_concat(*buf, "%secrel_v2_15");
+        break;
+   case TN_RELOC_GPREL_V4_15:
+        *buf = vstr_concat(*buf, "%secrel_v4_15");
+        break;
+#endif
+#ifdef TARG_SL2
+    case TN_RELOC_GPREL_SL2_V11:
+        *buf = vstr_concat(*buf, "%secrel_sl2_v11");
+	  break;
+    case TN_RELOC_GPREL_SL2_V15:
+        *buf = vstr_concat(*buf, "%secrel_sl2_v15");
+	  break;
+    case TN_RELOC_GPREL_SL2_S:
+        *buf = vstr_concat(*buf, "%secrel_sl2_s");
+	  break;
+#endif
+#ifdef TARG_LOONGSON
+	case TN_RELOC_CALL16:
+		*buf = vstr_concat(*buf, "%call16");
 		break;
-		case TN_RELOC_GOT_OFST:
-			*buf = vstr_concat (*buf, AS_GOT_OFST);
-		break;
-		case TN_RELOC_CALL16:
-			*buf = vstr_concat (*buf, AS_CALL16);
-		break;
-		case TN_RELOC_HI_GPSUB:
-			*buf = vstr_concat (*buf, AS_HI);
-			*buf = vstr_concat (*buf, "(");
-			*buf = vstr_concat (*buf, AS_NEG);
-			*buf = vstr_concat (*buf, "(");
-			*buf = vstr_concat (*buf, AS_GP_REL);
-		break;
-		case TN_RELOC_LO_GPSUB:
-			*buf = vstr_concat (*buf, AS_LO);
-			*buf = vstr_concat (*buf, "(");
-			*buf = vstr_concat (*buf, AS_NEG);
-			*buf = vstr_concat (*buf, "(");
-			*buf = vstr_concat (*buf, AS_GP_REL);
-		break;
+#endif
     	default:
 		#pragma mips_frequency_hint NEVER
     		FmtAssert (FALSE, ("relocs_asm: illegal reloc TN"));
 		/*NOTREACHED*/
 	}
-	
 	*buf = vstr_concat (*buf, "(" );
-	temp[0]='\0';
-	Get_Qualified_Name(st,temp);
-	*buf = vstr_concat(*buf, temp);
+	*buf = vstr_concat (*buf, ST_name(st));
 	*buf = vstr_concat (*buf, Symbol_Name_Suffix);
-
-	if (TN_relocs(t) == TN_RELOC_HI_GPSUB ||TN_relocs(t) == TN_RELOC_LO_GPSUB)
-		*buf = vstr_concat(*buf, "))");
-	
 	return paren;
 }
 
@@ -315,31 +407,7 @@ CGEMIT_Relocs_In_Asm (TN *t, ST *st, vstring *buf, INT64 *val)
 extern void
 CGEMIT_Relocs_In_Object (TN *t, ST *st, INT32 PC, pSCNINFO PU_section, INT64 *val)
 {
-	// only add in GP_DISP if based on gprel section
-	// not if based on ipa-generated extern.
-	if (ST_class(st) == CLASS_BLOCK && STB_section(st)) {
-		*val -= GP_DISP;
-	}
-	switch (TN_relocs(t)) {
-	case TN_RELOC_IA_GPREL22:
-		Em_Add_New_Rela (EMT_Put_Elf_Symbol (st), 
-			R_IA_64_GPREL22, PC, *val, PU_section);
-	      	*val = 0;
-		break;
-	case TN_RELOC_IA_LTOFF22:
-		Em_Add_New_Rela (EMT_Put_Elf_Symbol (st), 
-			R_IA_64_LTOFF22, PC, *val, PU_section);
-		*val = 0;
-		break;
-	case TN_RELOC_IA_LTOFF_FPTR:
-		Em_Add_New_Rela (EMT_Put_Elf_Symbol (st), 
-			R_IA_64_LTOFF_FPTR22, PC, *val, PU_section);
-		*val = 0;
-		break;
-	default:
-	      #pragma mips_frequency_hint NEVER
-	      FmtAssert (FALSE, ("relocs_object: illegal reloc TN"));
-	}
+  FmtAssert(FALSE, ("NYI"));
 } 
 
 // add events and relocs as needed for call
@@ -379,23 +447,16 @@ CGEMIT_Add_Call_Information (OP *op, BB *bb, INT32 PC, pSCNINFO PU_section)
 void
 CGEMIT_Gen_Asm_Frame (INT64 frame_len)
 {
-  TN* save_tn;
-
-  if (Current_PU_Stack_Model != SMODEL_SMALL)
-	fprintf ( Asm_File, "\t%s\t%s,\t%lld,\t%s\n", AS_FRAME, 
-		REGISTER_name(TN_register_class(FP_TN),TN_register(SP_TN)),
-		frame_len,REGISTER_name(TN_register_class(RA_TN),TN_register(RA_TN)));
-  else
-	fprintf ( Asm_File, "\t%s\t%s,\t%lld,\t%s\n", AS_FRAME, 
-		REGISTER_name(TN_register_class(SP_TN),TN_register(SP_TN)),
-		frame_len,REGISTER_name(TN_register_class(RA_TN),TN_register(RA_TN)));
-
-  /* Generate the .mask only for RA, and we can see the stack when gdb. */
-  save_tn = SAVE_tn(Return_Address_Reg);
-  if(TN_spill(save_tn))
-	fprintf( Asm_File, "\t%s\t0x80000000,\t%d\n", AS_MASK, Offset_from_FP(TN_spill(save_tn)));
-  else
-	fprintf( Asm_File, "\t%s\t0x00000000,\t0\n", AS_MASK);
+  if (CG_inhibit_size_directive)
+    return;
+  TN *tn = ((Current_PU_Stack_Model == SMODEL_SMALL) ? SP_TN : FP_TN);
+  ISA_REGISTER_CLASS rc = TN_register_class(tn);
+  REGISTER reg = TN_register(tn);
+  fprintf ( Asm_File, "\t%s\t%s, %lld, %s\n",
+	    AS_FRAME,
+	    ABI_PROPERTY_Reg_Name(rc, REGISTER_machine_id(rc, reg)),
+	    frame_len,
+	    ABI_PROPERTY_Reg_Name(rc, REGISTER_machine_id(rc, TN_register(RA_TN))));
 }
 
 
@@ -407,9 +468,8 @@ CGEMIT_Prn_Ent_In_Asm (ST *pu)
 
   fprintf ( Asm_File, "\t%s\t", AS_ENT);
   EMT_Write_Qualified_Name(Asm_File, pu);
-  //as as2.18 does not accept multiple names after .ent, need to make rest of like comments
-  fprintf (Asm_File, "# ");
 
+  if (CG_emit_non_gas_syntax)
   for (ent_list = Entry_BB_Head; ent_list; ent_list = BB_LIST_rest(ent_list)) {
     BB *bb = BB_LIST_first(ent_list);
     ANNOTATION *ant = ANNOT_Get (BB_annotations(bb), ANNOT_ENTRYINFO);
@@ -426,7 +486,105 @@ CGEMIT_Prn_Ent_In_Asm (ST *pu)
 
   fprintf ( Asm_File, "\n");
 }
+#ifdef TARG_SL
+static void Gen_Register_Mask(REGISTER_SET *interrupt_saved, REGISTER_SET *ctrl_saved, 
+                              REGISTER_SET *spe_saved) {
+  BB *bb;
+  OP *op;
 
+  REGISTER_SET caller_saved = REGISTER_CLASS_caller_saves(ISA_REGISTER_CLASS_integer);
+  REGISTER_SET used_gpr = REGISTER_SET_EMPTY_SET;
+  REGISTER_SET used_spe_reg = REGISTER_SET_EMPTY_SET; // special register
+  REGISTER_SET used_ctr_reg = REGISTER_SET_EMPTY_SET; // control register
+
+  for(bb = REGION_First_BB; bb; bb = BB_next(bb))
+  {
+    FOR_ALL_BB_OPs(bb, op)
+    {
+      for(INT i = 0; i < OP_results(op); i++) {
+        TN* tn = OP_result(op, i);
+        if (TN_is_register(tn) && (TN_register_class(tn) == ISA_REGISTER_CLASS_integer)) {
+           used_gpr =  REGISTER_SET_Union(used_gpr, (1 << (TN_register(tn)-1)));
+        } else if (tn == JA_TN) {
+           used_ctr_reg = REGISTER_SET_Union (used_ctr_reg, 1);
+        } else if (tn == RA_TN) {
+           used_ctr_reg = REGISTER_SET_Union (used_ctr_reg, 2);
+        } else if (TN_is_LoopRegister(tn)) {
+          // loop register
+           used_ctr_reg = REGISTER_SET_Union(used_ctr_reg, (1 << (TN_number(tn)-TN_number(LC0_TN)+2))); 
+        } else if (tn == HI_TN) {
+          // HI register
+           used_spe_reg = REGISTER_SET_Union(used_spe_reg, 21);
+        } else if (TN_is_AddrRegister(tn)) {
+           used_spe_reg = REGISTER_SET_Union(used_spe_reg, (1 << (TN_number(tn)-TN_number(Addr0_TN))));
+        } else if (TN_is_AccRegister(tn)) {
+           used_spe_reg = REGISTER_SET_Union(used_spe_reg, (1 << (TN_number(tn)-TN_number(Acc0_TN)+16)));
+        } else if (TN_is_AddrSizeRegister(tn)) {
+           used_spe_reg = REGISTER_SET_Union(used_spe_reg, (1 << (TN_number(tn)-TN_number(Addrsize0_TN)+8)));
+        }
+      }
+      if (CG_ISR == 2) {
+        for(INT i = 0; i < OP_opnds(op); i++) {
+          TN* tn = OP_opnd(op, i);
+          if (TN_is_register(tn) && (TN_register_class(tn) == ISA_REGISTER_CLASS_integer)) {
+            used_gpr =  REGISTER_SET_Union(used_gpr, (1 << (TN_register(tn)-1)));
+          } else if (tn == JA_TN) {
+            used_ctr_reg = REGISTER_SET_Union (used_ctr_reg, 1);
+          } else if (tn == RA_TN) {
+            used_ctr_reg = REGISTER_SET_Union (used_ctr_reg, 2);
+          } else if (TN_is_LoopRegister(tn)) {
+            // loop register
+            used_ctr_reg = REGISTER_SET_Union(used_ctr_reg, (1 << (TN_number(tn)-TN_number(LC0_TN)+2)));
+          } else if (tn == HI_TN) {
+            // HI register
+            used_spe_reg = REGISTER_SET_Union(used_spe_reg, 21);
+          } else if (TN_is_AddrRegister(tn)) {
+            used_spe_reg = REGISTER_SET_Union(used_spe_reg, (1 << (TN_number(tn)-TN_number(Addr0_TN))));
+          } else if (TN_is_AccRegister(tn)) {
+            used_spe_reg = REGISTER_SET_Union(used_spe_reg, (1 << (TN_number(tn)-TN_number(Acc0_TN)+16)));
+          } else if (TN_is_AddrSizeRegister(tn)) {
+           used_spe_reg = REGISTER_SET_Union(used_spe_reg, (1 << (TN_number(tn)-TN_number(Addrsize0_TN)+8)));
+          }
+        }
+      } // CG_ISR == 2
+    }
+  }
+  *interrupt_saved = REGISTER_SET_Intersection(caller_saved, used_gpr);
+  *ctrl_saved = used_ctr_reg;
+  *spe_saved = used_spe_reg;
+
+  if (0) {
+    REGISTER_SET_Print(caller_saved, stdout);
+    printf("caller_saved  = %x\n", caller_saved);
+    REGISTER_SET_Print(used_gpr, stdout);
+    REGISTER_SET_Print(*interrupt_saved, stdout);
+    REGISTER_SET_Print(used_ctr_reg, stdout);
+    REGISTER_SET_Print(used_spe_reg, stdout);
+  }
+}
+
+
+// Generate used caller saved-register as # *****
+void CGEMIT_Prn_Used_Callersaved_In_Asm (void)
+{
+  REGISTER_SET gpr_saved = REGISTER_SET_EMPTY_SET;
+  REGISTER_SET ctrl_saved = REGISTER_SET_EMPTY_SET;
+  REGISTER_SET spe_saved = REGISTER_SET_EMPTY_SET;
+  Gen_Register_Mask(&gpr_saved, &ctrl_saved, &spe_saved);
+  if (CG_ISR == 1) {
+    // show defined caller-saved register
+    fprintf (Asm_File, "\t# defined caller-saved GPR:  0x%x\n", gpr_saved);
+    fprintf (Asm_File, "\t# defined ctrl-register:  0x%x\n", ctrl_saved);
+    fprintf (Asm_File, "\t# defined special-register:  0x%x\n", spe_saved);
+  } else if (CG_ISR == 2) {
+    // show used caller-saved register
+    fprintf (Asm_File, "\t# used caller-saved GPR:  0x%x\n", gpr_saved);
+    fprintf (Asm_File, "\t# used ctrl-register:  0x%x\n", ctrl_saved);
+    fprintf (Asm_File, "\t# used special-register:  0x%x\n", spe_saved);
+  } 
+  
+}
+#endif
 
 // Preprocess FP registers before emit.  Needed only for IA-32.
 void
@@ -436,12 +594,75 @@ STACK_FP_Fixup_PU()
 void
 CGEMIT_Weak_Alias (ST *sym, ST *strongsym) 
 {
-        fprintf ( Asm_File, "\t%s\t%s#\n", AS_WEAK, ST_name(sym));
-        fprintf ( Asm_File, "\t.set %s#, %s#\n", ST_name(sym), ST_name(strongsym));
+        fprintf ( Asm_File, "\t%s\t%s\n", AS_WEAK, ST_name(sym));
+        fprintf ( Asm_File, "\t%s = %s\n", ST_name(sym), ST_name(strongsym));
+}
+
+void CGEMIT_Write_Literal_TCON(ST *lit_st, TCON tcon)
+{
+  INT64 val;
+  if (TCON_ty(tcon) == MTYPE_F4)
+    val = TCON_word0(tcon);
+  else if ((TCON_ty(tcon) == MTYPE_I4) || (TCON_ty(tcon) == MTYPE_U4))
+    val = TCON_v0(tcon);
+  else
+    FmtAssert(FALSE, ("Invalid literal value"));
+  fprintf ( Asm_File, "\t%s\t", ".literal");
+  EMT_Write_Qualified_Name(Asm_File, lit_st);
+  if ((val >= INT32_MIN) && (val <= INT32_MAX)) 
+    fprintf(Asm_File, ", %lld\n", val);
+  else
+    fprintf(Asm_File, ", %#llx\n", val);
+  
+}
+
+void CGEMIT_Write_Literal_Label (ST *lit_st, LABEL_IDX lab)
+{
+  fprintf ( Asm_File, "\t%s\t", ".literal");
+  EMT_Write_Qualified_Name(Asm_File, lit_st);
+  union {
+    UINT64 u;
+    void *p;
+  } u;
+  u.u = 0;
+  u.p = LABEL_name(lab);
+  fprintf(Asm_File, ", %lld\n", u.u);
+}
+
+void CGEMIT_Write_Literal_Symbol (ST *lit_st, ST *sym, 
+				  Elf64_Sxword sym_ofst)
+{
+  ST *basesym;
+  basesym = sym;
+  INT64 base_ofst = 0;
+
+  if (Has_Base_Block(sym) && ST_is_export_local(sym) && ST_class(sym) != CLASS_FUNC) {
+    Base_Symbol_And_Offset (sym, &basesym, &base_ofst);
+  }
+  base_ofst += sym_ofst;
+
+  fprintf ( Asm_File, "\t%s\t", ".literal");
+  EMT_Write_Qualified_Name(Asm_File, lit_st);
+  fprintf ( Asm_File, ", ");
+  if (ST_class(sym) == CLASS_CONST) {
+    EMT_Write_Qualified_Name (Asm_File, basesym);
+    if (base_ofst == 0)
+      fprintf (Asm_File, "\n");
+    else
+      fprintf (Asm_File, " %+lld\n", base_ofst);
+  }
+  else {
+    EMT_Write_Qualified_Name (Asm_File, sym);
+    if (sym_ofst == 0)
+      fprintf (Asm_File, "\n");
+    else
+      fprintf (Asm_File, " %+lld\n", sym_ofst);
+  }
 }
 
 void
 CGEMIT_Alias (ST *sym, ST *strongsym) 
 {
-        fprintf ( Asm_File, "\t.set %s#, %s#\n", ST_name(sym), ST_name(strongsym));
+        fprintf ( Asm_File, "\t%s = %s\n", ST_name(sym), ST_name(strongsym));
 }
+
