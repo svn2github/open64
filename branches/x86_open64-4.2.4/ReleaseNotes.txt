@@ -42,7 +42,39 @@ x86 Open64 4.2.4 Release Notes
 2. New Features in x86 Open64 4.2.4
 ===================================
 
- o [TBD]
+ o Improved function inlining heuristics and enhanced inline expansion of
+   library functions.
+
+ o Enhanced framework for multi-versioning.
+
+ o Improved inductive expression simplification and if-merging optimization.
+
+ o Improved code generation for the % operator.
+
+ o Improved interprocedural analysis for indirect function calls, virtual
+   functions, and functions with "noreturn" attribute.
+
+ o Optimized exception handling.
+
+ o Optimized processing of Fortran 90 temporary arrays.
+
+ o Improved processor affinity mapping in the OpenMP and parallel runtime
+   library.
+
+ o Added support for 1 GB huge pages.
+
+ o Improved gcc compatibility with the addition of long double support and bug
+   fixes for ABI compatibility, nonstandard calling conventions, and inline
+   assembly.
+
+ o Improved Fortran support with prebuilt OpenMP bindings and bug fixes for
+   Fortran preprocessing and OpenMP compilation.
+
+ o Additional built-in function mappings for the -ffastmath option and new
+   options for better control of floating point accuracy.
+
+ o General correctness improvements including bug fixes for problems with C++
+   short circuit operators, prefetching, inlining, and PIC code generation.
 
 
 
