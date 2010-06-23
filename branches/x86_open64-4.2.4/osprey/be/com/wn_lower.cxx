@@ -2063,7 +2063,7 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
 #ifdef TARG_X8664
       if ((ctype != MTYPE_C8 && ctype != MTYPE_V16C8) ||
         ST_sclass(WN_st(tree)) == SCLASS_REG && 
-	Is_Return_Preg(WN_offset(tree)) ||
+	(Is_Formal_Preg(WN_offset(tree)) || Is_Return_Preg(WN_offset(tree))) ||
         !Is_Target_SSE3() || !Vcast_Complex)
       {
 #endif
@@ -7029,7 +7029,7 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
   if (Action(LOWER_COMPLEX) && (WN_rtype(tree) == MTYPE_C8 ||
        WN_desc(tree) == MTYPE_V16C8 && WN_has_sym(tree) && 
        ST_sclass(WN_st(tree)) == SCLASS_REG && 
-       Is_Return_Preg(WN_offset(tree)))){
+       (Is_Formal_Preg(WN_offset(tree)) || Is_Return_Preg(WN_offset(tree))))){
     WN *realexp, *imagexp;
     lower_complex_expr(block, tree, actions, &realexp, &imagexp);
     if (WN_operator(tree) == OPR_PARM)
@@ -8027,7 +8027,7 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
     if (Action(LOWER_COMPLEX) && (MTYPE_is_complex(WN_desc(tree)) 
 #ifdef TARG_X8664
       || WN_desc(tree) == MTYPE_V16C8 && ST_sclass(WN_st(tree)) == SCLASS_REG 
-      && Is_Return_Preg(WN_offset(tree))
+      && (Is_Return_Preg(WN_offset(tree)) || Is_Formal_Preg(WN_offset(tree)))
 #endif
        ))
     {
@@ -8179,7 +8179,7 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 	if (ST_class(WN_st(tree)) == CLASS_PREG && WN_desc(tree)== MTYPE_C8
 	   && Is_Target_SSE3() && Vcast_Complex &&
 	   !(ST_sclass(WN_st(tree)) == SCLASS_REG && 
-		   Is_Return_Preg(WN_offset(tree))))
+ 	    (Is_Formal_Preg(WN_offset(tree)) || Is_Return_Preg(WN_offset(tree)))))
 	{
 	  PREG_NUM zN;
 	  TYPE_ID type;
