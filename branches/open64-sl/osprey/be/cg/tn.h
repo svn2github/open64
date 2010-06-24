@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -371,11 +375,16 @@ typedef enum {
   TN_RELOC_X8664_TPOFF32    = 0x34,	 /* thread-local storage (TLS) */
   TN_RELOC_X8664_TPOFF32_seg_reg = 0x35, /* like above, with segment register */
   TN_RELOC_X8664_GOTTPOFF   = 0x36,	 /* TLS with GOT entry */
+  TN_RELOC_X8664_GOTNTPOFF  = 0x37,      /* TLS with GOT entry under PIC */
+  TN_RELOC_X8664_DTPOFF     = 0x38,      /* Local Dynamic TLS */
+  TN_RELOC_X8664_TLSGD      = 0x39,      /* Global Dynamic TLS */
+  TN_RELOC_X8664_TLSLD      = 0x3a,      /* Local Dynamic TLS  */
 
 				     /* IA-32 relocations start at 0x40 */
   TN_RELOC_IA32_ALL   = 0x40,	     /* All 32 bits of a symbol value. */
   TN_RELOC_IA32_GOT   = 0x41,
-  TN_RELOC_IA32_GLOBAL_OFFSET_TABLE = 0x42
+  TN_RELOC_IA32_GLOBAL_OFFSET_TABLE = 0x42,
+  TN_RELOC_IA32_GOTOFF              = 0x43   /* 32 bit offset to GOT */
 #endif
 #if defined(TARG_SL)
 TN_RELOC_GPREL_V1 = 0x41,
@@ -421,7 +430,23 @@ inline TN * CAN_USE_REG_TN (const TN *t)
 #define     TN_size(t)		(CAN_USE_TN(t)->size+0)
 #define Set_TN_size(t,x)	(CAN_USE_TN(t)->size = (x))
 #define     TN_number(t)	(CAN_USE_REG_TN(t)->u1.reg_tn.number+0)
-#define Set_TN_number(t,x)	(CAN_USE_REG_TN(t)->u1.reg_tn.number = (x))
+
+#ifdef Is_True_On
+extern int trace_tn_number_;
+extern void set_trace_tn(int n);
+extern void reset_trace_tn();
+extern void gdb_stop_here();
+#endif
+
+inline void  Set_TN_number(TN *t, int x)
+{
+   (CAN_USE_REG_TN(t)->u1.reg_tn.number = (x));
+#ifdef Is_True_On
+   if (trace_tn_number_ == x)
+      gdb_stop_here();
+#endif
+}
+
 #define	    TN_class_reg(t)	(CAN_USE_REG_TN(t)->u1.reg_tn.class_reg)
 #define	Set_TN_class_reg(t,x)	(CAN_USE_REG_TN(t)->u1.reg_tn.class_reg = (x))
 #define     TN_register(t)	\
@@ -736,6 +761,12 @@ extern  TN* C2_MVSEL_TN;        // TN for c2 mvsel internal
 extern  TN* C2_VLCS_TN;         // TN for c2 vlcs internal 
 extern  TN* C2_MOVPAT_TN;       // TN for c2 mov pat register
 #endif
+#ifdef TARG_LOONGSON
+extern  TN *HI_TN;		// Hi register used for mul/div
+extern  TN *LO_TN;		// Lo register used for mul/div
+extern  TN *SL_TN;		// Static link register only for f90
+extern  TN *FPSR_TN;
+#endif
 
 /* ====================================================================
  * Prototypes of external routines.
@@ -750,6 +781,9 @@ extern	void Init_TNs_For_PU (void);
 /* Initialize the TN data structure at the start of each REGION. */ 
 extern	void Init_TNs_For_REGION (void);
 
+#if defined(TARG_PPC32)
+extern TN * Gen_CR_TN (UINT cr);
+#endif
 
 /* TN generation: */
 
@@ -813,6 +847,12 @@ inline TN *Build_TN_Like(TN *tn)
     ISA_REGISTER_CLASS rc = TN_register_class(tn);
     if (tn == RA_TN || tn == JA_TN || tn == LC0_TN || tn == LC1_TN || tn == LC2_TN || tn == LC3_TN ||
 	tn == HI_TN ) {
+      rc = ISA_REGISTER_CLASS_integer;
+    }
+    new_tn = Gen_Register_TN(rc, TN_size(tn));
+#elif defined(TARG_PPC32)
+    ISA_REGISTER_CLASS rc = TN_register_class(tn);;
+    if (tn == RA_TN) {
       rc = ISA_REGISTER_CLASS_integer;
     }
     new_tn = Gen_Register_TN(rc, TN_size(tn));

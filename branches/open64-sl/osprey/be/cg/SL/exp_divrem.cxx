@@ -12,7 +12,6 @@
 
 /* CGEXP routines for expanding divide and rem */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <signal.h>
 #include "defs.h"
@@ -641,10 +640,6 @@ Expand_Rem (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   INT64 src2_val;
   BOOL const_src2 = TN_Value_At_Op (src2, NULL, &src2_val);
   if (const_src2) {
-#if 0
-    if (src2_val == 0) // Division by Zero!
-      FmtAssert (FALSE, ("Division by zero detected.\n"));
-#endif
 
     /* Handle powers of 2 specially.
      */

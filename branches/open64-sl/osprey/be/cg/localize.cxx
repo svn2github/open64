@@ -77,6 +77,10 @@
 #include "cg_internal.h"
 #include "targ_sim.h"
 #include "whirl2ops.h"
+#if defined(TARG_PPC32)
+#include <queue>
+#include <set>
+#endif
 
 #if defined(TARG_SL)
 #include <queue>
@@ -458,6 +462,10 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 			/* not after call, so must span bb's */
 			Localize_Global_Return_Reg (current_bb, tn);
 		}
+#ifdef TARG_LOONGSON
+		else if (!def && BB_handler(current_bb))
+		  ;
+#endif
 		else {
 			FmtAssert (FALSE, ("use of param reg TN%d in bb %d is global", TN_number(tn), BB_id(current_bb)));
 		}
@@ -959,6 +967,7 @@ Localize_Any_Global_TNs ( RID *rid )
  *
  * =======================================================================
  */
+#ifndef TARG_LOONGSON
 static BB *
 BB_Reaches_Call_or_Exit( BB *start )
 {
@@ -981,8 +990,82 @@ BB_Reaches_Call_or_Exit( BB *start )
   }
 
   BB_MAP_Delete( visited );
+
   return ans;
 }
+#else
+ /* For loongson, there will be some codes like:
+  *                    IF:    $4 = ...
+  *                            $5 = ...
+  *                            $6 = ...
+  *                            hi, lo = div ...
+  *                            ... ...
+  *                            beq ...
+  *                 /      |
+  *               /        |
+  *       THEN:         |
+  *           ... ...       |
+  *              \          |
+  *               \         |
+  *                  CALL:
+  *                      $7 = ...
+  *                      printf(... )
+  *
+  * For the above example, $4,$5,$6,$7 are parameters of the call. But
+  * when preparing those parameters, there is a branch. So, just looking
+  * for the unique successor will not work any longer. We need a recursive
+  * way to look for the reached CALL/EXIT bb.
+  *
+  */
+static BB*
+BB_Reaches_Call_or_Exit_Helper(BB* start, BB_MAP visited)
+{
+  BB *ans = NULL, *result = NULL;
+  RID *rid;
+  BBLIST *slist;
+  BB *succ;
+
+  if ( BB_MAP32_Get( visited, start) )
+    return NULL;
+
+  rid = BB_rid(start);
+  if (rid && RID_level(rid) >= RL_CGSCHED)
+    return NULL;
+
+  BB_MAP32_Set( visited, start, 1 );
+
+  if (BB_call(start) || BB_exit(start) || BB_asm(start)) {
+     return start;
+  }
+
+  for ( slist = BB_succs( start ); slist; slist = BBLIST_next( slist ) ) {
+    succ = BBLIST_item( slist );
+    ans = BB_Reaches_Call_or_Exit_Helper(succ, visited);
+    if (ans != NULL) {
+      if (result == NULL) {
+        result = ans;
+      } else {
+        Is_True(ans == result,
+                      ("BB%d reaches two or more CALL/EXIT BBs.", start->id));
+      }
+    }
+    return ans;
+  }
+}
+
+static BB *
+BB_Reaches_Call_or_Exit( BB *start )
+{
+  BB_MAP visited = BB_MAP32_Create();
+
+  BB *ans = BB_Reaches_Call_or_Exit_Helper(start, visited);
+
+  BB_MAP_Delete( visited );
+  return ans;
+}
+#endif
+
+
 
 /* =======================================================================
  *
@@ -1027,7 +1110,7 @@ Call_or_Entry_Reaches_BB(BB *start)
     }
   }
 
-#if defined(TARG_SL)
+#if defined(TARG_SL) || defined(TARG_PPC32)
   /*
    * Fix a bug, in OspreyTest/SingleSource/gcc.c-torture/double/unsorted/poor.c
    * If  preds(bb1) = {bb2, bb3}, the original code only search bb2, but bb3 is omitted.

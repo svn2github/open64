@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -278,7 +282,7 @@ add_to_hash_table ( BOOL in_delay_slot,
     }
 #endif
     if ((tnr != NULL) && (tnr != True_TN) && (tnr != Zero_TN)) {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
       TN* tmp_tn = CGTARG_Gen_Dedicated_Subclass_TN( op, idx, TRUE );
       if( tmp_tn == NULL )
 	tmp_tn = tnr;
@@ -371,7 +375,7 @@ EBO_OPS_predicate(TN *predicate_tn, OPS *ops)
 }
 
 
-
+extern void Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops);
 
 inline
 void

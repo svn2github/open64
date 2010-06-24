@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -802,7 +802,7 @@ static void EBO_Start()
     Regs_Delta_Map[cl] = OP_MAP32_Create();
   }
   
-#if defined(TARG_X8664) || (defined(TARG_MIPS) && !defined(TARG_SL))
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) || (defined(TARG_MIPS) && !defined(TARG_SL))
   EBO_Special_Start( &MEM_local_pool );
 #endif 
 }
@@ -1023,7 +1023,11 @@ merge_memory_offsets( OP *op,
 {
   EBO_TN_INFO *index_tninfo = opnd_tninfo[index_opnd];
   OP *index_op = (index_tninfo != NULL) ? index_tninfo->in_op : NULL;
+#ifdef TARG_LOONGSON
+  TN *immed_tn = opnd_tn[index_opnd-1];
+#else
   TN *immed_tn = opnd_tn[index_opnd+1];
+#endif
   ST *immed_sym = TN_is_symbol(immed_tn) ? TN_var(immed_tn) : NULL;
   INT64 immed_offset = TN_is_symbol(immed_tn) ? TN_offset(immed_tn) : TN_Value(immed_tn);
   EBO_OP_INFO *index_opinfo;
@@ -1045,7 +1049,11 @@ merge_memory_offsets( OP *op,
   index_opinfo = locate_opinfo_entry (index_tninfo);
   if (index_opinfo == NULL) return;
 
+#ifdef TARG_LOONGSON
+   additive_index_tn = OP_result(index_op,0);
+#else
   additive_index_tn = OP_opnd(index_op,0);
+#endif
   additive_index_tninfo = index_opinfo->actual_opnd[0];
 #ifdef TARG_X8664
   // Handling -fPIC in exp_loadstore.cxx exposes this bug when assembling bug 274
@@ -1055,6 +1063,16 @@ merge_memory_offsets( OP *op,
 
   additive_immed_tn = OP_opnd(index_op,1);
   if (!TN_Is_Constant(additive_immed_tn)) return;
+
+#ifdef TARG_X8664
+  // disable merging memory offset on TLS initial-exec
+  if ( TN_is_symbol(immed_tn) &&
+        TN_relocs(immed_tn) == TN_RELOC_X8664_GOTTPOFF )
+    return;
+  if ( TN_is_symbol(additive_immed_tn) &&
+        TN_relocs(additive_immed_tn) == TN_RELOC_X8664_GOTTPOFF )
+    return;
+#endif
 
  /* Would the new index value be available for use? */
   if (!TN_Is_Constant(additive_index_tn) &&
@@ -1121,6 +1139,19 @@ merge_memory_offsets( OP *op,
   if (EBO_in_loop) {
     Set_OP_omega (op, index_opnd, (additive_index_tninfo != NULL) ? additive_index_tninfo->omega : 0);
   }
+#ifdef TARG_LOONGSON
+  Set_OP_opnd(op, index_opnd-1, new_tn);
+  if (EBO_in_loop) {
+    Set_OP_omega (op, index_opnd-1, 0);
+  }
+  opnd_tn[index_opnd] = additive_index_tn;
+  opnd_tn[index_opnd-1] = new_tn;
+  opnd_tninfo[index_opnd] = additive_index_tninfo;
+  opnd_tninfo[index_opnd-1] = NULL;
+  actual_tninfo[index_opnd] = additive_index_tninfo;
+  actual_tninfo[index_opnd-1] = NULL;
+  
+#else
   Set_OP_opnd(op, index_opnd+1, new_tn);
   if (EBO_in_loop) {
     Set_OP_omega (op, index_opnd+1, 0);
@@ -1131,6 +1162,7 @@ merge_memory_offsets( OP *op,
   opnd_tninfo[index_opnd+1] = NULL;
   actual_tninfo[index_opnd] = additive_index_tninfo;
   actual_tninfo[index_opnd+1] = NULL;
+#endif
 
   if (EBO_Trace_Optimization) {
     #pragma mips_frequency_hint NEVER
@@ -1209,7 +1241,13 @@ find_duplicate_mem_op (BB *bb,
   INT succ_base_idx = TOP_Find_Operand_Use(OP_code(op),OU_base);
   INT succ_offset_idx = TOP_Find_Operand_Use(OP_code(op),OU_offset);
 
-  if ((succ_base_idx >= 0) && (succ_offset_idx >= 0) &&
+  if (
+#ifdef TARG_LOONGSON
+ /* In loongson, the first operand is predicate */
+      (succ_base_idx > 0) && (succ_offset_idx > 0) &&
+#else
+      (succ_base_idx >= 0) && (succ_offset_idx >= 0) &&
+#endif
       TN_Is_Constant(opnd_tn[succ_offset_idx])) {
    /* Look for merge-able expressions. */
     merge_memory_offsets (op, succ_base_idx, opnd_tn, actual_tninfo, opnd_tninfo);
@@ -1698,7 +1736,7 @@ find_duplicate_mem_op (BB *bb,
       if (must_not_delete==FALSE) op_replaced = delete_duplicate_op (op, opnd_tninfo, opinfo);
 #else
     op_replaced = delete_duplicate_op (op, opnd_tninfo, opinfo
-#if defined(TARG_X8664)
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 					   , actual_tninfo
 #endif
 		      );
@@ -1969,6 +2007,30 @@ find_duplicate_op (BB *bb,
 
         }
     }
+
+#ifdef TARG_X8664
+    //check the rflags, op like sbb32 will be affected by the rflags,consider the following
+    // TN172 :- sbb32 TN154 TN154  #1
+    // TN173 :- sub32 TN161 TN162  #2
+    // TN174 :- sbb32 TN154 TN154  #3
+    // because the op #2 will change the rflags and op #3 will read the rflags, then
+    // op #2 is not a duplicate of op #1
+
+    if( hash_op_matches  && TOP_is_read_rflags( OP_code(op) ) ){
+      for( OP* iop = pred_op; iop != op && iop != NULL ; iop = OP_next( iop ) ){
+       if( TOP_is_change_rflags( OP_code(iop)) ){
+         hash_op_matches = FALSE;
+         if (EBO_Trace_Hash_Search) {
+            #pragma mips_frequency_hint NEVER
+            fprintf(TFile,"%sExpression match found, but the predicates do not match because of rflag dependency\n\t",
+                   EBO_trace_pfx);
+            Print_OP_No_SrcLine(pred_op);
+          }
+         break;
+       }
+      }
+    }
+#endif  //TARG_X8664
 
     if (hash_op_matches) {
 
@@ -2444,14 +2506,14 @@ Find_BB_TNs (BB *bb)
       }
 #endif
 
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON)
       if (OP_code(op) == TOP_jalr) {
 	dont_replace = TRUE;    // Bug 12505: Don't replace RA_TN in jalr
       }
 #endif
 
       if (tn != True_TN) {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 	TN* tmp_tn = CGTARG_Gen_Dedicated_Subclass_TN( op, opndnum, FALSE );
 	if( tmp_tn == NULL )
 	  tmp_tn = tn;
@@ -2865,6 +2927,13 @@ Find_BB_TNs (BB *bb)
         } else if (num_opnds > 1) {
           if (OP_results(op) > 0) {
            /* Consider special case optimizations. */
+#ifdef TARG_LOONGSON
+            INT o2_idx; /* TOP_Find_Operand_Use(OP_code(op),OU_opnd2) won't work for all the cases we care about */
+            INT o1_idx; /* TOP_Find_Operand_Use(OP_code(op),OU_opnd1) won't work for all the cases we care about */
+            /* In loongson, all ops have predicate tn  */		
+            o1_idx = (num_opnds > 2) ? TOP_Find_Operand_Use(OP_code(op),OU_opnd1) : -1;
+            o2_idx = (num_opnds > 3) ? TOP_Find_Operand_Use(OP_code(op),OU_opnd2) : -1;
+#else
             INT o2_idx; /* TOP_Find_Operand_Use(OP_code(op),OU_opnd2) won't work for all the cases we care about */
             INT o1_idx; /* TOP_Find_Operand_Use(OP_code(op),OU_opnd1) won't work for all the cases we care about */
             if (op_is_predicated) {
@@ -2880,6 +2949,7 @@ Find_BB_TNs (BB *bb)
               o1_idx = (num_opnds > 0) ? 0 : -1;
               o2_idx = (num_opnds > 1) ? 1 : -1;
             }
+#endif
 
             if (OP_same_res(op)) {
               op_replaced = EBO_Fix_Same_Res_Op (op, opnd_tn, opnd_tninfo);
@@ -2905,7 +2975,7 @@ Find_BB_TNs (BB *bb)
             op_replaced = Special_Sequence (op, opnd_tn, orig_tninfo);
           }
         }
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 	else if (num_opnds == 1) {
 	  if (OP_results(op) > 0) {
 	    if (!op_replaced) {
@@ -3002,7 +3072,8 @@ Find_BB_TNs (BB *bb)
         INT cix = copy_operand(op);
         TN *tnr = OP_result(op, 0);
 
-        if ((tnr != NULL) && (tnr != True_TN) && (tnr != Zero_TN)) {
+        // do not propagate copy if the copy has side effect
+        if ((tnr != NULL) && (tnr != True_TN) && (tnr != Zero_TN) && !Op_has_side_effect(op)) {
           tninfo = EBO_last_opinfo->actual_rslt[0];
 
           if (!OP_glue(op) && (cix >= 0)) {
@@ -3235,7 +3306,7 @@ void EBO_Remove_Unused_Ops (BB *bb, BOOL BB_completely_processed)
 
      /* Copies to and from the same register are not needed. */
       if (EBO_in_peep &&
-          OP_effectively_copy(op) &&
+          OP_effectively_copy(op) && !Op_has_side_effect(op) &&
           has_assigned_reg(tn) &&
           (copy_operand(op) >= 0) &&
           has_assigned_reg(OP_opnd(op,copy_operand(op))) &&
@@ -3542,8 +3613,13 @@ op_is_needed:
 #endif
       } else if (PROC_has_branch_delay_slot()) {
 	if (in_delay_slot && OP_code(op) == TOP_noop) {
+#ifdef TARG_LOONGSON
+          BB_Remove_Op(bb, op);
+          BB_Append_Op(bb, Mk_OP(TOP_nop, True_TN));
+#else
 	   // ugly hack for mips
 	   OP_Change_Opcode(op, noop_top);
+#endif
 	}
         in_delay_slot = OP_xfer(op);
       }
@@ -4061,175 +4137,6 @@ Mark_LRA_Spill_Reference(OP *op, BS **bs, MEM_POOL *pool)
 }
 #endif	// TARG_X8664
 
-#if 0
-// We can not say if a particular address will be taken outside of the 
-// current extended basic block unless we look at the Symbol Table. 
-// Currently, this support is not provided. But, this routine does some 
-// useful processing and may be useful at a later point.
-// Before a "store" op leaves the opinfo table,
-// look for any dependent op and if none exist, then delete
-// this "store" op
-void
-delete_useless_store_op (EBO_OP_INFO *opinfo)
-{
-  EBO_TN_INFO *save_last_tninfo = EBO_last_tninfo;
-
-  BOOL found_dependent_op = FALSE;
-
-  OP *store_op = opinfo->in_op;
-
-  /* Determine operand TN info */
-  BB *bb = opinfo->in_bb; 
-  EBO_TN_INFO *tninfo;
-  TN *op_predicate_tn = NULL;
-  EBO_TN_INFO *op_predicate_tninfo = NULL;
-  BOOL check_omegas = FALSE;
-  INT max_opnds = OP_MAX_FIXED_OPNDS;
-  EBO_TN_INFO **opnd_tninfo = TYPE_ALLOCA_N(EBO_TN_INFO *, max_opnds);
-  INT opndnum;
-  mUINT8 operand_omega;
-  check_omegas = (EBO_in_loop && _CG_LOOP_info(store_op))?TRUE:FALSE;
-  TN *tn;
-  for (opndnum = 0; opndnum < OP_opnds(store_op); opndnum ++) {
-    tn = OP_opnd(store_op, opndnum);
-    if (tn == NULL || TN_is_constant(tn) || TN_is_label(tn)) {
-      opnd_tninfo[opndnum] = NULL;
-      continue;
-    }
-    operand_omega = check_omegas ? OP_omega(store_op,opndnum) : 0;
-    tninfo = tn_info_use (bb, store_op, tn,
-			  op_predicate_tn, op_predicate_tninfo,
-			  operand_omega);
-    opnd_tninfo[opndnum] = tninfo;
-  }
-
-  /* Determine the indexes of the address components of this "store" op. */
-  INT store_base_idx = TOP_Find_Operand_Use(OP_code(store_op),OU_base);
-  INT store_offset_idx = TOP_Find_Operand_Use(OP_code(store_op),OU_offset);
-
-  /* Determine the address components of this "store" op. */
-  TN *store_base_tn = 
-    (store_base_idx >= 0) ? OP_opnd(store_op, store_base_idx) : NULL;
-  EBO_TN_INFO *store_base_tninfo = 
-    (store_base_idx >= 0) ? opnd_tninfo[store_base_idx] : NULL;
-  TN *store_offset_tn = 
-    (store_offset_idx >= 0) ? OP_opnd(store_op, store_offset_idx) : NULL;
-  EBO_TN_INFO *store_offset_tninfo = 
-    (store_offset_idx >= 0) ? opnd_tninfo[store_offset_idx] : NULL;
-
-  if ((store_offset_tn == NULL) && (store_base_tn != NULL)) {
-    find_index_and_offset(store_base_tninfo,
-                          &store_base_tn, &store_base_tninfo,
-                          &store_offset_tn, &store_offset_tninfo);
-  }
-
-  for (; bb != NULL; bb = BB_next(bb)) {
-    OP *op;
-    FOR_ALL_BB_OPs (bb, op) {
-      if (!OP_load(op))
-        continue;	
-      check_omegas = (EBO_in_loop && _CG_LOOP_info(op))?TRUE:FALSE;
-      TN *tn;
-      for (opndnum = 0; opndnum < OP_opnds(op); opndnum ++) {
-	tn = OP_opnd(op, opndnum);
-	if (tn == NULL || TN_is_constant(tn) || TN_is_label(tn)) {
-	  opnd_tninfo[opndnum] = NULL;
-	  continue;
-	}
-    	operand_omega = check_omegas ? OP_omega(op,opndnum) : 0;
-        tninfo = tn_info_use (bb, op, tn,
-                              op_predicate_tn, op_predicate_tninfo,
-                              operand_omega);
-        opnd_tninfo[opndnum] = tninfo;
-      }
-      if (EBO_hash_op(op, opnd_tninfo) == opinfo->hash_index) {
-	INT base_idx = 0;
-	INT offset_idx = 0;
-	TN *base_tn = NULL;
-	EBO_TN_INFO *base_tninfo = NULL;
-	TN *offset_tn = NULL;
-	EBO_TN_INFO *offset_tninfo = NULL;
-
-	/* Determine the address components of this "load" op. */
-	base_idx = TOP_Find_Operand_Use(OP_code(op),OU_base);
-	offset_idx = TOP_Find_Operand_Use(OP_code(op),OU_offset);
-	base_tn = (base_idx >= 0) ? OP_opnd(op,base_idx) : NULL;
-	base_tninfo = (base_idx >= 0) ? opnd_tninfo[base_idx] : NULL;
-	offset_tn = (offset_idx >= 0) ? OP_opnd(op,offset_idx) : NULL;
-	offset_tninfo = (offset_idx >= 0) ? opnd_tninfo[offset_idx] : NULL;
-
-	if ((offset_tn == NULL) && (base_tn != NULL)) {
-	  find_index_and_offset(base_tninfo,
-				&base_tn, &base_tninfo,
-				&offset_tn, &offset_tninfo);
-	}
-
-	BOOL hash_op_matches = ((base_tn == store_base_tn) &&           /* The base  index must match */
-				(base_tninfo == store_base_tninfo) &&   /* The base   info must match */
-				(offset_tninfo == store_offset_tninfo)) /* The offset info must match */
-	  ? TRUE : FALSE;
-	if (!hash_op_matches) // bases do not match
-	  continue;
-	BOOL op_is_subset = FALSE;
-	BOOL offsets_may_overlap = TRUE;
-	
- 	if (offset_tn == store_offset_tn) {
-	  // can not delete this "store" op
-	  found_dependent_op = TRUE;
-	  break;
-	}
-	
-	/* The offset tn's need to be looked at in more detail. */	
-	ST *symbol = ((offset_tn != NULL) && TN_is_symbol(offset_tn)) ?TN_var(offset_tn) : NULL;
-	ST *symbol_store = ((store_offset_tn != NULL) && TN_is_symbol(store_offset_tn)) ?TN_var(store_offset_tn) : NULL;
-	mUINT8 relocs = (offset_tn != NULL) ? TN_relocs(offset_tn) : 0;
-	mUINT8 relocs_store = (store_offset_tn != NULL) ? TN_relocs(store_offset_tn) : 0;
-	INT64 offset = 0;
-	INT64 offset_store = 0;
-	offset = (offset_tn != NULL) ? TN_offset(offset_tn) : 0;
-	offset_store = (store_offset_tn != NULL) ? TN_offset(store_offset_tn) : 0;
-
-	/* This time, the relocations must be the same. */
-	hash_op_matches = (symbol == symbol_store) && (relocs == relocs_store);
-	if (!hash_op_matches) // relocations do not match
-	  continue;
-
-	/* If the relocations are the same, we need to examine the offsets and sizes. */
-	INT size = CGTARG_Mem_Ref_Bytes(op);
-	INT size_store = CGTARG_Mem_Ref_Bytes(store_op);
-	
-	if ((offset == offset_store) &&
-	    (size == size_store)) {
-	  /* The perfect match: location and size. */
-	  // can not delete
-	  found_dependent_op = TRUE;
-	  break;
-	} else if ((offset >= offset_store) &&
-		    ((offset + size) <= (offset_store + size_store))) {
-	  /* The current reference is a subset of the preceeding one. */
-	  // can not delete
-	  found_dependent_op = TRUE;
-	  break;
-	} else if (((offset_store + size_store) <= offset) ||
-		   ((offset + size) <= offset_store)) {
-	  /* There is no potential overlap. */
-	} else {
-	  /* Any other case may be a potential conflict. */
-	  hash_op_matches = FALSE;
-	}
-      }
-    }
-    if (found_dependent_op)
-      break; 
-  }
-  if (found_dependent_op == FALSE) {
-    OP_Change_To_Noop(store_op);
-    printf("store op %#x does not have any dep op\n", store_op);
-  }
-  backup_tninfo_list(save_last_tninfo);
-  return;
-}
-#endif
 #endif
 
 // For each of BB's predecessors, if it branches to any OP other than the first

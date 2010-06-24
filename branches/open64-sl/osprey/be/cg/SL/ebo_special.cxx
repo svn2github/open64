@@ -1687,16 +1687,16 @@ BOOL Special_Sequence (OP *op,
       fprintf(TFile, "  local tn: ");
       Print_TN(OP_opnd(op, i), TRUE);
       fprintf(TFile, "\n  ebo tn: ");
-      Print_TN(opnd_tn[i], TRUE);
+      if (opnd_tn) Print_TN(opnd_tn[i], TRUE);
       fprintf(TFile, "\n   local in_op: ");
       fprintf(TFile, "<null>\n");
       fprintf(TFile, "   ebo in_op: ");
-      if (opnd_tninfo[i] && opnd_tninfo[i]->in_op)
+      if (opnd_tninfo && opnd_tninfo[i] && opnd_tninfo[i]->in_op)
 	Print_OP_No_SrcLine(opnd_tninfo[i]->in_op);
       else
 	fprintf(TFile, "<null>\n");
 
-      if (opnd_tninfo[i] && opnd_tninfo[i]->replacement_tn)
+      if (opnd_tninfo && opnd_tninfo[i] && opnd_tninfo[i]->replacement_tn)
       {
 	fprintf(TFile, "  replace tn: ");
 	Print_TN(opnd_tninfo[i]->replacement_tn, TRUE);
@@ -1781,7 +1781,7 @@ static BOOL Is_Res_Or_Src_Redef(TN *src, TN *result, OP *dw_op, BOOL special_cas
           && (TNs_Are_Equivalent(OP_opnd(dw_op, CGTARG_Copy_Operand(dw_op)), src)))
           /* res = src
            * src = result    it has been replaced by "src = src" before Is_Res_Or_Src_Redef
-           * other = result  continure tranverse
+           * other = result  continue tranverse
            */
           return FALSE;
         else 
@@ -1794,7 +1794,141 @@ static BOOL Is_Res_Or_Src_Redef(TN *src, TN *result, OP *dw_op, BOOL special_cas
   return FALSE;
 }
 
-/* This is used to eliminate unnecessry shift operations like:
+BOOL TOP_is_c3_mv(TOP top) 
+{
+  return (top == TOP_c3_mvfacc || top == TOP_c3_mvfaddr
+       || top == TOP_c3_mvtacc || top == TOP_c3_mvtaddr);
+}
+
+TOP Corresponding_C3_MV_TOP(TOP top)
+{
+  switch (top) {
+    case TOP_c3_mvfacc:
+      return TOP_c3_mvtacc;
+    case TOP_c3_mvtacc:
+      return TOP_c3_mvfacc;
+    case TOP_c3_mvfaddr:
+      return TOP_c3_mvtaddr;
+    case TOP_c3_mvtaddr:
+      return TOP_c3_mvfaddr;
+    default:
+      Fail_FmtAssertion("Corresponding_C3_MV_TOP: Unexpected top");
+  }
+}
+
+BOOL Is_Tn_Used_Before_Redefine(TN *tn, OP *dw_op)
+{
+  OP *op = OP_next(dw_op);
+  for ( ; op; op = OP_next(op)) {
+    if (OP_Refs_TN(op, tn)) {
+      return TRUE;
+    }
+    if (OP_Defs_TN(op, tn)) {
+      return FALSE;
+    }
+  }
+  return FALSE;
+}
+
+/* Eliminate SL special instruction */
+void Redundancy_Elimination_SL()
+{
+  for (BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
+    if (BB_rid(bb) && (RID_level(BB_rid(bb)) >= RL_CGSCHED)) {
+      /* don't change bb's which have already been through CG */
+      continue;
+    }
+
+    if (CG_skip_local_ebo
+     && ((BB_id(bb) < CG_local_skip_before)
+      || (BB_id(bb) > CG_local_skip_after)
+      || (BB_id(bb) == CG_local_skip_equal)))
+      continue;
+    
+    OP *next_op;
+    for (OP* op = BB_first_op(bb); op != NULL; op = next_op) {
+      next_op = OP_next(op);
+
+      if (TOP_is_c3_mv(OP_code(op))) {
+        TN *src    = OP_opnd(op, 0);
+        TN *result = OP_result(op, 0);
+
+        FmtAssert(TN_is_register(src) && TN_is_register(result),
+            ("src/result not registers in EBO_in_peep"));
+
+        /* do not delete op if result is live out 
+         * we can still delete the op if there is a re-definition before block-end
+         */
+        if (REG_LIVE_Outof_BB (TN_register_class(result), TN_register(result), bb)) {
+          if (Is_Result_Redefined(op) == FALSE) continue;
+        }
+
+        BOOL can_be_removed = TRUE;
+        OP *dw_op;
+        for (dw_op = OP_next(op); dw_op != NULL; dw_op = OP_next(dw_op)) {
+          if (OP_Defs_TN(dw_op, src)) {
+            /* src is redefined */
+            if (TN_is_zero(OP_opnd(op, 1)) && OP_Refs_TN(dw_op, result)
+            && OP_code(dw_op) == Corresponding_C3_MV_TOP(OP_code(op)) && TN_is_zero(OP_opnd(dw_op, 1))) {
+              /* 
+               * c3.mvfs  $5, acc, 0
+               * c3.mvts acc, $5, 0
+               * ....
+               */
+               OP *next_op_t = OP_next(dw_op);
+               BB_Remove_Op(bb, dw_op);
+               if (!Is_Tn_Used_Before_Redefine(result, dw_op)) {
+                 if (next_op == dw_op) {
+                   next_op = next_op_t;
+                   }
+                 BB_Remove_Op(bb, op);
+               }
+               break;
+            } else {
+              /* 
+               * c3.mvfs  $5, acc            
+               * c3.mac  acc, other, ....
+               * ....
+               */
+               can_be_removed = FALSE;
+            }
+
+          } else if (OP_Defs_TN(dw_op, result)) {
+            /* result is redefined */
+            if (OP_Refs_TN(dw_op, result)) {
+              /* 
+               * c3.mvfs  $5, acc
+               * add      $5, $5, *
+               */
+              can_be_removed = FALSE;
+            } else {
+              /* 
+               * c3.mvfs  $5, acc              
+               * add      $5, other, *
+               * ....
+               */
+
+              BB_Remove_Op(bb, op);
+              break;
+            }
+          } else {
+            if (OP_Refs_TN(dw_op, result)) {
+            /* result and src are not redefined
+             * c3.mvfs  $5, acc
+             * add      other, $5, *
+             */
+              can_be_removed = FALSE;
+            }
+          }
+          if (can_be_removed == FALSE)
+            break;
+        }
+      }
+    }
+  }
+}
+
+/* This is used to eliminate unnecessary shift operations like:
  *     TN78($2) :-  dsrl32 TN1($0) <const> ;
  * Replace uses of the result with Zero_TN, and eliminate the shift op.
  * The def should not be live out of the current basic block.
@@ -1804,6 +1938,7 @@ static BOOL Is_Res_Or_Src_Redef(TN *src, TN *result, OP *dw_op, BOOL special_cas
  */
 void Redundancy_Elimination()
 {
+  Redundancy_Elimination_SL();
   for (BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
     if (BB_rid(bb) && (RID_level(BB_rid(bb)) >= RL_CGSCHED)) {
       /* don't change bb's which have already been through CG */
@@ -1857,25 +1992,27 @@ void Redundancy_Elimination()
         BOOL special_case = FALSE;
         BOOL result_replace = FALSE;
         for (OP* dw_op = OP_next(op); dw_op != NULL; dw_op = OP_next(dw_op)) {
-          if ((OP_code(dw_op) != TOP_asm) && OP_results(dw_op)) {
-
+          if ((OP_code(dw_op) == TOP_asm)
+           || (OP_same_res(dw_op)
+             && (TNs_Are_Equivalent(OP_result(dw_op, 0), result)))) {
+            /* 
+             * (1) can not replace asm statement
+             * (2) result = src; depb res, src
+             *      (hidden operator, not emit, it must be same with res), 
+             */
+            cannot_be_removed = TRUE;
+            break;
+          } else if (OP_results(dw_op)){
             INT dw_op_copy_operand = CGTARG_Copy_Operand(dw_op);
             TN *dw_op_copy_operand_tn = (dw_op_copy_operand>=0)?OP_opnd(dw_op, dw_op_copy_operand):NULL;
             if ((dw_op_copy_operand >= 0) 
                 && TN_is_register(dw_op_copy_operand_tn) 
-                && TNs_Are_Equivalent(dw_op_copy_operand_tn, result)) {
-              /* Special case 1: 
+                && TNs_Are_Equivalent(dw_op_copy_operand_tn, result)
+                && TNs_Are_Equivalent(OP_result(dw_op, 0), src)) {
+              /* Special case: 
                * result = src; src = result;
                */
               special_case = TRUE;
-              break;
-            } else if ((OP_same_res(dw_op)) 
-                    && (TNs_Are_Equivalent(OP_result(dw_op, 0), result))) {
-              /* Special case 2: 
-               * result = src; depb res, src
-               *      (hiden operator, not emit, it must be same with res), ...
-               */
-              cannot_be_removed = TRUE;
               break;
             } else {
               if (Is_Res_Used_After_Src_Redef(dw_op, result, src) == TRUE) {
@@ -1883,7 +2020,7 @@ void Redundancy_Elimination()
                 break;
               } 
             }
-          } 
+          }
         } 
 
         if (cannot_be_removed) continue;
@@ -1905,7 +2042,7 @@ void Redundancy_Elimination()
             }
           }
 
-          /* Tranverse done util result or src is redefined */ 
+          /* Traverse done until result or src is redefined */ 
           if (Is_Res_Or_Src_Redef(src, result, dw_op, special_case) == TRUE)
             break;
         }      

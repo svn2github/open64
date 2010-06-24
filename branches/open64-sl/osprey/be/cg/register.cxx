@@ -160,6 +160,12 @@ CLASS_REG_PAIR      CLASS_REG_PAIR_c2mvsel;
 CLASS_REG_PAIR      CLASS_REG_PAIR_c2vlcs;
 CLASS_REG_PAIR      CLASS_REG_PAIR_c2movpat;
 #endif
+#ifdef TARG_LOONGSON
+CLASS_REG_PAIR      CLASS_REG_PAIR_at; 
+CLASS_REG_PAIR      CLASS_REG_PAIR_hi; 
+CLASS_REG_PAIR      CLASS_REG_PAIR_lo; 
+CLASS_REG_PAIR      CLASS_REG_PAIR_fsr;
+#endif
 
 const CLASS_REG_PAIR CLASS_REG_PAIR_undef =
   {CREATE_CLASS_N_REG(ISA_REGISTER_CLASS_UNDEFINED,REGISTER_UNDEFINED)};
@@ -363,7 +369,7 @@ Initialize_Register_Class(
         if ( ABI_PROPERTY_Is_func_val(rclass, isa_reg) )
           func_value = REGISTER_SET_Union1(func_value, reg);
 #endif
-#if defined(TARG_MIPS) || defined(TARG_IA64)
+#if defined(TARG_MIPS) || defined(TARG_IA64) || defined(TARG_LOONGSON)
         if ( ABI_PROPERTY_Is_ret_addr(rclass, isa_reg) )
           shrink_wrap = REGISTER_SET_Union1(shrink_wrap, reg);
 #endif
@@ -371,11 +377,6 @@ Initialize_Register_Class(
 #ifdef ABI_PROPERTY_stacked
         if ( ABI_PROPERTY_Is_stacked(rclass, isa_reg) )
           stacked = REGISTER_SET_Union1(stacked, reg);
-#endif
-#if 0  // These code has been removed from PSC 3.2
-	if( ABI_PROPERTY_Is_eight_bit_reg(rclass, isa_reg) ){
-	  eight_bit_regs = REGISTER_SET_Union1( eight_bit_regs, reg );
-	}
 #endif
       }
     }
@@ -407,7 +408,7 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_static_link, rclass);
     }
 #endif
-#if defined(TARG_MIPS) || defined(TARG_IA64)
+#if defined(TARG_MIPS) || defined(TARG_IA64) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
     else if ( ABI_PROPERTY_Is_global_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_gp, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_gp, rclass);
@@ -429,7 +430,7 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_sp, rclass);
     }
 #endif
-#if defined(TARG_MIPS) || defined(TARG_IA64)
+#if defined(TARG_MIPS) || defined(TARG_IA64) || defined(TARG_LOONGSON)
     else if ( ABI_PROPERTY_Is_entry_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_ep, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_ep, rclass);
@@ -576,7 +577,7 @@ Initialize_Register_Class(
 #endif // TARG_SL
 
 #endif // TARG_MIPS
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
     else if ( ABI_PROPERTY_Is_prev_funcstate(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_pfs, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_pfs, rclass);
@@ -600,6 +601,23 @@ Initialize_Register_Class(
     else if ( ABI_PROPERTY_Is_fone(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_fone, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_fone, rclass);
+    }
+#endif
+#ifdef TARG_LOONGSON
+    else if ( ABI_PROPERTY_Is_assembler_temporary(rclass, isa_reg)) {
+       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_at, reg);
+       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_at, rclass);
+    }
+    else if ( ABI_PROPERTY_Is_hi(rclass, isa_reg)) {
+       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_hi, reg);
+       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_hi, rclass);
+    }
+    else if ( ABI_PROPERTY_Is_lo(rclass, isa_reg)) {
+       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_lo, reg);
+       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_lo, rclass);
+    }else if (ABI_PROPERTY_Is_fsr(rclass, isa_reg)) {
+       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_fsr, reg);
+       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_fsr, rclass);
     }
 #endif
   }
@@ -1116,6 +1134,9 @@ REGISTER_Set_Allocatable(
   BOOL               is_allocatable
 )
 {
+  //added by li xin
+  if (rclass > ISA_REGISTER_CLASS_MAX)
+	  return;
   INT prev_status = reg_alloc_status[rclass][reg];
   INT new_status  = is_allocatable ? AS_allocatable : AS_not_allocatable;
 
@@ -1314,6 +1335,14 @@ extern void REGISTER_CLASS_Trace(
     REGISTER_SET_Print_Name(rclass, set, TFile);
     fprintf(TFile, "\n");
   }
+#ifdef TARG_LOONGSON
+  set = REGISTER_CLASS_assembler_temporary(rclass);
+  if ( !REGISTER_SET_EmptyP(set) ) {
+    fprintf(TFile, "  assembler temporary: ");
+    REGISTER_SET_Print_Name(rclass, set, TFile);
+    fprintf(TFile, "\n");
+  }
+#endif
 }
 
 

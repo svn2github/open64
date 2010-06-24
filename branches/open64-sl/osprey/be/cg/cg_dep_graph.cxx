@@ -65,7 +65,6 @@
 #endif // USE_PCH
 #pragma hdrstop
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 
 #define USE_STANDARD_TYPES
@@ -1742,6 +1741,9 @@ static OP *addr_base_offset(OP *op, ST **initial_sym, ST **sym, TN **base_tn, IN
         defop_offset_tn = OP_opnd(defop, 1);
 #ifdef TARG_IA64    // in pathscale-3.0 is #ifdef KEY
         defop_base_tn = OP_opnd(defop, 2);
+#elif TARG_LOONGSON
+        defop_offset_tn = OP_opnd(defop, 2);
+        defop_base_tn = OP_opnd(defop, 1);
 #else
         defop_base_tn = OP_opnd(defop, 0);
 #endif
@@ -1749,6 +1751,8 @@ static OP *addr_base_offset(OP *op, ST **initial_sym, ST **sym, TN **base_tn, IN
           *base_tn = defop_base_tn;
 #ifdef TARG_IA64
 	  base_num = 2;
+#elif TARG_LOONGSON
+          base_num = 1;
 #else
           base_num = 0;
 #endif
@@ -1761,7 +1765,7 @@ static OP *addr_base_offset(OP *op, ST **initial_sym, ST **sym, TN **base_tn, IN
           defop_base_tn = NULL;
         }
       } else if (OP_memory(defop)) {
-#if !defined(TARG_MIPS) && !defined(TARG_X8664)
+#if !defined(TARG_MIPS) && !defined(TARG_X8664) && !defined(TARG_PPC32)
         INT postinc_num = OP_find_opnd_use(defop, OU_postincr);
         base_num   = OP_find_opnd_use (defop, OU_base);
         if ((postinc_num >= 0) &&
@@ -1878,7 +1882,7 @@ succ_initial_sym) != SCLASS_UNKNOWN)) {
           return TRUE;  
         } else {
 	  /* The base symbols are the same so we can use offsets to determine conflicts. */
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 	  /* Given the same symbols, we need to check base registers, too. */
 	  if( pred_base != succ_base )
 	    return FALSE;
@@ -1888,7 +1892,7 @@ succ_initial_sym) != SCLASS_UNKNOWN)) {
        /* The index computations have a common origin so we can use offsets 
 to determine conflicts. */
       } else {
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 	if( pred_base != succ_base ||
 	    pred_root != pred_op   ||
 	    succ_root != succ_op ){
@@ -2237,7 +2241,7 @@ inline BOOL under_same_cond_tn(OP *pred_op, OP *succ_op, UINT8 omega)
  * ---------------------------------------------------------------------
  */
 {
-#ifdef TARG_X8664 // merged from pathscale-3.0
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) // merged from pathscale-3.0
 #ifdef KEY
   // CIO can not do WW elimination because MIPS is not predicated 
   // architecture
@@ -2783,14 +2787,6 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
 
     } else {
 
-#if 0
-      /* Warning disabled for now since we get these for SWP
-       * windup/winddown memory refs (there's no corresponding
-       * WHIRL node since these refs are specialized for particular
-       * iterations.
-       */
-      DevWarn("get_mem_dep: can't find WHIRL node for memory OP");
-#endif
       /* Fallback: Treat as possibly aliased unless addr analysis says
        * they're definitely aliased.
        */
@@ -3285,6 +3281,9 @@ CG_DEP_Can_OP_Move_Across_Call(OP *cur_op, OP *call_op, BOOL forw,
 #ifdef TARG_IA64
 	if (reg == REGISTER_UNDEFINED) continue;
 	// Is_True(reg != REGISTER_UNDEFINED, ("reg should not be REGISTER_UNDEFINED"));
+#endif
+#ifdef TARG_LOONGSON
+     	if (!reg) return FALSE;
 #endif
 	ISA_REGISTER_CLASS rclass = TN_register_class (result);
 	 

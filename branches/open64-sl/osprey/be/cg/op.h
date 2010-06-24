@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -439,6 +443,12 @@ typedef struct op {
 #define Set_OP_opnd(o,opnd,tn) \
 	((o)->res_opnd[(opnd) + OP_opnd_offset(o)] = (tn))
 
+#ifdef TARG_LOONGSON
+#define Set_OP_bb(o,b)      ((o)->bb = (b))
+#define Set_OP_prev(o,p)    ((o)->prev = (p))
+#define Set_OP_next(o,n)    ((o)->next = (n))
+#endif
+
 /*
  * Define the OP cond def mask.
  *
@@ -551,6 +561,27 @@ enum OP_COND_DEF_KIND {
 #endif //TARG_SL
 #endif 
 
+#if defined(TARG_PPC32) 
+#define OP_MASK_BC2_OP        0x00200000  /* Is OP renamed during global sched */
+#define OP_MASK_C2_BR_OP 0x00400000
+#define OP_MASK_16bit_OP 0x00400000  /* Is OP rechanged as 16-bit OP*/
+#define OP_MASK_PAIRED_OP 0x00800000  /* Is OP paired: 2 continus 16-bit OP */ 
+
+#define OP_MASK_LR_SPILL_OP 0x04000000
+#define OP_LR_spill(o)          (OP_flags(o) &  OP_MASK_LR_SPILL_OP)
+#define Set_OP_LR_spill(o)      (OP_flags(o) |= OP_MASK_LR_SPILL_OP)
+#define Reset_OP_LR_spill(o)	  (OP_flags(o) &= ~OP_MASK_LR_SPILL_OP)
+
+#define OP_bc2_op(op)		(OP_flags(op) & OP_MASK_BC2_OP)
+#define Set_OP_bc2_op(o)	(OP_flags(o) |= OP_MASK_BC2_OP)
+#define Reset_OP_bc2_op(o)	(OP_flags(o) &= ~OP_MASK_BC2_OP)
+#define OP_16bit_op(op)        (OP_flags(op) & OP_MASK_16bit_OP)
+#define Set_OP_16bit_op(o)     (OP_flags(o) |= OP_MASK_16bit_OP)
+#define Reset_OP_16bit_op(o)   (OP_flags(o) &= ~OP_MASK_16bit_OP)
+#define OP_Paired_op(op)       (OP_flags(op) & OP_MASK_PAIRED_OP)
+#define Set_OP_Paired_op(o)    (OP_flags(o) |= OP_MASK_PAIRED_OP)
+#define Reset_OP_Paired_op(o)  (OP_flags(o) &= ~OP_MASK_PAIRED_OP)
+#endif //TARG_PPC32
 
 # define OP_glue(o)		(OP_flags(o) & OP_MASK_GLUE)
 # define Set_OP_glue(o)		(OP_flags(o) |= OP_MASK_GLUE)
@@ -687,13 +718,14 @@ extern BOOL OP_use_return_value(OP*);
 #endif
 #define OP_mem_fill_type(o)     (TOP_is_mem_fill_type(OP_code(o)))
 #define OP_call(o)		(TOP_is_call(OP_code(o)))
-#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_NVISA) || defined(TARG_MIPS)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_NVISA) || defined(TARG_MIPS) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
 #define OP_xfer(o)		(TOP_is_xfer(OP_code(o)))
 #endif
 #define OP_cond(o)		(TOP_is_cond(OP_code(o)))
 #define OP_likely(o)		(TOP_is_likely(OP_code(o)))
 #define OP_dummy(o)		(TOP_is_dummy(OP_code(o)))
 #define OP_flop(o)		(TOP_is_flop(OP_code(o)))
+#define OP_sse5(o)		(TOP_is_non_destructive(OP_code(o)))
 #define OP_fadd(o)		(TOP_is_fadd(OP_code(o)))
 #define OP_fdiv(o)		(TOP_is_fdiv(OP_code(o)))
 #define OP_fmul(o)		(TOP_is_fmul(OP_code(o)))
@@ -769,6 +801,10 @@ extern BOOL OP_use_return_value(OP*);
 #ifdef TARG_SL
 #define OP_memtrap(o)           (TOP_is_memtrap(OP_code(o))) /* memory operation*/
 #define OP_no_peephole(o)       (TOP_is_npeep(OP_code(o)))
+#endif
+
+#ifdef TARG_LOONGSON
+#define OP_unsigned(o)          (TOP_is_unsigned_ext(OP_code(o)))
 #endif
 
 #ifdef TARG_IA64
@@ -1094,6 +1130,10 @@ inline void OPS_Remove_Ops(OPS *ops, OPS *remove_ops)
   first->prev = last->next = NULL;
   ops->length -= OPS_length(remove_ops);
 }
+
+#ifdef TARG_X8664
+void Init_LegacySSE_To_Vex_Group(void);
+#endif
 
 void OPS_Insert_Op_Before(OPS *ops, OP *point, OP *op);
 void OPS_Insert_Op_After(OPS *ops, OP *point, OP *op);

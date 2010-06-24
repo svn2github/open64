@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -128,6 +132,11 @@ extern void Init_Callee_Saved_Regs_for_REGION( ST *pu, BOOL is_region );
 
 /* Init subprogram entry/exit code: */
 extern void Init_Entry_Exit_Code ( WN *pu_wn);
+
+#ifdef TARG_X8664
+/* Generate Clear of Merge dependencies for YMM regs */
+extern void Generate_Entry_Merge_Clear( BOOL is_region );
+#endif
 
 /* Produce subprogram entry/exit code: */
 extern void Generate_Entry_Exit_Code ( ST* pu, BOOL is_region );

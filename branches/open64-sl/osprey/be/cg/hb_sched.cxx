@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -214,7 +218,7 @@ Can_Schedule_HB(std::list<BB*> hb_blocks)
 INT
 Memory_OP_Base_Opndnum (OP *op)
 {
-#ifdef TARG_X8664  
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)  
   return TOP_Find_Operand_Use( OP_code(op), OU_base );
 #else
   INT opnd_num;
@@ -233,7 +237,7 @@ Memory_OP_Base_Opndnum (OP *op)
 INT
 Memory_OP_Offset_Opndnum (OP *op)
 {
-#ifdef TARG_X8664  
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)  
   return TOP_Find_Operand_Use( OP_code(op), OU_offset );
 #else
   INT opnd_num;
@@ -414,19 +418,28 @@ Is_Ldst_Addiu_Pair (OPSCH *opsch1, OPSCH *opsch2, OP *op1,OP *op2)
   // Also check that if the memory OP is a store, the source is not the same
   // as the result of the addiu.
   INT base_opndnum = Memory_OP_Base_Opndnum(ldst_op);
-#if defined(TARG_X8664) || defined(TARG_SL)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_LOONGSON)
   if( base_opndnum < 0 ){
     return FALSE;
   }
 #endif
   if (OP_result(addiu_op,0 /*???*/) != OP_opnd(ldst_op,base_opndnum) ||
       (OP_store(ldst_op) &&
-       OP_result(addiu_op,0 /*???*/) == OP_opnd(ldst_op,0)))
+#ifdef TARG_LOONGSON
+       OP_result(addiu_op,0 /*???*/) == OP_opnd(ldst_op,1)
+#else
+       OP_result(addiu_op,0 /*???*/) == OP_opnd(ldst_op,0)
+#endif
+       ))
   {
     return FALSE;
   }
 
+#ifdef TARG_LOONGSON
+  INT64 addiu_const = TN_value (OP_opnd(addiu_op, 2));
+#else
   INT64 addiu_const = TN_value (OP_opnd(addiu_op, 1));
+#endif
   INT offset_opndnum = Memory_OP_Offset_Opndnum(ldst_op);
 #if defined(TARG_SL)
   if( offset_opndnum < 0 )
@@ -481,7 +494,11 @@ HB_Schedule::Adjust_Ldst_Offsets (void)
     OPSCH *opsch = OP_opsch(op, _hb_map);
     Set_OPSCH_visited (opsch);
     if (!OPSCH_addiu (opsch)) continue;
+#ifdef TARG_LOONGSON
+    INT64 addiu_const = TN_value (OP_opnd(op,2));
+#else
     INT64 addiu_const = TN_value (OP_opnd(op,1));
+#endif
     ARC_LIST *arcs;
     for (arcs = OP_succs(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
       ARC *arc = ARC_LIST_first(arcs);
@@ -528,7 +545,11 @@ void HB_Schedule::Adjust_Ldst_Offsets( BOOL is_fwd )
     OPSCH *opsch = OP_opsch(op, _hb_map);
     Set_OPSCH_visited (opsch);
     if (!OPSCH_addiu (opsch)) continue;
+#ifdef TARG_LOONGSON
+    INT64 addiu_const = TN_value (OP_opnd(op,2));
+#else
     INT64 addiu_const = TN_value (OP_opnd(op,1));
+#endif
     ARC_LIST *arcs;
 
     for (arcs = OP_succs(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
@@ -1555,7 +1576,7 @@ HB_Schedule::Add_OP_To_Sched_Vector (OP *op, BOOL is_fwd)
 	OPSCH *succ_opsch = OP_opsch (succ_op, _hb_map);
 	if (!OPSCH_scheduled(succ_opsch)) {
 	  INT opndnum = Memory_OP_Base_Opndnum (op);
-#if defined(TARG_X8664) || defined(TARG_SL)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_LOONGSON)
 	  if( opndnum < 0 ){
 	    continue;
 	  }
@@ -2794,7 +2815,7 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
   std::list<BB*> blocks;
   blocks.push_back(bb);
 
-#if defined (TARG_X8664)
+#if defined (TARG_X8664) || defined(TARG_LOONGSON)
   Is_True(scheduling_algorithm == 0 || scheduling_algorithm == 1,
     	  ("Schedule_Block: illegal scheduling_algorithm"));
   Init_RFlag_Table( blocks, scheduling_algorithm);
@@ -2821,7 +2842,7 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
   Priority_Selector *priority_fn;
   Cycle_Selector *cycle_fn;
 
-#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
 #if defined(TARG_SL) || defined(TARG_MIPS)
   if( LOCS_Fwd_Scheduling ){
 #else
@@ -2836,7 +2857,7 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
 			   &_hb_pool );
     cycle_fn = CXX_NEW( Bkwd_Cycle_Sel(), &_hb_pool );
   }
-#else // TARG_X8664 || TARG_SL || TARG_MIPS
+#else // TARG_X8664 || TARG_SL || TARG_MIPS || TARG_LOONGSON
 #ifndef TARG_IA64
   if( LOCS_Scheduling_Algorithm == 1 ){
     priority_fn = CXX_NEW( List_Based_Fwd(bb, this, _hbs_type, &_hb_pool),
@@ -2871,7 +2892,7 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
 	cur_op = priority_fn->Select_OP_For_Delay_Slot (xfer_op);
 	if (cur_op) {
 	  Add_OP_To_Sched_Vector(cur_op, priority_fn->Is_Fwd_Schedule());
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON) 
 	  // Schedule the branch and the delay slot OP in different cycles.
 	  Clock--;
 	  OPSCH *xfer_opsch = OP_opsch(xfer_op, _hb_map);
@@ -2901,7 +2922,15 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
 
     //    Is_True(cur_time < cycle_fn->Bound(),("Invalid cycle boundary, HB_SCHED"));
 
+    // bug fixed for 15264. After this loop, the process of Inserting the scheduled list
+    // assume that "Clock" be the smallest scycle of all the scheduled op in this bb. But Clock
+    // may not be when if the first few ops are independency. So use min_clock to record the 
+    // smallest scycle. 
+    INT min_clock;
+    min_clock = Clock;
     Add_OP_To_Sched_Vector(cur_op, priority_fn->Is_Fwd_Schedule());
+    if (! priority_fn->Is_Fwd_Schedule())
+      Clock = MIN(min_clock, Clock);
   }
     
   if( BB_length(bb) != VECTOR_count(_sched_vector) ){
@@ -3125,7 +3154,7 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
 #ifdef TARG_IA64
 	  Is_Target_Itanium() ? INCLUDE_CONTROL_ARCS : NO_CONTROL_ARCS,
 #else
-#if defined(TARG_MIPS) && !defined(TARG_SL)
+#if defined(TARG_LOONGSON) || defined(TARG_MIPS) && !defined(TARG_SL)
 	  // Backward scheduling performs delay slot filling.  Don't add
 	  // control flow dependencies because they eliminate all delay slot
 	  // candidates.  Bug 11943.

@@ -870,7 +870,7 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
       switch (opcode) {
       case OPC_I8INTCONST:
       case OPC_U8INTCONST:
-#if defined(EMULATE_LONGLONG) && !defined(TARG_SL)
+#if defined(EMULATE_LONGLONG) && !defined(TARG_SL) && !defined(TARG_PPC32)
         {
           extern TN *Gen_Literal_TN_Pair(UINT64);
           const_tn = Gen_Literal_TN_Pair((UINT64) WN_const_val(home));
@@ -1064,14 +1064,6 @@ CGSPILL_Prepend_Ops (BB *bb, OPS *ops)
 {
   if (OPS_first(ops) == NULL) return;
 
-#if 0
-  OP *op;
-  SRCPOS srcpos = 0;
-  /* want ops srcpos associated with beginning of bb */
-  srcpos = BB_first_op(bb) ? OP_srcpos(BB_first_op(bb)) 
-	: OP_srcpos(BB_last_op(BB_prev(bb)));
-  FOR_ALL_OPS_OPs(ops, op) OP_srcpos(op) = srcpos;
-#endif
 
   Reset_BB_scheduled (bb);
 

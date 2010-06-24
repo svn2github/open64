@@ -337,6 +337,12 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
 	  // because src2 is zero, and comparison is unsigned
 	  case V_BR_U8LE:
 	          *variant = V_BR_U8EQ; break;
+	  // because src2 is zero, and comparison is unsigned
+	  case V_BR_U4GT: 
+	          *variant = V_BR_U4NE; break;
+	  // because src2 is zero, and comparison is unsigned
+	  case V_BR_U8GT:
+	          *variant = V_BR_U8NE; break;
 	  }
   }
 
@@ -372,7 +378,8 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
 
   case V_BR_I8GT:	
   case V_BR_I4GT:
-    if (TN_has_value(*src2)) { // add 1 to value and handle as GE
+    if (TN_is_zero(*src2)) {
+    } else if (TN_has_value(*src2)) { // add 1 to value and handle as GE
       val = TN_value(*src2);
       *src2 = Gen_Literal_TN(val+1, TN_size(*src2));
       cmp_i = TOP_slti; cmp = TOP_slt; 
@@ -388,7 +395,8 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
     break;
   case V_BR_U8GT:
   case V_BR_U4GT:
-    if (TN_has_value(*src2)) { // add 1 to value and handle as GE
+    if (TN_is_zero(*src2)) {
+    } else if (TN_has_value(*src2)) { // add 1 to value and handle as GE
       val = TN_value(*src2);
       if (val == -1) {
 	*variant = V_BR_NEVER;
@@ -409,7 +417,8 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
 
   case V_BR_I8LE:
   case V_BR_I4LE:
-    if (TN_has_value(*src2)) { // subtract 1 from value and handle as LT
+    if (TN_is_zero(*src2)) {
+    } else if (TN_has_value(*src2)) { // subtract 1 from value and handle as LT
       val = TN_value(*src2);
       *src2 = Gen_Literal_TN(val+1, TN_size(*src2));
       cmp_i = TOP_slti; cmp = TOP_slt; 
@@ -425,7 +434,8 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
     break;
   case V_BR_U8LE:
   case V_BR_U4LE:
-    if (TN_has_value(*src2)) { // subtract 1 from value and handle as LT
+    if (TN_is_zero(*src2)) {
+    } else if (TN_has_value(*src2)) { // subtract 1 from value and handle as LT
       val = TN_value(*src2);
       if (val == -1) {
 	*variant = V_BR_ALWAYS;
@@ -684,16 +694,6 @@ void Exp_Call (OPERATOR opr, TN *return_address, TN *target, OPS *ops)
     top = TOP_jal;
     break;
   case OPR_ICALL:
-#if 0
-    if ( ! Get_Trace (TP_CGEXP, 256)) {
-      // target is at 0(target), gp at 8(target)
-      OPCODE opc = OPCODE_make_op (OPR_LDID, Pointer_Mtype, Pointer_Mtype);
-      TN *tmp1 = Build_TN_Of_Mtype (Pointer_Mtype);
-      Expand_Load (opc, GP_TN, target, Gen_Literal_TN(8, 4), V_NONE, ops);
-      Expand_Load (opc, tmp1, target, Gen_Literal_TN(0, 4), V_NONE, ops);
-      target = tmp1;
-    }
-#endif
     /*FALLTHROUGH*/
   case OPR_PICCALL:
     top = TOP_jalr;

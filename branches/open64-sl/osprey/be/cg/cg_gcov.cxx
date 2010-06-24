@@ -317,53 +317,6 @@ CG_Init_Func_Infos(ST *func_infos)
 #endif
 }
 
-#if 0
-/* Information about section of counters for a function.  */
-struct counter_section
-{
-  unsigned tag;         /* Tag of the section.  */
-  unsigned n_counters;  /* Number of counters in the section.  */
-};
-
-/* Information about section of counters for an object file.  */
-struct counter_section_data
-{
-  unsigned tag;         /* Tag of the section.  */
-  unsigned n_counters;  /* Number of counters in the section.  */
-  gcov_type *counters;  /* The data.  */
-};
-
-/* Information about a single function.  */
-struct function_info
-{
-  const char *name;             /* (mangled) name of function */
-  unsigned checksum;            /* function checksum */
-  unsigned n_counter_sections;  /* Number of types of counters */
-  const struct counter_section *counter_sections;
-                                /* The section descriptions */
-};
-
-/* Information about a single object file.  */
-struct gcov_info
-{
-  unsigned long version;        /* expected version number */
-  struct gcov_info *next;       /* link to next, used by libgcc */
-                                                                                                                                                             
-  const char *filename;         /* output file name */
-  long wkspc;                   /* libgcc workspace */
-                                                                                                                                                             
-  unsigned n_functions;             /* number of functions */
-  const struct function_info *functions; /* table of functions */
-                                                                                                                                                             
-  unsigned n_counter_sections;  /* Number of types of counters */
-  const struct counter_section_data *counter_sections;
-                                /* The data to be put into the sections.  */
-};
-
-
-
-
-#endif
 void
 CG_End_Final()
 {
@@ -497,27 +450,6 @@ CG_End_Final()
          The following are GNU extensions:
          5:  Number of bytes in this header.
          6:  address of table of function checksums (LPBX7).  */
-#if 0
-struct bb_function_info {
-  long checksum;
-  int arc_count;
-  const char *name;
-};
-                                                                         
-/* Structure emitted by --profile-arcs  */
-struct bb
-{
-  long zero_word;
-  const char *filename;
-  gcov_type *counts;
-  long ncounts;
-  struct bb *next;
-                                                                         
-  /* Older GCC's did not emit these fields.  */
-  long sizeof_bb;
-  struct bb_function_info *function_infos;
-};
-#endif
   TYPE_ID rtype;
   INT32 ty_size;
 
@@ -1323,7 +1255,7 @@ CG_Instrument_Arcs()
     ld_result_tn = Build_TN_Of_Mtype(rtype);
     Exp_Load (rtype, rtype, ld_result_tn, st, 0, &new_ops, 0);
     ld_2nd_result_tn = Build_TN_Of_Mtype(rtype);
-#if defined(TARG_MIPS) || defined(TARG_X8664)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_PPC32)
     Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
 #else
     Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);
@@ -1331,7 +1263,7 @@ CG_Instrument_Arcs()
     const_tn = Gen_Literal_TN(1,4);
     result_tn = Build_TN_Of_Mtype(rtype);
     Exp_OP2 (OPC_U4ADD, result_tn, ld_2nd_result_tn, const_tn, &new_ops);
-#if defined(TARG_MIPS) || defined(TARG_X8664)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_PPC32)
     Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
 #else
     Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);
@@ -1373,7 +1305,7 @@ CG_Instrument_Arcs()
 	ld_result_tn = Build_TN_Of_Mtype(rtype);
 	Exp_Load (rtype, rtype, ld_result_tn, st, 0, &new_ops, 0);
 	ld_2nd_result_tn = Build_TN_Of_Mtype(rtype);
-#if defined(TARG_MIPS) || defined(TARG_X8664)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_PPC32)
 	Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
 #else
 	Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);
@@ -1381,7 +1313,7 @@ CG_Instrument_Arcs()
 	const_tn = Gen_Literal_TN(1,4);
 	result_tn = Build_TN_Of_Mtype(rtype);
 	Exp_OP2 (OPC_U4ADD, result_tn, ld_2nd_result_tn, const_tn, &new_ops);
-#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_SL)
+#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_PPC32)
 	Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
 #else
 	Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), (VARIANT)0, &new_ops);
@@ -1416,12 +1348,16 @@ CG_Instrument_Arcs()
 	  tgt_label = Gen_Label_For_BB( bb_succ );
 #ifdef TARG_X8664
 	  Build_OP( TOP_jmp, Gen_Label_TN(tgt_label, 0), &new_ops);
+#elif defined(TARG_PPC32)
+	  Build_OP( TOP_ba, Gen_Label_TN(tgt_label, 0), &new_ops);
 #elif TARG_MIPS
 	  // mips
 	  Build_OP( TOP_j, Gen_Label_TN(tgt_label, 0), &new_ops);
 #else
+#ifndef TARG_LOONGSON
           // ia64
           Build_OP (TOP_br, Gen_Enum_TN(ECV_ph_few), Gen_Enum_TN(ECV_dh), Gen_Label_TN(tgt_label, 0), &new_ops);
+#endif
 #endif
 	  FmtAssert(TN_is_label( tgt_tn ), ("should be branch target label"));
 	}
